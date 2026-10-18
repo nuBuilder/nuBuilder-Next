@@ -5,6 +5,6 @@ commit-note: CWE-626 precautionary patch (null byte in file names rejected, PR #
 downloaded: 2026-10-19
 CVE-2025-15138: open (path traversal via fullpath – no upstream fix known)
 additions:
--  config.php
+- config.php
 fixes:
--  tinyfilemanager.php: :saving a file results in an "Invalid Token" error (https://github.com/prasathmani/tinyfilemanager/issues/1282)
+- tinyfilemanager.php: saving a file results in an "Invalid Token" error (https://github.com/prasathmani/tinyfilemanager/issues/1282)
