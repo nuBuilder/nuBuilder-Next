@@ -121,10 +121,22 @@
 	window.nuSESSION = window.nuSESSION || '';
 	window.nuUXOptions = Object.assign({}, N.ux || {}, window.nuUXOptions || {});   // settings (nuUXOptions) – code may still change them
 	window.nuLOOKUPSTATE = window.nuLOOKUPSTATE || {};
+	// nuBuilder's flags of an empty browse list (nuBrowseHandleNoDataScenario): no rows at all / none for the search
+	window.nuBrowseNoData = !!(N.browse && !N.browse.total && !N.browse.q);
+	window.nuBrowseNoSearchResults = !!(N.browse && !N.browse.total && N.browse.q);
 
 	// =================================================================== formatting (assets/js/nu/nuformat.js)
 	var addFormatting = NuFormatLib.add, removeFormatting = NuFormatLib.remove;
 
+	/** A stored date / date-time / time value that exists (2026-02-30 does not). */
+	function validDate(v) {
+		if (/^\d{2}:\d{2}(:\d{2})?$/.test(v)) return +v.substr(0, 2) < 24 && +v.substr(3, 2) < 60;
+		var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(v);
+		if (!m) return false;
+		if (m[1] === '0000') return true;                                    // nuBuilder's empty date
+		var d = new Date(+m[1], +m[2] - 1, +m[3]);
+		return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3] && (m[4] === undefined || (+m[4] < 24 && +m[5] < 60));
+	}
 	/** Applies the display format of an input and marks negative numbers / incomplete masks. */
 	function applyFormat(el, typing) {
 		var f = el.getAttribute && el.getAttribute('data-nu-format');
@@ -133,7 +145,15 @@
 			var typed = NuFormatLib.mask(el.value, f.substring(2));
 			if (typed.masked !== el.value && typed.raw !== '') el.value = typed.masked;
 		} else if (el.value !== '') {
-			var raw = removeFormatting(el.value, f);
+			var raw = removeFormatting(el.value, f), before = el.value;
+			if (f.charAt(0).toUpperCase() === 'D' && !validDate(raw)) {        // nuBuilder (nuReformat): a date it cannot read is cleared (0.8.383)
+				el.value = '';
+				['nuFormatValueClearedGlobal', 'nuFormatValueCleared'].forEach(function (fn) {
+					if (typeof window[fn] === 'function') { try { window[fn]($(el), before); } catch (x) { reportError(x.message, fn); } }
+				});
+				el.classList.remove('nuNegative');
+				return;
+			}
 			var formatted = addFormatting(raw, f);
 			if (formatted !== el.value) el.value = formatted;
 			el.classList.toggle('nuNegative', NuFormatLib.cssClass(raw, f) !== '');
@@ -161,6 +181,65 @@
 		if (!m) return [];
 		return m[1].split(',').map(function (s) { s = s.trim(); var a = /\s+as\s+(\w+)$/i.exec(s); return a ? a[1] : s.replace(/^.*\./, ''); });
 	};
+
+	// nuBuilder's nuFORM (nuFormObject) – thin wrappers onto nuBuilder Next's functions (0.8.383). The table / form schema is not
+	// sent to the browser: tableSchema / formSchema stay empty, getTables() and the field lists return [].
+	nuFORM.getProperty = function (f) { return nuGetProperty(f); };
+	nuFORM.setProperty = function (f, v) { return nuSetProperty(f, v); };
+	nuFORM.subforms = function () { return [''].concat($('#nuEditForm .nuSubform[id]').map(function () { return this.id; }).get().filter(function (id) { return (N.subforms || {})[id]; })); };
+	nuFORM.subform = function (id) {
+		if (id) return nuSubformObject(id);
+		var v = mainValues(), keys = Object.keys(v);                    // '' = the main form as a one-row sub-form object (as nuBuilder)
+		return {id: '', foreign_key: '', primary_key: N.form.primary_key || '', object_id: '', table: N.form.table || '',
+			fields: ['ID'].concat(keys).concat(['nuDelete']), rows: [[N.record_id].concat(keys.map(function (k) { return v[k]; })).concat([0])],
+			deleted: [0], edited: [[0].concat(keys.map(function (k) { var el = g(k); return el && el.classList.contains('nuEdited') ? 1 : 0; }))], columns: []};
+	};
+	nuFORM.data = function () { return nuFORM.subforms().map(function (id) { var o = nuFORM.subform(id); o.columns = null; return o; }); };
+	nuFORM.calc = function (field) {
+		var p = String(field).split('.');
+		if (p.length !== 2) { var el = g(field); return el ? nuFORM.removeFormatting(el.value, el.getAttribute('data-nu-format') || '') : 0; }
+		var o = nuSubformObject(p[0]), c = o.fields.indexOf(p[1]), v = 0;
+		if (c < 0) return 0;
+		o.rows.forEach(function (r, i) { if (!o.deleted[i]) v = parseFloat((Number(v) + Number(r[c])).toPrecision(10)); });
+		return Number(v);
+	};
+	nuFORM.scrollList = function (e, l) {
+		if (!e || !Array.isArray(l) || !l.length || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+		var el = e.target, i = l.indexOf(el.value);
+		i = i < 0 ? (e.key === 'ArrowDown' ? 0 : l.length - 1) : (i + (e.key === 'ArrowDown' ? 1 : l.length - 1)) % l.length;
+		$(el).val(l[i]).trigger('change');
+		if (e.preventDefault) e.preventDefault();
+	};
+	nuFORM.tableSchema = nuFORM.tableSchema || {};
+	nuFORM.formSchema = nuFORM.formSchema || {};
+	nuFORM.scroll = nuFORM.scroll || [];
+	nuFORM.getTables = nuFORM.getJustTables = function () { return Object.keys(nuFORM.tableSchema); };
+	nuFORM.getForms = function () { return Object.keys(nuFORM.formSchema); };
+	nuFORM.tableFields = nuFORM.formFields = function () { return []; };
+	nuFORM.dataType = function () { return ''; };
+	nuFORM.tablesFromSQL = function (sql) {
+		var out = [], re = /\b(?:from|join)\s+[`"[]?([\w.]+)/gi, m;
+		while ((m = re.exec(String(sql || ''))) !== null) if (out.indexOf(m[1]) < 0) out.push(m[1]);
+		return out;
+	};
+	Object.defineProperty(nuFORM, 'edited', {configurable: true, get: function () { return !!N.edited; }, set: function (v) { N.edited = !!v; }});
+	Object.defineProperty(nuFORM, 'breadcrumbs', {configurable: true, get: function () {   // earlier forms (title / url), the current one = its properties
+		return (N.breadcrumbs || []).slice(0, -1).map(function (b) { return {title: b.title || '', url: b.url || ''}; }).concat([nuCurrentProperties()]);
+	}});
+	nuFORM.removeLast = nuFORM.removeAfter = nuFORM.addBreadcrumb = function () { console.warn('nuFORM: breadcrumbs are kept by nuBuilder Next.'); };
+
+	// nuBuilder's nuSERVERRESPONSE (its last answer: the form's properties) – built from nuCurrentProperties() when read (0.8.383)
+	var serverResponse = null;
+	Object.defineProperty(window, 'nuSERVERRESPONSE', {configurable: true,
+		get: function () {
+			if (serverResponse) return serverResponse;
+			return $.extend({viewSchema: [], tableSchema: {}, formSchema: {}, buttons: {}, user_a11y: false}, nuCurrentProperties(), {
+				title: N.form.description || '', search: N.browse ? N.browse.q : '', browse_filtered_rows: N.browse ? N.browse.total : 0,
+				objects: Object.keys(N.objects || {}).map(function (id) { return $.extend({id: id}, N.objects[id]); })
+			});
+		},
+		set: function (v) { serverResponse = v; }
+	});
 
 	// =================================================================== values
 	function rawValue(el) {
@@ -755,6 +834,33 @@
 		});
 	});
 
+	// =================================================================== scripts of HTML objects (0.8.383)
+	// The server gives them type="text/nu-deferred" (NuRender::deferScripts): they run here, in page order, once jQuery and the
+	// runtime exist – as in nuBuilder, which inserts HTML objects after loading its libraries. A script with src is loaded first;
+	// the scripts after it wait for it.
+	api('nuNextRunDeferred', function (root) {
+		var list = Array.prototype.slice.call((root || document).querySelectorAll('script[type="text/nu-deferred"]:not([data-nu-ran])'));
+		(function next() {
+			var old = list.shift();
+			if (!old) return;
+			old.setAttribute('data-nu-ran', '1');
+			var s = document.createElement('script');
+			Array.prototype.forEach.call(old.attributes, function (a) { if (a.name !== 'type' && a.name !== 'data-nu-type' && a.name !== 'data-nu-ran') s.setAttribute(a.name, a.value); });
+			var tp = old.getAttribute('data-nu-type');
+			if (tp) s.type = tp;
+			s.setAttribute('data-nu-source', 'html object');
+			if (old.src) {
+				s.async = false;
+				s.onload = s.onerror = next;
+				old.parentNode.insertBefore(s, old.nextSibling);
+				return;
+			}
+			s.text = old.text;
+			try { old.parentNode.insertBefore(s, old.nextSibling); } catch (e) { reportError(e.message, 'html object'); }
+			next();
+		})();
+	});
+
 	// =================================================================== subforms
 	api('nuSubformObject', function (sf) {
 		var info = (N.subforms || {})[sf] || {fields: []};
@@ -781,6 +887,7 @@
 		var html = tpl.innerHTML.split('__ROW__').join(nuPad3(n));
 		$(body).append(html);
 		var row = g(sf + nuPad3(n));
+		nuNextRunDeferred(row);
 		initSelects(row);
 		var ev = ((N.events || {})[sf] || {}).afterinsertrow;
 		if (ev) runSnippet(ev, {target: row}, row);
@@ -1055,16 +1162,25 @@
 			if (!res.ok) { applyResult(res); return; }
 			try { if (res.js && res.js.length) sessionStorage.setItem('nuNextPendingJs', JSON.stringify(res.js)); } catch (x) { /* ignore */ }
 			N.edited = false;
-			callHook('nuAfterSaveGlobal');
-			if (window.nuAfterSave) { try { window.nuAfterSave(); } catch (x) { reportError(x.message, 'nuAfterSave'); } }
+			var afterSaveNow = function () {
+				callHook('nuAfterSaveGlobal');
+				if (window.nuAfterSave) { try { window.nuAfterSave(); } catch (x) { reportError(x.message, 'nuAfterSave'); } }
+			};
 			if (N.lookup && N.is_new && window.parent !== window && window.parent.nuNextLookupChosen) {   // added from a lookup: choose it
+				afterSaveNow();
 				try { window.parent.nuNextLookupChosen(N.lookup, res.record_id); return; } catch (x) { reportError(x.message, 'lookup'); }
 			}
-			if (then) { if (typeof then === 'function') then(); else window.location.href = then; return; }
+			if (then) { afterSaveNow(); if (typeof then === 'function') then(); else window.location.href = then; return; }
 			if (close === true) {
+				afterSaveNow();
+				var stay = false;                                              // nuBuilder: nuCloseAfterSaveGlobal() returning false keeps the form open
+				if (typeof window.nuCloseAfterSaveGlobal === 'function') { try { stay = window.nuCloseAfterSaveGlobal(true) === false; } catch (x) { reportError(x.message, 'nuCloseAfterSaveGlobal'); } }
 				var bc = N.breadcrumbs || [];
-				for (var bi = bc.length - 2; bi >= 0; bi--) if (bc[bi].url) { window.location.replace(bc[bi].url); return; }
+				if (!stay) for (var bi = bc.length - 2; bi >= 0; bi--) if (bc[bi].url) { window.location.replace(bc[bi].url); return; }
+				if (stay) return;
 			}
+			// nuBuilder runs nuAfterSaveGlobal / nuAfterSave on the rebuilt form: the reloaded page calls them after nuOnLoad (0.8.383)
+			try { sessionStorage.setItem('nuNextAfterSave', N.form.id + '|' + res.record_id); } catch (x) { afterSaveNow(); }
 			var u = new URL(window.location.href);
 			u.searchParams.set('r', res.record_id);
 			u.searchParams.set('saved', '1');
@@ -2557,17 +2673,29 @@
 		sfRows(sf).each(function () {
 			var row = this, prefix = row.id;
 			if (row.classList.contains('nuNewRow')) { row.classList.remove('nuFilteredOut'); return; }
+			var rowNo = parseInt(String(prefix).slice(sf.length), 10), all = sfRows(sf).length, hookHide = null;
 			var show = Object.keys(cols).every(function (col) {
 				var f = g(sf + col + '_filter');
 				if (!f) return true;
-				var txt = cellText(g(prefix + col));
+				var txt = cellText(g(prefix + col)), match, isAll = false, blank = false, fv;
 				if (f.tagName === 'SELECT') {
 					var opt = f.options[f.selectedIndex];
-					if (!opt || opt.getAttribute('data-nu-all') === 'true') return true;
-					return txt === opt.text;
+					isAll = !opt || opt.getAttribute('data-nu-all') === 'true';
+					fv = opt ? opt.text : '';
+					match = isAll || txt.toLowerCase() === fv.toLowerCase();
+				} else {
+					fv = f.value; blank = fv === '';
+					match = blank || txt.toLowerCase().indexOf(fv.toLowerCase()) >= 0;
 				}
-				return f.value === '' || txt.toLowerCase().indexOf(f.value.toLowerCase()) >= 0;
+				// nuBuilder's hook decides per column (the last column's answer counts): true = hide the row
+				if (typeof window.nuSubformOnFilterRows === 'function') {
+					try { hookHide = !!window.nuSubformOnFilterRows(sf, {val: txt, filter: fv, type: f.tagName === 'SELECT' ? 'select' : 'search', optionAll: isAll, optionBlank: blank, isMatch: match}, rowNo, all); }
+					catch (x) { reportError(x.message, 'nuSubformOnFilterRows'); }
+					return true;
+				}
+				return match;
 			});
+			if (hookHide !== null) show = !hookHide;
 			row.classList.toggle('nuFilteredOut', !show);
 		});
 	}
@@ -2581,6 +2709,21 @@
 		});
 		return out.sort(function (a, b) { return a.localeCompare(b); });
 	}
+	// nuBuilder's helpers inside nuSubformAddFilter, reachable from form code (0.8.383)
+	api('nuSubformFilterArray', function (sf, columns) {
+		var out = {}, list = Array.isArray(columns) ? columns : Object.keys(columns || {});
+		list.forEach(function (col) {
+			var f = g(sf + col + '_filter'), type = Array.isArray(columns) ? 'select' : ((columns[col] || {}).type || 'select');
+			var opt = f && f.tagName === 'SELECT' ? f.options[f.selectedIndex] : null;
+			out[col] = {type: type, value: f ? (opt ? opt.text : f.value) : '', all: !!(opt && opt.getAttribute('data-nu-all') === 'true')};
+		});
+		return out;
+	});
+	api('nuSubformFilterAddObject', function (type, sf, col, filterId, prop) {
+		var def = {}; def[sf] = {}; def[sf][col] = $.extend({}, prop || {}, {type: type || 'select'});
+		nuSubformAddFilter(def);
+		return $('#' + (filterId || sf + col + '_filter'));
+	});
 	api('nuSubformAddFilter', function (filter) {
 		Object.keys(filter || {}).forEach(function (sf) {
 			var def = filter[sf], cols = {};
@@ -2593,7 +2736,10 @@
 					el = $('<input type="search" class="form-control form-control-sm nuSubformFilter">').attr('id', id);
 					if (prop.datalist !== false) {
 						var dl = $('<datalist>').attr('id', id + '_list');
-						el.attr('list', id + '_list').on('focus', function () { dl.empty(); sfDistinct(sf, col).forEach(function (t) { dl.append($('<option>').attr('value', t)); }); });
+						el.attr('list', id + '_list').on('focus', function () {
+							dl.empty(); sfDistinct(sf, col).forEach(function (t) { dl.append($('<option>').attr('value', t)); });
+							if (typeof window.nuSubformFilterOnAddValues === 'function') { try { window.nuSubformFilterOnAddValues(sf, id); } catch (x) { reportError(x.message, 'nuSubformFilterOnAddValues'); } }
+						});
 						el = el.add(dl);
 					}
 					el.filter('input').on('input', function () { sfFilterRows(sf, cols); });
@@ -2603,7 +2749,14 @@
 					var fill = function () {
 						var cur = el.val();
 						el.find('option:not([data-nu-persistent])').remove();
-						sfDistinct(sf, col).forEach(function (t) { el.append($('<option>').text(t).attr('value', t)); });
+						sfDistinct(sf, col).forEach(function (t) {
+							var r = {add: true, text: t, value: t};
+							if (typeof window.nuSubformFilterOnAddValue === 'function') {   // nuBuilder: may change or skip an option
+								try { r = window.nuSubformFilterOnAddValue(sf, true, t, t) || r; } catch (x) { reportError(x.message, 'nuSubformFilterOnAddValue'); }
+							}
+							if (r.add !== false) el.append($('<option>').text(r.text).attr('value', r.value));
+						});
+						if (typeof window.nuSubformFilterOnAddValues === 'function') { try { window.nuSubformFilterOnAddValues(sf, id); } catch (x) { reportError(x.message, 'nuSubformFilterOnAddValues'); } }
 						if (cur !== null) el.val(cur);
 					};
 					if (all !== false) el.append($('<option value="" data-nu-persistent="true" data-nu-all="true" selected>').text(all));
@@ -2879,6 +3032,26 @@
 		// nuBuilder: global load hooks (setup header), then the form's nuOnLoad(formId, formCode)
 		callHook(N.mode === 'browse' ? 'nuLoadBrowseGlobal' : 'nuLoadEditGlobal', N.form.id, N.form.code);
 		callHook('nuOnLoad', N.form.id, N.form.code);
+		if (N.mode === 'edit') {                                            // nuAfterSave of the save that reloaded this page (0.8.383)
+			try {
+				var as = sessionStorage.getItem('nuNextAfterSave');
+				if (as !== null) {
+					sessionStorage.removeItem('nuNextAfterSave');
+					if (as === N.form.id + '|' + N.record_id) {
+						window.nuTimesSaved = (window.nuTimesSaved || 0) + 1;
+						callHook('nuAfterSaveGlobal');
+						if (window.nuAfterSave) { try { window.nuAfterSave(); } catch (x) { reportError(x.message, 'nuAfterSave'); } }
+					}
+				}
+			} catch (x) { /* ignore */ }
+		}
+		// nuBuilder ends nuBuildForm with nuSetSaved(true): values set by the form's own code while loading (nuSetValue …) do not
+		// count as an edit – Save stays normal and leaving does not ask. The fields keep their nuEdited mark, so they are still saved (0.8.383).
+		if (N.mode === 'edit' && N.edited) {
+			N.edited = false;
+			$('#nuSaveButton').removeClass('nuSaveEdited');
+			callHook('nuOnSetSaved', true);
+		}
 		// tooltip icons (nu-tooltip-icon attribute, assets/js/nu/nutooltip.js) – after nuOnLoad, which may set nuOnToolTipIcon or attributes
 		if (typeof window.nuAttachToolTip === 'function') { try { window.nuAttachToolTip(); } catch (x) { reportError(x.message, 'nuAttachToolTip'); } }
 		// chart objects – after nuOnLoad, so the form's code can still set the data arrays

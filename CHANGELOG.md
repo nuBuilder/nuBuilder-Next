@@ -3,6 +3,25 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.383 – nuBuilder 4.9 compatibility: form JavaScript
+- Scripts in HTML objects run as in nuBuilder (compatibility report M1): after jQuery and the nu… functions are loaded, in page
+  order and before the form's own JavaScript – `$` and functions they define work again. Other script types stay untouched.
+- `nuAfterSave()` / `nuAfterSaveGlobal()` run on the reloaded form after `nuOnLoad` (M7) – their messages and changes stay, and
+  `nuRecordId()` is the saved record. Save & Close: `nuCloseAfterSaveGlobal()` returning false keeps the form open.
+- `nuFORM` with nuBuilder's methods (M8): getProperty, setProperty, subform, subforms, data, calc, scrollList, breadcrumbs,
+  getTables … (no table schema in the browser); `nuSERVERRESPONSE` with the form's properties (N1).
+- Hooks (N2): `nuFormatValueCleared` / `nuFormatValueClearedGlobal` – a date field that does not hold a real date is cleared when
+  it is left, as in nuBuilder; sub-form filters call `nuSubformFilterOnAddValue(s)` and `nuSubformOnFilterRows`; the flags
+  `nuBrowseNoData` / `nuBrowseNoSearchResults` are set.
+- More nuBuilder functions (N3): `nuAddActionCheckbox`, `nuGetStartingTab`, `nuSubformFilterArray`, `nuSubformFilterAddObject`,
+  `nuDatalistShowAllOnArrowClick`, `nuSearchablePopupUtils`.
+- Values set while the form loads (e.g. `nuSetValue` in `nuOnLoad`) no longer turn Save red or ask when leaving (N4); they are
+  still saved with the next save.
+- Compatibility check: the findings above are marked as supported; N2 and N3 are also found in the application's code.
+- Start page: the Customise hint no longer says the start page is the same for every globeadmin – Done saves the layout chosen
+  under Layouts.
+- Test form tjs (dev/tests/nub49/build_app3.php) and e2e test nub49_js; docs/porting-review.md updated.
+
 ## 0.8.382 – nuBuilder 4.9 compatibility: browse lists and access conditions
 - Browse lists built the nuBuilder way (compatibility report C1–C6): the form's browse SQL stays as written – table-qualified
   columns, aliases, ORDER BY by alias or position, tables without primary key, duplicate column names and hash variables in

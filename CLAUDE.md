@@ -167,7 +167,9 @@ core/form/*.php      form runtime (meta, render, record, browse, hash variables,
                      → wrapped as nuX); nu_filter_match via expandFilterMatch(). Access 9: NuRecord::accessOf() runs sob_all_access_condition
                      (read only, hash of the record, cached; error = 2) on render and save · core/nucompat.php NuCompat::findings() + SINCE
                      = the compatibility report's findings (C/M/N ids) with the version that supports them – update SINCE when one is fixed;
-                     test application of the report: dev/tests/nub49/ (build_app*.php, e2e nub49_app)
+                     test application of the report: dev/tests/nub49/ (build_app*.php, e2e nub49_app, nub49_js)
+                     form JS (0.8.383): HTML-object scripts → type text/nu-deferred (NuRender::deferScripts), run by nuNextRunDeferred();
+                     nuAfterSave after the reload (sessionStorage nuNextAfterSave); edited flag reset after nuOnLoad (field nuEdited marks stay)
 core/nureport.php    reports: NuReport (data, rights, designer data) · core/nureportengine.php NuReportEngine (nurunpdf.php port, TCPDF)
 core/nuapi.php       REST API router (routes with scopes; a route may return a string = file, self::$after = work after the answer)
                      · core/nuapiclient.php clients, SCOPES, tokens, rate limit · core/nuapiplayground.php

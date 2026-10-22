@@ -276,7 +276,7 @@ final class NuRender
 				return '<div class="nuWord ' . h($cls) . '"' . $common . '>' . (string)$o['sob_all_label'] . '</div>';
 
 			case 'html':
-				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . NuHash::replace((string)$o['sob_html_code'], $this->hash, NuHash::HTML) . '</div>';
+				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(NuHash::replace((string)$o['sob_html_code'], $this->hash, NuHash::HTML)) . '</div>';
 
 			case 'run':
 				return $this->run($o, $common, $cls);
@@ -349,6 +349,25 @@ final class NuRender
 			. '<div class="nuFileInfo' . ($info === '' ? ' d-none' : '') . '">' . $info . $remove . '</div>'
 			. ($ro ? '' : '<input type="file" class="form-control form-control-sm nuFileInput" id="' . h($id) . '_file" data-nu-prefix="' . h(substr($id, 0, strlen($id) - strlen((string)$o['sob_all_id']))) . '" aria-label="' . h(strip_tags((string)$o['sob_all_label']) ?: t('file_choose')) . '">')
 			. '</div>';
+	}
+
+	/**
+	 * nuBuilder inserts HTML objects with jQuery after its libraries are loaded, so their <script> may use $ and every nu… function.
+	 * Here the HTML is part of the page: its JavaScript scripts get type="text/nu-deferred" and run in order once the runtime has
+	 * loaded (nuNextRunDeferred in assets/js/nu/nuruntime.js, before the form's own JavaScript). Other script types stay as they are.
+	 */
+	public static function deferScripts(string $html): string
+	{
+		if (stripos($html, '<script') === false) return $html;
+		return (string)preg_replace_callback('/<script\b([^>]*)>/i', static function (array $m): string {
+			$attrs = $m[1];
+			if (preg_match('/\btype\s*=\s*(["\']?)([^"\'\s>]*)\1/i', $attrs, $t)) {
+				$type = strtolower(trim($t[2]));
+				if (!in_array($type, ['', 'text/javascript', 'application/javascript', 'module'], true)) return $m[0];
+				$attrs = str_replace($t[0], 'data-nu-type="' . h($type) . '"', $attrs);
+			}
+			return '<script type="text/nu-deferred"' . $attrs . '>';
+		}, $html);
 	}
 
 	/** data: URL from a nuBuilder file JSON (its "file" is base64 of the data URL). */

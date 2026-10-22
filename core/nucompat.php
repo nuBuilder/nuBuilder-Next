@@ -273,8 +273,8 @@ final class NuCompat
 	 * which version nuBuilder Next supports them (null = not yet – see the Help). SINCE is kept up to date with each fix.
 	 */
 	public const SINCE = ['C1' => '0.8.382', 'C2' => '0.8.382', 'C3' => '0.8.382', 'C4' => '0.8.382', 'C5' => '0.8.382', 'C6' => '0.8.382',
-		'M1' => null, 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => null, 'M6' => null, 'M7' => null, 'M8' => null, 'M9' => null,
-		'M10' => null, 'N1' => null, 'I3' => null];
+		'M1' => '0.8.383', 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => null, 'M6' => null, 'M7' => '0.8.383', 'M8' => '0.8.383',
+		'M9' => null, 'M10' => null, 'N1' => '0.8.383', 'N2' => '0.8.383', 'N3' => '0.8.383', 'I3' => null];
 
 	/** @return array<string, list<array{where: string, form: string, detail: string}>> finding id => places (only ids with places) */
 	public static function findings(bool $withSystem = false): array
@@ -329,7 +329,9 @@ final class NuCompat
 		}
 		// JavaScript and PHP of the application
 		$js = ['M2' => '/\bnuAddBrowseTitleSelect\s*\(/', 'M3' => '/\bmultiSelect\s*:\s*true/', 'M7' => '/\bnuAfterSave\b/',
-			'M8' => '/\bnuFORM\s*\.\s*(getProperty|setProperty|subform|data|calc|scrollList|getTables|breadcrumbs|tableSchema)\b/', 'N1' => '/\bnuSERVERRESPONSE\b/'];
+			'M8' => '/\bnuFORM\s*\.\s*(getProperty|setProperty|subform|data|calc|scrollList|getTables|breadcrumbs|tableSchema)\b/', 'N1' => '/\bnuSERVERRESPONSE\b/',
+			'N2' => '/\b(nuCloseAfterSaveGlobal|nuFormatValueCleared(Global)?|nuSubformFilterOnAddValues?|nuSubformOnFilterRows|nuBrowseNoSearchResults)\b/',
+			'N3' => '/\b(nuAddActionCheckbox|nuGetStartingTab|nuSubformFilterArray|nuSubformFilterAddObject|nuDatalistShowAllOnArrowClick|nuSearchablePopupUtils)\b/'];
 		foreach (self::sources($withSystem) as $src) {
 			$code = self::stripComments($src['code']);
 			if ($src['lang'] === 'js') { foreach ($js as $id => $re) if (preg_match($re, $code, $m)) $hit($id, $src['where'], $src['form'], $m[0]); }

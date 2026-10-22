@@ -677,6 +677,67 @@
 			return this.each(function () { $(this).on('keydown', function (e) { if (e.key === 'Enter') { if (preventDefault) e.preventDefault(); fn.call(this, e); } }); });
 		};
 	}
+	// =================================================================== more nuBuilder 4.9 functions (compatibility report N3, 0.8.383)
+	// nuActionCheckbox: a check box in the action bar; its state is kept in the property "<id>_filter" (or session / local storage)
+	if (!$.fn.nuActionCheckbox) {
+		$.fn.nuActionCheckbox = function (options) {
+			var o = $.extend({id: window.nuID ? nuID() : 'nucb' + Date.now(), text: 'Checkbox', checked: false, storage: 'property', onChecked: function () {}}, options);
+			var get = function (k) { return o.storage === 'session' || o.storage === 'local' ? nuGetStorageItem(k, o.storage) : nuGetProperty(k); };
+			var set = function (k, v) { if (o.storage === 'session' || o.storage === 'local') nuSetStorageItem(k, v, o.storage); else nuSetProperty(k, v); };
+			return this.each(function () {
+				var key = o.id + '_filter';
+				var box = $('<input type="checkbox" class="form-check-input">').attr('id', o.id).prop('checked', get(key) === '1' || o.checked === true);
+				var label = $('<label class="form-check-label"></label>').attr('for', o.id).text(nuTranslate(o.text));
+				$(this).empty().addClass('form-check nuActionCheckbox align-self-center mb-0').append(box, label);
+				box.on('change', function () { set(key, this.checked ? '1' : '0'); try { o.onChecked(this.checked); } catch (x) { console.error(x); } });
+			});
+		};
+	}
+	api('nuAddActionCheckbox', function (settings) {
+		settings = settings || {};
+		var after = settings.insertAfterElement, opts = $.extend({}, settings);
+		delete opts.insertAfterElement;
+		var span = $('<span></span>');
+		if (after) span.insertAfter('#' + after); else span.appendTo('#nuActionHolder');
+		return span.nuActionCheckbox(opts);
+	});
+	// the tabs kept in the property tab_start ([{prefix, tabNumber}]) – nuBuilder Next remembers the open tab itself
+	api('nuGetStartingTab', function () {
+		var t = nuGetProperty('tab_start');
+		if (!Array.isArray(t)) return;
+		t.forEach(function (x) { if (x && !x.prefix && window.nuSelectTab) nuSelectTab(Number(x.tabNumber) || 0); });
+	});
+	// a click on the arrow of a field with a datalist shows the whole list (the value moves to the placeholder until the mouse leaves)
+	api('nuDatalistValueRestoreValue', function (id) {
+		var t = $('#' + id);
+		if (t.val() === '' && t.attr('placeholder') !== t.attr('org-placeholder')) { t.val(t.attr('placeholder')); t.attr('placeholder', t.attr('org-placeholder') || ''); }
+	});
+	api('nuDatalistShowAllOnArrowClick', function (id) {
+		$('#' + id)
+			.on('mouseenter', function () { if (!this.hasAttribute('org-placeholder')) $(this).attr('org-placeholder', $(this).attr('placeholder') || ''); })
+			.on('click', function (e) {
+				var t = $(this), rtl = getComputedStyle(this).direction === 'rtl';
+				var fromEdge = rtl ? e.clientX - this.getBoundingClientRect().left : this.getBoundingClientRect().right - e.clientX;
+				if (fromEdge < 24) { if (t.val() !== '') { t.attr('placeholder', t.val()); t.val(''); } }
+				else nuDatalistValueRestoreValue(id);
+			})
+			.on('mouseleave', function () { nuDatalistValueRestoreValue(id); });
+	});
+	// nuSearchablePopupUtils: the helpers form code uses (filter property, item lists)
+	window.nuSearchablePopupUtils = window.nuSearchablePopupUtils || {
+		PropertyManager: {
+			getFilterKey: function (column, columnId) { return (columnId || column) + '_filter'; },
+			getFilterValue: function (column, columnId) { return nuGetProperty(this.getFilterKey(column, columnId)); },
+			setFilterValue: function (column, columnId, value) { nuSetProperty(this.getFilterKey(column, columnId), value); },
+			clearFilterValue: function (column, columnId) { this.setFilterValue(column, columnId, ''); }
+		},
+		ArrayNormalizer: {
+			to2DArray: function (a) { return Array.isArray(a) && a.every(function (x) { return !Array.isArray(x); }) ? a.map(function (x) { return [x, x]; }) : a; },
+			flattenSingles: function (a) { return Array.isArray(a) && a.length && a.every(function (x) { return Array.isArray(x) && x.length === 1; }) ? a.map(function (x) { return x[0]; }) : a; },
+			normalize: function (items) { return this.to2DArray(this.flattenSingles(items)); }
+		}
+	};
+
 	if (!$.fn.nuFocusWithoutScrolling) {
 		$.fn.nuFocusWithoutScrolling = function () { var el = this[0]; if (el) el.focus({preventScroll: true}); return this; };
 	}

@@ -174,7 +174,7 @@ $client = [
 	'subforms' => $mode === 'edit' ? (object)$render->clientSubforms : (object)[],
 	'events' => $mode === 'edit' ? nu_form_client_events($meta) : (object)[],
 	'breadcrumbs' => $breadcrumbs, 'title' => $title, 'errors' => $errors,
-	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1] : null,
+	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1, 'total' => (int)($data['total'] ?? 0)] : null,
 	// keyboard shortcuts / options menu (nuBuilder Ctrl+Shift+…): only what exists in nuBuilder Next and the user may use
 	'tools' => [
 		'design' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM),
@@ -333,6 +333,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
 	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript (0.8.298)
 	. $setupHeader . "\n"
+	. ($mode === 'edit' ? '<script>nuNextRunDeferred(document);</script>' : '')   // scripts of HTML objects (0.8.383, NuRender::deferScripts)
 	. nu_script(implode("\n", $js), 'php: nuAddJavascript')
 	. ($errors ? '' : $custom)
 	. '<script>nuNextStart();</script>'

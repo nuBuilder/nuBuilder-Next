@@ -6,7 +6,7 @@
  * users, default Test1234! – set by the suite for every sample user), PKG (a package for the update page check, optional),
  * ONLY (comma separated test names), KEEP=1 (do not restore the database), SITE (folder of the test installation: demo mode test).
  * Covers: login, form save / validation / change / clone / delete, sub-form rows, rights of access levels, audit trail and restore,
- * notifications, list views, start page favourites and list in 2 columns, CSV import, update package check, the self-test (developer mode), CSRF and the
+ * nuBuilder 4.9 compatibility (nub49_app, nub49_js), notifications, list views, start page favourites and list in 2 columns, CSV import, update package check, the self-test (developer mode), CSRF and the
  * include guards. Exit code 1 when a test fails. Never run it against a database with real data.
  */
 const { chromium } = require('playwright');
@@ -786,6 +786,59 @@ T.nub49_app = async (s) => {
 			+ " DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = 'taccess'; DELETE FROM zzzzsys_access WHERE zzzzsys_access_id = 'taccess'; DELETE FROM zzzzsys_user WHERE zzzzsys_user_id IN ('tuser1','tuser2');"
 			+ " DELETE FROM zzzzsys_translate WHERE zzzzsys_translate_id LIKE 'ttr%'; DROP TABLE IF EXISTS tcountry, tcustomer, torder, tlog, tnote");
 		// the setup header function of build_app2.php is removed with the whole database at the end of the suite
+	}
+};
+
+// nuBuilder 4.9 form-page JavaScript (0.8.383, compatibility report M1, M7, M8, N1–N4): dev/tests/nub49/build_app3.php = form tjs
+T.nub49_js = async (s) => {
+	const db = (DB.match(/(?:^|\s)([A-Za-z0-9_]+)\s*$/) || [])[1] || 'nutest';
+	const user = (DB.match(/-u\s*(\S+)/) || [])[1] || 'nu', pass = (DB.match(/-p(\S+)/) || [])[1] || 'nu';
+	try {
+		for (const f of ['build_app.php', 'build_app3.php']) execSync('php ' + JSON.stringify(path.join(__dirname, 'nub49', f)) + ' ' + db, { env: Object.assign({}, process.env, { DBUSER: user, DBPASS: pass }) });
+		const p = s.ga;
+		const errs = []; const onErr = (e) => errs.push(e.message); p.on('pageerror', onErr);
+		await open(p, 'index.php?p=form&f=tjs&r=tu1'); await p.waitForTimeout(500);
+		const st = await p.evaluate(() => ({ T: window.T, box: document.getElementById('tHtmlBox').textContent, tpl: document.getElementById('tTpl').type,
+			edited: nuHasBeenEdited(), red: document.getElementById('nuSaveButton').classList.contains('nuSaveEdited') }));
+		expect(st.T.htmlJq === 'function' && st.box === 'set by script' && st.T.htmlFn === 'html ok', 'M1: script of an HTML object ' + JSON.stringify(st));
+		expect(st.tpl === 'text/x-template', 'M1: other script types must stay');
+		expect(st.T.prop === 'tjs' && st.T.sr === 'tjs' && st.T.main === true, 'M8 / N1: nuFORM / nuSERVERRESPONSE ' + JSON.stringify(st.T));
+		expect(st.T.editedInLoad === true && !st.edited && !st.red, 'N4: values set while loading must not mark the form as edited');
+		await p.fill('#cus_name', 'Alpha AG js'); await p.dispatchEvent('#cus_name', 'change');
+		await save(p);
+		expect(await p.evaluate(() => window.T.afterSave) === 'tu1|1', 'M7: nuAfterSave not run on the reloaded form');
+		expect(sql("SELECT CONCAT(cus_name, '|', cus_city) FROM tcustomer WHERE customer_id = 'tu1'") === 'Alpha AG js|Loaded', 'value set while loading not saved');
+		// subform filter hooks, nuFormatValueCleared (N2) and nuAddActionCheckbox (N3)
+		await open(p, 'index.php?p=form&f=tcustomer&r=tu1');
+		const r = await p.evaluate(() => {
+			const out = {};
+			window.nuSubformFilterOnAddValue = (sf, add, text, value) => ({ add: true, text: text + '!', value: value });
+			window.nuSubformOnFilterRows = (sf, data, row) => row === 0;
+			nuSubformAddFilter({ sub_orders: ['ord_product'] });
+			const sel = document.getElementById('sub_ordersord_product_filter');
+			sel.dispatchEvent(new Event('focus')); out.bang = Array.from(sel.options).some(o => /!$/.test(o.text));
+			sel.dispatchEvent(new Event('change'));
+			out.hidden = Array.from(document.querySelectorAll('#sub_orders .nuSubformRow.nuFilteredOut')).map(x => x.id).join();
+			let cleared = null; window.nuFormatValueCleared = ($e, v) => { cleared = v; };
+			const d = document.getElementById('cus_since'); d.value = '31-02-2026'; d.dispatchEvent(new Event('change', { bubbles: true }));
+			out.cleared = cleared + '|' + d.value;
+			nuAddActionCheckbox({ id: 'tChk', text: 'Only open' }); document.getElementById('tChk').click(); out.chk = nuGetProperty('tChk_filter');
+			return out;
+		});
+		expect(r.bang && r.hidden === 'sub_orders000', 'N2: subform filter hooks ' + JSON.stringify(r));
+		expect(r.cleared === '31-02-2026|', 'N2: nuFormatValueCleared ' + r.cleared);
+		expect(r.chk === '1', 'N3: nuAddActionCheckbox');
+		p.off('pageerror', onErr);
+		expect(errs.length === 0, 'JavaScript errors: ' + errs.join(' · '));
+		await open(p, 'index.php?p=compat');
+		expect(/0\.8\.383/.test(await p.locator('#compat_findings [data-finding="M1"]').textContent()), 'M1 not marked as supported');
+	} finally {
+		sql("DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id IN ('tcountry','tcustomer','torder_sf','tb_qualified','tb_alias','tb_nopk','tb_dupcol','tb_tablealias','tb_filter','tb_hash','tb_titleselect','tjs');"
+			+ " DELETE FROM zzzzsys_event WHERE zzzzsys_event_id LIKE 'tev%';"
+			+ " DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id IN ('tcountry','tcustomer','torder_sf','tjs'); DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id LIKE 't%' AND zzzzsys_browse_id LIKE 'tb\\_%';"
+			+ " DELETE FROM zzzzsys_form WHERE zzzzsys_form_id IN ('tcountry','tcustomer','torder_sf','tb_qualified','tb_alias','tb_nopk','tb_dupcol','tb_tablealias','tb_filter','tb_hash','tb_titleselect','tjs');"
+			+ " DELETE FROM zzzzsys_php WHERE zzzzsys_php_id LIKE 'tcustomer\\_%' OR zzzzsys_php_id = 'tproc_hello';"
+			+ " DROP TABLE IF EXISTS tcountry, tcustomer, torder, tlog, tnote");
 	}
 };
 
