@@ -1186,3 +1186,6 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 
 /* flash messages as toasts (nu_flash(…, true), 0.8.377): top right, below the top bar */
 .nuFlashToasts { top: 3.5rem; z-index: 1090; }
+
+/* update page → packages in the folder _update (0.8.381): the list at most 450 px wide, Check package below it */
+.nuUpdFolderList { max-width: 450px; }

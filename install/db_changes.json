@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.380",
+    "version": "0.8.381",
     "steps": [
         {
             "id": "0001-own-tables",

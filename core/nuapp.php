@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.380');
+define('NU_VERSION', '0.8.381');
 define('NU_BS', 'assets/vendor/bootstrap-5.3.8');
 define('NU_BI', 'assets/vendor/bootstrap-icons-1.13.2');
 define('NU_TINYMCE', 'assets/vendor/tinymce');      // not bundled: copy <nuBuilder>/third_party/tinymce here

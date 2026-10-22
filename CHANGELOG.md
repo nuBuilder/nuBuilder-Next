@@ -3,6 +3,10 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.381 – Update page: folder list
+- Update page → Packages in the folder _update: the list is at most 450 px wide and "Check package" sits below it instead of
+  next to it.
+
 ## 0.8.380 – Existing nuBuilder databases blocked for now
 - Existing nuBuilder databases (while nuBuilder Next is being tested): the installer refuses a database that already holds
   nuBuilder's tables ("choose a new, empty database"). An installation set up by hand on an existing nuBuilder database shows

@@ -523,9 +523,9 @@ nu_layout_start(t('upd_title'), 'home');
 				<?php if (!$folderPk): ?>
 					<p class="small text-body-secondary mb-0" id="updFolderNone"><?= h(t('upd_folder_none')) ?></p>
 				<?php else: $pre = null; foreach ($folderPk as $fp) if ($fp['ok'] && $pre === null) $pre = $fp['name']; ?>
-					<form method="post" action="<?= h(nu_url('update')) ?>" class="d-flex flex-wrap gap-2 align-items-start" data-nu-once>
+					<form method="post" action="<?= h(nu_url('update')) ?>" class="d-flex flex-column gap-2 align-items-start" data-nu-once>
 						<?= nu_csrf_field() ?><input type="hidden" name="action" value="folder_check">
-						<div class="list-group flex-grow-1" role="radiogroup" aria-label="<?= h(t('upd_folder_title')) ?>">
+						<div class="list-group w-100 nuUpdFolderList" role="radiogroup" aria-label="<?= h(t('upd_folder_title')) ?>">
 						<?php foreach ($folderPk as $i => $fp):
 							$state = !$fp['ok'] ? ($fp['version'] === '' ? t('upd_folder_notpkg') : t('upd_folder_sig_' . ($fp['signature'] === 'invalid' ? 'invalid' : 'unsigned')))
 								: (version_compare($fp['version'], NU_VERSION, '>') ? t('upd_folder_newer') : t('upd_folder_reinstall')); ?>
