@@ -28,7 +28,7 @@ final class NuListExport
 	public static function format(): ?string
 	{
 		$f = (string)($_GET['export'] ?? '');
-		return in_array($f, ['csv', 'print'], true) ? $f : null;
+		return in_array($f, ['csv', 'print', 'xlsx'], true) ? $f : null;
 	}
 
 	public static function allowed(string $formId): bool
@@ -53,7 +53,7 @@ final class NuListExport
 		$format = self::format();
 		if ($format === null) return;
 		NuAcl::require($formId, 'print');
-		$limit = $format === 'csv' ? self::MAX_CSV : self::MAX_PRINT;
+		$limit = $format === 'print' ? self::MAX_PRINT : self::MAX_CSV;
 		$data  = $rows($limit);
 		$lines = [];
 		foreach ($data as $r) {
@@ -63,19 +63,42 @@ final class NuListExport
 		}
 		NuLog::write('browse_exported', (string)($_GET['p'] ?? $formId), '', ['format' => $format, 'rows' => count($lines)]);
 		$base = (string)($_GET['p'] ?? 'list');
-		if ($format === 'csv') self::writeCsv($base, array_keys($columns), $lines);
-		$params = array_diff_key($_GET, ['export' => 1, 'sep' => 1, 'head' => 1, 'bom' => 1, 'name' => 1]);
-		self::printPage($title, array_keys($columns), $lines, $filter, count($data) >= $limit, self::csvDialog($params + ['export' => 'csv'], $base));
+		$head = array_keys($columns);
+		if ($format !== 'print') [$head, $lines] = self::onlyColumns($head, $lines);   // columns hidden in the print view (0.8.398)
+		if ($format === 'csv') self::writeCsv($base, $head, $lines);
+		if ($format === 'xlsx') self::writeXlsx($base, $title, $head, $lines, $filter);
+		$params = array_diff_key($_GET, ['export' => 1, 'sep' => 1, 'head' => 1, 'bom' => 1, 'name' => 1, 'cols' => 1]);
+		self::printPage($title, $head, $lines, $filter, count($data) >= $limit, self::csvDialog($params + ['export' => 'csv'], $base) . self::xlsxButton($params + ['export' => 'xlsx']));
 	}
 
-	/** Print button for the toolbar (nothing without the right): opens the list as a table in a new tab, CSV is exported from there. $small: btn-sm. */
-	/** $class: the button style (default: outline like Add; the debug page uses nuBtnAct like Back – 0.8.262). */
-	public static function buttons(string $formId, string $page, array $keep, bool $small = false, string $class = 'btn-outline-secondary nuToolBtn'): string
+	/**
+	 * Export button of a list toolbar (0.8.398, before: Print): a menu with HTML page (the print view in a new tab), CSV … (the options
+	 * dialog) and Excel (download). Nothing without the print right. $small: btn-sm; $class: the button style; $wrap: classes of the group
+	 * (e.g. hidden on phones – the CSV dialog stays outside it).
+	 */
+	public static function buttons(string $formId, string $page, array $keep, bool $small = false, string $class = 'btn-outline-secondary nuToolBtn', string $wrap = ''): string
 	{
 		if (!self::allowed($formId)) return '';
 		$params = array_filter($keep, static fn($v) => $v !== null && $v !== '');
-		return '<a class="btn' . ($small ? ' btn-sm' : '') . ' ' . $class . '" href="' . h(nu_url($page, $params + ['export' => 'print'])) . '" target="_blank" rel="noopener" id="nuListPrint">'
-			. '<i class="bi bi-printer me-1"></i>' . h(t('print')) . '</a>';
+		return self::menu(nu_url($page, $params + ['export' => 'print']), nu_url($page, $params + ['export' => 'xlsx']),
+			self::csvDialog(['p' => $page] + $params + ['export' => 'csv'], $page, false), 'nuListPrint', 'nuListExportBtn', $small, $class, $wrap);
+	}
+
+	/** The Export menu (lists and form browse lists): $id on the group, $btnId on the button; the CSV dialog is appended after the group. */
+	public static function menu(string $printUrl, string $xlsxUrl, string $csvDialog, string $id, string $btnId, bool $small, string $class, string $wrap = ''): string
+	{
+		return '<div class="dropdown d-inline-block nuExportMenu' . ($wrap !== '' ? ' ' . h($wrap) : '') . '" id="' . h($id) . '" data-print-url="' . h($printUrl) . '">'
+			. '<button class="btn' . ($small ? ' btn-sm' : '') . ' ' . h($class) . ' dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="' . h($btnId) . '">'
+			. '<i class="bi bi-box-arrow-up-right me-1"></i>' . h(t('exp_menu')) . '</button>'
+			. '<ul class="dropdown-menu shadow-sm">' . self::menuItems($printUrl, $xlsxUrl) . '</ul></div>' . $csvDialog;
+	}
+
+	/** The three entries (also in the ⋮ menu of phones). */
+	public static function menuItems(string $printUrl, string $xlsxUrl): string
+	{
+		return '<li><a class="dropdown-item nuExpHtml" href="' . h($printUrl) . '" target="_blank" rel="noopener"><i class="bi bi-filetype-html me-2"></i>' . h(t('exp_html')) . '</a></li>'
+			. '<li><button class="dropdown-item nuExpCsv" type="button" data-bs-toggle="modal" data-bs-target="#nuCsvDialog"><i class="bi bi-filetype-csv me-2"></i>' . h(t('exp_csv')) . '</button></li>'
+			. '<li><a class="dropdown-item nuExpXlsx" href="' . h($xlsxUrl) . '"><i class="bi bi-file-earmark-excel me-2"></i>' . h(t('exp_xlsx')) . '</a></li>';
 	}
 
 	/** Default separator key: $nuConfigCSVSeparator (";" when empty or not one of SEPARATORS). */
@@ -95,7 +118,7 @@ final class NuListExport
 	 * "Export CSV" button + options dialog (GET to index.php with $params, e.g. ['p' => 'users', 'q' => …, 'export' => 'csv']).
 	 * Needs Bootstrap's JS; assets/js/nuapp.js remembers the chosen options per browser.
 	 */
-	public static function csvDialog(array $params, string $base): string
+	public static function csvDialog(array $params, string $base, bool $button = true): string
 	{
 		$hidden = '';
 		foreach ($params as $k => $v) {
@@ -104,7 +127,7 @@ final class NuListExport
 		}
 		$sepOpts = '';
 		foreach (array_keys(self::SEPARATORS) as $key) $sepOpts .= '<option value="' . $key . '"' . ($key === self::defaultSep() ? ' selected' : '') . '>' . h(t('csv_sep_' . $key)) . '</option>';
-		return '<button type="button" class="btn btn-sm btn-outline-secondary d-print-none" data-bs-toggle="modal" data-bs-target="#nuCsvDialog" id="nuCsvButton"><i class="bi bi-filetype-csv me-1"></i>' . h(t('csv_export')) . '</button>'
+		return ($button ? '<button type="button" class="btn btn-sm btn-outline-secondary d-print-none" data-bs-toggle="modal" data-bs-target="#nuCsvDialog" id="nuCsvButton"><i class="bi bi-filetype-csv me-1"></i>' . h(t('csv_export')) . '</button>' : '')
 			. '<div class="modal fade d-print-none" id="nuCsvDialog" tabindex="-1" aria-labelledby="nuCsvDialogTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">'
 			. '<form method="get" action="index.php" class="js-csv-form">' . $hidden
 			. '<div class="modal-header"><h2 class="modal-title fs-5" id="nuCsvDialogTitle"><i class="bi bi-filetype-csv me-2"></i>' . h(t('csv_export')) . '</h2>'
@@ -118,6 +141,35 @@ final class NuListExport
 			. '</div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . h(t('cancel')) . '</button>'
 			. '<button type="submit" class="btn btn-primary"><i class="bi bi-download me-1"></i>' . h(t('csv_start')) . '</button></div>'
 			. '</form></div></div></div>';
+	}
+
+	/** ?cols=0,2,5 (the visible columns of the print view): only these columns, in this order. Without it: all. */
+	public static function onlyColumns(array $head, array $lines): array
+	{
+		$raw = $_GET['cols'] ?? null;
+		if (!is_string($raw) || !preg_match('/^\d{1,3}(,\d{1,3})*$/', $raw)) return [$head, $lines];
+		$keep = array_values(array_unique(array_filter(array_map('intval', explode(',', $raw)), static fn($i) => $i < count($head))));
+		if (!$keep) return [$head, $lines];
+		$pick = static fn(array $a) => array_map(static fn($i) => $a[$i] ?? '', $keep);
+		return [$pick(array_values($head)), array_map(static fn($l) => $pick(array_values($l)), $lines)];
+	}
+
+	/** "Export Excel" button (a link: the download starts at once – bold header row, frozen, autofilter, numbers as numbers). */
+	public static function xlsxButton(array $params): string
+	{
+		return '<a class="btn btn-sm btn-outline-secondary d-print-none" id="nuXlsxButton" href="' . h(nu_url((string)($params['p'] ?? 'home'), array_diff_key($params, ['p' => 1]))) . '">'
+			. '<i class="bi bi-file-earmark-excel me-1"></i>' . h(t('xlsx_export')) . '</a>';
+	}
+
+	/**
+	 * Sends the rows as an Excel file (NuXlsx) and ends the request: sheet = the title, header row bold and frozen with an autofilter,
+	 * text that is a plain number becomes a number; the search / filter text in the file properties.
+	 */
+	public static function writeXlsx(string $base, string $title, array $head, array $lines, string $filter = ''): never
+	{
+		$x = NuXlsx::create($title)->subject($filter)->company(nu_app_title());
+		$x->sheet($title !== '' ? $title : 'Export')->numbersFromText()->header($head)->rows($lines);
+		$x->download(self::fileBase($base) . '.xlsx');
 	}
 
 	/**
@@ -160,10 +212,13 @@ final class NuListExport
 		<div class="d-flex flex-wrap gap-2 d-print-none">
 			<button class="btn btn-sm btn-primary" type="button" data-nu-copy-table=".nu-print-table" data-nu-copied="<?= h(t('copy_done')) ?>" data-nu-copy-failed="<?= h(t('copy_failed')) ?>"><i class="bi bi-clipboard me-1"></i><span><?= h(t('copy_table')) ?></span></button>
 			<?= $csv ?>
+			<button class="btn btn-sm btn-outline-secondary" type="button" id="nuPrintUndo" disabled><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('print_undo')) ?></button>
+			<button class="btn btn-sm btn-outline-secondary" type="button" id="nuPrintReset" disabled><i class="bi bi-arrow-repeat me-1"></i><?= h(t('print_reset_view')) ?></button>
+			<span class="small text-body-secondary align-self-center d-none" id="nuPrintHiddenInfo" data-text="<?= h(t('print_cols_hidden', '%s')) ?>"></span>
 		</div>
 	</div>
 	<table class="table table-sm table-bordered nu-print-table">
-		<thead><tr><?php foreach ($head as $hd): ?><th><?= h($hd) ?></th><?php endforeach; ?></tr></thead>
+		<thead><tr><?php foreach ($head as $hd): // × hides the column (0.8.397, assets/js/nuprintlist.js) ?><th><span class="nuPrintColTitle"><?= h($hd) ?></span><button type="button" class="nuColHide d-print-none" aria-label="<?= h(t('print_col_hide', $hd)) ?>" title="<?= h(t('print_col_hide', $hd)) ?>"><i class="bi bi-x"></i></button></th><?php endforeach; ?></tr></thead>
 		<tbody>
 		<?php foreach ($lines as $line): ?>
 			<tr><?php foreach ($line as $v): ?><td><?= h($v) ?></td><?php endforeach; ?></tr>
@@ -174,6 +229,7 @@ final class NuListExport
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuprintlist.js') ?>"></script>
 </body>
 </html>
 <?php

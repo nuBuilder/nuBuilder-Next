@@ -299,6 +299,52 @@ check('page: heights', NuPage::validHeight('auto') && NuPage::validHeight('800px
 check('update: custom pages never touched', NuUpdate::isProtected('custom/pages/sales/index.php') && NuUpdate::isProtected('custom/lib/x.php') && NuUpdate::isProtected('custom/pages/sales/secrets.php')
 	&& !NuUpdate::isProtected('custom/.htaccess') && !NuUpdate::isProtected('custom/PAGE_GUIDE.md') && !NuUpdate::isProtected('custom/pages/_template/index.php')
 	&& !NuUpdate::isProtected('custom/pages/_template/assets/app.js'));
+// ---------------------------------------------------------------- Excel writer (NuXlsx, 0.8.398)
+check('xlsx: column names', NuXlsx::colName(1) === 'A' && NuXlsx::colName(26) === 'Z' && NuXlsx::colName(27) === 'AA' && NuXlsx::colName(16384) === 'XFD'
+	&& NuXlsx::colNumber('AA') === 27 && NuXlsx::range('B3:A1') === [1, 1, 3, 2]);
+$bad = 0;
+foreach (['A0', '1A', 'A1:', 'ZZZZ1', 'A1;B2', 'A99999999'] as $r) { try { NuXlsx::range($r); } catch (InvalidArgumentException) { $bad++; } }
+check('xlsx: invalid ranges refused', $bad === 6);
+$x = NuXlsx::create('T <&>');
+$s = $x->sheet('a/b:c*?[d]' . str_repeat('x', 40));
+$s->header(['Text', 'Num', 'Date', 'Bool'])
+	->row(['=1+1', 1.5, new DateTime('2026-03-01'), true])
+	->row(["<b>&\x01\nx", -7, new DateTime('2026-03-01 10:15:00'), false])
+	->row(['Sum', NuXlsx::formula('=SUM(B2:B3)'), null, NuXlsx::cell('x', ['bold' => true, 'bg' => '#FF0000', 'color' => 'nope', 'border' => 'thin'])])
+	->style('B2:B4', ['format' => '0.00']);
+$x->sheet('a/b:c*?[d]' . str_repeat('x', 40));
+$x->sheet('')->numbersFromText()->row(['12', '007', '1e5', '-3.25']);
+$bin = $x->toString();
+$tmp = tempnam(sys_get_temp_dir(), 'xt');
+file_put_contents($tmp, $bin);
+$z = new ZipArchive();
+$okZip = $z->open($tmp) === true;
+$parts = [];
+for ($i = 0; $okZip && $i < $z->numFiles; $i++) $parts[$z->getNameIndex($i)] = (string)$z->getFromIndex($i);
+@unlink($tmp);
+$wellFormed = true;
+foreach ($parts as $pn => $xml) { $d = new DOMDocument(); if (!@$d->loadXML($xml)) { $wellFormed = false; echo "  bad XML: $pn\n"; } }
+check('xlsx: zip with all parts, well-formed XML', $okZip && $wellFormed && isset($parts['[Content_Types].xml'], $parts['xl/workbook.xml'], $parts['xl/styles.xml'], $parts['xl/sharedStrings.xml'], $parts['xl/worksheets/sheet3.xml']));
+$wb = $parts['xl/workbook.xml'] ?? '';
+preg_match_all('/<sheet name="([^"]*)"/', $wb, $m);
+check('xlsx: sheet names valid and unique', count($m[1]) === 3 && mb_strlen(html_entity_decode($m[1][0])) <= 31 && !preg_match('/[\/:*?\[\]]/', $m[1][0]) && $m[1][0] !== $m[1][1], implode(' | ', $m[1]));
+$s1 = $parts['xl/worksheets/sheet1.xml'] ?? '';
+check('xlsx: a string starting with = stays text', str_contains($s1, '<c r="A2" s="') === false && preg_match('/<c r="A2"[^>]* t="s">/', $s1) && substr_count($s1, '<f>') === 1 && str_contains($s1, '<f>SUM(B2:B3)</f>'));
+check('xlsx: numbers, dates, booleans typed', (bool)preg_match('/<c r="B2"[^>]*><v>1\.5<\/v>/', $s1) && (bool)preg_match('/<c r="C2"[^>]*><v>46082<\/v>/', $s1)
+	&& (bool)preg_match('/<c r="D2"[^>]*t="b"><v>1<\/v>/', $s1) && (bool)preg_match('/<c r="C3"[^>]*><v>46082\.427083/', $s1));
+$ss = $parts['xl/sharedStrings.xml'] ?? '';
+check('xlsx: text escaped, control characters removed', str_contains($ss, '&lt;b&gt;&amp;' . "\n" . 'x') && !str_contains($ss, "\x01"));
+check('xlsx: header frozen with autofilter', str_contains($s1, 'state="frozen"') && str_contains($s1, '<autoFilter ref="A1:D1"/>') && str_contains($wb, '_xlnm._FilterDatabase'));
+$st = $parts['xl/styles.xml'] ?? '';
+check('xlsx: styles (bold, fill, border, number format; invalid colour ignored)', str_contains($st, '<b/>') && str_contains($st, 'FFFF0000') && str_contains($st, 'style="thin"')
+	&& str_contains($st, 'numFmtId="2"') && !str_contains($st, 'nope'));
+$s3 = $parts['xl/worksheets/sheet3.xml'] ?? '';
+check('xlsx: numbersFromText', (bool)preg_match('/<c r="A1"><v>12<\/v>/', $s3) && (bool)preg_match('/<c r="B1" t="s">/', $s3) && (bool)preg_match('/<c r="C1" t="s">/', $s3) && (bool)preg_match('/<c r="D1"><v>-3\.25<\/v>/', $s3));
+$err = 0;
+try { NuXlsx::formula('  '); } catch (InvalidArgumentException) { $err++; }
+try { $x->sheet()->freeze('A1:B2'); } catch (InvalidArgumentException) { $err++; }
+check('xlsx: empty formula / freeze range refused', $err === 2);
+
 // page API versions (0.8.388)
 $js = (string)file_get_contents(NU_ROOT . '/assets/js/nupage.js');
 preg_match('/var NuPage = \{(.*?)\n\t\};/s', $js, $mm);

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-/* CSV export of a browse list with the current search, sort and filters (needs the "print" right) – started from the print view's CSV dialog. */
+/* CSV / Excel (?fmt=xlsx, 0.8.398) export of a browse list with the current search, sort and filters (needs the "print" right) – started from the print view's CSV dialog. */
 
 NuTranslate::activate();   // texts in the reader's language (zzzzsys_translate)
 $meta = NuFormMeta::load((string)($_GET['f'] ?? ''));
@@ -30,5 +30,8 @@ foreach ($data['rows'] as $r) {
 	foreach ($cols as $c) $line[] = (string)$r['cells'][$c['index']];
 	$lines[] = $line;
 }
+$head = array_map(static fn($c) => $c['title'], $cols);
+// Excel (0.8.398): ?fmt=xlsx from the print view's "Export Excel"
+if (($_GET['fmt'] ?? '') === 'xlsx') NuListExport::writeXlsx($meta->code() ?: 'export', $meta->description() ?: $meta->code(), $head, $lines, $state['q'] !== '' ? t('search') . ': ' . $state['q'] : '');
 // options from the CSV dialog of the print view (sep, head, bom, name) – see core/nulistexport.php
-NuListExport::writeCsv($meta->code() ?: 'export', array_map(static fn($c) => $c['title'], $cols), $lines);
+NuListExport::writeCsv($meta->code() ?: 'export', $head, $lines);

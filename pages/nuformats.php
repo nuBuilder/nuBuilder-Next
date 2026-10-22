@@ -64,7 +64,7 @@ nu_layout_start(t('fmt_title'), 'forms');
 <form class="card card-body shadow-sm mb-3 py-3" method="get" action="index.php" role="search">
 	<input type="hidden" name="p" value="formats">
 	<div class="row g-2 align-items-end">
-		<div class="col-md-6"><?= nu_list_search($q, '', 'nuFmtFilters', $type !== '') ?></div>
+		<div class="col-md-6"><?= nu_list_search($q, '', 'nuFmtFilters', $type !== '', $q !== '' || $type !== '' ? nu_url('formats') : null) ?></div>
 		<div class="col-md-5 collapse<?= $type !== '' ? ' show' : '' ?>" id="nuFmtFilters">
 			<label class="form-label small mb-1" for="f_type"><?= h(t('fmt_type')) ?></label>
 			<select class="form-select js-autosubmit" id="f_type" name="type">
@@ -72,7 +72,6 @@ nu_layout_start(t('fmt_title'), 'forms');
 				<?php foreach (NuFormat::TYPES as $tp): ?><option value="<?= $tp ?>"<?= $tp === $type ? ' selected' : '' ?>><?= h(t('fmt_type_' . strtolower($tp))) ?></option><?php endforeach; ?>
 			</select>
 		</div>
-		<?= nu_list_reset('formats', $q !== '' || $type !== '') ?>
 	</div>
 </form>
 

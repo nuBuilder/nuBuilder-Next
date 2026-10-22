@@ -2,7 +2,12 @@
 """
 nuBuilder Next – make a release (run from the nunext folder):
 
-    python3 dev/release.py <version> "<title>" <changes.txt> [--no-checks]
+    python3 dev/release.py <version> "<title>" <changes.txt> [--gate] [--no-checks]
+
+  --gate       full release gate: also the browser suites (smoke, e2e, compat – see browser_tests()); the manifest says "gated": true.
+               Without it (0.8.389, the usual fast release) the browser suites are skipped, the package says "gated": false and the
+               update page shows "Not fully tested". The owner says when to gate (CLAUDE.md "How work is delivered"); the script
+               prints how many releases came since the last gate and reminds after GATE_REMIND of them.
 
   version      e.g. 0.8.202 (must be higher than core/nuapp.php's NU_VERSION)
   title        short title, lower case start, e.g. "user form: welcome e-mail hint behind an (i) icon"
@@ -76,8 +81,10 @@ def checks(files):
         print(out.splitlines()[-1] if out else 'tests: no output')
         if code != 0:
             bad.append(out)
-    if not bad:
+    if not bad and GATE:
         bad += browser_tests()
+    elif not GATE:
+        print('browser suites: skipped (fast release – run with --gate for the full release gate)')
     if bad:
         sys.exit('checks failed:\n' + '\n'.join(bad))
 
@@ -163,8 +170,12 @@ def signing_key():
     return None
 
 
+GATE = '--gate' in sys.argv
+GATE_REMIND = 5          # releases without the gate before the reminder
+
+
 def main():
-    args = [a for a in sys.argv[1:] if a != '--no-checks']
+    args = [a for a in sys.argv[1:] if a not in ('--no-checks', '--gate')]
     if len(args) != 3:
         sys.exit(__doc__)
     version, title, changes_file = args[0], args[1].strip(), args[2]
@@ -225,6 +236,9 @@ def main():
     man['libraries'] = libraries()          # bundled libraries with versions: the update page shows which change (0.8.229)
     man['page_api'] = page_api()            # page forms: API versions and methods – "Check package" lists pages that would break (0.8.388)
     man.pop('signature', None)
+    man['gated'] = GATE                     # full release gate passed (0.8.389) – the update page warns for packages without it
+    if GATE:
+        man['last_gate'] = version
     versions = [c.get('version') for c in man['changes']]
     at = versions.index(old) if old in versions else 0          # newest first (the list is not strictly sorted further down)
     man['changes'].insert(at, {'version': version, 'title': title, 'text': text})
@@ -249,7 +263,13 @@ def main():
             for p in ['nunext-manifest.json'] + sel:
                 z.write(p, 'nunext/' + p)
         print(f'{name}: {len(sel)} files, {os.path.getsize(out) // 1024} KB')
-    print(f'{old} → {version}' + (' (signed)' if keyfile else ' (UNSIGNED)'))
+    print(f'{old} → {version}' + (' (signed)' if keyfile else ' (UNSIGNED)') + (' – gated' if GATE else ' – not gated'))
+    if not GATE:
+        last = man.get('last_gate', '')
+        since = [c['version'] for c in man['changes'] if not last or key(c['version']) > key(last)]
+        print(f'releases since the last gate ({last or "none"}): {len(since)}')
+        if len(since) >= GATE_REMIND:
+            print(f'REMINDER: {len(since)} releases without the release gate – suggest "gate" to the owner')
 
 
 if __name__ == '__main__':

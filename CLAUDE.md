@@ -19,6 +19,13 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
   update page warns). Public key: `NuUpdate::SIGN_PUBLIC`. Several requests in one turn can share one version.
 - Before releasing also: a test in the browser (see "Test environment"), and after it **`php dev/inspect.php <test installation>
   ../nunext.zip`** (= `NuUpdate::inspect`): `ok=true`, the new version, `signature=valid`, `errors=[]`.
+- **Fast releases, gate on request (0.8.389, the owner's rule):** a normal request ends with a FAST release – `dev/release.py` WITHOUT
+  `--gate` (php -l, check_lang, unit tests, PHPStan, ESLint; browser suites skipped; manifest `"gated": false` → the update page shows
+  "Not fully tested") plus the e2e tests of the changed areas (`ONLY=…`) and a browser look; both zips are sent; **no git push**.
+  Only when the owner says **"gate"**: a new version with `python3 dev/release.py <version> "<title>" <file> --gate` (full gate: smoke,
+  all e2e, compat; manifest `"gated": true`, `last_gate`), then sync to the git mirror, commit and `git push origin main` (everything since
+  the last gate in one push). release.py prints the releases since the last gate – **after 5 ungated releases remind the owner** to
+  say "gate" (also suggest it after changes to login, rights, update or database steps).
 
 ### Checklist for every request (the usual flow)
 1. Starting a session: unpack `nunext-dev.zip` (folder `nunext/`), put `nunext-signing.key` next to it (`../nunext-signing.key`),
@@ -37,8 +44,8 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
    runs against a copy of a real nuBuilder database), typed input → same row, sub-form rows across both, reports, and the metadata
    editors (user, access level, procedure, SQL builder, report designer, permission item, e-mail template, form builder): a save
    without a change must leave nuBuilder's rows as they were. Accepted differences: `dev/tests/compat-known.json` (each with a reason).
-   **Release gate**: with `NUNEXT_TEST_SITE=<site folder> NUNEXT_TEST_BASE=<url> NUNEXT_TEST_NUB=<nuBuilder url>` set, `dev/release.py`
-   syncs the code and runs smoke, e2e and compat – a failing test stops the release. Set them in every session.
+   **Release gate** (`--gate`, only when the owner says "gate"): with `NUNEXT_TEST_SITE=<site folder> NUNEXT_TEST_BASE=<url> NUNEXT_TEST_NUB=<nuBuilder url>`
+   set, `dev/release.py --gate` syncs the code and runs smoke, e2e and compat – a failing test stops the release. Set them in every session.
    **Large data** (0.8.366): `SITE=<site> node dev/tests/load.js` fills 500 users, 100,000 customers / orders (300,000 items), 100,000 audit
    rows, 1,000 notifications, 200,000 log rows, times ~25 pages + the bell (budgets 1500 ms / 150 ms) and prints MariaDB's slow / no-index
    queries; puts the database back. ~3 minutes – start it in the background (`setsid nohup … > log &`; the shell call stops after 10
@@ -190,6 +197,10 @@ core/nuapi.php       REST API router (routes with scopes; a route may return a s
                      · core/nuapiclient.php clients, SCOPES, tokens, rate limit · core/nuapiplayground.php
 core/nusqlselect.php nuBuilder's SQL builder (zzzzsys_select) · core/nuappcloner.php App cloner (MySQL + SQL Server)
 core/nulibraries.php library overview of the update page (registry + NuSecurity::libraries(), NUNEXT-VERSION.txt of copied tools)
+core/nuxlsx.php      NuXlsx / NuXlsxSheet / NuXlsxCell (0.8.398): own .xlsx writer (ZipArchive only) – typed cells (strings never formulas),
+                     styles, freeze / autofilter / merge / widths; list exports (NuListExport::writeXlsx, ?export=xlsx, ?cols= = visible
+                     columns of the print view), form browse lists (formexport&fmt=xlsx), $nu->excel(), procedures (new NuXlsx). Export menu
+                     of lists and form browse lists: NuListExport::buttons() / menu() (HTML page, CSV …, Excel; #nuPrintButton = the group)
 core/nusqldump.php   SQL dump for backups (uses the cloner's export) · core/nusample.php sample application (VERSION constant)
 pages/nu*.php        one file per route; POST → action → nu_flash + nu_redirect (post/redirect/get); render with
                      nu_layout_start(title, active) … nu_layout_end('<script src="' . nu_asset('assets/js/x.js') . '"></script>')

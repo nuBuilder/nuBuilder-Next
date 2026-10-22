@@ -579,9 +579,9 @@ final class NuListView
 		<?= $opt['title_sub'] ?? '' ?>
 		<div class="d-flex flex-wrap gap-2 align-items-center"><?= ($opt['back'] ?? true) ? nu_back_button() : '' ?>
 			<?= $opt['buttons'] ?? '' ?>
-			<?= self::more($opt['more'] ?? [], $more ? NuListExport::printUrl($L['form'], $route, $rp + $keepSort) : '') ?>
+			<?= self::more($opt['more'] ?? [], $more ? NuListExport::printUrl($L['form'], $route, $rp + $keepSort) : '', $more && NuListExport::allowed($L['form']) ? nu_url($route, array_filter($rp + $keepSort, static fn($v) => $v !== null && $v !== '') + ['export' => 'xlsx']) : '') ?>
 			<?= self::menu($L, $views, $view, $keepSort) ?>
-			<?= NuListExport::buttons($L['form'], $route, $rp + $keepSort, false, 'btn-outline-secondary nuToolBtn' . ($more ? ' d-none d-sm-inline-block' : '')) ?>
+			<?= NuListExport::buttons($L['form'], $route, $rp + $keepSort, false, 'btn-outline-secondary nuToolBtn', $more ? 'd-none d-sm-inline-block' : '') ?>
 			<?= $opt['buttons_end'] ?? '' ?>
 		</div>
 	</div>
@@ -590,7 +590,7 @@ final class NuListView
 		<?php foreach ($rp as $k => $v): ?><input type="hidden" name="<?= h((string)$k) ?>" value="<?= h((string)$v) ?>"><?php endforeach; ?>
 		<?php if ($keep[$vp] !== null): ?><input type="hidden" name="<?= h($vp) ?>" value="<?= h($view['id']) ?>"><?php endif; ?>
 		<div class="row g-2 align-items-end">
-			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered) ?></div>
+			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null) ?></div>
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
 			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse<?= $filtered || $def['open'] ? ' show' : '' ?>" id="nuLvFilters"<?= !empty($L['open_min']) ? ' data-nu-open-min="' . (int)$L['open_min'] . '"' : '' ?>><div class="row g-2">
 				<?php foreach ($def['filters']['shown'] as $k): $f = $L['filters'][$k];
@@ -613,7 +613,6 @@ final class NuListView
 				<?php endforeach; ?>
 			</div></div>
 			<?php endif; ?>
-			<?= nu_list_reset($route, $hasQuery, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) ?>
 		</div>
 	</form>
 	<?= $opt['above_rows'] ?? '' ?>
@@ -670,7 +669,7 @@ final class NuListView
 	 * $opt['more'] (0.8.371): buttons that sit in the title bar from 576 px on and – with Print – in a ⋮ menu right of the Add button on
 	 * phones. Each entry: ['icon' => 'bi-…', 'label' => …, 'href' => …, 'title' => …, 'blank' => bool, 'id' => …].
 	 */
-	private static function more(array $items, string $printUrl): string
+	private static function more(array $items, string $printUrl, string $xlsxUrl = ''): string
 	{
 		if (!$items) return '';
 		$btns = $menu = '';
@@ -681,7 +680,7 @@ final class NuListView
 			$btns .= '<a class="btn btn-outline-secondary d-none d-sm-inline-block"' . $id . ' href="' . h((string)$i['href']) . '"' . $blank . $title . '><i class="bi ' . h((string)$i['icon']) . ' me-1"></i>' . h((string)$i['label']) . '</a>';
 			$menu .= '<li><a class="dropdown-item" href="' . h((string)$i['href']) . '"' . $blank . '><i class="bi ' . h((string)$i['icon']) . ' me-2"></i>' . h((string)$i['label']) . '</a></li>';
 		}
-		if ($printUrl !== '') $menu .= '<li><a class="dropdown-item" href="' . h($printUrl) . '" target="_blank" rel="noopener"><i class="bi bi-printer me-2"></i>' . h(t('print')) . '</a></li>';
+		if ($printUrl !== '') $menu .= '<li><hr class="dropdown-divider"></li><li><h6 class="dropdown-header">' . h(t('exp_menu')) . '</h6></li>' . NuListExport::menuItems($printUrl, $xlsxUrl);
 		return '<div class="dropdown d-sm-none nuMoreMenu"><button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="nuMoreBtn"'
 			. ' title="' . h(t('more_actions')) . '" aria-label="' . h(t('more_actions')) . '"><i class="bi bi-three-dots-vertical"></i></button>'
 			. '<ul class="dropdown-menu dropdown-menu-end shadow-sm">' . $menu . '</ul></div>' . $btns;

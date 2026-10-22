@@ -163,14 +163,13 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 		<input type="hidden" name="p" value="emailtemplates">
 		<div class="row g-2 align-items-end">
 			<?php $filtered = $group !== '' || $cat !== ''; ?>
-			<div class="col-md-6"><?= nu_list_search($q, '', 'nuEmtFilters', $filtered) ?></div>
+			<div class="col-md-6"><?= nu_list_search($q, '', 'nuEmtFilters', $filtered, $q !== '' || $filtered ? nu_url('emailtemplates') : null) ?></div>
 			<div class="col-md-5 collapse<?= $filtered ? ' show' : '' ?>" id="nuEmtFilters"><div class="row g-2">
 				<div class="col-sm-6"><label class="form-label small mb-1" for="f_g"><?= h(t('emt_group')) ?></label>
 					<select class="form-select js-autosubmit" id="f_g" name="group"><option value=""><?= h(t('all')) ?></option><?php foreach ($groups as $g): ?><option<?= $g === $group ? ' selected' : '' ?>><?= h($g) ?></option><?php endforeach; ?></select></div>
 				<div class="col-sm-6"><label class="form-label small mb-1" for="f_c"><?= h(t('emt_category')) ?></label>
 					<select class="form-select js-autosubmit" id="f_c" name="category"><option value=""><?= h(t('all')) ?></option><?php foreach ($cats as $c): ?><option<?= $c === $cat ? ' selected' : '' ?>><?= h($c) ?></option><?php endforeach; ?></select></div>
 			</div></div>
-			<?= nu_list_reset('emailtemplates', $q !== '' || $filtered) ?>
 		</div>
 	</form>
 	<div class="card shadow-sm">

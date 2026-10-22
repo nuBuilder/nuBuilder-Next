@@ -124,7 +124,7 @@ $heading = $row ? nu_form_label((string)$row['clo_form_source']) : t('cl_new_set
 	</div>
 	<form class="card card-body shadow-sm mb-3 py-3" method="get" action="index.php" role="search">
 		<input type="hidden" name="p" value="cloner">
-		<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($q) ?></div><?= nu_list_reset('cloner', $q !== '') ?></div>
+		<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($q, '', '', false, $q !== '' ? nu_url('cloner') : null) ?></div></div>
 	</form>
 	<div class="card shadow-sm">
 		<div class="card-header nuTitleBar">

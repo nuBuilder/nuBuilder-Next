@@ -11,7 +11,8 @@ $nu->api(1);                // the page API version this page is written for (cu
 $u = $nu->user();
 
 if ($nu->action() === 'hello' && $nu->isPost()) {
-	$nu->json(['message' => 'Hello ' . $u['display'], 'record' => $nu->recordId()]);
+	// page settings (form builder → Settings JSON; settings.example.json shows the keys): greeting = the first word of the answer
+	$nu->json(['message' => $nu->setting('greeting', 'Hello') . ' ' . $u['display'], 'record' => $nu->recordId()]);
 }
 ?><!doctype html>
 <html lang="<?= $nu->h($nu->lang()) ?>" data-theme="<?= $nu->h($nu->theme()) ?>">
@@ -25,7 +26,9 @@ if ($nu->action() === 'hello' && $nu->isPost()) {
 	<main>
 		<h1><?= $nu->h($nu->form()['description']) ?></h1>
 		<p>Signed in as <strong><?= $nu->h($u['display']) ?></strong><?= $u['team'] !== '' ? ' (' . $nu->h($u['team']) . ')' : '' ?></p>
+		<?php if ($nu->setting('show_context', true)): ?>
 		<p>Record: <?= $nu->h($nu->recordId() ?? '-') ?> · opened from: <?= $nu->h($nu->parent()['form_code'] ?? '-') ?></p>
+		<?php endif; ?>
 		<button type="button" id="hello" data-url="<?= $nu->h($nu->url(['action' => 'hello'])) ?>">Say hello</button>
 		<p id="answer" aria-live="polite"></p>
 	</main>

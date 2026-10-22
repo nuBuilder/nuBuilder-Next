@@ -623,7 +623,7 @@
 		if (n < 1 || (b.pages && n > b.pages)) return;
 		window.location.href = browseUrl({pg: n});
 	});
-	api('nuPrintAction', function () { var p = g('nuPrintButton'); if (p) window.open(p.href, '_blank'); });
+	api('nuPrintAction', function () { var p = g('nuPrintButton'); if (p) window.open(p.getAttribute('data-print-url') || p.href, '_blank'); });
 	api('nuAddAction', function () {
 		if (nuFormType() !== 'browse') return;
 		if (window.nuOnAddAction && window.nuOnAddAction(N.browse) === false) return;

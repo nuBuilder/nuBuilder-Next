@@ -46,6 +46,65 @@
 		}
 	});
 	if (settings) settings.addEventListener('blur', checkJson);
+
+	// keys the page reads (0.8.391): set / not set (default) while typing, and keys set that the page never reads
+	var keysBox = $('#pgKeys');
+	function has(obj, path) {
+		var v = obj;
+		var parts = path.split('.');
+		for (var i = 0; i < parts.length; i++) {
+			if (v === null || typeof v !== 'object' || !Object.prototype.hasOwnProperty.call(v, parts[i])) return false;
+			v = v[parts[i]];
+		}
+		return true;
+	}
+	function updateKeys() {
+		if (!keysBox || !settings) return;
+		var obj;
+		try { obj = JSON.parse(settings.value.trim() || '{}'); } catch (e) { return; }   // invalid JSON: keep the last state
+		if (obj === null || typeof obj !== 'object') return;
+		var firsts = {};
+		keysBox.querySelectorAll('.pgKey').forEach(function (tr) {
+			var key = tr.getAttribute('data-key');
+			firsts[key.split('.')[0]] = 1;
+			var set = has(obj, key);
+			var b = tr.querySelector('.pgKeyState');
+			b.textContent = keysBox.getAttribute(set ? 'data-set' : 'data-unset');
+			b.className = 'badge pgKeyState ' + (set ? 'text-bg-success' : 'text-bg-light border');
+		});
+		var unusedBox = $('#pgKeysUnused');
+		var unused = keysBox.getAttribute('data-all') === '1' || Array.isArray(obj) ? [] : Object.keys(obj).filter(function (k) { return !firsts[k]; });
+		unusedBox.textContent = unused.length ? keysBox.getAttribute('data-unused').replace('%s', unused.join(', ')) : '';
+		unusedBox.classList.toggle('d-none', !unused.length);
+	}
+	if (settings && keysBox) { settings.addEventListener('input', updateKeys); updateKeys(); }
+
+	// examples of the settings JSON (0.8.394): from the page's keys, its settings.example.json and built-in samples
+	var examples = $('#pgExamples');
+	if (examples && settings) examples.querySelectorAll('[data-example]').forEach(function (item) {
+		item.addEventListener('click', function () {
+			var cur = settings.value.trim();
+			if (cur !== '' && cur !== '{}' && !window.confirm(examples.getAttribute('data-confirm-text'))) return;
+			settings.value = item.getAttribute('data-example');
+			settings.dispatchEvent(new Event('input', {bubbles: true}));
+			checkJson();
+			settings.focus();
+		});
+	});
+
+	// unsaved changes (0.8.394): Open page, Copy AI prompt and Create from template use the saved settings – off until saved
+	var dirty = false;
+	function setDirty() {
+		if (dirty) return;
+		dirty = true;
+		document.querySelectorAll('.pgNeedsSaved').forEach(function (el) {
+			if (el.tagName === 'A') { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); el.setAttribute('tabindex', '-1'); }
+			else el.disabled = true;
+		});
+		var hint = $('#pgSaveFirst');
+		if (hint) hint.classList.remove('d-none');
+	}
+	if (form) { form.addEventListener('input', setDirty); form.addEventListener('change', setDirty); }
 	if (form) form.addEventListener('submit', function (e) {
 		if (checkJson() === false) { e.preventDefault(); settings.focus(); }
 	});

@@ -3,6 +3,73 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.398 – Excel export, Export menu
+- Excel export: own writer NuXlsx (core/nuxlsx.php, no other library – only PHP's zip extension) for .xlsx files with typed cells
+  (numbers, dates, booleans; a string is always text and never a formula – formulas only with NuXlsx::formula()), styles (bold,
+  italic, underline, strike, size, font, colour, fill, number format, alignment, wrap, borders), several sheets, column widths
+  (or from the content), frozen rows / columns, autofilter, merged cells, right to left, file properties; save, download or as a
+  string (e.g. an e-mail attachment). Usable in procedures and PHP hooks (new NuXlsx / NuXlsx::create) and in page forms
+  ($nu->excel()); Help → PHP functions and custom/PAGE_GUIDE.md describe it.
+- Lists and form browse lists: the Print button became an "Export" menu – HTML page (the print view), CSV … (the options dialog)
+  and Excel (bold, frozen header row with autofilter, plain numbers as numbers). On phones the entries are in the ⋮ menu. The
+  print view of the system lists has "Export Excel" next to "Export CSV"; both take only the columns that are not hidden there.
+
+## 0.8.397 – Print view: hide columns
+- Print view of the lists (&export=print): a small × after each column title hides that column – for printing and Copy.
+  Undo shows the last hidden column again, Reset view shows all; a note says how many are hidden. The hidden columns are
+  remembered per list in the browser; one column always stays. Export CSV still has all columns.
+
+## 0.8.396 – Lists: reset button border
+- Lists: the × (reset) button next to the funnel has the same light border as the search and filter buttons (light and dark
+  mode, also on hover).
+
+## 0.8.395 – Lists: reset next to the filter
+- Lists with a search or filter set: the × (reset) button sits right next to the funnel (or next to the search field when a
+  list has no filters), with the same size – before, it was a separate wider button at the end of the filter row. All system
+  lists, formats, debug results, e-mail templates, SQL builder, Cloner and App cloner.
+
+## 0.8.394 – Page builder: Save in the title bar, examples
+- Form builder of a page form: Save sits in the title bar right of Back (no longer at the bottom of the card). While there are
+  unsaved changes, Open page, Copy AI prompt and Create from template are switched off – they use the saved settings – and a
+  line says so.
+- Settings (JSON): an "Examples" menu – a JSON built from the keys the page reads (every $nu->setting() with its default,
+  dot paths as nested objects), the page folder's settings.example.json, and three samples of the format (lists and
+  colours, limits and switches, one block per client), each with the $nu->setting() call that reads it.
+
+## 0.8.393 – Help and tutorial: newer version notice
+- Help and tutorial: when the daily GitHub check has found a newer version, a notice at the top says that these texts belong
+  to the installed version and that the newer ones come with the update, with a link to the Update page. Only for users who may
+  update; no extra request to GitHub (the stored result of the daily check).
+
+## 0.8.392 – Update page in tabs
+- Update page in four tabs: Update (install a new version, package check, progress and result; one line for the server
+  requirements, the full list when one fails), Backups (list, Back up now, restore, keep rule), History (change history with
+  search) and System (server requirements, libraries – open, database steps, database structure check).
+- Tab badges: number of backups and of history entries; a dot on System when something needs a look (red: a server
+  requirement is not met; yellow: a library problem, an open database step or a difference in the database structure).
+- The tab is part of the address (#backups, #history, #system): links, reloads and the actions of a tab (Back up now, keep
+  rule, delete, restore, apply database structure) come back to it; older anchors such as #updHistory open their tab.
+
+## 0.8.391 – Page settings: keys and example
+- Page forms, Settings (JSON): below the field the form builder lists the keys the page reads – every $nu->setting('key',
+  default) in its PHP files – with the default in the code, the file and whether the key is set (updated while typing); keys
+  set but never read are named (typos). Keys built in code show as "clients.…"; pages that read everything with $nu->settings()
+  get a note instead.
+- settings.example.json in a page folder: "Insert example" fills the settings field with it. The template has one, and the
+  guide explains page settings (literal keys, always a default, the example file).
+
+## 0.8.390 – Update page: Look again as a link
+- Update page, "Update from GitHub": the big "Look for a new version" button became a small "Look again" link in the
+  "Last checked" row (the page already looks once a day by itself). The only big button left is "Download 0.8.x", shown when
+  GitHub has a newer version.
+
+## 0.8.389 – Update page: GitHub card, not-gated packages
+- Update page: "Update from GitHub" laid out as label / value rows (Repository, Last checked, Newest release with its badges,
+  Details) with a larger title and the Settings button on the right; on phones the rows stack. "Other ways to update" no longer
+  repeats "upload a zip · folder _update" next to it.
+- Fast releases: packages built without the full release gate say so in their manifest; "Check package" shows "Not fully
+  tested (no release gate)" for them – try such a package on a test installation before a live server.
+
 ## 0.8.388 – Page API versions
 - Page forms: the page API has a version (1). A page declares the version it is written for with $nu->api(1) as the second line
   of index.php (template, guide and Copy AI prompt include it; no line = 1); an unsupported version stops the page with a clear

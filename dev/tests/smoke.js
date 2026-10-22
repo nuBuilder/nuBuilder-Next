@@ -43,7 +43,7 @@ async function login(ctx, user, pw) {
 
 	// list print (0.8.267): the Print button opens the print view, not the list again
 	await p.goto(BASE + 'index.php?p=users');
-	const printHref = await p.getAttribute('#nuListPrint', 'href');
+	const printHref = await p.getAttribute('#nuListPrint', 'data-print-url');
 	ok('print link of lists', /export=print/.test(printHref || ''), String(printHref));
 	await p.goto(BASE + printHref);
 	ok('print view opens', await p.evaluate(() => document.body.classList.contains('nu-print-list')));

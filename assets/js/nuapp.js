@@ -447,6 +447,37 @@
 	// ---------------------------------------------------------------- flash messages shown as toasts (nu_flash(type, msg, true), 0.8.377)
 	if (nuBs.ready()) $$('.nuFlashToast').forEach(function (t) { nuBs.toast(t).show(); });
 
+	// ---------------------------------------------------------------- tabs kept in the address (0.8.392, update page: ul[data-nu-hash-tabs])
+	// #<tab> opens that tab, #<element id> the tab that holds the element (old anchors such as #updHistory); a tab shown by a click
+	// writes its name into the address (the first tab: none), so reloads, links and redirects after a form post come back to it
+	$$('[data-nu-hash-tabs]').forEach(function (nav) {
+		if (!nuBs.ready()) return;
+		var first = nav.querySelector('[data-nu-tab]');
+		function show(hash) {
+			var name = (hash || '').replace(/^#/, '');
+			if (!name) return;
+			var btn = null, target = null;
+			try { btn = nav.querySelector('[data-nu-tab="' + CSS.escape(name) + '"]'); } catch (e) { return; }
+			if (!btn) {
+				target = document.getElementById(name);
+				var pane = target && target.closest('.tab-pane');
+				if (pane) btn = nav.querySelector('[data-bs-target="#' + pane.id + '"]');
+			}
+			if (!btn) return;
+			nuBs.tab(btn).show();
+			if (target) setTimeout(function () { target.scrollIntoView({block: 'start'}); }, 60);
+		}
+		nav.addEventListener('shown.bs.tab', function (e) {
+			var n = e.target.getAttribute('data-nu-tab');
+			if (!n || ('#' + n) === location.hash) return;
+			var target = location.hash && document.getElementById(location.hash.slice(1));
+			if (target && e.target.getAttribute('data-bs-target') === '#' + (target.closest('.tab-pane') || {}).id) return;   // #updHistory inside it: keep
+			history.replaceState(null, '', e.target === first ? location.pathname + location.search : '#' + n);
+		});
+		show(location.hash);
+		window.addEventListener('hashchange', function () { show(location.hash); });
+	});
+
 	// ---------------------------------------------------------------- collapse whose open / closed state is remembered in this browser
 	// <div class="collapse" id="x" data-nu-remember-open="key">: opened at once when it was open last time (localStorage key = '1');
 	// data-nu-force-open: the server opened it (e.g. a package waits in _update/) – the stored state does not close it. (0.8.376)

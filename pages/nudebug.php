@@ -103,8 +103,7 @@ nu_layout_start(t('debug_title'), 'log');
 	<input type="hidden" name="p" value="debug">
 	<?php $filtered = $flag !== '' || $user !== '' || $from !== '' || $to !== ''; ?>
 	<div class="row g-2 align-items-end">
-		<div class="col-md-6"><?= nu_list_search($q, '', 'nuDebugFilters', $filtered) ?></div>
-		<?= nu_list_reset('debug', $q !== '' || $filtered) ?>
+		<div class="col-md-6"><?= nu_list_search($q, '', 'nuDebugFilters', $filtered, $q !== '' || $filtered ? nu_url('debug') : null) ?></div>
 		<div class="col-12 collapse<?= $filtered ? ' show' : '' ?>" id="nuDebugFilters"><div class="row g-2">
 		<?php if ($hasFlag): ?>
 			<div class="col-sm-6 col-lg-3"><label class="form-label small mb-1" for="f_flag"><?= h(t('debug_flag')) ?></label>

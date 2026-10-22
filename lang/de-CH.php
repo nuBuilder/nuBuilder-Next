@@ -34,6 +34,7 @@ return [
 	'builder_delete_object_confirm' => 'Objekt «%s» und seine Ereignisse löschen?',
 	'builder_err_id_taken' => 'Die ID «%s» wird in diesem Formular bereits verwendet.',
 	'forms_status_not_archived' => 'Alle ausser archivierte',
+	'page_keys_all' => 'Die Seite liest ausserdem alle Einstellungen mit $nu->settings() – auch oben nicht genannte Schlüssel können verwendet werden.',
 	'page_err_missing' => '%s gibt es nicht – per FTP hochladen oder im Formular-Builder «Aus Vorlage erstellen» verwenden.',
 	'page_api_unsupported' => 'Die Seite ist für die Seiten-API-Version %s geschrieben; diese Version unterstützt %s. Die Seite anpassen (custom/PAGE_GUIDE.md, «API versions») und ihre Zeile $nu->api().',
 	'builder_nulog_tip' => 'Eine Spalte <Tabelle>_nulog (Text, 1000), wie sie die Option «nulog» von nuBuilder anlegt: JSON mit wer den Datensatz angelegt und wer ihn zuletzt bearbeitet hat und wann – bei jedem Speichern von nuBuilder und nuBuilder Next geschrieben. Wird im ⋮-Menü des Datensatzes angezeigt.',

@@ -416,8 +416,9 @@ function nu_pagination(int $total, int $page, int $per, string $route, array $pa
  * search button at the right end of the field and, when $filterId is given, the filter
  * button (funnel) right of it that shows / hides the element #$filterId (a Bootstrap .collapse holding the filters).
  * $filtered = a filter is set: the filters start open and the button is blue.
+ * $resetUrl (0.8.395): a search or filter is set – the × (reset) button right of the funnel (or of the search field), same size.
  */
-function nu_list_search(string $value, string $hint = '', string $filterId = '', bool $filtered = false): string
+function nu_list_search(string $value, string $hint = '', string $filterId = '', bool $filtered = false, ?string $resetUrl = null): string
 {
 	$out = '<div class="d-flex gap-2 nuListSearch"><div class="input-group">'
 		. '<input type="search" class="form-control" id="q" name="q" value="' . h($value) . '" placeholder="' . h(t('search_ph')) . '" aria-label="' . h(t('search')) . '" data-nu-autofocus'
@@ -428,10 +429,12 @@ function nu_list_search(string $value, string $hint = '', string $filterId = '',
 			. ' aria-expanded="' . ($filtered ? 'true' : 'false') . '" aria-controls="' . h($filterId) . '" title="' . h(t('filter')) . '" aria-label="' . h(t('filter')) . '">'
 			. '<i class="bi bi-funnel' . ($filtered ? '-fill' : '') . '"></i></button>';
 	}
+	if ($resetUrl !== null) {
+		$out .= '<a class="btn btn-outline-secondary nuSearchBtn nuListResetBtn" href="' . h($resetUrl) . '" title="' . h(t('reset')) . '" aria-label="' . h(t('reset')) . '"><i class="bi bi-x-lg"></i></a>';
+	}
 	return $out . '</div>';
 }
 
-/** × (reset) button of a list filter row, shown when a search or filter is set. */
 /**
  * Back button of nuBuilder Next's own pages (0.8.256): one step up – the parent page of the breadcrumb, otherwise the start page.
  * $route: the page (default ?p=); $url: an own target (e.g. a list with its search).
@@ -447,11 +450,6 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
 	$route ??= (string)($_GET['p'] ?? '');
 	$url ??= nu_url($parent[$route] ?? 'home');
 	return '<a class="btn nuBtnAct nuBackBtn' . ($class !== '' ? ' ' . $class : '') . '" href="' . h($url) . '"><i class="bi bi-arrow-left me-1"></i>' . h(t('back')) . '</a>';
-}
-
-function nu_list_reset(string $page, bool $active, array $params = []): string
-{
-	return $active ? '<div class="col-md-1"><a class="btn btn-outline-secondary nuToolBtn w-100" href="' . h(nu_url($page, $params)) . '" title="' . h(t('reset')) . '" aria-label="' . h(t('reset')) . '"><i class="bi bi-x-lg"></i></a></div>' : '';
 }
 
 function nu_sort_th(string $label, string $col, string $sort, string $dir, string $route, array $params, string $class = ''): string
@@ -514,4 +512,18 @@ function nu_center_end(string $extraBody = ''): void
 </body>
 </html>
 <?php
+}
+
+/**
+ * Help and tutorial (0.8.393): a notice when the daily GitHub check found a newer version – the texts here belong to the installed
+ * version, the newer ones come with the update. Only for users who may update; no request to GitHub here (stored result).
+ */
+function nu_docs_update_notice(string $key): string
+{
+	if (!NuAdmin::can('update', 'view')) return '';
+	try { $n = NuGitHub::newer(); } catch (Throwable) { return ''; }
+	if (!$n) return '';
+	return '<div class="alert alert-info small py-2 d-flex flex-wrap gap-2 align-items-center" id="nuDocsNewer" role="status"><i class="bi bi-cloud-arrow-down"></i>'
+		. '<span class="me-auto">' . h(t($key, NU_VERSION, (string)$n['version'])) . '</span>'
+		. '<a class="alert-link" href="' . h(nu_url('update')) . '">' . h(t('docs_newer_link')) . '</a></div>';
 }

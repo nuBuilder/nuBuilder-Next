@@ -580,11 +580,11 @@ button.nu-tile { font: inherit; color: inherit; background: var(--bs-card-bg); c
 :root:not([data-bs-theme="dark"]) .btn.btn-outline-danger { --bs-btn-border-color: #ebaab1; --bs-btn-disabled-border-color: #ebaab1; }
 .input-group > .btn.btn-outline-secondary { --bs-btn-border-color: var(--bs-border-color); }
 /* filter button next to the search field: same border as the search button (also hover / open / focus) */
-.btn.btn-outline-secondary.nuFilterToggle { --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-border-color: var(--bs-border-color); --bs-btn-active-border-color: var(--bs-border-color); }
-.btn.nuFilterToggle:focus-visible { border-color: var(--bs-border-color); }
+.btn.btn-outline-secondary.nuFilterToggle, .btn.btn-outline-secondary.nuListResetBtn { --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-border-color: var(--bs-border-color); --bs-btn-active-border-color: var(--bs-border-color); }
+.btn.nuFilterToggle:focus-visible, .btn.nuListResetBtn:focus-visible { border-color: var(--bs-border-color); }
 /* Print button of lists (#nuListPrint) and form browse lists (#nuPrintButton), row buttons in lists (Clone …): same border as the search button */
 .nu-table .btn.btn-outline-secondary, .nu-table .btn.btn-outline-secondary.nuRowBtn,
-.btn.btn-outline-secondary#nuListPrint, .btn.btn-outline-secondary#nuPrintButton { --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-border-color: var(--bs-border-color); --bs-btn-active-border-color: var(--bs-border-color); }
+.btn.btn-outline-secondary#nuListExportBtn, .btn.btn-outline-secondary#nuExportButton { --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-border-color: var(--bs-border-color); --bs-btn-active-border-color: var(--bs-border-color); }
 
 /* inspect record (pages/nuinspect.php) */
 .inspTable .inspValue { display: inline-block; max-width: min(55vw, 46rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; cursor: pointer; font-size: .85rem; }
@@ -1213,3 +1213,24 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nu-bare .nuPageWrap .nuPageFrame { height: 100vh; }
 .nuPageWrap .nuPageCrumbs .breadcrumb { font-size: .875rem; }
 .nuPageToasts { z-index: 1090; }
+
+/* update page: "Update from GitHub" as label / value rows (0.8.389) */
+.nuGhInfo { display: grid; grid-template-columns: max-content 1fr; gap: .6rem 2.5rem; margin-bottom: 1.25rem; }
+.nuGhInfo dt { font-weight: 400; color: var(--bs-secondary-color); }
+.nuGhInfo dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.nuGhInfo .badge { font-weight: 500; font-size: .85em; padding: .4em .8em; }
+.nuGhBadgePre { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); }
+.nuGhBadgeMuted { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
+@media (max-width: 575.98px) { .nuGhInfo { grid-template-columns: 1fr; gap: .1rem; } .nuGhInfo dd { margin-bottom: .5rem; } }
+.nuGhAgain { font-size: .9em; text-decoration: none; vertical-align: baseline; }
+.nuGhAgain:hover { text-decoration: underline; }
+
+/* update page tabs (0.8.392): one line, scrolls sideways on phones; dot = something to look at in "System" */
+.nuUpdTabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.nuUpdTabs .nav-link { white-space: nowrap; }
+.nuTabDot { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; vertical-align: middle; }
+
+/* print view of lists (0.8.397): × after each column title hides the column */
+.nu-print-table .nuColHidden { display: none; }
+.nu-print-table th .nuColHide { border: 0; background: none; padding: 0 .1rem; margin-left: .25rem; line-height: 1; color: var(--bs-secondary-color); vertical-align: middle; }
+.nu-print-table th .nuColHide:hover, .nu-print-table th .nuColHide:focus-visible { color: var(--bs-danger); }

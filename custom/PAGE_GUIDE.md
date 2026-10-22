@@ -57,6 +57,7 @@ API version: 1 (`$nu->apiVersion()`, `NuPage.version`). Declare it in every page
     custom/pages/<form code>/index.php     entry, routes by $nu->action()
     custom/pages/<form code>/*.php         more code (require __DIR__ . '/x.php')
     custom/pages/<form code>/secrets.php   optional: API keys, passwords (never in a package or an export)
+    custom/pages/<form code>/settings.example.json   optional: example of the page settings ("Insert example" in the builder)
     custom/pages/<form code>/assets/       css, js, mjs, map, png, jpg, gif, svg, webp, ico, woff, woff2, ttf, json, txt, pdf
     custom/lib/                            optional shared PHP of the installation
 
@@ -155,6 +156,7 @@ Table and column names of insert / update / delete must match `^[A-Za-z0-9_]+$` 
 | `log(string $message, array $data = []): void` | a line in Debug results (flag `page:<form code>`) |
 | `session(): array` | by reference: the page's own session store. Read-only after releaseSession(). |
 | `releaseSession(): void` | ends the session lock for slow work |
+| `excel(string $title = ''): NuXlsx` | a new Excel workbook (see "Excel export") |
 | `apiVersion(): int` | the API version of this nuBuilder Next (1) |
 | `api(int $version): void` | declares the version the page is written for (second line of index.php) |
 
@@ -176,6 +178,26 @@ then:
 
 Error answers of nuBuilder Next to fetch requests are JSON: `{"error": "login" | "csrf" | "forbidden" | "not_found" | "server" | "read_only", "message": "..."}`.
 Long-running polls can add `&passive=1` to the URL: they then do not keep the session alive.
+
+## Page settings
+- Configuration of the app lives in the page settings JSON (form builder → Settings), read with `$nu->setting('key', default)`;
+  nested values with dot paths: `$nu->setting('clients.north.colour', '#333')`. Always give a default, so the page runs with `{}`.
+- Write keys as literal strings: `$nu->setting('rows_per_page', 20)`. The form builder lists every key it finds that way, with its
+  default and whether it is set, and shows keys that are set but never read. A key built in code (`$nu->setting('clients.' . $c)`)
+  is shown as `clients.…`.
+- Ship a `settings.example.json` in the page folder with every key and a sensible value – the builder's "Insert example" button
+  fills the field with it. It is a plain JSON file (no PHP, no secrets).
+
+## Excel export
+    $x = $nu->excel('Orders');                          // a NuXlsx workbook (title = the page title when empty)
+    $x->sheet('Orders')
+      ->header(['Customer', 'Amount', 'Date'])          // bold, frozen, autofilter
+      ->rows($nu->all('SELECT name, amount, created FROM my_orders'))
+      ->style('B2:B9999', ['format' => '#,##0.00']);
+    $x->download('orders.xlsx');                        // ends the page; or save($file) / toString()
+Values keep their type (int / float = number, DateTime = date, bool); strings are always text – never formulas
+(use NuXlsx::formula('SUM(B2:B9)')). Styles: bold, italic, underline, strike, size, font, color, bg, format, align,
+valign, wrap, border; one cell: NuXlsx::cell($value, ['bold' => true, 'bg' => '#fff3cd']).
 
 ## API versions
 - `$nu->api(1);` in index.php says which version of `$nu` / `NuPage` the page is written for (no line = 1).

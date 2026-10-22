@@ -139,7 +139,7 @@ $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" rol
 	</div>
 	<form class="card card-body shadow-sm mb-3 py-3" method="get" action="index.php" role="search">
 		<input type="hidden" name="p" value="appcloner">
-		<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($q) ?></div><?= nu_list_reset('appcloner', $q !== '') ?></div>
+		<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($q, '', '', false, $q !== '' ? nu_url('appcloner') : null) ?></div></div>
 	</form>
 	<div class="card shadow-sm">
 		<div class="card-header nuTitleBar">

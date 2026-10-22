@@ -1,5 +1,12 @@
 # nuBuilder Next – to do
 
+## 0.8.398 Excel export, Export menu – please verify
+- Open an exported .xlsx in Excel (and LibreOffice): bold frozen header, autofilter, numbers right-aligned as numbers, dates as dates.
+- Export menu (HTML page, CSV …, Excel) in the system lists, the debug results, formats, e-mail templates and form browse lists;
+  on phones in the ⋮ menu. Excel of a form browse list: formatted values (USD 50,000.00, 21.09.2026) stay text – only plain numbers
+  become numbers; the system lists' print view gives Excel / CSV only the visible columns.
+- NuXlsx in a procedure: `NuXlsx::create('x')->sheet('a')->header([...])->rows([...])` + download / save.
+
 ## 0.8.387 Page forms (custom PHP) – please verify
 - Create a page form (Forms → Add, type "Page (custom PHP)"), Create from template, open it in the three open modes (new tab, inside
   nuBuilder Next, whole window); menu, start page tile, run button and iframe run object of another form (parent form / record).
@@ -9,6 +16,8 @@
 - 0.8.388 API versions: a page with $nu->api(1) runs; change it to $nu->api(2) → clear error. "Check package" with the next
   package lists a page that calls a non-existing $nu method. When a method is deprecated for real: add it to NuPage::API_DEPRECATED
   and call $this->deprecated('name') at its start (JS: deprecated('name', 'replacement') in nupage.js + NuPage::JS_DEPRECATED).
+- 0.8.391 settings keys: the builder lists the $nu->setting() keys of a page (set / not set, unused keys); Insert example
+  (settings.example.json, also in the template).
 - Phase 2 (not built): table restriction (tables_json stored, not enforced), pages on another server (launch token + per-user REST),
   page cron hooks, settings form from a JSON schema.
 

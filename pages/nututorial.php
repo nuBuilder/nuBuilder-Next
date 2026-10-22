@@ -91,6 +91,7 @@ nu_layout_start($title, 'home');
 		<a class="btn nuBtnAct" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener"><i class="bi bi-book me-1"></i><?= h(t('help_title')) ?></a>
 	</div>
 </div>
+<?= nu_docs_update_notice('docs_newer_tutorial') ?>
 <?php if (nu_lang() !== 'en'): ?><div class="small text-body-secondary mb-2"><i class="bi bi-translate me-1"></i><?= h(t('tut_english')) ?></div><?php endif; ?>
 
 <div class="tutProgress mb-3">

@@ -389,7 +389,9 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				<a class="btn btn-outline-secondary nuActionButton" id="nuNoteCategoriesButton" href="<?= h(nu_url('form', ['f' => 'nunotescategroy', 'bt' => $bt['child'] ?: null])) ?>"><i class="bi bi-tags me-1"></i><?= h(t('notes_categories')) ?></a>
 			<?php endif; ?>
 			<?php if ($rights['print'] && empty($printMode) && $lookupTo === ''): ?>
-				<a class="btn btn-outline-secondary nuActionButton" id="nuPrintButton" href="<?= h(nu_url('form', ['print' => '1'] + array_diff_key($keep, ['iframe' => 1]))) ?>" target="_blank" rel="noopener"><i class="bi bi-printer me-1"></i><?= h(t('print')) ?></a>
+				<?php $expKeep = array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1]); // Export menu (0.8.398): HTML page, CSV …, Excel ?>
+				<?= NuListExport::menu(nu_url('form', ['print' => '1'] + array_diff_key($keep, ['iframe' => 1])), nu_url('formexport', ['fmt' => 'xlsx'] + $expKeep),
+					NuListExport::csvDialog(['p' => 'formexport'] + $expKeep, $meta->code() ?: 'export', false), 'nuPrintButton', 'nuExportButton', false, 'btn-outline-secondary nuActionButton') ?>
 			<?php endif; ?>
 		<?php elseif (!$errors): ?>
 			<?php if (($client['is_new'] && $rights['create']) || (!$client['is_new'] && $rights['save'])): ?>
@@ -437,6 +439,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<div class="d-flex flex-wrap gap-2 d-print-none">
 				<button class="btn btn-sm btn-primary" type="button" data-nu-copy-table="#nuBrowseTable" data-nu-copied="<?= h(t('copy_done')) ?>" data-nu-copy-failed="<?= h(t('copy_failed')) ?>"><i class="bi bi-clipboard me-1"></i><span><?= h(t('copy_table')) ?></span></button>
 				<?= NuListExport::csvDialog(['p' => 'formexport'] + array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1]), $meta->code() ?: 'export') ?>
+				<?= NuListExport::xlsxButton(['p' => 'formexport', 'fmt' => 'xlsx'] + array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1])) ?>
 			</div></div>
 	<?php endif; ?>
 	<div class="card shadow-sm nuListCard nuBrowseCard">

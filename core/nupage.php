@@ -507,6 +507,87 @@ final class NuPage
 		return $issues;
 	}
 
+	/**
+	 * Settings keys a page reads (0.8.391): every $nu->setting('key'[, default]) in its PHP files – key => [defaults, files, dynamic].
+	 * A key followed by a concatenation ($nu->setting('clients.' . $c)) is a dynamic key: its literal part ends with '.'.
+	 * all = the page also calls $nu->settings() (reads everything – no key can be called unused).
+	 * @return array{keys: array<string, array{defaults: list<string>, files: list<string>, dynamic: bool}>, all: bool}
+	 */
+	public static function settingKeys(string $code): array
+	{
+		$out = ['keys' => [], 'all' => false];
+		$folder = self::folder($code);
+		if ($folder === '' || !is_dir($folder)) return $out;
+		$n = 0;
+		$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($folder, FilesystemIterator::SKIP_DOTS));
+		foreach ($it as $f) {
+			if (strtolower($f->getExtension()) !== 'php' || $f->getFilename() === 'secrets.php' || $f->getSize() > 4_000_000 || ++$n > 500) continue;
+			$src = (string)@file_get_contents($f->getPathname());
+			$rel = substr(str_replace('\\', '/', $f->getPathname()), strlen(str_replace('\\', '/', $folder)) + 1);
+			if (preg_match('/\$nu\s*->\s*settings\s*\(\s*\)/', $src)) $out['all'] = true;
+			if (!preg_match_all('/\$nu\s*->\s*setting\s*\(\s*([\'"])([A-Za-z0-9_.\-]{1,120})\1\s*(?:(\.)[^)]*|,\s*((?:[^()]|\((?:[^()]|\([^()]*\))*\))*?))?\s*\)/', $src, $m, PREG_SET_ORDER)) continue;
+			foreach ($m as $x) {
+				$key = $x[2];
+				$dyn = ($x[3] ?? '') === '.';
+				$def = !$dyn && isset($x[4]) ? trim(preg_replace('/\s+/', ' ', $x[4]) ?? '') : '';
+				$e = $out['keys'][$key] ?? ['defaults' => [], 'files' => [], 'dynamic' => false];
+				if ($def !== '' && !in_array($def, $e['defaults'], true)) $e['defaults'][] = mb_strimwidth($def, 0, 80, '…');
+				if (!in_array($rel, $e['files'], true)) $e['files'][] = $rel;
+				$e['dynamic'] = $e['dynamic'] || $dyn;
+				$out['keys'][$key] = $e;
+			}
+		}
+		ksort($out['keys']);
+		return $out;
+	}
+
+	/** Built-in examples of the settings JSON (0.8.394, form builder → Examples): label key => [JSON, how a page reads it]. */
+	public const SETTING_SAMPLES = [
+		'page_sample_lists' => ['{"title": "Order board", "statuses": ["open", "in progress", "done"], "colours": {"open": "#1d6fd8", "done": "#2e7d32"}}',
+			"\$nu->setting('statuses', [])  ·  \$nu->setting('colours.done', '#333')"],
+		'page_sample_limits' => ['{"rows_per_page": 50, "max_upload_mb": 10, "show_archived": false, "refresh_seconds": 300}',
+			"\$nu->setting('rows_per_page', 20)  ·  \$nu->setting('show_archived', false)"],
+		'page_sample_clients' => ['{"default_client": "north", "clients": {"north": {"name": "North", "logo": "assets/north.svg", "colour": "#1d6fd8"}, "south": {"name": "South", "logo": "assets/south.svg", "colour": "#2e7d32"}}}',
+			"\$nu->setting('clients.' . \$client . '.colour')  ·  \$nu->setting('default_client')"],
+	];
+
+	/**
+	 * A settings JSON built from the keys a page reads (settingKeys): dot paths become nested objects, literal defaults their values
+	 * (numbers, strings, true / false / null, [] / {}), other defaults and keys without one null. '' when there are no keys.
+	 */
+	public static function settingsFromKeys(array $keys): string
+	{
+		$out = [];
+		foreach ($keys as $key => $e) {
+			if (!empty($e['dynamic'])) continue;
+			$val = null;
+			$d = trim((string)($e['defaults'][0] ?? ''));
+			if (preg_match('/^-?\d+(\.\d+)?$/', $d)) $val = str_contains($d, '.') ? (float)$d : (int)$d;
+			elseif (preg_match('/^([\'"])(.*)\1$/s', $d, $m)) $val = stripcslashes($m[2]);
+			elseif (in_array(strtolower($d), ['true', 'false'], true)) $val = strtolower($d) === 'true';
+			elseif ($d === '[]' || strtolower($d) === 'array()') $val = [];
+			elseif ($d === '{}') $val = new stdClass();
+			$ref = &$out;
+			$parts = explode('.', (string)$key);
+			foreach ($parts as $i => $part) {
+				if ($i === count($parts) - 1) { if (!isset($ref[$part]) || !is_array($ref[$part])) $ref[$part] = $val; }
+				else { if (!isset($ref[$part]) || !is_array($ref[$part])) $ref[$part] = []; $ref = &$ref[$part]; }
+			}
+			unset($ref);
+		}
+		return $out ? (string)json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+	}
+
+	/** settings.example.json of a page folder (valid JSON object, at most 64 KB), pretty-printed – '' when there is none. */
+	public static function settingsExample(string $code): string
+	{
+		$folder = self::folder($code);
+		$f = $folder !== '' ? $folder . '/settings.example.json' : '';
+		if ($f === '' || !is_file($f) || filesize($f) > 65536) return '';
+		$d = json_decode((string)file_get_contents($f), true);
+		return is_array($d) ? (string)json_encode($d, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+	}
+
 	/** Problems of one page form's folder with this version (cached per request). */
 	public static function issues(string $code): array
 	{
@@ -952,6 +1033,12 @@ class NuPageContext
 	{
 		return '<script src="' . h(nu_asset('assets/js/nupage.js')) . '" data-csrf="' . h(nu_csrf_token()) . '" data-home="' . h(nu_url('home')) . '"></script>';
 	}
+
+	/**
+	 * A new Excel workbook (NuXlsx, 0.8.398): $x = $nu->excel('Orders'); $x->sheet('Orders')->header([...])->rows($rows);
+	 * $x->download('orders.xlsx') – see custom/PAGE_GUIDE.md "Excel export".
+	 */
+	public function excel(string $title = ''): NuXlsx { return NuXlsx::create($title !== '' ? $title : $this->meta->description()); }
 
 	/** Sends JSON and ends the page. */
 	public function json(mixed $data, int $status = 200): never

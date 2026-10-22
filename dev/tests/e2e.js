@@ -515,11 +515,33 @@ switch ($nu->action()) {
 		fs.rmSync(path.join(dir, 'more.php')); fs.rmSync(path.join(dir, 'assets', 'app.js'));
 		await open(s.ga, 'index.php?p=builder&f=' + id);
 		expect(await s.ga.locator('#pgApiOk').count() === 1, 'builder: clean page not shown as ok');
+		// settings keys the page reads and settings.example.json (0.8.391)
+		fs.writeFileSync(path.join(dir, 'settings.example.json'), '{"a": {"colour": "blue"}, "extra": 1}');
+		await open(s.ga, 'index.php?p=builder&f=' + id);
+		const keyRow = s.ga.locator('#pgKeys tr.pgKey[data-key="a.colour"]');
+		expect(await keyRow.count() === 1 && /text-bg-success/.test(await keyRow.locator('.pgKeyState').getAttribute('class')), 'key a.colour not listed as set');
+		await s.ga.fill('#pg_settings', '{"zz": 1}');
+		await s.ga.waitForTimeout(200);
+		expect(/zz/.test(await s.ga.locator('#pgKeysUnused').textContent()) && !/text-bg-success/.test(await keyRow.locator('.pgKeyState').getAttribute('class')), 'unused key / not set not shown');
+		await s.ga.click('#pgExamplesBtn'); await s.ga.waitForTimeout(200);
+		await s.ga.click('#pgExample');
+		expect(/"colour": "blue"/.test(await s.ga.inputValue('#pg_settings')) && /extra/.test(await s.ga.locator('#pgKeysUnused').textContent()), 'Insert example');
+		fs.rmSync(path.join(dir, 'settings.example.json'));
+		// examples (0.8.394): a JSON from the page's keys and built-in samples; unsaved changes switch Open page / Copy AI prompt off
+		expect(await s.ga.locator('#pgOpen.disabled').count() === 1 && await s.ga.locator('#pgPrompt[disabled]').count() === 1 && await s.ga.locator('#pgSaveFirst:not(.d-none)').count() === 1, 'unsaved: Open page / Copy AI prompt still active');
+		await s.ga.click('#pgExamplesBtn'); await s.ga.waitForTimeout(200);
+		await s.ga.click('#pgExampleKeys');
+		expect(JSON.parse(await s.ga.inputValue('#pg_settings')).a.colour === null, 'example from the keys: ' + await s.ga.inputValue('#pg_settings'));
+		await s.ga.click('#pgExamplesBtn'); await s.ga.waitForTimeout(200);
+		await s.ga.locator('.pgSample').nth(1).click();
+		expect(JSON.parse(await s.ga.inputValue('#pg_settings')).rows_per_page === 50, 'built-in sample');
+		await open(s.ga, 'index.php?p=builder&f=' + id);
+		expect(await s.ga.locator('#pgOpen.disabled').count() === 0 && await s.ga.locator('#pgSave').count() === 1, 'fresh builder: Open page off / no Save in the title bar');
 		// the form builder of a page form: code rules, settings JSON
 		await open(s.ga, 'index.php?p=builder&f=' + id);
 		expect(await s.ga.locator('#pgForm').count() === 1 && await s.ga.locator('#pgFileFound').count() === 1, 'page builder');
 		await s.ga.fill('#pg_settings', '{"a":');
-		await s.ga.click('#pgForm [data-nu-save]');
+		await s.ga.click('#pgSave');
 		expect(await s.ga.locator('#pg_settings.is-invalid').count() === 1, 'invalid JSON not shown');
 		for (const bad of ['../x', '_template', 'a b', 'a.b']) {
 			const st = await csrfPost(s.ga, 'index.php?p=builder&f=' + id, { action: 'save', description: 'E2E page', code: bad, status: '1', open_mode: 'tab', iframe_height: 'auto', settings: '{}' });
@@ -592,6 +614,85 @@ T.notifications = async (s) => {
 	await open(b, 'index.php?p=notifications');
 	expect(await b.locator('.nuNtfItem', { hasText: 'E2E notification' }).count() === 0, 'other user got it');
 	await b.context().close();
+};
+
+T.excel_export = async (s) => {                         // 0.8.398: Export Excel of a list print view (visible columns) and of a form browse list
+	const p = s.ga;
+	const read = async (url) => {
+		const r = await p.request.get(BASE + url);
+		const buf = await r.body();
+		const f = path.join(require('os').tmpdir(), 'e2e-' + Date.now() + '.xlsx');
+		fs.writeFileSync(f, buf);
+		try {
+			return { status: r.status(), ct: r.headers()['content-type'] || '', rows: JSON.parse(execSync('python3 -', { input: "import openpyxl, json\nws = openpyxl.load_workbook(" + JSON.stringify(f) + ").worksheets[0]\nprint(json.dumps({'rows': [[str(c) if c is not None else None for c in r] for r in ws.iter_rows(values_only=True)][:5], 'bold': bool(ws['A1'].font.b), 'freeze': ws.freeze_panes, 'filter': ws.auto_filter.ref}))" }).toString()) };
+		} finally { fs.rmSync(f, { force: true }); }
+	};
+	let r = await read('index.php?p=forms&export=xlsx');
+	expect(r.status === 200 && /spreadsheetml/.test(r.ct) && r.rows.bold && r.rows.freeze === 'A2' && /^A1:/.test(r.rows.filter || ''), 'forms list as Excel: ' + JSON.stringify(r).slice(0, 300));
+	const all = r.rows.rows[0].length;
+	r = await read('index.php?p=forms&export=xlsx&cols=0,2');
+	expect(r.rows.rows[0].length === 2 && all > 2, 'visible columns only: ' + JSON.stringify(r.rows.rows[0]));
+	// the print view's button carries the visible columns
+	await open(p, 'index.php?p=forms&export=print');
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-print-cols:forms'); } catch (e) {} });
+	await open(p, 'index.php?p=forms&export=print');
+	await p.locator('.nu-print-table thead th .nuColHide').nth(1).click();
+	expect(/cols=0%2C2|cols=0,2/.test(await p.getAttribute('#nuXlsxButton', 'href')), 'Export Excel without the visible columns: ' + await p.getAttribute('#nuXlsxButton', 'href'));
+	await p.click('#nuPrintReset');
+	// form browse list (print view → Export Excel)
+	await open(p, 'index.php?p=form&f=samplecustomer&print=1');
+	const href = await p.getAttribute('#nuXlsxButton', 'href');
+	r = await read(href);
+	expect(r.status === 200 && r.rows.rows.length > 1 && r.rows.bold, 'form browse list as Excel: ' + JSON.stringify(r).slice(0, 300));
+	// the Export menu (0.8.398): HTML page, CSV … (dialog), Excel – lists and form browse lists
+	for (const [url, btn] of [['index.php?p=users', '#nuListExportBtn'], ['index.php?p=form&f=samplecustomer', '#nuExportButton']]) {
+		await open(p, url);
+		await p.click(btn); await p.waitForTimeout(300);
+		const menu = p.locator(btn + ' + .dropdown-menu');
+		expect(await menu.locator('.nuExpHtml').isVisible() && await menu.locator('.nuExpCsv').isVisible() && await menu.locator('.nuExpXlsx').isVisible(), url + ': Export menu');
+		expect(/print/.test(await menu.locator('.nuExpHtml').getAttribute('href')) && /xlsx/.test(await menu.locator('.nuExpXlsx').getAttribute('href')), url + ': menu links');
+		await menu.locator('.nuExpCsv').click(); await p.waitForTimeout(500);
+		expect(await p.locator('#nuCsvDialog').isVisible(), url + ': CSV dialog');
+		await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+	}
+	// without the print right: no file
+	const ben = await login('sample_ben', UPW);
+	const rb = await ben.request.get(BASE + 'index.php?p=users&export=xlsx');
+	expect(rb.status() === 403 || !/spreadsheetml/.test(rb.headers()['content-type'] || ''), 'Excel without the print right');
+	await ben.context().close();
+};
+
+T.print_columns = async (s) => {                        // 0.8.397: print view of a list – × hides a column, Undo, Reset view, remembered
+	const p = s.ga;
+	await open(p, 'index.php?p=forms&export=print');
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-print-cols:forms'); } catch (e) {} });
+	await open(p, 'index.php?p=forms&export=print');
+	const vis = async () => p.locator('.nu-print-table thead th:not(.nuColHidden)').count();
+	const n = await vis();
+	expect(n > 2 && await p.isDisabled('#nuPrintUndo') && await p.isDisabled('#nuPrintReset'), 'start state');
+	await p.locator('.nu-print-table thead th .nuColHide').nth(1).click();
+	await p.locator('.nu-print-table thead th .nuColHide').nth(2).click();
+	const cells = await p.evaluate(() => document.querySelector('.nu-print-table tbody tr').querySelectorAll('td:not(.nuColHidden)').length);
+	expect(await vis() === n - 2 && cells === n - 2 && /2/.test(await p.textContent('#nuPrintHiddenInfo')), 'hide two columns');
+	await open(p, 'index.php?p=forms&export=print');
+	expect(await vis() === n - 2, 'hidden columns not remembered');
+	await p.click('#nuPrintUndo');
+	expect(await vis() === n - 1, 'undo');
+	await p.click('#nuPrintReset');
+	expect(await vis() === n && await p.isDisabled('#nuPrintUndo'), 'reset view');
+};
+
+T.list_reset = async (s) => {                           // 0.8.395: the × of a filtered list sits right of the funnel, same size
+	await open(s.ga, 'index.php?p=forms&type=edit');
+	const box = async (sel) => s.ga.locator(sel).boundingBox();
+	const f = await box('.nuFilterToggle'), x = await box('.nuListResetBtn');
+	expect(f && x && Math.abs(f.height - x.height) < 1 && Math.abs(f.width - x.width) < 2 && Math.abs(f.y - x.y) < 1 && x.x > f.x && x.x - (f.x + f.width) < 16, 'reset not next to the funnel: ' + JSON.stringify([f, x]));
+	const bc = await s.ga.evaluate(() => ['.nuFilterToggle', '.nuListResetBtn'].map((q) => getComputedStyle(document.querySelector(q)).borderTopColor));
+	expect(bc[0] === bc[1], 'reset border differs from the filter button: ' + bc.join(' / '));
+	await Promise.all([s.ga.waitForNavigation(), s.ga.click('.nuListResetBtn')]);
+	expect(!/type=/.test(s.ga.url()) && await s.ga.locator('.nuListResetBtn').count() === 0, 'reset did not clear the filter');
+	await open(s.ga, 'index.php?p=forms');
+	expect(await s.ga.locator('.nuListResetBtn').count() === 0, '× without search or filter');
 };
 
 T.list_views = async (s) => {
@@ -891,7 +992,7 @@ T.users_more_menu = async () => {                        // 0.8.371: users list 
 	expect(order, 'the ⋮ button is not right of Add');
 	await m.click('#nuMoreBtn'); await m.waitForTimeout(300);
 	const items = await m.locator('.nuMoreMenu .dropdown-item:visible').allInnerTexts();
-	expect(items.length === 2 && /Import/.test(items[0]) && /Print/.test(items[1]), 'menu items: ' + items.join(' | '));
+	expect(items.length === 4 && /Import/.test(items[0]) && /HTML/.test(items[1]) && /CSV/.test(items[2]) && /Excel/.test(items[3]), 'menu items: ' + items.join(' | '));   // 0.8.398: Export entries
 	await m.context().close();
 	const d = await login(GA[0], GA[1]);
 	await open(d, 'index.php?p=users');
@@ -959,6 +1060,28 @@ T.github_update = async (s) => {                        // 0.8.374: newest relea
 	} finally { put(null); }
 };
 
+T.docs_newer = async (s) => {                           // 0.8.393: help and tutorial say when GitHub has a newer version
+	const prev = sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'github_update'");
+	const put = (v) => sql(`REPLACE INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('github_update', '{"repo":"nuBuilder/nuBuilder-Next","pre":true,"auto":false,"checked_at":${Math.floor(Date.now() / 1000)},"latest":{"version":"${v}","tag":"v${v}","name":"${v}","url":"","size":1,"published":"","page":"","pre":false},"error":""}')`);
+	try {
+		put('9.9.9');
+		for (const r of ['help', 'tutorial']) {
+			await open(s.ga, 'index.php?p=' + r);
+			expect(await s.ga.locator('#nuDocsNewer').count() === 1 && /9\.9\.9/.test(await s.ga.locator('#nuDocsNewer').textContent()), r + ': no notice of the newer version');
+		}
+		const anna = await login('sample_anna', UPW);
+		await open(anna, 'index.php?p=help');
+		expect(await anna.locator('#nuDocsNewer').count() === 0, 'notice for a user without the update right');
+		await anna.context().close();
+		put('0.0.1');
+		await open(s.ga, 'index.php?p=help');
+		expect(await s.ga.locator('#nuDocsNewer').count() === 0, 'notice although GitHub has no newer version');
+	} finally {
+		if (prev === '') sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'github_update'");
+		else sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + prev.replace(/'/g, "''") + "' WHERE zzzzsys_nunext_setting_id = 'github_update'");
+	}
+};
+
 T.update_layout = async (s) => {                        // 0.8.376: GitHub first, other ways folded; open / closed remembered in the browser
 	const p = s.ga;
 	await p.evaluate(() => { try { localStorage.removeItem('nunext-upd-other'); } catch (e) { /* */ } });
@@ -972,6 +1095,21 @@ T.update_layout = async (s) => {                        // 0.8.376: GitHub first
 	await p.click('#updOtherBtn'); await p.waitForTimeout(600);
 	await open(p, 'index.php?p=update');
 	expect(!(await p.locator('#updOther').isVisible()), 'closed state not remembered');
+	// tabs (0.8.392): the tab is part of the address; a form post in a tab comes back to it; old anchors open their tab
+	const active = async () => p.locator('#updTabs .nav-link.active').getAttribute('data-nu-tab');
+	expect(await active() === 'update' && !(await p.locator('#updLibraries').isVisible()), 'update tab not first');
+	await p.click('[data-nu-tab="system"]'); await p.waitForTimeout(400);
+	expect(/#system$/.test(p.url()) && await p.locator('#updLibraries').isVisible() && await p.locator('#updRequirements').isVisible(), 'system tab');
+	await open(p, 'index.php?p=update#backups'); await p.waitForTimeout(400);
+	expect(await active() === 'backups', 'address #backups');
+	const keep = await p.inputValue('#updKeep');
+	await Promise.all([p.waitForNavigation(), p.click('#updKeepForm button[type=submit]')]); await p.waitForTimeout(400);
+	expect(await active() === 'backups' && /#backups$/.test(p.url()), 'after saving the keep rule: ' + p.url());
+	await p.fill('#updKeep', keep);
+	await open(p, 'index.php?p=update#updHistory'); await p.waitForTimeout(400);
+	expect(await active() === 'history', 'old anchor #updHistory');
+	await p.click('[data-nu-tab="update"]'); await p.waitForTimeout(300);
+	expect(!/#/.test(p.url()), 'first tab keeps a # in the address');
 };
 
 // start page hook nunext_home (0.8.378): PHP changes of the tile start page – badge, hint, hidden tile, dynamic group / tiles, banner
@@ -1256,6 +1394,9 @@ T.update_check = async (s) => {
 	await Promise.all([p.waitForLoadState('networkidle'), p.click('#updUpload')]);
 	await p.waitForTimeout(800);
 	expect(await p.locator('#updSignature .bi-patch-check-fill').count() === 1, 'package not shown as signed: ' + ((await p.textContent('#updSignature').catch(() => '')) || '').trim());
+	// fast releases (0.8.389): a package without the release gate is marked "not fully tested"
+	const gated = execSync('python3 -', { input: "import zipfile, json\nz=zipfile.ZipFile(" + JSON.stringify(pkg) + ")\nn=[x for x in z.namelist() if x.endswith('nunext-manifest.json')][0]\nprint(json.dumps(json.loads(z.read(n)).get('gated')))" }).toString().trim();
+	expect((await p.locator('#updNotGated').count() === 1) === (gated === 'false'), 'not-gated note: manifest gated=' + gated);
 	// page forms (0.8.388): packages with page_api in the manifest check the installed pages
 	const hasApi = execSync('python3 -', { input: "import zipfile, json, sys\nz=zipfile.ZipFile(" + JSON.stringify(pkg) + ")\nn=[x for x in z.namelist() if x.endswith('nunext-manifest.json')][0]\nprint('1' if 'page_api' in json.loads(z.read(n)) else '0')" }).toString().trim() === '1';
 	if (hasApi && SITE) {

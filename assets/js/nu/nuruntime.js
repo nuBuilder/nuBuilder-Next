@@ -2891,7 +2891,7 @@
 			['c', 'clone', 'bi-copy', 3, edit && has('nuCloneButton'), function () { nuCloneAction(); }],
 			['s', 'search', 'bi-search', 3, browse && has('nuSearchField'), function () { nuSearchAction(); }],
 			['a', 'add', 'bi-plus-lg', 3, browse && has('nuAddButton'), function () { $('#nuAddButton').trigger('click'); }],
-			['p', 'print', 'bi-printer', 3, browse && has('nuPrintButton'), function () { openTab($('#nuPrintButton').attr('href')); }],
+			['p', 'print', 'bi-printer', 3, browse && has('nuPrintButton'), function () { openTab($('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href')); }],
 			['?', 'help', 'bi-question-circle', 3, true, function () { openTab(N.base + '?p=help#forms-use'); }],
 			['r', 'refresh', 'bi-arrow-repeat', 3, true, function () { window.location.reload(); }],
 			['d', 'debug', 'bi-bug', 4, T.debug, function () { openTab(N.base + '?p=debug'); }],

@@ -143,7 +143,7 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 		</div>
 		<form class="nuListFilter" method="get" action="index.php" role="search">
 			<input type="hidden" name="p" value="sqlbuilder">
-			<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($search, '', '', false) ?></div><?= nu_list_reset('sqlbuilder', $search !== '') ?></div>
+			<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($search, '', '', false, $search !== '' ? nu_url('sqlbuilder') : null) ?></div></div>
 		</form>
 		<div class="table-responsive">
 			<table class="table table-hover align-middle mb-0 nu-table" id="sqbList">

@@ -60,6 +60,9 @@ if (nu_is_post()) {
 }
 
 $s = NuPage::settings($formId);
+$keys = NuPage::settingKeys($meta->code());          // keys the page reads (0.8.391)
+$example = NuPage::settingsExample($meta->code());   // settings.example.json of the page folder
+$fromKeys = NuPage::settingsFromKeys($keys['keys']); // a settings JSON from the keys the page reads (0.8.394)
 $v = static fn(string $k, string $def) => array_key_exists($k, $_POST) && nu_is_post() ? (string)$_POST[$k] : $def;
 $info = NuPage::fileInfo($meta->code());
 $ro = !$canSave;
@@ -75,8 +78,9 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 		<span class="badge nuFormType nuFormType-page fs-6 fw-normal"><?= h(t('form_type_page')) ?></span></h1>
 	<div class="d-flex flex-wrap gap-2">
 		<?= nu_back_button(null, nu_url('forms')) ?>
-		<a class="btn nuBtnAct" href="<?= h($openUrl) ?>" target="_blank" rel="noopener" id="pgOpen"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('page_open')) ?></a>
-		<button class="btn nuBtnAct" type="button" id="pgPrompt" data-done="<?= h(t('page_prompt_copied')) ?>" data-fail="<?= h(t('page_prompt_failed')) ?>"><i class="bi bi-robot me-1"></i><?= h(t('page_prompt')) ?></button>
+		<?php if (!$ro): ?><button class="btn nuBtnAct nuBtnSave" type="submit" form="pgForm" data-nu-save id="pgSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
+		<a class="btn nuBtnAct pgNeedsSaved" href="<?= h($openUrl) ?>" target="_blank" rel="noopener" id="pgOpen"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('page_open')) ?></a>
+		<button class="btn nuBtnAct pgNeedsSaved" type="button" id="pgPrompt" data-done="<?= h(t('page_prompt_copied')) ?>" data-fail="<?= h(t('page_prompt_failed')) ?>"><i class="bi bi-robot me-1"></i><?= h(t('page_prompt')) ?></button>
 		<?php if ($canDeleteForm): ?>
 			<form method="post" class="d-inline" data-confirm="<?= h(t('page_delete_confirm', NuPage::shownFolder($meta->code()))) ?>" data-confirm-ok="<?= h(t('builder_delete_form')) ?>" data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
@@ -85,6 +89,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 		<?php endif; ?>
 	</div>
 </div>
+<div class="small text-warning-emphasis mb-2 d-none" id="pgSaveFirst" role="status"><i class="bi bi-info-circle me-1"></i><?= h(t('page_save_first')) ?></div>
 
 <div class="row g-3">
 	<div class="col-xl-7">
@@ -133,11 +138,49 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 					<div class="col-12">
 						<div class="d-flex align-items-end gap-2 mb-1">
 							<label class="form-label mb-0 me-auto" for="pg_settings"><?= h(t('page_settings_json')) ?></label><?= $tip(t('page_settings_tip')) ?>
+							<?php if (!$ro): // examples of the settings JSON (0.8.394): from this page's keys, its settings.example.json, built-in samples ?>
+							<div class="dropdown" id="pgExamples" data-confirm-text="<?= h(t('page_example_confirm')) ?>">
+								<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="pgExamplesBtn"><i class="bi bi-file-earmark-code me-1"></i><?= h(t('page_examples')) ?></button>
+								<ul class="dropdown-menu dropdown-menu-end nuPgExamples">
+									<?php if ($fromKeys !== ''): ?><li><button class="dropdown-item" type="button" data-example="<?= h($fromKeys) ?>" id="pgExampleKeys"><span class="d-block"><?= h(t('page_example_keys')) ?></span><small class="text-body-secondary"><?= h(t('page_example_keys_sub')) ?></small></button></li><?php endif; ?>
+									<?php if ($example !== ''): ?><li><button class="dropdown-item" type="button" data-example="<?= h($example) ?>" id="pgExample"><span class="d-block"><?= h(t('page_example')) ?></span><small class="text-body-secondary">settings.example.json</small></button></li><?php endif; ?>
+									<?php if ($fromKeys !== '' || $example !== ''): ?><li><hr class="dropdown-divider"></li><?php endif; ?>
+									<li><h6 class="dropdown-header"><?= h(t('page_examples_samples')) ?></h6></li>
+									<?php foreach (NuPage::SETTING_SAMPLES as $lk => [$json, $read]): ?>
+										<li><button class="dropdown-item pgSample" type="button" data-example="<?= h((string)json_encode(json_decode($json), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?>"><span class="d-block"><?= h(t($lk)) ?></span><small class="text-body-secondary font-monospace"><?= h($read) ?></small></button></li>
+									<?php endforeach; ?>
+								</ul>
+							</div>
+							<?php endif; ?>
 							<?php if (!$ro): ?><button class="btn btn-sm btn-outline-secondary" type="button" id="pgPretty" data-bad="<?= h(t('page_err_json', '')) ?>"><i class="bi bi-braces me-1"></i><?= h(t('page_pretty')) ?></button><?php endif; ?>
 						</div>
 						<textarea class="form-control font-monospace<?= nu_invalid($errors, 'settings') ?>" id="pg_settings" name="settings" rows="10" spellcheck="false"<?= $ro ? ' readonly' : '' ?>><?= h($v('settings', $s['settings'])) ?></textarea>
 						<?= nu_feedback($errors, 'settings') ?>
 						<div class="invalid-feedback" id="pgJsonError"></div>
+						<?php if ($info['exists']): // keys the page reads with $nu->setting() (0.8.391) ?>
+						<div class="mt-2 small" id="pgKeys" data-all="<?= $keys['all'] ? '1' : '0' ?>" data-set="<?= h(t('page_keys_set')) ?>" data-unset="<?= h(t('page_keys_unset')) ?>" data-unused="<?= h(t('page_keys_unused', '%s')) ?>">
+							<div class="fw-semibold mb-1"><?= h(t('page_keys_title')) ?></div>
+							<?php if (!$keys['keys']): ?>
+								<div class="text-body-secondary" id="pgKeysNone"><?= h(t('page_keys_none')) ?></div>
+							<?php else: ?>
+								<div class="table-responsive"><table class="table table-sm nu-table mb-1 align-middle">
+									<thead><tr><th><?= h(t('page_keys_col_key')) ?></th><th><?= h(t('page_keys_col_default')) ?></th><th><?= h(t('page_keys_col_where')) ?></th><th></th></tr></thead>
+									<tbody>
+									<?php foreach ($keys['keys'] as $k => $e): $show = $e['dynamic'] ? rtrim($k, '.') . '.…' : $k; ?>
+										<tr class="pgKey" data-key="<?= h(rtrim($k, '.')) ?>" data-dynamic="<?= $e['dynamic'] ? '1' : '0' ?>">
+											<td><code><?= h($show) ?></code><?= $e['dynamic'] ? ' <span class="text-body-secondary">' . h(t('page_keys_dynamic')) . '</span>' : '' ?></td>
+											<td><?= $e['defaults'] ? '<code>' . h(implode(' | ', $e['defaults'])) . '</code>' : '<span class="text-body-secondary">–</span>' ?></td>
+											<td class="text-body-secondary"><?= h(implode(', ', $e['files'])) ?></td>
+											<td class="text-end"><span class="badge pgKeyState"></span></td>
+										</tr>
+									<?php endforeach; ?>
+									</tbody>
+								</table></div>
+							<?php endif; ?>
+							<?php if ($keys['all']): ?><div class="text-body-secondary"><?= h(t('page_keys_all')) ?></div><?php endif; ?>
+							<div class="text-warning-emphasis d-none" id="pgKeysUnused"></div>
+						</div>
+						<?php endif; ?>
 					</div>
 					<div class="col-12">
 						<label class="form-label" for="pg_csp"><?= h(t('page_csp')) ?></label><?= $tip(t('page_csp_tip')) ?>
@@ -150,11 +193,6 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 					</div>
 				</div>
 			</div>
-			<?php if (!$ro): ?>
-			<div class="card-footer d-flex justify-content-end">
-				<button class="btn nuBtnAct nuBtnSave" type="submit" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
-			</div>
-			<?php endif; ?>
 		</form>
 	</div>
 
@@ -187,7 +225,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 				<?php if (!$ro && $info['valid'] && !$info['folder_exists']): ?>
 					<?php if ($info['writable'] && $info['template']): ?>
 						<form method="post"><?= nu_csrf_field() ?><input type="hidden" name="action" value="template">
-							<button class="btn nuBtnAct" type="submit" id="pgTemplate"><i class="bi bi-file-earmark-plus me-1"></i><?= h(t('page_template')) ?></button></form>
+							<button class="btn nuBtnAct pgNeedsSaved" type="submit" id="pgTemplate"><i class="bi bi-file-earmark-plus me-1"></i><?= h(t('page_template')) ?></button></form>
 					<?php else: ?>
 						<div class="small text-body-secondary"><?= h(t('page_template_ftp', NuPage::shownFolder('_template'), $info['folder'])) ?></div>
 					<?php endif; ?>

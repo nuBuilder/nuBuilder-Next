@@ -60,6 +60,7 @@ nu_layout_start(t('help_title'), '');
 		</div>
 	<?php endif; ?></div>
 </div>
+<?= nu_docs_update_notice('docs_newer_help') ?>
 <?php if ($html === ''): ?>
 	<div class="alert alert-warning"><?= h(t('help_missing')) ?></div>
 <?php else: ?>
