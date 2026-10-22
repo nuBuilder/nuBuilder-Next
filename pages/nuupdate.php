@@ -67,15 +67,20 @@ if (nu_is_post()) {
 		// GitHub (0.8.374, core/nugithub.php): settings, look for a newer release, download it into _update/ and check it from there
 		if ($action === 'github_settings') {
 			$changed = NuGitHub::saveSettings(nu_post('repo'), nu_check('pre') === '1', nu_check('auto') === '1');
-			nu_flash('success', $changed ? t('gh_saved') : t('aud_set_nochange'));
-			nu_redirect(nu_url('update') . '#updGitHub');
+			nu_flash('success', $changed ? t('gh_saved') : t('aud_set_nochange'), true);
+			nu_redirect(nu_url('update'));
 		}
+		// the answer as a toast (0.8.377): newer on GitHub / the same / the installed version is newer / nothing found / error
 		if ($action === 'github_check') {
 			$gs = NuGitHub::check();
-			if ($gs['error'] !== '') throw new RuntimeException(t('gh_err_check', $gs['error']));
-			$nw = NuGitHub::newer();
-			nu_flash($nw ? 'success' : 'info', $nw ? t('gh_found', (string)$nw['version']) : ($gs['latest'] ? t('gh_uptodate', (string)$gs['latest']['version']) : t('gh_err_none')));
-			nu_redirect(nu_url('update') . '#updGitHub');
+			$gl = $gs['latest'];
+			if ($gs['error'] !== '') nu_flash('danger', t('gh_err_check', $gs['error']), true);
+			elseif (!$gl) nu_flash('warning', t('gh_err_none'), true);
+			else {
+				$cmp = version_compare((string)$gl['version'], NU_VERSION);
+				nu_flash($cmp > 0 ? 'success' : 'info', $cmp > 0 ? t('gh_found', (string)$gl['version']) : ($cmp === 0 ? t('gh_uptodate', NU_VERSION) : t('gh_ahead', NU_VERSION, (string)$gl['version'])), true);
+			}
+			nu_redirect(nu_url('update'));
 		}
 		if ($action === 'github_download') {
 			if (!NuUpdate::enabled()) throw new RuntimeException(t('upd_disabled'));
@@ -475,7 +480,7 @@ nu_layout_start(t('upd_title'), 'home');
 					<div class="d-flex flex-wrap align-items-center gap-2 small mb-2" id="updGitHubLatest">
 						<span><?= h(t('gh_latest')) ?> <span class="fw-semibold"><?= h((string)$gl['version']) ?></span></span>
 						<?php if (!empty($gl['pre'])): ?><span class="badge text-bg-warning"><?= h(t('gh_pre')) ?></span><?php endif; ?>
-						<span class="badge <?= $gNew ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= h($gNew ? t('upd_folder_newer') : t('gh_installed')) ?></span>
+						<?php $gCmp = version_compare((string)$gl['version'], NU_VERSION); ?><span class="badge <?= $gCmp > 0 ? 'text-bg-success' : 'text-bg-secondary' ?>" id="updGitHubState"><?= h($gCmp > 0 ? t('upd_folder_newer') : ($gCmp === 0 ? t('gh_same') : t('gh_older'))) ?></span>
 						<span class="text-body-secondary"><?= $gl['published'] !== '' ? h(date('d.m.Y', (int)strtotime((string)$gl['published']))) . ' · ' : '' ?><?= h(NuFile::size((int)$gl['size'])) ?></span>
 						<?php if ($gl['page'] !== ''): ?><a href="<?= h((string)$gl['page']) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('gh_notes')) ?></a><?php endif; ?>
 					</div>

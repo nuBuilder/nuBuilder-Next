@@ -3,6 +3,34 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.378 – Start page hooks (PHP)
+- Start page hooks, part 1 (PHP): a procedure with the reserved code nunext_home runs every time the tile start page
+  (globeadmin, admin roles) is built and changes only that page view – nuHomeSetBadge($key, $text, $color), nuHomeSetHint,
+  nuHomeHideTile, nuHomeAddGroup($id, $title, $tab) and nuHomeAddTile($key, $tile) (keys x_…; a tile has exactly one target –
+  form + record, page, procedure + run, url + newtab – and is checked like an own tile of the tile editor), nuHomeBanner($text,
+  $level), nuHomeSetData($name, $value) (for JavaScript, next step) and nuHomeCache($seconds). Hash variables of the user plus
+  #ADMIN_ROLE#, #HOME_LAYOUT#, #HOME_SIZE#, #HOME_DISPLAY#. Dynamic tiles are drawn like all other tiles (search, compact
+  tooltips, every size), are not part of Customise and cannot be favourites; every text is escaped.
+- A failing hook (error, exception, refused tile or key) leaves the page without its changes; the globeadmin sees the message
+  with a link to the procedure, admin roles see nothing; errors and echo output go to Debug results. Off: $nuConfigHomeHooks =
+  false (nuconfig.php or the new Settings row "Start Page Hooks", database step 0013); safe mode for one page view:
+  ?p=home&tiles=1&safe=1 (globeadmin). An active hook is listed as information in the Security check and in System status.
+  The procedure editor suggests the code nunext_home; draft / archived procedures do not run.
+- nuRunQuery() results also offer nuBuilder's PDOStatement methods fetch(), fetchColumn(), fetchObject(), fetchAll(),
+  rowCount() and columnCount() (nuBuilder returns a PDOStatement).
+- Help: chapter "Start page hooks"; tutorial lesson "Start page hooks"; self-test check; unit tests and e2e tests home_hook
+  (badge, hint, hidden, dynamic group / tiles, banner, data, echo in Debug results, search, not in Customise, safe mode, refused
+  tile, exception, admin role) and home_hook_off ($nuConfigHomeHooks = false).
+- README.md: quick links with full GitHub addresses (releases, changelog), the nuBuilder forum and the documentation.
+
+## 0.8.377 – GitHub check answers as a toast
+- Update page → "Look for a new version": the answer is shown as a toast at the top right and the page no longer jumps down
+  to the GitHub section. Four answers: a newer version is available (green), up to date, the installed version is newer than
+  the newest release on GitHub (e.g. a version not yet published there), no release found / GitHub error (red, stays longer).
+  Saving the GitHub settings answers with a toast too.
+- The badge next to the newest release says "installed" or "older than installed" instead of "installed or older".
+- Flash messages can be toasts for every page: nu_flash(type, message, true) (core/nulayout.php, assets/js/nuapp.js).
+
 ## 0.8.376 – Update page: GitHub first
 - Update page: the card "Install a new version" shows "Update from GitHub" first (in a frame, "Look for a new version" is the
   main button while nothing newer is known). "Other ways to update" – upload a zip, packages in the folder _update – is folded

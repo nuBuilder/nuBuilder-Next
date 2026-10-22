@@ -252,6 +252,19 @@ final class NuSelfTest
 				$after = NuNotify::summary()['unread'];
 				return $got && $after === $before - 1 ? $ok() : $fail('unread ' . $before . ' → ' . $after);
 			}],
+			['features', 'home_hook', static function () use ($ok, $fail) {        // start page hooks (0.8.378): the PHP functions and the merge, without a procedure
+				$code = "nuHomeAddGroup('x_st', 'Self-test'); nuHomeAddTile('x_st_tile', ['group' => 'x_st', 'label' => 'Self-test', 'page' => 'help']); nuHomeSetBadge('x_st_tile', '1', 'info'); nuHomeHideTile('x_hidden');";
+				NuHomeHook::reset();
+				$r = NuPhp::isolated(static fn() => NuPhp::run($code, NuHash::plain(), 'selftest'));
+				if ($r['errors'] || NuHomeHook::$problems) return $fail(implode(' · ', array_merge(array_column($r['errors'], 'message'), NuHomeHook::$problems)));
+				$prev = NuHomeHook::$ran;
+				NuHomeHook::$ran = true;
+				$g = NuHomeHook::apply([['id' => 'g', 'title' => '', 'tab' => '', 'items' => ['x_hidden' => ['label' => 'x']]]], ['tabs' => []]);
+				NuHomeHook::$ran = $prev;
+				NuHomeHook::reset();
+				$tile = $g[0]['items']['x_st_tile'] ?? null;
+				return count($g) === 1 && $g[0]['id'] === 'x_st' && $tile && ($tile['badge'][0] ?? '') === '1' ? $ok(NuHomeHook::active() ? t('st_hook_active') : '') : $fail(json_encode($g));
+			}],
 			['features', 'housekeeping', static function () use ($ok, $warn) {
 				$h = NuHousekeeping::last();
 				if (!$h) return $warn(t('st_never'));

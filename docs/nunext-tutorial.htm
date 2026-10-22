@@ -403,6 +403,19 @@
 		</div>
 		<p><a data-help="dashboards">Dashboards in the documentation</a></p>
 	</section>
+	<section class="tut-lesson" id="home-hooks" data-right="ga">
+		<h3>Start page hooks</h3>
+		<p>A procedure with the code <code>nunext_home</code> runs every time the tile start page is built. Its PHP can put a badge on a tile (an open count, a warning), change a description, hide a tile for some admin roles, add a group with extra tiles or show a banner above the tiles – only for that page view, nothing is saved into the layout.</p>
+		<div class="tut-task">
+			<ol>
+				<li>Open <a data-open="procedures">Procedures</a> and add a procedure with the code <code>nunext_home</code>.</li>
+				<li>PHP: <code>nuHomeSetBadge('users', 'hook', 'info'); nuHomeBanner('Hello from the start page hook');</code> – save.</li>
+				<li>Open the start page: the banner is above the tiles, the Users tile carries the badge. A mistake in the code? The page still shows, with the message above the tiles.</li>
+				<li>Set the procedure's status to <em>Draft</em> to switch it off again.</li>
+			</ol>
+		</div>
+		<div class="tut-tip"><code>index.php?p=home&amp;tiles=1&amp;safe=1</code> opens the start page without the hook. All functions: <a data-help="home-hooks">Start page hooks</a>.</div>
+	</section>
 </article>
 
 <article class="tut-chapter" id="ch-comm" data-part="build">

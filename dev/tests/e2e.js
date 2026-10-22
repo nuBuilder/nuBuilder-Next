@@ -567,6 +567,7 @@ T.github_update = async (s) => {                        // 0.8.374: newest relea
 			await open(p, 'index.php?p=update');
 			await Promise.all([p.waitForNavigation(), p.click('#updGitHubCheck')]); await p.waitForLoadState('networkidle');
 			expect(await p.locator('#updGitHubError').count() === 0 && await p.locator('#updGitHubLatest').count() === 1, 'GitHub check failed');
+			expect(await p.locator('.nuFlashToast.show').count() === 1, 'no toast with the answer of GitHub');   // 0.8.377
 		}
 	} finally { put(null); }
 };
@@ -584,6 +585,81 @@ T.update_layout = async (s) => {                        // 0.8.376: GitHub first
 	await p.click('#updOtherBtn'); await p.waitForTimeout(600);
 	await open(p, 'index.php?p=update');
 	expect(!(await p.locator('#updOther').isVisible()), 'closed state not remembered');
+};
+
+// start page hook nunext_home (0.8.378): PHP changes of the tile start page – badge, hint, hidden tile, dynamic group / tiles, banner
+const homeHook = (php) => {
+	sql("DELETE FROM zzzzsys_php WHERE sph_code = 'nunext_home'");
+	if (php !== null) execSync('mysql ' + DB, { input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_status, sph_global) VALUES ('e2e_hook', 'nunext_home', 'e2e', '"
+		+ php.replace(/\\/g, '\\\\').replace(/'/g, "''") + "', '1', '0')" });
+};
+T.home_hook = async (s) => {
+	const p = s.ga;
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	try {
+		homeHook(`nuHomeSetBadge('users', 'E2E <b>', 'danger');
+nuHomeSetHint('access', 'Hint by hook');
+nuHomeHideTile('forms');
+nuHomeAddGroup('x_e2e', 'E2E group');
+nuHomeAddTile('x_e2e_tile', ['group' => 'x_e2e', 'label' => 'E2E dynamic', 'icon' => 'bi-archive', 'page' => 'update']);
+nuHomeAddTile('x_e2e_url', ['group' => 'x_e2e', 'label' => 'E2E url', 'url' => 'https://example.com/', 'newtab' => true]);
+if ('#ADMIN_ROLE#' === 'E2E hook role') nuHomeSetBadge('securitycheck', 'role seen', 'info');
+nuHomeBanner('E2E banner <script>x</script>', 'warning');
+nuHomeSetData('e2eCount', 42);
+echo 'e2e output';`);
+		await open(p, 'index.php?p=home&tiles=1');
+		const st = await p.evaluate(() => ({
+			badge: document.querySelector('[data-nu-tile="users"] .nuHomeBadge')?.textContent, hint: document.querySelector('[data-nu-tile="access"]')?.textContent,
+			forms: !!document.querySelector('#nuHomeView [data-nu-tile="forms"]'), dyn: [...document.querySelectorAll('#nuHomeView [data-nu-tile^="x_"]')].map(a => a.dataset.nuTile),
+			banner: document.querySelector('.nuHomeHookBanner')?.textContent, scripts: document.querySelectorAll('.nuHomeHookBanner script').length,
+			data: JSON.parse(document.getElementById('nuHomeData').textContent).hookData }));
+		expect(st.badge === 'E2E <b>' && /Hint by hook/.test(st.hint || '') && !st.forms, 'badge / hint / hidden: ' + JSON.stringify(st));
+		expect(st.dyn.join() === 'x_e2e_tile,x_e2e_url' && /E2E banner <script>/.test(st.banner || '') && st.scripts === 0 && st.data.e2eCount === 42, 'dynamic tiles / banner / data: ' + JSON.stringify(st));
+		expect(/e2e output/.test(sql("SELECT deb_message FROM zzzzsys_debug ORDER BY deb_added DESC LIMIT 1")), 'echo not in Debug results');
+		await p.fill('#nuHomeSearch', 'E2E dynamic'); await p.waitForTimeout(300);
+		expect(await p.locator('[data-nu-tile="x_e2e_tile"]').isVisible() && !(await p.locator('[data-nu-tile="users"]').isVisible()), 'search does not find the dynamic tile');
+		await p.fill('#nuHomeSearch', ''); await p.waitForTimeout(200);
+		if (await p.locator('#nuHomeCustomize').count()) {
+			await p.click('#nuHomeCustomize'); await p.waitForTimeout(500);
+			expect(await p.locator('#nuHomeEdit [data-key^="x_"]').count() === 0, 'dynamic tiles appear in Customize');
+		}
+		// safe mode: nothing of the hook
+		await open(p, 'index.php?p=home&tiles=1&safe=1');
+		expect(await p.locator('#nuHomeSafe').count() === 1 && await p.locator('[data-nu-tile^="x_"]').count() === 0 && await p.locator('.nuHomeHookBanner').count() === 0, 'safe mode runs the hook');
+		// a refused tile and a throwing hook: the page is drawn without the changes, the globeadmin sees why
+		for (const bad of [`nuHomeAddTile('x_bad', ['label' => 'Bad', 'url' => 'javascript:alert(1)']);`, `nuHomeSetBadge('users', 'x'); throw new Exception('E2E boom');`]) {
+			homeHook(bad);
+			await open(p, 'index.php?p=home&tiles=1');
+			expect(await p.locator('#nuHomeHookError').count() === 1 && await p.locator('[data-nu-tile="users"] .nuHomeBadge').count() === 0 && await p.locator('[data-nu-tile="users"]').count() === 1, 'broken hook: ' + bad);
+		}
+		// a user with an admin role sees the result (and #ADMIN_ROLE#), but never the error
+		homeHook(`nuHomeAddGroup('x_e2e', 'E2E group'); nuHomeAddTile('x_e2e_url', ['group' => 'x_e2e', 'label' => 'E2E url', 'url' => 'https://example.com/']);
+if ('#ADMIN_ROLE#' === 'E2E hook role') nuHomeSetBadge('securitycheck', 'role seen', 'info');`);
+		sql("INSERT INTO zzzzsys_nunext_admin_role (zzzzsys_nunext_admin_role_id, code, name, rights, sort_order) VALUES ('e2e_hrole', 'e2eh', 'E2E hook role', '{\"securitycheck\":\"view\"}', 99)");
+		sql("INSERT INTO zzzzsys_nunext_admin_user (zzzzsys_nunext_admin_user_id, role_id) VALUES ('" + uid + "', 'e2e_hrole')");
+		const pa = await login('sample_anna', UPW);
+		await open(pa, 'index.php?p=home');
+		expect(await pa.locator('[data-nu-tile="x_e2e_url"]').count() === 1 && /role seen/.test(await pa.locator('[data-nu-tile="securitycheck"]').textContent()), 'admin role: hook result not shown');
+		homeHook(`throw new Exception('E2E boom');`);
+		await open(pa, 'index.php?p=home');
+		expect(await pa.locator('#nuHomeHookError').count() === 0 && await pa.locator('[data-nu-tile="securitycheck"]').count() === 1, 'admin role sees the error');
+		await pa.context().close();
+	} finally {
+		homeHook(null);
+		sql("DELETE FROM zzzzsys_nunext_admin_user WHERE role_id = 'e2e_hrole'; DELETE FROM zzzzsys_nunext_admin_role WHERE zzzzsys_nunext_admin_role_id = 'e2e_hrole'; DELETE FROM zzzzsys_debug WHERE deb_message LIKE 'nunext_home%'");
+	}
+};
+
+T.home_hook_off = async (s) => {                        // $nuConfigHomeHooks = false: the hook does not run
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	const cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8');
+	try {
+		homeHook(`nuHomeBanner('E2E off test');`);
+		fs.writeFileSync(cfg, orig.replace(/\?>\s*$/, '') + '\n$nuConfigHomeHooks = false;\n');
+		await new Promise(r => setTimeout(r, 3500));
+		await open(s.ga, 'index.php?p=home&tiles=1');
+		expect(await s.ga.locator('.nuHomeHookBanner').count() === 0, '$nuConfigHomeHooks = false: the hook still runs');
+	} finally { fs.writeFileSync(cfg, orig); homeHook(null); await new Promise(r => setTimeout(r, 3500)); }
 };
 
 T.csv_import = async (s) => {

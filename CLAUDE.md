@@ -140,6 +140,10 @@ core/nulogintoken.php nuBuilder's single-use LOGIN_TOKEN in sus_json (+ LOGIN_TO
 core/nulistview.php  list views of the system lists (NuListView: prepare/card/page, views, editor, defaults); core/nulistdefs.php the lists
                      (columns, filters, card layout, SQL) – a new system list is a NuListDefs entry, not hand-written HTML
 core/nuhome.php      start page: tiles, Ctrl+K search, saved layouts (list_key 'home' in zzzzsys_nunext_list_view)
+core/nuhomehook.php  start page hooks (0.8.378): procedure nunext_home runs while the tile page is built (pages/nuhome.php: NuHomeHook::run +
+                     apply); PHP functions nuHomeSetBadge / SetHint / HideTile / AddGroup / AddTile (x_ keys, NuHome::cleanTile) / Banner /
+                     SetData / Cache in core/form/nuphp_api.php; errors → page without changes + alert for the globeadmin + Debug results;
+                     off: $nuConfigHomeHooks = false (settings row, step 0013), ?safe=1 (globeadmin)
 core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.php mailer (NuMailer: settings, send, authType(), test probe)
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',

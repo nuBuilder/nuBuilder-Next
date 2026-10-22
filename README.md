@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.376 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.378 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – on your existing nuBuilder database.**
 
@@ -12,11 +12,10 @@
 
 ### Quick Links:
 
-- 📦 [Releases](../../releases) – download `nunext.zip`
-- 📝 [Changelog](CHANGELOG.md)
+- 📦 [Releases](https://github.com/nuBuilder/nuBuilder-Next/releases) – download `nunext.zip`
+- 📝 [Changelog](https://github.com/nuBuilder/nuBuilder-Next/blob/main/CHANGELOG.md)
+- 💬 [nuBuilder Community Forum](https://forum.nubuilder.cloud/)
 - 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`); source `docs/nunext-docs.htm`
-- 🛠️ Development – [CLAUDE.md](CLAUDE.md) (rules, architecture, conventions, tests, release) · open checks: [TODO.md](TODO.md)
-- 🌐 [nuBuilder Home Page](https://www.nubuilder.com) · 💬 [nuBuilder Community Forum](https://forum.nubuilder.cloud/)
 
 ---
 

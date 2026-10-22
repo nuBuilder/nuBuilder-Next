@@ -343,4 +343,19 @@ if (!function_exists('nuDashboardData')) {
 	}
 }
 
+if (!function_exists('nuHomeSetBadge')) {
+	/*
+	 * Start page hooks (0.8.378, core/nuhomehook.php): in the procedure nunext_home – they change only the tile start page being
+	 * built (badges, descriptions, hidden tiles, dynamic groups / tiles with keys x_…, banners, data for JavaScript).
+	 */
+	function nuHomeSetBadge($key, $text, $color = 'secondary'): void { NuHomeHook::setBadge((string)$key, (string)$text, (string)$color); }
+	function nuHomeSetHint($key, $text): void { NuHomeHook::setHint((string)$key, (string)$text); }
+	function nuHomeHideTile($key): void { NuHomeHook::hideTile((string)$key); }
+	function nuHomeAddGroup($id, $title, $tab = ''): void { NuHomeHook::addGroup((string)$id, (string)$title, (string)$tab); }
+	function nuHomeAddTile($key, $tile): void { NuHomeHook::addTile((string)$key, is_array($tile) ? $tile : []); }
+	function nuHomeBanner($text, $level = 'info'): void { NuHomeHook::banner((string)$text, (string)$level); }
+	function nuHomeSetData($name, $value): void { NuHomeHook::setData((string)$name, $value); }
+	function nuHomeCache($seconds): void { NuHomeHook::cacheFor((int)$seconds); }
+}
+
 require_once __DIR__ . '/nuphp_compat.php';   // more nuBuilder functions (database, strings, procedures …)

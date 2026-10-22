@@ -439,6 +439,7 @@ final class NuSecurity
 		if (nu_cfg('nuConfigApiAllowHttp')) $add('api_http', 'bad', 'secchk_chk_api_http', t('secchk_chk_api_http_on'));
 		if (NuDemo::configured()) $add('demo', 'warn', 'secchk_chk_demo', t('secchk_chk_demo_on'), nu_url('vendor') . '#demomode');
 		if (nu_cfg('nuConfigAutoLogin')) $add('autologin', 'info', 'secchk_chk_autologin', t('secchk_chk_autologin_on'));
+		if (NuHomeHook::active()) $add('homehook', 'info', 'secchk_chk_homehook', t('secchk_chk_homehook_on'), nu_url('procedures', ['id' => (string)(NuHomeHook::procedure()['id'] ?? '')]));   // 0.8.378
 		if (!empty(nu_cfg('nuConfigDevMode'))) {             // 0.8.338: developer mode relaxes the password confirmation of the globeadmin
 			$dm = (int)self::get('reauth_minutes_dev');
 			$add('devmode', 'info', 'secchk_chk_devmode', $dm > 0 ? t('secchk_chk_devmode_on', $dm) : t('secchk_chk_devmode_never'), nu_url('securitycheck') . '#sec_reauth_minutes_dev');

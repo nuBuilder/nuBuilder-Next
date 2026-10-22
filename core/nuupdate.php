@@ -692,6 +692,7 @@ final class NuMigrate
 			'0010-home-layouts' => ['Start page: the layout becomes the shared layout "Standard" (saved layouts, zzzzsys_nunext_list_view)', static fn() => NuHome::migrateSingle()],
 			'0011-audit' => ['Audit trail (zzzzsys_nunext_audit): table created, the record changes of the log copied into it', static fn() => NuAudit::copyFromLog()],
 			'0012-notifications' => ['Notification centre (zzzzsys_nunext_notification, zzzzsys_nunext_notification_user); permission items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN', static fn() => NuNotify::install()],
+			'0013-setting-home-hooks' => ['Settings table: row $nuConfigHomeHooks (start page hooks on / off) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
 		];
 	}
 
@@ -716,6 +717,7 @@ final class NuMigrate
 			['zzzzsys_nunext_audit', 'data', 'record changes of zzzzsys_nunext_log (record_inserted, record_updated, record_deleted) copied, one row per column']],
 		'0012-notifications' => [['zzzzsys_nunext_notification', 'table', 'created when missing'], ['zzzzsys_nunext_notification_user', 'table', 'created when missing'],
 			['zzzzsys_permission_item', 'data', 'items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN added when missing (group "nuBuilder Next")']],
+		'0013-setting-home-hooks' => [['zzzzsys_config', 'data', 'row $nuConfigHomeHooks added when missing']],
 	];
 
 	/** Steps with their descriptions and changes (for install/db_changes.json). @return list<array{id: string, description: string, changes: list<array>}> */

@@ -14,7 +14,7 @@ final class NuProcedure
 	public const HOOKS = ['_BB', '_BE', '_BS', '_AS', '_BD', '_AD', '_AB'];
 	/** Codes of nuBuilder's global procedures (run by nuBuilder at these events) – suggestions for the code field. */
 	public const HOOK_CODES = ['nu_before_save', 'nu_after_save', 'nu_before_edit', 'nu_before_browse', 'nu_before_delete', 'nu_after_delete',
-		'nu_startup', 'nu_check_password_policy', 'nu_invalid_login', 'nu_after_update', 'nu_send_welcome_email', 'nu_debug_result_added'];
+		'nu_startup', 'nu_check_password_policy', 'nu_invalid_login', 'nu_after_update', 'nu_send_welcome_email', 'nu_debug_result_added', 'nunext_home'];
 	public const STATUS = ['1' => 'proc_status_active', '0' => 'proc_status_draft', '3' => 'proc_status_archived'];
 	public const RUN = ['' => 'proc_run_default', 'hide' => 'proc_run_hidden', 'window' => 'proc_run_window'];
 	/** Fields compared for the change history. */

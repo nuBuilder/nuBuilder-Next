@@ -757,6 +757,48 @@ fixes:
 	</ul>
 </section>
 
+<section id="home-hooks" data-doc="admin">
+	<h2 id="home-hooks-h">Start page hooks</h2>
+	<p>Since 0.8.378 a procedure with the reserved code <code>nunext_home</code> runs every time the <a href="#home-page">tile start page</a> is built (globeadmin and users with an admin role – normal users get their access level's page and are not affected). Its PHP changes only <em>this page view</em>: badges, descriptions, hidden tiles, extra groups and tiles, banners. Nothing is saved into a layout. Create it under <em>Procedures</em> → Add, code <code>nunext_home</code> (suggested in the code field); status <em>Draft</em> or <em>Archived</em> switches it off.</p>
+	<pre dir="ltr"><code>// procedure nunext_home – runs every time the tile start page is built
+nuHomeCache(60);                                   // keep the result 60 s per user
+
+$open = (int)nuRunQuery("SELECT COUNT(*) FROM orders WHERE status = 'open'")-&gt;fetchColumn();
+nuHomeSetBadge('c_orders', "$open open", $open &gt; 20 ? 'danger' : 'secondary');
+
+if ('#ADMIN_ROLE#' === 'Developer') nuHomeHideTile('cloner');
+
+nuHomeAddGroup('x_today', 'Today');
+nuHomeAddTile('x_backup', ['group' =&gt; 'x_today', 'label' =&gt; 'Last backup', 'icon' =&gt; 'bi-archive', 'page' =&gt; 'update']);
+
+nuHomeBanner('Maintenance on Saturday 22:00', 'warning');
+nuHomeSetData('openOrders', $open);</code></pre>
+	<ul>
+		<li><strong>Tile keys</strong>: built-in tiles by their key (<code>users</code>, <code>access</code>, <code>forms</code>, <code>update</code> … – the <code>data-nu-tile</code> attribute of a tile), own tiles <code>c_…</code>, pinned pages, and the hook's own tiles <code>x_…</code>.</li>
+		<li><strong>Hash variables</strong>: the user's ones (<code>&#35;USER_ID&#35;</code>, <code>&#35;USER_LOGIN&#35;</code>, <code>&#35;GLOBAL_ACCESS&#35;</code>, <code>&#35;ACCESS_LEVEL_CODE&#35;</code>, <code>&#35;USER_DEPARTMENT&#35;</code>, <code>&#35;USER_TEAM&#35;</code>, <code>&#35;LANGUAGE&#35;</code> …) and <code>&#35;ADMIN_ROLE&#35;</code> (name of the user's admin role, empty for the globeadmin), <code>&#35;HOME_LAYOUT&#35;</code> (name of the start page layout), <code>&#35;HOME_SIZE&#35;</code> (large, compact, list, listwide, list2), <code>&#35;HOME_DISPLAY&#35;</code> (groups, tabs).</li>
+		<li><strong>Dynamic tiles</strong> are checked like own tiles of the tile editor – a link the editor would refuse is refused here too – and drawn by the same code: search, the compact tooltips and every tile size work. They are not shown in <em>Customise</em> (so they can never be saved into a layout) and cannot be favourites. A form tile is shown only to users with rights on the form. All texts are escaped – a hook cannot add HTML.</li>
+		<li><strong>Errors</strong>: a failing hook (an error, an exception, a refused tile or key) leaves the page as it would be without the hook. The globeadmin sees the message above the tiles with a link to the procedure; users with an admin role see nothing. Every error and every <code>echo</code> output goes to <em>Debug results</em>.</li>
+		<li><strong>Off switch</strong>: <code>$nuConfigHomeHooks = false;</code> in <code>nuconfig.php</code> (or the row <em>Start Page Hooks</em> in <a href="#settings">Settings</a>). <strong>Safe mode</strong>: <code>index.php?p=home&amp;tiles=1&amp;safe=1</code> skips the hook for one page view (globeadmin only; a note on the page says so).</li>
+		<li><strong>Speed</strong>: the hook runs on every visit – <code>nuHomeCache(seconds)</code> (at most 3600) keeps its result in the session of each user (also for the same layout and the same code).</li>
+		<li><strong>Demo mode</strong>: the hook runs read only for demo visitors (writes stop it with an error). An active hook is listed as information in the <a href="#security">Security check</a> and in <em>System status</em>. Whoever may change procedures may change the hook – there is no extra right.</li>
+		<li><code>nuAddJavascript()</code> does nothing on this page (the start page allows only scripts from files). Hand values to JavaScript with <code>nuHomeSetData()</code>.</li>
+	</ul>
+	<table class="table table-sm">
+		<thead><tr><th>PHP function</th><th>What it does</th></tr></thead>
+		<tbody>
+			<tr><td><code>nuHomeSetBadge($key, $text, $color = 'secondary')</code></td><td>Badge on a tile; colour = primary, secondary, success, danger, warning, info, light, dark.</td></tr>
+			<tr><td><code>nuHomeSetHint($key, $text)</code></td><td>Replaces the tile's description.</td></tr>
+			<tr><td><code>nuHomeHideTile($key)</code></td><td>Hides a tile for this page view.</td></tr>
+			<tr><td><code>nuHomeAddGroup($id, $title, $tab = '')</code></td><td>Adds a group at the end (<code>$id</code> starts with <code>x_</code>; <code>$tab</code> = a tab id of the layout, else the first tab).</td></tr>
+			<tr><td><code>nuHomeAddTile($key, $tile)</code></td><td>Adds a tile (<code>$key</code> starts with <code>x_</code>). <code>$tile</code>: <code>group</code> (a group of the layout or of the hook; unknown → a group <em>More</em>), <code>label</code>, <code>hint</code>, <code>icon</code> (<code>bi-…</code>), <code>color</code> (<code>#rrggbb</code>) and exactly one target: <code>form</code> (id or code) + <code>record</code>, <code>page</code> (a nuBuilder Next page such as <code>users</code>, <code>update</code>), <code>procedure</code> (id or code) + <code>run</code> (<code>window</code> / <code>hidden</code>), <code>url</code> (<code>https://…</code> or <code>index.php?…</code>) + <code>newtab</code>.</td></tr>
+			<tr><td><code>nuHomeBanner($text, $level = 'info')</code></td><td>A notice above the tiles: info, success, warning, danger.</td></tr>
+			<tr><td><code>nuHomeSetData($name, $value)</code></td><td>A JSON value for the page's JavaScript.</td></tr>
+			<tr><td><code>nuHomeCache($seconds)</code></td><td>Keeps the result per user for that long.</td></tr>
+		</tbody>
+	</table>
+	<p>Since 0.8.378 the result of <code>nuRunQuery()</code> also offers nuBuilder's PDOStatement methods <code>fetch()</code>, <code>fetchColumn()</code>, <code>fetchObject()</code>, <code>fetchAll()</code>, <code>rowCount()</code> and <code>columnCount()</code>.</p>
+</section>
+
 <section id="configfile" data-doc="admin">
 	<h2 id="configfile-h">Configuration file (nuconfig.php)</h2>
 	<p><em>Admin tools → Configuration file (nuconfig.php)</em> (globeadmin; not in demo mode) edits <code>nuconfig.php</code> in a code editor with the usual tool buttons (undo / redo, search, replace, comment, spaces and tabs, <em>Format</em>, full screen – no hash variables). The path is shown under the title.</p>

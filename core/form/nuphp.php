@@ -189,4 +189,51 @@ final class NuResult
 		foreach ($row as $i => $v) $a[$this->columns[$i] ?? $i] = $v;
 		return $a;
 	}
+
+	// PDOStatement methods that nuBuilder code calls on the result of nuRunQuery() (nuBuilder returns a PDOStatement) – 0.8.378
+
+	private function shaped(array $row, int $mode): array|object
+	{
+		return match ($mode) {
+			PDO::FETCH_NUM => $row,
+			PDO::FETCH_ASSOC => $this->assoc($row),
+			PDO::FETCH_OBJ => (object)$this->assoc($row),
+			default => $this->assoc($row) + $row,                         // FETCH_BOTH
+		};
+	}
+
+	public function fetch(int $mode = PDO::FETCH_BOTH): array|object|false
+	{
+		$row = $this->next();
+		return $row === null ? false : $this->shaped($row, $mode);
+	}
+
+	public function fetchColumn(int $column = 0): mixed
+	{
+		$row = $this->next();
+		return $row === null ? false : ($row[$column] ?? null);
+	}
+
+	public function fetchObject(): object|false
+	{
+		$row = $this->next();
+		return $row === null ? false : (object)$this->assoc($row);
+	}
+
+	public function fetchAll(int $mode = PDO::FETCH_BOTH, int $column = 0): array
+	{
+		$out = [];
+		while (($row = $this->next()) !== null) $out[] = $mode === PDO::FETCH_COLUMN ? ($row[$column] ?? null) : $this->shaped($row, $mode);
+		return $out;
+	}
+
+	public function rowCount(): int
+	{
+		return $this->rows ? count($this->rows) : $this->affected;
+	}
+
+	public function columnCount(): int
+	{
+		return count($this->columns);
+	}
 }

@@ -29,7 +29,7 @@ final class NuSettings
 		'nuDebugMode' => ['next', 'next'], '$nuConfigGlobeadminHome' => ['next', 'next'], 'nuHideTabTitleIfOnlyOne' => ['next', 'next'],
 		'$nuConfigTitle' => ['next', 'next'], '$nuConfigIncludeApexCharts' => ['next', 'next'], '$nuConfig2FAAdmin' => ['next', 'next'],
 		'$nuConfig2FAUser' => ['next', 'next'], '$nuConfigDemoSavingAllowedIds' => ['next', 'next'], '$nuConfigEnableDatabaseUpdate' => ['next', 'next'], '$nuConfigPrimaryDatabaseManagement' => ['next', 'next'],
-		'$nuUseMd5PasswordHash' => ['next', 'next'],
+		'$nuUseMd5PasswordHash' => ['next', 'next'], '$nuConfigHomeHooks' => ['next', 'next'],
 		// not built yet
 		'$nuConfigDBGlobeadminUsers' => ['open', 'open'], '$nuConfigUserAdditional1Label' => ['open', 'open'], '$nuConfigUserAdditional2Label' => ['open', 'open'],
 		'$nuConfigUserCodeLabel' => ['open', 'open'], 'nuStickyHeaders' => ['open', 'open'], 'nuAutosizeBrowseColumns' => ['open', 'open'],
@@ -62,6 +62,10 @@ final class NuSettings
 			'cfg_setting' => '$nuConfigPrimaryDatabaseManagement', 'cfg_value' => '',
 			'cfg_description' => 'nuBuilder Next: phpMyAdmin or Adminer – opened by the Database buttons (the other one under ▾). Empty: phpMyAdmin when installed, else Adminer.',
 			'cfg_type' => 1, 'cfg_effective' => '1'],
+		['zzzzsys_config_id' => 'nunexthomehooks', 'zzzzsys_setup_id' => '1', 'cfg_order' => 116, 'cfg_category' => 'Admin', 'cfg_title' => 'Start Page Hooks',
+			'cfg_setting' => '$nuConfigHomeHooks', 'cfg_value' => 'true',
+			'cfg_description' => 'nuBuilder Next: false = the procedure nunext_home (PHP and JavaScript) does not run on the tile start page.',
+			'cfg_type' => 2, 'cfg_effective' => '1'],
 	];
 
 	/** Adds the rows of OWN that are missing (by setting name). @return int rows added */

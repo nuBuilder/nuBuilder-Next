@@ -223,12 +223,22 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 
 function nu_render_flashes(): void
 {
-	foreach (nu_flashes() as [$type, $msg]) {
+	$toasts = '';
+	foreach (nu_flashes() as $f) {
+		[$type, $msg] = $f;
 		$icon = ['success' => 'bi-check-circle', 'danger' => 'bi-exclamation-octagon', 'warning' => 'bi-exclamation-triangle'][$type] ?? 'bi-info-circle';
+		if (!empty($f[2])) {                                  // toast (0.8.377): assets/js/nuapp.js shows it and hides it after a few seconds
+			$toasts .= '<div class="toast align-items-center text-bg-' . h($type) . ' border-0 nuFlashToast" role="' . ($type === 'danger' ? 'alert' : 'status') . '" aria-live="'
+				. ($type === 'danger' ? 'assertive' : 'polite') . '" aria-atomic="true" data-bs-delay="' . ($type === 'danger' ? 10000 : 6000) . '"><div class="d-flex"><div class="toast-body d-flex gap-2">'
+				. '<i class="bi ' . $icon . '"></i><span>' . h($msg) . '</span></div><button type="button" class="btn-close' . (in_array($type, ['warning', 'info', 'light'], true) ? '' : ' btn-close-white')
+				. ' me-2 m-auto" data-bs-dismiss="toast" aria-label="' . h(t('close')) . '"></button></div></div>';
+			continue;
+		}
 		echo '<div class="alert alert-' . h($type) . ' alert-dismissible fade show d-flex align-items-start gap-2" role="alert">'
 			. '<i class="bi ' . $icon . ' mt-1"></i><div>' . h($msg) . '</div>'
 			. '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="' . h(t('close')) . '"></button></div>';
 	}
+	if ($toasts !== '') echo '<div class="toast-container position-fixed end-0 p-3 nuFlashToasts">' . $toasts . '</div>';
 }
 
 function nu_layout_end(string $extraBody = '', bool $bare = false): void

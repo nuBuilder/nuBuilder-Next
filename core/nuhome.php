@@ -364,7 +364,7 @@ final class NuHome
 	}
 
 	/** @return array{0: array, 1: string} [own tile, error text] */
-	private static function cleanTile(array $c, bool $strict): array
+	public static function cleanTile(array $c, bool $strict): array
 	{
 		$tile = [
 			'label' => mb_substr(trim((string)($c['label'] ?? '')), 0, 60), 'hint' => mb_substr(trim((string)($c['hint'] ?? '')), 0, 120),
@@ -720,6 +720,15 @@ final class NuHome
 		if ($href === null && $c['kind'] !== 'procedure') return null;
 		return ['href' => $href, 'post' => null, 'icon' => $c['icon'], 'label' => $c['label'], 'hint' => $c['hint'], 'color' => $c['color'],
 			'newtab' => (bool)$c['newtab'], 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null];
+	}
+
+	/** Where a tile comes from (0.8.378): builtin (catalogue), pinned (a page of a tile's menu), own (c_…) or dynamic (x_…, start page hook). */
+	public static function source(string $key): string
+	{
+		if (str_starts_with($key, 'x_')) return 'dynamic';
+		if (str_starts_with($key, 'c_')) return 'own';
+		if (isset(self::catalog()[$key])) return 'builtin';
+		return isset(self::subTiles()[$key]) ? 'pinned' : 'own';
 	}
 
 	/** Launch form for the globeadmin from $nuConfigGlobeadminHome (id or code); null = this start page ('' / nuhome / unknown form). */

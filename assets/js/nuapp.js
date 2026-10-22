@@ -444,6 +444,9 @@
 		if (f.form) f.form.addEventListener('submit', store);
 	});
 
+	// ---------------------------------------------------------------- flash messages shown as toasts (nu_flash(type, msg, true), 0.8.377)
+	if (nuBs.ready()) $$('.nuFlashToast').forEach(function (t) { nuBs.toast(t).show(); });
+
 	// ---------------------------------------------------------------- collapse whose open / closed state is remembered in this browser
 	// <div class="collapse" id="x" data-nu-remember-open="key">: opened at once when it was open last time (localStorage key = '1');
 	// data-nu-force-open: the server opened it (e.g. a package waits in _update/) – the stored state does not close it. (0.8.376)

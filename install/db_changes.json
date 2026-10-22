@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.376",
+    "version": "0.8.378",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -170,6 +170,17 @@
                     "table": "zzzzsys_permission_item",
                     "kind": "data",
                     "what": "items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN added when missing (group \"nuBuilder Next\")"
+                }
+            ]
+        },
+        {
+            "id": "0013-setting-home-hooks",
+            "description": "Settings table: row $nuConfigHomeHooks (start page hooks on / off) when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_config",
+                    "kind": "data",
+                    "what": "row $nuConfigHomeHooks added when missing"
                 }
             ]
         }

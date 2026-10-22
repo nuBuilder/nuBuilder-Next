@@ -1183,3 +1183,6 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuChevToggle:not(.collapsed) .bi-chevron-right { transform: rotate(90deg); }
 [dir="rtl"] .nuChevToggle:not(.collapsed) .bi-chevron-right { transform: rotate(-90deg); }
 @media (prefers-reduced-motion: reduce) { .nuChevToggle .bi-chevron-right { transition: none; } }
+
+/* flash messages as toasts (nu_flash(…, true), 0.8.377): top right, below the top bar */
+.nuFlashToasts { top: 3.5rem; z-index: 1090; }

@@ -194,6 +194,38 @@ check('github hosts', NuGitHub::hostAllowed('https://objects.githubusercontent.c
 	&& !NuGitHub::hostAllowed('https://github.com.evil.example/x') && !NuGitHub::hostAllowed('https://u@github.com/x'));
 check('github repo names', NuGitHub::validRepo('nuBuilder/nuBuilder-Next') && !NuGitHub::validRepo('a/../b') && !NuGitHub::validRepo('a/b/c') && !NuGitHub::validRepo('x'));
 
+// ---------------------------------------------------------------- nuRunQuery result with PDOStatement methods (0.8.378)
+$pdo = new PDO('sqlite::memory:');
+$mk = static function () use ($pdo) { return new NuResult($pdo->query("SELECT 1 AS a, 'x' AS b UNION ALL SELECT 2, 'y'")); };
+check('NuResult fetchColumn', $mk()->fetchColumn() == 1);
+check('NuResult fetch assoc', ($mk()->fetch(PDO::FETCH_ASSOC)['b'] ?? '') === 'x');
+check('NuResult fetchObject', $mk()->fetchObject()->b === 'x');
+check('NuResult fetchAll column', $mk()->fetchAll(PDO::FETCH_COLUMN, 1) === ['x', 'y']);
+check('NuResult rowCount', $mk()->rowCount() === 2);
+
+// ---------------------------------------------------------------- start page hooks (0.8.378)
+NuHomeHook::reset();
+NuHomeHook::addTile('bad_key', ['label' => 'x', 'page' => 'help']);
+NuHomeHook::addGroup('g_no', 'x');
+check('hook: x_ keys enforced', count(NuHomeHook::$problems) === 2 && !NuHomeHook::$tiles && !NuHomeHook::$groups);
+NuHomeHook::reset();
+NuHomeHook::addTile('x_js', ['label' => 'x', 'url' => 'javascript:alert(1)']);
+NuHomeHook::addTile('x_two', ['label' => 'x', 'url' => 'https://example.com/', 'page' => 'help']);
+NuHomeHook::addTile('x_nopage', ['label' => 'x', 'page' => 'nosuchpage']);
+NuHomeHook::addTile('x_nolabel', ['page' => 'help']);
+check('hook: targets refused like the tile editor', count(NuHomeHook::$problems) === 4 && !NuHomeHook::$tiles, implode(' | ', NuHomeHook::$problems));
+NuHomeHook::reset();
+NuHomeHook::addTile('x_ok', ['label' => '<b>Hi</b>', 'url' => 'index.php?p=help', 'icon' => 'bi-x" onclick="y', 'color' => 'red']);
+NuHomeHook::setBadge('users', 'n', 'evil');
+NuHomeHook::banner('Hello', 'nope');
+check('hook: values cleaned', !NuHomeHook::$problems && NuHomeHook::$tiles['x_ok']['tile']['icon'] === 'bi-star' && NuHomeHook::$tiles['x_ok']['tile']['color'] === ''
+	&& NuHomeHook::$badges['users'][1] === 'secondary' && NuHomeHook::$banners[0][1] === 'info');
+NuHomeHook::setData('bad name', 1);
+NuHomeHook::setData('ok', ['a' => 1]);
+NuHomeHook::cacheFor(99999);
+check('hook: data and cache', NuHomeHook::$data === ['ok' => ['a' => 1]] && NuHomeHook::$cache === 3600 && count(NuHomeHook::$problems) === 1);
+NuHomeHook::reset();
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

@@ -204,9 +204,13 @@ if ($tutBanner): ?>
 	$groups = [];
 	foreach ($layout['groups'] as $g) {
 		$items = [];
-		foreach ($g['tiles'] as $k) if (NuHome::visible($k, $layout) && ($r = NuHome::resolve($k, $layout)) !== null) $items[$k] = $r + ['fav' => in_array($k, (array)($layout['fav'] ?? []), true)];
-		if ($items) $groups[] = ['id' => $g['id'], 'title' => $g['title'], 'tab' => $g['tab'] ?? '', 'items' => $items];
+		foreach ($g['tiles'] as $k) if (NuHome::visible($k, $layout) && ($r = NuHome::resolve($k, $layout)) !== null) $items[$k] = $r + ['fav' => in_array($k, (array)($layout['fav'] ?? []), true), 'source' => NuHome::source($k)];
+		$groups[] = ['id' => $g['id'], 'title' => $g['title'], 'tab' => $g['tab'] ?? '', 'items' => $items];
 	}
+	// start page hook nunext_home (0.8.378, core/nuhomehook.php): badges, descriptions, hidden and dynamic tiles of this page view
+	NuHomeHook::run($layout);
+	$groups = NuHomeHook::apply($groups, $layout);
+	$groups = array_values(array_filter($groups, static fn($g) => $g['items'] !== []));
 	$size = $layout['size'];
 	$col = $size === 'compact' ? 'col-6 col-md-4 col-xl-3' : 'col-sm-6 col-lg-4';
 	$tilesOf = static function (array $items) use ($tileOut, $size, $col): string {
@@ -214,6 +218,18 @@ if ($tutBanner): ?>
 		return '<div class="row g-3">' . implode('', array_map(static fn($k, $t) => '<div class="' . $col . '">' . $tileOut((string)$k, $t, $size) . '</div>', array_keys($items), $items)) . '</div>';
 	};
 	?>
+<?php // start page hook (0.8.378): safe mode note, the error for the globeadmin, the hook's banners
+if (NuHomeHook::safeMode()): ?>
+<div class="alert alert-secondary d-flex flex-wrap align-items-center gap-2 py-2" role="note" id="nuHomeSafe"><i class="bi bi-shield-check" aria-hidden="true"></i>
+	<span class="me-auto"><?= h(t('hook_safe_on')) ?></span><a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('home', ['tiles' => '1'])) ?>"><?= h(t('hook_safe_off')) ?></a></div>
+<?php elseif (NuHomeHook::$error !== '' && $u['globeadmin']): ?>
+<div class="alert alert-danger d-flex flex-wrap align-items-start gap-2" role="alert" id="nuHomeHookError"><i class="bi bi-exclamation-octagon mt-1" aria-hidden="true"></i>
+	<div class="me-auto"><div class="fw-semibold"><?= h(t('hook_error_title')) ?></div><div class="small text-break"><?= h(NuHomeHook::$error) ?></div></div>
+	<a class="btn btn-sm btn-outline-danger" href="<?= h(nu_url('procedures', ['id' => (string)(NuHomeHook::procedure()['id'] ?? '')])) ?>"><?= h(t('hook_error_open')) ?></a></div>
+<?php endif;
+foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
+<div class="alert alert-<?= h($bLevel) ?> d-flex align-items-start gap-2 nuHomeHookBanner" role="note"><i class="bi <?= ['success' => 'bi-check-circle', 'warning' => 'bi-exclamation-triangle', 'danger' => 'bi-exclamation-octagon'][$bLevel] ?? 'bi-info-circle' ?> mt-1" aria-hidden="true"></i><div><?= h($bText) ?></div></div>
+<?php endforeach; ?>
 <?php // grid (nuapp.css): search on top; Customize at the bottom left on phones, at the top right next to the search on wider screens (0.8.320 / 0.8.321) ?>
 <div class="nuHomeWrap">
 <div class="nuHomeSearchRow mb-3" role="search">
@@ -355,7 +371,7 @@ if ($admin) {
 	$formList = [];
 	foreach (nu_forms() as $id => $f) if ($f['type'] !== 'subform') $formList[] = ['id' => (string)$id, 'label' => $f['code'] . ($f['description'] !== '' ? ' – ' . $f['description'] : '')];
 	$data = [
-		'url' => nu_url('home', ['tiles' => '1']), 'csrf' => nu_csrf_token(), 'layout' => $layout,
+		'url' => nu_url('home', ['tiles' => '1']), 'csrf' => nu_csrf_token(), 'layout' => $layout, 'hookData' => (object)NuHomeHook::$data,
 		'saved' => ['current' => ['id' => $hlCur['id'], 'name' => $hlCur['name'], 'scope' => $hlCur['scope'], 'roles' => $hlCur['roles']], 'manage' => $hlManage,
 			'roles' => $hlManage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'default' => NuHome::defaultLayout(), 'catalog' => $cat,
 		'forms' => $formList, 'pages' => NuHome::PAGES, 'procedures' => $procs, 'icons' => NuHome::ICONS, 'procUrl' => nu_url('procedures', ['id' => '__ID__']),
