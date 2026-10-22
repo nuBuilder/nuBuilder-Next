@@ -1,5 +1,14 @@
 # nuBuilder Next – to do
 
+## 0.8.387 Page forms (custom PHP) – please verify
+- Create a page form (Forms → Add, type "Page (custom PHP)"), Create from template, open it in the three open modes (new tab, inside
+  nuBuilder Next, whole window); menu, start page tile, run button and iframe run object of another form (parent form / record).
+- nginx: the rule for custom/ (Help → Security → Web server rules); the security check warns when custom/ is reachable directly.
+- An update with a page folder installed: custom/pages/<code>/ stays; a backup with "Include custom pages".
+- Copy AI prompt: paste into an AI with a short description and run the page it writes.
+- Phase 2 (not built): table restriction (tables_json stored, not enforced), pages on another server (launch token + per-user REST),
+  page cron hooks, settings form from a JSON schema.
+
 ## 0.8.386 Form drafts (phase 1) – please verify
 - Start a draft, change objects / code / list columns, Compare, Preview (banner, read-only; with saving allowed: confirmation), Publish with a note.
 - Conflict: change the live form after the draft was started (other window, "Change live anyway") – Publish asks for the form code.

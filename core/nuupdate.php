@@ -67,7 +67,37 @@ final class NuUpdate
 	/** Paths an update may never write or delete. */
 	public static function isProtected(string $rel): bool
 	{
-		return $rel === 'nuconfig.php' || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/') || str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, 'temp/') || $rel === 'install.allow';
+		return $rel === 'nuconfig.php' || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/') || str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, 'temp/') || $rel === 'install.allow'
+			|| (str_starts_with($rel, 'custom/') && !self::shippedCustom($rel));
+	}
+
+	/**
+	 * Page forms (0.8.387): of custom/ only these files come with nuBuilder Next – the rest (custom/pages/<form code>/, custom/lib/) belongs
+	 * to the installation and is never written, deleted or restored by an update.
+	 */
+	public static function shippedCustom(string $rel): bool
+	{
+		return in_array($rel, ['custom/.htaccess', 'custom/PAGE_GUIDE.md'], true) || str_starts_with($rel, 'custom/pages/_template/');
+	}
+
+	/** Files of the installation's own pages (custom/ without the shipped files) – for "Include custom pages" in a backup. */
+	public static function customFiles(): array
+	{
+		$out = [];
+		$dirs = [NU_ROOT . '/custom' => 'custom/'];
+		$pages = class_exists('NuPage') ? NuPage::dir() : NU_ROOT . '/custom/pages';
+		if (realpath($pages) !== false && !str_starts_with((string)realpath($pages), (string)realpath(NU_ROOT . '/custom'))) $dirs[$pages] = 'custom/pages/';   // $nuConfigCustomPagesDir outside
+		foreach ($dirs as $dir => $prefix) {
+			if (!is_dir($dir)) continue;
+			$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+			foreach ($it as $f) {
+				if (!$f->isFile()) continue;
+				$rel = $prefix . substr(str_replace('\\', '/', $f->getPathname()), strlen(rtrim(str_replace('\\', '/', $dir), '/')) + 1);
+				if (!self::shippedCustom($rel)) $out[$rel] = $f->getPathname();
+			}
+		}
+		ksort($out);
+		return $out;
 	}
 
 	/** Libraries: replaced when a package brings them, never deleted. */
@@ -308,13 +338,13 @@ final class NuUpdate
 	 * Installs a checked package. Returns the backup file name. The database steps run on the next request (new code).
 	 * @throws RuntimeException with a readable message; files are restored from the backup when copying failed half-way
 	 */
-	public static function install(string $zipFile, array $info, string $sqlScope = 'none', bool $withoutLogs = true): string
+	public static function install(string $zipFile, array $info, string $sqlScope = 'none', bool $withoutLogs = true, bool $withPages = false): string
 	{
 		nu_time_limit($sqlScope === 'none' ? 300 : 0);
 		$m = $info['manifest'];
 		$stage = self::stage($zipFile, $info);
 		try {
-			$backup = self::backup('update to ' . $m['version'], $sqlScope, $withoutLogs);
+			$backup = self::backup('update to ' . $m['version'], $sqlScope, $withoutLogs, $withPages);
 			self::maintenanceOn('update ' . NU_VERSION . ' → ' . $m['version']);
 			$old = self::installedManifest();
 			try {
@@ -428,7 +458,7 @@ final class NuUpdate
 	 * Never two at the same time (lock); while it runs a marker file says so – if the server stops the script (time limit), the next
 	 * page view reports it (interrupted()). Returns the file name inside backupDir().
 	 */
-	public static function backup(string $reason, string $sqlScope = 'none', bool $withoutLogs = true): string
+	public static function backup(string $reason, string $sqlScope = 'none', bool $withoutLogs = true, bool $withPages = false): string
 	{
 		$dir = self::backupDir();
 		$lock = @fopen($dir . '/.backup.lock', 'c');
@@ -452,6 +482,9 @@ final class NuUpdate
 			if ($z->open($path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) throw new RuntimeException(t('upd_err_backup'));
 			$files = self::programFiles();
 			foreach ($files as $rel) $z->addFile(NU_ROOT . '/' . $rel, 'files/' . $rel);
+			// "Include custom pages" (0.8.387): the installation's page folders as a copy (custom/…) – never restored by a rollback
+			$pages = [];
+			if ($withPages) foreach (self::customFiles() as $rel => $abs) { $z->addFile($abs, 'custom/' . substr($rel, 7)); $pages[] = $rel; }
 			$tables = [];
 			$db = nu_db();
 			foreach ($db->type === 'sqlite' ? [] : self::nunextTables() as $t) {
@@ -466,7 +499,7 @@ final class NuUpdate
 				$z->setCompressionName(self::SQL_ENTRY, ZipArchive::CM_STORE);   // already gzip
 			}
 			$z->addFromString('backup.json', json_encode(['product' => 'nuNext', 'version' => NU_VERSION, 'created' => date('c'), 'reason' => $reason,
-				'by' => (string)(NuAuth::currentRaw()['login'] ?? ''), 'files' => $files, 'tables' => $tables, 'sql' => $sql], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+				'by' => (string)(NuAuth::currentRaw()['login'] ?? ''), 'files' => $files, 'tables' => $tables, 'sql' => $sql, 'custom' => $pages], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 			if (!$z->close()) throw new RuntimeException(t('upd_err_backup'));
 			@chmod($path, 0600);
 			self::$lastSql = $sql;
@@ -563,7 +596,7 @@ final class NuUpdate
 	private static function nunextTables(): array
 	{
 		$out = [];
-		foreach (['zzzzsys_nunext_log', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft', 'zzzzsys_nunext_user_2fa', 'zzzzsys_nunext_token', 'zzzzsys_nunext_session', NuMigrate::TABLE] as $t) {
+		foreach (['zzzzsys_nunext_log', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft', 'zzzzsys_nunext_page', 'zzzzsys_nunext_user_2fa', 'zzzzsys_nunext_token', 'zzzzsys_nunext_session', NuMigrate::TABLE] as $t) {
 			if (nu_db()->tableExists($t)) $out[] = $t;
 		}
 		return $out;
@@ -697,6 +730,7 @@ final class NuMigrate
 			'0013-setting-home-hooks' => ['Settings table: row $nuConfigHomeHooks (start page hooks on / off) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
 			'0014-database-origin' => ['Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder database, or installed before 0.8.380)', static fn() => NuInstall::markOrigin(self::$earlier)],
 			'0015-form-drafts' => ['Form drafts (zzzzsys_nunext_form_draft)', static fn() => NuSchema::create()],
+			'0016-pages' => ['Page forms (zzzzsys_nunext_page)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -724,6 +758,7 @@ final class NuMigrate
 		'0013-setting-home-hooks' => [['zzzzsys_config', 'data', 'row $nuConfigHomeHooks added when missing']],
 		'0014-database-origin' => [['zzzzsys_nunext_setting', 'data', 'row db_origin added when missing']],
 		'0015-form-drafts' => [['zzzzsys_nunext_form_draft', 'table', 'created when missing']],
+		'0016-pages' => [['zzzzsys_nunext_page', 'table', 'created when missing']],
 	];
 
 	/** Steps with their descriptions and changes (for install/db_changes.json). @return list<array{id: string, description: string, changes: list<array>}> */

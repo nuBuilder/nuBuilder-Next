@@ -14,6 +14,7 @@ return [
 	'home_fav_none_edit' => 'No favorites yet – point at a tile and click ☆.',
 	'home_tile_color' => 'Color',
 	'home_all_hidden' => 'All tiles are hidden – click Customize to show them again.',
+	'page_settings_tip' => 'Configuration of the app (lists, colors, limits), read with $nu->setting(\'key\'). No secrets here – they go into secrets.php in the page folder.',
 	'ntf_f_must_confirm_tip' => 'Shown as a dialog on the next page the recipient opens, until "Got it" is clicked; the time is recorded. Always uses the fixed list.',
 	'mail_debug_2' => 'SMTP dialog',
 	'mail_debug_3' => 'SMTP dialog + connection',

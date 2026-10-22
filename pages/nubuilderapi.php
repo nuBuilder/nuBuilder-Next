@@ -437,6 +437,7 @@ try {
 				foreach (NB_HOOKS as $h) $db->delete('zzzzsys_php', 'zzzzsys_php_id', $formId . '_' . $h);
 				$db->delete('zzzzsys_form', 'zzzzsys_form_id', $formId);
 			});
+			NuPage::forget($formId);                       // settings of a page form (0.8.387)
 			NuLog::write('form_deleted', $meta->code(), $formId, ['table' => $meta->table()]);
 			if ($drop === '') nb_out(['ok' => true]);
 			// DDL ends a transaction on MySQL – the table goes after the form; if it fails, the form is gone and the table stays

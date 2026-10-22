@@ -90,6 +90,8 @@ $routes = [
 	'formatapi'   => ['json' => true],
 	'builder'     => [],
 	'builderapi'  => ['json' => true],
+	'page'        => [],                 // form type "page": the page file's own output (0.8.387, core/nupage.php)
+	'pageasset'   => [],                 // css / js / images of a page folder
 ];
 
 // nuBuilder's auto login: index.php?u=<login>[&p=<password hash>][&f=<form>&r=<record>][&h=<home>] – here p is the hash, not a page
@@ -104,19 +106,28 @@ if (!is_string($p) || !isset($routes[$p])) {
 	nu_fatal(t('err_not_found'), '', true);
 }
 
+// page forms (0.8.387): a fetch / XHR of the page gets JSON answers (401 login, 400 csrf …) instead of HTML pages
+$pageJson = ($p === 'page' || $p === 'pageasset') && NuPage::wantsJson();
+if ($pageJson && nu_is_post()) {
+	$sent = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+	if (!is_string($sent) || !hash_equals(nu_csrf_token(), $sent)) NuPage::fail(400, 'csrf', t('err_csrf'), t('err_csrf_hint'));
+}
 if (nu_is_post()) nu_csrf_verify();
 // Browsers post the lines of a <textarea> with CRLF; nuBuilder saves what its JavaScript reads (LF). Same line ends as nuBuilder,
 // so code, SQL and texts saved here are not changed by a save without a change (0.8.364, dev/tests/compat.js meta:sqlbuilder)
 if (nu_is_post()) array_walk_recursive($_POST, static function (&$v): void { if (is_string($v) && str_contains($v, "\r")) $v = str_replace(["\r\n", "\r"], "\n", $v); });
 // the bell asks every minute (0.8.357): that alone must not keep an idle session alive (NuAuth::user)
 if ($p === 'notifyapi' && !nu_is_post()) define('NU_PASSIVE', true);
+// a page's background poll (?passive=1) does not count as activity either (0.8.387)
+if ($p === 'page' && ($_GET['passive'] ?? '') === '1' && !defined('NU_PASSIVE')) define('NU_PASSIVE', true);
 
 if (empty($routes[$p]['public'])) {
 	$user = NuAuth::user();
 	if (!$user) {
 		// back here after the login – for a form post or a background request: the page it came from
-		$next = nu_is_post() || !empty($routes[$p]['json']) ? NuAuth::nextFromReferer() : NuAuth::validNext('index.php?' . (string)($_SERVER['QUERY_STRING'] ?? ''));
+		$next = nu_is_post() || !empty($routes[$p]['json']) || $pageJson ? NuAuth::nextFromReferer() : NuAuth::validNext('index.php?' . (string)($_SERVER['QUERY_STRING'] ?? ''));
 		if ($next !== null) NuAuth::setNext($next);
+		if ($pageJson) NuPage::fail(401, 'login', t('login_session_timeout'), '', ['login' => NuAuth::loginUrl($next)]);
 		if (!empty($routes[$p]['json'])) {
 			http_response_code(401);
 			header('Content-Type: application/json');
@@ -154,6 +165,7 @@ if (empty($routes[$p]['public'])) {
 	// globeadmin acting as another user: not the user's own login settings; view only = no form posts
 	if (NuImpersonate::active()) {
 		if (NuImpersonate::blockedRoute($p)) { nu_flash('warning', t('imp_err_route')); nu_redirect(nu_url('home')); }
+		if (NuImpersonate::readOnly() && nu_is_post() && $pageJson) NuPage::fail(403, 'read_only', t('imp_err_view_only'));
 		if (NuImpersonate::readOnly() && nu_is_post() && empty($routes[$p]['json']) && !NuImpersonate::allowedPost($p)) {
 			nu_flash('warning', t('imp_err_view_only'));
 			nu_redirect('index.php?' . (string)($_SERVER['QUERY_STRING'] ?? 'p=home'));   // same page, read again

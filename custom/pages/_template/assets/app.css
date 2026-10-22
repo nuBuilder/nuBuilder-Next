@@ -1,0 +1,9 @@
+/* Template page – the look is completely up to the page. */
+:root { color-scheme: light dark; --bg: #ffffff; --fg: #1f2328; --accent: #0d6efd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #16181c; --fg: #e6e8eb; --accent: #6ea8fe; } }
+:root[data-theme="dark"] { --bg: #16181c; --fg: #e6e8eb; --accent: #6ea8fe; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--fg); }
+main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+button { font: inherit; padding: .5rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; }
+button:disabled { opacity: .6; }

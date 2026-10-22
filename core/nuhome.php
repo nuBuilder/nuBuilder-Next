@@ -834,7 +834,7 @@ final class NuHome
 		};
 		if ($href === null && $c['kind'] !== 'procedure') return null;
 		return ['href' => $href, 'post' => null, 'icon' => $c['icon'], 'label' => $c['label'], 'hint' => $c['hint'], 'color' => $c['color'],
-			'newtab' => (bool)$c['newtab'], 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null, 'kind' => (string)$c['kind']];
+			'newtab' => (bool)$c['newtab'] || ($c['kind'] === 'form' && NuPage::opensInTab((string)$c['target'])), 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null, 'kind' => (string)$c['kind']];
 	}
 
 	/** Where a tile comes from (0.8.378): builtin (catalogue), pinned (a page of a tile's menu), own (c_…) or dynamic (x_…, start page hook). */

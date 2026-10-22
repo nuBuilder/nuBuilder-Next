@@ -497,11 +497,13 @@ button.nu-tile { font: inherit; color: inherit; background: var(--bs-card-bg); c
 .nuFormType-edit       { background: #e8f6ee; color: #1d6b3f; border-color: #c9e8d5; }
 .nuFormType-launch     { background: #fff4e0; color: #8a5300; border-color: #f6dfb3; }
 .nuFormType-subform    { background: #f1ecfd; color: #5b3aa6; border-color: #e0d6f8; }
+.nuFormType-page       { background: #fde8f0; color: #9b1d4f; border-color: #f6cadb; }
 [data-bs-theme="dark"] .nuFormType-browseedit { background: #16263f; color: #9ec2ff; border-color: #24395c; }
 [data-bs-theme="dark"] .nuFormType-browse     { background: #10303a; color: #8fd6e8; border-color: #1b4552; }
 [data-bs-theme="dark"] .nuFormType-edit       { background: #12301f; color: #8fd8ab; border-color: #1d4630; }
 [data-bs-theme="dark"] .nuFormType-launch     { background: #3a2a0d; color: #f3c46d; border-color: #54401a; }
 [data-bs-theme="dark"] .nuFormType-subform    { background: #2a2142; color: #c3b0f5; border-color: #3c3060; }
+[data-bs-theme="dark"] .nuFormType-page       { background: #3d1526; color: #f5a3c4; border-color: #5a2139; }
 [data-bs-theme="dark"] .nuAccessBadge.bg-secondary-subtle { background-color: #1d2b3a !important; border-color: #33405a !important; }
 
 /* tabs (0.8.312): clean underline look – no boxes; grey text, the selected tab in the accent blue with a 2 px line on the base line,
@@ -1205,3 +1207,9 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuDraftBanner .btn-outline-dark { --bs-btn-color: var(--bs-warning-text-emphasis); --bs-btn-border-color: var(--bs-warning-border-subtle); }
 .nuDraftBadge { position: fixed; top: .35rem; inset-inline-end: .35rem; z-index: 1080; padding: .1rem .45rem; border-radius: .35rem; font-size: .7rem; font-weight: 600;
 	letter-spacing: .04em; background: var(--bs-warning); color: #000; pointer-events: none; }
+
+/* ---------------------------------------------------------------- page forms (form type "page", 0.8.387): the iframe of the wrapper */
+.nuPageWrap .nuPageFrame { display: block; width: 100%; border: 0; height: calc(100vh - 150px); min-height: 200px; background: var(--bs-body-bg); }
+.nu-bare .nuPageWrap .nuPageFrame { height: 100vh; }
+.nuPageWrap .nuPageCrumbs .breadcrumb { font-size: .875rem; }
+.nuPageToasts { z-index: 1090; }

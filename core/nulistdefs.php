@@ -297,7 +297,7 @@ final class NuListDefs
 			'id' => self::idCol('f.zzzzsys_form_id'),
 		];
 		$filters = [
-			'type' => ['label' => t('builder_type'), 'type' => 'select', 'options' => static fn() => array_combine($t = ['browseedit', 'browse', 'edit', 'launch', 'subform'], array_map(static fn($x) => t('form_type_' . $x), $t)),
+			'type' => ['label' => t('builder_type'), 'type' => 'select', 'options' => static fn() => array_combine($t = ['browseedit', 'browse', 'edit', 'launch', 'subform', 'page'], array_map(static fn($x) => t('form_type_' . $x), $t)),
 				'where' => static fn(string $v) => ["COALESCE(NULLIF(f.sfo_type, ''), 'browseedit') = ?", [$v]]],
 			'group' => ['label' => t('builder_group'), 'type' => 'distinct', 'expr' => 'f.sfo_group', 'none' => t('forms_group_none')],
 			'status' => ['label' => t('builder_status'), 'type' => 'select', 'all' => 'all',

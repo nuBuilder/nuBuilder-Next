@@ -3,6 +3,30 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.387 – Page forms (custom PHP)
+- New form type "Page (custom PHP)": a PHP app in custom/pages/<form code>/index.php that nuBuilder Next runs after it has
+  checked the login and the access level's view right on the page form – the page writes no login code. Opened like any form
+  (menu, start page tile, run button, iframe run object, nuForm(), bookmark); open mode per page: new tab (default), inside
+  nuBuilder Next (iframe with breadcrumbs, height "auto" or fixed) or the whole window.
+- The page API $nu (version 1): the user (login, names, e-mail, team, department, position, permission items, access level),
+  hasPermission / inTeam / inDepartment / hasPosition / can / rights / require, the record and the opening form (only with the
+  right on it), nuSetProperty values, hash variables, page settings (JSON, dot paths), secrets.php, database helpers with
+  checked table names and the audit trail, URLs, assets, JSON answers, notifications, the debug log and an own session store.
+- nupage.js for the page: NuPage.fetch (CSRF token, JSON errors), automatic iframe height, toast, close, refresh of the opening
+  form, open a form, title. Messages are accepted only from page iframes of the same origin.
+- Security: login and view right before any page code, folder only from the form code (checked, confined to the pages folder),
+  CSRF on every POST, JSON answers for fetch requests (401 login, 400 csrf, 403, 404, 500 – error details for the globeadmin only),
+  framing by the same origin only, assets only from assets/ with a type whitelist. Every page file starts with the NU_PAGE guard;
+  custom/ is blocked by .htaccess, Help → Security has the nginx rule and the security check warns when custom/ is reachable.
+- Form builder of a page form: folder status (index.php, guard, secrets.php), open mode, iframe height, settings JSON (checked,
+  Format button), Content-Security-Policy, notes; Open page, Create from template, Copy AI prompt (guide, page data and the
+  application's tables for any AI). Form codes of pages must be valid folder names.
+- custom/PAGE_GUIDE.md (the guide for page authors and AIs) and custom/pages/_template/ come with the package; updates never touch
+  the installation's own page folders. Backups can include them ("Include custom pages"). Form cloner and App cloner copy the page
+  settings, with a hint to copy the folder by FTP. $nuConfigCustomPagesDir in nuconfig.php can move the pages folder out of the web root.
+- Help: chapter "Pages (custom PHP)".
+- Database step 0016 (table zzzzsys_nunext_page).
+
 ## 0.8.386 – Form drafts
 - Form drafts (phase 1): change a form in a draft while users keep working with the live form, then publish it in one step.
   Start draft in the form builder copies the whole form (settings, tabs, objects, events, PHP hooks, list columns, SQL builder

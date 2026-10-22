@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 12;
+	public const VERSION = 13;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -32,6 +32,12 @@ final class NuSchema
 				['submitted_at', 'datetime'], ['submitted_by', 'text', '50'], ['review_note', 'text', '1000'],
 				['published_at', 'datetime'], ['published_by', 'text', '50'], ['version', 'int'], ['history_id', 'text', '25']],
 			'index' => ['form_id', 'status'],
+		],
+		'zzzzsys_nunext_page' => [                                // form type "page" (0.8.387, core/nupage.php)
+			'pk' => 'zzzzsys_nunext_page_id',                  // = zzzzsys_form_id of the page form (one row per form)
+			'cols' => [['open_mode', 'text', '10'], ['iframe_height', 'text', '10'], ['settings', 'longtext'], ['tables_json', 'longtext'],
+				['csp', 'text', '2000'], ['note', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+			'index' => [],
 		],
 		'zzzzsys_nunext_user_2fa' => [
 			'pk' => 'zzzzsys_nunext_user_2fa_id',              // = zzzzsys_user_id or 'globeadmin'

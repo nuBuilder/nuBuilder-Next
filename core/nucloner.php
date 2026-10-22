@@ -178,6 +178,13 @@ final class NuCloner
 		if ($description !== null) $row['sfo_description'] = $description;
 		$this->write('zzzzsys_form', $row, (string)$row['sfo_code']);
 		$this->cloned[$f1] = $f2;
+		// page form (0.8.387): its settings row goes along, the files do not
+		if ((string)$row['sfo_type'] === 'page' && $this->db->tableExists(NuPage::TABLE)
+			&& ($pg = $this->db->one('SELECT * FROM ' . NuPage::TABLE . ' WHERE zzzzsys_nunext_page_id = ?', [$f1]))) {
+			$pg['zzzzsys_nunext_page_id'] = $f2;
+			$this->write(NuPage::TABLE, $pg);
+			$this->warnings[] = t('page_copy_files', NuPage::shownFolder((string)$this->db->value('SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$f1])), NuPage::shownFolder((string)$row['sfo_code']));
+		}
 
 		foreach ($this->db->all('SELECT * FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = ? ORDER BY sbr_order', [$f1]) as $b) {
 			$b['zzzzsys_browse_id'] = $this->pk((string)$b['zzzzsys_browse_id']);

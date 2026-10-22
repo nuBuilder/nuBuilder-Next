@@ -209,7 +209,7 @@ $formOptions = static function (string $selected = '', array $disabled = []) use
 		foreach ($forms as $fid => $f) {
 			if ($f['system'] !== $system) continue;
 			$html .= '<option value="' . h($fid) . '"' . ($fid === $selected ? ' selected' : '') . (isset($disabled[$fid]) ? ' disabled' : '') . '>'
-				. h(nu_form_label((string)$fid)) . '</option>';
+				. h(nu_form_label((string)$fid) . ($f['type'] === 'page' ? ' · ' . t('form_type_page') : '')) . '</option>';   // page forms (0.8.387): what is granted
 		}
 		if ($html !== '') $out .= '<optgroup label="' . h(t($system ? 'forms_system' : 'forms_app')) . '">' . $html . '</optgroup>';
 	}

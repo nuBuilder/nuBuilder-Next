@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.386",
+    "version": "0.8.387",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -205,6 +205,17 @@
                     "what": "created when missing"
                 }
             ]
+        },
+        {
+            "id": "0016-pages",
+            "description": "Page forms (zzzzsys_nunext_page)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_page",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
         }
     ],
     "own_tables": {
@@ -398,6 +409,48 @@
                 "form_id",
                 "status"
             ]
+        },
+        "zzzzsys_nunext_page": {
+            "pk": "zzzzsys_nunext_page_id",
+            "cols": [
+                [
+                    "open_mode",
+                    "text",
+                    "10"
+                ],
+                [
+                    "iframe_height",
+                    "text",
+                    "10"
+                ],
+                [
+                    "settings",
+                    "longtext"
+                ],
+                [
+                    "tables_json",
+                    "longtext"
+                ],
+                [
+                    "csp",
+                    "text",
+                    "2000"
+                ],
+                [
+                    "note",
+                    "longtext"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": []
         },
         "zzzzsys_nunext_user_2fa": {
             "pk": "zzzzsys_nunext_user_2fa_id",

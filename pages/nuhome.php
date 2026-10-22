@@ -342,7 +342,7 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 						<td>
 							<?php $fid = (string)$f['slf_zzzzsys_form_id']; $ft = nu_forms()[$fid]['type'] ?? ''; ?>
 							<?php if (!str_starts_with($fid, 'nu') && $ft !== 'subform' && isset(nu_forms()[$fid])): ?>
-								<a class="fw-semibold text-decoration-none" href="<?= h(nu_url('form', ['f' => $fid])) ?>"><?= h(nu_form_label($fid)) ?></a>
+								<a class="fw-semibold text-decoration-none" href="<?= h(nu_url('form', ['f' => $fid])) ?>"<?= $ft === 'page' && NuPage::opensInTab($fid) ? ' target="_blank" rel="noopener"' : '' ?>><?= h(nu_form_label($fid)) ?></a>
 							<?php else: ?><?= h(nu_form_label($fid)) ?><?php endif; ?>
 							<?php if ($access && $access['sal_zzzzsys_form_id'] === $f['slf_zzzzsys_form_id']): ?><span class="badge text-bg-info ms-1"><?= h(t('home_form')) ?></span><?php endif; ?>
 						</td>

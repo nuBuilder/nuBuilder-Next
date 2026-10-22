@@ -477,6 +477,11 @@ final class NuRender
 	{
 		$label = strip_tags((string)$o['sob_all_label']);
 		$run   = self::runInfo($o, $this->hash);
+		// a page form (0.8.387) in an iframe: its own output directly, with the opening form and record (pf / pr)
+		if ($run['method'] === 'i' && $run['type'] === 'F' && $run['form'] !== '' && ($pm = NuFormMeta::load($run['form'])) && $pm->isPage()) {
+			$src = NuPage::rawUrl($pm, ['r' => $run['record'], 'ps' => self::$scope ?: null, 'pf' => $this->meta->id, 'pr' => $this->recordId !== '' && $this->recordId !== '-1' ? $this->recordId : null]);
+			return '<iframe class="nuIframe nuPageFrame ' . h($cls) . '"' . $common . ' src="' . h($src) . '" title="' . h($label ?: $pm->description()) . '" data-nu-height="fixed"></iframe>';
+		}
 		if ($run['method'] === 'i' && $run['type'] === 'F' && $run['form'] !== '' && NuFormMeta::load($run['form'])) {
 			$src = nu_url('form', ['f' => $run['form'], 'r' => $run['record'], 'rf' => $run['filter'], 'iframe' => '1', 'ps' => self::$scope ?: null]);
 			return '<iframe class="nuIframe ' . h($cls) . '"' . $common . ' src="' . h($src) . '" title="' . h($label ?: 'iframe') . '"></iframe>';
@@ -489,6 +494,7 @@ final class NuRender
 			return '<iframe class="nuIframe nuIframeProcedure ' . h($cls) . '"' . $common . ' srcdoc="' . h($this->iframeProcedure($o, $run['code'])) . '"'
 				. ' data-nu-run-code="' . h($run['code']) . '" title="' . h($label ?: $run['code']) . '"></iframe>';
 		}
+		if ($run['type'] === 'F' && $run['form'] !== '' && $run['target'] === '0' && NuPage::opensInTab($run['form'])) $run['target'] = '2';   // page forms (0.8.387): new tab
 		$data = ' data-nu-run-type="' . h($run['type']) . '" data-nu-run-form="' . h($run['form']) . '" data-nu-run-code="' . h($run['code']) . '"'
 			. ' data-nu-run-record="' . h($run['record']) . '" data-nu-run-filter="' . h($run['filter']) . '" data-nu-run-target="' . h($run['target']) . '"'
 			. ($run['hidden'] ? ' data-nu-run-hidden="1"' : '');

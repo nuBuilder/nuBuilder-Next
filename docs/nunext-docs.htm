@@ -476,6 +476,51 @@
 	</div>
 </section>
 
+<section id="pages" data-acl="nuform">
+	<h2 id="pages-h">Pages (custom PHP)</h2>
+	<p>Since 0.8.387 a form can be of the type <strong>Page (custom PHP)</strong>: a PHP app of your own (or written by an AI) that runs inside nuBuilder Next. nuBuilder Next checks the login and the access level's right on the page form <em>before</em> any code of the page runs, and hands the page one object, <code>$nu</code>, with the user, the context and the database. The page writes no login code and has a completely free look – nuBuilder Next adds no header, menu or CSS to it.</p>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-create">Creating a page</h3>
+		<ol>
+			<li><em>Forms → Add</em>, type <em>Page (custom PHP)</em>. The <strong>code is the folder name</strong>: letters, digits, <code>_</code> and <code>-</code>, starting with a letter or digit, at most 64 characters (names starting with <code>_</code> are reserved).</li>
+			<li>The builder of a page form shows the folder <code>custom/pages/&lt;code&gt;/</code> and whether <code>index.php</code> is there. <strong>Create from template</strong> copies <code>custom/pages/_template/</code> there (when the folder is writable; otherwise copy it by FTP).</li>
+			<li>Give access levels the right on the page form, as for any form (<em>view</em> = may open it; the other rights can be read by the page with <code>$nu-&gt;rights()</code> and used as the app's roles).</li>
+			<li>Write the app in <code>index.php</code> (more files, <code>assets/</code> for css / js / images). <strong>Copy AI prompt</strong> puts the guide, this page and the list of your tables into the clipboard – paste it into any AI together with a description of the app.</li>
+		</ol>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-settings">Settings of a page</h3>
+		<ul>
+			<li><strong>Open in</strong>: <em>New tab</em> (default – menus, tiles and run buttons open it in a new browser tab), <em>Inside nuBuilder Next</em> (the page in an iframe below the top bar and breadcrumbs; <em>Iframe height</em> <code>auto</code> = the page reports its height, or a fixed height like <code>800px</code>) or <em>Whole window</em>.</li>
+			<li><strong>Settings (JSON)</strong>: the app's configuration (lists, colours, limits), read with <code>$nu-&gt;setting('key')</code> (dot paths). Invalid JSON is not saved. <strong>No secrets</strong> here – the settings are copied by the cloners.</li>
+			<li><strong>Secrets</strong> (API keys, passwords): <code>secrets.php</code> in the page folder (guard line first, <code>return ['key' =&gt; '…'];</code>), read with <code>$nu-&gt;secret('key')</code>. Never in a package, a cloner copy or the builder (it only says whether the file exists).</li>
+			<li><strong>Content-Security-Policy</strong> (optional): added to <code>frame-ancestors 'self'</code>, which every page gets.</li>
+			<li><strong>Notes</strong>: for the developers.</li>
+		</ul>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-run">How a page runs</h3>
+		<ul>
+			<li><code>index.php?p=form&amp;f=&lt;code&gt;</code> – the normal form address: an iframe page (mode <em>Inside nuBuilder Next</em>) or a redirect to the page's own address. Every way to open a form works: menus, tiles, run buttons, iframe run objects, <code>nuForm()</code>, bookmarks.</li>
+			<li><code>index.php?p=page&amp;f=&lt;code&gt;</code> – the page's own output (HTML, JSON for its fetch calls, downloads). <code>r</code> (record id), <code>ps</code> (nuSetProperty values) and the opening form and record (<code>pf</code> / <code>pr</code>, accepted only with the view right on that form) are passed on.</li>
+			<li><code>index.php?p=pageasset&amp;f=&lt;code&gt;&amp;file=assets/…</code> – files of <code>assets/</code> only (css, js, images, fonts, json, txt, pdf), with the same login and right.</li>
+			<li>Every POST needs the CSRF token (<code>$nu-&gt;csrfField()</code>, <code>NuPage.fetch()</code>). A fetch of the page gets JSON answers: 401 <code>login</code>, 400 <code>csrf</code>, 403 <code>forbidden</code>, 404 <code>not_found</code>, 500 <code>server</code> – error details only for the globeadmin.</li>
+			<li>While the globeadmin views as another user, <code>$nu-&gt;user()</code> is that user, <code>$nu-&gt;realUser()</code> the globeadmin, <code>$nu-&gt;readOnly()</code> is true and POSTs are refused. In demo mode <code>readOnly()</code> is true too.</li>
+		</ul>
+		<p>The complete list of <code>$nu</code> methods and of the JavaScript helpers (<code>NuPage.fetch</code>, <code>toast</code>, <code>resize</code>, <code>refreshParent</code>, <code>openForm</code> …) is in <code>custom/PAGE_GUIDE.md</code> (also part of <em>Copy AI prompt</em>). The API has a version (<code>$nu-&gt;apiVersion()</code>, now 1): pages that use only <code>$nu</code> keep working when nuBuilder Next changes inside.</p>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-files">Files, updates, copies</h3>
+		<ul>
+			<li>Pages live in <code>custom/pages/&lt;code&gt;/</code>, uploaded by FTP. <code>$nuConfigCustomPagesDir</code> in <code>nuconfig.php</code> (an absolute path) moves the pages folder, e.g. outside the web root – the safest setup.</li>
+			<li><strong>Updates never touch</strong> <code>custom/pages/</code> and <code>custom/lib/</code> – only <code>custom/.htaccess</code>, <code>custom/PAGE_GUIDE.md</code> and <code>custom/pages/_template/</code> come with nuBuilder Next. A rollback does not change them either. <em>Include custom pages</em> (update page, backups) puts a copy of the folders into a backup.</li>
+			<li>Direct requests of files in <code>custom/</code> are blocked three ways: the guard line <code>defined('NU_PAGE') || exit;</code> at the top of every PHP file (the builder warns when <code>index.php</code> lacks it), <code>custom/.htaccess</code> (Apache) and the nginx rule in <a href="#security-nginx">Web server rules</a>. <em>Security check</em> tests that the folder cannot be reached.</li>
+			<li>Renaming the code of a page form: rename its folder by FTP too (the builder says so). Deleting a page form keeps its files.</li>
+			<li>The cloner copies a page form with its settings, not its files (it shows the folders to copy). The App cloner copies the folders with the files of the installation, but never <code>secrets.php</code>.</li>
+		</ul>
+	</div>
+</section>
+
 <!-- ================================================================================================ GLOBEADMIN -->
 
 <section id="install" data-doc="admin">
@@ -1259,7 +1304,7 @@ nuRunPHPHidden('export_orders');   // the procedure ends it: nuAddJavascript("nu
 &lt;/Directory&gt;
 
 # nginx: server block
-location ~ ^/nunext/(core|pages|lang|install|docs|dev|_backup|_install|temp)/ { deny all; }
+location ~ ^/nunext/(core|pages|lang|install|docs|dev|_backup|_install|_update|temp|custom)/ { deny all; }   # custom/: page forms (0.8.387)
 location ~ ^/nunext/(README\.md|CHANGELOG\.md|LICENSE|TODO\.md|CLAUDE\.md|nunext-manifest\.json|nuconfig.*\.php|cron\.php)$ { deny all; }
 location ~ /NUNEXT-VERSION\.txt$ { deny all; }
 # browser cache (Apache: assets/.htaccess does it) – files with ?v= never change under their URL

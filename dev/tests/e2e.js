@@ -373,6 +373,171 @@ T.form_drafts_parity = async (s) => {
 	}
 };
 
+// page forms (0.8.387): login / right before the page code, wrapper modes, $nu (user, rights, parent, settings, secrets), JSON answers
+// (401 login, 400 csrf, 403, 500 with details only for the globeadmin), assets confined to assets/, bad table names, direct calls, impersonation
+T.page_forms = async (s) => {
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	const F = 'e2epg' + Date.now().toString(36), dir = path.join(SITE, 'custom', 'pages', F);
+	const id = 'e2epage' + Date.now().toString(36).slice(-6);
+	const page = `<?php
+defined('NU_PAGE') || exit;
+switch ($nu->action()) {
+	case 'info':
+		$nu->json(['user' => $nu->user(), 'real' => $nu->realUser(), 'rights' => $nu->rights(), 'perm' => $nu->hasPermission('e2e_none'), 'dept' => $nu->inDepartment('sample', 'x'),
+			'pos' => $nu->hasPosition('Trainee'), 'team' => $nu->inTeam('Lead'), 'parent' => $nu->parent(), 'record' => $nu->recordId(), 'colour' => $nu->setting('a.colour'),
+			'secret' => $nu->secret('token'), 'ro' => $nu->readOnly(), 'api' => $nu->apiVersion(), 'hash' => $nu->hash('#USER_ID#|#RECORD_ID#'), 'cwd' => basename(getcwd()),
+			'n' => count($nu->users(['department' => 'Sample'])), 'url' => $nu->url(['action' => 'x'])]);
+	case 'save':
+		$nu->log('e2e page log', ['v' => $nu->param('v')]);
+		$nu->json(['ok' => $nu->isPost(), 'echo' => $nu->param('v')]);
+	case 'boom':
+		throw new RuntimeException('e2e page boom');
+	case 'bad':
+		$nu->insert('x; DROP TABLE y', ['a' => 1]);
+		break;
+	case 'deny':
+		$nu->require($nu->hasPermission('e2e_none'));
+		break;
+	default:
+		echo '<!doctype html><title>e2e page</title><p id="pg">page ' . $nu->h($nu->slug()) . '</p>' . $nu->sdk();
+}
+`;
+	fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
+	fs.writeFileSync(path.join(dir, 'index.php'), page);
+	fs.writeFileSync(path.join(dir, 'secrets.php'), "<?php\ndefined('NU_PAGE') || exit;\nreturn ['token' => 'e2e-secret'];\n");
+	fs.writeFileSync(path.join(dir, 'assets', 'a.css'), 'body{color:red}');
+	fs.writeFileSync(path.join(dir, 'assets', 'x.php'), '<?php echo "x";');
+	sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_status) VALUES ('${id}', 'page', '${F}', 'E2E page', '1');
+		INSERT INTO zzzzsys_nunext_page (zzzzsys_nunext_page_id, open_mode, iframe_height, settings) VALUES ('${id}', 'tab', 'auto', '{"a":{"colour":"teal"}}');
+		INSERT INTO zzzzsys_access_form (zzzzsys_access_form_id, slf_zzzzsys_access_id, slf_zzzzsys_form_id, slf_save_button) VALUES ('${id}a', 'sample_viewer', '${id}', '1')`);
+	const anna = await login('sample_anna', UPW), ben = await login('sample_ben', UPW);
+	const get = (p, q, headers = {}) => p.evaluate(async ([u, h]) => { const r = await fetch(u, { headers: h, redirect: 'manual' }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, j, t, ct: r.headers.get('content-type') || '', h: Object.fromEntries(r.headers.entries()) }; }, [BASE + q, headers]);
+	const J = { Accept: 'application/json' };
+	try {
+		// signed out: the login (HTML) or 401 JSON
+		const out = await browser.newContext(); const o = await out.newPage();
+		await o.goto(BASE + 'index.php?p=page&f=' + F);
+		expect(/p=login/.test(o.url()), 'signed out: no login page');
+		const o401 = await o.evaluate(async (u) => { const r = await fetch(u, { headers: { Accept: 'application/json' } }); return [r.status, await r.json()]; }, BASE + 'index.php?p=page&f=' + F + '&action=info');
+		expect(o401[0] === 401 && o401[1].error === 'login', 'signed out JSON: ' + JSON.stringify(o401));
+		// direct request of the file: the guard ends it (the PHP server runs it – Apache denies it)
+		const direct = await o.evaluate(async (u) => { const r = await fetch(u); return (await r.text()).trim(); }, BASE + 'custom/pages/' + F + '/index.php');
+		expect(direct === '' || /denied|forbidden/i.test(direct), 'direct call gives output: ' + direct.slice(0, 80));
+		await out.close();
+		// user with the view right: $nu
+		let r = await get(anna, 'index.php?p=page&f=' + F + '&action=info&r=7&pf=samplecustomer&pr=3', J);
+		expect(r.status === 200 && r.j, 'info: ' + r.status + ' ' + r.t.slice(0, 200));
+		const u = r.j.user;
+		expect(u.login === 'sample_anna' && u.position === 'Trainee' && u.department === 'Sample' && !u.globeadmin && !u.impersonated, 'user(): ' + JSON.stringify(u));
+		expect(r.j.rights.view && r.j.rights.save && !r.j.rights.delete, 'rights(): ' + JSON.stringify(r.j.rights));
+		expect(!r.j.perm && r.j.dept && r.j.pos && !r.j.team, 'access helpers: ' + JSON.stringify([r.j.perm, r.j.dept, r.j.pos, r.j.team]));
+		expect(r.j.parent && r.j.parent.form_id === 'samplecustomer' && r.j.parent.record_id === '3' && r.j.record === '7', 'parent / record: ' + JSON.stringify(r.j.parent));
+		expect(r.j.colour === 'teal' && r.j.secret === 'e2e-secret' && r.j.api === 1 && r.j.cwd === F && !r.j.ro, 'settings / secret / cwd: ' + JSON.stringify(r.j));
+		expect(r.j.hash === u.id + '|7' && r.j.n >= 5 && /p=page/.test(r.j.url) && /r=7/.test(r.j.url), 'hash / users / url: ' + JSON.stringify([r.j.hash, r.j.n, r.j.url]));
+		r = await get(anna, 'index.php?p=page&f=' + F + '&action=info&pf=nuuser', J);
+		expect(r.j && r.j.parent === null, 'parent without the right on it');
+		r = await get(anna, 'index.php?p=page&f=' + F + '&action=deny', J);
+		expect(r.status === 403 && r.j.error === 'forbidden', '$nu->require(false): ' + r.status);
+		// headers of the page route
+		r = await get(anna, 'index.php?p=page&f=' + F);
+		expect(r.status === 200 && r.h['x-frame-options'] === 'SAMEORIGIN' && /^frame-ancestors 'self'$/.test(r.h['content-security-policy']) && /no-store/.test(r.h['cache-control']), 'page headers: ' + JSON.stringify(r.h));
+		expect(/nupage\.js/.test(r.t) && /data-csrf=/.test(r.t), 'sdk() missing');
+		// no view right: 403 (HTML and JSON) – before any page code
+		r = await get(ben, 'index.php?p=page&f=' + F, J);
+		expect(r.status === 403 && r.j.error === 'forbidden', 'without the right: ' + r.status);
+		expect((await open(ben, 'index.php?p=page&f=' + F)).status() === 403, 'without the right (HTML)');
+		// CSRF: JSON 400 / HTML 400; with the token the POST works
+		const post = (p, q, token, json) => p.evaluate(async ([u, tk, js]) => { const fd = new FormData(); fd.append('v', 'hi'); if (tk) fd.append('_csrf', document.querySelector('script[data-csrf]') ? document.querySelector('script[data-csrf]').dataset.csrf : '');
+			const r = await fetch(u, { method: 'POST', body: fd, headers: js ? { Accept: 'application/json' } : {} }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, j }; }, [BASE + q, token, json]);
+		await open(anna, 'index.php?p=page&f=' + F);
+		r = await post(anna, 'index.php?p=page&f=' + F + '&action=save', false, true);
+		expect(r.status === 400 && r.j && r.j.error === 'csrf', 'POST without token (JSON): ' + JSON.stringify(r));
+		r = await post(anna, 'index.php?p=page&f=' + F + '&action=save', false, false);
+		expect(r.status === 400 && !r.j, 'POST without token (HTML): ' + r.status);
+		r = await post(anna, 'index.php?p=page&f=' + F + '&action=save', true, true);
+		expect(r.status === 200 && r.j.ok && r.j.echo === 'hi', 'POST with token: ' + JSON.stringify(r));
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_debug WHERE deb_message LIKE 'e2e page log%' AND deb_flag = 'page:" + F + "'") >= 1, '$nu->log() wrote nothing');
+		r = await anna.evaluate(async () => { const r = await NuPage.fetch(location.href.replace(/&action=[^&]*/, '') + '&action=save', { method: 'POST', body: new URLSearchParams({ v: 'sdk' }) }); return r.json(); });
+		expect(r.echo === 'sdk', 'NuPage.fetch: ' + JSON.stringify(r));
+		// errors: details only for the globeadmin; bad table names write nothing
+		r = await get(anna, 'index.php?p=page&f=' + F + '&action=boom', J);
+		expect(r.status === 500 && r.j.error === 'server' && !/boom|index\.php/.test(JSON.stringify(r.j)), 'error for a user: ' + JSON.stringify(r.j));
+		r = await get(s.ga, 'index.php?p=page&f=' + F + '&action=boom', J);
+		expect(r.status === 500 && /e2e page boom/.test(r.j.detail || '') && /index\.php:\d+/.test(r.j.detail || ''), 'error for the globeadmin: ' + JSON.stringify(r.j));
+		r = await get(s.ga, 'index.php?p=page&f=' + F + '&action=bad', J);
+		expect(r.status === 500 && /Invalid table or column name/.test(r.j.detail || ''), 'bad table name: ' + JSON.stringify(r.j));
+		// assets: only assets/, whitelisted types
+		r = await get(anna, 'index.php?p=pageasset&f=' + F + '&file=assets/a.css');
+		expect(r.status === 200 && /text\/css/.test(r.ct) && r.h['x-content-type-options'] === 'nosniff' && /private/.test(r.h['cache-control'] || ''), 'asset: ' + r.status + ' ' + r.ct);
+		for (const bad of ['assets/../index.php', '../index.php', 'index.php', 'assets/x.php', 'secrets.php', '/etc/passwd', 'assets/./a.css', 'assets\\a.css'])
+			expect((await get(anna, 'index.php?p=pageasset&f=' + F + '&file=' + encodeURIComponent(bad))).status === 404, 'asset not refused: ' + bad);
+		// open modes: tab = redirect to the raw URL, iframe = wrapper with the page in an iframe (breadcrumb, host script)
+		await open(anna, 'index.php?p=form&f=' + F + '&r=5');
+		expect(/p=page/.test(anna.url()) && /r=5/.test(anna.url()), 'tab mode: ' + anna.url());
+		sql(`UPDATE zzzzsys_nunext_page SET open_mode = 'iframe', iframe_height = 'auto' WHERE zzzzsys_nunext_page_id = '${id}'`);
+		await open(anna, 'index.php?p=form&f=' + F + '&r=5');
+		expect(/p=form/.test(anna.url()) && await anna.locator('iframe.nuPageFrame').count() === 1, 'iframe mode: no wrapper');
+		expect(/p=page/.test(await anna.locator('iframe.nuPageFrame').getAttribute('src')), 'iframe src');
+		await anna.waitForTimeout(800);
+		const fr = anna.frameLocator('iframe.nuPageFrame');
+		expect(/page /.test(await fr.locator('#pg').textContent()), 'page in the iframe');
+		expect(await fr.locator('body').evaluate(() => window.NuPage && window.NuPage.inFrame), 'NuPage.inFrame');
+		await fr.locator('body').evaluate(() => NuPage.toast('e2e toast', 'success'));
+		await anna.waitForTimeout(500);
+		expect(/e2e toast/.test(await anna.locator('#nuPageToasts').textContent()), 'toast in the parent');
+		// the globeadmin as anna (view only): user() = anna, realUser() = the globeadmin, readOnly(), POST refused
+		const g = await login(GA[0], GA[1]);
+		const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+		await open(g, 'index.php?p=user&id=' + uid);
+		expect(await csrfPost(g, 'index.php?p=impersonate', { action: 'start', id: uid, mode: 'view' }) < 400, 'impersonation not started');
+		r = await get(g, 'index.php?p=page&f=' + F + '&action=info', J);
+		expect(r.j && r.j.user.login === 'sample_anna' && r.j.user.impersonated && r.j.real && r.j.real.globeadmin && r.j.ro, 'impersonated: ' + JSON.stringify([r.j && r.j.user.login, r.j && r.j.real, r.j && r.j.ro]));
+		await open(g, 'index.php?p=page&f=' + F);
+		r = await post(g, 'index.php?p=page&f=' + F + '&action=save', true, true);
+		expect(r.status === 403 && r.j.error === 'read_only', 'POST while viewing as a user: ' + JSON.stringify(r));
+		await g.context().close();
+		// the form builder of a page form: code rules, settings JSON
+		await open(s.ga, 'index.php?p=builder&f=' + id);
+		expect(await s.ga.locator('#pgForm').count() === 1 && await s.ga.locator('#pgFileFound').count() === 1, 'page builder');
+		await s.ga.fill('#pg_settings', '{"a":');
+		await s.ga.click('#pgForm [data-nu-save]');
+		expect(await s.ga.locator('#pg_settings.is-invalid').count() === 1, 'invalid JSON not shown');
+		for (const bad of ['../x', '_template', 'a b', 'a.b']) {
+			const st = await csrfPost(s.ga, 'index.php?p=builder&f=' + id, { action: 'save', description: 'E2E page', code: bad, status: '1', open_mode: 'tab', iframe_height: 'auto', settings: '{}' });
+			expect(st === 200 && sql(`SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`) === F, 'code accepted: ' + bad);
+		}
+		const st = await csrfPost(s.ga, 'index.php?p=builder&f=' + id, { action: 'save', description: 'E2E page 2', code: F, status: '1', open_mode: 'self', iframe_height: '600px', settings: '{"b":2}' });
+		expect((st === 303 || st === 0) && sql(`SELECT CONCAT(open_mode, '|', iframe_height, '|', settings) FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'`) === 'self|600px|{"b":2}', 'page settings not saved: ' + st + ' ' + sql(`SELECT CONCAT(open_mode, '|', iframe_height, '|', settings) FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'`));
+		// run objects of another form: an iframe shows the page itself with pf / pr; a button opens a tab page in a new tab
+		const tab = sql("SELECT syt_zzzzsys_form_id, zzzzsys_tab_id FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = 'samplecustomer' ORDER BY syt_order LIMIT 1").split('\t')[1];
+		sql(`INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_zzzzsys_tab_id, sob_all_type, sob_all_id, sob_all_label, sob_all_order, sob_all_top, sob_all_left, sob_all_width, sob_all_height, sob_all_access, sob_run_zzzzsys_form_id, sob_run_method, sob_run_type, sob_run_target, sob_run_id)
+			VALUES ('${id}i', 'samplecustomer', '${tab}', 'run', 'e2e_pgframe', 'Page frame', 999, 900, 20, 400, 200, '0', '${id}', 'i', 'F', '0', '#RECORD_ID#'),
+			('${id}b', 'samplecustomer', '${tab}', 'run', 'e2e_pgbtn', 'Page button', 998, 1120, 20, 120, 30, '0', '${id}', 'b', 'F', '0', '')`);
+		sql(`UPDATE zzzzsys_nunext_page SET open_mode = 'tab' WHERE zzzzsys_nunext_page_id = '${id}'`);
+		try {
+			const cust = s.cust || sql('SELECT MIN(sample_customer_id) FROM sample_customer');
+			await open(anna, 'index.php?p=form&f=samplecustomer&r=' + cust);
+			const src = await anna.locator('iframe.nuPageFrame').getAttribute('src');
+			expect(/p=page/.test(src) && /pf=samplecustomer/.test(src) && new RegExp('pr=' + cust).test(src), 'iframe run object: ' + src);
+			expect(await anna.locator('[data-nu-run-form="' + id + '"]').getAttribute('data-nu-run-target') === '2', 'run button of a tab page not in a new tab');
+		} finally { sql(`DELETE FROM zzzzsys_object WHERE zzzzsys_object_id IN ('${id}i', '${id}b')`); }
+		// cloner: the settings row goes along, the files do not (a hint says so)
+		await open(s.ga, 'index.php?p=cloner&f=' + id);
+		const cl = await s.ga.evaluate(async ([src, code]) => { const fd = new FormData(); fd.append('_csrf', document.querySelector('input[name=_csrf]').value);
+			for (const [k, v] of Object.entries({ action: 'run', source: src, dest_mode: 'new', code, description: 'E2E page clone', objects: '1' })) fd.append(k, v);
+			const r = await fetch('index.php?p=cloner', { method: 'POST', body: fd }); return r.text(); }, [id, F + 'c']);
+		const cid = sql(`SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = '${F}c'`);
+		expect(cid !== '' && sql(`SELECT settings FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${cid}'`) === '{"b":2}', 'cloned page form without its settings');
+		expect(/custom\/pages\/[^ ]+c\//.test(cl), 'no hint about the files');
+		sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${cid}'; DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${cid}'; DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${cid}'`);
+		await anna.context().close(); await ben.context().close();
+	} finally {
+		sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_form_id = '${id}'`);
+		sql("DELETE FROM zzzzsys_debug WHERE deb_message LIKE 'e2e page log%'");
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+};
+
 T.audit_history = async (s) => {
 	const p = s.ga;
 	if (sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'zzzzsys_nunext_audit'") === '0') throw new Error('audit table missing');

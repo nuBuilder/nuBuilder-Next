@@ -287,6 +287,20 @@ $d = NuFormSnapshot::diff($snapA, $snapF);
 check('snapshot: placement only = moved', $d['objects']['moved'] === 1 && !$d['objects']['changed'] && $d['counts']['total'] === 1);
 check('snapshot: no change', NuFormSnapshot::diff($snapA, $snapB)['counts']['total'] === 0);
 
+// ---------------------------------------------------------------- page forms (0.8.387)
+check('page: folder names', NuPage::validCode('sales-board_2') && NuPage::validCode('A') && !NuPage::validCode('_template') && !NuPage::validCode('../x')
+	&& !NuPage::validCode('a b') && !NuPage::validCode('a.b') && !NuPage::validCode('') && !NuPage::validCode(str_repeat('a', 65)) && NuPage::validCode(str_repeat('a', 64)));
+check('page: asset paths', NuPage::validAssetPath('assets/app.css') && NuPage::validAssetPath('assets/img/logo 2.svg') && !NuPage::validAssetPath('assets/../index.php')
+	&& !NuPage::validAssetPath('index.php') && !NuPage::validAssetPath('/etc/passwd') && !NuPage::validAssetPath('assets/.env') && !NuPage::validAssetPath('assets\\a.css')
+	&& !NuPage::validAssetPath('assets//a.css') && !NuPage::validAssetPath('assets/./a.css') && !NuPage::validAssetPath('assets/c:x.css'));
+check('page: guard line', NuPage::hasGuard("<?php\ndefined('NU_PAGE') || exit;\n") && NuPage::hasGuard("<?php\n/* app */\n// x\ndeclare(strict_types=1);\ndefined(\"NU_PAGE\") or die;")
+	&& !NuPage::hasGuard("<?php\necho 1;\ndefined('NU_PAGE') || exit;") && !NuPage::hasGuard("<html><?php defined('NU_PAGE') || exit; ?>"));
+check('page: heights', NuPage::validHeight('auto') && NuPage::validHeight('800px') && NuPage::validHeight('90vh') && NuPage::validHeight('100%') && !NuPage::validHeight('1px; x') && !NuPage::validHeight('calc(1px)'));
+check('update: custom pages never touched', NuUpdate::isProtected('custom/pages/sales/index.php') && NuUpdate::isProtected('custom/lib/x.php') && NuUpdate::isProtected('custom/pages/sales/secrets.php')
+	&& !NuUpdate::isProtected('custom/.htaccess') && !NuUpdate::isProtected('custom/PAGE_GUIDE.md') && !NuUpdate::isProtected('custom/pages/_template/index.php')
+	&& !NuUpdate::isProtected('custom/pages/_template/assets/app.js'));
+foreach (['custom/pages/_template/index.php'] as $f) check('page: shipped file has the guard: ' . $f, NuPage::hasGuard((string)file_get_contents(NU_ROOT . '/' . $f)));
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

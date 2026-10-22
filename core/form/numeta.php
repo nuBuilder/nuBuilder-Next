@@ -167,6 +167,7 @@ final class NuFormMeta
 	public function isSystem(): bool      { return str_starts_with($this->id, 'nu'); }
 	public function hasBrowse(): bool     { return in_array($this->type(), ['browse', 'browseedit'], true); }
 	public function hasEdit(): bool       { return in_array($this->type(), ['edit', 'browseedit', 'launch'], true); }
+	public function isPage(): bool        { return $this->type() === 'page'; }   // form type "page" (0.8.387, core/nupage.php)
 
 	public function settings(): array     { return self::nunextJson($this->form['sfo_json'] ?? null); }
 

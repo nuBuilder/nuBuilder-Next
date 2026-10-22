@@ -27,6 +27,8 @@ if ((string)($meta->form['sfo_status'] ?? '') === '0' && !$meta->isDraft() && !N
 	http_response_code(403);
 	nu_fatal(t('draft_not_published'), $meta->description(), true);
 }
+// form type "page" (0.8.387): an iframe inside nuBuilder Next or a redirect to the page's own output (core/nupage.php)
+if ($meta->type() === 'page') NuPage::wrapper($meta);
 
 $u        = NuAuth::user();
 $rights   = NuAcl::rights($meta->id);
@@ -342,6 +344,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset('assets/js/nu/nuruntime.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
+	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects (0.8.387)
 	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript (0.8.298)
 	. $setupHeader . "\n"
 	. ($mode === 'edit' ? '<script>nuNextRunDeferred(document);</script>' : '')   // scripts of HTML objects (0.8.383, NuRender::deferScripts)

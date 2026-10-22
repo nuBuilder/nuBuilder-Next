@@ -268,6 +268,8 @@ final class NuSecurity
 		$bd = NuUpdate::backupDir();
 		if (str_starts_with(str_replace('\\', '/', $bd), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($bd, strlen(NU_ROOT) + 1) . '/index.html';
 		if (is_dir(NU_ROOT . '/temp')) $urls[] = 'temp/index.html';
+		// page forms (0.8.387): custom/ is reachable only through the router (nginx needs its own rule)
+		foreach (['custom/PAGE_GUIDE.md', 'custom/pages/_template/index.php', 'custom/pages/_template/assets/app.css'] as $f) if (is_file(NU_ROOT . '/' . $f)) $urls[] = $f;
 		foreach (['PMA', 'TFM'] as $a) {                      // a local version note of a copied tool (0.8.231) may name open CVEs
 			$f = NuVendor::dir($a) . '/' . self::LOCAL_VERSION;
 			if (is_file($f) && str_starts_with(str_replace('\\', '/', $f), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($f, strlen(NU_ROOT) + 1);

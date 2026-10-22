@@ -72,7 +72,7 @@ async function login(ctx, user, pw) {
 		last = await q.textContent('body');
 		await c.close();
 	}
-	ok('login rate limit without cookies', /Too many failed attempts/.test(last));
+	ok('login rate limit without cookies', /Too many failed attempts/.test(last), /Too many failed attempts/.test(last) ? '' : last.replace(/\s+/g, ' ').slice(0, 300));
 
 	await b.close();
 	console.log(fails ? fails + ' FAILED' : 'smoke test passed');

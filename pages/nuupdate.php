@@ -119,7 +119,7 @@ if (nu_is_post()) {
 				if ($sr['errors']) throw new RuntimeException(t('upd_schema_failed') . ' ' . implode(' · ', $sr['errors'])
 					. ($sr['done'] ? ' ' . t('upd_schema_done', implode(', ', $sr['done'])) : ''));
 			}
-			$backup = NuUpdate::install($zip, $info, nu_check('backup_sql') === '1' ? 'all' : 'none', nu_check('backup_nologs') === '1');
+			$backup = NuUpdate::install($zip, $info, nu_check('backup_sql') === '1' ? 'all' : 'none', nu_check('backup_nologs') === '1', nu_check('backup_pages') === '1');
 			if ($schemaDone && isset($_SESSION['nu_update'])) $_SESSION['nu_update']['schema'] = $schemaDone;
 			// sample data: refreshed after the update, with the new code (finish request)
 			if (nu_check('sample_refresh') === '1' && isset($_SESSION['nu_update'])) $_SESSION['nu_update']['sample_refresh'] = true;
@@ -139,7 +139,7 @@ if (nu_is_post()) {
 			unset($_SESSION['nu_backup_once'][$once]);
 			// never two at the same time (two tabs, two globeadmins): NuUpdate::backup() locks and says so
 			$scope = in_array(nu_post('sql'), ['nunext', 'all'], true) ? nu_post('sql') : 'none';
-			$name = NuUpdate::backup('manual', $scope, nu_check('nologs') === '1');
+			$name = NuUpdate::backup('manual', $scope, nu_check('nologs') === '1', nu_check('pages') === '1');
 			$sql = NuUpdate::$lastSql;
 			NuLog::write('nunext_backup', '', '', ['file' => $name, 'sql' => $sql ? ['scope' => $scope, 'complete' => $sql['complete'], 'bytes' => $sql['bytes']] : 'none']);
 			nu_flash('success', t('upd_backup_done', $name));
@@ -326,6 +326,7 @@ $changes = static function (array $list): string {
 	return $html;
 };
 
+$hasPages = (bool)NuUpdate::customFiles();     // page forms (0.8.387): "Include custom pages" in backups
 nu_layout_start(t('upd_title'), 'home');
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
@@ -432,6 +433,11 @@ nu_layout_start(t('upd_title'), 'home');
 								<label class="form-check-label small" for="updBkSql"><?= h(t('upd_install_sql', NuFile::size($estAll))) ?></label>
 								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_install_sql_hint')) ?>" title="<?= h(t('upd_install_sql_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
 							<input type="hidden" name="backup_nologs" value="1">
+						<?php endif; ?>
+						<?php if ($hasPages): // page forms (0.8.387): the installation's page folders as a copy in the backup (off by default) ?>
+							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkPages" name="backup_pages" value="1">
+								<label class="form-check-label small" for="updBkPages"><?= h(t('upd_bk_pages')) ?></label>
+								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_pages_hint')) ?>" title="<?= h(t('upd_bk_pages_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
 						<?php endif; ?>
 						<?php if (!empty($check['sample'])): $sv = $check['sample']; $newer = $sv['to'] > $sv['from']; ?>
 							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updSample" name="sample_refresh" value="1"<?= $newer ? ' checked' : '' ?>>
@@ -588,6 +594,11 @@ nu_layout_start(t('upd_title'), 'home');
 						<div class="form-check mb-0 small"><input class="form-check-input" type="checkbox" id="updBkNologs" name="nologs" value="1" checked>
 							<label class="form-check-label" for="updBkNologs"><?= h(t('upd_bk_nologs')) ?></label>
 							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_nologs_hint', implode(', ', NuSqlDump::LOG_TABLES))) ?>" title="<?= h(t('upd_bk_nologs_hint', implode(', ', NuSqlDump::LOG_TABLES))) ?>"><i class="bi bi-info-circle"></i></span></div>
+					<?php endif; ?>
+					<?php if ($hasPages): ?>
+						<div class="form-check mb-0 small"><input class="form-check-input" type="checkbox" id="updBkPages2" name="pages" value="1">
+							<label class="form-check-label" for="updBkPages2"><?= h(t('upd_bk_pages')) ?></label>
+							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_pages_hint')) ?>" title="<?= h(t('upd_bk_pages_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
 					<?php endif; ?>
 					<button class="btn btn-sm btn-outline-secondary ms-auto" type="submit" data-nu-busy="<?= h(t('upd_backup_running')) ?>"><i class="bi bi-archive me-1"></i><?= h(t('upd_backup_now')) ?></button>
 				</form>

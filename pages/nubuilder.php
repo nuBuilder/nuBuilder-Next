@@ -22,6 +22,12 @@ if (!$isNew) {
 	}
 }
 
+// form type "page" (0.8.387): its own builder – form fields and the page settings, no objects (pages/nubuilder_page.php)
+if ($meta && $meta->isPage()) {
+	require __DIR__ . '/nubuilder_page.php';
+	exit;
+}
+
 // labels for builder.js
 $keys = ['save', 'delete', 'cancel', 'add', 'remove', 'remove_undo', 'remove_pending', 'saved', 'clone', 'back', 'please_select', 'search', 'yes', 'no', 'no_records'];
 foreach ([__DIR__ . '/../lang/en.php'] as $f) foreach (array_keys(require $f) as $k) if (str_starts_with($k, 'builder_') || str_starts_with($k, 'bf_') || str_starts_with($k, 'form_type_') || str_starts_with($k, 'form_layout')) $keys[] = $k;
@@ -98,7 +104,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<div class="col-sm-6 col-lg-4">
 							<label class="form-label" for="nb_type"><?= h(t('builder_type')) ?></label>
 							<select class="form-select" id="nb_type" name="type">
-								<?php foreach (['browseedit', 'edit', 'browse', 'subform', 'launch'] as $tp): ?><option value="<?= $tp ?>"><?= h(t('form_type_' . $tp)) ?></option><?php endforeach; ?>
+								<?php foreach (['browseedit', 'edit', 'browse', 'subform', 'launch', 'page'] as $tp): ?><option value="<?= $tp ?>"><?= h(t('form_type_' . $tp)) ?></option><?php endforeach; ?>
 							</select>
 						</div>
 						<div class="col-sm-6 col-lg-4">

@@ -81,8 +81,10 @@
 
 		function mode() { return $('#nb_mode_new').checked ? 'new' : 'existing'; }
 		function applyMode() {
-			var launch = $('#nb_type').value === 'launch';
+			var launch = $('#nb_type').value === 'launch' || $('#nb_type').value === 'page';   // page forms (0.8.387): no table either
 			$('.nbTableSection').classList.toggle('d-none', launch);
+			var lay = $('#nb_layout');
+			if (lay) lay.closest('[class*="col-"]').classList.toggle('d-none', $('#nb_type').value === 'page');
 			$$('.nbExisting').forEach(function (e) { e.classList.toggle('d-none', launch || mode() !== 'existing'); });
 			$$('.nbNew').forEach(function (e) { e.classList.toggle('d-none', launch || mode() !== 'new'); });
 			if (mode() === 'new' && !$('#nbColRows').children.length) addCol();

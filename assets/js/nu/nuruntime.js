@@ -663,6 +663,8 @@
 	function formUrl(f, r, extra) {
 		var q = $.extend({p: 'form', f: f}, (r !== undefined && r !== null && r !== '') ? {r: r} : {}, extra || {});
 		if (N.ps && !q.ps) q.ps = N.ps;
+		// the opening form and record (page forms read them with $nu->parent(), 0.8.387)
+		if (N.form && !q.pf) { q.pf = N.form.id; if (N.record_id && N.record_id !== '-1') q.pr = N.record_id; }
 		return N.base + '?' + $.param(q);
 	}
 	N.formUrl = formUrl;

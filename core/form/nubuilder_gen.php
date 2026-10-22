@@ -11,10 +11,10 @@ final class NuBuilderGen
 	public static function create(array $in): string
 	{
 		$db    = nu_db();
-		$type  = in_array($in['type'] ?? '', ['browseedit', 'browse', 'edit', 'launch', 'subform'], true) ? $in['type'] : 'browseedit';
+		$type  = in_array($in['type'] ?? '', ['browseedit', 'browse', 'edit', 'launch', 'subform', 'page'], true) ? $in['type'] : 'browseedit';
 		$code  = trim((string)($in['code'] ?? ''));
 		$desc  = trim((string)($in['description'] ?? ''));
-		$mode  = $type === 'launch' ? 'none' : (($in['table_mode'] ?? '') === 'new' ? 'new' : 'existing');
+		$mode  = $type === 'launch' || $type === 'page' ? 'none' : (($in['table_mode'] ?? '') === 'new' ? 'new' : 'existing');
 		$table = trim((string)($in['table'] ?? ''));
 		$pk    = trim((string)($in['primary_key'] ?? ''));
 		$audit = $mode === 'new' && !empty($in['audit']);
@@ -22,6 +22,7 @@ final class NuBuilderGen
 
 		if ($code === '' || $desc === '') nb_err(t('builder_err_code_desc'));
 		if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ?', [$code])) nb_err(t('builder_err_code_taken'));
+		if ($type === 'page' && !NuPage::validCode($code)) nb_err(t('page_err_code', $code));     // the code is the folder name (0.8.387)
 
 		$fields = [];                                 // what to generate objects for
 		if ($mode === 'existing') {
@@ -96,6 +97,7 @@ final class NuBuilderGen
 			}
 			throw $e;
 		}
+		if ($type === 'page') NuPage::save($formId, NuPage::defaults());    // settings row of a page form (0.8.387)
 		return $formId;
 	}
 

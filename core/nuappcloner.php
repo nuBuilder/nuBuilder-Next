@@ -134,6 +134,10 @@ final class NuAppCloner
 		}
 
 		if ($this->o['files'] && !$this->o['export']) $this->copyFiles();
+		// page forms (0.8.387): their folders are files – without the file copy they must be copied by FTP (secrets.php never goes along)
+		try {
+			if ((!$this->o['files'] || $this->o['export']) && (int)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_type = 'page'")) $this->warn(t('ac_page_folders', NuPage::shownFolder('')));
+		} catch (Throwable) {}
 
 		$this->say(t('ac_done_in', round(microtime(true) - $start, 1)), 'ok');
 		if (!$this->o['dry'] && !$this->o['export']) NuLog::write('app_cloned', 'database', (string)$this->o['target']['db'], ['stats' => $this->stats, 'files' => $this->o['files'] ? $this->o['target_path'] : '']);
@@ -967,6 +971,7 @@ final class NuAppCloner
 			static function (SplFileInfo $f) use ($sp, $ex): bool {
 				$rel = ltrim(str_replace('\\', '/', substr($f->getPathname(), strlen($sp))), '/');
 				foreach ($ex as $e) if ($rel === $e || str_starts_with($rel, $e . '/') || $f->getFilename() === $e) return false;
+				if (preg_match('~(^|/)custom/pages/[^/]+/secrets\.php$~', $rel)) return false;    // secrets of page forms are never copied (0.8.387)
 				return !$f->isLink();
 			}), RecursiveIteratorIterator::SELF_FIRST);
 		foreach ($it as $f) {
