@@ -216,7 +216,7 @@
 - SQL Server: both tables created by update step 0004 (TINYINT / NVARCHAR) – not tested on a real SQL Server.
 
 ## 0.8.207 security review – done, please verify
-All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in README "0.8.207" and Help → Security. To check on the live server:
+All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in CHANGELOG.md "0.8.207" and Help → Security. To check on the live server:
 - [ ] **Files on the web** (Admin tools → Security check): all green? On Debian / Ubuntu Apache's default `AllowOverride None` ignores every
       `.htaccess` – set `AllowOverride All` for the web folder, or nginx rules (Help → Security). If the site answers 500 after the update,
       the server forbids a directive of the new root `.htaccess` (`<FilesMatch>` / `Require`): delete that file by SFTP and report it.
@@ -326,7 +326,7 @@ All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in R
 - [ ] Since 0.8.207 packages are signed (Ed25519) and checked; unsigned ones show a warning.
 
 ## 0.7.2 – please verify
-- [ ] Delete the old file names after the update (list in README, section 0.7.2).
+- [ ] Delete the old file names after the update (list in CHANGELOG.md, section 0.7.2).
 - [ ] `nuRefreshSelectObject` with a subform's form id and no prefix refreshes that field in every row (nuBuilder only refreshes `#selectId`).
 - [ ] `nuRefreshDisplayObject` does not mark the form as edited (display objects are not saved); nuBuilder uses nuSetValue, which does.
 - [ ] `nuSubformAddFilter` on form-layout subforms puts the filters in a bar above the rows (nuBuilder only has grid subforms).

@@ -11,7 +11,7 @@ nuBuilder Next – make a release (run from the nunext folder):
 What it does (the same steps every release):
   0. lang/en-US.php and lang/de-CH.php built by dev/lang_variants.php; checks (skip with --no-checks): php -l of every PHP file, dev/check_lang.php, dev/tests/run.php,
      and with NUNEXT_TEST_BASE set the browser suites smoke.js, e2e.js and (NUNEXT_TEST_NUB) compat.js – see browser_tests()
-  1. README.md: version in the first line, new section "## <version> – <title>" above the newest one
+  1. README.md: version in the first line; CHANGELOG.md: new section "## <version> – <title>" above the newest one
   2. core/nuapp.php: NU_VERSION
   3. nunext-manifest.json: version, built, sha256 + size of every DEPLOYED file, the "changes" entry (shown on the update page),
      signature (Ed25519, dev/sign.php) when the signing key is found: $NUNEXT_SIGNING_KEY, ../nunext-signing.key or
@@ -179,16 +179,18 @@ def main():
     if '--no-checks' not in sys.argv:
         checks(all_files())
 
-    # 1. README
+    # 1. README title + CHANGELOG.md section (0.8.373: the changelog moved out of the README)
     readme = open('README.md', encoding='utf-8').read()
     readme, n = re.subn(r'^# nuBuilder Next \S+ –', f'# nuBuilder Next {version} –', readme, count=1)
     if n != 1:
         sys.exit('README.md: first line "# nuBuilder Next <version> – …" not found')
-    first = re.search(r'^## \d+\.\d+\.\d+ – ', readme, flags=re.M)
+    log = open('CHANGELOG.md', encoding='utf-8').read()
+    first = re.search(r'^## \d+\.\d+\.\d+ – ', log, flags=re.M)
     if not first:
-        sys.exit('README.md: no changelog section "## x.y.z – …" found')
-    readme = readme[:first.start()] + f'## {version} – {title}\n{text}\n\n' + readme[first.start():]
+        sys.exit('CHANGELOG.md: no changelog section "## x.y.z – …" found')
+    log = log[:first.start()] + f'## {version} – {title}\n{text}\n\n' + log[first.start():]
     open('README.md', 'w', encoding='utf-8').write(readme)
+    open('CHANGELOG.md', 'w', encoding='utf-8').write(log)
 
     # 2. version
     open('core/nuapp.php', 'w', encoding='utf-8').write(app.replace(m.group(0), f"define('NU_VERSION', '{version}');"))

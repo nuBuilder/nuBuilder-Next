@@ -84,7 +84,7 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'container']);
 	<ul class="list-group list-group-flush js-probe-list"></ul>
 	<div class="card-body small text-body-secondary border-top js-probe-help" hidden>
 		<p class="mb-1"><?= h(t('secchk_probe_help')) ?></p>
-		<pre dir="ltr" class="mb-0 small bg-body-tertiary p-2 rounded"><code><?= h("# Apache (virtual host or apache2.conf): let nuBuilder Next's .htaccess files work\n<Directory " . dirname(NU_ROOT) . ">\n\tAllowOverride All\n</Directory>\n\n# nginx (server block)\nlocation ~ ^" . rtrim(NuSecurity::cookiePath(), '/') . "/(core|pages|lang|install|docs|dev|_backup|_install|temp)/ { deny all; }\nlocation ~ ^" . rtrim(NuSecurity::cookiePath(), '/') . "/(README\\.md|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|cron\\.php)$ { deny all; }\nlocation ~ /NUNEXT-VERSION\\.txt$ { deny all; }") ?></code></pre>
+		<pre dir="ltr" class="mb-0 small bg-body-tertiary p-2 rounded"><code><?= h("# Apache (virtual host or apache2.conf): let nuBuilder Next's .htaccess files work\n<Directory " . dirname(NU_ROOT) . ">\n\tAllowOverride All\n</Directory>\n\n# nginx (server block)\nlocation ~ ^" . rtrim(NuSecurity::cookiePath(), '/') . "/(core|pages|lang|install|docs|dev|_backup|_install|temp)/ { deny all; }\nlocation ~ ^" . rtrim(NuSecurity::cookiePath(), '/') . "/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|cron\\.php)$ { deny all; }\nlocation ~ /NUNEXT-VERSION\\.txt$ { deny all; }") ?></code></pre>
 	</div>
 </div>
 

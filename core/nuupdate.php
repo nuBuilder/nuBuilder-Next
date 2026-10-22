@@ -409,7 +409,7 @@ final class NuUpdate
 				if ($f->isFile() && !self::isProtected($rel) && !self::isLibrary($rel)) $files[] = $rel;
 			}
 		}
-		foreach (['index.php', 'api.php', 'cron.php', '.htaccess', 'nuconfig-sample.php', 'README.md', 'TODO.md', self::MANIFEST, 'docs/.htaccess'] as $f) if (is_file(NU_ROOT . '/' . $f)) $files[] = $f;
+		foreach (['index.php', 'api.php', 'cron.php', '.htaccess', 'nuconfig-sample.php', 'README.md', 'CHANGELOG.md', 'LICENSE', 'TODO.md', self::MANIFEST, 'docs/.htaccess'] as $f) if (is_file(NU_ROOT . '/' . $f)) $files[] = $f;
 		$files = array_values(array_unique($files));
 		sort($files);
 		return $files;

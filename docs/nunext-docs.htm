@@ -566,7 +566,7 @@ fixes:
 			<li>MySQL / MariaDB: the dump is taken in one consistent snapshot (InnoDB) with <code>TIMESTAMP</code> values in UTC – records saved during the backup can't leave half a change in it, and it imports with the same moments on a server in another time zone. INSERT statements are at most about 1 MB, so the import also works where <code>max_allowed_packet</code> is small.</li>
 			<li><em>Keep SQL dumps in the newest … backups</em> (default 5, 0 = all): older backups lose their dump automatically (badge <em>SQL removed</em>), their program files stay. The header shows the number and total size of the backups.</li>
 		</ul>
-		<p>If the update page is not available (first update to 0.8.0, or PHP may not write to the folder): unpack the zip over the old folder, delete the old files listed in the README, and log in as globeadmin – the database steps run automatically.</p>
+		<p>If the update page is not available (e.g. PHP may not write to the folder): unpack the zip over the old folder (<code>nuconfig.php</code> and <code>_backup/</code> stay), and log in as globeadmin – the database steps run automatically. What changed in each version: <code>CHANGELOG.md</code> in the package, or <em>Change history</em> on the update page.</p>
 		<p>The server needs PHP 8.1+, the zip extension, write permission for PHP on the nuBuilder Next folder (Plesk: the folder belongs to the site user) and some free disk space – the update page shows each of them.</p>
 	</div>
 </section>
@@ -1167,7 +1167,7 @@ nuRunPHPHidden('export_orders');   // the procedure ends it: nuAddJavascript("nu
 
 # nginx: server block
 location ~ ^/nunext/(core|pages|lang|install|docs|dev|_backup|_install|temp)/ { deny all; }
-location ~ ^/nunext/(README\.md|TODO\.md|CLAUDE\.md|nunext-manifest\.json|nuconfig.*\.php|cron\.php)$ { deny all; }
+location ~ ^/nunext/(README\.md|CHANGELOG\.md|LICENSE|TODO\.md|CLAUDE\.md|nunext-manifest\.json|nuconfig.*\.php|cron\.php)$ { deny all; }
 location ~ /NUNEXT-VERSION\.txt$ { deny all; }
 # browser cache (Apache: assets/.htaccess does it) – files with ?v= never change under their URL
 location ^~ /nunext/assets/ { expires 7d; if ($arg_v) { expires 1y; add_header Cache-Control "public, immutable"; } }</code></pre>

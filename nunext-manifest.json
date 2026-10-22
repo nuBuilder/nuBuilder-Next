@@ -1,18 +1,26 @@
 {
  "product": "nuNext",
- "version": "0.8.372",
- "built": "2026-10-22 03:59",
+ "version": "0.8.373",
+ "built": "2026-10-22 04:41",
  "requires": {
   "php": "8.1"
  },
  "files": {
   ".htaccess": {
-   "sha256": "c69ced61c87dd8c2eab9e4e7de39f1c42281f73cf3d5a87879c43dc025d3993d",
-   "size": 574
+   "sha256": "2b8078291d3c92ac3c1824734bd5db4cdf26dca9f7f29b56c52ae12226d18c99",
+   "size": 596
+  },
+  "CHANGELOG.md": {
+   "sha256": "602b9bddd09f7b49c5f42547f3eb5307865dd8ccf45b0b23e2f24802503ab467",
+   "size": 276061
+  },
+  "LICENSE": {
+   "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+   "size": 35149
   },
   "README.md": {
-   "sha256": "60c031074f897330138172c61c9c4b930a6738886dfa215074e1028f7fa001cc",
-   "size": 284668
+   "sha256": "9a43de85f698b471ad5d95be8e0101ebdd53eab16dbf54cfff248f33f491c4e7",
+   "size": 5460
   },
   "api.php": {
    "sha256": "7b21c37e26bd799f78e988fd62f0e277cfd52690d87ff3bfd715f967ba83627d",
@@ -651,7 +659,7 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "4dff6c7f2e2b4347e8ab087d1b4244778af2535e36cd2a14106b0a67a24d6f26",
+   "sha256": "59f718e8272b2d80c07779e995f16c5e597966f401a70c907cc61e438a923af9",
    "size": 27859
   },
   "core/nuappcloner.php": {
@@ -867,8 +875,8 @@
    "size": 9816
   },
   "core/nuupdate.php": {
-   "sha256": "64f410bd22ac21d2de8ed7b8a772a12479d9ac4253a062e732f97731b4717d3c",
-   "size": 39931
+   "sha256": "bc062266216e2d364e6b0beb94e53b126181ffc6572b80e788f7c5f856be7531",
+   "size": 39958
   },
   "core/nuvendor.php": {
    "sha256": "8293181f67d85ba2cc4b7b4dae7bc2f0dd8df680377d30cc9e25a13ff7ca88ea",
@@ -887,8 +895,8 @@
    "size": 177
   },
   "docs/nunext-docs.htm": {
-   "sha256": "8fd58b534556b06c1c0a702fe8031de314253158ec4dcd1adfd718b65e133232",
-   "size": 220793
+   "sha256": "15e355dcb87aa4cb242899f8f92b03b8f9038be4c2cb301622cb2f49742e545f",
+   "size": 220929
   },
   "docs/nunext-tutorial.htm": {
    "sha256": "fa283d60bdf90944e1d5ddcb83ce50267715361ec9762392a9439773dbba0089",
@@ -907,7 +915,7 @@
    "size": 177
   },
   "install/db_changes.json": {
-   "sha256": "89f54eb8e11a7368f5a3037e7a8d7239e17bb0f0659bb3b4226e1e4b1251c355",
+   "sha256": "07f027fe832dd43631892e927594f9b6278988e2a40eb7ca699247a9d0380038",
    "size": 26742
   },
   "install/notes_snippets_mysql.sql": {
@@ -1239,8 +1247,8 @@
    "size": 6901
   },
   "pages/nusecuritycheck.php": {
-   "sha256": "47df91328a7009d446c72d1dae51c4d4438e244673194e9e6e0d4cb43f766dbb",
-   "size": 7689
+   "sha256": "8dda9d10477066d1d7858e2da118dcdfb417e6ba05aa6fa3b365544e31e8fc95",
+   "size": 7712
   },
   "pages/nuselftest.php": {
    "sha256": "d9229484aedbd3f8ca66ed33f97f21f7eb972fac99b12be0b83542027e10dd01",
@@ -1321,6 +1329,11 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.373",
+   "title": "Short README, CHANGELOG.md, alpha note",
+   "text": "- README.md is short now (about 90 lines, the front page on GitHub): a big alpha warning on top (\"not ready for production\"),\n  what nuBuilder Next is, requirements, install, updating (also from the folder _update/), compatibility notes and the licence.\n- The changelog moved to CHANGELOG.md (newest first); the old \"0.2–0.7 additions\" sections are at its end under \"Earlier\n  versions (0.2–0.7)\". dev/release.py writes new sections there and keeps the version in the README title.\n- LICENSE (GPL-3.0, like nuBuilder) is part of the package.\n- CHANGELOG.md and LICENSE are protected like README.md: Apache .htaccess, the nginx rules (Security check, Help) and the\n  update's file list.\n- Help → Updating by hand: the outdated hint to delete old files listed in the README is replaced by a pointer to CHANGELOG.md."
   },
   {
    "version": "0.8.372",
@@ -3277,5 +3290,5 @@
    "license": "MIT"
   }
  ],
- "signature": "qHOjwXAMZ6t1uy+0bHWyaaGONOIXHTGuhjO63fIZVZ1Wcc8TsrqxQgeUsdiAypXxbmW8McOUKOTgLBvXAtPNAA=="
+ "signature": "tbkHtcMY7BN+b0ynFwrsxR9QuMox0UXUvQvr6F5Lor6Tj4Si4fDokP5cxT1uGJbJUyJ4ZNm31uv3Fo4vGqOkDw=="
 }

@@ -2,15 +2,16 @@
 
 nuBuilder Next ("nuNext") is a modern PHP front end for **nuBuilder 4**. It runs on nuBuilder's own `zzzzsys_*` tables, side by side
 with a live nuBuilder on the same database, and adds only its own tables (`zzzzsys_nunext_*`). One owner/developer (not named here – see the rule below).
-User-facing description, install and the full **changelog**: `README.md`. User documentation (shown in the app, `?p=help`):
+Short user-facing description and install: `README.md` (alpha warning on top, ~90 lines – keep it short, it is the GitHub front page);
+the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions (0.2–0.7)" at the end). User documentation (shown in the app, `?p=help`):
 `docs/nunext-docs.htm`. Open points to verify: `TODO.md`. Differences to nuBuilder / not ported: `docs/porting-review.md`.
 
 ## How work is delivered
 - Every request ends as a **new version**: bump, changelog, manifest, zips sent to the owner, who installs `nunext.zip` with Admin
   tools → *Update*. Version scheme 0.8.x, one step per delivery (0.8.201 → 0.8.202).
 - Use **`python3 dev/release.py <version> "<title>" <changes.txt>`** – checks (php -l of all files, check_lang, `dev/tests/run.php`,
-  PHPStan level 2 if `../phpstan.phar` exists, ESLint if `../node_modules/eslint` exists – see "Test environment"), README title +
-  changelog section, `NU_VERSION`, the manifest (hashes of every **deployed** file + the `changes` entry), the Ed25519 signature and
+  PHPStan level 2 if `../phpstan.phar` exists, ESLint if `../node_modules/eslint` exists – see "Test environment"), README title, CHANGELOG.md
+  section, `NU_VERSION`, the manifest (hashes of every **deployed** file + the `changes` entry), the Ed25519 signature and
   two zips: **`../nunext.zip`** (install package: without CLAUDE.md, TODO.md, .gitignore, dev/, .github/ – these are readable on a web
   server) and **`../nunext-dev.zip`** (everything). Send both; the owner sends `nunext-dev.zip` to the next session.
 - **Signing key**: `../nunext-signing.key` (outside the project, never in a zip; also `$NUNEXT_SIGNING_KEY` or `~/.nunext-signing.key`).
@@ -21,7 +22,7 @@ User-facing description, install and the full **changelog**: `README.md`. User d
 
 ### Checklist for every request (the usual flow)
 1. Starting a session: unpack `nunext-dev.zip` (folder `nunext/`), put `nunext-signing.key` next to it (`../nunext-signing.key`),
-   rebuild the test environment (below). Read `TODO.md` and the newest README changelog sections.
+   rebuild the test environment (below). Read `TODO.md` and the newest `CHANGELOG.md` sections.
 2. Short request → build it; "suggest …" → numbered options with a recommendation and wait; "do recommendations" / "ok all" → build.
 3. New texts: write a JSON file and run `python3 dev/lang_add.py texts.json` (all eleven languages in one go, after an anchor key),
    then `php dev/lang_variants.php` and `php dev/check_lang.php`. Never edit `lang/en-US.php` / `lang/de-CH.php`.
@@ -68,7 +69,7 @@ step → `NuMigrate::steps()` + `NuMigrate::CHANGES` in core/nuupdate.php · a c
 ## The owner's standing rules
 - **No personal details of the developer** (name, e-mail, etc.) in any file of the project – code, docs, README, CLAUDE.md,
   changelog, manifest, comments. Refer to "the owner" / "the developer".
-- **Always update the changelog** (README section `## 0.8.x – title` + manifest `changes`, both via `dev/release.py`) and **bump the
+- **Always update the changelog** (CHANGELOG.md section `## 0.8.x – title` + manifest `changes`, both via `dev/release.py`) and **bump the
   version**, unless the owner says otherwise.
 - **All texts in all eleven languages** (`lang/en, de, fr, it, es, pt, nl, pl, ru, zh, ar.php`; Arabic is right to left). No hard-coded
   UI text. New keys go next to related keys in every file; `dev/check_lang.php` must report "all languages complete".
@@ -78,8 +79,8 @@ step → `NuMigrate::steps()` + `NuMigrate::CHANGES` in core/nuupdate.php · a c
   de-DE / de-CH (0.8.314 / 0.8.315).
 - **Update the docs** (`docs/nunext-docs.htm`, English only), the **tutorial** (`docs/nunext-tutorial.htm`, 0.8.328 – lessons for the
   globeadmin, structure in its header comment; lesson ids are progress keys, never rename them) and **`TODO.md`** when relevant; remove TODO points that are done or
-  outdated. README sections above the changelog describe the state of 0.2–0.7 (history) – new features are described in the
-  changelog section of their version and in the docs.
+  outdated. The README stays short (what it is, requirements, install, updating, compatibility,
+  licence) – new features are described in the CHANGELOG.md section of their version and in the docs.
 - **Upgrade baseline 0.8.321** (not released yet; both servers were on 0.8.321): no upgrade paths from earlier nuBuilder Next versions
   (old table names, old stored formats, old cookies, obsolete-file list – removed in 0.8.322). New migration steps and conversions are
   written for versions from the baseline on; the owner says when to move the baseline and drop the paths below it. nuBuilder
@@ -291,11 +292,11 @@ Gotchas seen while testing:
 - Hover delays: move the mouse in small steps (`page.mouse.move`) and wait – tile tooltips need 800 ms of rest.
 - The bell polls `?p=notifyapi` every 60 s; a GET there does not refresh the idle time (`NU_PASSIVE`, index.php / NuAuth::user).
 - `dev/release.py` refuses a version that is not higher than NU_VERSION: if a release must be rebuilt before it was delivered, set
-  NU_VERSION back and remove its README section and manifest `changes` entry first (then run with `--no-checks`, the manifest
+  NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
 ## Where things stand (October 2026, 0.8.360)
-Newest first, details in the README changelog: 0.8.357/0.8.358 notification centre (bell, panel, must confirm, Manage with recipients
+Newest first, details in CHANGELOG.md: 0.8.357/0.8.358 notification centre (bell, panel, must confirm, Manage with recipients
 from users / departments / teams / positions / access levels, live or fixed list, read receipts, e-mail, permission items NUNEXT_NOTIFY /
 NUNEXT_NOTIFY_OWN, `nuNextNotify()`, API /v1/notifications); 0.8.352–0.8.356 start page: favourites (☆ in Customise, "Favourites" filter
 on the page and in Customise), compact tiles show name + description as tooltip (mouse resting 800 ms, long tap on phones) – the size
@@ -313,7 +314,7 @@ Earlier: 0.8.298 dashboards, 0.8.297 branding, 0.8.295/0.8.291 App cloner 1:1, 0
 0.8.207 security review, 0.8.183 reports. Open checks are in `TODO.md` (sections "please verify").
 
 ### Earlier notes (0.8.207–0.8.296)
-Newest first, details in the README changelog: 0.8.295 App cloner with consistent snapshot, streaming, size-limited batches, UTC
+Newest first, details in CHANGELOG.md: 0.8.295 App cloner with consistent snapshot, streaming, size-limited batches, UTC
 (ideas from mysqldump); 0.8.291 App cloner 1:1 (verified, test harness described in the changelog); 0.8.282 Adminer via dbadmin.php
 + primary database tool; 0.8.276 saved Cloner / App cloner configurations (zzzzsys_cloner / zzzzsys_app_cloner); settings page with
 implementation status tags; $nuConfigEnableDatabaseUpdate. Older state (0.8.207–0.8.244):
@@ -326,7 +327,7 @@ tc-lib-pdf-font; the bundle was built from GitHub clones because packagist is bl
 status + group filters (archived hidden); users list Position / Code + position filter; lowest TinyMCE editor of a tab fits the window
 (250–800 px, legend stays visible); README / Help / TODO checked again (0.8.240). 0.8.241–0.8.244: settings descriptions as (i)
 below 800 px, one tooltip at a time, Bootstrap JS through `nuBs` (Bootstrap 6 evaluated: stay on 5.3.8, see TODO.md).
-Recent larger pieces (details in the README changelog): reports with PDF runner, report designer and SQL builder (0.8.183, uses
+Recent larger pieces (details in CHANGELOG.md): reports with PDF runner, report designer and SQL builder (0.8.183, uses
 nuBuilder's TCPDF), ApexCharts (0.8.182), change history on the update page (0.8.186–189), backups with an optional
 SQL dump, keep rule and incomplete check (0.8.197), App cloner and backups on SQL Server (0.8.198, **unverified on a real SQL
 Server**), nuBuilder-style buttons and tabs (0.8.199). Open checks are in `TODO.md` (sections "please verify").
