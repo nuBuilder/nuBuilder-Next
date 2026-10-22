@@ -731,6 +731,64 @@ T.existing_db = async (s) => {                          // 0.8.380: existing nuB
 	}
 };
 
+// nuBuilder 4.9 compatibility (0.8.382, dev/tests/nub49 = the test application of the compatibility report): browse lists with table names,
+// aliases, AS, no primary key, shared column names, nu_filter_match, nuAddBrowseTitleSelect, multi-value filter; access condition (access 9)
+T.nub49_app = async (s) => {
+	const db = (DB.match(/(?:^|\s)([A-Za-z0-9_]+)\s*$/) || [])[1] || 'nutest';
+	const user = (DB.match(/-u\s*(\S+)/) || [])[1] || 'nu', pass = (DB.match(/-p(\S+)/) || [])[1] || 'nu';
+	try {
+		for (const f of ['build_app.php', 'build_app2.php']) execSync('php ' + JSON.stringify(path.join(__dirname, 'nub49', f)) + ' ' + db, { env: Object.assign({}, process.env, { DBUSER: user, DBPASS: pass }) });
+		const p = s.ga;
+		const rows = () => p.evaluate(() => document.querySelectorAll('.nuBrowseTable tbody tr, table tbody tr[data-nu-pk]').length);
+		const want = { tcustomer: 5, tb_qualified: 5, tb_tablealias: 5, tb_alias: 5, tb_nopk: 5, tb_dupcol: 5, tb_filter: 5, tb_hash: 4, tb_titleselect: 5, tcountry: 3 };
+		for (const [f, n] of Object.entries(want)) {
+			await open(p, 'index.php?p=form&f=' + f);
+			const err = await p.locator('.alert-danger').count();
+			expect(!err && await rows() === n, f + ': ' + (err ? await p.locator('.alert-danger').first().textContent() : (await rows()) + ' rows, expected ' + n));
+		}
+		// alias column sorted by its expression; full name shown
+		await open(p, 'index.php?p=form&f=tb_alias&sort=1&dir=desc');
+		expect(/C005 - Epsilon/.test(await p.locator('tbody tr').first().textContent()), 'AS alias column: sort / value');
+		// nuAddBrowseTitleSelect → #nuBrowseTitle1_select#
+		await open(p, 'index.php?p=form&f=tb_titleselect');
+		await Promise.all([p.waitForNavigation(), p.selectOption('#nuBrowseTitle1_select', 'B')]); await p.waitForLoadState('networkidle');
+		expect(await rows() === 2 && await p.locator('#nuBrowseTitle1_select').inputValue() === 'B', 'nuAddBrowseTitleSelect filter');
+		// nu_filter_match with a multi-value filter
+		await open(p, 'index.php?p=form&f=tb_filter');
+		await p.evaluate(() => nuAddBrowseFilter('tbfiltercoltype').nuSearchablePopup({ items: [['A', 'Type A'], ['B', 'Type B']], multiSelect: true }));
+		await p.click('.nuBrowseFilterMulti summary'); await p.check('.nuBrowseFilterMenu input[value="A"]');
+		await Promise.all([p.waitForNavigation(), p.click('.nuBrowseFilterMenu .btn-primary')]); await p.waitForLoadState('networkidle');
+		expect(await rows() === 3, 'nu_filter_match / multiSelect: ' + await rows());
+		// access condition: SELECT 2 = hidden, globeadmin → 1 = read only; neither is taken from the browser when saving
+		await open(p, 'index.php?p=form&f=tadv&r=tu1');
+		const st = await p.evaluate(() => ({ hidden: document.getElementById('nuw_cus_code')?.style.display === 'none', ro: !!(document.getElementById('cus_name')?.readOnly || document.getElementById('cus_name')?.disabled) }));
+		expect(st.hidden && st.ro, 'access condition not applied: ' + JSON.stringify(st));
+		await p.evaluate(() => { for (const [id, v] of [['cus_code', 'HACK1'], ['cus_name', 'HACK2'], ['cus_city', 'Bern']]) { const e = document.getElementById(id); e.readOnly = false; e.disabled = false; e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); } });
+		await save(p);
+		const row = sql("SELECT CONCAT(cus_code, '|', cus_name, '|', cus_city) FROM tcustomer WHERE customer_id = 'tu1'");
+		expect(row === 'C001|Alpha AG|Bern', 'access condition: protected fields saved from the browser – ' + row);
+		// the Compatibility check names the features and their state
+		await open(p, 'index.php?p=compat');
+		for (const id of ['C1', 'C2', 'C5', 'C6', 'M1']) expect(await p.locator('#compat_findings [data-finding="' + id + '"]').count() === 1, 'Compatibility check: ' + id + ' not listed');
+		expect(/0\.8\.382/.test(await p.locator('#compat_findings [data-finding="C6"]').textContent()), 'C6 not marked as supported');
+		// the form builder offers access 9 with its condition, and saving the object keeps the condition
+		await open(p, 'index.php?p=builder&f=tadv'); await p.waitForTimeout(600);
+		await p.locator('.nbObj', { hasText: 'cus_name' }).locator('.nbObjMain').click(); await p.waitForTimeout(400);
+		expect(await p.locator('select[data-key=sob_all_access]').inputValue() === '9', 'builder: access 9 not shown');
+		expect(await p.locator('[data-key=sob_all_access_condition]').count() === 1, 'builder: no condition field');
+		await p.click('#nbSave'); await p.waitForTimeout(1000);
+		expect(/globeadmin/.test(sql("SELECT sob_all_access_condition FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'tadv' AND sob_all_id = 'cus_name'")), 'builder: condition lost on save');
+	} finally {
+		sql("DELETE FROM zzzzsys_event WHERE zzzzsys_event_id LIKE 'tev%'; DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id IN ('tcountry','tcustomer','torder_sf','tb_qualified','tb_alias','tb_nopk','tb_dupcol','tb_tablealias','tb_filter','tb_hash','tb_titleselect','tadv');"
+			+ " DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id IN ('tcountry','tcustomer','torder_sf','tadv'); DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id LIKE 't%' AND zzzzsys_browse_id LIKE 'tb\\_%';"
+			+ " DELETE FROM zzzzsys_form WHERE zzzzsys_form_id IN ('tcountry','tcustomer','torder_sf','tb_qualified','tb_alias','tb_nopk','tb_dupcol','tb_tablealias','tb_filter','tb_hash','tb_titleselect','tadv');"
+			+ " DELETE FROM zzzzsys_php WHERE zzzzsys_php_id LIKE 'tcustomer\\_%' OR zzzzsys_php_id IN ('tproc_hello','tsel_proc') OR zzzzsys_php_id LIKE 'to%\\_AB';"
+			+ " DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = 'taccess'; DELETE FROM zzzzsys_access WHERE zzzzsys_access_id = 'taccess'; DELETE FROM zzzzsys_user WHERE zzzzsys_user_id IN ('tuser1','tuser2');"
+			+ " DELETE FROM zzzzsys_translate WHERE zzzzsys_translate_id LIKE 'ttr%'; DROP TABLE IF EXISTS tcountry, tcustomer, torder, tlog, tnote");
+		// the setup header function of build_app2.php is removed with the whole database at the end of the suite
+	}
+};
+
 T.csv_import = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=import');

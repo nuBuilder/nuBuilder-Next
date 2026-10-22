@@ -23,6 +23,7 @@ final class NuRender
 		private array $hash,
 		private string $layout,
 	) {
+		NuRecord::$accessHash = $hash;                     // access conditions (access 9) of this form use its hash variables (0.8.382)
 	}
 
 	// ================================================================= tabs
@@ -650,7 +651,7 @@ final class NuRender
 	/** readonly / hidden from sob_all_access (0 editable, 1 readonly, 2 hidden, 3 hidden for users, 4 hidden for users + readonly for globeadmin) */
 	private function access(array $o): array
 	{
-		$a = (string)$o['sob_all_access'];
+		$a = NuRecord::accessOf($o);
 		$isAdmin = (bool)NuAuth::user()['globeadmin'];
 		return ['readonly' => $a === '1' || ($a === '4' && $isAdmin) || !$this->editable(), 'hidden' => NuRecord::hiddenFor($o)];
 	}

@@ -113,6 +113,7 @@ final class NuRecord
 		NuPhp::reset();
 		NuPhp::$subforms = self::nuSubformObjects($meta, $posted);
 		$hash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, $values, $props);
+		self::$accessHash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, [], $props);   // access conditions (0.8.382): as when the form was drawn
 
 		// --------------------------------------------------- validation (sob_all_validate)
 		$errors = self::validate($meta, $values, $posted, $isNew ? null : $recordId);
@@ -431,9 +432,42 @@ final class NuRecord
 	{
 		static $on = null;
 		$on ??= (bool)NuSecurity::get('protect_fields');
-		if (!$on) return false;
-		$a = (string)$o['sob_all_access'];
-		return $a === '1' || $a === '2' || $a === '4' || ($a === '3' && !NuAuth::user()['globeadmin']);
+		$a = self::accessOf($o);
+		$closed = $a === '1' || $a === '2' || $a === '4' || ($a === '3' && !NuAuth::user()['globeadmin']);
+		// an access condition (access 9) is enforced always: what it hides or makes read only is never taken from the browser (0.8.382)
+		if ((string)$o['sob_all_access'] === '9') return $closed;
+		return $on && $closed;
+	}
+
+	/**
+	 * nuBuilder's access condition (0.8.382, nuGetObjectAccess() in nuBuilder's core/nuform.php): an object with access 9 runs
+	 * sob_all_access_condition (SQL with the form's hash variables); the first value of the single row is its access – 0 editable,
+	 * 1 read only, 2 hidden, 3 hidden for users, 4 hidden for users + read only for the globeadmin. No row or several rows = 0, as
+	 * nuBuilder. An error hides the object (nuBuilder would show it) – a broken condition must not open a protected field.
+	 * $accessHash: the hash of the form being drawn or saved (set by NuRender / save); one query per object and record.
+	 */
+	public static array $accessHash = [];
+	private static array $accessCache = [];
+
+	public static function accessOf(array $o): string
+	{
+		$a = (string)($o['sob_all_access'] ?? '0');
+		if ($a !== '9') return $a;
+		$cond = trim((string)($o['sob_all_access_condition'] ?? ''));
+		if ($cond === '') return '0';
+		$hash = self::$accessHash ?: NuHash::plain();
+		$key = (string)($o['zzzzsys_object_id'] ?? '') . "\x1f" . (string)($hash['RECORD_ID'] ?? '') . "\x1f" . md5($cond);
+		if (isset(self::$accessCache[$key])) return self::$accessCache[$key];
+		try {
+			$sql = NuHash::replace($cond, $hash, NuHash::SQL);
+			$rows = nu_db()->readOnly(static fn() => nu_db()->all($sql));
+			$v = count($rows) === 1 ? (string)(array_values($rows[0])[0] ?? '0') : '0';
+			$v = in_array($v, ['0', '1', '2', '3', '4'], true) ? $v : '0';
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next access condition of ' . ($o['sob_all_id'] ?? '?') . ': ' . $e->getMessage());
+			$v = '2';
+		}
+		return self::$accessCache[$key] = $v;
 	}
 
 	/**
@@ -448,8 +482,8 @@ final class NuRecord
 		if (NuAuth::user()['globeadmin'] && empty(NuAuth::user()['demo'])) return true;
 		if (trim((string)$meta->form['sfo_browse_sql']) === '' || $meta->primaryKey() === '') return true;
 		try {
-			[$inner] = NuBrowse::splitOrder(NuBrowse::innerSql($meta, NuHash::forForm($meta, $recordId, [], [])));
-			return (bool)nu_db()->value('SELECT COUNT(*) FROM (' . $inner . ') nuT WHERE nuT.' . NuDB::ident($meta->primaryKey()) . ' = ?', [$recordId]);
+			[$inner] = NuBrowse::build(NuBrowse::innerSql($meta, NuHash::forForm($meta, $recordId, [], [])), $meta->primaryKey(), []);   // as the list (0.8.382)
+			return (bool)nu_db()->value('SELECT COUNT(*) FROM (' . $inner . ') nuT WHERE nuT.nu_pk = ?', [$recordId]);
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next record check ' . $meta->code() . ': ' . $e->getMessage());
 			return true;
@@ -458,7 +492,7 @@ final class NuRecord
 
 	public static function hiddenFor(array $o): bool
 	{
-		$a = (string)$o['sob_all_access'];
+		$a = self::accessOf($o);
 		return $a === '2' || (in_array($a, ['3', '4'], true) && !NuAuth::user()['globeadmin']);
 	}
 

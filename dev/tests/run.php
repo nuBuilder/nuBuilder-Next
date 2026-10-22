@@ -226,6 +226,18 @@ NuHomeHook::cacheFor(99999);
 check('hook: data and cache', NuHomeHook::$data === ['ok' => ['a' => 1]] && NuHomeHook::$cache === 3600 && count(NuHomeHook::$problems) === 1);
 NuHomeHook::reset();
 
+// ---------------------------------------------------------------- browse query the nuBuilder way (0.8.382)
+$cols = [['index' => 0, 'expr' => 'c.cus_name'], ['index' => 1, 'expr' => "CONCAT(cus_code, ' - ', cus_name) AS full_name"], ['index' => 2, 'expr' => 'CAST(x AS CHAR)']];
+[$in, $ord] = NuBrowse::build("SELECT c.*, t.name AS tname FROM tcustomer c LEFT JOIN tcountry t ON t.id = c.cid WHERE c.a = 'x FROM y' GROUP BY c.id HAVING COUNT(*) > 0 ORDER BY tname DESC, 2 LIMIT 5", 'customer_id', $cols);
+check('browse: field list replaced', str_starts_with($in, 'SELECT customer_id AS nu_pk, c.cus_name AS nu_c0, CONCAT(cus_code, \' - \', cus_name) AS nu_c1, CAST(x AS CHAR) AS nu_c2'), $in);
+check('browse: from / where / group / having kept', str_contains($in, "FROM tcustomer c LEFT JOIN tcountry t ON t.id = c.cid WHERE c.a = 'x FROM y' GROUP BY c.id HAVING COUNT(*) > 0") && !str_contains($in, 'LIMIT'), $in);
+check('browse: order by alias and position', str_contains($in, 't.name AS nu_o0') && str_contains($in, 't.name AS nu_o1') && $ord === 'nuT.nu_o0 DESC, nuT.nu_o1', $ord . ' | ' . $in);
+[$in2] = NuBrowse::build('SELECT cus_code FROM (SELECT * FROM t) x WHERE y IN (SELECT 1 FROM z)', 'id', []);
+check('browse: sub-queries', $in2 === 'SELECT id AS nu_pk FROM (SELECT * FROM t) x WHERE y IN (SELECT 1 FROM z)', $in2);
+[$in3] = NuBrowse::build('SELECT a FROM t UNION SELECT a FROM u', 'id', [['index' => 0, 'expr' => 'a']]);
+check('browse: UNION wrapped as before', str_contains($in3, 'FROM (SELECT a FROM t UNION SELECT a FROM u) nuX'), $in3);
+check('browse: nu_filter_match expanded', str_contains(NuBrowse::expandFilterMatch("SELECT * FROM t WHERE nu_filter_match('cus_type', 'abc')"), "FIND_IN_SET(cus_type, '#abc_filter#')"));
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

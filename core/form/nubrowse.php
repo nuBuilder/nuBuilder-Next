@@ -3,8 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Browse lists: sfo_browse_sql (hash-replaced) wrapped as a derived table, the zzzzsys_browse columns
- * selected from it, with server-side search, sort and paging on MySQL and MSSQL.
+ * Browse lists, built the way nuBuilder builds them (0.8.382, nuBrowseRows() / nuSqlString in nuBuilder 4.9): FROM, WHERE, GROUP BY
+ * and HAVING of sfo_browse_sql stay, the field list is replaced by the primary key and the zzzzsys_browse columns – so columns may
+ * use table names and aliases (customer.name, c.name), an AS alias, joins whose tables share column names, and a SQL that does not
+ * select the primary key. That query is then wrapped for search, column filters, count, sort and paging (MySQL and MSSQL):
+ *   SELECT … FROM (SELECT pk AS nu_pk, <col0> AS nu_c0, …, <order0> AS nu_o0 … FROM … WHERE … GROUP BY … HAVING …) nuT WHERE … ORDER BY …
+ * nuBuilder 4.9's nu_filter_match('column', '<browse id>'[, 'empty value']) is expanded first. SQL that cannot be split (UNION, WITH)
+ * is wrapped as a whole, as before.
  */
 final class NuBrowse
 {
@@ -45,7 +50,170 @@ final class NuBrowse
 	{
 		$sql = trim((string)$meta->form['sfo_browse_sql']);
 		if ($sql === '') $sql = 'SELECT * FROM ' . NuDB::ident($meta->table());
-		return NuHash::replace($sql, $hash, NuHash::SQL);
+		return NuHash::replace(self::expandFilterMatch($sql), $hash, NuHash::SQL);
+	}
+
+	/**
+	 * nuBuilder 4.9's nu_filter_match('column', '<browse id>'[, 'empty value']) (nuBrowseExpandNuEqualsFilter): true while the filter
+	 * #<browse id>_filter# is not set, otherwise the column must be one of its comma-separated values ('empty value', default -1, stands
+	 * for an empty column). The filter is set by nuAddBrowseFilter(…).nuSearchablePopup(…) – also with multiSelect.
+	 */
+	public static function expandFilterMatch(string $sql): string
+	{
+		if (stripos($sql, 'nu_filter_match') === false) return $sql;
+		$mssql = in_array((string)(nu_config()['nuConfigDBType'] ?? ''), ['sqlsrv', 'mssql'], true);   // without connecting (unit tests)
+		return (string)preg_replace_callback('/nu_filter_match\s*\(\s*([\'"])([^\'"]+)\1\s*,\s*([\'"])([^\'"]+)\3(?:\s*,\s*([\'"])([^\'"]*)\5)?\s*\)/i',
+			static function (array $m) use ($mssql): string {
+				$col = $m[2];
+				$ph = '#' . $m[4] . '_filter#';
+				$empty = str_replace("'", "''", isset($m[6]) && $m[6] !== '' ? $m[6] : '-1');
+				if ($mssql) {
+					$in = static fn(string $v): string => "CHARINDEX(',' + $v + ',', ',' + REPLACE('$ph', ' ', '') + ',') > 0";
+					return "((LEFT('$ph', 1) = '#' OR LTRIM(RTRIM('$ph')) = '') OR (" . $in("'$empty'") . " AND COALESCE(CAST($col AS NVARCHAR(4000)), '') = '') OR "
+						. $in("CAST($col AS NVARCHAR(4000))") . ')';
+				}
+				return "((LEFT('$ph', 1) = '#' OR TRIM('$ph') = '') OR (FIND_IN_SET('$empty', '$ph') > 0 AND COALESCE($col, '') = '') OR FIND_IN_SET($col, '$ph') > 0)";
+			}, $sql);
+	}
+
+	/**
+	 * Splits a SELECT at its top-level clauses (quotes, comments and brackets respected): ['fields' => …, 'from' => 'FROM …',
+	 * 'where' => …, 'group' => …, 'having' => …, 'order' => '<items without ORDER BY>'] – null when it is no plain SELECT
+	 * (UNION / INTERSECT / EXCEPT, WITH, no FROM).
+	 */
+	public static function splitSelect(string $sql): ?array
+	{
+		$sql = rtrim(trim($sql), "; \n\r\t");
+		$len = strlen($sql);
+		$depth = 0;
+		$hits = [];
+		for ($i = 0; $i < $len; $i++) {
+			$c = $sql[$i];
+			if ($c === "'" || $c === '"' || $c === '`' || $c === '[') {
+				$end = $c === '[' ? ']' : $c;
+				for ($i++; $i < $len; $i++) {
+					if ($sql[$i] === '\\' && $end !== '`' && $end !== ']') { $i++; continue; }
+					if ($sql[$i] === $end) { if ($i + 1 < $len && $sql[$i + 1] === $end && $end !== ']') { $i++; continue; } break; }
+				}
+				continue;
+			}
+			if ($c === '-' && ($sql[$i + 1] ?? '') === '-') { $nl = strpos($sql, "\n", $i); $i = $nl === false ? $len : $nl; continue; }
+			if ($c === '/' && ($sql[$i + 1] ?? '') === '*') { $e = strpos($sql, '*/', $i + 2); $i = $e === false ? $len : $e + 1; continue; }
+			if ($c === '(') { $depth++; continue; }
+			if ($c === ')') { $depth--; continue; }
+			if ($depth !== 0 || !ctype_alpha($c) || ($i > 0 && (ctype_alnum($sql[$i - 1]) || $sql[$i - 1] === '_' || $sql[$i - 1] === '.'))) continue;
+			if (preg_match('/\G(SELECT|FROM|WHERE|GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT|OFFSET|UNION|INTERSECT|EXCEPT|WITH|FOR\s+UPDATE)\b/i', $sql, $m, 0, $i)) {
+				$hits[] = [strtoupper((string)preg_replace('/\s+/', ' ', $m[1])), $i, strlen($m[0])];
+				$i += strlen($m[0]) - 1;
+			} else {
+				while ($i + 1 < $len && (ctype_alnum($sql[$i + 1]) || $sql[$i + 1] === '_')) $i++;
+			}
+		}
+		if (!$hits || $hits[0][0] !== 'SELECT' || $hits[0][1] !== 0) return null;
+		$parts = [];
+		$from = null;
+		foreach ($hits as $k => [$kw, $pos, $l]) {
+			if (in_array($kw, ['UNION', 'INTERSECT', 'EXCEPT', 'WITH'], true)) return null;
+			if ($kw === 'SELECT' && $k > 0) return null;
+			if ($kw === 'FROM' && $from === null) $from = $k;
+		}
+		if ($from === null) return null;
+		$order = ['SELECT' => 'fields', 'FROM' => 'from', 'WHERE' => 'where', 'GROUP BY' => 'group', 'HAVING' => 'having', 'ORDER BY' => 'order', 'LIMIT' => 'tail', 'OFFSET' => 'tail', 'FOR UPDATE' => 'tail'];
+		$seen = [];
+		for ($k = 0; $k < count($hits); $k++) {
+			[$kw, $pos, $l] = $hits[$k];
+			if ($k > 0 && $k < $from) continue;                 // FROM is the first one after SELECT
+			$name = $order[$kw] ?? null;
+			if ($name === null || isset($seen[$name])) continue;
+			$seen[$name] = true;
+			$next = $hits[$k + 1][1] ?? $len;
+			if ($k === 0) $next = $hits[$from][1];
+			$text = trim(substr($sql, $pos, $next - $pos));
+			$parts[$name] = $name === 'tail' ? $text : trim(in_array($name, ['fields', 'order'], true) ? substr($text, $l) : $text);
+		}
+		$parts['fields'] = (string)preg_replace('/^(DISTINCT|ALL|DISTINCTROW)\s+/i', '', $parts['fields'] ?? '');
+		if (isset($parts['order'])) $parts['order'] = trim((string)preg_replace('/\s+OFFSET\s+.*$/is', '', $parts['order']));
+		return $parts + ['where' => '', 'group' => '', 'having' => '', 'order' => ''];
+	}
+
+	/** Items of a comma list at the top level (brackets and quotes respected). */
+	public static function splitList(string $list): array
+	{
+		$out = [];
+		$depth = 0;
+		$cur = '';
+		$q = null;
+		$len = strlen($list);
+		for ($i = 0; $i < $len; $i++) {
+			$c = $list[$i];
+			if ($q !== null) { $cur .= $c; if ($c === $q) $q = null; continue; }
+			if ($c === "'" || $c === '"' || $c === '`') { $q = $c; $cur .= $c; continue; }
+			if ($c === '(') $depth++;
+			if ($c === ')') $depth--;
+			if ($c === ',' && $depth === 0) { $out[] = trim($cur); $cur = ''; continue; }
+			$cur .= $c;
+		}
+		if (trim($cur) !== '') $out[] = trim($cur);
+		return $out;
+	}
+
+	/** [expression, alias|null] – a trailing top-level "AS alias" (nuBuilder's nuBrowseRemoveFieldAlias, but never inside CAST(… AS …)). */
+	public static function stripAlias(string $item): array
+	{
+		$item = trim($item);
+		if (preg_match('/^(.*\S)\s+AS\s+(`[^`]+`|"[^"]+"|\[[^\]]+\]|\'[^\']+\'|[A-Za-z_][A-Za-z0-9_]*)$/is', $item, $m)) {
+			$expr = $m[1];
+			if (substr_count($expr, '(') === substr_count($expr, ')')) return [$expr, trim($m[2], '`"[]\'')];
+		}
+		return [$item, null];
+	}
+
+	/**
+	 * The query of the list: [inner SQL with nu_pk, nu_c<i> (the columns) and nu_o<k> (the browse SQL's own ORDER BY), outer default
+	 * order on nuT ('' = none)]. $cols: list of ['index' => i, 'expr' => display expression].
+	 */
+	public static function build(string $sql, string $pk, array $cols): array
+	{
+		$p = self::splitSelect($sql);
+		$pkIdent = NuDB::ident($pk ?: 'id');
+		if ($p === null) {                                      // UNION / WITH …: the whole SQL as a derived table, as before 0.8.382
+			[$inner, $order] = self::splitOrder($sql);
+			$f = ["nuX.$pkIdent AS nu_pk"];
+			foreach ($cols as $c) $f[] = $c['expr'] . ' AS nu_c' . $c['index'];
+			$outer = [];
+			foreach ($order !== '' ? self::splitList($order) : [] as $k => $item) {
+				[$e, $dir] = self::orderItem($item);
+				$f[] = $e . ' AS nu_o' . $k;
+				$outer[] = 'nuT.nu_o' . $k . $dir;
+			}
+			return ['SELECT ' . implode(', ', $f) . " FROM ($inner) nuX", implode(', ', $outer)];
+		}
+		$aliases = [];
+		$items = self::splitList($p['fields']);
+		foreach ($items as $it) { [$e, $a] = self::stripAlias($it); if ($a !== null) $aliases[strtolower($a)] = $e; }
+		$f = ["$pkIdent AS nu_pk"];
+		foreach ($cols as $c) $f[] = self::stripAlias($c['expr'])[0] . ' AS nu_c' . $c['index'];
+		$outer = [];
+		foreach ($p['order'] !== '' ? self::splitList($p['order']) : [] as $k => $item) {
+			[$e, $dir] = self::orderItem($item);
+			if (isset($aliases[strtolower(trim($e, '`"[]'))])) $e = $aliases[strtolower(trim($e, '`"[]'))];      // ORDER BY an alias of the field list
+			elseif (ctype_digit($e)) {                                                                          // ORDER BY 2
+				$e = isset($items[(int)$e - 1]) && !str_ends_with(trim($items[(int)$e - 1]), '*') ? self::stripAlias($items[(int)$e - 1])[0] : '';
+				if ($e === '') continue;
+			}
+			$f[] = $e . ' AS nu_o' . $k;
+			$outer[] = 'nuT.nu_o' . $k . $dir;
+		}
+		$inner = 'SELECT ' . implode(', ', $f) . ' ' . $p['from'] . ($p['where'] !== '' ? ' ' . $p['where'] : '') . ($p['group'] !== '' ? ' ' . $p['group'] : '')
+			. ($p['having'] !== '' ? ' ' . $p['having'] : '');
+		return [$inner, implode(', ', $outer)];
+	}
+
+	/** "expr DESC" → [expr, ' DESC'] */
+	private static function orderItem(string $item): array
+	{
+		if (preg_match('/^(.*\S)\s+(ASC|DESC)$/is', trim($item), $m)) return [$m[1], ' ' . strtoupper($m[2])];
+		return [trim($item), ''];
 	}
 
 	/**
@@ -54,12 +222,10 @@ final class NuBrowse
 	public static function query(NuFormMeta $meta, array $hash, array $opt = []): array
 	{
 		$db = nu_db();
-		[$inner, $defaultOrder] = self::splitOrder(self::innerSql($meta, $hash));
-		$pk = NuDB::ident($meta->primaryKey() ?: 'id');
 
 		$cols = [];
 		foreach ($meta->browse as $i => $b) {
-			$expr = trim((string)$b['sbr_display']);
+			$expr = trim(NuHash::replace((string)$b['sbr_display'], $hash, NuHash::SQL));   // nuBuilder replaces hash variables in the columns too
 			if ($expr === '' || strtolower($expr) === 'null') $expr = 'NULL';
 			$cols[] = [
 				'index' => $i, 'title' => (string)$b['sbr_title'], 'expr' => $expr, 'align' => (string)($b['sbr_align'] ?: 'l'),
@@ -67,6 +233,9 @@ final class NuBrowse
 				'filter' => !empty(NuFormMeta::nunextJson($b['sbr_json'] ?? null)['filter']) && $expr !== 'NULL',
 			];
 		}
+
+		[$inner, $defaultOrder] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), $cols);
+		$col = static fn(array $c): string => 'nuT.nu_c' . $c['index'];   // search, filters and sort work on the columns of the list query
 
 		$where  = [];
 		$params = [];
@@ -78,10 +247,10 @@ final class NuBrowse
 					if ($c['width'] <= 0 || $c['expr'] === 'NULL') continue;
 					if (in_array($c['index'], (array)($opt['nosearch'] ?? []), true)) continue;
 					if (!empty($opt['searchonly']) && !in_array($c['index'], (array)$opt['searchonly'], true)) continue;
-					$or[] = self::castText($c['expr']) . " LIKE ? ESCAPE '!'";
+					$or[] = self::castText($col($c)) . " LIKE ? ESCAPE '!'";
 					$params[] = NuDB::like($term);
 					if (str_starts_with(strtoupper($c['format']), 'D|')) {
-						$or[] = self::dateText($c['expr'], substr($c['format'], 2)) . " LIKE ? ESCAPE '!'";
+						$or[] = self::dateText($col($c), substr($c['format'], 2)) . " LIKE ? ESCAPE '!'";
 						$params[] = NuDB::like($term);
 					}
 				}
@@ -91,8 +260,8 @@ final class NuBrowse
 		foreach ((array)($opt['filters'] ?? []) as $idx => $val) {           // column filters (builder option "Filter")
 			$c = $cols[(int)$idx] ?? null;
 			if (!$c || !$c['filter'] || !is_string($val) || $val === '') continue;
-			if ($val === self::NULL_FILTER) { $where[] = '(' . $c['expr'] . ') IS NULL'; continue; }
-			$where[] = self::castText($c['expr']) . ' = ?';
+			if ($val === self::NULL_FILTER) { $where[] = '(' . $col($c) . ') IS NULL'; continue; }
+			$where[] = self::castText($col($c)) . ' = ?';
 			$params[] = $val;
 		}
 		if (!empty($opt['filter'])) {
@@ -108,8 +277,8 @@ final class NuBrowse
 		$pages = max(1, (int)ceil($total / $per));
 		$page  = min(max(1, (int)($opt['page'] ?? 1)), $pages);
 
-		$select = "SELECT nuT.$pk AS nu_pk";
-		foreach ($cols as $c) $select .= ', ' . $c['expr'] . ' AS nu_c' . $c['index'];
+		$select = 'SELECT nuT.nu_pk';
+		foreach ($cols as $c) $select .= ', ' . $col($c);
 
 		$sort = $opt['sort'] ?? null;
 		$dir  = strtolower((string)($opt['dir'] ?? 'asc')) === 'desc' ? 'DESC' : 'ASC';
@@ -136,8 +305,8 @@ final class NuBrowse
 	/** Distinct values of a filterable column: [[raw, label], …] (at most $limit). */
 	public static function distinctValues(NuFormMeta $meta, array $hash, array $col, int $limit = 300): array
 	{
-		[$inner] = self::splitOrder(self::innerSql($meta, $hash));
-		$expr = self::castText($col['expr']);
+		[$inner] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), [$col]);
+		$expr = self::castText('nuT.nu_c' . $col['index']);
 		$db   = nu_db();
 		$rows = $db->page("SELECT DISTINCT $expr AS v FROM ($inner) nuT", [], 'v', $limit, 0);
 		$out  = [];

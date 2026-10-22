@@ -3,6 +3,20 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.382 – nuBuilder 4.9 compatibility: browse lists and access conditions
+- Browse lists built the nuBuilder way (compatibility report C1–C6): the form's browse SQL stays as written – table-qualified
+  columns, aliases, ORDER BY by alias or position, tables without primary key, duplicate column names and hash variables in
+  column expressions all work; search, filters and sorting run on the result columns. UNION / WITH queries are wrapped as before.
+- `nu_filter_match` in browse SQL (MySQL and SQL Server), `nuAddBrowseTitleSelect()` and title filters with `multiSelect`
+  (several values, checkbox menu).
+- Access 9 (access condition, `sob_all_access_condition`): the SELECT is run with the record's hash variables when the form is
+  shown and again when it is saved – hidden and read-only fields are never taken from the browser. The form builder offers
+  "Condition (SQL)" with the condition field.
+- Compatibility check: new card "nuBuilder 4.9 features" – which findings of the compatibility report occur
+  in your application and since which version nuBuilder Next supports them.
+- Test application of the compatibility report in dev/tests/nub49 and e2e test nub49_app; docs/porting-review.md lists the
+  changes.
+
 ## 0.8.381 – Update page: folder list
 - Update page → Packages in the folder _update: the list is at most 450 px wide and "Check package" sits below it instead of
   next to it.

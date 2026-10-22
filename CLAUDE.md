@@ -162,6 +162,12 @@ core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintena
                      cron.php update --github / API {"github": true} · core/nudbchanges.php preview of an update's database changes (install/db_changes.json,
                      written by dev/db_changes.php from NuMigrate::CHANGES + NuSchema::definitions, compared on "Check package" / dry run)
 core/form/*.php      form runtime (meta, render, record, browse, hash variables, PHP API = nuBuilder's PHP functions)
+                     browse lists (0.8.382): NuBrowse::build() keeps the form's browse SQL as nuBuilder does – columns become
+                     nu_c<i>, the primary key nu_pk, ORDER BY items nu_o<k> of an outer SELECT (splitSelect / splitList; UNION … WITH
+                     → wrapped as nuX); nu_filter_match via expandFilterMatch(). Access 9: NuRecord::accessOf() runs sob_all_access_condition
+                     (read only, hash of the record, cached; error = 2) on render and save · core/nucompat.php NuCompat::findings() + SINCE
+                     = the compatibility report's findings (C/M/N ids) with the version that supports them – update SINCE when one is fixed;
+                     test application of the report: dev/tests/nub49/ (build_app*.php, e2e nub49_app)
 core/nureport.php    reports: NuReport (data, rights, designer data) · core/nureportengine.php NuReportEngine (nurunpdf.php port, TCPDF)
 core/nuapi.php       REST API router (routes with scopes; a route may return a string = file, self::$after = work after the answer)
                      · core/nuapiclient.php clients, SCOPES, tokens, rate limit · core/nuapiplayground.php

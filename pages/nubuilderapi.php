@@ -43,7 +43,7 @@ const NB_FORM_FIELDS = ['sfo_type', 'sfo_code', 'sfo_description', 'sfo_group', 
 	'sfo_browse_redirect_form_id', 'sfo_browse_rows_per_page', 'sfo_browse_sql', 'sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_style'];
 
 const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_all_zzzzsys_tab_id', 'sob_all_order', 'sob_all_top', 'sob_all_left',
-	'sob_all_width', 'sob_all_height', 'sob_all_cloneable', 'sob_all_align', 'sob_all_validate', 'sob_all_access', 'sob_all_style_type', 'sob_all_style',
+	'sob_all_width', 'sob_all_height', 'sob_all_cloneable', 'sob_all_align', 'sob_all_validate', 'sob_all_access', 'sob_all_access_condition', 'sob_all_style_type', 'sob_all_style',
 	'sob_calc_formula', 'sob_calc_format', 'sob_run_zzzzsys_form_id', 'sob_run_method', 'sob_run_type', 'sob_run_target', 'sob_run_id', 'sob_run_filter', 'sob_display_sql', 'sob_display_procedure', 'sob_select_multiple', 'sob_select_sql',
 	'sob_lookup_code', 'sob_lookup_description', 'sob_lookup_description_width', 'sob_lookup_zzzzsys_form_id', 'sob_lookup_javascript', 'sob_lookup_table',
 	'sob_subform_zzzzsys_form_id', 'sob_subform_foreign_key', 'sob_subform_add', 'sob_subform_delete', 'sob_subform_type', 'sob_subform_table',

@@ -268,6 +268,84 @@ final class NuCompat
 		return $res;
 	}
 
+	/**
+	 * nuBuilder 4.9 features of the compatibility report (0.8.382, ids C/M/N as there): where the application uses them, and since
+	 * which version nuBuilder Next supports them (null = not yet – see the Help). SINCE is kept up to date with each fix.
+	 */
+	public const SINCE = ['C1' => '0.8.382', 'C2' => '0.8.382', 'C3' => '0.8.382', 'C4' => '0.8.382', 'C5' => '0.8.382', 'C6' => '0.8.382',
+		'M1' => null, 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => null, 'M6' => null, 'M7' => null, 'M8' => null, 'M9' => null,
+		'M10' => null, 'N1' => null, 'I3' => null];
+
+	/** @return array<string, list<array{where: string, form: string, detail: string}>> finding id => places (only ids with places) */
+	public static function findings(bool $withSystem = false): array
+	{
+		$db = nu_db();
+		$sys = static fn(string $id) => !$withSystem && str_starts_with($id, 'nu');
+		$out = [];
+		$hit = static function (string $id, string $where, string $form, string $detail = '') use (&$out): void {
+			$out[$id][] = ['where' => $where, 'form' => $form, 'detail' => mb_substr(trim((string)preg_replace('/\s+/', ' ', $detail)), 0, 160)];
+		};
+		$forms = [];
+		foreach ($db->all('SELECT * FROM zzzzsys_form') as $f) $forms[(string)$f['zzzzsys_form_id']] = $f;
+		// browse lists: C1 table / alias prefix, C2 AS alias, C3 no primary key in the field list, C4 SELECT * over a join, C5 nu_filter_match
+		if ($db->tableExists('zzzzsys_browse')) {
+			foreach ($db->all('SELECT sbr_zzzzsys_form_id, sbr_display FROM zzzzsys_browse') as $b) {
+				$fid = (string)$b['sbr_zzzzsys_form_id'];
+				if ($sys($fid) || !isset($forms[$fid])) continue;
+				$d = (string)$b['sbr_display'];
+				$plain = (string)preg_replace("/'[^']*'|\"[^\"]*\"/", "''", $d);
+				$w = $forms[$fid]['sfo_code'] . ' · ' . t('compat_f_browse');
+				if (preg_match('/(?<![\w.])[A-Za-z_]\w*\.[A-Za-z_]/', $plain)) $hit('C1', $w, $fid, $d);
+				if (preg_match('/\sAS\s/i', $plain)) $hit('C2', $w, $fid, $d);
+			}
+		}
+		foreach ($forms as $fid => $f) {
+			if ($sys($fid)) continue;
+			$sql = trim((string)($f['sfo_browse_sql'] ?? ''));
+			if ($sql === '') continue;
+			$w = $f['sfo_code'] . ' · ' . t('compat_f_browse_sql');
+			if (stripos($sql, 'nu_filter_match') !== false) $hit('C5', $w, $fid, 'nu_filter_match');
+			$p = NuBrowse::splitSelect($sql);
+			if ($p === null) continue;
+			$pk = (string)($f['sfo_primary_key'] ?? '');
+			$star = (bool)preg_match('/(^|,)\s*([\w`]+\.)?\*\s*(,|$)/', $p['fields']);
+			if (!$star && $pk !== '' && stripos($p['fields'], $pk) === false) $hit('C3', $w, $fid, $p['fields']);
+			if ($star && preg_match('/\bJOIN\b/i', $p['from'])) $hit('C4', $w, $fid, $p['from']);
+		}
+		// objects: C6 access condition, M1 script in HTML, M4 select from a procedure, M5 file into the file system
+		if ($db->tableExists('zzzzsys_object')) {
+			$oc = $db->columns('zzzzsys_object');
+			$sel = ['zzzzsys_object_id', 'sob_all_id', 'sob_all_type', 'sob_all_zzzzsys_form_id', 'sob_all_access'];
+			foreach (['sob_all_access_condition', 'sob_html_code', 'sob_select_procedure', 'sob_input_type', 'sob_input_file_target'] as $c) if (isset($oc[$c])) $sel[] = $c;
+			foreach ($db->all('SELECT ' . implode(', ', $sel) . ' FROM zzzzsys_object') as $o) {
+				$fid = (string)$o['sob_all_zzzzsys_form_id'];
+				if ($sys($fid)) continue;
+				$w = ($forms[$fid]['sfo_code'] ?? $fid) . ' · ' . $o['sob_all_id'];
+				if ((string)$o['sob_all_access'] === '9') $hit('C6', $w, $fid, (string)($o['sob_all_access_condition'] ?? ''));
+				if ($o['sob_all_type'] === 'html' && stripos((string)($o['sob_html_code'] ?? ''), '<script') !== false) $hit('M1', $w, $fid);
+				if (trim((string)($o['sob_select_procedure'] ?? '')) !== '') $hit('M4', $w, $fid, (string)$o['sob_select_procedure']);
+				if (($o['sob_input_type'] ?? '') === 'file' && (string)($o['sob_input_file_target'] ?? '') === '1') $hit('M5', $w, $fid);
+			}
+		}
+		// JavaScript and PHP of the application
+		$js = ['M2' => '/\bnuAddBrowseTitleSelect\s*\(/', 'M3' => '/\bmultiSelect\s*:\s*true/', 'M7' => '/\bnuAfterSave\b/',
+			'M8' => '/\bnuFORM\s*\.\s*(getProperty|setProperty|subform|data|calc|scrollList|getTables|breadcrumbs|tableSchema)\b/', 'N1' => '/\bnuSERVERRESPONSE\b/'];
+		foreach (self::sources($withSystem) as $src) {
+			$code = self::stripComments($src['code']);
+			if ($src['lang'] === 'js') { foreach ($js as $id => $re) if (preg_match($re, $code, $m)) $hit($id, $src['where'], $src['form'], $m[0]); }
+			elseif (preg_match('/\b(nuRunReport|nuRunReportId|nuSavePDF|nuBuildTempTable)\s*\(/i', $code, $m)) $hit('M9', $src['where'], $src['form'], $m[1]);
+		}
+		// nuconfig.php: M6 own JavaScript / CSS files, M10 SSO
+		foreach (['nuConfigIncludeJS', 'nuConfigIncludeCSS'] as $v) if (!empty(nu_cfg($v))) $hit('M6', 'nuconfig.php · $' . $v, '', implode(', ', (array)nu_cfg($v)));
+		if (in_array(strtolower((string)nu_cfg('nuConfigLogonMode')), ['sso', 'both'], true)) $hit('M10', 'nuconfig.php · $nuConfigLogonMode', '', (string)nu_cfg('nuConfigLogonMode'));
+		// I3: MyISAM tables (no transactions)
+		if ($db->type === 'mysql') {
+			foreach ($db->all("SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND ENGINE = 'MyISAM'") as $r) $hit('I3', (string)$r['t'], '');
+		}
+		uksort($out, static fn($a, $b) => array_search($a, array_keys(self::SINCE), true) <=> array_search($b, array_keys(self::SINCE), true));
+		return $out;
+	}
+
 	/** Removes // and /* *\/ comments (roughly; strings containing // are rare in nu… calls). */
 	private static function stripComments(string $code): string
 	{

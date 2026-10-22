@@ -635,7 +635,8 @@
 				{key: 'sob_all_id', label: 'builder_obj_id', cls: 'col-sm-6', help: 'builder_obj_id_help'},
 				{key: 'sob_all_label', label: 'builder_obj_label'},
 				{key: 'sob_all_zzzzsys_tab_id', label: 'builder_obj_tab', kind: 'select', cls: 'col-sm-6', options: tabs},
-				{key: 'sob_all_access', label: 'builder_obj_access', kind: 'select', cls: 'col-sm-6', options: [['0', t('bf_access_0')], ['1', t('bf_access_1')], ['2', t('bf_access_2')], ['3', t('bf_access_3')], ['4', t('bf_access_4')]]},
+				{key: 'sob_all_access', label: 'builder_obj_access', kind: 'select', cls: 'col-sm-6', options: [['0', t('bf_access_0')], ['1', t('bf_access_1')], ['2', t('bf_access_2')], ['3', t('bf_access_3')], ['4', t('bf_access_4')], ['9', t('bf_access_9')]], change: true},
+				{key: 'sob_all_access_condition', label: 'builder_obj_access_cond', kind: 'code', rows: 2, help: 'builder_obj_access_cond_help', show: String(o.sob_all_access || '') === '9'},
 				{key: 'sob_all_validate', label: 'builder_obj_validate', kind: 'select', cls: 'col-sm-6', options: [['0', t('bf_validate_0')], ['1', t('bf_validate_1')], ['2', t('bf_validate_2')], ['3', t('bf_validate_3')]], types: ['input', 'select', 'textarea', 'lookup', 'calc']},
 				{key: 'sob_all_align', label: 'builder_obj_align', kind: 'select', cls: 'col-sm-6', options: [['left', '←'], ['center', '↔'], ['right', '→']]},
 				{key: 'sob_all_cloneable', label: 'builder_obj_cloneable', kind: 'switch', 'default': '1'}

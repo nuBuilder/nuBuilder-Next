@@ -350,3 +350,10 @@ input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-prima
 .nuChartMsg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: .5rem; text-align: center; font-size: .85rem;
 	color: var(--bs-secondary-color); border: 1px dashed var(--bs-border-color); border-radius: .4rem; }
 .nuChartMsg-error { color: var(--bs-danger-text-emphasis); border-color: var(--bs-danger-border-subtle); background: var(--bs-danger-bg-subtle); }
+
+/* nuBuilder 4.9 multi-value browse filter (nuSearchablePopup({multiSelect: true}), 0.8.382) */
+.nuBrowseFilterMulti { position: relative; display: block; margin-top: .25rem; font-weight: normal; text-transform: none; letter-spacing: normal; }
+.nuBrowseFilterMulti > summary { list-style: none; font-size: .8rem; padding: .1rem .5rem; }
+.nuBrowseFilterMulti > summary::-webkit-details-marker { display: none; }
+.nuBrowseFilterMenu { position: absolute; z-index: 1050; top: 100%; left: 0; min-width: 12rem; max-height: 18rem; overflow: auto; padding: .5rem .75rem;
+	background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); font-size: .85rem; text-align: start; }

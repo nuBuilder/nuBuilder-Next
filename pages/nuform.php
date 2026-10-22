@@ -212,7 +212,7 @@ $client = [
 		'not_supported' => t('form_not_supported'), 'saving' => t('form_saving'), 'all' => t('all'), 'close' => t('close'), 'help' => t('sc_help'), 'chart_no_data' => t('chart_no_data'), 'chart_load_failed' => t('chart_load_failed'), 'chart_no_type' => t('chart_no_type'),
 		'hash_name' => t('hash_name'), 'hash_value' => t('hash_value'), 'hash_source' => t('hash_source'), 'hash_filter' => t('hash_filter'), 'hash_locked' => t('hash_locked'),
 		'hash_src' => ['system' => t('hash_src_system'), 'user' => t('hash_src_user'), 'record' => t('hash_src_record'), 'property' => t('hash_src_property'), 'global' => t('hash_src_global')],
-		'file_too_large' => t('file_too_large'),
+		'file_too_large' => t('file_too_large'), 'empty' => t('form_filter_empty'),
 	],
 ];
 

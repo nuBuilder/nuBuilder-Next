@@ -84,6 +84,36 @@ nu_layout_start(t('compat_title'), 'home');
 		</div>
 	</div>
 <?php endforeach; ?>
+<?php $fnd = NuCompat::findings($withSystem); // nuBuilder 4.9 features of the compatibility report (0.8.382) ?>
+<div class="card shadow-sm mb-4" id="compat_findings">
+	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
+		<span class="fw-semibold me-auto"><i class="bi bi-list-check me-1"></i><?= h(t('compat_f_title')) ?><?= NuListView::infoTip(t('compat_f_tip')) ?></span>
+		<?php $open = count(array_filter(array_keys($fnd), static fn($id) => (NuCompat::SINCE[$id] ?? null) === null)); ?>
+		<span class="badge <?= $open ? 'text-bg-danger' : 'text-bg-success' ?>"><?= h(t('compat_f_open', $open)) ?></span>
+	</div>
+	<div class="table-responsive">
+		<table class="table table-sm align-middle mb-0 nu-table">
+			<thead><tr><th>ID</th><th><?= h(t('compat_f_feature')) ?></th><th><?= h(t('compat_status')) ?></th><th><?= h(t('compat_where')) ?></th></tr></thead>
+			<tbody>
+			<?php foreach ($fnd as $id => $places): $since = NuCompat::SINCE[$id] ?? null; ?>
+				<tr class="compat-<?= $since ? 'ok' : 'missing' ?>" data-finding="<?= h($id) ?>">
+					<td><code><?= h($id) ?></code></td>
+					<td class="small"><?= h(t('compat_f_' . strtolower($id))) ?></td>
+					<td><?= $since ? '<span class="badge text-bg-success">' . h(t('compat_f_since', $since)) . '</span>' : '<span class="badge text-bg-danger">' . h(t('compat_f_not_yet')) . '</span>' ?></td>
+					<td class="small">
+						<?php $links = [];
+						foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
+						echo implode(', ', array_slice($links, 0, 6)); ?>
+						<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($places) ?> <?= h(t('compat_places')) ?></summary>
+							<ul class="mb-0 ps-3"><?php foreach (array_slice($places, 0, 60) as $pl): ?><li><?= h($pl['where']) ?><?php if ($pl['detail'] !== ''): ?> – <code class="text-break"><?= h($pl['detail']) ?></code><?php endif; ?></li><?php endforeach; ?></ul></details>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			<?php if (!$fnd): ?><tr><td colspan="4" class="text-center text-success py-4"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_f_none')) ?></td></tr><?php endif; ?>
+			</tbody>
+		</table>
+	</div>
+</div>
 <?php $unq = NuCompat::unquotedHash($withSystem); // hash variables outside quotes (0.8.207) ?>
 <div class="card shadow-sm mb-4" id="compat_hash">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
