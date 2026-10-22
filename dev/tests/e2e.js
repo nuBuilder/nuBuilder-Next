@@ -290,6 +290,54 @@ T.home_list2 = async (s) => {                      // 0.8.363: tiles as a list i
 	if (before !== 'list2') await Promise.all([p.waitForNavigation(), p.evaluate(b => document.querySelector('[data-nu-size="' + b + '"]').click(), before)]);
 };
 
+T.home_profiles = async (s) => {                  // 0.8.385: Customise → Start from (profiles, Undo, Done) and Save as → Based on
+	const p = s.ga;
+	// the globeadmin's layout and layout choice are put back afterwards – later tests expect the tiles of his normal layout
+	const keepIds = sql("SELECT GROUP_CONCAT(zzzzsys_nunext_list_view_id) FROM zzzzsys_nunext_list_view WHERE list_key = 'home'");
+	const keepDefs = sql("SELECT HEX(GROUP_CONCAT(CONCAT(zzzzsys_nunext_list_view_id, CHAR(1), definition) SEPARATOR 0x02)) FROM zzzzsys_nunext_list_view WHERE list_key = 'home'");
+	const keepChoice = sql("SELECT HEX(setting_value) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'listview_ga'");
+	try {
+	const visible = () => p.locator('[data-nu-tile]').evaluateAll(a => a.filter(x => x.offsetParent !== null).map(x => x.getAttribute('data-nu-tile')).filter(k => !/^[cx]_/.test(k)));
+	await open(p, 'index.php?p=home&tiles=1');
+	await p.click('#nuHomeCustomize'); await p.waitForTimeout(400);
+	expect(await p.locator('#nuHomeReset').count() === 0, 'Reset still there');
+	await p.click('#nuHomeStartFrom'); await p.waitForTimeout(300);
+	expect(await p.locator('.nuHeStartItem').count() === 10, 'Start from: ' + await p.locator('.nuHeStartItem').count() + ' profiles');
+	const before = await p.inputValue('#nuHomeDisplay');
+	await p.click('.nuHeStartItem[data-preset="developer"]'); await p.waitForTimeout(400);
+	expect(await p.inputValue('#nuHomeDisplay') === 'tabs' && /3/.test(await p.locator('.nuHeNote').textContent()), 'Developer not loaded');
+	await p.click('#nuHomeUndo'); await p.waitForTimeout(300);
+	expect(await p.locator('.nuHeNote').count() === 0 && await p.inputValue('#nuHomeDisplay') === before, 'Undo did not go back');
+	await p.click('#nuHomeStartFrom'); await p.waitForTimeout(300);
+	await p.click('.nuHeStartItem[data-preset="minimal"]'); await p.waitForTimeout(300);
+	await p.click('#nuHomeSave'); await p.waitForLoadState('networkidle'); await p.waitForTimeout(600);
+	const shown = (await visible()).sort().join(',');
+	expect(shown === 'debug,forms,procedures,reports,settings,users', 'Minimal shows ' + shown);
+	// Save as → Based on "Users & security": a new layout, the current one stays
+	await p.evaluate(() => document.querySelector('[data-nu-layout-act="saveas"]').click());
+	await p.waitForSelector('#nuHlBase', { state: 'visible' });
+	await p.selectOption('#nuHlBase', 'security');
+	expect(await p.inputValue('#nuHlName') !== '' && await p.locator('.nuHlBaseInfo').textContent() !== '', 'Based on: no name / description');
+	await Promise.all([p.waitForNavigation(), p.click('.nuHlSave')]); await p.waitForLoadState('networkidle');
+	const sec = await visible();
+	expect(['users', 'access', 'permissions', 'sessions'].every(k => sec.includes(k)) && !sec.includes('forms'), 'Users & security shows ' + sec.join(','));
+	// an unknown profile is refused and stores nothing
+	const n = sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'home'");
+	const r = await p.evaluate(async () => { const D = JSON.parse(document.getElementById('nuHomeData').textContent);
+		return (await fetch(D.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf }, body: JSON.stringify({ action: 'layout_saveas', name: 'x', scope: 'user', preset: 'nope' }) })).json(); });
+	expect(!r.ok && sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'home'") === n, 'unknown profile stored: ' + JSON.stringify(r));
+	} finally {
+		const ids = keepIds && keepIds !== 'NULL' ? keepIds.split(',') : [];
+		sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'home'" + (ids.length ? " AND zzzzsys_nunext_list_view_id NOT IN ('" + ids.join("','") + "')" : ''));
+		if (keepDefs && keepDefs !== 'NULL') for (const row of Buffer.from(keepDefs, 'hex').toString('utf8').split('\x02')) {
+			const [id, def] = row.split('\x01');
+			sql("UPDATE zzzzsys_nunext_list_view SET definition = UNHEX('" + Buffer.from(def, 'utf8').toString('hex') + "') WHERE zzzzsys_nunext_list_view_id = '" + id + "'");
+		}
+		if (keepChoice && keepChoice !== 'NULL') sql("UPDATE zzzzsys_nunext_setting SET setting_value = UNHEX('" + keepChoice + "') WHERE zzzzsys_nunext_setting_id = 'listview_ga'");
+		else sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'listview_ga'");
+	}
+};
+
 // ------------------------------------------------------------------ admin roles, demo mode, login links, users, branding, dashboards (0.8.365)
 const csrfPost = (p, url, fields) => p.evaluate(async ([u, f]) => {
 	const fd = new FormData(); fd.append('_csrf', document.querySelector('input[name=_csrf]').value);

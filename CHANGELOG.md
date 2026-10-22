@@ -3,6 +3,17 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.385 – Start page profiles
+- Start page profiles: ten ready-made layouts – Standard, All tiles, Developer (three tabs), Minimal, Getting started, Users &
+  security, Operations, Reporting, Integration & mail, Blank. Tiles a profile does not show are hidden (search and Ctrl+K still find
+  them); tiles this installation does not have are left out.
+- Customise → "Start from" ▾ (replaces Reset): a profile replaces the page being edited; a blue strip says what was loaded and has
+  Undo; nothing is saved until Done, Cancel goes back to the saved layout. "Keep my own tiles" (on by default) moves own tiles into a
+  group "My tiles"; Standard with the switch off is what Reset did.
+- ▾ → Save as new layout…: new first field "Based on" – the current layout (a copy, as before) or a profile, with its description and
+  numbers and "Take my own tiles along"; the name follows the profile until one is typed. The current layout stays unchanged.
+- The Customise hint names "Start from"; docs and tutorial updated. e2e test home_profiles.
+
 ## 0.8.384 – Installer: nubuilder4.sql of any 4.x version
 - Installer: new choice "nubuilder4.sql of a nuBuilder 4.x version" (MySQL / MariaDB) – upload the file (.sql, .sql.gz or .zip)
   or copy it into the folder _install/ by FTP / SFTP and pick it there.

@@ -11,6 +11,7 @@ return [
 	'home_fav_none' => 'Noch keine Favoriten – Kacheln unter «Anpassen» mit ☆ markieren.',
 	'pal_keys' => '↑ ↓ wählen · Enter öffnen · Ctrl+Enter neuer Tab · Esc schliessen',
 	'home_delete_tile_confirm' => 'Kachel «%s» löschen?',
+	'home_edit_hint' => 'Kacheln und Gruppen per Ziehen anordnen – auf Touchscreens eine Kachel kurz halten, dann ziehen. Eine Kachel über einen Tab ziehen öffnet ihn. Gruppen und Tabs direkt an Ort und Stelle umbenennen. «Vorlage» lädt ein fertiges Profil. «Fertig» speichert dieses Layout.',
 	'home_all_hidden' => 'Alle Kacheln sind ausgeblendet – über «Anpassen» wieder einblenden.',
 	'user_created' => 'Benutzer «%s» wurde erstellt.',
 	'user_deleted' => 'Benutzer «%s» wurde gelöscht.',
@@ -166,4 +167,9 @@ Oder von Hand aktualisieren: die Dateien aus nunext.zip über die alten hochlade
 	'secchk_weak_admin_flash' => 'Das Globeadmin-Passwort ist schwach («nu» oder kürzer als 8 Zeichen). In nuconfig.php ändern – siehe Admin-Werkzeuge → Sicherheitsprüfung.',
 	'lv_my_default_set' => '«%s» ist jetzt die eigene Standardansicht.',
 	'lv_list_default_set' => '«%s» ist jetzt für alle die Standardansicht dieser Liste.',
+	'home_pf_menu_head' => 'Mit einem Profil beginnen – gespeichert wird erst mit «Fertig»',
+	'home_pf_loaded' => '«%s» geladen: %s.',
+	'home_pf_loaded_own' => 'Die eigenen Kacheln sind in «Meine Kacheln».',
+	'home_pf_not_saved' => 'Noch nicht gespeichert – «Fertig» übernimmt es, «Abbrechen» kehrt zum gespeicherten Layout zurück.',
+	'home_layout_based_current' => 'Das aktuelle Layout – «%s»',
 ];

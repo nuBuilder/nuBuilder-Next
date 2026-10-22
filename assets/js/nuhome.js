@@ -5,6 +5,11 @@
 	try { D = JSON.parse(document.getElementById('nuHomeData').textContent); } catch (e) { return; }
 	var T = D.t || {};
 	function t(k) { return T[k] || k; }
+	/** t() with arguments: %s in order, or %1$s %2$s … (as PHP's vsprintf). */
+	function tf(k) {
+		var a = Array.prototype.slice.call(arguments, 1), i = 0;
+		return t(k).replace(/%(?:(\d+)\$)?s/g, function (m, n) { var v = n ? a[n - 1] : a[i++]; return v === undefined ? '' : String(v); });
+	}
 	function $(s, r) { return (r || document).querySelector(s); }
 	function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
 	function el(tag, attrs, kids) {
@@ -251,6 +256,10 @@
 	var dirty = false;
 	var activeTab = '';                  // tab shown while editing (display tabs)
 	var editFav = false;                 // Customise: show only the favourite tiles (0.8.354) – a view filter, not saved
+	var baseL = null;                    // the saved layout when Customise opened (own tiles for "Start from", 0.8.385)
+	var prevEdit = null;                 // before the last profile was loaded: {L, dirty, activeTab} – Undo
+	var pfNote = null;                   // strip under the bar after loading a profile: {icon, text}
+	var keepOwn = true;                  // Start from: take own tiles along
 
 	function clone(o) { return JSON.parse(JSON.stringify(o)); }
 	function info(key) {
@@ -280,6 +289,7 @@
 		L.fav = Array.isArray(L.fav) ? L.fav : [];
 		L.tabs = L.tabs || [];
 		dirty = false;
+		baseL = clone(L); prevEdit = null; pfNote = null; keepOwn = true;
 		var shown = $('.nuHomeTabs .nav-link.active');          // keep the tab that was open in the view
 		var id = shown ? shown.id.replace('nuHomeTab_', '') : '';
 		activeTab = L.tabs.some(function (tb) { return tb.id === id; }) ? id : (L.tabs[0] ? L.tabs[0].id : '');
@@ -301,6 +311,7 @@
 		if (searchRow) searchRow.hidden = false;
 		document.body.classList.remove('nuHomeEditing');
 		dirty = false;
+		prevEdit = null; pfNote = null;
 		H.emit('customize', false);
 	}
 	if (btn) btn.addEventListener('click', open);
@@ -439,8 +450,14 @@
 			return '<div class="form-check form-check-inline"><input class="form-check-input nuHlRole" type="checkbox" id="nuHlR' + r.id + '" value="' + r.id + '"' + (roles.indexOf(r.id) !== -1 ? ' checked' : '') + '>'
 				+ '<label class="form-check-label" for="nuHlR' + r.id + '"></label></div>';
 		}).join('');
-		wrap.innerHTML = '<div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h2 class="modal-title h5"></h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
-			+ '<div class="modal-body"><label class="form-label" for="nuHlName"></label><input type="text" class="form-control" id="nuHlName" maxlength="100">'
+		// Save as → Based on (0.8.385): the current layout (as before) or a profile, own tiles optionally along
+		var P = D.presets || {}, own = isNew ? ownNames(D.layout) : '';
+		var baseHtml = isNew ? '<div class="mb-3 nuHlBaseBox"><label class="form-label" for="nuHlBase"></label><select class="form-select" id="nuHlBase"></select>'
+			+ '<div class="small mt-2 nuHlBaseInfo"></div>'
+			+ (own ? '<div class="form-check form-switch mt-2 nuHlKeepRow"><input class="form-check-input" type="checkbox" role="switch" id="nuHlKeep" checked><label class="form-check-label" for="nuHlKeep"></label></div>' : '')
+			+ '</div>' : '';
+		wrap.innerHTML = '<div class="modal-dialog' + (isNew ? ' modal-lg' : '') + '"><div class="modal-content"><div class="modal-header"><h2 class="modal-title h5"></h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
+			+ '<div class="modal-body">' + baseHtml + '<label class="form-label" for="nuHlName"></label><input type="text" class="form-control" id="nuHlName" maxlength="100">'
 			+ (SV.manage ? '<div class="mt-3"><div class="form-label nuHlScopeLbl"></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="nuHlScope" id="nuHlSu" value="user"><label class="form-check-label" for="nuHlSu"></label></div>'
 				+ '<div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="nuHlScope" id="nuHlSs" value="shared"><label class="form-check-label" for="nuHlSs"></label></div></div>'
 				+ '<div class="mt-3 nuHlRoles"><div class="form-label nuHlRolesLbl mb-0"></div><div class="small text-body-secondary mb-1 nuHlRolesAll"></div>' + rolesHtml + '</div>' : '')
@@ -452,6 +469,29 @@
 		q('#nuHlName').value = isNew ? t('home_layout_copy').replace('%s', cur.name || '') : (cur.name || '');
 		q('.modal-footer .btn-outline-secondary').textContent = t('cancel');
 		q('.nuHlSave').textContent = t('save');
+		if (isNew) {
+			var base = q('#nuHlBase'), baseInfo = q('.nuHlBaseInfo'), keepRow = q('.nuHlKeepRow'), nameEl = q('#nuHlName'), touched = false;
+			q('label[for="nuHlBase"]').textContent = t('home_layout_based_on');
+			base.appendChild(el('option', {value: '', text: tf('home_layout_based_current', cur.name || '')}));
+			var og = el('optgroup', {label: t('home_layout_based_profiles')});
+			Object.keys(P).forEach(function (id) { og.appendChild(el('option', {value: id, text: P[id].label})); });
+			base.appendChild(og);
+			if (keepRow) q('label[for="nuHlKeep"]').textContent = tf('home_layout_keep_own', own);
+			nameEl.addEventListener('input', function () { touched = true; });
+			var syncBase = function () {
+				var p = P[base.value];
+				baseInfo.textContent = '';
+				baseInfo.appendChild(p
+					? el('div', {'class': 'd-flex gap-2 align-items-start'}, [icon(p.icon + ' text-primary mt-1'), el('div', {}, [
+						el('div', {'class': 'fw-semibold', text: p.label}), el('div', {'class': 'text-body-secondary', text: p.hint}),
+						el('div', {'class': 'text-body-secondary', text: countsText(p.counts)})])])
+					: el('span', {'class': 'text-body-secondary', text: t('home_layout_based_copy')}));
+				if (keepRow) keepRow.hidden = !p;
+				if (!touched) nameEl.value = p ? p.label : t('home_layout_copy').replace('%s', cur.name || '');
+			};
+			base.addEventListener('change', syncBase);
+			syncBase();
+		}
 		if (SV.manage) {
 			q('.nuHlScopeLbl').textContent = t('home_layout_scope');
 			q('label[for="nuHlSu"]').textContent = t('home_layout_scope_user');
@@ -468,11 +508,12 @@
 		wrap.addEventListener('hidden.bs.modal', function () { wrap.remove(); });
 		var m = nuBs.modal(wrap);
 		m.show();
-		wrap.addEventListener('shown.bs.modal', function () { q('#nuHlName').focus(); });
+		wrap.addEventListener('shown.bs.modal', function () { q(isNew ? '#nuHlBase' : '#nuHlName').focus(); });
 		q('.nuHlSave').addEventListener('click', function () {
 			var sc = wrap.querySelector('input[name="nuHlScope"]:checked');
 			var body = {action: isNew ? 'layout_saveas' : 'layout_meta', name: q('#nuHlName').value, scope: sc ? sc.value : (isNew ? 'user' : cur.scope),
-				roles: $$('.nuHlRole', wrap).filter(function (c) { return c.checked; }).map(function (c) { return c.value; })};
+				roles: $$('.nuHlRole', wrap).filter(function (c) { return c.checked; }).map(function (c) { return c.value; }),
+				preset: isNew ? q('#nuHlBase').value : '', keep_own: isNew && q('#nuHlKeep') ? q('#nuHlKeep').checked : false};
 			post(body).then(function (j) {
 				if (j.ok) { window.location.href = D.url; return; }
 				var a = q('.nuHlErr'); a.textContent = j.message || t('home_saved_err'); a.classList.remove('d-none');
@@ -664,12 +705,12 @@
 				el('span', {'class': 'flex-grow-1'}),
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddGroup', title: t('home_add_group'), 'aria-label': t('home_add_group'), onclick: addGroup}, [icon('bi-collection me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_group')})]),
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddTile', title: t('home_add_tile'), 'aria-label': t('home_add_tile'), onclick: function () { tileDialog(null); }}, [icon('bi-plus-square me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_tile')})]),
-				// back to the default groups and tiles (deletes the own tiles, asks first) – in the bar since 0.8.319, before at the page end
-				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger', id: 'nuHomeReset', title: t('home_reset_confirm'), 'aria-label': t('home_reset'), onclick: reset}, [icon('bi-arrow-counterclockwise me-xxl-1'), el('span', {'class': 'd-none d-xxl-inline', text: t('home_reset')})]),
+				startFromMenu(),                                                 // Start from ▾ – profiles (0.8.385, replaces Reset)
 				el('span', {'class': 'd-inline-flex gap-2 ms-auto'}, [                   // Cancel and Done stay together
 					el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeCancel', onclick: cancel}, [t('cancel')]),
 					el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeSave', 'data-nu-save': true, onclick: save}, [icon('bi-check-lg me-1'), t('home_done')])])
-			])
+			]),
+			pfNote ? pfNoteEl() : null
 		]));
 
 		if (L.display === 'tabs') {
@@ -907,9 +948,90 @@
 		if (dirty && !window.confirm(t('home_discard_confirm'))) return;
 		close();
 	}
-	function reset() {
-		if (!window.confirm(t('home_reset_confirm'))) return;
-		post({action: 'reset'}).then(function () { dirty = false; window.location.href = D.url; });
+	// ---------------------------------------------------------------- profiles: Start from (0.8.385, in place of Reset)
+	/** A profile of D.presets as an edit copy – own tiles of "from" along with keep (same rules as NuHome::presetLayout()). */
+	function presetLayout(id, from, keep) {
+		var l = clone(D.presets[id].layout);
+		if (Array.isArray(l.custom)) l.custom = {};
+		l.fav = Array.isArray(l.fav) ? l.fav : [];
+		l.tabs = l.tabs || [];
+		var custom = keep && from && from.custom && !Array.isArray(from.custom) ? from.custom : {};
+		var own = Object.keys(custom);
+		if (own.length) {
+			l.custom = clone(custom);
+			var box = l.groups.filter(function (g) { return g.id === 'g_own'; })[0];
+			if (!box) { box = {id: 'g_own', title: t('home_pf_g_own'), tab: l.tabs[0] ? l.tabs[0].id : '', tiles: []}; l.groups.unshift(box); }
+			own.forEach(function (k) { if ((from.hidden || []).indexOf(k) >= 0) l.hidden.push(k); else box.tiles.push(k); });
+			(from.fav || []).forEach(function (k) { if (own.indexOf(k) >= 0 && l.fav.indexOf(k) < 0) l.fav.push(k); });
+		}
+		return l;
+	}
+	/** Own tiles to take along: those of the edit copy, else those of the saved layout (a profile without them was loaded before). */
+	function ownSource() { return Object.keys(L.custom || {}).length ? L : baseL; }
+	function ownNames(l) {
+		var c = l && l.custom && !Array.isArray(l.custom) ? l.custom : {}, n = Object.keys(c).map(function (k) { return c[k].label; });
+		return n.length > 3 ? n.slice(0, 3).join(', ') + ', …' : n.join(', ');
+	}
+	/** Numbers of the edit copy for the strip (tiles that can be drawn). */
+	function layoutCounts(l) {
+		var groups = l.groups.filter(function (g) { return g.tiles.some(function (k) { return !!info(k); }); });
+		var tiles = 0;
+		groups.forEach(function (g) { g.tiles.forEach(function (k) { if (info(k)) tiles++; }); });
+		var tabs = l.display !== 'tabs' ? 0 : (l.tabs.length ? l.tabs.filter(function (tb) { return groups.some(function (g) { return g.tab === tb.id; }); }).length : groups.length);
+		return {tabs: tabs, groups: groups.length, tiles: tiles, hidden: l.hidden.length};
+	}
+	function countsText(c) { return c.tabs > 1 ? tf('home_pf_counts_tabs', c.tabs, c.groups, c.tiles, c.hidden) : tf('home_pf_counts', c.groups, c.tiles, c.hidden); }
+	/** Customise → Start from ▾: the profiles; a click replaces the edit copy – Undo in the strip, Done saves. */
+	function startFromMenu() {
+		var names = ownNames(ownSource());
+		var toggle = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary dropdown-toggle', id: 'nuHomeStartFrom', 'data-bs-toggle': 'dropdown',
+			'data-bs-auto-close': 'outside', 'aria-expanded': 'false', title: t('home_start_from_tip')},
+			[icon('bi-layers me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_start_from')})]);
+		var items = [el('li', {}, [el('h6', {'class': 'dropdown-header', text: t('home_pf_menu_head')})])];
+		Object.keys(D.presets || {}).forEach(function (id) {
+			var p = D.presets[id];
+			items.push(el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item nuHeStartItem', 'data-preset': id, onclick: function () {
+				var dd = nuBs.dropdown(toggle);
+				if (dd) dd.hide();
+				applyPreset(id);
+			}}, [
+				el('span', {'class': 'nuHeStartIcon'}, [icon(p.icon)]),
+				el('span', {'class': 'min-w-0 flex-grow-1'}, [el('span', {'class': 'd-block', text: p.label}), el('span', {'class': 'd-block small text-body-secondary', text: p.hint})]),
+				el('span', {'class': 'small text-body-secondary text-nowrap ms-2', text: tf('home_pf_n_tiles', p.counts.tiles)})])]));
+		});
+		if (names) {
+			var cb = el('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: 'nuHomeKeepOwn', checked: keepOwn ? 'checked' : null});
+			cb.addEventListener('change', function () { keepOwn = cb.checked; });
+			items.push(el('li', {}, [el('hr', {'class': 'dropdown-divider'})]));
+			items.push(el('li', {'class': 'px-3 py-1'}, [el('div', {'class': 'form-check form-switch mb-0'}, [cb,
+				el('label', {'class': 'form-check-label small', 'for': 'nuHomeKeepOwn', text: tf('home_pf_keep_own', names)})])]));
+		}
+		return el('div', {'class': 'dropdown'}, [toggle, el('ul', {'class': 'dropdown-menu dropdown-menu-end shadow nuHeStartMenu'}, items)]);
+	}
+	function applyPreset(id) {
+		var p = D.presets[id];
+		if (!p) return;
+		prevEdit = {L: clone(L), dirty: dirty, activeTab: activeTab};
+		L = presetLayout(id, ownSource(), keepOwn);
+		activeTab = L.tabs[0] ? L.tabs[0].id : '';
+		editFav = false;                                         // the favourites filter could hide everything
+		changed();
+		pfNote = {icon: p.icon, text: tf('home_pf_loaded', p.label, countsText(layoutCounts(L)))
+			+ (Object.keys(L.custom).length ? ' ' + t('home_pf_loaded_own') : '') + ' ' + t('home_pf_not_saved')};
+		render();
+		window.scrollTo(0, 0);
+	}
+	function undoPreset() {
+		if (!prevEdit) return;
+		L = prevEdit.L; dirty = prevEdit.dirty; activeTab = prevEdit.activeTab;
+		prevEdit = null; pfNote = null;
+		render();
+	}
+	function pfNoteEl() {
+		return el('div', {'class': 'alert alert-info d-flex align-items-start gap-2 py-2 px-3 small mt-2 mb-0 nuHeNote', role: 'status'}, [
+			icon(pfNote.icon + ' mt-1'), el('div', {'class': 'flex-grow-1', text: pfNote.text}),
+			prevEdit ? el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary py-0 text-nowrap', id: 'nuHomeUndo', onclick: undoPreset}, [icon('bi-arrow-90deg-left me-1'), t('home_pf_undo')]) : null,
+			el('button', {type: 'button', 'class': 'btn-close btn-sm ms-1', 'aria-label': t('close'), onclick: function () { pfNote = null; render(); }})]);
 	}
 
 	// ---------------------------------------------------------------- own tile dialog

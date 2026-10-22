@@ -31,7 +31,7 @@ if ($admin) {
 			$roles = is_array($in['roles'] ?? null) ? $in['roles'] : [];
 			$err = match ($act) {
 				'layout_select' => NuHome::select((string)($in['id'] ?? '')) ? '' : t('err_not_found'),
-				'layout_saveas' => NuHome::saveAs((string)($in['name'] ?? ''), (string)($in['scope'] ?? 'user'), $roles),
+				'layout_saveas' => NuHome::saveAs((string)($in['name'] ?? ''), (string)($in['scope'] ?? 'user'), $roles, (string)($in['preset'] ?? ''), !empty($in['keep_own'])),
 				'layout_meta' => NuHome::meta((string)($in['name'] ?? ''), (string)($in['scope'] ?? 'user'), $roles),
 				'layout_delete' => NuHome::deleteCurrent(),
 				'layout_default' => NuHome::makeDefault(),
@@ -44,10 +44,6 @@ if ($admin) {
 			exit(json_encode(['ok' => true]));
 		}
 		if (!$canLayout) { http_response_code(403); exit(json_encode(['ok' => false, 'message' => t('err_forbidden')])); }
-		if (($in['action'] ?? '') === 'reset') {
-			NuHome::reset();
-			exit(json_encode(['ok' => true]));
-		}
 		if (($in['action'] ?? '') === 'pin') {                // pin in a tile's ▾ menu: that page as a tile of its own (0.8.321)
 			$p = NuHome::togglePin((string)($in['key'] ?? ''), (string)$u['login']);
 			exit(json_encode($p === null ? ['ok' => false] : ['ok' => true, 'pinned' => $p]));
@@ -381,16 +377,16 @@ if ($admin) {
 	$data = [
 		'url' => nu_url('home', ['tiles' => '1']), 'csrf' => nu_csrf_token(), 'layout' => $layout, 'hookData' => (object)NuHomeHook::$data, 'ga' => (bool)$u['globeadmin'],
 		'saved' => ['current' => ['id' => $hlCur['id'], 'name' => $hlCur['name'], 'scope' => $hlCur['scope'], 'roles' => $hlCur['roles']], 'manage' => $hlManage,
-			'roles' => $hlManage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'default' => NuHome::defaultLayout(), 'catalog' => $cat,
+			'roles' => $hlManage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'presets' => NuHome::presets(), 'catalog' => $cat,
 		'forms' => $formList, 'pages' => NuHome::PAGES, 'procedures' => $procs, 'icons' => NuHome::ICONS, 'procUrl' => nu_url('procedures', ['id' => '__ID__']),
 		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_size_list', 'home_size_listwide', 'home_size_list2',
-			'home_add_group', 'home_add_tile', 'home_reset', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned', 'home_unpinned', 'home_reset_confirm', 'home_hidden', 'home_hidden_hint', 'home_group_title', 'home_group_new', 'home_group_untitled',
+			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned', 'home_unpinned', 'home_hidden', 'home_hidden_hint', 'home_group_title', 'home_group_new', 'home_group_untitled',
 			'home_group_delete', 'home_move_up', 'home_move_down', 'home_move_left', 'home_move_right', 'home_hide', 'home_show', 'home_edit_tile', 'home_delete_tile',
 			'home_tile_new', 'home_tile_label', 'home_tile_hint', 'home_tile_icon', 'home_tile_color', 'home_tile_no_color', 'home_tile_kind', 'home_kind_form', 'home_kind_page',
 			'home_kind_procedure', 'home_kind_url', 'home_tile_form', 'home_tile_record', 'home_tile_record_hint', 'home_tile_page', 'home_tile_procedure', 'home_tile_run',
 			'home_run_window', 'home_run_hidden', 'home_tile_url', 'home_tile_url_hint', 'home_tile_newtab', 'home_drop_here', 'home_edit_hint', 'home_saved_err',
 			'home_proc_done', 'home_proc_failed', 'home_tabs', 'home_add_tab', 'home_tab_new', 'home_tab_title', 'home_tab_up', 'home_tab_down',
-			'home_tab_delete', 'home_tab_delete_confirm', 'home_tabs_hint', 'home_layout_saveas', 'home_layout_meta', 'home_layout_name', 'home_layout_scope', 'home_layout_scope_user',
+			'home_tab_delete', 'home_tab_delete_confirm', 'home_tabs_hint', 'home_layout_saveas', 'home_start_from', 'home_start_from_tip', 'home_pf_menu_head', 'home_pf_n_tiles', 'home_pf_keep_own', 'home_pf_loaded', 'home_pf_loaded_own', 'home_pf_not_saved', 'home_pf_counts', 'home_pf_counts_tabs', 'home_pf_undo', 'home_pf_g_own', 'home_layout_based_on', 'home_layout_based_current', 'home_layout_based_profiles', 'home_layout_based_copy', 'home_layout_keep_own', 'home_layout_meta', 'home_layout_name', 'home_layout_scope', 'home_layout_scope_user',
 			'home_layout_scope_shared', 'home_layout_roles', 'home_layout_roles_all', 'home_layout_delete_confirm', 'home_layout_copy', 'home_group_tab', 'home_running', 'home_done', 'home_editing', 'home_discard_confirm', 'home_drag', 'home_delete_tile_confirm', 'home_group_delete_confirm', 'save', 'cancel', 'ok', 'delete', 'close'], array_map('t', $k)),
 	];
 	$foot = '<script type="application/json" id="nuHomeData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>'

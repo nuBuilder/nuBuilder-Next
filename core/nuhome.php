@@ -28,6 +28,50 @@ final class NuHome
 		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'appcloner', 'sample']],
 		'g_adm_int'    => ['home_group_integration', ['apiclients', 'prompts', 'compat']],
 	];
+	/**
+	 * Start page profiles (0.8.385): ready-made layouts for Customise → "Start from" and Save as new layout → "Based on".
+	 * standard / all are built in presetLayout(); the others: display, size, tabs [id, title key], groups [id, title key ('' = none),
+	 * tab id ('' = none), tile keys], favourites. Tiles a profile does not place are hidden (presetLayout()). Label and description:
+	 * home_pf_<id>, home_pf_<id>_hint.
+	 */
+	public const PRESETS = [
+		'standard'    => ['icon' => 'bi-house'],
+		'all'         => ['icon' => 'bi-grid-3x3-gap'],
+		'developer'   => ['icon' => 'bi-code-slash', 'display' => 'tabs', 'size' => 'compact',
+			'tabs' => [['t_build', 'home_pf_t_build'], ['t_debug', 'home_pf_t_debug'], ['t_int', 'home_group_integration']],
+			'groups' => [
+				['g_forms', 'nav_forms', 't_build', ['forms', 's_form_new', 's_form_clone', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']],
+				['g_code', 'home_pf_g_code', 't_build', ['procedures', 's_proc_new', 'reports', 's_report_new', 's_sqlbuilder', 'prompts']],
+				// the pages Debug and Log – not the tile "Log" (it opens Debug; next to the page Log there would be two tiles called "Log")
+				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
+				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'appcloner', 'sample']],
+				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest']],
+				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'compat', 's_mail_test']],
+			],
+			'fav' => ['forms', 'procedures', 's_debug', 'pma']],
+		'minimal'     => ['icon' => 'bi-dash-square', 'display' => 'groups', 'size' => 'list',
+			'groups' => [['g_main', '', '', ['forms', 'procedures', 'reports', 'users', 'debug', 'settings']]]],
+		'start'       => ['icon' => 'bi-mortarboard', 'display' => 'groups', 'size' => 'large',
+			'groups' => [['g_learn', 'home_pf_g_learn', '', ['tutorial', 'setupwizard', 'sample']],
+				['g_setup', 'home_pf_g_setup', '', ['settings', 'branding', 'securitycheck']],
+				['g_build', 'home_pf_t_build', '', ['users', 'forms']]]],
+		'security'    => ['icon' => 'bi-shield-lock', 'display' => 'groups', 'size' => 'large',
+			'groups' => [['g_people', 'home_group_users', '', ['users', 's_user_new', 'access', 'permissions', 'adminroles']],
+				['g_watch', 'home_pf_g_monitoring', '', ['sessions', 's_audit', 's_log', 'notifications', 'securitycheck']]]],
+		'operations'  => ['icon' => 'bi-activity', 'display' => 'groups', 'size' => 'compact',
+			'groups' => [['g_health', 'home_pf_g_health', '', ['vendor', 'securitycheck', 'update', 's_mail_test']],
+				['g_config', 'home_pf_g_config', '', ['settings', 'configfile', 'branding']],
+				['g_tools', 'home_pf_g_tools', '', ['pma', 'tfm', 's_log', 'sessions', 's_mail_log']]]],
+		'reporting'   => ['icon' => 'bi-bar-chart', 'display' => 'groups', 'size' => 'large',
+			'groups' => [['g_reports', 'rpt_title_list', '', ['reports', 's_report_new', 's_sqlbuilder', 's_sqlbuilder_new']],
+				['g_dash', 'dash_title', '', ['dashboards', 's_dash_new']],
+				['g_rdata', 'home_group_data', '', ['pma', 'import']]]],
+		'integration' => ['icon' => 'bi-plug', 'display' => 'groups', 'size' => 'compact',
+			'groups' => [['g_api', 'home_pf_g_api', '', ['apiclients', 's_api_new', 's_api_playground', 'compat']],
+				['g_mail', 'nav_email', '', ['email', 's_mail_settings', 's_mail_templates', 's_mail_test', 's_mail_log']],
+				['g_msg', 'home_pf_g_messages', '', ['notifications', 'prompts']]]],
+		'blank'       => ['icon' => 'bi-square', 'display' => 'groups', 'size' => 'large', 'groups' => [['g_own', 'home_pf_g_own', '', []]]],
+	];
 	/** Version of the stored layout (2 since 0.8.316 – upgrade baseline 0.8.321: no conversion of older layouts). */
 	public const VERSION = 2;
 	/** Icons offered in the tile editor (any bi-… icon may be typed). */
@@ -238,6 +282,85 @@ final class NuHome
 		]];
 		foreach (self::ADMIN_GROUPS as $id => [$title, $tiles]) $l['groups'][] = ['id' => $id, 'title' => t($title), 'tab' => 't_admin', 'tiles' => $tiles];
 		return $l;
+	}
+
+	/**
+	 * A profile as a layout, cleaned like a stored one (0.8.385); null = unknown id. Only tiles this installation offers; every
+	 * built-in tile the profile does not place goes to "hidden" – otherwise layout() would add it to the last group again.
+	 * $keepOwn: the own tiles of $from come along – in a group "My tiles" on top (own tiles hidden there stay hidden, favourites stay).
+	 * Without: no own tiles (as Reset did). Mirrored in assets/js/nuhome.js (presetLayout) for the own tiles – keep both in step.
+	 */
+	public static function presetLayout(string $id, ?array $from = null, bool $keepOwn = false): ?array
+	{
+		$p = self::PRESETS[$id] ?? null;
+		if ($p === null) return null;
+		static $cat = null;
+		$cat ??= self::catalog();
+		$sub = self::subTiles();
+		$exists = static fn($k) => isset($cat[$k]) || isset($sub[$k]);
+		if ($id === 'standard' || $id === 'all') {
+			$l = self::defaultLayout();
+			if ($id === 'all') $l['size'] = 'list2';
+			foreach ($l['groups'] as &$g) {
+				$tiles = [];
+				foreach ($g['tiles'] as $k) {
+					$tiles[] = $k;
+					if ($k === 'email') $tiles[] = 'notifications';
+					if ($id !== 'all') continue;
+					// every page of the tile's ▾ / + – not import / sessions (tiles of their own) and not s_debug (the tile itself opens Debug)
+					foreach ($sub as $sk => $s) if ($s[3] === $k && !isset($cat[$sk]) && $sk !== 's_debug') $tiles[] = $sk;
+				}
+				$g['tiles'] = $tiles;
+			}
+			unset($g);
+		} else {
+			$l = ['v' => self::VERSION, 'display' => $p['display'], 'size' => $p['size'], 'hidden' => [], 'fav' => $p['fav'] ?? [], 'custom' => [],
+				'tabs' => array_map(static fn($t) => ['id' => $t[0], 'title' => t($t[1])], $p['tabs'] ?? []),
+				'groups' => array_map(static fn($g) => ['id' => $g[0], 'title' => $g[1] === '' ? '' : t($g[1]), 'tab' => $g[2], 'tiles' => $g[3]], $p['groups'])];
+		}
+		foreach ($l['groups'] as &$g) $g['tiles'] = array_values(array_filter($g['tiles'], $exists));
+		unset($g);
+		if ($id !== 'standard' && $id !== 'all') $l['hidden'] = array_values(array_diff(array_keys($cat), self::placed($l)));
+		// own tiles
+		$l['custom'] = [];
+		$custom = $keepOwn && $from ? (array)($from['custom'] ?? []) : [];
+		if ($custom) {
+			$l['custom'] = $custom;
+			$gi = array_search('g_own', array_column($l['groups'], 'id'), true);
+			if ($gi === false) {
+				array_unshift($l['groups'], ['id' => 'g_own', 'title' => t('home_pf_g_own'), 'tab' => $l['tabs'][0]['id'] ?? '', 'tiles' => []]);
+				$gi = 0;
+			}
+			$hiddenBefore = (array)($from['hidden'] ?? []);
+			foreach (array_keys($custom) as $k) {
+				if (in_array($k, $hiddenBefore, true)) $l['hidden'][] = $k;
+				else $l['groups'][$gi]['tiles'][] = $k;
+			}
+			foreach ((array)($from['fav'] ?? []) as $k) if (isset($custom[$k]) && !in_array($k, $l['fav'], true)) $l['fav'][] = $k;
+		}
+		$l['groups'] = array_values(array_filter($l['groups'], static fn($g) => $g['tiles'] || ($g['id'] === 'g_own' && $id === 'blank')));
+		return self::clean($l, false)[0];
+	}
+
+	/**
+	 * The profiles for the page (0.8.385): id => icon, label, hint, layout (without own tiles – the JS adds them), counts of what the
+	 * signed-in user sees (tiles his admin role does not allow are not counted).
+	 */
+	public static function presets(): array
+	{
+		$out = [];
+		foreach (array_keys(self::PRESETS) as $id) {
+			$l = (array)self::presetLayout($id);
+			$tiles = 0; $groups = 0; $tabs = [];
+			foreach ($l['groups'] as $g) {
+				$n = count(array_filter($g['tiles'], static fn($k) => self::visible((string)$k, $l)));
+				if (!$n) continue;
+				$tiles += $n; $groups++; $tabs[$g['tab']] = true;
+			}
+			$out[$id] = ['icon' => self::PRESETS[$id]['icon'], 'label' => t('home_pf_' . $id), 'hint' => t('home_pf_' . $id . '_hint'), 'layout' => $l,
+				'counts' => ['tabs' => $l['display'] !== 'tabs' ? 0 : ($l['tabs'] ? count($tabs) : $groups), 'groups' => $groups, 'tiles' => $tiles, 'hidden' => count($l['hidden'])]];
+		}
+		return $out;
 	}
 
 	// ------------------------------------------------------------------ stored layout
@@ -504,17 +627,6 @@ final class NuHome
 		return self::save($l, $login) ? null : $pinned;
 	}
 
-	/** Reset: the current layout gets the default groups and tiles again (its name and visibility stay). */
-	public static function reset(): void
-	{
-		$cur = self::current();
-		if (!$cur['editable'] || $cur['id'] === 'default') return;
-		nu_db()->update(NuListView::TABLE, ['definition' => json_encode(self::defaultLayout(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-			'updated_at' => date('Y-m-d H:i:s')], 'zzzzsys_nunext_list_view_id', $cur['id']);
-		self::$current = null;
-		NuLog::write('home_layout_reset', NuListView::TABLE, $cur['id']);
-	}
-
 	// ------------------------------------------------------------------ saved layouts (0.8.333)
 	// Stored like list views (zzzzsys_nunext_list_view, list_key 'home'): shared (by "Start page layout" admins, for everyone or for chosen
 	// admin roles – access_ids holds role ids here) and personal ones. The one shown is the user's own choice, else the default for
@@ -604,16 +716,19 @@ final class NuHome
 		return true;
 	}
 
-	/** Save the current layout as a new one (name, personal / shared, admin roles) and switch to it. @return string error ('' = done) */
-	public static function saveAs(string $name, string $scope, array $roles): string
+	/** Save as a new layout (name, personal / shared, admin roles) and switch to it – a copy of the current one or, with $preset
+	 *  ("Based on", 0.8.385), a profile (own tiles of the current layout along with $keepOwn). @return string error ('' = done) */
+	public static function saveAs(string $name, string $scope, array $roles, string $preset = '', bool $keepOwn = false): string
 	{
 		$name = trim($name);
 		if ($name === '') return t('lv_err_name');
 		$shared = $scope === 'shared';
 		if ($shared && !self::canManage()) return t('err_forbidden');
-		$id = self::insertLayout($name, $shared ? 'shared' : 'user', $shared ? self::roleIds($roles) : [], self::layout());
+		$def = $preset === '' ? self::layout() : self::presetLayout($preset, self::layout(), $keepOwn);
+		if ($def === null) return t('err_not_found');
+		$id = self::insertLayout($name, $shared ? 'shared' : 'user', $shared ? self::roleIds($roles) : [], $def);
 		NuListView::setOwnDefault(['key' => self::LIST], $id);
-		if ($shared) NuLog::write('home_layout_saved', NuListView::TABLE, $id, ['name' => $name, 'shared' => true]);
+		if ($shared || $preset !== '') NuLog::write('home_layout_saved', NuListView::TABLE, $id, ['name' => $name, 'shared' => $shared] + ($preset !== '' ? ['preset' => $preset] : []));
 		self::$current = null;
 		return '';
 	}
