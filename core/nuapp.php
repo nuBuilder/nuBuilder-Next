@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.385');
+define('NU_VERSION', '0.8.386');
 define('NU_BS', 'assets/vendor/bootstrap-5.3.8');
 define('NU_BI', 'assets/vendor/bootstrap-icons-1.13.2');
 define('NU_TINYMCE', 'assets/vendor/tinymce');      // not bundled: copy <nuBuilder>/third_party/tinymce here
@@ -21,7 +21,8 @@ const NU_AUTOLOAD = [
 	'NuReport' => 'core/nureport.php', 'NuReportEngine' => 'core/nureportengine.php', 'NuReportSection' => 'core/nureportengine.php',
 	'NuSqlSelect' => 'core/nusqlselect.php', 'NuPrompt' => 'core/nuprompt.php', 'NuImport' => 'core/nuimport.php',
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
-	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php',
+	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
+	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
 	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuLibraries' => 'core/nulibraries.php',
 ];
 spl_autoload_register(static function (string $class): void {

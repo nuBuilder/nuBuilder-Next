@@ -563,7 +563,7 @@ final class NuUpdate
 	private static function nunextTables(): array
 	{
 		$out = [];
-		foreach (['zzzzsys_nunext_log', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_user_2fa', 'zzzzsys_nunext_token', 'zzzzsys_nunext_session', NuMigrate::TABLE] as $t) {
+		foreach (['zzzzsys_nunext_log', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft', 'zzzzsys_nunext_user_2fa', 'zzzzsys_nunext_token', 'zzzzsys_nunext_session', NuMigrate::TABLE] as $t) {
 			if (nu_db()->tableExists($t)) $out[] = $t;
 		}
 		return $out;
@@ -696,6 +696,7 @@ final class NuMigrate
 			'0012-notifications' => ['Notification centre (zzzzsys_nunext_notification, zzzzsys_nunext_notification_user); permission items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN', static fn() => NuNotify::install()],
 			'0013-setting-home-hooks' => ['Settings table: row $nuConfigHomeHooks (start page hooks on / off) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
 			'0014-database-origin' => ['Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder database, or installed before 0.8.380)', static fn() => NuInstall::markOrigin(self::$earlier)],
+			'0015-form-drafts' => ['Form drafts (zzzzsys_nunext_form_draft)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -722,6 +723,7 @@ final class NuMigrate
 			['zzzzsys_permission_item', 'data', 'items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN added when missing (group "nuBuilder Next")']],
 		'0013-setting-home-hooks' => [['zzzzsys_config', 'data', 'row $nuConfigHomeHooks added when missing']],
 		'0014-database-origin' => [['zzzzsys_nunext_setting', 'data', 'row db_origin added when missing']],
+		'0015-form-drafts' => [['zzzzsys_nunext_form_draft', 'table', 'created when missing']],
 	];
 
 	/** Steps with their descriptions and changes (for install/db_changes.json). @return list<array{id: string, description: string, changes: list<array>}> */

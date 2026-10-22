@@ -1199,3 +1199,9 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 
 /* update page → packages in the folder _update (0.8.381): the list at most 450 px wide, Check package below it */
 .nuUpdFolderList { max-width: 450px; }
+
+/* form drafts (0.8.386): preview banner under the top bar, badge in iframes */
+.nuDraftBanner { position: sticky; top: var(--nu-nav-h, 0px); z-index: 1015; background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); }
+.nuDraftBanner .btn-outline-dark { --bs-btn-color: var(--bs-warning-text-emphasis); --bs-btn-border-color: var(--bs-warning-border-subtle); }
+.nuDraftBadge { position: fixed; top: .35rem; inset-inline-end: .35rem; z-index: 1080; padding: .1rem .45rem; border-radius: .35rem; font-size: .7rem; font-weight: 600;
+	letter-spacing: .04em; background: var(--bs-warning); color: #000; pointer-events: none; }

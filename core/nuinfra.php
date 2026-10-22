@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 11;
+	public const VERSION = 12;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -22,6 +22,16 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_form_history_id',
 			'cols' => [['form_id', 'text', '25'], ['created_at', 'datetime'], ['login', 'text', '50'], ['action', 'text', '60'], ['snapshot', 'longtext']],
 			'index' => ['form_id'],
+		],
+		'zzzzsys_nunext_form_draft' => [                          // form drafts (0.8.386, core/form/nuformdraft.php)
+			'pk' => 'zzzzsys_nunext_form_draft_id',
+			'cols' => [['form_id', 'text', '25'], ['changeset_id', 'text', '25'], ['status', 'text', '12'], ['note', 'text', '1000'],
+				['base_hash', 'text', '64'], ['base_snapshot', 'longtext'], ['snapshot', 'longtext'], ['undo_list', 'longtext'], ['rev', 'int'],
+				['preview_saves', 'int'], ['testers', 'text', '4000'], ['ddl', 'longtext'],
+				['created_at', 'datetime'], ['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50'],
+				['submitted_at', 'datetime'], ['submitted_by', 'text', '50'], ['review_note', 'text', '1000'],
+				['published_at', 'datetime'], ['published_by', 'text', '50'], ['version', 'int'], ['history_id', 'text', '25']],
+			'index' => ['form_id', 'status'],
 		],
 		'zzzzsys_nunext_user_2fa' => [
 			'pk' => 'zzzzsys_nunext_user_2fa_id',              // = zzzzsys_user_id or 'globeadmin'

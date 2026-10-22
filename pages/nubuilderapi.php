@@ -31,8 +31,10 @@ $in = json_decode((string)file_get_contents('php://input'), true);
 if (!is_array($in)) nb_err('Invalid request');
 
 // reading needs view rights on "nuform", every change needs save rights
-$readOnly = in_array($in['action'] ?? '', ['state', 'tables', 'columns', 'files', 'history.list'], true);
-if (!NuAcl::can(NuAcl::FORM_FORM, $readOnly ? 'view' : 'save')) nb_err(t('err_forbidden'), 403);
+$readOnly = in_array($in['action'] ?? '', ['state', 'tables', 'columns', 'files', 'history.list', 'draft.diff', 'draft.conflict'], true);
+// publishing (form drafts, 0.8.386) needs the right "Publish forms" – checked in NuFormDraft – and view rights on the builder
+$publish  = in_array($in['action'] ?? '', ['draft.publish', 'form.publishnew'], true);
+if (!NuAcl::can(NuAcl::FORM_FORM, $readOnly || $publish ? 'view' : 'save')) nb_err(t('err_forbidden'), 403);
 if (!$readOnly && NuDemo::active()) nb_err(t('demo_not_available'), 403);      // demo mode: the builder only shows (core/nudemo.php)
 
 $db     = nu_db();
@@ -88,7 +90,7 @@ function nb_table_info(NuFormMeta $meta): array
 /** The form being edited – must exist and not be a nuBuilder system form. */
 function nb_form(string $id): NuFormMeta
 {
-	$meta = NuFormMeta::load($id);
+	$meta = NuFormMeta::load($id, true);                 // the builder edits the live form (drafts: NuDraftStore)
 	if (!$meta) nb_err(t('form_err_not_found'), 404);
 	if ($meta->isSystem()) nb_err(t('builder_err_system'), 403);
 	return $meta;
@@ -144,7 +146,7 @@ function nb_missing_column(NuFormMeta $meta, string $objectId): ?array
 function nb_state(string $formId): array
 {
 	NuFormMeta::forget($formId);
-	$meta = NuFormMeta::load($formId);
+	$meta = NuFormMeta::load($formId, true);
 	$db   = nu_db();
 	$php  = [];
 	foreach (NB_HOOKS as $h) $php[$h] = (string)$db->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$formId . '_' . $h]);
@@ -160,12 +162,136 @@ function nb_state(string $formId): array
 	return [
 		'form' => $meta->form + ['layout' => $meta->layout()], 'tabs' => $meta->tabs, 'objects' => $objects, 'browse' => $meta->browse,
 		'events' => (object)$events, 'php' => $php, 'lookup_php' => (object)$ab, 'readonly' => $meta->isSystem(),
+		'draft' => null, 'live_draft' => $meta->isSystem() ? null : nb_live_draft($formId),   // form drafts (0.8.386)
 	];
 }
 
+/**
+ * Form drafts (0.8.386): the builder's actions on the open draft $store (draft_id + rev from the builder) – the same rules as the live
+ * actions below, on the draft's snapshot (NuDraftStore). Every change is a new revision of the draft (undo list); nothing reaches
+ * nuBuilder's tables before draft.publish.
+ */
+function nb_draft(NuDraftStore $store, string $action, array $in): never
+{
+	$out = static fn(array $extra = []) => nb_out(['ok' => true] + $extra + $store->state(NB_HOOKS));
+	switch ($action) {
+		case 'state':
+			$out();
+
+		case 'history.list':
+			nb_out(['ok' => true, 'history' => NuFormHistory::list($store->formId)]);
+
+		case 'history.restore':
+		case 'history.undo':
+			nb_err(t('builder_draft_use_undo'));
+
+		case 'form.save':
+			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
+			$layout = null;
+			if (array_key_exists('layout', $in['fields'] ?? [])) $layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? (string)$in['fields']['layout'] : 'absolute';
+			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS);
+			$store->commit('form.save');
+			$out();
+
+		case 'object.save':
+			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_OBJECT_FIELDS);
+			foreach (['sob_input_format', 'sob_calc_format'] as $fk) {
+				if (isset($fields[$fk]) && mb_strlen((string)$fields[$fk]) > NuFormat::MAX_KEY) nb_err(t('fmt_err_length', NuFormat::MAX_KEY - 2));
+				NuFormat::ensureSaved($fields[$fk] ?? null);       // shared format row – harmless while drafting
+			}
+			$oid = $store->objectSave((string)($in['object_id'] ?? ''), $fields, is_array($in['grid'] ?? null) ? $in['grid'] : null,
+				is_array($in['events'] ?? null) ? $in['events'] : null, array_key_exists('lookup_php', $in), ($in['lookup_php'] ?? null) === null ? null : (string)$in['lookup_php']);
+			$store->commit('object.save ' . (string)($store->object($oid)['sob_all_id'] ?? ''));
+			$store->subformIndex($oid);
+			$out(['object_id' => $oid, 'missing_column' => $store->missingColumn($oid)]);
+
+		case 'column.add':
+			// DDL at once (additive, nullable) – the draft lists it for the publish summary
+			$oid = (string)($in['object_id'] ?? '');
+			$o = $store->object($oid);
+			if (!$o) nb_err(t('record_not_found'), 404);
+			if ($store->missingColumn($oid) === null) nb_err(t('builder_err_column_exists'));
+			$type = (string)($in['type'] ?? '');
+			$length = trim((string)($in['length'] ?? ''));
+			if (!in_array($type, NuDDL::TYPES, true)) nb_err(t('builder_err_column_type', (string)$o['sob_all_id']));
+			if ($length !== '' && !preg_match('/^\d{1,5}([,.]\d{1,2})?$/', $length)) nb_err(t('builder_err_column_length', (string)$o['sob_all_id']));
+			$table = trim((string)($store->snapshot()['form']['sfo_table'] ?? ''));
+			NuDDL::addColumn($table, (string)$o['sob_all_id'], $type, $length);
+			NuFormDraft::addDdl($store->draftId, $table, (string)$o['sob_all_id'], $type, $length);
+			$out();
+
+		case 'object.delete':
+			$label = (string)($store->object((string)($in['object_id'] ?? ''))['sob_all_id'] ?? '');
+			$store->objectDelete((string)($in['object_id'] ?? ''));
+			$store->commit('object.delete ' . $label);
+			$out();
+
+		case 'object.order':
+			$store->objectOrder(is_array($in['ids'] ?? null) ? $in['ids'] : []);
+			$store->commit('object.order');
+			$out();
+
+		case 'tabs.save':
+			$rows = is_array($in['tabs'] ?? null) ? $in['tabs'] : [];
+			if (!$rows) nb_err(t('builder_err_one_tab'));
+			if (empty(NuAuth::user()['globeadmin'])) {               // only the globeadmin renames or deletes tabs (0.8.247) – also in a draft
+				$sent = [];
+				foreach ($rows as $t) if (is_array($t) && (string)($t['id'] ?? '') !== '') $sent[(string)$t['id']] = trim((string)($t['title'] ?? ''));
+				foreach ($store->snapshot()['tabs'] ?? [] as $cur) {
+					$id = (string)$cur['zzzzsys_tab_id'];
+					if (!array_key_exists($id, $sent) || $sent[$id] !== trim((string)$cur['syt_title'])) nb_err(t('builder_tabs_globeadmin'), 403);
+				}
+			}
+			$store->tabsSave($rows);
+			$store->commit('tabs.save');
+			$out();
+
+		case 'browse.save':
+			$rows = is_array($in['columns'] ?? null) ? $in['columns'] : [];
+			foreach ($rows as $c) NuFormat::ensureSaved(is_array($c) ? (string)($c['format'] ?? '') : '');
+			$store->browseSave($rows);
+			$store->commit('browse.save');
+			$out();
+
+		case 'layout.convert':
+			$store->layoutConvert();
+			$store->commit('layout.convert');
+			$out();
+
+		case 'draft.undo':
+			NuFormDraft::undo($store->draftId, $store->rev);
+			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));
+
+		case 'draft.settings':
+			NuFormDraft::setPreviewSaves($store->draftId, !empty($in['preview_saves']));
+			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));
+	}
+	nb_err('Unknown action');
+}
+
+/** Info of the open draft of a form for live mode (the builder's info bar), null when there is none. */
+function nb_live_draft(string $formId): ?array
+{
+	return NuFormDraft::info(NuFormDraft::openFor($formId));
+}
+
+
 const NB_SNAPSHOT_ACTIONS = ['form.save', 'object.save', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
+/** Live changes – refused or confirmed while a draft is open (form drafts, 0.8.386). */
+const NB_WRITE_ACTIONS = ['form.save', 'object.save', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
 
 try {
+	// form drafts (0.8.386): with draft_id the action works on the draft; without it on the live form – refused or confirmed while
+	// a draft is open or changes only go through drafts (NuFormDraft::liveEditRefused)
+	$draftId = (string)($in['draft_id'] ?? '');
+	if ($draftId !== '' && !str_starts_with($action, 'draft.publish') && $action !== 'draft.discard' && $action !== 'draft.diff' && $action !== 'draft.conflict') {
+		nb_form($formId);
+		nb_draft(NuDraftStore::open($draftId, $formId, (int)($in['rev'] ?? -1)), $action, $in);
+	}
+	if (in_array($action, NB_WRITE_ACTIONS, true) && $formId !== '' && ($refused = NuFormDraft::liveEditRefused($formId, !empty($in['live_ok'])))) {
+		nb_out(['ok' => false, 'error' => $refused['message'], 'code' => $refused['code']], 409);
+	}
+
 	// tabs (0.8.247): only the globeadmin renames or deletes existing tabs – others may add tabs, reorder them and set their visibility
 	if ($action === 'tabs.save' && empty(NuAuth::user()['globeadmin'])) {
 		$sent = [];
@@ -196,6 +322,47 @@ try {
 			NuFormHistory::restore($formId, (string)$last['id']);
 			nb_out(['ok' => true, 'restored' => $last] + nb_state($formId));
 
+
+		// --------------------------------------------------------------- form drafts (0.8.386)
+		case 'draft.start':
+			nb_form($formId);
+			$d = NuFormDraft::start($formId, (string)($in['note'] ?? ''));
+			nb_out(['ok' => true] + NuDraftStore::open((string)$d['zzzzsys_nunext_form_draft_id'], $formId, -1)->state(NB_HOOKS));
+
+		case 'draft.diff':
+		case 'draft.conflict':
+			nb_form($formId);
+			$d = NuFormDraft::get($draftId);
+			if (!$d || (string)$d['form_id'] !== $formId) nb_err(t('record_not_found'), 404);
+			$live = NuFormSnapshot::capture($formId) ?? [];
+			$snap = NuFormDraft::snapshotOf($d);
+			$base = NuFormDraft::snapshotOf($d, 'base_snapshot');
+			if ($action === 'draft.conflict') nb_out(['ok' => true, 'conflict' => NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash'], 'changes' => NuFormSnapshot::diff($base, $live)]);
+			$from = ($in['against'] ?? 'live') === 'base' ? $base : $live;
+			nb_out(['ok' => true, 'diff' => NuFormSnapshot::diff($from, $snap), 'ddl' => json_decode((string)($d['ddl'] ?? '[]'), true) ?: [],
+				'validation' => NuFormDraft::validate($formId, $snap, $live)]);
+
+		case 'draft.publish':
+			nb_form($formId);
+			$d = NuFormDraft::get($draftId);
+			if (!$d || (string)$d['form_id'] !== $formId) nb_err(t('record_not_found'), 404);
+			if (!NuFormDraft::canPublish()) nb_err(t('err_forbidden'), 403);
+			$force = !empty($in['force']);
+			if ($force && trim((string)($in['confirm_code'] ?? '')) !== (string)(NuFormDraft::snapshotOf($d)['form']['sfo_code'] ?? '')) nb_err(t('builder_draft_overwrite_type', (string)(NuFormDraft::snapshotOf($d)['form']['sfo_code'] ?? '')));
+			$r = NuFormDraft::publish($draftId, (string)($in['note'] ?? ''), $force, !empty($in['warnings_ok']));
+			nb_out($r + ($r['ok'] ? nb_state($formId) : []));
+
+		case 'draft.discard':
+			nb_form($formId);
+			$d = NuFormDraft::get($draftId);
+			if (!$d || (string)$d['form_id'] !== $formId) nb_err(t('record_not_found'), 404);
+			NuFormDraft::discard($draftId);
+			nb_out(['ok' => true] + nb_state($formId));
+
+		case 'form.publishnew':
+			nb_form($formId);
+			$v = NuFormDraft::publishNewForm($formId);
+			nb_out(['ok' => true, 'version' => $v] + nb_state($formId));
 
 		// --------------------------------------------------------------- read
 		case 'state':
@@ -239,6 +406,7 @@ try {
 
 		case 'form.deleteinfo':
 			if (empty(NuAuth::user()['globeadmin'])) nb_err(t('builder_delete_globeadmin'), 403);
+			if (NuFormDraft::openFor($formId)) nb_err(t('builder_draft_delete_first'));
 			$info = nb_table_info(nb_form($formId));
 			if ($info['reauth']) $_SESSION['nu_reauth_next'] = nu_url('builder', ['f' => $formId, 'delete' => '1']);
 			nb_out(['ok' => true] + $info + ($info['reauth'] ? ['reauth_url' => nu_url('reauth')] : []));
@@ -246,6 +414,7 @@ try {
 		case 'form.delete':
 			// a whole form (objects, tabs, events, PHP, rights) is deleted by the globeadmin only (0.8.246)
 			if (empty(NuAuth::user()['globeadmin'])) nb_err(t('builder_delete_globeadmin'), 403);
+			if (NuFormDraft::openFor($formId)) nb_err(t('builder_draft_delete_first'));
 			$meta = nb_form($formId);
 			// with the table: the typed name must match exactly; checked again here (rights, not a view, not used elsewhere, password)
 			$drop = (string)($in['drop_table'] ?? '');
@@ -461,6 +630,8 @@ try {
 			nb_out(['ok' => true] + nb_state($formId));
 	}
 	nb_err('Unknown action');
+} catch (NuDraftRevException $e) {
+	nb_out(['ok' => false, 'error' => $e->getMessage(), 'code' => 'draft_rev'], 409);          // the builder reloads the draft
 } catch (Throwable $e) {
 	error_log('nuBuilder Next builder: ' . $e->getMessage());
 	nb_err($e->getMessage(), 500);

@@ -95,7 +95,7 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'container']);
 	</div>
 	<div class="card-body">
 		<fieldset<?= !empty($u['demo']) ? ' disabled' : '' ?>>
-		<?php foreach (['rights_globeadmin_only', 'protect_fields', 'record_check', 'md5_login', 'login_token'] as $k): ?>
+		<?php foreach (['rights_globeadmin_only', 'protect_fields', 'record_check', 'md5_login', 'login_token', 'form_drafts_required', 'form_preview_saves'] as $k): ?>
 			<div class="d-flex align-items-center mb-3">
 				<div class="form-check form-switch mb-0">
 					<input class="form-check-input" type="checkbox" role="switch" id="sec_<?= $k ?>" name="<?= $k ?>" value="1"<?= $set[$k] ? ' checked' : '' ?>>

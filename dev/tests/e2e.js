@@ -218,6 +218,161 @@ T.rights_editor = async (s) => {
 	await p.context().close();
 };
 
+// form drafts (0.8.386): start, change, preview (read-only, banner), other users keep live, compare, publish (version, history),
+// restore, discard, conflict (live changed meanwhile → overwrite only with the typed code), form status Draft
+T.form_drafts = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const meta = ['zzzzsys_form', 'zzzzsys_object', 'zzzzsys_tab', 'zzzzsys_event', 'zzzzsys_browse', 'zzzzsys_php', 'zzzzsys_nunext_form_history'];
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-drafts.sql');
+	execSync('mysqldump ' + DB + ' ' + meta.join(' ') + ' > ' + keep);
+	const label = () => sql("SELECT sob_all_label FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '" + F + "' AND sob_all_id = 'cus_name'");
+	const cust = s.cust || sql('SELECT MIN(sample_customer_id) FROM sample_customer');
+	const before = label();
+	try {
+		await open(p, 'index.php?p=builder&f=' + F);
+		const api = (body) => p.evaluate(async (bd) => {
+			const csrf = JSON.parse(document.getElementById('nuBuilderData').textContent).csrf;
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(bd) });
+			return Object.assign({ status: r.status }, await r.json());
+		}, Object.assign({ form_id: F }, body));
+		let r = await api({ action: 'draft.start', note: 'e2e' });
+		expect(r.ok && r.draft && r.draft.rev === 0, 'start: ' + JSON.stringify(r).slice(0, 200));
+		const D = r.draft, obj = r.objects.find(o => o.sob_all_id === 'cus_name');
+		r = await api({ action: 'object.save', draft_id: D.id, rev: 0, object_id: obj.zzzzsys_object_id, fields: { sob_all_label: 'E2E draft label' } });
+		expect(r.ok && r.draft.rev === 1 && r.draft.changes === 1, 'draft change: ' + JSON.stringify(r.draft));
+		r = await api({ action: 'form.save', draft_id: D.id, rev: 1, php: { BE: "nuSetProperty('e2e_draft_be', 'draft');" } });
+		expect(r.ok && r.draft.changes === 2, 'draft PHP: ' + (r.error || JSON.stringify(r.draft)));
+		expect(label() === before, 'live changed by the draft');
+		r = await api({ action: 'object.save', draft_id: D.id, rev: 1, object_id: obj.zzzzsys_object_id, fields: { sob_all_label: 'stale' } });
+		expect(!r.ok && r.code === 'draft_rev', 'stale revision accepted');
+		r = await api({ action: 'object.save', object_id: obj.zzzzsys_object_id, fields: { sob_all_label: 'live' } });
+		expect(!r.ok && r.code === 'draft_open_confirm', 'live change while a draft is open: ' + r.code);
+		// preview: banner, the draft's label, saving refused
+		await open(p, 'index.php?p=form&f=' + F + '&r=' + cust + '&draft=' + D.id);
+		expect(await p.locator('.nuDraftBanner').count() === 1, 'no preview banner');
+		expect(/E2E draft label/.test(await p.locator('#label_cus_name').textContent()), 'preview does not show the draft');
+		const sv = await p.evaluate(async () => { const r = await fetch('index.php?p=formapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': nuNext.csrf },
+			body: JSON.stringify({ action: 'save', form_id: nuNext.form.id, record_id: nuNext.record_id, values: {}, edited: [] }) }); return r.status; });
+		expect(sv === 403, 'saving in a read-only preview: ' + sv);
+		// another user keeps the live form
+		const a = await login('sample_anna', UPW);
+		await open(a, 'index.php?p=form&f=' + F + '&r=' + cust);
+		expect(!/E2E draft label/.test(await a.locator('#label_cus_name').textContent()) && await a.locator('.nuDraftBanner').count() === 0, 'another user sees the draft');
+		// compare, publish
+		await open(p, 'index.php?p=builder&f=' + F + '&draft=1');
+		r = await api({ action: 'draft.diff', draft_id: D.id });
+		expect(r.diff.counts.objects === 1 && r.diff.counts.php === 1 && r.diff.objects.changed[0].sob_all_id === 'cus_name', 'compare: ' + JSON.stringify(r.diff.counts));
+		r = await api({ action: 'draft.publish', draft_id: D.id, note: '' });
+		expect(!r.ok && r.errors, 'publish without a note');
+		r = await api({ action: 'draft.publish', draft_id: D.id, note: 'E2E publish' });
+		if (!r.ok && r.warnings) r = await api({ action: 'draft.publish', draft_id: D.id, note: 'E2E publish', warnings_ok: true });
+		expect(r.ok && r.version >= 1 && label() === 'E2E draft label', 'publish: ' + JSON.stringify(r).slice(0, 200));
+		expect(sql("SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = '" + F + "_BE'").includes('e2e_draft_be'), 'published PHP missing');
+		await open(a, 'index.php?p=form&f=' + F + '&r=' + cust);
+		expect(/E2E draft label/.test(await a.locator('#label_cus_name').textContent()), 'users do not see the published version');
+		await a.context().close();
+		const hist = sql("SELECT GROUP_CONCAT(action ORDER BY created_at DESC, zzzzsys_nunext_form_history_id SEPARATOR '|') FROM zzzzsys_nunext_form_history WHERE form_id = '" + F + "'");
+		expect(/(^|\|)published v\d/.test(hist) && hist.includes('before publish'), 'history: ' + hist.slice(0, 120));
+		// restore "before publish" → the old label
+		const bp = sql("SELECT zzzzsys_nunext_form_history_id FROM zzzzsys_nunext_form_history WHERE form_id = '" + F + "' AND action = 'before publish' ORDER BY created_at DESC LIMIT 1");
+		r = await api({ action: 'history.restore', id: bp });
+		expect(r.ok && label() === before, 'restore before publish: ' + (r.error || label()));
+		// discard
+		r = await api({ action: 'draft.start' });
+		const D2 = r.draft;
+		r = await api({ action: 'draft.discard', draft_id: D2.id });
+		expect(r.ok && sql("SELECT status FROM zzzzsys_nunext_form_draft WHERE zzzzsys_nunext_form_draft_id = '" + D2.id + "'") === 'discarded' && label() === before, 'discard');
+		// conflict: live changed after the draft started
+		r = await api({ action: 'draft.start' });
+		const D3 = r.draft;
+		r = await api({ action: 'object.save', draft_id: D3.id, rev: 0, object_id: obj.zzzzsys_object_id, fields: { sob_all_label: 'E2E conflict draft' } });
+		sql("UPDATE zzzzsys_object SET sob_all_label = 'Changed in nuBuilder' WHERE zzzzsys_object_id = '" + obj.zzzzsys_object_id + "'");
+		r = await api({ action: 'draft.publish', draft_id: D3.id, note: 'conflict' });
+		expect(!r.ok && r.conflict && r.changes.counts.objects === 1, 'conflict not found: ' + JSON.stringify(r).slice(0, 160));
+		r = await api({ action: 'draft.publish', draft_id: D3.id, note: 'conflict', force: true, confirm_code: 'wrong', warnings_ok: true });
+		expect(!r.ok && label() === 'Changed in nuBuilder', 'overwrite without the code');
+		r = await api({ action: 'draft.publish', draft_id: D3.id, note: 'conflict', force: true, confirm_code: sql("SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'"), warnings_ok: true });
+		expect(r.ok && label() === 'E2E conflict draft', 'overwrite: ' + JSON.stringify(r).slice(0, 160));
+		// a form never published (status Draft): designers only, "Publish form" makes it active
+		sql("UPDATE zzzzsys_form SET sfo_status = '0' WHERE zzzzsys_form_id = '" + F + "'");
+		const a2 = await login('sample_anna', UPW);
+		const rs = await open(a2, 'index.php?p=form&f=' + F);
+		expect(rs.status() === 403, 'a Draft form opens for users: ' + rs.status());
+		await a2.context().close();
+		r = await api({ action: 'form.publishnew' });
+		expect(r.ok && sql("SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'") === '1', 'publish new form');
+		await open(p, 'index.php?p=form&f=' + F + '&draft=off');
+	} finally {
+		execSync('mysql ' + DB, { input: fs.readFileSync(keep) });
+		fs.unlinkSync(keep);
+		sql('DELETE FROM zzzzsys_nunext_form_draft');
+	}
+};
+
+// form drafts (0.8.386): the same builder actions once live and once in a draft (then published) give the same form
+T.form_drafts_parity = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const meta = ['zzzzsys_form', 'zzzzsys_object', 'zzzzsys_tab', 'zzzzsys_event', 'zzzzsys_browse', 'zzzzsys_php', 'zzzzsys_nunext_form_history'];
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-parity.sql');
+	execSync('mysqldump ' + DB + ' ' + meta.join(' ') + ' > ' + keep);
+	const restore = () => execSync('mysql ' + DB, { input: fs.readFileSync(keep) });
+	// the form without generated ids: objects by sob_all_id, tabs by title, browse columns by display
+	const raw = (q) => execSync('mysql -N -r -B ' + DB, { input: q }).toString().trim();     // raw: no escaping of line ends in the JSON
+	const norm = () => JSON.parse(raw(`SELECT JSON_OBJECT(
+		'form', (SELECT JSON_OBJECT('d', sfo_description, 'js', sfo_javascript, 'json', sfo_json) FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'),
+		'tabs', (SELECT JSON_ARRAYAGG(JSON_ARRAY(syt_title, syt_order, syt_access)) FROM (SELECT * FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' ORDER BY syt_order) x),
+		'objects', (SELECT JSON_ARRAYAGG(JSON_ARRAY(o.sob_all_id, o.sob_all_label, o.sob_all_type, o.sob_input_type, o.sob_all_order, t.syt_title, o.sob_all_json, o.sob_all_access, o.sob_all_validate, o.sob_all_cloneable, o.sob_all_table,
+			(SELECT JSON_ARRAYAGG(JSON_ARRAY(e.sev_event, e.sev_javascript)) FROM zzzzsys_event e WHERE e.sev_zzzzsys_object_id = o.zzzzsys_object_id)))
+			FROM (SELECT * FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${F}' ORDER BY sob_all_id) o LEFT JOIN zzzzsys_tab t ON t.zzzzsys_tab_id = o.sob_all_zzzzsys_tab_id),
+		'browse', (SELECT JSON_ARRAYAGG(JSON_ARRAY(sbr_title, sbr_display, sbr_order, sbr_width, sbr_align, sbr_format, sbr_json)) FROM (SELECT * FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${F}' ORDER BY sbr_order) x),
+		'php', (SELECT JSON_ARRAYAGG(JSON_ARRAY(SUBSTRING(zzzzsys_php_id, LENGTH('${F}') + 2), sph_php, sph_system, sph_hide)) FROM (SELECT * FROM zzzzsys_php WHERE zzzzsys_php_id LIKE '${F}\\_%' ORDER BY zzzzsys_php_id) x))`));
+	try {
+		await open(p, 'index.php?p=builder&f=' + F);
+		const api = (body) => p.evaluate(async (bd) => {
+			const csrf = JSON.parse(document.getElementById('nuBuilderData').textContent).csrf;
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(bd) });
+			return r.json();
+		}, Object.assign({ form_id: F }, body));
+		const run = async (draft) => {
+			let rev = 0;
+			const call = async (b) => {
+				const r = await api(Object.assign({}, b, draft ? { draft_id: draft, rev } : {}));
+				if (!r.ok) throw new Error(b.action + ': ' + r.error);
+				if (r.draft) rev = r.draft.rev;
+				return r;
+			};
+			let st = await call({ action: 'state' });
+			const id = (fid) => st.objects.find(o => o.sob_all_id === fid).zzzzsys_object_id;
+			const tab0 = st.tabs[0].zzzzsys_tab_id;
+			st = await call({ action: 'object.save', object_id: '', fields: { sob_all_type: 'input', sob_all_id: 'e2e_par', sob_all_label: 'Parity', sob_input_type: 'text', sob_all_zzzzsys_tab_id: tab0, sob_all_top: 300, sob_all_left: 100 },
+				events: [{ event: 'onchange', js: 'nuHasBeenEdited();' }] });
+			st = await call({ action: 'object.save', object_id: id('cus_name'), fields: { sob_all_label: 'Name (parity)', sob_all_validate: '1' }, events: [{ event: 'onblur', js: 'void 0;' }] });
+			st = await call({ action: 'object.order', ids: st.objects.map(o => o.zzzzsys_object_id).reverse() });
+			st = await call({ action: 'tabs.save', tabs: st.tabs.map(t => ({ id: t.zzzzsys_tab_id, title: t.syt_title, access: t.syt_access || '0' })).concat([{ id: '', title: 'Parity tab', access: '0' }]) });
+			st = await call({ action: 'browse.save', columns: st.browse.map(b => ({ id: b.zzzzsys_browse_id, title: b.sbr_title, display: b.sbr_display, align: b.sbr_align || 'l', format: b.sbr_format || '', width: b.sbr_width }))
+				.concat([{ id: '', title: 'Parity col', display: 'cus_code', align: 'c', width: 80, filter: true }]) });
+			st = await call({ action: 'form.save', fields: { sfo_javascript: '// parity' }, php: { BB: '$x = 1;' } });
+			st = await call({ action: 'layout.convert' });
+			st = await call({ action: 'object.delete', object_id: id('cus_notes') });
+			return st;
+		};
+		await run('');
+		const live = norm();
+		restore();
+		let r = await api({ action: 'draft.start' });
+		await run(r.draft.id);
+		r = await api({ action: 'draft.publish', draft_id: r.draft.id, note: 'parity', warnings_ok: true });
+		expect(r.ok, 'publish: ' + JSON.stringify(r).slice(0, 200));
+		const pub = norm();
+		for (const x of [live, pub]) for (const k of ['objects', 'tabs', 'browse', 'php']) if (Array.isArray(x[k])) x[k].sort((m, n) => JSON.stringify(m) < JSON.stringify(n) ? -1 : 1);   // JSON_ARRAYAGG has no order
+		for (const k of Object.keys(live)) expect(JSON.stringify(live[k]) === JSON.stringify(pub[k]), 'live and published draft differ in ' + k + ':\n' + JSON.stringify(live[k]).slice(0, 600) + '\n' + JSON.stringify(pub[k]).slice(0, 600));
+	} finally {
+		restore();
+		fs.unlinkSync(keep);
+		sql('DELETE FROM zzzzsys_nunext_form_draft');
+	}
+};
+
 T.audit_history = async (s) => {
 	const p = s.ga;
 	if (sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'zzzzsys_nunext_audit'") === '0') throw new Error('audit table missing');

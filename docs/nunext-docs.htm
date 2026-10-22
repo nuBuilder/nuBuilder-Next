@@ -425,7 +425,7 @@
 			<li>Left: objects per tab (drag to reorder). Right: the properties of the selected object, form settings, list columns, tabs, code.</li>
 			<li>The <strong>Save</strong> button (top, next to Undo) turns <span class="doc-red">red</span> while the open panel has unsaved changes. <kbd>Ctrl</kbd>+<kbd>S</kbd> saves.</li>
 			<li><strong>Preview</strong>: click an object to select it; drag to move, corner handle to resize (absolute layout), or drop before/after/into boxes and change the width (auto/grid layout).</li>
-			<li><strong>Undo / History</strong>: every change stores the complete form definition (last 100); restore any state. Table changes (new columns) are not undone.</li>
+			<li><strong>Undo / History</strong>: every change stores the complete form definition (last 100); restore any state. Table changes (new columns) are not undone. Published versions of <a href="#form-drafts">drafts</a> carry a badge <span class="doc-badge">vN</span> and are kept for ever.</li>
 			<li>If an object's ID has no column in the table, the builder offers to add the column.</li>
 			<li><strong>Removing rows</strong> (tabs, list columns, events of an object, HTML attributes): <i class="bi bi-x-circle"></i> crosses the row out and turns Save red; it is removed when you save (attributes: when you click Apply). Until then <i class="bi bi-arrow-counterclockwise"></i> brings it back.</li>
 			<li><strong>HTML attributes</strong>: the button <span class="doc-badge">⚙</span> next to the field opens the attribute editor – one row per attribute (name with suggestions, value; known attributes get a selection or need no value). It warns about invalid names, duplicates and event handlers (<code>onclick</code> … belong into the object's events). The result is written back as <code>name="value", …</code>.</li>
@@ -434,6 +434,23 @@
 			<li><strong>Delete form</strong> (top right, <strong>globeadmin only</strong> – other users with rights on forms do not see the button) deletes the form with its objects, tabs, list columns, events, PHP hooks and access rights. The globeadmin can also tick <em>Also delete the table</em> (with the number of records): the button only works after the table name is typed exactly as shown (case matters, pasting is not possible), and the password must have been confirmed in the last minutes. The table is not offered when it is a view, a <code>zzzzsys</code> table or used by another form. Both deletions are logged (<em>Form deleted</em>, <em>Table deleted</em>). A deleted table cannot be restored by Undo – only from a backup.</li>
 			<li><strong>Layouts</strong>: absolute (pixel positions as in nuBuilder), auto (responsive rows derived from the positions) and grid (12 columns). "Convert to grid" writes the auto result as a starting point.</li>
 		</ul>
+	</div>
+
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="form-drafts">Drafts and publishing</h3>
+		<p>Since 0.8.386 a form can be changed in a <strong>draft</strong>: users keep working with the live form until the draft is <strong>published</strong> in one step. The pill at the top of the builder shows <span class="doc-badge">Live</span> or <span class="doc-badge">Draft</span>.</p>
+		<ul>
+			<li><strong>Start draft</strong> (builder, top): copies the complete form definition – form settings, tabs, objects, events, PHP hooks (also of lookups), list columns and SQL builder selects. One open draft per form; the forms list shows it as <em>Draft · author</em> (filter <em>With draft</em>).</li>
+			<li><strong>Working in the draft</strong>: everything works as in the live builder; Save writes into the draft only. <strong>Undo</strong> in the draft bar goes back step by step (last 20 saves). New table columns are created at once (the table is shared with the live form) and listed when publishing.</li>
+			<li><strong>Preview</strong>: opens the form as the draft – only for you, with a yellow banner (<em>Back to live</em> ends it). Forms the draft opens that have a draft of yours too are shown as drafts as well. By default the preview is <strong>read-only</strong>; when saving is allowed (draft setting, default from the security setting below) Save and Delete change the <em>live data</em> after a confirmation.</li>
+			<li><strong>Compare</strong> (panel <em>Compare with live</em>): what changed – form settings, tabs, objects (added, removed, changed, moved), events, PHP and JavaScript line by line, list columns, SQL builder.</li>
+			<li><strong>Publish…</strong>: a note, the summary of the changes and the checks (errors such as a missing table column stop it; warnings need a tick). The live form is saved in the history first (<em>before publish</em>), then replaced in one transaction and stored as <em>published vN – note</em>. Versions are never removed by the history's limit.</li>
+			<li><strong>Conflict</strong>: when the live form was changed after the draft was started, Publish shows it; publishing anyway needs the form code typed in and overwrites those live changes.</li>
+			<li><strong>Discard</strong> deletes the draft; the live form is not touched. Two windows on the same draft: the second save is refused and the builder reloads.</li>
+			<li><strong>Rights</strong>: anybody who may change the form may start and edit a draft; <strong>publishing</strong> needs the globeadmin or the admin right <em>Publish forms (drafts)</em> (see <a href="#admin-roles">Admin roles</a>).</li>
+			<li><strong>Only through drafts</strong> (security setting): the builder then edits a draft for every published form, and <em>new forms</em> start as drafts (status <em>Draft</em>: only form designers can open them until they are published). The globeadmin may still change a form live after a confirmation. While a draft is open, changing the form live asks first, and deleting the form is refused.</li>
+		</ul>
+		<p>Drafts are stored in <code>zzzzsys_nunext_form_draft</code> (database step 0015); nuBuilder itself only ever sees the published form.</p>
 	</div>
 
 	<div class="doc-sub" data-acl="nuform">
@@ -735,6 +752,7 @@ fixes:
 		<li><strong>Rights on nuBuilder's system forms</strong> (users and permission items, access levels, forms with items, files, formats and translations, procedures, reports and SQL builder, e-mail, logs) are added to the user's access level: <em>change</em> = all buttons, <em>view</em> = open and print.</li>
 		<li><strong>Full access</strong> (red badge): Update, nuconfig.php, Database, File Manager, App cloner, forms, procedures, act as another user, Admin roles and API clients lead to full access in the end – PHP code on the server, the whole database, the web folder or the passwords. Give them only to people you would trust with the globeadmin password.</li>
 		<li><strong>Who manages roles</strong>: the globeadmin and users with the right <em>Admin roles</em>. Nobody gives rights he does not have himself, changes his own role or edits the role he holds; a role with users cannot be deleted. Users with a role act as other users only when the role has <em>Act as another user</em>, and never as another admin.</li>
+		<li><strong>Publish forms (drafts)</strong> (0.8.386): publishes <a href="#form-drafts">form drafts</a>; starting and editing a draft only needs the rights on the form.</li>
 		<li>The log names the real user; <em>Security check</em> lists everybody with an admin role and warns when a role holds full-access rights. Two-factor login is not required for admin roles (the access level's 2FA setting applies).</li>
 	</ul>
 </section>
@@ -755,7 +773,7 @@ fixes:
 		<li><strong>Display</strong>: groups one below the other or as <em>Tabs</em> (the last tab is remembered in the browser); tiles large with description, compact, as a list or as a wide list.</li>
 		<li><strong>Tabs with several groups</strong>: with display <em>Tabs</em>, <strong>+</strong> after the tabs creates a tab; the open tab is renamed in place, moved with its arrows or by dragging, and deleted with × (its groups move to the first tab). Drag a tile or a group over a tab title to open that tab and drop it there. Each group gets a tab selection; <em>Add group</em> next to a tab adds a group there. Without tabs every group is a tab of its own; a tab without tiles is not shown.</li>
 		<li><strong>Own tiles</strong> (<em>Add tile</em>): label, description, icon (any Bootstrap Icons name <code>bi-…</code>, suggestions offered) and colour; it opens a form (its list, a new record with <code>-1</code> or a record id), a nuBuilder Next page, a procedure (output in a new tab or hidden with a message only) or a link (<code>https://…</code> or <code>index.php?…</code>), optionally in a new tab. The pencil edits it, the bin deletes it.</li>
-		<li><strong>Reset</strong> returns to the default groups and deletes the own tiles. Changes are logged (<em>Start page changed / reset</em>). Stored in <code>zzzzsys_nunext_setting</code>.</li>
+		<li><strong>Back to the default</strong>: <em>Start from → Standard</em> (since 0.8.385, replaces <em>Reset</em>). Changes are logged (<em>Start page changed / reset</em>). Stored in <code>zzzzsys_nunext_setting</code>.</li>
 		<li><code>$nuConfigGlobeadminHome</code> (nuBuilder's setting, also in the settings table): the id or code of a launch form opens that form instead of this page (<code>nuhome</code> or empty = this page). The tile page is then in the user menu under <em>Start page (tiles)</em>.</li>
 	</ul>
 </section>
@@ -1214,6 +1232,8 @@ nuRunPHPHidden('export_orders');   // the procedure ends it: nuAddJavascript("nu
 			<tr><td>Records only through the form's list</td><td>off</td><td>A record can be opened, saved or deleted only when the form's browse SQL (with the user's hash variables) finds it – a user cannot reach records his list does not show by changing the record id. Forms without browse SQL and browse SQL that needs a temporary table of <em>Before Browse</em> are not checked. nuBuilder has no such check.</td></tr>
 			<tr><td>Accept old md5 passwords</td><td>on</td><td>Off: users with a password from nuBuilder before 4.5 cannot log in until they set a new one.</td></tr>
 			<tr><td>Accept nuBuilder's one-time login tokens</td><td>on</td><td>Links <code>index.php?u=…&amp;p=&lt;token&gt;</code> with <code>LOGIN_TOKEN</code> in <code>sus_json</code> sign a user in once (see <a href="#logintoken">one-time login link</a>). Off: such links open the login page.</td></tr>
+			<tr><td>Change published forms only through drafts</td><td>off</td><td>The form builder edits a <a href="#form-drafts">draft</a>; users see the change after it is published. New forms start as drafts. The globeadmin may still change a form live after a confirmation.</td></tr>
+			<tr><td>New drafts: allow saving in the preview</td><td>off</td><td>Save and Delete in a draft preview change the live data. Off: the preview is read-only. Each draft can change it.</td></tr>
 			<tr><td>Keep the log (days)</td><td>0 = for ever</td><td>Older log entries are deleted by the housekeeping.</td></tr>
 			<tr><td>Ask for the password again after (minutes)</td><td>15</td><td>Update and backups, nuconfig.php, settings, App cloner, API clients, phpMyAdmin / File Manager, <em>Act as user</em> with full access and the security settings ask for the password when the login or the last confirmation is older. 0 = never.</td></tr>
 			<tr><td>Ask for the password again in developer mode (minutes)</td><td>480</td><td>Only for the globeadmin while <code>$nuConfigDevMode = true</code>: development happens without live data, so the confirmation lasts longer (480 = 8 hours). 0 = never. The Security check shows an info point <em>Developer mode</em> while it is on – don't use developer mode on a live system.</td></tr>

@@ -1,5 +1,14 @@
 # nuBuilder Next – to do
 
+## 0.8.386 Form drafts (phase 1) – please verify
+- Start a draft, change objects / code / list columns, Compare, Preview (banner, read-only; with saving allowed: confirmation), Publish with a note.
+- Conflict: change the live form after the draft was started (other window, "Change live anyway") – Publish asks for the form code.
+- Security setting "only through drafts": new forms start as Draft (status 0, only designers open them), live changes need a confirmation (globeadmin).
+- Admin role with "Publish forms (drafts)"; a user with form rights but without it can edit a draft but not publish.
+- Not built (phase 2 / 3 of the brief): review / approval (`form_publish_review`), testers, rebase of a draft onto the new live form,
+  change sets over several forms, scheduled publishing, export / import of a draft. The live builder code was left as it was (no shared
+  store class); `dev/tests/e2e.js` form_drafts_parity checks that the same edits give the same rows live and through a published draft.
+
 ## 0.8.372 Update from the folder _update – please verify
 - Copy nunext.zip by FTP into <nuBuilder Next>/_update/ (the Update page creates the folder with a deny-all .htaccess – check once
   that https://…/nunext/_update/<file>.zip is refused, Security check → Files on the web), then Update → "Packages in the folder

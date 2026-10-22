@@ -36,6 +36,7 @@ final class NuAdmin
 		'appcloner'     => ['data', 'ac_title', true, 'c', []],
 		'sample'        => ['data', 'smp_title', false, 'vc', []],
 		'forms'         => ['dev', 'adm_r_forms', true, 'vc', [NuAcl::FORM_FORM, NuAcl::FORM_ITEM, NuAcl::FORM_FILE, NuAcl::FORM_FORMAT, NuAcl::FORM_TRANSLATE, 'nucodesnippet']],
+		'formpublish'   => ['dev', 'adm_r_formpublish', true, 'c', []],   // form drafts (0.8.386): publishing puts PHP / JavaScript live – full access
 		'procedures'    => ['dev', 'proc_title', true, 'vc', [NuAcl::FORM_PROCEDURE]],
 		'reports'       => ['dev', 'adm_r_reports', false, 'vc', [NuAcl::FORM_REPORT, NuAcl::FORM_SELECT]],
 		'dashboards'    => ['dev', 'dash_title', false, 'vc', []],

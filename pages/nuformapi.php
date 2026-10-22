@@ -37,6 +37,21 @@ NuTranslate::activate();   // texts in the reader's language (zzzzsys_translate)
 $meta = NuFormMeta::load((string)($in['form_id'] ?? ''));
 if (!$meta) nu_api_error(t('form_err_not_found'), 404);
 if (!NuAcl::can($meta->id)) nu_api_error(t('err_forbidden'), 403);
+// form drafts (0.8.386): a form never published (status Draft) is for designers only
+if ((string)($meta->form['sfo_status'] ?? '') === '0' && !$meta->isDraft() && !NuAcl::can(NuAcl::FORM_FORM, 'view')) nu_api_error(t('draft_not_published'), 403);
+
+/**
+ * Save / Delete in a draft preview (0.8.386): refused unless the draft allows it; then the user confirms once per session
+ * ("writes to the live data") – the browser asks on code preview_confirm and sends preview_confirm.
+ */
+function nu_api_preview_guard(NuFormMeta $meta, array $in): void
+{
+	if (!$meta->isDraft() || NuFormDraft::previewSaves($meta->id)) return;
+	$d = NuFormDraft::previewDraft($meta->id);
+	if (!$d || (int)$d['preview_saves'] !== 1) nu_api_error(t('draft_preview_no_save'), 403);
+	if (empty($in['preview_confirm'])) nu_api_out(['ok' => false, 'code' => 'preview_confirm', 'errors' => [['message' => t('builder_draft_saves_confirm'), 'field' => '']]], 409);
+	NuFormDraft::confirmPreviewSaves($meta->id);
+}
 
 $rights = NuAcl::rights($meta->id);
 $ps     = is_string($in['ps'] ?? null) ? $in['ps'] : '';
@@ -48,13 +63,19 @@ $record = (string)($in['record_id'] ?? '');
 /** The object (of this form or one of its subforms) a lookup request refers to. */
 function nu_api_object(NuFormMeta $meta, string $objectId): array
 {
-	$o = nu_db()->one('SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = ?', [$objectId]);
-	if (!$o) nu_api_error('Unknown object', 404);
-	$ok = $o['sob_all_zzzzsys_form_id'] === $meta->id;
-	foreach ($meta->objects as $so) {
-		if ($so['sob_all_type'] === 'subform' && $so['sob_subform_zzzzsys_form_id'] === $o['sob_all_zzzzsys_form_id']) $ok = true;
+	// from the form's metadata (and its sub-forms') – live, or the draft in a preview (0.8.386); only objects of these forms
+	$o = $meta->object($objectId);
+	if (!$o) {
+		foreach ($meta->objects as $so) {
+			if ($so['sob_all_type'] !== 'subform') continue;
+			$o = NuFormMeta::load((string)$so['sob_subform_zzzzsys_form_id'])?->object($objectId);
+			if ($o) break;
+		}
 	}
-	if (!$ok) nu_api_error(t('err_forbidden'), 403);
+	if (!$o) {
+		$exists = (bool)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_object WHERE zzzzsys_object_id = ?', [$objectId]);
+		$exists ? nu_api_error(t('err_forbidden'), 403) : nu_api_error('Unknown object', 404);
+	}
 	return $o;
 }
 
@@ -73,6 +94,7 @@ try {
 			$isNew = $record === '' || $record === '-1';
 			if (!$rights[$isNew ? 'create' : 'save']) nu_api_error(t('err_forbidden'), 403);
 			if (NuSecurity::runtimeBlocked($meta)) nu_api_error(t('secchk_err_system_form'), 403);   // users, rights, code: globeadmin only
+			nu_api_preview_guard($meta, $in);
 			if (NuDemo::active()) {
 				// demo mode: saving only in $nuConfigDemoSavingAllowedIds, and never deleting – also no subform rows (core/nudemo.php)
 				if (!NuDemo::savingAllowed($meta->id, $meta->code())) nu_api_error(t('demo_not_available'), 403);
@@ -89,6 +111,7 @@ try {
 		case 'delete':
 			if (!$rights['delete']) nu_api_error(t('err_forbidden'), 403);
 			if (NuSecurity::runtimeBlocked($meta)) nu_api_error(t('secchk_err_system_form'), 403);
+			nu_api_preview_guard($meta, $in);
 			if (NuDemo::active()) nu_api_error(t('demo_no_delete'), 403);
 			nu_api_out(NuRecord::delete($meta, $record, $props));
 

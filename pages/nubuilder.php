@@ -15,7 +15,7 @@ $isNew   = ($_GET['new'] ?? '') === '1';
 $meta    = null;
 
 if (!$isNew) {
-	$meta = NuFormMeta::load((string)($_GET['f'] ?? ''));
+	$meta = NuFormMeta::load((string)($_GET['f'] ?? ''), true);     // the live form – a draft is loaded by the builder API (0.8.386)
 	if (!$meta) {
 		http_response_code(404);
 		nu_fatal(t('form_err_not_found'), '', true);
@@ -45,6 +45,13 @@ if ($meta) {
 	$data['db_type'] = $db->type;
 	$data['readonly'] = $meta->isSystem() || !$canSave;
 	$data['globeadmin'] = !empty(NuAuth::user()['globeadmin']);      // tabs: only the globeadmin renames / deletes existing ones
+	// form drafts (0.8.386): the open draft and the rules; ?draft=1 opens the builder on the draft
+	$openDraft = $meta->isSystem() ? null : NuFormDraft::openFor($meta->id);
+	$data['draft'] = NuFormDraft::info($openDraft);
+	$data['draft_mode'] = $openDraft !== null && ($_GET['draft'] ?? '') === '1';
+	$data['draft_policy'] = ['required' => (bool)NuSecurity::get('form_drafts_required'), 'can_publish' => NuFormDraft::canPublish(),
+		'unpublished' => (string)($meta->form['sfo_status'] ?? '') === '0', 'live_url' => nu_url('builder', ['f' => $meta->id]),
+		'draft_url' => nu_url('builder', ['f' => $meta->id, 'draft' => '1'])];
 	$data['procedures'] = array_map(static fn($p) => [$p['zzzzsys_php_id'], $p['sph_code'] . ($p['sph_description'] ? ' – ' . $p['sph_description'] : '')],
 		array_values(array_filter($db->all("SELECT zzzzsys_php_id, sph_code, sph_description FROM zzzzsys_php WHERE zzzzsys_php_id NOT LIKE 'nu%' AND COALESCE(sph_system, '') <> '1' ORDER BY sph_code"),
 			static fn($p) => !preg_match('/_(BB|BE|BS|AS|BD|AD|AB)$/', (string)$p['zzzzsys_php_id']))));
@@ -182,7 +189,8 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 	<?= $crumb ?>
 	<div class="nuTitleBar mb-3">
 		<h1 class="h4 mb-0 d-flex align-items-center gap-2"><i class="bi bi-tools"></i><span id="nbTitle"><?= h($meta->description()) ?></span>
-			<span class="badge bg-secondary-subtle text-secondary-emphasis fs-6 fw-normal" id="nbType"><?= h(t('form_type_' . $meta->type())) ?></span></h1>
+			<span class="badge bg-secondary-subtle text-secondary-emphasis fs-6 fw-normal" id="nbType"><?= h(t('form_type_' . $meta->type())) ?></span>
+			<?php if (!$meta->isSystem()): ?><span class="badge fs-6 fw-normal nbModePill" id="nbModePill"></span><?php endif; ?></h1>
 		<?php if ($meta->isSystem()): ?><span class="badge text-bg-warning"><i class="bi bi-lock me-1"></i><?= h(t('builder_readonly_system')) ?></span><?php endif; ?>
 		<a class="btn btn-sm nuBtnAct" href="<?= h(nu_url('forms')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<div class="d-flex flex-wrap gap-2 nbTopActions" id="nbTopActions"></div>
@@ -195,6 +203,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 		<?php endif; ?>
 	</div>
 
+	<?php if (!$meta->isSystem()): ?><div class="nbDraftBar mb-3" id="nbDraftBar" hidden></div><?php endif; /* form drafts (0.8.386) */ ?>
 	<div class="row g-3 nbWorkspace" id="nbWorkspace">
 		<div class="col-xl-3 col-lg-4">
 			<div class="card shadow-sm nbSidebar">

@@ -79,8 +79,9 @@ final class NuLookup
 	{
 		NuPhp::reset();
 		NuPhp::$lookupRow = (object)$record['row'];
-		$code = nu_db()->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$o['zzzzsys_object_id'] . '_AB']);
-		NuPhp::run($code !== null ? (string)$code : null, $hash, 'Lookup ' . $o['sob_all_id']);
+		// through NuFormMeta: in a draft preview the draft's code (0.8.386)
+		$code = NuFormMeta::load((string)$o['sob_all_zzzzsys_form_id'])?->objectPhp((string)$o['zzzzsys_object_id'], 'AB');
+		NuPhp::run($code, $hash, 'Lookup ' . $o['sob_all_id']);
 		return NuPhp::result();
 	}
 }

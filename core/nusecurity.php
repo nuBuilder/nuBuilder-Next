@@ -20,6 +20,8 @@ final class NuSecurity
 		'record_check'           => false,  // a record must be found through the form's browse SQL before it is opened, saved or deleted
 		'md5_login'              => true,   // legacy md5 passwords (nuBuilder before 4.5) are still accepted
 		'login_token'            => true,   // nuBuilder's single-use login token (sus_json LOGIN_TOKEN, ?u=…&p=<token>) – core/nulogintoken.php (0.8.339)
+		'form_drafts_required'   => false,  // form builder (0.8.386): published forms change only through drafts (the globeadmin: live after a confirmation)
+		'form_preview_saves'     => false,  // default of new drafts: Save / Delete allowed in the draft preview (writes live data)
 		'log_keep_days'          => 0,      // 0 = keep the log for ever
 		'reauth_minutes'         => 15,     // password again for dangerous actions when the last confirmation is older (0 = never ask)
 		'reauth_minutes_dev'     => 480,    // the same for the globeadmin while $nuConfigDevMode is on (0.8.338: development without live data)

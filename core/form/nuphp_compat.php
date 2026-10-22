@@ -694,8 +694,7 @@ if (!function_exists('db_fetch_value')) {
 	/** The next number for a new record when $fieldId is an nuAutoNumber object, otherwise $value. */
 	function nuAutoNumber($formId, $recordId, $fieldId, $value): mixed
 	{
-		$o = nu_db()->one('SELECT sob_all_type, sob_input_type, zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ? AND sob_all_id = ?',
-			[(string)$formId, (string)$fieldId]);
+		$o = NuFormMeta::load((string)$formId)?->byId[(string)$fieldId] ?? null;     // through NuFormMeta: also the draft in a preview (0.8.386)
 		$isNew = nuHasNewRecordID() || nuHasNoRecordID() || (string)$recordId === '-1';
 		if ($o && $o['sob_all_type'] === 'input' && $o['sob_input_type'] === 'nuAutoNumber' && $isNew) return nuUpdateCounter($o['zzzzsys_object_id']);
 		return $value;

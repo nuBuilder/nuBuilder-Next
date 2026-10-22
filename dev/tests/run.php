@@ -258,6 +258,35 @@ foreach (['other table' => 'CREATE TABLE customers (a int)', 'insert into other 
 check('dump: strings with SQL in VALUES', NuInstall::checkDump($okDump . "INSERT INTO `zzzzsys_object` VALUES ('x', 'SELECT * FROM t; DROP TABLE y', 'it''s', 'a\\'b', NULL, -1.5, 0x1F);\n")['ok']);
 check('dump: 4.9 table definitions', count(NuInstall::tables49()) === 35 && isset(NuInstall::tables49()['zzzzsys_object']['sob_all_access_condition']));
 
+// ---------------------------------------------------------------- form drafts: snapshot canonical form, hash, diff (0.8.386)
+$snapA = ['v' => 2, 'form' => ['zzzzsys_form_id' => 'f1', 'sfo_code' => 'c', 'sfo_javascript' => "a\nb"],
+	'tabs' => [['zzzzsys_tab_id' => 't2', 'syt_title' => 'B', 'syt_order' => 20], ['zzzzsys_tab_id' => 't1', 'syt_title' => 'A', 'syt_order' => 10]],
+	'objects' => [['zzzzsys_object_id' => 'o1', 'sob_all_id' => 'x', 'sob_all_label' => 'X', 'sob_all_top' => 10, 'sob_all_type' => 'input']],
+	'events' => [], 'browse' => [], 'php' => [['zzzzsys_php_id' => 'f1_BE', 'sph_php' => 'echo 1;']], 'selects' => [], 'clauses' => []];
+$snapB = $snapA;
+$snapB['tabs'] = array_reverse($snapB['tabs']);                                   // another order, same content
+$snapB['objects'][0]['sob_all_top'] = '10';                                       // number vs string
+check('snapshot: hash ignores order and value types', NuFormSnapshot::hash($snapA) === NuFormSnapshot::hash($snapB));
+$snapC = $snapA;
+$snapC['objects'][0]['sob_all_label'] = 'Y';
+check('snapshot: hash sees a change', NuFormSnapshot::hash($snapA) !== NuFormSnapshot::hash($snapC));
+$snapD = $snapA;
+$snapD['objects'][0]['sob_new_column'] = null;                                    // a column added by an update since
+check('snapshot: column-stable hash', NuFormSnapshot::hash($snapD, $snapA) === NuFormSnapshot::hash($snapA) && NuFormSnapshot::hash($snapD) !== NuFormSnapshot::hash($snapA));
+$snapE = $snapC;
+$snapE['objects'][] = ['zzzzsys_object_id' => 'o2', 'sob_all_id' => 'y', 'sob_all_type' => 'select'];
+$snapE['objects'][0]['sob_all_top'] = 99;                                         // placement only on o1? no: label changed too
+$snapE['php'][0]['sph_php'] = 'echo 2;';
+$snapE['form']['sfo_javascript'] = "a\nc";
+$d = NuFormSnapshot::diff($snapA, $snapE);
+check('snapshot: diff', $d['counts']['objects'] === 2 && count($d['objects']['added']) === 1 && $d['objects']['changed'][0]['sob_all_id'] === 'x'
+	&& $d['counts']['php'] === 1 && $d['form'][0][0] === 'sfo_javascript' && $d['counts']['total'] === 4, json_encode($d['counts']));
+$snapF = $snapA;
+$snapF['objects'][0]['sob_all_top'] = 50;
+$d = NuFormSnapshot::diff($snapA, $snapF);
+check('snapshot: placement only = moved', $d['objects']['moved'] === 1 && !$d['objects']['changed'] && $d['counts']['total'] === 1);
+check('snapshot: no change', NuFormSnapshot::diff($snapA, $snapB)['counts']['total'] === 0);
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

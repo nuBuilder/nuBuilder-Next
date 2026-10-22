@@ -10,6 +10,11 @@ defined('NU_ROOT') || exit;
  */
 
 NuTranslate::activate();   // texts in the reader's language (zzzzsys_translate)
+// form drafts (0.8.386): draft=<id> starts the preview of a draft in this session, draft=off ends it
+if (is_string($_GET['draft'] ?? null) && $_GET['draft'] !== '') {
+	try { $_GET['draft'] === 'off' ? NuFormDraft::stopPreview() : NuFormDraft::startPreview($_GET['draft']); }
+	catch (Throwable $e) { nu_flash('warning', $e->getMessage()); }
+}
 $fParam = (string)($_GET['f'] ?? '');
 $meta   = NuFormMeta::load($fParam) ?? NuFormMeta::byCode($fParam);
 if (!$meta) {
@@ -17,6 +22,11 @@ if (!$meta) {
 	nu_fatal(t('form_err_not_found'), $fParam, true);
 }
 NuAcl::require($meta->id);
+// a form never published (status Draft, 0.8.386) opens for designers only
+if ((string)($meta->form['sfo_status'] ?? '') === '0' && !$meta->isDraft() && !NuAcl::can(NuAcl::FORM_FORM, 'view')) {
+	http_response_code(403);
+	nu_fatal(t('draft_not_published'), $meta->description(), true);
+}
 
 $u        = NuAuth::user();
 $rights   = NuAcl::rights($meta->id);
@@ -155,6 +165,7 @@ $client = [
 		'redirect' => trim((string)$meta->form['sfo_browse_redirect_form_id']),
 	],
 	'builder' => ($_GET['builder'] ?? '') === '1' && NuAcl::can(NuAcl::FORM_FORM),
+	'draft' => NuFormDraft::previewInfo($meta->id),          // form drafts (0.8.386): the draft shown (label menu, Save in the preview)
 	// launch form of a report (?p=report&c=…): its fields are the criteria, a button runs the report
 	'report' => $mode === 'edit' && is_string($_GET['rpt'] ?? null) && ($rp = NuReport::load((string)$_GET['rpt'])) && NuReport::canRun($rp)
 		? ['code' => (string)$rp['sre_code'], 'description' => (string)$rp['sre_description']] : null,

@@ -36,13 +36,32 @@
 		return b;
 	}
 
+	// form drafts (0.8.386): DR = the draft the builder works on (draft mode), LD = the open draft shown in live mode
+	var DR = D.draft_mode ? D.draft : null, LD = D.draft_mode ? null : (D.draft || null);
+	var DP = D.draft_policy || {};
+
 	function api(action, data) {
+		data = data || {};
+		var send = Object.assign({action: action, form_id: D.form_id}, DR && !data.no_draft ? {draft_id: DR.id, rev: DR.rev} : {}, data);
 		return fetch('index.php?p=builderapi', {
 			method: 'POST', credentials: 'same-origin',
 			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf},
-			body: JSON.stringify(Object.assign({action: action, form_id: D.form_id}, data || {}))
+			body: JSON.stringify(send)
 		}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); })
-			.then(function (j) { if (!j.ok) throw new Error(j.error || 'Error'); return j; });
+			.then(function (j) {
+				if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok) {          // live change while a draft is open (globeadmin)
+					if (window.confirm(j.error)) return api(action, Object.assign({}, data, {live_ok: true}));
+					throw new Error('');
+				}
+				if (!j.ok && j.code === 'draft_rev' && DR) {                             // changed by somebody else meanwhile: reload
+					return api('state', {}).then(function (st) { if (window.nbLoad) window.nbLoad(st); throw new Error(j.error); });
+				}
+				if (!j.ok) throw new Error(j.error || 'Error');
+				if (DR && j.draft) DR = j.draft;
+				if (!DR && j.live_draft !== undefined) LD = j.live_draft;
+				if (window.nbRenderDraftBar) window.nbRenderDraftBar();
+				return j;
+			});
 	}
 
 	function flash(ok, msg) {
@@ -241,6 +260,8 @@
 
 	function load(state) {
 		S = state;
+		if (DR && state.draft) DR = state.draft;
+		if (!DR && state.live_draft !== undefined) LD = state.live_draft;
 		$('#nbTitle').textContent = S.form.sfo_description || '';
 		$('#nbType').textContent = t('form_type_' + (S.form.sfo_type || 'browseedit'));
 		renderTabFilter();
@@ -434,7 +455,7 @@
 	function select(kind, id) {
 		sel = {kind: kind, id: id};
 		renderObjects();
-		({form: panelForm, code: panelCode, tabs: panelTabs, browse: panelBrowse, object: panelObject, history: panelHistory})[kind](id);
+		({form: panelForm, code: panelCode, tabs: panelTabs, browse: panelBrowse, object: panelObject, history: panelHistory, compare: panelCompare})[kind](id);
 		upgradeEditors($('#nbPanel'));
 		refreshEditors($('#nbPanel'));
 		if (kind === 'object') highlight(objById(id));
@@ -883,12 +904,13 @@
 			body.appendChild(h('p', {'class': 'small text-body-secondary', text: t('builder_history_help')}));
 			var list = h('ul', {'class': 'list-group nbHistory'});
 			r.history.forEach(function (it) {
+				var ver = /^published v(\d+)/.exec(it.action || '');                 // versions of form drafts (0.8.386)
 				list.appendChild(h('li', {'class': 'list-group-item d-flex align-items-center gap-2'}, [
 					h('div', {'class': 'flex-grow-1 small'}, [
-						h('div', {'class': 'fw-semibold', text: it.action}),
+						h('div', {'class': 'fw-semibold'}, [ver ? h('span', {'class': 'badge text-bg-success me-2', text: 'v' + ver[1]}) : null, it.action]),
 						h('div', {'class': 'text-body-secondary', text: it.created_at + ' · ' + (it.login || '')})
 					]),
-					RO ? null : h('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', text: t('builder_restore'), onclick: function () {
+					RO || DR ? null : h('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', text: t('builder_restore'), onclick: function () {
 						if (!confirm(t('builder_restore_confirm'))) return;
 						api('history.restore', {id: it.id}).then(function (s2) { load(s2); select('history'); preview(); flash(true); }).catch(function (e) { flash(false, e.message); });
 					}})
@@ -899,6 +921,8 @@
 	}
 
 	var undoBtn = $('#nbUndo');
+	if (undoBtn && DR) undoBtn.hidden = true;                   // draft mode: the draft bar has its own Undo
+	if (DR && $('#nbDeleteForm')) $('#nbDeleteForm').hidden = true;   // a form with an open draft is not deleted
 	if (undoBtn) undoBtn.addEventListener('click', function () {
 		undoBtn.disabled = true;
 		api('history.undo', {}).then(function (r) {
@@ -974,7 +998,7 @@
 		var type = S.form.sfo_type;
 		var rec = type === 'browse' ? '' : ($('#nbPreviewRecord').value.trim() || '-1');
 		$('#nbPreviewRecord').disabled = type === 'browse';
-		var q = {p: 'form', f: D.form_id, iframe: '1', builder: '1'};
+		var q = {p: 'form', f: D.form_id, iframe: '1', builder: '1', draft: DR ? DR.id : 'off'};   // draft mode: the preview shows the draft (0.8.386)
 		if (rec !== '') q.r = rec;
 		if ($('#nbPreviewLayout').value) q.layout = $('#nbPreviewLayout').value;
 		if (type === 'subform') { frame.removeAttribute('src'); frame.srcdoc = '<p style="font:14px sans-serif;padding:1rem;color:#666">' + t('builder_preview_subform') + '</p>'; return; }
@@ -1065,9 +1089,208 @@
 	if (del) del.addEventListener('click', openDelete);
 	if (del && new URLSearchParams(window.location.search).get('delete') === '1') openDelete();   // back from the password confirmation
 
+	// ------------------------------------------------------------------ form drafts (0.8.386)
+	// Live mode: pill LIVE, "Start draft" (or the info bar of an open draft); draft mode: pill DRAFT and the amber bar with Preview,
+	// Compare, Undo, "Saving in the preview", Publish… and Discard. Switching between the modes reloads the page.
+	window.nbLoad = function (st) { load(st); select(sel.kind === 'object' && objById(sel.id) ? 'object' : (sel.kind === 'object' ? 'form' : sel.kind), sel.id); preview(); };
+	function fmtTime(s) { return String(s || '').replace(/^(\d{4})-(\d\d)-(\d\d) (\d\d:\d\d).*$/, '$3.$2. $4'); }
+	function go(url) { if (window.nuLeaveGuard && isDirty()) window.nuLeaveGuard.ask(function () { window.location.href = url; }); else window.location.href = url; }
+	function renderDraftBar() {
+		var pill = $('#nbModePill'), bar = $('#nbDraftBar');
+		if (!pill || !bar || !S) return;
+		pill.className = 'badge fs-6 fw-normal nbModePill ' + (DR ? 'text-bg-warning' : 'text-bg-success');
+		pill.textContent = DR ? t('builder_draft_draft') : t('builder_draft_live');
+		bar.innerHTML = '';
+		bar.className = 'nbDraftBar mb-3';
+		var btn = function (cls, icon, label, fn, attrs) { return h('button', Object.assign({type: 'button', 'class': 'btn btn-sm ' + cls, onclick: fn}, attrs || {}), [h('i', {'class': 'bi ' + icon + ' me-1'}), label]); };
+		if (!DR) {
+			var items = [];
+			if (LD) {
+				bar.classList.add('nbDraftInfo');
+				items.push(h('i', {'class': 'bi bi-cone-striped'}), h('span', {'class': 'me-auto', text: t('builder_draft_open_info').replace('%s', LD.created_by).replace('%s', fmtTime(LD.created_at))}));
+				items.push(btn('btn-primary', 'bi-pencil-square', t('builder_draft_open_btn'), function () { go(DP.draft_url); }, {id: 'nbDraftOpen'}));
+			} else if (!RO && D.can_save) {
+				items.push(h('span', {'class': 'me-auto small text-body-secondary', text: t('builder_draft_start_tip')}));
+				if (DP.unpublished && DP.can_publish) items.push(btn('btn-outline-success', 'bi-rocket-takeoff', t('builder_draft_publish_new'), publishNew, {id: 'nbPublishNew'}));
+				items.push(btn(DP.required ? 'btn-primary' : 'btn-outline-primary', 'bi-cone-striped', t('builder_draft_start'), startDraft, {id: 'nbDraftStart', title: t('builder_draft_start_tip')}));
+			}
+			bar.hidden = !items.length;
+			items.forEach(function (x) { bar.appendChild(x); });
+			return;
+		}
+		bar.hidden = false;
+		bar.classList.add('nbDraftActive');
+		var info = t('builder_draft_bar').replace('%s', DR.created_by).replace('%s', fmtTime(DR.created_at)).replace('%s', fmtTime(DR.updated_at)).replace('%s', DR.changes);
+		var saves = h('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: 'nbDraftSaves', checked: DR.preview_saves ? 'checked' : null});
+		saves.addEventListener('change', function () {
+			if (saves.checked && !window.confirm(t('builder_draft_saves_confirm'))) { saves.checked = false; return; }
+			api('draft.settings', {preview_saves: saves.checked}).then(function (r) { load(r); flash(true); }).catch(function (e) { flash(false, e.message); });
+		});
+		[h('i', {'class': 'bi bi-cone-striped'}),
+			h('span', {'class': 'me-auto'}, [info, DR.conflict ? h('span', {'class': 'badge text-bg-danger ms-2', id: 'nbDraftConflict', text: t('builder_draft_conflict')}) : null]),
+			btn('btn-outline-dark', 'bi-box-arrow-up-right', t('builder_draft_preview'), function () { window.open(DR.preview_url, '_blank', 'noopener'); }, {id: 'nbDraftPreview'}),
+			btn('btn-outline-dark', 'bi-file-diff', t('builder_draft_compare'), function () { guarded(function () { select('compare'); })(); }, {id: 'nbDraftCompare'}),
+			btn('btn-outline-dark', 'bi-arrow-counterclockwise', t('builder_draft_undo'), draftUndo, {id: 'nbDraftUndo', disabled: DR.undo_count ? null : 'disabled', title: DR.undo_label || null}),
+			h('div', {'class': 'form-check form-switch mb-0 small'}, [saves, h('label', {'class': 'form-check-label', 'for': 'nbDraftSaves', text: t('builder_draft_saves')})]),
+			DP.can_publish ? btn('btn-success', 'bi-rocket-takeoff', t('builder_draft_publish'), publishDialog, {id: 'nbDraftPublish'}) : null,
+			btn('btn-outline-danger', 'bi-trash', t('builder_draft_discard'), discardDraft, {id: 'nbDraftDiscard'}),
+			h('a', {'class': 'btn btn-sm btn-link', href: DP.live_url, text: t('builder_draft_live')})
+		].forEach(function (x) { if (x) bar.appendChild(x); });
+	}
+	window.nbRenderDraftBar = renderDraftBar;
+	function startDraft() {
+		var note = window.prompt(t('builder_draft_note_prompt'), '');
+		if (note === null) return;
+		api('draft.start', {note: note, no_draft: true}).then(function () { window.location.href = DP.draft_url; }).catch(function (e) { alert(e.message); });
+	}
+	function publishNew() {
+		api('form.publishnew', {no_draft: true}).then(function (r) { alert(t('builder_draft_published').replace('%s', r.version)); window.location.href = DP.live_url; }).catch(function (e) { alert(e.message); });
+	}
+	function draftUndo() {
+		api('draft.undo', {}).then(function (r) { window.nbLoad(r); flash(true); }).catch(function (e) { if (e.message) alert(e.message); });
+	}
+	function discardDraft() {
+		if (!window.confirm(t('builder_draft_discard_confirm'))) return;
+		api('draft.discard', {}).then(function () { setDirty(false); window.location.href = DP.live_url; }).catch(function (e) { alert(e.message); });
+	}
+
+	/** Line diff (LCS) of two texts: [['=', line] | ['-', line] | ['+', line]]; null when too large. */
+	function lineDiff(a, b) {
+		var x = String(a || '').split('\n'), y = String(b || '').split('\n');
+		if (x.length * y.length > 4000000) return null;
+		var n = x.length, m = y.length, L = [], i, j;
+		for (i = 0; i <= n; i++) { L.push(new Uint32Array(m + 1)); }
+		for (i = n - 1; i >= 0; i--) for (j = m - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+		var out = []; i = 0; j = 0;
+		while (i < n && j < m) {
+			if (x[i] === y[j]) { out.push(['=', x[i]]); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) { out.push(['-', x[i++]]); } else { out.push(['+', y[j++]]); }
+		}
+		while (i < n) out.push(['-', x[i++]]);
+		while (j < m) out.push(['+', y[j++]]);
+		return out;
+	}
+	function codeDiff(oldText, newText) {
+		var d = lineDiff(oldText, newText);
+		if (!d) return h('div', {'class': 'small text-body-secondary', text: t('builder_draft_diff_large')});
+		// unchanged lines far from a change are folded
+		var keep = d.map(function () { return false; });
+		d.forEach(function (r, k) { if (r[0] !== '=') for (var q = Math.max(0, k - 2); q <= Math.min(d.length - 1, k + 2); q++) keep[q] = true; });
+		var pre = h('pre', {'class': 'nbDiffCode'}), folded = false;
+		d.forEach(function (r, k) {
+			if (!keep[k]) { if (!folded) pre.appendChild(h('div', {'class': 'nbDiffFold', text: '…'})); folded = true; return; }
+			folded = false;
+			pre.appendChild(h('div', {'class': r[0] === '+' ? 'nbDiffAdd' : (r[0] === '-' ? 'nbDiffDel' : ''), text: (r[0] === '=' ? '  ' : r[0] + ' ') + r[1]}));
+		});
+		return pre;
+	}
+	var CODE_COLS = ['sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_browse_sql', 'sfo_style', 'sob_select_sql', 'sob_display_sql', 'sob_html_code',
+		'sob_input_javascript', 'sob_lookup_javascript', 'sob_html_javascript', 'sob_all_access_condition', 'sob_calc_formula'];
+	function fieldRows(fields) {
+		return h('div', {}, fields.map(function (f) {
+			if (CODE_COLS.indexOf(f[0]) >= 0) return h('div', {'class': 'mt-1'}, [h('div', {'class': 'small fw-semibold', text: f[0]}), codeDiff(f[1], f[2])]);
+			return h('div', {'class': 'small'}, [h('code', {text: f[0]}), ': ', h('span', {'class': 'nbDiffDel px-1', text: f[1] === null ? '∅' : f[1]}), ' → ', h('span', {'class': 'nbDiffAdd px-1', text: f[2] === null ? '∅' : f[2]})]);
+		}));
+	}
+	/** The differences (NuFormSnapshot::diff) as lists – compare panel, publish dialog and conflicts. */
+	function diffView(d) {
+		var box = h('div', {'class': 'nbDiff'});
+		if (!d.counts.total) { box.appendChild(h('p', {'class': 'text-body-secondary mb-0', text: t('builder_draft_no_changes')})); return box; }
+		var sec = function (title, kids) { if (kids.length) box.appendChild(h('details', {'class': 'mb-2', open: 'open'}, [h('summary', {'class': 'fw-semibold', text: title})].concat(kids))); };
+		var li = function (cls, text, extra) { return h('div', {'class': 'small ' + cls}, [text].concat(extra || [])); };
+		sec(t('builder_sec_form'), d.form.length ? [fieldRows(d.form)] : []);
+		var tabs = [];
+		d.tabs.added.forEach(function (x) { tabs.push(li('nbDiffAdd', '+ ' + x.title)); });
+		d.tabs.removed.forEach(function (x) { tabs.push(li('nbDiffDel', '− ' + x.title)); });
+		d.tabs.changed.forEach(function (x) { tabs.push(li('', '~ ' + x.title, [fieldRows(x.fields)])); });
+		if (d.tabs.order) tabs.push(li('', t('builder_draft_order')));
+		sec(t('builder_sec_tabs'), tabs);
+		var objs = [];
+		d.objects.added.forEach(function (x) { objs.push(li('nbDiffAdd', '+ ' + x.sob_all_id + ' (' + x.type + ') ' + (x.label || ''))); });
+		d.objects.removed.forEach(function (x) { objs.push(li('nbDiffDel', '− ' + x.sob_all_id + ' (' + x.type + ')')); });
+		d.objects.changed.forEach(function (x) { objs.push(li('', '~ ' + x.sob_all_id, [fieldRows(x.fields)])); });
+		if (d.objects.moved) objs.push(li('', t('builder_draft_moved').replace('%s', d.objects.moved)));
+		sec(t('builder_objects'), objs);
+		sec(t('builder_sec_events'), d.events.map(function (x) { return li('', x.sob_all_id + ' · ' + x.event, [codeDiff(x.old, x.new)]); }));
+		sec('PHP', d.php.map(function (x) { return li('', x.hook === 'AB' ? x.id : x.hook, [codeDiff(x.old, x.new)]); }));
+		var br = [];
+		d.browse.added.forEach(function (x) { br.push(li('nbDiffAdd', '+ ' + (x.title || x.display))); });
+		d.browse.removed.forEach(function (x) { br.push(li('nbDiffDel', '− ' + (x.title || x.display))); });
+		d.browse.changed.forEach(function (x) { br.push(li('', '~ ' + x.title, [fieldRows(x.fields)])); });
+		if (d.browse.order) br.push(li('', t('builder_draft_order')));
+		sec(t('builder_sec_browse'), br);
+		if (d.sql_builder) sec('SQL builder', [li('', t('builder_draft_sql_builder'))]);
+		return box;
+	}
+	function panelCompare() {
+		var body = h('div', {}, [h('div', {'class': 'text-body-secondary small', text: '…'})]);
+		panel(t('builder_draft_summary'), body, null);
+		api('draft.diff', {}).then(function (r) {
+			body.innerHTML = '';
+			body.appendChild(h('p', {'class': 'small text-body-secondary', text: t('builder_draft_changes_n').replace('%s', r.diff.counts.total)}));
+			body.appendChild(diffView(r.diff));
+			if (r.ddl && r.ddl.length) body.appendChild(h('p', {'class': 'small mt-2'}, [t('builder_draft_ddl') + ' ', r.ddl.map(function (x) { return x.table + '.' + x.column; }).join(', ')]));
+		}).catch(function (e) { body.textContent = e.message; });
+	}
+
+	/** Publish…: change note, summary, checks; conflict → overwrite only with the typed form code. */
+	function publishDialog() {
+		var wrap = h('div', {'class': 'modal fade', tabindex: '-1', id: 'nbPublishModal'});
+		var note = h('textarea', {'class': 'form-control', id: 'nbPublishNote', rows: '2', maxlength: '1000'});
+		note.value = DR.note || '';
+		var summary = h('div', {'class': 'nbPublishSummary'}, [h('div', {'class': 'text-body-secondary small', text: '…'})]);
+		var msg = h('div', {'class': 'nbPublishMsg'});
+		var ok = h('button', {type: 'button', 'class': 'btn btn-success', id: 'nbPublishGo'}, [h('i', {'class': 'bi bi-rocket-takeoff me-1'}), t('builder_draft_publish_btn')]);
+		var state = {warnings_ok: false, force: false, confirm_code: ''};
+		wrap.appendChild(h('div', {'class': 'modal-dialog modal-lg modal-dialog-scrollable'}, [h('div', {'class': 'modal-content'}, [
+			h('div', {'class': 'modal-header'}, [h('h2', {'class': 'modal-title h5', text: t('builder_draft_publish')}), h('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('cancel')})]),
+			h('div', {'class': 'modal-body'}, [h('label', {'class': 'form-label', 'for': 'nbPublishNote', text: t('builder_draft_note')}), note,
+				h('h3', {'class': 'h6 mt-3', text: t('builder_draft_summary')}), summary, msg]),
+			h('div', {'class': 'modal-footer'}, [h('button', {type: 'button', 'class': 'btn btn-outline-secondary', 'data-bs-dismiss': 'modal', text: t('cancel')}), ok])
+		])]));
+		document.body.appendChild(wrap);
+		wrap.addEventListener('hidden.bs.modal', function () { wrap.remove(); });
+		nuBs.modal(wrap).show();
+		api('draft.diff', {}).then(function (r) {
+			summary.innerHTML = '';
+			summary.appendChild(diffView(r.diff));
+			if (r.validation.errors.length) summary.appendChild(h('div', {'class': 'alert alert-danger small mt-2 mb-0'}, [t('builder_draft_errors'), h('ul', {'class': 'mb-0'}, r.validation.errors.map(function (x) { return h('li', {text: x}); }))]));
+		}).catch(function (e) { summary.textContent = e.message; });
+		var list = function (cls, title, items) { return h('div', {'class': 'alert ' + cls + ' small mt-3 mb-0'}, [title, h('ul', {'class': 'mb-0'}, items.map(function (x) { return h('li', {text: x}); }))]); };
+		ok.addEventListener('click', function () {
+			msg.innerHTML = '';
+			if (!note.value.trim()) { msg.appendChild(h('div', {'class': 'alert alert-danger small mt-3 mb-0', text: t('builder_draft_note_required')})); note.focus(); return; }
+			ok.disabled = true;
+			fetch('index.php?p=builderapi', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf},
+				body: JSON.stringify(Object.assign({action: 'draft.publish', form_id: D.form_id, draft_id: DR.id, note: note.value}, state))})
+				.then(function (r) { return r.json(); }).then(function (j) {
+					ok.disabled = false;
+					if (j.ok) { setDirty(false); alert(t('builder_draft_published').replace('%s', j.version)); window.location.href = DP.live_url; return; }
+					if (j.error) { msg.appendChild(h('div', {'class': 'alert alert-danger small mt-3 mb-0', text: j.error})); return; }
+					if (j.errors) { msg.appendChild(list('alert-danger', t('builder_draft_errors'), j.errors)); return; }
+					if (j.conflict) {
+						var code = h('input', {'class': 'form-control form-control-sm mt-2', id: 'nbPublishCode', autocomplete: 'off', 'aria-label': t('builder_draft_overwrite')});
+						msg.appendChild(h('div', {'class': 'alert alert-danger small mt-3 mb-0'}, [h('strong', {text: t('builder_draft_conflict')}), h('p', {'class': 'mb-1', text: t('builder_draft_conflict_text')}),
+							diffView(j.changes), h('div', {'class': 'mt-2', text: t('builder_draft_overwrite_type').replace('%s', S.form.sfo_code)}), code]));
+						state.force = true;
+						code.addEventListener('input', function () { state.confirm_code = code.value; });
+						ok.lastChild.textContent = t('builder_draft_overwrite');
+						ok.className = 'btn btn-danger';
+						return;
+					}
+					if (j.warnings) {
+						var cb = h('input', {'class': 'form-check-input', type: 'checkbox', id: 'nbPublishWarn'});
+						cb.addEventListener('change', function () { state.warnings_ok = cb.checked; });
+						msg.appendChild(h('div', {'class': 'alert alert-warning small mt-3 mb-0'}, [t('builder_draft_warnings'), h('ul', {}, j.warnings.map(function (x) { return h('li', {text: x}); })),
+							h('div', {'class': 'form-check'}, [cb, h('label', {'class': 'form-check-label', 'for': 'nbPublishWarn', text: t('builder_draft_warnings_ok')})])]));
+					}
+				}).catch(function (e) { ok.disabled = false; msg.textContent = e.message; });
+		});
+	}
+
 	// ------------------------------------------------------------------ start
 	api('state', {}).then(function (r) {
 		load(r);
+		renderDraftBar();
 		select('form');
 		preview();
 		// opened from a form's options menu / Ctrl+Shift+A, H, F, O: ?open=arrange | add | form | objects

@@ -155,7 +155,7 @@ core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.p
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',
                      '0002-report-tables', '0003-translate-table', '0004-cloner-tables', '0005-setting-primary-db', '0007-drop-vendor-layout',
-                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications' – add new steps at the end; 0006 was removed with the baseline;
+                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts' – add new steps at the end; 0006 was removed with the baseline;
                      every step needs an entry in NuMigrate::CHANGES – tables + kind + what, release.py stops otherwise), change history,
                      SQL dumps in backups · core/nugithub.php NuGitHub (0.8.374): newest release of a GitHub repository
                      (setting 'github_update', daily look: cron or start / update page of users with the update right, Update tile badge), download into _update/ (only signed kept),
@@ -168,6 +168,11 @@ core/form/*.php      form runtime (meta, render, record, browse, hash variables,
                      (read only, hash of the record, cached; error = 2) on render and save · core/nucompat.php NuCompat::findings() + SINCE
                      = the compatibility report's findings (C/M/N ids) with the version that supports them – update SINCE when one is fixed;
                      test application of the report: dev/tests/nub49/ (build_app*.php, e2e nub49_app, nub49_js)
+                     form drafts (0.8.386): core/form/nusnapshot.php NuFormSnapshot (capture / apply / diff / hash of a whole form, also
+                     used by NuFormHistory), core/form/nuformdraft.php NuFormDraft (zzzzsys_nunext_form_draft, step 0015: start / save with rev
+                     check / undo / validate / publish / discard, preview session → NuFormMeta::load() returns the draft; admin right formpublish,
+                     security settings form_drafts_required / form_preview_saves), core/form/nuformstore.php NuDraftStore = the builder's write
+                     actions on a draft (pages/nubuilderapi.php nb_draft; live actions unchanged, e2e form_drafts_parity compares both)
                      form JS (0.8.383): HTML-object scripts → type text/nu-deferred (NuRender::deferScripts), run by nuNextRunDeferred();
                      nuAfterSave after the reload (sessionStorage nuNextAfterSave); edited flag reset after nuOnLoad (field nuEdited marks stay)
 core/nureport.php    reports: NuReport (data, rights, designer data) · core/nureportengine.php NuReportEngine (nurunpdf.php port, TCPDF)
@@ -194,7 +199,7 @@ cron.php             housekeeping for cron (CLI only) · .github/workflows/ci.ym
 Own tables: `zzzzsys_nunext_log`, `_form_history`, `_user_2fa`, `_token` (kinds: pw_reset, report_file …), `_session`, `_setting` (key/value:
 `security`, `backup_keep_sql`, `demo_reset`, `mail_auth_type`, `listview_defaults`, `audit`, `notify`, `home_fav_only_ga` …), `_api_*`, `_dashboard`,
 `_widget`, `_admin_role`, `_admin_user`, `_list_view` (list views and saved start page layouts – with `fav` favourites), `_audit` (audit trail),
-`_notification` + `_notification_user` (notification centre), `_migration`. Settings pattern: see `NuHome::save()` /
+`_notification` + `_notification_user` (notification centre), `_form_draft` (form drafts), `_migration`. Settings pattern: see `NuHome::save()` /
 `NuUpdate::setKeepSql()` (NuSchema::ensure(), then update or insert by `zzzzsys_nunext_setting_id`).
 
 ## Conventions

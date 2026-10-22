@@ -3,6 +3,24 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.386 – Form drafts
+- Form drafts (phase 1): change a form in a draft while users keep working with the live form, then publish it in one step.
+  Start draft in the form builder copies the whole form (settings, tabs, objects, events, PHP hooks, list columns, SQL builder
+  selects); one draft per form, shown in the forms list as "Draft · author" (filter "With draft"); undo in the draft (20 steps).
+- Preview of a draft: only for its author, with a banner; read-only by default, saving in the preview (live data) after a
+  confirmation when allowed. Forms the draft opens that have a draft of the same author are previewed too.
+- Compare with live: form settings, tabs, objects (added, removed, changed, moved), events, PHP / JavaScript line by line,
+  list columns and SQL builder. Publish with a note, the change summary and checks (errors stop, warnings need a tick); the live
+  form goes into the history first, is replaced in one transaction and kept as "published vN" (never pruned).
+- Conflicts: a live change after the draft was started is shown at publishing; overwriting needs the form code typed in. Two
+  windows on one draft: the second save is refused and the builder reloads.
+- New admin right "Publish forms (drafts)". Security settings "Change published forms only through drafts" (new forms then start
+  as drafts, visible to form designers only; the globeadmin may still change live after a confirmation) and "New drafts: allow
+  saving in the preview". While a draft is open, live changes ask first and deleting the form is refused.
+- Form history: snapshots now also hold the PHP hooks of lookups and the SQL builder selects (older entries restore as before).
+- Help: chapter "Drafts and publishing"; the start page chapter no longer mentions the removed Reset.
+- Database step 0015 (table zzzzsys_nunext_form_draft).
+
 ## 0.8.385 – Start page profiles
 - Start page profiles: ten ready-made layouts – Standard, All tiles, Developer (three tabs), Minimal, Getting started, Users &
   security, Operations, Reporting, Integration & mail, Blank. Tiles a profile does not show are hidden (search and Ctrl+K still find

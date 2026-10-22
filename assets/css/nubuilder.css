@@ -86,3 +86,18 @@
 
 /* tabs the user may not rename (only the globeadmin – 0.8.247) */
 .nbListTable input[readonly] { background-color: var(--bs-secondary-bg); color: var(--bs-secondary-color); cursor: not-allowed; }
+
+/* form drafts (0.8.386): mode pill, draft bar, compare / publish diff */
+.nbDraftBar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .55rem .85rem; border-radius: .6rem;
+	background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
+.nbDraftBar.nbDraftActive { background: var(--bs-warning-bg-subtle); border-color: var(--bs-warning-border-subtle); color: var(--bs-warning-text-emphasis); }
+.nbDraftBar.nbDraftInfo { background: var(--bs-info-bg-subtle); border-color: var(--bs-info-border-subtle); color: var(--bs-info-text-emphasis); }
+.nbDraftBar .btn-outline-dark { --bs-btn-color: var(--bs-warning-text-emphasis); --bs-btn-border-color: var(--bs-warning-border-subtle); }
+.nbModePill { letter-spacing: .03em; text-transform: uppercase; }
+.nbDiff details > summary { cursor: pointer; }
+.nbDiffAdd { background: var(--bs-success-bg-subtle); }
+.nbDiffDel { background: var(--bs-danger-bg-subtle); }
+.nbDiffFold { color: var(--bs-secondary-color); }
+.nbDiffCode { max-height: 22rem; overflow: auto; margin: .25rem 0 .5rem; padding: .35rem .5rem; border: 1px solid var(--bs-border-color); border-radius: .4rem;
+	font-size: .8rem; white-space: pre; background: var(--bs-body-bg); }
+.nbDiffCode > div { min-height: 1.2em; }

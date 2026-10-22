@@ -605,7 +605,15 @@
 			method: 'POST', credentials: 'same-origin',
 			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
 			body: JSON.stringify(data)
-		}).then(function (r) { return r.json().catch(function () { return {ok: false, errors: [{message: 'HTTP ' + r.status}]}; }); });
+		}).then(function (r) { return r.json().catch(function () { return {ok: false, errors: [{message: 'HTTP ' + r.status}]}; }); })
+			.then(function (res) {
+				// draft preview (0.8.386): Save / Delete write live data – asked once per session, then sent again
+				if (res && res.code === 'preview_confirm' && !data.preview_confirm) {
+					if (!window.confirm((res.errors && res.errors[0] && res.errors[0].message) || '')) return {ok: false, errors: []};
+					return call(action, $.extend({}, data, {preview_confirm: true}));
+				}
+				return res;
+			});
 	}
 	N.call = call;
 
@@ -1410,9 +1418,16 @@
 			return fetch(N.base + '?p=builderapi', {
 				method: 'POST', credentials: 'same-origin',
 				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
-				body: JSON.stringify($.extend({action: action, form_id: N.form.id}, data))
+				// in a draft preview the label menu changes the draft (0.8.386); a live change while a draft is open is confirmed first
+				body: JSON.stringify($.extend({action: action, form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
 			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); })
-				.then(function (j) { if (!j.ok) throw new Error(j.error || T.error); return j; });
+				.then(function (j) {
+					if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok && window.confirm(j.error)) return builderCall(action, $.extend({}, data, {live_ok: true}));
+					if (!j.ok && j.code === 'draft_rev') { window.location.reload(); }
+					if (!j.ok) throw new Error(j.error || T.error);
+					if (N.draft && j.draft) N.draft.rev = j.draft.rev;
+					return j;
+				});
 		}
 		function reload() {
 			if (N.edited && !window.confirm(T.unsaved)) return false;

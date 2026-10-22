@@ -63,7 +63,9 @@ final class NuBuilderGen
 		try {
 			$db->transaction(static function (NuDB $db) use ($formId, $type, $code, $desc, $table, $pk, $fields, $settings) {
 				$db->insert('zzzzsys_form', [
-					'zzzzsys_form_id' => $formId, 'sfo_type' => $type, 'sfo_code' => $code, 'sfo_description' => $desc, 'sfo_status' => '1',
+					'zzzzsys_form_id' => $formId, 'sfo_type' => $type, 'sfo_code' => $code, 'sfo_description' => $desc,
+					// changes only through drafts (0.8.386): a new form starts as Draft – only designers open it until it is published
+					'sfo_status' => NuSecurity::get('form_drafts_required') ? '0' : '1',
 					'sfo_table' => $table ?: null, 'sfo_primary_key' => $pk ?: null, 'sfo_browse_rows_per_page' => 20,
 					'sfo_browse_sql' => $table !== '' ? 'SELECT * FROM ' . $table : null,
 					'sfo_breadcrumb_title' => '|' . $desc, 'sfo_json' => $settings ? json_encode(['nunext' => $settings]) : null,

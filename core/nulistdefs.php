@@ -268,9 +268,15 @@ final class NuListDefs
 		$params = [];
 		if (!$ga && !$designer) { $where[] = 'f.zzzzsys_form_id IN (SELECT slf_zzzzsys_form_id FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?)'; $params[] = (string)$u['access_id']; }
 		$trail = '';
+		// form drafts (0.8.386): the open draft of each form (author, id) – for designers
+		$drafts = $designer && NuFormDraft::ready();
+		$dWhere = "d.status IN ('open', 'review') AND " . nu_db()->sameText('d.form_id', 'f.zzzzsys_form_id');
+		$dBy = $drafts ? "(SELECT MAX(d.created_by) FROM zzzzsys_nunext_form_draft d WHERE $dWhere)" : 'NULL';
+		$dId = $drafts ? "(SELECT MAX(d.zzzzsys_nunext_form_draft_id) FROM zzzzsys_nunext_form_draft d WHERE $dWhere)" : 'NULL';
 		$cols = [
-			'actions' => ['label' => '', 'select' => [], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'if' => static fn() => $designer, 'text' => static fn($r) => '', 'noexport' => true,
-				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('builder', ['f' => $r['__id']])) . '" title="' . h(t('builder_title')) . '" aria-label="' . h(t('builder_title')) . '"><i class="bi bi-tools"></i></a>'
+			'actions' => ['label' => '', 'select' => ['lv_draft_id' => $dId], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'if' => static fn() => $designer, 'text' => static fn($r) => '', 'noexport' => true,
+				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('builder', ['f' => $r['__id'], 'draft' => ($r['lv_draft_id'] ?? null) ? '1' : null])) . '" title="' . h(t('builder_title')) . '" aria-label="' . h(t('builder_title')) . '"><i class="bi bi-tools"></i></a>'
+					. (($r['lv_draft_id'] ?? null) ? ' <a class="btn btn-sm btn-outline-warning" href="' . h(nu_url('form', ['f' => $r['__id'], 'draft' => (string)$r['lv_draft_id']])) . '" target="_blank" rel="noopener" title="' . h(t('builder_draft_preview')) . '" aria-label="' . h(t('builder_draft_preview')) . '"><i class="bi bi-cone-striped"></i></a>' : '')
 					. ($ga ? ' <a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('cloner', ['f' => $r['__id']])) . '" title="' . h(t('cl_title')) . '" aria-label="' . h(t('cl_title')) . '"><i class="bi bi-files"></i></a>' : '')],
 			'description' => self::col('sfo_description', 'f.sfo_description', t('builder_description')) + ['main' => true, 'locked' => true],
 			'code' => self::col('sfo_code', 'f.sfo_code', t('builder_code'), 'small text-body-secondary'),
@@ -285,6 +291,9 @@ final class NuListDefs
 				'text' => static fn($r) => t($status[(string)$r['lv_status']] ?? 'builder_status_1'),
 				'html' => static fn($r) => self::badge(t($status[(string)$r['lv_status']] ?? 'builder_status_1'), match ((string)$r['lv_status']) {
 					'0' => 'bg-warning-subtle text-warning-emphasis', '3' => 'bg-secondary-subtle text-secondary-emphasis', default => 'bg-success-subtle text-success-emphasis' })],
+			'draft' => ['label' => t('forms_col_draft'), 'select' => ['lv_draft_by' => $dBy], 'sort' => $drafts ? $dBy : null, 'class' => 'small', 'if' => static fn() => $drafts,
+				'text' => static fn($r) => $r['lv_draft_by'] !== null ? t('forms_draft_by', (string)$r['lv_draft_by']) : '',
+				'html' => static fn($r) => $r['lv_draft_by'] !== null ? self::badge(t('forms_draft_by', (string)$r['lv_draft_by']), 'bg-warning-subtle text-warning-emphasis') : ''],
 			'id' => self::idCol('f.zzzzsys_form_id'),
 		];
 		$filters = [
@@ -296,6 +305,8 @@ final class NuListDefs
 				'where' => static fn(string $v) => $v === 'na' ? ["$st <> '3'", []] : (isset($status[$v]) ? ["$st = ?", [$v]] : null)],
 			'table' => ['label' => t('builder_table'), 'type' => 'distinct', 'expr' => 'f.sfo_table', 'none' => t('lv_empty')],
 		];
+		if ($drafts) $filters['draft'] = ['label' => t('forms_col_draft'), 'type' => 'select', 'options' => static fn() => ['1' => t('forms_with_draft')],
+			'where' => static fn(string $v) => $v === '1' ? ["$dBy IS NOT NULL", []] : null];
 		return [
 			'key' => 'forms', 'title' => t('nav_forms'), 'route' => 'forms', 'form' => NuAcl::FORM_FORM, 'public' => true, 'from' => ' FROM zzzzsys_form f', 'where' => $where, 'params' => $params,
 			'id' => 'f.zzzzsys_form_id', 'always' => ['type'],
@@ -310,7 +321,7 @@ final class NuListDefs
 			'search' => ['f.sfo_code', 'f.sfo_description', 'f.sfo_table', 'f.sfo_group'], 'search_ph' => t('forms_search_ph'), 'open_min' => 800,
 			'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
-				'default' => ['columns' => ['actions', 'description', 'code', 'type', 'table', 'group', 'layout', 'status'], 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code', 'table', 'group']],
+				'default' => ['columns' => ['actions', 'description', 'code', 'type', 'table', 'group', 'layout', 'status', 'draft'], 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code', 'table', 'group']],
 					'sort' => ['group', 'asc'], 'per' => 500, 'filters' => ['shown' => ['type', 'group', 'status'], 'values' => ['status' => 'na']]],
 				'compact' => ['columns' => ['actions', 'description', 'code', 'type'], 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code']],
 					'sort' => ['description', 'asc'], 'per' => 100, 'filters' => ['shown' => ['type', 'status'], 'values' => ['status' => 'na']]],

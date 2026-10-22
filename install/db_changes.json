@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.385",
+    "version": "0.8.386",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -194,6 +194,17 @@
                     "what": "row db_origin added when missing"
                 }
             ]
+        },
+        {
+            "id": "0015-form-drafts",
+            "description": "Form drafts (zzzzsys_nunext_form_draft)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_form_draft",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
         }
     ],
     "own_tables": {
@@ -273,6 +284,119 @@
             ],
             "index": [
                 "form_id"
+            ]
+        },
+        "zzzzsys_nunext_form_draft": {
+            "pk": "zzzzsys_nunext_form_draft_id",
+            "cols": [
+                [
+                    "form_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "changeset_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "status",
+                    "text",
+                    "12"
+                ],
+                [
+                    "note",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "base_hash",
+                    "text",
+                    "64"
+                ],
+                [
+                    "base_snapshot",
+                    "longtext"
+                ],
+                [
+                    "snapshot",
+                    "longtext"
+                ],
+                [
+                    "undo_list",
+                    "longtext"
+                ],
+                [
+                    "rev",
+                    "int"
+                ],
+                [
+                    "preview_saves",
+                    "int"
+                ],
+                [
+                    "testers",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "ddl",
+                    "longtext"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "submitted_at",
+                    "datetime"
+                ],
+                [
+                    "submitted_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "review_note",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "published_at",
+                    "datetime"
+                ],
+                [
+                    "published_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "version",
+                    "int"
+                ],
+                [
+                    "history_id",
+                    "text",
+                    "25"
+                ]
+            ],
+            "index": [
+                "form_id",
+                "status"
             ]
         },
         "zzzzsys_nunext_user_2fa": {

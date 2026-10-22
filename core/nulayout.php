@@ -96,6 +96,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	nu_head($title, $opt['head'] ?? '');
 	if (!empty($opt['bare'])) {
 		echo '<body class="nu-app nu-bare' . h(' ' . ($opt['body_class'] ?? '')) . '"><main id="main" class="' . h($opt['container'] ?? 'container-fluid') . ' py-2">';
+		if (!empty($_SESSION['nu_form_preview'])) echo NuFormDraft::banner(true);       // form drafts (0.8.386): "DRAFT" badge in iframes
 		nu_render_flashes();
 		return;
 	}
@@ -216,6 +217,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 		</div>
 	</div>
 </nav>
+<?= !empty($_SESSION['nu_form_preview']) ? NuFormDraft::banner(false) : '' /* form drafts (0.8.386): preview banner */ ?>
 <main id="main" class="<?= h($opt['container'] ?? 'container-xl') ?> py-4">
 	<?php nu_render_flashes(); ?>
 <?php
