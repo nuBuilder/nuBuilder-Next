@@ -305,6 +305,316 @@ final class NuInstall
 		return $out;
 	}
 
+	// ------------------------------------------------------------------ nubuilder4.sql of any 4.x version (0.8.384)
+
+	/** Largest dump the installer reads (unpacked). nuBuilder 4.9's nubuilder4.sql has about 1 MB. */
+	public const DUMP_MAX = 64 * 1024 * 1024;
+	/** Tables a nubuilder4.sql must create. */
+	public const DUMP_CORE = ['zzzzsys_access', 'zzzzsys_form', 'zzzzsys_object', 'zzzzsys_php', 'zzzzsys_user'];
+
+	/** nubuilder4.sql files copied into _install/ by FTP / SFTP or uploaded in the wizard: [file name => path]. */
+	public static function dumpCandidates(): array
+	{
+		$out = [];
+		foreach (glob(self::dir() . '/*') ?: [] as $f) {
+			$b = basename($f);
+			// files of the wizard itself (an upload, the checked copy) are not offered again
+			if (is_file($f) && preg_match('/\.(sql|sql\.gz|zip)$/i', $b) && !str_ends_with(strtolower($b), '.checked.sql') && !str_starts_with($b, 'upload-')) $out[$b] = $f;
+		}
+		ksort($out);
+		return $out;
+	}
+
+	/** Saves an uploaded file ($_FILES entry) into _install/. @return array{0: ?string, 1: string} path or null, error text */
+	public static function storeUpload(array $f): array
+	{
+		$err = (int)($f['error'] ?? UPLOAD_ERR_NO_FILE);
+		if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) return [null, t('ins_dump_err_size', (string)nu_ini_get('upload_max_filesize'))];
+		if ($err !== UPLOAD_ERR_OK || !is_uploaded_file((string)($f['tmp_name'] ?? ''))) return [null, t('ins_dump_err_upload')];
+		if (!preg_match('/\.(sql|sql\.gz|zip)$/i', (string)($f['name'] ?? ''), $m)) return [null, t('ins_dump_err_type')];
+		$dest = self::dir() . '/upload-' . bin2hex(random_bytes(4)) . '.' . strtolower($m[1]);
+		if (!@move_uploaded_file((string)$f['tmp_name'], $dest)) return [null, t('ins_dump_err_upload')];
+		@chmod($dest, 0640);
+		return [$dest, ''];
+	}
+
+	/** The SQL text of a .sql, .sql.gz or .zip (its nubuilder4.sql, otherwise its only .sql file); null when it cannot be read. */
+	public static function dumpSql(string $path): ?string
+	{
+		$name = strtolower($path);
+		if (str_ends_with($name, '.sql.gz')) {
+			if (!function_exists('gzdecode')) return null;
+			$raw = @file_get_contents($path, false, null, 0, self::DUMP_MAX);
+			$sql = is_string($raw) ? @gzdecode($raw, self::DUMP_MAX) : false;
+			return is_string($sql) ? $sql : null;
+		}
+		if (str_ends_with($name, '.zip')) {
+			if (!class_exists('ZipArchive')) return null;
+			$z = new ZipArchive();
+			if ($z->open($path) !== true) return null;
+			$pick = null; $sqls = [];
+			for ($i = 0; $i < $z->numFiles; $i++) {
+				$n = (string)$z->getNameIndex($i);
+				if (!preg_match('/\.sql$/i', $n)) continue;
+				$sqls[] = $i;
+				if (strtolower(basename($n)) === 'nubuilder4.sql') $pick = $i;
+			}
+			if ($pick === null && count($sqls) === 1) $pick = $sqls[0];
+			$st = $pick !== null ? $z->statIndex($pick) : false;
+			$sql = $st && (int)$st['size'] <= self::DUMP_MAX ? $z->getFromIndex((int)$pick) : false;
+			$z->close();
+			return is_string($sql) ? $sql : null;
+		}
+		$sz = @filesize($path);
+		if ($sz === false || $sz > self::DUMP_MAX) return null;
+		$sql = @file_get_contents($path);
+		return is_string($sql) ? $sql : null;
+	}
+
+	/**
+	 * Checks a nubuilder4.sql before it runs: only nuBuilder's own tables (zzzzsys_…) are created, filled, changed or dropped, besides
+	 * SET, transactions, LOCK TABLES and nuBuilder 4.5's views. Refused: other tables, other databases (USE, CREATE / DROP DATABASE),
+	 * users and rights, files (INTO OUTFILE, LOAD DATA), triggers, routines, events and an explicit DEFINER.
+	 * @return array{ok: bool, error: string, tables: int, forms: int}
+	 */
+	public static function checkDump(string $sql): array
+	{
+		$res = ['ok' => false, 'error' => '', 'tables' => 0, 'forms' => 0];
+		$created = [];
+		$tbl = '`?(zzzzsys_\w+)`?';
+		$insert = '/^(INSERT|REPLACE)\s+INTO\s+' . $tbl . '\s*(\([^)]*\)\s*)?VALUES\b/i';
+		foreach (self::splitSql($sql) as $stmt) {
+			$s = trim((string)preg_replace('#^/\*!\d*\s*(.*?)\s*\*/$#s', '$1', trim($stmt)));
+			if ($s === '') continue;
+			$bad = static fn() => ['ok' => false, 'error' => t('ins_dump_err_stmt', mb_substr((string)preg_replace('/\s+/', ' ', $s), 0, 80)), 'tables' => 0, 'forms' => 0];
+			if (preg_match($insert, $s, $m)) {
+				// VALUES with literals only (strings, numbers, NULL, hex) – no sub-queries or functions such as LOAD_FILE()
+				$vals = (string)preg_replace("/'(?:[^'\\\\]|\\\\.|'')*'/s", "''", substr($s, strlen($m[0])));
+				$vals = (string)preg_replace('/\b(NULL|TRUE|FALSE|0x[0-9a-f]+|_(binary|utf8mb4|utf8mb3|utf8|latin1))\b|-?\d+(\.\d+)?(e[+-]?\d+)?|\'\'/i', '', $vals);
+				if (!preg_match('/^[\s(),]*$/', $vals)) return $bad();
+				if (strtolower($m[2]) === 'zzzzsys_form') $res['forms'] += preg_match_all('/\)\s*,\s*\(/', $s) + 1;
+				continue;
+			}
+			if (preg_match('/\b(INTO\s+(OUT|DUMP)FILE|LOAD_FILE\s*\(|DEFINER\s*=)/i', $s)) return $bad();
+			if (preg_match('/^(START\s+TRANSACTION|BEGIN|COMMIT|UNLOCK\s+TABLES)$/i', $s)) continue;
+			if (preg_match('/^SET\s/i', $s) && !preg_match('/^SET\s+(GLOBAL|PASSWORD|ROLE|DEFAULT\s+ROLE|@@GLOBAL)\b/i', $s)) continue;
+			if (preg_match('/^LOCK\s+TABLES\s+' . $tbl . '\s+WRITE$/i', $s)) continue;
+			if (preg_match('/^CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?' . $tbl . '\s*\(/i', $s, $m)) { $created[strtolower($m[2])] = 1; continue; }
+			if (preg_match('/^(ALTER\s+TABLE|DROP\s+TABLE(\s+IF\s+EXISTS)?|DROP\s+VIEW(\s+IF\s+EXISTS)?)\s+' . $tbl . '(\s|$)/i', $s)) continue;
+			// nuBuilder 4.5: zzzzsys_object_list / zzzzsys_report_data / zzzzsys_run_list as views (upgradeTo49 replaces them as 4.9 does)
+			if (preg_match('/^CREATE\s+(OR\s+REPLACE\s+)?(ALGORITHM\s*=\s*\w+\s+)?(SQL\s+SECURITY\s+(DEFINER|INVOKER)\s+)?VIEW\s+' . $tbl . '\s+AS\s+SELECT\b/i', $s)) continue;
+			return $bad();
+		}
+		$missing = array_diff(self::DUMP_CORE, array_keys($created));
+		if ($missing) { $res['error'] = t('ins_dump_err_core', implode(', ', $missing)); return $res; }
+		$res['ok'] = true;
+		$res['tables'] = count($created);
+		return $res;
+	}
+
+	/** Column definitions of nuBuilder 4.9 (install/nubuilder49_tables.sql): [table => [column => definition]], in table order. */
+	public static function tables49(): array
+	{
+		$out = [];
+		foreach (self::splitSql((string)@file_get_contents(NU_ROOT . '/install/nubuilder49_tables.sql')) as $s) {
+			if (!preg_match('/^CREATE TABLE IF NOT EXISTS `(\w+)`\s*\((.*)\)\s*ENGINE/is', $s, $m)) continue;
+			foreach (preg_split('/,\s*\n\s*/', trim($m[2])) ?: [] as $line) {
+				if (preg_match('/^`(\w+)`\s+(.+)$/s', trim($line), $c)) $out[$m[1]][$c[1]] = trim($c[2]);
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Brings a database made from the nubuilder4.sql of an older 4.x version to the structure of nuBuilder 4.9 (MySQL) – what
+	 * nuBuilder's own update does with nuAlterSystemTables(), nuCreateJSONColumns() and nuCopySystemTables():
+	 *  1. nuBuilder 4.5's views zzzzsys_object_list / zzzzsys_run_list are dropped, zzzzsys_report_data becomes 4.9's table;
+	 *  2. missing tables are created from install/nubuilder49_tables.sql;
+	 *  3. nuBuilder 4.9's ALTER list (ALTER_49) adapted to 4.9's own nubuilder4.sql, the zzzzsys_setup defaults and nuBuilder's renames
+	 *     of system procedure codes (UPDATE_49);
+	 *  4. every column of 4.9 that is still missing (the *_json columns …) with 4.9's definition.
+	 * A 4.9 dump comes out unchanged. nuBuilder's own system records (its forms) stay those of the dump – nuBuilder updates them
+	 * with its own update. @return array{tables: int, columns: int, changed: int}
+	 */
+	public static function upgradeTo49(NuDB $db): array
+	{
+		$sum = ['tables' => 0, 'columns' => 0, 'changed' => 0];
+		if ($db->type !== 'mysql') return $sum;
+		$read = static function () use ($db): array {
+			$out = [];
+			foreach ($db->all('SELECT TABLE_NAME AS t, TABLE_TYPE AS k FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()') as $r) $out[(string)$r['t']] = ['_kind' => (string)$r['k']];
+			foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()') as $r) {
+				if (isset($out[(string)$r['t']])) $out[(string)$r['t']][strtolower((string)$r['c'])] = true;
+			}
+			return $out;
+		};
+		$have = $read();
+		foreach (['zzzzsys_object_list', 'zzzzsys_run_list', 'zzzzsys_report_data'] as $v) {
+			if (!isset($have[$v])) continue;
+			if ($have[$v]['_kind'] === 'VIEW') $db->exec('DROP VIEW `' . $v . '`');
+			elseif ($v !== 'zzzzsys_report_data' || !isset($have[$v]['zzzzsys_report_data_id'])) $db->exec('DROP TABLE `' . $v . '`');
+		}
+		$count = static fn(array $h) => count(array_filter(array_keys($h), static fn($t) => str_starts_with($t, 'zzzzsys_') && !str_starts_with($t, 'zzzzsys_nunext_')));
+		$before = $count($read());
+		foreach (self::splitSql((string)file_get_contents(NU_ROOT . '/install/nubuilder49_tables.sql')) as $s) $db->exec($s);
+		$have = $read();
+		$sum['tables'] = $count($have) - $before;
+		$add = static function (string $t, string $c, string $def) use ($db, &$have, &$sum): void {
+			if (!isset($have[$t]) || isset($have[$t][strtolower($c)])) return;
+			if (preg_match('/\sAFTER\s+`?(\w+)`?$/i', $def, $m) && !isset($have[$t][strtolower($m[1])])) $def = (string)preg_replace('/\sAFTER\s+`?\w+`?$/i', '', $def);
+			$db->exec("ALTER TABLE `$t` ADD `$c` $def");
+			$have[$t][strtolower($c)] = true;
+			$sum['columns']++;
+		};
+		foreach (self::ALTER_49 as [$op, $t, $c, $def]) {
+			if ($op === 'add') { $add($t, $c, $def); continue; }
+			if (!isset($have[$t][strtolower($c)])) continue;
+			if ($op === 'change') {
+				// only when the type differs from 4.9's (a 4.9 dump stays as it is)
+				$want = strtolower((string)preg_replace('/\s.*$/s', '', trim((string)preg_replace('/^`?\w+`?\s+/', '', $def))));
+				$is = strtolower((string)$db->value('SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$t, $c]));
+				$newName = (string)preg_replace('/^`?(\w+)`?\s.*$/s', '$1', $def);
+				if ($newName === $c && preg_replace('/\(\d+\)$/', '', $is) === preg_replace('/\(\d+\)$/', '', $want) && (str_contains($want, '(') ? $is === $want : true)) continue;
+				$db->exec("ALTER TABLE `$t` CHANGE `$c` $def");
+				if ($newName !== $c) { unset($have[$t][strtolower($c)]); $have[$t][strtolower($newName)] = true; }
+			} else {
+				$db->exec("ALTER TABLE `$t` DROP `$c`");
+				unset($have[$t][strtolower($c)]);
+			}
+			$sum['changed']++;
+		}
+		// zzzzsys_setup: nuBuilder fills the three columns it adds
+		foreach (self::SETUP_49 as $c => [$def, $value]) {
+			if (!isset($have['zzzzsys_setup']) || isset($have['zzzzsys_setup'][$c])) continue;
+			$add('zzzzsys_setup', $c, $def);
+			$db->run("UPDATE zzzzsys_setup SET `$c` = ?", [$value]);
+		}
+		foreach (self::UPDATE_49 as [$t, $sql]) if (isset($have[$t])) $db->exec($sql);
+		foreach (self::tables49() as $t => $defs) {
+			$prev = null;
+			foreach ($defs as $c => $def) {
+				$add($t, $c, $def . ($prev !== null ? ' AFTER `' . $prev . '`' : ''));
+				$prev = $c;
+			}
+		}
+		return $sum;
+	}
+
+	/**
+	 * nuBuilder 4.9's nuAlterSystemTables() (core/nusystemupdatelibs.php), adapted to 4.9's own nubuilder4.sql: sal_group VARCHAR(80)
+	 * (the update: 100), set_include TEXT (the update: LONGTEXT), zzzzsys_email_log keeps DATETIME (the update changes it to TIMESTAMP),
+	 * the DROP of zzzzsys_prompt_generator.sph_template and the pdf_temp columns only where they exist. [op, table, column, definition]
+	 */
+	public const ALTER_49 = [
+		['add', 'zzzzsys_debug', 'deb_flag', 'VARCHAR(50) NULL DEFAULT NULL AFTER deb_message'],
+		['add', 'zzzzsys_debug', 'deb_user_id', 'VARCHAR(25) NULL DEFAULT NULL AFTER deb_added'],
+		['change', 'zzzzsys_object', 'sob_input_count', 'sob_input_count VARCHAR(15) NULL DEFAULT NULL'],
+		['change', 'zzzzsys_object', 'sob_all_order', "sob_all_order INT(11) NULL DEFAULT '0'"],
+		['add', 'zzzzsys_object', 'sob_select_2', "VARCHAR(1) NULL DEFAULT '0' AFTER sob_select_multiple"],
+		['add', 'zzzzsys_object', 'sob_input_datalist', 'TEXT NULL DEFAULT NULL AFTER sob_input_javascript'],
+		['add', 'zzzzsys_object', 'sob_input_attribute', 'VARCHAR(1000) NULL DEFAULT NULL AFTER sob_input_datalist'],
+		['add', 'zzzzsys_object', 'sob_input_icon', 'VARCHAR(50) NULL DEFAULT NULL AFTER sob_input_type'],
+		['add', 'zzzzsys_object', 'sob_input_file_target', "VARCHAR(1) NULL DEFAULT '0' AFTER sob_input_attribute"],
+		['add', 'zzzzsys_object', 'sob_run_target', 'VARCHAR(1) NULL DEFAULT NULL AFTER sob_run_method'],
+		['add', 'zzzzsys_object', 'sob_run_type', 'VARCHAR(1) NULL DEFAULT NULL AFTER sob_run_target'],
+		['add', 'zzzzsys_object', 'sob_display_procedure', 'VARCHAR(25) NULL DEFAULT NULL AFTER sob_display_sql'],
+		['add', 'zzzzsys_object', 'sob_all_event', 'VARCHAR(1) NULL DEFAULT NULL AFTER sob_all_access'],
+		['add', 'zzzzsys_object', 'sob_all_style_type', 'VARCHAR(15) NULL DEFAULT NULL AFTER sob_all_event'],
+		['add', 'zzzzsys_object', 'sob_all_style', 'VARCHAR(1000) NULL DEFAULT NULL AFTER sob_all_style_type'],
+		['add', 'zzzzsys_object', 'sob_all_json', 'MEDIUMTEXT NULL DEFAULT NULL AFTER sob_image_zzzzsys_file_id'],
+		['add', 'zzzzsys_object', 'sob_all_access_condition', 'VARCHAR(1000) NULL DEFAULT NULL AFTER sob_all_access'],
+		['add', 'zzzzsys_object', 'sob_select_procedure', 'VARCHAR(25) NULL DEFAULT NULL AFTER sob_select_sql'],
+		['add', 'zzzzsys_form', 'sfo_browse_title_multiline', "VARCHAR(1) NULL DEFAULT '0' AFTER sfo_browse_rows_per_page"],
+		['add', 'zzzzsys_form', 'sfo_browse_autoresize_columns', 'VARCHAR(1) NULL DEFAULT NULL AFTER sfo_browse_title_multiline'],
+		['add', 'zzzzsys_form', 'sfo_breadcrumb_title', 'VARCHAR(100) NULL DEFAULT NULL AFTER sfo_description'],
+		['add', 'zzzzsys_form', 'sfo_browse_javascript', 'MEDIUMTEXT NULL DEFAULT NULL AFTER sfo_javascript'],
+		['add', 'zzzzsys_form', 'sfo_edit_javascript', 'MEDIUMTEXT NULL DEFAULT NULL AFTER sfo_browse_javascript'],
+		['add', 'zzzzsys_form', 'sfo_style', 'MEDIUMTEXT NULL DEFAULT NULL AFTER sfo_edit_javascript'],
+		['add', 'zzzzsys_form', 'sfo_mobile_view', 'VARCHAR(1) NULL DEFAULT NULL AFTER sfo_style'],
+		['add', 'zzzzsys_form', 'sfo_group', 'VARCHAR(100) NULL DEFAULT NULL AFTER sfo_description'],
+		['add', 'zzzzsys_form', 'sfo_status', 'VARCHAR(1) NULL DEFAULT NULL AFTER sfo_group'],
+		['add', 'zzzzsys_form', 'sfo_browse_target', 'VARCHAR(1) NULL DEFAULT NULL AFTER sfo_browse_redirect_form_id'],
+		['add', 'zzzzsys_session', 'sss_hashcookies', 'MEDIUMTEXT NULL DEFAULT NULL AFTER sss_access'],
+		['add', 'zzzzsys_session', 'sss_login_time', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP AFTER sss_time'],
+		['add', 'zzzzsys_tab', 'syt_access', 'VARCHAR(1) NULL DEFAULT NULL AFTER syt_help'],
+		['add', 'zzzzsys_user', 'sus_code', 'VARCHAR(50) DEFAULT NULL AFTER sus_name'],
+		['add', 'zzzzsys_user', 'sus_position', 'VARCHAR(50) DEFAULT NULL AFTER sus_code'],
+		['add', 'zzzzsys_user', 'sus_department', 'VARCHAR(50) DEFAULT NULL AFTER sus_position'],
+		['add', 'zzzzsys_user', 'sus_team', 'VARCHAR(50) DEFAULT NULL AFTER sus_department'],
+		['add', 'zzzzsys_user', 'sus_additional1', 'VARCHAR(100) DEFAULT NULL AFTER sus_email'],
+		['add', 'zzzzsys_user', 'sus_additional2', 'VARCHAR(100) DEFAULT NULL AFTER sus_additional1'],
+		['add', 'zzzzsys_user', 'sus_expires_on', 'DATETIME DEFAULT NULL AFTER sus_login_password'],
+		['add', 'zzzzsys_user', 'sus_json', 'MEDIUMTEXT NULL DEFAULT NULL AFTER sus_expires_on'],
+		['add', 'zzzzsys_user', 'sus_accessibility_features', 'VARCHAR(1) NULL DEFAULT NULL AFTER sus_expires_on'],
+		['add', 'zzzzsys_user', 'sus_change_password', 'VARCHAR(1) NULL DEFAULT NULL AFTER sus_expires_on'],
+		['add', 'zzzzsys_user', 'sus_permission', 'VARCHAR(1000) NULL DEFAULT NULL AFTER sus_additional2'],
+		['add', 'zzzzsys_user', 'sus_last_name', 'VARCHAR(30) NULL DEFAULT NULL AFTER sus_name'],
+		['add', 'zzzzsys_user', 'sus_first_name', 'VARCHAR(30) NULL DEFAULT NULL AFTER sus_name'],
+		['add', 'zzzzsys_access', 'sal_use_2fa', 'VARCHAR(1) NULL DEFAULT NULL AFTER sal_zzzzsys_form_id'],
+		['add', 'zzzzsys_access', 'sal_group', 'VARCHAR(80) NULL DEFAULT NULL AFTER sal_description'],
+		['add', 'zzzzsys_access_form', 'slf_data_mode', 'VARCHAR(2) DEFAULT NULL AFTER slf_print_button'],
+		['add', 'zzzzsys_access_form', 'slf_form_type', 'VARCHAR(2) DEFAULT NULL AFTER slf_data_mode'],
+		['add', 'zzzzsys_php', 'sph_global', "VARCHAR(1) NULL DEFAULT '0' AFTER sph_system"],
+		['add', 'zzzzsys_php', 'sph_template', "VARCHAR(1) NULL DEFAULT '0' AFTER sph_global"],
+		['add', 'zzzzsys_php', 'sph_demo', "VARCHAR(1) NULL DEFAULT '1' AFTER sph_global"],
+		['add', 'zzzzsys_php', 'sph_status', 'VARCHAR(1) NULL DEFAULT NULL AFTER sph_group'],
+		['add', 'zzzzsys_php', 'sph_category', 'VARCHAR(100) NULL DEFAULT NULL AFTER sph_group'],
+		['add', 'zzzzsys_php', 'sph_javascript', 'TEXT NULL DEFAULT NULL AFTER sph_php'],
+		['add', 'zzzzsys_php', 'sph_javascript_active', 'VARCHAR(1) NULL DEFAULT NULL AFTER sph_javascript'],
+		['add', 'zzzzsys_setup', 'set_smtp_use_ssl', "VARCHAR(1) NULL DEFAULT '1' AFTER set_smtp_use_authentication"],
+		['add', 'zzzzsys_format', 'srm_default', 'VARCHAR(1) NULL DEFAULT NULL AFTER srm_type'],
+		['change', 'zzzzsys_report', 'sre_zzzzsys_php_id', 'sre_zzzzsys_php_id VARCHAR(200) NULL DEFAULT NULL'],
+		['add', 'zzzzsys_select', 'sse_code', 'VARCHAR(50) NULL DEFAULT NULL AFTER zzzzsys_select_id'],
+		['change', 'zzzzsys_code_snippet', 'cot_updated_on', 'cot_updated_on TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'],
+		['add', 'zzzzsys_code_snippet', 'cot_group', 'VARCHAR(80) NULL DEFAULT NULL AFTER cot_description'],
+		['add', 'zzzzsys_code_snippet', 'cot_template', 'VARCHAR(1) NULL DEFAULT NULL AFTER cot_scope'],
+		['add', 'zzzzsys_cloner', 'clo_tables_include', 'MEDIUMTEXT NULL DEFAULT NULL AFTER clo_iframe_forms'],
+		['add', 'zzzzsys_cloner', 'clo_tables_exclude', 'MEDIUMTEXT NULL DEFAULT NULL AFTER clo_tables_include'],
+		['change', 'zzzzsys_app_cloner', 'cla_create_database', 'cla_target_db_mode VARCHAR(10)'],
+		['add', 'zzzzsys_app_cloner', 'cla_copy_files_mode', 'VARCHAR(10) NULL DEFAULT NULL AFTER cla_copy_files'],
+		['add', 'zzzzsys_email_template', 'emt_template', "VARCHAR(1) NULL DEFAULT '0' AFTER emt_group"],
+		['add', 'zzzzsys_email_template', 'emt_category', 'VARCHAR(100) NULL DEFAULT NULL AFTER emt_group'],
+		['add', 'pdf_temp', 'pdf_code', 'VARCHAR(100) NULL DEFAULT NULL AFTER pdf_added_by'],
+		['add', 'pdf_temp', 'pdf_tag', 'VARCHAR(100) NULL DEFAULT NULL AFTER pdf_code'],
+		['add', 'zzzzsys_config', 'cfg_title', 'VARCHAR(50) NULL DEFAULT NULL AFTER cfg_category'],
+		['add', 'zzzzsys_prompt_generator', 'pge_tag', 'VARCHAR(3000) NULL DEFAULT NULL AFTER pge_prompt'],
+		['add', 'zzzzsys_prompt_generator', 'pge_template', 'VARCHAR(1) NULL DEFAULT NULL AFTER pge_tag'],
+		['drop', 'zzzzsys_prompt_generator', 'sph_template', ''],
+		['add', 'zzzzsys_prompt_generator', 'pge_instruction', 'VARCHAR(3000) NULL DEFAULT NULL AFTER pge_template'],
+		['add', 'zzzzsys_item', 'itm_group', 'VARCHAR(100) NULL DEFAULT NULL AFTER itm_description'],
+		['add', 'zzzzsys_note', 'not_text', 'LONGTEXT NULL DEFAULT NULL AFTER not_content'],
+	];
+
+	/** zzzzsys_setup columns nuBuilder adds and fills (nuAlterSystemTables). [column => [definition, value]] */
+	public const SETUP_49 = [
+		'set_languages_included' => ['VARCHAR(1000) NULL DEFAULT NULL AFTER set_language', '["Afrikaans","Arabic","Armenian","Catalan","Chinese","Czech","Danish","Dutch","French","German","Greek","Hindi","Hungarian","Italian","Japanese","Malay","Norwegian","Polish","Portuguese (Brazil)","Portuguese","Romanian","Russian","Slovak","Spanish","Tamil","Turkish","Vietnamese"]'],
+		'set_style' => ['LONGTEXT NULL DEFAULT NULL AFTER set_header', "/* Define your own styles, override styles from nubuilder4.css */\r\n\r\n/*\r\n .nuActionButton {\r\n background-color: #579cb7\r\n}\r\n\r\n*/"],
+		'set_include' => ['TEXT NULL DEFAULT NULL AFTER set_header', "// Add external CSS/JS file here\r\n\r\n/*\r\n<link rel=\"stylesheet\" href=\"path_to_css.css\"/>\r\n\r\n<script src=\"path_to_js.js\"></script>\r\n*/"],
+	];
+
+	/** nuBuilder 4.9's renames of system procedure codes and html → chart objects (nuAlterSystemTables). [table, SQL] */
+	public const UPDATE_49 = [
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = REPLACE(sph_code, 'NUAUTHENTICATION2FA', 'nu_authentication_2fa') WHERE COALESCE(sph_code, '') LIKE '%NUAUTHENTICATION2FA%'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = REPLACE(sph_code, 'NUCHECKPASSWORDPOLICY', 'nu_check_password_policy') WHERE COALESCE(sph_code, '') LIKE '%NUCHECKPASSWORDPOLICY%'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = REPLACE(sph_code, 'NUDEBUGRESULTADDED', 'nu_debug_result_added') WHERE COALESCE(sph_code, '') LIKE '%NUDEBUGRESULTADDED%'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = REPLACE(sph_code, 'NUSENDWELCOMEEMAIL', 'nu_send_welcome_email') WHERE COALESCE(sph_code, '') LIKE '%NUSENDWELCOMEEMAIL%'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = REPLACE(sph_code, 'NUUPLOADFILE', 'nu_upload_file') WHERE COALESCE(sph_code, '') LIKE '%NUUPLOADFILE%'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_before_save' WHERE sph_code = 'nuBeforeSave'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_after_save' WHERE sph_code = 'nuAfterSave'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_before_edit' WHERE sph_code = 'nuBeforeEdit'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_before_browse' WHERE sph_code = 'nuBeforeBrowse'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_before_delete' WHERE sph_code = 'nuBeforeDelete'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_after_delete' WHERE sph_code = 'nuAfterDelete'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_startup' WHERE sph_code = 'nuStartup'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_check_password_policy' WHERE sph_code = 'nuCheckPasswordPolicy'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_invalid_login' WHERE sph_code = 'nuInvalidLogin'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_after_update' WHERE sph_code = 'nuAfterUpdate'"],
+		['zzzzsys_php', "UPDATE zzzzsys_php SET sph_code = 'nu_send_welcome_email' WHERE sph_code = 'nuSendWelcomeEmail'"],
+		['zzzzsys_object', "UPDATE zzzzsys_object SET sob_html_code = REPLACE(sob_html_code, 'procedure: ''NUUPLOADFILE_TEMPLATE''', 'procedure: ''nu_upload_file_template''') WHERE COALESCE(sob_html_code, '') LIKE '%NUUPLOADFILE_TEMPLATE%'"],
+		['zzzzsys_object', "UPDATE zzzzsys_object SET sob_html_code = REPLACE(sob_html_code, 'procedure: ''NUUPLOADFILE''', 'procedure: ''nu_upload_file''') WHERE COALESCE(sob_html_code, '') LIKE '%NUUPLOADFILE%'"],
+		['zzzzsys_object', "UPDATE zzzzsys_object SET sob_all_type = 'chart' WHERE sob_all_type = 'html' AND COALESCE(sob_html_chart_type, '') <> ''"],
+	];
+
 	// ------------------------------------------------------------------ nuconfig.php
 
 	/** nuconfig.php from nuconfig-sample.php with the chosen values (same variables as nuBuilder). */

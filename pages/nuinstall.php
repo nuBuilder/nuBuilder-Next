@@ -121,7 +121,29 @@ if ($late) {
 			break;
 
 		case 'content':
-			$S['content'] = ['choice' => nu_post('choice') === 'nubuilder' ? 'nubuilder' : 'nunext', 'confirm_other' => nu_check('confirm_other') === '1'];
+			$prevDump = $S['content']['dump'] ?? null;
+			$S['content'] = ['choice' => in_array(nu_post('choice'), ['nubuilder', 'upload'], true) ? nu_post('choice') : 'nunext', 'confirm_other' => nu_check('confirm_other') === '1',
+				'dump' => $prevDump];
+			// nubuilder4.sql of any 4.x version (0.8.384): uploaded here or copied into _install/ – checked now and again before the import
+			if ($S['content']['choice'] === 'upload' && $S['db']['type'] === 'mysql') {
+				$path = null;
+				$upErr = '';
+				if (($_FILES['dump']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) [$path, $upErr] = NuInstall::storeUpload($_FILES['dump']);
+				elseif (($pick = nu_post('dump_pick')) !== '' && isset(NuInstall::dumpCandidates()[$pick])) $path = NuInstall::dumpCandidates()[$pick];
+				if ($upErr !== '') { $errors['dump'] = $upErr; break; }
+				if ($path !== null) {
+					$sql = NuInstall::dumpSql($path);
+					$chk = $sql === null ? ['ok' => false, 'error' => t('ins_dump_err_read')] : NuInstall::checkDump($sql);
+					if (!$chk['ok']) { $errors['dump'] = $chk['error']; $S['content']['dump'] = null; break; }
+					$plain = (string)preg_replace('/\.(sql|sql\.gz|zip)$/i', '', $path) . '.checked.sql';
+					if (@file_put_contents($plain, $sql) === false) { $errors['dump'] = t('ins_dump_err_read'); break; }
+					$S['content']['dump'] = ['file' => $plain, 'name' => str_starts_with(basename($path), 'upload-') ? (string)($_FILES['dump']['name'] ?? basename($path)) : basename($path),
+						'tables' => $chk['tables'], 'forms' => $chk['forms'], 'size' => strlen($sql)];
+					if ($action === 'check_dump') break;
+				}
+				if ($action === 'check_dump') { $errors['dump'] = t('ins_dump_err_none'); break; }
+				if (empty($S['content']['dump']) || !is_file((string)$S['content']['dump']['file'])) { $errors['dump'] = t('ins_dump_err_none'); break; }
+			}
 			if (isset($_POST['nub_path'])) {                       // nuBuilder folder for nubuilder4.sql (also on the options step)
 				$np = rtrim(trim(nu_post('nub_path')), '/\\');
 				if ($np !== '' && !NuInstall::nuBuilderPath($np)) { $errors['nub_path'] = t('ins_err_nub_path'); break; }
@@ -184,7 +206,16 @@ if ($late) {
 				if ($det['kind'] === 'nubuilder') throw new RuntimeException(t('ins_err_existing_db', $d['name']));   // 0.8.380
 				$imported = 0;
 				if ($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other'])) {
-					foreach (NuInstall::schemaFiles($S['content']['choice'], $db->type, $S['opt']['nub_path'] ?: null) as $f) $imported += NuInstall::importFile($db, $f);
+					if ($S['content']['choice'] === 'upload' && $db->type === 'mysql') {
+						$f = (string)($S['content']['dump']['file'] ?? '');
+						$chk = is_file($f) ? NuInstall::checkDump((string)file_get_contents($f)) : ['ok' => false, 'error' => t('ins_dump_err_none')];
+						if (!$chk['ok']) throw new RuntimeException($chk['error']);              // checked again: the file may have been replaced
+						$imported += NuInstall::importFile($db, $f);
+					} else {
+						foreach (NuInstall::schemaFiles($S['content']['choice'], $db->type, $S['opt']['nub_path'] ?: null) as $f) $imported += NuInstall::importFile($db, $f);
+					}
+					// a nubuilder4.sql of an older 4.x version gets the structure of 4.9 (0.8.384; a 4.9 dump stays as it is)
+					if ($S['content']['choice'] !== 'nunext' && $db->type === 'mysql') $S['upgraded'] = NuInstall::upgradeTo49($db);
 					try { NuSettings::create($db); } catch (Throwable $e) { error_log('nuBuilder Next install, settings table: ' . $e->getMessage()); }   // nuBuilder's settings (zzzzsys_config)
 				}
 				$S['imported'] = $imported;
@@ -205,7 +236,7 @@ if ($late) {
 /** After nuconfig.php exists: nuBuilder Next's tables and database steps, token removed. Returns the done data. */
 function nu_install_finish(?array &$S): array
 {
-	$out = ['imported' => (int)($S['imported'] ?? 0), 'steps' => [], 'error' => ''];
+	$out = ['imported' => (int)($S['imported'] ?? 0), 'upgraded' => $S['upgraded'] ?? null, 'steps' => [], 'error' => ''];
 	try {
 		NuSchema::create();
 		NuInstall::setOrigin('nunext');                     // set up on a new database (0.8.380) – step 0014 keeps it
@@ -256,6 +287,8 @@ nu_head($title);
 				<h1 class="h4 mt-2"><?= h(t('ins_done_title')) ?></h1>
 				<p class="text-body-secondary"><?= h(t('ins_done_text', $done['admin'])) ?></p>
 				<?php if ($done['imported']): ?><p class="small mb-1"><?= h(t('ins_done_imported', $done['imported'])) ?></p><?php endif; ?>
+				<?php $up = $done['upgraded'] ?? null; if ($up && ($up['tables'] + $up['columns'] + $up['changed'])): ?><p class="small mb-1" id="insUpgraded"><?= h(t('ins_done_upgraded', $up['tables'], $up['columns'] + $up['changed'])) ?></p>
+					<p class="small text-body-secondary mb-1"><?= h(t('ins_done_upgraded_hint')) ?></p><?php endif; ?>
 				<?php if ($done['error'] !== ''): ?><div class="alert alert-warning small text-start"><?= h(t('ins_done_db_warning')) ?> <?= h($done['error']) ?></div><?php endif; ?>
 				<a class="btn btn-primary btn-lg my-3" href="<?= h(nu_url('login')) ?>"><i class="bi bi-box-arrow-in-right me-1"></i><?= h(t('ins_login')) ?></a>
 			</div>
@@ -331,7 +364,7 @@ nu_head($title);
 		<?php elseif ($step === 'content'): $det = $S['detect'] ?? ['kind' => 'empty', 'tables' => 0, 'forms' => 0, 'users' => 0]; $nubSql = $S['opt']['nub_path'] !== '' && is_file($S['opt']['nub_path'] . '/nubuilder4.sql') && $S['db']['type'] === 'mysql'; ?>
 			<!-- ================================================================ content -->
 			<h1 class="h4"><?= h(t('ins_step_content')) ?></h1>
-			<form method="post" action="<?= h(nu_url('install', ['step' => 'content'])) ?>" novalidate>
+			<form method="post" action="<?= h(nu_url('install', ['step' => 'content'])) ?>" enctype="multipart/form-data" novalidate>
 				<?= nu_csrf_field() ?>
 				<?php if ($det['kind'] === 'nubuilder'): ?>
 					<div class="alert alert-success" id="insKind"><i class="bi bi-database-check me-1"></i><?= h(t('ins_content_nubuilder', $det['forms'], $det['users'])) ?></div>
@@ -347,6 +380,25 @@ nu_head($title);
 						<input class="form-control<?= $err('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($S['opt']['nub_path']) ?>" placeholder="<?= h(dirname(NU_ROOT)) ?>" aria-label="<?= h(t('ins_opt_nub')) ?>">
 						<button class="btn btn-outline-secondary" type="submit" name="action" value="check" formnovalidate id="insCheckNub"><?= h(t('ins_check')) ?></button><?= $fb('nub_path') ?>
 					</div>
+					<?php $isMy = $S['db']['type'] === 'mysql'; $dumps = $isMy ? NuInstall::dumpCandidates() : []; $cd = $S['content']['dump'] ?? null; ?>
+					<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="choice_up" value="upload"<?= $S['content']['choice'] === 'upload' && $isMy ? ' checked' : '' ?><?= $isMy ? '' : ' disabled' ?>>
+						<label class="form-check-label" for="choice_up"><b><?= h(t('ins_choice_upload')) ?></b><br><span class="small text-body-secondary"><?= h($isMy ? t('ins_choice_upload_hint', (string)nu_ini_get('upload_max_filesize')) : t('ins_choice_upload_mssql')) ?></span></label></div>
+					<?php if ($isMy): ?>
+					<div class="ms-4 mb-3 insDump" id="insDump">
+						<?php if ($cd): ?><div class="alert alert-success small py-2 mb-2" id="insDumpOk"><i class="bi bi-file-earmark-check me-1"></i><?= h(t('ins_dump_ok', $cd['name'], $cd['tables'], $cd['forms'])) ?></div><?php endif; ?>
+						<div class="input-group input-group-sm has-validation">
+							<input class="form-control<?= $err('dump') ?>" type="file" id="dump" name="dump" accept=".sql,.gz,.zip" aria-label="<?= h(t('ins_choice_upload')) ?>">
+							<button class="btn btn-outline-secondary" type="submit" name="action" value="check_dump" id="insCheckDump"><?= h(t('ins_check')) ?></button><?= $fb('dump') ?>
+						</div>
+						<?php if ($dumps): ?>
+							<label class="form-label small mt-2 mb-1" for="dump_pick"><?= h(t('ins_dump_pick')) ?></label>
+							<select class="form-select form-select-sm" id="dump_pick" name="dump_pick"><option value="">–</option>
+								<?php foreach ($dumps as $dn => $dp): ?><option value="<?= h($dn) ?>"><?= h($dn) ?> (<?= h(NuFile::size((int)@filesize($dp))) ?>)</option><?php endforeach; ?></select>
+						<?php else: ?>
+							<div class="form-text"><?= h(t('ins_dump_folder', '_install/')) ?></div>
+						<?php endif; ?>
+					</div>
+					<?php endif; ?>
 					<?php if ($det['kind'] === 'other'): ?>
 						<div class="form-check mt-3"><input class="form-check-input<?= $err('confirm_other') ?>" type="checkbox" id="confirm_other" name="confirm_other" value="1"<?= $S['content']['confirm_other'] ? ' checked' : '' ?>>
 							<label class="form-check-label" for="confirm_other"><?= h(t('ins_confirm_other')) ?></label><?= $fb('confirm_other') ?></div>
@@ -420,7 +472,7 @@ nu_head($title);
 			<?php else: ?>
 				<dl class="row small mb-3" id="insSummary">
 					<dt class="col-sm-4"><?= h(t('ins_step_db')) ?></dt><dd class="col-sm-8"><?= h(($d['type'] === 'sqlsrv' ? 'MSSQL' : 'MySQL') . ' · ' . $d['user'] . '@' . $d['host'] . ($d['port'] !== '' ? ':' . $d['port'] : '') . ' / ' . $d['name']) ?><?= $d['create'] ? ' · ' . h(t('ins_db_create_short')) : '' ?></dd>
-					<dt class="col-sm-4"><?= h(t('ins_step_content')) ?></dt><dd class="col-sm-8"><?= h($det['kind'] === 'nubuilder' ? t('ins_sum_connect') : t($S['content']['choice'] === 'nubuilder' ? 'ins_choice_nubuilder' : 'ins_choice_nunext')) ?></dd>
+					<dt class="col-sm-4"><?= h(t('ins_step_content')) ?></dt><dd class="col-sm-8"><?= h($det['kind'] === 'nubuilder' ? t('ins_sum_connect') : ($S['content']['choice'] === 'upload' ? t('ins_choice_upload') . ' · ' . ($S['content']['dump']['name'] ?? '') : t($S['content']['choice'] === 'nubuilder' ? 'ins_choice_nubuilder' : 'ins_choice_nunext'))) ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_step_admin')) ?></dt><dd class="col-sm-8"><?= h($S['admin']['user']) ?><?= $S['admin']['email'] !== '' ? ' · ' . h($S['admin']['email']) : '' ?><?= $S['admin']['twofa'] ? ' · 2FA' : '' ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_opt_url')) ?></dt><dd class="col-sm-8 text-break"><?= h($S['opt']['base_url']) ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_opt_timezone')) ?></dt><dd class="col-sm-8"><?= h($S['opt']['timezone']) ?> · <?= (int)$S['opt']['timeout'] ?> min</dd>

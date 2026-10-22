@@ -238,6 +238,26 @@ check('browse: sub-queries', $in2 === 'SELECT id AS nu_pk FROM (SELECT * FROM t)
 check('browse: UNION wrapped as before', str_contains($in3, 'FROM (SELECT a FROM t UNION SELECT a FROM u) nuX'), $in3);
 check('browse: nu_filter_match expanded', str_contains(NuBrowse::expandFilterMatch("SELECT * FROM t WHERE nu_filter_match('cus_type', 'abc')"), "FIND_IN_SET(cus_type, '#abc_filter#')"));
 
+// ---------------------------------------------------------------- installer: nubuilder4.sql of any 4.x version (0.8.384)
+$core = implode(";\n", array_map(static fn($t) => "CREATE TABLE `$t` (`{$t}_id` varchar(25) NOT NULL) ENGINE=MyISAM", NuInstall::DUMP_CORE)) . ";\n";
+$okDump = "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\nSTART TRANSACTION;\n/*!40101 SET NAMES utf8mb4 */;\n" . $core
+	. "INSERT INTO `zzzzsys_form` (`zzzzsys_form_id`) VALUES\n('a'),\n('b');\nALTER TABLE `zzzzsys_form` ADD PRIMARY KEY (`zzzzsys_form_id`);\n"
+	. "CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `zzzzsys_run_list` AS select 1 AS id;\nCOMMIT;\n";
+$r = NuInstall::checkDump($okDump);
+check('dump: nuBuilder dump accepted', $r['ok'] && $r['tables'] === 5 && $r['forms'] === 2, json_encode($r));
+check('dump: core tables required', !NuInstall::checkDump("CREATE TABLE `zzzzsys_form` (a int);")['ok']);
+foreach (['other table' => 'CREATE TABLE customers (a int)', 'insert into other table' => 'INSERT INTO users VALUES (1)', 'USE' => 'USE mysql',
+	'DROP DATABASE' => 'DROP DATABASE x', 'GRANT' => "GRANT ALL ON *.* TO 'x'@'%'", 'CREATE USER' => "CREATE USER 'x'@'%'", 'SET PASSWORD' => "SET PASSWORD = 'x'",
+	'SET GLOBAL' => 'SET GLOBAL general_log = 1', 'OUTFILE' => "SELECT * FROM zzzzsys_user INTO OUTFILE '/tmp/x'", 'LOAD DATA' => "LOAD DATA INFILE '/etc/passwd' INTO TABLE zzzzsys_form",
+	'trigger' => 'CREATE TRIGGER t BEFORE INSERT ON zzzzsys_form FOR EACH ROW SET @a = 1', 'DEFINER view' => "CREATE DEFINER=`root`@`%` VIEW zzzzsys_v AS SELECT 1",
+	'view on other name' => 'CREATE VIEW users AS SELECT 1', 'INSERT … SELECT' => 'INSERT INTO zzzzsys_form SELECT * FROM mysql.user',
+	'conditional comment' => "/*!50003 CREATE PROCEDURE p() BEGIN END */",
+	'function in VALUES' => "INSERT INTO zzzzsys_form (a) VALUES ((SELECT LOAD_FILE('/etc/passwd')))", 'sub-query in VALUES' => "INSERT INTO zzzzsys_form VALUES ('a'), ((SELECT 1))"] as $what => $stmt) {
+	check('dump: refused ' . $what, !NuInstall::checkDump($okDump . $stmt . ";\n")['ok']);
+}
+check('dump: strings with SQL in VALUES', NuInstall::checkDump($okDump . "INSERT INTO `zzzzsys_object` VALUES ('x', 'SELECT * FROM t; DROP TABLE y', 'it''s', 'a\\'b', NULL, -1.5, 0x1F);\n")['ok']);
+check('dump: 4.9 table definitions', count(NuInstall::tables49()) === 35 && isset(NuInstall::tables49()['zzzzsys_object']['sob_all_access_condition']));
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

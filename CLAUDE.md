@@ -184,6 +184,9 @@ assets/css/nuapp.css global styles (tokens, dark mode, tabs, buttons) · nuform.
 lang/*.php           return [key => text]; t('key', ...$args) uses sprintf (%s, %d)
 docs/nunext-docs.htm help page: <section id=… data-doc="admin"> (globeadmin only) or data-acl="<form ids>" (shown with those rights)
 install/             schema_mysql*.sql, schema_mssql.sql, schema_expected.json (structure check of updates), settings defaults
+                     nubuilder49_tables.sql (nuBuilder 4.9's tables without data, written by dev/nub49_tables.php from nubuilder4.sql): the
+                     installer's upgrade of an uploaded nubuilder4.sql of any 4.x (NuInstall::checkDump / upgradeTo49 / ALTER_49, 0.8.384;
+                     dev/tests/nub49/upgrade_check.php for the 4.5–4.9 dumps, dev/tests/install.js runs the wizard)
 dev/                 release.py, sign.php, check_lang.php, tests/run.php (unit tests, no DB), tests/smoke.js (browser),
                      phpstan.neon, eslint.config.mjs – not part of the install package
 cron.php             housekeeping for cron (CLI only) · .github/workflows/ci.yml · .gitignore

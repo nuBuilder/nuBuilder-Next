@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.383",
- "built": "2026-10-22 07:36",
+ "version": "0.8.384",
+ "built": "2026-10-22 10:30",
  "requires": {
   "php": "8.1"
  },
@@ -11,15 +11,15 @@
    "size": 596
   },
   "CHANGELOG.md": {
-   "sha256": "64c53fd4e91492e442e3131f75509475402f6bc9dc558f1fb48768ce39bbaaeb",
-   "size": 287387
+   "sha256": "390d8d3e5d0f5017418b7787a508582680428714a2d6992576d6f0580272e4c3",
+   "size": 288904
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "373625aa86fb35b4cf45c5cc4f43176775e0e8324f36f9b3a4b43f7482c0d3dd",
+   "sha256": "a9b1ca0735919da3f72c4fa29d9eb5630576e4f6100356f90fb8fb0fe6dfbd92",
    "size": 10255
   },
   "api.php": {
@@ -659,7 +659,7 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "99fc0d8b53151932e56d42b0c901617d184d6f56584374651a97d71e8396bf86",
+   "sha256": "46951074d18d894688819a64ce361d1aa2879a45733fd38e0c467f079f14322a",
    "size": 28084
   },
   "core/nuappcloner.php": {
@@ -763,8 +763,8 @@
    "size": 5751
   },
   "core/nuinstall.php": {
-   "sha256": "8686e008d86e435723808fc8dde6f7a2ee184f56dd13e4de320e682c07ad2488",
-   "size": 18577
+   "sha256": "b632d01bf3d9716d5619280ce633c2d755dc7e5b66b13552c7eb5172c0a697e3",
+   "size": 41443
   },
   "core/nuitems.php": {
    "sha256": "918feb89dac6684d693d1b16457ec2e58ee6f8d5c7fbb27de98dbde4bcf09195",
@@ -903,8 +903,8 @@
    "size": 177
   },
   "docs/nunext-docs.htm": {
-   "sha256": "e2e977835a25facff8da7d29e3baee12ffecfd1327b11b5d76a4647b992ac9a6",
-   "size": 236715
+   "sha256": "168e9b181651ea2cf2a4413ab1c6dae68e7c30c87129f34b40e55333c55cbcce",
+   "size": 237762
   },
   "docs/nunext-tutorial.htm": {
    "sha256": "cb9d2450022998604fd254eec7018c484cdf33da12ed87f83c214d6081f0d25d",
@@ -923,12 +923,16 @@
    "size": 177
   },
   "install/db_changes.json": {
-   "sha256": "4cf8588a87d635d03f9dadd02de56a4b4dd8474f92f4d5d9d2ac297eda83af73",
+   "sha256": "122cfac400b334c4e4f74395f42ac181019f635a6f3f1bef9599126a28355245",
    "size": 27585
   },
   "install/notes_snippets_mysql.sql": {
    "sha256": "a31a46ab2048f3dd5a03a87364a70eea81989be97ed67fa8ec0700e8ea6bcbf8",
    "size": 10981
+  },
+  "install/nubuilder49_tables.sql": {
+   "sha256": "ef16433a3c131f1c06bc8011408c18e2895e4bfda53331cac69853b75e3b5a80",
+   "size": 25875
   },
   "install/schema_expected.json": {
    "sha256": "d58df1008e6b47cafc6932b81db03fe5b65c7953c0e08a4b5df90465abaf928d",
@@ -955,16 +959,16 @@
    "size": 177
   },
   "lang/ar.php": {
-   "sha256": "9e7b53df95c7b52cdc440ab0fd40ee4d5ac8fc423e9a5ef0e384ecce04936c11",
-   "size": 294011
+   "sha256": "10129bf4e989140494ffdf8ceed58f7b50d14dbbf9d91d56f80ab568c8ca5590",
+   "size": 295861
   },
   "lang/de-CH.php": {
-   "sha256": "f9754614259595307d1b1433327265e7dbede41792ab1b6f5bf4392a46984cc7",
-   "size": 23429
+   "sha256": "5136961554fb4d0bb6050f960b93a6e63117a6b8e47c6627b8cca26b83d2e849",
+   "size": 23686
   },
   "lang/de.php": {
-   "sha256": "84c829c2f6f38ceeb0eca4be02017489cac9833a2fd392d9652d2c14d4e3f15b",
-   "size": 239904
+   "sha256": "81e513c8c89cbd741fec21fea9c9e44d05cf0622d6732298aa60ce87f4c833dd",
+   "size": 241505
   },
   "lang/en-AU.php": {
    "sha256": "ada75936000a02c38cf523214ed6484c63de2b097d58d52c7306e0c4c1dc66b5",
@@ -975,40 +979,40 @@
    "size": 3943
   },
   "lang/en.php": {
-   "sha256": "4ecd9f401e75cacd2483da79beaa10cb9d7a90bf91d2e08415b710e86d27c393",
-   "size": 217505
+   "sha256": "a3bc4add6df6179c14bddaee09c61f57366c44f713d61841d216d147a5ccfac5",
+   "size": 218991
   },
   "lang/es.php": {
-   "sha256": "163287e9467dcf6b80063b959872b73cf2a93cb25f2604044562d3bef3568fb5",
-   "size": 243390
+   "sha256": "b9d252861127f4bf141ee00a2b83df07449b229c3d1c61232fbb4994385ed98f",
+   "size": 244952
   },
   "lang/fr.php": {
-   "sha256": "90d9f2215a8ceeb0ec3630cfad8cb86ecb31425276cea29674fb372835d79137",
-   "size": 253905
+   "sha256": "d9eab6b893fe6c77e5fa4f9997d7277f0a6899ee88c08e62e13b56bb1d8becbc",
+   "size": 255565
   },
   "lang/it.php": {
-   "sha256": "7dbb100477dbfa2c213cfc04ad78d9538e4fec28092c2354b2c299c4168a959c",
-   "size": 237802
+   "sha256": "a5518c90caebd22867299d15b4e530912c2dc9f1af2633d1908a6a1f71726279",
+   "size": 239376
   },
   "lang/nl.php": {
-   "sha256": "e21b233576c8092a66bd40bf0fde54bc995d63006d848c9e40cdd80bd154d454",
-   "size": 236381
+   "sha256": "a167a90779263c4e30f8c2c7f1cd5e581c6446c2cb3ada5a45e1ebfdeb5eec03",
+   "size": 238006
   },
   "lang/pl.php": {
-   "sha256": "394468e49d9db2f16f09d8d343b2ec15638e7c936a201dcb0b92881fd345db25",
-   "size": 236685
+   "sha256": "e4de84a34a42289f71f24a528182d86961cb59411d4353b015ce76d6bb52185b",
+   "size": 238223
   },
   "lang/pt.php": {
-   "sha256": "27acc76834c514d3ebe83520f04e11fbaf8bd2370b740ca0ddda281810d1eef0",
-   "size": 245443
+   "sha256": "4436a2925ff8f83cf9b9d489a9531ddea53ad51fea7477ac6a503676f236b257",
+   "size": 247036
   },
   "lang/ru.php": {
-   "sha256": "ee20a22073753aad0533ff664c33c369f2d06509ea03cd1be5c7dd9b88b8bdee",
-   "size": 329999
+   "sha256": "184dcb8a70edb5daa81e926d68a334b35cb977e3b6dc720c27e7a3eb873132e9",
+   "size": 332046
   },
   "lang/zh.php": {
-   "sha256": "752245d59adadb185cf73c13059a2502d91c77801be591c427a902f89a3dadf6",
-   "size": 218898
+   "sha256": "a39b4184c1a4dee4a2edd0448c9e44faced7a01aeabcb00e09bba4919b3dbfae",
+   "size": 220389
   },
   "nuconfig-sample.php": {
    "sha256": "bdcf795fa7a06bd1c3057c1be766dd5e4bcf1b0499f37243baa89621dddfcfb7",
@@ -1167,8 +1171,8 @@
    "size": 9880
   },
   "pages/nuinstall.php": {
-   "sha256": "8603c2e685f207b34490947b3c63fe10ced99e4da6ad8b510af37e9e3cbe0324",
-   "size": 32239
+   "sha256": "cbbae9e03eba587967e80a6ccfba5de479be97d8592432f085f0692aa59dd547",
+   "size": 37070
   },
   "pages/nuitems.php": {
    "sha256": "9240907a3ecd9deca8c6327611410b850beb0364a346beeac1464363c76abb7c",
@@ -1341,6 +1345,11 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.384",
+   "title": "Installer: nubuilder4.sql of any 4.x version",
+   "text": "- Installer: new choice \"nubuilder4.sql of a nuBuilder 4.x version\" (MySQL / MariaDB) – upload the file (.sql, .sql.gz or .zip)\n  or copy it into the folder _install/ by FTP / SFTP and pick it there.\n- The file is checked before it runs and again right before the import: it may only create, fill and change nuBuilder's own\n  tables (zzzzsys_…) – other tables, other databases, users and rights, files (INTO OUTFILE / LOAD DATA / LOAD_FILE), triggers,\n  routines, sub-queries in VALUES and a DEFINER are refused. The uploaded file is removed after the installation.\n- A file of an older version (tested with 4.5.1, 4.5.8, 4.6, 4.7, 4.8.1) is brought to the structure of nuBuilder 4.9, as nuBuilder's\n  own update does: missing tables from install/nubuilder49_tables.sql, nuBuilder's column list (nuAlterSystemTables) adapted to 4.9's\n  own nubuilder4.sql – sal_group VARCHAR(80), set_include TEXT, zzzzsys_email_log keeps DATETIME, the DROP of\n  zzzzsys_prompt_generator.sph_template and the pdf_temp columns only where they exist – the *_json columns, 4.5's views replaced.\n  A 4.9 file stays as it is; a second run changes nothing. The same upgrade runs after \"nuBuilder's complete system\" from the\n  nuBuilder folder.\n- Tests: dev/tests/nub49/upgrade_check.php (each 4.x dump → same structure as 4.9), dev/tests/install.js (the wizard in the browser\n  with an uploaded dump, a refused one, sign-in afterwards), unit tests of the file check."
   },
   {
    "version": "0.8.383",
@@ -3352,5 +3361,5 @@
    "license": "MIT"
   }
  ],
- "signature": "RJOFsTAtQM6xu9TJh/XrjbrjOvW8lRcXksnV3/0AUgZTof7mQ/e1z6EQOmdzY0TmXFwulwac2xADQ6U+k7mDDQ=="
+ "signature": "2OQD8M1qn89tjRFfNRozHBZ2y0EgBYkKSK26zE8b4FYbRwM08haJ9khOl9bu1flt+ZTEIBgAlVjbcWvxpDjbAg=="
 }

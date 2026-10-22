@@ -99,6 +99,8 @@ Oder von Hand aktualisieren: die Dateien aus nunext.zip über die alten hochlade
 	'adm_deleted' => 'Admin-Rolle «%s» gelöscht.',
 	'adm_delete_confirm' => 'Admin-Rolle «%s» löschen?',
 	'sess_end_all_confirm' => 'Alle Benutzer einschliesslich dir selbst abmelden (%d Sitzungen)? Danach ist eine neue Anmeldung nötig.',
+	'ins_dump_folder' => 'Grössere Dateien per FTP / SFTP in den Ordner %s kopieren und diese Seite neu laden.',
+	'ins_dump_err_size' => 'Die Datei ist grösser, als PHP für Uploads erlaubt (%s) – als .sql.gz senden oder per FTP nach _install/ kopieren.',
 	'ins_manual_config' => 'Die Datenbank ist bereit, aber nuconfig.php konnte nicht geschrieben werden. Den Inhalt unten als %s speichern (herunterladen oder kopieren) und auf «Erneut prüfen» klicken.',
 	'ins_next_backup' => 'Eine Kopie von nuconfig.php aufbewahren und die Datenbank regelmässig sichern.',
 	'smp_pw_hint' => 'Werden nur jetzt angezeigt – bitte kopieren. «Neue Passwörter» erzeugt jederzeit neue.',

@@ -3,6 +3,21 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.384 – Installer: nubuilder4.sql of any 4.x version
+- Installer: new choice "nubuilder4.sql of a nuBuilder 4.x version" (MySQL / MariaDB) – upload the file (.sql, .sql.gz or .zip)
+  or copy it into the folder _install/ by FTP / SFTP and pick it there.
+- The file is checked before it runs and again right before the import: it may only create, fill and change nuBuilder's own
+  tables (zzzzsys_…) – other tables, other databases, users and rights, files (INTO OUTFILE / LOAD DATA / LOAD_FILE), triggers,
+  routines, sub-queries in VALUES and a DEFINER are refused. The uploaded file is removed after the installation.
+- A file of an older version (tested with 4.5.1, 4.5.8, 4.6, 4.7, 4.8.1) is brought to the structure of nuBuilder 4.9, as nuBuilder's
+  own update does: missing tables from install/nubuilder49_tables.sql, nuBuilder's column list (nuAlterSystemTables) adapted to 4.9's
+  own nubuilder4.sql – sal_group VARCHAR(80), set_include TEXT, zzzzsys_email_log keeps DATETIME, the DROP of
+  zzzzsys_prompt_generator.sph_template and the pdf_temp columns only where they exist – the *_json columns, 4.5's views replaced.
+  A 4.9 file stays as it is; a second run changes nothing. The same upgrade runs after "nuBuilder's complete system" from the
+  nuBuilder folder.
+- Tests: dev/tests/nub49/upgrade_check.php (each 4.x dump → same structure as 4.9), dev/tests/install.js (the wizard in the browser
+  with an uploaded dump, a refused one, sign-in afterwards), unit tests of the file check.
+
 ## 0.8.383 – nuBuilder 4.9 compatibility: form JavaScript
 - Scripts in HTML objects run as in nuBuilder (compatibility report M1): after jQuery and the nu… functions are loaded, in page
   order and before the form's own JavaScript – `$` and functions they define work again. Other script types stay untouched.
