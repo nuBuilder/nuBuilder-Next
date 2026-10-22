@@ -53,6 +53,17 @@ final class NuListDefs
 		return self::col('lv_id', $sql, 'ID', 'small text-body-secondary');
 	}
 
+	/** Forms list (0.8.388): a warning next to the type of a page form whose files use an unsupported API version or unknown / deprecated methods. */
+	private static function pageApiBadge(string $code): string
+	{
+		$issues = NuPage::issues($code);
+		if (!$issues) return '';
+		$err = (bool)array_filter($issues, static fn($i) => $i['level'] === 'error');
+		$tip = implode("\n", array_column($issues, 'text'));
+		return ' <span class="nuInfoTip nuPageApiWarn ' . ($err ? 'text-danger' : 'text-warning-emphasis') . '" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide"'
+			. ' aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi ' . ($err ? 'bi-x-octagon' : 'bi-exclamation-triangle') . '"></i></span>';
+	}
+
 	private static function badge(string $text, string $cls = 'bg-secondary-subtle text-secondary-emphasis border', string $title = ''): string
 	{
 		return '<span class="badge ' . $cls . '"' . ($title !== '' ? ' title="' . h($title) . '"' : '') . '>' . h($text) . '</span>';
@@ -280,9 +291,10 @@ final class NuListDefs
 					. ($ga ? ' <a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('cloner', ['f' => $r['__id']])) . '" title="' . h(t('cl_title')) . '" aria-label="' . h(t('cl_title')) . '"><i class="bi bi-files"></i></a>' : '')],
 			'description' => self::col('sfo_description', 'f.sfo_description', t('builder_description')) + ['main' => true, 'locked' => true],
 			'code' => self::col('sfo_code', 'f.sfo_code', t('builder_code'), 'small text-body-secondary'),
-			'type' => ['label' => t('builder_type'), 'select' => ['sfo_type' => 'f.sfo_type'], 'sort' => 'f.sfo_type',
+			'type' => ['label' => t('builder_type'), 'select' => ['sfo_type' => 'f.sfo_type', 'lv_page_code' => 'f.sfo_code'], 'sort' => 'f.sfo_type',
 				'text' => static fn($r) => t('form_type_' . ($r['sfo_type'] ?: 'browseedit')),
-				'html' => static fn($r) => '<span class="badge nuFormType nuFormType-' . h($r['sfo_type'] ?: 'browseedit') . '">' . h(t('form_type_' . ($r['sfo_type'] ?: 'browseedit'))) . '</span>'],
+				'html' => static fn($r) => '<span class="badge nuFormType nuFormType-' . h($r['sfo_type'] ?: 'browseedit') . '">' . h(t('form_type_' . ($r['sfo_type'] ?: 'browseedit'))) . '</span>'
+					. ($designer && $r['sfo_type'] === 'page' ? self::pageApiBadge((string)$r['lv_page_code']) : '')],
 			'table' => self::col('sfo_table', 'f.sfo_table', t('builder_table'), 'small'),
 			'group' => self::col('sfo_group', 'f.sfo_group', t('builder_group'), 'small') + ['sort' => 'f.sfo_group, f.sfo_description'],
 			'layout' => ['label' => t('form_layout'), 'select' => ['sfo_json' => 'f.sfo_json'], 'sort' => null, 'class' => 'small',

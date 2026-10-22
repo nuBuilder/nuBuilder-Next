@@ -178,7 +178,11 @@ core/form/*.php      form runtime (meta, render, record, browse, hash variables,
                      NuPageContext ($nu, API_VERSION 1 – the stable contract, listed in custom/PAGE_GUIDE.md); routes page / pageasset (JSON
                      401 / 400 / 403 / 404 / 500 for fetch requests), assets/js/nupage.js (NuPage.*, in the page) + nupagehost.js (parent side,
                      postMessage checks); builder pages/nubuilder_page.php + assets/js/nubuilderpage.js; updates never touch custom/ except
-                     custom/.htaccess, PAGE_GUIDE.md, pages/_template/ (NuUpdate::shippedCustom); e2e page_forms
+                     custom/.htaccess, PAGE_GUIDE.md, pages/_template/ (NuUpdate::shippedCustom); e2e page_forms. API versions (0.8.388):
+                     NuPage::API_SUPPORTED / API_DEPRECATED / JS_API / JS_DEPRECATED, $nu->api(n) in the page (none = 1), adapters
+                     NuPageContextV<n> for older supported versions (contextClass), apiInfo() → manifest page_api (release.py), scan() /
+                     check() / report() → update page "Pages" card, builder, forms list badge. Never remove or change a $nu method within a
+                     version: add, deprecate, or raise NuPageContext::API_VERSION with an adapter
                      form JS (0.8.383): HTML-object scripts → type text/nu-deferred (NuRender::deferScripts), run by nuNextRunDeferred();
                      nuAfterSave after the reload (sessionStorage nuNextAfterSave); edited flag reset after nuOnLoad (field nuEdited marks stay)
 core/nureport.php    reports: NuReport (data, rights, designer data) · core/nureportengine.php NuReportEngine (nurunpdf.php port, TCPDF)

@@ -6,6 +6,9 @@
 - nginx: the rule for custom/ (Help → Security → Web server rules); the security check warns when custom/ is reachable directly.
 - An update with a page folder installed: custom/pages/<code>/ stays; a backup with "Include custom pages".
 - Copy AI prompt: paste into an AI with a short description and run the page it writes.
+- 0.8.388 API versions: a page with $nu->api(1) runs; change it to $nu->api(2) → clear error. "Check package" with the next
+  package lists a page that calls a non-existing $nu method. When a method is deprecated for real: add it to NuPage::API_DEPRECATED
+  and call $this->deprecated('name') at its start (JS: deprecated('name', 'replacement') in nupage.js + NuPage::JS_DEPRECATED).
 - Phase 2 (not built): table restriction (tables_json stored, not enforced), pages on another server (launch token + per-user REST),
   page cron hooks, settings form from a JSON schema.
 

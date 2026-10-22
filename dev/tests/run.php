@@ -299,6 +299,22 @@ check('page: heights', NuPage::validHeight('auto') && NuPage::validHeight('800px
 check('update: custom pages never touched', NuUpdate::isProtected('custom/pages/sales/index.php') && NuUpdate::isProtected('custom/lib/x.php') && NuUpdate::isProtected('custom/pages/sales/secrets.php')
 	&& !NuUpdate::isProtected('custom/.htaccess') && !NuUpdate::isProtected('custom/PAGE_GUIDE.md') && !NuUpdate::isProtected('custom/pages/_template/index.php')
 	&& !NuUpdate::isProtected('custom/pages/_template/assets/app.js'));
+// page API versions (0.8.388)
+$js = (string)file_get_contents(NU_ROOT . '/assets/js/nupage.js');
+preg_match('/var NuPage = \{(.*?)\n\t\};/s', $js, $mm);
+preg_match_all('/^\t\t([A-Za-z_]\w*)\s*:/m', $mm[1] ?? '', $keys);
+check('page: NuPage::JS_API = the names of nupage.js', ($a = $keys[1]) && !array_diff($a, NuPage::JS_API) && !array_diff(NuPage::JS_API, $a), implode(',', $keys[1]));
+$info = NuPage::apiInfo();
+check('page: apiInfo', $info['current'] === NuPageContext::API_VERSION && in_array(NuPageContext::API_VERSION, $info['supported'], true)
+	&& in_array('user', $info['methods'], true) && in_array('api', $info['methods'], true) && !in_array('__construct', $info['methods'], true));
+check('page: declared version', NuPage::declaredApi("<?php\ndefined('NU_PAGE') || exit;\n\$nu->api(1);") === 1 && NuPage::declaredApi('<?php echo 1;') === null
+	&& NuPage::declaredApi('$nu -> api( 2 )') === 2);
+$scan = ['declared' => 2, 'php' => ['user' => ['index.php'], 'oldThing' => ['x.php'], 'json' => ['index.php']], 'js' => ['fetch' => ['assets/app.js'], 'gone' => ['assets/app.js']]];
+$iss = NuPage::check($scan, ['supported' => [1], 'methods' => ['user', 'json'], 'deprecated' => ['json' => ['0.9.1', 'send()']], 'js' => ['fetch'], 'js_deprecated' => []]);
+$lv = array_count_values(array_column($iss, 'level'));
+check('page: check() – version, unknown, deprecated', count($iss) === 4 && ($lv['error'] ?? 0) === 3 && ($lv['warning'] ?? 0) === 1, json_encode($iss));
+check('page: check() – a clean page', NuPage::check(['declared' => null, 'php' => ['user' => ['index.php']], 'js' => ['toast' => ['a.js']]], $info) === []);
+check('page: context class', NuPage::contextClass(null) === 'NuPageContext' && NuPage::contextClass(1) === 'NuPageContext');
 foreach (['custom/pages/_template/index.php'] as $f) check('page: shipped file has the guard: ' . $f, NuPage::hasGuard((string)file_get_contents(NU_ROOT . '/' . $f)));
 
 @unlink($cfg);

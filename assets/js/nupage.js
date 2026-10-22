@@ -1,6 +1,6 @@
 // nuBuilder Next page SDK (form type "page", 0.8.387): loaded by a page with <?= $nu->sdk() ?>.
 // NuPage.csrf · NuPage.fetch(url, options) · NuPage.resize() · NuPage.close() · NuPage.refreshParent() · NuPage.openForm(code, record, {target})
-// NuPage.toast(text, type) · NuPage.setTitle(text) · NuPage.inFrame. Messages to the nuBuilder Next window around the page:
+// NuPage.toast(text, type) · NuPage.setTitle(text) · NuPage.inFrame · NuPage.version (= apiVersion, the page API version, 0.8.388). Messages to the nuBuilder Next window around the page:
 // postMessage({nuPage: 1, type, …}, location.origin) – handled by assets/js/nupagehost.js. Outside an iframe everything degrades quietly.
 (function () {
 	'use strict';
@@ -37,6 +37,7 @@
 		csrf: csrf,
 		inFrame: inFrame,
 		apiVersion: 1,
+		version: 1,          // same rules as $nu->api(): methods are only added within a version (NuPage::JS_API lists them)
 
 		/** fetch() with the CSRF token and JSON headers. 401 = signed out: the page (or the window around it) reloads to the login. */
 		fetch: function (url, options) {
@@ -90,6 +91,15 @@
 			if (!post('title', {text: String(text)})) document.title = String(text);
 		}
 	};
+	// deprecated names (NuPage::JS_DEPRECATED): wrap them here with deprecated('name', 'replacement') – one console warning per page view
+	var warned = {};
+	function deprecated(name, use) {   // eslint-disable-line no-unused-vars
+		var fn = NuPage[name];
+		NuPage[name] = function () {
+			if (!warned[name] && window.console) { warned[name] = 1; window.console.warn('NuPage.' + name + ' is deprecated – use ' + use); }
+			return fn.apply(NuPage, arguments);
+		};
+	}
 	window.NuPage = NuPage;
 
 	if (inFrame) {

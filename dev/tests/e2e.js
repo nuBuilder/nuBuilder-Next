@@ -496,6 +496,25 @@ switch ($nu->action()) {
 		r = await post(g, 'index.php?p=page&f=' + F + '&action=save', true, true);
 		expect(r.status === 403 && r.j.error === 'read_only', 'POST while viewing as a user: ' + JSON.stringify(r));
 		await g.context().close();
+		// page API versions (0.8.388): an unsupported $nu->api() stops before the page runs; unknown calls are listed in the builder and the forms list
+		expect(await s.ga.evaluate(async (u) => { await fetch(u); return true; }, BASE + 'index.php?p=page&f=' + F), 'page before the API test');
+		fs.writeFileSync(path.join(dir, 'index.php'), page.replace("defined('NU_PAGE') || exit;", "defined('NU_PAGE') || exit;\n$nu->api(99);"));
+		r = await get(s.ga, 'index.php?p=page&f=' + F + '&action=info', J);
+		expect(r.status === 500 && r.j && r.j.error === 'page_api' && /99/.test(r.j.detail || ''), 'unsupported API version: ' + JSON.stringify(r.j));
+		r = await get(anna, 'index.php?p=page&f=' + F + '&action=info', J);
+		expect(r.status === 500 && r.j.error === 'page_api' && !r.j.detail, 'API error details for a user: ' + JSON.stringify(r.j));
+		fs.writeFileSync(path.join(dir, 'index.php'), page.replace("defined('NU_PAGE') || exit;", "defined('NU_PAGE') || exit;\n$nu->api(1);"));
+		r = await get(anna, 'index.php?p=page&f=' + F + '&action=info', J);
+		expect(r.status === 200 && r.j && r.j.api === 1, '$nu->api(1): ' + r.status);
+		fs.writeFileSync(path.join(dir, 'more.php'), "<?php\ndefined('NU_PAGE') || exit;\n$nu->notAMethod();\n");
+		fs.writeFileSync(path.join(dir, 'assets', 'app.js'), "NuPage.toast('x'); NuPage.gone();");
+		await open(s.ga, 'index.php?p=builder&f=' + id);
+		expect(/\b1\b/.test(await s.ga.locator('#pgApi').textContent()) && await s.ga.locator('.pgApiIssue').count() === 2, 'builder API issues: ' + await s.ga.locator('#pgFolder').textContent());
+		await open(s.ga, 'index.php?p=forms&q=' + F);
+		expect(await s.ga.locator('.nuPageApiWarn.text-danger').count() >= 1, 'forms list: no API warning');
+		fs.rmSync(path.join(dir, 'more.php')); fs.rmSync(path.join(dir, 'assets', 'app.js'));
+		await open(s.ga, 'index.php?p=builder&f=' + id);
+		expect(await s.ga.locator('#pgApiOk').count() === 1, 'builder: clean page not shown as ok');
 		// the form builder of a page form: code rules, settings JSON
 		await open(s.ga, 'index.php?p=builder&f=' + id);
 		expect(await s.ga.locator('#pgForm').count() === 1 && await s.ga.locator('#pgFileFound').count() === 1, 'page builder');
@@ -1237,6 +1256,21 @@ T.update_check = async (s) => {
 	await Promise.all([p.waitForLoadState('networkidle'), p.click('#updUpload')]);
 	await p.waitForTimeout(800);
 	expect(await p.locator('#updSignature .bi-patch-check-fill').count() === 1, 'package not shown as signed: ' + ((await p.textContent('#updSignature').catch(() => '')) || '').trim());
+	// page forms (0.8.388): packages with page_api in the manifest check the installed pages
+	const hasApi = execSync('python3 -', { input: "import zipfile, json, sys\nz=zipfile.ZipFile(" + JSON.stringify(pkg) + ")\nn=[x for x in z.namelist() if x.endswith('nunext-manifest.json')][0]\nprint('1' if 'page_api' in json.loads(z.read(n)) else '0')" }).toString().trim() === '1';
+	if (hasApi && SITE) {
+		const F = 'e2eupg' + Date.now().toString(36), id = 'e2eupg' + Date.now().toString(36).slice(-6), dir = path.join(SITE, 'custom', 'pages', F);
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(path.join(dir, 'index.php'), "<?php\ndefined('NU_PAGE') || exit;\n$nu->api(1);\n$nu->noSuchMethod();\n");
+		sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_status) VALUES ('${id}', 'page', '${F}', 'E2E update page', '1')`);
+		try {
+			await p.reload(); await p.waitForTimeout(500);
+			expect(await p.locator(`#updPagesList [data-page="${F}"] .bg-danger`).count() === 1, 'update check: page that would break not listed');
+		} finally {
+			sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`);
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	}
 };
 
 T.selftest = async (s) => {

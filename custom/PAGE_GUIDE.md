@@ -4,10 +4,11 @@ A page is a PHP app in `custom/pages/<form code>/` that nuBuilder Next runs afte
 and the user's access to the page form. You never write login code. The folder name is exactly the form
 code (letters, digits, `_` and `-`; case matters on Linux).
 
-API version: 1 (`$nu->apiVersion()`).
+API version: 1 (`$nu->apiVersion()`, `NuPage.version`). Declare it in every page: `$nu->api(1);` (see "API versions").
 
 ## Hard rules
-1. The first line after `<?php` is:  `defined('NU_PAGE') || exit;`   (every .php file, also secrets.php)
+1. The first line after `<?php` is:  `defined('NU_PAGE') || exit;`   (every .php file, also secrets.php).
+   The second line of index.php is:  `$nu->api(1);`   (the page API version the page is written for)
 2. Use only the `$nu` object for user, rights, data and URLs. Never require nuconfig.php,
    never create your own PDO, never read zzzzsys_session.
 3. Never call session_start(), session_name(), session_destroy(), session_regenerate_id().
@@ -64,6 +65,7 @@ The current directory is the page folder while the page runs.
 ## Typical index.php
     <?php
     defined('NU_PAGE') || exit;
+    $nu->api(1);
     $nu->require($nu->hasPermission('my_app'));
     switch ($nu->action()) {
         case 'save':
@@ -153,7 +155,8 @@ Table and column names of insert / update / delete must match `^[A-Za-z0-9_]+$` 
 | `log(string $message, array $data = []): void` | a line in Debug results (flag `page:<form code>`) |
 | `session(): array` | by reference: the page's own session store. Read-only after releaseSession(). |
 | `releaseSession(): void` | ends the session lock for slow work |
-| `apiVersion(): int` | 1 |
+| `apiVersion(): int` | the API version of this nuBuilder Next (1) |
+| `api(int $version): void` | declares the version the page is written for (second line of index.php) |
 
 ## JavaScript (optional)
     <?= $nu->sdk() ?>
@@ -169,9 +172,23 @@ then:
     NuPage.setTitle('text')                title of the nuBuilder Next page around the iframe
     NuPage.resize()                        report the height now (automatic when the height is "auto")
     NuPage.inFrame                         true inside nuBuilder Next
+    NuPage.version                         the page API version (1)
 
 Error answers of nuBuilder Next to fetch requests are JSON: `{"error": "login" | "csrf" | "forbidden" | "not_found" | "server" | "read_only", "message": "..."}`.
 Long-running polls can add `&passive=1` to the URL: they then do not keep the session alive.
+
+## API versions
+- `$nu->api(1);` in index.php says which version of `$nu` / `NuPage` the page is written for (no line = 1).
+- Within one version methods are only added – never removed or changed. A page written for version 1 keeps working
+  with every nuBuilder Next that supports version 1.
+- A breaking change raises the version. nuBuilder Next then keeps the older version running (through an adapter) for at
+  least 6 months / 20 releases, so there is time to adjust the page and raise its `$nu->api()` line.
+- Deprecated methods still work; each call writes a notice to Debug results (once a day per page and method), and
+  `NuPage.*` names write a warning to the browser console.
+- Before an update, Admin tools → Update → "Check package" lists every page the new version would break (unsupported
+  version, unknown or removed methods) or that uses deprecated ones. The form builder of a page shows the same for the
+  installed version. Only calls written as `$nu->name(` and `NuPage.name` are found – keep the variable name `$nu`
+  (pass `$nu` on to your functions and classes instead of copying it into other variables).
 
 ## nuBuilder tables you may read
     zzzzsys_user (sus_*), zzzzsys_access, zzzzsys_permission_item, zzzzsys_user_permission,

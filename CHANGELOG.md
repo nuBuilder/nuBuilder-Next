@@ -3,6 +3,19 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.388 – Page API versions
+- Page forms: the page API has a version (1). A page declares the version it is written for with $nu->api(1) as the second line
+  of index.php (template, guide and Copy AI prompt include it; no line = 1); an unsupported version stops the page with a clear
+  message for the globeadmin. NuPage.version in nupage.js.
+- Compatibility rule (guide and Help): within one version methods are only added, never removed or changed; a breaking change
+  raises the version and the older one keeps running through an adapter for at least 6 months / 20 releases. Deprecated methods
+  keep working and write a notice to Debug results once a day per page (JavaScript: a console warning).
+- The update manifest lists the page API of each release (versions, $nu methods, NuPage names, deprecations). "Check package"
+  on the update page checks every page form's files against it and lists the pages the new version would break or that use
+  deprecated calls – before installing.
+- Form builder of a page form: declared API version and the problems with the installed version; the forms list shows a warning
+  next to the type of such pages.
+
 ## 0.8.387 – Page forms (custom PHP)
 - New form type "Page (custom PHP)": a PHP app in custom/pages/<form code>/index.php that nuBuilder Next runs after it has
   checked the login and the access level's view right on the page form – the page writes no login code. Opened like any form

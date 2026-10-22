@@ -244,6 +244,8 @@ if (isset($_GET['check']) && ($zip = $uploadPath((string)$_GET['check'])) !== ''
 		$check['schema'] = $exp ? NuSchemaCheck::compare($exp) : null;
 		// database changes of this update (0.8.346): pending steps, own tables, nuBuilder columns, sample data – with the SQL
 		$smpTo = $check['sample'] ? (int)$check['sample']['to'] : 0;
+		// page forms (0.8.388): which pages the new version's page API would break or warn about (manifest page_api)
+		$check['pages'] = isset($check['manifest']['page_api']) && is_array($check['manifest']['page_api']) ? NuPage::report($check['manifest']['page_api']) : null;
 		$check['dbc'] = NuDbChanges::preview(NuDbChanges::fromZip($zip, $check['prefix']), $exp, $check['schema'],
 			$check['sample'] && $smpTo > (int)$check['sample']['from'] ? ['from' => $check['sample']['from'], 'to' => $smpTo] : null);
 	}
@@ -413,6 +415,24 @@ nu_layout_start(t('upd_title'), 'home');
 					<div class="fw-semibold small mb-2"><i class="bi bi-database-exclamation me-1"></i><?= h(t('upd_dbc_title')) ?>
 						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_dbc_tip')) ?>" title="<?= h(t('upd_dbc_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
 					<?= $dbcList($check['dbc']) ?>
+				</div>
+				<?php endif; ?>
+				<?php if (!empty($check['pages'])): $pgBad = array_values(array_filter($check['pages'], static fn($x) => $x['issues'])); ?>
+				<div class="border rounded p-3 mb-3" id="updPages">
+					<div class="fw-semibold small mb-2"><i class="bi bi-filetype-php me-1"></i><?= h(t('upd_pages_title')) ?>
+						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_pages_tip')) ?>" title="<?= h(t('upd_pages_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+					<?php if (!$pgBad): ?>
+						<p class="small text-success mb-0" id="updPagesOk"><i class="bi bi-check-circle me-1"></i><?= h(t('upd_pages_ok', count($check['pages']))) ?></p>
+					<?php else: ?>
+						<ul class="list-unstyled small mb-0" id="updPagesList">
+						<?php foreach ($pgBad as $pg): $err = (bool)array_filter($pg['issues'], static fn($i) => $i['level'] === 'error'); ?>
+							<li class="mb-2" data-page="<?= h($pg['code']) ?>"><span class="badge <?= $err ? 'bg-danger' : 'bg-warning text-dark' ?> me-1"><?= h(t($err ? 'upd_pages_breaks' : 'upd_pages_deprecated')) ?></span>
+								<a href="<?= h(nu_url('builder', ['f' => $pg['id']])) ?>"><?= h($pg['description'] !== '' ? $pg['description'] : $pg['code']) ?></a> <code class="small"><?= h($pg['code']) ?></code>
+								<ul class="mb-0"><?php foreach ($pg['issues'] as $i): ?><li class="<?= $i['level'] === 'error' ? 'text-danger' : 'text-warning-emphasis' ?>"><?= h($i['text']) ?></li><?php endforeach; ?></ul></li>
+						<?php endforeach; ?>
+						</ul>
+						<p class="small text-body-secondary mt-1 mb-0"><?= h(t('upd_pages_hint')) ?></p>
+					<?php endif; ?>
 				</div>
 				<?php endif; ?>
 				<div class="border rounded p-3 mb-3" id="updSchemaCheck">

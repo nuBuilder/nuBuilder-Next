@@ -27,6 +27,21 @@ final class NuPage
 		'txt' => 'text/plain; charset=utf-8', 'pdf' => 'application/pdf',
 	];
 
+	/**
+	 * Page API versions (0.8.388). A page declares the version it is written for with $nu->api(<n>) (none = 1). Rules:
+	 * within one version methods are only added, never removed or changed; a breaking change raises the version, and the previous
+	 * one keeps running for at least 6 months / 20 releases through an adapter class NuPageContextV<n> (extends the current one).
+	 * Deprecated methods: API_DEPRECATED (method => [since, replacement]) – a call writes a notice to the debug log once a day per
+	 * page. The update manifest carries apiInfo() as page_api, so "Check package" lists the pages a new version would break.
+	 */
+	public const API_SUPPORTED = [1];
+	/** @var array<string, array{0:string, 1:string}> $nu methods: name => [since version, replacement] */
+	public const API_DEPRECATED = [];
+	/** NuPage.* of assets/js/nupage.js (dev/tests/run.php checks the list against the file). */
+	public const JS_API = ['csrf', 'inFrame', 'apiVersion', 'version', 'fetch', 'resize', 'close', 'refreshParent', 'openForm', 'toast', 'setTitle'];
+	/** @var array<string, array{0:string, 1:string}> NuPage.* (JavaScript): name => [since version, replacement] */
+	public const JS_DEPRECATED = [];
+
 	/** Output buffer level of the page (NuPageContext::json etc. clear down to it). */
 	public static int $obLevel = 0;
 
@@ -328,7 +343,13 @@ final class NuPage
 			if ($ga) self::fail(404, 'page_missing', t('page_err_missing_title'), t('page_err_missing', self::shownFolder($code) . 'index.php'));
 			self::fail(404, 'not_found', t('err_not_found'));
 		}
-		$ctx = new NuPageContext($meta, dirname($file), $s);
+		// API version (0.8.388): an unsupported version stops before the page runs; an older supported one gets its adapter class
+		$declared = self::declaredApi((string)@file_get_contents($file));
+		if ($declared !== null && !in_array($declared, self::API_SUPPORTED, true)) {
+			self::fail(500, 'page_api', t('page_api_title'), $ga ? t('page_api_unsupported', (string)$declared, implode(', ', self::API_SUPPORTED)) : '');
+		}
+		$class = self::contextClass($declared);
+		$ctx = new $class($meta, dirname($file), $s);
 		defined('NU_PAGE') || define('NU_PAGE', 1);
 		set_exception_handler(null);
 		register_shutdown_function(static function () use ($ga): void {
@@ -412,6 +433,130 @@ final class NuPage
 		return (bool)preg_match('~^[A-Za-z0-9._/ -]+$~', $rel);
 	}
 
+	// ================================================================= API versions (0.8.388)
+
+	/** What this nuBuilder Next offers to pages – also written into the update manifest (page_api) by dev/release.py. */
+	public static function apiInfo(): array
+	{
+		$methods = [];
+		foreach ((new ReflectionClass(NuPageContext::class))->getMethods(ReflectionMethod::IS_PUBLIC) as $m) {
+			if (!$m->isStatic() && !str_starts_with($m->getName(), '__')) $methods[] = $m->getName();
+		}
+		sort($methods);
+		return ['current' => NuPageContext::API_VERSION, 'supported' => self::API_SUPPORTED, 'methods' => $methods, 'deprecated' => self::API_DEPRECATED,
+			'js' => self::JS_API, 'js_deprecated' => self::JS_DEPRECATED];
+	}
+
+	/** The version a page source declares with $nu->api(<n>); null = none (counts as 1). */
+	public static function declaredApi(string $src): ?int
+	{
+		return preg_match('/\$nu\s*->\s*api\s*\(\s*(\d{1,3})\s*\)/', $src, $m) ? (int)$m[1] : null;
+	}
+
+	/**
+	 * What a page folder uses: declared version, $nu->… methods (PHP files) and NuPage.… names (PHP and JS files) with the files they are in.
+	 * @return array{declared:?int, php:array<string,list<string>>, js:array<string,list<string>>, files:int}
+	 */
+	public static function scan(string $code): array
+	{
+		$out = ['declared' => null, 'php' => [], 'js' => [], 'files' => 0];
+		$folder = self::folder($code);
+		if ($folder === '' || !is_dir($folder)) return $out;
+		$entry = self::file($code);
+		if ($entry !== null) $out['declared'] = self::declaredApi((string)@file_get_contents($entry));
+		$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($folder, FilesystemIterator::SKIP_DOTS));
+		foreach ($it as $f) {
+			$ext = strtolower($f->getExtension());
+			if (!in_array($ext, ['php', 'js', 'mjs'], true) || $f->getSize() > 4_000_000 || $f->getFilename() === 'secrets.php') continue;
+			if (++$out['files'] > 500) break;
+			$src = (string)@file_get_contents($f->getPathname());
+			$rel = substr(str_replace('\\', '/', $f->getPathname()), strlen(str_replace('\\', '/', $folder)) + 1);
+			if ($ext === 'php' && preg_match_all('/\$nu\s*->\s*([A-Za-z_]\w*)\s*\(/', $src, $m)) {
+				foreach (array_unique($m[1]) as $name) $out['php'][$name][] = $rel;
+			}
+			if (preg_match_all('/\bNuPage\s*\.\s*([A-Za-z_]\w*)/', $src, $m)) {
+				foreach (array_unique($m[1]) as $name) $out['js'][$name][] = $rel;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Problems of a scanned page against an API (apiInfo() of this or of a new version): errors break the page, warnings are deprecated calls.
+	 * @return list<array{level:string, text:string}>
+	 */
+	public static function check(array $scan, array $api): array
+	{
+		$issues = [];
+		$v = $scan['declared'] ?? 1;
+		if (!in_array($v, array_map('intval', (array)($api['supported'] ?? [])), true)) {
+			$issues[] = ['level' => 'error', 'text' => t('page_api_unsupported', (string)$v, implode(', ', (array)($api['supported'] ?? [])))];
+		}
+		$methods = array_flip((array)($api['methods'] ?? []));
+		foreach ($scan['php'] as $name => $files) {
+			$where = implode(', ', array_slice(array_unique($files), 0, 3));
+			if (!isset($methods[$name])) $issues[] = ['level' => 'error', 'text' => t('page_api_unknown', '$nu->' . $name . '()', $where)];
+			elseif (isset($api['deprecated'][$name])) $issues[] = ['level' => 'warning', 'text' => t('page_api_deprecated', '$nu->' . $name . '()', (string)$api['deprecated'][$name][0], (string)$api['deprecated'][$name][1], $where)];
+		}
+		$js = array_flip((array)($api['js'] ?? []));
+		foreach ($scan['js'] as $name => $files) {
+			$where = implode(', ', array_slice(array_unique($files), 0, 3));
+			if (!isset($js[$name])) $issues[] = ['level' => 'error', 'text' => t('page_api_unknown', 'NuPage.' . $name, $where)];
+			elseif (isset($api['js_deprecated'][$name])) $issues[] = ['level' => 'warning', 'text' => t('page_api_deprecated', 'NuPage.' . $name, (string)$api['js_deprecated'][$name][0], (string)$api['js_deprecated'][$name][1], $where)];
+		}
+		return $issues;
+	}
+
+	/** Problems of one page form's folder with this version (cached per request). */
+	public static function issues(string $code): array
+	{
+		static $cache = [];
+		return $cache[$code] ??= self::check(self::scan($code), self::apiInfo());
+	}
+
+	/**
+	 * All page forms checked against an API – the update page with the page_api of a new package (null = this version).
+	 * @return list<array{id:string, code:string, description:string, declared:?int, issues:list<array{level:string,text:string}>}>
+	 */
+	public static function report(?array $api = null): array
+	{
+		$api ??= self::apiInfo();
+		$out = [];
+		try {
+			foreach (nu_db()->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE sfo_type = 'page' ORDER BY sfo_code") as $f) {
+				$scan = self::scan((string)$f['sfo_code']);
+				$out[] = ['id' => (string)$f['zzzzsys_form_id'], 'code' => (string)$f['sfo_code'], 'description' => (string)$f['sfo_description'],
+					'declared' => $scan['declared'], 'exists' => self::file((string)$f['sfo_code']) !== null, 'issues' => self::check($scan, $api)];
+			}
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next page report: ' . $e->getMessage());
+		}
+		return $out;
+	}
+
+	/** A deprecated method was called: a notice in the debug log, at most once a day per page and method. */
+	public static function noteDeprecated(string $code, string $what): void
+	{
+		$key = $code . '|' . $what . '|' . date('Y-m-d');
+		if (isset($_SESSION['nu_page_dep'][$key])) return;
+		try {
+			$msg = 'Deprecated in page ' . $code . ': ' . $what;
+			$since = strtotime('today');
+			if (nu_db()->tableExists(NuDebugLog::TABLE) && (int)nu_db()->value('SELECT COUNT(*) FROM ' . NuDebugLog::TABLE . ' WHERE deb_message = ? AND deb_added >= ?', [$msg, $since]) === 0) {
+				NuDebugLog::write($msg, 'page:' . $code);
+			}
+			if (session_status() === PHP_SESSION_ACTIVE) $_SESSION['nu_page_dep'][$key] = 1;
+		} catch (Throwable) {}
+	}
+
+	/** The $nu class for a declared version: the current one, or the adapter NuPageContextV<n> of an older version that is still supported. */
+	public static function contextClass(?int $declared): string
+	{
+		$v = $declared ?? 1;
+		if ($v !== NuPageContext::API_VERSION && in_array($v, self::API_SUPPORTED, true) && class_exists('NuPageContextV' . $v)) return 'NuPageContextV' . $v;
+		return NuPageContext::class;
+	}
+
 	// ================================================================= builder helpers
 
 	/** Copies _template/ into the folder of the form code. @return array{ok:bool, message:string} */
@@ -444,6 +589,7 @@ final class NuPage
 			. 'Form code / folder: ' . $meta->code() . ' (custom/pages/' . $meta->code() . "/)\n"
 			. 'Title: ' . $meta->description() . "\n"
 			. 'Open mode: ' . $s['open_mode'] . "\n"
+			. 'Page API version: ' . NuPageContext::API_VERSION . ' – put $nu->api(' . NuPageContext::API_VERSION . "); as the second line of index.php\n"
 			. "Settings JSON (read with \$nu->setting()):\n" . $s['settings'] . "\n\n===== Database tables =====\n";
 		$db = nu_db();
 		$keep = ['zzzzsys_user', 'zzzzsys_access', 'zzzzsys_permission_item', 'zzzzsys_user_permission'];
@@ -475,7 +621,7 @@ final class NuPage
  * $nu – the page API (API_VERSION 1). The only contract page files rely on: internal classes may change between versions, this
  * class only with a new API version. Every method is listed in custom/PAGE_GUIDE.md.
  */
-final class NuPageContext
+class NuPageContext
 {
 	public const API_VERSION = 1;
 
@@ -483,7 +629,7 @@ final class NuPageContext
 	private ?array $secrets = null;
 	private array $set;
 
-	public function __construct(private NuFormMeta $meta, private string $dir, array $settings)
+	public function __construct(protected NuFormMeta $meta, protected string $dir, array $settings)
 	{
 		$d = json_decode((string)$settings['settings'], true);
 		$this->set = is_array($d) ? $d : [];
@@ -873,6 +1019,24 @@ final class NuPageContext
 	}
 
 	public function apiVersion(): int { return self::API_VERSION; }
+
+	/**
+	 * Declares the API version the page is written for – the second line of index.php: $nu->api(1);
+	 * (pages without it count as version 1). An unsupported version stops the page with a clear message (also checked before the file runs).
+	 */
+	public function api(int $version): void
+	{
+		if (!in_array($version, NuPage::API_SUPPORTED, true)) {
+			$u = NuAuth::user();
+			NuPage::fail(500, 'page_api', t('page_api_title'), !empty($u['globeadmin']) && empty($u['demo']) ? t('page_api_unsupported', (string)$version, implode(', ', NuPage::API_SUPPORTED)) : '');
+		}
+	}
+
+	/** For deprecated methods (NuPage::API_DEPRECATED): call at their start – a debug log notice once a day per page. */
+	protected function deprecated(string $method): void
+	{
+		NuPage::noteDeprecated($this->meta->code(), '$nu->' . $method . '()');
+	}
 
 	/** A value of secrets.php in the page folder (read once per request). */
 	public function secret(string $key, mixed $default = null): mixed

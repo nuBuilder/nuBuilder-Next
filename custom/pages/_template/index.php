@@ -7,6 +7,7 @@ defined('NU_PAGE') || exit;
  */
 
 /** @var NuPageContext $nu */
+$nu->api(1);                // the page API version this page is written for (custom/PAGE_GUIDE.md, "API versions")
 $u = $nu->user();
 
 if ($nu->action() === 'hello' && $nu->isPost()) {

@@ -119,6 +119,15 @@ def browser_tests():
     return bad
 
 
+def page_api():
+    """NuPage::apiInfo() of this version (supported page API versions, $nu methods, NuPage.* names, deprecations)."""
+    code, out = run(['php', '-r', "define('NU_ROOT', getcwd()); function t(string $k, mixed ...$a): string { return $k; } "
+                     "require 'core/nupage.php'; echo json_encode(NuPage::apiInfo());"])
+    if code != 0:
+        sys.exit('page_api: ' + out)
+    return json.loads(out)
+
+
 LIBRARIES = 'assets/vendor/libraries.json'
 
 
@@ -214,6 +223,7 @@ def main():
     man['version'] = version
     man['built'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     man['libraries'] = libraries()          # bundled libraries with versions: the update page shows which change (0.8.229)
+    man['page_api'] = page_api()            # page forms: API versions and methods – "Check package" lists pages that would break (0.8.388)
     man.pop('signature', None)
     versions = [c.get('version') for c in man['changes']]
     at = versions.index(old) if old in versions else 0          # newest first (the list is not strictly sorted further down)

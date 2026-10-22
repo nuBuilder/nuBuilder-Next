@@ -510,6 +510,18 @@
 		<p>The complete list of <code>$nu</code> methods and of the JavaScript helpers (<code>NuPage.fetch</code>, <code>toast</code>, <code>resize</code>, <code>refreshParent</code>, <code>openForm</code> …) is in <code>custom/PAGE_GUIDE.md</code> (also part of <em>Copy AI prompt</em>). The API has a version (<code>$nu-&gt;apiVersion()</code>, now 1): pages that use only <code>$nu</code> keep working when nuBuilder Next changes inside.</p>
 	</div>
 	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-api">API versions</h3>
+		<p>Since 0.8.388 the page API (<code>$nu</code> and <code>NuPage</code>) has a version number – this nuBuilder Next supports version 1. A page declares the version it is written for with <code>$nu-&gt;api(1);</code> as the second line of <code>index.php</code> (the template and Copy AI prompt include it; a page without it counts as version 1).</p>
+		<ul>
+			<li><strong>Rule</strong>: within one version, methods are only added – never removed or changed. A breaking change raises the version; the older version keeps running (through an adapter) for at least 6 months / 20 releases.</li>
+			<li><strong>Unsupported version</strong>: the page does not run; the globeadmin sees which version it needs and what this nuBuilder Next supports, other users a short error.</li>
+			<li><strong>Deprecated methods</strong> keep working; each call writes a notice to <em>Debug results</em> (once a day per page and method), deprecated <code>NuPage</code> names a warning in the browser console.</li>
+			<li><strong>Before an update</strong>: <em>Check package</em> on the update page lists every page the new version would break (unsupported version, unknown or removed <code>$nu-&gt;…</code> / <code>NuPage.…</code> calls) or that uses deprecated ones. The update can still be installed.</li>
+			<li><strong>Form builder</strong> of a page form: the declared version and the problems with this version; the forms list shows a warning next to the type of such pages.</li>
+			<li>Only calls written as <code>$nu-&gt;name(</code> and <code>NuPage.name</code> are found – keep the variable name <code>$nu</code>.</li>
+		</ul>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
 		<h3 id="pages-files">Files, updates, copies</h3>
 		<ul>
 			<li>Pages live in <code>custom/pages/&lt;code&gt;/</code>, uploaded by FTP. <code>$nuConfigCustomPagesDir</code> in <code>nuconfig.php</code> (an absolute path) moves the pages folder, e.g. outside the web root – the safest setup.</li>

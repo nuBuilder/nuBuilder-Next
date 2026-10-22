@@ -175,6 +175,14 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 						<li class="text-danger" id="pgNoGuard"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('page_file_no_guard')) ?> <code><?= h(NuPage::GUARD) ?></code></li>
 					<?php endif; ?>
 					<li><i class="bi bi-key me-1"></i><?= h(t('page_secrets', $info['secrets'] ? t('yes') : t('no'))) ?></li>
+					<?php if ($info['exists']): $scan = NuPage::scan($meta->code()); $apiIssues = NuPage::check($scan, NuPage::apiInfo()); // API versions (0.8.388) ?>
+						<li id="pgApi"><i class="bi bi-plug me-1"></i><?= h($scan['declared'] !== null ? t('page_api_declared', (string)$scan['declared'], implode(', ', NuPage::API_SUPPORTED)) : t('page_api_none', implode(', ', NuPage::API_SUPPORTED))) ?></li>
+						<?php if ($apiIssues): foreach ($apiIssues as $i): ?>
+							<li class="<?= $i['level'] === 'error' ? 'text-danger' : 'text-warning-emphasis' ?> pgApiIssue"><i class="bi <?= $i['level'] === 'error' ? 'bi-x-circle' : 'bi-exclamation-triangle' ?> me-1"></i><?= h($i['text']) ?></li>
+						<?php endforeach; else: ?>
+							<li class="text-success" id="pgApiOk"><i class="bi bi-check-circle me-1"></i><?= h(t('page_api_ok')) ?></li>
+						<?php endif; ?>
+					<?php endif; ?>
 				</ul>
 				<?php if (!$ro && $info['valid'] && !$info['folder_exists']): ?>
 					<?php if ($info['writable'] && $info['template']): ?>
