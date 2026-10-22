@@ -2,7 +2,7 @@
 
 nuBuilder Next ("nuNext") is a modern PHP front end for **nuBuilder 4**. It runs on nuBuilder's own `zzzzsys_*` tables, side by side
 with a live nuBuilder on the same database, and adds only its own tables (`zzzzsys_nunext_*`). One owner/developer (not named here – see the rule below).
-Short user-facing description and install: `README.md` (alpha warning on top, ~90 lines – keep it short, it is the GitHub front page);
+Short user-facing description and install: `README.md` (alpha warning on top, quick links, overview and features, install – the GitHub front page, keep it concise);
 the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions (0.2–0.7)" at the end). User documentation (shown in the app, `?p=help`):
 `docs/nunext-docs.htm`. Open points to verify: `TODO.md`. Differences to nuBuilder / not ported: `docs/porting-review.md`.
 

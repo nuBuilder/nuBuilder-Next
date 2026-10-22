@@ -3,6 +3,12 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.375 – README for GitHub
+- README.md: new front page for GitHub – one-line summary, quick links (releases, changelog, documentation, development,
+  nuBuilder home page and forum), overview, "Why nuBuilder Next?" and the core features for everyone, for building
+  applications and for administrators; requirements, install, updating and licence as before. Updating also mentions the
+  download from GitHub (0.8.374).
+
 ## 0.8.374 – Update from GitHub
 - Update page: new section "Update from GitHub". It looks for the newest release of the repository (default
   nuBuilder/nuBuilder-Next, public repositories only) with nunext.zip attached and shows version, date, size, a pre-release badge
