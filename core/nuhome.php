@@ -700,13 +700,13 @@ final class NuHome
 			$post = is_array($route) && isset($route['post']) ? $route['post'] : null;
 			$href = $post ? null : (is_array($route) ? nu_url($route[0], $route[1]) : nu_url($route));
 			return ['href' => $href, 'post' => $post, 'icon' => $icon, 'label' => $label, 'hint' => $hint, 'color' => '', 'newtab' => (bool)$post, 'proc' => null, 'run' => '',
-				'action' => self::actions()[$key] ?? null, 'badge' => $badge];
+				'action' => self::actions()[$key] ?? null, 'badge' => $badge, 'kind' => $post ? 'post' : 'page'];
 		}
 		$sub = self::subTiles()[$key] ?? null;
 		if ($sub) {                                         // a pinned page / action of a tile's menu (0.8.321)
 			$parent = self::catalog()[$sub[3]][2] ?? '';
 			return ['href' => $sub[0], 'post' => null, 'icon' => $sub[1], 'label' => $sub[2], 'hint' => $parent, 'color' => '', 'newtab' => false, 'proc' => null, 'run' => '',
-				'action' => null, 'badge' => null];
+				'action' => null, 'badge' => null, 'kind' => 'page'];
 		}
 		$c = ((array)$layout['custom'])[$key] ?? null;
 		if (!$c) return null;
@@ -719,7 +719,7 @@ final class NuHome
 		};
 		if ($href === null && $c['kind'] !== 'procedure') return null;
 		return ['href' => $href, 'post' => null, 'icon' => $c['icon'], 'label' => $c['label'], 'hint' => $c['hint'], 'color' => $c['color'],
-			'newtab' => (bool)$c['newtab'], 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null];
+			'newtab' => (bool)$c['newtab'], 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null, 'kind' => (string)$c['kind']];
 	}
 
 	/** Where a tile comes from (0.8.378): builtin (catalogue), pinned (a page of a tile's menu), own (c_…) or dynamic (x_…, start page hook). */

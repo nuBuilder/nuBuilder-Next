@@ -1,12 +1,14 @@
-# nuBuilder Next 0.8.378 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.380 – a modern front end for nuBuilder 4
 
-**An open-source, low-code platform for building and running web-based database applications – on your existing nuBuilder database.**
+**An open-source, low-code platform for building and running web-based database applications – built on nuBuilder 4.**
 
 > [!WARNING]
 > **Alpha version – not ready for production.**
 > nuBuilder Next is still under heavy development. Functions, screens and its own database tables can change from one version to
-> the next, and parts of it (e.g. SQL Server) are not verified yet. **For now, do not use it on an existing nuBuilder database –
-> install it on a new, empty database only.**
+> the next. New versions may introduce breaking changes, and compatibility with previous versions or existing nuBuilder
+> applications is not guaranteed. Some parts, such as SQL Server support, have not yet been verified.
+>
+> **For now, do not use it on an existing nuBuilder database. Install it on a new, empty database only.**
 
 ---
 
@@ -84,12 +86,12 @@ nuBuilder Next streamlines everyday database work:
 
 ## Requirements
 - PHP 8.1 or newer (8.2+ recommended) with `pdo_mysql` or `pdo_sqlsrv`
-- MySQL / MariaDB or SQL Server; an existing nuBuilder 4 database or an empty one
+- MySQL / MariaDB or SQL Server with a new, empty database (not an existing nuBuilder database for now)
 - Apache with `AllowOverride All` (for the `.htaccess` files) or nginx with the rules shown in Admin tools → *Security check*
 
 ## Install
 1. Download **`nunext.zip`** from the [releases](../../releases) (the install package – `nunext-dev.zip` is only for the
-   development) and unpack it into the web folder, e.g. next to or inside your nuBuilder folder.
+   development) and unpack it into the web folder.
 2. Open it in the browser: while `nuconfig.php` is missing, the **installer** runs and writes `nuconfig.php`. It asks for the setup
    token from `_install/setup-token.txt` (read it by SFTP) – or create an empty file `install.allow` first.
    By hand instead: rename `nuconfig-sample.php` to `nuconfig.php` and enter your settings (an existing nuBuilder `nuconfig.php`

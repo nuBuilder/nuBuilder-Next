@@ -86,6 +86,11 @@ step → `NuMigrate::steps()` + `NuMigrate::CHANGES` in core/nuupdate.php · a c
   written for versions from the baseline on; the owner says when to move the baseline and drop the paths below it. nuBuilder
   compatibility (old nuBuilder databases, md5 passwords, missing nuBuilder tables) is NOT upgrade code and stays.
 - **Do not add new variables to `nuconfig-sample.php`** unless asked.
+- **Existing nuBuilder databases are blocked for now** (0.8.380, `NuInstall::ORIGIN`): the installer refuses a database with nuBuilder's
+  tables; an installation made by hand on one (setting `db_origin` = 'nubuilder', step 0014) shows only a notice; installations from
+  before 0.8.380 ('legacy') keep working with a warning for the globeadmin. **`$nuConfigAllowExistingNuDB = true;`** in nuconfig.php
+  allows it – a hidden switch for the developer: never in README, nuconfig-sample.php or the help. The test site runs without it
+  (its database is 'legacy' – the start page shows the warning); e2e test `existing_db`.
 - **nuBuilder compatibility first**: same tables, same JSON formats (reports, SQL builder, form layouts), same PHP/JS function names
   and results as nuBuilder 4.9 – a form or report must keep working in nuBuilder. `dev/tests/compat.js` checks it against nuBuilder
   itself (0.8.364). Rules found that way: nuBuilder writes only EDITED fields (a new record's untouched empty field stays NULL –
@@ -143,7 +148,9 @@ core/nuhome.php      start page: tiles, Ctrl+K search, saved layouts (list_key '
 core/nuhomehook.php  start page hooks (0.8.378): procedure nunext_home runs while the tile page is built (pages/nuhome.php: NuHomeHook::run +
                      apply); PHP functions nuHomeSetBadge / SetHint / HideTile / AddGroup / AddTile (x_ keys, NuHome::cleanTile) / Banner /
                      SetData / Cache in core/form/nuphp_api.php; errors → page without changes + alert for the globeadmin + Debug results;
-                     off: $nuConfigHomeHooks = false (settings row, step 0013), ?safe=1 (globeadmin)
+                     off: $nuConfigHomeHooks = false (settings row, step 0013), ?safe=1 (globeadmin); JavaScript (0.8.379): the procedure's sph_javascript served by
+                     ?p=homejs&v=<hash> (pages/nuhomejs.php, NuHomeHook::serveJs) after nuhome.js, which exposes window.nuHome (on / off / tiles /
+                     tile / data; tile objects from the data-nu-* attributes of the tile markup)
 core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.php mailer (NuMailer: settings, send, authType(), test probe)
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',

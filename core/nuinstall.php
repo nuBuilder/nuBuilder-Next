@@ -12,14 +12,72 @@ defined('NU_ROOT') || exit;
  * The token file is readable for every account on the server (0644): PHP writes it as the web server's user (e.g. www-data), and
  * the FTP / SFTP user must be able to download it. The web is kept out by _install/.htaccess (Apache) as before.
  *
- * Steps: language + server check → database (test, optionally create) → content (existing nuBuilder database: connect only;
- * empty: nuBuilder's complete system from <nuBuilder>/nubuilder4.sql, or nuBuilder Next's own install scripts) → administrator
+ * Steps: language + server check → database (test, optionally create; an existing nuBuilder database is refused since 0.8.380 –
+ * see ORIGIN below) → content (empty: nuBuilder's complete system from <nuBuilder>/nubuilder4.sql, or nuBuilder Next's own install scripts) → administrator
  * (plain-text password in nuconfig.php, like nuBuilder) → options → summary → install (writes nuconfig.php, runs the database
  * steps, removes the token). Every step can be repeated; an interrupted install can simply be started again.
  */
 final class NuInstall
 {
 	public const MAX_TOKEN_ATTEMPTS = 10;
+
+	/*
+	 * Existing nuBuilder databases (0.8.380): while nuBuilder Next is being tested it is installed only on a new, empty database.
+	 * $nuConfigAllowExistingNuDB = true (nuconfig.php, written by hand – deliberately not in nuconfig-sample.php / README) allows an
+	 * existing one. Setting 'db_origin' (zzzzsys_nunext_setting, step 0014): 'nunext' = set up by the installer on an empty database,
+	 * 'legacy' = nuBuilder Next was already installed before 0.8.380 (keeps working, the globeadmin gets a warning), 'nubuilder' =
+	 * installed by hand on an existing nuBuilder database since 0.8.380 (blocked without the variable).
+	 */
+	public const ORIGIN = 'db_origin';
+
+	public static function existingAllowed(): bool
+	{
+		$v = nu_cfg('nuConfigAllowExistingNuDB');
+		return $v === true || (is_string($v) && in_array(strtolower(trim($v)), ['1', 'true', 'yes', 'on'], true)) || $v === 1;
+	}
+
+	/** 'nunext' | 'legacy' | 'nubuilder' | '' (not known yet). */
+	private static ?string $origin = null;
+
+	public static function origin(): string
+	{
+		if (self::$origin !== null) return self::$origin;
+		try {
+			$db = nu_db();
+			return self::$origin = $db->tableExists('zzzzsys_nunext_setting') ? (string)($db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::ORIGIN]) ?? '') : '';
+		} catch (Throwable) {
+			return '';
+		}
+	}
+
+	public static function setOrigin(string $origin, ?NuDB $db = null): void
+	{
+		$db ??= nu_db();
+		if (!$db->tableExists('zzzzsys_nunext_setting') || $db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::ORIGIN])) return;
+		$db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::ORIGIN, 'setting_value' => $origin, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'install']);
+		self::$origin = $origin;
+	}
+
+	/** Step 0014: the origin, once ($earlier = steps applied by an earlier request: nuBuilder Next was installed before). */
+	public static function markOrigin(bool $earlier): void
+	{
+		if (self::origin() !== '') return;
+		$db = nu_db();
+		$nub = $db->tableExists('zzzzsys_form') && $db->tableExists('zzzzsys_user');
+		self::setOrigin($earlier ? 'legacy' : ($nub ? 'nubuilder' : 'nunext'), $db);
+	}
+
+	/** Installed by hand on an existing nuBuilder database without $nuConfigAllowExistingNuDB: nobody may use it (index.php). */
+	public static function existingBlocked(): bool
+	{
+		return self::origin() === 'nubuilder' && !self::existingAllowed();
+	}
+
+	/** Older installation on an existing nuBuilder database: works, the globeadmin sees a warning (start page, Security check). */
+	public static function existingWarn(): bool
+	{
+		return self::origin() === 'legacy' && !self::existingAllowed() && nu_db()->tableExists('zzzzsys_form');
+	}
 
 	public static function configPath(): string
 	{

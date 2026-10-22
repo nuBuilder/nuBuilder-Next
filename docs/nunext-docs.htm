@@ -476,8 +476,8 @@
 			<li>Unpack <code>nunext.zip</code> on the web server (e.g. <code>/nubuilder4/nunext/</code>) – <code>nunext-dev.zip</code> is for development only. The package contains all libraries under <code>assets/vendor/</code> (Bootstrap, Bootstrap Icons, jQuery, jquery-confirm, Tom Select, CodeMirror, the code formatters, the QR code generator, ApexCharts) – only TinyMCE is copied by hand (see <a href="#copy-files">Files you copy yourself</a>).</li>
 			<li>Open nuBuilder Next in the browser. As long as <code>nuconfig.php</code> does not exist, every page shows the installer.</li>
 			<li><b>Start</b>: server check. From another computer you enter the <b>setup token</b> – nuBuilder Next writes it to <code>_install/setup-token.txt</code>; open that file by FTP / SFTP / file manager / SSH (it is readable for every account on the server, so also for an FTP user who is not the web server's user). <b>Or</b> create an empty file <code>install.allow</code> in the nuBuilder Next folder and click Start without a token – always possible, and the only way when the token file cannot be written. Only PHP's built-in development server (<code>php -S</code>) opened from the same computer skips the token – every other server asks for it (a reverse proxy on the same host would make every visitor look local). 10 wrong tokens lock the installer for 15 minutes.</li>
-			<li><b>Database</b>: MySQL / MariaDB or MSSQL; settings are taken from nuBuilder's <code>nuconfig.php</code> next to nuBuilder Next when found. <i>Test connection</i> checks them; the database can be created.</li>
-			<li><b>Content</b>: a nuBuilder database is used as it is (nothing imported). An empty database gets either nuBuilder's complete system (<code>nubuilder4.sql</code> from the nuBuilder folder, MySQL only) or nuBuilder Next's own install scripts. All tables are created as InnoDB.</li>
+			<li><b>Database</b>: MySQL / MariaDB or MSSQL; settings are taken from nuBuilder's <code>nuconfig.php</code> next to nuBuilder Next when found. <i>Test connection</i> checks them; the database can be created. While nuBuilder Next is being tested (since 0.8.380) a database that already holds nuBuilder's tables is refused – choose a new, empty database.</li>
+			<li><b>Content</b>: an empty database gets either nuBuilder's complete system (<code>nubuilder4.sql</code> from the nuBuilder folder, MySQL only) or nuBuilder Next's own install scripts. All tables are created as InnoDB.</li>
 			<li><b>Administrator</b>: globeadmin name and password – stored in plain text in <code>nuconfig.php</code>, as in nuBuilder – e-mail and optional two-factor login.</li>
 			<li><b>Options</b>: address, time zone, session timeout, nuBuilder folder, shared login. <b>Install</b> writes <code>nuconfig.php</code> from <code>nuconfig-sample.php</code> (with a new secret key; readable for every account on the server, so an FTP / SFTP user can download it – to change it use Admin tools → <i>nuconfig.php</i> or upload an edited copy), creates nuBuilder Next's tables and removes the token.</li>
 			<li>If the folder is not writable, the installer shows the content of <code>nuconfig.php</code>: download it, copy it to the shown place and click <i>Check again</i>.</li>
@@ -796,6 +796,32 @@ nuHomeSetData('openOrders', $open);</code></pre>
 			<tr><td><code>nuHomeCache($seconds)</code></td><td>Keeps the result per user for that long.</td></tr>
 		</tbody>
 	</table>
+	<h3 id="home-hooks-js">JavaScript: <code>nuHome</code> (0.8.379)</h3>
+	<p>The JavaScript field of the procedure <code>nunext_home</code> (when <em>JavaScript active</em> is on) runs on the tile start page. The page allows only scripts from files, so it is served as <code>index.php?p=homejs&amp;v=&lt;hash&gt;</code> (only for users of the tile page; the browser keeps it until the code changes) and loaded after the page's own script. PHP creates tiles, JavaScript decorates them – there is no <code>addTile()</code> in JavaScript.</p>
+	<pre dir="ltr"><code>// JavaScript of procedure nunext_home – runs on the tile start page
+nuHome.on('tile', function (tile) {
+  if (tile.kind === 'procedure') tile.el.classList.add('border', 'border-warning');
+  if (tile.key === 'c_orders' &amp;&amp; nuHome.data.openOrders &gt; 20) tile.setHint('Too many open orders – check today');
+});
+nuHome.on('search', function (query, shownTiles) {
+  if (query &amp;&amp; !shownTiles.length) console.info('No tile for', query);
+});</code></pre>
+	<table class="table table-sm">
+		<thead><tr><th>Member</th><th>Meaning</th></tr></thead>
+		<tbody>
+			<tr><td><code>nuHome.on(event, fn)</code>, <code>nuHome.off(event, fn)</code></td><td>Events: <code>tile</code> (<code>tile</code> – for every tile; replayed at once for the tiles already drawn, called again for tiles added later), <code>ready</code> (all tiles drawn; called at once when already past), <code>search</code> (<code>query</code>, <code>shownTiles</code>), <code>tab</code> (<code>tabId</code>), <code>favourites</code> (<code>on</code>), <code>customize</code> (<code>on</code> – <code>tile</code> callbacks are not called in Customise; use this to undo decorations).</td></tr>
+			<tr><td><code>nuHome.tiles(filter)</code>, <code>nuHome.tile(key)</code></td><td>All tile objects (filter = a function or an object such as <code>{source: 'own'}</code>), or one by key.</td></tr>
+			<tr><td><code>nuHome.data</code></td><td>The values of <code>nuHomeSetData()</code>.</td></tr>
+			<tr><td>tile: <code>key</code>, <code>el</code>, <code>source</code>, <code>kind</code>, <code>label</code>, <code>hint</code>, <code>icon</code>, <code>color</code>, <code>badge</code>, <code>group</code>, <code>tab</code>, <code>size</code>, <code>fav</code>, <code>href</code></td><td><code>source</code>: builtin, own, pinned, dynamic · <code>kind</code>: form, page, procedure, url, post (database tools) · <code>size</code>: large, compact, list, listwide, list2 · <code>href</code>: null for procedure and post tiles.</td></tr>
+			<tr><td>tile: <code>setBadge(text, color)</code>, <code>setHint(text)</code>, <code>hide()</code>, <code>show()</code>, <code>onClick(fn)</code></td><td>Change the tile in place; hidden tiles stay hidden in the search and with <em>Favourites only</em>; <code>fn(event, tile)</code> runs first – <code>return false</code> cancels the tile's own action.</td></tr>
+		</tbody>
+	</table>
+	<ul>
+		<li>Every tile carries <code>data-nu-tile</code>, <code>data-nu-source</code>, <code>data-nu-kind</code>, <code>data-nu-group</code>, <code>data-nu-tab</code>, <code>data-nu-label</code> and <code>data-nu-desc</code>.</li>
+		<li>Every callback runs in <code>try</code> / <code>catch</code>: an error goes to the browser console and – for the globeadmin – to a message at the bottom right (each error once); the other callbacks still run.</li>
+		<li>No <code>style="…"</code> in HTML strings (the page's content security policy blocks it) – set <code>el.style.…</code> from code instead.</li>
+		<li>Safe mode and <code>$nuConfigHomeHooks = false</code> skip the JavaScript too. The <a href="#compat">Compatibility check</a> scans it with the other procedures.</li>
+	</ul>
 	<p>Since 0.8.378 the result of <code>nuRunQuery()</code> also offers nuBuilder's PDOStatement methods <code>fetch()</code>, <code>fetchColumn()</code>, <code>fetchObject()</code>, <code>fetchAll()</code>, <code>rowCount()</code> and <code>columnCount()</code>.</p>
 </section>
 

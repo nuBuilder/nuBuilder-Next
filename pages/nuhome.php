@@ -90,6 +90,9 @@ nu_layout_start(t('nav_home'), 'home');
 </div>
 <?php endif; ?>
 
+<?php if ($u['globeadmin'] && NuInstall::existingWarn()): // an existing nuBuilder database (0.8.380, NuInstall) ?>
+<div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuExistingDbWarn"><i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i><div><?= h(t('existing_db_warn')) ?></div></div>
+<?php endif; ?>
 <?php // tutorial (0.8.328): until hidden or finished; right after the setup wizard also when hidden
 $tutBanner = NuTutorial::banner();
 $tutOffer = !empty($_SESSION['nu_tut_offer']) && NuTutorial::allowed();
@@ -162,16 +165,19 @@ if ($tutBanner): ?>
 		$bd = $t['badge'] ?? null;                           // status of a tool (version, sample data, System status – 0.8.316)
 		$badge = $bd ? ' <span class="badge text-bg-' . h((string)$bd[1]) . ' ms-1 align-middle nuHomeBadge">' . h((string)$bd[0]) . '</span>' : '';
 		$body = match ($size) {
-			'list' => '<span class="nu-tile-icon nuHomeIcon"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span><span class="flex-grow-1"><span class="d-block text-body">' . h($t['label']) . $badge . '</span>'
-				. ($t['hint'] !== '' ? '<span class="d-block small text-body-secondary">' . h($t['hint']) . '</span>' : '') . '</span>' . $arrowHtml,
+			'list' => '<span class="nu-tile-icon nuHomeIcon"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span><span class="flex-grow-1"><span class="d-block text-body nuHomeLabel">' . h($t['label']) . $badge . '</span>'
+				. ($t['hint'] !== '' ? '<span class="d-block small text-body-secondary nuHomeHint">' . h($t['hint']) . '</span>' : '') . '</span>' . $arrowHtml,
 			'compact' => '<div class="card-body d-flex align-items-center gap-2 py-2"><span class="nu-tile-icon nuHomeIcon nuHomeIconSm"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span>'
-				. '<span class="flex-grow-1 text-body text-truncate">' . h($t['label']) . '</span>' . ($bd && $bd[1] === 'warning' ? '<span class="badge text-bg-warning nuHomeBadge">!</span>' : '') . '</div>',
+				. '<span class="flex-grow-1 text-body text-truncate nuHomeLabel">' . h($t['label']) . '</span>' . ($bd && $bd[1] === 'warning' ? '<span class="badge text-bg-warning nuHomeBadge">!</span>' : '') . '</div>',
 			default => '<div class="card-body d-flex align-items-center gap-3"><span class="nu-tile-icon nuHomeIcon"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span><div class="flex-grow-1">'
-				. '<div class="fs-5 fw-normal lh-sm text-body">' . h($t['label']) . $badge . '</div>' . ($t['hint'] !== '' ? '<div class="small text-body-secondary mt-1">' . h($t['hint']) . '</div>' : '') . '</div>'
+				. '<div class="fs-5 fw-normal lh-sm text-body nuHomeLabel">' . h($t['label']) . $badge . '</div>' . ($t['hint'] !== '' ? '<div class="small text-body-secondary mt-1 nuHomeHint">' . h($t['hint']) . '</div>' : '') . '</div>'
 				. $arrowHtml . '</div>',
 		};
 		// compact tiles show no description (and may cut the name): a tooltip with name and description on mouse over (desktop) or a long tap (phones) shows it – assets/js/nuhome.js (0.8.355)
-		$attrs = ' data-nu-tile="' . h($key) . '"' . ($size === 'compact' ? ' data-nu-hint="' . h($t['label'] . ($t['hint'] !== '' ? ' – ' . $t['hint'] : '')) . '"' : '') . (!empty($t['fav']) ? ' data-nu-fav="1"' : '');
+		$attrs = ' data-nu-tile="' . h($key) . '"' . ($size === 'compact' ? ' data-nu-hint="' . h($t['label'] . ($t['hint'] !== '' ? ' – ' . $t['hint'] : '')) . '"' : '') . (!empty($t['fav']) ? ' data-nu-fav="1"' : '')
+			// for the nuHome JavaScript API (0.8.379): where the tile comes from, what it opens, its group / tab, its full label and description
+			. ' data-nu-source="' . h((string)($t['source'] ?? 'builtin')) . '" data-nu-kind="' . h((string)($t['kind'] ?? 'page')) . '" data-nu-group="' . h((string)($t['group'] ?? ''))
+			. '" data-nu-tab="' . h((string)($t['tab'] ?? '')) . '" data-nu-label="' . h($t['label']) . '" data-nu-desc="' . h($t['hint']) . '"';
 		if ($act && $t['post']) {
 			// POST tile (database tool) with ▾: the form button and the menu side by side (0.8.282)
 			$form = static fn(string $cls) => '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="' . ($size === 'list' ? 'flex-grow-1' : 'h-100') . '">' . nu_csrf_field()
@@ -211,6 +217,8 @@ if ($tutBanner): ?>
 	NuHomeHook::run($layout);
 	$groups = NuHomeHook::apply($groups, $layout);
 	$groups = array_values(array_filter($groups, static fn($g) => $g['items'] !== []));
+	foreach ($groups as &$g) foreach ($g['items'] as &$it) { $it['group'] = $g['id']; $it['tab'] = $g['tab']; }   // data-nu-group / data-nu-tab (0.8.379)
+	unset($g, $it);
 	$size = $layout['size'];
 	$col = $size === 'compact' ? 'col-6 col-md-4 col-xl-3' : 'col-sm-6 col-lg-4';
 	$tilesOf = static function (array $items) use ($tileOut, $size, $col): string {
@@ -371,7 +379,7 @@ if ($admin) {
 	$formList = [];
 	foreach (nu_forms() as $id => $f) if ($f['type'] !== 'subform') $formList[] = ['id' => (string)$id, 'label' => $f['code'] . ($f['description'] !== '' ? ' – ' . $f['description'] : '')];
 	$data = [
-		'url' => nu_url('home', ['tiles' => '1']), 'csrf' => nu_csrf_token(), 'layout' => $layout, 'hookData' => (object)NuHomeHook::$data,
+		'url' => nu_url('home', ['tiles' => '1']), 'csrf' => nu_csrf_token(), 'layout' => $layout, 'hookData' => (object)NuHomeHook::$data, 'ga' => (bool)$u['globeadmin'],
 		'saved' => ['current' => ['id' => $hlCur['id'], 'name' => $hlCur['name'], 'scope' => $hlCur['scope'], 'roles' => $hlCur['roles']], 'manage' => $hlManage,
 			'roles' => $hlManage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'default' => NuHome::defaultLayout(), 'catalog' => $cat,
 		'forms' => $formList, 'pages' => NuHome::PAGES, 'procedures' => $procs, 'icons' => NuHome::ICONS, 'procUrl' => nu_url('procedures', ['id' => '__ID__']),
@@ -386,6 +394,8 @@ if ($admin) {
 			'home_layout_scope_shared', 'home_layout_roles', 'home_layout_roles_all', 'home_layout_delete_confirm', 'home_layout_copy', 'home_group_tab', 'home_running', 'home_done', 'home_editing', 'home_discard_confirm', 'home_drag', 'home_delete_tile_confirm', 'home_group_delete_confirm', 'save', 'cancel', 'ok', 'delete', 'close'], array_map('t', $k)),
 	];
 	$foot = '<script type="application/json" id="nuHomeData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>'
-		. '<script src="' . nu_asset('assets/js/nuhome.js') . '"></script>';
+		. '<script src="' . nu_asset('assets/js/nuhome.js') . '"></script>'
+		// JavaScript of the start page hook (0.8.379): the procedure nunext_home's JavaScript, served as a file (CSP: no inline scripts)
+		. (($hookJs = NuHomeHook::jsUrl()) !== null ? '<script src="' . h($hookJs) . '"></script>' : '');
 }
 nu_layout_end($foot);

@@ -673,6 +673,8 @@ final class NuUpdate
 final class NuMigrate
 {
 	public const TABLE = 'zzzzsys_nunext_migration';
+	/** Were steps applied before this run (an existing installation)? Set by run(). */
+	public static bool $earlier = false;
 
 	/** id => [description, function] – append new steps at the end, never change or reorder existing ones. */
 	private static function steps(): array
@@ -693,6 +695,7 @@ final class NuMigrate
 			'0011-audit' => ['Audit trail (zzzzsys_nunext_audit): table created, the record changes of the log copied into it', static fn() => NuAudit::copyFromLog()],
 			'0012-notifications' => ['Notification centre (zzzzsys_nunext_notification, zzzzsys_nunext_notification_user); permission items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN', static fn() => NuNotify::install()],
 			'0013-setting-home-hooks' => ['Settings table: row $nuConfigHomeHooks (start page hooks on / off) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
+			'0014-database-origin' => ['Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder database, or installed before 0.8.380)', static fn() => NuInstall::markOrigin(self::$earlier)],
 		];
 	}
 
@@ -718,6 +721,7 @@ final class NuMigrate
 		'0012-notifications' => [['zzzzsys_nunext_notification', 'table', 'created when missing'], ['zzzzsys_nunext_notification_user', 'table', 'created when missing'],
 			['zzzzsys_permission_item', 'data', 'items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN added when missing (group "nuBuilder Next")']],
 		'0013-setting-home-hooks' => [['zzzzsys_config', 'data', 'row $nuConfigHomeHooks added when missing']],
+		'0014-database-origin' => [['zzzzsys_nunext_setting', 'data', 'row db_origin added when missing']],
 	];
 
 	/** Steps with their descriptions and changes (for install/db_changes.json). @return list<array{id: string, description: string, changes: list<array>}> */
@@ -765,6 +769,7 @@ final class NuMigrate
 		self::ensureTable();
 		$db = nu_db();
 		$done = array_flip(array_map('strval', array_column($db->all('SELECT ' . self::TABLE . '_id AS id FROM ' . self::TABLE), 'id')));
+		self::$earlier = $done !== [];                       // steps of an earlier request: nuBuilder Next was installed before (step 0014)
 		$applied = [];
 		foreach (self::steps() as $id => [$desc, $fn]) {
 			if (isset($done[$id])) continue;

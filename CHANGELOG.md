@@ -3,6 +3,33 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.380 – Existing nuBuilder databases blocked for now
+- Existing nuBuilder databases (while nuBuilder Next is being tested): the installer refuses a database that already holds
+  nuBuilder's tables ("choose a new, empty database"). An installation set up by hand on an existing nuBuilder database shows
+  only a notice with Sign out. Installations made before this version keep working; the globeadmin sees a warning on the start
+  page and in the Security check. A new database step 0014 notes where the database came from (setting db_origin: new database
+  / installed before / existing nuBuilder database).
+- README.md: the alpha warning now also says that new versions may break things and that compatibility with earlier versions
+  or existing nuBuilder applications is not guaranteed; requirements and the installer step in the Help say "new, empty database".
+- e2e test existing_db.
+
+## 0.8.379 – Start page hooks (JavaScript)
+- Start page hooks, part 2 (JavaScript): the JavaScript of the procedure nunext_home (when "JavaScript active" is on) runs on
+  the tile start page. The page allows only scripts from files, so it is served as ?p=homejs&v=<hash> (login and a tile page
+  user needed, cached until the code changes) and loaded after the page's own script; safe mode and $nuConfigHomeHooks = false
+  skip it.
+- window.nuHome: on(event, fn) / off – events tile (replayed for the tiles already drawn, called again for tiles added later),
+  ready, search (query, shown tiles), tab, favourites, customize; tiles(filter), tile(key) and data (the values of
+  nuHomeSetData()). A tile object has key, el, source (builtin, own, pinned, dynamic), kind (form, page, procedure, url, post),
+  label, hint, icon, color, badge, group, tab, size, fav, href and setBadge(), setHint(), hide(), show() (respected by the search
+  and "Favourites only") and onClick(fn) (return false cancels the tile's action). Every callback runs in try/catch: the error
+  goes to the console and – once – to a message for the globeadmin; the other callbacks still run.
+- Every tile of the start page carries data-nu-source, data-nu-kind, data-nu-group, data-nu-tab, data-nu-label and
+  data-nu-desc.
+- Help: "JavaScript: nuHome" in the chapter Start page hooks; e2e test home_hook_js (API, replay, ready, search, hidden tile not
+  found, onClick cancels, error once, Customise event, safe mode, file refused for normal users); home_hook_off also checks
+  the JavaScript.
+
 ## 0.8.378 – Start page hooks (PHP)
 - Start page hooks, part 1 (PHP): a procedure with the reserved code nunext_home runs every time the tile start page
   (globeadmin, admin roles) is built and changes only that page view – nuHomeSetBadge($key, $text, $color), nuHomeSetHint,

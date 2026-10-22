@@ -39,6 +39,7 @@ $routes = [
 	'log'         => [],
 	'notifications' => [],
 	'notifyapi'   => ['json' => true],
+	'homejs'      => ['json' => true],   // JavaScript of the start page hook nunext_home (0.8.379, NuHomeHook::serveJs)
 	'audit'       => [],
 	'audithistory' => [],
 	'debug'       => [],
@@ -138,6 +139,17 @@ if (empty($routes[$p]['public'])) {
 
 	// demo mode (core/nudemo.php): everything visible, read only – form posts and background saves answer "Not available in the demo"
 	if (!empty($user['demo'])) NuDemo::guardRequest($p, !empty($routes[$p]['json']));
+
+	// existing nuBuilder database without $nuConfigAllowExistingNuDB (0.8.380, NuInstall::existingBlocked): nothing but a notice
+	if (NuInstall::existingBlocked()) {
+		http_response_code(503);
+		if (!empty($routes[$p]['json'])) {
+			header('Content-Type: application/json');
+			exit(json_encode(['ok' => false, 'errors' => [['message' => t('existing_db_blocked'), 'field' => '']]]));
+		}
+		nu_page_minimal(t('existing_db_title'), t('existing_db_blocked'), false, true);
+		exit;
+	}
 
 	// globeadmin acting as another user: not the user's own login settings; view only = no form posts
 	if (NuImpersonate::active()) {

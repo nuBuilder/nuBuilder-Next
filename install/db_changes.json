@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.378",
+    "version": "0.8.380",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -181,6 +181,17 @@
                     "table": "zzzzsys_config",
                     "kind": "data",
                     "what": "row $nuConfigHomeHooks added when missing"
+                }
+            ]
+        },
+        {
+            "id": "0014-database-origin",
+            "description": "Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder database, or installed before 0.8.380)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_setting",
+                    "kind": "data",
+                    "what": "row db_origin added when missing"
                 }
             ]
         }

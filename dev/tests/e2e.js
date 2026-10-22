@@ -588,10 +588,11 @@ T.update_layout = async (s) => {                        // 0.8.376: GitHub first
 };
 
 // start page hook nunext_home (0.8.378): PHP changes of the tile start page – badge, hint, hidden tile, dynamic group / tiles, banner
-const homeHook = (php) => {
+const homeHook = (php, js = '') => {
+	const q = v => "'" + v.replace(/\\/g, '\\\\').replace(/'/g, "''") + "'";
 	sql("DELETE FROM zzzzsys_php WHERE sph_code = 'nunext_home'");
-	if (php !== null) execSync('mysql ' + DB, { input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_status, sph_global) VALUES ('e2e_hook', 'nunext_home', 'e2e', '"
-		+ php.replace(/\\/g, '\\\\').replace(/'/g, "''") + "', '1', '0')" });
+	if (php !== null) execSync('mysql ' + DB, { input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_javascript, sph_javascript_active, sph_status, sph_global) VALUES ('e2e_hook', 'nunext_home', 'e2e', "
+		+ q(php) + ', ' + q(js) + ", '1', '1', '0')" });
 };
 T.home_hook = async (s) => {
 	const p = s.ga;
@@ -650,16 +651,84 @@ if ('#ADMIN_ROLE#' === 'E2E hook role') nuHomeSetBadge('securitycheck', 'role se
 	}
 };
 
+T.home_hook_js = async (s) => {                         // 0.8.379: nuHome JavaScript API from the procedure's JavaScript (?p=homejs)
+	const p = s.ga;
+	try {
+		homeHook(`nuHomeSetData('n', 5); nuHomeAddGroup('x_e2e', 'E2E group'); nuHomeAddTile('x_e2e_tile', ['group' => 'x_e2e', 'label' => 'E2E dynamic', 'page' => 'update']);`,
+			`nuHome.on('tile', function (t) {
+  if (t.key === 'users') t.setBadge('JS ' + nuHome.data.n, 'success');
+  if (t.key === 'access') t.setHint('JS hint');
+  if (t.key === 'x_e2e_tile') { window.__dyn = t.source + '/' + t.kind + '/' + t.group; t.onClick(function () { window.__clicked = 1; return false; }); }
+  if (t.key === 'notes') t.hide();
+});
+nuHome.on('ready', function () { window.__ready = nuHome.tiles().length; window.__one = !!nuHome.tile('users'); });
+nuHome.on('search', function (q, shown) { window.__search = q + ':' + shown.map(function (t) { return t.key; }).join(','); });
+nuHome.on('customize', function (on) { window.__cust = on; });
+nuHome.on('tile', function () { throw new Error('E2E js boom'); });`);
+		await open(p, 'index.php?p=home&tiles=1'); await p.waitForTimeout(300);
+		await p.fill('#nuHomeSearch', 'E2E dynamic'); await p.waitForTimeout(250);
+		await p.fill('#nuHomeSearch', 'notes'); await p.waitForTimeout(250);
+		await p.fill('#nuHomeSearch', ''); await p.waitForTimeout(250);
+		await p.click('[data-nu-tile="x_e2e_tile"]'); await p.waitForTimeout(300);
+		const st = await p.evaluate(() => ({ url: location.search, ready: window.__ready, one: window.__one, dyn: window.__dyn, clicked: window.__clicked, search: window.__search,
+			badge: document.querySelector('[data-nu-tile="users"] .nuHomeBadge')?.textContent, hint: document.querySelector('[data-nu-tile="access"] .nuHomeHint')?.textContent,
+			notes: document.querySelector('[data-nu-tile="notes"]') ? document.querySelector('[data-nu-tile="notes"]').closest('.row > *, .nuHomeList > *').hidden : true,
+			toasts: [...document.querySelectorAll('#nuHomeToast .alert')].filter(a => /E2E js boom/.test(a.textContent)).length }));
+		expect(/tiles=1/.test(st.url) && st.clicked === 1 && st.dyn === 'dynamic/page/x_e2e' && st.ready > 5 && st.one, 'API: ' + JSON.stringify(st));
+		expect(st.badge === 'JS 5' && st.hint === 'JS hint' && st.notes === true && /^:.*x_e2e_tile/.test(st.search || ''), 'tile changes: ' + JSON.stringify(st));
+		expect(st.toasts === 1, 'error toast once for the globeadmin: ' + st.toasts);
+		await p.fill('#nuHomeSearch', 'notes'); await p.waitForTimeout(250);
+		expect(await p.evaluate(() => window.__search) === 'notes:', 'a tile hidden by code is found by the search');
+		await p.fill('#nuHomeSearch', ''); await p.waitForTimeout(200);
+		if (await p.locator('#nuHomeCustomize').count()) { await p.click('#nuHomeCustomize'); await p.waitForTimeout(400); expect(await p.evaluate(() => window.__cust) === true, 'no customize event'); }
+		// safe mode: no script; the file needs a tile page user
+		await open(p, 'index.php?p=home&tiles=1&safe=1');
+		expect(await p.evaluate(() => [...document.scripts].some(x => /homejs/.test(x.src))) === false, 'safe mode loads the JavaScript');
+		const pb = await login('sample_ben', UPW);
+		expect((await pb.request.get(BASE + 'index.php?p=homejs&v=x')).status() === 403, 'a normal user gets the hook JavaScript');
+		await pb.context().close();
+	} finally { homeHook(null); }
+};
+
 T.home_hook_off = async (s) => {                        // $nuConfigHomeHooks = false: the hook does not run
 	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
 	const cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8');
 	try {
-		homeHook(`nuHomeBanner('E2E off test');`);
+		homeHook(`nuHomeBanner('E2E off test');`, `window.__offjs = 1;`);
 		fs.writeFileSync(cfg, orig.replace(/\?>\s*$/, '') + '\n$nuConfigHomeHooks = false;\n');
 		await new Promise(r => setTimeout(r, 3500));
 		await open(s.ga, 'index.php?p=home&tiles=1');
-		expect(await s.ga.locator('.nuHomeHookBanner').count() === 0, '$nuConfigHomeHooks = false: the hook still runs');
+		expect(await s.ga.locator('.nuHomeHookBanner').count() === 0 && !(await s.ga.evaluate(() => window.__offjs)), '$nuConfigHomeHooks = false: the hook still runs');
 	} finally { fs.writeFileSync(cfg, orig); homeHook(null); await new Promise(r => setTimeout(r, 3500)); }
+};
+
+T.existing_db = async (s) => {                          // 0.8.380: existing nuBuilder database – older install warned, new one blocked, $nuConfigAllowExistingNuDB allows
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	const cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8');
+	const before = sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'db_origin'");
+	const origin = v => sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'db_origin';" + (v ? " INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value, updated_at, updated_by) VALUES ('db_origin', '" + v + "', NOW(), 'e2e')" : ''));
+	const p = s.ga;
+	try {
+		origin('legacy');
+		await open(p, 'index.php?p=home&tiles=1');
+		expect(await p.locator('#nuExistingDbWarn').count() === 1, 'older installation: no warning on the start page');
+		origin('nubuilder');
+		let r = await open(p, 'index.php?p=home&tiles=1');
+		expect(r.status() === 503 && /existing nuBuilder database/i.test(await p.textContent('body')), 'new installation on an existing database is not blocked');
+		r = await open(p, 'index.php?p=users');
+		expect(r.status() === 503, 'blocked installation opens the users');
+		fs.writeFileSync(cfg, orig.replace(/\?>\s*$/, '') + '\n$nuConfigAllowExistingNuDB = true;\n');
+		await new Promise(res => setTimeout(res, 3500));
+		r = await open(p, 'index.php?p=home&tiles=1');
+		expect(r.status() === 200 && await p.locator('#nuExistingDbWarn').count() === 0, '$nuConfigAllowExistingNuDB = true does not allow it');
+		origin('legacy');
+		await open(p, 'index.php?p=home&tiles=1');
+		expect(await p.locator('#nuExistingDbWarn').count() === 0, '$nuConfigAllowExistingNuDB = true still warns');
+	} finally {
+		fs.writeFileSync(cfg, orig);
+		origin(before || null);
+		await new Promise(res => setTimeout(res, 3500));
+	}
 };
 
 T.csv_import = async (s) => {

@@ -326,7 +326,7 @@ function nu_bell(): void
 }
 
 /** Standalone page for errors – needs neither DB nor login. */
-function nu_page_minimal(string $title, string $detail = '', bool $withHome = false): void
+function nu_page_minimal(string $title, string $detail = '', bool $withHome = false, bool $withLogout = false): void
 {
 	NuBranding::$off = true;                           // error pages: no database access – the default look
 	nu_head($title);
@@ -338,6 +338,7 @@ function nu_page_minimal(string $title, string $detail = '', bool $withHome = fa
 			<h1 class="h4 d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle text-warning"></i><?= h($title) ?></h1>
 			<?php if ($detail !== ''): ?><p class="text-body-secondary mb-0"><?= h($detail) ?></p><?php endif; ?>
 			<?php if ($withHome): ?><a class="btn btn-primary mt-3" href="<?= h(nu_url('home')) ?>"><?= h(t('back_home')) ?></a><?php endif; ?>
+			<?php if ($withLogout): ?><form method="post" action="<?= h(nu_url('logout')) ?>" class="mt-3"><?= nu_csrf_field() ?><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('nav_logout')) ?></button></form><?php endif; ?>
 		</div>
 	</div>
 </main>

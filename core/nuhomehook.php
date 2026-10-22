@@ -77,6 +77,30 @@ final class NuHomeHook
 		return $p;
 	}
 
+	/** URL of the hook's JavaScript (?p=homejs&v=<first 12 of its SHA-256>) or null – not in safe mode, not when switched off (0.8.379). */
+	public static function jsUrl(): ?string
+	{
+		$p = self::procedure();
+		if (!$p || $p['js'] === '' || !self::enabled() || self::safeMode()) return null;
+		return nu_url('homejs', ['v' => substr(hash('sha256', $p['js']), 0, 12)]);
+	}
+
+	/** ?p=homejs – the JavaScript as a file (login + tile page users only; cached for good, the URL changes with the code). */
+	public static function serveJs(): never
+	{
+		session_write_close();
+		$p = self::procedure();
+		header('Content-Type: text/javascript; charset=utf-8');
+		header('X-Content-Type-Options: nosniff');
+		if (!NuAdmin::any() || !$p || $p['js'] === '' || !self::enabled()) {
+			http_response_code(NuAdmin::any() ? 404 : 403);
+			header('Cache-Control: no-store');
+			exit('');
+		}
+		header('Cache-Control: private, max-age=31536000, immutable');
+		exit("/* nuBuilder Next – JavaScript of the procedure nunext_home (start page hook) */\n" . $p['js'] . "\n");
+	}
+
 	/** Is a hook active (Security check, System status)? */
 	public static function active(): bool
 	{

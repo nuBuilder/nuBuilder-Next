@@ -128,6 +128,119 @@
 		});
 	});
 
+	// ================================================================ nuHome – JavaScript API of the start page (0.8.379)
+	// For the JavaScript of the procedure nunext_home (served as ?p=homejs, loaded after this file): nuHome.on('tile' | 'ready' |
+	// 'search' | 'tab' | 'favourites' | 'customize', fn), off, tiles(filter), tile(key), data (nuHomeSetData() of the PHP hook).
+	// 'tile' and 'ready' are replayed for callbacks added later; every callback runs in try/catch (console + toast for the globeadmin).
+	var H = (function () {
+		var handlers = {}, objs = [], byEl = (typeof WeakMap === 'function') ? new WeakMap() : null, isReady = false;
+		var viewEl = document.getElementById('nuHomeView');
+		var told = {};
+		function report(ev, err) {
+			var msg = 'nuHome ' + ev + ': ' + (err && err.message ? err.message : String(err));
+			if (window.console) console.error(msg, err);   // eslint-disable-line no-console
+			if (D.ga && !told[msg]) { told[msg] = true; toast(msg, false); }   // the same error once, not once per tile
+		}
+		function call(ev, fn, args) { try { return fn.apply(null, args); } catch (e) { report(ev, e); return undefined; } }
+		function emit(ev, args) { (handlers[ev] || []).slice().forEach(function (fn) { call(ev, fn, args || []); }); }
+		function box(a) { return a.closest('.nuHomeList > *') || a.closest('.row > *') || a; }
+		function wrap(a) {
+			if (byEl && byEl.has(a)) return byEl.get(a);
+			var key = a.getAttribute('data-nu-tile');
+			var iconEl = a.querySelector('.nuHomeIcon i'), colEl = a.querySelector('[data-nu-color]');
+			var tile = {
+				key: key, el: a, source: a.getAttribute('data-nu-source') || 'builtin', kind: a.getAttribute('data-nu-kind') || 'page',
+				label: a.getAttribute('data-nu-label') || '', hint: a.getAttribute('data-nu-desc') || '',
+				icon: iconEl ? (iconEl.className.match(/\bbi-[a-z0-9-]+/) || [''])[0] : '', color: colEl ? colEl.getAttribute('data-nu-color') : '',
+				group: a.getAttribute('data-nu-group') || '', tab: a.getAttribute('data-nu-tab') || '', size: (D.layout && D.layout.size) || 'large',
+				fav: a.hasAttribute('data-nu-fav'), href: a.tagName === 'A' ? a.getAttribute('href') : null
+			};
+			var b = a.querySelector('.nuHomeBadge');
+			tile.badge = b ? b.textContent : '';
+			tile.setBadge = function (text, color) {
+				var cur = a.querySelector('.nuHomeBadge');
+				text = text === null || text === undefined ? '' : String(text);
+				if (!text) { if (cur) cur.remove(); tile.badge = ''; return tile; }
+				if (!cur) { cur = el('span', {'class': 'badge ms-1 align-middle nuHomeBadge'}); (a.querySelector('.nuHomeLabel') || a).appendChild(cur); }
+				cur.className = 'badge ms-1 align-middle nuHomeBadge text-bg-' + (/^(primary|secondary|success|danger|warning|info|light|dark)$/.test(color || '') ? color : 'secondary');
+				cur.textContent = text;
+				tile.badge = text;
+				return tile;
+			};
+			tile.setHint = function (text) {
+				text = text === null || text === undefined ? '' : String(text);
+				var h = a.querySelector('.nuHomeHint');
+				if (a.hasAttribute('data-nu-hint')) a.setAttribute('data-nu-hint', tile.label + (text ? ' – ' + text : ''));   // compact: the tooltip
+				else if (!h && text) {
+					var lab = a.querySelector('.nuHomeLabel');
+					h = el(lab && lab.tagName === 'SPAN' ? 'span' : 'div', {'class': (lab && lab.tagName === 'SPAN' ? 'd-block small' : 'small mt-1') + ' text-body-secondary nuHomeHint'});
+					if (lab) lab.parentNode.insertBefore(h, lab.nextSibling);
+				}
+				if (h) { h.textContent = text; h.hidden = !text; }
+				a.setAttribute('data-nu-desc', text);
+				tile.hint = text;
+				return tile;
+			};
+			tile.hide = function () { a.setAttribute('data-nu-js-hidden', '1'); box(a).hidden = true; groups(); return tile; };
+			tile.show = function () { a.removeAttribute('data-nu-js-hidden'); box(a).hidden = false; groups(); return tile; };
+			tile.onClick = function (fn) {
+				a.addEventListener('click', function (e) {
+					if (call('click', fn, [e, tile]) === false) { e.preventDefault(); e.stopImmediatePropagation(); }
+				}, true);
+				return tile;
+			};
+			if (byEl) byEl.set(a, tile);
+			objs.push(tile);
+			return tile;
+		}
+		/** groups whose tiles are all hidden by code are hidden too */
+		function groups() {
+			if (!viewEl) return;
+			$$('.nuHomeGroup', viewEl).forEach(function (g) {
+				var all = $$('[data-nu-tile]', g);
+				if (all.length && all.every(function (a) { return a.hasAttribute('data-nu-js-hidden'); })) g.hidden = true;
+				else if (!viewEl.classList.contains('nuHomeSearching')) g.hidden = false;
+			});
+		}
+		function scan(root) { return $$('[data-nu-tile]', root || viewEl || document).map(wrap); }
+		var api = {
+			data: D.hookData && typeof D.hookData === 'object' ? D.hookData : {},
+			on: function (ev, fn) {
+				if (typeof fn !== 'function') return api;
+				(handlers[ev] = handlers[ev] || []).push(fn);
+				if (ev === 'tile') scan().forEach(function (tl) { call('tile', fn, [tl]); });   // replay: tiles already drawn
+				if (ev === 'ready' && isReady) call('ready', fn, []);
+				return api;
+			},
+			off: function (ev, fn) { if (handlers[ev]) handlers[ev] = handlers[ev].filter(function (f) { return f !== fn; }); return api; },
+			tiles: function (filter) {
+				var list = scan();
+				if (typeof filter === 'function') return list.filter(function (tl) { try { return filter(tl); } catch (e) { report('tiles', e); return false; } });
+				if (filter && typeof filter === 'object') return list.filter(function (tl) { return Object.keys(filter).every(function (k) { return tl[k] === filter[k]; }); });
+				return list;
+			},
+			tile: function (key) { var a = viewEl && viewEl.querySelector('[data-nu-tile="' + String(key).replace(/["\\]/g, '') + '"]'); return a ? wrap(a) : null; }
+		};
+		// tiles added later (e.g. by other code) get the 'tile' callbacks too
+		if (viewEl && typeof MutationObserver === 'function') {
+			new MutationObserver(function (muts) {
+				muts.forEach(function (m) {
+					Array.prototype.forEach.call(m.addedNodes, function (n) {
+						if (n.nodeType !== 1) return;
+						var found = (n.matches && n.matches('[data-nu-tile]') ? [n] : []).concat($$('[data-nu-tile]', n));
+						found.forEach(function (a) { if (!(byEl && byEl.has(a))) emit('tile', [wrap(a)]); });
+					});
+				});
+			}).observe(viewEl, {childList: true, subtree: true});
+		}
+		function ready() { if (isReady) return; isReady = true; emit('ready', []); }
+		if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready); else setTimeout(ready, 0);
+		window.nuHome = api;
+		return {emit: function (ev) { emit(ev, Array.prototype.slice.call(arguments, 1)); }, wrap: wrap, groups: groups};
+	})();
+	tabs.forEach(function (b) { b.addEventListener('shown.bs.tab', function () { H.emit('tab', b.id.replace('nuHomeTab_', '')); }); });
+	if (favBtn) favBtn.addEventListener('click', function () { H.emit('favourites', favView.classList.contains('nuHomeFavOnly')); });
+
 	// ================================================================ edit mode (0.8.263): the start page itself is edited
 	// Customize turns the page into an editable copy of itself: tiles and groups are dragged (mouse; on touch screens hold
 	// briefly, then drag), group and tab names are typed in place, Done saves the whole layout, Cancel throws it away.
@@ -178,6 +291,7 @@
 		edit.hidden = false;
 		document.body.classList.add('nuHomeEditing');
 		render();
+		H.emit('customize', true);
 	}
 	function close() {
 		edit.hidden = true;
@@ -187,6 +301,7 @@
 		if (searchRow) searchRow.hidden = false;
 		document.body.classList.remove('nuHomeEditing');
 		dirty = false;
+		H.emit('customize', false);
 	}
 	if (btn) btn.addEventListener('click', open);
 	window.addEventListener('beforeunload', function (e) { if (dirty && !edit.hidden) { e.preventDefault(); e.returnValue = ''; } });
@@ -233,7 +348,7 @@
 		var q = search.value, P = window.nuPalette, words = (P ? P.norm(q) : q.toLowerCase()).split(/\s+/).filter(Boolean);
 		var byId = {};
 		(palItems || []).forEach(function (it) { byId[it.id] = it; });
-		var shown = 0, first = null, onPage = {};
+		var shown = 0, first = null, onPage = {}, shownEls = [];
 		view.classList.toggle('nuHomeSearching', words.length > 0);
 		favTabs();
 		$$('[data-nu-tile]', view).forEach(function (a) {
@@ -241,8 +356,9 @@
 			onPage['t:' + key] = true;
 			var hay = it ? it.hay : (P ? P.norm(a.textContent) : a.textContent.toLowerCase());
 			var ok = words.every(function (w) { return hay.indexOf(w) >= 0; });
+			ok = ok && !a.hasAttribute('data-nu-js-hidden');                  // hidden by nuHome tile.hide() (0.8.379)
 			tileBox(a).hidden = !ok;
-			if (ok) { shown++; if (!first) first = a; }
+			if (ok) { shown++; if (!first) first = a; shownEls.push(a); }
 		});
 		$$('.nuHomeGroup', view).forEach(function (g) { g.hidden = words.length > 0 && !$$('[data-nu-tile]', g).some(function (a) { return !tileBox(a).hidden; }); });
 		$$('.tab-pane', view).forEach(function (p) { p.classList.toggle('nuHomeSearchHit', words.length > 0 && $$('.nuHomeGroup', p).some(function (g) { return !g.hidden; })); });
@@ -261,6 +377,8 @@
 		moreBox.hidden = !more.length;
 		noneBox.hidden = !words.length || shown > 0 || more.length > 0;
 		search.setAttribute('data-first', first ? first.getAttribute('data-nu-tile') : '');
+		if (!words.length) H.groups();
+		H.emit('search', q, shownEls.map(H.wrap));
 	}
 	if (search) {
 		search.addEventListener('input', function () {

@@ -111,6 +111,8 @@ if ($late) {
 					$notice = t('ins_db_created', $d['name']);
 				}
 				$S['detect'] = NuInstall::detect($db);
+				// an existing nuBuilder database: not while nuBuilder Next is being tested (0.8.380) – a new, empty one
+				if ($S['detect']['kind'] === 'nubuilder') { $errors['_'] = t('ins_err_existing_db', $d['name']); break; }
 				if ($action === 'test') { $notice = trim($notice . ' ' . t('ins_db_ok')); break; }
 				$go('content');
 			} catch (Throwable $e) {
@@ -179,6 +181,7 @@ if ($late) {
 					$db = NuInstall::connect($d);
 				}
 				$det = NuInstall::detect($db);
+				if ($det['kind'] === 'nubuilder') throw new RuntimeException(t('ins_err_existing_db', $d['name']));   // 0.8.380
 				$imported = 0;
 				if ($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other'])) {
 					foreach (NuInstall::schemaFiles($S['content']['choice'], $db->type, $S['opt']['nub_path'] ?: null) as $f) $imported += NuInstall::importFile($db, $f);
@@ -205,6 +208,7 @@ function nu_install_finish(?array &$S): array
 	$out = ['imported' => (int)($S['imported'] ?? 0), 'steps' => [], 'error' => ''];
 	try {
 		NuSchema::create();
+		NuInstall::setOrigin('nunext');                     // set up on a new database (0.8.380) – step 0014 keeps it
 		$out['steps'] = NuMigrate::run();
 	} catch (Throwable $e) {
 		$out['error'] = $e->getMessage();
