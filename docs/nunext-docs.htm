@@ -16,6 +16,8 @@
 	     index.php?p=help&q=lookup        opens with a search
 	     index.php?p=help#formats         jumps to a chapter (the id of a section or sub-section)
 	Every <h2>/<h3> needs an id: it is the anchor and the entry in the index.
+	Function references (0.8.399): <div data-nu-fnref="php"></div> / "js" are replaced with the entries of docs/nunext-functions.json
+	(core/nufnref.php) – edit that file, not this one, for a function; dev/tests/run.php checks that code and reference match.
 -->
 </head>
 <body>
@@ -86,6 +88,18 @@
 			<li>Fields with a <strong>suggestion list</strong> (an arrow on the right, e.g. Position, Department, Team) offer values to choose: type to filter, or click the arrow to see all values – also when the field already has one (the old value comes back if you pick nothing).</li>
 			<li><strong>Searchable selects</strong> open their list above everything else; in multiple selects the chosen values are shown as tags, the field grows when they need more lines.</li>
 			<li>Some fields have a small <strong>help icon</strong> <span class="doc-badge">?</span> on their right: point at it (or tap it) to read a hint.</li>
+		</ul>
+	</div>
+
+	<div class="doc-sub">
+		<h3 id="concurrent-edits">Two people editing the same record</h3>
+		<ul>
+			<li><strong>Also open</strong> (since 0.8.401): a yellow note above the form shows who else has the same record open – “Anna also has this record open (since 10:40)”, or “… is editing this record – unsaved changes”. It is checked every 30 seconds and never blocks anybody.</li>
+			<li><strong>Saving after someone else</strong>: only the fields you changed are saved, so changes of others to <em>other</em> fields are kept. If someone saved the <em>same</em> field after you opened the record, Save stops and shows <em>Changed meanwhile</em>: who changed it and when, and for each such field the value when you opened the record, yours and the one saved now. Pick <em>Mine</em> or <em>Theirs</em> per field and <em>Save with these choices</em> – or <em>Reload</em> to see the record as it is now (your changes are lost). The same value on both sides is no conflict.</li>
+			<li><strong>Sub-forms</strong>: the same for each row; a row someone else deleted is named (your changes to it are not saved), a row you delete that someone else changed asks <em>Delete anyway</em> or <em>Keep the row</em>.</li>
+			<li><strong>Delete</strong>: if the record was changed after you opened it, you are asked before it is deleted.</li>
+			<li>Changes made in nuBuilder itself, by procedures or directly in the database are found too – the record is compared with the database. Who and when come from the <a href="#audit-trail">audit trail</a> (when on), otherwise from nuBuilder's record log of the table, otherwise “someone else”.</li>
+			<li data-doc="admin"><strong>Switching off</strong>: <code>$nuConfigEditConflictCheck = false;</code> (the check) and <code>$nuConfigEditPresence = false;</code> (the note) in nuconfig.php; per form in its Before Edit PHP: <code>nuNextConflictCheck(false);</code> / <code>nuNextPresence(false);</code>. The note is always off in demo mode. Saves made in nuBuilder itself are not checked (nuBuilder has no such check), but nuBuilder Next notices them.</li>
 		</ul>
 	</div>
 
@@ -246,13 +260,13 @@
 		<h3 id="notifications-send">Sending notifications</h3>
 		<p><em>Notifications → Manage</em> (start page tile, or the bell panel): <strong>who may send</strong> – the globeadmin, users with the admin role right <em>Notifications</em> = change, users with the permission item <code>NUNEXT_NOTIFY</code> (anyone) or <code>NUNEXT_NOTIFY_OWN</code> (only their own department and / or team – the other recipient fields are not offered). Both items are created by the update (group <em>nuBuilder Next</em>); give them to users under <em>Permission items</em> or in the user form. <em>Notifications</em> = view and <code>NUNEXT_NOTIFY</code> also show all notifications and their read receipts; <code>NUNEXT_NOTIFY_OWN</code> users see and change their own ones.</p>
 		<ul>
-			<li><strong>Content</strong>: title, text (plain text, line breaks kept, web addresses become links, no HTML), level, optional link (<code>index.php?p=…</code> or <code>https://…</code>).</li>
+			<li><strong>Content</strong>: title, text, level, optional link (<code>index.php?p=…</code> or <code>https://…</code>). The text is plain text (line breaks kept, web addresses become links) – or, with the switch <em>Formatted text</em> (since 0.8.400), formatted in an editor: bold, italic, underline, strikethrough, lists, links, quotes. When saving, everything else is removed (only these tags, no colours, fonts, images, styles or scripts; links only to <code>https://</code>, <code>mailto:</code> or pages of nuBuilder Next, opened in a new tab); at most 4000 characters including the tags. The bell, the confirm dialog and the e-mail show the formatting. Switching back to plain text removes it (after a question). The editor is TinyMCE – copied from nuBuilder (<code>third_party/tinymce</code> → <code>assets/vendor/tinymce</code>); without it the formatted text is edited as HTML.</li>
 			<li><strong>Recipients</strong>, combined (each user gets it once): <em>Everybody</em>, single users (also the globeadmin), departments, teams, positions (the fields of the user records; a new value can be typed) and access levels. The form shows how many users it reaches now and their names.</li>
 			<li><strong>Who gets it</strong>: <em>Whoever matches at the time</em> – checked whenever the bell is read, someone joining the team later sees it too; or <em>Fixed list when published</em> – the users matching at publishing are stored (exact read receipts). <em>Must confirm</em> always uses the fixed list.</li>
 			<li><strong>Publish at</strong> (later = scheduled), <strong>Expires at</strong> (then gone from the bell), <strong>Pinned</strong> (on top), <strong>Must confirm</strong>, <strong>Also by e-mail</strong> (once, when it appears, to the recipients with an e-mail address – needs the e-mail settings; scheduled ones are mailed by the housekeeping).</li>
-			<li><em>Save as draft</em> (invisible) or <em>Publish</em>. In the list: status (draft, scheduled, published, expired, withdrawn), recipients, read count; ⋯ → edit, read receipts (who read / confirmed / hid it and when), copy, publish / withdraw, delete. Every step is in the log.</li>
+			<li><em>Save as draft</em> (invisible) or <em>Publish</em>. In the list: status (draft, scheduled, published, expired, withdrawn), recipients, read count; ⋯ → edit, read receipts (who read / confirmed / hid it and when), copy, publish / withdraw, delete. The edit page has <em>Delete</em> and the same ⋯ menu (read receipts, copy, withdraw) next to <em>Save</em>; on phones the list keeps the ⋯ column visible at the right. Every step is in the log.</li>
 			<li><strong>Settings</strong>: <em>Delete notifications after</em> 30 days … 2 years or never (default 180 days, counted from the expiry or the publishing) – the housekeeping deletes them with their read receipts.</li>
-			<li><strong>From code</strong>: <code>nuNextNotify(['title' =&gt; 'New order', 'body' =&gt; '…', 'level' =&gt; 'info', 'link' =&gt; 'index.php?p=form&amp;f=…&amp;r=…', 'teams' =&gt; ['Sales'], 'users' =&gt; ['jdoe'], 'must_confirm' =&gt; false, 'email' =&gt; false])</code> in a procedure or form event (e.g. After Save) publishes at once and returns the id ('' when not valid; no rights check – it is server code). Keys: <code>all</code>, <code>users</code> (ids or login names), <code>departments</code>, <code>teams</code>, <code>positions</code>, <code>access_levels</code>, <code>mode</code>, <code>publish_at</code>, <code>expires_at</code>, <code>pinned</code>.</li>
+			<li><strong>From code</strong>: <code>nuNextNotify(['title' =&gt; 'New order', 'body' =&gt; '…', 'level' =&gt; 'info', 'link' =&gt; 'index.php?p=form&amp;f=…&amp;r=…', 'teams' =&gt; ['Sales'], 'users' =&gt; ['jdoe'], 'must_confirm' =&gt; false, 'email' =&gt; false])</code> (<code>'format' =&gt; 'html'</code>: the body is formatted text, cleaned like in the form) in a procedure or form event (e.g. After Save) publishes at once and returns the id ('' when not valid; no rights check – it is server code). Keys: <code>all</code>, <code>users</code> (ids or login names), <code>departments</code>, <code>teams</code>, <code>positions</code>, <code>access_levels</code>, <code>mode</code>, <code>publish_at</code>, <code>expires_at</code>, <code>pinned</code>.</li>
 			<li><strong>REST API</strong> (scope <code>notifications:write</code>): <code>POST /v1/notifications</code> with the same fields and <code>"audience": {…}</code>, <code>GET /v1/notifications/{id}</code> (state, recipients, read, confirmed), <code>DELETE /v1/notifications/{id}</code>.</li>
 		</ul>
 	</div>
@@ -416,6 +430,21 @@
 		<ul>
 			<li><strong>Existing table</strong>: pick the table (type part of its name to search the list) and primary key – objects and list columns are generated from its columns.</li>
 			<li><strong>New table</strong>: enter columns (name, label, type, length, required). The table gets a nuBuilder-style text primary key and optionally audit columns (created/updated at/by), filled on every save, and/or nuBuilder's record log <code>&lt;table&gt;_nulog</code> (see below). <i class="bi bi-x-circle"></i> crosses a column out – it is not created; <i class="bi bi-arrow-counterclockwise"></i> brings it back.</li>
+		</ul>
+	</div>
+
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="form-ai">Forms with AI</h3>
+		<p>Since 0.8.403 a form can be created or changed with any AI chat (Claude, ChatGPT …) – no API key, nothing is sent from nuBuilder Next: <em>Forms → With AI</em> (also in the new-form page) for a new form, <em>Change with AI</em> in the form builder for an existing one.</p>
+		<ol>
+			<li><strong>Describe it</strong> (fields, lists, lookups, the table – new or existing) and click <em>Copy prompt</em>. The prompt holds a short description of nuBuilder Next's form format, the tables and columns of the database, the forms lookups and sub-forms can use and – when changing – the current form. Paste it into the AI chat.</li>
+			<li><strong>Paste the AI's whole answer</strong> and click <em>Check</em>: errors (unknown types, forms or columns that do not exist, duplicate ids …) are listed – ask the AI to correct them or edit the JSON. Otherwise you see what happens: a new table, new columns, new / changed / removed objects, tab and list changes.</li>
+			<li><strong>Create draft</strong>: a missing table or columns are created first, only after you tick the box (they stay even if the draft is discarded). A <em>new form</em> is created with status <em>Draft</em> – only designers see it; check it with <em>Open form</em> and publish it in the builder. A <em>change</em> becomes a <a href="#builder-work">form draft</a>: the live form stays as it is until you preview, compare and publish it.</li>
+		</ol>
+		<ul>
+			<li>The format describes inputs (all input types), textareas, selects (options or SQL), lookups, sub-forms (an existing form of type sub-form), display and HTML objects and words, tabs and the list columns. Other objects (calculations, run buttons, charts …) are marked “keep” and stay unchanged, as do events, custom code, hooks and the SQL builder rows.</li>
+			<li>Existing objects keep their place; new ones are placed below the object before them (or next to it with <code>same_row</code>) and move the following ones down.</li>
+			<li>Not for nuBuilder's system forms and page forms. Since the prompt contains the table names and columns, check what your AI provider may receive.</li>
 		</ul>
 	</div>
 
@@ -1194,6 +1223,7 @@ curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/us
 
 	<div class="doc-sub" data-doc="admin">
 		<h3 id="php-api">PHP functions</h3>
+		<p>Every function with parameters, return value and examples: <a href="#ref-php">PHP function reference</a>.</p>
 		<p><code>nuRunQuery</code> (also named parameters), <code>db_fetch_row/array/object</code>, <code>db_num_rows</code>, <code>nuHash</code>, <code>nuDisplayError</code>, <code>nuAddJavascript</code>, <code>nuSetFormValue</code>, <code>nuLookupRecord</code>, <code>nuSetProperty</code>/<code>nuGetProperty</code>, <code>nuSubformObject</code>, <code>nuID</code>, <code>nuProcedure</code>, <code>nuCreateTableFromSelect</code>, <code>nuDebug</code>, <code>nuSendEmail</code>, <code>nuSendEmailEx</code>, <code>nuEmail</code>, <code>nuGetEmailTemplateData</code>, <code>nuSendEmailFromTemplate</code>, <code>nuReplaceHashVariables</code>, <code>nuFormId</code>, <code>nuRecordId</code>, <code>nuUserId</code>, <code>nuFormTable</code>, <code>nuIsValidEmail</code>, <code>nuSetUserJSONData($key, $value, $userId = '')</code> / <code>nuGetUserJSONData($key, $userId = '')</code> (per-user data in <code>sus_json</code>), <code>nuCreateLoginToken($userId, $minutes = 0, $formId = '', $recordId = '')</code> (nuBuilder Next: one-time login link), <code>nuNextNotify($args)</code> (nuBuilder Next: notification for the bell – see <a href="#notifications-send">Sending notifications</a>), <code>nuGlobalAccess</code>, <code>nuUserLanguage</code>, <code>nuTranslate</code>, <code>nuGetUserPermissions($userId = null)</code>, <code>nuUserHasPermission($item, $userId = null)</code> (true for the globeadmin).</p>
 		<p>Also, as in nuBuilder 4.9: database helpers (<code>db_fetch_value</code>, <code>db_update_value</code>, <code>db_fetch</code>, <code>db_fetch_all_array/object</code>, <code>db_fetch_key_pair_array</code>, <code>db_field_names/types/info/exists</code>, <code>db_primary_key</code>, <code>db_is_auto_id</code>, <code>db_quote</code>, <code>nuGetSQLValue</code>, <code>nuListTables</code>, <code>nuGetUserTables</code>, <code>nuMSSQL</code>, <code>nuTT</code>, <code>nuSQL</code>), record state (<code>nuHasNewRecordID</code>, <code>nuHasNoRecordID</code>), procedures (<code>nuRunProcedure</code>, <code>nuRunPHPHidden</code>, <code>nuGetPHP</code>, <code>nuHasProcedureAccess</code>), output (<code>nuDisplayMessage</code>, <code>nuJavaScriptCallback</code>, <code>nuLog</code>), session data (<code>nuSetJSONData</code>/<code>nuGetJSONData</code>), <code>nuObjKey</code>, <code>nuJsonDecode</code>, <code>nuEncode</code>/<code>nuDecode</code>, string helpers (<code>nuStringContains</code>, <code>nuStringStartsWith</code>, <code>nuStringEndsWith</code>, <code>nuStringLeft/Right</code>, <code>nuTrim</code>, <code>nuPad</code>, <code>nuQuotise</code> …), <code>nuFormatDate</code>, <code>nuAddFormatting</code>, <code>nuSelectOptions</code>, <code>nuPasswordHash</code>, <code>nuGenerateToken</code>, <code>nuGetIPAddress</code>, <code>nuIsMobile</code>, <code>nuUser</code>, <code>nuGetUserAccess</code>, <code>nuGetRecordURL</code>, <code>nuAutoNumber</code>/<code>nuUpdateCounter</code> and more. Input objects of type <em>nuAutoNumber</em> get the next number when a new record (or subform row) is saved (last number + 1, a prefix like <code>INV</code> is kept; the builder shows the last number under <em>Last number</em>, new records show “assigned on save”). Input objects of type <em>nuScroll</em> (since 0.8.369): the arrow keys ↑ / ↓ step through the list of the object's <em>Scroll</em> property (JavaScript, e.g. <code>['Low', 'Medium', 'High']</code>) and start over at the end; a value that is not in the list can still be typed. The same list is offered as suggestions – on a phone tapping the field shows it, on a desktop a small arrow in the field opens it. Differences and functions that are not ported: <code>docs/porting-review.md</code>.</p>
 		<h4 class="h6 mt-3" id="excel">Excel export (NuXlsx, 0.8.398)</h4>
@@ -1212,6 +1242,7 @@ $x-&gt;download('orders.xlsx');                         // or $x-&gt;save($file)
 
 	<div class="doc-sub" data-doc="admin">
 		<h3 id="js-api">JavaScript functions</h3>
+		<p>Every function with parameters, return value and examples: <a href="#ref-js">JavaScript function reference</a>.</p>
 		<p>About 100 nuBuilder functions work unchanged, among them <code>nuGetValue</code>/<code>nuSetValue</code>, <code>nuHide</code>/<code>nuShow</code>, <code>nuEnable</code>/<code>nuDisable</code>, <code>nuSetProperty</code>, <code>nuRunPHPHidden</code>, <code>nuForm</code>, <code>nuPopup</code>, <code>nuMessage</code>, <code>nuSaveAction</code>, <code>nuDeleteAction</code>, <code>nuCloneAction</code>, <code>nuSelectTab</code>, <code>nuAddActionButton</code>, <code>nuHasBeenEdited</code>, TinyMCE functions, <code>nuOpenAce</code>, <code>nuVendorLogin</code>, <code>nuTranslate</code>, <code>nuTranslateToEnglish</code>. New: <code>nuToast(message, type)</code> shows a notice at the bottom right (<code>success</code>, <code>danger</code>, <code>warning</code>, <code>info</code>).</p>
 		<p><strong>Hooks</strong> – functions a form's custom code (or nuBuilder's Setup → header, for the <em>…Global</em> ones) may define; nuBuilder Next calls them as nuBuilder 4.9 does (a <em>…Global</em> hook runs before the form's own):</p>
 		<table class="table table-sm small">
@@ -1281,6 +1312,18 @@ nuRunPHPHidden('export_orders');   // the procedure ends it: nuAddJavascript("nu
 			<li>Form pages allow inline scripts (needed for form code); all other pages use a strict Content-Security-Policy. Forms with charts (or <code>nuChart</code> in their code) also allow www.gstatic.com for Google Charts.</li>
 		</ul>
 	</div>
+</section>
+
+<section id="ref-php" data-doc="admin">
+	<h2 id="ref-php-h">PHP function reference</h2>
+	<p>Every PHP function for procedures, form hooks (Before Edit, Before Save …), lookups and page forms – with parameters, return value and examples. <span class="badge nuFnNb">nuBuilder</span> = works as in nuBuilder 4.9 (a form or procedure using it keeps working in nuBuilder), <span class="badge nuFnNext">nuBuilder Next</span> = only in nuBuilder Next, with the version that added it. Overview and hash variables: <a href="#php-api">PHP functions</a>, <a href="#hash-variables">Hash variables</a>.</p>
+	<div data-nu-fnref="php"></div>
+</section>
+
+<section id="ref-js" data-doc="admin">
+	<h2 id="ref-js-h">JavaScript function reference</h2>
+	<p>Every JavaScript function for a form's custom code (Custom code → JavaScript, Setup → header), the hooks a form may define, the page form SDK (<code>NuPage</code>) and the start page (<code>nuHome</code>). <span class="badge nuFnNb">nuBuilder</span> = as in nuBuilder 4.9, <span class="badge nuFnNext">nuBuilder Next</span> = only in nuBuilder Next. Overview: <a href="#js-api">JavaScript functions</a>.</p>
+	<div data-nu-fnref="js"></div>
 </section>
 
 <section id="security-check" data-doc="admin">

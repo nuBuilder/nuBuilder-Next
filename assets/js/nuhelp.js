@@ -84,7 +84,7 @@
 	function ownText(sec) {
 		var t = '';
 		Array.prototype.forEach.call(sec.childNodes, function (n) {
-			if (!(n.classList && n.classList.contains('doc-sub'))) t += ' ' + n.textContent;
+			if (!(n.classList && (n.classList.contains('doc-sub') || n.hasAttribute('data-nu-search-skip')))) t += ' ' + n.textContent;
 		});
 		return t;
 	}
@@ -96,6 +96,7 @@
 		var hits = 0;
 		sections.forEach(function (sec) {
 			var subs = Array.prototype.slice.call(sec.querySelectorAll('.doc-sub'));
+			fnFilter(sec, words);
 			if (!words.length) {
 				sec.hidden = false; subs.forEach(function (s) { s.hidden = false; show(s, true); });
 				show(sec, true);
@@ -104,7 +105,7 @@
 			var own = matches(ownText(sec), words);
 			var any = false;
 			subs.forEach(function (s) {
-				var ok = own || matches(s.textContent, words);
+				var ok = own || (s.nuFnShown !== undefined ? s.nuFnShown > 0 : matches(s.textContent, words));
 				s.hidden = !ok; show(s, ok);
 				if (ok && !own) hits++;
 				any = any || ok;
@@ -124,6 +125,63 @@
 	}
 
 	function show(el, on) { if (el.nuTocItem) el.nuTocItem.hidden = !on; }
+
+	// ------------------------------------------------------------------ function references (0.8.399, core/nufnref.php)
+	/** Global search: in a group of a function reference only the matching functions (all when the group title matches). */
+	function fnFilter(sec, words) {
+		Array.prototype.forEach.call(sec.querySelectorAll('[data-nu-search-skip]'), function (el) { el.hidden = words.length > 0; });   // own search + A–Z index
+		Array.prototype.forEach.call(sec.querySelectorAll('.nuFnGroup'), function (grp) {
+			var fns = grp.querySelectorAll('.nuFn'), h = grp.querySelector('h3'), all = !words.length || matches(h ? h.textContent : '', words), n = 0;
+			Array.prototype.forEach.call(fns, function (f) {
+				var ok = all || matches(f.textContent, words);
+				f.classList.toggle('nuFnOutG', !ok);
+				if (ok) n++;
+			});
+			grp.nuFnShown = words.length ? n : undefined;
+		});
+	}
+
+	/** The search field of one reference: filters its functions (name, signature, description, example). */
+	Array.prototype.forEach.call(body.querySelectorAll('[data-nu-fn-search]'), function (box) {
+		var sec = box.closest('section'), cnt = sec.querySelector('[data-nu-fn-count]'), noneEl = sec.querySelector('.nuFnNone');
+		var fns = Array.prototype.slice.call(sec.querySelectorAll('.nuFn')), tmr;
+		function filter() {
+			var words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean), shown = 0;
+			fns.forEach(function (f) {
+				var ok = !words.length || matches(f.getAttribute('data-nu-fn') + ' ' + f.textContent, words);
+				f.classList.toggle('nuFnOutL', !ok);
+				if (ok) shown++;
+			});
+			Array.prototype.forEach.call(sec.querySelectorAll('.nuFnGroup'), function (grp) {
+				grp.classList.toggle('nuFnOutL', !grp.querySelector('.nuFn:not(.nuFnOutL)'));
+			});
+			cnt.textContent = words.length ? cnt.getAttribute('data-nu-fn-count').replace('%s', shown).replace('%s', fns.length) : '';
+			noneEl.hidden = !words.length || shown > 0;
+		}
+		box.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(filter, 120); });
+		box.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') { box.value = ''; filter(); }
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				var first = sec.querySelector('.nuFn:not(.nuFnOutL):not(.nuFnOutG)');
+				if (first) first.scrollIntoView({block: 'start'});
+			}
+		});
+		box.nuFnFilter = filter;
+	});
+
+	/** A link to a function (index A–Z, links in the text) clears a search that hides it. */
+	body.addEventListener('click', function (e) {
+		var a = e.target.closest('a[href^="#fn-"]');
+		if (!a) return;
+		var t = document.getElementById(a.getAttribute('href').slice(1));
+		if (!t) return;
+		if (t.classList.contains('nuFnOutL')) {
+			var box = t.closest('section').querySelector('[data-nu-fn-search]');
+			if (box) { box.value = ''; box.nuFnFilter(); }
+		}
+		if (t.classList.contains('nuFnOutG') || t.closest('[hidden]')) { input.value = ''; run(); }
+	});
 
 	var timer;
 	input.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 150); });

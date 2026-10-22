@@ -8,7 +8,8 @@ defined('NU_ROOT') || exit;
  */
 $designer = NuAcl::can(NuAcl::FORM_FORM);
 $ga = (bool)NuAuth::user()['globeadmin'];
-$buttons = $designer ? '<a class="btn nuAddBtn" title="' . h(t('builder_new_form')) . '" href="' . h(nu_url('builder', ['new' => '1'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '';
+$buttons = $designer ? '<a class="btn nuAddBtn" title="' . h(t('builder_new_form')) . '" href="' . h(nu_url('builder', ['new' => '1'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>'
+	. '<a class="btn btn-outline-secondary" id="nuFormAiNew" title="' . h(t('fai_title_new')) . '" href="' . h(nu_url('formai')) . '"><i class="bi bi-stars me-1"></i>' . h(t('fai_button_new')) . '</a>' : '';   // form with AI (0.8.403)
 // tools of the forms area in one menu (only what the user may open)
 $tools = array_filter([
 	[isset(nu_forms()['nucodesnippet']) && NuAcl::can('nucodesnippet'), nu_url('form', ['f' => 'nucodesnippet']), 'bi-file-earmark-code', t('nav_snippets')],

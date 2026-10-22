@@ -71,7 +71,8 @@ step → `NuMigrate::steps()` + `NuMigrate::CHANGES` in core/nuupdate.php · a c
 `NuDemo::READ_POSTS` · an admin right → `NuAdmin::RIGHTS` · a start page tile → `NuHome::catalog()`, `TILE_RIGHTS`, `PAGES`, `PAGE_TILE`
 (and `subTiles()` / `actions()` for ▾ menus) · a system list → `NuListDefs` (+ `LISTS`) · a pseudo form for access levels → `NuAcl::FORM_*`
 · clean-up → a step in `NuHousekeeping::run()` · PHP API for form code → core/form/nuphp_api.php · REST → `NuApi` routes +
-`NuApiClient::SCOPES` · log events → `ev_*` texts · JS in `assets/js/<page>.js` (strict CSP).
+`NuApiClient::SCOPES` · log events → `ev_*` texts · JS in `assets/js/<page>.js` (strict CSP) · a PHP function for form code (core/form/nuphp_*.php) or a JS `api('…')` →
+an entry in `docs/nunext-functions.json` (Help → function references, core/nufnref.php; dev/tests/run.php fails otherwise).
 
 ## The owner's standing rules
 - **No personal details of the developer** (name, e-mail, etc.) in any file of the project – code, docs, README, CLAUDE.md,
@@ -190,6 +191,17 @@ core/form/*.php      form runtime (meta, render, record, browse, hash variables,
                      NuPageContextV<n> for older supported versions (contextClass), apiInfo() → manifest page_api (release.py), scan() /
                      check() / report() → update page "Pages" card, builder, forms list badge. Never remove or change a $nu method within a
                      version: add, deprecate, or raise NuPageContext::API_VERSION with an adapter
+                     concurrent edits (0.8.401): core/form/nuconflict.php NuConflict – signatures of the record + sub-form rows as opened
+                     (nuNext.cc, forRecord()), save payload cc = signatures of the EDITED fields, check() before Before Save and again with a
+                     row lock in the save transaction (NuConflictFound rolls back) → {conflict: {fields, by, at}} → dialog in nuruntime.js
+                     (showConflict: Mine = take over the new signature, Theirs = field no longer edited); delete: cc_h; presence table
+                     zzzzsys_nunext_presence (step 0017, formapi action presence, passive ping every 30 s); off: $nuConfigEditConflictCheck /
+                     $nuConfigEditPresence, nuNextConflictCheck(false) / nuNextPresence(false) in Before Edit; e2e edit_conflict
+                     forms with AI (0.8.403): core/form/nuformspec.php NuFormSpec – JSON format "nunext-form-1" (fromForm / fromSnapshot,
+                     prompt(), parse(), check() → errors / warnings / plan, toSnapshot() on top of the live snapshot: rows keep ids, events, code;
+                     "keep": true for types the spec does not describe), create() → new form with sfo_status 0 or NuFormDraft start + save;
+                     missing table / columns via NuDDL after a tick; page pages/nuformai.php + assets/js/nuformai.js (copy / paste, no API key);
+                     e2e form_ai
                      form JS (0.8.383): HTML-object scripts → type text/nu-deferred (NuRender::deferScripts), run by nuNextRunDeferred();
                      nuAfterSave after the reload (sessionStorage nuNextAfterSave); edited flag reset after nuOnLoad (field nuEdited marks stay)
 core/nureport.php    reports: NuReport (data, rights, designer data) · core/nureportengine.php NuReportEngine (nurunpdf.php port, TCPDF)

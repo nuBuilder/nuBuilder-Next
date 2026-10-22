@@ -363,6 +363,63 @@ check('page: check() – a clean page', NuPage::check(['declared' => null, 'php'
 check('page: context class', NuPage::contextClass(null) === 'NuPageContext' && NuPage::contextClass(1) === 'NuPageContext');
 foreach (['custom/pages/_template/index.php'] as $f) check('page: shipped file has the guard: ' . $f, NuPage::hasGuard((string)file_get_contents(NU_ROOT . '/' . $f)));
 
+// HTML cleaner of formatted notification texts (0.8.400)
+$c = NuHtmlClean::clean('<p onclick="x()" style="color:red">Hi <b>you</b> <script>alert(1)</script><img src=x onerror=alert(1)></p><iframe src="//e"></iframe>'
+	. '<a href="javascript:alert(1)">bad</a> <a href=" JaVaScRiPt:alert(1)">bad2</a> <a href="&#106;avascript:alert(1)">bad3</a> <a href="https://example.com/a?b=1&amp;c=2" onmouseover="x">ok</a>'
+	. '<span style="x">span</span><ul><li>one</li></ul><!-- c --><svg><script>1</script></svg><a href="index.php?p=home">in</a><a href="mailto:a@b.c">m</a>');
+check('htmlclean: no scripts, handlers, styles, iframes, images', !preg_match('/script|onclick|onerror|onmouseover|style=|iframe|<img|<svg|javascript|<!--|<span/i', $c), $c);
+check('htmlclean: allowed tags and safe links stay', str_contains($c, '<p>Hi <b>you</b>') && str_contains($c, '<ul><li>one</li></ul>') && str_contains($c, '>span')
+	&& str_contains($c, 'href="https://example.com/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">ok</a>') && str_contains($c, 'href="index.php?p=home"')
+	&& str_contains($c, 'href="mailto:a@b.c"') && str_contains($c, 'bad') && !str_contains($c, 'href="javascript'), $c);
+check('htmlclean: text, umlauts, empty', NuHtmlClean::clean('Grüße & <i>mehr</i>') === 'Grüße &amp; <i>mehr</i>' && NuHtmlClean::clean('  ') === ''
+	&& NuHtmlClean::toText('<p>a<br>b</p><ul><li>c</li></ul>') === "a\nb\n• c", NuHtmlClean::clean('Grüße & <i>mehr</i>'));
+check('notify: bodyHtml by format', NuNotify::bodyHtml('<b>x</b>') === '&lt;b&gt;x&lt;/b&gt;' && NuNotify::bodyHtml('<b>x</b><script>1</script>', 'html') === '<b>x</b>'
+	&& NuNotify::bodyText('<p>a</p><p>b</p>', 'html') === "a\nb");
+
+// concurrent edits (0.8.401)
+check('conflict: signatures', NuConflict::sig(null) === 'n' && NuConflict::sig('') !== 'n' && NuConflict::sig('1') === NuConflict::sig(1)
+	&& NuConflict::rowHash(['a' => 1, 'B' => 'x']) === NuConflict::rowHash(['b' => 'x', 'A' => '1']) && NuConflict::rowHash(['a' => 1]) !== NuConflict::rowHash(['a' => 2])
+	&& NuConflict::rowSigs(['Cus_Name' => null]) === ['cus_name' => 'n']);
+
+// form with AI (0.8.403): the JSON of an AI answer
+$pa = NuFormSpec::parse("Here it is:\n```json\n{\"format\": \"nunext-form-1\", \"form\": {\"code\": \"x\"}}\n```\nBye");
+$pb = NuFormSpec::parse('Text before {"form": {"code": "y"}, "tabs": []} and after');
+$pc = NuFormSpec::parse("{\n  \"form\": {\"code\": \"z\", \"u\": \"https://x.ch\"},   // code\n  // a comment the AI copied\n  \"n\": 1 // one\n}");
+check('formspec: parse fenced / plain / with comments / errors', is_array($pa) && $pa['form']['code'] === 'x' && is_array($pb) && $pb['form']['code'] === 'y'
+	&& is_array($pc) && $pc['form']['code'] === 'z' && $pc['form']['u'] === 'https://x.ch' && is_string(NuFormSpec::parse('no json here')) && is_string(NuFormSpec::parse('{"a": ')));
+$help = preg_replace('~//.*$~m', '', explode("\nRules:", NuFormSpec::formatHelp())[0]);
+check('formspec: the example of the prompt is valid JSON', is_array(json_decode((string)$help, true)), json_last_error_msg());
+
+// function reference of the Help page (0.8.399): every function of the code is documented, and nothing that is gone
+$ref = NuFnRef::load();
+check('fnref: docs/nunext-functions.json is valid', isset($ref['php']['items'], $ref['js']['items']) && count($ref['php']['items']) > 150 && count($ref['js']['items']) > 300);
+foreach (['php', 'js'] as $lang) {
+	$code = NuFnRef::codeNames($lang);
+	$doc = NuFnRef::documented($lang);
+	check("fnref $lang: every function of the code has an entry", !array_diff($code, $doc), implode(', ', array_diff($code, $doc)));
+	check("fnref $lang: every entry is a function of the code", !array_diff($doc, $code), implode(', ', array_diff($doc, $code)));
+	$names = array_column($ref[$lang]['items'], 'n');
+	check("fnref $lang: names unique", count($names) === count(array_unique($names)), implode(', ', array_keys(array_filter(array_count_values($names), static fn($c) => $c > 1))));
+	$groups = array_column($ref[$lang]['groups'], 'id');
+	$bad = array_filter($ref[$lang]['items'], static fn($it) => !in_array($it['g'] ?? '', $groups, true) || trim((string)($it['d'] ?? '')) === '' || trim((string)($it['s'] ?? '')) === ''
+		|| !in_array($it['o'] ?? '', ['nb', 'next'], true) || !in_array($it['k'] ?? 'fn', ['fn', 'method', 'hook'], true));
+	check("fnref $lang: entries complete (group, signature, description, origin)", !$bad, implode(', ', array_column($bad, 'n')));
+}
+// methods of page forms ($nu) and NuXlsx: the documented ones exist (and every public $nu method is documented)
+$nuDoc = array_map(static fn($n) => substr($n, 5), array_filter(array_column($ref['php']['items'], 'n'), static fn($n) => str_starts_with($n, '$nu->')));
+$nuCode = array_values(array_diff(NuPage::apiInfo()['methods'], ['deprecated']));
+check('fnref: $nu methods = NuPageContext', !array_diff($nuCode, $nuDoc) && !array_diff($nuDoc, $nuCode), implode(', ', array_merge(array_diff($nuCode, $nuDoc), array_diff($nuDoc, $nuCode))));
+$miss = [];
+foreach (array_column($ref["php"]["items"], "n") as $nm) {
+	if (preg_match('/^(?:NuXlsx::|\$x->)(\w+)$/', $nm, $m) && !method_exists('NuXlsx', $m[1])) $miss[] = $nm;
+	if (preg_match('/^\$sheet->(\w+)$/', $nm, $m) && !method_exists('NuXlsxSheet', $m[1])) $miss[] = $nm;
+}
+check('fnref: documented NuXlsx methods exist', !$miss, implode(', ', $miss));
+$jsDoc = array_map(static fn($n) => substr($n, 7), array_filter(array_column($ref['js']['items'], 'n'), static fn($n) => str_starts_with($n, 'NuPage.')));
+check('fnref: NuPage entries = NuPage::JS_API', !array_diff(NuPage::JS_API, $jsDoc) && !array_diff($jsDoc, NuPage::JS_API));
+check('fnref: render', str_contains(NuFnRef::render('php'), 'id="fn-php-nuRunQuery"') && str_contains(NuFnRef::render('js'), 'id="ref-js-hooks"')
+	&& NuFnRef::letter('nuRunQuery') === 'R' && NuFnRef::letter('db_fetch_row') === 'F' && NuFnRef::letter('$nu->user') === 'U');
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

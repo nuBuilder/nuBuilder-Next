@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.398 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.404 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder 4.**
 

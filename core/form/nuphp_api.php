@@ -334,6 +334,13 @@ if (!function_exists('nuRunQuery')) {
 
 if (!function_exists('nuDashboardData')) {
 	/**
+	 * nuBuilder Next (0.8.401), in Before Edit: switch the check for concurrent edits (another user saved the same field since the form
+	 * was opened) or the "also open by …" hint off – or on again – for this form.
+	 */
+	function nuNextConflictCheck(bool $on = true): void { NuConflict::$formCheck = $on; }
+	function nuNextPresence(bool $on = true): void { NuConflict::$formPresence = $on; }
+
+	/**
 	 * nuBuilder Next dashboards (0.8.298): a procedure used as the source of a dashboard widget hands over its rows –
 	 * a list of arrays, e.g. [['month' => 'Jan', 'sales' => 120], …] (first column = categories, the others = series).
 	 */

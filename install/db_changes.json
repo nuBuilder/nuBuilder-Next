@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.398",
+    "version": "0.8.404",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -212,6 +212,17 @@
             "changes": [
                 {
                     "table": "zzzzsys_nunext_page",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0017-presence",
+            "description": "Who has a record open (zzzzsys_nunext_presence)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_presence",
                     "kind": "table",
                     "what": "created when missing"
                 }
@@ -1006,6 +1017,11 @@
                     "4000"
                 ],
                 [
+                    "format",
+                    "text",
+                    "10"
+                ],
+                [
                     "level",
                     "text",
                     "10"
@@ -1080,6 +1096,53 @@
                 "status",
                 "publish_at",
                 "created_by_id"
+            ]
+        },
+        "zzzzsys_nunext_presence": {
+            "pk": "zzzzsys_nunext_presence_id",
+            "cols": [
+                [
+                    "form_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "record_id",
+                    "text",
+                    "100"
+                ],
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "login",
+                    "text",
+                    "50"
+                ],
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "edited",
+                    "text",
+                    "1"
+                ],
+                [
+                    "opened_at",
+                    "datetime"
+                ],
+                [
+                    "seen_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "record_id",
+                "seen_at"
             ]
         },
         "zzzzsys_nunext_notification_user": {

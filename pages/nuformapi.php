@@ -113,7 +113,11 @@ try {
 			if (NuSecurity::runtimeBlocked($meta)) nu_api_error(t('secchk_err_system_form'), 403);
 			nu_api_preview_guard($meta, $in);
 			if (NuDemo::active()) nu_api_error(t('demo_no_delete'), 403);
-			nu_api_out(NuRecord::delete($meta, $record, $props));
+			nu_api_out(NuRecord::delete($meta, $record, $props, $in));
+
+		case 'presence':                                   // concurrent edits (0.8.401): "also open by …" (passive – see index.php)
+			if (!NuConflict::presenceEnabled()) nu_api_out(['ok' => true, 'others' => []]);
+			nu_api_out(['ok' => true, 'others' => NuConflict::ping($meta->id, $record, !empty($in['edited']), !empty($in['leave']))]);
 
 		case 'lookupid':
 		case 'lookupcode':

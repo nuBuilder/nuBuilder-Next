@@ -78,6 +78,8 @@ $nuConfigApi								= false;					//-- true: REST API api.php/v1/… (clients: Ad
 $nuConfigApiTokenMinutes				= 15;						//-- Lifetime of API access tokens in minutes.
 //$nuConfigApiAllowHttp					= false;					//-- true: allow the API without HTTPS (tests only).
 $nuConfigLogRecordChanges				= true;						//-- Log changed fields when records are saved/deleted in forms.
+$nuConfigEditConflictCheck				= true;						//-- Edit forms: a save that would overwrite a field someone else changed since the form was opened asks first (false = off; per form: nuNextConflictCheck(false) in Before Edit).
+$nuConfigEditPresence					= true;						//-- Edit forms: show who else has the same record open (false = off; per form: nuNextPresence(false) in Before Edit).
 $nuConfigBaseURL						= "";						//-- Address users open nuBuilder Next with, e.g. "https://www.example.com/nunext" – for complete links in e-mails (forgot password, welcome mail), auto-login links and API addresses. Empty = taken from the page request (can be wrong behind a proxy) – set it on a live server.
 $nuConfigTrustProxy						= false;					//-- true behind a reverse proxy: take the client IP from X-Forwarded-For.
 

@@ -542,12 +542,12 @@ final class NuApi
 
 	/** GET /v1/reports – reports the service user may run, with the hash variables they use (params). */
 	/**
-	 * POST /v1/notifications {"title", "body", "level", "link", "audience": {"all", "users" (ids or logins), "departments", "teams", "positions",
+	 * POST /v1/notifications {"title", "body", "format" ("text" | "html": cleaned allowlist HTML, 0.8.400), "level", "link", "audience": {"all", "users" (ids or logins), "departments", "teams", "positions",
 	 * "access_levels"}, "mode": "live"|"fixed", "publish_at", "expires_at", "pinned", "must_confirm", "email", "draft": false} (0.8.357)
 	 */
 	private static function notifyCreate(): array
 	{
-		$in = self::fields(self::body(), ['title', 'body', 'level', 'link', 'audience', 'mode', 'publish_at', 'expires_at', 'pinned', 'must_confirm', 'email', 'draft']);
+		$in = self::fields(self::body(), ['title', 'body', 'format', 'level', 'link', 'audience', 'mode', 'publish_at', 'expires_at', 'pinned', 'must_confirm', 'email', 'draft']);
 		$u = self::$ctx['user'];
 		[$id, $errors] = NuNotify::save('', $in, empty($in['draft']), ['id' => (string)$u['zzzzsys_user_id'], 'login' => (string)$u['sus_login_name']], false);
 		if ($errors) throw new NuApiError(422, 'Validation failed.', $errors);

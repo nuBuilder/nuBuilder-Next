@@ -248,7 +248,7 @@ final class NuNotify
 	/** One notification for the bell / page (escaped HTML where needed). */
 	public static function item(array $r): array
 	{
-		return ['id' => (string)$r['zzzzsys_nunext_notification_id'], 'title' => (string)$r['title'], 'body' => self::bodyHtml((string)$r['body']), 'text' => (string)$r['body'],
+		return ['id' => (string)$r['zzzzsys_nunext_notification_id'], 'title' => (string)$r['title'], 'body' => self::bodyHtml((string)$r['body'], (string)($r['format'] ?? '')), 'text' => self::bodyText((string)$r['body'], (string)($r['format'] ?? '')),
 			'level' => (string)$r['level'], 'icon' => self::LEVELS[$r['level']] ?? 'bi-info-circle', 'link' => self::safeLink((string)$r['link']), 'pinned' => (string)$r['pinned'] === '1',
 			'confirm' => (string)$r['must_confirm'] === '1', 'at' => (string)($r['publish_at'] ?: $r['created_at']), 'ago' => self::ago((string)($r['publish_at'] ?: $r['created_at'])),
 			'read' => (string)$r['read_at'] !== '', 'hidden' => (string)$r['hidden_at'] !== '', 'confirmed' => (string)$r['confirmed_at'] !== '', 'by' => (string)$r['created_by']];
@@ -261,12 +261,22 @@ final class NuNotify
 		return $link !== '' && preg_match('~^(https?://[^\s]+|index\.php(\?[^\s]*)?|\?[^\s]+)$~i', $link) ? $link : '';
 	}
 
-	/** Text → HTML: escaped, line breaks, http(s) links clickable. */
-	public static function bodyHtml(string $s): string
+	/**
+	 * The text as HTML. Format 'text': escaped, line breaks, http(s) links clickable; 'html' (formatted text, 0.8.400): cleaned again
+	 * with NuHtmlClean (also rows written past save()).
+	 */
+	public static function bodyHtml(string $s, string $format = 'text'): string
 	{
+		if ($format === 'html') return NuHtmlClean::clean($s);
 		$h = h($s);
 		$h = (string)preg_replace('~(https?://[^\s<]+[^\s<.,;:!?)\]\'"])~i', '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>', $h);
 		return nl2br($h, false);
+	}
+
+	/** Plain text of the text (formatted text without its tags). */
+	public static function bodyText(string $s, string $format = 'text'): string
+	{
+		return $format === 'html' ? NuHtmlClean::toText($s) : $s;
 	}
 
 	public static function ago(string $at): string
@@ -411,7 +421,14 @@ final class NuNotify
 		if ($exp === false) $e['expires_at'] = t('ntf_err_date');
 		if (is_string($exp) && $exp <= max(self::now(), (string)$pub)) $e['expires_at'] = t('ntf_err_expires');
 		$confirm = !empty($in['must_confirm']) && $in['must_confirm'] !== '0';
-		$row = ['title' => $title, 'body' => mb_substr(trim((string)($in['body'] ?? '')), 0, 4000), 'level' => $level, 'link' => mb_substr($link, 0, 1000),
+		$format = ($in['format'] ?? '') === 'html' ? 'html' : 'text';      // 0.8.400: formatted text (allowlist HTML)
+		$body = trim((string)($in['body'] ?? ''));
+		if ($format === 'html') {
+			$body = NuHtmlClean::clean($body);
+			if (trim(NuHtmlClean::toText($body)) === '') $body = '';
+			if (mb_strlen($body) > 4000) $e['body'] = t('ntf_err_body_long');
+		} else $body = mb_substr($body, 0, 4000);
+		$row = ['title' => $title, 'body' => $body, 'format' => $format, 'level' => $level, 'link' => mb_substr($link, 0, 1000),
 			'audience' => json_encode($aud, JSON_UNESCAPED_UNICODE), 'mode' => $confirm || ($in['mode'] ?? '') === 'fixed' ? 'fixed' : 'live',
 			'publish_at' => is_string($pub) ? $pub : null, 'expires_at' => is_string($exp) ? $exp : null, 'pinned' => !empty($in['pinned']) && $in['pinned'] !== '0' ? '1' : '0',
 			'must_confirm' => $confirm ? '1' : '0', 'email' => !empty($in['email']) && $in['email'] !== '0' ? '1' : '0'];
@@ -495,7 +512,7 @@ final class NuNotify
 		$sent = 0;
 		$sl = self::safeLink((string)$n['link']);
 		$link = $sl !== '' ? (preg_match('~^https?://~i', $sl) ? $sl : rtrim(NuSecurity::mailBaseUrl(), '/') . '/' . ltrim($sl, '/')) : '';
-		$html = '<div style="font-size:14px;line-height:1.5">' . self::bodyHtml((string)$n['body']) . '</div>'
+		$html = '<div style="font-size:14px;line-height:1.5">' . self::bodyHtml((string)$n['body'], (string)($n['format'] ?? '')) . '</div>'
 			. ($link !== '' ? '<p style="margin-top:16px"><a href="' . h($link) . '">' . h($link) . '</a></p>' : '');
 		nu_time_limit(0);
 		foreach (array_slice($ids, 0, 2000) as $uid) {

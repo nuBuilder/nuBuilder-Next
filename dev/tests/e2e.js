@@ -614,6 +614,170 @@ T.notifications = async (s) => {
 	await open(b, 'index.php?p=notifications');
 	expect(await b.locator('.nuNtfItem', { hasText: 'E2E notification' }).count() === 0, 'other user got it');
 	await b.context().close();
+	// 0.8.402: Delete on the edit page (the list's ⋯ column was off-screen on phones – it stays visible now)
+	const id = sql("SELECT zzzzsys_nunext_notification_id FROM zzzzsys_nunext_notification WHERE title = 'E2E notification'");
+	await open(p, 'index.php?p=notifications&id=' + id);
+	await p.click('#ntfDelete'); await p.waitForTimeout(500);
+	await p.click('.js-confirm-ok'); await p.waitForLoadState('networkidle');
+	expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_notification WHERE zzzzsys_nunext_notification_id = '" + id + "'") === '0', 'not deleted from the edit page');
+};
+
+T.notify_format = async (s) => {                        // 0.8.400: "Formatted text" switch – TinyMCE (when installed), HTML cleaned on the server
+	const p = s.ga;
+	await open(p, 'index.php?p=notifications&id=new');
+	await p.fill('#ntf_title', 'E2E formatted');
+	await p.fill('#ntf_body', 'Line one\nLine <two>');
+	await p.locator('#aud_users').locator('xpath=..').locator('.ts-control input').fill('sample_anna');
+	await p.locator('.ts-dropdown .option[data-value="sample_anna"]').click(); await p.keyboard.press('Escape');
+	await p.check('#ntf_format');
+	const tiny = !!(await p.getAttribute('#ntf_format', 'data-tiny'));
+	const bad = '<p>Hello <strong>bold</strong> <a href="javascript:alert(1)">x</a> <a href="https://example.com">ok</a></p><script>window.pwned=1</script><img src=x onerror="window.pwned=1">';
+	if (tiny) {
+		await p.waitForSelector('.tox-tinymce', { timeout: 10000 });
+		expect(/Line one<br>Line &lt;two&gt;/.test(await p.evaluate(() => window.tinymce.activeEditor.getContent())), 'plain text not taken over into the editor');
+		await p.evaluate((h) => { const ed = window.tinymce.activeEditor; ed.setContent(h); ed.fire('change'); }, bad);
+	} else {
+		await p.evaluate((h) => { document.getElementById('ntf_body').value = h; }, bad);
+	}
+	await p.click('#ntfPublish'); await p.waitForLoadState('networkidle');
+	const row = sql("SELECT CONCAT(format, '|', body) FROM zzzzsys_nunext_notification WHERE title = 'E2E formatted'");
+	expect(row.startsWith('html|') && /<strong>bold<\/strong>/.test(row) && !/script|onerror|javascript|<img/i.test(row) && /href="https:\/\/example.com"/.test(row), 'stored HTML not cleaned: ' + row);
+	// the server cleans HTML that does not come from the editor (posted directly)
+	const a = await login('sample_anna', UPW);
+	await open(a, 'index.php?p=notifications');
+	const item = a.locator('.nuNtfItem', { hasText: 'E2E formatted' });
+	expect(await item.locator('strong', { hasText: 'bold' }).count() === 1 && await item.locator('a[href="https://example.com"][target="_blank"]').count() === 1, 'formatting not shown to the recipient');
+	expect(!(await a.evaluate(() => window.pwned)), 'script ran');
+	await a.click('#nuBellBtn'); await a.waitForTimeout(700);
+	expect(await a.locator('.nuBellItem strong', { hasText: 'bold' }).count() >= 1, 'formatting not in the bell');
+	await a.context().close();
+	// back to plain text: after the question the tags are gone
+	const id = sql("SELECT zzzzsys_nunext_notification_id FROM zzzzsys_nunext_notification WHERE title = 'E2E formatted'");
+	await open(p, 'index.php?p=notifications&id=' + id);
+	expect(await p.isChecked('#ntf_format'), 'switch not on for a formatted notification');
+	if (tiny) await p.waitForSelector('.tox-tinymce', { timeout: 10000 });
+	p.once('dialog', (d) => d.accept().catch(() => {}));
+	await p.uncheck('#ntf_format'); await p.waitForTimeout(400);
+	const txt = await p.inputValue('#ntf_body');
+	expect(/Hello bold/.test(txt) && !/</.test(txt) && await p.locator('.tox-tinymce').count() === 0, 'plain text after switching off: ' + txt);
+	sql("DELETE FROM zzzzsys_nunext_notification_user WHERE notification_id = '" + id + "'");
+	sql("DELETE FROM zzzzsys_nunext_notification WHERE zzzzsys_nunext_notification_id = '" + id + "'");
+};
+
+T.edit_conflict = async (s) => {                        // 0.8.401: concurrent edits – field check, dialog, sub-form rows, delete, "also open", off in Before Edit
+	const A = s.ga, B = await login('sample_carla', UPW);
+	const cus = 'index.php?p=form&f=samplecustomer&r=sample_cus_01';
+	const val = (c) => sql("SELECT " + c + " FROM sample_customer WHERE sample_customer_id = 'sample_cus_01'");
+	const save = async (p) => { await p.click('#nuSaveButton'); await p.waitForTimeout(1200); };
+	try {
+		await open(A, cus); await open(B, cus); await A.waitForTimeout(800);
+		await open(A, cus); await A.waitForTimeout(800);                              // A sees B (the first ping of B is done)
+		expect(/sample_carla/.test(await A.locator('#nuPresence').textContent().catch(() => '')), 'A does not see that B has the record open');
+		// 1. both change the name, B also the e-mail, A the phone: dialog for the name only; "Mine" → B's name, A's phone, B's e-mail
+		await A.fill('#cus_name', 'CC name A'); await A.fill('#cus_phone', '+41 1'); await save(A);
+		await B.fill('#cus_name', 'CC name B'); await B.fill('#cus_email', 'b@example.com'); await save(B);
+		expect(await B.locator('#nuConflict').count() === 1, 'no conflict dialog');
+		const rows = await B.locator('#nuConflict tbody tr').allTextContents();
+		expect(rows.length === 1 && /CC name A/.test(rows[0]) && /CC name B/.test(rows[0]), 'dialog rows: ' + JSON.stringify(rows));
+		await B.click('.jconfirm-buttons button:first-child'); await B.waitForLoadState('networkidle'); await B.waitForTimeout(800);
+		expect(val('cus_name') === 'CC name B' && val('cus_phone') === '+41 1' && val('cus_email') === 'b@example.com', 'after "Mine": ' + [val('cus_name'), val('cus_phone'), val('cus_email')]);
+		// 2. "Theirs": the other value stays, B's other field is saved; the same value on both sides is no conflict
+		await open(A, cus); await open(B, cus);
+		await A.fill('#cus_name', 'CC name A2'); await A.fill('#cus_code', 'C001X'); await save(A);
+		await B.fill('#cus_name', 'CC name B2'); await B.fill('#cus_code', 'C001X'); await B.fill('#cus_phone', '+41 2'); await save(B);
+		expect(await B.locator('#nuConflict tbody tr').count() === 1, 'same value counted as conflict');
+		await B.click('#nuConflict input[value="theirs"]');
+		await B.click('.jconfirm-buttons button:first-child'); await B.waitForLoadState('networkidle'); await B.waitForTimeout(800);
+		expect(val('cus_name') === 'CC name A2' && val('cus_phone') === '+41 2', 'after "Theirs": ' + [val('cus_name'), val('cus_phone')]);
+		// 3. no change by others → saves at once
+		await open(B, cus); await B.fill('#cus_phone', '+41 3'); await save(B);
+		expect(await B.locator('#nuConflict').count() === 0 && val('cus_phone') === '+41 3', 'plain save blocked');
+		// 4. sub-form rows: same field of a row; a row deleted by someone else
+		const ord = 'index.php?p=form&f=sampleorder&r=sample_ord_1';
+		const q1 = sql("SELECT ori_qty FROM sample_order_item WHERE sample_order_item_id = 'sample_ori_1'");
+		await open(A, ord); await open(B, ord);
+		const rowOf = (p, pk) => p.evaluate((k) => document.querySelector('#sample_items .nuSubformRow[data-nu-primary-key="' + k + '"]').getAttribute('data-nu-prefix'), pk);
+		const pa = await rowOf(A, 'sample_ori_1'), pb = await rowOf(B, 'sample_ori_1'), pb2 = await rowOf(B, 'sample_ori_2');
+		await A.fill('#' + pa + 'ori_qty', '7'); await save(A);
+		sql("DELETE FROM sample_order_item WHERE sample_order_item_id = 'sample_ori_2'");
+		await B.fill('#' + pb + 'ori_qty', '9'); await B.fill('#' + pb2 + 'ori_qty', '5'); await save(B);
+		const txt = await B.locator('#nuConflict').textContent().catch(() => '');
+		expect(/row 1/i.test(txt) && /deleted by someone else/.test(txt), 'sub-form conflict: ' + txt.slice(0, 300));
+		await B.click('.jconfirm-buttons button:first-child'); await B.waitForLoadState('networkidle'); await B.waitForTimeout(800);
+		expect(Number(sql("SELECT ori_qty FROM sample_order_item WHERE sample_order_item_id = 'sample_ori_1'")) === 9 && q1 !== '', 'sub-form row after "Mine"');
+		// 5. delete after someone else changed the record: asked (the test accepts) – then deleted
+		const cus7 = 'index.php?p=form&f=samplecustomer&r=sample_cus_07';
+		await open(A, cus7); await open(B, cus7);
+		await A.fill('#cus_phone', '+41 99'); await save(A);
+		const asked = [];
+		B.removeAllListeners('dialog'); B.on('dialog', d => { asked.push(d.message()); d.accept(); });
+		await B.evaluate(() => { window.jQuery.confirm = null; });                   // the plain browser question for "Delete?"
+		await B.evaluate(() => nuDeleteAction()); await B.waitForTimeout(1500);
+		expect(asked.some(m => /Delete it anyway/.test(m)), 'no question before deleting a changed record: ' + JSON.stringify(asked));
+		expect(sql("SELECT COUNT(*) FROM sample_customer WHERE sample_customer_id = 'sample_cus_07'") === '0', 'not deleted after "yes"');
+		// 6. switched off in Before Edit: no signatures, no hint
+		sql("INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php) VALUES ('samplecustomer_BE', 'samplecustomer_BE', 'e2e', 'nuNextConflictCheck(false); nuNextPresence(false);')");
+		await open(B, 'index.php?p=form&f=samplecustomer&r=sample_cus_02');
+		expect(await B.evaluate(() => window.nuNext.cc === null && window.nuNext.presence === false), 'conflict check / hint still on after nuNextConflictCheck(false) / nuNextPresence(false)');
+		await open(B, 'index.php?p=form&f=samplecustomer&r=sample_cus_03');
+		expect(await B.locator('#nuPresence').count() === 0, 'hint although switched off');
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'samplecustomer_BE'");
+		await open(B, 'index.php?p=form&f=samplecustomer&r=sample_cus_03');
+		expect(await B.evaluate(() => !!(window.nuNext.cc && window.nuNext.cc.h) && window.nuNext.presence === true), 'conflict check not on by default');
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'samplecustomer_BE'");
+		await B.context().close();
+	}
+};
+
+T.form_ai = async (s) => {                              // 0.8.403: form with AI – prompt, check, new form as Draft, change as form draft
+	const p = s.ga;
+	const spec = {format: 'nunext-form-1', form: {code: 'e2e_ai_project', description: 'E2E projects', type: 'browseedit', table: 'e2e_ai_project', primary_key: 'e2e_ai_project_id'},
+		tabs: [{title: 'Main', objects: [
+			{id: 'prj_name', type: 'input', input: 'text', label: 'Name', required: true},
+			{id: 'prj_customer_id', type: 'lookup', label: 'Customer', lookup: {form: 'sample_customer', code: 'cus_code', description: 'cus_name'}},
+			{id: 'prj_start', type: 'input', input: 'nuDate', label: 'Start'},
+			{id: 'prj_status', type: 'select', label: 'Status', options: [['open', 'Open'], ['done', 'Done']]}]}]};
+	try {
+		await open(p, 'index.php?p=forms');
+		expect(await p.locator('#nuFormAiNew').count() === 1, 'no "With AI" button in the forms list');
+		await open(p, 'index.php?p=formai');
+		await p.fill('#faRequest', 'Projects with a customer');
+		await p.click('#faCopy'); await p.waitForTimeout(800);
+		const prompt = await p.inputValue('#faPrompt');
+		expect(/nunext-form-1/.test(prompt) && /sample_customer/.test(prompt) && /Projects with a customer/.test(prompt), 'prompt incomplete');
+		// errors are listed and nothing is offered
+		await p.fill('#faAnswer', '```json\n{"format": "nunext-form-1", "form": {"code": "x y"}, "tabs": []}\n```'); await p.click('#faCheck'); await p.waitForTimeout(700);
+		expect(await p.locator('#faMessages .alert-danger li').count() >= 2 && await p.locator('#faCreateBox').isHidden(), 'bad answer not refused');
+		// a new form with a new table
+		await p.fill('#faAnswer', 'Sure:\n```json\n' + JSON.stringify(spec) + '\n```'); await p.click('#faCheck'); await p.waitForTimeout(700);
+		expect(await p.locator('#faOk').count() === 1 && /e2e_ai_project/.test(await p.textContent('#faPlan')), 'valid answer not accepted: ' + await p.textContent('#faMessages'));
+		await p.click('#faCreate'); await p.waitForTimeout(500);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = 'e2e_ai_project'") === '0', 'created without ticking the table box');
+		await p.check('#faDdl'); await p.click('#faCreate'); await p.waitForURL(/p=builder/); await p.waitForLoadState('networkidle');
+		expect(sql("SELECT sfo_status FROM zzzzsys_form WHERE sfo_code = 'e2e_ai_project'") === '0', 'new form not a Draft');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_object o JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id WHERE f.sfo_code = 'e2e_ai_project'") === '4', 'objects missing');
+		expect(/prj_customer_id/.test(sql("SHOW COLUMNS FROM e2e_ai_project")), 'table not created');
+		// change a form: a form draft, the live form stays
+		await open(p, 'index.php?p=builder&f=samplecustomer'); await p.waitForTimeout(800);
+		await p.click('#nbAi'); await p.waitForLoadState('networkidle');
+		await p.fill('#faRequest', 'Add Mobile after Phone'); await p.click('#faCopy'); await p.waitForTimeout(800);
+		const cur = JSON.parse((await p.inputValue('#faPrompt')).match(/## The current form\n```json\n([\s\S]*?)\n```/)[1]);
+		const main = cur.tabs[0];
+		main.objects.splice(main.objects.findIndex(o => o.id === 'cus_phone') + 1, 0, {id: 'e2e_mobile', type: 'input', input: 'tel', label: 'Mobile'});
+		await p.fill('#faAnswer', JSON.stringify(cur)); await p.click('#faCheck'); await p.waitForTimeout(700);
+		const plan = await p.textContent('#faPlan');
+		expect(/e2e_mobile/.test(plan) && !/cus_name|cus_code/.test(plan.replace(/.*e2e_mobile/s, '')), 'plan of the change: ' + plan);
+		await p.check('#faDdl'); await p.click('#faCreate'); await p.waitForURL(/draft=1/); await p.waitForLoadState('networkidle');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_id = 'e2e_mobile'") === '0', 'the live form was changed');
+		expect(/e2e_mobile/.test(sql("SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = 'samplecustomer' AND status = 'open'")), 'draft without the new object');
+	} finally {
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = 'samplecustomer' AND status = 'open'");
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'e2e_ai_project'");
+		if (fid) sql("DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '" + fid + "'; DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '" + fid + "'; DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '" + fid + "'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '" + fid + "'");
+		sql("DROP TABLE IF EXISTS e2e_ai_project");
+		try { sql("ALTER TABLE sample_customer DROP COLUMN e2e_mobile"); } catch (e) { /* not added */ }
+	}
 };
 
 T.excel_export = async (s) => {                         // 0.8.398: Export Excel of a list print view (visible columns) and of a form browse list
@@ -1080,6 +1244,29 @@ T.docs_newer = async (s) => {                           // 0.8.393: help and tut
 		if (prev === '') sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'github_update'");
 		else sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + prev.replace(/'/g, "''") + "' WHERE zzzzsys_nunext_setting_id = 'github_update'");
 	}
+};
+
+T.help_fnref = async (s) => {                           // 0.8.399: PHP / JavaScript function reference in the help, with search and A–Z index
+	const p = s.ga;
+	await open(p, 'index.php?p=help');
+	const php = await p.locator('#ref-php .nuFn').count(), js = await p.locator('#ref-js .nuFn').count();
+	expect(php > 150 && js > 300, 'reference entries missing: ' + php + ' / ' + js);
+	expect(await p.locator('#helpToc a[href="#ref-php-db-h"]').count() === 1, 'groups not in the contents');
+	await p.fill('#ref-php .nuFnSearch', 'fetch object'); await p.waitForTimeout(400);
+	const shown = await p.locator('#ref-php .nuFn:visible').count();
+	expect(shown > 0 && shown < 10 && await p.locator('#fn-php-db_fetch_object').isVisible(), 'own search does not filter: ' + shown);
+	expect(/\d/.test(await p.locator('#ref-php .nuFnCount').textContent()), 'no count');
+	await p.fill('#ref-php .nuFnSearch', 'xyzxyz'); await p.waitForTimeout(400);
+	expect(await p.locator('#ref-php .nuFnNone').isVisible(), 'no "nothing found"');
+	await p.fill('#ref-php .nuFnSearch', ''); await p.waitForTimeout(300);
+	await p.click('#ref-js .nuFnIndex summary');
+	await p.click('#ref-js .nuFnIndex a[href="#fn-js-nuSubformObject"]'); await p.waitForTimeout(300);
+	expect(await p.evaluate(() => location.hash) === '#fn-js-nuSubformObject' && await p.locator('#fn-js-nuSubformObject').isVisible(), 'index link');
+	await p.fill('#helpSearch', 'nuRunQueryNoDebug'); await p.waitForTimeout(600);
+	expect(await p.locator('.nuFn:visible').count() === 1 && !(await p.locator('#ref-php .nuFnIndex').isVisible()), 'help search does not narrow the functions');
+	await p.fill('#helpSearch', ''); await p.waitForTimeout(300);
+	await open(p, 'index.php?p=help&doc=user');
+	expect(await p.locator('#ref-php, #ref-js').count() === 0, 'reference in the user view');
 };
 
 T.update_layout = async (s) => {                        // 0.8.376: GitHub first, other ways folded; open / closed remembered in the browser

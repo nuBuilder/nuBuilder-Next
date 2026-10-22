@@ -3,6 +3,64 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.404 – Release gate
+- Release gate: smoke test, all end-to-end tests and the cross-tests against nuBuilder 4.9 for the releases 0.8.399–0.8.403
+  (function reference, formatted notification texts, concurrent edits, Delete on the notification edit page, forms with AI).
+
+## 0.8.403 – Forms with AI
+- Forms with AI: *Forms → With AI* (also on the new-form page) creates a form, *Change with AI* in the form builder changes one –
+  with any AI chat (Claude, ChatGPT …), no API key, nothing is sent by nuBuilder Next. Describe the form, *Copy prompt* (it holds
+  nuBuilder Next's form format, the tables and columns of the database, the forms for lookups / sub-forms and, for a change, the
+  current form), paste the AI's whole answer, *Check* – errors to correct, or what happens: new table / columns, new / changed /
+  removed objects, tab and list changes – and *Create draft*.
+- Never live at once: a new form gets status *Draft* (designers only, publish it in the builder); a change becomes a form draft
+  (preview, compare, publish). A missing table or columns are created only after a tick.
+- The format ("nunext-form-1", core/form/nuformspec.php) describes inputs, textareas, selects, lookups, sub-forms, display, HTML and
+  word objects, tabs and list columns; other objects ("keep"), events, custom code, hooks and SQL builder rows stay unchanged; existing
+  objects keep their place, new ones are placed below the one before them. A form read and written back unchanged gives no change
+  (checked for all sample forms).
+
+## 0.8.402 – Delete notifications on phones
+- Notifications: the edit page has a *Delete* button and a ⋯ menu (read receipts, copy, withdraw) next to *Save* – before,
+  these were only in the list's ⋯ column.
+- Notifications → Manage on phones: the ⋯ column stays visible at the right while the table scrolls sideways (it was off-screen).
+
+## 0.8.401 – Concurrent edits
+- Concurrent edits in forms: when someone saved the same field after you opened the record, Save stops with *Changed meanwhile* –
+  who changed it and when (audit trail, else nuBuilder's record log), and per field the value when opened, yours and the one saved
+  now; pick *Mine* or *Theirs* per field and save, or *Reload*. Fields only the other user changed are kept (only edited fields
+  are written); the same value on both sides is no conflict. The record is compared with the database, so changes made in
+  nuBuilder, by procedures or by SQL are found too – checked before Before Save and again with a row lock inside the save.
+- Sub-form rows the same way: edited fields per row, a row someone else deleted (named, its changes are dropped), a row deleted
+  here that was changed there (*Delete anyway* / *Keep the row*). Delete of a record changed since it was opened asks first.
+- "Also open": a note above the form shows who else has the same record open, and whether they have unsaved changes
+  (checked every 30 s, does not keep the session alive, never blocks). New table zzzzsys_nunext_presence (step 0017).
+- Off: `$nuConfigEditConflictCheck = false;` and `$nuConfigEditPresence = false;` in nuconfig.php (both in nuconfig-sample.php);
+  per form in Before Edit: `nuNextConflictCheck(false);` / `nuNextPresence(false);`. The note is always off in demo mode.
+
+## 0.8.400 – Formatted notification texts
+- Notifications: a switch *Formatted text* next to the text field. On: an editor (TinyMCE) for bold, italic, underline,
+  strikethrough, lists, links and quotes; the bell, the confirm dialog, the page *My notifications* and the e-mail show the
+  formatting. Off: plain text as before (line breaks, web addresses as links). Switching on takes the plain text over; switching
+  off asks and removes the formatting.
+- The server cleans formatted text when saving and again when showing it (new NuHtmlClean, an allowlist): only these tags stay,
+  no attributes except checked links (https://, mailto:, pages of nuBuilder Next – opened in a new tab), no colours, fonts,
+  images, styles or scripts. This also holds for `nuNextNotify(['format' => 'html', …])` and `POST /v1/notifications` with
+  `"format": "html"`. At most 4000 characters including the tags.
+- TinyMCE is not part of the package: copy nuBuilder's third_party/tinymce to assets/vendor/tinymce (as for form editors).
+  Without it the formatted text is edited as HTML. New column `format` in zzzzsys_nunext_notification (added by itself).
+
+## 0.8.399 – Function reference in the help
+- Help: two new chapters, *PHP function reference* (266 entries) and *JavaScript function reference* (357 entries) – every
+  function for procedures, form hooks, lookups and form code with its signature, a short description, the return value and
+  examples where useful, marked *nuBuilder* (works as in nuBuilder 4.9) or *nuBuilder Next* (with the version that added it).
+  Also the hooks a form may define, the methods of page forms (`$nu`, `NuPage`), NuXlsx and `nuHome`.
+- Each reference has its own search field (name, signature, description, example; Enter jumps to the first hit, Escape clears),
+  an A–Z index (sorted without the prefixes nu / db_) and its groups in the contents on the left. The search of the help page
+  narrows the functions too. For the globeadmin and users with an admin role.
+- The reference is kept in docs/nunext-functions.json; the unit tests check that every function of the code has an entry and
+  that no entry names a function that is gone.
+
 ## 0.8.398 – Excel export, Export menu
 - Excel export: own writer NuXlsx (core/nuxlsx.php, no other library – only PHP's zip extension) for .xlsx files with typed cells
   (numbers, dates, booleans; a string is always text and never a formula – formulas only with NuXlsx::formula()), styles (bold,

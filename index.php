@@ -89,6 +89,7 @@ $routes = [
 	'translations' => [],
 	'formatapi'   => ['json' => true],
 	'builder'     => [],
+	'formai'      => [],                     // form with AI (0.8.403)
 	'builderapi'  => ['json' => true],
 	'page'        => [],                 // form type "page": the page file's own output (0.8.387, core/nupage.php)
 	'pageasset'   => [],                 // css / js / images of a page folder
@@ -118,6 +119,7 @@ if (nu_is_post()) nu_csrf_verify();
 if (nu_is_post()) array_walk_recursive($_POST, static function (&$v): void { if (is_string($v) && str_contains($v, "\r")) $v = str_replace(["\r\n", "\r"], "\n", $v); });
 // the bell asks every minute (0.8.357): that alone must not keep an idle session alive (NuAuth::user)
 if ($p === 'notifyapi' && !nu_is_post()) define('NU_PASSIVE', true);
+if ($p === 'formapi' && ($_GET['presence'] ?? '') === '1') define('NU_PASSIVE', true);   // the "also open" ping (0.8.401) is no activity
 // a page's background poll (?passive=1) does not count as activity either (0.8.387)
 if ($p === 'page' && ($_GET['passive'] ?? '') === '1' && !defined('NU_PASSIVE')) define('NU_PASSIVE', true);
 

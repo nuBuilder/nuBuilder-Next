@@ -88,7 +88,8 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 	<div class="row justify-content-center">
 		<div class="col-lg-10 col-xl-8">
 			<?= $crumb   // inside the centred column, so it lines up with the card (0.8.249) ?>
-			<h1 class="h3 mb-3"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1>
+			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1>
+				<a class="btn btn-outline-secondary" id="nbAiNew" href="<?= h(nu_url('formai')) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_new')) ?></a></div>
 			<form class="card shadow-sm" id="nbNewForm" novalidate>
 				<div class="card-body p-4">
 					<div class="alert alert-warning nbStale" id="nbStale" role="alert"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('builder_stale_assets')) ?></div>
@@ -204,6 +205,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 			<button class="btn btn-sm btn-outline-secondary" type="button" id="nbUndo" title="<?= h(t('builder_undo_hint')) ?>"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('builder_undo')) ?></button>
 		<?php endif; ?>
 		<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('form', ['f' => $meta->id])) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('builder_open_form')) ?></a>
+		<?php if (!$meta->isSystem()): ?><a class="btn btn-sm btn-outline-secondary" id="nbAi" href="<?= h(nu_url('formai', ['f' => $meta->id])) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_change')) ?></a><?php endif; ?>
 		<?php if (!$meta->isSystem() && $canDeleteForm): ?>
 			<button class="btn btn-sm btn-outline-danger" type="button" id="nbDeleteForm"><i class="bi bi-trash me-1"></i><?= h(t('builder_delete_form')) ?></button>
 		<?php endif; ?>

@@ -1167,8 +1167,12 @@
 				if (el && untouchedNew(el)) delete values[f];
 			});
 		}
-		call('save', {values: values, edited: edited, subforms: subformPayload(), clone: !!N.cloning}).then(function (res) {
+		var subs = subformPayload();
+		var payload = {values: values, edited: edited, subforms: subs, clone: !!N.cloning};
+		if (N.cc && !N.cloning && N.record_id !== '-1') payload.cc = ccPayload(edited, subs);        // concurrent edits (0.8.401)
+		call('save', payload).then(function (res) {
 			btn.prop('disabled', false);
+			if (!res.ok && res.conflict) { N.afterSave = then; showConflict(res.conflict, close); return; }
 			if (!res.ok) { applyResult(res); return; }
 			try { if (res.js && res.js.length) sessionStorage.setItem('nuNextPendingJs', JSON.stringify(res.js)); } catch (x) { /* ignore */ }
 			N.edited = false;
@@ -1207,9 +1211,14 @@
 			buttons: {confirm: {text: M.delete, btnClass: 'btn-red', action: doDelete}, cancel: {text: M.cancel}}
 		});
 	}
-	function doDelete() {
-		if (window.nuBeforeDelete && window.nuBeforeDelete() === false) return;
-		call('delete', {}).then(function (res) {
+	function doDelete(force) {
+		if (force !== true && window.nuBeforeDelete && window.nuBeforeDelete() === false) return;
+		call('delete', N.cc ? (force === true ? {cc_force: 1} : {cc_h: N.cc.h}) : {}).then(function (res) {
+			if (!res.ok && res.conflict && res.conflict.delete) {            // changed since it was opened (0.8.401)
+				var q = res.conflict.by ? ccFmt(M.cc_delete_by, res.conflict.by, res.conflict.at) : M.cc_delete_anon;
+				if (window.confirm(q)) doDelete(true);
+				return;
+			}
 			if (!res.ok) { applyResult(res); return; }
 			N.edited = false;
 			window.last_action = 'delete';                                    // nuBuilder sets it before its after-delete hooks
@@ -1220,6 +1229,137 @@
 			var back = bc.length > 1 && bc[bc.length - 2].url ? bc[bc.length - 2].url : N.base + '?p=home';
 			window.location.replace(back);
 		});
+	}
+
+	// =================================================================== concurrent edits (0.8.401, core/form/nuconflict.php)
+	function ccFmt(t) { var a = Array.prototype.slice.call(arguments, 1), i = 0; return String(t || '').replace(/%s/g, function () { return a[i++] === undefined ? '' : a[i - 1]; }); }
+	N.ccOver = {};                                                        // signatures taken over after "keep mine" / "delete anyway"
+	/** Signatures of the edited fields (as opened) – the server compares them with the database. */
+	function ccPayload(edited, subs) {
+		var out = {f: {}, sf: {}}, cc = N.cc;
+		edited.forEach(function (f) {
+			var k = '||' + f, sig = N.ccOver[k] !== undefined ? N.ccOver[k] : (cc.f || {})[String(f).toLowerCase()];
+			if (sig !== undefined) out.f[f] = sig;
+		});
+		Object.keys(subs || {}).forEach(function (sf) {
+			var rowsCc = (cc.sf || {})[sf] || {}, o = {};
+			(subs[sf].rows || []).forEach(function (r) {
+				var info = r.pk ? rowsCc[r.pk] : null;
+				if (!info) return;
+				if (r.deleted) { var hk = sf + '|' + r.pk + '|'; o[r.pk] = {h: N.ccOver[hk] !== undefined ? N.ccOver[hk] : info.h}; return; }
+				var f = {};
+				(r.edited || []).forEach(function (fd) {
+					var k = sf + '|' + r.pk + '|' + fd, sig = N.ccOver[k] !== undefined ? N.ccOver[k] : (info.f || {})[String(fd).toLowerCase()];
+					if (sig !== undefined) f[fd] = sig;
+				});
+				if (Object.keys(f).length) o[r.pk] = {f: f};
+			});
+			if (Object.keys(o).length) out.sf[sf] = o;
+		});
+		return out;
+	}
+	function ccRow(c) { return c.sf ? $('#' + c.sf + ' .nuSubformRow').filter(function () { return this.getAttribute('data-nu-primary-key') === String(c.pk); })[0] : null; }
+	function ccEl(c) {
+		if (!c.sf) return g(c.field);
+		var row = ccRow(c), p = row ? row.getAttribute('data-nu-prefix') : '';
+		return p ? g(p + c.field) : null;
+	}
+	/** A value as the user sees it: text of a select option, ✓ for a ticked checkbox, (empty). */
+	function ccShow(el, v) {
+		v = v === null || v === undefined ? '' : String(v);
+		if (el && el.tagName === 'SELECT') { for (var i = 0; i < el.options.length; i++) if (el.options[i].value === v) { v = el.options[i].text; break; } }
+		else if (el && el.type === 'checkbox') v = v === '1' ? '✓' : '–';
+		return v === '' ? '<span class="text-body-secondary fst-italic">' + esc(M.cc_empty) + '</span>' : esc(v);
+	}
+	function showConflict(c, close) {
+		if (c.gone) { nuMessage([esc(M.cc_record_gone)]); return; }
+		var intro = c.by ? ccFmt(M.cc_by, c.by, c.at) : M.cc_anon, rows = '', notes = '';
+		(c.fields || []).forEach(function (x, i) {
+			var where = x.sf ? ccFmt(M.cc_row, x.sf_label, x.row) : '';
+			if (x.gone) { notes += '<li>' + esc(ccFmt(M.cc_row_gone, x.sf_label, x.row)) + '</li>'; return; }
+			if (x.deleted_changed) {
+				notes += '<li>' + esc(ccFmt(M.cc_row_changed, x.sf_label, x.row)) + ' <span class="text-nowrap">'
+					+ '<label class="me-2"><input type="radio" name="nuCc' + i + '" value="mine" checked> ' + esc(M.cc_delete_row) + '</label>'
+					+ '<label><input type="radio" name="nuCc' + i + '" value="theirs"> ' + esc(M.cc_keep_row) + '</label></span></li>';
+				return;
+			}
+			var el = ccEl(x);
+			var orig = el ? startValue(el) : '', mine = el ? rawValue(el) : '';
+			rows += '<tr><td class="fw-semibold">' + esc(x.label) + (where ? '<div class="small text-body-secondary">' + esc(where) + '</div>' : '') + '</td>'
+				+ '<td>' + ccShow(el, orig) + '</td><td>' + ccShow(el, mine) + '</td><td>' + ccShow(el, x.theirs) + '</td>'
+				+ '<td class="text-nowrap"><label class="me-2"><input type="radio" name="nuCc' + i + '" value="mine" checked> ' + esc(M.cc_keep_mine) + '</label>'
+				+ '<label><input type="radio" name="nuCc' + i + '" value="theirs"> ' + esc(M.cc_keep_theirs) + '</label></td></tr>';
+		});
+		var html = '<div id="nuConflict"><p>' + esc(intro) + '</p>'
+			+ (rows ? '<div class="table-responsive"><table class="table table-sm align-middle small mb-2"><thead><tr><th>' + esc(M.cc_field) + '</th><th>' + esc(M.cc_original) + '</th><th>' + esc(M.cc_yours)
+				+ '</th><th>' + esc(M.cc_theirs) + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '')
+			+ (notes ? '<ul class="small mb-2">' + notes + '</ul>' : '')
+			+ '<p class="small text-body-secondary mb-0">' + esc(M.cc_kept) + '</p></div>';
+		var resolve = function ($box) {
+			(c.fields || []).forEach(function (x, i) {
+				var pick = $box.find('input[name="nuCc' + i + '"]:checked').val();
+				if (x.gone) {                                                  // the row is gone: its changes are dropped
+					var row = ccRow(x);
+					if (row) $(row).find('.nuEdited').removeClass('nuEdited');
+					return;
+				}
+				if (x.deleted_changed) {
+					if (pick === 'theirs') { var rw = ccRow(x), d = rw ? g(rw.getAttribute('data-nu-prefix') + 'nuDelete') : null; if (d) { d.checked = false; $(d).trigger('change'); } }
+					else N.ccOver[x.sf + '|' + x.pk + '|'] = x.h;
+					return;
+				}
+				if (pick === 'theirs') { var el = ccEl(x); if (el) el.classList.remove('nuEdited'); }   // not written: the saved value stays
+				else N.ccOver[(x.sf || '') + '|' + (x.sf ? x.pk : '') + '|' + x.field] = x.sig;
+			});
+			nuSaveAction(close);
+		};
+		var reload = function () { N.edited = false; $('#nuEditForm .nuEdited').removeClass('nuEdited'); window.location.reload(); };
+		if ($.confirm) {
+			$.confirm({
+				title: M.cc_title, content: html, useBootstrap: false, boxWidth: Math.min(760, window.innerWidth - 24) + 'px', type: 'orange', columnClass: 'nuConflictBox',
+				buttons: {
+					save: {text: M.cc_save, btnClass: 'btn-orange', action: function () { resolve(this.$content); }},
+					reload: {text: M.cc_reload, action: reload},
+					cancel: {text: M.cancel}
+				}
+			});
+		} else if (window.confirm(intro + '\n\n' + M.cc_save + '?')) resolve($(html));
+	}
+
+	// "also open by …" (D1): ping every 30 s while the tab is visible; others are shown above the form; never blocks
+	if (N.presence && N.mode === 'edit' && N.record_id && N.record_id !== '-1') {
+		var presenceUrl = N.base + '?p=formapi&presence=1';
+		var ping = function (leave) {
+			var body = JSON.stringify({action: 'presence', form_id: N.form.id, record_id: N.record_id, edited: !!N.edited, leave: leave ? 1 : 0});
+			return fetch(presenceUrl, {method: 'POST', credentials: 'same-origin', keepalive: !!leave,
+				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'}, body: body})
+				.then(function (r) { return r.json(); }).then(function (j) { if (!leave && j && j.ok) showPresence(j.others || []); }).catch(function () { /* ignore */ });
+		};
+		var showPresence = function (others) {
+			var box = g('nuPresence');
+			if (!others.length) { if (box) box.remove(); return; }
+			if (!box) {
+				box = document.createElement('div');
+				box.id = 'nuPresence';
+				box.className = 'alert alert-warning py-2 px-3 mb-3 small d-flex gap-2 align-items-start';
+				box.setAttribute('role', 'status');
+				var head = document.querySelector('.nuFormHeader');
+				if (head && head.parentNode) head.parentNode.insertBefore(box, head.nextSibling); else document.body.insertBefore(box, document.body.firstChild);
+			}
+			box.innerHTML = '<i class="bi bi-people-fill mt-1"></i><div>' + others.map(function (o) {
+				var who = o.name && o.name !== o.login ? o.name + ' (' + o.login + ')' : o.login;
+				return esc(ccFmt(o.edited ? M.pr_editing : M.pr_open, who, o.since));
+			}).join('<br>') + '</div>';
+		};
+		var lastPing = 0, lastEdited = false;
+		var tick = function (force) {
+			if (document.visibilityState === 'hidden') return;
+			if (force || Date.now() - lastPing > 29000 || !!N.edited !== lastEdited) { lastPing = Date.now(); lastEdited = !!N.edited; ping(false); }
+		};
+		setTimeout(function () { tick(true); }, 300);
+		setInterval(tick, 5000);                                         // pings every 30 s, at once when unsaved changes start
+		document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') tick(true); });
+		window.addEventListener('pagehide', function () { ping(true); });
 	}
 
 	api('nuCloneAction', function () {

@@ -100,6 +100,8 @@ if ($mode === 'browse') {
 }
 
 // ===================================================================== edit
+$dbRow = [];
+$isNew = false;
 if ($mode === 'edit') {
 	$isNew = $r === '-1';
 	if ($isNew && !$rights['create'] && $meta->type() !== 'launch') NuAcl::require($meta->id, 'create');
@@ -116,8 +118,10 @@ if ($mode === 'edit') {
 			nu_fatal(t('record_not_found'), '', true);
 		}
 	}
+	$dbRow = $row;                                           // as stored – for the check of concurrent edits (0.8.401)
 	$hash = NuHash::forForm($meta, $isNew ? '-1' : $r, $row, $props);
 	NuPhp::reset();
+	NuConflict::$formCheck = NuConflict::$formPresence = null;
 	if (!NuPhp::run($meta->php('BE'), $hash, 'Before Edit')) $errors = NuPhp::$errors;
 	$js   = NuPhp::$js;
 	$hash = NuPhp::$hash + $hash;
@@ -173,6 +177,9 @@ $client = [
 		? ['code' => (string)$rp['sre_code'], 'description' => (string)$rp['sre_description']] : null,
 	'record_id' => $mode === 'edit' ? $r : '', 'is_new' => $mode === 'edit' && $r === '-1', 'saved' => ($_GET['saved'] ?? '') === '1',
 	'rights' => $rights,
+	// concurrent edits (0.8.401, core/form/nuconflict.php): signatures of the record as opened; the "also open by …" hint
+	'cc' => $mode === 'edit' && !$isNew && $dbRow && $rights['save'] && NuConflict::enabled() && NuConflict::$formCheck !== false ? NuConflict::forRecord($meta, (string)$r, $dbRow) : null,
+	'presence' => $mode === 'edit' && !$isNew && $dbRow && NuConflict::presenceEnabled() && NuConflict::$formPresence !== false,
 	'fileMaxKB' => max(1, (int)(nu_cfg('nuConfigFileMaxKB') ?: 300)),
 	'ux' => (object)NuSettings::uxOptions(),     // nuBuilder's nuUXOptions (settings table or nuconfig.php)
 	'user' => [
@@ -226,6 +233,8 @@ $client = [
 		'hash_name' => t('hash_name'), 'hash_value' => t('hash_value'), 'hash_source' => t('hash_source'), 'hash_filter' => t('hash_filter'), 'hash_locked' => t('hash_locked'),
 		'hash_src' => ['system' => t('hash_src_system'), 'user' => t('hash_src_user'), 'record' => t('hash_src_record'), 'property' => t('hash_src_property'), 'global' => t('hash_src_global')],
 		'file_too_large' => t('file_too_large'), 'empty' => t('form_filter_empty'),
+		// concurrent edits (0.8.401)
+		'cc_title' => t('form_cc_title'), 'cc_by' => t('form_cc_by'), 'cc_anon' => t('form_cc_anon'), 'cc_field' => t('form_cc_field'), 'cc_original' => t('form_cc_original'), 'cc_yours' => t('form_cc_yours'), 'cc_theirs' => t('form_cc_theirs'), 'cc_keep_mine' => t('form_cc_keep_mine'), 'cc_keep_theirs' => t('form_cc_keep_theirs'), 'cc_row' => t('form_cc_row'), 'cc_row_gone' => t('form_cc_row_gone'), 'cc_row_changed' => t('form_cc_row_changed'), 'cc_delete_row' => t('form_cc_delete_row'), 'cc_keep_row' => t('form_cc_keep_row'), 'cc_kept' => t('form_cc_kept'), 'cc_save' => t('form_cc_save'), 'cc_reload' => t('form_cc_reload'), 'cc_record_gone' => t('form_cc_record_gone'), 'cc_delete_by' => t('form_cc_delete_by'), 'cc_delete_anon' => t('form_cc_delete_anon'), 'cc_empty' => t('form_cc_empty'), 'pr_open' => t('form_pr_open'), 'pr_editing' => t('form_pr_editing'),
 	],
 ];
 

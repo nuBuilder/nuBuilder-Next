@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.398');
+define('NU_VERSION', '0.8.404');
 define('NU_BS', 'assets/vendor/bootstrap-5.3.8');
 define('NU_BI', 'assets/vendor/bootstrap-icons-1.13.2');
 define('NU_TINYMCE', 'assets/vendor/tinymce');      // not bundled: copy <nuBuilder>/third_party/tinymce here
@@ -23,7 +23,7 @@ const NU_AUTOLOAD = [
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
-	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuLibraries' => 'core/nulibraries.php',
+	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuLibraries' => 'core/nulibraries.php',
 ];
 spl_autoload_register(static function (string $class): void {
 	if (isset(NU_AUTOLOAD[$class])) require_once NU_ROOT . '/' . NU_AUTOLOAD[$class];
@@ -106,6 +106,8 @@ function nu_config(): array
 		'nuConfig2FATrustDays'             => 30,
 		'nuConfigSharedLogin'              => false,
 		'nuConfigLogRecordChanges'         => true,
+		'nuConfigEditConflictCheck'        => true,     // concurrent edits (0.8.401, core/form/nuconflict.php)
+		'nuConfigEditPresence'             => true,
 	];
 }
 

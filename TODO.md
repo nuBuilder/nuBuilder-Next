@@ -1,5 +1,18 @@
 # nuBuilder Next – to do
 
+## 0.8.403 Forms with AI – please verify
+- [ ] Forms → *With AI*: describe a form, copy the prompt into Claude / ChatGPT, paste the answer, Check, Create draft – new table, lookup, select.
+- [ ] Builder → *Change with AI* on a real form: the plan lists only what changed; the draft preview looks right; publish.
+- [ ] Answers with mistakes (unknown forms, columns, types): readable errors; asking the AI to fix them works.
+- [ ] SQL Server: new table / columns from the spec.
+
+## 0.8.401 Concurrent edits – please verify
+- [ ] Two browsers (two users), same record: the yellow "also open" note appears within 30 s and goes ~75 s after the other closes it.
+- [ ] Same field saved by both: dialog *Changed meanwhile* with who / when (audit trail on vs. off), Mine / Theirs, Reload.
+- [ ] Sub-form rows (same field, row deleted by the other, row deleted here but changed there); Delete of a changed record asks.
+- [ ] `$nuConfigEditConflictCheck = false` / `$nuConfigEditPresence = false` and `nuNextConflictCheck(false)` / `nuNextPresence(false)` in Before Edit.
+- [ ] SQL Server (row lock WITH (UPDLOCK, ROWLOCK)) – not testable here.
+
 ## 0.8.398 Excel export, Export menu – please verify
 - Open an exported .xlsx in Excel (and LibreOffice): bold frozen header, autofilter, numbers right-aligned as numbers, dates as dates.
 - Export menu (HTML page, CSV …, Excel) in the system lists, the debug results, formats, e-mail templates and form browse lists;
@@ -438,9 +451,6 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 ### Must have (9–10)
 - [ ] **10 · Test on a real SQL Server** (L) – App cloner, backups, installer and forms on MSSQL were written without one (see 0.8.198).
       A feature that is claimed but never ran is a risk; a Docker SQL Server in CI would settle it (see Docker below).
-- [ ] **9 · Protection against concurrent edits** (M) – two users open the same record, the second save silently overwrites the first.
-      Optimistic locking: remember a version / hash when the record is opened, check it on save, show "changed by Anna at 10:42 – reload or
-      overwrite". Standard in every modern framework; nuBuilder has none.
 - [ ] **9 · Scheduled automatic backups** (S–M) – today only "Back up now" and the backup before an update. Daily / weekly by cron.php
       with the database, a keep rule, optional copy to another folder / server (SFTP, S3) and a warning on the start page when the last
       backup is too old.

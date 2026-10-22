@@ -731,6 +731,7 @@ final class NuMigrate
 			'0014-database-origin' => ['Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder database, or installed before 0.8.380)', static fn() => NuInstall::markOrigin(self::$earlier)],
 			'0015-form-drafts' => ['Form drafts (zzzzsys_nunext_form_draft)', static fn() => NuSchema::create()],
 			'0016-pages' => ['Page forms (zzzzsys_nunext_page)', static fn() => NuSchema::create()],
+			'0017-presence' => ['Who has a record open (zzzzsys_nunext_presence)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -759,6 +760,7 @@ final class NuMigrate
 		'0014-database-origin' => [['zzzzsys_nunext_setting', 'data', 'row db_origin added when missing']],
 		'0015-form-drafts' => [['zzzzsys_nunext_form_draft', 'table', 'created when missing']],
 		'0016-pages' => [['zzzzsys_nunext_page', 'table', 'created when missing']],
+		'0017-presence' => [['zzzzsys_nunext_presence', 'table', 'created when missing']],
 	];
 
 	/** Steps with their descriptions and changes (for install/db_changes.json). @return list<array{id: string, description: string, changes: list<array>}> */

@@ -444,7 +444,7 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
 	static $parent = [
 		// the tools of the former Admin tools page go back to the start page (0.8.316)
 		'adminroles' => 'home',
-		'cloner' => 'forms', 'procedures' => 'forms', 'reports' => 'forms', 'prompts' => 'forms', 'formats' => 'forms', 'items' => 'forms',
+		'cloner' => 'forms', 'formai' => 'forms', 'procedures' => 'forms', 'reports' => 'forms', 'prompts' => 'forms', 'formats' => 'forms', 'items' => 'forms',
 		'files' => 'forms', 'translations' => 'forms', 'sqlbuilder' => 'reports', 'apiplayground' => 'apiclients', 'permissions' => 'users',
 	];
 	$route ??= (string)($_GET['p'] ?? '');

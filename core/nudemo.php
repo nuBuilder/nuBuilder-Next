@@ -29,7 +29,8 @@ final class NuDemo
 		'procedures'     => ['run'],
 		'notifications'  => ['state', 'readall', 'count'],   // own read / hidden state (the session only), number of recipients          // runs a procedure: only with "Demo access", and it cannot write (NuPhp::procedure, NuDB)
 		'prompts'        => ['build'],        // prompt generator: builds the text, saves nothing
-		'builder'        => ['prompt'],       // page forms (0.8.387): "Copy AI prompt" only reads
+		'builder'        => ['prompt'],
+		'formai'         => ['prompt', 'check'],   // form with AI (0.8.403): copy the prompt, check an answer       // page forms (0.8.387): "Copy AI prompt" only reads
 		'emailtemplates' => ['preview'],      // renders a template with a record
 		'reportdesigner' => ['preview', 'fields'],   // report designer: PDF preview of the layout, field list of the data source
 		'sqlbuilder'     => ['preview'],      // SQL builder: runs the SELECT (NuDB lets only reading statements through)

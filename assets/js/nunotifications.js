@@ -57,4 +57,83 @@
 	lockAudience();
 	lockMode();
 	count();
+
+	// ---- formatted text (0.8.400): the switch turns the text field into a TinyMCE editor (when installed); the server cleans the HTML
+	var fmt = document.getElementById('ntf_format'), body = document.getElementById('ntf_body'), noTiny = document.getElementById('ntfNoTiny');
+	var editor = null, loading = null;
+	function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+	function textToHtml(t) {
+		t = String(t || '').replace(/\r\n?/g, '\n').trim();
+		if (!t) return '';
+		return t.split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('');
+	}
+	function htmlToText(h) {
+		var doc = new DOMParser().parseFromString('<div>' + String(h || '') + '</div>', 'text/html');   // parsed, never run
+		var out = '';
+		(function walk(n) {
+			Array.prototype.forEach.call(n.childNodes, function (c) {
+				if (c.nodeType === 3) { out += c.nodeValue; return; }
+				if (c.nodeType !== 1) return;
+				var tg = c.tagName.toLowerCase();
+				if (tg === 'br') { out += '\n'; return; }
+				if (tg === 'li') out += '• ';
+				walk(c);
+				if (/^(p|li|h[1-6]|blockquote|div|ul|ol)$/.test(tg)) out += '\n';
+			});
+		})(doc.body);
+		return out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+	}
+	function changed() { body.dispatchEvent(new Event('input', {bubbles: true})); body.dispatchEvent(new Event('change', {bubbles: true})); }
+	function loadTiny() {
+		if (window.tinymce) return Promise.resolve();
+		if (loading) return loading;
+		loading = new Promise(function (ok, fail) {
+			var sc = document.createElement('script');
+			sc.src = fmt.getAttribute('data-tiny');
+			sc.onload = ok; sc.onerror = fail;
+			document.head.appendChild(sc);
+		});
+		return loading;
+	}
+	function startEditor() {
+		if (!fmt.getAttribute('data-tiny')) { if (noTiny) noTiny.classList.remove('d-none'); return; }
+		loadTiny().then(function () {
+			if (!fmt.checked || editor) return;
+			var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+			window.tinymce.init({
+				target: body, base_url: fmt.getAttribute('data-base'), suffix: '.min', license_key: 'gpl', promotion: false, branding: false,
+				plugins: 'lists link autolink', menubar: false, statusbar: false, height: 260, toolbar_mode: 'wrap',
+				toolbar: 'bold italic underline strikethrough | bullist numlist | link blockquote | removeformat | undo redo',
+				valid_elements: 'p,br,strong/b,em/i,u,s,strike,ul,ol,li,a[href|target|rel],blockquote,h4,h5,h6,hr',
+				link_default_target: '_blank', link_target_list: false, link_title: false, convert_urls: false, relative_urls: false,
+				skin: dark ? 'oxide-dark' : 'oxide', content_css: dark ? 'dark' : 'default',
+				setup: function (ed) {
+					editor = ed;
+					ed.on('input change undo redo', function () { ed.save(); changed(); });
+				}
+			});
+		}).catch(function () { if (noTiny) noTiny.classList.remove('d-none'); });
+	}
+	function stopEditor() {
+		if (editor) { editor.save(); editor.remove(); editor = null; }
+	}
+	if (fmt && body) {
+		if (fmt.checked) startEditor();
+		fmt.addEventListener('change', function () {
+			if (fmt.checked) {
+				body.removeAttribute('maxlength');
+				body.value = textToHtml(body.value);
+				startEditor();
+			} else {
+				if (editor) editor.save();
+				if (body.value.trim() && !window.confirm(fmt.getAttribute('data-confirm-text'))) { fmt.checked = true; return; }
+				stopEditor();
+				body.value = htmlToText(body.value);
+				body.setAttribute('maxlength', '4000');
+				if (noTiny) noTiny.classList.add('d-none');
+			}
+			changed();
+		});
+		form.addEventListener('submit', function () { if (editor) editor.save(); });
+	}
 })();

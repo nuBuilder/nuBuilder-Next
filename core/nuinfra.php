@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 13;
+	public const VERSION = 15;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -118,10 +118,16 @@ final class NuSchema
 		],
 		'zzzzsys_nunext_notification' => [                        // notification centre (0.8.357, core/nunotify.php)
 			'pk' => 'zzzzsys_nunext_notification_id',
-			'cols' => [['title', 'text', '200'], ['body', 'text', '4000'], ['level', 'text', '10'], ['link', 'text', '1000'], ['audience', 'text', '4000'],
+			'cols' => [['title', 'text', '200'], ['body', 'text', '4000'], ['format', 'text', '10'], ['level', 'text', '10'], ['link', 'text', '1000'], ['audience', 'text', '4000'],
 				['mode', 'text', '10'], ['publish_at', 'datetime'], ['expires_at', 'datetime'], ['pinned', 'text', '1'], ['must_confirm', 'text', '1'], ['email', 'text', '1'],
 				['sent_mail_at', 'datetime'], ['status', 'text', '10'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['created_by_id', 'text', '25'], ['updated_at', 'datetime']],
 			'index' => ['status', 'publish_at', 'created_by_id'],
+		],
+		'zzzzsys_nunext_presence' => [                            // concurrent edits (0.8.401, core/form/nuconflict.php): who has which record open
+			'pk' => 'zzzzsys_nunext_presence_id',
+			'cols' => [['form_id', 'text', '25'], ['record_id', 'text', '100'], ['user_id', 'text', '25'], ['login', 'text', '50'], ['name', 'text', '100'],
+				['edited', 'text', '1'], ['opened_at', 'datetime'], ['seen_at', 'datetime']],
+			'index' => ['record_id', 'seen_at'],
 		],
 		'zzzzsys_nunext_notification_user' => [                   // per notification and user: on the fixed list, read / hidden / confirmed
 			'pk' => 'zzzzsys_nunext_notification_user_id',

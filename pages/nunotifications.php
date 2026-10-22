@@ -75,7 +75,7 @@ if (nu_is_post()) {
 	}
 	if ($n && $a === 'copy') {
 		$_SESSION['nu_ntf_form'] = ['in' => ['title' => $n['title'], 'body' => $n['body'], 'level' => $n['level'], 'link' => $n['link'], 'audience' => $n['aud'],
-			'mode' => $n['mode'], 'pinned' => $n['pinned'], 'must_confirm' => $n['must_confirm'], 'email' => $n['email']], 'errors' => []];
+			'mode' => $n['mode'], 'pinned' => $n['pinned'], 'must_confirm' => $n['must_confirm'], 'email' => $n['email'], 'format' => (string)($n['format'] ?? '')], 'errors' => []];
 		nu_redirect(nu_url('notifications', ['id' => 'new']));
 	}
 	nu_redirect(nu_url('notifications', ['tab' => 'manage']));
@@ -100,7 +100,7 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 	$flash = $_SESSION['nu_ntf_form'] ?? null;
 	unset($_SESSION['nu_ntf_form']);
 	$v = $flash['in'] ?? ($n ? ['title' => $n['title'], 'body' => $n['body'], 'level' => $n['level'], 'link' => $n['link'], 'audience' => $n['aud'], 'mode' => $n['mode'],
-		'publish_at' => $n['publish_at'], 'expires_at' => $n['expires_at'], 'pinned' => $n['pinned'], 'must_confirm' => $n['must_confirm'], 'email' => $n['email']] : ['level' => 'info', 'mode' => 'live']);
+		'publish_at' => $n['publish_at'], 'expires_at' => $n['expires_at'], 'pinned' => $n['pinned'], 'must_confirm' => $n['must_confirm'], 'email' => $n['email'], 'format' => (string)($n['format'] ?? '')] : ['level' => 'info', 'mode' => 'live']);
 	$err = $flash['errors'] ?? [];
 	$aud = NuNotify::cleanAudience(is_array($v['audience'] ?? null) ? $v['audience'] : [], $own);
 	$ch = NuNotify::choices($own);
@@ -119,6 +119,10 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 		return '<div class="col-md-6"><label class="form-label small mb-1" for="aud_' . $key . '">' . h($label) . '</label><select class="form-select" multiple name="audience[' . $key . '][]" id="aud_' . $key . '" data-ntf-ts'
 			. ($own ? '' : ' data-create="' . (in_array($key, ['departments', 'teams', 'positions'], true) ? '1' : '') . '"') . '>' . $o . '</select></div>';
 	};
+	// formatted text (0.8.400): TinyMCE when it is installed (copied from nuBuilder); it needs inline styles on this page only
+	$html = ($v['format'] ?? '') === 'html';
+	$tiny = is_file(NU_ROOT . '/' . NU_TINYMCE . '/tinymce.min.js');
+	if ($tiny) header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 	nu_layout_start(t('ntf_title'), 'notifications', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">']);
 	echo $tabs;
 	?>
@@ -131,6 +135,15 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 			<?= nu_back_button(null, nu_url('notifications', ['tab' => 'manage'])) ?>
 			<?php if (!$published): ?><button type="submit" class="btn nuBtnAct" name="publish" value="0" id="ntfDraft"><i class="bi bi-floppy me-1"></i><?= h(t('ntf_save_draft')) ?></button><?php endif; ?>
 			<button type="submit" class="btn nuBtnAct nuBtnSave" name="publish" value="1" id="ntfPublish" data-nu-save><i class="bi <?= $published ? 'bi-floppy' : 'bi-send' ?> me-1"></i><?= h($published ? t('save') : t('ntf_publish')) ?></button>
+			<?php if ($n): // 0.8.402: Delete and the list's ⋯ actions also here (the list's ⋯ column is off-screen on phones) ?>
+			<button type="submit" class="btn nuBtnAct nuBtnDel" form="ntfActDelete" id="ntfDelete" title="<?= h(t('delete')) ?>"><i class="bi bi-trash me-1"></i><span><?= h(t('delete')) ?></span></button>
+			<div class="dropdown"><button class="btn nuBtnAct" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= h(t('actions')) ?>" id="ntfMore"><i class="bi bi-three-dots"></i></button>
+				<ul class="dropdown-menu dropdown-menu-end">
+					<li><a class="dropdown-item" href="<?= h(nu_url('notifications', ['id' => $id, 'receipts' => '1'])) ?>"><i class="bi bi-people me-2"></i><?= h(t('ntf_receipts')) ?></a></li>
+					<li><button type="submit" class="dropdown-item" form="ntfActCopy"><i class="bi bi-copy me-2"></i><?= h(t('ntf_copy')) ?></button></li>
+					<?php if ($published): ?><li><button type="submit" class="dropdown-item" form="ntfActWithdraw"><i class="bi bi-eye-slash me-2"></i><?= h(t('ntf_withdraw')) ?></button></li><?php endif; ?>
+				</ul></div>
+			<?php endif; ?>
 		</div>
 	</div>
 	<div class="card-body">
@@ -138,8 +151,12 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 			<div class="col-lg-7">
 				<div class="mb-3"><label class="form-label" for="ntf_title"><?= h(t('ntf_f_title')) ?> *</label>
 					<input type="text" class="form-control<?= isset($err['title']) ? ' is-invalid' : '' ?>" name="title" id="ntf_title" maxlength="200" required value="<?= h((string)($v['title'] ?? '')) ?>"><?= $fe('title') ?></div>
-				<div class="mb-3"><label class="form-label" for="ntf_body"><?= h(t('ntf_f_body')) ?></label><?= NuListView::infoTip(t('ntf_f_body_tip')) ?>
-					<textarea class="form-control" name="body" id="ntf_body" rows="6" maxlength="4000"><?= h((string)($v['body'] ?? '')) ?></textarea></div>
+				<div class="mb-3"><div class="d-flex flex-wrap align-items-center gap-2 mb-2"><label class="form-label mb-0 me-auto" for="ntf_body"><?= h(t('ntf_f_body')) ?></label>
+						<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="ntf_format" name="format" value="html"<?= $html ? ' checked' : '' ?>
+							data-tiny="<?= $tiny ? h(nu_asset(NU_TINYMCE . '/tinymce.min.js')) : '' ?>" data-base="<?= h(NU_TINYMCE) ?>" data-lang="<?= h(nu_lang()) ?>"
+							data-confirm-text="<?= h(t('ntf_format_off_confirm')) ?>"><label class="form-check-label" for="ntf_format"><?= h(t('ntf_f_format')) ?></label></div><?= NuListView::infoTip(t('ntf_f_format_tip')) ?></div>
+					<textarea class="form-control<?= isset($err['body']) ? ' is-invalid' : '' ?>" name="body" id="ntf_body" rows="6"<?= $html ? '' : ' maxlength="4000"' ?>><?= h((string)($v['body'] ?? '')) ?></textarea><?= $fe('body') ?>
+					<?php if (!$tiny): ?><div class="form-text<?= $html ? '' : ' d-none' ?>" id="ntfNoTiny"><?= h(t('ntf_tinymce_missing')) ?></div><?php endif; ?></div>
 				<div class="mb-3"><span class="form-label d-block"><?= h(t('ntf_f_level')) ?></span>
 					<div class="btn-group flex-wrap nuNtfLevels" role="group" aria-label="<?= h(t('ntf_f_level')) ?>">
 						<?php foreach (NuNotify::LEVELS as $lv => $ic): ?>
@@ -200,6 +217,9 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 		</div>
 	</div>
 </form>
+<?php if ($n): foreach (['delete' => 'ntfActDelete', 'copy' => 'ntfActCopy', 'withdraw' => 'ntfActWithdraw'] as $act => $fid): ?>
+<form method="post" id="<?= $fid ?>" class="d-none"<?= $act === 'delete' ? ' data-confirm="' . h(t('ntf_delete_confirm')) . '" data-confirm-ok="' . h(t('delete')) . '" data-confirm-class="btn btn-danger"' : '' ?>><?= nu_csrf_field() ?><input type="hidden" name="action" value="<?= $act ?>"><input type="hidden" name="id" value="<?= h($id) ?>"></form>
+<?php endforeach; endif; ?>
 	<?php
 	nu_layout_end('<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nunotifications.js') . '"></script>');
 	return;
@@ -264,7 +284,7 @@ if ($tab === 'manage') {
 		<button type="submit" class="btn btn-sm nuBtnAct nuBtnSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 	</form></div>
 	<?php endif; ?>
-	<div class="table-responsive"><table class="table table-hover align-middle mb-0 nu-table">
+	<div class="table-responsive"><table class="table table-hover align-middle mb-0 nu-table nuNtfManage">
 		<thead><tr><th></th><th><?= h(t('ntf_f_title')) ?></th><th><?= h(t('ntf_status')) ?></th><th><?= h(t('ntf_f_audience')) ?></th><th class="text-end"><?= h(t('ntf_read')) ?></th><th><?= h(t('ntf_created')) ?></th><th></th></tr></thead>
 		<tbody>
 		<?php foreach ($rows as $r): $st = NuNotify::state($r); $nid = (string)$r['zzzzsys_nunext_notification_id']; $edit = NuNotify::canEdit($r); ?>

@@ -110,6 +110,10 @@ final class NuRecord
 		$columns = $db->columns($meta->table());
 		if (!$columns) return self::fail(t('form_err_table_missing', $meta->table()));
 
+		// concurrent edits (0.8.401): fields someone else changed since the form was opened – before Before Save runs
+		$checkCc = !$isNew && empty($p['cc_force']) && is_array($p['cc'] ?? null);
+		if ($checkCc && ($c = NuConflict::check($meta, $recordId, $p, false))) return ['ok' => false, 'conflict' => $c];
+
 		NuPhp::reset();
 		NuPhp::$subforms = self::nuSubformObjects($meta, $posted);
 		$hash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, $values, $props);
@@ -127,7 +131,8 @@ final class NuRecord
 		$audit = ['form_id' => $meta->id, 'form_code' => $meta->code(), 'source' => 'form', 'action' => $isNew && !empty($p['clone']) ? 'clone' : null];
 		NuAudit::begin();                                         // audit trail (0.8.350): main record and sub-form rows share one change
 		try {
-		$newId = $db->transaction(function (NuDB $db) use ($meta, $isNew, $recordId, $values, $edited, $columns, $table, $pk, $posted, $oldRow, $audit, &$written) {
+		$newId = $db->transaction(function (NuDB $db) use ($meta, $isNew, $recordId, $values, $edited, $columns, $table, $pk, $posted, $oldRow, $audit, &$written, $checkCc, $p) {
+			if ($checkCc && ($c = NuConflict::check($meta, $recordId, $p, true))) throw new NuConflictFound($c);   // again, with the rows locked
 			$row = [];
 			foreach ($meta->objects as $o) {
 				$f = (string)$o['sob_all_id'];
@@ -183,6 +188,8 @@ final class NuRecord
 			foreach ($posted as $sfId => $sf) self::saveSubform($meta, (string)$sfId, is_array($sf) ? $sf : [], $id, $audit);
 			return $id;
 		});
+		} catch (NuConflictFound $cf) {
+			return ['ok' => false, 'conflict' => $cf->conflict];
 		} finally {
 			NuAudit::end();
 		}
@@ -286,10 +293,11 @@ final class NuRecord
 
 	// ================================================================= delete
 
-	public static function delete(NuFormMeta $meta, string $recordId, array $props = []): array
+	public static function delete(NuFormMeta $meta, string $recordId, array $props = [], array $in = []): array
 	{
 		$row = self::load($meta, $recordId);
 		if (!$row || !self::visible($meta, $recordId)) return self::fail(t('record_not_found'));
+		if ($c = NuConflict::checkDelete($meta, $recordId, $in)) return ['ok' => false, 'conflict' => $c];   // changed since it was opened (0.8.401)
 
 		NuPhp::reset();
 		$hash = NuHash::forForm($meta, $recordId, $row, $props);
@@ -554,5 +562,14 @@ final class NuAutoNumber
 			if ($st->rowCount() === 1) return $new;
 		}
 		return null;
+	}
+}
+
+/** A conflict found inside the save transaction (rolls it back). */
+final class NuConflictFound extends RuntimeException
+{
+	public function __construct(public readonly array $conflict)
+	{
+		parent::__construct('conflict');
 	}
 }
