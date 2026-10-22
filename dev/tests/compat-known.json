@@ -1,0 +1,10 @@
+{
+ "about": "Accepted differences between nuBuilder and nuBuilder Next for dev/tests/compat.js. kind: value (edit form field), cell (browse cell id), column (table column after a save). form / field: regex (* = any form). nub / next: optional regex the two values must match. Every entry needs a reason.",
+ "known": [
+  {"kind": "value", "form": "*", "field": "[A-Za-z0-9_]*(-ts-control|_file|_file_input)", "reason": "helper elements of the page (Tom Select search box, file upload parts) – not a field value"},
+  {"kind": "value", "form": "*", "field": ".*", "nub": "^\\S*\\s?-[\\d.,]+$", "next": "^\\(.*\\)$", "reason": "nuBuilder Next: format option 'negative' = brackets / red_brackets (Formats page) – nuBuilder has no such option and shows a minus"},
+  {"kind": "cell",  "form": "*", "field": ".*", "nub": "^\\S*\\s?-[\\d.,]+$", "next": "^\\(.*\\)$", "reason": "as above, in browse lists"},
+  {"kind": "value", "form": "*", "field": ".*", "nub": "^-?[\\d.,]+$", "next": "^-?[\\d.,]+ ?%$", "reason": "nuBuilder Next shows the suffix of a number format (1000.0 %) – nuBuilder drops it"},
+  {"kind": "cell",  "form": "*", "field": ".*", "nub": "^-?[\\d.,]+$", "next": "^-?[\\d.,]+ ?%$", "reason": "as above, in browse lists"}
+ ]
+}

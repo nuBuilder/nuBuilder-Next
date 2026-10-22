@@ -1,0 +1,76 @@
+/* nuBuilder Next – report designer (pages/nureportdesigner.php, assets/js/nureportdesigner.js) */
+.rdBody main.rdContainer { padding-top: .5rem; padding-bottom: .5rem; }
+.rdApp { display: flex; flex-direction: column; height: calc(100vh - 4.6rem); min-height: 28rem; border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); overflow: hidden; }
+.rdToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .4rem .5rem; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+.rdTitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .75rem; padding: .3rem .75rem; border-bottom: 1px solid var(--bs-border-color); line-height: 1.3; min-width: 0; }
+.rdTitle > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.rdZoomLbl { display: inline-block; min-width: 3.2rem; text-align: center; padding: 0 .25rem; border-top: 1px solid var(--bs-border-color); border-bottom: 1px solid var(--bs-border-color); line-height: 1.85rem; }
+.rdMain { flex: 1; display: grid; grid-template-columns: 14rem minmax(0, 1fr) 19rem; min-height: 0; }
+.rdLeft, .rdRight { overflow-y: auto; padding: .5rem; background: var(--bs-body-bg); }
+.rdLeft { border-inline-end: 1px solid var(--bs-border-color); }
+.rdRight { border-inline-start: 1px solid var(--bs-border-color); }
+.rdPanelHead { font-weight: 600; font-size: .85rem; margin-bottom: .4rem; }
+.rdPanelSub { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); margin: .6rem 0 .25rem; }
+.rdField { display: flex; align-items: center; gap: .3rem; padding: .2rem .45rem; margin-bottom: 2px; border: 1px solid var(--bs-border-color-translucent); border-radius: .3rem;
+	font-size: .8rem; cursor: var(--nu-cursor-grab); background: var(--bs-body-bg); user-select: none; }
+.rdField:hover, .rdField:focus { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); outline: none; }
+.rdField > .bi { color: var(--bs-secondary-color); font-size: .75rem; }
+.rdField:active { cursor: var(--nu-cursor-grabbing); }
+.rdReadonly .rdField, .rdReadonly .rdField:active { cursor: default; }
+.rdField[hidden] { display: none; }
+
+.rdCanvas { overflow: auto; background: var(--bs-secondary-bg); padding: 1.25rem 1.5rem 3rem; outline: none; }
+.rdPageWrap { width: max-content; margin: 0 auto; }
+.rdRuler { position: relative; height: 1.1rem; margin-bottom: 2px; font-size: .6rem; color: var(--bs-secondary-color); }
+.rdTick { position: absolute; bottom: 0; height: .35rem; border-inline-start: 1px solid var(--bs-secondary-color); padding-inline-start: 2px; line-height: 1; }
+.rdTickMajor { height: 1rem; }
+.rdPage { background: #fff; color: #000; box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .18); }
+.rdBand { position: relative; }
+.rdBandHead { display: flex; justify-content: space-between; gap: .5rem; padding: .1rem .4rem; font-size: .72rem; background: #e9eef6; color: #334; border-top: 1px solid #c6d0e0;
+	border-bottom: 1px solid #c6d0e0; cursor: pointer; user-select: none; }
+.rdBandActive { background: #cfe0fb; }
+.rdBandInfo { color: #667; }
+.rdBandBody { position: relative; overflow: visible;
+	background-image: linear-gradient(to right, rgba(60, 90, 140, .09) 1px, transparent 1px), linear-gradient(to bottom, rgba(60, 90, 140, .09) 1px, transparent 1px); }
+.rdNoGrid .rdBandBody { background-image: none; }
+.rdBandGrip { height: 5px; margin-top: -2px; cursor: ns-resize; position: relative; z-index: 3; }
+.rdBandGrip:hover { background: rgba(13, 110, 253, .35); }
+.rdDropOver { outline: 2px dashed var(--bs-primary); outline-offset: -2px; background-color: rgba(13, 110, 253, .06) !important; }
+.rdObj { position: absolute; box-sizing: border-box; cursor: move; overflow: hidden; outline: 1px dashed rgba(0, 0, 0, .18); user-select: none; touch-action: none; }
+.rdObj.rdT-box { outline: none; }
+.rdObj.rdSel { outline: 2px solid #0d6efd; overflow: visible; z-index: 100 !important; }
+.rdText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 1px; pointer-events: none; height: 100%; }
+.rdT-field .rdText { color: #0b4fa8; }
+.rdObj img { width: 100%; height: 100%; object-fit: fill; pointer-events: none; display: block; }
+.rdImgPh { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; font-size: .7rem; color: #667; background: repeating-linear-gradient(45deg, #f2f4f8, #f2f4f8 6px, #e7ebf2 6px, #e7ebf2 12px); pointer-events: none; overflow: hidden; }
+.rdHandle { position: absolute; width: 8px; height: 8px; background: #fff; border: 1px solid #0d6efd; border-radius: 1px; z-index: 5; }
+.rdH-n { top: -5px; left: calc(50% - 4px); cursor: ns-resize; }
+.rdH-s { bottom: -5px; left: calc(50% - 4px); cursor: ns-resize; }
+.rdH-e { right: -5px; top: calc(50% - 4px); cursor: ew-resize; }
+.rdH-w { left: -5px; top: calc(50% - 4px); cursor: ew-resize; }
+.rdH-ne { right: -5px; top: -5px; cursor: nesw-resize; }
+.rdH-sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.rdH-nw { left: -5px; top: -5px; cursor: nwse-resize; }
+.rdH-se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.rdMarquee { position: absolute; border: 1px dashed #0d6efd; background: rgba(13, 110, 253, .08); pointer-events: none; z-index: 200; }
+
+.rdProps .rdProp { margin-bottom: .45rem; min-width: 0; }
+.rdProps .rdProp .form-label { font-size: .72rem; margin-bottom: .1rem; color: var(--bs-secondary-color); }
+.rdProps .rdPropRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(4.2rem, 1fr)); gap: .4rem; }
+.rdProps .form-check-input { display: block; margin-top: .3rem; }
+.rdProps .form-control-color { width: 100%; height: 1.9rem; padding: .15rem; }
+.rdGroupRow { display: grid; grid-template-columns: auto minmax(0, 1fr) 7rem; gap: .25rem; align-items: center; margin-bottom: .5rem; padding-bottom: .4rem; border-bottom: 1px dashed var(--bs-border-color); }
+.rdGroupBtns { grid-column: 2 / 4; justify-self: end; }
+.rdPreviewFrame { width: 100%; height: 80vh; border: 0; display: block; }
+.rdHelp p { margin-bottom: .35rem; }
+
+@media (max-width: 991.98px) {
+	.rdApp { height: auto; }
+	.rdMain { grid-template-columns: 1fr; }
+	.rdLeft { max-height: 12rem; border-inline-end: 0; border-bottom: 1px solid var(--bs-border-color); }
+	.rdCanvas { max-height: 70vh; }
+	.rdRight { border-inline-start: 0; border-top: 1px solid var(--bs-border-color); }
+}
+[data-bs-theme="dark"] .rdBandHead { background: #2c3443; color: #dde; border-color: #3c4658; }
+[data-bs-theme="dark"] .rdBandActive { background: #23406e; }
+[data-bs-theme="dark"] .rdBandInfo { color: #aab; }

@@ -1,0 +1,984 @@
+{
+    "format": 1,
+    "version": "0.8.372",
+    "steps": [
+        {
+            "id": "0001-own-tables",
+            "description": "nuBuilder Next tables: log, form history, 2FA, tokens, sessions, API, dashboards …",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_*",
+                    "kind": "table",
+                    "what": "nuBuilder Next tables created when missing (log, form history, 2FA, tokens, sessions, settings, API, dashboards …)"
+                }
+            ]
+        },
+        {
+            "id": "0002-report-tables",
+            "description": "nuBuilder report and SQL builder tables (zzzzsys_report, zzzzsys_access_report, zzzzsys_select, zzzzsys_select_clause) when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_report",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_access_report",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_select",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_select_clause",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0003-translate-table",
+            "description": "nuBuilder translation table (zzzzsys_translate) when missing – new installations have it, older ones got it only with the first saved translation",
+            "changes": [
+                {
+                    "table": "zzzzsys_translate",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0004-cloner-tables",
+            "description": "nuBuilder tables of saved Cloner and App cloner settings (zzzzsys_cloner, zzzzsys_app_cloner) when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_cloner",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_app_cloner",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0005-setting-primary-db",
+            "description": "Settings table: row $nuConfigPrimaryDatabaseManagement (phpMyAdmin or Adminer) when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_config",
+                    "kind": "data",
+                    "what": "row $nuConfigPrimaryDatabaseManagement added when missing"
+                }
+            ]
+        },
+        {
+            "id": "0007-drop-vendor-layout",
+            "description": "Settings of nuBuilder Next: row vendor_layout of the former Admin tools view removed",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_setting",
+                    "kind": "data",
+                    "what": "row vendor_layout deleted"
+                }
+            ]
+        },
+        {
+            "id": "0008-admin-roles",
+            "description": "nuBuilder Next admin roles (zzzzsys_nunext_admin_role, zzzzsys_nunext_admin_user) with the five default roles",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_admin_role",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_admin_user",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_admin_role",
+                    "kind": "data",
+                    "what": "five default roles inserted when the table is empty"
+                }
+            ]
+        },
+        {
+            "id": "0009-list-views",
+            "description": "nuBuilder Next list views (zzzzsys_nunext_list_view): layouts of the users and access level lists",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_list_view",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0010-home-layouts",
+            "description": "Start page: the layout becomes the shared layout \"Standard\" (saved layouts, zzzzsys_nunext_list_view)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_list_view",
+                    "kind": "data",
+                    "what": "the start page layout inserted as shared layout \"Standard\" (list_key home) and set as default"
+                },
+                {
+                    "table": "zzzzsys_nunext_setting",
+                    "kind": "data",
+                    "what": "row home_layout moved there and deleted"
+                }
+            ]
+        },
+        {
+            "id": "0011-audit",
+            "description": "Audit trail (zzzzsys_nunext_audit): table created, the record changes of the log copied into it",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_audit",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_audit",
+                    "kind": "data",
+                    "what": "record changes of zzzzsys_nunext_log (record_inserted, record_updated, record_deleted) copied, one row per column"
+                }
+            ]
+        },
+        {
+            "id": "0012-notifications",
+            "description": "Notification centre (zzzzsys_nunext_notification, zzzzsys_nunext_notification_user); permission items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_notification",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_notification_user",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_permission_item",
+                    "kind": "data",
+                    "what": "items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN added when missing (group \"nuBuilder Next\")"
+                }
+            ]
+        }
+    ],
+    "own_tables": {
+        "zzzzsys_nunext_log": {
+            "pk": "zzzzsys_nunext_log_id",
+            "cols": [
+                [
+                    "log_time",
+                    "datetime"
+                ],
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "login",
+                    "text",
+                    "50"
+                ],
+                [
+                    "ip",
+                    "text",
+                    "45"
+                ],
+                [
+                    "event",
+                    "text",
+                    "40"
+                ],
+                [
+                    "object",
+                    "text",
+                    "100"
+                ],
+                [
+                    "record_id",
+                    "text",
+                    "100"
+                ],
+                [
+                    "details",
+                    "longtext"
+                ]
+            ],
+            "index": [
+                "log_time",
+                "event"
+            ]
+        },
+        "zzzzsys_nunext_form_history": {
+            "pk": "zzzzsys_nunext_form_history_id",
+            "cols": [
+                [
+                    "form_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "login",
+                    "text",
+                    "50"
+                ],
+                [
+                    "action",
+                    "text",
+                    "60"
+                ],
+                [
+                    "snapshot",
+                    "longtext"
+                ]
+            ],
+            "index": [
+                "form_id"
+            ]
+        },
+        "zzzzsys_nunext_user_2fa": {
+            "pk": "zzzzsys_nunext_user_2fa_id",
+            "cols": [
+                [
+                    "totp_secret",
+                    "text",
+                    "255"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "last_step",
+                    "bigint"
+                ]
+            ],
+            "index": []
+        },
+        "zzzzsys_nunext_session": {
+            "pk": "zzzzsys_nunext_session_id",
+            "cols": [
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "login",
+                    "text",
+                    "50"
+                ],
+                [
+                    "display",
+                    "text",
+                    "100"
+                ],
+                [
+                    "via",
+                    "text",
+                    "20"
+                ],
+                [
+                    "ip",
+                    "text",
+                    "45"
+                ],
+                [
+                    "user_agent",
+                    "text",
+                    "255"
+                ],
+                [
+                    "login_at",
+                    "datetime"
+                ],
+                [
+                    "last_seen",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "last_seen"
+            ]
+        },
+        "zzzzsys_nunext_token": {
+            "pk": "zzzzsys_nunext_token_id",
+            "cols": [
+                [
+                    "kind",
+                    "text",
+                    "20"
+                ],
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "expires_at",
+                    "datetime"
+                ],
+                [
+                    "attempts",
+                    "int"
+                ],
+                [
+                    "data",
+                    "text",
+                    "255"
+                ]
+            ],
+            "index": [
+                "user_id"
+            ]
+        },
+        "zzzzsys_nunext_api_client": {
+            "pk": "zzzzsys_nunext_api_client_id",
+            "cols": [
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "client_id",
+                    "text",
+                    "64"
+                ],
+                [
+                    "secret_hash",
+                    "text",
+                    "64"
+                ],
+                [
+                    "secret_hash_old",
+                    "text",
+                    "64"
+                ],
+                [
+                    "secret_old_until",
+                    "datetime"
+                ],
+                [
+                    "scopes",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "ip_allow",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "rate_limit",
+                    "int"
+                ],
+                [
+                    "active",
+                    "text",
+                    "1"
+                ],
+                [
+                    "expires_on",
+                    "datetime"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "last_used_at",
+                    "datetime"
+                ],
+                [
+                    "fails",
+                    "int"
+                ],
+                [
+                    "locked_until",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "client_id",
+                "user_id"
+            ]
+        },
+        "zzzzsys_nunext_api_token": {
+            "pk": "zzzzsys_nunext_api_token_id",
+            "cols": [
+                [
+                    "client_ref",
+                    "text",
+                    "25"
+                ],
+                [
+                    "scopes",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "expires_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "client_ref",
+                "expires_at"
+            ]
+        },
+        "zzzzsys_nunext_api_rate": {
+            "pk": "zzzzsys_nunext_api_rate_id",
+            "cols": [
+                [
+                    "hits",
+                    "int"
+                ],
+                [
+                    "minute_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "minute_at"
+            ]
+        },
+        "zzzzsys_nunext_setting": {
+            "pk": "zzzzsys_nunext_setting_id",
+            "cols": [
+                [
+                    "setting_value",
+                    "longtext"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": []
+        },
+        "zzzzsys_nunext_dashboard": {
+            "pk": "zzzzsys_nunext_dashboard_id",
+            "cols": [
+                [
+                    "code",
+                    "text",
+                    "50"
+                ],
+                [
+                    "title",
+                    "text",
+                    "200"
+                ],
+                [
+                    "description",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "on_home",
+                    "text",
+                    "1"
+                ],
+                [
+                    "access",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "date_range",
+                    "text",
+                    "20"
+                ],
+                [
+                    "sort_order",
+                    "int"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "code"
+            ]
+        },
+        "zzzzsys_nunext_widget": {
+            "pk": "zzzzsys_nunext_widget_id",
+            "cols": [
+                [
+                    "dashboard_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "sort_order",
+                    "int"
+                ],
+                [
+                    "type",
+                    "text",
+                    "10"
+                ],
+                [
+                    "title",
+                    "text",
+                    "200"
+                ],
+                [
+                    "source",
+                    "text",
+                    "10"
+                ],
+                [
+                    "query",
+                    "longtext"
+                ],
+                [
+                    "options",
+                    "longtext"
+                ]
+            ],
+            "index": [
+                "dashboard_id"
+            ]
+        },
+        "zzzzsys_nunext_admin_role": {
+            "pk": "zzzzsys_nunext_admin_role_id",
+            "cols": [
+                [
+                    "code",
+                    "text",
+                    "50"
+                ],
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "description",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "rights",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "sort_order",
+                    "int"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "code"
+            ]
+        },
+        "zzzzsys_nunext_admin_user": {
+            "pk": "zzzzsys_nunext_admin_user_id",
+            "cols": [
+                [
+                    "role_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "role_id"
+            ]
+        },
+        "zzzzsys_nunext_list_view": {
+            "pk": "zzzzsys_nunext_list_view_id",
+            "cols": [
+                [
+                    "list_key",
+                    "text",
+                    "100"
+                ],
+                [
+                    "scope",
+                    "text",
+                    "10"
+                ],
+                [
+                    "owner",
+                    "text",
+                    "50"
+                ],
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "access_ids",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "definition",
+                    "longtext"
+                ],
+                [
+                    "sort_order",
+                    "int"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "list_key"
+            ]
+        },
+        "zzzzsys_nunext_audit": {
+            "pk": "zzzzsys_nunext_audit_id",
+            "cols": [
+                [
+                    "change_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "changed_at",
+                    "datetime"
+                ],
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "login",
+                    "text",
+                    "50"
+                ],
+                [
+                    "ip",
+                    "text",
+                    "45"
+                ],
+                [
+                    "action",
+                    "text",
+                    "10"
+                ],
+                [
+                    "source",
+                    "text",
+                    "10"
+                ],
+                [
+                    "table_name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "record_id",
+                    "text",
+                    "100"
+                ],
+                [
+                    "form_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "form_code",
+                    "text",
+                    "100"
+                ],
+                [
+                    "parent_table",
+                    "text",
+                    "100"
+                ],
+                [
+                    "parent_id",
+                    "text",
+                    "100"
+                ],
+                [
+                    "column_name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "old_value",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "new_value",
+                    "text",
+                    "4000"
+                ]
+            ],
+            "index": [
+                "change_id",
+                "changed_at",
+                "table_name",
+                "record_id",
+                "parent_id",
+                "user_id"
+            ]
+        },
+        "zzzzsys_nunext_notification": {
+            "pk": "zzzzsys_nunext_notification_id",
+            "cols": [
+                [
+                    "title",
+                    "text",
+                    "200"
+                ],
+                [
+                    "body",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "level",
+                    "text",
+                    "10"
+                ],
+                [
+                    "link",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "audience",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "mode",
+                    "text",
+                    "10"
+                ],
+                [
+                    "publish_at",
+                    "datetime"
+                ],
+                [
+                    "expires_at",
+                    "datetime"
+                ],
+                [
+                    "pinned",
+                    "text",
+                    "1"
+                ],
+                [
+                    "must_confirm",
+                    "text",
+                    "1"
+                ],
+                [
+                    "email",
+                    "text",
+                    "1"
+                ],
+                [
+                    "sent_mail_at",
+                    "datetime"
+                ],
+                [
+                    "status",
+                    "text",
+                    "10"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "created_by_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "status",
+                "publish_at",
+                "created_by_id"
+            ]
+        },
+        "zzzzsys_nunext_notification_user": {
+            "pk": "zzzzsys_nunext_notification_user_id",
+            "cols": [
+                [
+                    "notification_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "recipient",
+                    "text",
+                    "1"
+                ],
+                [
+                    "read_at",
+                    "datetime"
+                ],
+                [
+                    "hidden_at",
+                    "datetime"
+                ],
+                [
+                    "confirmed_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "notification_id",
+                "user_id"
+            ]
+        },
+        "zzzzsys_nunext_api_request": {
+            "pk": "zzzzsys_nunext_api_request_id",
+            "cols": [
+                [
+                    "kind",
+                    "text",
+                    "10"
+                ],
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "folder",
+                    "text",
+                    "100"
+                ],
+                [
+                    "method",
+                    "text",
+                    "10"
+                ],
+                [
+                    "path",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "headers",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "body",
+                    "longtext"
+                ],
+                [
+                    "settings",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "kind",
+                "created_by"
+            ]
+        }
+    }
+}

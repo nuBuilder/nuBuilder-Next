@@ -1,0 +1,37 @@
+# Static analysis (B3 of the 0.8.207 review):  php phpstan.phar analyse -c dev/phpstan.neon
+# phpstan.phar is not part of the project (download from github.com/phpstan/phpstan/releases); dev/release.py runs it when
+# it finds ../phpstan.phar. Level 2: undefined variables, unknown classes / functions / methods, wrong argument counts, PHPDoc types;
+# level 3 (0.8.368): return types and array shapes. Levels 4 / 5 were tried (0.8.368): ~70 findings, all "always true / false" or
+# "unreachable" through closures with references, eval'd procedure code, static state and the NU_FEATURE_* constants – no real bug,
+# so they stay off; the few argument-type points of level 5 were fixed.
+parameters:
+	level: 3
+	phpVersion: 80100
+	excludePaths:
+		- ../core/nutcpdf.php
+	paths:
+		- ../index.php
+		- ../api.php
+		- ../cron.php
+		- ../core
+		- ../pages
+	bootstrapFiles:
+		- phpstan-bootstrap.php
+	ignoreErrors:
+		# nuBuilder's PHP API is defined at runtime inside if (!function_exists(…)) blocks; form code is eval'd
+		- '#Function nu\w+ not found#'
+		- '#Function db_\w+ not found#'
+		# PDO SQL Server constants exist only with pdo_sqlsrv
+		- '#Access to undefined constant PDO::SQLSRV_\w+#'
+		# TCPDF and PHPMailer come from the nuBuilder installation
+		- '#(TCPDF|PHPMailer)#'
+		# pages are included by index.php, which defines their variables ($user, $p …)
+		- message: '#Variable \$\w+ might not be defined#'
+		  path: ../pages/*
+		# the API router calls its handlers with the matched URL parts (self::$fn(...$parts))
+		- message: '#invoked with 0 parameters#'
+		  path: ../core/nuapi.php
+		# nuRunProcedure: the eval'd procedure sets $error
+		- message: '#unused use \$error#'
+		  path: ../core/form/nuphp_compat.php
+	reportUnmatchedIgnoredErrors: false

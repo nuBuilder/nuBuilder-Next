@@ -1,0 +1,15 @@
+# nuBuilder Next – files that never go into the repository (B1 of the 0.8.207 review)
+nuconfig.php
+install.allow
+_backup/
+_install/
+_update/
+temp/
+third_party/
+assets/vendor/tinymce/
+lib/PHPMailer/
+node_modules/
+*.zip
+*.key
+phpstan.phar
+.DS_Store

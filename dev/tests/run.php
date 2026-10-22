@@ -1,0 +1,182 @@
+<?php
+declare(strict_types=1);
+
+/*
+ * nuBuilder Next – unit tests without a database or web server (run from the nunext folder):  php dev/tests/run.php
+ * Called by dev/release.py before every release. Exit code 1 when a test fails.
+ * Browser tests against a test installation: dev/tests/smoke.js (see the comment there).
+ */
+if (PHP_SAPI !== 'cli') exit;
+$cfg = tempnam(sys_get_temp_dir(), 'nucfg');
+file_put_contents($cfg, "<?php\n\$nuConfigDBName = 'none'; \$nuConfigTrustProxy = true; \$nuConfigSecretKey = 'test-key';\n");
+putenv('NU_CONFIG=' . $cfg);
+require dirname(__DIR__, 2) . '/core/nuapp.php';
+
+$fails = 0;
+$n = 0;
+function check(string $name, bool $ok, string $info = ''): void
+{
+	global $fails, $n;
+	$n++;
+	if (!$ok) { $fails++; echo "FAIL $name" . ($info !== '' ? " – $info" : '') . "\n"; }
+}
+
+// ---------------------------------------------------------------- SQL classification (demo mode, SQL builder preview)
+foreach (['SELECT 1' => true, "SELECT * FROM a JOIN b ON a.x = b.y WHERE s = 'DELETE'" => true, 'WITH x AS (SELECT 1) SELECT * FROM x' => true,
+	'SELECT `update` FROM t' => true, '(SELECT 1) UNION (SELECT 2)' => true,
+	'WITH x AS (SELECT 1) DELETE FROM t' => false, 'SELECT * INTO new_t FROM a' => false, 'SELECT 1; DROP TABLE x' => false,
+	"SELECT LOAD_FILE('/etc/passwd')" => false, 'SELECT * FROM t FOR UPDATE' => false, 'UPDATE t SET a = 1' => false, 'CALL p()' => false,
+	"SELECT * FROM t INTO OUTFILE '/tmp/x'" => false] as $sql => $want) {
+	check("readOnlySql: $sql", NuDemo::readOnlySql($sql) === $want);
+}
+check('tablesOf', NuDemo::tablesOf('SELECT * FROM zzzzsys_user u JOIN `Orders` o ON 1') === ['zzzzsys_user', 'orders']);
+check('sqlAllowed select', NuDemo::sqlAllowed('SELECT 1'));
+check('sqlAllowed update', !NuDemo::sqlAllowed('UPDATE customer SET a = 1'));
+
+// ---------------------------------------------------------------- English variants (0.8.314)
+foreach (['en-US' => 'en-US', 'en' => 'en-US', 'en_CA' => 'en-US', 'en-AU' => 'en-AU', 'en-nz' => 'en-AU', 'en-GB' => 'en-GB', 'en-IE' => 'en-GB', 'en-IN' => 'en-GB', 'de-CH' => 'de-CH', 'de' => 'de-DE', 'de-AT' => 'de-DE', 'fr-CH' => null] as $tag => $want) {
+	check("variant of $tag", nu_lang_variant_of($tag) === $want, (string)nu_lang_variant_of($tag));
+}
+$_SESSION = [];
+nu_set_lang('en-US');
+check('set en-US', nu_lang() === 'en' && nu_lang_variant() === 'en-US' && nu_locale() === 'en-US');
+check('en-US text', t('home_tile_color') === 'Color' && t('save') === (require NU_ROOT . '/lang/en.php')['save']);
+nu_set_lang('en');
+check('plain en keeps the variant', nu_lang_variant() === 'en-US');
+nu_set_lang('en-GB');
+check('en-GB text (base)', t('home_tile_color') === (require NU_ROOT . '/lang/en.php')['home_tile_color'] && nu_locale() === 'en-GB');
+nu_set_lang('fr');
+check('other language drops the variant', nu_lang_variant() === '' && !isset($_SESSION['nu_lang_variant']) && nu_lang_choice() === 'fr');
+check('menu choices', array_slice(array_keys(nu_lang_choices()), 0, 5) === ['de-DE', 'de-CH', 'en-GB', 'en-AU', 'en-US'] && !isset(nu_lang_choices()['en']) && !isset(nu_lang_choices()['de']));
+// German (0.8.315): de.php = de-DE (ß, „“), de-CH generated (ss, «»)
+nu_set_lang('de');
+check('plain de = de-DE', nu_lang_variant() === 'de-DE' && nu_locale() === 'de-DE' && t('close') === 'Schließen');
+nu_set_lang('de-CH');
+check('de-CH text', nu_lang() === 'de' && nu_locale() === 'de-CH' && t('close') === 'Schliessen' && !str_contains(t('home_delete_tile_confirm'), '„'));
+$_SESSION = [];
+
+// ---------------------------------------------------------------- client IP (last X-Forwarded-For entry), HTTPS behind a proxy
+$_SERVER['REMOTE_ADDR'] = '10.0.0.1';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '1.2.3.4, 203.0.113.9';
+check('client ip = last forwarded entry', nu_client_ip() === '203.0.113.9', nu_client_ip());
+$_SERVER['HTTP_X_FORWARDED_FOR'] = 'not-an-ip';
+check('client ip ignores junk', nu_client_ip() === '10.0.0.1');
+$_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
+check('https behind trusted proxy', nu_https());
+unset($_SERVER['HTTP_X_FORWARDED_PROTO']);
+check('http', !nu_https());
+
+// ---------------------------------------------------------------- API IP list
+check('ip in /24', NuApiClient::ipAllowed('192.168.1.0/24', '192.168.1.77'));
+check('ip outside /24', !NuApiClient::ipAllowed('192.168.1.0/24', '192.168.2.1'));
+check('ipv6 /64', NuApiClient::ipAllowed('2001:db8::/64', '2001:db8::1'));
+check('empty list = all', NuApiClient::ipAllowed('', '8.8.8.8'));
+
+// ---------------------------------------------------------------- update package paths and signature payload
+$safe = new ReflectionMethod(NuUpdate::class, 'safePath');
+foreach (['core/nuapp.php' => true, '.htaccess' => true, 'core/.htaccess' => true, '../x.php' => false, '/etc/passwd' => false, 'a\\b' => false,
+	'.git/config' => false, 'c:/x' => false] as $p => $want) check("safePath $p", $safe->invoke(null, $p) === $want);
+check('protected nuconfig', NuUpdate::isProtected('nuconfig.php') && NuUpdate::isProtected('_backup/x.zip'));
+$m = json_decode((string)file_get_contents(NU_ROOT . '/nunext-manifest.json'), true);
+if (!empty($m['signature'])) check('manifest signature valid', NuUpdate::signatureState($m) === 'valid');
+$m2 = ['version' => '1', 'files' => ['b' => ['sha256' => 'x', 'size' => 1], 'a' => ['sha256' => 'y', 'size' => 2]]];
+$m3 = ['version' => '1', 'files' => ['a' => ['sha256' => 'y', 'size' => 2], 'b' => ['sha256' => 'x', 'size' => 1]]];
+check('signed payload independent of order', NuUpdate::signedPayload($m2) === NuUpdate::signedPayload($m3));
+check('tampered package is invalid', NuUpdate::signatureState($m2 + ['signature' => base64_encode(str_repeat('a', 64))]) === 'invalid');
+
+// ---------------------------------------------------------------- passwords, 2FA
+[$ok] = NuAuth::verifyPassword('secret', password_hash('secret', PASSWORD_DEFAULT));
+check('bcrypt', $ok);
+check('md5 legacy', NuAuth::verifyPassword('secret', md5('secret')) === [true, true]);
+check('wrong password', NuAuth::verifyPassword('x', md5('secret'))[0] === false);
+$b32 = NuTwoFA::base32Encode('12345678901234567890');
+check('base32', $b32 === 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', $b32);
+check('TOTP RFC 6238 (59 s)', NuTwoFA::code($b32, 1) === '287082');
+check('TOTP RFC 6238 (1111111109 s)', NuTwoFA::code($b32, intdiv(1111111109, 30)) === '081804');
+check('auto-login hash changes with expiry', NuAuth::urlHash('h') !== NuAuth::urlHash('h', time() + 60));
+check('auto-login hash old format', NuAuth::urlHash('h') === hash_hmac('sha256', 'nunext-autologin|h', 'test-key'));
+
+// ---------------------------------------------------------------- secrets, next URLs
+check('secret names', NuSecurity::secretName('sus_login_password') && NuSecurity::secretName('smtp_secret') && !NuSecurity::secretName('cus_name')
+	&& !NuSecurity::secretName('nuConfigPasswordMinLength'));
+check('hash values', NuSecurity::hashValue('$2y$10$abcdefghijklmnopqrstuv') && !NuSecurity::hashValue('hello'));
+check('validNext local', NuAuth::validNext('index.php?p=users') === 'index.php?p=users');
+check('validNext no other host', NuAuth::validNext('https://evil.example/') === null && NuAuth::validNext('index.php?p=login') === null
+	&& NuAuth::validNext('index.php?p=x&u=a') === null && NuAuth::validNext('index.php?p=reauth') === null);
+
+// ---------------------------------------------------------------- protected folders
+$tmp = sys_get_temp_dir() . '/nunext-test-' . bin2hex(random_bytes(4));
+NuSecurity::protectDir($tmp);
+check('protectDir', is_file("$tmp/.htaccess") && (string)file_get_contents("$tmp/.htaccess") === NuSecurity::DENY && is_file("$tmp/index.html"));
+file_put_contents("$tmp/.htaccess", "# own rules\n");                                // an existing .htaccess is left alone
+NuSecurity::protectDir($tmp);
+check('protectDir keeps an existing .htaccess', (string)file_get_contents("$tmp/.htaccess") === "# own rules\n");
+foreach (["$tmp/.htaccess", "$tmp/index.html"] as $f) @unlink($f);
+@rmdir($tmp);
+foreach (['core', 'pages', 'lang', 'install', 'docs', 'dev'] as $d) check(".htaccess in $d/", is_file(NU_ROOT . "/$d/.htaccess"));
+
+// ---------------------------------------------------------------- include guards and class loading
+foreach (array_merge(glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*.php'), glob(NU_ROOT . '/pages/*.php'), glob(NU_ROOT . '/lang/*.php')) as $f) {
+	if (basename($f) === 'nuapp.php') continue;
+	check('include guard ' . substr($f, strlen(NU_ROOT) + 1), str_contains(substr((string)file_get_contents($f), 0, 300), "defined('NU_ROOT') || exit;"));
+}
+foreach (array_merge(glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*.php')) as $f) {
+	if (!preg_match_all('/^(?:final |abstract )?class (\w+)/m', (string)file_get_contents($f), $mm)) continue;
+	foreach ($mm[1] as $c) {
+		if ($c === 'NuTCPDF') continue;                                    // needs TCPDF first (NuReport::loadTcpdf)
+		$where = substr($f, strlen(NU_ROOT) + 1);
+		$ok = class_exists($c, false) || (isset(NU_AUTOLOAD[$c]) && NU_AUTOLOAD[$c] === $where) || in_array($where, ['core/form/nuphp_compat.php', 'core/form/nuphp_api.php'], true);
+		check("class $c is loaded or in NU_AUTOLOAD", $ok, $where);
+	}
+}
+foreach (NU_AUTOLOAD as $c => $file) check("autoload $c", class_exists($c), $file);
+
+// ---------------------------------------------------------------- branding (0.8.297): colours and logo types
+check('brand hex short', NuBranding::hex('#ABC') === '#aabbcc');
+check('brand hex invalid', NuBranding::hex('red') === '' && NuBranding::hex('#12345') === '');
+check('brand contrast black/white', abs(NuBranding::contrast('#000000', '#ffffff') - 21.0) < 0.01);
+check('brand text on dark accent', NuBranding::onColor('#7b2cbf') === '#fff');
+check('brand text on light accent', NuBranding::onColor('#ffe066') === '#000');
+check('brand readable link', NuBranding::contrast(NuBranding::readable('#ffcc00', '#ffffff', 4.5, '#000000'), '#ffffff') >= 4.5);
+check('brand svg accepted', NuBranding::imageType('<?xml version="1.0"?>' . "\n" . '<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'a.svg') === 'image/svg+xml');
+check('brand html refused', NuBranding::imageType('<html><svg></svg></html>', 'a.svg') === '');
+check('brand text refused', NuBranding::imageType('hello', 'a.png') === '');
+
+// ---------------------------------------------------------------- dashboards (0.8.298)
+$today = date('Y-m-d');
+check('dash range today', NuDashboard::range('today') === [$today, $today]);
+check('dash range month', NuDashboard::range('month') === [date('Y-m-01'), date('Y-m-t')]);
+check('dash range custom', NuDashboard::range('custom', '2026-01-05', '2026-02-01') === ['2026-01-05', '2026-02-01']);
+check('dash range custom invalid', NuDashboard::range('custom', '2026-02-30', 'x')[1] === $today);
+check('dash range quarter', strlen(NuDashboard::range('quarter')[1]) === 10 && NuDashboard::range('quarter')[0] <= $today && NuDashboard::range('quarter')[1] >= $today);
+$o = NuDashboard::options(['width' => 5, 'height' => 5000, 'chart' => 'x', 'decimals' => 9, 'low' => 'abc', 'refresh' => 3], 'kpi');
+check('dash options limits', $o['width'] === 3 && $o['height'] === 800 && $o['chart'] === 'bar' && $o['decimals'] === 6 && $o['low'] === '' && $o['refresh'] === 10);
+check('dash value numbers', NuDashboard::value('12') === 12 && NuDashboard::value('1.50') === 1.5 && NuDashboard::value('007a') === '007a' && NuDashboard::value(null) === null);
+check('dash value long number stays text', NuDashboard::value('12345678901234567890') === '12345678901234567890');
+check('dash uses dates', NuDashboard::usesDates([['source' => 'sql', 'query' => "SELECT 1 WHERE d >= '#DATE_FROM#'"]]) && !NuDashboard::usesDates([['source' => 'sql', 'query' => 'SELECT 1']]));
+
+// ---------------------------------------------------------------- negative numbers as nuBuilder: minus after the prefix (0.8.364)
+foreach (['N|€ 1.000,00' => ['-99.95', '€ -99,95'], 'N|USD 1,000.00' => ['-1234.5', 'USD -1,234.50'], 'N|1000.00' => ['-5', '-5.00'], 'N|1000.0 %' => ['-7.25', '-7.3 %']] as $f => [$v, $want]) {
+	$num = (new ReflectionMethod('NuFormat', 'number'))->invoke(null, $v, substr($f, 2), 'minus');      // without the format registry (no database)
+	check("number $f $v", $num === $want, $num);
+}
+
+// ---------------------------------------------------------------- PHP2Shell fixed releases (0.8.362)
+foreach (['8.3.6' => '8.3.36', '8.3.35' => '8.3.36', '8.3.36' => '', '8.3.40' => '', '8.2.34' => '8.2.35', '8.2.35' => '', '8.4.26' => '8.4.27',
+	'8.4.27' => '', '8.5.11' => '8.5.12', '8.5.12' => '', '8.1.33' => '8.2.35', '7.4.33' => '8.2.35', '8.6.0' => '', '9.0.0' => '',
+	'8.3.36-dev' => '', 'x' => ''] as $v => $want) {
+	check("phpFixNeeded $v", NuSecurity::phpFixNeeded($v) === $want, NuSecurity::phpFixNeeded($v));
+}
+check('phpFixNote', NuSecurity::phpFixNote('8.5.12') === '' && str_contains(NuSecurity::phpFixNote('8.3.6'), '8.3.36') && str_contains(NuSecurity::phpFixNote('8.1.2'), '8.2.35'));
+
+// ---------------------------------------------------------------- hash variables outside quotes (lint)
+$lint = static fn(string $code, string $lang) => NuCompat::unquotedVars($code, $lang);
+check('lint sql', $lint("SELECT * FROM t WHERE id = '#RECORD_ID#' AND x = #cus_id#", 'sql') === ['cus_id']);
+check('lint sql comment', $lint('SELECT 1 -- #x#', 'sql') === []);
+check('lint php', $lint('$a = #amount#; $b = "#name#";', 'php') === ['amount']);
+check('lint sql in php string', $lint('nuRunQuery("SELECT * FROM t WHERE id = #x#");', 'php') === ['x']);
+check('lint record id unquoted', $lint('SELECT * FROM t WHERE id = #RECORD_ID#', 'sql') === ['RECORD_ID']);
+
+@unlink($cfg);
+echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
+exit($fails ? 1 : 0);

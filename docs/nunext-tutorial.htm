@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nuBuilder Next tutorial</title>
+<!--
+	nuBuilder Next tutorial (English, British spelling). Shown at index.php?p=tutorial (pages/nututorial.php, core/nututorial.php) –
+	never link this file directly. For the globeadmin and users with an admin role.
+
+	Structure:
+	  <article class="tut-chapter" id="ch-…" data-part="basics|build|admin" [data-right="…"]>
+	    <h2>Chapter title</h2>
+	    <p class="tut-intro">One sentence shown in the overview.</p>
+	    <section class="tut-lesson" id="…" [data-right="…"]>   id = stable key of the reader's progress – never rename
+	      <h3>Lesson title</h3>
+	      … text …
+	      <div class="tut-task"> … </div>            "Try it" box (heading added in the reader's language)
+	      <div class="tut-tip"> / <div class="tut-note">  blue tip / yellow note
+	    </section>
+	  </article>
+	data-right: empty = everybody who may open the tutorial; "ga" = globeadmin only; "acl:<form id>" = view right on that nuBuilder
+	form; otherwise a right of NuAdmin::RIGHTS (view level is enough). Hidden lessons are not counted.
+	Links: <a data-open="route" data-args="k=v&amp;k2=v2">  opens a nuBuilder Next page in a new tab
+	       <a data-help="anchor">                         opens the documentation at that chapter in a new tab
+	       <a data-lesson="lesson-id">                    another lesson of the tutorial
+	No pictures for now. No inline scripts or styles (CSP).
+-->
+</head>
+<body>
+<main>
+
+<!-- ============================================================================================ PART 1: BASICS -->
+
+<article class="tut-chapter" id="ch-first" data-part="basics">
+	<h2>First steps</h2>
+	<p class="tut-intro">What nuBuilder Next is, how the start page works and how to find your way around.</p>
+
+	<section class="tut-lesson" id="welcome">
+		<h3>Welcome to nuBuilder Next</h3>
+		<p>nuBuilder Next is a modern front end for <strong>nuBuilder 4</strong> applications. It runs on the <em>same database</em> as nuBuilder – the same forms, users, access levels, procedures and reports – so both can be used side by side: an application built in one opens in the other.</p>
+		<ul>
+			<li>nuBuilder's tables all start with <code>zzzzsys_</code>. nuBuilder Next reads and writes them in nuBuilder's formats and adds only its own tables (<code>zzzzsys_nunext_…</code>: log, sessions, two-factor data, settings, dashboards …).</li>
+			<li>The <strong>globeadmin</strong> is the main administrator. Its name and password are not stored in a user record but in the configuration file <code>nuconfig.php</code>. The globeadmin may do everything.</li>
+			<li>All other people are <strong>users</strong>. What they may do comes from their <strong>access level</strong> – exactly as in nuBuilder. In addition, nuBuilder Next can give a user an <strong>admin role</strong>: a defined part of the globeadmin's rights.</li>
+		</ul>
+		<h4>How this tutorial works</h4>
+		<ul>
+			<li>The tutorial is split into three parts: <strong>Basics</strong> (finding your way, users and rights), <strong>Building applications</strong> (forms, code, reports, e-mail) and <strong>Administration</strong> (settings, security, updates and advanced topics).</li>
+			<li>Each lesson explains one topic. Links with <i class="bi bi-box-arrow-up-right"></i> open the page in a <em>new tab</em>, so this lesson stays open; links with <i class="bi bi-book"></i> open the matching chapter of the documentation.</li>
+			<li>A green <em>Try it</em> box suggests a small exercise. When you are done, click <em>Done – next lesson</em>. Your progress is saved; the start page tile shows it.</li>
+			<li>The tutorial is in English, like the documentation. The pages themselves follow your language.</li>
+		</ul>
+		<div class="tut-task">
+			<p class="mb-0">Look at the list of lessons on the left (below on a phone). Then click <em>Done – next lesson</em>.</p>
+		</div>
+	</section>
+
+	<section class="tut-lesson" id="start-page">
+		<h3>The start page and navigation</h3>
+		<p>After signing in, the globeadmin sees the <a data-open="home">start page</a>: tiles in groups such as <em>Users &amp; rights</em>, <em>Development</em>, <em>Communication</em>, <em>System</em>, <em>Look</em>, <em>Data</em> and <em>Integration</em>. Each tile opens one area.</p>
+		<ul>
+			<li><strong>+</strong> on the right of a tile opens a new record straight away (e.g. a new user). <strong>▾</strong> opens a menu with the pages behind the tile (e.g. <em>Forms</em> → New form, Cloner, Formats, Translations …).</li>
+			<li><strong>Badges</strong> on tiles show information at a glance: an update of the <em>Sample data</em>, how many points of <em>System status</em> need a look.</li>
+			<li>The <strong>search field</strong> above the tiles filters them as you type (<kbd>/</kbd> jumps into it). Below, <em>More results</em> also lists forms, procedures, reports and the pages of the ▾ menus. English words always work, too.</li>
+			<li><kbd>Ctrl</kbd>+<kbd>K</kbd> (or the magnifier in the top bar) opens the same search on <em>every</em> page.</li>
+			<li>The <strong>top bar</strong>: the logo always leads back to the start page; the theme button switches light / dark / automatic; the language menu changes the interface language; the <strong>user menu</strong> (top right) holds Help, this tutorial, System status, the database tools and Sign out.</li>
+			<li><strong>Back</strong> (first button on every page) goes one level up – from a record to its list, from a list to the start page.</li>
+		</ul>
+		<div class="tut-task">
+			<ol>
+				<li>Open the <a data-open="home">start page</a> and type <code>mail</code> into the search field – see which tiles stay.</li>
+				<li>Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, type <code>users</code> and press <kbd>Enter</kbd>.</li>
+				<li>Switch the theme to dark and back.</li>
+			</ol>
+		</div>
+		<p><a data-help="navigation">Navigation, language and theme</a> · <a data-help="home-page">Start page of the globeadmin</a></p>
+	</section>
+
+	<section class="tut-lesson" id="sample-data" data-right="sample">
+		<h3>Sample data to practise with</h3>
+		<p>The best way to learn is with a small application to play with. <a data-open="sample">Sample data</a> installs one – in nuBuilder's format, so it also opens in nuBuilder:</p>
+		<ul>
+			<li><strong>Forms</strong>: customers, products, orders with order lines, a start form, and <em>All objects</em> (<code>sample_all</code>) – a form that shows every object type nuBuilder knows.</li>
+			<li><strong>Users</strong> <code>sample_anna</code> … <code>sample_eva</code> with different <strong>access levels</strong>: view only, add and change, everything, orders only, with two-factor login.</li>
+			<li>Formats, procedures, an e-mail template, two reports and dashboards.</li>
+		</ul>
+		<div class="tut-note">The passwords of the sample users are random and shown <strong>only once</strong> after installing – copy them. <em>New passwords</em> on the same page creates new ones at any time. <em>Remove</em> deletes everything the sample data installed.</div>
+		<div class="tut-task">
+			<p>Open <a data-open="sample">Sample data</a> and install it (or check that it is installed). Note one sample user and password – you will use them in the lesson about acting as another user.</p>
+		</div>
+		<p><a data-help="sample-data">Sample data in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="working-forms">
+		<h3>Working with forms and lists</h3>
+		<p>Everything your users do happens in <strong>forms</strong>: a <em>list</em> (nuBuilder calls it <em>browse</em>) and an <em>edit form</em> for one record. nuBuilder Next's own pages (users, access levels …) work the same way.</p>
+		<h4>Lists</h4>
+		<ul>
+			<li>Type into the search field and press <kbd>Enter</kbd> – several words must all match. Click a column title to sort; click again to reverse.</li>
+			<li>Filters sit behind the funnel button next to the search field; × resets search and filters.</li>
+			<li>Click a row to open the record; <em>Add</em> creates a new one. <em>Print</em> opens the list in a new tab – with <em>Copy</em> (for Excel) and <em>Export CSV</em>.</li>
+		</ul>
+		<h4>Edit forms</h4>
+		<ul>
+			<li>As soon as something changes, <strong>Save</strong> turns red. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves. Leaving with unsaved changes asks first.</li>
+			<li><strong>Clone</strong> copies the record into a new, unsaved one (yellow frame); <strong>Delete</strong> asks first.</li>
+			<li>A red <code>*</code> after a label means "required", a blue ◆ means "must be unique".</li>
+			<li>The <strong>⋮</strong> button at the end of the toolbar lists everything you can do on this form, each with its keyboard shortcut. As globeadmin you also find the builder shortcuts, <em>Inspect record</em> and the hash variables there.</li>
+			<li>Sub-forms (rows inside a record): typing in the empty last row adds a row. Lookups: type a code or click the search button.</li>
+		</ul>
+		<div class="tut-task">
+			<ol>
+				<li>Open the sample <a data-open="form" data-args="f=samplecustomer">customer list</a>, search for a customer and open it.</li>
+				<li>Change a field – watch <em>Save</em> turn red – and save with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>.</li>
+				<li>Open the ⋮ menu and look at the entries.</li>
+				<li>Open an <a data-open="form" data-args="f=sampleorder">order</a> and add a line in its sub-form.</li>
+			</ol>
+		</div>
+		<p><a data-help="forms-use">Working with forms</a> · <a data-help="shortcuts">Keyboard shortcuts</a></p>
+	</section>
+
+	<section class="tut-lesson" id="help-and-docs">
+		<h3>Help, documentation and the log</h3>
+		<p>Three places answer most questions:</p>
+		<ul>
+			<li>The <a data-open="help">documentation</a> (user menu → Help): searchable, with an index. Every user sees only the chapters for his rights; the globeadmin sees everything, including the administration chapters. <em>View: As user</em> at the top of the help page shows what a user without special rights sees.</li>
+			<li>The <strong>(i)</strong> icons next to labels explain a field when you point at them or tap them.</li>
+			<li>The <a data-open="log">Log</a> records logins, changes to users, access levels and forms, record changes with the changed fields, exports and much more – the first place to look when something happened and nobody knows who did it.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open the <a data-open="help">documentation</a> and search for <code>welcome e-mail</code>. Then open the <a data-open="log">Log</a> and filter by your own logins.</p>
+		</div>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-users" data-part="basics">
+	<h2>Users and rights</h2>
+	<p class="tut-intro">Who may sign in, and what they may do: users, access levels, permission items and admin roles.</p>
+
+	<section class="tut-lesson" id="rights-model" data-right="users">
+		<h3>How rights work</h3>
+		<p>Before creating users it helps to know the model – it is nuBuilder's:</p>
+		<ol>
+			<li>Every user has exactly one <strong>access level</strong>. Without one the login is refused.</li>
+			<li>An access level lists the <strong>forms</strong> the user may open. Per form: <em>view</em> (the row exists), <em>Save</em>, <em>Add / New</em>, <em>Delete</em>, <em>Clone</em> and <em>Print</em>.</li>
+			<li><strong>Procedures</strong> (PHP code) and <strong>reports</strong> are allowed per access level too.</li>
+			<li><strong>Permission items</strong> are named switches your own code checks – for finer rules ("may approve invoices").</li>
+			<li>The globeadmin may do everything.</li>
+		</ol>
+		<p>nuBuilder Next's own pages are protected by nuBuilder's <em>system forms</em>: the users page by <code>nuuser</code>, access levels by <code>nuaccess</code>, the form builder by <code>nuform</code>, procedures by <code>nuprocedure</code> and so on. Give an access level the row <code>nuuser</code> and its users see the users page.</p>
+		<div class="tut-note"><strong>Admin-equivalent rights:</strong> changing rights on <code>nuform</code>, <code>nuprocedure</code>, <code>nuselect</code>, <code>nusetup</code>, <code>nuuser</code> or <code>nuaccess</code> amount to full control – PHP on the server, SQL on every table, the passwords of all users. With <em>Only the globeadmin grants admin rights</em> (Security check, on by default) only the globeadmin hands them out.</div>
+		<p><a data-help="rights">How rights work</a></p>
+	</section>
+
+	<section class="tut-lesson" id="access-levels" data-right="acl:nuaccess">
+		<h3>Access levels</h3>
+		<p><a data-open="access">Access levels</a> define what a group of users may do. Create one per role in your organisation (e.g. <em>sales</em>, <em>accounting</em>, <em>read only</em>).</p>
+		<ul>
+			<li><strong>Forms</strong>: add a single form from the list, or <em>Several…</em> to pick many at once (search, filter by group and type) and set the buttons they get – e.g. everything but Delete.</li>
+			<li><strong>Removing</strong> a form crosses its row out; it disappears when you save. Until then the same button brings it back.</li>
+			<li><strong>Procedures</strong> and <strong>reports</strong>: on their own tabs.</li>
+			<li><strong>Use two-factor authentication</strong>: users of this level confirm the login with an authenticator app or an e-mail code.</li>
+			<li>The level's <strong>start form</strong> (nuBuilder's <em>home form</em>) is what its users see after signing in.</li>
+			<li>An access level with users cannot be deleted. <em>Clone</em> copies it with all rights – the quickest way to a similar level.</li>
+		</ul>
+		<div class="tut-task">
+			<ol>
+				<li>Open <a data-open="access">Access levels</a> and open <code>sample_editor</code>: see which forms and buttons it has.</li>
+				<li>Clone it as <code>tutorial_level</code>, remove the Delete right on the customer form and save.</li>
+			</ol>
+		</div>
+		<p><a data-help="access">Access levels in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="users" data-right="acl:nuuser">
+		<h3>Creating and managing users</h3>
+		<p><a data-open="users">Users</a> lists everybody who may sign in (active users by default; the filter shows expired and archived ones).</p>
+		<ul>
+			<li><strong>New user</strong>: full name (it fills first and last name), e-mail, login name (unique), access level and a password – the magic wand creates a strong one. <em>Change password at next login</em> makes the user choose his own.</li>
+			<li><strong>Welcome e-mail</strong> (when e-mail is set up): instead of telling the user a password, send a personal link to set one. The password field can then stay empty.</li>
+			<li><strong>Valid until</strong>: the login works through that day. <strong>Archive</strong> sets it to yesterday – the user can no longer sign in, but all data stays. <strong>Delete</strong> removes the user for good.</li>
+			<li><strong>Language</strong>: the user's interface language (empty = browser). <strong>Position, department, team</strong> suggest values of the other users.</li>
+			<li><strong>Reset 2FA</strong> removes the user's authenticator app – e.g. after a lost phone.</li>
+			<li><strong>Import…</strong> in the users list creates many users at once from a CSV file, with the same checks as the user form; existing logins are skipped.</li>
+			<li>The <i class="bi bi-layout-three-columns"></i> <strong>View</strong> button switches the list's layout: <em>Default</em>, <em>Compact</em>, <em>All columns</em> or your own views – columns, order, filters and the cards on a phone. Shared views can be limited to access levels.</li>
+		</ul>
+		<div class="tut-task">
+			<ol>
+				<li>Create a user <code>tutorial_user</code> with the access level <code>tutorial_level</code> from the last lesson (or <code>sample_viewer</code>) and a generated password.</li>
+				<li>Archive the user, look at the list with the filter <em>All</em>, then clear <em>Valid until</em> again.</li>
+			</ol>
+		</div>
+		<p><a data-help="users">Users</a> · <a data-help="welcome-mail">Welcome e-mail</a> · <a data-help="csv-import-users">Importing users</a></p>
+	</section>
+
+	<section class="tut-lesson" id="permission-items" data-right="acl:nupermissionitem">
+		<h3>Permission items</h3>
+		<p>Sometimes users of the same access level need different rights – one sales person may give discounts, the others may not. <a data-open="permissions">Permission items</a> solve this:</p>
+		<ul>
+			<li>An item has an <strong>ident</strong> (the name used in code, e.g. <code>sales_discount</code>) and a group.</li>
+			<li>Assign users on the item, or tick items at the bottom of the user form – both edit the same list.</li>
+			<li>Your code asks: PHP <code>nuUserHasPermission('sales_discount')</code>, JavaScript the same, SQL <code>#USER_PERMISSIONS#</code>. <em>Used in code</em> on the item shows where.</li>
+		</ul>
+		<div class="tut-tip">Always check on the server (e.g. in <em>Before Save</em>) – a check in the browser alone can be bypassed.</div>
+		<p><a data-help="permissions">Permission items in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="act-as-user" data-right="impersonate">
+		<h3>Seeing the application as a user</h3>
+		<p>To check what a user really sees – menu, forms, buttons, rights – you do not need his password: <strong>Act as user</strong> (the icon in front of the name in the user form, or a row of <a data-open="sessions">Logged-in users</a>).</p>
+		<ul>
+			<li><strong>View only</strong>: everything the user sees, but nothing can be changed. The bar on top is blue.</li>
+			<li><strong>Full access</strong>: work as the user (red bar). Records are saved as this user; the log notes that the globeadmin acted.</li>
+			<li><em>Back to globeadmin</em> (in the bar) returns to where you started – no new login.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open the user <a data-open="users" data-args="q=sample_anna">sample_anna</a>, act as her with <em>View only</em>, try to save a customer – then go back to the globeadmin.</p>
+		</div>
+		<p><a data-help="impersonate">Acting as another user</a></p>
+	</section>
+
+	<section class="tut-lesson" id="sessions" data-right="sessions">
+		<h3>Logged-in users</h3>
+		<p><a data-open="sessions">Logged-in users</a> shows every active session: user, address, browser, login time and last activity (green = active in the last five minutes).</p>
+		<ul>
+			<li><strong>End session</strong> signs one user out at his next click – e.g. after changing his rights.</li>
+			<li><strong>Log out all others</strong> before maintenance work; <strong>Log out everyone</strong> includes you.</li>
+			<li>The (i) next to the title shows the session timeouts (<code>$nuConfigSessionTimeout</code>, default 120 minutes; the globeadmin 12 hours).</li>
+		</ul>
+		<p><a data-help="sessions">Logged-in users in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="admin-roles" data-right="adminroles">
+		<h3>Admin roles: sharing the administration</h3>
+		<p>Nobody but the globeadmin should know the globeadmin password. When others need to help – a colleague who manages users, a developer, support – give them an <a data-open="adminroles">admin role</a>.</p>
+		<ul>
+			<li>A role is a set of rights, one per tool, each <em>view</em> or <em>change</em>. A user gets at most one role (field <em>Admin role</em> in the user form).</li>
+			<li>Five default roles: <em>Full administrator</em>, <em>Administrator without system</em>, <em>Developer</em>, <em>User manager</em>, <em>Support (read only)</em> – editable and copyable.</li>
+			<li>A user with a role sees the tiles, menu entries, search results, help chapters and tutorial lessons of his rights. Pages he may only view show <em>View only</em>.</li>
+			<li>Rights marked <strong>full access</strong> (red) – Update, nuconfig.php, Database, forms, procedures, acting as another user … – lead to full control in the end. Give them only to people you would trust with the globeadmin password.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open <a data-open="adminroles">Admin roles</a> and look at the default role <em>User manager</em>. Give <code>tutorial_user</code> this role, then act as that user and look at the start page.</p>
+		</div>
+		<p><a data-help="admin-roles">Admin roles in the documentation</a></p>
+	</section>
+</article>
+
+<!-- ============================================================================================ PART 2: BUILDING -->
+
+<article class="tut-chapter" id="ch-forms" data-part="build" data-right="acl:nuform">
+	<h2>Building forms</h2>
+	<p class="tut-intro">From a database table to a working form: the form builder, objects, layouts and run buttons.</p>
+
+	<section class="tut-lesson" id="forms-overview">
+		<h3>Forms, tables and the forms list</h3>
+		<p>A nuBuilder form shows the records of one <strong>table</strong> (or a view): the list (browse) shows some columns, the edit form all fields. Types: <em>browse and edit</em>, <em>browse</em> only, <em>edit</em> only, <em>launch</em> (a start page or a criteria form without table) and <em>subform</em> (rows inside another form).</p>
+		<p>The <a data-open="forms">forms list</a> shows all forms with group and status (Active, Draft, Archived). Click a form to <em>open</em> it as a user would; the <i class="bi bi-tools"></i> button opens it in the <strong>form builder</strong>. nuBuilder's own forms (<code>nu…</code>) are read-only.</p>
+		<div class="tut-task">
+			<p>Open the <a data-open="forms">forms list</a>, filter by status, then open <code>sample_order</code> in the builder (<i class="bi bi-tools"></i>).</p>
+		</div>
+		<p><a data-help="builder">Forms and the form builder</a></p>
+	</section>
+
+	<section class="tut-lesson" id="new-form">
+		<h3>Creating a form</h3>
+		<p><a data-open="builder" data-args="new=1">New form</a> offers two ways:</p>
+		<ul>
+			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns.</li>
+			<li><strong>New table</strong>: enter the columns (name, label, type, length, required). The table gets a nuBuilder-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
+		</ul>
+		<p>Afterwards the form opens in the builder. Give your forms a meaningful <em>code</em> and a <em>group</em> – the forms list and the access level page filter by them.</p>
+		<div class="tut-note">A new form is not yet in any access level: only the globeadmin can open it until you add it to an <a data-lesson="access-levels">access level</a>.</div>
+		<div class="tut-task">
+			<p>Create a form <code>tutorial_task</code> with a <em>new table</em> <code>tutorial_task</code> and the columns <code>tsk_title</code> (text, required), <code>tsk_due</code> (date) and <code>tsk_done</code> (checkbox), with audit columns. Open it and add two records.</p>
+		</div>
+		<p><a data-help="new-form">Creating a form</a></p>
+	</section>
+
+	<section class="tut-lesson" id="form-builder">
+		<h3>Working in the form builder</h3>
+		<ul>
+			<li><strong>Left</strong>: the objects per tab – drag them to change the order. <strong>Middle</strong>: the preview – click an object to select it, drag to move, use the handle to resize. <strong>Right</strong>: properties of the selected object, the form's settings, list columns, tabs and code.</li>
+			<li><strong>Layouts</strong>: <em>absolute</em> (pixel positions as in nuBuilder), <em>auto</em> (responsive rows worked out from the positions) and <em>grid</em> (12 columns). Auto and grid work well on phones.</li>
+			<li><strong>List columns</strong>: what the browse list shows – title, column or SQL expression, width, alignment, format.</li>
+			<li><strong>Save</strong> turns red while the open panel has changes; <kbd>Ctrl</kbd>+<kbd>S</kbd> saves. <strong>Undo / History</strong> keeps the last 100 states of the form – any of them can be restored.</li>
+			<li>If an object's ID has no column in the table yet, the builder offers to add it.</li>
+		</ul>
+		<div class="tut-tip">On any form page, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> opens the builder to arrange objects, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> to add an object, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> the form properties.</div>
+		<div class="tut-task">
+			<ol>
+				<li>Open <code>tutorial_task</code> in the builder, change the label of <code>tsk_title</code> and make it wider.</li>
+				<li>Switch the layout to <em>auto</em> and look at the preview; undo it with <em>History</em>.</li>
+				<li>Add a list column for <code>tsk_due</code> with a date format.</li>
+			</ol>
+		</div>
+		<p><a data-help="builder-work">Working in the builder</a></p>
+	</section>
+
+	<section class="tut-lesson" id="object-types">
+		<h3>Object types</h3>
+		<p>Objects are the fields and elements of a form. The most important ones:</p>
+		<ul>
+			<li><strong>Input</strong> – text, number, date, checkbox, file, button, masks (IBAN, phone). <strong>Text area</strong> and <strong>WYSIWYG editor</strong> for longer texts.</li>
+			<li><strong>Select</strong> – a list of values or SQL; searchable, also with multiple values.</li>
+			<li><strong>Lookup</strong> – picks a record of another form (e.g. the customer of an order): type a code or search in a list.</li>
+			<li><strong>Display</strong> and <strong>calculation</strong> – show a value from SQL or calculate from other fields (e.g. the order total).</li>
+			<li><strong>Sub-form</strong> – rows of another table inside the record (order lines).</li>
+			<li><strong>Run</strong> – a button or iframe that opens a form, runs a procedure or a report.</li>
+			<li><strong>HTML</strong>, <strong>content box</strong>, <strong>image</strong>, <strong>chart</strong>, <strong>word</strong> (a label).</li>
+		</ul>
+		<p>Every object has an <strong>access</strong> setting (editable, read only, hidden, hidden for users, globeadmin only) and a <strong>validation</strong> (none, required, unique, both) – checked on the server, too.</p>
+		<div class="tut-task">
+			<p>Open the sample form <a data-open="form" data-args="f=sampleall">All objects</a> and click through its tabs – every object type is there. Then open it in the builder to see how each is set up.</p>
+		</div>
+		<p><a data-help="object-types">Object types</a> · <a data-help="run-objects">Run objects</a></p>
+	</section>
+
+	<section class="tut-lesson" id="form-code">
+		<h3>Code: events, hash variables and the code editor</h3>
+		<p>Forms come alive with code – exactly as in nuBuilder:</p>
+		<ul>
+			<li><strong>PHP events</strong> on the form's <em>Code</em> tab: <em>Before Browse</em>, <em>Before Edit</em>, <em>Before Save</em>, <em>After Save</em>, <em>Before Delete</em>, <em>After Delete</em>. Typical: check values in Before Save and stop with <code>nuDisplayError('…')</code>.</li>
+			<li><strong>JavaScript</strong> of the form and <strong>object events</strong> (onchange, onclick …) run in the browser.</li>
+			<li><strong>Hash variables</strong> such as <code>#RECORD_ID#</code>, <code>#USER_ID#</code> or <code>#cus_name#</code> (a field of the record) are replaced before the code runs. In SQL always put them in quotes: <code>WHERE cus_id = '#RECORD_ID#'</code>.</li>
+			<li>Code fields open the <strong>code editor</strong> with a double-click: colours, search and replace, <em>Format</em>, full screen.</li>
+			<li>⋮ → <em>Hash variables</em> on any form shows the values available there.</li>
+		</ul>
+		<div class="tut-tip">The <a data-open="prompts">Prompt generator</a> builds a prompt for an AI tool with the right nuBuilder context (scopes, functions, your table columns) – useful when you write code for a new event.</div>
+		<div class="tut-task">
+			<p>In <code>tutorial_task</code>, add a <em>Before Save</em> event that refuses a due date in the past:</p>
+			<pre class="small mb-0"><code>if ('#tsk_due#' !== '' &amp;&amp; '#tsk_due#' &lt; date('Y-m-d')) {
+    nuDisplayError('The due date is in the past.');
+}</code></pre>
+		</div>
+		<p><a data-help="hooks">PHP hooks and procedures</a> · <a data-help="hash-variables">Hash variables</a> · <a data-help="js-api">JavaScript functions</a></p>
+	</section>
+
+	<section class="tut-lesson" id="form-tools" data-right="forms">
+		<h3>Formats, items, files, translations and the cloner</h3>
+		<p>The ▾ menu of the <em>Forms</em> tile holds the tools around forms:</p>
+		<ul>
+			<li><a data-open="formats">Formats</a> – date, number and text-mask formats (e.g. <code>dd.mm.yyyy</code>, <code>CHF 1'000.00</code>). Changing a format updates every field that uses it.</li>
+			<li><a data-open="items">Items</a> – nuBuilder's value lists. <a data-open="files">Files</a> – images and documents in the database (logos for reports, image objects).</li>
+			<li><a data-open="translations">Translations</a> – your labels in other languages; the <em>Missing</em> tab lists what is not translated yet.</li>
+			<li><a data-open="cloner">Cloner</a> – copies a form with its tabs, objects, code, subforms and rights, or creates the SQL to move it to another database.</li>
+			<li><a data-open="import">CSV import</a> – loads a CSV file into a table, with column mapping, date and number conversion and a trial run.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Clone <code>tutorial_task</code> with the <a data-open="cloner">Cloner</a> as <code>tutorial_task_copy</code>, then delete the copy in the builder (<em>Delete form</em>, without the table).</p>
+		</div>
+		<p><a data-help="formats">Formats</a> · <a data-help="translations">Translations</a> · <a data-help="cloner">Cloner</a> · <a data-help="csv-import">CSV import</a></p>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-logic" data-part="build">
+	<h2>Procedures, reports and dashboards</h2>
+	<p class="tut-intro">Server code, PDF reports and dashboards with key figures and charts.</p>
+
+	<section class="tut-lesson" id="procedures" data-right="acl:nuprocedure">
+		<h3>Procedures</h3>
+		<p><a data-open="procedures">Procedures</a> are PHP code stored in the database (<code>zzzzsys_php</code>). A run button, a tile or <code>nuRunPHP('code')</code> starts them – in a new tab (output visible) or hidden (background work, then a message).</p>
+		<ul>
+			<li><strong>Access levels</strong> tab: who may run it. <strong>Usage</strong>: which objects and code start it. <strong>History</strong>: every change with the code before and after.</li>
+			<li><em>Hidden</em> / <em>New tab</em> on the page run the saved version as a test.</li>
+			<li>Some codes have a special meaning in nuBuilder: <code>nu_before_save</code> (for every form), <code>nu_startup</code>, <code>nu_check_password_policy</code>, <code>nu_send_welcome_email</code>.</li>
+			<li>Debug with <code>nuDebug($value)</code> – the output appears under <a data-open="debug">Debug</a>.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Create a procedure <code>tutorial_hello</code> with <code>echo 'Hello ' . '#USER_ID#';</code>, run it in a new tab, then write <code>nuDebug('test');</code> into it, run it hidden and look at <a data-open="debug">Debug</a>.</p>
+		</div>
+		<p><a data-help="procedures">Procedures in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="reports" data-right="reports">
+		<h3>Reports and the SQL builder</h3>
+		<p><a data-open="reports">Reports</a> produce PDFs in nuBuilder's format (they work in both). A report has:</p>
+		<ul>
+			<li>A <strong>data source</strong>: a table or view, an <a data-open="sqlbuilder">SQL builder</a> query, or a procedure that fills a temporary table <code>#TABLE_ID#</code>.</li>
+			<li>An optional <strong>launch form</strong> for criteria (e.g. a date range); its fields are available as hash variables.</li>
+			<li>The <strong>layout</strong> in the report designer: bands (report header, page header, groups, detail, footers) with fields, texts, lines, boxes and images.</li>
+			<li><strong>Access levels</strong> that may run it.</li>
+		</ul>
+		<p>The <strong>SQL builder</strong> creates queries graphically: add tables, tick columns, drag a column onto another to join, add conditions and sorting. <em>Run</em> shows the first rows.</p>
+		<div class="tut-note">The PDF needs TCPDF – taken from nuBuilder when nuBuilder Next sits in nuBuilder's folder. Without it the report pages say so.</div>
+		<div class="tut-task">
+			<p>Open the sample report <code>sample_customers</code> (customers by country) in the designer, look at its bands and run <em>Preview</em>. Then open the SQL builder query <code>sample_orders</code>.</p>
+		</div>
+		<p><a data-help="reports">Reports</a> · <a data-help="report-designer">Report designer</a> · <a data-help="sql-builder">SQL builder</a></p>
+	</section>
+
+	<section class="tut-lesson" id="dashboards" data-right="dashboards">
+		<h3>Dashboards</h3>
+		<p><a data-open="dashboards">Dashboards</a> show key figures, charts and tables – on the start page of users (per access level) or inside any form.</p>
+		<ul>
+			<li>A dashboard holds <strong>widgets</strong>: KPI tiles (value, change in %, colour by thresholds), charts (columns, bars, line, area, pie, donut …) and tables.</li>
+			<li>Data comes from one <strong>SELECT</strong>, an SQL builder query or a PHP procedure – always read-only.</li>
+			<li><code>#DATE_FROM#</code> / <code>#DATE_TO#</code> add a date filter; on forms <code>#RECORD_ID#</code> and the record's fields filter the data.</li>
+			<li>On a form: an HTML object with <code>&lt;div data-nu-dashboard="CODE"&gt;&lt;/div&gt;</code>.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open the sample dashboard <code>sample_sales</code>, look at a widget's SQL and use <em>Test</em>. Then act as <code>sample_carla</code> (view only) to see it on her start page.</p>
+		</div>
+		<p><a data-help="dashboards">Dashboards in the documentation</a></p>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-comm" data-part="build">
+	<h2>E-mail, look and data</h2>
+	<p class="tut-intro">Sending e-mail, giving the installation its own look, importing and exporting data.</p>
+
+	<section class="tut-lesson" id="email" data-right="email">
+		<h3>E-mail: settings, test mail and templates</h3>
+		<p>Password links, two-factor codes, welcome e-mails and your own mails need a mail server. <a data-open="email" data-args="tab=settings">E-mail → Settings</a> uses nuBuilder's settings:</p>
+		<ul>
+			<li>SMTP server, port (465 = SSL/TLS, 587 = STARTTLS), user, password and sender. The password is never shown again – leave the field empty to keep it.</li>
+			<li><a data-open="email" data-args="tab=test">Test mail</a> shows the whole conversation with the server – the fastest way to find a wrong setting.</li>
+			<li><a data-open="email" data-args="tab=log">E-mail log</a>: every mail with its status and error.</li>
+			<li><a data-open="emailtemplates">Templates</a>: subject and body with placeholders (<code>#cus_name#</code>), per language. Clone nuBuilder's <code>nu_send_welcome_email_template</code> to write your own welcome e-mail.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Enter your mail server and send a <a data-open="email" data-args="tab=test">test mail</a> to yourself. If it fails, read the server conversation.</p>
+		</div>
+		<p>For messages inside the application use <a data-open="notifications" data-args="tab=manage">Notifications</a>: the bell in the top bar turns red for the recipients – everybody, single users, departments, teams, positions or access levels – with read receipts and, if needed, a confirmation ("Got it") or an e-mail as well.</p>
+		<p><a data-help="email">E-mail in the documentation</a> · <a data-help="notifications">Notifications</a></p>
+	</section>
+
+	<section class="tut-lesson" id="branding" data-right="branding">
+		<h3>Branding and the start page layout</h3>
+		<p><a data-open="branding">Branding</a> gives the installation its own look: logo (also one for dark mode), title next to the logo, accent colour and an <strong>environment label</strong> such as <code>TEST</code> – a coloured badge and line on every page, so a test copy is never mistaken for the live system.</p>
+		<p>The start page itself is arranged with <strong>Customise</strong> (top right): drag tiles and groups, rename groups, hide tiles, add your own tiles (a form, a page, a procedure or a link), choose tabs or groups and the tile size. <strong>Reset</strong> goes back to the default. The pin in a ▾ menu puts a page on the start page as a tile of its own. The ▾ next to <em>Customise</em> holds several <strong>saved layouts</strong> – your own ones, and shared ones that can be limited to admin roles – and switches between them.</p>
+		<div class="tut-task">
+			<ol>
+				<li>Set the environment label <code>TEST</code> with an orange colour in <a data-open="branding">Branding</a> and look at the top bar.</li>
+				<li>On the <a data-open="home">start page</a>, click <em>Customise</em>, add a tile that opens the form <code>tutorial_task</code> and click <em>Done</em>.</li>
+			</ol>
+		</div>
+		<p><a data-help="branding">Branding</a> · <a data-help="home-page">Start page</a></p>
+	</section>
+
+	<section class="tut-lesson" id="import-export" data-right="import">
+		<h3>Importing and exporting data</h3>
+		<ul>
+			<li><strong>Export</strong>: every list with the Print right has <em>Print</em> – a table in a new tab with <em>Copy</em> (pastes into Excel) and <em>Export CSV</em>. Search, filters and sort apply.</li>
+			<li><strong>Import</strong>: <a data-open="import">CSV import</a> in three steps – file (encoding and separator are detected), mapping (columns matched by name, dates and numbers converted, fixed values, <code>nuID()</code> for nuBuilder ids), check (a complete trial run that changes nothing) and import. Add new records, update existing ones or both.</li>
+			<li><em>Save configuration</em> keeps the mapping for the next file of the same kind.</li>
+			<li>Users have their own import: <em>Users → Import…</em>.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Export the <a data-open="form" data-args="f=samplecustomer">customer list</a> as CSV (<em>Print</em> → <em>Export CSV</em>) and open the file. Then load it into the <a data-open="import">CSV import</a>, choose the table <code>sample_customer</code>, click <em>Map automatically</em> and run <em>Check</em> – the trial run changes nothing, so you can try every option.</p>
+		</div>
+		<p><a data-help="csv-import">CSV import</a> · <a data-help="list-export">Print and CSV</a></p>
+	</section>
+</article>
+
+<!-- ============================================================================================ PART 3: ADMINISTRATION -->
+
+<article class="tut-chapter" id="ch-admin" data-part="admin">
+	<h2>Running the installation</h2>
+	<p class="tut-intro">Settings, security, logs, updates and backups – what keeps an installation healthy.</p>
+
+	<section class="tut-lesson" id="config" data-right="configfile">
+		<h3>Configuration: nuconfig.php and the setup wizard</h3>
+		<p><code>nuconfig.php</code> holds the database access, the globeadmin login and many settings – the same file and variable names as nuBuilder. nuBuilder Next's own settings start with <code>$nuConfig…</code> too (session timeouts, password length, two-factor login, base URL …).</p>
+		<ul>
+			<li>The <a data-open="setupwizard">Setup wizard</a> asks for the most important ones in four steps: language and time zone, look and tools, security, sample data.</li>
+			<li><a data-open="configfile">Configuration file (nuconfig.php)</a> edits the file directly. Saving checks the PHP, runs it and tests the database connection first; the old file is kept as a backup.</li>
+			<li>Important on a live server: <code>$nuConfigBaseURL</code> (the address in e-mail links), <code>$nuConfigSecretKey</code> (encryption key), <code>$nuConfigTimezone</code>.</li>
+		</ul>
+		<div class="tut-note">A broken <code>nuconfig.php</code> stops the whole site – and nuBuilder too, if it reads the same file. The editor refuses to save a file that does not pass its checks; if something still goes wrong, copy a backup from <code>_backup/</code> over it by FTP.</div>
+		<p><a data-help="config">Configuration</a> · <a data-help="configfile">nuconfig.php editor</a> · <a data-help="setup-wizard">Setup wizard</a></p>
+	</section>
+
+	<section class="tut-lesson" id="settings" data-right="settings">
+		<h3>Settings (nuBuilder's settings table)</h3>
+		<p>nuBuilder can keep its settings in a table instead of <code>nuconfig.php</code>. <a data-open="settings">Settings</a> edits that table; it is only used with <code>$nuConfigSettingsFromDB = true</code> (the page offers to switch it on).</p>
+		<ul>
+			<li>A tag after each setting tells what it means for nuBuilder Next: <em>Used</em>, <em>Not yet</em> (only nuBuilder uses it for now) or <em>Not needed</em> (nuBuilder Next has its own solution).</li>
+			<li><em>Import</em> copies the values set in <code>nuconfig.php</code> into the table.</li>
+		</ul>
+		<p><a data-help="settings">Settings in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="security" data-right="securitycheck">
+		<h3>Security check and two-factor login</h3>
+		<p>The <a data-open="securitycheck">Security check</a> shows everything that matters for this installation as traffic lights – red: fix it soon, yellow: check it, blue: information – each with a link to where it is fixed: HTTPS, base URL, secret key, the globeadmin password and its two-factor login, debug output, files the web server must not hand out, library versions, users with old passwords, access levels with admin-equivalent rights.</p>
+		<ul>
+			<li><strong>Security settings</strong> on the same page: who grants admin rights, log retention, when to ask for the password again, old md5 passwords …</li>
+			<li><strong>Two-factor login</strong>: <code>$nuConfig2FAAdmin</code> for the globeadmin, <code>$nuConfig2FAUser</code> plus <em>Use two-factor authentication</em> on access levels for users. Each person sets up an authenticator app under <a data-open="security">Security</a> in the user menu, or gets codes by e-mail.</li>
+			<li>Built in: a login rate limit, signed update packages, strict security headers, masked secrets in the log.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open the <a data-open="securitycheck">Security check</a> and go through every red and yellow point. Set up an authenticator app for your own login under <a data-open="security">Security</a>.</p>
+		</div>
+		<p><a data-help="security-check">Security</a> · <a data-help="security-checklist">Checklist for a live server</a></p>
+	</section>
+
+	<section class="tut-lesson" id="logs" data-right="log">
+		<h3>Log and debug results</h3>
+		<ul>
+			<li>The <a data-open="log">Log</a> records logins and failed logins, two-factor events, password changes, changes to users, access levels, forms and settings, exports, imports and updates. Filter by event, user, date or text.</li>
+			<li>The <a data-open="audit">Audit trail</a> records every change made in the forms – one row per column with old and new value, also sub-form rows, deletes, clones and CSV imports. In a record, ⋮ → <em>History of this record</em> shows its changes; ↺ puts an old value or a deleted row back.</li>
+			<li><a data-open="debug">Debug</a> collects what <code>nuDebug()</code> writes in PHP code – your main tool when a procedure or event does not do what it should.</li>
+			<li><em>Keep the log (days)</em> in the security settings deletes old entries automatically (0 = keep for ever).</li>
+		</ul>
+		<p><a data-help="log">Log and debug results</a></p>
+	</section>
+
+	<section class="tut-lesson" id="update" data-right="update">
+		<h3>Updates and backups</h3>
+		<p>New versions are installed on the <a data-open="update">Update</a> page – no FTP needed:</p>
+		<ol>
+			<li>Choose <code>nunext.zip</code> and click <em>Check package</em>: version, changed files, what's new, database changes, and whether the package is <em>signed by nuBuilder Next</em>. Nothing changes yet.</li>
+			<li><em>Install</em> makes a <strong>backup</strong> (program files, nuBuilder Next's tables, optionally an SQL dump of the whole database), switches on maintenance mode, copies the files and runs the database steps. If copying fails, the backup is put back automatically.</li>
+			<li><strong>Roll back</strong> puts the program files of an earlier backup back. Backups can be downloaded – the SQL dump imports with phpMyAdmin.</li>
+		</ol>
+		<ul>
+			<li>The <em>Change history</em> card lists what changed in every version.</li>
+			<li><em>Back up now</em> makes a backup by hand – before larger changes, choose <em>the whole database</em>.</li>
+			<li>Updates can also run unattended (command line or REST API) – see the documentation.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open <a data-open="update">Update</a>, read the change history of the installed version and make a backup with <em>Back up now</em> (database: <em>nuBuilder Next tables</em>).</p>
+		</div>
+		<p><a data-help="updating">Updating nuBuilder Next</a></p>
+	</section>
+
+	<section class="tut-lesson" id="system-status" data-right="status">
+		<h3>System status and database tools</h3>
+		<ul>
+			<li><a data-open="vendor">System status</a> lists what needs a look: the time zone, a missing database tool or File Manager, tables that are not InnoDB, the demo mode. The badge on its tile counts these points.</li>
+			<li><strong>Storage engine</strong>: older nuBuilder databases often still use MyISAM tables, which have no transactions. <em>Convert all to InnoDB</em> fixes that (make a backup first).</li>
+			<li><strong>Database tools</strong>: phpMyAdmin and / or Adminer and Tiny File Manager open from the user menu and the start page, signed in through nuBuilder Next. They are not part of the package – System status says where to copy them.</li>
+		</ul>
+		<div class="tut-note">phpMyAdmin, Adminer and the File Manager give full access to the database and the web folder. Use them with care, and only as globeadmin or with a role you fully trust.</div>
+		<p><a data-help="admin-tools">System status and tools</a> · <a data-help="innodb">Storage engine</a></p>
+	</section>
+
+	<section class="tut-lesson" id="housekeeping" data-right="ga">
+		<h3>Housekeeping and the live-server checklist</h3>
+		<p><code>cron.php</code> removes expired tokens and sessions, old log entries and temporary files. Run it every 15 minutes as the web server's user:</p>
+		<pre class="small"><code>*/15 * * * * sudo -u www-data php /var/www/html/nunext/cron.php &gt; /dev/null</code></pre>
+		<p>Before users start working on a live server:</p>
+		<ul>
+			<li>HTTPS only; <code>$nuConfigBaseURL</code> and <code>$nuConfigSecretKey</code> set.</li>
+			<li>A long globeadmin password and two-factor login for the globeadmin.</li>
+			<li><code>$nuConfigDebug = false</code>; all <em>Files on the web</em> points of the Security check green.</li>
+			<li>Backups outside the web root (<code>$nuConfigBackupPath</code>), a log retention, cron running.</li>
+			<li>Admin-equivalent rights and admin roles only for people who may change code and users.</li>
+		</ul>
+		<p><a data-help="security-cron">Housekeeping</a> · <a data-help="security-checklist">Checklist</a></p>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-advanced" data-part="admin">
+	<h2>Advanced topics</h2>
+	<p class="tut-intro">Copies of the application, the REST API, demo mode, nuBuilder compatibility and where to go next.</p>
+
+	<section class="tut-lesson" id="app-cloner" data-right="appcloner">
+		<h3>App cloner: test and development copies</h3>
+		<p>The <a data-open="appcloner">App cloner</a> copies the whole application – into another database on the same or another server, optionally with the files – e.g. for a test system:</p>
+		<ul>
+			<li>Choose what is copied: system tables, your own tables, data, views, functions, procedures, triggers, events.</li>
+			<li><strong>Dry run</strong> shows every step without changing anything; <strong>Run</strong> copies and compares the record counts at the end.</li>
+			<li><strong>Download SQL</strong> exports the database as one file instead – for an import elsewhere.</li>
+			<li>Configurations are saved in nuBuilder's table, so nuBuilder's App cloner opens them too.</li>
+		</ul>
+		<div class="tut-tip">Set the environment label of a test copy in its <code>nuconfig.php</code> (<code>$nuConfigEnvironmentLabel = "TEST";</code>) – a label stored in the database would be copied along with it.</div>
+		<p><a data-help="appcloner">App cloner in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="api" data-right="apiclients">
+		<h3>REST API</h3>
+		<p>Other systems (an HR tool, a script) can manage users, access levels and permission items through the REST API (<code>api.php/v1/…</code>):</p>
+		<ul>
+			<li>Switch it on with <code>$nuConfigApi = true</code> (the <a data-open="apiclients">API clients</a> page offers a button) and set a secret key.</li>
+			<li>Create a <strong>client</strong>: it gets a <code>client_id</code> and a secret shown <em>once</em>, a <strong>service user</strong> whose access level decides its rights, and <strong>scopes</strong> (e.g. <code>users:read</code>). Optional: allowed IP addresses, a request limit, an expiry date.</li>
+			<li>The <a data-open="apiplayground">API playground</a> sends requests from the browser – ideal to learn the endpoints and copy a <code>curl</code> command.</li>
+		</ul>
+		<p><a data-help="api">REST API in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="demo-mode" data-right="ga">
+		<h3>Demo mode</h3>
+		<p>Demo mode lets visitors look at the whole application without being able to change anything – useful for presentations and evaluations.</p>
+		<ol>
+			<li>Create a user (e.g. <code>demo</code>) with any access level.</li>
+			<li>Set <code>$nuConfigDemoUser = "demo";</code> in <code>nuconfig.php</code>.</li>
+			<li>The login page shows <em>Try the demo</em>. The demo user sees everything the globeadmin sees, but every change is refused – also by the database.</li>
+		</ol>
+		<div class="tut-note">Demo users see all data and code of the application. Use demo mode only with a database that holds demo data.</div>
+		<p><a data-help="demo-mode">Demo mode in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="compat" data-right="compat">
+		<h3>Bringing a nuBuilder application to nuBuilder Next</h3>
+		<p>An existing nuBuilder application usually works at once – the database is the same. Before opening it to users:</p>
+		<ol>
+			<li>Run the <a data-open="compat">Compatibility check</a>: it scans all JavaScript, events, procedures and SQL for nuBuilder functions and shows whether each one is <em>supported</em>, a <em>stub</em> or <em>missing</em> in nuBuilder Next.</li>
+			<li>Fix the <strong>hash variables outside quotes</strong> it lists – <code>WHERE id = #field#</code> lets a user put SQL into a field; write <code>'#field#'</code>.</li>
+			<li>Check <a data-open="vendor">System status</a> (InnoDB, time zone) and the <a data-open="securitycheck">Security check</a>.</li>
+			<li>Act as a few typical users and click through their forms.</li>
+		</ol>
+		<p><a data-help="compat">Compatibility check</a> · <a data-help="trouble">Troubleshooting</a></p>
+	</section>
+
+	<section class="tut-lesson" id="next-steps">
+		<h3>Where to go next</h3>
+		<p>You have seen every part of nuBuilder Next. From here:</p>
+		<ul>
+			<li>The <a data-open="help">documentation</a> describes every page in detail – including the developer reference with all PHP and JavaScript functions.</li>
+			<li><kbd>Ctrl</kbd>+<kbd>K</kbd> finds any page, form, procedure or report in a moment.</li>
+			<li>The <em>Update</em> page's change history shows what each new version brings.</li>
+			<li>Clean up what this tutorial created when you no longer need it: the form and table <code>tutorial_task</code>, the procedure <code>tutorial_hello</code>, the user <code>tutorial_user</code> and the access level <code>tutorial_level</code> – and the sample data (<em>Sample data → Remove</em>).</li>
+		</ul>
+		<div class="tut-task">
+			<p>Mark this lesson as done – and start building your own application.</p>
+		</div>
+	</section>
+</article>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# nuBuilder Next – browser cache for the static files (0.8.366, Lighthouse "Use efficient cache lifetimes").
+# Pages load every file of assets/ through nu_asset(): the URL carries ?v=<file time>, so a changed file gets a new URL and a long
+# cache is safe – one year, "immutable" (no revalidation on reload). Files without ?v= (fonts and images that a stylesheet loads):
+# one week. Every block only runs when its module is there – without mod_headers / mod_expires nothing changes.
+# nginx ignores this file: see Help → Security → Web server rules.
+
+<IfModule mod_expires.c>
+	ExpiresActive On
+	ExpiresDefault "access plus 7 days"
+</IfModule>
+
+<IfModule mod_headers.c>
+	<IfModule mod_version.c>
+		<IfVersion >= 2.4>
+			<If "%{QUERY_STRING} =~ /(^|&)v=/">
+				Header set Cache-Control "public, max-age=31536000, immutable"
+				Header unset Expires
+			</If>
+		</IfVersion>
+	</IfModule>
+</IfModule>

@@ -1,0 +1,88 @@
+/* nuBuilder Next form builder */
+.nuBuilderContainer { max-width: 1900px; }
+.nbSidebar { position: sticky; top: 4.5rem; max-height: calc(100vh - 6rem); display: flex; flex-direction: column; }
+.nbSections .list-group-item.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: transparent; }
+.nbObjectList { overflow-y: auto; flex: 1 1 auto; min-height: 8rem; }
+.nbTabHeader { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); background: var(--bs-tertiary-bg); padding: .3rem .75rem; }
+.nbObj { display: flex; align-items: center; gap: .25rem; padding: 0; }
+.nbObj.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: var(--bs-border-color-translucent); }
+.nbObjMain { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: .5rem; padding: .4rem .5rem .4rem .75rem; background: none; border: 0; text-align: start; color: inherit; }
+.nbObjIcon { color: var(--bs-secondary-color); }
+.nbObjText { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; line-height: 1.2; }
+.nbObjId { font-weight: 600; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nbObjLabel { font-size: .75rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nbObjType { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); font-weight: 500; font-size: .68rem; }
+.nbObjMove { display: flex; flex-direction: column; padding-inline-end: .25rem; }
+.nbObjMove .btn { padding: 0 .25rem; line-height: 1; color: var(--bs-secondary-color); }
+.nbPanel .card-body { max-height: calc(100vh - 9rem); overflow-y: auto; }
+.nbFieldset { border: 0; padding: 0; margin: 0 0 1rem; }
+.nbLegend { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--bs-secondary-color); font-weight: 600; margin-bottom: .35rem; float: none; width: auto; }
+.nbCode { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; tab-size: 4; }
+.nbCodeNav .btn { font-size: .75rem; padding: .15rem .5rem; }
+.nbCodeNav .nbHasCode::after { content: '●'; margin-inline-start: .3rem; font-size: .6rem; vertical-align: middle; color: var(--bs-success); }
+.nbListTable td { padding: .2rem; }
+.nbListTable .nbNum { width: 5rem; }
+.nbPreviewCard { position: sticky; top: 4.5rem; }
+.nbPreview { width: 100%; height: calc(100vh - 10rem); min-height: 420px; border: 0; display: block; background: var(--bs-body-bg); border-radius: 0 0 var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius); }
+.nbPreviewRecord { width: 6rem; }
+.nbPreviewLayout { width: auto; }
+@media (max-width: 1199.98px) { .nbSidebar, .nbPreviewCard { position: static; max-height: none; } .nbPreview { height: 70vh; } }
+.nbColGrid td { padding: .2rem; }
+.nbColGrid .nbLen, .nbMcLen .nbLen { width: 5.5rem; }
+.nbColGrid td:first-child { min-width: 9rem; }
+.nbColGrid td:nth-child(2) { min-width: 8.5rem; }   /* label */
+.nbColGrid td:nth-child(3) { min-width: 10.5rem; }  /* type: the longest name ("Record ID (lookup)") fits; the grid scrolls sideways on phones */
+.nbMcType { min-width: 10rem; }
+
+/* "new form" wizard: the table switch also works without JavaScript (CSS :has) */
+#nbNewForm:has(#nb_mode_new:checked) .nbExisting { display: none !important; }
+#nbNewForm:has(#nb_mode_new:checked):not(:has(#nb_type option[value="launch"]:checked)) .nbNew { display: block !important; }
+#nbNewForm:has(#nb_mode_existing:checked) .nbNew { display: none !important; }
+
+/* shown only if builder.js did not start (outdated cache / blocked script) */
+.nbStale { display: none; }
+@keyframes nbStaleShow { to { visibility: visible; } }
+#nbNewForm .nbStale { display: block; visibility: hidden; animation: nbStaleShow 0s 2s forwards; }
+
+/* code editors */
+.nbCM.CodeMirror { height: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; background: var(--bs-body-bg); color: var(--bs-body-color); }
+.nbCM .CodeMirror-scroll { min-height: 4.5rem; max-height: 62vh; }
+.nbCM .CodeMirror-gutters { background: var(--bs-tertiary-bg); border-right: 1px solid var(--bs-border-color-translucent); }
+.nbCM .CodeMirror-linenumber { color: var(--bs-secondary-color); }
+.nbCM .CodeMirror-cursor { border-left-color: var(--bs-body-color); }
+.nbCM.CodeMirror-focused { border-color: #86b7fe; box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .2); }
+[data-bs-theme="dark"] .nbCM .cm-keyword { color: #c792ea; }
+[data-bs-theme="dark"] .nbCM .cm-string, [data-bs-theme="dark"] .nbCM .cm-string-2 { color: #c3e88d; }
+[data-bs-theme="dark"] .nbCM .cm-number { color: #f78c6c; }
+[data-bs-theme="dark"] .nbCM .cm-comment { color: #7f8a9e; }
+[data-bs-theme="dark"] .nbCM .cm-def, [data-bs-theme="dark"] .nbCM .cm-variable-2 { color: #82aaff; }
+[data-bs-theme="dark"] .nbCM .cm-variable, [data-bs-theme="dark"] .nbCM .cm-property { color: #e0e6f0; }
+[data-bs-theme="dark"] .nbCM .cm-tag, [data-bs-theme="dark"] .nbCM .cm-atom { color: #ff9cac; }
+[data-bs-theme="dark"] .nbCM .cm-attribute, [data-bs-theme="dark"] .nbCM .cm-builtin { color: #ffcb6b; }
+[data-bs-theme="dark"] .nbCM .CodeMirror-matchingbracket { color: #fff !important; background: rgba(130, 170, 255, .3); }
+[data-bs-theme="dark"] .nbCM .CodeMirror-selected { background: rgba(130, 170, 255, .25); }
+.nbHistory .list-group-item { padding: .45rem .7rem; }
+
+/* preview can be hidden (button in its header, remembered in localStorage) */
+.nbPreviewCollapsed .nbPreviewBody { display: none; }
+.nbPreviewCollapsed .nbPreviewCard .card-header > :not(.nbPreviewToggle):not(.nbPreviewTitle) { display: none; }
+.nbPreviewCollapsed .nbPreviewCard .card-header { border-bottom: 0; }
+@media (min-width: 1200px) {
+	.nbPreviewCollapsed .nbPreviewCol { flex: 0 0 auto; width: auto; }
+	.nbPreviewCollapsed .nbPanelCol { flex: 1 1 0; width: auto; }
+	.nbPreviewCollapsed .nbPreviewTitle { display: none; }
+	.nbPreviewCollapsed .nbPreviewCard .card-header { padding: .5rem; }
+}
+
+/* attribute editor (assets/js/nuattreditor.js) */
+.nuAttrPreviewBox { padding: .4rem .6rem; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-tertiary-bg); overflow-wrap: anywhere; }
+.nuAttrPreview { color: var(--bs-body-color); font-size: .8rem; white-space: pre-wrap; }
+.nuAttrHead { padding-inline-end: 2.6rem; }
+.input-group > .btn-outline-secondary.nbAttrBtn { --bs-btn-border-color: var(--bs-border-color); --bs-btn-color: var(--bs-secondary-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-border-color); }
+
+/* new form: Table select with search (Tom Select) */
+.nbExisting .ts-wrapper.form-select { padding: 0; }
+.nbExisting .ts-wrapper.single .ts-control { padding-inline-end: 2.25rem; }
+
+/* tabs the user may not rename (only the globeadmin – 0.8.247) */
+.nbListTable input[readonly] { background-color: var(--bs-secondary-bg); color: var(--bs-secondary-color); cursor: not-allowed; }

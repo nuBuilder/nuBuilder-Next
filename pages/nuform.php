@@ -1,0 +1,536 @@
+<?php
+declare(strict_types=1);
+defined('NU_ROOT') || exit;
+
+/*
+ * Runs a nuBuilder form: browse list (no r) or edit view (r = record id, -1 = new).
+ *   f=<form id or code>  r=<record id>  iframe=1  lookup=<target element id>&lo=<lookup object id>
+ *   ps=<property scope key: nuSetProperty values of the opening form, kept in the session – NuProps>
+ *   q/sort/dir/pg = browse state  layout=<preview override>
+ */
+
+NuTranslate::activate();   // texts in the reader's language (zzzzsys_translate)
+$fParam = (string)($_GET['f'] ?? '');
+$meta   = NuFormMeta::load($fParam) ?? NuFormMeta::byCode($fParam);
+if (!$meta) {
+	http_response_code(404);
+	nu_fatal(t('form_err_not_found'), $fParam, true);
+}
+NuAcl::require($meta->id);
+
+$u        = NuAuth::user();
+$rights   = NuAcl::rights($meta->id);
+$iframe   = ($_GET['iframe'] ?? '') === '1';
+$lookupTo = preg_replace('/[^\w]/', '', (string)($_GET['lookup'] ?? ''));
+$psIn    = is_string($_GET['ps'] ?? null) ? $_GET['ps'] : '';
+[$props, $locked] = NuProps::load($psIn);     // properties of the opening form; names set in PHP are locked
+$bare     = $iframe || $lookupTo !== '' || ($_GET['print'] ?? '') === '1';
+$r        = isset($_GET['r']) ? (string)$_GET['r'] : null;
+$btKey    = $bare ? null : (is_string($_GET['bt'] ?? null) ? $_GET['bt'] : null);
+$trail    = NuTrail::get($btKey);                  // breadcrumbs of the forms this one was opened from (run objects, nuForm)
+
+// browse-only form opened with a record → its redirect form (nuBuilder sfo_browse_redirect_form_id)
+if ($r !== null && $r !== '' && !$meta->hasEdit()) {
+	$redirect = trim((string)$meta->form['sfo_browse_redirect_form_id']);
+	if ($redirect !== '') nu_redirect(nu_url('form', ['f' => $redirect, 'r' => $r, 'iframe' => $iframe ? '1' : null, 'bt' => $trail !== null ? $btKey : null]));
+	$r = null;
+}
+if ($r === null || $r === '') {
+	if (!$meta->hasBrowse()) $r = '-1';          // edit / launch forms open directly
+}
+$mode = ($r === null || $r === '') ? 'browse' : 'edit';
+
+// forms run admin-authored JavaScript (like nuBuilder): this page needs inline scripts and eval.
+// Charts (chart objects or nuChart() in the form's code) use Google Charts: www.gstatic.com is allowed only on those forms.
+$usesCharts = (bool)array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'chart' || stripos((string)($o['sob_html_code'] ?? ''), 'nuChart') !== false)
+	|| preg_match('/nuChart|google\.(charts|visualization)/', $meta->form['sfo_javascript'] . $meta->form['sfo_browse_javascript'] . $meta->form['sfo_edit_javascript'] . ($meta->php('BE') ?? ''));
+$gs = $usesCharts ? ' https://www.gstatic.com' : '';
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'$gs; script-src 'self' 'unsafe-inline' 'unsafe-eval'$gs; font-src 'self' data:; connect-src 'self'$gs; frame-src 'self'; object-src 'self' data: blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'none'");
+header('X-Frame-Options: SAMEORIGIN');
+
+$layout = $meta->layout();
+if ($u['globeadmin'] && in_array($_GET['layout'] ?? '', ['absolute', 'auto', 'grid'], true)) $layout = $_GET['layout'];
+
+$js     = [];       // JS from hooks (nuAddJavascript)
+$errors = [];
+$breadcrumbs = [['title' => t('nav_home'), 'url' => nu_url('home')]];
+
+// ===================================================================== browse
+if ($mode === 'browse') {
+	$hash = NuHash::forForm($meta, '', [], $props);
+	NuPhp::reset();
+	$okBB = NuPhp::run($meta->php('BB'), $hash, 'Before Browse');
+	$hash = NuPhp::$hash + $hash;
+	$js   = NuPhp::$js;
+	if (!$okBB) $errors = NuPhp::$errors;
+	nu_form_php_props($props, $locked);
+	$pageScope = NuRender::$scope = NuProps::create($props, $locked);
+
+	$state = nu_browse_request();
+	$printMode = ($_GET['print'] ?? '') === '1' && $rights['print'];
+	$data = null;
+	if (!$errors) {
+		try {
+			$data = NuBrowse::query($meta, $hash, ['search' => trim($state['rf'] . ' ' . $state['q']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $state['pg'],
+				'filters' => $state['flt'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $printMode ? 5000 : 0]);
+			foreach ($data['columns'] as &$col) {
+				if ($col['filter'] && !$printMode) $col['values'] = NuBrowse::distinctValues($meta, $hash, $col);
+			}
+			unset($col);
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next browse ' . $meta->code() . ': ' . $e->getMessage());
+			$errors[] = ['message' => $u['globeadmin'] || nu_cfg('nuConfigDebug') ? t('form_err_browse_sql') . ' ' . $e->getMessage() : t('form_err_browse_sql'), 'field' => ''];
+		}
+		NuBrowse::dropTempTable();
+	}
+	$title = $meta->description();
+	$breadcrumbs[] = ['title' => $title, 'url' => ''];
+}
+
+// ===================================================================== edit
+if ($mode === 'edit') {
+	$isNew = $r === '-1';
+	if ($isNew && !$rights['create'] && $meta->type() !== 'launch') NuAcl::require($meta->id, 'create');
+	$row = [];
+	if (!$isNew) {
+		try {
+			$row = NuRecord::load($meta, $r) ?? [];
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next load ' . $meta->code() . ': ' . $e->getMessage());
+			nu_fatal(t('form_err_load'), $u['globeadmin'] ? $e->getMessage() : '', true);
+		}
+		if (!$row || !NuRecord::visible($meta, $r)) {        // Security check: "Records only through the form's list"
+			http_response_code(404);
+			nu_fatal(t('record_not_found'), '', true);
+		}
+	}
+	$hash = NuHash::forForm($meta, $isNew ? '-1' : $r, $row, $props);
+	NuPhp::reset();
+	if (!NuPhp::run($meta->php('BE'), $hash, 'Before Edit')) $errors = NuPhp::$errors;
+	$js   = NuPhp::$js;
+	$hash = NuPhp::$hash + $hash;
+	foreach (NuPhp::$formValues as $k => $v) $row[$k] = $v;          // nuSetFormValue in BE
+	nu_form_php_props($props, $locked);
+	$pageScope = NuRender::$scope = NuProps::create($props, $locked);
+
+	$render = new NuRender($meta, $isNew ? '-1' : $r, $row, $hash, $layout);
+	$render->setReadonly(!$isNew && !$rights['save']);
+	$body  = $errors ? '' : $render->tabs();
+	$title = $meta->breadcrumb($isNew, $hash);
+	if ($meta->hasBrowse()) $breadcrumbs[] = ['title' => $meta->description(), 'url' => nu_url('form', ['f' => $meta->id])];
+	$breadcrumbs[] = ['title' => $title, 'url' => ''];
+}
+
+/** Properties set in PHP (BB / BE) join the page's properties and are locked; nuDeleteProperty removes them. */
+function nu_form_php_props(array &$props, array &$locked): void
+{
+	foreach (NuPhp::$props as $k => $v) { $props[$k] = $v; $locked[$k] = true; }
+	foreach (array_keys(NuPhp::$deleted) as $k) unset($props[$k], $locked[$k]);
+}
+
+/** Query parameters that keep the browse state (search, sort, filters, props …) in links. */
+$keep = $mode === 'browse' ? array_filter([
+	'f' => $meta->id, 'q' => $state['q'], 'sort' => $state['sort'], 'dir' => $state['sort'] !== null ? $state['dir'] : null,
+	'flt' => $state['flt'] ?: null, 'iframe' => $iframe ? '1' : null, 'lookup' => $lookupTo ?: null, 'lo' => $_GET['lo'] ?? null, 'ps' => $pageScope,
+	'rf' => $state['rf'], 'bt' => $trail !== null ? $btKey : null,
+	'nsc' => $state['nsc'] ? implode(',', $state['nsc']) : null, 'sc' => $state['sc'] ? implode(',', $state['sc']) : null,
+], static fn($v) => $v !== null && $v !== '') : [];
+
+// opened from another form: Home + that trail + this page
+if ($trail !== null) $breadcrumbs = array_merge([$breadcrumbs[0]], $trail, [end($breadcrumbs)]);
+// trails for forms opened from here: child = add a breadcrumb, same = replace this one
+$selfTrail = array_slice($breadcrumbs, 1);
+$selfTrail[count($selfTrail) - 1]['url'] = NuTrail::currentUrl();
+$bt = $bare ? ['child' => '', 'same' => ''] : ['child' => NuTrail::store($selfTrail), 'same' => NuTrail::store(array_slice($selfTrail, 0, -1))];
+
+// iframes and lookup popups have their own trail, starting with their form (nuGetBreadcrumb(0) = reload)
+if ($bare) $breadcrumbs = array_values(array_slice($breadcrumbs, 1));
+
+// ===================================================================== client data
+$client = [
+	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'lookup' => $lookupTo,
+	'form' => [
+		'id' => $meta->id, 'code' => $meta->code(), 'description' => $meta->description(), 'type' => $meta->type(),
+		'table' => $meta->table(), 'primary_key' => $meta->primaryKey(), 'layout' => $layout,
+		'redirect' => trim((string)$meta->form['sfo_browse_redirect_form_id']),
+	],
+	'builder' => ($_GET['builder'] ?? '') === '1' && NuAcl::can(NuAcl::FORM_FORM),
+	// launch form of a report (?p=report&c=…): its fields are the criteria, a button runs the report
+	'report' => $mode === 'edit' && is_string($_GET['rpt'] ?? null) && ($rp = NuReport::load((string)$_GET['rpt'])) && NuReport::canRun($rp)
+		? ['code' => (string)$rp['sre_code'], 'description' => (string)$rp['sre_description']] : null,
+	'record_id' => $mode === 'edit' ? $r : '', 'is_new' => $mode === 'edit' && $r === '-1', 'saved' => ($_GET['saved'] ?? '') === '1',
+	'rights' => $rights,
+	'fileMaxKB' => max(1, (int)(nu_cfg('nuConfigFileMaxKB') ?: 300)),
+	'ux' => (object)NuSettings::uxOptions(),     // nuBuilder's nuUXOptions (settings table or nuconfig.php)
+	'user' => [
+		'id' => $u['id'], 'login' => $u['login'], 'name' => $u['globeadmin'] ? 'globeadmin' : $u['login'], 'display' => $u['display'],
+		'globeadmin' => $u['globeadmin'], 'access_level_id' => $u['access_id'], 'access_level_code' => NuHash::base()['ACCESS_LEVEL_CODE'],
+		'language' => NuTranslate::language(), 'permissions' => NuHash::permissions((string)$u['id']),
+	] + nu_form_user_details($u),
+	'translations' => (object)NuTranslate::dictionary(),
+	'props' => (object)$props,
+	'ps' => $pageScope, 'locked' => array_keys($locked), 'globals' => (object)NuHashCookies::all(),
+	'objects' => $mode === 'edit' ? (object)$render->clientObjects : (object)[],
+	'subforms' => $mode === 'edit' ? (object)$render->clientSubforms : (object)[],
+	'events' => $mode === 'edit' ? nu_form_client_events($meta) : (object)[],
+	'breadcrumbs' => $breadcrumbs, 'title' => $title, 'errors' => $errors,
+	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1] : null,
+	// keyboard shortcuts / options menu (nuBuilder Ctrl+Shift+…): only what exists in nuBuilder Next and the user may use
+	'tools' => [
+		'design' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM),
+		'debug' => NuAcl::can(NuAcl::FORM_DEBUG),
+		'password' => !$u['globeadmin'] && ($u['via'] ?? '') !== 'nubuilder' && !NuImpersonate::active(),
+		'pma' => NuAdmin::can('dbtool', 'change') && NuVendor::primaryDb() !== '',     // ⋮ → Database: phpMyAdmin or Adminer (0.8.282)
+		'tfm' => NuAdmin::can('filemanager', 'change') && NuVendor::available('TFM'),
+		'sessions' => NuAdmin::can('sessions'),
+		'version' => $u['globeadmin'] ? 'nuBuilder Next ' . NU_VERSION . ' · PHP ' . PHP_VERSION . ' · ' . nu_db()->type : '',
+	],
+	'shortcuts' => nu_shortcut_labels(), 'dev_mode' => NuHash::devMode(), 'db_type' => nu_db()->type, 'db_name' => $u['globeadmin'] && empty($u['demo']) ? (string)nu_cfg('nuConfigDBName') : '', 'hashCatalog' => $mode === 'edit' ? NuHash::catalog() : null,
+	'formats' => (object)NuFormat::clientRegistry(), 'tinymceBase' => NU_TINYMCE,
+	// audit trail (0.8.350): "History of this record" in the ⋮ menu
+	'audit' => $mode === 'edit' && $r !== null && $r !== '-1' && NuAudit::on() && NuAudit::audited($meta->table())
+		? ['url' => nu_url('audithistory', ['f' => $meta->id, 'r' => (string)$r]), 'label' => t('aud_history')] : null,
+	// nuBuilder's <table>_nulog of the record: "Added … / Last edited …" in the ⋮ menu (0.8.349)
+	'nulog' => $mode === 'edit' && $r !== null && $r !== '-1' ? (static function () use ($meta, $r): ?array {
+		$i = NuRecord::nulogInfo($meta, (string)$r);
+		if ($i === null) return null;
+		$fmt = static fn(?array $e, string $key) => $e ? t($key, $e['name'] === 'unknown' ? t('nulog_unknown') : $e['name'], $e['when'] !== '' ? $e['when'] : '–') : null;
+		return ['column' => $i['column'], 'added' => $fmt($i['added'], 'nulog_added'), 'edited' => $fmt($i['edited'], 'nulog_edited'), 'none' => t('nulog_none')];
+	})() : null,
+	// globeadmin: menu on the labels of the edit form for quick changes of an object (nuBuilder's label context menu)
+	'objmenu' => $mode === 'edit' && $u['globeadmin'] && !$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM, 'save') ? [
+		'tabs' => array_map(static fn($t) => [(string)$t['zzzzsys_tab_id'], trim(strip_tags((string)$t['syt_title']))], $meta->tabs),
+		'm' => ['object' => t('om_object'), 'copied' => t('om_copied'), 'properties' => t('om_properties'), 'rename' => t('om_rename'), 'rename_prompt' => t('om_rename_prompt'),
+			'actions' => t('om_actions'), 'delete' => t('delete'), 'delete_confirm' => t('om_delete_confirm'), 'move' => t('om_move_tab'), 'access' => t('om_access'),
+			'align' => t('om_align'), 'left' => t('om_left'), 'center' => t('om_center'), 'right' => t('om_right'), 'validation' => t('om_validation'),
+			'unsaved' => t('om_unsaved'), 'error' => t('form_error'),
+			'access_v' => array_map(static fn($i) => t('bf_access_' . $i), range(0, 4)), 'validate_v' => array_map(static fn($i) => t('bf_validate_' . $i), range(0, 3))],
+	] : null,
+	'messages' => [
+		'mask_incomplete' => t('fmt_err_incomplete'), 'saved' => t('saved'), 'deleted' => t('form_deleted'), 'cloned' => t('form_cloned'), 'clone_badge' => t('form_clone_badge'), 'unsaved' => t('form_unsaved'), 'report_running' => t('rpt_running'), 'report_emailed' => t('rpt_emailed'), 'delete_confirm' => t('form_delete_confirm'), 'error' => t('form_error'),
+		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'code_hint' => t('form_code_hint'), 'code_readonly' => t('form_code_readonly'), 'code_discard' => t('form_code_discard'), 'code_dblclick' => t('form_code_dblclick'), 'delete' => t('delete'), 'lookup' => t('form_lookup_title'), 'js_errors' => t('form_js_errors'),
+		'not_supported' => t('form_not_supported'), 'saving' => t('form_saving'), 'all' => t('all'), 'close' => t('close'), 'help' => t('sc_help'), 'chart_no_data' => t('chart_no_data'), 'chart_load_failed' => t('chart_load_failed'), 'chart_no_type' => t('chart_no_type'),
+		'hash_name' => t('hash_name'), 'hash_value' => t('hash_value'), 'hash_source' => t('hash_source'), 'hash_filter' => t('hash_filter'), 'hash_locked' => t('hash_locked'),
+		'hash_src' => ['system' => t('hash_src_system'), 'user' => t('hash_src_user'), 'record' => t('hash_src_record'), 'property' => t('hash_src_property'), 'global' => t('hash_src_global')],
+		'file_too_large' => t('file_too_large'),
+	],
+];
+
+/** Labels of the options menu / shortcuts (keys: sc_*). */
+function nu_shortcut_labels(): array
+{
+	$out = [];
+	foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) if (str_starts_with($k, 'sc_')) $out[substr($k, 3)] = t($k);
+	return $out;
+}
+
+/** nuBuilder's user details for nuUserCode(), nuUserTeam() … (blank for the globeadmin, like nuBuilder). */
+function nu_form_user_details(array $u): array
+{
+	$map = ['code' => 'sus_code', 'position' => 'sus_position', 'department' => 'sus_department', 'team' => 'sus_team', 'first_name' => 'sus_first_name',
+		'last_name' => 'sus_last_name', 'additional1' => 'sus_additional1', 'additional2' => 'sus_additional2', 'email' => 'sus_email',
+		'accessibility' => 'sus_accessibility_features'];
+	$out = array_fill_keys(array_keys($map), '');
+	if ($u['globeadmin']) return $out;
+	try {
+		$cols = nu_db()->columns('zzzzsys_user');
+		$sel = array_values(array_filter($map, static fn($c) => isset($cols[$c])));
+		$row = $sel ? (nu_db()->one('SELECT ' . implode(', ', $sel) . ' FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [(string)$u['id']]) ?? []) : [];
+		foreach ($map as $k => $c) $out[$k] = (string)($row[$c] ?? '');
+	} catch (Throwable) {
+	}
+	return $out;
+}
+
+/** Events of subform objects (afterinsertrow etc.) keyed by subform id. */
+function nu_form_client_events(NuFormMeta $meta): object
+{
+	$out = [];
+	foreach ($meta->objects as $o) {
+		if ($o['sob_all_type'] === 'subform' && isset($meta->events[$o['zzzzsys_object_id']])) $out[$o['sob_all_id']] = $meta->events[$o['zzzzsys_object_id']];
+		if ($o['sob_all_type'] === 'lookup' && trim((string)$o['sob_lookup_javascript']) !== '') $out[$o['sob_all_id']]['lookup'] = (string)$o['sob_lookup_javascript'];
+	}
+	foreach ($meta->objects as $o) {
+		if ($o['sob_all_type'] !== 'subform') continue;
+		$sub = NuFormMeta::load((string)$o['sob_subform_zzzzsys_form_id']);
+		foreach ($sub?->objects ?? [] as $so) {
+			if ($so['sob_all_type'] === 'lookup' && trim((string)$so['sob_lookup_javascript']) !== '') $out[$o['sob_all_id'] . '.' . $so['sob_all_id']]['lookup'] = (string)$so['sob_lookup_javascript'];
+		}
+	}
+	return (object)$out;
+}
+
+function nu_script(string $code, string $label): string
+{
+	if (trim($code) === '') return '';
+	return '<script data-nu-source="' . h($label) . '">' . str_ireplace('</script', '<\/script', $code) . "\n</script>\n";
+}
+
+// ===================================================================== output
+$setupHeader = '';
+try {
+	if (nu_db()->tableExists('zzzzsys_setup')) {
+		$setup = nu_db()->one('SELECT * FROM zzzzsys_setup') ?? [];
+		$setupHeader = nu_setup_header((string)($setup['set_header'] ?? ''), (string)($setup['set_style'] ?? ''));
+	}
+} catch (Throwable) {
+}
+
+/**
+ * Setup → Header as nuBuilder outputs it: JavaScript inside <script id="nuheader"> (HTML such as <link> is added by closing
+ * the script with </script> … <script>), followed by Setup → Style. A header that starts with a tag (nuBuilder Next 0.8.3 and older
+ * expected HTML) is output unchanged.
+ */
+function nu_setup_header(string $header, string $style): string
+{
+	$out = '';
+	if (trim($header) !== '') {
+		$out = preg_match('/^\s*<(script|link|style|meta|!--)/i', $header) ? $header : "<script id=\"nuheader\" data-nu-source=\"set_header\">\n" . $header . "\n</script>";
+	}
+	$style = trim($style);
+	if ($style !== '') $out .= "\n" . (preg_match('#</style>$#i', $style) ? $style : '<style data-nu-source="set_style">' . $style . '</style>');
+	return $out;
+}
+
+$head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset('assets/vendor/jquery-confirm/jquery-confirm.min.css') . '">'
+	. '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">'
+	. '<link rel="stylesheet" href="' . nu_asset('assets/css/nuform.css') . '">'
+	. (trim((string)$meta->form['sfo_style']) !== '' ? '<style data-nu-source="sfo_style">' . str_ireplace('</style', '<\/style', (string)$meta->form['sfo_style']) . '</style>' : '');
+
+$custom = nu_script((string)$meta->form['sfo_javascript'], 'sfo_javascript')
+	. nu_script((string)$meta->form[$mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript'], $mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript');
+
+// WYSIWYG editor objects need TinyMCE (not bundled – copied from nuBuilder to assets/vendor/tinymce)
+$hasEditor = $mode === 'edit' && array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'editor');
+$tinymce   = $hasEditor && is_file(NU_ROOT . '/' . NU_TINYMCE . '/tinymce.min.js');
+$notice    = $hasEditor && !$tinymce && $u['globeadmin'] ? t('form_tinymce_missing') : '';
+
+// ApexCharts (nuBuilder: $nuConfigIncludeApexCharts loads third_party/apexcharts on every page) – bundled, loaded on form pages when switched on.
+// A form whose code uses ApexCharts while it is off: the globeadmin gets a hint with a "Switch on" button.
+$apex = (bool)nu_cfg('nuConfigIncludeApexCharts');
+$apexNotice = '';
+if (!$apex && $u['globeadmin'] && empty($u['demo'])) {
+	$apexCode = $meta->form['sfo_javascript'] . $meta->form['sfo_browse_javascript'] . $meta->form['sfo_edit_javascript'] . ($meta->php('BE') ?? '')
+		. implode("\n", array_map(static fn($o) => (string)($o['sob_html_code'] ?? ''), $meta->objects));
+	if (preg_match('/\bApexCharts\b/', $apexCode)) $apexNotice = t('form_apex_off');
+}
+// dashboards (0.8.298): <div data-nu-dashboard="CODE"> in an HTML object, or nuNextDashboard('CODE', …) in the form's JavaScript
+$dashboards = $mode === 'edit' && preg_match('/data-nu-dashboard|nuNextDashboard/', implode("\n", array_map(static fn($o) => (string)($o['sob_html_code'] ?? ''), $meta->objects))
+	. $meta->form['sfo_javascript'] . $meta->form['sfo_edit_javascript']);
+if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
+
+$foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>'
+	. '<script src="' . nu_asset('assets/vendor/jquery/jquery.min.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/vendor/jquery-confirm/jquery-confirm.min.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nu/nuinfobar.js') . '"></script>'
+	. ($tinymce ? '<script src="' . nu_asset(NU_TINYMCE . '/tinymce.min.js') . '"></script>' : '')
+	. '<script src="' . nu_asset('assets/js/nu/nuformat.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nu/nuruntime.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
+	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript (0.8.298)
+	. $setupHeader . "\n"
+	. nu_script(implode("\n", $js), 'php: nuAddJavascript')
+	. ($errors ? '' : $custom)
+	. '<script>nuNextStart();</script>'
+	. (!empty($client['builder']) ? '<script src="' . nu_asset('assets/js/nu/nudesigner.js') . '"></script>' : '')
+	;
+
+nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '')]);
+?>
+<div class="nuFormHeader nuTitleBar mb-3">
+	<?php if (!$bare): ?>
+	<nav aria-label="breadcrumb">
+		<ol class="breadcrumb mb-0 nuBreadcrumbHolder" id="nuBreadcrumbHolder">
+			<?php foreach ($breadcrumbs as $i => $b): ?>
+				<li class="breadcrumb-item<?= $b['url'] === '' ? ' active' : '' ?>">
+					<?php if ($b['url'] !== ''): ?><a class="nuBreadcrumb" id="nuBreadcrumb<?= $i ?>" href="<?= h($b['url']) ?>"><?= h($b['title']) ?></a>
+					<?php else: ?><span class="nuBreadcrumb fw-semibold" id="nuBreadcrumb<?= $i ?>"><?= h($b['title']) ?></span><?php endif; ?>
+				</li>
+			<?php endforeach; ?>
+		</ol>
+	</nav>
+	<?php else: ?>
+	<div class="fw-semibold nuBreadcrumb" id="nuBreadcrumb0"><?= h($title) ?></div>
+	<?php endif; ?>
+
+	<div class="d-flex flex-wrap gap-2 nuActionHolder" id="nuActionHolder">
+		<?php
+		// Back (0.8.255): to the previous breadcrumb – the list, the Forms list or the start page; not in iframes / lookup windows
+		$backIdx = null;
+		if (!$bare) for ($bi = count($breadcrumbs) - 2; $bi >= 0; $bi--) if (($breadcrumbs[$bi]['url'] ?? '') !== '') { $backIdx = $bi; break; }
+		?>
+		<?php if ($backIdx !== null && empty($printMode)): ?>
+			<a class="btn nuBtnAct nuActionButton" id="nuBackButton" data-nu-crumb="<?= (int)$backIdx ?>" href="<?= h($breadcrumbs[$backIdx]['url']) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
+		<?php endif; ?>
+		<?php if ($mode === 'browse'): ?>
+			<?php if ($rights['add'] && $meta->hasEdit()): // "Add" right only (as nuBuilder; "New" is the button on the edit screen) – also in a lookup window: the new record is chosen right after saving ?>
+				<button type="button" class="btn nuAddBtn nuActionButton" id="nuAddButton"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></button>
+			<?php endif; ?>
+			<?php if ($meta->id === 'nunotes' && $lookupTo === '' && empty($printMode) && isset(nu_forms()['nunotescategroy']) && NuAcl::can('nunotescategroy')): // notes: categories one click away ?>
+				<a class="btn btn-outline-secondary nuActionButton" id="nuNoteCategoriesButton" href="<?= h(nu_url('form', ['f' => 'nunotescategroy', 'bt' => $bt['child'] ?: null])) ?>"><i class="bi bi-tags me-1"></i><?= h(t('notes_categories')) ?></a>
+			<?php endif; ?>
+			<?php if ($rights['print'] && empty($printMode) && $lookupTo === ''): ?>
+				<a class="btn btn-outline-secondary nuActionButton" id="nuPrintButton" href="<?= h(nu_url('form', ['print' => '1'] + array_diff_key($keep, ['iframe' => 1]))) ?>" target="_blank" rel="noopener"><i class="bi bi-printer me-1"></i><?= h(t('print')) ?></a>
+			<?php endif; ?>
+		<?php elseif (!$errors): ?>
+			<?php if (($client['is_new'] && $rights['create']) || (!$client['is_new'] && $rights['save'])): ?>
+				<?php if ($meta->type() !== 'launch'): ?>
+					<button type="button" class="btn nuBtnAct nuBtnSave nuActionButton" id="nuSaveButton"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
+				<?php endif; ?>
+			<?php endif; ?>
+			<?php if (!empty($client['report'])): ?>
+				<button type="button" class="btn btn-primary nuActionButton" id="nuRunReportButton" data-nu-report="<?= h($client['report']['code']) ?>"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rpt_run')) ?></button>
+			<?php endif; ?>
+			<?php if (!$client['is_new'] && $rights['clone'] && $meta->type() !== 'launch'): ?>
+				<button type="button" class="btn nuBtnAct nuActionButton" id="nuCloneButton"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
+			<?php endif; ?>
+			<?php if (!$client['is_new'] && $rights['new'] && $meta->type() !== 'launch'): ?>
+				<button type="button" class="btn btn-outline-secondary nuActionButton" id="nuNewButton"><i class="bi bi-plus-lg me-1"></i><?= h(t('form_new')) ?></button>
+			<?php endif; ?>
+			<?php if (!$client['is_new'] && $rights['delete'] && $meta->type() !== 'launch'): ?>
+				<button type="button" class="btn nuBtnAct nuBtnDel nuActionButton" id="nuDeleteButton"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+			<?php endif; ?>
+		<?php endif; ?>
+		<?php if ($u['globeadmin'] && !$bare): ?>
+			<div class="btn-group" role="group" aria-label="<?= h(t('form_layout')) ?>">
+				<?php if ($mode === 'edit'): foreach (['absolute', 'auto', 'grid'] as $l): ?>
+					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
+				<?php endforeach; endif; ?>
+				<?php if (!$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM)): ?>
+					<a class="btn btn-outline-secondary" href="<?= h(nu_url('builder', ['f' => $meta->id])) ?>" title="<?= h(t('builder_title')) ?>"><i class="bi bi-tools"></i></a>
+				<?php endif; ?>
+			</div>
+			<button type="button" class="btn btn-outline-danger d-none" id="nuJsErrors"><i class="bi bi-bug me-1"></i><span></span></button>
+		<?php endif; ?>
+	</div>
+</div>
+
+<?php if ($notice !== ''): ?><div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h($notice) ?></div><?php endif; ?>
+<?php if ($apexNotice !== ''): ?><div class="alert alert-warning small py-2 d-flex flex-wrap align-items-center gap-2"><span class="flex-grow-1"><i class="bi bi-exclamation-triangle me-1"></i><?= h($apexNotice) ?></span><?= NuSettings::fromDb() ? '<a href="' . h(nu_url('settings')) . '">' . h(t('access_2fa_cfg_settings')) . '</a>' : NuConfigFile::enableButton('nuConfigIncludeApexCharts', t('apex_on'), t('apex_on_confirm'), 'form', ['f' => $meta->id, 'r' => (string)($r ?? '')]) ?></div><?php endif; ?>
+<?php foreach ($errors as $e): ?>
+	<div class="alert alert-danger d-flex gap-2"><i class="bi bi-exclamation-octagon mt-1"></i><div><?= nl2br(h($e['message'])) ?></div></div>
+<?php endforeach; ?>
+
+<?php if ($mode === 'browse' && $data): ?>
+	<?php if (!empty($printMode)): ?>
+		<div class="nuPrintHead nuTitleBar mb-2"><h1 class="h5 mb-0"><?= h($meta->description()) ?></h1>
+			<div class="nuTitleSub small text-body-secondary"><?= h(date('d.m.Y H:i')) ?> · <?= h(t('n_records', $data['total'])) ?><?= $state['q'] !== '' ? ' · ' . h(t('search')) . ': ' . h($state['q']) : '' ?></div>
+			<div class="d-flex flex-wrap gap-2 d-print-none">
+				<button class="btn btn-sm btn-primary" type="button" data-nu-copy-table="#nuBrowseTable" data-nu-copied="<?= h(t('copy_done')) ?>" data-nu-copy-failed="<?= h(t('copy_failed')) ?>"><i class="bi bi-clipboard me-1"></i><span><?= h(t('copy_table')) ?></span></button>
+				<?= NuListExport::csvDialog(['p' => 'formexport'] + array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1]), $meta->code() ?: 'export') ?>
+			</div></div>
+	<?php endif; ?>
+	<div class="card shadow-sm nuListCard nuBrowseCard">
+		<?php if (empty($printMode)): ?>
+		<form class="nuBrowseSearch nuListFilter" method="get" action="index.php" role="search">
+			<input type="hidden" name="p" value="form"><input type="hidden" name="f" value="<?= h($meta->id) ?>">
+			<?php foreach (array_diff_key($keep, ['f' => 1, 'q' => 1, 'flt' => 1]) as $k => $v): ?>
+				<input type="hidden" name="<?= h($k) ?>" value="<?= h($v) ?>">
+			<?php endforeach; ?>
+			<?php foreach ($state['flt'] as $fi => $fv): ?><input type="hidden" name="flt[<?= (int)$fi ?>]" value="<?= h($fv) ?>"><?php endforeach; ?>
+			<div class="d-flex gap-2 nuListSearch"><div class="input-group nuSearchGroup">
+				<input type="search" class="form-control" id="nuSearchField" name="q" value="<?= h($state['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('search')) ?>" autocomplete="off"<?= $lookupTo !== '' ? ' autofocus' : '' ?>>
+				<button class="btn btn-outline-secondary nuSearchBtn" id="nuSearchButton" type="submit" title="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>"><i class="bi bi-search"></i></button>
+			</div></div>
+		</form>
+		<?php endif; ?>
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0 nu-table nuBrowseTable" id="nuBrowseTable">
+				<thead><tr>
+					<?php foreach ($data['columns'] as $c):
+						$hidden = $c['width'] <= 0;
+						$isSort = $state['sort'] === $c['index'];
+						$nextDir = $isSort && $state['dir'] === 'asc' ? 'desc' : 'asc';
+						$link = nu_url('form', ['sort' => $c['index'], 'dir' => $nextDir] + $keep);
+					?>
+						<th scope="col" id="nuBrowseTitle<?= $c['index'] ?>" class="nuBrowseTitle text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
+							data-nu-column="<?= $c['index'] ?>" data-nu-browse-id="<?= h($c['id']) ?>" style="<?= $hidden ? 'display:none;' : 'width:' . $c['width'] . 'px;' ?>"<?= $isSort ? ' aria-sort="' . ($state['dir'] === 'asc' ? 'ascending' : 'descending') . '"' : '' ?>>
+							<a class="nu-sort" href="<?= h($link) ?>"><?= h($c['title']) ?><?= $isSort ? ' <i class="bi bi-caret-' . ($state['dir'] === 'asc' ? 'up' : 'down') . '-fill"></i>' : '' ?></a>
+						</th>
+					<?php endforeach; ?>
+				</tr>
+				<?php if (array_filter($data['columns'], static fn($c) => !empty($c['values']))): ?>
+					<tr class="nuFilterRow">
+						<?php foreach ($data['columns'] as $c): ?>
+							<th scope="col" class="fw-normal"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>>
+								<?php if (!empty($c['values'])): ?>
+									<form method="get" action="index.php">
+										<?php foreach (array_diff_key($keep, ['flt' => 1]) as $k => $v): ?><input type="hidden" name="<?= h($k) ?>" value="<?= h($v) ?>"><?php endforeach; ?>
+										<input type="hidden" name="p" value="form">
+										<?php foreach ($state['flt'] as $fi => $fv): if ($fi !== $c['index']): ?><input type="hidden" name="flt[<?= (int)$fi ?>]" value="<?= h($fv) ?>"><?php endif; endforeach; ?>
+										<select class="form-select form-select-sm nuColumnFilter<?= isset($state['flt'][$c['index']]) ? ' nuFilterActive' : '' ?>" name="flt[<?= $c['index'] ?>]" aria-label="<?= h(t('filter') . ': ' . $c['title']) ?>">
+											<option value=""><?= h(t('all')) ?></option>
+											<?php foreach ($c['values'] as [$v, $l]): ?><option value="<?= h($v) ?>"<?= ($state['flt'][$c['index']] ?? null) === $v ? ' selected' : '' ?>><?= h($l) ?></option><?php endforeach; ?>
+										</select>
+									</form>
+								<?php endif; ?>
+							</th>
+						<?php endforeach; ?>
+					</tr>
+				<?php endif; ?>
+				</thead>
+				<tbody>
+				<?php if (!$data['rows']): ?>
+					<tr><td colspan="<?= max(1, count($data['columns'])) ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
+				<?php endif; ?>
+				<?php foreach ($data['rows'] as $ri => $row): ?>
+					<tr class="nuBrowseRow" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-row="<?= $ri ?>" tabindex="0">
+						<?php foreach ($data['columns'] as $ci => $c): ?>
+							<td id="nucell_<?= $ri ?>_<?= $c['index'] ?>" class="nuCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
+								data-nu-column="<?= $c['index'] ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?php if (!empty($row['classes'][$ci])): ?><span class="<?= h($row['classes'][$ci]) ?>"><?= h($row['cells'][$ci]) ?></span><?php else: ?><?= h($row['cells'][$ci]) ?><?php endif; ?></td>
+						<?php endforeach; ?>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php nu_list_footer((int)$data['total'], (int)$data['page'], (int)$data['per'], 'form', $keep); ?>
+	</div>
+<?php elseif ($mode === 'edit'): ?>
+	<div class="nuEditForm" id="nuEditForm"><?= $body ?></div>
+<?php endif; ?>
+
+<div class="modal fade" id="nuLookupModal" tabindex="-1" aria-hidden="true" aria-labelledby="nuLookupTitle">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header py-2"><h2 class="modal-title fs-6" id="nuLookupTitle"><?= h(t('form_lookup_title')) ?></h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+			<div class="modal-body p-0"><iframe class="nuLookupFrame" title="<?= h(t('form_lookup_title')) ?>"></iframe></div>
+		</div>
+	</div>
+</div>
+<div class="modal fade" id="nuPopupModal" tabindex="-1" aria-hidden="true" aria-label="<?= h(t('form_popup_title')) ?>">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header py-2"><h2 class="modal-title fs-6"><?= h(t('form_popup_title')) ?></h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+			<div class="modal-body p-0"><iframe class="nuLookupFrame nuPopupFrame" title="<?= h(t('form_popup_title')) ?>"></iframe></div>
+		</div>
+	</div>
+</div>
+<div class="modal fade" id="nuReportModal" tabindex="-1" aria-hidden="true" aria-label="<?= h(t('rpt_title')) ?>">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header py-2"><h2 class="modal-title fs-6 me-auto"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rpt_title')) ?></h2>
+				<a class="btn btn-sm btn-outline-secondary me-2 nuReportOpen" href="#" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('rpt_open_tab')) ?></a>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+			<div class="modal-body p-0"><iframe class="nuLookupFrame nuReportFrame" title="<?= h(t('rpt_title')) ?>"></iframe></div>
+		</div>
+	</div>
+</div>
+<div class="modal fade" id="nuMessageModal" tabindex="-1" aria-hidden="true" aria-labelledby="nuMessageTitle">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content" id="nuMessageDiv">
+			<div class="modal-header py-2"><h2 class="modal-title fs-6" id="nuMessageTitle"></h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+			<div class="modal-body nuMessageBody"></div>
+			<div class="modal-footer py-2"><button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal"><?= h(t('ok')) ?></button></div>
+		</div>
+	</div>
+</div>
+<?php
+nu_layout_end($foot, $bare);

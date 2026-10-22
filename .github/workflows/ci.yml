@@ -1,0 +1,83 @@
+# nuBuilder Next – checks on every push (B4 of the 0.8.207 review). Needs the project in a GitHub repository.
+# lint: php -l, languages, unit tests, PHPStan, ESLint · mysql: nuBuilder database + browser smoke test · mssql: SQL Server install
+# script + smoke test (the SQL Server job was written without a SQL Server at hand – see TODO.md "SQL Server").
+name: ci
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium' }
+      - run: for f in $(git ls-files '*.php'); do php -l "$f" > /dev/null || exit 1; done
+      - run: php dev/check_lang.php
+      - run: php dev/tests/run.php
+      - run: curl -sSL -o ../phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.1.17/phpstan.phar && php ../phpstan.phar analyse -c dev/phpstan.neon --no-progress --memory-limit=1G
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install --no-save --prefix .. eslint@9.17.0 globals@15.14.0 && npx --prefix .. eslint -c dev/eslint.config.mjs assets/js
+
+  mysql:
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env: { MARIADB_ROOT_PASSWORD: root, MARIADB_DATABASE: nutest, MARIADB_USER: nu, MARIADB_PASSWORD: nu }
+        ports: ['3306:3306']
+        options: --health-cmd="healthcheck.sh --connect" --health-interval=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: nunext }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium' }
+      - run: git clone --depth 1 https://github.com/nuBuilder/nuBuilder.git nub && mv nunext nub/nunext
+      - run: mysql -h 127.0.0.1 -unu -pnu nutest < nub/nubuilder4.sql
+      - run: |
+          cat > nub/nunext/nuconfig.php <<'PHP'
+          <?php
+          $nuConfigDBHost = "127.0.0.1"; $nuConfigDBName = "nutest"; $nuConfigDBUser = "nu"; $nuConfigDBPassword = "nu";
+          $nuConfigDBGlobeadminUsername = "globeadmin"; $nuConfigDBGlobeadminPassword = "ci-globeadmin-pw";
+          $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099/nunext";
+          PHP
+      - run: (cd nub && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
+      - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/nunext/ ADMIN_PW=ci-globeadmin-pw node nub/nunext/dev/tests/smoke.js
+      - if: failure()
+        run: cat srv.log
+
+  mssql:
+    runs-on: ubuntu-latest
+    needs: lint
+    continue-on-error: true          # not verified yet: schema_mssql.sql has no form tables (see TODO.md "Install scripts")
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env: { ACCEPT_EULA: 'Y', MSSQL_SA_PASSWORD: 'Ci_Passw0rd!' }
+        ports: ['1433:1433']
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: nunext }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: 'pdo_sqlsrv, sqlsrv, mbstring, zip, sodium' }
+      - run: |
+          php -r '$pdo = new PDO("sqlsrv:Server=127.0.0.1,1433;TrustServerCertificate=1", "sa", "Ci_Passw0rd!"); $pdo->exec("CREATE DATABASE nutest");'
+          cat > nunext/nuconfig.php <<'PHP'
+          <?php
+          $nuConfigDBType = "sqlsrv"; $nuConfigDBHost = "127.0.0.1"; $nuConfigDBPort = 1433; $nuConfigDBName = "nutest";
+          $nuConfigDBUser = "sa"; $nuConfigDBPassword = "Ci_Passw0rd!"; $nuConfigDBTrustServerCertificate = true;
+          $nuConfigDBGlobeadminUsername = "globeadmin"; $nuConfigDBGlobeadminPassword = "ci-globeadmin-pw";
+          $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099";
+          PHP
+          cd nunext && php -r 'require "core/nuapp.php"; $db = nu_db(); echo NuInstall::importFile($db, "install/schema_mssql.sql"), " statements\n";'
+      - run: (cd nunext && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
+      - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/ ADMIN_PW=ci-globeadmin-pw node nunext/dev/tests/smoke.js
+      - if: failure()
+        run: cat srv.log

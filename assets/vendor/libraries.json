@@ -1,0 +1,14 @@
+[
+ {"name": "Bootstrap", "version": "5.3.8", "dir": "bootstrap-5.3.8", "file": "css/bootstrap.min.css", "detect": "Bootstrap\\s+v([0-9.]+)", "license": "MIT", "use": "layout"},
+ {"name": "Bootstrap Icons", "version": "1.13.2", "dir": "bootstrap-icons-1.13.2", "file": "bootstrap-icons.min.css", "detect": "Bootstrap Icons v([0-9.]+)", "license": "MIT", "use": "icons"},
+ {"name": "jQuery", "version": "3.7.1", "dir": "jquery", "file": "jquery.min.js", "detect": "jQuery v([0-9.]+)", "license": "MIT", "use": "runtime"},
+ {"name": "jquery-confirm", "version": "3.3.4", "dir": "jquery-confirm", "file": "jquery-confirm.min.js", "detect": "jquery-confirm v([0-9.]+)", "license": "MIT", "use": "dialogs"},
+ {"name": "Tom Select", "version": "2.6.2", "dir": "tom-select-2.6.2", "file": "tom-select.complete.min.js", "detect": "Tom Select v([0-9.]+)", "license": "Apache-2.0", "use": "selects"},
+ {"name": "CodeMirror", "version": "5.65.21", "dir": "codemirror-5.65.21", "file": "codemirror-bundle.js", "detect": "CodeMirror ([0-9.]+) \\(MIT", "license": "MIT", "use": "editor"},
+ {"name": "js-beautify", "version": "1.15", "dir": "formatter", "file": "beautify.min.js", "detect": "", "license": "MIT", "use": "fmt_js"},
+ {"name": "sql-formatter", "version": "15.6.4", "dir": "formatter", "file": "sql-formatter.min.js", "detect": "", "license": "MIT", "use": "fmt_sql"},
+ {"name": "Prettier", "version": "3.3.3", "dir": "formatter", "file": "prettier-standalone.js", "detect": "\"(3\\.[0-9]+\\.[0-9]+)\"", "license": "MIT", "use": "fmt_php"},
+ {"name": "@prettier/plugin-php", "version": "0.25.0", "dir": "formatter", "file": "prettier-plugin-php.js", "detect": "", "license": "MIT", "use": "fmt_php"},
+ {"name": "qrcode-generator", "version": "2.0.4", "dir": "qrcode-generator-2.0.4", "file": "qrcode.js", "detect": "", "license": "MIT", "use": "qr"},
+ {"name": "ApexCharts", "version": "4.4.0", "dir": "apexcharts-4.4.0", "file": "apexcharts.min.js", "detect": "ApexCharts v([0-9.]+)", "license": "MIT", "use": "charts"}
+]
