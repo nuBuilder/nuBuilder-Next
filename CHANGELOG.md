@@ -3,6 +3,17 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.376 – Update page: GitHub first
+- Update page: the card "Install a new version" shows "Update from GitHub" first (in a frame, "Look for a new version" is the
+  main button while nothing newer is known). "Other ways to update" – upload a zip, packages in the folder _update – is folded
+  below it; this browser remembers whether it was open (localStorage), and it opens by itself when a signed package waits in
+  _update. New texts: hint of the card, "Other ways to update", "Upload a zip".
+- Collapses with data-nu-remember-open="key" remember their state for every page (assets/js/nuapp.js); a chevron toggle
+  (.nuChevToggle) turns when open.
+- e2e test update_layout (order, folded at first, state remembered).
+- README.md: the alpha warning now says not to use nuBuilder Next on an existing nuBuilder database for now – only on a new,
+  empty database.
+
 ## 0.8.375 – README for GitHub
 - README.md: new front page for GitHub – one-line summary, quick links (releases, changelog, documentation, development,
   nuBuilder home page and forum), overview, "Why nuBuilder Next?" and the core features for everyone, for building

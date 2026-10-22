@@ -571,6 +571,21 @@ T.github_update = async (s) => {                        // 0.8.374: newest relea
 	} finally { put(null); }
 };
 
+T.update_layout = async (s) => {                        // 0.8.376: GitHub first, other ways folded; open / closed remembered in the browser
+	const p = s.ga;
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-upd-other'); } catch (e) { /* */ } });
+	await open(p, 'index.php?p=update');
+	const order = await p.evaluate(() => { const g = document.getElementById('updGitHub'), o = document.getElementById('updOther'); return !!(g && o && (g.compareDocumentPosition(o) & Node.DOCUMENT_POSITION_FOLLOWING)); });
+	expect(order, 'GitHub is not above the other ways');
+	expect(!(await p.locator('#updOther').isVisible()), 'other ways are open at first');
+	await p.click('#updOtherBtn'); await p.waitForTimeout(600);
+	await open(p, 'index.php?p=update');
+	expect(await p.locator('#updOther').isVisible() && await p.locator('#updOtherBtn').getAttribute('aria-expanded') === 'true', 'open state not remembered');
+	await p.click('#updOtherBtn'); await p.waitForTimeout(600);
+	await open(p, 'index.php?p=update');
+	expect(!(await p.locator('#updOther').isVisible()), 'closed state not remembered');
+};
+
 T.csv_import = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=import');
@@ -592,6 +607,7 @@ T.update_check = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=update');
 	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update'); }
+	if (!(await p.locator('#updOther').isVisible())) { await p.click('#updOtherBtn'); await p.waitForTimeout(500); }   // other ways are folded (0.8.376)
 	await p.setInputFiles('#updPackage', pkg);
 	await p.waitForTimeout(300);
 	await Promise.all([p.waitForLoadState('networkidle'), p.click('#updUpload')]);

@@ -444,6 +444,23 @@
 		if (f.form) f.form.addEventListener('submit', store);
 	});
 
+	// ---------------------------------------------------------------- collapse whose open / closed state is remembered in this browser
+	// <div class="collapse" id="x" data-nu-remember-open="key">: opened at once when it was open last time (localStorage key = '1');
+	// data-nu-force-open: the server opened it (e.g. a package waits in _update/) – the stored state does not close it. (0.8.376)
+	$$('.collapse[data-nu-remember-open]').forEach(function (el) {
+		var key = el.getAttribute('data-nu-remember-open');
+		var toggles = el.id ? $$('[data-bs-target="#' + el.id + '"]') : [];
+		var saved = null;
+		try { saved = localStorage.getItem(key); } catch (e) { /* storage blocked */ }
+		if (saved === '1' && !el.classList.contains('show')) {
+			el.classList.add('show');
+			toggles.forEach(function (b) { b.classList.remove('collapsed'); b.setAttribute('aria-expanded', 'true'); });
+		}
+		var store = function (v) { return function (e) { if (e.target !== el) return; try { localStorage.setItem(key, v); } catch (x) { /* storage blocked */ } }; };
+		el.addEventListener('shown.bs.collapse', store('1'));
+		el.addEventListener('hidden.bs.collapse', store('0'));
+	});
+
 	// ---------------------------------------------------------------- list footer: click on "Page x / y" → enter a page, Enter jumps there
 	$$('.nuPagerJump').forEach(function (btn) {
 		btn.addEventListener('click', function () {

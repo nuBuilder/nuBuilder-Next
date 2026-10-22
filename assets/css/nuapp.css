@@ -1177,3 +1177,9 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 [data-bs-theme="dark"] .CodeMirror .cm-meta, [data-bs-theme="dark"] .CodeMirror .cm-bracket { color: #b0b8c0; }
 [data-bs-theme="dark"] .CodeMirror .cm-error { color: #ff8e98; background: transparent; }
 [data-bs-theme="dark"] .CodeMirror .CodeMirror-matchingbracket { color: #c3e88d !important; outline: 1px solid #4f5c6a; }
+
+/* toggle with a chevron that turns when its collapse is open (update page → Other ways to update, 0.8.376) */
+.nuChevToggle .bi-chevron-right { display: inline-block; transition: transform .2s; }
+.nuChevToggle:not(.collapsed) .bi-chevron-right { transform: rotate(90deg); }
+[dir="rtl"] .nuChevToggle:not(.collapsed) .bi-chevron-right { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) { .nuChevToggle .bi-chevron-right { transition: none; } }

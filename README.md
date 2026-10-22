@@ -1,12 +1,12 @@
-# nuBuilder Next 0.8.375 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.376 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – on your existing nuBuilder database.**
 
 > [!WARNING]
 > **Alpha version – not ready for production.**
 > nuBuilder Next is still under heavy development. Functions, screens and its own database tables can change from one version to
-> the next, and parts of it (e.g. SQL Server) are not verified yet. Try it on a **copy** of your nuBuilder database, keep backups,
-> and do not use it for data you cannot afford to lose.
+> the next, and parts of it (e.g. SQL Server) are not verified yet. **For now, do not use it on an existing nuBuilder database –
+> install it on a new, empty database only.**
 
 ---
 

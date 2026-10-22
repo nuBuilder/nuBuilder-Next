@@ -456,17 +456,64 @@ nu_layout_start(t('upd_title'), 'home');
 		</div>
 	</div>
 <?php elseif (!$finished && $updOn): ?>
-	<div class="card shadow-sm mb-4">
+	<?php $folderPk = NuUpdate::folderPackages(); $folderReady = (bool)array_filter($folderPk, static fn($x) => $x['ok']); ?>
+	<div class="card shadow-sm mb-4" id="updInstall">
 		<div class="card-body">
 			<h2 class="h5"><i class="bi bi-cloud-arrow-up me-2"></i><?= h(t('upd_upload_title')) ?></h2>
-			<p class="small text-body-secondary"><?= h(t('upd_upload_hint')) ?></p>
+			<p class="small text-body-secondary"><?= h(t('upd_install_hint')) ?></p>
+			<?php $gs = NuGitHub::settings(); $gl = $gs['latest']; $gNew = NuGitHub::newer(); $repoUrl = 'https://github.com/' . $gs['repo'] . '/releases'; ?>
+			<div class="border rounded-3 p-3 mb-3" id="updGitHub">
+				<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+					<h3 class="h6 d-inline-flex align-items-center gap-1 mb-0 me-auto"><i class="bi bi-github me-1"></i><?= h(t('gh_title')) ?><?= NuListView::infoTip(t('gh_tip')) ?></h3>
+					<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubSet" aria-expanded="false" aria-controls="updGitHubSet" id="updGitHubSetBtn"><i class="bi bi-gear me-1"></i><?= h(t('gh_settings')) ?></button>
+				</div>
+				<p class="small mb-2"><a href="<?= h($repoUrl) ?>" target="_blank" rel="noopener" id="updGitHubRepo"><?= h($gs['repo']) ?></a>
+					· <?= h($gs['checked_at'] ? t('gh_checked', date('d.m.Y H:i', $gs['checked_at'])) : t('gh_never')) ?>
+					<?= $gs['auto'] ? ' · ' . h(t('gh_auto_on')) : '' ?></p>
+				<?php if ($gs['error'] !== ''): ?><div class="alert alert-warning small py-2 mb-2" id="updGitHubError"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('gh_err_check', $gs['error'])) ?></div><?php endif; ?>
+				<?php if ($gl): ?>
+					<div class="d-flex flex-wrap align-items-center gap-2 small mb-2" id="updGitHubLatest">
+						<span><?= h(t('gh_latest')) ?> <span class="fw-semibold"><?= h((string)$gl['version']) ?></span></span>
+						<?php if (!empty($gl['pre'])): ?><span class="badge text-bg-warning"><?= h(t('gh_pre')) ?></span><?php endif; ?>
+						<span class="badge <?= $gNew ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= h($gNew ? t('upd_folder_newer') : t('gh_installed')) ?></span>
+						<span class="text-body-secondary"><?= $gl['published'] !== '' ? h(date('d.m.Y', (int)strtotime((string)$gl['published']))) . ' · ' : '' ?><?= h(NuFile::size((int)$gl['size'])) ?></span>
+						<?php if ($gl['page'] !== ''): ?><a href="<?= h((string)$gl['page']) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('gh_notes')) ?></a><?php endif; ?>
+					</div>
+				<?php endif; ?>
+				<div class="d-flex flex-wrap gap-2">
+					<form method="post" action="<?= h(nu_url('update')) ?>" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_check">
+						<button class="btn <?= $gNew ? 'btn-outline-secondary' : 'btn-primary' ?>" type="submit" id="updGitHubCheck" data-nu-busy="<?= h(t('gh_checking')) ?>"><i class="bi bi-arrow-repeat me-1"></i><?= h(t('gh_check')) ?></button></form>
+					<?php if ($gNew): ?>
+					<form method="post" action="<?= h(nu_url('update')) ?>" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_download">
+						<button class="btn btn-primary" type="submit" id="updGitHubDownload" data-nu-busy="<?= h(t('gh_downloading')) ?>"><i class="bi bi-cloud-download me-1"></i><?= h(t('gh_download', (string)$gNew['version'])) ?></button></form>
+					<?php endif; ?>
+				</div>
+				<div class="collapse" id="updGitHubSet">
+					<form method="post" action="<?= h(nu_url('update')) ?>" class="border rounded p-3 mt-3 bg-body-tertiary" id="updGitHubSetForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_settings">
+						<div class="row g-3 align-items-end">
+							<div class="col-md-5"><label class="form-label small mb-1" for="ghRepo"><?= h(t('gh_repo')) ?></label><?= NuListView::infoTip(t('gh_repo_tip')) ?>
+								<input type="text" class="form-control form-control-sm" name="repo" id="ghRepo" value="<?= h($gs['repo']) ?>" maxlength="140" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+" spellcheck="false" autocomplete="off"></div>
+							<div class="col-md-5">
+								<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="pre" value="1" id="ghPre"<?= $gs['pre'] ? ' checked' : '' ?>><label class="form-check-label small" for="ghPre"><?= h(t('gh_set_pre')) ?></label></div>
+								<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="auto" value="1" id="ghAuto"<?= $gs['auto'] ? ' checked' : '' ?>><label class="form-check-label small" for="ghAuto"><?= h(t('gh_set_auto')) ?></label></div>
+							</div>
+							<div class="col-md-2 text-md-end"><button type="submit" class="btn btn-sm nuBtnAct nuBtnSave" id="ghSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div>
+						</div>
+					</form>
+				</div>
+			</div>
+			<button class="btn btn-link px-0 text-decoration-none nuChevToggle<?= $folderReady ? '' : ' collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#updOther" aria-expanded="<?= $folderReady ? 'true' : 'false' ?>" aria-controls="updOther" id="updOtherBtn"><i class="bi bi-chevron-right me-1"></i><?= h(t('upd_other_title')) ?> <span class="small text-body-secondary d-none d-sm-inline"><?= h(t('upd_other_sub')) ?></span></button>
+			<div class="collapse<?= $folderReady ? ' show' : '' ?>" id="updOther" data-nu-remember-open="nunext-upd-other"<?= $folderReady ? ' data-nu-force-open' : '' ?>>
+				<div class="pt-3" id="updZip">
+					<h3 class="h6 d-inline-flex align-items-center gap-1 mb-2"><i class="bi bi-file-earmark-zip me-1"></i><?= h(t('upd_zip_title')) ?></h3>
+					<p class="small text-body-secondary"><?= h(t('upd_upload_hint')) ?></p>
 			<form method="post" action="<?= h(nu_url('update')) ?>" enctype="multipart/form-data" class="d-flex flex-wrap gap-2" data-nu-once>
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="upload">
 				<input class="form-control w-auto" type="file" name="package" id="updPackage" accept=".zip,application/zip" required aria-label="<?= h(t('upd_package')) ?>">
 				<button class="btn btn-primary d-none" type="submit" id="updUpload" data-nu-needs-file="#updPackage" data-nu-busy="<?= h(t('upd_checking')) ?>"><i class="bi bi-search me-1"></i><?= h(t('upd_check')) ?></button>
 			</form>
-			<?php $folderPk = NuUpdate::folderPackages(); ?>
-			<div class="mt-3 pt-3 border-top" id="updFolder">
+				</div>
+						<div class="mt-3 pt-3 border-top" id="updFolder">
 				<h3 class="h6 d-inline-flex align-items-center gap-1 mb-2"><i class="bi bi-folder2-open me-1"></i><?= h(t('upd_folder_title')) ?><?= NuListView::infoTip(t('upd_folder_tip')) ?></h3>
 				<?php if (!$folderPk): ?>
 					<p class="small text-body-secondary mb-0" id="updFolderNone"><?= h(t('upd_folder_none')) ?></p>
@@ -490,46 +537,6 @@ nu_layout_start(t('upd_title'), 'home');
 					</form>
 				<?php endif; ?>
 			</div>
-			<?php $gs = NuGitHub::settings(); $gl = $gs['latest']; $gNew = NuGitHub::newer(); $repoUrl = 'https://github.com/' . $gs['repo'] . '/releases'; ?>
-			<div class="mt-3 pt-3 border-top" id="updGitHub">
-				<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-					<h3 class="h6 d-inline-flex align-items-center gap-1 mb-0 me-auto"><i class="bi bi-github me-1"></i><?= h(t('gh_title')) ?><?= NuListView::infoTip(t('gh_tip')) ?></h3>
-					<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubSet" aria-expanded="false" aria-controls="updGitHubSet" id="updGitHubSetBtn"><i class="bi bi-gear me-1"></i><?= h(t('gh_settings')) ?></button>
-				</div>
-				<p class="small mb-2"><a href="<?= h($repoUrl) ?>" target="_blank" rel="noopener" id="updGitHubRepo"><?= h($gs['repo']) ?></a>
-					· <?= h($gs['checked_at'] ? t('gh_checked', date('d.m.Y H:i', $gs['checked_at'])) : t('gh_never')) ?>
-					<?= $gs['auto'] ? ' · ' . h(t('gh_auto_on')) : '' ?></p>
-				<?php if ($gs['error'] !== ''): ?><div class="alert alert-warning small py-2 mb-2" id="updGitHubError"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('gh_err_check', $gs['error'])) ?></div><?php endif; ?>
-				<?php if ($gl): ?>
-					<div class="d-flex flex-wrap align-items-center gap-2 small mb-2" id="updGitHubLatest">
-						<span><?= h(t('gh_latest')) ?> <span class="fw-semibold"><?= h((string)$gl['version']) ?></span></span>
-						<?php if (!empty($gl['pre'])): ?><span class="badge text-bg-warning"><?= h(t('gh_pre')) ?></span><?php endif; ?>
-						<span class="badge <?= $gNew ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= h($gNew ? t('upd_folder_newer') : t('gh_installed')) ?></span>
-						<span class="text-body-secondary"><?= $gl['published'] !== '' ? h(date('d.m.Y', (int)strtotime((string)$gl['published']))) . ' · ' : '' ?><?= h(NuFile::size((int)$gl['size'])) ?></span>
-						<?php if ($gl['page'] !== ''): ?><a href="<?= h((string)$gl['page']) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('gh_notes')) ?></a><?php endif; ?>
-					</div>
-				<?php endif; ?>
-				<div class="d-flex flex-wrap gap-2">
-					<form method="post" action="<?= h(nu_url('update')) ?>" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_check">
-						<button class="btn btn-outline-secondary" type="submit" id="updGitHubCheck" data-nu-busy="<?= h(t('gh_checking')) ?>"><i class="bi bi-arrow-repeat me-1"></i><?= h(t('gh_check')) ?></button></form>
-					<?php if ($gNew): ?>
-					<form method="post" action="<?= h(nu_url('update')) ?>" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_download">
-						<button class="btn btn-primary" type="submit" id="updGitHubDownload" data-nu-busy="<?= h(t('gh_downloading')) ?>"><i class="bi bi-cloud-download me-1"></i><?= h(t('gh_download', (string)$gNew['version'])) ?></button></form>
-					<?php endif; ?>
-				</div>
-				<div class="collapse" id="updGitHubSet">
-					<form method="post" action="<?= h(nu_url('update')) ?>" class="border rounded p-3 mt-3 bg-body-tertiary" id="updGitHubSetForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_settings">
-						<div class="row g-3 align-items-end">
-							<div class="col-md-5"><label class="form-label small mb-1" for="ghRepo"><?= h(t('gh_repo')) ?></label><?= NuListView::infoTip(t('gh_repo_tip')) ?>
-								<input type="text" class="form-control form-control-sm" name="repo" id="ghRepo" value="<?= h($gs['repo']) ?>" maxlength="140" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+" spellcheck="false" autocomplete="off"></div>
-							<div class="col-md-5">
-								<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="pre" value="1" id="ghPre"<?= $gs['pre'] ? ' checked' : '' ?>><label class="form-check-label small" for="ghPre"><?= h(t('gh_set_pre')) ?></label></div>
-								<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="auto" value="1" id="ghAuto"<?= $gs['auto'] ? ' checked' : '' ?>><label class="form-check-label small" for="ghAuto"><?= h(t('gh_set_auto')) ?></label></div>
-							</div>
-							<div class="col-md-2 text-md-end"><button type="submit" class="btn btn-sm nuBtnAct nuBtnSave" id="ghSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div>
-						</div>
-					</form>
-				</div>
 			</div>
 		</div>
 	</div>
