@@ -116,6 +116,11 @@ final class NuHome
 			$smp = NuSample::status();
 			if ($smp['installed'] && $smp['version'] < $smp['current']) $b['sample'] = [t('smp_update_available'), 'warning'];
 		} catch (Throwable) { /* no sample data */ }
+		try {                                                   // a newer release on GitHub (0.8.374, NuGitHub – looked up once a day)
+			if (NuAdmin::can('update', 'view')) NuGitHub::autoCheck();   // once a day, only for those who may update (a page view of anybody else never waits for GitHub)
+			$gh = NuGitHub::newer();
+			if ($gh) $b['update'] = [t('gh_badge_new', (string)$gh['version']), 'success'];
+		} catch (Throwable) { /* no settings table */ }
 		$n = self::statusWarnings();
 		$b['vendor'] = $n > 0 ? [t('status_badge_warn', $n), 'warning'] : [t('status_badge_ok'), 'success'];
 		return $b;

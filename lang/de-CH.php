@@ -76,6 +76,8 @@ return [
 	'upd_progress_keep' => 'Diese Seite offen lassen: nicht neu laden, schliessen oder zurückgehen, bis das Ergebnis angezeigt wird. Je nach Server und Datenbanksicherung kann das einige Minuten dauern.',
 	'upd_req_see_card' => 'Karte «Server» weiter unten',
 	'upd_folder_tip' => 'Statt hochladen: nunext.zip per FTP nach <nuBuilder Next>/_update/ kopieren – praktisch bei grossen Paketen oder kleinem Upload-Limit. Von dort lassen sich nur signierte Pakete installieren; nach einer erfolgreichen Installation wird die ZIP-Datei im Ordner gelöscht. Aus dem Web ist der Ordner nicht lesbar.',
+	'gh_err_size' => 'Der Download ist unvollständig (Grösse stimmt nicht) – bitte erneut versuchen.',
+	'gh_err_big' => 'Der Download ist grösser als 64 MB.',
 	'upd_libs_hint' => 'Bibliotheken von Drittanbietern. «Im Paket»: kommen mit nuBuilder Next und werden bei einem Update ersetzt. «Kopiert / von nuBuilder»: selbst kopiert oder nuBuilder Next nutzt die Kopie von nuBuilder – ein Update ändert sie nie.',
 	'upd_size' => 'Grösse',
 	'upd_backups_hint' => 'Programmdateien und die eigenen Tabellen von nuBuilder Next (Protokoll, 2FA, Sitzungen …), mit der Auswahl oben auch ein SQL-Dump der Datenbank, in %s – über das Web nicht erreichbar (Apache). Besser ein Ordner ausserhalb des Web-Verzeichnisses ($nuConfigBackupPath): der SQL-Dump enthält Benutzerdaten.',

@@ -233,7 +233,9 @@ All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in C
       project. A new development session needs it next to the project folder (`../nunext-signing.key`) – without it `dev/release.py`
       builds unsigned packages (warning on the update page). Losing it means: new key pair + `NuUpdate::SIGN_PUBLIC` in a release.
 - [ ] Continue development from **`nunext-dev.zip`** (with CLAUDE.md, TODO.md, dev/, .github/); `nunext.zip` is only for installing.
-- [ ] B1/B4: put the project into a private Git repository (`.gitignore` is ready) – then `.github/workflows/ci.yml` runs lint, PHPStan,
+- [ ] Update from GitHub (0.8.374): on the live servers check that the host allows outgoing HTTPS to github.com (InfinityFree may not) –
+      the section shows the error otherwise; a cron with `php cron.php update --github` updates unattended.
+- [ ] B1/B4: the project is on GitHub now (nuBuilder/nuBuilder-Next, public) – `.github/workflows/ci.yml` runs lint, PHPStan,
       ESLint, unit tests and the browser smoke test on MariaDB; the SQL Server job is written but not verified (no form tables in
       `schema_mssql.sql`, see "Install scripts").
 - [ ] SQL Server (untested here): read-only preview (BEGIN TRAN … ROLLBACK, `PDO::SQLSRV_ATTR_QUERY_TIMEOUT`), `NuDB::escapeString`.

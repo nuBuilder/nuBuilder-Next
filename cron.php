@@ -13,6 +13,7 @@ declare(strict_types=1);
  * belong to it:
  *     php cron.php update --url=https://example.com/nunext.zip [options]
  *     php cron.php update --zip=/path/nunext.zip [options]
+ *     php cron.php update --github [options]   the newest release of the repository set on the update page (0.8.374, NuGitHub)
  *   options:  --dry-run                 check only (signature, requirements, files, database structure, sample data) – nothing changes
  *             --sha256=<hex>            expected checksum of the package
  *             --backup=auto|files|sql|sql_nologs   (auto: whole database without logs when it is smaller than 50 MB)
@@ -86,7 +87,7 @@ if (isset($opt['finish'])) {
 	exit(!empty($r['ok']) ? 0 : 1);
 }
 
-[$o, $errors] = NuAutoUpdate::options($opt + ['dry_run' => !empty($flags['dry_run']), 'reinstall' => !empty($flags['reinstall'])], true);
+[$o, $errors] = NuAutoUpdate::options($opt + ['dry_run' => !empty($flags['dry_run']), 'reinstall' => !empty($flags['reinstall']), 'github' => !empty($flags['github'])], true);
 if ($errors) {
 	fwrite(STDERR, implode("\n", $errors) . "\nUsage: php cron.php update --url=https://…/nunext.zip | --zip=/path/nunext.zip [--dry-run] [--sha256=…] [--backup=…] [--schema=…] [--sample=…] [--reinstall] [--json]\n");
 	exit(2);

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.373 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.374 – a modern front end for nuBuilder 4
 
 > [!WARNING]
 > **Alpha version – not ready for production.**
@@ -42,7 +42,7 @@ branding, demo mode, a security check, backups and signed updates from the brows
 
 ## Updating
 **Admin tools → Update** (globeadmin): choose the new `nunext.zip` – or copy it by FTP into the folder `_update/` and pick it
-there – then *Check package* and *Install*. Packages are signed; the check shows "Signed by nuBuilder Next" and refuses a package
+there, or let the page download the newest release from GitHub – then *Check package* and *Install*. Packages are signed; the check shows "Signed by nuBuilder Next" and refuses a package
 that was changed. A backup is made first (optionally with an SQL dump) and can be rolled back; database steps run automatically.
 
 If the update page cannot be used (e.g. PHP may not write to the folder): unpack the new `nunext.zip` over the old folder (your

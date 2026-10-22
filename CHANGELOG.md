@@ -3,6 +3,22 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.374 – Update from GitHub
+- Update page: new section "Update from GitHub". It looks for the newest release of the repository (default
+  nuBuilder/nuBuilder-Next, public repositories only) with nunext.zip attached and shows version, date, size, a pre-release badge
+  and a link to the release notes. "Download x.y.z and check" downloads the zip into the folder _update/ and continues with the
+  usual check page; a download without a valid signature is deleted at once – the signature, not GitHub, decides what is installed.
+  Downloads only from GitHub's own addresses (https), at most 64 MB, size compared with GitHub's.
+- Settings of the section: repository (owner/name), "Pre-releases count" (default on – nuBuilder Next is alpha) and "Look once a
+  day" (default on: cron.php, or the start page / update page of a user who may update, asks GitHub once a day – nobody else waits for it). A newer version shows a green "New: x.y.z" badge on the Update tile
+  of the start page.
+- Unattended: php cron.php update --github [--dry-run …] and POST api.php/v1/system/update {"github": true} install the newest
+  release (an error when it is not newer, unless reinstall).
+- Without curl PHP's own HTTPS functions are used. GitHub allows 60 requests per hour per server address; the error is shown
+  in the section.
+- Tests: unit tests for the release choice, allowed hosts and repository names; e2e test github_update (badge, download button,
+  settings; GITHUB=1 also asks GitHub).
+
 ## 0.8.373 – Short README, CHANGELOG.md, alpha note
 - README.md is short now (about 90 lines, the front page on GitHub): a big alpha warning on top ("not ready for production"),
   what nuBuilder Next is, requirements, install, updating (also from the folder _update/), compatibility notes and the licence.

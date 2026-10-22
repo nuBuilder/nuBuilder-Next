@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.373');
+define('NU_VERSION', '0.8.374');
 define('NU_BS', 'assets/vendor/bootstrap-5.3.8');
 define('NU_BI', 'assets/vendor/bootstrap-icons-1.13.2');
 define('NU_TINYMCE', 'assets/vendor/tinymce');      // not bundled: copy <nuBuilder>/third_party/tinymce here
@@ -14,7 +14,7 @@ define('NU_FEATURE_ACCESSIBILITY', false);   // user form switch "Accessibility 
  * checked with class_exists(…, false) stay in the require list below. dev/tests/run.php checks that every class of core/ is found.
  */
 const NU_AUTOLOAD = [
-	'NuCompat' => 'core/nucompat.php', 'NuSchemaCheck' => 'core/nuschemacheck.php', 'NuSettings' => 'core/nusettings.php', 'NuBranding' => 'core/nubranding.php', 'NuDashboard' => 'core/nudashboard.php', 'NuAutoUpdate' => 'core/nuautoupdate.php',
+	'NuCompat' => 'core/nucompat.php', 'NuSchemaCheck' => 'core/nuschemacheck.php', 'NuSettings' => 'core/nusettings.php', 'NuBranding' => 'core/nubranding.php', 'NuDashboard' => 'core/nudashboard.php', 'NuAutoUpdate' => 'core/nuautoupdate.php', 'NuGitHub' => 'core/nugithub.php',
 	'NuHome' => 'core/nuhome.php', 'NuApi' => 'core/nuapi.php', 'NuApiError' => 'core/nuapi.php', 'NuApiClient' => 'core/nuapiclient.php',
 	'NuApiPlayground' => 'core/nuapiplayground.php', 'NuInstall' => 'core/nuinstall.php', 'NuConfigFile' => 'core/nuconfigfile.php', 'NuSetupWizard' => 'core/nusetupwizard.php', 'NuPalette' => 'core/nupalette.php', 'NuAdmin' => 'core/nuadmin.php', 'NuTutorial' => 'core/nututorial.php', 'NuListView' => 'core/nulistview.php', 'NuListDefs' => 'core/nulistdefs.php', 'NuLoginToken' => 'core/nulogintoken.php', 'NuReportApi' => 'core/nureportapi.php', 'NuDemoData' => 'core/nudemodata.php', 'NuDbChanges' => 'core/nudbchanges.php', 'NuAudit' => 'core/nuaudit.php', 'NuNotify' => 'core/nunotify.php', 'NuSelfTest' => 'core/nuselftest.php',
 	'NuSample' => 'core/nusample.php', 'NuListExport' => 'core/nulistexport.php', 'NuProcedure' => 'core/nuprocedure.php',

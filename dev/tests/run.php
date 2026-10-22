@@ -177,6 +177,23 @@ check('lint php', $lint('$a = #amount#; $b = "#name#";', 'php') === ['amount']);
 check('lint sql in php string', $lint('nuRunQuery("SELECT * FROM t WHERE id = #x#");', 'php') === ['x']);
 check('lint record id unquoted', $lint('SELECT * FROM t WHERE id = #RECORD_ID#', 'sql') === ['RECORD_ID']);
 
+// ---------------------------------------------------------------- GitHub releases (0.8.374)
+$asset = static fn(string $v, string $host = 'github.com') => ['name' => 'nunext.zip', 'size' => 10, 'browser_download_url' => "https://$host/o/r/releases/download/v$v/nunext.zip"];
+$rels = [
+	['tag_name' => 'v0.8.380', 'draft' => true, 'prerelease' => false, 'assets' => [$asset('0.8.380')]],
+	['tag_name' => 'v0.8.376', 'draft' => false, 'prerelease' => true, 'assets' => [$asset('0.8.376')]],
+	['tag_name' => 'v0.8.375', 'draft' => false, 'prerelease' => false, 'assets' => [$asset('0.8.375')]],
+	['tag_name' => 'v0.8.377', 'draft' => false, 'prerelease' => false, 'assets' => [['name' => 'other.zip'] + $asset('0.8.377')]],
+	['tag_name' => 'v0.8.378', 'draft' => false, 'prerelease' => false, 'assets' => [$asset('0.8.378', 'evil.example')]],
+	['tag_name' => 'latest', 'draft' => false, 'prerelease' => false, 'assets' => [$asset('9.9.9')]],
+];
+check('github pick with pre-releases', (NuGitHub::pick($rels, true)['version'] ?? '') === '0.8.376');
+check('github pick without pre-releases', (NuGitHub::pick($rels, false)['version'] ?? '') === '0.8.375');
+check('github pick none', NuGitHub::pick([], true) === null);
+check('github hosts', NuGitHub::hostAllowed('https://objects.githubusercontent.com/x') && !NuGitHub::hostAllowed('http://github.com/x')
+	&& !NuGitHub::hostAllowed('https://github.com.evil.example/x') && !NuGitHub::hostAllowed('https://u@github.com/x'));
+check('github repo names', NuGitHub::validRepo('nuBuilder/nuBuilder-Next') && !NuGitHub::validRepo('a/../b') && !NuGitHub::validRepo('a/b/c') && !NuGitHub::validRepo('x'));
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

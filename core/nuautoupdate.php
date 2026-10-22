@@ -7,7 +7,8 @@ defined('NU_ROOT') || exit;
  * REST API (POST api.php/v1/system/update, scope system:update). Uses NuUpdate (checks, signature, backup, maintenance, install,
  * restore when copying fails) and the same options as the page.
  *
- *   options: url (https; http only for localhost) or zip (a file on the server – command line only), sha256 (optional checksum),
+ *   options: url (https; http only for localhost), zip (a file on the server – command line only) or github (the newest release of the
+ *            repository set on the update page, 0.8.374 – NuGitHub), sha256 (optional checksum),
  *            backup files|sql|sql_nologs|auto, schema none|missing|safe|all, sample auto|yes|no, reinstall, dry_run
  *
  * Two phases, like the page: run() checks and installs; finish() runs the database steps and the sample refresh with the NEW code,
@@ -30,9 +31,9 @@ final class NuAutoUpdate
 		$o = [
 			'url' => trim((string)($in['url'] ?? '')), 'zip' => trim((string)($in['zip'] ?? '')), 'sha256' => strtolower(trim((string)($in['sha256'] ?? ''))),
 			'backup' => (string)($in['backup'] ?? 'auto'), 'schema' => (string)($in['schema'] ?? 'safe'), 'sample' => (string)($in['sample'] ?? 'auto'),
-			'reinstall' => self::bool($in['reinstall'] ?? false), 'dry_run' => self::bool($in['dry_run'] ?? false),
+			'reinstall' => self::bool($in['reinstall'] ?? false), 'dry_run' => self::bool($in['dry_run'] ?? false), 'github' => self::bool($in['github'] ?? false),
 		];
-		if (($o['url'] === '') === ($o['zip'] === '')) $e['url'] = 'Give either url or zip.';
+		if ((int)($o['url'] !== '') + (int)($o['zip'] !== '') + (int)$o['github'] !== 1) $e['url'] = 'Give either url, zip or github.';
 		if ($o['zip'] !== '' && !$cli) $e['zip'] = 'zip (a file on the server) is for the command line only – use url.';
 		if ($o['url'] !== '' && !self::urlAllowed($o['url'])) $e['url'] = 'url must be https:// (http:// only for localhost).';
 		if ($o['sha256'] !== '' && !preg_match('/^[a-f0-9]{64}$/', $o['sha256'])) $e['sha256'] = 'sha256 must be 64 hex characters.';
@@ -70,6 +71,14 @@ final class NuAutoUpdate
 		$tmp = null;
 		try {
 			// --------------------------------------------------- the package
+			if ($o['github']) {                                         // newest release on GitHub (0.8.374): its download address
+				$gs = NuGitHub::check();
+				if ($gs['error'] !== '') throw new RuntimeException('GitHub: ' . $gs['error']);
+				if (!$gs['latest']) throw new RuntimeException('GitHub: no release with ' . NuGitHub::ASSET . ' in ' . $gs['repo'] . '.');
+				$r['github'] = ['repo' => $gs['repo'], 'tag' => $gs['latest']['tag'], 'pre' => $gs['latest']['pre']];
+				if (!version_compare((string)$gs['latest']['version'], NU_VERSION, '>') && !$o['reinstall']) throw new RuntimeException('GitHub: the newest release (' . $gs['latest']['version'] . ') is not newer than the installed version (' . NU_VERSION . ').');
+				$o['url'] = (string)$gs['latest']['url'];
+			}
 			if ($o['url'] !== '') {
 				$tmp = self::download($o['url']);
 				$zip = $tmp;

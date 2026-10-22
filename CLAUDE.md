@@ -146,7 +146,9 @@ core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintena
                      '0002-report-tables', '0003-translate-table', '0004-cloner-tables', '0005-setting-primary-db', '0007-drop-vendor-layout',
                      '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications' – add new steps at the end; 0006 was removed with the baseline;
                      every step needs an entry in NuMigrate::CHANGES – tables + kind + what, release.py stops otherwise), change history,
-                     SQL dumps in backups · core/nudbchanges.php preview of an update's database changes (install/db_changes.json,
+                     SQL dumps in backups · core/nugithub.php NuGitHub (0.8.374): newest release of a GitHub repository
+                     (setting 'github_update', daily look: cron or start / update page of users with the update right, Update tile badge), download into _update/ (only signed kept),
+                     cron.php update --github / API {"github": true} · core/nudbchanges.php preview of an update's database changes (install/db_changes.json,
                      written by dev/db_changes.php from NuMigrate::CHANGES + NuSchema::definitions, compared on "Check package" / dry run)
 core/form/*.php      form runtime (meta, render, record, browse, hash variables, PHP API = nuBuilder's PHP functions)
 core/nureport.php    reports: NuReport (data, rights, designer data) · core/nureportengine.php NuReportEngine (nurunpdf.php port, TCPDF)
