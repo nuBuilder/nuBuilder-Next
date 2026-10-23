@@ -206,7 +206,7 @@ $client = [
 		'version' => $u['globeadmin'] ? 'nuBuilder Next ' . NU_VERSION . ' · PHP ' . PHP_VERSION . ' · ' . nu_db()->type : '',
 	],
 	'shortcuts' => nu_shortcut_labels(), 'dev_mode' => NuHash::devMode(), 'db_type' => nu_db()->type, 'db_name' => $u['globeadmin'] && empty($u['demo']) ? (string)nu_cfg('nuConfigDBName') : '', 'hashCatalog' => $mode === 'edit' ? NuHash::catalog() : null,
-	'formats' => (object)NuFormat::clientRegistry(), 'tinymceBase' => NU_TINYMCE,
+	'formats' => (object)NuFormat::clientRegistry(), 'tinymceBase' => NuLibs::tinymce() ?: NU_TINYMCE,
 	// audit trail (0.8.350): "History of this record" in the ⋮ menu
 	'audit' => $mode === 'edit' && $r !== null && $r !== '-1' && NuAudit::on() && NuAudit::audited($meta->table())
 		? ['url' => nu_url('audithistory', ['f' => $meta->id, 'r' => (string)$r]), 'label' => t('aud_history')] : null,
@@ -314,18 +314,19 @@ function nu_setup_header(string $header, string $style): string
 	return $out;
 }
 
-$head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset('assets/vendor/jquery-confirm/jquery-confirm.min.css') . '">'
-	. '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">'
+$head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset(NU_JQCONFIRM . '/jquery-confirm.min.css') . '">'
+	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset('assets/css/nuform.css') . '">'
 	. (trim((string)$meta->form['sfo_style']) !== '' ? '<style data-nu-source="sfo_style">' . str_ireplace('</style', '<\/style', (string)$meta->form['sfo_style']) . '</style>' : '');
 
 $custom = nu_script((string)$meta->form['sfo_javascript'], 'sfo_javascript')
 	. nu_script((string)$meta->form[$mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript'], $mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript');
 
-// WYSIWYG editor objects need TinyMCE (not bundled – copied from nuBuilder to assets/vendor/tinymce)
+// WYSIWYG editor objects need TinyMCE (not bundled – a library pack, or the old hand copy in assets/vendor/tinymce)
 $hasEditor = $mode === 'edit' && array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'editor');
-$tinymce   = $hasEditor && is_file(NU_ROOT . '/' . NU_TINYMCE . '/tinymce.min.js');
-$notice    = $hasEditor && !$tinymce && $u['globeadmin'] ? t('form_tinymce_missing') : '';
+$tinyDir   = $hasEditor ? NuLibs::tinymce() : '';            // library pack or assets/vendor/tinymce (0.8.405)
+$tinymce   = $tinyDir !== '';
+$notice    = $hasEditor && !$tinymce && $u['globeadmin'] ? t('form_tinymce_missing') . ' ' . t('lp_get_pack') : '';
 
 // ApexCharts (nuBuilder: $nuConfigIncludeApexCharts loads third_party/apexcharts on every page) – bundled, loaded on form pages when switched on.
 // A form whose code uses ApexCharts while it is off: the globeadmin gets a hint with a "Switch on" button.
@@ -342,11 +343,11 @@ $dashboards = $mode === 'edit' && preg_match('/data-nu-dashboard|nuNextDashboard
 if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
 
 $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>'
-	. '<script src="' . nu_asset('assets/vendor/jquery/jquery.min.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/vendor/jquery-confirm/jquery-confirm.min.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script>'
+	. '<script src="' . nu_asset(NU_JQUERY . '/jquery.min.js') . '"></script>'
+	. '<script src="' . nu_asset(NU_JQCONFIRM . '/jquery-confirm.min.js') . '"></script>'
+	. '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nuinfobar.js') . '"></script>'
-	. ($tinymce ? '<script src="' . nu_asset(NU_TINYMCE . '/tinymce.min.js') . '"></script>' : '')
+	. ($tinymce ? '<script src="' . nu_asset($tinyDir . '/tinymce.min.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nuformat.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'

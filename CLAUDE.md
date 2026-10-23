@@ -209,6 +209,22 @@ core/nuapi.php       REST API router (routes with scopes; a route may return a s
                      · core/nuapiclient.php clients, SCOPES, tokens, rate limit · core/nuapiplayground.php
 core/nusqlselect.php nuBuilder's SQL builder (zzzzsys_select) · core/nuappcloner.php App cloner (MySQL + SQL Server)
 core/nulibraries.php library overview of the update page (registry + NuSecurity::libraries(), NUNEXT-VERSION.txt of copied tools)
+core/nulibs.php      library packs (0.8.405): TCPDF, PHPMailer, TinyMCE, phpMyAdmin (dir nudb), Adminer, Tiny File Manager as signed zips
+                     nunext-lib-<slot>-<version>.zip (nunext-lib.json + lib/, Ed25519 with the nunext.zip key over payload()), installed to
+                     vendor/packs/<dir>-<version>/ (0.8.409; temp folder + rename, sha256 per file; vendor/packs/ deny-all, written by ensureBase();
+                     deny-all .htaccess for server-only packs, NuLibs::ALLOW for browser packs), active version in vendor/packs/nunext-libs.php
+                     ("<?php exit; ?>" + JSON), KEEP older ones for roll back; packs of 0.8.405–0.8.408 in third_party/ are read as an old place
+                     (legacy(), only for a slot without a vendor/packs entry; isLegacy()); phpMyAdmin / TFM configs reach nuconfig.php through the
+                     shim vendor/nuconfig.php ("../../nuconfig.php" from vendor/packs/<x>/); sources: _update/ (+ _install/ in the
+                     installer), upload, GitHub release tag "libraries" (signed libraries.json, setting github_libs, NuGitHub::get, daily with
+                     NuGitHub::autoCheck). Lookups use the active pack first: NuReport::tcpdfDir, NuMailer::phpMailerCandidates, NuLibs::tinymce(),
+                     NuVendor::dir, dbadmin.php nu_adm_dir() – the old places only while no pack is installed. Update page tab Libraries
+                     (actions lp_*, assets/js/nulibpacks.js), installer step libs (nu_install_libs), dev page ?p=libpack (pages/nulibpack.php:
+                     key uploaded per request, never stored) and php dev/libpack.php. Tests: run.php (own key), e2e libpacks (needs SITE + the
+                     owner's key), dev/tests/install.js LIBPACKS=<folder>. Versions a release needs (0.8.406): install/libraries-required.json
+                     {slot: {min, needed}} → manifest requires_libs (release.py) → NuLibs::required() / unmet() → Check package box #updLibReq
+                     ("Install the packs first", back to the check), tab status, unattended update "libraries"; e2e libreq. Raise a minimum only
+                     after its pack is in the GitHub release "libraries".
 core/nuxlsx.php      NuXlsx / NuXlsxSheet / NuXlsxCell (0.8.398): own .xlsx writer (ZipArchive only) – typed cells (strings never formulas),
                      styles, freeze / autofilter / merge / widths; list exports (NuListExport::writeXlsx, ?export=xlsx, ?cols= = visible
                      columns of the print view), form browse lists (formexport&fmt=xlsx), $nu->excel(), procedures (new NuXlsx). Export menu
@@ -220,7 +236,9 @@ assets/js/nuapp.js   global behaviour: leave guard (form[data-nu-guard]), confir
                      jump, data-nu-once, red Save, change history, … · assets/js/nu/*.js form runtime (nuruntime.js, nucompat.js)
 assets/css/nuapp.css global styles (tokens, dark mode, tabs, buttons) · nuform.css form pages
 lang/*.php           return [key => text]; t('key', ...$args) uses sprintf (%s, %d)
-docs/nunext-docs.htm help page: <section id=… data-doc="admin"> (globeadmin only) or data-acl="<form ids>" (shown with those rights)
+docs/nunext-docs.htm help page: <section id=… data-doc="admin"> (globeadmin only), data-doc="dev" (globeadmin in developer mode –
+                     chapter #devflow "Development with Claude": session start, signing key, gate, releases by hand, package contents;
+                     keep it in step with this file) or data-acl="<form ids>" (shown with those rights)
 install/             schema_mysql*.sql, schema_mssql.sql, schema_expected.json (structure check of updates), settings defaults
                      nubuilder49_tables.sql (nuBuilder 4.9's tables without data, written by dev/nub49_tables.php from nubuilder4.sql): the
                      installer's upgrade of an uploaded nubuilder4.sql of any 4.x (NuInstall::checkDump / upgradeTo49 / ALTER_49, 0.8.384;
@@ -266,7 +284,14 @@ Own tables: `zzzzsys_nunext_log`, `_form_history`, `_user_2fa`, `_token` (kinds:
 - Long tasks / downloads: `session_write_close()` first; `nu_time_limit(0)` where needed. Functions hosts may disable
   (disable_functions) are never called directly – `@` does not stop "Call to undefined function": use `nu_time_limit()`,
   `nu_ignore_abort()`, `nu_ini_get()`, `nu_ini_set()` or a `function_exists()` check (disk_*_space, posix_*, opcache_*) (0.8.273).
-- **Libraries**: every library in `assets/vendor/` has an entry in `assets/vendor/libraries.json` (name, version, dir, file, detect
+- **Third-party code** (0.8.409, `vendor/`): `vendor/bundled/` = libraries of the package (an update replaces them, never deletes –
+  `NuUpdate::isLibrary`), paths ONLY through the constants of core/nuapp.php (`NU_VENDOR`, `NU_BS`, `NU_BI`, `NU_TOMSELECT`, `NU_CODEMIRROR`,
+  `NU_QRCODE`, `NU_JQUERY`, `NU_JQCONFIRM`, `NU_FORMATTER`, `NU_APEXCHARTS`, `NU_FONTAWESOME`; JS files: the literal `vendor/bundled/…`);
+  `vendor/packs/` = library packs (NuLibs, `NU_PACKS`, `NuUpdate::isProtected`); `dev/libsrc/<slot>/` = sources of the packs release.py
+  builds into `_install/` of nunext.zip (PHPMailer). Old places (read until the upgrade baseline moves): `assets/vendor/`, `third_party/`,
+  `lib/PHPMailer`. Sync to a test site with `rsync -a --exclude /nuconfig.php --exclude /vendor/packs --exclude _backup` (`vendor/nuconfig.php`
+  must come along).
+- **Libraries**: every library in `vendor/bundled/` has an entry in `vendor/bundled/libraries.json` (name, version, dir, file, detect
   regex, licence, use key `upd_libuse_*`). Changing a library = change files + registry; `dev/release.py` checks that the file shows the
   registered version and copies the list into the manifest (update page: card Libraries, "Libraries that change").
 - Lists: `nu_list_footer($total, $page, $per, 'route', $params[, class, param, anchor])` = the pager used everywhere.
@@ -323,7 +348,8 @@ Nothing of the earlier test setup survives; this is how it was done (Linux conta
 7. Static analysis: PHPStan phar from github.com/phpstan/phpstan/releases to `../phpstan.phar`; ESLint:
    `npm install --no-save --prefix .. eslint@9.17.0 globals@15.14.0` (both outside the project, release.py finds them).
 6. After copying changed files wait ~3 s (OPcache) before reloading. Sync the whole package with
-   `rsync -a --exclude nuconfig.php --exclude _backup ./ <site>/`.
+   `rsync -a --exclude /nuconfig.php --exclude /vendor/packs --exclude _backup ./ <site>/` (0.8.409: `/nuconfig.php` – the shim
+   `vendor/nuconfig.php` must be copied).
 
 Test database discipline: before a test that changes data, `mysqldump -unu -pnu nutest <tables> > <scratch>/pre.sql`; afterwards
 restore it and remove what the new version created, so the next release tests its database step again – e.g.

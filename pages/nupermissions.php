@@ -78,7 +78,7 @@ if ($id === '') {
 }
 
 $title = $id === '' ? t('perm_title') : ($item ? (string)$item['pme_ident'] : t('perm_new'));
-$head = $id !== '' ? '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">' : '';
+$head = $id !== '' ? '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">' : '';
 nu_layout_start($title, 'users', ['head' => $head]);
 ?>
 <nav aria-label="breadcrumb">
@@ -201,4 +201,4 @@ nu_layout_start($title, 'users', ['head' => $head]);
 	</form>
 <?php endif; ?>
 <?php
-nu_layout_end($id !== '' ? '<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nupermissions.js') . '"></script>' : '');
+nu_layout_end($id !== '' ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nupermissions.js') . '"></script>' : '');

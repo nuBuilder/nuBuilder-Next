@@ -56,7 +56,7 @@ $required = $u['globeadmin'] ? (bool)nu_cfg('nuConfig2FAAdmin')
 	: ((bool)nu_cfg('nuConfig2FAUser') && (string)nu_db()->value('SELECT sal_use_2fa FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]) === '1');
 $email    = $u['globeadmin'] ? (string)(nu_cfg('nuConfigGlobeadminEmail') ?: NuMail::settings()['from']) : $u['email'];
 
-$foot = $setup ? '<script src="' . nu_asset('assets/vendor/qrcode-generator-2.0.4/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>' : '';
+$foot = $setup ? '<script src="' . nu_asset(NU_QRCODE . '/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>' : '';
 
 nu_layout_start(t('sec_title'));
 ?>

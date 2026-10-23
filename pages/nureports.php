@@ -110,7 +110,7 @@ $tcpdf = NuReport::tcpdfDir();
 </nav>
 <?php if (isset($errors['_'])): ?><div class="alert alert-danger"><?= h($errors['_']) ?></div><?php endif; ?>
 <?php if ($tcpdf === null): ?>
-	<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('rpt_tcpdf_missing')) ?></div>
+	<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('rpt_tcpdf_missing')) ?> <?= nu_lp_hint() ?></div>
 <?php endif; ?>
 
 <?php if ($id === ''): ?>

@@ -21,7 +21,7 @@ scan(path.join(root, 'assets/js'));
 export default [
 	{
 		files: ['**/*.js'],
-		ignores: ['assets/vendor/**'],
+		ignores: ['vendor/**'],
 		languageOptions: {
 			ecmaVersion: 2020,
 			sourceType: 'script',

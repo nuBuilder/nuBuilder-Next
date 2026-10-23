@@ -47,6 +47,29 @@ function nu_adm_t(string $key): string
 	return (string)($d[$key] ?? $key);
 }
 
+/**
+ * Adminer's folder (as NuLibs, 0.8.409): the active pack vendor/packs/adminer-<version>/ (vendor/packs/nunext-libs.php), else an old pack of
+ * 0.8.405–0.8.408 (third_party/nunext-libs.php, only while vendor/packs/ has no Adminer entry), else the hand copy third_party/adminer.
+ */
+function nu_adm_dir(): string
+{
+	static $dir = null;
+	if ($dir !== null) return $dir;
+	$read = static function (string $f): array {
+		$j = json_decode((string)preg_replace('/^<\?php[^\n]*\n/', '', (string)@file_get_contents($f)), true);
+		return is_array($j) ? $j : [];
+	};
+	$has = static fn(string $d): bool => is_file("$d/adminer.php") || (bool)glob("$d/adminer-*.php");
+	$new = $read(NU_ROOT . '/vendor/packs/nunext-libs.php');
+	foreach ([['vendor/packs', $new], ['third_party', isset($new['adminer']) ? [] : $read(NU_ROOT . '/third_party/nunext-libs.php')]] as [$base, $st]) {
+		$v = (string)($st['adminer']['active'] ?? '');
+		if ($v === '' || !preg_match('/^[0-9][0-9A-Za-z.+_-]{0,40}$/', $v)) continue;
+		$pack = NU_ROOT . '/' . $base . '/adminer-' . preg_replace('/[^0-9A-Za-z._-]/', '_', $v);
+		if ($has($pack)) return $dir = $pack;
+	}
+	return $dir = NU_ROOT . '/third_party/adminer';
+}
+
 function nu_adm_fail(string $key, int $code = 403): never
 {
 	http_response_code($code);
@@ -60,7 +83,7 @@ function nu_adm_fail(string $key, int $code = 403): never
 // browser, so they are served here (only these two names). Adminer itself looks for them in the current folder (see css() below).
 if (isset($_GET['nu_css'])) {
 	$nuCss = (string)$_GET['nu_css'];
-	$nuCssFile = NU_ROOT . '/third_party/adminer/' . $nuCss;
+	$nuCssFile = nu_adm_dir() . '/' . $nuCss;
 	if (!in_array($nuCss, ['adminer.css', 'adminer-dark.css'], true) || !is_file($nuCssFile)) { http_response_code(404); exit; }
 	header('Content-Type: text/css; charset=utf-8');
 	header('Cache-Control: public, max-age=31536000');     // the URL carries ?v=<checksum> of the file
@@ -73,7 +96,7 @@ if (!is_file(NU_ROOT . '/nuconfig.php')) nu_adm_fail('adm_err_login');
 require NU_ROOT . '/nuconfig.php';
 
 // Adminer's file (as NuVendor::adminerFile())
-$nuAdmDir = NU_ROOT . '/third_party/adminer';
+$nuAdmDir = nu_adm_dir();
 $nuAdmFile = is_file("$nuAdmDir/adminer.php") ? "$nuAdmDir/adminer.php" : '';
 if ($nuAdmFile === '') {
 	$bestV = '';
@@ -197,7 +220,7 @@ unset($nuConfigDBPassword);
 function nu_adm_css(callable $parent): array
 {
 	$cwd = getcwd();
-	@chdir(NU_ROOT . '/third_party/adminer');
+	@chdir(nu_adm_dir());
 	try { $r = (array)$parent(); } finally { if ($cwd !== false) @chdir($cwd); }
 	$fix = static fn(string $u): string => preg_replace('~^(adminer(?:-dark)?\.css)\?v=~', basename(__FILE__) . '?nu_css=$1&v=', $u) ?? $u;
 	if (array_is_list($r)) return array_map(static fn($u) => $fix((string)$u), $r);

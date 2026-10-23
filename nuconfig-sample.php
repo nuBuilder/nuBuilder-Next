@@ -89,10 +89,10 @@ $nuConfigNuBuilderURL					= "";						//-- e.g. "/" or "https://www.example.com/"
 //$nuConfigNuBuilderSessionName			= "";						//-- Only if nuBuilder uses a different session name than the database name.
 
 // E-mail. The SMTP settings are edited in nuBuilder Next (E-mail → Settings) and stored in zzzzsys_setup, like in nuBuilder.
-// PHPMailer is loaded from nuBuilder (<nuBuilder>/third_party/phpmailer/), otherwise from nuBuilder Next's lib/PHPMailer.
+// PHPMailer: the library pack (Update → Libraries); without one nuBuilder's copy (<nuBuilder>/third_party/phpmailer/) or lib/PHPMailer.
 //$nuConfigNuBuilderPath				= "";						//-- File system path of nuBuilder; default: the folder above nuBuilder Next.
 //$nuConfigPHPMailerPath				= "";						//-- Folder with PHPMailer.php, SMTP.php, Exception.php (overrides the search).
-//$nuConfigFontAwesomePath				= "";						//-- Folder with css/all.min.css; default: <nuBuilder>/third_party/fontawesome.
+//$nuConfigFontAwesomePath				= "";						//-- Folder with css/all.min.css; default: <nuBuilder>/third_party/fontawesome, else vendor/bundled.
 // Only to override zzzzsys_setup (e.g. a separate account for nuBuilder Next). Used when $nuConfigSMTPHost is not empty.
 //$nuConfigSMTPHost						= "";
 //$nuConfigSMTPPort						= 587;
@@ -107,13 +107,13 @@ $nuConfigTimezone						= "Europe/Zurich";			//-- Time zone for log entries, audi
 //$nuConfigDevMode						= true;						//-- Developer mode for the globeadmin: #DEV_MODE# = 1, nuDevMode() = true (as nuBuilder).
 $nuConfigFileMaxKB						= 300;						//-- Maximum size of files uploaded into form fields (KB).
 
-// Admin tools for the globeadmin (user menu): nuBuilder's phpMyAdmin and Tiny File Manager, NOT part of the package.
-// Copy <nuBuilder>/third_party/nudb/ to <nuBuilder Next>/third_party/nudb/ and <nuBuilder>/third_party/tinyfilemanager/ to
-// <nuBuilder Next>/third_party/tinyfilemanager/ (with their nuBuilder config files). MySQL / MariaDB only.
+// Admin tools for the globeadmin (user menu): phpMyAdmin and Tiny File Manager with nuBuilder's config, NOT part of the package –
+// install them as library packs (Update → Libraries; vendor/packs/nudb-<version>/, vendor/packs/tinyfilemanager-<version>/).
+// Copies in third_party/nudb/ and third_party/tinyfilemanager/ still work while no pack is installed. MySQL / MariaDB only.
 //$nuConfigPMAURL						= "";						//-- Other URL of phpMyAdmin, e.g. "/nubuilder4/third_party/nudb/"
 //$nuConfigTFMURL						= "";						//-- Other URL of Tiny File Manager
-// Adminer (optional, NOT part of the package): copy adminer.php (or adminer-<version>.php, 5.x recommended) to
-// <nuBuilder Next>/third_party/adminer/ – it opens through dbadmin.php, logged in with the account above (also SQL Server).
+// Adminer (optional, NOT part of the package): a library pack (Update → Libraries) or adminer.php in third_party/adminer/ –
+// it opens through dbadmin.php, logged in with the account above (also SQL Server).
 //$nuConfigPrimaryDatabaseManagement	= "phpMyAdmin";				//-- Database buttons open "phpMyAdmin" or "Adminer" (▾ = the other one). Not set: phpMyAdmin when installed, else Adminer.
 
 // Updates (Admin tools → Update): backups of the program files and nuBuilder Next's tables, and the maintenance flag.

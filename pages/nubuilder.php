@@ -67,12 +67,12 @@ if ($meta) {
 		$db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' ORDER BY sfo_code"));
 }
 
-$head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror.css') . '">'
+$head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset('assets/css/nubuilder.css') . '">'
-	. ($isNew ? '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">' : '');   // new form: searchable Table select
+	. ($isNew ? '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">' : '');   // new form: searchable Table select
 $foot = '<script type="application/json" id="nuBuilderData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
-	. ($isNew ? '<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script>' : '<script src="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror-bundle.js') . '"></script>'
-		. '<script src="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror-addons.js') . '"></script>'
+	. ($isNew ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>' : '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
+		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>')
 	. '<script src="' . nu_asset('assets/js/nu/nuformat.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nuformatdesigner.js') . '"></script>'

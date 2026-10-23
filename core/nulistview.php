@@ -482,12 +482,12 @@ final class NuListView
 	/** Head / foot HTML of a page with a list (Tom Select, the editor). */
 	public static function head(): string
 	{
-		return '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">';
+		return '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';
 	}
 
 	public static function foot(): string
 	{
-		return '<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistview.js') . '"></script>'
+		return '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistview.js') . '"></script>'
 			. '<script src="' . nu_asset('assets/js/nulistselect.js') . '"></script>';
 	}
 

@@ -1269,6 +1269,16 @@ T.help_fnref = async (s) => {                           // 0.8.399: PHP / JavaSc
 	expect(await p.locator('#ref-php, #ref-js').count() === 0, 'reference in the user view');
 };
 
+T.help_dev = async (s) => {                               // 0.8.408: chapter "Development with Claude" only in developer mode
+	const p = s.ga;
+	await open(p, 'index.php?p=help');
+	const dev = (await p.evaluate(async () => (await fetch('index.php?p=selftest')).status)) !== 404;
+	expect((await p.locator('#devflow-h').count() === 1) === dev, 'developer chapter shown: ' + !dev);
+	if (dev) expect(await p.locator('#devflow-key, #devflow-gate, #devflow-manual, #devflow-zips').count() === 4, 'developer chapter incomplete');
+	await open(p, 'index.php?p=help&doc=user');
+	expect(await p.locator('#devflow-h').count() === 0, 'developer chapter in the user preview');
+};
+
 T.update_layout = async (s) => {                        // 0.8.376: GitHub first, other ways folded; open / closed remembered in the browser
 	const p = s.ga;
 	await p.evaluate(() => { try { localStorage.removeItem('nunext-upd-other'); } catch (e) { /* */ } });
@@ -1286,7 +1296,9 @@ T.update_layout = async (s) => {                        // 0.8.376: GitHub first
 	const active = async () => p.locator('#updTabs .nav-link.active').getAttribute('data-nu-tab');
 	expect(await active() === 'update' && !(await p.locator('#updLibraries').isVisible()), 'update tab not first');
 	await p.click('[data-nu-tab="system"]'); await p.waitForTimeout(400);
-	expect(/#system$/.test(p.url()) && await p.locator('#updLibraries').isVisible() && await p.locator('#updRequirements').isVisible(), 'system tab');
+	expect(/#system$/.test(p.url()) && await p.locator('#updRequirements').isVisible(), 'system tab');
+	await p.click('[data-nu-tab="libraries"]'); await p.waitForTimeout(400);
+	expect(/#libraries$/.test(p.url()) && await p.locator('#updLibraries').isVisible() && await p.locator('#updLibPacks').isVisible(), 'libraries tab (0.8.405)');
 	await open(p, 'index.php?p=update#backups'); await p.waitForTimeout(400);
 	expect(await active() === 'backups', 'address #backups');
 	const keep = await p.inputValue('#updKeep');
@@ -1598,6 +1610,134 @@ T.update_check = async (s) => {
 			sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`);
 			fs.rmSync(dir, { recursive: true, force: true });
 		}
+	}
+};
+
+// library packs (0.8.405): build two signed PHPMailer packs (dev/libpack.php, the owner's key), install from _update/, upload,
+// roll back, self-test, refuse a changed pack, remove – and the developer page builds one with the key uploaded. Needs SITE and the key.
+T.libpacks = async (s) => {
+	const key = process.env.NUNEXT_SIGNING_KEY && fs.existsSync(process.env.NUNEXT_SIGNING_KEY) ? process.env.NUNEXT_SIGNING_KEY : path.resolve(__dirname, '../../../nunext-signing.key');
+	if (!SITE || !fs.existsSync(key)) { s.skip = 'SITE or signing key missing'; return; }
+	const src = [path.join(path.dirname(SITE), 'third_party/phpmailer'), path.join(SITE, 'lib/PHPMailer')].find(d => fs.existsSync(path.join(d, 'PHPMailer.php')));
+	if (!src) { s.skip = 'no PHPMailer source'; return; }
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nulp-'));
+	const stateFile = path.join(SITE, 'vendor/packs/nunext-libs.php');
+	const stateBefore = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
+	const tp = path.join(SITE, 'vendor/packs');
+	const keep = path.join(tmp, 'keep');                     // PHPMailer packs installed before the test: put aside, back afterwards
+	fs.mkdirSync(keep);
+	for (const d of fs.existsSync(tp) ? fs.readdirSync(tp) : []) if (/^phpmailer-/.test(d)) fs.renameSync(path.join(tp, d), path.join(keep, d));
+	const cleanup = () => {
+		for (const d of fs.existsSync(tp) ? fs.readdirSync(tp) : []) if (/^phpmailer-99\.0\./.test(d)) fs.rmSync(path.join(tp, d), { recursive: true, force: true });
+		for (const d of fs.readdirSync(keep)) fs.renameSync(path.join(keep, d), path.join(tp, d));
+		for (const f of fs.readdirSync(path.join(SITE, '_update'))) if (/^nunext-lib-phpmailer-99\.0\./.test(f)) fs.unlinkSync(path.join(SITE, '_update', f));
+		if (stateBefore) fs.writeFileSync(stateFile, stateBefore); else if (fs.existsSync(stateFile)) fs.unlinkSync(stateFile);
+		fs.rmSync(tmp, { recursive: true, force: true });
+	};
+	try {
+		execSync(`php dev/libpack.php ${JSON.stringify(tmp)} ${JSON.stringify(key)} phpmailer=${JSON.stringify(src)}@99.0.1`, { cwd: path.resolve(__dirname, '../..') });
+		execSync(`php dev/libpack.php ${JSON.stringify(tmp + '/b')} ${JSON.stringify(key)} phpmailer=${JSON.stringify(src)}@99.0.2`, { cwd: path.resolve(__dirname, '../..') });
+		fs.mkdirSync(path.join(SITE, '_update'), { recursive: true });
+		fs.copyFileSync(path.join(tmp, 'b/nunext-lib-phpmailer-99.0.2.zip'), path.join(SITE, '_update/nunext-lib-phpmailer-99.0.2.zip'));
+		const p = s.ga;
+		const go = async () => {                                // a new address each time: a change of the #hash alone does not load the page
+			await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries');
+			if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
+		};
+		const row = async () => (await p.locator('tr[data-slot=phpmailer]').innerText()).replace(/\s+/g, ' ');
+		await go();
+		expect(/99\.0\.2/.test(await p.locator('tr[data-slot=phpmailer] .nuLpAvail').innerText()), 'pack in _update/ not offered: ' + await row());
+		await Promise.all([p.waitForNavigation(), p.click('tr[data-slot=phpmailer] .nuLpInstall')]);
+		expect(fs.existsSync(path.join(tp, 'phpmailer-99.0.2/PHPMailer.php')) && fs.existsSync(path.join(tp, 'phpmailer-99.0.2/.htaccess')), 'not installed into vendor/packs/phpmailer-99.0.2/');
+		expect(!fs.existsSync(path.join(SITE, '_update/nunext-lib-phpmailer-99.0.2.zip')), 'used pack left in _update/');
+		expect(/99\.0\.2/.test(await p.locator('tr[data-slot=phpmailer] .nuLpInUse').innerText()), 'row after install: ' + await row());
+		// upload the other version → active, the first one can be rolled back to
+		await p.setInputFiles('#lpUpload', path.join(tmp, 'nunext-lib-phpmailer-99.0.1.zip'));
+		await Promise.all([p.waitForNavigation(), p.click('#lpUploadBtn')]);
+		expect(/99\.0\.1/.test(await p.locator('tr[data-slot=phpmailer] .nuLpInUse').innerText()) && /99\.0\.2/.test(await p.locator('tr[data-slot=phpmailer] .nuLpInUse').innerText()), 'after upload: ' + await row());
+		await p.click('tr[data-slot=phpmailer] [data-bs-toggle=dropdown]');
+		await p.click('tr[data-slot=phpmailer] button[form="lpF-lp_rollback-phpmailer"]');
+		await p.waitForTimeout(400);
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm .js-confirm-ok')]);
+		expect(/^99\.0\.2/.test((await p.locator('tr[data-slot=phpmailer] .nuLpInUse .fw-semibold').innerText()).trim()), 'roll back: ' + await row());
+		// self-test with the pack
+		await p.click('tr[data-slot=phpmailer] [data-bs-toggle=dropdown]');
+		await Promise.all([p.waitForNavigation(), p.click('tr[data-slot=phpmailer] button[form="lpF-lp_test-phpmailer"]')]);
+		expect(await p.locator('tr[data-slot=phpmailer] .nuLpTest-ok').count() === 1, 'self-test: ' + await row());
+		// a changed pack is refused (one byte of the manifest's signature)
+		execSync('python3 -', { input: `import zipfile, json\nsrc = zipfile.ZipFile(${JSON.stringify(path.join(tmp, 'nunext-lib-phpmailer-99.0.1.zip'))})\nout = zipfile.ZipFile(${JSON.stringify(path.join(tmp, 'bad.zip'))}, 'w', zipfile.ZIP_DEFLATED)\nfor n in src.namelist():\n    d = src.read(n)\n    if n == 'nunext-lib.json':\n        m = json.loads(d); m['version'] = '99.0.9'; d = json.dumps(m).encode()\n    out.writestr(n, d)\nout.close()\n` });
+		await p.setInputFiles('#lpUpload', path.join(tmp, 'bad.zip'));
+		await Promise.all([p.waitForNavigation(), p.click('#lpUploadBtn')]);
+		expect(await p.locator('.alert-danger').count() >= 1, 'changed pack not refused');
+		expect(/^99\.0\.2/.test((await p.locator('tr[data-slot=phpmailer] .nuLpInUse .fw-semibold').innerText()).trim()), 'changed pack changed the installation');
+		// developer page: build a pack with the key uploaded
+		if ((await open(p, 'index.php?p=libpack')).status() !== 404) {
+			if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=libpack'); }
+			for (const b of await p.locator('#lpBuildForm input[name="slots[]"]').all()) if (await b.isChecked()) await b.uncheck();
+			await p.check('#lpB-phpmailer');
+			await p.fill('input[name="ver[phpmailer]"]', '99.0.3');
+			await p.setInputFiles('#lpKey', key);
+			await Promise.all([p.waitForNavigation(), p.click('#lpBuildBtn')]);
+			expect(/nunext-lib-phpmailer-99\.0\.3\.zip/.test(await p.locator('#lpResult').innerText().catch(() => '')), 'developer page: no pack built');
+			const idx = await p.evaluate(async (u) => (await fetch(u)).json(), await p.locator('#lpIndexLink').getAttribute('href'));
+			expect(idx.format === 'nunext-libs-1' && idx.signature && idx.libs.some(l => l.version === '99.0.3'), 'developer page: index');
+			const d = await p.locator('form input[name=action][value=discard]').count();
+			if (d) await Promise.all([p.waitForNavigation(), p.click('form:has(input[value=discard]) button')]);
+		}
+		// remove: all PHPMailer packs gone
+		await go();
+		await p.click('tr[data-slot=phpmailer] [data-bs-toggle=dropdown]');
+		await p.click('tr[data-slot=phpmailer] button[form="lpF-lp_remove-phpmailer"]');
+		await p.waitForTimeout(400);
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm .js-confirm-ok')]);
+		expect(!fs.readdirSync(tp).some(d => /^phpmailer-99\./.test(d)), 'remove left folders');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event IN ('nunext_lib_install', 'nunext_lib_rollback', 'nunext_lib_remove') AND log_time > NOW() - INTERVAL 10 MINUTE") >= 4, 'log events missing');
+	} finally {
+		cleanup();
+	}
+};
+
+// library versions a release needs (0.8.406): a package whose manifest asks for PHPMailer ≥ 99.0.2 → Check package lists it with the pack
+// in _update/; "Install first" installs it and comes back to the checked package, which then shows nothing more. Needs PKG, SITE and the key.
+T.libreq = async (s) => {
+	const pkg = process.env.PKG;
+	const key = process.env.NUNEXT_SIGNING_KEY && fs.existsSync(process.env.NUNEXT_SIGNING_KEY) ? process.env.NUNEXT_SIGNING_KEY : path.resolve(__dirname, '../../../nunext-signing.key');
+	if (!pkg || !fs.existsSync(pkg) || !SITE || !fs.existsSync(key)) { s.skip = 'PKG, SITE or signing key missing'; return; }
+	const src = [path.join(path.dirname(SITE), 'third_party/phpmailer'), path.join(SITE, 'lib/PHPMailer')].find(d => fs.existsSync(path.join(d, 'PHPMailer.php')));
+	if (!src) { s.skip = 'no PHPMailer source'; return; }
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nulr-'));
+	const tp = path.join(SITE, 'vendor/packs'), stateFile = path.join(tp, 'nunext-libs.php');
+	const stateBefore = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
+	const keep = path.join(tmp, 'keep'); fs.mkdirSync(keep);
+	for (const d of fs.existsSync(tp) ? fs.readdirSync(tp) : []) if (/^phpmailer-/.test(d)) fs.renameSync(path.join(tp, d), path.join(keep, d));
+	const p = s.ga;
+	try {
+		execSync(`php dev/libpack.php ${JSON.stringify(tmp)} ${JSON.stringify(key)} phpmailer=${JSON.stringify(src)}@99.0.2`, { cwd: path.resolve(__dirname, '../..') });
+		fs.mkdirSync(path.join(SITE, '_update'), { recursive: true });
+		fs.copyFileSync(path.join(tmp, 'nunext-lib-phpmailer-99.0.2.zip'), path.join(SITE, '_update/nunext-lib-phpmailer-99.0.2.zip'));
+		// the package with the requirement (requires_libs is not part of the signed payload – the signature stays valid)
+		execSync('python3 -', { input: `import zipfile, json\nsrc = zipfile.ZipFile(${JSON.stringify(pkg)})\nout = zipfile.ZipFile(${JSON.stringify(path.join(tmp, 'pkg.zip'))}, 'w', zipfile.ZIP_DEFLATED)\nfor n in src.namelist():\n    d = src.read(n)\n    if n.endswith('nunext-manifest.json'):\n        m = json.loads(d); m['requires_libs'] = {'phpmailer': {'min': '99.0.2', 'needed': True}}; d = json.dumps(m).encode()\n    out.writestr(n, d)\nout.close()\n` });
+		await open(p, 'index.php?p=update&lr=' + Date.now());
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update'); }
+		if (!(await p.locator('#updOther').isVisible())) { await p.click('#updOtherBtn'); await p.waitForTimeout(500); }
+		await p.setInputFiles('#updPackage', path.join(tmp, 'pkg.zip'));
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('#updUpload')]);
+		await p.waitForTimeout(500);
+		expect(await p.locator('#updLibReq li[data-slot=phpmailer]').count() === 1, 'requirement not listed');
+		expect(/99\.0\.2/.test(await p.locator('#updLibReq li[data-slot=phpmailer]').innerText()), 'pack in _update/ not named');
+		const checkUrl = p.url();
+		await Promise.all([p.waitForNavigation(), p.click('#updLibReqInstall')]);
+		await p.waitForTimeout(400);
+		expect(/check=/.test(p.url()) && p.url().split('check=')[1] === checkUrl.split('check=')[1], 'not back on the checked package: ' + p.url());
+		expect(await p.locator('#updLibReq').count() === 0, 'requirement still listed after installing the pack');
+		expect(fs.existsSync(path.join(tp, 'phpmailer-99.0.2/PHPMailer.php')), 'pack not installed');
+		await Promise.all([p.waitForNavigation(), p.click('#updCancel')]);
+	} finally {
+		for (const d of fs.existsSync(tp) ? fs.readdirSync(tp) : []) if (/^phpmailer-99\./.test(d)) fs.rmSync(path.join(tp, d), { recursive: true, force: true });
+		for (const d of fs.readdirSync(keep)) fs.renameSync(path.join(keep, d), path.join(tp, d));
+		for (const f of fs.readdirSync(path.join(SITE, '_update'))) if (/^nunext-lib-phpmailer-99\./.test(f)) fs.unlinkSync(path.join(SITE, '_update', f));
+		if (stateBefore) fs.writeFileSync(stateFile, stateBefore); else if (fs.existsSync(stateFile)) fs.unlinkSync(stateFile);
+		fs.rmSync(tmp, { recursive: true, force: true });
 	}
 };
 

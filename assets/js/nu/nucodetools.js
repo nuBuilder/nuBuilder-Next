@@ -5,7 +5,7 @@
  *                                 fullscreen: function () → bool  (own full screen, e.g. a modal; default: toolbar + editor fill the window)})
  *   NuCodeTools.format(code, lang, db) → Promise<string>
  *
- * Formatters (assets/vendor/formatter, loaded on first use) – options as nuBuilder's nuace.php:
+ * Formatters (vendor/bundled/formatter, loaded on first use) – options as nuBuilder's nuace.php:
  *   JS / HTML / CSS: js-beautify · SQL: sql-formatter (MySQL or T-SQL) · PHP: Prettier + @prettier/plugin-php
  * Hash variables (#RECORD_ID# …) are protected while formatting: "#" starts a comment in PHP and MySQL.
  */
@@ -14,7 +14,7 @@
 
 	var script = document.currentScript && document.currentScript.src || '';
 	var BASE = script.replace(/assets\/js\/nu\/nucodetools\.js.*$/, '');
-	var FMT = BASE + 'assets/vendor/formatter/';
+	var FMT = BASE + 'vendor/bundled/formatter/';
 	var LIBS = {
 		JS: ['beautify.min.js'], CSS: ['beautify-css.js'], HTML: ['beautify.min.js', 'beautify-css.js', 'beautify-html.min.js'],
 		SQL: ['sql-formatter.min.js'], PHP: ['prettier-standalone.js', 'prettier-plugin-php.js']

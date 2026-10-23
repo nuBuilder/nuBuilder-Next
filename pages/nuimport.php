@@ -79,7 +79,7 @@ foreach (['imp_col_n', 'imp_none', 'imp_const', 'imp_nuid', 'imp_detected', 'imp
 $canTables = NuImport::canTables();
 $target = ($_GET['target'] ?? '') === 'users' && NuImport::canUsers() ? NuImport::USERS : '';
 $formats = NuImport::dateFormats();
-nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">']);
+nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 ?>
 <nav aria-label="breadcrumb">
 	<ol class="breadcrumb small mb-2">
@@ -249,4 +249,4 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 	</section>
 </div>
 <?php
-nu_layout_end('<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nuimport.js') . '"></script>');
+nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nuimport.js') . '"></script>');

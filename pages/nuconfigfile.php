@@ -81,9 +81,9 @@ if (nu_is_post()) {
 }
 $backups = NuConfigFile::backups();
 
-$head = '<link rel="stylesheet" href="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror.css') . '">';
-$foot = '<script src="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror-bundle.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror-addons.js') . '"></script>'
+$head = '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">';
+$foot = '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
+	. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'           // undo/redo, search, comment, invisibles, format, full screen – no hash variables
 	. '<script src="' . nu_asset('assets/js/nuconfigfile.js') . '"></script>';
 nu_layout_start('nuconfig.php', 'home', ['container' => 'container-xl', 'head' => $head]);

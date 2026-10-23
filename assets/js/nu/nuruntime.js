@@ -2225,13 +2225,13 @@
 		if (cmLoading) return cmLoading;
 		cmLoading = new Promise(function (ok, fail) {
 			var css = document.createElement('link');
-			css.rel = 'stylesheet'; css.href = 'assets/vendor/codemirror-5.65.21/codemirror.css';
+			css.rel = 'stylesheet'; css.href = 'vendor/bundled/codemirror-5.65.21/codemirror.css';
 			document.head.appendChild(css);
 			var js = document.createElement('script');
-			js.src = 'assets/vendor/codemirror-5.65.21/codemirror-bundle.js';
+			js.src = 'vendor/bundled/codemirror-5.65.21/codemirror-bundle.js';
 			js.onload = function () {                     // then the add-ons (search, comment …)
 				var ad = document.createElement('script');
-				ad.src = 'assets/vendor/codemirror-5.65.21/codemirror-addons.js';
+				ad.src = 'vendor/bundled/codemirror-5.65.21/codemirror-addons.js';
 				ad.onload = ok; ad.onerror = ok;
 				document.head.appendChild(ad);
 			};
@@ -2342,7 +2342,7 @@
 	N.markCodeFields = markCodeFields;
 
 	// =================================================================== WYSIWYG editor (nuBuilder "editor" objects, TinyMCE)
-	// TinyMCE is not bundled: copy nuBuilder's third_party/tinymce/ to assets/vendor/tinymce/ (see README).
+	// TinyMCE is not bundled: a library pack (Update → Libraries, vendor/packs/tinymce-<version>/); nuNext.tinymceBase = its folder.
 	function tiny() { return window.tinymce || null; }
 
 	api('nuInitTinyMCE', function (id, options, mobile, toolbar, toolbarGroups, menubar, contextmenu, quickbars) {
@@ -2350,7 +2350,7 @@
 		if (!ta || !box) return;
 		if (!tiny()) {
 			$(box).hide(); $(ta).show().addClass('nuEditorFallback');
-			if (!warned.tinymce) { warned.tinymce = true; console.warn('nuBuilder Next: TinyMCE not found – copy nuBuilder\'s third_party/tinymce to assets/vendor/tinymce'); }
+			if (!warned.tinymce) { warned.tinymce = true; console.warn('nuBuilder Next: TinyMCE not found – install its library pack (Update → Libraries)'); }
 			return;
 		}
 		var plugins = typeof options === 'string' ? options : null;

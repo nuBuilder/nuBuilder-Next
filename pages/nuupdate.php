@@ -185,10 +185,76 @@ if (nu_is_post()) {
 			NuUpdate::maintenanceOff();
 			nu_redirect(nu_url('update'));
 		}
+		// library packs (0.8.405, core/nulibs.php): tab Libraries – install / update (one or the ticked ones), upload, roll back,
+		// remove, self-test, look on GitHub. Every pack needs a valid signature.
+		if (str_starts_with($action, 'lp_')) {
+			$back = nu_url('update') . '#libraries';
+			if (in_array($action, ['lp_install', 'lp_upload', 'lp_rollback', 'lp_remove'], true) && !NuUpdate::enabled()) throw new RuntimeException(t('upd_disabled'));
+			$slots = array_values(array_intersect(array_map('strval', nu_post('slot') !== '' ? [nu_post('slot')] : (array)($_POST['slots'] ?? [])), array_keys(NuLibs::SLOTS)));
+			if ($action === 'lp_gh_check') {
+				$g = NuLibs::ghCheck();
+				if ($g['error'] !== '') nu_flash('danger', t('lp_gh_error', $g['error']), true);
+				else nu_flash('success', t('lp_gh_found', count($g['libs'])), true);
+				nu_redirect($back);
+			}
+			if ($action === 'lp_upload') {
+				$f = $_FILES['pack'] ?? null;
+				$err = is_array($f) ? (int)($f['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+				if (in_array($err, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) throw new RuntimeException(t('upd_err_upload_size', NuUpdate::uploadLimitText()));
+				if ($err !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) throw new RuntimeException(t('upd_err_upload'));
+				$tmp = NuUpdate::folderDir() . '/.upload-' . bin2hex(random_bytes(6)) . '.zip';
+				if (!move_uploaded_file($f['tmp_name'], $tmp)) throw new RuntimeException(t('upd_err_upload'));
+				try {
+					nu_ignore_abort();
+					$r = NuLibs::install($tmp, 'upload');
+				} finally {
+					@unlink($tmp);
+				}
+				nu_flash('success', t('lp_installed', NuLibs::SLOTS[$r['slot']]['title'], $r['version']), true);
+				nu_redirect($back);
+			}
+			if (!$slots) throw new RuntimeException(t('lp_err_none'));
+			if ($action === 'lp_install') {
+				nu_ignore_abort();
+				$ov = NuLibs::overview();
+				$done = $fail = [];
+				foreach ($slots as $sl) {
+					$best = $ov[$sl]['best'] ?? null;
+					try {
+						if (!$best) throw new RuntimeException(t('lp_err_nothing'));
+						$r = NuLibs::installCandidate($best);
+						$done[] = NuLibs::SLOTS[$sl]['title'] . ' ' . $r['version'];
+					} catch (Throwable $e) {
+						$fail[] = NuLibs::SLOTS[$sl]['title'] . ': ' . $e->getMessage();
+					}
+				}
+				if ($done) nu_flash('success', t('lp_installed_list', implode(', ', $done)), true);
+				foreach ($fail as $m) nu_flash('danger', $m);
+				// from "Check package" (0.8.406): back to the checked package
+				if (preg_match('/^[a-f0-9]{16}$/', nu_post('back_check')) && is_file($uploadPath(nu_post('back_check')))) nu_redirect(nu_url('update', ['check' => nu_post('back_check')]));
+				nu_redirect($back);
+			}
+			if ($action === 'lp_rollback') {
+				foreach ($slots as $sl) nu_flash('success', t('lp_rolled_back', NuLibs::SLOTS[$sl]['title'], NuLibs::rollback($sl)), true);
+				nu_redirect($back);
+			}
+			if ($action === 'lp_remove') {
+				foreach ($slots as $sl) { NuLibs::remove($sl); nu_flash('success', t('lp_removed', NuLibs::SLOTS[$sl]['title']), true); }
+				nu_redirect($back);
+			}
+			if ($action === 'lp_test') {
+				$res = [];
+				foreach ($slots as $sl) $res[$sl] = NuLibs::selfTest($sl);
+				$_SESSION['nu_lp_test'] = $res;
+				NuLog::write('nunext_lib_test', 'third_party', implode(',', $slots), array_map(static fn($r) => $r[0], $res));
+				nu_redirect($back);
+			}
+			throw new RuntimeException(t('lp_err_none'));
+		}
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next update: ' . $e->getMessage());
 		nu_flash('danger', $e->getMessage());
-		nu_redirect(nu_url('update'));
+		nu_redirect(nu_url('update') . (str_starts_with((string)$action, 'lp_') ? '#libraries' : ''));
 	}
 }
 
@@ -235,7 +301,7 @@ if (isset($_GET['check']) && ($zip = $uploadPath((string)$_GET['check'])) !== ''
 		}
 		foreach (array_unique(array_merge($cur ? array_keys($cur['files']) : [], (array)($check['manifest']['obsolete'] ?? []))) as $rel) {
 			if (!isset($check['manifest']['files'][$rel]) && is_file(NU_ROOT . '/' . $rel) && !NuUpdate::isProtected((string)$rel)
-				&& !str_starts_with((string)$rel, 'assets/vendor/') && !str_starts_with((string)$rel, 'lib/')) $diff['removed'][] = (string)$rel;
+				&& !NuUpdate::isLibrary((string)$rel)) $diff['removed'][] = (string)$rel;
 		}
 		$check['diff'] = $diff;
 		$smp = NuSample::status();                           // installed sample data: offer to update it as well
@@ -365,10 +431,15 @@ $tabLibProblems = count(array_filter($tabLibs, static fn($l) => $l['status'] !==
 $tabPending = count(array_filter(NuMigrate::status(), static fn($x) => !$x['applied']));
 $tabSchema = ($e = NuSchemaCheck::installed()) ? NuSchemaCheck::compare($e) : null;
 $tabSchemaBad = $tabSchema && ($tabSchema['missing'] || $tabSchema['changed']);
-$tabSys = !$reqOk ? 'danger' : ($tabLibProblems || $tabPending || $tabSchemaBad ? 'warning' : '');
+$tabSys = !$reqOk ? 'danger' : ($tabPending || $tabSchemaBad ? 'warning' : '');
+$lpView = NuLibs::overview();                                         // library packs (0.8.405)
+$lpUpdates = count(array_filter($lpView, static fn($x) => $x['update'] && ($x['pack'] !== '' || $x['version'] !== '')));
+$lpWarn = NuLibs::warnings();
+$tabLib = $lpWarn || $tabLibProblems ? 'warning' : ($lpUpdates ? 'info' : '');
 $tabHist = count(NuUpdate::history());
 $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups' => ['bi-archive', t('upd_tab_backups'), $tabBackups ? '<span class="badge rounded-pill text-bg-light border ms-1">' . $tabBackups . '</span>' : ''],
 	'history' => ['bi-clock-history', t('upd_tab_history'), $tabHist ? '<span class="badge rounded-pill text-bg-light border ms-1">' . $tabHist . '</span>' : ''],
+	'libraries' => ['bi-boxes', t('upd_tab_libs'), $tabLib !== '' ? '<span class="nuTabDot bg-' . $tabLib . ' ms-1" role="img" aria-label="' . h(t($tabLib === 'warning' ? 'lp_tab_warn' : 'lp_tab_updates')) . '" title="' . h(t($tabLib === 'warning' ? 'lp_tab_warn' : 'lp_tab_updates')) . '"></span>' : ''],
 	'system' => ['bi-hdd-stack', t('upd_tab_system'), $tabSys !== '' ? '<span class="nuTabDot bg-' . $tabSys . ' ms-1" role="img" aria-label="' . h(t($tabSys === 'danger' ? 'upd_tab_sys_problem' : 'upd_tab_sys_notice')) . '" title="' . h(t($tabSys === 'danger' ? 'upd_tab_sys_problem' : 'upd_tab_sys_notice')) . '"></span>' : '']]; ?>
 <ul class="nav nav-tabs nuUpdTabs mb-4" id="updTabs" role="tablist" data-nu-hash-tabs>
 	<?php foreach ($tabs as $k => [$icon, $label, $extra]): ?>
@@ -423,6 +494,26 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 							<?= h(implode(' · ', array_map(static fn($c) => $c['name'] . ' ' . ($c['from'] === '' ? t('upd_libs_new') . ' ' . $c['to'] : ($c['to'] === '' ? t('upd_libs_dropped') : $c['from'] . ' → ' . $c['to'])), $libChg))) ?><?php endif; ?></li>
 					<?php endif; ?>
 				</ul>
+				<?php $libReq = NuLibs::unmet(NuLibs::required((array)$check['manifest']), null, NuLibs::available()); // library packs the new version needs (0.8.406)
+				if ($libReq): $libNeeded = (bool)array_filter($libReq, static fn($x) => $x['needed'] && $x['have'] === ''); $libCan = array_filter($libReq, static fn($x) => $x['best'] !== null); ?>
+					<div class="alert <?= $libNeeded ? 'alert-danger' : 'alert-warning' ?> small py-2" id="updLibReq" role="alert">
+						<div class="fw-semibold mb-1"><i class="bi bi-boxes me-1"></i><?= h(t('lp_req_title', $check['version'])) ?></div>
+						<ul class="mb-2">
+						<?php foreach ($libReq as $x): ?>
+							<li data-slot="<?= h($x['slot']) ?>"><?= h(t('lp_req_line', $x['title'], $x['min'])) ?> · <?= h($x['have'] !== '' ? t('lp_req_have', $x['have']) : t('lp_req_none')) ?>
+								· <?= $x['best'] ? h(t('lp_req_avail', $x['best']['version'], $x['best']['where'] === 'github' ? 'GitHub' : $x['best']['folder'] . '/')) : '<span class="fw-semibold">' . h(t('lp_req_noavail')) . '</span>' ?><?= $x['needed'] ? '' : ' · ' . h(t('lp_req_optional')) ?></li>
+						<?php endforeach; ?>
+						</ul>
+						<div class="d-flex flex-wrap gap-2 align-items-center">
+						<?php if ($libCan && NuUpdate::enabled()): ?>
+							<form method="post" action="<?= h(nu_url('update')) ?>" class="m-0" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="lp_install"><input type="hidden" name="back_check" value="<?= h((string)$check['id']) ?>">
+								<?php foreach ($libCan as $x): ?><input type="hidden" name="slots[]" value="<?= h($x['slot']) ?>"><?php endforeach; ?>
+								<button class="btn btn-sm btn-primary" type="submit" id="updLibReqInstall" data-nu-busy="<?= h(t('lp_installing')) ?>"><i class="bi bi-download me-1"></i><?= h(t('lp_req_install', count($libCan))) ?></button></form>
+						<?php endif; ?>
+							<span><?= h(t('lp_req_hint')) ?></span>
+						</div>
+					</div>
+				<?php endif; ?>
 				<?php if (!$newer): ?><div class="alert alert-danger small py-2 d-flex gap-2 align-items-start" role="alert"><i class="bi bi-exclamation-octagon mt-1"></i><div><?= h(t('upd_not_newer', $check['version'], NU_VERSION)) ?></div></div><?php endif; ?>
 				<?php $new = NuUpdate::changesSince((array)($check['manifest']['changes'] ?? []), NU_VERSION); if ($new): ?>
 					<details class="mb-3" open><summary class="fw-semibold"><?= h(t('upd_whats_new')) ?></summary><?= $changes($new) ?></details>
@@ -744,22 +835,101 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 <?php endif; ?>
 <?php if (!$history): ?><p class="text-body-secondary small" id="updHistoryNone"><?= h(t('no_records')) ?></p><?php endif; ?>
 </div>
-<div class="tab-pane fade" id="updPane-system" role="tabpanel" aria-labelledby="updTabBtn-system" tabindex="0">
-		<div class="card shadow-sm mb-4<?= $reqOk ? '' : ' border-danger' ?>" id="updRequirements">
-			<div class="card-header fw-semibold"><?= h(t('upd_requirements')) ?></div>
-			<ul class="list-group list-group-flush small">
-				<?php foreach ($req as [$label, $ok, $detail]): ?>
-					<li class="list-group-item d-flex gap-2<?= $ok ? '' : ' list-group-item-danger' ?>"><i class="bi <?= $ok ? 'bi-check-circle text-success' : 'bi-x-circle text-danger' ?>"></i><span class="me-auto"><?= h($label) ?><?php if (!$ok && $label === t('upd_req_writable')): $tip = NuUpdate::writableHelp(); ?>
-						<span class="nuInfoTip ms-1" tabindex="0" role="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus click" data-bs-custom-class="nuTipWide nuTipPre" aria-label="<?= h($tip) ?>" title="<?= h($tip) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?></span><span class="text-body-secondary text-end text-break"><?= h($detail) ?></span></li>
-				<?php endforeach; ?>
-			</ul>
-			<div class="card-footer small text-body-secondary"><?= h(t('upd_req_hint')) ?></div>
-		</div>
-	
-<?php $libs = NuLibraries::all(); // third-party libraries (0.8.229) ?>
+<div class="tab-pane fade" id="updPane-libraries" role="tabpanel" aria-labelledby="updTabBtn-libraries" tabindex="0">
+<?php // library packs (0.8.405, core/nulibs.php)
+$lpGh = NuLibs::ghState();
+$lpTests = $_SESSION['nu_lp_test'] ?? [];
+unset($_SESSION['nu_lp_test']);
+$lpCan = NuUpdate::enabled();
+$lpFrom = static fn(array $x): string => match ($x['from']) { 'pack' => t('lp_from_pack'), 'nubuilder' => t('lp_from_nubuilder'), 'manual' => t('lp_from_manual'), default => '' };
+$lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide nuTipPre" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi ' . $icon . '"></i></span>';
+?>
+<div class="card shadow-sm mb-4" id="updLibPacks">
+	<div class="card-header d-flex flex-wrap align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-boxes me-2"></i><?= h(t('lp_title')) ?>
+		<?php if ($lpUpdates): ?><span class="badge text-bg-info ms-1" id="lpBadgeUpdates"><?= h(t('lp_badge_updates', $lpUpdates)) ?></span><?php endif; ?>
+		<?php if ($lpWarn): ?><span class="badge text-bg-warning ms-1" id="lpBadgeWarn"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('lp_badge_warn', $lpWarn)) ?></span><?php endif; ?>
+		<?= $lpTip(t('lp_hint')) ?></span>
+		<form method="post" action="<?= h(nu_url('update')) ?>" data-nu-once class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="lp_gh_check">
+			<button class="btn btn-sm btn-outline-secondary" type="submit" id="lpGhCheck" data-nu-busy="<?= h(t('gh_checking')) ?>"><i class="bi bi-github me-1"></i><?= h(t('lp_gh_check')) ?></button></form>
+		<?php if (NuHash::devMode() && !empty(NuAuth::user()['globeadmin'])): ?><a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('libpack')) ?>" id="lpBuildLink"><i class="bi bi-pen me-1"></i><?= h(t('lp_build_title')) ?> <span class="badge text-bg-secondary">Dev</span></a><?php endif; ?>
+	</div>
+	<div class="card-body py-2 small text-body-secondary" id="lpGhState">
+		<?php if ($lpGh['checked_at']): ?>
+			<?= $lpGh['error'] !== '' ? '<i class="bi bi-exclamation-triangle text-warning me-1"></i>' . h(t('lp_gh_error', $lpGh['error'])) : h(t('lp_gh_state', $lpGh['repo'], date('d.m.Y H:i', (int)$lpGh['checked_at']), count($lpGh['libs']))) ?>
+		<?php else: ?><?= h(t('lp_gh_never')) ?><?php endif; ?>
+		· <?= h(t('lp_folder_hint', '_update/')) ?>
+	</div>
+	<div class="table-responsive">
+		<table class="table table-sm nu-table mb-0 small align-middle" id="lpTable">
+			<thead><tr><th class="nuLpCheck"><input class="form-check-input" type="checkbox" id="lpAll" aria-label="<?= h(t('lp_select_all')) ?>"></th><th><?= h(t('upd_libs_name')) ?></th><th class="d-none d-md-table-cell"><?= h(t('lp_col_inuse')) ?></th><th class="d-none d-md-table-cell"><?= h(t('lp_col_available')) ?></th><th class="d-none d-md-table-cell"><?= h(t('upd_libs_state')) ?></th><th class="text-end"><span class="visually-hidden"><?= h(t('lp_col_actions')) ?></span></th></tr></thead>
+			<tbody>
+			<?php foreach ($lpView as $sl => $x):
+				$best = $x['best'];
+				[$icon, $text] = $x['unmet'] ? ['bi-exclamation-triangle text-warning', t('lp_req_needs', (string)$x['req']['min'])] : match ($x['status']) {
+					'ok' => ['bi-check-circle text-success', t('upd_libs_ok')],
+					'missing' => ['bi-dash-circle text-body-secondary', t('lp_missing')],
+					'old' => ['bi-exclamation-triangle text-warning', t('lp_below_safe', $x['min'])],
+					default => ['bi-exclamation-triangle text-warning', $x['note'] !== '' ? t($x['note']) : t('upd_libs_ok')],
+				};
+				$test = $lpTests[$sl] ?? null; ?>
+				<tr data-slot="<?= h($sl) ?>" class="nuLpRow">
+					<td class="nuLpCheck"><input class="form-check-input" type="checkbox" form="lpForm" name="slots[]" value="<?= h($sl) ?>" id="lpSel-<?= h($sl) ?>" aria-label="<?= h($x['title']) ?>"></td>
+					<td><label class="fw-semibold" for="lpSel-<?= h($sl) ?>"><?= h($x['title']) ?></label><div class="text-body-secondary"><?= h(t('upd_libuse_' . $x['use'])) ?></div>
+						<div class="d-md-none nuLpCompact"><i class="bi <?= $icon ?> me-1"></i><?= h(($x['pack'] !== '' ? $x['pack'] : ($x['version'] !== '' ? $x['version'] : $text)) . ($best && $x['update'] ? ' → ' . $best['version'] : '')) ?></div>
+						<?php if ($test): ?><div class="d-md-none small"><?= h($test[1]) ?></div><?php endif; ?></td>
+					<td class="nuLpInUse d-none d-md-table-cell"><?php if ($x['version'] !== '' || $x['pack'] !== ''): ?>
+						<span class="fw-semibold"><?= h($x['pack'] !== '' ? $x['pack'] : $x['version']) ?></span>
+						<span class="badge text-bg-light border ms-1 nuLpFrom"><?= h($lpFrom($x)) ?></span><?= $x['path'] !== '' ? $lpTip(str_replace(NU_ROOT . '/', '', $x['path']), 'bi-folder2') : '' ?>
+						<?php if ($x['prev'] !== ''): ?><div class="text-body-secondary"><?= h(t('lp_prev', $x['prev'])) ?></div><?php endif; ?>
+					<?php else: ?><span class="text-body-secondary">–</span><?php endif; ?></td>
+					<td class="nuLpAvail d-none d-md-table-cell"><?php if ($best): ?>
+						<span class="<?= $x['update'] ? 'fw-semibold text-primary-emphasis' : '' ?>"><?= h($best['version']) ?></span>
+						<span class="text-body-secondary ms-1"><i class="bi <?= $best['where'] === 'github' ? 'bi-github' : 'bi-folder2' ?> me-1"></i><?= h($best['where'] === 'github' ? 'GitHub' : $best['folder'] . '/') ?></span>
+					<?php else: ?><span class="text-body-secondary">–</span><?php endif; ?>
+					<?php if ($x['rejected']): $rt = implode("\n", array_map(static fn($c) => basename((string)($c['file'] ?? '')) . ': ' . implode(' ', $c['errors']), $x['rejected'])); ?>
+						<div class="text-danger nuLpRejected"><i class="bi bi-shield-x me-1"></i><?= h(t('lp_rejected', count($x['rejected']))) ?><?= $lpTip($rt) ?></div><?php endif; ?></td>
+					<td class="nuLibState d-none d-md-table-cell"><i class="bi <?= $icon ?> me-1"></i><?= h($text) ?>
+						<?php if ($test): ?><div class="nuLpTest nuLpTest-<?= h($test[0]) ?>"><i class="bi <?= ['ok' => 'bi-check2-circle text-success', 'warn' => 'bi-exclamation-circle text-warning', 'fail' => 'bi-x-octagon text-danger'][$test[0]] ?? 'bi-question-circle' ?> me-1"></i><?= h($test[1]) ?></div><?php endif; ?></td>
+					<td class="text-end text-nowrap">
+						<?php if ($best && $x['update'] && $lpCan): ?><button class="btn btn-sm btn-primary nuLpInstall" type="submit" form="lpF-lp_install-<?= h($sl) ?>" data-nu-busy="<?= h(t('lp_installing')) ?>" aria-label="<?= h(t($x['pack'] !== '' || $x['version'] !== '' ? 'lp_update' : 'lp_install')) ?>"><i class="bi bi-download"></i><span class="d-none d-sm-inline ms-1"><?= h(t($x['pack'] !== '' || $x['version'] !== '' ? 'lp_update' : 'lp_install')) ?></span></button><?php endif; ?>
+						<div class="dropdown d-inline-block">
+							<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= h(t('lp_col_actions')) ?>" title="<?= h(t('lp_col_actions')) ?>"><i class="bi bi-three-dots-vertical"></i></button>
+							<ul class="dropdown-menu dropdown-menu-end">
+								<?php if ($best && !$x['update'] && $lpCan): ?><li><button class="dropdown-item" type="submit" form="lpF-lp_install-<?= h($sl) ?>"><i class="bi bi-arrow-repeat me-2"></i><?= h(t('lp_reinstall', $best['version'])) ?></button></li><?php endif; ?>
+								<li><button class="dropdown-item" type="submit" form="lpF-lp_test-<?= h($sl) ?>"><i class="bi bi-clipboard2-pulse me-2"></i><?= h(t('lp_test')) ?></button></li>
+								<?php if ($x['prev'] !== '' && $lpCan): ?><li><button class="dropdown-item" type="submit" form="lpF-lp_rollback-<?= h($sl) ?>"><i class="bi bi-arrow-counterclockwise me-2"></i><?= h(t('lp_rollback', $x['prev'])) ?></button></li><?php endif; ?>
+								<?php if ($x['installed'] && $lpCan): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger" type="submit" form="lpF-lp_remove-<?= h($sl) ?>"><i class="bi bi-trash me-2"></i><?= h(t('lp_remove')) ?></button></li><?php endif; ?>
+							</ul>
+						</div>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+	</div>
+	<?php foreach ($lpView as $sl => $x): foreach (['lp_install', 'lp_test', 'lp_rollback', 'lp_remove'] as $a):
+		$cf = $a === 'lp_rollback' ? t('lp_rollback_confirm', $x['title'], $x['prev']) : ($a === 'lp_remove' ? t('lp_remove_confirm', $x['title']) : ''); ?>
+		<form method="post" action="<?= h(nu_url('update')) ?>" id="lpF-<?= $a ?>-<?= h($sl) ?>" class="d-none" data-nu-once<?= $cf !== '' ? ' data-confirm="' . h($cf) . '"' . ($a === 'lp_remove' ? ' data-confirm-ok="' . h(t('lp_remove')) . '" data-confirm-class="btn btn-danger"' : '') : '' ?>><?= nu_csrf_field() ?><input type="hidden" name="action" value="<?= $a ?>"><input type="hidden" name="slot" value="<?= h($sl) ?>"></form>
+	<?php endforeach; endforeach; ?>
+	<form method="post" action="<?= h(nu_url('update')) ?>" id="lpForm" class="card-footer d-flex flex-wrap align-items-center gap-2" data-nu-once><?= nu_csrf_field() ?>
+		<?php if ($lpCan): ?><button class="btn btn-sm btn-primary" type="submit" name="action" value="lp_install" id="lpInstallSel" data-lp-bulk disabled data-nu-busy="<?= h(t('lp_installing')) ?>"><i class="bi bi-download me-1"></i><?= h(t('lp_install_sel')) ?></button><?php endif; ?>
+		<button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="lp_test" id="lpTestSel" data-lp-bulk disabled><i class="bi bi-clipboard2-pulse me-1"></i><?= h(t('lp_test_sel')) ?></button>
+		<span class="small text-body-secondary ms-auto"><?= h(t('lp_keep_hint', NuLibs::KEEP)) ?></span>
+	</form>
+	<?php if ($lpCan): ?>
+	<div class="card-footer">
+		<form method="post" action="<?= h(nu_url('update')) ?>" enctype="multipart/form-data" class="d-flex flex-wrap align-items-center gap-2" id="lpUploadForm" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="lp_upload">
+			<label class="small fw-semibold" for="lpUpload"><?= h(t('lp_upload')) ?></label><?= $lpTip(t('lp_upload_hint')) ?>
+			<input class="form-control form-control-sm w-auto" type="file" name="pack" id="lpUpload" accept=".zip" required>
+			<button class="btn btn-sm btn-outline-primary" type="submit" id="lpUploadBtn" data-nu-busy="<?= h(t('lp_installing')) ?>"><i class="bi bi-upload me-1"></i><?= h(t('lp_upload_btn')) ?></button>
+		</form>
+	</div>
+	<?php else: ?><div class="card-footer small text-body-secondary"><?= h(t('upd_disabled')) ?></div><?php endif; ?>
+</div>
+<?php $libs = array_values(array_filter(NuLibraries::all(), static fn($l) => $l['kind'] === 'bundled')); // in the package (0.8.229); the others: card above ?>
 <?php $libProblems = count(array_filter($libs, static fn($l) => $l['status'] !== 'ok' && !($l['kind'] === 'external' && $l['status'] === 'missing'))); ?>
-<details class="card shadow-sm mb-4" id="updLibraries" open>
-	<summary class="card-header fw-semibold d-flex align-items-center gap-2"><span class="me-auto"><i class="bi bi-chevron-right nuLibChevron me-1" aria-hidden="true"></i><?= h(t('upd_libs')) ?>
+<details class="card shadow-sm mb-4" id="updLibraries">
+	<summary class="card-header fw-semibold d-flex align-items-center gap-2"><span class="me-auto"><i class="bi bi-chevron-right nuLibChevron me-1" aria-hidden="true"></i><?= h(t('upd_libs') . ' · ' . t('upd_libs_bundled')) ?>
 		<span class="badge text-bg-secondary ms-1"><?= count($libs) ?></span><?php if ($libProblems): ?><span class="badge text-bg-warning ms-1"><i class="bi bi-exclamation-triangle me-1"></i><?= $libProblems ?></span><?php endif; ?></span>
 		<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_libs_hint')) ?>" title="<?= h(t('upd_libs_hint')) ?>"><i class="bi bi-info-circle"></i></span></summary>
 	<div class="table-responsive">
@@ -785,6 +955,19 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 		</table>
 	</div>
 </details>
+</div>
+<div class="tab-pane fade" id="updPane-system" role="tabpanel" aria-labelledby="updTabBtn-system" tabindex="0">
+		<div class="card shadow-sm mb-4<?= $reqOk ? '' : ' border-danger' ?>" id="updRequirements">
+			<div class="card-header fw-semibold"><?= h(t('upd_requirements')) ?></div>
+			<ul class="list-group list-group-flush small">
+				<?php foreach ($req as [$label, $ok, $detail]): ?>
+					<li class="list-group-item d-flex gap-2<?= $ok ? '' : ' list-group-item-danger' ?>"><i class="bi <?= $ok ? 'bi-check-circle text-success' : 'bi-x-circle text-danger' ?>"></i><span class="me-auto"><?= h($label) ?><?php if (!$ok && $label === t('upd_req_writable')): $tip = NuUpdate::writableHelp(); ?>
+						<span class="nuInfoTip ms-1" tabindex="0" role="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus click" data-bs-custom-class="nuTipWide nuTipPre" aria-label="<?= h($tip) ?>" title="<?= h($tip) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?></span><span class="text-body-secondary text-end text-break"><?= h($detail) ?></span></li>
+				<?php endforeach; ?>
+			</ul>
+			<div class="card-footer small text-body-secondary"><?= h(t('upd_req_hint')) ?></div>
+		</div>
+	
 <div class="card shadow-sm mb-4" id="updStepsCard">
 	<div class="card-header fw-semibold"><?= h(t('upd_db_steps')) ?></div>
 	<ul class="list-group list-group-flush small" id="updSteps">
@@ -813,4 +996,4 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 </div>
 </div>
 <?php
-nu_layout_end();
+nu_layout_end('<script src="' . nu_asset('assets/js/nulibpacks.js') . '"></script>');

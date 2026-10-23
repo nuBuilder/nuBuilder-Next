@@ -16,8 +16,10 @@ $doc = (string)($_GET['doc'] ?? '');
 $admin = NuAdmin::any() && $doc !== 'user';             // globeadmin and users with an admin role (0.8.323)
 $preview = NuAdmin::any() && $doc === 'user';
 
-/** Visible for the current reader? data-doc="admin" → admin only; data-acl="a,b" → view right on one of the forms. */
-$visible = static function (DOMElement $el) use ($admin, $preview): bool {
+/** Visible for the current reader? data-doc="admin" → admin only; data-doc="dev" → globeadmin in developer mode (0.8.408); data-acl="a,b" → view right on one of the forms. */
+$dev = $admin && NuHash::devMode();
+$visible = static function (DOMElement $el) use ($admin, $preview, $dev): bool {
+	if ($el->getAttribute('data-doc') === 'dev') return $dev;
 	if ($el->getAttribute('data-doc') === 'admin') return $admin;
 	$acl = trim($el->getAttribute('data-acl'));
 	if ($acl === '' || $admin) return true;

@@ -1,0 +1,9 @@
+{
+ "_comment": "Library versions this version of nuBuilder Next needs (NuLibs::required, 0.8.406). needed = must be installed; otherwise the minimum only counts when the library is there. dev/release.py copies it into the manifest as requires_libs - Check package warns when the server does not meet it.",
+ "tcpdf": {"min": "6.7.4", "needed": false},
+ "phpmailer": {"min": "6.5.0", "needed": false},
+ "tinymce": {"min": "6.0.0", "needed": false},
+ "phpmyadmin": {"min": "5.2.0", "needed": false},
+ "adminer": {"min": "4.8.1", "needed": false},
+ "tinyfilemanager": {"min": "2.5", "needed": false}
+}

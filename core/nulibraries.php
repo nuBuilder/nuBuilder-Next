@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Third-party libraries (0.8.229): the ones in the package (assets/vendor/libraries.json – also copied into nunext-manifest.json
+ * Third-party libraries (0.8.229): the ones in the package (vendor/bundled/libraries.json since 0.8.409 – also copied into nunext-manifest.json
  * by dev/release.py as "libraries") and the ones copied by hand or used from nuBuilder (NuSecurity::libraries(): TCPDF, PHPMailer,
  * TinyMCE, phpMyAdmin, Tiny File Manager). Update page: card "Libraries" and, for a checked package, which libraries change.
  */
 final class NuLibraries
 {
-	public const REGISTRY = 'assets/vendor/libraries.json';
+	public const REGISTRY = NU_VENDOR . '/libraries.json';
 
 	/** @return list<array{name: string, version: string, dir: string, file: string, detect: string, license: string, use: string}> */
 	public static function registry(string $root = NU_ROOT): array
@@ -21,7 +21,7 @@ final class NuLibraries
 	/** Version read from the library file itself ('' = no pattern or not found, null = file missing). */
 	public static function detect(array $lib, string $root = NU_ROOT): ?string
 	{
-		$f = $root . '/assets/vendor/' . $lib['dir'] . '/' . $lib['file'];
+		$f = $root . '/' . NU_VENDOR . '/' . $lib['dir'] . '/' . $lib['file'];
 		if (!is_file($f)) return null;
 		if (($lib['detect'] ?? '') === '') return '';
 		$src = (string)@file_get_contents($f, false, null, 0, 400000);
@@ -38,7 +38,7 @@ final class NuLibraries
 		foreach (self::registry() as $l) {
 			$found = self::detect($l);
 			$ver = $found === null ? '' : ($found !== '' ? $found : (string)$l['version']);
-			$out[] = ['name' => (string)$l['name'], 'version' => $ver, 'path' => 'assets/vendor/' . $l['dir'] . '/', 'license' => (string)$l['license'],
+			$out[] = ['name' => (string)$l['name'], 'version' => $ver, 'path' => NU_VENDOR . '/' . $l['dir'] . '/', 'license' => (string)$l['license'],
 				'use' => t('upd_libuse_' . $l['use']), 'kind' => 'bundled', 'note' => '', 'local' => '',
 				'status' => $found === null ? 'missing' : ($found !== '' && $found !== (string)$l['version'] ? 'differs' : 'ok')];
 		}

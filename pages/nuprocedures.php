@@ -114,10 +114,10 @@ if ($id !== '') {
 		'msg' => ['unsaved' => t('proc_run_unsaved'), 'running' => t('proc_running'), 'done' => t('proc_run_done'), 'failed' => t('proc_run_failed'),
 			'js' => t('proc_run_js'), 'output' => t('proc_run_output'), 'debug' => t('proc_run_debug'), 'cancelled' => t('proc_run_cancelled'),
 			'snippet' => t('proc_snippet'), 'search' => t('search'), 'none' => t('no_records')]];
-	$head = '<link rel="stylesheet" href="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror.css') . '">';
+	$head = '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">';
 	$foot = '<script type="application/json" id="procData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
-		. '<script src="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror-bundle.js') . '"></script>'
-		. '<script src="' . nu_asset('assets/vendor/codemirror-5.65.21/codemirror-addons.js') . '"></script>'
+		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
+		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nuprocedures.js') . '"></script>';

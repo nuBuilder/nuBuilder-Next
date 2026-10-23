@@ -33,19 +33,24 @@ final class NuVendor
 	];
 	/** Database tools: app => product name (labels, $nuConfigPrimaryDatabaseManagement). */
 	public const DB_TOOLS = ['PMA' => 'phpMyAdmin', 'ADM' => 'Adminer'];
+	/** app => library pack slot (NuLibs) */
+	public const SLOT = ['PMA' => 'phpmyadmin', 'TFM' => 'tinyfilemanager', 'ADM' => 'adminer'];
 	public const MARK = 'nunext_vendor';   // sss_access.session.nunext_vendor = nuBuilder Next session key
 
 	/** Folder of the tool inside nuBuilder Next (default location). */
 	public static function dir(string $app): string
 	{
-		return NU_ROOT . '/third_party/' . self::APPS[$app]['dir'];
+		$pack = NuLibs::activeDir(self::SLOT[$app]);             // library pack vendor/packs/<dir>-<version>/ (0.8.405 / 0.8.409), else the old hand copy
+		return $pack ?? NU_ROOT . '/third_party/' . self::APPS[$app]['dir'];
 	}
 
 	/** Base URL of the tool with trailing slash: the configured URL, or "third_party/<dir>/" relative to nuBuilder Next. */
 	public static function baseUrl(string $app): string
 	{
 		$cfg = trim((string)nu_cfg(self::APPS[$app]['cfg']));
-		return $cfg !== '' ? rtrim($cfg, '/') . '/' : 'third_party/' . self::APPS[$app]['dir'] . '/';
+		if ($cfg !== '') return rtrim($cfg, '/') . '/';
+		$pack = NuLibs::webPath(self::SLOT[$app]);                 // vendor/packs/<dir>-<version>/ (or an old pack in third_party/)
+		return $pack !== '' ? $pack . '/' : 'third_party/' . self::APPS[$app]['dir'] . '/';
 	}
 
 	/**

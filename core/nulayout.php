@@ -439,6 +439,12 @@ function nu_list_search(string $value, string $hint = '', string $filterId = '',
  * Back button of nuBuilder Next's own pages (0.8.256): one step up – the parent page of the breadcrumb, otherwise the start page.
  * $route: the page (default ?p=); $url: an own target (e.g. a list with its search).
  */
+/** "Or install it as a library pack: Update → Libraries" – a link for users with the update right, plain text otherwise (0.8.405). */
+function nu_lp_hint(string $key = 'lp_get_hint'): string
+{
+	return NuAdmin::can('update') ? '<a href="' . h(nu_url('update') . '#libraries') . '" class="nuLpHint">' . h(t($key)) . '</a>' : h(t($key));
+}
+
 function nu_back_button(?string $route = null, ?string $url = null, string $class = ''): string
 {
 	static $parent = [

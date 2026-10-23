@@ -30,7 +30,7 @@ if ($late && !(is_array($_SESSION['nu_install'] ?? null) && !empty($_SESSION['nu
 	nu_redirect(nu_url('login'));
 }
 
-const NU_INS_STEPS = ['start', 'db', 'content', 'admin', 'options', 'summary'];
+const NU_INS_STEPS = ['start', 'db', 'content', 'admin', 'options', 'libs', 'summary'];   // libs: library packs (0.8.405)
 
 // ------------------------------------------------------------------ state
 $S = &$_SESSION['nu_install'];
@@ -176,8 +176,17 @@ if ($late) {
 			if ($o['nub_path'] !== '' && !NuInstall::nuBuilderPath($o['nub_path'])) $errors['nub_path'] = t('ins_err_nub_path');
 			if ($o['shared'] && $o['nub_path'] === '') $errors['shared'] = t('ins_err_shared');
 			$S['opt'] = $o;
-			if (!$errors) $go('summary');
+			if (!$errors) $go('libs');
 			break;
+
+		// library packs (0.8.405, core/nulibs.php): zips copied into _install/ or _update/ and the GitHub release "libraries";
+		// the ticked ones are installed after nuconfig.php is written (nu_install_finish)
+		case 'libs':
+			if ($action === 'gh') { $S['libs_gh'] = NuLibs::ghCheck(NuGitHub::DEFAULT_REPO, false); break; }
+			if ($action === 'rescan') break;
+			$S['libs'] = array_values(array_intersect(array_map('strval', (array)($_POST['slots'] ?? [])), array_keys(NuLibs::SLOTS)));
+			$S['libs_set'] = true;
+			$go('summary');
 
 		case 'summary':
 			if ($action === 'download' && $S['pending_config']) {
@@ -244,10 +253,42 @@ function nu_install_finish(?array &$S): array
 	} catch (Throwable $e) {
 		$out['error'] = $e->getMessage();
 	}
+	$out['libs'] = nu_install_libs($S);
 	NuInstall::cleanup();
 	$out['admin'] = $S['admin']['user'];
 	$S = null;
 	unset($_SESSION['nu_install']);
+	return $out;
+}
+
+/**
+ * Installs the library packs ticked on the step "Libraries" (0.8.405) – a failed one does not stop the installation (the update page
+ * can install it later). Packs left in _install/ move to _update/, so the update page still offers them.
+ * @return list<array{0: string, 1: string, 2: bool, 3: string}> title, version, ok, error
+ */
+function nu_install_libs(?array $S): array
+{
+	$out = [];
+	$want = (array)($S['libs'] ?? []);
+	if ($want) {
+		try {
+			$ov = NuLibs::overview(true, $S['libs_gh'] ?? ['libs' => []]);
+		} catch (Throwable $e) {
+			return [[t('upd_libs'), '', false, $e->getMessage()]];
+		}
+		foreach ($want as $sl) {
+			$best = $ov[$sl]['best'] ?? null;
+			try {
+				if (!$best) throw new RuntimeException(t('lp_err_nothing'));
+				$r = NuLibs::installCandidate($best, 'installer');
+				$out[] = [NuLibs::SLOTS[$sl]['title'], $r['version'], true, ''];
+			} catch (Throwable $e) {
+				error_log('nuBuilder Next install, library ' . $sl . ': ' . $e->getMessage());
+				$out[] = [NuLibs::SLOTS[$sl]['title'], (string)($best['version'] ?? ''), false, $e->getMessage()];
+			}
+		}
+	}
+	foreach (glob(NU_ROOT . '/_install/nunext-lib-*.zip') ?: [] as $f) @rename($f, NuUpdate::folderDir() . '/' . basename($f));
 	return $out;
 }
 
@@ -290,11 +331,14 @@ nu_head($title);
 				<?php $up = $done['upgraded'] ?? null; if ($up && ($up['tables'] + $up['columns'] + $up['changed'])): ?><p class="small mb-1" id="insUpgraded"><?= h(t('ins_done_upgraded', $up['tables'], $up['columns'] + $up['changed'])) ?></p>
 					<p class="small text-body-secondary mb-1"><?= h(t('ins_done_upgraded_hint')) ?></p><?php endif; ?>
 				<?php if ($done['error'] !== ''): ?><div class="alert alert-warning small text-start"><?= h(t('ins_done_db_warning')) ?> <?= h($done['error']) ?></div><?php endif; ?>
+				<?php if (!empty($done['libs'])): ?><ul class="list-unstyled small text-start mx-auto mb-1 nuInsLibsDone" id="insLibsDone">
+					<?php foreach ($done['libs'] as [$lt, $lvv, $lok, $lerr]): ?><li><i class="bi <?= $lok ? 'bi-check-circle text-success' : 'bi-x-circle text-danger' ?> me-1"></i><?= h($lok ? t('ins_libs_done', $lt, $lvv) : t('ins_libs_failed', $lt, $lerr)) ?></li><?php endforeach; ?>
+				</ul><?php endif; ?>
 				<a class="btn btn-primary btn-lg my-3" href="<?= h(nu_url('login')) ?>"><i class="bi bi-box-arrow-in-right me-1"></i><?= h(t('ins_login')) ?></a>
 			</div>
 			<h2 class="h6"><?= h(t('ins_next_title')) ?></h2>
 			<ul class="small mb-0">
-				<li><?= h(t('ins_next_libs')) ?></li>
+				<li><?= h(t('ins_next_libpacks')) ?></li>
 				<li><?= h(t('ins_next_mail')) ?></li>
 				<li><?= h(t('ins_next_docs')) ?></li>
 				<li><?= h(t('ins_next_backup')) ?></li>
@@ -457,6 +501,39 @@ nu_head($title);
 				</div>
 			</form>
 
+		<?php elseif ($step === 'libs'):
+			if (!isset($S['libs_gh'])) $S['libs_gh'] = NuLibs::ghCheck(NuGitHub::DEFAULT_REPO, false);       // once per installation; "Look again" below
+			$lv = NuLibs::overview(true, $S['libs_gh']); $lgh = $S['libs_gh']; ?>
+			<!-- ================================================================ libraries (0.8.405) -->
+			<h1 class="h4"><?= h(t('ins_step_libs')) ?></h1>
+			<p class="text-body-secondary small"><?= h(t('ins_libs_text')) ?></p>
+			<p class="small mb-2" id="insLibsGh"><?php if ($lgh['error'] !== ''): ?><i class="bi bi-exclamation-triangle text-warning me-1"></i><?= h(t('ins_libs_gh_off', $lgh['error'])) ?><?php else: ?><i class="bi bi-github me-1"></i><?= h(t('ins_libs_gh_ok', count($lgh['libs']))) ?><?php endif; ?></p>
+			<form method="post" action="<?= h(nu_url('install', ['step' => 'libs'])) ?>" id="insLibsForm" data-nu-once>
+				<?= nu_csrf_field() ?>
+				<div class="list-group mb-2">
+				<?php foreach ($lv as $sl => $x): $best = $x['best'];
+					$checked = isset($S['libs_set']) ? in_array($sl, (array)($S['libs'] ?? []), true) : ($x['rec'] && $best && $x['pack'] === ''); ?>
+					<label class="list-group-item d-flex gap-3 align-items-start nuInsLib" data-slot="<?= h($sl) ?>">
+						<input class="form-check-input flex-shrink-0 mt-1" type="checkbox" name="slots[]" value="<?= h($sl) ?>"<?= $checked && $best ? ' checked' : '' ?><?= $best ? '' : ' disabled' ?>>
+						<span class="flex-grow-1"><span class="fw-semibold"><?= h($x['title']) ?></span> <span class="small text-body-secondary">· <?= h(t('upd_libuse_' . $x['use'])) ?></span>
+							<span class="d-block small"><?php if ($best): ?><?= h(t('ins_libs_from', $best['version'], $best['where'] === 'github' ? 'GitHub' : $best['folder'] . '/')) ?><?php else: ?><span class="text-body-secondary"><?= h(t('ins_libs_none')) ?></span><?php endif; ?>
+							<?php if ($x['pack'] !== '' || $x['version'] !== ''): ?><span class="text-body-secondary"> · <?= h(t('ins_libs_now', $x['pack'] !== '' ? $x['pack'] : $x['version'])) ?></span><?php endif; ?></span>
+							<?php foreach ($x['rejected'] as $c): ?><span class="d-block small text-danger"><i class="bi bi-shield-x me-1"></i><?= h(basename((string)($c['file'] ?? '')) . ': ' . implode(' ', $c['errors'])) ?></span><?php endforeach; ?>
+							<?php if (!$x['rec']): ?><span class="d-block small text-body-secondary"><?= h(t('ins_libs_optional')) ?></span><?php endif; ?></span>
+					</label>
+				<?php endforeach; ?>
+				</div>
+				<p class="small text-body-secondary"><?= h(t('ins_libs_copy', '_install/', 'nunext-lib-<name>-<version>.zip')) ?></p>
+				<div class="d-flex flex-wrap gap-2 mb-2">
+					<button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="rescan" formnovalidate><i class="bi bi-arrow-repeat me-1"></i><?= h(t('ins_libs_rescan')) ?></button>
+					<button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="gh" formnovalidate><i class="bi bi-github me-1"></i><?= h(t('lp_gh_check')) ?></button>
+				</div>
+				<div class="d-flex justify-content-between mt-4">
+					<button class="btn btn-outline-secondary" type="submit" name="action" value="back" formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button>
+					<button class="btn btn-primary" type="submit" name="action" value="next" id="insNext"><?= h(t('ins_next')) ?> <i class="bi bi-arrow-right"></i></button>
+				</div>
+			</form>
+
 		<?php elseif ($step === 'summary'): $d = $S['db']; $det = $S['detect'] ?? ['kind' => 'empty']; ?>
 			<!-- ================================================================ summary / install -->
 			<h1 class="h4"><?= h(t('ins_step_summary')) ?></h1>
@@ -477,6 +554,7 @@ nu_head($title);
 					<dt class="col-sm-4"><?= h(t('ins_opt_url')) ?></dt><dd class="col-sm-8 text-break"><?= h($S['opt']['base_url']) ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_opt_timezone')) ?></dt><dd class="col-sm-8"><?= h($S['opt']['timezone']) ?> · <?= (int)$S['opt']['timeout'] ?> min</dd>
 					<dt class="col-sm-4">nuBuilder</dt><dd class="col-sm-8 text-break"><?= h($S['opt']['nub_path'] ?: '–') ?><?= $S['opt']['shared'] ? ' · ' . h(t('ins_opt_shared_short')) : '' ?></dd>
+					<dt class="col-sm-4"><?= h(t('ins_step_libs')) ?></dt><dd class="col-sm-8" id="insSumLibs"><?= h(($S['libs'] ?? []) ? implode(', ', array_map(static fn($x) => NuLibs::SLOTS[$x]['title'], $S['libs'])) : '–') ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_config_file')) ?></dt><dd class="col-sm-8 text-break"><code><?= h(NuInstall::configPath()) ?></code></dd>
 				</dl>
 				<form method="post" action="<?= h(nu_url('install', ['step' => 'summary'])) ?>" class="d-flex justify-content-between" id="insInstallForm">

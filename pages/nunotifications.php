@@ -121,9 +121,10 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 	};
 	// formatted text (0.8.400): TinyMCE when it is installed (copied from nuBuilder); it needs inline styles on this page only
 	$html = ($v['format'] ?? '') === 'html';
-	$tiny = is_file(NU_ROOT . '/' . NU_TINYMCE . '/tinymce.min.js');
+	$tinyDir = NuLibs::tinymce();                         // library pack or assets/vendor/tinymce (0.8.405)
+	$tiny = $tinyDir !== '';
 	if ($tiny) header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
-	nu_layout_start(t('ntf_title'), 'notifications', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">']);
+	nu_layout_start(t('ntf_title'), 'notifications', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 	echo $tabs;
 	?>
 <form method="post" class="card shadow-sm nuListCard" id="ntfForm" data-nu-guard action="<?= h(nu_url('notifications', ['id' => $id])) ?>">
@@ -153,10 +154,10 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 					<input type="text" class="form-control<?= isset($err['title']) ? ' is-invalid' : '' ?>" name="title" id="ntf_title" maxlength="200" required value="<?= h((string)($v['title'] ?? '')) ?>"><?= $fe('title') ?></div>
 				<div class="mb-3"><div class="d-flex flex-wrap align-items-center gap-2 mb-2"><label class="form-label mb-0 me-auto" for="ntf_body"><?= h(t('ntf_f_body')) ?></label>
 						<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="ntf_format" name="format" value="html"<?= $html ? ' checked' : '' ?>
-							data-tiny="<?= $tiny ? h(nu_asset(NU_TINYMCE . '/tinymce.min.js')) : '' ?>" data-base="<?= h(NU_TINYMCE) ?>" data-lang="<?= h(nu_lang()) ?>"
+							data-tiny="<?= $tiny ? h(nu_asset($tinyDir . '/tinymce.min.js')) : '' ?>" data-base="<?= h($tinyDir) ?>" data-lang="<?= h(nu_lang()) ?>"
 							data-confirm-text="<?= h(t('ntf_format_off_confirm')) ?>"><label class="form-check-label" for="ntf_format"><?= h(t('ntf_f_format')) ?></label></div><?= NuListView::infoTip(t('ntf_f_format_tip')) ?></div>
 					<textarea class="form-control<?= isset($err['body']) ? ' is-invalid' : '' ?>" name="body" id="ntf_body" rows="6"<?= $html ? '' : ' maxlength="4000"' ?>><?= h((string)($v['body'] ?? '')) ?></textarea><?= $fe('body') ?>
-					<?php if (!$tiny): ?><div class="form-text<?= $html ? '' : ' d-none' ?>" id="ntfNoTiny"><?= h(t('ntf_tinymce_missing')) ?></div><?php endif; ?></div>
+					<?php if (!$tiny): ?><div class="form-text<?= $html ? '' : ' d-none' ?>" id="ntfNoTiny"><?= h(t('ntf_tinymce_missing')) ?> <?= nu_lp_hint('lp_get_pack') ?></div><?php endif; ?></div>
 				<div class="mb-3"><span class="form-label d-block"><?= h(t('ntf_f_level')) ?></span>
 					<div class="btn-group flex-wrap nuNtfLevels" role="group" aria-label="<?= h(t('ntf_f_level')) ?>">
 						<?php foreach (NuNotify::LEVELS as $lv => $ic): ?>
@@ -221,7 +222,7 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 <form method="post" id="<?= $fid ?>" class="d-none"<?= $act === 'delete' ? ' data-confirm="' . h(t('ntf_delete_confirm')) . '" data-confirm-ok="' . h(t('delete')) . '" data-confirm-class="btn btn-danger"' : '' ?>><?= nu_csrf_field() ?><input type="hidden" name="action" value="<?= $act ?>"><input type="hidden" name="id" value="<?= h($id) ?>"></form>
 <?php endforeach; endif; ?>
 	<?php
-	nu_layout_end('<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nunotifications.js') . '"></script>');
+	nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nunotifications.js') . '"></script>');
 	return;
 }
 

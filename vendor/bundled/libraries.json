@@ -10,5 +10,6 @@
  {"name": "Prettier", "version": "3.3.3", "dir": "formatter", "file": "prettier-standalone.js", "detect": "\"(3\\.[0-9]+\\.[0-9]+)\"", "license": "MIT", "use": "fmt_php"},
  {"name": "@prettier/plugin-php", "version": "0.25.0", "dir": "formatter", "file": "prettier-plugin-php.js", "detect": "", "license": "MIT", "use": "fmt_php"},
  {"name": "qrcode-generator", "version": "2.0.4", "dir": "qrcode-generator-2.0.4", "file": "qrcode.js", "detect": "", "license": "MIT", "use": "qr"},
- {"name": "ApexCharts", "version": "4.4.0", "dir": "apexcharts-4.4.0", "file": "apexcharts.min.js", "detect": "ApexCharts v([0-9.]+)", "license": "MIT", "use": "charts"}
+ {"name": "ApexCharts", "version": "4.4.0", "dir": "apexcharts-4.4.0", "file": "apexcharts.min.js", "detect": "ApexCharts v([0-9.]+)", "license": "MIT", "use": "charts"},
+ {"name": "Font Awesome", "version": "7.0.0", "dir": "fontawesome-7.0.0", "file": "css/all.min.css", "detect": "Font Awesome Free ([0-9.]+)", "license": "CC-BY-4.0 / OFL-1.1 / MIT", "use": "icons_fa"}
 ]

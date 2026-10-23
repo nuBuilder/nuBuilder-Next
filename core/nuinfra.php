@@ -366,23 +366,27 @@ final class NuBuilderLib
 		return (str_starts_with($p, '/') || preg_match('~^[A-Za-z]:[/\\\\]~', $p)) ? $p : NU_ROOT . '/' . $p;
 	}
 
-	/** Folder with css/all.min.css: $nuConfigFontAwesomePath, else <nuBuilder>/third_party/fontawesome. */
+	/**
+	 * Folder with css/all.min.css: $nuConfigFontAwesomePath, else <nuBuilder>/third_party/fontawesome (the same icons as nuBuilder), else
+	 * the copy bundled with nuBuilder Next (vendor/bundled/fontawesome-<version>, 0.8.409).
+	 */
 	public static function fontAwesomeDir(): ?string
 	{
 		static $dir = false;
 		if ($dir !== false) return $dir;
 		$cfg = trim((string)nu_cfg('nuConfigFontAwesomePath'));
-		foreach ([$cfg !== '' ? self::absPath($cfg) : '', self::path() . '/third_party/fontawesome'] as $d) {
+		foreach ([$cfg !== '' ? self::absPath($cfg) : '', self::path() . '/third_party/fontawesome', NU_ROOT . '/' . NU_FONTAWESOME] as $d) {
 			if ($d !== '' && is_file("$d/css/all.min.css")) return $dir = $d;
 		}
 		return $dir = null;
 	}
 
-	/** <link> for nuBuilder's Font Awesome, '' when nuBuilder's copy is not found. */
+	/** <link> for Font Awesome: the bundled copy directly, nuBuilder's (maybe outside the web root) through ?p=fa; '' = none. */
 	public static function fontAwesomeTag(): string
 	{
 		$dir = self::fontAwesomeDir();
 		if ($dir === null) return '';
+		if ($dir === NU_ROOT . '/' . NU_FONTAWESOME) return '<link rel="stylesheet" href="' . h(nu_asset(NU_FONTAWESOME . '/css/all.min.css')) . '">';
 		$v = base_convert((string)(int)filemtime("$dir/css/all.min.css"), 10, 36);
 		return '<link rel="stylesheet" href="index.php?p=fa&amp;f=css/all.min.css&amp;v=' . $v . '">';
 	}

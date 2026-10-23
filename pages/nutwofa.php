@@ -97,7 +97,7 @@ if (nu_is_post()) {
 
 $method = $p['method'];
 $foot   = $method === 'enroll'
-	? '<script src="' . nu_asset('assets/vendor/qrcode-generator-2.0.4/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>'
+	? '<script src="' . nu_asset(NU_QRCODE . '/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>'
 	: '';
 
 nu_center_start(t('twofa_title'), t('twofa_subtitle_' . $method), 'bi-shield-lock');

@@ -268,6 +268,13 @@ final class NuSecurity
 		$bd = NuUpdate::backupDir();
 		if (str_starts_with(str_replace('\\', '/', $bd), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($bd, strlen(NU_ROOT) + 1) . '/index.html';
 		if (is_dir(NU_ROOT . '/temp')) $urls[] = 'temp/index.html';
+		// library packs (0.8.409): vendor/packs/ is closed – its state file and the server-only packs (TCPDF, PHPMailer, Adminer)
+		if (is_file(NU_ROOT . '/' . NU_PACKS . '/index.html')) $urls[] = NU_PACKS . '/index.html';
+		if (is_file(NU_ROOT . '/' . NuLibs::STATE)) $urls[] = NuLibs::STATE;
+		foreach (['tcpdf', 'phpmailer'] as $sl) {
+			$d = NuLibs::activeDir($sl);
+			if ($d !== null && is_file($d . '/' . NuLibs::MANIFEST) && !NuLibs::isLegacy($sl)) $urls[] = NuLibs::webPath($sl) . '/' . NuLibs::MANIFEST;
+		}
 		// page forms (0.8.387): custom/ is reachable only through the router (nginx needs its own rule)
 		foreach (['custom/PAGE_GUIDE.md', 'custom/pages/_template/index.php', 'custom/pages/_template/assets/app.css'] as $f) if (is_file(NU_ROOT . '/' . $f)) $urls[] = $f;
 		foreach (['PMA', 'TFM'] as $a) {                      // a local version note of a copied tool (0.8.231) may name open CVEs
@@ -283,7 +290,7 @@ final class NuSecurity
 	// ================================================================= libraries taken from nuBuilder
 
 	/**
-	 * Third-party code nuBuilder Next uses from the nuBuilder installation (or its own third_party/ copy): [name, version, path, min,
+	 * Third-party code nuBuilder Next uses from the nuBuilder installation, a library pack (vendor/packs/) or an old copy: [name, version, path, min,
 	 * status ok|old|warn|missing, note key]. Minimum = first version without the publicly known vulnerabilities at the time of this
 	 * release (TCPDF CVE-2024-32489 → 6.7.4, PHPMailer CVE-2021-34551 → 6.5.0, phpMyAdmin PMASA-2025-1…3 → 5.2.2, TinyMCE
 	 * CVE-2024-38356/38357 → 6.8.4 / 7.2.0). Tiny File Manager up to 2.6 has a path traversal (CVE-2025-15138) without a fix.
@@ -323,7 +330,7 @@ final class NuSecurity
 		$pm = '';
 		foreach (NuMailer::phpMailerCandidates() as $d) if (is_file("$d/PHPMailer.php")) { $pm = $d; break; }
 		$out[] = ['PHPMailer', $pm !== '' ? $read("$pm/PHPMailer.php", "/const VERSION = '([0-9.]+)'/") : '', $pm, '6.5.0', ''];
-		$tm = NU_ROOT . '/' . NU_TINYMCE;
+		$tm = NU_ROOT . '/' . (NuLibs::tinymce() ?: NU_TINYMCE);
 		$v = $read($tm . '/tinymce.min.js', '/TinyMCE version ([0-9.]+)/');
 		$out[] = ['TinyMCE', $v, is_dir($tm) ? $tm : '', $v !== '' && version_compare($v, '7', '>=') ? '7.2.0' : '6.8.4', ''];
 		$pma = NuVendor::dir('PMA');

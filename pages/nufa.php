@@ -3,7 +3,8 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Serves nuBuilder's Font Awesome (<nuBuilder>/third_party/fontawesome/) through nuBuilder Next, so existing
+ * Serves nuBuilder's Font Awesome (<nuBuilder>/third_party/fontawesome/ – without it the bundled copy in vendor/bundled/ is linked
+ * directly, 0.8.409) through nuBuilder Next, so existing
  * "fa fa-…" icons in forms keep working. Runs before the session starts (no locking, cacheable).
  * index.php?p=fa&f=css/all.min.css  |  index.php?p=fa&f=webfonts/fa-solid-900.woff2
  */

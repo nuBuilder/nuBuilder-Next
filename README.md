@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.404 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.409 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder 4.**
 
@@ -101,8 +101,10 @@ nuBuilder Next streamlines everyday database work:
 4. Open **Admin tools → Security check** and fix what is red: HTTPS, a long globeadmin password, `$nuConfigBaseURL`, "Files on
    the web" (the web server must not hand out `core/`, `install/`, `README.md` …) and the PHP version.
 5. Optional: cron for the housekeeping – `*/15 * * * * php /var/www/html/nunext/cron.php` as the web server's user.
-6. Optional, for the WYSIWYG editor: TinyMCE is not in the package – copy `<nuBuilder>/third_party/tinymce/` to
-   `<nuBuilder Next>/assets/vendor/tinymce/`.
+6. Third-party code lives in `vendor/`: `vendor/bundled/` comes with the package, `vendor/packs/` holds the signed **library packs**
+   (TCPDF for reports, TinyMCE, phpMyAdmin, Adminer, Tiny File Manager – from the GitHub release `libraries`; PHPMailer is in the
+   package). The installer offers them (step *Libraries*), later **Update → Libraries**. Without internet: copy the
+   `nunext-lib-*.zip` files into `_install/` or `_update/` first.
 
 ## Updating
 **Admin tools → Update** (globeadmin): choose the new `nunext.zip` – or copy it by FTP into the folder `_update/` and pick it

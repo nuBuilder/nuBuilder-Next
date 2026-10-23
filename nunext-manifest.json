@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.404",
- "built": "2026-10-23 01:31",
+ "version": "0.8.409",
+ "built": "2026-10-23 08:33",
  "requires": {
   "php": "8.1"
  },
@@ -11,16 +11,16 @@
    "size": 596
   },
   "CHANGELOG.md": {
-   "sha256": "e040b0d5525a623b576a26c9c8d135dd0f3dbfd5ab9ce6b7f5f1acda2929fa62",
-   "size": 306631
+   "sha256": "e5b83e23b297459cff42b05dbaa16f3ee72205beff99d94d43d780d4b3695e4e",
+   "size": 314704
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "e3e3d0e337225b59436de44c3455575c53f4e8fd80c4a616580d114843383a9a",
-   "size": 10255
+   "sha256": "8bccb59ec9777b331e6281f6c7ac2b51de757399ba2799c43707005bbd47b469",
+   "size": 10544
   },
   "api.php": {
    "sha256": "7b21c37e26bd799f78e988fd62f0e277cfd52690d87ff3bfd715f967ba83627d",
@@ -63,8 +63,8 @@
    "size": 26259
   },
   "assets/js/nu/nucodetools.js": {
-   "sha256": "439ff0d637088d4587f14d7955ddb0eebaa7c177a3af72f1ce5de2f634523a08",
-   "size": 17796
+   "sha256": "63bc2ecc3845a6af3d2c909b6545537339b973441c758100ae89d1c0c137aeee",
+   "size": 17798
   },
   "assets/js/nu/nucompat.js": {
    "sha256": "cdc06957b0a1d82c697e3ffd084209596855dfc260df66a3ea243ff918f0a2ec",
@@ -87,8 +87,8 @@
    "size": 16100
   },
   "assets/js/nu/nuruntime.js": {
-   "sha256": "b04f7d3404cc490482b57cb6ca272a6d6036a10269701558c9912c00c916d33a",
-   "size": 179443
+   "sha256": "ad1953382b2a3cf24032394c9fb7203745c35f828aa15b6423a9409f10f54e8a",
+   "size": 179458
   },
   "assets/js/nu/nutooltip.js": {
    "sha256": "ef077398d0cf9bb0b8fe52255f7523d773db46c7f4e010c9cda36240471422c5",
@@ -202,6 +202,10 @@
    "sha256": "1bdc1b5d758a6ed268ac1532fa7c9f858df13aa120c449c5fa4e44f7310fd384",
    "size": 1535
   },
+  "assets/js/nulibpacks.js": {
+   "sha256": "c007d3024d1ca494c3e7f98bd569da09ce2c452c9b1a86b677c86d8dc2492028",
+   "size": 839
+  },
   "assets/js/nulistselect.js": {
    "sha256": "711bb33d1149ac5c44b780d395b11aa96c43de7b721370e805a00ca83a817c53",
    "size": 847
@@ -285,310 +289,6 @@
   "assets/js/nuuser.js": {
    "sha256": "9ffddc325173cd20ea7e9041188325219e47ff43f69bbdbf4f3df407adc74a62",
    "size": 13523
-  },
-  "assets/vendor/apexcharts-4.4.0/LICENSE": {
-   "sha256": "4db98d106f5a157d60b24d49a4852156542ef58e08f1034e8a3b6d63e53e2241",
-   "size": 1076
-  },
-  "assets/vendor/apexcharts-4.4.0/apexcharts.css": {
-   "sha256": "252e37722a7ea9e8937724fb0137ffcc08cd1df596b668857d5530f2951b889e",
-   "size": 14574
-  },
-  "assets/vendor/apexcharts-4.4.0/apexcharts.min.js": {
-   "sha256": "f4f5a1cfe4f5a5f9092968b011eb26d775f69289285ec2a8d9003be067780990",
-   "size": 574008
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ar.json": {
-   "sha256": "735011f4ffca4af74834d69c8dda67f78bc275b70fbf3b479fcf79c7bb63a5cc",
-   "size": 1004
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/be-cyrl.json": {
-   "sha256": "6483c32613ce09c0fd140299e6e740458a771c51a94ea8a630ff8c6bde0200d3",
-   "size": 1335
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/be-latn.json": {
-   "sha256": "42d75f59d00d4b82c9f61fb1c579d2387fcd5aed60a8222235559ef046d2868f",
-   "size": 1072
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ca.json": {
-   "sha256": "b1bd1533dcacfea9c007f71307e03516c0adad5388355766b365e6883bb5dc29",
-   "size": 1013
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/cs.json": {
-   "sha256": "3ff7ca1bf37184b57cf0d1c5463e0140a644fce69e238832d1a878765ecc4e88",
-   "size": 1011
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/da.json": {
-   "sha256": "e8498ada60846d37aa0ae3f2154369e79ebc414c4a39b54f0dd260e166653acd",
-   "size": 976
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/de.json": {
-   "sha256": "be8a4371536508a99621299308ab1aee0e1fe52a80d186981b800180586e11a6",
-   "size": 1006
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/el.json": {
-   "sha256": "6ae9d5cc76f60278a9e657249b68dc09caeb315557e6eb332231dd27db4f4ba5",
-   "size": 1324
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/en.json": {
-   "sha256": "2ca9488956d9b3385319b76a71ad97ab5e192d099de24c438b5f9928818c32fb",
-   "size": 983
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/es.json": {
-   "sha256": "7430ea1f6b0ee12e67f04a175f1ebdc0f9608e15e4872cbe4ca814f625ce5c6b",
-   "size": 1001
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/et.json": {
-   "sha256": "744392592739ad383d8b5f5a6aedbaf2f595318596a1df54219b6c905a17fe83",
-   "size": 1055
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/fa.json": {
-   "sha256": "de4beca5ea8e80de98b600e02fc58467781e86b5c67d39c4a9d2f9489ee91509",
-   "size": 1170
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/fi.json": {
-   "sha256": "6eeb7b7b2113c68b35d3194de204df7a91db35d816c5fe695c8e1b2e34fbddba",
-   "size": 1030
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/fr.json": {
-   "sha256": "cd0ee90773c5ab6c23fd203947e470bf29abb8ce61638d81d2303507f37e4512",
-   "size": 1071
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/he.json": {
-   "sha256": "64c140043d657a1f986c437dde75de6d65c73951e230d41776501c57d5bdb53e",
-   "size": 1129
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/hi.json": {
-   "sha256": "712ead7f912099639275c00c3be92ba1087ec6400b5f65d0363c71b50ac6e0d8",
-   "size": 1508
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/hr.json": {
-   "sha256": "51cfc6741d84e43e5581209de317a19a19c4cde8d531f0acc18742fb7b379686",
-   "size": 1035
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/hu.json": {
-   "sha256": "fee6205761d78ab0a6cc40fe39511d1260001678c3951e80b1f40c27b19410ec",
-   "size": 1164
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/hy.json": {
-   "sha256": "d631851794e9e69765b54d819a7fde46c85d50c0dfd34debb3582d920a725b54",
-   "size": 1323
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/id.json": {
-   "sha256": "1c91913a787aa10e9f094f17108f7d66720fb8db8e0cf0215ccb2249fd5693dc",
-   "size": 917
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/it.json": {
-   "sha256": "27b98864a9432bfc6630ee0da41eee1cf2a39088767f421f2d283bac3051f996",
-   "size": 996
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ja.json": {
-   "sha256": "0c345fdb6a622c584f924b27c9dd57de6661b819d6e68730f85d1bc0b0898e78",
-   "size": 1028
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ka.json": {
-   "sha256": "a540650ffe3b5310d019cd12ae204854899687b532218e42c21c24988be10d13",
-   "size": 1618
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ko.json": {
-   "sha256": "5e9e04cb5e5107222ca0e2637024723bbbeb14412fe20db6bb36cd72995b69c0",
-   "size": 1002
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/lt.json": {
-   "sha256": "e07a22955bcba2c89a1be347467e4bbd9a749df012a3f922e52ca91c6987ab1d",
-   "size": 1064
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/lv.json": {
-   "sha256": "62f712d13b6d528855370065cfd65cb4db9fbf86ff45ce5ec8d8572bdae61601",
-   "size": 1122
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ms.json": {
-   "sha256": "ac591ea0137c334c9ba6c8a0a410dd63787b929b416125700626d28ccd7cefcf",
-   "size": 1366
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/nb.json": {
-   "sha256": "183c54adef45d3768aa6cf59475e1c8c8370b67a767c164390d32962bb9aa700",
-   "size": 968
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/nl.json": {
-   "sha256": "0920a6304869b36cfd884fdf9439fbeb44a0975aa9e3fdbbf8d2b1e82aaf4b8e",
-   "size": 1054
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/pl.json": {
-   "sha256": "94c39ecc597677b5bc936b3967d17539f665cfe90e7b1f37ebc49dc9266da375",
-   "size": 1012
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/pt-br.json": {
-   "sha256": "a814fccc03612664704e41b7dec9ed01a8ecbbc121e11379a111077a013ccc1a",
-   "size": 989
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/pt.json": {
-   "sha256": "ef9150e19ba1916b4bf28dc0e93ca9a05f18b09b3b008b21041fb5fc3e075ae0",
-   "size": 1029
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/rs.json": {
-   "sha256": "b28a385d7a0ef0f58a892b44c97818aa1c17280e8b34538a41756058f7001ec1",
-   "size": 998
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ru.json": {
-   "sha256": "29419f9cb18657e2cbd3e912bd2b75ce88c737967ba38142aad46ac8392cec33",
-   "size": 1268
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/se.json": {
-   "sha256": "74671ca064712ca88a90e4db8a6859fb9e196ec83c650f5dee22ae09c9cd0876",
-   "size": 986
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/sk.json": {
-   "sha256": "23caef5fa2e45a86ff30400a82ab9d0a5c0232642c3c7ca09f22867848cf7934",
-   "size": 1006
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/sl.json": {
-   "sha256": "ac8521ed1d8989dca217477e5cfbdfac07e290a1dbae17037c8d2629d4f63a24",
-   "size": 982
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/sq.json": {
-   "sha256": "3e73909d8f0d4d56618d3b28492b26628b89d2321106cfa64b67cab385eeef3c",
-   "size": 999
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/th.json": {
-   "sha256": "ab9f4af6223baa884bb9d16678fff13b37233ee98cbb0bb6292dbc5f71a325d8",
-   "size": 1484
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/tr.json": {
-   "sha256": "22450559be105671b676063b3804463aca53d6a1452cb40502276465f8177a86",
-   "size": 1011
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/ua.json": {
-   "sha256": "0c473728f8b11013443e9c3e0cb1413eeccb94e013cf8274eadba424d2b4e097",
-   "size": 1277
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/vi.json": {
-   "sha256": "428af0564439a7322f6622f8ed5fba149be001c06bfe6ca8dbea1decf56a0787",
-   "size": 1142
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/zh-cn.json": {
-   "sha256": "de063e3fae0184747fec365801204257126b20ef23f20a2e9b743e3d0d38eb04",
-   "size": 1055
-  },
-  "assets/vendor/apexcharts-4.4.0/locales/zh-tw.json": {
-   "sha256": "bed728f2e86b36230cfe1e9ea7f3dcea5cbbca6b68558f4286e36d0cb459a062",
-   "size": 1055
-  },
-  "assets/vendor/bootstrap-5.3.8/LICENSE": {
-   "sha256": "c5f361fe9af814f57c925bfdadbb3d1857e511fa9feef485cdc5cae817ad44dd",
-   "size": 1114
-  },
-  "assets/vendor/bootstrap-5.3.8/css/bootstrap.min.css": {
-   "sha256": "596a918e5d4c71cb731b23412d5b145e429c2203a23e9bf7ba90eff3e291bbb8",
-   "size": 232116
-  },
-  "assets/vendor/bootstrap-5.3.8/css/bootstrap.rtl.min.css": {
-   "sha256": "5356aa50fd0bd941e11075a1ed1dbc12a742cb47b41ec08f2341a74d36c1871e",
-   "size": 232224
-  },
-  "assets/vendor/bootstrap-5.3.8/js/bootstrap.bundle.min.js": {
-   "sha256": "6c75a7cf1bda55690683f20364392d197e8637a4bb12e98d78cf650973d63fff",
-   "size": 80502
-  },
-  "assets/vendor/bootstrap-icons-1.13.2/LICENSE": {
-   "sha256": "0fb3e11bd57e896c5a512afd64864d28a37de45d19835016c87ca1ad19ead969",
-   "size": 1093
-  },
-  "assets/vendor/bootstrap-icons-1.13.2/bootstrap-icons.min.css": {
-   "sha256": "79c99c1a1e0e937f808a58165728b7ed00800f02ef5efcfcd10dfe71464e675d",
-   "size": 87008
-  },
-  "assets/vendor/bootstrap-icons-1.13.2/fonts/bootstrap-icons.woff2": {
-   "sha256": "2b7689746f87e0beeae25338bc021dd2515c2f6f003f3d3d064d878d380b2150",
-   "size": 134012
-  },
-  "assets/vendor/codemirror-5.65.21/LICENSE": {
-   "sha256": "168a4becc968f5001e2ee2e0291b6e4daabafc1894a11ade1e11d56e96096e07",
-   "size": 1113
-  },
-  "assets/vendor/codemirror-5.65.21/codemirror-addons.js": {
-   "sha256": "d03347821ba12762281c51d72d50ed9170ae7c91d5d00e45f92ad0fdcd7fe7d9",
-   "size": 40819
-  },
-  "assets/vendor/codemirror-5.65.21/codemirror-bundle.js": {
-   "sha256": "753646cb5afca2e874c80a5ab9d200c3e6aa19270348876b22ebddd45799ae0c",
-   "size": 629760
-  },
-  "assets/vendor/codemirror-5.65.21/codemirror.css": {
-   "sha256": "eb494ea972d2661ef86f7f6ac656dd6786d721e49c9c1b46e1eb967e4b6f9bf3",
-   "size": 8720
-  },
-  "assets/vendor/formatter/LICENSE-prettier": {
-   "sha256": "ac068b6510d1c9fea513b09bd6d7cee5c38dc21b2dc9ab11f6247d499f6008c9",
-   "size": 205606
-  },
-  "assets/vendor/formatter/LICENSE-prettier-plugin-php": {
-   "sha256": "1415f351c7f685327813b6ba4614a94080ca355476effc1f12a2da485949f9c9",
-   "size": 1082
-  },
-  "assets/vendor/formatter/beautify-css.js": {
-   "sha256": "511af9357a595716883760560597f7872ad3c7946dc9e45f00b453f46ab317f3",
-   "size": 54387
-  },
-  "assets/vendor/formatter/beautify-html.min.js": {
-   "sha256": "6a055eceb56038f8c68d469bb9c8cbba13b32d8b067424508d7c91d31e0df242",
-   "size": 45573
-  },
-  "assets/vendor/formatter/beautify.min.js": {
-   "sha256": "40789fde39e23977976d6e5ca7f6d9ec294bbb0462f5e6563e64001b76b802eb",
-   "size": 74968
-  },
-  "assets/vendor/formatter/prettier-plugin-php.js": {
-   "sha256": "9c9fd544c256b339cedf0fb6db7d079496a7de3158a094ebd7e620b017217afd",
-   "size": 169832
-  },
-  "assets/vendor/formatter/prettier-standalone.js": {
-   "sha256": "0127d72f138eec832f4068ab60f4531d24d3060b0ece9739cc36b91b1c1d7dd4",
-   "size": 79270
-  },
-  "assets/vendor/formatter/sql-formatter.min.js": {
-   "sha256": "0f5d7cfe47457e9121b00a6b912481d5947744b79b579018b20e8656322feaff",
-   "size": 274666
-  },
-  "assets/vendor/jquery-confirm/LICENSE": {
-   "sha256": "7cf54cc8ed40895eae5ac2223ba310a4a83f0818fd4104cd9adb13c773b6530d",
-   "size": 1102
-  },
-  "assets/vendor/jquery-confirm/jquery-confirm.min.css": {
-   "sha256": "6f545eadeb021dde0a3bfa7af108cf85e1261a2a45b20e451f84b8ddac19f43f",
-   "size": 22546
-  },
-  "assets/vendor/jquery-confirm/jquery-confirm.min.js": {
-   "sha256": "a1fbeefceaa19bbe2fb991a57c5d7f6f83945a42bf7f39559405b19201ebf92e",
-   "size": 28231
-  },
-  "assets/vendor/jquery/LICENSE.txt": {
-   "sha256": "d4db9ebe6f29f5168eac45ad713f055623ac5d0dcd5ba92da23d650ae012020d",
-   "size": 1097
-  },
-  "assets/vendor/jquery/jquery.min.js": {
-   "sha256": "fc9a93dd241f6b045cbff0481cf4e1901becd0e12fb45166a8f17f95823f0b1a",
-   "size": 87533
-  },
-  "assets/vendor/libraries.json": {
-   "sha256": "1a38bec753057b39ad36150b5dd2172caa73c6d90aa4793fb23ed90f3454e803",
-   "size": 2020
-  },
-  "assets/vendor/qrcode-generator-2.0.4/qrcode.js": {
-   "sha256": "79ec86f82856005b1c887905cfccfcfbec3821ca61c7fd5a952faa5f778f791c",
-   "size": 56694
-  },
-  "assets/vendor/tom-select-2.6.2/LICENSE": {
-   "sha256": "f15dc64ea1f373c8af0ee7c020064360497addf335c9c2bcf27c3a6f56a6f0bd",
-   "size": 11350
-  },
-  "assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css": {
-   "sha256": "ce467598f8953044ddfc0ff9fd4b7e2f6cced549001737d6b712a14f8b9a6599",
-   "size": 15663
-  },
-  "assets/vendor/tom-select-2.6.2/tom-select.complete.min.js": {
-   "sha256": "8f9d7d3420e938c2c9817818b56df43ea46feae5bf1f5a2e828863c034df0e37",
-   "size": 51804
   },
   "core/.htaccess": {
    "sha256": "347ca3cb9d998f25fd504d1fe305ebaccaedb319c895ab87b5909b6fc169d6c9",
@@ -699,8 +399,8 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "77158f0d870254cba527130612533a28bea057538026749a4bc352418f93acce",
-   "size": 28803
+   "sha256": "e446fe0596e7c3879a3f223cbb85f7e21b7cee6c012885823e25ea2d1c9e1ed5",
+   "size": 29595
   },
   "core/nuappcloner.php": {
    "sha256": "10f4a206f8d93858086416315c46dd72a349d21a91da8f0a72dcf86e5c1d1222",
@@ -719,8 +419,8 @@
    "size": 32670
   },
   "core/nuautoupdate.php": {
-   "sha256": "3ff5a75899c1ac5794c74d21285b65054dd6a1c89e8b355fcc959a00afcdd5a6",
-   "size": 16473
+   "sha256": "cee498a94bde0a056ad2a6d2b369c01e0bc90f6befcf70605d22f32253b498c2",
+   "size": 16821
   },
   "core/nubranding.php": {
    "sha256": "23f924304a58c2a8072d646b925d33b27fcdb80cb26ca81fc217408e46e1f5be",
@@ -775,8 +475,8 @@
    "size": 5961
   },
   "core/nugithub.php": {
-   "sha256": "3bb7ce7692d4d3497cf06db23ee1b0bea8958045a5a81f66e39969ca1ec3c1f2",
-   "size": 12654
+   "sha256": "36b360d3b926f53588cd0380f74414f053fc6178b8509cff0663ace155c57e14",
+   "size": 12851
   },
   "core/nuhome.php": {
    "sha256": "7560be7ea86a78d8caebd034451f95542a97c2e06b601b3cadbce942a365771b",
@@ -803,8 +503,8 @@
    "size": 39596
   },
   "core/nuinfra.php": {
-   "sha256": "c904802c9d5069781110c1fceb31bcadaa7ec8c0b9ddd47637ed4259bf001bf4",
-   "size": 21247
+   "sha256": "db90f88bd348b83c45db33be67481a201cdd6b948a65cd65cc0167e76a499736",
+   "size": 21598
   },
   "core/nuinspect.php": {
    "sha256": "24d52f5ef167998782d97ab495cfc3c4e1dc2a8b652d83f8c294a4915194b5a9",
@@ -819,12 +519,16 @@
    "size": 3635
   },
   "core/nulayout.php": {
-   "sha256": "00b8caa31e3aabddf0f4c7edf8857ca4efce1f5749d8e96cf0c5fe105801bb82",
-   "size": 31353
+   "sha256": "737e4114826fe5f28c113f3c6de600d70c668a768df5a07ea281a2c848a39e12",
+   "size": 31696
   },
   "core/nulibraries.php": {
-   "sha256": "d4b15bca87d872ea66167d64814117fa890068d73efe84790ecabf829497c864",
-   "size": 3986
+   "sha256": "af15c2720a5f6734c69f6f681450418787e8bed77972d2b5bc2de0df630e7384",
+   "size": 4003
+  },
+  "core/nulibs.php": {
+   "sha256": "e551fdc4e3f6342bec197ec7ee7edbce04126c6b22f04661e4060cf6afffdd02",
+   "size": 50707
   },
   "core/nulistdefs.php": {
    "sha256": "641f8f6887b2882a79a894ec9098314726b373123787ddf45aef44685d372d0a",
@@ -835,16 +539,16 @@
    "size": 15474
   },
   "core/nulistview.php": {
-   "sha256": "4186a80f62c8c19cb9b6f7acef776816d4282a1f94b4dd78ad3a6907bf3be1d6",
-   "size": 43813
+   "sha256": "306c4fcacd73737b58f4b1249613c5707184c4271248d2ae19d11d24eb8e8c81",
+   "size": 43783
   },
   "core/nulogintoken.php": {
    "sha256": "8cd1c6b981241dea49c448823e98e405c4400260a6d4583548d72f23949ee737",
    "size": 9578
   },
   "core/numail.php": {
-   "sha256": "9ae835ccb1514e7de87ffba467d164eda2b75f55d9889dae126a44dbc1658d99",
-   "size": 48882
+   "sha256": "4e388b5e51886f720e3d96fa6afd94aa1d039a66397296e5c3481d51377a759d",
+   "size": 49088
   },
   "core/nunotify.php": {
    "sha256": "b9601506e1607c0ea584e898b4affe5e7f377cf32a7390e42dfd8fdaab95c0e4",
@@ -871,8 +575,8 @@
    "size": 19561
   },
   "core/nureport.php": {
-   "sha256": "8f21a549c2b7c52a0e7afee0aa21e313c6a8c8f6fbaf4bda046bd21355c4c23c",
-   "size": 35072
+   "sha256": "7a957a8278b4ea0bf76834a88263568b5efb2208b1a8c41078a5aeda9ed6ec1f",
+   "size": 35245
   },
   "core/nureportapi.php": {
    "sha256": "776ef7d5a7b6d8560558bcbf964666b5e1640e12271a58d3c2bd6add5cd82617",
@@ -891,8 +595,8 @@
    "size": 9921
   },
   "core/nusecurity.php": {
-   "sha256": "7b7b4b088ee8281e81501af48af669c4b195b0beb1b9b58429ef841d4e86c572",
-   "size": 29466
+   "sha256": "3a02d28262401b7a5444383dd1325bdfde3b4cb00f619f2c384703cd2d548826",
+   "size": 30019
   },
   "core/nuselftest.php": {
    "sha256": "68907cf3f1e19a298dab1d82454a74bbc4427723793b4eb2c0390ede64c37167",
@@ -935,12 +639,12 @@
    "size": 9816
   },
   "core/nuupdate.php": {
-   "sha256": "b4db47e8b3039626f415f3198792a43fc8675c930d14c9015a86913e8cb7477d",
-   "size": 43268
+   "sha256": "1104b160e5e94bf943632a1c9a12974554e13dd709c0ffe6a8bef11b1c96dd6a",
+   "size": 43665
   },
   "core/nuvendor.php": {
-   "sha256": "8293181f67d85ba2cc4b7b4dae7bc2f0dd8df680377d30cc9e25a13ff7ca88ea",
-   "size": 13984
+   "sha256": "e911bcf97086e35bf8e348656e7ea7d9d3219bfe70b5e4a2de7b038e5b0ab3ec",
+   "size": 14445
   },
   "core/nuxlsx.php": {
    "sha256": "f41af7cf3011eec1b3fdc0359a7caaac34436cc64a64a9c4545a6e60bb0735c7",
@@ -975,16 +679,16 @@
    "size": 50
   },
   "dbadmin.php": {
-   "sha256": "9c408208d57d28d9e3f10c9fb295b347b37966f3d0c5155aa3e13cd4ca7149f7",
-   "size": 13738
+   "sha256": "dfb407872feb64751b2d990886cd686619f62f71056a7b5d801091a03f2b5c12",
+   "size": 14869
   },
   "docs/.htaccess": {
    "sha256": "347ca3cb9d998f25fd504d1fe305ebaccaedb319c895ab87b5909b6fc169d6c9",
    "size": 177
   },
   "docs/nunext-docs.htm": {
-   "sha256": "299ee5727b83a145c5ea5b87ea2ab2117168e4b5f78e15d6868b22ec4a227ab6",
-   "size": 262967
+   "sha256": "cab4ebb870e0d98758f5aaf5c358972d1814f5735314467b5265c1dee4071169",
+   "size": 285873
   },
   "docs/nunext-functions.json": {
    "sha256": "817c08b99bc50c18091d44e90197e7549945470c502d01b34b6b17c3e2113b1a",
@@ -999,16 +703,20 @@
    "size": 27421
   },
   "index.php": {
-   "sha256": "0851c691d8b0c396b8ba04ab7ee204d7b8384084df834f45c0f6f217b7450921",
-   "size": 8276
+   "sha256": "3157c3a27515a3340d6a55f1f60ba96fb5f8745d60c90f8ac1146cc83613b8fb",
+   "size": 8377
   },
   "install/.htaccess": {
    "sha256": "347ca3cb9d998f25fd504d1fe305ebaccaedb319c895ab87b5909b6fc169d6c9",
    "size": 177
   },
   "install/db_changes.json": {
-   "sha256": "8a6c5592c64c544e302b15f526c5bc1bc62d05b3646ddd0b5fee9ed237b5169e",
+   "sha256": "ca0642afb6e4e38c8d6edbbe878be18e7efeb25234bf82cea26abcd5046c974f",
    "size": 33734
+  },
+  "install/libraries-required.json": {
+   "sha256": "0e57e74f6145517369c8753a24879f916051837b6f79dab56aa1e876f813df10",
+   "size": 598
   },
   "install/notes_snippets_mysql.sql": {
    "sha256": "a31a46ab2048f3dd5a03a87364a70eea81989be97ed67fa8ec0700e8ea6bcbf8",
@@ -1043,16 +751,16 @@
    "size": 177
   },
   "lang/ar.php": {
-   "sha256": "fc1e040a015fa5f9abc183ac55149714141906c453d2eeb5ef27d894c448b7a4",
-   "size": 323551
+   "sha256": "43adbe71e2b4f75a07262d13c34f85ba536cdafe40baac70b85574a22c64890e",
+   "size": 334586
   },
   "lang/de-CH.php": {
-   "sha256": "3beb4d53a34897852dd1da13c1559f4298b6ac12c40189f5bb7bb395065a77c0",
-   "size": 26239
+   "sha256": "b0596793c7298f9fb3b6ac5fb4b6f2d330408ac81b9633ac147b765d9b6e459d",
+   "size": 27703
   },
   "lang/de.php": {
-   "sha256": "c60c5040a25444f79faf2b1ee41440539f89ae3aaa9b7f61a3b65eb84dcb23a0",
-   "size": 264662
+   "sha256": "1573e6f6ef00cbb38f54baa2c3670e53cb6d763f36e21b769caefc271a7376aa",
+   "size": 273947
   },
   "lang/en-AU.php": {
    "sha256": "ada75936000a02c38cf523214ed6484c63de2b097d58d52c7306e0c4c1dc66b5",
@@ -1063,44 +771,44 @@
    "size": 4327
   },
   "lang/en.php": {
-   "sha256": "076858c5be7fca4dbed9de683efe99d10e6768d1646141279fe408afbfbabc32",
-   "size": 239726
+   "sha256": "344851bdaa6667fead431fe2ebf9879975cfaf471a48ecef3ae072a237fccf31",
+   "size": 248075
   },
   "lang/es.php": {
-   "sha256": "c5ee5b96557396ccb11999c0a2cc95146c837e7973020921e31e085d3453aa66",
-   "size": 267983
+   "sha256": "a72d92d692cfc8b72fa4edf3b54d2a10eff28038e35ec9789d0da9b6a0f0ffab",
+   "size": 277251
   },
   "lang/fr.php": {
-   "sha256": "a7917bae6a0fd70cfaa9e66b3bbd1cace05204839e7f91a8caa0b22c944cd663",
-   "size": 279590
+   "sha256": "35222967230dae4c46a6ef26df5636cd0a32a2ae4b3385c706634b44a40b8c72",
+   "size": 289233
   },
   "lang/it.php": {
-   "sha256": "93902f8103e9bb986c5e7ef76659d028c0eaeab1c98a6aadfc25cdaef982bb66",
-   "size": 261846
+   "sha256": "a3b6a33dc312fbc53353c04ae09e8a835cc57a840f023b755c4fa67caaa4c93c",
+   "size": 270932
   },
   "lang/nl.php": {
-   "sha256": "7ac36eea9ac76b68aef75557704a1afaa84c4aebd20458000f521d6ee8fad0b3",
-   "size": 260553
+   "sha256": "1a943142c5692c7c88f7a5551fcc6d5d5ac8f29d2ce849c367f887b1a23bb526",
+   "size": 269847
   },
   "lang/pl.php": {
-   "sha256": "b490489223d43658755f1b51e52bec88bfe5571f9490bc20b3bb615387dacf15",
-   "size": 260637
+   "sha256": "e586ada8a0e8f8bad19b1f775b2f2a8e52cdf09da7b258a1522c82ddae860fd9",
+   "size": 269695
   },
   "lang/pt.php": {
-   "sha256": "fd3c8120b10357566fc9995c95cccfd239a7c881219879dd62bbd0527fcd4948",
-   "size": 270062
+   "sha256": "acc385c678576f63d22a722116e2d054b0995669b32b5a879efacc0edc161400",
+   "size": 279339
   },
   "lang/ru.php": {
-   "sha256": "23a21ca36443271d1a8e1f1bfd545256414e78ec8bbda20f7536950217c6380d",
-   "size": 363059
+   "sha256": "48b28d2b9b08c3bd481704460ec4370fccb40c39707af652d7eb2b815111fcd6",
+   "size": 375313
   },
   "lang/zh.php": {
-   "sha256": "52b8944956fa2d20194b952dbb3565429c6fb54d713749d22a940a46d76464b0",
-   "size": 241411
+   "sha256": "de934030f17323205f4c7df82c5002c7ff12795f2004fb9adf19d7f2f06cb5b4",
+   "size": 249624
   },
   "nuconfig-sample.php": {
-   "sha256": "2347afff32bfcbcc3e2900644e3f6ff4b02d0fb84737d394611292ea033c22a8",
-   "size": 11325
+   "sha256": "1f00d446ddefe27fee56fd869a13328a1a3c43d58e8de10d6457acbc888d2bef",
+   "size": 11373
   },
   "pages/.htaccess": {
    "sha256": "347ca3cb9d998f25fd504d1fe305ebaccaedb319c895ab87b5909b6fc169d6c9",
@@ -1151,8 +859,8 @@
    "size": 8948
   },
   "pages/nubuilder.php": {
-   "sha256": "08a9dd709e58f9f486105a51c170e1d822190cc5f2b7905339f55ba223fc45fe",
-   "size": 21407
+   "sha256": "47f592e0626f11e03786b927ce8ed1ba7cc54302111bb1ce0db0ce749f40d129",
+   "size": 21329
   },
   "pages/nubuilder_page.php": {
    "sha256": "33c8340b640a2f0fdf510481229cb2c73ec5f1b337882526be57a309c989699b",
@@ -1171,8 +879,8 @@
    "size": 9291
   },
   "pages/nuconfigfile.php": {
-   "sha256": "1d794906d371c8af62bf94ceec6861bb6a79f5721eaf61ca0f51181f0499df8e",
-   "size": 8486
+   "sha256": "8cb4f460933baae2c578a492c83b4fd9d5787da116e9b8bd6f778ba8f857e646",
+   "size": 8438
   },
   "pages/nudashboardapi.php": {
    "sha256": "e1d0d67e9d8691b89fb471460cbdff41592bd38d982284ad531ef1204a66c665",
@@ -1195,8 +903,8 @@
    "size": 22850
   },
   "pages/nufa.php": {
-   "sha256": "18af0e8871a3e6cf36fec112c5ff6336bbb7983ce204549553e437d820731c51",
-   "size": 1832
+   "sha256": "43479dd2aaac981f0a01948e26d14b720b96108d541c2887e9d80058a38567ea",
+   "size": 1914
   },
   "pages/nufile.php": {
    "sha256": "fc7b366b49fe68a48c3cf7641956bde8a6061d74850951bde87dd0af47b1f49e",
@@ -1211,8 +919,8 @@
    "size": 3925
   },
   "pages/nuform.php": {
-   "sha256": "4c762b091b0d279145c059621a8773e2eb5389cf319e142b4cd4963eaf4c730b",
-   "size": 39774
+   "sha256": "9028217ffb607845bc69d4a32516e9a320d53bedf4c1a4d81e7d55c3fdbc2cc0",
+   "size": 39827
   },
   "pages/nuformai.php": {
    "sha256": "c4c409d6591d5e511f7ad0db43c05e5f1eb070829ba0cb13f21472ddae7c7e17",
@@ -1239,8 +947,8 @@
    "size": 2556
   },
   "pages/nuhelp.php": {
-   "sha256": "cb69ea3eac5c30c54dea26c36832dc9c608ad821b1b94ff0f8ccda5a48c5091e",
-   "size": 4334
+   "sha256": "8c0c670a898ecc91ad8dd6dabb75e67882cd3397665cc58dbae371d9510b32bf",
+   "size": 4494
   },
   "pages/nuhome.php": {
    "sha256": "0514567947a1bf185f70abd5e8fa2512b2ac0f0b61c2bbabaeab55d656d11a75",
@@ -1255,24 +963,28 @@
    "size": 911
   },
   "pages/nuimport.php": {
-   "sha256": "cf7d80a206f4d998695fde3b33957ea95ba4eda461bb09e0c5c95a7c8e16db6f",
-   "size": 16812
+   "sha256": "c0e4622526a6919a48cfefb5139a082312f7403a9c29c02cd59ded5d36e6fac1",
+   "size": 16782
   },
   "pages/nuinspect.php": {
    "sha256": "2545c994fcbe6ce1346b3b067479b032c6d1c419b9394e6d5a0fdc98fea4fb88",
    "size": 9880
   },
   "pages/nuinstall.php": {
-   "sha256": "cbbae9e03eba587967e80a6ccfba5de479be97d8592432f085f0692aa59dd547",
-   "size": 37070
+   "sha256": "134ce189e70fc820b4d50d0d5101506f7cb1b8540a2d77a294293f54f8b7e679",
+   "size": 43016
   },
   "pages/nuitems.php": {
-   "sha256": "9240907a3ecd9deca8c6327611410b850beb0364a346beeac1464363c76abb7c",
-   "size": 13729
+   "sha256": "4fa293abb98f36bf0c1e2eaa84f4fd079c48f9ab8ee1532a322c09c525ed513c",
+   "size": 13699
   },
   "pages/nulang.php": {
    "sha256": "429300cbd5a5317f27968ed61cda3ee3772315c8d19ee21cdd65a3dbfd9abc39",
    "size": 1295
+  },
+  "pages/nulibpack.php": {
+   "sha256": "6aba21f66e6a23e8ee79d6d9b056aaccc27ded9e4ead155b271c4c09040bfa50",
+   "size": 9860
   },
   "pages/nulistview.php": {
    "sha256": "571e5635621e9ef995a38cdc0f9c08404b5854481119bb2f4ff19bb734f9bd9f",
@@ -1291,8 +1003,8 @@
    "size": 268
   },
   "pages/nunotifications.php": {
-   "sha256": "70fcf19cdc41d9815b05f97f577a0028469009b7599134ca9369cf39702b450e",
-   "size": 31474
+   "sha256": "6e46b50a7efd8fd1b9027f48c6b04559d68281ffdc1f6796a1e1c9f5d6f38006",
+   "size": 31539
   },
   "pages/nunotifyapi.php": {
    "sha256": "1608d9632cf3288e0d73bce2a7f85eef457d0193dd9b83c13514ef46e9b7f51c",
@@ -1315,16 +1027,16 @@
    "size": 3039
   },
   "pages/nupermissions.php": {
-   "sha256": "2c6560dcd4f1bca47eaab3cd2e55e27316b02c15c3bb85f70c6670c5e2e13262",
-   "size": 12259
+   "sha256": "c80447dc60e66d56026949add2874f1a8b9f71fefa18d3e047f8f5e01f2e8e98",
+   "size": 12229
   },
   "pages/nuprocedures.php": {
-   "sha256": "4f54929cd47e54b755c36a30d027deda6086dcc03c5730f0eedb5f3a616fb0ab",
-   "size": 27742
+   "sha256": "e0a71f6b11e5f625127a05710a3ed72857d522adfa5903d8e4a8f17b5b83185f",
+   "size": 27694
   },
   "pages/nuprompts.php": {
-   "sha256": "2c9f27e08a3fbb4e20e65012271966549a448d41ff8a0beafff1627130f849dc",
-   "size": 11745
+   "sha256": "349d33e595920bbfa5aa6dff6df09147bc202dbef9a74571d8cc48b14670679c",
+   "size": 11715
   },
   "pages/nureauth.php": {
    "sha256": "553d98b038a249344e02856cc528b86da7a4d910e806ac58f069f91629296753",
@@ -1335,8 +1047,8 @@
    "size": 1049
   },
   "pages/nureportdesigner.php": {
-   "sha256": "85933c70de8f8876fbe4a798957746d17c9d5c82eb343f81be8b1e15c6f0c85b",
-   "size": 8243
+   "sha256": "ebb547039acb0679b2ec6592595210641ab2493089ad9693861d8df5ab4878ad",
+   "size": 8263
   },
   "pages/nureportfile.php": {
    "sha256": "1e5648f3ad73e99da0d19abae8c9a66924fd8b37b0e0655adf12a6dcc20cad44",
@@ -1347,8 +1059,8 @@
    "size": 3624
   },
   "pages/nureports.php": {
-   "sha256": "ae33d5d365852cedfc0b152455ffcbb016c45a6ec4e57762ee946ca4488a0fe9",
-   "size": 20030
+   "sha256": "7fab8bdfc8c508d63a84a1910f8393d236d015b6d95de429310b444952838a2c",
+   "size": 20050
   },
   "pages/nureset.php": {
    "sha256": "323d1d2f0f7b9bd42ed908cbd9dc6bec4e09ea0d28afa95553046b993e9be7bf",
@@ -1359,8 +1071,8 @@
    "size": 6960
   },
   "pages/nusecurity.php": {
-   "sha256": "564330828ac184a0f0838bc9ae472e1fb0e0ab2dde53fba07ec1dd2ea7982868",
-   "size": 6901
+   "sha256": "c8ef274be787b2258f7804853f6386218859b77515c10448da5997e739e1708d",
+   "size": 6877
   },
   "pages/nusecuritycheck.php": {
    "sha256": "7614a7f800553eeefd92c860f734e2273f8644142da39b9140fd1e043884c095",
@@ -1399,24 +1111,360 @@
    "size": 9640
   },
   "pages/nutwofa.php": {
-   "sha256": "285ff64259b98954b1ee1c0b7ada053be073fa82b5b9a941e44859c0c4f0bf51",
-   "size": 6332
+   "sha256": "7b0611a074a10563ef6ff681e7f34f2d305f28bc23208ceb7dd602b43fae386b",
+   "size": 6308
   },
   "pages/nuupdate.php": {
-   "sha256": "4091dd3093535a7c4f55f9c1a85e20d5205499744455433920d521df71515aef",
-   "size": 66022
+   "sha256": "8e10440be2065af13af53258bed5f664a49fc32ce0eb4981e74f767219ce6ae2",
+   "size": 82754
   },
   "pages/nuuser.php": {
-   "sha256": "c0b383d636c9d5951c1044429df3e8685b6645aaaa435aa54a9cdcfd3a15459b",
-   "size": 44921
+   "sha256": "5fea531d702d97ec4937f4d6b40f30ecd1314b39b1fa01cc98d20cde64a93703",
+   "size": 44891
   },
   "pages/nuusers.php": {
    "sha256": "68d53797da4f65ff7c2b2f557d205d322bbf4313bd4de645d41744478e5aa17d",
    "size": 978
   },
   "pages/nuvendor.php": {
-   "sha256": "52716fae0c688a2863477b4d2204edc674f66a569ae53f07b41168c6cccfb17d",
-   "size": 14191
+   "sha256": "34bc25ad999b6b20cb9d867daf701df86ae614050f94fe2cb8d91527e2fb63a6",
+   "size": 14251
+  },
+  "vendor/bundled/.htaccess": {
+   "sha256": "a9ffbf26e337aeb325cc58acb4410f6df4dadca3a289cb7939a6d9015b76f955",
+   "size": 923
+  },
+  "vendor/bundled/apexcharts-4.4.0/LICENSE": {
+   "sha256": "4db98d106f5a157d60b24d49a4852156542ef58e08f1034e8a3b6d63e53e2241",
+   "size": 1076
+  },
+  "vendor/bundled/apexcharts-4.4.0/apexcharts.css": {
+   "sha256": "252e37722a7ea9e8937724fb0137ffcc08cd1df596b668857d5530f2951b889e",
+   "size": 14574
+  },
+  "vendor/bundled/apexcharts-4.4.0/apexcharts.min.js": {
+   "sha256": "f4f5a1cfe4f5a5f9092968b011eb26d775f69289285ec2a8d9003be067780990",
+   "size": 574008
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ar.json": {
+   "sha256": "735011f4ffca4af74834d69c8dda67f78bc275b70fbf3b479fcf79c7bb63a5cc",
+   "size": 1004
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/be-cyrl.json": {
+   "sha256": "6483c32613ce09c0fd140299e6e740458a771c51a94ea8a630ff8c6bde0200d3",
+   "size": 1335
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/be-latn.json": {
+   "sha256": "42d75f59d00d4b82c9f61fb1c579d2387fcd5aed60a8222235559ef046d2868f",
+   "size": 1072
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ca.json": {
+   "sha256": "b1bd1533dcacfea9c007f71307e03516c0adad5388355766b365e6883bb5dc29",
+   "size": 1013
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/cs.json": {
+   "sha256": "3ff7ca1bf37184b57cf0d1c5463e0140a644fce69e238832d1a878765ecc4e88",
+   "size": 1011
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/da.json": {
+   "sha256": "e8498ada60846d37aa0ae3f2154369e79ebc414c4a39b54f0dd260e166653acd",
+   "size": 976
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/de.json": {
+   "sha256": "be8a4371536508a99621299308ab1aee0e1fe52a80d186981b800180586e11a6",
+   "size": 1006
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/el.json": {
+   "sha256": "6ae9d5cc76f60278a9e657249b68dc09caeb315557e6eb332231dd27db4f4ba5",
+   "size": 1324
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/en.json": {
+   "sha256": "2ca9488956d9b3385319b76a71ad97ab5e192d099de24c438b5f9928818c32fb",
+   "size": 983
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/es.json": {
+   "sha256": "7430ea1f6b0ee12e67f04a175f1ebdc0f9608e15e4872cbe4ca814f625ce5c6b",
+   "size": 1001
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/et.json": {
+   "sha256": "744392592739ad383d8b5f5a6aedbaf2f595318596a1df54219b6c905a17fe83",
+   "size": 1055
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/fa.json": {
+   "sha256": "de4beca5ea8e80de98b600e02fc58467781e86b5c67d39c4a9d2f9489ee91509",
+   "size": 1170
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/fi.json": {
+   "sha256": "6eeb7b7b2113c68b35d3194de204df7a91db35d816c5fe695c8e1b2e34fbddba",
+   "size": 1030
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/fr.json": {
+   "sha256": "cd0ee90773c5ab6c23fd203947e470bf29abb8ce61638d81d2303507f37e4512",
+   "size": 1071
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/he.json": {
+   "sha256": "64c140043d657a1f986c437dde75de6d65c73951e230d41776501c57d5bdb53e",
+   "size": 1129
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/hi.json": {
+   "sha256": "712ead7f912099639275c00c3be92ba1087ec6400b5f65d0363c71b50ac6e0d8",
+   "size": 1508
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/hr.json": {
+   "sha256": "51cfc6741d84e43e5581209de317a19a19c4cde8d531f0acc18742fb7b379686",
+   "size": 1035
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/hu.json": {
+   "sha256": "fee6205761d78ab0a6cc40fe39511d1260001678c3951e80b1f40c27b19410ec",
+   "size": 1164
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/hy.json": {
+   "sha256": "d631851794e9e69765b54d819a7fde46c85d50c0dfd34debb3582d920a725b54",
+   "size": 1323
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/id.json": {
+   "sha256": "1c91913a787aa10e9f094f17108f7d66720fb8db8e0cf0215ccb2249fd5693dc",
+   "size": 917
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/it.json": {
+   "sha256": "27b98864a9432bfc6630ee0da41eee1cf2a39088767f421f2d283bac3051f996",
+   "size": 996
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ja.json": {
+   "sha256": "0c345fdb6a622c584f924b27c9dd57de6661b819d6e68730f85d1bc0b0898e78",
+   "size": 1028
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ka.json": {
+   "sha256": "a540650ffe3b5310d019cd12ae204854899687b532218e42c21c24988be10d13",
+   "size": 1618
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ko.json": {
+   "sha256": "5e9e04cb5e5107222ca0e2637024723bbbeb14412fe20db6bb36cd72995b69c0",
+   "size": 1002
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/lt.json": {
+   "sha256": "e07a22955bcba2c89a1be347467e4bbd9a749df012a3f922e52ca91c6987ab1d",
+   "size": 1064
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/lv.json": {
+   "sha256": "62f712d13b6d528855370065cfd65cb4db9fbf86ff45ce5ec8d8572bdae61601",
+   "size": 1122
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ms.json": {
+   "sha256": "ac591ea0137c334c9ba6c8a0a410dd63787b929b416125700626d28ccd7cefcf",
+   "size": 1366
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/nb.json": {
+   "sha256": "183c54adef45d3768aa6cf59475e1c8c8370b67a767c164390d32962bb9aa700",
+   "size": 968
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/nl.json": {
+   "sha256": "0920a6304869b36cfd884fdf9439fbeb44a0975aa9e3fdbbf8d2b1e82aaf4b8e",
+   "size": 1054
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/pl.json": {
+   "sha256": "94c39ecc597677b5bc936b3967d17539f665cfe90e7b1f37ebc49dc9266da375",
+   "size": 1012
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/pt-br.json": {
+   "sha256": "a814fccc03612664704e41b7dec9ed01a8ecbbc121e11379a111077a013ccc1a",
+   "size": 989
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/pt.json": {
+   "sha256": "ef9150e19ba1916b4bf28dc0e93ca9a05f18b09b3b008b21041fb5fc3e075ae0",
+   "size": 1029
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/rs.json": {
+   "sha256": "b28a385d7a0ef0f58a892b44c97818aa1c17280e8b34538a41756058f7001ec1",
+   "size": 998
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ru.json": {
+   "sha256": "29419f9cb18657e2cbd3e912bd2b75ce88c737967ba38142aad46ac8392cec33",
+   "size": 1268
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/se.json": {
+   "sha256": "74671ca064712ca88a90e4db8a6859fb9e196ec83c650f5dee22ae09c9cd0876",
+   "size": 986
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/sk.json": {
+   "sha256": "23caef5fa2e45a86ff30400a82ab9d0a5c0232642c3c7ca09f22867848cf7934",
+   "size": 1006
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/sl.json": {
+   "sha256": "ac8521ed1d8989dca217477e5cfbdfac07e290a1dbae17037c8d2629d4f63a24",
+   "size": 982
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/sq.json": {
+   "sha256": "3e73909d8f0d4d56618d3b28492b26628b89d2321106cfa64b67cab385eeef3c",
+   "size": 999
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/th.json": {
+   "sha256": "ab9f4af6223baa884bb9d16678fff13b37233ee98cbb0bb6292dbc5f71a325d8",
+   "size": 1484
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/tr.json": {
+   "sha256": "22450559be105671b676063b3804463aca53d6a1452cb40502276465f8177a86",
+   "size": 1011
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/ua.json": {
+   "sha256": "0c473728f8b11013443e9c3e0cb1413eeccb94e013cf8274eadba424d2b4e097",
+   "size": 1277
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/vi.json": {
+   "sha256": "428af0564439a7322f6622f8ed5fba149be001c06bfe6ca8dbea1decf56a0787",
+   "size": 1142
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/zh-cn.json": {
+   "sha256": "de063e3fae0184747fec365801204257126b20ef23f20a2e9b743e3d0d38eb04",
+   "size": 1055
+  },
+  "vendor/bundled/apexcharts-4.4.0/locales/zh-tw.json": {
+   "sha256": "bed728f2e86b36230cfe1e9ea7f3dcea5cbbca6b68558f4286e36d0cb459a062",
+   "size": 1055
+  },
+  "vendor/bundled/bootstrap-5.3.8/LICENSE": {
+   "sha256": "c5f361fe9af814f57c925bfdadbb3d1857e511fa9feef485cdc5cae817ad44dd",
+   "size": 1114
+  },
+  "vendor/bundled/bootstrap-5.3.8/css/bootstrap.min.css": {
+   "sha256": "596a918e5d4c71cb731b23412d5b145e429c2203a23e9bf7ba90eff3e291bbb8",
+   "size": 232116
+  },
+  "vendor/bundled/bootstrap-5.3.8/css/bootstrap.rtl.min.css": {
+   "sha256": "5356aa50fd0bd941e11075a1ed1dbc12a742cb47b41ec08f2341a74d36c1871e",
+   "size": 232224
+  },
+  "vendor/bundled/bootstrap-5.3.8/js/bootstrap.bundle.min.js": {
+   "sha256": "6c75a7cf1bda55690683f20364392d197e8637a4bb12e98d78cf650973d63fff",
+   "size": 80502
+  },
+  "vendor/bundled/bootstrap-icons-1.13.2/LICENSE": {
+   "sha256": "0fb3e11bd57e896c5a512afd64864d28a37de45d19835016c87ca1ad19ead969",
+   "size": 1093
+  },
+  "vendor/bundled/bootstrap-icons-1.13.2/bootstrap-icons.min.css": {
+   "sha256": "79c99c1a1e0e937f808a58165728b7ed00800f02ef5efcfcd10dfe71464e675d",
+   "size": 87008
+  },
+  "vendor/bundled/bootstrap-icons-1.13.2/fonts/bootstrap-icons.woff2": {
+   "sha256": "2b7689746f87e0beeae25338bc021dd2515c2f6f003f3d3d064d878d380b2150",
+   "size": 134012
+  },
+  "vendor/bundled/codemirror-5.65.21/LICENSE": {
+   "sha256": "168a4becc968f5001e2ee2e0291b6e4daabafc1894a11ade1e11d56e96096e07",
+   "size": 1113
+  },
+  "vendor/bundled/codemirror-5.65.21/codemirror-addons.js": {
+   "sha256": "d03347821ba12762281c51d72d50ed9170ae7c91d5d00e45f92ad0fdcd7fe7d9",
+   "size": 40819
+  },
+  "vendor/bundled/codemirror-5.65.21/codemirror-bundle.js": {
+   "sha256": "753646cb5afca2e874c80a5ab9d200c3e6aa19270348876b22ebddd45799ae0c",
+   "size": 629760
+  },
+  "vendor/bundled/codemirror-5.65.21/codemirror.css": {
+   "sha256": "eb494ea972d2661ef86f7f6ac656dd6786d721e49c9c1b46e1eb967e4b6f9bf3",
+   "size": 8720
+  },
+  "vendor/bundled/fontawesome-7.0.0/LICENSE.txt": {
+   "sha256": "9a306fac2e741079be4379566e87cd7cc184d0b66ce69481be1265338c8006cc",
+   "size": 903
+  },
+  "vendor/bundled/fontawesome-7.0.0/css/all.min.css": {
+   "sha256": "547a97285861331729b9b61ff718967428a88c46d8f4d7b14388e1f00c5bbdc3",
+   "size": 74185
+  },
+  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-brands-400.woff2": {
+   "sha256": "a288b58f2364e3b318277c20f4aa96889b875bf2595776ba3a0c1adc800c2d3c",
+   "size": 101088
+  },
+  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-regular-400.woff2": {
+   "sha256": "3454c1d0ec7b4d90b45b3379ce229c49442041bc23c40644e4c0360ec043284c",
+   "size": 18892
+  },
+  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-solid-900.woff2": {
+   "sha256": "2a84ae47aa8183257edf08360986803a809a2ea0c34c3c7229562c62c15c9ff2",
+   "size": 113108
+  },
+  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-v4compatibility.woff2": {
+   "sha256": "1e397e3f5af8f20cf20b2f7b31a13814c22a61595e47dbabec188e03b988ed58",
+   "size": 4132
+  },
+  "vendor/bundled/formatter/LICENSE-prettier": {
+   "sha256": "ac068b6510d1c9fea513b09bd6d7cee5c38dc21b2dc9ab11f6247d499f6008c9",
+   "size": 205606
+  },
+  "vendor/bundled/formatter/LICENSE-prettier-plugin-php": {
+   "sha256": "1415f351c7f685327813b6ba4614a94080ca355476effc1f12a2da485949f9c9",
+   "size": 1082
+  },
+  "vendor/bundled/formatter/beautify-css.js": {
+   "sha256": "511af9357a595716883760560597f7872ad3c7946dc9e45f00b453f46ab317f3",
+   "size": 54387
+  },
+  "vendor/bundled/formatter/beautify-html.min.js": {
+   "sha256": "6a055eceb56038f8c68d469bb9c8cbba13b32d8b067424508d7c91d31e0df242",
+   "size": 45573
+  },
+  "vendor/bundled/formatter/beautify.min.js": {
+   "sha256": "40789fde39e23977976d6e5ca7f6d9ec294bbb0462f5e6563e64001b76b802eb",
+   "size": 74968
+  },
+  "vendor/bundled/formatter/prettier-plugin-php.js": {
+   "sha256": "9c9fd544c256b339cedf0fb6db7d079496a7de3158a094ebd7e620b017217afd",
+   "size": 169832
+  },
+  "vendor/bundled/formatter/prettier-standalone.js": {
+   "sha256": "0127d72f138eec832f4068ab60f4531d24d3060b0ece9739cc36b91b1c1d7dd4",
+   "size": 79270
+  },
+  "vendor/bundled/formatter/sql-formatter.min.js": {
+   "sha256": "0f5d7cfe47457e9121b00a6b912481d5947744b79b579018b20e8656322feaff",
+   "size": 274666
+  },
+  "vendor/bundled/jquery-confirm/LICENSE": {
+   "sha256": "7cf54cc8ed40895eae5ac2223ba310a4a83f0818fd4104cd9adb13c773b6530d",
+   "size": 1102
+  },
+  "vendor/bundled/jquery-confirm/jquery-confirm.min.css": {
+   "sha256": "6f545eadeb021dde0a3bfa7af108cf85e1261a2a45b20e451f84b8ddac19f43f",
+   "size": 22546
+  },
+  "vendor/bundled/jquery-confirm/jquery-confirm.min.js": {
+   "sha256": "a1fbeefceaa19bbe2fb991a57c5d7f6f83945a42bf7f39559405b19201ebf92e",
+   "size": 28231
+  },
+  "vendor/bundled/jquery/LICENSE.txt": {
+   "sha256": "d4db9ebe6f29f5168eac45ad713f055623ac5d0dcd5ba92da23d650ae012020d",
+   "size": 1097
+  },
+  "vendor/bundled/jquery/jquery.min.js": {
+   "sha256": "fc9a93dd241f6b045cbff0481cf4e1901becd0e12fb45166a8f17f95823f0b1a",
+   "size": 87533
+  },
+  "vendor/bundled/libraries.json": {
+   "sha256": "a63875eb0118c20aaca3dca58e271f227fca1c3a0c195b28adb2b989114d43da",
+   "size": 2222
+  },
+  "vendor/bundled/qrcode-generator-2.0.4/qrcode.js": {
+   "sha256": "79ec86f82856005b1c887905cfccfcfbec3821ca61c7fd5a952faa5f778f791c",
+   "size": 56694
+  },
+  "vendor/bundled/tom-select-2.6.2/LICENSE": {
+   "sha256": "f15dc64ea1f373c8af0ee7c020064360497addf335c9c2bcf27c3a6f56a6f0bd",
+   "size": 11350
+  },
+  "vendor/bundled/tom-select-2.6.2/tom-select.bootstrap5.min.css": {
+   "sha256": "ce467598f8953044ddfc0ff9fd4b7e2f6cced549001737d6b712a14f8b9a6599",
+   "size": 15663
+  },
+  "vendor/bundled/tom-select-2.6.2/tom-select.complete.min.js": {
+   "sha256": "8f9d7d3420e938c2c9817818b56df43ea46feae5bf1f5a2e828863c034df0e37",
+   "size": 51804
+  },
+  "vendor/nuconfig.php": {
+   "sha256": "0e60190c2dd217ddbc9a685132120d4c072296be8ca86f4b7677a4044b386ce0",
+   "size": 446
   }
  },
  "obsolete": [],
@@ -1445,6 +1493,31 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.409",
+   "title": "Library folders vendor/",
+   "text": "- Library folders: all third-party code is in vendor/ now. vendor/bundled/ holds the libraries of the package – an update replaces\n  them, never deletes them (Bootstrap, Bootstrap Icons, jQuery, jquery-confirm, Tom Select, CodeMirror, formatters, QR code,\n  ApexCharts). vendor/packs/ holds the library packs – installed separately, an update never touches it. assets/ keeps only nuBuilder\n  Next's own css, js and images. Bundled paths only through constants (NU_VENDOR, NU_TOMSELECT, NU_CODEMIRROR, NU_QRCODE …).\n- Library packs install into vendor/packs/<name>-<version>/. vendor/packs/ is closed for the browser (deny-all .htaccess, written on\n  first use). Browser packs (TinyMCE, phpMyAdmin, Tiny File Manager) get an allow file; server-only packs keep their deny-all one. A\n  browser pack must not bring its own top-level .htaccess (building refuses it). phpMyAdmin and Tiny File Manager keep nuBuilder's\n  config files: their \"../../nuconfig.php\" reaches vendor/nuconfig.php, a small loader for nuBuilder Next's nuconfig.php.\n- Existing installations: nothing is moved. Packs of 0.8.405–0.8.408 in third_party/ keep working as an old place until a pack of that\n  library is installed into vendor/packs/. assets/vendor/, third_party/ hand copies and lib/PHPMailer stay as old places until the\n  upgrade baseline moves; the update leaves the old assets/vendor/ folders alone (delete them by hand, a later version removes them).\n- PHPMailer comes with nunext.zip: release.py builds and signs its pack from dev/libsrc/phpmailer/ into _install/, so the installer\n  installs e-mail without internet. Existing servers get it from the GitHub release \"libraries\".\n- Font Awesome 7.0.0 (the version nuBuilder 4.9 ships) is bundled as a fallback for nuBuilder's \"fa fa-…\" icons when nuBuilder's copy is\n  not found; it is linked directly, nuBuilder's copy is still served through ?p=fa.\n- Update: vendor/packs/ protected, vendor/bundled/ treated as library (NuUpdate::isLibrary, also for the unattended update). Security\n  check probes vendor/packs/. Texts: TinyMCE notices point to the pack, \"Kept\" of the update page, library pack hint. Help: folders,\n  old places, Font Awesome, PHPMailer in the package, nginx rules for vendor/; README; developer chapter.\n- Development: release.py, ESLint and .gitignore follow the new folders; test sites are synced with --exclude /nuconfig.php\n  --exclude /vendor/packs. Tests: unit tests for the folders, browser packs, old packs in third_party/ and the update rules."
+  },
+  {
+   "version": "0.8.408",
+   "title": "Help: development with Claude",
+   "text": "- Help: new chapter \"Development with Claude\", shown only to the globeadmin in developer mode (new filter data-doc=\"dev\"). It covers\n  what a Claude session needs, how to start a new session (nunext-dev.zip + signing key, first message), the signing key (what it\n  is, where the tools look for it, how to make a new pair and what that means for installations; not the same as\n  $nuConfigSecretKey), how requests are handled (short request, \"suggest\", \"gate\"), fast release vs. gate (checks, manifest flags,\n  push, test variables), making and publishing a release by hand (release.py, inspect.php, GitHub release with nunext.zip, the\n  separate \"libraries\" release), what nunext.zip / nunext-dev.zip / the manifest contain, and the test suites.\n- Tests: e2e test \"help_dev\" (chapter only in developer mode, never in the user preview)."
+  },
+  {
+   "version": "0.8.407",
+   "title": "TCPDF and PHPMailer optional",
+   "text": "- Library versions a release needs: TCPDF and PHPMailer are no longer marked as required (install/libraries-required.json, all six\n  \"needed\": false). nuBuilder Next runs without them – without TCPDF no PDF reports, without PHPMailer no e-mail. Check package now\n  warns only when an installed library is older than the version the release needs, never because one is missing. The tab Libraries\n  still shows missing libraries as \"not installed\"."
+  },
+  {
+   "version": "0.8.406",
+   "title": "Library versions a release needs",
+   "text": "- Library versions a release needs: install/libraries-required.json lists, per library, the lowest version this version of\n  nuBuilder Next works with. TCPDF and PHPMailer must be installed; TinyMCE, phpMyAdmin, Adminer and Tiny File Manager count only when\n  they are installed. dev/release.py copies the list into the package manifest (requires_libs).\n- Check package: a box lists every library the server does not meet, with the installed version and the pack that would meet it (from\n  GitHub or _update/). \"Install the packs first\" installs them and returns to the checked package. The update can still be\n  installed; the box says that those features may fail until the libraries are updated.\n- Tab Libraries: a library below what the installed version needs is marked \"nuBuilder Next needs ≥ …\" and counts for the dot on the\n  tab. The unattended update (CLI / API, also the dry run) reports these libraries as \"libraries\".\n- Tests: unit tests for the requirements, e2e test \"libreq\" (package that needs a newer PHPMailer → install the pack from the check page)."
+  },
+  {
+   "version": "0.8.405",
+   "title": "Library packs",
+   "text": "- Library packs: TCPDF, PHPMailer, TinyMCE, phpMyAdmin (with nuBuilder's login config), Adminer and Tiny File Manager now come as\n  signed zips, one per library and version (nunext-lib-<name>-<version>.zip), independent of nuBuilder Next's own version and of\n  nuBuilder's copies. They are installed into third_party/<name>-<version>/ next to each other; the active version is noted in\n  third_party/nunext-libs.php. The active version and two older ones are kept, so a roll back is immediate. An update of nuBuilder\n  Next never touches them.\n- Every pack is checked the same way wherever it comes from: the Ed25519 signature (the key of nunext.zip), every file against its\n  SHA-256 and size, and nothing outside the listed files. Installing writes into a temporary folder and switches only when every file\n  checked out. TCPDF, PHPMailer and Adminer get a deny-all .htaccess.\n- Update page: new tab Libraries. Per library it shows the version in use and where it comes from, the newest pack available, and the\n  state against the safe version (dot on the tab, badges). Actions: Install / Update (one or the ticked ones), Install again,\n  Self-test, Roll back, Remove, Look on GitHub, and Upload a pack (for servers without access to GitHub). The libraries of the\n  package are listed below.\n- Sources: the GitHub release with the tag \"libraries\" (signed index libraries.json; looked up with the daily update check), zips\n  copied into _update/, and uploads.\n- Self-test: TCPDF writes a PDF, PHPMailer checks addresses, TinyMCE is checked for its parts, phpMyAdmin and Tiny File Manager for\n  nuBuilder's login check in their config, and Adminer for its blocked folder.\n- Installer: new step \"Libraries\" before Install, with the packs from GitHub or from zips copied into _install/ or _update/. TCPDF,\n  PHPMailer and TinyMCE are ticked; phpMyAdmin, Adminer and Tiny File Manager are optional. Refused packs are shown with the reason.\n  A pack that fails does not stop the installation.\n- Developer mode: page \"Build library packs\" (Update → Libraries; password asked again; HTTPS or this computer). It builds and signs\n  the packs and libraries.json from the libraries in use or from other folders. The key file is uploaded per build, used in memory\n  and never stored. The page checks the results and offers them as single files or one zip for the GitHub release. The same is\n  available on the command line: php dev/libpack.php.\n- Lookups use the active pack first. The old places ($nuConfigTCPDFPath / $nuConfigPHPMailerPath, third_party/tcpdf, nudb, adminer,\n  tinyfilemanager, assets/vendor/tinymce, nuBuilder's third_party/) are used only while no pack is installed. Notices about a\n  missing library link to the tab Libraries.\n- Tests: unit tests for packs (build, signature, changed or extra files, paths, roll back, index), e2e test \"libpacks\", and the\n  installer test with LIBPACKS=<folder>. Help: chapter \"Libraries (library packs)\", nginx rule for the library folders."
   },
   {
    "version": "0.8.404",
@@ -3559,6 +3632,12 @@
    "version": "4.4.0",
    "dir": "apexcharts-4.4.0",
    "license": "MIT"
+  },
+  {
+   "name": "Font Awesome",
+   "version": "7.0.0",
+   "dir": "fontawesome-7.0.0",
+   "license": "CC-BY-4.0 / OFL-1.1 / MIT"
   }
  ],
  "page_api": {
@@ -3645,7 +3724,33 @@
   ],
   "js_deprecated": []
  },
- "last_gate": "0.8.404",
+ "last_gate": "0.8.409",
  "gated": true,
- "signature": "x70xYITo6TQWIrMzkXIwk+jxCmQBzCZKnCx8rXB4SoPZcXqgXTktXN2qHgMUaXt/KXw+wD2x0q0JlCmTbcejAg=="
+ "requires_libs": {
+  "tcpdf": {
+   "min": "6.7.4",
+   "needed": false
+  },
+  "phpmailer": {
+   "min": "6.5.0",
+   "needed": false
+  },
+  "tinymce": {
+   "min": "6.0.0",
+   "needed": false
+  },
+  "phpmyadmin": {
+   "min": "5.2.0",
+   "needed": false
+  },
+  "adminer": {
+   "min": "4.8.1",
+   "needed": false
+  },
+  "tinyfilemanager": {
+   "min": "2.5",
+   "needed": false
+  }
+ },
+ "signature": "g77YbSW1KwnSAqgVsZOXSbf0O2eKbc3opGwQlbs2X6EPeXzcqjumIGEbfujuipAW8lRHMXEtr0xRp6mKkntvDg=="
 }

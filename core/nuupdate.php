@@ -15,8 +15,8 @@ defined('NU_ROOT') || exit;
  *   5. finish  – next request, with the new code: database steps (NuMigrate), maintenance mode off, "what's new"
  * A failure while copying puts the backup back automatically. "Rollback" restores the program files of a backup later.
  *
- * Never touched: nuconfig.php, third_party/ (phpMyAdmin, Tiny File Manager), _backup/. assets/vendor/ and lib/ are only
- * replaced when a package contains them and never deleted (TinyMCE and other libraries you copied stay).
+ * Never touched: nuconfig.php, vendor/packs/ (library packs), third_party/ (packs and hand copies of earlier versions), _backup/.
+ * vendor/bundled/ (and assets/vendor/, lib/ of earlier versions) are only replaced when a package contains them and never deleted.
  */
 final class NuUpdate
 {
@@ -67,7 +67,7 @@ final class NuUpdate
 	/** Paths an update may never write or delete. */
 	public static function isProtected(string $rel): bool
 	{
-		return $rel === 'nuconfig.php' || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/') || str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, 'temp/') || $rel === 'install.allow'
+		return $rel === 'nuconfig.php' || str_starts_with($rel, NU_PACKS . '/') || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/') || str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, 'temp/') || $rel === 'install.allow'
 			|| (str_starts_with($rel, 'custom/') && !self::shippedCustom($rel));
 	}
 
@@ -100,10 +100,13 @@ final class NuUpdate
 		return $out;
 	}
 
-	/** Libraries: replaced when a package brings them, never deleted. */
-	private static function isLibrary(string $rel): bool
+	/**
+	 * Libraries: replaced when a package brings them, never deleted. vendor/bundled/ since 0.8.409; assets/vendor/ (the place before) and
+	 * lib/ stay untouched on installations of earlier versions (removed by a later version, when the upgrade baseline moves).
+	 */
+	public static function isLibrary(string $rel): bool
 	{
-		return str_starts_with($rel, 'assets/vendor/') || str_starts_with($rel, 'lib/');
+		return str_starts_with($rel, NU_VENDOR . '/') || str_starts_with($rel, 'assets/vendor/') || str_starts_with($rel, 'lib/');
 	}
 
 	private static function safePath(string $rel): bool
@@ -273,7 +276,7 @@ final class NuUpdate
 		$out = [];
 		foreach (glob($dir . '/*.zip') ?: [] as $f) {
 			$name = basename($f);
-			if (!self::folderName($name) || !is_file($f)) continue;
+			if (!self::folderName($name) || !is_file($f) || str_starts_with($name, 'nunext-lib-')) continue;     // library packs: NuLibs (0.8.405)
 			$p = ['name' => $name, 'size' => (int)@filesize($f), 'time' => (int)@filemtime($f), 'version' => '', 'signature' => '', 'ok' => false];
 			if (class_exists('ZipArchive')) {
 				$z = new ZipArchive();

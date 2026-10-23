@@ -332,7 +332,7 @@ $input = static function (string $col, string $type = 'text', array $attr = []) 
 	return $html;
 };
 
-nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.bootstrap5.min.css') . '">']);   // access level: searchable (0.8.327)
+nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);   // access level: searchable (0.8.327)
 ?>
 <nav aria-label="breadcrumb">
 	<ol class="breadcrumb small mb-2">
@@ -657,4 +657,4 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 <?php endif; ?>
 <?php
 if ($existing && $id !== $me['id']) echo nu_user_remove_modal($rights, ['stay' => '1']);
-nu_layout_end('<script src="' . nu_asset('assets/vendor/tom-select-2.6.2/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuuser.js') . '"></script>');   // name parts; permission items when present
+nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuuser.js') . '"></script>');   // name parts; permission items when present

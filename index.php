@@ -90,6 +90,7 @@ $routes = [
 	'formatapi'   => ['json' => true],
 	'builder'     => [],
 	'formai'      => [],                     // form with AI (0.8.403)
+	'libpack'     => [],                     // library packs: build and sign (0.8.405, developer mode)
 	'builderapi'  => ['json' => true],
 	'page'        => [],                 // form type "page": the page file's own output (0.8.387, core/nupage.php)
 	'pageasset'   => [],                 // css / js / images of a page folder

@@ -4,6 +4,10 @@
  * A dump with a foreign statement must be refused. Cleans up (folder, database) at the end.
  *
  *   NUB=http://127.0.0.1:8099/ NUB_DIR=<nuBuilder folder> DUMP=<nubuilder4.sql of any 4.x> DB="-unu -pnu" NODE_PATH=$(npm root -g) node dev/tests/install.js
+ *
+ * Library packs (0.8.405): LIBPACKS=<folder with signed nunext-lib-*.zip> copies them into _install/ (plus a changed copy that must be
+ * refused); the step "Libraries" must offer them (TCPDF / PHPMailer ticked, phpMyAdmin not) and install the ticked ones.
+ * Without LIBPACKS the step is only passed.
  */
 'use strict';
 const { chromium } = require('playwright');
@@ -17,6 +21,7 @@ const NUB_DIR = process.env.NUB_DIR;
 const DUMP = process.env.DUMP;
 const DB = process.env.DB || '-unu -pnu';
 const NAME = 'nuinst_e2e';
+const LIBPACKS = process.env.LIBPACKS || '';
 if (!NUB_DIR || !DUMP) { console.error('NUB_DIR and DUMP are needed'); process.exit(2); }
 const SITE = path.join(NUB_DIR, 'nuinst');
 const BASE = NUB + 'nuinst/';
@@ -29,6 +34,12 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 	const evil = path.join(os.tmpdir(), 'nuinst-evil.sql');
 	const plain = /\.gz$/i.test(DUMP) ? require('zlib').gunzipSync(fs.readFileSync(DUMP)).toString('utf8') : fs.readFileSync(DUMP, 'utf8');
 	fs.writeFileSync(evil, plain + "\nCREATE TABLE customers (a int);\n");
+	const packs = LIBPACKS ? fs.readdirSync(LIBPACKS).filter((f) => /^nunext-lib-.*\.zip$/.test(f)) : [];
+	if (packs.length) {
+		fs.mkdirSync(path.join(SITE, '_install'), { recursive: true });
+		for (const f of packs) fs.copyFileSync(path.join(LIBPACKS, f), path.join(SITE, '_install', f));
+		fs.copyFileSync(path.join(LIBPACKS, packs[0]), path.join(SITE, '_install', packs[0].replace(/-([0-9][^-]*)\.zip$/, '-99.0.zip')));   // renamed: refused
+	}
 	const browser = await chromium.launch();
 	let failed = false;
 	try {
@@ -51,13 +62,24 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		await p.check('#choice_up');
 		await p.setInputFiles('#dump', DUMP);
 		await Promise.all([p.waitForNavigation(), p.click('#insCheckDump')]);
-		expect(await p.locator('#insNotice').count() === 1, 'dump not accepted: ' + await p.locator('.invalid-feedback').allTextContents());
+		expect(await p.locator('#insNotice, #insDumpOk').count() >= 1, 'dump not accepted: ' + await p.locator('.invalid-feedback').allTextContents());
 		await p.check('#choice_up');
 		await next();
 		await p.fill('#user', 'globeadmin'); await p.fill('#password', 'Install-Test-1'); await p.fill('#password2', 'Install-Test-1');
 		await next();
 		await next();                                                                                          // options
-		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#insInstall')]);
+		expect(await p.locator('#insLibsForm').count() === 1, 'no step Libraries');
+		const ticked = {};
+		for (const r of await p.locator('.nuInsLib').all()) ticked[await r.getAttribute('data-slot')] = await r.locator('input').isChecked();
+		if (packs.length) {
+			const has = (s) => packs.some((f) => f.startsWith('nunext-lib-' + s + '-'));
+			if (has('tcpdf')) expect(ticked.tcpdf, 'TCPDF not ticked');
+			if (has('phpmyadmin')) expect(!ticked.phpmyadmin, 'phpMyAdmin ticked');
+			expect(await p.locator('.nuInsLib .text-danger').count() >= 1, 'changed pack not refused');
+		}
+		await next();                                                                                          // libraries
+		if (packs.length) expect(/TCPDF|PHPMailer/.test(await p.locator('#insSumLibs').textContent()), 'summary without libraries');
+		await Promise.all([p.waitForNavigation({ timeout: 300000 }), p.click('#insInstall')]);
 		const done = await p.locator('main').textContent();
 		expect(!/alert-danger/.test(await p.content()) || /insUpgraded/.test(await p.content()), 'install failed: ' + done.slice(0, 300));
 		// the structure of 4.9 (columns of every version up to 4.9 present)
@@ -66,6 +88,13 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		expect(Number(sql('SELECT COUNT(*) FROM ' + NAME + '.zzzzsys_form')) > 50, 'nuBuilder forms not imported');
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" + NAME + "' AND TABLE_TYPE = 'VIEW'") === '0', 'old views left');
 		expect(!fs.readdirSync(path.join(SITE, '_install')).some((f) => /\.sql|\.zip|\.gz/.test(f)), 'uploaded file left in _install/');
+		if (packs.length) {
+			const want = Object.keys(ticked).filter((k) => ticked[k]);
+			const got = fs.readdirSync(path.join(SITE, 'vendor/packs'));
+			for (const s of want) expect(got.some((d) => d.startsWith((s === 'phpmyadmin' ? 'nudb' : s) + '-')), 'library not installed: ' + s);
+			expect(await p.locator('#insLibsDone .bi-check-circle').count() === want.length, 'result list: ' + await p.locator('#insLibsDone').textContent());
+			expect(fs.readFileSync(path.join(SITE, 'vendor/packs/nunext-libs.php'), 'utf8').startsWith('<?php exit; ?>'), 'state file');
+		}
 		// signs in
 		await p.goto(BASE + 'index.php?p=login');
 		await p.fill('input[name=username]', 'globeadmin'); await p.fill('input[name=password]', 'Install-Test-1');

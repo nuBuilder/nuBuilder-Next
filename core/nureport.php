@@ -12,7 +12,7 @@ defined('NU_ROOT') || exit;
  *   zzzzsys_access_report                    which access levels may run it (sre_zzzzsys_access_id, sre_zzzzsys_report_id)
  *
  * Rights to edit: nuBuilder's system form "nubuildreport". Rights to run: the globeadmin, or an access_report row of the user's level.
- * TCPDF is not bundled (about 27 MB with fonts): nuBuilder's third_party/tcpdf is used (see tcpdfDir()).
+ * TCPDF is not bundled (about 27 MB with fonts): a library pack (vendor/packs/tcpdf-<version>), else the old places (see tcpdfDir()).
  */
 final class NuReport
 {
@@ -477,7 +477,8 @@ final class NuReport
 		static $dir = false;
 		if ($dir !== false) return $dir;
 		$cfg = trim((string)nu_cfg('nuConfigTCPDFPath'));
-		foreach ([$cfg !== '' ? NuBuilderLib::absPath($cfg) : '', NU_ROOT . '/third_party/tcpdf', NuBuilderLib::path() . '/third_party/tcpdf'] as $d) {
+		// library pack (0.8.405) after an own $nuConfigTCPDFPath; the old places only while no pack is installed
+		foreach ([$cfg !== '' ? NuBuilderLib::absPath($cfg) : '', (string)NuLibs::activeDir('tcpdf'), NU_ROOT . '/third_party/tcpdf', NuBuilderLib::path() . '/third_party/tcpdf'] as $d) {
 			if ($d !== '' && is_file("$d/tcpdf.php")) return $dir = rtrim($d, '/\\');
 			// TCPDF 7 (0.8.232): a Composer project folder – vendor/tecnickcom/tcpdf + tc-lib-pdf and its libraries
 			if ($d !== '' && is_file("$d/vendor/tecnickcom/tcpdf/tcpdf.php")) return $dir = rtrim($d, '/\\') . '/vendor/tecnickcom/tcpdf';

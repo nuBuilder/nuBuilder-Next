@@ -420,6 +420,89 @@ check('fnref: NuPage entries = NuPage::JS_API', !array_diff(NuPage::JS_API, $jsD
 check('fnref: render', str_contains(NuFnRef::render('php'), 'id="fn-php-nuRunQuery"') && str_contains(NuFnRef::render('js'), 'id="ref-js-hooks"')
 	&& NuFnRef::letter('nuRunQuery') === 'R' && NuFnRef::letter('db_fetch_row') === 'F' && NuFnRef::letter('$nu->user') === 'U');
 
+// ---------------------------------------------------------------- library packs (0.8.405): build, check, install, roll back, index
+$lpKp = sodium_crypto_sign_keypair();
+$lpSk = sodium_crypto_sign_secretkey($lpKp);
+$lpPk = base64_encode(sodium_crypto_sign_publickey($lpKp));
+$lpTmp = sys_get_temp_dir() . '/nulp-' . bin2hex(random_bytes(4));
+mkdir($lpTmp . '/src/sub', 0755, true);
+file_put_contents($lpTmp . '/src/PHPMailer.php', "<?php\nnamespace PHPMailer\\PHPMailer;\nclass PHPMailer { const VERSION = '6.9.3'; }\n");
+file_put_contents($lpTmp . '/src/sub/a.txt', 'a');
+file_put_contents($lpTmp . '/src/nuconfig.php', '<?php // never packed');
+NuLibs::$root = $lpTmp . '/site';
+NuLibs::$log = false;
+mkdir(NuLibs::$root, 0755);
+check('libpack: version detected', NuLibs::detectVersion('phpmailer', $lpTmp . '/src') === '6.9.3');
+$lpA = NuLibs::build('phpmailer', $lpTmp . '/src', $lpSk, $lpTmp . '/out', '', $lpPk);
+$lpB = NuLibs::build('phpmailer', $lpTmp . '/src', $lpSk, $lpTmp . '/out', '6.9.4+nu1', $lpPk);
+check('libpack: built', basename($lpA['file']) === 'nunext-lib-phpmailer-6.9.3.zip' && $lpA['files'] === 2 && basename($lpB['file']) === 'nunext-lib-phpmailer-6.9.4_nu1.zip');
+$i = NuLibs::inspect($lpA['file'], $lpPk);
+check('libpack: inspect ok', $i['ok'] && $i['signature'] === 'valid' && $i['name'] === 'phpmailer', implode(' ', $i['errors']));
+check('libpack: nuconfig.php left out', !isset($i['manifest']['files']['nuconfig.php']));
+check('libpack: other key = invalid', NuLibs::inspect($lpA['file'])['signature'] === 'invalid');
+copy($lpA['file'], $lpTmp . '/same.zip');
+$z = new ZipArchive(); $z->open($lpTmp . '/same.zip'); $z->addFromString('lib/sub/a.txt', 'b'); $z->close();       // same size, other content
+check('libpack: changed file passes the listing', NuLibs::inspect($lpTmp . '/same.zip', $lpPk)['ok']);
+$err = '';
+try { NuLibs::install($lpTmp . '/same.zip', 'test', $lpPk); } catch (Throwable $e) { $err = $e->getMessage(); }
+check('libpack: changed file refused at install', $err === t('lp_err_hash', 'sub/a.txt') && !NuLibs::installed('phpmailer') && !glob(NuLibs::$root . '/vendor/packs/.nunext-tmp-*'), $err);
+copy($lpA['file'], $lpTmp . '/extra.zip');
+$z = new ZipArchive(); $z->open($lpTmp . '/extra.zip'); $z->addFromString('lib/evil.php', '<?php'); $z->close();
+check('libpack: extra file refused', !NuLibs::inspect($lpTmp . '/extra.zip', $lpPk)['ok']);
+copy($lpA['file'], $lpTmp . '/path.zip');
+$z = new ZipArchive(); $z->open($lpTmp . '/path.zip'); $m = json_decode((string)$z->getFromName('nunext-lib.json'), true); $m['files']['../x.php'] = $m['files']['PHPMailer.php']; $z->addFromString('nunext-lib.json', json_encode($m)); $z->close();
+check('libpack: path outside refused', !NuLibs::inspect($lpTmp . '/path.zip', $lpPk)['ok']);
+$r1 = NuLibs::install($lpA['file'], 'test', $lpPk);
+$r2 = NuLibs::install($lpB['file'], 'test', $lpPk);
+check('libpack: installed side by side', $r1['version'] === '6.9.3' && $r2['prev'] === '6.9.3' && NuLibs::activeVersion('phpmailer') === '6.9.4+nu1'
+	&& is_file(NuLibs::$root . '/vendor/packs/phpmailer-6.9.4_nu1/PHPMailer.php') && (string)file_get_contents(NuLibs::$root . '/vendor/packs/phpmailer-6.9.4_nu1/.htaccess') === NuSecurity::DENY
+	&& (string)file_get_contents(NuLibs::$root . '/vendor/packs/.htaccess') === NuSecurity::DENY && NuLibs::webPath('phpmailer') === 'vendor/packs/phpmailer-6.9.4_nu1');
+check('libpack: state file not readable as PHP output', str_starts_with((string)file_get_contents(NuLibs::$root . '/' . NuLibs::STATE), '<?php exit; ?>'));
+check('libpack: roll back', NuLibs::rollback('phpmailer') === '6.9.3' && NuLibs::activeVersion('phpmailer') === '6.9.3' && NuLibs::state()['phpmailer']['prev'] === '6.9.4+nu1');
+$idx = NuLibs::buildIndex([$lpB], $lpSk);
+$pi = NuLibs::parseIndex($idx, $lpPk);
+check('libpack: index', count($pi) === 1 && $pi[0]['file'] === 'nunext-lib-phpmailer-6.9.4_nu1.zip' && $pi[0]['sha256'] === hash_file('sha256', $lpB['file']));
+$bad = json_decode($idx, true); $bad['libs'][0]['sha256'] = str_repeat('0', 64);
+$err = '';
+try { NuLibs::parseIndex(json_encode($bad), $lpPk); } catch (Throwable $e) { $err = $e->getMessage(); }
+check('libpack: changed index refused', $err === t('lp_err_index_sig'));
+check('libpack: newer', NuLibs::newer('6.9.4', '6.9.3') && NuLibs::newer('2.6+git.1.nu2', '2.6+git.1.nu1') && !NuLibs::newer('6.9.3', '6.10.0'));
+check('libpack: key check', (static function () use ($lpSk, $lpPk) { try { NuLibs::secretKey("x\n" . base64_encode($lpSk), $lpPk); } catch (Throwable) { return false; } try { NuLibs::secretKey("x\n" . base64_encode($lpSk)); } catch (Throwable) { return true; } return false; })());
+// a browser pack gets the allow .htaccess; an old pack of 0.8.405–0.8.408 in third_party/ counts only while vendor/packs/ has no entry (0.8.409)
+mkdir($lpTmp . '/tsrc', 0755, true);
+file_put_contents($lpTmp . '/tsrc/tinymce.min.js', '/* TinyMCE version 7.9.1 */');
+$lpT = NuLibs::build('tinymce', $lpTmp . '/tsrc', $lpSk, $lpTmp . '/out', '', $lpPk);
+NuLibs::install($lpT['file'], 'test', $lpPk);
+check('libpack: browser pack opened', (string)file_get_contents(NuLibs::$root . '/vendor/packs/tinymce-7.9.1/.htaccess') === NuLibs::ALLOW && NuLibs::tinymce() === 'vendor/packs/tinymce-7.9.1');
+NuLibs::remove('tinymce');
+mkdir(NuLibs::$root . '/third_party/tinymce-7.0.1', 0755, true);
+file_put_contents(NuLibs::$root . '/third_party/tinymce-7.0.1/tinymce.min.js', '/* TinyMCE version 7.0.1 */');
+file_put_contents(NuLibs::$root . '/third_party/nunext-libs.php', "<?php exit; ?>\n" . json_encode(['tinymce' => ['active' => '7.0.1'], 'adminer' => ['active' => '5.0.0']]));
+(static function () { $r = new ReflectionProperty('NuLibs', 'legacy'); $r->setValue(null, null); })();
+check('libpack: old pack in third_party/', NuLibs::tinymce() === 'third_party/tinymce-7.0.1' && NuLibs::isLegacy('tinymce') && NuLibs::activeVersion('tinymce') === '7.0.1'
+	&& NuLibs::activeDir('adminer') === null && !NuLibs::installed('tinymce'));
+NuLibs::install($lpT['file'], 'test', $lpPk);
+check('libpack: a new pack wins over the old one', NuLibs::tinymce() === 'vendor/packs/tinymce-7.9.1' && !NuLibs::isLegacy('tinymce') && NuLibs::state()['tinymce']['prev'] === '');
+NuLibs::remove('tinymce');
+check('libpack: after remove the old pack counts again', NuLibs::tinymce() === 'third_party/tinymce-7.0.1');
+check('update: vendor/packs protected, vendor/bundled a library', NuUpdate::isProtected('vendor/packs/x') && !NuUpdate::isProtected('vendor/bundled/x') && NuUpdate::isLibrary('vendor/bundled/jquery/jquery.min.js') && NuUpdate::isLibrary('assets/vendor/x') && !NuUpdate::isLibrary('assets/js/nuapp.js'));
+NuLibs::remove('phpmailer');
+check('libpack: removed', !NuLibs::installed('phpmailer') && NuLibs::activeDir('phpmailer') === null && !NuLibs::state());
+check('libpack: pack names', NuLibs::isPackName('nunext-lib-tcpdf-6.8.2.zip') && !NuLibs::isPackName('nunext-lib-tcpdf-../x.zip') && !NuLibs::validRel('a/../b') && NuLibs::validRel('a/b.php'));
+NuLibs::$root = NU_ROOT;
+(static function (string $d): void { $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($d, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST); foreach ($it as $f) { $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname()); } rmdir($d); })($lpTmp);
+
+// ---------------------------------------------------------------- library versions a release needs (0.8.406)
+$rq = NuLibs::required(['requires_libs' => ['tcpdf' => ['min' => '7.0.0', 'needed' => true], 'phpmyadmin' => ['min' => '5.2.0', 'needed' => false],
+	'tinymce' => ['min' => '6.0.0'], 'adminer' => ['min' => '5.0.0'], 'nosuch' => ['min' => '1'], 'phpmailer' => ['min' => '../x']]]);
+check('required: parsed', array_keys($rq) === ['tcpdf', 'phpmyadmin', 'tinymce', 'adminer'] && $rq['tcpdf']['needed'] && !$rq['tinymce']['needed']);
+$av = ['tcpdf' => [['version' => '6.9.0', 'ok' => true, 'where' => 'local'], ['version' => '7.0.19', 'ok' => true, 'where' => 'github'], ['version' => '8.0', 'ok' => false]]];
+$um = NuLibs::unmet($rq, ['tcpdf' => '6.8.2', 'phpmyadmin' => '', 'tinymce' => '8.0.0', 'adminer' => '4.8.1'], $av);
+check('unmet: old needed, installed optional below', array_keys($um) === ['tcpdf', 'adminer'] && $um['tcpdf']['best']['version'] === '7.0.19' && $um['adminer']['best'] === null);
+check('unmet: missing needed', isset(NuLibs::unmet($rq, ['tcpdf' => ''], [])['tcpdf']) && !NuLibs::unmet($rq, ['tcpdf' => '7.0.1', 'adminer' => '5.0.0+nu1'], []));
+check('required: release file valid', NuLibs::required() !== [] && isset(NuLibs::required()['tcpdf']));
+check('required: no manifest entry = nothing', NuLibs::required(['version' => '0.8.400']) === []);
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

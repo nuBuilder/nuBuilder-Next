@@ -36,6 +36,8 @@ final class NuMailer
 		$dirs = [];
 		$cfg = trim((string)nu_cfg('nuConfigPHPMailerPath'));
 		if ($cfg !== '') $dirs[] = self::absPath($cfg);
+		$pack = NuLibs::activeDir('phpmailer');                  // library pack (0.8.405): files at the top or in src/
+		if ($pack !== null) $dirs[] = is_file($pack . '/PHPMailer.php') ? $pack : $pack . '/src';
 		$dirs[] = self::nuBuilderPath() . '/third_party/phpmailer';
 		$dirs[] = NU_ROOT . '/lib/PHPMailer';
 		return array_values(array_unique($dirs));

@@ -3,6 +3,84 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.409 – Library folders vendor/
+- Library folders: all third-party code is in vendor/ now. vendor/bundled/ holds the libraries of the package – an update replaces
+  them, never deletes them (Bootstrap, Bootstrap Icons, jQuery, jquery-confirm, Tom Select, CodeMirror, formatters, QR code,
+  ApexCharts). vendor/packs/ holds the library packs – installed separately, an update never touches it. assets/ keeps only nuBuilder
+  Next's own css, js and images. Bundled paths only through constants (NU_VENDOR, NU_TOMSELECT, NU_CODEMIRROR, NU_QRCODE …).
+- Library packs install into vendor/packs/<name>-<version>/. vendor/packs/ is closed for the browser (deny-all .htaccess, written on
+  first use). Browser packs (TinyMCE, phpMyAdmin, Tiny File Manager) get an allow file; server-only packs keep their deny-all one. A
+  browser pack must not bring its own top-level .htaccess (building refuses it). phpMyAdmin and Tiny File Manager keep nuBuilder's
+  config files: their "../../nuconfig.php" reaches vendor/nuconfig.php, a small loader for nuBuilder Next's nuconfig.php.
+- Existing installations: nothing is moved. Packs of 0.8.405–0.8.408 in third_party/ keep working as an old place until a pack of that
+  library is installed into vendor/packs/. assets/vendor/, third_party/ hand copies and lib/PHPMailer stay as old places until the
+  upgrade baseline moves; the update leaves the old assets/vendor/ folders alone (delete them by hand, a later version removes them).
+- PHPMailer comes with nunext.zip: release.py builds and signs its pack from dev/libsrc/phpmailer/ into _install/, so the installer
+  installs e-mail without internet. Existing servers get it from the GitHub release "libraries".
+- Font Awesome 7.0.0 (the version nuBuilder 4.9 ships) is bundled as a fallback for nuBuilder's "fa fa-…" icons when nuBuilder's copy is
+  not found; it is linked directly, nuBuilder's copy is still served through ?p=fa.
+- Update: vendor/packs/ protected, vendor/bundled/ treated as library (NuUpdate::isLibrary, also for the unattended update). Security
+  check probes vendor/packs/. Texts: TinyMCE notices point to the pack, "Kept" of the update page, library pack hint. Help: folders,
+  old places, Font Awesome, PHPMailer in the package, nginx rules for vendor/; README; developer chapter.
+- Development: release.py, ESLint and .gitignore follow the new folders; test sites are synced with --exclude /nuconfig.php
+  --exclude /vendor/packs. Tests: unit tests for the folders, browser packs, old packs in third_party/ and the update rules.
+
+## 0.8.408 – Help: development with Claude
+- Help: new chapter "Development with Claude", shown only to the globeadmin in developer mode (new filter data-doc="dev"). It covers
+  what a Claude session needs, how to start a new session (nunext-dev.zip + signing key, first message), the signing key (what it
+  is, where the tools look for it, how to make a new pair and what that means for installations; not the same as
+  $nuConfigSecretKey), how requests are handled (short request, "suggest", "gate"), fast release vs. gate (checks, manifest flags,
+  push, test variables), making and publishing a release by hand (release.py, inspect.php, GitHub release with nunext.zip, the
+  separate "libraries" release), what nunext.zip / nunext-dev.zip / the manifest contain, and the test suites.
+- Tests: e2e test "help_dev" (chapter only in developer mode, never in the user preview).
+
+## 0.8.407 – TCPDF and PHPMailer optional
+- Library versions a release needs: TCPDF and PHPMailer are no longer marked as required (install/libraries-required.json, all six
+  "needed": false). nuBuilder Next runs without them – without TCPDF no PDF reports, without PHPMailer no e-mail. Check package now
+  warns only when an installed library is older than the version the release needs, never because one is missing. The tab Libraries
+  still shows missing libraries as "not installed".
+
+## 0.8.406 – Library versions a release needs
+- Library versions a release needs: install/libraries-required.json lists, per library, the lowest version this version of
+  nuBuilder Next works with. TCPDF and PHPMailer must be installed; TinyMCE, phpMyAdmin, Adminer and Tiny File Manager count only when
+  they are installed. dev/release.py copies the list into the package manifest (requires_libs).
+- Check package: a box lists every library the server does not meet, with the installed version and the pack that would meet it (from
+  GitHub or _update/). "Install the packs first" installs them and returns to the checked package. The update can still be
+  installed; the box says that those features may fail until the libraries are updated.
+- Tab Libraries: a library below what the installed version needs is marked "nuBuilder Next needs ≥ …" and counts for the dot on the
+  tab. The unattended update (CLI / API, also the dry run) reports these libraries as "libraries".
+- Tests: unit tests for the requirements, e2e test "libreq" (package that needs a newer PHPMailer → install the pack from the check page).
+
+## 0.8.405 – Library packs
+- Library packs: TCPDF, PHPMailer, TinyMCE, phpMyAdmin (with nuBuilder's login config), Adminer and Tiny File Manager now come as
+  signed zips, one per library and version (nunext-lib-<name>-<version>.zip), independent of nuBuilder Next's own version and of
+  nuBuilder's copies. They are installed into third_party/<name>-<version>/ next to each other; the active version is noted in
+  third_party/nunext-libs.php. The active version and two older ones are kept, so a roll back is immediate. An update of nuBuilder
+  Next never touches them.
+- Every pack is checked the same way wherever it comes from: the Ed25519 signature (the key of nunext.zip), every file against its
+  SHA-256 and size, and nothing outside the listed files. Installing writes into a temporary folder and switches only when every file
+  checked out. TCPDF, PHPMailer and Adminer get a deny-all .htaccess.
+- Update page: new tab Libraries. Per library it shows the version in use and where it comes from, the newest pack available, and the
+  state against the safe version (dot on the tab, badges). Actions: Install / Update (one or the ticked ones), Install again,
+  Self-test, Roll back, Remove, Look on GitHub, and Upload a pack (for servers without access to GitHub). The libraries of the
+  package are listed below.
+- Sources: the GitHub release with the tag "libraries" (signed index libraries.json; looked up with the daily update check), zips
+  copied into _update/, and uploads.
+- Self-test: TCPDF writes a PDF, PHPMailer checks addresses, TinyMCE is checked for its parts, phpMyAdmin and Tiny File Manager for
+  nuBuilder's login check in their config, and Adminer for its blocked folder.
+- Installer: new step "Libraries" before Install, with the packs from GitHub or from zips copied into _install/ or _update/. TCPDF,
+  PHPMailer and TinyMCE are ticked; phpMyAdmin, Adminer and Tiny File Manager are optional. Refused packs are shown with the reason.
+  A pack that fails does not stop the installation.
+- Developer mode: page "Build library packs" (Update → Libraries; password asked again; HTTPS or this computer). It builds and signs
+  the packs and libraries.json from the libraries in use or from other folders. The key file is uploaded per build, used in memory
+  and never stored. The page checks the results and offers them as single files or one zip for the GitHub release. The same is
+  available on the command line: php dev/libpack.php.
+- Lookups use the active pack first. The old places ($nuConfigTCPDFPath / $nuConfigPHPMailerPath, third_party/tcpdf, nudb, adminer,
+  tinyfilemanager, assets/vendor/tinymce, nuBuilder's third_party/) are used only while no pack is installed. Notices about a
+  missing library link to the tab Libraries.
+- Tests: unit tests for packs (build, signature, changed or extra files, paths, roll back, index), e2e test "libpacks", and the
+  installer test with LIBPACKS=<folder>. Help: chapter "Libraries (library packs)", nginx rule for the library folders.
+
 ## 0.8.404 – Release gate
 - Release gate: smoke test, all end-to-end tests and the cross-tests against nuBuilder 4.9 for the releases 0.8.399–0.8.403
   (function reference, formatted notification texts, concurrent edits, Delete on the notification edit page, forms with AI).

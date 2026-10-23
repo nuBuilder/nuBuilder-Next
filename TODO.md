@@ -1,5 +1,27 @@
 # nuBuilder Next – to do
 
+## 0.8.409 Library folders vendor/ – please verify
+- [ ] Update the live server: pages load (Bootstrap, icons, Tom Select, CodeMirror, formatters, QR code, ApexCharts) from `vendor/bundled/`;
+      the old `assets/vendor/` stays (delete it by hand once everything works – a later version removes it).
+- [ ] Packs installed with 0.8.405–0.8.408 in `third_party/<name>-<version>/` still work (shown as pack); a new install of that library
+      goes to `vendor/packs/`. phpMyAdmin / Tiny File Manager from `vendor/packs/` reach `nuconfig.php` through `vendor/nuconfig.php`.
+- [ ] Apache: `vendor/packs/nunext-libs.php`, `vendor/packs/tcpdf-*/…`, `vendor/packs/phpmailer-*/…`, `vendor/nuconfig.php` → 403;
+      `vendor/packs/tinymce-*/tinymce.min.js`, `vendor/packs/nudb-*/` → 200 (Security check probes the closed ones). nginx: new rules in Help.
+- [ ] Fresh install from `nunext.zip`: the step Libraries offers PHPMailer from `_install/` without internet.
+- [ ] Forms with `fa fa-…` icons without nuBuilder next to nuBuilder Next: the bundled Font Awesome 7.0.0.
+
+## 0.8.405 Library packs – please verify
+- [ ] Create the GitHub release with the tag `libraries` and attach the packs + `libraries.json` (built on the development installation:
+      Update → Libraries → *Build library packs*, or `php dev/libpack.php`). Sources: TCPDF 7 Composer folder, PHPMailer, TinyMCE,
+      phpMyAdmin with nuBuilder's `config.inc.php` (no `blowfish_secret`), Adminer, the patched Tiny File Manager with its `NUNEXT-VERSION.txt`.
+- [ ] Update → Libraries on the live server: *Look on GitHub*, install all, self-test each; reports (PDF), test mail, an editor field,
+      Database (phpMyAdmin / Adminer) and File Manager open from their new folders `third_party/<name>-<version>/`.
+- [ ] Afterwards remove the old copies (`third_party/tcpdf`, `nudb`, `adminer`, `tinyfilemanager`, `assets/vendor/tinymce`, `lib/PHPMailer`) – they are only
+      used while no pack is installed. phpMyAdmin keeps its own cookies per folder: a new version means one new phpMyAdmin login cookie.
+- [ ] Installer: step *Libraries* with packs from GitHub and with zips copied into `_install/` (no internet).
+- [ ] nginx: TinyMCE, phpMyAdmin and Tiny File Manager are served from `third_party/<name>-<version>/`; TCPDF, PHPMailer and Adminer folders
+      carry a deny-all `.htaccess` – nginx needs the rule in Help → Security check → Web server rules.
+
 ## 0.8.403 Forms with AI – please verify
 - [ ] Forms → *With AI*: describe a form, copy the prompt into Claude / ChatGPT, paste the answer, Check, Create draft – new table, lookup, select.
 - [ ] Builder → *Change with AI* on a real form: the plan lists only what changed; the draft preview looks right; publish.
@@ -284,7 +306,7 @@ All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in C
 - [ ] SQL Server (untested here): read-only preview (BEGIN TRAN … ROLLBACK, `PDO::SQLSRV_ATTR_QUERY_TIMEOUT`), `NuDB::escapeString`.
 - [ ] B8 only partly done: `NuApiClient`, `NuApiPlayground` and `NuReportEngine` are in their own files; the pages with most logic
       (`pages/nuuser.php`, `nuemail.php`, `nuform.php`) still mix actions and HTML – move the actions into core classes step by step.
-- [ ] Since 0.8.224 the package contains all libraries of `assets/vendor/` (except TinyMCE). They were rebuilt from the official packages
+- [ ] Since 0.8.224 the package contains all libraries of `vendor/bundled/` (assets/vendor/ before 0.8.409; except TinyMCE). They were rebuilt from the official packages
       (CodeMirror 5.65.21 bundle = core + matchbrackets + closebrackets + modes xml/javascript/css/htmlmixed/clike/php/sql; add-ons file =
       comment/dialog/searchcursor/search/jump-to-line; formatter = nuBuilder's beautify / sql-formatter + Prettier 3.3.3 + plugin-php 0.25.0).
       Check the code editors (procedures, form builder, double-click editor) and Format on the live server. The package is now ~2.4 MB:
@@ -292,11 +314,11 @@ All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in C
 - [ ] TCPDF 7 (0.8.232, optional): with the Composer bundle tcpdf-7.0.19-for-nunext.zip in `<nuBuilder Next>/third_party/tcpdf/` (PHP ≥ 8.2)
       run your own reports once and compare with TCPDF 6 – the samples are identical, other features (HTML cells, barcodes, images)
       go through TCPDF 7's compatibility layer. nuBuilder itself keeps TCPDF 6. TCPDF 6 gets no more fixes (end of life).
-- [ ] Tiny File Manager ≤ 2.6 (nuBuilder ships 2.6) has an unfixed path traversal (CVE-2025-15138): remove `third_party/tinyfilemanager`
+- [ ] Tiny File Manager ≤ 2.6 (nuBuilder ships 2.6) has an unfixed path traversal (CVE-2025-15138): remove the pack (Update → Libraries)
       when not needed, watch for a new version.
 
 ## For the developer to verify (assumptions made in 0.7)
-- [ ] **phpMyAdmin**: copy `<nuBuilder>/third_party/nudb/` to `<nuBuilder Next>/third_party/nudb/` (with nuBuilder's `config.inc.php`).
+- [ ] **phpMyAdmin** (since 0.8.405 a library pack, same config): copy `<nuBuilder>/third_party/nudb/` to `<nuBuilder Next>/third_party/nudb/` (with nuBuilder's `config.inc.php`).
       Assumption: the unchanged nuBuilder config works, because it reads `../../nuconfig.php` (= nuBuilder Next's) and checks cookie `nu_PMA`
       against a `zzzzsys_session` row with `global_access = 1`. Tested locally with nuBuilder 4.9's nudb.
 - [ ] **Tiny File Manager**: copy `<nuBuilder>/third_party/tinyfilemanager/` to `<nuBuilder Next>/third_party/tinyfilemanager/` (with `config.php`).

@@ -119,6 +119,9 @@ final class NuAutoUpdate
 			// database changes of this update grouped by table, with the SQL (0.8.346)
 			$r['database'] = NuDbChanges::report(NuDbChanges::preview(NuDbChanges::fromZip($zip, $info['prefix']), $exp, $cmp,
 				$refresh ? ['from' => (int)$st['version'], 'to' => $sampleTo] : null));
+			// library packs the new version needs (0.8.406) – reported only; installed on Update → Libraries
+			$r['libraries'] = array_values(array_map(static fn($x) => ['library' => $x['slot'], 'min' => $x['min'], 'needed' => $x['needed'], 'installed' => $x['have'],
+				'available' => $x['best']['version'] ?? null], NuLibs::unmet(NuLibs::required((array)$info['manifest']), null, NuLibs::available())));
 			$scope = $o['backup'];
 			if ($scope === 'auto') $scope = NuUpdate::loadDump() && NuSqlDump::available() && NuSqlDump::estimate('all', true) < 50 * 1048576 ? 'sql_nologs' : 'files';
 			if ($scope !== 'files' && !(NuUpdate::loadDump() && NuSqlDump::available())) $scope = 'files';
@@ -178,7 +181,7 @@ final class NuAutoUpdate
 		}
 		foreach (array_unique(array_merge($cur ? array_keys($cur['files']) : [], (array)($info['manifest']['obsolete'] ?? []))) as $rel) {
 			if (!isset($info['manifest']['files'][$rel]) && is_file(NU_ROOT . '/' . $rel) && !NuUpdate::isProtected((string)$rel)
-				&& !str_starts_with((string)$rel, 'assets/vendor/') && !str_starts_with((string)$rel, 'lib/')) $d['removed']++;
+				&& !NuUpdate::isLibrary((string)$rel)) $d['removed']++;
 		}
 		return $d;
 	}

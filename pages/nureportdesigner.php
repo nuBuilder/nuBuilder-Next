@@ -88,7 +88,7 @@ $foot = '<script type="application/json" id="rdData">' . json_encode($data, JSON
 	. '<script src="' . nu_asset('assets/js/nureportdesigner.js') . '"></script>';
 nu_layout_start(t('rd_title') . ' · ' . $report['sre_code'], 'forms', ['head' => $head, 'container' => 'container-fluid rdContainer', 'body_class' => 'rdBody']);
 ?>
-<?php if (!NuReport::tcpdfDir()): ?><div class="alert alert-warning small py-2 mb-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('rpt_tcpdf_missing')) ?></div><?php endif; ?>
+<?php if (!NuReport::tcpdfDir()): ?><div class="alert alert-warning small py-2 mb-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('rpt_tcpdf_missing')) ?> <?= nu_lp_hint() ?></div><?php endif; ?>
 <div id="rdApp" class="rdApp" aria-busy="true">
 	<div class="rdLoading text-body-secondary small p-3"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span><?= h(t('loading')) ?></div>
 </div>

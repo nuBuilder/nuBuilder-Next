@@ -23,6 +23,7 @@ What it does (the same steps every release):
      ~/.nunext-signing.key – without it the package is unsigned (the update page warns)
   4. ../nunext.zip      – the package to install (folder nunext/ inside): without CLAUDE.md, TODO.md, dev/ and .github/
      ../nunext-dev.zip  – everything, to continue the development (send this one to a new session)
+     nunext.zip also gets the signed library packs of dev/libsrc/ in _install/ (0.8.409, PHPMailer – installed by the installer)
 Then check the package on a test installation: NuUpdate::inspect('…/nunext.zip') must report no errors.
 """
 import datetime, hashlib, json, os, re, subprocess, sys, zipfile
@@ -39,7 +40,8 @@ def deployed(p):
 def all_files():
     out = []
     for dirpath, dirnames, filenames in os.walk('.'):
-        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', '_backup', '_install', 'temp', 'third_party')]
+        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', '_backup', '_install', '_update', 'temp', 'third_party')
+                       and os.path.relpath(os.path.join(dirpath, d), '.').replace(os.sep, '/') != 'vendor/packs']   # packs: the server's (0.8.409)
         for f in filenames:
             p = os.path.relpath(os.path.join(dirpath, f), '.').replace(os.sep, '/')
             if p == 'nunext-manifest.json' or p.endswith('.pyc') or p == 'nuconfig.php' or p == 'install.allow':
@@ -56,7 +58,7 @@ def run(cmd):
 def checks(files):
     bad = []
     for p in files:
-        if p.endswith('.php') and not p.startswith('assets/vendor/'):
+        if p.endswith('.php') and not p.startswith('vendor/bundled/'):
             code, out = run(['php', '-l', p])
             if code != 0:
                 bad.append(out)
@@ -99,7 +101,7 @@ def browser_tests():
         return []
     site = os.environ.get('NUNEXT_TEST_SITE', '')
     if site:
-        run(['rsync', '-a', '--exclude', 'nuconfig.php', '--exclude', '_backup', '--exclude', 'temp', '--exclude', 'third_party',
+        run(['rsync', '-a', '--exclude', '/nuconfig.php', '--exclude', '/vendor/packs', '--exclude', '_backup', '--exclude', 'temp', '--exclude', 'third_party',
              '--exclude', 'dev', '--exclude', '.github', '--exclude', 'CLAUDE.md', '--exclude', 'TODO.md', './', site.rstrip('/') + '/'])
         import time
         time.sleep(3)                                                   # OPcache
@@ -135,14 +137,32 @@ def page_api():
     return json.loads(out)
 
 
-LIBRARIES = 'assets/vendor/libraries.json'
+LIBRARIES = 'vendor/bundled/libraries.json'
 
 
 def libraries():
-    """The bundled libraries (assets/vendor/libraries.json) for the manifest: name, version, dir, license."""
+    """The bundled libraries (vendor/bundled/libraries.json) for the manifest: name, version, dir, license."""
     if not os.path.isfile(LIBRARIES):
         return []
     return [{k: l[k] for k in ('name', 'version', 'dir', 'license')} for l in json.load(open(LIBRARIES, encoding='utf-8'))]
+
+
+REQUIRED_LIBS = 'install/libraries-required.json'
+LIB_SLOTS = ('tcpdf', 'phpmailer', 'tinymce', 'phpmyadmin', 'adminer', 'tinyfilemanager')
+
+
+def required_libs():
+    """Library packs this version needs (0.8.406): {slot: {min, needed}} for the manifest ("requires_libs") – Check package warns."""
+    if not os.path.isfile(REQUIRED_LIBS):
+        return {}
+    out = {}
+    for k, v in json.load(open(REQUIRED_LIBS, encoding='utf-8')).items():
+        if k.startswith('_'):
+            continue
+        if k not in LIB_SLOTS or not isinstance(v, dict) or not re.match(r'^[0-9][0-9A-Za-z.+_-]{0,40}$', str(v.get('min', ''))):
+            sys.exit(f'{REQUIRED_LIBS}: bad entry {k}')
+        out[k] = {'min': str(v['min']), 'needed': bool(v.get('needed'))}
+    return out
 
 
 def library_problems():
@@ -151,7 +171,7 @@ def library_problems():
     if not os.path.isfile(LIBRARIES):
         return [LIBRARIES + ' missing']
     for l in json.load(open(LIBRARIES, encoding='utf-8')):
-        f = os.path.join('assets/vendor', l['dir'], l['file'])
+        f = os.path.join('vendor/bundled', l['dir'], l['file'])
         if not os.path.isfile(f):
             bad.append(f'library {l["name"]}: {f} missing')
             continue
@@ -161,6 +181,25 @@ def library_problems():
                 bad.append(f'library {l["name"]}: registry says {l["version"]}, the file says {m.group(1) if m else "nothing"}')
     print('libraries: ' + ('ok' if not bad else 'errors'))
     return bad
+
+
+LIBSRC = 'dev/libsrc'          # sources of the library packs that come with nunext.zip (0.8.409): <slot>/ – today only phpmailer
+
+
+def bundled_packs(keyfile):
+    """Builds and signs the packs of dev/libsrc/<slot>/ (dev/libpack.php) – the installer installs them from _install/ without GitHub.
+    Without the key: none (an unsigned pack would be refused anyway)."""
+    if not keyfile or not os.path.isdir(LIBSRC):
+        if os.path.isdir(LIBSRC):
+            print('WARNING: no signing key – no library packs in nunext.zip')
+        return []
+    import tempfile
+    out = tempfile.mkdtemp(prefix='nulibsrc-')
+    args = [f'{d}={os.path.join(LIBSRC, d)}' for d in sorted(os.listdir(LIBSRC)) if os.path.isdir(os.path.join(LIBSRC, d))]
+    code, msg = run(['php', 'dev/libpack.php', out, keyfile] + args)
+    if code != 0:
+        sys.exit('library packs: ' + msg)
+    return sorted(os.path.join(out, f) for f in os.listdir(out) if f.startswith('nunext-lib-') and f.endswith('.zip'))
 
 
 def signing_key():
@@ -234,6 +273,7 @@ def main():
     man['version'] = version
     man['built'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     man['libraries'] = libraries()          # bundled libraries with versions: the update page shows which change (0.8.229)
+    man['requires_libs'] = required_libs()  # library packs this version needs: Check package warns (0.8.406)
     man['page_api'] = page_api()            # page forms: API versions and methods – "Check package" lists pages that would break (0.8.388)
     man.pop('signature', None)
     man['gated'] = GATE                     # full release gate passed (0.8.389) – the update page warns for packages without it
@@ -255,6 +295,7 @@ def main():
 
     # 4. zips
     parent = os.path.dirname(root)
+    packs = bundled_packs(keyfile)
     for name, sel in (('nunext.zip', [p for p in everything if deployed(p)]), ('nunext-dev.zip', everything)):
         out = os.path.join(parent, name)
         if os.path.exists(out):
@@ -262,7 +303,10 @@ def main():
         with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
             for p in ['nunext-manifest.json'] + sel:
                 z.write(p, 'nunext/' + p)
-        print(f'{name}: {len(sel)} files, {os.path.getsize(out) // 1024} KB')
+            if name == 'nunext.zip':
+                for f in packs:                  # library packs for the installer (0.8.409): not in the manifest – _install/ is never updated
+                    z.write(f, 'nunext/_install/' + os.path.basename(f))
+        print(f'{name}: {len(sel)} files, {os.path.getsize(out) // 1024} KB' + (f' + {len(packs)} library pack(s) in _install/' if name == 'nunext.zip' and packs else ''))
     print(f'{old} → {version}' + (' (signed)' if keyfile else ' (UNSIGNED)') + (' – gated' if GATE else ' – not gated'))
     if not GATE:
         last = man.get('last_gate', '')

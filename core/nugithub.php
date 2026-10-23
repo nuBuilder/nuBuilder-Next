@@ -128,6 +128,7 @@ final class NuGitHub
 		$s = self::settings();
 		if (!$s['auto'] || $s['checked_at'] > time() - self::AUTO_HOURS * 3600) return 0;
 		self::check();
+		try { NuLibs::ghCheck($s['repo']); } catch (Throwable) { /* shown on the update page */ }    // library packs (0.8.405)
 		return 1;
 	}
 
@@ -170,12 +171,12 @@ final class NuGitHub
 	}
 
 	/**
-	 * GET over https with GitHub's headers; redirects are followed only to the allowed hosts. Without $file the body is returned.
+	 * GET over https with GitHub's headers (also used by NuLibs – library packs, 0.8.405); redirects are followed only to the allowed hosts. Without $file the body is returned.
 	 * curl when available, otherwise PHP's stream wrapper (redirects followed by hand).
 	 */
-	private static function get(string $url, int $max, int $timeout, ?string $file = null): string
+	public static function get(string $url, int $max, int $timeout, ?string $file = null, bool $raw = false): string
 	{
-		$headers = ['Accept: ' . ($file ? 'application/octet-stream' : 'application/vnd.github+json'), 'X-GitHub-Api-Version: 2022-11-28', 'User-Agent: nuBuilder-Next/' . NU_VERSION];
+		$headers = ['Accept: ' . ($file || $raw ? 'application/octet-stream' : 'application/vnd.github+json'), 'X-GitHub-Api-Version: 2022-11-28', 'User-Agent: nuBuilder-Next/' . NU_VERSION];
 		for ($hop = 0; $hop < 6; $hop++) {
 			if (!self::hostAllowed($url)) throw new RuntimeException(t('gh_err_host', (string)parse_url($url, PHP_URL_HOST)));
 			[$status, $location, $body] = function_exists('curl_init') ? self::curl($url, $headers, $max, $timeout, $file) : self::stream($url, $headers, $max, $timeout, $file);
