@@ -7,9 +7,12 @@ defined('NU_ROOT') || exit;
  * installation, stored as JSON in zzzzsys_nunext_setting (id home_layout). Without a stored layout the default groups apply.
  * Customize mode: assets/js/nuhome.js. $nuConfigGlobeadminHome (nuBuilder's setting) can replace the page by a launch form.
  *
- * Layout: {v, display: groups|tabs, size: large|compact|list, tabs: [{id, title}], groups: [{id, title, tab, tiles: [key …]}], hidden: [key …],
- *          custom: {key: {label, hint, icon, color, kind: form|page|procedure|url, target, record, run, newtab}}}
+ * Layout: {v, display: groups|tabs, size: large|compact|list, tabs: [{id, title}], groups: [{id, title, tab, tiles: [key …], color?}], hidden: [key …],
+ *          custom: {key: {label, hint, icon, color, kind: form|page|procedure|url, target, record, run, newtab}}, view: {…}}
  * Display tabs: the tabs hold groups (group.tab); without tabs each group is a tab of its own.
+ * View (0.8.420, the View panel of the start page): how the tiles look – style, descriptions, navigation, look, per tab (tabStyle) and per
+ * screen size (sizes.tablet / sizes.phone); size and display are derived from it (compatibility: hook variables, Customise). People
+ * without the right to change the layout keep their own changes in an overlay per layout (overlays(), not in the layout).
  */
 final class NuHome
 {
@@ -37,7 +40,7 @@ final class NuHome
 	public const PRESETS = [
 		'standard'    => ['icon' => 'bi-house'],
 		'all'         => ['icon' => 'bi-grid-3x3-gap'],
-		'developer'   => ['icon' => 'bi-code-slash', 'display' => 'tabs', 'size' => 'compact',
+		'developer'   => ['icon' => 'bi-code-slash', 'display' => 'tabs', 'size' => 'compact', 'view' => ['style' => 'compact', 'nav' => 'tabs', 'desc' => 'hovercard'],
 			'tabs' => [['t_build', 'home_pf_t_build'], ['t_debug', 'home_pf_t_debug'], ['t_int', 'home_group_integration']],
 			'groups' => [
 				['g_forms', 'nav_forms', 't_build', ['forms', 's_form_new', 's_form_clone', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']],
@@ -49,7 +52,7 @@ final class NuHome
 				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'compat', 's_mail_test']],
 			],
 			'fav' => ['forms', 'procedures', 's_debug', 'pma']],
-		'minimal'     => ['icon' => 'bi-dash-square', 'display' => 'groups', 'size' => 'list',
+		'minimal'     => ['icon' => 'bi-dash-square', 'display' => 'groups', 'size' => 'list', 'view' => ['style' => 'list'],
 			'groups' => [['g_main', '', '', ['forms', 'procedures', 'reports', 'users', 'debug', 'settings']]]],
 		'start'       => ['icon' => 'bi-mortarboard', 'display' => 'groups', 'size' => 'large',
 			'groups' => [['g_learn', 'home_pf_g_learn', '', ['tutorial', 'setupwizard', 'sample']],
@@ -58,7 +61,7 @@ final class NuHome
 		'security'    => ['icon' => 'bi-shield-lock', 'display' => 'groups', 'size' => 'large',
 			'groups' => [['g_people', 'home_group_users', '', ['users', 's_user_new', 'access', 'permissions', 'adminroles']],
 				['g_watch', 'home_pf_g_monitoring', '', ['sessions', 's_audit', 's_log', 'notifications', 'securitycheck']]]],
-		'operations'  => ['icon' => 'bi-activity', 'display' => 'groups', 'size' => 'compact',
+		'operations'  => ['icon' => 'bi-activity', 'display' => 'groups', 'size' => 'compact', 'view' => ['style' => 'compact'],
 			'groups' => [['g_health', 'home_pf_g_health', '', ['vendor', 'securitycheck', 'update', 's_mail_test']],
 				['g_config', 'home_pf_g_config', '', ['settings', 'configfile', 'branding']],
 				['g_tools', 'home_pf_g_tools', '', ['pma', 'tfm', 's_log', 'sessions', 's_mail_log']]]],
@@ -66,12 +69,33 @@ final class NuHome
 			'groups' => [['g_reports', 'rpt_title_list', '', ['reports', 's_report_new', 's_sqlbuilder', 's_sqlbuilder_new']],
 				['g_dash', 'dash_title', '', ['dashboards', 's_dash_new']],
 				['g_rdata', 'home_group_data', '', ['pma', 'import']]]],
-		'integration' => ['icon' => 'bi-plug', 'display' => 'groups', 'size' => 'compact',
+		'integration' => ['icon' => 'bi-plug', 'display' => 'groups', 'size' => 'compact', 'view' => ['style' => 'compact'],
 			'groups' => [['g_api', 'home_pf_g_api', '', ['apiclients', 's_api_new', 's_api_playground', 'compat']],
 				['g_mail', 'nav_email', '', ['email', 's_mail_settings', 's_mail_templates', 's_mail_test', 's_mail_log']],
 				['g_msg', 'home_pf_g_messages', '', ['notifications', 'prompts']]]],
 		'blank'       => ['icon' => 'bi-square', 'display' => 'groups', 'size' => 'large', 'groups' => [['g_own', 'home_pf_g_own', '', []]]],
 	];
+	/** View of a layout (0.8.420): allowed values and defaults – see the class comment. */
+	public const VIEW_STYLES = ['large', 'cards', 'compact', 'list', 'launcher', 'panels', 'table'];
+	public const VIEW_DESCS = ['auto', 'inline', 'tooltip', 'hovercard', 'info', 'off'];
+	public const VIEW_NAVS = ['groups', 'tabs', 'sidebar', 'none'];
+	public const VIEW_DENSITIES = ['comfortable', 'cozy', 'dense'];
+	public const VIEW_ICONS = ['soft', 'solid', 'outline', 'mono', 'none'];
+	public const VIEW_LIST_COLS = ['1', '2', 'auto'];
+	public const VIEW_LIST_WIDTHS = ['readable', 'full'];
+	public const VIEW_LINES = [0, 1, 2, 3];
+	public const VIEW_DELAYS = [0, 300, 800];
+	public const VIEW_SIZES = ['tablet', 'phone'];
+	public const VIEW_DEFAULTS = ['style' => 'large', 'listCols' => '1', 'listWidth' => 'readable', 'desc' => 'auto', 'lines' => 2, 'delay' => 300, 'nav' => 'groups',
+		'density' => 'comfortable', 'icon' => 'soft', 'groupColors' => false, 'favStrip' => false, 'recentStrip' => false, 'badges' => true, 'actions' => true];
+	/** Colours of groups without an own colour (by position) when "Colour per group" is on. */
+	public const GROUP_COLORS = ['#5b5bd6', '#2f6fd6', '#0f8f86', '#5f6b7a', '#c2417a', '#c27803', '#7a4fd0'];
+	/** Personal view per layout: users in sus_json, the globeadmin in a setting row, demo visitors in the session. */
+	private const VIEW_JSON = 'NUNEXT_HOME_VIEW';
+	private const VIEW_GA = 'home_view_ga';
+	/** Most layouts with a personal view per person; size of one entry (JSON). */
+	public const VIEW_OVERLAYS_MAX = 20;
+	public const VIEW_OVERLAY_BYTES = 4096;
 	/** Version of the stored layout (2 since 0.8.316 – upgrade baseline 0.8.321: no conversion of older layouts). */
 	public const VERSION = 2;
 	/** Icons offered in the tile editor (any bi-… icon may be typed). */
@@ -274,7 +298,7 @@ final class NuHome
 	public static function defaultLayout(): array
 	{
 		// two tabs (display "Tabs"): the daily work and the former Admin tools page (0.8.316); display "Groups" shows all groups
-		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => (object)[],
+		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => (object)[], 'view' => self::VIEW_DEFAULTS,
 			'tabs' => [['id' => 't_home', 'title' => t('nav_home')], ['id' => 't_admin', 'title' => t('vendor_title')]], 'groups' => [
 			['id' => 'g_users', 'title' => t('home_group_users'), 'tab' => 't_home', 'tiles' => ['users', 'access', 'permissions', 'sessions', 'adminroles']],
 			['id' => 'g_dev', 'title' => t('home_group_dev'), 'tab' => 't_home', 'tiles' => ['forms', 'procedures', 'reports', 'debug']],
@@ -300,7 +324,7 @@ final class NuHome
 		$exists = static fn($k) => isset($cat[$k]) || isset($sub[$k]);
 		if ($id === 'standard' || $id === 'all') {
 			$l = self::defaultLayout();
-			if ($id === 'all') $l['size'] = 'list2';
+			if ($id === 'all') { $l['size'] = 'list2'; $l['view'] = ['style' => 'list', 'listCols' => '2'] + self::VIEW_DEFAULTS; }
 			foreach ($l['groups'] as &$g) {
 				$tiles = [];
 				foreach ($g['tiles'] as $k) {
@@ -315,6 +339,7 @@ final class NuHome
 			unset($g);
 		} else {
 			$l = ['v' => self::VERSION, 'display' => $p['display'], 'size' => $p['size'], 'hidden' => [], 'fav' => $p['fav'] ?? [], 'custom' => [],
+				'view' => ($p['view'] ?? []) + ['nav' => $p['display'] === 'tabs' ? 'tabs' : 'groups'] + self::VIEW_DEFAULTS,
 				'tabs' => array_map(static fn($t) => ['id' => $t[0], 'title' => t($t[1])], $p['tabs'] ?? []),
 				'groups' => array_map(static fn($g) => ['id' => $g[0], 'title' => $g[1] === '' ? '' : t($g[1]), 'tab' => $g[2], 'tiles' => $g[3]], $p['groups'])];
 		}
@@ -473,7 +498,9 @@ final class NuHome
 			}
 			$title = mb_substr(trim((string)($g['title'] ?? '')), 0, 60);
 			$tab = (string)($g['tab'] ?? '');
-			$out['groups'][] = ['id' => $key($g['id'] ?? '') ?? 'g_' . $i, 'title' => $title, 'tab' => isset($tabIds[$tab]) ? $tab : ($out['tabs'][0]['id'] ?? ''), 'tiles' => $tiles];
+			$grp = ['id' => $key($g['id'] ?? '') ?? 'g_' . $i, 'title' => $title, 'tab' => isset($tabIds[$tab]) ? $tab : ($out['tabs'][0]['id'] ?? ''), 'tiles' => $tiles];
+			if (preg_match('/^#[0-9a-fA-F]{6}$/', (string)($g['color'] ?? ''))) $grp['color'] = strtolower((string)$g['color']);   // own colour of the group (0.8.420)
+			$out['groups'][] = $grp;
 		}
 		foreach (array_slice(is_array($in['hidden'] ?? null) ? $in['hidden'] : [], 0, 200) as $t) {
 			if (($t = $key($t)) !== null && !isset($seen[$t])) { $out['hidden'][] = $t; $seen[$t] = true; }
@@ -483,7 +510,180 @@ final class NuHome
 			if (($t = $key($t)) !== null && isset($seen[$t]) && !in_array($t, $out['fav'], true)) $out['fav'][] = $t;
 		}
 		$out['custom'] = (object)$out['custom'];
+		// view (0.8.420): cleaned, or built from size / display of an older layout; size and display follow it (compatibility)
+		$units = $tabIds ?: array_fill_keys(array_column($out['groups'], 'id'), true);   // without tabs every group is a tab of its own
+		$out['view'] = is_array($in['view'] ?? null) ? self::cleanView($in['view'], $units, false) : self::legacyView($in);
+		[$out['size'], $out['display']] = self::compat($out['view']);
 		return [$out, $errors];
+	}
+
+	/**
+	 * A view (0.8.420): unknown keys are dropped, wrong values become the default ($partial = false: a whole view with tabStyle and
+	 * sizes) or are dropped ($partial = true: an entry of sizes or of a personal view). $units: ids a tab style may be set for.
+	 */
+	public static function cleanView(array $in, array $units, bool $partial): array
+	{
+		$in = (array)json_decode((string)json_encode($in), true);    // tabStyle / sizes of a cleaned view are objects (JSON {})
+		$enums = ['style' => self::VIEW_STYLES, 'listCols' => self::VIEW_LIST_COLS, 'listWidth' => self::VIEW_LIST_WIDTHS, 'desc' => self::VIEW_DESCS,
+			'nav' => self::VIEW_NAVS, 'density' => self::VIEW_DENSITIES, 'icon' => self::VIEW_ICONS];
+		$out = [];
+		foreach (self::VIEW_DEFAULTS as $k => $def) {
+			if (!array_key_exists($k, $in)) { if (!$partial) $out[$k] = $def; continue; }
+			$v = $in[$k];
+			$ok = false;
+			if (isset($enums[$k])) { $v = is_scalar($v) ? (string)$v : ''; $ok = in_array($v, $enums[$k], true); }
+			elseif ($k === 'lines' || $k === 'delay') { $v = is_numeric($v) ? (int)$v : -1; $ok = in_array($v, $k === 'lines' ? self::VIEW_LINES : self::VIEW_DELAYS, true); }
+			elseif (is_bool($v) || in_array($v, [0, 1, '0', '1'], true)) { $v = (bool)$v; $ok = true; }
+			if ($ok) $out[$k] = $v;
+			elseif (!$partial) $out[$k] = $def;
+		}
+		if ($partial) return $out;
+		$ts = [];
+		foreach (array_slice(is_array($in['tabStyle'] ?? null) ? $in['tabStyle'] : [], 0, 20, true) as $id => $st) {
+			if (isset($units[(string)$id]) && in_array($st, self::VIEW_STYLES, true)) $ts[(string)$id] = $st;
+		}
+		$sizes = [];
+		foreach (self::VIEW_SIZES as $sz) {
+			$e = is_array($in['sizes'][$sz] ?? null) ? self::cleanView($in['sizes'][$sz], [], true) : [];
+			if ($e) $sizes[$sz] = $e;
+		}
+		$out['tabStyle'] = (object)$ts;
+		$out['sizes'] = (object)$sizes;
+		return $out;
+	}
+
+	/** The view of a layout saved before 0.8.420: from its size and display; the compact tooltip keeps its 800 ms. */
+	public static function legacyView(array $in): array
+	{
+		$size = in_array($in['size'] ?? '', self::SIZES, true) ? (string)$in['size'] : 'large';
+		$v = match ($size) {
+			'compact' => ['style' => 'compact'],
+			'list' => ['style' => 'list', 'listCols' => '1', 'listWidth' => 'readable'],
+			'listwide' => ['style' => 'list', 'listCols' => '1', 'listWidth' => 'full'],
+			'list2' => ['style' => 'list', 'listCols' => '2'],
+			default => ['style' => 'large'],
+		};
+		$v += ['nav' => ($in['display'] ?? '') === 'tabs' ? 'tabs' : 'groups', 'delay' => 800] + self::VIEW_DEFAULTS;
+		return self::cleanView($v, [], false);
+	}
+
+	/** [size, display] of a view – the fields of older readers (hook variables HOME_SIZE / HOME_DISPLAY, Customise). */
+	public static function compat(array $view): array
+	{
+		$size = match ($view['style'] ?? 'large') {
+			'compact', 'launcher' => 'compact',
+			'list' => ($view['listCols'] ?? '1') !== '1' ? 'list2' : (($view['listWidth'] ?? '') === 'full' ? 'listwide' : 'list'),
+			'table' => 'listwide',
+			'panels' => 'list',
+			default => 'large',
+		};
+		return [$size, in_array($view['nav'] ?? '', ['tabs', 'sidebar'], true) ? 'tabs' : 'groups'];
+	}
+
+	/** The desktop view a person sees: the layout's view with the personal one over it (screen sizes: assets/js/nuhome.js). */
+	public static function effectiveView(array $layout, ?array $overlay): array
+	{
+		$v = (array)($layout['view'] ?? []) + self::VIEW_DEFAULTS;
+		foreach ((array)($overlay['view'] ?? []) as $k => $x) $v[$k] = $x;
+		unset($v['tabStyle'], $v['sizes']);
+		return $v;
+	}
+
+	/** Tile style of a tab on the desktop: personal style > the tab's own style (tabs / sidebar only) > the layout's style. */
+	public static function styleFor(array $layout, ?array $overlay, string $tab): string
+	{
+		if (isset($overlay['view']['style'])) return (string)$overlay['view']['style'];
+		$v = (array)($layout['view'] ?? []);
+		$ts = (array)($v['tabStyle'] ?? []);
+		if (in_array($v['nav'] ?? '', ['tabs', 'sidebar'], true) && isset($ts[$tab])) return (string)$ts[$tab];
+		return (string)($v['style'] ?? 'large');
+	}
+
+	// ------------------------------------------------------------------ personal view (0.8.420)
+
+	/** @return array<string, array{view: array, sizes: array, at: string}> layout id => personal view; layouts no longer there are left out */
+	public static function overlays(): array
+	{
+		$u = NuAuth::user();
+		if (!$u) return [];
+		try {
+			if (!empty($u['demo'])) $all = $_SESSION['nu_home_view'] ?? [];
+			elseif (!empty($u['globeadmin'])) $all = json_decode((string)nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::VIEW_GA]), true);
+			else $all = NuUserJson::get((string)$u['id'], self::VIEW_JSON);
+		} catch (Throwable) {
+			return [];
+		}
+		if (!is_array($all)) return [];
+		$ids = self::layouts();
+		$out = [];
+		foreach ($all as $id => $e) {
+			if (!isset($ids[(string)$id]) || !is_array($e)) continue;
+			$e = self::cleanOverlay($e);
+			if ($e) $out[(string)$id] = $e;
+		}
+		return $out;
+	}
+
+	public static function overlay(string $layoutId): ?array
+	{
+		return self::overlays()[$layoutId] ?? null;
+	}
+
+	/** An entry of a personal view, cleaned: {view, sizes: {tablet, phone}, at}; [] = nothing left. */
+	public static function cleanOverlay(array $in): array
+	{
+		$in = (array)json_decode((string)json_encode($in), true);
+		$view = self::cleanView(is_array($in['view'] ?? null) ? $in['view'] : [], [], true);
+		$sizes = [];
+		foreach (self::VIEW_SIZES as $sz) {
+			$e = is_array($in['sizes'][$sz] ?? null) ? self::cleanView($in['sizes'][$sz], [], true) : [];
+			if ($e) $sizes[$sz] = $e;
+		}
+		if (!$view && !$sizes) return [];
+		$at = (string)($in['at'] ?? '');
+		return ['view' => $view, 'sizes' => $sizes, 'at' => preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/', $at) ? $at : date('Y-m-d H:i:s')];
+	}
+
+	/** Stores (null: removes) the personal view of a layout. @return bool false = too large (VIEW_OVERLAY_BYTES) */
+	public static function setOverlay(string $layoutId, ?array $ov): bool
+	{
+		$u = NuAuth::user();
+		if (!$u || $layoutId === '') return false;
+		$all = self::overlays();
+		unset($all[$layoutId]);
+		if ($ov !== null) {
+			if (strlen((string)json_encode($ov)) > self::VIEW_OVERLAY_BYTES * 2) return false;   // raw payload: refused before cleaning
+			$e = self::cleanOverlay(['at' => ''] + $ov);
+			if ($e) {
+				$e['at'] = date('Y-m-d H:i:s');
+				if (strlen((string)json_encode($e)) > self::VIEW_OVERLAY_BYTES) return false;
+				$all[$layoutId] = $e;
+			}
+		}
+		uasort($all, static fn($a, $b) => strcmp($b['at'], $a['at']));
+		$all = array_slice($all, 0, self::VIEW_OVERLAYS_MAX, true);
+		if (!empty($u['demo'])) { $_SESSION['nu_home_view'] = $all; return true; }
+		if (!empty($u['globeadmin'])) { self::setSetting(self::VIEW_GA, json_encode((object)$all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), (string)$u['login']); return true; }
+		NuUserJson::set((string)$u['id'], self::VIEW_JSON, $all ? $all : null);
+		return true;
+	}
+
+	/** The view of the current layout (View panel "for everyone" / a personal layout). @return array errors ('' key = refused) */
+	public static function saveView(array $view, string $login): array
+	{
+		$l = self::layout();
+		$l['view'] = $view;
+		$v = (array)(self::clean($l, false)[0]['view']);
+		return self::save($l, $login, 'home_view_saved', ['style' => $v['style'] ?? '', 'nav' => $v['nav'] ?? '']);
+	}
+
+	private static function setSetting(string $id, string $value, string $login): void
+	{
+		NuSchema::ensure();
+		$db = nu_db();
+		$row = ['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)];
+		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
+		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
 	}
 
 	/** @return array{0: array, 1: string} [own tile, error text] */
@@ -518,7 +718,7 @@ final class NuHome
 	}
 
 	/** @return array errors (own tile key => text); empty = saved */
-	public static function save(array $in, string $login): array
+	public static function save(array $in, string $login, string $event = 'home_layout_saved', ?array $details = null): array
 	{
 		[$layout, $errors] = self::clean($in);
 		if ($errors) return $errors;
@@ -535,7 +735,7 @@ final class NuHome
 				'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)], 'zzzzsys_nunext_list_view_id', $id);
 		}
 		self::$current = null;
-		NuLog::write('home_layout_saved', NuListView::TABLE, $id, ['groups' => count($layout['groups']), 'hidden' => count($layout['hidden']), 'own' => count((array)$layout['custom'])]);
+		NuLog::write($event, NuListView::TABLE, $id, $details ?? ['groups' => count($layout['groups']), 'hidden' => count($layout['hidden']), 'own' => count((array)$layout['custom'])]);
 		return [];
 	}
 

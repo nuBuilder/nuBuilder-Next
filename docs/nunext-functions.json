@@ -662,11 +662,12 @@
 {"g": "page", "k": "method", "n": "NuPage.openForm", "s": "NuPage.openForm(code, record, opt)", "d": "Opens a form of nuBuilder Next.", "o": "next", "v": "0.8.387"},
 {"g": "page", "k": "method", "n": "NuPage.toast", "s": "NuPage.toast(text, type)", "d": "A short notice (success, danger, warning, info).", "o": "next", "v": "0.8.387"},
 {"g": "page", "k": "method", "n": "NuPage.setTitle", "s": "NuPage.setTitle(text)", "d": "Title of the page in nuBuilder Next.", "o": "next", "v": "0.8.387"},
-{"g": "home", "k": "method", "n": "nuHome.on", "s": "nuHome.on(event, fn)", "d": "Handler for start page events: tile (every tile, also those already drawn), ready, search (query, shownTiles), tab (tabId), favourites (on), customize (on).", "r": "nuHome", "e": "nuHome.on('tile', function (tile) { if (tile.key === 'form:invoice') … });", "o": "next", "v": "0.8.379"},
+{"g": "home", "k": "method", "n": "nuHome.on", "s": "nuHome.on(event, fn)", "d": "Handler for start page events: tile (every tile, also those already drawn), ready, search (query, shownTiles), tab (tabId), favourites (on), customize (on), view (the view in effect, after every change – 0.8.420).", "r": "nuHome", "e": "nuHome.on('tile', function (tile) { if (tile.key === 'form:invoice') … });", "o": "next", "v": "0.8.379"},
 {"g": "home", "k": "method", "n": "nuHome.off", "s": "nuHome.off(event, fn)", "d": "Removes a handler.", "r": "nuHome", "o": "next", "v": "0.8.379"},
 {"g": "home", "k": "method", "n": "nuHome.tiles", "s": "nuHome.tiles(filter)", "d": "The tiles shown (objects with key, label, icon, hint …).", "r": "array", "o": "next", "v": "0.8.379"},
 {"g": "home", "k": "method", "n": "nuHome.tile", "s": "nuHome.tile(key)", "d": "One tile.", "r": "object, null", "o": "next", "v": "0.8.379"},
-{"g": "home", "k": "method", "n": "nuHome.data", "s": "nuHome.data", "d": "Data of nuHomeSetData() in the procedure nunext_home.", "r": "object", "o": "next", "v": "0.8.379"}
+{"g": "home", "k": "method", "n": "nuHome.data", "s": "nuHome.data", "d": "Data of nuHomeSetData() in the procedure nunext_home.", "r": "object", "o": "next", "v": "0.8.379"},
+{"g": "home", "k": "method", "n": "nuHome.view", "s": "nuHome.view", "d": "The view in effect for this screen size (a copy): style, listCols, listWidth, desc, lines, delay, nav, density, icon, groupColors, favStrip, recentStrip, badges, actions. Changed with the View panel; the event view reports changes.", "r": "object", "e": "nuHome.on('view', function (v) { if (v.style === 'table') … });", "o": "next", "v": "0.8.420"}
 ]
 }
 }

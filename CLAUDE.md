@@ -26,6 +26,10 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
   all e2e, compat; manifest `"gated": true`, `last_gate`), then sync to the git mirror, commit and `git push origin main` (everything since
   the last gate in one push). release.py prints the releases since the last gate – **after 5 ungated releases remind the owner** to
   say "gate" (also suggest it after changes to login, rights, update or database steps).
+- **GitHub release** (the owner creates it by hand after a gate): when asked for the tag / release notes, follow
+  **`dev/release-notes.md`** – release settings (tag `v<version>`, title, only `nunext.zip`, pre-release), the structure of the notes
+  (link to CHANGELOG.md, alpha note, Highlights, Security, After updating) and an example; it records the last published release –
+  update that line once the owner has published.
 
 ### Checklist for every request (the usual flow)
 1. Starting a session: unpack `nunext-dev.zip` (folder `nunext/`), put `nunext-signing.key` next to it (`../nunext-signing.key`),
@@ -152,7 +156,12 @@ core/nuselftest.php  self-test (?p=selftest, developer mode only): integration c
 core/nulogintoken.php nuBuilder's single-use LOGIN_TOKEN in sus_json (+ LOGIN_TOKEN_EXPIRES): create, link, rotate (compare and swap), clear
 core/nulistview.php  list views of the system lists (NuListView: prepare/card/page, views, editor, defaults); core/nulistdefs.php the lists
                      (columns, filters, card layout, SQL) – a new system list is a NuListDefs entry, not hand-written HTML
-core/nuhome.php      start page: tiles, Ctrl+K search, saved layouts (list_key 'home' in zzzzsys_nunext_list_view)
+core/nuhome.php      start page: tiles, Ctrl+K search, saved layouts (list_key 'home' in zzzzsys_nunext_list_view); view (0.8.420, View panel):
+                     layout key view {style, desc, nav, density, icon, … tabStyle, sizes.tablet / sizes.phone} – cleanView / legacyView (layouts
+                     without view: size + display) / compat (size + display derived on every save); personal views per layout (overlays /
+                     setOverlay: sus_json NUNEXT_HOME_VIEW, setting home_view_ga, session for demo) – POST view_me / view_me_clear (everyone),
+                     view_layout (editable layout only); one tile markup for all styles (pages/nuhome.php), classes + container queries in
+                     assets/css/nuhome.css, precedence / panel / tooltips in assets/js/nuhome.js; e2e home_view
 core/nuhomehook.php  start page hooks (0.8.378): procedure nunext_home runs while the tile page is built (pages/nuhome.php: NuHomeHook::run +
                      apply); PHP functions nuHomeSetBadge / SetHint / HideTile / AddGroup / AddTile (x_ keys, NuHome::cleanTile) / Banner /
                      SetData / Cache in core/form/nuphp_api.php; errors → page without changes + alert for the globeadmin + Debug results;

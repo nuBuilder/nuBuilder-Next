@@ -56,9 +56,11 @@
 		res.sort(function (a, b) { return a[0] - b[0] || a[1].label.localeCompare(b[1].label); });
 		return res.map(function (r) { return r[1]; });
 	}
+	/** An entry (or its id, e.g. 't:users' – tiles opened on the start page, 0.8.420) goes to the top of the last opened ones. */
 	function remember(it) {
-		var r = store().filter(function (id) { return id !== it.id; });
-		r.unshift(it.id);
+		var id = typeof it === 'string' ? it : it.id;
+		var r = store().filter(function (x) { return x !== id; });
+		r.unshift(id);
 		store(r.slice(0, 8));
 	}
 	/** Opens an entry: a link, or a POST to the database tool / File Manager (new tab, as the tile does). */
@@ -74,7 +76,7 @@
 		if (newTab) window.open(it.url, '_blank', 'noopener');
 		else window.location.href = it.url;
 	}
-	window.nuPalette = {load: load, match: match, go: go, norm: norm};
+	window.nuPalette = {load: load, match: match, go: go, norm: norm, remember: remember};
 
 	// ------------------------------------------------------------------ the box
 	var modal = null, input, list, status, current = [], active = 0;

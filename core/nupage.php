@@ -260,11 +260,11 @@ final class NuPage
 		return $meta;
 	}
 
-	/** Context of the URL that is carried from the wrapper to the page: r, ps, pf, pr, bt, iframe. */
+	/** Context of the URL that is carried from the wrapper to the page: r, ps, pf, pr, bt, cbt (0.8.422), iframe. */
 	public static function carried(): array
 	{
 		$out = [];
-		foreach (['r', 'ps', 'pf', 'pr', 'bt', 'iframe'] as $k) {
+		foreach (['r', 'ps', 'pf', 'pr', 'bt', 'cbt', 'iframe'] as $k) {
 			$v = $_GET[$k] ?? null;
 			if (is_string($v) && $v !== '' && strlen($v) <= 200) $out[$k] = $v;
 		}
@@ -286,11 +286,13 @@ final class NuPage
 		$s = self::settings($meta->id);
 		$carry = self::carried();
 		$bare = ($carry['iframe'] ?? '') === '1';
-		unset($carry['iframe']);
+		unset($carry['iframe'], $carry['cbt']);
+		$title = $meta->description() !== '' ? $meta->description() : $meta->code();
+		// trail for the forms the page opens (0.8.422): this page's breadcrumbs + the page itself, so their Back returns here
+		if (!$bare) $carry['cbt'] = NuTrail::store(array_merge(NuTrail::get(is_string($_GET['bt'] ?? null) ? $_GET['bt'] : null) ?? [], [['title' => $title, 'url' => NuTrail::currentUrl()]]));
 		$src = self::rawUrl($meta, $carry);
 		if ($s['open_mode'] !== 'iframe' && !$bare) nu_redirect($src);
 
-		$title = $meta->description() !== '' ? $meta->description() : $meta->code();
 		$height = $s['iframe_height'];
 		$frame = '<iframe class="nuPageFrame" id="nuPageFrame" src="' . h($src) . '" title="' . h($title) . '" data-nu-height="' . h($height) . '"></iframe>';
 		$host = self::hostScript();
@@ -1020,10 +1022,32 @@ class NuPageContext
 		return nu_url('pageasset', ['f' => $this->meta->code(), 'file' => $path, 'v' => $m ? base_convert((string)$m, 10, 36) : null]);
 	}
 
-	/** URL of a form (id or code) – list, or a record ('-1' = new). */
+	/** URL of a form (id or code) – list, or a record ('-1' = new); with the breadcrumb trail back to this page (0.8.422). */
 	public function formUrl(string $form, ?string $record = null): string
 	{
-		return nu_url('form', ['f' => $form, 'r' => $record, 'pf' => $this->meta->id, 'pr' => $this->recordId()]);
+		return nu_url('form', ['f' => $form, 'r' => $record, 'pf' => $this->meta->id, 'pr' => $this->recordId(), 'bt' => $this->trailKey() ?: null]);
+	}
+
+	private ?string $trailKey = null;
+
+	/**
+	 * Breadcrumb trail of the forms this page opens (0.8.422) – their Back returns: on its own page (the wrapper passes cbt) to this
+	 * page; in a launch form's iframe to that form (its description); else to this page after the trail it was opened with.
+	 */
+	protected function trailKey(): string
+	{
+		if ($this->trailKey !== null) return $this->trailKey;
+		$cbt = $_GET['cbt'] ?? null;
+		if (is_string($cbt) && NuTrail::get($cbt) !== null) return $this->trailKey = $cbt;
+		$p = $this->parent();
+		if ($p !== null) {
+			$pm = NuFormMeta::load($p['form_id']);
+			$title = $pm && $pm->description() !== '' ? $pm->description() : $p['form_code'];
+			return $this->trailKey = NuTrail::store([['title' => $title, 'url' => nu_url('form', ['f' => $p['form_id'], 'r' => $p['record_id']])]]);
+		}
+		$title = $this->meta->description() !== '' ? $this->meta->description() : $this->meta->code();
+		$back = nu_url('form', ['f' => $this->meta->code() !== '' ? $this->meta->code() : $this->meta->id, 'r' => $this->recordId()]);
+		return $this->trailKey = NuTrail::store(array_merge(NuTrail::get(is_string($_GET['bt'] ?? null) ? $_GET['bt'] : null) ?? [], [['title' => $title, 'url' => $back]]));
 	}
 
 	public function homeUrl(): string { return nu_url('home'); }
@@ -1031,7 +1055,7 @@ class NuPageContext
 	/** <script> tag of nupage.js (NuPage.fetch, resize, toast …), with the CSRF token as data attribute. */
 	public function sdk(): string
 	{
-		return '<script src="' . h(nu_asset('assets/js/nupage.js')) . '" data-csrf="' . h(nu_csrf_token()) . '" data-home="' . h(nu_url('home')) . '"></script>';
+		return '<script src="' . h(nu_asset('assets/js/nupage.js')) . '" data-csrf="' . h(nu_csrf_token()) . '" data-home="' . h(nu_url('home')) . '" data-bt="' . h($this->trailKey()) . '"></script>';
 	}
 
 	/**

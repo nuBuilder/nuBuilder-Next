@@ -209,6 +209,10 @@ final class NuDemo
 			return;
 		}
 		if ($jsonRoute) return;                                                  // formapi / builderapi / formatapi decide per action
+		if ($page === 'home') {                                                  // start page: favourites only and the own view – kept in the session (0.8.420)
+			$in = json_decode((string)file_get_contents('php://input'), true);
+			if (is_array($in) && in_array($in['action'] ?? '', ['fav_only', 'view_me', 'view_me_clear'], true)) return;
+		}
 		if (in_array((string)($_POST['action'] ?? ''), self::READ_POSTS[$page] ?? [], true)) return;
 		self::refuse();
 	}

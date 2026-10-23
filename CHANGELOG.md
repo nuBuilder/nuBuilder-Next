@@ -3,6 +3,54 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.423 – Release gate
+- Release gate for 0.8.419–0.8.423 (release notes template, start page View panel, installer required fields, Panels quick actions,
+  Back from forms opened by page forms): smoke, all end-to-end tests and the cross-tests against nuBuilder passed.
+
+## 0.8.422 – Page forms: Back returns to the page
+- Page forms: forms opened from a page now go *Back* to the page instead of the Forms list. `$nu->formUrl()` adds a breadcrumb trail
+  (`&bt=`) – the page's own breadcrumbs plus the page; `NuPage.openForm()` passes the same trail through the window around the page
+  (assets/js/nupagehost.js used to drop it). A page shown in a launch form's iframe leads back to that form, with its description in the
+  breadcrumbs. Breadcrumbs: Home › page › form; from a record: record → list → page. Pages need no own code for it (no internal class).
+- `custom/PAGE_GUIDE.md` and the help: links to forms inside a page need `target="_top"` (the page runs in an iframe) or
+  `NuPage.openForm()`. E2E test `page_back`.
+
+## 0.8.421 – Installer: required fields, Panels quick actions
+- Installer: required fields have a red star after their label and a legend "* Required field" above them – token, database host and
+  name, the administrator's login name and password (both fields; not when the password is kept), time zone and session timeout.
+  The administrator's e-mail is optional; it gets the star (and becomes required) only while two-step login is ticked.
+- Start page, tile style Panels: the quick actions + and ▾ are shown at the end of a row (small, framed on hover) – the pages behind a
+  tile can be opened and pinned as in the other styles. They follow the switch *Quick actions* of the View panel; Launcher keeps
+  them hidden (no room – the hover card lists the pages there).
+
+## 0.8.420 – Start page: View panel
+- Start page: the ▾ menu next to Customise is replaced by a **View** panel (button `View` next to the search, key `V`): how the tiles
+  look, applied at once without reloading – a drawer on the right on wide screens (the page moves aside), an overlay on tablets, a sheet
+  from the bottom on phones. Its section *Layout* holds the saved layouts (switch, + Save as, ⋯ name / visibility, delete, default).
+- Tile styles: Large, Cards (new), Compact, List (1, 2 or Auto columns; readable or full width), Launcher (new, big icons), Panels (new,
+  one card per group with links), Table (new, sortable by name, group and status – not saved). All styles share one tile markup; the
+  style, descriptions and navigation are classes, sized by container queries.
+- Descriptions: Auto, Always, Tooltip, Hover card (description, badge and the pages behind ▾), Info icon (ⓘ), Off – with lines and hover
+  delay; keyboard focus and a long press on touch screens show them too. Navigation: Groups, Tabs, Sidebar (new, a drop-down list on narrow
+  screens), No groups. Rows on top: favourites and recently used tiles (the history of Ctrl+K, tiles opened on the start page count too).
+  Look: density, icon style (soft, solid, outline, grey, plain), a colour per group, badges, quick actions.
+- Per tab (Tabs / Sidebar): a tab may have its own tile style. Per screen size: settings for all sizes or only the phone / tablet / desktop
+  (width of the page, not the device); phones without own settings show a one-column list and the sidebar instead of tabs.
+- Shared layouts: changes in View go to the person's own view of the layout (users: `sus_json` key `NUNEXT_HOME_VIEW`, globeadmin: setting
+  `home_view_ga`, demo visitors: the session) – tiles, groups and tabs keep coming from the layout; *Undo my changes*. With the right
+  *Start page layout*: *Only me* (default each time the panel opens) or *Everyone using "…"* (note, Undo in the toast); *Make my view the
+  layout's view*. The server writes the layout only when it may be changed (`view_layout`, otherwise 403) and cleans every payload.
+- Layouts keep a new key `view`; layouts of earlier versions look as before (size → style, display → navigation, the compact tooltip keeps
+  its 800 ms). `size` and `display` are derived from it (hook variables `#HOME_SIZE#` / `#HOME_DISPLAY#`, Customise); new hook variable
+  `#HOME_VIEW#` and JavaScript `nuHome.view` + event `view`. Profiles carry a view (Developer: compact, tabs, hover card). Groups accept an
+  own colour (`groups[].color`).
+- Texts in all languages, help (start page chapter), tutorial, e2e test `home_view`, unit tests for the view model.
+
+## 0.8.419 – Release notes template
+- Developer files: dev/release-notes.md – template for the GitHub release notes (tag, title, attachment, pre-release; structure:
+  link to the changelog, alpha note, highlights, security, steps after updating; example of v0.8.418; last published release).
+  Referenced in the development notes and in Help → Development with Claude.
+
 ## 0.8.418 – Release gate
 - Release gate for 0.8.416–0.8.417 (Excel writer revised, patched library CVEs accepted): smoke, all end-to-end tests and the
   cross-tests against nuBuilder passed.

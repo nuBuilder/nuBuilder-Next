@@ -145,7 +145,7 @@ Table and column names of insert / update / delete must match `^[A-Za-z0-9_]+$` 
 | `csrfToken(): string` / `csrfField(): string` | the token / a hidden `_csrf` field |
 | `url(array $params = []): string` | this page (keeps r, pf, pr, ps): `url(['action' => 'save'])` |
 | `asset(string $path): string` | URL of a file in assets/ with a version stamp |
-| `formUrl(string $form, ?string $record = null): string` | a nuBuilder Next form (id or code) – list, or a record ('-1' = new) |
+| `formUrl(string $form, ?string $record = null): string` | a nuBuilder Next form (id or code) – list, or a record ('-1' = new); carries the breadcrumb trail, so the form's Back returns to this page (inside a launch form: to that form). The page runs in an iframe: give such links `target="_top"` (or use `NuPage.openForm()`), otherwise the form opens inside the page's frame |
 | `homeUrl(): string` | the start page |
 | `sdk(): string` | the `<script>` tag of the JavaScript helpers (below) |
 | `json(mixed $data, int $status = 200): never` | sends JSON and ends |

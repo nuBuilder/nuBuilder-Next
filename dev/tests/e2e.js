@@ -375,6 +375,47 @@ T.form_drafts_parity = async (s) => {
 
 // page forms (0.8.387): login / right before the page code, wrapper modes, $nu (user, rights, parent, settings, secrets), JSON answers
 // (401 login, 400 csrf, 403, 500 with details only for the globeadmin), assets confined to assets/, bad table names, direct calls, impersonation
+T.page_back = async (s) => {                        // 0.8.422: forms opened from a page form go Back to the page (or to its launch form)
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	const p = s.ga;
+	const F = 'e2epb' + Date.now().toString(36), dir = path.join(SITE, 'custom', 'pages', F), id = 'e2epb' + Date.now().toString(36).slice(-6);
+	fs.mkdirSync(dir, { recursive: true });
+	fs.writeFileSync(path.join(dir, 'index.php'), `<?php
+defined('NU_PAGE') || exit;
+if ($nu->action() === 'url') $nu->json(['url' => $nu->formUrl('samplecustomer')]);
+echo '<!doctype html><title>pb</title><a id="go" target="_top" href="' . $nu->h($nu->formUrl('samplecustomer')) . '">go</a> <button id="js" type="button">js</button>' . $nu->sdk()
+	. '<script src="' . $nu->h($nu->asset('assets/a.js')) . '"></script>';
+`);
+	fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
+	fs.writeFileSync(path.join(dir, 'assets', 'a.js'), "document.getElementById('js').addEventListener('click', function () { NuPage.openForm('samplecustomer', '-1'); });");
+	sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_status) VALUES ('${id}', 'page', '${F}', 'E2E back page', '1');
+		INSERT INTO zzzzsys_nunext_page (zzzzsys_nunext_page_id, open_mode, iframe_height, settings) VALUES ('${id}', 'iframe', 'auto', '{}')`);
+	const back = async () => p.evaluate(() => ({ back: document.getElementById('nuBackButton')?.getAttribute('href') || '', crumbs: [...document.querySelectorAll('.breadcrumb-item')].map(x => x.textContent.trim()) }));
+	try {
+		// on its own page: a link with formUrl()
+		await open(p, 'index.php?p=form&f=' + F);
+		const fr = p.frameLocator('#nuPageFrame');
+		await fr.locator('#go').click(); await p.waitForURL(/f=samplecustomer/, { timeout: 8000 }).catch(() => { throw new Error('link did not open the form: ' + p.url()); }); await p.waitForLoadState('networkidle');
+		let b = await back();
+		expect(b.back.includes('f=' + F) && b.crumbs.includes('E2E back page'), 'link: Back / breadcrumbs ' + JSON.stringify(b));
+		// NuPage.openForm() through the window around the page
+		await open(p, 'index.php?p=form&f=' + F);
+		await p.frameLocator('#nuPageFrame').locator('#js').click(); await p.waitForURL(/f=samplecustomer/, { timeout: 8000 }).catch(() => { throw new Error('openForm did not open the form: ' + p.url()); }); await p.waitForLoadState('networkidle');
+		b = await back();
+		expect(b.back.includes('f=' + F) && /r=-1/.test(p.url()), 'openForm: ' + JSON.stringify(b) + ' ' + p.url());
+		// in a launch form's iframe (pf): Back goes to the launch form, the breadcrumb shows its description
+		const r = await p.evaluate(async (u) => (await fetch(u, { headers: { Accept: 'application/json' } })).json(), BASE + 'index.php?p=page&f=' + F + '&action=url&pf=samplecustomer&pr=-1');
+		expect(/[?&]bt=[0-9a-f]{12}/.test(r.url), 'formUrl without trail: ' + r.url);
+		await open(p, r.url.replace(/^index\.php/, 'index.php'));
+		b = await back();
+		const desc = sql("SELECT sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+		expect(b.back.includes('f=samplecustomer') && b.crumbs.includes(desc), 'embedded: ' + JSON.stringify(b));
+	} finally {
+		sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'`);
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+};
+
 T.page_forms = async (s) => {
 	if (!SITE) { s.skip = 'needs SITE'; return; }
 	const F = 'e2epg' + Date.now().toString(36), dir = path.join(SITE, 'custom', 'pages', F);
@@ -880,18 +921,130 @@ T.home_favourites = async (s) => {
 	await p.click('#nuHomeFavOnly');
 };
 
-T.home_list2 = async (s) => {                      // 0.8.363: tiles as a list in two columns
+T.home_list2 = async (s) => {                      // 0.8.363: tiles as a list in two columns (0.8.420: View panel → List, 2 columns)
 	const p = s.ga;
-	await open(p, 'index.php?p=home&tiles=1');
-	const before = await p.evaluate(() => (document.querySelector('[data-nu-size][aria-current]') || {}).dataset?.nuSize || 'large');
-	await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('[data-nu-size="list2"]').click())]);
-	await p.waitForLoadState('networkidle');
-	const pos = await p.evaluate(() => [...document.querySelector('.nuHomeList2').children].slice(0, 2).map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; }));
-	expect(pos.length === 2 && pos[0][0] === pos[1][0] && pos[1][1] > pos[0][1], 'two columns: ' + JSON.stringify(pos));
-	await p.click('#nuHomeCustomize'); await p.waitForTimeout(400);
-	expect(await p.locator('.nuHeDrop.nuHomeList2').count() > 0 && await p.inputValue('#nuHomeSize') === 'list2', 'Customise keeps the 2 columns');
-	await open(p, 'index.php?p=home&tiles=1');
-	if (before !== 'list2') await Promise.all([p.waitForNavigation(), p.evaluate(b => document.querySelector('[data-nu-size="' + b + '"]').click(), before)]);
+	const keep = sql("SELECT HEX(setting_value) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'home_view_ga'");
+	try {
+		await open(p, 'index.php?p=home&tiles=1');
+		await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300);
+		await p.click('#nuHomeViewPanel [data-f="style:list"]'); await p.waitForTimeout(200);
+		await p.click('#nuHomeViewPanel [data-f="listCols:2"]'); await p.waitForTimeout(700);
+		const pos = await p.evaluate(() => [...document.querySelector('.nuHomeGroup .nuHomeTiles').children].slice(0, 2).map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; }));
+		expect(pos.length === 2 && pos[0][0] === pos[1][0] && pos[1][1] > pos[0][1], 'two columns: ' + JSON.stringify(pos));
+		await open(p, 'index.php?p=home&tiles=1');                         // kept (own view of the globeadmin)
+		expect(await p.evaluate(() => nuHome.view.style + '/' + nuHome.view.listCols) === 'list/2', 'own view not kept');
+	} finally {
+		if (keep && keep !== 'NULL') sql("UPDATE zzzzsys_nunext_setting SET setting_value = UNHEX('" + keep + "') WHERE zzzzsys_nunext_setting_id = 'home_view_ga'");
+		else sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'home_view_ga'");
+	}
+};
+
+T.home_view = async (s) => {                       // 0.8.420: View panel – styles, legacy layouts, own view on shared layouts, everyone, rights
+	const p = s.ga;
+	const keepIds = sql("SELECT GROUP_CONCAT(zzzzsys_nunext_list_view_id) FROM zzzzsys_nunext_list_view WHERE list_key = 'home'");
+	const keepDefs = sql("SELECT HEX(GROUP_CONCAT(CONCAT(zzzzsys_nunext_list_view_id, CHAR(1), definition) SEPARATOR 0x02)) FROM zzzzsys_nunext_list_view WHERE list_key = 'home'");
+	const keepSet = sql("SELECT HEX(GROUP_CONCAT(CONCAT(zzzzsys_nunext_setting_id, CHAR(1), setting_value) SEPARATOR 0x02)) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('listview_ga', 'listview_defaults', 'home_view_ga')");
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	const ujson = sql("SELECT HEX(sus_json) FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'");
+	const errs = [];
+	p.on('console', m => { if (/Content.Security|Refused to/.test(m.text())) errs.push(m.text()); });
+	const post = (body) => p.evaluate(async b => { const D = JSON.parse(document.getElementById('nuHomeData').textContent);
+		const r = await fetch(D.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf }, body: JSON.stringify(b) }); return { status: r.status, j: await r.json() }; }, body);
+	const panel = async () => { if (await p.locator('#nuHomeViewPanel').isHidden()) { await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300); } };
+	const pick = async f => { await p.click('#nuHomeViewPanel [data-f="' + f + '"]'); await p.waitForTimeout(200); };
+	try {
+		// a layout saved before 0.8.420 (size compact, display tabs) looks as before: compact tiles, tabs, the 800 ms tooltip
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'home_view_ga'");
+		const def = JSON.stringify({ v: 2, display: 'tabs', size: 'compact', tabs: [{ id: 't_a', title: 'A' }, { id: 't_b', title: 'B' }],
+			groups: [{ id: 'g_a', title: 'Ga', tab: 't_a', tiles: ['users', 'access'] }, { id: 'g_b', title: 'Gb', tab: 't_b', tiles: ['forms'] }], hidden: [], custom: {}, fav: [] });
+		sql("INSERT INTO zzzzsys_nunext_list_view (zzzzsys_nunext_list_view_id, list_key, scope, owner, name, access_ids, definition, sort_order) VALUES ('e2e_hv', 'home', 'shared', '', 'E2E view', '[]', UNHEX('"
+			+ Buffer.from(def).toString('hex') + "'), 99)");
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'listview_ga'");
+		await open(p, 'index.php?p=home&tiles=1');
+		await post({ action: 'layout_select', id: 'e2e_hv' });
+		await open(p, 'index.php?p=home&tiles=1');
+		let st = await p.evaluate(() => ({ view: document.getElementById('nuHomeView').className, pane: document.querySelector('.nuHomePane.nuHomeActive')?.className, tabs: document.querySelectorAll('[data-nu-tabbtn]').length,
+			v: nuHome.view }));
+		expect(/nuHomeNav-tabs/.test(st.view) && /nuHomeStyle-compact/.test(st.pane) && st.tabs === 2 && st.v.delay === 800, 'legacy layout: ' + JSON.stringify(st));
+		// every style with every navigation draws without errors; the table can be sorted
+		await panel();
+		for (const nav of ['groups', 'tabs', 'sidebar', 'none']) for (const sty of ['large', 'cards', 'compact', 'list', 'launcher', 'panels', 'table']) {
+			await p.click('#nuHomeViewPanel [data-f="nav:' + nav + '"]').catch(() => {}); await p.click('#nuHomeViewPanel [data-f="style:' + sty + '"]').catch(() => {});
+		}
+		await p.waitForTimeout(300);
+		st = await p.evaluate(() => ({ head: !!document.querySelector('.nuHomeStyle-table > .nuHomeTHead'), nav: nuHome.view.nav, style: nuHome.view.style }));
+		expect(st.head && st.nav === 'none' && st.style === 'table', 'table / none: ' + JSON.stringify(st));
+		await p.click('.nuHomeTHead [data-nu-sort="label"]'); await p.waitForTimeout(150); await p.click('.nuHomeTHead [data-nu-sort="label"]'); await p.waitForTimeout(150);
+		const order = await p.evaluate(() => [...document.querySelectorAll('.nuHomeTileWrap')].sort((a, b) => (+a.style.order) - (+b.style.order)).map(w => w.querySelector('[data-nu-tile]').dataset.nuLabel));
+		expect(order.length > 3 && order[0].localeCompare(order[order.length - 1]) > 0, 'table sort (descending): ' + order.join(','));
+		// "Only me" (default): the shared layout stays, the globeadmin's own view is stored
+		await pick('nav:groups'); await pick('style:cards'); await p.waitForTimeout(700);
+		expect(!/"view"/.test(sql("SELECT definition FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_hv'")), 'only me changed the shared layout');
+		expect(/"e2e_hv"/.test(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'home_view_ga'")) , 'own view of the globeadmin not stored');
+		// "Everyone": the layout gets the view, a note and an Undo toast; reopening the panel is back on "Only me"
+		await pick('target:all');
+		expect(await p.locator('#nuHomeViewPanel .nuHomeVpWarn').count() === 1, 'no note for everyone');
+		await pick('desc:tooltip'); await p.waitForTimeout(800);
+		expect(/"desc":"tooltip"/.test(sql("SELECT definition FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_hv'")), 'everyone: layout not changed');
+		expect(await p.locator('#nuHomeToast .alert button').count() >= 1, 'no Undo toast');
+		await p.click('#nuHomeViewBtn'); await p.waitForTimeout(200); await panel();
+		expect(await p.getAttribute('#nuHomeViewPanel [data-f="target:me"]', 'aria-pressed') === 'true', '"Everyone" was remembered');
+		// tooltip mode: hovering a tile shows its description
+		await p.click('#nuHomeViewBtn'); await p.waitForTimeout(200);
+		await p.hover('[data-nu-tile="users"]'); await p.waitForTimeout(1200);
+		expect(await p.locator('#nuHomeTip').isVisible() && /\S/.test(await p.locator('#nuHomeTip').textContent()), 'no tooltip');
+		// Customise keeps the view
+		await p.mouse.move(0, 0);
+		await p.click('#nuHomeCustomize'); await p.waitForTimeout(400);
+		await Promise.all([p.waitForNavigation(), p.click('#nuHomeSave')]); await p.waitForLoadState('networkidle');
+		expect(/"desc":"tooltip"/.test(sql("SELECT definition FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_hv'")), 'Customise lost the view');
+		// invalid payloads are cleaned or refused
+		let r = await post({ action: 'view_me', view: { style: 'bogus', desc: 'auto', tabStyle: { t_a: 'cards' } }, sizes: { phone: { nav: 'x' }, watch: { style: 'list' } } });
+		expect(r.j.ok && JSON.stringify(r.j.overlay.view) === '{"desc":"auto"}' && !Object.keys(r.j.overlay.sizes).length, 'view_me not cleaned: ' + JSON.stringify(r.j));
+		r = await post({ action: 'view_me', view: { desc: 'x'.repeat(10000) } });
+		expect(r.status === 400 && !r.j.ok, 'a 10 KB view was taken: ' + JSON.stringify(r));
+		r = await post({ action: 'view_layout', view: { style: 'nope', tabStyle: { t_missing: 'cards', t_a: 'panels' } } });
+		const d = JSON.parse(sql("SELECT definition FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_hv'")).view;
+		expect(r.j.ok && d.style === 'large' && JSON.stringify(d.tabStyle) === '{"t_a":"panels"}', 'view_layout not cleaned: ' + JSON.stringify(d));
+		await post({ action: 'view_me_clear' });
+		// a user with an admin role but without "Start page layout": own view only, the shared layout stays; view_layout → 403
+		sql("UPDATE zzzzsys_user SET sus_json = NULL WHERE zzzzsys_user_id = '" + uid + "'");    // no own layout choice (put back below)
+		sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('listview_defaults', '{\"home\":\"e2e_hv\"}') ON DUPLICATE KEY UPDATE setting_value = JSON_SET(COALESCE(NULLIF(setting_value, ''), '{}'), '$.home', 'e2e_hv')");
+		sql("INSERT INTO zzzzsys_nunext_admin_role (zzzzsys_nunext_admin_role_id, code, name, rights, sort_order) VALUES ('e2e_vrole', 'e2ev', 'E2E view role', '{\"securitycheck\":\"view\"}', 99)");
+		sql("INSERT INTO zzzzsys_nunext_admin_user (zzzzsys_nunext_admin_user_id, role_id) VALUES ('" + uid + "', 'e2e_vrole')");
+		const before = sql("SELECT definition FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_hv'");
+		const pa = await login('sample_anna', UPW);
+		await open(pa, 'index.php?p=home');
+		await pa.click('#nuHomeViewBtn'); await pa.waitForTimeout(300);
+		expect(await pa.locator('#nuHomeViewPanel [data-f="target:all"]').count() === 0 && await pa.locator('#nuHomeCustomize').count() === 0, 'a user without the right may write the layout');
+		await pa.click('#nuHomeViewPanel [data-f="style:launcher"]'); await pa.waitForTimeout(800);
+		expect(sql("SELECT definition FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_hv'") === before, 'the user changed the shared layout');
+		expect(/NUNEXT_HOME_VIEW.*launcher/.test(sql("SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'")), 'own view not in sus_json');
+		await open(pa, 'index.php?p=home');
+		expect(await pa.evaluate(() => nuHome.view.style) === 'launcher', 'own view not shown again');
+		const r2 = await pa.evaluate(async () => { const D = JSON.parse(document.getElementById('nuHomeData').textContent);
+			return (await fetch(D.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf }, body: JSON.stringify({ action: 'view_layout', view: { style: 'table' } }) })).status; });
+		expect(r2 === 403, 'view_layout without the right: ' + r2);
+		await pa.click('#nuHomeViewBtn'); await pa.waitForTimeout(300);
+		await pa.click('#nuHomeViewPanel [data-f="undomine"]'); await pa.waitForTimeout(600);
+		expect(!/launcher/.test(sql("SELECT COALESCE(sus_json, '') FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'")), 'Undo my changes kept the own view');
+		await pa.context().close();
+		expect(errs.length === 0, 'CSP: ' + errs.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_admin_user WHERE role_id = 'e2e_vrole'; DELETE FROM zzzzsys_nunext_admin_role WHERE zzzzsys_nunext_admin_role_id = 'e2e_vrole'");
+		sql("UPDATE zzzzsys_user SET sus_json = " + (ujson && ujson !== 'NULL' ? "UNHEX('" + ujson + "')" : 'NULL') + " WHERE zzzzsys_user_id = '" + uid + "'");
+		const ids = keepIds && keepIds !== 'NULL' ? keepIds.split(',') : [];
+		sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'home'" + (ids.length ? " AND zzzzsys_nunext_list_view_id NOT IN ('" + ids.join("','") + "')" : ''));
+		if (keepDefs && keepDefs !== 'NULL') for (const row of Buffer.from(keepDefs, 'hex').toString('utf8').split('\x02')) {
+			const [id, def] = row.split('\x01');
+			sql("UPDATE zzzzsys_nunext_list_view SET definition = UNHEX('" + Buffer.from(def, 'utf8').toString('hex') + "') WHERE zzzzsys_nunext_list_view_id = '" + id + "'");
+		}
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('listview_ga', 'listview_defaults', 'home_view_ga')");
+		if (keepSet && keepSet !== 'NULL') for (const row of Buffer.from(keepSet, 'hex').toString('utf8').split('\x02')) {
+			const [id, v] = row.split('\x01');
+			sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('" + id + "', UNHEX('" + Buffer.from(v, 'utf8').toString('hex') + "'))");
+		}
+	}
 };
 
 T.home_profiles = async (s) => {                  // 0.8.385: Customise → Start from (profiles, Undo, Done) and Save as → Based on
@@ -918,7 +1071,8 @@ T.home_profiles = async (s) => {                  // 0.8.385: Customise → Star
 	const shown = (await visible()).sort().join(',');
 	expect(shown === 'debug,forms,procedures,reports,settings,users', 'Minimal shows ' + shown);
 	// Save as → Based on "Users & security": a new layout, the current one stays
-	await p.evaluate(() => document.querySelector('[data-nu-layout-act="saveas"]').click());
+	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300);           // Save as: in the View panel (0.8.420)
+	await p.click('#nuHomeViewPanel [data-f="saveas"]');
 	await p.waitForSelector('#nuHlBase', { state: 'visible' });
 	await p.selectOption('#nuHlBase', 'security');
 	expect(await p.inputValue('#nuHlName') !== '' && await p.locator('.nuHlBaseInfo').textContent() !== '', 'Based on: no name / description');
@@ -1396,7 +1550,7 @@ nuHome.on('tile', function () { throw new Error('E2E js boom'); });`);
 		await p.click('[data-nu-tile="x_e2e_tile"]'); await p.waitForTimeout(300);
 		const st = await p.evaluate(() => ({ url: location.search, ready: window.__ready, one: window.__one, dyn: window.__dyn, clicked: window.__clicked, search: window.__search,
 			badge: document.querySelector('[data-nu-tile="users"] .nuHomeBadge')?.textContent, hint: document.querySelector('[data-nu-tile="access"] .nuHomeHint')?.textContent,
-			notes: document.querySelector('[data-nu-tile="notes"]') ? document.querySelector('[data-nu-tile="notes"]').closest('.row > *, .nuHomeList > *').hidden : true,
+			notes: document.querySelector('[data-nu-tile="notes"]') ? document.querySelector('[data-nu-tile="notes"]').closest('.nuHomeTileWrap').hidden : true,
 			toasts: [...document.querySelectorAll('#nuHomeToast .alert')].filter(a => /E2E js boom/.test(a.textContent)).length }));
 		expect(/tiles=1/.test(st.url) && st.clicked === 1 && st.dyn === 'dynamic/page/x_e2e' && st.ready > 5 && st.one, 'API: ' + JSON.stringify(st));
 		expect(st.badge === 'JS 5' && st.hint === 'JS hint' && st.notes === true && /^:.*x_e2e_tile/.test(st.search || ''), 'tile changes: ' + JSON.stringify(st));

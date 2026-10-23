@@ -297,6 +297,9 @@ $title = t('ins_title');
 $reqs = NuInstall::requirements();
 $err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback">' . h($errors[$k]) . '</div>' : '';
+// required fields (0.8.421): a red star after the label (screen readers: the required attribute), a legend above the fields
+$req = ' <span class="text-danger" aria-hidden="true" title="' . h(t('val_legend_required')) . '">*</span>';
+$reqLegend = '<p class="small text-body-secondary mb-3"><span class="text-danger" aria-hidden="true">*</span> ' . h(t('val_legend_required')) . '</p>';
 NuBranding::$off = true;                              // no branding in the installer (database not ready)
 nu_head($title);
 ?>
@@ -359,9 +362,9 @@ nu_head($title);
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="next">
 				<?php if ($needsToken && !$S['auth']): ?>
 					<?php if ($token !== null): ?>
-						<label class="form-label fw-semibold" for="token"><?= h(t('ins_token')) ?></label>
+						<label class="form-label fw-semibold" for="token"><?= h(t('ins_token')) ?><?= $req ?></label>
 						<p class="small text-body-secondary mb-2"><?= h(t('ins_token_hint')) ?> <code class="text-break"><?= h(NuInstall::tokenFile()) ?></code></p>
-						<input class="form-control font-monospace<?= $err('token') ?>" id="token" name="token" autocomplete="off" spellcheck="false" autofocus><?= $fb('token') ?>
+						<input class="form-control font-monospace<?= $err('token') ?>" id="token" name="token" autocomplete="off" spellcheck="false" autofocus required><?= $fb('token') ?>
 						<p class="small text-body-secondary mt-2 mb-0" id="insAllowAlt"><?= h(t('ins_allow_alt')) ?> <code class="text-break"><?= h(NU_ROOT . '/install.allow') ?></code></p>
 					<?php else: ?>
 						<div class="alert alert-info small<?= isset($errors['token']) ? ' border-danger' : '' ?>"><?= h(t('ins_allow_hint')) ?> <code class="text-break"><?= h(NU_ROOT . '/install.allow') ?></code></div>
@@ -377,15 +380,16 @@ nu_head($title);
 			<p class="text-body-secondary small"><?= h(t($S['from_nub'] ? 'ins_db_from_nub' : 'ins_db_text')) ?></p>
 			<form method="post" action="<?= h(nu_url('install', ['step' => 'db'])) ?>" id="insDbForm" novalidate>
 				<?= nu_csrf_field() ?>
+				<?= $reqLegend ?>
 				<div class="row g-3">
 					<div class="col-sm-5"><label class="form-label" for="type"><?= h(t('ins_db_type')) ?></label>
 						<select class="form-select" id="type" name="type">
 							<option value="mysql"<?= $d['type'] === 'mysql' ? ' selected' : '' ?>>MySQL / MariaDB</option>
 							<option value="sqlsrv"<?= $d['type'] === 'sqlsrv' ? ' selected' : '' ?><?= extension_loaded('pdo_sqlsrv') ? '' : ' disabled' ?>>Microsoft SQL Server</option>
 						</select></div>
-					<div class="col-sm-5"><label class="form-label" for="host"><?= h(t('ins_db_host')) ?></label><input class="form-control" id="host" name="host" value="<?= h($d['host']) ?>" required></div>
+					<div class="col-sm-5"><label class="form-label" for="host"><?= h(t('ins_db_host')) ?><?= $req ?></label><input class="form-control" id="host" name="host" value="<?= h($d['host']) ?>" required></div>
 					<div class="col-sm-2"><label class="form-label" for="port"><?= h(t('ins_db_port')) ?></label><input class="form-control" id="port" name="port" inputmode="numeric" value="<?= h($d['port']) ?>"></div>
-					<div class="col-sm-4"><label class="form-label" for="name"><?= h(t('ins_db_name')) ?></label><input class="form-control" id="name" name="name" value="<?= h($d['name']) ?>" required></div>
+					<div class="col-sm-4"><label class="form-label" for="name"><?= h(t('ins_db_name')) ?><?= $req ?></label><input class="form-control" id="name" name="name" value="<?= h($d['name']) ?>" required></div>
 					<div class="col-sm-4"><label class="form-label" for="user"><?= h(t('ins_db_user')) ?></label><input class="form-control" id="user" name="user" value="<?= h($d['user']) ?>" autocomplete="off"></div>
 					<div class="col-sm-4"><label class="form-label" for="password"><?= h(t('ins_db_password')) ?></label>
 						<input class="form-control" type="password" id="password" name="password" autocomplete="new-password" placeholder="<?= $d['password'] !== '' ? '••••••••' : '' ?>">
@@ -461,15 +465,16 @@ nu_head($title);
 			<form method="post" action="<?= h(nu_url('install', ['step' => 'admin'])) ?>" novalidate>
 				<?= nu_csrf_field() ?>
 				<div class="row g-3">
-					<div class="col-sm-6"><label class="form-label" for="user"><?= h(t('ins_admin_user')) ?></label><input class="form-control<?= $err('user') ?>" id="user" name="user" value="<?= h($a['user']) ?>" autocomplete="username" required><?= $fb('user') ?></div>
-					<div class="col-sm-6"><label class="form-label" for="email"><?= h(t('ins_admin_email')) ?></label><input class="form-control<?= $err('email') ?>" type="email" id="email" name="email" value="<?= h($a['email']) ?>"><?= $fb('email') ?></div>
-					<div class="col-sm-6"><label class="form-label" for="password"><?= h(t('ins_admin_password')) ?></label>
-						<input class="form-control<?= $err('password') ?>" type="password" id="password" name="password" autocomplete="new-password" minlength="10" placeholder="<?= $a['password'] !== '' ? '••••••••' : '' ?>"><?= $fb('password') ?>
+					<div class="col-12"><?= $reqLegend ?></div>
+					<div class="col-sm-6"><label class="form-label" for="user"><?= h(t('ins_admin_user')) ?><?= $req ?></label><input class="form-control<?= $err('user') ?>" id="user" name="user" value="<?= h($a['user']) ?>" autocomplete="username" required><?= $fb('user') ?></div>
+					<div class="col-sm-6"><label class="form-label" for="email"><?= h(t('ins_admin_email')) ?><span id="insEmailReq"<?= $a['twofa'] ? '' : ' hidden' ?>><?= $req ?></span></label><input class="form-control<?= $err('email') ?>" type="email" id="email" name="email" value="<?= h($a['email']) ?>"<?= $a['twofa'] ? ' required' : '' ?>><?= $fb('email') ?></div>
+					<div class="col-sm-6"><label class="form-label" for="password"><?= h(t('ins_admin_password')) ?><?= $a['password'] === '' ? $req : '' ?></label>
+						<input class="form-control<?= $err('password') ?>" type="password" id="password" name="password" autocomplete="new-password" minlength="10"<?= $a['password'] === '' ? ' required' : '' ?> placeholder="<?= $a['password'] !== '' ? '••••••••' : '' ?>"><?= $fb('password') ?>
 						<div class="progress mt-2 insStrength" role="presentation"><div class="progress-bar" id="insStrength" data-labels="<?= h(json_encode([t('ins_pw_weak'), t('ins_pw_fair'), t('ins_pw_good'), t('ins_pw_strong')])) ?>" data-short="<?= h(t('ins_err_admin_pw')) ?>"></div></div>
 						<div class="form-text" id="insStrengthText"><?= h(t('ins_pw_rules')) ?></div>
 						<?php if ($a['password'] !== ''): ?><input type="hidden" name="keep_password" value="1"><div class="form-text"><?= h(t('ins_keep_password')) ?></div><?php endif; ?></div>
-					<div class="col-sm-6"><label class="form-label" for="password2"><?= h(t('ins_admin_password2')) ?></label>
-						<input class="form-control<?= $err('password2') ?>" type="password" id="password2" name="password2" autocomplete="new-password" data-mismatch="<?= h(t('ins_err_admin_pw2')) ?>"><?= $fb('password2') ?></div>
+					<div class="col-sm-6"><label class="form-label" for="password2"><?= h(t('ins_admin_password2')) ?><?= $a['password'] === '' ? $req : '' ?></label>
+						<input class="form-control<?= $err('password2') ?>" type="password" id="password2" name="password2" autocomplete="new-password"<?= $a['password'] === '' ? ' required' : '' ?> data-mismatch="<?= h(t('ins_err_admin_pw2')) ?>"><?= $fb('password2') ?></div>
 					<div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="twofa" name="twofa" value="1"<?= $a['twofa'] ? ' checked' : '' ?>><label class="form-check-label" for="twofa"><?= h(t('ins_admin_twofa')) ?></label></div></div>
 					<div class="col-12 small text-body-secondary"><i class="bi bi-info-circle me-1"></i><?= h(t('ins_admin_plain')) ?></div>
 				</div>
@@ -485,12 +490,13 @@ nu_head($title);
 			<p class="text-body-secondary small"><?= h(t('ins_options_text')) ?></p>
 			<form method="post" action="<?= h(nu_url('install', ['step' => 'options'])) ?>" novalidate>
 				<?= nu_csrf_field() ?>
+				<?= $reqLegend ?>
 				<div class="row g-3">
 					<div class="col-12"><label class="form-label" for="base_url"><?= h(t('ins_opt_url')) ?></label><input class="form-control<?= $err('base_url') ?>" id="base_url" name="base_url" value="<?= h($o['base_url']) ?>"><?= $fb('base_url') ?>
 						<div class="form-text"><?= h(t('ins_opt_url_hint')) ?></div></div>
-					<div class="col-sm-8"><label class="form-label" for="timezone"><?= h(t('ins_opt_timezone')) ?></label>
+					<div class="col-sm-8"><label class="form-label" for="timezone"><?= h(t('ins_opt_timezone')) ?><?= $req ?></label>
 						<select class="form-select<?= $err('timezone') ?>" id="timezone" name="timezone"><?php foreach (timezone_identifiers_list() as $tz): ?><option<?= $tz === $o['timezone'] ? ' selected' : '' ?>><?= h($tz) ?></option><?php endforeach; ?></select><?= $fb('timezone') ?></div>
-					<div class="col-sm-4"><label class="form-label" for="timeout"><?= h(t('ins_opt_timeout')) ?></label><input class="form-control<?= $err('timeout') ?>" type="number" min="5" max="1440" id="timeout" name="timeout" value="<?= (int)$o['timeout'] ?>"><?= $fb('timeout') ?></div>
+					<div class="col-sm-4"><label class="form-label" for="timeout"><?= h(t('ins_opt_timeout')) ?><?= $req ?></label><input class="form-control<?= $err('timeout') ?>" type="number" min="5" max="1440" id="timeout" name="timeout" value="<?= (int)$o['timeout'] ?>"><?= $fb('timeout') ?></div>
 					<div class="col-12"><label class="form-label" for="nub_path"><?= h(t('ins_opt_nub')) ?></label><input class="form-control<?= $err('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($o['nub_path']) ?>" placeholder="<?= h(dirname(NU_ROOT)) ?>"><?= $fb('nub_path') ?>
 						<div class="form-text"><?= h(t('ins_opt_nub_hint')) ?></div></div>
 					<div class="col-12"><div class="form-check"><input class="form-check-input<?= $err('shared') ?>" type="checkbox" id="shared" name="shared" value="1"<?= $o['shared'] ? ' checked' : '' ?>><label class="form-check-label" for="shared"><?= h(t('ins_opt_shared')) ?></label><?= $fb('shared') ?></div></div>

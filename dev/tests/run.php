@@ -301,6 +301,28 @@ check('update: custom pages never touched', NuUpdate::isProtected('custom/pages/
 	&& !NuUpdate::isProtected('custom/pages/_template/assets/app.js'));
 check('library CVE status: fixed / patched count as dealt with', NuSecurity::cveFixed('fixed in 2.7') && NuSecurity::cveFixed('patched locally 2026-10-23') && NuSecurity::cveFixed('Patched')
 	&& !NuSecurity::cveFixed('open – no fix') && !NuSecurity::cveFixed('unpatched') && !NuSecurity::cveFixed(''));
+// ---------------------------------------------------------------- start page view (NuHome, 0.8.420)
+$lv = NuHome::legacyView(['size' => 'list2', 'display' => 'tabs']);
+check('home view: a layout of before 0.8.420 keeps its look', $lv['style'] === 'list' && $lv['listCols'] === '2' && $lv['nav'] === 'tabs' && $lv['delay'] === 800
+	&& NuHome::compat($lv) === ['list2', 'tabs'] && NuHome::legacyView(['size' => 'listwide'])['listWidth'] === 'full' && NuHome::legacyView([])['style'] === 'large');
+$cv = NuHome::cleanView(['style' => 'bogus', 'desc' => 'hovercard', 'lines' => '3', 'delay' => 5, 'groupColors' => '1', 'x' => 1, 'tabStyle' => ['t_a' => 'panels', 't_z' => 'cards', 't_b' => 'nope'],
+	'sizes' => ['phone' => ['nav' => 'sidebar', 'style' => 'nope'], 'watch' => ['style' => 'list'], 'tablet' => []]], ['t_a' => true, 't_b' => true], false);
+check('home view: cleaned (wrong values → default, unknown keys / tabs / sizes dropped)', $cv['style'] === 'large' && $cv['desc'] === 'hovercard' && $cv['lines'] === 3 && $cv['delay'] === 300
+	&& $cv['groupColors'] === true && !isset($cv['x']) && (array)$cv['tabStyle'] === ['t_a' => 'panels'] && json_encode($cv['sizes']) === '{"phone":{"nav":"sidebar"}}', json_encode($cv));
+$map = ['large' => ['large', 'tabs'], 'cards' => ['large', 'tabs'], 'compact' => ['compact', 'tabs'], 'launcher' => ['compact', 'tabs'], 'panels' => ['list', 'tabs'], 'table' => ['listwide', 'tabs']];
+$okMap = true;
+foreach ($map as $st => $want) $okMap = $okMap && NuHome::compat(['style' => $st, 'nav' => 'sidebar']) === $want;
+check('home view: size / display derived (hook variables, Customise)', $okMap && NuHome::compat(['style' => 'list', 'listCols' => '1', 'listWidth' => 'full', 'nav' => 'none']) === ['listwide', 'groups']
+	&& NuHome::compat(['style' => 'list', 'listCols' => 'auto', 'nav' => 'groups'])[0] === 'list2');
+$oldDef = ['v' => 2, 'display' => 'tabs', 'size' => 'compact', 'tabs' => [['id' => 't_a', 'title' => 'A']], 'groups' => [['id' => 'g_a', 'title' => 'G', 'tab' => 't_a', 'tiles' => ['users'], 'color' => '#ABCDEF']], 'hidden' => [], 'custom' => [], 'fav' => []];
+$c1 = NuHome::clean($oldDef, false)[0];
+$newDef = $c1; $newDef['view'] = ['style' => 'panels', 'nav' => 'sidebar', 'tabStyle' => ['t_a' => 'table', 'g_a' => 'cards'], 'sizes' => ['tablet' => ['style' => 'cards']]];
+$c2 = NuHome::clean($newDef, false)[0];
+check('home view: clean() is stable for old and new layouts', json_encode(NuHome::clean($c1, false)[0]) === json_encode($c1) && json_encode(NuHome::clean($c2, false)[0]) === json_encode($c2)
+	&& $c1['view']['style'] === 'compact' && $c1['groups'][0]['color'] === '#abcdef' && $c2['size'] === 'list' && $c2['display'] === 'tabs' && json_encode($c2['view']['tabStyle']) === '{"t_a":"table"}');
+$ov = NuHome::cleanOverlay(['view' => ['style' => 'cards', 'tabStyle' => ['t_a' => 'list'], 'nav' => 'x'], 'sizes' => ['phone' => ['desc' => 'off'], 'tablet' => ['nav' => 'nope']], 'at' => 'yesterday']);
+check('home view: personal view cleaned', $ov['view'] === ['style' => 'cards'] && $ov['sizes'] === ['phone' => ['desc' => 'off']] && preg_match('/^\d{4}-/', $ov['at']) === 1
+	&& NuHome::cleanOverlay(['view' => ['style' => 'nope']]) === []);
 // ---------------------------------------------------------------- Excel writer (NuXlsx, 0.8.398)
 check('xlsx: column names', NuXlsx::colName(1) === 'A' && NuXlsx::colName(26) === 'Z' && NuXlsx::colName(27) === 'AA' && NuXlsx::colName(16384) === 'XFD'
 	&& NuXlsx::colNumber('AA') === 27 && NuXlsx::range('B3:A1') === [1, 1, 3, 2]);

@@ -7,6 +7,7 @@
 	var me = document.currentScript;
 	var csrf = me ? me.getAttribute('data-csrf') || '' : '';
 	var home = me ? me.getAttribute('data-home') || 'index.php?p=home' : 'index.php?p=home';
+	var bt = me ? me.getAttribute('data-bt') || '' : '';                 // breadcrumb trail back to this page (0.8.422)
 	var inFrame = false;
 	try {
 		inFrame = window.parent !== window && window.parent.location.origin === window.location.origin
@@ -22,7 +23,8 @@
 	}
 
 	function formUrl(code, record) {
-		return 'index.php?p=form&f=' + encodeURIComponent(code) + (record !== undefined && record !== null && record !== '' ? '&r=' + encodeURIComponent(record) : '');
+		return 'index.php?p=form&f=' + encodeURIComponent(code) + (record !== undefined && record !== null && record !== '' ? '&r=' + encodeURIComponent(record) : '')
+			+ (/^[0-9a-f]{12}$/.test(bt) ? '&bt=' + bt : '');
 	}
 
 	var lastHeight = 0;
@@ -77,7 +79,7 @@
 
 		openForm: function (code, record, opt) {
 			var target = (opt && opt.target) || 'self';
-			if (post('open', {form: String(code), record: record === undefined || record === null ? '' : String(record), target: target})) return;
+			if (post('open', {form: String(code), record: record === undefined || record === null ? '' : String(record), target: target, bt: bt})) return;
 			if (target === 'tab') window.open(formUrl(code, record), '_blank', 'noopener'); else window.location.href = formUrl(code, record);
 		},
 

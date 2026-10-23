@@ -43,4 +43,8 @@ return [
 	'rd_html_hint' => 'Text in fields and labels is printed as HTML (bold, lists, colors …) – nuBuilder\'s "Use HTML".',
 	'rd_help_text' => 'Drag fields from the left onto a band, or click Field / Text / Box / Line / Image. Bands print in this order: report header (once), page header (every page), group headers, detail (every row), group footers, page footer, report footer.\\nMove objects with the mouse (also into another band) or the arrow keys (Shift = 4 mm, Alt = 0.25 mm); the handles change the size. Shift-click or drag a frame to select several, then use the align buttons.\\nCtrl+Z / Ctrl+Y undo and redo, Ctrl+C / Ctrl+V copy, Ctrl+D duplicates, Del deletes, Ctrl+S saves.\\nFields: a column, SUM(column) or AVERAGE(a, b) – sums are per sort group. Texts may contain #page#, #pages#, #code#, #description#, #nu_date# and every hash variable (e.g. fields of the launch form).\\nA field starting with #B#rrggbb| or #F#rrggbb| gets that background / text color (conditional formatting from the data source).\\nPreview prints the current layout with empty criteria; the layout is stored in nuBuilder\'s format.',
 	'lv_align_center' => 'Center',
+	'home_v_customise_tip' => 'Customize – arrange tiles, groups and tabs',
+	'home_v_fav_row' => 'Favorites',
+	'home_v_group_colors' => 'Color per group',
+	'home_v_icon_mono' => 'Gray',
 ];

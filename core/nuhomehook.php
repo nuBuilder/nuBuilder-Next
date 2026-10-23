@@ -108,12 +108,15 @@ final class NuHomeHook
 		return self::enabled() && $p !== null && (trim($p['php']) !== '' || $p['js'] !== '');
 	}
 
-	/** Hash variables of the hook: the user's ones + ADMIN_ROLE, HOME_LAYOUT, HOME_SIZE, HOME_DISPLAY. */
+	/** Hash variables of the hook: the user's ones + ADMIN_ROLE, HOME_LAYOUT, HOME_SIZE, HOME_DISPLAY, HOME_VIEW (0.8.420: the desktop view as JSON). */
 	public static function hash(array $layout): array
 	{
 		$role = NuAdmin::role();
-		return NuHash::plain([], ['ADMIN_ROLE' => (string)($role['name'] ?? ''), 'HOME_LAYOUT' => (string)(NuHome::current()['name'] ?? ''),
-			'HOME_SIZE' => (string)$layout['size'], 'HOME_DISPLAY' => (string)$layout['display'], 'PROCEDURE_CODE' => self::CODE]);
+		$cur = NuHome::current();
+		$view = NuHome::effectiveView($layout, NuHome::overlay((string)$cur['id']));
+		[$size, $display] = NuHome::compat($view);                  // what this person sees (a personal view changes it too)
+		return NuHash::plain([], ['ADMIN_ROLE' => (string)($role['name'] ?? ''), 'HOME_LAYOUT' => (string)($cur['name'] ?? ''),
+			'HOME_SIZE' => $size, 'HOME_DISPLAY' => $display, 'HOME_VIEW' => (string)json_encode($view, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'PROCEDURE_CODE' => self::CODE]);
 	}
 
 	/** Runs the hook for the start page (or takes the cached result). Errors leave the state empty. */

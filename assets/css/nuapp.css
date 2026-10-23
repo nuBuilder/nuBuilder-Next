@@ -800,24 +800,6 @@ th[aria-sort="descending"] .inspSortBtn::after { content: " \25BC"; font-size: .
 .nuLoginOr::before, .nuLoginOr::after { content: ''; flex: 1; border-top: 1px solid var(--bs-border-color); }
 .nuLoginDemoCustom { max-width: 22rem; margin: 1rem auto 0; }
 
-/* start page (0.8.141): "+" / "▾" on the right of a tile instead of ">" (NuHome::actions) – card and button lift together */
-.nuHomeTileWrap { position: relative; transition: transform .12s ease; }
-.nuHomeTileWrap > .nu-tile:hover { transform: none; }
-.nuHomeTileWrap:not(.nuHomeListRow):hover { transform: translateY(-2px); }
-.nuHomeTileWrap:not(.nuHomeListRow):hover > .nu-tile { box-shadow: 0 .5rem 1.25rem rgba(0, 0, 0, .08) !important; }
-.nuHomeTileWrap:focus-within, .nuHomeTileWrap:has(.dropdown-menu.show) { z-index: 3; }   /* the open menu stays above the next tiles */
-.nuHomeTileWrap > .nuHomeAction { position: absolute; top: 50%; inset-inline-end: .9rem; transform: translateY(-50%); z-index: 2; }
-.nuHomeHasAction > .card-body { padding-inline-end: 3.6rem; }
-.nuHomeCompact > .nuHomeAction { inset-inline-end: .5rem; }
-.nuHomeCompact > .nuHomeHasAction > .card-body { padding-inline-end: 3rem; }
-.nuHomeMenuBtn.dropdown-toggle::after { margin-inline-start: 0; }
-.nuHomeList .nuHomeListRow { padding: 0; }
-.nuHomeListRow:hover { background: var(--bs-list-group-action-hover-bg); }
-.nuHomeListRow > .nuHomeAction { position: static; transform: none; margin-inline-end: .75rem; flex: none; }
-.nuHomeList .nuHomeListLink { padding: .6rem 1rem; color: inherit; min-width: 0; }
-.nuHomeListRow > form { min-width: 0; margin: 0; }   /* POST tile (Database) with ▾: the button gets the same padding as a link row (0.8.317) */
-/* tiles sent as a form (File Manager): no double line between rows – Bootstrap only removes it between adjacent items */
-.nuHomeList > form:not(:first-child) > .list-group-item, .nuHomeList > form + .list-group-item { border-top-width: 0; }
 
 /* a button whose action is blocked (data-nu-info explains why on click) */
 .btn.nuBtnBlocked { opacity: .5; }
@@ -1000,40 +982,15 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .dashPreview { min-height: 6rem; }
 .dashWidgetRow td { vertical-align: middle; }
 
-/* start page (globeadmin), Customize + ▾ at the bottom (0.8.305): on touch screens a target for the thumb – the ▾ at least 48 px wide,
-   both buttons 44 px high */
-@media (max-width: 767.98px), (pointer: coarse) {
-	.nuHomeCustomizeBar .btn { min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; }
-	.nuHomeCustomizeBar #nuHomeSizeMenu { min-width: 3rem; }
-}
 
 /* update page: progress modal while installing (0.8.308) */
 .nuUpdSpinner { width: 3rem; height: 3rem; border-width: .3rem; }
 /* update page, database steps (0.8.308): description and date wrap on narrow screens instead of widening the page */
 .nuUpdStepDesc { flex: 1 1 14rem; min-width: 0; overflow-wrap: anywhere; }
 
-/* start page (0.8.320): on wider screens Customize sits at the top right – its ▾ opens downwards, so the caret points down */
-@media (min-width: 768px) {
-	.nuHomeCustomizeBar .dropup .dropdown-toggle::after { border-top: .3em solid; border-bottom: 0; }
-}
 
-/* start page (0.8.321): grid – search on top, the tiles below; Customize at the bottom on phones, next to the search on wider screens */
-.nuHomeWrap { display: grid; grid-template-columns: minmax(0, 1fr); }
-.nuHomeWrap > .nuHomeSearchRow { grid-row: 1; }
-.nuHomeWrap > #nuHomeView, .nuHomeWrap > #nuHomeEdit { grid-row: 2; min-width: 0; }
-.nuHomeWrap > .nuHomeCustomizeBar { grid-row: 3; }
-@media (min-width: 768px) {
-	.nuHomeWrap { grid-template-columns: minmax(0, 1fr) auto; column-gap: 1rem; }
-	.nuHomeWrap > .nuHomeSearchRow { grid-column: 1; }
-	.nuHomeWrap > .nuHomeCustomizeBar { grid-column: 2; grid-row: 1; align-self: start; }
-	.nuHomeWrap > #nuHomeView, .nuHomeWrap > #nuHomeEdit { grid-column: 1 / -1; }
-}
 .nuHomeSearchBox { max-width: 26rem; }
 .nuHomeSearchRow .nuHomeList { max-width: 550px; }
-/* while searching: every tab with hits is shown, the tab titles are hidden */
-#nuHomeView.nuHomeSearching .nuHomeTabs { display: none; }
-#nuHomeView.nuHomeSearching .tab-pane { display: none; opacity: 1; }
-#nuHomeView.nuHomeSearching .tab-pane.nuHomeSearchHit { display: block; }
 /* pin in a tile's ▾ menu */
 .nuPinItem .dropdown-item { padding-inline-end: .5rem; }
 .nuPinBtn { color: var(--bs-secondary-color); border: 0; padding: .15rem .5rem; margin-inline-end: .35rem; line-height: 1; }
@@ -1112,10 +1069,7 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuAudOld { color: var(--bs-secondary-color); }
 
 
-/* start page favourites (0.8.353): "Favourites only" hides the other tiles and groups without favourites (not while searching) */
-.nuHomeFavOnly:not(.nuHomeSearching) .row > :not(:has([data-nu-fav])),
-.nuHomeFavOnly:not(.nuHomeSearching) .nuHomeList > :not([data-nu-fav]):not(:has([data-nu-fav])),
-.nuHomeFavOnly:not(.nuHomeSearching) .nuHomeGroup:not(:has([data-nu-fav])) { display: none !important; }
+/* start page favourites (0.8.353): "Favourites only" – assets/css/nuhome.css (0.8.420) */
 .nuHomeFavBtn.active, .nuHomeFavBtn.active:hover { color: #e0a800; background: var(--bs-body-bg); border-color: var(--bs-border-color); }
 .nuHeToolFav, .nuHeToolFav:hover { color: #e0a800 !important; }
 

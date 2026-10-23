@@ -81,7 +81,7 @@
 				break;
 			case 'open':
 				if (typeof d.form !== 'string' || !/^[\w-]{1,64}$/.test(d.form)) break;
-				var url = formUrl(d.form, typeof d.record === 'string' ? d.record : '');
+				var url = formUrl(d.form, typeof d.record === 'string' ? d.record : '') + (typeof d.bt === 'string' && /^[0-9a-f]{12}$/.test(d.bt) ? '&bt=' + d.bt : '');   // Back → the page (0.8.422)
 				if (d.target === 'tab') window.open(url, '_blank', 'noopener'); else window.location.href = url;
 				break;
 			case 'toast':

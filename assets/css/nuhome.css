@@ -1,0 +1,408 @@
+/* nuBuilder Next – start page of the globeadmin / admin roles (0.8.420): tile styles, navigation, descriptions and the View panel.
+   pages/nuhome.php draws every tile once with the same markup; assets/js/nuhome.js switches the view with classes:
+   on #nuHomeView  nuHomeNav-<groups|tabs|sidebar|none> nuHomeDesc-<auto|inline|tooltip|hovercard|info|off> nuHomeDens-<…> nuHomeIcn-<…>
+                   nuHomeGcol nuHomeNoBadges nuHomeNoActions nuHomeListCols-<1|2|auto> nuHomeListFull, --nu-lines
+   style class     nuHomeStyle-<large|cards|compact|list|launcher|panels|table> on .nuHomeMain (groups / no groups) or on each .nuHomePane
+                   (tabs / sidebar – a tab may have its own style).
+   Colours: --nu-gc = colour of the group (section, set from data-nu-gcolor), --nu-c = own colour of a tile (data-nu-color). No inline
+   style attributes (CSP): the script sets the variables with style.setProperty. Responsive rules: container queries on .nuHomeWrap. */
+
+.nuHomeWrap { container-type: inline-size; }
+.nuHomeMain { container-type: inline-size; min-width: 0; }   /* tile styles measure the room they really have (sidebar next to them) */
+#nuHomeView { --nu-gap: 1rem; --nu-pad: 1.1rem; --nu-sec: 1.75rem; --nu-lines: 2; --nu-star: #e0a800; --nu-radius: .75rem; }
+#nuHomeView.nuHomeDens-cozy { --nu-gap: .7rem; --nu-pad: .8rem; --nu-sec: 1.35rem; }
+#nuHomeView.nuHomeDens-dense { --nu-gap: .45rem; --nu-pad: .55rem; --nu-sec: 1rem; }
+
+/* ------------------------------------------------------------------ search row: search, favourites only, View, Customise */
+.nuHomeSearchRow { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
+.nuHomeSearchRow .nuHomeSearchBox { flex: 0 1 34rem; min-width: 0; max-width: none; }
+.nuHomeTools { display: flex; gap: .5rem; margin-inline-start: auto; flex: none; }
+.nuHomeTools .btn { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
+#nuHomeViewBtn[aria-expanded="true"] { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: var(--bs-primary-border-subtle); }
+@container (max-width: 640px) {
+	.nuHomeBtnTx { display: none; }
+	.nuHomeSearchRow .nuHomeSearchBox { flex: 1 1 auto; }
+}
+
+/* ------------------------------------------------------------------ rows on top: favourites, recently used */
+.nuHomeStrip { margin-bottom: var(--nu-sec); }
+.nuHomeStrip .nuHomeGroupTitle { display: flex; align-items: center; gap: .45rem; }
+.nuHomeStripStar { color: var(--nu-star); }
+.nuHomeChips { display: flex; flex-wrap: wrap; gap: .5rem; }
+.nuHomeChips > .nuHomeTileForm { display: contents; }
+.nuHomeChip { display: inline-flex; align-items: center; gap: .5rem; max-width: 100%; padding: .3rem .85rem .3rem .3rem; font: inherit; font-size: .9rem; color: var(--bs-body-color);
+	text-decoration: none; background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: 999px; box-shadow: var(--bs-box-shadow-sm); cursor: pointer; }
+.nuHomeChip:hover, .nuHomeChip:focus-visible { color: var(--bs-body-color); border-color: color-mix(in srgb, var(--nu-gc, var(--bs-primary)) 50%, transparent); }
+#nuHomeView .nuHomeChip .nuHomeIcon { width: 1.7rem; height: 1.7rem; font-size: .85rem; border-radius: 50%; }
+.nuHomeChipLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#nuHomeView.nuHomeSearching .nuHomeStrip, #nuHomeView.nuHomeFavOnly .nuHomeStrip[data-nu-strip="fav"] { display: none !important; }
+
+/* ------------------------------------------------------------------ groups, tabs, sidebar */
+.nuHomeGroup { margin-bottom: var(--nu-sec); }
+.nuHomeGroupHead { display: flex; align-items: center; gap: .45rem; margin-bottom: .65rem; }
+.nuHomeGroupHead .nuHomeGroupTitle { margin: 0; }
+.nuHomeGDot { display: none; flex: none; width: .55rem; height: .55rem; border-radius: 50%; background: var(--nu-gc, var(--bs-secondary-color)); }
+#nuHomeView.nuHomeGcol .nuHomeGDot { display: inline-block; }
+.nuHomeGCount { display: none; flex: none; font-size: .72rem; font-weight: 600; line-height: 1.5; padding: 0 .45rem; border-radius: 999px; color: var(--bs-secondary-color); background: var(--bs-secondary-bg); }
+#nuHomeView .nuHomeTabs { margin-bottom: 1.25rem; }
+#nuHomeView:not(.nuHomeNav-tabs) .nuHomeTabs { display: none; }
+#nuHomeView.nuHomeNav-groups .nuHomePane, #nuHomeView.nuHomeNav-none .nuHomePane { display: contents; }
+#nuHomeView.nuHomeNav-tabs .nuHomePane:not(.nuHomeActive) { display: none; }
+#nuHomeView.nuHomeNav-tabs .nuHomePane[data-nu-plain] .nuHomeGroupHead { display: none; }   /* each group a tab of its own: the tab shows the title */
+#nuHomeView.nuHomeNav-none .nuHomeGroup, #nuHomeView.nuHomeNav-none .nuHomeTiles { display: contents; }
+#nuHomeView.nuHomeNav-none .nuHomeGroupHead { display: none; }
+
+.nuHomeSide, .nuHomeSideSelect { display: none; }
+#nuHomeView.nuHomeNav-sidebar .nuHomeBody { display: grid; grid-template-columns: 14.5rem minmax(0, 1fr); gap: 1.75rem; align-items: start; }
+#nuHomeView.nuHomeNav-sidebar .nuHomeSide { display: flex; flex-direction: column; gap: .1rem; position: sticky; top: calc(var(--nu-nav-h, 0px) + 1rem); }
+.nuHomeSideHead { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--bs-secondary-color); padding: .9rem .7rem .35rem; }
+.nuHomeSideHead:first-child { padding-top: 0; }
+.nuHomeSideItem { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; font: inherit; text-align: start; color: var(--bs-body-color); background: none; border: 0; border-radius: .5rem; }
+.nuHomeSideItem .nuHomeSideLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuHomeSideItem .nuHomeGDot { display: inline-block; }
+.nuHomeSideItem .nuHomeGCount { display: inline-block; }
+.nuHomeSideItem:hover { background: var(--bs-tertiary-bg); }
+.nuHomeSideItem.active { font-weight: 600; background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); }
+#nuHomeView.nuHomeGcol .nuHomeSideItem.active { background: color-mix(in srgb, var(--nu-gc) 14%, var(--nu-surface, var(--bs-body-bg))); color: var(--bs-body-color); }
+#nuHomeView.nuHomeNav-sidebar .nuHomeGroup:not(.nuHomeSideOn), #nuHomeView.nuHomeNav-sidebar .nuHomePane:not(:has(.nuHomeSideOn)) { display: none; }
+#nuHomeView.nuHomeNav-sidebar .nuHomeGroupHead .nuHomeGroupTitle { font-size: 1.15rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--bs-body-color); }
+#nuHomeView.nuHomeNav-sidebar .nuHomeGroupHead .nuHomeGCount { display: inline-block; }
+@container (max-width: 760px) {
+	#nuHomeView.nuHomeNav-sidebar .nuHomeBody { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+	#nuHomeView.nuHomeNav-sidebar .nuHomeSide { display: none; }
+	#nuHomeView.nuHomeNav-sidebar .nuHomeSideSelect { display: block; }
+}
+
+/* ------------------------------------------------------------------ one tile (all styles) */
+#nuHomeView .nuHomeTileForm { display: contents; }
+.nuHomeTileWrap { position: relative; display: flex; align-items: stretch; min-width: 0; --nu-ea: 0rem; --nu-ei: 0rem; }
+.nuHomeTileWrap:has(> .nuHomeAction) { --nu-ea: 2.6rem; }
+#nuHomeView.nuHomeNoActions .nuHomeTileWrap { --nu-ea: 0rem; }
+#nuHomeView.nuHomeDesc-info .nuHomeTileWrap { --nu-ei: 1.9rem; }
+.nuHomeTileWrap:focus-within, .nuHomeTileWrap:has(.dropdown-menu.show) { z-index: 3; }   /* an open ▾ menu stays above the next tiles */
+.nuHomeTile { flex: 1 1 auto; display: flex; align-items: center; gap: .95rem; min-width: 0; margin: 0; padding: 0; font: inherit; text-align: start; color: var(--bs-body-color);
+	text-decoration: none; background: none; border: 0; cursor: pointer; }
+.nuHomeTile:hover, .nuHomeTile:focus { color: var(--bs-body-color); }
+.nuHomeTile:focus-visible { outline: 0; box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .4) !important; }
+.nuHomeText { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.nuHomeLabelRow { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .4rem; min-width: 0; }
+.nuHomeLabel { min-width: 0; overflow-wrap: anywhere; }
+.nuHomeFavMark { flex: none; font-size: .62rem; color: var(--nu-star); }
+.nuHomeHint { color: var(--bs-secondary-color); font-size: .84rem; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--nu-lines); line-clamp: var(--nu-lines); }
+.nuHomeHint:empty { display: none; }
+.nuHomeGroupName { display: none; }
+.nuHomeKind { flex: none; color: var(--bs-secondary-color); }
+.nuHomeBadge { flex: none; font-size: .7rem; font-weight: 600; line-height: 1.2; padding: .18rem .5rem; border-radius: 999px; }
+#nuHomeView.nuHomeNoBadges .nuHomeBadge { display: none; }
+.nuHomeAction { position: absolute; z-index: 2; top: 50%; inset-inline-end: .85rem; transform: translateY(-50%); }
+#nuHomeView.nuHomeNoActions .nuHomeAction { display: none; }
+.nuHomeMenuBtn.dropdown-toggle::after { margin-inline-start: 0; }
+.nuHomeInfo { display: none; position: absolute; z-index: 2; top: 50%; inset-inline-end: calc(.7rem + var(--nu-ea)); transform: translateY(-50%); place-items: center;
+	width: 1.6rem; height: 1.6rem; padding: 0; font-size: .95rem; line-height: 1; color: var(--bs-secondary-color); background: none; border: 0; border-radius: 50%; }
+.nuHomeInfo:hover, .nuHomeInfo:focus-visible { color: var(--bs-primary); background: var(--bs-tertiary-bg); }
+#nuHomeView.nuHomeDesc-info .nuHomeInfo { display: inline-grid; }
+/* icons: soft (Bootstrap's look), solid, outline, grey, plain; --nu-c = own colour of the tile, --nu-gc = colour of the group */
+#nuHomeView .nuHomeIcon { --nu-ic: var(--nu-c, var(--bs-primary)); flex: none; transition: transform .12s ease; }
+#nuHomeView.nuHomeGcol .nuHomeIcon { --nu-ic: var(--nu-c, var(--nu-gc, var(--bs-primary))); }
+#nuHomeView.nuHomeIcn-soft .nuHomeIcon[data-nu-color], #nuHomeView.nuHomeIcn-soft.nuHomeGcol .nuHomeIcon {
+	background: color-mix(in srgb, var(--nu-ic) 13%, var(--nu-surface, var(--bs-body-bg))); color: color-mix(in srgb, var(--nu-ic) 85%, var(--bs-body-color)); }
+[data-bs-theme="dark"] #nuHomeView.nuHomeIcn-soft .nuHomeIcon[data-nu-color], [data-bs-theme="dark"] #nuHomeView.nuHomeIcn-soft.nuHomeGcol .nuHomeIcon {
+	background: color-mix(in srgb, var(--nu-ic) 24%, var(--nu-surface, var(--bs-body-bg))); color: color-mix(in srgb, var(--nu-ic) 60%, #fff); }
+#nuHomeView.nuHomeIcn-solid .nuHomeIcon { background: var(--nu-ic); color: #fff; }
+[data-bs-theme="dark"] #nuHomeView.nuHomeIcn-solid .nuHomeIcon { background: color-mix(in srgb, var(--nu-ic) 80%, #000); }
+#nuHomeView.nuHomeIcn-outline .nuHomeIcon { background: transparent; color: var(--nu-ic); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--nu-ic) 50%, transparent); }
+[data-bs-theme="dark"] #nuHomeView.nuHomeIcn-outline .nuHomeIcon { color: color-mix(in srgb, var(--nu-ic) 60%, #fff); }
+#nuHomeView.nuHomeIcn-mono .nuHomeIcon { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); box-shadow: none; }
+#nuHomeView.nuHomeIcn-none .nuHomeIcon { background: transparent; color: var(--nu-ic); box-shadow: none; width: auto; min-width: 1.75rem; }
+[data-bs-theme="dark"] #nuHomeView.nuHomeIcn-none .nuHomeIcon { color: color-mix(in srgb, var(--nu-ic) 60%, #fff); }
+
+/* descriptions: hidden ones stay readable for screen readers */
+#nuHomeView:is(.nuHomeDesc-tooltip, .nuHomeDesc-hovercard, .nuHomeDesc-info, .nuHomeDesc-off) .nuHomeHint,
+#nuHomeView.nuHomeDesc-auto :is(.nuHomeStyle-compact, .nuHomeStyle-launcher, .nuHomeStyle-panels) .nuHomeHint {
+	position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important;
+	clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+
+/* card look shared by several styles */
+:is(.nuHomeStyle-large, .nuHomeStyle-cards, .nuHomeStyle-compact) .nuHomeTile {
+	background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: var(--nu-radius); box-shadow: var(--bs-box-shadow-sm);
+	transition: box-shadow .12s ease, border-color .12s ease; }
+:is(.nuHomeStyle-large, .nuHomeStyle-cards, .nuHomeStyle-compact) .nuHomeTileWrap { transition: transform .12s ease; }
+:is(.nuHomeStyle-large, .nuHomeStyle-cards, .nuHomeStyle-compact) .nuHomeTileWrap:hover { transform: translateY(-2px); }
+:is(.nuHomeStyle-large, .nuHomeStyle-cards, .nuHomeStyle-compact) .nuHomeTileWrap:hover > .nuHomeTile,
+:is(.nuHomeStyle-large, .nuHomeStyle-cards, .nuHomeStyle-compact) .nuHomeTileWrap:hover > .nuHomeTileForm > .nuHomeTile { box-shadow: 0 .5rem 1.25rem rgba(0, 0, 0, .08); }
+#nuHomeView.nuHomeGcol :is(.nuHomeStyle-large, .nuHomeStyle-cards, .nuHomeStyle-compact) .nuHomeTileWrap:hover .nuHomeTile { border-color: color-mix(in srgb, var(--nu-gc) 45%, transparent); }
+
+/* Large: icon, name and description side by side */
+.nuHomeStyle-large .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-large { display: grid; gap: var(--nu-gap); grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr)); }
+.nuHomeStyle-large .nuHomeTile { min-height: 5.25rem; padding: var(--nu-pad); padding-inline-end: calc(var(--nu-pad) + var(--nu-ea) + var(--nu-ei)); }
+.nuHomeStyle-large .nuHomeLabel { font-size: 1.15rem; line-height: 1.25; }
+.nuHomeStyle-large .nuHomeHint { margin-top: .2rem; }
+#nuHomeView.nuHomeDens-dense .nuHomeStyle-large .nuHomeTile { min-height: 4.25rem; }
+#nuHomeView.nuHomeDens-dense .nuHomeStyle-large .nuHomeIcon { width: 2.5rem; height: 2.5rem; font-size: 1.15rem; }
+
+/* Cards: icon on top, name, short description */
+.nuHomeStyle-cards .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-cards { display: grid; gap: var(--nu-gap); grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
+.nuHomeStyle-cards .nuHomeTile { flex-direction: column; align-items: flex-start; gap: 0; min-height: 8.25rem; padding: var(--nu-pad); }
+.nuHomeStyle-cards .nuHomeIcon { width: 2.6rem; height: 2.6rem; font-size: 1.2rem; }
+.nuHomeStyle-cards .nuHomeText { width: 100%; margin-top: .75rem; }
+.nuHomeStyle-cards .nuHomeLabel { font-weight: 600; line-height: 1.25; }
+.nuHomeStyle-cards .nuHomeHint { margin-top: .25rem; font-size: .82rem; }
+.nuHomeStyle-cards :is(.nuHomeAction, .nuHomeInfo) { top: .6rem; transform: none; }
+.nuHomeStyle-cards .nuHomeAction { inset-inline-end: .6rem; }
+.nuHomeStyle-cards .nuHomeInfo { inset-inline-end: calc(.55rem + var(--nu-ea)); }
+.nuHomeStyle-cards .nuHomeKind { position: absolute; top: .85rem; inset-inline-end: .85rem; }
+#nuHomeView.nuHomeDens-dense .nuHomeStyle-cards .nuHomeTile { min-height: 6.5rem; }
+
+/* Compact: name only */
+.nuHomeStyle-compact .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-compact { display: grid; gap: calc(var(--nu-gap) * .75); grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); }
+.nuHomeStyle-compact .nuHomeTile { gap: .6rem; min-height: 3.1rem; padding: .55rem .7rem; padding-inline-end: calc(.7rem + var(--nu-ea) * .9 + var(--nu-ei)); }
+.nuHomeStyle-compact .nuHomeIcon { width: 2rem; height: 2rem; font-size: 1rem; }
+.nuHomeStyle-compact .nuHomeLabelRow { flex-wrap: nowrap; }
+.nuHomeStyle-compact .nuHomeLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95rem; }
+.nuHomeStyle-compact .nuHomeHint { font-size: .74rem; -webkit-line-clamp: min(var(--nu-lines), 2); line-clamp: min(var(--nu-lines), 2); }
+.nuHomeStyle-compact .nuHomeAction { inset-inline-end: .45rem; }
+.nuHomeStyle-compact .nuHomeAction .btn { --bs-btn-padding-y: .2rem; --bs-btn-padding-x: .45rem; }
+.nuHomeStyle-compact .nuHomeInfo { inset-inline-end: calc(.45rem + var(--nu-ea) * .9); }
+#nuHomeView.nuHomeDens-dense .nuHomeStyle-compact .nuHomeTile { min-height: 2.6rem; padding-block: .35rem; }
+
+/* badges as a dot where there is no room (the text stays for screen readers and as title) */
+:is(.nuHomeStyle-compact, .nuHomeStyle-launcher, .nuHomeStyle-panels) .nuHomeBadge { width: .55rem; height: .55rem; padding: 0; font-size: 0; line-height: 0; }
+
+/* List: rows – 1 column (readable or full width), 2 columns or as many as fit */
+.nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-list {
+	display: flex; flex-direction: column; max-width: 560px; overflow: hidden; background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent);
+	border-radius: .6rem; box-shadow: var(--bs-box-shadow-sm); }
+#nuHomeView.nuHomeListFull .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListFull.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { max-width: none; }
+.nuHomeStyle-list .nuHomeTileWrap { align-items: center; border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuHomeStyle-list .nuHomeTileWrap:last-child { border-bottom: 0; }
+.nuHomeStyle-list .nuHomeTileWrap:hover { background: var(--bs-tertiary-bg); }
+.nuHomeStyle-list .nuHomeTile { gap: .85rem; padding: calc(var(--nu-pad) * .55) 1rem; }
+.nuHomeStyle-list .nuHomeIcon { width: 2.1rem; height: 2.1rem; font-size: 1.05rem; }
+.nuHomeStyle-list .nuHomeHint { font-size: .82rem; }
+.nuHomeStyle-list :is(.nuHomeAction, .nuHomeInfo) { position: static; transform: none; flex: none; }
+.nuHomeStyle-list .nuHomeAction { margin-inline-end: .75rem; }
+.nuHomeStyle-list .nuHomeInfo { margin-inline-end: .35rem; }
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTiles,
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto).nuHomeNav-none .nuHomeMain.nuHomeStyle-list {
+	display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; max-width: none; overflow: visible; background: none; border: 0; box-shadow: none; }
+#nuHomeView.nuHomeListCols-auto .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-auto.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTileWrap {
+	background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: .6rem; box-shadow: var(--bs-box-shadow-sm); }
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTileWrap:hover { background: color-mix(in srgb, var(--nu-surface, var(--bs-body-bg)) 93%, var(--bs-body-color)); }
+
+/* Launcher: big icons, short names */
+.nuHomeStyle-launcher .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-launcher { display: grid; gap: calc(var(--nu-gap) * .6); grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); }
+.nuHomeStyle-launcher .nuHomeTile { flex-direction: column; justify-content: flex-start; gap: 0; padding: .85rem .35rem .7rem; text-align: center; border-radius: .9rem; transition: background-color .12s ease; }
+.nuHomeStyle-launcher .nuHomeTile:hover { background: color-mix(in srgb, var(--bs-body-color) 5%, transparent); }
+.nuHomeStyle-launcher .nuHomeIcon { width: 3.6rem; height: 3.6rem; font-size: 1.65rem; border-radius: 1rem; box-shadow: var(--bs-box-shadow-sm); }
+.nuHomeStyle-launcher .nuHomeTile:hover .nuHomeIcon { transform: scale(1.06); }
+.nuHomeStyle-launcher .nuHomeText { width: 100%; max-width: 100%; align-items: center; margin-top: .55rem; }
+.nuHomeStyle-launcher .nuHomeLabelRow { justify-content: center; }
+.nuHomeStyle-launcher .nuHomeLabel { overflow-wrap: break-word; hyphens: auto; font-size: .85rem; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+.nuHomeStyle-launcher .nuHomeHint { font-size: .7rem; margin-top: .2rem; -webkit-line-clamp: min(var(--nu-lines), 2); line-clamp: min(var(--nu-lines), 2); }
+.nuHomeStyle-launcher .nuHomeBadge { position: absolute; top: .7rem; inset-inline-end: calc(50% - 2.05rem); box-shadow: 0 0 0 2px var(--nu-page, var(--bs-body-bg)); }
+.nuHomeStyle-launcher :is(.nuHomeAction, .nuHomeKind) { display: none; }
+.nuHomeStyle-launcher .nuHomeInfo { top: .2rem; transform: none; inset-inline-end: .2rem; }
+#nuHomeView.nuHomeDens-dense .nuHomeStyle-launcher .nuHomeIcon { width: 3rem; height: 3rem; font-size: 1.35rem; }
+@container (max-width: 560px) {
+	.nuHomeStyle-launcher .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-launcher { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); }
+	.nuHomeStyle-launcher .nuHomeIcon { width: 3rem; height: 3rem; font-size: 1.35rem; }
+	.nuHomeStyle-cards .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.nuHomeStyle-cards .nuHomeTile { min-height: 0; }
+	#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTiles,
+	#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto).nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Panels: one card per group with a list of links */
+.nuHomeMain.nuHomeStyle-panels, .nuHomePane.nuHomeStyle-panels { columns: 3 300px; column-gap: var(--nu-gap); }
+#nuHomeView.nuHomeNav-sidebar .nuHomeStyle-panels { columns: 2 280px; }
+.nuHomeStyle-panels .nuHomeGroup { display: inline-block; width: 100%; break-inside: avoid; margin-bottom: var(--nu-gap); padding: .35rem .45rem .5rem;
+	background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: var(--nu-radius); box-shadow: var(--bs-box-shadow-sm); }
+.nuHomeStyle-panels .nuHomeGroupHead { gap: .6rem; margin: 0 0 .35rem; padding: .55rem .5rem .6rem; border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuHomeStyle-panels .nuHomeGroupHead .nuHomeGroupTitle { flex: 1; font-size: 1rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--bs-body-color); }
+.nuHomeStyle-panels .nuHomeGroupHead .nuHomeGDot { display: inline-block; width: .7rem; height: .7rem; }
+.nuHomeStyle-panels .nuHomeGroupHead .nuHomeGCount { display: inline-block; }
+.nuHomeStyle-panels .nuHomeTiles { display: flex; flex-direction: column; }
+.nuHomeStyle-panels .nuHomeTileWrap { align-items: center; break-inside: avoid; border-radius: .45rem; }
+.nuHomeStyle-panels .nuHomeTileWrap:hover { background: var(--bs-tertiary-bg); }
+.nuHomeStyle-panels .nuHomeTile { gap: .65rem; padding: .38rem .55rem; }
+.nuHomeStyle-panels .nuHomeIcon { width: 1.65rem; height: 1.65rem; font-size: .85rem; border-radius: .4rem; }
+.nuHomeStyle-panels .nuHomeLabelRow { flex-wrap: nowrap; }
+.nuHomeStyle-panels .nuHomeLabel { font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nuHomeStyle-panels .nuHomeHint { font-size: .76rem; }
+.nuHomeStyle-panels .nuHomeAction { position: static; transform: none; flex: none; margin-inline-end: .15rem; }   /* + / ▾ at the end of the row (0.8.421) */
+.nuHomeStyle-panels .nuHomeAction .btn { --bs-btn-padding-y: .1rem; --bs-btn-padding-x: .35rem; --bs-btn-font-size: .75rem; border-color: transparent; }
+.nuHomeStyle-panels .nuHomeTileWrap:hover .nuHomeAction .btn, .nuHomeStyle-panels .nuHomeAction .btn:focus-visible, .nuHomeStyle-panels .nuHomeAction .btn[aria-expanded="true"] { border-color: var(--bs-border-color); }
+.nuHomeStyle-panels .nuHomeInfo { position: static; transform: none; flex: none; margin-inline-end: .2rem; }
+#nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-panels { columns: 3 240px; padding: .5rem; background: var(--nu-surface, var(--bs-body-bg));
+	border: 1px solid var(--bs-border-color-translucent); border-radius: var(--nu-radius); box-shadow: var(--bs-box-shadow-sm); }
+
+/* Table: one row per tile – name, description, group, status; the header row (sorting) is added by the script */
+.nuHomeStyle-table { --nu-tc: 2rem minmax(9rem, 1.1fr) minmax(0, 2fr) 10rem 8rem; --nu-c-grp: 4; --nu-c-st: 5; --nu-tend: 5.25rem; }
+#nuHomeView.nuHomeNoActions .nuHomeStyle-table { --nu-tend: 1rem; }
+#nuHomeView.nuHomeDesc-info .nuHomeStyle-table { --nu-tend: 7rem; }
+#nuHomeView.nuHomeDesc-info.nuHomeNoActions .nuHomeStyle-table { --nu-tend: 2.75rem; }
+#nuHomeView:is(.nuHomeDesc-tooltip, .nuHomeDesc-hovercard, .nuHomeDesc-info, .nuHomeDesc-off) .nuHomeStyle-table { --nu-tc: 2rem minmax(9rem, 1fr) 10rem 8rem; --nu-c-grp: 3; --nu-c-st: 4; }
+.nuHomeMain.nuHomeStyle-table, .nuHomePane.nuHomeStyle-table { display: flex; flex-direction: column; overflow: hidden; margin-bottom: var(--nu-sec);
+	background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: var(--nu-radius); box-shadow: var(--bs-box-shadow-sm); }
+.nuHomeStyle-table .nuHomeGroup, .nuHomeStyle-table .nuHomeTiles { display: contents; }
+.nuHomeStyle-table .nuHomeGroupHead { display: none; }
+.nuHomeStyle-table .nuHomeTileWrap { align-items: center; padding-inline-end: var(--nu-tend); border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuHomeStyle-table .nuHomeTileWrap:hover { background: var(--bs-tertiary-bg); }
+.nuHomeStyle-table .nuHomeTile, .nuHomeTHead { display: grid; grid-template-columns: var(--nu-tc); column-gap: .75rem; align-items: center; padding: calc(var(--nu-pad) * .45) .9rem; }
+.nuHomeStyle-table .nuHomeTile { position: relative; }
+.nuHomeStyle-table :is(.nuHomeText, .nuHomeLabelRow) { display: contents; }
+.nuHomeStyle-table :is(.nuHomeIcon, .nuHomeLabel, .nuHomeHint, .nuHomeGroupName, .nuHomeBadge) { grid-row: 1; }   /* one line per tile, whatever the order in the markup */
+.nuHomeStyle-table .nuHomeIcon { grid-column: 1; width: 1.85rem; height: 1.85rem; font-size: .9rem; border-radius: .45rem; }
+.nuHomeStyle-table .nuHomeLabel { grid-column: 2; font-weight: 500; }
+.nuHomeStyle-table .nuHomeFavMark { position: absolute; top: .3rem; inset-inline-start: .35rem; }
+.nuHomeStyle-table .nuHomeHint { grid-column: 3; font-size: .85rem; }
+.nuHomeStyle-table .nuHomeGroupName { grid-column: var(--nu-c-grp); display: block; justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+	font-size: .75rem; padding: .1rem .55rem; border-radius: 999px; background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+#nuHomeView.nuHomeGcol .nuHomeStyle-table .nuHomeGroupName { background: color-mix(in srgb, var(--nu-gc) 13%, var(--nu-surface, var(--bs-body-bg))); color: color-mix(in srgb, var(--nu-gc) 70%, var(--bs-body-color)); }
+.nuHomeStyle-table .nuHomeBadge { grid-column: var(--nu-c-st); justify-self: start; }
+.nuHomeStyle-table .nuHomeKind { display: none; }
+.nuHomeStyle-table .nuHomeAction { inset-inline-end: .75rem; }
+.nuHomeStyle-table .nuHomeInfo { inset-inline-end: calc(.6rem + var(--nu-ea)); }
+.nuHomeTHead { display: none; order: -1; padding-inline-end: calc(.9rem + var(--nu-tend)); font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+	color: var(--bs-secondary-color); background: var(--bs-tertiary-bg); border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuHomeStyle-table > .nuHomeTHead { display: grid; }
+.nuHomeTHead > * { min-width: 0; padding: 0; font: inherit; text-transform: inherit; letter-spacing: inherit; text-align: start; color: inherit; background: none; border: 0; white-space: nowrap; }
+.nuHomeTHead [data-nu-sort] { cursor: pointer; }
+.nuHomeTHead [data-nu-sort]:hover, .nuHomeTHead [aria-sort]:not([aria-sort="none"]) { color: var(--bs-body-color); }
+.nuHomeTHead .nuHomeThName { grid-column: 2; }
+.nuHomeTHead .nuHomeThHint { grid-column: 3; }
+.nuHomeTHead .nuHomeThGroup { grid-column: var(--nu-c-grp); }
+.nuHomeTHead .nuHomeThStatus { grid-column: var(--nu-c-st); }
+#nuHomeView:is(.nuHomeDesc-tooltip, .nuHomeDesc-hovercard, .nuHomeDesc-info, .nuHomeDesc-off) .nuHomeThHint { display: none; }
+@container (max-width: 760px) {
+	.nuHomeStyle-table { --nu-tc: 2rem minmax(9rem, 1.1fr) minmax(0, 2fr) 7rem; --nu-c-st: 4; }
+	#nuHomeView:is(.nuHomeDesc-tooltip, .nuHomeDesc-hovercard, .nuHomeDesc-info, .nuHomeDesc-off) .nuHomeStyle-table { --nu-tc: 2rem minmax(0, 1fr) 7rem; --nu-c-st: 3; }
+	.nuHomeStyle-table .nuHomeGroupName, .nuHomeTHead .nuHomeThGroup { display: none; }
+}
+@container (max-width: 560px) {
+	.nuHomeStyle-table, #nuHomeView:is(.nuHomeDesc-tooltip, .nuHomeDesc-hovercard, .nuHomeDesc-info, .nuHomeDesc-off) .nuHomeStyle-table { --nu-tc: 2rem minmax(0, 1fr) auto; --nu-c-st: 3; }
+	#nuHomeView .nuHomeStyle-table .nuHomeHint { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; }
+	.nuHomeTHead .nuHomeThHint { display: none; }
+}
+
+/* favourites only: other tiles and groups / tabs without favourites are hidden (not while searching) */
+#nuHomeView.nuHomeFavOnly:not(.nuHomeSearching) .nuHomeTileWrap:not(:has([data-nu-fav])),
+#nuHomeView.nuHomeFavOnly:not(.nuHomeSearching) .nuHomeGroup:not(:has([data-nu-fav])) { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+	#nuHomeView .nuHomeTileWrap, #nuHomeView .nuHomeIcon, .nuHomeVp, .nuHomeTip { transition: none !important; }
+	#nuHomeView .nuHomeTileWrap:hover, #nuHomeView .nuHomeTile:hover .nuHomeIcon { transform: none !important; }
+}
+
+/* ------------------------------------------------------------------ tooltip and hover card (one element in <body>) */
+.nuHomeTip { position: fixed; z-index: 1085; top: 0; left: 0; opacity: 0; transform: translateY(4px); transition: opacity .12s ease, transform .12s ease; }
+.nuHomeTip.nuHomeTipAbove { transform: translateY(-4px); }
+.nuHomeTip.nuHomeTipIn { opacity: 1; transform: none; }
+.nuHomeTip.nuHomeTipTip { max-width: 300px; padding: .5rem .7rem; font-size: .82rem; line-height: 1.35; pointer-events: none; color: var(--bs-body-bg); background: var(--bs-emphasis-color);
+	border-radius: .5rem; box-shadow: var(--bs-box-shadow); }
+.nuHomeTip.nuHomeTipTip b { display: block; font-weight: 600; margin-bottom: .1rem; }
+.nuHomeTip.nuHomeTipTip span { display: block; opacity: .85; }
+.nuHomeTip.nuHomeTipTip .nuHomeTipBadge { margin-top: .35rem; opacity: 1; }
+.nuHomeTip.nuHomeTipCard { width: 320px; max-width: calc(100vw - 16px); color: var(--bs-body-color); background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent);
+	border-radius: .8rem; box-shadow: var(--bs-box-shadow-lg); }
+.nuHomeHc { padding: .9rem .9rem .6rem; }
+.nuHomeHcHead { display: flex; align-items: center; gap: .75rem; }
+.nuHomeHcHead .nuHomeIcon { width: 2.5rem; height: 2.5rem; font-size: 1.15rem; }
+.nuHomeHcHead b { display: block; font-size: 1.02rem; }
+.nuHomeHcGroup { display: block; font-size: .75rem; color: var(--bs-secondary-color); }
+.nuHomeHc p { margin: .65rem 0 .5rem; font-size: .87rem; color: var(--bs-secondary-color); }
+.nuHomeHcBadge { margin-bottom: .5rem; }
+.nuHomeHcLinks { margin: 0 -.45rem; padding-top: .35rem; border-top: 1px solid var(--bs-border-color-translucent); }
+.nuHomeHcLink { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .35rem .5rem; font: inherit; font-size: .87rem; text-align: start; text-decoration: none; color: var(--bs-body-color);
+	background: none; border: 0; border-radius: .4rem; }
+.nuHomeHcLink:hover, .nuHomeHcLink:focus-visible { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+.nuHomeHcLink .bi { font-size: .8rem; color: var(--bs-secondary-color); }
+.nuHomeHcFoot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .35rem; padding-top: .5rem; font-size: .75rem; color: var(--bs-secondary-color);
+	border-top: 1px solid var(--bs-border-color-translucent); }
+.nuHomeHcFoot .nuHomeHcLink { width: auto; padding: .2rem .45rem; font-size: .8rem; color: var(--bs-primary-text-emphasis); }
+.nuHomeHcFoot kbd { font-size: .7rem; padding: .1rem .3rem; color: var(--bs-body-color); background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
+
+/* ------------------------------------------------------------------ the View panel: drawer (≥ 992 px, pushes the page), overlay (576–991 px), sheet (phones) */
+.nuHomeVp { position: fixed; z-index: 1035; display: flex; flex-direction: column; font-size: .88rem; color: var(--bs-body-color); background: var(--nu-surface, var(--bs-body-bg)); }
+.nuHomeVp[hidden] { display: none; }
+@media (min-width: 992px) {
+	.nuHomeVp { top: var(--nu-nav-h, 56px); bottom: 0; inset-inline-end: 0; width: 360px; border-inline-start: 1px solid var(--bs-border-color-translucent); box-shadow: -6px 0 18px rgba(0, 0, 0, .05); }
+	body.nuHomeVpOpen #main { width: auto; margin-inline-end: 360px; transition: margin .2s ease; }
+}
+@media (min-width: 576px) and (max-width: 991.98px) {
+	.nuHomeVp { top: var(--nu-nav-h, 56px); bottom: 0; inset-inline-end: 0; width: min(360px, 92vw); border-inline-start: 1px solid var(--bs-border-color-translucent); box-shadow: var(--bs-box-shadow-lg); }
+}
+@media (max-width: 575.98px) {
+	.nuHomeVp { left: 0; right: 0; bottom: 0; height: 65vh; border-top: 1px solid var(--bs-border-color-translucent); border-radius: 1.1rem 1.1rem 0 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, .18); }
+	.nuHomeVp::before { content: ""; display: block; flex: none; width: 2.5rem; height: 4px; margin: .5rem auto 0; border-radius: 2px; background: var(--bs-secondary-bg); }
+}
+.nuHomeVpHead { display: flex; flex: none; align-items: center; justify-content: space-between; padding: .7rem 1rem .6rem 1.1rem; border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuHomeVpHead h2 { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: 1.05rem; font-weight: 600; }
+.nuHomeVpHead h2:focus { outline: 0; }
+.nuHomeVpBody { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 1.1rem; }
+.nuHomeVpFoot { display: flex; flex: none; align-items: center; justify-content: space-between; gap: .5rem; padding: .6rem 1.1rem; border-top: 1px solid var(--bs-border-color-translucent); }
+.nuHomeVpSaved { font-size: .78rem; color: var(--bs-secondary-color); opacity: 0; transition: opacity .2s; }
+.nuHomeVpSaved.nuHomeVpShow { opacity: 1; }
+.nuHomeVpSaved .bi { color: var(--bs-success); }
+.nuHomeVpSec { padding: .95rem 0; border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuHomeVpSec:last-child { border-bottom: 0; }
+.nuHomeVpLbl { display: flex; align-items: center; gap: .4rem; margin-bottom: .55rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--bs-secondary-color); }
+.nuHomeVpRow { display: flex; gap: .4rem; }
+.nuHomeVpRow .form-select { flex: 1; min-width: 0; }
+.nuHomeVpRow .btn { flex: none; }
+.nuHomeVpStore { display: flex; gap: .5rem; margin: .55rem 0 0; font-size: .8rem; line-height: 1.4; color: var(--bs-secondary-color); }
+.nuHomeVpStore > .bi { flex: none; margin-top: .1rem; }
+.nuHomeVpHelp { margin: .45rem 0 0; min-height: 1.1em; font-size: .8rem; line-height: 1.4; color: var(--bs-secondary-color); }
+.nuHomeVpNote { margin: .55rem 0 0; padding: .4rem .55rem; font-size: .78rem; line-height: 1.4; color: var(--bs-secondary-color); background: var(--bs-tertiary-bg);
+	border: 1px solid var(--bs-border-color-translucent); border-radius: .45rem; }
+.nuHomeVpNote.nuHomeVpWarn { color: var(--bs-warning-text-emphasis); background: var(--bs-warning-bg-subtle); border-color: var(--bs-warning-border-subtle); }
+.nuHomeVpNote .bi { margin-inline-end: .25rem; }
+.nuHomeVpLink { padding: 0; font: inherit; color: var(--bs-link-color); text-decoration: underline; text-underline-offset: 2px; background: none; border: 0; }
+.nuHomeVpLink:hover { color: var(--bs-link-hover-color); }
+.nuHomeVpOwn { padding: 0 .45rem; font-size: .68rem; font-weight: 600; text-transform: none; letter-spacing: 0; border-radius: 999px; color: var(--bs-primary-text-emphasis); background: var(--bs-primary-bg-subtle); }
+.nuHomeVpSub { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .6rem; }
+.nuHomeVpSub > span { font-size: .82rem; color: var(--bs-secondary-color); white-space: nowrap; }
+.nuHomeVpSub .nuHomeSeg { flex: 0 1 auto; min-width: 0; }
+.nuHomeVpSub.nuHomeVpCol { flex-direction: column; align-items: stretch; gap: .4rem; }
+.nuHomeVpTabScope .nuHomeSeg button { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; }
+.nuHomeSeg { display: flex; overflow: hidden; border: 1px solid var(--bs-border-color); border-radius: .5rem; }
+.nuHomeSeg button { display: inline-flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: .35rem; padding: .32rem .6rem; font: inherit; font-size: .8rem; white-space: nowrap;
+	color: var(--bs-body-color); background: var(--nu-surface, var(--bs-body-bg)); border: 0; border-inline-end: 1px solid var(--bs-border-color); }
+.nuHomeSeg button:last-child { border-inline-end: 0; }
+.nuHomeSeg button:hover { background: var(--bs-tertiary-bg); }
+.nuHomeSeg button[aria-pressed="true"] { color: #fff; background: var(--bs-primary); }
+.nuHomeSeg button:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--bs-primary); outline-offset: -2px; }
+.nuHomeSeg.nuHomeSeg2 button { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.nuHomeSeg.nuHomeSeg3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.nuHomeSeg.nuHomeSeg3 button { margin-bottom: -1px; border-bottom: 1px solid var(--bs-border-color); }
+.nuHomeSeg.nuHomeSeg3 button:nth-child(3n) { border-inline-end: 0; }
+.nuHomeVpPick { display: grid; gap: .45rem; grid-template-columns: repeat(4, 1fr); }
+.nuHomeVpPick.nuHomeVpPickIcon { grid-template-columns: repeat(5, 1fr); }
+.nuHomeVpPick button { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0; padding: .35rem .2rem .3rem; font: inherit; font-size: .72rem;
+	color: var(--bs-secondary-color); background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color); border-radius: .55rem; }
+.nuHomeVpPick button > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuHomeVpPick button:hover { color: var(--bs-body-color); border-color: color-mix(in srgb, var(--bs-primary) 45%, transparent); }
+.nuHomeVpPick button[aria-pressed="true"] { font-weight: 600; color: var(--bs-primary-text-emphasis); background: color-mix(in srgb, var(--bs-primary) 7%, var(--nu-surface, var(--bs-body-bg)));
+	border-color: var(--bs-primary); box-shadow: 0 0 0 1px var(--bs-primary); }
+.nuHomeVpPick button:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+.nuHomeTh { width: 100%; height: auto; aspect-ratio: 3 / 2; fill: currentColor; color: var(--bs-secondary-color); }
+.nuHomeVpPick button[aria-pressed="true"] .nuHomeTh { color: var(--bs-primary); }
+.nuHomeTh .nuHomeThCard { fill: var(--nu-surface, var(--bs-body-bg)); stroke: currentColor; stroke-opacity: .45; stroke-width: .8; }
+.nuHomeVpPickIcon .nuHomeIcon { width: 1.9rem; height: 1.9rem; font-size: .9rem; }
+.nuHomeVpSw { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .35rem 0; margin: 0; cursor: pointer; }
+.nuHomeVpSw b { display: block; font-weight: 500; font-size: .86rem; }
+.nuHomeVpSw small { display: block; font-size: .76rem; color: var(--bs-secondary-color); }
+.nuHomeVpSw .form-check-input { flex: none; margin: 0; float: none; cursor: pointer; }
+.nuHomeVpMore { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; color: var(--bs-secondary-color); background: none; border: 0; }
+.nuHomeVpMore .nuHomeVpLbl { margin: 0; }
+.nuHomeVpMore + .nuHomeVpSub { margin-top: .8rem; }
+.nuHomeVpTarget { margin-top: .6rem; }
+.nuHomeVpTarget > span { display: block; margin-bottom: .3rem; font-size: .8rem; color: var(--bs-secondary-color); }
+.nuHomeVpSw.form-switch { padding-inline-start: 0; }
+/* the icon samples of the panel (--nu-ic set by the script) */
+.nuHomeVpPickIcon .nuHomeIcon { background: color-mix(in srgb, var(--nu-ic) 13%, var(--nu-surface, var(--bs-body-bg))); color: color-mix(in srgb, var(--nu-ic) 85%, var(--bs-body-color)); }
+.nuHomeVpPickIcon .nuHomeIcn-solid .nuHomeIcon { background: var(--nu-ic); color: #fff; }
+.nuHomeVpPickIcon .nuHomeIcn-outline .nuHomeIcon { background: transparent; color: var(--nu-ic); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--nu-ic) 50%, transparent); }
+.nuHomeVpPickIcon .nuHomeIcn-mono .nuHomeIcon { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+.nuHomeVpPickIcon .nuHomeIcn-none .nuHomeIcon { background: transparent; color: var(--nu-ic); }

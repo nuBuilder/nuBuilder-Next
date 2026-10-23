@@ -43,15 +43,28 @@ if ($admin) {
 			NuDemo::permitted(static fn() => NuHome::setFavOnly(!empty($in['on'])));
 			exit(json_encode(['ok' => true]));
 		}
+		// View panel (0.8.420): the personal view of the current layout – everyone who sees this page (shared layouts stay as they are)
+		if ($act === 'view_me' || $act === 'view_me_clear') {
+			$curId = (string)NuHome::current()['id'];
+			$ov = $act === 'view_me' ? ['view' => is_array($in['view'] ?? null) ? $in['view'] : [], 'sizes' => is_array($in['sizes'] ?? null) ? $in['sizes'] : []] : null;
+			if (!NuDemo::permitted(static fn() => NuHome::setOverlay($curId, $ov))) { http_response_code(400); exit(json_encode(['ok' => false, 'message' => t('home_v_too_large')], JSON_UNESCAPED_UNICODE)); }
+			exit(json_encode(['ok' => true, 'overlay' => NuHome::overlay($curId)], JSON_UNESCAPED_UNICODE));
+		}
 		if (!$canLayout) { http_response_code(403); exit(json_encode(['ok' => false, 'message' => t('err_forbidden')])); }
+		if ($act === 'view_layout') {                         // View panel: the layout's own view (personal layout, or "for everyone")
+			if (!is_array($in['view'] ?? null)) { http_response_code(400); exit(json_encode(['ok' => false, 'message' => t('home_saved_err')], JSON_UNESCAPED_UNICODE)); }
+			$errors = NuHome::saveView($in['view'], (string)$u['login']);
+			exit(json_encode($errors ? ['ok' => false, 'errors' => $errors, 'message' => (string)reset($errors)] : ['ok' => true, 'view' => NuHome::layout()['view']], JSON_UNESCAPED_UNICODE));
+		}
 		if (($in['action'] ?? '') === 'pin') {                // pin in a tile's ▾ menu: that page as a tile of its own (0.8.321)
 			$p = NuHome::togglePin((string)($in['key'] ?? ''), (string)$u['login']);
 			exit(json_encode($p === null ? ['ok' => false] : ['ok' => true, 'pinned' => $p]));
 		}
-		if (($in['action'] ?? '') === 'size') {                // ▾ next to Customize: only the tile layout changes
-			$l = NuHome::layout();
-			$l['size'] = (string)($in['size'] ?? '');
-			$errors = NuHome::save($l, (string)$u['login']);
+		if (($in['action'] ?? '') === 'size') {                // deprecated (0.8.420, the former ▾ size menu): drop with the home_size_* texts
+			$v = (array)NuHome::layout()['view'];
+			$lv = NuHome::legacyView(['size' => (string)($in['size'] ?? '')]);
+			foreach (['style', 'listCols', 'listWidth'] as $k) $v[$k] = $lv[$k];
+			$errors = NuHome::saveView($v, (string)$u['login']);
 			exit(json_encode($errors ? ['ok' => false, 'errors' => $errors] : ['ok' => true], JSON_UNESCAPED_UNICODE));
 		}
 		$errors = NuHome::save(is_array($in['layout'] ?? null) ? $in['layout'] : [], (string)$u['login']);
@@ -72,7 +85,7 @@ if (!$u['globeadmin']) {
 
 $homeDash = NuDashboard::forHome();   // dashboards of the user's access level (Admin tools → Dashboards, 0.8.298)
 if ($homeDash) NuDashboard::csp();
-nu_layout_start(t('nav_home'), 'home');
+nu_layout_start(t('nav_home'), 'home', $admin ? ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nuhome.css') . '">'] : []);   // tile styles and View panel (0.8.420)
 ?>
 <?php if ($u['globeadmin']): // no greeting – the page is the tiles; Customize at the bottom (0.8.303) ?>
 <h1 class="visually-hidden"><?= h(t('nav_home')) ?></h1>
@@ -122,7 +135,6 @@ if ($tutBanner): ?>
 <?php endif; ?>
 
 <?php if ($admin):
-	/** One tile of the globeadmin page in the chosen size (large: icon, label, hint · compact: icon, label · list: a row). */
 	/** "+" (straight to a new record) or "▾" (menu of the pages behind the tile) on the right of a built-in tile – NuHome::actions(). */
 	$pinnedKeys = array_flip(NuHome::placed($layout));
 	$actionHtml = static function (array $a) use ($pinnedKeys, $canLayout): string {
@@ -152,75 +164,73 @@ if ($tutBanner): ?>
 		return '<div class="dropdown nuHomeAction"><button class="btn btn-outline-secondary nuRowBtn nuHomeMenuBtn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"'
 			. ' title="' . h($tip) . '" aria-label="' . h($tip) . '"></button><ul class="dropdown-menu dropdown-menu-end shadow-sm">' . $items . '</ul></div>';
 	};
-	$tile = static function (string $key, array $t, string $size) use ($actionHtml): string {
-		if ($size === 'compact' && !empty($t['badge'])) $t['hint'] = trim($t['hint'] . ' · ' . $t['badge'][0], ' ·');
+	/**
+	 * One tile (0.8.420): the same markup for every tile style – the style, the descriptions and the navigation are classes set by
+	 * assets/js/nuhome.js (View panel), so changing the view needs no reload. Kinds: link, POST form (database tool, File Manager),
+	 * procedure button. The data-nu-* attributes are read by the nuHome JavaScript API (0.8.379).
+	 */
+	$tile = static function (string $key, array $t) use ($actionHtml): string {
 		$act = $t['action'] ?? null;
-		$arrow = $t['newtab'] || $t['post'] ? 'bi-box-arrow-up-right' : ($t['proc'] ? 'bi-play-fill' : 'bi-chevron-right');
-		$arrowHtml = $act ? '' : '<i class="bi ' . $arrow . ' text-body-secondary"></i>';     // the button takes the place of ">"
+		$kind = $t['newtab'] || $t['post'] ? 'bi-box-arrow-up-right' : ($t['proc'] ? 'bi-play-fill' : '');
 		$color = $t['color'] !== '' ? ' data-nu-color="' . h($t['color']) . '"' : '';
 		$bd = $t['badge'] ?? null;                           // status of a tool (version, sample data, System status – 0.8.316)
-		$badge = $bd ? ' <span class="badge text-bg-' . h((string)$bd[1]) . ' ms-1 align-middle nuHomeBadge">' . h((string)$bd[0]) . '</span>' : '';
-		$body = match ($size) {
-			'list' => '<span class="nu-tile-icon nuHomeIcon"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span><span class="flex-grow-1"><span class="d-block text-body nuHomeLabel">' . h($t['label']) . $badge . '</span>'
-				. ($t['hint'] !== '' ? '<span class="d-block small text-body-secondary nuHomeHint">' . h($t['hint']) . '</span>' : '') . '</span>' . $arrowHtml,
-			'compact' => '<div class="card-body d-flex align-items-center gap-2 py-2"><span class="nu-tile-icon nuHomeIcon nuHomeIconSm"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span>'
-				. '<span class="flex-grow-1 text-body text-truncate nuHomeLabel">' . h($t['label']) . '</span>' . ($bd && $bd[1] === 'warning' ? '<span class="badge text-bg-warning nuHomeBadge">!</span>' : '') . '</div>',
-			default => '<div class="card-body d-flex align-items-center gap-3"><span class="nu-tile-icon nuHomeIcon"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span><div class="flex-grow-1">'
-				. '<div class="fs-5 fw-normal lh-sm text-body nuHomeLabel">' . h($t['label']) . $badge . '</div>' . ($t['hint'] !== '' ? '<div class="small text-body-secondary mt-1 nuHomeHint">' . h($t['hint']) . '</div>' : '') . '</div>'
-				. $arrowHtml . '</div>',
-		};
-		// compact tiles show no description (and may cut the name): a tooltip with name and description on mouse over (desktop) or a long tap (phones) shows it – assets/js/nuhome.js (0.8.355)
-		$attrs = ' data-nu-tile="' . h($key) . '"' . ($size === 'compact' ? ' data-nu-hint="' . h($t['label'] . ($t['hint'] !== '' ? ' – ' . $t['hint'] : '')) . '"' : '') . (!empty($t['fav']) ? ' data-nu-fav="1"' : '')
-			// for the nuHome JavaScript API (0.8.379): where the tile comes from, what it opens, its group / tab, its full label and description
+		$badge = $bd ? '<span class="badge text-bg-' . h((string)$bd[1]) . ' nuHomeBadge" title="' . h((string)$bd[0]) . '">' . h((string)$bd[0]) . '</span>' : '';
+		$body = '<span class="nu-tile-icon nuHomeIcon"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span>'
+			. '<span class="nuHomeText"><span class="nuHomeLabelRow"><span class="nuHomeLabel">' . h($t['label']) . '</span>'
+			. (!empty($t['fav']) ? '<i class="bi bi-star-fill nuHomeFavMark" aria-hidden="true"></i>' : '') . $badge . '</span>'
+			. '<span class="nuHomeHint">' . h($t['hint']) . '</span></span>'
+			. '<span class="nuHomeGroupName">' . h((string)($t['groupTitle'] ?? '')) . '</span>'
+			. ($kind !== '' && !$act ? '<i class="bi ' . $kind . ' nuHomeKind" aria-hidden="true"></i>' : '');
+		$attrs = ' data-nu-tile="' . h($key) . '" data-nu-hint="' . h($t['label'] . ($t['hint'] !== '' ? ' – ' . $t['hint'] : '')) . '"' . (!empty($t['fav']) ? ' data-nu-fav="1"' : '')
 			. ' data-nu-source="' . h((string)($t['source'] ?? 'builtin')) . '" data-nu-kind="' . h((string)($t['kind'] ?? 'page')) . '" data-nu-group="' . h((string)($t['group'] ?? ''))
 			. '" data-nu-tab="' . h((string)($t['tab'] ?? '')) . '" data-nu-label="' . h($t['label']) . '" data-nu-desc="' . h($t['hint']) . '"';
-		if ($act && $t['post']) {
-			// POST tile (database tool) with ▾: the form button and the menu side by side (0.8.282)
-			$form = static fn(string $cls) => '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="' . ($size === 'list' ? 'flex-grow-1' : 'h-100') . '">' . nu_csrf_field()
-				. '<input type="hidden" name="app" value="' . h($t['post']) . '"><button type="submit" class="' . $cls . '"' . $attrs . '>' . $body . '</button></form>';
-			if ($size === 'list') {
-				return '<div class="list-group-item d-flex align-items-center nuHomeTileWrap nuHomeListRow">' . $form('d-flex align-items-center gap-3 w-100 text-start border-0 bg-transparent nuHomeListLink nuHomeTile') . $actionHtml($act) . '</div>';
-			}
-			return '<div class="h-100 nuHomeTileWrap' . ($size === 'compact' ? ' nuHomeCompact' : '') . '">' . $form('card nu-tile h-100 w-100 text-start p-0 shadow-sm nuHomeTile nuHomeHasAction') . $actionHtml($act) . '</div>';
-		}
-		if ($act) {
-			// link and button side by side in one wrapper (a button cannot sit inside a link)
-			if ($size === 'list') {
-				return '<div class="list-group-item d-flex align-items-center nuHomeTileWrap nuHomeListRow"><a class="d-flex align-items-center gap-3 flex-grow-1 text-decoration-none nuHomeListLink nuHomeTile" href="'
-					. h((string)$t['href']) . '"' . $attrs . '>' . $body . '</a>' . $actionHtml($act) . '</div>';
-			}
-			return '<div class="h-100 nuHomeTileWrap' . ($size === 'compact' ? ' nuHomeCompact' : '') . '"><a class="card nu-tile h-100 text-decoration-none shadow-sm nuHomeTile nuHomeHasAction" href="'
-				. h((string)$t['href']) . '"' . $attrs . '>' . $body . '</a>' . $actionHtml($act) . '</div>';
-		}
-		$cls = $size === 'list' ? 'list-group-item list-group-item-action d-flex align-items-center gap-3 nuHomeTile' : 'card nu-tile h-100 text-decoration-none shadow-sm nuHomeTile';
 		if ($t['post']) {
-			return '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="' . ($size === 'list' ? '' : 'h-100') . '">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h($t['post']) . '">'
-				. '<button type="submit" class="' . $cls . ' w-100 text-start' . ($size === 'list' ? '' : ' p-0') . '"' . $attrs . '>' . $body . '</button></form>';
+			$el = '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="nuHomeTileForm">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h($t['post']) . '">'
+				. '<button type="submit" class="nuHomeTile"' . $attrs . '>' . $body . '</button></form>';
+		} elseif ($t['proc']) {
+			$el = '<button type="button" class="nuHomeTile nuHomeProc"' . $attrs . ' data-nu-proc="' . h($t['proc']) . '" data-nu-run="' . h($t['run']) . '">' . $body . '</button>';
+		} else {
+			$el = '<a class="nuHomeTile" href="' . h((string)$t['href']) . '"' . ($t['newtab'] ? ' target="_blank" rel="noopener"' : '') . $attrs . '>' . $body . '</a>';
 		}
-		if ($t['proc']) {
-			return '<button type="button" class="' . $cls . ' w-100 text-start' . ($size === 'list' ? '' : ' p-0') . ' nuHomeProc"' . $attrs . ' data-nu-proc="' . h($t['proc']) . '" data-nu-run="' . h($t['run']) . '">' . $body . '</button>';
-		}
-		return '<a class="' . $cls . '" href="' . h((string)$t['href']) . '"' . ($t['newtab'] ? ' target="_blank" rel="noopener"' : '') . $attrs . '>' . $body . '</a>';
+		$info = '<button type="button" class="nuHomeInfo" data-nu-descinfo aria-label="' . h(t('home_v_info_aria', $t['label'])) . '"><i class="bi bi-info-circle" aria-hidden="true"></i></button>';
+		return '<div class="nuHomeTileWrap" data-nu-wrap="' . h($key) . '">' . $el . $info . ($act ? $actionHtml($act) : '') . '</div>';
 	};
-	$tileOut = $tile;
+	/** A favourite as a chip in the row on top (0.8.420): opens like the tile. */
+	$chip = static function (string $key, array $t): string {
+		$color = $t['color'] !== '' ? ' data-nu-color="' . h($t['color']) . '"' : '';
+		$body = '<span class="nu-tile-icon nuHomeIcon"' . $color . '><i class="bi ' . h($t['icon']) . '"></i></span><span class="nuHomeChipLabel">' . h($t['label']) . '</span>';
+		$attrs = ' data-nu-chip="' . h($key) . '" data-nu-cgroup="' . h((string)($t['group'] ?? '')) . '" title="' . h($t['label'] . ($t['hint'] !== '' ? ' – ' . $t['hint'] : '')) . '"';
+		if ($t['post']) return '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="nuHomeTileForm">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h($t['post']) . '">'
+			. '<button type="submit" class="nuHomeChip"' . $attrs . '>' . $body . '</button></form>';
+		if ($t['proc']) return '<button type="button" class="nuHomeChip nuHomeProc"' . $attrs . ' data-nu-proc="' . h($t['proc']) . '" data-nu-run="' . h($t['run']) . '">' . $body . '</button>';
+		return '<a class="nuHomeChip" href="' . h((string)$t['href']) . '"' . ($t['newtab'] ? ' target="_blank" rel="noopener"' : '') . $attrs . '>' . $body . '</a>';
+	};
 	$groups = [];
 	foreach ($layout['groups'] as $g) {
 		$items = [];
 		foreach ($g['tiles'] as $k) if (NuHome::visible($k, $layout) && ($r = NuHome::resolve($k, $layout)) !== null) $items[$k] = $r + ['fav' => in_array($k, (array)($layout['fav'] ?? []), true), 'source' => NuHome::source($k)];
-		$groups[] = ['id' => $g['id'], 'title' => $g['title'], 'tab' => $g['tab'] ?? '', 'items' => $items];
+		$groups[] = ['id' => $g['id'], 'title' => $g['title'], 'tab' => $g['tab'] ?? '', 'items' => $items, 'color' => (string)($g['color'] ?? '')];
 	}
 	// start page hook nunext_home (0.8.378, core/nuhomehook.php): badges, descriptions, hidden and dynamic tiles of this page view
 	NuHomeHook::run($layout);
 	$groups = NuHomeHook::apply($groups, $layout);
 	$groups = array_values(array_filter($groups, static fn($g) => $g['items'] !== []));
-	foreach ($groups as &$g) foreach ($g['items'] as &$it) { $it['group'] = $g['id']; $it['tab'] = $g['tab']; }   // data-nu-group / data-nu-tab (0.8.379)
+	foreach ($groups as $gi => &$g) {
+		$g['color'] = ($g['color'] ?? '') !== '' ? $g['color'] : NuHome::GROUP_COLORS[$gi % count(NuHome::GROUP_COLORS)];   // "Colour per group" (0.8.420)
+		foreach ($g['items'] as &$it) { $it['group'] = $g['id']; $it['tab'] = $g['tab']; $it['groupTitle'] = $g['title']; }   // data-nu-group / data-nu-tab (0.8.379)
+	}
 	unset($g, $it);
-	$size = $layout['size'];
-	$col = $size === 'compact' ? 'col-6 col-md-4 col-xl-3' : 'col-sm-6 col-lg-4';
-	$tilesOf = static function (array $items) use ($tileOut, $size, $col): string {
-		if (in_array($size, ['list', 'listwide', 'list2'], true)) return '<div class="list-group shadow-sm nuHomeList' . ['list' => '', 'listwide' => ' nuHomeListWide', 'list2' => ' nuHomeListWide nuHomeList2'][$size] . '">' . implode('', array_map(static fn($k, $t) => $tileOut((string)$k, $t, 'list'), array_keys($items), $items)) . '</div>';
-		return '<div class="row g-3">' . implode('', array_map(static fn($k, $t) => '<div class="' . $col . '">' . $tileOut((string)$k, $t, $size) . '</div>', array_keys($items), $items)) . '</div>';
-	};
+	// View (0.8.420): the desktop view is drawn on the server (no flash); tablet and phone sizes are set by assets/js/nuhome.js
+	$hlCur = NuHome::current(); $hlAll = NuHome::layouts(); $hlDef = NuListView::listDefault(NuHome::LIST); $hlManage = NuHome::canManage();
+	$myView = NuHome::overlay((string)$hlCur['id']);
+	$view = NuHome::effectiveView($layout, $myView);
+	$units = NuHome::tabsOf($layout, $groups);                // tabs with their groups; without tabs every group is a tab of its own
+	$tabbed = in_array($view['nav'], ['tabs', 'sidebar'], true);
+	$favCount = 0; foreach ($groups as $g) foreach ($g['items'] as $it) if (!empty($it['fav'])) $favCount++;
+	$favOn = $favCount > 0 && NuHome::favOnly();
+	$viewCls = 'nuHomeNav-' . $view['nav'] . ' nuHomeDesc-' . $view['desc'] . ' nuHomeDens-' . $view['density'] . ' nuHomeIcn-' . $view['icon']
+		. ($view['groupColors'] ? ' nuHomeGcol' : '') . (!$view['badges'] ? ' nuHomeNoBadges' : '') . (!$view['actions'] ? ' nuHomeNoActions' : '') . ($favOn ? ' nuHomeFavOnly' : '')
+		. ($view['style'] === 'list' ? ' nuHomeListCols-' . $view['listCols'] . ($view['listWidth'] === 'full' ? ' nuHomeListFull' : '') : '');
 	?>
 <?php // start page hook (0.8.378): safe mode note, the error for the globeadmin, the hook's banners
 if (NuHomeHook::safeMode()): ?>
@@ -234,91 +244,82 @@ if (NuHomeHook::safeMode()): ?>
 foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 <div class="alert alert-<?= h($bLevel) ?> d-flex align-items-start gap-2 nuHomeHookBanner" role="note"><i class="bi <?= ['success' => 'bi-check-circle', 'warning' => 'bi-exclamation-triangle', 'danger' => 'bi-exclamation-octagon'][$bLevel] ?? 'bi-info-circle' ?> mt-1" aria-hidden="true"></i><div><?= h($bText) ?></div></div>
 <?php endforeach; ?>
-<?php // grid (nuapp.css): search on top; Customize at the bottom left on phones, at the top right next to the search on wider screens (0.8.320 / 0.8.321) ?>
-<div class="nuHomeWrap">
-<div class="nuHomeSearchRow mb-3" role="search">
+<div class="nuHomeWrap" id="nuHomeWrap">
+<div class="nuHomeSearchRow" role="search">
 	<div class="input-group nuHomeSearchBox">
 		<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
 		<input type="search" class="form-control" id="nuHomeSearch" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('home_search')) ?>" autocomplete="off" spellcheck="false">
-		<?php // favourites only (0.8.353): tiles marked ☆ in Customize; the choice is kept per login
-		$favCount = 0; foreach ($groups as $g) foreach ($g['items'] as $it) if (!empty($it['fav'])) $favCount++;
-		$favOn = $favCount > 0 && NuHome::favOnly(); $favTip = $favCount ? t('home_fav_only') : t('home_fav_none'); ?>
+		<?php // favourites only (0.8.353): tiles marked ☆ in Customise; the choice is kept per login
+		$favTip = $favCount ? t('home_fav_only') : t('home_fav_none'); ?>
 		<button type="button" class="btn btn-outline-secondary nuHomeFavBtn<?= $favOn ? ' active' : '' ?>" id="nuHomeFavOnly" aria-pressed="<?= $favOn ? 'true' : 'false' ?>"<?= $favCount ? '' : ' disabled' ?>
-			title="<?= h($favTip) ?>" aria-label="<?= h($favTip) ?>"><i class="bi <?= $favOn ? 'bi-star-fill' : 'bi-star' ?>"></i><span class="d-none d-sm-inline ms-1"><?= h(t('home_fav')) ?></span></button>
+			title="<?= h($favTip) ?>" aria-label="<?= h($favTip) ?>"><i class="bi <?= $favOn ? 'bi-star-fill' : 'bi-star' ?>"></i></button>
 	</div>
-	<div class="small text-body-secondary mt-2" id="nuHomeSearchNone" hidden><?= h(t('home_search_none')) ?></div>
-	<div class="mt-3" id="nuHomeSearchMore" hidden><h2 class="nuHomeGroupTitle"><?= h(t('home_search_more')) ?></h2><div class="list-group shadow-sm nuHomeList nuHomeSearchList"></div></div>
+	<?php // View (0.8.420): how the tiles look – the panel #nuHomeViewPanel; Customise: what goes where (current layout editable) ?>
+	<div class="nuHomeTools">
+		<button type="button" class="btn btn-outline-secondary" id="nuHomeViewBtn" aria-expanded="false" aria-controls="nuHomeViewPanel" title="<?= h(t('home_v_view_tip')) ?>">
+			<i class="bi bi-sliders2" aria-hidden="true"></i><span class="nuHomeBtnTx"><?= h(t('home_v_view')) ?></span></button>
+		<?php if ($canLayout): ?><button type="button" class="btn btn-outline-secondary" id="nuHomeCustomize" title="<?= h(t('home_v_customise_tip')) ?>">
+			<i class="bi bi-pencil" aria-hidden="true"></i><span class="nuHomeBtnTx"><?= h(t('home_customize')) ?></span></button><?php endif; ?>
+	</div>
 </div>
-<div id="nuHomeView"<?= $favOn ? ' class="nuHomeFavOnly"' : '' ?>>
+<div class="small text-body-secondary mb-3" id="nuHomeSearchNone" hidden><?= h(t('home_search_none')) ?></div>
+<div class="mb-4" id="nuHomeSearchMore" hidden><h2 class="nuHomeGroupTitle"><?= h(t('home_search_more')) ?></h2><div class="list-group shadow-sm nuHomeList nuHomeSearchList"></div></div>
+<div id="nuHomeView" class="<?= h($viewCls) ?>">
 	<?php if (!$groups): ?>
 		<div class="alert alert-info"><?= h(t('home_all_hidden')) ?></div>
-	<?php elseif ($layout['display'] === 'tabs' && count($tabList = NuHome::tabsOf($layout, $groups)) > 1): ?>
-		<ul class="nav nav-tabs nuHomeTabs" role="tablist">
-			<?php foreach ($tabList as $i => $tb): ?>
-				<li class="nav-item" role="presentation"><button class="nav-link<?= $i === 0 ? ' active' : '' ?>" id="nuHomeTab_<?= h($tb['id']) ?>" data-bs-toggle="tab" data-bs-target="#nuHomePane_<?= h($tb['id']) ?>"
-					type="button" role="tab" aria-controls="nuHomePane_<?= h($tb['id']) ?>" aria-selected="<?= $i === 0 ? 'true' : 'false' ?>"><?= h($tb['title'] !== '' ? $tb['title'] : t('home_group_untitled')) ?></button></li>
+	<?php else: ?>
+	<section class="nuHomeStrip" data-nu-strip="fav"<?= $view['favStrip'] && $favCount ? '' : ' hidden' ?> aria-label="<?= h(t('home_v_fav_row')) ?>">
+		<h2 class="nuHomeGroupTitle"><i class="bi bi-star-fill nuHomeStripStar" aria-hidden="true"></i><?= h(t('home_v_fav_row')) ?></h2>
+		<div class="nuHomeChips"><?php foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) echo $chip((string)$k, $it); ?></div>
+	</section>
+	<section class="nuHomeStrip" data-nu-strip="recent" hidden aria-label="<?= h(t('home_v_recent_row')) ?>">
+		<h2 class="nuHomeGroupTitle"><i class="bi bi-clock-history" aria-hidden="true"></i><?= h(t('home_v_recent_row')) ?></h2>
+		<div class="nuHomeChips"></div>
+	</section>
+	<?php if (count($units) > 1): ?>
+	<ul class="nav nav-tabs nuHomeTabs" role="tablist">
+		<?php foreach ($units as $i => $tb): ?>
+			<li class="nav-item" role="presentation"><button class="nav-link<?= $i === 0 ? ' active' : '' ?>" id="nuHomeTab_<?= h($tb['id']) ?>" data-nu-tabbtn="<?= h($tb['id']) ?>"
+				type="button" role="tab" aria-controls="nuHomePane_<?= h($tb['id']) ?>" aria-selected="<?= $i === 0 ? 'true' : 'false' ?>"<?= $i === 0 ? '' : ' tabindex="-1"' ?>><?= h($tb['title'] !== '' ? $tb['title'] : t('home_group_untitled')) ?></button></li>
+		<?php endforeach; ?>
+	</ul>
+	<?php endif; ?>
+	<div class="nuHomeBody">
+		<nav class="nuHomeSide" aria-label="<?= h(t('home_v_groups_nav')) ?>">
+			<?php $first = true; foreach ($units as $tb): ?>
+				<?php if ($layout['tabs'] && count($units) > 1): ?><div class="nuHomeSideHead"><?= h($tb['title'] !== '' ? $tb['title'] : t('home_group_untitled')) ?></div><?php endif; ?>
+				<?php foreach ($tb['groups'] as $g): ?>
+					<button type="button" class="nuHomeSideItem<?= $first ? ' active' : '' ?>" data-nu-side="<?= h($g['id']) ?>" data-nu-unit="<?= h($tb['id']) ?>" data-nu-gcolor="<?= h($g['color']) ?>"<?= $first ? ' aria-current="true"' : '' ?>>
+						<span class="nuHomeGDot" aria-hidden="true"></span><span class="nuHomeSideLabel"><?= h($g['title'] !== '' ? $g['title'] : t('home_group_untitled')) ?></span><span class="nuHomeGCount"><?= count($g['items']) ?></span></button>
+				<?php $first = false; endforeach; ?>
 			<?php endforeach; ?>
-		</ul>
-		<div class="tab-content pt-3 mb-4">
-			<?php foreach ($tabList as $i => $tb): ?>
-				<div class="tab-pane fade<?= $i === 0 ? ' show active' : '' ?>" id="nuHomePane_<?= h($tb['id']) ?>" role="tabpanel" aria-labelledby="nuHomeTab_<?= h($tb['id']) ?>">
+		</nav>
+		<select class="form-select nuHomeSideSelect" aria-label="<?= h(t('home_v_groups_nav')) ?>">
+			<?php foreach ($units as $tb): ?>
+				<?php if ($layout['tabs'] && count($units) > 1): ?><optgroup label="<?= h($tb['title'] !== '' ? $tb['title'] : t('home_group_untitled')) ?>"><?php endif; ?>
+				<?php foreach ($tb['groups'] as $g): ?><option value="<?= h($g['id']) ?>"><?= h($g['title'] !== '' ? $g['title'] : t('home_group_untitled')) ?></option><?php endforeach; ?>
+				<?php if ($layout['tabs'] && count($units) > 1): ?></optgroup><?php endif; ?>
+			<?php endforeach; ?>
+		</select>
+		<div class="nuHomeMain<?= $tabbed ? '' : ' nuHomeStyle-' . h($view['style']) ?>">
+			<?php $firstG = true; foreach ($units as $i => $tb): ?>
+				<div class="nuHomePane<?= $i === 0 ? ' nuHomeActive' : '' ?><?= $tabbed ? ' nuHomeStyle-' . h(NuHome::styleFor($layout, $myView, $tb['id'])) : '' ?>" id="nuHomePane_<?= h($tb['id']) ?>" data-nu-tab="<?= h($tb['id']) ?>"
+					<?= !empty($tb['groups'][0]['plain']) ? ' data-nu-plain="1"' : '' ?><?= count($units) > 1 ? ' role="tabpanel" aria-labelledby="nuHomeTab_' . h($tb['id']) . '"' : '' ?>>
 					<?php foreach ($tb['groups'] as $g): ?>
-						<section class="nuHomeGroup mb-4">
-							<?php if (empty($g['plain']) && $g['title'] !== ''): ?><h2 class="nuHomeGroupTitle"><?= h($g['title']) ?></h2><?php endif; ?>
-							<?= $tilesOf($g['items']) ?>
+						<section class="nuHomeGroup<?= $firstG ? ' nuHomeSideOn' : '' ?>" data-nu-group="<?= h($g['id']) ?>" data-nu-gcolor="<?= h($g['color']) ?>" aria-label="<?= h($g['title'] !== '' ? $g['title'] : t('home_group_untitled')) ?>">
+							<?php if ($g['title'] !== ''): ?><div class="nuHomeGroupHead"><span class="nuHomeGDot" aria-hidden="true"></span><h2 class="nuHomeGroupTitle"><?= h($g['title']) ?></h2><span class="nuHomeGCount"><?= count($g['items']) ?></span></div><?php endif; ?>
+							<div class="nuHomeTiles"><?php foreach ($g['items'] as $k => $it) echo $tile((string)$k, $it); ?></div>
 						</section>
-					<?php endforeach; ?>
+					<?php $firstG = false; endforeach; ?>
 				</div>
 			<?php endforeach; ?>
 		</div>
-	<?php else: ?>
-		<?php foreach ($groups as $g): ?>
-			<section class="nuHomeGroup mb-4" aria-label="<?= h($g['title'] !== '' ? $g['title'] : t('home_group_untitled')) ?>">
-				<?php if ($g['title'] !== ''): ?><h2 class="nuHomeGroupTitle"><?= h($g['title']) ?></h2><?php endif; ?>
-				<?= $tilesOf($g['items']) ?>
-			</section>
-		<?php endforeach; ?>
+	</div>
 	<?php endif; ?>
 </div>
 <div id="nuHomeEdit" hidden></div>
-<?php // Customize (current layout editable) and the ▾ menu: saved layouts (0.8.333) and – when editable – the tile size
-	$hlCur = NuHome::current(); $hlAll = NuHome::layouts(); $hlDef = NuListView::listDefault(NuHome::LIST); $hlManage = NuHome::canManage(); ?>
-<div class="d-flex justify-content-start justify-content-md-end mt-2 mt-md-0 mb-3 nuHomeCustomizeBar">
-	<div class="btn-group dropup" id="nuHomeCustomizeGroup">
-		<?php if ($canLayout): ?><button type="button" class="btn btn-sm btn-outline-secondary" id="nuHomeCustomize"><i class="bi bi-pencil me-1"></i><?= h(t('home_customize')) ?></button><?php endif; ?>
-		<button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle<?= $canLayout ? ' dropdown-toggle-split' : '' ?>" id="nuHomeSizeMenu" data-bs-toggle="dropdown" aria-expanded="false"
-			aria-label="<?= h(t('home_layouts')) ?>" title="<?= h(t('home_layouts') . ': ' . $hlCur['name']) ?>"><?php if (!$canLayout): ?><i class="bi bi-layout-text-window me-1"></i><?= h($hlCur['name']) ?><?php endif; ?></button>
-		<ul class="dropdown-menu dropdown-menu-md-end nuHomeLayoutMenu" aria-labelledby="nuHomeSizeMenu">
-			<li><h6 class="dropdown-header"><?= h(t('home_layouts')) ?></h6></li>
-			<?php foreach ($hlAll as $hl): $on = $hl['id'] === $hlCur['id']; ?>
-				<li><button type="button" class="dropdown-item d-flex align-items-center<?= $on ? ' active' : '' ?>" data-nu-layout="<?= h($hl['id']) ?>"<?= $on ? ' aria-current="true"' : '' ?>>
-					<i class="bi <?= $hl['mine'] ? 'bi-person' : 'bi-people' ?> me-2" aria-hidden="true"></i><span class="flex-grow-1"><?= h($hl['name']) ?></span>
-					<?php if ($hl['id'] === $hlDef || ($hl['id'] === 'default' && $hlDef === 'default')): ?><i class="bi bi-pin-angle-fill ms-2" title="<?= h(t('home_layout_is_default')) ?>"></i><?php endif; ?>
-					<?php if ($hl['roles']): ?><i class="bi bi-person-badge ms-2" title="<?= h(t('home_layout_limited')) ?>"></i><?php endif; ?>
-					<?php if ($on): ?><i class="bi bi-check-lg ms-3" aria-hidden="true"></i><?php endif; ?></button></li>
-			<?php endforeach; ?>
-			<li><hr class="dropdown-divider"></li>
-			<li><button type="button" class="dropdown-item" data-nu-layout-act="saveas"><i class="bi bi-plus-lg me-2"></i><?= h(t('home_layout_saveas')) ?></button></li>
-			<?php if ($hlCur['id'] !== 'default' && $hlCur['editable']): ?>
-				<li><button type="button" class="dropdown-item" data-nu-layout-act="meta"><i class="bi bi-pencil-square me-2"></i><?= h(t('home_layout_meta')) ?></button></li>
-				<?php if (!($hlCur['scope'] === 'shared' && $hlCur['id'] === $hlDef)): ?><li><button type="button" class="dropdown-item text-danger" data-nu-layout-act="delete"><i class="bi bi-trash me-2"></i><?= h(t('home_layout_delete')) ?></button></li><?php endif; ?>
-			<?php endif; ?>
-			<?php if ($hlManage && $hlCur['scope'] === 'shared' && $hlCur['id'] !== $hlDef): ?>
-				<li><button type="button" class="dropdown-item" data-nu-layout-act="default"><i class="bi bi-pin-angle me-2"></i><?= h(t('home_layout_make_default')) ?></button></li>
-			<?php endif; ?>
-			<?php if ($canLayout): ?>
-			<li><hr class="dropdown-divider"></li>
-			<li><h6 class="dropdown-header"><?= h(t('home_size')) ?></h6></li>
-			<?php foreach (['large' => 'bi-grid-1x2', 'compact' => 'bi-grid-3x3-gap', 'list' => 'bi-list-ul', 'listwide' => 'bi-view-list', 'list2' => 'bi-layout-split'] as $sz => $szIcon): $on = $layout['size'] === $sz; ?>
-				<li><button type="button" class="dropdown-item d-flex align-items-center<?= $on ? ' active' : '' ?>" data-nu-size="<?= h($sz) ?>"<?= $on ? ' aria-current="true"' : '' ?>>
-					<i class="bi <?= $szIcon ?> me-2" aria-hidden="true"></i><span class="flex-grow-1"><?= h(t('home_size_' . $sz)) ?></span>
-					<?php if ($on): ?><i class="bi bi-check-lg ms-3" aria-hidden="true"></i><?php endif; ?></button></li>
-			<?php endforeach; ?>
-			<?php endif; ?>
-		</ul>
-	</div>
 </div>
-</div>
+<aside id="nuHomeViewPanel" class="nuHomeVp" hidden aria-labelledby="nuHomeVpTitle"></aside>
 <?php endif; ?>
 
 <?php if (!$u['globeadmin']): ?>
@@ -374,8 +375,16 @@ if ($admin) {
 	} catch (Throwable) { /* no procedures table */ }
 	$formList = [];
 	foreach (nu_forms() as $id => $f) if ($f['type'] !== 'subform') $formList[] = ['id' => (string)$id, 'label' => $f['code'] . ($f['description'] !== '' ? ' – ' . $f['description'] : '')];
+	$vLayouts = [];
+	foreach ($hlAll as $hl) $vLayouts[] = ['id' => $hl['id'], 'name' => $hl['name'], 'scope' => $hl['scope'], 'isDefault' => $hl['id'] === $hlDef || ($hl['id'] === 'default' && $hlDef === 'default')];
 	$data = [
-		'url' => nu_url('home', ['tiles' => '1']), 'csrf' => nu_csrf_token(), 'layout' => $layout, 'hookData' => (object)NuHomeHook::$data, 'ga' => (bool)$u['globeadmin'],
+		'url' => nu_url('home', ['tiles' => '1']), 'csrf' => nu_csrf_token(), 'layout' => $layout,
+		// View panel (0.8.420): the layout's view, this person's own changes, where a change may go, the saved layouts
+		'view' => ['layout' => $layout['view'], 'overlay' => $myView, 'editable' => (bool)$hlCur['editable'], 'scope' => (string)$hlCur['scope'], 'id' => (string)$hlCur['id'],
+			'name' => (string)$hlCur['name'], 'isDefault' => $hlCur['id'] === $hlDef, 'layouts' => $vLayouts, 'defaults' => NuHome::VIEW_DEFAULTS, 'groupColors' => NuHome::GROUP_COLORS,
+			'units' => array_map(static fn($tb) => ['id' => $tb['id'], 'title' => $tb['title'] !== '' ? $tb['title'] : t('home_group_untitled')], $units),
+			'canMeta' => $hlCur['id'] !== 'default' && $hlCur['editable'], 'canDelete' => $hlCur['id'] !== 'default' && $hlCur['editable'] && !($hlCur['scope'] === 'shared' && $hlCur['id'] === $hlDef),
+			'canDefault' => $hlManage && $hlCur['scope'] === 'shared' && $hlCur['id'] !== $hlDef], 'hookData' => (object)NuHomeHook::$data, 'ga' => (bool)$u['globeadmin'],
 		'saved' => ['current' => ['id' => $hlCur['id'], 'name' => $hlCur['name'], 'scope' => $hlCur['scope'], 'roles' => $hlCur['roles']], 'manage' => $hlManage,
 			'roles' => $hlManage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'presets' => NuHome::presets(), 'catalog' => $cat,
 		'forms' => $formList, 'pages' => NuHome::PAGES, 'procedures' => $procs, 'icons' => NuHome::ICONS, 'procUrl' => nu_url('procedures', ['id' => '__ID__']),
@@ -387,7 +396,19 @@ if ($admin) {
 			'home_run_window', 'home_run_hidden', 'home_tile_url', 'home_tile_url_hint', 'home_tile_newtab', 'home_drop_here', 'home_edit_hint', 'home_saved_err',
 			'home_proc_done', 'home_proc_failed', 'home_tabs', 'home_add_tab', 'home_tab_new', 'home_tab_title', 'home_tab_up', 'home_tab_down',
 			'home_tab_delete', 'home_tab_delete_confirm', 'home_tabs_hint', 'home_layout_saveas', 'home_start_from', 'home_start_from_tip', 'home_pf_menu_head', 'home_pf_n_tiles', 'home_pf_keep_own', 'home_pf_loaded', 'home_pf_loaded_own', 'home_pf_not_saved', 'home_pf_counts', 'home_pf_counts_tabs', 'home_pf_undo', 'home_pf_g_own', 'home_layout_based_on', 'home_layout_based_current', 'home_layout_based_profiles', 'home_layout_based_copy', 'home_layout_keep_own', 'home_layout_meta', 'home_layout_name', 'home_layout_scope', 'home_layout_scope_user',
-			'home_layout_scope_shared', 'home_layout_roles', 'home_layout_roles_all', 'home_layout_delete_confirm', 'home_layout_copy', 'home_group_tab', 'home_running', 'home_done', 'home_editing', 'home_discard_confirm', 'home_drag', 'home_delete_tile_confirm', 'home_group_delete_confirm', 'save', 'cancel', 'ok', 'delete', 'close'], array_map('t', $k)),
+			'home_layout_scope_shared', 'home_layout_roles', 'home_layout_roles_all', 'home_layout_delete_confirm', 'home_layout_delete', 'home_layout_make_default', 'home_layout_copy', 'home_group_tab', 'home_running', 'home_done', 'home_editing', 'home_discard_confirm', 'home_drag', 'home_delete_tile_confirm', 'home_group_delete_confirm', 'save', 'cancel', 'ok', 'delete', 'close'], array_map('t', $k))
+			// View panel (0.8.420)
+			+ array_combine($k = array_map(static fn($x) => 'home_v_' . $x, ['view', 'personal', 'fav_row', 'fav_row_hint', 'recent_row', 'recent_row_hint', 'sort_name', 'sort_group', 'sort_status', 'col_desc', 'hc_open',
+			'saved_everyone', 'size_desktop', 'size_tablet', 'size_phone', 'style', 'list_cols', 'list_width', 'desc', 'lines', 'delay', 'nav', 'density',
+			'icons', 'group_colors', 'badges', 'badges_hint', 'actions', 'actions_hint', 'own_one', 'default', 'more', 'layout', 'store_personal',
+			'store_shared_user', 'undo_mine', 'store_shared_admin', 'applies_to', 'only_me', 'everyone', 'everyone_note', 'mine_count', 'make_layout',
+			'settings_for', 'all_sizes', 'only_size', 'own_settings', 'same_all_sizes', 'only_size_note', 'style_large', 'style_large_hint', 'style_cards',
+			'style_cards_hint', 'style_compact', 'style_compact_hint', 'style_list', 'style_list_hint', 'style_launcher', 'style_launcher_hint', 'style_panels',
+			'style_panels_hint', 'style_table', 'style_table_hint', 'auto', 'readable', 'full', 'use_for', 'all_tabs', 'only_tab', 'same_all_tabs', 'tab_owner',
+			'size_beats_tab', 'desc_auto', 'desc_auto_hint', 'desc_inline', 'desc_inline_hint', 'desc_tooltip', 'desc_tooltip_hint', 'desc_hovercard',
+			'desc_hovercard_hint', 'desc_info', 'desc_info_hint', 'desc_off', 'desc_off_hint', 'all', 'delay_none', 'delay_short', 'delay_long', 'nav_groups',
+			'nav_groups_hint', 'nav_tabs', 'nav_tabs_hint', 'nav_sidebar', 'nav_sidebar_hint', 'nav_none', 'nav_none_hint', 'on_top', 'look', 'roomy', 'medium',
+			'dense', 'icon_soft', 'icon_solid', 'icon_outline', 'icon_mono', 'icon_none', 'reset', 'saved', 'reset_done', 'reset_everyone']), array_map('t', $k)),
 	];
 	$foot = '<script type="application/json" id="nuHomeData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>'
 		. '<script src="' . nu_asset('assets/js/nuhome.js') . '"></script>'

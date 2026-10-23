@@ -1,5 +1,14 @@
 # nuBuilder Next – to do
 
+## 0.8.420 Start page View panel – please verify
+- [ ] On the live server: your layouts look as before (tile size → style, display → navigation); open *View* (button or key V) and try the
+      styles, descriptions and navigation at desktop, tablet and phone width; light and dark.
+- [ ] A user with an admin role but without *Start page layout*: changes in *View* stay his own (the shared layout is unchanged for others),
+      *Undo my changes* goes back. As globeadmin on a shared layout: *Only me* is the default, *Everyone* writes the layout (Undo in the toast).
+- [ ] Open the start page in Microsoft Edge / Safari / Firefox (container queries, `:has()`, `color-mix()` – browsers from 2023 on).
+- [ ] Next release: drop the deprecated POST action `size` and the texts `home_size_*` (still used by Customise's tile size select – check
+      first), and decide on a colour field per group in Customise (layouts already accept `groups[].color`).
+
 ## 0.8.409 Library folders vendor/ – please verify
 - [ ] Update the live server: pages load (Bootstrap, icons, Tom Select, CodeMirror, formatters, QR code, ApexCharts) from `vendor/bundled/`;
       the old `assets/vendor/` stays (delete it by hand once everything works – a later version removes it).
