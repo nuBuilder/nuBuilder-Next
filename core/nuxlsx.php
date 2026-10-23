@@ -3,24 +3,34 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Excel export (0.8.398): a small writer for .xlsx files (Office Open XML) without other libraries – only PHP's ZipArchive.
+ * Excel export (0.8.398, revised): a small writer for .xlsx files (Office Open XML) without other libraries – only PHP's ZipArchive.
  * For the list exports of nuBuilder Next and for own code (procedures, page forms: $nu->excel()).
  *
  *   $x = NuXlsx::create('Customers');                         // workbook (title = file property)
  *   $s = $x->sheet('Customers');                              // a sheet (name made valid and unique)
  *   $s->header(['Name', 'Amount', 'Since'])                   // bold, header row frozen, autofilter
  *     ->row(['Anna', 1250.5, new DateTime('2026-01-15')])     // int / float = number, DateTimeInterface = date, bool, string = text
- *     ->row(['Total', NuXlsx::formula('SUM(B2:B2)')], ['bold' => true])
+ *     ->row(['Total', NuXlsx::formula('SUM(B2:B2)', value: 1250.5)], ['bold' => true])
  *     ->style('B2:B3', ['format' => '#,##0.00'])
  *     ->width('A', 30);                                       // or autoWidth() (default on)
- *   $x->download('customers.xlsx');                           // or save($file) / toString()
+ *   $x->download('Kundenübersicht.xlsx');                     // or save($file) / toString()
  *
  * Cell styles (arrays): bold, italic, underline, strike (bool), size (points), font, color, bg ('#RRGGBB'), format (Excel number
  * format, e.g. '0.00', '#,##0', 'dd.mm.yyyy', '0%'), align (left / center / right), valign (top / middle / bottom), wrap (bool),
- * border (thin / medium / thick / dashed / dotted / double). One cell: NuXlsx::cell($value, $style).
+ * border (thin / medium / thick / dashed / dotted / double / hair). One cell: NuXlsx::cell($value, $style).
+ * A key set to false removes an inherited value: NuXlsx::cell('x', ['bold' => false]) in a bold row is not bold.
+ * Order of precedence (strongest first): style() ranges (later calls win) > the cell's own style > the row's style.
+ *
+ * Values: int / float (NAN and INF = empty), bool, DateTimeInterface (wall time; dates outside 1900-03-01 … 9999-12-31 are written
+ * as ISO text, because Excel cannot show them as dates), string, Stringable, enums (backed = value, pure = name), null.
+ *
+ * Formulas: English function names and ',' as the separator (the file format, independent of the reader's locale). Functions newer
+ * than Excel 2007 (XLOOKUP, IFS, TEXTJOIN, …) get their '_xlfn.' prefix automatically. Dynamic-array functions (FILTER, SORT,
+ * UNIQUE, SEQUENCE, LET, LAMBDA) are not supported. The workbook asks the reader to recalculate on load; for readers that never
+ * calculate (previews, pandas), give the cached result: NuXlsx::formula('SUM(B2:B9)', value: 1250.5).
  *
  * Safe by design: a string is always text (never a formula, also when it starts with = + - @), invalid XML characters are removed,
- * names and ranges are checked. Formulas only through NuXlsx::formula().
+ * text that looks like an Excel escape (_x0041_) stays as typed, names and ranges are checked. Formulas only through NuXlsx::formula().
  */
 final class NuXlsx
 {
@@ -30,6 +40,20 @@ final class NuXlsx
 	public const STYLE_KEYS = ['bold', 'italic', 'underline', 'strike', 'size', 'font', 'color', 'bg', 'format', 'align', 'valign', 'wrap', 'border'];
 	private const BORDERS = ['thin', 'medium', 'thick', 'dashed', 'dotted', 'double', 'hair'];
 	private const BUILTIN_FORMATS = ['0' => 1, '0.00' => 2, '#,##0' => 3, '#,##0.00' => 4, '0%' => 9, '0.00%' => 10, '0.00E+00' => 11, '@' => 49];
+	/** Functions added after Excel 2007: stored with the '_xlfn.' prefix in the file, otherwise Excel shows #NAME?. */
+	private const FUTURE_FUNCTIONS = [
+		'ACOT', 'ACOTH', 'AGGREGATE', 'ARABIC', 'BASE', 'BETA.DIST', 'BETA.INV', 'BINOM.DIST', 'BINOM.DIST.RANGE', 'BINOM.INV', 'BITAND', 'BITLSHIFT',
+		'BITOR', 'BITRSHIFT', 'BITXOR', 'CEILING.MATH', 'CEILING.PRECISE', 'CHISQ.DIST', 'CHISQ.DIST.RT', 'CHISQ.INV', 'CHISQ.INV.RT', 'CHISQ.TEST',
+		'COMBINA', 'CONCAT', 'CONFIDENCE.NORM', 'CONFIDENCE.T', 'COT', 'COTH', 'COVARIANCE.P', 'COVARIANCE.S', 'CSC', 'CSCH', 'DAYS', 'DECIMAL',
+		'ENCODEURL', 'ERF.PRECISE', 'ERFC.PRECISE', 'EXPON.DIST', 'F.DIST', 'F.DIST.RT', 'F.INV', 'F.INV.RT', 'F.TEST', 'FILTERXML', 'FLOOR.MATH',
+		'FLOOR.PRECISE', 'FORECAST.LINEAR', 'FORMULATEXT', 'GAMMA', 'GAMMA.DIST', 'GAMMA.INV', 'GAMMALN.PRECISE', 'GAUSS', 'HYPGEOM.DIST', 'IFNA',
+		'IFS', 'IMCOSH', 'IMCOT', 'IMCSC', 'IMCSCH', 'IMSEC', 'IMSECH', 'IMSINH', 'IMTAN', 'ISFORMULA', 'ISOWEEKNUM', 'LOGNORM.DIST', 'LOGNORM.INV',
+		'MAXIFS', 'MINIFS', 'MODE.MULT', 'MODE.SNGL', 'MUNIT', 'NEGBINOM.DIST', 'NETWORKDAYS.INTL', 'NORM.DIST', 'NORM.INV', 'NORM.S.DIST',
+		'NORM.S.INV', 'NUMBERVALUE', 'PDURATION', 'PERCENTILE.EXC', 'PERCENTILE.INC', 'PERCENTRANK.EXC', 'PERCENTRANK.INC', 'PERMUTATIONA', 'PHI',
+		'POISSON.DIST', 'QUARTILE.EXC', 'QUARTILE.INC', 'RANK.AVG', 'RANK.EQ', 'RRI', 'SEC', 'SECH', 'SHEET', 'SHEETS', 'SKEW.P', 'STDEV.P', 'STDEV.S',
+		'SWITCH', 'T.DIST', 'T.DIST.2T', 'T.DIST.RT', 'T.INV', 'T.INV.2T', 'T.TEST', 'TEXTJOIN', 'UNICHAR', 'UNICODE', 'VAR.P', 'VAR.S',
+		'WEIBULL.DIST', 'WEBSERVICE', 'WORKDAY.INTL', 'XLOOKUP', 'XMATCH', 'XOR', 'Z.TEST',
+	];
 
 	/** @var list<NuXlsxSheet> */
 	private array $sheets = [];
@@ -37,8 +61,9 @@ final class NuXlsx
 	/** Date / date-time formats of DateTimeInterface values; default = Excel's built-in formats 14 / 22 (shown in the reader's locale). */
 	private string $dateFormat = '';
 	private string $dateTimeFormat = '';
-	/** @var array<string, int> style key => cellXfs index (built in toString()) */
+	/** @var array<string, int> style key => cellXfs index (built in writeZip()) */
 	private array $xfIndex = [];
+	private static ?string $futureRegex = null;
 
 	public function __construct(string $title = '')
 	{
@@ -57,15 +82,22 @@ final class NuXlsx
 		return new NuXlsxCell($value, self::cleanStyle($style));
 	}
 
-	/** A formula cell: NuXlsx::formula('SUM(B2:B9)') – with or without the leading '='. */
-	public static function formula(string $formula, array $style = []): NuXlsxCell
+	/**
+	 * A formula cell: NuXlsx::formula('SUM(B2:B9)') – with or without the leading '='.
+	 * $value = optional cached result (int / float / bool / string) for readers that do not calculate.
+	 */
+	public static function formula(string $formula, array $style = [], mixed $value = null): NuXlsxCell
 	{
 		$f = ltrim(trim($formula), '=');
 		if ($f === '' || mb_strlen($f) > 8192) throw new InvalidArgumentException('NuXlsx: formula empty or too long');
-		return new NuXlsxCell($f, self::cleanStyle($style), true);
+		if ($value !== null && !is_int($value) && !is_float($value) && !is_bool($value) && !is_string($value)) {
+			throw new InvalidArgumentException('NuXlsx: the cached formula value must be int, float, bool or string');
+		}
+		if (is_float($value) && !is_finite($value)) $value = null;
+		return new NuXlsxCell(self::prefixFutureFunctions($f), self::cleanStyle($style), true, $value);
 	}
 
-	/** Adds a sheet (the name is made valid: at most 31 characters, without : \ / ? * [ ] – and unique). */
+	/** Adds a sheet (the name is made valid: at most 31 characters, without : \ / ? * [ ], not 'History' – and unique). */
 	public function sheet(string $name = ''): NuXlsxSheet
 	{
 		$s = new NuXlsxSheet($this->uniqueName($name !== '' ? $name : 'Sheet' . (count($this->sheets) + 1)));
@@ -93,63 +125,50 @@ final class NuXlsx
 
 	// ================================================================= output
 
-	/** Writes the file (the folder must exist). */
+	/** Writes the file (the folder must exist). Written to a temporary file next to it first, so a failure leaves no half file. */
 	public function save(string $file): void
 	{
-		if (file_put_contents($file, $this->toString()) === false) throw new RuntimeException('NuXlsx: cannot write ' . basename($file));
+		$dir = dirname($file);
+		if (!is_dir($dir) || !is_writable($dir)) throw new RuntimeException('NuXlsx: cannot write ' . basename($file));
+		$tmp = @tempnam($dir, '.nuxlsx');
+		if ($tmp === false) throw new RuntimeException('NuXlsx: no temporary file');
+		try {
+			$this->writeZip($tmp);
+			if (!@rename($tmp, $file)) throw new RuntimeException('NuXlsx: cannot write ' . basename($file));
+			@chmod($file, 0666 & ~umask());
+		} finally {
+			if (is_file($tmp)) @unlink($tmp);
+		}
 	}
 
-	/** Sends the file as a download and ends the request. */
+	/** Sends the file as a download and ends the request. Non-ASCII file names (Übersicht.xlsx) are kept for modern browsers. */
 	public function download(string $filename = 'export.xlsx'): never
 	{
-		$name = trim((string)preg_replace('/[^A-Za-z0-9_. -]+/', '_', $filename), ' ._') ?: 'export';
-		if (!preg_match('/\.xlsx$/i', $name)) $name .= '.xlsx';
-		$data = $this->toString();
-		while (ob_get_level() > 0) ob_end_clean();
-		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-		header('Content-Disposition: attachment; filename="' . $name . '"');
-		header('Content-Length: ' . strlen($data));
-		header('Cache-Control: no-store');
-		echo $data;
+		if (headers_sent($file, $line)) throw new RuntimeException('NuXlsx: output already started' . ($file ? ' in ' . basename((string)$file) . ':' . $line : '') . ' – cannot send the download');
+		[$ascii, $utf8] = self::downloadNames($filename);
+		$tmp = self::tempFile();
+		try {
+			$this->writeZip($tmp);
+			while (ob_get_level() > 0) ob_end_clean();
+			if (nu_ini_get('zlib.output_compression')) nu_ini_set('zlib.output_compression', '0');   // hosts may disable ini_set (CLAUDE.md)
+			header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+			header('Content-Disposition: attachment; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($utf8));
+			header('Content-Length: ' . filesize($tmp));
+			header('Cache-Control: no-store');
+			header('X-Content-Type-Options: nosniff');
+			readfile($tmp);
+		} finally {
+			@unlink($tmp);
+		}
 		exit;
 	}
 
 	/** The .xlsx file as a string. */
 	public function toString(): string
 	{
-		if (!class_exists('ZipArchive')) throw new RuntimeException('NuXlsx: the PHP extension zip is missing');
-		if (!$this->sheets) $this->sheet();
-		$strings = new NuXlsxStrings();
-		$styles = $this->collectStyles();
-		$parts = [];
-		foreach ($this->sheets as $i => $s) $parts['xl/worksheets/sheet' . ($i + 1) . '.xml'] = $s->xml($strings, fn(array $st, string $kind) => $this->xf($st, $kind));
-		$parts['xl/sharedStrings.xml'] = $strings->xml();
-		$parts['xl/styles.xml'] = $styles;
-		$parts['xl/workbook.xml'] = $this->workbookXml();
-		$parts['xl/_rels/workbook.xml.rels'] = $this->workbookRels();
-		$parts['[Content_Types].xml'] = $this->contentTypes();
-		$parts['_rels/.rels'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
-			. '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-			. '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
-			. '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>'
-			. '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>'
-			. '</Relationships>';
-		$parts['docProps/core.xml'] = $this->coreXml();
-		$parts['docProps/app.xml'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
-			. '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>nuBuilder Next</Application>'
-			. ($this->props['company'] !== '' ? '<Company>' . self::esc($this->props['company']) . '</Company>' : '') . '</Properties>';
-
-		$tmp = tempnam(sys_get_temp_dir(), 'nuxlsx');
-		if ($tmp === false) throw new RuntimeException('NuXlsx: no temporary file');
+		$tmp = self::tempFile();
 		try {
-			$z = new ZipArchive();
-			if ($z->open($tmp, ZipArchive::OVERWRITE) !== true) throw new RuntimeException('NuXlsx: cannot create the zip file');
-			foreach (['[Content_Types].xml', '_rels/.rels', 'docProps/core.xml', 'docProps/app.xml', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml', 'xl/sharedStrings.xml'] as $n) {
-				$z->addFromString($n, $parts[$n]);
-				unset($parts[$n]);
-			}
-			foreach ($parts as $n => $xml) $z->addFromString($n, $xml);
-			$z->close();
+			$this->writeZip($tmp);
 			return (string)file_get_contents($tmp);
 		} finally {
 			@unlink($tmp);
@@ -197,19 +216,29 @@ final class NuXlsx
 		return [min($r1, $r2), min($c1, $c2), max($r1, $r2), max($c1, $c2)];
 	}
 
-	/** Excel serial number of a date (days since 1899-12-30, local wall time). */
+	/** 'A1:C9' of [row1, col1, row2, col2]. */
+	public static function rangeRef(int $r1, int $c1, int $r2, int $c2): string
+	{
+		return self::colName($c1) . $r1 . ':' . self::colName($c2) . $r2;
+	}
+
+	/**
+	 * Excel serial number of a date (days since 1899-12-30, local wall time). Correct from 1900-03-01 on; earlier dates are hit by
+	 * Excel's fake 1900-02-29 – the sheet writes them as text.
+	 */
 	public static function serial(DateTimeInterface $d): float
 	{
 		$utc = new DateTimeImmutable($d->format('Y-m-d H:i:s'), new DateTimeZone('UTC'));
 		return $utc->getTimestamp() / 86400 + 25569;
 	}
 
-	/** Only known style keys with checked values. */
+	/** Only known style keys with checked values; false = "remove the inherited value" (kept until the cell's style is resolved). */
 	public static function cleanStyle(array $st): array
 	{
 		$out = [];
 		foreach ($st as $k => $v) {
-			if (!in_array($k, self::STYLE_KEYS, true) || $v === null || $v === false || $v === '') continue;
+			if (!in_array($k, self::STYLE_KEYS, true) || $v === null || $v === '') continue;
+			if ($v === false) { $out[$k] = false; continue; }
 			switch ($k) {
 				case 'bold': case 'italic': case 'underline': case 'strike': case 'wrap': $out[$k] = true; break;
 				case 'size': $n = (float)$v; if ($n >= 1 && $n <= 409) $out[$k] = $n; break;
@@ -227,14 +256,88 @@ final class NuXlsx
 
 	// ================================================================= internals
 
+	private static function tempFile(): string
+	{
+		if (!class_exists('ZipArchive')) throw new RuntimeException('NuXlsx: the PHP extension zip is missing');
+		$tmp = tempnam(sys_get_temp_dir(), 'nuxlsx');
+		if ($tmp === false) throw new RuntimeException('NuXlsx: no temporary file');
+		return $tmp;
+	}
+
+	/** [ASCII fallback, UTF-8 name] for Content-Disposition (RFC 6266 / RFC 5987). */
+	private static function downloadNames(string $filename): array
+	{
+		$utf8 = trim((string)preg_replace('/[\x00-\x1F\x7F\\\\\/:*?"<>|]+/u', '_', mb_scrub($filename, 'UTF-8')), ' ._');
+		$utf8 = mb_substr($utf8 !== '' ? $utf8 : 'export', 0, 200);
+		if (!preg_match('/\.xlsx$/i', $utf8)) $utf8 .= '.xlsx';
+		$ascii = strtr($utf8, ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'Ä' => 'Ae', 'Ö' => 'Oe', 'Ü' => 'Ue', 'ß' => 'ss']);
+		if (class_exists('Normalizer') && is_string($d = Normalizer::normalize($ascii, Normalizer::FORM_D))) $ascii = (string)preg_replace('/\p{Mn}+/u', '', $d);
+		$ascii = trim((string)preg_replace('/[^A-Za-z0-9_. -]+/', '_', $ascii), ' ._');
+		if ($ascii === '' || strcasecmp($ascii, 'xlsx') === 0) $ascii = 'export';
+		if (!preg_match('/\.xlsx$/i', $ascii)) $ascii .= '.xlsx';
+		return [$ascii, $utf8];
+	}
+
+	/** Adds the '_xlfn.' prefix to post-2007 functions – outside of string literals, only where not prefixed yet. */
+	private static function prefixFutureFunctions(string $f): string
+	{
+		if (self::$futureRegex === null) {
+			$names = self::FUTURE_FUNCTIONS;
+			usort($names, static fn($a, $b) => strlen($b) <=> strlen($a));
+			self::$futureRegex = '/(?<![\w.])(' . implode('|', array_map(static fn($n) => preg_quote($n, '/'), $names)) . ')(?=\s*\()/i';
+		}
+		$parts = preg_split('/("(?:[^"]|"")*")/', $f, -1, PREG_SPLIT_DELIM_CAPTURE);
+		if ($parts === false) return $f;
+		foreach ($parts as $i => $p) {
+			if ($i % 2 === 0 && $p !== '') $parts[$i] = (string)preg_replace_callback(self::$futureRegex, static fn($m) => '_xlfn.' . strtoupper($m[1]), $p);
+		}
+		return implode('', $parts);
+	}
+
 	private function uniqueName(string $name): string
 	{
 		$n = trim((string)preg_replace('/[:\\\\\/?*\[\]]/', ' ', $name), " '");
 		$n = mb_substr($n !== '' ? $n : 'Sheet', 0, 31);
 		$taken = array_map(static fn(NuXlsxSheet $s) => mb_strtolower($s->name()), $this->sheets);
+		$taken[] = 'history';   // reserved by Excel
 		$base = $n; $i = 2;
 		while (in_array(mb_strtolower($n), $taken, true)) $n = mb_substr($base, 0, 31 - strlen((string)$i) - 1) . ' ' . $i++;
 		return $n;
+	}
+
+	/** Builds the package into $path. */
+	private function writeZip(string $path): void
+	{
+		if (!class_exists('ZipArchive')) throw new RuntimeException('NuXlsx: the PHP extension zip is missing');
+		if (!$this->sheets) $this->sheet();
+		$strings = new NuXlsxStrings();
+		$styles = $this->collectStyles();
+		$parts = [];
+		foreach ($this->sheets as $i => $s) $parts['xl/worksheets/sheet' . ($i + 1) . '.xml'] = $s->xml($strings, fn(array $st, string $kind) => $this->xf($st, $kind));
+		$parts['xl/sharedStrings.xml'] = $strings->xml();
+		$parts['xl/styles.xml'] = $styles;
+		$parts['xl/workbook.xml'] = $this->workbookXml();
+		$parts['xl/_rels/workbook.xml.rels'] = $this->workbookRels();
+		$parts['[Content_Types].xml'] = $this->contentTypes();
+		$parts['_rels/.rels'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
+			. '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+			. '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+			. '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>'
+			. '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>'
+			. '</Relationships>';
+		$parts['docProps/core.xml'] = $this->coreXml();
+		$parts['docProps/app.xml'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
+			. '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>nuBuilder Next</Application>'
+			. ($this->props['company'] !== '' ? '<Company>' . self::esc($this->props['company']) . '</Company>' : '') . '</Properties>';
+
+		$z = new ZipArchive();
+		if ($z->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) throw new RuntimeException('NuXlsx: cannot create the zip file');
+		foreach (['[Content_Types].xml', '_rels/.rels', 'docProps/core.xml', 'docProps/app.xml', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml', 'xl/sharedStrings.xml'] as $n) {
+			$z->addFromString($n, $parts[$n]);
+			unset($parts[$n]);
+		}
+		foreach ($parts as $n => $xml) $z->addFromString($n, $xml);
+		if (!$z->close()) throw new RuntimeException('NuXlsx: cannot write the zip file');
 	}
 
 	/** styles.xml from every style used in the sheets; fills $this->xfIndex. */
@@ -247,9 +350,8 @@ final class NuXlsx
 		$borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>'];
 		$numFmts = [];
 		$xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'];
-		$this->xfIndex = ['|' => 0];
+		$this->xfIndex = [];
 		foreach ($used as $key => [$st, $kind]) {
-			if ($st === [] && $kind === '') { $this->xfIndex[$key] = 0; continue; }
 			$font = '<font>' . (!empty($st['bold']) ? '<b/>' : '') . (!empty($st['italic']) ? '<i/>' : '') . (!empty($st['strike']) ? '<strike/>' : '')
 				. (!empty($st['underline']) ? '<u/>' : '') . '<sz val="' . ($st['size'] ?? 11) . '"/>' . (isset($st['color']) ? '<color rgb="FF' . $st['color'] . '"/>' : '')
 				. '<name val="' . self::esc($st['font'] ?? 'Calibri') . '"/><family val="2"/></font>';
@@ -320,7 +422,9 @@ final class NuXlsx
 		}
 		return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
 			. '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-			. '<bookViews><workbookView/></bookViews><sheets>' . $sheets . '</sheets>' . ($names !== '' ? '<definedNames>' . $names . '</definedNames>' : '') . '</workbook>';
+			. '<bookViews><workbookView/></bookViews><sheets>' . $sheets . '</sheets>' . ($names !== '' ? '<definedNames>' . $names . '</definedNames>' : '')
+			. '<calcPr calcId="0" fullCalcOnLoad="1"/>'
+			. '</workbook>';
 	}
 
 	private static function absRange(string $r): string
@@ -371,7 +475,7 @@ final class NuXlsx
 /** One sheet of a NuXlsx workbook – rows are written one after the other; all methods return the sheet (chainable). */
 final class NuXlsxSheet
 {
-	/** @var array<int, array<int, array{0: mixed, 1: array, 2: bool}>> row => col => [value, style, formula] */
+	/** @var array<int, array<int, array{0: mixed, 1: array, 2: bool, 3: mixed}>> row => col => [value, style, formula, cached result] */
 	private array $cells = [];
 	private int $row = 0;
 	/** @var array<int, float> col => width */
@@ -394,7 +498,7 @@ final class NuXlsxSheet
 	/** The last written row (0 = none yet). */
 	public function lastRow(): int { return $this->row; }
 
-	/** A header row: bold (or $style), the sheet is frozen below it and gets an autofilter over it. */
+	/** A header row: bold (or $style), the sheet is frozen below it and gets an autofilter over it (and the data below). */
 	public function header(array $titles, array $style = ['bold' => true]): self
 	{
 		$this->row(array_values($titles), $style);
@@ -403,19 +507,27 @@ final class NuXlsxSheet
 		return $this;
 	}
 
-	/** One row; values: int / float / bool / DateTimeInterface / string / null, or NuXlsx::cell() / NuXlsx::formula(). */
+	/**
+	 * One row; values: int / float / bool / DateTimeInterface / string / Stringable / enum / null, or NuXlsx::cell() / NuXlsx::formula().
+	 * Arrays and other objects throw an InvalidArgumentException.
+	 */
 	public function row(array $values, array $style = []): self
 	{
 		if ($this->row >= NuXlsx::MAX_ROWS) throw new OverflowException('NuXlsx: more than ' . NuXlsx::MAX_ROWS . ' rows');
 		if (count($values) > NuXlsx::MAX_COLS) throw new OverflowException('NuXlsx: more than ' . NuXlsx::MAX_COLS . ' columns');
 		$this->row++;
 		$st = NuXlsx::cleanStyle($style);
+		$styled = (bool)array_filter($st, static fn($x) => $x !== false);
 		$c = 0;
 		foreach ($values as $v) {
 			$c++;
-			if ($v instanceof NuXlsxCell) $this->cells[$this->row][$c] = [$v->value, $v->style + $st, $v->formula];
-			elseif ($v !== null && $v !== '') $this->cells[$this->row][$c] = [$v, $st, false];
-			elseif ($st) $this->cells[$this->row][$c] = [null, $st, false];   // empty but styled (fill, border)
+			if ($v instanceof NuXlsxCell) {
+				$this->cells[$this->row][$c] = $v->formula ? [$v->value, $v->style + $st, true, $v->cached] : [self::normalize($v->value), $v->style + $st, false, null];
+				continue;
+			}
+			$v = self::normalize($v);
+			if ($v !== null && $v !== '') $this->cells[$this->row][$c] = [$v, $st, false, null];
+			elseif ($styled) $this->cells[$this->row][$c] = [null, $st, false, null];   // empty but styled (fill, border)
 		}
 		return $this;
 	}
@@ -460,6 +572,7 @@ final class NuXlsxSheet
 	/** Width from the content for columns without width() (default on). */
 	public function autoWidth(bool $on = true): self { $this->auto = $on; return $this; }
 
+	/** Row height in points – also for rows without cells. */
 	public function height(int $row, float $points): self
 	{
 		if ($row < 1 || $row > NuXlsx::MAX_ROWS) throw new InvalidArgumentException('NuXlsx: row out of range');
@@ -467,7 +580,20 @@ final class NuXlsxSheet
 		return $this;
 	}
 
-	public function merge(string $range): self { $r = NuXlsx::range($range); $this->merges[] = $r; return $this; }
+	/** Merges a range; a single cell is ignored, a range overlapping another merged range throws. */
+	public function merge(string $range): self
+	{
+		$r = NuXlsx::range($range);
+		[$r1, $c1, $r2, $c2] = $r;
+		if ($r1 === $r2 && $c1 === $c2) return $this;
+		foreach ($this->merges as [$a1, $b1, $a2, $b2]) {
+			if ($r1 <= $a2 && $a1 <= $r2 && $c1 <= $b2 && $b1 <= $c2) {
+				throw new InvalidArgumentException('NuXlsx: merge ' . $range . ' overlaps ' . NuXlsx::rangeRef($a1, $b1, $a2, $b2));
+			}
+		}
+		$this->merges[] = $r;
+		return $this;
+	}
 
 	/** Freeze the rows above and the columns left of a cell: freeze('A2') = header row, freeze('B2') = also column A; '' = none. */
 	public function freeze(string $cell): self
@@ -477,7 +603,10 @@ final class NuXlsxSheet
 		return $this;
 	}
 
-	/** Autofilter over a range (the header row and its columns), '' = none. */
+	/**
+	 * Autofilter over a range, '' = none. A one-row range (the header row) is extended over the data below it when the file is
+	 * written – down to the last row of the block without a gap, so a total row after an empty row stays outside.
+	 */
 	public function filter(string $range): self
 	{
 		if ($range !== '') NuXlsx::range($range);
@@ -490,17 +619,23 @@ final class NuXlsxSheet
 	/** Strings that are plain numbers ("12", "-3.5") become numbers – for exports of text values (default off). */
 	public function numbersFromText(bool $on = true): self { $this->numbers = $on; return $this; }
 
-	/** @internal */
-	public function filterRange(): string { return $this->filter; }
+	/** @internal the autofilter range as written to the file ('' = none). */
+	public function filterRange(): string
+	{
+		if ($this->filter === '') return '';
+		[$r1, $c1, $r2, $c2] = NuXlsx::range($this->filter);
+		if ($r1 === $r2) while ($r2 < NuXlsx::MAX_ROWS && isset($this->cells[$r2 + 1])) $r2++;
+		return NuXlsx::rangeRef($r1, $c1, $r2, $c2);
+	}
 
 	/** @internal style key => [style, kind] of every cell (for styles.xml). */
 	public function usedStyles(): array
 	{
 		$out = [];
 		foreach ($this->cells as $r => $cols) foreach ($cols as $c => $cell) {
-			$v = $this->value($cell[0]);
+			$v = $cell[2] ? null : $this->value($cell[0]);
 			$st = $this->styleAt($r, $c, $cell[1], $v);
-			$kind = self::kind($v);
+			$kind = $cell[2] ? 'formula' : self::kind($v);
 			$out[self::styleKey($st) . '|' . $kind] = [$st, $kind];
 		}
 		return $out;
@@ -516,41 +651,58 @@ final class NuXlsxSheet
 	public function xml(NuXlsxStrings $strings, callable $xf): string
 	{
 		ksort($this->cells);
+		$filter = $this->filter !== '' ? NuXlsx::range($this->filter) : null;   // header cells get room for the dropdown arrow
+		$rowNums = array_keys($this->cells + array_fill_keys(array_keys($this->heights), []));
+		sort($rowNums);
 		$maxCol = 0;
 		$len = [];
 		$data = '';
-		foreach ($this->cells as $r => $cols) {
+		foreach ($rowNums as $r) {
+			$cols = $this->cells[$r] ?? [];
 			ksort($cols);
-			$data .= '<row r="' . $r . '"' . (isset($this->heights[$r]) ? ' ht="' . $this->heights[$r] . '" customHeight="1"' : '') . '>';
-			foreach ($cols as $c => [$raw, $own, $isFormula]) {
+			$data .= '<row r="' . $r . '"' . (isset($this->heights[$r]) ? ' ht="' . $this->heights[$r] . '" customHeight="1"' : '') . ($cols ? '>' : '/>');
+			if (!$cols) continue;
+			foreach ($cols as $c => [$raw, $own, $isFormula, $cached]) {
 				$maxCol = max($maxCol, $c);
 				$ref = NuXlsx::colName($c) . $r;
+				if ($isFormula) {
+					$st = $this->styleAt($r, $c, $own, null);
+					$s = $xf($st, 'formula');
+					$sa = $s ? ' s="' . $s . '"' : '';
+					$f = '<f>' . NuXlsx::esc((string)$raw) . '</f>';
+					if (is_bool($cached)) $data .= '<c r="' . $ref . '"' . $sa . ' t="b">' . $f . '<v>' . ($cached ? 1 : 0) . '</v></c>';
+					elseif (is_int($cached) || is_float($cached)) $data .= '<c r="' . $ref . '"' . $sa . '>' . $f . '<v>' . self::num($cached) . '</v></c>';
+					elseif (is_string($cached)) $data .= '<c r="' . $ref . '"' . $sa . ' t="str">' . $f . '<v>' . NuXlsx::esc($cached) . '</v></c>';
+					else $data .= '<c r="' . $ref . '"' . $sa . '>' . $f . '</c>';
+					continue;
+				}
 				$v = $this->value($raw);
 				$kind = self::kind($v);
 				$st = $this->styleAt($r, $c, $own, $v);
 				$s = $xf($st, $kind);
 				$sa = $s ? ' s="' . $s . '"' : '';
-				if ($isFormula) {
-					$data .= '<c r="' . $ref . '"' . $sa . '><f>' . NuXlsx::esc((string)$raw) . '</f></c>';
-					continue;
-				}
+				$w = 0;
 				switch ($kind) {
 					case 'empty': $data .= '<c r="' . $ref . '"' . $sa . '/>'; break;
-					case 'bool': $data .= '<c r="' . $ref . '"' . $sa . ' t="b"><v>' . ($v ? 1 : 0) . '</v></c>'; $len[$c] = max($len[$c] ?? 0, 5); break;
+					case 'bool': $data .= '<c r="' . $ref . '"' . $sa . ' t="b"><v>' . ($v ? 1 : 0) . '</v></c>'; $w = 7; break;
 					case 'number':
-						$data .= '<c r="' . $ref . '"' . $sa . '><v>' . self::num($v) . '</v></c>';
-						$len[$c] = max($len[$c] ?? 0, strlen(self::num($v)) + 2);
+						$n = self::num($v);
+						$data .= '<c r="' . $ref . '"' . $sa . '><v>' . $n . '</v></c>';
+						$w = strlen($n) + 2;
+						if (isset($st['format']) && str_contains($st['format'], ',')) $w += intdiv(strlen(ltrim(explode('.', $n)[0], '-')) - 1, 3);   // thousands separators
 						break;
 					case 'date': case 'datetime':
 						$data .= '<c r="' . $ref . '"' . $sa . '><v>' . self::num(NuXlsx::serial($v)) . '</v></c>';
-						$len[$c] = max($len[$c] ?? 0, $kind === 'date' ? 11 : 17);
+						$w = $kind === 'date' ? 12 : 18;
 						break;
 					default:
 						$t = mb_substr((string)$v, 0, NuXlsx::MAX_TEXT);
 						$data .= '<c r="' . $ref . '"' . $sa . ' t="s"><v>' . $strings->id($t) . '</v></c>';
-						$longest = max(array_map('mb_strlen', explode("\n", $t)));
-						$len[$c] = max($len[$c] ?? 0, (int)ceil($longest * (!empty($st['bold']) ? 1.1 : 1.0)) + 2);
+						$longest = max(array_map(static fn($line) => mb_strwidth($line, 'UTF-8'), explode("\n", $t)));
+						$w = (int)ceil($longest * (!empty($st['bold']) ? 1.1 : 1.0)) + 2;
 				}
+				if ($filter && $r === $filter[0] && $c >= $filter[1] && $c <= $filter[3]) $w += 2;
+				if ($w) $len[$c] = max($len[$c] ?? 0, $w);
 			}
 			$data .= '</row>';
 		}
@@ -570,26 +722,48 @@ final class NuXlsxSheet
 		$view .= '</sheetView>';
 		$dim = $this->cells ? 'A1:' . NuXlsx::colName(max(1, $maxCol)) . max(1, (int)max(array_keys($this->cells))) : 'A1';
 		$merge = '';
-		foreach ($this->merges as [$r1, $c1, $r2, $c2]) $merge .= '<mergeCell ref="' . NuXlsx::colName($c1) . $r1 . ':' . NuXlsx::colName($c2) . $r2 . '"/>';
+		foreach ($this->merges as [$r1, $c1, $r2, $c2]) $merge .= '<mergeCell ref="' . NuXlsx::rangeRef($r1, $c1, $r2, $c2) . '"/>';
+		$filterRef = $this->filterRange();
 		return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
 			. '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
 			. '<dimension ref="' . $dim . '"/><sheetViews>' . $view . '</sheetViews><sheetFormatPr defaultRowHeight="15"/>'
 			. ($cols !== '' ? '<cols>' . $cols . '</cols>' : '')
 			. '<sheetData>' . $data . '</sheetData>'
-			. ($this->filter !== '' ? '<autoFilter ref="' . $this->filter . '"/>' : '')
+			. ($filterRef !== '' ? '<autoFilter ref="' . $filterRef . '"/>' : '')
 			. ($merge !== '' ? '<mergeCells count="' . count($this->merges) . '">' . $merge . '</mergeCells>' : '')
 			. '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>'
 			. '</worksheet>';
 	}
 
-	/** Style of a cell: its own (and its row's), range styles over it; text with line breaks wraps unless 'wrap' is set. */
+	/**
+	 * Style of a cell: its own (and its row's), range styles over it; text with line breaks wraps unless 'wrap' is set.
+	 * Keys set to false (= "remove the inherited value") are dropped at the end.
+	 */
 	private function styleAt(int $r, int $c, array $own, mixed $v = null): array
 	{
 		$st = $own;
 		foreach ($this->rangeStyles as [[$r1, $c1, $r2, $c2], $rs]) if ($r >= $r1 && $r <= $r2 && $c >= $c1 && $c <= $c2) $st = $rs + $st;
 		if (is_string($v) && str_contains($v, "\n") && !isset($st['wrap'])) $st['wrap'] = true;
+		$st = array_filter($st, static fn($x) => $x !== false);
 		ksort($st);
 		return $st;
+	}
+
+	/** Value at row() time: enums, Stringable, line breaks, NAN / INF, dates Excel cannot show; anything else throws. */
+	private static function normalize(mixed $v): mixed
+	{
+		if ($v instanceof BackedEnum) $v = $v->value;
+		elseif ($v instanceof UnitEnum) $v = $v->name;
+		if ($v === null || is_bool($v) || is_int($v)) return $v;
+		if (is_float($v)) return is_finite($v) ? $v : null;
+		if ($v instanceof DateTimeInterface) {
+			$day = $v->format('Y-m-d');
+			if ($day >= '1900-03-01' && strlen($day) === 10 && $day <= '9999-12-31') return $v;
+			return $v->format($v->format('H:i:s') === '00:00:00' ? 'Y-m-d' : 'Y-m-d H:i:s');
+		}
+		if ($v instanceof Stringable) $v = (string)$v;
+		if (is_string($v)) return str_contains($v, "\r") ? str_replace(["\r\n", "\r"], "\n", $v) : $v;
+		throw new InvalidArgumentException('NuXlsx: unsupported cell value of type ' . get_debug_type($v));
 	}
 
 	private function value(mixed $v): mixed
@@ -602,23 +776,29 @@ final class NuXlsxSheet
 	{
 		if ($v === null || $v === '') return 'empty';
 		if (is_bool($v)) return 'bool';
-		if (is_int($v) || (is_float($v) && is_finite($v))) return 'number';
+		if (is_int($v) || is_float($v)) return 'number';
 		if ($v instanceof DateTimeInterface) return $v->format('H:i:s') === '00:00:00' ? 'date' : 'datetime';
 		return 'text';
 	}
 
+	/** Number as xsd:double with 15 significant digits (Excel's precision) – also for very small and very large values. */
 	private static function num(int|float $v): string
 	{
 		if (is_int($v)) return (string)$v;
-		$s = rtrim(rtrim(sprintf('%.15F', $v), '0'), '.');
-		return $s === '-0' ? '0' : $s;
+		if ($v == 0.0) return '0';
+		return sprintf('%.15G', $v);
 	}
 }
 
-/** A cell with its own style, or a formula (NuXlsx::cell(), NuXlsx::formula()). */
+/** A cell with its own style, or a formula with an optional cached result (NuXlsx::cell(), NuXlsx::formula()). */
 final class NuXlsxCell
 {
-	public function __construct(public readonly mixed $value, public readonly array $style = [], public readonly bool $formula = false) {}
+	public function __construct(
+		public readonly mixed $value,
+		public readonly array $style = [],
+		public readonly bool $formula = false,
+		public readonly mixed $cached = null,
+	) {}
 }
 
 /** @internal shared strings of a workbook */
@@ -637,7 +817,13 @@ final class NuXlsxStrings
 	{
 		$out = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
 			. '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' . $this->count . '" uniqueCount="' . count($this->ids) . '">';
-		foreach (array_keys($this->ids) as $s) $out .= '<si><t xml:space="preserve">' . NuXlsx::esc((string)$s) . '</t></si>';
+		foreach (array_keys($this->ids) as $s) $out .= '<si><t xml:space="preserve">' . self::text((string)$s) . '</t></si>';
 		return $out . '</sst>';
+	}
+
+	/** Excel reads _xHHHH_ in text as an escaped character; a literal underscore before such a sequence is written as _x005F_. */
+	private static function text(string $s): string
+	{
+		return NuXlsx::esc(str_contains($s, '_x') ? (string)preg_replace('/_(x[0-9A-Fa-f]{4}_)/', '_x005F_$1', $s) : $s);
 	}
 }

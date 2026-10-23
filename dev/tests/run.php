@@ -299,6 +299,8 @@ check('page: heights', NuPage::validHeight('auto') && NuPage::validHeight('800px
 check('update: custom pages never touched', NuUpdate::isProtected('custom/pages/sales/index.php') && NuUpdate::isProtected('custom/lib/x.php') && NuUpdate::isProtected('custom/pages/sales/secrets.php')
 	&& !NuUpdate::isProtected('custom/.htaccess') && !NuUpdate::isProtected('custom/PAGE_GUIDE.md') && !NuUpdate::isProtected('custom/pages/_template/index.php')
 	&& !NuUpdate::isProtected('custom/pages/_template/assets/app.js'));
+check('library CVE status: fixed / patched count as dealt with', NuSecurity::cveFixed('fixed in 2.7') && NuSecurity::cveFixed('patched locally 2026-10-23') && NuSecurity::cveFixed('Patched')
+	&& !NuSecurity::cveFixed('open – no fix') && !NuSecurity::cveFixed('unpatched') && !NuSecurity::cveFixed(''));
 // ---------------------------------------------------------------- Excel writer (NuXlsx, 0.8.398)
 check('xlsx: column names', NuXlsx::colName(1) === 'A' && NuXlsx::colName(26) === 'Z' && NuXlsx::colName(27) === 'AA' && NuXlsx::colName(16384) === 'XFD'
 	&& NuXlsx::colNumber('AA') === 27 && NuXlsx::range('B3:A1') === [1, 1, 3, 2]);
@@ -334,7 +336,25 @@ check('xlsx: numbers, dates, booleans typed', (bool)preg_match('/<c r="B2"[^>]*>
 	&& (bool)preg_match('/<c r="D2"[^>]*t="b"><v>1<\/v>/', $s1) && (bool)preg_match('/<c r="C3"[^>]*><v>46082\.427083/', $s1));
 $ss = $parts['xl/sharedStrings.xml'] ?? '';
 check('xlsx: text escaped, control characters removed', str_contains($ss, '&lt;b&gt;&amp;' . "\n" . 'x') && !str_contains($ss, "\x01"));
-check('xlsx: header frozen with autofilter', str_contains($s1, 'state="frozen"') && str_contains($s1, '<autoFilter ref="A1:D1"/>') && str_contains($wb, '_xlnm._FilterDatabase'));
+check('xlsx: header frozen with autofilter', str_contains($s1, 'state="frozen"') && str_contains($s1, '<autoFilter ref="A1:D4"/>') && str_contains($wb, '_xlnm._FilterDatabase'));
+// 0.8.416: revised writer – _x escaping, 15 significant digits, recalculation, _xlfn., old dates as text, false removes a row style, merges
+$x2 = NuXlsx::create('T');
+$s2 = $x2->sheet('History');
+$s2->row(['ABC_x0041_', 1e-20, NuXlsx::formula('TEXTJOIN(",",TRUE,A1:A2)', [], 'a'), new DateTime('1899-06-15'), NAN])
+	->row([NuXlsx::cell('plain', ['bold' => false])], ['bold' => true])->height(3, 30)->merge('A5:A5');
+$mergeErr = false;
+try { $s2->merge('A6:B7')->merge('B7:C8'); } catch (InvalidArgumentException) { $mergeErr = true; }
+$arrErr = false;
+try { $s2->row([[1, 2]]); } catch (InvalidArgumentException) { $arrErr = true; }
+$tmp = tempnam(sys_get_temp_dir(), 'xt'); file_put_contents($tmp, $x2->toString());
+$z = new ZipArchive(); $p2 = [];
+if ($z->open($tmp) === true) { for ($i = 0; $i < $z->numFiles; $i++) $p2[$z->getNameIndex($i)] = (string)$z->getFromIndex($i); $z->close(); }
+@unlink($tmp);
+$w2 = $p2['xl/worksheets/sheet1.xml'] ?? ''; $ss2 = $p2['xl/sharedStrings.xml'] ?? ''; $wb2 = $p2['xl/workbook.xml'] ?? '';
+check('xlsx: revised writer (escaping, numbers, formulas, dates, styles, merges, History, arrays)',
+	str_contains($ss2, 'ABC_x005F_x0041_') && str_contains($w2, '<v>1.0E-20</v>') && str_contains($w2, '_xlfn.TEXTJOIN') && str_contains($wb2, 'fullCalcOnLoad="1"')
+	&& str_contains($ss2, '1899-06-15') && !str_contains($ss2, 'NAN') && str_contains($wb2, 'name="History 2"') && (bool)preg_match('/<row r="3"[^>]*customHeight="1"/', $w2)
+	&& !str_contains($w2, 'ref="A5:A5"') && $mergeErr && $arrErr && NuXlsx::rangeRef(1, 1, 3, 2) === 'A1:B3');
 $st = $parts['xl/styles.xml'] ?? '';
 check('xlsx: styles (bold, fill, border, number format; invalid colour ignored)', str_contains($st, '<b/>') && str_contains($st, 'FFFF0000') && str_contains($st, 'style="thin"')
 	&& str_contains($st, 'numFmtId="2"') && !str_contains($st, 'nope'));

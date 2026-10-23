@@ -303,6 +303,12 @@ final class NuSecurity
 	 * Reads NUNEXT-VERSION.txt of a copied library: "key: value" lines (version, upstream, commit, downloaded, CVE-…: open|fixed …) and
 	 * free lists (additions:, fixes:, changes: with "- " lines). @return ?array{version: string, cves: array<string, string>, text: string}
 	 */
+	/** A CVE line of NUNEXT-VERSION.txt that says it is dealt with: starts with "fixed" or "patched" (0.8.417), any case. */
+	public static function cveFixed(string $status): bool
+	{
+		return (bool)preg_match('/^\s*(fixed|patched)\b/i', $status);
+	}
+
 	public static function localVersion(string $dir): ?array
 	{
 		$f = rtrim($dir, '/\\') . '/' . self::LOCAL_VERSION;
@@ -345,7 +351,7 @@ final class NuSecurity
 			// own build / patched copy: NUNEXT-VERSION.txt gives the version (e.g. 2.6+git.4149143.nu1) and the state of known CVEs
 			$local = $ver !== '' ? self::localVersion($path) : null;
 			if ($local && $local['version'] !== '') $ver = $local['version'];
-			if ($local && $name === 'Tiny File Manager' && str_starts_with(strtolower($local['cves']['CVE-2025-15138'] ?? ''), 'fixed')) $note = '';
+			if ($local && $name === 'Tiny File Manager' && self::cveFixed($local['cves']['CVE-2025-15138'] ?? '')) $note = '';
 			$base = preg_match('/^[0-9][0-9.]*[0-9]/', $ver, $bm) ? $bm[0] : '?';     // "2.6+git…" is compared as 2.6
 			$st = $ver === '' ? 'missing' : ($note !== '' ? 'warn' : ($base === '?' || ($min !== '' && version_compare($base, $min, '<')) ? 'old' : 'ok'));
 			$l = ['name' => $name, 'version' => $ver, 'path' => $path, 'min' => $min, 'status' => $st, 'note' => $note, 'local' => $local ? $local['text'] : ''];

@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.415",
- "built": "2026-10-23 09:50",
+ "version": "0.8.418",
+ "built": "2026-10-23 10:39",
  "requires": {
   "php": "8.1"
  },
@@ -11,15 +11,15 @@
    "size": 596
   },
   "CHANGELOG.md": {
-   "sha256": "cf40f2c4363d177f7b525e59fcff719865c6f29330410c3e82cbd14d59f15a33",
-   "size": 317538
+   "sha256": "009c96f55f138eaee929e2c15107e69122aaf99b2d009f337a4afebec4b77e45",
+   "size": 319552
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "0a095b1684bd2f0c3c3efea9956a938c6f9d6106dcb7ecd33fa10e3b1834e2b0",
+   "sha256": "745f912e4bf9328f0afa72652a4b7c72bb7a5876a6ee777d5e257df53abd1599",
    "size": 10544
   },
   "api.php": {
@@ -399,7 +399,7 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "8d588ac59e3ac5b1527cdb096630ee9bc8ef51a117303dc20fa6d2967f333738",
+   "sha256": "c01941a711d75d313e4354c664fb8a2699f168456bf6437adba0c69241ec67e1",
    "size": 29595
   },
   "core/nuappcloner.php": {
@@ -595,8 +595,8 @@
    "size": 9921
   },
   "core/nusecurity.php": {
-   "sha256": "8be4b8deed586ba4f6da5e2d4a2cd54f09019a188703e7ad7417b6d7b8b648e2",
-   "size": 30144
+   "sha256": "5f5c7e2a7242bd79977371cc5f4279350975f6cd75aaef28e84bf72632dce6a6",
+   "size": 30371
   },
   "core/nuselftest.php": {
    "sha256": "68907cf3f1e19a298dab1d82454a74bbc4427723793b4eb2c0390ede64c37167",
@@ -647,8 +647,8 @@
    "size": 14445
   },
   "core/nuxlsx.php": {
-   "sha256": "f41af7cf3011eec1b3fdc0359a7caaac34436cc64a64a9c4545a6e60bb0735c7",
-   "size": 31821
+   "sha256": "72710e2731fe4f764ba40413839efa66150ad843067ded51522991e34e4863d8",
+   "size": 42403
   },
   "cron.php": {
    "sha256": "b5855b94b1130bca85f29c9594a8d7c34ef67011af18e59eab2b1fbebe13aa8a",
@@ -687,12 +687,12 @@
    "size": 177
   },
   "docs/nunext-docs.htm": {
-   "sha256": "554286b7f9f1b68de4e61a99c3b0562d4d4ae81452279b72097e25e705b46f48",
-   "size": 290481
+   "sha256": "ad3ade8c96ecf7b26a2df43d6789d5453c2176f68b1c37ff92a13947502877f4",
+   "size": 290540
   },
   "docs/nunext-functions.json": {
-   "sha256": "817c08b99bc50c18091d44e90197e7549945470c502d01b34b6b17c3e2113b1a",
-   "size": 107954
+   "sha256": "71b6ca84bba76ab88ecb0c037524029e98220e6d184e313cd4775e5c61d8b26f",
+   "size": 108272
   },
   "docs/nunext-tutorial.htm": {
    "sha256": "ebfc9d1b8bd82d01d7c87db9734d64c2508cacce927a67135c2739f46fac7b66",
@@ -711,7 +711,7 @@
    "size": 177
   },
   "install/db_changes.json": {
-   "sha256": "bd9b3ebc1c1cc0d11f47fe28ae229c93f8cbfd010700ee5bf4b8fc9bc06d5c0f",
+   "sha256": "083d8dd0e5561ed0c35d3a8d01c4720d66b2d0f43c144fc7d8a5c90c14e3c5d3",
    "size": 33734
   },
   "install/libraries-required.json": {
@@ -1493,6 +1493,21 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.418",
+   "title": "Release gate",
+   "text": "- Release gate for 0.8.416–0.8.417 (Excel writer revised, patched library CVEs accepted): smoke, all end-to-end tests and the\n  cross-tests against nuBuilder passed."
+  },
+  {
+   "version": "0.8.417",
+   "title": "Patched library CVEs accepted",
+   "text": "- Security check / Libraries: a CVE line in a library's NUNEXT-VERSION.txt that starts with \"patched\" (e.g. \"CVE-2025-15138: patched\n  locally 2026-10-23\") now counts as dealt with, like \"fixed\" – the Tiny File Manager warning goes away for a patched own build."
+  },
+  {
+   "version": "0.8.416",
+   "title": "Excel writer revised",
+   "text": "- Excel writer (NuXlsx) revised – fixes in the generated file:\n  text like `ABC_x0041_` stays as typed (`_x005F_` escaping); numbers with 15 significant digits (1e-20 no longer 0, -0 → 0);\n  formulas are recalculated when the file is opened (LibreOffice, previews), optional cached result `NuXlsx::formula($f, value: …)`;\n  functions newer than Excel 2007 (TEXTJOIN, IFS, XLOOKUP …) get their `_xlfn.` prefix; `height()` also on rows without cells;\n  `false` in a cell style removes a value of the row style (`['bold' => false]`); one-cell merges are ignored, overlapping ones refused;\n  Windows line breaks become `\\n`; new helper `NuXlsx::rangeRef()`.\n- Changed on purpose (check exports that rely on them): the autofilter covers the header and the data block below it (until the first\n  empty row); a sheet named `History` (reserved by Excel) becomes `History 2`; NAN / INF are empty cells; dates before 1900-03-01 or after\n  9999-12-31 are written as ISO text; arrays or objects without a text form as values throw `InvalidArgumentException`.\n- Downloads: file names with umlauts kept (RFC 5987 plus an ASCII fallback), clear error when output was already sent, output compression\n  switched off for the download, `nosniff` header, the file is built in a temporary file; `save()` writes to a temporary file and renames it\n  (no half files). Auto width counts wide characters (CJK, emoji) double and leaves room for the filter arrow and thousands separators."
   },
   {
    "version": "0.8.415",
@@ -3754,7 +3769,7 @@
   ],
   "js_deprecated": []
  },
- "last_gate": "0.8.415",
+ "last_gate": "0.8.418",
  "gated": true,
  "requires_libs": {
   "tcpdf": {
@@ -3782,5 +3797,5 @@
    "needed": false
   }
  },
- "signature": "WNfnBniYLbfNwsGsl0qZMzQqdcT13QXJH52W2ocx/j1C4L/NmdJeR1nYWE8vW4/mI2egrU4s59IT1XiWSDS5BA=="
+ "signature": "0Lf6dZMUHF4KeJm4LKh77j/U6EI+ih/MHrpPLGBVoGgRu0T+xUw0HTPscL3oalAQPOEzUZdx6nmpiYq7nMIaDQ=="
 }

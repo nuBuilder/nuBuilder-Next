@@ -314,8 +314,9 @@ All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in C
 - [ ] TCPDF 7 (0.8.232, optional): with the Composer bundle tcpdf-7.0.19-for-nunext.zip in `<nuBuilder Next>/third_party/tcpdf/` (PHP ≥ 8.2)
       run your own reports once and compare with TCPDF 6 – the samples are identical, other features (HTML cells, barcodes, images)
       go through TCPDF 7's compatibility layer. nuBuilder itself keeps TCPDF 6. TCPDF 6 gets no more fixes (end of life).
-- [ ] Tiny File Manager ≤ 2.6 (nuBuilder ships 2.6) has an unfixed path traversal (CVE-2025-15138): remove the pack (Update → Libraries)
-      when not needed, watch for a new version.
+- [ ] Tiny File Manager ≤ 2.6 (nuBuilder ships 2.6) has an upstream-unfixed path traversal (CVE-2025-15138), patched locally in the own
+      build 2.6+git.4149143.nu3 (upload destination checked with realpath() before and after mkdir, allow-list on the destination name,
+      two XSS escapes). Verify: build and publish the nu3 pack, Security check shows no Tiny File Manager warning; watch for an upstream fix.
 
 ## For the developer to verify (assumptions made in 0.7)
 - [ ] **phpMyAdmin** (since 0.8.405 a library pack, same config): copy `<nuBuilder>/third_party/nudb/` to `<nuBuilder Next>/third_party/nudb/` (with nuBuilder's `config.inc.php`).

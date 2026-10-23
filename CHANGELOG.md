@@ -3,6 +3,28 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.418 – Release gate
+- Release gate for 0.8.416–0.8.417 (Excel writer revised, patched library CVEs accepted): smoke, all end-to-end tests and the
+  cross-tests against nuBuilder passed.
+
+## 0.8.417 – Patched library CVEs accepted
+- Security check / Libraries: a CVE line in a library's NUNEXT-VERSION.txt that starts with "patched" (e.g. "CVE-2025-15138: patched
+  locally 2026-10-23") now counts as dealt with, like "fixed" – the Tiny File Manager warning goes away for a patched own build.
+
+## 0.8.416 – Excel writer revised
+- Excel writer (NuXlsx) revised – fixes in the generated file:
+  text like `ABC_x0041_` stays as typed (`_x005F_` escaping); numbers with 15 significant digits (1e-20 no longer 0, -0 → 0);
+  formulas are recalculated when the file is opened (LibreOffice, previews), optional cached result `NuXlsx::formula($f, value: …)`;
+  functions newer than Excel 2007 (TEXTJOIN, IFS, XLOOKUP …) get their `_xlfn.` prefix; `height()` also on rows without cells;
+  `false` in a cell style removes a value of the row style (`['bold' => false]`); one-cell merges are ignored, overlapping ones refused;
+  Windows line breaks become `\n`; new helper `NuXlsx::rangeRef()`.
+- Changed on purpose (check exports that rely on them): the autofilter covers the header and the data block below it (until the first
+  empty row); a sheet named `History` (reserved by Excel) becomes `History 2`; NAN / INF are empty cells; dates before 1900-03-01 or after
+  9999-12-31 are written as ISO text; arrays or objects without a text form as values throw `InvalidArgumentException`.
+- Downloads: file names with umlauts kept (RFC 5987 plus an ASCII fallback), clear error when output was already sent, output compression
+  switched off for the download, `nosniff` header, the file is built in a temporary file; `save()` writes to a temporary file and renames it
+  (no half files). Auto width counts wide characters (CJK, emoji) double and leaves room for the filter arrow and thousands separators.
+
 ## 0.8.415 – Release gate
 - Release gate for 0.8.410 – 0.8.414 (library pack sources in ../libsrc/ or _libsrc/, found / not found ticks, open_basedir notice,
   help for publishing the packs on GitHub): smoke test, all end-to-end tests and the cross-tests against nuBuilder passed.
