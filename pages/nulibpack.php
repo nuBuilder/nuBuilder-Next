@@ -66,7 +66,7 @@ if (nu_is_post()) {
 			$packs = [];
 			foreach ($slots as $sl) {
 				$src = trim((string)($_POST['src'][$sl] ?? ''));
-				$src = $src === '' ? NuLibs::sourceDir($sl) : NuBuilderLib::absPath($src);
+				$src = $src === '' ? NuLibs::source($sl)[0] : NuBuilderLib::absPath($src);   // empty: ../libsrc/<slot>/, else the library in use (0.8.410)
 				$ver = trim((string)($_POST['ver'][$sl] ?? ''));
 				try {
 					$packs[] = NuLibs::build($sl, $src, $sk, $dir, $ver);
@@ -109,6 +109,9 @@ nu_layout_start(t('lp_build_title'), 'update');
 	</div>
 	<div class="card-body">
 		<?php if (!$secure): ?><div class="alert alert-danger" id="lpInsecure"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('lp_err_https')) ?></div><?php endif; ?>
+		<?php if (($lpOb = NuLibs::libsrcBlocked()) !== '' && !is_dir(NU_ROOT . '/' . NuLibs::LIBSRC_IN)): // open_basedir hides ../libsrc/ (0.8.411) – then _libsrc/ (0.8.412) ?>
+		<div class="alert alert-warning small" id="lpLibsrcBlocked"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('lp_src_blocked', '../' . NuLibs::LIBSRC, $lpOb)) ?></div>
+		<?php endif; ?>
 		<?php if ($last): ?>
 		<div class="alert alert-success" id="lpResult">
 			<div class="fw-semibold mb-2"><i class="bi bi-check-circle me-1"></i><?= h(t('lp_result')) ?></div>
@@ -130,11 +133,11 @@ nu_layout_start(t('lp_build_title'), 'update');
 				<table class="table table-sm nu-table small align-middle">
 					<thead><tr><th></th><th><?= h(t('upd_libs_name')) ?></th><th><?= h(t('lp_src')) ?></th><th><?= h(t('upd_libs_version')) ?></th></tr></thead>
 					<tbody>
-					<?php foreach (NuLibs::SLOTS as $sl => $def): $src = NuLibs::sourceDir($sl); $ver = $src !== '' ? NuLibs::detectVersion($sl, $src) : ''; ?>
+					<?php foreach (NuLibs::SLOTS as $sl => $def): [$src, $kind] = NuLibs::source($sl); $ver = $src !== '' ? NuLibs::detectVersion($sl, $src) : ''; ?>
 						<tr data-slot="<?= h($sl) ?>">
 							<td><input class="form-check-input" type="checkbox" name="slots[]" value="<?= h($sl) ?>" id="lpB-<?= h($sl) ?>"<?= $src !== '' ? ' checked' : '' ?> aria-label="<?= h($def['title']) ?>"></td>
-							<td><label class="fw-semibold" for="lpB-<?= h($sl) ?>"><?= h($def['title']) ?></label><div class="text-body-secondary"><?= h(NU_PACKS) ?>/<?= h($def['dir']) ?>-&lt;<?= h(t('upd_libs_version')) ?>&gt;/</div></td>
-							<td><input class="form-control form-control-sm" type="text" name="src[<?= h($sl) ?>]" placeholder="<?= h($src !== '' ? str_replace(NU_ROOT . '/', '', $src) : t('lp_src_none')) ?>" aria-label="<?= h(t('lp_src') . ' ' . $def['title']) ?>"></td>
+							<td><label class="fw-semibold" for="lpB-<?= h($sl) ?>"><?= h($def['title']) ?></label><div class="text-body-secondary small nuLpSrcKind" data-kind="<?= h($kind) ?>"><i class="bi <?= $kind === 'libsrc' ? 'bi-check-circle-fill text-success' : ($kind === 'inuse' ? 'bi-check-circle text-success' : 'bi-x-circle text-danger') ?> me-1" aria-hidden="true"></i><?= h($kind === 'libsrc' ? t('lp_src_from', NuLibs::shortPath(dirname($src)) . '/') : ($kind === 'inuse' ? t('lp_src_inuse') : t('lp_src_none'))) ?></div></td>
+							<td><input class="form-control form-control-sm" type="text" name="src[<?= h($sl) ?>]" placeholder="<?= h($src !== '' ? NuLibs::shortPath($src) : (NuLibs::libsrcBlocked() !== '' ? NuLibs::LIBSRC_IN : '../' . NuLibs::LIBSRC) . '/' . $sl) ?>" aria-label="<?= h(t('lp_src') . ' ' . $def['title']) ?>"></td>
 							<td><input class="form-control form-control-sm nuLpVer" type="text" name="ver[<?= h($sl) ?>]" placeholder="<?= h($ver !== '' ? $ver : '?') ?>" aria-label="<?= h(t('upd_libs_version') . ' ' . $def['title']) ?>"></td>
 						</tr>
 					<?php endforeach; ?>

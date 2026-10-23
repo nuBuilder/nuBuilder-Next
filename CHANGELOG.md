@@ -3,6 +3,39 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.415 – Release gate
+- Release gate for 0.8.410 – 0.8.414 (library pack sources in ../libsrc/ or _libsrc/, found / not found ticks, open_basedir notice,
+  help for publishing the packs on GitHub): smoke test, all end-to-end tests and the cross-tests against nuBuilder passed.
+
+## 0.8.414 – Help: publishing library packs on GitHub
+- Help: new section "Publishing the library packs on GitHub (step by step)" – the first time (build and download, unpack the bundle,
+  Draft a new release, tag "libraries", Release title, attach libraries.json and every pack zip, Set as a pre-release, Publish,
+  check with Look on GitHub) and when a library changes (rebuild only that one with "Keep the other libraries", edit the same
+  release, replace libraries.json and the zip). The build page's hint and the developer chapter link to it.
+
+## 0.8.413 – Library pack sources: found / not found
+- Build library packs: a green tick shows that a source folder was found (filled: in ../libsrc/ or _libsrc/, outlined: the library in
+  use), a red cross that none was found. The hint under the table names _libsrc/ too.
+
+## 0.8.412 – Library pack sources in _libsrc/
+- Build library packs: sources can also be in _libsrc/<name>/ inside nuBuilder Next, next to index.php – for hosts whose open_basedir
+  allows only the web folder (e.g. free hosting with only htdocs/). nuBuilder Next writes a deny-all .htaccess into _libsrc/ as soon
+  as it reads it. An update never touches the folder, and it is never part of a package, backup or the repository. Each library is
+  looked for in ../libsrc/ first (when PHP may read it), then in _libsrc/; the line under its name says where it was found.
+- Security check probes _libsrc/; nginx rule in the help extended.
+
+## 0.8.411 – Library pack sources: spelling, open_basedir
+- Build library packs: folders in ../libsrc/ are found in any spelling (PHPMailer = phpmailer). When the host's open_basedir does not
+  let PHP read the folder above nuBuilder Next (PHP then simply sees no folder), the page says so with the allowed folders –
+  ask the host to add it, or keep libsrc/ in an allowed folder outside the web root and type the paths.
+
+## 0.8.410 – Library pack sources in ../libsrc
+- Build library packs: the source folder defaults to ../libsrc/<name>/ next to the project (tcpdf, phpmailer, tinymce, phpmyadmin or
+  nudb, adminer, tinyfilemanager) – outside the project and the web root. A library without such a folder falls back to the
+  library in use. The line under each name now says where the source comes from ("from ../libsrc/", "the library in use", "not
+  found") instead of the folder the pack is installed into; paths are shown relative to the project.
+- dev/libpack.php: --all builds every library found in ../libsrc/; a slot without "=folder" uses ../libsrc/<slot>.
+
 ## 0.8.409 – Library folders vendor/
 - Library folders: all third-party code is in vendor/ now. vendor/bundled/ holds the libraries of the package – an update replaces
   them, never deletes them (Bootstrap, Bootstrap Icons, jQuery, jquery-confirm, Tom Select, CodeMirror, formatters, QR code,

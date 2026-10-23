@@ -812,7 +812,68 @@ final class NuLibs
 		return self::validVersion($v) ? $v : '';
 	}
 
-	/** Folder of the library in use (source of a pack): the active pack, else where nuBuilder Next finds it now ('' = none). */
+	/** Sources of the packs next to the project (0.8.410): <parent of nuBuilder Next>/libsrc/<slot>/ – outside the project and the web. */
+	public const LIBSRC = 'libsrc';
+	/** Inside nuBuilder Next (0.8.412): for hosts whose open_basedir allows only the web folder – closed for the web (deny-all .htaccess). */
+	public const LIBSRC_IN = '_libsrc';
+
+	/** ../libsrc/<slot>/ when it exists (phpMyAdmin also ../libsrc/nudb/; capitals do not matter: PHPMailer = phpmailer), '' = not there. */
+	public static function libsrcDir(string $slot, ?string $root = null): string
+	{
+		$want = array_unique([$slot, self::SLOTS[$slot]['dir']]);
+		foreach (self::libsrcBases($root) as $base) {
+			foreach ($want as $name) if (@is_dir("$base/$name")) return "$base/$name";
+			foreach (@scandir($base) ?: [] as $e) {                // other spelling (0.8.411)
+				if ($e[0] !== '.' && in_array(strtolower($e), $want, true) && @is_dir("$base/$e")) return "$base/$e";
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Folders with sources, in this order: ../libsrc/ next to nuBuilder Next (when PHP may read it), _libsrc/ inside it (0.8.412, for
+	 * hosts whose open_basedir allows only the web folder – closed for the web with a deny-all .htaccess as soon as it is used).
+	 * @return list<string>
+	 */
+	public static function libsrcBases(?string $root = null): array
+	{
+		$root ??= NU_ROOT;
+		$out = [];
+		if (self::libsrcBlocked($root) === '' && @is_dir(dirname($root) . '/' . self::LIBSRC)) $out[] = dirname($root) . '/' . self::LIBSRC;
+		$in = $root . '/' . self::LIBSRC_IN;
+		if (@is_dir($in)) {
+			if ($root === NU_ROOT && class_exists('NuSecurity', false) && method_exists('NuSecurity', 'protectDir')) NuSecurity::protectDir($in);
+			$out[] = $in;
+		}
+		return $out;
+	}
+
+	/**
+	 * Why ../libsrc/ cannot be read (0.8.411): '' = fine or simply not there; otherwise the open_basedir list of the host (PHP then sees no
+	 * folder outside the allowed ones – is_dir() just says false).
+	 */
+	public static function libsrcBlocked(?string $root = null): string
+	{
+		$ob = trim(function_exists('nu_ini_get') ? nu_ini_get('open_basedir') : (string)ini_get('open_basedir'));
+		if ($ob === '') return '';
+		$base = str_replace('\\', '/', dirname($root ?? NU_ROOT) . '/' . self::LIBSRC);
+		foreach (explode(PATH_SEPARATOR, $ob) as $allowed) {
+			$a = rtrim(str_replace('\\', '/', trim($allowed)), '/');
+			if ($a !== '' && ($base === $a || str_starts_with($base . '/', $a . '/'))) return '';
+		}
+		return $ob;
+	}
+
+	/** Source folder of a pack: ../libsrc/<slot>/, else the library in use. @return array{0: string, 1: string} path, kind 'libsrc' | 'inuse' | '' */
+	public static function source(string $slot): array
+	{
+		$l = self::libsrcDir($slot);
+		if ($l !== '') return [$l, 'libsrc'];
+		$u = self::sourceDir($slot);
+		return [$u, $u !== '' ? 'inuse' : ''];
+	}
+
+	/** Folder of the library in use: the active pack, else where nuBuilder Next finds it now ('' = none). */
 	public static function sourceDir(string $slot): string
 	{
 		$a = self::activeDir($slot);
@@ -824,6 +885,16 @@ final class NuLibs
 			return $p;
 		}
 		return '';
+	}
+
+	/** A path as the developer types it: relative to nuBuilder Next (vendor/packs/…, ../libsrc/…) when it is near, else absolute. */
+	public static function shortPath(string $p): string
+	{
+		$p = str_replace('\\', '/', $p);
+		$root = str_replace('\\', '/', NU_ROOT);
+		if (str_starts_with($p, $root . '/')) return substr($p, strlen($root) + 1);
+		if (str_starts_with($p, dirname($root) . '/')) return '../' . substr($p, strlen(dirname($root)) + 1);
+		return $p;
 	}
 
 	/**

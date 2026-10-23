@@ -486,6 +486,12 @@ check('libpack: a new pack wins over the old one', NuLibs::tinymce() === 'vendor
 NuLibs::remove('tinymce');
 check('libpack: after remove the old pack counts again', NuLibs::tinymce() === 'third_party/tinymce-7.0.1');
 check('update: vendor/packs protected, vendor/bundled a library', NuUpdate::isProtected('vendor/packs/x') && !NuUpdate::isProtected('vendor/bundled/x') && NuUpdate::isLibrary('vendor/bundled/jquery/jquery.min.js') && NuUpdate::isLibrary('assets/vendor/x') && !NuUpdate::isLibrary('assets/js/nuapp.js'));
+mkdir($lpTmp . '/libsrc/nudb', 0755, true);
+mkdir($lpTmp . '/libsrc/PHPMailer', 0755, true);
+check('libpack: ../libsrc/ found (phpMyAdmin also as nudb)', NuLibs::libsrcDir('phpmyadmin', $lpTmp . '/proj') === $lpTmp . '/libsrc/nudb' && NuLibs::libsrcDir('tcpdf', $lpTmp . '/proj') === '' && NuLibs::libsrcDir('phpmailer', $lpTmp . '/proj') === $lpTmp . '/libsrc/PHPMailer'
+	&& NuLibs::shortPath(dirname(NU_ROOT) . '/libsrc/tcpdf') === '../libsrc/tcpdf' && NuLibs::shortPath(NU_ROOT . '/vendor/packs/x') === 'vendor/packs/x');
+mkdir($lpTmp . '/proj2/_libsrc/tcpdf', 0755, true);
+check('libpack: _libsrc/ inside when ../libsrc/ is not there', NuLibs::libsrcDir('tcpdf', $lpTmp . '/proj2') === $lpTmp . '/proj2/_libsrc/tcpdf' && NuUpdate::isProtected('_libsrc/tcpdf/tcpdf.php'));
 NuLibs::remove('phpmailer');
 check('libpack: removed', !NuLibs::installed('phpmailer') && NuLibs::activeDir('phpmailer') === null && !NuLibs::state());
 check('libpack: pack names', NuLibs::isPackName('nunext-lib-tcpdf-6.8.2.zip') && !NuLibs::isPackName('nunext-lib-tcpdf-../x.zip') && !NuLibs::validRel('a/../b') && NuLibs::validRel('a/b.php'));

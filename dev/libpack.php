@@ -5,17 +5,20 @@ declare(strict_types=1);
  * nuBuilder Next – builds and signs library packs on the command line (the same as Admin → Update → Libraries → "Build library
  * packs" in developer mode, core/nulibs.php):
  *
- *   php dev/libpack.php <out folder> <key file> <slot>=<source folder>[@<version>] … [--keep=<old libraries.json>]
+ *   php dev/libpack.php <out folder> <key file> <slot>[=<source folder>][@<version>] … [--all] [--keep=<old libraries.json>]
  *     slot: tcpdf | phpmailer | tinymce | phpmyadmin | adminer | tinyfilemanager
+ *     source folder: default ../libsrc/<slot> next to the project (phpMyAdmin also ../libsrc/nudb, 0.8.410)
+ *     --all: every library that has a folder in ../libsrc/
  *     version: read from the library (or its NUNEXT-VERSION.txt) when left out
  *     --keep: entries of an earlier index for the slots not built now (its signature is checked)
  *
- *   e.g. php dev/libpack.php ../libpacks ../nunext-signing.key tcpdf=../src/tcpdf phpmyadmin=../src/nudb tinyfilemanager=../src/tfm@2.6+git.4149143.nu1
+ *   e.g. php dev/libpack.php ../libpacks ../nunext-signing.key --all
+ *        php dev/libpack.php ../libpacks ../nunext-signing.key tcpdf phpmyadmin=/other/nudb tinyfilemanager@2.6+git.4149143.nu1
  *
  * Writes nunext-lib-<slot>-<version>.zip per library and the signed index libraries.json into the out folder – attach them to the
  * GitHub release with the tag "libraries". The key file is the owner's (the one of nunext.zip) and never part of the project.
  */
-if (PHP_SAPI !== 'cli' || $argc < 4) { fwrite(STDERR, "usage: php dev/libpack.php <out folder> <key file> <slot>=<folder>[@<version>] … [--keep=<libraries.json>]\n"); exit(2); }
+if (PHP_SAPI !== 'cli' || $argc < 4) { fwrite(STDERR, "usage: php dev/libpack.php <out folder> <key file> <slot>[=<folder>][@<version>] … [--all] [--keep=<libraries.json>]\n"); exit(2); }
 define('NU_ROOT', dirname(__DIR__));
 const NU_VERSION_FILE = NU_ROOT . '/core/nuapp.php';
 if (!defined('NU_VERSION')) define('NU_VERSION', preg_match("/define\\('NU_VERSION', '([^']+)'\\)/", (string)file_get_contents(NU_VERSION_FILE), $m) ? $m[1] : '');
@@ -44,11 +47,22 @@ try {
 	$sk = NuLibs::secretKey((string)file_get_contents($argv[2]));
 	$packs = [];
 	$keep = [];
+	$jobs = [];
 	foreach (array_slice($argv, 3) as $a) {
 		if (str_starts_with($a, '--keep=')) { $keep = NuLibs::parseIndex((string)file_get_contents(substr($a, 7))); continue; }
-		if (!preg_match('/^([a-z]+)=(.+?)(?:@([0-9][0-9A-Za-z.+_-]*))?$/', $a, $m)) throw new RuntimeException("bad argument: $a");
+		if ($a === '--all') {
+			foreach (array_keys(NuLibs::SLOTS) as $sl) if (NuLibs::libsrcDir($sl) !== '') $jobs[$sl] ??= [NuLibs::libsrcDir($sl), ''];
+			continue;
+		}
+		if (!preg_match('/^([a-z]+)(?:=(.+?))?(?:@([0-9][0-9A-Za-z.+_-]*))?$/', $a, $m) || !isset(NuLibs::SLOTS[$m[1]])) throw new RuntimeException("bad argument: $a");
+		$src = ($m[2] ?? '') !== '' ? $m[2] : NuLibs::libsrcDir($m[1]);
+		if ($src === '') throw new RuntimeException("$m[1]: no folder ../" . NuLibs::LIBSRC . "/$m[1] or " . NuLibs::LIBSRC_IN . "/$m[1] – give one with $m[1]=<folder>");
+		$jobs[$m[1]] = [$src, $m[3] ?? ''];
+	}
+	if (!$jobs) throw new RuntimeException('nothing to build (no library folders in ../' . NuLibs::LIBSRC . '/)');
+	foreach ($jobs as $slot => [$src, $ver]) {
 		$t0 = microtime(true);
-		$p = NuLibs::build($m[1], $m[2], $sk, $out, $m[3] ?? '');
+		$p = NuLibs::build($slot, $src, $sk, $out, $ver);
 		$packs[] = $p;
 		printf("%-16s %-24s %6d files %8.1f MB  %s  (%.1f s)\n", $p['name'], $p['version'], $p['files'], $p['size'] / 1048576, basename($p['file']), microtime(true) - $t0);
 	}

@@ -268,6 +268,7 @@ final class NuSecurity
 		$bd = NuUpdate::backupDir();
 		if (str_starts_with(str_replace('\\', '/', $bd), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($bd, strlen(NU_ROOT) + 1) . '/index.html';
 		if (is_dir(NU_ROOT . '/temp')) $urls[] = 'temp/index.html';
+		if (is_file(NU_ROOT . '/_libsrc/index.html')) $urls[] = '_libsrc/index.html';     // library pack sources inside (0.8.412)
 		// library packs (0.8.409): vendor/packs/ is closed – its state file and the server-only packs (TCPDF, PHPMailer, Adminer)
 		if (is_file(NU_ROOT . '/' . NU_PACKS . '/index.html')) $urls[] = NU_PACKS . '/index.html';
 		if (is_file(NU_ROOT . '/' . NuLibs::STATE)) $urls[] = NuLibs::STATE;

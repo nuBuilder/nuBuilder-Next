@@ -67,7 +67,7 @@ final class NuUpdate
 	/** Paths an update may never write or delete. */
 	public static function isProtected(string $rel): bool
 	{
-		return $rel === 'nuconfig.php' || str_starts_with($rel, NU_PACKS . '/') || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/') || str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, 'temp/') || $rel === 'install.allow'
+		return $rel === 'nuconfig.php' || str_starts_with($rel, NU_PACKS . '/') || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/') || str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, '_libsrc/') || str_starts_with($rel, 'temp/') || $rel === 'install.allow'
 			|| (str_starts_with($rel, 'custom/') && !self::shippedCustom($rel));
 	}
 

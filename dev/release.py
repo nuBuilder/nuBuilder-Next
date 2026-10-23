@@ -40,7 +40,7 @@ def deployed(p):
 def all_files():
     out = []
     for dirpath, dirnames, filenames in os.walk('.'):
-        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', '_backup', '_install', '_update', 'temp', 'third_party')
+        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', '_backup', '_install', '_update', '_libsrc', 'temp', 'third_party')
                        and os.path.relpath(os.path.join(dirpath, d), '.').replace(os.sep, '/') != 'vendor/packs']   # packs: the server's (0.8.409)
         for f in filenames:
             p = os.path.relpath(os.path.join(dirpath, f), '.').replace(os.sep, '/')
@@ -101,7 +101,7 @@ def browser_tests():
         return []
     site = os.environ.get('NUNEXT_TEST_SITE', '')
     if site:
-        run(['rsync', '-a', '--exclude', '/nuconfig.php', '--exclude', '/vendor/packs', '--exclude', '_backup', '--exclude', 'temp', '--exclude', 'third_party',
+        run(['rsync', '-a', '--exclude', '/nuconfig.php', '--exclude', '/vendor/packs', '--exclude', '/_libsrc', '--exclude', '_backup', '--exclude', 'temp', '--exclude', 'third_party',
              '--exclude', 'dev', '--exclude', '.github', '--exclude', 'CLAUDE.md', '--exclude', 'TODO.md', './', site.rstrip('/') + '/'])
         import time
         time.sleep(3)                                                   # OPcache

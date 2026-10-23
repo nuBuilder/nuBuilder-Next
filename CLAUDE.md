@@ -289,8 +289,9 @@ Own tables: `zzzzsys_nunext_log`, `_form_history`, `_user_2fa`, `_token` (kinds:
   `NU_QRCODE`, `NU_JQUERY`, `NU_JQCONFIRM`, `NU_FORMATTER`, `NU_APEXCHARTS`, `NU_FONTAWESOME`; JS files: the literal `vendor/bundled/…`);
   `vendor/packs/` = library packs (NuLibs, `NU_PACKS`, `NuUpdate::isProtected`); `dev/libsrc/<slot>/` = sources of the packs release.py
   builds into `_install/` of nunext.zip (PHPMailer). Old places (read until the upgrade baseline moves): `assets/vendor/`, `third_party/`,
-  `lib/PHPMailer`. Sync to a test site with `rsync -a --exclude /nuconfig.php --exclude /vendor/packs --exclude _backup` (`vendor/nuconfig.php`
-  must come along).
+  `lib/PHPMailer`. Sync to a test site with `rsync -a --exclude /nuconfig.php --exclude /vendor/packs --exclude /_libsrc --exclude _backup` (`vendor/nuconfig.php`
+  must come along). Pack sources for *Build library packs*: `../libsrc/<slot>/` next to the project, or `_libsrc/<slot>/` inside it
+  (0.8.412, hosts with open_basedir; deny-all, protected, never packaged) – NuLibs::libsrcBases().
 - **Libraries**: every library in `vendor/bundled/` has an entry in `vendor/bundled/libraries.json` (name, version, dir, file, detect
   regex, licence, use key `upd_libuse_*`). Changing a library = change files + registry; `dev/release.py` checks that the file shows the
   registered version and copies the list into the manifest (update page: card Libraries, "Libraries that change").

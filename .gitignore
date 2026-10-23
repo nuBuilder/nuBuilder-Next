@@ -3,6 +3,7 @@
 install.allow
 _backup/
 _install/
+_libsrc/
 _update/
 temp/
 third_party/
