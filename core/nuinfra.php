@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 16;
+	public const VERSION = 17;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -130,6 +130,11 @@ final class NuSchema
 				['sort', 'int'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => ['code'],
 		],
+		'zzzzsys_nunext_recent' => [                              // side bar (0.8.460, core/nusidebar.php): pages / forms a user used last
+			'pk' => 'zzzzsys_nunext_recent_id',
+			'cols' => [['user_id', 'text', '25'], ['item', 'text', '100'], ['used_at', 'datetime'], ['stamp', 'text', '20']],   // stamp: YmdHis + microseconds (order)
+			'index' => ['user_id'],
+		],
 		'zzzzsys_nunext_presence' => [                            // concurrent edits (0.8.401, core/form/nuconflict.php): who has which record open
 			'pk' => 'zzzzsys_nunext_presence_id',
 			'cols' => [['form_id', 'text', '25'], ['record_id', 'text', '100'], ['user_id', 'text', '25'], ['login', 'text', '50'], ['name', 'text', '100'],
@@ -150,12 +155,51 @@ final class NuSchema
 		],
 	];
 
+	/** Set by the globeadmin's sign-in and the installer: this request may create the own tables (0.8.462, gap analysis B2). */
+	private static bool $allowed = false;
+	private static ?bool $present = null;
+
+	public static function allow(): void
+	{
+		self::$allowed = true;
+	}
+
+	/** nuBuilder Next's own tables exist (zzzzsys_nunext_migration is the first one of NuSchema::create). */
+	public static function present(): bool
+	{
+		if (self::$present) return true;
+		try {
+			return self::$present = nu_db()->tableExists('zzzzsys_nunext_migration');
+		} catch (Throwable) {
+			return false;
+		}
+	}
+
+	/**
+	 * May this request change the database structure? (0.8.462, B2) Copying nuBuilder Next next to a live nuBuilder must not change
+	 * its database: the own tables are created by the installer, cron.php or the globeadmin's first sign-in – never by an anonymous
+	 * request (login page, failed login, public links) and never while the database is blocked (NuInstall::existingBlocked). Once
+	 * they exist, signed-in requests apply the database steps of an update, as before.
+	 */
+	private static function mayChange(): bool
+	{
+		if (self::$allowed || PHP_SAPI === 'cli') return true;
+		if (!self::present()) return false;
+		if (empty($_SESSION['nu_auth']['id'])) return false;
+		try {
+			return !NuInstall::existingBlocked();
+		} catch (Throwable) {
+			return false;
+		}
+	}
+
 	public static function ensure(): void
 	{
 		static $done = false;
 		if ($done) return;
+		if (($_SESSION['nu_schema'] ?? 0) === self::VERSION . '/' . NU_VERSION) { $done = true; return; }
+		if (!self::mayChange()) return;                   // asked again later in this request (e.g. after the globeadmin's sign-in)
 		$done = true;
-		if (($_SESSION['nu_schema'] ?? 0) === self::VERSION . '/' . NU_VERSION) return;
 
 		self::create();
 		try {

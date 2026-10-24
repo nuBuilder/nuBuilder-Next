@@ -290,6 +290,7 @@ if (($_GET['finish'] ?? '') === '1' && isset($_SESSION['nu_update'])) {
 	try {
 		$finished['steps'] = NuMigrate::run();
 		$finished['ok'] = true;
+		if (($hookErr = NuUpdate::afterUpdateHook()) !== '') nu_flash('warning', 'nu_after_update: ' . $hookErr);   // nuBuilder's hook (0.8.462)
 		if (!empty($finished['sample_refresh'])) {          // "Update the sample data too" (0.8.300): same as Sample data → Refresh
 			try {
 				$_SESSION['nu_sample_pw'] = NuSample::install();

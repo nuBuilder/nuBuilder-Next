@@ -60,9 +60,16 @@ $v['sal_use_2fa']         = (string)($source['sal_use_2fa'] ?? '') === '1' ? '1'
 // form-right rows of this level (or of the clone source), keyed by id
 $rightsSql = 'SELECT * FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?';
 $dbRows    = $existing ? $db->all($rightsSql, [$id]) : [];
-$rows      = [];                  // key => ['id','form', right => '0'|'1']
+$rows      = [];                  // key => ['id','form', right => '0'|'1', 'dm' => ''|'0', 'ft' => ''|'0'|'1']
+// nuBuilder 4.9's data mode (0 = no changes to existing records) and form type (0 = browse only, 1 = edit only) per form (0.8.461)
+$afCols  = $db->columns('zzzzsys_access_form');
+$hasDm   = isset($afCols['slf_data_mode']);
+$hasFt   = isset($afCols['slf_form_type']);
+$dmOf    = static fn($v) => trim((string)$v) === '0' ? '0' : '';
+$ftOf    = static fn($v) => in_array(trim((string)$v), ['0', '1'], true) ? trim((string)$v) : '';
 foreach (($isNew && $source) ? $db->all($rightsSql, [$cloneId]) : $dbRows as $r) {
-	$row = ['id' => $isNew ? '' : (string)$r['zzzzsys_access_form_id'], 'form' => (string)$r['slf_zzzzsys_form_id']];
+	$row = ['id' => $isNew ? '' : (string)$r['zzzzsys_access_form_id'], 'form' => (string)$r['slf_zzzzsys_form_id'],
+		'dm' => $dmOf($r['slf_data_mode'] ?? ''), 'ft' => $ftOf($r['slf_form_type'] ?? '')];
 	foreach (NuAcl::RIGHTS as $right => $col) $row[$right] = (string)$r[$col] === '1' ? '1' : '0';
 	$rows[$isNew ? 'c' . count($rows) : $row['id']] = $row;
 }
@@ -70,6 +77,20 @@ $existingById = [];
 foreach ($dbRows as $r) $existingById[(string)$r['zzzzsys_access_form_id']] = $r;
 
 $errors = [];
+
+/** Data mode and form type of a form row (0.8.461) – two small selects, as nuBuilder's access level form. */
+function nu_access_mode_cells(string $k, string $dm, string $ft, string $label, bool $hasDm, bool $hasFt): string
+{
+	$sel = static function (string $name, string $cur, array $opts, string $aria) use ($k): string {
+		$o = '';
+		foreach ($opts as $v => $txt) $o .= '<option value="' . h((string)$v) . '"' . ((string)$v === $cur ? ' selected' : '') . '>' . h($txt) . '</option>';
+		return '<td><select class="form-select form-select-sm nuAccMode nuAccMode-' . $name . '" name="rights[' . $k . '][' . $name . ']" aria-label="' . h($aria) . '">' . $o . '</select></td>';
+	};
+	$out = '';
+	if ($hasDm) $out .= $sel('dm', $dm, ['' => t('access_dm_normal'), '0' => t('access_dm_noedit')], t('access_col_dm') . ($label !== '' ? ' – ' . $label : ''));
+	if ($hasFt) $out .= $sel('ft', $ft, ['' => t('access_ft_both'), '0' => t('access_ft_browse'), '1' => t('access_ft_edit')], t('access_col_ft') . ($label !== '' ? ' – ' . $label : ''));
+	return $out;
+}
 
 // ------------------------------------------------------------------ save
 if (nu_is_post() && nu_post('action') === 'save') {
@@ -102,7 +123,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		if ($form === '') continue;
 		// crossed out (0.8.139): not saved, so an existing row is deleted below; kept crossed out if the page comes back with errors
 		if (($p['remove'] ?? '') === '1') {
-			$row = ['id' => $rid, 'form' => $form, 'remove' => true];
+			$row = ['id' => $rid, 'form' => $form, 'remove' => true, 'dm' => $dmOf($p['dm'] ?? ''), 'ft' => $ftOf($p['ft'] ?? '')];
 			foreach (NuAcl::RIGHTS as $right => $_) $row[$right] = (($p[$right] ?? '') === '1') ? '1' : '0';
 			$rows[$rid !== '' ? $rid : 'n' . preg_replace('/\W/', '', (string)$key)] = $row;
 			continue;
@@ -112,7 +133,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		if (isset($seen[$form])) { $errors['rights'] = t('access_err_duplicate', nu_form_label($form)); continue; }
 		$seen[$form] = true;
 
-		$row = ['id' => $rid, 'form' => $form];
+		$row = ['id' => $rid, 'form' => $form, 'dm' => $dmOf($p['dm'] ?? ''), 'ft' => $ftOf($p['ft'] ?? '')];
 		foreach (NuAcl::RIGHTS as $right => $_) $row[$right] = (($p[$right] ?? '') === '1') ? '1' : '0';
 		$rows[$rid !== '' ? $rid : 'n' . preg_replace('/\W/', '', (string)$key)] = $row;
 	}
@@ -137,7 +158,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	}
 
 	if (!$errors) {
-		$newId = $db->transaction(static function (NuDB $db) use ($isNew, $id, $v, $rows, $existingById, $cloneId, $source) {
+		$newId = $db->transaction(static function (NuDB $db) use ($isNew, $id, $v, $rows, $existingById, $cloneId, $source, $hasDm, $hasFt) {
 			$head = [
 				'sal_code'            => $v['sal_code'],
 				'sal_description'     => $v['sal_description'] === '' ? null : $v['sal_description'],
@@ -157,8 +178,10 @@ if (nu_is_post() && nu_post('action') === 'save') {
 				if (!empty($row['remove'])) continue;                 // crossed out: an existing row is deleted below
 				$data = ['slf_zzzzsys_form_id' => $row['form']];
 				foreach (NuAcl::RIGHTS as $right => $col) $data[$col] = $row[$right];
+				if ($hasDm) $data['slf_data_mode'] = $row['dm'] === '' ? null : $row['dm'];       // 0.8.461: NULL = no limit (as nuBuilder)
+				if ($hasFt) $data['slf_form_type'] = $row['ft'] === '' ? null : $row['ft'];
 				if ($row['id'] !== '') {
-					$db->update('zzzzsys_access_form', $data, 'zzzzsys_access_form_id', $row['id']);   // data mode / form type / json untouched
+					$db->update('zzzzsys_access_form', $data, 'zzzzsys_access_form_id', $row['id']);   // json untouched; unchanged columns are not written
 					$keep[$row['id']] = true;
 				} else {
 					$db->insert('zzzzsys_access_form', ['zzzzsys_access_form_id' => nu_id(), 'slf_zzzzsys_access_id' => $id] + $data);
@@ -385,6 +408,8 @@ nu_layout_start($title, 'access');
 									</label>
 								</th>
 							<?php endforeach; ?>
+							<?php if ($hasDm): ?><th scope="col" class="small"><?= h(t('access_col_dm')) ?></th><?php endif; ?>
+							<?php if ($hasFt): ?><th scope="col" class="small"><?= h(t('access_col_ft')) ?></th><?php endif; ?>
 							<th scope="col"><span class="visually-hidden"><?= h(t('actions')) ?></span></th>
 						</tr>
 						</thead>
@@ -405,12 +430,13 @@ nu_layout_start($title, 'access');
 											   aria-label="<?= h(t('right_' . $r) . ' – ' . nu_form_label($row['form'])) ?>">
 									</td>
 								<?php endforeach; ?>
+								<?= nu_access_mode_cells($k, $row['dm'], $row['ft'], nu_form_label($row['form']), $hasDm, $hasFt) ?>
 								<td class="text-end">
 									<?php if ($canSave): ?><button class="btn btn-sm btn-link text-danger js-remove-row" type="button" title="<?= h(t('remove')) ?>" aria-label="<?= h(t('remove')) ?>" aria-pressed="false"><i class="bi bi-x-circle"></i></button><?php endif; ?>
 								</td>
 							</tr>
 						<?php endforeach; ?>
-						<tr class="js-rights-empty<?= $rows ? ' d-none' : '' ?>"><td colspan="8" class="text-center text-body-secondary py-4"><?= h(t('access_no_forms')) ?></td></tr>
+						<tr class="js-rights-empty<?= $rows ? ' d-none' : '' ?>"><td colspan="<?= 8 + (int)$hasDm + (int)$hasFt ?>" class="text-center text-body-secondary py-4"><?= h(t('access_no_forms')) ?></td></tr>
 						</tbody>
 					</table>
 				</div>
@@ -430,6 +456,7 @@ nu_layout_start($title, 'access');
 			<?php foreach (array_keys(NuAcl::RIGHTS) as $r): ?>
 				<td class="text-center"><input class="form-check-input" type="checkbox" name="rights[__KEY__][<?= $r ?>]" value="1" data-col="<?= $r ?>" checked aria-label="<?= h(t('right_' . $r)) ?>"></td>
 			<?php endforeach; ?>
+			<?= nu_access_mode_cells('__KEY__', '', '', '', $hasDm, $hasFt) ?>
 			<td class="text-end"><button class="btn btn-sm btn-link text-danger js-remove-row" type="button" title="<?= h(t('remove')) ?>" aria-label="<?= h(t('remove')) ?>" aria-pressed="false"><i class="bi bi-x-circle"></i></button></td>
 		</tr>
 	</template>

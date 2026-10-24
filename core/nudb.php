@@ -211,9 +211,27 @@ final class NuDB
 	 * Runs $fn inside a transaction that is always rolled back, with a time limit per statement – for queries typed by a user
 	 * (SQL builder preview). MySQL / MariaDB: START TRANSACTION READ ONLY (writes fail), max_execution_time (MySQL, SELECT) or
 	 * max_statement_time (MariaDB); SQL Server: BEGIN TRAN … ROLLBACK and the query timeout of the driver.
+	 * Inside a running transaction (0.8.461, e.g. an access condition checked during a save): a SAVEPOINT that is rolled back – a new
+	 * START TRANSACTION would commit the running one in MySQL (the save wrote half, its ROLLBACK then hit nothing).
 	 */
 	public function readOnly(callable $fn, int $seconds = 15): mixed
 	{
+		static $depth = 0;
+		if ($this->pdo->inTransaction()) {
+			$sp = 'nu_ro_' . (++$depth);
+			$this->pdo->exec($this->type === 'sqlsrv' ? "SAVE TRANSACTION $sp" : "SAVEPOINT $sp");
+			try {
+				return $fn($this);
+			} finally {
+				$depth--;
+				try {
+					if ($this->type === 'sqlsrv') $this->pdo->exec("ROLLBACK TRANSACTION $sp");
+					else { $this->pdo->exec("ROLLBACK TO SAVEPOINT $sp"); $this->pdo->exec("RELEASE SAVEPOINT $sp"); }
+				} catch (Throwable $e) {
+					error_log('nuBuilder Next readOnly savepoint: ' . $e->getMessage());
+				}
+			}
+		}
 		$restore = [];
 		try {
 			if ($this->type === 'mysql') {

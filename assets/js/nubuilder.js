@@ -675,6 +675,10 @@
 				{key: 'sob_input_datalist', label: 'builder_input_datalist', kind: 'textarea', types: ['input'], help: 'builder_input_datalist_help', show: ['text', 'number', 'email', 'tel', 'url'].indexOf(it) >= 0},
 				{key: 'sob_input_javascript', label: 'builder_input_scroll', kind: 'code', rows: 2, types: ['input'], show: it === 'nuScroll'},
 				{key: 'sob_input_count', label: 'builder_input_count', cls: 'col-sm-6', types: ['input'], show: it === 'nuAutoNumber', help: 'builder_input_count_help'},
+				// file objects (0.8.459): target Database (the file in the record) or File System (Uppy uploads to a server folder, HTML code = Uppy template)
+				{key: 'sob_input_file_target', label: 'builder_file_target', kind: 'select', cls: 'col-sm-6', types: ['input'], show: it === 'file', change: true, help: 'builder_file_target_help',
+					options: [['0', t('builder_file_target_0')], ['1', t('builder_file_target_1')]], value: String(o.sob_input_file_target || '0') === '1' ? '1' : '0'},
+				{key: 'sob_html_code', label: 'builder_html', kind: 'code', rows: 8, types: ['input'], show: it === 'file' && String(o.sob_input_file_target || '0') === '1', help: 'builder_file_uppy_help'},
 				{key: 'sob_select_sql', label: 'builder_select_sql', kind: 'code', types: ['select'], help: 'builder_select_sql_help'},
 				{key: 'sob_select_multiple', label: 'builder_select_multiple', kind: 'switch', cls: 'col-sm-6', types: ['select']},
 				{key: 'sob_select_2', label: 'builder_select_search', kind: 'switch', cls: 'col-sm-6', types: ['select']},
@@ -741,6 +745,12 @@
 		if (!o) { select('form'); return; }
 		var draft = Object.assign({}, o);
 		var body = h('div', {});
+		// a file object switched to "File System" with empty HTML code gets the Uppy template (nuBuilder: procedure nu_upload_file_load_uppy_code)
+		function uppyTemplate(d) {
+			if (d.sob_all_type === 'input' && d.sob_input_type === 'file' && String(d.sob_input_file_target || '0') === '1' && !String(d.sob_html_code || '').trim() && D.uppy_template) {
+				d.sob_html_code = D.uppy_template;
+			}
+		}
 		function build() {
 			body.innerHTML = '';
 			objectSpecs(draft).forEach(function (sec) {
@@ -751,7 +761,7 @@
 					if (s.show === false) return;
 					var val = 'value' in s ? s.value : (s.key === 'lookup_php' ? S.lookup_php[o.zzzzsys_object_id] : draft[s.key]);
 					var f = field(s, val);
-					if (s.change) $('[data-key]', f).addEventListener('change', function () { Object.assign(draft, collect(body)); build(); });
+					if (s.change) $('[data-key]', f).addEventListener('change', function () { Object.assign(draft, collect(body)); uppyTemplate(draft); build(); });
 					kids.push(f);
 				});
 				if (kids.length) body.appendChild(section(sec[0], kids));

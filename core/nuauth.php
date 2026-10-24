@@ -76,8 +76,46 @@ final class NuAuth
 		if ($result !== null && $result !== '2fa') {
 			if ($result === 'login_err_invalid') usleep(random_int(250_000, 600_000));
 			NuLog::write('login_failed', '', '', ['reason' => $result] + ($byHash ? ['via' => 'url'] : []), ['id' => '', 'login' => $login]);
+			return self::invalidLoginHook($login) ?? $result;
 		}
-		return $result;
+		return $result === null ? self::startupHook() : $result;
+	}
+
+	/**
+	 * nuBuilder's global hooks of the login (0.8.462, gap analysis B5): nu_startup after every login (also by link, demo button,
+	 * second factor) – a text in its $error ends the new session and is shown instead (nuBuilder: nuDie($error)); the shared login
+	 * from nuBuilder does not run it again (nuBuilder did). @return string|null null = logged in, otherwise the message
+	 */
+	private static function startupHook(): ?string
+	{
+		if (empty($_SESSION['nu_auth']['globeadmin']) && !NuSchema::present()) {   // not set up yet: only the globeadmin (0.8.462, B2)
+			unset($_SESSION['nu_auth']);
+			self::$user = null;
+			self::$loaded = false;
+			return t('login_not_ready');
+		}
+		try {
+			$hash = NuHash::base();
+		} catch (Throwable) {
+			$hash = [];
+		}
+		NuPhp::reset();
+		if (NuProcedure::hook('nu_startup', $hash)) return null;
+		$msg = NuPhp::$error !== '' ? NuPhp::$error : (string)(NuPhp::$errors[0]['message'] ?? t('login_err_invalid'));
+		$u = self::user();
+		NuLog::write('login_refused', '', '', ['hook' => 'nu_startup', 'message' => mb_substr($msg, 0, 300)], $u ? ['id' => (string)$u['id'], 'login' => (string)$u['login']] : null);
+		unset($_SESSION['nu_auth']);
+		self::$user = null;
+		self::$loaded = false;
+		return $msg;
+	}
+
+	/** nu_invalid_login after a failed login (0.8.462): #LOGIN_NAME# = the name typed; a text in $error is shown instead of the usual message. */
+	private static function invalidLoginHook(string $login): ?string
+	{
+		NuPhp::reset();
+		$ok = NuProcedure::hook('nu_invalid_login', ['LOGIN_NAME' => mb_substr($login, 0, 100), 'USER_ID' => '', 'RECORD_ID' => '', 'FORM_ID' => '']);
+		return !$ok && NuPhp::$error !== '' ? NuPhp::$error : null;
 	}
 
 	/**
@@ -91,7 +129,7 @@ final class NuAuth
 		$fail = static function (string $reason) use ($user): string {
 			if ($reason === 'login_err_invalid') usleep(random_int(250_000, 600_000));
 			NuLog::write('login_failed', '', '', ['reason' => $reason, 'via' => 'token'], ['id' => '', 'login' => $user]);
-			return $reason;
+			return self::invalidLoginHook($user) ?? $reason;
 		};
 		if (!NuLoginToken::enabled()) return $fail('login_err_invalid');
 		if (NuSecurity::loginBlocked($user)) {
@@ -113,7 +151,7 @@ final class NuAuth
 		$auth = ['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'fp' => self::fingerprint((string)$row['sus_login_password']), 'login' => (string)$row['sus_login_name']];
 		self::start($auth + ['via' => 'token']);
 		NuLog::write('login', '', '', ['via' => 'token'], $auth);
-		return null;
+		return self::startupHook();
 	}
 
 	/**
@@ -287,15 +325,16 @@ final class NuAuth
 		$_SESSION['nu_2fa'] = $p;
 	}
 
-	/** Second factor confirmed: turn the pending login into a session. */
-	public static function completePending(string $method, bool $trustDevice): void
+	/** Second factor confirmed: turn the pending login into a session. @return string|null message of nu_startup when it refused (0.8.462) */
+	public static function completePending(string $method, bool $trustDevice): ?string
 	{
 		$p = self::pending();
-		if (!$p) return;
+		if (!$p) return null;
 		unset($_SESSION['nu_2fa']);
 		if ($trustDevice) NuTwoFA::trustDevice($p['auth']['id']);
 		self::start($p['auth']);
 		NuLog::write('login', '', '', ['2fa' => $method], $p['auth']);
+		return self::startupHook();
 	}
 
 	/** REST API request: acts as the client's service user for this request only (no session, rights of its access level). */
@@ -320,11 +359,11 @@ final class NuAuth
 			self::applyLanguage(null, '', true);
 			self::start(['id' => 'globeadmin', 'globeadmin' => true, 'fp' => NuDemo::gaFingerprint(), 'login' => $u['login'], 'via' => 'demo_ga']);
 			NuLog::write('login', '', '', ['via' => 'demo button'], ['id' => 'globeadmin', 'login' => $u['login']]);
-			return null;
+			return self::startupHook();
 		}
 		self::start(['id' => $u['id'], 'globeadmin' => false, 'fp' => self::fingerprint($u['hash']), 'login' => $u['login'], 'via' => 'demo']);
 		NuLog::write('login', '', '', ['via' => 'demo button'], ['id' => $u['id'], 'login' => $u['login']]);
-		return null;
+		return self::startupHook();
 	}
 
 	/** Session of another login without password (globeadmin acting as a user, and back) – NuImpersonate only. */
@@ -337,6 +376,10 @@ final class NuAuth
 
 	private static function start(array $data): void
 	{
+		if (!empty($data['globeadmin']) && !NuInstall::existingBlocked()) {   // the globeadmin's first sign-in sets up the own tables (0.8.462, B2)
+			NuSchema::allow();
+			NuSchema::ensure();
+		}
 		session_regenerate_id(true);
 		$_SESSION['nu_auth'] = $data + ['since' => time(), 'last' => time(), 'inst' => NuSecurity::installId()];
 		self::$loaded = false;
@@ -519,6 +562,20 @@ final class NuAuth
 		self::$loaded = false;
 	}
 
+	/**
+	 * nuBuilder's hook nu_check_password_policy (0.8.462, gap analysis B5) for a new password: the procedure gets $newPassword,
+	 * $newPasswordCheck, $will (all the new password), $userId and $check = true, as in nuBuilder's password procedures; it refuses
+	 * with $check = false (its nuDisplayError text is shown) or an error. @return string|null null = accepted, otherwise the message
+	 */
+	public static function passwordPolicy(string $new, string $userId): ?string
+	{
+		NuPhp::reset();
+		$hash = ['USER_ID' => $userId, 'RECORD_ID' => $userId, 'FORM_ID' => 'nuuser'];
+		$ok = NuProcedure::hook('nu_check_password_policy', $hash, ['newPassword' => $new, 'newPasswordCheck' => $new, 'will' => $new, 'userId' => $userId, 'check' => true]);
+		if ($ok && (NuPhp::$vars['check'] ?? true) !== false) return null;
+		return (string)(NuPhp::$errors[0]['message'] ?? (NuPhp::$error !== '' ? NuPhp::$error : t('pw_err_policy')));
+	}
+
 	/** Own password change (also clears sus_change_password). */
 	public static function changeOwnPassword(string $current, string $new): ?string
 	{
@@ -530,6 +587,7 @@ final class NuAuth
 		[$ok] = self::verifyPassword($current, $hash);
 		if (!$ok) return 'pw_err_current';
 		if (hash_equals($current, $new)) return 'pw_err_same';
+		if (($policy = self::passwordPolicy($new, (string)$u['id'])) !== null) return $policy;   // nu_check_password_policy (0.8.462)
 
 		$newHash = self::hash($new);
 		$db->update('zzzzsys_user', ['sus_login_password' => $newHash, 'sus_change_password' => '0'], 'zzzzsys_user_id', $u['id']);

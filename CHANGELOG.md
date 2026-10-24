@@ -3,6 +3,99 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.463 – Release gate
+- Release gate for 0.8.458–0.8.462 (permission items as a table, uploads with Uppy, side bar with favourites and recently used,
+  gap analysis nuBuilder 4.9 / nuBuilder Next: data mode / form type, access condition in the save transaction, global hooks,
+  sub-form calc, onnuload / onenter, no own tables before the globeadmin's sign-in, nuFORMdata, Compatibility check G1–G8):
+  smoke, all end-to-end tests and the cross-tests against nuBuilder passed.
+
+## 0.8.462 – Gap analysis: global hooks, sub-form calc, onnuload / onenter, no own tables before sign-in
+- Gap analysis nuBuilder 4.9 / nuBuilder Next, second part (items 3–9 of the owner's list; B1 stays the owner's decision).
+- B2 – no changes to a live nuBuilder database by a copy next to it: nuBuilder Next's own tables (zzzzsys_nunext_*) are created only
+  by the installer, cron.php or the globeadmin's first sign-in – never by a request without a login (login page, failed sign-in) and
+  not at all while an existing nuBuilder database is blocked (also before the set-up, when nuBuilder's tables are there and
+  $nuConfigAllowExistingNuDB is not set). Until the globeadmin has signed in once, other users see "nuBuilder Next is not set up yet".
+  Once the tables exist, signed-in requests apply an update's database steps as before.
+- B5 – nuBuilder's global hook procedures: nu_before_save (before every Before Browse and Before Save, also the browse export),
+  nu_before_edit, nu_before_delete, nu_startup (after every sign-in – login form, link, demo, second factor; $error ends the
+  session with that text), nu_invalid_login, nu_check_password_policy (user form, own password, reset link, REST API: $newPassword,
+  $userId, $check = false or nuDisplayError refuses), nu_after_update (after the database steps of an update, also unattended) and
+  nu_debug_result_added ($nuDebugId, $nuDebugMessage). An error in a save hook stops the save.
+- B6 – calc objects in grid sub-forms: the formula gets the row prefix as in nuBuilder (nuTotal('qty') = this row's field), so row values
+  and totals are right; calculating no longer marks the blank new row as edited – a new record with such a sub-form saves again and
+  afterinsertrow runs once per new row.
+- B7 – object events onnuload (after the calc objects, before nuOnLoad, "this" as nuBuilder rewrites it) and onenter (Enter key).
+- Smaller differences: nuFORMdata in the hash of Before Save / After Save with nuGetNuDataValue() and nuSetNuDataValue() (a change in
+  Before Save is saved – edit form and the first row of a sub-form); #USER_NAME# is sus_name (was first + last name);
+  nuLookupRecord() has the key as ID; the group footer of an empty (NULL) report group is blank instead of 0.00.
+  Not changed on purpose: #RECORD_ID# / #FORM_ID# of hidden procedures.
+- Compatibility check: new findings G1–G8 – access levels with data mode / form type, global hook procedures, calc objects on
+  sub-forms, onnuload / onenter, nuFORMdata, scripts / frames / styles / images from other sites (blocked by the Content Security
+  Policy), hash variables nuBuilder Next does not set, hidden procedures reading #RECORD_ID# / #FORM_ID#.
+- Tests: the test application of the analysis is in dev/tests/gapkit/; e2e tests gap_hooks, gap_calc_events, gap_schema (fresh
+  database and a second server), gap_small, gap_compat; compat.js loads the test application (GAPKIT=0 leaves it out).
+- Help: global hooks, nuFORMdata, object events, own tables on the first sign-in, Compatibility check G1–G8; function reference
+  nuGetNuDataValue / nuSetNuDataValue, nuLookupRecord with ID.
+
+## 0.8.461 – Access level data mode and form type; saves with access conditions
+- Fixed (gap analysis B4, data): a form with an object of access 9 (access condition) could not be saved – the condition's read-only
+  check started its own transaction inside the save, which in MySQL / MariaDB commits the save half way (main row written, After Save
+  and sub-form rows skipped, "There is no active transaction"). Inside a running transaction `NuDB::readOnly()` now uses a SAVEPOINT
+  (SQL Server: SAVE TRANSACTION) and rolls back to it.
+- Fixed (gap analysis B3, access): nuBuilder's per-form *Data mode* and *Form type* of the access level are enforced, as in 4.9 –
+  data mode 0 (no changes to existing records): existing records open read only without Save, the server refuses a save
+  ("Changes to existing records are not allowed"); new records, Clone and Delete follow their own rights. Form type 0 (browse only):
+  no record opens, also no new one (no Add, rows open nothing); form type 1 (edit only): no list and no list export. The globeadmin
+  and admin roles with "change" on the form are not limited.
+- Access levels: two new columns per form, *Data mode* and *Form type* (as nuBuilder's access level form); a save without a change
+  leaves nuBuilder's rows as they were.
+- Tests: the gap analysis' test application in dev/tests/gapkit (forms tt*, users ttfull / ttlim, global hooks, events, access 9);
+  e2e tests gap_access and gap_access9.
+
+## 0.8.460 – Side bar: favourites and recently used
+- Side bar (optional): a column on the left of every page with **Favourites** – the start page's ☆ tiles, same order – and
+  **Recently used** – the last 8 pages and forms (a form counts once, whichever record). Each user switches it on or off in the user
+  menu → *Side bar*; the globeadmin sets the default for everybody without an own choice (*Side bar for everyone by default*; off
+  until then). Entries without the right to open them are not shown.
+- ☆ next to an entry makes a start page tile a favourite or stops it – the start page shows the same change (admins: the layout,
+  users: their own favourites of their start page). ⊗ empties *Recently used*.
+- « collapses it to an icon strip (names on hover, remembered per device, no jump while the page loads); below 992 px it is a drawer
+  opened by the button left of the logo (Esc / a tap beside it closes it). Colours of the start page groups, light and dark mode;
+  the current page is marked.
+- Recently used is kept per user in the new table zzzzsys_nunext_recent (update step 0021-recent, the last 10) and only while the side
+  bar is on; demo visitors keep everything for the session; not recorded while the globeadmin acts as another user.
+- Help chapter *Side bar*; e2e test sidebar (on / off, recent order, current page, ☆ both ways, icon strip, clear, default for users,
+  own choice, phone drawer); a11y: favourites title 4.5:1 in light mode.
+
+## 0.8.459 – Uploads with Uppy (file target File System)
+- Uploads with Uppy, as nuBuilder 4.9: a file input with the target *File System* (`sob_input_file_target` 1) shows its HTML code –
+  nuBuilder's Uppy template – and uploads files to a folder on the server (compatibility report M5). nuBuilder's replacements
+  (`#uppy_div#`, `#this_object_id#`, `nuInitUppy_<id>()`, `.cssNumber(`, `new Uppy.Core()`), `nuUppyCreate()`, `nuUppySetLanguage()`,
+  `nuUppyGetLanguageCodeAndLocale()` and the hook `nuOnFileUploadComplete()`; templates written for nuBuilder run unchanged.
+- Uppy is a library pack (slot `uppy`, `vendor/packs/uppy-<version>/`, not in `nunext.zip`): Update → Libraries lists it with version,
+  self-test and upload; form pages load it only where a form uses it; a missing pack shows the globeadmin a notice. Pack
+  `nunext-lib-uppy-4.2.0.zip` = the build nuBuilder 4.9.2 ships (Uppy core 4.2.0, locales).
+- Upload route `index.php?p=upload`: `nuUppyCreate()` sends the template's endpoint `core/nuapi.php` there with the CSRF header (the
+  login counts – nuBuilder's `session_id` is not used) and adds the form id. The procedure named in the template runs with the user's
+  procedure rights and the form's hash variables; its `$result` and HTTP status are the answer, as in nuBuilder. File names a web
+  server could run or obey (`.php`, `.phtml`, `.phar`, `.htaccess`, `.user.ini` …, also `x.php.pdf`) are refused before any procedure
+  runs. Uploads are logged (*File uploaded* / *File upload refused*); demo visitors cannot upload.
+- PHP: a procedure's variable `$result` is kept (`NuPhp::$result`, nuBuilder's `nuRunPHPHiddenResult`); new `nuSetUploadError()`.
+- Update step `0020-upload-template`: databases without nuBuilder's rows get the snippet `nu_upload_file_uppy_code_template`
+  (nuBuilder's text) and `nu_upload_file_template` in a hardened version – the extension must fit the content type, no HTML /
+  JavaScript / SVG / XML, an existing file is never overwritten (`name-1.pdf`). It runs in nuBuilder too. Existing rows stay.
+- Form builder: *File target* (Database / File System) for file inputs; File System shows the HTML code and fills in the Uppy
+  template when it is empty. The object is never saved with the record, validated or offered as a new column.
+- The Uppy dashboard follows dark mode when the template sets no theme.
+- Help (Forms → File uploads to the server, Libraries), porting review, function reference; e2e test `uppy_upload` (real uploads,
+  name guard, type check, no overwrite, log, CSRF, record save, step 0020). Development notes: PHPStan 2.1.17 as in CI.
+
+## 0.8.458 – Permission items as a table in the user form
+- User form → Permission items: the items are a table now – checkbox, ident, description and group, one row per item (before: a grid
+  of checkboxes under group headings). A click anywhere on a row ticks or unticks it; search, group filter, *All* / *None* and the
+  count work as before. On phones the description sits below the ident and the group column is left out.
+- Help (Users → Permission items); e2e test user_tabs checks the table and the row click.
+
 ## 0.8.457 – Release gate
 - Release gate for 0.8.455–0.8.456 (Customise as an icon next to the search, function reference with PHP / JavaScript tabs, examples
   and results): smoke, all end-to-end tests and the cross-tests against nuBuilder passed.

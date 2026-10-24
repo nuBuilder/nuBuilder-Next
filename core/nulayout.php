@@ -114,12 +114,17 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	// "Start" only next to other links – alone it repeats the logo, which also opens the start page
 	$nav = array_filter($nav, static fn($n) => (bool)$n[2]);
 	if (array_keys($nav) === ['home']) $nav = [];
+	$sidebar = NuSidebar::enabled() && empty($opt['no_sidebar']);   // side bar (0.8.460, core/nusidebar.php)
+	if ($sidebar) NuSidebar::record(NuSidebar::currentKey());
 	?>
-<body class="nu-app<?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?>>
+<body class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?>>
 <a class="visually-hidden-focusable" href="#main"><?= h(t('skip_to_content')) ?></a>
 <nav class="navbar navbar-expand-md nu-navbar border-bottom sticky-top<?= NuImpersonate::active() ? ' flex-wrap' : '' ?>">
 	<?= NuImpersonate::banner() ?>
 	<div class="container-xl">
+		<?php if ($sidebar): // side bar (0.8.460): below 992 px a drawer opened here ?>
+			<button type="button" class="btn btn-sm btn-outline-secondary me-2 nuSbOpenBtn" id="nuSbOpen" aria-controls="nuSidebar" aria-expanded="false" title="<?= h(t('sb_open')) ?>" aria-label="<?= h(t('sb_open')) ?>"><i class="bi bi-layout-sidebar"></i></button>
+		<?php endif; ?>
 		<a class="navbar-brand d-flex align-items-center gap-2" href="<?= h(nu_url('home')) ?>">
 			<?= nu_brand_logo() ?>
 		</a>
@@ -169,6 +174,14 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php if ($u['globeadmin'] && NuHome::globeadminForm() !== null): // $nuConfigGlobeadminHome opens a form – the tile page stays reachable here ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('home', ['tiles' => '1'])) ?>"><i class="bi bi-grid me-2"></i><?= h(t('home_tiles_link')) ?></a></li>
 						<?php endif; ?>
+						<?php $sbBack = 'index.php?' . (string)($_SERVER['QUERY_STRING'] ?? ''); // side bar (0.8.460): mine on / off; the globeadmin also the default for everyone ?>
+						<li><form method="post" action="<?= h(nu_url('sidebar')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="toggle"><input type="hidden" name="back" value="<?= h($sbBack) ?>">
+							<button class="dropdown-item d-flex align-items-center" type="submit" id="nuSidebarToggle" role="menuitemcheckbox" aria-checked="<?= $sidebar ? 'true' : 'false' ?>"><i class="bi bi-layout-sidebar me-2"></i><?= h(t('sb_menu')) ?><i class="bi bi-check2 ms-auto ps-3<?= $sidebar ? '' : ' invisible' ?>" aria-hidden="true"></i></button></form></li>
+						<?php if ($u['globeadmin'] && empty($u['demo'])): $sbDef = NuSidebar::defaultOn(); ?>
+						<li><form method="post" action="<?= h(nu_url('sidebar')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="default"><input type="hidden" name="back" value="<?= h($sbBack) ?>">
+							<button class="dropdown-item d-flex align-items-center small text-body-secondary" type="submit" id="nuSidebarDefault" role="menuitemcheckbox" aria-checked="<?= $sbDef ? 'true' : 'false' ?>"><i class="bi bi-people me-2"></i><?= h(t('sb_menu_default')) ?><i class="bi bi-check2 ms-auto ps-3<?= $sbDef ? '' : ' invisible' ?>" aria-hidden="true"></i></button></form></li>
+						<?php endif; ?>
+						<li><hr class="dropdown-divider"></li>
 						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
@@ -221,9 +234,52 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	</div>
 </nav>
 <?= !empty($_SESSION['nu_form_preview']) ? NuFormDraft::banner(false) : '' /* form drafts (0.8.386): preview banner */ ?>
-<main id="main" class="<?= h($opt['container'] ?? 'container-xl') ?> py-4">
+<?php if ($sidebar) { echo '<div class="nuShell">'; nu_sidebar(); NuSidebar::$drawn = true; } ?>
+<main id="main" class="<?= h($opt['container'] ?? 'container-xl') ?> py-4<?= $sidebar ? ' nuShellMain' : '' ?>">
 	<?php nu_render_flashes(); ?>
 <?php
+}
+
+/** The side bar (0.8.460, core/nusidebar.php): favourites and recently used; collapsed to an icon rail (≥ 992 px) or a drawer (narrower). */
+function nu_sidebar(): void
+{
+	$d = NuSidebar::data();
+	$back = 'index.php?' . (string)($_SERVER['QUERY_STRING'] ?? '');
+	$post = static fn(string $action, string $inner, array $extra = [], string $cls = '') => '<form method="post" action="' . h(nu_url('sidebar')) . '" class="nuSbForm' . ($cls !== '' ? ' ' . $cls : '') . '">'
+		. nu_csrf_field() . '<input type="hidden" name="action" value="' . h($action) . '"><input type="hidden" name="back" value="' . h($back) . '">'
+		. implode('', array_map(static fn($k, $v) => '<input type="hidden" name="' . h($k) . '" value="' . h($v) . '">', array_keys($extra), $extra)) . $inner . '</form>';
+	$item = static function (array $it) use ($post): string {
+		$body = '<span class="nuSbIcon"' . ($it['color'] !== '' ? ' data-nu-color="' . h($it['color']) . '"' : '') . '><i class="bi ' . h($it['icon']) . '" aria-hidden="true"></i></span>'
+			. '<span class="nuSbLabel">' . h($it['label']) . '</span>';
+		$cur = $it['current'] ? ' aria-current="page"' : '';
+		$link = $it['post'] !== null
+			? '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="nuSbForm nuSbGrow">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h((string)$it['post']) . '">'
+				. '<button type="submit" class="nuSbLink" title="' . h($it['label']) . '">' . $body . '</button></form>'
+			: '<a class="nuSbLink nuSbGrow" href="' . h((string)$it['href']) . '"' . ($it['newtab'] ? ' target="_blank" rel="noopener"' : '') . ' title="' . h($it['label']) . '"' . $cur . '>' . $body . '</a>';
+		$star = '';
+		if ($it['canFav']) {
+			$tip = t($it['fav'] ? 'sb_unfav' : 'sb_fav', $it['label']);
+			$star = $post('fav', '<button type="submit" class="nuSbFav' . ($it['fav'] ? ' on' : '') . '" title="' . h($tip) . '" aria-label="' . h($tip) . '" aria-pressed="' . ($it['fav'] ? 'true' : 'false') . '">'
+				. '<i class="bi ' . ($it['fav'] ? 'bi-star-fill' : 'bi-star') . '" aria-hidden="true"></i></button>', ['key' => $it['key']], 'nuSbStar');
+		} elseif ($it['fav']) {
+			$star = '<span class="nuSbFav on nuSbStar" role="img" aria-label="' . h(t('sb_favourites')) . '"><i class="bi bi-star-fill" aria-hidden="true"></i></span>';
+		}
+		return '<li class="nuSbItem' . ($it['current'] ? ' active' : '') . ($it['fav'] ? ' fav' : '') . '" data-nu-sb="' . h($it['key']) . '">' . $link . $star . '</li>';
+	};
+	$section = static function (string $id, string $icon, string $title, array $items, string $empty, string $extra = '') use ($item): string {
+		return '<section class="nuSbSec nuSbSec-' . $id . '" aria-labelledby="nuSbH-' . $id . '"><h2 class="nuSbSecTitle" id="nuSbH-' . $id . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>'
+			. '<span class="nuSbText">' . h($title) . '</span>' . ($items ? '<span class="nuSbCount">' . count($items) . '</span>' : '') . $extra . '</h2>'
+			. ($items ? '<ul class="nuSbList">' . implode('', array_map($item, $items)) . '</ul>' : '<p class="nuSbEmpty">' . h($empty) . '</p>') . '</section>';
+	};
+	$clear = $d['recent'] ? $post('clear', '<button type="submit" class="nuSbClear" title="' . h(t('sb_recent_clear')) . '" aria-label="' . h(t('sb_recent_clear')) . '"><i class="bi bi-x-circle" aria-hidden="true"></i></button>', [], 'nuSbClearForm') : '';
+	echo '<aside id="nuSidebar" class="nuSidebar" aria-label="' . h(t('sb_title')) . '" data-t-collapse="' . h(t('sb_collapse')) . '" data-t-expand="' . h(t('sb_expand')) . '">'
+		. '<div class="nuSbHead"><span class="nuSbTitle"><i class="bi bi-compass" aria-hidden="true"></i><span class="nuSbText">' . h(t('sb_title')) . '</span></span>'
+		. '<button type="button" class="nuSbCollapse" id="nuSbCollapse" aria-controls="nuSidebar" aria-expanded="true" title="' . h(t('sb_collapse')) . '" aria-label="' . h(t('sb_collapse')) . '"><i class="bi bi-chevron-double-left" aria-hidden="true"></i></button>'
+		. '<button type="button" class="nuSbClose" id="nuSbClose" title="' . h(t('close')) . '" aria-label="' . h(t('close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
+		. '<nav class="nuSbBody" aria-label="' . h(t('sb_title')) . '">'
+		. $section('fav', 'bi-star-fill', t('sb_favourites'), $d['fav'], t($d['canFav'] ? 'sb_fav_none' : 'sb_fav_none_ro'))
+		. $section('recent', 'bi-clock-history', t('sb_recent'), $d['recent'], t('sb_recent_none'), $clear)
+		. '</nav></aside>';
 }
 
 function nu_render_flashes(): void
@@ -250,6 +306,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 {
 	?>
 </main>
+<?= NuSidebar::$drawn ? '</div>' : '' /* side bar wrapper .nuShell (0.8.460) */ ?>
 
 <div class="modal fade" id="nuLeave" tabindex="-1" aria-labelledby="nuLeaveTitle" aria-hidden="true" data-text-nosave="<?= h(t('leave_text_nosave')) ?>" data-text="<?= h(t('leave_text')) ?>">
 	<div class="modal-dialog modal-dialog-centered">
@@ -288,6 +345,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
+<?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
 <?= $extraBody ?>
 </body>
 </html>

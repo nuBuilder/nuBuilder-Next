@@ -35,6 +35,7 @@ final class NuDemo
 		'reportdesigner' => ['preview', 'fields'],   // report designer: PDF preview of the layout, field list of the data source
 		'sqlbuilder'     => ['preview'],      // SQL builder: runs the SELECT (NuDB lets only reading statements through)
 		'impersonate'    => ['stop'],
+		'sidebar'        => ['toggle', 'clear', 'fav'],   // side bar (0.8.460): on / off, recently used and ☆ – kept in the session for demo visitors
 		'tutorial'       => ['done', 'undo', 'hide', 'show', 'reset'],   // own progress – kept in the session for demo users         // the globeadmin acting as the demo user goes back
 	];
 

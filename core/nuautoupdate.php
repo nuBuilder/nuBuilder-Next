@@ -249,6 +249,7 @@ final class NuAutoUpdate
 			try {
 				unset($_SESSION['nu_schema']);
 				$j['steps'] = NuMigrate::run();
+				if (($hookErr = NuUpdate::afterUpdateHook()) !== '') $j['hook_error'] = $hookErr;   // nu_after_update (0.8.462)
 				if (!empty($j['sample_refresh'])) {
 					try {
 						NuSample::install();                                     // new passwords: Admin tools → Sample data → New passwords

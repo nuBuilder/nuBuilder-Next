@@ -59,9 +59,8 @@
 			it.classList.toggle('d-none', !on);
 			if (on) shown++;
 		});
-		box.querySelectorAll('.userPermGroup').forEach(function (g) {
-			g.classList.toggle('d-none', !g.querySelector('.userPermItem:not(.d-none)'));
-		});
+		var table = box.querySelector('.userPermTable');
+		if (table) table.classList.toggle('d-none', shown === 0);
 		empty.classList.toggle('d-none', shown > 0);
 	}
 	if (filter) {
@@ -70,6 +69,12 @@
 	}
 	if (group) group.addEventListener('change', apply);
 	box.addEventListener('change', function (e) { if (e.target.name === 'perm[]') update(); });
+	box.addEventListener('click', function (e) {   // table (0.8.458): a click on the row toggles its checkbox (not on the box / label themselves)
+		var row = e.target.closest('.userPermItem');
+		if (!row || e.target.closest('input, label, a, button')) return;
+		var cb = row.querySelector('input[name="perm[]"]');
+		if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change', {bubbles: true})); }
+	});
 	box.querySelectorAll('[data-perm-all]').forEach(function (b) {
 		b.addEventListener('click', function () {
 			var on = b.getAttribute('data-perm-all') === '1';

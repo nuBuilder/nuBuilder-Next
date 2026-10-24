@@ -153,16 +153,19 @@ final class NuReportEngine
 			}
 			$a = $b = 0.0;
 			$n = 0;
+			$seen = false;                                                     // a value that is not NULL (SQL SUM() of none is NULL)
 			foreach ($this->rows as $r) {
-				foreach ($filter as $f => $v) if (!self::same($r[$f] ?? null, $v)) continue 2;
+				// nuBuilder: WHERE <group field> = '<value>' – a NULL group value is '', a NULL row never matches (0.8.462)
+				foreach ($filter as $f => $v) if (($r[$f] ?? null) === null || !self::same($r[$f], $v ?? '')) continue 2;
 				$n++;
+				if (($r[$args[0]] ?? null) !== null) $seen = true;
 				$a += (float)($r[$args[0]] ?? 0);
 				if ($isAvg) $b += (float)($r[$args[1] ?? ''] ?? 0);
 			}
-			if ($n === 0) $value = 0;
-			elseif ($isAvg) $value = $b == 0 ? 0 : $a / $b;
+			if ($isAvg) $value = $b == 0 ? 0 : $a / $b;
+			elseif (!$seen) $value = '';                                       // nuBuilder: blank, not 0.00
 			else $value = $a;
-			$value = (string)(is_float($value) && floor($value) == $value && abs($value) < 1e15 ? (string)(int)$value : $value);
+			$value = $value === '' ? '' : (string)(is_float($value) && floor($value) == $value && abs($value) < 1e15 ? (string)(int)$value : $value);
 		} else {
 			$value = array_key_exists($name, $row) ? self::stripFormatting((string)($row[$name] ?? ''))[0] : '';
 		}

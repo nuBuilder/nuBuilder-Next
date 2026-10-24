@@ -21,6 +21,36 @@ final class NuProcedure
 	public const FIELDS = ['sph_code', 'sph_description', 'sph_group', 'sph_category', 'sph_status', 'sph_zzzzsys_form_id', 'sph_run',
 		'sph_php', 'sph_javascript', 'sph_javascript_active', 'sph_global', 'sph_demo'];
 
+	/**
+	 * nuBuilder's global hook procedures (0.8.462, gap analysis B5) – run where nuBuilder 4.9 runs them: nu_before_save (before Before
+	 * Browse and before Before Save), nu_before_edit (before Before Edit), nu_before_delete (before Before Delete), nu_startup (after a
+	 * login), nu_invalid_login (after a failed one), nu_check_password_policy (password changes), nu_after_update (after an update),
+	 * nu_debug_result_added (after a Debug result). Like nuBuilder's eval(nuProcedure()): the procedure with that code, without
+	 * procedure rights or status, in the request's PHP context (its errors and JavaScript join the request). nu_after_save,
+	 * nu_before_browse and nu_after_delete are only reserved names, in nuBuilder too.
+	 * @return bool false = the hook reported an error (nuDisplayError …) or set $error (text in NuPhp::$error)
+	 */
+	public static function hook(string $code, array $hash, array $vars = []): bool
+	{
+		static $running = [];
+		if (isset($running[$code])) return true;              // a hook that triggers itself (nuDebug in nu_debug_result_added …)
+		try {
+			if (!nu_db()->tableExists('zzzzsys_php')) return true;
+			$php = nu_db()->value('SELECT sph_php FROM zzzzsys_php WHERE sph_code = ?', [$code]);
+		} catch (Throwable) {
+			return true;
+		}
+		if ($php === null || trim((string)$php) === '') return true;
+		$running[$code] = true;
+		try {
+			$before = count(NuPhp::$errors);
+			$ok = NuPhp::run((string)$php, $hash + ['PROCEDURE_CODE' => $code], $code, $vars);
+			return $ok && count(NuPhp::$errors) === $before && NuPhp::$error === '';
+		} finally {
+			unset($running[$code]);
+		}
+	}
+
 	public static function isHook(string $id): bool
 	{
 		return in_array(substr($id, -3), self::HOOKS, true);

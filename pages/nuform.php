@@ -51,6 +51,11 @@ if ($r === null || $r === '') {
 	if (!$meta->hasBrowse()) $r = '-1';          // edit / launch forms open directly
 }
 $mode = ($r === null || $r === '') ? 'browse' : 'edit';
+// access level form type (0.8.461, as nuBuilder 4.9): "browse only" opens no record (also no new one), "edit only" no browse list
+if ($meta->type() !== 'launch' && !$rights[$mode]) {
+	http_response_code(403);
+	nu_fatal(t('acl_form_type_denied'), $meta->description(), true);
+}
 
 // forms run admin-authored JavaScript (like nuBuilder): this page needs inline scripts and eval.
 // Charts (chart objects or nuChart() in the form's code) use Google Charts: www.gstatic.com is allowed only on those forms.
@@ -72,10 +77,11 @@ $breadcrumbs = [['title' => t('nav_home'), 'url' => nu_url('home')]];
 if ($mode === 'browse') {
 	$hash = NuHash::forForm($meta, '', [], $props);
 	NuPhp::reset();
-	$okBB = NuPhp::run($meta->php('BB'), $hash, 'Before Browse');
+	// nuBuilder's global hook nu_before_save runs before every Before Browse too (0.8.462); an error stops the list's own hook
+	$okBB = NuProcedure::hook('nu_before_save', $hash) && NuPhp::run($meta->php('BB'), $hash, 'Before Browse');
 	$hash = NuPhp::$hash + $hash;
 	$js   = NuPhp::$js;
-	if (!$okBB) $errors = NuPhp::$errors;
+	if (!$okBB) $errors = NuPhp::$errors ?: [['message' => NuPhp::$error, 'field' => '']];
 	nu_form_php_props($props, $locked);
 	$pageScope = NuRender::$scope = NuProps::create($props, $locked);
 
@@ -123,7 +129,8 @@ if ($mode === 'edit') {
 	$hash = NuHash::forForm($meta, $isNew ? '-1' : $r, $row, $props);
 	NuPhp::reset();
 	NuConflict::$formCheck = NuConflict::$formPresence = null;
-	if (!NuPhp::run($meta->php('BE'), $hash, 'Before Edit')) $errors = NuPhp::$errors;
+	// global hook nu_before_edit first (0.8.462, as nuBuilder 4.9); an error stops the form's Before Edit
+	if (!NuProcedure::hook('nu_before_edit', $hash) || !NuPhp::run($meta->php('BE'), $hash, 'Before Edit')) $errors = NuPhp::$errors ?: [['message' => NuPhp::$error, 'field' => '']];
 	$js   = NuPhp::$js;
 	$hash = NuPhp::$hash + $hash;
 	foreach (NuPhp::$formValues as $k => $v) $row[$k] = $v;          // nuSetFormValue in BE
@@ -344,6 +351,13 @@ if (!$apex && $u['globeadmin'] && empty($u['demo'])) {
 // dashboards (0.8.298): <div data-nu-dashboard="CODE"> in an HTML object, or nuNextDashboard('CODE', …) in the form's JavaScript
 $dashboards = $mode === 'edit' && preg_match('/data-nu-dashboard|nuNextDashboard/', implode("\n", array_map(static fn($o) => (string)($o['sob_html_code'] ?? ''), $meta->objects))
 	. $meta->form['sfo_javascript'] . $meta->form['sfo_edit_javascript']);
+// Uppy (0.8.459, library pack – nuBuilder loads it on every page): forms with a file object of target "File System" or code that uses Uppy
+$uppyUse = $mode === 'edit' && (array_filter($meta->objects, static fn($o) => NuRender::isUppy($o))
+	|| preg_match('/\bUppy\b|nuUppyCreate/', $setupHeader . $meta->form['sfo_javascript'] . $meta->form['sfo_edit_javascript'] . implode("\n", array_map(static fn($o) => (string)($o['sob_html_code'] ?? ''), $meta->objects))));
+$uppyDir = $uppyUse ? NuLibs::uppy() : '';
+$uppyNotice = $uppyUse && $uppyDir === '' && $u['globeadmin'] ? t('form_uppy_missing') . ' ' . t('lp_get_pack') : '';
+if ($uppyDir !== '') $head .= '<link rel="stylesheet" href="' . nu_asset($uppyDir . '/uppy.min.css') . '">';
+$client['uppyBase'] = $uppyDir;                               // nuUppySetLanguage loads <uppyBase>/locales/<code>.min.js
 if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
 
 $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>'
@@ -352,6 +366,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nuinfobar.js') . '"></script>'
 	. ($tinymce ? '<script src="' . nu_asset($tinyDir . '/tinymce.min.js') . '"></script>' : '')
+	. ($uppyDir !== '' ? '<script src="' . nu_asset($uppyDir . '/uppy.min.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nuformat.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
@@ -398,7 +413,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<a class="btn nuBtnAct nuActionButton" id="nuBackButton" data-nu-crumb="<?= (int)$backIdx ?>" href="<?= h($breadcrumbs[$backIdx]['url']) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php endif; ?>
 		<?php if ($mode === 'browse'): ?>
-			<?php if ($rights['add'] && $meta->hasEdit()): // "Add" right only (as nuBuilder; "New" is the button on the edit screen) – also in a lookup window: the new record is chosen right after saving ?>
+			<?php if ($rights['add'] && $rights['edit'] && $meta->hasEdit()): // "Add" right only (0.8.461: not on a "browse only" form) (as nuBuilder; "New" is the button on the edit screen) – also in a lookup window: the new record is chosen right after saving ?>
 				<button type="button" class="btn nuAddBtn nuActionButton" id="nuAddButton"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></button>
 			<?php endif; ?>
 			<?php if ($meta->id === 'nunotes' && $lookupTo === '' && empty($printMode) && isset(nu_forms()['nunotescategroy']) && NuAcl::can('nunotescategroy')): // notes: categories one click away ?>
@@ -444,6 +459,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 </div>
 
 <?php if ($notice !== ''): ?><div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h($notice) ?></div><?php endif; ?>
+<?php if ($uppyNotice !== ''): ?><div class="alert alert-warning small py-2" id="nuUppyMissing"><i class="bi bi-exclamation-triangle me-1"></i><?= h($uppyNotice) ?></div><?php endif; ?>
 <?php if ($apexNotice !== ''): ?><div class="alert alert-warning small py-2 d-flex flex-wrap align-items-center gap-2"><span class="flex-grow-1"><i class="bi bi-exclamation-triangle me-1"></i><?= h($apexNotice) ?></span><?= NuSettings::fromDb() ? '<a href="' . h(nu_url('settings')) . '">' . h(t('access_2fa_cfg_settings')) . '</a>' : NuConfigFile::enableButton('nuConfigIncludeApexCharts', t('apex_on'), t('apex_on_confirm'), 'form', ['f' => $meta->id, 'r' => (string)($r ?? '')]) ?></div><?php endif; ?>
 <?php foreach ($errors as $e): ?>
 	<div class="alert alert-danger d-flex gap-2"><i class="bi bi-exclamation-octagon mt-1"></i><div><?= nl2br(h($e['message'])) ?></div></div>

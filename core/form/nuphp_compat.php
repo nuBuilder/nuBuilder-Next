@@ -366,6 +366,7 @@ if (!function_exists('db_fetch_value')) {
 		$saved = NuPhp::$hash;
 		$res = NuPhp::procedure((string)$nuCode, NuPhp::$hash);
 		NuPhp::$hash = $saved;
+		if (NuPhp::$result !== null) $_POST['nuRunPHPHiddenResult'] = NuPhp::$result;   // nuBuilder: the procedure's $result (0.8.459)
 		if (empty($res['ok']) && !str_starts_with((string)$nuCode, 'nu')) nuDisplayError((string)($res['error'] ?? ''));
 		$f = new stdClass();
 		$f->id = 1;
@@ -517,6 +518,17 @@ if (!function_exists('db_fetch_value')) {
 	{
 		$file = (string)preg_replace('/[^\w\s\-~,;\[\]\(\).]/u', '', (string)$file);
 		return (string)preg_replace('/\.{2,}/', '', $file);
+	}
+
+	/**
+	 * Answer of an upload procedure that failed (nuBuilder's core/nuupload.php, 0.8.459): HTTP status 401 and JSON {error, message} –
+	 * Uppy's template shows message. $error defaults to nuBuilder's "Sorry, there was an error uploading your file."
+	 */
+	function nuSetUploadError($message, $error = null): string
+	{
+		if ($error === null) $error = nuTranslate('Sorry, there was an error uploading your file.');
+		http_response_code(401);
+		return (string)json_encode(['error' => $error, 'message' => $message], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 	}
 
 	function nuEnsureFileExtension($filename, $desiredExtension, $forceExtension = false): string

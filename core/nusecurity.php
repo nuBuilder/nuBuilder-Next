@@ -349,6 +349,8 @@ final class NuSecurity
 		$out[] = ['Adminer', NuVendor::adminerVersion(), $adm !== '' ? dirname($adm) : '', '5.0.0', NuVendor::adminerConverted() ? 'secchk_lib_adminer_crlf' : ''];
 		$tfm = NuVendor::dir('TFM');
 		$out[] = ['Tiny File Manager', $read($tfm . '/tinyfilemanager.php', "/define\\('VERSION', '([0-9.]+)'\\)/"), is_dir($tfm) ? $tfm : '', '', 'secchk_lib_tfm_note'];
+		$up = NuLibs::uppy();                                     // 0.8.459: file objects with target "File System" (library pack only)
+		$out[] = ['Uppy', $up !== '' ? (NuLibs::uppyVersion(NU_ROOT . '/' . $up . '/uppy.min.js') ?: '?') : '', $up !== '' ? NU_ROOT . '/' . $up : '', '', ''];
 		foreach ($out as &$l) {
 			[$name, $ver, $path, $min, $note] = $l;
 			// own build / patched copy: NUNEXT-VERSION.txt gives the version (e.g. 2.6+git.4149143.nu1) and the state of known CVEs
@@ -513,6 +515,26 @@ final class NuSecurity
 			$add('lib_' . strtolower(str_replace(' ', '', $l['name'])), $st, 'secchk_chk_lib', $l['name'] . ' ' . $det);
 		}
 		return $c;
+	}
+
+	// ================================================================= uploads
+
+	/**
+	 * Extensions a web server may run or obey (0.8.459, upload route ?p=upload): checked on every dot part after the name, because
+	 * Apache with "AddHandler" runs report.php.pdf too. Names starting with a dot (.htaccess, .user.ini) are refused as well.
+	 */
+	public const UPLOAD_DANGEROUS = ['php', 'php2', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8', 'phps', 'pht', 'phtm', 'phtml', 'phar', 'inc',
+		'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'asp', 'aspx', 'ashx', 'asmx', 'cer', 'jsp', 'jspx', 'shtml', 'shtm', 'stm', 'htaccess', 'htpasswd', 'ini', 'exe', 'com', 'bat', 'cmd', 'dll'];
+
+	/** Would a web server possibly run this uploaded file name (or treat it as its configuration)? */
+	public static function dangerousUploadName(string $name): bool
+	{
+		$base = strtolower(trim(basename(str_replace('\\', '/', $name))));
+		if ($base === '' || str_starts_with($base, '.') || str_contains($base, "\0") || preg_match('/[\x00-\x1f]/', $base)) return true;
+		$parts = explode('.', rtrim($base, '. '));
+		array_shift($parts);
+		foreach ($parts as $p) if (in_array(trim($p), self::UPLOAD_DANGEROUS, true)) return true;
+		return false;
 	}
 
 	// ================================================================= base URL for e-mail links

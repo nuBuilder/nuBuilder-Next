@@ -40,7 +40,7 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
    then `php dev/lang_variants.php` and `php dev/check_lang.php`. Never edit `lang/en-US.php` / `lang/de-CH.php`.
 4. Sync to the test site, test in the browser (Playwright), look at screenshots; run `dev/tests/smoke.js` and the end-to-end suite
    `BASE=http://127.0.0.1:8099/nunext/ DB="-unu -pnu nutest" PKG=../nunext.zip NODE_PATH=$(npm root -g) node dev/tests/e2e.js`
-   (88 tests in 0.8.454: forms, sub-forms, nuBuilder hooks, lookups, permission items, rights, admin roles, demo mode (needs SITE=<site folder>),
+   (96 tests in 0.8.462: forms, sub-forms, nuBuilder hooks, lookups, permission items, rights, admin roles, demo mode (needs SITE=<site folder>),
    login links, user import, audit, notifications, list views, favourites, branding, dashboards, login limit, CSV import, update check, self-test, CSRF …;
    it saves the whole database first and puts it back – `ONLY=name1,name2` runs single tests). Add a test for every new feature.
    The test site runs with `$nuConfigDevMode = true`, so the in-app self-test (`?p=selftest`, core/nuselftest.php) runs too.
@@ -77,7 +77,9 @@ step → `NuMigrate::steps()` + `NuMigrate::CHANGES` in core/nuupdate.php · a c
 (and `subTiles()` / `actions()` for ▾ menus) · a system list → `NuListDefs` (+ `LISTS`) · a pseudo form for access levels → `NuAcl::FORM_*`
 · clean-up → a step in `NuHousekeeping::run()` · PHP API for form code → core/form/nuphp_api.php · REST → `NuApi` routes +
 `NuApiClient::SCOPES` · log events → `ev_*` texts · JS in `assets/js/<page>.js` (strict CSP) · a PHP function for form code (core/form/nuphp_*.php) or a JS `api('…')` →
-an entry in `docs/nunext-functions.json` (Help → function references, core/nufnref.php; dev/tests/run.php fails otherwise). Each entry needs
+an entry in `docs/nunext-functions.json` (Help → function references, core/nufnref.php; dev/tests/run.php fails otherwise) · a library
+pack → `NuLibs::SLOTS` + `BY_NAME` + `detectVersion()` + `selfTest()`, `LIB_SLOTS` in dev/release.py, a row in `NuSecurity::libraries()`, the
+use map in `NuLibraries::all()`, text `upd_libuse_*`, the slot list in dev/libpack.php and the table in the help (#copy-files). Each entry needs
 an example `e`, parameter descriptions `p` {name: text} and – when it returns a value – a sample result `x` (0.8.456: PHP / JavaScript tabs,
 wiki-style cards with signature, parameters, returns, example, result / console.log(), "Also see"; NuFnRef::tabs() / entry(), nuhelp.js fnTab / reveal).
 
@@ -135,7 +137,10 @@ core/nudb.php        NuDB: PDO wrapper for mysql and sqlsrv (sqlite only for tes
 core/nuauth.php      login, sessions (cookie nunext), password hashing (bcrypt, md5 upgrade; md5 storage while $nuUseMd5PasswordHash is on,
                      NuAuth::md5Storage), NuAuth::user(), loginToken() (one-time login links), demo globeadmin sessions (via 'demo_ga')
 core/nuacl.php       rights from zzzzsys_access_form; constants FORM_* = nuBuilder's system form ids (nuuser, nuaccess, nuform …)
-core/nuinfra.php     own tables (NuSchema::ensure/create), NuLog::write(event, object, recordId, details), tokens, sessions,
+core/nuinfra.php     own tables (NuSchema::ensure/create; 0.8.462 gap analysis B2: ensure() changes the database only when mayChange() –
+                     CLI, NuSchema::allow() (installer, the globeadmin's sign-in in NuAuth::start), or present() + a signed-in session and
+                     not NuInstall::existingBlocked() (also true before the set-up on a database with nuBuilder's tables); NuAuth::startupHook
+                     refuses other users with login_not_ready while !present(); e2e gap_schema), NuLog::write(event, object, recordId, details), tokens, sessions,
                      nu_client_ip() (last X-Forwarded-For entry), nu_https() (also behind a TLS proxy), nu_base_url()
 core/nusecurity.php  NuSecurity (0.8.207): security settings (JSON row 'security'), login rate limit (counted in the log),
                      admin-equivalent rights (ADMIN_FORMS / restricted()), password confirmation (requireRecentAuth), protectDir,
@@ -196,11 +201,36 @@ core/nuuserfields.php NuUserFields (0.8.454): custom user fields – definitions
                      tab More, ?p=account (My account: edit_by 'user'), users list columns / filters (NuListDefs, in_list), CSV import,
                      #USER_<CODE># (NuHash), nuNextUserField / nuNextSetUserField (PHP), nuNextUserField (JS, N.user.fields), REST "fields",
                      start page cond.fields; e2e user_fields
+core/nuupload.php    NuUpload (0.8.459): uploads of nuBuilder's file objects with target "File System" (sob_input_file_target 1) with Uppy –
+                     NuRender::isUppy / uppyField (div + the object's HTML with nuBuilder's replacements #uppy_div# …, no data-nu-field: never
+                     saved / validated / column proposal), Uppy = library pack slot 'uppy' (NuLibs::uppy(), uppyVersion() = core version;
+                     pages/nuform.php loads it where a form uses it, notice form_uppy_missing), nucompat.js nuUppyCreate (endpoint
+                     core/nuapi.php → index.php?p=upload + X-CSRF-Token, meta form_id, Dashboard theme = dark mode) / nuUppySetLanguage
+                     (<script> for locales/<code>.min.js), route pages/nuupload.php (json; CSRF error as {error, message}; NuSecurity::
+                     dangerousUploadName refuses .php … before the procedure; NuPhp::procedure with the form's hash; answer = NuPhp::$result
+                     – the procedure's $result, as nuEvalSafe – and its HTTP status; log file_upload / file_upload_refused); templates HTML
+                     (nuBuilder's snippet, unchanged) and PROCEDURE (hardened nu_upload_file_template) with nuBuilder's row ids, step
+                     0020-upload-template (ensureTemplates, when missing); builder: File target select + HTML, htmlTemplate() on switch; e2e uppy_upload
+core/nusidebar.php   NuSidebar (0.8.460): optional left side bar – favourites (= the start page's ☆ tiles, NuHome; favToggle) and recently used
+                     (zzzzsys_nunext_recent, step 0021, KEEP 10, 8 shown; pages of PAGE_KEYS + form:<id>, recorded by nu_layout_start); on / off per
+                     user (sus_json NUNEXT_SIDEBAR, globeadmin: setting sidebar_ga, demo: session), default sidebar_default (globeadmin, user menu);
+                     drawn by nu_sidebar() in core/nulayout.php (.nuShell wrapper), POST route ?p=sidebar (toggle / default / clear / fav, demo READ_POSTS),
+                     assets/js/nusidebar.js (« icon strip: localStorage nunext-sidebar-collapsed, set early by nutheme.js; drawer < 992 px); e2e sidebar
+core/nuprocedure.php NuProcedure::hook(code, hash, vars) (0.8.462, gap analysis B5): nuBuilder's global hook procedures by sph_code –
+                     nu_before_save (pages/nuform.php before BB, NuRecord::save before BS, formexport), nu_before_edit, nu_before_delete,
+                     nu_startup / nu_invalid_login (NuAuth), nu_check_password_policy (NuAuth::passwordPolicy: user form, own password, reset,
+                     REST), nu_after_update (NuUpdate::afterUpdateHook), nu_debug_result_added (NuDebugLog); variables through NuPhp::run
+                     $vars (extract) and NuPhp::$vars / $error / $result after the run. Other gap fixes: NuAcl data mode / form type (B3,
+                     0.8.461), NuDB::readOnly savepoints (B4), sub-form calc prefix (NuRender calc: "al('" + row prefix) and no edit mark
+                     of the blank row (nuCalculateForm, B6), onnuload / onenter (nuruntime.js, B7), nuFORMdata + nuGet/SetNuDataValue
+                     (NuRecord::nuFormData / applyFormData), #USER_NAME# = sus_name, nuLookupRecord()->ID, blank SUM of an empty (NULL)
+                     report group (NuReportEngine::fieldValue), Compatibility check G1–G8 (NuCompat). Test application of the analysis:
+                     dev/tests/gapkit/ (testapp.sql, t08_fixture.sql; e2e ttInstall / ttRemove, tests gap_*; compat.js loads it, GAPKIT=0 not)
 core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.php mailer (NuMailer: settings, send, authType(), test probe)
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',
                      '0002-report-tables', '0003-translate-table', '0004-cloner-tables', '0005-setting-primary-db', '0007-drop-vendor-layout',
-                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages', '0017-presence', '0018-home-hook-codes' (0.8.438: procedures nunext_home → nu_home), '0019-user-fields' (0.8.454) – add new steps at the end; 0006 was removed with the baseline;
+                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages', '0017-presence', '0018-home-hook-codes' (0.8.438: procedures nunext_home → nu_home), '0019-user-fields' (0.8.454), '0020-upload-template' (0.8.459), '0021-recent' (0.8.460) – add new steps at the end; 0006 was removed with the baseline;
                      every step needs an entry in NuMigrate::CHANGES – tables + kind + what, release.py stops otherwise), change history,
                      SQL dumps in backups · core/nugithub.php NuGitHub (0.8.374): newest release of a GitHub repository
                      (setting 'github_update', daily look: cron or start / update page of users with the update right, Update tile badge), download into _update/ (only signed kept),
@@ -284,7 +314,7 @@ dev/                 release.py, sign.php, check_lang.php, tests/run.php (unit t
                      phpstan.neon, eslint.config.mjs – not part of the install package
 cron.php             housekeeping for cron (CLI only) · .github/workflows/ci.yml · .gitignore
 ```
-Own tables: `zzzzsys_nunext_log`, `_form_history`, `_user_2fa`, `_token` (kinds: pw_reset, report_file …), `_session`, `_setting` (key/value:
+Own tables: `zzzzsys_nunext_recent` (side bar, 0.8.460), `zzzzsys_nunext_log`, `_form_history`, `_user_2fa`, `_token` (kinds: pw_reset, report_file …), `_session`, `_setting` (key/value:
 `security`, `backup_keep_sql`, `demo_reset`, `mail_auth_type`, `listview_defaults`, `audit`, `notify`, `home_fav_only_ga` …), `_api_*`, `_dashboard`,
 `_widget`, `_admin_role`, `_admin_user`, `_list_view` (list views and saved start page layouts – with `fav` favourites), `_audit` (audit trail),
 `_notification` + `_notification_user` (notification centre), `_form_draft` (form drafts), `_page` (page forms), `_migration`. Settings pattern: see `NuHome::save()` /
@@ -383,7 +413,10 @@ Nothing of the earlier test setup survives; this is how it was done (Linux conta
    `playwright install`). Log in at `index.php?p=login` with globeadmin / nu. `dev/tests/smoke.js` (BASE=…/nunext/) opens every page.
    Login rate limit: failed logins stay in `zzzzsys_nunext_log` for 15 minutes – delete `login_failed` rows between test runs.
    The installer asks for the token unless PHP's built-in server is used from the same computer.
-7. Static analysis: PHPStan phar from github.com/phpstan/phpstan/releases to `../phpstan.phar`; ESLint:
+8. Library pack Uppy for the e2e test `uppy_upload` (skipped without it, 0.8.459): copy nuBuilder's `third_party/uppy/` to `../libsrc/uppy/`,
+   `php dev/libpack.php ../libpacks ../nunext-signing.key uppy`, then Update → Libraries → *Upload a pack* on the test site.
+7. Static analysis: PHPStan **2.1.17** (the version `.github/workflows/ci.yml` pins – newer ones report false alarms, e.g. 2.3.1
+   `closure.unusedUse` on variables that are used) from github.com/phpstan/phpstan/releases/download/2.1.17/phpstan.phar to `../phpstan.phar`; ESLint:
    `npm install --no-save --prefix .. eslint@9.17.0 globals@15.14.0` (both outside the project, release.py finds them).
 6. After copying changed files wait ~3 s (OPcache) before reloading. Sync the whole package with
    `rsync -a --exclude /nuconfig.php --exclude /vendor/packs --exclude _backup ./ <site>/` (0.8.409: `/nuconfig.php` – the shim
@@ -421,8 +454,12 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (October 2026, 0.8.454)
-Newest first, details in CHANGELOG.md; last gate 0.8.454 (gate = local full test run, no push – no GitHub connection):
+## Where things stand (October 2026, 0.8.462)
+Newest first, details in CHANGELOG.md; last gate 0.8.457 (full test run, pushed to GitHub on the owner's request, published as v0.8.457):
+0.8.462 gap analysis B2 (no own tables from anonymous requests), B5 global hooks, B6 calc in sub-forms, B7 onnuload / onenter, nuFORMdata,
+#USER_NAME#, nuLookupRecord ID, NULL group footer, Compatibility check G1–G8, kit tests; 0.8.461 gap analysis B3 data mode / form type,
+B4 access condition in the save transaction (savepoint); 0.8.460 optional side bar with favourites and recently used (NuSidebar); 0.8.459 uploads with Uppy (file target "File System", library pack uppy, route ?p=upload, hardened template, see NuUpload); 0.8.458
+permission items of the user form as a table; 0.8.457 (gate) smoke / e2e sign-in helpers wait for the navigation (rate limit test was flaky);
 0.8.456 function reference: PHP / JavaScript tabs, every function with example, parameters and sample result; 0.8.455 Customise as icon next to ☆, search max 300 px; 0.8.454 (gate) custom user fields (NuUserFields, see Architecture); 0.8.453 tab order Appearance · Content · Layouts; 0.8.452 start page: one Customise button (#nuHomeViewBtn) – panel tabs Content (#nuHomeVpEdit / #nuHomeVpMine click the hidden
 #nuHomeCustomize / #nuHomeMine), Appearance (former View; V), Layouts; tab in localStorage nunext-home-cust-tab; tile size gone from the
 edit bar; e2e helpers homeTab / homeEdit / homeMine, test home_customise;

@@ -247,6 +247,7 @@ function nu_install_finish(?array &$S): array
 {
 	$out = ['imported' => (int)($S['imported'] ?? 0), 'upgraded' => $S['upgraded'] ?? null, 'steps' => [], 'error' => ''];
 	try {
+		NuSchema::allow();
 		NuSchema::create();
 		NuInstall::setOrigin('nunext');                     // set up on a new database (0.8.380) – step 0014 keeps it
 		$out['steps'] = NuMigrate::run();

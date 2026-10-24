@@ -86,6 +86,37 @@ if (!function_exists('nuRunQuery')) {
 		NuPhp::$formValues[$field] = $value;
 	}
 
+	/** nuBuilder: a value of nuFORMdata (#nuFORMdata#, Before / After Save) – $formId '' = the edit form, else the sub-form object id. */
+	function nuGetNuDataValue(mixed $nudata, string $formId, string $field): mixed
+	{
+		if ($formId === '') $formId = 'nuBuilder4EditForm';
+		foreach ((array)$nudata as $sf) {
+			if (!is_object($sf) || ($sf->id ?? null) !== $formId) continue;
+			$key = array_search($field, (array)($sf->fields ?? []), true);
+			if ($key !== false) return $sf->rows[0][$key] ?? null;
+		}
+		return null;
+	}
+
+	/** nuBuilder: changes a value of nuFORMdata and marks it edited – in Before Save the new value is saved. */
+	function nuSetNuDataValue(mixed &$nudata, string $formId, string $field, mixed $value): bool
+	{
+		if ($formId === '') $formId = 'nuBuilder4EditForm';
+		foreach ((array)$nudata as $i => $sf) {
+			if (!is_object($sf) || ($sf->id ?? null) !== $formId) continue;
+			$key = array_search($field, (array)($sf->fields ?? []), true);
+			if ($key === false) continue;
+			$rows = (array)$sf->rows;
+			$rows[0][$key] = $value;
+			$sf->rows = $rows;
+			$ed = (array)($sf->edited ?? []);
+			$ed[0][$key] = 1;
+			$sf->edited = $ed;
+			return true;
+		}
+		return false;
+	}
+
 	function nuLookupRecord(): object
 	{
 		return NuPhp::$lookupRow ?? new stdClass();

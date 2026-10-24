@@ -46,6 +46,7 @@ if ($meta) {
 		}
 	}
 	$data['form_id'] = $meta->id;
+	$data['uppy_template'] = NuUpload::htmlTemplate();          // file objects with target "File System" (0.8.459)
 	$data['preview_record'] = $preview;
 	$data['hash_catalog'] = NuHash::catalog();
 	$data['db_type'] = $db->type;

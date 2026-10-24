@@ -20,6 +20,24 @@ defined('NU_ROOT') || exit;
  */
 final class NuUpdate
 {
+	/**
+	 * nuBuilder's hook nu_after_update (0.8.462, gap analysis B5): the procedure runs once after an update's database steps (update
+	 * page, unattended update) – as after nuBuilder's own system update. @return string its error text, '' = ran fine or none there
+	 */
+	public static function afterUpdateHook(): string
+	{
+		try {
+			NuPhp::reset();
+			try { $hash = NuAuth::user() ? NuHash::base() : []; } catch (Throwable) { $hash = []; }
+			if (NuProcedure::hook('nu_after_update', $hash)) return '';
+			$msg = (string)(NuPhp::$errors[0]['message'] ?? NuPhp::$error);
+		} catch (Throwable $e) {
+			$msg = $e->getMessage();
+		}
+		NuLog::write('update_hook_failed', 'zzzzsys_php', 'nu_after_update', ['message' => mb_substr($msg, 0, 500)]);
+		return $msg;
+	}
+
 	public const MANIFEST = 'nunext-manifest.json';
 	private const MAX_FILES = 3000;
 	private const MAX_BYTES = 80 * 1024 * 1024;     // unpacked
@@ -829,6 +847,8 @@ final class NuMigrate
 			'0017-presence' => ['Who has a record open (zzzzsys_nunext_presence)', static fn() => NuSchema::create()],
 			'0018-home-hook-codes' => ['Start page hooks renamed: procedures nunext_home → nu_home, nunext_home_user → nu_home_user', static fn() => self::renameHomeHooks()],
 			'0019-user-fields' => ['Custom user fields (zzzzsys_nunext_user_field); their values table is created with the first field', static fn() => NuSchema::create()],
+			'0020-upload-template' => ['Uppy uploads: nuBuilder\'s procedure nu_upload_file_template (hardened) and the snippet nu_upload_file_uppy_code_template when missing', static fn() => NuUpload::ensureTemplates()],
+			'0021-recent' => ['Side bar: recently used pages and forms per user (zzzzsys_nunext_recent)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -861,6 +881,9 @@ final class NuMigrate
 		'0018-home-hook-codes' => [['zzzzsys_php', 'data', 'sph_code nunext_home → nu_home and nunext_home_user → nu_home_user (only when the new code is not taken)'],
 			['zzzzsys_config', 'data', 'description of the row $nuConfigHomeHooks names nu_home']],
 		'0019-user-fields' => [['zzzzsys_nunext_user_field', 'table', 'created when missing (zzzzsys_nunext_user_ext follows when the first field is added)']],
+		'0020-upload-template' => [['zzzzsys_php', 'data', 'procedure nu_upload_file_template added when no procedure has that code'],
+			['zzzzsys_code_snippet', 'data', 'snippet nu_upload_file_uppy_code_template (Uppy HTML of file objects) added when missing']],
+		'0021-recent' => [['zzzzsys_nunext_recent', 'table', 'created when missing']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

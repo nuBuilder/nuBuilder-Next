@@ -78,7 +78,7 @@ final class NuLookup
 	public static function afterBrowse(array $o, array $record, array $hash): array
 	{
 		NuPhp::reset();
-		NuPhp::$lookupRow = (object)$record['row'];
+		NuPhp::$lookupRow = (object)(['ID' => (string)$record['pk']] + (array)$record['row']);   // nuBuilder: the row with its key as ID (0.8.462)
 		// through NuFormMeta: in a draft preview the draft's code (0.8.386)
 		$code = NuFormMeta::load((string)$o['sob_all_zzzzsys_form_id'])?->objectPhp((string)$o['zzzzsys_object_id'], 'AB');
 		NuPhp::run($code, $hash, 'Lookup ' . $o['sob_all_id']);

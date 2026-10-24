@@ -433,11 +433,12 @@ final class NuApi
 		return $vals;
 	}
 
-	private static function checkPassword(string $pw, array &$errors): void
+	private static function checkPassword(string $pw, array &$errors, string $userId = ''): void
 	{
 		$min = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
 		if (mb_strlen($pw) < $min) $errors['password'] = "at least $min characters";
 		elseif (strlen($pw) > 72) $errors['password'] = 'at most 72 bytes';
+		elseif (($policy = NuAuth::passwordPolicy($pw, $userId)) !== null) $errors['password'] = strip_tags($policy);   // nu_check_password_policy (0.8.462)
 	}
 
 	private static function userCreate(): array
@@ -524,7 +525,7 @@ final class NuApi
 			return [200, ['sent' => true], []];
 		}
 		$errors = [];
-		self::checkPassword((string)($in['password'] ?? ''), $errors);
+		self::checkPassword((string)($in['password'] ?? ''), $errors, $id);
 		if ($errors) throw new NuApiError(422, 'Validation failed.', $errors);
 		$db->update('zzzzsys_user', ['sus_login_password' => NuAuth::hash((string)$in['password']), 'sus_change_password' => !empty($in['change_password']) ? '1' : '0'], 'zzzzsys_user_id', $id);
 		NuUserJson::passwordChanged($id, 'admin');

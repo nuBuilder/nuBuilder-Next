@@ -273,8 +273,19 @@ final class NuCompat
 	 * which version nuBuilder Next supports them (null = not yet – see the Help). SINCE is kept up to date with each fix.
 	 */
 	public const SINCE = ['C1' => '0.8.382', 'C2' => '0.8.382', 'C3' => '0.8.382', 'C4' => '0.8.382', 'C5' => '0.8.382', 'C6' => '0.8.382',
-		'M1' => '0.8.383', 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => null, 'M6' => '0.8.443', 'M7' => '0.8.383', 'M8' => '0.8.383',
-		'M9' => null, 'M10' => null, 'N1' => '0.8.383', 'N2' => '0.8.383', 'N3' => '0.8.383', 'I3' => null];
+		'M1' => '0.8.383', 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => '0.8.459', 'M6' => '0.8.443', 'M7' => '0.8.383', 'M8' => '0.8.383',
+		'M9' => null, 'M10' => null, 'N1' => '0.8.383', 'N2' => '0.8.383', 'N3' => '0.8.383', 'I3' => null,
+		// gap and migration analysis nuBuilder 4.9 / nuBuilder Next (0.8.462): G1 access data mode / form type (B3), G2 global hook
+		// procedures (B5), G3 calc in sub-forms (B6), G4 events onnuload / onenter (B7), G5 nuFORMdata, G6 external scripts / frames
+		// (the Content Security Policy blocks them), G7 hash variables nuBuilder Next does not set, G8 #RECORD_ID# / #FORM_ID# in hidden procedures
+		'G1' => '0.8.461', 'G2' => '0.8.462', 'G3' => '0.8.462', 'G4' => '0.8.462', 'G5' => '0.8.462', 'G6' => null, 'G7' => null, 'G8' => null];
+
+	/** nuBuilder's global hook procedures (by code) – G2. */
+	public const HOOKS = ['nu_before_save', 'nu_before_edit', 'nu_before_delete', 'nu_startup', 'nu_invalid_login', 'nu_check_password_policy',
+		'nu_after_update', 'nu_debug_result_added'];
+
+	/** Hash variables of nuBuilder 4.9 that nuBuilder Next does not set – G7. */
+	public const MISSING_HASH = ['USER_GROUP_ID', 'USER_A11Y', 'form_id', 'record_id', 'browse_sql', 'subforms'];
 
 	/** @return array<string, list<array{where: string, form: string, detail: string}>> finding id => places (only ids with places) */
 	public static function findings(bool $withSystem = false): array
@@ -327,6 +338,54 @@ final class NuCompat
 				if (($o['sob_input_type'] ?? '') === 'file' && (string)($o['sob_input_file_target'] ?? '') === '1') $hit('M5', $w, $fid);
 			}
 		}
+		// G1: access levels that limit a form to browse / edit or to reading (data mode)
+		if ($db->tableExists('zzzzsys_access_form')) {
+			$ac = $db->columns('zzzzsys_access_form');
+			$cols = array_values(array_filter(['slf_data_mode', 'slf_form_type'], static fn($c) => isset($ac[$c])));
+			if ($cols) {
+				$acc = [];
+				foreach ($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $a) $acc[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
+				foreach ($db->all('SELECT slf_zzzzsys_access_id, slf_zzzzsys_form_id, ' . implode(', ', $cols) . ' FROM zzzzsys_access_form') as $r) {
+					$fid = (string)$r['slf_zzzzsys_form_id'];
+					$dm = (string)($r['slf_data_mode'] ?? ''); $ft = (string)($r['slf_form_type'] ?? '');
+					if ($sys($fid) || ($dm !== '0' && $ft !== '0' && $ft !== '1')) continue;
+					$hit('G1', ($acc[(string)$r['slf_zzzzsys_access_id']] ?? (string)$r['slf_zzzzsys_access_id']) . ' · ' . ($forms[$fid]['sfo_code'] ?? $fid), $fid,
+						trim(($dm === '0' ? 'data mode 0 ' : '') . ($ft === '0' || $ft === '1' ? 'form type ' . $ft : '')));
+				}
+			}
+		}
+		// G2: global hook procedures, G8: hidden procedures that read #RECORD_ID# / #FORM_ID#
+		if ($db->tableExists('zzzzsys_php')) {
+			foreach ($db->all('SELECT zzzzsys_php_id, sph_code, sph_run, sph_php FROM zzzzsys_php') as $r) {
+				if (in_array((string)$r['sph_code'], self::HOOKS, true)) $hit('G2', 'Procedure · ' . $r['sph_code'], '');
+				if ($sys((string)$r['zzzzsys_php_id']) || (string)$r['sph_run'] !== 'hide') continue;
+				if (preg_match('/#(RECORD_ID|FORM_ID)#/', (string)$r['sph_php'], $m)) $hit('G8', 'Procedure · ' . $r['sph_code'], '', $m[0]);
+			}
+		}
+		// G3: calc objects on sub-forms, G4: events onnuload / onenter, G6: external scripts and frames in HTML objects
+		if ($db->tableExists('zzzzsys_object')) {
+			$ext = '#<(script|iframe|link|img)\b[^>]*\b(src|href)\s*=\s*["\']?((https?:)?//[^"\'\s>]+)#i';
+			$names = [];
+			foreach ($db->all('SELECT zzzzsys_object_id, sob_all_id, sob_all_type, sob_all_zzzzsys_form_id, sob_html_code FROM zzzzsys_object') as $o) {
+				$fid = (string)$o['sob_all_zzzzsys_form_id'];
+				$names[(string)$o['zzzzsys_object_id']] = [$fid, ($forms[$fid]['sfo_code'] ?? $fid) . ' · ' . $o['sob_all_id']];
+				if ($sys($fid)) continue;
+				if ($o['sob_all_type'] === 'calc' && (string)($forms[$fid]['sfo_type'] ?? '') === 'subform') $hit('G3', $names[(string)$o['zzzzsys_object_id']][1], $fid);
+				if ($o['sob_all_type'] === 'html' && preg_match($ext, (string)($o['sob_html_code'] ?? ''), $m)) $hit('G6', $names[(string)$o['zzzzsys_object_id']][1], $fid, $m[3]);
+			}
+			if ($db->tableExists('zzzzsys_event')) {
+				foreach ($db->all("SELECT sev_zzzzsys_object_id, sev_event FROM zzzzsys_event WHERE sev_event IN ('onnuload', 'onenter')") as $e) {
+					[$fid, $w] = $names[(string)$e['sev_zzzzsys_object_id']] ?? ['', (string)$e['sev_zzzzsys_object_id']];
+					if (!$sys($fid)) $hit('G4', $w, $fid, (string)$e['sev_event']);
+				}
+			}
+			if ($db->tableExists('zzzzsys_setup')) {
+				$su = $db->one('SELECT * FROM zzzzsys_setup');
+				foreach (['set_header' => 'Header', 'set_include' => 'Include'] as $c => $lbl) {
+					if (preg_match($ext, (string)($su[$c] ?? ''), $m)) $hit('G6', 'Setup · ' . $lbl, '', $m[3]);
+				}
+			}
+		}
 		// JavaScript and PHP of the application
 		$js = ['M2' => '/\bnuAddBrowseTitleSelect\s*\(/', 'M3' => '/\bmultiSelect\s*:\s*true/', 'M7' => '/\bnuAfterSave\b/',
 			'M8' => '/\bnuFORM\s*\.\s*(getProperty|setProperty|subform|data|calc|scrollList|getTables|breadcrumbs|tableSchema)\b/', 'N1' => '/\bnuSERVERRESPONSE\b/',
@@ -336,6 +395,8 @@ final class NuCompat
 			$code = self::stripComments($src['code']);
 			if ($src['lang'] === 'js') { foreach ($js as $id => $re) if (preg_match($re, $code, $m)) $hit($id, $src['where'], $src['form'], $m[0]); }
 			elseif (preg_match('/\b(nuRunReport|nuRunReportId|nuSavePDF|nuBuildTempTable)\s*\(/i', $code, $m)) $hit('M9', $src['where'], $src['form'], $m[1]);
+			if ($src['lang'] === 'php' && preg_match('/\bnuFORMdata\b|\bnu(Get|Set)NuDataValue\s*\(/', $code, $m)) $hit('G5', $src['where'], $src['form'], $m[0]);
+			if (preg_match('/#(' . implode('|', self::MISSING_HASH) . ')#/', $code, $m)) $hit('G7', $src['where'], $src['form'], $m[0]);
 		}
 		// nuconfig.php: M6 own JavaScript / CSS files, M10 SSO
 		foreach (['nuConfigIncludeJS', 'nuConfigIncludeCSS'] as $v) if (!empty(nu_cfg($v))) $hit('M6', 'nuconfig.php · $' . $v, '', implode(', ', (array)nu_cfg($v)));

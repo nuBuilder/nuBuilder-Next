@@ -27,6 +27,7 @@ if (nu_is_post()) {
 	if (mb_strlen($new) < $min)  $errors['new'] = t('pw_err_min', $min);
 	elseif (strlen($new) > 72)   $errors['new'] = t('err_too_long', 72);
 	if ($new !== $confirm)       $errors['confirm'] = t('pw_err_confirm');
+	if (!$errors && ($policy = NuAuth::passwordPolicy($new, $uid)) !== null) $errors['new'] = $policy;   // nu_check_password_policy (0.8.462)
 
 	if (!$errors) {
 		nu_db()->update('zzzzsys_user', ['sus_login_password' => NuAuth::hash($new), 'sus_change_password' => '0'], 'zzzzsys_user_id', $uid);

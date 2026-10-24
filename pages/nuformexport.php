@@ -11,11 +11,12 @@ if (!$meta || !$meta->hasBrowse()) {
 	nu_fatal(t('form_err_not_found'), '', true);
 }
 NuAcl::require($meta->id, 'print');
+NuAcl::require($meta->id, 'browse');                       // access level "edit only" (0.8.461): no list, so no list export either
 
 $state = nu_browse_request();
 $hash  = NuHash::forForm($meta, '', [], NuRender::props());          // ?ps= of the browse page
 NuPhp::reset();
-if (!NuPhp::run($meta->php('BB'), $hash, 'Before Browse')) nu_fatal(t('form_error'), implode("\n", array_column(NuPhp::$errors, 'message')), true);
+if (!NuProcedure::hook('nu_before_save', $hash) || !NuPhp::run($meta->php('BB'), $hash, 'Before Browse')) nu_fatal(t('form_error'), implode("\n", array_column(NuPhp::$errors, 'message')), true);
 $hash = NuPhp::$hash + $hash;
 
 $max  = 50000;

@@ -763,3 +763,70 @@
 		};
 	});
 })();
+
+/*
+ * Uppy (0.8.459): nuBuilder's nuUppyCreate / nuUppySetLanguage / nuUppyGetLanguageCodeAndLocale for file objects with target
+ * "File System" (template: code snippet nu_upload_file_uppy_code_template). Uppy itself is a library pack (vendor/packs/uppy-<version>/),
+ * loaded by pages/nuform.php where a form uses it. nuUppyCreate() keeps the template unchanged: an XHRUpload endpoint
+ * 'core/nuapi.php' (nuBuilder's upload) goes to index.php?p=upload with the CSRF header, and the form id is added to the meta data.
+ */
+(function () {
+	'use strict';
+
+	var N = window.nuNext || {};
+	function api(name, fn) { window[name] = fn; }
+
+	// nuBuilder's language names → Uppy's locale files (locales/<code>.min.js of the pack)
+	var LANGS = [['Vietnamese', 'vi_VN'], ['Turkish', 'tr_TR'], ['Spanish', 'es_ES'], ['Slovak', 'sk_SK'], ['Russian', 'ru_RU'], ['Romanian', 'ro_RO'],
+		['Portuguese', 'pt_PT'], ['Polish', 'pl_PL'], ['Japanese', 'ja_JP'], ['Italian', 'it_IT'], ['Hindi', 'hi_IN'], ['Greek', 'el_GR'], ['German', 'de_DE'],
+		['French', 'fr_FR'], ['Hungarian', 'hu_HU'], ['Dutch', 'nl_NL'], ['Danish', 'da_DK'], ['Czech', 'cs_CZ'], ['Chinese', 'zh_CN'], ['Catalan', 'ca_ES'],
+		['Armenian', 'hy_AM'], ['Arabic', 'ar_SA'], ['Afrikaans', 'af_ZA']];
+	// nuBuilder Next's own interface languages (users without a nuBuilder language): <html lang> → nuBuilder's name
+	var UI = {de: 'German', fr: 'French', it: 'Italian', es: 'Spanish', pt: 'Portuguese', nl: 'Dutch', pl: 'Polish', ru: 'Russian', zh: 'Chinese', ar: 'Arabic'};
+	var ENDPOINT = /(^|\/)core\/nuapi\.php(\?.*)?$/;
+
+	function locales() { return (window.Uppy && window.Uppy.locales) || {}; }
+
+	api('nuUppyGetLanguageCodeAndLocale', function (language) {
+		var l = LANGS.filter(function (x) { return x[0] === language; })[0];
+		return l ? {code: l[1], locale: locales()[l[1]]} : null;
+	});
+
+	api('nuUppySetLanguage', function (uppy, language, languageFallback) {
+		var userLanguage = language || (typeof window.nuUserLanguage === 'function' ? window.nuUserLanguage() : '') || languageFallback
+			|| UI[String(document.documentElement.lang || '').slice(0, 2).toLowerCase()] || '';
+		if (!userLanguage || !uppy) return undefined;
+		var res = window.nuUppyGetLanguageCodeAndLocale(userLanguage);
+		if (!res) return undefined;
+		if (res.locale) { uppy.setOptions({locale: res.locale}); return res; }
+		if (!N.uppyBase) return res;
+		// a <script> element instead of nuBuilder's $.getScript (strict Content-Security-Policy: no eval of fetched code)
+		var s = document.createElement('script');
+		s.src = N.uppyBase + '/locales/' + res.code + '.min.js';
+		s.onload = function () { var l = locales()[res.code]; if (l) uppy.setOptions({locale: l}); };
+		document.head.appendChild(s);
+		return res;
+	});
+
+	api('nuUppyCreate', function (language, languageFallback) {
+		if (!window.Uppy || typeof window.Uppy.Uppy !== 'function') {
+			throw new Error('Uppy is not installed – library pack "Uppy": Update → tab Libraries');
+		}
+		var uppy = new window.Uppy.Uppy();
+		var use = uppy.use;
+		uppy.use = function (plugin, opts) {
+			if (plugin === window.Uppy.XHRUpload && opts && typeof opts.endpoint === 'string' && ENDPOINT.test(opts.endpoint)) {
+				var headers = Object.assign({}, typeof opts.headers === 'object' && opts.headers ? opts.headers : {}, {'X-CSRF-Token': N.csrf || ''});
+				opts = Object.assign({}, opts, {endpoint: 'index.php?p=upload', headers: headers});
+			}
+			// the Dashboard in nuBuilder Next's colour mode when the template sets no theme (nuBuilder: always light)
+			if (plugin === window.Uppy.Dashboard && opts && opts.theme === undefined) {
+				opts = Object.assign({}, opts, {theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light'});
+			}
+			return use.call(this, plugin, opts);
+		};
+		uppy.setMeta({form_id: N.form ? N.form.id : ''});      // the template adds procedure, session_id and record_id on 'upload'
+		window.nuUppySetLanguage(uppy, language, languageFallback);
+		return uppy;
+	});
+})();

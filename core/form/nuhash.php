@@ -47,6 +47,7 @@ final class NuHash
 			$h['HOME_ID']            = (string)($acc['sal_zzzzsys_form_id'] ?? '');
 			if (trim((string)($row['sus_language'] ?? '')) !== '') $h['LANGUAGE'] = (string)$row['sus_language'];
 			$h['USER_PERMISSIONS']   = implode(', ', self::permissions((string)$u['id']));
+			if (array_key_exists('sus_name', $row)) $h['USER_NAME'] = (string)$row['sus_name'];   // nuBuilder: sus_name, not first + last name (0.8.462)
 		}
 		// custom user fields (0.8.454): #USER_<CODE># – empty for the globeadmin (no user record)
 		foreach (NuUserFields::mine() + array_map(static fn() => '', NuUserFields::all()) as $code => $val) {

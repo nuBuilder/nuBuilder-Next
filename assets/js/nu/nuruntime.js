@@ -805,6 +805,11 @@
 		nuChange(e);
 	});
 	$(document).on('input', '#nuEditForm input[data-nu-field]:not(.nuLookupCode), #nuEditForm textarea[data-nu-field]', function () { markEdited(this); });
+	// object event onenter (nuBuilder: nuOnEnterKey – keydown Enter runs the code with this = the object, 0.8.462)
+	$(document).on('keydown', '#nuEditForm [onenter]', function (e) {
+		if (e.key !== 'Enter' || this.closest('template')) return;
+		runSnippet(this.getAttribute('onenter'), e.originalEvent || e, this);
+	});
 
 	// =================================================================== calculations
 	api('nuTotal', function (path) {
@@ -840,7 +845,9 @@
 			var v = 0;
 			try { v = new Function('return (' + formula + ');')(); } catch (x) { reportError(x.message, 'calc ' + el.id); }   // eslint-disable-line no-new-func
 			var fixed = addFormatting(v, el.getAttribute('data-nu-format'));
-			if (el.value !== fixed) { el.value = fixed; if (setAsEdited !== false) markEdited(el); }
+			// the blank new row of a sub-form stays blank: its calc value does not make it an edited row (nuBuilder 4.9)
+			var blankRow = el.closest('.nuNewRow');
+			if (el.value !== fixed) { el.value = fixed; if (setAsEdited !== false && !blankRow) markEdited(el); }
 			el.classList.toggle('nuNegative', NuFormatLib.cssClass(v, el.getAttribute('data-nu-format')) !== '');
 			if (window.nuCalculated) { try { window.nuCalculated(el, v, fixed); } catch (x) { reportError(x.message, 'nuCalculated'); } }
 		});
@@ -1456,6 +1463,7 @@
 			return;
 		}
 		if (N.form.type === 'browse' && !N.form.redirect) return;
+		if (N.rights && N.rights.edit === false && !N.form.redirect) return;   // access level "browse only" (0.8.461): rows open nothing
 		go(function () { return formUrl(N.form.id, pk, N.iframe ? {iframe: '1'} : (!newTab && N.bt && N.bt.child ? {bt: N.bt.child} : {})); }, newTab ? 'blank' : null);
 	}
 
@@ -3202,6 +3210,17 @@
 		// nuBuilder calculates calc objects once after building the edit form, without marking it as edited
 		if (N.mode === 'edit' && typeof window.nuCalculateForm === 'function') {
 			try { window.nuCalculateForm(false); } catch (x) { reportError(x.message, 'nuCalculateForm'); }
+		}
+		// object event onnuload (nuBuilder nuEvaluateOnLoadEvents): after the calc, before the load hooks; "(this)" / "this." name the
+		// object by its id, as nuBuilder rewrites them – B7 of the gap analysis, 0.8.462
+		if (N.mode === 'edit') {
+			$('#nuEditForm [onnuload]').each(function () {
+				if (this.closest('template') || this.closest('.nuSubform')) return;
+				var id = this.id, js = String(this.getAttribute('onnuload') || '');
+				if (!id || !js.trim()) return;
+				try { (0, eval)(js.split('(this)').join('("#' + id + '")').split('this.').join(id + '.')); }   // eslint-disable-line no-eval
+				catch (x) { reportError(x.message, 'onnuload ' + id); }
+			});
 		}
 		// nuBuilder marks the search words in the browse list before the load hooks (nuBrowseTable → nuHighlightSearch, 0.8.427)
 		if (N.mode === 'browse' && typeof window.nuHighlightSearch === 'function') {

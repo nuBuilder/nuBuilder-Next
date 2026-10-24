@@ -14,6 +14,8 @@
 		document.documentElement.classList.add('nuTabsPending');
 		setTimeout(function () { document.documentElement.classList.remove('nuTabsPending'); }, 3000);
 	}
+	// side bar (0.8.460): collapsed to the icon rail on this device – before drawing, so the page does not jump
+	try { if (localStorage.getItem('nunext-sidebar-collapsed') === '1') document.documentElement.classList.add('nuSbCollapsed'); } catch (e) {}
 	// page forms (0.8.387, $nu->theme()): the choice for the server too
 	try { document.cookie = 'nunext_theme=' + encodeURIComponent(stored) + '; path=' + window.location.pathname.replace(/[^/]*$/, '') + '; SameSite=Lax'; } catch (e) {}
 })();

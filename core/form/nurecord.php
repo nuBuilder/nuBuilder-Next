@@ -117,6 +117,8 @@ final class NuRecord
 		NuPhp::reset();
 		NuPhp::$subforms = self::nuSubformObjects($meta, $posted);
 		$hash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, $values, $props);
+		$formData = self::nuFormData($meta, $isNew ? '-1' : $recordId, $values, $edited);   // nuBuilder's #nuFORMdata# (0.8.462)
+		$hash['nuFORMdata'] = $formData;
 		self::$accessHash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, [], $props);   // access conditions (0.8.382): as when the form was drawn
 
 		// --------------------------------------------------- validation (sob_all_validate)
@@ -124,8 +126,11 @@ final class NuRecord
 		if ($errors) return ['ok' => false, 'errors' => $errors];
 
 		// --------------------------------------------------- before save
+		// global hook nu_before_save, then the form's Before Save (0.8.462, as nuBuilder 4.9)
+		if (!NuProcedure::hook('nu_before_save', $hash)) return ['ok' => false] + self::hookResult();
 		if (!NuPhp::run($meta->php('BS'), $hash, 'Before Save')) return ['ok' => false] + NuPhp::result();
 		$jsBefore = NuPhp::$js;
+		self::applyFormData($formData, $values, $edited, $posted);   // nuSetNuDataValue() in Before Save changes what is saved
 
 		$written = [];
 		$audit = ['form_id' => $meta->id, 'form_code' => $meta->code(), 'source' => 'form', 'action' => $isNew && !empty($p['clone']) ? 'clone' : null];
@@ -136,7 +141,7 @@ final class NuRecord
 			$row = [];
 			foreach ($meta->objects as $o) {
 				$f = (string)$o['sob_all_id'];
-				if (!in_array($o['sob_all_type'], self::SAVED_TYPES, true) || ($o['sob_input_type'] ?? '') === 'button') continue;
+				if (!in_array($o['sob_all_type'], self::SAVED_TYPES, true) || ($o['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($o)) continue;   // Uppy: files go to the server folder (0.8.459)
 				if ($isNew && ($o['sob_input_type'] ?? '') === 'nuAutoNumber' && $o['sob_all_type'] === 'input'
 					&& ($col = self::column($columns, $f)) !== null && ($n = NuAutoNumber::next((string)$o['zzzzsys_object_id'])) !== null) {
 					$row[$col] = $n;                                   // nuBuilder: new records get the next number (nuAutoNumber / nuUpdateCounter)
@@ -197,6 +202,7 @@ final class NuRecord
 		// --------------------------------------------------- after save
 		NuPhp::$js = $jsBefore;
 		$hash['RECORD_ID'] = $newId;
+		if (isset($formData[0]->rows[0][0])) $formData[0]->rows[0][0] = (string)$newId;   // nuFORMdata of After Save: the saved record
 		if (nu_cfg('nuConfigLogRecordChanges') && !(NuAudit::on() && NuAudit::audited($meta->table()))) {   // the audit trail replaces these log entries
 			$changes = NuLog::diff($oldRow, $written);
 			$subs = array_filter(array_map(static fn($sf) => count($sf['rows'] ?? []), $posted));
@@ -262,7 +268,7 @@ final class NuRecord
 			$data = [];
 			foreach ($sub->objects as $so) {
 				$f = (string)$so['sob_all_id'];
-				if (!in_array($so['sob_all_type'], self::SAVED_TYPES, true) || ($so['sob_input_type'] ?? '') === 'button') continue;
+				if (!in_array($so['sob_all_type'], self::SAVED_TYPES, true) || ($so['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($so)) continue;   // Uppy: files go to the server folder (0.8.459)
 				if (!array_key_exists($f, $vals)) continue;
 				if (self::protectedField($so)) continue;
 				$col = self::column($columns, $f);
@@ -295,6 +301,14 @@ final class NuRecord
 
 	// ================================================================= delete
 
+	/** Answer when a global hook stopped (0.8.462): its errors, or its $error text. */
+	private static function hookResult(): array
+	{
+		$r = NuPhp::result();
+		if (!$r['errors'] && NuPhp::$error !== '') $r['errors'] = [['message' => NuPhp::$error, 'field' => '']];
+		return $r;
+	}
+
 	public static function delete(NuFormMeta $meta, string $recordId, array $props = [], array $in = []): array
 	{
 		$row = self::load($meta, $recordId);
@@ -303,6 +317,7 @@ final class NuRecord
 
 		NuPhp::reset();
 		$hash = NuHash::forForm($meta, $recordId, $row, $props);
+		if (!NuProcedure::hook('nu_before_delete', $hash)) return ['ok' => false] + self::hookResult();   // global hook (0.8.462)
 		if (!NuPhp::run($meta->php('BD'), $hash, 'Before Delete')) return ['ok' => false] + NuPhp::result();
 
 		NuAudit::begin();
@@ -371,7 +386,7 @@ final class NuRecord
 		$columns = $db->columns($meta->table());
 		foreach ($meta->objects as $o) {
 			$v = (string)$o['sob_all_validate'];
-			if (!in_array($v, ['1', '2', '3'], true) || !in_array($o['sob_all_type'], self::SAVED_TYPES, true)) continue;
+			if (!in_array($v, ['1', '2', '3'], true) || !in_array($o['sob_all_type'], self::SAVED_TYPES, true) || NuRender::isUppy($o)) continue;
 			if (self::hiddenFor($o)) continue;
 			$f = (string)$o['sob_all_id'];
 			$label = self::label($o);
@@ -513,6 +528,73 @@ final class NuRecord
 	}
 
 	/** Posted subforms in nuBuilder's nuSubformObject() shape, for BS/AS hooks. */
+	/**
+	 * nuBuilder's nuFORMdata (nuform.js nuFORM.data()): the edit form ('nuBuilder4EditForm') and its sub-forms as objects with fields
+	 * (ID first, nuDelete last), rows, edited, deleted – for nuGetNuDataValue() / nuSetNuDataValue() in Before / After Save (0.8.462).
+	 * The objects are shared with the hash, so a change made through nuSetNuDataValue() is seen by applyFormData().
+	 * @return list<stdClass>
+	 */
+	private static function nuFormData(NuFormMeta $meta, string $recordId, array $values, array $edited): array
+	{
+		$fields = ['ID'];
+		foreach ($meta->objects as $o) {
+			if (in_array($o['sob_all_type'], self::SAVED_TYPES, true) && !NuRender::isUppy($o) && $o['sob_all_type'] !== 'subform') $fields[] = (string)$o['sob_all_id'];
+		}
+		$fields[] = 'nuDelete';
+		$row = [$recordId];
+		$ed  = [0];
+		foreach (array_slice($fields, 1, -1) as $f) { $row[] = isset($values[$f]) && is_scalar($values[$f]) ? (string)$values[$f] : ''; $ed[] = isset($edited[$f]) ? 1 : 0; }
+		$row[] = 0;
+		$ed[]  = 0;
+		$out = [(object)['id' => 'nuBuilder4EditForm', 'foreign_key' => '', 'foreign_key_name' => '', 'primary_key' => $meta->primaryKey(),
+			'object_id' => $meta->id, 'table' => $meta->table(), 'action' => 'save', 'fields' => $fields, 'rows' => [$row], 'edited' => [$ed], 'deleted' => [0]]];
+		foreach (NuPhp::$subforms as $sf) {
+			$sf['foreign_key_name'] = $sf['foreign_key'];
+			$sf['foreign_key'] = $recordId;
+			$sf['object_id'] = $sf['id'];
+			$sf['action'] = 'save';
+			$out[] = (object)$sf;
+		}
+		return $out;
+	}
+
+	/** Values the code changed in nuFORMdata go into the save (only changed cells and cells it marked edited). */
+	private static function applyFormData(array $formData, array &$values, array &$edited, array &$posted): void
+	{
+		foreach ($formData as $d) {
+			if (!$d instanceof stdClass || !is_array($d->fields ?? null) || !is_array($d->rows ?? null)) continue;
+			$fields = array_values($d->fields);
+			if ($d->id === 'nuBuilder4EditForm') {
+				$row = (array)($d->rows[0] ?? []);
+				$ed  = (array)($d->edited[0] ?? []);
+				foreach ($fields as $i => $f) {
+					if ($i === 0 || $f === 'nuDelete' || !array_key_exists($i, $row) || !is_scalar($row[$i]) && $row[$i] !== null) continue;
+					$was = isset($values[$f]) && is_scalar($values[$f]) ? (string)$values[$f] : '';
+					if ((string)$row[$i] === $was && (empty($ed[$i]) || isset($edited[$f]))) continue;
+					$values[$f] = (string)$row[$i];
+					$edited[$f] = true;
+				}
+				continue;
+			}
+			$sfId = (string)$d->id;
+			if (!isset($posted[$sfId]['rows']) || !is_array($posted[$sfId]['rows'])) continue;
+			foreach (array_values($posted[$sfId]['rows']) as $n => $r) {
+				$key = array_keys($posted[$sfId]['rows'])[$n];
+				$row = (array)($d->rows[$n] ?? []);
+				$ed  = (array)($d->edited[$n] ?? []);
+				foreach ($fields as $i => $f) {
+					if ($i === 0 || $f === 'nuDelete' || !array_key_exists($i, $row) || !is_scalar($row[$i]) && $row[$i] !== null) continue;
+					$was = isset($r['values'][$f]) && is_scalar($r['values'][$f]) ? (string)$r['values'][$f] : '';
+					if ((string)$row[$i] === $was && empty($ed[$i])) continue;
+					$posted[$sfId]['rows'][$key]['values'][$f] = (string)$row[$i];
+					$list = (array)($posted[$sfId]['rows'][$key]['edited'] ?? []);
+					if (!in_array($f, $list, true)) $list[] = $f;
+					$posted[$sfId]['rows'][$key]['edited'] = $list;
+				}
+			}
+		}
+	}
+
 	private static function nuSubformObjects(NuFormMeta $meta, array $posted): array
 	{
 		$out = [];
@@ -521,7 +603,7 @@ final class NuRecord
 			$sub = $o ? NuFormMeta::load((string)$o['sob_subform_zzzzsys_form_id']) : null;
 			if (!$sub || !is_array($sf)) continue;
 			$fields = ['ID'];
-			foreach ($sub->objects as $so) if (in_array($so['sob_all_type'], self::SAVED_TYPES, true)) $fields[] = (string)$so['sob_all_id'];
+			foreach ($sub->objects as $so) if (in_array($so['sob_all_type'], self::SAVED_TYPES, true) && !NuRender::isUppy($so)) $fields[] = (string)$so['sob_all_id'];
 			$fields[] = 'nuDelete';
 			$rows = $deleted = $editedRows = [];
 			foreach ($sf['rows'] ?? [] as $r) {

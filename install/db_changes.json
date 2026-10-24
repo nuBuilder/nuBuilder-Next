@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.457",
+    "version": "0.8.463",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -252,6 +252,33 @@
                     "table": "zzzzsys_nunext_user_field",
                     "kind": "table",
                     "what": "created when missing (zzzzsys_nunext_user_ext follows when the first field is added)"
+                }
+            ]
+        },
+        {
+            "id": "0020-upload-template",
+            "description": "Uppy uploads: nuBuilder's procedure nu_upload_file_template (hardened) and the snippet nu_upload_file_uppy_code_template when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_php",
+                    "kind": "data",
+                    "what": "procedure nu_upload_file_template added when no procedure has that code"
+                },
+                {
+                    "table": "zzzzsys_code_snippet",
+                    "kind": "data",
+                    "what": "snippet nu_upload_file_uppy_code_template (Uppy HTML of file objects) added when missing"
+                }
+            ]
+        },
+        {
+            "id": "0021-recent",
+            "description": "Side bar: recently used pages and forms per user (zzzzsys_nunext_recent)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_recent",
+                    "kind": "table",
+                    "what": "created when missing"
                 }
             ]
         }
@@ -1202,6 +1229,33 @@
             ],
             "index": [
                 "code"
+            ]
+        },
+        "zzzzsys_nunext_recent": {
+            "pk": "zzzzsys_nunext_recent_id",
+            "cols": [
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "item",
+                    "text",
+                    "100"
+                ],
+                [
+                    "used_at",
+                    "datetime"
+                ],
+                [
+                    "stamp",
+                    "text",
+                    "20"
+                ]
+            ],
+            "index": [
+                "user_id"
             ]
         },
         "zzzzsys_nunext_presence": {

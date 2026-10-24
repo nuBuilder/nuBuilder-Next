@@ -53,7 +53,27 @@ final class NuDebugLog
 			error_log('nuDebug: ' . $message . ' (' . $e->getMessage() . ')');
 			return null;
 		}
+		self::addedHook($id, $flag, (string)$message);
 		return $id;
+	}
+
+	/**
+	 * nuBuilder's hook nu_debug_result_added (0.8.462, gap analysis B5) after each new Debug result – the procedure reads $nuDebugId,
+	 * $nuDebugFlag and $nuDebugMessage. It usually runs inside other PHP code (nuDebug in a procedure): that code's hash variables
+	 * and $result stay as they were; the hook does not run for its own nuDebug calls (NuProcedure::hook).
+	 */
+	private static function addedHook(string $id, ?string $flag, string $message): void
+	{
+		if (!class_exists('NuPhp') || !class_exists('NuProcedure')) return;
+		$keep = [NuPhp::$hash, NuPhp::$result, NuPhp::$error, NuPhp::$vars];
+		try {
+			try { $hash = NuPhp::$hash ?: (NuAuth::user() ? NuHash::base() : []); } catch (Throwable) { $hash = []; }
+			NuProcedure::hook('nu_debug_result_added', $hash, ['nuDebugId' => $id, 'nuDebugFlag' => (string)$flag, 'nuDebugMessage' => $message]);
+		} catch (Throwable $e) {
+			error_log('nu_debug_result_added: ' . $e->getMessage());
+		} finally {
+			[NuPhp::$hash, NuPhp::$result, NuPhp::$error, NuPhp::$vars] = $keep;
+		}
 	}
 }
 

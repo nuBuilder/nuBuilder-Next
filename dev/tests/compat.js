@@ -3,7 +3,8 @@
  *     NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/nunext/ NUB=http://127.0.0.1:8099/ DB="-unu -pnu nutest" node dev/tests/compat.js
  * Env: BASE (nuBuilder Next), NUB (nuBuilder on the same database), DB (mysql / mysqldump arguments), ADMIN_USER / ADMIN_PW (globeadmin
  * of both), FORMS (comma separated form ids – default: every browse / edit form that is not one of nuBuilder's own nu… forms),
- * RECORDS (records per form, default 3), WRITE=0 (read-only checks only), ONLY (test names or name prefixes), KEEP=1 (no restore).
+ * RECORDS (records per form, default 3), WRITE=0 (read-only checks only), ONLY (test names or name prefixes), KEEP=1 (no restore),
+ * GAPKIT=0 (without the test application of the gap analysis, dev/tests/gapkit/ – loaded by default unless FORMS is set).
  *
  * Generic checks for every form, so the suite also runs against a COPY of a real nuBuilder 4.x database with its own applications:
  *   browse:<form>   page 1 of the browse list: same records in the same order, same cell texts
@@ -166,6 +167,15 @@ function formsToTest() {
 	if (process.env.FORMS) return process.env.FORMS.split(',').filter(Boolean);
 	return sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_type IN ('browse','browseedit','edit') AND zzzzsys_form_id NOT LIKE 'nu%'"
 		+ " AND sfo_table IS NOT NULL AND sfo_table <> '' ORDER BY sfo_code").split('\n').filter(Boolean);
+}
+
+// the whole database is saved first and put back at the end (also the test application of the gap analysis, loaded here – GAPKIT=0
+// leaves it out; it has the kit's access levels, global hooks, calc sub-form and events, 0.8.462)
+const DUMP = path.join(os.tmpdir(), 'nunext-compat-' + process.pid + '.sql');
+const TABLES_BEFORE = sql('SHOW TABLES').split('\n');
+execSync('mysqldump ' + DB + ' > ' + DUMP);
+if (process.env.GAPKIT !== '0' && !process.env.FORMS) {
+	for (const f of ['testapp.sql', 't08_fixture.sql']) execSync('mysql ' + DB, { input: fs.readFileSync(path.join(__dirname, 'gapkit', f)) });
 }
 
 for (const form of formsToTest()) {
@@ -392,9 +402,7 @@ T.push(['js_errors', async (s) => {                  // errors of nuBuilder itse
 // ------------------------------------------------------------------ run
 
 (async () => {
-	const dump = path.join(os.tmpdir(), 'nunext-compat-' + process.pid + '.sql');
-	const tablesBefore = sql('SHOW TABLES').split('\n');
-	execSync('mysqldump ' + DB + ' > ' + dump);
+	const dump = DUMP, tablesBefore = TABLES_BEFORE;
 	browser = await chromium.launch();
 	const s = { rows: {} };
 	try {

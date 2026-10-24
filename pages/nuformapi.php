@@ -92,6 +92,9 @@ try {
 
 		case 'save':
 			$isNew = $record === '' || $record === '-1';
+			// access level (0.8.461, as nuBuilder 4.9): "no changes to existing records" / "browse only"
+			if (!$isNew && !empty($rights['no_edits'])) nu_api_error(t('acl_no_edits'), 403);
+			if (empty($rights['edit']) && $meta->type() !== 'launch') nu_api_error(t('acl_form_type_denied'), 403);
 			if (!$rights[$isNew ? 'create' : 'save']) nu_api_error(t('err_forbidden'), 403);
 			if (NuSecurity::runtimeBlocked($meta)) nu_api_error(t('secchk_err_system_form'), 403);   // users, rights, code: globeadmin only
 			nu_api_preview_guard($meta, $in);

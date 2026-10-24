@@ -489,6 +489,13 @@ T.user_tabs = async (s) => {
 	await p.click('#userTabPermBtn'); await p.waitForTimeout(300);
 	expect(new URL(p.url()).searchParams.get('tab') === 'perm' && await p.isVisible('#userPerms'), 'Permission items tab: ' + p.url());
 	const n0 = +await p.textContent('#userPermTabCount');
+	// table (0.8.458): one row per item; a click on the description toggles the row's checkbox, a second one undoes it
+	expect(await p.locator('#userPerms table.userPermTable tbody tr.userPermItem').count() === +sql('SELECT COUNT(*) FROM zzzzsys_permission_item'), 'one table row per item');
+	const row = p.locator('#userPerms tr.userPermItem').first(), rowWas = await row.locator('input').isChecked();
+	await row.locator('td.userPermDesc').click();
+	expect(await row.locator('input').isChecked() !== rowWas, 'a click on the row toggles it');
+	await row.locator('td.userPermDesc').click();
+	expect(await row.locator('input').isChecked() === rowWas && +await p.textContent('#userPermTabCount') === n0, 'second click back, count unchanged');
 	const box = p.locator('#userPerms input[name="perm[]"]').first(), was = await box.isChecked();
 	await box.click();
 	expect(+await p.textContent('#userPermTabCount') === n0 + (was ? -1 : 1), 'tab count');
@@ -2710,6 +2717,455 @@ T.libreq = async (s) => {
 		for (const f of fs.readdirSync(path.join(SITE, '_update'))) if (/^nunext-lib-phpmailer-99\./.test(f)) fs.unlinkSync(path.join(SITE, '_update', f));
 		if (stateBefore) fs.writeFileSync(stateFile, stateBefore); else if (fs.existsSync(stateFile)) fs.unlinkSync(stateFile);
 		fs.rmSync(tmp, { recursive: true, force: true });
+	}
+};
+
+// Uppy uploads (0.8.459): a file object with target "File System" and nuBuilder's Uppy template (library pack uppy) uploads through
+// ?p=upload into the folder of the procedure; executable names refused before any procedure, the hardened template checks type +
+// extension and never overwrites; nothing of it is saved with the record; update step 0020 adds the template rows when missing
+// side bar (0.8.460, core/nusidebar.php): off by default, on per user (user menu) or for everyone (globeadmin); favourites = the start page's ☆,
+// recently used pages and forms on the server (order, rights), ☆ in the side bar, clear, icon rail kept, drawer on phones
+T.sidebar = async (s) => {
+	const p = s.ga;
+	const benId = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	if (!benId) { s.skip = 'no sample users'; return; }
+	const keepBen = sql(`SELECT IFNULL(HEX(sus_json), '-') FROM zzzzsys_user WHERE zzzzsys_user_id = '${benId}'`);
+	const cleanup = () => {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('sidebar_ga', 'sidebar_default')");
+		sql(`UPDATE zzzzsys_user SET sus_json = ${keepBen === '-' ? 'NULL' : `UNHEX('${keepBen}')`} WHERE zzzzsys_user_id = '${benId}'`);
+		sql('DELETE FROM zzzzsys_nunext_recent');
+	};
+	cleanup();
+	const items = sec => p.locator(`#nuSidebar .nuSbSec-${sec} [data-nu-sb]`).evaluateAll(e => e.map(x => x.getAttribute('data-nu-sb')));
+	try {
+		await open(p, 'index.php?p=home&tiles=1');
+		expect(await p.locator('#nuSidebar').count() === 0, 'side bar on by default');
+		await p.click('.nu-navbar .nu-user-name');
+		await Promise.all([p.waitForNavigation(), p.click('#nuSidebarToggle')]);
+		expect(await p.locator('#nuSidebar').count() === 1 && /tiles=1/.test(p.url()), 'side bar not switched on (back to the page): ' + p.url());
+		for (const u of ['userfields', 'forms', 'form&f=samplecustomer', 'update', 'users']) await open(p, 'index.php?p=' + u);
+		let r = await items('recent');
+		expect(JSON.stringify(r) === JSON.stringify(['users', 'update', 'form:samplecustomer', 'forms', 'userfields']), 'recently used: ' + JSON.stringify(r));
+		// the current page is marked in each section it is in (Users may also be a favourite, e.g. after home_favourites)
+		expect(await p.locator('#nuSidebar .nuSbSec-recent [data-nu-sb="users"].active a[aria-current="page"]').count() === 1, 'current page not marked');
+		// ☆ on a recently used tile → favourite of the start page; again → gone
+		const wasFav = (await items('fav')).includes('update');
+		await Promise.all([p.waitForNavigation(), p.click('#nuSidebar .nuSbSec-recent [data-nu-sb="update"] .nuSbFav', { force: true })]);
+		expect((await items('fav')).includes('update') !== wasFav, 'star did not change the favourite');
+		await open(p, 'index.php?p=home&tiles=1');
+		expect((await p.locator('[data-nu-tile="update"][data-nu-fav="1"]').count() > 0) !== wasFav, 'start page does not show the same favourite');
+		await Promise.all([p.waitForNavigation(), p.click('#nuSidebar .nuSbSec-recent [data-nu-sb="update"] .nuSbFav', { force: true })]);
+		expect((await items('fav')).includes('update') === wasFav, 'second star click did not undo');
+		expect(await p.locator('#nuSidebar [data-nu-sb="form:samplecustomer"] .nuSbFav').count() === 0, 'a form that is no tile offers a star');
+		// icon rail kept after a reload; clear empties the list
+		await p.click('#nuSbCollapse');
+		await p.reload(); await p.waitForLoadState('networkidle');
+		expect(await p.evaluate(() => document.documentElement.classList.contains('nuSbCollapsed')), 'icon rail not kept');
+		await p.click('#nuSbCollapse');
+		await Promise.all([p.waitForNavigation(), p.click('#nuSidebar .nuSbClear')]);
+		r = await items('recent');
+		expect(r.length <= 1, 'clear: ' + JSON.stringify(r));
+		// default for everyone → sample_ben sees it with his start page's favourites; a form he may not open is left out
+		await p.click('.nu-navbar .nu-user-name');
+		await Promise.all([p.waitForNavigation(), p.click('#nuSidebarDefault')]);
+		expect(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'sidebar_default'") === '1', 'default not stored');
+		const ben = await login('sample_ben', UPW);
+		expect(await ben.locator('#nuSidebar').count() === 1, 'default on: sample_ben has no side bar');
+		const benForm = sql("SELECT slf_zzzzsys_form_id FROM zzzzsys_access_form af JOIN zzzzsys_user u ON u.sus_zzzzsys_access_id = af.slf_zzzzsys_access_id WHERE u.zzzzsys_user_id = '" + benId + "' AND slf_zzzzsys_form_id NOT LIKE 'nu%' LIMIT 1");
+		if (benForm) await open(ben, 'index.php?p=form&f=' + benForm);
+		sql(`INSERT INTO zzzzsys_nunext_recent (zzzzsys_nunext_recent_id, user_id, item, used_at, stamp) VALUES ('e2esb1', '${benId}', 'form:nuform', NOW(), '20990101000000000000')`);
+		await open(ben, 'index.php?p=home');
+		const benRecent = await ben.locator('#nuSidebar .nuSbSec-recent [data-nu-sb]').evaluateAll(e => e.map(x => x.getAttribute('data-nu-sb')));
+		expect(!benRecent.includes('form:nuform') && (!benForm || benRecent.includes('form:' + benForm)), 'sample_ben recent: ' + JSON.stringify(benRecent));
+		// his own choice wins over the default
+		await ben.click('.nu-navbar .nu-user-name');
+		await Promise.all([ben.waitForNavigation(), ben.click('#nuSidebarToggle')]);
+		expect(await ben.locator('#nuSidebar').count() === 0 && /"NUNEXT_SIDEBAR":"0"/.test(sql(`SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = '${benId}'`)), 'own choice off not kept');
+		expect(ben.errors.length === 0, ben.errors.slice(0, 2).join(' | '));
+		await ben.context().close();
+		// phone: a drawer from the top bar, Esc closes it, nothing wider than the screen
+		const ph = await login(GA[0], GA[1], { viewport: { width: 390, height: 800 } });
+		await open(ph, 'index.php?p=users');
+		expect(!await ph.locator('#nuSidebar').isVisible() && await ph.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'phone: side bar in the page');
+		await ph.click('#nuSbOpen'); await ph.waitForTimeout(300);
+		expect(await ph.locator('#nuSidebar').isVisible(), 'drawer not opened');
+		await ph.keyboard.press('Escape'); await ph.waitForTimeout(300);
+		expect(!await ph.evaluate(() => document.body.classList.contains('nuSbOpen')), 'Esc did not close the drawer');
+		await ph.context().close();
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		cleanup();
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-sidebar-collapsed'); } catch (e) {} });
+	}
+};
+
+T.uppy_upload = async (s) => {
+	if (!SITE || !fs.existsSync(path.join(SITE, 'vendor/packs')) || !fs.readdirSync(path.join(SITE, 'vendor/packs')).some(d => /^uppy-/.test(d))) { s.skip = 'Uppy library pack not installed on the test site'; return; }
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-uppy-'));
+	fs.chmodSync(dir, 0o777);
+	const php = k => execSync(`php -r 'define("NU_ROOT", "."); require "core/nuupload.php"; echo NuUpload::${k};'`).toString();
+	const hex = t => Buffer.from(t, 'utf8').toString('hex');
+	const proc = php('PROCEDURE').replace("$targetDirectory = $_SERVER['DOCUMENT_ROOT'] . '/';", `$targetDirectory = '${dir}/';`);
+	const html = php('HTML').replace("procedure: 'nu_upload_file_template'", "procedure: 'e2e_upload'")
+		.replace("$(document).ready(function () {", "window.e2eUppy = [];\nwindow.nuOnFileUploadComplete = function (t, id, r, m) { window.e2eUppy.push(t + '|' + id + '|' + m); };\n$(document).ready(function () {");
+	expect(proc.includes(dir) && html.includes("'e2e_upload'"), 'template text not as expected');
+	const tab = sql("SELECT zzzzsys_tab_id FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = 'samplecustomer' ORDER BY syt_order LIMIT 1");
+	const files = { png: path.join(dir, 'src-pic.png'), php: path.join(dir, 'src-evil.php'), html: path.join(dir, 'src-page.html') };
+	const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+	const src = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-uppysrc-'));
+	const p = s.ga;
+	try {
+		sql(`INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_run, sph_global, sph_system, sph_status) VALUES ('e2e_upload', 'e2e_upload', 'e2e', UNHEX('${hex(proc)}'), 'hide', '1', '0', '1')`);
+		sql(`INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_zzzzsys_tab_id, sob_all_type, sob_all_id, sob_all_label, sob_all_order, sob_all_top, sob_all_left, sob_all_width, sob_all_height, sob_all_access, sob_all_validate, sob_input_type, sob_input_file_target, sob_html_code)
+			VALUES ('e2e_uppy_obj', 'samplecustomer', '${tab}', 'input', 'e2e_uppy', 'Upload', 997, 900, 20, 500, 320, '0', '1', 'file', '1', UNHEX('${hex(html)}'))`);
+		const cust = sql('SELECT MIN(sample_customer_id) FROM sample_customer');
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + cust);
+		await p.waitForSelector('#e2e_uppy_uppy_div .uppy-Dashboard', { timeout: 10000 });
+		expect(await p.locator('#e2e_uppy[data-nu-field]').count() === 0 && await p.locator('#e2e_uppy.nuFileUppy').count() === 1, 'Uppy object rendered as a field');
+		expect(await p.locator('#nuUppyMissing').count() === 0, 'missing notice although the pack is installed');
+		const upload = async (name, body) => {
+			const f = path.join(src, name); fs.writeFileSync(f, body);
+			const before = await p.evaluate(() => window.e2eUppy.length);
+			await p.setInputFiles('#e2e_uppy_uppy_div input.uppy-Dashboard-input', f);
+			await p.click('#e2e_uppy_uppy_div .uppy-StatusBar-actionBtn--upload');
+			await p.waitForFunction(n => window.e2eUppy.length > n, before, { timeout: 15000 });
+			const msg = await p.evaluate(() => window.e2eUppy[window.e2eUppy.length - 1]);
+			return msg;
+		};
+		// each upload on a freshly opened record (one Uppy dashboard per page load)
+		let m = await upload('pic.png', PNG);
+		expect(/^FS\|e2e_uppy\|The file pic\.png has been uploaded\./.test(m) && fs.existsSync(path.join(dir, 'pic.png')), 'png upload: ' + m);
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + cust); await p.waitForSelector('#e2e_uppy_uppy_div .uppy-Dashboard');
+		m = await upload('pic.png', PNG);
+		expect(/pic-1\.png has been uploaded/.test(m) && fs.existsSync(path.join(dir, 'pic-1.png')), 'second upload overwrote or failed: ' + m);
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + cust); await p.waitForSelector('#e2e_uppy_uppy_div .uppy-Dashboard');
+		// refused files: nuBuilder's template shows only "Error uploading file(s)." (its onAfterResponse swallows the 401 message) –
+		// the route's own answer is checked directly below
+		for (const [name, body] of [['evil.php', PNG], ['page.html', '<html><body><script>alert(1)</script></body></html>'], ['fake.pdf', PNG]]) {
+			await open(p, 'index.php?p=form&f=samplecustomer&r=' + cust); await p.waitForSelector('#e2e_uppy_uppy_div .uppy-Dashboard');
+			m = await upload(name, body);
+			expect(/Error uploading|Invalid file type/.test(m) && !fs.existsSync(path.join(dir, name)), name + ' not refused: ' + m);
+		}
+		const direct = (name, b64) => p.evaluate(async ([name, b64]) => {
+			const fd = new FormData(); fd.append('file', new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))]), name); fd.append('procedure', 'e2e_upload'); fd.append('form_id', 'samplecustomer');
+			const r = await fetch('index.php?p=upload', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': window.nuNext.csrf } }); return r.status + ' ' + JSON.stringify(await r.json()); }, [name, b64]);
+		const r1 = await direct('x.php.png', PNG.toString('base64')), r2 = await direct('fake.pdf', PNG.toString('base64')), r3 = await direct('ok.png', PNG.toString('base64'));
+		expect(/^401 .*"message":"Invalid file type"/.test(r1), 'route guard (x.php.png): ' + r1);
+		expect(/^401 .*"message":"Invalid file type"/.test(r2), 'template type check (fake.pdf): ' + r2);
+		expect(/^201 .*"file":"ok.png"/.test(r3) && fs.existsSync(path.join(dir, 'ok.png')), 'direct upload: ' + r3);
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'file_upload' AND record_id = 'e2e_upload'") === 3
+			&& +sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'file_upload_refused' AND record_id = 'e2e_upload'") === 5, 'log rows: '
+			+ sql("SELECT GROUP_CONCAT(event) FROM zzzzsys_nunext_log WHERE record_id = 'e2e_upload'"));
+		// without the CSRF token: nuBuilder's error answer, nothing stored
+		const noCsrf = await p.evaluate(async () => { const fd = new FormData(); fd.append('file', new Blob(['x'], { type: 'text/plain' }), 'a.txt'); fd.append('procedure', 'e2e_upload');
+			const r = await fetch('index.php?p=upload', { method: 'POST', body: fd }); return r.status + ' ' + (await r.json()).message; });
+		expect(/^400 /.test(noCsrf) && !fs.existsSync(path.join(dir, 'a.txt')), 'upload without CSRF token: ' + noCsrf);
+		// the record saves without the object (no column, "required" ignored), the Uppy input never marks the form as edited
+		expect(await p.locator('.nuSaveEdited').count() === 0, 'Uppy marked the form as edited');
+		await p.locator('[data-nu-field="cus_name"]').first().fill('E2E Uppy save'); await p.locator('[data-nu-field="cus_name"]').first().dispatchEvent('change');
+		await save(p);
+		expect(sql(`SELECT cus_name FROM sample_customer WHERE sample_customer_id = '${cust}'`) === 'E2E Uppy save', 'record not saved with an Uppy object on the form');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+		// update step 0020 on a database without nuBuilder's rows: the hardened procedure and nuBuilder's snippet are added
+		const keep = sql("SELECT CONCAT(zzzzsys_php_id, '|', sph_code) FROM zzzzsys_php WHERE sph_code = 'nu_upload_file_template'");
+		sql("UPDATE zzzzsys_php SET sph_code = 'e2e_kept_upload' WHERE sph_code = 'nu_upload_file_template'; UPDATE zzzzsys_php SET zzzzsys_php_id = 'e2e_kept_upload_id' WHERE zzzzsys_php_id = 'nu62da72900a02b9a';"
+			+ " UPDATE zzzzsys_code_snippet SET cot_code = 'e2e_kept_snippet', zzzzsys_code_snippet_id = 'e2e_kept_snippet_id' WHERE cot_code = 'nu_upload_file_uppy_code_template'; DELETE FROM zzzzsys_nunext_migration WHERE zzzzsys_nunext_migration_id = '0020-upload-template'");
+		try {
+			const q = await login(GA[0], GA[1]);
+			expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_migration WHERE zzzzsys_nunext_migration_id = '0020-upload-template'") === '1', 'step 0020 not run');
+			expect(/never overwritten/.test(sql("SELECT sph_php FROM zzzzsys_php WHERE sph_code = 'nu_upload_file_template' AND zzzzsys_php_id = 'nu62da72900a02b9a' AND sph_global = '1'")), 'hardened procedure not added');
+			expect(sql("SELECT HEX(cot_source_code) FROM zzzzsys_code_snippet WHERE cot_code = 'nu_upload_file_uppy_code_template'") === hex(php('HTML')).toUpperCase(), 'snippet not added as nuBuilder\'s');
+			await q.context().close();
+		} finally {
+			sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'nu62da72900a02b9a'; DELETE FROM zzzzsys_code_snippet WHERE zzzzsys_code_snippet_id = 'nu6866e0177fc5399';"
+				+ " UPDATE zzzzsys_php SET zzzzsys_php_id = 'nu62da72900a02b9a' WHERE zzzzsys_php_id = 'e2e_kept_upload_id'; UPDATE zzzzsys_php SET sph_code = 'nu_upload_file_template' WHERE sph_code = 'e2e_kept_upload';"
+				+ " UPDATE zzzzsys_code_snippet SET cot_code = 'nu_upload_file_uppy_code_template', zzzzsys_code_snippet_id = 'nu6866e0177fc5399' WHERE zzzzsys_code_snippet_id = 'e2e_kept_snippet_id'");
+			expect(sql("SELECT CONCAT(zzzzsys_php_id, '|', sph_code) FROM zzzzsys_php WHERE sph_code = 'nu_upload_file_template'") === keep, 'template row not restored');
+		}
+	} finally {
+		sql("DELETE FROM zzzzsys_object WHERE zzzzsys_object_id = 'e2e_uppy_obj'; DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_upload'; DELETE FROM zzzzsys_nunext_log WHERE record_id = 'e2e_upload'");
+		fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(src, { recursive: true, force: true });
+	}
+};
+
+// ---------------------------------------------------------------- gap analysis 0.8.458 (dev/tests/gapkit, 0.8.461)
+const GAPKIT = path.join(__dirname, 'gapkit');
+const TT_PW = 'Secret#123';
+function ttInstall() {
+	for (const f of ['testapp.sql', 't08_fixture.sql']) execSync('mysql ' + DB, { input: fs.readFileSync(path.join(GAPKIT, f)) });
+	sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'");
+}
+function ttRemove() {
+	sql("DROP TABLE IF EXISTS tt_country, tt_customer, tt_order, tt_log, tt_nopk;"
+		+ ['form', 'tab', 'object', 'browse', 'event', 'php', 'access', 'access_form', 'access_php', 'access_report', 'report', 'user', 'permission_item', 'user_permission', 'file']
+			.map(t => ` DELETE FROM zzzzsys_${t} WHERE zzzzsys_${t}_id LIKE 'tt%';`).join(''));
+}
+
+// B3: access level data mode 0 (no changes to existing records) and form type 0 / 1 (browse only / edit only), as nuBuilder 4.9
+T.gap_access = async (s) => {
+	ttInstall();
+	let lim, full;
+	try {
+		lim = await login('ttlim', TT_PW);
+		// ttcus: data mode 0 – the record opens read only, no Save; a save from code is refused by the server
+		await open(lim, 'index.php?p=form&f=ttcus&r=cus_1');
+		expect(lim.url().includes('r=cus_1') && await lim.locator('#nuSaveButton').count() === 0, 'Save shown with data mode 0');
+		expect(await lim.locator('[data-nu-field="cus_name"]').first().evaluate(e => e.readOnly || e.disabled), 'field editable with data mode 0');
+		const r = await lim.evaluate(async () => {
+			const res = await fetch('index.php?p=formapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': nuNext.csrf },
+				body: JSON.stringify({ action: 'save', form_id: 'ttcus', record_id: 'cus_1', values: { cus_name: 'changed by ttlim' }, edited: ['cus_name'] }) });
+			return res.status + ' ' + JSON.stringify(await res.json());
+		});
+		expect(/^403 .*Changes to existing records are not allowed/.test(r), 'save of an existing record not refused: ' + r);
+		expect(sql("SELECT cus_name FROM tt_customer WHERE tt_customer_id = 'cus_1'") === 'Alice Muster', 'record changed');
+		// a new record is still allowed (nuBuilder: data mode only protects existing records)
+		await open(lim, 'index.php?p=form&f=ttcus&r=-1');
+		expect(await lim.locator('#nuSaveButton').count() === 1, 'new record without Save under data mode 0');
+		// ttcty: form type 0 = browse only – the list works, a record (also a new one) is refused, no Add, rows open nothing
+		await open(lim, 'index.php?p=form&f=ttcty');
+		expect(await lim.locator('tr.nuBrowseRow').count() > 0 && await lim.locator('#nuAddButton').count() === 0, 'browse only: list or Add wrong');
+		const before = lim.url();
+		await lim.locator('tr.nuBrowseRow').first().click(); await lim.waitForTimeout(500);
+		expect(lim.url() === before, 'browse only: a row opened ' + lim.url());
+		for (const rec of ['cty_ch', '-1']) {
+			const resp = await open(lim, 'index.php?p=form&f=ttcty&r=' + rec);
+			expect(resp.status() === 403 && /only the list or only the edit screen/.test(await lim.textContent('body')), 'browse only: record ' + rec + ' opened (' + resp.status() + ')');
+		}
+		// edit only (form type 1): the list is refused, a record opens
+		sql("UPDATE zzzzsys_access_form SET slf_form_type = '1' WHERE zzzzsys_access_form_id = 'tt_af_lim_ttcty'");
+		expect((await open(lim, 'index.php?p=form&f=ttcty')).status() === 403, 'edit only: list opened');
+		expect((await open(lim, 'index.php?p=form&f=ttcty&r=cty_ch')).status() === 200, 'edit only: record refused');
+		expect((await open(lim, 'index.php?p=formexport&f=ttcty&fmt=xlsx')).status() === 403, 'edit only: list export allowed');
+		// the access level editor shows and keeps both settings; a save without a change leaves the rows as they were
+		const ga = s.ga;
+		sql("UPDATE zzzzsys_access_form SET slf_form_type = '0' WHERE zzzzsys_access_form_id = 'tt_af_lim_ttcty'");
+		const rowsBefore = sql("SELECT GROUP_CONCAT(CONCAT_WS('|', zzzzsys_access_form_id, IFNULL(slf_data_mode, 'N'), IFNULL(slf_form_type, 'N')) ORDER BY 1) FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = 'tt_acc_limited'");
+		await open(ga, 'index.php?p=accesslevel&id=tt_acc_limited');
+		const sel = async (form, k) => ga.locator(`tr[data-form="${form}"] select[name$="[${k}]"]`).inputValue();
+		expect(await sel('ttcus', 'dm') === '0' && await sel('ttcty', 'ft') === '0' && await sel('ttord', 'ft') === '', 'editor values: ' + await sel('ttcus', 'dm') + '/' + await sel('ttcty', 'ft'));
+		await Promise.all([ga.waitForNavigation(), ga.click('[data-nu-save]')]);
+		expect(sql("SELECT GROUP_CONCAT(CONCAT_WS('|', zzzzsys_access_form_id, IFNULL(slf_data_mode, 'N'), IFNULL(slf_form_type, 'N')) ORDER BY 1) FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = 'tt_acc_limited'") === rowsBefore, 'save without a change changed the rows');
+		await ga.locator('tr[data-form="ttcty"] select[name$="[ft]"]').selectOption('1');
+		await Promise.all([ga.waitForNavigation(), ga.click('[data-nu-save]')]);
+		expect(sql("SELECT slf_form_type FROM zzzzsys_access_form WHERE zzzzsys_access_form_id = 'tt_af_lim_ttcty'") === '1', 'form type not saved');
+		// the full access level is not limited
+		full = await login('ttfull', TT_PW);
+		await open(full, 'index.php?p=form&f=ttcty&r=cty_ch');
+		expect(await full.locator('#nuSaveButton').count() === 1, 'full access level limited');
+	} finally {
+		if (lim) await lim.context().close();
+		if (full) await full.context().close();
+		ttRemove();
+	}
+};
+
+// B4: a form with an access-9 object (access condition) saves completely – the condition runs in a SAVEPOINT, not a new transaction
+T.gap_access9 = async (s) => {
+	ttInstall();
+	let p;
+	try {
+		p = await login('ttfull', TT_PW);
+		await open(p, 'index.php?p=form&f=ttcus&r=cus_1');
+		await setField(p, '[data-nu-field="cus_name"]', 'Alice saved with access 9');
+		await save(p);
+		expect(sql("SELECT cus_name FROM tt_customer WHERE tt_customer_id = 'cus_1'") === 'Alice saved with access 9', 'not saved');
+		expect(+sql("SELECT COUNT(*) FROM tt_log WHERE log_event = 'AS' AND log_record = 'cus_1'") >= 1, 'After Save did not run (save stopped half way)');
+		expect(p.errors.length === 0 && await p.locator('.alert-danger, .jconfirm-content:has-text("transaction")').count() === 0, 'error shown: ' + p.errors.join(' | '));
+	} finally {
+		if (p) await p.context().close();
+		ttRemove();
+	}
+};
+
+// B5: nuBuilder's global hook procedures run where 4.9 runs them (0.8.462) – the fixture's hooks write into tt_log
+T.gap_hooks = async (s) => {
+	ttInstall();
+	const log = ev => +sql(`SELECT COUNT(*) FROM tt_log WHERE log_event = '${ev}'`);
+	let p, q;
+	try {
+		// nu_invalid_login (wrong password) and nu_startup (#LOGIN_NAME#)
+		const bad = await browser.newContext({ locale: 'en-GB' }); const b = await bad.newPage();
+		await b.goto(BASE + 'index.php?p=login'); await b.fill('#username', 'ttfull'); await b.fill('#password', 'wrong');
+		await Promise.all([b.waitForNavigation({ waitUntil: 'load' }), b.click('form button[type=submit]:not([name=demo_user])')]);
+		await bad.close();
+		expect(log('INVALID_LOGIN') === 1, 'nu_invalid_login: ' + log('INVALID_LOGIN'));
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'");
+		p = await login('ttfull', TT_PW);
+		expect(sql("SELECT log_extra FROM tt_log WHERE log_event = 'STARTUP' ORDER BY tt_log_id DESC LIMIT 1") === 'ttfull', 'nu_startup: ' + sql("SELECT GROUP_CONCAT(log_extra) FROM tt_log WHERE log_event = 'STARTUP'"));
+		// nu_before_save before Before Browse and before Before Save; nu_before_edit; nu_before_delete
+		await open(p, 'index.php?p=form&f=ttcus');
+		expect(log('GLOBAL_BS') === 1 && sql("SELECT tt_log_id FROM tt_log WHERE log_event = 'GLOBAL_BS'") < sql("SELECT MIN(tt_log_id) FROM tt_log WHERE log_event = 'BB'"), 'nu_before_save before BB');
+		await open(p, 'index.php?p=form&f=ttcus&r=cus_2');
+		expect(sql("SELECT CONCAT(log_record, '|', log_form) FROM tt_log WHERE log_event = 'GLOBAL_BE' ORDER BY tt_log_id DESC LIMIT 1") === 'cus_2|ttcus', 'nu_before_edit: hash');
+		await setField(p, '[data-nu-field="cus_name"]', 'Bruno hook'); await save(p);
+		expect(sql("SELECT COUNT(*) FROM tt_log WHERE log_event = 'GLOBAL_BS' AND log_record = 'cus_2' AND log_form = 'ttcus'") === '1' && sql("SELECT cus_name FROM tt_customer WHERE tt_customer_id = 'cus_2'") === 'Bruno hook', 'nu_before_save on save');
+		await open(p, 'index.php?p=form&f=ttcus&r=cus_3');
+		await p.click('#nuDeleteButton'); await confirmDelete(p);
+		expect(log('GLOBAL_BD') === 1 && sql("SELECT COUNT(*) FROM tt_customer WHERE tt_customer_id = 'cus_3'") === '0', 'nu_before_delete');
+		// an error in the hook stops what follows (nuBuilder: nuErrors)
+		sql("UPDATE zzzzsys_php SET sph_php = CONCAT(sph_php, '\nnuDisplayError(''Global check failed'');') WHERE sph_code = 'nu_before_save' AND zzzzsys_php_id LIKE 'tt%'");
+		await open(p, 'index.php?p=form&f=ttcus&r=cus_1');
+		await setField(p, '[data-nu-field="cus_name"]', 'not saved'); await save(p);
+		expect(sql("SELECT cus_name FROM tt_customer WHERE tt_customer_id = 'cus_1'") === 'Alice Muster' && /Global check failed/.test(await p.textContent('body')), 'error of nu_before_save did not stop the save');
+		// nu_debug_result_added after nuDebug
+		sql("INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_run, sph_global, sph_system, sph_status) VALUES "
+			+ "('tt_dbg', 'tt_dbg', 'debug', 'nuDebug(''hello from tt'');', 'hide', '1', '0', '1'), "
+			+ "('tt_dbgadd', 'nu_debug_result_added', 'hook', 'nuRunQuery(\"INSERT INTO tt_log (log_event, log_extra) VALUES (?, ?)\", [''DEBUG_ADDED'', $nuDebugMessage]);', '', '0', '0', '1')");
+		await p.evaluate(() => nuRunPHPHidden('tt_dbg')); await p.waitForTimeout(1200);
+		expect(sql("SELECT log_extra FROM tt_log WHERE log_event = 'DEBUG_ADDED' LIMIT 1").includes('hello from tt'), 'nu_debug_result_added');
+		// nu_check_password_policy: $check = false refuses a password (user form of the globeadmin)
+		sql("INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_run, sph_global, sph_system, sph_status) VALUES "
+			+ "('tt_pwpol', 'nu_check_password_policy', 'policy', 'if (strlen($newPassword) < 12) { nuDisplayError(''At least 12 characters (policy)''); $check = false; }', '', '0', '0', '1')");
+		await open(s.ga, 'index.php?p=user&id=tt_user_lim');
+		await s.ga.fill('#password', 'Short#1x'); await s.ga.fill('#password_confirm', 'Short#1x');
+		await Promise.all([s.ga.waitForNavigation({ waitUntil: 'load' }), s.ga.click('[data-nu-save]')]);
+		expect(/At least 12 characters \(policy\)/.test(await s.ga.textContent('body')), 'password policy not applied');
+		// nu_startup with $error: the login is refused with that text
+		sql("UPDATE zzzzsys_php SET sph_php = CONCAT(sph_php, '\nif (''#LOGIN_NAME#'' === ''ttlim'') $error = ''Startup says no'';') WHERE sph_code = 'nu_startup' AND zzzzsys_php_id LIKE 'tt%'");
+		q = await login('ttlim', TT_PW);
+		expect(/p=login/.test(q.url()) && /Startup says no/.test(await q.textContent('body')), 'nu_startup $error did not refuse the login: ' + q.url());
+	} finally {
+		if (p) await p.context().close();
+		if (q) await q.context().close();
+		sql("DELETE FROM zzzzsys_debug WHERE deb_message LIKE '%hello from tt%'; DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'");
+		ttRemove();
+	}
+};
+
+// B6 / B7: calc objects in grid sub-form rows, the blank new row, afterinsertrow once; object events onnuload / onenter (nuBuilder 4.9)
+T.gap_calc_events = async (s) => {
+	ttInstall();
+	let p;
+	try {
+		p = await login('ttfull', TT_PW);
+		await open(p, 'index.php?p=form&f=ttcus&r=cus_1');
+		const v = await p.evaluate(() => ({ row: $('#tt_sf000ord_total').val(), total: $('#tt_calc').val(), nl: window.TT_NULOAD, air: window.TT_AIR || 0, edited: !!window.nuIsSaved && !nuIsSaved() }));
+		expect(v.row === '7.50' && v.total === '37.40', 'calc in sub-form rows: ' + JSON.stringify(v));
+		expect(v.nl === 1, 'onnuload did not run');
+		await p.evaluate(() => document.getElementById('cus_search').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));   // on a hidden tab
+		expect(await p.evaluate(() => window.TT_ENTER) === 1, 'onenter did not run');
+		// typing into the blank row adds exactly one new row
+		const rows0 = await p.locator('#tt_sf .nuSubformRow:not(template .nuSubformRow)').count();
+		await setField(p, '#tt_sf002ord_item', 'Lamp'); await setField(p, '#tt_sf002ord_qty', '2'); await setField(p, '#tt_sf002ord_price', '5');
+		const after = await p.evaluate(() => ({ air: window.TT_AIR || 0, total: $('#tt_calc').val(), row: $('#tt_sf002ord_total').val() }));
+		expect(after.air === 1 && await p.locator('#tt_sf .nuSubformRow:not(template .nuSubformRow)').count() === rows0 + 1, 'afterinsertrow / rows: ' + JSON.stringify(after));
+		expect(after.row === '10.00' && after.total === '47.40', 'calc after typing: ' + JSON.stringify(after));
+		// a new record with the grid sub-form (blank row with a calc column) saves
+		await open(p, 'index.php?p=form&f=ttcus&r=-1');
+		await setField(p, '[data-nu-field="cus_name"]', 'Calc new'); await setField(p, '[data-nu-field="cus_email"]', 'calc.new@example.com');
+		await save(p);
+		expect(sql("SELECT COUNT(*) FROM tt_customer WHERE cus_name = 'Calc new'") === '1', 'new record with a calc sub-form not saved: ' + (await p.textContent('body')).slice(0, 300).replace(/\s+/g, ' '));
+		expect(sql("SELECT COUNT(*) FROM tt_order o JOIN tt_customer c ON c.tt_customer_id = o.ord_tt_customer_id WHERE c.cus_name = 'Calc new'") === '0', 'the blank row was saved');
+	} finally {
+		if (p) await p.context().close();
+		ttRemove();
+	}
+};
+
+// B2: a copy next to a live nuBuilder does not change its database – no own tables from anonymous requests, the globeadmin's first
+// sign-in sets them up, other users wait for it; a database with nuBuilder's tables stays untouched while it is blocked
+T.gap_schema = async (s) => {
+	const nubSql = SITE ? path.join(SITE, '..', 'nubuilder4.sql') : '';
+	if (!SITE || !fs.existsSync(nubSql)) { s.skip = 'SITE / nubuilder4.sql not found'; return; }
+	const DBN = 'nutest_gapb2', PORT = 8097, cfgFile = path.join(SITE, '..', '.nuconfig_gapb2.php');
+	try { execSync('mysql', { input: `DROP DATABASE IF EXISTS ${DBN}; CREATE DATABASE ${DBN}; GRANT ALL ON ${DBN}.* TO 'nu'@'localhost';`, stdio: 'pipe' }); }
+	catch (e) { s.skip = 'cannot create a database (needs the mysql root login)'; return; }
+	const db2 = q => execSync('mysql -N ' + DB.replace(/\S+$/, DBN), { input: q }).toString().trim();
+	const own = () => +db2(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '${DBN}' AND table_name LIKE 'zzzzsys_nunext%'`);
+	const fresh = () => {
+		execSync('mysql', { input: `DROP DATABASE IF EXISTS ${DBN}; CREATE DATABASE ${DBN};` });
+		execSync('mysql ' + DB.replace(/\S+$/, DBN), { input: fs.readFileSync(nubSql) });
+		const h = execSync(`php -r 'echo password_hash("${TT_PW}", PASSWORD_BCRYPT);'`).toString();
+		db2(`INSERT INTO zzzzsys_access (zzzzsys_access_id, sal_code, sal_description, sal_zzzzsys_form_id) VALUES ('b2acc', 'B2', 'B2', 'nuuserhome');
+			INSERT INTO zzzzsys_user (zzzzsys_user_id, sus_zzzzsys_access_id, sus_name, sus_login_name, sus_login_password) VALUES ('b2user', 'b2acc', 'B2', 'b2user', '${h}')`);
+	};
+	const config = allow => {
+		const c = fs.readFileSync(path.join(SITE, 'nuconfig.php'), 'utf8').replace(/(\$nuConfigDBName\s*=\s*)"[^"]*"/, `$1"${DBN}"`).replace(/\?>\s*$/, '');
+		fs.writeFileSync(cfgFile, c + (allow ? '\n$nuConfigAllowExistingNuDB = true;\n' : '\n'));
+	};
+	const B2 = BASE.replace(/:\d+\//, ':' + PORT + '/');
+	const signIn = async (user, pw) => {
+		const ctx = await browser.newContext({ locale: 'en-GB' }); const p = await ctx.newPage();
+		const r0 = await p.goto(B2 + 'index.php?p=login');
+		await p.fill('#username', user); await p.fill('#password', pw);
+		const [r] = await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.click('form button[type=submit]:not([name=demo_user])')]);
+		const out = { url: p.url(), status: r ? r.status() : 0, first: r0.status(), text: (await p.textContent('body')).replace(/\s+/g, ' ') };
+		await ctx.close();
+		return out;
+	};
+	let srv;
+	const serve = async () => {
+		if (srv) { srv.kill(); await new Promise(res => setTimeout(res, 500)); }
+		srv = require('child_process').spawn('php', ['-S', '127.0.0.1:' + PORT, '-t', path.join(SITE, '..')], { env: Object.assign({}, process.env, { NU_CONFIG: cfgFile }), stdio: 'ignore' });
+		await new Promise(res => setTimeout(res, 1200));
+	};
+	try {
+		fresh(); config(true); await serve();
+		let r = await signIn('nobody', 'wrong');
+		expect(own() === 0, 'anonymous requests created ' + own() + ' own tables');
+		r = await signIn('b2user', TT_PW);
+		expect(/p=login/.test(r.url) && /globeadmin/i.test(r.text) && own() === 0, 'a user signed in before the globeadmin: ' + r.url + ' ' + own());
+		r = await signIn(GA[0], GA[1]);
+		expect(/p=home/.test(r.url) && own() > 10, 'the globeadmin\'s first sign-in did not set up the tables: ' + own());
+		r = await signIn('b2user', TT_PW);
+		expect(!/p=login/.test(r.url), 'user cannot sign in after the set-up: ' + r.url);
+		// blocked (existing nuBuilder database without $nuConfigAllowExistingNuDB): nothing is written, not even by the globeadmin
+		fresh(); config(false); await serve();
+		r = await signIn(GA[0], GA[1]);
+		expect(r.status === 503 && own() === 0, 'blocked database: status ' + r.status + ', own tables ' + own());
+	} finally {
+		if (srv) srv.kill();
+		try { fs.unlinkSync(cfgFile); } catch (e) { /* gone */ }
+		execSync('mysql', { input: `DROP DATABASE IF EXISTS ${DBN};` });
+	}
+};
+
+// smaller differences of the gap analysis (0.8.462): #USER_NAME# = sus_name, nuLookupRecord() with ID, nuFORMdata with
+// nuGetNuDataValue / nuSetNuDataValue in Before Save, a blank group footer for an empty (NULL) report group
+T.gap_small = async (s) => {
+	ttInstall();
+	let p;
+	try {
+		sql("UPDATE zzzzsys_php SET sph_php = CONCAT(sph_php, '\n$d = nuHash()[''nuFORMdata''];\nnuSetNuDataValue($d, '''', ''cus_name'', nuGetNuDataValue($d, '''', ''cus_name'') . '' *'');\nnuSetNuDataValue($d, ''tt_sf'', ''ord_item'', ''first row'');') WHERE zzzzsys_php_id = 'ttcus_BS'");
+		p = await login('ttfull', TT_PW);
+		await open(p, 'index.php?p=form&f=ttcus&r=cus_1');
+		expect(sql("SELECT log_extra FROM tt_log WHERE log_event = 'BE' ORDER BY tt_log_id DESC LIMIT 1").includes('|TT Full User|'), '#USER_NAME# is not sus_name: ' + sql("SELECT log_extra FROM tt_log WHERE log_event = 'BE' ORDER BY tt_log_id DESC LIMIT 1"));
+		await setField(p, '[data-nu-field="cus_name"]', 'Data'); await save(p);
+		expect(sql("SELECT cus_name FROM tt_customer WHERE tt_customer_id = 'cus_1'") === 'Data *', 'nuSetNuDataValue (edit form): ' + sql("SELECT cus_name FROM tt_customer WHERE tt_customer_id = 'cus_1'"));
+		expect(sql("SELECT ord_item FROM tt_order WHERE tt_order_id = 'ord_1'") === 'first row', 'nuSetNuDataValue (sub-form): ' + sql("SELECT ord_item FROM tt_order WHERE tt_order_id = 'ord_1'"));
+		// lookup: After Browse sees the chosen row with ID
+		await open(p, 'index.php?p=form&f=ttcus&r=cus_2');
+		const code = sql("SELECT cou_code FROM tt_country ORDER BY tt_country_id LIMIT 1"), cid = sql("SELECT tt_country_id FROM tt_country ORDER BY tt_country_id LIMIT 1");
+		await p.evaluate(() => { const t = document.querySelector('[data-nu-target="cus_tt_country_id"].nuLookupCode') || document.getElementById('cus_tt_country_idcode'); t.value = ''; });
+		await p.fill('#cus_tt_country_idcode', code); await p.locator('#cus_tt_country_idcode').dispatchEvent('change'); await p.waitForTimeout(1200);
+		const ab = sql("SELECT log_extra FROM tt_log WHERE log_event = 'AB' ORDER BY tt_log_id DESC LIMIT 1");
+		expect(ab.includes('"ID":"' + cid + '"'), 'nuLookupRecord() without ID: ' + ab);
+		// report: a customer without type → the footer of that (NULL) group is blank, as in nuBuilder
+		sql("INSERT INTO tt_customer (tt_customer_id, cus_name, cus_amount, cus_type) VALUES ('cus_null', 'No type', 5.00, NULL)");
+		const pdf = await p.context().request.get(BASE + 'index.php?p=reportpdf&c=tt_report');
+		const f = path.join(require('os').tmpdir(), 'gap_small.pdf'); fs.writeFileSync(f, await pdf.body());
+		const txt = execSync(`pdftotext -layout ${f} -`).toString();
+		expect(/No type/.test(txt), 'report without the NULL group row: ' + txt.slice(0, 400));
+		const fives = (txt.match(/(^|\s)5\.00(?=\s|$)/gm) || []).length;
+		expect(fives === 1, 'NULL group footer is not blank (5.00 printed ' + fives + ' times): ' + txt.slice(0, 800));
+	} finally {
+		if (p) await p.context().close();
+		ttRemove();
+	}
+};
+
+// Compatibility check (0.8.462): the features of the gap analysis are listed – not only function names
+T.gap_compat = async (s) => {
+	ttInstall();
+	try {
+		sql("UPDATE zzzzsys_php SET sph_php = CONCAT(sph_php, '\n$g = ''#USER_GROUP_ID#'';') WHERE zzzzsys_php_id = 'ttcus_BS'");
+		const r = await open(s.ga, 'index.php?p=compat');
+		expect(r.status() === 200, 'compatibility page: ' + r.status());
+		const ids = await s.ga.$$eval('#compat_findings tbody tr td:first-child', tds => tds.map(t => t.textContent.trim()));
+		const want = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8'];
+		expect(want.every(id => ids.includes(id)), 'findings missing: ' + want.filter(id => !ids.includes(id)).join(', ') + ' (have ' + ids.join(' ') + ')');
+	} finally {
+		ttRemove();
 	}
 };
 

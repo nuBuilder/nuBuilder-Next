@@ -242,6 +242,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		if (mb_strlen($pw) < $min)  $errors['password'] = t('pw_err_min', $min);
 		elseif (strlen($pw) > 72)   $errors['password'] = t('err_too_long', 72);
 		elseif ($pw !== $confirm)   $errors['password_confirm'] = t('pw_err_confirm');
+		elseif (($policy = NuAuth::passwordPolicy($pw, $isNew ? '' : (string)$id)) !== null) $errors['password'] = $policy;   // nu_check_password_policy (0.8.462)
 	}
 
 	// custom fields (0.8.454): only the ones this admin may change; a new user's unique check against all others
@@ -606,22 +607,30 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 							<button type="button" class="btn btn-sm btn-outline-secondary" data-perm-all="1"><i class="bi bi-check2-all me-1"></i><?= h(t('perm_all')) ?></button>
 							<button type="button" class="btn btn-sm btn-outline-secondary" data-perm-all="0"><i class="bi bi-x-lg me-1"></i><?= h(t('perm_none')) ?></button>
 						</div>
-						<?php $grp = null; foreach ($permItems as $pi):
-							$g = (string)$pi['pme_group'];
-							if ($g !== $grp) {
-								if ($grp !== null) echo '</div></div>';
-								echo '<div class="userPermGroup mb-2"><div class="small fw-semibold text-body-secondary text-uppercase mb-1">' . h($g !== '' ? $g : t('no_group')) . '</div><div class="row g-1">';
-								$grp = $g;
-							}
-							$pid = (string)$pi['zzzzsys_permission_item_id']; ?>
-							<div class="col-sm-6 col-xl-4 userPermItem" data-group="<?= h($g) ?>" data-search="<?= h(mb_strtolower($pi['pme_ident'] . ' ' . $g . ' ' . $pi['pme_description'])) ?>">
-								<div class="form-check">
-									<input class="form-check-input" type="checkbox" name="perm[]" value="<?= h($pid) ?>" id="perm_<?= h($pid) ?>"<?= in_array($pid, $permSel, true) ? ' checked' : '' ?>>
-									<label class="form-check-label" for="perm_<?= h($pid) ?>"><span class="font-monospace"><?= h($pi['pme_ident']) ?></span>
-										<?php if ((string)$pi['pme_description'] !== ''): ?><span class="d-block small text-body-secondary"><?= h(mb_strimwidth((string)$pi['pme_description'], 0, 100, '…')) ?></span><?php endif; ?></label>
-								</div>
-							</div>
-						<?php endforeach; echo '</div></div>'; ?>
+						<?php // table (0.8.458): one row per item – a click anywhere on the row toggles it (nuuser.js) ?>
+						<div class="table-responsive">
+							<table class="table nu-table table-hover align-middle mb-0 userPermTable">
+								<thead><tr>
+									<th class="userPermCheck"><span class="visually-hidden"><?= h(t('perm_title')) ?></span></th>
+									<th><?= h(t('perm_ident')) ?></th>
+									<th class="d-none d-sm-table-cell"><?= h(t('perm_description')) ?></th>
+									<th class="d-none d-md-table-cell"><?= h(t('perm_group')) ?></th>
+								</tr></thead>
+								<tbody>
+								<?php foreach ($permItems as $pi):
+									$g = (string)$pi['pme_group'];
+									$pid = (string)$pi['zzzzsys_permission_item_id']; ?>
+									<tr class="userPermItem" data-group="<?= h($g) ?>" data-search="<?= h(mb_strtolower($pi['pme_ident'] . ' ' . $g . ' ' . $pi['pme_description'])) ?>">
+										<td class="userPermCheck"><input class="form-check-input" type="checkbox" name="perm[]" value="<?= h($pid) ?>" id="perm_<?= h($pid) ?>"<?= in_array($pid, $permSel, true) ? ' checked' : '' ?>></td>
+										<td><label class="font-monospace" for="perm_<?= h($pid) ?>"><?= h($pi['pme_ident']) ?></label>
+											<?php if ((string)$pi['pme_description'] !== ''): // phones: the description below the ident ?><div class="small text-body-secondary userPermDesc d-sm-none"><?= h((string)$pi['pme_description']) ?></div><?php endif; ?></td>
+										<td class="text-body-secondary userPermDesc d-none d-sm-table-cell"><?= h((string)$pi['pme_description']) ?></td>
+										<td class="text-body-secondary text-nowrap d-none d-md-table-cell"><?= h($g !== '' ? $g : t('no_group')) ?></td>
+									</tr>
+								<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
 						<div class="text-body-secondary small d-none" id="userPermEmpty"><?= h(t('no_records')) ?></div>
 						<div class="form-text mt-2"><?= h(t('perm_user_hint')) ?></div>
 					<?php endif; ?>

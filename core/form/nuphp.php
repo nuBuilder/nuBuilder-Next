@@ -20,6 +20,12 @@ final class NuPhp
 	public static array $debug        = [];
 	public static string $output      = '';
 	public static ?string $openRecord = null;   // nuReturnNewRecord(): the record the form opens after the save (0.8.443)
+	/** The procedure's own variable $result after it ran (nuBuilder's nuEvalSafe → nuRunPHPHiddenResult; the upload procedure's answer, 0.8.459). */
+	public static mixed $result       = null;
+	/** The code's variable $error after it ran – nuBuilder's login hooks (nu_startup / nu_invalid_login) stop with it (0.8.462). */
+	public static string $error       = '';
+	/** Variables a hook's code reads (0.8.462): nu_check_password_policy gets $newPassword …, its $check comes back here. */
+	public static array $vars         = [];
 
 	public static function reset(): void
 	{
@@ -27,6 +33,9 @@ final class NuPhp
 		self::$lookupRow = null;
 		self::$output = '';
 		self::$openRecord = null;
+		self::$result = null;
+		self::$error = '';
+		self::$vars = [];
 	}
 
 	/** Loads $nuConfigIncludePHP files once (global helper functions of an installation). */
@@ -45,7 +54,7 @@ final class NuPhp
 	/**
 	 * @return bool  false when the code reported an error (nuDisplayError) or failed
 	 */
-	public static function run(?string $code, array $hash, string $label): bool
+	public static function run(?string $code, array $hash, string $label, array $vars = []): bool
 	{
 		self::$hash = $hash;
 		if ($code === null || trim($code) === '') return true;
@@ -66,7 +75,7 @@ final class NuPhp
 		});
 		ob_start();
 		try {
-			self::evaluate($code);
+			self::evaluate($code, $vars);
 		} catch (NuDemoBlocked $e) {                         // demo mode: the code tried to change data – no line, it is not an error in the code
 			self::$errors[] = ['message' => "$label: " . $e->getMessage(), 'field' => ''];
 		} catch (Throwable $e) {
@@ -87,9 +96,18 @@ final class NuPhp
 		return count(self::$errors) === $errorsBefore;
 	}
 
-	private static function evaluate(string $__code): void
+	private static function evaluate(string $__code, array $__vars = []): void
 	{
-		eval($__code);
+		$result = null;                                    // like nuBuilder's nuEvalSafe: what the code leaves in $result is its answer
+		$error = '';                                       // nuBuilder's login hooks: a text here stops the login
+		extract($__vars, EXTR_SKIP);
+		try {
+			eval($__code);
+		} finally {
+			self::$result = $result;
+			self::$error = is_string($error) ? $error : '';
+			if ($__vars) self::$vars = get_defined_vars();   // e.g. $check of nu_check_password_policy
+		}
 	}
 
 	private static function logDebug(): void

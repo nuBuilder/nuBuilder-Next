@@ -58,9 +58,11 @@ final class NuLibs
 		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db'],
 		'adminer'         => ['title' => 'Adminer', 'dir' => 'adminer', 'web' => false, 'entry' => ['adminer.php', 'adminer-*.php'], 'rec' => false, 'use' => 'db'],
 		'tinyfilemanager' => ['title' => 'Tiny File Manager', 'dir' => 'tinyfilemanager', 'web' => true, 'entry' => ['tinyfilemanager.php'], 'rec' => false, 'use' => 'files'],
+		// nuBuilder's Uppy (0.8.459): file objects with target "File System" upload with it (uppy.min.js / .css + locales/)
+		'uppy'            => ['title' => 'Uppy', 'dir' => 'uppy', 'web' => true, 'entry' => ['uppy.min.js'], 'rec' => false, 'use' => 'upload'],
 	];
 	/** NuSecurity::libraries() name => slot */
-	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Tiny File Manager' => 'tinyfilemanager'];
+	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Tiny File Manager' => 'tinyfilemanager', 'Uppy' => 'uppy'];
 
 	private static ?array $state = null;
 	private static ?array $legacy = null;
@@ -206,6 +208,12 @@ final class NuLibs
 		$w = self::webPath('tinymce');
 		if ($w !== '') return $w;
 		return is_file(NU_ROOT . '/' . NU_TINYMCE . '/tinymce.min.js') ? NU_TINYMCE : '';
+	}
+
+	/** Uppy's folder for the browser (relative to nuBuilder Next, 0.8.459): the library pack; '' = not installed. */
+	public static function uppy(): string
+	{
+		return self::webPath('uppy');
 	}
 
 	/** Installed versions of $slot (folders with a pack manifest), newest first. @return list<array{version: string, dir: string, at: string, source: string}> */
@@ -762,6 +770,12 @@ final class NuLibs
 					$src = (string)@file_get_contents($cfg);
 					if ($src === '' || !str_contains($src, $slot === 'phpmyadmin' ? 'nu_PMA' : 'nu_TFM')) return ['fail', t('lp_test_cfg', basename($cfg))];
 					return ['ok', t('lp_test_vendor', NuVendor::baseUrl($app))];
+				case 'uppy':
+					$w = self::uppy();
+					if ($w === '') return ['fail', t('lp_test_missing')];
+					$v = self::uppyVersion(NU_ROOT . '/' . $w . '/uppy.min.js');
+					if (!is_file(NU_ROOT . '/' . $w . '/uppy.min.css')) return ['fail', t('lp_test_tiny_part', 'uppy.min.css')];
+					return $v !== '' ? ['ok', t('lp_test_tiny', $v, $w . '/')] : ['warn', t('lp_test_tiny', '?', $w . '/')];
 				case 'adminer':
 					$f = NuVendor::adminerFile();
 					if ($f === '') return ['fail', t('lp_test_missing')];
@@ -808,8 +822,23 @@ final class NuLibs
 			case 'tinyfilemanager':
 				$v = $read("$dir/tinyfilemanager.php", "/define\\('VERSION', '([0-9.]+)'\\)/");
 				break;
+			case 'uppy':
+				$v = self::uppyVersion("$dir/uppy.min.js");
+				break;
 		}
 		return self::validVersion($v) ? $v : '';
+	}
+
+	/**
+	 * Version of an Uppy bundle (uppy.min.js): the version of Uppy's core class – the bundle has no banner. Its minified form is
+	 * `var X={version:"4.2.0"},Y=Z("callbacks")` (core) – the other {version:"…"} objects belong to the plugins. '' = not found.
+	 */
+	public static function uppyVersion(string $file): string
+	{
+		if (!is_file($file)) return '';
+		$src = (string)@file_get_contents($file);
+		if (preg_match('/\{version:"([0-9][0-9.]*)"\},\w+=\w+\("callbacks"\)/', $src, $m)) return $m[1];
+		return preg_match('/Uppy v?([0-9]+\.[0-9]+\.[0-9]+)/', $src, $m) ? $m[1] : '';
 	}
 
 	/** Sources of the packs next to the project (0.8.410): <parent of nuBuilder Next>/libsrc/<slot>/ – outside the project and the web. */

@@ -46,7 +46,7 @@ final class NuLibraries
 			$path = (string)$l['path'];
 			if ($path !== '' && str_starts_with($path, NU_ROOT . '/')) $path = substr($path, strlen(NU_ROOT) + 1) . '/';
 			elseif ($path !== '' && str_starts_with($path, dirname(NU_ROOT) . '/')) $path = '../' . substr($path, strlen(dirname(NU_ROOT)) + 1) . '/';   // nuBuilder's copy
-			$use = ['TCPDF' => 'pdf', 'PHPMailer' => 'mail', 'TinyMCE' => 'wysiwyg', 'phpMyAdmin' => 'db', 'Tiny File Manager' => 'files'][(string)$l['name']] ?? '';
+			$use = ['TCPDF' => 'pdf', 'PHPMailer' => 'mail', 'TinyMCE' => 'wysiwyg', 'phpMyAdmin' => 'db', 'Tiny File Manager' => 'files', 'Uppy' => 'upload'][(string)$l['name']] ?? '';
 			$out[] = ['name' => (string)$l['name'], 'version' => (string)$l['version'], 'path' => $path, 'license' => '', 'use' => $use !== '' ? t('upd_libuse_' . $use) : '', 'kind' => 'external',
 				'status' => (string)$l['status'], 'note' => $l['status'] === 'old' ? (string)$l['min'] : (string)$l['note'], 'local' => (string)($l['local'] ?? '')];
 		}

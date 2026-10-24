@@ -79,7 +79,8 @@ if (nu_is_post()) {
 		}
 
 		if ($ok) {
-			NuAuth::completePending($p['method'] === 'enroll' ? 'totp' : $p['method'], $trust);
+			$refused = NuAuth::completePending($p['method'] === 'enroll' ? 'totp' : $p['method'], $trust);
+			if ($refused !== null) { nu_flash('danger', $refused); nu_redirect(nu_url('login')); }   // nu_startup said no (0.8.462)
 			nu_redirect(NuAuth::takeNext());
 		}
 

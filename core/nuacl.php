@@ -44,24 +44,32 @@ final class NuAcl
 	private static array $cache = [];
 
 	/** @return array{view:bool,add:bool,save:bool,delete:bool,clone:bool,new:bool,print:bool,create:bool} */
+	/**
+	 * Besides the buttons (RIGHTS), nuBuilder's access level gives per form (0.8.461, as 4.9's nuform.php / nudata.php):
+	 *   slf_form_type 0 = browse only (no edit screen, not even a new record), 1 = edit only (no browse list) → 'browse' / 'edit' false;
+	 *   slf_data_mode 0 = no changes to existing records → 'no_edits' true and 'save' false (new records, Clone and Delete stay).
+	 * The globeadmin and admin roles with "change" on the form are not limited (nuBuilder: global access).
+	 */
+	private const FREE = ['browse' => true, 'edit' => true, 'no_edits' => false];
+
 	public static function rights(string $formId): array
 	{
 		$u = NuAuth::user();
 		if (!$u) return self::none();
-		if ($u['globeadmin']) return array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true);
+		if ($u['globeadmin']) return array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true) + self::FREE;
 
 		$key = $u['access_id'] . '|' . $formId;
 		if (isset(self::$cache[$key])) return self::$cache[$key];
 		if (NuImpersonate::readOnly()) {                        // globeadmin acting as a user, view only
 			$r = self::rightsOf($u, $formId);
-			foreach ($r as $k => $v) if ($k !== 'view' && $k !== 'print') $r[$k] = false;
+			foreach (['create', ...array_keys(self::RIGHTS)] as $k) if ($k !== 'print') $r[$k] = false;
 			return self::$cache[$key] = $r;
 		}
 		$r = self::rightsOf($u, $formId);
 		// admin role (0.8.323): rights on nuBuilder's system forms on top of the access level (core/nuadmin.php)
 		$lvl = class_exists('NuAdmin') ? NuAdmin::formLevel($formId) : '';
-		if ($lvl === 'change') $r = array_fill_keys(array_keys($r), true);
-		elseif ($lvl === 'view') { $r['view'] = true; $r['print'] = true; }
+		if ($lvl === 'change') $r = array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true) + self::FREE;
+		elseif ($lvl === 'view') { $r['view'] = true; $r['print'] = true; $r['browse'] = $r['edit'] = true; }
 		return self::$cache[$key] = $r;
 	}
 
@@ -82,6 +90,17 @@ final class NuAcl
 		$r = ['view' => true];
 		foreach (self::RIGHTS as $right => $col) $r[$right] = (string)$row[$col] === '1';
 		$r['create'] = $r['add'] || $r['new'];     // "Add" on the list, "New" on the edit screen: either one allows creating
+		// form type / data mode (0.8.461) – columns of nuBuilder 4.9 (older databases lack them: no limit)
+		$r += self::FREE;
+		$cols = nu_db()->columns('zzzzsys_access_form');
+		if (isset($cols['slf_form_type']) || isset($cols['slf_data_mode'])) {
+			$m = nu_db()->one('SELECT ' . implode(', ', array_keys(array_intersect_key(['slf_form_type' => 1, 'slf_data_mode' => 1], $cols)))
+				. ' FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ? AND slf_zzzzsys_form_id = ?', [$u['access_id'], $formId]) ?? [];
+			$ft = trim((string)($m['slf_form_type'] ?? ''));
+			if ($ft === '0') $r['edit'] = false;              // browse only
+			if ($ft === '1') $r['browse'] = false;            // edit only
+			if (trim((string)($m['slf_data_mode'] ?? '')) === '0') { $r['no_edits'] = true; $r['save'] = false; }
+		}
 		return $r;
 	}
 
@@ -100,6 +119,6 @@ final class NuAcl
 
 	private static function none(): array
 	{
-		return array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], false);
+		return array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], false) + ['browse' => false, 'edit' => false, 'no_edits' => false];
 	}
 }

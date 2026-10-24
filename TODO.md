@@ -1,5 +1,48 @@
 # nuBuilder Next – to do
 
+## 0.8.462 Gap analysis B2, B5–B7 and smaller differences – please verify
+- [ ] B2: a copy of nuBuilder Next next to a live nuBuilder (on a COPY of its database): the login page and a failed sign-in create no
+      `zzzzsys_nunext_*` tables; the globeadmin's first sign-in creates them; with an existing nuBuilder database and without
+      `$nuConfigAllowExistingNuDB` nothing is written. Users see "not set up yet" until the globeadmin has signed in once.
+- [ ] B5: your global hook procedures (`nu_before_save`, `nu_before_edit`, `nu_before_delete`, `nu_startup`, `nu_invalid_login`,
+      `nu_check_password_policy`, `nu_after_update`, `nu_debug_result_added`) run as in nuBuilder – Compatibility check → G2 lists them.
+- [ ] B6: forms with calc objects in grid sub-forms show the same row values and totals as nuBuilder; a new record with such a
+      sub-form saves (the blank row stays blank); `afterinsertrow` runs once per new row.
+- [ ] B7: `onnuload` / `onenter` events of your forms (Compatibility check → G4).
+- [ ] Before Save code with `nuFORMdata` / `nuGetNuDataValue` / `nuSetNuDataValue`; `#USER_NAME#` (now `sus_name`); lookups that
+      read `nuLookupRecord()->ID`; report group footers of empty (NULL) groups are blank.
+- [ ] Before the login limit counts failed sign-ins the own tables must exist (B2) – on a new installation the globeadmin signs in first.
+- [ ] Open from the analysis: B1 (existing nuBuilder databases are still blocked – the owner decides), hidden procedures' `#RECORD_ID#` /
+      `#FORM_ID#` (G8, kept on purpose), external scripts / frames (G6, Content Security Policy).
+
+## 0.8.461 Gap analysis B3 / B4 (data mode, form type, access condition on save) – please verify
+- [ ] An access level with *No changes to existing records* on a form: as a user of it, existing records are read only, a new record saves.
+- [ ] *Browse only* / *Edit only*: as a user the list resp. a record is refused; the same access level in nuBuilder behaves the same.
+- [ ] A form with an object of access 9 (condition) on your live database: Save works, After Save runs, sub-form rows are saved.
+- [ ] SQL Server: the access condition inside the save transaction uses SAVE TRANSACTION / ROLLBACK TRANSACTION – not tested on a real SQL Server.
+
+## 0.8.460 Side bar (favourites, recently used) – please verify
+- [ ] User menu → *Side bar* on your server, as globeadmin and as a normal user (start page of his access level): favourites = the ☆ tiles,
+      ☆ in the side bar changes the start page too; recently used fills while you work; « icon strip; phone drawer.
+- [ ] *Side bar for everyone by default* – users without an own choice get it; one who switched it off keeps it off.
+- [ ] Decide: should records count as "recently used" too (e.g. "Customer · Alpenblick AG")? Today only pages and forms.
+- [ ] SQL Server: table zzzzsys_nunext_recent (step 0021) – not tested on a real SQL Server.
+- [ ] `dev/tests/a11y.js` (side bar on): side bar clean; still open from before – contrast of `#nuMailCheckBtn2` (E-mail / Update, light, phone)
+      and the CodeMirror scroll box of the nuconfig.php editor.
+
+## 0.8.459 Uploads with Uppy (file target "File System") – please verify
+- [ ] Publish the Uppy pack: attach `nunext-lib-uppy-4.2.0.zip` and the new `libraries.json` (signed, keeps the six packs) to the
+      GitHub release `libraries` – until then install it by hand: Update → Libraries → *Upload a pack*.
+- [ ] On the live server: a nuBuilder form with an Uppy object (file input, target File System) – the drop area shows, files land in
+      the folder of `nu_upload_file_template`, `nuOnFileUploadComplete` runs; the same form still uploads in nuBuilder itself.
+- [ ] Your database keeps nuBuilder's `nu_upload_file_template` (web root, accepts HTML / JavaScript / SVG): replace it with the
+      hardened text (`NuUpload::PROCEDURE`, Help → Forms → File uploads) or point `$targetDirectory` to an upload folder.
+- [ ] A refused file shows only "Error uploading file(s)." – nuBuilder's template swallows the reason (it is in the log). Change the
+      template's `onAfterResponse` to show `jsonData.message`? (Then nuBuilder and nuBuilder Next show it.)
+- [ ] Uppy version: the pack is the build nuBuilder 4.9.2 ships (Uppy core 4.2.0). A newer Uppy: new pack (`../libsrc/uppy/`,
+      `php dev/libpack.php`), nothing in nuBuilder Next changes.
+- [ ] SQL Server: step 0020 inserts the template rows – not tested on a real SQL Server.
+
 ## 0.8.454 Custom user fields – please verify
 - [ ] Users → Custom user fields: add a text, a choice list and a yes / no field; the user form shows them on the tab More.
 - [ ] A field edited by the user himself appears in My account (user menu) for a normal user.

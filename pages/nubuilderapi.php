@@ -49,7 +49,7 @@ const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_al
 	'sob_calc_formula', 'sob_calc_format', 'sob_run_zzzzsys_form_id', 'sob_run_method', 'sob_run_type', 'sob_run_target', 'sob_run_id', 'sob_run_filter', 'sob_display_sql', 'sob_display_procedure', 'sob_select_multiple', 'sob_select_sql',
 	'sob_lookup_code', 'sob_lookup_description', 'sob_lookup_description_width', 'sob_lookup_zzzzsys_form_id', 'sob_lookup_javascript', 'sob_lookup_table',
 	'sob_subform_zzzzsys_form_id', 'sob_subform_foreign_key', 'sob_subform_add', 'sob_subform_delete', 'sob_subform_type', 'sob_subform_table',
-	'sob_input_format', 'sob_input_type', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_html_code',
+	'sob_input_format', 'sob_input_type', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_input_file_target', 'sob_html_code',
 	'sob_html_chart_type', 'sob_html_javascript', 'sob_html_title', 'sob_html_vertical_label', 'sob_html_horizontal_label',
 	'sob_select_2', 'sob_image_zzzzsys_file_id'];
 

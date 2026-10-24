@@ -140,6 +140,7 @@ final class NuDDL
 	{
 		$type = (string)($o['sob_all_type'] ?? '');
 		$it   = (string)($o['sob_input_type'] ?? '');
+		if (NuRender::isUppy($o)) return null;                // file target "File System": nothing is stored in the record (0.8.459)
 		switch ($type) {
 			case 'textarea':
 			case 'editor':

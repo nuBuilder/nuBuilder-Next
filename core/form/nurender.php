@@ -265,8 +265,10 @@ final class NuRender
 
 			case 'calc':
 				$fmt = (string)$o['sob_calc_format'];
+				// nuBuilder (nuform.js nuCALC): in a sub-form row nuTotal('qty') means this row's field – "al('" gets the row prefix
+				$formula = $prefix !== '' ? str_replace("al('", "al('" . $prefix, (string)$o['sob_calc_formula']) : (string)$o['sob_calc_formula'];
 				return '<input type="text" class="form-control nuReadonly nuCalculator ' . h(trim($cls . ' ' . NuFormat::cssClass($value, $fmt))) . '"' . $common . ' readonly tabindex="-1"'
-					. ' data-nu-formula="' . h($o['sob_calc_formula']) . '" data-nu-format="' . h($fmt) . '" data-nu-calc-order="' . (int)$o['sob_all_order'] . '"'
+					. ' data-nu-formula="' . h($formula) . '" data-nu-format="' . h($fmt) . '" data-nu-calc-order="' . (int)$o['sob_all_order'] . '"'
 					. ' value="' . h(NuFormat::format($value, $fmt)) . '">';
 
 			case 'lookup':
@@ -313,6 +315,7 @@ final class NuRender
 				return '<input type="text" class="form-control nuScroll ' . h($cls) . '"' . $common . ' data-nu-scroll="' . h($o['sob_input_javascript']) . '"' . ($ro ? ' readonly' : '')
 					. (str_contains($common, ' title="') ? '' : ' title="' . h(t('form_scroll_hint')) . '"') . ' value="' . h($value) . '">';   // nuBuilder's hint (0.8.369)
 			case 'file':
+				if (self::isUppy($o)) return $this->uppyField($o, $id, $common, $cls);   // target "File System" (0.8.459)
 				return $this->fileField($o, $id, (string)$value, $common, $ro);
 		}
 		$allowed = ['text', 'number', 'date', 'datetime-local', 'email', 'month', 'password', 'range', 'search', 'tel', 'time', 'url', 'week', 'color'];
@@ -325,6 +328,26 @@ final class NuRender
 		if ($mask !== '') $value = NuFormat::format($value, $fmt);
 		return '<input type="' . $type . '" class="form-control' . ($type === 'color' ? ' form-control-color' : '') . ' ' . h($cls) . '"' . $common . $list . $mask . ' autocomplete="off"'
 			. ($type === 'number' ? ' step="any"' : '') . ($ro ? ' readonly' : '') . ' value="' . h($value) . '">' . $this->datalist($o, $id);
+	}
+
+	/** nuBuilder's file object with target "File System" (sob_input_file_target 1): uploaded with Uppy, nothing stored in the record. */
+	public static function isUppy(array $o): bool
+	{
+		return ($o['sob_all_type'] ?? '') === 'input' && ($o['sob_input_type'] ?? '') === 'file' && (string)($o['sob_input_file_target'] ?? '0') === '1';
+	}
+
+	/**
+	 * File object with target "File System" (0.8.459) as nuBuilder's nuINPUTfileFileSystem: a div with the object's HTML code – usually
+	 * the Uppy template (snippet nu_upload_file_uppy_code_template) – after nuBuilder's replacements: #uppy_div# → <id>_uppy_div,
+	 * #this_object_id# → <id>, nuInitUppy() → nuInitUppy_<id>() (several objects on one form), .cssNumber( → .nuCSSNumber(,
+	 * new Uppy.Core() → new Uppy.Uppy() (Uppy 1 code). Its scripts run like those of HTML objects (deferScripts).
+	 */
+	private function uppyField(array $o, string $id, string $common, string $cls): string
+	{
+		$html = strtr((string)$o['sob_html_code'], ['#uppy_div#' => $id . '_uppy_div', '#this_object_id#' => $id, 'nuInitUppy()' => 'nuInitUppy_' . $id . '()',
+			'.cssNumber(' => '.nuCSSNumber(', 'new Uppy.Core()' => 'new Uppy.Uppy()']);
+		$common = (string)preg_replace('/ data-nu-field="[^"]*"/', '', $common, 1);   // nothing of it is a field of the record (not saved, never "edited")
+		return '<div class="nuFileUppy ' . h($cls) . '"' . $common . '>' . self::deferScripts(NuHash::replace($html, $this->hash, NuHash::HTML)) . '</div>';
 	}
 
 	/**
@@ -871,7 +894,7 @@ final class LayoutSize
 		$h    = (int)$o['sob_all_height'];
 		if ($type === 'lookup') return 'width:' . (int)$o['sob_all_width'] . 'px;';
 		if ($type === 'input' && $o['sob_input_type'] === 'checkbox') return '';
-		if (in_array($type, ['textarea', 'editor', 'html', 'run', 'word', 'chart'], true) || ($type === 'select' && $h > 40)) return 'width:100%;height:' . max(18, $h) . 'px;';
+		if (in_array($type, ['textarea', 'editor', 'html', 'run', 'word', 'chart'], true) || ($type === 'select' && $h > 40) || NuRender::isUppy($o)) return 'width:100%;height:' . max(18, $h) . 'px;';
 		return 'width:100%;';
 	}
 
@@ -881,7 +904,7 @@ final class LayoutSize
 		$h    = (int)$o['sob_all_height'];
 		if ($type === 'editor') return 'height:' . max(200, $h) . 'px;';
 		if ($type === 'textarea' || $type === 'run' || ($type === 'select' && $h > 40)) return 'height:' . max(60, $h) . 'px;';
-		if ($type === 'html' && $h > 0) return 'min-height:' . $h . 'px;';
+		if (($type === 'html' || NuRender::isUppy($o)) && $h > 0) return 'min-height:' . $h . 'px;';
 		return '';
 	}
 }

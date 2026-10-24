@@ -148,7 +148,7 @@ def libraries():
 
 
 REQUIRED_LIBS = 'install/libraries-required.json'
-LIB_SLOTS = ('tcpdf', 'phpmailer', 'tinymce', 'phpmyadmin', 'adminer', 'tinyfilemanager')
+LIB_SLOTS = ('tcpdf', 'phpmailer', 'tinymce', 'phpmyadmin', 'adminer', 'tinyfilemanager', 'uppy')
 
 
 def required_libs():

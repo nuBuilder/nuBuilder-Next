@@ -411,7 +411,10 @@ body.nu-print-list { background: var(--bs-body-bg); font-size: .85rem; }
 
 /* user form: permission items */
 .userPermSearch { max-width: 260px; }
-#userPerms .form-check-label { cursor: pointer; }
+#userPerms .userPermItem, #userPerms .userPermItem label { cursor: pointer; }
+#userPerms .userPermCheck { width: 2.5rem; }
+#userPerms .userPermItem label { margin: 0; }
+#userPerms .userPermTable .userPermDesc { white-space: normal; }   /* the description wraps (lists keep nowrap on phones) */
 
 /* hamburger: Bootstrap draws a 0.25rem ring on every :focus (also after a tap) – only for keyboard focus, and thinner */
 .navbar-toggler:focus { box-shadow: none; }
@@ -1177,6 +1180,76 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuNtfLevels .btn-check:checked + .nuNtfLv-danger { background: var(--bs-danger-bg-subtle); border-color: var(--bs-danger-border-subtle); color: var(--bs-danger-text-emphasis); }
 .nuNtfLevels .btn-check:focus-visible + .btn { box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2); }
 
+/* side bar (0.8.460, nu_sidebar() in core/nulayout.php, assets/js/nusidebar.js): favourites and recently used on the left – from 992 px
+   a column next to the page (html.nuSbCollapsed = icon rail), narrower a drawer (body.nuSbOpen) */
+:root { --nu-sb-w: 260px; --nu-sb-rail: 64px; --nu-nav-h: 57px; --nu-sb-fav: #c27803; --nu-sb-fav-text: #9a5b00; --nu-sb-active: color-mix(in srgb, var(--nu-accent) 10%, var(--nu-surface)); }
+[data-bs-theme="dark"] { --nu-sb-fav: #e3a33b; --nu-sb-fav-text: #e3a33b; --nu-sb-active: color-mix(in srgb, #5ea4e8 16%, var(--nu-surface)); }
+.nuShell { display: flex; align-items: flex-start; min-height: calc(100vh - var(--nu-nav-h)); }
+.nuShellMain { flex: 1 1 auto; min-width: 0; }
+.nuSidebar { flex: none; width: var(--nu-sb-w); position: sticky; top: var(--nu-nav-h); height: calc(100vh - var(--nu-nav-h)); overflow-y: auto; overflow-x: hidden;
+	background: var(--nu-surface); border-right: 1px solid var(--bs-border-color); display: flex; flex-direction: column; transition: width .15s ease; z-index: 1010; }
+.nuSbHead { display: flex; align-items: center; gap: .5rem; padding: .85rem .75rem .85rem 1rem; border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuSbTitle { flex: 1 1 auto; display: flex; align-items: center; gap: .5rem; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-secondary-color); min-width: 0; }
+.nuSbTitle .bi { font-size: 1.05rem; }
+.nuSbCollapse, .nuSbClose, .nuSbClear, .nuSbFav { border: 0; background: none; color: var(--bs-secondary-color); border-radius: .375rem; line-height: 1; padding: .35rem .4rem; }
+.nuSbCollapse:hover, .nuSbClose:hover, .nuSbClear:hover, .nuSbFav:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+.nuSbClose { display: none; }
+.nuSbBody { padding: .5rem .5rem 1rem; }
+.nuSbSec { margin-top: .5rem; }
+.nuSbSecTitle { display: flex; align-items: center; gap: .45rem; margin: 0; padding: .55rem .5rem .4rem; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-secondary-color); }
+.nuSbSec-fav .nuSbSecTitle { color: var(--nu-sb-fav-text); }   /* text 4.5:1 (the star icons keep the brighter --nu-sb-fav) */
+.nuSbSecTitle .nuSbText { flex: 1 1 auto; }
+.nuSbCount { font-size: .7rem; font-weight: 600; min-width: 1.4rem; text-align: center; padding: .1rem .4rem; border-radius: 1rem; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); letter-spacing: 0; }
+.nuSbSec-fav .nuSbCount { background: color-mix(in srgb, var(--nu-sb-fav) 16%, var(--nu-surface)); color: var(--nu-sb-fav-text); }
+.nuSbClearForm { display: inline-flex; }
+.nuSbClear { padding: .15rem .3rem; font-size: .85rem; }
+.nuSbList { list-style: none; margin: 0; padding: 0; }
+.nuSbItem { display: flex; align-items: center; border-radius: .5rem; border: 1px solid transparent; margin: 1px 0; }
+.nuSbItem:hover { background: var(--bs-tertiary-bg); }
+.nuSbItem.active { background: var(--nu-sb-active); border-color: color-mix(in srgb, var(--nu-accent) 25%, transparent); }
+.nuSbSec-fav .nuSbItem.active { background: color-mix(in srgb, var(--nu-sb-fav) 9%, var(--nu-surface)); border-color: color-mix(in srgb, var(--nu-sb-fav) 30%, transparent); }
+.nuSbGrow { flex: 1 1 auto; min-width: 0; }
+.nuSbForm { margin: 0; }
+.nuSbLink { display: flex; align-items: center; gap: .7rem; width: 100%; padding: .4rem .5rem; color: var(--bs-body-color); text-decoration: none; border: 0; background: none; text-align: left; border-radius: .5rem; }
+.nuSbLink:hover { color: var(--bs-body-color); }
+.nuSbItem.active .nuSbLink { font-weight: 600; }
+.nuSbIcon { --nu-ic: var(--nu-sb-c, var(--nu-accent)); flex: none; width: 2rem; height: 2rem; border-radius: .5rem; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;
+	background: color-mix(in srgb, var(--nu-ic) 13%, var(--nu-surface)); color: color-mix(in srgb, var(--nu-ic) 85%, var(--bs-body-color)); }
+[data-bs-theme="dark"] .nuSbIcon { background: color-mix(in srgb, var(--nu-ic) 24%, var(--nu-surface)); color: color-mix(in srgb, var(--nu-ic) 60%, #fff); }
+.nuSbLabel { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuSbStar { flex: none; margin-right: .2rem; }
+.nuSbFav { font-size: .9rem; }
+.nuSbFav.on { color: var(--nu-sb-fav); }
+span.nuSbFav { padding: .35rem .4rem; }
+.nuSbItem:not(.fav) .nuSbFav { opacity: 0; }
+.nuSbItem:not(.fav):hover .nuSbFav, .nuSbItem:not(.fav) .nuSbFav:focus-visible { opacity: 1; }
+.nuSbEmpty { margin: 0; padding: .1rem .5rem .4rem; font-size: .8rem; color: var(--bs-secondary-color); }
+.nuSbOpenBtn { display: none; }
+@media (min-width: 992px) {
+	/* icon rail */
+	.nuSbCollapsed .nuSidebar { width: var(--nu-sb-rail); }
+	.nuSbCollapsed .nuSbHead { justify-content: center; padding-left: .5rem; padding-right: .5rem; }
+	.nuSbCollapsed .nuSbTitle, .nuSbCollapsed .nuSbText, .nuSbCollapsed .nuSbLabel, .nuSbCollapsed .nuSbStar, .nuSbCollapsed .nuSbClearForm, .nuSbCollapsed .nuSbEmpty { display: none; }
+	.nuSbCollapsed .nuSbCollapse .bi { display: inline-block; transform: rotate(180deg); }
+	.nuSbCollapsed .nuSbSecTitle { justify-content: center; padding-left: 0; padding-right: 0; }
+	.nuSbCollapsed .nuSbCount { display: none; }
+	.nuSbCollapsed .nuSbLink { justify-content: center; padding-left: 0; padding-right: 0; }
+}
+@media (max-width: 991.98px) {
+	.nuShell { display: block; min-height: 0; }
+	.nuSbOpenBtn { display: inline-block; }
+	.nuSidebar { position: fixed; top: 0; left: 0; bottom: 0; height: 100vh; width: min(var(--nu-sb-w), 85vw); z-index: 1050; transform: translateX(-100%); visibility: hidden;
+		transition: transform .2s ease, visibility .2s; box-shadow: none; }
+	body.nuSbOpen .nuSidebar { transform: none; visibility: visible; box-shadow: 0 0 2rem rgba(0, 0, 0, .25); }
+	body.nuSbOpen { overflow: hidden; }
+	.nuSbCollapse { display: none; }
+	.nuSbClose { display: inline-block; }
+	.nuSbBackdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 1045; }
+	.nuSbItem:not(.fav) .nuSbFav { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .nuSidebar { transition: none; } }
+@media print { .nuSidebar, .nuSbOpenBtn { display: none !important; } .nuShell { display: block; } }
+
 /* accessibility (0.8.368, dev/tests/a11y.js – WCAG AA, text contrast at least 4.5:1): Bootstrap's grey #6c757d of outline buttons,
    its link blue and a few own colours are a little too light on the grey page (#f4f6f9) or too dark in dark mode. */
 :root:not([data-bs-theme="dark"]) .btn-outline-secondary { --bs-btn-color: #5c636a; }
@@ -1281,3 +1354,7 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 .scodeCM { height: calc(100vh - 400px); min-height: 360px; }
 .updBkSelCol { width: 2.5rem; padding-inline-start: 1rem !important; }
+
+/* access level: data mode / form type per form (0.8.461) – the whole option text visible (the table scrolls on small screens) */
+.nu-rights .nuAccMode-dm { min-width: 16.5rem; }
+.nu-rights .nuAccMode-ft { min-width: 10rem; }

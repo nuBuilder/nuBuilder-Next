@@ -83,11 +83,13 @@ $routes = [
 	'accesslevel' => [],
 	'form'        => [],
 	'formapi'     => ['json' => true],
+	'upload'      => ['json' => true],   // file upload of nuBuilder's Uppy objects (0.8.459, pages/nuupload.php)
 	'forms'       => [],
 	'formats'     => [],
 	'items'       => [],
 	'permissions' => [],
 	'impersonate' => [],
+	'sidebar'     => [],                 // side bar on / off, default, recently used, ☆ (0.8.460, pages/nusidebar.php)
 	'files'       => [],
 	'file'        => [],
 	'translations' => [],
@@ -117,6 +119,12 @@ $pageJson = ($p === 'page' || $p === 'pageasset') && NuPage::wantsJson();
 if ($pageJson && nu_is_post()) {
 	$sent = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
 	if (!is_string($sent) || !hash_equals(nu_csrf_token(), $sent)) NuPage::fail(400, 'csrf', t('err_csrf'), t('err_csrf_hint'));
+}
+// Uppy upload (0.8.459): a wrong token gets nuBuilder's upload answer {error, message} – Uppy's template shows message
+if ($p === 'upload' && nu_is_post() && !hash_equals(nu_csrf_token(), is_string($sent = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')) ? $sent : '')) {
+	http_response_code(400);
+	header('Content-Type: application/json; charset=utf-8');
+	exit(json_encode(['error' => t('err_csrf'), 'message' => t('err_csrf') . ' ' . t('err_csrf_hint')], JSON_UNESCAPED_UNICODE));
 }
 if (nu_is_post()) nu_csrf_verify();
 // Browsers post the lines of a <textarea> with CRLF; nuBuilder saves what its JavaScript reads (LF). Same line ends as nuBuilder,

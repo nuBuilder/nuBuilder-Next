@@ -70,7 +70,16 @@ final class NuInstall
 	/** Installed by hand on an existing nuBuilder database without $nuConfigAllowExistingNuDB: nobody may use it (index.php). */
 	public static function existingBlocked(): bool
 	{
-		return self::origin() === 'nubuilder' && !self::existingAllowed();
+		if (self::existingAllowed()) return false;
+		if (self::origin() === 'nubuilder') return true;
+		// not set up yet on a database with nuBuilder's tables: step 0014 would mark it 'nubuilder' – blocked before anything is
+		// written, so the globeadmin's sign-in does not create the own tables first (0.8.462, gap analysis B2)
+		if (self::origin() !== '' || NuSchema::present()) return false;
+		try {
+			return nu_db()->tableExists('zzzzsys_form') && nu_db()->tableExists('zzzzsys_user');
+		} catch (Throwable) {
+			return false;
+		}
 	}
 
 	/** Older installation on an existing nuBuilder database: works, the globeadmin sees a warning (start page, Security check). */
