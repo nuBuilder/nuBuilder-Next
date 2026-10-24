@@ -197,7 +197,7 @@ final class NuAutoUpdate
 			curl_setopt_array($ch, [CURLOPT_FILE => $fh, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 5, CURLOPT_CONNECTTIMEOUT => 20, CURLOPT_TIMEOUT => 300,
 				CURLOPT_FAILONERROR => true, CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
 				CURLOPT_USERAGENT => 'nuBuilder Next ' . NU_VERSION, CURLOPT_NOPROGRESS => false,
-				CURLOPT_XFERINFOFUNCTION => static function ($c, $dlTotal, $dl) use (&$size): int { $size = $dl; return $dl > self::MAX_DOWNLOAD ? 1 : 0; }]);
+				nu_curl_progress_opt() => static function ($c, $dlTotal, $dl) use (&$size): int { $size = $dl; return $dl > self::MAX_DOWNLOAD ? 1 : 0; }]);
 			$ok = curl_exec($ch);
 			$err = curl_error($ch);
 			curl_close($ch);

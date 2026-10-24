@@ -573,6 +573,10 @@ final class NuImport
 		$out['sus_language']   = $col('sus_language', t('user_language') . ' · ' . t('imp_u_lang_hint'), 0);
 		$out['sus_expires_on'] = $col('sus_expires_on', t('user_expires'), 0, false, 'date');
 		$out['password']       = $col('password', t('imp_u_password'), 72, false, 'text', ['secret' => true]);
+		foreach (NuUserFields::editable('import') as $code => $f) {    // custom user fields (0.8.454): uf_<code>
+			$max = NuUserFields::TYPES[(string)$f['type']][2];
+			$out['uf_' . $code] = $col('uf_' . $code, NuUserFields::label($f), $max, (string)$f['required'] === '1', (string)$f['type'] === 'date' ? 'date' : 'text');
+		}
 		return $out;
 	}
 
@@ -582,7 +586,8 @@ final class NuImport
 		return ['sus_login_name' => t('user_login_name'), 'sus_name' => t('user_display_name'), 'sus_first_name' => t('user_first_name'),
 			'sus_last_name' => t('user_last_name'), 'sus_email' => t('user_email'), 'access_level' => t('access_level'), 'sus_code' => t('user_code'),
 			'sus_position' => t('user_position'), 'sus_department' => t('user_department'), 'sus_team' => t('user_team'), 'sus_additional1' => t('user_additional1'),
-			'sus_additional2' => t('user_additional2'), 'sus_language' => t('user_language'), 'sus_expires_on' => t('user_expires'), 'password' => t('login_password')];
+			'sus_additional2' => t('user_additional2'), 'sus_language' => t('user_language'), 'sus_expires_on' => t('user_expires'), 'password' => t('login_password')]
+			+ array_combine(array_map(static fn($c) => 'uf_' . $c, array_keys(NuUserFields::editable('import'))), array_map([NuUserFields::class, 'label'], NuUserFields::editable('import')));   // 0.8.454
 	}
 
 	/** CSV template of the user import: header row only, separator $nuConfigCSVSeparator (default ;), UTF-8 with BOM for Excel. */
@@ -637,7 +642,7 @@ final class NuImport
 		$addError = static function (int $line, string $col, string $value, string $msg) use (&$res): void {
 			if (count($res['errors']) < self::MAX_ERRORS) $res['errors'][] = ['line' => $line, 'column' => $col, 'value' => mb_strimwidth($value, 0, 80, '…'), 'message' => $msg];
 		};
-		$seen = [];                                                  // logins of this file
+		$seen = []; $ufSeen = [];                                   // logins / unique custom field values of this file
 		$created = [];                                               // [id, login, row, password given, welcome]
 
 		// 1. check every row (nothing is written: zzzzsys_user is often MyISAM, where a transaction cannot be rolled back)
@@ -647,7 +652,7 @@ final class NuImport
 			if ($first && $read['header']) { $first = false; continue; }
 			$first = false;
 			$res['rows']++;
-			$v = []; $bad = false; $code = ''; $pw = ''; $lang = ['', ''];
+			$v = []; $bad = false; $code = ''; $pw = ''; $lang = ['', '']; $ufv = [];
 			foreach ($map as $col => $m) {
 				$raw = $m['src'] === 'csv' ? ($r[$m['idx']] ?? '') : $m['value'];
 				if ($col === 'password') { $v[$col] = $raw; continue; }            // as typed (no trimming)
@@ -687,6 +692,19 @@ final class NuImport
 					if (mb_strlen($pw) < $min) { $addError($line, 'password', '***', t('pw_err_min', $min)); $bad = true; }
 					elseif (strlen($pw) > 72) { $addError($line, 'password', '***', t('err_too_long', 72)); $bad = true; }
 				} elseif ($welcome && $email === '') { $addError($line, 'sus_email', '', t('welcome_err_email')); $bad = true; }
+				// custom user fields (0.8.454): checked like in the user form; unique also within the file
+				$ufv = [];
+				foreach (NuUserFields::editable('import') as $code => $f) {
+					if (!isset($cols['uf_' . $code]) || !array_key_exists('uf_' . $code, $v)) continue;
+					$x = (string)$v['uf_' . $code];
+					$err = NuUserFields::checkValue($f, $x, '');
+					if ($err === null && $x !== '' && (string)$f['is_unique'] === '1') {
+						$k = $code . "\x1f" . mb_strtolower($x);
+						if (isset($ufSeen[$k])) $err = t('imp_err_dupkey', $ufSeen[$k]); else $ufSeen[$k] = $line;
+					}
+					if ($err !== null) { $addError($line, 'uf_' . $code, $x, $err); $bad = true; continue; }
+					if ($x !== '') $ufv[$code] = $x;
+				}
 			}
 			if ($bad) {
 				$res['failed']++;
@@ -703,7 +721,7 @@ final class NuImport
 			$row['sus_change_password'] = '1';                          // own password at the first login
 			$row['sus_accessibility_features'] = '0';
 			$sendWelcome = $pw === '' && $welcome;
-			$rows[] = [$row, $pw, $sendWelcome, $lang[1], $line];
+			$rows[] = [$row, $pw, $sendWelcome, $lang[1], $line, $ufv];
 		}
 
 		// 2. write – with "stop on error" only when every row is fine
@@ -715,7 +733,7 @@ final class NuImport
 			return $res;
 		}
 		$created = [];
-		foreach ($rows as [$row, $pw, $sendWelcome, $variant, $line]) {
+		foreach ($rows as [$row, $pw, $sendWelcome, $variant, $line, $ufv]) {
 			$row['sus_login_password'] = NuAuth::hash($pw !== '' ? $pw : bin2hex(random_bytes(24)));   // random: unknown to anybody
 			try {
 				$db->insert('zzzzsys_user', $row);
@@ -726,14 +744,17 @@ final class NuImport
 			}
 			$res['inserted']++;
 			if ($sendWelcome) $res['welcome']++; elseif ($pw === '') $res['random']++;
-			$created[] = [(string)$row['zzzzsys_user_id'], $row, $pw !== '', $sendWelcome, $variant, $line];
+			$created[] = [(string)$row['zzzzsys_user_id'], $row, $pw !== '', $sendWelcome, $variant, $line, $ufv];
 		}
 
 		// then: language variant, password history, log, welcome e-mails
-		foreach ($created as [$id, $row, $hasPw, $sendWelcome, $variant, $line]) {
+		foreach ($created as [$id, $row, $hasPw, $sendWelcome, $variant, $line, $ufv]) {
 			if ($variant !== '') NuUserJson::set($id, 'NUNEXT_LANG_VARIANT', $variant);
 			if ($hasPw) NuUserJson::passwordChanged($id, 'admin');
-			NuLog::write('user_created', 'zzzzsys_user', $id, ['source' => 'csv_import', 'fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1]))]);
+			$ufv += array_filter(array_diff_key(NuUserFields::defaults(), $ufv), static fn($d) => $d !== '');   // defaults for the fields left out
+			[$ufOk] = NuUserFields::validate($ufv, $id, 'import');
+			$ufDiff = NuUserFields::save($id, $ufOk);
+			NuLog::write('user_created', 'zzzzsys_user', $id, ['source' => 'csv_import', 'fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + $ufDiff]);
 			if ($sendWelcome) {
 				$err = NuWelcome::send($row);
 				if ($err !== null) {

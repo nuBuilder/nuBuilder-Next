@@ -14,6 +14,30 @@
 	sync();
 })();
 
+/* User form tabs General / Permission items (0.8.438): the open tab goes into the address (?tab=perm) and into the form, so a
+   reload and the page after Save show the same tab; a field the browser finds invalid opens its tab. */
+(function () {
+	'use strict';
+	var tabs = document.getElementById('userTabs'), field = document.getElementById('userTab');
+	if (!tabs || !field) return;
+	tabs.addEventListener('shown.bs.tab', function (e) {
+		var v = e.target.getAttribute('data-nu-tab') || '';
+		field.value = v;
+		try {
+			var u = new URL(window.location.href);
+			if (v) u.searchParams.set('tab', v); else u.searchParams.delete('tab');
+			window.history.replaceState(window.history.state, '', u.toString());
+		} catch (x) { /* old browser: the address stays */ }
+	});
+	var form = field.form;
+	if (form) form.addEventListener('invalid', function (e) {
+		var pane = e.target.closest && e.target.closest('.tab-pane');
+		if (!pane || pane.classList.contains('active')) return;
+		var btn = tabs.querySelector('[data-bs-target="#' + pane.id + '"]');
+		if (btn) nuBs.tab(btn).show();
+	}, true);
+})();
+
 /* User form: Full name ↔ first / last name, password generator, permission items. */
 (function () {
 	'use strict';
@@ -22,8 +46,10 @@
 	var filter = document.getElementById('userPermFilter'), count = document.getElementById('userPermCount'), empty = document.getElementById('userPermEmpty');
 	var items = Array.prototype.slice.call(box.querySelectorAll('.userPermItem'));
 
+	var tabCount = document.getElementById('userPermTabCount');
 	function update() {
 		count.textContent = box.querySelectorAll('input[name="perm[]"]:checked').length;
+		if (tabCount) tabCount.textContent = count.textContent;
 	}
 	var group = document.getElementById('userPermGroup');   // group filter (0.8.260) – combined with the search
 	function apply() {

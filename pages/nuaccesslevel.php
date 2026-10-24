@@ -243,6 +243,9 @@ nu_layout_start($title, 'access');
 		<a class="btn nuBtnAct" href="<?= h(nu_url('access')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if ($canSave): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if (!$isNew): ?>
+			<?php if (NuHome::canManage()): // its start page (user start pages, 0.8.425) ?>
+				<a class="btn nuBtnAct" href="<?= h(nu_url('home', ['for' => $id])) ?>" id="nuAccessHome"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i><?= h(t('home_u_edit_level')) ?></a>
+			<?php endif; ?>
 			<?php if ($rights['clone']): ?>
 				<a class="btn nuBtnAct" href="<?= h(nu_url('accesslevel', ['clone' => $id])) ?>"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>

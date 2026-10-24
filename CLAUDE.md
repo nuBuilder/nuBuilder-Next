@@ -24,8 +24,9 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
   "Not fully tested") plus the e2e tests of the changed areas (`ONLY=…`) and a browser look; both zips are sent; **no git push**.
   Only when the owner says **"gate"**: a new version with `python3 dev/release.py <version> "<title>" <file> --gate` (full gate: smoke,
   all e2e, compat; manifest `"gated": true`, `last_gate`), then sync to the git mirror, commit and `git push origin main` (everything since
-  the last gate in one push). release.py prints the releases since the last gate – **after 5 ungated releases remind the owner** to
-  say "gate" (also suggest it after changes to login, rights, update or database steps).
+  the last gate in one push). **Account without a GitHub connection (since 0.8.451, the owner's rule):** a gate runs the full test
+  suite locally and releases with `--gate`, but nothing is synced, committed or pushed; do **not** remind the owner about gates
+  (release.py only prints the count).
 - **GitHub release** (the owner creates it by hand after a gate): when asked for the tag / release notes, follow
   **`dev/release-notes.md`** – release settings (tag `v<version>`, title, only `nunext.zip`, pre-release), the structure of the notes
   (link to CHANGELOG.md, alpha note, Highlights, Security, After updating) and an example; it records the last published release –
@@ -39,7 +40,7 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
    then `php dev/lang_variants.php` and `php dev/check_lang.php`. Never edit `lang/en-US.php` / `lang/de-CH.php`.
 4. Sync to the test site, test in the browser (Playwright), look at screenshots; run `dev/tests/smoke.js` and the end-to-end suite
    `BASE=http://127.0.0.1:8099/nunext/ DB="-unu -pnu nutest" PKG=../nunext.zip NODE_PATH=$(npm root -g) node dev/tests/e2e.js`
-   (37 tests: forms, sub-forms, nuBuilder hooks, lookups, permission items, rights, admin roles, demo mode (needs SITE=<site folder>),
+   (88 tests in 0.8.454: forms, sub-forms, nuBuilder hooks, lookups, permission items, rights, admin roles, demo mode (needs SITE=<site folder>),
    login links, user import, audit, notifications, list views, favourites, branding, dashboards, login limit, CSV import, update check, self-test, CSRF …;
    it saves the whole database first and puts it back – `ONLY=name1,name2` runs single tests). Add a test for every new feature.
    The test site runs with `$nuConfigDevMode = true`, so the in-app self-test (`?p=selftest`, core/nuselftest.php) runs too.
@@ -76,7 +77,9 @@ step → `NuMigrate::steps()` + `NuMigrate::CHANGES` in core/nuupdate.php · a c
 (and `subTiles()` / `actions()` for ▾ menus) · a system list → `NuListDefs` (+ `LISTS`) · a pseudo form for access levels → `NuAcl::FORM_*`
 · clean-up → a step in `NuHousekeeping::run()` · PHP API for form code → core/form/nuphp_api.php · REST → `NuApi` routes +
 `NuApiClient::SCOPES` · log events → `ev_*` texts · JS in `assets/js/<page>.js` (strict CSP) · a PHP function for form code (core/form/nuphp_*.php) or a JS `api('…')` →
-an entry in `docs/nunext-functions.json` (Help → function references, core/nufnref.php; dev/tests/run.php fails otherwise).
+an entry in `docs/nunext-functions.json` (Help → function references, core/nufnref.php; dev/tests/run.php fails otherwise). Each entry needs
+an example `e`, parameter descriptions `p` {name: text} and – when it returns a value – a sample result `x` (0.8.456: PHP / JavaScript tabs,
+wiki-style cards with signature, parameters, returns, example, result / console.log(), "Also see"; NuFnRef::tabs() / entry(), nuhelp.js fnTab / reveal).
 
 ## The owner's standing rules
 - **No personal details of the developer** (name, e-mail, etc.) in any file of the project – code, docs, README, CLAUDE.md,
@@ -112,6 +115,8 @@ an entry in `docs/nunext-functions.json` (Help → function references, core/nuf
 - Explanatory texts under fields are usually not wanted any more: show them as **tooltip of an (i) icon** next to the label
   (pattern below). The owner asks for this field by field.
 - Requests are short; ask only when a wrong guess is expensive. When the plan has several parts the answer is often "ok all".
+- **No effort or time estimates** in suggestions or answers (no "one to two weeks", "S / M / L", "a day of work") – the work is done by AI
+  and goes much faster; describe scope and steps instead.
 - On "suggest how …": give concrete proposals with numbered options (A/B/C … with 1/2/3) and a recommendation; implement the one picked
   ("do recommendations" = the recommended ones). Answers to the owner are short: what changed, where, what to verify.
 - Every delivery: both zips are sent with the file tool, also when only docs changed.
@@ -162,17 +167,40 @@ core/nuhome.php      start page: tiles, Ctrl+K search, saved layouts (list_key '
                      setOverlay: sus_json NUNEXT_HOME_VIEW, setting home_view_ga, session for demo) – POST view_me / view_me_clear (everyone),
                      view_layout (editable layout only); one tile markup for all styles (pages/nuhome.php), classes + container queries in
                      assets/css/nuhome.css, precedence / panel / tooltips in assets/js/nuhome.js; e2e home_view
-core/nuhomehook.php  start page hooks (0.8.378): procedure nunext_home runs while the tile page is built (pages/nuhome.php: NuHomeHook::run +
+                     user start pages (0.8.425): users without an admin role get the tile page too – NuHome::forLevel(access, preview)
+                     switches the class: list key home_user (access_ids [access id] or ["*"] = default; userLayouts(): own > default >
+                     autoLayout() = forms + reports of the level), own tiles only (userOnly(); kinds form, report, procedure, url, page in
+                     USER_PAGES), cond {permission, team, department, position} on tiles and groups (cleanCond / condOk – not applied in the
+                     editor preview), user overlay fav / hide (setMine, POST mine / mine_clear, Personalise in nuhome.js); editor
+                     ?p=home&for=<id|*> with the right homelayout (link on the access level form, sub tile s_user_home), resetLevel();
+                     procedure tiles run through ?p=home&run=<id> (NuPhp rights); hook nu_home_user (NuHomeHook::useUserPage,
+                     #HOME_PAGE# / #HOME_ACCESS#); "My forms and rights" only while acting as the user; e2e home_user
+core/nuhomehook.php  start page hooks (0.8.378): procedure nu_home runs while the tile page is built (pages/nuhome.php: NuHomeHook::run +
                      apply); PHP functions nuHomeSetBadge / SetHint / HideTile / AddGroup / AddTile (x_ keys, NuHome::cleanTile) / Banner /
                      SetData / Cache in core/form/nuphp_api.php; errors → page without changes + alert for the globeadmin + Debug results;
                      off: $nuConfigHomeHooks = false (settings row, step 0013), ?safe=1 (globeadmin); JavaScript (0.8.379): the procedure's sph_javascript served by
                      ?p=homejs&v=<hash> (pages/nuhomejs.php, NuHomeHook::serveJs) after nuhome.js, which exposes window.nuHome (on / off / tiles /
                      tile / data; tile objects from the data-nu-* attributes of the tile markup)
+core/nuincludes.php  NuIncludes (0.8.443/0.8.444): $nuConfigIncludeJS / CSS / PHP (nuBuilder Next's folder, then nuBuilder's), Setup → Include
+                     elements (setupElements), CSP sources for form pages, missing() for the Security check; page ?p=setupcode
+                     (pages/nusetupcode.php, admin right setupcode) edits set_header / set_style / set_include. Tabs that a script opens
+                     after loading: data-nu-tab-restore (hidden by nutheme.js until DOMContentLoaded, 0.8.444)
+core/numailoauth.php NuMailOAuth (0.8.445): SMTP login with OAuth 2 (auth type XOAUTH2) – Google / Microsoft 365 / other; settings row mail_oauth
+                     (secrets sealed with $nuConfigSecretKey, else "plain:"), consent via pages/numailoauth.php (?p=mailoauth&go=1 → meta refresh,
+                     because form-action 'self' blocks a POST redirect to another site; back at oauth.php = p=mailoauth), token refresh in
+                     accessToken(), PHPMailer token provider core/numailoauthtoken.php; NuMailer::send / check use it; e2e mail_oauth with
+                     dev/tests/fakeoauth.py + fakesmtp.py (XOAUTH2)
+core/nuuserfields.php NuUserFields (0.8.454): custom user fields – definitions zzzzsys_nunext_user_field (step 0019), values
+                     zzzzsys_nunext_user_ext (one row per user, one REAL column per field, made with NuDDL in the collation of zzzzsys_user –
+                     joinable USING (zzzzsys_user_id)); page ?p=userfields (admin right userfields, CSV of a field before deleting), user form
+                     tab More, ?p=account (My account: edit_by 'user'), users list columns / filters (NuListDefs, in_list), CSV import,
+                     #USER_<CODE># (NuHash), nuNextUserField / nuNextSetUserField (PHP), nuNextUserField (JS, N.user.fields), REST "fields",
+                     start page cond.fields; e2e user_fields
 core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.php mailer (NuMailer: settings, send, authType(), test probe)
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',
                      '0002-report-tables', '0003-translate-table', '0004-cloner-tables', '0005-setting-primary-db', '0007-drop-vendor-layout',
-                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages' – add new steps at the end; 0006 was removed with the baseline;
+                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages', '0017-presence', '0018-home-hook-codes' (0.8.438: procedures nunext_home → nu_home), '0019-user-fields' (0.8.454) – add new steps at the end; 0006 was removed with the baseline;
                      every step needs an entry in NuMigrate::CHANGES – tables + kind + what, release.py stops otherwise), change history,
                      SQL dumps in backups · core/nugithub.php NuGitHub (0.8.374): newest release of a GitHub repository
                      (setting 'github_update', daily look: cron or start / update page of users with the update right, Update tile badge), download into _update/ (only signed kept),
@@ -393,7 +421,28 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (October 2026, 0.8.360)
+## Where things stand (October 2026, 0.8.454)
+Newest first, details in CHANGELOG.md; last gate 0.8.454 (gate = local full test run, no push – no GitHub connection):
+0.8.456 function reference: PHP / JavaScript tabs, every function with example, parameters and sample result; 0.8.455 Customise as icon next to ☆, search max 300 px; 0.8.454 (gate) custom user fields (NuUserFields, see Architecture); 0.8.453 tab order Appearance · Content · Layouts; 0.8.452 start page: one Customise button (#nuHomeViewBtn) – panel tabs Content (#nuHomeVpEdit / #nuHomeVpMine click the hidden
+#nuHomeCustomize / #nuHomeMine), Appearance (former View; V), Layouts; tab in localStorage nunext-home-cust-tab; tile size gone from the
+edit bar; e2e helpers homeTab / homeEdit / homeMine, test home_customise;
+0.8.451 (gate) update page → Backups: delete several (NuUpdate::deleteBackups, protectedBackups = newest + newest "before rollback"),
+clean-up rule (cleanupRule / cleanupPlan / autoCleanup after install(), setting backup_cleanup, assets/js/nubackups.js, e2e backups_bulk
+with dev/tests/fakebackups.py); ?tab=<name> lets the server open a tab (update page, Setup code) so nutheme.js hides [data-nu-tab-restore]
+only when #hash ≠ ?tab= (no blank tab when paging); form[data-confirm] skips submit buttons with data-no-confirm; no gate reminders;
+0.8.447 builder buttons in a row below the title; 0.8.446 options menu ⋮ without add / print / search / form info / form properties /
+object list (shortcuts stay, Ctrl+Shift+M opens the (i) panel); 0.8.445 SMTP login with OAuth 2 (NuMailOAuth, oauth.php, Google /
+Microsoft 365 / other, e2e mail_oauth with dev/tests/fakeoauth.py); 0.8.444 Setup code page (set_header / set_style / set_include),
+Setup → Include on form pages, no first-tab flash (data-nu-tab-restore); 0.8.443 $nuConfigIncludeJS / CSS, PHP includes from nuBuilder's
+folder, nuSetSaveButtonPosition; 0.8.442 nuconfig.php editor "Insert variable" (NuConfigFile::catalog); 0.8.441 count() out of loop
+conditions; 0.8.440 release.py without shell; 0.8.439 builder preview Browse | Edit; 0.8.438 hooks nunext_home → nu_home (step 0018),
+user form tabs General / Permission items; 0.8.437 page size menu in list footers (?per=); 0.8.436 pager only with several pages;
+0.8.435 form info (i) panel for the globeadmin; 0.8.434 e-mail template without code title; 0.8.433 DeepScan clean-up; 0.8.432 e-mail
+"Check connection" (NuMailer::check) and foldable template fields; 0.8.425–0.8.431 user start pages per access level, browse search
+highlighting and reset, PHP 8.1 curl constant, Tiny File Manager status. Open from the owner's last questions: rename the options menu
+entry "Sessions" to "Logged-in users"; nuSetSaveButtonProperties and the full arguments of nuAttachSaveButtonTo (both not built yet).
+
+### Earlier state (0.8.360)
 Newest first, details in CHANGELOG.md: 0.8.357/0.8.358 notification centre (bell, panel, must confirm, Manage with recipients
 from users / departments / teams / positions / access levels, live or fixed list, read receipts, e-mail, permission items NUNEXT_NOTIFY /
 NUNEXT_NOTIFY_OWN, `nuNextNotify()`, API /v1/notifications); 0.8.352–0.8.356 start page: favourites (☆ in Customise, "Favourites" filter

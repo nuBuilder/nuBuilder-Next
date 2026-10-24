@@ -174,6 +174,9 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('password')) ?>"><i class="bi bi-key me-2"></i><?= h(t('nav_change_password')) ?></a></li>
 						<?php endif; ?>
+						<?php if (!$u['globeadmin'] && NuUserFields::editable('self')): // custom fields the user fills in himself (0.8.454) ?>
+							<li><a class="dropdown-item" href="<?= h(nu_url('account')) ?>" id="nuMyAccount"><i class="bi bi-person-lines-fill me-2"></i><?= h(t('acc_title')) ?></a></li>
+						<?php endif; ?>
 						<?php if (NuAdmin::any() && (nu_db()->type === 'mysql' || NuVendor::available('ADM'))): // admin roles (0.8.323): only what the role allows ?>
 							<li><hr class="dropdown-divider"></li>
 							<?php if (NuAdmin::can('status')): ?><li><a class="dropdown-item" href="<?= h(nu_url('vendor')) ?>"><i class="bi bi-activity me-2"></i><?= h(t('status_title')) ?></a></li><?php endif; ?>
@@ -358,7 +361,18 @@ function nu_page_minimal(string $title, string $detail = '', bool $withHome = fa
  * Footer of a list: total · first / previous / page x of y / next / last · rows per page. Always shown (also with one page)
  * and sticky at the bottom of the window while the list is longer than the screen. $class: extra classes (card-footer in a card).
  */
-function nu_list_footer(int $total, int $page, int $per, string $route, array $params, string $class = 'card-footer', string $param = 'pg', string $anchor = ''): void
+/** Page sizes of the footer's menu (0.8.437); a list reads the choice with nu_per_param(). */
+const NU_PER_MENU = [10, 25, 50, 100, 250, 500];
+
+/** ?per= of a list when it is one of NU_PER_MENU, otherwise 0 (= the list's own page size). */
+function nu_per_param(): int
+{
+	$v = (int)($_GET['per'] ?? 0);
+	return in_array($v, NU_PER_MENU, true) ? $v : 0;
+}
+
+/** $perMenu: the page size is a menu (the list reads ?per= through nu_per_param() and keeps it in $params). */
+function nu_list_footer(int $total, int $page, int $per, string $route, array $params, string $class = 'card-footer', string $param = 'pg', string $anchor = '', bool $perMenu = false): void
 {
 	// $param: name of the page parameter (two lists on one page); $anchor: '#id' the links jump to
 	$pages = (int)max(1, ceil($total / max(1, $per)));
@@ -369,9 +383,10 @@ function nu_list_footer(int $total, int $page, int $per, string $route, array $p
 			: '<span class="nuPagerBtn ' . $cls . ' disabled" role="link" aria-disabled="true" aria-label="' . h($label) . '">' . $html . '</span>';   // aria-label needs a role (0.8.368)
 	};
 	?>
-	<div class="nuListFooter <?= h($class) ?>">
+	<div class="nuListFooter <?= h($class) ?><?= $pages <= 1 ? ' nuListFooterOne' : '' ?>">
 		<div class="nuLfTotal"><?= h(t('lf_total')) ?> <b><?= number_format($total, 0, '.', "'") ?></b> <span class="nuLfUnit"><?= h(t($total === 1 ? 'lf_record' : 'lf_records')) ?></span></div>
-		<nav class="nuPager" aria-label="<?= h(t('pagination')) ?>">
+		<?php if ($pages > 1): // everything on one page: only the total – no disabled pager, no page size (0.8.436) ?>
+		<nav class="nuPager"" aria-label="<?= h(t('pagination')) ?>">
 			<?= $btn($page > 1, 1, 'nuPagerFirst', '<i class="bi bi-chevron-double-left"></i>', t('sc_page_first')) ?>
 			<?= $btn($page > 1, $page - 1, 'nuPagerPrev', '<i class="bi bi-chevron-left"></i><span class="nuPagerTxt">' . h(t('prev')) . '</span>', t('prev')) ?>
 			<?php if ($pages > 1): // click: enter a page number, Enter jumps there (assets/js/nuapp.js) ?>
@@ -383,7 +398,20 @@ function nu_list_footer(int $total, int $page, int $per, string $route, array $p
 			<?= $btn($page < $pages, $page + 1, 'nuPagerNext', '<span class="nuPagerTxt">' . h(t('next')) . '</span><i class="bi bi-chevron-right"></i>', t('next')) ?>
 			<?= $btn($page < $pages, $pages, 'nuPagerLast', '<i class="bi bi-chevron-double-right"></i>', t('sc_page_last')) ?>
 		</nav>
+		<?php if ($perMenu):
+			$choices = array_unique(array_merge(NU_PER_MENU, [$per])); sort($choices); ?>
+		<div class="nuLfPer dropup">
+			<button type="button" class="btn btn-sm nuLfPerBtn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h(t('lf_per_choose')) ?>"><?= h(t('lf_per_page', $per)) ?></button>
+			<ul class="dropdown-menu dropdown-menu-end nuLfPerMenu">
+				<?php foreach ($choices as $c): ?>
+					<li><a class="dropdown-item<?= $c === $per ? ' active' : '' ?>" href="<?= h(nu_url($route, ['per' => $c, $param => null] + $params) . $anchor) ?>"<?= $c === $per ? ' aria-current="true"' : '' ?>><?= h(t('lf_per_page', $c)) ?></a></li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+		<?php else: ?>
 		<div class="nuLfPer"><?= h(t('lf_per_page', $per)) ?></div>
+		<?php endif; ?>
+		<?php endif; ?>
 	</div>
 	<?php
 }
@@ -451,7 +479,7 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
 		// the tools of the former Admin tools page go back to the start page (0.8.316)
 		'adminroles' => 'home',
 		'cloner' => 'forms', 'formai' => 'forms', 'procedures' => 'forms', 'reports' => 'forms', 'prompts' => 'forms', 'formats' => 'forms', 'items' => 'forms',
-		'files' => 'forms', 'translations' => 'forms', 'sqlbuilder' => 'reports', 'apiplayground' => 'apiclients', 'permissions' => 'users',
+		'files' => 'forms', 'translations' => 'forms', 'sqlbuilder' => 'reports', 'apiplayground' => 'apiclients', 'permissions' => 'users', 'userfields' => 'users',
 	];
 	$route ??= (string)($_GET['p'] ?? '');
 	$url ??= nu_url($parent[$route] ?? 'home');

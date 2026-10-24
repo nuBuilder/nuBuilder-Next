@@ -98,7 +98,7 @@ final class NuReportEngine
 					$top = $this->section($last, 3 + $g, 1, $top);
 					$value[$this->groups[$g]] = $row[$this->groups[$g]] ?? null;
 				}
-				for ($g = $backTo; $g < count($this->groups); $g++) {             // and their new headers
+				for ($g = $backTo, $nG = count($this->groups); $g < $nG; $g++) {   // and their new headers
 					$top = $this->section($row, 3 + $g, 0, $top);
 					$value[$this->groups[$g]] = $row[$this->groups[$g]] ?? null;
 				}

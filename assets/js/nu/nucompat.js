@@ -629,36 +629,24 @@
 		if (window.nuOnAddAction && window.nuOnAddAction(N.browse) === false) return;
 		nuForm(N.form.redirect || N.form.id, '-1');
 	});
-	if (!$.fn.nuHighlight) {
-		$.fn.nuHighlight = function (pattern) {
-			if (!pattern) return this;
-			var fold = function (s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase(); };
-			var p = fold(String(pattern));
-			this.each(function () {
-				var walk = function (node) {
-					if (node.nodeType === 3) {
-						var i = fold(node.data).indexOf(p);
-						if (i < 0) return 0;
-						var m = document.createElement('mark'); m.className = 'nuHighlight';
-						var mid = node.splitText(i); mid.splitText(p.length);
-						m.appendChild(mid.cloneNode(true)); mid.parentNode.replaceChild(m, mid);
-						return 1;
-					}
-					if (node.nodeType === 1 && node.childNodes && !/(script|style|mark)/i.test(node.tagName)) {
-						for (var k = 0; k < node.childNodes.length; k++) k += walk(node.childNodes[k]);
-					}
-					return 0;
-				};
-				walk(this);
-			});
-			return this;
-		};
-	}
+	// nuBuilder's $.fn.nuHighlight(pattern, accentInsensitive = true): marks pattern (a string or a list) in the elements – every occurrence,
+	// <mark class="nuHighlight"> (nuBuilder: <span class="nuBrowseSearch">, the class of the search form here). nuHighlightText in nuapp.js.
+	$.fn.nuHighlight = function (pattern, accentInsensitive) {
+		if (!window.nuHighlightText || pattern === undefined || pattern === null || pattern === '') return this;
+		var o = {accents: accentInsensitive === false ? false : undefined};
+		return this.each(function () { window.nuHighlightText(this, pattern, o); });
+	};
+	$.fn.nuUnhighlight = function () { return this.each(function () { if (window.nuHighlightClear) window.nuHighlightClear(this); }); };
+	// the search words / "phrases" of the browse list (NuBrowse::terms – -exclusions are not marked) in the searched columns; runs after
+	// loading as in nuBuilder (0.8.427) – again from form code it does nothing new (existing marks are skipped)
 	api('nuHighlightSearch', function () {
-		var q = String((N.browse || {}).q || '');
-		if (!q) return;
-		q.split(' ').filter(function (a) { return a && a.charAt(0) !== '-'; }).sort(function (a, b) { return a.length - b.length; })
-			.forEach(function (t) { $('td.nuCell').nuHighlight(t); });
+		var b = N.browse || {}, terms = b.hl || [], no = (b.nsc || []).map(Number), only = (b.sc || []).map(Number);
+		if (!terms.length || !window.nuHighlightText) return;
+		$('td.nuCell').each(function () {
+			var c = +this.getAttribute('data-nu-column');
+			if (no.indexOf(c) >= 0 || (only.length && only.indexOf(c) < 0)) return;
+			window.nuHighlightText(this, terms);
+		});
 	});
 
 	// =================================================================== action buttons
@@ -741,4 +729,37 @@
 	if (!$.fn.nuFocusWithoutScrolling) {
 		$.fn.nuFocusWithoutScrolling = function () { var el = this[0]; if (el) el.focus({preventScroll: true}); return this; };
 	}
+})();
+
+/* Absolute layout (0.8.443): nuBuilder positions every field and every label on its own; nuBuilder Next puts label + field into one
+ * positioned wrapper #nuw_<id>. Form code that reads or sets top / left with jQuery on a field – or top on its label – works on the
+ * wrapper, so both move together as in nuBuilder ($('#x').css('top', …), .css({top: …}), $('#x').nuCSSNumber('top')). */
+(function () {
+	'use strict';
+	var jq = window.jQuery;
+	if (!jq || !jq.cssHooks) return;
+	function wrapperOf(el, prop) {
+		if (!el || el.nodeType !== 1 || !el.id) return null;
+		var w = el.parentElement;
+		if (!w || !w.id || w.id.indexOf('nuw_') !== 0 || !w.classList.contains('nuAbs')) return null;
+		var id = w.id.slice(4);
+		if (el.id === id) return w;
+		if (el.id === 'label_' + id && prop === 'top') return w;   // a label's left stays its own (it sits left of the field)
+		return null;
+	}
+	['top', 'left'].forEach(function (prop) {
+		var prev = jq.cssHooks[prop] || {};
+		jq.cssHooks[prop] = {
+			get: function (el, computed, extra) {
+				var w = wrapperOf(el, prop);
+				if (w) return w.style[prop] || window.getComputedStyle(w)[prop];
+				return prev.get ? prev.get(el, computed, extra) : undefined;
+			},
+			set: function (el, value, extra) {
+				var w = wrapperOf(el, prop);
+				if (w) { w.style[prop] = value; return undefined; }      // undefined: jQuery does not set the element itself
+				return prev.set ? prev.set(el, value, extra) : value;
+			}
+		};
+	});
 })();

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Start page hooks (0.8.378): the procedure with the reserved code nunext_home runs every time the tile start page (globeadmin and
+ * Start page hooks (0.8.378): the procedure with the reserved code nu_home runs every time the tile start page (globeadmin and
  * admin roles) is built. Its PHP asks for changes of THIS page view through nuHomeSetBadge / nuHomeSetHint / nuHomeHideTile /
  * nuHomeAddGroup / nuHomeAddTile / nuHomeBanner / nuHomeSetData / nuHomeCache (core/form/nuphp_api.php) – collected here and
  * merged by pages/nuhome.php while drawing; nothing is ever saved into a layout.
@@ -13,10 +13,25 @@ defined('NU_ROOT') || exit;
  *     and every echo goes to Debug results (zzzzsys_debug)
  *   - off: $nuConfigHomeHooks = false (nuconfig.php or Settings) · one page view: ?p=home&safe=1 (globeadmin only)
  *   - nuHomeCache(seconds): the result is kept in the session per user, layout and code
+ *   - user start pages (0.8.425): the procedure nu_home_user runs instead (useUserPage()) – same functions, own tiles only;
+ *     #HOME_PAGE# = admin | user, #HOME_ACCESS# = code of the access level the page belongs to
  */
 final class NuHomeHook
 {
-	public const CODE = 'nunext_home';
+	public const CODE = 'nu_home';
+	public const CODE_USER = 'nu_home_user';
+	/** The procedure of this page: CODE (tile page of admins) or CODE_USER (start pages of users, 0.8.425). */
+	private static string $code = self::CODE;
+
+	public static function useUserPage(): void
+	{
+		self::$code = self::CODE_USER;
+	}
+
+	public static function code(): string
+	{
+		return self::$code;
+	}
 	public const COLORS = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark'];
 	public const LEVELS = ['info', 'success', 'warning', 'danger'];
 	private const MAX = 100;                                  // tiles, groups, banners, data entries per page view
@@ -57,24 +72,23 @@ final class NuHomeHook
 		return ($_GET['safe'] ?? '') === '1' && $u && $u['globeadmin'];
 	}
 
-	/** The procedure nunext_home (or null): code, PHP, JavaScript (when active), status. */
+	/** The procedure nu_home (or null): code, PHP, JavaScript (when active), status. */
 	public static function procedure(): ?array
 	{
-		static $p = false;
-		if ($p !== false) return $p;
+		static $cache = [];
+		if (array_key_exists(self::$code, $cache)) return $cache[self::$code];
 		$p = null;
 		try {
 			$db = nu_db();
-			if (!$db->tableExists('zzzzsys_php')) return null;
-			$row = $db->one('SELECT * FROM zzzzsys_php WHERE sph_code = ?', [self::CODE]);
-			if (!$row) return null;
-			if (in_array((string)($row['sph_status'] ?? '1'), ['0', '3'], true)) return null;     // draft / archived: not run
-			$js = (string)($row['sph_javascript_active'] ?? '1') !== '0' ? (string)($row['sph_javascript'] ?? '') : '';
-			$p = ['id' => (string)$row['zzzzsys_php_id'], 'php' => (string)($row['sph_php'] ?? ''), 'js' => trim($js) !== '' ? $js : ''];
+			$row = $db->tableExists('zzzzsys_php') ? $db->one('SELECT * FROM zzzzsys_php WHERE sph_code = ?', [self::$code]) : null;
+			if ($row && !in_array((string)($row['sph_status'] ?? '1'), ['0', '3'], true)) {     // draft / archived: not run
+				$js = (string)($row['sph_javascript_active'] ?? '1') !== '0' ? (string)($row['sph_javascript'] ?? '') : '';
+				$p = ['id' => (string)$row['zzzzsys_php_id'], 'php' => (string)($row['sph_php'] ?? ''), 'js' => trim($js) !== '' ? $js : ''];
+			}
 		} catch (Throwable) {
 			$p = null;
 		}
-		return $p;
+		return $cache[self::$code] = $p;
 	}
 
 	/** URL of the hook's JavaScript (?p=homejs&v=<first 12 of its SHA-256>) or null – not in safe mode, not when switched off (0.8.379). */
@@ -82,23 +96,26 @@ final class NuHomeHook
 	{
 		$p = self::procedure();
 		if (!$p || $p['js'] === '' || !self::enabled() || self::safeMode()) return null;
-		return nu_url('homejs', ['v' => substr(hash('sha256', $p['js']), 0, 12)]);
+		return nu_url('homejs', ['v' => substr(hash('sha256', $p['js']), 0, 12), 'u' => self::$code === self::CODE_USER ? '1' : null]);
 	}
 
 	/** ?p=homejs – the JavaScript as a file (login + tile page users only; cached for good, the URL changes with the code). */
 	public static function serveJs(): never
 	{
 		session_write_close();
+		$user = ($_GET['u'] ?? '') === '1';                       // start pages of users (0.8.425): every signed-in user
+		if ($user) self::useUserPage();
 		$p = self::procedure();
+		$allowed = $user ? NuAuth::user() !== null : NuAdmin::any();
 		header('Content-Type: text/javascript; charset=utf-8');
 		header('X-Content-Type-Options: nosniff');
-		if (!NuAdmin::any() || !$p || $p['js'] === '' || !self::enabled()) {
-			http_response_code(NuAdmin::any() ? 404 : 403);
+		if (!$allowed || !$p || $p['js'] === '' || !self::enabled()) {
+			http_response_code($allowed ? 404 : 403);
 			header('Cache-Control: no-store');
 			exit('');
 		}
 		header('Cache-Control: private, max-age=31536000, immutable');
-		exit("/* nuBuilder Next – JavaScript of the procedure nunext_home (start page hook) */\n" . $p['js'] . "\n");
+		exit('/* nuBuilder Next – JavaScript of the procedure ' . self::$code . " (start page hook) */\n" . $p['js'] . "\n");
 	}
 
 	/** Is a hook active (Security check, System status)? */
@@ -115,8 +132,11 @@ final class NuHomeHook
 		$cur = NuHome::current();
 		$view = NuHome::effectiveView($layout, NuHome::overlay((string)$cur['id']));
 		[$size, $display] = NuHome::compat($view);                  // what this person sees (a personal view changes it too)
+		$for = NuHome::target();
+		$acc = $for === null ? '' : ($for['access'] === NuHome::ALL_LEVELS ? NuHome::ALL_LEVELS : (string)(nu_db()->value('SELECT sal_code FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$for['access']]) ?? ''));
 		return NuHash::plain([], ['ADMIN_ROLE' => (string)($role['name'] ?? ''), 'HOME_LAYOUT' => (string)($cur['name'] ?? ''),
-			'HOME_SIZE' => $size, 'HOME_DISPLAY' => $display, 'HOME_VIEW' => (string)json_encode($view, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'PROCEDURE_CODE' => self::CODE]);
+			'HOME_SIZE' => $size, 'HOME_DISPLAY' => $display, 'HOME_VIEW' => (string)json_encode($view, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'PROCEDURE_CODE' => self::$code,
+			'HOME_PAGE' => $for === null ? 'admin' : 'user', 'HOME_ACCESS' => $acc]);
 	}
 
 	/** Runs the hook for the start page (or takes the cached result). Errors leave the state empty. */
@@ -129,7 +149,7 @@ final class NuHomeHook
 		$p = self::procedure();
 		if (!$p || trim($p['php']) === '') return;
 		$u = NuAuth::user();
-		$ck = hash('sha256', (string)$u['id'] . "\x1f" . (string)(NuHome::current()['id'] ?? '') . "\x1f" . $p['php']);
+		$ck = hash('sha256', (string)$u['id'] . "\x1f" . self::$code . "\x1f" . (string)(NuHome::current()['id'] ?? '') . "\x1f" . $p['php']);
 		$c = $_SESSION['nu_home_hook'] ?? null;
 		if (is_array($c) && ($c['key'] ?? '') === $ck && (int)($c['until'] ?? 0) > time() && is_array($c['state'] ?? null)) {
 			self::restore($c['state']);
@@ -139,17 +159,17 @@ final class NuHomeHook
 		unset($_SESSION['nu_home_hook']);
 		$hash = self::hash($layout);
 		try {
-			$r = NuPhp::isolated(static fn() => NuPhp::run($p['php'], $hash, self::CODE));
+			$r = NuPhp::isolated(static fn() => NuPhp::run($p['php'], $hash, self::$code));
 			$errors = array_column($r['errors'], 'message');
-			if (trim($r['output']) !== '') NuDebugLog::write(self::CODE . " – output:\n" . $r['output']);
+			if (trim($r['output']) !== '') NuDebugLog::write(self::$code . " – output:\n" . $r['output']);
 		} catch (Throwable $e) {
-			$errors = [self::CODE . ': ' . $e->getMessage()];
+			$errors = [self::$code . ': ' . $e->getMessage()];
 		}
 		$errors = array_merge($errors, self::$problems);
 		if ($errors) {
 			self::reset();
 			self::$error = implode(' · ', $errors);
-			NuDebugLog::write(self::CODE . " – error:\n" . self::$error);
+			NuDebugLog::write(self::$code . " – error:\n" . self::$error);
 			return;
 		}
 		self::$ran = true;
@@ -169,7 +189,7 @@ final class NuHomeHook
 
 	private static function problem(string $msg): void
 	{
-		self::$problems[] = self::CODE . ': ' . $msg;
+		self::$problems[] = self::$code . ': ' . $msg;
 	}
 
 	/** A tile key a hook may change: built-in, own (c_), pinned, dynamic (x_). */
@@ -209,14 +229,15 @@ final class NuHomeHook
 	}
 
 	/**
-	 * A dynamic tile: group, label, hint, icon, color and exactly one target – form (+ record), page, procedure (+ run), url (+ newtab).
+	 * A dynamic tile: group, label, hint, icon, color and exactly one target – form (+ record), page, procedure (+ run), url (+ newtab),
+	 * report (id or code, 0.8.425).
 	 * Checked like an own tile of the tile editor; a refused tile is a problem of the hook (the page then shows none of its changes).
 	 */
 	public static function addTile(string $key, array $tile): void
 	{
 		if (!preg_match('/^x_[a-z0-9_]{1,37}$/', $key)) { self::problem(t('hook_err_xkey', $key)); return; }
 		if (count(self::$tiles) >= self::MAX) return;
-		$targets = array_values(array_filter(['form', 'page', 'procedure', 'url'], static fn($k) => trim((string)($tile[$k] ?? '')) !== ''));
+		$targets = array_values(array_filter(['form', 'page', 'procedure', 'url', 'report'], static fn($k) => trim((string)($tile[$k] ?? '')) !== ''));
 		if (count($targets) !== 1) { self::problem(t('hook_err_target', $key)); return; }
 		$kind = $targets[0];
 		$target = trim((string)$tile[$kind]);
@@ -225,6 +246,10 @@ final class NuHomeHook
 		}
 		if ($kind === 'procedure') {                                                   // a procedure code instead of its id
 			$id = nu_db()->value('SELECT zzzzsys_php_id FROM zzzzsys_php WHERE zzzzsys_php_id = ? OR sph_code = ?', [$target, $target]);
+			if ($id !== null) $target = (string)$id;
+		}
+		if ($kind === 'report') {                                                      // a report code instead of its id (0.8.425)
+			$id = nu_db()->tableExists(NuReport::TABLE) ? nu_db()->value('SELECT zzzzsys_report_id FROM zzzzsys_report WHERE zzzzsys_report_id = ? OR sre_code = ?', [$target, $target]) : null;
 			if ($id !== null) $target = (string)$id;
 		}
 		[$clean, $err] = NuHome::cleanTile(['label' => $tile['label'] ?? '', 'hint' => $tile['hint'] ?? '', 'icon' => $tile['icon'] ?? '', 'color' => $tile['color'] ?? '',

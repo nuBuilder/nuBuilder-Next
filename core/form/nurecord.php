@@ -206,9 +206,11 @@ final class NuRecord
 			}
 		}
 		$hash[$meta->primaryKey()] = $newId;
+		NuPhp::$openRecord = null;
 		NuPhp::run($meta->php('AS'), $hash, 'After Save');
+		$open = NuPhp::$openRecord !== null && NuPhp::$openRecord !== (string)$newId ? ['open_id' => NuPhp::$openRecord] : [];   // nuReturnNewRecord()
 
-		return ['ok' => true, 'record_id' => $newId] + NuPhp::result();
+		return ['ok' => true, 'record_id' => $newId] + $open + NuPhp::result();
 	}
 
 	/**

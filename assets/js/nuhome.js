@@ -83,7 +83,7 @@
 	});
 
 	// ================================================================ nuHome – JavaScript API of the start page (0.8.379)
-	// For the JavaScript of the procedure nunext_home (served as ?p=homejs, loaded after this file): nuHome.on('tile' | 'ready' |
+	// For the JavaScript of the procedure nu_home (served as ?p=homejs, loaded after this file): nuHome.on('tile' | 'ready' |
 	// 'search' | 'tab' | 'favourites' | 'customize' | 'view', fn), off, tiles(filter), tile(key), data (nuHomeSetData() of the PHP hook),
 	// view (0.8.420: the view in effect, a copy). 'tile' and 'ready' are replayed for callbacks added later; every callback runs in
 	// try/catch (console + toast for the globeadmin).
@@ -578,7 +578,7 @@
 	// Where a change goes: a personal layout → the layout; a shared / the built-in layout → the person's own view (overlay), for
 	// "Start page layout" admins also the layout itself ("Everyone" – chosen anew each time the panel opens).
 	var vp = document.getElementById('nuHomeViewPanel'), viewBtn = document.getElementById('nuHomeViewBtn');
-	var VP = {open: false, everyone: false, scopeDev: 'all', scopeTab: 'all', more: false, snap: null, undone: false, saveT: 0};
+	var VP = {open: false, everyone: false, scopeDev: 'all', scopeTab: 'all', more: false, snap: null, undone: false, saveT: 0, tab: store('nunext-home-cust-tab') || 'appearance'};
 	var STYLES = ['large', 'cards', 'compact', 'list', 'launcher', 'panels', 'table'];
 	var DESCS = [['auto', 'bi-magic'], ['inline', 'bi-text-paragraph'], ['tooltip', 'bi-chat-square-text'], ['hovercard', 'bi-window'], ['info', 'bi-info-circle'], ['off', 'bi-eye-slash']];
 	var NAVS = ['groups', 'tabs', 'sidebar', 'none'];
@@ -586,7 +586,8 @@
 		nav: 'home_v_nav', density: 'home_v_density', icon: 'home_v_icons', groupColors: 'home_v_group_colors', favStrip: 'home_v_fav_row', recentStrip: 'home_v_recent_row',
 		badges: 'home_v_badges', actions: 'home_v_actions'};
 	function sizeName(z) { return t('home_v_size_' + z); }
-	function target() { return VS.scope === 'user' ? 'layout' : (VS.editable && VP.everyone ? 'layout' : 'me'); }
+	// user start pages (0.8.425): the editor of an access level's page (scope level) changes that page; users keep their own view
+	function target() { return VS.scope === 'user' || VS.scope === 'level' ? 'layout' : (VS.editable && VP.everyone ? 'layout' : 'me'); }
 	function bag(z) {
 		if (target() === 'layout') {
 			if (!z) return VD;
@@ -635,7 +636,7 @@
 			else if (j.view) D.layout.view = j.view;
 			var s = vp && $('.nuHomeVpSaved', vp);
 			if (s) { s.classList.add('nuHomeVpShow'); setTimeout(function () { s.classList.remove('nuHomeVpShow'); }, 1600); }
-			if (tg === 'layout' && VS.scope !== 'user' && !VP.undone) {       // "for everyone": once per opening, with Undo
+			if (tg === 'layout' && VS.scope !== 'user' && VS.scope !== 'level' && !VP.undone) {       // "for everyone": once per opening, with Undo
 				VP.undone = true;
 				var snap = VP.snap;
 				toast(t('home_v_saved_everyone'), true, function () { VD = normView(snap); applyView(); drawPanel(); saveView('layout'); });
@@ -647,8 +648,9 @@
 		applyView(); drawPanel();
 		post({action: 'view_me_clear'}).then(function (j) { if (!j.ok) toast(j.message || t('home_saved_err'), false); });
 	}
-	function openPanel() {
+	function openPanel(tab) {
 		if (!vp) return;
+		if (tab) VP.tab = tab;                                      // V: Appearance (0.8.452)
 		VP.open = true; VP.everyone = false; VP.scopeDev = 'all'; VP.scopeTab = 'all'; VP.snap = clone(VD); VP.undone = false;
 		vp.hidden = false;
 		document.body.classList.add('nuHomeVpOpen');
@@ -666,10 +668,10 @@
 		if (viewBtn) { viewBtn.setAttribute('aria-expanded', 'false'); viewBtn.focus(); }
 		setTimeout(measure, 250);
 	}
-	if (viewBtn) viewBtn.addEventListener('click', function () { if (VP.open) closePanel(); else openPanel(); });
+	if (viewBtn) viewBtn.addEventListener('click', function () { if (VP.open) closePanel(); else openPanel(); });   // the last tab used
 	document.addEventListener('keydown', function (e) {
 		if (e.ctrlKey || e.metaKey || e.altKey || typing() || document.body.classList.contains('nuHomeEditing') || $('.modal.show')) return;
-		if ((e.key === 'v' || e.key === 'V') && viewBtn) { e.preventDefault(); if (VP.open) closePanel(); else openPanel(); }
+		if ((e.key === 'v' || e.key === 'V') && viewBtn) { e.preventDefault(); if (VP.open) closePanel(); else openPanel('appearance'); }
 		else if (e.key === 'Escape') { if (tipFor) hideTip(true); else if (VP.open) closePanel(); }
 	});
 	if (vp) vp.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !typing()) { e.stopPropagation(); closePanel(); } });
@@ -719,7 +721,7 @@
 		var focus = document.activeElement && vp.contains(document.activeElement) ? document.activeElement.getAttribute('data-f') : null;
 		var old = $('.nuHomeVpBody', vp), top = old ? old.scrollTop : 0;
 		var v = eff(size), tabbed = v.nav === 'tabs' || v.nav === 'sidebar', unit = panelUnit(), st = styleFor(unit, size, v), tg = target();
-		var secs = [];
+		var secs = [], lays = [], cont = [];   // tabs Appearance · Layouts · Content (0.8.452)
 
 		// layout: the saved layouts, Save as, ⋯ (name / visibility, delete, default for everyone); where changes go
 		var sel = el('select', {'class': 'form-select form-select-sm', id: 'nuHomeVpLayout', 'data-f': 'layout'});
@@ -745,21 +747,28 @@
 				}}, [icon(m[1] + ' me-2'), m[2]])]);
 			}))]) : null;
 		var store2 = [], sc = VS.scope;
-		if (sc === 'user') store2.push(el('span', {text: t('home_v_store_personal')}));
-		else if (!VS.editable) {
-			store2.push(el('span', {text: t('home_v_store_shared_user') + ' '}));
-			if (ovCount()) store2.push(link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine'));
-		} else store2.push(el('span', {text: tf('home_v_store_shared_admin', VS.name)}));
-		var layoutSec = [lbl('home_v_layout'), el('div', {'class': 'nuHomeVpRow'}, [el('label', {'class': 'visually-hidden', 'for': 'nuHomeVpLayout', text: t('home_v_layout')}), sel,
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', title: t('home_layout_saveas'), 'aria-label': t('home_layout_saveas'), 'data-f': 'saveas', onclick: function () { layoutDialog('saveas'); }}, [icon('bi-plus-lg')]), moreBox]),
-			el('p', {'class': 'nuHomeVpStore'}, [icon(sc === 'user' ? 'bi-person' : 'bi-people')].concat(store2))];
-		if (sc !== 'user' && VS.editable) {                         // admins of shared layouts: only me (default) or everyone using it
-			layoutSec.push(el('div', {'class': 'nuHomeVpTarget'}, [el('span', {text: t('home_v_applies_to')}),
-				seg('target', [['me', t('home_v_only_me')], ['all', tf('home_v_everyone', VS.name)]], VP.everyone ? 'all' : 'me', function (x) { VP.everyone = x === 'all'; drawPanel(); }, 'nuHomeSeg2')]));
-			if (VP.everyone) layoutSec.push(note([icon('bi-exclamation-triangle'), tf('home_v_everyone_note', VS.name)], true));
-			else if (ovCount()) layoutSec.push(note([tf('home_v_mine_count', ovCount()) + ' ', link(t('home_v_make_layout'), makeLayoutView, 'mklayout'), ' · ', link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine')]));
+		if (D.mode && D.mode !== 'admin') {                         // user start pages (0.8.425): one layout – no choice, no Save as
+			secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_layout'), el('p', {'class': 'nuHomeVpStore'}, D.mode === 'level'
+				? [icon('bi-people'), el('span', {text: tf('home_u_store_level', VS.name)})]
+				: [icon('bi-person'), el('span', {text: t('home_u_store_user') + ' '})].concat(ovCount() ? [link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine')] : []))]));
+		} else {
+			if (sc === 'user') store2.push(el('span', {text: t('home_v_store_personal')}));
+			else if (!VS.editable) {
+				store2.push(el('span', {text: t('home_v_store_shared_user') + ' '}));
+				if (ovCount()) store2.push(link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine'));
+			} else store2.push(el('span', {text: tf('home_v_store_shared_admin', VS.name)}));
+			var layoutSec = [lbl('home_v_layout'), el('div', {'class': 'nuHomeVpRow'}, [el('label', {'class': 'visually-hidden', 'for': 'nuHomeVpLayout', text: t('home_v_layout')}), sel,
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', title: t('home_layout_saveas'), 'aria-label': t('home_layout_saveas'), 'data-f': 'saveas', onclick: function () { layoutDialog('saveas'); }}, [icon('bi-plus-lg')]), moreBox]),
+				el('p', {'class': 'nuHomeVpStore'}, [icon(sc === 'user' ? 'bi-person' : 'bi-people')].concat(store2))];
+			lays.push(el('section', {'class': 'nuHomeVpSec'}, layoutSec));
+			if (sc !== 'user' && VS.editable) {                         // admins of shared layouts: only me (default) or everyone using it – on Appearance (0.8.452)
+				var tgt = [el('div', {'class': 'nuHomeVpTarget'}, [el('span', {text: t('home_v_applies_to')}),
+					seg('target', [['me', t('home_v_only_me')], ['all', tf('home_v_everyone', VS.name)]], VP.everyone ? 'all' : 'me', function (x) { VP.everyone = x === 'all'; drawPanel(); }, 'nuHomeSeg2')])];
+				if (VP.everyone) tgt.push(note([icon('bi-exclamation-triangle'), tf('home_v_everyone_note', VS.name)], true));
+				else if (ovCount()) tgt.push(note([tf('home_v_mine_count', ovCount()) + ' ', link(t('home_v_make_layout'), makeLayoutView, 'mklayout'), ' · ', link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine')]));
+				secs.push(el('section', {'class': 'nuHomeVpSec'}, tgt));
+			} else if (sc !== 'user' && ovCount()) secs.push(el('section', {'class': 'nuHomeVpSec'}, [note([link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine')])]));
 		}
-		secs.push(el('section', {'class': 'nuHomeVpSec'}, layoutSec));
 
 		// settings for: all screen sizes / only this one
 		var own = ownKeys(size), dev = {desktop: 'bi-display', tablet: 'bi-tablet', phone: 'bi-phone'}[size];
@@ -834,14 +843,30 @@
 		}
 		secs.push(el('section', {'class': 'nuHomeVpSec'}, look));
 
+		// content (0.8.452): the edit mode (tiles, groups, tabs of the layout) and a user's Personalise – the hidden page buttons start them
+		var editB = $('#nuHomeCustomize'), mineB = $('#nuHomeMine');
+		var start = function (b) { return function () { closePanel(); b.click(); }; };
+		if (editB) cont.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_c_edit'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_edit_hint')}),
+			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'edit', id: 'nuHomeVpEdit', onclick: start(editB)}, [icon('bi-pencil me-1'), t('home_c_edit_btn')])]));
+		if (mineB) cont.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_u_mine'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_mine_hint')}),
+			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'mine', id: 'nuHomeVpMine', onclick: start(mineB)}, [icon('bi-person-gear me-1'), t('home_u_mine')])]));
+		var tabs = [['appearance', t('home_c_tab_appearance'), secs], ['content', t('home_c_tab_content'), cont], ['layouts', t('home_layouts'), lays]]   // order: owner's choice (0.8.453).filter(function (x) { return x[2].length; });
+		if (!tabs.some(function (x) { return x[0] === VP.tab; })) VP.tab = tabs[0][0];
+		var cur = tabs.filter(function (x) { return x[0] === VP.tab; })[0];
+
 		vp.textContent = '';
-		vp.appendChild(el('div', {'class': 'nuHomeVpHead'}, [el('h2', {id: 'nuHomeVpTitle', tabindex: '-1'}, [icon('bi-sliders2'), t('home_v_view')]),
+		vp.appendChild(el('div', {'class': 'nuHomeVpHead'}, [el('h2', {id: 'nuHomeVpTitle', tabindex: '-1'}, [icon('bi-sliders2'), t('home_customize')]),
 			el('button', {type: 'button', 'class': 'btn-close', 'aria-label': t('close'), title: t('close'), 'data-f': 'close', onclick: closePanel})]));
-		var body = el('div', {'class': 'nuHomeVpBody'}, secs);
+		if (tabs.length > 1) vp.appendChild(el('div', {'class': 'nav nav-tabs nuHomeVpTabs', role: 'tablist'}, tabs.map(function (x) {
+			return el('button', {type: 'button', 'class': 'nav-link' + (x[0] === VP.tab ? ' active' : ''), role: 'tab', 'aria-selected': x[0] === VP.tab ? 'true' : 'false',
+				'data-f': 'tab:' + x[0], id: 'nuHomeVpTab-' + x[0], onclick: function () { VP.tab = x[0]; store('nunext-home-cust-tab', x[0]); drawPanel(); }}, [x[1]]);
+		})));
+		var body = el('div', {'class': 'nuHomeVpBody', role: tabs.length > 1 ? 'tabpanel' : null, 'aria-labelledby': tabs.length > 1 ? 'nuHomeVpTab-' + VP.tab : null}, cur[2]);
 		vp.appendChild(body);
-		vp.appendChild(el('div', {'class': 'nuHomeVpFoot'}, [
+		if (VP.tab === 'appearance') vp.appendChild(el('div', {'class': 'nuHomeVpFoot'}, [
 			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-f': 'reset', onclick: resetView}, [icon('bi-arrow-counterclockwise me-1'), t('home_v_reset')]),
 			el('span', {'class': 'nuHomeVpSaved', role: 'status'}, [icon('bi-check2 me-1'), t('home_v_saved')])]));
+		if (old && old.getAttribute('aria-labelledby') !== body.getAttribute('aria-labelledby')) top = 0;   // another tab: from the top
 		body.scrollTop = top;
 		if (focus) { var f = vp.querySelector('[data-f="' + focus.replace(/["\\]/g, '') + '"]'); if (f) f.focus({preventScroll: true}); }
 		// the icon samples: the group colour of the first group
@@ -872,6 +897,75 @@
 		if (typeof ResizeObserver === 'function' && wrapEl) new ResizeObserver(measure).observe(wrapEl); else window.addEventListener('resize', measure);
 		measure();
 	}
+
+	// ================================================================ user start pages (0.8.425)
+	// The editor's "Start page for" choice; Personalise: a user stars and hides tiles of his start page (saved with Done)
+	var forSel = document.getElementById('nuHomeFor');
+	if (forSel) forSel.addEventListener('change', function () { var o = forSel.options[forSel.selectedIndex]; if (o && o.getAttribute('data-url')) window.location.href = o.getAttribute('data-url'); });
+	var mineBtn = document.getElementById('nuHomeMine');
+	if (mineBtn && D.mine && viewEl) (function () {
+		var M = null, bar = null, hiddenBox = document.getElementById('nuHomeMineHidden');
+		function has(list, k) { return list.indexOf(k) >= 0; }
+		function toggle(list, k) { var i = list.indexOf(k); if (i >= 0) list.splice(i, 1); else list.push(k); }
+		function paint(w) {
+			var k = w.getAttribute('data-nu-wrap'), fav = has(M.fav, k), gone = has(M.hide, k);
+			w.classList.toggle('nuHomeMineGone', gone);
+			var s = $('.nuHomeMineStar', w), h2 = $('.nuHomeMineEye', w);
+			s.setAttribute('aria-pressed', fav ? 'true' : 'false');
+			s.title = t(fav ? 'home_u_mine_unfav' : 'home_u_mine_fav'); s.setAttribute('aria-label', s.title);
+			s.firstChild.className = 'bi ' + (fav ? 'bi-star-fill' : 'bi-star');
+			h2.setAttribute('aria-pressed', gone ? 'true' : 'false');
+			h2.title = t(gone ? 'home_show' : 'home_u_mine_hide'); h2.setAttribute('aria-label', h2.title);
+			h2.firstChild.className = 'bi ' + (gone ? 'bi-eye' : 'bi-eye-slash');
+		}
+		function tools(w) {
+			var k = w.getAttribute('data-nu-wrap');
+			var star = el('button', {type: 'button', 'class': 'btn nuHomeMineStar'}, [icon('bi-star')]);
+			var eye = el('button', {type: 'button', 'class': 'btn nuHomeMineEye'}, [icon('bi-eye-slash')]);
+			star.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); toggle(M.fav, k); paint(w); });
+			eye.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); toggle(M.hide, k); paint(w); });
+			w.appendChild(el('div', {'class': 'nuHomeMineTools'}, [star, eye]));
+			paint(w);
+		}
+		function open() {
+			M = {fav: D.mine.fav.slice(), hide: D.mine.hide.slice()};
+			closePanel();
+			hideTip(true);
+			document.body.classList.add('nuHomeMineOn');
+			bar = el('div', {'class': 'alert alert-primary d-flex flex-wrap align-items-center gap-2 py-2 nuHomeMineBar', role: 'region', 'aria-label': t('home_u_mine')}, [
+				icon('bi-person-gear'), el('span', {'class': 'me-auto', text: t('home_u_mine_bar')}),
+				D.mine.own ? el('button', {type: 'button', 'class': 'btn btn-sm btn-link', id: 'nuHomeMineReset', onclick: reset}, [t('home_u_mine_reset')]) : null,
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeMineCancel', onclick: function () { window.location.reload(); }}, [t('cancel')]),
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeMineDone', onclick: save}, [icon('bi-check-lg me-1'), t('home_done')])]);
+			var row = $('.nuHomeSearchRow');
+			row.parentNode.insertBefore(bar, row);
+			row.hidden = true;
+			if (hiddenBox) hiddenBox.hidden = false;
+			$$('.nuHomeTileWrap', viewEl).forEach(tools);
+			$$('[data-nu-unhide]', hiddenBox || document).forEach(function (c) {
+				c.addEventListener('click', function () { toggle(M.hide, c.getAttribute('data-nu-unhide')); c.classList.toggle('nuHomeMineBack', !has(M.hide, c.getAttribute('data-nu-unhide'))); });
+			});
+			if ($('.nuHomeMineStar', viewEl)) $('.nuHomeMineStar', viewEl).focus();
+		}
+		function save() {
+			$('#nuHomeMineDone').disabled = true;
+			post({action: 'mine', fav: M.fav, hide: M.hide}).then(function (j) {
+				if (j.ok) { window.location.reload(); return; }
+				$('#nuHomeMineDone').disabled = false;
+				toast(j.message || t('home_saved_err'), false);
+			}).catch(function (e) { $('#nuHomeMineDone').disabled = false; toast(t('home_saved_err') + ' ' + e.message, false); });
+		}
+		function reset() {
+			if (!window.confirm(t('home_u_mine_reset_confirm'))) return;
+			post({action: 'mine_clear'}).then(function () { window.location.reload(); });
+		}
+		// while personalising a click on a tile does not open it
+		viewEl.addEventListener('click', function (e) {
+			if (!document.body.classList.contains('nuHomeMineOn') || e.target.closest('.nuHomeMineTools')) return;
+			if (e.target.closest('.nuHomeTileWrap, .nuHomeChip')) { e.preventDefault(); e.stopPropagation(); }
+		}, true);
+		mineBtn.addEventListener('click', open);
+	})();
 
 	// ================================================================ edit mode (0.8.263): the start page itself is edited
 	// Customize turns the page into an editable copy of itself: tiles and groups are dragged (mouse; on touch screens hold
@@ -1152,16 +1246,17 @@
 		if (fav) attrs['data-fav'] = '1';
 		// favourite: a star in the corner that stays visible (the tools with ★ show on hover)
 		var mark = fav && !hidden ? el('span', {'class': 'nuHeFavMark', title: t('home_fav'), 'aria-hidden': 'true'}, [icon('bi-star-fill')]) : null;
+		var cnd = L.custom[key] && L.custom[key].cond && Object.keys(L.custom[key].cond).length ? el('span', {'class': 'nuHeCondMark', title: condText(L.custom[key].cond), 'aria-label': condText(L.custom[key].cond), role: 'img'}, [icon('bi-funnel-fill')]) : null;
 		if (isList(size)) {
 			return el('div', Object.assign({'class': 'list-group-item d-flex align-items-center gap-3 nuHeItem'}, attrs), [tileIcon(i, false),
-				el('span', {'class': 'flex-grow-1 min-w-0'}, [el('span', {'class': 'd-block text-body'}, [i.label, fav ? el('i', {'class': 'bi bi-star-fill ms-2 nuHeFavInline', 'aria-hidden': 'true'}) : null]), i.hint ? el('span', {'class': 'd-block small text-body-secondary', text: i.hint}) : null]), tools]);
+				el('span', {'class': 'flex-grow-1 min-w-0'}, [el('span', {'class': 'd-block text-body'}, [i.label, fav ? el('i', {'class': 'bi bi-star-fill ms-2 nuHeFavInline', 'aria-hidden': 'true'}) : null, cnd]), i.hint ? el('span', {'class': 'd-block small text-body-secondary', text: i.hint}) : null]), tools]);
 		}
 		var body = size === 'compact'
 			? el('div', {'class': 'card-body d-flex align-items-center gap-2 py-2'}, [tileIcon(i, true), el('span', {'class': 'flex-grow-1 text-body text-truncate', text: i.label})])
 			: el('div', {'class': 'card-body d-flex align-items-center gap-3'}, [tileIcon(i, false), el('div', {'class': 'flex-grow-1'}, [
 				el('div', {'class': 'fs-5 fw-normal lh-sm text-body', text: i.label}), i.hint ? el('div', {'class': 'small text-body-secondary mt-1', text: i.hint}) : null])]);
 		return el('div', Object.assign({'class': (size === 'compact' ? 'col-6 col-md-4 col-xl-3' : 'col-sm-6 col-lg-4') + ' nuHeItem'}, attrs), [
-			el('div', {'class': 'card nu-tile h-100 shadow-sm' + (i.own ? ' nuHeOwn' : '')}, [body, mark, tools])]);
+			el('div', {'class': 'card nu-tile h-100 shadow-sm' + (i.own ? ' nuHeOwn' : '')}, [body, mark, cnd, tools])]);
 	}
 	/** Tiles shown as list rows: List, Wide list, List in 2 columns (0.8.363). */
 	function isList(size) { return size === 'list' || size === 'listwide' || size === 'list2'; }
@@ -1187,8 +1282,9 @@
 		return el('section', {'class': 'nuHomeGroup nuHeGroup mb-4', 'data-id': g.id, 'data-drag': 'group'}, [
 			el('div', {'class': 'nuHeGroupHead'}, [
 				el('button', {type: 'button', 'class': 'btn nuHeGrip', title: t('home_drag'), 'aria-label': t('home_drag')}, [icon('bi-grip-vertical')]),
-				title, tabSel,
-				toolBtn('bi-arrow-up', t('home_move_up'), function () { swapGroup(g, -1); }, gi <= 0 ? 'disabled' : ''),
+			title, tabSel,
+			D.mode === 'level' ? toolBtn(g.cond && Object.keys(g.cond).length ? 'bi-funnel-fill' : 'bi-funnel', g.cond && Object.keys(g.cond).length ? condText(g.cond) : t('home_u_cond_group'), function () { condDialog(g); }, g.cond && Object.keys(g.cond).length ? 'nuHeCondOn' : '') : null,
+			toolBtn('bi-arrow-up', t('home_move_up'), function () { swapGroup(g, -1); }, gi <= 0 ? 'disabled' : ''),
 				toolBtn('bi-arrow-down', t('home_move_down'), function () { swapGroup(g, 1); }, gi < 0 || gi >= mine.length - 1 ? 'disabled' : ''),
 				toolBtn('bi-trash', t('home_group_delete'), function () {
 					if (g.tiles.length && !window.confirm(t('home_group_delete_confirm'))) return;
@@ -1269,10 +1365,6 @@
 			el('option', {value: 'groups', text: t('home_display_groups')}), el('option', {value: 'tabs', text: t('home_display_tabs')})]);
 		displaySel.value = L.display;
 		displaySel.addEventListener('change', function () { L.display = displaySel.value; if (!activeTab && L.tabs[0]) activeTab = L.tabs[0].id; changed(); render(); });
-		var sizeSel = el('select', {'class': 'form-select form-select-sm w-auto', id: 'nuHomeSize', 'aria-label': t('home_size')}, [
-			el('option', {value: 'large', text: t('home_size_large')}), el('option', {value: 'compact', text: t('home_size_compact')}), el('option', {value: 'list', text: t('home_size_list')}), el('option', {value: 'listwide', text: t('home_size_listwide')}), el('option', {value: 'list2', text: t('home_size_list2')})]);
-		sizeSel.value = L.size;
-		sizeSel.addEventListener('change', function () { L.size = sizeSel.value; changed(); render(); });
 		if (editFav && !L.fav.length) editFav = false;
 		var favSel = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuHomeFavBtn' + (editFav ? ' active' : ''), id: 'nuHomeEditFav',
 			'aria-pressed': editFav ? 'true' : 'false', disabled: L.fav.length ? null : 'disabled', title: L.fav.length ? t('home_fav_only') : t('home_fav_none_edit'),
@@ -1284,11 +1376,11 @@
 				el('span', {'class': 'fw-semibold me-1 text-nowrap'}, [icon('bi-pencil-square me-2 text-primary'), el('span', {'class': 'd-none d-xxl-inline', text: t('home_editing')}),
 					el('span', {'class': 'nuInfoTip ms-1 fw-normal', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', title: t('home_edit_hint'), 'aria-label': t('home_edit_hint')}, [icon('bi-info-circle')])]),
 				el('label', {'class': 'visually-hidden', 'for': 'nuHomeDisplay', text: t('home_display')}), displaySel,
-				el('label', {'class': 'visually-hidden', 'for': 'nuHomeSize', text: t('home_size')}), sizeSel, favSel,
+				favSel,                                                  // tile style: Customise → Appearance (0.8.452)
 				el('span', {'class': 'flex-grow-1'}),
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddGroup', title: t('home_add_group'), 'aria-label': t('home_add_group'), onclick: addGroup}, [icon('bi-collection me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_group')})]),
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddTile', title: t('home_add_tile'), 'aria-label': t('home_add_tile'), onclick: function () { tileDialog(null); }}, [icon('bi-plus-square me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_tile')})]),
-				startFromMenu(),                                                 // Start from ▾ – profiles (0.8.385, replaces Reset)
+				Object.keys(D.presets || {}).length ? startFromMenu() : null,    // Start from ▾ – profiles (0.8.385, replaces Reset); none on user start pages
 				el('span', {'class': 'd-inline-flex gap-2 ms-auto'}, [                   // Cancel and Done stay together
 					el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeCancel', onclick: cancel}, [t('cancel')]),
 					el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeSave', 'data-nu-save': true, onclick: save}, [icon('bi-check-lg me-1'), t('home_done')])])
@@ -1623,6 +1715,67 @@
 			el('button', {type: 'button', 'class': 'btn-close btn-sm ms-1', 'aria-label': t('close'), onclick: function () { pfNote = null; render(); }})]);
 	}
 
+	// ---------------------------------------------------------------- conditions of tiles and groups (user start pages, 0.8.425)
+	var COND = ['permission', 'team', 'department', 'position'];
+	/** Who sees a tile / group: one field per kind (values separated by commas, suggestions from D.cond); value() → {kind: [values]}. */
+	function condFields(cond) {
+		var inputs = {};
+		var rows = COND.map(function (k) {
+			var id = 'htCond_' + k, list = 'htCondList_' + k;
+			inputs[k] = el('input', {'class': 'form-control form-control-sm', id: id, value: (cond[k] || []).join(', '), list: list, autocomplete: 'off', spellcheck: 'false', placeholder: t('home_u_cond_values')});
+			return el('div', {'class': 'col-sm-6'}, [el('label', {'class': 'form-label small mb-1', 'for': id, text: t('home_u_cond_' + k)}), inputs[k],
+				el('datalist', {id: list}, ((D.cond || {})[k] || []).map(function (v) { return el('option', {value: v}); }))]);
+		});
+		// custom user fields (0.8.454): one row per field, stored as cond.fields = {code: [values]}
+		var fin = {};
+		((D.cond || {}).fields || []).forEach(function (fd) {
+			var id = 'htCondF_' + fd.code, list = 'htCondFList_' + fd.code;
+			fin[fd.code] = el('input', {'class': 'form-control form-control-sm', id: id, value: ((cond.fields || {})[fd.code] || []).join(', '), list: list, autocomplete: 'off', spellcheck: 'false', placeholder: t('home_u_cond_values')});
+			rows.push(el('div', {'class': 'col-sm-6'}, [el('label', {'class': 'form-label small mb-1', 'for': id, text: fd.label}), fin[fd.code],
+				el('datalist', {id: list}, (fd.values || []).map(function (v) { return el('option', {value: v}); }))]));
+		});
+		var box = el('fieldset', {'class': 'border rounded p-2 mb-2 nuHeCond'}, [el('legend', {'class': 'float-none w-auto px-1 mb-0 small fw-semibold'}, [icon('bi-funnel me-1'), t('home_u_cond')]),
+			el('div', {'class': 'form-text mt-0 mb-2', text: t('home_u_cond_hint')}), el('div', {'class': 'row g-2'}, rows)]);
+		var split = function (s) { return s.split(',').map(function (x) { return x.trim(); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 20); };
+		return {el: box, value: function () {
+			var out = {};
+			COND.forEach(function (k) {
+				var v = split(inputs[k].value);
+				if (v.length) out[k] = v;
+			});
+			var fv = {};
+			Object.keys(fin).forEach(function (c) { var v = split(fin[c].value); if (v.length) fv[c] = v; });
+			if (Object.keys(fv).length) out.fields = fv;
+			return out;
+		}};
+	}
+	function condText(cond) {
+		var labels = {};
+		((D.cond || {}).fields || []).forEach(function (fd) { labels[fd.code] = fd.label; });
+		return COND.filter(function (k) { return cond[k] && cond[k].length; }).map(function (k) { return t('home_u_cond_' + k) + ': ' + cond[k].join(', '); })
+			.concat(Object.keys(cond.fields || {}).map(function (c) { return (labels[c] || c) + ': ' + cond.fields[c].join(', '); })).join(' · ');
+	}
+	/** The conditions of a group (a small dialog). */
+	function condDialog(g) {
+		var f = condFields(g.cond || {});
+		var ok = el('button', {type: 'button', 'class': 'btn btn-primary btn-sm'}, [t('ok')]);
+		var m = el('div', {'class': 'modal fade', tabindex: '-1', 'aria-labelledby': 'nuHomeCondTitle', 'aria-hidden': 'true'}, [
+			el('div', {'class': 'modal-dialog'}, [el('div', {'class': 'modal-content'}, [
+				el('div', {'class': 'modal-header py-2'}, [el('h2', {'class': 'modal-title h6', id: 'nuHomeCondTitle', text: t('home_u_cond_group') + (g.title ? ': ' + g.title : '')}),
+					el('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('close')})]),
+				el('div', {'class': 'modal-body'}, [f.el]),
+				el('div', {'class': 'modal-footer py-2'}, [el('button', {type: 'button', 'class': 'btn btn-outline-secondary btn-sm', 'data-bs-dismiss': 'modal', text: t('cancel')}), ok])])])]);
+		document.body.appendChild(m);
+		var md = nuBs.modal(m);
+		m.addEventListener('hidden.bs.modal', function () { md.dispose(); m.remove(); });
+		ok.addEventListener('click', function () {
+			var v = f.value();
+			if (Object.keys(v).length) g.cond = v; else delete g.cond;
+			changed(); md.hide(); render();
+		});
+		md.show();
+	}
+
 	// ---------------------------------------------------------------- own tile dialog
 	var modal = null;
 	function tileDialog(key) {
@@ -1647,8 +1800,10 @@
 		color.className = 'form-control form-control-color form-control-sm';
 		var noColor = el('input', {'class': 'form-check-input', type: 'checkbox', id: 'htNoColor'});
 		noColor.checked = !c.color;
-		var kinds = [['form', t('home_kind_form')], ['page', t('home_kind_page')], ['procedure', t('home_kind_procedure')], ['url', t('home_kind_url')]];
-		if (!key) kinds.unshift(['builtin', t('home_kind_builtin')]);   // a page / action of nuBuilder Next that is not on the page yet (0.8.321)
+		var kinds = [['form', t('home_kind_form')], ['report', t('home_kind_report')], ['page', t('home_kind_page')], ['procedure', t('home_kind_procedure')], ['url', t('home_kind_url')]];
+		if (!(D.reports || []).length && c.kind !== 'report') kinds.splice(1, 1);
+		if (!key && Object.keys(D.catalog || {}).length) kinds.unshift(['builtin', t('home_kind_builtin')]);   // a page / action of nuBuilder Next that is not on the page yet (0.8.321)
+		if (!key && c.kind === 'builtin' && kinds[0][0] !== 'builtin') c.kind = 'form';
 		var kind = sel('htKind', kinds, c.kind);
 		var placed = {};
 		L.groups.forEach(function (g) { g.tiles.forEach(function (k) { placed[k] = true; }); });
@@ -1663,6 +1818,8 @@
 		var form = sel('htForm', D.forms.map(function (f) { return [f.id, f.label]; }), c.kind === 'form' ? c.target : '');
 		var record = inp('htRecord', c.record, {maxlength: '25', placeholder: '-1'});
 		var page = sel('htPage', D.pages.map(function (p) { return [p, p]; }), c.kind === 'page' ? c.target : '');
+		var report = sel('htReport', (D.reports || []).map(function (p) { return [p.id, p.label]; }), c.kind === 'report' ? c.target : '');
+		var condBox = D.mode === 'level' ? condFields(c.cond || {}) : null;   // user start pages (0.8.425): who sees the tile
 		var proc = sel('htProc', D.procedures.map(function (p) { return [p.id, p.label]; }), c.kind === 'procedure' ? c.target : '');
 		var run = sel('htRun', [['window', t('home_run_window')], ['hidden', t('home_run_hidden')]], c.run);
 		var url = inp('htUrl', c.kind === 'url' ? c.target : '', {maxlength: '500', placeholder: 'https://…'});
@@ -1683,18 +1840,21 @@
 			own,
 			field('htForm', t('home_tile_form'), form), field('htRecord', t('home_tile_record'), record, t('home_tile_record_hint')),
 			field('htPage', t('home_tile_page'), page),
+			field('htReport', t('home_tile_report'), report),
 			field('htProc', t('home_tile_procedure'), proc), field('htRun', t('home_tile_run'), run),
 			field('htUrl', t('home_tile_url'), url, t('home_tile_url_hint')),
 			el('div', {'class': 'form-check mb-2 nuHomeField', 'data-for': 'htNewtab'}, [newtab, el('label', {'class': 'form-check-label small', 'for': 'htNewtab', text: t('home_tile_newtab')})]),
+			condBox ? condBox.el : null,
 			err
 		]);
 		function sync() {
-			var k = kind.value, showFor = {builtin: ['htBuiltin'], form: ['htForm', 'htRecord', 'htNewtab'], page: ['htPage', 'htNewtab'], procedure: ['htProc', 'htRun'], url: ['htUrl', 'htNewtab']}[k];
+			var k = kind.value, showFor = {builtin: ['htBuiltin'], form: ['htForm', 'htRecord', 'htNewtab'], report: ['htReport', 'htNewtab'], page: ['htPage', 'htNewtab'], procedure: ['htProc', 'htRun'], url: ['htUrl', 'htNewtab']}[k];
 			$$('.nuHomeField', body).forEach(function (f) {
 				var id = f.getAttribute('data-for');
-				if (['htBuiltin', 'htForm', 'htRecord', 'htPage', 'htProc', 'htRun', 'htUrl', 'htNewtab'].indexOf(id) >= 0) f.hidden = showFor.indexOf(id) < 0;
+				if (['htBuiltin', 'htForm', 'htRecord', 'htPage', 'htReport', 'htProc', 'htRun', 'htUrl', 'htNewtab'].indexOf(id) >= 0) f.hidden = showFor.indexOf(id) < 0;
 			});
 			own.hidden = k === 'builtin';
+			if (condBox) condBox.el.hidden = k === 'builtin';
 			color.disabled = noColor.checked;
 		}
 		kind.addEventListener('change', sync);
@@ -1723,9 +1883,10 @@
 				return;
 			}
 			var tile = {label: label.value.trim(), hint: hint.value.trim(), icon: ic.value.trim() || 'bi-star', color: noColor.checked ? '' : color.value,
-				kind: k, target: {form: form.value, page: page.value, procedure: proc.value, url: url.value.trim()}[k], record: k === 'form' ? record.value.trim() : '',
+				kind: k, target: {form: form.value, report: report.value, page: page.value, procedure: proc.value, url: url.value.trim()}[k], record: k === 'form' ? record.value.trim() : '',
 				run: run.value, newtab: k !== 'procedure' && newtab.checked};
-			var problem = !tile.label ? t('home_tile_label') : (!tile.target ? ({form: t('home_tile_form'), page: t('home_tile_page'), procedure: t('home_tile_procedure'), url: t('home_tile_url')}[k]) : '');
+			if (condBox) { var cv = condBox.value(); if (Object.keys(cv).length) tile.cond = cv; }
+			var problem = !tile.label ? t('home_tile_label') : (!tile.target ? ({form: t('home_tile_form'), report: t('home_tile_report'), page: t('home_tile_page'), procedure: t('home_tile_procedure'), url: t('home_tile_url')}[k]) : '');
 			if (!problem && k === 'url' && !/^(https?:\/\/\S+|index\.php\?\S*)$/i.test(tile.target)) problem = t('home_tile_url_hint');
 			if (!/^bi-[a-z0-9-]{1,40}$/.test(tile.icon)) problem = t('home_tile_icon');
 			if (problem) { err.hidden = false; err.textContent = problem; return; }

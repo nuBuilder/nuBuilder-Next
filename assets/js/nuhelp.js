@@ -114,6 +114,7 @@
 			if (visible && (own || !subs.length)) hits++;
 			sec.hidden = !visible; show(sec, visible);
 		});
+		body.classList.toggle('nuHelpSearching', words.length > 0);   // both tabs of the function reference are shown
 		if (words.length) highlight(body, words);
 		none.classList.toggle('d-none', !words.length || hits > 0);
 		count.textContent = words.length ? (M.found || '%d found').replace('%d', hits) : '';
@@ -131,19 +132,26 @@
 	function fnFilter(sec, words) {
 		Array.prototype.forEach.call(sec.querySelectorAll('[data-nu-search-skip]'), function (el) { el.hidden = words.length > 0; });   // own search + A–Z index
 		Array.prototype.forEach.call(sec.querySelectorAll('.nuFnGroup'), function (grp) {
-			var fns = grp.querySelectorAll('.nuFn'), h = grp.querySelector('h3'), all = !words.length || matches(h ? h.textContent : '', words), n = 0;
+			var fns = grp.querySelectorAll('.nuFn'), h = grp.querySelector('h4'), all = !words.length || matches(h ? h.textContent : '', words), n = 0;
 			Array.prototype.forEach.call(fns, function (f) {
-				var ok = all || matches(f.textContent, words);
+				var ok = all || matches(fnText(f), words);
 				f.classList.toggle('nuFnOutG', !ok);
 				if (ok) n++;
 			});
 			grp.nuFnShown = words.length ? n : undefined;
+			grp.classList.toggle('nuFnGroupOut', words.length > 0 && n === 0);
+		});
+		// the tabs PHP / JavaScript (0.8.456): a tab counts as a part of the index – its matches decide whether it is listed
+		Array.prototype.forEach.call(sec.querySelectorAll('.nuFnPane'), function (pane) {
+			var n = 0;
+			Array.prototype.forEach.call(pane.querySelectorAll('.nuFnGroup'), function (g) { n += g.nuFnShown || 0; });
+			pane.nuFnShown = words.length ? n : undefined;
 		});
 	}
 
 	/** The search field of one reference: filters its functions (name, signature, description, example). */
 	Array.prototype.forEach.call(body.querySelectorAll('[data-nu-fn-search]'), function (box) {
-		var sec = box.closest('section'), cnt = sec.querySelector('[data-nu-fn-count]'), noneEl = sec.querySelector('.nuFnNone');
+		var sec = box.closest('.nuFnPane') || box.closest('section'), cnt = sec.querySelector('[data-nu-fn-count]'), noneEl = sec.querySelector('.nuFnNone');
 		var fns = Array.prototype.slice.call(sec.querySelectorAll('.nuFn')), tmr;
 		function filter() {
 			var words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean), shown = 0;
@@ -177,7 +185,7 @@
 		var t = document.getElementById(a.getAttribute('href').slice(1));
 		if (!t) return;
 		if (t.classList.contains('nuFnOutL')) {
-			var box = t.closest('section').querySelector('[data-nu-fn-search]');
+			var box = (t.closest('.nuFnPane') || t.closest('section')).querySelector('[data-nu-fn-search]');
 			if (box) { box.value = ''; box.nuFnFilter(); }
 		}
 		if (t.classList.contains('nuFnOutG') || t.closest('[hidden]')) { input.value = ''; run(); }
@@ -209,8 +217,53 @@
 		Array.prototype.forEach.call(toc.querySelectorAll('a.active'), function (x) { x.classList.remove('active'); });
 		a.classList.add('active');
 	});
+	/** Text of a function card for the search – without "Also see" (names of other functions). */
+	function fnText(f) {
+		if (f.nuFnText === undefined) { var see = f.querySelector('.nuFnSee'); f.nuFnText = see ? f.textContent.replace(see.textContent, '') : f.textContent; }
+		return f.nuFnText;
+	}
+	// ------------------------------------------------------------------ tabs of the function reference (0.8.456)
+	function fnTab(paneId) {
+		var pane = document.getElementById(paneId);
+		if (!pane) return;
+		Array.prototype.forEach.call(body.querySelectorAll('.nuFnPane'), function (x) { x.classList.toggle('active', x === pane); });
+		Array.prototype.forEach.call(body.querySelectorAll('[data-nu-fn-tab]'), function (b) {
+			var on = b.getAttribute('data-nu-fn-tab') === paneId;
+			b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+		});
+		try { localStorage.setItem('nunext-help-fntab', paneId); } catch (e) { /* storage blocked */ }
+	}
+	/** An element inside a tab that is not shown: open that tab first (links to #fn-…, #ref-js-…, the index). */
+	function reveal(el) {
+		var pane = el && el.closest ? el.closest('.nuFnPane') : null;
+		if (pane && !pane.classList.contains('active')) fnTab(pane.id);
+	}
+	Array.prototype.forEach.call(body.querySelectorAll('[data-nu-fn-tab]'), function (b) {
+		b.addEventListener('click', function () { fnTab(b.getAttribute('data-nu-fn-tab')); });
+	});
+	document.addEventListener('click', function (e) {
+		var a = e.target.closest && e.target.closest('a[href^="#"]');
+		if (!a) return;
+		var t = document.getElementById(a.getAttribute('href').slice(1));
+		if (t) reveal(t);
+	}, true);
+	window.addEventListener('hashchange', function () {
+		var t = document.getElementById(location.hash.slice(1));
+		if (t && t.closest('.nuFnPane') && !t.closest('.nuFnPane').classList.contains('active')) { reveal(t); t.scrollIntoView({block: 'start', behavior: 'instant'}); }
+	});
+	try {
+		var last = localStorage.getItem('nunext-help-fntab');
+		if (last && document.getElementById(last) && !location.hash) fnTab(last);
+	} catch (e) { /* storage blocked */ }
+
 	if (location.hash) {
 		var t = document.getElementById(location.hash.slice(1));
-		if (t) setTimeout(function () { t.scrollIntoView(); }, 0);
+		if (t) {
+			// opened with #target: jump without the smooth scroll of the page (a long way on this page), also after images / fonts
+			var root = document.documentElement, jump = function () { t.scrollIntoView({block: 'start', behavior: 'instant'}); };
+			root.style.scrollBehavior = 'auto';
+			reveal(t); setTimeout(jump, 0);
+			window.addEventListener('load', function () { setTimeout(function () { jump(); root.style.scrollBehavior = ''; }, 50); });
+		}
 	}
 })();

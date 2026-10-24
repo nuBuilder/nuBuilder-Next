@@ -160,7 +160,7 @@
 			<li><strong>Removing</strong> a form crosses its row out; it disappears when you save. Until then the same button brings it back.</li>
 			<li><strong>Procedures</strong> and <strong>reports</strong>: on their own tabs.</li>
 			<li><strong>Use two-factor authentication</strong>: users of this level confirm the login with an authenticator app or an e-mail code.</li>
-			<li>The level's <strong>start form</strong> (nuBuilder's <em>home form</em>) is what its users see after signing in.</li>
+			<li>The level's <strong>start form</strong> (nuBuilder's <em>home form</em>) opens in nuBuilder after signing in; in nuBuilder Next it is the first tile of the level's automatic start page (next lesson).</li>
 			<li>An access level with users cannot be deleted. <em>Clone</em> copies it with all rights – the quickest way to a similar level.</li>
 		</ul>
 		<div class="tut-task">
@@ -170,6 +170,26 @@
 			</ol>
 		</div>
 		<p><a data-help="access">Access levels in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="user-start-pages" data-right="homelayout">
+		<h3>Start pages of users</h3>
+		<p>Users without an admin role get a tile start page of their access level. Until you set one up, it shows the level's forms and reports automatically. Each access level can have its own page, and one default page serves all levels without their own.</p>
+		<ul>
+			<li>Open an access level and click <strong>Start page</strong> (or <em>Access levels</em> ▾ → <em>Start pages of users</em>). The page shows what its users would see – only tiles their rights allow.</li>
+			<li><strong>Customise</strong> works as on your own start page: groups, tabs, tiles for forms, <strong>reports</strong>, procedures and links. <em>Done</em> saves the page for that access level.</li>
+			<li><strong>Only for</strong>: a tile or a whole group (the funnel next to its name) can be limited to a permission item, team, department or position. The editor marks such tiles with a funnel but shows them all.</li>
+			<li>Users <strong>personalise</strong> their page themselves: favourites and tiles they hide – only for them.</li>
+		</ul>
+		<div class="tut-task">
+			<ol>
+				<li>Look at the examples of the sample data: <a data-open="home" data-args="for=sample_sales">sample_sales</a> (favourites, a group only for a permission item), <a data-open="home" data-args="for=sample_manager">sample_manager</a> (two tabs, a group only for a team) and <a data-open="home" data-args="for=sample_editor">sample_editor</a> (a list in two columns).</li>
+				<li>Open <a data-open="home" data-args="for=sample_viewer">the start page of <code>sample_viewer</code></a>: the automatic page with forms and reports.</li>
+				<li>Customise: add a tile for the report <em>Sample: orders by customer</em> in a new group <em>Reports to check</em>, give the group the condition <em>Department</em> = <code>Sample</code>, and save.</li>
+				<li>Act as <code>sample_anna</code> (department <em>Sample</em>) and look at her start page; then <em>Use the default</em> to remove the page again.</li>
+			</ol>
+		</div>
+		<p><a data-help="home-users">Start pages of users in the documentation</a></p>
 	</section>
 
 	<section class="tut-lesson" id="users" data-right="acl:nuuser">
@@ -405,10 +425,10 @@
 	</section>
 	<section class="tut-lesson" id="home-hooks" data-right="ga">
 		<h3>Start page hooks</h3>
-		<p>A procedure with the code <code>nunext_home</code> runs every time the tile start page is built. Its PHP can put a badge on a tile (an open count, a warning), change a description, hide a tile for some admin roles, add a group with extra tiles or show a banner above the tiles – only for that page view, nothing is saved into the layout.</p>
+		<p>A procedure with the code <code>nu_home</code> runs every time the tile start page is built (<code>nu_home_user</code> on the start pages of users). Its PHP can put a badge on a tile (an open count, a warning), change a description, hide a tile for some admin roles, add a group with extra tiles or show a banner above the tiles – only for that page view, nothing is saved into the layout.</p>
 		<div class="tut-task">
 			<ol>
-				<li>Open <a data-open="procedures">Procedures</a> and add a procedure with the code <code>nunext_home</code>.</li>
+				<li>Open <a data-open="procedures">Procedures</a> and add a procedure with the code <code>nu_home</code>.</li>
 				<li>PHP: <code>nuHomeSetBadge('users', 'hook', 'info'); nuHomeBanner('Hello from the start page hook');</code> – save.</li>
 				<li>Open the start page: the banner is above the tiles, the Users tile carries the badge. A mistake in the code? The page still shows, with the message above the tiles.</li>
 				<li>Set the procedure's status to <em>Draft</em> to switch it off again.</li>
@@ -446,7 +466,7 @@
 		<div class="tut-task">
 			<ol>
 				<li>Set the environment label <code>TEST</code> with an orange colour in <a data-open="branding">Branding</a> and look at the top bar.</li>
-				<li>On the <a data-open="home">start page</a>, click <em>Customise</em>, add a tile that opens the form <code>tutorial_task</code> and click <em>Done</em>.</li>
+				<li>On the <a data-open="home">start page</a>, click <em>Customise</em> → <em>Edit tiles and groups</em>, add a tile that opens the form <code>tutorial_task</code> and click <em>Done</em>.</li>
 			</ol>
 		</div>
 		<p><a data-help="branding">Branding</a> · <a data-help="home-page">Start page</a></p>

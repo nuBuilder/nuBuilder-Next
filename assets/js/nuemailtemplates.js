@@ -15,6 +15,22 @@
 	var formSel = document.getElementById('emt_form_id');
 	var fields = [];
 
+	// code, description and recipients fold away (0.8.432): the state is remembered in this browser; a field with an error or a required
+	// field the browser complains about opens it; the summary line follows the fields
+	var fold = document.getElementById('emtHead'), headInfo = document.getElementById('emtHeadInfo');
+	if (fold) {
+		var KEY = 'nunext-emt-head-open';
+		try { if (!fold.hasAttribute('data-nu-force-open')) { var st = localStorage.getItem(KEY); if (st !== null) fold.open = st === '1'; } } catch (e) { /* no storage */ }
+		fold.addEventListener('toggle', function () { try { localStorage.setItem(KEY, fold.open ? '1' : '0'); } catch (e) { /* no storage */ } });
+		fold.addEventListener('invalid', function () { fold.open = true; }, true);
+		var info = function () {
+			var val = function (id) { var f = document.getElementById(id); return f ? f.value.trim() : ''; };
+			var to = val('emt_to');
+			headInfo.textContent = [val('emt_code'), val('emt_description'), to ? (D.toLabel || 'To') + ': ' + to : ''].filter(Boolean).join(' · ');
+		};
+		['emt_code', 'emt_description', 'emt_to'].forEach(function (id) { var f = document.getElementById(id); if (f) f.addEventListener('input', info); });
+	}
+
 	function el(tag, attrs, kids) {
 		var e = document.createElement(tag);
 		Object.keys(attrs || {}).forEach(function (k) {

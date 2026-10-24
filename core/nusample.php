@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 14;             // 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 15;             // 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -46,6 +46,7 @@ final class NuSample
 	/** System tables with sample rows: table => primary key. Children first (removal order). */
 	private const SYSTEM = [
 		'zzzzsys_nunext_widget' => 'zzzzsys_nunext_widget_id', 'zzzzsys_nunext_dashboard' => 'zzzzsys_nunext_dashboard_id',   // dashboards (0.8.299)
+		'zzzzsys_nunext_list_view' => 'zzzzsys_nunext_list_view_id',                                                              // start pages of users (0.8.425)
 		'zzzzsys_user_permission' => 'zzzzsys_user_permission_id', 'zzzzsys_permission_item' => 'zzzzsys_permission_item_id',
 		'zzzzsys_event' => 'zzzzsys_event_id', 'zzzzsys_object' => 'zzzzsys_object_id', 'zzzzsys_browse' => 'zzzzsys_browse_id',
 		'zzzzsys_tab' => 'zzzzsys_tab_id', 'zzzzsys_access_form' => 'zzzzsys_access_form_id', 'zzzzsys_access_php' => 'zzzzsys_access_php_id',
@@ -200,6 +201,8 @@ final class NuSample
 		// assignments of sample items to other users, and of other items to sample users
 		if ($t === 'zzzzsys_user_permission') $c .= ' OR ' . self::isSample('upe_ident') . ' OR ' . self::isSample('upe_zzzzsys_user_id');
 		if ($t === 'zzzzsys_event') $c .= " OR sev_zzzzsys_object_id IN ('" . implode("', '", self::AB_OBJECTS) . "')";
+		// start pages saved in the editor for a sample access level (their ids are random)
+		if ($t === 'zzzzsys_nunext_list_view') $c .= " OR (list_key = '" . NuHome::LIST_USER . "' AND SUBSTRING(access_ids, 1, 9) = '[\"" . self::PREFIX . "')";
 		return '(' . $c . ')';
 	}
 
@@ -271,6 +274,7 @@ final class NuSample
 
 		// ------------------------------------------------------------ dashboards (Admin tools → Dashboards)
 		foreach (self::dashboards() as [$t, $r]) $add($t, $r);
+		foreach (self::userHomes() as [$t, $r]) $add($t, $r);
 
 		// ------------------------------------------------------------ access levels + users
 		[$access, $users] = self::accessAndUsers();
@@ -687,6 +691,89 @@ final class NuSample
 			$out[] = ['sample_all_line', ['sample_all_line_id' => 'sample_sal_' . ($n + 1), 'sal_sample_all_id' => 'sample_all_1', 'sal_text' => $t, 'sal_qty' => $q, 'sal_done' => $d]];
 		}
 		return $out;
+	}
+
+	/**
+	 * Start pages of users (0.8.425) – three ways to build one; sample_viewer and sample_secure keep the automatic page (their forms and
+	 * reports). Only access levels of the sample set: the default for all access levels ("*") would change the start page of real users.
+	 *   sample_sales   "Sales desk": cards, favourites row, a new-order tile (record -1), a report, a group only for the permission item
+	 *                  sample_discount (Dario has it)
+	 *   sample_manager "Manager": two tabs (Daily work, Insights), group colours, a procedure tile, a group only for team "Lead" (Carla)
+	 *   sample_editor  "Data entry": a list in two columns, "new record" tiles, a report only for positions Clerk / Manager, the help page
+	 */
+	private static function userHomes(): array
+	{
+		$f = static fn(string $label, string $form, string $icon, string $hint = '', string $record = '', string $color = '', array $cond = []) => array_filter([
+			'label' => $label, 'hint' => $hint, 'icon' => $icon, 'color' => $color, 'kind' => 'form', 'target' => self::fid($form), 'record' => $record,
+			'run' => 'window', 'newtab' => false, 'cond' => $cond], static fn($v) => $v !== []);
+		$rep = static fn(string $label, string $id, string $hint = '', array $cond = []) => array_filter(['label' => $label, 'hint' => $hint, 'icon' => 'bi-file-earmark-richtext',
+			'color' => '', 'kind' => 'report', 'target' => $id, 'record' => '', 'run' => 'window', 'newtab' => true, 'cond' => $cond], static fn($v) => $v !== []);
+		$g = static function (string $id, string $title, array $tiles, string $tab = '', array $cond = [], string $color = ''): array {
+			$o = ['id' => $id, 'title' => $title, 'tab' => $tab, 'tiles' => $tiles];
+			if ($cond) $o['cond'] = $cond;
+			if ($color !== '') $o['color'] = $color;
+			return $o;
+		};
+		$pages = [
+			'sample_sales' => ['Sample: sales desk', [
+				'display' => 'groups', 'view' => ['style' => 'cards', 'favStrip' => true, 'desc' => 'inline'],
+				'custom' => [
+					'c_neworder' => $f('New order', 'sample_order', 'bi-cart-plus', 'Start a new order', '-1', '#0f8f86'),
+					'c_orders' => $f('Orders', 'sample_order', 'bi-receipt', 'All orders – open, paid, shipped'),
+					'c_customers' => $f('Customers', 'sample_customer', 'bi-people', 'Look up a customer (view only)'),
+					'c_rptorders' => $rep('Orders by customer', 'sample_rpt_orders', 'PDF report with sums per customer'),
+					'c_products' => $f('Products and prices', 'sample_product', 'bi-tags', 'Only with the permission item sample_discount'),
+				],
+				'groups' => [$g('g_today', 'Today', ['c_neworder', 'c_orders', 'c_customers']), $g('g_reports', 'Reports', ['c_rptorders']),
+					$g('g_pricing', 'Pricing', ['c_products'], '', ['permission' => ['sample_discount']])],
+				'fav' => ['c_neworder', 'c_orders']]],
+			'sample_manager' => ['Sample: manager', [
+				'display' => 'tabs', 'view' => ['style' => 'large', 'nav' => 'tabs', 'groupColors' => true],
+				'tabs' => [['id' => 't_daily', 'title' => 'Daily work'], ['id' => 't_insights', 'title' => 'Insights']],
+				'custom' => [
+					'c_customers' => $f('Customers', 'sample_customer', 'bi-people', 'Customers with their orders and statistics'),
+					'c_newcust' => $f('New customer', 'sample_customer', 'bi-person-plus', '', '-1'),
+					'c_orders' => $f('Orders', 'sample_order', 'bi-receipt', 'Orders with their items'),
+					'c_products' => $f('Products', 'sample_product', 'bi-box-seam', 'The product catalogue'),
+					'c_allobj' => $f('All object types', 'sample_all', 'bi-ui-checks-grid', 'Every nuBuilder object type in one form'),
+					'c_rptcust' => $rep('Customers by country', 'sample_rpt_customers'),
+					'c_rptorders' => $rep('Orders by customer', 'sample_rpt_orders'),
+					'c_hello' => ['label' => 'Run a procedure', 'hint' => 'sample_hello – output in a new tab', 'icon' => 'bi-play-circle', 'color' => '', 'kind' => 'procedure',
+						'target' => 'sample_proc_hello', 'record' => '', 'run' => 'window', 'newtab' => false],
+					'c_notify' => ['label' => 'Notifications', 'hint' => 'Messages to the team', 'icon' => 'bi-bell', 'color' => '', 'kind' => 'page', 'target' => 'notifications',
+						'record' => '', 'run' => 'window', 'newtab' => false],
+				],
+				'groups' => [$g('g_sales', 'Sales', ['c_customers', 'c_newcust', 'c_orders'], 't_daily'), $g('g_catalogue', 'Catalogue', ['c_products', 'c_allobj'], 't_daily'),
+					$g('g_reports', 'Reports', ['c_rptcust', 'c_rptorders'], 't_insights'),
+					$g('g_lead', 'Team lead', ['c_hello', 'c_notify'], 't_insights', ['team' => ['Lead']], '#c2417a')],
+				'fav' => []]],
+			'sample_editor' => ['Sample: data entry', [
+				'display' => 'groups', 'view' => ['style' => 'list', 'listCols' => '2', 'desc' => 'inline'],
+				'custom' => [
+					'c_newcust' => $f('New customer', 'sample_customer', 'bi-person-plus', '', '-1', '#2f6fd6'),
+					'c_neworder' => $f('New order', 'sample_order', 'bi-cart-plus', '', '-1', '#2f6fd6'),
+					'c_newprod' => $f('New product', 'sample_product', 'bi-plus-square', '', '-1', '#2f6fd6'),
+					'c_customers' => $f('Customers', 'sample_customer', 'bi-people'),
+					'c_orders' => $f('Orders', 'sample_order', 'bi-receipt'),
+					'c_products' => $f('Products', 'sample_product', 'bi-box-seam'),
+					'c_rptcust' => $rep('Customers by country', 'sample_rpt_customers', 'Only for the positions Clerk and Manager', ['position' => ['Clerk', 'Manager']]),
+					'c_help' => ['label' => 'Help', 'hint' => 'How to use nuBuilder Next', 'icon' => 'bi-question-circle', 'color' => '', 'kind' => 'page', 'target' => 'help',
+						'record' => '', 'run' => 'window', 'newtab' => true],
+				],
+				'groups' => [$g('g_enter', 'Enter', ['c_newcust', 'c_neworder', 'c_newprod']), $g('g_lookup', 'Look up', ['c_customers', 'c_orders', 'c_products']),
+					$g('g_more', 'More', ['c_rptcust', 'c_help'])],
+				'fav' => []]],
+		];
+		$rows = [];
+		$now = date('Y-m-d H:i:s');
+		$i = 0;
+		foreach ($pages as $access => [$name, $l]) {
+			$def = $l + ['v' => NuHome::VERSION, 'size' => 'large', 'tabs' => [], 'hidden' => []];
+			$rows[] = ['zzzzsys_nunext_list_view', ['zzzzsys_nunext_list_view_id' => 'sample_uh_' . substr($access, 7), 'list_key' => NuHome::LIST_USER, 'scope' => 'shared', 'owner' => '',
+				'name' => $name, 'access_ids' => json_encode([$access]), 'definition' => json_encode(NuHome::clean($def, false)[0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+				'sort_order' => ++$i, 'updated_at' => $now, 'updated_by' => 'sample']];
+		}
+		return $rows;
 	}
 
 	/**

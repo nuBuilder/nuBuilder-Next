@@ -10,7 +10,7 @@ const USER = process.env.ADMIN_USER || 'globeadmin';
 const PW = process.env.ADMIN_PW || 'nu';
 let fails = 0;
 const ok = (name, cond, info = '') => { console.log((cond ? 'ok   ' : 'FAIL ') + name + (info ? '  ' + info : '')); if (!cond) fails++; };
-const ROUTES = ['home', 'security', 'log', 'sessions', 'vendor', 'apiclients', 'settings', 'branding', 'setupwizard', 'dashboards', 'configfile', 'help', 'tutorial', 'compat', 'update', 'sample', 'procedures',
+const ROUTES = ['home', 'security', 'log', 'sessions', 'vendor', 'apiclients', 'settings', 'branding', 'setupwizard', 'dashboards', 'configfile', 'setupcode', 'userfields', 'help', 'tutorial', 'compat', 'update', 'sample', 'procedures',
 	'reports', 'sqlbuilder', 'prompts', 'import', 'email', 'emailtemplates', 'users', 'access', 'forms', 'formats', 'items', 'permissions', 'files',
 	'translations', 'securitycheck', 'audit', 'notifications', 'selftest'];
 
@@ -19,7 +19,7 @@ async function login(ctx, user, pw) {
 	await p.goto(BASE + 'index.php?p=login');
 	await p.fill('#username', user);
 	await p.fill('#password', pw);
-	await Promise.all([p.waitForLoadState('load'), p.click('button[type=submit]')]);
+	await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.click('button[type=submit]')]);
 	return p;
 }
 
@@ -34,7 +34,7 @@ async function login(ctx, user, pw) {
 		const resp = await p.goto(BASE + 'index.php?p=' + r);
 		if (/p=reauth/.test(p.url())) {                                       // password confirmation (dangerous pages)
 			await p.fill('#reauthPassword', PW);
-			await Promise.all([p.waitForLoadState('load'), p.click('button[type=submit]')]);
+			await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.click('button[type=submit]')]);
 		}
 		const body = (await p.textContent('body')).replace(/\s+/g, ' ');
 		ok('page ' + r, resp.status() < 500 && !/(Fatal error|Warning:|Notice:|Deprecated:) /.test(body), String(resp.status()));

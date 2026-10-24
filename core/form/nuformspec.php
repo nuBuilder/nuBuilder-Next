@@ -86,7 +86,7 @@ final class NuFormSpec
 			if ($sql !== '' && !preg_match('/^\s*(select|with)\b/i', $sql)) {
 				$p = explode('|', $sql);
 				$s['options'] = [];
-				for ($i = 0; $i + 1 < count($p); $i += 2) $s['options'][] = [$p[$i], $p[$i + 1]];
+				for ($i = 0, $n = count($p); $i + 1 < $n; $i += 2) $s['options'][] = [$p[$i], $p[$i + 1]];
 			} elseif ($sql !== '') $s['sql'] = $sql;
 			if ((string)($o['sob_select_multiple'] ?? '') === '1') $s['multiple'] = true;
 		}

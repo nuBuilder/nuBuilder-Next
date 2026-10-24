@@ -199,6 +199,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 			<span class="badge bg-secondary-subtle text-secondary-emphasis fs-6 fw-normal" id="nbType"><?= h(t('form_type_' . $meta->type())) ?></span>
 			<?php if (!$meta->isSystem()): ?><span class="badge fs-6 fw-normal nbModePill" id="nbModePill"></span><?php endif; ?></h1>
 		<?php if ($meta->isSystem()): ?><span class="badge text-bg-warning"><i class="bi bi-lock me-1"></i><?= h(t('builder_readonly_system')) ?></span><?php endif; ?>
+		<div class="d-flex flex-wrap gap-2 nbTitleButtons"><?php // own row below the title (0.8.447) ?>
 		<a class="btn btn-sm nuBtnAct" href="<?= h(nu_url('forms')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<div class="d-flex flex-wrap gap-2 nbTopActions" id="nbTopActions"></div>
 		<?php if (!$meta->isSystem() && $canSave): ?>
@@ -209,6 +210,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 		<?php if (!$meta->isSystem() && $canDeleteForm): ?>
 			<button class="btn btn-sm btn-outline-danger" type="button" id="nbDeleteForm"><i class="bi bi-trash me-1"></i><?= h(t('builder_delete_form')) ?></button>
 		<?php endif; ?>
+		</div>
 	</div>
 
 	<?php if (!$meta->isSystem()): ?><div class="nbDraftBar mb-3" id="nbDraftBar" hidden></div><?php endif; /* form drafts (0.8.386) */ ?>
@@ -255,6 +257,11 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 					<button class="btn btn-sm btn-outline-secondary nbPreviewToggle" type="button" id="nbPreviewToggle" aria-controls="nbPreviewBody" aria-expanded="true"
 						data-show="<?= h(t('builder_preview_show')) ?>" data-hide="<?= h(t('builder_preview_hide')) ?>" title="<?= h(t('builder_preview_hide')) ?>" aria-label="<?= h(t('builder_preview_hide')) ?>"><i class="bi bi-chevron-bar-right"></i></button>
 					<span class="fw-semibold me-auto nbPreviewTitle"><i class="bi bi-eye me-1"></i><?= h(t('builder_preview')) ?></span>
+					<?php // Browse and edit forms: the preview shows the list or a record (0.8.439, nubuilder.js previewMode) ?>
+					<div class="btn-group btn-group-sm d-none" id="nbPreviewMode" role="group" aria-label="<?= h(t('builder_pv_mode')) ?>">
+						<button type="button" class="btn btn-outline-secondary" data-mode="browse" aria-pressed="false"><i class="bi bi-list-ul me-1"></i><?= h(t('builder_pv_browse')) ?></button>
+						<button type="button" class="btn btn-outline-secondary" data-mode="edit" aria-pressed="false"><i class="bi bi-pencil-square me-1"></i><?= h(t('builder_pv_edit')) ?></button>
+					</div>
 					<label class="small text-body-secondary" for="nbPreviewRecord"><?= h(t('builder_record')) ?></label>
 					<input class="form-control form-control-sm nbPreviewRecord" id="nbPreviewRecord" value="">
 					<select class="form-select form-select-sm nbPreviewLayout" id="nbPreviewLayout" aria-label="<?= h(t('form_layout')) ?>">
@@ -266,7 +273,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbPreviewReload" title="<?= h(t('builder_reload')) ?>" aria-label="<?= h(t('builder_reload')) ?>"><i class="bi bi-arrow-clockwise"></i></button>
 				</div>
 				<div class="nbPreviewBody" id="nbPreviewBody">
-					<?php if (!$meta->isSystem() && $canSave): ?><div class="small text-body-secondary px-3 py-1 border-bottom"><i class="bi bi-arrows-move me-1"></i><?= h(t('builder_designer_hint')) ?></div><?php endif; ?>
+					<?php if (!$meta->isSystem() && $canSave): ?><div class="small text-body-secondary px-3 py-1 border-bottom" id="nbDesignerHint"><i class="bi bi-arrows-move me-1"></i><?= h(t('builder_designer_hint')) ?></div><?php endif; ?>
 					<iframe class="nbPreview" id="nbPreview" title="<?= h(t('builder_preview')) ?>"></iframe>
 				</div>
 			</div>

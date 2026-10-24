@@ -323,6 +323,40 @@ check('home view: clean() is stable for old and new layouts', json_encode(NuHome
 $ov = NuHome::cleanOverlay(['view' => ['style' => 'cards', 'tabStyle' => ['t_a' => 'list'], 'nav' => 'x'], 'sizes' => ['phone' => ['desc' => 'off'], 'tablet' => ['nav' => 'nope']], 'at' => 'yesterday']);
 check('home view: personal view cleaned', $ov['view'] === ['style' => 'cards'] && $ov['sizes'] === ['phone' => ['desc' => 'off']] && preg_match('/^\d{4}-/', $ov['at']) === 1
 	&& NuHome::cleanOverlay(['view' => ['style' => 'nope']]) === []);
+// user start pages (0.8.425): conditions, a user's own favourites / hidden tiles, report tiles
+$cc = NuHome::cleanCond(['team' => 'Sales, Support ,,Sales', 'department' => [' HR ', '', ['x']], 'position' => str_repeat('p', 80), 'colour' => ['red'], 'permission' => []]);
+check('user start page: conditions cleaned', $cc === ['team' => ['Sales', 'Support'], 'department' => ['HR'], 'position' => [str_repeat('p', 60)]]
+	&& NuHome::cleanCond('team') === [] && count(NuHome::cleanCond(['team' => range(1, 30)])['team']) === 20);
+$ovm = NuHome::cleanOverlay(['fav' => ['c_a', 'c_a', 'BAD KEY', 7], 'hide' => array_map(static fn($i) => 'c_' . $i, range(1, 80))]);
+check('user start page: own favourites and hidden tiles', $ovm['fav'] === ['c_a'] && count($ovm['hide']) === NuHome::MINE_MAX && $ovm['view'] === []
+	&& array_key_exists('fav', NuHome::cleanOverlay(['fav' => []])) && !array_key_exists('fav', NuHome::cleanOverlay(['hide' => ['c_b']])));
+[$ct] = NuHome::cleanTile(['label' => 'R', 'kind' => 'report', 'target' => 'x', 'cond' => ['team' => 'A']], false);
+[$ct2] = NuHome::cleanTile(['label' => 'L', 'kind' => 'url', 'target' => 'https://x'], false);
+$cl = NuHome::clean(['groups' => [['id' => 'g_a', 'tiles' => [], 'cond' => ['position' => 'Lead']], ['id' => 'g_b', 'tiles' => []]]], false)[0];
+check('user start page: report kind and conditions kept', $ct['kind'] === 'report' && $ct['cond'] === ['team' => ['A']] && !isset($ct2['cond'])
+	&& $cl['groups'][0]['cond'] === ['position' => ['Lead']] && !isset($cl['groups'][1]['cond']));
+// PHP 8.1 is the minimum (0.8.430): functions and constants of PHP 8.2+ only behind a check – PHPStan's phpVersion does not know constants
+// ("Undefined constant CURLOPT_XFERINFOFUNCTION" stopped the GitHub download on PHP 8.1). Quoted names (defined('…'), constant('…')) and comments are fine.
+$newer = '/(?<![\'"\w$>:])(json_validate|mb_str_pad|mb_trim|mb_ltrim|mb_rtrim|mb_ucfirst|mb_lcfirst|str_increment|str_decrement|array_find|array_find_key|array_any|array_all'
+	. '|memory_reset_peak_usage|ini_parse_quantity|curl_upkeep|openssl_cipher_key_length|mysqli_execute_query|stream_context_set_options|http_get_last_response_headers'
+	. '|request_parse_body|bcround|bcceil|bcfloor|grapheme_str_split)\s*\(|(?<![\'"\w])(CURLOPT_XFERINFOFUNCTION|CURLOPT_AWS_SIGV4|CURLOPT_PREREQFUNCTION|CURLOPT_DEBUGFUNCTION'
+	. '|CURLOPT_SERVER_RESPONSE_TIMEOUT|CURLINFO_CAINFO|CURLINFO_CAPATH|CURLINFO_CONN_ID|CURLINFO_QUEUE_TIME_T|CURLINFO_USED_PROXY|CURLINFO_HTTPAUTH_USED|CURLINFO_POSTTRANSFER_TIME_T)\b'
+	. '|\breadonly\s+class\b|#\[\\?Override\]/';
+$hits = [];
+$files = array_merge(glob(NU_ROOT . '/{core,core/form,pages,install}/*.php', GLOB_BRACE) ?: [], array_map(static fn($f) => NU_ROOT . '/' . $f, ['index.php', 'api.php', 'cron.php', 'dbadmin.php']));
+foreach ($files as $f) {
+	foreach (file($f) ?: [] as $no => $line) {
+		if (preg_match('~^\s*(\*|/\*|//)~', $line)) continue;                 // comment lines
+		if (preg_match($newer, (string)preg_replace('~//.*$~', '', $line), $m)) $hits[] = basename($f) . ':' . ($no + 1) . ' ' . trim($m[0]);
+	}
+}
+check('PHP 8.1: no PHP 8.2+ functions / constants without a check', !$hits, implode(', ', array_slice($hits, 0, 5)));
+check('PHP 8.1: cURL progress option', nu_curl_progress_opt() === (defined('CURLOPT_XFERINFOFUNCTION') ? constant('CURLOPT_XFERINFOFUNCTION') : CURLOPT_PROGRESSFUNCTION));
+
+// browse search terms as nuBuilder reads them (0.8.427): words, "phrases", -exclusions
+$bt = NuBrowse::terms('  Alpen  "Mont Blanc" -GmbH -"Lago Verde" - x x "" "open');
+check('browse: search terms (words, phrases, exclusions)', $bt === ['in' => ['Alpen', 'Mont Blanc', '-', 'x', '"open'], 'out' => ['GmbH', 'Lago Verde']]
+	&& NuBrowse::terms('') === ['in' => [], 'out' => []] && NuBrowse::terms('Zürich -') === ['in' => ['Zürich', '-'], 'out' => []]);
 // ---------------------------------------------------------------- Excel writer (NuXlsx, 0.8.398)
 check('xlsx: column names', NuXlsx::colName(1) === 'A' && NuXlsx::colName(26) === 'Z' && NuXlsx::colName(27) === 'AA' && NuXlsx::colName(16384) === 'XFD'
 	&& NuXlsx::colNumber('AA') === 27 && NuXlsx::range('B3:A1') === [1, 1, 3, 2]);
@@ -460,6 +494,8 @@ check('fnref: documented NuXlsx methods exist', !$miss, implode(', ', $miss));
 $jsDoc = array_map(static fn($n) => substr($n, 7), array_filter(array_column($ref['js']['items'], 'n'), static fn($n) => str_starts_with($n, 'NuPage.')));
 check('fnref: NuPage entries = NuPage::JS_API', !array_diff(NuPage::JS_API, $jsDoc) && !array_diff($jsDoc, NuPage::JS_API));
 check('fnref: render', str_contains(NuFnRef::render('php'), 'id="fn-php-nuRunQuery"') && str_contains(NuFnRef::render('js'), 'id="ref-js-hooks"')
+	&& str_contains(NuFnRef::tabs(), 'data-nu-fn-tab="ref-js"') && str_contains(NuFnRef::render('js'), 'nuFnBlock nuFnOut')
+	&& NuFnRef::params('nuX(string $a, int $b = 2, ...$c)')[1][2] === '2' && NuFnRef::params('nuX(string $a, int $b = 2, ...$c)')[2][3] === true
 	&& NuFnRef::letter('nuRunQuery') === 'R' && NuFnRef::letter('db_fetch_row') === 'F' && NuFnRef::letter('$nu->user') === 'U');
 
 // ---------------------------------------------------------------- library packs (0.8.405): build, check, install, roll back, index

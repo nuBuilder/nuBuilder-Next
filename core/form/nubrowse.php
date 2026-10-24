@@ -120,7 +120,7 @@ final class NuBrowse
 		if ($from === null) return null;
 		$order = ['SELECT' => 'fields', 'FROM' => 'from', 'WHERE' => 'where', 'GROUP BY' => 'group', 'HAVING' => 'having', 'ORDER BY' => 'order', 'LIMIT' => 'tail', 'OFFSET' => 'tail', 'FOR UPDATE' => 'tail'];
 		$seen = [];
-		for ($k = 0; $k < count($hits); $k++) {
+		for ($k = 0, $nHits = count($hits); $k < $nHits; $k++) {
 			[$kw, $pos, $l] = $hits[$k];
 			if ($k > 0 && $k < $from) continue;                 // FROM is the first one after SELECT
 			$name = $order[$kw] ?? null;
@@ -241,20 +241,24 @@ final class NuBrowse
 		$params = [];
 		$search = trim((string)($opt['search'] ?? ''));
 		if ($search !== '') {
-			foreach (preg_split('/\s+/', $search) as $term) {
-				$or = [];
-				foreach ($cols as $c) {
-					if ($c['width'] <= 0 || $c['expr'] === 'NULL') continue;
-					if (in_array($c['index'], (array)($opt['nosearch'] ?? []), true)) continue;
-					if (!empty($opt['searchonly']) && !in_array($c['index'], (array)$opt['searchonly'], true)) continue;
-					$or[] = self::castText($col($c)) . " LIKE ? ESCAPE '!'";
-					$params[] = NuDB::like($term);
-					if (str_starts_with(strtoupper($c['format']), 'D|')) {
-						$or[] = self::dateText($col($c), substr($c['format'], 2)) . " LIKE ? ESCAPE '!'";
-						$params[] = NuDB::like($term);
+			// nuBuilder's syntax (0.8.427): words and "phrases" must each be found in one of the searched columns; -word and -"phrase"
+			// must be in none of them (an empty column counts as not containing it – nuBuilder's NOT LIKE drops such rows)
+			$terms = self::terms($search);
+			$searched = array_filter($cols, static fn($c) => $c['width'] > 0 && $c['expr'] !== 'NULL' && !in_array($c['index'], (array)($opt['nosearch'] ?? []), true)
+				&& (empty($opt['searchonly']) || in_array($c['index'], (array)$opt['searchonly'], true)));
+			foreach (['in' => ' OR ', 'out' => ' AND '] as $kind => $glue) {
+				foreach ($terms[$kind] as $term) {
+					$part = [];
+					foreach ($searched as $c) {
+						$texts = [self::castText($col($c))];
+						if (str_starts_with(strtoupper($c['format']), 'D|')) $texts[] = self::dateText($col($c), substr($c['format'], 2));
+						foreach ($texts as $tx) {
+							$part[] = $kind === 'in' ? "$tx LIKE ? ESCAPE '!'" : "COALESCE($tx, '') NOT LIKE ? ESCAPE '!'";
+							$params[] = NuDB::like($term);
+						}
 					}
+					if ($part) $where[] = '(' . implode($glue, $part) . ')';
 				}
-				if ($or) $where[] = '(' . implode(' OR ', $or) . ')';
 			}
 		}
 		foreach ((array)($opt['filters'] ?? []) as $idx => $val) {           // column filters (builder option "Filter")
@@ -317,6 +321,26 @@ final class NuBrowse
 		return $out;
 	}
 
+	/**
+	 * The search terms of a browse search, as nuBuilder reads them (nuBrowseWhereClause): words separated by spaces, "phrases" in double
+	 * quotes, a leading minus excludes (-word, -"phrase"; a lone "-" is a word). Duplicates are dropped. Also used for highlighting.
+	 * @return array{in: list<string>, out: list<string>}
+	 */
+	public static function terms(string $search): array
+	{
+		$in = $out = [];
+		preg_match_all('/(-?)"([^"]*)"|(\S+)/u', $search, $m, PREG_SET_ORDER);
+		foreach ($m as $x) {
+			if (($x[3] ?? '') !== '') {
+				$t = $x[3];
+				if ($t[0] === '-' && strlen($t) > 1) $out[] = substr($t, 1); else $in[] = $t;
+			} elseif (trim($x[2]) !== '') {
+				if ($x[1] === '-') $out[] = $x[2]; else $in[] = $x[2];
+			}
+		}
+		return ['in' => array_values(array_unique($in)), 'out' => array_values(array_unique($out))];
+	}
+
 	private static function castText(string $expr): string
 	{
 		return nu_db()->type === 'sqlsrv' ? "CAST(($expr) AS NVARCHAR(4000))" : "CAST(($expr) AS CHAR)";
@@ -368,6 +392,7 @@ function nu_browse_request(): array
 		'sort' => isset($_GET['sort']) && $_GET['sort'] !== '' ? (int)$_GET['sort'] : null,
 		'dir'  => ($_GET['dir'] ?? '') === 'desc' ? 'desc' : 'asc',
 		'pg'   => max(1, (int)($_GET['pg'] ?? 1)),
+		'per'  => nu_per_param(),       // the footer's page size menu (0.8.437); 0 = the form's rows per page
 		'flt'  => $flt,
 		// nuBuilder nuSetNoSearchColumns / nuSetSearchColumns: column indexes the search skips / is limited to ("1,3")
 		'nsc'  => nu_browse_index_list($_GET['nsc'] ?? ''),

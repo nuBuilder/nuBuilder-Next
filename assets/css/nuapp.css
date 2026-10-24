@@ -179,6 +179,16 @@ fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-c
 .emtFieldMeta { grid-column: 1 / -1; font-size: .75rem; color: var(--bs-secondary-color); }
 .emtActive { border-color: var(--bs-primary) !important; box-shadow: 0 0 0 .15rem rgba(var(--bs-primary-rgb), .15); }
 .emtRecord { width: 9rem; }
+/* e-mail template: code, description and recipients fold away (0.8.432) */
+.nuEmtHead > summary { display: flex; align-items: center; gap: .5rem; min-width: 0; cursor: pointer; list-style: none; padding: .15rem 0; border-radius: .375rem; }
+.nuEmtHead > summary::-webkit-details-marker { display: none; }
+.nuEmtHead > summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.nuEmtHead > .row { margin-top: 0; }
+.nuEmtHead > summary { position: relative; z-index: 1; }
+.nuEmtChev { transition: transform .15s; color: var(--bs-secondary-color); }
+.nuEmtHead[open] .nuEmtChev { transform: rotate(90deg); }
+.nuEmtHeadInfo { min-width: 0; flex: 1 1 auto; }
+.nuEmtHead[open] .nuEmtHeadInfo { display: none; }
 .emtTestTo { width: 16rem; max-width: 100%; }
 .emtPreview { min-height: 260px; border-top: 1px solid var(--bs-border-color); border-radius: 0; }
 @media (min-width: 1200px) { .emtFieldsCard { position: sticky; top: 4.5rem; } }
@@ -240,28 +250,73 @@ fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-c
 .nuHelpBody .doc-red { color: var(--bs-danger); font-weight: 600; }
 .nuHelpBody .doc-badge { background: var(--bs-warning); color: #000; border-radius: .375rem; padding: 0 .4rem; font-size: .8rem; font-weight: 600; }
 /* function reference (0.8.399, core/nufnref.php) */
+/* function reference of the help (0.8.399; tabs and cards in the style of nuBuilder's wiki since 0.8.456 – core/nufnref.php) */
+.nuFnTabs { margin: 1rem 0 .25rem; }
+.nuFnTabCount { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); font-weight: 500; font-size: .7rem; margin-inline-start: .15rem; }
+.nuFnPane:not(.active) { display: none; }
+.nuHelpSearching .nuFnPane { display: block; }
+.nuFnPaneTitle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.nuHelpSearching .nuFnPaneTitle { position: static; width: auto; height: auto; overflow: visible; clip: auto; margin: 1.25rem 0 .5rem; font-size: 1.1rem; }
 .nuFnTools { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: .75rem 0 .5rem; }
 .nuFnTools .nuFnSearch { max-width: 350px; }
+.nuFnGroupNav { display: flex; flex-wrap: wrap; gap: .35rem; margin: .25rem 0 .6rem; }
+.nuFnGroupNav a { font-size: .8rem; text-decoration: none; padding: .2rem .55rem; border: 1px solid var(--bs-border-color); border-radius: 999px; color: var(--bs-body-color); background: var(--bs-body-bg); }
+.nuFnGroupNav a:hover { border-color: var(--bs-primary); color: var(--bs-primary); }
+.nuFnGroupNav a span { color: var(--bs-secondary-color); font-size: .72rem; }
 .nuFnIndex { margin-bottom: .75rem; }
 .nuFnIndex summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
 .nuFnAz { font-size: .8rem; margin-top: .5rem; line-height: 1.7; }
 .nuFnLetter { margin-bottom: .25rem; }
 .nuFnLetter b { display: inline-block; min-width: 1.25rem; }
 .nuFnLetter a { margin-right: .5rem; white-space: nowrap; }
-.nuFn { border-top: 1px solid var(--bs-border-color-translucent); padding: .5rem 0 .6rem; scroll-margin-top: 4.5rem; }
-.nuFn:target { background: var(--bs-warning-bg-subtle); box-shadow: 0 0 0 .5rem var(--bs-warning-bg-subtle); border-radius: .25rem; }
-.nuFnHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .5rem; }
-.nuFnSig { font-weight: 600; font-size: .85rem; }
+.nuFnGroup { margin-top: 1.25rem; }
+.nuFnGroupTitle { font-size: 1.05rem; font-weight: 600; padding-bottom: .35rem; border-bottom: 2px solid var(--bs-border-color); margin-bottom: .75rem; scroll-margin-top: 4.5rem; }
+.nuFn { border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); padding: .8rem 1rem .9rem; margin-bottom: .9rem; scroll-margin-top: 4.5rem; }
+.nuFn:target { box-shadow: 0 0 0 3px var(--bs-warning-border-subtle); }
+.nuFnHead { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .5rem; margin-bottom: .5rem; }
+.nuFnName { font-family: var(--bs-font-monospace); font-size: 1.05rem; font-weight: 600; margin: 0 .25rem 0 0; overflow-wrap: anywhere; }
 .nuFnHead .badge { font-weight: 500; font-size: .7rem; }
+.nuFnLink { margin-inline-start: auto; color: var(--bs-secondary-color); opacity: 0; transition: opacity .15s; }
+.nuFn:hover .nuFnLink, .nuFnLink:focus { opacity: 1; }
 .nuFnNb { background: var(--bs-secondary-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); }
 .nuFnNext { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border: 1px solid var(--bs-primary-border-subtle); }
 .nuFnHook { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); border: 1px solid var(--bs-warning-border-subtle); }
-.nuFnDesc { font-size: .9rem; margin-top: .15rem; }
-.nuFnRet { font-size: .85rem; }
-.nuFnRet span { color: var(--bs-secondary-color); margin-right: .25rem; }
-.nuFn pre.doc-code { margin: .35rem 0 0; }
-.nuFn.nuFnOutL, .nuFn.nuFnOutG, .nuFnGroup.nuFnOutL { display: none; }
+.nuFnKind { background: transparent; color: var(--bs-secondary-color); border: 1px solid var(--bs-border-color); }
+pre.nuFnSig { margin: 0 0 .65rem; padding: .45rem .7rem; background: var(--bs-tertiary-bg); border-inline-start: 3px solid var(--nu-accent, var(--bs-primary)); border-radius: .25rem;
+	font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre.nuFnSig b { color: var(--bs-primary-text-emphasis); }
+.nuFnSpec { display: grid; grid-template-columns: 7.5rem 1fr; gap: .35rem .75rem; margin: 0 0 .5rem; font-size: .9rem; }
+.nuFnSpec dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); font-weight: 600; padding-top: .15rem; }
+.nuFnSpec dd { margin: 0; }
+.nuFnParams { list-style: none; margin: 0; padding: 0; }
+.nuFnParams li { padding: .1rem 0; }
+.nuFnPName { font-weight: 600; }
+.nuFnPType { font-family: var(--bs-font-monospace); font-size: .78rem; color: var(--bs-secondary-color); }
+.nuFnPOpt { font-size: .78rem; color: var(--bs-secondary-color); font-style: italic; }
+.nuFnPDesc { display: block; color: var(--bs-body-color); font-size: .85rem; }
+.nuFnPDesc::before { content: none; }
+.nuFnBlock { margin-top: .5rem; border: 1px solid var(--bs-border-color-translucent); border-radius: .35rem; overflow: hidden; }
+.nuFnBlockHead { display: flex; align-items: center; justify-content: space-between; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 600;
+	color: var(--bs-secondary-color); padding: .25rem .6rem; background: var(--bs-tertiary-bg); border-bottom: 1px solid var(--bs-border-color-translucent); }
+.nuFnOut .nuFnBlockHead { text-transform: none; letter-spacing: 0; font-family: var(--bs-font-monospace); color: var(--bs-primary-text-emphasis); }
+.nuFnCopy { border: 0; background: none; color: var(--bs-secondary-color); padding: 0 .15rem; line-height: 1; }
+.nuFnCopy:hover { color: var(--bs-primary); }
+pre.nuFnCode { margin: 0; padding: .55rem .7rem; font-size: .82rem; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bs-warning-bg-subtle); color: var(--bs-body-color); }
+.nuFnOut pre.nuFnCode { background: var(--bs-body-bg); border-inline-start: 3px solid var(--bs-success-border-subtle); }
+[data-bs-theme="dark"] pre.nuFnCode { background: #2b2a22; }
+[data-bs-theme="dark"] .nuFnOut pre.nuFnCode { background: var(--bs-body-bg); }
+.nuFnSee { margin: .55rem 0 0; font-size: .85rem; }
+.nuFnSee span { font-weight: 600; }
+@media (max-width: 575.98px) {
+	.nuFnSpec { grid-template-columns: 1fr; gap: .1rem; }
+	.nuFnSpec dd { margin-bottom: .35rem; }
+}
+.nuFn.nuFnOutL, .nuFn.nuFnOutG, .nuFnGroup.nuFnOutL, .nuFnGroup.nuFnGroupOut { display: none; }
 mark.nuHelpHit { padding: 0; background: rgba(var(--bs-warning-rgb), .45); color: inherit; }
+/* search words in browse lists and system lists (0.8.427, nuHighlightText in nuapp.js) – colour through --nu-highlight (form CSS may set it) */
+:root, [data-bs-theme="light"] { --nu-highlight: rgba(var(--bs-warning-rgb), .45); }
+[data-bs-theme="dark"] { --nu-highlight: rgba(var(--bs-warning-rgb), .28); }
+mark.nuHighlight { padding: 0 .05em; margin: 0 -.05em; border-radius: .2em; background: var(--nu-highlight); color: inherit; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 @media (max-width: 991.98px) { .nuHelpSide { position: static; max-height: none; } .nuHelpToc { max-height: 40vh; overflow-y: auto; } }
 
 .nuEngineList { max-height: 20rem; overflow-y: auto; }
@@ -1214,3 +1269,15 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 /* notifications → Manage (0.8.402): the ⋯ column stays visible when the table scrolls sideways on phones */
 .nuNtfManage th:last-child, .nuNtfManage td:last-child { position: sticky; right: 0; z-index: 1; background: var(--nu-surface, var(--bs-body-bg)); }
 .nuNtfManage td:last-child .dropdown-menu { z-index: 1060; }
+.nuCopyBuffer { position: fixed; left: -10000px; top: 0; opacity: 0; }
+/* page size menu in the list footer (0.8.437) */
+.nuLfPerBtn { color: var(--bs-secondary-color); font-size: inherit; padding: .15rem .5rem; border: 1px solid transparent; }
+.nuLfPerBtn:hover, .nuLfPerBtn:focus-visible, .nuLfPerBtn.show { color: var(--bs-body-color); border-color: var(--bs-border-color); }
+.nuLfPerMenu { min-width: 9rem; font-size: .875rem; }
+.cfgInsLine { background: var(--bs-success-bg-subtle); }
+.cfgInsList { max-height: 50vh; overflow: auto; }
+.cfgInsItem code { color: var(--bs-body-color); }
+/* tabs a script opens after loading – hidden until then (0.8.444, nutheme.js / nuapp.js) */
+html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
+.scodeCM { height: calc(100vh - 400px); min-height: 360px; }
+.updBkSelCol { width: 2.5rem; padding-inline-start: 1rem !important; }

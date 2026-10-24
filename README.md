@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.423 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.457 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder 4.**
 
@@ -62,7 +62,7 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Report Designer & SQL Builder** – design reports visually, build queries without writing SQL and run reports as PDF.
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
 - ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder; a code editor with syntax colours, search / replace and one-click formatting for PHP, SQL, JavaScript, HTML and CSS.
-- ✅ **E-mail & Templates** – SMTP settings with a test mail, e-mail templates with field placeholders and an e-mail log.
+- ✅ **E-mail & Templates** – SMTP settings with a test mail and a connection check that sends nothing, login with OAuth 2 (Google, Microsoft 365), e-mail templates with field placeholders and an e-mail log.
 - ✅ **CSV Import** – into any table, with automatic encoding / separator detection and column mapping.
 - ✅ **Cloner & App Cloner** – copy a single form or the whole application.
 - ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool.
@@ -72,13 +72,13 @@ nuBuilder Next streamlines everyday database work:
 
 ### 🛡️ For Administrators
 
-- ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, search with Ctrl+K. Normal users see their access level's dashboards and the forms they may open.
-- ✅ **Advanced User Management** – users, access levels, admin roles and permission items; CSV user import with a template; a welcome e-mail with a set-password link; own and shared list views.
+- ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, search with Ctrl+K. Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
+- ✅ **Advanced User Management** – users with custom fields of your own, access levels, admin roles and permission items; CSV user import with a template; a welcome e-mail with a set-password link; own and shared list views.
 - ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit and a built-in Security check.
 - ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.
 - ✅ **Send Notifications** – to chosen users, departments or teams, with read receipts.
-- ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving; System status; logged-in users; phpMyAdmin, Adminer and File Manager links; housekeeping cron.
+- ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving and inserts missing variables; nuBuilder's Setup code (Header, Style, Include); System status; logged-in users; phpMyAdmin, Adminer and File Manager links; housekeeping cron.
 - ✅ **Easy Start** – installer, setup wizard, a step-by-step tutorial and built-in documentation.
 - ✅ **Branding & Demo Mode** – logo, accent colour and environment label; read-only demo users.
 

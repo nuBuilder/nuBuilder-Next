@@ -767,7 +767,7 @@ final class NuRender
 			} else {
 				$parts = explode('|', str_replace(["\r\n", "\r", "\n"], '', $src));
 				if (end($parts) === '') array_pop($parts);
-				for ($i = 0; $i + 1 < count($parts); $i += 2) $opts[] = [$parts[$i], $parts[$i + 1]];
+				for ($i = 0, $n = count($parts); $i + 1 < $n; $i += 2) $opts[] = [$parts[$i], $parts[$i + 1]];
 				if (count($parts) % 2 === 1) $opts[] = [end($parts), end($parts)];
 			}
 		}

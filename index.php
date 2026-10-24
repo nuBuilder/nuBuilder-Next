@@ -39,7 +39,7 @@ $routes = [
 	'log'         => [],
 	'notifications' => [],
 	'notifyapi'   => ['json' => true],
-	'homejs'      => ['json' => true],   // JavaScript of the start page hook nunext_home (0.8.379, NuHomeHook::serveJs)
+	'homejs'      => ['json' => true],   // JavaScript of the start page hook nu_home (0.8.379, NuHomeHook::serveJs)
 	'audit'       => [],
 	'audithistory' => [],
 	'debug'       => [],
@@ -52,6 +52,9 @@ $routes = [
 	'apiplayground' => [],
 	'settings'    => [],
 	'configfile'  => [],
+	'setupcode'   => [],
+	'userfields'  => [],   // custom user fields (0.8.454)
+	'account'     => [],   // My account: the custom fields a user fills in himself (0.8.454)
 	'todo'        => [],
 	'selftest'    => [],
 	'help'        => [],
@@ -69,6 +72,7 @@ $routes = [
 	'prompts'     => [],
 	'import'      => [],
 	'email'       => [],
+	'mailoauth'   => [],   // OAuth 2 for the SMTP login: to the provider and back (oauth.php, 0.8.445)
 	'emailtemplates' => [],
 	'formexport'  => [],
 	'home'        => [],

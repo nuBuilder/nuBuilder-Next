@@ -363,6 +363,7 @@ final class NuUpdate
 			self::resetCaches();
 			$_SESSION['nu_update'] = ['from' => NU_VERSION, 'to' => (string)$m['version'], 'backup' => $backup, 'changes' => $m['changes'] ?? []];
 			NuLog::write('nunext_update', '', '', ['from' => NU_VERSION, 'to' => $m['version'], 'backup' => $backup]);
+			try { self::autoCleanup(); } catch (Throwable $e) { error_log('nuBuilder Next backup clean-up: ' . $e->getMessage()); }   // 0.8.451, never stops the update
 			return $backup;
 		} finally {
 			self::rmTree($stage);
@@ -629,6 +630,97 @@ final class NuUpdate
 		return is_file($f) ? $f : null;
 	}
 
+	// ================================================================= deleting several backups, clean-up rule (0.8.451)
+
+	public const CLEANUP_SETTING = 'backup_cleanup';
+
+	/**
+	 * Backups that are never deleted by "Delete selected" or the clean-up rule: the newest backup (the way back from the last update)
+	 * and the newest safety backup made before a roll back. Deleting one by one with its own button still works. @return array<string, string> name => reason key
+	 */
+	public static function protectedBackups(?array $all = null): array
+	{
+		$all ??= self::backups();
+		$out = [];
+		if ($all) $out[$all[0]['name']] = 'upd_bk_prot_newest';
+		foreach ($all as $b) {
+			if (str_starts_with($b['reason'], 'before rollback')) { $out[$b['name']] ??= 'upd_bk_prot_safety'; break; }
+		}
+		return $out;
+	}
+
+	/**
+	 * Deletes the named backups; protected ones and unknown names are skipped. One log entry for all.
+	 * @param list<string> $names @return array{deleted: list<string>, bytes: int, skipped: list<string>}
+	 */
+	public static function deleteBackups(array $names, string $how = 'selected'): array
+	{
+		$all = self::backups();
+		$prot = self::protectedBackups($all);
+		$size = array_column($all, 'size', 'name');
+		$out = ['deleted' => [], 'bytes' => 0, 'skipped' => []];
+		foreach (array_unique(array_map('strval', $names)) as $n) {
+			$f = self::backupPath($n);
+			if (!$f || isset($prot[$n]) || !isset($size[$n])) { $out['skipped'][] = $n; continue; }
+			if (!@unlink($f)) { $out['skipped'][] = $n; continue; }
+			$out['deleted'][] = $n;
+			$out['bytes'] += (int)$size[$n];
+		}
+		if ($out['deleted']) NuLog::write('nunext_backups_deleted', '', '', ['how' => $how, 'count' => count($out['deleted']), 'bytes' => $out['bytes'], 'files' => $out['deleted']]);
+		return $out;
+	}
+
+	/** Clean-up rule: ['mode' => 'keep'|'age', 'n' => keep newest n / older than n days, 'auto' => after each update]. */
+	public static function cleanupRule(): array
+	{
+		$v = [];
+		try {
+			$raw = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::CLEANUP_SETTING]);
+			$v = is_string($raw) ? (array)(json_decode($raw, true) ?: []) : [];
+		} catch (Throwable) {
+		}
+		$mode = ($v['mode'] ?? '') === 'age' ? 'age' : 'keep';
+		return ['mode' => $mode, 'n' => max(1, min(9999, (int)($v['n'] ?? ($mode === 'age' ? 90 : 10)))), 'auto' => !empty($v['auto'])];
+	}
+
+	public static function setCleanupRule(string $mode, int $n, bool $auto): void
+	{
+		$row = ['setting_value' => json_encode(['mode' => $mode === 'age' ? 'age' : 'keep', 'n' => max(1, min(9999, $n)), 'auto' => $auto]),
+			'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => (string)(NuAuth::user()['login'] ?? '')];
+		NuSchema::ensure();
+		$db = nu_db();
+		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::CLEANUP_SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::CLEANUP_SETTING);
+		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::CLEANUP_SETTING] + $row);
+	}
+
+	/**
+	 * Backups the rule would delete (newest first), protected ones left out: 'keep' = all but the newest n, 'age' = created more than
+	 * n days ago. @return list<array> rows of backups()
+	 */
+	public static function cleanupPlan(string $mode, int $n, ?array $all = null, ?int $now = null): array
+	{
+		$all ??= self::backups();
+		$prot = self::protectedBackups($all);
+		$n = max(1, $n);
+		$cut = ($now ?? time()) - $n * 86400;
+		$out = [];
+		foreach ($all as $i => $b) {
+			if (isset($prot[$b['name']])) continue;
+			$old = $mode === 'age' ? ($b['created'] !== '' && (int)strtotime($b['created']) < $cut) : $i >= $n;
+			if ($old) $out[] = $b;
+		}
+		return $out;
+	}
+
+	/** After an update (install()): the clean-up rule when "automatically" is on. @return int deleted backups */
+	public static function autoCleanup(): int
+	{
+		$r = self::cleanupRule();
+		if (!$r['auto']) return 0;
+		$plan = self::cleanupPlan($r['mode'], $r['n']);
+		return $plan ? count(self::deleteBackups(array_column($plan, 'name'), 'auto')['deleted']) : 0;
+	}
+
 	/** Program files of a backup back in place; files of the current version that the backup does not have are removed. */
 	public static function restoreFiles(string $backupFile, ?array $current = null): array
 	{
@@ -735,6 +827,8 @@ final class NuMigrate
 			'0015-form-drafts' => ['Form drafts (zzzzsys_nunext_form_draft)', static fn() => NuSchema::create()],
 			'0016-pages' => ['Page forms (zzzzsys_nunext_page)', static fn() => NuSchema::create()],
 			'0017-presence' => ['Who has a record open (zzzzsys_nunext_presence)', static fn() => NuSchema::create()],
+			'0018-home-hook-codes' => ['Start page hooks renamed: procedures nunext_home → nu_home, nunext_home_user → nu_home_user', static fn() => self::renameHomeHooks()],
+			'0019-user-fields' => ['Custom user fields (zzzzsys_nunext_user_field); their values table is created with the first field', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -764,7 +858,25 @@ final class NuMigrate
 		'0015-form-drafts' => [['zzzzsys_nunext_form_draft', 'table', 'created when missing']],
 		'0016-pages' => [['zzzzsys_nunext_page', 'table', 'created when missing']],
 		'0017-presence' => [['zzzzsys_nunext_presence', 'table', 'created when missing']],
+		'0018-home-hook-codes' => [['zzzzsys_php', 'data', 'sph_code nunext_home → nu_home and nunext_home_user → nu_home_user (only when the new code is not taken)'],
+			['zzzzsys_config', 'data', 'description of the row $nuConfigHomeHooks names nu_home']],
+		'0019-user-fields' => [['zzzzsys_nunext_user_field', 'table', 'created when missing (zzzzsys_nunext_user_ext follows when the first field is added)']],
 	];
+
+	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */
+	public static function renameHomeHooks(): void
+	{
+		$db = nu_db();
+		if (!$db->tableExists('zzzzsys_php')) return;
+		foreach (['nunext_home' => NuHomeHook::CODE, 'nunext_home_user' => NuHomeHook::CODE_USER] as $old => $new) {
+			if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE sph_code = ?', [$new]) > 0) continue;
+			$db->run('UPDATE zzzzsys_php SET sph_code = ? WHERE sph_code = ?', [$new, $old]);
+		}
+		if ($db->tableExists('zzzzsys_config')) {   // the description of the row $nuConfigHomeHooks named the old code
+			$db->run("UPDATE zzzzsys_config SET cfg_description = ? WHERE zzzzsys_config_id = 'nunexthomehooks' AND cfg_description LIKE '%nunext_home%'",
+				[array_column(NuSettings::OWN, 'cfg_description', 'zzzzsys_config_id')['nunexthomehooks']]);
+		}
+	}
 
 	/** Steps with their descriptions and changes (for install/db_changes.json). @return list<array{id: string, description: string, changes: list<array>}> */
 	public static function catalog(): array

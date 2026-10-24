@@ -294,8 +294,11 @@ final class NuSecurity
 	 * Third-party code nuBuilder Next uses from the nuBuilder installation, a library pack (vendor/packs/) or an old copy: [name, version, path, min,
 	 * status ok|old|warn|missing, note key]. Minimum = first version without the publicly known vulnerabilities at the time of this
 	 * release (TCPDF CVE-2024-32489 → 6.7.4, PHPMailer CVE-2021-34551 → 6.5.0, phpMyAdmin PMASA-2025-1…3 → 5.2.2, TinyMCE
-	 * CVE-2024-38356/38357 → 6.8.4 / 7.2.0). Tiny File Manager up to 2.6 has a path traversal (CVE-2025-15138) without a fix.
+	 * CVE-2024-38356/38357 → 6.8.4 / 7.2.0). Tiny File Manager up to 2.6 has a path traversal (CVE-2025-15138) without a fix upstream: a
+	 * warning unless NUNEXT-VERSION.txt of the copy says it is patched – then OK, with a note while the newer reports (TFM_NEWER) are not
+	 * marked patched too (0.8.431).
 	 */
+	public const TFM_NEWER = ['CVE-2025-46651' => 'upload from URL', 'CVE-2026-108801' => 'upload via fullpath'];
 	/** Version note of a library you build / patch yourself (0.8.231), in the library's folder – see localVersion(). */
 	public const LOCAL_VERSION = 'NUNEXT-VERSION.txt';
 
@@ -351,9 +354,14 @@ final class NuSecurity
 			// own build / patched copy: NUNEXT-VERSION.txt gives the version (e.g. 2.6+git.4149143.nu1) and the state of known CVEs
 			$local = $ver !== '' ? self::localVersion($path) : null;
 			if ($local && $local['version'] !== '') $ver = $local['version'];
-			if ($local && $name === 'Tiny File Manager' && self::cveFixed($local['cves']['CVE-2025-15138'] ?? '')) $note = '';
+			$info = false;                                             // a note that does not make the line a warning
+			if ($local && $name === 'Tiny File Manager' && self::cveFixed($local['cves']['CVE-2025-15138'] ?? '')) {
+				$open = array_filter(array_keys(self::TFM_NEWER), static fn($c) => !self::cveFixed($local['cves'][$c] ?? ''));
+				$note = $open ? 'secchk_lib_tfm_newer' : '';
+				$info = true;
+			}
 			$base = preg_match('/^[0-9][0-9.]*[0-9]/', $ver, $bm) ? $bm[0] : '?';     // "2.6+git…" is compared as 2.6
-			$st = $ver === '' ? 'missing' : ($note !== '' ? 'warn' : ($base === '?' || ($min !== '' && version_compare($base, $min, '<')) ? 'old' : 'ok'));
+			$st = $ver === '' ? 'missing' : ($note !== '' && !$info ? 'warn' : ($base === '?' || ($min !== '' && version_compare($base, $min, '<')) ? 'old' : 'ok'));
 			$l = ['name' => $name, 'version' => $ver, 'path' => $path, 'min' => $min, 'status' => $st, 'note' => $note, 'local' => $local ? $local['text'] : ''];
 		}
 		return $out;
@@ -437,6 +445,12 @@ final class NuSecurity
 		$add('adminpw', self::weakAdminPassword() ? 'bad' : 'ok', 'secchk_chk_adminpw', self::weakAdminPassword() ? t('secchk_chk_adminpw_weak') : '', nu_url('configfile'));
 		$add('admin2fa', nu_cfg('nuConfig2FAAdmin') ? 'ok' : 'warn', 'secchk_chk_admin2fa', nu_cfg('nuConfig2FAAdmin') ? '' : t('secchk_chk_admin2fa_off'), nu_url('configfile'));
 		$add('debug', nu_cfg('nuConfigDebug') ? 'bad' : 'ok', 'secchk_chk_debug', nu_cfg('nuConfigDebug') ? t('secchk_chk_debug_on') : '');
+		// $nuConfigIncludeJS / CSS / PHP (0.8.443): files that are not found are left out – say which
+		if (NuIncludes::entries('js') || NuIncludes::entries('css') || NuIncludes::entries('php')) {
+			$miss = NuIncludes::missing();
+			$add('includes', $miss ? 'warn' : 'ok', 'secchk_chk_includes',
+				$miss ? t('secchk_chk_includes_missing', implode(' · ', array_map(static fn($m) => $m['var'] . ': ' . $m['file'], $miss))) : '', nu_url('configfile'));
+		}
 		// admin roles (0.8.323): who has a part of the globeadmin's rights – roles with "full access" rights are named
 		try {
 			$adm = [];

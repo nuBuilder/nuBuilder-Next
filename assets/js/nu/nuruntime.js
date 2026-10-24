@@ -104,6 +104,8 @@
 	});
 	api('nuUserName', function () { return N.user.name; });
 	api('nuUserLanguage', function () { return N.user.language; });
+	// custom user field of the signed-in user (0.8.454); null when there is no such field
+	api('nuNextUserField', function (code) { var f = N.user.fields || {}; var k = String(code || '').toLowerCase(); return Object.prototype.hasOwnProperty.call(f, k) ? f[k] : null; });
 	api('nuCurrentDateTime', function (fmt) {
 		var d = new Date();
 		var s = d.getFullYear() + '-' + nuPad2(d.getMonth() + 1) + '-' + nuPad2(d.getDate()) + ' ' + nuPad2(d.getHours()) + ':' + nuPad2(d.getMinutes()) + ':' + nuPad2(d.getSeconds());
@@ -393,7 +395,7 @@
 		if (typeof window.nuOnDisableGlobal !== 'function') return true;
 		try { return window.nuOnDisableGlobal(id, $(el)) !== false; } catch (x) { reportError(x.message, 'nuOnDisableGlobal'); return true; }
 	}
-	function setState(id, el, disabled, readonly) {
+	function setState(el, disabled, readonly) {
 		el.disabled = disabled;
 		if ('readOnly' in el) el.readOnly = readonly;
 		el.classList.toggle('nuReadonly', disabled || readonly);
@@ -461,13 +463,13 @@
 
 	api('nuEnable', function (ids, enable) {
 		if (enable === false) { nuDisable(ids); return; }
-		arr(ids).forEach(function (id) { controls(id).forEach(function (el) { setState(id, el, false, false); }); });
+		arr(ids).forEach(function (id) { controls(id).forEach(function (el) { setState(el, false, false); }); });
 	});
 	api('nuDisable', function (ids) {
 		arr(ids).forEach(function (id) {
 			controls(id).forEach(function (el) {
 				el.classList.add('nuReadonly');
-				if (allowDisable(id, el)) setState(id, el, true, true);
+				if (allowDisable(id, el)) setState(el, true, true);
 			});
 		});
 	});
@@ -477,7 +479,7 @@
 		arr(ids).forEach(function (id) {
 			controls(id).forEach(function (el) {
 				if (id + 'description' === el.id) return;           // lookup description is always read only
-				if (noReadonly(el)) setState(id, el, on, on); else setState(id, el, false, on);
+				if (noReadonly(el)) setState(el, on, on); else setState(el, false, on);
 			});
 		});
 	});
@@ -1194,9 +1196,10 @@
 				if (stay) return;
 			}
 			// nuBuilder runs nuAfterSaveGlobal / nuAfterSave on the rebuilt form: the reloaded page calls them after nuOnLoad (0.8.383)
-			try { sessionStorage.setItem('nuNextAfterSave', N.form.id + '|' + res.record_id); } catch (x) { afterSaveNow(); }
+			var openId = res.open_id !== undefined && res.open_id !== null ? String(res.open_id) : res.record_id;   // nuReturnNewRecord() in After Save (0.8.443)
+			try { sessionStorage.setItem('nuNextAfterSave', N.form.id + '|' + openId); } catch (x) { afterSaveNow(); }
 			var u = new URL(window.location.href);
-			u.searchParams.set('r', res.record_id);
+			u.searchParams.set('r', openId);
 			u.searchParams.set('saved', '1');
 			window.location.replace(u.toString());
 		}, function (err) { btn.prop('disabled', false); nuMessage([esc(err.message)]); });
@@ -1402,6 +1405,23 @@
 		$(target).after(holder);
 	});
 
+	// nuBuilder: nuSetSaveButtonPosition(top, left, height, width, fontSize or css) – the Save button moves onto the first tab of an
+	// absolute layout (like nuBuilder: only shown there); other layouts keep it in the action bar (0.8.443)
+	api('nuSetSaveButtonPosition', function (t, l, h, w, fs) {
+		var b = g('nuSaveButton'), rec = g('nuRECORD');
+		if (!b || !rec || !rec.classList.contains('nuLayout-absolute')) return $(b);
+		var canvas = rec.querySelector('.nuTabPane .nuAbsoluteCanvas') || rec.querySelector('.nuTabPane');
+		if (!canvas) return $(b);
+		if (!w) w = b.offsetWidth;
+		if (!h) h = b.offsetHeight;
+		canvas.appendChild(b);
+		$(b).addClass('nuSaveMoved').css({position: 'absolute', top: t + 'px', left: l + 'px', width: w + 'px', height: h + 'px', margin: 'unset'});
+		if (fs !== undefined && fs !== null) { if (typeof fs === 'number') b.style.fontSize = fs + 'px'; else $(b).css(fs); }
+		var need = Number(t) + Number(h) + 10;
+		if (canvas.offsetHeight < need) canvas.style.minHeight = need + 'px';
+		return $(b);
+	});
+
 	api('nuAddActionButton', function (id, value, func, title) {
 		var b = $('<button type="button" class="btn btn-outline-secondary nuActionButton"></button>').attr('id', 'nu' + id + 'Button').attr('title', title || '').html(value);
 		b.on('click', function (e) { if (typeof func === 'function') func(e); else runSnippet(func, e, this); });
@@ -1571,12 +1591,6 @@
 					return j;
 				});
 		}
-		function reload() {
-			if (N.edited && !window.confirm(T.unsaved)) return false;
-			N.edited = false;
-			window.location.reload();
-			return true;
-		}
 		function change(o, fields) {
 			if (N.edited && !window.confirm(T.unsaved)) return;
 			builderCall('object.save', {object_id: o.object_id, fields: fields}).then(function () { N.edited = false; window.location.reload(); })
@@ -1730,7 +1744,7 @@
 		return reportRun(code).then(function (res) {
 			var url = reportUrl(res.id);
 			if (w) { w.location.href = url; return res; }
-			if (!w && (iFrame === undefined || iFrame === null || iFrame === '')) { window.open(url, '_blank'); return res; }
+			if (iFrame === undefined || iFrame === null || iFrame === '') { window.open(url, '_blank'); return res; }
 			var f = null;
 			try { f = (parent && parent.document.getElementById(iFrame)) || g(iFrame); } catch (x) { f = g(iFrame); }
 			if (f) f.setAttribute('src', url);
@@ -1786,8 +1800,8 @@
 			return $();
 		};
 	});
-	if ($ && !$.fn.nuSearchablePopup) $.fn.nuSearchablePopup = function () { return this; };
-	if ($ && !$.fn.nuCSSNumber) $.fn.nuCSSNumber = function (p) { return parseInt(this.css(p), 10) || 0; };
+	if (!$.fn.nuSearchablePopup) $.fn.nuSearchablePopup = function () { return this; };
+	if (!$.fn.nuCSSNumber) $.fn.nuCSSNumber = function (p) { return parseInt(this.css(p), 10) || 0; };
 
 	// =================================================================== files in fields (nuBuilder format)
 	function fileSize(b) { return !b ? '' : (b < 1024 ? b + ' B' : (b < 1048576 ? Math.round(b / 1024) + ' KB' : (b / 1048576).toFixed(1) + ' MB')); }
@@ -2442,7 +2456,7 @@
 	api('nuIsIframe', function () { return !!N.iframe; });
 	api('nuIsMobile', function () { return window.matchMedia('(max-width: 767.98px)').matches; });
 	api('nuUseMobileView', function () { return false; });
-	if ($ && !$.fn.nuOnEnterKey) $.fn.nuOnEnterKey = function (fn) { return this.on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); fn.call(this, e); } }); };
+	if (!$.fn.nuOnEnterKey) $.fn.nuOnEnterKey = function (fn) { return this.on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); fn.call(this, e); } }); };
 	if (!String.prototype.nuJustNumbers) String.prototype.nuJustNumbers = function () { return this.replace(/[^0-9]/g, ''); };
 	api('nuAttachFontAwesome', function (id, cls) { $('#' + id).prepend($('<i>').addClass(cls).css('margin-right', '4px')); });
 
@@ -2959,7 +2973,7 @@
 			el.setAttribute('data-nu-label-position', 'top');
 		});
 	});
-	if ($ && !$.fn.nuLabelOnTop) $.fn.nuLabelOnTop = function (offsetTop, offsetLeft) { nuLabelOnTop(this.map(function () { return this.id; }).get(), [], offsetTop, offsetLeft); return this; };
+	if (!$.fn.nuLabelOnTop) $.fn.nuLabelOnTop = function (offsetTop, offsetLeft) { nuLabelOnTop(this.map(function () { return this.id; }).get(), [], offsetTop, offsetLeft); return this; };
 
 	// ---- hooks: tabs and breadcrumbs (nuOnSelectTab may cancel; nuOnTabSelected after the switch)
 	$(document).on('show.bs.tab', '.nuTab', function (e) {
@@ -3005,6 +3019,8 @@
 		nuSelectTab(+t.getAttribute('data-nu-tab'));
 	}
 	function showFormInfo() {
+		var panel = g('nuFormInfoBtn');                       // the (i) panel next to Delete (0.8.435) – Ctrl+Shift+M opens it (0.8.446)
+		if (panel && window.nuBs) { nuBs.dropdown(panel).show(); return; }
 		var S = N.shortcuts || {}, rows = [[S.info_form, N.form.description], [S.info_code, N.form.code], ['ID', N.form.id], [S.info_type, N.form.type],
 			[S.info_table, N.form.table], [S.info_pk, N.form.primary_key], [S.info_layout, N.form.layout]];
 		if (N.mode === 'edit') rows.push([S.info_record, N.record_id]);
@@ -3020,18 +3036,19 @@
 	function shortcutActions() {
 		var T = N.tools || {}, ga = !!N.user.globeadmin, edit = N.mode === 'edit', browse = N.mode === 'browse';
 		var has = function (id) { return !!g(id); };
-		// [key, label key, icon, group, available, action]
+		// [key, label key, icon, group, available, action] – group 0: a keyboard shortcut only, not in the options menu (0.8.446: add, print,
+		// search, form info, form properties and object list have buttons of their own on the page)
 		return [
 			['a', 'arrange', 'bi-arrows-move', 1, edit && T.design, function () { openTab(builderUrl('arrange')); }],
 			['h', 'add_object', 'bi-plus-lg', 1, edit && T.design, function () { openTab(builderUrl('add')); }],
-			['f', 'form_properties', 'bi-gear', 2, T.design, function () { openTab(builderUrl('form')); }],
-			['o', 'object_list', 'bi-list-ul', 2, T.design, function () { openTab(builderUrl('objects')); }],
+			['f', 'form_properties', 'bi-gear', 0, T.design, function () { openTab(builderUrl('form')); }],
+			['o', 'object_list', 'bi-list-ul', 0, T.design, function () { openTab(builderUrl('objects')); }],
 			['s', 'save', 'bi-floppy', 3, edit && has('nuSaveButton'), function () { if (document.activeElement) $(document.activeElement).trigger('blur'); nuSaveAction(); }],
 			['y', 'delete', 'bi-trash', 3, edit && has('nuDeleteButton'), function () { nuDeleteAction(); }],
 			['c', 'clone', 'bi-copy', 3, edit && has('nuCloneButton'), function () { nuCloneAction(); }],
-			['s', 'search', 'bi-search', 3, browse && has('nuSearchField'), function () { nuSearchAction(); }],
-			['a', 'add', 'bi-plus-lg', 3, browse && has('nuAddButton'), function () { $('#nuAddButton').trigger('click'); }],
-			['p', 'print', 'bi-printer', 3, browse && has('nuPrintButton'), function () { openTab($('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href')); }],
+			['s', 'search', 'bi-search', 0, browse && has('nuSearchField'), function () { nuSearchAction(); }],
+			['a', 'add', 'bi-plus-lg', 0, browse && has('nuAddButton'), function () { $('#nuAddButton').trigger('click'); }],
+			['p', 'print', 'bi-printer', 0, browse && has('nuPrintButton'), function () { openTab($('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href')); }],
 			['?', 'help', 'bi-question-circle', 3, true, function () { openTab(N.base + '?p=help#forms-use'); }],
 			['r', 'refresh', 'bi-arrow-repeat', 3, true, function () { window.location.reload(); }],
 			['d', 'debug', 'bi-bug', 4, T.debug, function () { openTab(N.base + '?p=debug'); }],
@@ -3039,7 +3056,7 @@
 			['j', 'sessions', 'bi-key', 5, T.sessions, function () { openTab(N.base + '?p=sessions'); }],
 			['q', 'file_manager', 'bi-folder2-open', 5, T.tfm, function () { nuVendorLogin('TFM'); }],
 			['q', 'password', 'bi-key', 5, edit && T.password, function () { openTab(N.base + '?p=password'); }],
-			['m', 'form_info', 'bi-info-circle', 5, ga, showFormInfo],
+			['m', 'form_info', 'bi-info-circle', 0, ga, showFormInfo],
 			['v', 'version', 'bi-info-circle', 5, ga && T.version, function () { nuMessage(N.shortcuts.version || 'Version', [esc(T.version)]); }],
 			['x', 'properties', 'bi-braces', 5, ga, function () { showHash(); }],
 			// all columns of the open record with type and stored value (new tab); no shortcut – Ctrl+Shift+I opens the browser's tools
@@ -3185,6 +3202,10 @@
 		// nuBuilder calculates calc objects once after building the edit form, without marking it as edited
 		if (N.mode === 'edit' && typeof window.nuCalculateForm === 'function') {
 			try { window.nuCalculateForm(false); } catch (x) { reportError(x.message, 'nuCalculateForm'); }
+		}
+		// nuBuilder marks the search words in the browse list before the load hooks (nuBrowseTable → nuHighlightSearch, 0.8.427)
+		if (N.mode === 'browse' && typeof window.nuHighlightSearch === 'function') {
+			try { window.nuHighlightSearch(); } catch (x) { reportError(x.message, 'nuHighlightSearch'); }
 		}
 		// nuBuilder: global load hooks (setup header), then the form's nuOnLoad(formId, formCode)
 		callHook(N.mode === 'browse' ? 'nuLoadBrowseGlobal' : 'nuLoadEditGlobal', N.form.id, N.form.code);

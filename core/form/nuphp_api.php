@@ -69,6 +69,13 @@ if (!function_exists('nuRunQuery')) {
 		NuPhp::$errors[] = ['message' => $message, 'field' => $field];
 	}
 
+	/** nuBuilder: in After Save – the form opens this record instead of the saved one (-1 = a new, empty record; 0.8.443). */
+	function nuReturnNewRecord(mixed $i = -1): void
+	{
+		NuPhp::$openRecord = (string)$i;
+		NuPhp::$hash['RECORD_ID'] = (string)$i;
+	}
+
 	function nuAddJavascript(string $js): void
 	{
 		NuPhp::$js[] = $js;
@@ -284,6 +291,27 @@ if (!function_exists('nuRunQuery')) {
 		return NuHash::permissions($userId === null ? (string)(NuAuth::user()['id'] ?? '') : (string)$userId);
 	}
 
+	/** Custom user field (0.8.454): the value of $code for the signed-in user or $userId; null when there is no such field. */
+	function nuNextUserField(string $code, ?string $userId = null): ?string
+	{
+		return NuUserFields::get($code, $userId);
+	}
+
+	/** Custom user field (0.8.454): sets $code of a user ('' = empty). Checked like in the user form; logged. @return string '' or the error */
+	function nuNextSetUserField(string $userId, string $code, string $value): string
+	{
+		$code = strtolower($code);
+		$f = NuUserFields::all()[$code] ?? null;
+		if (!$f) return 'unknown field';
+		if (!nu_db()->value('SELECT COUNT(*) FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId])) return 'unknown user';
+		[$vals, $err] = NuUserFields::validate([$code => $value], $userId, 'api');
+		if ($err) return (string)reset($err);
+		if (!isset($vals[$code])) return 'not allowed';
+		$diff = NuUserFields::save($userId, $vals);
+		if ($diff) NuLog::write('user_updated', 'zzzzsys_user', $userId, ['fields' => $diff, 'via' => 'php']);
+		return '';
+	}
+
 	/** nuBuilder: true when the user has the permission item – or the current user is the globeadmin. */
 	function nuUserHasPermission($item, $userId = null): bool
 	{
@@ -352,7 +380,7 @@ if (!function_exists('nuDashboardData')) {
 
 if (!function_exists('nuHomeSetBadge')) {
 	/*
-	 * Start page hooks (0.8.378, core/nuhomehook.php): in the procedure nunext_home – they change only the tile start page being
+	 * Start page hooks (0.8.378, core/nuhomehook.php): in the procedure nu_home – they change only the tile start page being
 	 * built (badges, descriptions, hidden tiles, dynamic groups / tiles with keys x_…, banners, data for JavaScript).
 	 */
 	function nuHomeSetBadge($key, $text, $color = 'secondary'): void { NuHomeHook::setBadge((string)$key, (string)$text, (string)$color); }

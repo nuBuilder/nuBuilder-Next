@@ -101,3 +101,23 @@
 .nbDiffCode { max-height: 22rem; overflow: auto; margin: .25rem 0 .5rem; padding: .35rem .5rem; border: 1px solid var(--bs-border-color); border-radius: .4rem;
 	font-size: .8rem; white-space: pre; background: var(--bs-body-bg); }
 .nbDiffCode > div { min-height: 1.2em; }
+
+/* properties panel (0.8.449): fields packed tighter when the panel is wide (preview hidden, wide screens) – container query on the
+   panel's width: half-width fields become a third / a quarter, single-line full-width fields two thirds / half; text and code areas
+   and switches keep the full width */
+#nbPanel { container: nbpanel / inline-size; }
+@container nbpanel (min-width: 44rem) {
+	.nbFld.col-sm-5, .nbFld.col-sm-6, .nbFld.col-sm-7 { flex: 0 0 auto; width: 33.3333%; }
+	.nbFld.col-sm-4 { flex: 0 0 auto; width: 25%; }
+	.nbFld.col-sm-8 { flex: 0 0 auto; width: 50%; }
+	.nbFld.col-3 { flex: 0 0 auto; width: 16.6667%; }
+	.nbFld.col-12:not(.form-switch):not(:has(textarea)):not(:has(.nuAttrBtn, .nbAttrBtn)) { flex: 0 0 auto; width: 66.6667%; }
+}
+@container nbpanel (min-width: 72rem) {
+	.nbFld.col-sm-5, .nbFld.col-sm-6, .nbFld.col-sm-7 { width: 25%; }
+	.nbFld.col-sm-4 { width: 20%; }
+	.nbFld.col-sm-8 { width: 40%; }
+	.nbFld.col-3 { width: 12.5%; }
+	.nbFld.col-12:not(.form-switch):not(:has(textarea)):not(:has(.nuAttrBtn, .nbAttrBtn)) { width: 50%; }
+	.nbFld.col-12:has(textarea) { flex: 0 0 auto; width: 75%; }
+}

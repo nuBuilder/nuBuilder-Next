@@ -36,10 +36,9 @@ if (is_file($file)) {
 	$dom = new DOMDocument();
 	libxml_use_internal_errors(true);
 	$src = (string)file_get_contents($file);
-	foreach (['php', 'js'] as $lang) {   // function reference (0.8.399): docs/nunext-functions.json, admin sections only
-		$tag = '<div data-nu-fnref="' . $lang . '"></div>';
-		if (str_contains($src, $tag)) $src = str_replace($tag, $admin ? NuFnRef::render($lang) : '', $src);
-	}
+	// function reference (0.8.399; tabs PHP / JavaScript since 0.8.456): docs/nunext-functions.json, admin sections only
+	$tag = '<div data-nu-fnref="tabs"></div>';
+	if (str_contains($src, $tag)) $src = str_replace($tag, $admin ? NuFnRef::tabs() : '', $src);
 	$dom->loadHTML('<?xml encoding="utf-8"?>' . $src, LIBXML_NONET);
 	libxml_clear_errors();
 	$xp = new DOMXPath($dom);

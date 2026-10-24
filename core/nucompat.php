@@ -273,7 +273,7 @@ final class NuCompat
 	 * which version nuBuilder Next supports them (null = not yet – see the Help). SINCE is kept up to date with each fix.
 	 */
 	public const SINCE = ['C1' => '0.8.382', 'C2' => '0.8.382', 'C3' => '0.8.382', 'C4' => '0.8.382', 'C5' => '0.8.382', 'C6' => '0.8.382',
-		'M1' => '0.8.383', 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => null, 'M6' => null, 'M7' => '0.8.383', 'M8' => '0.8.383',
+		'M1' => '0.8.383', 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => null, 'M6' => '0.8.443', 'M7' => '0.8.383', 'M8' => '0.8.383',
 		'M9' => null, 'M10' => null, 'N1' => '0.8.383', 'N2' => '0.8.383', 'N3' => '0.8.383', 'I3' => null];
 
 	/** @return array<string, list<array{where: string, form: string, detail: string}>> finding id => places (only ids with places) */

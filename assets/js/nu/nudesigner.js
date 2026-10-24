@@ -61,7 +61,7 @@
 		var sx = e.clientX, sy = e.clientY, moved = false;
 		if (absolute) {
 			var top0 = w.offsetTop, left0 = w.offsetLeft;
-			drag(e, function (ev) {
+			drag(function (ev) {
 				var dx = ev.clientX - sx, dy = ev.clientY - sy;
 				if (!moved && Math.abs(dx) + Math.abs(dy) < 3) return;
 				moved = true;
@@ -75,7 +75,7 @@
 		}
 		// flow layouts: find a drop target under the pointer
 		var ghost = null, target = null, side = null;
-		drag(e, function (ev) {
+		drag(function (ev) {
 			if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 6) return;
 			if (!moved) {
 				moved = true;
@@ -121,7 +121,7 @@
 		var sx = e.clientX, sy = e.clientY, w0 = w.offsetWidth, h0 = w.offsetHeight;
 		if (absolute) {
 			var hasHeight = !!w.style.height;
-			drag(e, function (ev) {
+			drag(function (ev) {
 				w.style.width = Math.max(10, w0 + snap(ev.clientX - sx, ev)) + 'px';
 				if (hasHeight) w.style.height = Math.max(10, h0 + snap(ev.clientY - sy, ev)) + 'px';
 			}, function () {
@@ -134,7 +134,7 @@
 		var row = w.parentElement, colW = row.getBoundingClientRect().width / 12;
 		var m = /\bcol-md-(\d+)\b/.exec(w.className);
 		var span0 = m ? +m[1] : Math.max(1, Math.min(12, Math.round(w0 / colW))), span = span0;
-		drag(e, function (ev) {
+		drag(function (ev) {
 			span = Math.max(1, Math.min(12, span0 + Math.round((ev.clientX - sx) / colW)));
 			w.className = w.className.replace(/\bcol-md-\d+\b/, 'col-md-' + span);
 			w.setAttribute('data-span', span);
@@ -143,7 +143,7 @@
 		});
 	}
 
-	function drag(e, onMove, onEnd) {
+	function drag(onMove, onEnd) {
 		function mv(ev) { onMove(ev); }
 		function up(ev) {
 			document.removeEventListener('pointermove', mv);

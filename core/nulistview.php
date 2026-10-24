@@ -518,7 +518,7 @@ final class NuListView
 
 		$sort = isset($cols[$_GET['sort'] ?? '']) && !empty($cols[$_GET['sort']]['sort']) ? (string)$_GET['sort'] : $def['sort'][0];
 		$dir = isset($_GET['dir']) ? (($_GET['dir'] === 'desc') ? 'desc' : 'asc') : ($sort === $def['sort'][0] ? $def['sort'][1] : 'asc');
-		$per = $def['per'];
+		$per = nu_per_param() ?: $def['per'];   // the footer's page size menu (0.8.437)
 		$pg = max(1, (int)($_GET['pg'] ?? 1));
 		[$from, $params, $order] = self::query($L, $view, [$sort, $dir]);
 
@@ -528,7 +528,7 @@ final class NuListView
 		[$selSql, $selParams] = self::select($L, $need);
 
 		// keep: what links (sort, pages, print, view menu) carry over
-		$keep = ['q' => trim((string)($_GET['q'] ?? '')), $vp => isset($_GET[$vp]) ? $view['id'] : null];
+		$keep = ['q' => trim((string)($_GET['q'] ?? '')), $vp => isset($_GET[$vp]) ? $view['id'] : null, 'per' => nu_per_param() ?: null];
 		foreach (array_keys($L['filters']) as $k) if (array_key_exists($k, $_GET)) $keep[$k] = (string)$_GET[$k];
 		$keepSort = $keep + (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []);
 
@@ -589,6 +589,7 @@ final class NuListView
 		<input type="hidden" name="p" value="<?= h($route) ?>">
 		<?php foreach ($rp as $k => $v): ?><input type="hidden" name="<?= h((string)$k) ?>" value="<?= h((string)$v) ?>"><?php endforeach; ?>
 		<?php if ($keep[$vp] !== null): ?><input type="hidden" name="<?= h($vp) ?>" value="<?= h($view['id']) ?>"><?php endif; ?>
+		<?php if ($keep['per'] !== null): ?><input type="hidden" name="per" value="<?= (int)$keep['per'] ?>"><?php endif; ?>
 		<div class="row g-2 align-items-end">
 			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null) ?></div>
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
@@ -618,7 +619,7 @@ final class NuListView
 	<?= $opt['above_rows'] ?? '' ?>
 	<?php if ($grid): ?>
 		<div class="p-3"><?php if (!$rows): ?><div class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></div><?php else: ?>
-			<div class="row g-3 nuLvGrid"><?php foreach ($rows as $r): ?><?= ($L['grid'])($r, ($L['link'])($r)) ?><?php endforeach; ?></div><?php endif; ?></div>
+			<div class="row g-3 nuLvGrid"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>><?php foreach ($rows as $r): ?><?= ($L['grid'])($r, ($L['link'])($r)) ?><?php endforeach; ?></div><?php endif; ?></div>
 	<?php else: ?>
 	<div class="table-responsive d-none d-md-block">
 		<table class="table table-hover align-middle mb-0 nu-table<?= !empty($L['table_class']) ? ' ' . h($L['table_class']) : '' ?>">
@@ -630,7 +631,7 @@ final class NuListView
 					<th scope="col"<?= $cls !== '' ? ' class="' . h($cls) . '"' : '' ?>><?= $cd['label'] !== '' ? h($cd['label']) : '<span class="visually-hidden">' . h(t('actions')) . '</span>' ?></th>
 				<?php endif; endforeach; ?>
 			</tr></thead>
-			<tbody>
+			<tbody<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>>
 			<?php if (!$rows): ?>
 				<tr><td colspan="<?= count($def['columns']) ?>" class="text-center text-body-secondary py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i><?= h(t('no_records')) ?></td></tr>
 			<?php endif; ?>
@@ -644,7 +645,7 @@ final class NuListView
 			</tbody>
 		</table>
 	</div>
-	<div class="d-md-none nuLvCards">
+	<div class="d-md-none nuLvCards"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>>
 		<?php if (!$rows): ?><div class="text-center text-body-secondary py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i><?= h(t('no_records')) ?></div><?php endif; ?>
 		<?php foreach ($rows as $r): $href = ($L['link'])($r); $card = $def['card']; $tag = $href !== '' ? 'a' : 'div'; ?>
 			<<?= $tag ?> class="nuLvCard"<?= $href !== '' ? ' href="' . h($href) . '"' : '' ?>>
@@ -657,7 +658,7 @@ final class NuListView
 		<?php endforeach; ?>
 	</div>
 	<?php endif; ?>
-	<?php nu_list_footer($total, $pg, $per, $route, $rp + $keepSort); ?>
+	<?php nu_list_footer($total, $pg, $per, $route, $rp + $keepSort, 'card-footer', 'pg', '', true); ?>
 </div>
 <?= self::editorData($L, $views, $view) ?>
 		<?php

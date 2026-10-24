@@ -15,9 +15,10 @@
 
 /* ------------------------------------------------------------------ search row: search, favourites only, View, Customise */
 .nuHomeSearchRow { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
-.nuHomeSearchRow .nuHomeSearchBox { flex: 0 1 34rem; min-width: 0; max-width: none; }
-.nuHomeTools { display: flex; gap: .5rem; margin-inline-start: auto; flex: none; }
+.nuHomeSearchRow .nuHomeSearchBox { flex: 1 1 auto; min-width: 0; max-width: 300px; }   /* 0.8.455: Customise right next to it */
+.nuHomeTools { display: flex; gap: .5rem; flex: none; }
 .nuHomeTools .btn { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
+#nuHomeViewBtn .nuHomeBtnTx { display: none; }   /* icon only (0.8.455) – name in title / aria-label */
 #nuHomeViewBtn[aria-expanded="true"] { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: var(--bs-primary-border-subtle); }
 @container (max-width: 640px) {
 	.nuHomeBtnTx { display: none; }
@@ -406,3 +407,31 @@
 .nuHomeVpPickIcon .nuHomeIcn-outline .nuHomeIcon { background: transparent; color: var(--nu-ic); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--nu-ic) 50%, transparent); }
 .nuHomeVpPickIcon .nuHomeIcn-mono .nuHomeIcon { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
 .nuHomeVpPickIcon .nuHomeIcn-none .nuHomeIcon { background: transparent; color: var(--nu-ic); }
+
+/* ------------------------------------------------------------------ user start pages (0.8.425) */
+/* editor: tiles and groups shown only to some users (conditions) */
+.nuHomeCondMark { flex: none; font-size: .7rem; color: var(--bs-info-text-emphasis); margin-inline-start: .35rem; }
+.nuHomeGroupHead .nuHomeCondMark { font-size: .8rem; }
+.nuHeCondMark { position: absolute; top: .5rem; inset-inline-start: .65rem; font-size: .8rem; color: var(--bs-info-text-emphasis); z-index: 1; }
+.list-group-item .nuHeCondMark { position: static; margin-inline-start: .5rem; }
+.nuHeCondOn { color: var(--bs-info-text-emphasis); }
+.nuHomeForBar label { white-space: nowrap; }
+/* Personalise: star and hide on every tile, hidden tiles dimmed, the tiles hidden before as chips */
+.nuHomeMineTools { position: absolute; top: .3rem; inset-inline-end: .3rem; display: flex; gap: .2rem; z-index: 4; }
+.nuHomeMineTools .btn { padding: .1rem .35rem; line-height: 1.2; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.nuHomeMineTools .nuHomeMineStar[aria-pressed="true"] { color: var(--nu-star, #b8860b); }
+.nuHomeMineOn .nuHomeTileWrap > .nuHomeTile, .nuHomeMineOn .nuHomeTileWrap > .nuHomeTileForm { cursor: default; }
+.nuHomeMineOn .nuHomeTileWrap .nuHomeAction, .nuHomeMineOn .nuHomeTileWrap .nuHomeInfo { visibility: hidden; }
+.nuHomeTileWrap.nuHomeMineGone > .nuHomeTile, .nuHomeTileWrap.nuHomeMineGone > .nuHomeTileForm { opacity: .4; filter: grayscale(1); }
+.nuHomeMineOn :is(.nuHomeStyle-large, .nuHomeStyle-cards, .nuHomeStyle-compact) .nuHomeTileWrap:hover { transform: none; }
+.nuHomeMineHidden .nuHomeChip { opacity: .65; }
+.nuHomeMineHidden .nuHomeChip.nuHomeMineBack { opacity: 1; outline: 2px solid var(--bs-success); }
+/* the globeadmin acting as a user: rights of the access level, collapsed */
+.nuHomeRights > summary { cursor: pointer; list-style: none; }
+.nuHomeRights > summary::-webkit-details-marker { display: none; }
+.nuHomeRights > summary::after { content: "\F282"; font-family: bootstrap-icons; margin-inline-start: .5rem; transition: transform .15s; }
+.nuHomeRights[open] > summary::after { transform: rotate(180deg); }
+
+/* one Customise panel (0.8.452): tabs Content · Appearance · Layouts under the head */
+.nuHomeVpTabs { padding: 0 1rem; flex-wrap: nowrap; --nu-tab-surface: var(--bs-body-bg); }
+.nuHomeVpTabs .nav-link { padding: .45rem .6rem; font-size: .875rem; white-space: nowrap; }

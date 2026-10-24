@@ -68,7 +68,31 @@ final class NuFnRef
 		return preg_match('/[A-Z]/', $c) ? $c : '#';
 	}
 
-	/** HTML of one reference (search field, A–Z index, one .doc-sub per group). */
+	/**
+	 * The two references as tabs (0.8.456): <div data-nu-fnref="tabs"> of docs/nunext-docs.htm. Each tab is a .doc-sub (the help index
+	 * lists "PHP functions" / "JavaScript functions"), ids ref-php / ref-js stay the anchors of older links; assets/js/nuhelp.js switches
+	 * the tab for #ref-…, #fn-… and the index, and shows both while the help search runs.
+	 */
+	public static function tabs(): string
+	{
+		$langs = ['php' => 'PHP', 'js' => 'JavaScript'];
+		$nav = '<ul class="nav nav-tabs nuFnTabs" role="tablist" data-nu-search-skip>';
+		$panes = '';
+		$first = true;
+		foreach ($langs as $lang => $label) {
+			$n = count(self::load()[$lang]['items'] ?? []);
+			if (!$n) continue;
+			$nav .= '<li class="nav-item" role="presentation"><button type="button" class="nav-link' . ($first ? ' active' : '') . '" role="tab" id="ref-' . $lang . '-tab"'
+				. ' data-nu-fn-tab="ref-' . $lang . '" aria-controls="ref-' . $lang . '" aria-selected="' . ($first ? 'true' : 'false') . '">'
+				. '<i class="bi ' . ($lang === 'php' ? 'bi-filetype-php' : 'bi-filetype-js') . ' me-1"></i>' . h($label) . ' <span class="badge rounded-pill nuFnTabCount">' . $n . '</span></button></li>';
+			$panes .= '<div class="doc-sub nuFnPane' . ($first ? ' active' : '') . '" id="ref-' . $lang . '" role="tabpanel" aria-labelledby="ref-' . $lang . '-tab">'
+				. '<h3 id="ref-' . $lang . '-h" class="nuFnPaneTitle">' . h($label) . ' functions</h3>' . self::render($lang) . '</div>';
+			$first = false;
+		}
+		return $nav . '</ul>' . $panes;
+	}
+
+	/** HTML of one reference (search field, A–Z index, one block per group). */
 	public static function render(string $lang): string
 	{
 		$ref = self::load()[$lang] ?? null;
@@ -84,7 +108,13 @@ final class NuFnRef
 			. '<span class="nuFnCount small text-body-secondary" aria-live="polite" data-nu-fn-count="' . h(t('fnref_count')) . '"></span></div>'
 			. '<p class="nuFnNone small text-body-secondary" hidden>' . h(t('help_no_match')) . '</p>';
 
-		// A–Z index
+		// groups as chips, then the A–Z index
+		$h .= '<nav class="nuFnGroupNav" data-nu-search-skip aria-label="' . h($label) . '">';
+		foreach ($ref['groups'] ?? [] as $g) {
+			$cnt = count($byGroup[(string)$g['id']] ?? []);
+			if ($cnt) $h .= '<a href="#ref-' . h($lang) . '-' . h((string)$g['id']) . '">' . h((string)$g['title']) . ' <span>' . $cnt . '</span></a>';
+		}
+		$h .= '</nav>';
 		$az = [];
 		foreach ($items as $it) $az[self::letter((string)$it['n'])][(string)$it['n']] = true;
 		ksort($az);
@@ -102,8 +132,8 @@ final class NuFnRef
 			$list = $byGroup[(string)$g['id']] ?? [];
 			if (!$list) continue;
 			$gid = 'ref-' . $lang . '-' . $g['id'];
-			$h .= '<div class="doc-sub nuFnGroup" id="' . h($gid) . '"><h3 id="' . h($gid) . '-h">' . h((string)$g['title']) . '</h3>';
-			foreach ($list as $it) $h .= self::entry($lang, $it);
+			$h .= '<div class="nuFnGroup" id="' . h($gid) . '"><h4 class="nuFnGroupTitle" id="' . h($gid) . '-h">' . h((string)$g['title']) . '</h4>';
+			foreach ($list as $it) $h .= self::entry($lang, $it, $list);
 			$h .= '</div>';
 		}
 		return $h;
@@ -115,19 +145,105 @@ final class NuFnRef
 		return $n;
 	}
 
-	private static function entry(string $lang, array $it): string
+	/** Parameters of a signature: [[name, type, default, variadic], …] – "string $code, ?string $userId = null" or "id, method". */
+	public static function params(string $sig): array
+	{
+		$open = strpos($sig, '(');
+		if ($open === false) return [];
+		$depth = 0; $buf = ''; $parts = [];
+		for ($i = $open + 1, $n = strlen($sig); $i < $n; $i++) {
+			$c = $sig[$i];
+			if ($c === '(' || $c === '[') $depth++;
+			if ($c === ')' || $c === ']') { if ($depth === 0) break; $depth--; }
+			if ($c === ',' && $depth === 0) { $parts[] = $buf; $buf = ''; continue; }
+			$buf .= $c;
+		}
+		if (trim($buf) !== '') $parts[] = $buf;
+		$out = [];
+		foreach ($parts as $p) {
+			$p = trim($p);
+			if ($p === '') continue;
+			[$decl, $def] = array_pad(array_map('trim', explode('=', $p, 2)), 2, null);
+			$var = (bool)preg_match('/^(.*?)(\.\.\.)?(&?\$\w+|\w+)$/', $decl, $m);
+			$type = $var ? trim($m[1]) : '';
+			$name = $var ? ($m[2] ?? '') . ltrim($m[3], '&') : $decl;
+			$out[] = [$name, $type, $def, str_contains($decl, '...')];
+		}
+		return $out;
+	}
+
+	private static function entry(string $lang, array $it, array $group = []): string
 	{
 		$n = (string)$it['n'];
+		$kind = (string)($it['k'] ?? 'fn');
 		$next = ($it['o'] ?? 'nb') === 'next';
 		$v = (string)($it['v'] ?? '');
 		$badge = $next
 			? '<span class="badge nuFnNext">nuBuilder Next' . ($v !== '' ? ' ' . h($v) : '') . '</span>'
-			: (($it['k'] ?? 'fn') === 'hook' ? '<span class="badge nuFnHook">hook</span>' : '<span class="badge nuFnNb">nuBuilder</span>');
-		$h = '<div class="nuFn" id="' . h(self::anchor($lang, $n)) . '" data-nu-fn="' . h(strtolower($n)) . '">'
-			. '<div class="nuFnHead"><code class="nuFnSig">' . h((string)$it['s']) . '</code>' . $badge . '</div>'
-			. '<div class="nuFnDesc">' . h((string)$it['d']) . '</div>';
-		if (!empty($it['r'])) $h .= '<div class="nuFnRet"><span>Returns</span> ' . h((string)$it['r']) . '</div>';
-		if (!empty($it['e'])) $h .= '<pre class="doc-code">' . h((string)$it['e']) . '</pre>';
-		return $h . '</div>';
+			: ($kind === 'hook' ? '<span class="badge nuFnHook">hook</span>' : '<span class="badge nuFnNb">nuBuilder</span>');
+		if ($kind === 'method' && !$next) $badge .= '<span class="badge nuFnKind">method</span>';
+		$h = '<article class="nuFn" id="' . h(self::anchor($lang, $n)) . '" data-nu-fn="' . h(strtolower($n)) . '">'
+			. '<header class="nuFnHead"><h5 class="nuFnName">' . h($n) . '</h5>' . $badge
+			. '<a class="nuFnLink" href="#' . h(self::anchor($lang, $n)) . '" title="Link" aria-label="Link to ' . h($n) . '"><i class="bi bi-link-45deg"></i></a></header>'
+			. '<pre class="nuFnSig"><code>' . self::sigHtml((string)$it['s'], $n) . '</code></pre>'
+			. '<dl class="nuFnSpec">';
+		$params = self::params((string)$it['s']);
+		$pd = (array)($it['p'] ?? []);
+		if ($params) {
+			$h .= '<dt>Parameters</dt><dd><ul class="nuFnParams">';
+			foreach ($params as [$pn, $pt, $def, $variadic]) {
+				$desc = $pd[$pn] ?? $pd[ltrim($pn, '.')] ?? '';
+				$h .= '<li><code class="nuFnPName">' . h($pn) . '</code>'
+					. ($pt !== '' ? ' <span class="nuFnPType">' . h($pt) . '</span>' : '')
+					. ($def !== null ? ' <span class="nuFnPOpt">optional, default <code>' . h($def) . '</code></span>' : ($variadic ? ' <span class="nuFnPOpt">any number</span>' : ''))
+					. ($desc !== '' ? '<span class="nuFnPDesc">' . h((string)$desc) . '</span>' : '') . '</li>';
+			}
+			$h .= '</ul></dd>';
+		} elseif (isset($pd['...'])) {
+			$h .= '<dt>Parameters</dt><dd><ul class="nuFnParams"><li><code class="nuFnPName">…</code><span class="nuFnPDesc">' . h((string)$pd['...']) . '</span></li></ul></dd>';
+		}
+		if (!empty($it['r'])) $h .= '<dt>' . ($kind === 'hook' ? 'Return' : 'Returns') . '</dt><dd>' . h((string)$it['r']) . '</dd>';
+		$h .= '<dt>Description</dt><dd>' . h((string)$it['d']) . '</dd></dl>';
+		if (!empty($it['e'])) {
+			$h .= '<div class="nuFnBlock"><div class="nuFnBlockHead"><span>' . ($kind === 'hook' ? 'Define it in the form\'s JavaScript' : 'Example') . '</span>'
+				. '<button type="button" class="nuFnCopy" data-nu-copy-text="' . h((string)$it['e']) . '" title="Copy" aria-label="Copy the example"><i class="bi bi-clipboard"></i></button></div>'
+				. '<pre class="nuFnCode nuFnCode-' . $lang . '"><code>' . h((string)$it['e']) . '</code></pre></div>';
+		}
+		if (isset($it['x']) && (string)$it['x'] !== '') {
+			$out = $lang === 'js' && str_contains((string)($it['e'] ?? ''), 'console.log(') ? 'console.log()' : 'Result';
+			$h .= '<div class="nuFnBlock nuFnOut"><div class="nuFnBlockHead"><span>' . h($out) . '</span></div><pre class="nuFnCode"><code>' . h((string)$it['x']) . '</code></pre></div>';
+		}
+		$see = self::related($n, $group);
+		if ($see) {
+			$h .= '<p class="nuFnSee"><span>Also see:</span> ' . implode(', ', array_map(static fn($x) => '<a href="#' . h(self::anchor($lang, $x)) . '">' . h($x) . '</a>', $see)) . '</p>';
+		}
+		return $h . '</article>';
+	}
+
+	/** Signature with the function name in bold: "nuGetValue(id, method)". */
+	private static function sigHtml(string $sig, string $name): string
+	{
+		$p = strpos($sig, $name);
+		if ($p === false) return h($sig);
+		return h(substr($sig, 0, $p)) . '<b>' . h($name) . '</b>' . h(substr($sig, $p + strlen($name)));
+	}
+
+	/** Up to four functions of the same group with a similar name (nuIsDisabled → nuIsEnabled, nuIsVisible, nuIsHidden). */
+	public static function related(string $name, array $group): array
+	{
+		$core = static fn(string $s) => strtolower((string)preg_replace('/^(\$\w+->|NuXlsx::|NuPage\.|nuHome\.|db_|nu)/', '', (string)preg_replace('/\(.*$/', '', $s)));
+		$me = $core($name);
+		if (strlen($me) < 3) return [];
+		$scores = [];
+		foreach ($group as $o) {
+			$on = (string)$o['n'];
+			if ($on === $name) continue;
+			$c = $core($on);
+			similar_text($me, $c, $pct);
+			$prefix = strlen($me) >= 4 && strlen($c) >= 4 && (str_starts_with($c, substr($me, 0, 4)) || str_ends_with($c, substr($me, -5)));
+			if ($pct >= 62 || $prefix) $scores[$on] = $pct + ($prefix ? 25 : 0);
+		}
+		arsort($scores);
+		return array_slice(array_keys($scores), 0, 4);
 	}
 }

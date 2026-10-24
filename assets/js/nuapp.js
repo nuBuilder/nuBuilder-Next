@@ -360,6 +360,34 @@
 		});
 	});
 
+	// ---------------------------------------------------------------- copy a text: data-nu-copy-text="…" (form info, 0.8.435)
+	function nuCopyText(text) {
+		if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return fallback(); });
+		return Promise.resolve(fallback());
+		function fallback() {   // http without TLS: a hidden text area and execCommand
+			var ta = document.createElement('textarea');
+			ta.value = text; ta.setAttribute('readonly', ''); ta.className = 'nuCopyBuffer';
+			document.body.appendChild(ta); ta.select();
+			var ok = false;
+			try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+			ta.remove();
+			return ok;
+		}
+	}
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest && e.target.closest('[data-nu-copy-text]');
+		if (!b) return;
+		e.preventDefault();
+		nuCopyText(b.getAttribute('data-nu-copy-text') || '').then(function (ok) {
+			var icon = b.querySelector('.bi');
+			if (!icon) return;
+			var was = icon.className.replace(/\bbi-clipboard(-check|-x)?\b/, '').trim();
+			icon.className = was + ' ' + (ok ? 'bi-clipboard-check text-success' : 'bi-clipboard-x text-danger');
+			b.classList.add('nuCopied');
+			setTimeout(function () { icon.className = was + ' bi-clipboard'; b.classList.remove('nuCopied'); }, 1500);
+		});
+	});
+
 	// ---------------------------------------------------------------- print view: Copy puts the table on the clipboard
 	// as HTML (pastes as a table into Excel, Word, e-mail) and as tab-separated text; only visible columns, no filter row
 	$$('[data-nu-copy-table]').forEach(function (b) {
@@ -447,6 +475,13 @@
 	// ---------------------------------------------------------------- flash messages shown as toasts (nu_flash(type, msg, true), 0.8.377)
 	if (nuBs.ready()) $$('.nuFlashToast').forEach(function (t) { nuBs.toast(t).show(); });
 
+	// ---------------------------------------------------------------- tabs restored by a script (0.8.444): shown once every script of the
+	// page has run (the hash tabs below, a remembered tab in nuprocedures.js …) – nutheme.js hid [data-nu-tab-restore] in the meantime
+	(function () {
+		var done = function () { document.documentElement.classList.remove('nuTabsPending'); };
+		if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', done); else done();
+	})();
+
 	// ---------------------------------------------------------------- tabs kept in the address (0.8.392, update page: ul[data-nu-hash-tabs])
 	// #<tab> opens that tab, #<element id> the tab that holds the element (old anchors such as #updHistory); a tab shown by a click
 	// writes its name into the address (the first tab: none), so reloads, links and redirects after a form post come back to it
@@ -472,7 +507,11 @@
 			if (!n || ('#' + n) === location.hash) return;
 			var target = location.hash && document.getElementById(location.hash.slice(1));
 			if (target && e.target.getAttribute('data-bs-target') === '#' + (target.closest('.tab-pane') || {}).id) return;   // #updHistory inside it: keep
-			history.replaceState(null, '', e.target === first ? location.pathname + location.search : '#' + n);
+			// ?tab= of the server (0.8.451) follows the tab clicked, so a reload opens the same tab without hiding the page
+			var u = new URL(location.href);
+			if (u.searchParams.has('tab')) { if (e.target === first) u.searchParams.delete('tab'); else u.searchParams.set('tab', n); }
+			u.hash = e.target === first ? '' : n;
+			history.replaceState(null, '', u.pathname + u.search + u.hash);
 		});
 		show(location.hash);
 		window.addEventListener('hashchange', function () { show(location.hash); });
@@ -490,9 +529,22 @@
 			el.classList.add('show');
 			toggles.forEach(function (b) { b.classList.remove('collapsed'); b.setAttribute('aria-expanded', 'true'); });
 		}
+		// open by default (0.8.450, update page → GitHub): folded last time → folded again, unless the server forces it open
+		if (saved === '0' && el.classList.contains('show') && !el.hasAttribute('data-nu-force-open')) {
+			el.classList.remove('show');
+			toggles.forEach(function (b) { b.classList.add('collapsed'); b.setAttribute('aria-expanded', 'false'); });
+		}
 		var store = function (v) { return function (e) { if (e.target !== el) return; try { localStorage.setItem(key, v); } catch (x) { /* storage blocked */ } }; };
 		el.addEventListener('shown.bs.collapse', store('1'));
 		el.addEventListener('hidden.bs.collapse', store('0'));
+	});
+
+	// a button inside a folded area's header that opens something inside it: data-nu-open-first="#area" unfolds the area first (0.8.450)
+	$$('[data-nu-open-first]').forEach(function (b) {
+		b.addEventListener('click', function () {
+			var area = $(b.getAttribute('data-nu-open-first'));
+			if (area && !area.classList.contains('show') && nuBs.ready()) nuBs.collapse(area, {toggle: false}).show();
+		});
 	});
 
 	// ---------------------------------------------------------------- list footer: click on "Page x / y" → enter a page, Enter jumps there
@@ -555,6 +607,7 @@
 		$$('form[data-confirm]').forEach(function (f) {
 			f.addEventListener('submit', function (e) {
 				if (f.dataset.confirmed === '1') return;
+				if (e.submitter && e.submitter.hasAttribute('data-no-confirm')) return;   // e.g. "Save rule" next to "Delete now" (0.8.451)
 				e.preventDefault();
 				pending = f;
 				$('.js-confirm-text', modalEl).textContent = f.getAttribute('data-confirm');
@@ -952,4 +1005,132 @@
 	var rt = null;
 	window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(run, 200); });
 	window.nuA11y = run;                                           // pages that draw later (sub-form rows, dialogs) may call it again
+})();
+
+/*
+ * Search highlighting (0.8.427): marks the words of a search in text – form browse lists (nuHighlightSearch() / $.fn.nuHighlight in
+ * assets/js/nu/nucompat.js, run after loading as in nuBuilder) and the system lists (data-nu-highlight on their rows). Better than
+ * nuBuilder's nuHighlight: every occurrence (not only the first of a text node), all terms in one pass (longest first, no marks inside
+ * marks), case- and accent-insensitive like the database's collation (é = e, ß = ss) with exact positions in the original text, and
+ * the marked part only (nuBuilder's accent mode marked the rest of the text too). Skips script / style / form fields / buttons, existing
+ * marks and anything inside .nuNoHighlight. API: nuHighlightText(root, terms, {className, accents}) → number of marks;
+ * nuHighlightClear(root, className).
+ */
+(function () {
+	'use strict';
+	var SKIP = /^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|OPTION|BUTTON|SVG|MARK)$/;
+	var MAX_NODES = 20000;                                        // a print view with thousands of rows stays fast
+	function fold(s, accents) {
+		s = s.toLowerCase();
+		if (accents === false) return s;
+		return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/æ/g, 'ae').replace(/œ/g, 'oe').replace(/ø/g, 'o').replace(/đ/g, 'd').replace(/ł/g, 'l');
+	}
+	/** The folded text and, for every folded character, the index of its original character (+ the end as the last entry). */
+	function folded(text, accents) {
+		var f = '', map = [], i = 0;
+		Array.from(text).forEach(function (ch) {
+			var x = fold(ch, accents);
+			for (var k = 0; k < x.length; k++) map.push(i);
+			f += x;
+			i += ch.length;
+		});
+		map.push(i);
+		return {f: f, map: map, len: i};
+	}
+	function ranges(F, keys) {
+		var out = [], pos = 0;
+		while (pos < F.f.length) {
+			var best = -1, blen = 0;
+			for (var k = 0; k < keys.length; k++) {               // keys: longest first – the first found at the smallest index wins
+				var at = F.f.indexOf(keys[k], pos);
+				if (at >= 0 && (best < 0 || at < best)) { best = at; blen = keys[k].length; }
+			}
+			if (best < 0) break;
+			var s = F.map[best], last = F.map[best + blen - 1], e = F.len;
+			for (var j = best + blen; j < F.map.length; j++) if (F.map[j] > last) { e = F.map[j]; break; }
+			if (!out.length || s >= out[out.length - 1][1]) out.push([s, e]);
+			pos = best + blen;
+		}
+		return out;
+	}
+	function highlight(root, terms, opt) {
+		opt = opt || {};
+		var cls = opt.className || 'nuHighlight', accents = opt.accents;
+		if (!root || !terms) return 0;
+		var keys = (Array.isArray(terms) ? terms : [terms]).map(function (t) { return fold(String(t == null ? '' : t).trim(), accents); })
+			.filter(function (t, i, a) { return t !== '' && a.indexOf(t) === i; }).sort(function (a, b) { return b.length - a.length; });
+		if (!keys.length) return 0;
+		var nodes = [], walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode: function (n) {
+			if (!n.data || !n.data.trim()) return NodeFilter.FILTER_REJECT;
+			for (var p = n.parentNode; p && p !== root.parentNode; p = p.parentNode) {
+				if (p.nodeType !== 1) continue;
+				if (SKIP.test(p.tagName.toUpperCase()) || (p.classList && (p.classList.contains('nuNoHighlight') || p.classList.contains(cls)))) return NodeFilter.FILTER_REJECT;
+			}
+			return NodeFilter.FILTER_ACCEPT;
+		}});
+		while (walker.nextNode() && nodes.length < MAX_NODES) nodes.push(walker.currentNode);
+		var count = 0;
+		nodes.forEach(function (n) {
+			var text = n.data, rs = ranges(folded(text, accents), keys);
+			if (!rs.length) return;
+			var frag = document.createDocumentFragment(), at = 0;
+			rs.forEach(function (r) {
+				if (r[0] > at) frag.appendChild(document.createTextNode(text.slice(at, r[0])));
+				var m = document.createElement('mark');
+				m.className = cls;
+				m.textContent = text.slice(r[0], r[1]);
+				frag.appendChild(m);
+				at = r[1];
+				count++;
+			});
+			if (at < text.length) frag.appendChild(document.createTextNode(text.slice(at)));
+			n.parentNode.replaceChild(frag, n);
+		});
+		return count;
+	}
+	function clear(root, cls) {
+		if (!root) return;
+		Array.prototype.slice.call(root.querySelectorAll('mark.' + (cls || 'nuHighlight'))).forEach(function (m) {
+			var p = m.parentNode;
+			p.replaceChild(document.createTextNode(m.textContent), m);
+			p.normalize();
+		});
+	}
+	window.nuHighlightText = highlight;
+	window.nuHighlightClear = clear;
+	// system lists: rows / cards carrying data-nu-highlight="<the search>" (words separated by spaces, as the lists search)
+	function lists() {
+		document.querySelectorAll('[data-nu-highlight]').forEach(function (box) {
+			var q = box.getAttribute('data-nu-highlight') || '';
+			box.removeAttribute('data-nu-highlight');
+			highlight(box, q.split(/\s+/));
+		});
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lists); else lists();
+})();
+
+/*
+ * Search fields of lists (0.8.428, form browse lists and nuBuilder Next's own lists): the browser's × in the field and Esc empty the field
+ * and show the list without the search words at once (before, the × only emptied the box). Esc in an empty field does nothing here, so
+ * a lookup window can still be closed with it.
+ */
+(function () {
+	'use strict';
+	function reload(f, input) {
+		if (input.defaultValue === '') return;                    // nothing was searched: emptying the box is enough
+		if (typeof f.requestSubmit === 'function') f.requestSubmit(); else f.submit();
+	}
+	document.addEventListener('search', function (e) {        // the × of type="search" (Chrome, Edge, Safari); Enter submits anyway
+		var input = e.target, f = input && input.form;
+		if (!f || input.type !== 'search' || !f.classList.contains('nuListFilter') || input.value !== '') return;
+		reload(f, input);
+	}, true);
+	document.addEventListener('keydown', function (e) {
+		var input = e.target, f = input && input.form;
+		if (e.key !== 'Escape' || !f || input.type !== 'search' || !f.classList.contains('nuListFilter') || input.value === '') return;
+		e.preventDefault();
+		e.stopPropagation();
+		input.value = '';
+		reload(f, input);
+	}, true);
 })();

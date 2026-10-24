@@ -89,7 +89,7 @@
 		if (TYPES.indexOf(s.type) < 0) s.type = 'info';
 		if (s.modal) s.fixed = true;                     // inside a container the bar could lie below the backdrop
 		if (s.icon && !/<i\b/i.test(String(s.html))) s.html = '<i class="' + s.icon + ' nu-info-bar__icon" aria-hidden="true"></i> ' + s.html;   // icon also for $.nuInfoBar({icon})
-		if (!s.allowMultiple) bars().each(function () { destroy(this, false); });
+		if (!s.allowMultiple) bars().each(function () { destroy(this); });
 
 		var role = s.modal ? 'alertdialog' : (s.type === 'error' || s.type === 'warning' ? 'alert' : 'status');
 		var $bar = $('<div class="nu-info-bar" tabindex="-1"></div>')

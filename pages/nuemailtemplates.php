@@ -208,7 +208,7 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 	$isTemplate = (string)($tpl['emt_template'] ?? '') === '1';
 	$locked = $isTemplate || !($tpl ? $rights['save'] : $rights['create']);   // nuBuilder's templates: read-only view
 	$langs = NuEmailTemplate::languages();
-	$data = ['csrf' => nu_csrf_token(), 'system' => NuEmailTemplate::SYSTEM_FIELDS, 'fieldsUrl' => nu_url('emailtemplates') . '&fields=',
+	$data = ['toLabel' => t('mail_to'), 'csrf' => nu_csrf_token(), 'system' => NuEmailTemplate::SYSTEM_FIELDS, 'fieldsUrl' => nu_url('emailtemplates') . '&fields=',
 		'labels' => ['insert' => t('emt_insert_hint'), 'no_fields' => t('emt_no_fields'), 'system' => t('emt_system_fields'), 'sent' => t('mail_test_ok'),
 			'not_found' => t('emt_record_not_found')]];
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
@@ -225,7 +225,8 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="action" value="save">
 		<div class="nuTitleBar mb-3">
-			<h2 class="h5 mb-0"><?= h($tpl ? (string)$tpl['emt_code'] : t('emt_new')) ?></h2>
+			<?php // the code is in the field below (and in the folded line) – only screen readers get it as heading (0.8.434) ?>
+			<h2 class="h5 mb-0<?= $tpl ? ' visually-hidden' : '' ?>"><?= h($tpl ? (string)$tpl['emt_code'] : t('emt_new')) ?></h2>
 			<?php if (!$locked): ?>
 				<button data-nu-save class="btn nuBtnAct nuBtnSave btn-sm" type="submit" id="emtSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 			<?php endif; ?>
@@ -239,6 +240,14 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 		<div class="row g-3">
 			<div class="col-xl-8">
 				<div class="card shadow-sm mb-3"><div class="card-body"><fieldset<?= $locked ? ' disabled' : '' ?>><div class="row g-3">
+					<?php // code, group, category, language, description and recipients can be folded away (0.8.432): the summary line shows code, description
+					// and To; open until folded, then as last left in this browser (nuemailtemplates.js) – always open when one of these fields has an error
+					$headErr = (bool)array_intersect_key($errors, array_flip(['emt_code', 'emt_group', 'emt_category', 'emt_description', 'emt_to', 'emt_cc', 'emt_bcc']));
+					$headInfo = implode(' · ', array_filter([$v('emt_code'), $v('emt_description'), $v('emt_to') !== '' ? t('mail_to') . ': ' . $v('emt_to') : ''], static fn($x) => $x !== '')); ?>
+					<details class="col-12 nuEmtHead" id="emtHead" open<?= $headErr ? ' data-nu-force-open="1"' : '' ?>>
+						<summary class="nuEmtHeadSum"><i class="bi bi-chevron-right nuEmtChev" aria-hidden="true"></i><span class="fw-semibold text-nowrap"><?= h(t('emt_head')) ?></span>
+							<span class="nuEmtHeadInfo small text-body-secondary text-truncate" id="emtHeadInfo"><?= h($headInfo) ?></span></summary>
+					<div class="row g-3 pt-2">
 					<div class="col-sm-4"><label class="form-label" for="emt_code"><?= h(t('emt_code')) ?> <span class="text-danger">*</span></label>
 						<input class="form-control<?= $err('emt_code') ?>" id="emt_code" name="emt_code" maxlength="80" value="<?= h($v('emt_code')) ?>" required><?= $fb('emt_code') ?></div>
 					<div class="col-sm-4"><label class="form-label" for="emt_group"><?= h(t('emt_group')) ?></label>
@@ -259,6 +268,8 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 						<input class="form-control emtTarget<?= $err('emt_cc') ?>" id="emt_cc" name="emt_cc" maxlength="1000" value="<?= h($v('emt_cc')) ?>"><?= $fb('emt_cc') ?></div>
 					<div class="col-sm-6"><label class="form-label" for="emt_bcc">Bcc</label>
 						<input class="form-control emtTarget<?= $err('emt_bcc') ?>" id="emt_bcc" name="emt_bcc" maxlength="1000" value="<?= h($v('emt_bcc')) ?>"><?= $fb('emt_bcc') ?></div>
+					</div></details>
+					<div class="col-12 nuEmtHeadEnd"><hr class="my-0"></div>
 					<div class="col-12"><label class="form-label" for="emt_subject"><?= h(t('mail_subject')) ?></label>
 						<input class="form-control emtTarget<?= $err('emt_subject') ?>" id="emt_subject" name="emt_subject" maxlength="1000" value="<?= h($v('emt_subject')) ?>"><?= $fb('emt_subject') ?></div>
 					<div class="col-12">

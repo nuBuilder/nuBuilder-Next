@@ -134,7 +134,7 @@ if (nu_is_post()) {
 			$once = nu_post('once');
 			if ($once === '' || !isset($_SESSION['nu_backup_once'][$once])) {
 				nu_flash('info', t('upd_backup_twice'));
-				nu_redirect(nu_url('update') . '#backups');
+				nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
 			}
 			unset($_SESSION['nu_backup_once'][$once]);
 			// never two at the same time (two tabs, two globeadmins): NuUpdate::backup() locks and says so
@@ -145,21 +145,41 @@ if (nu_is_post()) {
 			nu_flash('success', t('upd_backup_done', $name));
 			if ($sql && $sql['complete']) nu_flash('success', t('upd_sql_done', $sql['tables'], number_format((int)$sql['rows'], 0, '.', "'"), NuFile::size((int)$sql['bytes'])));
 			elseif ($sql) nu_flash('danger', t('upd_sql_incomplete', $sql['error'] !== '' ? $sql['error'] : '?'));
-			nu_redirect(nu_url('update') . '#backups');
+			nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
 		}
 		if ($action === 'backup_keep') {
 			NuUpdate::setKeepSql((int)nu_post('keep'));
 			nu_flash('success', t('upd_keep_saved'));
-			nu_redirect(nu_url('update') . '#backups');
+			nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
+		}
+		if ($action === 'delete_backups') {                                         // several at once (0.8.451); newest + safety backup kept
+			$names = is_array($_POST['names'] ?? null) ? array_values(array_filter($_POST['names'], 'is_string')) : [];
+			$res = NuUpdate::deleteBackups($names);
+			nu_flash($res['deleted'] ? 'success' : 'warning', $res['deleted'] ? t('upd_bk_deleted_n', count($res['deleted']), NuFile::size($res['bytes'])) : t('upd_bk_deleted_none'));
+			$pg = (int)nu_post('pg');
+			nu_redirect(nu_url('update', ['pg' => $pg > 1 ? $pg : null, 'tab' => 'backups']) . '#backups');
+		}
+		if ($action === 'backup_cleanup') {                                         // clean-up rule: save it, and with "Delete now" apply it (0.8.451)
+			$mode = nu_post('mode') === 'age' ? 'age' : 'keep';
+			$n = max(1, min(9999, (int)nu_post($mode === 'age' ? 'days' : 'keep_n')));
+			NuUpdate::setCleanupRule($mode, $n, nu_check('auto') === '1');
+			if (nu_post('run') === '1') {
+				$res = NuUpdate::deleteBackups(array_column(NuUpdate::cleanupPlan($mode, $n), 'name'), 'rule');
+				nu_flash($res['deleted'] ? 'success' : 'info', $res['deleted'] ? t('upd_bk_deleted_n', count($res['deleted']), NuFile::size($res['bytes'])) : t('upd_bk_clean_nothing'));
+			} else {
+				nu_flash('success', t('saved'));
+			}
+			nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
 		}
 		if ($action === 'rollback' || $action === 'delete_backup') {
 			$f = NuUpdate::backupPath(nu_post('name'));
 			if (!$f) throw new RuntimeException(t('upd_err_backup_invalid'));
 			if ($action === 'delete_backup') {
-				@unlink($f);
+				$sz = (int)@filesize($f);
+				if (@unlink($f)) NuLog::write('nunext_backups_deleted', '', '', ['how' => 'single', 'count' => 1, 'bytes' => $sz, 'files' => [basename($f)]]);   // logged since 0.8.451
 				nu_flash('success', t('upd_backup_deleted'));
 				$pg = (int)nu_post('pg');
-				nu_redirect(nu_url('update', ['pg' => $pg > 1 ? $pg : null]) . '#backups');         // stay on the page of the backup list
+				nu_redirect(nu_url('update', ['pg' => $pg > 1 ? $pg : null, 'tab' => 'backups']) . '#backups');         // stay on the page of the backup list
 			}
 			$safety = NuUpdate::backup('before rollback');                              // the current state can be restored again
 			NuUpdate::maintenanceOn('rollback');
@@ -170,7 +190,7 @@ if (nu_is_post()) {
 			}
 			NuLog::write('nunext_rollback', '', '', ['from' => NU_VERSION, 'to' => $r['version'], 'backup' => basename($f), 'safety' => $safety]);
 			nu_flash('success', t('upd_rollback_done', $r['version'], $safety));
-			nu_redirect(nu_url('update') . '#backups');
+			nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
 		}
 		if ($action === 'schema_apply') {
 			$exp = NuSchemaCheck::installed();
@@ -179,7 +199,7 @@ if (nu_is_post()) {
 			if ($sr['done']) nu_flash('success', t('upd_schema_done', implode(', ', $sr['done'])));
 			if ($sr['errors']) nu_flash('danger', t('upd_schema_failed') . ' ' . implode(' · ', $sr['errors']));
 			if (!$sr['done'] && !$sr['errors']) nu_flash('info', t('upd_schema_nothing'));
-			nu_redirect(nu_url('update') . '#system');
+			nu_redirect(nu_url('update', ['tab' => 'system']) . '#system');
 		}
 		if ($action === 'maintenance_off') {
 			NuUpdate::maintenanceOff();
@@ -188,7 +208,7 @@ if (nu_is_post()) {
 		// library packs (0.8.405, core/nulibs.php): tab Libraries – install / update (one or the ticked ones), upload, roll back,
 		// remove, self-test, look on GitHub. Every pack needs a valid signature.
 		if (str_starts_with($action, 'lp_')) {
-			$back = nu_url('update') . '#libraries';
+			$back = nu_url('update', ['tab' => 'libraries']) . '#libraries';
 			if (in_array($action, ['lp_install', 'lp_upload', 'lp_rollback', 'lp_remove'], true) && !NuUpdate::enabled()) throw new RuntimeException(t('upd_disabled'));
 			$slots = array_values(array_intersect(array_map('strval', nu_post('slot') !== '' ? [nu_post('slot')] : (array)($_POST['slots'] ?? [])), array_keys(NuLibs::SLOTS)));
 			if ($action === 'lp_gh_check') {
@@ -254,7 +274,7 @@ if (nu_is_post()) {
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next update: ' . $e->getMessage());
 		nu_flash('danger', $e->getMessage());
-		nu_redirect(nu_url('update') . (str_starts_with((string)$action, 'lp_') ? '#libraries' : ''));
+		nu_redirect(str_starts_with((string)$action, 'lp_') ? nu_url('update', ['tab' => 'libraries']) . '#libraries' : nu_url('update'));
 	}
 }
 
@@ -441,13 +461,17 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 	'history' => ['bi-clock-history', t('upd_tab_history'), $tabHist ? '<span class="badge rounded-pill text-bg-light border ms-1">' . $tabHist . '</span>' : ''],
 	'libraries' => ['bi-boxes', t('upd_tab_libs'), $tabLib !== '' ? '<span class="nuTabDot bg-' . $tabLib . ' ms-1" role="img" aria-label="' . h(t($tabLib === 'warning' ? 'lp_tab_warn' : 'lp_tab_updates')) . '" title="' . h(t($tabLib === 'warning' ? 'lp_tab_warn' : 'lp_tab_updates')) . '"></span>' : ''],
 	'system' => ['bi-hdd-stack', t('upd_tab_system'), $tabSys !== '' ? '<span class="nuTabDot bg-' . $tabSys . ' ms-1" role="img" aria-label="' . h(t($tabSys === 'danger' ? 'upd_tab_sys_problem' : 'upd_tab_sys_notice')) . '" title="' . h(t($tabSys === 'danger' ? 'upd_tab_sys_problem' : 'upd_tab_sys_notice')) . '"></span>' : '']]; ?>
-<ul class="nav nav-tabs nuUpdTabs mb-4" id="updTabs" role="tablist" data-nu-hash-tabs>
+<?php // ?tab=<name> (0.8.451): the server opens that tab itself – pager links and redirects carry it, so the page is not hidden until the
+// script switched tabs (nutheme.js hides [data-nu-tab-restore] only when the address names another tab than ?tab=)
+$updTab = (string)($_GET['tab'] ?? 'update');
+if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
+<ul class="nav nav-tabs nuUpdTabs mb-4" id="updTabs" role="tablist" data-nu-hash-tabs data-nu-tab-restore>
 	<?php foreach ($tabs as $k => [$icon, $label, $extra]): ?>
-	<li class="nav-item" role="presentation"><button class="nav-link<?= $k === 'update' ? ' active' : '' ?>" id="updTabBtn-<?= $k ?>" data-bs-toggle="tab" data-bs-target="#updPane-<?= $k ?>" data-nu-tab="<?= $k ?>" type="button" role="tab" aria-controls="updPane-<?= $k ?>" aria-selected="<?= $k === 'update' ? 'true' : 'false' ?>"><i class="bi <?= $icon ?> me-1"></i><?= h($label) ?><?= $extra ?></button></li>
+	<li class="nav-item" role="presentation"><button class="nav-link<?= $k === $updTab ? ' active' : '' ?>" id="updTabBtn-<?= $k ?>" data-bs-toggle="tab" data-bs-target="#updPane-<?= $k ?>" data-nu-tab="<?= $k ?>" type="button" role="tab" aria-controls="updPane-<?= $k ?>" aria-selected="<?= $k === $updTab ? 'true' : 'false' ?>"><i class="bi <?= $icon ?> me-1"></i><?= h($label) ?><?= $extra ?></button></li>
 	<?php endforeach; ?>
 </ul>
-<div class="tab-content" id="updPanes">
-<div class="tab-pane fade show active" id="updPane-update" role="tabpanel" aria-labelledby="updTabBtn-update" tabindex="0">
+<div class="tab-content" id="updPanes" data-nu-tab-restore>
+<div class="tab-pane fade<?= $updTab === 'update' ? ' show active' : '' ?>" id="updPane-update" role="tabpanel" aria-labelledby="updTabBtn-update" tabindex="0">
 <?php if ($finished): ?>
 	<div class="card shadow-sm mb-4 border-<?= $finished['ok'] ? 'success' : 'danger' ?>" id="updFinished">
 		<div class="card-body">
@@ -607,10 +631,13 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 			<p class="small text-body-secondary"><?= h(t('upd_install_hint')) ?></p>
 			<?php $gs = NuGitHub::settings(); $gl = $gs['latest']; $gNew = NuGitHub::newer(); $repoUrl = 'https://github.com/' . $gs['repo'] . '/releases'; ?>
 			<div class="border rounded-3 p-3 p-sm-4 mb-3" id="updGitHub">
-				<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-					<h3 class="h5 d-inline-flex align-items-center gap-1 mb-0 me-auto"><i class="bi bi-github me-1"></i><?= h(t('gh_title')) ?><?= NuListView::infoTip(t('gh_tip')) ?></h3>
-					<button class="btn nuBtnAct" type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubSet" aria-expanded="false" aria-controls="updGitHubSet" id="updGitHubSetBtn"><i class="bi bi-gear me-1"></i><?= h(t('gh_settings')) ?></button>
+				<?php // collapsible (0.8.450): open by default, folded state remembered in this browser; a newer release keeps it open ?>
+				<div class="d-flex flex-wrap align-items-center gap-2">
+					<h3 class="h5 d-inline-flex align-items-center gap-1 mb-0 me-auto"><button class="btn btn-link p-0 text-decoration-none text-reset fs-5 nuChevToggle d-inline-flex align-items-center"
+						type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubBody" aria-expanded="true" aria-controls="updGitHubBody" id="updGitHubToggle"><i class="bi bi-chevron-right me-1"></i><i class="bi bi-github me-2"></i><?= h(t('gh_title')) ?></button><?= NuListView::infoTip(t('gh_tip')) ?></h3>
+					<button class="btn nuBtnAct" type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubSet" aria-expanded="false" aria-controls="updGitHubSet" id="updGitHubSetBtn" data-nu-open-first="#updGitHubBody"><i class="bi bi-gear me-1"></i><?= h(t('gh_settings')) ?></button>
 				</div>
+				<div class="collapse show" id="updGitHubBody" data-nu-remember-open="nunext-upd-github"<?= $gNew ? ' data-nu-force-open' : '' ?>><div class="pt-3">
 				<?php if ($gs['error'] !== ''): ?><div class="alert alert-warning small py-2 mb-2" id="updGitHubError"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('gh_err_check', $gs['error'])) ?></div><?php endif; ?>
 				<dl class="nuGhInfo<?= $gNew ? '' : ' mb-0' ?>" id="updGitHubInfo">
 					<dt><?= h(t('gh_repo')) ?></dt>
@@ -648,6 +675,7 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 						</div>
 					</form>
 				</div>
+				</div></div>
 			</div>
 			<button class="btn btn-link px-0 text-decoration-none nuChevToggle<?= $folderReady ? '' : ' collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#updOther" aria-expanded="<?= $folderReady ? 'true' : 'false' ?>" aria-controls="updOther" id="updOtherBtn"><i class="bi bi-chevron-right me-1"></i><?= h(t('upd_other_title')) ?></button>
 			<div class="collapse<?= $folderReady ? ' show' : '' ?>" id="updOther" data-nu-remember-open="nunext-upd-other"<?= $folderReady ? ' data-nu-force-open' : '' ?>>
@@ -697,7 +725,7 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 		<a class="alert-link" href="#system"><?= h(t('upd_req_details')) ?></a></div>
 <?php endif; ?>
 </div>
-<div class="tab-pane fade" id="updPane-backups" role="tabpanel" aria-labelledby="updTabBtn-backups" tabindex="0">
+<div class="tab-pane fade<?= $updTab === 'backups' ? ' show active' : '' ?>" id="updPane-backups" role="tabpanel" aria-labelledby="updTabBtn-backups" tabindex="0">
 		<div class="card shadow-sm" id="updBackupsCard">
 			<?php // newest first, 10 per page with the list footer (first / previous / page x of y / next / last)
 			$allBackups = NuUpdate::backups();
@@ -738,14 +766,60 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 			$bkPer   = 10;
 			$bkTotal = count($allBackups);
 			$bkPage  = max(1, min((int)($_GET['pg'] ?? 1), (int)max(1, ceil($bkTotal / $bkPer))));
-			$backups = array_slice($allBackups, ($bkPage - 1) * $bkPer, $bkPer); ?>
+			$backups = array_slice($allBackups, ($bkPage - 1) * $bkPer, $bkPer);
+			$bkProt = NuUpdate::protectedBackups($allBackups);
+			$bkRule = NuUpdate::cleanupRule();
+			// several at once and the clean-up rule (0.8.451, assets/js/nubackups.js): the rows' checkboxes belong to #updBkBulk ?>
+			<form method="post" action="<?= h(nu_url('update')) ?>" id="updBkBulk" data-confirm="" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"
+				data-confirm-text="<?= h(t('upd_bk_del_confirm')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete_backups"><input type="hidden" name="pg" value="<?= $bkPage ?>"></form>
+			<?php if ($allBackups): ?>
+			<div class="d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-bottom updBkTools">
+				<button class="btn btn-sm btn-outline-danger" type="submit" form="updBkBulk" id="updBkDelSel" disabled data-label="<?= h(t('upd_bk_del_selected')) ?>"><i class="bi bi-trash me-1"></i><span><?= h(sprintf(t('upd_bk_del_selected'), 0)) ?></span></button>
+				<span class="small text-body-secondary" id="updBkSelInfo" aria-live="polite"></span>
+				<button class="btn btn-sm btn-outline-secondary ms-auto<?= $bkRule['auto'] ? '' : ' collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#updBkClean" aria-expanded="false" aria-controls="updBkClean" id="updBkCleanBtn">
+					<i class="bi bi-funnel me-1"></i><?= h(t('upd_bk_clean')) ?><?php if ($bkRule['auto']): ?> <span class="badge text-bg-secondary ms-1"><?= h(t('upd_bk_clean_auto_on')) ?></span><?php endif; ?></button>
+			</div>
+			<div class="collapse" id="updBkClean">
+				<form method="post" action="<?= h(nu_url('update')) ?>" class="px-3 py-3 border-bottom bg-body-tertiary" id="updBkCleanForm"
+					data-confirm="" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger" data-confirm-text="<?= h(t('upd_bk_del_confirm')) ?>"
+					data-backups="<?= h(json_encode(array_map(static fn($b) => ['n' => $b['name'], 'v' => $b['version'], 't' => $b['created'] !== '' ? (int)strtotime($b['created']) : 0, 's' => $b['size'], 'p' => isset($bkProt[$b['name']])], $allBackups))) ?>"
+					data-now="<?= time() ?>">
+					<?= nu_csrf_field() ?><input type="hidden" name="action" value="backup_cleanup"><input type="hidden" name="run" value="0" id="updBkCleanRunFlag">
+					<div class="d-flex flex-column gap-2 small">
+						<div class="d-flex flex-wrap align-items-center gap-2">
+							<input class="form-check-input mt-0" type="radio" name="mode" value="keep" id="updBkModeKeep"<?= $bkRule['mode'] === 'keep' ? ' checked' : '' ?>>
+							<label for="updBkModeKeep"><?= h(t('upd_bk_clean_keep')) ?></label>
+							<input type="number" class="form-control form-control-sm updKeepNum" name="keep_n" min="1" max="9999" value="<?= $bkRule['mode'] === 'keep' ? $bkRule['n'] : 10 ?>" aria-label="<?= h(t('upd_bk_clean_keep')) ?>" id="updBkKeepN">
+							<span><?= h(t('upd_bk_clean_keep_suffix')) ?></span>
+						</div>
+						<div class="d-flex flex-wrap align-items-center gap-2">
+							<input class="form-check-input mt-0" type="radio" name="mode" value="age" id="updBkModeAge"<?= $bkRule['mode'] === 'age' ? ' checked' : '' ?>>
+							<label for="updBkModeAge"><?= h(t('upd_bk_clean_age')) ?></label>
+							<input type="number" class="form-control form-control-sm updKeepNum" name="days" min="1" max="9999" value="<?= $bkRule['mode'] === 'age' ? $bkRule['n'] : 90 ?>" aria-label="<?= h(t('upd_bk_clean_age')) ?>" id="updBkDays">
+							<span><?= h(t('upd_bk_clean_age_suffix')) ?></span>
+						</div>
+						<div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="auto" value="1" id="updBkAuto"<?= $bkRule['auto'] ? ' checked' : '' ?>>
+							<label class="form-check-label" for="updBkAuto"><?= h(t('upd_bk_clean_auto')) ?></label></div>
+						<div class="text-body-secondary" id="updBkCleanPreview" aria-live="polite" data-none="<?= h(t('upd_bk_clean_nothing')) ?>" data-some="<?= h(t('upd_bk_clean_preview')) ?>"
+							data-kept="<?= h(t('upd_bk_clean_kept')) ?>"></div>
+						<div class="d-flex flex-wrap gap-2">
+							<button class="btn btn-sm btn-danger" type="submit" id="updBkCleanRun" data-label="<?= h(t('upd_bk_clean_run')) ?>"><i class="bi bi-trash me-1"></i><span><?= h(sprintf(t('upd_bk_clean_run'), 0)) ?></span></button>
+							<button class="btn btn-sm btn-outline-secondary" type="submit" data-no-confirm id="updBkCleanSave"><i class="bi bi-floppy me-1"></i><?= h(t('upd_bk_clean_save')) ?></button>
+						</div>
+						<div class="text-body-secondary"><i class="bi bi-shield-check me-1"></i><?= h(t('upd_bk_prot_hint')) ?></div>
+					</div>
+				</form>
+			</div>
+			<?php endif; ?>
 			<div class="table-responsive">
 				<table class="table table-sm align-middle mb-0 nu-table" id="updBackups">
-					<thead><tr><th><?= h(t('upd_version')) ?></th><th><?= h(t('upd_created')) ?></th><th><?= h(t('upd_reason')) ?></th><th class="text-end"><?= h(t('upd_size')) ?></th><th></th></tr></thead>
+					<thead><tr><th class="updBkSelCol"><input class="form-check-input" type="checkbox" id="updBkAll" aria-label="<?= h(t('upd_bk_select_page')) ?>" title="<?= h(t('upd_bk_select_page')) ?>"></th><th><?= h(t('upd_version')) ?></th><th><?= h(t('upd_created')) ?></th><th><?= h(t('upd_reason')) ?></th><th class="text-end"><?= h(t('upd_size')) ?></th><th></th></tr></thead>
 					<tbody>
-					<?php if (!$backups): ?><tr><td colspan="5" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
+					<?php if (!$backups): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
 					<?php foreach ($backups as $b): ?>
 						<tr>
+							<td class="updBkSelCol"><?php if (isset($bkProt[$b['name']])): ?><i class="bi bi-lock text-body-secondary" role="img" title="<?= h(t($bkProt[$b['name']])) ?>" aria-label="<?= h(t($bkProt[$b['name']])) ?>"></i><?php else: ?>
+								<input class="form-check-input updBkSel" type="checkbox" form="updBkBulk" name="names[]" value="<?= h($b['name']) ?>" data-size="<?= (int)$b['size'] ?>" aria-label="<?= h(t('upd_bk_select', $b['version'])) ?>"><?php endif; ?></td>
 							<td class="fw-semibold"><?= h($b['version']) ?></td>
 							<td class="small text-nowrap"><?= $b['created'] ? h(date('d.m.Y H:i', strtotime($b['created']))) : '' ?></td>
 							<td class="small"><?= h($b['reason']) ?><?= $b['by'] !== '' ? ' · ' . h($b['by']) : '' ?>
@@ -787,7 +861,7 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 					</tbody>
 				</table>
 			</div>
-			<?php if ($bkTotal > $bkPer) nu_list_footer($bkTotal, $bkPage, $bkPer, 'update', array_filter(['hpg' => (int)($_GET['hpg'] ?? 0) > 1 ? (int)$_GET['hpg'] : null, 'hq' => trim((string)($_GET['hq'] ?? '')) ?: null]), 'card-footer updBackupsNav', 'pg', '#backups'); ?>
+			<?php if ($bkTotal > $bkPer) nu_list_footer($bkTotal, $bkPage, $bkPer, 'update', array_filter(['hpg' => (int)($_GET['hpg'] ?? 0) > 1 ? (int)$_GET['hpg'] : null, 'hq' => trim((string)($_GET['hq'] ?? '')) ?: null, 'tab' => 'backups']), 'card-footer updBackupsNav', 'pg', '#backups'); ?>
 			<?php if ($sqlOk): // keep rule: only the newest N backups keep their SQL dump ?>
 				<form method="post" action="<?= h(nu_url('update')) ?>" class="card-footer d-flex flex-wrap gap-2 align-items-center small" id="updKeepForm">
 					<?= nu_csrf_field() ?><input type="hidden" name="action" value="backup_keep">
@@ -802,7 +876,7 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 		</div>
 	
 </div>
-<div class="tab-pane fade" id="updPane-history" role="tabpanel" aria-labelledby="updTabBtn-history" tabindex="0">
+<div class="tab-pane fade<?= $updTab === 'history' ? ' show active' : '' ?>" id="updPane-history" role="tabpanel" aria-labelledby="updTabBtn-history" tabindex="0">
 <?php $history = NuUpdate::history(); if ($history):
 	// change history: 10 per page (?hpg=), search in version, title and text (?hq=) – the backup list keeps its page (?pg=) and vice versa
 	$hq = trim((string)($_GET['hq'] ?? ''));
@@ -813,7 +887,7 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 	$hList = array_slice($hits, ($hPage - 1) * $hPer, $hPer);
 	$bkKeep = isset($_GET['pg']) && (int)$_GET['pg'] > 1 ? ['pg' => (int)$_GET['pg']] : []; ?>
 <div class="card shadow-sm" id="updHistory">
-	<form class="card-header d-flex flex-wrap gap-2 align-items-center" method="get" action="<?= h(nu_url('update')) ?>#updHistory" role="search">
+	<form class="card-header d-flex flex-wrap gap-2 align-items-center" method="get" action="<?= h(nu_url('update')) ?>#history" role="search"><input type="hidden" name="tab" value="history">
 		<input type="hidden" name="p" value="update"><?php foreach ($bkKeep as $k => $val): ?><input type="hidden" name="<?= h($k) ?>" value="<?= (int)$val ?>"><?php endforeach; ?>
 		<span class="fw-semibold me-auto"><i class="bi bi-clock-history me-2"></i><?= h(t('upd_history')) ?> <span class="badge text-bg-secondary"><?= count($history) ?></span></span>
 		<input type="search" name="hq" value="<?= h($hq) ?>" class="form-control form-control-sm w-auto" id="updHistorySearch" placeholder="<?= h(t('search')) ?>" aria-label="<?= h(t('upd_history_search')) ?>">
@@ -830,12 +904,12 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''], 'backups'
 		<?php endforeach; ?>
 		<?php if (!$hList): ?><div class="list-group-item text-body-secondary small"><?= h(t('no_records')) ?></div><?php endif; ?>
 	</div>
-	<?php if ($hTotal > $hPer) nu_list_footer($hTotal, $hPage, $hPer, 'update', ($hq !== '' ? ['hq' => $hq] : []) + $bkKeep, 'card-footer', 'hpg', '#updHistory'); ?>
+	<?php if ($hTotal > $hPer) nu_list_footer($hTotal, $hPage, $hPer, 'update', ($hq !== '' ? ['hq' => $hq] : []) + $bkKeep + ['tab' => 'history'], 'card-footer', 'hpg', '#history'); ?>
 </div>
 <?php endif; ?>
 <?php if (!$history): ?><p class="text-body-secondary small" id="updHistoryNone"><?= h(t('no_records')) ?></p><?php endif; ?>
 </div>
-<div class="tab-pane fade" id="updPane-libraries" role="tabpanel" aria-labelledby="updTabBtn-libraries" tabindex="0">
+<div class="tab-pane fade<?= $updTab === 'libraries' ? ' show active' : '' ?>" id="updPane-libraries" role="tabpanel" aria-labelledby="updTabBtn-libraries" tabindex="0">
 <?php // library packs (0.8.405, core/nulibs.php)
 $lpGh = NuLibs::ghState();
 $lpTests = $_SESSION['nu_lp_test'] ?? [];
@@ -866,7 +940,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 			<?php foreach ($lpView as $sl => $x):
 				$best = $x['best'];
 				[$icon, $text] = $x['unmet'] ? ['bi-exclamation-triangle text-warning', t('lp_req_needs', (string)$x['req']['min'])] : match ($x['status']) {
-					'ok' => ['bi-check-circle text-success', t('upd_libs_ok')],
+					'ok' => ['bi-check-circle text-success', t('upd_libs_ok') . ($x['note'] !== '' ? ' – ' . t($x['note']) : '')],
 					'missing' => ['bi-dash-circle text-body-secondary', t('lp_missing')],
 					'old' => ['bi-exclamation-triangle text-warning', t('lp_below_safe', $x['min'])],
 					default => ['bi-exclamation-triangle text-warning', $x['note'] !== '' ? t($x['note']) : t('upd_libs_ok')],
@@ -940,7 +1014,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 				<tr class="nuLibGroup"><td colspan="6" class="fw-semibold text-body-secondary"><?= h(t($l['kind'] === 'bundled' ? 'upd_libs_bundled' : 'upd_libs_external')) ?></td></tr>
 			<?php endif;
 				[$icon, $text] = match ($l['status']) {
-					'ok' => ['bi-check-circle text-success', t('upd_libs_ok')],
+					'ok' => ['bi-check-circle text-success', t('upd_libs_ok') . ($l['note'] !== '' ? ' – ' . t($l['note']) : '')],
 					'missing' => $l['kind'] === 'bundled' ? ['bi-x-circle text-danger', t('upd_libs_missing')] : ['bi-dash-circle text-body-secondary', t('vendor_missing')],
 					'old' => ['bi-exclamation-triangle text-warning', t('upd_libs_old', $l['note'])],
 					'differs' => ['bi-exclamation-triangle text-warning', t('upd_libs_differs')],
@@ -956,7 +1030,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 	</div>
 </details>
 </div>
-<div class="tab-pane fade" id="updPane-system" role="tabpanel" aria-labelledby="updTabBtn-system" tabindex="0">
+<div class="tab-pane fade<?= $updTab === 'system' ? ' show active' : '' ?>" id="updPane-system" role="tabpanel" aria-labelledby="updTabBtn-system" tabindex="0">
 		<div class="card shadow-sm mb-4<?= $reqOk ? '' : ' border-danger' ?>" id="updRequirements">
 			<div class="card-header fw-semibold"><?= h(t('upd_requirements')) ?></div>
 			<ul class="list-group list-group-flush small">
@@ -996,4 +1070,4 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 </div>
 </div>
 <?php
-nu_layout_end('<script src="' . nu_asset('assets/js/nulibpacks.js') . '"></script>');
+nu_layout_end('<script src="' . nu_asset('assets/js/nulibpacks.js') . '"></script><script src="' . nu_asset('assets/js/nubackups.js') . '"></script>');

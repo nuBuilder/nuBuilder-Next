@@ -43,6 +43,8 @@ nu_layout_start(t('smp_title'), 'home');
 	<?= nu_back_button() ?>
 </div>
 <p class="text-body-secondary"><?= h(t('smp_intro')) ?></p>
+<p class="text-body-secondary" id="smpIntroHome"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i><?= h(t('smp_intro_home')) ?>
+	<?php if (NuHome::canManage()): ?><a href="<?= h(nu_url('home', ['for' => 'sample_sales'])) ?>"><?= h(t('home_u_title')) ?></a><?php endif; ?></p>
 
 <?php if ($passwords): ?>
 	<div class="card border-warning shadow-sm mb-4" id="smpPasswords">

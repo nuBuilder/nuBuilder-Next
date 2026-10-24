@@ -354,7 +354,7 @@
 		} else if (spec.kind === 'switch') {
 			input = h('input', Object.assign(common, {type: 'checkbox', role: 'switch', 'class': 'form-check-input'}));
 			input.checked = v === '1' || (v === '' && spec.default === '1');
-			return h('div', {'class': 'form-check form-switch ' + (spec.cls || 'col-12')}, [input, h('label', {'class': 'form-check-label', 'for': id, text: t(spec.label)})]);
+			return h('div', {'class': 'form-check form-switch nbFld ' + (spec.cls || 'col-12')}, [input, h('label', {'class': 'form-check-label', 'for': id, text: t(spec.label)})]);
 		} else {
 			input = h('input', Object.assign(common, {type: spec.kind === 'number' ? 'number' : 'text', 'class': 'form-control form-control-sm', value: v, autocomplete: 'off', spellcheck: 'false'}));
 			if (spec.list) {
@@ -379,7 +379,7 @@
 				input = h('div', {'class': 'input-group input-group-sm'}, [attrIn, attrBtn]);
 			}
 		}
-		return h('div', {'class': spec.cls || 'col-12'}, [
+		return h('div', {'class': 'nbFld ' + (spec.cls || 'col-12')}, [   // nbFld: packed tighter in a wide panel (nubuilder.css, 0.8.449)
 			h('label', {'class': 'form-label small mb-1', 'for': id, text: t(spec.label)}),
 			input,
 			spec.help ? h('div', {'class': 'form-text', text: t(spec.help)}) : null
@@ -456,6 +456,7 @@
 	// ------------------------------------------------------------------ panels
 	function select(kind, id) {
 		sel = {kind: kind, id: id};
+		if (kind === 'browse' && S && S.form.sfo_type === 'browseedit' && previewMode() !== 'browse') setPreviewMode('browse', true);   // browse columns: show the list
 		renderObjects();
 		({form: panelForm, code: panelCode, tabs: panelTabs, browse: panelBrowse, object: panelObject, history: panelHistory, compare: panelCompare})[kind](id);
 		upgradeEditors($('#nbPanel'));
@@ -505,7 +506,10 @@
 		}
 		[['general', 'builder_sec_general', 'bi-sliders'], ['browse', 'builder_sec_browse', 'bi-table']].forEach(function (tb) {
 			nav.appendChild(h('li', {'class': 'nav-item', role: 'presentation'}, [h('button', {type: 'button', 'class': 'nav-link', role: 'tab', 'data-tab': tb[0],
-				onclick: function () { showTab(tb[0]); }}, [h('i', {'class': 'bi ' + tb[2] + ' me-1'}), t(tb[1])])]));
+				onclick: function () {
+					showTab(tb[0]);
+					if (tb[0] === 'browse' && S.form.sfo_type === 'browseedit' && previewMode() !== 'browse') setPreviewMode('browse', true);   // browse SQL: show the list
+				}}, [h('i', {'class': 'bi ' + tb[2] + ' me-1'}), t(tb[1])])]));
 		});
 		var body = h('div', {}, [nav, general, browse]);
 		// edit and launch forms have no list: no Browse tab (the values stay and are saved unchanged)
@@ -996,10 +1000,35 @@
 	// ------------------------------------------------------------------ preview
 	var frame = $('#nbPreview');
 	$('#nbPreviewRecord').value = D.preview_record || '-1';
+	// Browse and edit forms (0.8.439): the preview shows the list (Browse) or a record (Edit) – remembered per form in this browser
+	var PM_KEY = 'nunext-builder-pvmode-' + D.form_id, pmBox = $('#nbPreviewMode'), pmMode = null;
+	function previewMode() {
+		if (pmMode === null) { pmMode = 'edit'; try { if (localStorage.getItem(PM_KEY) === 'browse') pmMode = 'browse'; } catch (e) { /* no storage */ } }
+		return pmMode;
+	}
+	function setPreviewMode(m, reload) {
+		pmMode = m === 'browse' ? 'browse' : 'edit';
+		try { if (pmMode === 'browse') localStorage.setItem(PM_KEY, 'browse'); else localStorage.removeItem(PM_KEY); } catch (e) { /* no storage */ }
+		if (reload) preview();
+	}
+	if (pmBox) pmBox.addEventListener('click', function (e) {
+		var b = e.target.closest('[data-mode]');
+		if (b && b.getAttribute('data-mode') !== previewMode()) setPreviewMode(b.getAttribute('data-mode'), true);
+	});
 	function preview() {
-		var type = S.form.sfo_type;
-		var rec = type === 'browse' ? '' : ($('#nbPreviewRecord').value.trim() || '-1');
-		$('#nbPreviewRecord').disabled = type === 'browse';
+		var type = S.form.sfo_type, both = type === 'browseedit';
+		var browse = type === 'browse' || (both && previewMode() === 'browse');
+		if (pmBox) {
+			pmBox.classList.toggle('d-none', !both);
+			pmBox.querySelectorAll('[data-mode]').forEach(function (b) {
+				var on = b.getAttribute('data-mode') === previewMode();
+				b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+			});
+		}
+		var hint = $('#nbDesignerHint');
+		if (hint) hint.classList.toggle('d-none', browse);   // dragging objects needs the edit form
+		var rec = browse ? '' : ($('#nbPreviewRecord').value.trim() || '-1');
+		$('#nbPreviewRecord').disabled = browse;
 		var q = {p: 'form', f: D.form_id, iframe: '1', builder: '1', draft: DR ? DR.id : 'off'};   // draft mode: the preview shows the draft (0.8.386)
 		if (rec !== '') q.r = rec;
 		if ($('#nbPreviewLayout').value) q.layout = $('#nbPreviewLayout').value;

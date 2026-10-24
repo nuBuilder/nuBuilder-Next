@@ -191,7 +191,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 
 	<form method="post" action="<?= h(nu_url('procedures', ['id' => $id])) ?>" id="nuRecordForm" data-nu-focus-first data-nu-guard novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="access_sent" value="1">
-		<ul class="nav nav-tabs" role="tablist" id="procTabs">
+		<ul class="nav nav-tabs" role="tablist" id="procTabs" data-nu-tab-restore>
 			<li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#procTabPhp" role="tab" data-tab="php">PHP</button></li>
 			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabJs" role="tab" data-tab="js">JS<?= trim($v('sph_javascript')) !== '' ? ' <span class="badge text-bg-secondary">1</span>' : '' ?></button></li>
 			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabAccess" role="tab" data-tab="access"><?= h(t('nav_access')) ?> <span class="badge text-bg-secondary" id="procAccessCount" data-everyone="<?= h(t('proc_everyone')) ?>"><?= $chk('sph_global') ? h(t('proc_everyone')) : $nAccess ?></span></button></li>
@@ -201,7 +201,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 			<?php endif; ?>
 		</ul>
 		<fieldset class="card shadow-sm border-top-0 rounded-top-0"<?= $locked ? ' disabled' : '' ?>>
-		<div class="card-body tab-content">
+		<div class="card-body tab-content" data-nu-tab-restore>
 			<!-- ============================================================ PHP -->
 			<div class="tab-pane fade show active" id="procTabPhp" role="tabpanel">
 				<?php // code, description, group, category, status, launch form (0.8.225): collapsed for a saved procedure, open for a new one or after an error

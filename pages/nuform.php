@@ -57,7 +57,8 @@ $mode = ($r === null || $r === '') ? 'browse' : 'edit';
 $usesCharts = (bool)array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'chart' || stripos((string)($o['sob_html_code'] ?? ''), 'nuChart') !== false)
 	|| preg_match('/nuChart|google\.(charts|visualization)/', $meta->form['sfo_javascript'] . $meta->form['sfo_browse_javascript'] . $meta->form['sfo_edit_javascript'] . ($meta->php('BE') ?? ''));
 $gs = $usesCharts ? ' https://www.gstatic.com' : '';
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'$gs; script-src 'self' 'unsafe-inline' 'unsafe-eval'$gs; font-src 'self' data:; connect-src 'self'$gs; frame-src 'self'; object-src 'self' data: blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'none'");
+$inc = NuIncludes::cspSources();   // $nuConfigIncludeJS / CSS from other hosts (0.8.443)
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'$gs{$inc['style']}; script-src 'self' 'unsafe-inline' 'unsafe-eval'$gs{$inc['script']}; font-src 'self' data:; connect-src 'self'$gs; frame-src 'self'; object-src 'self' data: blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'none'");
 header('X-Frame-Options: SAMEORIGIN');
 
 $layout = $meta->layout();
@@ -83,7 +84,7 @@ if ($mode === 'browse') {
 	$data = null;
 	if (!$errors) {
 		try {
-			$data = NuBrowse::query($meta, $hash, ['search' => trim($state['rf'] . ' ' . $state['q']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $state['pg'],
+			$data = NuBrowse::query($meta, $hash, ['search' => trim($state['rf'] . ' ' . $state['q']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $state['pg'], 'per' => $state['per'],
 				'filters' => $state['flt'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $printMode ? 5000 : 0]);
 			foreach ($data['columns'] as &$col) {
 				if ($col['filter'] && !$printMode) $col['values'] = NuBrowse::distinctValues($meta, $hash, $col);
@@ -148,7 +149,7 @@ function nu_form_php_props(array &$props, array &$locked): void
 $keep = $mode === 'browse' ? array_filter([
 	'f' => $meta->id, 'q' => $state['q'], 'sort' => $state['sort'], 'dir' => $state['sort'] !== null ? $state['dir'] : null,
 	'flt' => $state['flt'] ?: null, 'iframe' => $iframe ? '1' : null, 'lookup' => $lookupTo ?: null, 'lo' => $_GET['lo'] ?? null, 'ps' => $pageScope,
-	'rf' => $state['rf'], 'bt' => $trail !== null ? $btKey : null,
+	'rf' => $state['rf'], 'bt' => $trail !== null ? $btKey : null, 'per' => $state['per'] ?: null,
 	'nsc' => $state['nsc'] ? implode(',', $state['nsc']) : null, 'sc' => $state['sc'] ? implode(',', $state['sc']) : null,
 ], static fn($v) => $v !== null && $v !== '') : [];
 
@@ -186,6 +187,7 @@ $client = [
 		'id' => $u['id'], 'login' => $u['login'], 'name' => $u['globeadmin'] ? 'globeadmin' : $u['login'], 'display' => $u['display'],
 		'globeadmin' => $u['globeadmin'], 'access_level_id' => $u['access_id'], 'access_level_code' => NuHash::base()['ACCESS_LEVEL_CODE'],
 		'language' => NuTranslate::language(), 'permissions' => NuHash::permissions((string)$u['id']),
+		'fields' => (object)NuUserFields::mine(),                 // custom user fields (0.8.454): nuNextUserField(code)
 	] + nu_form_user_details($u),
 	'translations' => (object)NuTranslate::dictionary(),
 	'props' => (object)$props,
@@ -194,7 +196,8 @@ $client = [
 	'subforms' => $mode === 'edit' ? (object)$render->clientSubforms : (object)[],
 	'events' => $mode === 'edit' ? nu_form_client_events($meta) : (object)[],
 	'breadcrumbs' => $breadcrumbs, 'title' => $title, 'errors' => $errors,
-	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1, 'total' => (int)($data['total'] ?? 0)] : null,
+	// hl: the words / phrases of the search to highlight (NuBrowse::terms, 0.8.427), nsc / sc: columns left out of / limited to by the search
+	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'hl' => NuBrowse::terms($state['q'])['in'], 'nsc' => array_values((array)$state['nsc']), 'sc' => array_values((array)$state['sc']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1, 'total' => (int)($data['total'] ?? 0)] : null,
 	// keyboard shortcuts / options menu (nuBuilder Ctrl+Shift+…): only what exists in nuBuilder Next and the user may use
 	'tools' => [
 		'design' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM),
@@ -317,6 +320,7 @@ function nu_setup_header(string $header, string $style): string
 $head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset(NU_JQCONFIRM . '/jquery-confirm.min.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset('assets/css/nuform.css') . '">'
+	. NuIncludes::cssTags()                                     // $nuConfigIncludeCSS (0.8.443)
 	. (trim((string)$meta->form['sfo_style']) !== '' ? '<style data-nu-source="sfo_style">' . str_ireplace('</style', '<\/style', (string)$meta->form['sfo_style']) . '</style>' : '');
 
 $custom = nu_script((string)$meta->form['sfo_javascript'], 'sfo_javascript')
@@ -356,6 +360,8 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
 	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects (0.8.387)
 	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript (0.8.298)
+	. NuIncludes::jsTags()                                       // $nuConfigIncludeJS (0.8.443): before Setup → Header and the form's code
+	. NuIncludes::setupTags()                                    // Setup → Include (0.8.444): its <link> / <script> / <style> elements
 	. $setupHeader . "\n"
 	. ($mode === 'edit' ? '<script>nuNextRunDeferred(document);</script>' : '')   // scripts of HTML objects (0.8.383, NuRender::deferScripts)
 	. nu_script(implode("\n", $js), 'php: nuAddJavascript')
@@ -423,6 +429,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php endif; ?>
 		<?php endif; ?>
 		<?php if ($u['globeadmin'] && !$bare): ?>
+			<?= NuFormInfo::html($meta, $mode, $r) /* (i) form info for the globeadmin (0.8.435) */ ?>
 			<div class="btn-group" role="group" aria-label="<?= h(t('form_layout')) ?>">
 				<?php if ($mode === 'edit'): foreach (['absolute', 'auto', 'grid'] as $l): ?>
 					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
@@ -463,7 +470,11 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<div class="d-flex gap-2 nuListSearch"><div class="input-group nuSearchGroup">
 				<input type="search" class="form-control" id="nuSearchField" name="q" value="<?= h($state['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('search')) ?>" autocomplete="off"<?= $lookupTo !== '' ? ' autofocus' : '' ?>>
 				<button class="btn btn-outline-secondary nuSearchBtn" id="nuSearchButton" type="submit" title="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>"><i class="bi bi-search"></i></button>
-			</div></div>
+			</div>
+			<?php if ($state['q'] !== '' || $state['flt']): // reset (0.8.428): search words and column filters go, sort / page size / filter of form code stay ?>
+				<a class="btn btn-outline-secondary nuSearchBtn nuListResetBtn" id="nuSearchReset" href="<?= h(nu_url('form', array_diff_key($keep, ['q' => 1, 'flt' => 1]))) ?>" title="<?= h(t('reset')) ?>" aria-label="<?= h(t('reset')) ?>"><i class="bi bi-x-lg"></i></a>
+			<?php endif; ?>
+			</div>
 		</form>
 		<?php endif; ?>
 		<div class="table-responsive">
@@ -516,7 +527,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				</tbody>
 			</table>
 		</div>
-		<?php nu_list_footer((int)$data['total'], (int)$data['page'], (int)$data['per'], 'form', $keep); ?>
+		<?php nu_list_footer((int)$data['total'], (int)$data['page'], (int)$data['per'], 'form', $keep, 'card-footer', 'pg', '', empty($printMode)); ?>
 	</div>
 <?php elseif ($mode === 'edit'): ?>
 	<div class="nuEditForm" id="nuEditForm"><?= $body ?></div>

@@ -191,12 +191,39 @@ final class NuListDefs
 					: ['EXISTS (SELECT 1 FROM zzzzsys_nunext_admin_user au WHERE ' . $db->sameText('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id') . ' AND au.role_id = ?)', [$v]]];
 		}
 
+		// custom user fields (0.8.454, core/nuuserfields.php): the ones marked "in the users list" as columns (hidden by default, chosen in a
+		// list view), filters for choice lists, yes / no, dates and short texts; text fields also found by the search
+		$from = ' FROM zzzzsys_user u LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id';
+		$search = ['u.sus_login_name', 'u.sus_name', 'u.sus_first_name', 'u.sus_last_name', 'u.sus_email', 'u.sus_code', 'u.sus_department', 'u.sus_team', 'u.sus_position'];
+		if (NuUserFields::ready()) {
+			$from .= ' LEFT JOIN ' . NuUserFields::EXT . ' ux ON ' . $db->sameText('ux.' . NuUserFields::KEY, 'u.zzzzsys_user_id');
+			foreach (NuUserFields::all() as $code => $f) {
+				if ((string)$f['in_list'] !== '1') continue;
+				$expr = 'ux.' . NuDB::ident((string)$code);
+				$type = (string)$f['type'];
+				$cols['uf_' . $code] = ['label' => NuUserFields::label($f), 'select' => ['uf_' . $code => $expr], 'sort' => $type === 'longtext' ? null : $expr,
+					'class' => in_array($type, ['integer', 'number'], true) ? 'text-end' : '', 'text' => static fn($r) => NuUserFields::text($f, $r['uf_' . $code] ?? null)];
+				if ($type === 'select') {
+					$filters['uf_' . $code] = ['label' => NuUserFields::label($f), 'type' => 'select', 'none' => t('lv_empty'),
+						'options' => static function () use ($f): array { try { return NuUserFields::options($f); } catch (Throwable) { return []; } },
+						'where' => static fn(string $v) => $v === '-' ? ["($expr IS NULL OR $expr = '')", []] : ["$expr = ?", [$v]]];
+				} elseif ($type === 'yesno') {
+					$filters['uf_' . $code] = ['label' => NuUserFields::label($f), 'type' => 'bool', 'expr' => "$expr = '1'"];
+				} elseif ($type === 'date') {
+					$filters['uf_' . $code] = ['label' => NuUserFields::label($f), 'type' => 'date', 'expr' => $expr, 'presets' => ['past', 'next30', 'future', 'empty']];
+				} elseif (in_array($type, ['text', 'email', 'phone'], true)) {
+					$filters['uf_' . $code] = ['label' => NuUserFields::label($f), 'type' => 'distinct', 'expr' => $expr, 'none' => t('lv_empty')];
+				}
+				if (in_array($type, ['text', 'longtext', 'email', 'phone', 'url', 'select'], true)) $search[] = $expr;
+			}
+		}
+
 		return [
 			'key' => 'users', 'title' => t('nav_users'), 'route' => 'users', 'form' => NuAcl::FORM_USER,
-			'from' => ' FROM zzzzsys_user u LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id',
+			'from' => $from,
 			'where' => ["COALESCE(u.sus_login_name, '') <> ''"], 'params' => [],   // not nuBuilder's data row for the globeadmin (nuSetUserJSONData: only the id)
 			'id' => 'u.zzzzsys_user_id', 'link' => static fn($r) => nu_url('user', ['id' => $r['__id']]),
-			'search' => ['u.sus_login_name', 'u.sus_name', 'u.sus_first_name', 'u.sus_last_name', 'u.sus_email', 'u.sus_code', 'u.sus_department', 'u.sus_team', 'u.sus_position'],
+			'search' => $search,
 			'search_ph' => t('user_search_ph'), 'open_min' => 800,
 			'columns' => $cols, 'filters' => $filters,
 			'builtin' => [

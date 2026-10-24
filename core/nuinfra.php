@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 15;
+	public const VERSION = 16;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -122,6 +122,13 @@ final class NuSchema
 				['mode', 'text', '10'], ['publish_at', 'datetime'], ['expires_at', 'datetime'], ['pinned', 'text', '1'], ['must_confirm', 'text', '1'], ['email', 'text', '1'],
 				['sent_mail_at', 'datetime'], ['status', 'text', '10'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['created_by_id', 'text', '25'], ['updated_at', 'datetime']],
 			'index' => ['status', 'publish_at', 'created_by_id'],
+		],
+		'zzzzsys_nunext_user_field' => [                          // custom user fields (0.8.454, core/nuuserfields.php); values: zzzzsys_nunext_user_ext
+			'pk' => 'zzzzsys_nunext_user_field_id',
+			'cols' => [['code', 'text', '64'], ['label', 'text', '200'], ['type', 'text', '20'], ['options', 'longtext'], ['required', 'text', '1'],
+				['is_unique', 'text', '1'], ['default_value', 'text', '1000'], ['hint', 'text', '1000'], ['edit_by', 'text', '20'], ['in_list', 'text', '1'],
+				['sort', 'int'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+			'index' => ['code'],
 		],
 		'zzzzsys_nunext_presence' => [                            // concurrent edits (0.8.401, core/form/nuconflict.php): who has which record open
 			'pk' => 'zzzzsys_nunext_presence_id',

@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.423",
+    "version": "0.8.457",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -225,6 +225,33 @@
                     "table": "zzzzsys_nunext_presence",
                     "kind": "table",
                     "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0018-home-hook-codes",
+            "description": "Start page hooks renamed: procedures nunext_home → nu_home, nunext_home_user → nu_home_user",
+            "changes": [
+                {
+                    "table": "zzzzsys_php",
+                    "kind": "data",
+                    "what": "sph_code nunext_home → nu_home and nunext_home_user → nu_home_user (only when the new code is not taken)"
+                },
+                {
+                    "table": "zzzzsys_config",
+                    "kind": "data",
+                    "what": "description of the row $nuConfigHomeHooks names nu_home"
+                }
+            ]
+        },
+        {
+            "id": "0019-user-fields",
+            "description": "Custom user fields (zzzzsys_nunext_user_field); their values table is created with the first field",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_user_field",
+                    "kind": "table",
+                    "what": "created when missing (zzzzsys_nunext_user_ext follows when the first field is added)"
                 }
             ]
         }
@@ -1096,6 +1123,85 @@
                 "status",
                 "publish_at",
                 "created_by_id"
+            ]
+        },
+        "zzzzsys_nunext_user_field": {
+            "pk": "zzzzsys_nunext_user_field_id",
+            "cols": [
+                [
+                    "code",
+                    "text",
+                    "64"
+                ],
+                [
+                    "label",
+                    "text",
+                    "200"
+                ],
+                [
+                    "type",
+                    "text",
+                    "20"
+                ],
+                [
+                    "options",
+                    "longtext"
+                ],
+                [
+                    "required",
+                    "text",
+                    "1"
+                ],
+                [
+                    "is_unique",
+                    "text",
+                    "1"
+                ],
+                [
+                    "default_value",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "hint",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "edit_by",
+                    "text",
+                    "20"
+                ],
+                [
+                    "in_list",
+                    "text",
+                    "1"
+                ],
+                [
+                    "sort",
+                    "int"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "code"
             ]
         },
         "zzzzsys_nunext_presence": {

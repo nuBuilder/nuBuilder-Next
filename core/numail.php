@@ -62,6 +62,7 @@ final class NuMailer
 		foreach (self::phpMailerCandidates() as $dir) {
 			if (!is_file("$dir/PHPMailer.php") || !is_file("$dir/SMTP.php") || !is_file("$dir/Exception.php")) continue;
 			require_once "$dir/Exception.php";
+			if (is_file("$dir/OAuthTokenProvider.php")) require_once "$dir/OAuthTokenProvider.php";   // XOAUTH2 (0.8.445, NuMailOAuth)
 			require_once "$dir/PHPMailer.php";
 			require_once "$dir/SMTP.php";
 			return self::$phpMailerDir = $dir;
@@ -135,8 +136,14 @@ final class NuMailer
 		self::$probeResult = ['offered' => $offered, 'used' => $used, 'forced' => (bool)$s->smtp_use_authentication ? (string)($s->auth_type ?? '') : '', 'auth' => (bool)$s->smtp_use_authentication];
 	}
 
+	/** The base64 string after "AUTH XOAUTH2" holds the access token – hidden in every debug output (0.8.445). */
+	public static function maskOAuth(string $line): string
+	{
+		return (string)preg_replace('/(AUTH XOAUTH2\s+)\S+/i', '$1********', $line);
+	}
+
 	/** SMTP authentication methods that can be forced ('' = automatic: PHPMailer takes CRAM-MD5, LOGIN, PLAIN, XOAUTH2 – the first the server offers). */
-	public const AUTH_TYPES = ['', 'LOGIN', 'PLAIN', 'CRAM-MD5'];
+	public const AUTH_TYPES = ['', 'LOGIN', 'PLAIN', 'CRAM-MD5', 'XOAUTH2'];   // XOAUTH2 = OAuth 2 (0.8.445, NuMailOAuth)
 	private const AUTH_SETTING = 'mail_auth_type';
 
 	/**
@@ -221,6 +228,78 @@ final class NuMailer
 			$useSsl && $port !== 25 => 'ssl',
 			default => '',
 		};
+	}
+
+	/**
+	 * Connection check without sending (0.8.432, E-mail → Test → Check connection): connect, EHLO, encryption (SMTPS or STARTTLS), login and
+	 * MAIL FROM with the sender address, then RSET and QUIT – no message is transferred (no RCPT, no DATA). Uses the saved settings.
+	 * @return array{ok: bool, steps: list<array{0: string, 1: ?bool, 2: string}>, debug: string} steps: [server|tls|login|sender, ok (null = note), detail]
+	 */
+	public static function check(int $timeout = 15): array
+	{
+		$s = self::settings();
+		$steps = [];
+		$debug = [];
+		$add = static function (string $k, ?bool $ok, string $d = '') use (&$steps): void { $steps[] = [$k, $ok, $d]; };
+		$done = static function () use (&$steps, &$debug): array {
+			return ['ok' => !in_array(false, array_column($steps, 1), true), 'steps' => $steps, 'debug' => implode("\n", $debug)];
+		};
+		if ($s['host'] === '') { $add('server', false, t('mail_chk_no_host')); return $done(); }
+		if (!self::loadPHPMailer()) { $add('server', false, 'PHPMailer not found in: ' . implode(', ', self::phpMailerCandidates())); return $done(); }
+		$secret = array_filter([(string)$s['password'], base64_encode((string)$s['password']), base64_encode("\0" . $s['username'] . "\0" . $s['password'])], static fn($x) => strlen($x) > 2);
+		$smtp = new \PHPMailer\PHPMailer\SMTP();
+		$smtp->do_debug = \PHPMailer\PHPMailer\SMTP::DEBUG_SERVER;
+		$smtp->Debugoutput = static function (string $str) use (&$debug, $secret): void { $debug[] = self::maskOAuth(rtrim(str_replace($secret, '********', $str))); };
+		$smtp->Timeout = $timeout;
+		if (property_exists($smtp, 'Timelimit')) $smtp->Timelimit = $timeout;
+		$err = static function () use ($smtp): string {
+			$e = $smtp->getError();
+			return trim(implode(' ', array_filter([(string)($e['error'] ?? ''), (string)($e['smtp_code'] ?? ''), (string)($e['detail'] ?? '')])));
+		};
+		$where = $s['host'] . ':' . $s['port'];
+		if (!$smtp->connect(($s['secure'] === 'ssl' ? 'ssl://' : '') . $s['host'], (int)$s['port'], $timeout)) {
+			$add('server', false, $where . ' – ' . $err());
+			return $done();
+		}
+		try {
+			$me = (string)(gethostname() ?: 'localhost');
+			if (!$smtp->hello($me)) { $add('server', false, $where . ' – ' . $err()); return $done(); }
+			$add('server', true, $where);
+			if ($s['secure'] === 'ssl') {
+				$add('tls', true, 'SSL/TLS (SMTPS)');
+			} elseif ($s['secure'] === 'tls' || ($s['secure'] === '' && $smtp->getServerExt('STARTTLS'))) {
+				if (!$smtp->startTLS()) { $add('tls', false, 'STARTTLS – ' . $err()); return $done(); }
+				$smtp->hello($me);
+				$add('tls', true, 'STARTTLS');
+			} else {
+				$add('tls', null, t('mail_chk_plain'));
+			}
+			if ($s['auth']) {
+				$oauth = null;
+				$user = (string)$s['username'];
+				if ((string)$s['auth_type'] === 'XOAUTH2') {      // OAuth 2 (0.8.445): the access token first – its error is clearer than the server's
+					$user = $user !== '' ? $user : NuMailOAuth::settings()['account'];
+					try { NuMailOAuth::accessToken(); $oauth = NuMailOAuth::tokenProvider($user); }
+					catch (Throwable $e) { $add('login', false, $e->getMessage()); return $done(); }
+				}
+				if (!$smtp->authenticate($user, (string)$s['password'], (string)$s['auth_type'] !== '' ? (string)$s['auth_type'] : null, $oauth)) {
+					$add('login', false, $user . ' – ' . $err());
+					return $done();
+				}
+				$add('login', true, $user . ($oauth !== null ? ' · OAuth 2' : ''));
+			} else {
+				$add('login', null, t('mail_chk_no_auth'));
+			}
+			$from = (string)$s['from_address'];
+			if (!self::validAddress($from)) $add('sender', false, $from === '' ? t('mail_chk_no_from') : $from);
+			elseif ($smtp->mail($from)) { $add('sender', true, $from); $smtp->reset(); }
+			else $add('sender', false, $from . ' – ' . $err());
+		} finally {
+			if ($smtp->connected()) $smtp->quit();
+			$smtp->close();
+			self::probeRead($debug, (object)['smtp_use_authentication' => $s['auth'], 'auth_type' => $s['auth_type']]);   // AUTH methods, as the test e-mail
+		}
+		return $done();
 	}
 
 	/** True when mails can be sent (an SMTP host is set, or $nuConfigMailLog redirects mails to a file). */
@@ -382,7 +461,7 @@ final class NuMailer
 			// test e-mail (0.8.342): the server conversation is read for its AUTH list even when the chosen debug level shows less
 			$mail->SMTPDebug   = self::$probe ? max($level, 2) : $level;
 			$mail->Debugoutput = static function (string $str, int $lvl = 0) use (&$debug, &$raw, $secret, $level): void {
-				$line = rtrim(str_replace(array_filter($secret, static fn($x) => strlen($x) > 2), '********', $str));
+				$line = self::maskOAuth(rtrim(str_replace(array_filter($secret, static fn($x) => strlen($x) > 2), '********', $str)));
 				$raw[] = $line;
 				if ($lvl <= $level) $debug[] = $line;
 			};
@@ -398,6 +477,11 @@ final class NuMailer
 			$mail->SMTPAuth = (bool)$s->smtp_use_authentication;
 			if ($mail->SMTPAuth && (string)($s->auth_type ?? '') !== '') $mail->AuthType = (string)$s->auth_type;   // forced method (0.8.342)
 			$mail->Username = (string)$s->username;
+			if ($mail->SMTPAuth && (string)($s->auth_type ?? '') === 'XOAUTH2') {   // OAuth 2 (0.8.445): the connected mailbox, token from NuMailOAuth
+				if ($mail->Username === '') $mail->Username = NuMailOAuth::settings()['account'];
+				NuMailOAuth::accessToken();                       // a refresh error stops here with the provider's message
+				$mail->setOAuth(NuMailOAuth::tokenProvider($mail->Username));
+			}
 			$mail->Password = (string)$s->password;
 			$mail->Timeout  = (int)($s->timeout ?? 20);
 			// PHPMailer waits up to SMTP::$Timelimit (300 s) for each server reply – limit it to the timeout as well

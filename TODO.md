@@ -1,5 +1,65 @@
 # nuBuilder Next – to do
 
+## 0.8.454 Custom user fields – please verify
+- [ ] Users → Custom user fields: add a text, a choice list and a yes / no field; the user form shows them on the tab More.
+- [ ] A field edited by the user himself appears in My account (user menu) for a normal user.
+- [ ] Browse SQL / report: `LEFT JOIN zzzzsys_nunext_user_ext USING (zzzzsys_user_id)` works on the live database (collation).
+- [ ] SQL Server: adding / deleting a field (ALTER TABLE) – not testable here.
+
+## 0.8.451 Backups: delete several, clean-up rule – please verify
+- [ ] Update → Backups: tick a few, Delete selected; the newest backup and the newest "before rollback" backup show a lock.
+- [ ] Clean up…: preview matches what Delete now removes; "Apply automatically after each update" runs after the next update.
+- [ ] Paging the backups or history list no longer blanks the tab for a moment.
+
+## 0.8.445 SMTP login with OAuth 2 – please verify
+- [ ] Google: register the OAuth client (Help → E-mail → OAuth 2), connect, Check connection, send a test mail; note: an external app in "Testing" loses the permission after 7 days.
+- [ ] Microsoft 365: app registration with SMTP.Send, Authenticated SMTP on for the mailbox, connect, Check connection, test mail.
+- [ ] Set $nuConfigSecretKey on the server first, so client secret and tokens are stored encrypted.
+
+## 0.8.435 Form info for the globeadmin – please verify
+- [ ] (i) next to Delete in a form (browse and edit): values right, copy buttons and *Copy all* work on your server (https: clipboard API; http: fallback).
+
+## 0.8.432 E-mail: check connection, fold template fields – please verify
+- [ ] E-mail → Test → *Check connection* with your real server: all four steps green, no mail arrives; a wrong password shows the login step red.
+- [ ] E-mail templates: fold *Template and recipients*, reload – stays folded; a template with an empty code opens it.
+
+## 0.8.431 Tiny File Manager status – please do
+- [ ] On the server: `NUNEXT-VERSION.txt` in the Tiny File Manager folder with `version: 2.6+git.4149143.nu3` and `CVE-2025-15138: patched …`
+      → Security check and Update → Libraries show OK (with a note on CVE-2025-46651 / CVE-2026-108801).
+- [ ] Decide on the two newer reports (no upstream fix, vendor silent): check them against the nu3 patch – CVE-2026-108801 uses the same
+      `fullpath` upload path; CVE-2025-46651 is "upload from URL" (switch it off?) – then mark them `patched` in NUNEXT-VERSION.txt.
+
+## 0.8.430 PHP 8.1: GitHub download – please verify
+- [ ] On the PHP 8.1 server: installer step *Libraries* and Update → *Look on GitHub* reach GitHub again (before: "Undefined constant
+      CURLOPT_XFERINFOFUNCTION"); the unattended update (`php cron.php update --github`) downloads. Tested here only with PHP 8.3, where the
+      PHP 8.1 option (CURLOPT_PROGRESSFUNCTION) downloads and stops at the size limit as before.
+
+## 0.8.428 Back to all records – please verify
+- [ ] Form lists: the × button right of the search (also with a column filter set), Esc in the search field, the browser's × in the field
+      (Chrome / Edge / Safari; Firefox shows none); in a lookup window Esc in an empty search field still closes it.
+
+## 0.8.427 Search highlighting, nuBuilder search syntax – please verify
+- [ ] Browse lists of your forms: search with several words, `"phrases"` and `-exclusions` – same rows as in nuBuilder? The marks: only in
+      searched columns, also inside formatted cells (badges, links); dark mode colour; print view.
+- [ ] Forms with own CSS for nuBuilder's `.nuBrowseSearch` highlight span: in nuBuilder Next the marks are `mark.nuHighlight`.
+- [ ] Very large print views (thousands of rows): highlighting stops after 20,000 text pieces – fast enough?
+
+## 0.8.425 Start pages of users – please verify
+- [ ] Log in as a normal user (no admin role) on the live server: the automatic start page shows the forms and reports of the access level
+      (home form first); the table "My forms and rights" is gone – it appears only while the globeadmin acts as the user (collapsed).
+- [ ] Access levels → a level → *Start page*: Customise, tiles for a form, a report (with and without launch form), a procedure (granted to
+      the level / global) and a link; *Only for* on a tile and on a group (permission item, team, department, position); *Use the default*;
+      the default for all access levels. Check one of your real access levels with "act as user".
+- [ ] Users: *Personalise* (star, hide, *Hidden by you*, *Back to the standard*) and *View* on desktop and phone.
+- [ ] 0.8.426 sample data 15: Admin tools → Sample data → *Refresh*, then sign in as sample_dario, sample_carla, sample_ben (the three example
+      start pages) and sample_anna (automatic page); remove the permission item sample_discount from Dario – the group *Pricing* goes.
+- [ ] The procedure `nu_home_user` (hook of user start pages) with `#HOME_ACCESS#`; `nu_home` still runs only on the admin page.
+- [ ] Decide: should users with an admin role also see their access level's page (today: the admin tile page)? Should the access level's
+      home form open after login as in nuBuilder (today: the first tile)? SQL rules for tiles (like `visible_sql` of a custom page) – later?
+- [ ] SQL Server: the new list key `home_user` uses the existing table zzzzsys_nunext_list_view – not tested on a real SQL Server.
+- [ ] `dev/tests/a11y.js` reports three serious points that were already there in 0.8.424 (not from this change): CodeMirror scroll box
+      not focusable (nuconfig.php editor, help), contrast of `#updReqLine` (update page), help page 420 px wide on phones (API table).
+
 ## 0.8.420 Start page View panel – please verify
 - [ ] On the live server: your layouts look as before (tile size → style, display → navigation); open *View* (button or key V) and try the
       styles, descriptions and navigation at desktop, tablet and phone width; light and dark.

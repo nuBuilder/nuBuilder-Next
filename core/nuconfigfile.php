@@ -153,6 +153,83 @@ final class NuConfigFile
 		return self::save($text, self::hash($current));
 	}
 
+	// ================================================================= Insert variable (0.8.442)
+
+	/** Never offered by Insert variable: developer switches and nuBuilder settings nuBuilder Next does not support. */
+	public const HIDDEN = ['nuConfigAllowExistingNuDB', 'nuConfigLogonMode'];
+
+	/** Groups of Insert variable: first matching pattern of the name (without $nuConfig) wins; the rest is "General". */
+	public const GROUPS = [
+		'Database'           => '/^DB(?!Globeadmin)/',
+		'Login and security' => '/^(2FA|DBGlobeadmin|Globeadmin(Email)?$|Password|Session|SecretKey|AutoLogin|TrustProxy)/',
+		'E-mail'             => '/^(SMTP|MailLog|PHPMailer)/',
+		'REST API'           => '/^Api/',
+		'Demo mode'          => '/^(Demo|IsDemo)/',
+		'nuBuilder'          => '/^(SharedLogin|NuBuilder|FontAwesome)/',
+		'Includes'           => '/^Include(JS|CSS|PHP)$/',
+		'Admin tools'        => '/^(PMAURL|TFMURL|PrimaryDatabase|BackupPath|EnableDatabaseUpdate|TCPDFPath|ShowInstaller|DevMode|Debug$|SettingsFromDB)/',
+	];
+
+	/** Variables nuBuilder Next reads that nuconfig-sample.php does not show: name => [default (PHP code), comment]. */
+	public const EXTRA = [
+		'nuConfigTitle'                    => ['""', 'Application title in the browser tab and the header (empty: nuBuilder Next).'],
+		'nuConfigGlobeadminHome'           => ['""', 'nuBuilder: id or code of a launch form opened as the globeadmin\'s start page instead of the tile page.'],
+		'nuConfigIncludeJS'                => ['\'\'', 'nuBuilder: own JavaScript file(s) for form pages, e.g. \'myjslib.js\' or [\'a.js\', \'b.js\'] – relative to nuBuilder Next, else nuBuilder\'s folder; https:// addresses too.'],
+		'nuConfigIncludeCSS'               => ['\'\'', 'nuBuilder: own CSS file(s) for form pages, e.g. \'mystyles.css\' or [\'a.css\', \'b.css\'] – relative to nuBuilder Next, else nuBuilder\'s folder.'],
+		'nuConfigCSVSeparator'             => ['";"', 'Default delimiter of the Export CSV dialog: ";" "," "|" or "\t".'],
+		'nuConfigIncludeApexCharts'        => ['false', 'nuBuilder: true loads ApexCharts on form pages (new ApexCharts(element, options).render() in form code).'],
+		'nuConfigIntegerPKsAuto'           => ['false', 'nuBuilder: integer primary keys count as auto-increment when the column does not say so.'],
+		'nuConfigCustomPagesDir'           => ['""', 'Absolute path of the folder with the page forms (default: custom/pages/ of nuBuilder Next).'],
+		'nuConfigHomeHooks'                => ['true', 'false: the start page hooks nu_home / nu_home_user (PHP and JavaScript) do not run.'],
+		'nuConfigEnableDatabaseUpdate'     => ['true', 'nuBuilder: false switches updates off (Admin tools → Update refuses to install).'],
+		'nuConfigTCPDFPath'                => ['""', 'Folder of TCPDF (tcpdf.php) for reports – overrides the library pack and the search.'],
+		'nuConfigIsDemo'                   => ['false', 'nuBuilder demo: true lets the demo globeadmin below sign in read only.'],
+		'nuConfigDemoDBGlobeadminUsername' => ['""', 'nuBuilder demo: login name of the demo globeadmin (with $nuConfigIsDemo = true).'],
+		'nuConfigDemoDBGlobeadminPassword' => ['""', 'nuBuilder demo: password of the demo globeadmin.'],
+	];
+
+	/**
+	 * Variables for Insert variable: those of nuconfig-sample.php (default and comment from there – commented-out lines too, the first
+	 * occurrence wins: the MySQL block before SQL Server) and EXTRA, without HIDDEN. @return list<array{name: string, value: string, comment: string, group: string}>
+	 */
+	public static function catalog(): array
+	{
+		$out = [];
+		$sample = NU_ROOT . '/nuconfig-sample.php';
+		$lines = is_file($sample) ? (array)file($sample, FILE_IGNORE_NEW_LINES) : [];
+		$last = null;                                         // index in $out of the previous variable (for "//--" continuation lines)
+		$inBlock = false;
+		foreach ($lines as $line) {
+			$line = (string)$line;
+			$t = trim($line);
+			if (str_starts_with($t, '/*')) $inBlock = true;
+			if ($inBlock) { if (str_contains($t, '*/')) $inBlock = false; $last = null; continue; }
+			if (preg_match('/^(?:\/\/)?\s*\$(nuConfig\w+)\s*=\s*(.+?);\s*(?:\/\/--\s*(.*))?$/', $t, $m)) {
+				$name = $m[1];
+				if (isset($out[$name]) || in_array($name, self::HIDDEN, true)) { $last = null; continue; }
+				$out[$name] = ['name' => $name, 'value' => trim($m[2]), 'comment' => trim($m[3] ?? ''), 'group' => self::groupOf($name)];
+				$last = $name;
+				continue;
+			}
+			if ($last !== null && preg_match('/^\/\/--\s*(.*)$/', $t, $m)) { $out[$last]['comment'] = trim($out[$last]['comment'] . ' ' . $m[1]); continue; }
+			$last = null;
+		}
+		foreach (self::EXTRA as $name => [$value, $comment]) {
+			if (!isset($out[$name]) && !in_array($name, self::HIDDEN, true)) $out[$name] = ['name' => $name, 'value' => $value, 'comment' => $comment, 'group' => self::groupOf($name)];
+		}
+		$order = array_flip(array_merge(array_keys(self::GROUPS), ['General']));
+		$list = array_values($out);
+		usort($list, static fn($a, $b) => [$order[$a['group']], $a['name']] <=> [$order[$b['group']], $b['name']]);
+		return $list;
+	}
+
+	public static function groupOf(string $name): string
+	{
+		$short = (string)preg_replace('/^nuConfig/', '', $name);
+		foreach (self::GROUPS as $g => $re) if (preg_match($re, $short)) return $g;
+		return 'General';
+	}
+
 	/** Settings a button elsewhere may switch on (pages/nuconfigfile.php, action enable): variable => [log event, success text, page to return to]. */
 	public const SWITCHES = [
 		'nuConfigApi'     => ['api_switched_on', 'api_on_done', ['apiclients', 'apiplayground']],

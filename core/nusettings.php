@@ -64,7 +64,7 @@ final class NuSettings
 			'cfg_type' => 1, 'cfg_effective' => '1'],
 		['zzzzsys_config_id' => 'nunexthomehooks', 'zzzzsys_setup_id' => '1', 'cfg_order' => 116, 'cfg_category' => 'Admin', 'cfg_title' => 'Start Page Hooks',
 			'cfg_setting' => '$nuConfigHomeHooks', 'cfg_value' => 'true',
-			'cfg_description' => 'nuBuilder Next: false = the procedure nunext_home (PHP and JavaScript) does not run on the tile start page.',
+			'cfg_description' => 'nuBuilder Next: false = the procedure nu_home (PHP and JavaScript) does not run on the tile start page.',
 			'cfg_type' => 2, 'cfg_effective' => '1'],
 	];
 

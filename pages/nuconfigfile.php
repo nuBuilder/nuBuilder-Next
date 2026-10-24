@@ -137,6 +137,9 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'container-xl', 'head' =
 		<div class="cfgEditor">
 			<div class="d-flex flex-wrap gap-2 align-items-center px-3 py-2 border-bottom cfgToolbar">
 				<label class="form-label small fw-semibold mb-0 me-auto" for="cfgContent">PHP</label>
+				<?php if ($writable): ?>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="cfgInsertBtn" data-bs-toggle="modal" data-bs-target="#cfgInsert"><i class="bi bi-plus-square me-1"></i><?= h(t('cfg_ins_btn')) ?></button>
+				<?php endif; ?>
 				<span class="cfgCodeTools d-flex gap-2"></span>
 			</div>
 			<textarea class="form-control font-monospace border-0 rounded-0 cfgCode" name="content" id="cfgContent" rows="28" spellcheck="false" aria-label="nuconfig.php"
@@ -144,4 +147,42 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'container-xl', 'head' =
 		</div>
 	</div>
 </form>
+<?php if ($writable):   // Insert variable (0.8.442): variables nuBuilder Next reads that the file does not set yet (NuConfigFile::catalog), and own ones ?>
+<div class="modal fade" id="cfgInsert" tabindex="-1" aria-labelledby="cfgInsertTitle" aria-hidden="true"
+	 data-catalog="<?= h((string)json_encode(NuConfigFile::catalog(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+	 data-commented="<?= h(t('cfg_ins_commented')) ?>" data-done="<?= h(t('cfg_ins_done')) ?>" data-none="<?= h(t('cfg_ins_none')) ?>"
+	 data-bad-name="<?= h(t('cfg_ins_bad_name')) ?>" data-bad-number="<?= h(t('cfg_ins_bad_number')) ?>" data-exists="<?= h(t('cfg_ins_exists')) ?>">
+	<div class="modal-dialog modal-lg modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="cfgInsertTitle"><i class="bi bi-plus-square me-2"></i><?= h(t('cfg_ins_btn')) ?></h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button>
+			</div>
+			<div class="modal-body">
+				<p class="small text-body-secondary mb-2"><?= h(t('cfg_ins_hint')) ?></p>
+				<input type="search" class="form-control mb-2" id="cfgInsSearch" placeholder="<?= h(t('cfg_ins_search')) ?>" aria-label="<?= h(t('cfg_ins_search')) ?>">
+				<div class="small text-success mb-2" id="cfgInsDone" role="status" aria-live="polite"></div>
+				<div class="list-group list-group-flush border rounded cfgInsList" id="cfgInsList"></div>
+				<h3 class="h6 mt-4"><?= h(t('cfg_ins_other')) ?></h3>
+				<div class="row g-2 align-items-end" id="cfgInsOther">
+					<div class="col-sm-5"><label class="form-label small mb-1" for="cfgInsName"><?= h(t('cfg_ins_name')) ?></label>
+						<div class="input-group input-group-sm"><span class="input-group-text">$</span><input class="form-control font-monospace" id="cfgInsName" value="nuConfig" autocomplete="off" spellcheck="false"></div></div>
+					<div class="col-sm-3"><label class="form-label small mb-1" for="cfgInsType"><?= h(t('cfg_ins_type')) ?></label>
+						<select class="form-select form-select-sm" id="cfgInsType">
+							<option value="text"><?= h(t('cfg_ins_text')) ?></option><option value="number"><?= h(t('cfg_ins_number')) ?></option>
+							<option value="true">true</option><option value="false">false</option>
+						</select></div>
+					<div class="col-sm-4"><label class="form-label small mb-1" for="cfgInsValue"><?= h(t('cfg_ins_value')) ?></label>
+						<input class="form-control form-control-sm" id="cfgInsValue" autocomplete="off"></div>
+					<div class="col-sm-9"><label class="form-label small mb-1" for="cfgInsComment"><?= h(t('cfg_ins_comment')) ?></label>
+						<input class="form-control form-control-sm" id="cfgInsComment" autocomplete="off"></div>
+					<div class="col-sm-3 d-grid"><button type="button" class="btn btn-sm btn-outline-primary" id="cfgInsAdd"><i class="bi bi-plus-lg me-1"></i><?= h(t('cfg_ins_add')) ?></button></div>
+					<div class="col-12 small text-danger" id="cfgInsErr" role="alert"></div>
+				</div>
+			</div>
+			<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= h(t('close')) ?></button></div>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
 <?php nu_layout_end($foot);

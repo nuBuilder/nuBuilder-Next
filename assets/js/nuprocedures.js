@@ -114,7 +114,8 @@
 	function showResult(res, mode) {
 		result.hidden = false;
 		result.innerHTML = '';
-		var ok = res && res.ok;
+		res = res || {};   // a response without a JSON object
+		var ok = !!res.ok;
 		var box = el('div', {'class': 'alert py-2 mb-0 small ' + (ok ? 'alert-success' : 'alert-danger')});
 		box.appendChild(el('div', {'class': 'fw-semibold', text: ok ? M.done : M.failed}));
 		(res.errors || []).forEach(function (e) { box.appendChild(el('div', {text: e.message || String(e)})); });

@@ -48,6 +48,11 @@ final class NuHash
 			if (trim((string)($row['sus_language'] ?? '')) !== '') $h['LANGUAGE'] = (string)$row['sus_language'];
 			$h['USER_PERMISSIONS']   = implode(', ', self::permissions((string)$u['id']));
 		}
+		// custom user fields (0.8.454): #USER_<CODE># – empty for the globeadmin (no user record)
+		foreach (NuUserFields::mine() + array_map(static fn() => '', NuUserFields::all()) as $code => $val) {
+			$k = 'USER_' . strtoupper((string)$code);
+			if (!isset($h[$k])) $h[$k] = (string)$val;
+		}
 		return $base = $h;
 	}
 
@@ -67,6 +72,7 @@ final class NuHash
 		foreach (self::CATALOG as $g => $names) {
 			$items = [];
 			foreach ($names as $n) $items[] = [$n, t('hv_' . strtolower($n))];
+			if ($g === 'user') foreach (NuUserFields::all() as $code => $f) $items[] = ['USER_' . strtoupper((string)$code), t('hv_user_field', NuUserFields::label($f))];   // 0.8.454
 			$groups[] = ['title' => t('hv_group_' . $g), 'items' => $items];
 		}
 		return ['title' => t('hv_title'), 'search' => t('hv_search'), 'empty' => t('hv_empty'), 'fields' => t('hv_group_fields'),

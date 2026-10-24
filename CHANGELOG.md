@@ -3,6 +3,177 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.457 – Release gate
+- Release gate for 0.8.455–0.8.456 (Customise as an icon next to the search, function reference with PHP / JavaScript tabs, examples
+  and results): smoke, all end-to-end tests and the cross-tests against nuBuilder passed.
+- Tests: the sign-in helpers of `dev/tests/smoke.js` and `dev/tests/e2e.js` wait for the page the click opens (`waitForNavigation`)
+  instead of `waitForLoadState`, which returned at once on the already loaded sign-in page – a failed sign-in could be cut off before
+  it was counted, so "login rate limit without cookies" failed now and then.
+
+## 0.8.456 – Function reference: PHP / JavaScript tabs with examples and results
+- Help → Function reference: two tabs, "PHP functions" and "JavaScript functions" (the last tab is remembered; a link to a function
+  of the other tab, e.g. from the contents or the A–Z index, opens that tab). Group chips on top of each tab.
+- Every function (635) now has a sample call, and the 338 that return a value a sample result – shown as "console.log()" output
+  for JavaScript examples that log, otherwise as "Result". Cards in the style of nuBuilder's wiki: signature, parameters (type,
+  default, description), returns, description, example with copy button, result and "Also see" links to related functions.
+- The help search ignores the "Also see" links; opening the help with #function jumps there at once.
+
+## 0.8.455 – Customise as an icon next to the search
+Start page: the Customise button sits right next to the favourites (☆) button and shows only its icon (name as tooltip); the search field is at most 300 px wide.
+
+## 0.8.454 – Custom user fields
+Custom user fields: Users → Custom user fields (start page tile, admin right "Custom user fields") adds own fields to the user form – label (translatable), code, type (text, long text, whole number, number, date, yes / no, e-mail, phone, web address, choice list with fixed values or a read-only SELECT), default, help text (i), required, unique, "In the users list", and who edits it (admins with rights on users, only the globeadmin, or the user himself on My account). Values live in zzzzsys_nunext_user_ext – one row per user, one real column per field, joinable with LEFT JOIN zzzzsys_nunext_user_ext USING (zzzzsys_user_id) in browse SQL, reports and lookups; deleting a field offers a CSV of its values first.
+Where they show up: user form tab "More"; "My account" in the user menu (fields the user edits himself); users list columns, filters and search; CSV user import and its template; hash variables #USER_<CODE># (also in the # menu); PHP nuNextUserField() / nuNextSetUserField(); JavaScript nuNextUserField(); REST /v1/users "fields"; conditions of user start page tiles and groups; the log.
+Database step 0019-user-fields (zzzzsys_nunext_user_field). Help chapter Users → Custom user fields; README; e2e test user_fields.
+
+## 0.8.453 – Customise panel: Appearance first
+Start page → Customise: the tabs are now Appearance · Content · Layouts; Appearance opens first (later the last tab used).
+
+## 0.8.452 – One Customise button on the start page
+Start page: one "Customise" button instead of "View" and "Customise". Its panel has three tabs (the last one used opens again): Content – "Edit tiles and groups" starts the edit mode (users: Personalise); Appearance – how the tiles look (before: View; key V opens this tab), with "Changes apply to: only me / everyone"; Layouts – choose, save, rename, share and delete layouts. Each setting is in one place only: the tile size was removed from the edit bar (it is the tile style on Appearance).
+Help and tutorial updated; e2e test home_customise.
+
+## 0.8.451 – Delete several backups, clean-up rule, no blank tab when paging
+Update page → Backups: tick several backups (or all on the page) and "Delete selected (n)" – the confirmation shows how many and how much space is freed. "Clean up…": keep the newest n backups or delete backups older than n days, with a preview of what would go, "Delete now" and "Save rule"; optionally applied automatically after each update. The newest backup and the newest safety backup made before a roll back are never deleted this way (lock instead of a checkbox; the server checks too). Every deletion is logged ("Backups deleted"), also of a single backup.
+Paging a table in a tab (update page → Backups / History) no longer blanks the tab for a moment: pager links and redirects name the tab (?tab=), so the server opens it directly; the same for the Setup code page after saving.
+Development: no gate reminders (this account has no GitHub connection – a gate runs the full test suite locally, without a push); e2e test backups_bulk with dev/tests/fakebackups.py.
+Tests: list_footer no longer depends on the amount of log data.
+
+## 0.8.450 – Update from GitHub foldable
+Update page: "Update from GitHub" can be folded (chevron before the title) – open by default, the folded state is remembered in the browser, a newer release keeps it open; Settings unfolds it first.
+
+## 0.8.449 – Compact properties panel in the form builder
+Form builder: the properties panel packs its fields tighter when it is wide (preview hidden, wide screens) – three or four fields per row, single-line fields no longer full width; text and code areas stay wide. The normal layout with the preview is unchanged.
+
+## 0.8.448 – Documentation brought up to date
+Docs: README (e-mail OAuth 2 and connection check, user start pages, Setup code, Insert variable), help (authentication methods, builder buttons), porting review (M6 includes, Setup → Include) and the development notes brought up to date.
+
+## 0.8.447 – Form builder buttons below the title
+Form builder: Back, Save, Undo, Open form, Change with AI and Delete form are in their own row below the title.
+
+## 0.8.446 – Slimmer options menu
+Forms: the options menu (⋮) no longer lists Add record, Print, Search, Form info, Form properties and Form object list – they have their own buttons on the page; their keyboard shortcuts (Ctrl+Shift+A / P / S / M / F / O) still work, and Ctrl+Shift+M now opens the form info panel (i). e2e test options_menu.
+
+## 0.8.445 – SMTP login with OAuth 2 (Google, Microsoft 365)
+E-mail: SMTP login with OAuth 2 (XOAUTH2) – authentication method "OAuth 2" in E-mail → Settings with provider Google, Microsoft 365 or another OAuth 2 service (own addresses and scope), client ID / secret, the redirect URI to copy (oauth.php) and "Save and connect account": the provider's sign-in page, back with the permission, "Connected: <mailbox>". Access tokens are fetched with the refresh token when needed (no Composer / League libraries – PHPMailer's own OAuth interface); used by every mail of nuBuilder Next, the test mail and Check connection ("login … · OAuth 2"). Client secret and tokens encrypted with $nuConfigSecretKey (warning without a key), not in Copy settings, hidden in the server conversation; connect / failure / disconnect logged.
+Help: chapter E-mail → OAuth 2 with the setup at Google and Microsoft 365 step by step and what to do when it fails.
+Tests: dev/tests/fakeoauth.py (fake OAuth provider), fakesmtp.py with XOAUTH2, RCPT and DATA; e2e test mail_oauth (connect, check, test mail, token refresh, foreign state refused, disconnect).
+
+## 0.8.444 – Setup code page, Include on form pages, no tab flash
+Admin tools → Setup code (new page, admin right "Setup code" = full access): nuBuilder's Setup → Header (JavaScript), Style (CSS) and Include (HTML) in code editors, saved to the same zzzzsys_setup fields; only changed fields are written, a field changed elsewhere meanwhile is not overwritten (the text is kept); logged; tabs in the address.
+Form pages: Setup → Include is used – its <link>, <script> and <style> elements (other text, comments and nuBuilder's default text ignored) after the runtime, before Setup → Header; addresses on other servers allowed by the page's Content-Security-Policy.
+Tabs that a script opens after loading (update page #backups / #history, the last tab of a procedure) no longer flash the first tab while the page loads (data-nu-tab-restore).
+Also in 0.8.443 (not listed there): JavaScript nuSetSaveButtonPosition(top, left, height, width, fontSize) as in nuBuilder (absolute layout).
+e2e test setup_code.
+
+## 0.8.443 – nuconfig.php: IncludeJS / IncludeCSS
+nuconfig.php: nuBuilder's $nuConfigIncludeJS and $nuConfigIncludeCSS are supported (form pages; a file name or a list) – loaded after the runtime, before Setup → Header and the form's code (CSS after nuBuilder Next's styles); https:// addresses as they are (added to the page's Content-Security-Policy), relative paths from the nuBuilder Next folder, else from nuBuilder's folder, with the file's change time (?v=). Compatibility report: M6 supported.
+$nuConfigIncludePHP: a relative path is also looked for in nuBuilder's folder, so the line of nuBuilder's nuconfig.php works unchanged.
+Security check: include files that are not found are named. Insert variable: $nuConfigIncludeJS / CSS added (group Includes). e2e test config_includes.
+
+## 0.8.442 – nuconfig.php: Insert variable
+nuconfig.php editor: "Insert variable" – lists the variables nuBuilder Next reads that the file does not set yet (nuconfig-sample.php plus the ones read only by the code, without developer switches; NuConfigFile::catalog) in groups, with default value and comment; commented-out lines are marked. A click inserts the line below the cursor (otherwise at the end, before a closing ?>); own variables with name, type (text / number / true / false) and comment. Nothing is written before Save. e2e test config_insert.
+
+## 0.8.441 – count() out of loop conditions
+Code: count() no longer in for-loop conditions (browse SQL parser, form spec, select options of the form runtime, report group headers) – DeepSource PHP-P1000; no change in behaviour.
+
+## 0.8.440 – Release script without shell call
+dev/release.py: the clean-up of failed logins before the browser suites runs mysql without a shell (DeepSource BAN-B602; development only, not in the install package).
+
+## 0.8.439 – Builder preview: Browse or Edit
+Form builder: the preview of a Browse and edit form switches between Browse (the list – browse columns, browse SQL, rows per page, of the draft too) and Edit (a record); remembered per form in the browser, the browse columns and the Browse tab of the form settings switch to the list. e2e test builder_preview_mode.
+
+## 0.8.438 – nu_home hooks, user form tabs
+Start page hooks renamed: the procedures nunext_home and nunext_home_user are now nu_home and nu_home_user. The update renames existing procedures once (database step 0018-home-hook-codes; not when the new code is taken already) and the description of the setting $nuConfigHomeHooks; the old codes no longer run.
+User form: tabs General and Permission items (with the number ticked); one Save stores both, the tab stays open after Save (?tab=perm), a field the browser finds invalid opens its tab. e2e test user_tabs.
+
+## 0.8.437 – Page size menu in the list footer
+Lists: with several pages the page size in the footer is a menu – 10 / 25 / 50 / 100 / 250 / 500 rows (system lists, form browse lists, debug results); the choice stays while paging, sorting and searching (?per=). e2e test list_footer extended.
+
+## 0.8.436 – Pager only when there is more than one page
+Lists: the footer shows the pager and the page size only when the records fill more than one page; a list that fits on one page shows only the total (all system lists, form browse lists, debug results). The forms list keeps 500 per page, so its pager appears from the 501st form. e2e test list_footer.
+
+## 0.8.435 – Form info for the globeadmin
+Forms: form info for the globeadmin – an (i) button next to Delete (browse and edit) opens a panel with title, code, description, type, form ID, table, primary key and browse SQL; in a record also the record ID and created / last changed (time and login) from the audit trail. Every value has a copy button, "Copy all" copies everything as "Label: value" lines; Esc or a click outside closes it.
+Copy helper data-nu-copy-text (nuapp.js) with a fallback for http without TLS. e2e test form_info (also: not shown to other users).
+
+## 0.8.434 – E-mail template: no code title
+E-mail templates: the code is no longer repeated as a title next to Save (it is in the Code field and the folded line); screen readers still get it as heading. A new template keeps its title.
+
+## 0.8.433 – Code clean-up (DeepScan)
+Code clean-up after a DeepScan review (no change in behaviour): procedure result also without a JSON object, redundant jQuery and window checks in the runtime removed, unused function reload (form builder) and tableValue (import) removed, unused parameters of setState and the designer's drag removed, info bar destroy() called with its one argument; e2e test edit_conflict checks the draft save.
+
+## 0.8.432 – E-mail: check connection, foldable template fields
+E-mail → Settings / Test: new "Check connection" – tests the saved SMTP settings without sending anything (connect, encryption SSL/TLS or STARTTLS, login, sender address via MAIL FROM, then RSET/QUIT); each step with the server's answer, conversation with hidden passwords, logged as email_check / email_check_failed.
+E-mail templates: code, group, category, language, description and To/Cc/Bcc fold away under "Template and recipients"; the folded line shows code · description · To; the state is remembered in the browser, a field with an error opens it again.
+Tests: dev/tests/fakesmtp.py (local fake SMTP server) and e2e tests mail_check and emt_fold.
+
+## 0.8.431 – Tiny File Manager status
+- Security check / Update → Libraries: Tiny File Manager shows OK when the copy's NUNEXT-VERSION.txt marks CVE-2025-15138 as patched
+  (as before), now with a short note while the newer reports for versions up to 2.6 – CVE-2025-46651 (upload from URL) and
+  CVE-2026-108801 (upload via fullpath, October 2026) – are not marked patched too; a copy without that file still gets the warning.
+- Help (libraries: NUNEXT-VERSION.txt example with the three CVE lines).
+
+## 0.8.430 – PHP 8.1: GitHub download
+- Fixed on PHP 8.1: downloads from GitHub (installer step Libraries, Update → Look on GitHub, library packs, `cron.php update --github`)
+  and the unattended update's download stopped with "Undefined constant CURLOPT_XFERINFOFUNCTION" – that option exists only from PHP 8.2
+  on. PHP 8.1 now uses CURLOPT_PROGRESSFUNCTION (same callback, same 64 MB limit): `nu_curl_progress_opt()`.
+- Unit test: no PHP 8.2+ functions or constants without a check in the code (PHPStan's phpVersion 8.1 does not catch constants).
+
+## 0.8.429 – Release gate
+- Release gate for 0.8.424–0.8.428 (release notes template, start pages of users, sample start pages, search highlighting and
+  nuBuilder's search syntax, back to all records in lists): smoke, all end-to-end tests and the cross-tests against nuBuilder passed.
+
+## 0.8.428 – Back to all records in lists
+- Form lists: a × button right of the search ("Reset filter", as in nuBuilder Next's own lists) while a search or a column filter is
+  active – it shows all records again; sorting, rows per page and a filter set by form code (nuSetBrowseFilter) stay.
+- All lists: Esc in the search field and the browser's × in the field empty it and show the list without the search words at once
+  (before, the × only emptied the box). Esc in an empty field does nothing, so a lookup window still closes with it.
+- Help (Lists → Search); e2e test browse_reset.
+
+## 0.8.427 – Search highlighting in lists
+- Browse lists highlight the search words, as in nuBuilder (nuHighlightSearch runs after the list is loaded, before nuOnLoad) – but
+  better: every occurrence (nuBuilder: the first per text piece), all words in one pass (no marks inside marks), case- and
+  accent-insensitive like the database (zurich finds and marks Zürich, ß = ss) with exact positions (nuBuilder's accent mode marked the
+  rest of the text too), only in the columns that are searched (nuSetNoSearchColumns / nuSetSearchColumns), and not inside form fields,
+  buttons or `.nuNoHighlight`. Colour: CSS variable `--nu-highlight` (light and dark mode).
+- nuBuilder's search syntax in browse lists: `"phrases"` in double quotes and exclusions `-word` / `-"phrase"` (before, a minus was searched
+  literally). An empty column counts as not containing an excluded word.
+- nuBuilder Next's own lists (users, forms, procedures …) mark their search words too.
+- `$.fn.nuHighlight(pattern, accentInsensitive)` takes a word or a list; new `$.fn.nuUnhighlight()`, `nuHighlightText()`, `nuHighlightClear()`.
+  Marks are `<mark class="nuHighlight">` (nuBuilder: `<span class="nuBrowseSearch">`, the class of the search form in nuBuilder Next).
+- Help (Lists → Search), function reference, porting review; unit test for the search terms, e2e test browse_highlight.
+
+## 0.8.426 – Sample start pages of users
+- Sample data 15: example start pages of users – sample_sales (Dario): a sales desk in the style Cards with a favourites row, a *New order*
+  tile, a report and a group *Pricing* only for the permission item sample_discount; sample_manager (Carla): two tabs *Daily work* /
+  *Insights* with group colours, a procedure tile and a group *Team lead* only for team Lead; sample_editor (Ben): a list in two columns
+  with *New …* tiles and a report only for the positions Clerk and Manager. sample_viewer and sample_secure keep the automatic page.
+  Admin tools → Sample data → *Refresh* installs them; removing the sample data also removes start pages saved later for a sample access level.
+- Help (Start pages of users → Examples, Sample data), tutorial lesson *Start pages of users* and the sample data page point to them;
+  e2e test home_user checks the three pages.
+
+## 0.8.425 – Start pages of users
+- Start pages of users: users without an admin role get a tile start page too – one per access level, with the same groups, tabs,
+  tile styles and View panel as the globeadmin's. Without a page of its own an access level uses the default for all access levels,
+  else an automatic page with its forms (home form first) and the reports it may run. The table "My forms and rights" is gone; the
+  globeadmin sees it (collapsed) while acting as the user.
+- Editor: Access levels → a level → *Start page*, or Access levels ▾ → *Start pages of users* (right "Start page layout"): *Start page
+  for* (default or an access level), a preview with that level's rights, Customise, *Use the default* / *Remove the default*.
+- Tiles for forms, reports (new tile type, also on the admin start page and in `nuHomeAddTile()`), procedures (run with the user's rights),
+  links and a few pages. *Only for*: a tile or a whole group can be limited to permission items, team, department or position; the
+  editor marks such tiles with a funnel.
+- Users: *Personalise* – own favourites and tiles hidden only for them (*Hidden by you*, *Back to the standard*); *View* changes only
+  their own view.
+- Hook procedure `nunext_home_user` for these pages (`#HOME_PAGE#`, `#HOME_ACCESS#`); `nunext_home` keeps running only on the admin page.
+- Fixed: on the tile start page the dashboards of an admin role user's access level did not load (their script was dropped).
+- Help: chapters *Start pages of users* and *Your start page*; tutorial lesson *Start pages of users*; function reference example of
+  `nuHomeAddTile()` corrected (`url`, not `href`). E2E test `home_user`.
+
+## 0.8.424 – Release notes: last published release
+- Release notes template (`dev/release-notes.md`): the last published GitHub release is v0.8.423 now – the next notes cover
+  the changes after it.
+
 ## 0.8.423 – Release gate
 - Release gate for 0.8.419–0.8.423 (release notes template, start page View panel, installer required fields, Panels quick actions,
   Back from forms opened by page forms): smoke, all end-to-end tests and the cross-tests against nuBuilder passed.

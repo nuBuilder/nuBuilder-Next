@@ -13,20 +13,32 @@ defined('NU_ROOT') || exit;
  * View (0.8.420, the View panel of the start page): how the tiles look – style, descriptions, navigation, look, per tab (tabStyle) and per
  * screen size (sizes.tablet / sizes.phone); size and display are derived from it (compatibility: hook variables, Customise). People
  * without the right to change the layout keep their own changes in an overlay per layout (overlays(), not in the layout).
+ *
+ * User start pages (0.8.425): users without an admin role get a tile page too – one layout per access level (list key home_user,
+ * access_ids = [access id]) or the default for all access levels (access_ids = ["*"]); without either, an automatic layout of the
+ * forms and reports of the access level (autoLayout()). Only own tiles (c_…: form, report, procedure, link, a few pages), each tile
+ * and group optionally with conditions (cond: permission items, team, department, position). Edited by "Start page layout"
+ * admins on ?p=home&for=<access id | *> (forLevel(…, preview: true) – rights of that access level, conditions not applied, marked).
+ * Users keep their own view, favourites and hidden tiles in their overlay (fav / hide).
  */
 final class NuHome
 {
 	public const SETTING = 'home_layout';
 	public const DISPLAYS = ['groups', 'tabs'];
 	public const SIZES = ['large', 'compact', 'list', 'listwide', 'list2'];   // list2 = list in two columns (0.8.363); 'largeinfo' of 0.8.352 was removed in 0.8.355 (stored: becomes 'large')
-	public const KINDS = ['form', 'page', 'procedure', 'url'];
+	public const KINDS = ['form', 'page', 'procedure', 'url', 'report'];
+	/** User start pages (0.8.425): list key, default layout id in access_ids, pages a user tile may open, condition kinds. */
+	public const LIST_USER = 'home_user';
+	public const ALL_LEVELS = '*';
+	public const USER_PAGES = ['help', 'password', 'security', 'notifications'];
+	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'email', 'emailtemplates',
 		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'dashboards', 'vendor', 'sample', 'import', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
-		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'compat', 'adminroles', 'tutorial'];
+		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'setupcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
 	public const ADMIN_GROUPS = [
-		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest']],
+		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'setupcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest']],
 		'g_adm_look'   => ['home_group_look', ['branding', 'dashboards']],
 		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'appcloner', 'sample']],
 		'g_adm_int'    => ['home_group_integration', ['apiclients', 'prompts', 'compat']],
@@ -63,7 +75,7 @@ final class NuHome
 				['g_watch', 'home_pf_g_monitoring', '', ['sessions', 's_audit', 's_log', 'notifications', 'securitycheck']]]],
 		'operations'  => ['icon' => 'bi-activity', 'display' => 'groups', 'size' => 'compact', 'view' => ['style' => 'compact'],
 			'groups' => [['g_health', 'home_pf_g_health', '', ['vendor', 'securitycheck', 'update', 's_mail_test']],
-				['g_config', 'home_pf_g_config', '', ['settings', 'configfile', 'branding']],
+				['g_config', 'home_pf_g_config', '', ['settings', 'setupcode', 'configfile', 'branding']],
 				['g_tools', 'home_pf_g_tools', '', ['pma', 'tfm', 's_log', 'sessions', 's_mail_log']]]],
 		'reporting'   => ['icon' => 'bi-bar-chart', 'display' => 'groups', 'size' => 'large',
 			'groups' => [['g_reports', 'rpt_title_list', '', ['reports', 's_report_new', 's_sqlbuilder', 's_sqlbuilder_new']],
@@ -118,6 +130,7 @@ final class NuHome
 			'permissions' => ['permissions', 'bi-key', t('perm_title'), t('home_perm_hint')],
 			'sessions'    => ['sessions', 'bi-people-fill', t('sess_title'), t('home_sessions_hint')],
 			'adminroles'  => ['adminroles', 'bi-person-badge', t('adm_title'), t('adm_card_hint')],
+			'userfields'  => ['userfields', 'bi-ui-checks', t('uf_title'), t('uf_card_hint')],   // custom user fields (0.8.454)
 			'forms'       => ['forms', 'bi-ui-checks-grid', t('nav_forms'), t('home_forms_hint')],
 			'procedures'  => ['procedures', 'bi-filetype-php', t('proc_title'), t('home_proc_hint')],
 			'reports'     => ['reports', 'bi-file-earmark-richtext', t('rpt_title_list'), t('home_reports_hint')],
@@ -147,6 +160,7 @@ final class NuHome
 		$c += [
 			'securitycheck' => ['securitycheck', 'bi-shield-check', t('secchk_title'), t('secchk_card_hint')],
 			'configfile'    => ['configfile', 'bi-filetype-php', t('cfg_title'), t('cfg_card_hint')],
+			'setupcode'     => ['setupcode', 'bi-code-square', t('scode_title'), t('scode_card_hint')],
 			'setupwizard'   => ['setupwizard', 'bi-magic', t('wiz_title'), t('wiz_card_hint')],
 			'branding'      => ['branding', 'bi-palette', t('brand_title'), t('brand_card_hint')],
 			'dashboards'    => ['dashboards', 'bi-speedometer2', t('dash_title'), t('dash_card_hint')],
@@ -229,6 +243,7 @@ final class NuHome
 		$s = [
 			's_user_new'      => [nu_url('user'), 'bi-person-plus', t('user_new'), 'users'],
 			's_access_new'    => [nu_url('accesslevel'), 'bi-plus-lg', t('access_new'), 'access'],
+			's_user_home'     => [nu_url('home', ['for' => self::ALL_LEVELS]), 'bi-grid-1x2', t('home_u_title'), 'access'],   // user start pages (0.8.425)
 			's_perm_new'      => [nu_url('permissions', ['id' => 'new']), 'bi-plus-lg', t('perm_new'), 'permissions'],
 			's_proc_new'      => [nu_url('procedures', ['id' => 'new']), 'bi-plus-lg', t('proc_new'), 'procedures'],
 			's_prompt_new'    => [nu_url('prompts', ['id' => 'new']), 'bi-plus-lg', t('pg_new'), 'prompts'],
@@ -279,7 +294,7 @@ final class NuHome
 		if (count(NuVendor::dbTools()) > 1) $a['pma'] = ['dbmenu', t('home_db')];   // both tools: open either, star = make it the default (NuVendor::dbMenuItems)
 		$a += array_filter([
 			'users'       => $add('s_user_new'),
-			'access'      => $add('s_access_new'),
+			'access'      => $menu(t('nav_access'), ['s_access_new', 's_user_home']),
 			'permissions' => $add('s_perm_new'),
 			'procedures'  => $add('s_proc_new'),
 			'prompts'     => $add('s_prompt_new'),
@@ -300,7 +315,7 @@ final class NuHome
 		// two tabs (display "Tabs"): the daily work and the former Admin tools page (0.8.316); display "Groups" shows all groups
 		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => (object)[], 'view' => self::VIEW_DEFAULTS,
 			'tabs' => [['id' => 't_home', 'title' => t('nav_home')], ['id' => 't_admin', 'title' => t('vendor_title')]], 'groups' => [
-			['id' => 'g_users', 'title' => t('home_group_users'), 'tab' => 't_home', 'tiles' => ['users', 'access', 'permissions', 'sessions', 'adminroles']],
+			['id' => 'g_users', 'title' => t('home_group_users'), 'tab' => 't_home', 'tiles' => ['users', 'access', 'permissions', 'userfields', 'sessions', 'adminroles']],
 			['id' => 'g_dev', 'title' => t('home_group_dev'), 'tab' => 't_home', 'tiles' => ['forms', 'procedures', 'reports', 'debug']],
 			['id' => 'g_comm', 'title' => t('home_group_comm'), 'tab' => 't_home', 'tiles' => ['email', 'notes']],
 		]];
@@ -434,6 +449,7 @@ final class NuHome
 
 	public static function layout(): array
 	{
+		if (self::$for !== null) return self::userOnly(self::clean(self::stored() ?? self::autoLayout(), false)[0]);
 		$l = self::clean(self::stored() ?? self::defaultLayout(), false)[0];
 		$known = array_merge(array_keys(self::catalog()), array_keys((array)$l['custom']));
 		$knownAll = array_merge($known, array_keys(self::subTiles()));     // pinned pages / actions stay; unpinned ones are not added
@@ -446,7 +462,7 @@ final class NuHome
 		$l['hidden'] = array_values(array_filter($l['hidden'], static fn($k) => in_array($k, $knownAll, true)));
 		$missing = array_values(array_diff($known, $placed));
 		// tiles of a later version next to their neighbour when it is placed (reports after procedures, 0.8.183)
-		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo'] as $tile => $after) {
+		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'userfields' => 'permissions'] as $tile => $after) {
 			if (!in_array($tile, $missing, true)) continue;
 			foreach ($l['groups'] as &$g) {
 				$i = array_search($after, $g['tiles'], true);
@@ -500,6 +516,7 @@ final class NuHome
 			$tab = (string)($g['tab'] ?? '');
 			$grp = ['id' => $key($g['id'] ?? '') ?? 'g_' . $i, 'title' => $title, 'tab' => isset($tabIds[$tab]) ? $tab : ($out['tabs'][0]['id'] ?? ''), 'tiles' => $tiles];
 			if (preg_match('/^#[0-9a-fA-F]{6}$/', (string)($g['color'] ?? ''))) $grp['color'] = strtolower((string)$g['color']);   // own colour of the group (0.8.420)
+			if ($cond = self::cleanCond($g['cond'] ?? null)) $grp['cond'] = $cond;   // who sees the group (user start pages, 0.8.425)
 			$out['groups'][] = $grp;
 		}
 		foreach (array_slice(is_array($in['hidden'] ?? null) ? $in['hidden'] : [], 0, 200) as $t) {
@@ -629,7 +646,13 @@ final class NuHome
 		return self::overlays()[$layoutId] ?? null;
 	}
 
-	/** An entry of a personal view, cleaned: {view, sizes: {tablet, phone}, at}; [] = nothing left. */
+	/** Most tiles in a person's own favourites / hidden tiles (user start pages, 0.8.425). */
+	public const MINE_MAX = 60;
+
+	/**
+	 * An entry of a personal view, cleaned: {view, sizes: {tablet, phone}, at} + on user start pages (0.8.425) fav (own favourites –
+	 * replace the layout's) and hide (tiles hidden for this person); [] = nothing left.
+	 */
 	public static function cleanOverlay(array $in): array
 	{
 		$in = (array)json_decode((string)json_encode($in), true);
@@ -639,18 +662,41 @@ final class NuHome
 			$e = is_array($in['sizes'][$sz] ?? null) ? self::cleanView($in['sizes'][$sz], [], true) : [];
 			if ($e) $sizes[$sz] = $e;
 		}
-		if (!$view && !$sizes) return [];
+		$keys = static fn($l) => array_slice(array_values(array_unique(array_filter(is_array($l) ? $l : [], static fn($k) => is_string($k) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $k)))), 0, self::MINE_MAX);
+		$fav = array_key_exists('fav', $in) && is_array($in['fav']) ? $keys($in['fav']) : null;
+		$hide = $keys($in['hide'] ?? []);
+		if (!$view && !$sizes && $fav === null && !$hide) return [];
 		$at = (string)($in['at'] ?? '');
-		return ['view' => $view, 'sizes' => $sizes, 'at' => preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/', $at) ? $at : date('Y-m-d H:i:s')];
+		$out = ['view' => $view, 'sizes' => $sizes, 'at' => preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/', $at) ? $at : date('Y-m-d H:i:s')];
+		if ($fav !== null) $out['fav'] = $fav;
+		if ($hide) $out['hide'] = $hide;
+		return $out;
 	}
 
-	/** Stores (null: removes) the personal view of a layout. @return bool false = too large (VIEW_OVERLAY_BYTES) */
-	public static function setOverlay(string $layoutId, ?array $ov): bool
+	/**
+	 * Own favourites and hidden tiles of a user start page (0.8.425) – the view of the overlay stays. $fav null = the layout's
+	 * favourites again. @return bool false = too large
+	 */
+	public static function setMine(string $layoutId, ?array $fav, array $hide): bool
+	{
+		$cur = self::overlay($layoutId) ?? [];
+		$ov = ['view' => $cur['view'] ?? [], 'sizes' => $cur['sizes'] ?? [], 'hide' => $hide];
+		if ($fav !== null) $ov['fav'] = $fav;
+		return self::setOverlay($layoutId, $ov, false);
+	}
+
+	/** Stores (null: removes) the personal view of a layout – own favourites / hidden tiles stay unless $keepMine is false. @return bool false = too large (VIEW_OVERLAY_BYTES) */
+	public static function setOverlay(string $layoutId, ?array $ov, bool $keepMine = true): bool
 	{
 		$u = NuAuth::user();
 		if (!$u || $layoutId === '') return false;
 		$all = self::overlays();
+		$old = $all[$layoutId] ?? [];
 		unset($all[$layoutId]);
+		if ($keepMine && $old) {                                  // a change of the view (View panel) keeps the tiles a user chose (0.8.425)
+			$ov ??= [];
+			foreach (['fav', 'hide'] as $k) if (array_key_exists($k, $old) && !array_key_exists($k, $ov)) $ov[$k] = $old[$k];
+		}
 		if ($ov !== null) {
 			if (strlen((string)json_encode($ov)) > self::VIEW_OVERLAY_BYTES * 2) return false;   // raw payload: refused before cleaning
 			$e = self::cleanOverlay(['at' => ''] + $ov);
@@ -697,6 +743,7 @@ final class NuHome
 			'target' => mb_substr(trim((string)($c['target'] ?? '')), 0, 500), 'record' => mb_substr(trim((string)($c['record'] ?? '')), 0, 25),
 			'run' => ($c['run'] ?? '') === 'hidden' ? 'hidden' : 'window', 'newtab' => !empty($c['newtab']),
 		];
+		if ($cond = self::cleanCond($c['cond'] ?? null)) $tile['cond'] = $cond;   // who sees the tile (user start pages, 0.8.425)
 		if (!$strict) return [$tile, ''];
 		if ($tile['label'] === '') return [$tile, t('home_err_label')];
 		switch ($tile['kind']) {
@@ -706,7 +753,10 @@ final class NuHome
 				if ($tile['record'] !== '' && !preg_match('/^(-1|[\w\-]{1,25})$/', $tile['record'])) return [$tile, t('home_err_record')];
 				break;
 			case 'page':
-				if (!in_array($tile['target'], self::PAGES, true)) return [$tile, t('home_err_page')];
+				if (!in_array($tile['target'], self::$for !== null ? self::USER_PAGES : self::PAGES, true)) return [$tile, t('home_err_page')];
+				break;
+			case 'report':
+				if (self::report($tile['target']) === null) return [$tile, t('home_err_report')];
 				break;
 			case 'procedure':
 				if (!nu_db()->value('SELECT COUNT(*) FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$tile['target']])) return [$tile, t('home_err_procedure')];
@@ -724,6 +774,7 @@ final class NuHome
 		if ($errors) return $errors;
 		$cur = self::current();
 		if (!$cur['editable']) return ['_' => t('err_forbidden')];
+		if (self::$for !== null) return self::saveUser(self::userOnly($layout), $login, $event, $details);
 		$id = $cur['id'];
 		if ($id === 'default') {                               // the built-in layout is never changed: a stored copy takes its place
 			$shared = self::canManage();
@@ -739,6 +790,28 @@ final class NuHome
 		return [];
 	}
 
+	/** Saves a user start page (0.8.425): the access level's own row, created on its first save (also when it showed the default). */
+	private static function saveUser(array $layout, string $login, string $event, ?array $details): array
+	{
+		$acc = (string)self::$for['access'];
+		$db = nu_db();
+		NuSchema::ensure();
+		$own = self::userRows()[$acc] ?? null;
+		$def = json_encode($layout, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		if ($own !== null) {
+			$id = (string)$own['zzzzsys_nunext_list_view_id'];
+			$db->update(NuListView::TABLE, ['definition' => $def, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)], 'zzzzsys_nunext_list_view_id', $id);
+		} else {
+			$name = $acc === self::ALL_LEVELS ? t('home_u_default') : (string)($db->value('SELECT sal_code FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$acc]) ?? $acc);
+			$id = nu_id();
+			$db->insert(NuListView::TABLE, ['zzzzsys_nunext_list_view_id' => $id, 'list_key' => self::LIST_USER, 'scope' => 'shared', 'owner' => '', 'name' => mb_substr($name, 0, 100),
+				'access_ids' => json_encode([$acc]), 'definition' => $def, 'sort_order' => 0, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)]);
+		}
+		self::$current = self::$rows = null;
+		NuLog::write($event === 'home_layout_saved' ? 'home_user_saved' : $event, NuListView::TABLE, $id, ($details ?? []) + ['access' => $acc, 'groups' => count($layout['groups']), 'own' => count((array)$layout['custom'])]);
+		return [];
+	}
+
 	/**
 	 * Admin roles (0.8.323): which tiles a user with a role sees – the globeadmin sees all. Built-in tile => admin right [right, level]
 	 * or a nuBuilder system form (rights of access level + role, NuAcl). Pinned pages follow their tile; own tiles: forms by their
@@ -750,10 +823,10 @@ final class NuHome
 		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'],
 		'email' => ['email', 'view'], 'debug' => ['acl', NuAcl::FORM_DEBUG], 'update' => ['update', 'view'], 'settings' => ['settings', 'view'],
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
-		'configfile' => ['configfile', 'change'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'],
+		'configfile' => ['configfile', 'change'], 'setupcode' => ['setupcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'],
 		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'appcloner' => ['appcloner', 'change'], 'sample' => ['sample', 'view'],
-		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''],
-		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'],
+		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'],
+		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'], 's_user_home' => ['homelayout', 'change'],
 	];
 	/** Pages an own tile (kind page) may open => the tile whose right decides. */
 	private const PAGE_TILE = ['users' => 'users', 'access' => 'access', 'permissions' => 'permissions', 'sessions' => 'sessions', 'forms' => 'forms',
@@ -761,7 +834,7 @@ final class NuHome
 		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit', 'notifications' => 'notifications', 'update' => 'update',
 		'settings' => 'settings', 'branding' => 'branding', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import',
 		'cloner' => 'forms', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
-		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'compat' => 'compat', 'adminroles' => 'adminroles',
+		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'setupcode' => 'setupcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
 		'tutorial' => 'tutorial'];
 
 	/** May the signed-in user see this tile? */
@@ -769,6 +842,7 @@ final class NuHome
 	{
 		$u = NuAuth::user();
 		if (!$u) return false;
+		if (self::$for !== null) return self::visibleUser($key, $layout);
 		if ($u['globeadmin']) return true;
 		if (isset(self::subTiles()[$key]) && !isset(self::TILE_RIGHTS[$key])) $key = self::subTiles()[$key][3];   // pinned page: as its tile
 		if (isset(self::TILE_RIGHTS[$key])) {
@@ -850,6 +924,7 @@ final class NuHome
 	/** @return array<string, array{id: string, name: string, scope: string, roles: array, def: ?array, editable: bool, mine: bool}> */
 	public static function layouts(): array
 	{
+		if (self::$for !== null) return self::userLayouts();
 		$manage = self::canManage();
 		$out = ['default' => ['id' => 'default', 'name' => t('home_layout_builtin'), 'scope' => 'builtin', 'roles' => [], 'def' => null, 'editable' => true, 'mine' => false]];
 		$db = nu_db();
@@ -882,6 +957,7 @@ final class NuHome
 	{
 		if (self::$current !== null) return self::$current;
 		$all = self::layouts();
+		if (self::$for !== null) return self::$current = reset($all);
 		foreach ([NuListView::myDefault(self::LIST), NuListView::listDefault(self::LIST), 'default'] as $id) {
 			if ($id !== '' && isset($all[$id])) return self::$current = $all[$id];
 		}
@@ -1029,12 +1105,320 @@ final class NuHome
 		$href = match ($c['kind']) {
 			'form' => isset(nu_forms()[$c['target']]) ? nu_url('form', ['f' => $c['target'], 'r' => $c['record'] !== '' ? $c['record'] : null]) : null,
 			'page' => in_array($c['target'], self::PAGES, true) ? nu_url($c['target']) : null,
+			'report' => ($r = self::report((string)$c['target'])) !== null ? nu_url('report', ['c' => $r['code']]) : null,
 			'procedure' => null,
 			default => preg_match('~^(https?://|index\.php\?)~i', (string)$c['target']) ? (string)$c['target'] : null,
 		};
 		if ($href === null && $c['kind'] !== 'procedure') return null;
 		return ['href' => $href, 'post' => null, 'icon' => $c['icon'], 'label' => $c['label'], 'hint' => $c['hint'], 'color' => $c['color'],
-			'newtab' => (bool)$c['newtab'] || ($c['kind'] === 'form' && NuPage::opensInTab((string)$c['target'])), 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null, 'kind' => (string)$c['kind']];
+			'newtab' => (bool)$c['newtab'] || ($c['kind'] === 'form' && NuPage::opensInTab((string)$c['target'])), 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null, 'kind' => (string)$c['kind'],
+			'cond' => (array)($c['cond'] ?? [])];
+	}
+
+	// ------------------------------------------------------------------ user start pages (0.8.425)
+
+	/** ['access' => access id | '*', 'preview' => true on the editor page (rights of that access level, conditions not applied)] */
+	private static ?array $for = null;
+
+	/** Switches NuHome to the start page of an access level ('*' = the default for all access levels). */
+	public static function forLevel(string $access, bool $preview): void
+	{
+		self::$for = ['access' => $access, 'preview' => $preview];
+		self::$current = null;
+	}
+
+	/** null = the admin tile page; else ['access', 'preview']. */
+	public static function target(): ?array
+	{
+		return self::$for;
+	}
+
+	/** Rows of the user start pages: access id => row, '*' = the default (the first row naming an access level wins). */
+	private static ?array $rows = null;
+
+	private static function userRows(): array
+	{
+		if (self::$rows !== null) return self::$rows;
+		$rows = [];
+		$db = nu_db();
+		try {
+			if (!$db->tableExists(NuListView::TABLE)) return self::$rows = $rows;
+			foreach ($db->all('SELECT * FROM ' . NuListView::TABLE . ' WHERE list_key = ? ORDER BY sort_order, name', [self::LIST_USER]) as $r) {
+				$ids = json_decode((string)$r['access_ids'], true);
+				foreach (is_array($ids) ? $ids : [] as $a) if (is_string($a) && !isset($rows[$a])) $rows[$a] = $r;
+			}
+		} catch (Throwable) { /* no table yet */ }
+		return self::$rows = $rows;
+	}
+
+	/**
+	 * The one layout a user start page shows: the access level's own (source level), the default for all access levels (default),
+	 * or the automatic one (auto). editable = the editor page with the right "Start page layout".
+	 */
+	private static function userLayouts(): array
+	{
+		$acc = (string)self::$for['access'];
+		$rows = self::userRows();
+		$editable = self::$for['preview'] && self::canManage();
+		$row = $rows[$acc] ?? ($acc !== self::ALL_LEVELS ? ($rows[self::ALL_LEVELS] ?? null) : null);
+		if ($row === null) {
+			return ['auto' => ['id' => 'auto', 'name' => t('home_u_auto'), 'scope' => 'level', 'roles' => [], 'def' => null, 'editable' => $editable, 'mine' => false, 'own' => false, 'source' => 'auto']];
+		}
+		$def = json_decode((string)$row['definition'], true);
+		$own = isset($rows[$acc]);
+		$id = (string)$row['zzzzsys_nunext_list_view_id'];
+		return [$id => ['id' => $id, 'name' => (string)$row['name'], 'scope' => 'level', 'roles' => [], 'def' => is_array($def) ? $def : null, 'editable' => $editable,
+			'mine' => false, 'own' => $own, 'source' => $own && $acc !== self::ALL_LEVELS ? 'level' : 'default']];
+	}
+
+	/** Only own tiles on a user start page (keys of the catalogue, pinned pages and stale keys are dropped). */
+	private static function userOnly(array $l): array
+	{
+		$own = array_keys((array)$l['custom']);
+		$keep = static fn(array $keys) => array_values(array_filter($keys, static fn($k) => in_array($k, $own, true)));
+		foreach ($l['groups'] as &$g) $g['tiles'] = $keep($g['tiles']);
+		unset($g);
+		$l['hidden'] = $keep($l['hidden']);
+		$placed = array_merge($l['hidden'], ...array_map(static fn($g) => $g['tiles'], $l['groups']));
+		$missing = array_values(array_diff($own, $placed));       // own tiles in no group: hidden (never lost)
+		$l['hidden'] = array_merge($l['hidden'], $missing);
+		$l['fav'] = $keep((array)$l['fav']);
+		return $l;
+	}
+
+	/**
+	 * The automatic start page of an access level (F1): its forms (no sub-forms, no nuBuilder system forms; the home form first) and
+	 * the reports it may run – own tiles with stable keys, so favourites and hidden tiles stay. '*': one empty group.
+	 */
+	public static function autoLayout(?string $access = null): array
+	{
+		$access ??= (string)(self::$for['access'] ?? '');
+		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => [], 'tabs' => [],
+			'view' => ['style' => 'cards'] + self::VIEW_DEFAULTS, 'groups' => []];
+		if ($access === self::ALL_LEVELS || $access === '') {
+			$l['groups'][] = ['id' => 'g_main', 'title' => '', 'tab' => '', 'tiles' => []];
+			return $l;
+		}
+		$db = nu_db();
+		$forms = nu_forms();
+		$home = (string)($db->value('SELECT sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$access]) ?? '');
+		$fTiles = [];
+		foreach ($db->all('SELECT slf_zzzzsys_form_id FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?', [$access]) as $r) {
+			$fid = (string)$r['slf_zzzzsys_form_id'];
+			$f = $forms[$fid] ?? null;
+			if (!$f || $f['type'] === 'subform' || !empty($f['system']) || str_starts_with($fid, 'nu')) continue;
+			$fTiles[$fid] = ['label' => mb_substr($f['description'] !== '' ? $f['description'] : $f['code'], 0, 60), 'hint' => $fid === $home ? t('home_form') : '',
+				'icon' => $f['type'] === 'launch' || $f['type'] === 'page' ? 'bi-window' : 'bi-table', 'color' => '', 'kind' => 'form', 'target' => $fid, 'record' => '', 'run' => 'window', 'newtab' => false];
+		}
+		uksort($fTiles, static fn($a, $b) => ($b === $home) <=> ($a === $home) ?: strcasecmp($fTiles[$a]['label'], $fTiles[$b]['label']));
+		$rTiles = [];
+		try {
+			if ($db->tableExists(NuReport::TABLE)) {
+				foreach ($db->all('SELECT r.zzzzsys_report_id, r.sre_code, r.sre_description FROM zzzzsys_report r JOIN zzzzsys_access_report a ON a.sre_zzzzsys_report_id = r.zzzzsys_report_id
+					WHERE a.sre_zzzzsys_access_id = ? ORDER BY r.sre_description, r.sre_code', [$access]) as $r) {
+					$rTiles[(string)$r['zzzzsys_report_id']] = ['label' => mb_substr((string)($r['sre_description'] ?: $r['sre_code']), 0, 60), 'hint' => '', 'icon' => 'bi-file-earmark-richtext',
+						'color' => '', 'kind' => 'report', 'target' => (string)$r['zzzzsys_report_id'], 'record' => '', 'run' => 'window', 'newtab' => false];
+				}
+			}
+		} catch (Throwable) { /* no reports */ }
+		$key = static fn(string $p, string $id) => 'c_' . $p . substr(hash('sha256', $id), 0, 12);
+		foreach ([['g_forms', t('nav_forms'), 'f', $fTiles], ['g_reports', t('rpt_title_list'), 'r', $rTiles]] as [$gid, $title, $p, $tiles]) {
+			if (!$tiles) continue;
+			$g = ['id' => $gid, 'title' => $title, 'tab' => '', 'tiles' => []];
+			foreach ($tiles as $id => $tl) { $k = $key($p, (string)$id); $l['custom'][$k] = $tl; $g['tiles'][] = $k; }
+			$l['groups'][] = $g;
+		}
+		if (!$l['groups']) $l['groups'][] = ['id' => 'g_main', 'title' => '', 'tab' => '', 'tiles' => []];
+		return $l;
+	}
+
+	/** May the user see a tile of a user start page? Own tiles only; the editor (preview) sees by the rights of the access level. */
+	private static function visibleUser(string $key, array $layout): bool
+	{
+		$c = (array)(((array)$layout['custom'])[$key] ?? []);
+		if (!$c) return false;
+		if (!self::condOk((array)($c['cond'] ?? []))) return false;
+		$acc = (string)self::$for['access'];
+		$preview = (bool)self::$for['preview'];
+		$target = (string)($c['target'] ?? '');
+		$db = nu_db();
+		switch ($c['kind'] ?? '') {
+			case 'form':
+				if (!isset(nu_forms()[$target])) return false;
+				if (!$preview) return NuAcl::can($target);
+				return $acc === self::ALL_LEVELS || NuAcl::levelRights($acc, $target)['view'];
+			case 'report':
+				$r = self::report($target);
+				if ($r === null) return false;
+				if (!$preview) return NuReport::canRun($r['row']);
+				return $acc === self::ALL_LEVELS || (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_access_report WHERE sre_zzzzsys_access_id = ? AND sre_zzzzsys_report_id = ?', [$acc, $target]);
+			case 'procedure':
+				$p = $db->one('SELECT zzzzsys_php_id, sph_global FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$target]);
+				if (!$p) return false;
+				$u = NuAuth::user();
+				if ((string)$p['sph_global'] === '1' || (!$preview && (!empty($u['globeadmin']) || NuAdmin::can('procedures', 'change')))) return true;
+				$level = $preview ? $acc : (string)($u['access_id'] ?? '');
+				if ($preview && $acc === self::ALL_LEVELS) return true;
+				return $db->tableExists('zzzzsys_access_php') && (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php WHERE slp_zzzzsys_access_id = ? AND slp_zzzzsys_php_id = ?', [$level, $target]);
+			case 'page':
+				return in_array($target, self::USER_PAGES, true) && !($target === 'security' && NuImpersonate::active());
+			default:
+				return true;
+		}
+	}
+
+	/**
+	 * Conditions of a tile or group (0.8.425): every kind given must match – permission items (any of them), team, department, position
+	 * (any value, case-insensitive). The editor page shows everything (conditions are marked there); the globeadmin always passes.
+	 */
+	public static function condOk(array $cond): bool
+	{
+		if (!$cond || self::$for === null || self::$for['preview']) return true;
+		$f = self::facts();
+		if ($f === null) return true;                            // the globeadmin
+		foreach (self::COND_KINDS as $k) {
+			$want = array_map(static fn($x) => mb_strtolower(trim((string)$x)), (array)($cond[$k] ?? []));
+			if (!$want) continue;
+			$have = $k === 'permission' ? $f['permission'] : [$f[$k]];
+			if (!array_intersect($want, $have)) return false;
+		}
+		foreach ((array)($cond['fields'] ?? []) as $code => $vals) {   // custom user fields (0.8.454): the value is one of the listed ones
+			$want = array_map(static fn($x) => mb_strtolower(trim((string)$x)), (array)$vals);
+			if ($want && !in_array(mb_strtolower(trim((string)($f['fields'][$code] ?? ''))), $want, true)) return false;
+		}
+		return true;
+	}
+
+	/** Team, department, position and permission items of the signed-in user (lower case); null for the globeadmin. */
+	private static function facts(): ?array
+	{
+		static $f = false;
+		if ($f !== false) return $f;
+		$u = NuAuth::user();
+		if (!$u || !empty($u['globeadmin'])) return $f = null;
+		$row = nu_db()->one('SELECT sus_team, sus_department, sus_position FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [(string)$u['id']]) ?? [];
+		$low = static fn($v) => mb_strtolower(trim((string)$v));
+		return $f = ['team' => $low($row['sus_team'] ?? ''), 'department' => $low($row['sus_department'] ?? ''), 'position' => $low($row['sus_position'] ?? ''),
+			'permission' => array_map($low, NuPermission::idents((string)$u['id'])), 'fields' => NuUserFields::mine()];
+	}
+
+	/** Conditions as stored: kind => list of values (max 20, 60 characters each); a string is split at commas. [] = none. */
+	public static function cleanCond(mixed $in): array
+	{
+		if (!is_array($in)) return [];
+		$out = [];
+		foreach (self::COND_KINDS as $k) {
+			$v = $in[$k] ?? [];
+			if (is_string($v)) $v = explode(',', $v);
+			if (!is_array($v)) continue;
+			$list = [];
+			foreach ($v as $x) {
+				$x = mb_substr(trim(is_scalar($x) ? (string)$x : ''), 0, 60);
+				if ($x !== '' && !in_array($x, $list, true)) $list[] = $x;
+			}
+			if ($list) $out[$k] = array_slice($list, 0, 20);
+		}
+		$fields = [];                                            // custom user fields (0.8.454): {code: [values]}
+		foreach (is_array($in['fields'] ?? null) ? $in['fields'] : [] as $code => $v) {
+			$code = strtolower((string)$code);
+			if (!isset(NuUserFields::all()[$code])) continue;
+			if (is_string($v)) $v = explode(',', $v);
+			$list = [];
+			foreach (is_array($v) ? $v : [] as $x) {
+				$x = mb_substr(trim(is_scalar($x) ? (string)$x : ''), 0, 60);
+				if ($x !== '' && !in_array($x, $list, true)) $list[] = $x;
+			}
+			if ($list) $fields[$code] = array_slice($list, 0, 20);
+		}
+		if ($fields) $out['fields'] = $fields;
+		return $out;
+	}
+
+	/** Conditions in words for the editor's marker: "Team: Sales, Support · Permission item: TILE_BUDGET". */
+	public static function condText(array $cond): string
+	{
+		$out = [];
+		foreach (self::COND_KINDS as $k) if (!empty($cond[$k])) $out[] = t('home_u_cond_' . $k) . ': ' . implode(', ', array_map('strval', (array)$cond[$k]));
+		$all = NuUserFields::all();
+		foreach ((array)($cond['fields'] ?? []) as $code => $vals) $out[] = (isset($all[$code]) ? NuUserFields::label($all[$code]) : $code) . ': ' . implode(', ', array_map('strval', (array)$vals));
+		return t('home_u_cond_only') . ' ' . implode(' · ', $out);
+	}
+
+	/** Values offered in the condition fields of the tile editor: permission items, and the teams / departments / positions in use. */
+	public static function condOptions(): array
+	{
+		$db = nu_db();
+		$out = ['permission' => [], 'team' => [], 'department' => [], 'position' => []];
+		try {
+			if ($db->tableExists('zzzzsys_permission_item')) $out['permission'] = array_map('strval', array_column($db->all('SELECT pme_ident FROM zzzzsys_permission_item WHERE pme_ident IS NOT NULL ORDER BY pme_ident'), 'pme_ident'));
+			foreach (['team' => 'sus_team', 'department' => 'sus_department', 'position' => 'sus_position'] as $k => $col) {
+				$out[$k] = array_values(array_unique(array_filter(array_map(static fn($v) => trim((string)$v), array_column($db->all("SELECT DISTINCT $col AS v FROM zzzzsys_user WHERE $col IS NOT NULL ORDER BY $col"), 'v')), static fn($v) => $v !== '')));
+				$out[$k] = array_slice($out[$k], 0, 300);
+			}
+		} catch (Throwable) { /* columns of an older nuBuilder */ }
+		// custom user fields (0.8.454): label, type and the values to offer (choices, or the values in use)
+		$out['fields'] = [];
+		foreach (NuUserFields::all() as $code => $f) {
+			if ((string)$f['type'] === 'longtext') continue;
+			$vals = [];
+			try {
+				if ((string)$f['type'] === 'select') $vals = array_map('strval', array_keys(NuUserFields::options($f)));
+				elseif ((string)$f['type'] === 'yesno') $vals = ['1', '0'];
+				elseif ($db->tableExists(NuUserFields::EXT)) $vals = array_map('strval', array_column($db->page('SELECT DISTINCT ' . NuDB::ident((string)$code) . ' AS v FROM ' . NuUserFields::EXT
+					. ' WHERE ' . NuDB::ident((string)$code) . ' IS NOT NULL', [], 'v', 300, 0), 'v'));
+			} catch (Throwable) { $vals = []; }
+			$out['fields'][] = ['code' => (string)$code, 'label' => NuUserFields::label($f), 'values' => $vals];
+		}
+		return $out;
+	}
+
+	/** A report by id: ['code', 'label', 'row'] or null. */
+	public static function report(string $id): ?array
+	{
+		static $cache = [];
+		if ($id === '') return null;
+		if (array_key_exists($id, $cache)) return $cache[$id];
+		try {
+			$db = nu_db();
+			$r = $db->tableExists(NuReport::TABLE) ? $db->one('SELECT * FROM zzzzsys_report WHERE zzzzsys_report_id = ?', [$id]) : null;
+		} catch (Throwable) {
+			$r = null;
+		}
+		return $cache[$id] = $r ? ['code' => (string)$r['sre_code'], 'label' => (string)($r['sre_description'] ?: $r['sre_code']), 'row' => $r] : null;
+	}
+
+	/**
+	 * Access levels for the editor's "Start page for" choice: '*' (default) first, then every access level with the source of its
+	 * start page (level = own, default, auto).
+	 */
+	public static function levelChoices(): array
+	{
+		$rows = self::userRows();
+		$out = [self::ALL_LEVELS => ['label' => t('home_u_default'), 'source' => isset($rows[self::ALL_LEVELS]) ? 'level' : 'auto']];
+		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a) {
+			$id = (string)$a['zzzzsys_access_id'];
+			$out[$id] = ['label' => $a['sal_code'] . ($a['sal_description'] ? ' – ' . $a['sal_description'] : ''),
+				'source' => isset($rows[$id]) ? 'level' : (isset($rows[self::ALL_LEVELS]) ? 'default' : 'auto')];
+		}
+		return $out;
+	}
+
+	/** The access level's own start page goes; it uses the default (or the automatic one) again. '*': the default goes. */
+	public static function resetLevel(): string
+	{
+		if (self::$for === null || !self::$for['preview'] || !self::canManage()) return t('err_forbidden');
+		$acc = (string)self::$for['access'];
+		$row = self::userRows()[$acc] ?? null;
+		if ($row === null) return '';
+		$ids = json_decode((string)$row['access_ids'], true);
+		$ids = array_values(array_filter(is_array($ids) ? $ids : [], static fn($a) => $a !== $acc));
+		$db = nu_db();
+		$id = (string)$row['zzzzsys_nunext_list_view_id'];
+		if ($ids) $db->update(NuListView::TABLE, ['access_ids' => json_encode($ids), 'updated_at' => date('Y-m-d H:i:s')], 'zzzzsys_nunext_list_view_id', $id);
+		else $db->run('DELETE FROM ' . NuListView::TABLE . ' WHERE zzzzsys_nunext_list_view_id = ?', [$id]);
+		NuLog::write('home_user_reset', NuListView::TABLE, $id, ['access' => $acc]);
+		self::$current = self::$rows = null;
+		return '';
 	}
 
 	/** Where a tile comes from (0.8.378): builtin (catalogue), pinned (a page of a tile's menu), own (c_…) or dynamic (x_…, start page hook). */

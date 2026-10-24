@@ -198,7 +198,7 @@ final class NuGitHub
 		$size = 0;
 		$opt = [CURLOPT_FOLLOWLOCATION => false, CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_TIMEOUT => $timeout, CURLOPT_HTTPHEADER => $headers,
 			CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_NOPROGRESS => false,
-			CURLOPT_XFERINFOFUNCTION => static function ($c, $total, $now) use (&$size, $max): int { $size = $now; return $now > $max ? 1 : 0; },
+			nu_curl_progress_opt() => static function ($c, $total, $now) use (&$size, $max): int { $size = $now; return $now > $max ? 1 : 0; },
 			CURLOPT_HEADERFUNCTION => static function ($c, $h) use (&$location): int { if (stripos($h, 'location:') === 0) $location = trim(substr($h, 9)); return strlen($h); }];
 		if ($fh) $opt[CURLOPT_FILE] = $fh; else $opt[CURLOPT_RETURNTRANSFER] = true;
 		curl_setopt_array($ch, $opt);

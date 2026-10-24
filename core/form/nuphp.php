@@ -19,12 +19,14 @@ final class NuPhp
 	public static array $subforms     = [];     // posted subform data for nuSubformObject
 	public static array $debug        = [];
 	public static string $output      = '';
+	public static ?string $openRecord = null;   // nuReturnNewRecord(): the record the form opens after the save (0.8.443)
 
 	public static function reset(): void
 	{
 		self::$errors = self::$js = self::$formValues = self::$props = self::$globals = self::$deleted = self::$debug = [];
 		self::$lookupRow = null;
 		self::$output = '';
+		self::$openRecord = null;
 	}
 
 	/** Loads $nuConfigIncludePHP files once (global helper functions of an installation). */
@@ -33,11 +35,10 @@ final class NuPhp
 		static $done = false;
 		if ($done) return;
 		$done = true;
-		foreach ((array)(nu_cfg('nuConfigIncludePHP') ?? []) as $file) {
-			$file = (string)$file;
-			if ($file !== '' && !str_starts_with($file, '/')) $file = NU_ROOT . '/' . $file;
-			if (is_file($file)) require_once $file;
-			else error_log("nuBuilder Next: \$nuConfigIncludePHP file not found: $file");
+		foreach (NuIncludes::entries('php') as $entry) {   // nuBuilder Next's folder, then nuBuilder's (0.8.443, NuIncludes::phpFile)
+			$file = NuIncludes::phpFile($entry);
+			if ($file !== null) require_once $file;
+			else error_log("nuBuilder Next: \$nuConfigIncludePHP file not found: $entry");
 		}
 	}
 

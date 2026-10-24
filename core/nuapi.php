@@ -310,6 +310,7 @@ final class NuApi
 		];
 		$pt = (int)NuUserJson::get((string)$r['zzzzsys_user_id'], 'PASSWORD_CHANGED_TIME');
 		$o['password_changed_at'] = $pt > 0 ? date('c', $pt) : null;
+		if (NuUserFields::all()) $o['fields'] = (object)NuUserFields::values((string)$r['zzzzsys_user_id']);   // custom user fields (0.8.454)
 		return $o;
 	}
 
@@ -366,7 +367,7 @@ final class NuApi
 	private static function userValidate(array $in, ?array $old): array
 	{
 		$db = nu_db();
-		$allowed = array_merge(array_keys(self::USER_MAP), ['access_level_id', 'expires_on', 'change_password', 'password', 'permissions']);
+		$allowed = array_merge(array_keys(self::USER_MAP), ['access_level_id', 'expires_on', 'change_password', 'password', 'permissions', 'fields']);
 		self::fields($in, $allowed);
 		$errors = [];
 		$row = [];
@@ -408,6 +409,30 @@ final class NuApi
 		return $row;
 	}
 
+	/**
+	 * Custom user fields of a request ({"fields": {"code": "value"}}, 0.8.454): checked like in the user form; fields only the globeadmin
+	 * edits are refused. @return array<string, string> values to save
+	 */
+	private static function userFields(array $in, string $userId): array
+	{
+		if (!array_key_exists('fields', $in)) return [];
+		if (!is_array($in['fields'])) throw new NuApiError(422, 'Validation failed.', ['fields' => 'must be an object']);
+		$all = NuUserFields::all();
+		$edit = NuUserFields::editable('api');
+		$errors = [];
+		foreach (array_keys($in['fields']) as $k) {
+			if (!isset($all[strtolower((string)$k)])) $errors['fields.' . $k] = 'unknown field';
+			elseif (!isset($edit[strtolower((string)$k)])) $errors['fields.' . $k] = 'only the globeadmin changes this field';
+		}
+		$vals = [];
+		if (!$errors) {
+			[$vals, $err] = NuUserFields::validate(array_change_key_case($in['fields'], CASE_LOWER), $userId, 'api');
+			foreach ($err as $k => $m) $errors['fields.' . $k] = $m;
+		}
+		if ($errors) throw new NuApiError(422, 'Validation failed.', $errors);
+		return $vals;
+	}
+
 	private static function checkPassword(string $pw, array &$errors): void
 	{
 		$min = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
@@ -420,13 +445,15 @@ final class NuApi
 		self::need(NuAcl::FORM_USER, 'create');
 		$in = self::body();
 		$row = self::userValidate($in, null);
+		$uf = self::userFields($in, '');
 		$db = nu_db();
 		$id = nu_id();
 		$pw = isset($in['password']) ? (string)$in['password'] : '';
 		$row += ['sus_login_password' => NuAuth::hash($pw !== '' ? $pw : bin2hex(random_bytes(24))), 'sus_change_password' => $row['sus_change_password'] ?? ($pw === '' ? '1' : '0')];
 		$db->insert('zzzzsys_user', ['zzzzsys_user_id' => $id] + $row);
 		if ($pw !== '') NuUserJson::passwordChanged($id, 'admin');
-		NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])), 'via' => 'api']);
+		$uf += array_filter(array_diff_key(NuUserFields::defaults(), $uf), static fn($d) => $d !== '');
+		NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + NuUserFields::save($id, $uf), 'via' => 'api']);
 		if (isset($in['permissions']) && is_array($in['permissions'])) self::setPerms($id, $in['permissions']);
 		[, $body, $h] = self::one(self::userOut(self::userRow($id)));
 		return [201, $body, $h + ['Location' => nu_base_url() . '/api.php/v1/users/' . $id]];
@@ -441,6 +468,7 @@ final class NuApi
 		$in = self::body();
 		if (isset($in['permissions'])) throw new NuApiError(422, 'Validation failed.', ['permissions' => 'use PUT /v1/users/{id}/permissions']);
 		$row = self::userValidate($in, $old);
+		$uf = self::userFields($in, $id);
 		if (isset($in['password']) && (string)$in['password'] !== '') {
 			$row['sus_login_password'] = NuAuth::hash((string)$in['password']);
 			if (!array_key_exists('sus_change_password', $row)) $row['sus_change_password'] = '0';
@@ -452,6 +480,7 @@ final class NuApi
 			if (isset($row['sus_login_password'])) $changes['sus_login_password'] = ['…', '(' . t('log_new_password') . ')'];
 			if ($changes) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $changes, 'via' => 'api']);
 		}
+		if ($uf && ($ud = NuUserFields::save($id, $uf))) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $ud, 'via' => 'api']);
 		return self::one(self::userOut(self::userRow($id)));
 	}
 
@@ -469,6 +498,7 @@ final class NuApi
 			NuTwoFA::removeTotp($id);
 			NuTwoFA::forgetDevices($id);
 			NuLog::write('user_deleted', 'zzzzsys_user', $id, ['login' => $old['sus_login_name'], 'via' => 'api']);
+			NuUserFields::forget($id);
 			return [204, null, []];
 		}
 		self::need(NuAcl::FORM_USER, 'save');

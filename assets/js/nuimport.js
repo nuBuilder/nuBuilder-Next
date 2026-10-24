@@ -107,7 +107,6 @@
 	// ------------------------------------------------------------------ step 2: table and mapping
 	var tableSel = window.TomSelect ? new TomSelect('#impTable', {options: TABLES.map(function (t) { return {value: t, text: t === USERS ? tx('imp_u_target') : t}; }), maxOptions: 1000, create: false, allowEmptyOption: true}) : null;
 	if (!tableSel) TABLES.forEach(function (t) { $('#impTable').insertAdjacentHTML('beforeend', '<option value="' + esc(t) + '">' + esc(t === USERS ? tx('imp_u_target') : t) + '</option>'); });
-	function tableValue() { return tableSel ? tableSel.getValue() : $('#impTable').value; }
 	function setTable(t) { if (tableSel) tableSel.setValue(t, true); else $('#impTable').value = t; }
 
 	function loadColumns(table, then) {

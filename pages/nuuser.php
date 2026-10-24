@@ -63,6 +63,7 @@ if (nu_is_post() && nu_post('action') === 'delete') {
 	NuTwoFA::removeTotp($id);
 	NuTwoFA::forgetDevices($id);
 	NuLog::write('user_deleted', 'zzzzsys_user', $id, ['login' => $existing['sus_login_name']]);
+	NuUserFields::forget($id);                                  // custom field values (0.8.454)
 	nu_flash('success', t('user_deleted', $existing['sus_login_name']));
 	nu_redirect($backToList());
 }
@@ -168,6 +169,13 @@ $permItems = NuPermission::items();
 $permOld   = array_keys(array_filter(NuPermission::forUser($existing ? $id : $cloneId), static fn($a) => $a === '1'));
 $permSel   = array_map('strval', $permOld);
 
+// custom user fields (0.8.454, core/nuuserfields.php): tab More; a clone takes the values along except unique ones, a new user the defaults
+$ufAll = NuUserFields::all();
+$ufEdit = NuUserFields::editable('admin');
+$ufVals = $existing ? NuUserFields::values($id) : ($cloneId !== '' ? array_map(static fn($f, $x) => (string)$f['is_unique'] === '1' ? '' : $x, $ufAll, NuUserFields::values($cloneId)) : NuUserFields::defaults());
+if ($ufAll) $ufVals = array_combine(array_keys($ufAll), array_values($ufVals));
+$ufErr = [];
+
 $errors = [];
 $min    = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
 
@@ -236,6 +244,17 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		elseif ($pw !== $confirm)   $errors['password_confirm'] = t('pw_err_confirm');
 	}
 
+	// custom fields (0.8.454): only the ones this admin may change; a new user's unique check against all others
+	$ufPost = is_array($_POST['uf'] ?? null) ? $_POST['uf'] : [];
+	if ($ufEdit && $ufPost) {
+		[$ufNew, $ufErr] = NuUserFields::validate($ufPost, $isNew ? '' : $id, 'admin');
+		$ufVals = array_merge($ufVals, array_map(static fn($x) => is_scalar($x) ? (string)$x : '', array_intersect_key($ufPost, $ufEdit)));
+		foreach ($ufErr as $code => $msg) $errors['uf_' . $code] = $msg;
+	} else {
+		$ufNew = [];
+	}
+	if ($isNew) foreach ($ufAll as $code => $f) if (!isset($ufNew[$code]) && !isset($ufErr[$code]) && !isset($ufEdit[$code]) && ($ufVals[$code] ?? '') !== '') $ufNew[$code] = $ufVals[$code];   // defaults of fields this admin may not edit
+
 	if (!$errors) {
 		$row = [];
 		foreach ($text as $col => $_) $row[$col] = $v[$col] === '' ? null : $v[$col];
@@ -258,7 +277,8 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			$db->insert('zzzzsys_user', $row);
 			if ($langVariant !== '' || $cloneId !== '') NuUserJson::set($id, 'NUNEXT_LANG_VARIANT', $langVariant);
 			if ($pw !== '') NuUserJson::passwordChanged($id, 'admin');   // not for the random one of a welcome e-mail
-			NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1]))]);
+			$ufDiff = NuUserFields::save($id, $ufNew);
+			NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + $ufDiff]);
 			if ($permItems) NuPermission::setUser($id, $permSel);
 			$pa = array_values(array_intersect_key(array_column($permItems, 'pme_ident', 'zzzzsys_permission_item_id'), array_flip($permSel)));
 			if ($pa) NuLog::write('user_permissions', 'zzzzsys_user', $id, ['login' => $v['sus_login_name'], 'added' => $pa, 'removed' => []]);
@@ -270,6 +290,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			$changes = NuLog::diff($existing, array_diff_key($row, ['sus_login_password' => 1]));
 			if ($langVariant !== $langVariantOld && NuUserJson::set($id, 'NUNEXT_LANG_VARIANT', $langVariant)) $changes['language_variant'] = [$langVariantOld, $langVariant];
 			if ($newHash) $changes['sus_login_password'] = ['…', '(' . t('log_new_password') . ')'];
+			$changes += NuUserFields::save($id, $ufNew);            // custom fields (0.8.454): "field:<code>" in the log
 			if ($changes) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $changes]);
 			if ($permItems && isset($_POST['perm_sent'])) {
 				[$pa, $pr] = NuPermission::setUser($id, $permSel);
@@ -284,7 +305,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			$err = $saved ? NuWelcome::send($saved, $pw) : t('err_not_found');
 			nu_flash($err === null ? 'success' : 'danger', $err === null ? t('welcome_sent', (string)$saved['sus_email']) : t('welcome_failed') . ' ' . $err);
 		}
-		nu_redirect(nu_url('user', ['id' => $id]));
+		nu_redirect(nu_url('user', ['id' => $id, 'tab' => in_array(nu_post('tab'), ['perm', 'more'], true) ? nu_post('tab') : null]));   // stays on the tab it was saved from
 	}
 	nu_flash('danger', t('err_check_form'));
 }
@@ -379,6 +400,21 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 <form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" action="<?= h(nu_url('user', $isNew ? ($cloneId !== '' ? ['clone' => $cloneId] : []) : ['id' => $id])) ?>" data-nu-new="<?= $isNew ? '1' : '0' ?>" novalidate>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 	<fieldset<?= $ro ?>>
+	<?php // tabs General / Permission items (0.8.438): one form, one Save; ?tab=perm opens the second tab (also after saving there)
+	$userTab = (string)($_GET['tab'] ?? '');
+	if ($errors) $userTab = array_filter(array_keys($errors), static fn($k) => !str_starts_with((string)$k, 'uf_')) ? '' : 'more';   // the tab with the errors
+	if (!in_array($userTab, ['perm', 'more'], true) || ($userTab === 'more' && !$ufAll)) $userTab = '';
+	$permTab = $userTab === 'perm';
+	$moreTab = $userTab === 'more';
+	$permCount = count(array_intersect($permSel, array_column($permItems, 'zzzzsys_permission_item_id'))); ?>
+	<input type="hidden" name="tab" id="userTab" value="<?= h($userTab) ?>">
+	<ul class="nav nav-tabs mb-3" id="userTabs" role="tablist">
+		<li class="nav-item" role="presentation"><button class="nav-link<?= $userTab === '' ? ' active' : '' ?>" id="userTabGeneralBtn" data-bs-toggle="tab" data-bs-target="#userTabGeneral" data-nu-tab="" type="button" role="tab" aria-controls="userTabGeneral" aria-selected="<?= $userTab === '' ? 'true' : 'false' ?>"><i class="bi bi-person me-1"></i><?= h(t('user_tab_general')) ?></button></li>
+		<li class="nav-item" role="presentation"><button class="nav-link<?= $permTab ? ' active' : '' ?>" id="userTabPermBtn" data-bs-toggle="tab" data-bs-target="#userTabPerm" data-nu-tab="perm" type="button" role="tab" aria-controls="userTabPerm" aria-selected="<?= $permTab ? 'true' : 'false' ?>"><i class="bi bi-key me-1"></i><?= h(t('perm_title')) ?> <span class="badge rounded-pill text-bg-secondary ms-1" id="userPermTabCount"><?= $permCount ?></span></button></li>
+		<?php if ($ufAll): // custom user fields (0.8.454) ?><li class="nav-item" role="presentation"><button class="nav-link<?= $moreTab ? ' active' : '' ?>" id="userTabMoreBtn" data-bs-toggle="tab" data-bs-target="#userTabMore" data-nu-tab="more" type="button" role="tab" aria-controls="userTabMore" aria-selected="<?= $moreTab ? 'true' : 'false' ?>"><i class="bi bi-ui-checks me-1"></i><?= h(t('user_tab_more')) ?><?= $ufErr ? ' <i class="bi bi-exclamation-circle text-danger ms-1" role="img" aria-label="' . h(t('err_check_form')) . '"></i>' : '' ?></button></li><?php endif; ?>
+	</ul>
+	<div class="tab-content">
+	<div class="tab-pane fade<?= $userTab === '' ? ' show active' : '' ?>" id="userTabGeneral" role="tabpanel" aria-labelledby="userTabGeneralBtn" tabindex="0">
 	<div class="row g-3">
 		<div class="col-lg-6">
 			<div class="card shadow-sm h-100">
@@ -541,11 +577,13 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			</div>
 		</div>
 
-		<div class="col-12">
+	</div>
+	</div>
+	<div class="tab-pane fade<?= $permTab ? ' show active' : '' ?>" id="userTabPerm" role="tabpanel" aria-labelledby="userTabPermBtn" tabindex="0">
 			<div class="card shadow-sm" id="userPerms">
 				<div class="card-header fw-semibold d-flex flex-wrap align-items-center gap-2">
 					<span class="me-auto"><i class="bi bi-key me-2"></i><?= h(t('perm_title')) ?>
-						<span class="badge text-bg-secondary ms-1" id="userPermCount"><?= count(array_intersect($permSel, array_column($permItems, 'zzzzsys_permission_item_id'))) ?></span></span>
+						<span class="badge text-bg-secondary ms-1" id="userPermCount"><?= $permCount ?></span></span>
 					<?php if (NuAcl::can(NuAcl::FORM_PERMISSION)): ?><a class="btn btn-sm btn-outline-secondary fw-normal" href="<?= h(nu_url('permissions')) ?>"><i class="bi bi-gear me-1"></i><?= h(t('perm_manage')) ?></a><?php endif; ?>
 				</div>
 				<div class="card-body">
@@ -589,7 +627,18 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<?php endif; ?>
 				</div>
 			</div>
+	</div>
+	<?php if ($ufAll): ?>
+	<div class="tab-pane fade<?= $moreTab ? ' show active' : '' ?>" id="userTabMore" role="tabpanel" aria-labelledby="userTabMoreBtn" tabindex="0">
+		<div class="card shadow-sm">
+			<div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-ui-checks me-2"></i><?= h(t('user_tab_more')) ?></span>
+				<?php if (NuAdmin::can('userfields')): ?><a class="small" href="<?= h(nu_url('userfields')) ?>" id="userFieldsManage"><i class="bi bi-gear me-1"></i><?= h(t('uf_manage')) ?></a><?php endif; ?></div>
+			<div class="card-body"><div class="row g-3">
+				<?php foreach ($ufAll as $code => $f) echo NuUserFields::inputHtml($f, (string)($ufVals[$code] ?? ''), $ufErr[$code] ?? null, !isset($ufEdit[$code])); ?>
+			</div></div>
 		</div>
+	</div>
+	<?php endif; ?>
 	</div>
 	</fieldset>
 

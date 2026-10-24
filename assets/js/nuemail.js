@@ -100,3 +100,31 @@
 		} else dialog();
 	});
 })();
+
+/* OAuth 2 for the SMTP login (0.8.445): the block shows with the method OAuth 2; provider → tenant (Microsoft) or own addresses (other);
+ * "Use smtp.gmail.com:587" fills server and port. */
+(function () {
+	'use strict';
+	var box = document.getElementById('nuMailOAuth'), type = document.getElementById('m_authtype');
+	if (!box || !type) return;
+	var prov = document.getElementById('m_oprov'), srv = document.getElementById('nuMailOAuthServer');
+	function sync() {
+		box.classList.toggle('d-none', type.value !== 'XOAUTH2');
+		var p = prov.value, opt = prov.options[prov.selectedIndex];
+		box.querySelectorAll('.nuOAuthMs').forEach(function (e) { e.classList.toggle('d-none', p !== 'microsoft'); });
+		box.querySelectorAll('.nuOAuthOther').forEach(function (e) { e.classList.toggle('d-none', p !== 'other'); });
+		var host = opt && opt.getAttribute('data-host');
+		srv.classList.toggle('d-none', !host);
+		if (host) srv.textContent = srv.getAttribute('data-label').replace('%s', host + ':' + opt.getAttribute('data-port'));
+	}
+	type.addEventListener('change', sync);
+	prov.addEventListener('change', sync);
+	srv.addEventListener('click', function () {
+		var opt = prov.options[prov.selectedIndex], h = document.getElementById('m_host'), pt = document.getElementById('m_port');
+		if (!opt || !h || !pt) return;
+		h.value = opt.getAttribute('data-host'); pt.value = opt.getAttribute('data-port');
+		[h, pt].forEach(function (e) { e.dispatchEvent(new Event('input', {bubbles: true})); });
+	});
+	sync();
+})();
+

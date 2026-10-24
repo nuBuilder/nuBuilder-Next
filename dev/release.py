@@ -26,7 +26,7 @@ What it does (the same steps every release):
      nunext.zip also gets the signed library packs of dev/libsrc/ in _install/ (0.8.409, PHPMailer – installed by the installer)
 Then check the package on a test installation: NuUpdate::inspect('…/nunext.zip') must report no errors.
 """
-import datetime, hashlib, json, os, re, subprocess, sys, zipfile
+import datetime, hashlib, json, os, re, shlex, subprocess, sys, zipfile
 
 # never deployed to a server (readable there, and not needed): development notes, open points, tools, CI
 DEV_ONLY = ('CLAUDE.md', 'TODO.md', '.gitignore')
@@ -117,7 +117,7 @@ def browser_tests():
         + ([('a11y', 'dev/tests/a11y.js')] if os.environ.get('NUNEXT_TEST_A11Y') == '1' else [])   # large data / accessibility: ~4 minutes each, on request
     bad = []
     for name, f in suites:
-        subprocess.run('mysql ' + db + ' -e "DELETE FROM zzzzsys_nunext_log WHERE event = \'login_failed\'"', shell=True, capture_output=True)
+        subprocess.run(['mysql', *shlex.split(db), '-e', "DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'"], capture_output=True)   # no shell (DeepSource BAN-B602)
         p = subprocess.run(['node', f], capture_output=True, text=True, env=env)
         out = (p.stdout + p.stderr).strip().splitlines()
         print(name + ': ' + (out[-1] if out else 'no output'))
@@ -313,7 +313,7 @@ def main():
         since = [c['version'] for c in man['changes'] if not last or key(c['version']) > key(last)]
         print(f'releases since the last gate ({last or "none"}): {len(since)}')
         if len(since) >= GATE_REMIND:
-            print(f'REMINDER: {len(since)} releases without the release gate – suggest "gate" to the owner')
+            pass   # the owner's rule (0.8.451): no gate reminders – this account has no GitHub connection
 
 
 if __name__ == '__main__':

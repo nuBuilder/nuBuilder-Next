@@ -27,6 +27,7 @@ final class NuAdmin
 		'update'        => ['system', 'upd_title', true, 'vc', []],
 		'configfile'    => ['system', 'cfg_title', true, 'c', []],
 		'settings'      => ['system', 'set_title', false, 'vc', []],
+		'setupcode'     => ['system', 'scode_title', true, 'vc', []],   // 0.8.444: JavaScript for every form page = full access
 		'securitycheck' => ['system', 'secchk_title', false, 'vc', []],
 		'setupwizard'   => ['system', 'wiz_title', false, 'c', []],
 		'status'        => ['system', 'status_title', false, 'vc', []],
@@ -43,6 +44,7 @@ final class NuAdmin
 		'prompts'       => ['dev', 'pg_title', false, 'vc', [NuAcl::FORM_PROMPT]],
 		'users'         => ['users', 'adm_r_users', false, 'vc', [NuAcl::FORM_USER, NuAcl::FORM_PERMISSION]],
 		'access'        => ['users', 'nav_access', false, 'vc', [NuAcl::FORM_ACCESS]],
+		'userfields'    => ['users', 'uf_title', false, 'vc', []],   // custom user fields (0.8.454): change = add / change / delete fields
 		'sessions'      => ['users', 'sess_title', false, 'vc', []],
 		'impersonate'   => ['users', 'adm_r_impersonate', true, 'c', []],
 		'adminroles'    => ['users', 'adm_title', true, 'c', []],
@@ -64,13 +66,13 @@ final class NuAdmin
 	public static function defaults(): array
 	{
 		$all = array_map(static fn() => 'change', self::RIGHTS);
-		$system = ['update', 'configfile', 'settings', 'dbtool', 'filemanager', 'appcloner', 'apiclients', 'adminroles'];
+		$system = ['update', 'configfile', 'settings', 'setupcode', 'dbtool', 'filemanager', 'appcloner', 'apiclients', 'adminroles'];
 		return [
 			'full_admin'      => $all,
 			'admin_no_system' => array_diff_key($all, array_flip($system)),
 			'developer'       => ['forms' => 'change', 'procedures' => 'change', 'reports' => 'change', 'dashboards' => 'change', 'prompts' => 'change',
 				'import' => 'change', 'debug' => 'view', 'compat' => 'view'],
-			'user_manager'    => ['users' => 'change', 'access' => 'change', 'sessions' => 'change', 'listviews' => 'change'],
+			'user_manager'    => ['users' => 'change', 'access' => 'change', 'userfields' => 'change', 'sessions' => 'change', 'listviews' => 'change'],
 			'support'         => ['log' => 'view', 'audit' => 'view', 'debug' => 'view', 'sessions' => 'view', 'status' => 'view'],
 		];
 	}

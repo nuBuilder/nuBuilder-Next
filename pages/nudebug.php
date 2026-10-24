@@ -39,7 +39,7 @@ $flag = (string)($_GET['flag'] ?? '');
 $user = (string)($_GET['user'] ?? '');
 $from = (string)($_GET['from'] ?? '');
 $to   = (string)($_GET['to'] ?? '');
-$per  = 50;
+$per  = nu_per_param() ?: 50;   // the footer's page size menu (0.8.437)
 $pg   = max(1, (int)($_GET['pg'] ?? 1));
 
 $where = [];
@@ -56,7 +56,7 @@ $pg    = min($pg, (int)max(1, ceil($total / $per)));
 $rows  = $db->page('SELECT d.*' . ($userJoin ? ', u.sus_login_name, u.sus_name' : '') . $sqlFrom, $params, 'd.deb_added DESC, d.zzzzsys_debug_id DESC', $per, ($pg - 1) * $per);
 $flags = $hasFlag ? array_column($db->all("SELECT DISTINCT deb_flag FROM $T WHERE deb_flag IS NOT NULL AND deb_flag <> '' ORDER BY deb_flag"), 'deb_flag') : [];
 $users = $hasUser ? $db->all("SELECT DISTINCT d.deb_user_id" . ($userJoin ? ', u.sus_login_name' : '') . " FROM $T d$userJoin WHERE d.deb_user_id IS NOT NULL ORDER BY d.deb_user_id") : [];
-$keep  = ['q' => $q, 'flag' => $flag, 'user' => $user, 'from' => $from, 'to' => $to];
+$keep  = ['q' => $q, 'flag' => $flag, 'user' => $user, 'from' => $from, 'to' => $to, 'per' => nu_per_param() ?: null];
 $canDelete = NuAcl::can(NuAcl::FORM_DEBUG, 'delete');
 
 /** Message as text: nuBuilder's "<br>" after the header line is dropped, " <html>" messages are shown as source. */
@@ -101,6 +101,7 @@ nu_layout_start(t('debug_title'), 'log');
 </div>
 	<form class="nuListFilter" method="get" action="index.php" role="search">
 	<input type="hidden" name="p" value="debug">
+	<?php if (nu_per_param()): ?><input type="hidden" name="per" value="<?= nu_per_param() ?>"><?php endif; ?>
 	<?php $filtered = $flag !== '' || $user !== '' || $from !== '' || $to !== ''; ?>
 	<div class="row g-2 align-items-end">
 		<div class="col-md-6"><?= nu_list_search($q, '', 'nuDebugFilters', $filtered, $q !== '' || $filtered ? nu_url('debug') : null) ?></div>
@@ -151,7 +152,7 @@ nu_layout_start(t('debug_title'), 'log');
 				</div>
 			<?php endforeach; ?>
 		</div>
-		<?php nu_list_footer($total, $pg, $per, 'debug', $keep); ?>
+		<?php nu_list_footer($total, $pg, $per, 'debug', $keep, 'card-footer', 'pg', '', true); ?>
 	</div>
 </form>
 </div>
