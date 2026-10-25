@@ -161,45 +161,10 @@ if ($id !== '') {
 	return;
 }
 
-// ------------------------------------------------------------------ the list
-nu_layout_start(t('uf_title'), 'users');
-?>
-<div class="nuTitleBar mb-3">
-	<h1 class="h4 mb-0"><i class="bi bi-ui-checks me-2"></i><?= h(t('uf_title')) ?></h1>
-	<div class="nuTitleSub text-body-secondary small"><?= h(t('uf_sub')) ?></div>
-	<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
-		<?php if ($canChange): ?><a class="btn nuBtnAct" href="<?= h(nu_url('userfields', ['id' => 'new'])) ?>" id="ufAdd"><i class="bi bi-plus-lg me-1"></i><?= h(t('uf_new')) ?></a><?php endif; ?>
-	</div>
-</div>
-<div class="card shadow-sm">
-	<div class="table-responsive">
-		<table class="table align-middle mb-0 nu-table" id="ufList">
-			<thead><tr><th></th><th><?= h(t('uf_label')) ?></th><th><?= h(t('uf_code')) ?></th><th><?= h(t('uf_type')) ?></th><th><?= h(t('uf_edit_by')) ?></th><th></th></tr></thead>
-			<tbody>
-			<?php if (!$all): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('uf_none')) ?></td></tr><?php endif; ?>
-			<?php $i = 0; $n = count($all); foreach ($all as $f): $fid = (string)$f['zzzzsys_nunext_user_field_id']; ?>
-				<tr data-uf="<?= h((string)$f['code']) ?>">
-					<td class="text-nowrap">
-						<?php if ($canChange): ?>
-							<?php foreach (['up' => [$i > 0, 'bi-arrow-up', 'home_move_up'], 'down' => [$i < $n - 1, 'bi-arrow-down', 'home_move_down']] as $dir => [$on, $ic, $lbl]): ?>
-								<form method="post" action="<?= h(nu_url('userfields')) ?>" class="d-inline"><?= nu_csrf_field() ?><input type="hidden" name="action" value="move"><input type="hidden" name="id" value="<?= h($fid) ?>"><input type="hidden" name="dir" value="<?= $dir ?>">
-									<button class="btn btn-sm btn-outline-secondary nuRowBtn" type="submit"<?= $on ? '' : ' disabled' ?> title="<?= h(t($lbl)) ?>" aria-label="<?= h(t($lbl)) ?>"><i class="bi <?= $ic ?>"></i></button></form>
-							<?php endforeach; ?>
-						<?php endif; ?>
-					</td>
-					<td><a class="fw-semibold text-decoration-none" href="<?= h(nu_url('userfields', ['id' => $fid])) ?>"><?= h(NuUserFields::label($f)) ?></a>
-						<?php if ((string)$f['required'] === '1'): ?><span class="badge text-bg-light border ms-1"><?= h(t('uf_required')) ?></span><?php endif; ?>
-						<?php if ((string)$f['is_unique'] === '1'): ?><span class="badge text-bg-light border ms-1"><?= h(t('uf_unique')) ?></span><?php endif; ?></td>
-					<td class="small font-monospace">#USER_<?= h(strtoupper((string)$f['code'])) ?>#</td>
-					<td class="small"><?= h($typeName((string)$f['type'])) ?></td>
-					<td class="small"><?= h($editName((string)$f['edit_by'])) ?></td>
-					<td class="text-end"><a class="btn btn-sm btn-outline-secondary nuRowBtn" href="<?= h(nu_url('userfields', ['id' => $fid])) ?>" title="<?= h(t('edit')) ?>" aria-label="<?= h(t('edit')) ?>"><i class="bi bi-pencil"></i></a></td>
-				</tr>
-			<?php $i++; endforeach; ?>
-			</tbody>
-		</table>
-	</div>
-	<div class="card-footer small text-body-secondary"><?= h(t('uf_list_hint')) ?></div>
-</div>
-<?php
-nu_layout_end();
+// ------------------------------------------------------------------ the list (0.8.546: a system list – views, columns, filters, print / export, core/nulistdefs.php)
+$tip = t('uf_sub', t('user_tab_more')) . ' ' . t('uf_list_hint');
+NuListView::page('userfields', [
+	'before' => NuListView::crumbs([[t('nav_users'), nu_url('users')], [t('uf_title')]]), 'active' => 'users',
+	'title_extra' => NuListView::infoTip($tip),
+	'buttons' => $canChange ? '<a class="btn nuAddBtn" href="' . h(nu_url('userfields', ['id' => 'new'])) . '" id="ufAdd"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+]);

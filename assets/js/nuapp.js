@@ -221,6 +221,16 @@
 		if (el instanceof HTMLInputElement && el.list) el.style.cursor = dlUsable(el) && dlOnArrow(el, e.clientX) ? 'pointer' : '';
 	});
 
+	// ---------------------------------------------------------------- F1 = the documentation page of this page (0.8.528, core/nuhelplink.php)
+	// <body data-nu-help="index.php?p=help#…">, opened in a new tab; pages without it leave F1 to the browser
+	document.addEventListener('keydown', function (e) {
+		if (e.key !== 'F1' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+		var url = document.body && document.body.getAttribute('data-nu-help');
+		if (!url) return;
+		e.preventDefault();
+		window.open(url, '_blank', 'noopener');
+	}, true);
+
 	// ---------------------------------------------------------------- Ctrl+Shift+S (Mac: ⌃⇧S / ⌘⇧S) = Save on nuBuilder Next's own edit pages
 	// (the button marked data-nu-save; nuBuilder form pages have their own shortcuts in nuruntime.js). Same key as in nuBuilder.
 	(function () {

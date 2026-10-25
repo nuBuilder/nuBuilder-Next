@@ -114,12 +114,13 @@ if ($id !== '') {
 		'msg' => ['unsaved' => t('proc_run_unsaved'), 'running' => t('proc_running'), 'done' => t('proc_run_done'), 'failed' => t('proc_run_failed'),
 			'js' => t('proc_run_js'), 'output' => t('proc_run_output'), 'debug' => t('proc_run_debug'), 'cancelled' => t('proc_run_cancelled'),
 			'snippet' => t('proc_snippet'), 'search' => t('search'), 'none' => t('no_records')]];
-	$head = '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">';
+	$head = '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">' . nu_ts_head();
 	$foot = '<script type="application/json" id="procData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
 		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
 		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
+		. nu_ts_foot()   // Launch form: searchable (0.8.536)
 		. '<script src="' . nu_asset('assets/js/nuprocedures.js') . '"></script>';
 }
 nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
@@ -225,7 +226,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				<div class="row g-3 procFieldRow">
 					<div class="col-md-6"><?= $row('sph_status', t('proc_status'), '<select class="form-select" id="sph_status" name="sph_status">'
 						. implode('', array_map(static fn($k, $l) => '<option value="' . h((string)$k) . '"' . ((string)$k === $v('sph_status') ? ' selected' : '') . '>' . h(t($l)) . '</option>', array_keys(NuProcedure::STATUS), NuProcedure::STATUS)) . '</select>', true) ?></div>
-					<div class="col-md-6"><?= $row('sph_zzzzsys_form_id', t('proc_launch'), '<select class="form-select' . $err('sph_zzzzsys_form_id') . '" id="sph_zzzzsys_form_id" name="sph_zzzzsys_form_id"><option value=""></option>'
+					<div class="col-md-6"><?= $row('sph_zzzzsys_form_id', t('proc_launch'), '<select class="form-select nuListTomSelect' . $err('sph_zzzzsys_form_id') . '" id="sph_zzzzsys_form_id" name="sph_zzzzsys_form_id"><option value=""></option>'
 						. implode('', array_map(static fn($f) => '<option value="' . h($f['zzzzsys_form_id']) . '"' . ($f['zzzzsys_form_id'] === $v('sph_zzzzsys_form_id') ? ' selected' : '') . '>' . h($f['sfo_code'] . ($f['sfo_description'] ? ' – ' . $f['sfo_description'] : '')) . '</option>', $forms))
 						. '</select>' . $fb('sph_zzzzsys_form_id')) ?></div>
 				</div>

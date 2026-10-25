@@ -129,6 +129,7 @@ final class NuCustomCode
 	{
 		$a = ' data-nu-page="' . h(self::$context === 'login' && self::page() === 'home' ? 'login' : self::page()) . '"';
 		if ($form) $a .= ' data-nu-mode="' . h((string)$form[0]) . '" data-nu-form="' . h((string)$form[1]) . '"';
+		if (self::$context === 'app' && ($help = NuHelpLink::url(self::page())) !== '') $a .= ' data-nu-help="' . h($help) . '"';   // F1 (0.8.528)
 		try {
 			$u = NuAuth::user();
 			if ($u !== null && (!empty($u['globeadmin']) || NuAdmin::any())) $a .= ' data-nu-admin="1"';

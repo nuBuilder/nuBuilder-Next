@@ -110,6 +110,7 @@ final class NuDraftStore
 	{
 		$existing = $objectId !== '' ? $this->object($objectId) : null;
 		if ($objectId !== '' && !$existing) throw new RuntimeException(t('record_not_found'));
+		if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);   // spaces at the ends (0.8.536)
 		$type = (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '');
 		$fid = (string)($fields['sob_all_id'] ?? $existing['sob_all_id'] ?? '');
 		if (!in_array($type, NuFormDraft::TYPES, true)) throw new RuntimeException(t('builder_err_type'));

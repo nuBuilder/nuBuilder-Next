@@ -496,7 +496,53 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 		<div class="card-body">
 			<?php if (!$check['ok']): ?>
 				<div class="alert alert-danger mb-3"><b><?= h(t('upd_package_invalid')) ?></b><ul class="mb-0"><?php foreach ($check['errors'] as $e): ?><li><?= h($e) ?></li><?php endforeach; ?></ul></div>
-			<?php else:
+			<?php endif; ?>
+			<?php // install options, Install and Cancel right below the package title (0.8.534), the details of the check below them ?>
+			<div class="d-flex flex-wrap gap-2 align-items-center pb-3 mb-3 border-bottom" id="updActions">
+				<?php if ($check['ok'] && $reqOk && $updOn): ?>
+					<form method="post" action="<?= h(nu_url('update')) ?>" class="nuContents" id="updInstallForm" data-nu-once data-nu-lock="#updCancel" data-nu-progress="#updProgress" data-confirm="<?= h(t('upd_install_confirm', $check['version'])) ?>" data-confirm-ok="<?= h(t('upd_install')) ?>" data-confirm-class="btn btn-primary">
+						<?= nu_csrf_field() ?><input type="hidden" name="action" value="install"><input type="hidden" name="id" value="<?= h($check['id']) ?>">
+						<?php if (!version_compare($check['version'], NU_VERSION, '>')): ?>
+							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="reinstall" name="reinstall" value="1"><label class="form-check-label small" for="reinstall"><?= h(t('upd_reinstall')) ?></label></div>
+						<?php endif; ?>
+						<?php if (NuUpdate::loadDump() && NuSqlDump::available()): $estAll = NuSqlDump::estimate('all', true); // backup before the update: also the database (pre-ticked when small) ?>
+							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkSql" name="backup_sql" value="1"<?= $estAll < 50 * 1024 * 1024 && empty(nu_cfg('nuConfigDevMode')) ? ' checked' : '' ?>><?php // developer mode: off by default (0.8.499) ?>
+								<label class="form-check-label small" for="updBkSql"><?= h(t('upd_install_sql', NuFile::size($estAll))) ?></label>
+								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_install_sql_hint')) ?>" title="<?= h(t('upd_install_sql_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
+							<input type="hidden" name="backup_nologs" value="1">
+						<?php endif; ?>
+						<?php if ($hasPages): // page forms (0.8.387): the installation's page folders as a copy in the backup (off by default) ?>
+							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkPages" name="backup_pages" value="1">
+								<label class="form-check-label small" for="updBkPages"><?= h(t('upd_bk_pages')) ?></label>
+								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_pages_hint')) ?>" title="<?= h(t('upd_bk_pages_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<?php endif; ?>
+						<?php if (!empty($check['sample'])): $sv = $check['sample']; $sNewer = $sv['to'] > $sv['from']; ?>
+							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updSample" name="sample_refresh" value="1"<?= $sNewer ? ' checked' : '' ?>>
+								<label class="form-check-label small" for="updSample"><?= h($sNewer ? t('upd_sample_refresh', $sv['from'], $sv['to']) : t('upd_sample_refresh_same')) ?></label>
+								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_sample_refresh_tip')) ?>" title="<?= h(t('upd_sample_refresh_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<?php endif; ?>
+						<div class="w-100" aria-hidden="true"></div><?php // Install and Cancel on their own row below the options (0.8.505) ?>
+						<button class="btn btn-primary" type="submit" id="updInstall" data-nu-busy="<?= h(t('upd_installing')) ?>"><i class="bi bi-download me-1"></i><?= h(t('upd_install')) ?></button>
+					</form>
+				<?php endif; ?>
+				<?php // shown while the install request runs (data-nu-progress): no close button, no Escape ?>
+				<div class="modal fade" id="updProgress" tabindex="-1" aria-labelledby="updProgressTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+					<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+						<div class="modal-body p-4 text-center">
+							<div class="spinner-border text-primary mb-3 nuUpdSpinner" role="status" aria-hidden="true"></div>
+							<h2 class="h5 mb-2" id="updProgressTitle"><?= h(t('upd_progress_title', $check['version'])) ?></h2>
+							<p class="mb-3 small text-body-secondary"><?= h(t('upd_progress_steps')) ?></p>
+							<div class="alert alert-warning text-start small mb-2 py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('upd_progress_keep')) ?></div>
+							<p class="small text-body-secondary text-start mb-0"><?= h(t('upd_progress_info')) ?></p>
+						</div>
+					</div></div>
+				</div>
+				<form method="post" action="<?= h(nu_url('update')) ?>">
+					<?= nu_csrf_field() ?><input type="hidden" name="action" value="discard"><input type="hidden" name="id" value="<?= h($check['id']) ?>">
+					<button class="btn btn-outline-secondary" type="submit" id="updCancel"><?= h(t('cancel')) ?></button>
+				</form>
+			</div>
+			<?php if ($check['ok']):
 				$d = $check['diff'];
 				$newer = version_compare($check['version'], NU_VERSION, '>'); ?>
 				<p class="mb-2"><?= h(t('upd_from_to', NU_VERSION, $check['version'])) ?><?= !empty($check['manifest']['built']) ? ' · ' . h(t('upd_built', (string)$check['manifest']['built'])) : '' ?></p>
@@ -579,50 +625,6 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 					<?php if (!empty($check['schema']['missing']) || !empty($check['schema']['changed'])): ?><p class="small text-body-secondary mt-2 mb-0"><?= h(t('upd_schema_backup_hint')) ?></p><?php endif; ?>
 				</div>
 			<?php endif; ?>
-			<div class="d-flex flex-wrap gap-2 align-items-center">
-				<?php if ($check['ok'] && $reqOk && $updOn): ?>
-					<form method="post" action="<?= h(nu_url('update')) ?>" class="nuContents" id="updInstallForm" data-nu-once data-nu-lock="#updCancel" data-nu-progress="#updProgress" data-confirm="<?= h(t('upd_install_confirm', $check['version'])) ?>" data-confirm-ok="<?= h(t('upd_install')) ?>" data-confirm-class="btn btn-primary">
-						<?= nu_csrf_field() ?><input type="hidden" name="action" value="install"><input type="hidden" name="id" value="<?= h($check['id']) ?>">
-						<?php if (!version_compare($check['version'], NU_VERSION, '>')): ?>
-							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="reinstall" name="reinstall" value="1"><label class="form-check-label small" for="reinstall"><?= h(t('upd_reinstall')) ?></label></div>
-						<?php endif; ?>
-						<?php if (NuUpdate::loadDump() && NuSqlDump::available()): $estAll = NuSqlDump::estimate('all', true); // backup before the update: also the database (pre-ticked when small) ?>
-							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkSql" name="backup_sql" value="1"<?= $estAll < 50 * 1024 * 1024 && empty(nu_cfg('nuConfigDevMode')) ? ' checked' : '' ?>><?php // developer mode: off by default (0.8.499) ?>
-								<label class="form-check-label small" for="updBkSql"><?= h(t('upd_install_sql', NuFile::size($estAll))) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_install_sql_hint')) ?>" title="<?= h(t('upd_install_sql_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
-							<input type="hidden" name="backup_nologs" value="1">
-						<?php endif; ?>
-						<?php if ($hasPages): // page forms (0.8.387): the installation's page folders as a copy in the backup (off by default) ?>
-							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkPages" name="backup_pages" value="1">
-								<label class="form-check-label small" for="updBkPages"><?= h(t('upd_bk_pages')) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_pages_hint')) ?>" title="<?= h(t('upd_bk_pages_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
-						<?php endif; ?>
-						<?php if (!empty($check['sample'])): $sv = $check['sample']; $newer = $sv['to'] > $sv['from']; ?>
-							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updSample" name="sample_refresh" value="1"<?= $newer ? ' checked' : '' ?>>
-								<label class="form-check-label small" for="updSample"><?= h($newer ? t('upd_sample_refresh', $sv['from'], $sv['to']) : t('upd_sample_refresh_same')) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_sample_refresh_tip')) ?>" title="<?= h(t('upd_sample_refresh_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
-						<?php endif; ?>
-						<div class="w-100" aria-hidden="true"></div><?php // Install and Cancel on their own row below the options (0.8.505) ?>
-						<button class="btn btn-primary" type="submit" id="updInstall" data-nu-busy="<?= h(t('upd_installing')) ?>"><i class="bi bi-download me-1"></i><?= h(t('upd_install')) ?></button>
-					</form>
-				<?php endif; ?>
-				<?php // shown while the install request runs (data-nu-progress): no close button, no Escape ?>
-				<div class="modal fade" id="updProgress" tabindex="-1" aria-labelledby="updProgressTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-					<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-						<div class="modal-body p-4 text-center">
-							<div class="spinner-border text-primary mb-3 nuUpdSpinner" role="status" aria-hidden="true"></div>
-							<h2 class="h5 mb-2" id="updProgressTitle"><?= h(t('upd_progress_title', $check['version'])) ?></h2>
-							<p class="mb-3 small text-body-secondary"><?= h(t('upd_progress_steps')) ?></p>
-							<div class="alert alert-warning text-start small mb-2 py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('upd_progress_keep')) ?></div>
-							<p class="small text-body-secondary text-start mb-0"><?= h(t('upd_progress_info')) ?></p>
-						</div>
-					</div></div>
-				</div>
-				<form method="post" action="<?= h(nu_url('update')) ?>">
-					<?= nu_csrf_field() ?><input type="hidden" name="action" value="discard"><input type="hidden" name="id" value="<?= h($check['id']) ?>">
-					<button class="btn btn-outline-secondary" type="submit" id="updCancel"><?= h(t('cancel')) ?></button>
-				</form>
-			</div>
 		</div>
 	</div>
 <?php elseif (!$finished && $updOn): ?>

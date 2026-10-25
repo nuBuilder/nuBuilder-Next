@@ -44,7 +44,7 @@ final class NuAdmin
 		'prompts'       => ['dev', 'pg_title', false, 'vc', [NuAcl::FORM_PROMPT]],
 		'users'         => ['users', 'adm_r_users', false, 'vc', [NuAcl::FORM_USER, NuAcl::FORM_PERMISSION]],
 		'access'        => ['users', 'nav_access', false, 'vc', [NuAcl::FORM_ACCESS]],
-		'userfields'    => ['users', 'uf_title', false, 'vc', []],   // custom user fields (0.8.454): change = add / change / delete fields
+		'userfields'    => ['users', 'uf_title', false, 'vc', [NuAcl::FORM_USERFIELD]],   // custom user fields (0.8.454): change = add / change / delete fields
 		'sessions'      => ['users', 'sess_title', false, 'vc', []],
 		'impersonate'   => ['users', 'adm_r_impersonate', true, 'c', []],
 		'adminroles'    => ['users', 'adm_title', true, 'c', []],
@@ -53,7 +53,7 @@ final class NuAdmin
 		'listviews'     => ['look', 'adm_r_listviews', false, 'c', []],   // shared list views, default view of a list (0.8.329)
 		'email'         => ['comm', 'nav_email', false, 'vc', [NuAcl::FORM_SETUP, NuAcl::FORM_EMAILLOG, NuAcl::FORM_EMAILTEMPLATE]],
 		'notifications' => ['comm', 'ntf_title', false, 'vc', []],   // notification centre (0.8.357): view = all + read receipts, change = send
-		'apiclients'    => ['integration', 'api_title', true, 'vc', []],
+		'apiclients'    => ['integration', 'api_title', true, 'vc', [NuAcl::FORM_APICLIENT]],
 		'log'           => ['logs', 'adm_r_log', false, 'vc', [NuAcl::FORM_LOG]],
 		'audit'         => ['logs', 'aud_title', true, 'vc', [NuAcl::FORM_AUDIT]],   // audit trail (0.8.350): change = its settings
 		'debug'         => ['logs', 'debug_title', false, 'vc', [NuAcl::FORM_DEBUG]],

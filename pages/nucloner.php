@@ -104,7 +104,7 @@ $options = static function (string $selected, bool $withSystem = true) use ($for
 $tableLabels = ['zzzzsys_form' => t('cl_t_form'), 'zzzzsys_tab' => t('cl_t_tab'), 'zzzzsys_browse' => t('cl_t_browse'), 'zzzzsys_object' => t('cl_t_object'),
 	'zzzzsys_event' => t('cl_t_event'), 'zzzzsys_php' => t('cl_t_php'), 'zzzzsys_select' => t('cl_t_select'), 'zzzzsys_select_clause' => t('cl_t_select'), 'zzzzsys_access_form' => t('cl_t_access')];
 
-nu_layout_start(t('cl_title'), 'forms');
+nu_layout_start(t('cl_title'), 'forms', ['head' => nu_ts_head()]);
 $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
 $heading = $row ? nu_form_label((string)$row['clo_form_source']) : t('cl_new_settings');
 ?>
@@ -198,7 +198,7 @@ endif; ?>
 				<div class="card-header fw-semibold"><?= h(t('cl_source')) ?></div>
 				<div class="card-body">
 					<label class="form-label" for="clSource"><?= h(t('form')) ?> <span class="text-danger">*</span></label>
-					<select class="form-select" id="clSource" name="source" required>
+					<select class="form-select nuListTomSelect" id="clSource" name="source" required>
 						<option value=""><?= h(t('please_select')) ?></option><?= $options($in['source']) ?>
 					</select>
 					<div class="form-text" id="clSourceInfo" aria-live="polite"></div>
@@ -234,7 +234,7 @@ endif; ?>
 					</div>
 					<div id="clDestExisting">
 						<label class="form-label small" for="clDest"><?= h(t('form')) ?></label>
-						<select class="form-select" id="clDest" name="dest"><option value=""><?= h(t('please_select')) ?></option><?= $options($in['dest'], false) ?></select>
+						<select class="form-select nuListTomSelect" id="clDest" name="dest"><option value=""><?= h(t('please_select')) ?></option><?= $options($in['dest'], false) ?></select>
 						<div class="form-text"><?= h(t('cl_dest_existing_hint')) ?></div>
 					</div>
 				</div>
@@ -276,4 +276,4 @@ endif; ?>
 	<textarea class="form-control font-monospace small border-0 rounded-0 nuClSql" id="clSql" rows="18" readonly spellcheck="false"><?= h($result['sql']) ?></textarea>
 </div>
 <?php endif;
-nu_layout_end('<script src="' . nu_asset('assets/js/nucloner.js') . '"></script>');
+nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nucloner.js') . '"></script>');   // forms: searchable (0.8.536)

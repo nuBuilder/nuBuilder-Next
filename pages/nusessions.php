@@ -85,7 +85,22 @@ $cmp = static function (array $a, array $b) use ($key, $dir): int {
 };
 usort($rows, $cmp);
 usort($nb, $cmp);
-$th = static fn(string $label, string $col, string $class = ''): string => nu_sort_th($label, $col, $sort, $dir, 'sessions', [], $class);
+// search by user (0.8.540): login name, display name, full / first / last name – in both lists; End all / End others still mean all
+$q = trim((string)($_GET['q'] ?? ''));
+$allRows = $rows;
+if ($q !== '') {
+	$hit = static function (string $uid, string ...$texts) use ($q, $users): bool {
+		$u = $users[$uid] ?? [];
+		foreach (array_merge($texts, [(string)($u['sus_login_name'] ?? ''), (string)($u['sus_name'] ?? ''), trim((string)($u['sus_first_name'] ?? '') . ' ' . (string)($u['sus_last_name'] ?? ''))]) as $x) {
+			if ($x !== '' && mb_stripos($x, $q) !== false) return true;
+		}
+		return false;
+	};
+	$rows = array_values(array_filter($rows, static fn($r) => $hit((string)$r['user_id'], (string)$r['login'], (string)$r['display'])));
+	$nb = array_values(array_filter($nb, static fn($r) => $hit($r['uid'], $r['login'])));
+}
+$qp = $q !== '' ? ['q' => $q] : [];
+$th = static fn(string $label, string $col, string $class = ''): string => nu_sort_th($label, $col, $sort, $dir, 'sessions', $qp, $class);
 
 function nu_sess_ago(int $ts): string
 {
@@ -106,20 +121,25 @@ nu_layout_start(t('sess_title'), 'log');
 	<h1 class="h5 mb-0 fw-semibold"><?= h(t('sess_title')) ?><?php $tip = t('sess_hint', $timeout, $timeoutAdmin); ?>
 		<span class="nuInfoTip fs-6 fw-normal ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($tip) ?>" title="<?= h($tip) ?>"><i class="bi bi-info-circle"></i></span></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
-		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions', isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : [])) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
-		<?php $others = count(array_filter($rows, static fn($r) => (string)$r['zzzzsys_nunext_session_id'] !== $me)); ?>
+		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions', (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) + $qp)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
+		<?php $others = count(array_filter($allRows, static fn($r) => (string)$r['zzzzsys_nunext_session_id'] !== $me)); ?>
 		<span class="d-inline-flex flex-wrap gap-2 ms-auto">
 		<form method="post" data-confirm="<?= h(t('sess_end_others_confirm', $others)) ?>" data-confirm-ok="<?= h(t('sess_end_others')) ?>" data-confirm-class="btn btn-danger">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_others">
 			<button class="btn btn-outline-danger fw-normal" type="submit"<?= $others ? '' : ' disabled' ?>><i class="bi bi-people me-1"></i><?= h(t('sess_end_others')) ?></button>
 		</form>
-		<form method="post" data-confirm="<?= h(t('sess_end_all_confirm', count($rows))) ?>" data-confirm-ok="<?= h(t('sess_end_all')) ?>" data-confirm-class="btn btn-danger">
+		<form method="post" data-confirm="<?= h(t('sess_end_all_confirm', count($allRows))) ?>" data-confirm-ok="<?= h(t('sess_end_all')) ?>" data-confirm-class="btn btn-danger">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_all">
 			<button class="btn btn-outline-danger fw-normal" type="submit"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('sess_end_all')) ?></button>
 		</form>
 		</span>
 	</div>
 	</div>
+	<form class="nuListFilter" method="get" action="index.php" role="search" id="sessSearch">
+		<input type="hidden" name="p" value="sessions">
+		<?php if (isset($_GET['sort'])): ?><input type="hidden" name="sort" value="<?= h($sort) ?>"><input type="hidden" name="dir" value="<?= h($dir) ?>"><?php endif; ?>
+		<div class="row g-2"><div class="col-md-6"><?= nu_list_search($q, t('sess_search_hint'), '', false, $q !== '' ? nu_url('sessions', isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) : null) ?></div></div>
+	</form>
 	<div class="px-3 py-2 border-bottom fw-semibold small">nuBuilder Next <span class="badge text-bg-secondary ms-1"><?= count($rows) ?></span></div>
 	<div class="table-responsive">
 		<table class="table align-middle mb-0 nu-table" id="sessTable">

@@ -305,7 +305,7 @@ $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback
 $req = ' <span class="text-danger" aria-hidden="true" title="' . h(t('val_legend_required')) . '">*</span>';
 $reqLegend = '<p class="small text-body-secondary mb-3"><span class="text-danger" aria-hidden="true">*</span> ' . h(t('val_legend_required')) . '</p>';
 NuBranding::$off = true;                              // no branding in the installer (database not ready)
-nu_head($title);
+nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 ?>
 <body class="nu-center nu-login">
 <main class="nu-install">
@@ -499,7 +499,7 @@ nu_head($title);
 					<div class="col-12"><label class="form-label" for="base_url"><?= h(t('ins_opt_url')) ?></label><input class="form-control<?= $err('base_url') ?>" id="base_url" name="base_url" value="<?= h($o['base_url']) ?>"><?= $fb('base_url') ?>
 						<div class="form-text"><?= h(t('ins_opt_url_hint')) ?></div></div>
 					<div class="col-sm-8"><label class="form-label" for="timezone"><?= h(t('ins_opt_timezone')) ?><?= $req ?></label>
-						<select class="form-select<?= $err('timezone') ?>" id="timezone" name="timezone"><?php foreach (timezone_identifiers_list() as $tz): ?><option<?= $tz === $o['timezone'] ? ' selected' : '' ?>><?= h($tz) ?></option><?php endforeach; ?></select><?= $fb('timezone') ?></div>
+						<select class="form-select nuListTomSelect<?= $err('timezone') ?>" id="timezone" name="timezone"><?php foreach (timezone_identifiers_list() as $tz): ?><option<?= $tz === $o['timezone'] ? ' selected' : '' ?>><?= h($tz) ?></option><?php endforeach; ?></select><?= $fb('timezone') ?></div>
 					<div class="col-sm-4"><label class="form-label" for="timeout"><?= h(t('ins_opt_timeout')) ?><?= $req ?></label><input class="form-control<?= $err('timeout') ?>" type="number" min="5" max="1440" id="timeout" name="timeout" value="<?= (int)$o['timeout'] ?>"><?= $fb('timeout') ?></div>
 					<div class="col-12"><label class="form-label" for="nub_path"><?= h(t('ins_opt_nub')) ?></label><input class="form-control<?= $err('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($o['nub_path']) ?>" placeholder="<?= h(dirname(NU_ROOT)) ?>"><?= $fb('nub_path') ?>
 						<div class="form-text"><?= h(t('ins_opt_nub_hint')) ?></div></div>
@@ -581,6 +581,7 @@ nu_head($title);
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
+<?= nu_ts_foot() ?>
 <script src="<?= nu_asset('assets/js/nuinstall.js') ?>"></script>
 </body>
 </html>

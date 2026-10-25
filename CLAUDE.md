@@ -258,6 +258,9 @@ core/nuprocedure.php NuProcedure::hook(code, hash, vars) (0.8.462, gap analysis 
 core/nucodetemplates.php NuCodeTemplates (0.8.524): built-in templates of the Custom code page – all() = tab → [id, cat, code], CATS
                      (look / page / form / fn), texts ctpl_<id> + ctpl_<id>_d; ▾ Templates per tab + preview dialogue #scodeTplDlg (nusetupcode.js);
                      a new template = an entry + its two texts (run.php checks); e2e custom_code_templates
+core/nuhelplink.php  NuHelpLink (0.8.528): F1 help – MAP route → section id of docs/pages (home: admins home-page, else navigation-p);
+                     <body data-nu-help> (NuCustomCode::bodyAttrs, app pages only), assets/js/nuapp.js opens it in a new tab; a new page = an
+                     entry here (run.php checks route + id); e2e help_f1
 core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.php mailer (NuMailer: settings, send, authType(), test probe)
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',

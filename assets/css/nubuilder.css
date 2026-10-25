@@ -1,7 +1,11 @@
 /* nuBuilder Next form builder */
 .nuBuilderContainer { max-width: 1900px; }
 .nbSidebar { position: sticky; top: 4.5rem; max-height: calc(100vh - 6rem); display: flex; flex-direction: column; }
-.nbSections .list-group-item.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: transparent; }
+.nbBar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; border-bottom: 1px solid var(--bs-border-color); }   /* sections + draft bar (0.8.531) */
+.nbBar .nbSections { border-bottom: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+.nbBar .nbSections .nav-link { white-space: nowrap; }
+.nbBar .nbDraftBar { margin: 0 0 .4rem auto; padding: .3rem .6rem; }
+.nbBar .nbDraftBar:not(.nbDraftActive):not(.nbDraftInfo) { background: none; border-color: transparent; padding: 0; }   /* idle: only (i) + Start draft */
 .nbObjectList { overflow-y: auto; flex: 1 1 auto; min-height: 8rem; }
 .nbTabHeader { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); background: var(--bs-tertiary-bg); padding: .3rem .75rem; }
 .nbObj { display: flex; align-items: center; gap: .25rem; padding: 0; }

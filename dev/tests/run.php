@@ -507,6 +507,13 @@ check('help: every #link of the help points to an id', !$deadLinks, implode(', '
 preg_match_all('/data-help="([^"]+)"/', (string)preg_replace('/<!--.*?-->/s', '', (string)@file_get_contents(NU_ROOT . '/docs/nunext-tutorial.htm')), $m);
 $deadTut = array_values(array_filter(array_unique($m[1]), static fn($l) => !isset($helpIds[$l])));
 check('help: every help link of the tutorial points to an id', !$deadTut, implode(', ', $deadTut));
+// F1 help (0.8.528): every route of NuHelpLink::MAP exists in index.php and points to a section of the help
+preg_match_all("/^\t'([a-z0-9_]+)'\s*=>\s*\[/m", (string)file_get_contents(NU_ROOT . '/index.php'), $m);
+$f1Bad = [];
+foreach (NuHelpLink::MAP + ['home' => 'home-page', 'home ' => 'navigation-p'] as $route => $id) {
+	if (!isset($helpIds[$id]) || (trim($route) !== 'home' && !in_array($route, $m[1], true))) $f1Bad[] = $route . ' → ' . $id;
+}
+check('help: F1 links of the pages (NuHelpLink)', !$f1Bad && count(NuHelpLink::MAP) > 40, implode(', ', $f1Bad));
 
 // function reference of the Help page (0.8.399): every function of the code is documented, and nothing that is gone
 $ref = NuFnRef::load();

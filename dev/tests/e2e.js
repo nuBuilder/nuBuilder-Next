@@ -1322,6 +1322,236 @@ T.custom_code_templates = async (s) => {
 	await p.evaluate(() => { window.nuLeaveGuard.isDirty = () => false; });   // leave without saving (no beforeunload question)
 };
 
+// 0.8.527 / 0.8.530: API client → service user: New service user (its fields) or Existing user (Tom Select: login name, full name ·
+// access level as second line, the chosen user's access level below); Existing without a user is refused, with one it is saved
+T.api_client_user_select = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=apiclients&id=new');
+	expect(await p.locator('#suModeNew:checked').count() === 1 && await p.locator('.nuApiNewUser:not([hidden])').count() === 1
+		&& await p.locator('.nuApiExistUser[hidden]').count() === 1, 'New service user at first, its fields shown');
+	await p.click('label[for=suModeExisting]');
+	expect(await p.locator('.nuApiNewUser[hidden]').count() === 1 && await p.locator('.nuApiExistUser:not([hidden])').count() === 1, 'Existing user: list shown');
+	expect(await p.locator('#user_id.tomselected').count() === 1, 'service user is a Tom Select');
+	await p.fill('#name', 'E2E client');
+	await Promise.all([p.waitForNavigation(), p.click('button.nuBtnSave')]);
+	expect(await p.locator('#user_id.is-invalid, .nuApiExistUser .invalid-feedback').count() > 0 && await p.locator('#suModeExisting:checked').count() === 1, 'existing without a user: refused, choice kept');
+	await p.locator('#user_id + .ts-wrapper .ts-control').click();
+	await p.keyboard.type('sample_anna');
+	const opt = p.locator('.ts-dropdown .option', { hasText: 'sample_anna' }).first();
+	await opt.waitFor();
+	expect((await opt.locator('.small').count()) === 1, 'second line with name / access level');
+	await opt.click(); await p.waitForTimeout(200);
+	expect(/sample_viewer/.test(await p.textContent('#apiUserAccess')), 'access level of the chosen user: ' + await p.textContent('#apiUserAccess'));
+	await Promise.all([p.waitForNavigation(), p.click('button.nuBtnSave')]);
+	const anna = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_api_client WHERE name = 'E2E client' AND user_id = '" + anna + "'") === '1', 'saved with the existing user');
+	sql("DELETE FROM zzzzsys_nunext_api_client WHERE name = 'E2E client'");
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.528: F1 opens the documentation page of the page that is open (new tab); pages without one leave F1 alone
+T.help_f1 = async (s) => {
+	const p = s.ga;
+	const f1 = async (path, want) => {
+		await open(p, path);
+		const [tab] = await Promise.all([p.context().waitForEvent('page', { timeout: 5000 }), p.keyboard.press('F1')]);
+		await tab.waitForLoadState('domcontentloaded');
+		const ok = /p=help/.test(tab.url()) && tab.url().endsWith('#' + want);
+		await tab.close();
+		expect(ok, path + ' → ' + tab.url());
+	};
+	await f1('index.php?p=users', 'users');
+	await f1('index.php?p=form&f=samplecustomer', 'forms-use');
+	await f1('index.php', 'home-page');
+	await open(p, 'index.php?p=help');
+	expect(await p.evaluate(() => document.body.getAttribute('data-nu-help')) === null, 'no F1 link on the help page');
+	expect(await p.locator('.dropdown-menu a[href$="p=help"][target=_blank]').count() === 1, 'user menu: documentation opens in a new tab (0.8.541)');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.533: form builder – Style shows an example that follows the style type (CSS / Class), HTML attributes an example placeholder
+T.builder_placeholders = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=builder&f=samplecustomer');
+	await p.click('#nbObjectList li:has-text("cus_name")'); await p.waitForTimeout(600);
+	const st = p.locator('[data-key=sob_all_style_type]'), sf = p.locator('[data-key=sob_all_style]');
+	await st.selectOption('CSS');
+	const css = await sf.getAttribute('placeholder');
+	await st.selectOption('Class');
+	const cls = await sf.getAttribute('placeholder');
+	await st.selectOption('');
+	expect(/;/.test(css) && /fw-bold/.test(cls) && !(await sf.getAttribute('placeholder')), 'style placeholder: ' + css + ' | ' + cls);
+	expect(/spellcheck=false/.test(await p.locator('[data-key=sob_input_attribute]').getAttribute('placeholder') || ''), 'attributes placeholder');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	await p.evaluate(() => { if (window.nuLeaveGuard) window.nuLeaveGuard.isDirty = () => false; });
+};
+
+// 0.8.535: form builder → Form settings → "Open records in form" is searchable (Tom Select); choosing a form marks the panel edited
+T.builder_redirect_search = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=builder&f=samplecustomer');
+	await p.click('.nbSections [data-nb-section=form]'); await p.waitForTimeout(500);
+	const sel = p.locator('select[data-key=sfo_browse_redirect_form_id]');
+	expect(await sel.evaluate(e => e.classList.contains('tomselected')), 'redirect form is a Tom Select');
+	const before = await sel.inputValue();
+	await p.click('.nbFormTabs .nav-link[data-tab=browse]');
+	await p.waitForTimeout(300);
+	const ctl = p.locator('select[data-key=sfo_browse_redirect_form_id] + .ts-wrapper .ts-control');
+	await ctl.click(); await p.keyboard.type('order');
+	const opt = p.locator('.ts-dropdown .option').filter({ hasText: /order/i }).first();
+	await opt.waitFor(); await opt.click(); await p.waitForTimeout(300);
+	const after = await sel.inputValue();
+	expect(after && after !== before, 'value taken over by the select: ' + before + ' → ' + after);
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	await p.evaluate(() => { if (window.nuLeaveGuard) window.nuLeaveGuard.isDirty = () => false; });
+};
+
+// 0.8.536: searchable selects (Tom Select) for long lists – builder objects (lookup / sub-form / run form / report / display procedure)
+// and own pages (start form, launch form, e-mail template form, cloner, dashboard widget, time zone); object ID: trimmed, checked while typing
+T.searchable_selects = async (s) => {
+	const p = s.ga;
+	const ts = async (path, ids) => {
+		await open(p, path);
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, path); }
+		for (const id of ids) expect(await p.locator(id + '.tomselected').count() === 1, path + ': ' + id + ' not searchable');
+	};
+	await ts('index.php?p=accesslevel&id=sample_editor', ['#sal_zzzzsys_form_id']);
+	await ts('index.php?p=procedures&id=new', ['#sph_zzzzsys_form_id']);
+	await ts('index.php?p=emailtemplates&id=new', ['#emt_form_id']);
+	await ts('index.php?p=cloner&id=new', ['#clSource', '#clDest']);
+	await ts('index.php?p=dashboards&id=sample_dash_country&w=new', ['#dSelect', '#dPhp']);
+	await ts('index.php?p=setupwizard', ['#timezone']);
+	// builder: lookup / sub-form objects of "Sample: all objects", the object ID check
+	await open(p, 'index.php?p=builder&f=sampleall');
+	for (const [type, key] of [['lookup', 'sob_lookup_zzzzsys_form_id'], ['subform', 'sob_subform_zzzzsys_form_id']]) {
+		const id = sql("SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'sampleall' AND sob_all_type = '" + type + "' LIMIT 1");
+		if (!id) continue;
+		await p.click('#nbObjectList li:has-text("' + id + '")'); await p.waitForTimeout(500);
+		expect(await p.locator('select[data-key=' + key + '].tomselected').count() === 1, type + ': form select not searchable');
+	}
+	const idf = p.locator('input[data-key=sob_all_id]');
+	const old = await idf.inputValue();
+	await idf.fill('bad id-1');
+	expect(await idf.evaluate(e => e.classList.contains('is-invalid')), 'invalid ID marked');
+	await idf.fill('  ' + old + '  '); await idf.blur(); await p.waitForTimeout(200);
+	expect(await idf.inputValue() === old && !(await idf.evaluate(e => e.classList.contains('is-invalid'))), 'ID trimmed on blur: "' + await idf.inputValue() + '"');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	await p.evaluate(() => { if (window.nuLeaveGuard) window.nuLeaveGuard.isDirty = () => false; });
+};
+
+// 0.8.537: column filters of form browse lists are labelled selects next to the search (like the system lists), not a row below the header
+T.browse_filters_bar = async (s) => {
+	const p = s.ga;
+	sql("UPDATE zzzzsys_browse SET sbr_json = '{\"nunext\":{\"filter\":true}}' WHERE zzzzsys_browse_id = 'sample_customer_b3'");
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer&q=a');
+		expect(await p.locator('.nuFilterRow').count() === 0, 'no filter row below the header');
+		const sel = p.locator('#nuBrowseFilters select.nuColumnFilter');
+		expect(await sel.count() === 1 && /Country/i.test(await p.textContent('#nuBrowseFilters label')), 'labelled filter next to the search');
+		const val = await sel.locator('option').nth(1).getAttribute('value');
+		await Promise.all([p.waitForNavigation(), sel.selectOption(val)]);
+		const u = new URL(p.url());
+		expect(u.searchParams.get('flt[2]') === val && u.searchParams.get('q') === 'a', 'filter and search kept: ' + p.url());
+		expect(await p.locator('#nuBrowseFilters select.nuFilterActive').count() === 1 && await p.locator('.nuFilterToggle .bi-funnel-fill').count() === 1, 'active filter marked');
+		const cells = await p.locator('td.nuCell[data-nu-column="2"]').allTextContents();
+		expect(cells.length > 0 && cells.every(c => c.trim() === cells[0].trim()), 'rows filtered: ' + cells.join(','));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("UPDATE zzzzsys_browse SET sbr_json = NULL WHERE zzzzsys_browse_id = 'sample_customer_b3'");
+	}
+};
+
+// 0.8.540: Logged-in users – search by user (login, display or full name) in both lists; End all still counts every session
+T.sessions_search = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=sessions&sort=user&dir=asc');
+	expect(await p.locator('#sessSearch #q').count() === 1, 'search field');
+	await p.fill('#sessSearch #q', 'globeadmin');
+	await Promise.all([p.waitForNavigation(), p.press('#sessSearch #q', 'Enter')]);
+	const u = new URL(p.url());
+	expect(u.searchParams.get('q') === 'globeadmin' && u.searchParams.get('sort') === 'user', 'search keeps the sort: ' + p.url());
+	expect(await p.locator('#sessTable tbody tr').count() >= 1 && /globeadmin/i.test(await p.textContent('#sessTable tbody')), 'own session found');
+	await p.fill('#sessSearch #q', 'zzz-nobody-zzz');
+	await Promise.all([p.waitForNavigation(), p.press('#sessSearch #q', 'Enter')]);
+	expect(await p.locator('#sessTable tbody tr').count() === 1 && await p.locator('#sessSearch .nuListResetBtn').count() === 1, 'no hit, reset button shown');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.543: setup wizard – picking a language switches the wizard (session language) at once, the choice stays selected
+T.wizard_lang = async (s) => {
+	const p = s.ga;
+	const go = async () => {
+		await open(p, 'index.php?p=setupwizard&step=basics');
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=setupwizard&step=basics'); }
+	};
+	await go();
+	const before = await p.evaluate(() => document.documentElement.lang);
+	const orig = await p.inputValue('#lang');
+	try {
+		await Promise.all([p.waitForNavigation(), p.selectOption('#lang', 'fr')]);
+		expect(await p.evaluate(() => document.documentElement.lang) === 'fr' && await p.inputValue('#lang') === 'fr' && /step=basics/.test(p.url()), 'wizard in French: ' + p.url());
+	} finally {
+		await Promise.all([p.waitForNavigation(), p.selectOption('#lang', orig)]);
+		await open(p, 'index.php?p=lang&l=' + encodeURIComponent(before));
+		await p.evaluate(() => fetch('index.php?p=setupwizard&step=basics'));
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.546: custom user fields as a system list – view menu, export, filters, (i) with the SQL / hash variable hint, move buttons
+T.userfields_list = async (s) => {
+	const p = s.ga;
+	const T = 'zzzzsys_nunext_user_field';
+	const had = sql("SELECT COUNT(*) FROM " + T) || '0';
+	sql("INSERT INTO " + T + " (zzzzsys_nunext_user_field_id, code, label, type, edit_by, required, is_unique, in_list, sort) VALUES ('e2euf1','e2e_a','E2E Alpha','text','admin','1','0','0',10),('e2euf2','e2e_b','E2E Beta','date','user','0','0','0',20)");
+	try {
+		await open(p, 'index.php?p=userfields');
+		expect(await p.locator('.nuLv[data-lv-list="userfields"]').count() === 1, 'list view');
+		expect(await p.locator('.nuListHead .dropdown-toggle').count() >= 2, 'view menu and export');
+		expect(/LEFT JOIN zzzzsys_nunext_user_ext/.test(await p.locator('.nuListHead h1 .nuInfoTip').getAttribute('aria-label')), '(i) next to the title');
+		expect(await p.locator('#lvf_type').count() === 1 && await p.locator('#lvf_edit_by').count() === 1, 'filters type / edit by');
+		const rows = await p.locator('table.nu-table tbody tr').allTextContents();
+		expect(rows.findIndex(r => /E2E Alpha/.test(r)) < rows.findIndex(r => /E2E Beta/.test(r)), 'in their order');
+		await Promise.all([p.waitForNavigation(), p.locator('tr:has-text("E2E Beta") button[title]').first().click()]);   // move up
+		expect(sql("SELECT sort FROM " + T + " WHERE zzzzsys_nunext_user_field_id = 'e2euf2'") < sql("SELECT sort FROM " + T + " WHERE zzzzsys_nunext_user_field_id = 'e2euf1'"), 'moved up');
+		await open(p, 'index.php?p=userfields&type=date');
+		const t2 = await p.textContent('table.nu-table tbody');
+		expect(/E2E Beta/.test(t2) && !/E2E Alpha/.test(t2), 'filter by type');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM " + T + " WHERE zzzzsys_nunext_user_field_id IN ('e2euf1','e2euf2')");
+	}
+};
+
+// 0.8.547: API clients as a system list – scopes behind a small button (menu with the list), filters status / scope, playground in ⋮ on phones
+T.apiclients_list = async (s) => {
+	const p = s.ga;
+	const C = 'zzzzsys_nunext_api_client';
+	sql(`INSERT INTO ${C} (zzzzsys_nunext_api_client_id, name, client_id, scopes, user_id, active, rate_limit, created_at) SELECT 'e2eapi1','E2E Client','nk_e2e1','["users:read","reports:run"]', zzzzsys_user_id, '1', 120, NOW() FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'`);
+	sql(`INSERT INTO ${C} (zzzzsys_nunext_api_client_id, name, client_id, scopes, user_id, active, created_at) VALUES ('e2eapi2','E2E Off','nk_e2e2','["access:read"]','', '0', NOW())`);
+	const go = async (q) => {
+		await open(p, 'index.php?p=apiclients' + (q || ''));
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=apiclients' + (q || '')); }
+	};
+	try {
+		await go('');
+		expect(await p.locator('.nuLv[data-lv-list="apiclients"]').count() === 1 && await p.locator('#apiPlayground').count() === 1, 'list view with playground button');
+		const row = p.locator('tr:has-text("E2E Client")');
+		await row.locator('.nuApiScopes button').click(); await p.waitForTimeout(300);
+		const items = await row.locator('.nuApiScopes .dropdown-menu.show li').allTextContents();
+		expect(items.length === 2 && /users:read/.test(items.join()), 'scopes in the menu: ' + items.join(' | '));
+		await go('&scope=access:read');
+		const t1 = await p.textContent('table.nu-table tbody');
+		expect(/E2E Off/.test(t1) && !/E2E Client/.test(t1), 'filter by scope');
+		await go('&status=on');
+		const t2 = await p.textContent('table.nu-table tbody');
+		expect(/E2E Client/.test(t2) && !/E2E Off/.test(t2), 'filter by status');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM " + C + " WHERE zzzzsys_nunext_api_client_id IN ('e2eapi1','e2eapi2')");
+	}
+};
+
 T.notify_format = async (s) => {                        // 0.8.400: "Formatted text" switch – TinyMCE (when installed), HTML cleaned on the server
 	const p = s.ga;
 	await open(p, 'index.php?p=notifications&id=new');

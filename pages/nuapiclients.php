@@ -26,6 +26,9 @@ if (nu_is_post()) {
 			'name' => nu_post('name'), 'scopes' => is_array($_POST['scopes'] ?? null) ? $_POST['scopes'] : [], 'user_id' => nu_post('user_id'),
 			'ip_allow' => nu_post('ip_allow'), 'rate_limit' => nu_post('rate_limit'), 'expires_on' => nu_post('expires_on'), 'active' => nu_check('active') === '1',
 		];
+		$suMode = nu_post('su_mode');                                       // 0.8.530: New service user / Existing user
+		if ($suMode === 'new') $in['user_id'] = '__new';
+		elseif ($suMode === 'existing' && $in['user_id'] === '__new') $in['user_id'] = '';
 		if ($in['user_id'] === '__new') {                                   // create the service user first
 			[$uid, $ue] = NuApiClient::createServiceUser(nu_post('su_login'), nu_post('su_name') ?: $in['name'], nu_post('su_access'));
 			$errors += $ue;
@@ -62,7 +65,8 @@ if ($secret && (string)$secret['id'] !== $id) $secret = null;
 unset($_SESSION['nu_api_secret']);                                   // shown once
 $base = nu_base_url() . '/api.php/v1';
 
-nu_layout_start(t('api_title'), 'home', ['container' => 'container']);
+$lvState = $id === '' ? NuListView::prepare('apiclients') : null;   // the list (0.8.547): a system list – views, filters, print / export, cards on phones
+nu_layout_start(t('api_title'), 'home', ($lvState ? [] : ['container' => 'container']) + ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
@@ -145,44 +149,20 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 <?php endif; ?>
 
 <?php if ($id === ''): ?>
-	<?php $rows = NuApiClient::all(); ?>
-	<div class="card shadow-sm nuListCard">
-		<div class="card-header nuListHead nuTitleBar">
-			<h1 class="h5 mb-0 fw-semibold"><?= h(t('api_title')) ?></h1>
-			<div class="nuTitleSub text-body-secondary small"><?= h(t('api_hint')) ?> <code><?= h($base) ?>/</code></div>
-			<div class="d-flex gap-2"><?= nu_back_button() ?>
-				<a class="btn nuAddBtn" href="<?= h(nu_url('apiclients', ['id' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a>
-				<a class="btn btn-outline-secondary" href="<?= h(nu_url('apiplayground')) ?>" id="apiPlayground"><i class="bi bi-terminal me-1"></i><?= h(t('apg_title')) ?></a>
-			</div>
-		</div>
-		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 nu-table" id="apiClients">
-				<thead><tr><th><?= h(t('api_name')) ?></th><th>client_id</th><th><?= h(t('api_user')) ?></th><th><?= h(t('api_scopes')) ?></th><th><?= h(t('api_last_used')) ?></th><th><?= h(t('status')) ?></th></tr></thead>
-				<tbody>
-				<?php if (!$rows): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
-				<?php foreach ($rows as $r):
-					$on = (string)$r['active'] === '1' && !($r['expires_on'] && nu_is_expired($r['expires_on'])); ?>
-					<tr data-href="<?= h(nu_url('apiclients', ['id' => (string)$r['zzzzsys_nunext_api_client_id']])) ?>">
-						<td class="fw-semibold"><a class="text-decoration-none" href="<?= h(nu_url('apiclients', ['id' => (string)$r['zzzzsys_nunext_api_client_id']])) ?>"><?= h((string)$r['name']) ?></a></td>
-						<td><code class="small"><?= h((string)$r['client_id']) ?></code></td>
-						<td class="small"><?= h((string)($r['sus_login_name'] ?? '–')) ?><?php if (!empty($r['sal_code'])): ?> <span class="badge bg-secondary-subtle text-secondary-emphasis border"><?= h((string)$r['sal_code']) ?></span><?php endif; ?></td>
-						<td class="small"><?php foreach (NuApiClient::scopesOf($r) as $s): ?><span class="badge text-bg-light border me-1"><?= h($s) ?></span><?php endforeach; ?></td>
-						<td class="small text-nowrap"><?= $r['last_used_at'] ? h(date('d.m.Y H:i', strtotime((string)$r['last_used_at']))) : '–' ?></td>
-						<td><span class="badge <?= $on ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= h(t($on ? 'api_active' : 'api_inactive')) ?></span></td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
-	</div>
+	<?= NuListView::card($lvState, [
+		'title_extra' => NuListView::infoTip(t('api_hint') . ' ' . $base . '/'),
+		'buttons' => '<a class="btn nuAddBtn" href="' . h(nu_url('apiclients', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>',
+		'more' => [['icon' => 'bi-terminal', 'label' => t('apg_title'), 'href' => nu_url('apiplayground'), 'id' => 'apiPlayground']],   // phones: in the ⋮ menu
+	]) ?>
 <?php else:
 	$v = static fn(string $k, string $d = '') => nu_is_post() ? (string)($_POST[$k] ?? $d) : (string)($client[$k] ?? $d);
 	$scopes = nu_is_post() ? array_map('strval', (array)($_POST['scopes'] ?? [])) : ($client ? NuApiClient::scopesOf($client) : ['users:read']);
-	$users = $db->all("SELECT u.zzzzsys_user_id, u.sus_login_name, u.sus_name, a.sal_code FROM zzzzsys_user u LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id
+	$users = $db->all("SELECT u.zzzzsys_user_id, u.sus_login_name, u.sus_name, a.sal_code, a.sal_description FROM zzzzsys_user u LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id
 		WHERE COALESCE(u.sus_login_name, '') <> '' ORDER BY u.sus_login_name");
 	$taken = array_column($db->all('SELECT user_id, name FROM ' . NuApiClient::CLIENT . ' WHERE zzzzsys_nunext_api_client_id <> ?', [$client ? $id : '']), 'name', 'user_id');
 	$levels = $db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code');
 	$uSel = $v('user_id', $client ? '' : '__new');
+	$suMode = nu_is_post() && in_array(nu_post('su_mode'), ['new', 'existing'], true) ? nu_post('su_mode') : ($uSel === '__new' ? 'new' : 'existing');
 	$active = nu_is_post() ? nu_check('active') === '1' : ($client ? (string)$client['active'] === '1' : true);
 	?>
 	<div class="nuTitleBar mb-3">
@@ -203,15 +183,21 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 							<label class="form-check-label" for="active"><?= h(t('api_active')) ?></label></div></div>
 						<?php if ($client): ?><div class="col-12"><label class="form-label small mb-0">client_id</label><div><code><?= h((string)$client['client_id']) ?></code></div></div><?php endif; ?>
 
-						<div class="col-12"><label class="form-label" for="user_id"><?= h(t('api_user')) ?> <span class="text-danger">*</span></label>
-							<select class="form-select<?= nu_invalid($errors, 'user_id') ?>" id="user_id" name="user_id">
-								<option value="__new"<?= $uSel === '__new' ? ' selected' : '' ?>><?= h(t('api_user_new')) ?></option>
+						<div class="col-12"><span class="form-label d-block" id="suModeLabel"><?= h(t('api_user')) ?> <span class="text-danger">*</span>
+							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('api_user_hint')) ?>" title="<?= h(t('api_user_hint')) ?>"><i class="bi bi-info-circle"></i></span></span>
+							<div class="btn-group nuApiSuMode" role="radiogroup" aria-labelledby="suModeLabel"><?php /* 0.8.530: either a new service user or an existing one */ ?>
+								<input type="radio" class="btn-check" name="su_mode" id="suModeNew" value="new"<?= $suMode === 'new' ? ' checked' : '' ?>><label class="btn btn-outline-primary" for="suModeNew"><i class="bi bi-person-plus me-1"></i><?= h(t('api_su_mode_new')) ?></label>
+								<input type="radio" class="btn-check" name="su_mode" id="suModeExisting" value="existing"<?= $suMode === 'existing' ? ' checked' : '' ?>><label class="btn btn-outline-primary" for="suModeExisting"><i class="bi bi-person-check me-1"></i><?= h(t('api_su_mode_existing')) ?></label>
+							</div></div>
+						<div class="col-12 nuApiExistUser"<?= $suMode === 'existing' ? '' : ' hidden' ?>>
+							<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'user_id') ?>" id="user_id" name="user_id" aria-labelledby="suModeLabel" data-access-text="<?= h(t('api_su_access')) ?>" data-noaccess-text="<?= h(t('api_err_user_access')) ?>"><?php /* searchable (Tom Select, 0.8.527 – assets/js/nulistselect.js): login name, full name · access level as second line */ ?>
+								<option value=""></option>
 								<?php foreach ($users as $u): if (isset($taken[(string)$u['zzzzsys_user_id']])) continue; ?>
-									<option value="<?= h((string)$u['zzzzsys_user_id']) ?>"<?= $uSel === (string)$u['zzzzsys_user_id'] ? ' selected' : '' ?>><?= h($u['sus_login_name'] . ($u['sal_code'] ? ' · ' . $u['sal_code'] : '')) ?></option>
+									<option value="<?= h((string)$u['zzzzsys_user_id']) ?>"<?= $uSel === (string)$u['zzzzsys_user_id'] ? ' selected' : '' ?> data-sub="<?= h(implode(' · ', array_filter([(string)$u['sus_name'], (string)$u['sal_code']], 'strlen'))) ?>" data-access="<?= h(trim((string)$u['sal_code'] . ((string)$u['sal_description'] !== '' ? ' – ' . $u['sal_description'] : ''), ' –')) ?>"><?= h((string)$u['sus_login_name']) ?></option>
 								<?php endforeach; ?>
 							</select><?= nu_feedback($errors, 'user_id') ?>
-							<div class="form-text"><?= h(t('api_user_hint')) ?></div></div>
-						<div class="col-12 nuApiNewUser"<?= $uSel === '__new' ? '' : ' hidden' ?>><div class="row g-2">
+							<div class="form-text" id="apiUserAccess" aria-live="polite"></div></div>
+						<div class="col-12 nuApiNewUser"<?= $suMode === 'new' ? '' : ' hidden' ?>><div class="row g-2">
 							<div class="col-sm-4"><label class="form-label small" for="su_login"><?= h(t('user_login_name')) ?></label>
 								<input class="form-control form-control-sm<?= nu_invalid($errors, 'su_login') ?>" id="su_login" name="su_login" maxlength="50" value="<?= h((string)($_POST['su_login'] ?? 'api_')) ?>"><?= nu_feedback($errors, 'su_login') ?></div>
 							<div class="col-sm-4"><label class="form-label small" for="su_name"><?= h(t('user_display_name')) ?></label>
@@ -279,4 +265,5 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 	</div>
 <?php endif; ?>
 <?php
-nu_layout_end('<script src="' . nu_asset('assets/js/nuapiclients.js') . '"></script>');
+nu_layout_end($lvState ? NuListView::foot() . '<script src="' . nu_asset('assets/js/nuapiclients.js') . '"></script>'
+	: '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuapiclients.js') . '"></script>');

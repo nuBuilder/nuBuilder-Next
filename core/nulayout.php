@@ -183,7 +183,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 							<button class="dropdown-item d-flex align-items-center small text-body-secondary" type="submit" id="nuSidebarDefault" role="menuitemcheckbox" aria-checked="<?= $sbDef ? 'true' : 'false' ?>"><i class="bi bi-people me-2"></i><?= h(t('sb_menu_default')) ?><i class="bi bi-check2 ms-auto ps-3<?= $sbDef ? '' : ' invisible' ?>" aria-hidden="true"></i></button></form></li>
 						<?php endif; ?>
 						<li><hr class="dropdown-divider"></li>
-						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
+						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('password')) ?>"><i class="bi bi-key me-2"></i><?= h(t('nav_change_password')) ?></a></li>
@@ -534,6 +534,17 @@ function nu_list_search(string $value, string $hint = '', string $filterId = '',
 function nu_lp_hint(string $key = 'lp_get_hint'): string
 {
 	return NuAdmin::can('update') ? '<a href="' . h(nu_url('update') . '#libraries') . '" class="nuLpHint">' . h(t($key)) . '</a>' : h(t($key));
+}
+
+/** Searchable selects (Tom Select, 0.8.536): <select class="nuListTomSelect"> on own pages – CSS for the head, scripts for the end of the page
+ *  (assets/js/nulistselect.js turns every such select into a Tom Select; options may carry data-sub as a second line). */
+function nu_ts_head(): string
+{
+	return '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';
+}
+function nu_ts_foot(): string
+{
+	return '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script>';
 }
 
 function nu_back_button(?string $route = null, ?string $url = null, string $class = ''): string

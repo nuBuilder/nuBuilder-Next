@@ -330,7 +330,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 					</div>
 					<div class="mb-3">
 						<label class="form-label" for="sal_zzzzsys_form_id"><?= h(t('home_form')) ?></label>
-						<select class="form-select<?= nu_invalid($errors, 'sal_zzzzsys_form_id') ?>" id="sal_zzzzsys_form_id" name="sal_zzzzsys_form_id">
+						<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'sal_zzzzsys_form_id') ?>" id="sal_zzzzsys_form_id" name="sal_zzzzsys_form_id">
 							<option value=""><?= h(t('please_select')) ?></option>
 							<?php if ($v['sal_zzzzsys_form_id'] !== '' && !isset($forms[$v['sal_zzzzsys_form_id']])): ?>
 								<option value="<?= h($v['sal_zzzzsys_form_id']) ?>" selected><?= h($v['sal_zzzzsys_form_id']) ?></option>
@@ -544,4 +544,4 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 if (!(bool)nu_cfg('nuConfig2FAUser') && NuAuth::user()['globeadmin'] && !NuSettings::fromDb()) {
 	echo NuConfigFile::enableForm('nuConfig2FAUser', 'nuEnable2fa', t('twofa_on'), t('twofa_on_confirm'), $isNew ? 'access' : 'accesslevel', $isNew ? '' : (string)$id);
 }
-nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nuaccesslevel.js') . '"></script>');
+nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuaccesslevel.js') . '"></script>');

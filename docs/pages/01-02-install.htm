@@ -34,7 +34,7 @@
 <h3 id="setup-wizard">Setup wizard</h3>
 <p>Right after the globeadmin's sign-in, nuBuilder Next opens the <b>setup wizard</b> – after a new installation and also when <code>nuconfig.php</code> already exists, e.g. nuBuilder Next added to a running nuBuilder. It asks only for nuBuilder Next's settings; the database is not touched otherwise. Nothing changes before <i>Apply</i> on the last step.</p>
 <ul>
-<li><b>Basics</b>: default language (nuBuilder's <em>Setup → Language</em>; used for the globeadmin and for users without their own language; English as UK, Australia or US), time zone, address (URL), session timeouts for users and for the globeadmin, nuBuilder folder, shared login.</li>
+<li><b>Basics</b>: default language (nuBuilder's <em>Setup → Language</em>; used for the globeadmin and for users without their own language; English as UK, Australia or US; picking it switches the wizard to that language at once, the default is saved with Apply), time zone, address (URL), session timeouts for users and for the globeadmin, nuBuilder folder, shared login.</li>
 <li><b>Look &amp; tools</b>: application title (<code>$nuConfigTitle</code>), environment label such as TEST or DEV (see <a href="#branding">Branding</a>), primary database tool (when phpMyAdmin and Adminer are both there), REST API on / off.</li>
 <li><b>Security</b>: a new globeadmin password (you sign in again afterwards; the fields show <em>(unchanged)</em> – left empty, the current password stays), two-factor login for the globeadmin with its e-mail address, whether the page runs on HTTPS, and the cron line to copy.</li>
 <li><b>Sample data</b>: install (or refresh) the sample application; the new passwords of the sample users are shown once afterwards.</li>

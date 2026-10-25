@@ -17,6 +17,8 @@ final class NuAcl
 	public const FORM_FORM   = 'nuform';      // form builder
 	public const FORM_LOG    = 'nunextlog';   // login & change log (nuBuilder Next only)
 	public const FORM_AUDIT  = 'nunextaudit'; // audit trail (nuBuilder Next only, 0.8.350)
+	public const FORM_APICLIENT = 'nunextapiclient'; // API clients list (nuBuilder Next only, 0.8.547) – right through the admin right apiclients
+	public const FORM_USERFIELD = 'nunextuserfield'; // custom user fields list (nuBuilder Next only, 0.8.546) – right through the admin right userfields
 	public const FORM_SETUP  = 'nusetup';     // nuBuilder setup form (e-mail settings, test mail)
 	public const FORM_EMAILLOG = 'nuemaillog'; // nuBuilder e-mail log
 	public const FORM_FORMAT = 'nuformat';

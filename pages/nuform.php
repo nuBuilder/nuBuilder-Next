@@ -483,13 +483,34 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php foreach (array_diff_key($keep, ['f' => 1, 'q' => 1, 'flt' => 1]) as $k => $v): ?>
 				<input type="hidden" name="<?= h($k) ?>" value="<?= h($v) ?>">
 			<?php endforeach; ?>
-			<?php foreach ($state['flt'] as $fi => $fv): ?><input type="hidden" name="flt[<?= (int)$fi ?>]" value="<?= h($fv) ?>"><?php endforeach; ?>
+			<?php // column filters (0.8.537): labelled selects next to the search, like the system lists (users …) – not a row below the header
+			$fltCols = array_values(array_filter($data['columns'], static fn($c) => !empty($c['values']) && $c['width'] > 0));
+			$fltIdx = array_column($fltCols, 'index');
+			foreach ($state['flt'] as $fi => $fv): if (!in_array($fi, $fltIdx, true)): ?><input type="hidden" name="flt[<?= (int)$fi ?>]" value="<?= h($fv) ?>"><?php endif; endforeach; ?>
+			<div class="row g-2 align-items-end"><div class="col-md-6">
 			<div class="d-flex gap-2 nuListSearch"><div class="input-group nuSearchGroup">
 				<input type="search" class="form-control" id="nuSearchField" name="q" value="<?= h($state['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('search')) ?>" autocomplete="off"<?= $lookupTo !== '' ? ' autofocus' : '' ?>>
 				<button class="btn btn-outline-secondary nuSearchBtn" id="nuSearchButton" type="submit" title="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>"><i class="bi bi-search"></i></button>
 			</div>
 			<?php if ($state['q'] !== '' || $state['flt']): // reset (0.8.428): search words and column filters go, sort / page size / filter of form code stay ?>
 				<a class="btn btn-outline-secondary nuSearchBtn nuListResetBtn" id="nuSearchReset" href="<?= h(nu_url('form', array_diff_key($keep, ['q' => 1, 'flt' => 1]))) ?>" title="<?= h(t('reset')) ?>" aria-label="<?= h(t('reset')) ?>"><i class="bi bi-x-lg"></i></a>
+			<?php endif; ?>
+			<?php if ($fltCols): $fltOn = (bool)array_intersect($fltIdx, array_keys($state['flt'])); ?>
+				<button class="btn btn-outline-secondary nuSearchBtn nuFilterToggle<?= $fltOn ? ' active' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#nuBrowseFilters" aria-expanded="true" aria-controls="nuBrowseFilters" title="<?= h(t('filter')) ?>" aria-label="<?= h(t('filter')) ?>"><i class="bi bi-funnel<?= $fltOn ? '-fill' : '' ?>"></i></button>
+			<?php endif; ?>
+			</div></div>
+			<?php if ($fltCols): $n = count($fltCols); ?>
+			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse show" id="nuBrowseFilters"><div class="row g-2">
+				<?php foreach ($fltCols as $c): ?>
+					<div class="<?= $n > 3 ? 'col-sm-6 col-lg-3' : ($n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4')) ?>">
+						<label class="form-label small mb-1" for="nuFlt<?= (int)$c['index'] ?>"><?= h($c['title']) ?></label>
+						<select class="form-select nuColumnFilter<?= isset($state['flt'][$c['index']]) ? ' nuFilterActive' : '' ?>" id="nuFlt<?= (int)$c['index'] ?>" name="flt[<?= (int)$c['index'] ?>]">
+							<option value=""><?= h(t('all')) ?></option>
+							<?php foreach ($c['values'] as [$v, $l]): ?><option value="<?= h($v) ?>"<?= ($state['flt'][$c['index']] ?? null) === $v ? ' selected' : '' ?>><?= h($l) ?></option><?php endforeach; ?>
+						</select>
+					</div>
+				<?php endforeach; ?>
+			</div></div>
 			<?php endif; ?>
 			</div>
 		</form>
@@ -512,26 +533,6 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 						</th>
 					<?php endforeach; ?>
 				</tr>
-				<?php if (array_filter($data['columns'], static fn($c) => !empty($c['values']))): ?>
-					<tr class="nuFilterRow">
-						<?php if ($rowDel): ?><th scope="col" class="nuRowDelCol"></th><?php endif; ?>
-						<?php foreach ($data['columns'] as $c): ?>
-							<th scope="col" class="fw-normal"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>>
-								<?php if (!empty($c['values'])): ?>
-									<form method="get" action="index.php">
-										<?php foreach (array_diff_key($keep, ['flt' => 1]) as $k => $v): ?><input type="hidden" name="<?= h($k) ?>" value="<?= h($v) ?>"><?php endforeach; ?>
-										<input type="hidden" name="p" value="form">
-										<?php foreach ($state['flt'] as $fi => $fv): if ($fi !== $c['index']): ?><input type="hidden" name="flt[<?= (int)$fi ?>]" value="<?= h($fv) ?>"><?php endif; endforeach; ?>
-										<select class="form-select form-select-sm nuColumnFilter<?= isset($state['flt'][$c['index']]) ? ' nuFilterActive' : '' ?>" name="flt[<?= $c['index'] ?>]" aria-label="<?= h(t('filter') . ': ' . $c['title']) ?>">
-											<option value=""><?= h(t('all')) ?></option>
-											<?php foreach ($c['values'] as [$v, $l]): ?><option value="<?= h($v) ?>"<?= ($state['flt'][$c['index']] ?? null) === $v ? ' selected' : '' ?>><?= h($l) ?></option><?php endforeach; ?>
-										</select>
-									</form>
-								<?php endif; ?>
-							</th>
-						<?php endforeach; ?>
-					</tr>
-				<?php endif; ?>
 				</thead>
 				<tbody>
 				<?php if (!$data['rows']): ?>

@@ -43,6 +43,7 @@
 				if (!desc.value || desc.value === lastDesc) { desc.value = nd; lastDesc = nd; }
 				// the destination cannot be the source
 				Array.prototype.forEach.call($('#clDest').options, function (o) { o.disabled = o.value !== '' && o.value === id; });
+				if ($('#clDest').tomselect) $('#clDest').tomselect.sync();   // searchable select (0.8.536): take over the disabled option
 				sync();
 			}, function () { info.textContent = '?'; });
 	}

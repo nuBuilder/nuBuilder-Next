@@ -1513,3 +1513,20 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 
 /* a form whose fields join the flex row around it (update page: options, then Install + Cancel on their own row, 0.8.505) */
 .nuContents { display: contents; }
+
+/* setup wizard (0.8.544): fields as wide as their content needs, not the whole column */
+#wizForm #lang { width: 260px; max-width: 100%; }
+#wizForm #timezone + .ts-wrapper, #wizForm select#timezone { width: 320px; max-width: 100%; }
+#wizForm #timeout, #wizForm #timeout_ga { width: 80px; }
+#wizForm #base_url { max-width: 520px; }
+#wizForm #nub_path { max-width: 640px; }
+#wizForm #title { max-width: 400px; }
+#wizForm #env_label { max-width: 200px; }
+#wizForm #env_color { width: 80px; }
+#wizForm #dbtool { max-width: 300px; }
+#wizForm #pw1, #wizForm #pw2 { width: 320px; max-width: 100%; }   /* side by side (col-sm-auto, 0.8.545) */
+#wizForm #admin_email { max-width: 400px; }
+
+/* API clients list (0.8.547): the scopes of a client in a small menu – never wider than the screen, long descriptions wrap */
+.nuApiScopes .dropdown-menu { max-width: min(92vw, 480px); }
+.nuApiScopes .dropdown-item-text { white-space: normal; }

@@ -156,8 +156,7 @@ img.nuImage { max-width: 100%; height: auto; display: block; }
 .nuAbs .ts-wrapper.multi.has-items:not(.focus) .ts-control > input, .nuSubformTable .ts-wrapper.multi.has-items:not(.focus) .ts-control > input { min-width: 0 !important; width: 0 !important; flex: 0 0 0; padding: 0 !important; }
 
 /* browse filters */
-.nuFilterRow th { background: var(--bs-tertiary-bg); padding-top: .3rem; padding-bottom: .3rem; }
-.nuColumnFilter, .nuBrowseFilterSelect { font-size: .8rem; min-width: 6rem; }
+.nuBrowseFilterSelect { font-size: .8rem; min-width: 6rem; }
 .nuFilterActive { border-color: var(--bs-primary); box-shadow: 0 0 0 .1rem rgba(var(--bs-primary-rgb), .25); }
 .nuBrowseFilterSelect { margin-top: .25rem; }
 .nuBrowseTitle.nuFiltered > a { color: var(--bs-primary); }
@@ -166,7 +165,7 @@ img.nuImage { max-width: 100%; height: auto; display: block; }
 .nuPrintHead { padding: .25rem 0; }
 .nuPrintView .nuFormHeader, .nuPrintView .nuBrowseCard .card-footer { display: none !important; }
 @media print {
-	.nuFormHeader, .nuBrowseSearch, .nuFilterRow { display: none !important; }
+	.nuFormHeader, .nuBrowseSearch { display: none !important; }
 	.nuBrowseCard { border: 0; box-shadow: none !important; }
 	.nuBrowseTable td { white-space: normal; max-width: none; }
 	body.nu-app { background: #fff !important; }
@@ -387,3 +386,9 @@ input.nuButtonSpinning:is(.nuFormBtn:not([class*="btn-"]), .btn-light, .btn-outl
 .nuShowTabOrder .nuWrap { outline: 1px dashed rgba(220, 53, 69, .35); outline-offset: 1px; }
 .nuShowTabOrder .nuWrap:not(.nuAbs) { position: relative; }
 .nuDesignOrder.nuDesignOrderOut { right: auto; left: calc(100% + 4px); }
+
+/* column filters of form lists (0.8.538): never wider than 330 px (one filter would otherwise take the whole row) */
+#nuBrowseFilters .nuColumnFilter { max-width: 330px; }
+
+/* Notes (0.8.539): nuBuilder's title field has the inline style "color: maroon" – unreadable on the dark background; a light red in dark mode */
+[data-bs-theme="dark"] body[data-nu-form="nunotes"] #not_title { color: var(--bs-danger-text-emphasis) !important; }

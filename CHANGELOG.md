@@ -3,6 +3,119 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.547 – API clients as a system list; release gate
+- API clients: the list is a system list like Users – view menu (Default / Compact / All columns, own views), search, filters
+  status (active / inactive / expired) and scope, print and export, cards on phones; more columns (client_id, expires, requests /
+  minute, IP addresses, created, ID). Scopes no longer make the table wide: a small button "n scopes" opens a menu with the scopes
+  and their meaning (fits on phones). The API playground moves into the ⋮ menu on phones; the base URL hint is an (i) by the title.
+- Help: REST API → Clients.
+- Release gate: full test run (smoke, all end-to-end tests, compatibility with nuBuilder) for 0.8.527–0.8.547.
+
+## 0.8.546 – Custom user fields as a system list
+- Custom user fields: the list is a system list like Users – view menu (Default / Compact / All columns, own views), columns
+  label, code (#USER_…#), type, edited by, required, unique, in the users list, default, hint, order, changed, ID; filters type and
+  edited by; search; print and export; phone cards. The arrows still move a field up or down.
+- Custom user fields: the explanation (where the fields are shown and how to use them in SQL – LEFT JOIN zzzzsys_nunext_user_ext
+  USING (zzzzsys_user_id) – and form code – #USER_<CODE># or nuNextUserField('code')) is an (i) next to the title; it names the
+  user form's tab "Additional fields".
+- Help: Custom user fields.
+
+## 0.8.545 – Setup wizard: paired fields side by side
+- Setup wizard: New password and Repeat password sit right next to each other (no longer half a page apart); the same for
+  Language / Time zone and the two session timeouts.
+
+## 0.8.544 – Setup wizard: reasonable field widths
+- Setup wizard: fields as wide as their content needs – session timeouts 80 px, language 260 px, time zone 320 px, address
+  520 px, nuBuilder folder 640 px, application title 400 px, environment label 200 px with its colour right next to it,
+  passwords 320 px, e-mail 400 px.
+
+## 0.8.543 – Setup wizard: language switches at once
+- Setup wizard: picking a language switches the wizard (and the rest of the session) to it at once; the entries of the step are
+  kept, and the installation's default language is still saved with Apply.
+- Help: Setup wizard.
+
+## 0.8.542 – Setup wizard: Next beside Back
+- Setup wizard: Next (and Apply on the last step) sits right of Back with some space between them, instead of at the far right.
+
+## 0.8.541 – Documentation in a new tab
+- User menu: Documentation opens in a new tab (the page you are on stays open), like F1.
+
+## 0.8.540 – Logged-in users: search by user
+- Logged-in users: a search field finds users by login name, display name or full name – in the nuBuilder Next and the nuBuilder
+  list; the sort order is kept, × clears the search. "Log out all others" / "Log out everyone" still end every session.
+- Help: Logged-in users (search; a doubled sentence removed).
+
+## 0.8.539 – Notes: readable title in dark mode
+- Notes: the title field is readable in dark mode – nuBuilder's form gives it the inline colour maroon; in dark mode it is now a
+  light red (Bootstrap's danger text colour). Light mode and nuBuilder's form are unchanged.
+
+## 0.8.538 – Form lists: narrower column filters
+- Form lists: column filters (e.g. the category filter of Notes) are at most 330 px wide.
+
+## 0.8.537 – Form lists: filters next to the search
+- Form browse lists (e.g. Notes with its category filter): column filters are labelled selects next to the search field, as in
+  the users list – no longer a row below the column titles. Choosing a value keeps the search words; the filter button (funnel)
+  shows / hides the filters and is filled while one is set.
+- Help: Lists, Notes.
+
+## 0.8.536 – Searchable selects for long lists, object ID check
+- Searchable selects (Tom Select) for long lists: form builder objects – Lookup form, Sub-form form, Run → Form and Report,
+  Display → Procedure; access levels → Start form; procedures → Launch form; e-mail templates → Form; Cloner → Source and
+  Destination form; dashboard widgets → SQL builder select and Procedure; installer and setup wizard → Time zone.
+  Helpers nu_ts_head() / nu_ts_foot() load Tom Select for <select class="nuListTomSelect"> on own pages.
+- Form builder: an object's ID / field turns red while it holds characters that are not allowed (letters, digits and _, not
+  starting with a digit), and spaces at both ends are removed when leaving the field (also on the server before saving).
+- Help: form builder (ID check, searchable lists).
+
+## 0.8.535 – Form builder: searchable Open records in form
+- Form builder → Form settings → Browse: "Open records in form" is searchable (Tom Select – type code or description). Builder
+  selects can now be made searchable with one option (spec.search); Tom Select is loaded on every builder page.
+- Form builder → select objects: the switch "Searchable (select2)" is now just "Searchable" – nuBuilder Next uses Tom Select.
+
+## 0.8.534 – Update page: Install right below the package title
+- Update page: after "Check package" the install options (back up the whole database, include custom pages, refresh the sample
+  data …) with Install and Cancel come right below the package title; the details of the check (signature, files, what's new,
+  database changes and structure) follow below them.
+
+## 0.8.533 – Form builder: examples in Style and HTML attributes
+- Form builder: the field Style shows an example as placeholder that follows the style type – CSS: "e.g. border: 1px solid
+  #b00020; font-weight: bold – separate styles with ;", Class: "e.g. text-danger fw-bold – separate classes with spaces" (also as
+  tooltip, the field is narrow). HTML attributes: the hint "Comma separated, e.g. placeholder=Name, spellcheck=false" is now the
+  field's placeholder instead of a line below it.
+
+## 0.8.532 – Form builder: suggestions (datalist) explained
+- Form builder: the input field "Suggestions" is now "Suggestions (datalist)" (nuBuilder's Datalist), with an (i) tooltip that
+  explains it – values the browser suggests while typing, as comma / line separated values, a JSON list or a SELECT – and an
+  example as placeholder. Builder fields can now carry such an (i) (spec.tip).
+- Help → Object types: new section "Suggestions (datalist)".
+
+## 0.8.531 – Form builder: sections as tabs next to the draft bar
+- Form builder: Form settings, Code, Tabs, Browse and History are tabs in one row above the work area (no longer a list on top
+  of the objects), with "Start draft" on the right of the same row; its explanation is an (i) tooltip. The bar of an open draft
+  takes that place too. The objects list on the left starts higher and shows more objects.
+- Help: form builder layout.
+
+## 0.8.530 – API clients: new or existing service user
+- API clients: the service user is now a clear choice – "New service user" (login name, display name, access level) or
+  "Existing user" (searchable list; the chosen user's access level is shown below it). The explanation moved to an (i) next to
+  "Service user". Choosing Existing user without a user is refused with the choice kept.
+- API clients: the scope notifications:write has its description (it showed the text key).
+- Help → REST API: "Create a client" describes both choices.
+
+## 0.8.529 – Help: creating an API client
+- Help → REST API: new section "Create a client – step by step" (switch the API on and set the secret key, name, service user and
+  its access level, scopes, optional limits, copy the secret, test in the API playground).
+
+## 0.8.528 – F1 opens the documentation of the page
+- F1 opens the matching page of nuBuilder Next's documentation in a new tab: form pages → Editing records, admin pages (users,
+  access levels, reports, procedures, settings, Custom code, update …) → their own chapter, start page → the start page chapter
+  (users: navigation). Pages without a matching chapter leave F1 to the browser.
+- Help: F1 in "Navigation".
+
+## 0.8.527 – Searchable service user on API clients
+- API clients: the field Service user is searchable (Tom Select) – login name, with the full name and access level as a second
+  line (also searched). "Create a new service user" stays the first entry.
+
 ## 0.8.526 – Release gate (0.8.511–0.8.525)
 - Release gate: full test run (smoke, all end-to-end tests, compatibility with nuBuilder) for 0.8.511–0.8.525.
 

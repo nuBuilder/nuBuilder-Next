@@ -140,7 +140,7 @@ if ($id === '') {
 	], static fn(int $limit) => array_slice($rows, 0, $limit), NuListExport::filterText([t('search') => $q, t('emt_group') => $group, t('emt_category') => $cat]));
 }
 
-nu_layout_start(t('emt_title'), 'email', ['head' => '']);
+nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : '']);
 ?>
 <div class="nuTitleBar mb-3">
 	<h1 class="h3 mb-0"><?= h(t('nav_email')) ?></h1>
@@ -314,7 +314,7 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 				<div class="card shadow-sm emtFieldsCard">
 					<div class="card-body pb-2">
 						<label class="form-label" for="emt_form_id"><?= h(t('emt_form')) ?></label>
-						<select class="form-select<?= $err('emt_form_id') ?>" id="emt_form_id" name="emt_form_id"<?= $locked ? ' disabled' : '' ?>>
+						<select class="form-select nuListTomSelect<?= $err('emt_form_id') ?>" id="emt_form_id" name="emt_form_id"<?= $locked ? ' disabled' : '' ?>>
 							<option value="">—</option>
 							<?php $curForm = $v('emt_form_id'); if ($curForm !== '' && !in_array($curForm, array_column($forms, 'zzzzsys_form_id'), true)): ?><option value="<?= h($curForm) ?>" selected><?= h($curForm) ?></option><?php endif; ?>
 							<?php foreach ($forms as $f): ?><option value="<?= h($f['zzzzsys_form_id']) ?>"<?= (string)$f['zzzzsys_form_id'] === $v('emt_form_id') ? ' selected' : '' ?>><?= h($f['sfo_code'] . ' – ' . $f['sfo_description']) ?></option><?php endforeach; ?>
@@ -330,4 +330,4 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 	<script type="application/json" id="emtData"><?= json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endif; ?>
 <?php
-nu_layout_end($id !== '' ? '<script src="' . nu_asset('assets/js/nuemailtemplates.js') . '"></script>' : '');
+nu_layout_end($id !== '' ? nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuemailtemplates.js') . '"></script>' : '');   // Form: searchable (0.8.536)

@@ -70,9 +70,10 @@ if ($meta) {
 
 $head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset('assets/css/nubuilder.css') . '">'
-	. ($isNew ? '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">' : '');   // new form: searchable Table select
+	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';   // searchable selects: Table (new form), form lists (0.8.535)
 $foot = '<script type="application/json" id="nuBuilderData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
-	. ($isNew ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>' : '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
+	. '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>'
+	. ($isNew ? '' : '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
 		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>')
 	. '<script src="' . nu_asset('assets/js/nu/nuformat.js') . '"></script>'
@@ -215,18 +216,21 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 		</div>
 	</div>
 
-	<?php if (!$meta->isSystem()): ?><div class="nbDraftBar mb-3" id="nbDraftBar" hidden></div><?php endif; /* form drafts (0.8.386) */ ?>
+	<?php // one row above the workspace (0.8.531): the form's sections as tabs on the left, the draft bar (form drafts, 0.8.386) on the right ?>
+	<div class="nbBar mb-3" id="nbBar">
+		<ul class="nav nav-tabs nbSections" role="list">
+			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="form"><i class="bi bi-sliders me-1"></i><?= h(t('builder_sec_form')) ?></button></li>
+			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="code"><i class="bi bi-code-slash me-1"></i><?= h(t('builder_sec_code')) ?></button></li>
+			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="tabs"><i class="bi bi-folder2 me-1"></i><?= h(t('builder_sec_tabs')) ?></button></li>
+			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="browse"><i class="bi bi-table me-1"></i><?= h(t('builder_sec_browse')) ?></button></li>
+			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="history"><i class="bi bi-clock-history me-1"></i><?= h(t('builder_sec_history')) ?></button></li>
+		</ul>
+		<?php if (!$meta->isSystem()): ?><div class="nbDraftBar" id="nbDraftBar" hidden></div><?php endif; ?>
+	</div>
 	<div class="row g-3 nbWorkspace" id="nbWorkspace">
 		<div class="col-xl-3 col-lg-4">
 			<div class="card shadow-sm nbSidebar">
-				<div class="list-group list-group-flush nbSections" role="list">
-					<button type="button" class="list-group-item list-group-item-action" data-nb-section="form"><i class="bi bi-sliders me-2"></i><?= h(t('builder_sec_form')) ?></button>
-					<button type="button" class="list-group-item list-group-item-action" data-nb-section="code"><i class="bi bi-code-slash me-2"></i><?= h(t('builder_sec_code')) ?></button>
-					<button type="button" class="list-group-item list-group-item-action" data-nb-section="tabs"><i class="bi bi-folder2 me-2"></i><?= h(t('builder_sec_tabs')) ?></button>
-					<button type="button" class="list-group-item list-group-item-action" data-nb-section="browse"><i class="bi bi-table me-2"></i><?= h(t('builder_sec_browse')) ?></button>
-					<button type="button" class="list-group-item list-group-item-action" data-nb-section="history"><i class="bi bi-clock-history me-2"></i><?= h(t('builder_sec_history')) ?></button>
-				</div>
-				<div class="card-body border-top pb-2">
+				<div class="card-body pb-2">
 					<div class="d-flex align-items-center justify-content-between mb-2">
 						<h2 class="h6 mb-0"><?= h(t('builder_objects')) ?> <span class="badge text-bg-secondary" id="nbObjCount">0</span></h2>
 						<div class="dropdown">

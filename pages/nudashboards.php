@@ -120,7 +120,7 @@ if ($d && $wid !== '') {
 	$type = in_array($cur['type'], NuDashboard::TYPES, true) ? $cur['type'] : 'kpi';
 	$src = in_array($cur['source'], NuDashboard::SOURCES, true) ? $cur['source'] : 'sql';
 	$sel = static fn(bool $on) => $on ? ' selected' : '';
-	nu_layout_start(t('dash_w_title'), 'home');
+	nu_layout_start(t('dash_w_title'), 'home', ['head' => nu_ts_head()]);
 	?>
 	<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li class="breadcrumb-item"><a href="<?= h(nu_url('dashboards')) ?>"><?= h(t('dash_title')) ?></a></li>
 		<li class="breadcrumb-item"><a href="<?= h(nu_url('dashboards', ['id' => $id])) ?>"><?= h($d['code']) ?></a></li><li class="breadcrumb-item active" aria-current="page"><?= h($w ? ($w['title'] ?: '–') : t('dash_w_new')) ?></li></ol></nav>
@@ -168,13 +168,13 @@ if ($d && $wid !== '') {
 					</div>
 					<div class="col-md-8" data-dash-src="select">
 						<label class="form-label" for="dSelect"><?= h(t('dash_src_select')) ?></label>
-						<select class="form-select<?= $inv('select_id') ?>" id="dSelect" name="select_id"><option value=""></option>
+						<select class="form-select nuListTomSelect<?= $inv('select_id') ?>" id="dSelect" name="select_id"><option value=""></option>
 							<?php foreach ($selects as $q): ?><option value="<?= h($q['zzzzsys_select_id']) ?>"<?= $sel($src === 'select' && $cur['query'] === $q['zzzzsys_select_id']) ?>><?= h(trim($q['sse_code'] . ' – ' . $q['sse_description'], ' –')) ?></option><?php endforeach; ?>
 						</select><?= $fb('select_id') ?>
 					</div>
 					<div class="col-md-8" data-dash-src="php">
 						<label class="form-label" for="dPhp"><?= h(t('dash_src_php')) ?></label><?= $tip(t('dash_php_tip')) ?>
-						<select class="form-select<?= $inv('php_id') ?>" id="dPhp" name="php_id"><option value=""></option>
+						<select class="form-select nuListTomSelect<?= $inv('php_id') ?>" id="dPhp" name="php_id"><option value=""></option>
 							<?php foreach ($procs as $p): ?><option value="<?= h($p['zzzzsys_php_id']) ?>"<?= $sel($src === 'php' && $cur['query'] === $p['zzzzsys_php_id']) ?>><?= h(trim($p['sph_code'] . ' – ' . $p['sph_description'], ' –')) ?></option><?php endforeach; ?>
 						</select><?= $fb('php_id') ?>
 					</div>
@@ -272,7 +272,7 @@ if ($d && $wid !== '') {
 	</div>
 	<span hidden id="dashShapes" data-kpi="<?= h(t('dash_shape_kpi')) ?>" data-chart="<?= h(t('dash_shape_chart')) ?>" data-table="<?= h(t('dash_shape_table')) ?>" data-forms-label="<?= h(t('dash_link_form')) ?>"></span>
 	<?php
-	nu_layout_end(NuDashboard::scriptTag() . '<script src="' . nu_asset('assets/js/nudashboards.js') . '"></script>');
+	nu_layout_end(NuDashboard::scriptTag() . nu_ts_foot() . '<script src="' . nu_asset('assets/js/nudashboards.js') . '"></script>');   // SQL builder select / procedure: searchable (0.8.536)
 	return;
 }
 

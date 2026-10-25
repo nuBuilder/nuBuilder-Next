@@ -345,18 +345,20 @@
 			(spec.options || []).forEach(function (o) { input.appendChild(h('option', {value: o[0], text: o[1]})); });
 			if (v !== '' && !(spec.options || []).some(function (o) { return String(o[0]) === v; })) input.appendChild(h('option', {value: v, text: v}));
 			input.value = v;
+			if (spec.search && window.TomSelect) searchable(input);
 		} else if (spec.kind === 'format') {
 			var fp = formatPicker(v, spec.letters || 'DNT', Object.assign(common, {'class': 'form-select form-select-sm'}));
 			input = fp.el;
 		} else if (spec.kind === 'textarea' || spec.kind === 'code') {
-			input = h('textarea', Object.assign(common, {'class': 'form-control form-control-sm' + (spec.kind === 'code' ? ' nbCode' : ''), rows: spec.rows || (spec.kind === 'code' ? 6 : 3), spellcheck: spec.kind === 'code' ? 'false' : null}));
+			input = h('textarea', Object.assign(common, {'class': 'form-control form-control-sm' + (spec.kind === 'code' ? ' nbCode' : ''), rows: spec.rows || (spec.kind === 'code' ? 6 : 3), spellcheck: spec.kind === 'code' ? 'false' : null, placeholder: spec.placeholder || null}));
 			input.value = v;
 		} else if (spec.kind === 'switch') {
 			input = h('input', Object.assign(common, {type: 'checkbox', role: 'switch', 'class': 'form-check-input'}));
 			input.checked = v === '1' || (v === '' && spec.default === '1');
 			return h('div', {'class': 'form-check form-switch nbFld ' + (spec.cls || 'col-12')}, [input, h('label', {'class': 'form-check-label', 'for': id, text: t(spec.label)})]);
 		} else {
-			input = h('input', Object.assign(common, {type: spec.kind === 'number' ? 'number' : 'text', 'class': 'form-control form-control-sm', value: v, autocomplete: 'off', spellcheck: 'false'}));
+			input = h('input', Object.assign(common, {type: spec.kind === 'number' ? 'number' : 'text', 'class': 'form-control form-control-sm', value: v, autocomplete: 'off', spellcheck: 'false',
+				placeholder: spec.phKey ? t(spec.phKey) : (spec.placeholder || null)}));
 			if (spec.list) {
 				var dl = h('datalist', {id: id + '_dl'});
 				spec.list.forEach(function (x) { dl.appendChild(h('option', {value: x})); });
@@ -379,11 +381,47 @@
 				input = h('div', {'class': 'input-group input-group-sm'}, [attrIn, attrBtn]);
 			}
 		}
-		return h('div', {'class': 'nbFld ' + (spec.cls || 'col-12')}, [   // nbFld: packed tighter in a wide panel (nubuilder.css, 0.8.449)
-			h('label', {'class': 'form-label small mb-1', 'for': id, text: t(spec.label)}),
+		// spec.trim: spaces at both ends removed when leaving the field; spec.pattern: checked while typing, red with spec.patternErr (0.8.536)
+		var feedback = null, field1 = input.tagName === 'INPUT' ? input : null;
+		if (field1 && spec.trim) field1.addEventListener('blur', function () {
+			var v2 = field1.value.trim();
+			if (v2 !== field1.value) { field1.value = v2; field1.dispatchEvent(new Event('input', {bubbles: true})); field1.dispatchEvent(new Event('change', {bubbles: true})); }
+		});
+		if (field1 && spec.pattern) {
+			feedback = h('div', {'class': 'invalid-feedback', text: t(spec.patternErr)});
+			var check = function () { var bad = field1.value.trim() !== '' && !spec.pattern.test(field1.value.trim()); field1.classList.toggle('is-invalid', bad); field1.setAttribute('aria-invalid', bad ? 'true' : 'false'); };
+			field1.addEventListener('input', check);
+			check();
+		}
+		var fld = h('div', {'class': 'nbFld ' + (spec.cls || 'col-12')}, [   // nbFld: packed tighter in a wide panel (nubuilder.css, 0.8.449)
+			h('div', {'class': 'd-flex align-items-center'}, [h('label', {'class': 'form-label small mb-1', 'for': id, text: t(spec.label)}), spec.tip ? infoTip(t(spec.tip)) : null]),
 			input,
+			feedback,
 			spec.help ? h('div', {'class': 'form-text', text: t(spec.help)}) : null
 		]);
+		upgradeSearch(fld);
+		return fld;
+	}
+
+	/** Searchable select (Tom Select, 0.8.535) for long lists – spec.search; the select keeps its value and change event. Called before
+	 *  the select is in a wrapper, so Tom Select is created once the field's div exists (setTimeout 0 would miss collect()). */
+	function searchable(sel) {
+		sel.nbSearch = true;
+	}
+	function upgradeSearch(root) {
+		$$('select[data-key]', root).forEach(function (sel) {
+			if (!sel.nbSearch || sel.tomselect) return;
+			new TomSelect(sel, {create: false, maxOptions: null, allowEmptyOption: true, searchField: ['text'], sortField: [{field: '$order'}],
+				render: {no_results: function () { return '<div class="no-results">' + t('no_records') + '</div>'; }}});
+		});
+	}
+
+	/** (i) next to a field label (0.8.532: spec.tip instead of a line of help text) */
+	function infoTip(text) {
+		var tip = h('span', {'class': 'nuInfoTip ms-1 mb-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': text, title: text},
+			[h('i', {'class': 'bi bi-info-circle'})]);
+		if (window.nuBs && nuBs.tooltip) nuBs.tooltip(tip);
+		return tip;
 	}
 
 	function collect(root) {
@@ -489,7 +527,7 @@
 			h('div', {'class': 'row g-2'}, [
 				field({key: 'sfo_browse_sql', label: 'builder_browse_sql', kind: 'code', rows: 16, help: 'builder_browse_sql_help'}, f.sfo_browse_sql),
 				field({key: 'sfo_browse_rows_per_page', label: 'builder_rows_per_page', kind: 'number', cls: 'col-sm-4'}, f.sfo_browse_rows_per_page),
-				field({key: 'sfo_browse_redirect_form_id', label: 'builder_redirect', kind: 'select', cls: 'col-sm-8', options: formOptions(['edit', 'browseedit'])}, f.sfo_browse_redirect_form_id)
+				field({key: 'sfo_browse_redirect_form_id', label: 'builder_redirect', kind: 'select', cls: 'col-sm-8', search: true, options: formOptions(['edit', 'browseedit'])}, f.sfo_browse_redirect_form_id)
 			])
 		]);
 		// tabs General / Browse – the open tab stays open after saving
@@ -659,7 +697,7 @@
 		var spec = [
 			['builder_sec_general', [
 				{key: 'sob_all_type', label: 'builder_obj_type', kind: 'select', cls: 'col-sm-6', options: TYPES.map(function (x) { return [x, t('bf_type_' + x)]; }), change: true},
-				{key: 'sob_all_id', label: 'builder_obj_id', cls: 'col-sm-6', help: 'builder_obj_id_help'},
+				{key: 'sob_all_id', label: 'builder_obj_id', cls: 'col-sm-6', help: 'builder_obj_id_help', trim: true, pattern: /^[A-Za-z_][A-Za-z0-9_]*$/, patternErr: 'builder_err_id'},
 				{key: 'sob_all_label', label: 'builder_obj_label'},
 				{key: 'sob_all_zzzzsys_tab_id', label: 'builder_obj_tab', kind: 'select', cls: 'col-sm-6', options: tabs},
 				{key: 'sob_all_access', label: 'builder_obj_access', kind: 'select', cls: 'col-sm-6', options: [['0', t('bf_access_0')], ['1', t('bf_access_1')], ['2', t('bf_access_2')], ['3', t('bf_access_3')], ['4', t('bf_access_4')], ['9', t('bf_access_9')]], change: true},
@@ -672,7 +710,7 @@
 				{key: 'sob_input_type', label: 'builder_input_type', kind: 'select', cls: 'col-sm-6', options: INPUT_TYPES.map(function (x) { return [x, x]; }), types: ['input'], change: true},
 				{key: 'sob_input_format', label: 'builder_input_format', cls: 'col-sm-6', kind: 'format', letters: it === 'nuDate' ? 'D' : (it === 'nuNumber' ? 'N' : 'T'),
 					types: ['input'], show: ['nuDate', 'nuNumber', 'text', 'tel', 'search'].indexOf(it) >= 0, help: ['text', 'tel', 'search'].indexOf(it) >= 0 ? 'builder_input_mask_help' : null},
-				{key: 'sob_input_datalist', label: 'builder_input_datalist', kind: 'textarea', types: ['input'], help: 'builder_input_datalist_help', show: ['text', 'number', 'email', 'tel', 'url'].indexOf(it) >= 0},
+				{key: 'sob_input_datalist', label: 'builder_input_datalist', kind: 'textarea', types: ['input'], tip: 'builder_input_datalist_help', placeholder: 'Red, Green, Blue', show: ['text', 'number', 'email', 'tel', 'url'].indexOf(it) >= 0},
 				{key: 'sob_input_javascript', label: 'builder_input_scroll', kind: 'code', rows: 2, types: ['input'], show: it === 'nuScroll'},
 				{key: 'sob_input_count', label: 'builder_input_count', cls: 'col-sm-6', types: ['input'], show: it === 'nuAutoNumber', help: 'builder_input_count_help'},
 				// file objects (0.8.459): target Database (the file in the record) or File System (Uppy uploads to a server folder, HTML code = Uppy template)
@@ -682,18 +720,18 @@
 				{key: 'sob_select_sql', label: 'builder_select_sql', kind: 'code', types: ['select'], help: 'builder_select_sql_help'},
 				{key: 'sob_select_multiple', label: 'builder_select_multiple', kind: 'switch', cls: 'col-sm-6', types: ['select']},
 				{key: 'sob_select_2', label: 'builder_select_search', kind: 'switch', cls: 'col-sm-6', types: ['select']},
-				{key: 'sob_display_procedure', label: 'builder_display_proc', kind: 'select', options: dispOpts, types: ['display'], help: 'builder_display_proc_help'},
+				{key: 'sob_display_procedure', label: 'builder_display_proc', kind: 'select', search: true, options: dispOpts, types: ['display'], help: 'builder_display_proc_help'},
 				{key: 'sob_display_sql', label: 'builder_display_sql', kind: 'code', types: ['display']},
 				{key: 'sob_calc_formula', label: 'builder_calc_formula', kind: 'code', rows: 2, types: ['calc'], help: 'builder_calc_help'},
 				{key: 'sob_calc_format', label: 'builder_input_format', kind: 'format', letters: 'N', types: ['calc']},
-				{key: 'sob_lookup_zzzzsys_form_id', label: 'builder_lookup_form', kind: 'select', options: formOptions(['browse', 'browseedit']), types: ['lookup']},
+				{key: 'sob_lookup_zzzzsys_form_id', label: 'builder_lookup_form', kind: 'select', search: true, options: formOptions(['browse', 'browseedit']), types: ['lookup']},
 				{key: 'sob_lookup_code', label: 'builder_lookup_code', cls: 'col-sm-6', types: ['lookup']},
 				{key: 'sob_lookup_description', label: 'builder_lookup_description', cls: 'col-sm-6', types: ['lookup']},
 				{key: 'sob_lookup_description_width', label: 'builder_lookup_desc_width', kind: 'number', cls: 'col-sm-6', types: ['lookup']},
 				{key: 'sob_lookup_table', label: 'builder_table', cls: 'col-sm-6', types: ['lookup']},
 				{key: 'sob_lookup_javascript', label: 'builder_lookup_js', kind: 'code', rows: 3, types: ['lookup']},
 				{key: 'lookup_php', label: 'builder_lookup_php', kind: 'code', rows: 4, types: ['lookup'], help: 'builder_lookup_php_help'},
-				{key: 'sob_subform_zzzzsys_form_id', label: 'builder_subform_form', kind: 'select', options: formOptions(['subform']), types: ['subform']},
+				{key: 'sob_subform_zzzzsys_form_id', label: 'builder_subform_form', kind: 'select', search: true, options: formOptions(['subform']), types: ['subform']},
 				{key: 'sob_subform_type', label: 'builder_subform_type', kind: 'select', cls: 'col-sm-6', options: [['g', t('builder_subform_grid')], ['f', t('builder_subform_formlayout')]], types: ['subform']},
 				{key: 'sob_subform_foreign_key', label: 'builder_subform_fk', cls: 'col-sm-6', types: ['subform']},
 				{key: 'sob_subform_table', label: 'builder_table', cls: 'col-sm-6', types: ['subform']},
@@ -710,10 +748,10 @@
 				{key: 'sob_run_type', label: 'builder_run_type', kind: 'select', cls: run.type === 'F' ? 'col-sm-7' : 'col-12', types: ['run'], change: true,
 					options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')]]},
 				{key: 'sob_run_method', label: 'builder_run_method', kind: 'select', cls: run.type === 'F' ? 'col-sm-5' : 'col-12', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]], types: ['run'], change: true},
-				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_form', kind: 'select', options: formOptions(), value: run.type === 'F' && !run.isProc ? run.id : '', types: ['run'], show: run.type === 'F'},
+				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_form', kind: 'select', search: true, options: formOptions(), value: run.type === 'F' && !run.isProc ? run.id : '', types: ['run'], show: run.type === 'F'},
 				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_procedure', kind: 'select', options: [['', t('please_select')]].concat(D.procedures || []), value: run.isProc ? run.id : '',
 					types: ['run'], show: run.type === 'P', help: 'builder_run_procedure_help'},
-				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_report', kind: 'select', value: run.type === 'R' ? run.id : '', types: ['run'], show: run.type === 'R', help: 'builder_run_report_help',
+				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_report', kind: 'select', search: true, value: run.type === 'R' ? run.id : '', types: ['run'], show: run.type === 'R', help: 'builder_run_report_help',
 					options: [['', t('please_select')]].concat(D.reports || []).concat(run.type === 'R' && run.id && !run.isReport ? [[run.id, run.id]] : [])},
 				{key: 'sob_run_id', label: 'builder_run_record', cls: 'col-sm-6', types: ['run'], show: run.type === 'F', help: 'builder_run_record_help'},
 				{key: 'sob_run_filter', label: 'builder_run_filter', cls: 'col-sm-6', types: ['run'], show: run.type === 'F', help: 'builder_run_filter_help'},
@@ -734,7 +772,7 @@
 			['builder_sec_style', [
 				{key: 'sob_all_style_type', label: 'builder_style_type', kind: 'select', cls: 'col-sm-4', options: [['', '—'], ['CSS', 'CSS'], ['Class', 'Class']]},
 				{key: 'sob_all_style', label: 'builder_style', cls: 'col-sm-8'},
-				{key: 'sob_input_attribute', label: 'builder_attributes', help: 'builder_attributes_help', attrEditor: true}
+				{key: 'sob_input_attribute', label: 'builder_attributes', phKey: 'builder_attributes_help', attrEditor: true}
 			]]
 		];
 		return spec;
@@ -766,6 +804,13 @@
 				});
 				if (kids.length) body.appendChild(section(sec[0], kids));
 			});
+			// Style (0.8.533): the placeholder follows the style type – CSS declarations or class names
+			var stType = $('[data-key=sob_all_style_type]', body), stField = $('[data-key=sob_all_style]', body);
+			if (stType && stField) {
+				var stPh = function () { stField.placeholder = stType.value === 'CSS' ? t('builder_style_ph_css') : (stType.value === 'Class' ? t('builder_style_ph_class') : ''); stField.title = stField.placeholder; };   // title: the whole hint in a narrow field
+				stType.addEventListener('change', stPh);
+				stPh();
+			}
 			body.appendChild(eventsEditor(o));
 			if (body.isConnected) { upgradeEditors(body); refreshEditors(body); }
 		}
@@ -1155,7 +1200,7 @@
 		pill.className = 'badge fs-6 fw-normal nbModePill ' + (DR ? 'text-bg-warning' : 'text-bg-success');
 		pill.textContent = DR ? t('builder_draft_draft') : t('builder_draft_live');
 		bar.innerHTML = '';
-		bar.className = 'nbDraftBar mb-3';
+		bar.className = 'nbDraftBar';
 		var btn = function (cls, icon, label, fn, attrs) { return h('button', Object.assign({type: 'button', 'class': 'btn btn-sm ' + cls, onclick: fn}, attrs || {}), [h('i', {'class': 'bi ' + icon + ' me-1'}), label]); };
 		if (!DR) {
 			var items = [];
@@ -1164,7 +1209,11 @@
 				items.push(h('i', {'class': 'bi bi-cone-striped'}), h('span', {'class': 'me-auto', text: t('builder_draft_open_info').replace('%s', LD.created_by).replace('%s', fmtTime(LD.created_at))}));
 				items.push(btn('btn-primary', 'bi-pencil-square', t('builder_draft_open_btn'), function () { go(DP.draft_url); }, {id: 'nbDraftOpen'}));
 			} else if (!RO && D.can_save) {
-				items.push(h('span', {'class': 'me-auto small text-body-secondary', text: t('builder_draft_start_tip')}));
+				// next to the section tabs (0.8.531): the explanation as (i) tooltip instead of a line of text
+				var tip = h('span', {'class': 'nuInfoTip', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide',
+					'aria-label': t('builder_draft_start_tip'), title: t('builder_draft_start_tip')}, [h('i', {'class': 'bi bi-info-circle'})]);
+				if (window.nuBs && nuBs.tooltip) nuBs.tooltip(tip);
+				items.push(tip);
 				if (DP.unpublished && DP.can_publish) items.push(btn('btn-outline-success', 'bi-rocket-takeoff', t('builder_draft_publish_new'), publishNew, {id: 'nbPublishNew'}));
 				items.push(btn(DP.required ? 'btn-primary' : 'btn-outline-primary', 'bi-cone-striped', t('builder_draft_start'), startDraft, {id: 'nbDraftStart', title: t('builder_draft_start_tip')}));
 			}

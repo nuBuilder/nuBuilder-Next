@@ -48,6 +48,11 @@ if (nu_is_post()) {
 		nu_redirect($res['manual'] !== '' ? nu_url('setupwizard', ['step' => 'done']) : ($res['sample'] !== null ? nu_url('sample') : nu_url('home')));
 	}
 	$state = NuSetupWizard::take($step, $state, $_POST);
+	if ($action === 'lang') {                                      // language picked (0.8.543): the wizard switches to it at once (session language)
+		$_SESSION['nu_setup_wiz'] = $state;
+		if (isset(nu_lang_choices()[(string)$state['lang']])) nu_set_lang((string)$state['lang']);
+		nu_redirect(nu_url('setupwizard', ['step' => $step]));
+	}
 	if ($action === 'next') $errors = NuSetupWizard::validate($step, $state);
 	$_SESSION['nu_setup_wiz'] = $state;
 	if (!$errors) {
@@ -70,7 +75,7 @@ $icons = ['basics' => 'bi-sliders', 'look' => 'bi-palette', 'security' => 'bi-sh
 $writable = NuConfigFile::writable();
 $v = $state;
 
-nu_layout_start(t('wiz_title'), 'home');
+nu_layout_start(t('wiz_title'), 'home', ['head' => nu_ts_head()]);
 ?>
 <div class="card shadow-sm nuListCard nuWizCard" id="nuSetupWizard">
 	<div class="card-header nuListHead nuTitleBar">
@@ -107,15 +112,15 @@ nu_layout_start(t('wiz_title'), 'home');
 
 		<?php if ($step === 'basics'): ?>
 		<div class="row g-3">
-			<div class="col-sm-6"><label class="form-label" for="lang"><?= h(t('wiz_lang')) ?></label><?= $tip(t('wiz_lang_tip')) ?>
-				<select class="form-select<?= $inv('lang') ?>" id="lang" name="lang"><?php foreach (nu_lang_choices() as $code => $own): ?><option value="<?= h($code) ?>"<?= $code === $v['lang'] ? ' selected' : '' ?>><?= h($own) ?></option><?php endforeach; ?></select><?= $fb('lang') ?></div>
-			<div class="col-sm-6"><label class="form-label" for="timezone"><?= h(t('ins_opt_timezone')) ?></label><?= $tip(t('wiz_timezone_tip')) ?>
-				<select class="form-select<?= $inv('timezone') ?>" id="timezone" name="timezone"><option value=""><?= h(t('wiz_tz_default', date_default_timezone_get())) ?></option><?php foreach (timezone_identifiers_list() as $tz): ?><option<?= $tz === $v['timezone'] ? ' selected' : '' ?>><?= h($tz) ?></option><?php endforeach; ?></select><?= $fb('timezone') ?></div>
+			<div class="col-sm-auto"><label class="form-label" for="lang"><?= h(t('wiz_lang')) ?></label><?= $tip(t('wiz_lang_tip')) ?>
+				<select class="form-select<?= $inv('lang') ?>" id="lang" name="lang" data-wiz-lang><?php foreach (nu_lang_choices() as $code => $own): ?><option value="<?= h($code) ?>"<?= $code === $v['lang'] ? ' selected' : '' ?>><?= h($own) ?></option><?php endforeach; ?></select><?= $fb('lang') ?></div>
+			<div class="col-sm-auto"><label class="form-label" for="timezone"><?= h(t('ins_opt_timezone')) ?></label><?= $tip(t('wiz_timezone_tip')) ?>
+				<select class="form-select nuListTomSelect<?= $inv('timezone') ?>" id="timezone" name="timezone"><option value=""><?= h(t('wiz_tz_default', date_default_timezone_get())) ?></option><?php foreach (timezone_identifiers_list() as $tz): ?><option<?= $tz === $v['timezone'] ? ' selected' : '' ?>><?= h($tz) ?></option><?php endforeach; ?></select><?= $fb('timezone') ?></div>
 			<div class="col-12"><label class="form-label" for="base_url"><?= h(t('ins_opt_url')) ?></label><?= $tip(t('ins_opt_url_hint')) ?>
 				<input class="form-control<?= $inv('base_url') ?>" id="base_url" name="base_url" value="<?= h($v['base_url']) ?>" placeholder="<?= h(nu_base_url()) ?>"><?= $fb('base_url') ?></div>
-			<div class="col-sm-6"><label class="form-label" for="timeout"><?= h(t('ins_opt_timeout')) ?></label>
+			<div class="col-sm-auto"><label class="form-label" for="timeout"><?= h(t('ins_opt_timeout')) ?></label>
 				<input class="form-control<?= $inv('timeout') ?>" type="number" min="5" max="1440" id="timeout" name="timeout" value="<?= (int)$v['timeout'] ?>"><?= $fb('timeout') ?></div>
-			<div class="col-sm-6"><label class="form-label" for="timeout_ga"><?= h(t('wiz_timeout_ga')) ?></label>
+			<div class="col-sm-auto"><label class="form-label" for="timeout_ga"><?= h(t('wiz_timeout_ga')) ?></label>
 				<input class="form-control<?= $inv('timeout_ga') ?>" type="number" min="5" max="1440" id="timeout_ga" name="timeout_ga" value="<?= (int)$v['timeout_ga'] ?>"><?= $fb('timeout_ga') ?></div>
 			<div class="col-12"><label class="form-label" for="nub_path"><?= h(t('ins_opt_nub')) ?></label><?= $tip(t('ins_opt_nub_hint')) ?>
 				<input class="form-control<?= $inv('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($v['nub_path']) ?>" placeholder="<?= h(NuBuilderLib::path()) ?>"><?= $fb('nub_path') ?></div>
@@ -126,11 +131,11 @@ nu_layout_start(t('wiz_title'), 'home');
 		<div class="row g-3">
 			<div class="col-12"><label class="form-label" for="title"><?= h(t('wiz_app_title')) ?></label><?= $tip(t('wiz_app_title_tip')) ?>
 				<input class="form-control<?= $inv('title') ?>" id="title" name="title" maxlength="100" value="<?= h($v['title']) ?>" placeholder="nuBuilder Next"><?= $fb('title') ?></div>
-			<div class="col-sm-8"><label class="form-label" for="env_label"><?= h(t('brand_env')) ?></label><?= $tip(t('brand_env_field_tip')) ?>
+			<div class="col-auto"><label class="form-label" for="env_label"><?= h(t('brand_env')) ?></label><?= $tip(t('brand_env_field_tip')) ?>
 				<input class="form-control<?= $inv('env_label') ?>" id="env_label" name="env_label" maxlength="<?= NuBranding::ENV_LEN ?>" value="<?= h($v['env_label']) ?>" placeholder="TEST" list="wizEnvList"><?= $fb('env_label') ?>
 				<datalist id="wizEnvList"><option value="TEST"><option value="DEV"><option value="STAGING"></datalist></div>
-			<div class="col-sm-4"><label class="form-label" for="env_color"><?= h(t('brand_env_color')) ?></label>
-				<input class="form-control form-control-color w-100" type="color" id="env_color" name="env_color" value="<?= h($v['env_color']) ?>"></div>
+			<div class="col-auto"><label class="form-label" for="env_color"><?= h(t('brand_env_color')) ?></label>
+				<input class="form-control form-control-color" type="color" id="env_color" name="env_color" value="<?= h($v['env_color']) ?>"></div>
 			<?php if (count($tools) > 1): ?>
 			<div class="col-sm-6"><label class="form-label" for="dbtool"><?= h(t('wiz_dbtool')) ?></label><?= $tip(t('wiz_dbtool_tip')) ?>
 				<select class="form-select" id="dbtool" name="dbtool"><?php foreach ($tools as $a): ?><option value="<?= h($a) ?>"<?= $a === $v['dbtool'] ? ' selected' : '' ?>><?= h(NuVendor::DB_TOOLS[$a]) ?></option><?php endforeach; ?></select></div>
@@ -142,9 +147,9 @@ nu_layout_start(t('wiz_title'), 'home');
 		<div class="row g-3">
 			<div class="col-12"><h2 class="h6 mb-0"><?= h(t('wiz_pw')) ?><?= $tip(t('wiz_pw_tip')) ?></h2>
 				<?php if ($weak): ?><div class="alert alert-warning small mt-2 mb-0" id="wizWeak"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('wiz_pw_weak_note')) ?></div><?php endif; ?></div>
-			<div class="col-sm-6"><label class="form-label" for="pw1"><?= h(t('wiz_pw_new_label')) ?></label>
+			<div class="col-sm-auto"><label class="form-label" for="pw1"><?= h(t('wiz_pw_new_label')) ?></label>
 				<input class="form-control<?= $inv('pw1') ?>" type="password" id="pw1" name="pw1" autocomplete="new-password"<?= $v['pw1'] === '' ? ' placeholder="' . h(t('wiz_pw_unchanged')) . '"' : (!$errors ? ' placeholder="' . h(t('wiz_pw_keep')) . '"' : '') ?>><?= $fb('pw1') ?></div>
-			<div class="col-sm-6"><label class="form-label" for="pw2"><?= h(t('wiz_pw_repeat')) ?></label>
+			<div class="col-sm-auto"><label class="form-label" for="pw2"><?= h(t('wiz_pw_repeat')) ?></label>
 				<input class="form-control<?= $inv('pw2') ?>" type="password" id="pw2" name="pw2" autocomplete="new-password"<?= $v['pw1'] === '' ? ' placeholder="' . h(t('wiz_pw_unchanged')) . '"' : '' ?>><?= $fb('pw2') ?></div>
 			<div class="col-12"><hr class="my-1"></div>
 			<div class="col-12"><div class="form-check form-switch d-inline-block"><input class="form-check-input" type="checkbox" role="switch" id="twofa" name="twofa" value="1"<?= $v['twofa'] ? ' checked' : '' ?>><label class="form-check-label" for="twofa"><?= h(t('wiz_twofa')) ?></label></div><?= $tip(t('wiz_twofa_tip')) ?></div>
@@ -174,8 +179,8 @@ nu_layout_start(t('wiz_title'), 'home');
 		<?php if ($v['pw1'] !== ''): ?><div class="alert alert-info small mt-3 mb-0"><?= h(t('wiz_pw_relogin_note')) ?></div><?php endif; ?>
 		<?php endif; ?>
 
-		<div class="d-flex justify-content-between mt-4 gap-2">
-			<?php if ($i > 0): ?><button class="btn btn-outline-secondary" type="submit" name="action" value="back" formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button><?php else: ?><span></span><?php endif; ?>
+		<div class="d-flex flex-wrap mt-4 gap-3"><?php // Next right next to Back, with some space (0.8.542) ?>
+			<?php if ($i > 0): ?><button class="btn btn-outline-secondary" type="submit" name="action" value="back" formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button><?php endif; ?>
 			<?php if ($step === 'summary'): ?>
 			<button class="btn btn-primary" type="submit" name="action" value="apply" id="wizApply" data-nu-busy="<?= h(t('wiz_applying')) ?>"><i class="bi bi-check2"></i> <?= h(t('wiz_apply')) ?></button>
 			<?php else: ?>
@@ -186,4 +191,4 @@ nu_layout_start(t('wiz_title'), 'home');
 	<?php endif; ?>
 </div>
 <?php
-nu_layout_end();
+nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nusetupwizard.js') . '"></script>');   // time zone: searchable (0.8.536); language switch (0.8.543)

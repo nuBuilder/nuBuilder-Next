@@ -462,6 +462,7 @@ try {
 				NuFormat::ensureSaved($fields[$fk] ?? null);           // built-in format → zzzzsys_format, so nuBuilder knows it
 			}
 
+			if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);   // spaces at the ends (0.8.536)
 			$type = (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '');
 			$fid  = (string)($fields['sob_all_id'] ?? $existing['sob_all_id'] ?? '');
 			if (!in_array($type, NB_TYPES, true)) nb_err(t('builder_err_type'));

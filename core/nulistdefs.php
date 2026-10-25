@@ -24,14 +24,14 @@ final class NuListDefs
 {
 	/** @return array<string, array> */
 	/** Keys of all lists with views (0.8.329: users, access; 0.8.334: the other system lists). */
-	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog'];
+	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients'];
 
 	public static function get(string $list): ?array
 	{
 		return match ($list) {
 			'users' => self::users(), 'access' => self::access(), 'forms' => self::forms(), 'procedures' => self::procedures(), 'reports' => self::reports(),
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),
-			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(),
+			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(), 'userfields' => self::userFields(), 'apiclients' => self::apiClients(),
 			default => null,
 		};
 	}
@@ -848,6 +848,131 @@ final class NuListDefs
 		if ($v === null || $v === '') return '';
 		$ts = strtotime((string)$v);
 		return $ts ? date('d.m.Y H:i:s', $ts) : (string)$v;
+	}
+
+	// ------------------------------------------------------------------ custom user fields (0.8.546; before: a table of its own in pages/nuuserfields.php)
+
+	private static function userFields(): array
+	{
+		NuSchema::ensure();
+		$T = NuUserFields::TABLE;
+		$canChange = NuAdmin::can('userfields', 'change') && empty(NuAuth::user()['demo']);
+		$yes = static fn(string $a) => static fn($r) => (string)$r[$a] === '1' ? t('yes') : '';
+		$flag = static fn(string $a) => static fn($r) => (string)$r[$a] === '1' ? '<span class="text-success">✔</span>' : '';
+		$move = static function ($r): string {
+			$out = '';
+			foreach (['up' => ['bi-arrow-up', 'home_move_up'], 'down' => ['bi-arrow-down', 'home_move_down']] as $dir => [$ic, $lbl]) {
+				$out .= '<form method="post" action="' . h(nu_url('userfields')) . '" class="d-inline">' . nu_csrf_field() . '<input type="hidden" name="action" value="move">'
+					. '<input type="hidden" name="id" value="' . h((string)$r['__id']) . '"><input type="hidden" name="dir" value="' . $dir . '">'
+					. '<button class="btn btn-sm btn-outline-secondary nuRowBtn" type="submit" title="' . h(t($lbl)) . '" aria-label="' . h(t($lbl)) . '"><i class="bi ' . $ic . '"></i></button></form> ';
+			}
+			return $out;
+		};
+		$cols = [
+			'order' => ['label' => '', 'select' => ['uf_sort' => 'sort'], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'noexport' => true, 'if' => static fn() => $canChange,
+				'text' => static fn($r) => '', 'html' => $move],
+			'label' => ['label' => t('uf_label'), 'main' => true, 'locked' => true, 'select' => ['uf_label' => 'label'], 'sort' => 'label',
+				'text' => static fn($r) => NuTranslate::text((string)$r['uf_label'])],
+			'code' => ['label' => t('uf_code'), 'select' => ['uf_code' => 'code'], 'sort' => 'code', 'class' => 'small font-monospace',
+				'text' => static fn($r) => '#USER_' . strtoupper((string)$r['uf_code']) . '#'],
+			'type' => ['label' => t('uf_type'), 'select' => ['uf_type' => 'type'], 'sort' => 'type', 'class' => 'small', 'text' => static fn($r) => t('uf_type_' . $r['uf_type'])],
+			'edit_by' => ['label' => t('uf_edit_by'), 'select' => ['uf_edit_by' => 'edit_by'], 'sort' => 'edit_by', 'class' => 'small', 'text' => static fn($r) => t('uf_edit_' . $r['uf_edit_by'])],
+			'required' => ['label' => t('uf_required'), 'select' => ['uf_required' => 'required'], 'sort' => 'required', 'align' => 'center', 'text' => $yes('uf_required'), 'html' => $flag('uf_required')],
+			'unique' => ['label' => t('uf_unique'), 'select' => ['uf_unique' => 'is_unique'], 'sort' => 'is_unique', 'align' => 'center', 'text' => $yes('uf_unique'), 'html' => $flag('uf_unique')],
+			'in_list' => ['label' => t('uf_in_list'), 'select' => ['uf_in_list' => 'in_list'], 'sort' => 'in_list', 'align' => 'center', 'text' => $yes('uf_in_list'), 'html' => $flag('uf_in_list')],
+			'default' => self::col('uf_default', 'default_value', t('uf_default'), 'small text-break'),
+			'hint' => self::col('uf_hint', 'hint', t('uf_hint'), 'small text-break') + ['html' => static fn($r) => h(mb_strimwidth((string)$r['uf_hint'], 0, 90, '…'))],
+			'sort' => self::col('uf_sort2', 'sort', t('lv_sort_order'), 'small') + ['align' => 'end'],
+			'updated' => ['label' => t('fi_changed'), 'select' => ['uf_updated' => 'updated_at'], 'sort' => 'updated_at', 'class' => 'small text-nowrap',
+				'text' => static fn($r) => $r['uf_updated'] ? date('d.m.Y H:i', strtotime((string)$r['uf_updated'])) : ''],
+			'id' => self::idCol('zzzzsys_nunext_user_field_id'),
+		];
+		$filters = [
+			'type' => ['label' => t('uf_type'), 'type' => 'select', 'options' => static fn() => array_combine(array_keys(NuUserFields::TYPES), array_map(static fn($k) => t('uf_type_' . $k), array_keys(NuUserFields::TYPES))),
+				'where' => static fn(string $v) => isset(NuUserFields::TYPES[$v]) ? ['type = ?', [$v]] : null],
+			'edit_by' => ['label' => t('uf_edit_by'), 'type' => 'select', 'options' => static fn() => array_combine(NuUserFields::EDIT_BY, array_map(static fn($k) => t('uf_edit_' . $k), NuUserFields::EDIT_BY)),
+				'where' => static fn(string $v) => in_array($v, NuUserFields::EDIT_BY, true) ? ['edit_by = ?', [$v]] : null],
+		];
+		$base = ['columns' => ['order', 'label', 'code', 'type', 'edit_by', 'required', 'unique'], 'card' => ['title' => 'label', 'badge' => 'type', 'lines' => ['code', 'edit_by']],
+			'sort' => ['sort', 'asc'], 'per' => 50, 'filters' => ['shown' => ['type', 'edit_by'], 'values' => []]];
+		return [
+			'key' => 'userfields', 'title' => t('uf_title'), 'route' => 'userfields', 'form' => NuAcl::FORM_USERFIELD,
+			'from' => " FROM $T", 'where' => [], 'params' => [], 'id' => 'zzzzsys_nunext_user_field_id',
+			'link' => static fn($r) => nu_url('userfields', ['id' => $r['__id']]),
+			'search' => ['code', 'label', 'hint'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'compact' => ['columns' => ['label', 'code', 'type']] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
+
+	// ------------------------------------------------------------------ REST API clients (0.8.547; before: a table of its own in pages/nuapiclients.php)
+
+	private static function apiClients(): array
+	{
+		NuApiClient::ensure();
+		$db = nu_db();
+		$C = NuApiClient::CLIENT;
+		$now = date('Y-m-d H:i:s');
+		$state = static fn($r) => (string)$r['api_active'] !== '1' ? 'off' : ($r['api_expires'] && nu_is_expired($r['api_expires']) ? 'expired' : 'on');
+		$scopes = static fn($r) => NuApiClient::scopesOf(['scopes' => $r['api_scopes']]);
+		$dt = static fn(string $a, string $fmt = 'd.m.Y H:i') => static fn($r) => $r[$a] ? date($fmt, strtotime((string)$r[$a])) : '';
+		$cols = [
+			'name' => ['label' => t('api_name'), 'main' => true, 'locked' => true, 'select' => ['api_name' => 'c.name'], 'sort' => 'c.name', 'text' => static fn($r) => (string)$r['api_name']],
+			'client_id' => self::col('api_client_id', 'c.client_id', 'client_id', 'small font-monospace text-break'),
+			'user' => ['label' => t('api_user'), 'select' => ['api_login' => 'u.sus_login_name', 'api_access' => 'a.sal_code'], 'sort' => 'u.sus_login_name', 'class' => 'small',
+				'text' => static fn($r) => trim((string)$r['api_login'] . ((string)$r['api_access'] !== '' ? ' · ' . $r['api_access'] : '')),
+				'html' => static fn($r) => h((string)($r['api_login'] ?? '–')) . ((string)$r['api_access'] !== '' ? ' ' . self::badge((string)$r['api_access'], 'bg-secondary-subtle text-secondary-emphasis border') : '')],
+			// scopes (0.8.547): a small button with the number; a click opens the list – no wide row of badges, also on phones
+			'scopes' => ['label' => t('api_scopes'), 'select' => ['api_scopes' => 'c.scopes'], 'sort' => null, 'class' => 'small',
+				'text' => static fn($r) => implode(', ', $scopes($r)),
+				'html' => static function ($r) use ($scopes): string {
+					$s = $scopes($r);
+					if (!$s) return '<span class="text-body-secondary">' . h(t('api_scopes_none')) . '</span>';
+					$items = '';
+					foreach ($s as $x) $items .= '<li class="dropdown-item-text small"><code>' . h($x) . '</code> – ' . h(t('api_scope_' . str_replace(':', '_', $x))) . '</li>';
+					return '<div class="dropdown d-inline-block nuApiScopes"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-popper-config=\'{"strategy":"fixed"}\' aria-expanded="false" title="'
+						. h(implode(', ', $s)) . '"><i class="bi bi-key me-1"></i>' . h(t('api_scopes_n', count($s))) . '</button><ul class="dropdown-menu shadow-sm">' . $items . '</ul></div>';
+				}],
+			'status' => ['label' => t('status'), 'select' => ['api_active' => 'c.active', 'api_expires' => 'c.expires_on'], 'sort' => 'c.active', 'align' => 'center',
+				'text' => static fn($r) => t(['on' => 'api_active', 'off' => 'api_inactive', 'expired' => 'api_expired'][$state($r)]),
+				'html' => static fn($r) => self::badge(t(['on' => 'api_active', 'off' => 'api_inactive', 'expired' => 'api_expired'][$state($r)]), ['on' => 'text-bg-success', 'off' => 'text-bg-secondary', 'expired' => 'text-bg-warning'][$state($r)])],
+			'last_used' => ['label' => t('api_last_used'), 'select' => ['api_last' => 'c.last_used_at'], 'sort' => 'c.last_used_at', 'class' => 'small text-nowrap', 'text' => $dt('api_last')],
+			'expires' => ['label' => t('user_expires'), 'select' => ['api_exp2' => 'c.expires_on'], 'sort' => 'c.expires_on', 'class' => 'small text-nowrap', 'text' => $dt('api_exp2', 'd.m.Y')],
+			'rate' => ['label' => t('api_rate'), 'select' => ['api_rate' => 'c.rate_limit'], 'sort' => 'c.rate_limit', 'class' => 'small', 'align' => 'end', 'text' => static fn($r) => (string)($r['api_rate'] ?? '')],
+			'ip' => self::col('api_ip', 'c.ip_allow', t('api_ip'), 'small text-break') + ['sort' => null],
+			'created' => ['label' => t('api_created'), 'select' => ['api_created' => 'c.created_at'], 'sort' => 'c.created_at', 'class' => 'small text-nowrap', 'text' => $dt('api_created')],
+			'id' => self::idCol('c.zzzzsys_nunext_api_client_id'),
+		];
+		$filters = [
+			'status' => ['label' => t('status'), 'type' => 'select',
+				'options' => static fn() => ['on' => t('api_active'), 'off' => t('api_inactive'), 'expired' => t('api_expired')],
+				'where' => static fn(string $v) => match ($v) {
+					'on' => ["c.active = '1' AND (c.expires_on IS NULL OR c.expires_on > ?)", [$now]],
+					'off' => ["COALESCE(c.active, '0') <> '1'", []],
+					'expired' => ["c.active = '1' AND c.expires_on IS NOT NULL AND c.expires_on <= ?", [$now]],
+					default => null,
+				}],
+			'scope' => ['label' => t('api_scopes'), 'type' => 'select',
+				'options' => static fn() => array_combine(array_keys(NuApiClient::SCOPES), array_keys(NuApiClient::SCOPES)),
+				'where' => static fn(string $v) => isset(NuApiClient::SCOPES[$v]) ? ['c.scopes LIKE ?', ['%"' . $v . '"%']] : null],
+		];
+		$base = ['columns' => ['name', 'user', 'scopes', 'status', 'last_used'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['user', 'scopes', 'last_used']],
+			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['status', 'scope'], 'values' => []]];
+		return [
+			'key' => 'apiclients', 'title' => t('api_title'), 'route' => 'apiclients', 'form' => NuAcl::FORM_APICLIENT,
+			'from' => " FROM $C c LEFT JOIN zzzzsys_user u ON " . $db->sameText('u.zzzzsys_user_id', 'c.user_id') . ' LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id',
+			'where' => [], 'params' => [], 'id' => 'c.zzzzsys_nunext_api_client_id',
+			'link' => static fn($r) => nu_url('apiclients', ['id' => $r['__id']]),
+			'search' => ['c.name', 'c.client_id', 'u.sus_login_name', 'a.sal_code', 'c.scopes'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'compact' => ['columns' => ['name', 'status', 'scopes'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['scopes']]] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
 	}
 
 	private static function emailLog(): array

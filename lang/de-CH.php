@@ -20,7 +20,7 @@ return [
 	'home_u_mine_bar' => 'Favoriten mit dem Stern markieren und nicht benötigte Kacheln ausblenden. «Fertig» speichert – nur für dich.',
 	'home_u_all_mine_hidden' => 'Du hast alle Kacheln ausgeblendet – «Für mich anpassen» zeigt sie wieder.',
 	'home_u_empty_editor' => 'Noch keine Kacheln – «Anpassen» klicken und Kacheln hinzufügen («Kachel hinzufügen»).',
-	'uf_sub' => 'Zusätzliche Felder des Benutzerformulars – im Tab «Weitere», gespeichert in zzzzsys_nunext_user_ext.',
+	'uf_sub' => 'Zusätzliche Felder des Benutzerformulars – im Tab «%s», gespeichert in zzzzsys_nunext_user_ext.',
 	'uf_in_list_tip' => 'Als Spalte angeboten (in einer Listenansicht oder «Alle Spalten» wählen), als Filter bei Auswahllisten, Ja / Nein, Datum und kurzen Texten, und von der Listensuche durchsucht.',
 	'uf_delete_confirm' => 'Feld «%s» löschen? Die Spalte und die Werte von %d Benutzern werden entfernt – bei Bedarf vorher herunterladen.',
 	'uf_deleted' => 'Feld «%s» gelöscht (Werte von %d Benutzern entfernt).',
