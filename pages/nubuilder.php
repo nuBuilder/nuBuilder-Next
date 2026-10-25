@@ -208,6 +208,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 		<?php endif; ?>
 		<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('form', ['f' => $meta->id])) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('builder_open_form')) ?></a>
 		<?php if (!$meta->isSystem()): ?><a class="btn btn-sm btn-outline-secondary" id="nbAi" href="<?= h(nu_url('formai', ['f' => $meta->id])) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_change')) ?></a><?php endif; ?>
+		<?php if (!$meta->isSystem() && $meta->type() !== 'page'): ?><a class="btn btn-sm btn-outline-secondary" id="nbDataAccess" href="<?= h(nu_url('dataaccess', ['f' => $meta->id])) ?>"><i class="bi bi-shield-lock me-1"></i><?= h(t('da_title')) ?></a><?php endif; ?>
 		<?php if (!$meta->isSystem() && $canDeleteForm): ?>
 			<button class="btn btn-sm btn-outline-danger" type="button" id="nbDeleteForm"><i class="bi bi-trash me-1"></i><?= h(t('builder_delete_form')) ?></button>
 		<?php endif; ?>

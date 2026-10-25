@@ -672,6 +672,29 @@
 		});
 	});
 
+	// ---------------------------------------------------------------- tabs that remember the open tab (0.8.484, access level form)
+	// <ul class="nav-tabs" data-nu-tabfield="<hidden input id>">: the open tab's data-nu-tab goes into that input (sent with Save, so the
+	// page after saving shows the same tab) and into the address (?tab=…, kept on reload); a field the browser finds invalid opens its tab.
+	$$('ul[data-nu-tabfield]').forEach(function (tabs) {
+		var field = document.getElementById(tabs.getAttribute('data-nu-tabfield'));
+		if (!field) return;
+		tabs.addEventListener('shown.bs.tab', function (e) {
+			var v = e.target.getAttribute('data-nu-tab') || '';
+			field.value = v;
+			try {
+				var u = new URL(window.location.href);
+				if (v) u.searchParams.set('tab', v); else u.searchParams.delete('tab');
+				window.history.replaceState(window.history.state, '', u.toString());
+			} catch (x) { /* old browser: the address stays */ }
+		});
+		if (field.form) field.form.addEventListener('invalid', function (e) {
+			var pane = e.target.closest && e.target.closest('.tab-pane');
+			if (!pane || pane.classList.contains('active')) return;
+			var btn = tabs.querySelector('[data-bs-target="#' + pane.id + '"]');
+			if (btn) nuBs.tab(btn).show();
+		}, true);
+	});
+
 	// ---------------------------------------------------------------- access level: form rights grid
 	var body = $('.js-rights-body');
 	if (body) {
@@ -685,8 +708,7 @@
 
 		var refresh = function () {
 			var all = rows(), n = all.filter(function (r) { return !r.classList.contains('nuRowRemoved'); }).length;
-			var badge = $('.js-rights-count');
-			if (badge) badge.textContent = n;                       // rows that stay after saving
+			$$('.js-rights-count').forEach(function (b) { b.textContent = n; });                       // rows that stay after saving
 			var empty = $('.js-rights-empty', body);
 			if (empty) empty.classList.toggle('d-none', all.length > 0);
 			syncColumnToggles();

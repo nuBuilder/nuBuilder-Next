@@ -136,7 +136,10 @@ final class NuRecord
 		$audit = ['form_id' => $meta->id, 'form_code' => $meta->code(), 'source' => 'form', 'action' => $isNew && !empty($p['clone']) ? 'clone' : null];
 		NuAudit::begin();                                         // audit trail (0.8.350): main record and sub-form rows share one change
 		try {
-		$newId = $db->transaction(function (NuDB $db) use ($meta, $isNew, $recordId, $values, $edited, $columns, $table, $pk, $posted, $oldRow, $audit, &$written, $checkCc, $p) {
+		// clone (0.8.480): the source record, when the user may see it – for the fields he cannot write
+		$cloneFrom = $isNew && !empty($p['clone']) ? trim((string)($p['clone_from'] ?? '')) : '';
+		$cloneSrc = $cloneFrom !== '' && NuFieldAccess::rulesOfForm($meta->id) && self::visible($meta, $cloneFrom) ? self::load($meta, $cloneFrom) : null;
+		$newId = $db->transaction(function (NuDB $db) use ($meta, $isNew, $recordId, $values, $edited, $columns, $table, $pk, $posted, $oldRow, $audit, &$written, $checkCc, $p, $cloneSrc) {
 			if ($checkCc && ($c = NuConflict::check($meta, $recordId, $p, true))) throw new NuConflictFound($c);   // again, with the rows locked
 			$row = [];
 			foreach ($meta->objects as $o) {
@@ -147,8 +150,13 @@ final class NuRecord
 					$row[$col] = $n;                                   // nuBuilder: new records get the next number (nuAutoNumber / nuUpdateCounter)
 					continue;
 				}
+				// a clone takes the locked values (protected, masked, withheld) of its source from the database, never from the browser (0.8.480)
+				if ($cloneSrc && $f !== $meta->primaryKey() && (string)$o['sob_all_cloneable'] !== '0' && in_array(NuFieldAccess::mode($o), ['prot', 'mask', 'wh'], true)) {
+					if (($col = self::column($columns, $f)) !== null && ($sc = self::column($cloneSrc, $f)) !== null && $cloneSrc[$sc] !== null) $row[$col] = $cloneSrc[$sc];
+					continue;
+				}
 				if (!array_key_exists($f, $values) || $f === $meta->primaryKey()) continue;
-				if (self::protectedField($o)) continue;          // Security check: read-only / hidden objects are not taken from the browser
+				if (!NuFieldAccess::writable($o, $isNew)) { self::dropped($meta, $f); continue; }   // read only / hidden (protect_fields), field data access (0.8.480)
 				$col = self::column($columns, $f);
 				if ($col === null) continue;
 				if (!$isNew && !isset($edited[$f])) continue;
@@ -270,7 +278,7 @@ final class NuRecord
 				$f = (string)$so['sob_all_id'];
 				if (!in_array($so['sob_all_type'], self::SAVED_TYPES, true) || ($so['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($so)) continue;   // Uppy: files go to the server folder (0.8.459)
 				if (!array_key_exists($f, $vals)) continue;
-				if (self::protectedField($so)) continue;
+				if (!NuFieldAccess::writable($so, $rowPk === '')) { self::dropped($sub, $f); continue; }   // field data access per row (0.8.480)
 				$col = self::column($columns, $f);
 				if ($col === null || $col === $pkCol || $col === $fkCol || $col === $nl) continue;
 				if ($rowPk !== '' && !isset($ed[$f])) continue;
@@ -387,7 +395,7 @@ final class NuRecord
 		foreach ($meta->objects as $o) {
 			$v = (string)$o['sob_all_validate'];
 			if (!in_array($v, ['1', '2', '3'], true) || !in_array($o['sob_all_type'], self::SAVED_TYPES, true) || NuRender::isUppy($o)) continue;
-			if (self::hiddenFor($o)) continue;
+			if (self::hiddenFor($o) || !NuFieldAccess::writable($o, $recordId === null)) continue;   // what the user cannot write is not checked from the post (0.8.480)
 			$f = (string)$o['sob_all_id'];
 			$label = self::label($o);
 			$val = $values[$f] ?? '';
@@ -404,7 +412,7 @@ final class NuRecord
 		// text masks that must be complete
 		foreach ($meta->objects as $o) {
 			$fmt = self::maskOf($o);
-			if ($fmt === '' || self::hiddenFor($o)) continue;
+			if ($fmt === '' || self::hiddenFor($o) || !NuFieldAccess::writable($o, $recordId === null)) continue;
 			$val = $values[(string)$o['sob_all_id']] ?? '';
 			if (is_string($val) && !NuFormat::maskComplete(trim($val), $fmt)) $errors[] = ['message' => t('fmt_err_incomplete', self::label($o)), 'field' => (string)$o['sob_all_id']];
 		}
@@ -515,10 +523,20 @@ final class NuRecord
 		}
 	}
 
+	/** Hidden for this user: nuBuilder's access 2 / 3 / 4, or field data access hide / withheld (0.8.480, NuFieldAccess). */
 	public static function hiddenFor(array $o): bool
 	{
-		$a = self::accessOf($o);
-		return $a === '2' || (in_array($a, ['3', '4'], true) && !NuAuth::user()['globeadmin']);
+		return NuFieldAccess::hidden($o);
+	}
+
+	/** A posted value the user may not write was left out (once per field and request, in Debug results – nuBuilder JavaScript often fills such fields). */
+	private static function dropped(NuFormMeta $meta, string $field): void
+	{
+		static $seen = [];
+		$k = $meta->id . '.' . $field;
+		if (isset($seen[$k]) || !NuFieldAccess::rulesOfForm($meta->id)) return;
+		$seen[$k] = true;
+		try { NuDebugLog::write('field access: ' . $meta->code() . '.' . $field . ' not saved (' . (NuAuth::user()['login'] ?? '') . ')', 'fieldaccess'); } catch (Throwable) {}
 	}
 
 	private static function label(array $o): string

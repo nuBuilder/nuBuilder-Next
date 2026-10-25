@@ -1,5 +1,48 @@
 # nuBuilder Next – to do
 
+## Open questions for the owner
+- [ ] `nuHideHolders(0)`: hide only the form's button row (nuBuilder's meaning, current) or also nuBuilder Next's top bar (logo, search,
+      user menu)? The owner's note says "param 0: top navbar" – to decide (0.8.468).
+
+## Handover of 25 Oct 2026 (security assessment, nuFiles, specs 03–08 – base 0.8.460) – open
+- [x] Step 2 done in 0.8.479 (nuFiles C1–C5, C9; reauth default `code`, data in `custom/pages/nufiles/_data/`). Open from nuFiles:
+      C6 page cron hook (trash purge without visitors), C7 Security check entries for risky nuFiles settings, C10 more languages
+      (French, Italian … – nuFiles has English and German).
+- [x] Step 3 done in 0.8.480 (spec 04 field data access, spec 07 list column visibility). Open from the specs: rules are not copied
+      by form clone / App cloner; builder object panel shows nuBuilder's access only (rules on Form builder → Data access); report
+      overview "forms × fields × subjects"; logging reads of withheld fields; masked "replace the whole value"; report SQL stays the
+      developer's (nuFieldAccessAllowed); Security check list of ro/hide fields while protect_fields is off.
+- [ ] Step 4: CSV import restrictions (06), nuUpload (03), external DB connections (08) as needed.
+- [ ] Security assessment, not built: HSTS header over HTTPS, CSP without 'unsafe-inline' / 'unsafe-eval' on form pages, constant-time
+      sign-in, SameSite=Strict for the admin area. Re-run the assessment's test kit against the live server (HTTPS, real access levels).
+
+## 0.8.480 Data access (fields + list columns) – please verify
+- [ ] Form builder → Data access on a real form: Withheld / Masked / Protected / Insert only / Update only for an access level, a user,
+      a team; the user's edit form, list, export (Excel / CSV / print) and the record history show no withheld value.
+- [ ] Forms whose JavaScript reads a field that is now withheld (nuGetValue returns '' – the control is gone).
+- [ ] Preview as user matches what that user really gets; "Act as user" too.
+- [ ] Lookup objects set to Masked show a locked text (the lookup button is gone).
+
+## 0.8.479 File Manager = nuFiles – please verify
+- [ ] After the update: `third_party/tinyfilemanager/` and `vendor/packs/tinyfilemanager-*` of nuBuilder Next are gone (Security check
+      red if one is left); nuBuilder's own `third_party/tinyfilemanager/` is untouched.
+- [ ] Start page → File Manager → *Set up the File Manager*: the Uploads share points to the folder of the upload procedure
+      (`nu_uploads/` next to or inside the web root); the Web root share asks for the password when it was last entered > 15 min ago.
+- [ ] Give the form `nufiles` to an access level and a grant in the settings; that user sees only the granted share.
+- [ ] nginx: `location ^~ /custom/ { deny all; }` covers `custom/pages/nufiles/_data/`; add `apps` to the deny rule (built-in pages, 0.8.481).
+
+## 0.8.478 Security quick wins – please verify
+- [ ] Update on the live server: step 0022 replaces `nu_upload_file_template` only when it is an unchanged copy; otherwise the Security
+      check shows it red – then set `$targetDirectory` to a folder outside the web root. Files uploaded before stay where they are
+      (in the web root): move them and delete them there.
+- [ ] InfinityFree: `nu_uploads/` next to `htdocs` cannot be created → it is made inside `htdocs` with a deny-all `.htaccess`; check that
+      `https://<site>/nu_uploads/<file>` answers 403.
+- [ ] Apache: a folder without index page (e.g. `vendor/bundled/`) shows an empty listing; no error 500 from the new `IndexIgnore` line.
+- [ ] Forms whose JavaScript puts `onclick` buttons into `nuMessage`: add `nuNextSafeHtml(false);` (the browser console names removed parts).
+- [ ] Image objects: users still see the images of the forms they can open; a file used by an image object on another form now answers 404.
+- [ ] Decide for existing installations: switch on *Records only through the form's list* and *Do not save read-only and hidden fields*
+      (Security check marks both orange while off) after checking the applications.
+
 ## 0.8.462 Gap analysis B2, B5–B7 and smaller differences – please verify
 - [ ] B2: a copy of nuBuilder Next next to a live nuBuilder (on a COPY of its database): the login page and a failed sign-in create no
       `zzzzsys_nunext_*` tables; the globeadmin's first sign-in creates them; with an existing nuBuilder database and without

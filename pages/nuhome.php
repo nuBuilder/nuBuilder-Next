@@ -318,6 +318,8 @@ if ($tutBanner): ?>
 	$units = NuHome::tabsOf($layout, $groups);                // tabs with their groups; without tabs every group is a tab of its own
 	$tabbed = in_array($view['nav'], ['tabs', 'sidebar'], true);
 	$favCount = 0; foreach ($groups as $g) foreach ($g['items'] as $it) if (!empty($it['fav'])) $favCount++;
+	// row "Recently used" (0.8.492): the same list as the side bar (NuSidebar, per user in the database) – not in the layout editor
+	$recentItems = $editorPage ? [] : NuSidebar::data(8)['recent'];
 	$favOn = $favCount > 0 && NuHome::favOnly();
 	$viewCls = 'nuHomeNav-' . $view['nav'] . ' nuHomeDesc-' . $view['desc'] . ' nuHomeDens-' . $view['density'] . ' nuHomeIcn-' . $view['icon']
 		. ($view['groupColors'] ? ' nuHomeGcol' : '') . (!$view['badges'] ? ' nuHomeNoBadges' : '') . (!$view['actions'] ? ' nuHomeNoActions' : '') . ($favOn ? ' nuHomeFavOnly' : '')
@@ -372,12 +374,17 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 		<div class="alert alert-info"><?= h(t($userPage ? ($editorPage ? 'home_u_empty_editor' : ($mineHidden ? 'home_u_all_mine_hidden' : 'home_u_empty')) : 'home_all_hidden')) ?></div>
 	<?php else: ?>
 	<section class="nuHomeStrip" data-nu-strip="fav"<?= $view['favStrip'] && $favCount ? '' : ' hidden' ?> aria-label="<?= h(t('home_v_fav_row')) ?>">
-		<h2 class="nuHomeGroupTitle"><i class="bi bi-star-fill nuHomeStripStar" aria-hidden="true"></i><?= h(t('home_v_fav_row')) ?></h2>
-		<div class="nuHomeChips"><?php foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) echo $chip((string)$k, $it); ?></div>
+		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true" aria-controls="nuHomeStripFav"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-star-fill nuHomeStripStar" aria-hidden="true"></i><?= h(t('home_v_fav_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button></h2>
+		<div class="nuHomeChips" id="nuHomeStripFav"><?php foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) echo $chip((string)$k, $it); ?></div>
 	</section>
 	<section class="nuHomeStrip" data-nu-strip="recent" hidden aria-label="<?= h(t('home_v_recent_row')) ?>">
-		<h2 class="nuHomeGroupTitle"><i class="bi bi-clock-history" aria-hidden="true"></i><?= h(t('home_v_recent_row')) ?></h2>
-		<div class="nuHomeChips"></div>
+		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true" aria-controls="nuHomeStripRecent"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-clock-history" aria-hidden="true"></i><?= h(t('home_v_recent_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button><?php if ($recentItems): ?><form method="post" action="<?= h(nu_url('sidebar')) ?>" class="nuHomeStripClearForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="clear"><input type="hidden" name="back" value="<?= h(nu_url('home')) ?>"><button type="submit" class="nuHomeStripClear" id="nuHomeRecentClear" title="<?= h(t('sb_recent_clear_menu')) ?>" aria-label="<?= h(t('sb_recent_clear_menu')) ?>"><i class="bi bi-x-circle" aria-hidden="true"></i></button></form><?php endif; ?></h2>
+		<div class="nuHomeChips" id="nuHomeStripRecent"><?php foreach ($recentItems as $it):
+			$body = '<span class="nu-tile-icon nuHomeIcon"' . ($it['color'] !== '' ? ' data-nu-color="' . h($it['color']) . '"' : '') . '><i class="bi ' . h($it['icon']) . '"></i></span><span class="nuHomeChipLabel">' . h($it['label']) . '</span>';
+			$attrs = ' data-nu-recent="' . h($it['key']) . '" title="' . h($it['label']) . '"' . ($it['color'] !== '' ? ' data-nu-gcolor="' . h($it['color']) . '"' : '');
+			if ($it['post']) echo '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="nuHomeTileForm">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h((string)$it['post']) . '"><button type="submit" class="nuHomeChip"' . $attrs . '>' . $body . '</button></form>';
+			else echo '<a class="nuHomeChip" href="' . h((string)$it['href']) . '"' . ($it['newtab'] ? ' target="_blank" rel="noopener"' : '') . $attrs . '>' . $body . '</a>';
+		endforeach; ?></div>
 	</section>
 	<?php if (count($units) > 1): ?>
 	<ul class="nav nav-tabs nuHomeTabs" role="tablist">
@@ -495,7 +502,7 @@ if ($admin || $userPage) {
 	$myFav = []; foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) $myFav[] = (string)$k;
 	foreach ($mineHidden as $k => $it) if (!empty($it['fav'])) $myFav[] = (string)$k;
 	$data = [
-		'url' => $selfUrl, 'csrf' => nu_csrf_token(), 'layout' => $layout, 'mode' => $mode,
+		'url' => $selfUrl, 'csrf' => nu_csrf_token(), 'layout' => $layout, 'mode' => $mode, 'usedUrl' => $editorPage ? '' : nu_url('sidebar'),
 		// a user's own favourites and hidden tiles (0.8.425)
 		'mine' => $mode === 'user' ? ['fav' => $myFav, 'hide' => array_values(array_map('strval', array_keys($mineHidden))), 'own' => array_key_exists('fav', $mine) || $hideList !== []] : null,
 		// View panel (0.8.420): the layout's view, this person's own changes, where a change may go, the saved layouts

@@ -225,12 +225,17 @@ final class NuBrowse
 
 		$cols = [];
 		foreach ($meta->browse as $i => $b) {
+			// column visibility / field data access (0.8.480, NuBrowseAccess): a hidden column is never selected, searched, filtered or
+			// sorted; a masked one is shown masked and is not searched, filtered or sorted. Columns keep their index (nu_c<index>).
+			$state = NuBrowseAccess::state($meta, $b);
+			if ($state === 'hide') continue;
 			$expr = trim(NuHash::replace((string)$b['sbr_display'], $hash, NuHash::SQL));   // nuBuilder replaces hash variables in the columns too
 			if ($expr === '' || strtolower($expr) === 'null') $expr = 'NULL';
-			$cols[] = [
+			$cols[$i] = [
+				'mask' => str_starts_with($state, 'mask:') ? substr($state, 5) : null,
 				'index' => $i, 'title' => (string)$b['sbr_title'], 'expr' => $expr, 'align' => (string)($b['sbr_align'] ?: 'l'),
 				'format' => (string)$b['sbr_format'], 'width' => (int)$b['sbr_width'], 'id' => (string)$b['zzzzsys_browse_id'],
-				'filter' => !empty(NuFormMeta::nunextJson($b['sbr_json'] ?? null)['filter']) && $expr !== 'NULL',
+				'filter' => !empty(NuFormMeta::nunextJson($b['sbr_json'] ?? null)['filter']) && $expr !== 'NULL' && !str_starts_with($state, 'mask:'),
 			];
 		}
 
@@ -244,7 +249,7 @@ final class NuBrowse
 			// nuBuilder's syntax (0.8.427): words and "phrases" must each be found in one of the searched columns; -word and -"phrase"
 			// must be in none of them (an empty column counts as not containing it – nuBuilder's NOT LIKE drops such rows)
 			$terms = self::terms($search);
-			$searched = array_filter($cols, static fn($c) => $c['width'] > 0 && $c['expr'] !== 'NULL' && !in_array($c['index'], (array)($opt['nosearch'] ?? []), true)
+			$searched = array_filter($cols, static fn($c) => $c['width'] > 0 && $c['expr'] !== 'NULL' && $c['mask'] === null && !in_array($c['index'], (array)($opt['nosearch'] ?? []), true)
 				&& (empty($opt['searchonly']) || in_array($c['index'], (array)$opt['searchonly'], true)));
 			foreach (['in' => ' OR ', 'out' => ' AND '] as $kind => $glue) {
 				foreach ($terms[$kind] as $term) {
@@ -286,7 +291,7 @@ final class NuBrowse
 
 		$sort = $opt['sort'] ?? null;
 		$dir  = strtolower((string)($opt['dir'] ?? 'asc')) === 'desc' ? 'DESC' : 'ASC';
-		if ($sort !== null && $sort !== '' && isset($cols[(int)$sort])) {
+		if ($sort !== null && $sort !== '' && isset($cols[(int)$sort]) && $cols[(int)$sort]['mask'] === null) {
 			$order = 'nu_c' . (int)$sort . " $dir";
 		} else {
 			$order = $defaultOrder !== '' ? $defaultOrder : "nu_pk";
@@ -296,9 +301,10 @@ final class NuBrowse
 		$rows = [];
 		foreach ($db->page($select . $from, $params, $order, $per, ($page - 1) * $per) as $r) {
 			$cells = $classes = [];
-			foreach ($cols as $c) {
-				$cells[]   = NuFormat::format(NuSecurity::demoMask($c['expr'], $r['nu_c' . $c['index']]), $c['format']);   // demo: no hashes / secrets
-				$classes[] = NuFormat::cssClass($r['nu_c' . $c['index']], $c['format']);
+			foreach ($cols as $k => $c) {
+				$v = $r['nu_c' . $c['index']];
+				$cells[$k]   = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : NuFormat::format(NuSecurity::demoMask($c['expr'], $v), $c['format']);   // demo: no hashes / secrets
+				$classes[$k] = $c['mask'] !== null ? '' : NuFormat::cssClass($v, $c['format']);
 			}
 			$rows[] = ['pk' => (string)$r['nu_pk'], 'cells' => $cells, 'classes' => $classes];
 		}

@@ -9,3 +9,10 @@
 		Deny from all
 	</IfModule>
 </FilesMatch>
+
+# No folder listings (0.8.478, security assessment K5): with Apache's autoindex on, folders without index file (vendor/bundled/,
+# _install/ …) would list their files. IndexIgnore needs the same "AllowOverride Indexes" as the cache rules in assets/.htaccess
+# (Options -Indexes would need "AllowOverride Options", which some hosts refuse with an error 500). nginx lists nothing by default.
+<IfModule mod_autoindex.c>
+	IndexIgnore *
+</IfModule>

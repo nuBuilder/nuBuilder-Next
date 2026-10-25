@@ -200,7 +200,7 @@ final class NuAudit
 		if (!$u || (($u['globeadmin'] ?? false) && empty($u['demo'])) || NuAcl::can(NuAcl::FORM_AUDIT)) return null;
 		$out = [];
 		$add = static function (NuFormMeta $m, string $table) use (&$out): void {
-			foreach ($m->objects as $o) if (!NuRecord::hiddenFor($o)) $out[strtolower($table)][strtolower((string)$o['sob_all_id'])] = $o;
+			foreach ($m->objects as $o) if (!NuRecord::hiddenFor($o) && !NuFieldAccess::masked($o)) $out[strtolower($table)][strtolower((string)$o['sob_all_id'])] = $o;   // withheld / masked: not in the history (0.8.480)
 		};
 		$add($meta, $meta->table());
 		foreach ($meta->objects as $o) {
@@ -280,7 +280,7 @@ final class NuAudit
 		$cols = self::formColumns($meta);
 		if ($cols !== null && $a['action'] !== 'delete') {
 			$o = $cols[strtolower($table)][strtolower((string)$a['column_name'])] ?? null;
-			if ($o === null || NuRecord::protectedField($o) || in_array((string)$o['sob_all_access'], ['1', '2', '4'], true)) throw new RuntimeException(t('err_forbidden'));
+			if ($o === null || !NuFieldAccess::writable($o, false) || in_array((string)$o['sob_all_access'], ['1', '2', '4'], true)) throw new RuntimeException(t('err_forbidden'));
 		}
 		$ctx = ['source' => 'restore', 'action' => 'restore', 'form_id' => $formId, 'form_code' => (string)$a['form_code'], 'parent_table' => (string)$a['parent_table'], 'parent_id' => (string)$a['parent_id']];
 		$exists = static fn() => (bool)$db->value('SELECT COUNT(*) FROM ' . NuDB::ident($table) . ' WHERE ' . NuDB::ident($pk) . ' = ?', [$rid]);

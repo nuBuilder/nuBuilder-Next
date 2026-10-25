@@ -44,8 +44,10 @@
 	function snippetMenu(cm, host, lang) {
 		var list = (D.snippets || []).filter(function (s) { return String(s[3] || '').toLowerCase() === lang; });
 		if (!list.length || !nuBs.ready()) return;
-		var btn = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-bs-toggle': 'dropdown', 'data-bs-auto-close': 'outside', 'aria-expanded': 'false', title: M.snippet},
-			[el('i', {'class': 'bi bi-file-earmark-code me-1'}), M.snippet || 'Snippet']);
+		// same box as the editor's tool buttons; on phones only the icon (0.8.475 – the label made the row twice as high)
+		var btn = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary procSnippetBtn', 'data-bs-toggle': 'dropdown', 'data-bs-auto-close': 'outside',
+			'aria-expanded': 'false', title: M.snippet, 'aria-label': M.snippet || 'Snippet'},
+			[el('i', {'class': 'bi bi-file-earmark-code', 'aria-hidden': 'true'}), el('span', {'class': 'procSnippetLabel', text: M.snippet || 'Snippet'})]);
 		var search = el('input', {type: 'search', 'class': 'form-control form-control-sm mb-1', placeholder: M.search || '', 'aria-label': M.search || ''});
 		var box = el('div', {'class': 'nuHashVarsList'});
 		var menu = el('div', {'class': 'dropdown-menu dropdown-menu-end p-2 nuHashVarsMenu'}, [search, box]);

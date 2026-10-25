@@ -8,11 +8,18 @@ defined('NU_ROOT') || exit;
  *   default  on / off for everyone without an own choice (the globeadmin)
  *   clear    empty my "Recently used"
  *   fav      ☆ of a start page tile (key) – the start page's favourites
+ *   used     a start page tile was opened (key; sent with navigator.sendBeacon, answers 204 – 0.8.492)
  */
 
 $u = NuAuth::user();
 $back = NuAuth::validNext(nu_post('back')) ?? nu_url('home');
 if (!nu_is_post()) nu_redirect($back);
+
+if (nu_post('action') === 'used') {
+	NuSidebar::recordTile(nu_post('key'));
+	http_response_code(204);
+	exit;
+}
 
 switch (nu_post('action')) {
 	case 'toggle':

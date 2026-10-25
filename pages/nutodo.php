@@ -5,7 +5,8 @@ defined('NU_ROOT') || exit;
 /*
  * Admin tools → To do (?p=todo): TODO.md of the installation as a page – only in developer mode (globeadmin + $nuConfigDevMode = true,
  * nuBuilder's switch, NuHash::devMode()), never for demo users. Read only; the small Markdown renderer covers what TODO.md uses:
- * headings, lists with [ ] / [x], indented continuation lines, `code`, **bold**, *italic*.
+ * headings, lists with [ ] / [x], indented continuation lines, `code`, **bold**, *italic*. Every "## " section folds (0.8.467,
+ * assets/js/nutodo.js: Collapse all / Expand all, folded sections remembered per device).
  */
 
 $u = NuAuth::user();
@@ -55,12 +56,30 @@ $flushList = static function () use (&$items, &$html, $inline, &$open, &$done) {
 	while ($depth >= 0) { $html .= '</ul>'; $depth--; }
 	$items = [];
 };
+// every "## " section folds (0.8.467): <details> with the heading as <summary> and the number of its open points
+$sec = null; $secs = 0;
+$closeSec = static function () use (&$sec, &$html, &$open) {
+	if ($sec === null) return;
+	$n = $open - $sec;
+	$html = str_replace('%%NU_TODO_OPEN%%', $n > 0 ? '<span class="badge rounded-pill text-bg-warning ms-2 nuTodoOpen">' . $n . '</span>' : '', $html) . '</details>';
+	$sec = null;
+};
 foreach ($lines as $line) {
 	if (trim($line) === '') { $flushPara(); continue; }
 	if (preg_match('/^(#{1,4})\s+(.*)$/', $line, $m)) {
 		$flushPara(); $flushList();
 		$lvl = min(6, strlen($m[1]) + 1);
-		$html .= '<h' . $lvl . ' class="nuTodoH' . strlen($m[1]) . '">' . $inline($m[2]) . '</h' . $lvl . '>';
+		$head = '<h' . $lvl . ' class="nuTodoH' . strlen($m[1]) . '">' . $inline($m[2]) . '</h' . $lvl . '>';
+		if (strlen($m[1]) === 2) {
+			$closeSec();
+			$sec = $open;
+			$secs++;
+			$html .= '<details class="nuTodoSec" open data-nu-todo-key="' . h(substr(md5(trim($m[2])), 0, 12)) . '"><summary>'
+				. '<i class="bi bi-chevron-down nuTodoChev" aria-hidden="true"></i>' . $head . '%%NU_TODO_OPEN%%</summary>';
+		} else {
+			if (strlen($m[1]) === 1) $closeSec();
+			$html .= $head;
+		}
 		continue;
 	}
 	if (preg_match('/^(\s*)[-*]\s+(?:\[( |x|X)\]\s+)?(.*)$/', $line, $m)) {
@@ -75,9 +94,9 @@ foreach ($lines as $line) {
 	$flushList();
 	$para[] = trim($line);
 }
-$flushPara(); $flushList();
+$flushPara(); $flushList(); $closeSec();
 
-nu_layout_start(t('todo_title'), 'home', ['container' => 'container-xl']);
+nu_layout_start(t('todo_title'), 'home', ['container' => 'nuContainer']);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
@@ -86,11 +105,13 @@ nu_layout_start(t('todo_title'), 'home', ['container' => 'container-xl']);
 <div class="nuTitleBar mb-3">
 	<h1 class="h3 mb-0"><i class="bi bi-list-check me-2"></i><?= h(t('todo_title')) ?></h1>
 	<?php if ($md !== ''): ?><div class="nuTitleSub text-body-secondary small"><?= h(t('todo_counts', $open, $done)) ?> · <code>TODO.md</code> · <?= h(date('d.m.Y H:i', (int)filemtime($file))) ?></div><?php endif; ?>
-	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?></div>
+	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
+		<?php if ($secs > 1): ?><button type="button" class="btn nuBtnAct" id="nuTodoAll" data-collapse="<?= h(t('todo_collapse_all')) ?>" data-expand="<?= h(t('todo_expand_all')) ?>"><i class="bi bi-arrows-collapse me-1" aria-hidden="true"></i><span><?= h(t('todo_collapse_all')) ?></span></button><?php endif; ?>
+	</div>
 </div>
 <?php if ($md === ''): ?>
 	<div class="alert alert-warning"><?= h(t('todo_missing')) ?></div>
 <?php else: ?>
 	<div class="card shadow-sm"><div class="card-body nuTodo"><?= $html ?></div></div>
 <?php endif; ?>
-<?php nu_layout_end();
+<?php nu_layout_end('<script src="' . nu_asset('assets/js/nutodo.js') . '"></script>');

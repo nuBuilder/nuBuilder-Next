@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.463');
+define('NU_VERSION', '0.8.492');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -34,7 +34,7 @@ const NU_AUTOLOAD = [
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
-	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php',
+	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
 ];
 spl_autoload_register(static function (string $class): void {
 	if (isset(NU_AUTOLOAD[$class])) require_once NU_ROOT . '/' . NU_AUTOLOAD[$class];

@@ -4,7 +4,7 @@ nuBuilder Next ("nuNext") is a modern PHP front end for **nuBuilder 4**. It runs
 with a live nuBuilder on the same database, and adds only its own tables (`zzzzsys_nunext_*`). One owner/developer (not named here – see the rule below).
 Short user-facing description and install: `README.md` (alpha warning on top, quick links, overview and features, install – the GitHub front page, keep it concise);
 the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions (0.2–0.7)" at the end). User documentation (shown in the app, `?p=help`):
-`docs/nunext-docs.htm`. Open points to verify: `TODO.md`. Differences to nuBuilder / not ported: `docs/porting-review.md`.
+`docs/nunext-docs.htm` (guide) + `docs/nunext-ref.htm` (code reference, 0.8.464). Open points to verify: `TODO.md`. Differences to nuBuilder / not ported: `docs/porting-review.md`.
 
 ## How work is delivered
 - Every request ends as a **new version**: bump, changelog, manifest, zips sent to the owner, who installs `nunext.zip` with Admin
@@ -40,7 +40,7 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
    then `php dev/lang_variants.php` and `php dev/check_lang.php`. Never edit `lang/en-US.php` / `lang/de-CH.php`.
 4. Sync to the test site, test in the browser (Playwright), look at screenshots; run `dev/tests/smoke.js` and the end-to-end suite
    `BASE=http://127.0.0.1:8099/nunext/ DB="-unu -pnu nutest" PKG=../nunext.zip NODE_PATH=$(npm root -g) node dev/tests/e2e.js`
-   (96 tests in 0.8.462: forms, sub-forms, nuBuilder hooks, lookups, permission items, rights, admin roles, demo mode (needs SITE=<site folder>),
+   (113 tests in 0.8.484: forms, sub-forms, nuBuilder hooks, lookups, permission items, rights, admin roles, demo mode (needs SITE=<site folder>),
    login links, user import, audit, notifications, list views, favourites, branding, dashboards, login limit, CSV import, update check, self-test, CSRF …;
    it saves the whole database first and puts it back – `ONLY=name1,name2` runs single tests). Add a test for every new feature.
    The test site runs with `$nuConfigDevMode = true`, so the in-app self-test (`?p=selftest`, core/nuselftest.php) runs too.
@@ -212,10 +212,30 @@ core/nuupload.php    NuUpload (0.8.459): uploads of nuBuilder's file objects wit
                      (nuBuilder's snippet, unchanged) and PROCEDURE (hardened nu_upload_file_template) with nuBuilder's row ids, step
                      0020-upload-template (ensureTemplates, when missing); builder: File target select + HTML, htmlTemplate() on switch; e2e uppy_upload
 core/nusidebar.php   NuSidebar (0.8.460): optional left side bar – favourites (= the start page's ☆ tiles, NuHome; favToggle) and recently used
-                     (zzzzsys_nunext_recent, step 0021, KEEP 10, 8 shown; pages of PAGE_KEYS + form:<id>, recorded by nu_layout_start); on / off per
+                     (zzzzsys_nunext_recent, step 0021, KEEP 10, 8 shown; pages of PAGE_KEYS + form:<id>, recorded by nu_layout_start also while the side bar is off,
+                     start page tiles through POST action used = sendBeacon → recordTile, 0.8.492; the start page's row Recently used = the same list, drawn by
+                     pages/nuhome.php); on / off per
                      user (sus_json NUNEXT_SIDEBAR, globeadmin: setting sidebar_ga, demo: session), default sidebar_default (globeadmin, user menu);
                      drawn by nu_sidebar() in core/nulayout.php (.nuShell wrapper), POST route ?p=sidebar (toggle / default / clear / fav, demo READ_POSTS),
                      assets/js/nusidebar.js (« icon strip: localStorage nunext-sidebar-collapsed, set early by nutheme.js; drawer < 992 px); e2e sidebar
+core/nufilemanager.php NuFileManager (0.8.479, handover nuFiles): File Manager = the page form nufiles (built-in page apps/nufiles/,
+                     NuPage::BUILTIN – never ship files under custom/ except the shippedCustom list: older versions refuse the package, 0.8.481;
+                     data in custom/pages/nufiles/_data via \$nu->dataDir()), route ?p=filemanager (pages/nufilemanager.php: redirect to the page, or setup()
+                     for the globeadmin – page form + default settings: shares uploads (= upload template folder) + webroot (code), reauth
+                     code); entries: tile 'tfm', user menu, form ⋮, nuVendorLogin('TFM'); admin right filemanager; Tiny File Manager removed
+                     (step 0023-retire-tfm: NuLibs::retire + third_party/tinyfilemanager of nuBuilder Next). Page API added: $nu->vendor /
+                     recentAuth / reauthUrl / dataDir / dangerousName. e2e file_manager
+core/nufieldaccess.php NuFieldAccess (0.8.480, handover spec 04): field data access – modes edit / ro / hide / prot / ins / upd / mask / wh per
+                     object, default + rules per subject in zzzzsys_nunext_object_access (step 0024); NuSubject (core/nusubject.php) = who a
+                     rule applies to (user > perm > team/dept > access > default; best()); resolve() / mode() / readonly() / writable() /
+                     shown() / scrubHash(); used by NuRecord::hiddenFor + save (writable, clone_from takes locked values from the DB),
+                     NuRender (withheld = nothing, masked = locked text, pageHash for HTML objects), formapi lookup / refresh, breadcrumb,
+                     NuAudit history / restore, NuConflict signatures; globeadmin bypass unless Security setting field_access_ga.
+                     NuBrowseAccess (core/nubrowseaccess.php, spec 07): column state show / hide / mask:<pattern> from sbr_json
+                     nunext.access {default, rules} + the field's mode; NuBrowse::query keeps $cols keyed by browse index, hidden columns never
+                     selected / searched / filtered / sorted, masked not searched / filtered / sorted. Page ?p=dataaccess&f= (pages/nudataaccess.php
+                     + assets/js/nudataaccess.js: Fields, List columns, By access level, Preview as user; button in the builder);
+                     PHP nuFieldAccessMode / nuFieldAccessAllowed; e2e field_access
 core/nuprocedure.php NuProcedure::hook(code, hash, vars) (0.8.462, gap analysis B5): nuBuilder's global hook procedures by sph_code –
                      nu_before_save (pages/nuform.php before BB, NuRecord::save before BS, formexport), nu_before_edit, nu_before_delete,
                      nu_startup / nu_invalid_login (NuAuth), nu_check_password_policy (NuAuth::passwordPolicy: user form, own password, reset,
@@ -230,7 +250,7 @@ core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.p
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',
                      '0002-report-tables', '0003-translate-table', '0004-cloner-tables', '0005-setting-primary-db', '0007-drop-vendor-layout',
-                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages', '0017-presence', '0018-home-hook-codes' (0.8.438: procedures nunext_home → nu_home), '0019-user-fields' (0.8.454), '0020-upload-template' (0.8.459), '0021-recent' (0.8.460) – add new steps at the end; 0006 was removed with the baseline;
+                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages', '0017-presence', '0018-home-hook-codes' (0.8.438: procedures nunext_home → nu_home), '0019-user-fields' (0.8.454), '0020-upload-template' (0.8.459), '0021-recent' (0.8.460), '0022-upload-template-folder' (0.8.478), '0023-retire-tfm' (0.8.479), '0024-object-access' (0.8.480) – add new steps at the end; 0006 was removed with the baseline;
                      every step needs an entry in NuMigrate::CHANGES – tables + kind + what, release.py stops otherwise), change history,
                      SQL dumps in backups · core/nugithub.php NuGitHub (0.8.374): newest release of a GitHub repository
                      (setting 'github_update', daily look: cron or start / update page of users with the update right, Update tile badge), download into _update/ (only signed kept),
@@ -303,7 +323,11 @@ assets/js/nuapp.js   global behaviour: leave guard (form[data-nu-guard]), confir
                      jump, data-nu-once, red Save, change history, … · assets/js/nu/*.js form runtime (nuruntime.js, nucompat.js)
 assets/css/nuapp.css global styles (tokens, dark mode, tabs, buttons) · nuform.css form pages
 lang/*.php           return [key => text]; t('key', ...$args) uses sprintf (%s, %d)
-docs/nunext-docs.htm help page: <section id=… data-doc="admin"> (globeadmin only), data-doc="dev" (globeadmin in developer mode –
+docs/nunext-docs.htm help page, tab Guide; docs/nunext-ref.htm (0.8.464) tab Code reference – developer reference, function reference,
+                     pages, start page hooks, REST API, Compatibility check, #devflow (pages/nuhelp.php renders both with the same filter;
+                     ?p=help&part=ref = the reference fragment, fetched by assets/js/nuhelp.js on demand; ?tab=ref; a #hash / link to an id of
+                     the other file opens its tab; "Search both tabs"; ids unique over both files and every #link checked by run.php; e2e help_tabs).
+                     Code chapters go into nunext-ref.htm. Both files: <section id=… data-doc="admin"> (globeadmin only), data-doc="dev" (globeadmin in developer mode –
                      chapter #devflow "Development with Claude": session start, signing key, gate, releases by hand, package contents;
                      keep it in step with this file) or data-acl="<form ids>" (shown with those rights)
 install/             schema_mysql*.sql, schema_mssql.sql, schema_expected.json (structure check of updates), settings defaults
@@ -455,7 +479,8 @@ Gotchas seen while testing:
   signature test fails until the release re-signs it).
 
 ## Where things stand (October 2026, 0.8.462)
-Newest first, details in CHANGELOG.md; last gate 0.8.457 (full test run, pushed to GitHub on the owner's request, published as v0.8.457):
+Newest first, details in CHANGELOG.md; last gate 0.8.463 (full test run, pushed, published by the owner as v0.8.463 – creating GitHub releases is refused for this session type, the owner does it by hand):
+0.8.464 help in two tabs: Guide / Code reference (docs/nunext-ref.htm, loaded on demand); 0.8.463 (gate, published v0.8.463);
 0.8.462 gap analysis B2 (no own tables from anonymous requests), B5 global hooks, B6 calc in sub-forms, B7 onnuload / onenter, nuFORMdata,
 #USER_NAME#, nuLookupRecord ID, NULL group footer, Compatibility check G1–G8, kit tests; 0.8.461 gap analysis B3 data mode / form type,
 B4 access condition in the save transaction (savepoint); 0.8.460 optional side bar with favourites and recently used (NuSidebar); 0.8.459 uploads with Uppy (file target "File System", library pack uppy, route ?p=upload, hardened template, see NuUpload); 0.8.458

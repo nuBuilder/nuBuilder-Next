@@ -129,6 +129,7 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 		<input type="hidden" name="tab" id="itemTab" value="<?= h($tab) ?>">
 		<div class="nuTitleBar mb-3">
 			<h1 class="h4 mb-0"><?= h($item ? (string)$item['itm_value'] : t('item_new')) ?></h1>
+			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
 			<a class="btn nuBtnAct" href="<?= h(nu_url('items')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="itemSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($item && $rights['clone']): ?>
@@ -137,6 +138,7 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 			<?php if ($item && $rights['delete']): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('item_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
+			</div>
 		</div>
 		<div class="card shadow-sm itemCard">
 			<div class="card-header pb-0 border-bottom-0">

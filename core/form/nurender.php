@@ -24,7 +24,11 @@ final class NuRender
 		private string $layout,
 	) {
 		NuRecord::$accessHash = $hash;                     // access conditions (access 9) of this form use its hash variables (0.8.382)
+		$this->pageHash = NuFieldAccess::scrubHash($meta, $hash);   // HTML objects: no withheld / masked values (0.8.480)
 	}
+
+	/** The hash for what goes into the page as text (HTML objects): withheld fields empty, masked ones masked. */
+	private array $pageHash = [];
 
 	// ================================================================= tabs
 
@@ -109,6 +113,7 @@ final class NuRender
 	{
 		$type = (string)$o['sob_all_type'];
 		$id   = (string)$o['sob_all_id'];
+		if (NuFieldAccess::withheld($o)) return '';              // field data access (0.8.480): no label, no control, no value
 		$value = $this->valueOf($o);
 
 		$this->clientObjects[$id] = [
@@ -232,6 +237,12 @@ final class NuRender
 			. $this->attributes($o) . ($type === 'lookup' ? '' : $events) . ($style !== '' && $type !== 'lookup' ? ' style="' . h($style) . '"' : '');
 		$ro = $acc['readonly'];
 		if ($type !== 'lookup') $common .= $this->ariaRequired($o, $ro);
+		// field data access (0.8.480): a masked field is a locked text with the mask only – the value never reaches the page
+		if (NuFieldAccess::masked($o)) {
+			$mStyle = $style !== '' && $type === 'lookup' ? ' style="' . h($style) . '"' : '';
+			return '<input type="text" class="form-control nuReadonly nuMasked ' . h($cls) . '"' . $common . $mStyle . ' readonly tabindex="-1" data-nu-masked="1" value="'
+				. h(NuFieldAccess::maskValue($type === 'display' ? $this->display($o) : $value, NuFieldAccess::maskOf($o))) . '">';
+		}
 
 		switch ($type) {
 			case 'input':
@@ -278,7 +289,7 @@ final class NuRender
 				return '<div class="nuWord ' . h($cls) . '"' . $common . '>' . (string)$o['sob_all_label'] . '</div>';
 
 			case 'html':
-				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(NuHash::replace((string)$o['sob_html_code'], $this->hash, NuHash::HTML)) . '</div>';
+				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML)) . '</div>';
 
 			case 'run':
 				return $this->run($o, $common, $cls);
@@ -548,7 +559,7 @@ final class NuRender
 		$sf  = (string)$o['sob_all_id'];
 		if (!$sub) return '<div class="alert alert-warning" id="' . h($sf) . '">' . h(t('form_err_subform_missing', (string)$o['sob_subform_zzzzsys_form_id'])) . '</div>';
 
-		$cols = array_values(array_filter($sub->objects, static fn($so) => !in_array($so['sob_all_type'], ['contentbox', 'subform'], true)));
+		$cols = array_values(array_filter($sub->objects, static fn($so) => !in_array($so['sob_all_type'], ['contentbox', 'subform'], true) && !NuFieldAccess::withheld($so)));   // withheld: no column (0.8.480)
 		usort($cols, static fn($a, $b) => [(int)$a['sob_all_order'], (int)$a['sob_all_left']] <=> [(int)$b['sob_all_order'], (int)$b['sob_all_left']]);
 		$canAdd    = (string)$o['sob_subform_add'] !== '0';
 		$canDelete = (string)$o['sob_subform_delete'] !== '0';
@@ -701,7 +712,9 @@ final class NuRender
 	{
 		$a = NuRecord::accessOf($o);
 		$isAdmin = (bool)NuAuth::user()['globeadmin'];
-		return ['readonly' => $a === '1' || ($a === '4' && $isAdmin) || !$this->editable(), 'hidden' => NuRecord::hiddenFor($o)];
+		$fa = NuFieldAccess::resolve($o)[1] !== null;          // a field data access rule decides (0.8.480), else nuBuilder's access as before
+		$ro = $fa ? NuFieldAccess::readonly($o, $this->recordId === '-1') : ($a === '1' || ($a === '4' && $isAdmin));
+		return ['readonly' => $ro || !$this->editable(), 'hidden' => NuRecord::hiddenFor($o)];
 	}
 
 	private bool $readonlyForm = false;

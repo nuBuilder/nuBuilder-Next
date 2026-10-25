@@ -150,10 +150,8 @@ final class NuHome
 			$c['pma'] = $dbTools ? [['post' => 'DB'], 'bi-database', t('home_db'), NuVendor::DB_TOOLS[$dbTools[0]]]
 				: ['vendor', 'bi-database', t('home_db'), 'phpMyAdmin / Adminer – ' . t('home_tool_missing')];
 		}
-		if (nu_db()->type === 'mysql') {
-			$ok = NuVendor::available('TFM');
-			$c['tfm'] = [$ok ? ['post' => 'TFM'] : 'vendor', 'bi-folder2-open', t('vendor_tfm'), $ok ? 'Tiny File Manager' : 'Tiny File Manager – ' . t('home_tool_missing')];
-		}
+		// File Manager (0.8.479): the page nuFiles (core/nufilemanager.php) – key 'tfm' kept, so saved layouts keep the tile
+		if (NuFileManager::shipped()) $c['tfm'] = ['filemanager', 'bi-folder2-open', t('vendor_tfm'), t('fm_tile_desc')];
 		// the former Admin tools page (0.8.316): its tools are tiles now; 'vendor' = System status (InnoDB, demo mode, missing tools)
 		$b = self::badges();
 		$c['update'][4] = $b['update'] ?? null;
@@ -222,7 +220,6 @@ final class NuHome
 			$mysql = nu_db()->type === 'mysql';
 			if (nu_timezone()[1] === 'server') $n++;
 			if ($mysql && !NuVendor::dbTools()) $n++;
-			if ($mysql && !NuVendor::available('TFM')) $n++;
 			if ($mysql && (int)nu_db()->value("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND COALESCE(ENGINE, '') <> 'InnoDB'") > 0) $n++;
 			foreach (NuDemo::status() as $d) if ($d['problems']) { $n++; break; }
 		} catch (Throwable) { /* best effort */ }

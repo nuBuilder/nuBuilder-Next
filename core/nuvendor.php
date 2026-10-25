@@ -3,20 +3,19 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * nuBuilder's admin tools for the globeadmin: phpMyAdmin ("nudb") and Tiny File Manager. Both are NOT shipped
- * with nuBuilder Next; copy them from nuBuilder:
+ * nuBuilder's admin tool for the globeadmin: phpMyAdmin ("nudb") – NOT shipped with nuBuilder Next (library pack, or a copy of
  *   <nuBuilder>/third_party/nudb/              → <nuBuilder Next>/third_party/nudb/
- *   <nuBuilder>/third_party/tinyfilemanager/   → <nuBuilder Next>/third_party/tinyfilemanager/
- * Their nuBuilder config files (nudb/config.inc.php, tinyfilemanager/config.php) include "../../nuconfig.php",
- * which is nuBuilder Next's nuconfig.php at that location (same variables as nuBuilder), and accept a request when the
- * cookie nu_PMA / nu_TFM holds the id of a zzzzsys_session row whose sss_access has session.global_access = 1.
+ * Its nuBuilder config file (nudb/config.inc.php) includes "../../nuconfig.php", which is nuBuilder Next's nuconfig.php at that
+ * location (same variables as nuBuilder), and accepts a request when the cookie nu_PMA holds the id of a zzzzsys_session row whose
+ * sss_access has session.global_access = 1. Tiny File Manager was removed in 0.8.479: the File Manager is the page nuFiles
+ * (core/nufilemanager.php); nuVendorLogin('TFM') opens it.
  *
  * Launch (same as nuBuilder's core/nuvendorlogin.php): nuBuilder Next writes such a row for the current nuBuilder Next session,
  * sets the cookie (HttpOnly, SameSite=Strict, only for the tool's folder – 0.8.264) and redirects. The row lives as long as the nuBuilder Next session: sss_time is
  * refreshed with the session activity, the row is removed at logout, when the globeadmin ends the session, or
  * after the session timeout.
  *
- * Other location (e.g. the tools inside nuBuilder): $nuConfigPMAURL / $nuConfigTFMURL in nuconfig.php.
+ * Other location (e.g. phpMyAdmin inside nuBuilder): $nuConfigPMAURL in nuconfig.php ($nuConfigTFMURL is ignored since 0.8.479).
  *
  * Adminer (0.8.282, app 'ADM', NOT shipped): copy adminer.php (or adminer-<version>.php, 4.8.1 or newer) to
  * <nuBuilder Next>/third_party/adminer/. It is never opened directly (that folder gets a deny-all .htaccess) but through
@@ -28,13 +27,12 @@ final class NuVendor
 {
 	public const APPS = [
 		'PMA' => ['dir' => 'nudb', 'entry' => 'index.php', 'cfg' => 'nuConfigPMAURL'],
-		'TFM' => ['dir' => 'tinyfilemanager', 'entry' => 'tinyfilemanager.php', 'cfg' => 'nuConfigTFMURL'],
 		'ADM' => ['dir' => 'adminer', 'entry' => 'adminer.php', 'cfg' => ''],
 	];
 	/** Database tools: app => product name (labels, $nuConfigPrimaryDatabaseManagement). */
 	public const DB_TOOLS = ['PMA' => 'phpMyAdmin', 'ADM' => 'Adminer'];
 	/** app => library pack slot (NuLibs) */
-	public const SLOT = ['PMA' => 'phpmyadmin', 'TFM' => 'tinyfilemanager', 'ADM' => 'adminer'];
+	public const SLOT = ['PMA' => 'phpmyadmin', 'ADM' => 'adminer'];
 	public const MARK = 'nunext_vendor';   // sss_access.session.nunext_vendor = nuBuilder Next session key
 
 	/** Folder of the tool inside nuBuilder Next (default location). */
@@ -176,11 +174,10 @@ final class NuVendor
 		return is_file(self::dir($app) . '/' . self::APPS[$app]['entry']);
 	}
 
-	/** URL of the tool after login: phpMyAdmin opens the database structure (or a table), TFM its start page. */
+	/** URL of the tool after login: phpMyAdmin opens the database structure (or a table). */
 	public static function target(string $app, string $table = ''): string
 	{
 		$base = self::baseUrl($app);
-		if ($app === 'TFM') return $base . self::APPS[$app]['entry'];
 		$db = (string)nu_cfg('nuConfigDBName');
 		$q = $table !== '' && preg_match('/^[A-Za-z0-9_$]+$/', $table)
 			? ['route' => '/sql', 'pos' => 0, 'db' => $db, 'table' => $table]

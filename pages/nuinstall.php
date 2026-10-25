@@ -250,6 +250,9 @@ function nu_install_finish(?array &$S): array
 		NuSchema::allow();
 		NuSchema::create();
 		NuInstall::setOrigin('nunext');                     // set up on a new database (0.8.380) – step 0014 keeps it
+		// safer defaults for NEW installations (0.8.478, security assessment C2 / K1): records only through the form's list, read-only
+		// and hidden fields never saved from the browser – existing installations keep their settings (the Security check names them)
+		NuSecurity::save(['record_check' => true, 'protect_fields' => true]);
 		$out['steps'] = NuMigrate::run();
 	} catch (Throwable $e) {
 		$out['error'] = $e->getMessage();

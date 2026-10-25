@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nuBuilder Next code reference</title>
+<!--
+	nuBuilder Next code reference (English, 0.8.464): the tab "Code reference" of index.php?p=help (?p=help&tab=ref) – the guide is
+	docs/nunext-docs.htm. Same rules as there; links between the two files are plain #ids (nuhelp.js opens the right tab).
+
+	Who sees what (filtered on the server, so a user never receives sections that are not for him):
+	  <section data-doc="admin">          globeadmin only
+	  <section data-doc="dev">            globeadmin in developer mode ($nuConfigDevMode = true) only (0.8.408)
+	  <section data-acl="nuuser">         users with the view right on that nuBuilder form (globeadmin always)
+	  <section> (no attribute)            everybody
+	  Attributes work on any element – usually <section> (h2 level), <div class="doc-sub"> (h3 level) or a single <li>.
+	URL: index.php?p=help                 everything the current user may see
+	     index.php?p=help&doc=user        globeadmin: preview what a user without special rights sees
+	     index.php?p=help&q=lookup        opens with a search
+	     index.php?p=help#formats         jumps to a chapter (the id of a section or sub-section)
+	Every <h2>/<h3> needs an id: it is the anchor and the entry in the index.
+	Function references (0.8.399): <div data-nu-fnref="php"></div> / "js" are replaced with the entries of docs/nunext-functions.json
+	(core/nufnref.php) – edit that file, not this one, for a function; dev/tests/run.php checks that code and reference match.
+-->
+</head>
+<body>
+<main>
+
+<section id="dev" data-doc="admin">
+	<h2 id="dev-h">Developer reference</h2>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="hooks">PHP hooks and procedures</h3>
+		<ul>
+			<li>Form hooks as in nuBuilder: Before Browse, Before Edit, Before Save, After Save, Before Delete, After Delete; lookup <em>After Browse</em> code (<code>nuLookupRecord()</code> = the chosen row with its key as <code>ID</code>).</li>
+			<li><strong>Global hooks</strong> (since 0.8.462, as nuBuilder 4.9): a procedure with one of these codes runs for every form – <code>nu_before_save</code> (before each form's Before Browse and Before Save), <code>nu_before_edit</code> (before Before Edit), <code>nu_before_delete</code> (before Before Delete), <code>nu_startup</code> (after each sign-in; a text in <code>$error</code> ends the session and is shown instead), <code>nu_invalid_login</code> (after a failed sign-in, <code>&#35;LOGIN_NAME&#35;</code> = the name typed), <code>nu_check_password_policy</code> (new passwords: <code>$newPassword</code>, <code>$userId</code>; <code>$check = false</code> or <code>nuDisplayError()</code> refuses it – user form, own password, reset link, REST API), <code>nu_after_update</code> (after an update's database steps) and <code>nu_debug_result_added</code> (after each <code>nuDebug()</code>: <code>$nuDebugId</code>, <code>$nuDebugMessage</code>). An error in a save hook stops the save.</li>
+			<li><strong>nuFORMdata</strong> (since 0.8.462): in Before Save and After Save <code>nuHash()['nuFORMdata']</code> holds the posted edit form (<code>nuBuilder4EditForm</code>) and its sub-forms as in nuBuilder; <code>nuGetNuDataValue($d, '', 'field')</code> reads a value, <code>nuSetNuDataValue($d, '', 'field', $value)</code> in Before Save changes what is saved (sub-forms: the sub-form object id, first row).</li>
+			<li>Object events: <code>onchange</code>, <code>oninput</code>, <code>onclick</code>, <code>onblur</code>, <code>onfocus</code>, <code>onkeydown</code>, <code>onnuload</code> (when the edit form has loaded, after the calc objects and before <code>nuOnLoad</code>; <code>this</code> as in nuBuilder) and <code>onenter</code> (the Enter key in the field) – the last two since 0.8.462. Calc objects of a sub-form are calculated per row (<code>nuTotal('qty')</code> = this row's field) and do not make the blank new row an edited one.</li>
+			<li>Procedures (<code>zzzzsys_php</code>): <code>nuRunPHPHidden('code')</code> runs in the background, run objects and <code>nuRunPHP</code> show output.</li>
+			<li>Hash variables (<code>&#35;RECORD_ID&#35;</code>, <code>&#35;USER_ID&#35;</code>, fields, properties …) – see <a href="#hash-variables">Hash variables</a>.</li>
+			<li>Your own helper functions: <code>$nuConfigIncludePHP</code>.</li>
+		</ul>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="label-menu">Label menu (globeadmin)</h3>
+		<p>In the edit form, a click on the label of an object opens a menu: <b>Object: id</b> (click copies the id), <b>Properties…</b> (opens the object in the form builder), <b>Rename…</b>, <b>Actions</b> (Delete, Move to tab), <b>Access</b>, <b>Align</b> and <b>Validation</b>. The current value is marked; a change is saved at once and the form reloads. Not on nuBuilder system forms. On narrow screens a submenu that has no room beside the menu unfolds below its row (tap to open / close).</p>
+		<h3 id="hash-variables">Hash variables (hash cookies)</h3>
+		<p>Before SQL (browse, display, select, lookups), PHP (hooks, procedures) and HTML objects run, every <code>&#35;NAME&#35;</code> with a known name is replaced. Unknown names stay as they are (as in nuBuilder), so <code>LOCATE('&#35;', '&#35;x&#35;')</code> tests still work. JavaScript is not replaced – use <code>nuGetProperty('name')</code> there.</p>
+		<div class="table-responsive"><table class="table table-sm">
+			<thead><tr><th>Group</th><th>Variables</th><th>Where</th></tr></thead>
+			<tbody>
+				<tr><td>User and session</td><td><code>&#35;USER_ID&#35;, &#35;LOGIN_NAME&#35;, &#35;USER_NAME&#35;, &#35;USER_EMAIL&#35;, &#35;USER_CODE&#35;, &#35;USER_FIRST_NAME&#35;, &#35;USER_LAST_NAME&#35;, &#35;USER_POSITION&#35;, &#35;USER_DEPARTMENT&#35;, &#35;USER_TEAM&#35;, &#35;USER_ADDITIONAL1&#35;, &#35;USER_ADDITIONAL2&#35;, &#35;USER_LANGUAGE&#35;, &#35;LANGUAGE&#35;, &#35;USER_PERMISSIONS&#35;, &#35;ACCESS_LEVEL_ID&#35;, &#35;ACCESS_LEVEL_CODE&#35;, &#35;ACCESS_LEVEL_GROUP&#35;, &#35;GLOBAL_ACCESS&#35;, &#35;HOME_ID&#35;, &#35;DEV_MODE&#35;, &#35;SESSION_ID&#35;</code></td><td>everywhere</td></tr>
+				<tr><td>Form and record</td><td><code>&#35;FORM_ID&#35;, &#35;FORM_CODE&#35;, &#35;FORM_GROUP&#35;, &#35;RECORD_ID&#35; (-1 = new), &#35;NEW_RECORD&#35;, &#35;PREVIOUS_RECORD_ID&#35;, &#35;TABLE_ID&#35;</code></td><td>everywhere</td></tr>
+				<tr><td>Date and time (server time zone)</td><td><code>&#35;nu_date&#35;, &#35;nu_date_time&#35;, &#35;nu_time&#35;, &#35;nu_year&#35;, &#35;nu_month&#35;, &#35;nu_day&#35;, &#35;nu_hour&#35;, &#35;nu_minute&#35;</code></td><td>everywhere</td></tr>
+				<tr><td>Record fields</td><td><code>&#35;field_id&#35; – every field of the record, as on the screen (also unsaved changes)</code></td><td>edit form, hooks, procedures</td></tr>
+				<tr><td>Properties</td><td><code>nuSetProperty(&&#35;x27;name&&#35;x27;, value) – this form and the forms opened from it</code></td><td>where set and below</td></tr>
+				<tr><td>Hash cookies</td><td><code>nuSetProperty(&&#35;x27;name&&#35;x27;, value, true) in JavaScript or PHP – until logout, in every form (shared with nuBuilder when logged in there)</code></td><td>everywhere</td></tr>
+				<tr><td>Lookup After Browse</td><td><code>&#35;ID&#35;, &#35;CODE&#35; of the chosen record, &#35;SUBFORM_ID&#35;; nuSetFormValue(&&#35;x27;&#35;ROW&#35;field&&#35;x27;, …) sets a field of the same subform row</code></td><td>lookup PHP</td></tr>
+				<tr><td>Display / select SQL</td><td><code>&#35;OBJECT_ID&#35; – id of the object</code></td><td>display and select SQL</td></tr>
+				<tr><td>Procedures</td><td><code>&#35;PROCEDURE_CODE&#35;</code></td><td>procedures</td></tr>
+			</tbody>
+		</table></div>
+		<ul>
+			<li><b>Order</b>: system and user variables win, then record fields, then properties, then hash cookies – a field called <code>USER_ID</code> or a property can never replace <code>&#35;USER_ID&#35;</code>.</li>
+			<li><b>Escaping</b> (difference to nuBuilder): values are escaped for where they go – quotes in SQL, quotes and <code>$</code> in PHP strings, HTML entities in HTML. A value can't break out of <code>'&#35;field&#35;'</code>. Write hashes inside quotes in SQL and PHP.</li>
+			<li><code>&#35;DEV_MODE&#35;</code> is 1 for the globeadmin when <code>$nuConfigDevMode = true</code> is set (also <code>nuDevMode()</code> in JavaScript).</li>
+			<li><code>&#35;USER_PERMISSIONS&#35;</code> lists the active permission items of the user (nuBuilder's <code>zzzzsys_user_permission</code>), comma separated.</li>
+			<li><b>Code editor</b>: the <code>&#35;</code> button in SQL, PHP and HTML editors (form builder and double-click editor) lists every variable with a description, the fields of the form and your hash cookies – click or Enter inserts it at the cursor.</li>
+			<li><b>Hash viewer</b>: in a form, the globeadmin sees every variable with its current value and source.</li>
+		</ul>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="php-api">PHP functions</h3>
+		<p>Every function with parameters, return value and examples: <a href="#ref-php">PHP function reference</a>.</p>
+		<p><code>nuRunQuery</code> (also named parameters), <code>db_fetch_row/array/object</code>, <code>db_num_rows</code>, <code>nuHash</code>, <code>nuDisplayError</code>, <code>nuAddJavascript</code>, <code>nuSetFormValue</code>, <code>nuLookupRecord</code>, <code>nuSetProperty</code>/<code>nuGetProperty</code>, <code>nuSubformObject</code>, <code>nuID</code>, <code>nuProcedure</code>, <code>nuCreateTableFromSelect</code>, <code>nuDebug</code>, <code>nuSendEmail</code>, <code>nuSendEmailEx</code>, <code>nuEmail</code>, <code>nuGetEmailTemplateData</code>, <code>nuSendEmailFromTemplate</code>, <code>nuReplaceHashVariables</code>, <code>nuFormId</code>, <code>nuRecordId</code>, <code>nuUserId</code>, <code>nuFormTable</code>, <code>nuIsValidEmail</code>, <code>nuSetUserJSONData($key, $value, $userId = '')</code> / <code>nuGetUserJSONData($key, $userId = '')</code> (per-user data in <code>sus_json</code>), <code>nuCreateLoginToken($userId, $minutes = 0, $formId = '', $recordId = '')</code> (nuBuilder Next: one-time login link), <code>nuNextNotify($args)</code> (nuBuilder Next: notification for the bell – see <a href="#notifications-send">Sending notifications</a>), <code>nuGlobalAccess</code>, <code>nuUserLanguage</code>, <code>nuTranslate</code>, <code>nuGetUserPermissions($userId = null)</code>, <code>nuUserHasPermission($item, $userId = null)</code> (true for the globeadmin).</p>
+		<p>Also, as in nuBuilder 4.9: database helpers (<code>db_fetch_value</code>, <code>db_update_value</code>, <code>db_fetch</code>, <code>db_fetch_all_array/object</code>, <code>db_fetch_key_pair_array</code>, <code>db_field_names/types/info/exists</code>, <code>db_primary_key</code>, <code>db_is_auto_id</code>, <code>db_quote</code>, <code>nuGetSQLValue</code>, <code>nuListTables</code>, <code>nuGetUserTables</code>, <code>nuMSSQL</code>, <code>nuTT</code>, <code>nuSQL</code>), record state (<code>nuHasNewRecordID</code>, <code>nuHasNoRecordID</code>), procedures (<code>nuRunProcedure</code>, <code>nuRunPHPHidden</code>, <code>nuGetPHP</code>, <code>nuHasProcedureAccess</code>), output (<code>nuDisplayMessage</code>, <code>nuJavaScriptCallback</code>, <code>nuLog</code>), session data (<code>nuSetJSONData</code>/<code>nuGetJSONData</code>), <code>nuObjKey</code>, <code>nuJsonDecode</code>, <code>nuEncode</code>/<code>nuDecode</code>, string helpers (<code>nuStringContains</code>, <code>nuStringStartsWith</code>, <code>nuStringEndsWith</code>, <code>nuStringLeft/Right</code>, <code>nuTrim</code>, <code>nuPad</code>, <code>nuQuotise</code> …), <code>nuFormatDate</code>, <code>nuAddFormatting</code>, <code>nuSelectOptions</code>, <code>nuPasswordHash</code>, <code>nuGenerateToken</code>, <code>nuGetIPAddress</code>, <code>nuIsMobile</code>, <code>nuUser</code>, <code>nuGetUserAccess</code>, <code>nuGetRecordURL</code>, <code>nuAutoNumber</code>/<code>nuUpdateCounter</code> and more. Input objects of type <em>nuAutoNumber</em> get the next number when a new record (or subform row) is saved (last number + 1, a prefix like <code>INV</code> is kept; the builder shows the last number under <em>Last number</em>, new records show “assigned on save”). Input objects of type <em>nuScroll</em> (since 0.8.369): the arrow keys ↑ / ↓ step through the list of the object's <em>Scroll</em> property (JavaScript, e.g. <code>['Low', 'Medium', 'High']</code>) and start over at the end; a value that is not in the list can still be typed. The same list is offered as suggestions – on a phone tapping the field shows it, on a desktop a small arrow in the field opens it. Differences and functions that are not ported: <code>docs/porting-review.md</code>.</p>
+		<h4 class="h6 mt-3" id="excel">Excel export (NuXlsx, 0.8.398)</h4>
+		<p>The class <code>NuXlsx</code> writes .xlsx files without other libraries – in procedures, PHP hooks and page forms (<code>$nu-&gt;excel()</code>). Values keep their type: numbers stay numbers, <code>DateTime</code> becomes an Excel date, <code>true</code> / <code>false</code> a boolean, strings are always text (a string starting with <code>=</code> never becomes a formula – formulas only with <code>NuXlsx::formula()</code>).</p>
+<pre class="small"><code>$x = NuXlsx::create('Orders');                       // or $nu-&gt;excel() in a page
+$s = $x-&gt;sheet('Open orders');                       // more sheets: $x-&gt;sheet('…') again
+$s-&gt;header(['Customer', 'Amount', 'Date'])           // bold, frozen below, autofilter
+  -&gt;rows($rows)                                       // arrays of values
+  -&gt;row(['Total', NuXlsx::formula('SUM(B2:B99)')], ['bold' =&gt; true])
+  -&gt;style('B2:B100', ['format' =&gt; '#,##0.00'])
+  -&gt;row([NuXlsx::cell('late', ['color' =&gt; '#c00000', 'bg' =&gt; '#fff3cd'])])
+  -&gt;width('A', 30);                                   // other columns: width from the content
+$x-&gt;download('orders.xlsx');                         // or $x-&gt;save($file) / $x-&gt;toString() (e-mail attachment)</code></pre>
+		<p>Styles: <code>bold</code>, <code>italic</code>, <code>underline</code>, <code>strike</code>, <code>size</code>, <code>font</code>, <code>color</code>, <code>bg</code> (#RRGGBB), <code>format</code> (Excel number format, e.g. <code>0.00</code>, <code>dd.mm.yyyy</code>, <code>0%</code>), <code>align</code> (left / center / right), <code>valign</code>, <code>wrap</code>, <code>border</code> (thin / medium / thick / dashed / dotted / double). Sheet: <code>bold($range)</code>, <code>merge($range)</code>, <code>freeze('B2')</code>, <code>filter($range)</code>, <code>widths([30, 12])</code>, <code>height($row, $points)</code>, <code>rightToLeft()</code>, <code>numbersFromText()</code> (text such as "12.5" becomes a number). Workbook: <code>title()</code>, <code>author()</code>, <code>subject()</code>, <code>company()</code>, <code>dateFormats('dd.mm.yyyy', 'dd.mm.yyyy hh:mm')</code> (default: Excel's date format in the reader's language). The lists' print views have <em>Export Excel</em> next to <em>Export CSV</em> (only the visible columns).</p>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="js-api">JavaScript functions</h3>
+		<p>Every function with parameters, return value and examples: <a href="#ref-js">JavaScript function reference</a>.</p>
+		<p>About 100 nuBuilder functions work unchanged, among them <code>nuGetValue</code>/<code>nuSetValue</code>, <code>nuHide</code>/<code>nuShow</code>, <code>nuEnable</code>/<code>nuDisable</code>, <code>nuSetProperty</code>, <code>nuRunPHPHidden</code>, <code>nuForm</code>, <code>nuPopup</code>, <code>nuMessage</code>, <code>nuSaveAction</code>, <code>nuDeleteAction</code>, <code>nuCloneAction</code>, <code>nuSelectTab</code>, <code>nuAddActionButton</code>, <code>nuHasBeenEdited</code>, TinyMCE functions, <code>nuOpenAce</code>, <code>nuVendorLogin</code>, <code>nuTranslate</code>, <code>nuTranslateToEnglish</code>. New: <code>nuToast(message, type)</code> shows a notice at the bottom right (<code>success</code>, <code>danger</code>, <code>warning</code>, <code>info</code>).</p>
+		<p><strong>Hooks</strong> – functions a form's custom code (or nuBuilder's Setup → header, for the <em>…Global</em> ones) may define; nuBuilder Next calls them as nuBuilder 4.9 does (a <em>…Global</em> hook runs before the form's own):</p>
+		<table class="table table-sm small">
+			<thead><tr><th>Hook</th><th>When</th><th>Arguments / return</th></tr></thead>
+			<tbody>
+				<tr><td><code>nuOnLoad(formId, formCode)</code></td><td>after the form loaded</td><td></td></tr>
+				<tr><td><code>nuBeforeSaveGlobal()</code>, <code>nuBeforeSave()</code></td><td>before saving</td><td><code>false</code> cancels (<code>nuBeforeSave</code>: anything falsy)</td></tr>
+				<tr><td><code>nuAfterSaveGlobal()</code>, <code>nuAfterSave()</code></td><td>after a successful save, before the record is shown again</td><td></td></tr>
+				<tr><td><code>nuBeforeDelete()</code></td><td>before deleting</td><td><code>false</code> cancels</td></tr>
+				<tr><td><code>nuAfterDeleteGlobal()</code>, <code>nuAfterDelete()</code></td><td>after a successful delete, before going back (<code>window.last_action = 'delete'</code>)</td><td></td></tr>
+				<tr><td><code>nuOnClone()</code></td><td>after <em>Clone</em></td><td></td></tr>
+				<tr><td><code>nuOnSetSaved(isSaved)</code></td><td>the record gets edited (<code>false</code>) or counts as saved again (<code>true</code>, <code>nuHasNotBeenEdited()</code>)</td><td></td></tr>
+				<tr><td><code>nuOnLookupPopulatedGlobal(id, prefix, data)</code>, <code>nuOnLookupPopulated(id, prefix, data)</code></td><td>after a lookup filled its fields – every lookup (nuBuilder: only in sub-form rows)</td><td><code>data</code>: pk, code, description and the values set by the lookup's PHP</td></tr>
+				<tr><td><code>nuOnSelectTab(tab)</code> / <code>nuOnTabSelected</code> / <code>nuOnTabSelectedGlobal</code></td><td>before / after a tab switch</td><td><code>nuOnSelectTab</code>: <code>false</code> cancels</td></tr>
+				<tr><td><code>nuSelectBrowse(e, row)</code></td><td>a row of the browse list is clicked</td><td>the form opens the row itself</td></tr>
+				<tr><td><code>nuOnSearchAction</code>, <code>nuOnSearchActionGlobal</code></td><td>before the browse search runs</td><td>may change or cancel it</td></tr>
+				<tr><td><code>nuOnMessage(messageDiv, errors)</code></td><td>an error message is shown (<code>nuDisplayError</code>, errors of saving / deleting)</td><td><code>messageDiv</code>: the message box (jQuery)</td></tr>
+				<tr><td><code>nuOnSetCalendarOptions(id, {options})</code></td><td>before the date picker opens</td><td>the browser's own date picker knows only the range: <code>minDate</code> / <code>maxDate</code> (or <code>min</code> / <code>max</code>) as Date, <code>yyyy-mm-dd</code> or in the field's format – in the returned object or set in <code>options</code>; other options are ignored</td></tr>
+				<tr><td><code>nuOnRawValueFormatted(id, rawValue, format)</code></td><td>a number field's value is read without its format (saving, values sent to lookups and procedures, <code>nuFORM.removeFormatting(value, format, id)</code>)</td><td>a returned value replaces it</td></tr>
+				<tr><td><code>nuOnSetSelect2Options(id, {options})</code></td><td>before a searchable select (Select2 in nuBuilder, Tom Select here) is built</td><td>taken over: <code>placeholder</code>, <code>allowClear</code>, <code>maximumSelectionLength</code>, <code>minimumResultsForSearch: Infinity</code> (no search box), <code>tags</code>; <code>{tomselect: {…}}</code> passes Tom Select options directly; other Select2 options are ignored</td></tr>
+				<tr><td><code>nuSetSelect2(id, {top, left, width})</code>, <code>$('#id').select2({…})</code></td><td>form code that makes a select searchable itself (since 0.8.370)</td><td>Tom Select instead of Select2: the same Select2 options as above, <code>data: [{id, text}]</code>, <code>multiple</code>; <code>.select2('open' | 'close' | 'focus' | 'isOpen' | 'data' | 'enable' | 'disable' | 'destroy')</code>; <code>nuSetSelect2</code> returns the id of the box (<code>id_select2</code>) and places it with top / left / width on forms with absolute layout. A value set with <code>$('#id').val(v).trigger('change')</code> is taken over.</td></tr>
+				<tr><td><code>nuOnPopupOpenedGlobal(formId, recordId, filter)</code></td><td>after <code>nuPopup()</code> opened a form</td><td></td></tr>
+				<tr><td><code>nuOnOptionsListLoadedGlobal()</code></td><td>each time the ⋮ options menu opens</td><td>the menu is <code>#nuOptions</code> + <code>.nuOptionsList</code> (Bootstrap dropdown), not nuBuilder's list</td></tr>
+				<tr><td><code>nuCalculated(el, value, shown)</code></td><td>after a calculation field was computed</td><td></td></tr>
+				<tr><td>also</td><td colspan="2"><code>nuOnBeforeGetBreadcrumb</code>, <code>nuBeforeAddActionButtons</code>, <code>nuOnAddAction</code>, <code>nuOnFileLoad</code> / <code>nuOnFileLoaded</code>, <code>nuOnEditorLoad</code>, <code>nuOnToolTipIcon</code> / <code>nuOnToolTipIconClick</code> / <code>nuOnAdvancedToolTip</code>, <code>nuOnDisableGlobal</code>, <code>nuDisplayObjectRefreshed</code>, <code>nuSelectObjectRefreshed</code></td></tr>
+			</tbody>
+		</table>
+		<p>Not called: nuBuilder's mobile-view hooks (<code>nuOnMobile…</code>), <code>nuOnLabelPositionCustom</code> (labels are placed differently) and <code>nuOnPropertySet</code> (declared in nuBuilder, never called).</p>
+		<p>Also: permission items (<code>nuUserPermissions()</code>, <code>nuUserHasPermission(item, userOnly)</code> – true for the globeadmin unless <code>userOnly</code>); user details (<code>nuUserId</code>, <code>nuUserCode</code>, <code>nuUserTeam</code> …); tabs (<code>nuOpenTab</code>, <code>nuSelectedTabTitle</code>, <code>nuHideTabByTitle</code>, <code>nuRemoveTabs</code>); <code>nuRefreshSelectObject</code> / <code>nuRefreshDisplayObject</code>; reports (<code>nuRunReport</code>, <code>nuRunReportSave</code>, <code>nuPreviewReport</code>, <code>nuEmailReportPDF</code>); <code>nuSearchAction</code>, <code>nuSetNoSearchColumns</code>; Run iFrames (<code>nuGetIframeValue</code>, <code>nuSetIframeValue</code>, <code>nuFilterRun</code>, <code>nuRecordRun</code>); <code>nuSubformAddFilter</code>; <code>nuLabelOnTop</code>, <code>nuHideHolders</code>, <code>nuSetVerticalTabs</code>, <code>nuPrintEditForm</code>; <code>nuAttachImage</code>, <code>nuAttachButtonImage</code>, <code>nuEmbedObject</code>.</p>
+		<p>Also, as in nuBuilder 4.9: subforms (<code>nuSubformGetValue</code>/<code>nuSubformSetValue</code>, <code>nuSubformGetObjectId</code>, <code>nuSubformHide</code>/<code>nuSubformShow</code>, <code>nuSubformHideColumns</code>, <code>nuSubformSetHeight</code>, <code>nuSubformFocusLastRow</code>, <code>nuAddSubformRow</code>, <code>nuSubformToClipboard</code>, <code>nuSubformEnableMultiPaste</code>, <code>nuSortSubform</code>), tabs (<code>nuSelectTabById</code>/<code>ByTitle</code>, <code>nuRemoveTabById</code>/<code>ByTitle</code>, <code>nuSelectNextTab</code>, <code>nuGetTabIndexByTitle</code>), selects (<code>nuSelectToArray</code>, <code>nuSelectSelectAll</code>, <code>nuSelectSelectedValueArray</code>, <code>nuSelectRemoveOption</code>, <code>nuSelectSetIndex</code> …), lists (<code>nuSetBrowseTitle</code>, <code>nuSetBrowseNoDataMessage</code>, <code>nuHighlightSearch</code>, <code>nuSortBrowse</code>, <code>nuGetPage</code>, <code>nuHideSearchField</code>), <code>nuPrompt</code>, <code>nuRunPHPWithParams</code>, <code>nuSetAccess</code>, <code>nuCopyToClipboard</code>, <code>nuGetStorageItem</code>/<code>nuSetStorageItem</code>, <code>nuAddCSSStyle</code>, <code>nuAttachHTML</code>, <code>nuAddInputIcon</code>, <code>nuInputMaxLength</code>, <code>nuEscapeHTML</code>, <code>nuEncode</code>/<code>nuDecode</code>, <code>nuGetURLParameterValue</code>, <code>nuLogout</code>, <code>nuAddBackButton</code>, <code>nuAddActionButtonSaveClose</code> (<code>nuSaveAction(true)</code> = save and close) and more (<code>assets/js/nu/nucompat.js</code>).</p>
+		<p>Bootstrap 5 (<code>window.bootstrap</code>) is available to form code as before. Code that should keep working with a later Bootstrap version can use nuBuilder Next's small helper instead: <code>nuBs.modal(el)</code>, <code>nuBs.tooltip(el)</code>, <code>nuBs.dropdown(el)</code>, <code>nuBs.tab(el)</code>, <code>nuBs.toast(el, {delay: 3000})</code>, <code>nuBs.collapse(el)</code> (each returns the Bootstrap instance, e.g. <code>nuBs.modal(el).show()</code>) and <code>nuBs.ready()</code>.</p>
+		<p>Unsupported functions are harmless and write a console warning. Script errors of a form are listed for the globeadmin (bug button in the form toolbar).</p>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="js-infobar">Info bar (nuInfoBar)</h3>
+		<p>As in nuBuilder: a notification bar at the top or bottom of the window. <code>$.nuInfoBar.info|success|warning|error(message, options)</code>, <code>$.nuInfoBar(options)</code>, <code>$.nuInfoBar.modal.…</code> (blocks the page, a click outside shakes the bar), <code>$.nuInfoBar.shake()</code>, <code>.shakeLast()</code>, <code>.closeAll()</code>, <code>.updateContent(html)</code>, <code>$('#box').nuInfoBar(…)</code>. Options: <code>html, type, theme (light|dark), icon, customClass, autoClose, autoCloseDelay, showCloseButton, allowMultiple, hideOnFormClose, shakeOnShow, modal, animationDuration, animationType (slide|fade), slideDirection, shakeDuration, shakeIntensity, position (top|bottom), fixed, zIndex, opacity, closeOnClick, onShow, onClose, onClick, onShake</code>.</p>
+		<p>In nuBuilder Next several bars are stacked, fixed bars push the page down, auto-close pauses while the mouse is on the bar, Escape closes it; every call returns the bar, <code>$.nuInfoBar.close(bar)</code> and <code>.count()</code> are extra. Forms open as new pages, so a bar disappears with its form – with <code>hideOnFormClose: false</code> it is shown again on the next page.</p>
+		<pre class="doc-code">$.nuInfoBar.success('Saved!', {autoCloseDelay: 3000});
+$.nuInfoBar.modal.warning('Please confirm first');</pre>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="js-tooltips">Tooltip icons (nu-tooltip-icon)</h3>
+		<p>Add the HTML attribute <code>nu-tooltip-icon="text"</code> (HTML allowed: <code>b, i, br, ul, li, code, a</code> …) to an object – a help icon appears on its right; hover, focus or tap shows the text. Per object: <code>nu-tooltip-position</code> (top, bottom, left, right), <code>nu-tooltip-theme</code> (light, dark, blue, green, purple, red, orange), <code>nu-tooltip-arrow-size</code> (small, default, large). <code>nu-tooltip="text"</code> puts the tooltip on the field itself, without icon.</p>
+		<p>No JavaScript needed – fields added later are found by themselves. <code>nuAttachToolTip(options)</code>, <code>nuAttachToolTip.refresh()</code>, <code>.destroy()</code> as in nuBuilder; <code>function nuOnToolTipIcon(element, settings)</code> changes the settings of single fields (<code>theme, iconSize, gapRight, tooltipPosition, animationDuration, iconClasses, onClick(el, text)</code>), <code>nuOnToolTipIconClick(element, text)</code> is called on a click.</p>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="js-charts">Charts (nuChart)</h3>
+		<p>Chart objects call it by themselves; in code: <code>nuChart(chartId, chartType, dataArray, chartTitle, xAxisTitle, yAxisTitle, seriesType, isStacked, options)</code> – chart types of Google Charts (<code>PieChart</code>, <code>ComboChart</code>, <code>BarChart</code>, <code>LineChart</code>, <code>ColumnChart</code> …). <code>dataArray</code>: the name of an array, the array itself, a function or a DataTable; <code>options</code> (extra in nuBuilder Next) are merged into the Google options. Returns a Promise with the chart wrapper, also in <code>window[chartId + '_wrapper']</code>; <code>function nuChartOnReady(chartId, wrapper)</code> is called when it is drawn.</p>
+		<p>Charts follow light / dark mode, are drawn when a hidden tab opens and redrawn when their size changes. Data from the database: in Before Edit, e.g. <code>nuAddJavascript('window.myData = ' . json_encode($rows) . ';');</code> and <code>myData</code> as the JavaScript array of the chart.</p>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="js-button-loading">Button spinner (nuButtonLoading)</h3>
+		<p><code>nuButtonLoading(button, true)</code> shows a spinner on a button and disables it while something runs, <code>nuButtonLoading(button, false)</code> ends it; <code>nuButtonLoading(button, true, 15)</code> enables it again after 15 seconds. <code>button</code>: id, element or jQuery (also <code>$('#id').nuButtonLoading(true)</code>). Works on Run buttons and on input objects of type button; the width stays the same.</p>
+		<pre class="doc-code">nuButtonLoading('btn_export', true);
+nuRunPHPHidden('export_orders');   // the procedure ends it: nuAddJavascript("nuButtonLoading('btn_export', false);")</pre>
+	</div>
+
+	<div class="doc-sub" data-doc="admin">
+		<h3 id="debugging">Debugging</h3>
+		<ul>
+			<li><code>nuDebug($a, $b, …)</code> writes to <em>Log → Debug</em> (nuBuilder format). <code>nuDebug::setFlag('import')-&gt;log(…)</code> sets a flag to filter by.</li>
+			<li><code>$nuConfigDebug = true</code> shows database errors on screen – only for testing.</li>
+			<li>Form pages allow inline scripts (needed for form code); all other pages use a strict Content-Security-Policy. Forms with charts (or <code>nuChart</code> in their code) also allow www.gstatic.com for Google Charts.</li>
+		</ul>
+	</div>
+</section>
+
+<section id="ref" data-doc="admin">
+	<h2 id="ref-h">Function reference</h2>
+	<p>Every function for your own code, in two tabs. <strong>PHP</strong>: procedures, form hooks (Before Edit, Before Save …), lookups and page forms. <strong>JavaScript</strong>: a form's custom code (Custom code → JavaScript, Setup → Header), the hooks a form may define, the page form SDK (<code>NuPage</code>) and the start page (<code>nuHome</code>). Each function shows its parameters, return value, description, an example call and – when it returns something – a sample result. <span class="badge nuFnNb">nuBuilder</span> = works as in nuBuilder 4.9 (a form or procedure using it keeps working in nuBuilder), <span class="badge nuFnNext">nuBuilder Next</span> = only in nuBuilder Next, with the version that added it. Overviews: <a href="#php-api">PHP functions</a>, <a href="#js-api">JavaScript functions</a>, <a href="#hash-variables">Hash variables</a>.</p>
+	<div data-nu-fnref="tabs"></div>
+</section>
+
+<section id="pages" data-acl="nuform">
+	<h2 id="pages-h">Pages (custom PHP)</h2>
+	<p>Since 0.8.387 a form can be of the type <strong>Page (custom PHP)</strong>: a PHP app of your own (or written by an AI) that runs inside nuBuilder Next. nuBuilder Next checks the login and the access level's right on the page form <em>before</em> any code of the page runs, and hands the page one object, <code>$nu</code>, with the user, the context and the database. The page writes no login code and has a completely free look – nuBuilder Next adds no header, menu or CSS to it.</p>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-create">Creating a page</h3>
+		<ol>
+			<li><em>Forms → Add</em>, type <em>Page (custom PHP)</em>. The <strong>code is the folder name</strong>: letters, digits, <code>_</code> and <code>-</code>, starting with a letter or digit, at most 64 characters (names starting with <code>_</code> are reserved).</li>
+			<li>The builder of a page form shows the folder <code>custom/pages/&lt;code&gt;/</code> and whether <code>index.php</code> is there. <strong>Create from template</strong> copies <code>custom/pages/_template/</code> there (when the folder is writable; otherwise copy it by FTP).</li>
+			<li>Give access levels the right on the page form, as for any form (<em>view</em> = may open it; the other rights can be read by the page with <code>$nu-&gt;rights()</code> and used as the app's roles).</li>
+			<li>Write the app in <code>index.php</code> (more files, <code>assets/</code> for css / js / images). <strong>Copy AI prompt</strong> puts the guide, this page and the list of your tables into the clipboard – paste it into any AI together with a description of the app.</li>
+		</ol>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-settings">Settings of a page</h3>
+		<ul>
+			<li><strong>Open in</strong>: <em>New tab</em> (default – menus, tiles and run buttons open it in a new browser tab), <em>Inside nuBuilder Next</em> (the page in an iframe below the top bar and breadcrumbs; <em>Iframe height</em> <code>auto</code> = the page reports its height, or a fixed height like <code>800px</code>) or <em>Whole window</em>.</li>
+			<li><strong>Settings (JSON)</strong>: the app's configuration (lists, colours, limits), read with <code>$nu-&gt;setting('key')</code> (dot paths). Invalid JSON is not saved. <strong>No secrets</strong> here – the settings are copied by the cloners. Below the field the builder lists the <strong>keys the page reads</strong> (every <code>$nu-&gt;setting('key', default)</code> in its files) with the default in the code, the file and whether the key is set, and it names keys that are set but never read (0.8.391). When the page folder has a <code>settings.example.json</code>, <em>Insert example</em> fills the field with it (the template has one).</li>
+			<li><strong>Secrets</strong> (API keys, passwords): <code>secrets.php</code> in the page folder (guard line first, <code>return ['key' =&gt; '…'];</code>), read with <code>$nu-&gt;secret('key')</code>. Never in a package, a cloner copy or the builder (it only says whether the file exists).</li>
+			<li><strong>Content-Security-Policy</strong> (optional): added to <code>frame-ancestors 'self'</code>, which every page gets.</li>
+			<li><strong>Notes</strong>: for the developers.</li>
+		</ul>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-run">How a page runs</h3>
+		<ul>
+			<li><code>index.php?p=form&amp;f=&lt;code&gt;</code> – the normal form address: an iframe page (mode <em>Inside nuBuilder Next</em>) or a redirect to the page's own address. Every way to open a form works: menus, tiles, run buttons, iframe run objects, <code>nuForm()</code>, bookmarks.</li>
+			<li><code>index.php?p=page&amp;f=&lt;code&gt;</code> – the page's own output (HTML, JSON for its fetch calls, downloads). <code>r</code> (record id), <code>ps</code> (nuSetProperty values) and the opening form and record (<code>pf</code> / <code>pr</code>, accepted only with the view right on that form) are passed on.</li>
+			<li><code>index.php?p=pageasset&amp;f=&lt;code&gt;&amp;file=assets/…</code> – files of <code>assets/</code> only (css, js, images, fonts, json, txt, pdf), with the same login and right.</li>
+			<li>Every POST needs the CSRF token (<code>$nu-&gt;csrfField()</code>, <code>NuPage.fetch()</code>). A fetch of the page gets JSON answers: 401 <code>login</code>, 400 <code>csrf</code>, 403 <code>forbidden</code>, 404 <code>not_found</code>, 500 <code>server</code> – error details only for the globeadmin.</li>
+			<li>While the globeadmin views as another user, <code>$nu-&gt;user()</code> is that user, <code>$nu-&gt;realUser()</code> the globeadmin, <code>$nu-&gt;readOnly()</code> is true and POSTs are refused. In demo mode <code>readOnly()</code> is true too.</li>
+		</ul>
+		<p>The complete list of <code>$nu</code> methods and of the JavaScript helpers (<code>NuPage.fetch</code>, <code>toast</code>, <code>resize</code>, <code>refreshParent</code>, <code>openForm</code> …) is in <code>custom/PAGE_GUIDE.md</code> (also part of <em>Copy AI prompt</em>). Forms opened from a page – links with <code>$nu-&gt;formUrl()</code> (with <code>target="_top"</code>) or <code>NuPage.openForm()</code> – get a breadcrumb trail (0.8.422): their <em>Back</em> returns to the page, and when the page is shown in a launch form's iframe, to that form (its description in the breadcrumbs). The API has a version (<code>$nu-&gt;apiVersion()</code>, now 1): pages that use only <code>$nu</code> keep working when nuBuilder Next changes inside.</p>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-api">API versions</h3>
+		<p>Since 0.8.388 the page API (<code>$nu</code> and <code>NuPage</code>) has a version number – this nuBuilder Next supports version 1. A page declares the version it is written for with <code>$nu-&gt;api(1);</code> as the second line of <code>index.php</code> (the template and Copy AI prompt include it; a page without it counts as version 1).</p>
+		<ul>
+			<li><strong>Rule</strong>: within one version, methods are only added – never removed or changed. A breaking change raises the version; the older version keeps running (through an adapter) for at least 6 months / 20 releases.</li>
+			<li><strong>Unsupported version</strong>: the page does not run; the globeadmin sees which version it needs and what this nuBuilder Next supports, other users a short error.</li>
+			<li><strong>Deprecated methods</strong> keep working; each call writes a notice to <em>Debug results</em> (once a day per page and method), deprecated <code>NuPage</code> names a warning in the browser console.</li>
+			<li><strong>Before an update</strong>: <em>Check package</em> on the update page lists every page the new version would break (unsupported version, unknown or removed <code>$nu-&gt;…</code> / <code>NuPage.…</code> calls) or that uses deprecated ones. The update can still be installed.</li>
+			<li><strong>Form builder</strong> of a page form: the declared version and the problems with this version; the forms list shows a warning next to the type of such pages.</li>
+			<li>Only calls written as <code>$nu-&gt;name(</code> and <code>NuPage.name</code> are found – keep the variable name <code>$nu</code>.</li>
+		</ul>
+	</div>
+	<div class="doc-sub" data-acl="nuform">
+		<h3 id="pages-files">Files, updates, copies</h3>
+		<ul>
+			<li>Pages live in <code>custom/pages/&lt;code&gt;/</code>, uploaded by FTP. <code>$nuConfigCustomPagesDir</code> in <code>nuconfig.php</code> (an absolute path) moves the pages folder, e.g. outside the web root – the safest setup.</li>
+			<li><strong>Updates never touch</strong> <code>custom/pages/</code> and <code>custom/lib/</code> – only <code>custom/.htaccess</code>, <code>custom/PAGE_GUIDE.md</code> and <code>custom/pages/_template/</code> come with nuBuilder Next. A rollback does not change them either. <em>Include custom pages</em> (update page, backups) puts a copy of the folders into a backup.</li>
+			<li>Direct requests of files in <code>custom/</code> are blocked three ways: the guard line <code>defined('NU_PAGE') || exit;</code> at the top of every PHP file (the builder warns when <code>index.php</code> lacks it), <code>custom/.htaccess</code> (Apache) and the nginx rule in <a href="#security-nginx">Web server rules</a>. <em>Security check</em> tests that the folder cannot be reached.</li>
+			<li>Renaming the code of a page form: rename its folder by FTP too (the builder says so). Deleting a page form keeps its files.</li>
+			<li>The cloner copies a page form with its settings, not its files (it shows the folders to copy). The App cloner copies the folders with the files of the installation, but never <code>secrets.php</code>.</li>
+		</ul>
+	</div>
+</section>
+
+<section id="home-hooks" data-doc="admin">
+	<h2 id="home-hooks-h">Start page hooks</h2>
+	<p>Since 0.8.378 a procedure with the reserved code <code>nu_home</code> (called <code>nunext_home</code> before 0.8.438 – the update renames it, and <code>nunext_home_user</code> to <code>nu_home_user</code>, unless the new code is taken already) runs every time the <a href="#home-page">tile start page</a> is built (globeadmin and users with an admin role). On the <a href="#home-users">start pages of users</a> (0.8.425) the procedure <code>nu_home_user</code> runs instead – the same functions; tile keys there are the own tiles <code>c_…</code> of the page and the hook's <code>x_…</code>; <code>&#35;HOME_PAGE&#35;</code> is <code>user</code> (else <code>admin</code>) and <code>&#35;HOME_ACCESS&#35;</code> the code of the page's access level (<code>*</code> on the default in the editor). In the editor it runs as the globeadmin. Its PHP changes only <em>this page view</em>: badges, descriptions, hidden tiles, extra groups and tiles, banners. Nothing is saved into a layout. Create it under <em>Procedures</em> → Add, code <code>nu_home</code> (suggested in the code field); status <em>Draft</em> or <em>Archived</em> switches it off.</p>
+	<pre dir="ltr"><code>// procedure nu_home – runs every time the tile start page is built
+nuHomeCache(60);                                   // keep the result 60 s per user
+
+$open = (int)nuRunQuery("SELECT COUNT(*) FROM orders WHERE status = 'open'")-&gt;fetchColumn();
+nuHomeSetBadge('c_orders', "$open open", $open &gt; 20 ? 'danger' : 'secondary');
+
+if ('#ADMIN_ROLE#' === 'Developer') nuHomeHideTile('cloner');
+
+nuHomeAddGroup('x_today', 'Today');
+nuHomeAddTile('x_backup', ['group' =&gt; 'x_today', 'label' =&gt; 'Last backup', 'icon' =&gt; 'bi-archive', 'page' =&gt; 'update']);
+
+nuHomeBanner('Maintenance on Saturday 22:00', 'warning');
+nuHomeSetData('openOrders', $open);</code></pre>
+	<ul>
+		<li><strong>Tile keys</strong>: built-in tiles by their key (<code>users</code>, <code>access</code>, <code>forms</code>, <code>update</code> … – the <code>data-nu-tile</code> attribute of a tile), own tiles <code>c_…</code>, pinned pages, and the hook's own tiles <code>x_…</code>.</li>
+		<li><strong>Hash variables</strong>: the user's ones (<code>&#35;USER_ID&#35;</code>, <code>&#35;USER_LOGIN&#35;</code>, <code>&#35;GLOBAL_ACCESS&#35;</code>, <code>&#35;ACCESS_LEVEL_CODE&#35;</code>, <code>&#35;USER_DEPARTMENT&#35;</code>, <code>&#35;USER_TEAM&#35;</code>, <code>&#35;LANGUAGE&#35;</code> …) and <code>&#35;ADMIN_ROLE&#35;</code> (name of the user's admin role, empty for the globeadmin), <code>&#35;HOME_LAYOUT&#35;</code> (name of the start page layout), <code>&#35;HOME_SIZE&#35;</code> (large, compact, list, listwide, list2), <code>&#35;HOME_DISPLAY&#35;</code> (groups, tabs) – both derived from the view since 0.8.420 – and <code>&#35;HOME_VIEW&#35;</code> (0.8.420: the desktop view the person sees as JSON – style, desc, nav, density, icon …).</li>
+		<li><strong>Dynamic tiles</strong> are checked like own tiles of the tile editor – a link the editor would refuse is refused here too – and drawn by the same code: search, the compact tooltips and every tile size work. They are not shown in <em>Customise</em> (so they can never be saved into a layout) and cannot be favourites. A form tile is shown only to users with rights on the form. All texts are escaped – a hook cannot add HTML.</li>
+		<li><strong>Errors</strong>: a failing hook (an error, an exception, a refused tile or key) leaves the page as it would be without the hook. The globeadmin sees the message above the tiles with a link to the procedure; users with an admin role see nothing. Every error and every <code>echo</code> output goes to <em>Debug results</em>.</li>
+		<li><strong>Off switch</strong>: <code>$nuConfigHomeHooks = false;</code> in <code>nuconfig.php</code> (or the row <em>Start Page Hooks</em> in <a href="#settings">Settings</a>). <strong>Safe mode</strong>: <code>index.php?p=home&amp;tiles=1&amp;safe=1</code> skips the hook for one page view (globeadmin only; a note on the page says so).</li>
+		<li><strong>Speed</strong>: the hook runs on every visit – <code>nuHomeCache(seconds)</code> (at most 3600) keeps its result in the session of each user (also for the same layout and the same code).</li>
+		<li><strong>Demo mode</strong>: the hook runs read only for demo visitors (writes stop it with an error). An active hook is listed as information in the <a href="#security">Security check</a> and in <em>System status</em>. Whoever may change procedures may change the hook – there is no extra right.</li>
+		<li><code>nuAddJavascript()</code> does nothing on this page (the start page allows only scripts from files). Hand values to JavaScript with <code>nuHomeSetData()</code>.</li>
+	</ul>
+	<table class="table table-sm">
+		<thead><tr><th>PHP function</th><th>What it does</th></tr></thead>
+		<tbody>
+			<tr><td><code>nuHomeSetBadge($key, $text, $color = 'secondary')</code></td><td>Badge on a tile; colour = primary, secondary, success, danger, warning, info, light, dark.</td></tr>
+			<tr><td><code>nuHomeSetHint($key, $text)</code></td><td>Replaces the tile's description.</td></tr>
+			<tr><td><code>nuHomeHideTile($key)</code></td><td>Hides a tile for this page view.</td></tr>
+			<tr><td><code>nuHomeAddGroup($id, $title, $tab = '')</code></td><td>Adds a group at the end (<code>$id</code> starts with <code>x_</code>; <code>$tab</code> = a tab id of the layout, else the first tab).</td></tr>
+			<tr><td><code>nuHomeAddTile($key, $tile)</code></td><td>Adds a tile (<code>$key</code> starts with <code>x_</code>). <code>$tile</code>: <code>group</code> (a group of the layout or of the hook; unknown → a group <em>More</em>), <code>label</code>, <code>hint</code>, <code>icon</code> (<code>bi-…</code>), <code>color</code> (<code>#rrggbb</code>) and exactly one target: <code>form</code> (id or code) + <code>record</code>, <code>page</code> (a nuBuilder Next page such as <code>users</code>, <code>update</code>), <code>procedure</code> (id or code) + <code>run</code> (<code>window</code> / <code>hidden</code>), <code>url</code> (<code>https://…</code> or <code>index.php?…</code>) + <code>newtab</code>, <code>report</code> (id or code, 0.8.425).</td></tr>
+			<tr><td><code>nuHomeBanner($text, $level = 'info')</code></td><td>A notice above the tiles: info, success, warning, danger.</td></tr>
+			<tr><td><code>nuHomeSetData($name, $value)</code></td><td>A JSON value for the page's JavaScript.</td></tr>
+			<tr><td><code>nuHomeCache($seconds)</code></td><td>Keeps the result per user for that long.</td></tr>
+		</tbody>
+	</table>
+	<h3 id="home-hooks-js">JavaScript: <code>nuHome</code> (0.8.379)</h3>
+	<p>The JavaScript field of the procedure <code>nu_home</code> (when <em>JavaScript active</em> is on) runs on the tile start page. The page allows only scripts from files, so it is served as <code>index.php?p=homejs&amp;v=&lt;hash&gt;</code> (only for users of the tile page; the browser keeps it until the code changes) and loaded after the page's own script. PHP creates tiles, JavaScript decorates them – there is no <code>addTile()</code> in JavaScript.</p>
+	<pre dir="ltr"><code>// JavaScript of procedure nu_home – runs on the tile start page
+nuHome.on('tile', function (tile) {
+  if (tile.kind === 'procedure') tile.el.classList.add('border', 'border-warning');
+  if (tile.key === 'c_orders' &amp;&amp; nuHome.data.openOrders &gt; 20) tile.setHint('Too many open orders – check today');
+});
+nuHome.on('search', function (query, shownTiles) {
+  if (query &amp;&amp; !shownTiles.length) console.info('No tile for', query);
+});</code></pre>
+	<table class="table table-sm">
+		<thead><tr><th>Member</th><th>Meaning</th></tr></thead>
+		<tbody>
+			<tr><td><code>nuHome.on(event, fn)</code>, <code>nuHome.off(event, fn)</code></td><td>Events: <code>tile</code> (<code>tile</code> – for every tile; replayed at once for the tiles already drawn, called again for tiles added later), <code>ready</code> (all tiles drawn; called at once when already past), <code>search</code> (<code>query</code>, <code>shownTiles</code>), <code>tab</code> (<code>tabId</code>), <code>favourites</code> (<code>on</code>), <code>customize</code> (<code>on</code> – <code>tile</code> callbacks are not called in Customise; use this to undo decorations).</td></tr>
+			<tr><td><code>nuHome.tiles(filter)</code>, <code>nuHome.tile(key)</code></td><td>All tile objects (filter = a function or an object such as <code>{source: 'own'}</code>), or one by key.</td></tr>
+			<tr><td><code>nuHome.data</code></td><td>The values of <code>nuHomeSetData()</code>.</td></tr>
+			<tr><td>tile: <code>key</code>, <code>el</code>, <code>source</code>, <code>kind</code>, <code>label</code>, <code>hint</code>, <code>icon</code>, <code>color</code>, <code>badge</code>, <code>group</code>, <code>tab</code>, <code>size</code>, <code>fav</code>, <code>href</code></td><td><code>source</code>: builtin, own, pinned, dynamic · <code>kind</code>: form, page, procedure, url, post (database tools) · <code>size</code>: large, compact, list, listwide, list2 · <code>href</code>: null for procedure and post tiles.</td></tr>
+			<tr><td>tile: <code>setBadge(text, color)</code>, <code>setHint(text)</code>, <code>hide()</code>, <code>show()</code>, <code>onClick(fn)</code></td><td>Change the tile in place; hidden tiles stay hidden in the search and with <em>Favourites only</em>; <code>fn(event, tile)</code> runs first – <code>return false</code> cancels the tile's own action.</td></tr>
+		</tbody>
+	</table>
+	<ul>
+		<li>Every tile carries <code>data-nu-tile</code>, <code>data-nu-source</code>, <code>data-nu-kind</code>, <code>data-nu-group</code>, <code>data-nu-tab</code>, <code>data-nu-label</code> and <code>data-nu-desc</code>.</li>
+		<li>Every callback runs in <code>try</code> / <code>catch</code>: an error goes to the browser console and – for the globeadmin – to a message at the bottom right (each error once); the other callbacks still run.</li>
+		<li>No <code>style="…"</code> in HTML strings (the page's content security policy blocks it) – set <code>el.style.…</code> from code instead.</li>
+		<li>Safe mode and <code>$nuConfigHomeHooks = false</code> skip the JavaScript too. The <a href="#compat">Compatibility check</a> scans it with the other procedures.</li>
+	</ul>
+	<p>Since 0.8.378 the result of <code>nuRunQuery()</code> also offers nuBuilder's PDOStatement methods <code>fetch()</code>, <code>fetchColumn()</code>, <code>fetchObject()</code>, <code>fetchAll()</code>, <code>rowCount()</code> and <code>columnCount()</code>.</p>
+</section>
+
+<section id="api" data-doc="admin">
+	<h2 id="api-h">REST API</h2>
+	<p>JSON API for users, access levels with their form rights, permission items and reports (PDF): <code>api.php/v1/…</code> (no URL rewriting needed). Switch it on with <code>$nuConfigApi = true</code> in <code>nuconfig.php</code> and set a long random <code>$nuConfigSecretKey</code>. HTTPS only (localhost excepted; <code>$nuConfigApiAllowHttp = true</code> for tests). Access tokens live <code>$nuConfigApiTokenMinutes</code> minutes (default 15).</p>
+	<h3 class="h6 mt-3">Clients – <em>Admin tools → API clients</em></h3>
+	<ul>
+		<li>A client has a public <code>client_id</code> and a <code>client_secret</code> that is shown <strong>once</strong> (copy it right away). Only HMAC hashes of secrets and tokens are stored.</li>
+		<li><strong>Service user</strong>: each client acts as its own user (created on the page or chosen). The rights of that user's access level apply exactly as in the browser (view / save / add / delete on <code>nuuser</code>, <code>nuaccess</code>, <code>nupermissionitem</code>). A service user can no longer log in, and neither it nor its access level can be changed through the API.</li>
+		<li><strong>Scopes</strong>: what the client may do at all – <code>users:read</code>, <code>users:write</code>, <code>users:password</code>, <code>users:login_link</code>, <code>reports:run</code>, <code>notifications:write</code>, <code>access:read</code>, <code>access:write</code>, <code>permissions:read</code>, <code>permissions:write</code>. A request needs the scope <em>and</em> the right of the access level.</li>
+		<li>Optional: allowed IP addresses / networks, requests per minute (default 120, then <code>429</code>), expiry date. <em>New secret</em> (the old one stays valid 24 h or ends at once), <em>Revoke all tokens</em>, <em>Delete</em>. Every token and request is logged (Log: <em>API token issued / refused</em>, <em>API read / change</em>).</li>
+	</ul>
+	<h3 class="h6 mt-3">Access token (OAuth 2.0 client credentials)</h3>
+	<pre class="nuApiExample"><code>curl -u 'nk_…:ns_…' -d grant_type=client_credentials https://example.com/nunext/api.php/v1/token
+→ {"access_token":"nt_…","token_type":"Bearer","expires_in":900,"scope":"users:read …"}
+
+curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/users?q=anna&amp;state=active&amp;limit=20'</code></pre>
+	<p>Credentials as HTTP Basic or as <code>client_id</code> / <code>client_secret</code> in the body; <code>scope</code> may ask for fewer scopes. Ten wrong secrets lock the client for 15 minutes. If the <code>Authorization</code> header does not reach PHP (some FastCGI set-ups), add <code>SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1</code> to the folder's <code>.htaccess</code>.</p>
+	<h3 class="h6 mt-3">Endpoints</h3>
+	<table class="table table-sm small">
+		<thead><tr><th>Method and path</th><th>Scope</th><th>Notes</th></tr></thead>
+		<tbody>
+			<tr><td><code>GET /v1/me</code></td><td>–</td><td>client, scopes, service user</td></tr>
+			<tr><td><code>GET /v1/users</code></td><td>users:read</td><td><code>q</code>, <code>state</code> (active / expired / all), <code>access_level_id</code>, <code>login</code>, <code>email</code>, <code>sort</code> (login / name / email), <code>limit</code> (max 200), <code>offset</code></td></tr>
+			<tr><td><code>GET /v1/users/{id}</code></td><td>users:read</td><td>fields: login, name, first_name, last_name, code, email, position, department, team, additional1, additional2, language, access_level_id, expires_on, change_password (+ read only: access_level_code, expired, service_user, password_changed_at)</td></tr>
+			<tr><td><code>POST /v1/users</code></td><td>users:write</td><td>login, name and access_level_id required; <code>password</code> needs users:password (without one the user must use a welcome link); <code>permissions</code>: list of item ids or idents</td></tr>
+			<tr><td><code>PATCH /v1/users/{id}</code></td><td>users:write</td><td>only the fields sent</td></tr>
+			<tr><td><code>DELETE /v1/users/{id}</code></td><td>users:write</td><td>archives (Valid until = yesterday, Save right); <code>?hard=1</code> deletes (Delete right)</td></tr>
+			<tr><td><code>POST /v1/users/{id}/password</code></td><td>users:password</td><td><code>{"password": "…", "change_password": true}</code> or <code>{"welcome": true}</code> (welcome e-mail with a link)</td></tr>
+			<tr><td><code>POST /v1/users/{id}/login-link</code></td><td>users:login_link</td><td><code>{"minutes": 1440, "form_id": "…", "record_id": "…", "email": false}</code> → 201 <code>{"url": "…", "expires_at": "…Z" | null, "emailed": false}</code> – one-time login link (minutes 0 = no expiry); <code>DELETE</code> removes the user's token. Needs the save right on the user form.</td></tr>
+			<tr><td><code>GET / PUT /v1/users/{id}/permissions</code></td><td>permissions:read / write</td><td><code>{"items": ["sample_discount", …]}</code> – the complete list</td></tr>
+			<tr><td><code>GET, POST /v1/access-levels</code>, <code>GET, PATCH, DELETE /v1/access-levels/{id}</code></td><td>access:read / write</td><td>code, description, group, home_form_id, use_2fa; DELETE only without users (<code>409</code>)</td></tr>
+			<tr><td><code>GET / PUT /v1/access-levels/{id}/forms</code></td><td>access:read / write</td><td><code>{"forms": [{"form_id": "nuuser", "add": true, "save": true, "delete": false, "clone": false, "new": true, "print": false}]}</code> – replaces the rights</td></tr>
+			<tr><td><code>GET, POST /v1/permission-items</code>, <code>GET, PATCH, DELETE /v1/permission-items/{id}</code></td><td>permissions:read / write</td><td>ident, group, description</td></tr>
+		</tbody>
+			<tr><td><code>GET /v1/reports</code></td><td>reports:run</td><td>Reports the service user's access level may run: id, code, description, data source and <code>params</code> – the hash variables (<code>#name#</code>) its data source and layout use</td></tr>
+			<tr><td><code>POST /v1/reports/{id or code}/run</code></td><td>reports:run</td><td>Runs the report – see <a href="#api-reports">Reports and PDF links</a></td></tr>
+			<tr><td><code>POST /v1/notifications</code></td><td>notifications:write</td><td>Creates and publishes a notification (<code>"draft": true</code> = draft) – fields as in <a href="#notifications-send">Sending notifications</a>, recipients in <code>"audience": {"all", "users", "departments", "teams", "positions", "access_levels"}</code>; answers 201 with the notification</td></tr>
+			<tr><td><code>GET /v1/notifications/{id}</code></td><td>notifications:write</td><td>State (draft, scheduled, published, expired, withdrawn), recipients, read and confirmed counts</td></tr>
+			<tr><td><code>DELETE /v1/notifications/{id}</code></td><td>notifications:write</td><td>Deletes the notification and its read receipts (204)</td></tr>
+			<tr><td><code>GET /v1/reports/jobs/{job}</code></td><td>reports:run</td><td>Status of a run with <code>"async": true</code>: <code>queued</code>, <code>running</code>, <code>done</code> (with <code>result</code>) or <code>failed</code> (with <code>error</code>)</td></tr>
+	</table>
+	<p><strong>Rules</strong>: requests and answers are JSON (<code>Content-Type: application/json</code>); unknown fields are an error. Every record has an <code>ETag</code>; <code>PATCH</code>, <code>PUT</code> and <code>DELETE</code> need it in <code>If-Match</code> (<code>428</code> without, <code>412</code> when the record changed meanwhile; <code>*</code> skips the check). Lists: <code>{"data": […], "meta": {"total", "limit", "offset"}}</code>. Errors (RFC 9457): <code>{"type", "title", "status", "errors": [{"field", "message"}]}</code> – <code>401</code> token, <code>403</code> scope or right, <code>404</code>, <code>405</code>, <code>415</code>, <code>422</code> validation, <code>429</code> rate limit. Cross-origin (browser) requests are not allowed.</p>
+	<h3 class="h6 mt-3" id="api-reports">Reports and PDF links (0.8.340)</h3>
+	<pre class="small"><code>POST api.php/v1/reports/sample_orders/run
+{"params": {"customer_id": "C001"}, "filename": "orders-C001.pdf", "expires_minutes": 15, "max_downloads": 1}
+→ 201 {"report": "sample_orders", "filename": "orders-C001.pdf", "size": 48211, "sha256": "…",
+       "url": "https://…/index.php?p=reportfile&amp;t=…", "expires_at": "2026-10-21T10:15:00Z", "max_downloads": 1}</code></pre>
+	<ul>
+		<li><strong>Rights</strong>: the scope <code>reports:run</code> and the report right of the service user's access level (Reports → access levels), as in the browser. Data-source procedures run as in the browser.</li>
+		<li><strong>params</strong> become hash variables (<code>#customer_id#</code>), like the values a form passes in nuBuilder – also <code>RECORD_ID</code> or <code>FORM_ID</code>. The service user's own variables (<code>USER_ID</code>, <code>ACCESS_LEVEL_CODE</code>, <code>TABLE_ID</code> …) cannot be passed (<code>422</code>). Date variables and <code>TABLE_ID</code> are added as for every run.</li>
+		<li><strong>Download link</strong> <code>url</code>: opens without a login, so it can be handed to anybody – valid <code>expires_minutes</code> (1–1440, default 15) for <code>max_downloads</code> downloads (1–100, default 1); then <code>410</code>. Add <code>&amp;dl=1</code> to download instead of showing the PDF. Only a hash of the token is stored; the PDF waits in the protected temp folder and is deleted after the last download or by the housekeeping. Runs and downloads are logged (<em>Report printed</em>, <em>Report downloaded</em>).</li>
+		<li><strong>The PDF itself</strong>: send <code>Accept: application/pdf</code> – the answer is the file (<code>200</code>, header <code>X-Report-Sha256</code>), no link.</li>
+		<li><strong>E-mail</strong>: <code>"email": {"to": "…", "cc": "…", "bcc": "…", "subject": "…", "body": "…"}</code> sends the PDF as attachment (nuBuilder's <code>nuEmailReportPDF</code>; subject default: the report's description). The answer has <code>emailed</code> (and <code>email_error</code>). <code>"url": false</code> sends only the e-mail (<code>422</code> when it fails).</li>
+		<li><strong>Long reports</strong>: <code>"async": true</code> answers <code>202 {"job", "status_url"}</code> at once; ask <code>GET /v1/reports/jobs/{job}</code> until <code>done</code> – the <code>result</code> is the same as above. With PHP-FPM the report runs right after the answer; otherwise it runs when the status is asked for the first time. Jobs belong to the client that started them.</li>
+		<li><strong>Limit</strong>: 10 report runs per minute per client (<code>429</code>), on top of the client's request limit.</li>
+	</ul>
+	<h3 class="h6 mt-3" id="api-playground">Playground – <em>Admin tools → API clients → API playground</em></h3>
+	<ul>
+		<li>Choose a client (and optionally fewer scopes) and press <em>Send</em>: a token is fetched for the client without its secret (logged with <code>via: playground</code>) and the request goes from the browser to <code>api.php</code> exactly like a real client's. Under <i class="bi bi-sliders"></i> you can instead test the real token request with the client secret – it is not stored.</li>
+		<li><em>Endpoints</em> fills in method, path and an example body. The answer shows status, time, body and headers; <em>curl</em> copies the request as a command line.</li>
+		<li><strong>Variables</strong> <code>{{name}}</code> work in path, headers and body: your own (<code>name=value</code> per line) and from the last response – <code>{{last_id}}</code> (its <code>id</code> or the end of <code>Location</code>), <code>{{last_etag}}</code>, <code>{{last_status}}</code>. With <em>If-Match automatically</em> PATCH / PUT / DELETE send the ETag last seen for that resource.</li>
+		<li><strong>Saved requests</strong> (name, folder, method, path, headers, body, client and scope) are shared by the administrators; client, scope, variables and the If-Match option are kept per login. Table <code>zzzzsys_nunext_api_request</code>.</li>
+		<li>Requests are real: they change data, count towards the rate limit and must come from an allowed IP address.</li>
+	</ul>
+</section>
+
+<section id="compat" data-doc="admin">
+	<h2 id="compat-h">Compatibility check</h2>
+	<p>Start page → <em>Compatibility check</em> scans all code of your application – form JavaScript, object events, lookup code, HTML objects, the setup header and procedures – for calls of <code>nu…()</code> functions and shows for each one whether nuBuilder Next supports it:</p>
+	<ul>
+		<li><strong>supported</strong> – works in nuBuilder Next; <strong>stub</strong> – exists but does nothing yet; <strong>missing</strong> – a nuBuilder function nuBuilder Next does not have (the call fails); <strong>unknown</strong> – not a nuBuilder function (typo, other library); <strong>your own</strong> – defined in your code or <code>$nuConfigIncludePHP</code>.</li>
+		<li>Each row shows the number of calls and where they are; form names link to the builder. <em>Show supported functions too</em> lists everything, <em>Include nuBuilder's own forms</em> also scans the <code>nu…</code> forms.</li>
+		<li>Run it after importing an application into a database used by nuBuilder Next, and before opening it to users.</li>
+		<li><strong>nuBuilder 4.9 features</strong> (0.8.382): the features of the nuBuilder 4.9 compatibility review your application uses, with the places (form, object, procedure, line of <code>nuconfig.php</code>) and since which version nuBuilder Next supports them – red = not supported yet, test these places by hand. IDs as in the review: C1–C6 (browse columns with table names or aliases, <code>AS</code> aliases, browse SQL without the primary key, <code>SELECT *</code> over joins, <code>nu_filter_match</code>, access conditions), M1–M10 (scripts in HTML objects, <code>nuAddBrowseTitleSelect</code>, multi-value filters, selects from a procedure, files into the file system, <code>$nuConfigIncludeJS</code> / <code>…CSS</code>, <code>nuAfterSave</code>, <code>nuFORM</code> methods, report PDFs from PHP, SSO), N1 (<code>nuSERVERRESPONSE</code>), I3 (MyISAM tables). Since 0.8.462 also the points of the nuBuilder 4.9 gap analysis – not only function names: G1 access levels with data mode / form type, G2 global hook procedures, G3 calc objects on sub-forms, G4 events <code>onnuload</code> / <code>onenter</code>, G5 <code>nuFORMdata</code>, G6 scripts, frames, styles or images from other sites (blocked by the Content Security Policy), G7 hash variables nuBuilder Next does not set (<code>&#35;USER_GROUP_ID&#35;</code>, <code>&#35;USER_A11Y&#35;</code>, lower-case internals such as <code>&#35;form_id&#35;</code>), G8 hidden procedures that read <code>&#35;RECORD_ID&#35;</code> / <code>&#35;FORM_ID&#35;</code> (values can differ from nuBuilder's).</li>
+		<li><strong>Hash variables outside quotes</strong> (0.8.207): <code>&#35;field&#35;</code> is escaped for a quoted string only. In <code>WHERE id = &#35;field&#35;</code> or <code>$x = &#35;field&#35;;</code> a user can put SQL or PHP into a field value. The list shows every procedure, hook, browse SQL, select / display SQL and SQL builder query with such a variable (also SQL inside PHP strings, <code>nuRunQuery("… = &#35;x&#35;")</code>). Fix: <code>'&#35;field&#35;'</code> in quotes, or parameters (<code>nuRunQuery($sql, [$value])</code>). Variables the server sets (<code>&#35;USER_ID&#35;</code>, <code>&#35;FORM_ID&#35;</code>, <code>&#35;TABLE_ID&#35;</code> …) are not listed; <code>&#35;RECORD_ID&#35;</code>, <code>&#35;ID&#35;</code> and <code>&#35;CODE&#35;</code> are – they come from the browser.</li>
+	</ul>
+</section>
+
+<section id="devflow" data-doc="dev">
+	<h2 id="devflow-h">Development with Claude</h2>
+	<p>Only shown in developer mode. nuBuilder Next is developed in sessions with Claude (Anthropic's AI) working on a copy of the project in its own Linux workspace: it changes the code, tests it in a browser against a real nuBuilder database and hands back two signed zips. The rules it follows are in <code>CLAUDE.md</code> (in <code>nunext-dev.zip</code> and the repository, never in the install package) – read it once; this chapter is the short version for the developer.</p>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-needs">What a session needs</h3>
+		<ul>
+			<li><strong>Claude with a workspace</strong>: a Claude session that can run commands and handle files (Claude Code – web, desktop or terminal – or claude.ai with the code / file tools). It needs internet access for the package registries (apt, npm, pip) and GitHub (cloning nuBuilder for the test installation, and pushing).</li>
+			<li><strong><code>nunext-dev.zip</code></strong> of the last release – the whole project including <code>CLAUDE.md</code>, <code>TODO.md</code>, <code>dev/</code> (release script, tests, tools) and <code>.github/</code>.</li>
+			<li><strong>The signing key file</strong> <code>nunext-signing.key</code> (see below) – without it releases are unsigned and every installation warns.</li>
+			<li><strong>For "gate"</strong>: write access to the repository <code>nuBuilder/nuBuilder-Next</code> in the session (GitHub connection with push rights).</li>
+		</ul>
+		<p>Nothing survives between sessions: the workspace, the test database and the test installation are rebuilt from the zip each time (<code>CLAUDE.md</code> → "Test environment": MariaDB, PHP's built-in server, a clone of nuBuilder with nuBuilder Next inside it at <code>/nunext/</code>, Playwright with Chromium, PHPStan, ESLint, axe-core).</p>
+	</div>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-start">Starting a new session</h3>
+		<ol>
+			<li>Attach <code>nunext-dev.zip</code> (from the last answer) and <code>nunext-signing.key</code>.</li>
+			<li>First message, e.g.: <em>"New session: unpack nunext-dev.zip, put nunext-signing.key next to the project folder, read CLAUDE.md and TODO.md, rebuild the test environment."</em> – then the request.</li>
+			<li>Claude unpacks to <code>nunext/</code>, puts the key next to it (<code>../nunext-signing.key</code> – outside the project, never in a zip), installs MariaDB / the test site / the tools and reads the newest changelog sections.</li>
+		</ol>
+		<p>A long session that reaches its context limit continues with a summary – nothing to do. A new session is only needed when the old one is gone; always send it the <code>nunext-dev.zip</code> of the <em>last</em> answer.</p>
+	</div>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-key">The signing key</h3>
+		<ul>
+			<li>An Ed25519 key pair. The <strong>public</strong> key is in the code (<code>NuUpdate::SIGN_PUBLIC</code> in <code>core/nuupdate.php</code>); every installation checks <code>nunext.zip</code> and the <a href="#copy-files">library packs</a> against it. The <strong>secret</strong> key is the file <code>nunext-signing.key</code> (last line = the base64 secret key) – whoever has it can make packages every installation accepts. Keep it private: never in the project, a zip, the repository, a ticket or a chat that is shared.</li>
+			<li>Where the tools look for it: <code>$NUNEXT_SIGNING_KEY</code>, <code>../nunext-signing.key</code> (next to the project folder), <code>~/.nunext-signing.key</code>. The page <em>Build library packs</em> takes it as an upload for that one request and never stores it.</li>
+			<li>A new key pair (only if the old one is lost or leaked):
+				<pre class="small"><code>php -r '$k = sodium_crypto_sign_keypair(); echo "nuBuilder Next signing key\n", base64_encode(sodium_crypto_sign_secretkey($k)), "\n"; fwrite(STDERR, "public: " . base64_encode(sodium_crypto_sign_publickey($k)) . "\n");' &gt; nunext-signing.key</code></pre>
+				Put the printed public key into <code>NuUpdate::SIGN_PUBLIC</code> and release. Installations still on the old key refuse the new packages – update them once by hand (unpack the zip over the folder), and rebuild the library packs with the new key.</li>
+			<li>Not the same as <code>$nuConfigSecretKey</code> in <code>nuconfig.php</code> – that one is per installation (API tokens, one-time links) and never leaves the server.</li>
+		</ul>
+	</div>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-requests">Requests</h3>
+		<ul>
+			<li><strong>A short request</strong> ("add a filter to the users list") → Claude builds it and ends with a <strong>fast release</strong> (next version 0.8.x+1), tests of the changed areas and a look in the browser, and sends both zips. It asks first only when a wrong guess would be expensive.</li>
+			<li><strong>"Suggest …"</strong> → numbered options with a recommendation, nothing built. Answer with the option, <em>"do recommendations"</em> or <em>"ok all"</em>.</li>
+			<li><strong>"Gate"</strong> → full release gate and push to GitHub (below).</li>
+			<li>Every release: version bump, <code>CHANGELOG.md</code> section, texts in all eleven languages, the help (this file), <code>TODO.md</code> (points to verify), tests for new features. No personal details of the developer in any file.</li>
+		</ul>
+	</div>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-gate">Fast release and gate</h3>
+		<table class="table table-sm">
+			<thead><tr><th></th><th>Fast release (default)</th><th>Gate (when you say "gate")</th></tr></thead>
+			<tbody>
+				<tr><td>Command</td><td><code>python3 dev/release.py &lt;version&gt; "&lt;title&gt;" changes.txt</code></td><td>the same with <code>--gate</code></td></tr>
+				<tr><td>Checks</td><td><code>php -l</code> of every file, <code>dev/check_lang.php</code>, unit tests <code>dev/tests/run.php</code>, PHPStan, ESLint – plus by hand the e2e tests of the changed areas (<code>ONLY=…</code>) and screenshots</td><td>all of these plus the browser suites on the test installation: smoke test, all e2e tests, the cross-test against nuBuilder 4.9 (<code>compat.js</code>); a failing test stops the release</td></tr>
+				<tr><td>Manifest</td><td><code>"gated": false</code> – the update page shows <em>Not fully tested</em></td><td><code>"gated": true</code>, <code>"last_gate"</code></td></tr>
+				<tr><td>GitHub</td><td>nothing pushed</td><td>the project is copied to the repository clone, committed and pushed to <code>main</code> – everything since the last gate in one commit</td></tr>
+			</tbody>
+		</table>
+		<p><code>release.py</code> prints the releases since the last gate; after five Claude reminds you to gate (also after changes to login, rights, the update or database steps). The gate needs the test installation's addresses in the environment: <code>NUNEXT_TEST_SITE</code> (folder), <code>NUNEXT_TEST_BASE</code> (its URL), <code>NUNEXT_TEST_NUB</code> (nuBuilder on the same database, for <code>compat.js</code>); optional <code>NUNEXT_TEST_LOAD=1</code> (large data, ~3 min) and <code>NUNEXT_TEST_A11Y=1</code> (accessibility).</p>
+		<p>The push makes the code public on GitHub – it does <em>not</em> create a GitHub release. Servers updating from GitHub only see a version once its release exists (next chapter).</p>
+	</div>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-manual">Making a release by hand</h3>
+		<ol>
+			<li>In the project folder (key next to it): write the changelog text into a file – <code>- </code> bullets, continuation lines indented by two spaces – and run <code>python3 dev/release.py 0.8.x "Title" changes.txt</code> (add <code>--gate</code> with the test variables set). The version must be higher than <code>NU_VERSION</code>.</li>
+			<li>It updates <code>README.md</code> (version line), <code>CHANGELOG.md</code>, <code>NU_VERSION</code> in <code>core/nuapp.php</code>, <code>lang/en-US.php</code> / <code>de-CH.php</code>, <code>install/db_changes.json</code>, writes and signs <code>nunext-manifest.json</code> and builds <code>../nunext.zip</code> and <code>../nunext-dev.zip</code>.</li>
+			<li>Check it like an installation would: <code>php dev/inspect.php &lt;test installation&gt; ../nunext.zip</code> → <code>ok=true</code>, the new version, <code>signature=valid</code>, <code>errors=[]</code>.</li>
+			<li>Publish: on GitHub create a release with the tag <code>v0.8.x</code> (on the pushed commit), release notes made from the changelog (Claude writes them on request after the template <code>dev/release-notes.md</code>: link to the changelog, highlights, security, steps after updating), and attach <strong><code>nunext.zip</code></strong> (that file name – the update page looks for it; pre-release while nuBuilder Next is alpha). <code>nunext-dev.zip</code> is not needed there (the repository is the same).</li>
+			<li>Library packs are a separate, fixed release with the tag <code>libraries</code> – touched only when a library changes (<a href="#libs-github">Publishing the packs on GitHub</a>). If the new version needs a newer library (<code>install/libraries-required.json</code>), update that release first.</li>
+		</ol>
+		<p>If a release must be rebuilt before it went out: set <code>NU_VERSION</code> back, remove its <code>CHANGELOG.md</code> section and the manifest's <code>changes</code> entry, then run it again.</p>
+	</div>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-zips">What the packages contain</h3>
+		<ul>
+			<li><strong><code>nunext.zip</code></strong> – the install / update package, folder <code>nunext/</code> inside: everything that runs on a server. Left out because they are readable on a web server and not needed there: <code>CLAUDE.md</code>, <code>TODO.md</code>, <code>.gitignore</code>, <code>dev/</code>, <code>.github/</code>. Added (0.8.409, not in the manifest): <code>_install/nunext-lib-phpmailer-&lt;version&gt;.zip</code>, built and signed by <code>release.py</code> from <code>dev/libsrc/phpmailer/</code> – to update PHPMailer, replace that folder (only the release's PHPMailer; existing servers get it from the <code>libraries</code> release).</li>
+			<li><strong><code>nunext-dev.zip</code></strong> – the whole project, to continue the development (send it to the next session).</li>
+			<li><strong><code>nunext-manifest.json</code></strong> (in both): <code>version</code>, <code>built</code>, <code>files</code> (SHA-256 and size of every deployed file – the update checks each one and knows which old files to remove), <code>changes</code> (the change history shown on the update page), <code>libraries</code> (bundled libraries and versions), <code>requires_libs</code> (library versions this version needs), <code>page_api</code> (page form API versions – pages that would break are listed), <code>gated</code> / <code>last_gate</code>, and <code>signature</code> (Ed25519 over <code>nunext-release|&lt;version&gt;|sha256 of the file list</code>).</li>
+			<li>Also inside: <code>install/db_changes.json</code> (the database steps and own tables – <em>Check package</em> previews the database changes), <code>install/schema_expected.json</code> (structure check), <code>install/libraries-required.json</code>.</li>
+			<li>Folders: <code>vendor/bundled/</code> (bundled libraries, registry <code>libraries.json</code>), <code>vendor/nuconfig.php</code> (loader for the packed configs of phpMyAdmin / Tiny File Manager).</li>
+			<li>Never inside: <code>nuconfig.php</code>, <code>vendor/packs/</code>, <code>third_party/</code>, <code>_backup/</code>, <code>_update/</code>, the signing key (see <code>.gitignore</code>).</li>
+		</ul>
+	</div>
+
+	<div class="doc-sub" data-doc="dev">
+		<h3 id="devflow-tests">Tests</h3>
+		<ul>
+			<li><code>php dev/tests/run.php</code> – unit tests without a database (every release).</li>
+			<li><code>dev/tests/smoke.js</code> – opens every page; <code>dev/tests/e2e.js</code> – the end-to-end tests (forms, rights, update page, library packs …; <code>ONLY=name1,name2</code> runs single ones; it saves the database first and puts it back); <code>dev/tests/compat.js</code> – nuBuilder 4.9 and nuBuilder Next on the same database, a save without a change must leave nuBuilder's rows alone.</li>
+			<li><code>dev/tests/install.js</code> – the installer with an uploaded <code>nubuilder4.sql</code> (and <code>LIBPACKS=&lt;folder&gt;</code> for the library step); <code>load.js</code> – large data and timings; <code>a11y.js</code> – accessibility (WCAG 2.1 AA) in light, dark and phone width.</li>
+			<li><a href="#selftest">Self-test</a> (<code>?p=selftest</code>) – the same kind of checks inside a running installation.</li>
+		</ul>
+	</div>
+</section>
+
+</main>
+</body>
+</html>

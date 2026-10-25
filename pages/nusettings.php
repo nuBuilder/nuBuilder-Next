@@ -89,7 +89,7 @@ $control = static function (array $r, string $value, bool $invalid) use ($aceThe
 	}
 };
 
-nu_layout_start(t('set_title'), 'home', ['container' => 'container-xl']);
+nu_layout_start(t('set_title'), 'home', ['container' => 'nuContainer']);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>

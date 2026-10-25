@@ -117,7 +117,7 @@ if ($id !== '') {
 	$foot = '<script type="application/json" id="sqbData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
 		. '<script src="' . nu_asset('assets/js/nusqlbuilder.js') . '"></script>';
 }
-nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nusqlbuilder.css') . '">', 'container' => $id !== '' ? 'container-fluid' : 'container-xl']);
+nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nusqlbuilder.css') . '">', 'container' => $id !== '' ? 'container-fluid' : 'nuContainer']);
 ?>
 <nav aria-label="breadcrumb">
 	<ol class="breadcrumb small mb-2">
@@ -172,6 +172,7 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 	?>
 	<div class="nuTitleBar mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-diagram-3 me-2"></i><?= h($q ? ((string)$q['sse_code'] ?: (string)$q['sse_description']) : t('sqb_new')) ?></h1>
+		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
 		<a class="btn nuBtnAct" href="<?= h(nu_url('sqlbuilder')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="sqbSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if ($q && $rights['clone']): ?>
@@ -183,6 +184,7 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="sqbDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
 		<?php endif; ?>
+		</div>
 	</div>
 	<?php if ($used): ?><div class="small text-body-secondary mb-2"><i class="bi bi-file-earmark-richtext me-1"></i><?= h(t('sqb_used_by', implode(', ', array_column($used, 'sre_code')))) ?></div><?php endif; ?>
 	<form method="post" action="<?= h(nu_url('sqlbuilder', ['id' => $id])) ?>" id="nuRecordForm" data-nu-guard novalidate>

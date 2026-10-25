@@ -89,6 +89,7 @@ final class NuListView
 		if (in_array((int)($d['per'] ?? 0), self::PER, true)) $out['per'] = (int)$d['per'];
 		$out['open'] = !empty($d['open']);
 		$out['display'] = isset($L['grid']) && ($d['display'] ?? '') === 'grid' ? 'grid' : 'table';
+		$out['phone'] = ($d['phone'] ?? '') === 'table' ? 'table' : 'cards';   // layout below 768 px (0.8.471); the ▦ / ☰ button overrides it per device
 		return $out;
 	}
 
@@ -554,6 +555,13 @@ final class NuListView
 	}
 
 	/** The list card: title bar, filters, table (desktop), cards (phone) or grid, pager, editor data. */
+	/** Links of a cell as plain text (inside a card that is a link itself). */
+	private static function unlink(string $html): string
+	{
+		if (stripos($html, '<a') === false) return $html;
+		return (string)preg_replace(['~<a\b[^>]*>~i', '~</a\s*>~i'], ['<span>', '</span>'], $html);
+	}
+
 	public static function card(array $st, array $opt = []): string
 	{
 		['L' => $L, 'views' => $views, 'view' => $view, 'def' => $def, 'cols' => $cols, 'sort' => $sort, 'dir' => $dir, 'per' => $per, 'pg' => $pg,
@@ -573,13 +581,16 @@ final class NuListView
 		$more = !empty($opt['more']);                             // ⋮ menu on phones (more()): Print moves into it
 		ob_start();
 		?>
-<div class="card shadow-sm nuListCard nuLv" data-lv-list="<?= h($L['key']) ?>">
+<div class="card shadow-sm nuListCard nuLv<?= ($def['phone'] ?? 'cards') === 'table' ? ' nuLvPhoneTable' : '' ?>" data-lv-list="<?= h($L['key']) ?>" data-lv-phone="<?= h($def['phone'] ?? 'cards') ?>">
 	<div class="card-header nuListHead nuTitleBar">
 		<?php if ($title !== ''): ?><h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h($title) ?><?= $opt['title_extra'] ?? '' ?></h1><?php endif; ?>
 		<?= $opt['title_sub'] ?? '' ?>
 		<div class="d-flex flex-wrap gap-2 align-items-center"><?= ($opt['back'] ?? true) ? nu_back_button() : '' ?>
 			<?= $opt['buttons'] ?? '' ?>
 			<?= self::more($opt['more'] ?? [], $more ? NuListExport::printUrl($L['form'], $route, $rp + $keepSort) : '', $more && NuListExport::allowed($L['form']) ? nu_url($route, array_filter($rp + $keepSort, static fn($v) => $v !== null && $v !== '') + ['export' => 'xlsx']) : '') ?>
+			<?php if (!$grid): // phones: cards ⇄ table, remembered on the device (0.8.471, assets/js/nulistview.js) ?>
+			<button type="button" class="btn nuBtnAct nuToolBtn d-md-none nuLvPhoneBtn" data-lv-phone-toggle aria-pressed="false" title="<?= h(t('lv_phone_toggle')) ?>" aria-label="<?= h(t('lv_phone_toggle')) ?>"><i class="bi bi-table nuLvPhoneToTable" aria-hidden="true"></i><i class="bi bi-card-list nuLvPhoneToCards" aria-hidden="true"></i></button>
+			<?php endif; ?>
 			<?= self::menu($L, $views, $view, $keepSort) ?>
 			<?= NuListExport::buttons($L['form'], $route, $rp + $keepSort, false, 'btn-outline-secondary nuToolBtn', $more ? 'd-none d-sm-inline-block' : '') ?>
 			<?= $opt['buttons_end'] ?? '' ?>
@@ -621,7 +632,7 @@ final class NuListView
 		<div class="p-3"><?php if (!$rows): ?><div class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></div><?php else: ?>
 			<div class="row g-3 nuLvGrid"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>><?php foreach ($rows as $r): ?><?= ($L['grid'])($r, ($L['link'])($r)) ?><?php endforeach; ?></div><?php endif; ?></div>
 	<?php else: ?>
-	<div class="table-responsive d-none d-md-block">
+	<div class="table-responsive nuLvTableWrap">
 		<table class="table table-hover align-middle mb-0 nu-table<?= !empty($L['table_class']) ? ' ' . h($L['table_class']) : '' ?>">
 			<thead><tr>
 				<?php foreach ($def['columns'] as $c): $cd = $cols[$c['key']]; $cls = trim($wCls[$c['width']] . $aCls($c['align'], $cd));
@@ -645,13 +656,15 @@ final class NuListView
 			</tbody>
 		</table>
 	</div>
-	<div class="d-md-none nuLvCards"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>>
+	<div class="nuLvCards"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>>
 		<?php if (!$rows): ?><div class="text-center text-body-secondary py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i><?= h(t('no_records')) ?></div><?php endif; ?>
-		<?php foreach ($rows as $r): $href = ($L['link'])($r); $card = $def['card']; $tag = $href !== '' ? 'a' : 'div'; ?>
+		<?php foreach ($rows as $r): $href = ($L['link'])($r); $card = $def['card']; $tag = $href !== '' ? 'a' : 'div';
+			// a card that is a link must not hold links: a nested <a> ends the card early and its value lands below it (0.8.466)
+			$cell = static fn(string $k) => $href !== '' ? self::unlink(self::cellHtml($cols[$k], $r)) : self::cellHtml($cols[$k], $r); ?>
 			<<?= $tag ?> class="nuLvCard"<?= $href !== '' ? ' href="' . h($href) . '"' : '' ?>>
-				<span class="nuLvCardHead"><span class="nuLvCardTitle"><?= self::cellHtml($cols[$card['title']], $r) ?></span>
-					<?php if ($card['badge'] !== ''): ?><span class="nuLvCardBadge"><?= self::cellHtml($cols[$card['badge']], $r) ?></span><?php endif; ?></span>
-				<?php foreach ($card['lines'] as $k): $html = self::cellHtml($cols[$k], $r); if (trim(strip_tags($html)) === '' && !str_contains($html, '<i')) continue; ?>
+				<span class="nuLvCardHead"><span class="nuLvCardTitle"><?= $cell($card['title']) ?></span>
+					<?php if ($card['badge'] !== ''): ?><span class="nuLvCardBadge"><?= $cell($card['badge']) ?></span><?php endif; ?></span>
+				<?php foreach ($card['lines'] as $k): $html = $cell($k); if (trim(strip_tags($html)) === '' && !str_contains($html, '<i')) continue; ?>
 					<span class="nuLvCardLine"><?php if ($cols[$k]['label'] !== ''): ?><span class="nuLvCardLabel"><?= h($cols[$k]['label']) ?></span><?php endif; ?><span class="nuLvCardVal"><?= $html ?></span></span>
 				<?php endforeach; ?>
 			</<?= $tag ?>>
@@ -751,7 +764,7 @@ final class NuListView
 			'lv_width_auto', 'lv_width_narrow', 'lv_width_wide', 'lv_align_auto', 'lv_align_start', 'lv_align_center', 'lv_align_end', 'lv_card_title', 'lv_card_badge',
 			'lv_card_lines', 'lv_none', 'lv_filter_shown', 'lv_filter_default', 'lv_filters_open', 'lv_sort', 'lv_sort_asc', 'lv_sort_desc', 'lv_per', 'lv_scope',
 			'lv_scope_user', 'lv_scope_shared', 'lv_levels', 'lv_levels_all', 'lv_save', 'lv_save_new', 'lv_delete', 'lv_delete_confirm', 'cancel', 'lv_up', 'lv_down',
-			'lv_import_title', 'lv_import_hint', 'lv_import_go', 'lv_card_preview', 'lv_locked', 'lv_copy_of', 'lv_err_name', 'lv_display', 'lv_display_table', 'lv_display_grid'] as $k) $texts[$k] = t($k);
+			'lv_import_title', 'lv_import_hint', 'lv_import_go', 'lv_card_preview', 'lv_locked', 'lv_copy_of', 'lv_err_name', 'lv_display', 'lv_display_table', 'lv_display_grid', 'lv_phone_layout', 'lv_phone_cards', 'lv_phone_table'] as $k) $texts[$k] = t($k);
 		$data = ['list' => $L['key'], 'route' => $L['route'], 'columns' => $cols, 'filters' => $filters, 'per' => self::PER, 'levels' => $levels, 'grid' => isset($L['grid']),
 			'manage' => self::canManage(), 'view' => ['id' => $view['id'], 'name' => $view['name'], 'scope' => $view['scope'], 'levels' => $view['levels'], 'editable' => $view['editable'], 'def' => $view['def']],
 			'texts' => $texts, 'post' => nu_url('listview')];

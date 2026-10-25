@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 17;
+	public const VERSION = 18;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -134,6 +134,13 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_recent_id',
 			'cols' => [['user_id', 'text', '25'], ['item', 'text', '100'], ['used_at', 'datetime'], ['stamp', 'text', '20']],   // stamp: YmdHis + microseconds (order)
 			'index' => ['user_id'],
+		],
+		'zzzzsys_nunext_object_access' => [                       // field data access (0.8.480, core/nufieldaccess.php): default mode + rules per object
+			'pk' => 'zzzzsys_nunext_object_access_id',
+			'cols' => [['noa_object_id', 'text', '25'], ['noa_form_id', 'text', '25'], ['noa_subject_type', 'text', '10'], ['noa_subject', 'text', '100'],
+				['noa_mode', 'text', '4'], ['noa_mask', 'text', '50'], ['noa_condition', 'text', '1000'], ['noa_note', 'text', '500'],
+				['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+			'index' => ['noa_object_id', 'noa_form_id'],
 		],
 		'zzzzsys_nunext_presence' => [                            // concurrent edits (0.8.401, core/form/nuconflict.php): who has which record open
 			'pk' => 'zzzzsys_nunext_presence_id',

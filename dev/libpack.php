@@ -6,14 +6,14 @@ declare(strict_types=1);
  * packs" in developer mode, core/nulibs.php):
  *
  *   php dev/libpack.php <out folder> <key file> <slot>[=<source folder>][@<version>] … [--all] [--keep=<old libraries.json>]
- *     slot: tcpdf | phpmailer | tinymce | phpmyadmin | adminer | tinyfilemanager | uppy (0.8.459)
+ *     slot: tcpdf | phpmailer | tinymce | phpmyadmin | adminer | uppy (0.8.459; tinyfilemanager removed in 0.8.479)
  *     source folder: default ../libsrc/<slot> next to the project (phpMyAdmin also ../libsrc/nudb, 0.8.410)
  *     --all: every library that has a folder in ../libsrc/
  *     version: read from the library (or its NUNEXT-VERSION.txt) when left out
  *     --keep: entries of an earlier index for the slots not built now (its signature is checked)
  *
  *   e.g. php dev/libpack.php ../libpacks ../nunext-signing.key --all
- *        php dev/libpack.php ../libpacks ../nunext-signing.key tcpdf phpmyadmin=/other/nudb tinyfilemanager@2.6+git.4149143.nu1
+ *        php dev/libpack.php ../libpacks ../nunext-signing.key tcpdf phpmyadmin=/other/nudb uppy@4.2.0
  *
  * Writes nunext-lib-<slot>-<version>.zip per library and the signed index libraries.json into the out folder – attach them to the
  * GitHub release with the tag "libraries". The key file is the owner's (the one of nunext.zip) and never part of the project.

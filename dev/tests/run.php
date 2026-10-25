@@ -466,6 +466,27 @@ check('formspec: parse fenced / plain / with comments / errors', is_array($pa) &
 $help = preg_replace('~//.*$~m', '', explode("\nRules:", NuFormSpec::formatHelp())[0]);
 check('formspec: the example of the prompt is valid JSON', is_array(json_decode((string)$help, true)), json_last_error_msg());
 
+// help in two files (0.8.464): guide + code reference – ids unique over both, every #link points to an id of one of them
+$helpIds = []; $helpLinks = [];
+try { $fnHtml = NuFnRef::tabs(); } catch (Throwable) { $fnHtml = ''; }
+foreach (['docs/nunext-docs.htm', 'docs/nunext-ref.htm'] as $hf) {
+	$src = (string)@file_get_contents(NU_ROOT . '/' . $hf);
+	$src = (string)preg_replace('/<!--.*?-->/s', '', $src);
+	if ($hf === 'docs/nunext-ref.htm') $src = str_replace('<div data-nu-fnref="tabs"></div>', $fnHtml, $src);
+	preg_match_all('/\sid="([^"]+)"/', $src, $m);
+	foreach ($m[1] as $id) $helpIds[$id][] = $hf;
+	preg_match_all('/href="#([^"]+)"/', $src, $m);
+	foreach ($m[1] as $l) $helpLinks[$l] = $hf;
+}
+check('help: both files have chapters', count($helpIds) > 200 && is_file(NU_ROOT . '/docs/nunext-ref.htm'));
+$dupIds = array_keys(array_filter($helpIds, static fn($f) => count($f) > 1 && count(array_unique($f)) > 1));
+check('help: ids unique over guide and code reference', !$dupIds, implode(', ', array_slice($dupIds, 0, 10)));
+$deadLinks = array_values(array_filter(array_keys($helpLinks), static fn($l) => !isset($helpIds[$l])));
+check('help: every #link of the help points to an id', !$deadLinks, implode(', ', array_slice($deadLinks, 0, 15)));
+preg_match_all('/data-help="([^"]+)"/', (string)preg_replace('/<!--.*?-->/s', '', (string)@file_get_contents(NU_ROOT . '/docs/nunext-tutorial.htm')), $m);
+$deadTut = array_values(array_filter(array_unique($m[1]), static fn($l) => !isset($helpIds[$l])));
+check('help: every help link of the tutorial points to an id', !$deadTut, implode(', ', $deadTut));
+
 // function reference of the Help page (0.8.399): every function of the code is documented, and nothing that is gone
 $ref = NuFnRef::load();
 check('fnref: docs/nunext-functions.json is valid', isset($ref['php']['items'], $ref['js']['items']) && count($ref['php']['items']) > 150 && count($ref['js']['items']) > 300);

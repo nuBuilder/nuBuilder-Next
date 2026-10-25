@@ -145,6 +145,7 @@ nu_layout_start(t('trl_title'), 'forms');
 		<div class="nuTitleBar mb-3">
 			<h1 class="h4 mb-0"><?= h($row ? t('trl_edit') : t('trl_new')) ?>
 				<?php if ($isNu): ?><span class="badge bg-info-subtle text-info-emphasis fs-6 align-middle">nuBuilder</span><?php endif; ?></h1>
+			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
 			<a class="btn nuBtnAct" href="<?= h(($back === 'missing' ? nu_url('translations', ['view' => 'missing', 'lang' => $curLang]) : nu_url('translations'))) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="trlSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($isNu && $rights['create']): ?>
@@ -157,6 +158,7 @@ nu_layout_start(t('trl_title'), 'forms');
 			<?php if ($row && !$isNu && $rights['delete']): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('trl_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
+			</div>
 		</div>
 		<?php if ($isNu): ?><div class="alert alert-info py-2 small"><?= h(t('trl_nu_locked')) ?></div><?php endif; ?>
 		<fieldset class="card card-body shadow-sm"<?= $locked ? ' disabled' : '' ?>>

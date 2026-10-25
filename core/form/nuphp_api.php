@@ -400,6 +400,26 @@ if (!function_exists('nuDashboardData')) {
 	function nuNextPresence(bool $on = true): void { NuConflict::$formPresence = $on; }
 
 	/**
+	 * nuBuilder Next field data access (0.8.480): the mode of a field for the signed-in user – edit, ro, hide, prot, ins, upd, mask or wh
+	 * (Form builder → Data access); '' when the form or field does not exist. nuFieldAccessAllowed(): may the user see its value?
+	 * Report SQL and procedures read the real values – use these to leave out what the user must not see.
+	 */
+	function nuFieldAccessMode(string $form, string $field): string
+	{
+		$meta = NuFormMeta::load($form);
+		if (!$meta) foreach (nu_forms() as $id => $f) if ((string)$f['code'] === $form) { $meta = NuFormMeta::load((string)$id); break; }
+		if (!$meta) return '';
+		$o = $meta->byId[$field] ?? null;
+		if ($o === null) foreach ($meta->objects as $x) if (strcasecmp((string)$x['sob_all_id'], $field) === 0) { $o = $x; break; }
+		return $o === null ? '' : NuFieldAccess::mode($o);
+	}
+	function nuFieldAccessAllowed(string $form, string $field): bool
+	{
+		$m = nuFieldAccessMode($form, $field);
+		return $m !== '' && $m !== 'wh' && $m !== 'mask';
+	}
+
+	/**
 	 * nuBuilder Next dashboards (0.8.298): a procedure used as the source of a dashboard widget hands over its rows –
 	 * a list of arrays, e.g. [['month' => 'Jan', 'sales' => 120], …] (first column = categories, the others = series).
 	 */

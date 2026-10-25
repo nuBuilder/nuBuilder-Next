@@ -40,7 +40,7 @@ def deployed(p):
 def all_files():
     out = []
     for dirpath, dirnames, filenames in os.walk('.'):
-        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', '_backup', '_install', '_update', '_libsrc', 'temp', 'third_party')
+        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', '_backup', '_install', '_update', '_libsrc', 'temp', 'third_party', '_data')
                        and os.path.relpath(os.path.join(dirpath, d), '.').replace(os.sep, '/') != 'vendor/packs']   # packs: the server's (0.8.409)
         for f in filenames:
             p = os.path.relpath(os.path.join(dirpath, f), '.').replace(os.sep, '/')
@@ -148,7 +148,7 @@ def libraries():
 
 
 REQUIRED_LIBS = 'install/libraries-required.json'
-LIB_SLOTS = ('tcpdf', 'phpmailer', 'tinymce', 'phpmyadmin', 'adminer', 'tinyfilemanager', 'uppy')
+LIB_SLOTS = ('tcpdf', 'phpmailer', 'tinymce', 'phpmyadmin', 'adminer', 'uppy')   # tinyfilemanager removed in 0.8.479 (nuFiles)
 
 
 def required_libs():
@@ -264,6 +264,10 @@ def main():
     man = json.load(open('nunext-manifest.json', encoding='utf-8'))
     files = {}
     everything = all_files()
+    # 0.8.481: installed versions refuse a package with files under custom/ other than these (NuUpdate::isProtected of 0.8.387+)
+    bad_custom = [p for p in everything if deployed(p) and p.startswith('custom/') and p not in ('custom/.htaccess', 'custom/PAGE_GUIDE.md') and not p.startswith('custom/pages/_template/')]
+    if bad_custom:
+        sys.exit('files under custom/ would make the package uninstallable for installed versions: ' + ', '.join(bad_custom[:5]))
     for p in everything:
         if not deployed(p):
             continue
@@ -306,6 +310,9 @@ def main():
             if name == 'nunext.zip':
                 for f in packs:                  # library packs for the installer (0.8.409): not in the manifest – _install/ is never updated
                     z.write(f, 'nunext/_install/' + os.path.basename(f))
+                if packs:                        # 0.8.478 (security assessment K5): the folder is closed to the web from the start
+                    z.writestr('nunext/_install/.htaccess', '# nuBuilder Next – never served directly\n<IfModule mod_authz_core.c>\n\tRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n\tOrder allow,deny\n\tDeny from all\n</IfModule>\n')
+                    z.writestr('nunext/_install/index.html', '')
         print(f'{name}: {len(sel)} files, {os.path.getsize(out) // 1024} KB' + (f' + {len(packs)} library pack(s) in _install/' if name == 'nunext.zip' and packs else ''))
     print(f'{old} → {version}' + (' (signed)' if keyfile else ' (UNSIGNED)') + (' – gated' if GATE else ' – not gated'))
     if not GATE:

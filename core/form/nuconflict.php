@@ -60,7 +60,9 @@ final class NuConflict
 	/** What the edit form needs: ['f' => sigs, 'h' => hash, 'sf' => [subform id => [pk => ['f' => sigs, 'h' => hash]]]]. */
 	public static function forRecord(NuFormMeta $meta, string $recordId, array $row): array
 	{
-		$out = ['f' => (object)self::rowSigs($row), 'h' => self::rowHash($row), 'sf' => []];
+		$sigs = self::rowSigs($row);
+		foreach ($meta->objects as $o) if (NuFieldAccess::withheld($o) || NuFieldAccess::masked($o)) unset($sigs[strtolower((string)$o['sob_all_id'])]);   // no trace of what the user must not see (0.8.480)
+		$out = ['f' => (object)$sigs, 'h' => self::rowHash($row), 'sf' => []];
 		foreach ($meta->objects as $o) {
 			if ($o['sob_all_type'] !== 'subform') continue;
 			[$tName, $pkCol, $fkCol] = self::subTable($o);

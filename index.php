@@ -48,6 +48,7 @@ $routes = [
 	'cloner'      => [],
 	'appcloner'   => [],
 	'vendor'      => [],
+	'filemanager' => [],                      // File Manager = the page nuFiles (0.8.479, pages/nufilemanager.php)
 	'apiclients'  => [],
 	'apiplayground' => [],
 	'settings'    => [],
@@ -96,6 +97,7 @@ $routes = [
 	'formatapi'   => ['json' => true],
 	'builder'     => [],
 	'formai'      => [],                     // form with AI (0.8.403)
+	'dataaccess'  => [],                     // field data access + column visibility of a form (0.8.480)
 	'libpack'     => [],                     // library packs: build and sign (0.8.405, developer mode)
 	'builderapi'  => ['json' => true],
 	'page'        => [],                 // form type "page": the page file's own output (0.8.387, core/nupage.php)

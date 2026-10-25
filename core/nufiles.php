@@ -90,6 +90,23 @@ final class NuFile
 		exit;
 	}
 
+	/**
+	 * May the signed-in user fetch this file through ?p=file (0.8.478, security assessment K3)? A file shown by image objects only by
+	 * users who can open one of those forms (or a form that has such a form as sub-form); files no image object uses (nuAttachImage …,
+	 * report images, branding) stay open to every signed-in user, as in nuBuilder. The globeadmin may always.
+	 */
+	public static function mayRead(string $id): bool
+	{
+		if (!empty(NuAuth::user()['globeadmin'])) return true;
+		$forms = array_values(array_unique(array_filter(array_map(static fn($u) => (string)$u['sob_all_zzzzsys_form_id'], self::usage($id)))));
+		if (!$forms) return true;
+		foreach ($forms as $f) if (NuAcl::can($f)) return true;
+		$in = implode(',', array_fill(0, count($forms), '?'));
+		$parents = nu_db()->all("SELECT DISTINCT sob_all_zzzzsys_form_id AS f FROM zzzzsys_object WHERE sob_all_type = 'subform' AND sob_subform_zzzzsys_form_id IN ($in)", $forms);
+		foreach ($parents as $p) if (NuAcl::can((string)$p['f'])) return true;
+		return false;
+	}
+
 	/** Image objects that show this file: [form code, object id]. */
 	public static function usage(string $id): array
 	{

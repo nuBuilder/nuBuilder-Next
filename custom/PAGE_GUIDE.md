@@ -147,6 +147,11 @@ Table and column names of insert / update / delete must match `^[A-Za-z0-9_]+$` 
 | `asset(string $path): string` | URL of a file in assets/ with a version stamp |
 | `formUrl(string $form, ?string $record = null): string` | a nuBuilder Next form (id or code) – list, or a record ('-1' = new); carries the breadcrumb trail, so the form's Back returns to this page (inside a launch form: to that form). The page runs in an iframe: give such links `target="_top"` (or use `NuPage.openForm()`), otherwise the form opens inside the page's frame |
 | `homeUrl(): string` | the start page |
+| `vendor(string $lib, string $file): string` | URL of a file of a library nuBuilder Next ships, with a version stamp: `bootstrap`, `bootstrap-icons`, `codemirror`, `jquery`, `tom-select`, `apexcharts` – `vendor('bootstrap', 'css/bootstrap.min.css')` (0.8.479) |
+| `recentAuth(): bool` | the password was confirmed (or typed at the login) within the Security setting *reauth_minutes* (0.8.479) |
+| `reauthUrl(string $back = ''): string` | URL of the password confirmation; afterwards it returns to `$back` (this page when empty) – open it in a window or redirect to it (0.8.479) |
+| `dataDir(): string` | a private folder of the page, `<page folder>/_data`, closed to the web (deny-all `.htaccess`; on nginx the `custom/` rule) – trash, caches, temporary files (0.8.479) |
+| `dangerousName(string $name): bool` | true for names a web server could run or obey (`.php`, `.phtml`, `.htaccess`, `x.php.pdf` …) – the rule of uploads (0.8.479) |
 | `sdk(): string` | the `<script>` tag of the JavaScript helpers (below) |
 | `json(mixed $data, int $status = 200): never` | sends JSON and ends |
 | `redirect(string $url): never` | same origin only |

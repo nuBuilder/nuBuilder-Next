@@ -29,10 +29,27 @@
 .nuHomeStrip { margin-bottom: var(--nu-sec); }
 .nuHomeStrip .nuHomeGroupTitle { display: flex; align-items: center; gap: .45rem; }
 .nuHomeStripStar { color: var(--nu-star); }
+/* fold the rows (0.8.465): the heading is the button; folded = chevron right + number of entries */
+.nuHomeStripToggle { display: inline-flex; align-items: center; gap: .45rem; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.nuHomeStripClear { padding: .1rem .3rem; border: 0; background: none; color: var(--bs-secondary-color); font-size: .85rem; line-height: 1; border-radius: .25rem; cursor: pointer; }   /* 0.8.491 */
+.nuHomeStripClear:hover { color: var(--bs-danger); }
+.nuHomeStripClear:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+.nuHomeStripClearForm { display: inline; margin: 0; }
+.nuHomeStrip.nuHomeStripFolded .nuHomeStripClearForm { display: none; }
+.nuHomeStripToggle:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; border-radius: .25rem; }
+.nuHomeStripChev { font-size: .8em; transition: transform .15s; }
+.nuHomeStripCount { display: none; background: var(--bs-secondary-bg); color: var(--bs-body-color); font-weight: 500; letter-spacing: 0; }
+.nuHomeStrip.nuHomeStripFolded .nuHomeChips { display: none; }
+.nuHomeStrip.nuHomeStripFolded .nuHomeStripChev { transform: rotate(-90deg); }
+.nuHomeStrip.nuHomeStripFolded .nuHomeStripCount { display: inline-block; }
+.nuHomeStrip.nuHomeStripFolded { margin-bottom: calc(var(--nu-sec) * .6); }
+@media (prefers-reduced-motion: reduce) { .nuHomeStripChev { transition: none; } }
 .nuHomeChips { display: flex; flex-wrap: wrap; gap: .5rem; }
 .nuHomeChips > .nuHomeTileForm { display: contents; }
+/* chips and panel groups in light mode (0.8.487): lighter border, no shadow */
+:root:not([data-bs-theme="dark"]) { --nu-home-line: #6060602d; --nu-home-shadow: none; }
 .nuHomeChip { display: inline-flex; align-items: center; gap: .5rem; max-width: 100%; padding: .3rem .85rem .3rem .3rem; font: inherit; font-size: .9rem; color: var(--bs-body-color);
-	text-decoration: none; background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: 999px; box-shadow: var(--bs-box-shadow-sm); cursor: pointer; }
+	text-decoration: none; background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--nu-home-line, var(--bs-border-color-translucent)); border-radius: 999px; box-shadow: var(--nu-home-shadow, var(--bs-box-shadow-sm)); cursor: pointer; }
 .nuHomeChip:hover, .nuHomeChip:focus-visible { color: var(--bs-body-color); border-color: color-mix(in srgb, var(--nu-gc, var(--bs-primary)) 50%, transparent); }
 #nuHomeView .nuHomeChip .nuHomeIcon { width: 1.7rem; height: 1.7rem; font-size: .85rem; border-radius: 50%; }
 .nuHomeChipLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -218,7 +235,7 @@
 .nuHomeMain.nuHomeStyle-panels, .nuHomePane.nuHomeStyle-panels { columns: 3 300px; column-gap: var(--nu-gap); }
 #nuHomeView.nuHomeNav-sidebar .nuHomeStyle-panels { columns: 2 280px; }
 .nuHomeStyle-panels .nuHomeGroup { display: inline-block; width: 100%; break-inside: avoid; margin-bottom: var(--nu-gap); padding: .35rem .45rem .5rem;
-	background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: var(--nu-radius); box-shadow: var(--bs-box-shadow-sm); }
+	background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--nu-home-line, var(--bs-border-color-translucent)); border-radius: var(--nu-radius); box-shadow: var(--nu-home-shadow, var(--bs-box-shadow-sm)); }
 .nuHomeStyle-panels .nuHomeGroupHead { gap: .6rem; margin: 0 0 .35rem; padding: .55rem .5rem .6rem; border-bottom: 1px solid var(--bs-border-color-translucent); }
 .nuHomeStyle-panels .nuHomeGroupHead .nuHomeGroupTitle { flex: 1; font-size: 1rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--bs-body-color); }
 .nuHomeStyle-panels .nuHomeGroupHead .nuHomeGDot { display: inline-block; width: .7rem; height: .7rem; }

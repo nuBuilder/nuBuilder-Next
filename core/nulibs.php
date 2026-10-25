@@ -57,12 +57,13 @@ final class NuLibs
 		'tinymce'         => ['title' => 'TinyMCE', 'dir' => 'tinymce', 'web' => true, 'entry' => ['tinymce.min.js'], 'rec' => true, 'use' => 'wysiwyg'],
 		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db'],
 		'adminer'         => ['title' => 'Adminer', 'dir' => 'adminer', 'web' => false, 'entry' => ['adminer.php', 'adminer-*.php'], 'rec' => false, 'use' => 'db'],
-		'tinyfilemanager' => ['title' => 'Tiny File Manager', 'dir' => 'tinyfilemanager', 'web' => true, 'entry' => ['tinyfilemanager.php'], 'rec' => false, 'use' => 'files'],
 		// nuBuilder's Uppy (0.8.459): file objects with target "File System" upload with it (uppy.min.js / .css + locales/)
 		'uppy'            => ['title' => 'Uppy', 'dir' => 'uppy', 'web' => true, 'entry' => ['uppy.min.js'], 'rec' => false, 'use' => 'upload'],
 	];
 	/** NuSecurity::libraries() name => slot */
-	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Tiny File Manager' => 'tinyfilemanager', 'Uppy' => 'uppy'];
+	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Uppy' => 'uppy'];
+	/** Slots that were removed (slot => folder name): their packs are deleted by retire() – Tiny File Manager since 0.8.479 (nuFiles). */
+	public const RETIRED = ['tinyfilemanager' => 'tinyfilemanager'];
 
 	private static ?array $state = null;
 	private static ?array $legacy = null;
@@ -443,6 +444,27 @@ final class NuLibs
 		if (self::$log) NuLog::write('nunext_lib_remove', self::PACKS, $slot, ['versions' => $vers]);
 	}
 
+	/**
+	 * Deletes every pack of a RETIRED slot – vendor/packs/<dir>-*, third_party/<dir>-* (packs of 0.8.405–0.8.408) – and its entry in
+	 * nunext-libs.php (readState() skips unknown slots, so saving the state drops it). @return list<string> removed folders
+	 */
+	public static function retire(string $slot): array
+	{
+		$dir = self::RETIRED[$slot] ?? null;
+		if ($dir === null) return [];
+		$out = [];
+		foreach ([self::baseDir(), self::$root . '/' . self::LEGACY] as $base) {
+			foreach (glob($base . '/' . $dir . '-*', GLOB_ONLYDIR) ?: [] as $d) {
+				self::rmTree($d);
+				$out[] = substr(str_replace('\\', '/', $d), strlen(str_replace('\\', '/', self::$root)) + 1);
+			}
+		}
+		$raw = (string)@file_get_contents(self::$root . '/' . self::STATE);
+		if (str_contains($raw, '"' . $slot . '"')) self::saveState(self::state());
+		if ($out && self::$log) NuLog::write('nunext_lib_remove', self::PACKS, $slot, ['versions' => $out]);
+		return $out;
+	}
+
 	/** Keeps the active and the previous version and KEEP older ones in all; removes the rest. */
 	public static function prune(string $slot): void
 	{
@@ -763,13 +785,11 @@ final class NuLibs
 					}
 					return $v !== '' ? ['ok', t('lp_test_tiny', $v, $w . '/')] : ['warn', t('lp_test_tiny', '?', $w . '/')];
 				case 'phpmyadmin':
-				case 'tinyfilemanager':
-					$app = $slot === 'phpmyadmin' ? 'PMA' : 'TFM';
-					if (!NuVendor::available($app)) return ['fail', t('lp_test_missing')];
-					$cfg = NuVendor::dir($app) . '/' . ($slot === 'phpmyadmin' ? 'config.inc.php' : 'config.php');
+					if (!NuVendor::available('PMA')) return ['fail', t('lp_test_missing')];
+					$cfg = NuVendor::dir('PMA') . '/config.inc.php';
 					$src = (string)@file_get_contents($cfg);
-					if ($src === '' || !str_contains($src, $slot === 'phpmyadmin' ? 'nu_PMA' : 'nu_TFM')) return ['fail', t('lp_test_cfg', basename($cfg))];
-					return ['ok', t('lp_test_vendor', NuVendor::baseUrl($app))];
+					if ($src === '' || !str_contains($src, 'nu_PMA')) return ['fail', t('lp_test_cfg', basename($cfg))];
+					return ['ok', t('lp_test_vendor', NuVendor::baseUrl('PMA'))];
 				case 'uppy':
 					$w = self::uppy();
 					if ($w === '') return ['fail', t('lp_test_missing')];
@@ -818,9 +838,6 @@ final class NuLibs
 				break;
 			case 'adminer':
 				foreach (array_merge(glob("$dir/adminer.php") ?: [], glob("$dir/adminer-*.php") ?: []) as $f) if ($v === '') $v = $read($f, '/@version\s+([0-9][0-9.]*)/');
-				break;
-			case 'tinyfilemanager':
-				$v = $read("$dir/tinyfilemanager.php", "/define\\('VERSION', '([0-9.]+)'\\)/");
 				break;
 			case 'uppy':
 				$v = self::uppyVersion("$dir/uppy.min.js");
@@ -957,7 +974,7 @@ final class NuLibs
 		$p = [];
 		if (!self::hasEntryList($slot, array_keys($files))) $p[] = t('lp_err_entry', implode(', ', self::SLOTS[$slot]['entry']));
 		if (self::SLOTS[$slot]['web'] && isset($files['.htaccess'])) $p[] = t('lp_err_htaccess');      // installing writes its own (vendor/packs/ is closed)
-		$cfg = ['phpmyadmin' => ['config.inc.php', 'nu_PMA'], 'tinyfilemanager' => ['config.php', 'nu_TFM']][$slot] ?? null;
+		$cfg = ['phpmyadmin' => ['config.inc.php', 'nu_PMA']][$slot] ?? null;
 		if ($cfg) {
 			$src = isset($files[$cfg[0]]) ? (string)file_get_contents($files[$cfg[0]]) : '';
 			if (!str_contains($src, $cfg[1])) $p[] = t('lp_test_cfg', $cfg[0]);

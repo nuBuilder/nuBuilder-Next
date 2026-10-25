@@ -140,7 +140,7 @@ if ($mode === 'edit') {
 	$render = new NuRender($meta, $isNew ? '-1' : $r, $row, $hash, $layout);
 	$render->setReadonly(!$isNew && !$rights['save']);
 	$body  = $errors ? '' : $render->tabs();
-	$title = $meta->breadcrumb($isNew, $hash);
+	$title = $meta->breadcrumb($isNew, NuFieldAccess::scrubHash($meta, $hash));   // no withheld / masked values in the title (0.8.480)
 	if ($meta->hasBrowse()) $breadcrumbs[] = ['title' => $meta->description(), 'url' => nu_url('form', ['f' => $meta->id])];
 	$breadcrumbs[] = ['title' => $title, 'url' => ''];
 }
@@ -211,7 +211,7 @@ $client = [
 		'debug' => NuAcl::can(NuAcl::FORM_DEBUG),
 		'password' => !$u['globeadmin'] && ($u['via'] ?? '') !== 'nubuilder' && !NuImpersonate::active(),
 		'pma' => NuAdmin::can('dbtool', 'change') && NuVendor::primaryDb() !== '',     // ⋮ → Database: phpMyAdmin or Adminer (0.8.282)
-		'tfm' => NuAdmin::can('filemanager', 'change') && NuVendor::available('TFM'),
+		'tfm' => NuFileManager::visible(),                                      // File Manager = the page nuFiles (0.8.479)
 		'sessions' => NuAdmin::can('sessions'),
 		'version' => $u['globeadmin'] ? 'nuBuilder Next ' . NU_VERSION . ' · PHP ' . PHP_VERSION . ' · ' . nu_db()->type : '',
 	],
@@ -494,8 +494,11 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 		</form>
 		<?php endif; ?>
 		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 nu-table nuBrowseTable" id="nuBrowseTable">
+			<?php // Notes (0.8.469): a delete button at the very left of each row – with the delete right, not in lookups, print or demo mode
+			$rowDel = $meta->id === 'nunotes' && !empty($rights['delete']) && $lookupTo === '' && empty($printMode) && !NuDemo::active(); ?>
+			<table class="table table-hover align-middle mb-0 nu-table nuBrowseTable<?= $rowDel ? ' nuBrowseRowDel' : '' ?>" id="nuBrowseTable">
 				<thead><tr>
+					<?php if ($rowDel): ?><th scope="col" class="nuRowDelCol"><span class="visually-hidden"><?= h(t('delete')) ?></span></th><?php endif; ?>
 					<?php foreach ($data['columns'] as $c):
 						$hidden = $c['width'] <= 0;
 						$isSort = $state['sort'] === $c['index'];
@@ -510,6 +513,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				</tr>
 				<?php if (array_filter($data['columns'], static fn($c) => !empty($c['values']))): ?>
 					<tr class="nuFilterRow">
+						<?php if ($rowDel): ?><th scope="col" class="nuRowDelCol"></th><?php endif; ?>
 						<?php foreach ($data['columns'] as $c): ?>
 							<th scope="col" class="fw-normal"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>>
 								<?php if (!empty($c['values'])): ?>
@@ -530,13 +534,14 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				</thead>
 				<tbody>
 				<?php if (!$data['rows']): ?>
-					<tr><td colspan="<?= max(1, count($data['columns'])) ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
+					<tr><td colspan="<?= max(1, count($data['columns'])) + ($rowDel ? 1 : 0) ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ($data['rows'] as $ri => $row): ?>
 					<tr class="nuBrowseRow" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-row="<?= $ri ?>" tabindex="0">
+						<?php if ($rowDel): ?><td class="nuRowDelCol"><button type="button" class="btn btn-sm btn-outline-danger nuRowDel" data-nu-pk="<?= h($row['pk']) ?>" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php foreach ($data['columns'] as $ci => $c): ?>
 							<td id="nucell_<?= $ri ?>_<?= $c['index'] ?>" class="nuCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
-								data-nu-column="<?= $c['index'] ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?php if (!empty($row['classes'][$ci])): ?><span class="<?= h($row['classes'][$ci]) ?>"><?= h($row['cells'][$ci]) ?></span><?php else: ?><?= h($row['cells'][$ci]) ?><?php endif; ?></td>
+								data-nu-column="<?= $c['index'] ?>" data-nu-column-id="<?= h((string)($c['id'] ?? '')) ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?php if (!empty($row['classes'][$ci])): ?><span class="<?= h($row['classes'][$ci]) ?>"><?= h($row['cells'][$ci]) ?></span><?php else: ?><?= h($row['cells'][$ci]) ?><?php endif; ?></td>
 						<?php endforeach; ?>
 					</tr>
 				<?php endforeach; ?>

@@ -87,7 +87,7 @@ final class NuImpersonate
 		if (!$i) return '';
 		$u = NuAuth::user();
 		$view = $i['mode'] === 'view';
-		return '<div class="nuImpBar ' . ($view ? 'nuImpView' : 'nuImpFull') . '" role="status"><div class="container-xl d-flex flex-wrap align-items-center gap-2 py-1">'
+		return '<div class="nuImpBar ' . ($view ? 'nuImpView' : 'nuImpFull') . '" role="status"><div class="nuContainer d-flex flex-wrap align-items-center gap-2 py-1">'
 			. '<span class="me-auto"><i class="bi ' . ($view ? 'bi-eye' : 'bi-person-fill-gear') . ' me-2"></i>' . t('imp_banner', '<b>' . h($u['display'] ?? $i['login']) . '</b> (' . h($i['login']) . ')') . ' · <span class="badge ' . ($view ? 'text-bg-info' : 'text-bg-danger') . '">'
 			. h(t($view ? 'imp_mode_view' : 'imp_mode_full')) . '</span></span>'
 			. '<form method="post" action="' . h(nu_url('impersonate')) . '" class="m-0">' . nu_csrf_field() . '<input type="hidden" name="action" value="stop">'

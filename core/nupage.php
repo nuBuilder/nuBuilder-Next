@@ -60,16 +60,25 @@ final class NuPage
 		return (bool)preg_match(self::CODE_RE, $code);
 	}
 
+	/**
+	 * Pages that come with nuBuilder Next (0.8.481): program files in apps/<code>/ (replaced by every update, closed to the web by
+	 * apps/.htaccess). A folder of the same name in custom/pages/ takes precedence (an own copy). Their data stays in custom/pages/<code>/_data.
+	 */
+	public const BUILTIN = ['nufiles'];
+
 	/** Folder of a page form ('' when the code is no valid folder name). Does not check that it exists. */
 	public static function folder(string $code): string
 	{
-		return self::validCode($code) ? self::dir() . '/' . $code : '';
+		if (!self::validCode($code)) return '';
+		$own = self::dir() . '/' . $code;
+		if (in_array($code, self::BUILTIN, true) && !is_file($own . '/index.php') && is_file(NU_ROOT . '/apps/' . $code . '/index.php')) return NU_ROOT . '/apps/' . $code;
+		return $own;
 	}
 
 	/** Shown path of a page folder: relative to nuBuilder Next when it lies inside, else absolute. */
 	public static function shownFolder(string $code): string
 	{
-		$f = self::dir() . '/' . $code . '/';
+		$f = (self::validCode($code) ? self::folder($code) : self::dir() . '/' . $code) . '/';
 		$root = rtrim(str_replace('\\', '/', NU_ROOT), '/') . '/';
 		$f = str_replace('\\', '/', $f);
 		return str_starts_with($f, $root) ? substr($f, strlen($root)) : $f;
@@ -80,7 +89,7 @@ final class NuPage
 	{
 		$folder = self::folder($code);
 		if ($folder === '') return null;
-		$base = realpath(self::dir());
+		$base = realpath(dirname($folder));                   // custom/pages/ (or $nuConfigCustomPagesDir), apps/ for the built-in pages
 		$file = realpath($folder . '/index.php');
 		if ($base === false || $file === false || !is_file($file)) return null;
 		return str_starts_with($file, $base . DIRECTORY_SEPARATOR) ? $file : null;
@@ -1021,6 +1030,40 @@ class NuPageContext
 		$m = @filemtime($this->dir . '/' . $path);
 		return nu_url('pageasset', ['f' => $this->meta->code(), 'file' => $path, 'v' => $m ? base_convert((string)$m, 10, 36) : null]);
 	}
+
+	/** Libraries of nuBuilder Next a page may load with vendor() (0.8.479). */
+	public const VENDOR_LIBS = ['bootstrap' => 'NU_BS', 'bootstrap-icons' => 'NU_BI', 'codemirror' => 'NU_CODEMIRROR', 'jquery' => 'NU_JQUERY',
+		'tom-select' => 'NU_TOMSELECT', 'apexcharts' => 'NU_APEXCHARTS'];
+
+	/** URL of a file of a bundled library, with a version stamp (0.8.479): vendor('codemirror', 'codemirror-bundle.js'). */
+	public function vendor(string $lib, string $file): string
+	{
+		$const = self::VENDOR_LIBS[$lib] ?? null;
+		$file = ltrim($file, '/');
+		if ($const === null || !defined($const) || !NuPage::validAssetPath('assets/' . $file)) throw new InvalidArgumentException('vendor: ' . $lib . '/' . $file);
+		return nu_asset(constant($const) . '/' . $file);
+	}
+
+	/** The password was confirmed (or typed at the login) less than reauth_minutes ago (0.8.479). */
+	public function recentAuth(): bool { return NuSecurity::recentAuth(); }
+
+	/** URL of the password confirmation; afterwards it returns to $back (a URL of this installation; '' = this page) (0.8.479). */
+	public function reauthUrl(string $back = ''): string
+	{
+		$_SESSION['nu_reauth_next'] = NuAuth::validNext($back !== '' ? $back : $this->url()) ?? $this->url();
+		return nu_url('reauth');
+	}
+
+	/** A private folder of the page that is never served: <page folder>/_data (deny-all .htaccess, empty index.html) (0.8.479). */
+	public function dataDir(): string
+	{
+		$d = NuPage::dir() . '/' . $this->meta->code() . '/_data';             // built-in pages too: in custom/pages/, never touched by updates
+		NuSecurity::protectDir($d);
+		return $d;
+	}
+
+	/** Could a web server run this file name, or obey it (.php, .phtml, .htaccess, x.php.pdf …)? Same rule as uploads (0.8.479). */
+	public function dangerousName(string $name): bool { return NuSecurity::dangerousUploadName($name); }
 
 	/** URL of a form (id or code) – list, or a record ('-1' = new); with the breadcrumb trail back to this page (0.8.422). */
 	public function formUrl(string $form, ?string $record = null): string

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.463 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.492 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder 4.**
 
@@ -17,7 +17,7 @@
 - 📦 [Releases](https://github.com/nuBuilder/nuBuilder-Next/releases) – download `nunext.zip`
 - 📝 [Changelog](https://github.com/nuBuilder/nuBuilder-Next/blob/main/CHANGELOG.md)
 - 💬 [nuBuilder Community Forum](https://forum.nubuilder.cloud/)
-- 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`); source `docs/nunext-docs.htm`
+- 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`, tabs Guide and Code reference); source `docs/nunext-docs.htm` and `docs/nunext-ref.htm`
 
 ---
 
@@ -102,7 +102,7 @@ nuBuilder Next streamlines everyday database work:
    the web" (the web server must not hand out `core/`, `install/`, `README.md` …) and the PHP version.
 5. Optional: cron for the housekeeping – `*/15 * * * * php /var/www/html/nunext/cron.php` as the web server's user.
 6. Third-party code lives in `vendor/`: `vendor/bundled/` comes with the package, `vendor/packs/` holds the signed **library packs**
-   (TCPDF for reports, TinyMCE, phpMyAdmin, Adminer, Tiny File Manager – from the GitHub release `libraries`; PHPMailer is in the
+   (TCPDF for reports, TinyMCE, phpMyAdmin, Adminer, Uppy – from the GitHub release `libraries`; PHPMailer is in the
    package). The installer offers them (step *Libraries*), later **Update → Libraries**. Without internet: copy the
    `nunext-lib-*.zip` files into `_install/` or `_update/` first.
 

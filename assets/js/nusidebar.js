@@ -60,4 +60,53 @@
 	if (closeBtn) closeBtn.addEventListener('click', close);
 	document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
 	(wide.addEventListener ? wide.addEventListener.bind(wide, 'change') : wide.addListener.bind(wide))(function () { if (wide.matches) close(); });
+
+	// ---------------------------------------------------------------- right-click menu of "Recently used" (0.8.489)
+	// One entry "Clear recently used" – submits the section's own clear form (POST ?p=sidebar action clear). Only while the list has entries.
+	var recent = sb.querySelector('.nuSbSec-recent'), menu = null, at = 0;
+	function closeMenu() { if (menu) { menu.remove(); menu = null; } }
+	function onScroll() { if (menu && Math.abs(recent.getBoundingClientRect().top - at) > 2) closeMenu(); }   // only when the list really moved
+	if (recent) {
+		recent.addEventListener('contextmenu', function (e) {
+			var form = recent.querySelector('.nuSbClearForm');
+			if (!form) return;                                   // nothing to clear: the browser's own menu
+			e.preventDefault();
+			closeMenu();
+			var label = recent.getAttribute('data-t-clear') || (form.querySelector('button') || {}).title || '';
+			menu = document.createElement('ul');
+			menu.className = 'dropdown-menu show nuSbMenu';
+			menu.setAttribute('role', 'menu');
+			var li = document.createElement('li'), btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'dropdown-item';
+			btn.setAttribute('role', 'menuitem');
+			var ic = document.createElement('i');
+			ic.className = 'bi bi-x-circle me-2';
+			ic.setAttribute('aria-hidden', 'true');
+			btn.appendChild(ic);
+			btn.appendChild(document.createTextNode(label));
+			btn.addEventListener('click', function () {
+				closeMenu();
+				if (form.requestSubmit) form.requestSubmit(); else form.submit();
+			});
+			li.appendChild(btn);
+			menu.appendChild(li);
+			document.body.appendChild(menu);
+			var x = e.clientX, y = e.clientY;
+			if (!x && !y) {                                      // context-menu key / Shift+F10: below the focused element
+				var r = (document.activeElement && recent.contains(document.activeElement) ? document.activeElement : recent).getBoundingClientRect();
+				x = r.left + 8; y = r.top + Math.min(r.height, 32);
+			}
+			var w = menu.offsetWidth, h = menu.offsetHeight;
+			menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
+			menu.style.top = Math.max(4, Math.min(y, window.innerHeight - h - 4)) + 'px';
+			at = recent.getBoundingClientRect().top;
+			btn.focus({preventScroll: true});
+		});
+		document.addEventListener('pointerdown', function (e) { if (menu && !menu.contains(e.target)) closeMenu(); }, true);
+		document.addEventListener('keydown', function (e) { if (menu && e.key === 'Escape') { e.stopPropagation(); closeMenu(); } }, true);
+		window.addEventListener('scroll', onScroll, true);
+		window.addEventListener('resize', closeMenu);
+		window.addEventListener('blur', closeMenu);
+	}
 })();

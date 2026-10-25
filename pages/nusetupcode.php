@@ -59,7 +59,7 @@ if (nu_is_post() && nu_post('action') === 'save' && $row !== null) {
 $canChange = NuAdmin::can('setupcode', 'change') && empty(NuAuth::user()['demo']);
 $tabs = ['header' => ['bi-filetype-js', 'javascript'], 'style' => ['bi-filetype-css', 'css'], 'include' => ['bi-code-slash', 'htmlmixed']];
 
-nu_layout_start(t('scode_title'), 'home', ['container' => 'container-xl', 'head' => '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">']);
+nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'head' => '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">']);
 ?>
 <form method="post" action="<?= h(nu_url('setupcode')) ?>" id="scodeForm" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="tab" id="scodeTab" value="">

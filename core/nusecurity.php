@@ -18,6 +18,7 @@ final class NuSecurity
 		'rights_globeadmin_only' => true,   // only the globeadmin grants rights on ADMIN_FORMS; nobody changes his own access level / rights
 		'protect_fields'         => false,  // read-only / hidden objects are not saved from the browser
 		'record_check'           => false,  // a record must be found through the form's browse SQL before it is opened, saved or deleted
+		'field_access_ga'        => false,  // field data access / column visibility rules apply to the globeadmin too (testing, 0.8.480)
 		'md5_login'              => true,   // legacy md5 passwords (nuBuilder before 4.5) are still accepted
 		'login_token'            => true,   // nuBuilder's single-use login token (sus_json LOGIN_TOKEN, ?u=…&p=<token>) – core/nulogintoken.php (0.8.339)
 		'form_drafts_required'   => false,  // form builder (0.8.386): published forms change only through drafts (the globeadmin: live after a confirmation)
@@ -277,8 +278,8 @@ final class NuSecurity
 			if ($d !== null && is_file($d . '/' . NuLibs::MANIFEST) && !NuLibs::isLegacy($sl)) $urls[] = NuLibs::webPath($sl) . '/' . NuLibs::MANIFEST;
 		}
 		// page forms (0.8.387): custom/ is reachable only through the router (nginx needs its own rule)
-		foreach (['custom/PAGE_GUIDE.md', 'custom/pages/_template/index.php', 'custom/pages/_template/assets/app.css'] as $f) if (is_file(NU_ROOT . '/' . $f)) $urls[] = $f;
-		foreach (['PMA', 'TFM'] as $a) {                      // a local version note of a copied tool (0.8.231) may name open CVEs
+		foreach (['custom/PAGE_GUIDE.md', 'custom/pages/_template/index.php', 'custom/pages/_template/assets/app.css', 'apps/nufiles/README.md', 'apps/nufiles/lib/api.php'] as $f) if (is_file(NU_ROOT . '/' . $f)) $urls[] = $f;
+		foreach (['PMA'] as $a) {                             // a local version note of a copied tool (0.8.231) may name open CVEs
 			$f = NuVendor::dir($a) . '/' . self::LOCAL_VERSION;
 			if (is_file($f) && str_starts_with(str_replace('\\', '/', $f), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($f, strlen(NU_ROOT) + 1);
 		}
@@ -294,11 +295,8 @@ final class NuSecurity
 	 * Third-party code nuBuilder Next uses from the nuBuilder installation, a library pack (vendor/packs/) or an old copy: [name, version, path, min,
 	 * status ok|old|warn|missing, note key]. Minimum = first version without the publicly known vulnerabilities at the time of this
 	 * release (TCPDF CVE-2024-32489 → 6.7.4, PHPMailer CVE-2021-34551 → 6.5.0, phpMyAdmin PMASA-2025-1…3 → 5.2.2, TinyMCE
-	 * CVE-2024-38356/38357 → 6.8.4 / 7.2.0). Tiny File Manager up to 2.6 has a path traversal (CVE-2025-15138) without a fix upstream: a
-	 * warning unless NUNEXT-VERSION.txt of the copy says it is patched – then OK, with a note while the newer reports (TFM_NEWER) are not
-	 * marked patched too (0.8.431).
+	 * CVE-2024-38356/38357 → 6.8.4 / 7.2.0). Tiny File Manager was removed in 0.8.479 (File Manager = the page nuFiles).
 	 */
-	public const TFM_NEWER = ['CVE-2025-46651' => 'upload from URL', 'CVE-2026-108801' => 'upload via fullpath'];
 	/** Version note of a library you build / patch yourself (0.8.231), in the library's folder – see localVersion(). */
 	public const LOCAL_VERSION = 'NUNEXT-VERSION.txt';
 
@@ -347,8 +345,6 @@ final class NuSecurity
 		$out[] = ['phpMyAdmin', $read($pma . '/libraries/classes/Version.php', "/VERSION = '([0-9.]+)'/"), is_dir($pma) ? $pma : '', '5.2.2', ''];
 		$adm = NuVendor::adminerFile();                           // 0.8.282 – 4.x works but is not PHP 8 clean and no longer maintained
 		$out[] = ['Adminer', NuVendor::adminerVersion(), $adm !== '' ? dirname($adm) : '', '5.0.0', NuVendor::adminerConverted() ? 'secchk_lib_adminer_crlf' : ''];
-		$tfm = NuVendor::dir('TFM');
-		$out[] = ['Tiny File Manager', $read($tfm . '/tinyfilemanager.php', "/define\\('VERSION', '([0-9.]+)'\\)/"), is_dir($tfm) ? $tfm : '', '', 'secchk_lib_tfm_note'];
 		$up = NuLibs::uppy();                                     // 0.8.459: file objects with target "File System" (library pack only)
 		$out[] = ['Uppy', $up !== '' ? (NuLibs::uppyVersion(NU_ROOT . '/' . $up . '/uppy.min.js') ?: '?') : '', $up !== '' ? NU_ROOT . '/' . $up : '', '', ''];
 		foreach ($out as &$l) {
@@ -356,14 +352,8 @@ final class NuSecurity
 			// own build / patched copy: NUNEXT-VERSION.txt gives the version (e.g. 2.6+git.4149143.nu1) and the state of known CVEs
 			$local = $ver !== '' ? self::localVersion($path) : null;
 			if ($local && $local['version'] !== '') $ver = $local['version'];
-			$info = false;                                             // a note that does not make the line a warning
-			if ($local && $name === 'Tiny File Manager' && self::cveFixed($local['cves']['CVE-2025-15138'] ?? '')) {
-				$open = array_filter(array_keys(self::TFM_NEWER), static fn($c) => !self::cveFixed($local['cves'][$c] ?? ''));
-				$note = $open ? 'secchk_lib_tfm_newer' : '';
-				$info = true;
-			}
 			$base = preg_match('/^[0-9][0-9.]*[0-9]/', $ver, $bm) ? $bm[0] : '?';     // "2.6+git…" is compared as 2.6
-			$st = $ver === '' ? 'missing' : ($note !== '' && !$info ? 'warn' : ($base === '?' || ($min !== '' && version_compare($base, $min, '<')) ? 'old' : 'ok'));
+			$st = $ver === '' ? 'missing' : ($note !== '' ? 'warn' : ($base === '?' || ($min !== '' && version_compare($base, $min, '<')) ? 'old' : 'ok'));
 			$l = ['name' => $name, 'version' => $ver, 'path' => $path, 'min' => $min, 'status' => $st, 'note' => $note, 'local' => $local ? $local['text'] : ''];
 		}
 		return $out;
@@ -492,6 +482,22 @@ final class NuSecurity
 		} else {
 			$add('md5', $md5 === 0 ? 'ok' : (self::get('md5_login') ? 'warn' : 'info'), 'secchk_chk_md5', $md5 === 0 ? '' : t('secchk_chk_md5_n', $md5));
 		}
+		// 0.8.478 (security assessment C2 / K1 / C1): row access, field protection, the upload template's folder
+		$rc = (bool)self::get('record_check');
+		$add('recordcheck', $rc ? 'ok' : 'warn', 'secchk_chk_recordcheck', $rc ? '' : t('secchk_chk_recordcheck_off'), $rc ? '' : nu_url('securitycheck') . '#sec_record_check');
+		$pf = (bool)self::get('protect_fields');
+		$add('protectfields', $pf ? 'ok' : 'warn', 'secchk_chk_protectfields', $pf ? '' : t('secchk_chk_protectfields_off'), $pf ? '' : nu_url('securitycheck') . '#sec_protect_fields');
+		$web = NuUpload::procedureInWebRoot();
+		if ($web !== null) {
+			$pid = (string)(nu_db()->value('SELECT zzzzsys_php_id FROM zzzzsys_php WHERE sph_code = ?', [NuUpload::PROCEDURE_CODE]) ?? '');
+			$add('uploadtpl', $web ? 'bad' : 'ok', 'secchk_chk_uploadtpl', $web ? t('secchk_chk_uploadtpl_web') : '', $web ? nu_url('procedures', ['id' => $pid]) : '');
+		}
+		// field data access (0.8.480): forms with rules – the values of withheld / masked fields still reach nuBuilder 4.9 on the same database
+		$fa = NuFieldAccess::counts();
+		if ($fa) $add('fieldaccess', 'info', 'secchk_chk_fieldaccess', t('secchk_chk_fieldaccess_n', array_sum($fa), count($fa)));
+		// 0.8.479: Tiny File Manager is gone – a copy the update could not delete is still reachable on the web
+		$tfmLeft = array_values(array_filter([NU_ROOT . '/third_party/tinyfilemanager', ...(glob(NU_ROOT . '/' . NU_PACKS . '/tinyfilemanager-*', GLOB_ONLYDIR) ?: [])], 'is_dir'));
+		if ($tfmLeft) $add('tfm_left', 'bad', 'secchk_chk_tfm_left', t('secchk_chk_tfm_left_n', implode(' · ', array_map(static fn($d) => substr(str_replace('\\', '/', $d), strlen(NU_ROOT) + 1), $tfmLeft))));
 		$levels = self::adminLevels();
 		$add('adminlevels', $levels ? 'info' : 'ok', 'secchk_chk_adminlevels',
 			$levels ? implode(' · ', array_map(static fn($code, $forms) => $code . ' (' . implode(', ', $forms) . ')', array_keys($levels), $levels)) : '', nu_url('access'));

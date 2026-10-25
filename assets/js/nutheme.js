@@ -16,6 +16,12 @@
 	}
 	// side bar (0.8.460): collapsed to the icon rail on this device – before drawing, so the page does not jump
 	try { if (localStorage.getItem('nunext-sidebar-collapsed') === '1') document.documentElement.classList.add('nuSbCollapsed'); } catch (e) {}
+	// system lists on phones (0.8.471): cards or table chosen with the ▦ / ☰ button of this list (?p=<route>) – before drawing
+	try {
+		var lvRoute = (window.location.search.match(/[?&]p=([\w-]+)/) || [])[1] || '';
+		var lvPhone = lvRoute ? localStorage.getItem('nunext-lv-phone-' + lvRoute) : null;
+		if (lvPhone === 'table' || lvPhone === 'cards') document.documentElement.setAttribute('data-lv-phone', lvPhone);
+	} catch (e) {}
 	// page forms (0.8.387, $nu->theme()): the choice for the server too
 	try { document.cookie = 'nunext_theme=' + encodeURIComponent(stored) + '; path=' + window.location.pathname.replace(/[^/]*$/, '') + '; SameSite=Lax'; } catch (e) {}
 })();

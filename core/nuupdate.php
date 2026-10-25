@@ -91,7 +91,7 @@ final class NuUpdate
 
 	/**
 	 * Page forms (0.8.387): of custom/ only these files come with nuBuilder Next – the rest (custom/pages/<form code>/, custom/lib/) belongs
-	 * to the installation and is never written, deleted or restored by an update.
+	 * to the installation and is never written, deleted or restored by an update. Built-in pages (File Manager) live in apps/ (NuPage::BUILTIN).
 	 */
 	public static function shippedCustom(string $rel): bool
 	{
@@ -849,6 +849,9 @@ final class NuMigrate
 			'0019-user-fields' => ['Custom user fields (zzzzsys_nunext_user_field); their values table is created with the first field', static fn() => NuSchema::create()],
 			'0020-upload-template' => ['Uppy uploads: nuBuilder\'s procedure nu_upload_file_template (hardened) and the snippet nu_upload_file_uppy_code_template when missing', static fn() => NuUpload::ensureTemplates()],
 			'0021-recent' => ['Side bar: recently used pages and forms per user (zzzzsys_nunext_recent)', static fn() => NuSchema::create()],
+			'0022-upload-template-folder' => ['Upload procedure nu_upload_file_template: files no longer in the web root (only an unchanged copy of the earlier template is replaced)', static fn() => NuUpload::replaceOldProcedure()],
+			'0023-retire-tfm' => ['Tiny File Manager removed (File Manager = the page nuFiles): its library packs and the copy in third_party/tinyfilemanager/', static fn() => NuFileManager::retireTfm()],
+			'0024-object-access' => ['Field data access: rules per object (zzzzsys_nunext_object_access)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -884,6 +887,9 @@ final class NuMigrate
 		'0020-upload-template' => [['zzzzsys_php', 'data', 'procedure nu_upload_file_template added when no procedure has that code'],
 			['zzzzsys_code_snippet', 'data', 'snippet nu_upload_file_uppy_code_template (Uppy HTML of file objects) added when missing']],
 		'0021-recent' => [['zzzzsys_nunext_recent', 'table', 'created when missing']],
+		'0022-upload-template-folder' => [['zzzzsys_php', 'data', 'nu_upload_file_template replaced when it is an unchanged earlier template']],
+		'0023-retire-tfm' => [['zzzzsys_nunext_log', 'data', 'files only: Tiny File Manager packs (vendor/packs/tinyfilemanager-*, third_party/tinyfilemanager*) deleted, logged']],
+		'0024-object-access' => [['zzzzsys_nunext_object_access', 'table', 'created when missing']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

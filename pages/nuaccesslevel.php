@@ -207,7 +207,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 
 		NuLog::write($isNew ? 'access_created' : 'access_updated', 'zzzzsys_access', $newId, ['code' => $v['sal_code'], 'forms' => count(array_filter($rows, static fn($r) => empty($r['remove'])))]);
 		nu_flash('success', $isNew ? t('access_created', $v['sal_code']) : t('saved'));
-		nu_redirect(nu_url('accesslevel', ['id' => $newId]));
+		nu_redirect(nu_url('accesslevel', ['id' => $newId, 'tab' => nu_post('tab') === 'rights' ? 'rights' : null]));   // stays on the tab it was saved from
 	}
 	nu_flash('danger', t('err_check_form'));
 }
@@ -252,7 +252,7 @@ $pickGroups = array_values(array_unique(array_filter(array_column($pick, 'group'
 natcasesort($pickGroups);
 $pickTypes = array_values(array_unique(array_filter(array_column($pick, 'type'))));
 
-nu_layout_start($title, 'access');
+nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 ?>
 <nav aria-label="breadcrumb">
 	<ol class="breadcrumb small mb-2">
@@ -293,8 +293,21 @@ nu_layout_start($title, 'access');
 <form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" action="<?= h(nu_url('accesslevel', $isNew ? ($cloneId !== '' ? ['clone' => $cloneId] : []) : ['id' => $id])) ?>" novalidate>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 	<fieldset<?= $ro ?>>
+	<?php
+	// tab General / Form rights (0.8.484): ?tab=rights, the tab it was saved from; an error opens the tab that shows it (General first)
+	$genErr = array_diff_key($errors, ['rights' => 1]) !== [];
+	$accTab = !$genErr && (isset($errors['rights']) || (string)($_GET['tab'] ?? '') === 'rights') ? 'rights' : '';
+	$rightsCount = count(array_filter($rows, static fn($r) => empty($r['remove'])));
+	?>
+	<input type="hidden" name="tab" id="accessTab" value="<?= h($accTab) ?>">
+	<ul class="nav nav-tabs mb-3" id="accessTabs" role="tablist" data-nu-tabfield="accessTab">
+		<li class="nav-item" role="presentation"><button class="nav-link<?= $accTab === '' ? ' active' : '' ?>" id="accessTabGeneralBtn" data-bs-toggle="tab" data-bs-target="#accessTabGeneral" data-nu-tab="" type="button" role="tab" aria-controls="accessTabGeneral" aria-selected="<?= $accTab === '' ? 'true' : 'false' ?>"><i class="bi bi-card-text me-1"></i><?= h(t('access_sec_general')) ?></button></li>
+		<li class="nav-item" role="presentation"><button class="nav-link<?= $accTab === 'rights' ? ' active' : '' ?>" id="accessTabRightsBtn" data-bs-toggle="tab" data-bs-target="#accessTabRights" data-nu-tab="rights" type="button" role="tab" aria-controls="accessTabRights" aria-selected="<?= $accTab === 'rights' ? 'true' : 'false' ?>"><i class="bi bi-ui-checks-grid me-1"></i><?= h(t('access_forms')) ?> <span class="badge text-bg-secondary js-rights-count"><?= $rightsCount ?></span><?php if (isset($errors['rights'])): ?> <i class="bi bi-exclamation-circle text-danger" role="img" aria-label="<?= h(t('err_check_form')) ?>"></i><?php endif; ?></button></li>
+	</ul>
+	<div class="tab-content">
+	<div class="tab-pane fade<?= $accTab === '' ? ' show active' : '' ?>" id="accessTabGeneral" role="tabpanel" aria-labelledby="accessTabGeneralBtn" tabindex="0">
 	<div class="row g-3">
-		<div class="col-lg-4">
+		<div class="col-lg-6">
 			<div class="card shadow-sm mb-3">
 				<div class="card-header fw-semibold"><i class="bi bi-card-text me-2"></i><?= h(t('access_sec_general')) ?></div>
 				<div class="card-body">
@@ -345,7 +358,9 @@ nu_layout_start($title, 'access');
 					</div>
 				</div>
 			</div>
+		</div>
 
+		<div class="col-lg-6">
 			<?php if (!$isNew): ?>
 			<div class="card shadow-sm mb-3">
 				<div class="card-header fw-semibold d-flex justify-content-between"><span><i class="bi bi-people me-2"></i><?= h(t('nav_users')) ?></span><span class="badge text-bg-secondary"><?= $userCount ?></span></div>
@@ -372,11 +387,13 @@ nu_layout_start($title, 'access');
 				<?php if (NuReport::available()): ?><br><i class="bi bi-file-earmark-richtext me-1"></i><?php if (NuAcl::can(NuAcl::FORM_REPORT)): ?><a href="<?= h(nu_url('reports')) ?>"><?= h(t('access_rpt_info', $rptCount)) ?></a><?php else: ?><?= h(t('access_rpt_info', $rptCount)) ?><?php endif; ?><?php endif; ?>
 			</div>
 		</div>
+	</div>
+	</div>
 
-		<div class="col-lg-8">
+	<div class="tab-pane fade<?= $accTab === 'rights' ? ' show active' : '' ?>" id="accessTabRights" role="tabpanel" aria-labelledby="accessTabRightsBtn" tabindex="0">
 			<div class="card shadow-sm">
 				<div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-					<span class="fw-semibold"><i class="bi bi-ui-checks-grid me-2"></i><?= h(t('access_forms')) ?> <span class="badge text-bg-secondary js-rights-count"><?= count(array_filter($rows, static fn($r) => empty($r['remove']))) ?></span></span>
+					<span class="fw-semibold"><i class="bi bi-ui-checks-grid me-2"></i><?= h(t('access_forms')) ?> <span class="badge text-bg-secondary js-rights-count"><?= $rightsCount ?></span></span>
 					<input type="search" class="form-control form-control-sm nu-rights-filter js-rights-filter" placeholder="<?= h(t('access_filter_forms')) ?>" aria-label="<?= h(t('access_filter_forms')) ?>">
 				</div>
 				<?php if (isset($errors['rights'])): ?><div class="alert alert-danger rounded-0 mb-0 py-2"><?= h($errors['rights']) ?></div><?php endif; ?>
@@ -441,7 +458,7 @@ nu_layout_start($title, 'access');
 					</table>
 				</div>
 			</div>
-		</div>
+	</div>
 	</div>
 	</fieldset>
 
@@ -525,4 +542,4 @@ nu_layout_start($title, 'access');
 if (!(bool)nu_cfg('nuConfig2FAUser') && NuAuth::user()['globeadmin'] && !NuSettings::fromDb()) {
 	echo NuConfigFile::enableForm('nuConfig2FAUser', 'nuEnable2fa', t('twofa_on'), t('twofa_on_confirm'), $isNew ? 'access' : 'accesslevel', $isNew ? '' : (string)$id);
 }
-nu_layout_end();
+nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nuaccesslevel.js') . '"></script>');

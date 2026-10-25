@@ -102,7 +102,8 @@ NUHTML;
 	public const PROCEDURE = <<<'NUPHP'
 // nuBuilder Next's version of nuBuilder's upload template (same name, same structure – it runs in nuBuilder too):
 // the file extension must fit the content type, no HTML / JavaScript / SVG / XML (they would run in the browser
-// from your site) and an existing file is never overwritten (name-1.pdf, name-2.pdf …).
+// from your site), an existing file is never overwritten (name-1.pdf, name-2.pdf …) and files are stored where the web
+// server does not serve them.
 
 // Allowed content types and the file extensions that go with them
 $allowedTypes = [
@@ -147,13 +148,23 @@ $allowedTypes = [
 // Maximum file size
 $maxFileSize = 5 * 1024 * 1024; // (5 MB)
 
-// Target directory
-$targetDirectory = $_SERVER['DOCUMENT_ROOT'] . '/';
-// $targetDirectory = '../uploads/';
+// Target directory – never a folder the web server serves (nuBuilder Next 0.8.478): first "nu_uploads" NEXT TO the web
+// root; where that cannot be created (shared hosting), "nu_uploads" inside it, closed with a deny-all .htaccess
+// (nginx: add  location ^~ /nu_uploads/ { deny all; } ). Uploaded files are then read by your own code, not by URL.
+$targetDirectory = dirname($_SERVER['DOCUMENT_ROOT']) . '/nu_uploads/';
+if (!is_dir($targetDirectory) && !@mkdir($targetDirectory, 0750, true)) {
+    $targetDirectory = $_SERVER['DOCUMENT_ROOT'] . '/nu_uploads/';
+}
 
-// Ensure the directory exists
+// Ensure the directory exists and is closed to the web
 if (!is_dir($targetDirectory)) {
-    mkdir($targetDirectory, 0755, true);
+    mkdir($targetDirectory, 0750, true);
+}
+if (!file_exists($targetDirectory . '.htaccess')) {
+    file_put_contents($targetDirectory . '.htaccess', "<IfModule mod_authz_core.c>\n\tRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n\tOrder allow,deny\n\tDeny from all\n</IfModule>\n");
+}
+if (!file_exists($targetDirectory . 'index.html')) {
+    file_put_contents($targetDirectory . 'index.html', '');
 }
 
 try {
@@ -186,13 +197,13 @@ try {
     }
 
     if (move_uploaded_file($_FILES['file']['tmp_name'], $targetFile)) {
-        $data = ['url' => $targetFile,
+        $data = ['url' => $fileName,          // the name only: the server path is not shown to the browser
             'file' => $fileName,
             'message' => 'The file ' . $fileName . ' has been uploaded.'];
         http_response_code(201);
         $result = json_encode($data);
     } else {
-        throw new Exception(nuTranslate('Unable to move the uploaded file to its final location:') . $targetFile);
+        throw new Exception(nuTranslate('Unable to move the uploaded file to its final location:') . ' ' . $fileName);
     }
 
 } catch(\Throwable $th) {
@@ -219,6 +230,46 @@ NUPHP;
 		} catch (Throwable) {
 		}
 		return self::HTML;
+	}
+
+	/**
+	 * Unchanged copies of the earlier upload procedures (sha1 of the trimmed text, LF line ends): nuBuilder 4.9's
+	 * nu_upload_file_template and nuBuilder Next's of 0.8.459–0.8.477 – both store files in the web root (security assessment C1).
+	 */
+	public const OLD_PROCEDURES = ['8bb66de2e5860b8075f75d05c64d4c3792c3177e', '64671638dff56420dcbb54e47824684f5103fd64'];
+
+	public static function codeHash(string $php): string
+	{
+		return sha1(trim(str_replace("\r\n", "\n", $php)));
+	}
+
+	/** Does the stored upload procedure still write into the web root? null = no such procedure. */
+	public static function procedureInWebRoot(): ?bool
+	{
+		try {
+			$db = nu_db();
+			if (!$db->tableExists('zzzzsys_php')) return null;
+			$php = $db->value('SELECT sph_php FROM zzzzsys_php WHERE sph_code = ?', [self::PROCEDURE_CODE]);
+			if (!is_string($php)) return null;
+			return (bool)preg_match('/\$targetDirectory\s*=\s*\$_SERVER\s*\[\s*[\'"]DOCUMENT_ROOT[\'"]\s*\]\s*\.\s*[\'"]\/?[\'"]\s*;/', $php);
+		} catch (Throwable) {
+			return null;
+		}
+	}
+
+	/**
+	 * Update step 0022-upload-template-folder: replaces the upload procedure by the current one when it is an UNCHANGED copy of an
+	 * earlier template (OLD_PROCEDURES) – edited procedures are kept (the Security check names them). @return string what was done
+	 */
+	public static function replaceOldProcedure(): string
+	{
+		$db = nu_db();
+		if (!$db->tableExists('zzzzsys_php')) return '';
+		$row = $db->one('SELECT zzzzsys_php_id, sph_php FROM zzzzsys_php WHERE sph_code = ?', [self::PROCEDURE_CODE]);
+		if (!$row) return '';
+		if (!in_array(self::codeHash((string)$row['sph_php']), self::OLD_PROCEDURES, true)) return 'kept (edited)';
+		$db->update('zzzzsys_php', ['sph_php' => self::PROCEDURE], 'zzzzsys_php_id', (string)$row['zzzzsys_php_id']);
+		return 'replaced';
 	}
 
 	/** Update step 0020-upload-template: nuBuilder's procedure and snippet when the database has no row of that code yet. @return string what was added */

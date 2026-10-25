@@ -109,11 +109,14 @@ final class NuSidebar
 		return $u ? mb_substr((string)$u['id'], 0, 25) : '';
 	}
 
-	/** Notes the page being shown (only while the side bar is on, not while the globeadmin acts as another user). */
+	/**
+	 * Notes the page being shown – also while the side bar is off (0.8.492): the start page's row "Recently used" shows the same list.
+	 * Not while the globeadmin acts as another user.
+	 */
 	public static function record(string $key): void
 	{
 		$u = NuAuth::user();
-		if ($key === '' || !$u || !self::enabled() || NuImpersonate::active()) return;
+		if ($key === '' || !$u || NuImpersonate::active()) return;
 		if (!empty($u['demo'])) {
 			$list = array_values(array_diff((array)($_SESSION['nu_recent'] ?? []), [$key]));
 			array_unshift($list, $key);
@@ -138,6 +141,24 @@ final class NuSidebar
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next side bar: ' . $e->getMessage());
 		}
+	}
+
+	/**
+	 * A start page tile was opened (POST action used, 0.8.492): a form tile counts as its form (as when the form page is shown), a tile
+	 * of a page as that page, other tiles (reports, links, tools) under their own key. Unknown or hidden tiles are ignored.
+	 */
+	public static function recordTile(string $key): void
+	{
+		if ($key === '' || strlen($key) > 100) return;
+		[$layout] = self::startPage();
+		if (!NuHome::visible($key, $layout) || ($r = NuHome::resolve($key, $layout)) === null || $r['proc'] !== null) return;
+		$c = (array)($layout['custom'][$key] ?? []);
+		if (($r['kind'] ?? '') === 'form' && ($c['target'] ?? '') !== '') {
+			$f = (string)$c['target'];
+			self::record($f === 'nunotes' ? 'notes' : 'form:' . $f);
+			return;
+		}
+		self::record($key);
 	}
 
 	/** @return list<string> item keys, the last used first */

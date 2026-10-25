@@ -103,6 +103,7 @@
 		var colOpts = D.columns.map(function (c) { return [c.key, c.label]; });
 		var noneOpts = [['', T.lv_none]].concat(colOpts);
 		html += '<div class="tab-pane fade" id="' + p + 'phone" role="tabpanel"><div class="row g-3"><div class="col-md-7">'
+			+ (D.grid && d.display === 'grid' ? '' : '<label class="form-label small mb-1">' + esc(T.lv_phone_layout) + '</label>' + sel([['cards', T.lv_phone_cards], ['table', T.lv_phone_table]], d.phone || 'cards', 'lvPhoneLayout') + '<hr class="my-2">')
 			+ '<label class="form-label small mb-1">' + esc(T.lv_card_title) + '</label>' + sel(colOpts, d.card.title, 'lvCardTitle')
 			+ '<label class="form-label small mb-1 mt-2">' + esc(T.lv_card_badge) + '</label>' + sel(noneOpts, d.card.badge, 'lvCardBadge')
 			+ '<label class="form-label small mb-1 mt-2">' + esc(T.lv_card_lines) + '</label>';
@@ -166,7 +167,8 @@
 				card: {title: $('.lvCardTitle').value, badge: $('.lvCardBadge').value, lines: $$('.lvCardLine').map(function (s) { return s.value; }).filter(Boolean)},
 				sort: [$('.lvSortKey') ? $('.lvSortKey').value : d.sort[0], $('.lvSortDir').value],
 				filters: {shown: [], values: {}},
-				per: +$('.lvPer').value, open: $('#' + p + 'open').checked, display: $('.lvDisplay') ? $('.lvDisplay').value : 'table'
+				per: +$('.lvPer').value, open: $('#' + p + 'open').checked, display: $('.lvDisplay') ? $('.lvDisplay').value : 'table',
+				phone: $('.lvPhoneLayout') ? $('.lvPhoneLayout').value : 'cards'
 			};
 			$$('.nuLvFilRows tr').forEach(function (tr) {
 				var k = tr.dataset.key, f = D.filters.filter(function (x) { return x.key === k; })[0];
@@ -219,4 +221,26 @@
 		if (b) { editor(b.getAttribute('data-lv-edit')); return; }
 		if (e.target.closest('[data-lv-import]')) importDialog();
 	});
+})();
+
+/* Phones (0.8.471): the ▦ / ☰ button switches this list between cards and table. The choice is kept on the device per list
+   (localStorage nunext-lv-phone-<route>, read early by nutheme.js → <html data-lv-phone>); choosing the view's own layout removes it,
+   so the list follows its view again. */
+(function () {
+	'use strict';
+	var box = document.querySelector('.nuLv[data-lv-phone]'), btn = box && box.querySelector('[data-lv-phone-toggle]');
+	if (!btn) return;
+	var route = (window.location.search.match(/[?&]p=([\w-]+)/) || [])[1] || '', root = document.documentElement;
+	function current() { return root.getAttribute('data-lv-phone') || box.getAttribute('data-lv-phone') || 'cards'; }
+	function mark() { btn.setAttribute('aria-pressed', current() === 'table' ? 'true' : 'false'); }
+	btn.addEventListener('click', function () {
+		var next = current() === 'table' ? 'cards' : 'table';
+		try {
+			if (next === box.getAttribute('data-lv-phone')) localStorage.removeItem('nunext-lv-phone-' + route);
+			else localStorage.setItem('nunext-lv-phone-' + route, next);
+		} catch (e) { /* storage blocked: only for this page */ }
+		if (next === box.getAttribute('data-lv-phone')) root.removeAttribute('data-lv-phone'); else root.setAttribute('data-lv-phone', next);
+		mark();
+	});
+	mark();
 })();

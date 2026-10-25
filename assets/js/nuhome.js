@@ -369,32 +369,43 @@
 		});
 	}
 
-	// ---------------------------------------------------------------- recently used (the search's history, assets/js/nupalette.js)
-	function fillRecent(strip) {
-		var box2 = $('.nuHomeChips', strip);
-		box2.textContent = '';
-		var ids = [];
-		try { ids = JSON.parse(store('nunext.palRecent') || '[]'); } catch (e) { ids = []; }
-		ids.filter(function (id) { return /^t:/.test(id); }).forEach(function (id) {
-			if (box2.children.length >= 6) return;
-			var a = viewEl.querySelector('[data-nu-tile="' + id.slice(2).replace(/["\\]/g, '') + '"]');
-			if (!a || a.hasAttribute('data-nu-js-hidden')) return;
-			var ic = a.querySelector('.nuHomeIcon');
-			var kids = [ic ? ic.cloneNode(true) : null, el('span', {'class': 'nuHomeChipLabel', text: a.getAttribute('data-nu-label')})];
-			var chip = a.tagName === 'A'
-				? el('a', {'class': 'nuHomeChip', href: a.getAttribute('href'), target: a.getAttribute('target'), rel: a.getAttribute('rel'), title: a.getAttribute('data-nu-hint'), 'data-nu-recent': a.getAttribute('data-nu-tile')}, kids)
-				: el('button', {type: 'button', 'class': 'nuHomeChip', title: a.getAttribute('data-nu-hint'), 'data-nu-recent': a.getAttribute('data-nu-tile'), onclick: function () { a.click(); }}, kids);
-			var g = a.closest('.nuHomeGroup');
-			if (g) chip.style.setProperty('--nu-gc', g.getAttribute('data-nu-gcolor'));
-			colours(chip);
-			box2.appendChild(chip);
-		});
+	// ---------------------------------------------------------------- recently used: drawn by the server, the side bar's list (0.8.492)
+	// ------------------------------------------------------------------ fold the rows Favourites / Recently used (0.8.465)
+	// remembered per device (localStorage nunext-home-strip-<fav|recent> = 'open' | 'folded'); without a choice: open, on phones
+	// (< 576 px) Recently used starts folded. A folded heading shows the number of entries.
+	function stripKey(st) { return 'nunext-home-strip-' + st.getAttribute('data-nu-strip'); }
+	function stripFold(st, toggle) {
+		var btn = $('.nuHomeStripToggle', st);
+		if (!btn) return;
+		var saved = null;
+		try { saved = localStorage.getItem(stripKey(st)); } catch (e) { /* storage blocked */ }
+		var folded = saved ? saved === 'folded' : (st.getAttribute('data-nu-strip') === 'recent' && window.matchMedia && window.matchMedia('(max-width: 575.98px)').matches);
+		if (toggle) {
+			folded = !st.classList.contains('nuHomeStripFolded');
+			try { localStorage.setItem(stripKey(st), folded ? 'folded' : 'open'); } catch (e) { /* storage blocked */ }
+		}
+		st.classList.toggle('nuHomeStripFolded', folded);
+		btn.setAttribute('aria-expanded', folded ? 'false' : 'true');
+		var cnt = $('.nuHomeStripCount', st);
+		if (cnt) cnt.textContent = String(st.querySelectorAll('.nuHomeChip').length);
+		if (!btn.nuFoldBound) {
+			btn.nuFoldBound = true;
+			btn.addEventListener('click', function () { stripFold(st, true); });
+		}
 	}
+
 	// opening a tile counts as "used" (the search box's list of last opened entries)
 	if (viewEl) viewEl.addEventListener('click', function (e) {
 		var a = e.target.closest && e.target.closest('[data-nu-tile], [data-nu-chip]');
 		var k = a && (a.getAttribute('data-nu-tile') || a.getAttribute('data-nu-chip'));
 		if (k && window.nuPalette && window.nuPalette.remember) window.nuPalette.remember('t:' + k);
+		// …and goes into "Recently used" of the user (side bar + this row): tiles that open no recorded page – reports, links, tools –
+		// count under their own key; forms and pages are recorded again when they open (NuSidebar::recordTile)
+		if (k && D.usedUrl && navigator.sendBeacon) {
+			var fd = new FormData();
+			fd.append('_csrf', D.csrf); fd.append('action', 'used'); fd.append('key', k);
+			try { navigator.sendBeacon(D.usedUrl, fd); } catch (x) { /* only a convenience */ }
+		}
 	}, true);
 
 	// ---------------------------------------------------------------- apply the view (idempotent: load, resize, tab, every panel change)
@@ -419,7 +430,8 @@
 		var fs = $('[data-nu-strip="fav"]', viewEl);
 		if (fs) fs.hidden = !v.favStrip || !$('.nuHomeChip', fs);
 		var rs = $('[data-nu-strip="recent"]', viewEl);
-		if (rs) { if (v.recentStrip) fillRecent(rs); rs.hidden = !v.recentStrip || !$('.nuHomeChip', rs); }
+		if (rs) { rs.hidden = !v.recentStrip || !$('.nuHomeChip', rs); }
+		[fs, rs].forEach(function (st) { if (st) stripFold(st); });
 		favTabs();
 		tableHeads();
 		var now = JSON.stringify(v);
@@ -850,7 +862,7 @@
 			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'edit', id: 'nuHomeVpEdit', onclick: start(editB)}, [icon('bi-pencil me-1'), t('home_c_edit_btn')])]));
 		if (mineB) cont.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_u_mine'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_mine_hint')}),
 			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'mine', id: 'nuHomeVpMine', onclick: start(mineB)}, [icon('bi-person-gear me-1'), t('home_u_mine')])]));
-		var tabs = [['appearance', t('home_c_tab_appearance'), secs], ['content', t('home_c_tab_content'), cont], ['layouts', t('home_layouts'), lays]]   // order: owner's choice (0.8.453).filter(function (x) { return x[2].length; });
+		var tabs = [['appearance', t('home_c_tab_appearance'), secs], ['content', t('home_c_tab_content'), cont], ['layouts', t('home_layouts'), lays]].filter(function (x) { return x[2].length; });   // order: owner's choice (0.8.453)
 		if (!tabs.some(function (x) { return x[0] === VP.tab; })) VP.tab = tabs[0][0];
 		var cur = tabs.filter(function (x) { return x[0] === VP.tab; })[0];
 

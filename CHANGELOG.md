@@ -3,6 +3,233 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.492 – Recently used as one list; release gate (0.8.464–0.8.492)
+- Recently used is one list: the start page row "Recently used" shows the side bar's list (per user on the server, every device) instead of
+  the search box's browser history. Pages and forms are recorded also while the side bar is off; tiles opened on the start page that
+  lead to no page of their own (reports, links, tools) count through a beacon (POST ?p=sidebar action used → NuSidebar::recordTile,
+  answer 204, demo: read-only list). The ✕ of the row empties the same list as the side bar's ✕ / right-click menu.
+- e2e home_strips rewritten for the shared list.
+- Phones: page content keeps Bootstrap's .75 rem side gutter (0.8.490 used 1 rem everywhere – the procedure editor's tool buttons wrapped).
+- Release gate: smoke, all e2e, compat (0.8.464–0.8.492).
+
+## 0.8.491 – Start page: clear Recently used
+- Start page: the row "Recently used" has a ✕ next to its heading – it forgets the tiles of the row (the search box keeps its
+  other history) and hides the row; hidden while the row is folded. e2e home_strips checks it.
+
+## 0.8.490 – Full-width pages, content aligned with the logo
+- Page width: own pages use the full width with 1 rem on both sides (class .nuContainer, as the top bar) – the content lines up with
+  the logo; centred only above 1920 px. Before: container-xl (max 1140 / 1320 px, wide empty margins). Security check and API clients
+  keep their narrower layout, Help its own text column; forms, builder, report designer unchanged (already full width).
+
+## 0.8.489 – Side bar: Clear recently used in a right-click menu
+- Side bar: right-click on "Recently used" opens a small menu with "Clear recently used" (same action as the ✕ button; Esc, a
+  click outside or scrolling the list closes it; context-menu key / Shift+F10 work too). New text sb_recent_clear_menu.
+- e2e: sidebar clears the list through the menu; E2E_STACK=1 prints the stack of a failing test.
+
+## 0.8.488 – Access levels: Add button border
+- Access levels → Form rights: the Add button really shows its full right border now – Bootstrap gives every button of an input
+  group z-index 2, so the fix of 0.8.485 (also 2) lost to the "Several…" button after it; now 4 (hover / focus stay 5).
+
+## 0.8.487 – Start page: lighter chip and group borders
+- Start page, light mode: chips (.nuHomeChip) and panel groups (.nuHomeGroup) have a lighter border (#6060602d) and no shadow
+  (variables --nu-home-line / --nu-home-shadow in nuhome.css; dark mode unchanged).
+
+## 0.8.486 – Access levels: Add form list above the grid
+- Access levels → Form rights: the "Add form…" list opens above the rights grid (its sticky header and the selects showed through).
+
+## 0.8.485 – Access levels: Add form as Tom Select
+- Access levels → Form rights: "Add form…" is a searchable Tom Select (type code or description, Enter adds the row; forms already in
+  the grid are greyed out; app forms and nuBuilder system forms stay in their groups) – assets/js/nuaccesslevel.js.
+- The blue Add button next to "Several…" shows its full right border (the next button of the input group covered it).
+
+## 0.8.484 – Access levels: General and Form rights tabs
+- Access levels: the form has two tabs – General (code, description, group, start form, two-factor login, users and the procedure /
+  report counts side by side) and Form rights (the full-width rights grid with filter, Add / Several…, data mode and form type; the
+  count badge is on the tab too). The open tab is kept after Save and in the address (?tab=rights); an error opens the tab that shows it.
+- Generic remembered tabs: a tab list with data-nu-tabfield="<hidden input>" writes the open tab into that input and the address (nuapp.js).
+- e2e: new test access_tabs; gap_access opens the rights tab.
+
+## 0.8.483 – Logo fixed at the left
+- Navigation bar: the logo stays at the left edge of the window (1 rem margin) on every page, the search, bell and user menu at the
+  right – before, the bar was centred and 1320 px wide, so the logo moved with the window width and with the scrollbar. The room of the
+  scrollbar is always kept (scrollbar-gutter), so pages with and without a scrollbar no longer shift.
+
+## 0.8.482 – File Manager editor toolbar
+- File Manager (nuFiles) – the editor's header: the file name has its own row (shortened with … when too long, full name as tooltip),
+  the tools below. On phones Versions, Save and Close show only their icon and the "Wrap lines" switch a wrap icon; all buttons have
+  the same size.
+- The editor gets nuBuilder Next's code tool buttons: Undo / Redo, Search, Replace, Toggle comment, Show spaces and tabs, Format (PHP,
+  JavaScript / JSON, SQL, HTML, CSS) and Copy / Paste / Paste (replace existing) – the same as the other code editors. The editor fills
+  the rest of the window, whatever the header's height.
+- NuCodeTools.attach(): option noFull (no full-screen button) and toolbar.nuDetach() to attach again for another file.
+
+## 0.8.481 – Fix: update package installable again
+- Fix: 0.8.479 and 0.8.480 could not be installed by an update ("The package must not contain custom/pages/nufiles/…"): installed
+  versions never let a package write into custom/. The File Manager page nuFiles now comes in apps/nufiles/ (a built-in page,
+  NuPage::BUILTIN, closed to the web by apps/.htaccess); its data stays in custom/pages/nufiles/_data/. A copy in custom/pages/nufiles/
+  takes precedence. dev/release.py refuses a package with such files under custom/.
+- Includes everything of 0.8.479 (File Manager = nuFiles, Tiny File Manager removed) and 0.8.480 (data access per field and list column).
+- nginx: add apps to the deny rule (Help → Security check → web server rules); the Security check probes apps/nufiles/.
+
+## 0.8.480 – Data access per field and list column
+- Data access per field and per list column (handover of 25 Oct 2026, step 3: specs 04 field data access and 07 browse column
+  visibility). New page Form builder → Data access (?p=dataaccess&f=<form id>, right: the form builder) with the tabs Fields, List
+  columns, By access level and Preview as user.
+- Fields: modes Editable, Read only / Hidden (nuBuilder), Protected (shown locked, never saved), Insert only, Update only, Masked (only
+  a mask such as •••• 1234 reaches the browser – last:N, first:N, email, text:…) and Withheld (not in the page at all). A default plus
+  rules for an access level, a user, a permission item, a team or a department; the most specific rule wins (user > permission item >
+  team / department > access level > everyone), a tie goes to the more open mode; optional SQL condition per rule (counts only when it
+  returns 1, an error never counts). A field without rules keeps nuBuilder's access exactly as before.
+- Enforced on the server: edit form and sub-form rows (withheld = no control, label or column; masked = locked text), HTML objects and
+  breadcrumb title (hash variables blanked / masked), lookups and display refreshes, save of the main record and sub-form rows (values the
+  user may not write are dropped and noted in Debug results), validation, clone (locked values come from the database), the list,
+  exports, the record history and its restore, the concurrent-edit signatures.
+- List columns: Visible / Hidden by default with rules per subject (a tie hides), stored in the column's sbr_json. A hidden column – also
+  one showing a withheld field – is removed before the list query is built: never selected, searched, filtered, sorted or exported; a
+  masked column shows the mask and is not searched, filtered or sorted.
+- The globeadmin keeps nuBuilder's access; new Security setting "Apply data access rules to the globeadmin" for testing. "Act as user"
+  applies the rules of that user. A new default mode sets the object's nuBuilder access to the nearest value (read only / hidden for
+  users) for nuBuilder 4.9 on the same database; the Security check counts the rules.
+- New table zzzzsys_nunext_object_access (step 0024), housekeeping removes rules of deleted objects. PHP functions nuFieldAccessMode()
+  and nuFieldAccessAllowed() for procedures and reports.
+- Help: chapter "Data access"; e2e test field_access.
+
+## 0.8.479 – File Manager = nuFiles
+- File Manager = nuFiles (handover of 25 Oct 2026, step 2: nuFiles core changes C1–C5 and C9). Tiny File Manager is removed.
+- nuFiles 1.0.0 comes with nuBuilder Next as the page custom/pages/nufiles/ (updated with every release; its settings and its data
+  folder _data/ stay). Every File Manager entry – start page tile, user menu, form ⋮ menu (Ctrl+Shift+Q), nuVendorLogin('TFM') –
+  opens index.php?p=filemanager: the page, or for the globeadmin "Set up the File Manager" (page form nufiles, open mode tab,
+  shares Uploads = the folder of the upload procedure and Web root (code) without .git / nuconfig.php, password asked again for
+  code folders: setting reauth "code"). Works with every database (Tiny File Manager: MySQL only). Admin right "File Manager" as before.
+- Update step 0023 deletes Tiny File Manager: its library packs (vendor/packs/tinyfilemanager-*, old packs in third_party/) and
+  nuBuilder Next's copy in third_party/tinyfilemanager/ – never nuBuilder's own. A copy it cannot delete is red in the Security check.
+  The library pack slot, its Security check line and the System status card are gone; $nuConfigTFMURL is no longer used.
+- Page API (no version change, methods added): $nu->vendor($lib, $file) (bundled Bootstrap, Bootstrap Icons, CodeMirror, jQuery, Tom
+  Select, ApexCharts with version stamp), $nu->recentAuth(), $nu->reauthUrl($back), $nu->dataDir() (<page>/_data, closed),
+  $nu->dangerousName($name). nuFiles uses them by itself. PAGE_GUIDE.md and the function reference list them.
+- Help: new chapter "File Manager (nuFiles)", admin tools and library packs without Tiny File Manager; nuFiles README; e2e test
+  file_manager.
+
+## 0.8.478 – Security quick wins
+- Security quick wins from the security assessment of 0.8.460 (handover of 25 Oct 2026, step 1).
+- Uploads (C1): the upload procedure nu_upload_file_template stores files in nu_uploads/ next to the web root – where that folder cannot
+  be created (shared hosting), in nu_uploads/ inside it, closed with a deny-all .htaccess and an empty index.html – instead of the web
+  root, where anyone could download them without signing in. Its answer names only the file, no longer the server path. Update step
+  0022 replaces the procedure when it is an unchanged copy of nuBuilder 4.9's template or of the earlier hardened one; an edited
+  procedure is kept and marked red in the Security check.
+- Messages and titles (K2): nuSetTitle, nuSetLabelText and nuMessage keep HTML but remove script (<script>, on… attributes, javascript:
+  links, SVG animation handlers) – a record value shown in a title no longer runs in another user's browser. Form code with onclick
+  buttons in messages: nuNextSafeHtml(false) on that page. New JS function nuSafeHtml(html). Removed parts are named in the console.
+- Images (K3): ?p=file serves a file shown by image objects only to users who can open one of those forms (or a form that has such a
+  form as sub-form); files without an image object stay open to signed-in users, as in nuBuilder. The globeadmin sees all.
+- Folder listings (K5): the root .htaccess hides files of folders without an index page (IndexIgnore – no "AllowOverride Options"
+  needed); _install/ in nunext.zip gets a deny-all .htaccess.
+- Safer defaults (C2 / K1): new installations switch on "Records only through the form's list" and "Do not save read-only and hidden
+  fields"; existing installations keep their settings. The Security check shows both (orange while off) and the upload procedure's folder.
+- Help (security chapter, uploads, settings table, nginx rule for nu_uploads/), function reference, TODO (handover steps 2–4,
+  nuFiles decisions); e2e test sec_quick_wins, uppy_upload checks the folder and the answer.
+
+## 0.8.477 – Notifications: Settings button as icon on phones
+- Notifications → Manage: the Settings button shows only its gear icon on phones (below 576 px); the name stays as tooltip and for
+  screen readers. e2e test ntf_settings_phone.
+
+## 0.8.476 – Copy / paste menu on code editor labels
+- Code editors: a click on the label of a code field (e.g. PHP / JavaScript on the procedure page, the code fields of the form builder)
+  opens a menu with Copy (the whole code), Paste (at the cursor – replaces a selection, like Ctrl+V) and Paste (replace existing)
+  (the clipboard becomes the whole code; Undo brings the old code back, no confirmation). Editors without a label (double-click
+  editor, nuconfig.php editor) get a clipboard button in the toolbar with the same menu. Read-only editors offer only Copy.
+- Without HTTPS or when the browser refuses to read the clipboard, Paste opens a small box to paste into, then Insert. Copy falls back
+  to the older copy command; a short "Copied" badge confirms it. Keyboard: Enter / Space on the label, Esc closes the menu.
+- Help: "Copy and paste" in the code editor chapter; e2e test code_clip_menu.
+
+## 0.8.475 – Procedure editor tools on phones
+- Procedure editor on phones: *Insert snippet* shows only its icon (the name stays as tooltip and for screen readers); the tool
+  buttons, # and the snippet button all have the same square size (31 px) and stay in one row – before, the two-line snippet label
+  stretched the whole row. On wider screens the snippet button keeps its label at the same height.
+- The editor tool buttons have the same height everywhere they are used (code editors of the setup code, nuconfig.php …).
+- e2e test proc_tools_phone.
+
+## 0.8.474 – Title bars: buttons in their own row
+- Fixed: title bars of the procedure, SQL builder, item and translation pages had their buttons (and on the procedure page the record
+  ID) directly next to the heading – when the bar wrapped, the ID stood left of Back. Now as on every other page: heading, the ID as a
+  small line below it, then one row of buttons starting with Back.
+- e2e test title_bars (structure of the title bar on eight record pages, ID above the buttons on a phone).
+
+## 0.8.473 – Setup wizard: password fields show (unchanged)
+- Setup wizard, step Security: both globeadmin password fields show "(unchanged)" – left empty, the current password stays (once a new
+  password has been entered in this run, the field says "entered – leave empty to keep it" as before).
+- The e-mail change of 0.8.472 is taken back (a misunderstanding): the globeadmin's e-mail field shows the stored address again, without
+  "(unchanged)" and without "Remove the address".
+- Help (Setup wizard); e2e test wizard_password (replaces wizard_email).
+
+## 0.8.472 – Setup wizard: globeadmin e-mail as (unchanged)
+- Setup wizard run again, step Security: a stored globeadmin e-mail address is shown as placeholder "(unchanged) address" in an empty
+  field (as the password) – leaving it empty keeps it, typing a new one replaces it, *Remove the address* clears it.
+- Help (Setup wizard); e2e test wizard_email.
+
+## 0.8.471 – Lists on phones: cards or table
+- System lists on phones (users, access levels, forms, procedures, reports, log …): cards or table.
+- Per view: the editor's tab Phone has *On phones: Cards / Table* (stored with the view – a shared view shows the same to everyone).
+- Per device: a cards / table button next to the view menu (only below 768 px) switches the list; the choice is kept on the device for
+  this list (read before the page is drawn – no flicker); switching back to the view's layout removes it.
+- The table on a phone: smaller text and padding, no line breaks, the first column stays in place while the others scroll sideways;
+  a tap on a row opens the record as before.
+- Help (List views); e2e test list_phone_layout.
+
+## 0.8.470 – Confirmation dialogs readable in dark mode
+- Fixed: confirmation dialogs (Delete … – jquery-confirm, also those of nuBuilder form code) were unreadable in dark mode – the box stayed
+  white while title and text took the light text colour. They now follow the theme: dark box with light text, grey Cancel, darker
+  backdrop; light mode with dark text as before.
+- e2e test confirm_dark (contrast of title and text at least 4.5:1).
+
+## 0.8.469 – Notes: delete button in each row
+- Notes: a delete button at the very left of each row of the list – it asks once (as Delete in the note) and deletes the note without
+  opening it; the list reloads with a "Record deleted" notice. The delete goes through the form API (right to delete, Before Delete,
+  nu_before_delete, audit trail). Shown only with the right to delete notes – not in lookups, the print view or demo mode.
+- TODO.md: section "Open questions for the owner" (nuHideHolders(0)).
+- Help (Notes); e2e test notes_row_delete.
+
+## 0.8.468 – nuBrowseRow; nuSelectBrowse and nuSubformValue as in nuBuilder
+- nuBuilder JavaScript checked against the owner's notes (nuBeforeDelete, nuBrowseRow, nuEndsWith / nuStartsWith, nuHideHolders,
+  nuOnClone, nuOnLoad, nuOnSelectTab, nuOnSetSaved, nuOnTabSelected, nuSelectBrowse, nuSubformValue):
+- New: nuBrowseRow(elOrEvent, columnNumberOrId) as nuBuilder 4.7+ – {pk, row, column, colId, html, value, $cell} of the clicked browse
+  cell or of another cell of the same row (zero-based column number or the column id); browse cells carry data-nu-column-id.
+- Fixed: nuSelectBrowse(event, element) gets the clicked cell, as nuBuilder – before, a cell with a style class gave the inner element,
+  so $(element).attr('data-nu-primary-key') was empty.
+- Fixed: nuSubformValue(el, field) returns the value as shown in the field (formatted numbers stay formatted), as nuBuilder.
+- Function reference: nuBrowseRow, nuSelectBrowse, nuSubformValue; e2e test nub_js_notes.
+
+## 0.8.467 – To do: fold sections, collapse / expand all
+- To do page (developer mode): every section of TODO.md folds – a tap on its heading closes or opens it; the heading shows the number
+  of open points. *Collapse all* / *Expand all* in the title bar folds or opens all sections at once (the label follows the state);
+  folded sections are remembered on the device (assets/js/nutodo.js).
+- e2e test todo_fold.
+
+## 0.8.466 – Lists on phones: numbers inside the cards
+- Lists on phones: values that are links (e.g. the number of users of an access level) stay inside their card. A card is a link
+  itself, and a link inside it ended the card early – the number appeared below the card. Inside a card such values are now plain text
+  (the whole card still opens the record); the table on wider screens keeps the links.
+- e2e test list_cards (access levels, users, forms, procedures, reports at phone width).
+
+## 0.8.465 – Start page: fold Favourites and Recently used
+- Start page: the rows *Favourites* and *Recently used* fold – a tap on the heading closes the row (▸ and the number of entries) or
+  opens it again (▾). The state is remembered per device, for each row separately; without a choice both are open, on phones
+  (below 576 px) *Recently used* starts folded.
+- Fixed: the Customise panel showed a tab without content (the filter of empty tabs was inside a comment).
+- Help (Your start page); e2e test home_strips.
+
+## 0.8.464 – Documentation in two tabs: Guide and Code reference
+- Documentation in two tabs: *Guide* (docs/nunext-docs.htm) and *Code reference* (new file docs/nunext-ref.htm) – the developer
+  reference (hooks, hash variables, PHP / JavaScript helpers), the function reference, Pages (custom PHP), start page hooks, REST API,
+  Compatibility check and Development with Claude moved to the code reference. The guide page is about a quarter smaller.
+- The code reference is loaded only when its tab is opened (or a link, #anchor or search needs it); each tab has its own contents list.
+  ?p=help&tab=ref opens it; old links such as ?p=help#api or #fn-php-nuRunQuery open the right tab by themselves.
+- Search: in the open tab; *Search both tabs* searches both, shows the hits per tab and switches to the tab with hits.
+- The tab is shown only to readers who may see something in it (globeadmin, admin roles; users with form builder rights see *Pages*);
+  the user preview shows none.
+- Tests: dev/tests/run.php checks that ids are unique over both files and that every #link of the help and every help link of the
+  tutorial points to an existing id; e2e test help_tabs (on-demand loading, links into the other tab, search in both tabs, user view).
+
 ## 0.8.463 – Release gate
 - Release gate for 0.8.458–0.8.462 (permission items as a table, uploads with Uppy, side bar with favourites and recently used,
   gap analysis nuBuilder 4.9 / nuBuilder Next: data mode / form type, access condition in the save transaction, global hooks,

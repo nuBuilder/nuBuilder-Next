@@ -93,6 +93,9 @@
 .nuBrowseRow { cursor: pointer; }
 .nuBrowseRow:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
 .nuBrowseTable td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 32rem; }
+/* delete button at the left of each row (Notes, 0.8.469) */
+.nuBrowseTable .nuRowDelCol { width: 1%; padding-inline-end: .25rem; white-space: nowrap; }
+.nuBrowseTable .nuRowDel { padding: .1rem .4rem; line-height: 1.2; }
 
 @media print {
 	.nuFormHeader, .nuBrowseSearch, .card-footer { display: none !important; }

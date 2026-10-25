@@ -1,0 +1,47 @@
+{
+	"shares": [
+		{
+			"id": "uploads",
+			"label": "Uploads",
+			"path": "{NUBUILDER}/uploads",
+			"type": "files",
+			"extensions": "pdf, png, jpg, jpeg, gif, webp, txt, csv, md, json, docx, xlsx, pptx, odt, ods, zip",
+			"max_upload_mb": 100,
+			"grants": [
+				{"permission": ["FILES_UPLOADS"], "rights": ["view", "upload", "mkdir", "edit", "rename", "copy", "delete", "zip"]},
+				{"permission": ["FILES_UPLOADS_READ"], "rights": ["view"]}
+			]
+		},
+		{
+			"id": "documents",
+			"label": "Documents (outside the web root)",
+			"path": "/srv/nubuilder-files/documents",
+			"type": "files",
+			"trash": true,
+			"grants": [
+				{"access": ["SALES"], "rights": ["view", "upload", "mkdir"]},
+				{"permission": ["FILES_DOCS_ADMIN"], "rights": ["view", "upload", "mkdir", "edit", "rename", "copy", "delete", "zip"]}
+			]
+		},
+		{
+			"id": "webroot",
+			"label": "Web root (code)",
+			"path": "{DOCUMENT_ROOT}",
+			"type": "code",
+			"deny": [".git", "nuconfig.php", "secrets.php"]
+		}
+	],
+	"reauth": "code",
+	"max_upload_mb": 200,
+	"chunk_mb": 2,
+	"zip_max_mb": 500,
+	"zip_max_entries": 5000,
+	"copy_max_mb": 2000,
+	"editor_max_kb": 2048,
+	"search_max_results": 500,
+	"list_max_entries": 10000,
+	"trash_days": 30,
+	"versions_keep": 10,
+	"log_table": "nufiles_log",
+	"log_reads": false
+}

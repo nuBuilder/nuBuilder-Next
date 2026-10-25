@@ -115,13 +115,13 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	$nav = array_filter($nav, static fn($n) => (bool)$n[2]);
 	if (array_keys($nav) === ['home']) $nav = [];
 	$sidebar = NuSidebar::enabled() && empty($opt['no_sidebar']);   // side bar (0.8.460, core/nusidebar.php)
-	if ($sidebar) NuSidebar::record(NuSidebar::currentKey());
+	if (empty($opt['bare'])) NuSidebar::record(NuSidebar::currentKey());   // recently used: side bar and start page (0.8.492)
 	?>
 <body class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?>>
 <a class="visually-hidden-focusable" href="#main"><?= h(t('skip_to_content')) ?></a>
 <nav class="navbar navbar-expand-md nu-navbar border-bottom sticky-top<?= NuImpersonate::active() ? ' flex-wrap' : '' ?>">
 	<?= NuImpersonate::banner() ?>
-	<div class="container-xl">
+	<div class="container-fluid nuNavInner"><?php // full width (0.8.483): the logo stays at the left edge on every page, the menus at the right ?>
 		<?php if ($sidebar): // side bar (0.8.460): below 992 px a drawer opened here ?>
 			<button type="button" class="btn btn-sm btn-outline-secondary me-2 nuSbOpenBtn" id="nuSbOpen" aria-controls="nuSidebar" aria-expanded="false" title="<?= h(t('sb_open')) ?>" aria-label="<?= h(t('sb_open')) ?>"><i class="bi bi-layout-sidebar"></i></button>
 		<?php endif; ?>
@@ -190,7 +190,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php if (!$u['globeadmin'] && NuUserFields::editable('self')): // custom fields the user fills in himself (0.8.454) ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('account')) ?>" id="nuMyAccount"><i class="bi bi-person-lines-fill me-2"></i><?= h(t('acc_title')) ?></a></li>
 						<?php endif; ?>
-						<?php if (NuAdmin::any() && (nu_db()->type === 'mysql' || NuVendor::available('ADM'))): // admin roles (0.8.323): only what the role allows ?>
+						<?php if (NuAdmin::any() && (nu_db()->type === 'mysql' || NuVendor::available('ADM') || NuFileManager::visible())): // admin roles (0.8.323): only what the role allows ?>
 							<li><hr class="dropdown-divider"></li>
 							<?php if (NuAdmin::can('status')): ?><li><a class="dropdown-item" href="<?= h(nu_url('vendor')) ?>"><i class="bi bi-activity me-2"></i><?= h(t('status_title')) ?></a></li><?php endif; ?>
 							<?php // database tools (0.8.282): phpMyAdmin / Adminer, the primary one first ($nuConfigPrimaryDatabaseManagement); then File Manager
@@ -199,7 +199,6 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 								foreach (NuVendor::dbTools() as $va) $vItems[] = [$va, 'bi-database', t('vendor_db_with', NuVendor::DB_TOOLS[$va]), true];
 								if (!$vItems) $vItems[] = ['DB', 'bi-database', t('vendor_pma'), false];
 							}
-							if (nu_db()->type === 'mysql' && NuAdmin::can('filemanager', 'change')) $vItems[] = ['TFM', 'bi-folder2-open', t('vendor_tfm'), NuVendor::available('TFM')];
 							foreach ($vItems as [$va, $vi, $vl, $vok]): ?>
 								<li>
 									<?php if ($vok): ?>
@@ -212,6 +211,9 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 									<?php endif; ?>
 								</li>
 							<?php endforeach; ?>
+							<?php if (NuFileManager::visible()): // File Manager = the page nuFiles (0.8.479) ?>
+								<li><a class="dropdown-item" href="<?= h(NuFileManager::url()) ?>" target="_blank" rel="noopener" id="nuMenuFiles"><i class="bi bi-folder2-open me-2"></i><?= h(t('vendor_tfm')) ?></a></li>
+							<?php endif; ?>
 						<?php endif; ?>
 						<?php if (NuAdmin::can('update')): // version and change history (Update page) ?>
 							<li><hr class="dropdown-divider"></li>
@@ -235,7 +237,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 </nav>
 <?= !empty($_SESSION['nu_form_preview']) ? NuFormDraft::banner(false) : '' /* form drafts (0.8.386): preview banner */ ?>
 <?php if ($sidebar) { echo '<div class="nuShell">'; nu_sidebar(); NuSidebar::$drawn = true; } ?>
-<main id="main" class="<?= h($opt['container'] ?? 'container-xl') ?> py-4<?= $sidebar ? ' nuShellMain' : '' ?>">
+<main id="main" class="<?= h($opt['container'] ?? 'nuContainer') ?> py-4<?= $sidebar ? ' nuShellMain' : '' ?>">
 	<?php nu_render_flashes(); ?>
 <?php
 }
@@ -267,7 +269,7 @@ function nu_sidebar(): void
 		return '<li class="nuSbItem' . ($it['current'] ? ' active' : '') . ($it['fav'] ? ' fav' : '') . '" data-nu-sb="' . h($it['key']) . '">' . $link . $star . '</li>';
 	};
 	$section = static function (string $id, string $icon, string $title, array $items, string $empty, string $extra = '') use ($item): string {
-		return '<section class="nuSbSec nuSbSec-' . $id . '" aria-labelledby="nuSbH-' . $id . '"><h2 class="nuSbSecTitle" id="nuSbH-' . $id . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>'
+		return '<section class="nuSbSec nuSbSec-' . $id . '"' . ($id === 'recent' ? ' data-t-clear="' . h(t('sb_recent_clear_menu')) . '"' : '') . ' aria-labelledby="nuSbH-' . $id . '"><h2 class="nuSbSecTitle" id="nuSbH-' . $id . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>'
 			. '<span class="nuSbText">' . h($title) . '</span>' . ($items ? '<span class="nuSbCount">' . count($items) . '</span>' : '') . $extra . '</h2>'
 			. ($items ? '<ul class="nuSbList">' . implode('', array_map($item, $items)) . '</ul>' : '<p class="nuSbEmpty">' . h($empty) . '</p>') . '</section>';
 	};

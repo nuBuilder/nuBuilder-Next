@@ -275,7 +275,7 @@ if ($tab === 'manage') {
 		<div class="d-flex flex-wrap gap-2">
 			<?= nu_back_button() ?>
 			<?php if ($canSend): ?><a class="btn btn-outline-secondary" href="<?= h(nu_url('notifications', ['id' => 'new'])) ?>" id="ntfNew"><i class="bi bi-plus-lg me-1"></i><?= h(t('ntf_new')) ?></a><?php endif; ?>
-			<?php if ($canSet): ?><button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#ntfSettings" aria-expanded="false" aria-controls="ntfSettings"><i class="bi bi-gear me-1"></i><?= h(t('aud_settings')) ?></button><?php endif; ?>
+			<?php if ($canSet): ?><button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#ntfSettings" aria-expanded="false" aria-controls="ntfSettings" id="ntfSettingsBtn" title="<?= h(t('aud_settings')) ?>" aria-label="<?= h(t('aud_settings')) ?>"><i class="bi bi-gear me-sm-1" aria-hidden="true"></i><span class="d-none d-sm-inline"><?= h(t('aud_settings')) ?></span></button><?php endif; ?>
 		</div>
 	</div>
 	<?php if ($canSet): ?>

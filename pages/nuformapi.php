@@ -125,6 +125,7 @@ try {
 		case 'lookupid':
 		case 'lookupcode':
 			$o  = nu_api_object($meta, (string)($in['object_id'] ?? ''));
+			if (NuFieldAccess::withheld($o) || NuFieldAccess::masked($o) || NuFieldAccess::readonly($o, $record === '-1')) nu_api_out(['ok' => true, 'count' => 0]);   // field data access (0.8.480)
 			$lf = NuLookup::form($o);
 			if (!$lf) nu_api_error(t('form_err_not_found'));
 			if (!NuAcl::can($lf->id)) nu_api_error(t('form_err_lookup_denied'), 403);
@@ -153,7 +154,8 @@ try {
 			$rowValues = is_array($in['row'] ?? null) ? $in['row'] : [];
 			$hash = NuHash::forForm($meta, $record, $rowValues + $values, $props, ['SUBFORM_ID' => nu_api_subform_id($meta, $objForm)]);
 			$r = new NuRender($meta, $record, [], $hash, 'absolute');
-			if ($o['sob_all_type'] === 'display') nu_api_out(['ok' => true, 'found' => true, 'value' => $r->display($o)]);
+			if (NuFieldAccess::withheld($o)) nu_api_out(['ok' => true, 'found' => false]);   // field data access (0.8.480)
+			if ($o['sob_all_type'] === 'display') nu_api_out(['ok' => true, 'found' => true, 'value' => (string)NuFieldAccess::shown($o, $r->display($o))]);
 			if ($o['sob_all_type'] === 'select') nu_api_out(['ok' => true, 'found' => true, 'options' => $r->options($o)]);
 			nu_api_out(['ok' => true, 'found' => false]);
 

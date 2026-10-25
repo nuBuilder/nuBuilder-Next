@@ -17,6 +17,13 @@ body.nu-app, body.nu-center { background: var(--nu-page); }
 
 /* navbar */
 .nu-navbar { background: var(--nu-surface); }
+/* 0.8.483: the navigation bar spans the window – the logo sits at the left with a small margin, the same on every page; the scrollbar's
+   room is always kept, so nothing shifts between pages with and without a scrollbar */
+.nu-navbar .nuNavInner { padding-inline: 1rem; }
+/* page content (0.8.490): full width with the top bar's 1rem on both sides – the left edge lines up with the logo; centred only above 1920 px */
+.nuContainer { width: 100%; max-width: 1920px; margin-inline: auto; padding-inline: 1rem; }
+@media (max-width: 575.98px) { .nuContainer { padding-inline: .75rem; } }   /* phones: Bootstrap's gutter as before – every pixel counts for button rows */
+html { scrollbar-gutter: stable; }
 .nu-navbar .nav-link { border-radius: .5rem; padding-inline: .75rem !important; }
 .nu-navbar .nav-link.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); }
 .nu-user-name { max-width: 12rem; }
@@ -108,6 +115,9 @@ input.form-control[list]:not(.is-invalid):not(.is-valid) {
 .nu-rights thead th { background: var(--nu-surface); font-weight: 600; z-index: 2; }
 .nu-rights .form-check-input { cursor: pointer; }
 .nu-rights-filter { max-width: 15rem; }
+/* access level: the blue Add button sits between grey ones – in an input group the next button covers its right border (0.8.485) */
+.input-group > .js-add-form-btn { position: relative; z-index: 4; }   /* Bootstrap gives every .btn of an input group z-index 2 – the later one wins; 5 = hover / focus */
+.ts-dropdown.nuAddFormDd { z-index: 1050; }   /* above the sticky header and selects of the rights grid, below dialogs (0.8.486) */
 .nu-scroll { max-height: 18rem; overflow: auto; }
 
 /* sticky action bar at the bottom of edit screens */
@@ -355,6 +365,15 @@ mark.nuHighlight { padding: 0 .05em; margin: 0 -.05em; border-radius: .2em; back
 .nuHashVarsBtn { font-family: var(--bs-font-monospace); font-weight: 700; font-size: .9rem; line-height: 1; padding: 0;
 	display: inline-flex; align-items: center; justify-content: center; width: 1.925rem; height: 1.9375rem; }
 .nuHashVarsMenu { width: min(26rem, 90vw); }
+/* procedure editor tools (0.8.475): one row height – the buttons keep their own size instead of stretching to the tallest one */
+.procCodeTools { flex-wrap: wrap; align-items: center; }
+.procCodeTools .nuCodeTools, .procCodeTools .dropdown { align-self: center; }
+.procSnippetBtn { display: inline-flex; align-items: center; gap: .3rem; height: 1.9375rem; padding: .15rem .45rem; font-size: .8125rem; line-height: 1; white-space: nowrap; }
+.procSnippetBtn .bi { font-size: .9rem; }
+@media (max-width: 575.98px) {
+	.procSnippetBtn { width: 1.925rem; padding: 0; justify-content: center; }
+	.procSnippetLabel { display: none; }
+}
 .nuHashVarsMenu .form-control { margin-bottom: .35rem; }
 .nuHashVarsList { max-height: 50vh; overflow-y: auto; }
 .nuHashVarsList .dropdown-header { position: sticky; top: 0; background: var(--bs-dropdown-bg); font-weight: 600; }
@@ -383,7 +402,7 @@ body.nu-print-list { background: var(--bs-body-bg); font-size: .85rem; }
 [data-bs-theme="dark"] .procCM .CodeMirror { background: var(--bs-body-bg); color: var(--bs-body-color); }
 
 /* code editor toolbar (assets/js/nu/nucodetools.js) + CodeMirror search dialog */
-.nuCodeTools .btn { padding: .15rem .45rem; }
+.nuCodeTools .btn { padding: .15rem .45rem; height: 1.9375rem; display: inline-flex; align-items: center; justify-content: center; }   /* = # and snippet buttons (0.8.475) */
 .nuCodeTools .btn .bi { font-size: .9rem; }
 .CodeMirror-dialog { position: absolute; left: 0; right: 0; background: var(--bs-tertiary-bg); color: var(--bs-body-color); z-index: 15; padding: .25rem .8rem; overflow: hidden; font-size: .85rem; }
 .CodeMirror-dialog-top { border-bottom: 1px solid var(--bs-border-color); top: 0; }
@@ -882,6 +901,15 @@ th[aria-sort="descending"] .inspSortBtn::after { content: " \25BC"; font-size: .
 .nuTodo h2 { font-size: 1.35rem; margin: 0 0 1rem; }
 .nuTodo h3 { font-size: 1.05rem; margin: 1.6rem 0 .6rem; padding-bottom: .3rem; border-bottom: 1px solid var(--bs-border-color); }
 .nuTodo h4, .nuTodo h5 { font-size: .95rem; margin: 1rem 0 .4rem; }
+/* folding sections (0.8.467) */
+.nuTodo .nuTodoSec > summary { display: flex; align-items: center; gap: .4rem; list-style: none; cursor: pointer; margin: 1.6rem 0 .6rem; padding-bottom: .3rem; border-bottom: 1px solid var(--bs-border-color); }
+.nuTodo .nuTodoSec > summary::-webkit-details-marker { display: none; }
+.nuTodo .nuTodoSec > summary h3 { margin: 0; padding: 0; border: 0; }
+.nuTodo .nuTodoSec > summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; border-radius: .25rem; }
+.nuTodo .nuTodoChev { font-size: .8rem; color: var(--bs-secondary-color); transition: transform .15s; }
+.nuTodo .nuTodoSec:not([open]) > summary .nuTodoChev { transform: rotate(-90deg); }
+.nuTodo .nuTodoSec:not([open]) > summary { margin-bottom: 0; }
+@media (prefers-reduced-motion: reduce) { .nuTodo .nuTodoChev { transition: none; } }
 .nuTodo .nuTodoList { list-style: none; padding-inline-start: 0; margin-bottom: .5rem; }
 .nuTodo .nuTodoList .nuTodoList { padding-inline-start: 1.6rem; margin: .25rem 0; }
 .nuTodo .nuTodoList > li { display: flex; align-items: flex-start; padding: .2rem 0; }
@@ -1102,6 +1130,26 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuLvMenuBtn .nuLvMenuName { display: inline-block; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
 .nuLvMenu { max-height: 70vh; overflow-y: auto; min-width: 16rem; }
 .nuLvCards { padding: .5rem .75rem; }
+/* phones: cards or table (0.8.471) – the view's choice (.nuLvPhoneTable), overridden per device by <html data-lv-phone> (nutheme.js) */
+.nuLv .nuLvCards, .nuLv .nuLvPhoneToTable, .nuLv .nuLvPhoneToCards { display: none; }
+@media (max-width: 767.98px) {
+	.nuLv .nuLvTableWrap { display: none; }
+	.nuLv .nuLvCards { display: block; }
+	.nuLv.nuLvPhoneTable .nuLvTableWrap, html[data-lv-phone="table"] .nuLv .nuLvTableWrap { display: block; }
+	.nuLv.nuLvPhoneTable .nuLvCards, html[data-lv-phone="table"] .nuLv .nuLvCards { display: none; }
+	html[data-lv-phone="cards"] .nuLv .nuLvTableWrap { display: none; }
+	html[data-lv-phone="cards"] .nuLv .nuLvCards { display: block; }
+	/* the button shows the layout it switches to */
+	.nuLv .nuLvPhoneToTable { display: inline; }
+	.nuLv.nuLvPhoneTable .nuLvPhoneToTable, html[data-lv-phone="table"] .nuLv .nuLvPhoneToTable { display: none; }
+	.nuLv.nuLvPhoneTable .nuLvPhoneToCards, html[data-lv-phone="table"] .nuLv .nuLvPhoneToCards { display: inline; }
+	html[data-lv-phone="cards"] .nuLv .nuLvPhoneToTable { display: inline; }
+	html[data-lv-phone="cards"] .nuLv .nuLvPhoneToCards { display: none; }
+	/* the table on a phone: tighter, first column stays while the rest scrolls sideways */
+	.nuLv .nuLvTableWrap .nu-table { font-size: .875rem; }
+	.nuLv .nuLvTableWrap .nu-table > :not(caption) > * > * { padding: .4rem .5rem; white-space: nowrap; }
+	.nuLv .nuLvTableWrap .nu-table th:first-child, .nuLv .nuLvTableWrap .nu-table td:first-child { position: sticky; inset-inline-start: 0; z-index: 1; background: var(--bs-body-bg); box-shadow: inset -1px 0 0 var(--bs-border-color); }
+}
 .nuLvCard { display: block; padding: .6rem .75rem; margin-bottom: .5rem; border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); color: var(--bs-body-color); text-decoration: none; }
 .nuLvCard:hover, .nuLvCard:focus { border-color: var(--bs-primary); color: var(--bs-body-color); }
 .nuLvCardHead { display: flex; align-items: flex-start; gap: .5rem; }
@@ -1203,6 +1251,7 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuSbSec-fav .nuSbCount { background: color-mix(in srgb, var(--nu-sb-fav) 16%, var(--nu-surface)); color: var(--nu-sb-fav-text); }
 .nuSbClearForm { display: inline-flex; }
 .nuSbClear { padding: .15rem .3rem; font-size: .85rem; }
+.nuSbMenu { position: fixed; z-index: 1080; margin: 0; min-width: 12rem; }   /* right-click menu of "Recently used" (0.8.489) */
 .nuSbList { list-style: none; margin: 0; padding: 0; }
 .nuSbItem { display: flex; align-items: center; border-radius: .5rem; border: 1px solid transparent; margin: 1px 0; }
 .nuSbItem:hover { background: var(--bs-tertiary-bg); }
@@ -1358,3 +1407,29 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 /* access level: data mode / form type per form (0.8.461) – the whole option text visible (the table scrolls on small screens) */
 .nu-rights .nuAccMode-dm { min-width: 16.5rem; }
 .nu-rights .nuAccMode-ft { min-width: 10rem; }
+
+/* jquery-confirm dialogs (Delete … – form runtime and nuBuilder form code) follow the theme (0.8.470): the library's box is always
+   white while title and text took the light text colour of dark mode – unreadable */
+.jconfirm .jconfirm-box { color: var(--bs-body-color); }
+.jconfirm .jconfirm-box div.jconfirm-title-c, .jconfirm .jconfirm-box div.jconfirm-content-pane .jconfirm-content { color: var(--bs-emphasis-color); }
+.jconfirm .jconfirm-box div.jconfirm-content-pane .jconfirm-content { color: var(--bs-body-color); }
+[data-bs-theme="dark"] .jconfirm .jconfirm-box { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
+[data-bs-theme="dark"] .jconfirm.jconfirm-light .jconfirm-box { box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .6); }
+[data-bs-theme="dark"] .jconfirm.jconfirm-light .jconfirm-bg { background-color: #000; opacity: .55; }
+[data-bs-theme="dark"] .jconfirm.jconfirm-light .jconfirm-box .jconfirm-buttons button.btn-default { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
+[data-bs-theme="dark"] .jconfirm.jconfirm-light .jconfirm-box .jconfirm-buttons button.btn-default:hover { background: var(--bs-border-color); }
+[data-bs-theme="dark"] .jconfirm .jconfirm-box div.jconfirm-closeIcon { color: var(--bs-body-color); }
+
+/* Code editors: the label opens Copy / Paste / Paste (replace existing) (0.8.476, nucodetools.js) */
+.nuClipLabel { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.nuClipLabel:hover, .nuClipLabel:focus-visible { color: var(--bs-link-color); }
+.nuClipMenu { min-width: 14rem; max-width: calc(100vw - 16px); }
+.nuClipMenu.nuClipManual { padding: .5rem; width: 22rem; }
+.nuClipFlash { margin-left: .5rem; vertical-align: middle; }
+
+/* Data access of a form (0.8.480, pages/nudataaccess.php) */
+.daField > summary { cursor: pointer; list-style-position: inside; }
+.daRules select.daType { min-width: 11rem; }
+.daRules .daSubject { min-width: 11rem; }
+.daRules select.daMode { min-width: 10rem; }
+.daRules td:nth-child(5) input { min-width: 14rem; }

@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.463",
+    "version": "0.8.492",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -277,6 +277,39 @@
             "changes": [
                 {
                     "table": "zzzzsys_nunext_recent",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0022-upload-template-folder",
+            "description": "Upload procedure nu_upload_file_template: files no longer in the web root (only an unchanged copy of the earlier template is replaced)",
+            "changes": [
+                {
+                    "table": "zzzzsys_php",
+                    "kind": "data",
+                    "what": "nu_upload_file_template replaced when it is an unchanged earlier template"
+                }
+            ]
+        },
+        {
+            "id": "0023-retire-tfm",
+            "description": "Tiny File Manager removed (File Manager = the page nuFiles): its library packs and the copy in third_party/tinyfilemanager/",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_log",
+                    "kind": "data",
+                    "what": "files only: Tiny File Manager packs (vendor/packs/tinyfilemanager-*, third_party/tinyfilemanager*) deleted, logged"
+                }
+            ]
+        },
+        {
+            "id": "0024-object-access",
+            "description": "Field data access: rules per object (zzzzsys_nunext_object_access)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_object_access",
                     "kind": "table",
                     "what": "created when missing"
                 }
@@ -1256,6 +1289,64 @@
             ],
             "index": [
                 "user_id"
+            ]
+        },
+        "zzzzsys_nunext_object_access": {
+            "pk": "zzzzsys_nunext_object_access_id",
+            "cols": [
+                [
+                    "noa_object_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "noa_form_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "noa_subject_type",
+                    "text",
+                    "10"
+                ],
+                [
+                    "noa_subject",
+                    "text",
+                    "100"
+                ],
+                [
+                    "noa_mode",
+                    "text",
+                    "4"
+                ],
+                [
+                    "noa_mask",
+                    "text",
+                    "50"
+                ],
+                [
+                    "noa_condition",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "noa_note",
+                    "text",
+                    "500"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "noa_object_id",
+                "noa_form_id"
             ]
         },
         "zzzzsys_nunext_presence": {

@@ -107,11 +107,10 @@ $nuConfigTimezone						= "Europe/Zurich";			//-- Time zone for log entries, audi
 //$nuConfigDevMode						= true;						//-- Developer mode for the globeadmin: #DEV_MODE# = 1, nuDevMode() = true (as nuBuilder).
 $nuConfigFileMaxKB						= 300;						//-- Maximum size of files uploaded into form fields (KB).
 
-// Admin tools for the globeadmin (user menu): phpMyAdmin and Tiny File Manager with nuBuilder's config, NOT part of the package –
-// install them as library packs (Update → Libraries; vendor/packs/nudb-<version>/, vendor/packs/tinyfilemanager-<version>/).
-// Copies in third_party/nudb/ and third_party/tinyfilemanager/ still work while no pack is installed. MySQL / MariaDB only.
+// Admin tools for the globeadmin (user menu): phpMyAdmin with nuBuilder's config, NOT part of the package – install it as a library
+// pack (Update → Libraries; vendor/packs/nudb-<version>/). A copy in third_party/nudb/ still works while no pack is installed.
+// MySQL / MariaDB only. The File Manager is the page nuFiles of nuBuilder Next (0.8.479; $nuConfigTFMURL is no longer used).
 //$nuConfigPMAURL						= "";						//-- Other URL of phpMyAdmin, e.g. "/nubuilder4/third_party/nudb/"
-//$nuConfigTFMURL						= "";						//-- Other URL of Tiny File Manager
 // Adminer (optional, NOT part of the package): a library pack (Update → Libraries) or adminer.php in third_party/adminer/ –
 // it opens through dbadmin.php, logged in with the account above (also SQL Server).
 //$nuConfigPrimaryDatabaseManagement	= "phpMyAdmin";				//-- Database buttons open "phpMyAdmin" or "Adminer" (▾ = the other one). Not set: phpMyAdmin when installed, else Adminer.

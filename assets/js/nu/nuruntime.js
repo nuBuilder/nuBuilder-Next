@@ -24,6 +24,34 @@
 	function g(id) { return id ? document.getElementById(id) : null; }
 	function arr(x) { return x === undefined || x === null ? [] : (Array.isArray(x) ? x : [x]); }
 	function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+	// HTML from form code (nuSetTitle, nuSetLabelText, nuMessage) without script (0.8.478, security assessment K2): a record value such
+	// as <img src=x onerror=…> passed to these helpers ran as script in the next user's browser. Parsed in an inert <template> (nothing
+	// loads or runs there), script-like elements, on… attributes and javascript: / vbscript: / non-image data: URLs are removed, and the
+	// nodes are moved over as they are (no second parse). Formatting (<b>, <br>, <span class>, icons, links, inputs) stays.
+	// nuNextSafeHtml(false) in a form's JavaScript turns it off for nuMessage only (nuBuilder code with onclick buttons in messages).
+	var SAFE_DROP = {script: 1, iframe: 1, frame: 1, frameset: 1, object: 1, embed: 1, applet: 1, base: 1, meta: 1, link: 1, noscript: 1,
+		template: 1, animate: 1, set: 1, animatemotion: 1, animatetransform: 1, handler: 1, portal: 1, foreignobject: 1};
+	var SAFE_URL = /^(href|src|action|formaction|xlink:href|data|poster|background|lowsrc|dynsrc|ping|cite|codebase|srcset|to|from|values)$/;
+	var safeMessages = true;
+	function safeFrag(html) {
+		var t = document.createElement('template'), dropped = 0;
+		t.innerHTML = html === null || html === undefined ? '' : String(html);
+		Array.prototype.slice.call(t.content.querySelectorAll('*')).forEach(function (el) {
+			if (!t.content.contains(el)) return;                     // inside an element removed before
+			if (SAFE_DROP[String(el.localName).toLowerCase()]) { el.remove(); dropped++; return; }
+			Array.prototype.slice.call(el.attributes).forEach(function (at) {
+				var n = at.name.toLowerCase(), v = String(at.value).replace(/[\u0000- \u007f-\u009f]/g, '').toLowerCase();
+				if (n.indexOf('on') === 0 || n === 'srcdoc' || n === 'style' && /expression\(|url\(\s*['"]?\s*javascript:/.test(v)
+					|| SAFE_URL.test(n) && (/^(javascript|vbscript):/.test(v) || /^data:/.test(v) && !/^data:image\/(png|jpe?g|gif|webp|bmp|avif);/.test(v))) {
+					el.removeAttribute(at.name); dropped++;
+				}
+			});
+		});
+		if (dropped && window.console) console.warn('nuBuilder Next removed ' + dropped + ' script part(s) from HTML given to a message / title helper.');
+		return t.content;
+	}
+	api('nuNextSafeHtml', function (on) { safeMessages = on !== false; });
+	api('nuSafeHtml', function (html) { var d = document.createElement('div'); d.appendChild(safeFrag(html)); return d.innerHTML; });
 	function globalEval(code) { if (code && String(code).trim() !== '') (0, eval)(String(code)); }   // eslint-disable-line no-eval
 	function runSnippet(code, event, thisArg) {
 		if (!code || !String(code).trim()) return;
@@ -92,9 +120,11 @@
 		if (nuBs.ready()) nuBs.toast(t, {delay: ms || 3000}).show();
 		else { t.classList.add('show'); setTimeout(function () { t.remove(); }, ms || 3000); }
 	});
-	// nuBuilder: nuVendorLogin('PMA' | 'TFM', table) – phpMyAdmin / Tiny File Manager in a new tab (globeadmin only); also 'ADM' (Adminer) and 'DB' (the primary database tool)
+	// nuBuilder: nuVendorLogin('PMA' | 'TFM', table) – phpMyAdmin / the File Manager in a new tab (globeadmin only); also 'ADM' (Adminer) and 'DB' (the primary database tool)
+	// 'TFM' opens the File Manager page nuFiles since 0.8.479 (Tiny File Manager was removed)
 	api('nuVendorLogin', function (appId, table) {
 		if (!N.user.globeadmin) return;
+		if (String(appId).toUpperCase() === 'TFM') { window.open(N.base + '?p=filemanager', '_blank', 'noopener'); return; }
 		var f = document.createElement('form');
 		f.method = 'post'; f.action = 'index.php?p=vendor'; f.target = '_blank';
 		[['_csrf', N.csrf], ['app', appId || 'PMA'], ['table', table === undefined ? (N.form.table || '') : (table || '')]].forEach(function (kv) {
@@ -299,7 +329,7 @@
 	// keeps the validation markers (* / ◆) after the new text
 	api('nuSetLabelText', function (id, t, translate) {
 		var l = $('#label_' + id), marks = l.children('.nuMarks').detach();
-		l.html(translate ? nuTranslate(t) : t).append(marks);
+		l.empty().append(safeFrag(translate ? nuTranslate(t) : t)).append(marks);
 	});
 	api('nuSetToolTip', function (id, t) { $('#' + id).attr('title', t); });
 
@@ -522,8 +552,9 @@
 		var box = $('<div id="nuMessageDiv" class="nuMessage shadow" role="alertdialog" aria-live="assertive"></div>');
 		var close = $('<button type="button" class="btn-close nuMessageClose" aria-label="Close"></button>').on('click', function () { box.remove(); });
 		box.append(close);
-		if (title) box.append($('<div class="nuMessageTitle fw-semibold mb-2"></div>').html(title));
-		lines.forEach(function (l) { box.append($('<div class="nuMessageLine"></div>').html(String(l))); });
+		var put = function (div, h) { return safeMessages ? div.append(safeFrag(h)) : div.html(h); };
+		if (title) box.append(put($('<div class="nuMessageTitle fw-semibold mb-2"></div>'), title));
+		lines.forEach(function (l) { box.append(put($('<div class="nuMessageLine"></div>'), String(l))); });
 		$('body').append(box);
 		close.trigger('focus');
 		return box;
@@ -740,7 +771,7 @@
 		var bc = N.breadcrumbs || [];
 		for (var i = bc.length - 2; i >= 0; i--) if (bc[i].url) { window.location.href = bc[i].url; return; }
 	});
-	api('nuSetTitle', function (t) { $('.nuBreadcrumb').last().html(t); document.title = $('<div>').html(t).text(); });
+	api('nuSetTitle', function (t) { var f = safeFrag(t); document.title = f.textContent.trim(); $('.nuBreadcrumb').last().empty().append(f); });
 
 	// =================================================================== tabs
 	function tabKey() { return 'nuNextTab:' + N.form.id; }
@@ -1177,7 +1208,7 @@
 			});
 		}
 		var subs = subformPayload();
-		var payload = {values: values, edited: edited, subforms: subs, clone: !!N.cloning};
+		var payload = {values: values, edited: edited, subforms: subs, clone: !!N.cloning, clone_from: N.cloning ? (N.cloneFrom || '') : ''};
 		if (N.cc && !N.cloning && N.record_id !== '-1') payload.cc = ccPayload(edited, subs);        // concurrent edits (0.8.401)
 		call('save', payload).then(function (res) {
 			btn.prop('disabled', false);
@@ -1373,6 +1404,7 @@
 	}
 
 	api('nuCloneAction', function () {
+		if (!N.cloning && N.record_id && N.record_id !== '-1') N.cloneFrom = N.record_id;   // field data access (0.8.480): locked values come from the server
 		N.record_id = '-1';
 		N.is_new = true;
 		N.cloning = true;
@@ -1468,11 +1500,30 @@
 	}
 
 	$(document).on('click', 'tr.nuBrowseRow', function (e) {
-		if (window.nuSelectBrowse) { window.nuSelectBrowse(e, e.target); return; }   // the form takes over row clicks
+		// the form takes over row clicks – with the clicked cell as element, as nuBuilder (not an element inside it, 0.8.468)
+		if (window.nuSelectBrowse) { window.nuSelectBrowse(e, (e.target.closest && e.target.closest('td.nuCell')) || this); return; }
 		if (window.getSelection && String(window.getSelection()).length) return;
 		openRow(this, e.ctrlKey || e.metaKey);
 	});
-	$(document).on('keydown', 'tr.nuBrowseRow', function (e) { if (e.key === 'Enter') openRow(this, e.ctrlKey || e.metaKey); });
+	$(document).on('keydown', 'tr.nuBrowseRow', function (e) { if (e.key === 'Enter' && !e.target.closest('.nuRowDel')) openRow(this, e.ctrlKey || e.metaKey); });
+	// delete button at the left of a browse row (Notes, 0.8.469): asks, deletes through the form API (rights, Before Delete, audit), reloads
+	$(document).on('click', '#nuBrowseTable .nuRowDel', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		var btn = this, pk = btn.getAttribute('data-nu-pk');
+		var go = function () {
+			btn.disabled = true;
+			call('delete', {record_id: pk}).then(function (res) {
+				if (!res.ok) { btn.disabled = false; applyResult(res); return; }
+				try { sessionStorage.setItem('nuNextToast', JSON.stringify([M.deleted || 'Record deleted.', 'success'])); } catch (x) { /* ignore */ }
+				window.location.reload();
+			}, function () { btn.disabled = false; });
+		};
+		if ($.confirm) {
+			$.confirm({title: M.delete, content: M.delete_confirm, useBootstrap: false, boxWidth: '360px', type: 'red',
+				buttons: {confirm: {text: M.delete, btnClass: 'btn-red', action: go}, cancel: {text: M.cancel}}});
+		} else if (window.confirm(M.delete_confirm)) go();
+	});
 
 	// =================================================================== jQuery plugins (nuBuilder nucommon.js: $('#id').nuHide() …)
 	// Each one calls the global function with the element id, as in nuBuilder.
@@ -2536,10 +2587,30 @@
 		if (p) window.nuSubformRow = Number(p.slice(-3));
 	});
 	api('nuCurrentRow', function () { return window.nuSubformRow; });
+	// nuBuilder: $('#' + prefix + id).val() – the value as shown in the field (formatted numbers stay formatted, 0.8.468)
 	api('nuSubformValue', function (el, field) {
 		var p = $(el).attr('data-nu-prefix') || $(el).closest('[data-nu-prefix]').attr('data-nu-prefix') || '';
-		var t = g(p + field);
-		return t ? N.rawValue(t) : undefined;
+		return $('#' + p + field).val();
+	});
+
+	/**
+	 * nuBuilder 4.7+: the clicked browse cell (or another cell of its row – column index or the column's id, data-nu-column-id)
+	 * as {pk, row, column, colId, html, value, $cell}. Takes the cell element or the click event (nuSelectBrowse(event, element)).
+	 */
+	api('nuBrowseRow', function (elOrEvent, columnNumberOrId) {
+		var $invoked = (elOrEvent && elOrEvent.target) ? $(elOrEvent.currentTarget || elOrEvent.target) : $(elOrEvent);
+		if (!$invoked.is('[data-nu-row]')) $invoked = $invoked.closest('[data-nu-row]');
+		var rowAttr = $invoked.attr('data-nu-row');
+		var row = rowAttr != null ? parseInt(rowAttr, 10) : null;
+		var $cell = $invoked;
+		if (columnNumberOrId != null && row !== null) {
+			var $byPk = $('.nuCell[data-nu-row="' + row + '"][data-nu-column-id="' + String(columnNumberOrId).replace(/["\\]/g, '') + '"]');
+			$cell = $byPk.length ? $byPk : $('#nucell_' + row + '_' + columnNumberOrId);
+		}
+		return {
+			pk: $cell.attr('data-nu-primary-key'), row: row, column: parseInt($cell.attr('data-nu-column'), 10), colId: $cell.attr('data-nu-column-id'),
+			html: $cell.html(), value: $cell.text(), $cell: $cell
+		};
 	});
 
 	// ---- dates and ids

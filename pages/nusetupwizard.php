@@ -143,9 +143,9 @@ nu_layout_start(t('wiz_title'), 'home');
 			<div class="col-12"><h2 class="h6 mb-0"><?= h(t('wiz_pw')) ?><?= $tip(t('wiz_pw_tip')) ?></h2>
 				<?php if ($weak): ?><div class="alert alert-warning small mt-2 mb-0" id="wizWeak"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('wiz_pw_weak_note')) ?></div><?php endif; ?></div>
 			<div class="col-sm-6"><label class="form-label" for="pw1"><?= h(t('wiz_pw_new_label')) ?></label>
-				<input class="form-control<?= $inv('pw1') ?>" type="password" id="pw1" name="pw1" autocomplete="new-password"<?= $v['pw1'] !== '' && !$errors ? ' placeholder="' . h(t('wiz_pw_keep')) . '"' : '' ?>><?= $fb('pw1') ?></div>
+				<input class="form-control<?= $inv('pw1') ?>" type="password" id="pw1" name="pw1" autocomplete="new-password"<?= $v['pw1'] === '' ? ' placeholder="' . h(t('wiz_pw_unchanged')) . '"' : (!$errors ? ' placeholder="' . h(t('wiz_pw_keep')) . '"' : '') ?>><?= $fb('pw1') ?></div>
 			<div class="col-sm-6"><label class="form-label" for="pw2"><?= h(t('wiz_pw_repeat')) ?></label>
-				<input class="form-control<?= $inv('pw2') ?>" type="password" id="pw2" name="pw2" autocomplete="new-password"><?= $fb('pw2') ?></div>
+				<input class="form-control<?= $inv('pw2') ?>" type="password" id="pw2" name="pw2" autocomplete="new-password"<?= $v['pw1'] === '' ? ' placeholder="' . h(t('wiz_pw_unchanged')) . '"' : '' ?>><?= $fb('pw2') ?></div>
 			<div class="col-12"><hr class="my-1"></div>
 			<div class="col-12"><div class="form-check form-switch d-inline-block"><input class="form-check-input" type="checkbox" role="switch" id="twofa" name="twofa" value="1"<?= $v['twofa'] ? ' checked' : '' ?>><label class="form-check-label" for="twofa"><?= h(t('wiz_twofa')) ?></label></div><?= $tip(t('wiz_twofa_tip')) ?></div>
 			<div class="col-sm-8"><label class="form-label" for="admin_email"><?= h(t('wiz_admin_email')) ?></label>

@@ -5,14 +5,15 @@ defined('NU_ROOT') || exit;
 /*
  * Globeadmin only – System status (0.8.316; before: Admin tools, whose tools are tiles of the start page now): time zone, missing
  * database tool / File Manager (where to copy them), storage engine (InnoDB), demo mode. Also opens phpMyAdmin / Adminer (app=PMA /
- * ADM / DB, optional table) or Tiny File Manager (app=TFM) – see core/nuvendor.php: POST (CSRF-checked in index.php) logs in and redirects.
+ * ADM / DB, optional table) – see core/nuvendor.php: POST (CSRF-checked in index.php) logs in and redirects. app=TFM (nuBuilder's
+ * nuVendorLogin('TFM')) opens the File Manager page nuFiles since 0.8.479.
  */
 
 // admin rights (0.8.323): opening a tool needs its right, converting tables "System status: change", the page "System status: view"
 if (nu_is_post()) {
 	$reqApp = strtoupper((string)($_POST['app'] ?? ''));
 	if (nu_post('action') === 'db_primary' || in_array($reqApp, ['PMA', 'ADM', 'DB'], true)) NuAdmin::require('dbtool', 'change');
-	elseif ($reqApp === 'TFM') NuAdmin::require('filemanager', 'change');
+	elseif ($reqApp === 'TFM') { NuAdmin::require('filemanager', 'change'); nu_redirect(NuFileManager::url()); }
 	else NuAdmin::require('status', 'change');
 } else {
 	NuAdmin::require('status', 'view');
@@ -110,11 +111,10 @@ nu_layout_start(t('status_title'), 'home');
 <?php endif; ?>
 <?php
 // Database (0.8.282): the primary tool (phpMyAdmin or Adminer, $nuConfigPrimaryDatabaseManagement), ▾ = the other one; a card that
-// explains where to copy them when none is there. Tiny File Manager: a card only while it is missing (it opens from the start page).
+// explains where to copy them when none is there.
 $dbTools = NuVendor::dbTools();
-$tfmMissing = $mysql && !NuVendor::available('TFM');
 ?>
-<?php if ((!$dbTools && in_array(nu_db()->type, ['mysql', 'sqlsrv'], true)) || $tfmMissing): ?>
+<?php if (!$dbTools && in_array(nu_db()->type, ['mysql', 'sqlsrv'], true)): ?>
 <div class="row g-3 mb-4">
 	<?php if (!$dbTools): ?>
 		<div class="col-md-6">
@@ -127,17 +127,6 @@ $tfmMissing = $mysql && !NuVendor::available('TFM');
 					<?php endif; ?>
 					<p class="small text-body-secondary mb-1"><strong>Adminer</strong> – <?= h(t('vendor_adminer_copy')) ?> <?= nu_lp_hint() ?></p>
 					<code class="small d-block text-break"><?= h(NuVendor::dir('ADM')) ?>/adminer.php</code>
-				</div>
-			</div>
-		</div>
-	<?php endif; ?>
-	<?php if ($tfmMissing): ?>
-		<div class="col-md-6">
-			<div class="card shadow-sm h-100">
-				<div class="card-body">
-					<h2 class="h5"><i class="bi bi-folder2-open me-2"></i>Tiny File Manager <span class="badge ms-1 text-bg-secondary"><?= h(t('vendor_missing')) ?></span></h2>
-					<p class="small text-body-secondary mb-2"><?= h(t('vendor_copy', NuVendor::APPS['TFM']['dir'])) ?> <?= nu_lp_hint() ?></p>
-					<code class="small d-block text-break"><?= h(NuVendor::dir('TFM')) ?>/</code>
 				</div>
 			</div>
 		</div>
