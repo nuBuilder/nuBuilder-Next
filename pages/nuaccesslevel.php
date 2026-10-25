@@ -282,6 +282,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 					<?php endif; ?>
 				</form>
 			<?php endif; ?>
+			<?= NuFormInfo::record('zzzzsys_access', (string)$id, ['code' => (string)$existing['sal_code']]) /* (i) record info (0.8.501) */ ?>
 		<?php endif; ?>
 	</div>
 </div>

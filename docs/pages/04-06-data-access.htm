@@ -1,0 +1,64 @@
+<section id="data-access" data-acl="nuform" data-level="advanced">
+	<h2 id="data-access-h">Data access: fields and list columns per user</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Server-side rules for who sees and changes each field and list column.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
+	<p><em>Form builder → Data access</em> (button next to <em>Change with AI</em>; <code>index.php?p=dataaccess&amp;f=&lt;form id&gt;</code>, right: the form builder – view to look, save to change) sets <strong>who may see and change each field</strong> of a form and its sub-forms, and <strong>who sees each column of its list</strong>. The server enforces it – unlike nuBuilder's <em>read only</em> and <em>hidden</em>, which only change the display.</p>
+<table class="table table-sm">
+<thead><tr><th>Mode</th><th>Shown</th><th>Sent to the browser</th><th>Saved from the browser</th></tr></thead>
+<tbody>
+<tr><td>Editable</td><td>yes</td><td>value</td><td>yes</td></tr>
+<tr><td>Read only / Hidden (nuBuilder)</td><td>locked / no</td><td>value</td><td>yes, unless the Security setting <em>Do not save read-only and hidden fields</em></td></tr>
+<tr><td>Protected</td><td>locked</td><td>value</td><td>never</td></tr>
+<tr><td>Insert only / Update only</td><td>editable on a new / an existing record, else locked</td><td>value</td><td>only on insert / only on update (the server decides by the record id; a clone counts as insert)</td></tr>
+<tr><td>Masked</td><td>locked, e.g. <code>•••• 1234</code></td><td>the mask only</td><td>never</td></tr>
+<tr><td>Withheld</td><td>no (no label, no control, no list column)</td><td>nothing</td><td>never</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Rules</strong>: each field gets a default (<em>Everyone</em>) and rules for an access level, a user, a permission item, a team or a department. The most specific matching rule wins – user &gt; permission item &gt; team / department &gt; access level &gt; everyone; two rules of the same rank: the more open mode. A rule may have a <em>condition</em> (SQL with the form's hash variables, as nuBuilder's access condition): it counts only when the first value is 1, an error never counts. A field without rules keeps nuBuilder's access (0–4, 9) exactly as before.</li>
+<li><strong>Masks</strong>: <code>last:4</code> (default), <code>first:2</code>, <code>email</code> (<code>a•••@example.com</code>), <code>text:(hidden)</code>.</li>
+<li><strong>Where it is enforced</strong>: the edit form (also sub-form rows – a withheld sub-form field has no column), HTML objects and the breadcrumb title (hash variables of withheld / masked fields are empty / masked there), lookups and display objects refreshed from the page, save (main record and sub-form rows; posted values the user may not write are dropped and noted in Debug results), validation, clone (protected, masked and withheld values come from the database, never from the browser), the list (a column showing a withheld field is not selected at all, a masked one shows the mask and cannot be searched, filtered or sorted), list exports and the record history. Hooks, procedures and reports run on the server and read the real values – use <code>nuFieldAccessMode()</code> / <code>nuFieldAccessAllowed()</code> there.</li>
+<li><strong>List columns</strong> (tab <em>List columns</em>): <em>Visible</em> / <em>Hidden</em> by default and rules per subject (a tie hides). A hidden column is removed before the list query is built: it is not read, searched, filtered, sorted or exported; a sort on it falls back to the default order. Stored in the column's <code>sbr_json</code>, so it travels with the form.</li>
+<li><strong>By access level</strong>: all fields and columns of the form for one access level at once. <strong>Preview as user</strong>: what a user gets and which rule decided it; a required field that user cannot fill is flagged.</li>
+<li>The <strong>globeadmin</strong> keeps nuBuilder's access and sees every column; the Security setting <em>Apply data access rules to the globeadmin</em> applies the rules to him too (for testing). <em>Act as user</em> applies the rules of that user.</li>
+<li><strong>nuBuilder 4.9 on the same database</strong> ignores the rules. A new default mode sets the object's access to the nearest nuBuilder value (Protected, Insert only, Update only → read only; Masked, Withheld → hidden for users), but nuBuilder still sends those values to the browser. Rules are kept in <code>zzzzsys_nunext_object_access</code>; rules of deleted objects are removed by the housekeeping. They are not copied with a cloned form or by the App cloner yet.</li>
+</ul><figure class="doc-figure" id="dg-access"><svg class="doc-flow" viewBox="0 0 680 250" role="img" aria-labelledby="dg-access-title dg-access-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-access-title">Which data access rule wins</title><desc id="dg-access-desc">Of the rules that match the user, the most specific wins: user, then permission item, then team or department, then access level, then everyone. Two rules of the same rank: the more open mode for fields, hidden for list columns.</desc>
+<defs><marker id="dg-access-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
+<text x="20" y="24" dy=".35em" class="dg-lbl dg-start">most specific</text>
+<text x="660" y="24" dy=".35em" class="dg-lbl dg-end">least specific</text>
+<rect x="20" y="40" width="116" height="56" rx="8" class="dg-box dg-p"/>
+<text x="78" y="58" dy=".35em" class="dg-t dg-p">User</text>
+<text x="78" y="78" dy=".35em" class="dg-s dg-p">one login</text>
+<rect x="151" y="40" width="116" height="56" rx="8" class="dg-box dg-p"/>
+<text x="209" y="58" dy=".35em" class="dg-t dg-p">Permission item</text>
+<text x="209" y="78" dy=".35em" class="dg-s dg-p">of the user</text>
+<path d="M136 68 L149 68" class="dg-line" marker-end="url(#dg-access-arrow)"/>
+<rect x="282" y="40" width="116" height="56" rx="8" class="dg-box dg-p"/>
+<text x="340" y="58" dy=".35em" class="dg-t dg-p">Team, department</text>
+<text x="340" y="78" dy=".35em" class="dg-s dg-p">of the user</text>
+<path d="M267 68 L280 68" class="dg-line" marker-end="url(#dg-access-arrow)"/>
+<rect x="413" y="40" width="116" height="56" rx="8" class="dg-box dg-p"/>
+<text x="471" y="58" dy=".35em" class="dg-t dg-p">Access level</text>
+<text x="471" y="78" dy=".35em" class="dg-s dg-p">the user’s level</text>
+<path d="M398 68 L411 68" class="dg-line" marker-end="url(#dg-access-arrow)"/>
+<rect x="544" y="40" width="116" height="56" rx="8" class="dg-box dg-n"/>
+<text x="602" y="58" dy=".35em" class="dg-t dg-n">Everyone</text>
+<text x="602" y="78" dy=".35em" class="dg-s dg-n">the default</text>
+<path d="M529 68 L542 68" class="dg-line" marker-end="url(#dg-access-arrow)"/>
+<rect x="20" y="150" width="180" height="56" rx="8" class="dg-box dg-n"/>
+<text x="110" y="168" dy=".35em" class="dg-t dg-n">Rules that match</text>
+<text x="110" y="188" dy=".35em" class="dg-s dg-n">condition true, if any</text>
+<rect x="250" y="144" width="180" height="68" rx="8" class="dg-box dg-p"/>
+<text x="340" y="160" dy=".35em" class="dg-t dg-p">Highest rank wins</text>
+<text x="340" y="180" dy=".35em" class="dg-s dg-p">tie: more open (fields)</text>
+<text x="340" y="196" dy=".35em" class="dg-s dg-p">hide (list columns)</text>
+<rect x="480" y="150" width="180" height="56" rx="8" class="dg-box dg-g"/>
+<text x="570" y="168" dy=".35em" class="dg-t dg-g">Mode of the field</text>
+<text x="570" y="188" dy=".35em" class="dg-s dg-g">editable … withheld</text>
+<path d="M200 178 L248 178" class="dg-line" marker-end="url(#dg-access-arrow)"/>
+<path d="M430 178 L478 178" class="dg-line" marker-end="url(#dg-access-arrow)"/>
+</svg></figure>
+
+	<p class="doc-see">See also: <a href="#access">Access levels</a> · <a href="#save-flow">How a save works</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nufieldaccess.php</code></li><li><code>core/nubrowseaccess.php</code></li><li><code>pages/nudataaccess.php</code></li></ul></details>
+</section>

@@ -574,7 +574,7 @@ final class NuApi
 	/** GET /v1/reports – reports the service user may run, with the hash variables they use (params). */
 	/**
 	 * POST /v1/notifications {"title", "body", "format" ("text" | "html": cleaned allowlist HTML, 0.8.400), "level", "link", "audience": {"all", "users" (ids or logins), "departments", "teams", "positions",
-	 * "access_levels"}, "mode": "live"|"fixed", "publish_at", "expires_at", "pinned", "must_confirm", "email", "draft": false} (0.8.357)
+	 * "access_levels", "exclude"}, "mode": "live"|"fixed", "publish_at", "expires_at", "pinned", "must_confirm", "email", "draft": false} (0.8.357)
 	 */
 	private static function notifyCreate(): array
 	{

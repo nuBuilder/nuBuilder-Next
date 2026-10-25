@@ -122,6 +122,7 @@ final class NuNotify
 
 	public static function matches(array $aud, array $p): bool
 	{
+		if (in_array($p['id'], (array)($aud['exclude'] ?? []), true)) return false;   // "Exclude users" wins over everything (0.8.510)
 		if (!empty($aud['all'])) return true;
 		$in = static fn(string $k, string $v) => $v !== '' && in_array(mb_strtolower($v), array_map('mb_strtolower', (array)($aud[$k] ?? [])), true);
 		return in_array($p['id'], (array)($aud['users'] ?? []), true) || $in('departments', $p['department']) || $in('teams', $p['team'])
@@ -133,7 +134,7 @@ final class NuNotify
 	{
 		$out = [];
 		foreach (self::people() as $id => $p) if (self::matches($aud, $p)) $out[] = (string)$id;
-		if (!empty($aud['all']) || in_array('globeadmin', (array)($aud['users'] ?? []), true)) $out[] = 'globeadmin';
+		if ((!empty($aud['all']) || in_array('globeadmin', (array)($aud['users'] ?? []), true)) && !in_array('globeadmin', (array)($aud['exclude'] ?? []), true)) $out[] = 'globeadmin';
 		return $out;
 	}
 
@@ -145,13 +146,15 @@ final class NuNotify
 		$list = static fn($v) => array_values(array_unique(array_filter(array_map(static fn($x) => mb_substr(trim((string)$x), 0, 100), is_array($v) ? $v : (is_string($v) && $v !== '' ? explode(',', $v) : [])), static fn($x) => $x !== '')));
 		$aud = ['all' => !empty($in['all']) && $in['all'] !== '0'];
 		foreach (self::AUD_KEYS as $k) $aud[$k] = $list($in[$k] ?? ($k === 'access' ? ($in['access_levels'] ?? []) : []));
-		$aud['users'] = array_values(array_unique(array_filter(array_map(static function ($x) use ($people, $logins) {
+		$ids = static fn(array $v) => array_values(array_unique(array_filter(array_map(static function ($x) use ($people, $logins) {
 			if ($x === 'globeadmin' || isset($people[$x])) return $x;
 			return $logins[mb_strtolower($x)] ?? null;
-		}, $aud['users']))));
+		}, $v))));
+		$aud['users'] = $ids($aud['users']);
+		$aud['exclude'] = $ids($list($in['exclude'] ?? []));   // users left out (0.8.510) – not a recipient group: an audience of only exclusions is empty
 		if ($own) {
 			$g = self::ownGroups();
-			$aud = ['all' => false, 'users' => [], 'positions' => [], 'access' => [],
+			$aud = ['all' => false, 'users' => [], 'positions' => [], 'access' => [], 'exclude' => [],
 				'departments' => array_values(array_intersect($aud['departments'], $g['departments'] ?? [])), 'teams' => array_values(array_intersect($aud['teams'], $g['teams'] ?? []))];
 		}
 		return $aud;
@@ -167,16 +170,18 @@ final class NuNotify
 	/** Short text of an audience for lists ("Everybody", "Departments: Sales · 2 users"). */
 	public static function audienceText(array $aud): string
 	{
-		if (!empty($aud['all'])) return t('ntf_aud_all');
-		$parts = [];
 		$people = self::people();
 		$names = static fn(array $ids) => implode(', ', array_map(static fn($i) => $i === 'globeadmin' ? 'globeadmin' : ($people[$i]['login'] ?? $i), $ids));
+		$ex = !empty($aud['exclude']) ? t('ntf_aud_exclude') . ': ' . $names($aud['exclude']) : '';
+		if (!empty($aud['all'])) return t('ntf_aud_all') . ($ex !== '' ? ' · ' . $ex : '');
+		$parts = [];
 		if (!empty($aud['users'])) $parts[] = t('ntf_aud_users') . ': ' . $names($aud['users']);
 		foreach (['departments', 'teams', 'positions'] as $k) if (!empty($aud[$k])) $parts[] = t('ntf_aud_' . $k) . ': ' . implode(', ', $aud[$k]);
 		if (!empty($aud['access'])) {
 			$codes = self::accessLevels();
 			$parts[] = t('ntf_aud_access') . ': ' . implode(', ', array_map(static fn($i) => $codes[$i] ?? $i, $aud['access']));
 		}
+		if ($ex !== '') $parts[] = $ex;
 		return implode(' · ', $parts);
 	}
 

@@ -1,0 +1,67 @@
+<section id="api" data-doc="admin">
+	<h2 id="api-h">REST API</h2>
+	<p class="doc-lead">JSON API for users, access levels, permission items and reports.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>JSON API for users, access levels with their form rights, permission items and reports (PDF): <code>api.php/v1/…</code> (no URL rewriting needed). Switch it on with <code>$nuConfigApi = true</code> in <code>nuconfig.php</code> and set a long random <code>$nuConfigSecretKey</code>. HTTPS only (localhost excepted; <code>$nuConfigApiAllowHttp = true</code> for tests). Access tokens live <code>$nuConfigApiTokenMinutes</code> minutes (default 15).</p>
+<h3 class="h6 mt-3">Clients – <em>Admin tools → API clients</em></h3>
+<ul>
+<li>A client has a public <code>client_id</code> and a <code>client_secret</code> that is shown <strong>once</strong> (copy it right away). Only HMAC hashes of secrets and tokens are stored.</li>
+<li><strong>Service user</strong>: each client acts as its own user (created on the page or chosen). The rights of that user's access level apply exactly as in the browser (view / save / add / delete on <code>nuuser</code>, <code>nuaccess</code>, <code>nupermissionitem</code>). A service user can no longer log in, and neither it nor its access level can be changed through the API.</li>
+<li><strong>Scopes</strong>: what the client may do at all – <code>users:read</code>, <code>users:write</code>, <code>users:password</code>, <code>users:login_link</code>, <code>reports:run</code>, <code>notifications:write</code>, <code>access:read</code>, <code>access:write</code>, <code>permissions:read</code>, <code>permissions:write</code>. A request needs the scope <em>and</em> the right of the access level.</li>
+<li>Optional: allowed IP addresses / networks, requests per minute (default 120, then <code>429</code>), expiry date. <em>New secret</em> (the old one stays valid 24 h or ends at once), <em>Revoke all tokens</em>, <em>Delete</em>. Every token and request is logged (Log: <em>API token issued / refused</em>, <em>API read / change</em>).</li>
+</ul>
+<h3 class="h6 mt-3">Access token (OAuth 2.0 client credentials)</h3>
+<pre class="nuApiExample"><code>curl -u 'nk_…:ns_…' -d grant_type=client_credentials https://example.com/nunext/api.php/v1/token
+→ {"access_token":"nt_…","token_type":"Bearer","expires_in":900,"scope":"users:read …"}
+
+curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/users?q=anna&amp;state=active&amp;limit=20'</code></pre>
+<p>Credentials as HTTP Basic or as <code>client_id</code> / <code>client_secret</code> in the body; <code>scope</code> may ask for fewer scopes. Ten wrong secrets lock the client for 15 minutes. If the <code>Authorization</code> header does not reach PHP (some FastCGI set-ups), add <code>SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1</code> to the folder's <code>.htaccess</code>.</p>
+<h3 class="h6 mt-3">Endpoints</h3>
+<table class="table table-sm small">
+<thead><tr><th>Method and path</th><th>Scope</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><code>GET /v1/me</code></td><td>–</td><td>client, scopes, service user</td></tr>
+<tr><td><code>GET /v1/users</code></td><td>users:read</td><td><code>q</code>, <code>state</code> (active / expired / all), <code>access_level_id</code>, <code>login</code>, <code>email</code>, <code>sort</code> (login / name / email), <code>limit</code> (max 200), <code>offset</code></td></tr>
+<tr><td><code>GET /v1/users/{id}</code></td><td>users:read</td><td>fields: login, name, first_name, last_name, code, email, position, department, team, additional1, additional2, language, access_level_id, expires_on, change_password (+ read only: access_level_code, expired, service_user, password_changed_at)</td></tr>
+<tr><td><code>POST /v1/users</code></td><td>users:write</td><td>login, name and access_level_id required; <code>password</code> needs users:password (without one the user must use a welcome link); <code>permissions</code>: list of item ids or idents</td></tr>
+<tr><td><code>PATCH /v1/users/{id}</code></td><td>users:write</td><td>only the fields sent</td></tr>
+<tr><td><code>DELETE /v1/users/{id}</code></td><td>users:write</td><td>archives (Valid until = yesterday, Save right); <code>?hard=1</code> deletes (Delete right)</td></tr>
+<tr><td><code>POST /v1/users/{id}/password</code></td><td>users:password</td><td><code>{"password": "…", "change_password": true}</code> or <code>{"welcome": true}</code> (welcome e-mail with a link)</td></tr>
+<tr><td><code>POST /v1/users/{id}/login-link</code></td><td>users:login_link</td><td><code>{"minutes": 1440, "form_id": "…", "record_id": "…", "email": false}</code> → 201 <code>{"url": "…", "expires_at": "…Z" | null, "emailed": false}</code> – one-time login link (minutes 0 = no expiry); <code>DELETE</code> removes the user's token. Needs the save right on the user form.</td></tr>
+<tr><td><code>GET / PUT /v1/users/{id}/permissions</code></td><td>permissions:read / write</td><td><code>{"items": ["sample_discount", …]}</code> – the complete list</td></tr>
+<tr><td><code>GET, POST /v1/access-levels</code>, <code>GET, PATCH, DELETE /v1/access-levels/{id}</code></td><td>access:read / write</td><td>code, description, group, home_form_id, use_2fa; DELETE only without users (<code>409</code>)</td></tr>
+<tr><td><code>GET / PUT /v1/access-levels/{id}/forms</code></td><td>access:read / write</td><td><code>{"forms": [{"form_id": "nuuser", "add": true, "save": true, "delete": false, "clone": false, "new": true, "print": false}]}</code> – replaces the rights</td></tr>
+<tr><td><code>GET, POST /v1/permission-items</code>, <code>GET, PATCH, DELETE /v1/permission-items/{id}</code></td><td>permissions:read / write</td><td>ident, group, description</td></tr>
+</tbody>
+<tr><td><code>GET /v1/reports</code></td><td>reports:run</td><td>Reports the service user's access level may run: id, code, description, data source and <code>params</code> – the hash variables (<code>#name#</code>) its data source and layout use</td></tr>
+<tr><td><code>POST /v1/reports/{id or code}/run</code></td><td>reports:run</td><td>Runs the report – see <a href="#api-reports">Reports and PDF links</a></td></tr>
+<tr><td><code>POST /v1/notifications</code></td><td>notifications:write</td><td>Creates and publishes a notification (<code>"draft": true</code> = draft) – fields as in <a href="#notifications-send">Sending notifications</a>, recipients in <code>"audience": {"all", "users", "departments", "teams", "positions", "access_levels", "exclude"}</code> (<code>exclude</code>: users left out); answers 201 with the notification</td></tr>
+<tr><td><code>GET /v1/notifications/{id}</code></td><td>notifications:write</td><td>State (draft, scheduled, published, expired, withdrawn), recipients, read and confirmed counts</td></tr>
+<tr><td><code>DELETE /v1/notifications/{id}</code></td><td>notifications:write</td><td>Deletes the notification and its read receipts (204)</td></tr>
+<tr><td><code>GET /v1/reports/jobs/{job}</code></td><td>reports:run</td><td>Status of a run with <code>"async": true</code>: <code>queued</code>, <code>running</code>, <code>done</code> (with <code>result</code>) or <code>failed</code> (with <code>error</code>)</td></tr>
+</table>
+<p><strong>Rules</strong>: requests and answers are JSON (<code>Content-Type: application/json</code>); unknown fields are an error. Every record has an <code>ETag</code>; <code>PATCH</code>, <code>PUT</code> and <code>DELETE</code> need it in <code>If-Match</code> (<code>428</code> without, <code>412</code> when the record changed meanwhile; <code>*</code> skips the check). Lists: <code>{"data": […], "meta": {"total", "limit", "offset"}}</code>. Errors (RFC 9457): <code>{"type", "title", "status", "errors": [{"field", "message"}]}</code> – <code>401</code> token, <code>403</code> scope or right, <code>404</code>, <code>405</code>, <code>415</code>, <code>422</code> validation, <code>429</code> rate limit. Cross-origin (browser) requests are not allowed.</p>
+<h3 class="h6 mt-3" id="api-reports">Reports and PDF links</h3>
+<pre class="small"><code>POST api.php/v1/reports/sample_orders/run
+{"params": {"customer_id": "C001"}, "filename": "orders-C001.pdf", "expires_minutes": 15, "max_downloads": 1}
+→ 201 {"report": "sample_orders", "filename": "orders-C001.pdf", "size": 48211, "sha256": "…",
+       "url": "https://…/index.php?p=reportfile&amp;t=…", "expires_at": "2026-10-21T10:15:00Z", "max_downloads": 1}</code></pre>
+<ul>
+<li><strong>Rights</strong>: the scope <code>reports:run</code> and the report right of the service user's access level (Reports → access levels), as in the browser. Data-source procedures run as in the browser.</li>
+<li><strong>params</strong> become hash variables (<code>#customer_id#</code>), like the values a form passes in nuBuilder – also <code>RECORD_ID</code> or <code>FORM_ID</code>. The service user's own variables (<code>USER_ID</code>, <code>ACCESS_LEVEL_CODE</code>, <code>TABLE_ID</code> …) cannot be passed (<code>422</code>). Date variables and <code>TABLE_ID</code> are added as for every run.</li>
+<li><strong>Download link</strong> <code>url</code>: opens without a login, so it can be handed to anybody – valid <code>expires_minutes</code> (1–1440, default 15) for <code>max_downloads</code> downloads (1–100, default 1); then <code>410</code>. Add <code>&amp;dl=1</code> to download instead of showing the PDF. Only a hash of the token is stored; the PDF waits in the protected temp folder and is deleted after the last download or by the housekeeping. Runs and downloads are logged (<em>Report printed</em>, <em>Report downloaded</em>).</li>
+<li><strong>The PDF itself</strong>: send <code>Accept: application/pdf</code> – the answer is the file (<code>200</code>, header <code>X-Report-Sha256</code>), no link.</li>
+<li><strong>E-mail</strong>: <code>"email": {"to": "…", "cc": "…", "bcc": "…", "subject": "…", "body": "…"}</code> sends the PDF as attachment (nuBuilder's <code>nuEmailReportPDF</code>; subject default: the report's description). The answer has <code>emailed</code> (and <code>email_error</code>). <code>"url": false</code> sends only the e-mail (<code>422</code> when it fails).</li>
+<li><strong>Long reports</strong>: <code>"async": true</code> answers <code>202 {"job", "status_url"}</code> at once; ask <code>GET /v1/reports/jobs/{job}</code> until <code>done</code> – the <code>result</code> is the same as above. With PHP-FPM the report runs right after the answer; otherwise it runs when the status is asked for the first time. Jobs belong to the client that started them.</li>
+<li><strong>Limit</strong>: 10 report runs per minute per client (<code>429</code>), on top of the client's request limit.</li>
+</ul>
+<h3 class="h6 mt-3" id="api-playground">Playground – <em>Admin tools → API clients → API playground</em></h3>
+<ul>
+<li>Choose a client (and optionally fewer scopes) and press <em>Send</em>: a token is fetched for the client without its secret (logged with <code>via: playground</code>) and the request goes from the browser to <code>api.php</code> exactly like a real client's. Under <i class="bi bi-sliders"></i> you can instead test the real token request with the client secret – it is not stored.</li>
+<li><em>Endpoints</em> fills in method, path and an example body. The answer shows status, time, body and headers; <em>curl</em> copies the request as a command line.</li>
+<li><strong>Variables</strong> <code>{{name}}</code> work in path, headers and body: your own (<code>name=value</code> per line) and from the last response – <code>{{last_id}}</code> (its <code>id</code> or the end of <code>Location</code>), <code>{{last_etag}}</code>, <code>{{last_status}}</code>. With <em>If-Match automatically</em> PATCH / PUT / DELETE send the ETag last seen for that resource.</li>
+<li><strong>Saved requests</strong> (name, folder, method, path, headers, body, client and scope) are shared by the administrators; client, scope, variables and the If-Match option are kept per login. Table <code>zzzzsys_nunext_api_request</code>.</li>
+<li>Requests are real: they change data, count towards the rate limit and must come from an allowed IP address.</li>
+</ul>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>api.php</code></li><li><code>core/nuapi.php</code></li><li><code>core/nuapiclient.php</code></li><li><code>core/nureportapi.php</code></li></ul></details>
+</section>

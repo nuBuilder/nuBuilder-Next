@@ -1,0 +1,35 @@
+<section id="rights" data-acl="nuaccess,nupermissionitem">
+	<h2 id="rights-h">Authentication and security</h2>
+	<p class="doc-lead">How rights work, how users sign in, and how the installation is protected.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuaccess, nupermissionitem</p>
+	<div data-doc="admin"><p>The globeadmin may do everything. All other users get their rights from their access level (<code>zzzzsys_access_form</code>), exactly like in nuBuilder. nuBuilder Next's own screens are protected by nuBuilder's system forms:</p>
+<table class="table table-sm">
+<thead><tr><th>Screen</th><th>Form id</th></tr></thead>
+<tbody>
+<tr><td>Users</td><td><code>nuuser</code></td></tr>
+<tr><td>Access levels</td><td><code>nuaccess</code></td></tr>
+<tr><td>Forms / builder</td><td><code>nuform</code></td></tr>
+<tr><td>E-mail settings / log / templates</td><td><code>nusetup</code> / <code>nuemaillog</code> / <code>nuemailtemplate</code></td></tr>
+<tr><td>Formats</td><td><code>nuformat</code></td></tr>
+<tr><td>Items</td><td><code>nuitem</code></td></tr>
+<tr><td>Files</td><td><code>nufile</code></td></tr>
+<tr><td>Translations</td><td><code>nutranslate</code></td></tr>
+<tr><td>Reports and report designer</td><td><code>nubuildreport</code></td></tr>
+<tr><td>SQL builder</td><td><code>nuselect</code></td></tr>
+<tr><td>Debug results</td><td><code>nudebug</code></td></tr>
+<tr><td>Log</td><td><code>nunextlog</code></td></tr>
+<tr><td>Audit trail (list and settings; the history of a record needs view on its form)</td><td><code>nunextaudit</code></td></tr>
+<tr><td>Logged-in users, admin tools</td><td>globeadmin only</td></tr>
+</tbody>
+</table>
+<p>Row present = view; Save = edit; Add/New = create; Delete; Clone; Print = print view and CSV export. Procedures need a row in <code>zzzzsys_access_php</code> (or <em>global</em>).</p>
+<p><strong>Admin-equivalent rights</strong> (marked <i class="bi bi-shield-exclamation"></i> on the access level page): Save, Add, New, Delete or Clone on <code>nuform</code>, <code>nuprocedure</code>, <code>nuselect</code>, <code>nusetup</code>, <code>nuuser</code> or <code>nuaccess</code> give full control – PHP code on the server, SQL on every table, the mail server (password-reset mails), the passwords and access levels of all users. With <em>Only the globeadmin grants admin rights</em> (<a href="#security-check">Security check</a>, on by default):</p>
+<ul>
+<li>only the globeadmin adds these rights to an access level or assigns an access level that has them (also through the REST API);</li>
+<li>nobody else changes, archives, deletes or resets a user whose access level has them;</li>
+<li>nobody changes his own access level or the rights of his own access level;</li>
+<li>nuBuilder's system forms on users, rights, code and setup (<code>zzzzsys_user</code>, <code>zzzzsys_access*</code>, <code>zzzzsys_php</code>, <code>zzzzsys_form</code>, <code>zzzzsys_object</code> …) are saved through the form runtime by the globeadmin only.</li>
+</ul></div>
+	<p class="doc-see">See also: <a href="#access">Access levels</a> · <a href="#signin-methods">Sign-in methods</a> · <a href="#security-check">Security check, server rules and housekeeping</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuacl.php</code></li><li><code>core/nuadmin.php</code></li></ul></details>
+</section>

@@ -158,6 +158,7 @@ nu_layout_start(t('trl_title'), 'forms');
 			<?php if ($row && !$isNu && $rights['delete']): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('trl_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
+			<?php if ($row): ?><?= NuFormInfo::record($T, (string)$id) /* (i) record info (0.8.501) */ ?><?php endif; ?>
 			</div>
 		</div>
 		<?php if ($isNu): ?><div class="alert alert-info py-2 small"><?= h(t('trl_nu_locked')) ?></div><?php endif; ?>

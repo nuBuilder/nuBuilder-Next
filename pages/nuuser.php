@@ -370,7 +370,6 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 		<?php if (!$isNew && NuDemo::isDemoUser($id)): ?><span class="badge nuDemoBadge fs-6" title="<?= h(t('demo_user_hint')) ?>"><i class="bi bi-eye me-1"></i><?= h(t('demo_user_badge')) ?></span><?php endif; ?>
 	</h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center">
-		<?php if (!$isNew && $id !== (string)$existing['sus_login_name']): ?><span class="small text-body-secondary me-1">ID <?= h($id) ?></span><?php endif; ?>
 		<a class="btn nuBtnAct" href="<?= h(nu_url('users')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if ($canSave): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if (!$isNew): ?>
@@ -390,6 +389,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					data-choice-archived="<?= nu_is_expired($existing['sus_expires_on']) ? '1' : '0' ?>"
 					title="<?= h(t('user_remove')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
+			<?= NuFormInfo::record('zzzzsys_user', (string)$id, ['login' => (string)$existing['sus_login_name']]) /* (i): record ID, table, created / changed (0.8.500) */ ?>
 		<?php endif; ?>
 	</div>
 </div>
@@ -425,7 +425,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<div class="col-12"><?= $input('sus_name', 'text', ['required' => true]) ?></div>
 						<div class="col-sm-6"><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
 						<div class="col-sm-6"><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
-						<div class="col-12"><?= $input('sus_email', 'email', ['autocomplete' => 'off']) ?></div>
+						<div class="col-12"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
 						<div class="col-sm-4"><?= $input('sus_position') ?></div>
 						<div class="col-sm-4"><?= $input('sus_department') ?></div>
 						<div class="col-sm-4"><?= $input('sus_team') ?></div>
@@ -534,8 +534,11 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						</div>
 						<div class="col-sm-6">
 							<label class="form-label" for="password_confirm"><?= h(t('pw_confirm')) ?></label>
-							<input type="password" class="form-control<?= nu_invalid($errors, 'password_confirm') ?>" id="password_confirm" name="password_confirm" autocomplete="new-password">
-							<?= nu_feedback($errors, 'password_confirm') ?>
+							<div class="input-group<?= isset($errors['password_confirm']) ? ' has-validation' : '' ?>">
+								<input type="password" class="form-control<?= nu_invalid($errors, 'password_confirm') ?>" id="password_confirm" name="password_confirm" autocomplete="new-password">
+								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#password_confirm" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
+								<?= nu_feedback($errors, 'password_confirm') ?>
+							</div>
 						</div>
 					</div>
 
@@ -562,7 +565,9 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					</div>
 					<?php if ($mailOk && $canSave): ?>
 					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="user_send_welcome_email" name="user_send_welcome_email" value="1"<?= $welcome ? ' checked' : '' ?> aria-describedby="welcomeHint">
+						<input class="form-check-input" type="checkbox" role="switch" id="user_send_welcome_email" name="user_send_welcome_email" value="1"<?= $welcome ? ' checked' : '' ?> aria-describedby="welcomeHint"
+							data-nu-welcome="<?= h((string)json_encode(NuWelcome::sources(), JSON_UNESCAPED_UNICODE)) ?>"
+							data-nu-welcome-t="<?= h((string)json_encode(['title' => t('welcome_option'), 'proc' => t('welcome_src_proc'), 'tpl' => t('welcome_src_tpl'), 'builtin' => t('welcome_src_builtin'), 'close' => t('close')], JSON_UNESCAPED_UNICODE)) ?>">
 						<label class="form-check-label" for="user_send_welcome_email"><?= h(t('welcome_option')) ?></label><?php // hint as tooltip of the (i), outside the label (a click does not toggle) ?>
 						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('info')) ?>" title="<?= h(t('welcome_option_hint', NuWelcome::hours())) ?>"><i class="bi bi-info-circle"></i></span>
 						<span class="visually-hidden" id="welcomeHint"><?= h(t('welcome_option_hint', NuWelcome::hours())) ?></span>
@@ -643,7 +648,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-ui-checks me-2"></i><?= h(t('user_tab_more')) ?></span>
 				<?php if (NuAdmin::can('userfields')): ?><a class="small" href="<?= h(nu_url('userfields')) ?>" id="userFieldsManage"><i class="bi bi-gear me-1"></i><?= h(t('uf_manage')) ?></a><?php endif; ?></div>
 			<div class="card-body"><div class="row g-3">
-				<?php foreach ($ufAll as $code => $f) echo NuUserFields::inputHtml($f, (string)($ufVals[$code] ?? ''), $ufErr[$code] ?? null, !isset($ufEdit[$code])); ?>
+				<?php foreach ($ufAll as $code => $f) echo NuUserFields::inputHtml($f, (string)($ufVals[$code] ?? ''), $ufErr[$code] ?? null, !isset($ufEdit[$code]), true); ?>
 			</div></div>
 		</div>
 	</div>

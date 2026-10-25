@@ -772,6 +772,24 @@ final class NuWelcome
 		return $err;
 	}
 
+	/**
+	 * What send() will use (0.8.508, toast of the user form): {proc: code|null, tpl: {emt_language: "code (language) – description"},
+	 * fallback: database language of the current session (used when the user has none), code: TEMPLATE}.
+	 */
+	public static function sources(): array
+	{
+		$db = nu_db();
+		$proc = $db->tableExists('zzzzsys_php') && $db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE sph_code = ?', [self::PROCEDURE]) ? self::PROCEDURE : null;
+		$tpl = [];
+		if ($db->tableExists(NuEmailTemplate::TABLE)) {
+			foreach ($db->all('SELECT emt_language, emt_description FROM ' . NuEmailTemplate::TABLE . " WHERE emt_code = ? AND COALESCE(emt_template,'') <> '1'", [self::TEMPLATE]) as $r) {
+				$l = trim((string)$r['emt_language']);
+				$tpl[$l] = self::TEMPLATE . ($l !== '' ? ' (' . $l . ')' : '') . (trim((string)$r['emt_description']) !== '' ? ' – ' . trim((string)$r['emt_description']) : '');
+			}
+		}
+		return ['proc' => $proc, 'tpl' => (object)$tpl, 'fallback' => nu_lang_to_db(nu_lang()), 'code' => self::TEMPLATE];
+	}
+
 	/** @return array{0: string, 1: string, 2: string} subject, HTML, source ('template' / 'builtin') */
 	private static function content(array $user, array $hash, string $lang): array
 	{

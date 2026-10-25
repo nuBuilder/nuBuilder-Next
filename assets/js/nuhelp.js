@@ -1,7 +1,10 @@
 /*
- * Documentation page: two tabs (0.8.464) – Guide (#helpBody, docs/nunext-docs.htm) and Code reference (#helpRef, docs/nunext-ref.htm,
- * fetched from ?p=help&part=ref the first time it is needed). Each tab has its own index (from h2 / h3); the search runs in the open
- * tab, or in both with "Search both tabs". A link or #hash to an id of the other tab opens that tab. ?tab=ref is kept in the address.
+ * Documentation page: two tabs – Guide (#helpBody) and Code reference (#helpRef, fetched from ?p=help&part=ref the first time it is
+ * needed), both assembled by pages/nuhelp.php from docs/toc.json. Each tab has its own index: chapters (sections with
+ * data-nu-level="1"), their pages (data-nu-level="2") and the h3 of a page, folded until the page is opened or searched.
+ * The search runs in the open tab, or in both with "Search both tabs". A link or #hash to an id of the other tab opens that tab.
+ * "Show advanced topics" (#helpAdvanced, remembered in this browser) hides sections with data-level="advanced"; a link or search
+ * into such a section still reaches it (the switch is turned on). ?tab=ref is kept in the address.
  */
 (function () {
 	'use strict';
@@ -26,52 +29,97 @@
 		this.name = name; this.body = body; this.toc = toc; this.wrap = wrap;
 		this.sections = Array.prototype.slice.call(body.querySelectorAll(':scope > section'));
 		this.buildToc();
+		this.renumber();
 		this.initFnRef();
 	}
 
 	Pane.prototype.buildToc = function () {
 		var ul = document.createElement('ul');
 		ul.className = 'list-unstyled mb-0';
+		var chapterLi = null, pagesUl = null;
 		this.sections.forEach(function (sec) {
 			var h2 = sec.querySelector('h2');
 			if (!h2) return;
+			var isPage = sec.getAttribute('data-nu-level') === '2' && pagesUl;
 			var li = document.createElement('li');
-			li.appendChild(link(h2, 'nuHelpToc2'));
+			li.appendChild(link(h2, isPage ? 'nuHelpTocPage' : 'nuHelpToc2'));
+			if (sec.getAttribute('data-level') === 'advanced') li.classList.add('nuAdv');
 			var subs = sec.querySelectorAll('.doc-sub');
 			if (subs.length) {
 				var sul = document.createElement('ul');
-				sul.className = 'list-unstyled';
+				sul.className = 'list-unstyled nuHelpTocSubs';
 				Array.prototype.forEach.call(subs, function (sub) {
 					var h3 = sub.querySelector('h3');
 					if (!h3) return;
 					var sli = document.createElement('li');
 					sli.appendChild(link(h3, 'nuHelpToc3'));
+					if (sub.getAttribute('data-level') === 'advanced') sli.classList.add('nuAdv');
 					sul.appendChild(sli);
 					sub.nuTocItem = sli;
 				});
 				li.appendChild(sul);
 			}
-			ul.appendChild(li);
+			if (isPage) {
+				pagesUl.appendChild(li);
+				sec.nuChapterItem = chapterLi;
+			} else {
+				ul.appendChild(li);
+				chapterLi = li;
+				pagesUl = document.createElement('ul');
+				pagesUl.className = 'list-unstyled nuHelpTocPages';
+				li.appendChild(pagesUl);
+			}
 			sec.nuTocItem = li;
 		});
 		this.toc.textContent = '';
 		this.toc.appendChild(ul);
 		var toc = this.toc;
-		toc.addEventListener('click', function (e) {   // active index entry
+		toc.addEventListener('click', function (e) {   // active index entry; its h3 entries unfold
 			var a = e.target.closest('a');
 			if (!a) return;
 			Array.prototype.forEach.call(toc.querySelectorAll('a.active'), function (x) { x.classList.remove('active'); });
 			a.classList.add('active');
+			if (a.classList.contains('nuHelpToc3')) return;
+			Array.prototype.forEach.call(toc.querySelectorAll('li.nuOpen'), function (x) { x.classList.remove('nuOpen'); });
+			a.parentNode.classList.add('nuOpen');
 		});
+	};
+
+	/** Unfolds the index entry of the page that holds el. */
+	Pane.prototype.openTocFor = function (el) {
+		var sec = el && el.closest ? el.closest('section') : null;
+		if (!sec || !sec.nuTocItem) return;
+		Array.prototype.forEach.call(this.toc.querySelectorAll('li.nuOpen'), function (x) { x.classList.remove('nuOpen'); });
+		sec.nuTocItem.classList.add('nuOpen');
 	};
 
 	function link(h, cls) {
 		var a = document.createElement('a');
 		a.href = '#' + h.id;
 		a.className = cls;
-		a.textContent = h.textContent;
+		var num = h.querySelector('.doc-num');
+		if (num) {   // the number (set by pages/nuhelp.php, renumbered by renumber()) is shared by heading and index entry
+			var n = num.cloneNode(true);
+			a.appendChild(n);
+			h.nuTocNum = n;
+			a.appendChild(document.createTextNode(' ' + h.textContent.replace(num.textContent, '').trim()));
+		} else {
+			a.textContent = h.textContent;
+		}
 		return a;
 	}
+
+	/** Numbers of the visible chapters and pages (1, 1.1 …) – without gaps when advanced topics are hidden. */
+	Pane.prototype.renumber = function () {
+		var c = 0, p = 0, skip = basic();
+		this.sections.forEach(function (sec) {
+			var h2 = sec.querySelector('h2'), num = h2 ? h2.querySelector('.doc-num') : null;
+			if (!num || (skip && sec.getAttribute('data-level') === 'advanced')) return;
+			if (sec.getAttribute('data-nu-level') === '2' && c > 0) { p++; num.textContent = c + '.' + p; }
+			else { c++; p = 0; num.textContent = String(c); }
+			if (h2.nuTocNum) h2.nuTocNum.textContent = num.textContent;
+		});
+	};
 
 	Pane.prototype.clearMarks = function () {
 		Array.prototype.forEach.call(this.body.querySelectorAll('mark.nuHelpHit'), function (m) {
@@ -87,6 +135,7 @@
 		var nodes = [];
 		while (walker.nextNode()) nodes.push(walker.currentNode);
 		nodes.forEach(function (n) {
+			if (n.parentNode && n.parentNode.closest && n.parentNode.closest('svg')) return;   // diagrams: no <mark> inside SVG
 			if (!re.test(n.nodeValue)) return;
 			re.lastIndex = 0;
 			var frag = document.createDocumentFragment();
@@ -112,9 +161,14 @@
 	Pane.prototype.search = function (words) {
 		var self = this, hits = 0;
 		this.clearMarks();
+		var basicMode = basic();
 		this.sections.forEach(function (sec) {
 			var subs = Array.prototype.slice.call(sec.querySelectorAll('.doc-sub'));
 			self.fnFilter(sec, words);
+			if (words.length && basicMode && sec.getAttribute('data-level') === 'advanced') {   // hidden topics are not searched
+				sec.hidden = true; show(sec, false);
+				return;
+			}
 			if (!words.length) {
 				sec.hidden = false; subs.forEach(function (s) { s.hidden = false; show(s, true); });
 				show(sec, true);
@@ -123,7 +177,8 @@
 			var own = matches(ownText(sec), words);
 			var any = false;
 			subs.forEach(function (s) {
-				var ok = own || (s.nuFnShown !== undefined ? s.nuFnShown > 0 : matches(s.textContent, words));
+				var ok = !(basicMode && s.getAttribute('data-level') === 'advanced')
+					&& (own || (s.nuFnShown !== undefined ? s.nuFnShown > 0 : matches(s.textContent, words)));
 				s.hidden = !ok; show(s, ok);
 				if (ok && !own) hits++;
 				any = any || ok;
@@ -132,6 +187,10 @@
 			if (visible && (own || !subs.length)) hits++;
 			sec.hidden = !visible; show(sec, visible);
 		});
+		this.sections.forEach(function (sec) {   // a chapter stays listed while one of its pages is
+			if (sec.nuChapterItem && !sec.hidden) sec.nuChapterItem.hidden = false;
+		});
+		this.toc.classList.toggle('nuHelpTocSearching', words.length > 0);
 		this.body.classList.toggle('nuHelpSearching', words.length > 0);   // both tabs of the function reference are shown
 		if (words.length) highlight(this.body, words);
 		this.hits = hits;
@@ -227,6 +286,27 @@
 			b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
 		});
 		try { localStorage.setItem('nunext-help-fntab', paneId); } catch (e) { /* storage blocked */ }
+	}
+
+	// ================================================================== basic / advanced
+	var advBox = document.getElementById('helpAdvanced');
+	function basic() { return document.documentElement.classList.contains('nuHelpBasic'); }
+	function setAdvanced(on, keep) {
+		document.documentElement.classList.toggle('nuHelpBasic', !on);
+		if (advBox) advBox.checked = on;
+		if (typeof guide !== 'undefined' && guide) guide.renumber();
+		if (typeof ref !== 'undefined' && ref) ref.renumber();
+		if (!keep) { try { localStorage.setItem('nunext-help-advanced', on ? '1' : '0'); } catch (e) { /* storage blocked */ } }
+	}
+	(function () {
+		var on = false;
+		try { on = localStorage.getItem('nunext-help-advanced') === '1'; } catch (e) { /* storage blocked */ }
+		setAdvanced(on, true);
+	})();
+	if (advBox) advBox.addEventListener('change', function () { setAdvanced(advBox.checked); run(); });
+	/** A link, #hash or search hit inside an advanced topic turns the switch on, so the target can be shown. */
+	function revealAdvanced(el) {
+		if (basic() && el && el.closest && el.closest('[data-level="advanced"]')) { setAdvanced(true); run(); }
 	}
 
 	// ================================================================== the two tabs
@@ -353,7 +433,10 @@
 	}
 	function jump(t) {
 		if (!t) return;
+		revealAdvanced(t);
 		reveal(t);
+		var pane = refBody && refBody.contains(t) ? ref : guide;
+		if (pane) pane.openTocFor(t);
 		var root = document.documentElement;
 		root.style.scrollBehavior = 'auto';   // a long way on this page: no smooth scroll
 		t.scrollIntoView({block: 'start', behavior: 'instant'});
@@ -363,7 +446,11 @@
 		var a = e.target.closest && e.target.closest('a[href^="#"]');
 		if (!a || a.closest('#helpTabs')) return;
 		var id = a.getAttribute('href').slice(1), t = document.getElementById(id);
-		if (t && t.closest('[role="tabpanel"]') && !t.closest('[role="tabpanel"]').hidden) { reveal(t); return; }   // same tab: the browser scrolls
+		if (t && t.closest('[role="tabpanel"]') && !t.closest('[role="tabpanel"]').hidden && !(basic() && t.closest('[data-level="advanced"]'))) {
+			reveal(t);   // same tab: the browser scrolls
+			(refBody && refBody.contains(t) ? ref : guide).openTocFor(t);
+			return;
+		}
 		e.preventDefault();
 		locate(id).then(function (x) { if (x) { history.replaceState(null, '', '#' + id); jump(x); } });
 	}, true);

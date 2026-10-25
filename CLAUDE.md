@@ -4,7 +4,7 @@ nuBuilder Next ("nuNext") is a modern PHP front end for **nuBuilder 4**. It runs
 with a live nuBuilder on the same database, and adds only its own tables (`zzzzsys_nunext_*`). One owner/developer (not named here – see the rule below).
 Short user-facing description and install: `README.md` (alpha warning on top, quick links, overview and features, install – the GitHub front page, keep it concise);
 the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions (0.2–0.7)" at the end). User documentation (shown in the app, `?p=help`):
-`docs/nunext-docs.htm` (guide) + `docs/nunext-ref.htm` (code reference, 0.8.464). Open points to verify: `TODO.md`. Differences to nuBuilder / not ported: `docs/porting-review.md`.
+one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (0.8.493; tabs Guide / Code reference). Open points to verify: `TODO.md`. Differences to nuBuilder / not ported: `docs/pages/12-02-porting.htm`.
 
 ## How work is delivered
 - Every request ends as a **new version**: bump, changelog, manifest, zips sent to the owner, who installs `nunext.zip` with Admin
@@ -64,7 +64,7 @@ the full **changelog**: `CHANGELOG.md` (0.8.373; newest first, "Earlier versions
    column title, lookup) and makes scrolling boxes focusable – new pages need nothing extra; icons with aria-label need role="img".
    **PHPStan level 3** (0.8.368); 4 / 5 tried – only false alarms (see dev/phpstan.neon).
 5. Put the test database back as it was (see "Test database discipline").
-6. Docs (`docs/nunext-docs.htm`), tutorial, `TODO.md`, this file when the architecture changes.
+6. Docs (the matching page in `docs/pages/`, see `docs/toc.json`), tutorial, `TODO.md`, this file when the architecture changes.
 7. Changelog text in a scratch file ("- " bullets, continuation lines indented by two spaces) → `python3 dev/release.py 0.8.x "Title" file`.
 8. `php dev/inspect.php <site> ../nunext.zip`, then send **both** `../nunext.zip` and `../nunext-dev.zip`; answer with a short
    summary of what changed (no step-by-step recap).
@@ -94,7 +94,8 @@ wiki-style cards with signature, parameters, returns, example, result / console.
   `dev/lang_variants.php` (word list, run by release.py – never edit it), `lang/en-AU.php` is a hand-kept overlay (usually empty).
   Variants: `NU_LANG_VARIANTS`, `nu_lang()` stays 'en' / 'de', `nu_lang_variant()` / `nu_lang_choice()` = en-GB / en-AU / en-US,
   de-DE / de-CH (0.8.314 / 0.8.315).
-- **Update the docs** (`docs/nunext-docs.htm`, English only), the **tutorial** (`docs/nunext-tutorial.htm`, 0.8.328 – lessons for the
+- **Update the docs** (English only; the matching page in `docs/pages/` – a new page = a new file + an entry in `docs/toc.json`; mark advanced topics
+  with `data-level="advanced"`; **no version numbers in the text** – history is CHANGELOG.md; page template and rules in the comment of toc.json), the **tutorial** (`docs/nunext-tutorial.htm`, 0.8.328 – lessons for the
   globeadmin, structure in its header comment; lesson ids are progress keys, never rename them) and **`TODO.md`** when relevant; remove TODO points that are done or
   outdated. The README stays short (what it is, requirements, install, updating, compatibility,
   licence) – new features are described in the CHANGELOG.md section of their version and in the docs.
@@ -198,7 +199,7 @@ core/numailoauth.php NuMailOAuth (0.8.445): SMTP login with OAuth 2 (auth type X
 core/nuuserfields.php NuUserFields (0.8.454): custom user fields – definitions zzzzsys_nunext_user_field (step 0019), values
                      zzzzsys_nunext_user_ext (one row per user, one REAL column per field, made with NuDDL in the collation of zzzzsys_user –
                      joinable USING (zzzzsys_user_id)); page ?p=userfields (admin right userfields, CSV of a field before deleting), user form
-                     tab More, ?p=account (My account: edit_by 'user'), users list columns / filters (NuListDefs, in_list), CSV import,
+                     tab Additional fields (type in brackets), ?p=account (My account: edit_by 'user'), users list columns / filters (NuListDefs, in_list), CSV import,
                      #USER_<CODE># (NuHash), nuNextUserField / nuNextSetUserField (PHP), nuNextUserField (JS, N.user.fields), REST "fields",
                      start page cond.fields; e2e user_fields
 core/nuupload.php    NuUpload (0.8.459): uploads of nuBuilder's file objects with target "File System" (sob_input_file_target 1) with Uppy –
@@ -323,13 +324,17 @@ assets/js/nuapp.js   global behaviour: leave guard (form[data-nu-guard]), confir
                      jump, data-nu-once, red Save, change history, … · assets/js/nu/*.js form runtime (nuruntime.js, nucompat.js)
 assets/css/nuapp.css global styles (tokens, dark mode, tabs, buttons) · nuform.css form pages
 lang/*.php           return [key => text]; t('key', ...$args) uses sprintf (%s, %d)
-docs/nunext-docs.htm help page, tab Guide; docs/nunext-ref.htm (0.8.464) tab Code reference – developer reference, function reference,
-                     pages, start page hooks, REST API, Compatibility check, #devflow (pages/nuhelp.php renders both with the same filter;
-                     ?p=help&part=ref = the reference fragment, fetched by assets/js/nuhelp.js on demand; ?tab=ref; a #hash / link to an id of
-                     the other file opens its tab; "Search both tabs"; ids unique over both files and every #link checked by run.php; e2e help_tabs).
-                     Code chapters go into nunext-ref.htm. Both files: <section id=… data-doc="admin"> (globeadmin only), data-doc="dev" (globeadmin in developer mode –
-                     chapter #devflow "Development with Claude": session start, signing key, gate, releases by hand, package contents;
-                     keep it in step with this file) or data-acl="<form ids>" (shown with those rights)
+docs/toc.json        help (0.8.493, DeepWiki-like): chapters → pages, one file per page in docs/pages/NN-MM-name.htm (one <section id>, one h2,
+                     sub-sections div.doc-sub > h3; p.doc-lead / doc-for / doc-see, details.doc-src); tab guide / ref per chapter; pages/nuhelp.php
+                     joins and filters them per reader (data-doc="admin" / "dev", data-acl="<form ids>", also on any element) and numbers them;
+                     assets/js/nuhelp.js: index chapter → page → h3, search, "Show advanced topics" (data-level="advanced", localStorage
+                     nunext-help-advanced, a link into an advanced topic turns it on), Code reference loaded on demand (?p=help&part=ref, ?tab=ref);
+                     ids unique over all files and every #link checked by run.php (also: every page in toc.json, no 0.8.x in the text, chapter not
+                     more restrictive than its pages); e2e help_tabs / help_pages / help_dev. #devflow (chapter 13, data-doc="dev") = "Development
+                     with Claude": keep it in step with this file. Diagrams: inline SVG with classes (strict CSP) – convert a drawn SVG with
+                     python3 -I dev/doc_svg.py <file.svg> <id prefix> and paste it as <figure class="doc-figure">; colours .doc-flow in nuapp.css
+                     (n neutral/browser, p server, g database/result, a your code/exits; dg-lbl labels). Our own diagrams are drawn in
+                     dev/doc_diagrams.py (10, 0.8.496) – change them there and run python3 -I dev/doc_diagrams.py (replaces <figure id="dg-<name>">)
 install/             schema_mysql*.sql, schema_mssql.sql, schema_expected.json (structure check of updates), settings defaults
                      nubuilder49_tables.sql (nuBuilder 4.9's tables without data, written by dev/nub49_tables.php from nubuilder4.sql): the
                      installer's upgrade of an uploaded nubuilder4.sql of any 4.x (NuInstall::checkDump / upgradeTo49 / ALTER_49, 0.8.384;

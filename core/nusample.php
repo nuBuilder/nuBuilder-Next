@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 15;             // 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 16;             // 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -127,6 +127,7 @@ final class NuSample
 		NuPermission::ensureTables();
 		NuReport::ensureTables();                                // reports and SQL builder (sample reports)
 		NuSchema::create();                                      // nuBuilder Next's own tables (dashboards)
+		try { NuUpload::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next sample upload template: ' . $e->getMessage()); }   // tab Upload of sample_all
 
 		$def = self::definition();
 		$created = [];
@@ -289,6 +290,7 @@ final class NuSample
 		$cols = [];
 		foreach ($f['objects'] as $o) {
 			if (in_array($o['type'], ['subform', 'word', 'html', 'run', 'image', 'contentbox', 'display'], true)) continue;
+			if (($o['target'] ?? '0') === '1') continue;   // Uppy upload (file system): no column
 			$type = NuDDL::typeForObject(['sob_all_type' => $o['type'], 'sob_input_type' => $o['input'] ?? '', 'sob_input_format' => $o['format'] ?? '', 'sob_select_multiple' => !empty($o['multiple']) ? '1' : '0']);
 			if ($type) $cols[] = ['name' => $o['id'], 'type' => $type[0], 'length' => $type[1]];
 		}
@@ -346,7 +348,7 @@ final class NuSample
 				'sob_all_event' => !empty($o['events']) ? '1' : '0', 'sob_all_style_type' => $o['style_type'] ?? '', 'sob_all_style' => $o['style'] ?? '',
 				'sob_input_type' => $o['type'] === 'input' ? ($o['input'] ?? 'text') : null, 'sob_input_format' => $o['format'] ?? '',
 				'sob_input_count' => $o['count'] ?? null, 'sob_input_javascript' => $o['scroll'] ?? null, 'sob_input_datalist' => $o['datalist'] ?? null,
-				'sob_input_attribute' => $o['attribute'] ?? null, 'sob_input_icon' => null, 'sob_input_file_target' => $o['type'] === 'input' && ($o['input'] ?? '') === 'file' ? '0' : null,
+				'sob_input_attribute' => $o['attribute'] ?? null, 'sob_input_icon' => null, 'sob_input_file_target' => $o['type'] === 'input' && ($o['input'] ?? '') === 'file' ? (string)($o['target'] ?? '0') : null,
 				'sob_select_multiple' => $o['type'] === 'select' ? (!empty($o['multiple']) ? '1' : '0') : null, 'sob_select_2' => $o['type'] === 'select' ? (!empty($o['select2']) ? '1' : '0') : null,
 				'sob_select_sql' => $o['options'] ?? null,
 				'sob_display_sql' => $o['sql'] ?? null,
@@ -516,7 +518,7 @@ final class NuSample
 		$i = static fn(string $input, string $id, string $label, array $more = []) => ['type' => 'input', 'input' => $input, 'id' => $id, 'label' => $label] + $more;
 		return [
 			'id' => 'sample_all', 'type' => 'browseedit', 'table' => 'sample_all', 'desc' => 'Sample: all objects', 'layout' => null,
-			'breadcrumb' => '#all_text#|New record', 'tabs' => ['Inputs', 'Numbers & dates', 'Choices', 'Display', 'Run', 'Subform', 'Access', 'Charts', 'Miscellaneous'],
+			'breadcrumb' => '#all_text#|New record', 'tabs' => ['Inputs', 'Numbers & dates', 'Choices', 'Display', 'Run', 'Subform', 'Access', 'Charts', 'Miscellaneous', 'Upload'],
 			'browse' => [['Text', 'all_text', 'l', '', 200], ['Number', 'all_nunumber', 'r', "N|USD 1,000.00", 120], ['Date', 'all_nudate', 'l', 'D|dd.mm.yyyy', 110], ['Select', 'all_select', 'l', '', 120], ['Checkbox', 'all_checkbox', 'c', '', 80]],
 			'objects' => [
 				// --- Inputs
@@ -617,6 +619,15 @@ final class NuSample
 					'chart_title' => 'Orders per status (database)'],
 				['tab' => 7, 'type' => 'chart', 'id' => 'all_chart_team', 'label' => '', 'left' => 20, 'top' => 310, 'w' => 660, 'h' => 200, 'chart' => 'bhs',
 					'chart_data' => "[['Team', 'Done', 'Open'], ['Sales', 8, 3], ['Support', 5, 6], ['Admin', 2, 1]]", 'chart_title' => 'Tasks per team (array in the object, stacked)', 'chart_h' => 'Tasks'],
+				// --- Upload: nuBuilder's file object with target "File System" (Uppy, 0.8.506)
+				['tab' => 9, 'type' => 'html', 'id' => 'all_upload_intro', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 150,
+					'html' => '<div class="alert alert-secondary small mb-0 py-2"><b>Upload to the server</b> – a <i>File</i> object with <i>File target</i> = <b>File System</b>: '
+						. 'the files go into a folder on the server, not into the record. nuBuilder\'s procedure <code>nu_upload_file_template</code> stores them in '
+						. '<code>nu_uploads/</code> next to the web root (a second file with the same name gets <code>-1</code>, <code>-2</code> …; .php, .html and other '
+						. 'dangerous types are refused). Copy the procedure to change the folder or the allowed types. Needs the library pack <b>Uppy</b> '
+						. '(Update → Libraries); without it the form shows a notice.</div>'],
+				['tab' => 9, 'type' => 'input', 'input' => 'file', 'id' => 'all_upload', 'label' => '', 'left' => 20, 'top' => 190, 'w' => 660, 'h' => 320,
+					'target' => '1', 'html' => NuUpload::HTML],
 			],
 			'edit_js' => "// sfo_edit_javascript runs when the edit form opens\nif (nuIsNewRecord()) nuSetValue('all_text', 'New sample record');\n\n"
 				. "// tooltip icons: own settings for one field (tab Miscellaneous)\nwindow.nuOnToolTipIcon = function (element, settings) {\n\tif (element.id === 'all_tip_select') {\n"

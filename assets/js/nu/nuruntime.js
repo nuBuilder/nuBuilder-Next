@@ -3061,6 +3061,7 @@
 		}
 	});
 	$(document).on('shown.bs.tab', '.nuTab', function (e) {
+		if (N.autoTab) { N.autoTab = false; return; }   // chosen by the page (Notes, 0.8.508), not by the user: not remembered
 		try { sessionStorage.setItem(tabKey(), e.target.getAttribute('data-nu-tab')); } catch (x) { /* ignore */ }
 		['nuOnTabSelectedGlobal', 'nuOnTabSelected'].forEach(function (fn) {
 			if (typeof window[fn] === 'function') { try { window[fn](e.target); } catch (x) { reportError(x.message, fn); } }
@@ -3256,6 +3257,14 @@
 				var t = sessionStorage.getItem(tabKey());
 				if (t !== null && g('nuTab' + t) && $(g('nuTab' + t)).parent().is(':visible')) nuSelectTab(+t);
 			} catch (x) { /* ignore */ }
+			// nuBuilder's Notes form (0.8.508): an existing note with an empty editor but text on the tab Additional opens that tab
+			var only = {nunotes: ['not_content', 'not_text']}[N.form.id];
+			if (only && !N.is_new) {
+				var empty = function (v) { return String(v || '').replace(/<[^>]*>/g, '').replace(/&nbsp;|\u00a0/g, ' ').trim() === ''; };
+				var other = g(only[1]), pane = other && other.closest('.nuTabPane');
+				var tb = pane && g(pane.getAttribute('aria-labelledby'));
+				if (tb && !tb.classList.contains('active') && empty(nuGetValue(only[0])) && !empty(nuGetValue(only[1]))) { N.autoTab = true; nuSelectTab(tb); }
+			}
 			try {
 				var pending = JSON.parse(sessionStorage.getItem('nuNextPendingJs') || '[]');
 				sessionStorage.removeItem('nuNextPendingJs');

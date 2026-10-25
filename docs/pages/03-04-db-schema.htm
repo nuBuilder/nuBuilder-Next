@@ -1,0 +1,60 @@
+<section id="db-schema" data-doc="admin">
+	<h2 id="db-schema-h">Database schema</h2>
+	<p class="doc-lead">nuBuilder&#x27;s system tables that nuBuilder Next shares, and the tables it adds.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>The database holds three kinds of tables:</p>
+<ol>
+	<li><strong>Your application's tables</strong> – the data your forms show and save.</li>
+	<li><strong>nuBuilder's system tables</strong> <code>zzzzsys_*</code> – the definition of the application (forms, objects, users, rights …). nuBuilder Next reads and writes them exactly as nuBuilder 4.9 does, so both can work on the same database.</li>
+	<li><strong>nuBuilder Next's own tables</strong> <code>zzzzsys_nunext_*</code> – everything only nuBuilder Next needs.</li>
+</ol>
+<figure class="doc-figure"><svg class="doc-flow" viewBox="0 0 680 640" role="img" aria-labelledby="db-tables-title db-tables-desc" xmlns="http://www.w3.org/2000/svg"><title id="db-tables-title">nuBuilder metadata tables</title><desc id="db-tables-desc">Form tables: zzzzsys_form has tabs, browse columns and PHP hooks named form id plus suffix; tabs hold objects, which have events and lookup PHP. Access tables: users link to an access level with form, PHP and report rights, and to permission items.</desc>
+<defs><marker id="db-tables-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
+<text x="40" y="40" class="dg-t dg-n dg-start">Form definition</text>
+<rect x="40" y="60" width="120" height="56" rx="8" class="dg-box dg-p"/><text x="100" y="78" dy=".35em" class="dg-t dg-p">zzzzsys_form</text><text x="100" y="98" dy=".35em" class="dg-s dg-p">One per form</text>
+<rect x="180" y="60" width="140" height="56" rx="8" class="dg-box dg-p"/><text x="250" y="78" dy=".35em" class="dg-t dg-p">zzzzsys_tab</text><text x="250" y="98" dy=".35em" class="dg-s dg-p">Form tabs</text>
+<rect x="180" y="136" width="140" height="56" rx="8" class="dg-box dg-p"/><text x="250" y="154" dy=".35em" class="dg-t dg-p">zzzzsys_browse</text><text x="250" y="174" dy=".35em" class="dg-s dg-p">List columns</text>
+<rect x="180" y="212" width="220" height="56" rx="8" class="dg-box dg-p"/><text x="290" y="230" dy=".35em" class="dg-t dg-p">zzzzsys_php</text><text x="290" y="250" dy=".35em" class="dg-s dg-p">&lt;form id&gt;_BB/BE/BS/AS/BD/AD</text>
+<rect x="340" y="60" width="140" height="56" rx="8" class="dg-box dg-p"/><text x="410" y="78" dy=".35em" class="dg-t dg-p">zzzzsys_object</text><text x="410" y="98" dy=".35em" class="dg-s dg-p">Fields, buttons</text>
+<rect x="500" y="60" width="140" height="56" rx="8" class="dg-box dg-p"/><text x="570" y="78" dy=".35em" class="dg-t dg-p">zzzzsys_event</text><text x="570" y="98" dy=".35em" class="dg-s dg-p">JS per event</text>
+<rect x="500" y="136" width="140" height="56" rx="8" class="dg-box dg-p"/><text x="570" y="154" dy=".35em" class="dg-t dg-p">zzzzsys_php</text><text x="570" y="174" dy=".35em" class="dg-s dg-p">&lt;id&gt;_AB lookup</text>
+<line x1="160" y1="88" x2="178" y2="88" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<path d="M100 116 L100 164 L178 164" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<path d="M100 164 L100 240 L178 240" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<line x1="320" y1="88" x2="338" y2="88" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<line x1="480" y1="88" x2="498" y2="88" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<path d="M410 116 L410 164 L498 164" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<line x1="40" y1="296" x2="640" y2="296" class="dg-sep"/>
+<text x="40" y="326" class="dg-t dg-n dg-start">Users and access</text>
+<rect x="40" y="346" width="120" height="56" rx="8" class="dg-box dg-g"/><text x="100" y="364" dy=".35em" class="dg-t dg-g">zzzzsys_user</text><text x="100" y="384" dy=".35em" class="dg-s dg-g">Accounts</text>
+<rect x="180" y="346" width="200" height="56" rx="8" class="dg-box dg-g"/><text x="280" y="364" dy=".35em" class="dg-t dg-g">zzzzsys_access</text><text x="280" y="384" dy=".35em" class="dg-s dg-g">via sus_zzzzsys_access_id</text>
+<rect x="420" y="346" width="200" height="56" rx="8" class="dg-box dg-g"/><text x="520" y="364" dy=".35em" class="dg-t dg-g">zzzzsys_access_form</text><text x="520" y="384" dy=".35em" class="dg-s dg-g">Forms, buttons</text>
+<rect x="420" y="422" width="200" height="56" rx="8" class="dg-box dg-g"/><text x="520" y="440" dy=".35em" class="dg-t dg-g">zzzzsys_access_php</text><text x="520" y="460" dy=".35em" class="dg-s dg-g">Procedures</text>
+<rect x="420" y="498" width="200" height="56" rx="8" class="dg-box dg-g"/><text x="520" y="516" dy=".35em" class="dg-t dg-g">zzzzsys_access_report</text><text x="520" y="536" dy=".35em" class="dg-s dg-g">Reports</text>
+<rect x="180" y="574" width="200" height="56" rx="8" class="dg-box dg-g"/><text x="280" y="592" dy=".35em" class="dg-t dg-g">zzzzsys_user_permission</text><text x="280" y="612" dy=".35em" class="dg-s dg-g">Per-user grants</text>
+<rect x="420" y="574" width="200" height="56" rx="8" class="dg-box dg-g"/><text x="520" y="592" dy=".35em" class="dg-t dg-g">zzzzsys_permission_item</text><text x="520" y="612" dy=".35em" class="dg-s dg-g">Permission catalog</text>
+<line x1="160" y1="374" x2="178" y2="374" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<line x1="380" y1="374" x2="418" y2="374" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<path d="M400 374 L400 450 L418 450" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<path d="M400 450 L400 526 L418 526" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<path d="M100 402 L100 602 L178 602" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+<line x1="380" y1="602" x2="418" y2="602" marker-end="url(#db-tables-arrow)" class="dg-line"/>
+</svg>
+</figure>
+<div class="doc-sub">
+	<h3 id="db-schema-ids">Keys and conventions</h3>
+	<ul>
+		<li>Every system table has a text primary key <code>&lt;table&gt;_id</code> (e.g. <code>zzzzsys_form_id</code>); nuBuilder's ids are 25-character strings, made with <code>nu_id()</code> in nuBuilder Next. Ids of nuBuilder's own records start with <code>nu</code>.</li>
+		<li>Column names carry a short prefix of their table: <code>sfo_</code> form, <code>syt_</code> tab, <code>sob_</code> object, <code>sbr_</code> browse column, <code>sph_</code> PHP, <code>sev_</code> event, <code>sus_</code> user, <code>sal_</code> access level, <code>slf_</code> access form.</li>
+		<li>A form hook is a <code>zzzzsys_php</code> row whose id is <code>&lt;form id&gt;_&lt;hook&gt;</code>; that is why sample form ids contain no underscore.</li>
+		<li>nuBuilder Next stores its own options of a nuBuilder row as JSON under the key <code>nunext</code> in nuBuilder's JSON columns (e.g. a form's layout, an object's grid position or a format's options), so nuBuilder ignores them.</li>
+	</ul>
+</div>
+<div class="doc-sub">
+	<h3 id="db-schema-own">How nuBuilder Next's tables are created</h3>
+	<p>nuBuilder Next's tables are defined in code (<code>core/nuinfra.php</code>) and created on first use on MySQL / MariaDB and SQL Server; missing columns of existing own tables are added by updates. nuBuilder never reads them, its update keeps them, and its app cloner and backups treat them as system tables. <em>Admin tools → Self-test</em> and the update page compare the actual structure with <code>install/schema_expected.json</code>.</p>
+	<p>Every table with its purpose: <a href="#table-ref">Database table reference</a>.</p>
+</div>
+	<p class="doc-see">See also: <a href="#table-ref">Database table reference</a> · <a href="#databases">Databases: MySQL, MariaDB and SQL Server</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuinfra.php</code></li><li><code>core/nuschemacheck.php</code></li><li><code>install/schema_expected.json</code></li></ul></details>
+</section>

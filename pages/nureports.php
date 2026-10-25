@@ -93,8 +93,10 @@ if ($id === '') {
 }
 
 // ------------------------------------------------------------------ view
-$foot = $id !== '' ? '<script src="' . nu_asset('assets/js/nureports.js') . '"></script>' : '';
-nu_layout_start(t('rpt_title_list'), 'forms');
+// Launch form and Data source: searchable (Tom Select, 0.8.510 – assets/js/nulistselect.js, class nuListTomSelect, description as second line)
+$foot = $id !== '' ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nureports.js') . '"></script>' : '';
+nu_layout_start(t('rpt_title_list'), 'forms', $id !== '' ? ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">'] : []);
 $tcpdf = NuReport::tcpdfDir();
 ?>
 <nav aria-label="breadcrumb">
@@ -139,7 +141,7 @@ $tcpdf = NuReport::tcpdfDir();
 	?>
 	<div class="nuTitleBar mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-file-earmark-richtext me-2"></i><?= h($report ? (string)$report['sre_code'] : t('rpt_new')) ?></h1>
-		<?php if ($report): ?><span class="small text-body-secondary">ID <?= h($id) ?></span><?php endif; ?>
+		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page -->
 		<a class="btn nuBtnAct" href="<?= h(nu_url('reports')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="rptSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if ($report): ?>
@@ -155,6 +157,8 @@ $tcpdf = NuReport::tcpdfDir();
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="rptDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
 		<?php endif; ?>
+		<?php if ($report): ?><?= NuFormInfo::record('zzzzsys_report', (string)$id, ['code' => (string)$report['sre_code']]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+		</div>
 	</div>
 
 	<form method="post" action="<?= h(nu_url('reports', ['id' => $id])) ?>" id="nuRecordForm" data-nu-focus-first data-nu-guard novalidate>
@@ -177,8 +181,9 @@ $tcpdf = NuReport::tcpdfDir();
 				<div class="row g-3">
 					<div class="col-md-4"><?= $row('sre_group', t('rpt_group'), '<input class="form-control" id="sre_group" name="sre_group" maxlength="100" list="rptGroups" value="' . h($v('sre_group')) . '">'
 						. '<datalist id="rptGroups">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', $groupsDist)) . '</datalist>') ?></div>
-					<div class="col-md-8"><?= $row('sre_zzzzsys_form_id', t('rpt_launch'), '<select class="form-select' . $err('sre_zzzzsys_form_id') . '" id="sre_zzzzsys_form_id" name="sre_zzzzsys_form_id"><option value="">' . h(t('rpt_launch_none')) . '</option>'
-						. implode('', array_map(static fn($f) => '<option value="' . h($f['zzzzsys_form_id']) . '"' . ($f['zzzzsys_form_id'] === $v('sre_zzzzsys_form_id') ? ' selected' : '') . '>' . h($f['sfo_code'] . ($f['sfo_description'] ? ' – ' . $f['sfo_description'] : '') . ($f['sfo_type'] === 'launch' ? ' · launch' : '')) . '</option>', $forms))
+					<div class="col-md-8"><?= $row('sre_zzzzsys_form_id', t('rpt_launch'), '<select class="form-select nuListTomSelect' . $err('sre_zzzzsys_form_id') . '" id="sre_zzzzsys_form_id" name="sre_zzzzsys_form_id"><option value="">' . h(t('rpt_launch_none')) . '</option>'
+						. implode('', array_map(static fn($f) => '<option value="' . h($f['zzzzsys_form_id']) . '"' . ($f['zzzzsys_form_id'] === $v('sre_zzzzsys_form_id') ? ' selected' : '')
+							. ' data-sub="' . h(trim((string)$f['sfo_description'] . ($f['sfo_type'] === 'launch' ? ' · launch' : ''), ' ·')) . '">' . h($f['sfo_code']) . '</option>', $forms))
 						. '</select>' . $fb('sre_zzzzsys_form_id') . '<div class="form-text">' . h(t('rpt_launch_hint')) . '</div>') ?></div>
 				</div>
 				<?php
@@ -187,11 +192,11 @@ $tcpdf = NuReport::tcpdfDir();
 					$items = array_filter($sources, static fn($s) => $s['kind'] === $kind);
 					if (!$items) continue;
 					$opt .= '<optgroup label="' . h(t($lbl)) . '">';
-					foreach ($items as $s) $opt .= '<option value="' . h($s['id']) . '"' . ($s['id'] === $current ? ' selected' : '') . '>' . h($s['code'] . ($s['description'] !== '' ? ' – ' . $s['description'] : '')) . '</option>';
+					foreach ($items as $s) $opt .= '<option value="' . h($s['id']) . '"' . ($s['id'] === $current ? ' selected' : '') . ' data-sub="' . h($s['description']) . '">' . h($s['code']) . '</option>';
 					$opt .= '</optgroup>';
 				}
 				?>
-				<?= $row('sre_zzzzsys_php_id', t('rpt_source'), '<select class="form-select' . $err('sre_zzzzsys_php_id') . '" id="sre_zzzzsys_php_id" name="sre_zzzzsys_php_id" required>' . $opt . '</select>' . $fb('sre_zzzzsys_php_id')
+				<?= $row('sre_zzzzsys_php_id', t('rpt_source'), '<select class="form-select nuListTomSelect' . $err('sre_zzzzsys_php_id') . '" id="sre_zzzzsys_php_id" name="sre_zzzzsys_php_id" required>' . $opt . '</select>' . $fb('sre_zzzzsys_php_id')
 					. '<div class="form-text">' . h(t('rpt_source_hint')) . (NuAcl::can(NuAcl::FORM_SELECT) ? ' <a href="' . h(nu_url('sqlbuilder', ['id' => 'new'])) . '">' . h(t('sqb_new')) . '</a>' : '')
 					. (NuAcl::can(NuAcl::FORM_PROCEDURE) ? ' · <a href="' . h(nu_url('procedures', ['id' => 'new'])) . '">' . h(t('proc_new')) . '</a>' : '') . '</div>', true) ?>
 				<?php if ($report && $layout): ?>

@@ -1,0 +1,41 @@
+<section id="key-concepts">
+	<h2 id="key-concepts-h">Key concepts</h2>
+	<p class="doc-lead">The ideas everything else builds on: metadata-driven forms, objects, hooks, hash variables, access levels and nuBuilder Next&#x27;s own tables.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone</p>
+	<div class="doc-sub">
+	<h3 id="concept-metadata">Forms are data</h3>
+	<p>A form is a row in <code>zzzzsys_form</code> with its tabs (<code>zzzzsys_tab</code>), objects (<code>zzzzsys_object</code>), list columns (<code>zzzzsys_browse</code>), JavaScript events (<code>zzzzsys_event</code>) and PHP hooks (<code>zzzzsys_php</code>). The form builder edits these rows; nuBuilder Next draws the form from them on every request. Nothing is generated as files, so a form changed in the builder is live at once – or, with a <a href="#form-drafts">draft</a>, after publishing.</p>
+	<ul>
+		<li><strong>Form types</strong>: <em>browse and edit</em> (a list and a record), <em>browse</em> or <em>edit</em> only, <em>launch</em> (a form without a table, e.g. a menu), <em>subform</em> (shown inside another form) and <em>page</em> (your own PHP, see <a href="#pages">Pages</a>).</li>
+		<li><strong>Objects</strong> are the fields and elements on a form: input, select, lookup, subform, calc, display, HTML, image, run (button), word, contentbox, chart … – see <a href="#object-types">Object types</a>. An object's <em>ID</em> is the column it saves to.</li>
+		<li>The <strong>browse SQL</strong> of a form is the <code>SELECT</code> of its list; the <strong>browse columns</strong> say which of its columns are shown.</li>
+	</ul>
+</div>
+<div class="doc-sub">
+	<h3 id="concept-code">Code: hooks, procedures and events</h3>
+	<ul>
+		<li><strong>PHP hooks</strong> of a form run on the server: Before Browse, Before Edit, Before Save, After Save, Before Delete, After Delete – and After Browse of a lookup. <strong>Global hooks</strong> (procedures with reserved codes) run for every form.</li>
+		<li><strong>Procedures</strong> are named pieces of PHP that buttons, run objects, <code>nuRunPHP()</code> and <code>nuRunPHPHidden()</code> start, and that reports use.</li>
+		<li><strong>JavaScript</strong> runs in the browser: the form's custom code, object events (onchange, onclick …) and hooks such as <code>nuOnLoad()</code> or <code>nuBeforeSave()</code>.</li>
+	</ul>
+	<p>The order in which they run is on <a href="#form-lifecycle">Form lifecycle and event order</a>.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="concept-hash">Hash variables</h3>
+	<p><code>#RECORD_ID#</code>, <code>#USER_ID#</code>, <code>#cus_name#</code> … are replaced by their values in SQL, PHP and HTML before the code runs – the record, the user, the form's fields and properties set with <code>nuSetProperty()</code>. Unlike nuBuilder, values are escaped for the place they are inserted into, so a field value cannot break out of a quoted SQL or PHP string. See <a href="#hash-variables">Hash variables</a>.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="concept-rights">Rights</h3>
+	<p>The <strong>globeadmin</strong> (login from <code>nuconfig.php</code>) may do everything. Every other user has one <strong>access level</strong> that lists the forms, procedures and reports he may use and, per form, the buttons (Save, Add, Delete, Clone, Print). <strong>Permission items</strong> are named switches your code checks; <strong>admin roles</strong> give a user a defined part of the globeadmin's tools; <strong>field data access</strong> decides per field who sees and changes it. See <a href="#rights">How rights work</a>.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="concept-tables">nuBuilder's tables and nuBuilder Next's tables</h3>
+	<p>All system tables start with <code>zzzzsys_</code>. nuBuilder Next reads and writes nuBuilder's tables the way nuBuilder does, and keeps everything only it needs in tables named <code>zzzzsys_nunext_*</code> – sessions, log, audit trail, form drafts and history, start page settings, dashboards, API clients … They are created on first use; nuBuilder never reads them and its updates keep them. See <a href="#db-schema">Database schema</a> and <a href="#table-ref">Database table reference</a>.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="concept-config">Configuration in two places</h3>
+	<p><code>nuconfig.php</code> holds the database connection and settings in PHP variables – the same file and variable names as nuBuilder, plus nuBuilder Next's own (<a href="#config">Configuration</a>). nuBuilder's settings table <code>zzzzsys_config</code> holds the settings of Setup → Settings (<a href="#settings">Settings</a>). nuBuilder Next's own installation settings (security, start page layouts, branding …) are JSON rows in <code>zzzzsys_nunext_setting</code>.</p>
+</div>
+	<p class="doc-see">See also: <a href="#architecture">Architecture</a> · <a href="#form-lifecycle">Form lifecycle and event order</a> · <a href="#glossary">Glossary</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/numeta.php</code></li><li><code>core/form/nuhash.php</code></li><li><code>core/nuacl.php</code></li><li><code>core/nuinfra.php</code></li></ul></details>
+</section>

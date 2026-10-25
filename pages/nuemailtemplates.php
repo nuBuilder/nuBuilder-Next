@@ -214,7 +214,6 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	?>
-	<div class="mb-3"><a class="btn nuBtnAct" href="<?= h(nu_url('emailtemplates')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a></div>
 	<?php if ($isTemplate): ?><div class="alert alert-info small py-2"><i class="bi bi-info-circle me-1"></i><?= h(t('emt_is_template')) ?><?php
 		$cloneCode = preg_replace('/_template$/', '', (string)$tpl['emt_code']);
 		if ($cloneCode !== (string)$tpl['emt_code']): ?> <?= h(t('emt_clone_code', $cloneCode)) ?><?php endif; ?></div><?php endif; ?>
@@ -227,15 +226,18 @@ nu_layout_start(t('emt_title'), 'email', ['head' => '']);
 		<div class="nuTitleBar mb-3">
 			<?php // the code is in the field below (and in the folded line) – only screen readers get it as heading (0.8.434) ?>
 			<h2 class="h5 mb-0<?= $tpl ? ' visually-hidden' : '' ?>"><?= h($tpl ? (string)$tpl['emt_code'] : t('emt_new')) ?></h2>
+			<div class="d-flex flex-wrap gap-2"><?php // Back to the list + record buttons in one row (0.8.508) ?>
+			<a class="btn nuBtnAct nuBackBtn" href="<?= h(nu_url('emailtemplates')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?>
-				<button data-nu-save class="btn nuBtnAct nuBtnSave btn-sm" type="submit" id="emtSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
+				<button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="emtSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 			<?php endif; ?>
 			<?php if ($tpl && $rights['clone']): ?>
-				<button class="btn nuBtnAct btn-sm" type="submit" name="action" value="clone" formnovalidate><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
+				<button class="btn nuBtnAct" type="submit" name="action" value="clone" formnovalidate><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
 			<?php endif; ?>
 			<?php if ($tpl && $rights['delete'] && !$locked): ?>
-				<button class="btn nuBtnAct nuBtnDel btn-sm" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('emt_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('emt_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
+			</div>
 		</div>
 		<div class="row g-3">
 			<div class="col-xl-8">

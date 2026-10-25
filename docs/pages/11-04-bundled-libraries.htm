@@ -1,0 +1,24 @@
+<section id="bundled-libraries" data-doc="admin">
+	<h2 id="bundled-libraries-h">Bundled libraries</h2>
+	<p class="doc-lead">Third-party libraries that come with nuBuilder Next and that your code may use.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>These libraries are part of the nuBuilder Next package (<code>vendor/bundled/</code>) and are always there. The exact versions are listed in <code>vendor/bundled/libraries.json</code> and on <em>Update → Libraries</em>.</p>
+<table class="table table-sm">
+	<thead><tr><th>Library</th><th>Used for</th><th>Licence</th></tr></thead>
+	<tbody>
+		<tr><td>Bootstrap</td><td>Layout and components</td><td>MIT</td></tr>
+		<tr><td>Bootstrap Icons</td><td>Icons of nuBuilder Next</td><td>MIT</td></tr>
+		<tr><td>Font Awesome (Free)</td><td>Icons of nuBuilder forms (<code>fa-…</code>), when nuBuilder's copy is not found</td><td>CC BY 4.0 / OFL 1.1 / MIT</td></tr>
+		<tr><td>jQuery</td><td>Form runtime and nuBuilder's JavaScript</td><td>MIT</td></tr>
+		<tr><td>jquery-confirm</td><td>Dialogs</td><td>MIT</td></tr>
+		<tr><td>Tom Select</td><td>Searchable selects (also in place of Select2)</td><td>Apache 2.0</td></tr>
+		<tr><td>CodeMirror</td><td>Code editor</td><td>MIT</td></tr>
+		<tr><td>js-beautify, sql-formatter, Prettier (+ PHP plugin)</td><td><em>Format</em> button of the code editor</td><td>MIT</td></tr>
+		<tr><td>ApexCharts</td><td>Charts of dashboards and <code>nuChart</code></td><td>MIT</td></tr>
+		<tr><td>qrcode-generator</td><td>QR codes (authenticator setup)</td><td>MIT</td></tr>
+	</tbody>
+</table>
+<p>Your form code may use jQuery, Bootstrap, Tom Select and ApexCharts. Larger libraries (TCPDF, PHPMailer, TinyMCE, phpMyAdmin, Adminer, Uppy …) are not in the package – they come from nuBuilder's folder or as <a href="#copy-files">library packs</a>.</p>
+	<p class="doc-see">See also: <a href="#copy-files">Libraries (library packs)</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>vendor/bundled/libraries.json</code></li><li><code>vendor/bundled/</code></li></ul></details>
+</section>

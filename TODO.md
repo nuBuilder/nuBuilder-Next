@@ -619,8 +619,12 @@ The SQL generation was checked with simulated catalog data and a T-SQL parser; a
       (`NU_FEATURE_ACCESSIBILITY` in `core/nuapp.php`); saving a user keeps the stored value.
 
 ## Documentation
-- [ ] `docs/nunext-docs.htm` is English only. Extend it with every new feature (chapters are filtered per user: `data-doc="admin"`,
-      `data-acl="<form id>"`).
+- [ ] The help (`docs/pages/*.htm` + `docs/toc.json`) is English only. Extend the matching page with every new feature (filtered per
+      reader: `data-doc="admin"`, `data-acl="<form id>"`; advanced topics `data-level="advanced"`; no version numbers).
+- [ ] Help restructure (0.8.493) – please verify the pages written new from the code: 01-00 overview, 01-01 key-concepts, 01-03 databases,
+      02-00, 02-08 phones, all of 03 architecture, 04-01 form-lifecycle, 05-00..05-02 saving / save flow / validation, 06-00, 07-01
+      sign-in methods, 08-00, 09-00, 10-06 table reference, 11-00, 11-03 theming, 11-04 bundled libraries, 12-00, 12-02 porting, 14-00,
+      14-01 glossary, 14-03 FAQ; and whether the 24 "advanced" flags fit.
 
 ## Ideas – what could come next (rated 0.8.292)
 Rating 1–10: **10 = must have** in a modern business-app framework · 7–8 important · 5–6 useful · 1–4 nice to have.

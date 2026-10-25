@@ -1,0 +1,128 @@
+<section id="devflow" data-doc="dev">
+	<h2 id="devflow-h">Contributing: development with Claude</h2>
+	<p class="doc-lead">How nuBuilder Next itself is developed, released and tested.</p>
+	<p class="doc-for" data-doc="admin">For: Globeadmin in developer mode</p>
+	<p>Only shown in developer mode. nuBuilder Next is developed in sessions with Claude (Anthropic's AI) working on a copy of the project in its own Linux workspace: it changes the code, tests it in a browser against a real nuBuilder database and hands back two signed zips. The rules it follows are in <code>CLAUDE.md</code> (in <code>nunext-dev.zip</code> and the repository, never in the install package) – read it once; this chapter is the short version for the developer.</p>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-needs">What a session needs</h3>
+<ul>
+<li><strong>Claude with a workspace</strong>: a Claude session that can run commands and handle files (Claude Code – web, desktop or terminal – or claude.ai with the code / file tools). It needs internet access for the package registries (apt, npm, pip) and GitHub (cloning nuBuilder for the test installation, and pushing).</li>
+<li><strong><code>nunext-dev.zip</code></strong> of the last release – the whole project including <code>CLAUDE.md</code>, <code>TODO.md</code>, <code>dev/</code> (release script, tests, tools) and <code>.github/</code>.</li>
+<li><strong>The signing key file</strong> <code>nunext-signing.key</code> (see below) – without it releases are unsigned and every installation warns.</li>
+<li><strong>For "gate"</strong>: write access to the repository <code>nuBuilder/nuBuilder-Next</code> in the session (GitHub connection with push rights).</li>
+</ul>
+<p>Nothing survives between sessions: the workspace, the test database and the test installation are rebuilt from the zip each time (<code>CLAUDE.md</code> → "Test environment": MariaDB, PHP's built-in server, a clone of nuBuilder with nuBuilder Next inside it at <code>/nunext/</code>, Playwright with Chromium, PHPStan, ESLint, axe-core).</p>
+</div>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-start">Starting a new session</h3>
+<ol>
+<li>Attach <code>nunext-dev.zip</code> (from the last answer) and <code>nunext-signing.key</code>.</li>
+<li>First message, e.g.: <em>"New session: unpack nunext-dev.zip, put nunext-signing.key next to the project folder, read CLAUDE.md and TODO.md, rebuild the test environment."</em> – then the request.</li>
+<li>Claude unpacks to <code>nunext/</code>, puts the key next to it (<code>../nunext-signing.key</code> – outside the project, never in a zip), installs MariaDB / the test site / the tools and reads the newest changelog sections.</li>
+</ol>
+<p>A long session that reaches its context limit continues with a summary – nothing to do. A new session is only needed when the old one is gone; always send it the <code>nunext-dev.zip</code> of the <em>last</em> answer.</p>
+</div>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-key">The signing key</h3>
+<ul>
+<li>An Ed25519 key pair. The <strong>public</strong> key is in the code (<code>NuUpdate::SIGN_PUBLIC</code> in <code>core/nuupdate.php</code>); every installation checks <code>nunext.zip</code> and the <a href="#copy-files">library packs</a> against it. The <strong>secret</strong> key is the file <code>nunext-signing.key</code> (last line = the base64 secret key) – whoever has it can make packages every installation accepts. Keep it private: never in the project, a zip, the repository, a ticket or a chat that is shared.</li>
+<li>Where the tools look for it: <code>$NUNEXT_SIGNING_KEY</code>, <code>../nunext-signing.key</code> (next to the project folder), <code>~/.nunext-signing.key</code>. The page <em>Build library packs</em> takes it as an upload for that one request and never stores it.</li>
+<li>A new key pair (only if the old one is lost or leaked):
+				<pre class="small"><code>php -r '$k = sodium_crypto_sign_keypair(); echo "nuBuilder Next signing key\n", base64_encode(sodium_crypto_sign_secretkey($k)), "\n"; fwrite(STDERR, "public: " . base64_encode(sodium_crypto_sign_publickey($k)) . "\n");' &gt; nunext-signing.key</code></pre>
+				Put the printed public key into <code>NuUpdate::SIGN_PUBLIC</code> and release. Installations still on the old key refuse the new packages – update them once by hand (unpack the zip over the folder), and rebuild the library packs with the new key.</li>
+<li>Not the same as <code>$nuConfigSecretKey</code> in <code>nuconfig.php</code> – that one is per installation (API tokens, one-time links) and never leaves the server.</li>
+</ul>
+</div>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-requests">Requests</h3>
+<ul>
+<li><strong>A short request</strong> ("add a filter to the users list") → Claude builds it and ends with a <strong>fast release</strong> (next version 0.8.x+1), tests of the changed areas and a look in the browser, and sends both zips. It asks first only when a wrong guess would be expensive.</li>
+<li><strong>"Suggest …"</strong> → numbered options with a recommendation, nothing built. Answer with the option, <em>"do recommendations"</em> or <em>"ok all"</em>.</li>
+<li><strong>"Gate"</strong> → full release gate and push to GitHub (below).</li>
+<li>Every release: version bump, <code>CHANGELOG.md</code> section, texts in all eleven languages, the help (this file), <code>TODO.md</code> (points to verify), tests for new features. No personal details of the developer in any file.</li>
+</ul>
+</div>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-gate">Fast release and gate</h3><figure class="doc-figure" id="dg-devflow"><svg class="doc-flow" viewBox="0 0 680 330" role="img" aria-labelledby="dg-devflow-title dg-devflow-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-devflow-title">Releases: fast and gated</title><desc id="dg-devflow-desc">A normal request ends with a fast release: the change, the tests of its area and two signed zips. When the owner says gate, the full test run (smoke, all end-to-end tests, the checks against nuBuilder) makes a gated release that is pushed to GitHub; the owner publishes the GitHub release.</desc>
+<defs><marker id="dg-devflow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
+<text x="20" y="20" dy=".35em" class="dg-t dg-n dg-start">A request</text>
+<rect x="20" y="40" width="150" height="56" rx="8" class="dg-box dg-n"/>
+<text x="95" y="58" dy=".35em" class="dg-t dg-n">Request</text>
+<text x="95" y="78" dy=".35em" class="dg-s dg-n">from the owner</text>
+<rect x="185" y="40" width="150" height="56" rx="8" class="dg-box dg-p"/>
+<text x="260" y="58" dy=".35em" class="dg-t dg-p">Change + tests</text>
+<text x="260" y="78" dy=".35em" class="dg-s dg-p">unit · area e2e · browser</text>
+<path d="M170 68 L183 68" class="dg-line" marker-end="url(#dg-devflow-arrow)"/>
+<rect x="350" y="40" width="150" height="56" rx="8" class="dg-box dg-p"/>
+<text x="425" y="58" dy=".35em" class="dg-t dg-p">Fast release</text>
+<text x="425" y="78" dy=".35em" class="dg-s dg-p">release.py: not gated</text>
+<path d="M335 68 L348 68" class="dg-line" marker-end="url(#dg-devflow-arrow)"/>
+<rect x="515" y="40" width="150" height="56" rx="8" class="dg-box dg-g"/>
+<text x="590" y="58" dy=".35em" class="dg-t dg-g">Two zips</text>
+<text x="590" y="78" dy=".35em" class="dg-s dg-g">nunext + nunext-dev</text>
+<path d="M500 68 L513 68" class="dg-line" marker-end="url(#dg-devflow-arrow)"/>
+<line x1="20" y1="130" x2="660" y2="130" class="dg-sep"/>
+<text x="20" y="158" dy=".35em" class="dg-t dg-n dg-start">“gate”</text>
+<rect x="20" y="178" width="150" height="56" rx="8" class="dg-box dg-p"/>
+<text x="95" y="196" dy=".35em" class="dg-t dg-p">Full test run</text>
+<text x="95" y="216" dy=".35em" class="dg-s dg-p">smoke · all e2e · compat</text>
+<rect x="185" y="178" width="150" height="56" rx="8" class="dg-box dg-p"/>
+<text x="260" y="196" dy=".35em" class="dg-t dg-p">Gated release</text>
+<text x="260" y="216" dy=".35em" class="dg-s dg-p">release.py --gate</text>
+<path d="M170 206 L183 206" class="dg-line" marker-end="url(#dg-devflow-arrow)"/>
+<rect x="350" y="178" width="150" height="56" rx="8" class="dg-box dg-g"/>
+<text x="425" y="196" dy=".35em" class="dg-t dg-g">Push to GitHub</text>
+<text x="425" y="216" dy=".35em" class="dg-s dg-g">all since the last gate</text>
+<path d="M335 206 L348 206" class="dg-line" marker-end="url(#dg-devflow-arrow)"/>
+<rect x="515" y="178" width="150" height="56" rx="8" class="dg-box dg-a"/>
+<text x="590" y="196" dy=".35em" class="dg-t dg-a">GitHub release</text>
+<text x="590" y="216" dy=".35em" class="dg-s dg-a">by the owner</text>
+<path d="M500 206 L513 206" class="dg-line" marker-end="url(#dg-devflow-arrow)"/>
+<text x="20" y="262" dy=".35em" class="dg-lbl dg-start">A failing test stops the release.</text>
+</svg></figure>
+
+<table class="table table-sm">
+<thead><tr><th></th><th>Fast release (default)</th><th>Gate (when you say "gate")</th></tr></thead>
+<tbody>
+<tr><td>Command</td><td><code>python3 dev/release.py &lt;version&gt; "&lt;title&gt;" changes.txt</code></td><td>the same with <code>--gate</code></td></tr>
+<tr><td>Checks</td><td><code>php -l</code> of every file, <code>dev/check_lang.php</code>, unit tests <code>dev/tests/run.php</code>, PHPStan, ESLint – plus by hand the e2e tests of the changed areas (<code>ONLY=…</code>) and screenshots</td><td>all of these plus the browser suites on the test installation: smoke test, all e2e tests, the cross-test against nuBuilder 4.9 (<code>compat.js</code>); a failing test stops the release</td></tr>
+<tr><td>Manifest</td><td><code>"gated": false</code> – the update page shows <em>Not fully tested</em></td><td><code>"gated": true</code>, <code>"last_gate"</code></td></tr>
+<tr><td>GitHub</td><td>nothing pushed</td><td>the project is copied to the repository clone, committed and pushed to <code>main</code> – everything since the last gate in one commit</td></tr>
+</tbody>
+</table>
+<p><code>release.py</code> prints the releases since the last gate; after five Claude reminds you to gate (also after changes to login, rights, the update or database steps). The gate needs the test installation's addresses in the environment: <code>NUNEXT_TEST_SITE</code> (folder), <code>NUNEXT_TEST_BASE</code> (its URL), <code>NUNEXT_TEST_NUB</code> (nuBuilder on the same database, for <code>compat.js</code>); optional <code>NUNEXT_TEST_LOAD=1</code> (large data, ~3 min) and <code>NUNEXT_TEST_A11Y=1</code> (accessibility).</p>
+<p>The push makes the code public on GitHub – it does <em>not</em> create a GitHub release. Servers updating from GitHub only see a version once its release exists (next chapter).</p>
+</div>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-manual">Making a release by hand</h3>
+<ol>
+<li>In the project folder (key next to it): write the changelog text into a file – <code>- </code> bullets, continuation lines indented by two spaces – and run <code>python3 dev/release.py 0.8.x "Title" changes.txt</code> (add <code>--gate</code> with the test variables set). The version must be higher than <code>NU_VERSION</code>.</li>
+<li>It updates <code>README.md</code> (version line), <code>CHANGELOG.md</code>, <code>NU_VERSION</code> in <code>core/nuapp.php</code>, <code>lang/en-US.php</code> / <code>de-CH.php</code>, <code>install/db_changes.json</code>, writes and signs <code>nunext-manifest.json</code> and builds <code>../nunext.zip</code> and <code>../nunext-dev.zip</code>.</li>
+<li>Check it like an installation would: <code>php dev/inspect.php &lt;test installation&gt; ../nunext.zip</code> → <code>ok=true</code>, the new version, <code>signature=valid</code>, <code>errors=[]</code>.</li>
+<li>Publish: on GitHub create a release with the tag <code>v0.8.x</code> (on the pushed commit), release notes made from the changelog (Claude writes them on request after the template <code>dev/release-notes.md</code>: link to the changelog, highlights, security, steps after updating), and attach <strong><code>nunext.zip</code></strong> (that file name – the update page looks for it; pre-release while nuBuilder Next is alpha). <code>nunext-dev.zip</code> is not needed there (the repository is the same).</li>
+<li>Library packs are a separate, fixed release with the tag <code>libraries</code> – touched only when a library changes (<a href="#libs-github">Publishing the packs on GitHub</a>). If the new version needs a newer library (<code>install/libraries-required.json</code>), update that release first.</li>
+</ol>
+<p>If a release must be rebuilt before it went out: set <code>NU_VERSION</code> back, remove its <code>CHANGELOG.md</code> section and the manifest's <code>changes</code> entry, then run it again.</p>
+</div>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-zips">What the packages contain</h3>
+<ul>
+<li><strong><code>nunext.zip</code></strong> – the install / update package, folder <code>nunext/</code> inside: everything that runs on a server. Left out because they are readable on a web server and not needed there: <code>CLAUDE.md</code>, <code>TODO.md</code>, <code>.gitignore</code>, <code>dev/</code>, <code>.github/</code>. Added (not in the manifest): <code>_install/nunext-lib-phpmailer-&lt;version&gt;.zip</code>, built and signed by <code>release.py</code> from <code>dev/libsrc/phpmailer/</code> – to update PHPMailer, replace that folder (only the release's PHPMailer; existing servers get it from the <code>libraries</code> release).</li>
+<li><strong><code>nunext-dev.zip</code></strong> – the whole project, to continue the development (send it to the next session).</li>
+<li><strong><code>nunext-manifest.json</code></strong> (in both): <code>version</code>, <code>built</code>, <code>files</code> (SHA-256 and size of every deployed file – the update checks each one and knows which old files to remove), <code>changes</code> (the change history shown on the update page), <code>libraries</code> (bundled libraries and versions), <code>requires_libs</code> (library versions this version needs), <code>page_api</code> (page form API versions – pages that would break are listed), <code>gated</code> / <code>last_gate</code>, and <code>signature</code> (Ed25519 over <code>nunext-release|&lt;version&gt;|sha256 of the file list</code>).</li>
+<li>Also inside: <code>install/db_changes.json</code> (the database steps and own tables – <em>Check package</em> previews the database changes), <code>install/schema_expected.json</code> (structure check), <code>install/libraries-required.json</code>.</li>
+<li>Folders: <code>vendor/bundled/</code> (bundled libraries, registry <code>libraries.json</code>), <code>vendor/nuconfig.php</code> (loader for the packed configs of phpMyAdmin / Tiny File Manager).</li>
+<li>Never inside: <code>nuconfig.php</code>, <code>vendor/packs/</code>, <code>third_party/</code>, <code>_backup/</code>, <code>_update/</code>, the signing key (see <code>.gitignore</code>).</li>
+</ul>
+</div>
+	<div class="doc-sub" data-doc="dev">
+<h3 id="devflow-tests">Tests</h3>
+<ul>
+<li><code>php dev/tests/run.php</code> – unit tests without a database (every release).</li>
+<li><code>dev/tests/smoke.js</code> – opens every page; <code>dev/tests/e2e.js</code> – the end-to-end tests (forms, rights, update page, library packs …; <code>ONLY=name1,name2</code> runs single ones; it saves the database first and puts it back); <code>dev/tests/compat.js</code> – nuBuilder 4.9 and nuBuilder Next on the same database, a save without a change must leave nuBuilder's rows alone.</li>
+<li><code>dev/tests/install.js</code> – the installer with an uploaded <code>nubuilder4.sql</code> (and <code>LIBPACKS=&lt;folder&gt;</code> for the library step); <code>load.js</code> – large data and timings; <code>a11y.js</code> – accessibility (WCAG 2.1 AA) in light, dark and phone width.</li>
+<li><a href="#selftest">Self-test</a> (<code>?p=selftest</code>) – the same kind of checks inside a running installation.</li>
+</ul>
+</div>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>CLAUDE.md (nunext-dev.zip)</code></li><li><code>dev/</code></li></ul></details>
+</section>

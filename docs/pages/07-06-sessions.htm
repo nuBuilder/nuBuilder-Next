@@ -1,0 +1,14 @@
+<section id="sessions" data-doc="admin" data-level="advanced">
+	<h2 id="sessions-h">Logged-in users</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Active sessions and ending them.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p><em>Log → Logged-in users</em> lists every active nuBuilder Next session: user, IP address, browser, login time and last activity (green = active in the last 5 minutes); click a column title to sort by it (again = the other way round), newest activity first by default. click a column title to sort by it (again = the other way round), newest activity first by default. Activity is recorded at most every 30 seconds.</p>
+<ul>
+<li><strong>End session</strong> signs the user out with his next click (your own session cannot be ended here).</li>
+<li><strong>Log out all others</strong> ends every nuBuilder Next session except your own; <strong>Log out everyone (incl. me)</strong> ends your own session too, and you sign in again. Both ask first and are logged (<em>All sessions ended</em>). nuBuilder's own sessions are not touched.</li>
+<li>The (i) next to the title shows the current timeouts. Sessions without activity for longer than <code>$nuConfigSessionTimeout</code> (globeadmin: <code>$nuConfigSessionTimeoutGlobeadmin</code>) disappear.</li>
+<li>The second list shows nuBuilder's sessions (<code>zzzzsys_session</code>) for information; they are ended in nuBuilder.</li>
+</ul>
+	<p class="doc-see">See also: <a href="#sessions-arch">Sessions and sign-in flow</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nusessions.php</code></li></ul></details>
+</section>

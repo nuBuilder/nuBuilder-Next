@@ -1,0 +1,30 @@
+<section id="theming" data-doc="admin">
+	<h2 id="theming-h">Theming and CSS</h2>
+	<p class="doc-lead">Light and dark mode, CSS variables and where your own CSS goes.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>nuBuilder Next is built on <strong>Bootstrap 5</strong> with a thin layer of its own CSS. Light and dark mode use Bootstrap's colour modes: the theme (light, dark, automatic) is chosen in the menu bar and set as <code>data-bs-theme</code> on <code>&lt;html&gt;</code>. Style your own elements with Bootstrap's CSS variables (<code>var(--bs-body-color)</code>, <code>var(--bs-border-color)</code> …) and they follow the theme automatically.</p>
+<div class="doc-sub">
+	<h3 id="theming-vars">nuBuilder Next's CSS variables</h3>
+	<table class="table table-sm">
+		<thead><tr><th>Variable</th><th>Used for</th></tr></thead>
+		<tbody>
+			<tr><td><code>--nu-accent</code>, <code>--nu-accent-2</code></td><td>Accent colours (logo, highlights) – set by <a href="#branding">Branding</a></td></tr>
+			<tr><td><code>--nu-page</code></td><td>Page background</td></tr>
+			<tr><td><code>--nu-surface</code></td><td>Background of cards, the menu bar and panels</td></tr>
+			<tr><td><code>--nu-highlight</code></td><td>Highlighted search words in lists</td></tr>
+		</tbody>
+	</table>
+	<p>Override them for dark mode under <code>[data-bs-theme="dark"]</code>. Other <code>--nu-…</code> variables in <code>assets/css/</code> are internal and may change.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="theming-where">Where your CSS goes</h3>
+	<ul>
+		<li><strong>All forms</strong>: Setup → <em>Style</em> (<a href="#setupcode">Setup code</a>) or <code>$nuConfigIncludeCSS</code> – loaded after nuBuilder Next's styles, so they can override them.</li>
+		<li><strong>One form</strong>: the form's style in the form builder.</li>
+		<li><strong>Pages</strong>: their own CSS files in the page folder – nuBuilder Next adds nothing (<a href="#pages">Pages</a>).</li>
+	</ul>
+	<p>Do not edit the files in <code>assets/css/</code>: an update replaces them. The element ids of forms are nuBuilder's (see <a href="#form-rendering">Form rendering pipeline</a>), so CSS written for nuBuilder mostly applies; forms with the automatic or grid layout use Bootstrap rows and columns instead of pixel positions.</p>
+</div>
+	<p class="doc-see">See also: <a href="#branding">Branding</a> · <a href="#setupcode">Setup code</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>assets/css/nuapp.css</code></li><li><code>assets/css/nuform.css</code></li><li><code>assets/js/nutheme.js</code></li><li><code>core/nubranding.php</code></li></ul></details>
+</section>

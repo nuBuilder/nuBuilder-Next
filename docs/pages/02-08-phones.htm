@@ -1,0 +1,21 @@
+<section id="phones">
+	<h2 id="phones-h">Phones and small screens</h2>
+	<p class="doc-lead">How nuBuilder Next adapts to phones and tablets, in one place.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone</p>
+	<p>nuBuilder Next has no separate mobile version: every page adapts to the width of the screen. The main differences:</p>
+<table class="table table-sm">
+	<thead><tr><th>Where</th><th>On a phone</th></tr></thead>
+	<tbody>
+		<tr><td>Menu bar</td><td>Behind the ☰ button.</td></tr>
+		<tr><td>Start page</td><td>A layout without its own phone settings shows a one-column list, and tabs become the side bar. A layout can have separate settings for phone (narrower than 576 px), tablet (narrower than 992 px) and desktop – see <a href="#home-page">Start page of the globeadmin</a>.</td></tr>
+		<tr><td>Lists of nuBuilder Next</td><td>Below 768 px every row is a card (title, badge, up to four lines), or a compact table whose first column stays while the others scroll – set per list in its <a href="#list-views">list view</a>. A button next to the view menu switches between cards and table on your phone; the choice is kept on the device.</td></tr>
+		<tr><td>Form lists</td><td>No page-size choice (Back / Next stay).</td></tr>
+		<tr><td>Edit forms</td><td>Forms with automatic or grid layout put objects below each other; Save, Clone and Delete show only their icon (the text is the tooltip).</td></tr>
+		<tr><td>Dashboards</td><td>One widget per row (tablets: two).</td></tr>
+		<tr><td>Help icons and tooltips</td><td>Tap instead of pointing.</td></tr>
+	</tbody>
+</table>
+<p>Forms built with absolute positions (nuBuilder's pixel layout) keep their positions; the automatic and grid layouts turn the same objects into responsive rows (see <a href="#form-rendering">Form rendering pipeline</a>).</p>
+	<p class="doc-see">See also: <a href="#list-views">List views</a> · <a href="#home-page">Start page of the globeadmin</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>assets/css/nuapp.css</code></li><li><code>core/form/nulayout.php</code></li></ul></details>
+</section>

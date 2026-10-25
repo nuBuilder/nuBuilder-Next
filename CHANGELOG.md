@@ -3,6 +3,111 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.510 – Exclude users in notifications, searchable report fields (gate)
+- Notifications: new field "Exclude users" (Tom Select) – these users never get the notification, also with Everybody (audience key
+  "exclude", also for nuNextNotify() and POST /v1/notifications). "Show" opens the recipients in a dialogue as a table – full name,
+  login name, department, team, position – sortable by a click on the column title.
+- Reports: the fields Launch form and Data source are searchable (Tom Select, description as second line).
+- Release gate: full test run (smoke, all end-to-end tests, compatibility with nuBuilder).
+
+## 0.8.509 – Placeholder line breaks, To do folded
+- E-mail templates: a placeholder clicked into the body gets a line break after it (<br>), so the next one starts on a new line.
+- To do (developer mode): every section is folded when the page opens; the folded state is no longer remembered.
+
+## 0.8.508 – User form details, sortable logged-in users, notes tab
+- User form: the field Confirm password has its own Show password button.
+- User form: ticking "Send welcome e-mail" shows a message saying what will send it – the procedure nu_send_welcome_email,
+  the e-mail template nu_send_welcome_email for the chosen language (code, language, description) or the built-in text.
+- User form: the tab "More" is now "Additional fields"; every field label shows its data type in brackets.
+- Logged-in users: the columns of both tables can be sorted (click the column title; default: newest activity first).
+- Notes: a note with an empty editor but text on the tab Additional opens on that tab (not remembered as the last tab).
+- E-mail templates: Back, Save, Clone and Delete in one row (normal button size).
+
+## 0.8.507 – Narrower permission item fields
+- Permission item form: the fields Ident and Group are at most 350 px wide.
+
+## 0.8.506 – Upload sample
+- Sample data 16: the form "Sample: all objects" has a new tab Upload – a file object with the target File System (Uppy). Files go
+  into the folder nu_uploads/ next to the web root through nuBuilder's procedure nu_upload_file_template (set up with the sample
+  data when missing); needs the library pack Uppy. Refresh the sample data (Admin tools → Sample data) to get it.
+- Uppy upload objects keep their width when their tab is opened later (nuBuilder's template read "100%" as 100 px on a hidden tab).
+
+## 0.8.505 – Update page: Install and Cancel on their own row
+- Update page: Install and Cancel on their own row below the install options (backup of the whole database, sample data …).
+
+## 0.8.504 – Start page: confirm before applying or undoing my view
+- Start page → Customise → Appearance, "Only me": "Make my view the layout’s view" and "Undo my changes" first open a dialog that says
+  what happens (Apply for everyone / Undo my changes, or Cancel). "You have 1 own change." in the singular. New texts
+  home_v_mine_count_one, home_v_make_layout_title / _text / _ok, home_v_undo_mine_title / _text / _ok. e2e home_view_confirm.
+
+## 0.8.503 – Security check: correct file results on hosts with bot protection
+- Security check → Files on the web shows correct results on hosts with a bot protection (e.g. InfinityFree): the requests carry the
+  browser's cookies (the host lets them through, as when the file is clicked), and a file counts as readable only when the answer is
+  the file itself (NuSecurity::probeMarks: its first characters; empty files: an empty answer). Any other page with HTTP 200 is shown
+  as "blocked – another page, not the file". New text secchk_probe_other. e2e sec_probe (simulated host page and 403).
+
+## 0.8.502 – Security check: files as links
+- Security check → Files on the web: every file is a link (new tab, no referrer) – open it yourself, best in a private window, to
+  see what a stranger sees (hosts with a bot protection, e.g. InfinityFree, can answer the check's cookie-less requests with their own
+  page and HTTP 200). New text secchk_probe_link.
+
+## 0.8.501 – Record info (i) on nine more pages
+- Record info (i) also on access levels, permission items, admin roles, reports, dashboards, translations, items, user fields and
+  files: record ID, code (where there is one), table, copy buttons. Reports and files: the title bar buttons sit in their own row as on
+  every page; the "ID …" text of the report page is gone. e2e record_info covers all pages.
+
+## 0.8.500 – Record info (i) on the user and procedure pages
+- User form and procedure editor: an (i) button next to Delete shows the record ID, the login name / code and the table, each with
+  a copy button and "Copy all" (NuFormInfo::record / panel – the panel of the form info, its styles now in nuapp.css); the "ID …" text
+  in the title bar is gone. New texts fi_record_title, fi_login. e2e record_info.
+
+## 0.8.499 – Developer mode: no whole-database backup by default
+- Update page: in developer mode ($nuConfigDevMode) "Back up the whole database too" is not ticked at first (otherwise as before:
+  ticked below 50 MB); the hint says so in all languages. e2e update_check checks it.
+
+## 0.8.498 – Remove single entries from Recently used
+- Recently used: right-click on an entry (long press on a phone) → Remove from recently used, in the side bar and in the start
+  page's row (NuSidebar::forget, POST ?p=sidebar action forget; demo: session); the menu also offers Clear recently used. New text
+  sb_recent_remove. e2e recent_forget.
+
+## 0.8.497 – Start page: favourites by right-click / long press
+- Start page: right-click on a tile (long press on a phone) opens a small menu with the tile's name and description and Add to
+  favourites / Remove from favourites (same change as the ☆ of the side bar, POST ?p=sidebar action fav; then the page reloads). Only
+  where the reader may change the favourites, not while customising; without that right a long press still shows the description.
+  e2e home_ctx_fav.
+
+## 0.8.496 – Help: ten more diagrams
+- Help: ten more diagrams in the style of the architecture and schema diagrams (light and dark mode) – sign-in and sessions, how a
+  save works, form lifecycle and event order (list, record, save, delete), form rendering pipeline, installing an update, which data
+  access rule wins, which start page a user gets, drafts and publishing, where libraries come from, fast and gated releases. The
+  text drawings of sessions and save are replaced.
+- Diagram colours: amber for your own code and for exits / stops, small labels on arrows (.dg-a, .dg-lbl in nuapp.css); wide
+  diagrams (.doc-flow-wide).
+- dev/doc_diagrams.py draws them and writes them into the pages (run again after a change; never edit the SVG in a page by hand).
+
+## 0.8.495 – Help: database schema diagram
+- Help → Database schema: the tables are a diagram (form definition, users and access) instead of the text drawing, light and
+  dark mode. dev/doc_svg.py turns a drawn SVG into the help's class-based inline SVG (strict CSP: no style attributes).
+
+## 0.8.494 – Help: architecture request flow diagram
+- Help → Architecture: the request flow is a diagram (inline SVG, colours by class in nuapp.css for light and dark mode) instead
+  of the text drawing. The help search does not mark words inside diagrams.
+
+## 0.8.493 – Help as wiki pages with basic / advanced topics
+- Help restructured like a wiki: numbered chapters → pages, one file per page in docs/pages/ (94 pages), reading order and tabs in
+  docs/toc.json. docs/nunext-docs.htm, docs/nunext-ref.htm and docs/porting-review.md are gone (an update removes them); every old
+  anchor still works (links from forms, the tutorial, the builder).
+- Page template: purpose, audience, content, "See also", relevant source files (admins). No version numbers in the text any more.
+- Basic / advanced: "Show advanced topics" switch in the help (remembered per browser); 24 advanced pages are hidden while it is off,
+  numbering closes the gaps; a link into an advanced page turns it on. New texts help_show_advanced / help_advanced.
+- New pages: key concepts, databases, phones, architecture (routing, startup, sessions, schema, rendering), form lifecycle and event
+  order, how a save works, validation, sign-in methods, table reference, theming, bundled libraries, migration, glossary, FAQ.
+- Differences and functions not ported (was porting-review.md): review questions removed; report functions (nuRunReport,
+  nuRunReportAction, nuRunReportSave), nuGet/SetNuDataValue, nuLogout, nuBrowseRow, nuGetNumberFormat, nuSetUploadError no longer listed
+  as missing; reports and SQL builder described as supported.
+- dev/tests/run.php reads the pages through toc.json (every page listed, one section / h2 each, no version numbers, chapter not more
+  restrictive than its pages, unique ids, links); e2e help_pages (switch, old ids, link into an advanced page).
+
 ## 0.8.492 – Recently used as one list; release gate (0.8.464–0.8.492)
 - Recently used is one list: the start page row "Recently used" shows the side bar's list (per user on the server, every device) instead of
   the search box's browser history. Pages and forms are recorded also while the side bar is off; tiles opened on the start page that

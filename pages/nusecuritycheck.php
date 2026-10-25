@@ -75,8 +75,8 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'container']);
 	</ul>
 </div>
 
-<div class="card shadow-sm mb-4" id="secProbe" data-urls="<?= h(json_encode(NuSecurity::probeUrls())) ?>"
-	 data-ok="<?= h(t('secchk_probe_ok')) ?>" data-empty="<?= h(t('secchk_probe_empty')) ?>" data-open="<?= h(t('secchk_probe_open')) ?>" data-error="<?= h(t('secchk_probe_error')) ?>">
+<div class="card shadow-sm mb-4" id="secProbe" data-urls="<?= h(json_encode(NuSecurity::probeUrls())) ?>" data-marks="<?= h((string)json_encode(NuSecurity::probeMarks(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE)) ?>"
+	 data-ok="<?= h(t('secchk_probe_ok')) ?>" data-empty="<?= h(t('secchk_probe_empty')) ?>" data-open="<?= h(t('secchk_probe_open')) ?>" data-error="<?= h(t('secchk_probe_error')) ?>" data-link="<?= h(t('secchk_probe_link')) ?>" data-other="<?= h(t('secchk_probe_other')) ?>">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><?= h(t('secchk_probe_title')) ?><?= $tip(t('secchk_probe_tip')) ?></span>
 		<span class="badge text-bg-secondary js-probe-summary">…</span>

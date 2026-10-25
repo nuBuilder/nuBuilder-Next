@@ -1,0 +1,28 @@
+<section id="validation" data-acl="nuform" data-level="advanced">
+	<h2 id="validation-h">Validation and business rules</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Required and unique fields, masks, and rules written in Before Save.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
+	<div class="doc-sub">
+	<h3 id="validation-builtin">Built-in checks</h3>
+	<p>Set per object in the form builder (nuBuilder's <em>Validation</em> of an object). They are checked on the server for every save, also when the browser's checks are bypassed:</p>
+	<table class="table table-sm">
+		<thead><tr><th>Check</th><th>Marker after the label</th><th>Message</th></tr></thead>
+		<tbody>
+			<tr><td>Required (no blanks)</td><td><code>*</code></td><td>"… cannot be blank."</td></tr>
+			<tr><td>Unique (no duplicates in the table)</td><td>blue ◆</td><td>"… must be unique – this value already exists."</td></tr>
+			<tr><td>Text mask complete (format with the option "complete")</td><td>–</td><td>names the field (and the row of a sub-form)</td></tr>
+		</tbody>
+	</table>
+	<p>Fields the user cannot write (read only, hidden, field data access) are not checked from the post. The markers can be switched off with <code>$nuConfigValidationMarkers</code>.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="validation-own">Your own rules</h3>
+	<ul>
+		<li><strong>In the browser</strong>: <code>nuBeforeSave()</code> returning <code>false</code> – quick feedback, but not a protection.</li>
+		<li><strong>On the server</strong>: in <strong>Before Save</strong> read the posted values (<code>'#field#'</code> or <code>nuGetNuDataValue()</code>) and stop with <code>nuDisplayError('message', 'field')</code> – the field is highlighted. For rules that apply to every form, use the global hook <code>nu_before_save</code>.</li>
+		<li><strong>Who may change what</strong> belongs into rights, not code: access levels, <a href="#data-access">field data access</a>, permission items (<code>nuUserHasPermission()</code>).</li>
+	</ul>
+</div>
+	<p class="doc-see">See also: <a href="#save-flow">How a save works</a> · <a href="#hooks">PHP hooks and procedures</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nurecord.php</code></li><li><code>core/form/nuformat.php</code></li></ul></details>
+</section>

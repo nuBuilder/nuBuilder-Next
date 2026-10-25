@@ -7,6 +7,7 @@ defined('NU_ROOT') || exit;
  *   toggle   the side bar on / off for me
  *   default  on / off for everyone without an own choice (the globeadmin)
  *   clear    empty my "Recently used"
+ *   forget   one entry (key) out of my "Recently used"
  *   fav      ☆ of a start page tile (key) – the start page's favourites
  *   used     a start page tile was opened (key; sent with navigator.sendBeacon, answers 204 – 0.8.492)
  */
@@ -32,6 +33,9 @@ switch (nu_post('action')) {
 		break;
 	case 'clear':
 		NuSidebar::clearRecent();
+		break;
+	case 'forget':
+		NuSidebar::forget(nu_post('key'));
 		break;
 	case 'fav':
 		$demoUser = !empty($u['demo']);

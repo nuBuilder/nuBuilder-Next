@@ -57,7 +57,31 @@ final class NuFormInfo
 	/** The button with its panel (a Bootstrap dropdown: closes on Esc and on a click outside). */
 	public static function html(NuFormMeta $meta, string $mode, ?string $recordId): string
 	{
-		$rows = self::rows($meta, $mode, $recordId);
+		return self::panel(self::rows($meta, $mode, $recordId), t('fi_title'), 'nuFormInfo');
+	}
+
+	/**
+	 * Record info of nuBuilder Next's own record pages (0.8.500: user, procedure): the record ID, the table and created / last changed
+	 * from the audit trail, plus $extra rows ['key' => value] (labels fi_<key>). The same (i) panel as the form info.
+	 */
+	public static function record(string $table, string $id, array $extra = [], string $idBase = 'nuRecInfo'): string
+	{
+		$rows = [];
+		$add = static function (string $key, string $value, bool $code = true) use (&$rows): void {
+			$rows[] = ['key' => $key, 'label' => t('fi_' . $key), 'value' => $value, 'code' => $code];
+		};
+		$add('record_id', $id);
+		foreach ($extra as $k => $v) $add((string)$k, (string)$v);
+		$add('table', $table);
+		[$created, $changed] = self::audit($table, $id);              // only when the audit trail has the record (own pages are not audited)
+		if ($created !== '') $add('created', $created, false);
+		if ($changed !== '') $add('changed', $changed, false);
+		return self::panel($rows, t('fi_record_title'), $idBase);
+	}
+
+	/** @param list<array{key: string, label: string, value: string, code: bool, long?: bool}> $rows */
+	public static function panel(array $rows, string $title, string $idBase): string
+	{
 		$all = [];
 		$items = '';
 		foreach ($rows as $r) {
@@ -73,11 +97,11 @@ final class NuFormInfo
 			$items .= '<div class="nuFormInfoRow" data-key="' . h($r['key']) . '"><dt>' . h($r['label']) . '</dt><dd>' . $shown . '</dd>' . $copy . '</div>';
 		}
 		return '<div class="dropdown">'
-			. '<button type="button" class="btn btn-outline-secondary" id="nuFormInfoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . h(t('fi_title')) . '" aria-label="' . h(t('fi_title')) . '"><i class="bi bi-info-circle"></i></button>'
-			. '<div class="dropdown-menu dropdown-menu-end p-0 nuFormInfo" id="nuFormInfo">'
-			. '<div class="px-3 py-2 border-bottom fw-semibold small">' . h(t('fi_title')) . '</div>'
+			. '<button type="button" class="btn btn-outline-secondary" id="' . h($idBase) . 'Btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . h($title) . '" aria-label="' . h($title) . '"><i class="bi bi-info-circle"></i></button>'
+			. '<div class="dropdown-menu dropdown-menu-end p-0 nuFormInfo" id="' . h($idBase) . '">'
+			. '<div class="px-3 py-2 border-bottom fw-semibold small">' . h($title) . '</div>'
 			. '<dl class="nuFormInfoList small mb-0">' . $items . '</dl>'
-			. '<div class="border-top px-3 py-2 text-end"><button type="button" class="btn btn-sm btn-outline-secondary" id="nuFormInfoCopyAll" data-nu-copy-text="' . h(implode("\n", $all)) . '"><i class="bi bi-clipboard me-1"></i>' . h(t('fi_copy_all')) . '</button></div>'
+			. '<div class="border-top px-3 py-2 text-end"><button type="button" class="btn btn-sm btn-outline-secondary" id="' . h($idBase) . 'CopyAll" data-nu-copy-text="' . h(implode("\n", $all)) . '"><i class="bi bi-clipboard me-1"></i>' . h(t('fi_copy_all')) . '</button></div>'
 			. '</div></div>';
 	}
 }

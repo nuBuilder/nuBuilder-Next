@@ -269,7 +269,7 @@ function nu_sidebar(): void
 		return '<li class="nuSbItem' . ($it['current'] ? ' active' : '') . ($it['fav'] ? ' fav' : '') . '" data-nu-sb="' . h($it['key']) . '">' . $link . $star . '</li>';
 	};
 	$section = static function (string $id, string $icon, string $title, array $items, string $empty, string $extra = '') use ($item): string {
-		return '<section class="nuSbSec nuSbSec-' . $id . '"' . ($id === 'recent' ? ' data-t-clear="' . h(t('sb_recent_clear_menu')) . '"' : '') . ' aria-labelledby="nuSbH-' . $id . '"><h2 class="nuSbSecTitle" id="nuSbH-' . $id . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>'
+		return '<section class="nuSbSec nuSbSec-' . $id . '"' . ($id === 'recent' ? ' data-t-clear="' . h(t('sb_recent_clear_menu')) . '" data-t-remove="' . h(t('sb_recent_remove')) . '" data-csrf="' . h(nu_csrf_token()) . '" data-url="' . h(nu_url('sidebar')) . '"' : '') . ' aria-labelledby="nuSbH-' . $id . '"><h2 class="nuSbSecTitle" id="nuSbH-' . $id . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>'
 			. '<span class="nuSbText">' . h($title) . '</span>' . ($items ? '<span class="nuSbCount">' . count($items) . '</span>' : '') . $extra . '</h2>'
 			. ($items ? '<ul class="nuSbList">' . implode('', array_map($item, $items)) . '</ul>' : '<p class="nuSbEmpty">' . h($empty) . '</p>') . '</section>';
 	};

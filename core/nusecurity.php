@@ -265,7 +265,7 @@ final class NuSecurity
 	/** Files of the package that must never be served (Admin tools → Security check requests them from the browser). */
 	public static function probeUrls(): array
 	{
-		$urls = ['README.md', 'nunext-manifest.json', 'install/schema_mysql.sql', 'lang/en.php', 'core/nuauth.php', 'docs/nunext-docs.htm'];
+		$urls = ['README.md', 'nunext-manifest.json', 'install/schema_mysql.sql', 'lang/en.php', 'core/nuauth.php', 'docs/toc.json'];
 		$bd = NuUpdate::backupDir();
 		if (str_starts_with(str_replace('\\', '/', $bd), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($bd, strlen(NU_ROOT) + 1) . '/index.html';
 		if (is_dir(NU_ROOT . '/temp')) $urls[] = 'temp/index.html';
@@ -287,6 +287,21 @@ final class NuSecurity
 		$adm = NuVendor::adminerFile();
 		if ($adm !== '' && str_starts_with(str_replace('\\', '/', $adm), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr(str_replace('\\', '/', $adm), strlen(NU_ROOT) + 1);
 		return $urls;
+	}
+
+	/**
+	 * What each probed file really starts with (0.8.503): the Security check counts a file as readable only when the answer contains
+	 * this – a host's own page (bot protection, error page) with HTTP 200 is not the file. '' = an empty file (index.html of a closed
+	 * folder). @return array<string, string> url => the first 80 characters (line ends as \n)
+	 */
+	public static function probeMarks(): array
+	{
+		$out = [];
+		foreach (self::probeUrls() as $u) {
+			$c = (string)@file_get_contents(NU_ROOT . '/' . $u, false, null, 0, 400);
+			$out[$u] = mb_substr(ltrim(str_replace("\r", '', $c)), 0, 80);
+		}
+		return $out;
 	}
 
 	// ================================================================= libraries taken from nuBuilder

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.492 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.510 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder 4.**
 
@@ -17,7 +17,7 @@
 - 📦 [Releases](https://github.com/nuBuilder/nuBuilder-Next/releases) – download `nunext.zip`
 - 📝 [Changelog](https://github.com/nuBuilder/nuBuilder-Next/blob/main/CHANGELOG.md)
 - 💬 [nuBuilder Community Forum](https://forum.nubuilder.cloud/)
-- 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`, tabs Guide and Code reference); source `docs/nunext-docs.htm` and `docs/nunext-ref.htm`
+- 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`, tabs Guide and Code reference); source: one file per page in `docs/pages/`, in reading order in `docs/toc.json`
 
 ---
 
@@ -127,7 +127,7 @@ the web server afterwards.
 - Language: `sus_language` with nuBuilder's names (German, English, French, Italian, Spanish, Portuguese, Russian, Chinese
   (Simplified), Dutch, Polish, Arabic); empty → the browser's language.
 - Own sessions (cookie `nunext`); a shared login with nuBuilder is possible (`$nuConfigSharedLogin`).
-- Differences to nuBuilder and what is not ported: `docs/porting-review.md`.
+- Differences to nuBuilder and what is not ported: help → Code reference → *Migrating from nuBuilder 4.9* (`docs/pages/12-02-porting.htm`).
 
 ---
 

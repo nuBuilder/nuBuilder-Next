@@ -1,0 +1,17 @@
+<section id="access" data-acl="nuaccess">
+	<h2 id="access-h">Access levels</h2>
+	<p class="doc-lead">Which forms and buttons a user may use.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuaccess</p>
+	<p>Menu <em>Access levels</em>. An access level lists the forms a user may open and, per form, the buttons: Save, Add/New, Delete, Clone, Print. The row itself means "may view". Procedures need their own entry.</p>
+<p>The form has two tabs: <strong>General</strong> (code, description, group, start form, two-factor login, the users with this level) and <strong>Form rights</strong> (the forms and their buttons; the badge shows how many). The open tab stays after <em>Save</em> and in the address (<code>&amp;tab=rights</code>); an error opens the tab that shows it.</p>
+<ul>
+<li><strong>Use two-factor authentication</strong>: users of this level must confirm their login with a second factor – an authenticator app or a code by e-mail (hover or focus the <i class="bi bi-info-circle"></i> icon for this hint). It needs <code>$nuConfig2FAUser = true</code>; the form shows whether it is on, and while it is off the globeadmin can switch it on there (<em>Switch on</em>, or a link to Settings when the settings table is used).</li>
+<li><strong>Reports</strong>: the reports users of this level may run (nuBuilder's <code>zzzzsys_access_report</code>); the form shows how many are ticked. They are set on the report itself (see <a href="#reports">Reports</a>).</li>
+<li><strong>Adding forms</strong>: pick one form from the list (type to search by code or description; forms already in the list are greyed out), or click <em>Several…</em>: search (code, description, table), filter by form group, type and own / nuBuilder system forms, tick the forms (or <em>Select all shown</em>) and choose the rights the new rows get – e.g. everything but Delete. Forms already in the list are hidden. Save afterwards.</li>
+<li><strong>Removing a form</strong>: <i class="bi bi-x-circle"></i> crosses the row out – it is removed when you save the access level. Until then the same button (<i class="bi bi-arrow-counterclockwise"></i>) brings it back. The form builder's lists (tabs, list columns, events, columns of a new table, HTML attributes) work the same way.</li>
+<li><strong>Data mode</strong> and <strong>Form type</strong> per form (as in nuBuilder 4.9, enforced): <em>No changes to existing records</em> opens existing records read only, without <em>Save</em> – the server refuses a save even from code (“Changes to existing records are not allowed”); new records, <em>Clone</em> and <em>Delete</em> follow their own rights. <em>Browse only</em> shows the list, but no record (also no new one: no <em>Add</em>, rows open nothing); <em>Edit only</em> opens records, but not the list (nor its export). The globeadmin and admin roles with <em>change</em> on the form are not limited.</li>
+<li>An access level cannot be deleted while users still have it. Deleting it also removes its form, procedure and report rights; cloning copies them.</li>
+</ul>
+	<p class="doc-see">See also: <a href="#rights">Authentication and security</a> · <a href="#data-access">Data access: fields and list columns per user</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuacl.php</code></li><li><code>pages/nuaccesslevel.php</code></li></ul></details>
+</section>

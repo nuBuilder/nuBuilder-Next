@@ -466,21 +466,42 @@ check('formspec: parse fenced / plain / with comments / errors', is_array($pa) &
 $help = preg_replace('~//.*$~m', '', explode("\nRules:", NuFormSpec::formatHelp())[0]);
 check('formspec: the example of the prompt is valid JSON', is_array(json_decode((string)$help, true)), json_last_error_msg());
 
-// help in two files (0.8.464): guide + code reference – ids unique over both, every #link points to an id of one of them
-$helpIds = []; $helpLinks = [];
+// help: one file per page in docs/pages/, listed in docs/toc.json (0.8.493) – ids unique over all files, every #link points to an id
+$helpIds = []; $helpLinks = []; $tocFiles = []; $pageProblems = [];
 try { $fnHtml = NuFnRef::tabs(); } catch (Throwable) { $fnHtml = ''; }
-foreach (['docs/nunext-docs.htm', 'docs/nunext-ref.htm'] as $hf) {
-	$src = (string)@file_get_contents(NU_ROOT . '/' . $hf);
-	$src = (string)preg_replace('/<!--.*?-->/s', '', $src);
-	if ($hf === 'docs/nunext-ref.htm') $src = str_replace('<div data-nu-fnref="tabs"></div>', $fnHtml, $src);
-	preg_match_all('/\sid="([^"]+)"/', $src, $m);
-	foreach ($m[1] as $id) $helpIds[$id][] = $hf;
-	preg_match_all('/href="#([^"]+)"/', $src, $m);
-	foreach ($m[1] as $l) $helpLinks[$l] = $hf;
+$toc = json_decode((string)@file_get_contents(NU_ROOT . '/docs/toc.json'), true);
+check('help: docs/toc.json is valid', is_array($toc) && !empty($toc['chapters']));
+$rank = static function (string $sec): int {                  // how restrictive a section is: 0 everybody, 1 acl, 2 admin, 3 dev
+	if (preg_match('/<section\b[^>]*\bdata-doc="dev"/', $sec)) return 3;
+	if (preg_match('/<section\b[^>]*\bdata-doc="admin"/', $sec)) return 2;
+	return preg_match('/<section\b[^>]*\bdata-acl="/', $sec) ? 1 : 0;
+};
+foreach ((array)($toc['chapters'] ?? []) as $ch) {
+	$chSrc = (string)@file_get_contents(NU_ROOT . '/docs/pages/' . ($ch['file'] ?? ''));
+	$chRank = $rank($chSrc);
+	foreach (array_merge([$ch], (array)($ch['pages'] ?? [])) as $pg) {
+		$f = (string)($pg['file'] ?? '');
+		$tocFiles[] = $f;
+		$src = (string)@file_get_contents(NU_ROOT . '/docs/pages/' . $f);
+		if ($src === '') { $pageProblems[] = "$f missing"; continue; }
+		$src = (string)preg_replace('/<!--.*?-->/s', '', $src);
+		if (preg_match_all('/<section\b/', $src) !== 1 || preg_match_all('/<h2\b/', $src) !== 1) $pageProblems[] = "$f: not one section / h2";
+		if (preg_match('/\b0\.8\.\d+/', $src)) $pageProblems[] = "$f: version number";
+		if ($pg !== $ch && $rank($src) < $chRank) $pageProblems[] = "$f: chapter more restrictive than the page";
+		$src = str_replace('<div data-nu-fnref="tabs"></div>', $fnHtml, $src);
+		preg_match_all('/\sid="([^"]+)"/', $src, $m);
+		foreach ($m[1] as $id) $helpIds[$id][] = $f;
+		preg_match_all('/href="#([^"]+)"/', $src, $m);
+		foreach ($m[1] as $l) $helpLinks[$l] = $f;
+	}
 }
-check('help: both files have chapters', count($helpIds) > 200 && is_file(NU_ROOT . '/docs/nunext-ref.htm'));
-$dupIds = array_keys(array_filter($helpIds, static fn($f) => count($f) > 1 && count(array_unique($f)) > 1));
-check('help: ids unique over guide and code reference', !$dupIds, implode(', ', array_slice($dupIds, 0, 10)));
+$onDisk = array_map('basename', glob(NU_ROOT . '/docs/pages/*.htm') ?: []);
+check('help: every page file is in toc.json and the other way round', !array_diff($onDisk, $tocFiles) && !array_diff($tocFiles, $onDisk) && count($tocFiles) === count(array_unique($tocFiles)),
+	implode(', ', array_merge(array_diff($onDisk, $tocFiles), array_diff($tocFiles, $onDisk))));
+check('help: pages well formed (one section and h2, no version numbers, chapter not more restrictive)', !$pageProblems, implode('; ', array_slice($pageProblems, 0, 10)));
+check('help: pages have chapters', count($helpIds) > 200 && count($tocFiles) > 50);
+$dupIds = array_keys(array_filter($helpIds, static fn($f) => count($f) > 1));
+check('help: ids unique over all pages', !$dupIds, implode(', ', array_slice($dupIds, 0, 10)));
 $deadLinks = array_values(array_filter(array_keys($helpLinks), static fn($l) => !isset($helpIds[$l])));
 check('help: every #link of the help points to an id', !$deadLinks, implode(', ', array_slice($deadLinks, 0, 15)));
 preg_match_all('/data-help="([^"]+)"/', (string)preg_replace('/<!--.*?-->/s', '', (string)@file_get_contents(NU_ROOT . '/docs/nunext-tutorial.htm')), $m);

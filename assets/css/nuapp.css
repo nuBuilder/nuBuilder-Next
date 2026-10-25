@@ -248,7 +248,58 @@ fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-c
 .nuHelpToc a { display: block; padding: .15rem .5rem; border-radius: .375rem; text-decoration: none; color: var(--bs-body-color); }
 .nuHelpToc a:hover, .nuHelpToc a.active { background: var(--bs-secondary-bg); }
 .nuHelpToc .nuHelpToc2 { font-weight: 600; margin-top: .35rem; }
-.nuHelpToc .nuHelpToc3 { font-size: .875rem; padding-inline-start: 1.25rem; color: var(--bs-secondary-color); }
+.nuHelpToc .nuHelpTocPage { font-size: .9rem; padding-inline-start: 1rem; }
+.nuHelpToc .nuHelpToc3 { font-size: .8125rem; padding-inline-start: 2rem; color: var(--bs-secondary-color); }
+.nuHelpToc .nuHelpTocSubs { display: none; }                                   /* h3 entries: only of the open page, or while searching */
+.nuHelpToc li.nuOpen > .nuHelpTocSubs, .nuHelpToc.nuHelpTocSearching .nuHelpTocSubs { display: block; }
+.nuHelpToc > ul > li > .nuHelpTocSubs .nuHelpToc3 { padding-inline-start: 1rem; }   /* a chapter's own h3 */
+/* documentation pages (docs/pages/, see docs/toc.json) */
+.nuHelpBody .doc-num { color: var(--bs-secondary-color); font-weight: 400; margin-inline-end: .35rem; }
+.nuHelpToc .doc-num { color: var(--bs-secondary-color); font-weight: 400; margin-inline-end: .25rem; }
+.nuHelpBody section[data-nu-level="1"] { border-inline-start: 4px solid var(--nu-accent); }
+.nuHelpBody .doc-lead { font-size: 1.05rem; color: var(--bs-secondary-color); }
+.nuHelpBody .doc-for { font-size: .8rem; color: var(--bs-secondary-color); margin-top: -.5rem; }
+.nuHelpBody .doc-adv { background: var(--bs-info-bg-subtle); color: var(--bs-info-text-emphasis); font-weight: 600; vertical-align: .1em; }
+.nuHelpBody .doc-see { font-size: .9rem; border-top: 1px solid var(--bs-border-color-translucent); padding-top: .5rem; margin-top: 1rem; }
+.nuHelpBody details.doc-src { font-size: .85rem; color: var(--bs-secondary-color); }
+.nuHelpBody details.doc-src ul { margin: .25rem 0 0; columns: 2; }
+.nuHelpBody pre.doc-diagram { white-space: pre; overflow-x: auto; }
+/* help diagrams as inline SVG (0.8.494, architecture request flow): colours by class, light and dark */
+.nuHelpBody .doc-figure { margin: 1rem 0 1.25rem; overflow-x: auto; }
+.nuHelpBody svg.doc-flow { display: block; width: 100%; max-width: 680px; min-width: 520px; height: auto; font-family: var(--bs-body-font-family); }
+.nuHelpBody svg.doc-flow-wide { max-width: 760px; min-width: 580px; }
+.doc-flow .dg-t { font-size: 14px; font-weight: 500; text-anchor: middle; }
+.doc-flow .dg-s { font-size: 12px; text-anchor: middle; }
+.doc-flow .dg-lbl { font-size: 11px; text-anchor: middle; fill: #6c6a64; }
+.doc-flow .dg-start { text-anchor: start; }
+.doc-flow .dg-end { text-anchor: end; }
+.doc-flow .dg-box.dg-a { fill: #faeeda; stroke: #ba7517; }
+.doc-flow .dg-t.dg-a { fill: #633806; } .doc-flow .dg-s.dg-a { fill: #854f0b; }
+[data-bs-theme="dark"] .doc-flow .dg-box.dg-a { fill: #3b2a12; stroke: #d99a3e; }
+[data-bs-theme="dark"] .doc-flow .dg-t.dg-a { fill: #fbe3bd; } [data-bs-theme="dark"] .doc-flow .dg-s.dg-a { fill: #efc27c; }
+[data-bs-theme="dark"] .doc-flow .dg-lbl { fill: #a7adb4; }
+.doc-flow .dg-box { stroke-width: .5px; }
+.doc-flow .dg-line { fill: none; stroke: #898781; stroke-width: 1.5px; }
+.doc-flow .dg-sep { fill: none; stroke: #898781; stroke-width: .5px; stroke-dasharray: 4 3; }
+.doc-flow .dg-head { fill: none; stroke: #898781; stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round; }
+.doc-flow .dg-box.dg-n { fill: #fcfcfb; stroke: rgba(11, 11, 11, .2); }
+.doc-flow .dg-box.dg-p { fill: #eeedfe; stroke: #534ab7; }
+.doc-flow .dg-box.dg-g { fill: #e1f5ee; stroke: #0f6e56; }
+.doc-flow .dg-t.dg-n { fill: #0b0b0b; } .doc-flow .dg-s.dg-n { fill: #52514e; }
+.doc-flow .dg-t.dg-p { fill: #3c3489; } .doc-flow .dg-s.dg-p { fill: #534ab7; }
+.doc-flow .dg-t.dg-g { fill: #085041; } .doc-flow .dg-s.dg-g { fill: #0f6e56; }
+[data-bs-theme="dark"] .doc-flow .dg-box.dg-n { fill: #2b2f33; stroke: rgba(255, 255, 255, .25); }
+[data-bs-theme="dark"] .doc-flow .dg-box.dg-p { fill: #2a2650; stroke: #8f86e8; }
+[data-bs-theme="dark"] .doc-flow .dg-box.dg-g { fill: #133a30; stroke: #4cc39e; }
+[data-bs-theme="dark"] .doc-flow .dg-t.dg-n { fill: #e9ecef; } [data-bs-theme="dark"] .doc-flow .dg-s.dg-n { fill: #adb5bd; }
+[data-bs-theme="dark"] .doc-flow .dg-t.dg-p { fill: #d6d2ff; } [data-bs-theme="dark"] .doc-flow .dg-s.dg-p { fill: #b3acf5; }
+[data-bs-theme="dark"] .doc-flow .dg-t.dg-g { fill: #bfeedd; } [data-bs-theme="dark"] .doc-flow .dg-s.dg-g { fill: #7fd8b8; }
+[data-bs-theme="dark"] .doc-flow .dg-line, [data-bs-theme="dark"] .doc-flow .dg-sep, [data-bs-theme="dark"] .doc-flow .dg-head { stroke: #8d939a; }
+.nuHelpBody dl.doc-glossary dt, .nuHelpBody dl.doc-faq dt { margin-top: .5rem; }
+.nuHelpBody dl.doc-glossary dd, .nuHelpBody dl.doc-faq dd { margin-inline-start: 1rem; }
+/* basic mode: "Show advanced topics" off (nuhelp.js) */
+.nuHelpBasic .nuHelpBody [data-level="advanced"], .nuHelpBasic .nuHelpToc li.nuAdv { display: none !important; }
+@media (max-width: 575.98px) { .nuHelpBody details.doc-src ul { columns: 1; } }
 .nuHelpBody { max-width: 60rem; }
 .nuHelpBody section { background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: .75rem; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
 .nuHelpBody h2 { font-size: 1.35rem; margin-bottom: .75rem; }
@@ -430,6 +481,7 @@ body.nu-print-list { background: var(--bs-body-bg); font-size: .85rem; }
 
 /* user form: permission items */
 .userPermSearch { max-width: 260px; }
+.permField { max-width: 350px; }   /* permission item: Ident and Group (0.8.507) */
 #userPerms .userPermItem, #userPerms .userPermItem label { cursor: pointer; }
 #userPerms .userPermCheck { width: 2.5rem; }
 #userPerms .userPermItem label { margin: 0; }
@@ -1213,11 +1265,11 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuBellLv-warning .nuBellIcon, .nuBellIcon.nuBellLv-warning { color: #d39e00; }
 .nuBellLv-danger .nuBellIcon, .nuBellIcon.nuBellLv-danger { color: var(--bs-danger); }
 .nuBellToasts { z-index: 1090; margin-top: 3.5rem; }
+.nuWelcomeToasts { z-index: 1090; margin-top: 3.5rem; }   /* user form: which welcome e-mail is sent (0.8.508) */
 .nuBellToast { cursor: pointer; }
 .nuNtfItem.nuBellUnread { border-color: var(--bs-primary-border-subtle) !important; }
 .nuNtfItem.nuBellLv-danger { border-inline-start: 4px solid var(--bs-danger) !important; }
 .nuNtfItem.nuBellLv-warning { border-inline-start: 4px solid #d39e00 !important; }
-.nuNtfNames { max-height: 8rem; overflow-y: auto; }
 
 /* notification form (0.8.358): the chosen level light in its own colour instead of the dark grey of Bootstrap's checked button */
 .nuNtfLevels .btn { --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-border-color); color: var(--bs-body-color); }
@@ -1433,3 +1485,18 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 .daRules .daSubject { min-width: 11rem; }
 .daRules select.daMode { min-width: 10rem; }
 .daRules td:nth-child(5) input { min-width: 14rem; }
+
+/* form info / record info (i) panel (0.8.435; own record pages 0.8.500) – NuFormInfo::panel() */
+.nuFormInfo { width: 26rem; max-width: calc(100vw - 2rem); }
+.nuFormInfoList { padding: .25rem 0; }
+.nuFormInfoRow { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; align-items: start; gap: .5rem; padding: .25rem .5rem .25rem 1rem; }
+.nuFormInfoRow:hover { background: var(--bs-tertiary-bg); }
+.nuFormInfoRow dt { font-weight: 500; color: var(--bs-secondary-color); padding-top: .2rem; }
+.nuFormInfoRow dd { margin: 0; padding-top: .2rem; overflow-wrap: anywhere; min-width: 0; }
+.nuFormInfoRow code { color: var(--bs-body-color); }
+.nuFormInfoCopy { padding: 0 .35rem; line-height: 1.6; color: var(--bs-secondary-color); }
+.nuFormInfoCopy:hover, .nuFormInfoCopy:focus-visible { color: var(--bs-primary); }
+.nuFormInfoSql { max-height: 8rem; overflow: auto; white-space: pre-wrap; font-size: .8em; background: var(--bs-tertiary-bg); padding: .25rem .4rem; border-radius: .25rem; }
+
+/* a form whose fields join the flex row around it (update page: options, then Install + Cancel on their own row, 0.8.505) */
+.nuContents { display: contents; }

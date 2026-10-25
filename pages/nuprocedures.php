@@ -174,7 +174,6 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 	<div class="nuTitleBar mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-filetype-php me-2"></i><?= h($proc ? (string)$proc['sph_code'] : t('proc_new')) ?>
 			<?php if ($proc && (string)$proc['sph_template'] === '1'): ?><span class="badge text-bg-light border fs-6 align-middle"><?= h(t('proc_template')) ?></span><?php endif; ?></h1>
-		<?php if ($proc): ?><div class="nuTitleSub text-body-secondary small">ID <?= h($id) ?></div><?php endif; ?>
 		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page (0.8.474) -->
 		<a class="btn nuBtnAct" href="<?= h(nu_url('procedures')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="procSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
@@ -187,6 +186,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="procDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
 		<?php endif; ?>
+		<?php if ($proc): ?><?= NuFormInfo::record('zzzzsys_php', (string)$id, ['code' => (string)$proc['sph_code']]) /* (i): record ID … (0.8.500) */ ?><?php endif; ?>
 		</div>
 	</div>
 	<?php if ($proc && NuProcedure::locked($proc)): ?><div class="alert alert-info py-2 small"><?= h(t('proc_template_locked')) ?></div><?php endif; ?>

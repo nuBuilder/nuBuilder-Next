@@ -1,0 +1,17 @@
+<section id="startup" data-doc="admin">
+	<h2 id="startup-h">Startup and configuration</h2>
+	<p class="doc-lead">What happens before a page runs: nuconfig.php, security headers, the session and housekeeping.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p><code>core/nuapp.php</code> is loaded first by <code>index.php</code>, <code>api.php</code> and <code>cron.php</code> (<code>dbadmin.php</code> deliberately not – Adminer's functions would clash). It defines the helpers and loads most classes only when they are first used. <code>nu_boot()</code> then prepares the request:</p>
+<ol>
+	<li><strong>Configuration</strong> – <code>nuconfig.php</code> is read on every request (<code>nu_config()</code>, values through <code>nu_cfg('…')</code>). Without it, a setup hint is shown.</li>
+	<li><strong>Security headers</strong> – a strict Content-Security-Policy (only own scripts, styles and fonts). Pages that run form code allow inline scripts, because forms contain admin-written JavaScript; chart forms also allow Google's chart host, and <code>$nuConfigIncludeJS</code> / <code>$nuConfigIncludeCSS</code> from other hosts are added.</li>
+	<li><strong>Session</strong> – PHP session named <code>nunext</code>, cookie only for nuBuilder Next's folder (another copy on the same domain has its own), <code>HttpOnly</code>, <code>SameSite=Lax</code>, <code>Secure</code> under HTTPS, strict mode. PHP keeps idle sessions at least as long as the longer of the two time-outs.</li>
+	<li><strong>Time zone</strong> of the installation.</li>
+	<li><strong>Housekeeping</strong> – without cron, a page view now and then removes expired tokens and sessions, old log rows and temporary files (see <a href="#security-cron">Housekeeping</a>).</li>
+	<li><strong>Error handler</strong> – unexpected errors are logged to PHP's error log; the user sees a short message (details only with <code>$nuConfigDebug = true</code>).</li>
+</ol>
+<p>nuBuilder's own include files (<code>$nuConfigIncludePHP</code>) are loaded only when form PHP runs, so lines copied from nuBuilder's <code>nuconfig.php</code> work unchanged. All variables are listed on <a href="#config">Configuration (nuconfig.php)</a>.</p>
+	<p class="doc-see">See also: <a href="#config">Configuration (nuconfig.php)</a> · <a href="#sessions-arch">Sessions and sign-in flow</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuapp.php</code></li><li><code>core/nuconfigfile.php</code></li><li><code>core/nuhousekeeping.php</code></li></ul></details>
+</section>

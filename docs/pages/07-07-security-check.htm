@@ -1,0 +1,82 @@
+<section id="security-check" data-doc="admin" data-level="advanced">
+	<h2 id="security-check-h">Security check, server rules and housekeeping</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Security settings, web server rules, cron and the checklist for a live server.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p><em>Admin tools → Security check</em> (<code>index.php?p=securitycheck</code>, globeadmin) shows what matters for the security of this installation as traffic lights – red: fix it soon, yellow: check it, blue: for information – each with a link to the place where it is fixed:</p>
+<ul>
+<li>HTTPS, <code>$nuConfigBaseURL</code>, <code>$nuConfigSecretKey</code> (and authenticator secrets stored before the key existed), the globeadmin password (<code>nu</code> or shorter than 8 characters) and its two-factor login, <code>$nuConfigDebug</code>, PHP's <code>display_errors</code>, the PHP version (red while it lacks the fix for PHP2Shell, CVE-2026-109618 / CVE-2026-109619 – fixed in PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12; PHP 8.1 and older get no official fix. Linux distributions and hosts sometimes backport the fix without changing the version number: then check their security notice and ignore the red point), <code>$nuConfigApiAllowHttp</code>, demo mode, auto-login links and one-time login tokens;</li>
+<li>users with old md5 passwords, access levels with admin-equivalent rights (see <a href="#rights">How rights work</a>), hash variables outside quotes (see <a href="#compat">Compatibility check</a>);</li>
+<li> whether <em>Records only through the form's list</em> and <em>Do not save read-only and hidden fields</em> are on (orange while off – new installations switch both on, existing ones keep their setting), and whether the upload procedure <code>nu_upload_file_template</code> still stores files in the web root (red);</li>
+<li>the last housekeeping run, the log retention, the backup folder, and the versions of the libraries taken from nuBuilder (TCPDF, PHPMailer, TinyMCE, phpMyAdmin, Tiny File Manager) against the first version without the vulnerabilities known at the time of the release;</li>
+<li><strong>Files on the web</strong>: your browser requests files that the web server must never hand out – <code>README.md</code>, <code>nunext-manifest.json</code>, <code>install/*.sql</code>, <code>docs/</code>, <code>_backup/</code>, <code>temp/</code> and PHP files of <code>core/</code> / <code>lang/</code> (they answer with an empty page). Red means the web server ignores nuBuilder Next's <code>.htaccess</code> files.</li>
+</ul>
+<h3 id="security-settings">Security settings</h3>
+<table class="table table-sm">
+<thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td>Only the globeadmin grants admin rights</td><td>on</td><td>See <a href="#rights">How rights work</a>.</td></tr>
+<tr><td>Do not save read-only and hidden fields from the browser</td><td>off (new installations: on)</td><td>Objects with an <em>access condition</em> (nuBuilder's access 9) are always protected this way, whatever this setting says. Objects with access 1 (read only), 2 (hidden), 3 (hidden for users) and 4 keep their stored value, whatever the browser sends. Off = like nuBuilder: JavaScript that fills such fields (<code>nuSetValue</code> on a hidden field) keeps working – check your forms before switching it on.</td></tr>
+<tr><td>Records only through the form's list</td><td>off (new installations: on)</td><td>A record can be opened, saved or deleted only when the form's browse SQL (with the user's hash variables) finds it – a user cannot reach records his list does not show by changing the record id. Forms without browse SQL and browse SQL that needs a temporary table of <em>Before Browse</em> are not checked. nuBuilder has no such check.</td></tr>
+<tr><td>Accept old md5 passwords</td><td>on</td><td>Off: users with a password from nuBuilder before 4.5 cannot log in until they set a new one.</td></tr>
+<tr><td>Accept nuBuilder's one-time login tokens</td><td>on</td><td>Links <code>index.php?u=…&amp;p=&lt;token&gt;</code> with <code>LOGIN_TOKEN</code> in <code>sus_json</code> sign a user in once (see <a href="#logintoken">one-time login link</a>). Off: such links open the login page.</td></tr>
+<tr><td>Change published forms only through drafts</td><td>off</td><td>The form builder edits a <a href="#form-drafts">draft</a>; users see the change after it is published. New forms start as drafts. The globeadmin may still change a form live after a confirmation.</td></tr>
+<tr><td>New drafts: allow saving in the preview</td><td>off</td><td>Save and Delete in a draft preview change the live data. Off: the preview is read-only. Each draft can change it.</td></tr>
+<tr><td>Keep the log (days)</td><td>0 = for ever</td><td>Older log entries are deleted by the housekeeping.</td></tr>
+<tr><td>Ask for the password again after (minutes)</td><td>15</td><td>Update and backups, nuconfig.php, settings, App cloner, API clients, phpMyAdmin / File Manager, <em>Act as user</em> with full access and the security settings ask for the password when the login or the last confirmation is older. 0 = never.</td></tr>
+<tr><td>Ask for the password again in developer mode (minutes)</td><td>480</td><td>Only for the globeadmin while <code>$nuConfigDevMode = true</code>: development happens without live data, so the confirmation lasts longer (480 = 8 hours). 0 = never. The Security check shows an info point <em>Developer mode</em> while it is on – don't use developer mode on a live system.</td></tr>
+</tbody>
+</table>
+<h3 id="security-built-in">Built in (no setting)</h3>
+<ul>
+<li><strong>Login rate limit</strong>: 5 failed logins (or wrong second-factor codes) for a name from one address, 20 for a name from anywhere or 30 from one address within 15 minutes lock further attempts – counted in the log, so a client without cookies cannot reset it. Auto-login links, one-time login tokens and the password confirmation count too.</li>
+<li><strong>"Forgot password"</strong> sends links only to <code>$nuConfigBaseURL</code> or, while that is empty, to the address the globeadmin last used – never to the host name of the anonymous request (a forged host name would send the reset link to someone else's server). At most 10 requests an hour per address and 3 links an hour per user.</li>
+<li><strong>Sessions</strong>: the cookie belongs to the nuBuilder Next folder; a login is bound to this folder and database, and a globeadmin login ends when name or password change in nuconfig.php. Strict session ids, <code>Secure</code> cookies also behind a proxy that ends TLS (<code>$nuConfigTrustProxy</code> + <code>X-Forwarded-Proto</code>); with <code>$nuConfigTrustProxy</code> the client address is the <em>last</em> <code>X-Forwarded-For</code> entry (the one your proxy adds).</li>
+<li><strong>Headers</strong>: Content-Security-Policy, <code>X-Frame-Options</code>, <code>Permissions-Policy</code>, <code>Cross-Origin-Opener-Policy</code>, and <code>Strict-Transport-Security</code> on HTTPS.</li>
+<li><strong>Log</strong>: passwords, keys, tokens and password hashes are written as ••• in the record changes.</li>
+<li><strong>Demo mode</strong>: password hashes and secret columns show as ••• in forms, lists and the hash viewer; the SQL builder cannot read <code>zzzzsys_user</code>, sessions, setup, settings or nuBuilder Next's tables.</li>
+<li><strong>Hash variables</strong> in SQL are escaped for the database's mode (also MySQL's <code>NO_BACKSLASH_ESCAPES</code>); they are safe inside quotes only – the <a href="#compat">Compatibility check</a> lists places without quotes.</li>
+<li><strong>Update packages</strong> are signed (Ed25519); the update page shows <em>Signed by nuBuilder Next</em>, warns for unsigned packages and refuses a package whose signature does not match.</li>
+<li><strong>Messages and titles</strong>: <code>nuSetTitle</code>, <code>nuSetLabelText</code> and <code>nuMessage</code> keep HTML but remove script – <code>&lt;script&gt;</code>, <code>on…</code> attributes, <code>javascript:</code> links – so a record value shown in a title cannot run in another user's browser. Form code that puts <code>onclick</code> buttons into a message can call <code>nuNextSafeHtml(false)</code> on that page; <code>nuSafeHtml(html)</code> cleans HTML for your own code.</li>
+<li><strong>Images of forms</strong>: <code>?p=file</code> serves a file that image objects show only to users who can open one of those forms (or a form with such a form as sub-form); files without an image object (<code>nuAttachImage</code>, report images) stay open to every signed-in user, as in nuBuilder.</li>
+<li><strong>No folder listings</strong>: the root <code>.htaccess</code> hides the files of folders without an index page (<code>IndexIgnore</code>); <code>_install/</code> gets a deny-all <code>.htaccess</code> in the package.</li>
+<li><strong>Package files</strong>: every PHP file of <code>core/</code>, <code>pages/</code> and <code>lang/</code> ends at once when called directly; <code>.htaccess</code> files block <code>core/</code>, <code>pages/</code>, <code>lang/</code>, <code>install/</code>, <code>docs/</code>, <code>dev/</code>, <code>_backup/</code>, <code>_install/</code>, <code>temp/</code> and the notes in the main folder (Apache 2.2 and 2.4). <code>TODO.md</code>, <code>CLAUDE.md</code> and <code>dev/</code> are no longer part of the installed package.</li>
+</ul>
+<h3 id="security-nginx">Web server rules</h3>
+<p>Apache reads the <code>.htaccess</code> files only with <code>AllowOverride All</code> (Debian / Ubuntu's default for <code>/var/www</code> is <code>None</code>). nginx ignores them. Add rules like these (path of your installation), then run the Security check again:</p>
+<pre><code># Apache: virtual host or apache2.conf
+&lt;Directory /var/www/html&gt;
+	AllowOverride All
+&lt;/Directory&gt;
+
+# nginx: server block
+location ~ ^/nunext/(core|pages|lang|install|docs|dev|_backup|_install|_update|_libsrc|temp|custom|lib|apps)/ { deny all; }   # apps/: built-in pages   # custom/: page forms
+location ~ ^/nunext/(README\.md|CHANGELOG\.md|LICENSE|TODO\.md|CLAUDE\.md|nunext-manifest\.json|nuconfig.*\.php|cron\.php)$ { deny all; }
+location ~ /NUNEXT-VERSION\.txt$ { deny all; }
+location ^~ /nu_uploads/ { deny all; }   # only when the upload template had to create its folder inside the web root
+# library packs: vendor/packs/ is closed except the browser packs; vendor/nuconfig.php is covered by the nuconfig rule above
+location ~ ^/nunext/vendor/(nuconfig\.php|packs/(nunext-libs\.php|index\.html|[^/]+/nunext-lib\.json))$ { deny all; }
+location ~ ^/nunext/vendor/packs/(tcpdf|phpmailer|adminer)(-[^/]*)?/ { deny all; }
+location ~ ^/nunext/third_party/((tcpdf|phpmailer|adminer)(-[^/]*)?/|[^/]+/nunext-lib\.json$) { deny all; }   # packs of older versions
+# browser cache (Apache: assets/.htaccess and vendor/bundled/.htaccess do it) – files with ?v= never change under their URL
+location ^~ /nunext/assets/ { expires 7d; if ($arg_v) { expires 1y; add_header Cache-Control "public, immutable"; } }
+location ^~ /nunext/vendor/bundled/ { expires 7d; if ($arg_v) { expires 1y; add_header Cache-Control "public, immutable"; } }</code></pre>
+<p><strong>Browser cache</strong>: every script, stylesheet and picture of nuBuilder Next is loaded with a version in its address (<code>?v=…</code>), so <code>assets/.htaccess</code> lets browsers keep it for a year without asking again (<code>immutable</code>); after an update the address changes and the new file is loaded. Files without a version (fonts, pictures of a stylesheet) are kept for a week. Needs Apache's <code>mod_headers</code> / <code>mod_expires</code> (without them nothing changes); nginx: the rule above.</p>
+<p>Even better for backups: <code>$nuConfigBackupPath</code> outside the web root.</p>
+<h3 id="security-cron">Housekeeping (cron)</h3>
+<p><code>cron.php</code> removes expired tokens and sessions, old API counters, log entries beyond <em>Keep the log</em>, PDFs of the REST API whose download link expired and temporary files older than a day. Run it as the web server's user, e.g. every 15 minutes:</p>
+<pre><code>*/15 * * * *  sudo -u www-data php /var/www/html/nunext/cron.php &gt; /dev/null</code></pre>
+<p>Without cron a page view does it now and then (as before); once cron has run in the last 25 hours, page views leave it to cron. The web server never runs <code>cron.php</code>.</p>
+<h3 id="security-checklist">Checklist for a live server</h3>
+<ol>
+<li>HTTPS only; <code>$nuConfigBaseURL</code> set; <code>$nuConfigTrustProxy</code> only behind your own proxy.</li>
+<li>A long globeadmin password, <code>$nuConfig2FAAdmin = true</code> and a globeadmin e-mail or authenticator.</li>
+<li><code>$nuConfigSecretKey</code> set (API clients page → <em>Generate key</em>).</li>
+<li><code>$nuConfigDebug = false</code>, PHP <code>display_errors = Off</code>, PHP 8.2 or newer.</li>
+<li><em>Files on the web</em> all green; backups outside the web root.</li>
+<li>Admin-equivalent rights only for people who may change code and users.</li>
+<li>A log retention and cron for the housekeeping.</li>
+<li>Demo mode only with a demo database.</li>
+</ol>
+	<p class="doc-see">See also: <a href="#config">Configuration (nuconfig.php)</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nusecurity.php</code></li><li><code>pages/nusecuritycheck.php</code></li><li><code>core/nuhousekeeping.php</code></li><li><code>cron.php</code></li></ul></details>
+</section>

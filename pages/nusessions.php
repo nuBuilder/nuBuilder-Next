@@ -67,6 +67,26 @@ if ($db->tableExists('zzzzsys_session')) {
 	}
 }
 
+// sortable columns (0.8.508): ?sort=user|ip|browser|login|last &dir=asc|desc – default: last activity, newest first
+$sort = in_array($_GET['sort'] ?? '', ['user', 'ip', 'browser', 'login', 'last'], true) ? (string)$_GET['sort'] : 'last';
+$dir  = ($_GET['dir'] ?? '') === 'asc' ? 'asc' : (($_GET['dir'] ?? '') === 'desc' || !isset($_GET['sort']) ? 'desc' : 'asc');
+$ts = static fn($v): int => $v === null || $v === '' ? 0 : (is_numeric($v) ? (int)$v : (int)strtotime((string)$v));
+$key = [
+	'user' => static fn(array $r) => mb_strtolower((string)$r['login']),
+	'ip' => static fn(array $r) => (string)($r['ip'] ?? ''),
+	'browser' => static fn(array $r) => mb_strtolower(isset($r['user_agent']) ? NuSessions::agent((string)$r['user_agent']) : ''),
+	'login' => static fn(array $r) => $ts($r['login_at'] ?? null),
+	'last' => static fn(array $r) => isset($r['last_seen']) ? $ts($r['last_seen']) : (int)($r['last'] ?? 0),
+][$sort];
+$cmp = static function (array $a, array $b) use ($key, $dir): int {
+	$x = $key($a); $y = $key($b);
+	$c = is_int($x) && is_int($y) ? $x <=> $y : strnatcasecmp((string)$x, (string)$y);
+	return $dir === 'asc' ? $c : -$c;
+};
+usort($rows, $cmp);
+usort($nb, $cmp);
+$th = static fn(string $label, string $col, string $class = ''): string => nu_sort_th($label, $col, $sort, $dir, 'sessions', [], $class);
+
 function nu_sess_ago(int $ts): string
 {
 	$d = max(0, time() - $ts);
@@ -86,7 +106,7 @@ nu_layout_start(t('sess_title'), 'log');
 	<h1 class="h5 mb-0 fw-semibold"><?= h(t('sess_title')) ?><?php $tip = t('sess_hint', $timeout, $timeoutAdmin); ?>
 		<span class="nuInfoTip fs-6 fw-normal ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($tip) ?>" title="<?= h($tip) ?>"><i class="bi bi-info-circle"></i></span></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
-		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions')) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
+		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions', isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : [])) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
 		<?php $others = count(array_filter($rows, static fn($r) => (string)$r['zzzzsys_nunext_session_id'] !== $me)); ?>
 		<span class="d-inline-flex flex-wrap gap-2 ms-auto">
 		<form method="post" data-confirm="<?= h(t('sess_end_others_confirm', $others)) ?>" data-confirm-ok="<?= h(t('sess_end_others')) ?>" data-confirm-class="btn btn-danger">
@@ -103,7 +123,7 @@ nu_layout_start(t('sess_title'), 'log');
 	<div class="px-3 py-2 border-bottom fw-semibold small">nuBuilder Next <span class="badge text-bg-secondary ms-1"><?= count($rows) ?></span></div>
 	<div class="table-responsive">
 		<table class="table align-middle mb-0 nu-table" id="sessTable">
-			<thead><tr><th><?= h(t('user')) ?></th><th>IP</th><th><?= h(t('sess_browser')) ?></th><th><?= h(t('sess_login_at')) ?></th><th><?= h(t('sess_last')) ?></th><th></th></tr></thead>
+			<thead><tr><?= $th(t('user'), 'user') . $th('IP', 'ip') . $th(t('sess_browser'), 'browser') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th></th></tr></thead>
 			<tbody>
 			<?php if (!$rows): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
 			<?php foreach ($rows as $r):
@@ -147,7 +167,7 @@ nu_layout_start(t('sess_title'), 'log');
 		<div class="card-header fw-semibold">nuBuilder <span class="badge text-bg-secondary ms-1"><?= count($nb) ?></span></div>
 		<div class="table-responsive">
 			<table class="table align-middle mb-0 nu-table">
-				<thead><tr><th><?= h(t('user')) ?></th><th><?= h(t('sess_login_at')) ?></th><th><?= h(t('sess_last')) ?></th><th></th></tr></thead>
+				<thead><tr><?= $th(t('user'), 'user') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th></th></tr></thead>
 				<tbody>
 				<?php if (!$nb): ?><tr><td colspan="4" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
 				<?php foreach ($nb as $r): ?>

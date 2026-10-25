@@ -222,7 +222,7 @@ if (!function_exists('nuRunQuery')) {
 	function nuNextNotify(array $args): string
 	{
 		$aud = [];
-		foreach (['all', 'users', 'departments', 'teams', 'positions', 'access', 'access_levels'] as $k) if (array_key_exists($k, $args)) $aud[$k] = $args[$k];
+		foreach (['all', 'users', 'departments', 'teams', 'positions', 'access', 'access_levels', 'exclude'] as $k) if (array_key_exists($k, $args)) $aud[$k] = $args[$k];
 		$u = NuAuth::currentRaw();
 		[$id, $errors] = NuNotify::save('', ['audience' => $aud] + $args, true, ['id' => (string)($u['id'] ?? ''), 'login' => (string)($u['login'] ?? 'procedure')], false);
 		return $errors ? '' : $id;

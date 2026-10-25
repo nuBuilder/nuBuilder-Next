@@ -1,0 +1,20 @@
+<section id="sample-data" data-doc="admin">
+	<h2 id="sample-data-h">Sample data</h2>
+	<p class="doc-lead">A small sample application for trying things out.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>Admin tools → <em>Sample data</em> (<code>index.php?p=sample</code>) installs a small sample application for trying out and testing nuBuilder Next (and nuBuilder – the forms are stored in nuBuilder's format and open there too).</p>
+<ul>
+<li><b>Forms</b> (codes <code>sample_…</code>, ids without underscore such as <code>sampleorder</code>, because nuBuilder splits hook ids like <code>sampleorder_BS</code> at "_"):
+			<code>sample_home</code> (launch form, start page of the sample access levels), <code>sample_customer</code> (nuBuilder positions, two tabs, validation, Before Delete check),
+			<code>sample_product</code> (grid layout), <code>sample_order</code> + <code>sample_order_item</code> (auto layout, audit columns, lookup, grid subform, calc, Before Edit / Before Save / After Save PHP) and
+			<code>sample_all</code> + <code>sample_all_line</code> – <b>every object type and input type</b> with different formats, access settings (read only, hidden, globeadmin only), events, an iframe and a subform in form layout. Its tabs <em>Run</em> and <em>Subform</em> show the run object types and the subform; <em>Charts</em> three charts, <em>Miscellaneous</em> tooltip icons, the info bar and button spinners. The charts get their data (from the form's JavaScript, from the database via Before Edit, and in the object). <em>Upload</em> has a file object with the target <i>File System</i>: files are uploaded with Uppy into the folder <code>nu_uploads/</code> next to the web root by nuBuilder's procedure <code>nu_upload_file_template</code> (needs the library pack Uppy).</li>
+<li><b>Users and access levels</b>: <code>sample_anna</code> (view only), <code>sample_ben</code> (add and change, German), <code>sample_carla</code> (everything), <code>sample_dario</code> (orders only, must change the password), <code>sample_eva</code> (two-factor login, expires in a year). Passwords are random and shown <b>once</b>; <em>New passwords</em> creates new ones.</li>
+<li>Also: 9 formats, 2 procedures (window / hidden), an e-mail template, 3 code snippets, a picture in Files, and two <a href="#reports">reports</a> (customers by country from a table, orders by customer from the SQL builder query <code>sample_orders</code>) – started from tiles on the start page and from <em>All objects</em>; every sample access level may run them.</li>
+<li><b>Start pages of users</b> (version 15): <code>sample_sales</code>, <code>sample_manager</code> and <code>sample_editor</code> have their own tile start pages – see <a href="#home-users">Start pages of users</a> (examples).</li>
+<li>Tables <code>sample_customer</code>, <code>sample_product</code>, <code>sample_order</code>, <code>sample_order_item</code>, <code>sample_all</code>, <code>sample_all_line</code> with data (InnoDB).</li>
+</ul>
+<p><em>Remove</em> deletes every sample record (ids starting with <code>sample_</code> and the sample form ids), rights of other access levels on sample forms and the sample tables. It is blocked while a non-sample user has a sample access level.
+	A newer nuBuilder Next may bring a newer sample set: the page then shows <em>update available</em> – <em>Refresh</em> removes and installs it again (changes to sample records are lost).</p>
+	<p class="doc-see">See also: <a href="#tutorial-doc">Tutorial</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nusample.php</code></li></ul></details>
+</section>

@@ -1,0 +1,59 @@
+<section id="home-users" data-doc="admin">
+	<h2 id="home-users-h">Start pages of users</h2>
+	<p class="doc-lead">One tile start page per access level.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>Users without an admin role get a tile start page as well – one per <a href="#access">access level</a>, built with the same tiles, groups, tabs and appearance settings as the <a href="#home-page">globeadmin's start page</a>. The globeadmin sees the table <em>My forms and rights</em> while <a href="#sessions">acting as a user</a> (collapsed at the bottom: <em>Forms and rights of this user</em>). The access level's dashboards stay above the tiles.</p>
+<ul>
+<li><strong>Where to edit</strong>: <em>Access levels</em> → an access level → <em>Start page</em>, or the tile <em>Access levels</em> ▾ → <em>Start pages of users</em> (<code>index.php?p=home&amp;for=&lt;access level id&gt;</code>). Needs the admin right <em>Start page layout</em> (the globeadmin always). <em>Start page for</em> switches between <em>Default for all access levels</em> and each access level; the list says whether it has its own page, uses the default or the automatic one.</li>
+<li><strong>Which page a user gets</strong>: the access level's own page; else the default for all access levels; else the <em>automatic</em> page – the forms of the access level (no sub-forms, no nuBuilder system forms; the home form first, marked <em>Home form</em>) and the reports it may run. Customise on an access level that shows the default or the automatic page saves a page of its own (starting from what is shown). <em>Use the default</em> removes the access level's own page again; on the default, <em>Remove the default</em>.</li>
+<li><strong>Preview</strong>: the editor shows the page with the rights of the chosen access level – tiles its users may not open are left out. Conditions are not applied there; such tiles and groups carry a funnel <i class="bi bi-funnel-fill"></i> (its tooltip lists them). To see a page exactly as one user does, act as that user.</li>
+<li><strong>Tiles</strong> (<em>Customise → Add tile</em>): a form (list, new record <code>-1</code> or a record id), a <strong>report</strong> (opens like <code>index.php?p=report&amp;c=&lt;code&gt;</code>, with its launch form when it has one), a procedure (runs with the user's rights – <em>Access levels → Procedures</em> or <em>Global</em>), a page (<em>help</em>, <em>password</em>, <em>security</em>, <em>notifications</em>) or a link. A tile is shown only when the user may open it: form rights of the access level, the report or procedure granted to it. The built-in tiles of the admin page are not offered.</li>
+<li><strong>Only for</strong> (conditions): every tile (in its dialog) and every group (the funnel next to the group name) can be limited to <em>Permission item</em>, <em>Team</em>, <em>Department</em> or <em>Position</em> of the user (<a href="#users">user form</a>). Several values separated by commas – any of them is enough; several fields – all must match; case does not matter. A hidden group hides all its tiles. Static per-user rules are best done with <a href="#permissions">permission items</a>. Hiding is not access control: a form stays protected by the rights of the access level.</li>
+<li><strong>What users change</strong> (<em>Customise</em>): <em>Appearance</em> (style, descriptions, navigation … only for themselves) and <strong>Personalise</strong>: a star and an eye on every tile – own favourites (they replace the page's favourites for this user) and tiles hidden for this user, listed under <em>Hidden by you</em> while personalising. <em>Done</em> saves, <em>Back to the standard</em> removes both. Stored in the user's <code>sus_json</code> (<code>NUNEXT_HOME_VIEW</code>, per page), at most 60 tiles each. Not offered while the globeadmin acts as the user in view mode.</li>
+<li><strong>Examples</strong> in the <a href="#sample-data">sample data</a> (version 15): <code>sample_sales</code> (Dario) – a sales desk in the style Cards with a favourites row, a <em>New order</em> tile (record <code>-1</code>), a report and a group <em>Pricing</em> only for the permission item <code>sample_discount</code>; <code>sample_manager</code> (Carla) – two tabs <em>Daily work</em> / <em>Insights</em> with group colours, a procedure tile and a group <em>Team lead</em> only for team <code>Lead</code>; <code>sample_editor</code> (Ben) – a list in two columns with <em>New …</em> tiles and a report only for the positions <code>Clerk</code> and <code>Manager</code>. <code>sample_viewer</code> (Anna) and <code>sample_secure</code> (Eva) show the automatic page. Removing the sample data removes these pages too (also pages saved later for a sample access level).</li>
+<li><strong>Hook</strong>: the procedure <code>nu_home_user</code> runs on these pages (not <code>nu_home</code>) – see <a href="#home-hooks">Start page hooks</a>.</li>
+<li>Stored in <code>zzzzsys_nunext_list_view</code> (list <code>home_user</code>; <code>access_ids</code> = the access level, <code>["*"]</code> = the default). Changes are logged (<em>Start page of an access level changed / removed</em>). Users with an admin role keep the admin start page.</li>
+</ul><figure class="doc-figure" id="dg-homeusers"><svg class="doc-flow" viewBox="0 0 680 420" role="img" aria-labelledby="dg-homeusers-title dg-homeusers-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-homeusers-title">Which start page a user gets</title><desc id="dg-homeusers-desc">A user with an admin role gets the admin start page. Otherwise: the access level’s own page, else the default page for all access levels, else the automatic page with the forms and reports of the level. On top come the user’s own favourites and hidden tiles; tiles and groups with conditions show only when they match.</desc>
+<defs><marker id="dg-homeusers-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
+<rect x="40" y="20" width="230" height="56" rx="8" class="dg-box dg-p"/>
+<text x="155" y="48" dy=".35em" class="dg-t dg-p">Admin role?</text>
+<rect x="420" y="20" width="200" height="56" rx="8" class="dg-box dg-g"/>
+<text x="520" y="48" dy=".35em" class="dg-t dg-g">Admin start page</text>
+<path d="M270 48 L418 48" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<text x="344" y="38" dy=".35em" class="dg-lbl">yes</text>
+<path d="M155 76 L155 104" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<text x="170" y="90" dy=".35em" class="dg-lbl dg-start">no</text>
+<rect x="40" y="106" width="230" height="56" rx="8" class="dg-box dg-p"/>
+<text x="155" y="134" dy=".35em" class="dg-t dg-p">Own page of the level?</text>
+<rect x="420" y="106" width="200" height="56" rx="8" class="dg-box dg-g"/>
+<text x="520" y="134" dy=".35em" class="dg-t dg-g">That page</text>
+<path d="M270 134 L418 134" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<text x="344" y="124" dy=".35em" class="dg-lbl">yes</text>
+<path d="M155 162 L155 190" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<text x="170" y="176" dy=".35em" class="dg-lbl dg-start">no</text>
+<rect x="40" y="192" width="230" height="56" rx="8" class="dg-box dg-p"/>
+<text x="155" y="220" dy=".35em" class="dg-t dg-p">Default for all levels?</text>
+<rect x="420" y="192" width="200" height="56" rx="8" class="dg-box dg-g"/>
+<text x="520" y="220" dy=".35em" class="dg-t dg-g">The default page</text>
+<path d="M270 220 L418 220" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<text x="344" y="210" dy=".35em" class="dg-lbl">yes</text>
+<path d="M155 248 L155 276" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<text x="170" y="262" dy=".35em" class="dg-lbl dg-start">no</text>
+<rect x="40" y="278" width="230" height="56" rx="8" class="dg-box dg-g"/>
+<text x="155" y="296" dy=".35em" class="dg-t dg-g">Automatic page</text>
+<text x="155" y="316" dy=".35em" class="dg-s dg-g">forms + reports of the level</text>
+<rect x="420" y="278" width="200" height="56" rx="8" class="dg-box dg-n"/>
+<text x="520" y="296" dy=".35em" class="dg-t dg-n">+ the user’s favourites</text>
+<text x="520" y="316" dy=".35em" class="dg-s dg-n">and hidden tiles</text>
+<rect x="420" y="354" width="200" height="50" rx="8" class="dg-box dg-a"/>
+<text x="520" y="369" dy=".35em" class="dg-t dg-a">Conditions</text>
+<text x="520" y="389" dy=".35em" class="dg-s dg-a">permission, team, department</text>
+<path d="M270 306 L418 306" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<path d="M520 334 L520 352" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<path d="M520 162 L520 176 L650 176 L650 306 L622 306" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+<path d="M520 248 L520 262 L650 262" class="dg-line" marker-end="url(#dg-homeusers-arrow)"/>
+</svg></figure>
+
+	<p class="doc-see">See also: <a href="#dashboards">Dashboards</a> · <a href="#home-hooks">Start page hooks</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuhome.php</code></li></ul></details>
+</section>

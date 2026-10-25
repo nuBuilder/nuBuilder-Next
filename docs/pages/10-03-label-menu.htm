@@ -1,0 +1,32 @@
+<section id="label-menu-p" data-doc="admin">
+	<h2 id="label-menu">Hash variables and the label menu</h2>
+	<p class="doc-lead">#…# variables in SQL, PHP and HTML, and the globeadmin&#x27;s label menu.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>In the edit form, a click on the label of an object opens a menu: <b>Object: id</b> (click copies the id), <b>Properties…</b> (opens the object in the form builder), <b>Rename…</b>, <b>Actions</b> (Delete, Move to tab), <b>Access</b>, <b>Align</b> and <b>Validation</b>. The current value is marked; a change is saved at once and the form reloads. Not on nuBuilder system forms. On narrow screens a submenu that has no room beside the menu unfolds below its row (tap to open / close).</p>
+<h3 id="hash-variables">Hash variables (hash cookies)</h3>
+<p>Before SQL (browse, display, select, lookups), PHP (hooks, procedures) and HTML objects run, every <code>#NAME#</code> with a known name is replaced. Unknown names stay as they are (as in nuBuilder), so <code>LOCATE('#', '#x#')</code> tests still work. JavaScript is not replaced – use <code>nuGetProperty('name')</code> there.</p>
+<div class="table-responsive"><table class="table table-sm">
+<thead><tr><th>Group</th><th>Variables</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td>User and session</td><td><code>#USER_ID#, #LOGIN_NAME#, #USER_NAME#, #USER_EMAIL#, #USER_CODE#, #USER_FIRST_NAME#, #USER_LAST_NAME#, #USER_POSITION#, #USER_DEPARTMENT#, #USER_TEAM#, #USER_ADDITIONAL1#, #USER_ADDITIONAL2#, #USER_LANGUAGE#, #LANGUAGE#, #USER_PERMISSIONS#, #ACCESS_LEVEL_ID#, #ACCESS_LEVEL_CODE#, #ACCESS_LEVEL_GROUP#, #GLOBAL_ACCESS#, #HOME_ID#, #DEV_MODE#, #SESSION_ID#</code></td><td>everywhere</td></tr>
+<tr><td>Form and record</td><td><code>#FORM_ID#, #FORM_CODE#, #FORM_GROUP#, #RECORD_ID# (-1 = new), #NEW_RECORD#, #PREVIOUS_RECORD_ID#, #TABLE_ID#</code></td><td>everywhere</td></tr>
+<tr><td>Date and time (server time zone)</td><td><code>#nu_date#, #nu_date_time#, #nu_time#, #nu_year#, #nu_month#, #nu_day#, #nu_hour#, #nu_minute#</code></td><td>everywhere</td></tr>
+<tr><td>Record fields</td><td><code>#field_id# – every field of the record, as on the screen (also unsaved changes)</code></td><td>edit form, hooks, procedures</td></tr>
+<tr><td>Properties</td><td><code>nuSetProperty(&amp;#x27;name&amp;#x27;, value) – this form and the forms opened from it</code></td><td>where set and below</td></tr>
+<tr><td>Hash cookies</td><td><code>nuSetProperty(&amp;#x27;name&amp;#x27;, value, true) in JavaScript or PHP – until logout, in every form (shared with nuBuilder when logged in there)</code></td><td>everywhere</td></tr>
+<tr><td>Lookup After Browse</td><td><code>#ID#, #CODE# of the chosen record, #SUBFORM_ID#; nuSetFormValue(&amp;#x27;#ROW#field&amp;#x27;, …) sets a field of the same subform row</code></td><td>lookup PHP</td></tr>
+<tr><td>Display / select SQL</td><td><code>#OBJECT_ID# – id of the object</code></td><td>display and select SQL</td></tr>
+<tr><td>Procedures</td><td><code>#PROCEDURE_CODE#</code></td><td>procedures</td></tr>
+</tbody>
+</table></div>
+<ul>
+<li><b>Order</b>: system and user variables win, then record fields, then properties, then hash cookies – a field called <code>USER_ID</code> or a property can never replace <code>#USER_ID#</code>.</li>
+<li><b>Escaping</b> (difference to nuBuilder): values are escaped for where they go – quotes in SQL, quotes and <code>$</code> in PHP strings, HTML entities in HTML. A value can't break out of <code>'#field#'</code>. Write hashes inside quotes in SQL and PHP.</li>
+<li><code>#DEV_MODE#</code> is 1 for the globeadmin when <code>$nuConfigDevMode = true</code> is set (also <code>nuDevMode()</code> in JavaScript).</li>
+<li><code>#USER_PERMISSIONS#</code> lists the active permission items of the user (nuBuilder's <code>zzzzsys_user_permission</code>), comma separated.</li>
+<li><b>Code editor</b>: the <code>#</code> button in SQL, PHP and HTML editors (form builder and double-click editor) lists every variable with a description, the fields of the form and your hash cookies – click or Enter inserts it at the cursor.</li>
+<li><b>Hash viewer</b>: in a form, the globeadmin sees every variable with its current value and source.</li>
+</ul>
+	<p class="doc-see">See also: <a href="#form-lifecycle">Form lifecycle and event order</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nuhash.php</code></li><li><code>assets/js/nu/nuhashvars.js</code></li></ul></details>
+</section>

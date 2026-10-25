@@ -121,6 +121,7 @@ nu_layout_start($title, 'users', ['head' => $head]);
 					<button class="btn nuBtnAct nuBtnDel" type="submit"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 				</form>
 			<?php endif; ?>
+			<?php if ($item): ?><?= NuFormInfo::record('zzzzsys_permission_item', (string)$id, ['code' => (string)$item['pme_ident']]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
 		</div>
 	</div>
 	<?php if ($locked): ?><div class="alert alert-info d-flex gap-2"><i class="bi bi-eye mt-1"></i><div><?= h(t('read_only')) ?></div></div><?php endif; ?>
@@ -135,13 +136,13 @@ nu_layout_start($title, 'users', ['head' => $head]);
 					<div class="card-body">
 						<div class="mb-3">
 							<label class="form-label" for="pme_ident"><?= h(t('perm_ident')) ?> <span class="text-danger">*</span></label>
-							<input class="form-control font-monospace<?= nu_invalid($errors, 'pme_ident') ?>" id="pme_ident" name="pme_ident" maxlength="50" required spellcheck="false" autocomplete="off" value="<?= h($v('pme_ident')) ?>"<?= $isNew ? ' autofocus' : '' ?>>
+							<input class="form-control permField font-monospace<?= nu_invalid($errors, 'pme_ident') ?>" id="pme_ident" name="pme_ident" maxlength="50" required spellcheck="false" autocomplete="off" value="<?= h($v('pme_ident')) ?>"<?= $isNew ? ' autofocus' : '' ?>>
 							<?= nu_feedback($errors, 'pme_ident') ?>
 							<div class="form-text"><?= h(t('perm_ident_hint')) ?></div>
 						</div>
 						<div class="mb-3">
 							<label class="form-label" for="pme_group"><?= h(t('perm_group')) ?></label>
-							<input class="form-control<?= nu_invalid($errors, 'pme_group') ?>" id="pme_group" name="pme_group" maxlength="50" list="permGroups" value="<?= h($v('pme_group')) ?>">
+							<input class="form-control permField<?= nu_invalid($errors, 'pme_group') ?>" id="pme_group" name="pme_group" maxlength="50" list="permGroups" value="<?= h($v('pme_group')) ?>">
 							<?= nu_feedback($errors, 'pme_group') ?>
 							<datalist id="permGroups"><?php foreach ($groups as $g): ?><option value="<?= h($g) ?>"><?php endforeach; ?></datalist>
 						</div>

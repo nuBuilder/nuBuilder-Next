@@ -6,7 +6,7 @@ defined('NU_ROOT') || exit;
  * Admin tools → To do (?p=todo): TODO.md of the installation as a page – only in developer mode (globeadmin + $nuConfigDevMode = true,
  * nuBuilder's switch, NuHash::devMode()), never for demo users. Read only; the small Markdown renderer covers what TODO.md uses:
  * headings, lists with [ ] / [x], indented continuation lines, `code`, **bold**, *italic*. Every "## " section folds (0.8.467,
- * assets/js/nutodo.js: Collapse all / Expand all, folded sections remembered per device).
+ * assets/js/nutodo.js: Collapse all / Expand all; since 0.8.509 every section starts folded).
  */
 
 $u = NuAuth::user();
@@ -74,7 +74,7 @@ foreach ($lines as $line) {
 			$closeSec();
 			$sec = $open;
 			$secs++;
-			$html .= '<details class="nuTodoSec" open data-nu-todo-key="' . h(substr(md5(trim($m[2])), 0, 12)) . '"><summary>'
+			$html .= '<details class="nuTodoSec" data-nu-todo-key="' . h(substr(md5(trim($m[2])), 0, 12)) . '"><summary>'
 				. '<i class="bi bi-chevron-down nuTodoChev" aria-hidden="true"></i>' . $head . '%%NU_TODO_OPEN%%</summary>';
 		} else {
 			if (strlen($m[1]) === 1) $closeSec();
@@ -106,7 +106,7 @@ nu_layout_start(t('todo_title'), 'home', ['container' => 'nuContainer']);
 	<h1 class="h3 mb-0"><i class="bi bi-list-check me-2"></i><?= h(t('todo_title')) ?></h1>
 	<?php if ($md !== ''): ?><div class="nuTitleSub text-body-secondary small"><?= h(t('todo_counts', $open, $done)) ?> · <code>TODO.md</code> · <?= h(date('d.m.Y H:i', (int)filemtime($file))) ?></div><?php endif; ?>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
-		<?php if ($secs > 1): ?><button type="button" class="btn nuBtnAct" id="nuTodoAll" data-collapse="<?= h(t('todo_collapse_all')) ?>" data-expand="<?= h(t('todo_expand_all')) ?>"><i class="bi bi-arrows-collapse me-1" aria-hidden="true"></i><span><?= h(t('todo_collapse_all')) ?></span></button><?php endif; ?>
+		<?php if ($secs > 1): ?><button type="button" class="btn nuBtnAct" id="nuTodoAll" data-collapse="<?= h(t('todo_collapse_all')) ?>" data-expand="<?= h(t('todo_expand_all')) ?>"><i class="bi bi-arrows-expand me-1" aria-hidden="true"></i><span><?= h(t('todo_expand_all')) ?></span></button><?php endif; ?>
 	</div>
 </div>
 <?php if ($md === ''): ?>

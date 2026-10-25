@@ -61,48 +61,70 @@
 	document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
 	(wide.addEventListener ? wide.addEventListener.bind(wide, 'change') : wide.addListener.bind(wide))(function () { if (wide.matches) close(); });
 
-	// ---------------------------------------------------------------- right-click menu of "Recently used" (0.8.489)
-	// One entry "Clear recently used" – submits the section's own clear form (POST ?p=sidebar action clear). Only while the list has entries.
-	var recent = sb.querySelector('.nuSbSec-recent'), menu = null, at = 0;
+	// ---------------------------------------------------------------- right-click / long press menu of "Recently used" (0.8.489, 0.8.498)
+	// On an entry: Remove from recently used (POST ?p=sidebar action forget, then reload); everywhere in the list: Clear recently used
+	// (the section's own clear form). Only while the list has entries.
+	var recent = sb.querySelector('.nuSbSec-recent'), menu = null, at = 0, pressT = null, pressed = false;
 	function closeMenu() { if (menu) { menu.remove(); menu = null; } }
 	function onScroll() { if (menu && Math.abs(recent.getBoundingClientRect().top - at) > 2) closeMenu(); }   // only when the list really moved
+	function entry(icon, label, run) {
+		var li = document.createElement('li'), btn = document.createElement('button'), ic = document.createElement('i');
+		btn.type = 'button';
+		btn.className = 'dropdown-item';
+		btn.setAttribute('role', 'menuitem');
+		ic.className = 'bi ' + icon + ' me-2';
+		ic.setAttribute('aria-hidden', 'true');
+		btn.appendChild(ic);
+		btn.appendChild(document.createTextNode(label));
+		btn.addEventListener('click', function () { closeMenu(); run(); });
+		li.appendChild(btn);
+		return li;
+	}
+	function openMenu(target, x, y) {
+		var form = recent.querySelector('.nuSbClearForm');
+		if (!form) return false;                             // nothing to clear: the browser's own menu
+		closeMenu();
+		menu = document.createElement('ul');
+		menu.className = 'dropdown-menu show nuSbMenu';
+		menu.setAttribute('role', 'menu');
+		var item = target.closest && target.closest('.nuSbItem[data-nu-sb]');
+		if (item) {
+			var key = item.getAttribute('data-nu-sb');
+			menu.appendChild(entry('bi-dash-circle', recent.getAttribute('data-t-remove') || '', function () {
+				var fd = new FormData();
+				fd.append('_csrf', recent.getAttribute('data-csrf') || ''); fd.append('action', 'forget'); fd.append('key', key);
+				fetch(recent.getAttribute('data-url'), {method: 'POST', body: fd, credentials: 'same-origin'}).then(function () { location.reload(); }, function () { location.reload(); });
+			}));
+		}
+		menu.appendChild(entry('bi-x-circle', recent.getAttribute('data-t-clear') || (form.querySelector('button') || {}).title || '', function () {
+			if (form.requestSubmit) form.requestSubmit(); else form.submit();
+		}));
+		document.body.appendChild(menu);
+		if (!x && !y) {                                      // context-menu key / Shift+F10: below the focused element
+			var r = (document.activeElement && recent.contains(document.activeElement) ? document.activeElement : recent).getBoundingClientRect();
+			x = r.left + 8; y = r.top + Math.min(r.height, 32);
+		}
+		menu.style.left = Math.max(4, Math.min(x, window.innerWidth - menu.offsetWidth - 4)) + 'px';
+		menu.style.top = Math.max(4, Math.min(y, window.innerHeight - menu.offsetHeight - 4)) + 'px';
+		at = recent.getBoundingClientRect().top;
+		menu.querySelector('button').focus({preventScroll: true});
+		return true;
+	}
 	if (recent) {
 		recent.addEventListener('contextmenu', function (e) {
-			var form = recent.querySelector('.nuSbClearForm');
-			if (!form) return;                                   // nothing to clear: the browser's own menu
-			e.preventDefault();
-			closeMenu();
-			var label = recent.getAttribute('data-t-clear') || (form.querySelector('button') || {}).title || '';
-			menu = document.createElement('ul');
-			menu.className = 'dropdown-menu show nuSbMenu';
-			menu.setAttribute('role', 'menu');
-			var li = document.createElement('li'), btn = document.createElement('button');
-			btn.type = 'button';
-			btn.className = 'dropdown-item';
-			btn.setAttribute('role', 'menuitem');
-			var ic = document.createElement('i');
-			ic.className = 'bi bi-x-circle me-2';
-			ic.setAttribute('aria-hidden', 'true');
-			btn.appendChild(ic);
-			btn.appendChild(document.createTextNode(label));
-			btn.addEventListener('click', function () {
-				closeMenu();
-				if (form.requestSubmit) form.requestSubmit(); else form.submit();
-			});
-			li.appendChild(btn);
-			menu.appendChild(li);
-			document.body.appendChild(menu);
-			var x = e.clientX, y = e.clientY;
-			if (!x && !y) {                                      // context-menu key / Shift+F10: below the focused element
-				var r = (document.activeElement && recent.contains(document.activeElement) ? document.activeElement : recent).getBoundingClientRect();
-				x = r.left + 8; y = r.top + Math.min(r.height, 32);
-			}
-			var w = menu.offsetWidth, h = menu.offsetHeight;
-			menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
-			menu.style.top = Math.max(4, Math.min(y, window.innerHeight - h - 4)) + 'px';
-			at = recent.getBoundingClientRect().top;
-			btn.focus({preventScroll: true});
+			if (menu || pressed) { e.preventDefault(); return; }
+			if (openMenu(e.target, e.clientX, e.clientY)) e.preventDefault();
 		});
+		// touch: a long press opens the same menu and does not follow the link
+		recent.addEventListener('pointerdown', function (e) {
+			if (e.pointerType !== 'touch') return;
+			var target = e.target, x = e.clientX, y = e.clientY;
+			pressed = false;
+			pressT = setTimeout(function () { if (openMenu(target, x, y)) { pressed = true; if (navigator.vibrate) navigator.vibrate(10); } }, 500);
+		});
+		['pointerup', 'pointercancel'].forEach(function (ev) { recent.addEventListener(ev, function () { clearTimeout(pressT); }); });
+		recent.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch' && Math.abs(e.movementX) + Math.abs(e.movementY) > 4) clearTimeout(pressT); });
+		recent.addEventListener('click', function (e) { if (pressed) { pressed = false; e.preventDefault(); e.stopPropagation(); } }, true);
 		document.addEventListener('pointerdown', function (e) { if (menu && !menu.contains(e.target)) closeMenu(); }, true);
 		document.addEventListener('keydown', function (e) { if (menu && e.key === 'Escape') { e.stopPropagation(); closeMenu(); } }, true);
 		window.addEventListener('scroll', onScroll, true);

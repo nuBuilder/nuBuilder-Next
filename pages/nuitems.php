@@ -138,6 +138,7 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 			<?php if ($item && $rights['delete']): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('item_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
+			<?php if ($item): ?><?= NuFormInfo::record($T, (string)$id) /* (i) record info (0.8.501) */ ?><?php endif; ?>
 			</div>
 		</div>
 		<div class="card shadow-sm itemCard">

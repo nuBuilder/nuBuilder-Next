@@ -557,14 +557,72 @@
 		// touch: a long press shows the description (hover card in that mode) and does not open the tile or the browser's link menu
 		viewEl.addEventListener('pointerdown', function (e) {
 			if (e.pointerType !== 'touch') return;
-			var a = tileOf(e.target);
-			if (!a || (e.target.closest && e.target.closest('.nuHomeAction, [data-nu-descinfo]')) || eff(size).desc === 'off') return;
-			pressT = setTimeout(function () { suppress = true; showTip(a, eff(size).desc === 'hovercard' ? 'card' : 'tip'); if (navigator.vibrate) navigator.vibrate(10); }, 500);
+			var a = tileOf(e.target) || (e.target.closest && e.target.closest('[data-nu-recent]'));
+			if (!a || (e.target.closest && e.target.closest('.nuHomeAction, [data-nu-descinfo]')) || (eff(size).desc === 'off' && !ctxOk(a))) return;
+			var px = e.clientX, py = e.clientY;
+			pressT = setTimeout(function () {
+				suppress = true;
+				if (ctxOk(a)) openCtx(a, px, py); else if (a.hasAttribute('data-nu-tile')) showTip(a, eff(size).desc === 'hovercard' ? 'card' : 'tip');
+				if (navigator.vibrate) navigator.vibrate(10);
+			}, 500);
 		});
 		['pointerup', 'pointercancel'].forEach(function (ev) { viewEl.addEventListener(ev, function () { clearTimeout(pressT); }); });
 		viewEl.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch' && Math.abs(e.movementX) + Math.abs(e.movementY) > 4) clearTimeout(pressT); });
-		viewEl.addEventListener('contextmenu', function (e) { if (suppress || tipFor) e.preventDefault(); });
+		viewEl.addEventListener('contextmenu', function (e) {
+			if (ctxMenu) { e.preventDefault(); return; }                    // the long press opened it already
+			var c = e.target.closest && e.target.closest('[data-nu-tile], [data-nu-chip], [data-nu-recent]');
+			if (c && ctxOk(c)) { e.preventDefault(); hideTip(true); openCtx(c, e.clientX, e.clientY); return; }
+			if (suppress || tipFor) e.preventDefault();
+		});
 	}
+
+	// ---------------------------------------------------------------- right-click / long press on a tile (0.8.497): the tile's name and
+	// description and "Add to favourites" / "Remove from favourites" – the same POST as the ☆ of the side bar (?p=sidebar action fav),
+	// then the page reloads. Only where the reader may change the favourites (D.favUrl) and not while customising. On a chip of the row
+	// "Recently used" (0.8.498): Remove from recently used (action forget) and Clear recently used (action clear).
+	var ctxMenu = null;
+	function ctxKey(node) { return node.getAttribute('data-nu-tile') || node.getAttribute('data-nu-chip') || node.getAttribute('data-nu-recent') || ''; }
+	function ctxOk(node) {
+		return !!(node && ctxKey(node) && (node.hasAttribute('data-nu-recent') ? D.usedUrl : D.favUrl) && !document.body.classList.contains('nuHomeEditing') && !document.body.classList.contains('nuHomeMineOn'));
+	}
+	function closeCtx() { if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; } }
+	function ctxPost(url, data) {
+		var fd = new FormData();
+		fd.append('_csrf', D.csrf); fd.append('back', location.pathname + location.search);
+		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+		fetch(url, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function () { location.reload(); }, function () { location.reload(); });
+	}
+	function ctxItem(iconCls, text, run) {
+		var b = el('button', {type: 'button', 'class': 'dropdown-item', role: 'menuitem'}, [el('i', {'class': 'bi ' + iconCls + ' me-2', 'aria-hidden': 'true'}), text]);
+		b.addEventListener('click', function () { closeCtx(); run(); });
+		return b;
+	}
+	function openCtx(src, x, y) {
+		closeCtx();
+		var key = ctxKey(src), items = [], label, desc = '';
+		if (src.hasAttribute('data-nu-recent')) {           // a chip of the row "Recently used" (the side bar's list)
+			label = (src.querySelector('.nuHomeChipLabel') || src).textContent;
+			items.push(ctxItem('bi-dash-circle', t('sb_recent_remove'), function () { ctxPost(D.usedUrl, {action: 'forget', key: key}); }));
+			items.push(ctxItem('bi-x-circle', t('sb_recent_clear_menu'), function () { ctxPost(D.usedUrl, {action: 'clear'}); }));
+		} else {
+			var tile = viewEl.querySelector('[data-nu-tile="' + key.replace(/["\\]/g, '') + '"]') || src;
+			var fav = tile.getAttribute('data-nu-fav') === '1' || src.hasAttribute('data-nu-chip');
+			label = tile.getAttribute('data-nu-label') || key; desc = tile.getAttribute('data-nu-desc') || '';
+			items.push(ctxItem(fav ? 'bi-star' : 'bi-star-fill text-warning', t(fav ? 'home_unfav' : 'home_fav_add'), function () { ctxPost(D.favUrl, {action: 'fav', key: key}); }));
+		}
+		ctxMenu = el('div', {'class': 'dropdown-menu show nuHomeCtx', role: 'menu', 'aria-label': label},
+			[el('div', {'class': 'nuHomeCtxHead'}, [el('div', {'class': 'fw-semibold', text: label})].concat(desc ? [el('div', {'class': 'small text-body-secondary', text: desc})] : [])),
+				el('div', {'class': 'dropdown-divider'})].concat(items));
+		document.body.appendChild(ctxMenu);
+		if (!x && !y) { var r = src.getBoundingClientRect(); x = r.left + 12; y = r.bottom - 4; }   // context-menu key
+		ctxMenu.style.left = Math.max(4, Math.min(x, window.innerWidth - ctxMenu.offsetWidth - 4)) + 'px';
+		ctxMenu.style.top = Math.max(4, Math.min(y, window.innerHeight - ctxMenu.offsetHeight - 4)) + 'px';
+		items[0].focus({preventScroll: true});
+	}
+	document.addEventListener('pointerdown', function (e) { if (ctxMenu && !ctxMenu.contains(e.target)) closeCtx(); }, true);
+	document.addEventListener('keydown', function (e) { if (ctxMenu && e.key === 'Escape') { e.stopPropagation(); closeCtx(); } }, true);
+	window.addEventListener('resize', closeCtx);
+	window.addEventListener('blur', closeCtx);
 	tip.addEventListener('mouseover', function () { clearTimeout(hideT); });
 	tip.addEventListener('mouseout', function (e) { if (!tip.contains(e.relatedTarget)) hideTip(); });
 	document.addEventListener('pointerdown', function (e) { if (tipFor && !tip.contains(e.target) && !(e.target.closest && e.target.closest('[data-nu-descinfo]')) && tileOf(e.target) !== tipFor) hideTip(true); });
@@ -655,6 +713,25 @@
 			}
 		}).catch(function (e) { toast(t('home_saved_err') + ' ' + e.message, false); });
 	}
+	// the two links of "Only me" (0.8.504): first a dialog that says what happens (the page's #nuConfirm of core/nulayout.php)
+	function ask(title, text, okLabel, okClass, run) {
+		var m = document.getElementById('nuConfirm');
+		if (!m) { if (window.confirm(title + '\n\n' + text)) run(); return; }
+		var ok = m.querySelector('.js-confirm-ok'), ttl = document.getElementById('nuConfirmTitle'), body = m.querySelector('.js-confirm-text');
+		var oldTitle = ttl.textContent, oldOk = ok.textContent, oldCls = ok.className;
+		ttl.textContent = title; body.textContent = text; ok.textContent = okLabel; ok.className = okClass + ' js-confirm-ok';
+		var go = false, inst = nuBs.modal(m);
+		var onOk = function () { go = true; inst.hide(); };
+		ok.addEventListener('click', onOk);
+		m.addEventListener('hidden.bs.modal', function done() {
+			m.removeEventListener('hidden.bs.modal', done); ok.removeEventListener('click', onOk);
+			ttl.textContent = oldTitle; ok.textContent = oldOk; ok.className = oldCls;
+			if (go) run();
+		});
+		inst.show();
+	}
+	function askMakeLayout() { ask(t('home_v_make_layout_title'), tf('home_v_make_layout_text', VS.name), t('home_v_make_layout_ok'), 'btn btn-primary', makeLayoutView); }
+	function askClearMine() { ask(t('home_v_undo_mine_title'), t('home_v_undo_mine_text'), t('home_v_undo_mine_ok'), 'btn btn-danger', clearMine); }
 	function clearMine() {
 		VO = null;
 		applyView(); drawPanel();
@@ -762,12 +839,12 @@
 		if (D.mode && D.mode !== 'admin') {                         // user start pages (0.8.425): one layout – no choice, no Save as
 			secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_layout'), el('p', {'class': 'nuHomeVpStore'}, D.mode === 'level'
 				? [icon('bi-people'), el('span', {text: tf('home_u_store_level', VS.name)})]
-				: [icon('bi-person'), el('span', {text: t('home_u_store_user') + ' '})].concat(ovCount() ? [link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine')] : []))]));
+				: [icon('bi-person'), el('span', {text: t('home_u_store_user') + ' '})].concat(ovCount() ? [link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine')] : []))]));
 		} else {
 			if (sc === 'user') store2.push(el('span', {text: t('home_v_store_personal')}));
 			else if (!VS.editable) {
 				store2.push(el('span', {text: t('home_v_store_shared_user') + ' '}));
-				if (ovCount()) store2.push(link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine'));
+				if (ovCount()) store2.push(link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine'));
 			} else store2.push(el('span', {text: tf('home_v_store_shared_admin', VS.name)}));
 			var layoutSec = [lbl('home_v_layout'), el('div', {'class': 'nuHomeVpRow'}, [el('label', {'class': 'visually-hidden', 'for': 'nuHomeVpLayout', text: t('home_v_layout')}), sel,
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', title: t('home_layout_saveas'), 'aria-label': t('home_layout_saveas'), 'data-f': 'saveas', onclick: function () { layoutDialog('saveas'); }}, [icon('bi-plus-lg')]), moreBox]),
@@ -777,9 +854,9 @@
 				var tgt = [el('div', {'class': 'nuHomeVpTarget'}, [el('span', {text: t('home_v_applies_to')}),
 					seg('target', [['me', t('home_v_only_me')], ['all', tf('home_v_everyone', VS.name)]], VP.everyone ? 'all' : 'me', function (x) { VP.everyone = x === 'all'; drawPanel(); }, 'nuHomeSeg2')])];
 				if (VP.everyone) tgt.push(note([icon('bi-exclamation-triangle'), tf('home_v_everyone_note', VS.name)], true));
-				else if (ovCount()) tgt.push(note([tf('home_v_mine_count', ovCount()) + ' ', link(t('home_v_make_layout'), makeLayoutView, 'mklayout'), ' · ', link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine')]));
+				else if (ovCount()) tgt.push(note([(ovCount() === 1 ? t('home_v_mine_count_one') : tf('home_v_mine_count', ovCount())) + ' ', link(t('home_v_make_layout'), askMakeLayout, 'mklayout'), ' · ', link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine')]));
 				secs.push(el('section', {'class': 'nuHomeVpSec'}, tgt));
-			} else if (sc !== 'user' && ovCount()) secs.push(el('section', {'class': 'nuHomeVpSec'}, [note([link(tf('home_v_undo_mine', ovCount()), clearMine, 'undomine')])]));
+			} else if (sc !== 'user' && ovCount()) secs.push(el('section', {'class': 'nuHomeVpSec'}, [note([link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine')])]));
 		}
 
 		// settings for: all screen sizes / only this one

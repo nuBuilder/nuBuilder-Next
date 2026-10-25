@@ -1,0 +1,15 @@
+<section id="concurrent-edits-p">
+	<h2 id="concurrent-edits">Two people editing the same record</h2>
+	<p class="doc-lead">The &quot;also open&quot; note and how conflicting changes are detected and resolved.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone</p>
+	<ul>
+<li><strong>Also open</strong>: a yellow note above the form shows who else has the same record open – “Anna also has this record open (since 10:40)”, or “… is editing this record – unsaved changes”. It is checked every 30 seconds and never blocks anybody.</li>
+<li><strong>Saving after someone else</strong>: only the fields you changed are saved, so changes of others to <em>other</em> fields are kept. If someone saved the <em>same</em> field after you opened the record, Save stops and shows <em>Changed meanwhile</em>: who changed it and when, and for each such field the value when you opened the record, yours and the one saved now. Pick <em>Mine</em> or <em>Theirs</em> per field and <em>Save with these choices</em> – or <em>Reload</em> to see the record as it is now (your changes are lost). The same value on both sides is no conflict.</li>
+<li><strong>Sub-forms</strong>: the same for each row; a row someone else deleted is named (your changes to it are not saved), a row you delete that someone else changed asks <em>Delete anyway</em> or <em>Keep the row</em>.</li>
+<li><strong>Delete</strong>: if the record was changed after you opened it, you are asked before it is deleted.</li>
+<li>Changes made in nuBuilder itself, by procedures or directly in the database are found too – the record is compared with the database. Who and when come from the <a href="#audit-trail">audit trail</a> (when on), otherwise from nuBuilder's record log of the table, otherwise “someone else”.</li>
+<li data-doc="admin"><strong>Switching off</strong>: <code>$nuConfigEditConflictCheck = false;</code> (the check) and <code>$nuConfigEditPresence = false;</code> (the note) in nuconfig.php; per form in its Before Edit PHP: <code>nuNextConflictCheck(false);</code> / <code>nuNextPresence(false);</code>. The note is always off in demo mode. Saves made in nuBuilder itself are not checked (nuBuilder has no such check), but nuBuilder Next notices them.</li>
+</ul>
+	<p class="doc-see">See also: <a href="#save-flow">How a save works</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nuconflict.php</code></li></ul></details>
+</section>

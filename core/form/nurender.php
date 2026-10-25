@@ -907,6 +907,8 @@ final class LayoutSize
 		$h    = (int)$o['sob_all_height'];
 		if ($type === 'lookup') return 'width:' . (int)$o['sob_all_width'] . 'px;';
 		if ($type === 'input' && $o['sob_input_type'] === 'checkbox') return '';
+		// Uppy: a width in px – nuBuilder's template reads it with nuCSSNumber('width'), also while its tab is hidden ('100%' gave 100 px, 0.8.506)
+		if (NuRender::isUppy($o)) return 'width:' . max(10, (int)$o['sob_all_width']) . 'px;max-width:100%;height:' . max(18, $h) . 'px;';
 		if (in_array($type, ['textarea', 'editor', 'html', 'run', 'word', 'chart'], true) || ($type === 'select' && $h > 40) || NuRender::isUppy($o)) return 'width:100%;height:' . max(18, $h) . 'px;';
 		return 'width:100%;';
 	}

@@ -1,0 +1,85 @@
+<section id="save-flow" data-acl="nuform" data-level="advanced">
+	<h2 id="save-flow-h">How a save works</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> The steps of a save on the server, from the posted fields to After Save.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
+	<p>The browser posts the record's values, the list of fields the user edited, the form properties and the sub-form rows to the form API (<code>save</code>). <code>NuRecord::save()</code> then works through these steps:</p>
+<figure class="doc-figure" id="dg-save"><svg class="doc-flow" viewBox="0 0 680 560" role="img" aria-labelledby="dg-save-title dg-save-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-save-title">How a save works</title><desc id="dg-save-desc">Posted values go through seven steps: visibility, concurrent edits, validation, Before Save, one transaction for record, sub-form rows and audit trail, the record log and After Save. Conflicts, field errors and nuDisplayError stop the save.</desc>
+<defs><marker id="dg-save-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
+<rect x="20" y="20" width="160" height="52" rx="8" class="dg-box dg-n"/>
+<text x="100" y="36" dy=".35em" class="dg-t dg-n">Posted values</text>
+<text x="100" y="56" dy=".35em" class="dg-s dg-n">edited fields, rows</text>
+<rect x="220" y="20" width="240" height="52" rx="8" class="dg-box dg-p"/>
+<text x="340" y="36" dy=".35em" class="dg-t dg-p">1 Record visible?</text>
+<text x="340" y="56" dy=".35em" class="dg-s dg-p">table exists, access condition</text>
+<path d="M180 46 L218 46" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="220" y="94" width="240" height="52" rx="8" class="dg-box dg-p"/>
+<text x="340" y="110" dy=".35em" class="dg-t dg-p">2 Changed by others?</text>
+<text x="340" y="130" dy=".35em" class="dg-s dg-p">since the form was opened</text>
+<path d="M340 72 L340 92" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="495" y="98" width="170" height="44" rx="8" class="dg-box dg-a"/>
+<text x="580" y="120" dy=".35em" class="dg-t dg-a">“Changed meanwhile”</text>
+<path d="M460 120 L493 120" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="220" y="168" width="240" height="52" rx="8" class="dg-box dg-p"/>
+<text x="340" y="184" dy=".35em" class="dg-t dg-p">3 Validation</text>
+<text x="340" y="204" dy=".35em" class="dg-s dg-p">required · unique · masks</text>
+<path d="M340 146 L340 166" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="495" y="172" width="170" height="44" rx="8" class="dg-box dg-a"/>
+<text x="580" y="194" dy=".35em" class="dg-t dg-a">field errors</text>
+<path d="M460 194 L493 194" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="220" y="242" width="240" height="52" rx="8" class="dg-box dg-a"/>
+<text x="340" y="258" dy=".35em" class="dg-t dg-a">4 Before Save</text>
+<text x="340" y="278" dy=".35em" class="dg-s dg-a">nu_before_save, the form’s hook</text>
+<path d="M340 220 L340 240" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="495" y="246" width="170" height="44" rx="8" class="dg-box dg-a"/>
+<text x="580" y="268" dy=".35em" class="dg-t dg-a">nuDisplayError stops</text>
+<path d="M460 268 L493 268" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="220" y="316" width="240" height="52" rx="8" class="dg-box dg-p"/>
+<text x="340" y="332" dy=".35em" class="dg-t dg-p">5 Transaction</text>
+<text x="340" y="352" dy=".35em" class="dg-s dg-p">check 2 again with rows locked</text>
+<path d="M340 294 L340 314" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="220" y="390" width="240" height="52" rx="8" class="dg-box dg-p"/>
+<text x="340" y="406" dy=".35em" class="dg-t dg-p">6 Record log</text>
+<text x="340" y="426" dy=".35em" class="dg-s dg-p">when the audit trail is off</text>
+<path d="M340 368 L340 388" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="220" y="464" width="240" height="52" rx="8" class="dg-box dg-a"/>
+<text x="340" y="480" dy=".35em" class="dg-t dg-a">7 After Save</text>
+<text x="340" y="500" dy=".35em" class="dg-s dg-a">#RECORD_ID# is the saved record</text>
+<path d="M340 442 L340 462" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="20" y="316" width="160" height="52" rx="8" class="dg-box dg-g"/>
+<text x="100" y="332" dy=".35em" class="dg-t dg-g">Your tables</text>
+<text x="100" y="352" dy=".35em" class="dg-s dg-g">record · rows · audit trail</text>
+<path d="M220 342 L182 342" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+<rect x="20" y="468" width="160" height="44" rx="8" class="dg-box dg-n"/>
+<text x="100" y="490" dy=".35em" class="dg-t dg-n">JSON {ok, record_id}</text>
+<path d="M220 490 L182 490" class="dg-line" marker-end="url(#dg-save-arrow)"/>
+</svg></figure>
+<div class="doc-sub">
+	<h3 id="save-flow-fields">Which fields are written</h3>
+	<ul>
+		<li>Only objects that save to a column (input, select, lookup, calc, textarea …) and whose id is a column of the table; buttons and file-system uploads never.</li>
+		<li>Existing record: only fields the user <em>edited</em> – so changes others made to other fields are kept.</li>
+		<li>New record: untouched empty fields are not written, so the column default or <code>NULL</code> applies (as in nuBuilder). <em>nuAutoNumber</em> inputs get the next number.</li>
+		<li>Fields the user may not change (read only, hidden, or limited by <a href="#data-access">field data access</a>) are dropped from the post – never taken from the browser. A clone takes such values from the source record in the database.</li>
+		<li>Values are converted to the column's type (dates, numbers); text with a mask is stored with or without the mask characters, as the format says.</li>
+	</ul>
+</div>
+<div class="doc-sub">
+	<h3 id="save-flow-server-cols">Columns set by the server</h3>
+	<ul>
+		<li><strong>Audit columns</strong> <code>created_at</code>, <code>created_by</code>, <code>updated_at</code>, <code>updated_by</code> – on forms created with the audit option.</li>
+		<li><strong>nuBuilder's record log</strong> <code>&lt;table&gt;_nulog</code> – JSON with who added and last edited the record.</li>
+		<li>"Updated on" of notes and code snippets.</li>
+		<li>New primary keys: a nuBuilder id (<code>nu_id()</code>), or the database's auto increment.</li>
+	</ul>
+</div>
+<div class="doc-sub">
+	<h3 id="save-flow-hooks">What hooks can do during a save</h3>
+	<ul>
+		<li>Before Save: stop with <code>nuDisplayError()</code>; read the posted values from <code>#nuFORMdata#</code> / <code>nuGetNuDataValue()</code> and change what is saved with <code>nuSetNuDataValue()</code>; add JavaScript with <code>nuAddJavascript()</code>.</li>
+		<li>After Save: the record is written; <code>#RECORD_ID#</code> is its id; <code>nuReturnNewRecord()</code> makes the form open another record.</li>
+	</ul>
+</div>
+<p>Delete works the same way: visibility check, Before Delete, one transaction for the record and its sub-form rows with audit trail, After Delete.</p>
+	<p class="doc-see">See also: <a href="#form-lifecycle">Form lifecycle and event order</a> · <a href="#validation">Validation and business rules</a> · <a href="#audit-trail">Audit trail</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nurecord.php</code></li><li><code>core/form/nuconflict.php</code></li><li><code>core/nuaudit.php</code></li><li><code>core/nufieldaccess.php</code></li></ul></details>
+</section>

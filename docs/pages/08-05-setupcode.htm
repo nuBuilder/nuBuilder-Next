@@ -1,0 +1,14 @@
+<section id="setupcode" data-doc="admin" data-level="advanced">
+	<h2 id="setupcode-h">Setup code</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Header JavaScript, style and include of nuBuilder&#x27;s Setup form.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p><em>Admin tools → Setup code</em> (globeadmin or the admin role right <em>Setup code</em> – a full-access right, because the code runs for every user) edits the three code fields of nuBuilder's Setup form in <code>zzzzsys_setup</code>, so nuBuilder and nuBuilder Next stay in step. Each field has its own tab and code editor; the tab is part of the address (<code>#header</code>, <code>#style</code>, <code>#include</code>) and stays open after <em>Save</em>.</p>
+<ul>
+<li><strong>Header (JavaScript)</strong> – <code>set_header</code>: on every form page after nuBuilder Next's runtime and before the form's own code – your global functions and nuBuilder's <code>nuLoadEditGlobal</code>, <code>nuLoadBrowseGlobal</code>, <code>nuOnLoad</code>.</li>
+<li><strong>Style (CSS)</strong> – <code>set_style</code>: on every form page after nuBuilder Next's styles.</li>
+<li><strong>Include (HTML)</strong> – <code>set_include</code>: its <code>&lt;link&gt;</code>, <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code> elements are added to every form page (after the runtime and <code>$nuConfigIncludeJS</code>, before Header); other text, HTML comments and <code>/* … */</code> blocks – such as nuBuilder's default text – are ignored. Addresses on other servers are allowed by the page's Content-Security-Policy. (nuBuilder 4.9 saves this field, but in our tests did not output it.)</li>
+<li>Only changed fields are written. A field someone else changed since the page was opened (in nuBuilder or another tab) is not overwritten: the page says which one and keeps your text – saving again overwrites. Saves are logged (<em>Setup code changed</em>, with the fields).</li>
+</ul>
+	<p class="doc-see">See also: <a href="#theming">Theming and CSS</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nusetupcode.php</code></li></ul></details>
+</section>

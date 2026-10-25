@@ -1,0 +1,72 @@
+<section id="form-rendering" data-doc="admin">
+	<h2 id="form-rendering-h">Form rendering pipeline</h2>
+	<p class="doc-lead">From the form&#x27;s metadata to the HTML of a list or an edit form.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p><code>index.php?p=form&amp;f=&lt;form id or code&gt;</code> shows a form's list; with <code>&amp;r=&lt;record id&gt;</code> (or <code>-1</code> for a new record) its edit view. Both are drawn on the server by <code>pages/nuform.php</code>:</p>
+<ol>
+	<li><strong>Metadata</strong> – <code>NuFormMeta::load()</code> reads the form, tabs, objects, events, list columns and hooks (a draft instead, while its author previews it). Rights are checked with <code>NuAcl</code>: view, and per action add, save, delete, clone, print; nuBuilder's "browse only" / "edit only" and "no changes to existing records" of the access level apply.</li>
+	<li><strong>Hash</strong> – <code>NuHash::forForm()</code> collects the hash variables: user, record, fields of the record, form properties.</li>
+	<li><strong>Hooks</strong> – Before Browse or Before Edit run (after the global hook), and may add JavaScript, set values or properties, or stop with an error.</li>
+	<li><strong>Data</strong>
+		<ul>
+			<li>List: <code>NuBrowse::query()</code> keeps FROM / WHERE / GROUP BY / HAVING of the browse SQL, selects the primary key and the list columns, and wraps it for search, column filters, count, sort and paging – on MySQL and SQL Server.</li>
+			<li>Record: <code>NuRecord::load()</code>; sub-form rows come from the sub-form's browse SQL filtered by the foreign key; lookups show code and description from the lookup form.</li>
+		</ul>
+	</li>
+	<li><strong>Field data access</strong> – fields the user may not see are left out or masked before anything is sent to the browser.</li>
+	<li><strong>HTML</strong> – <code>NuRender</code> writes tabs and objects with nuBuilder's element ids (<code>#cus_name</code>, <code>#label_cus_name</code>, <code>#&lt;lookup&gt;code</code>, <code>#&lt;subform&gt;000&lt;field&gt;</code>, <code>#nuTab0</code> …), so existing JavaScript finds its targets. The layout is chosen per form: <em>absolute</em> (nuBuilder's pixel positions), <em>auto</em> (rows derived from the positions, Bootstrap columns) or <em>grid</em> (explicit rows and spans).</li>
+	<li><strong>Properties</strong> – the page gets a scope key; values set with <code>nuSetProperty()</code> in PHP stay on the server and cannot be changed in the browser (<code>NuProps</code>).</li>
+	<li><strong>Browser</strong> – <code>assets/js/nu/nuruntime.js</code> and the compatibility functions start, run nuBuilder's load hooks and the form's JavaScript, and from then on talk to the <a href="#routing-formapi">form API</a>.</li>
+</ol>
+<figure class="doc-figure" id="dg-rendering"><svg class="doc-flow" viewBox="0 0 680 560" role="img" aria-labelledby="dg-rendering-title dg-rendering-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-rendering-title">Form rendering pipeline</title><desc id="dg-rendering-desc">index.php?p=form goes through metadata and rights, the hash variables, the Before Browse / Before Edit hooks, the data of the list or the record, field data access and NuRender to the HTML page, where nuruntime.js starts.</desc>
+<defs><marker id="dg-rendering-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
+<text x="115" y="24" dy=".35em" class="dg-t dg-n">Browser</text>
+<text x="345" y="24" dy=".35em" class="dg-t dg-n">pages/nuform.php</text>
+<text x="570" y="24" dy=".35em" class="dg-t dg-n">Database</text>
+<rect x="40" y="44" width="150" height="52" rx="8" class="dg-box dg-n"/>
+<text x="115" y="60" dy=".35em" class="dg-t dg-n">?p=form&amp;f=…</text>
+<text x="115" y="80" dy=".35em" class="dg-s dg-n">&amp;r= for a record</text>
+<path d="M190 70 L238 70" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="240" y="44" width="210" height="52" rx="8" class="dg-box dg-p"/>
+<text x="345" y="60" dy=".35em" class="dg-t dg-p">Metadata and rights</text>
+<text x="345" y="80" dy=".35em" class="dg-s dg-p">NuFormMeta · NuAcl</text>
+<rect x="240" y="120" width="210" height="52" rx="8" class="dg-box dg-p"/>
+<text x="345" y="136" dy=".35em" class="dg-t dg-p">Hash variables</text>
+<text x="345" y="156" dy=".35em" class="dg-s dg-p">NuHash::forForm()</text>
+<path d="M345 96 L345 118" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="240" y="196" width="210" height="52" rx="8" class="dg-box dg-a"/>
+<text x="345" y="212" dy=".35em" class="dg-t dg-a">Hooks</text>
+<text x="345" y="232" dy=".35em" class="dg-s dg-a">Before Browse / Before Edit</text>
+<path d="M345 172 L345 194" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="240" y="272" width="210" height="52" rx="8" class="dg-box dg-p"/>
+<text x="345" y="288" dy=".35em" class="dg-t dg-p">Data</text>
+<text x="345" y="308" dy=".35em" class="dg-s dg-p">list: NuBrowse · record: NuRecord</text>
+<path d="M345 248 L345 270" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="240" y="348" width="210" height="52" rx="8" class="dg-box dg-p"/>
+<text x="345" y="364" dy=".35em" class="dg-t dg-p">Field data access</text>
+<text x="345" y="384" dy=".35em" class="dg-s dg-p">left out or masked</text>
+<path d="M345 324 L345 346" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="240" y="424" width="210" height="52" rx="8" class="dg-box dg-p"/>
+<text x="345" y="440" dy=".35em" class="dg-t dg-p">HTML</text>
+<text x="345" y="460" dy=".35em" class="dg-s dg-p">NuRender: absolute · auto · grid</text>
+<path d="M345 400 L345 422" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="500" y="44" width="140" height="52" rx="8" class="dg-box dg-g"/>
+<text x="570" y="60" dy=".35em" class="dg-t dg-g">Form metadata</text>
+<text x="570" y="80" dy=".35em" class="dg-s dg-g">zzzzsys_form, _tab…</text>
+<path d="M500 70 L452 70" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="500" y="272" width="140" height="52" rx="8" class="dg-box dg-g"/>
+<text x="570" y="298" dy=".35em" class="dg-t dg-g">Your tables</text>
+<path d="M500 298 L452 298" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="40" y="424" width="150" height="52" rx="8" class="dg-box dg-n"/>
+<text x="115" y="440" dy=".35em" class="dg-t dg-n">HTML page</text>
+<text x="115" y="460" dy=".35em" class="dg-s dg-n">+ nuruntime.js</text>
+<path d="M240 450 L192 450" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+<rect x="40" y="508" width="150" height="52" rx="8" class="dg-box dg-n"/>
+<text x="115" y="524" dy=".35em" class="dg-t dg-n">Load hooks</text>
+<text x="115" y="544" dy=".35em" class="dg-s dg-n">then ?p=formapi</text>
+<path d="M115 476 L115 506" class="dg-line" marker-end="url(#dg-rendering-arrow)"/>
+</svg></figure>
+<p>What runs in which order, including the JavaScript hooks: <a href="#form-lifecycle">Form lifecycle and event order</a>.</p>
+	<p class="doc-see">See also: <a href="#form-lifecycle">Form lifecycle and event order</a> · <a href="#save-flow">How a save works</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nuform.php</code></li><li><code>core/form/numeta.php</code></li><li><code>core/form/nurender.php</code></li><li><code>core/form/nulayout.php</code></li><li><code>core/form/nubrowse.php</code></li><li><code>core/form/nuprops.php</code></li></ul></details>
+</section>

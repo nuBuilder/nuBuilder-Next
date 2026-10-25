@@ -362,13 +362,3 @@ input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-prima
 	background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); font-size: .85rem; text-align: start; }
 
 /* form info for the globeadmin (0.8.435, core/form/nuforminfo.php) */
-.nuFormInfo { width: 26rem; max-width: calc(100vw - 2rem); }
-.nuFormInfoList { padding: .25rem 0; }
-.nuFormInfoRow { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; align-items: start; gap: .5rem; padding: .25rem .5rem .25rem 1rem; }
-.nuFormInfoRow:hover { background: var(--bs-tertiary-bg); }
-.nuFormInfoRow dt { font-weight: 500; color: var(--bs-secondary-color); padding-top: .2rem; }
-.nuFormInfoRow dd { margin: 0; padding-top: .2rem; overflow-wrap: anywhere; min-width: 0; }
-.nuFormInfoRow code { color: var(--bs-body-color); }
-.nuFormInfoCopy { padding: 0 .35rem; line-height: 1.6; color: var(--bs-secondary-color); }
-.nuFormInfoCopy:hover, .nuFormInfoCopy:focus-visible { color: var(--bs-primary); }
-.nuFormInfoSql { max-height: 8rem; overflow: auto; white-space: pre-wrap; font-size: .8em; background: var(--bs-tertiary-bg); padding: .25rem .4rem; border-radius: .25rem; }

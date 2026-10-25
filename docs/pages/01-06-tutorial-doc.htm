@@ -1,0 +1,13 @@
+<section id="tutorial-doc" data-doc="admin">
+	<h2 id="tutorial-h">Tutorial</h2>
+	<p class="doc-lead">The step-by-step introduction for administrators inside nuBuilder Next.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p><em>Tutorial</em> (start page tile in <em>System</em>, user menu, <kbd>Ctrl</kbd>+<kbd>K</kbd>; <code>index.php?p=tutorial</code>) introduces nuBuilder Next step by step for the globeadmin and users with an admin role: <strong>Basics</strong> (start page, sample data, forms and lists, users, access levels, permission items, acting as a user, admin roles), <strong>Building applications</strong> (forms and the builder, object types, code and hash variables, procedures, reports, dashboards, e-mail, branding, import and export) and <strong>Administration</strong> (configuration, settings, security, logs, updates and backups, system status, cron, App cloner, REST API, demo mode, migrating a nuBuilder application). The text is English, like this documentation.</p>
+<ul>
+<li>Each lesson explains one topic; links open the page it is about – or the matching chapter of this documentation – in a new tab, and a <em>Try it</em> box suggests a small exercise (most use the <a href="#sample-data">sample data</a>).</li>
+<li><em>Done – next lesson</em> marks a lesson; the list on the left and the tile's badge show the progress. <em>Start again</em> clears it. The progress is kept per person: the globeadmin's in <code>zzzzsys_nunext_setting</code> (<code>tutorial_ga</code>), other users' in their <code>sus_json</code> (<code>NUNEXT_TUTORIAL</code>), demo users' only for the session.</li>
+<li>Users with an admin role see only the lessons of their rights.</li>
+<li>The start page shows a note with <em>Start the tutorial</em> until it is hidden (<em>Hide</em>, or the button on the tutorial's overview) or every lesson is done; right after the <a href="#setup-wizard">setup wizard</a> it is shown once more, and the wizard's last page links to it.</li>
+</ul>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nututorial.php</code></li><li><code>docs/nunext-tutorial.htm</code></li></ul></details>
+</section>

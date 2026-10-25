@@ -1,0 +1,140 @@
+<section id="form-lifecycle" data-acl="nuform" data-level="advanced">
+	<h2 id="form-lifecycle-h">Form lifecycle and event order</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Which PHP hooks and JavaScript functions run, and in which order, when a list or a record is opened, saved or deleted.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
+	<p>The same hooks as in nuBuilder 4.9 run, in the same order. PHP hooks run on the server and can stop the step with an error (<code>nuDisplayError()</code>); JavaScript hooks run in the browser, and a hook that returns <code>false</code> cancels the action.</p>
+<figure class="doc-figure" id="dg-lifecycle"><svg class="doc-flow doc-flow-wide" viewBox="0 0 760 470" role="img" aria-labelledby="dg-lifecycle-title dg-lifecycle-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-lifecycle-title">Form lifecycle and event order</title><desc id="dg-lifecycle-desc">Four sequences from left to right: opening a list, opening a record, saving and deleting. Grey boxes run in the browser, purple ones on the server, amber ones are the hooks with your own PHP.</desc>
+<defs><marker id="dg-lifecycle-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
+<rect x="20" y="14" width="112" height="26" rx="8" class="dg-box dg-n"/>
+<text x="76" y="27" dy=".35em" class="dg-t dg-n">Browser (JS)</text>
+<rect x="144" y="14" width="112" height="26" rx="8" class="dg-box dg-p"/>
+<text x="200" y="27" dy=".35em" class="dg-t dg-p">Server</text>
+<rect x="268" y="14" width="112" height="26" rx="8" class="dg-box dg-a"/>
+<text x="324" y="27" dy=".35em" class="dg-t dg-a">Your PHP hook</text>
+<text x="20" y="74" dy=".35em" class="dg-t dg-n dg-start">Opening a list</text>
+<rect x="20" y="90" width="136" height="56" rx="8" class="dg-box dg-a"/>
+<text x="88" y="108" dy=".35em" class="dg-t dg-a">nu_before_save</text>
+<text x="88" y="128" dy=".35em" class="dg-s dg-a">then Before Browse</text>
+<rect x="171" y="90" width="136" height="56" rx="8" class="dg-box dg-p"/>
+<text x="239" y="108" dy=".35em" class="dg-t dg-p">List query</text>
+<text x="239" y="128" dy=".35em" class="dg-s dg-p">search · sort · paging</text>
+<path d="M156 118 L169 118" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="322" y="90" width="136" height="56" rx="8" class="dg-box dg-n"/>
+<text x="390" y="108" dy=".35em" class="dg-t dg-n">Browse global</text>
+<text x="390" y="128" dy=".35em" class="dg-s dg-n">nuLoadBrowseGlobal</text>
+<path d="M307 118 L320 118" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="473" y="90" width="136" height="56" rx="8" class="dg-box dg-n"/>
+<text x="541" y="108" dy=".35em" class="dg-t dg-n">nuOnLoad</text>
+<text x="541" y="128" dy=".35em" class="dg-s dg-n">the form’s JavaScript</text>
+<path d="M458 118 L471 118" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<text x="20" y="174" dy=".35em" class="dg-t dg-n dg-start">Opening a record</text>
+<rect x="20" y="190" width="136" height="56" rx="8" class="dg-box dg-p"/>
+<text x="88" y="208" dy=".35em" class="dg-t dg-p">Load record</text>
+<text x="88" y="228" dy=".35em" class="dg-s dg-p">new record = -1</text>
+<rect x="171" y="190" width="136" height="56" rx="8" class="dg-box dg-a"/>
+<text x="239" y="208" dy=".35em" class="dg-t dg-a">nu_before_edit</text>
+<text x="239" y="228" dy=".35em" class="dg-s dg-a">then Before Edit</text>
+<path d="M156 218 L169 218" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="322" y="190" width="136" height="56" rx="8" class="dg-box dg-p"/>
+<text x="390" y="208" dy=".35em" class="dg-t dg-p">Draw objects</text>
+<text x="390" y="228" dy=".35em" class="dg-s dg-p">field data access</text>
+<path d="M307 218 L320 218" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="473" y="190" width="136" height="56" rx="8" class="dg-box dg-n"/>
+<text x="541" y="208" dy=".35em" class="dg-t dg-n">HTML scripts</text>
+<text x="541" y="228" dy=".35em" class="dg-s dg-n">nuLoadEditGlobal</text>
+<path d="M458 218 L471 218" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="624" y="190" width="136" height="56" rx="8" class="dg-box dg-n"/>
+<text x="692" y="208" dy=".35em" class="dg-t dg-n">nuOnLoad</text>
+<text x="692" y="228" dy=".35em" class="dg-s dg-n">then nuAfterSave</text>
+<path d="M609 218 L622 218" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<text x="20" y="274" dy=".35em" class="dg-t dg-n dg-start">Saving</text>
+<rect x="20" y="290" width="136" height="56" rx="8" class="dg-box dg-n"/>
+<text x="88" y="308" dy=".35em" class="dg-t dg-n">nuBeforeSave</text>
+<text x="88" y="328" dy=".35em" class="dg-s dg-n">false cancels</text>
+<rect x="171" y="290" width="136" height="56" rx="8" class="dg-box dg-p"/>
+<text x="239" y="308" dy=".35em" class="dg-t dg-p">Checks</text>
+<text x="239" y="328" dy=".35em" class="dg-s dg-p">conflicts, validation</text>
+<path d="M156 318 L169 318" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="322" y="290" width="136" height="56" rx="8" class="dg-box dg-a"/>
+<text x="390" y="308" dy=".35em" class="dg-t dg-a">Before Save</text>
+<text x="390" y="328" dy=".35em" class="dg-s dg-a">nuDisplayError stops</text>
+<path d="M307 318 L320 318" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="473" y="290" width="136" height="56" rx="8" class="dg-box dg-p"/>
+<text x="541" y="308" dy=".35em" class="dg-t dg-p">Transaction</text>
+<text x="541" y="328" dy=".35em" class="dg-s dg-p">record · rows · audit</text>
+<path d="M458 318 L471 318" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="624" y="290" width="136" height="56" rx="8" class="dg-box dg-a"/>
+<text x="692" y="308" dy=".35em" class="dg-t dg-a">After Save</text>
+<text x="692" y="328" dy=".35em" class="dg-s dg-a">then the form reloads</text>
+<path d="M609 318 L622 318" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<text x="20" y="374" dy=".35em" class="dg-t dg-n dg-start">Deleting</text>
+<rect x="20" y="390" width="136" height="56" rx="8" class="dg-box dg-n"/>
+<text x="88" y="408" dy=".35em" class="dg-t dg-n">nuBeforeDelete</text>
+<text x="88" y="428" dy=".35em" class="dg-s dg-n">false cancels</text>
+<rect x="171" y="390" width="136" height="56" rx="8" class="dg-box dg-a"/>
+<text x="239" y="408" dy=".35em" class="dg-t dg-a">Before Delete</text>
+<text x="239" y="428" dy=".35em" class="dg-s dg-a">an error stops</text>
+<path d="M156 418 L169 418" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="322" y="390" width="136" height="56" rx="8" class="dg-box dg-p"/>
+<text x="390" y="408" dy=".35em" class="dg-t dg-p">Transaction</text>
+<text x="390" y="428" dy=".35em" class="dg-s dg-p">record · rows · audit</text>
+<path d="M307 418 L320 418" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="473" y="390" width="136" height="56" rx="8" class="dg-box dg-a"/>
+<text x="541" y="418" dy=".35em" class="dg-t dg-a">After Delete</text>
+<path d="M458 418 L471 418" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+<rect x="624" y="390" width="136" height="56" rx="8" class="dg-box dg-n"/>
+<text x="692" y="408" dy=".35em" class="dg-t dg-n">nuAfterDelete</text>
+<text x="692" y="428" dy=".35em" class="dg-s dg-n">…Global</text>
+<path d="M609 418 L622 418" class="dg-line" marker-end="url(#dg-lifecycle-arrow)"/>
+</svg></figure>
+<div class="doc-sub">
+	<h3 id="lifecycle-browse">Opening a list</h3>
+	<ol>
+		<li>PHP: global hook <code>nu_before_save</code> (as in nuBuilder it also runs before every Before Browse), then the form's <strong>Before Browse</strong>.</li>
+		<li>Server: the list query (browse SQL with search, filters, sort and paging) runs; the page is drawn.</li>
+		<li>JavaScript: <code>nuLoadBrowseGlobal()</code> (Setup → Header), then the form's <code>nuOnLoad(formId, formCode)</code>.</li>
+	</ol>
+</div>
+<div class="doc-sub">
+	<h3 id="lifecycle-edit">Opening a record</h3>
+	<ol>
+		<li>Server: the record is loaded (a new record has the id <code>-1</code>).</li>
+		<li>PHP: global hook <code>nu_before_edit</code>, then the form's <strong>Before Edit</strong>. <code>nuSetFormValue()</code> here changes what is shown; <code>nuAddJavascript()</code> adds code for the browser.</li>
+		<li>Server: objects are drawn; field data access is applied.</li>
+		<li>JavaScript: scripts inside HTML objects, then <code>nuLoadEditGlobal()</code>, then <code>nuOnLoad(formId, formCode)</code>. Values set while loading do not mark the form as changed.</li>
+		<li>JavaScript: after a save that reloaded the form, <code>nuAfterSave()</code> / <code>nuAfterSaveGlobal()</code>.</li>
+	</ol>
+</div>
+<div class="doc-sub">
+	<h3 id="lifecycle-save">Saving</h3>
+	<ol>
+		<li>JavaScript: <code>nuBeforeSaveGlobal()</code>, then the form's <code>nuBeforeSave()</code> – <code>false</code> cancels.</li>
+		<li>Server: concurrent-edit check, validation of required / unique fields and masks.</li>
+		<li>PHP: global hook <code>nu_before_save</code>, then <strong>Before Save</strong> – <code>nuDisplayError()</code> stops the save; <code>#nuFORMdata#</code> holds the posted values.</li>
+		<li>Server: one transaction writes the record and its sub-form rows and records the audit trail.</li>
+		<li>PHP: <strong>After Save</strong> (<code>#RECORD_ID#</code> is the saved record; <code>nuReturnNewRecord()</code> opens another one).</li>
+		<li>JavaScript: the form reloads; <code>nuOnLoad()</code>, then <code>nuAfterSave()</code> / <code>nuAfterSaveGlobal()</code>. <em>Save &amp; Close</em>: <code>nuCloseAfterSaveGlobal()</code> returning <code>false</code> keeps the form open.</li>
+	</ol>
+	<p>The server side in detail: <a href="#save-flow">How a save works</a>.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="lifecycle-delete">Deleting</h3>
+	<ol>
+		<li>JavaScript: <code>nuBeforeDelete()</code> – <code>false</code> cancels.</li>
+		<li>PHP: <strong>Before Delete</strong> – an error stops the delete.</li>
+		<li>Server: the record and its sub-form rows are deleted in one transaction (audit trail).</li>
+		<li>PHP: <strong>After Delete</strong>; JavaScript: <code>nuAfterDelete()</code> / <code>nuAfterDeleteGlobal()</code>.</li>
+	</ol>
+</div>
+<div class="doc-sub">
+	<h3 id="lifecycle-other">Other events</h3>
+	<ul>
+		<li><strong>Lookups</strong>: the lookup's <strong>After Browse</strong> PHP runs when a row is chosen (<code>nuLookupRecord()</code>); in the browser <code>nuOnLookupPopulated()</code> / <code>nuOnLookupPopulatedGlobal()</code>.</li>
+		<li><strong>Procedures</strong> started from the browser (<code>nuRunPHPHidden()</code>, run objects) run with the current form's hash.</li>
+		<li><strong>Object events</strong> (onchange, onclick, onblur …) are the JavaScript of <code>zzzzsys_event</code> rows, bound when the form loads.</li>
+		<li>More hooks the runtime calls when a form defines them (formatting, calendars, selects, popups, messages, action buttons): see the <a href="#ref">Function reference</a>, group <em>hooks</em>.</li>
+	</ul>
+</div>
+	<p class="doc-see">See also: <a href="#hooks">PHP hooks and procedures</a> · <a href="#save-flow">How a save works</a> · <a href="#ref">Function reference</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nuform.php</code></li><li><code>pages/nuformapi.php</code></li><li><code>core/form/nurecord.php</code></li><li><code>core/form/nuphp.php</code></li><li><code>assets/js/nu/nuruntime.js</code></li></ul></details>
+</section>

@@ -132,6 +132,7 @@ nu_layout_start(t('file_title'), 'forms');
 		<div class="nuTitleBar mb-3">
 			<h1 class="h4 mb-0"><?= h($file ? (string)$file['sfi_code'] : t('file_new')) ?>
 				<?php if ($file && $isSystem($file)): ?><span class="badge bg-info-subtle text-info-emphasis fs-6 align-middle"><?= h(t('file_system')) ?></span><?php endif; ?></h1>
+			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page -->
 			<a class="btn nuBtnAct" href="<?= h(nu_url('files')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="fileSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($file && $rights['clone']): ?>
@@ -140,6 +141,8 @@ nu_layout_start(t('file_title'), 'forms');
 			<?php if ($file && $rights['delete'] && !$sysLocked): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('file_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
+			<?php if ($file): ?><?= NuFormInfo::record($T, (string)$id, ['code' => (string)$file['sfi_code']]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+			</div>
 		</div>
 		<?php if ($sysLocked): ?><div class="alert alert-info py-2 small"><?= h(t('file_system_locked')) ?></div><?php endif; ?>
 		<div class="row g-3">

@@ -37,9 +37,11 @@ if (nu_is_post()) {
 		$aud = NuNotify::cleanAudience(['all' => !$own && nu_check('aud_all') === '1'] + (is_array($_POST['audience'] ?? null) ? $_POST['audience'] : []), $own);
 		$ids = NuNotify::audienceEmpty($aud) ? [] : NuNotify::recipients($aud);
 		$people = NuNotify::people();
-		$names = array_map(static fn($i) => $i === 'globeadmin' ? 'globeadmin' : ($people[$i]['login'] ?? $i), $ids);
-		natcasesort($names);
-		exit(json_encode(['ok' => true, 'n' => count($ids), 'text' => t('ntf_reaches', count($ids)), 'names' => array_values(array_slice($names, 0, 500))], JSON_UNESCAPED_UNICODE));
+		// recipients for the "Show" dialogue (0.8.510): full name, login name, department, team, position – sorted by name
+		$rows = array_map(static fn($i) => $i === 'globeadmin' ? ['Globeadmin', 'globeadmin', '', '', '']
+			: [($people[$i]['name'] ?? '') !== '' ? $people[$i]['name'] : ($people[$i]['login'] ?? $i), $people[$i]['login'] ?? $i, $people[$i]['department'] ?? '', $people[$i]['team'] ?? '', $people[$i]['position'] ?? ''], $ids);
+		usort($rows, static fn($a, $b) => strnatcasecmp($a[0], $b[0]));
+		exit(json_encode(['ok' => true, 'n' => count($ids), 'text' => t('ntf_reaches', count($ids)), 'people' => array_slice($rows, 0, 2000)], JSON_UNESCAPED_UNICODE));
 	}
 	if ($a === 'settings') {
 		if (!$u['globeadmin'] && !NuAdmin::can('notifications', 'change')) NuAcl::require('-');
@@ -109,14 +111,15 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 	$fe = static fn(string $k) => isset($err[$k]) ? '<div class="invalid-feedback d-block">' . h($err[$k]) . '</div>' : '';
 	$published = $n && $n['status'] === 'published';
 	$mailOk = NuMail::configured();
-	$sel = static function (string $key, array $options, array $chosen, string $label) use ($own): string {
+	$sel = static function (string $key, array $options, array $chosen, string $label, string $tip = '') use ($own): string {
 		$o = '';
 		foreach ($options as $val => $lab) {
 			[$val, $text, $sub] = is_array($lab) ? [(string)$val, $lab[0], $lab[1]] : [(string)$lab, (string)$lab, ''];
 			$o .= '<option value="' . h($val) . '"' . (in_array($val, $chosen, true) ? ' selected' : '') . ($sub !== '' ? ' data-sub="' . h($sub) . '"' : '') . '>' . h($text) . '</option>';
 		}
 		foreach ($chosen as $c) if (!array_key_exists($c, $options) && !in_array($c, $options, true)) $o .= '<option value="' . h($c) . '" selected>' . h($c) . '</option>';
-		return '<div class="col-md-6"><label class="form-label small mb-1" for="aud_' . $key . '">' . h($label) . '</label><select class="form-select" multiple name="audience[' . $key . '][]" id="aud_' . $key . '" data-ntf-ts'
+		return '<div class="col-md-6"><label class="form-label small mb-1" for="aud_' . $key . '">' . h($label) . '</label>' . ($tip !== '' ? NuListView::infoTip($tip) : '')
+			. '<select class="form-select" multiple name="audience[' . $key . '][]" id="aud_' . $key . '" data-ntf-ts' . ($key === 'exclude' ? ' data-ntf-exclude' : '')
 			. ($own ? '' : ' data-create="' . (in_array($key, ['departments', 'teams', 'positions'], true) ? '1' : '') . '"') . '>' . $o . '</select></div>';
 	};
 	// formatted text (0.8.400): TinyMCE when it is installed (copied from nuBuilder); it needs inline styles on this page only
@@ -201,13 +204,13 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 			<?php if (!$own): ?>
 				<?= $sel('positions', $ch['positions'], $aud['positions'], t('ntf_aud_positions')) ?>
 				<?= $sel('access', $ch['access'], $aud['access'], t('ntf_aud_access')) ?>
+				<?= $sel('exclude', $ch['users'], $aud['exclude'] ?? [], t('ntf_aud_exclude'), t('ntf_aud_exclude_tip')) ?>
 			<?php endif; ?>
 		</div>
 		<div class="d-flex flex-wrap align-items-center gap-3 mt-3">
 			<div class="alert alert-secondary py-2 mb-0 small" id="ntfCount" role="status" aria-live="polite" data-url="<?= h(nu_url('notifications')) ?>">…</div>
 			<button type="button" class="btn btn-link btn-sm p-0" id="ntfCountShow" hidden><?= h(t('ntf_show_names')) ?></button>
 		</div>
-		<div class="small text-body-secondary mt-2 nuNtfNames" id="ntfNames" hidden></div>
 
 		<div class="mt-4"><span class="form-label d-block"><?= h(t('ntf_f_mode')) ?></span>
 			<div class="form-check"><input class="form-check-input" type="radio" name="mode" value="live" id="ntf_mode_live"<?= ($v['mode'] ?? 'live') !== 'fixed' ? ' checked' : '' ?><?= $published ? ' disabled' : '' ?>>
@@ -218,6 +221,20 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 		</div>
 	</div>
 </form>
+<?php // recipients as a sortable table (0.8.510, assets/js/nunotifications.js fills it from the count answer) ?>
+<div class="modal fade" id="ntfPeopleDlg" tabindex="-1" aria-labelledby="ntfPeopleTitle" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+		<div class="modal-header"><h2 class="modal-title h5" id="ntfPeopleTitle"><?= h(t('ntf_recipients_now')) ?> <span class="badge text-bg-secondary ms-1" id="ntfPeopleN"></span></h2>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+		<div class="modal-body p-0">
+			<table class="table nu-table align-middle mb-0" id="ntfPeopleTable">
+				<thead><tr><?php foreach (['user_display_name', 'user_login_name', 'user_department', 'user_team', 'user_position'] as $i => $k): ?><th scope="col"><button type="button" class="btn btn-link p-0 nuNtfSort text-reset text-decoration-none" data-col="<?= $i ?>"><?= h(t($k)) ?><i class="bi ms-1" aria-hidden="true"></i></button></th><?php endforeach; ?></tr></thead>
+				<tbody></tbody>
+			</table>
+		</div>
+		<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= h(t('close')) ?></button></div>
+	</div></div>
+</div>
 <?php if ($n): foreach (['delete' => 'ntfActDelete', 'copy' => 'ntfActCopy', 'withdraw' => 'ntfActWithdraw'] as $act => $fid): ?>
 <form method="post" id="<?= $fid ?>" class="d-none"<?= $act === 'delete' ? ' data-confirm="' . h(t('ntf_delete_confirm')) . '" data-confirm-ok="' . h(t('delete')) . '" data-confirm-class="btn btn-danger"' : '' ?>><?= nu_csrf_field() ?><input type="hidden" name="action" value="<?= $act ?>"><input type="hidden" name="id" value="<?= h($id) ?>"></form>
 <?php endforeach; endif; ?>

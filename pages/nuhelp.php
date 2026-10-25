@@ -3,21 +3,22 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Documentation (English): docs/nunext-docs.htm, filtered on the server so every user receives only what is relevant
- * for him (see the comment at the top of that file).
+ * Documentation (English): one file per page in docs/pages/, listed in reading order in docs/toc.json (see the comment there).
+ * Filtered on the server so every user receives only what is relevant for him.
  *   ?p=help            everything the current user may see (globeadmin: all)
  *   ?p=help&doc=user   globeadmin: preview of the documentation of a user without special rights
- *   ?p=help&q=…        opens with a search; #id jumps to a chapter (in either tab)
- *   ?p=help&tab=ref    opens the tab Code reference (docs/nunext-ref.htm, 0.8.464); ?p=help&part=ref = its HTML for nuhelp.js
- * Index (h2/h3) and search are built in the browser by assets/js/nuhelp.js.
+ *   ?p=help&q=…        opens with a search; #id jumps to a page or section (in either tab)
+ *   ?p=help&tab=ref    opens the tab Code reference (chapters with "tab": "ref"); ?p=help&part=ref = its HTML for nuhelp.js
+ * Chapters and pages are numbered here after filtering (1, 1.1 …); index (h2/h3), search and the switch
+ * "Show advanced topics" (data-level="advanced") are handled in the browser by assets/js/nuhelp.js.
  */
 
 $u = NuAuth::user();
 $doc = (string)($_GET['doc'] ?? '');
-$admin = NuAdmin::any() && $doc !== 'user';             // globeadmin and users with an admin role (0.8.323)
+$admin = NuAdmin::any() && $doc !== 'user';             // globeadmin and users with an admin role
 $preview = NuAdmin::any() && $doc === 'user';
 
-/** Visible for the current reader? data-doc="admin" → admin only; data-doc="dev" → globeadmin in developer mode (0.8.408); data-acl="a,b" → view right on one of the forms. */
+/** Visible for the current reader? data-doc="admin" → admin only; data-doc="dev" → globeadmin in developer mode; data-acl="a,b" → view right on one of the forms. */
 $dev = $admin && NuHash::devMode();
 $visible = static function (DOMElement $el) use ($admin, $preview, $dev): bool {
 	if ($el->getAttribute('data-doc') === 'dev') return $dev;
@@ -31,18 +32,41 @@ $visible = static function (DOMElement $el) use ($admin, $preview, $dev): bool {
 	return false;
 };
 
+/** The table of contents (docs/toc.json): list of chapters {id, title, tab, file, pages: [{id, title, file}]}. */
+$toc = (static function (): array {
+	$f = NU_ROOT . '/docs/toc.json';
+	$j = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
+	return is_array($j['chapters'] ?? null) ? $j['chapters'] : [];
+})();
+
+/** The source of one tab: its chapter and page files in order, each <section> marked with its level (1 chapter, 2 page). */
+$source = static function (string $tab) use ($toc): string {
+	$dir = NU_ROOT . '/docs/pages/';
+	$read = static function (string $file, int $level) use ($dir): string {
+		if (!preg_match('/^[A-Za-z0-9._-]+\.htm$/', $file) || !is_file($dir . $file)) return '';
+		return preg_replace('/<section\b/', '<section data-nu-level="' . $level . '"', (string)file_get_contents($dir . $file), 1) ?? '';
+	};
+	$src = '';
+	foreach ($toc as $ch) {
+		if (($ch['tab'] ?? 'guide') !== $tab) continue;
+		$src .= $read((string)($ch['file'] ?? ''), 1);
+		foreach ((array)($ch['pages'] ?? []) as $pg) $src .= $read((string)($pg['file'] ?? ''), 2);
+	}
+	return $src === '' ? '' : '<main>' . $src . '</main>';
+};
+
 /**
- * One documentation file, filtered for the reader (0.8.464: the guide docs/nunext-docs.htm and the code reference
- * docs/nunext-ref.htm – two tabs of this page). @return string the HTML inside <main>, '' when nothing is left
+ * One tab, filtered for the reader and numbered. $full = false: without the function reference (only to see whether anything
+ * is left). @return string the HTML inside <main>, '' when nothing is left
  */
-$render = static function (string $file) use ($visible, $admin): string {
-	if (!is_file($file)) return '';
+$render = static function (string $tab, bool $full = true) use ($visible, $admin, $source): string {
+	$src = $source($tab);
+	if ($src === '') return '';
+	// function reference: docs/nunext-functions.json, admin sections only
+	$tag = '<div data-nu-fnref="tabs"></div>';
+	if (str_contains($src, $tag)) $src = str_replace($tag, $admin && $full ? NuFnRef::tabs() : '', $src);
 	$dom = new DOMDocument();
 	libxml_use_internal_errors(true);
-	$src = (string)file_get_contents($file);
-	// function reference (0.8.399; tabs PHP / JavaScript since 0.8.456): docs/nunext-functions.json, admin sections only
-	$tag = '<div data-nu-fnref="tabs"></div>';
-	if (str_contains($src, $tag)) $src = str_replace($tag, $admin ? NuFnRef::tabs() : '', $src);
 	$dom->loadHTML('<?xml encoding="utf-8"?>' . $src, LIBXML_NONET);
 	libxml_clear_errors();
 	$xp = new DOMXPath($dom);
@@ -54,32 +78,36 @@ $render = static function (string $file) use ($visible, $admin): string {
 		$el->removeAttribute('data-acl');
 	}
 	$main = $dom->getElementsByTagName('main')->item(0);
-	if (!$main || !$xp->query('.//section', $main)->length) return '';
+	if (!$main || !$xp->query('./section', $main)->length) return '';
+	// numbers of what is left: chapters 1, 2 … and their pages 1.1, 1.2 … (a page without a chapter before it keeps none)
+	$c = 0; $p = 0;
+	foreach (iterator_to_array($xp->query('./section', $main)) as $sec) {
+		$h2 = $xp->query('./h2', $sec)->item(0);
+		if (!$sec instanceof DOMElement || !$h2) continue;
+		if ($sec->getAttribute('data-nu-level') === '1') { $c++; $p = 0; $num = (string)$c; }
+		elseif ($c > 0) { $p++; $num = $c . '.' . $p; }
+		else continue;
+		$span = $dom->createElement('span', $num);
+		$span->setAttribute('class', 'doc-num');
+		$h2->insertBefore($dom->createTextNode(' '), $h2->firstChild);
+		$h2->insertBefore($span, $h2->firstChild);
+	}
 	$html = '';
 	foreach ($main->childNodes as $n) $html .= $dom->saveHTML($n);
 	return $html;
 };
-$refFile = NU_ROOT . '/docs/nunext-ref.htm';
 
 // the code reference is fetched by assets/js/nuhelp.js when its tab (or a link / search into it) needs it
 if (($_GET['part'] ?? '') === 'ref') {
 	header('Content-Type: text/html; charset=utf-8');
 	header('Cache-Control: private, no-store');
-	echo $render($refFile);
+	echo $render('ref');
 	exit;
 }
 
-$html = $render(NU_ROOT . '/docs/nunext-docs.htm');
-/** Does the reader see anything in the code reference? (the tab is shown only then) – the sections without the function list. */
-$hasRef = (static function () use ($refFile, $visible): bool {
-	if (!is_file($refFile)) return false;
-	$dom = new DOMDocument();
-	libxml_use_internal_errors(true);
-	$dom->loadHTML('<?xml encoding="utf-8"?>' . (string)file_get_contents($refFile), LIBXML_NONET);
-	libxml_clear_errors();
-	foreach ((new DOMXPath($dom))->query('//main/section') as $sec) if ($sec instanceof DOMElement && $visible($sec)) return true;
-	return false;
-})();
+$html = $render('guide');
+/** Does the reader see anything in the code reference? (the tab is shown only then) – without building the function list. */
+$hasRef = $render('ref', false) !== '';
 $tab = $hasRef && ($_GET['tab'] ?? '') === 'ref' ? 'ref' : 'guide';
 
 nu_layout_start(t('help_title'), '');
@@ -113,6 +141,9 @@ nu_layout_start(t('help_title'), '');
 			<?php if ($hasRef): ?>
 			<div class="form-check form-switch small mb-2"><input class="form-check-input" type="checkbox" role="switch" id="helpAll"<?= ($_GET['all'] ?? '') === '1' ? ' checked' : '' ?>><label class="form-check-label" for="helpAll"><?= h(t('help_search_all')) ?></label></div>
 			<?php endif; ?>
+			<?php if ($hasRef || str_contains($html, 'data-level="advanced"')): ?>
+			<div class="form-check form-switch small mb-2"><input class="form-check-input" type="checkbox" role="switch" id="helpAdvanced"><label class="form-check-label" for="helpAdvanced"><?= h(t('help_show_advanced')) ?></label></div>
+			<?php endif; ?>
 			<div class="small text-body-secondary mb-2" id="helpCount" aria-live="polite"></div>
 			<nav id="helpToc" class="nuHelpToc" aria-label="<?= h(t('help_index')) ?>"<?= $tab === 'ref' ? ' hidden' : '' ?>></nav>
 			<?php if ($hasRef): ?><nav id="helpTocRef" class="nuHelpToc" aria-label="<?= h(t('help_index')) ?>"<?= $tab === 'ref' ? '' : ' hidden' ?>></nav><?php endif; ?>
@@ -129,7 +160,7 @@ nu_layout_start(t('help_title'), '');
 		<?php endif; ?>
 	</div>
 </div>
-<script type="application/json" id="helpData"><?= json_encode(['found' => t('help_found'), 'index' => t('help_index'), 'failed' => t('help_ref_failed')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
+<script type="application/json" id="helpData"><?= json_encode(['found' => t('help_found'), 'index' => t('help_index'), 'failed' => t('help_ref_failed'), 'advanced' => t('help_advanced')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endif; ?>
 <?php
 nu_layout_end('<script src="' . nu_asset('assets/js/nuhelp.js') . '"></script>');

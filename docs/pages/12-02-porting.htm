@@ -1,0 +1,326 @@
+<section id="porting" data-doc="admin">
+	<h2 id="porting-h">Differences and functions not ported</h2>
+	<p class="doc-lead">Functions that behave differently from nuBuilder 4.9, and those not ported, with the reason.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>Compared with nuBuilder 4.9. nuBuilder Next implements nuBuilder's PHP functions for hooks and procedures (<code>core/form/nuphp_api.php</code>, <code>core/form/nuphp_compat.php</code>) and its JavaScript functions for form code (<code>assets/js/nu/nucompat.js</code>). This page lists where they behave differently and which nuBuilder functions are not ported, and why. Your application's own use of them is shown by the <a href="#compat">Compatibility check</a>.</p>
+<div class="doc-sub">
+<h3 id="porting-report">nuBuilder 4.9 compatibility report: what is supported</h3>
+<p>The compatibility analysis of a real nuBuilder 4.9 application (findings C1–C6, M1–M9, N1–N10) is worked off in steps;
+the Compatibility check (Admin tools → <em>Compatibility check</em>) lists each finding found in the application's code with the version
+that supports it.</p>
+<table class="table table-sm">
+<thead>
+<tr>
+
+<th>Findings</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+
+<td>C1–C6, M2, M3</td>
+<td>Browse lists built the nuBuilder way: the form's browse SQL stays as it is (qualified columns, aliases, ORDER BY by alias or position, tables without primary key, duplicate column names, hash variables in column expressions); <code>nu_filter_match</code>; <code>nuAddBrowseTitleSelect</code>; <code>multiSelect</code> title filters. Access 9 (<code>sob_all_access_condition</code>) is evaluated when the form is shown and when it is saved, and offered in the form builder.</td>
+</tr>
+<tr>
+
+<td>M1, M7, M8, N1–N4</td>
+<td>Scripts in HTML objects run after the runtime (before the form's JavaScript); <code>nuAfterSave</code> / <code>nuAfterSaveGlobal</code> on the reloaded form, <code>nuCloseAfterSaveGlobal</code>; <code>nuFORM</code> methods (<code>getProperty</code>, <code>setProperty</code>, <code>subform</code>, <code>data</code>, <code>calc</code>, <code>scrollList</code>, <code>breadcrumbs</code> …; no table schema in the browser); <code>nuSERVERRESPONSE</code>; hooks <code>nuFormatValueCleared(Global)</code> (an unreadable date is cleared, as in nuBuilder), <code>nuSubformFilterOnAddValue(s)</code>, <code>nuSubformOnFilterRows</code>, flags <code>nuBrowseNoData</code> / <code>nuBrowseNoSearchResults</code>; <code>nuAddActionCheckbox</code>, <code>nuGetStartingTab</code>, <code>nuSubformFilterArray</code>, <code>nuSubformFilterAddObject</code>, <code>nuDatalistShowAllOnArrowClick</code>, <code>nuSearchablePopupUtils</code> (property and list helpers); values set while loading no longer mark the form as edited. <code>nuCancel</code> and <code>nuSortElement</code> are local variables in nuBuilder, not hooks.</td>
+</tr>
+<tr>
+
+<td>M6</td>
+<td><code>$nuConfigIncludeJS</code> / <code>$nuConfigIncludeCSS</code> on form pages (nuBuilder Next's folder, then nuBuilder's; other hosts allowed by the CSP); <code>$nuConfigIncludePHP</code> also from nuBuilder's folder</td>
+</tr>
+<tr>
+
+<td>M5</td>
+<td>File objects with target <em>File System</em> (<code>sob_input_file_target</code> 1) upload with Uppy, a library pack (not in <code>nunext.zip</code>): the object's HTML code with nuBuilder's replacements (<code>#uppy_div#</code>, <code>#this_object_id#</code>, <code>nuInitUppy_&lt;id&gt;</code>, <code>.cssNumber</code>, <code>Uppy.Core</code>), <code>nuUppyCreate</code> / <code>nuUppySetLanguage</code> / <code>nuUppyGetLanguageCodeAndLocale</code>, the endpoint <code>core/nuapi.php</code> sent to <code>?p=upload</code> (login cookie + CSRF instead of <code>session_id</code>), the procedure's <code>$result</code> and HTTP status as the answer, <code>nuSetUploadError</code>. Executable file names (.php, .phtml, .htaccess …) are refused before the procedure runs; fresh installations get a hardened <code>nu_upload_file_template</code></td>
+</tr>
+<tr>
+
+<td>–</td>
+<td>Setup → Include (<code>set_include</code>) used on form pages – its <code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> / <code>&lt;style&gt;</code> elements (nuBuilder 4.9 itself saves the field but did not output it in our tests); page <em>Setup code</em> edits Header / Style / Include</td>
+</tr>
+<tr>
+
+<td>–</td>
+<td>Browse search with nuBuilder's syntax: <code>"phrases"</code> and <code>-word</code> / <code>-"phrase"</code> exclusions (before: words only, a minus was searched literally; an empty column counts as not containing an excluded word – nuBuilder drops such rows); search words highlighted after loading (<code>nuHighlightSearch</code> as in nuBuilder, only in searched columns, all occurrences, accent-insensitive). Difference: marks are <code>&lt;mark class="nuHighlight"&gt;</code> – nuBuilder's <code>&lt;span class="nuBrowseSearch"&gt;</code> would clash with the search form's class here; own CSS for highlighting uses <code>mark.nuHighlight</code> or the variable <code>--nu-highlight</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="doc-sub">
+<h3 id="porting-differs">Implemented, but behaviour differs</h3>
+<table class="table table-sm">
+<thead>
+<tr>
+<th>Function</th>
+<th>nuBuilder</th>
+<th>nuBuilder Next</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nuRunPHP($code)</code> (PHP)</td>
+<td>Not hidden: stores the hash and returns an id so the browser opens the procedure output in a new window</td>
+<td>Runs the procedure hidden, like <code>nuRunPHPHidden</code></td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuRunProcedure($code)</code> (PHP)</td>
+<td><code>eval()</code> in the calling function – the procedure sees and changes the caller's local variables</td>
+<td>Runs in its own scope; only <code>$error</code> is shared</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSetJSONData</code> / <code>nuGetJSONData</code></td>
+<td>Stored in <code>zzzzsys_session.sss_access</code> (nuBuilder session)</td>
+<td>Stored in the PHP session of nuBuilder Next</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSetJSONDataAll</code></td>
+<td>Sets the value for <strong>every</strong> open session</td>
+<td>Only for the current session</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuChangeHashVariable</code></td>
+<td>Changes <code>$_POST['nuHash']</code> for the rest of the request</td>
+<td>Changes the hash for the code that runs after it in the same request; system variables are protected</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuReturnNewRecord</code></td>
+<td>Sets RECORD_ID to -1 so the form opens a new record after save</td>
+<td><strong>Ported</strong></td>
+<td>In After Save: the form opens that record (default -1 = new) instead of the saved one</td>
+</tr>
+<tr>
+<td><code>nuSetSaveButtonPosition</code></td>
+<td>Moves the Save button onto the form at given coordinates</td>
+<td><strong>Ported</strong></td>
+<td>Absolute layout: onto the first tab; other layouts keep it in the action bar</td>
+</tr>
+<tr>
+<td>jQuery <code>.css('top' / 'left')</code> on fields</td>
+<td>Each field and label is positioned on its own in nuBuilder</td>
+<td><strong>Mapped</strong></td>
+<td>Absolute layout: top / left of a field (top of its label) go to the wrapper <code>#nuw_&lt;id&gt;</code>, so label and field move together</td>
+</tr>
+<tr>
+<td><code>nuLog(...)</code></td>
+<td>Appends to <code>temp/nuDebug.txt</code></td>
+<td>Writes to the PHP error log</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuGetIPAddress</code></td>
+<td>Trusts <code>CF-Connecting-IP</code> / <code>X-Forwarded-For</code> / <code>Client-IP</code> always</td>
+<td>Proxy headers only with <code>$nuConfigTrustProxy</code> (spoofing-safe)</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuGetLastError</code></td>
+<td>Last PDO error (queries fail softly)</td>
+<td>Always <code>null</code> – a failing query stops the code with an error</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuColorToHex</code></td>
+<td>~140 named CSS colours</td>
+<td>24 common names, otherwise the hex value</td>
+<td>Extend if your code uses rare colour names.</td>
+</tr>
+<tr>
+<td><code>db_field_exists</code></td>
+<td>Returns false for the <strong>first</strong> column (<code>array_search(...) != false</code> bug)</td>
+<td>Correct for every column</td>
+<td>Fixed on purpose.</td>
+</tr>
+<tr>
+<td><code>nuStringEndsWith</code></td>
+<td>Can fail when the needle occurs more than once</td>
+<td>Correct</td>
+<td>Fixed on purpose.</td>
+</tr>
+<tr>
+<td><code>nuRandomPassword</code> (JS)</td>
+<td>Shuffles the characters (no character twice, length ≤ set size)</td>
+<td>Secure random, characters may repeat, any length</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuDatabaseName()</code> (JS)</td>
+<td>Sent to every user</td>
+<td>Only for the globeadmin (empty for users)</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSetAccess(id, r)</code> (JS)</td>
+<td>Also sets <code>nuAccessHiddenUser</code> styling for the globeadmin</td>
+<td>Hides / disables as access 2–4 says, no extra styling</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSubformSetHeight</code> (JS)</td>
+<td>Sets the subform height (second call restores)</td>
+<td>Sets the maximum height of the scroll area (second call restores)</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSubformHideHeader</code> (JS)</td>
+<td>Moves the rows up over the header</td>
+<td>Hides the table header of a grid subform</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSortSubform(sf, col)</code> (JS)</td>
+<td>Bound to clicks on the column titles</td>
+<td>Sorts when called; not bound to the titles automatically</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>&lt;table&gt;_nulog</code> (record log)</td>
+<td>Written by nuUpdateDatabase on every save</td>
+<td>Written the same way (also CSV import); shown in the ⋮ menu</td>
+<td>–</td>
+</tr>
+<tr>
+<td>JS hooks <code>nuOnLookupPopulated</code> / <code>…Global</code></td>
+<td>Called only for lookups in sub-form rows (the function returns early otherwise)</td>
+<td>Called for every lookup</td>
+<td>–</td>
+</tr>
+<tr>
+<td>JS hooks <code>nuOnSetCalendarOptions</code>, <code>nuOnSetSelect2Options</code>, <code>nuOnOptionsListLoadedGlobal</code></td>
+<td>Options of vanilla Datepicker / Select2; nuBuilder's options list</td>
+<td>Browser date picker (only minDate / maxDate), Tom Select (shared options, <code>tomselect: {}</code>), Bootstrap ⋮ menu</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSubformPaste</code> (JS)</td>
+<td>Writes into existing rows only</td>
+<td>Adds rows when the pasted block is longer; read-only cells are skipped</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSetHideTabIfOnlyOne(who)</code> (JS)</td>
+<td>Reads the setting <code>nuHideTabTitleIfOnlyOne</code> (Setup)</td>
+<td>Optional argument <code>everyone</code> / <code>user</code> / <code>globeadmin</code> (default everyone)</td>
+<td>Setup settings are not available.</td>
+</tr>
+<tr>
+<td><code>nuPrompt(text, caption, value, format, fn)</code> (JS)</td>
+<td><code>format</code> is accepted but unused in nuBuilder too</td>
+<td>Bootstrap dialog; callback <code>fn(value, ok)</code> or <code>nuOnPromptClose(value, ok)</code></td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuAddInputIcon</code> (JS)</td>
+<td>Font Awesome / HTML icon inside the input</td>
+<td>Icon before / after the input (<code>fa…</code>, <code>bi-…</code> or HTML)</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuGetPHP(formId, recordId)</code> (JS)</td>
+<td>Opens the procedure in nuBuilder's editor (breadcrumb)</td>
+<td>Opens Procedures → that procedure in a new tab</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuIsPopup()</code> (JS)</td>
+<td>True inside a nuBuilder drag dialog</td>
+<td>True inside nuBuilder Next's popup dialog</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuRefreshIframe(id)</code> (JS)</td>
+<td>Calls <code>nuGetBreadcrumb()</code> in the iframe</td>
+<td>Reloads the iframe</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuSaveAction(true)</code> (JS)</td>
+<td>Save &amp; close</td>
+<td>Save, then back to the previous breadcrumb; <code>nuAddActionButtonSaveClose()</code> uses it</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Auto numbers (<code>nuAutoNumber</code>, <code>nuUpdateCounter</code>)</td>
+<td>New records get the next <code>sob_input_count</code></td>
+<td><strong>New:</strong> also applied when nuBuilder Next saves a new record or subform row (main form and subforms)</td>
+<td>Behaviour change.</td>
+</tr>
+<tr>
+<td><code>nuSelectOptions($sql)</code> (PHP)</td>
+<td>Also supports <code>languages</code> and <code>SHOW TABLES</code></td>
+<td>SELECT/WITH/SHOW, JSON array and pipe lists (<code>v1\|t1\|v2\|t2</code>)</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuDemo($showError)</code> (PHP)</td>
+<td>True in nuBuilder's demo mode (globeadmin demo login)</td>
+<td>True for the demo users of <code>$nuConfigDemoUser</code>; the error is "Not available in the demo."</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>nuGetRecordURL()</code> (PHP)</td>
+<td><code>index.php?f=…&amp;r=…</code> (nuBuilder)</td>
+<td><code>index.php?p=form&amp;f=…&amp;r=…</code> (nuBuilder Next)</td>
+<td>–</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="doc-sub">
+<h3 id="porting-missing">Not ported – and why</h3>
+<p>These are almost all internals of nuBuilder's own client (rendering, designers, Ajax, breadcrumbs) or server
+(save/load, login, reports, update). Form code normally does not call them. Unsupported <strong>public</strong> functions that
+still exist as placeholders write a console warning instead of failing.</p>
+<h4 class="h6 mt-3">JavaScript (468)</h4>
+<p><strong>Placeholders (exist, do nothing, console warning)</strong> (11) – Kept as harmless placeholders so existing code does not break; the feature behind them is missing (column resizing …). <code>nuSetSelect2</code> works (Tom Select, also <code>$(…).select2(…)</code> of form code).</p>
+<p><code>nuAccessFormSetButtonIcons</code>, <code>nuBrowseStyleStatusColumn</code>, <code>nuCreateDialog</code>, <code>nuDragElement</code>, <code>nuHasHiddenModalDragDialog</code>, <code>nuOpenWiki</code>, <code>nuPrintExcludeColumns</code>, <code>nuResizeBrowseColumns</code>, <code>nuSetBrowseColumnWidth</code>, <code>nuSetSnippetFormFilter</code>, <code>nuShowVersionInfo</code></p>
+<p><strong>Form designer and report designer (drag &amp; drop)</strong> (106) – nuBuilder Next has its own form builder and report designer.</p>
+<p><code>nuAbortSaveDrag</code>, <code>nuAddContentBoxFrames</code>, <code>nuAddDragSelected</code>, <code>nuAdjustButton</code>, <code>nuAdjustDialog</code>, <code>nuAlignBottom</code>, <code>nuAlignLeft</code>, <code>nuAlignRight</code>, <code>nuAlignTop</code>, <code>nuBindDragEvents</code>, <code>nuBlankMultipleValues</code>, <code>nuCanMove</code>, <code>nuCheckIfMovingFieldToOtherTabAllowed</code>, <code>nuCheckIfMovingTabOrderAllowed</code>, <code>nuClearFieldsList</code>, <code>nuClickGroup</code>, <code>nuCloneObjects</code>, <code>nuCreateBox</code>, <code>nuCreateDrag</code>, <code>nuCreateDragOptionsBox</code>, <code>nuDeleteSelectedObjects</code>, <code>nuDialogInput</code>, <code>nuDoNothing</code>, <code>nuDragBox</code>, <code>nuDragButtonToggleState</code>, <code>nuDragCreateButton</code>, <code>nuDragCreateCheckbox</code>, <code>nuDragCreateSelectBox</code>, <code>nuDragCurrentTabNumber</code>, <code>nuDragGenerateOptionsControlPanel</code>, <code>nuDragGetCurrentTabNumber</code>, <code>nuDragGetElementBounds</code>, <code>nuDragGetRelatedElements</code>, <code>nuDragIsElementInBounds</code>, <code>nuDragReport</code>, <code>nuDragSelectInIframe</code>, <code>nuDragSelected</code>, <code>nuDragSetElementPosition</code>, <code>nuDragSetElementSize</code>, <code>nuDragToggleTabOrder</code>, <code>nuFindFieldInState</code>, <code>nuFindWithAttr</code>, <code>nuGetMinTabOrderInTab</code>, <code>nuGetNuDragDialogIframes</code>, <code>nuGetTopArea</code>, <code>nuGroupDialog</code>, <code>nuInitialiseDragState</code>, <code>nuLoadReport</code>, <code>nuMoveDownOrder</code>, <code>nuMoveGroup</code>, <code>nuMoveGroupUpDown</code>, <code>nuMoveNuDrag</code>, <code>nuMoveReportGroup</code>, <code>nuMoveSelected</code>, <code>nuMoveToolbar</code>, <code>nuMoveUpOrder</code>, <code>nuMoverAdjustHorClick</code>, <code>nuMoverAdjustVerClick</code>, <code>nuMoverAlignBottomClick</code>, <code>nuMoverAlignLeftClick</code>, <code>nuMoverAlignRightClick</code>, <code>nuMoverAlignTopClick</code>, <code>nuNewObject</code>, <code>nuObjectDialog</code>, <code>nuOrderedSelectObjects</code>, <code>nuPopulateFieldsList</code>, <code>nuPopulateTabDropdown</code>, <code>nuPutFieldDimensionsIntoState</code>, <code>nuRemoveBox</code>, <code>nuReportDialog</code>, <code>nuResizeDrag</code>, <code>nuResizeShortestClick</code>, <code>nuResizeTallestClick</code>, <code>nuResizeThinestClick</code>, <code>nuResizeToHighest</code>, <code>nuResizeToLowest</code>, <code>nuResizeToThinnest</code>, <code>nuResizeToWidest</code>, <code>nuResizeWidestClick</code>, <code>nuSaveNuDrag</code>, <code>nuSelectAllDragObjects</code>, <code>nuSelectDialog</code>, <code>nuSetDialog</code>, <code>nuSetTabOrderDataAttrs</code>, <code>nuSetTools</code>, <code>nuSetnuScroll</code>, <code>nuShowContentBoxFrames</code>, <code>nuSortObjAsc</code>, <code>nuSortObjects</code>, <code>nuSpaceHorizontally</code>, <code>nuSpaceVertically</code>, <code>nuSpacingNotSupported</code>, <code>nuThisContentBox</code>, <code>nuThisLabel</code>, <code>nuToggleDragLabels</code>, <code>nuToggleHiddenObjects</code>, <code>nuUnbindDragEvents</code>, <code>nuUndo</code>, <code>nuUnselectAllDragObjects</code>, <code>nuUpdateDragFieldsListbox</code>, <code>nuUpdateDragOptionsButtonState</code>, <code>nuUpdateDragSelections</code>, <code>nuUpdateGroup</code>, <code>nuUpdateProperties</code>, <code>nuUpdateReport</code>, <code>nuUpdateSectionProperty</code></p>
+<p><strong>Admin tools, context menus, object properties</strong> (57) – nuBuilder Next has its own globeadmin menus (label menu, Ctrl+Shift shortcuts, Inspect record).</p>
+<p><code>nuAddAdminButton</code>, <code>nuAddAdminButtons</code>, <code>nuAddIconToBreadcrumbHolder</code>, <code>nuAdminPreInspectRecordJS</code>, <code>nuAdminToolsClick</code>, <code>nuAdminToolsCreateMenuConfig</code>, <code>nuAdminToolsRun</code>, <code>nuClosePropertiesMsgDiv</code>, <code>nuContextLabelHasClass</code>, <code>nuContextMenuAccessText</code>, <code>nuContextMenuAddTabPrompt</code>, <code>nuContextMenuAddTabPromptCallback</code>, <code>nuContextMenuAlignText</code>, <code>nuContextMenuBeforeRender</code>, <code>nuContextMenuBold</code>, <code>nuContextMenuClone</code>, <code>nuContextMenuClose</code>, <code>nuContextMenuCopyIdToClipboard</code>, <code>nuContextMenuCurrentTargetBrowseId</code>, <code>nuContextMenuCurrentTargetBrowseIdText</code>, <code>nuContextMenuCurrentTargetEditIdText</code>, <code>nuContextMenuCurrentTargetId</code>, <code>nuContextMenuCurrentTargetUpdateId</code>, <code>nuContextMenuGetFormId</code>, <code>nuContextMenuGetWordWidth</code>, <code>nuContextMenuIdHasAlgin</code>, <code>nuContextMenuItemPosition</code>, <code>nuContextMenuItemPositionChanged</code>, <code>nuContextMenuItemText</code>, <code>nuContextMenuLabelPrompt</code>, <code>nuContextMenuLabelPromptCallback</code>, <code>nuContextMenuObjectPopup</code>, <code>nuContextMenuPositionText</code>, <code>nuContextMenuShowTabSelector</code>, <code>nuContextMenuUpdate</code>, <code>nuContextMenuUpdateAccess</code>, <code>nuContextMenuUpdateAction</code>, <code>nuContextMenuUpdateAlign</code>, <code>nuContextMenuUpdateLabel</code>, <code>nuContextMenuUpdateObject</code>, <code>nuContextMenuUpdateValidation</code>, <code>nuContextMenuValidationText</code>, <code>nuEditPHP</code>, <code>nuFormInfoCopyBrowseSQL</code>, <code>nuFormInfoCopyPermalink</code>, <code>nuFormInfoCurrentProperties</code>, <code>nuInitSetBrowseWidthHelper</code>, <code>nuOpenContextMenu</code>, <code>nuOpenCurrentFormProperties</code>, <code>nuOpenCurrentObjectList</code>, <code>nuOpenNuDebug</code>, <code>nuOpenPropertiesOnMiddleClick</code>, <code>nuPrettyPrintMessage</code>, <code>nuRoundNearest</code>, <code>nuSetBrowseColumnWidths</code>, <code>nuShowFormInfo</code>, <code>nuShowObjectTooltip</code></p>
+<p><strong>Mobile view</strong> (15) – nuBuilder Next uses a responsive layout instead of a scaled mobile view.</p>
+<p><code>nuAddTabNavigator</code>, <code>nuGetTabNavData</code>, <code>nuInitMobileView</code>, <code>nuMobileViewGetScaledDocumentWidth</code>, <code>nuMobileViewGetTransformScale</code>, <code>nuMobileViewSetDimensionsAndScale</code>, <code>nuMobileViewSetEndElement</code>, <code>nuMobileViewSetTopPosition</code>, <code>nuMobileViewTabNavUpdateArrowStates</code>, <code>nuMobileViewTabNavUpdateStates</code>, <code>nuScrollToTopLeft</code>, <code>nuSetMobileView</code>, <code>nuTabNavCreateIcon</code>, <code>nuTabNavOnClick</code>, <code>nuVisibleTabs</code></p>
+<p><strong>SQL Builder</strong> (5) – internals of nuBuilder's visual SQL builder; nuBuilder Next has its own SQL builder for the same zzzzsys_select data.</p>
+<p><code>nuAngle</code>, <code>nuChangeJoin</code>, <code>nuDown</code>, <code>nuMove</code>, <code>nuUp</code></p>
+<p><strong>Fast Report</strong> (6) – Fast Report is not ported. Reports themselves run with nuBuilder Next's own report runner and designer (<code>nuRunReport</code>, <code>nuRunReportAction</code>, <code>nuRunReportSave</code> work).</p>
+<p><code>nuBuildFastReport</code>, <code>nuEmailReportAction</code>, <code>nuFastObject</code>, <code>nuFastReportFormat</code>, <code>nuGetReport</code>, <code>nuNewFastObject</code></p>
+<p><strong>nuBuilder's own rendering of forms, browse lists and subforms</strong> (193) – nuBuilder Next renders forms, lists and subforms on the server with its own markup; these functions build or position nuBuilder's DOM.</p>
+<p><code>nuActionButtonsToggleVisibility</code>, <code>nuAddActionButtons</code>, <code>nuAddAttributes</code>, <code>nuAddBreadcrumb</code>, <code>nuAddBreadcrumbs</code>, <code>nuAddBrowseAdditionalNavButtons</code>, <code>nuAddDataTab</code>, <code>nuAddDblClickOpenObjectProperties</code>, <code>nuAddEditTabs</code>, <code>nuAddFormStyle</code>, <code>nuAddHolder</code>, <code>nuAddHome</code>, <code>nuAddHomeLogout</code>, <code>nuAddIconToBreadCrumb2</code>, <code>nuAddJSObjectEvents</code>, <code>nuAddJavaScript</code>, <code>nuAddObjectFunctions</code>, <code>nuAddStyle</code>, <code>nuAddStyleFromArray</code>, <code>nuAddedByLookup</code>, <code>nuAlign</code>, <code>nuAlignmentStyle</code>, <code>nuAllowChanges</code>, <code>nuApplyAttributes</code>, <code>nuApplyInputTypeSpecificBehaviors</code>, <code>nuArrangingObjects</code>, <code>nuArrowPressed</code>, <code>nuAscendingSortColumn</code>, <code>nuAscendingSortNumberColumn</code>, <code>nuBreadcrumbTitleWithoutBrowse</code>, <code>nuBrowseAdditionalNavButtons</code>, <code>nuBrowseBorders</code>, <code>nuBrowseCalculateInitialTopOffset</code>, <code>nuBrowseCells</code>, <code>nuBrowseColumnSize</code>, <code>nuBrowseCreateFooter</code>, <code>nuBrowseCreateFooterHtml</code>, <code>nuBrowseGetFirstRowCellId</code>, <code>nuBrowseHandleCellCreation</code>, <code>nuBrowseHandleNoDataScenario</code>, <code>nuBrowseRowsPerPageFilter</code>, <code>nuBrowseSetCellAttributes</code>, <code>nuBrowseSetCellContentAndEvents</code>, <code>nuBrowseStickyColumns</code>, <code>nuBrowseTable</code>, <code>nuBrowseTableHoverIn</code>, <code>nuBrowseTableHoverOut</code>, <code>nuBrowseTitle</code>, <code>nuBrowseTitleMultiLine</code>, <code>nuBrowseUpdateParentDocumentStyles</code>, <code>nuBuildEditObjects</code>, <code>nuBuildForm</code>, <code>nuBuildOptionsList</code>, <code>nuBuildSubformDeleteTitle</code>, <code>nuBuildSubformTitle</code>, <code>nuCONTENTBOX</code>, <code>nuCSSPropertySum</code>, <code>nuCalendarWeekNumbers</code>, <code>nuCalendarWeekStartNumber</code>, <code>nuCanArrangeObjects</code>, <code>nuChangeDeleteClicked</code>, <code>nuChooseEventList</code>, <code>nuClickSearchColumn</code>, <code>nuClickTab</code>, <code>nuConvertToVanillaJSCalendarFormat</code>, <code>nuCreateElementWithId</code>, <code>nuDRAG</code>, <code>nuDebugLastMessages</code>, <code>nuDecendingSortColumn</code>, <code>nuDecendingSortNumberColumn</code>, <code>nuDetach</code>, <code>nuDialogHeadersHeight</code>, <code>nuDisableBrowseResize</code>, <code>nuDownBrowseResize</code>, <code>nuDragBrowseColumn</code>, <code>nuDragBrowseDown</code>, <code>nuDragBrowseMove</code>, <code>nuDragBrowseUp</code>, <code>nuDragTitleEvents</code>, <code>nuEDITOR</code>, <code>nuEditTab</code>, <code>nuEmptyNoClone</code>, <code>nuEndBrowseResize</code>, <code>nuEvaluateOnLoadEvents</code>, <code>nuFormModification</code>, <code>nuFormWH</code>, <code>nuGenerateSortSpan</code>, <code>nuGetBrowsePaginationInfo</code>, <code>nuGetColumWidths</code>, <code>nuGetDBColumnLengh</code>, <code>nuGetFirstObject</code>, <code>nuGetLookupFields</code>, <code>nuGetOptionsList</code>, <code>nuGetSearchList</code>, <code>nuGetSubformDimensions</code>, <code>nuGetSubformRowSize</code>, <code>nuGetTitleNew</code>, <code>nuGetWordWidth</code>, <code>nuHTML</code>, <code>nuHideOptionsItemShortcutKeys</code>, <code>nuIMAGE</code>, <code>nuINPUT</code>, <code>nuINPUTCalc</code>, <code>nuINPUTCheckbox</code>, <code>nuINPUTDisplay</code>, <code>nuINPUTInput</code>, <code>nuINPUTLookup</code>, <code>nuINPUTSetMaxLength</code>, <code>nuINPUTSetProperties</code>, <code>nuINPUTSetValue</code>, <code>nuINPUTfileDatabase</code>, <code>nuINPUTfileFileSystem</code>, <code>nuINPUTnuAutoNumber</code>, <code>nuINPUTnuDate</code>, <code>nuINPUTnuNumber</code>, <code>nuINPUTnuScroll</code>, <code>nuIPUTNuChangeEvent</code>, <code>nuInitJSOptions</code>, <code>nuInitShowJSErrors</code>, <code>nuInternalSelectBrowse</code>, <code>nuLabel</code>, <code>nuLabelGetValidationClass</code>, <code>nuLabelOrPosition</code>, <code>nuLookingUp</code>, <code>nuLookupFocus</code>, <code>nuLookupObject</code>, <code>nuModifyHolders</code>, <code>nuNewRowObject</code>, <code>nuNoDuplicates</code>, <code>nuNumberFormat</code>, <code>nuObjectPosition</code>, <code>nuOnFocus</code>, <code>nuOnSubformDeleteClick</code>, <code>nuOptions</code>, <code>nuOptionsListAction</code>, <code>nuParseAttributes</code>, <code>nuPopulateLookup</code>, <code>nuPopulateLookup3</code>, <code>nuPortraitLabelWidth</code>, <code>nuPortraitScreen</code>, <code>nuPortraitScreenObjDimensions</code>, <code>nuRUN</code>, <code>nuRUNGetOnClickEvent</code>, <code>nuRecordHolderObject</code>, <code>nuRecordProperties</code>, <code>nuRedefineNuSelectBrowse</code>, <code>nuReformat</code>, <code>nuResponseDefault</code>, <code>nuResponseNoWrap</code>, <code>nuResponseWrap</code>, <code>nuResponsiveWrap</code>, <code>nuRestoreScrollPositions</code>, <code>nuSELECT</code>, <code>nuSUBFORM</code>, <code>nuSUBFORMAddCSS</code>, <code>nuSUBFORMScrollDivAddCSS</code>, <code>nuSUBFORMnuRECORDAddCSS</code>, <code>nuSUBFORMnuTabHolderAddCSS</code>, <code>nuSaveScrollPositions</code>, <code>nuSearchFieldSetSearchType</code>, <code>nuSearchPressed</code>, <code>nuSearchableList</code>, <code>nuSelectAllTabs</code>, <code>nuSelectOnFocus</code>, <code>nuSetBody</code>, <code>nuSetBrowseHeight</code>, <code>nuSetDefaultWindowProperties</code>, <code>nuSetFormProperties</code>, <code>nuSetMobileView1</code>, <code>nuSetObjectBounds</code>, <code>nuSetSaveButtonProperties</code>, <code>nuSetSearchColumn</code>, <code>nuSetStartingTab</code>, <code>nuSetTab</code>, <code>nuShowBrowsePaginationInfo</code>, <code>nuStartingTab</code>, <code>nuStickyHeaders</code>, <code>nuStopBrowserResize</code>, <code>nuSubformHandleArrowKeyEvent</code>, <code>nuSubformRearrangeColumns</code>, <code>nuSubformSortTop</code>, <code>nuTinyMCEOnChangeHandler</code>, <code>nuTitleDrag</code>, <code>nuTogglePaginationInfo</code>, <code>nuTotalHeight</code>, <code>nuTotalWidth</code>, <code>nuTransformScale</code>, <code>nuUnbindDragEvents</code>, <code>nuUpdateDebugButtonTitle</code>, <code>nuWORD</code>, <code>nuWidestTitle</code>, <code>nuWindowPosition</code>, <code>nuWrapWithForm</code></p>
+<p><strong>Subform filter internals</strong> (11) – nuSubformAddFilter() is implemented on its own; these are its nuBuilder internals.</p>
+<p><code>nuSubformFilterAddSearch</code>, <code>nuSubformFilterAddSelect</code>, <code>nuSubformFilterAddValues</code>, <code>nuSubformFilterCellValue</code>, <code>nuSubformFilterCreateSelectOption</code>, <code>nuSubformFilterId</code>, <code>nuSubformFilterOptionAll</code>, <code>nuSubformFilterRows</code>, <code>nuSubformFilterSortOptions</code>, <code>nuSubformFilterValue</code>, <code>nuSubformFiltersAdd</code></p>
+<p><strong>Navigation, Ajax, session and window handling</strong> (53) – Part of nuBuilder's single-page client (Ajax calls, breadcrumbs, opener tabs, dialogs) or replaced by nuBuilder Next's own pages and buttons.</p>
+<p><code>nuAbortSave</code>, <code>nuAccessLevelGroup</code>, <code>nuAddEditFieldsToHash</code>, <code>nuAjaxShowError</code>, <code>nuAjax_</code>, <code>nuAttachFile</code>, <code>nuBackAction</code>, <code>nuBindCtrlEvents</code>, <code>nuClick</code>, <code>nuCloseAfterSave</code>, <code>nuDeleteAllAction</code>, <code>nuDisplayLoggedInUser</code>, <code>nuEditDoCloseAfterSave</code>, <code>nuFormatAjaxErrorMessage</code>, <code>nuFormatAjaxErrorRemoveJSON</code>, <code>nuGetFunctionList</code>, <code>nuGetHTML</code>, <code>nuGetOpenerById</code>, <code>nuImportUsersFromCSV</code>, <code>nuIsOpener</code>, <code>nuLogin</code>, <code>nuNeedToLoginAgain</code>, <code>nuOpenFormHelp</code>, <code>nuOpenNewBrowserTab</code>, <code>nuOpener</code>, <code>nuOpenerAppend</code>, <code>nuPopEvent</code>, <code>nuPopPHP</code>, <code>nuPopSQL</code>, <code>nuPreview</code>, <code>nuPrintCSVExportOptions</code>, <code>nuPrintIncludeColumns</code>, <code>nuPrintIncludeHiddenColumns</code>, <code>nuPrintUseBrowseFormats</code>, <code>nuProcessAfterSave</code>, <code>nuRemoveOpenerById</code>, <code>nuResizeFormDialogCoordinates</code>, <code>nuResizeWindow</code>, <code>nuRunBackup</code>, <code>nuRunPHPAction</code>, <code>nuSaveAfterDrag</code>, <code>nuSavingProgressMessage</code>, <code>nuSelectInParentBody</code>, <code>nuSelectInParentContext</code>, <code>nuSelectInParentDocument</code>, <code>nuSetURLPermaLink</code>, <code>nuShowLastUpdatedMessage</code>, <code>nuShowMessages</code>, <code>nuStopClick</code>, <code>nuSubmit</code>, <code>nuSystemUpdate</code>, <code>nuUpdateData</code>, <code>nuUpdateMessage</code></p>
+<h4 class="h6 mt-3">PHP (285)</h4>
+<p><strong>Saving, loading and validating records; building forms and browse lists</strong> (79) – nuBuilder Next loads, validates and saves records with its own code (core/form/nurecord.php, nubrowse.php, nurender.php).</p>
+<p><code>nuAddPrintButtons</code>, <code>nuAutoNumbers</code>, <code>nuBeforeBrowse</code>, <code>nuBeforeEdit</code>, <code>nuBreadcrumbDescription</code>, <code>nuBreadcrumbDescriptionPart</code>, <code>nuBrowseColumns</code>, <code>nuBrowseExpandNuEqualsFilter</code>, <code>nuBrowseRemoveFieldAlias</code>, <code>nuBrowseRows</code>, <code>nuBrowseWhereClause</code>, <code>nuBuildTabList</code>, <code>nuButtons</code>, <code>nuCheckAccess</code>, <code>nuCheckAccessLevel</code>, <code>nuDefaultObject</code>, <code>nuDeleteForm</code>, <code>nuDisplayErrorAccessDenied</code>, <code>nuDisplayErrorRequiredFields</code>, <code>nuDuplicate</code>, <code>nuEditObjects</code>, <code>nuEditedRow</code>, <code>nuEvents</code>, <code>nuExtractFunctionBody</code>, <code>nuFormAccess</code>, <code>nuFormAccessList</code>, <code>nuFormDimensions</code>, <code>nuFormEvents</code>, <code>nuFormProperties</code>, <code>nuFormatValue</code>, <code>nuGatherFormAndSessionData</code>, <code>nuGetAllLookupList</code>, <code>nuGetAllLookupValues</code>, <code>nuGetBrowseWidth</code>, <code>nuGetDBTypesSetNullWhenEmpty</code>, <code>nuGetEditForm</code>, <code>nuGetFile</code>, <code>nuGetFormData</code>, <code>nuGetFormFinalize</code>, <code>nuGetFormModifyObject</code>, <code>nuGetFormObject</code>, <code>nuGetFormPermission</code>, <code>nuGetFormProcessObjects</code>, <code>nuGetFormSetBasicProperties</code>, <code>nuGetFormStatus</code>, <code>nuGetLookupValues</code>, <code>nuGetObjectAccess</code>, <code>nuGetOtherLookupValues</code>, <code>nuGetSubformRecords</code>, <code>nuObjectEvents</code>, <code>nuOnProcess</code>, <code>nuPreloadImages</code>, <code>nuProcedureAccessList</code>, <code>nuRefineTabList</code>, <code>nuReorderBrowse</code>, <code>nuReorderTabs</code>, <code>nuReportAccessList</code>, <code>nuRowsPerPage</code>, <code>nuRunCode</code>, <code>nuRunDescription</code>, <code>nuSetLastLoggedInUser</code>, <code>nuSetupButtons</code>, <code>nuSubFormsEdited</code>, <code>nuUpdateDatabase</code>, <code>nuUpdateDatabaseAddNuLog</code>, <code>nuUpdateDatabaseDelete</code>, <code>nuUpdateDatabaseExecStatements</code>, <code>nuUpdateDatabaseGetUpdateValue</code>, <code>nuUpdateDatabaseHasDataModePermission</code>, <code>nuUpdateDatabaseIsValidTable</code>, <code>nuUpdateDatabaseRunAfterEvents</code>, <code>nuUpdateDatabaseRunBeforeDeleteEvent</code>, <code>nuUpdateDatabaseRunBeforeSaveEvents</code>, <code>nuUpdateDatabaseSave</code>, <code>nuUpdateDatabaseSetValues</code>, <code>nuValidateForms</code>, <code>nuValidateFormsFetchFormObjects</code>, <code>nuValidateFormsFetchObject</code>, <code>nuValidateFormsRequiredFields</code></p>
+<p><strong>Login, sessions, 2FA, IP rules</strong> (53) – nuBuilder Next has its own login, sessions, two-step login and vendor login.</p>
+<p><code>nu2FAGetStoredTokens</code>, <code>nu2FALocalTokenOK</code>, <code>nu2FARemoveOldTokens</code>, <code>nu2FASafeIPAddr</code>, <code>nu2FAStatusPending</code>, <code>nu2FAStoreAllTokens</code>, <code>nu2FAStoreToken</code>, <code>nuAccessLevelInfo</code>, <code>nuAuthCheck</code>, <code>nuAuthGetElapsedTime</code>, <code>nuCheckExistingSession</code>, <code>nuCheckGarbageCollector</code>, <code>nuCheckGlobeadminLoginRequest</code>, <code>nuCheckIsLoginRequest</code>, <code>nuCheckUserLoginRequest</code>, <code>nuDie</code>, <code>nuExpandIPv6</code>, <code>nuGet2FASafeIPAddresses</code>, <code>nuGet2FAToken</code>, <code>nuGet2FATokenSentTime</code>, <code>nuGet2FAVerifiedTime</code>, <code>nuGetAccessLevelQuery</code>, <code>nuGetFormAccessQuery</code>, <code>nuGetLoginUserId</code>, <code>nuGetPHPIdsQuery</code>, <code>nuGetReportIdsQuery</code>, <code>nuGetTranslation</code>, <code>nuGetVendorURL</code>, <code>nuIDTEMP</code>, <code>nuIsHTTPS2</code>, <code>nuIsValidIPPattern</code>, <code>nuLoadNewSession</code>, <code>nuLoginSetupGlobeadmin</code>, <code>nuLoginSetupNOTGlobeadmin</code>, <code>nuMatchesAnyIPPattern</code>, <code>nuMatchesIPPattern</code>, <code>nuMatchesIPv4Pattern</code>, <code>nuMatchesIPv6Pattern</code>, <code>nuNormaliseIPv6</code>, <code>nuOutput2FATokenToConsole</code>, <code>nuPasswordChangeStatusPending</code>, <code>nuRedirectToForm</code>, <code>nuRunLoginProcedure</code>, <code>nuSet2FAToken</code>, <code>nuSet2FATokenSentTime</code>, <code>nuSet2FAVerified</code>, <code>nuSet2FAVerifiedTime</code>, <code>nuSetAuthenticated</code>, <code>nuSetSafeSessionName</code>, <code>nuShow2FAAuthenticationError</code>, <code>nuTempAnonReport</code>, <code>nuTokenMatches</code>, <code>nuUpdateExistingSession</code></p>
+<p><strong>Reports, PDF and HTML print</strong> (35) – nuBuilder's own report runner (nurunpdf.php / nurunhtml.php) and its helpers; nuBuilder Next runs the same reports with its own engine, and list printing is done by its own print, CSV and Excel export.</p>
+<p><code>nuAddCriteriaValues</code>, <code>nuBuildCurrencyFormats</code>, <code>nuBuildReport</code>, <code>nuBuildTempTable</code>, <code>nuExecuteQueryAndFetchData</code>, <code>nuGetColumnAlias</code>, <code>nuGetDebugMessageData</code>, <code>nuGetObjectProperties</code>, <code>nuGetTotalPages</code>, <code>nuIsField</code>, <code>nuIsFile</code>, <code>nuIsImage</code>, <code>nuLowestGroupChange</code>, <code>nuMakeSummaryTable</code>, <code>nuPdfObject</code>, <code>nuPdfSection</code>, <code>nuPrintBackground</code>, <code>nuPrintField</code>, <code>nuPrintImage</code>, <code>nuPrintReport</code>, <code>nuRemoveFiles</code>, <code>nuRemovePageBreak</code>, <code>nuReplaceLabelHashVariables</code>, <code>nuRunHTML</code>, <code>nuRunHTMLCleanup</code>, <code>nuRunHTMLDownloadCSV</code>, <code>nuRunHTMLGenerateHTMLTable</code>, <code>nuRunHTMLGenerateTableData</code>, <code>nuRunHTMLGenerateTableHeader</code>, <code>nuRunHTMLPrintColumn</code>, <code>nuRunReportId</code>, <code>nuSavePDF</code>, <code>nuSetPixelsToMM</code>, <code>nuTTList</code>, <code>nuTableToCSV</code></p>
+<p><strong>Fast Form / Fast Report builders</strong> (20) – nuBuilder Next has its own "New form" wizard.</p>
+<p><code>nuBuildFastForm</code>, <code>nuBuildFastReport</code>, <code>nuFFCreateNewTable</code>, <code>nuFFCreateTable</code>, <code>nuFFCreatedMessage</code>, <code>nuFFError</code>, <code>nuFFFormProperties</code>, <code>nuFFGetLink</code>, <code>nuFFInsertBrowse</code>, <code>nuFFInsertForm</code>, <code>nuFFInsertObjects</code>, <code>nuFFInsertRunButton</code>, <code>nuFFInsertTab</code>, <code>nuFFIsNewTable</code>, <code>nuFFNewTableSQL</code>, <code>nuFFNumber</code>, <code>nuFFObjectMaxTop</code>, <code>nuFFTempCreate</code>, <code>nuFFTempInsertSampleObjects</code>, <code>nuFFTempUpdate</code></p>
+<p><strong>AI calls</strong> (10) – nuBuilder Next's prompt generator only builds prompts; it does not call an AI service.</p>
+<p><code>nuAIPromptBuildPromptInformation</code>, <code>nuAIPromptExtractJSON</code>, <code>nuAIPromptGetResponse</code>, <code>nuAIPromptGetTableInformation</code>, <code>nuAIPromptGetTagsFromPrompt</code>, <code>nuAIPromptParseParamArray</code>, <code>nuAITestCredentials</code>, <code>nuBuildCurlOptions</code>, <code>nuGetAIResponse</code>, <code>nuResolveAIConfig</code></p>
+<p><strong>Installation, update, setup and includes</strong> (40) – nuBuilder Next has its own installer and updater and does not change nuBuilder's system tables.</p>
+<p><code>nuAddNewSystemTables</code>, <code>nuAlterSystemTables</code>, <code>nuAppendToSystemTables</code>, <code>nuArrayFlatten</code>, <code>nuBuildFormSchema</code>, <code>nuBuildTableSchema</code>, <code>nuBuildViewSchema</code>, <code>nuCSSInclude</code>, <code>nuCSSIndexInclude</code>, <code>nuCleanConfigValue</code>, <code>nuConfigScript</code>, <code>nuCopySystemTables</code>, <code>nuCreateJSONColumns</code>, <code>nuDropDatabaseObject</code>, <code>nuGetIncludedLanguages</code>, <code>nuGetJSActionScreen</code>, <code>nuGetJS_login</code>, <code>nuGetSupportedLanguagesAsJson</code>, <code>nuImportLanguageFiles</code>, <code>nuImportNewDB</code>, <code>nuInclude</code>, <code>nuIncludeConfigPHPFiles</code>, <code>nuIncludeFiles</code>, <code>nuInstallException</code>, <code>nuJSInclude</code>, <code>nuJSIndexInclude</code>, <code>nuJustNuRecords</code>, <code>nuLoadBody</code>, <code>nuMergeIncludeFiles</code>, <code>nuOtherUpdates</code>, <code>nuRemoveNuRecords</code>, <code>nuRunSystemUpdate</code>, <code>nuSQLImportFileExists</code>, <code>nuSetCollation</code>, <code>nuSetupImportSQLFile</code>, <code>nuSystemList</code>, <code>nuUpdateFormSchema</code>, <code>nuUpdateSystemRecords</code>, <code>nuUpdateTableSchema</code>, <code>nuUseUP</code></p>
+<p><strong>Files, temp files, uploads</strong> (5) – Files are stored in zzzzsys_file / file fields by nuBuilder Next itself; nuBuilder's temp folder is not used.</p>
+<p><code>nuCreateFile</code>, <code>nuCreateTempFile</code>, <code>nuDeleteFiles</code>, <code>nuImageList</code>, <code>nuUploadFile</code></p>
+<p><strong>CSV and translation admin tools</strong> (6) – Replaced by nuBuilder Next's CSV import, list CSV export and Translations page.</p>
+<p><code>nuFromCSV</code>, <code>nuImportUsersFromCSV</code>, <code>nuToCSV</code>, <code>nuTranslateExport</code>, <code>nuTranslateGenerateFile</code>, <code>nuTranslateWriteSQL</code></p>
+<p><strong>Not ported on purpose (security)</strong> (1) – Returns the database password to form code – deliberately left out.</p>
+<p><code>nuGetDBParams</code></p>
+<p><strong>nuBuilder internals (eval, hash list, properties, debug, misc.)</strong> (30) – Internal helpers of nuBuilder's request handling; nuBuilder Next does these things differently (hash variables, properties, debug log, eval of code).</p>
+<p><code>nuAddToHashCookies</code>, <code>nuAddToHashList</code>, <code>nuAllowedActivities</code>, <code>nuClientTimeZone</code>, <code>nuDebugMessageString</code>, <code>nuDescribeTableSQL</code>, <code>nuDragSave</code>, <code>nuEval</code>, <code>nuEvalMessage</code>, <code>nuEvalSafe</code>, <code>nuEvalSafeErrorHandler</code>, <code>nuExceptionHandler</code>, <code>nuFailIfUnsetHashCookies</code>, <code>nuFontList</code>, <code>nuFormatList</code>, <code>nuFormatVarArgs</code>, <code>nuGetDefaultFormats</code>, <code>nuGetFormProperties</code>, <code>nuGetLastDebugMessages</code>, <code>nuGetProperties</code>, <code>nuGetSelectType</code>, <code>nuGetURLParams</code>, <code>nuID_DEV</code>, <code>nuPrepareQuery</code>, <code>nuQueryExtractQueryComponents</code>, <code>nuRunQueryString</code>, <code>nuSanitizeSqlQuery</code>, <code>nuSendError</code>, <code>nuSetGlobalPropertiesJS</code>, <code>nuSetHashList</code></p>
+</div>
+	<p class="doc-see">See also: <a href="#compat">Compatibility check</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nuphp_compat.php</code></li><li><code>assets/js/nu/nucompat.js</code></li></ul></details>
+</section>

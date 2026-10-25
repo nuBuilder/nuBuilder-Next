@@ -503,6 +503,7 @@ if ($admin || $userPage) {
 	foreach ($mineHidden as $k => $it) if (!empty($it['fav'])) $myFav[] = (string)$k;
 	$data = [
 		'url' => $selfUrl, 'csrf' => nu_csrf_token(), 'layout' => $layout, 'mode' => $mode, 'usedUrl' => $editorPage ? '' : nu_url('sidebar'),
+		'favUrl' => !$editorPage && NuSidebar::canFav() ? nu_url('sidebar') : '',   // right-click / long press → add to / remove from favourites (0.8.497)
 		// a user's own favourites and hidden tiles (0.8.425)
 		'mine' => $mode === 'user' ? ['fav' => $myFav, 'hide' => array_values(array_map('strval', array_keys($mineHidden))), 'own' => array_key_exists('fav', $mine) || $hideList !== []] : null,
 		// View panel (0.8.420): the layout's view, this person's own changes, where a change may go, the saved layouts
@@ -515,7 +516,7 @@ if ($admin || $userPage) {
 			'roles' => $hlManage && !$userPage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'presets' => $userPage ? (object)[] : NuHome::presets(), 'catalog' => (object)$cat,
 		'forms' => $formList, 'pages' => $userPage ? NuHome::USER_PAGES : NuHome::PAGES, 'procedures' => $procs, 'reports' => $reportList, 'cond' => $condOpts, 'icons' => NuHome::ICONS,
 		'procUrl' => $userPage ? nu_url('home', ['for' => $for, 'run' => '__ID__']) : nu_url('procedures', ['id' => '__ID__']),
-		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_size_list', 'home_size_listwide', 'home_size_list2',
+		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_size_list', 'home_size_listwide', 'home_size_list2',
 			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned', 'home_unpinned', 'home_hidden', 'home_hidden_hint', 'home_group_title', 'home_group_new', 'home_group_untitled',
 			'home_group_delete', 'home_move_up', 'home_move_down', 'home_move_left', 'home_move_right', 'home_hide', 'home_show', 'home_edit_tile', 'home_delete_tile',
 			'home_tile_new', 'home_tile_label', 'home_tile_hint', 'home_tile_icon', 'home_tile_color', 'home_tile_no_color', 'home_tile_kind', 'home_kind_form', 'home_kind_page',
@@ -534,7 +535,7 @@ if ($admin || $userPage) {
 			+ array_combine($k = array_map(static fn($x) => 'home_v_' . $x, ['view', 'personal', 'fav_row', 'fav_row_hint', 'recent_row', 'recent_row_hint', 'sort_name', 'sort_group', 'sort_status', 'col_desc', 'hc_open',
 			'saved_everyone', 'size_desktop', 'size_tablet', 'size_phone', 'style', 'list_cols', 'list_width', 'desc', 'lines', 'delay', 'nav', 'density',
 			'icons', 'group_colors', 'badges', 'badges_hint', 'actions', 'actions_hint', 'own_one', 'default', 'more', 'layout', 'store_personal',
-			'store_shared_user', 'undo_mine', 'store_shared_admin', 'applies_to', 'only_me', 'everyone', 'everyone_note', 'mine_count', 'make_layout',
+			'store_shared_user', 'undo_mine', 'store_shared_admin', 'applies_to', 'only_me', 'everyone', 'everyone_note', 'mine_count', 'mine_count_one', 'make_layout', 'make_layout_title', 'make_layout_text', 'make_layout_ok', 'undo_mine_title', 'undo_mine_text', 'undo_mine_ok',
 			'settings_for', 'all_sizes', 'only_size', 'own_settings', 'same_all_sizes', 'only_size_note', 'style_large', 'style_large_hint', 'style_cards',
 			'style_cards_hint', 'style_compact', 'style_compact_hint', 'style_list', 'style_list_hint', 'style_launcher', 'style_launcher_hint', 'style_panels',
 			'style_panels_hint', 'style_table', 'style_table_hint', 'auto', 'readable', 'full', 'use_for', 'all_tabs', 'only_tab', 'same_all_tabs', 'tab_owner',

@@ -1,0 +1,16 @@
+<section id="sign-in-p">
+	<h2 id="sign-in">Signing in</h2>
+	<p class="doc-lead">Signing in, session time-outs and what happens when an account is locked or expired.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone</p>
+	<p>Sign in with your nuBuilder user name and password. Depending on your access level you may be asked for a second factor (see <a href="#security">Security</a>).</p>
+<p>If your session has ended (no activity for a while), the next click shows the sign-in page; after signing in you are taken to the page you had clicked – also when the sign-in page was left open for a long time.</p>
+<ul>
+<li>Your account can expire or be locked by an administrator – then the login is refused.</li>
+<li>If your administrator requires a new password, you are asked to set one right after signing in.</li>
+<li>After a period without activity you are signed out automatically and must sign in again.</li>
+<li>If your company uses the shared login, you are signed in automatically when you are already signed in to nuBuilder.</li>
+<li>If the sign-in page shows <strong>Try the demo</strong>, one click signs you in to a demo: you can look at everything, but nothing you change is saved (a badge <em>Demo – read only</em> in the menu bar shows it).</li>
+</ul>
+	<p class="doc-see">See also: <a href="#security">Your password and two-step login</a> · <a href="#signin-methods">Sign-in methods</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nulogin.php</code></li><li><code>core/nuauth.php</code></li></ul></details>
+</section>

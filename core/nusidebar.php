@@ -176,6 +176,16 @@ final class NuSidebar
 		}
 	}
 
+	/** One entry out of "Recently used" (right-click / long press → Remove from recently used, 0.8.498). */
+	public static function forget(string $key): void
+	{
+		$u = NuAuth::user();
+		if (!$u || $key === '') return;
+		if (!empty($u['demo'])) { $_SESSION['nu_recent'] = array_values(array_diff((array)($_SESSION['nu_recent'] ?? []), [$key])); return; }
+		NuSchema::ensure();
+		nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE user_id = ? AND item = ?', [self::userId(), $key]);
+	}
+
 	public static function clearRecent(): void
 	{
 		$u = NuAuth::user();

@@ -4,8 +4,9 @@
 	'use strict';
 	var card = document.getElementById('secProbe');
 	if (!card) return;
-	var urls = [];
+	var urls = [], marks = {};
 	try { urls = JSON.parse(card.getAttribute('data-urls') || '[]'); } catch (e) { urls = []; }
+	try { marks = JSON.parse(card.getAttribute('data-marks') || '{}'); } catch (e) { marks = {}; }
 	var list = card.querySelector('.js-probe-list'), sum = card.querySelector('.js-probe-summary'), help = card.querySelector('.js-probe-help');
 	var open = 0, done = 0;
 
@@ -14,9 +15,13 @@
 		li.className = 'list-group-item d-flex gap-3 align-items-center small' + (state === 'open' ? ' sec-open' : '');
 		var i = document.createElement('i');
 		i.className = 'bi ' + (state === 'ok' ? 'bi-check-circle-fill text-success' : state === 'open' ? 'bi-x-octagon-fill text-danger' : 'bi-question-circle text-secondary');
-		var c = document.createElement('code');
-		c.className = 'flex-grow-1 text-break';
+		var c = document.createElement('a');                    // a link (0.8.502): open the file yourself, e.g. in a private window
+		c.className = 'flex-grow-1 text-break font-monospace';
 		c.dir = 'ltr';
+		c.href = url;
+		c.target = '_blank';
+		c.rel = 'noopener noreferrer';
+		c.title = card.getAttribute('data-link') || '';
 		c.textContent = url;
 		var s = document.createElement('span');
 		s.className = 'text-body-secondary';
@@ -34,14 +39,18 @@
 
 	if (!urls.length) { sum.textContent = '–'; return; }
 	urls.forEach(function (u) {
-		fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'probe=' + Date.now(), { cache: 'no-store', credentials: 'omit', redirect: 'manual' })
+		// with the browser's cookies (0.8.503): hosts with a bot protection (InfinityFree …) answer cookie-less requests with their own page
+		fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'probe=' + Date.now(), { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' })
 			.then(function (r) {
 				return r.text().then(function (body) {
-					// served = 200 with content; an empty answer of a PHP file (include guard) or an empty index.html of a protected folder
-					// that the server still hands out counts: the folder itself is reachable
-					var isPhp = /\.php$/.test(u), served = r.status === 200 && (!isPhp || body.trim() !== '');
+					// readable = HTTP 200 AND the answer is the file itself: it contains the file's first characters (an empty file: an
+					// empty answer). A PHP file that only runs (include guard, no output) is fine; another page with HTTP 200 (the host's
+					// error or bot-protection page) is not the file
+					var b = body.replace(/\r/g, ''), mark = Object.prototype.hasOwnProperty.call(marks, u) ? marks[u] : null;
+					var isFile = mark === null ? b.trim() !== '' : (mark === '' ? b.trim() === '' : b.indexOf(mark) >= 0);
+					var served = r.status === 200 && isFile;
 					if (served) open++;
-					var label = served ? 'data-open' : (r.status === 200 ? 'data-empty' : 'data-ok');
+					var label = served ? 'data-open' : (r.status !== 200 ? 'data-ok' : (b.trim() === '' ? 'data-empty' : 'data-other'));
 					row(u, served ? 'open' : 'ok', card.getAttribute(label) + ' (HTTP ' + r.status + ')');
 				});
 			})

@@ -299,6 +299,7 @@ nu_layout_start(t('dash_title'), 'home');
 			<?php if ($d): ?>
 				<button class="btn nuBtnAct" type="submit" form="dashCopy"><i class="bi bi-copy"></i><?= h(t('clone')) ?></button>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" form="dashDelete"><i class="bi bi-trash"></i><?= h(t('delete')) ?></button>
+				<?= NuFormInfo::record(NuDashboard::TD, (string)$id, ['code' => (string)($d['code'] ?? '')]) /* (i) record info (0.8.501) */ ?>
 			<?php endif; ?>
 		</div>
 	</div>

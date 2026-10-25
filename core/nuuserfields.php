@@ -394,7 +394,7 @@ final class NuUserFields
 	 * Input of a field for the user form and My account: a Bootstrap column with label, (i) tip, the input (name uf[<code>]) and the
 	 * error. $readOnly: shown, not changeable (the field is edited by someone else).
 	 */
-	public static function inputHtml(array $f, string $value, ?string $error, bool $readOnly): string
+	public static function inputHtml(array $f, string $value, ?string $error, bool $readOnly, bool $showType = false): string
 	{
 		$code = (string)$f['code'];
 		$id = 'uf_' . $code;
@@ -406,13 +406,14 @@ final class NuUserFields
 		$attr = ' id="' . h($id) . '" name="' . h($name) . '"' . ($req && !$readOnly ? ' required' : '') . $ro . ' data-uf="' . h($code) . '"';
 		$tip = self::hint($f) !== '' ? ' <span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h(self::hint($f))
 			. '" title="' . h(self::hint($f)) . '"><i class="bi bi-info-circle"></i></span>' : '';
-		$label = '<label class="form-label" for="' . h($id) . '">' . h(self::label($f)) . ($req ? ' <span class="text-danger">*</span>' : '') . '</label>' . $tip;
+		$kind = $showType ? ' <span class="text-body-secondary small nuUfType">(' . h(t('uf_type_' . $type)) . ')</span>' : '';   // user form (0.8.508)
+		$label = '<label class="form-label" for="' . h($id) . '">' . h(self::label($f)) . $kind . ($req ? ' <span class="text-danger">*</span>' : '') . '</label>' . $tip;
 		$max = self::TYPES[$type][2];
 		$ml = $max ? ' maxlength="' . $max . '"' : '';
 		if ($type === 'yesno') {
 			$input = '<div class="form-check form-switch mt-1">' . ($readOnly ? '' : '<input type="hidden" name="' . h($name) . '" value="0">')
 				. '<input class="form-check-input' . $inv . '" type="checkbox" role="switch" value="1"' . $attr . ($value === '1' ? ' checked' : '') . '>'
-				. '<label class="form-check-label" for="' . h($id) . '">' . h(self::label($f)) . '</label>' . $tip . '</div>';
+				. '<label class="form-check-label" for="' . h($id) . '">' . h(self::label($f)) . $kind . '</label>' . $tip . '</div>';
 			$label = '';
 		} elseif ($type === 'longtext') {
 			$input = '<textarea class="form-control' . $inv . '" rows="3"' . $attr . '>' . h($value) . '</textarea>';

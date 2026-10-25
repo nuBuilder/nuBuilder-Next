@@ -581,13 +581,13 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 			<?php endif; ?>
 			<div class="d-flex flex-wrap gap-2 align-items-center">
 				<?php if ($check['ok'] && $reqOk && $updOn): ?>
-					<form method="post" action="<?= h(nu_url('update')) ?>" class="d-flex flex-wrap gap-2 align-items-center" id="updInstallForm" data-nu-once data-nu-lock="#updCancel" data-nu-progress="#updProgress" data-confirm="<?= h(t('upd_install_confirm', $check['version'])) ?>" data-confirm-ok="<?= h(t('upd_install')) ?>" data-confirm-class="btn btn-primary">
+					<form method="post" action="<?= h(nu_url('update')) ?>" class="nuContents" id="updInstallForm" data-nu-once data-nu-lock="#updCancel" data-nu-progress="#updProgress" data-confirm="<?= h(t('upd_install_confirm', $check['version'])) ?>" data-confirm-ok="<?= h(t('upd_install')) ?>" data-confirm-class="btn btn-primary">
 						<?= nu_csrf_field() ?><input type="hidden" name="action" value="install"><input type="hidden" name="id" value="<?= h($check['id']) ?>">
 						<?php if (!version_compare($check['version'], NU_VERSION, '>')): ?>
 							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="reinstall" name="reinstall" value="1"><label class="form-check-label small" for="reinstall"><?= h(t('upd_reinstall')) ?></label></div>
 						<?php endif; ?>
 						<?php if (NuUpdate::loadDump() && NuSqlDump::available()): $estAll = NuSqlDump::estimate('all', true); // backup before the update: also the database (pre-ticked when small) ?>
-							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkSql" name="backup_sql" value="1"<?= $estAll < 50 * 1024 * 1024 ? ' checked' : '' ?>>
+							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkSql" name="backup_sql" value="1"<?= $estAll < 50 * 1024 * 1024 && empty(nu_cfg('nuConfigDevMode')) ? ' checked' : '' ?>><?php // developer mode: off by default (0.8.499) ?>
 								<label class="form-check-label small" for="updBkSql"><?= h(t('upd_install_sql', NuFile::size($estAll))) ?></label>
 								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_install_sql_hint')) ?>" title="<?= h(t('upd_install_sql_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
 							<input type="hidden" name="backup_nologs" value="1">
@@ -602,6 +602,7 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 								<label class="form-check-label small" for="updSample"><?= h($newer ? t('upd_sample_refresh', $sv['from'], $sv['to']) : t('upd_sample_refresh_same')) ?></label>
 								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_sample_refresh_tip')) ?>" title="<?= h(t('upd_sample_refresh_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
 						<?php endif; ?>
+						<div class="w-100" aria-hidden="true"></div><?php // Install and Cancel on their own row below the options (0.8.505) ?>
 						<button class="btn btn-primary" type="submit" id="updInstall" data-nu-busy="<?= h(t('upd_installing')) ?>"><i class="bi bi-download me-1"></i><?= h(t('upd_install')) ?></button>
 					</form>
 				<?php endif; ?>

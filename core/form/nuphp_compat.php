@@ -5,7 +5,7 @@ defined('NU_ROOT') || exit;
 /*
  * More nuBuilder 4.9 PHP functions for form events, lookups and procedures (loaded with nuphp_api.php).
  * Ported from nuBuilder's core/nudatabase.php, nucommon.php, nudata.php, nuform.php and nusecurity.php.
- * Differences to nuBuilder are noted at the function; see docs/porting-review.md for open questions.
+ * Differences to nuBuilder are noted at the function; see the help page #porting (docs/pages/12-02-porting.htm).
  */
 
 if (!function_exists('db_fetch_value')) {

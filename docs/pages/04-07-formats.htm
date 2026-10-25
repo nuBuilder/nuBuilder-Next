@@ -1,0 +1,23 @@
+<section id="formats" data-acl="nuformat">
+	<h2 id="formats-h">Formats</h2>
+	<p class="doc-lead">Date, number and text-mask formats shared with nuBuilder.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuformat</p>
+	<p><em>Forms → Tools → Formats</em>. Formats are shared with nuBuilder (table <code>zzzzsys_format</code>).</p>
+<table class="table table-sm">
+<thead><tr><th>Type</th><th>Examples</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Date / time</td><td><code>dd.mm.yyyy hh:nn</code>, <code>dddd, dd.mm.yyyy</code></td><td>tokens dd mm yyyy yy mmm mmmm ddd dddd hh nn ss</td></tr>
+<tr><td>Number</td><td><code>$ 1,000.00</code>, <code>1000.0 %</code></td><td>prefix, separators, places, suffix; negative numbers with minus (after the prefix, as nuBuilder: <code>€ -99,95</code>), brackets and/or red</td></tr>
+<tr><td>Text mask</td><td><code>CH99 9999 9999 9999 9999 9</code></td><td><code>9</code> digit, <code>a</code> letter, <code>A</code> upper-case letter, <code>*</code> letter or digit, <code>\</code> next character literally</td></tr>
+</tbody>
+</table>
+<p>When the pattern of a used format changes, the objects and list columns using it are updated. A format can only be deleted when it is unused.</p>
+<p><strong>Typing or pasting numbers</strong>: a number field accepts numbers in other notations too – from Excel, calculators or PDFs – and shows them in its own format when you leave it; nothing is cleared.</p>
+<ul>
+<li>Currency signs, letters, <code>%</code>, spaces (also no-break and thin spaces) and apostrophes are ignored.</li>
+<li>Negative: a minus in front (also the calculator minus <code>−</code> and dashes <code>–</code>), a minus at the end (<code>1.234,56-</code>) or brackets <code>(1.234,56)</code>.</li>
+<li>Decimal separator: with both <code>.</code> and <code>,</code> the last one (<code>1.234,56</code> and <code>1,234.56</code> are both 1234.56). With one kind only: several of them are thousands separators (<code>1.234.567</code>); a single one is the decimal separator when it is the field's own or is not followed by exactly three digits (<code>1,5</code> = 1.5). Only <code>1,234</code> / <code>1.234</code> are ambiguous – the field decides: with <code>,</code> as its decimal separator <code>1,234</code> is 1.234, otherwise 1234.</li>
+<li>Examples in a field <code>1,000.00</code>: <code>−1.234,56</code> → -1,234.56 · <code>€1 000,50</code> → 1,000.50 · <code>(1.234.567,89)</code> → -1,234,567.89 · <code>1'234.50</code> → 1,234.50.</li>
+</ul>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nuformat.php</code></li><li><code>assets/js/nu/nuformat.js</code></li></ul></details>
+</section>

@@ -1,0 +1,68 @@
+<section id="table-ref" data-doc="admin">
+	<h2 id="table-ref-h">Database table reference</h2>
+	<p class="doc-lead">The tables nuBuilder Next reads and writes, with their purpose.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>Read-only reference; change system tables through the screens of nuBuilder or nuBuilder Next, not by hand. Columns are best looked up with <em>Inspect record</em> or the database tools.</p>
+<div class="doc-sub">
+	<h3 id="table-ref-nb">nuBuilder's system tables (shared)</h3>
+	<table class="table table-sm">
+		<thead><tr><th>Table</th><th>Holds</th><th>Edited in nuBuilder Next at</th></tr></thead>
+		<tbody>
+			<tr><td><code>zzzzsys_form</code></td><td>Forms: code, type, table, primary key, browse SQL, JavaScript, style</td><td>Form builder</td></tr>
+			<tr><td><code>zzzzsys_tab</code></td><td>Tabs of a form</td><td>Form builder</td></tr>
+			<tr><td><code>zzzzsys_object</code></td><td>Objects of a form (fields, lookups, subforms, HTML …)</td><td>Form builder</td></tr>
+			<tr><td><code>zzzzsys_browse</code></td><td>List columns of a form</td><td>Form builder</td></tr>
+			<tr><td><code>zzzzsys_event</code></td><td>JavaScript events of objects</td><td>Form builder</td></tr>
+			<tr><td><code>zzzzsys_php</code></td><td>Procedures and PHP hooks of forms and lookups</td><td>Procedures, form builder</td></tr>
+			<tr><td><code>zzzzsys_user</code></td><td>Users</td><td>Users</td></tr>
+			<tr><td><code>zzzzsys_access</code>, <code>zzzzsys_access_form</code>, <code>zzzzsys_access_php</code>, <code>zzzzsys_access_report</code></td><td>Access levels and their forms (with buttons), procedures and reports</td><td>Access levels</td></tr>
+			<tr><td><code>zzzzsys_permission_item</code>, <code>zzzzsys_user_permission</code></td><td>Permission items and which user has them</td><td>Permission items, user form</td></tr>
+			<tr><td><code>zzzzsys_report</code>, <code>zzzzsys_report_data</code></td><td>PDF reports</td><td>Reports, report designer</td></tr>
+			<tr><td><code>zzzzsys_select</code>, <code>zzzzsys_select_clause</code></td><td>Queries of the SQL builder</td><td>SQL builder</td></tr>
+			<tr><td><code>zzzzsys_format</code></td><td>Display formats</td><td>Formats</td></tr>
+			<tr><td><code>zzzzsys_item</code></td><td>Item lists</td><td>Items</td></tr>
+			<tr><td><code>zzzzsys_file</code></td><td>Files stored in the database (also the branding logos)</td><td>Files, branding</td></tr>
+			<tr><td><code>zzzzsys_translate</code></td><td>Translations</td><td>Translations</td></tr>
+			<tr><td><code>zzzzsys_setup</code></td><td>Setup: e-mail settings, header JavaScript, style, include</td><td>E-mail, setup code</td></tr>
+			<tr><td><code>zzzzsys_config</code></td><td>Settings (Setup → Settings)</td><td>Settings</td></tr>
+			<tr><td><code>zzzzsys_email_log</code>, <code>zzzzsys_email_template</code></td><td>Sent e-mails, e-mail templates</td><td>E-mail log, e-mail templates</td></tr>
+			<tr><td><code>zzzzsys_note</code>, <code>zzzzsys_note_category</code>, <code>zzzzsys_code_snippet</code></td><td>Notes, their categories, code snippets</td><td>Notes, code editor</td></tr>
+			<tr><td><code>zzzzsys_cloner</code>, <code>zzzzsys_app_cloner</code></td><td>Saved configurations of the cloners</td><td>Cloner, app cloner</td></tr>
+			<tr><td><code>zzzzsys_prompt_generator</code></td><td>Saved prompts</td><td>Prompt generator</td></tr>
+			<tr><td><code>zzzzsys_debug</code></td><td>Output of <code>nuDebug()</code></td><td>Debug results</td></tr>
+			<tr><td><code>zzzzsys_session</code></td><td>nuBuilder's sessions – only read (shared login, database tools)</td><td>–</td></tr>
+			<tr><td><code>zzzzsys_info</code>, <code>zzzzsys_timezone</code></td><td>nuBuilder's version information, time zones</td><td>–</td></tr>
+		</tbody>
+	</table>
+</div>
+<div class="doc-sub">
+	<h3 id="table-ref-next">nuBuilder Next's tables</h3>
+	<table class="table table-sm">
+		<thead><tr><th>Table</th><th>Holds</th></tr></thead>
+		<tbody>
+			<tr><td><code>zzzzsys_nunext_setting</code></td><td>Settings of the installation as JSON rows (security, start page layouts, branding …)</td></tr>
+			<tr><td><code>zzzzsys_nunext_session</code></td><td>Logged-in users: one row per session (key = hash of the session id)</td></tr>
+			<tr><td><code>zzzzsys_nunext_token</code></td><td>One-time and login tokens (password reset, links), stored as hashes</td></tr>
+			<tr><td><code>zzzzsys_nunext_user_2fa</code></td><td>Authenticator secrets (encrypted with <code>$nuConfigSecretKey</code>)</td></tr>
+			<tr><td><code>zzzzsys_nunext_log</code></td><td>Log: logins, security events, exports …</td></tr>
+			<tr><td><code>zzzzsys_nunext_audit</code></td><td>Audit trail: one row per changed column</td></tr>
+			<tr><td><code>zzzzsys_nunext_form_history</code></td><td>Snapshots of forms before every change in the builder</td></tr>
+			<tr><td><code>zzzzsys_nunext_form_draft</code></td><td>Form drafts</td></tr>
+			<tr><td><code>zzzzsys_nunext_presence</code></td><td>Who has which record open (concurrent edits)</td></tr>
+			<tr><td><code>zzzzsys_nunext_object_access</code></td><td>Field data access: default mode and rules per object</td></tr>
+			<tr><td><code>zzzzsys_nunext_page</code></td><td>Settings of page forms (custom PHP)</td></tr>
+			<tr><td><code>zzzzsys_nunext_list_view</code></td><td>List views of nuBuilder Next's own lists</td></tr>
+			<tr><td><code>zzzzsys_nunext_dashboard</code>, <code>zzzzsys_nunext_widget</code></td><td>Dashboards and their widgets</td></tr>
+			<tr><td><code>zzzzsys_nunext_admin_role</code>, <code>zzzzsys_nunext_admin_user</code></td><td>Admin roles and the role of each user</td></tr>
+			<tr><td><code>zzzzsys_nunext_notification</code>, <code>zzzzsys_nunext_notification_user</code></td><td>Notifications and their read / hidden / confirmed state per user</td></tr>
+			<tr><td><code>zzzzsys_nunext_user_field</code>, <code>zzzzsys_nunext_user_ext</code></td><td>Custom user fields and their values</td></tr>
+			<tr><td><code>zzzzsys_nunext_recent</code></td><td>Recently used pages of the side bar</td></tr>
+			<tr><td><code>zzzzsys_nunext_api_client</code>, <code>zzzzsys_nunext_api_token</code>, <code>zzzzsys_nunext_api_rate</code></td><td>REST API clients, access tokens (as HMAC), rate limit counters</td></tr>
+			<tr><td><code>zzzzsys_nunext_api_request</code></td><td>Saved requests and settings of the API playground</td></tr>
+			<tr><td><code>zzzzsys_nunext_migration</code></td><td>Marker that nuBuilder Next's tables exist (the first one created)</td></tr>
+		</tbody>
+	</table>
+</div>
+	<p class="doc-see">See also: <a href="#db-schema">Database schema</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuinfra.php</code></li><li><code>install/schema_mysql.sql</code></li><li><code>install/nubuilder49_tables.sql</code></li></ul></details>
+</section>

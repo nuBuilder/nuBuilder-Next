@@ -62,13 +62,14 @@
 	}
 
 	// ------------------------------------------------------------------ placeholders
-	// into the body a form field comes with its label: <b>Field Id: </b>#field_id# (subject, to, cc …: only #field_id#)
+	// into the body a form field comes with its label and a line break: <b>Field Id: </b>#field_id#<br> (subject, to, cc …: only #field_id#)
 	function htmlText(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 	function placeholder(id, label, isField) {
 		var ph = '#' + id + '#';
-		if (!isField || target !== body) return ph;
+		if (target !== body) return ph;
+		if (!isField) return ph + '<br>\n';                       // body: each placeholder on its own line (0.8.509)
 		label = String(label || '').replace(/\s+/g, ' ').trim().replace(/\s*:$/, '');
-		return label ? '<b>' + htmlText(label) + ': </b>' + ph : ph;
+		return (label ? '<b>' + htmlText(label) + ': </b>' + ph : ph) + '<br>\n';
 	}
 	function renderFields() {
 		var q = (search.value || '').toLowerCase();

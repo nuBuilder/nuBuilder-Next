@@ -2,7 +2,7 @@
  * More nuBuilder 4.9 JavaScript functions (nucommon.js, nuform.js, nuajax.js) for existing form code.
  * Loaded after nuruntime.js; works on nuBuilder Next's markup (subform rows .nuSubformRow with data-nu-prefix,
  * tabs .nuTab[data-nu-tab][data-nu-tab-id], browse cells td.nuCell[data-nu-column]).
- * Open questions and functions that are not ported: docs/porting-review.md.
+ * Differences and functions that are not ported: help, Code reference → Differences and functions not ported (docs/pages/12-02-porting.htm).
  */
 (function () {
 	'use strict';

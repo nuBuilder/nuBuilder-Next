@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Function reference of the Help page (0.8.399): docs/nunext-functions.json → the section #ref of docs/nunext-ref.htm (0.8.464: tab Code reference)
+ * Function reference of the Help page: docs/nunext-functions.json → the page #ref of the tab Code reference (docs/pages/, see docs/toc.json)
  * (<div data-nu-fnref="php"></div> / "js" are replaced by render()). Search and index: assets/js/nuhelp.js.
  * dev/tests/run.php compares the documented functions with the code (codeNames()): a new PHP function in
  * core/form/nuphp_api.php / nuphp_compat.php, core/nudebug.php, core/numail.php or a new api('…') in
@@ -69,7 +69,7 @@ final class NuFnRef
 	}
 
 	/**
-	 * The two references as tabs (0.8.456): <div data-nu-fnref="tabs"> of docs/nunext-ref.htm. Each tab is a .doc-sub (the help index
+	 * The two references as tabs: <div data-nu-fnref="tabs"> of the page docs/pages/10-04-ref.htm. Each tab is a .doc-sub (the help index
 	 * lists "PHP functions" / "JavaScript functions"), ids ref-php / ref-js stay the anchors of older links; assets/js/nuhelp.js switches
 	 * the tab for #ref-…, #fn-… and the index, and shows both while the help search runs.
 	 */
@@ -179,7 +179,7 @@ final class NuFnRef
 		$next = ($it['o'] ?? 'nb') === 'next';
 		$v = (string)($it['v'] ?? '');
 		$badge = $next
-			? '<span class="badge nuFnNext">nuBuilder Next' . ($v !== '' ? ' ' . h($v) : '') . '</span>'
+			? '<span class="badge nuFnNext">nuBuilder Next</span>'   // the version ("v") stays in the JSON for the changelog, not in the help
 			: ($kind === 'hook' ? '<span class="badge nuFnHook">hook</span>' : '<span class="badge nuFnNb">nuBuilder</span>');
 		if ($kind === 'method' && !$next) $badge .= '<span class="badge nuFnKind">method</span>';
 		$h = '<article class="nuFn" id="' . h(self::anchor($lang, $n)) . '" data-nu-fn="' . h(strtolower($n)) . '">'

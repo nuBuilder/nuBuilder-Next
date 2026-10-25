@@ -452,3 +452,7 @@
 /* one Customise panel (0.8.452): tabs Content · Appearance · Layouts under the head */
 .nuHomeVpTabs { padding: 0 1rem; flex-wrap: nowrap; --nu-tab-surface: var(--bs-body-bg); }
 .nuHomeVpTabs .nav-link { padding: .45rem .6rem; font-size: .875rem; white-space: nowrap; }
+
+/* right-click / long press menu of a tile (0.8.497): name, description, add to / remove from favourites */
+.nuHomeCtx { position: fixed; z-index: 1080; margin: 0; min-width: 14rem; max-width: 20rem; }
+.nuHomeCtxHead { padding: .25rem 1rem .35rem; white-space: normal; }

@@ -1,0 +1,543 @@
+{
+ "comment": [
+  "nuBuilder Next documentation (English), shown at index.php?p=help – never link the files directly.",
+  "One file per page in docs/pages/. Chapters and pages are listed here in reading order; pages/nuhelp.php joins them per tab",
+  "(guide = tab Guide, ref = tab Code reference) and numbers them (1, 1.1 …) after filtering, so numbers are never written in the files.",
+  "Every file holds exactly one <section id=…> with one <h2 id=…>; sub-sections are <div class=\"doc-sub\"> with an <h3 id=…>.",
+  "Ids are anchors (index.php?p=help#id) and must be unique over all files – links from code, the tutorial and other pages use them.",
+  "Who sees what (filtered on the server): data-doc=\"admin\" globeadmin and admin roles; data-doc=\"dev\" globeadmin in developer mode;",
+  "data-acl=\"nuuser,…\" users with the view right on one of these forms; no attribute = everybody. Works on any element.",
+  "A chapter's section must not be more restrictive than its pages (a reader would see pages without their chapter).",
+  "Page template: h2, p.doc-lead (purpose and scope), p.doc-for (audience, admin only), content, p.doc-see, details.doc-src (admin only).",
+  "data-level=\"advanced\" on a section (or doc-sub) marks an advanced topic: hidden while the reader has \"Show advanced topics\" off (nuhelp.js).",
+  "No version numbers in the text – the change history is CHANGELOG.md.",
+  "Function references: <div data-nu-fnref=\"tabs\"></div> is replaced with docs/nunext-functions.json (core/nufnref.php)."
+ ],
+ "chapters": [
+  {
+   "n": 1,
+   "id": "overview",
+   "title": "Overview",
+   "tab": "guide",
+   "file": "01-00-overview.htm",
+   "pages": [
+    {
+     "id": "key-concepts",
+     "title": "Key concepts",
+     "file": "01-01-key-concepts.htm"
+    },
+    {
+     "id": "install",
+     "title": "Requirements and installation",
+     "file": "01-02-install.htm"
+    },
+    {
+     "id": "databases",
+     "title": "Databases: MySQL, MariaDB and SQL Server",
+     "file": "01-03-databases.htm"
+    },
+    {
+     "id": "updating-p",
+     "title": "Updating nuBuilder Next",
+     "file": "01-04-updating.htm"
+    },
+    {
+     "id": "copy-files-p",
+     "title": "Libraries (library packs)",
+     "file": "01-05-copy-files.htm"
+    },
+    {
+     "id": "tutorial-doc",
+     "title": "Tutorial",
+     "file": "01-06-tutorial-doc.htm"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "id": "start",
+   "title": "Using nuBuilder Next",
+   "tab": "guide",
+   "file": "02-00-start.htm",
+   "pages": [
+    {
+     "id": "sign-in-p",
+     "title": "Signing in",
+     "file": "02-01-sign-in.htm"
+    },
+    {
+     "id": "navigation-p",
+     "title": "Navigation and your start page",
+     "file": "02-02-navigation.htm"
+    },
+    {
+     "id": "lists-p",
+     "title": "Lists (browse)",
+     "file": "02-03-lists.htm"
+    },
+    {
+     "id": "forms-use",
+     "title": "Editing records",
+     "file": "02-04-forms-use.htm"
+    },
+    {
+     "id": "concurrent-edits-p",
+     "title": "Two people editing the same record",
+     "file": "02-05-concurrent-edits.htm"
+    },
+    {
+     "id": "security",
+     "title": "Your password and two-step login",
+     "file": "02-06-security.htm"
+    },
+    {
+     "id": "notes",
+     "title": "Notes",
+     "file": "02-07-notes.htm"
+    },
+    {
+     "id": "phones",
+     "title": "Phones and small screens",
+     "file": "02-08-phones.htm"
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "id": "architecture",
+   "title": "Architecture",
+   "tab": "ref",
+   "file": "03-00-architecture.htm",
+   "pages": [
+    {
+     "id": "routing",
+     "title": "Request routing",
+     "file": "03-01-routing.htm"
+    },
+    {
+     "id": "startup",
+     "title": "Startup and configuration",
+     "file": "03-02-startup.htm"
+    },
+    {
+     "id": "sessions-arch",
+     "title": "Sessions and sign-in flow",
+     "file": "03-03-sessions-arch.htm"
+    },
+    {
+     "id": "db-schema",
+     "title": "Database schema",
+     "file": "03-04-db-schema.htm"
+    },
+    {
+     "id": "form-rendering",
+     "title": "Form rendering pipeline",
+     "file": "03-05-form-rendering.htm"
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "id": "builder",
+   "title": "Form system",
+   "tab": "guide",
+   "file": "04-00-builder.htm",
+   "pages": [
+    {
+     "id": "form-lifecycle",
+     "title": "Form lifecycle and event order",
+     "file": "04-01-form-lifecycle.htm"
+    },
+    {
+     "id": "new-form-p",
+     "title": "Creating a form",
+     "file": "04-02-new-form.htm"
+    },
+    {
+     "id": "builder-work-p",
+     "title": "Working in the form builder",
+     "file": "04-03-builder-work.htm"
+    },
+    {
+     "id": "form-drafts-p",
+     "title": "Drafts and publishing",
+     "file": "04-04-form-drafts.htm"
+    },
+    {
+     "id": "object-types-p",
+     "title": "Object types",
+     "file": "04-05-object-types.htm"
+    },
+    {
+     "id": "data-access",
+     "title": "Data access: fields and list columns per user",
+     "file": "04-06-data-access.htm"
+    },
+    {
+     "id": "formats",
+     "title": "Formats",
+     "file": "04-07-formats.htm"
+    },
+    {
+     "id": "items",
+     "title": "Items",
+     "file": "04-08-items.htm"
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "id": "saving",
+   "title": "Saving data",
+   "tab": "guide",
+   "file": "05-00-saving.htm",
+   "pages": [
+    {
+     "id": "save-flow",
+     "title": "How a save works",
+     "file": "05-01-save-flow.htm"
+    },
+    {
+     "id": "validation",
+     "title": "Validation and business rules",
+     "file": "05-02-validation.htm"
+    },
+    {
+     "id": "procedures",
+     "title": "Procedures and hooks",
+     "file": "05-03-procedures.htm"
+    },
+    {
+     "id": "log",
+     "title": "Record log, audit trail and debug results",
+     "file": "05-04-log.htm"
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "id": "output",
+   "title": "Lists, reports and dashboards",
+   "tab": "guide",
+   "file": "06-00-output.htm",
+   "pages": [
+    {
+     "id": "list-views",
+     "title": "List views",
+     "file": "06-01-list-views.htm"
+    },
+    {
+     "id": "reports",
+     "title": "Reports and the report designer",
+     "file": "06-02-reports.htm"
+    },
+    {
+     "id": "sql-builder",
+     "title": "SQL builder",
+     "file": "06-03-sql-builder.htm"
+    },
+    {
+     "id": "dashboards",
+     "title": "Dashboards",
+     "file": "06-04-dashboards.htm"
+    }
+   ]
+  },
+  {
+   "n": 7,
+   "id": "rights",
+   "title": "Authentication and security",
+   "tab": "guide",
+   "file": "07-00-rights.htm",
+   "pages": [
+    {
+     "id": "signin-methods",
+     "title": "Sign-in methods",
+     "file": "07-01-signin-methods.htm"
+    },
+    {
+     "id": "access",
+     "title": "Access levels",
+     "file": "07-02-access.htm"
+    },
+    {
+     "id": "permissions",
+     "title": "Permission items",
+     "file": "07-03-permissions.htm"
+    },
+    {
+     "id": "admin-roles",
+     "title": "Admin roles",
+     "file": "07-04-admin-roles.htm"
+    },
+    {
+     "id": "impersonate",
+     "title": "Acting as another user",
+     "file": "07-05-impersonate.htm"
+    },
+    {
+     "id": "sessions",
+     "title": "Logged-in users",
+     "file": "07-06-sessions.htm"
+    },
+    {
+     "id": "security-check",
+     "title": "Security check, server rules and housekeeping",
+     "file": "07-07-security-check.htm"
+    }
+   ]
+  },
+  {
+   "n": 8,
+   "id": "administration",
+   "title": "Administration",
+   "tab": "guide",
+   "file": "08-00-administration.htm",
+   "pages": [
+    {
+     "id": "users",
+     "title": "Users",
+     "file": "08-01-users.htm"
+    },
+    {
+     "id": "config",
+     "title": "Configuration (nuconfig.php)",
+     "file": "08-02-config.htm"
+    },
+    {
+     "id": "configfile",
+     "title": "Editing nuconfig.php in the browser",
+     "file": "08-03-configfile.htm"
+    },
+    {
+     "id": "settings",
+     "title": "Settings",
+     "file": "08-04-settings.htm"
+    },
+    {
+     "id": "setupcode",
+     "title": "Setup code",
+     "file": "08-05-setupcode.htm"
+    },
+    {
+     "id": "home-page",
+     "title": "Start page of the globeadmin",
+     "file": "08-06-home-page.htm"
+    },
+    {
+     "id": "home-users",
+     "title": "Start pages of users",
+     "file": "08-07-home-users.htm"
+    },
+    {
+     "id": "admin-tools",
+     "title": "Admin tools and system status",
+     "file": "08-08-admin-tools.htm"
+    },
+    {
+     "id": "csv-import",
+     "title": "CSV import",
+     "file": "08-09-csv-import.htm"
+    },
+    {
+     "id": "sample-data",
+     "title": "Sample data",
+     "file": "08-10-sample-data.htm"
+    },
+    {
+     "id": "inspect",
+     "title": "Inspect record",
+     "file": "08-11-inspect.htm"
+    },
+    {
+     "id": "selftest",
+     "title": "Self-test",
+     "file": "08-12-selftest.htm"
+    },
+    {
+     "id": "innodb",
+     "title": "Storage engine (InnoDB)",
+     "file": "08-13-innodb.htm"
+    },
+    {
+     "id": "demo-mode",
+     "title": "Demo mode",
+     "file": "08-14-demo-mode.htm"
+    }
+   ]
+  },
+  {
+   "n": 9,
+   "id": "features",
+   "title": "Extended features",
+   "tab": "guide",
+   "file": "09-00-features.htm",
+   "pages": [
+    {
+     "id": "email",
+     "title": "E-mail",
+     "file": "09-01-email.htm"
+    },
+    {
+     "id": "notifications",
+     "title": "Notifications",
+     "file": "09-02-notifications.htm"
+    },
+    {
+     "id": "prompts",
+     "title": "AI: prompt generator and forms with AI",
+     "file": "09-03-prompts.htm"
+    },
+    {
+     "id": "translations",
+     "title": "Translations",
+     "file": "09-04-translations.htm"
+    },
+    {
+     "id": "files",
+     "title": "Files",
+     "file": "09-05-files.htm"
+    },
+    {
+     "id": "cloner",
+     "title": "Cloner (copy a form)",
+     "file": "09-06-cloner.htm"
+    },
+    {
+     "id": "appcloner",
+     "title": "App cloner (copy the whole application)",
+     "file": "09-07-appcloner.htm"
+    },
+    {
+     "id": "branding",
+     "title": "Branding",
+     "file": "09-08-branding.htm"
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "id": "dev",
+   "title": "API reference",
+   "tab": "ref",
+   "file": "10-00-dev.htm",
+   "pages": [
+    {
+     "id": "php-api-p",
+     "title": "PHP functions",
+     "file": "10-01-php-api.htm"
+    },
+    {
+     "id": "js-api-p",
+     "title": "JavaScript functions",
+     "file": "10-02-js-api.htm"
+    },
+    {
+     "id": "label-menu-p",
+     "title": "Hash variables and the label menu",
+     "file": "10-03-label-menu.htm"
+    },
+    {
+     "id": "ref",
+     "title": "Function reference",
+     "file": "10-04-ref.htm"
+    },
+    {
+     "id": "api",
+     "title": "REST API",
+     "file": "10-05-api.htm"
+    },
+    {
+     "id": "table-ref",
+     "title": "Database table reference",
+     "file": "10-06-table-ref.htm"
+    },
+    {
+     "id": "debugging-p",
+     "title": "Debugging",
+     "file": "10-07-debugging.htm"
+    }
+   ]
+  },
+  {
+   "n": 11,
+   "id": "customization",
+   "title": "Customization",
+   "tab": "ref",
+   "file": "11-00-customization.htm",
+   "pages": [
+    {
+     "id": "pages",
+     "title": "Pages (custom PHP)",
+     "file": "11-01-pages.htm"
+    },
+    {
+     "id": "home-hooks",
+     "title": "Start page hooks",
+     "file": "11-02-home-hooks.htm"
+    },
+    {
+     "id": "theming",
+     "title": "Theming and CSS",
+     "file": "11-03-theming.htm"
+    },
+    {
+     "id": "bundled-libraries",
+     "title": "Bundled libraries",
+     "file": "11-04-bundled-libraries.htm"
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "id": "migration",
+   "title": "Migrating from nuBuilder 4.9",
+   "tab": "ref",
+   "file": "12-00-migration.htm",
+   "pages": [
+    {
+     "id": "compat",
+     "title": "Compatibility check",
+     "file": "12-01-compat.htm"
+    },
+    {
+     "id": "porting",
+     "title": "Differences and functions not ported",
+     "file": "12-02-porting.htm"
+    }
+   ]
+  },
+  {
+   "n": 13,
+   "id": "devflow",
+   "title": "Contributing: development with Claude",
+   "tab": "ref",
+   "file": "13-00-devflow.htm",
+   "pages": []
+  },
+  {
+   "n": 14,
+   "id": "more",
+   "title": "Glossary, troubleshooting and FAQ",
+   "tab": "guide",
+   "file": "14-00-more.htm",
+   "pages": [
+    {
+     "id": "glossary",
+     "title": "Glossary",
+     "file": "14-01-glossary.htm"
+    },
+    {
+     "id": "trouble",
+     "title": "Troubleshooting",
+     "file": "14-02-trouble.htm"
+    },
+    {
+     "id": "faq",
+     "title": "FAQ",
+     "file": "14-03-faq.htm"
+    }
+   ]
+  }
+ ]
+}

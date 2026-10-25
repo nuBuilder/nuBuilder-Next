@@ -1,0 +1,49 @@
+<section id="forms-use">
+	<h2 id="forms-use-h">Editing records</h2>
+	<p class="doc-lead">Saving, required and unique fields, masks, cloning and deleting, sub-forms and lookups, keyboard shortcuts.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone</p>
+	<div class="doc-sub">
+<h3 id="editing">Editing a record</h3>
+<ul>
+<li><strong>Save</strong>, <strong>Clone</strong> and <strong>Delete</strong> look the same (light buttons with icon and text, as in nuBuilder). As soon as you change something, <strong>Save</strong> turns <span class="doc-red">red</span> – red text on a light red background: there are unsaved changes. After saving it looks like the others again. On phones the three show only their icon.</li>
+<li>After saving, deleting or cloning, a short message appears at the bottom right.</li>
+<li>On phones, <strong>Save</strong>, <strong>Clone</strong> and <strong>Delete</strong> show only their icon (Save as a floppy disk); the text appears as tooltip.</li>
+<li>Required fields are marked with <span class="doc-red">*</span>, fields whose value must be unique with a blue ◆ (see <em>Markers after labels</em> below). If something is missing or invalid, a message tells you which field, and the field is highlighted.</li>
+<li>Fields with a <strong>mask</strong> (e.g. IBAN, phone) only accept the expected characters; the separators are added for you.</li>
+<li>If you leave a record with unsaved changes, the browser asks first.</li>
+<li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> (Mac ⌃⇧S) saves – in forms and on nuBuilder Next's own edit pages (user, access level, procedure, prompt, e-mail template …), also while you are typing in a field; the tooltip of the Save button shows it.</li>
+<li>Fields with a <strong>suggestion list</strong> (an arrow on the right, e.g. Position, Department, Team) offer values to choose: type to filter, or click the arrow to see all values – also when the field already has one (the old value comes back if you pick nothing).</li>
+<li><strong>Searchable selects</strong> open their list above everything else; in multiple selects the chosen values are shown as tags, the field grows when they need more lines.</li>
+<li>Some fields have a small <strong>help icon</strong> <span class="doc-badge">?</span> on their right: point at it (or tap it) to read a hint.</li>
+</ul>
+</div>
+	<div class="doc-sub">
+<h3 id="clone-delete">Clone and delete</h3>
+<ul>
+<li><strong>Clone</strong> copies the record into a new, unsaved record. A yellow badge <span class="doc-badge">Clone – not saved yet</span> and a dashed yellow frame show that you are working on the copy. Nothing is stored until you click Save.</li>
+<li><strong>Delete</strong> asks for confirmation and then returns to the list.</li>
+</ul>
+</div>
+	<div class="doc-sub">
+<h3 id="subforms">Sub-forms, lookups, files</h3>
+<ul>
+<li><strong>Sub-forms</strong> (rows inside a record): typing in the empty last row adds a new row; switch <em>Delete</em> on to remove a row when saving.</li>
+<li><strong>Lookups</strong>: type a code or click the search button to pick a record from a list. With a description width of 0 (form builder) only the code is shown.</li>
+<li><strong>Markers after labels</strong>: a red <span class="nuMark nuMarkRequired">*</span> means the field must not be empty, a blue <i class="bi bi-diamond-fill nuMark nuMarkUnique"></i> means its value must be unique (both can appear). Hover a marker for its meaning; the legend below the form lists the markers in use. They come from the object's <em>Validation</em> setting (No blanks / No duplicates / No duplicates and blanks), also in subform column titles, and are not shown when the form can only be viewed. <code>$nuConfigValidationMarkers = false</code> in <code>nuconfig.php</code> switches them off.</li>
+<li><strong>Files</strong>: choose a file to upload; download or remove it with the buttons next to the field.</li>
+<li><strong>Breadcrumbs</strong> (top left) show where you came from; click an entry to go back.</li>
+</ul>
+</div>
+	<div class="doc-sub">
+<h3 id="shortcuts">Keyboard shortcuts and the options menu</h3>
+<p>The <strong>⋮</strong> button at the end of the toolbar opens the options menu with the actions that have no button of their own, each with its keyboard shortcut. Add, Print, Search, Form info, Form properties and Object list are not in the menu – they have buttons on the page – but their shortcuts still work. All shortcuts are <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+key:</p>
+<ul>
+<li><kbd>S</kbd> save (in a list: search; also on nuBuilder Next's own edit pages), <kbd>C</kbd> clone, <kbd>Y</kbd> delete, <kbd>A</kbd> in a list: add a record, <kbd>P</kbd> print the list, <kbd>R</kbd> refresh, <kbd>?</kbd> help, <kbd>L</kbd> log out.</li>
+<li><kbd>←</kbd> <kbd>→</kbd> previous / next tab (in a list: page), <kbd>Home</kbd> / <kbd>End</kbd> first / last page, <kbd>1</kbd>–<kbd>9</kbd> in a list: switch a column in or out of the search.</li>
+<li>Only what you are allowed to do is offered – a shortcut for something you have no right for does nothing.</li>
+<li><strong>Mac:</strong> use <kbd>Control</kbd>+<kbd>Shift</kbd> (shown as ⌃⇧). <kbd>Cmd</kbd>+<kbd>Shift</kbd> also works, except for combinations macOS or the browser keeps for itself (⌘⇧Q logs you out of macOS!).</li>
+</ul>
+</div>
+	<p class="doc-see">See also: <a href="#concurrent-edits">Two people editing the same record</a> · <a href="#validation">Validation and business rules</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nuform.php</code></li><li><code>assets/js/nu/nuruntime.js</code></li></ul></details>
+</section>

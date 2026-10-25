@@ -1,0 +1,39 @@
+<section id="glossary">
+	<h2 id="glossary-h">Glossary</h2>
+	<p class="doc-lead">The terms used in nuBuilder and nuBuilder Next.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone</p>
+	<dl class="doc-glossary">
+	<dt>Access level</dt><dd>The set of forms (with their buttons), procedures and reports a user may use. Every user except the globeadmin has one. <a href="#access">Access levels</a></dd>
+	<dt>Admin role</dt><dd>A part of the globeadmin's rights given to a user, per tool view or change. nuBuilder Next only. <a href="#admin-roles">Admin roles</a></dd>
+	<dt>App cloner</dt><dd>Copies the whole application into another database or an SQL file. <a href="#appcloner">App cloner</a></dd>
+	<dt>Audit trail</dt><dd>Every change of a record, one row per column, with history and restore. <a href="#audit-trail">Audit trail</a></dd>
+	<dt>Browse</dt><dd>The list of a form (nuBuilder's name). Its rows come from the form's <em>browse SQL</em>, its columns are the <em>browse columns</em>.</dd>
+	<dt>Breadcrumbs</dt><dd>The path above a form (start page › list › record); <em>Back</em> goes one step up.</dd>
+	<dt>Dashboard</dt><dd>A set of widgets (KPI tile, chart, table) built from SQL, shown on start pages or forms. <a href="#dashboards">Dashboards</a></dd>
+	<dt>Draft</dt><dd>A working copy of a form; users keep the live form until the draft is published. <a href="#form-drafts">Drafts and publishing</a></dd>
+	<dt>Field data access</dt><dd>Server-side rules per field: shown, masked, read only or withheld for certain users. <a href="#data-access">Data access</a></dd>
+	<dt>Format</dt><dd>A date, number or text-mask format shared with nuBuilder (<code>zzzzsys_format</code>). <a href="#formats">Formats</a></dd>
+	<dt>Form</dt><dd>A list and / or edit screen defined by rows in <code>zzzzsys_form</code> and related tables. Types: browse and edit, browse, edit, launch, subform, page.</dd>
+	<dt>Global hook</dt><dd>A procedure with a reserved code (<code>nu_before_save</code>, <code>nu_before_edit</code>, <code>nu_startup</code> …) that runs for every form or every login. <a href="#hooks">Hooks</a></dd>
+	<dt>Globeadmin</dt><dd>The administrator account defined in <code>nuconfig.php</code>; may do everything.</dd>
+	<dt>Hash variable</dt><dd><code>#NAME#</code> placeholder replaced by its value in SQL, PHP and HTML – the user, the record, fields, properties. Also "hash cookie". <a href="#hash-variables">Hash variables</a></dd>
+	<dt>Hook</dt><dd>PHP of a form that runs at a fixed moment: Before Browse, Before Edit, Before Save, After Save, Before Delete, After Delete; After Browse of a lookup. <a href="#form-lifecycle">Form lifecycle</a></dd>
+	<dt>Item</dt><dd>An entry of nuBuilder's item lists (<code>zzzzsys_item</code>), e.g. for selects. <a href="#items">Items</a></dd>
+	<dt>Launch form</dt><dd>A form without a table – a menu or a page of buttons and HTML.</dd>
+	<dt>Library pack</dt><dd>A signed zip that installs a third-party library (TinyMCE, phpMyAdmin …) into <code>vendor/packs/</code>. <a href="#copy-files">Library packs</a></dd>
+	<dt>List view</dt><dd>The layout of one of nuBuilder Next's own lists: columns, sort, phone view. <a href="#list-views">List views</a></dd>
+	<dt>Lookup</dt><dd>An object that stores the primary key of a record of another form and shows its code and description. <a href="#object-types">Object types</a></dd>
+	<dt>Object</dt><dd>A field or element on a form (input, select, lookup, subform, calc, HTML, run …); its id is the column it saves to.</dd>
+	<dt>Page (form type)</dt><dd>A PHP app of your own in <code>custom/pages/</code> that runs inside nuBuilder Next. <a href="#pages">Pages</a></dd>
+	<dt>Permission item</dt><dd>A named switch that code checks with <code>nuUserHasPermission()</code>. <a href="#permissions">Permission items</a></dd>
+	<dt>Procedure</dt><dd>Named PHP in <code>zzzzsys_php</code>, started by buttons, run objects, <code>nuRunPHP()</code> or reports. <a href="#procedures">Procedures</a></dd>
+	<dt>Property</dt><dd>A value set with <code>nuSetProperty()</code> that is available as a hash variable to the form and the forms opened from it.</dd>
+	<dt>Record ID</dt><dd>The primary key of the open record; <code>-1</code> for a new one (<code>#RECORD_ID#</code>).</dd>
+	<dt>Run object</dt><dd>A button object that opens a form, report or procedure. <a href="#run-objects">Run objects</a></dd>
+	<dt>Setup code</dt><dd>Header JavaScript, style and include of nuBuilder's Setup form, used on every form page. <a href="#setupcode">Setup code</a></dd>
+	<dt>Subform</dt><dd>A form shown as rows inside another form, linked by a foreign key.</dd>
+	<dt>Tile</dt><dd>An entry of a start page: a form, report, procedure, page or link.</dd>
+	<dt><code>zzzzsys_</code> tables</dt><dd>nuBuilder's system tables; <code>zzzzsys_nunext_</code> are nuBuilder Next's own. <a href="#table-ref">Table reference</a></dd>
+</dl>
+	<p class="doc-see">See also: <a href="#key-concepts">Key concepts</a></p>
+</section>

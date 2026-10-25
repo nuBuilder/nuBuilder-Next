@@ -1,0 +1,15 @@
+<section id="permissions" data-acl="nupermissionitem">
+	<h2 id="permissions-h">Permission items</h2>
+	<p class="doc-lead">Named switches your own code checks.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nupermissionitem</p>
+	<p>Start page tile <em>Permission items</em>, or <em>Manage</em> at the permission items of the user form (rights of nuBuilder's form <code>nupermissionitem</code>). A permission item is a named switch that your own code checks – for things an access level cannot express, e.g. "may approve invoices" for some users of the same access level.</p>
+<ul>
+<li><strong>Ident</strong>: the name used in code, unique (letters, digits and <code>_ . : -</code>). <strong>Group</strong> sorts the items in lists and in the user form.</li>
+<li><strong>Users</strong>: add or remove users directly on the item, or tick the item in the user form – both edit the same assignment (<code>zzzzsys_user_permission</code>, as nuBuilder).</li>
+<li><strong>Used in code</strong> lists form code, events and procedures that name the ident in quotes.</li>
+<li>Deleting an item removes it from all users. The globeadmin has every item.</li>
+</ul>
+<p>Checking an item: PHP <code>nuUserHasPermission('ident')</code> or <code>nuGetUserPermissions()</code>, JavaScript <code>nuUserHasPermission('ident')</code> or <code>nuUserPermissions()</code>, SQL / code <code>#USER_PERMISSIONS#</code>. Check on the server too (Before Save) – a browser check alone can be bypassed.</p>
+	<p class="doc-see">See also: <a href="#users">Users</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nupermission.php</code></li></ul></details>
+</section>

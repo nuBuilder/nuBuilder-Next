@@ -95,6 +95,7 @@ if ($id !== '') {
 			<div class="d-flex flex-wrap gap-2"><?= nu_back_button(null, nu_url('userfields')) ?>
 				<?php if ($canChange): ?><button class="btn nuBtnAct nuBtnSave" type="submit" data-nu-save id="ufSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 				<?php if ($canChange && $f): ?><button class="btn nuBtnAct nuBtnDel" type="submit" form="ufDelete" id="ufDeleteBtn"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button><?php endif; ?>
+				<?php if ($f): ?><?= NuFormInfo::record(NuUserFields::TABLE, (string)$id, ['code' => (string)($f['code'] ?? '')]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
 			</div>
 		</div>
 		<fieldset<?= $canChange ? '' : ' disabled' ?>>

@@ -304,3 +304,71 @@
 		else { f.select(); try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ } }
 	});
 })();
+
+/* E-mail (0.8.508): checked when the field is left – red with the message while the syntax is wrong (empty is fine; the server checks again). */
+(function () {
+	'use strict';
+	var el = document.getElementById('sus_email');
+	if (!el || !el.hasAttribute('data-nu-email-msg')) return;
+	var RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+	function bad() { var v = el.value.trim(); return v !== '' && (!RE.test(v) || (el.validity && el.validity.typeMismatch)); }
+	function feedback() {
+		var fb = el.nextElementSibling;
+		if (!fb || !fb.classList.contains('invalid-feedback')) {
+			fb = document.createElement('div');
+			fb.className = 'invalid-feedback';
+			el.insertAdjacentElement('afterend', fb);
+		}
+		return fb;
+	}
+	function show(on) {
+		el.classList.toggle('is-invalid', on);
+		if (on) { feedback().textContent = el.getAttribute('data-nu-email-msg'); el.setAttribute('aria-invalid', 'true'); }
+		else el.removeAttribute('aria-invalid');
+	}
+	el.addEventListener('blur', function () { show(bad()); });
+	el.addEventListener('input', function () { if (el.classList.contains('is-invalid') && !bad()) show(false); });   // turns back as soon as it is right
+})();
+
+/* Welcome e-mail (0.8.508): ticking the switch shows in a toast what will be sent – the procedure nu_send_welcome_email, the e-mail
+   template nu_send_welcome_email in the user's language (else the one without a language) or the built-in text (NuWelcome::send). */
+(function () {
+	'use strict';
+	var box = document.getElementById('user_send_welcome_email');
+	if (!box || !box.hasAttribute('data-nu-welcome')) return;
+	var src, tx;
+	try { src = JSON.parse(box.getAttribute('data-nu-welcome')); tx = JSON.parse(box.getAttribute('data-nu-welcome-t')); } catch (e) { return; }
+	function which() {
+		if (src.proc) return tx.proc.replace('%s', src.proc);
+		var sel = document.getElementById('sus_language'), lang = sel ? sel.value.split('|')[0] : '';
+		var tries = [lang, lang === '' ? src.fallback : null, ''];
+		for (var i = 0; i < tries.length; i++) {
+			if (tries[i] !== null && Object.prototype.hasOwnProperty.call(src.tpl, tries[i])) return tx.tpl.replace('%s', src.tpl[tries[i]]);
+		}
+		return tx.builtin.replace('%s', src.code);
+	}
+	function show() {
+		if (!window.nuBs || !nuBs.ready()) return;
+		var holder = document.getElementById('nuWelcomeToasts');
+		if (!holder) {
+			holder = document.createElement('div');
+			holder.id = 'nuWelcomeToasts';
+			holder.className = 'toast-container position-fixed top-0 end-0 p-3 nuWelcomeToasts';
+			document.body.appendChild(holder);
+		}
+		holder.textContent = '';
+		var t = document.createElement('div');
+		t.className = 'toast';
+		t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite');
+		var head = document.createElement('div'); head.className = 'toast-header gap-2';
+		var ic = document.createElement('i'); ic.className = 'bi bi-envelope'; ic.setAttribute('aria-hidden', 'true');
+		var st = document.createElement('strong'); st.className = 'me-auto'; st.textContent = tx.title;
+		var x = document.createElement('button'); x.type = 'button'; x.className = 'btn-close'; x.setAttribute('data-bs-dismiss', 'toast'); x.setAttribute('aria-label', tx.close);
+		head.appendChild(ic); head.appendChild(st); head.appendChild(x);
+		var body = document.createElement('div'); body.className = 'toast-body'; body.textContent = which();
+		t.appendChild(head); t.appendChild(body); holder.appendChild(t);
+		t.addEventListener('hidden.bs.toast', function () { t.remove(); });
+		nuBs.toast(t, {delay: 7000}).show();
+	}
+	box.addEventListener('change', function () { if (box.checked) show(); });
+})();

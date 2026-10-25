@@ -4,10 +4,11 @@
 	'use strict';
 	var form = document.getElementById('ntfForm');
 	if (!form) return;
-	var all = document.getElementById('ntf_all'), countBox = document.getElementById('ntfCount'), showBtn = document.getElementById('ntfCountShow'), names = document.getElementById('ntfNames');
+	var all = document.getElementById('ntf_all'), countBox = document.getElementById('ntfCount'), showBtn = document.getElementById('ntfCountShow');
+	var dlg = document.getElementById('ntfPeopleDlg'), tbody = dlg ? dlg.querySelector('tbody') : null, sortCol = 0, sortAsc = true;
 	var confirmSw = document.getElementById('ntf_confirm'), live = document.getElementById('ntf_mode_live'), fixed = document.getElementById('ntf_mode_fixed');
 	var selects = Array.prototype.slice.call(form.querySelectorAll('select[data-ntf-ts]'));
-	var ts = [], timer = 0, seq = 0, lastNames = [];
+	var ts = [], timer = 0, seq = 0, people = [];
 
 	selects.forEach(function (s) {
 		if (!window.TomSelect) return;
@@ -25,8 +26,9 @@
 
 	function lockAudience() {
 		var on = !!(all && all.checked);
-		ts.forEach(function (t) { if (on) t.disable(); else t.enable(); });
-		if (!ts.length) selects.forEach(function (s) { s.disabled = on; });
+		// "Exclude users" stays open with "Everybody" (0.8.510)
+		ts.forEach(function (t) { if (on && !t.input.hasAttribute('data-ntf-exclude')) t.disable(); else t.enable(); });
+		if (!ts.length) selects.forEach(function (s) { s.disabled = on && !s.hasAttribute('data-ntf-exclude'); });
 	}
 	var modeLocked = !live || live.disabled;               // published: the mode stays
 	function lockMode() {
@@ -44,16 +46,47 @@
 				if (my !== seq || !j.ok) return;
 				countBox.textContent = j.text;
 				countBox.className = 'alert py-2 mb-0 small ' + (j.n ? 'alert-info' : 'alert-warning');
-				lastNames = j.names || [];
-				showBtn.hidden = !lastNames.length;
-				if (!names.hidden) names.textContent = lastNames.join(', ');
+				people = j.people || [];
+				showBtn.hidden = !people.length;
+				if (dlg && dlg.classList.contains('show')) fill();
 			}).catch(function () { /* keep */ });
 	}
 	function schedule() { window.clearTimeout(timer); timer = window.setTimeout(count, 250); }
 
 	if (all) all.addEventListener('change', function () { lockAudience(); schedule(); });
 	if (confirmSw) confirmSw.addEventListener('change', lockMode);
-	showBtn.addEventListener('click', function () { names.hidden = !names.hidden; names.textContent = lastNames.join(', '); });
+	// recipients in a dialogue (0.8.510): full name, login name, department, team, position; a click on a column title sorts by it
+	var coll = window.Intl && Intl.Collator ? new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'}) : null;
+	function fill() {
+		if (!tbody) return;
+		var rows = people.slice().sort(function (a, b) {
+			var x = String(a[sortCol] || ''), y = String(b[sortCol] || ''), r;
+			if (x === '' || y === '') r = x === y ? 0 : (x === '' ? 1 : -1);          // empty cells last, both ways
+			else r = (coll ? coll.compare(x, y) : (x < y ? -1 : x > y ? 1 : 0)) * (sortAsc ? 1 : -1);
+			return r || (coll ? coll.compare(String(a[0]), String(b[0])) : 0);
+		});
+		tbody.textContent = '';
+		rows.forEach(function (p) {
+			var tr = document.createElement('tr');
+			p.forEach(function (v, i) { var td = document.createElement('td'); td.textContent = v; td.className = i === 0 ? 'fw-semibold' : 'small'; tr.appendChild(td); });
+			tbody.appendChild(tr);
+		});
+		document.getElementById('ntfPeopleN').textContent = String(people.length);
+		dlg.querySelectorAll('.nuNtfSort').forEach(function (b) {
+			var on = +b.getAttribute('data-col') === sortCol;
+			b.closest('th')[on ? 'setAttribute' : 'removeAttribute']('aria-sort', sortAsc ? 'ascending' : 'descending');
+			b.querySelector('i').className = 'bi ms-1' + (on ? (sortAsc ? ' bi-caret-up-fill' : ' bi-caret-down-fill') : '');
+		});
+	}
+	if (dlg) dlg.querySelectorAll('.nuNtfSort').forEach(function (b) {
+		b.addEventListener('click', function () {
+			var c = +b.getAttribute('data-col');
+			sortAsc = c === sortCol ? !sortAsc : true;
+			sortCol = c;
+			fill();
+		});
+	});
+	showBtn.addEventListener('click', function () { if (!dlg) return; fill(); nuBs.modal(dlg).show(); });
 	lockAudience();
 	lockMode();
 	count();

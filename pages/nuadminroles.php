@@ -107,6 +107,7 @@ nu_layout_start(t('adm_title'), 'home');
 			<?php if (!$isNew): ?>
 				<a class="btn nuBtnAct" href="<?= h(nu_url('adminroles', ['id' => 'new', 'copy' => $role['id']])) ?>"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 				<?php if (!$users && !$own): ?><button class="btn nuBtnAct nuBtnDel" type="submit" form="admDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button><?php endif; ?>
+				<?= NuFormInfo::record(NuAdmin::ROLE_TABLE, (string)$role['id'], ['code' => (string)($role['code'] ?? '')]) /* (i) record info (0.8.501) */ ?>
 			<?php endif; ?>
 		</div>
 	</div>

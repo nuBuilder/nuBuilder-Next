@@ -1,0 +1,14 @@
+<section id="saving" data-acl="nudebug,nuform,nunextaudit,nunextlog,nuprocedure">
+	<h2 id="saving-h">Saving data</h2>
+	<p class="doc-lead">What happens to a record between the Save button and the database – and what is recorded about it.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nudebug, nuform, nunextaudit, nunextlog, nuprocedure</p>
+	<p>A save in nuBuilder Next writes only the fields the user changed, checks that nobody else changed the same fields meanwhile, runs your hooks, writes the record and its sub-form rows in one transaction and records every change. Each of these steps is described on its own page:</p>
+<ul>
+	<li><a href="#save-flow">How a save works</a> – the steps on the server.</li>
+	<li><a href="#validation">Validation and business rules</a> – what is checked and how to add your own rules.</li>
+	<li><a href="#procedures-h">Procedures and hooks</a> – the PHP that runs around a save.</li>
+	<li><a href="#log-h">Record log, audit trail and debug results</a> – what is recorded.</li>
+</ul>
+	<p class="doc-see">See also: <a href="#save-flow">How a save works</a> · <a href="#validation">Validation and business rules</a> · <a href="#procedures">Procedures and hooks</a> · <a href="#log">Record log, audit trail and debug results</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nurecord.php</code></li></ul></details>
+</section>

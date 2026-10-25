@@ -1,0 +1,39 @@
+<section id="overview">
+	<h2 id="overview-h">Overview</h2>
+	<p class="doc-lead">What nuBuilder Next is, how it relates to nuBuilder 4.9, and how this documentation is organised.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone</p>
+	<p><strong>nuBuilder Next</strong> is a modern front end for <strong>nuBuilder</strong> applications. It runs on the same database as nuBuilder 4.9 – the same forms, users, access levels, procedures, reports and data – so an application can be used in nuBuilder and in nuBuilder Next side by side, and a change made in one is seen in the other.</p>
+<p>Like nuBuilder, nuBuilder Next is <strong>metadata-driven</strong>: a form is not a file of code but rows in nuBuilder's system tables (<code>zzzzsys_form</code>, <code>zzzzsys_object</code> …). nuBuilder Next reads these rows and draws lists and edit forms from them with Bootstrap 5, in light and dark mode and on phones. Custom JavaScript and PHP written for nuBuilder keep working through a compatibility layer of nuBuilder's functions.</p>
+<div class="doc-sub">
+	<h3 id="overview-same-db">nuBuilder and nuBuilder Next</h3>
+	<table class="table table-sm">
+		<thead><tr><th>Shared with nuBuilder</th><th>nuBuilder Next only</th></tr></thead>
+		<tbody><tr>
+			<td>Forms, objects, tabs, browse columns, events and hooks · users, access levels, permission items · procedures, reports, SQL builder queries · formats, items, files, translations · <code>nuconfig.php</code> and the settings table</td>
+			<td>Sessions and sign-in (also two-step login) · start pages, dashboards, notifications · form drafts and history · audit trail and log · admin roles · REST API · pages (custom PHP) · update, backups, library packs · its own tables <code>zzzzsys_nunext_*</code>, which nuBuilder never reads</td>
+		</tr></tbody>
+	</table>
+</div>
+<div class="doc-sub">
+	<h3 id="overview-docs">How this documentation is organised</h3>
+	<p>The help has two tabs. <strong>Guide</strong> is for everyone who uses or administers nuBuilder Next; <strong>Code reference</strong> is for developers. You only see the chapters that apply to your rights.</p>
+	<table class="table table-sm">
+		<thead><tr><th>Chapter</th><th>For</th><th>What it covers</th></tr></thead>
+		<tbody>
+			<tr><td>Overview</td><td>Everyone, administrators</td><td>Concepts, installation, databases, updates, libraries</td></tr>
+			<tr><td>Using nuBuilder Next</td><td>Everyone</td><td>Signing in, navigation, lists, editing records</td></tr>
+			<tr><td>Form system</td><td>Form designers</td><td>Lifecycle of a form, form builder, object types, field data access</td></tr>
+			<tr><td>Saving data</td><td>Form designers</td><td>How a save works, validation, procedures and hooks, audit trail</td></tr>
+			<tr><td>Lists, reports and dashboards</td><td>Everyone with the rights</td><td>List views, reports, SQL builder, dashboards</td></tr>
+			<tr><td>Authentication and security</td><td>Administrators</td><td>Rights, sign-in methods, access levels, admin roles, security check</td></tr>
+			<tr><td>Administration</td><td>Administrators</td><td>Users, configuration, settings, start pages, admin tools</td></tr>
+			<tr><td>Extended features</td><td>Everyone with the rights</td><td>E-mail, notifications, AI helpers, translations, files, cloners, branding</td></tr>
+			<tr><td>Glossary, troubleshooting and FAQ</td><td>Everyone</td><td>Terms, common problems, short answers</td></tr>
+			<tr><td><em>Code reference:</em> Architecture · API reference · Customization · Migrating from nuBuilder 4.9 · Contributing</td><td>Developers</td><td>How nuBuilder Next works inside, every function, pages and hooks, porting an application</td></tr>
+		</tbody>
+	</table>
+	<p>Every page starts with what it is about. Administrators also see who a page is for, and a list of the relevant source files at its end.</p>
+</div>
+	<p class="doc-see">See also: <a href="#key-concepts">Key concepts</a> · <a href="#install">Requirements and installation</a> · <a href="#glossary">Glossary</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>README.md</code></li><li><code>index.php</code></li><li><code>nuconfig-sample.php</code></li></ul></details>
+</section>

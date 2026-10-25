@@ -1,0 +1,12 @@
+<section id="impersonate" data-doc="admin" data-level="advanced">
+	<h2 id="impersonate-h">Acting as another user</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Seeing nuBuilder Next exactly as a user does.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<p>To see nuBuilder Next exactly as a user does – menu, forms, rights, permission items, hash variables – the globeadmin clicks <em>Act as user</em> in the user form – the icon <i class="bi bi-person-fill-gear"></i> in front of the user name – or in a row of <em>Log → Sessions</em>, and chooses:</p>
+<ul>
+<li><strong>View only</strong>: everything the user sees, but nothing can be changed – no save, delete, clone or new, no procedures, no form posts.</li>
+<li><strong>Full access</strong>: work as the user (after a confirmation). Records are saved as this user; nuBuilder Next's log adds <code>acting_globeadmin</code> to every entry written meanwhile.</li>
+</ul>
+<p>A coloured bar (blue = view only, red = full access) stays on top of every page; <em>Back to globeadmin</em> (in the bar or the user menu) returns to the page where you started – no new login. Works for every user, also expired ones and users with two-step login (no code needed). Not available while acting: the user's password and the security page (two-step login, devices). If the user is deleted or gets a new password meanwhile, you are the globeadmin again. A session timeout logs you out completely. Start and end are logged (<code>impersonate_start</code> / <code>impersonate_end</code>).</p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuimpersonate.php</code></li></ul></details>
+</section>
