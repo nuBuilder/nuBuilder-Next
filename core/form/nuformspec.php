@@ -188,7 +188,7 @@ final class NuFormSpec
       {"id": "cus_since", "type": "input", "input": "nuDate", "format": "D|dd.mm.yyyy", "label": "Customer since", "width": 110},
       {"id": "cus_credit", "type": "input", "input": "nuNumber", "format": "N|1,000.00", "label": "Credit", "width": 120, "same_row": true},
       {"id": "cus_active", "type": "input", "input": "checkbox", "label": "Active"},
-      {"id": "cus_country", "type": "select", "label": "Country", "options": [["CH", "Switzerland"], ["DE", "Germany"]]},
+      {"id": "cus_country", "type": "select", "label": "Country", "options": [["US", "United States"], ["GB", "United Kingdom"]]},
       {"id": "cus_notes", "type": "textarea", "label": "Notes", "width": 400, "height": 80},
       {"id": "cus_rep_id", "type": "lookup", "label": "Sales rep", "lookup": {"form": "employees", "code": "emp_code", "description": "emp_name"}},
       {"id": "cus_orders", "type": "subform", "label": "Orders", "width": 700, "height": 250,

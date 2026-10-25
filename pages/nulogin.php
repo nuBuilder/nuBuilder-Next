@@ -82,9 +82,10 @@ if ($custom !== null) {
 	// nuBuilder's $nuWelcomeBodyInnerHTML: the page of the config file replaces the login card. Inline style="…" is allowed here
 	// (the HTML comes from nuconfig.php); inline scripts and onclick="…" stay blocked – assets/js/nulogincustom.js wires the form.
 	header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+	NuCustomCode::$context = 'login';                 // Global JS & CSS: scope "sign-in pages" (0.8.523)
 	nu_head(t('login_title'));
 	?>
-<body class="nu-login nu-login-custom" data-login-url="<?= h($loginAction) ?>" data-login-user="<?= h($login) ?>" data-csrf="<?= h(nu_csrf_token()) ?>">
+<body class="nu-login nu-login-custom"<?= NuCustomCode::bodyAttrs() ?> data-login-url="<?= h($loginAction) ?>" data-login-user="<?= h($login) ?>" data-csrf="<?= h(nu_csrf_token()) ?>">
 <div class="nu-login-tools">
 	<?= NuBranding::envBadge() ?>
 	<?php nu_theme_menu(); ?>
@@ -108,15 +109,17 @@ if ($custom !== null) {
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nulogincustom.js') ?>"></script>
+<?= NuCustomCode::jsTag() ?>
 </body>
 </html>
 <?php
 	return;
 }
 
+NuCustomCode::$context = 'login';
 nu_head(t('login_title'));
 ?>
-<body class="nu-center nu-login">
+<body class="nu-center nu-login"<?= NuCustomCode::bodyAttrs() ?>>
 <main class="nu-card-narrow">
 	<div class="d-flex justify-content-end align-items-center gap-2 mb-3">
 		<?= NuBranding::envBadge('me-auto') ?>
@@ -168,5 +171,6 @@ nu_head(t('login_title'));
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
+<?= NuCustomCode::jsTag() ?>
 </body>
 </html>

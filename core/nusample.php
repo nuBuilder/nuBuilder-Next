@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 16;             // 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 17;             // 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -392,7 +392,7 @@ final class NuSample
 			['name' => 'cus_since', 'type' => 'date', 'length' => ''], ['name' => 'cus_credit', 'type' => 'decimal', 'length' => '15,2'],
 			['name' => 'cus_notes', 'type' => 'longtext', 'length' => ''],
 		];
-		$countries = 'CH|Switzerland|DE|Germany|AT|Austria|IT|Italy|FR|France';
+		$countries = 'US|United States|GB|United Kingdom|CA|Canada|AU|Australia|DE|Germany';
 		return [
 			// ---------------------------------------------------- 1. launch form: start page of the sample access levels
 			[
@@ -452,7 +452,7 @@ final class NuSample
 					['tab' => 2, 'type' => 'html', 'id' => 'cus_dashboard', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 900, 'h' => 520,
 						'html' => '<div data-nu-dashboard="sample_customer"></div>'],
 				],
-				'edit_js' => "if (nuIsNewRecord()) { nuSetValue('cus_active', true); nuSetValue('cus_country', 'CH'); }",
+				'edit_js' => "if (nuIsNewRecord()) { nuSetValue('cus_active', true); nuSetValue('cus_country', 'US'); }",
 				'php' => ['BD' => "\$n = db_fetch_row(nuRunQuery(\"SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = ?\", ['#RECORD_ID#']))[0] ?? 0;\nif (\$n > 0) nuDisplayError(\"This customer has \$n orders and cannot be deleted.\");"],
 			],
 			// ---------------------------------------------------- 3. products: grid layout, browse formats, select2
@@ -614,7 +614,7 @@ final class NuSample
 					'events' => ['onclick' => "nuButtonLoading('all_spin_run', true, 2);"]],
 				['tab' => 7, 'type' => 'html', 'id' => 'all_new_h_chart', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fw-semibold mb-0 border-bottom pb-1">Charts – object type chart (Google Charts)</h6>'],
 				['tab' => 7, 'type' => 'chart', 'id' => 'all_chart_bars', 'label' => '', 'left' => 20, 'top' => 56, 'w' => 400, 'h' => 240, 'chart' => 'b', 'chart_data' => 'sampleMonths',
-					'chart_title' => 'Sales and costs (array in the form JavaScript)', 'chart_h' => 'Month', 'chart_v' => 'CHF'],
+					'chart_title' => 'Sales and costs (array in the form JavaScript)', 'chart_h' => 'Month', 'chart_v' => 'USD'],
 				['tab' => 7, 'type' => 'chart', 'id' => 'all_chart_pie', 'label' => '', 'left' => 430, 'top' => 56, 'w' => 250, 'h' => 240, 'chart' => 'p', 'chart_data' => 'sampleOrderStatus',
 					'chart_title' => 'Orders per status (database)'],
 				['tab' => 7, 'type' => 'chart', 'id' => 'all_chart_team', 'label' => '', 'left' => 20, 'top' => 310, 'w' => 660, 'h' => 200, 'chart' => 'bhs',
@@ -660,13 +660,13 @@ final class NuSample
 	{
 		$out = [];
 		$customers = [
-			['C001', 'Alpenblick AG', 'CH', 50000], ['C002', 'Bergmann GmbH', 'DE', 25000], ['C003', 'Donau Handel', 'AT', 15000], ['C004', 'Lago Verde Srl', 'IT', 30000],
-			['C005', 'Mont Blanc SA', 'FR', 20000], ['C006', 'Rheinwerk AG', 'CH', 75000], ['C007', 'Seeland Bau', 'CH', 10000], ['C008', 'Tessiner Weine', 'CH', 5000],
-			['C009', 'Nordlicht KG', 'DE', 40000], ['C010', 'Wiener Feinkost', 'AT', 12000], ['C011', 'Zürcher Druck', 'CH', 8000], ['C012', 'Ostwind GmbH', 'DE', -2500],
+			['C001', 'Bluepeak Systems', 'US', 50000], ['C002', 'Maple Ridge Supply', 'CA', 25000], ['C003', 'Harbour Lane Ltd', 'GB', 15000], ['C004', 'Coral Bay Imports', 'AU', 30000],
+			['C005', 'Brightwater Labs', 'US', 20000], ['C006', 'Ironwood Manufacturing Inc', 'US', 75000], ['C007', 'Silverline Logistics Ltd', 'GB', 10000], ['C008', 'Sunfield Organics', 'AU', 5000],
+			['C009', 'Northgate Analytics', 'CA', 40000], ['C010', 'Café Aurora Ltd', 'GB', 12000], ['C011', 'Redstone Printing', 'US', 8000], ['C012', 'Eastwind Trading', 'DE', -2500],
 		];
 		foreach ($customers as $n => [$code, $name, $country, $credit]) {
 			$out[] = ['sample_customer', ['sample_customer_id' => sprintf('sample_cus_%02d', $n + 1), 'cus_code' => $code, 'cus_name' => $name,
-				'cus_email' => strtolower(preg_replace('/[^a-z]/i', '', explode(' ', $name)[0])) . '@example.com', 'cus_phone' => '+41 44 555 ' . sprintf('%02d', 10 + $n) . ' ' . sprintf('%02d', 20 + $n),
+				'cus_email' => strtolower(preg_replace('/[^a-z]/i', '', explode(' ', $name)[0])) . '@example.com', 'cus_phone' => '+1 555 ' . sprintf('%03d', 110 + $n) . ' ' . sprintf('%04d', 2000 + $n),
 				'cus_country' => $country, 'cus_active' => $n !== 10, 'cus_since' => date('Y-m-d', strtotime('-' . (30 + $n * 97) . ' days')), 'cus_credit' => $credit,
 				'cus_notes' => $n === 0 ? 'Key account. Delivery only on weekdays.' : null]];
 		}
@@ -689,8 +689,8 @@ final class NuSample
 			$out[] = ['sample_order', ['sample_order_id' => $oid, 'ord_number' => 'S-' . (1001 + $n), 'ord_sample_customer_id' => sprintf('sample_cus_%02d', $cus),
 				'ord_date' => date('Y-m-d', strtotime('-' . (60 - $n * 9) . ' days')), 'ord_status' => $status, 'ord_total' => round($total, 2), 'ord_note' => null]];
 		}
-		$out[] = ['sample_all', ['sample_all_id' => 'sample_all_1', 'all_text' => 'First sample record', 'all_autonumber' => 1001, 'all_datalist' => 'Banana', 'all_mask' => 'ZH12 3456 7890 1',
-			'all_email' => 'anna@example.com', 'all_url' => 'https://www.nubuilder.cloud', 'all_tel' => '+41 44 555 12 34', 'all_color' => '#2f6fd6', 'all_checkbox' => 1, 'all_scroll' => 'Medium',
+		$out[] = ['sample_all', ['sample_all_id' => 'sample_all_1', 'all_text' => 'First sample record', 'all_autonumber' => 1001, 'all_datalist' => 'Banana', 'all_mask' => 'AB12 3456 7890 1',
+			'all_email' => 'anna@example.com', 'all_url' => 'https://www.nubuilder.cloud', 'all_tel' => '+1 555 123 4567', 'all_color' => '#2f6fd6', 'all_checkbox' => 1, 'all_scroll' => 'Medium',
 			'all_number' => 42, 'all_nunumber' => 1234.5, 'all_nunumber_eur' => -99.95, 'all_percent' => 12.5, 'all_calc' => 1134.55, 'all_range' => 30,
 			'all_nudate' => date('Y-m-d'), 'all_nudate_long' => date('Y-m-d'), 'all_nudatetime' => date('Y-m-d H:i:00'), 'all_date' => date('Y-m-d'), 'all_datetime' => date('Y-m-d 08:30:00'), 'all_time' => '13:45:00',
 			'all_month' => date('Y-m'), 'all_week' => date('o-\WW'),

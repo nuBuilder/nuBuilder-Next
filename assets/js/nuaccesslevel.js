@@ -21,3 +21,13 @@
 	ts.on('dropdown_open', function () { used(); ts.refreshOptions(false); });
 	ts.on('item_add', function () { window.setTimeout(function () { ts.clear(true); ts.blur(); }, 0); });
 })();
+
+/* "Use two-factor authentication" (0.8.511): the note on $nuConfig2FAUser (and its switch-on button) only while the switch is on */
+(function () {
+	'use strict';
+	var sw = document.getElementById('sal_use_2fa'), note = document.getElementById('nu2faCfgNote');
+	if (!sw || !note) return;
+	function sync() { note.hidden = !sw.checked; }
+	sw.addEventListener('change', sync);
+	sync();
+})();

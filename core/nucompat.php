@@ -278,7 +278,9 @@ final class NuCompat
 		// gap and migration analysis nuBuilder 4.9 / nuBuilder Next (0.8.462): G1 access data mode / form type (B3), G2 global hook
 		// procedures (B5), G3 calc in sub-forms (B6), G4 events onnuload / onenter (B7), G5 nuFORMdata, G6 external scripts / frames
 		// (the Content Security Policy blocks them), G7 hash variables nuBuilder Next does not set, G8 #RECORD_ID# / #FORM_ID# in hidden procedures
-		'G1' => '0.8.461', 'G2' => '0.8.462', 'G3' => '0.8.462', 'G4' => '0.8.462', 'G5' => '0.8.462', 'G6' => null, 'G7' => null, 'G8' => null];
+		'G1' => '0.8.461', 'G2' => '0.8.462', 'G3' => '0.8.462', 'G4' => '0.8.462', 'G5' => '0.8.462', 'G6' => null, 'G7' => null, 'G8' => null,
+		// G9 (0.8.523): Global JS of Custom code defines nuBuilder hook functions (nuOnLoad …) – a form's own function replaces them
+		'G9' => null];
 
 	/** nuBuilder's global hook procedures (by code) – G2. */
 	public const HOOKS = ['nu_before_save', 'nu_before_edit', 'nu_before_delete', 'nu_startup', 'nu_invalid_login', 'nu_check_password_policy',
@@ -398,6 +400,8 @@ final class NuCompat
 			if ($src['lang'] === 'php' && preg_match('/\bnuFORMdata\b|\bnu(Get|Set)NuDataValue\s*\(/', $code, $m)) $hit('G5', $src['where'], $src['form'], $m[0]);
 			if (preg_match('/#(' . implode('|', self::MISSING_HASH) . ')#/', $code, $m)) $hit('G7', $src['where'], $src['form'], $m[0]);
 		}
+		// G9: Global JS (Custom code → All pages) that defines nuBuilder's hook names
+		try { foreach (NuCustomCode::hookClashes() as $n) $hit('G9', 'Custom code · Global JS', '', $n); } catch (Throwable) { /* no settings table */ }
 		// nuconfig.php: M6 own JavaScript / CSS files, M10 SSO
 		foreach (['nuConfigIncludeJS', 'nuConfigIncludeCSS'] as $v) if (!empty(nu_cfg($v))) $hit('M6', 'nuconfig.php · $' . $v, '', implode(', ', (array)nu_cfg($v)));
 		if (in_array(strtolower((string)nu_cfg('nuConfigLogonMode')), ['sso', 'both'], true)) $hit('M10', 'nuconfig.php · $nuConfigLogonMode', '', (string)nu_cfg('nuConfigLogonMode'));

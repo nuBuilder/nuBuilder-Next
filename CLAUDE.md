@@ -214,11 +214,19 @@ core/nuupload.php    NuUpload (0.8.459): uploads of nuBuilder's file objects wit
                      0020-upload-template (ensureTemplates, when missing); builder: File target select + HTML, htmlTemplate() on switch; e2e uppy_upload
 core/nusidebar.php   NuSidebar (0.8.460): optional left side bar – favourites (= the start page's ☆ tiles, NuHome; favToggle) and recently used
                      (zzzzsys_nunext_recent, step 0021, KEEP 10, 8 shown; pages of PAGE_KEYS + form:<id>, recorded by nu_layout_start also while the side bar is off,
-                     start page tiles through POST action used = sendBeacon → recordTile, 0.8.492; the start page's row Recently used = the same list, drawn by
+                     start page tiles through POST action used = sendBeacon → recordTile, 0.8.492; a drawer on every width since 0.8.513, no icon rail; the start page's row Recently used = the same list, drawn by
                      pages/nuhome.php); on / off per
                      user (sus_json NUNEXT_SIDEBAR, globeadmin: setting sidebar_ga, demo: session), default sidebar_default (globeadmin, user menu);
                      drawn by nu_sidebar() in core/nulayout.php (.nuShell wrapper), POST route ?p=sidebar (toggle / default / clear / fav, demo READ_POSTS),
-                     assets/js/nusidebar.js (« icon strip: localStorage nunext-sidebar-collapsed, set early by nutheme.js; drawer < 992 px); e2e sidebar
+                     assets/js/nusidebar.js (drawer, button #nuSbOpen left of the logo); e2e sidebar
+core/nucustomcode.php NuCustomCode (0.8.523): Admin tools → Custom code (pages/nusetupcode.php, route setupcode, right setupcode) – Form pages =
+                     nuBuilder's Setup Header / Style / Include (form-only, unchanged), All pages = Global JS & CSS in settings rows custom_js /
+                     custom_css / custom_scope {forms, app, login}; served as files ?p=customcode&t=js|css&v=<hash> (public route; without a session
+                     only while scope login is on); CSS in nu_head before the page's styles, JS after nuapp.js (form pages: in pages/nuform.php
+                     before Setup → Include / Header, so a form's nuOnLoad wins); never on setupcode / update, ?safe=1 (globeadmin / right
+                     setupcode); $context app / login (nu_center_start, login page) / none (error pages). Page hook: <body data-nu-page
+                     data-nu-mode data-nu-form data-nu-admin> (bodyAttrs) + nuOnPageLoad(page, info) / event nu:pageload (assets/js/nuapp.js;
+                     form pages: nuruntime.js after nuOnLoad); hookClashes() → editor warning + compatibility check G9; e2e custom_code
 core/nufilemanager.php NuFileManager (0.8.479, handover nuFiles): File Manager = the page form nufiles (built-in page apps/nufiles/,
                      NuPage::BUILTIN – never ship files under custom/ except the shippedCustom list: older versions refuse the package, 0.8.481;
                      data in custom/pages/nufiles/_data via \$nu->dataDir()), route ?p=filemanager (pages/nufilemanager.php: redirect to the page, or setup()
@@ -247,6 +255,9 @@ core/nuprocedure.php NuProcedure::hook(code, hash, vars) (0.8.462, gap analysis 
                      (NuRecord::nuFormData / applyFormData), #USER_NAME# = sus_name, nuLookupRecord()->ID, blank SUM of an empty (NULL)
                      report group (NuReportEngine::fieldValue), Compatibility check G1–G8 (NuCompat). Test application of the analysis:
                      dev/tests/gapkit/ (testapp.sql, t08_fixture.sql; e2e ttInstall / ttRemove, tests gap_*; compat.js loads it, GAPKIT=0 not)
+core/nucodetemplates.php NuCodeTemplates (0.8.524): built-in templates of the Custom code page – all() = tab → [id, cat, code], CATS
+                     (look / page / form / fn), texts ctpl_<id> + ctpl_<id>_d; ▾ Templates per tab + preview dialogue #scodeTplDlg (nusetupcode.js);
+                     a new template = an entry + its two texts (run.php checks); e2e custom_code_templates
 core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.php mailer (NuMailer: settings, send, authType(), test probe)
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',

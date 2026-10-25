@@ -211,7 +211,7 @@ if ($d && $wid !== '') {
 					</div>
 					<div class="col-md-2">
 						<label class="form-label" for="dPrefix"><?= h(t('dash_prefix')) ?></label>
-						<input class="form-control" id="dPrefix" name="opt[prefix]" maxlength="30" placeholder="CHF" value="<?= h($opt['prefix']) ?>">
+						<input class="form-control" id="dPrefix" name="opt[prefix]" maxlength="30" placeholder="USD" value="<?= h($opt['prefix']) ?>">
 					</div>
 					<div class="col-md-2">
 						<label class="form-label" for="dSuffix"><?= h(t('dash_suffix')) ?></label>

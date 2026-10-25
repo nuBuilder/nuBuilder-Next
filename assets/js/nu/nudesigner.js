@@ -42,8 +42,30 @@
 		if (w && notify) send({nuBuilderPick: idOf(w)});
 	}
 
+	// tab order (0.8.521, button in the builder's preview bar): a red number on every object the Tab key stops at, in that order –
+	// over all tabs, like nuBuilder's arrange mode; a sub-form counts once
+	var FOCUSABLE = 'input:not([type=hidden]):not([tabindex="-1"]):not([disabled]), select:not([disabled]), textarea:not([tabindex="-1"]):not([disabled]), button:not([disabled]):not([tabindex="-1"]), a[href]:not([tabindex="-1"]), [contenteditable="true"]';
+	function showTabOrder(on) {
+		document.querySelectorAll('.nuDesignOrder').forEach(function (b) { b.remove(); });
+		document.documentElement.classList.toggle('nuShowTabOrder', !!on);
+		if (!on) return;
+		var n = 0;
+		document.querySelectorAll('#nuEditForm .nuWrap').forEach(function (w) {
+			if (w.parentElement && w.parentElement.closest('.nuWrap')) return;             // objects inside a sub-form: counted with it
+			if (/\bnuWrap_(html|word|image|contentbox|chart)\b/.test(w.className)) return;  // display objects: links inside them are not form fields
+			var stops = Array.prototype.filter.call(w.querySelectorAll(FOCUSABLE), function (el) { return !el.closest('.nuDesignOverlay, .nuDesignHandle, label'); });
+			if (!stops.length) return;
+			var b = document.createElement('span');
+			b.className = 'nuDesignOrder';
+			b.textContent = String(++n);
+			if (w.getBoundingClientRect().width < 48) b.classList.add('nuDesignOrderOut');   // e.g. a checkbox: the number next to it
+			w.appendChild(b);
+		});
+	}
+
 	// the builder selects objects from its list
 	window.addEventListener('message', function (e) {
+		if (e.origin === origin && e.data && 'nuBuilderTabOrder' in e.data) { showTabOrder(e.data.nuBuilderTabOrder); return; }
 		if (e.origin !== origin || !e.data || !e.data.nuBuilderSelect) return;
 		var w = document.getElementById('nuw_' + e.data.nuBuilderSelect);
 		if (!w) return;

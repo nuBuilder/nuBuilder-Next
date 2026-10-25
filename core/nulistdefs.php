@@ -91,6 +91,9 @@ final class NuListDefs
 		$role = $hasRoles ? '(SELECT r.name FROM zzzzsys_nunext_admin_user au JOIN zzzzsys_nunext_admin_role r ON r.zzzzsys_nunext_admin_role_id = au.role_id WHERE ' . $db->sameText('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id') . ')' : 'NULL';
 		$expired = static fn(array $r): bool => ($d = nu_date_only($r['sus_expires_on'] ?? '')) !== '' && (int)substr($d, 0, 4) > 1900 && $d < date('Y-m-d');
 		$name = static fn(array $r): string => (trim(($r['sus_first_name'] ?? '') . ' ' . ($r['sus_last_name'] ?? '')) ?: (string)($r['sus_name'] ?? '')) ?: '—';
+		// first and last name shown as columns of their own (e.g. view "All columns"): the name column shows only the full name (0.8.512)
+		$ownCols = static fn(): bool => in_array('first_name', NuListView::$shown, true) && in_array('last_name', NuListView::$shown, true);
+		$fullName = static fn(array $r): string => (trim((string)($r['sus_name'] ?? '')) ?: trim(($r['sus_first_name'] ?? '') . ' ' . ($r['sus_last_name'] ?? ''))) ?: '—';
 		$deptTeam = static function (array $r): string {
 			$dept = trim((string)($r['sus_department'] ?? '')); $team = trim((string)($r['sus_team'] ?? ''));   // equal (ignoring case): shown once
 			return implode(' / ', array_filter($dept !== '' && mb_strtolower($dept) === mb_strtolower($team) ? [$dept] : [$dept, $team], static fn($v) => $v !== ''));
@@ -105,8 +108,9 @@ final class NuListDefs
 		$cols = [
 			'name' => ['label' => t('name'), 'main' => true, 'locked' => true,
 				'select' => ['sus_first_name' => 'u.sus_first_name', 'sus_last_name' => 'u.sus_last_name', 'sus_name' => 'u.sus_name'],
-				'sort' => 'u.sus_last_name, u.sus_first_name, u.sus_name', 'text' => $name,
-				'html' => static function (array $r) use ($name): string {
+				'sort' => 'u.sus_last_name, u.sus_first_name, u.sus_name', 'text' => static fn(array $r): string => $ownCols() ? $fullName($r) : $name($r),
+				'html' => static function (array $r) use ($name, $ownCols, $fullName): string {
+					if ($ownCols()) return h($fullName($r));
 					$n = trim(($r['sus_first_name'] ?? '') . ' ' . ($r['sus_last_name'] ?? ''));
 					return h($name($r)) . ($n !== '' && ($r['sus_name'] ?? '') !== '' && $r['sus_name'] !== $n ? '<div class="small text-body-secondary fw-normal">' . h($r['sus_name']) . '</div>' : '');
 				}],

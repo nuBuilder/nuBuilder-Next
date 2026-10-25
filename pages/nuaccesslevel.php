@@ -346,7 +346,8 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-placement="top" title="<?= h(t('access_2fa_hint')) ?>" aria-label="<?= h(t('access_2fa_hint')) ?>"><i class="bi bi-info-circle"></i></span>
 						<?php // the switch only works while $nuConfig2FAUser is on (as in nuBuilder) – say so, and offer to switch it on
 						$cfg2fa = (bool)nu_cfg('nuConfig2FAUser'); $fromDb = NuSettings::fromDb(); $me2 = NuAuth::user(); ?>
-						<div class="small mt-1 <?= $cfg2fa ? 'text-success' : 'text-warning-emphasis' ?>">
+						<?php // shown only while the switch is on (0.8.511, assets/js/nuaccesslevel.js toggles it) ?>
+						<div class="small mt-1 <?= $cfg2fa ? 'text-success' : 'text-warning-emphasis' ?>" id="nu2faCfgNote"<?= $v['sal_use_2fa'] === '1' ? '' : ' hidden' ?>>
 							<i class="bi <?= $cfg2fa ? 'bi-check-circle' : 'bi-exclamation-triangle' ?> me-1"></i><?= h(t($cfg2fa ? 'access_2fa_cfg_on' : 'access_2fa_cfg_off')) ?>
 							<?php if (!$cfg2fa && $me2['globeadmin'] && empty($me2['demo'])): ?>
 								<?php if ($fromDb): ?>

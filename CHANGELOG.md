@@ -3,6 +3,79 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.526 – Release gate (0.8.511–0.8.525)
+- Release gate: full test run (smoke, all end-to-end tests, compatibility with nuBuilder) for 0.8.511–0.8.525.
+
+## 0.8.525 – Clearer custom code tab names
+- Custom code: clearer tab names – Form JavaScript, Form CSS and Form includes (nuBuilder's Setup → Header, Style, Include),
+  Global JavaScript and Global CSS. An (i) next to the hint of each form tab names the field in nuBuilder.
+
+## 0.8.524 – Custom code templates
+- Custom code: every tab (Header, Style, Include, Global JS, Global CSS) has a Templates menu with ready-made code – buttons and
+  look, page-specific examples, form helpers and ready-made functions. A click inserts the code at the cursor; "Preview all …"
+  shows each template with a description and code to insert or copy.
+- Help: Custom code → Templates.
+
+## 0.8.523 – Custom code: Global JS & CSS with page hook
+- Admin tools → "Setup code" is now "Custom code", with two groups of tabs: Form pages (nuBuilder's Setup → Header, Style,
+  Include – unchanged, form pages only) and All pages: new Global JS and Global CSS for every page of nuBuilder Next.
+- Global JS & CSS: kept in nuBuilder Next's own settings (nuBuilder is not affected), delivered as files of this server (the strict
+  Content-Security-Policy stays), with switches for where they run – form pages, other app pages, sign-in pages (off by default).
+  Never on the Custom code page and the Update page; ?safe=1 opens any page without them (globeadmin and admins with the right).
+  On form pages Global JS comes before Setup → Header and the form's code, so a form's nuOnLoad always wins.
+- Page hook: <body data-nu-page data-nu-mode data-nu-form data-nu-admin> on every page for CSS, and nuOnPageLoad(page, info) plus
+  the event nu:pageload for JavaScript (on form pages after nuOnLoad).
+- The page and the Compatibility check (new G9) warn when Global JS defines nuBuilder hook names such as nuOnLoad.
+- Help: Custom code page rewritten (form pages, all pages, page hook with examples); function reference: nuOnPageLoad, nu:pageload.
+
+## 0.8.522 – Setup code page without subtitle
+- Setup code page: the line below the title about nuBuilder's Setup form removed.
+
+## 0.8.521 – Show tab order in the form builder
+- Form builder: new button "Show tab order" (123) in the preview header – a red number on every object the Tab key stops at,
+  in that order and over all tabs, like nuBuilder's arrange mode; remembered in the browser.
+
+## 0.8.520 – First tab when a record is opened
+- Forms: a record opened from the list (or a link, a lookup …) always starts on the first tab; the last tab is kept only
+  for the same record – after Save, a reload, back / forward or another layout.
+
+## 0.8.519 – New example names
+- Sample data and help: new example names – made-up international company and place names, US dollar amounts and
+  international phone numbers. Refresh the sample data (Admin tools → Sample data) to get them.
+
+## 0.8.518 – Consistent form buttons
+- Form buttons: input buttons and run buttons have one clean look – light surface, thin border, rounded corners, dark text,
+  a shade darker on hover, dark-mode version. A button with its own btn-* class (form code) keeps that look. Input buttons keep
+  their object height in the absolute layout, like run buttons and nuBuilder.
+
+## 0.8.517 – Form builder in a new tab, shorter options menu
+- Form pages: the form builder button (tools icon next to Absolute / Auto / Grid) opens the builder in a new tab.
+- Options menu ⋮: Arrange objects, Save, Delete, Clone and Log out removed – buttons on the page (and the user menu) do the
+  same; their keyboard shortcuts still work.
+
+## 0.8.516 – File Manager in a new tab
+- Start page: the File Manager tile opens in a new tab (also as a favourite in the side bar), like the database tools.
+
+## 0.8.515 – Side bar close button on the left
+- Side bar: the close button × sits on the left, right where the open button is – it can be opened and closed again without
+  moving the mouse.
+
+## 0.8.514 – Modern scrollbars
+- Scrollbars: thin, soft grey and rounded everywhere, with a dark version in dark mode (Chrome / Edge / Safari with rounded
+  thumbs, Firefox with its thin standard scrollbar in the same colours).
+
+## 0.8.513 – Side bar as a drawer on every screen
+- Side bar: on desktops too it is now a drawer opened by the button left of the logo (as on phones) – no column next to the page
+  and no narrow icon strip any more.
+
+## 0.8.512 – Users list: full name with all columns
+- Users list: when first name and last name are shown as columns of their own (e.g. view "All columns"), the Name column
+  shows only the full name; other views keep first + last name with the full name below.
+
+## 0.8.511 – Two-factor note only when switched on
+- Access levels: the note "Not active yet: $nuConfig2FAUser is not true …" and its Switch on button appear only while
+  "Use two-factor authentication" is switched on.
+
 ## 0.8.510 – Exclude users in notifications, searchable report fields (gate)
 - Notifications: new field "Exclude users" (Tom Select) – these users never get the notification, also with Everybody (audience key
   "exclude", also for nuNextNotify() and POST /v1/notifications). "Show" opens the recipients in a dialogue as a table – full name,

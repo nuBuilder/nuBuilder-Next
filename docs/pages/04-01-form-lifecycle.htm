@@ -92,7 +92,7 @@
 	<ol>
 		<li>PHP: global hook <code>nu_before_save</code> (as in nuBuilder it also runs before every Before Browse), then the form's <strong>Before Browse</strong>.</li>
 		<li>Server: the list query (browse SQL with search, filters, sort and paging) runs; the page is drawn.</li>
-		<li>JavaScript: <code>nuLoadBrowseGlobal()</code> (Setup → Header), then the form's <code>nuOnLoad(formId, formCode)</code>.</li>
+		<li>JavaScript: <code>nuLoadBrowseGlobal()</code> (Setup → Header), then the form's <code>nuOnLoad(formId, formCode)</code>, then <code>nuOnPageLoad(page, info)</code> and the event <code>nu:pageload</code> of Global JS (<a href="#page-hook">page hook</a>).</li>
 	</ol>
 </div>
 <div class="doc-sub">

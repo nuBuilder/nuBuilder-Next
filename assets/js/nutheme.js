@@ -14,8 +14,8 @@
 		document.documentElement.classList.add('nuTabsPending');
 		setTimeout(function () { document.documentElement.classList.remove('nuTabsPending'); }, 3000);
 	}
-	// side bar (0.8.460): collapsed to the icon rail on this device – before drawing, so the page does not jump
-	try { if (localStorage.getItem('nunext-sidebar-collapsed') === '1') document.documentElement.classList.add('nuSbCollapsed'); } catch (e) {}
+	// side bar: the icon rail of 0.8.460–0.8.512 is gone (0.8.513) – forget its remembered state
+	try { localStorage.removeItem('nunext-sidebar-collapsed'); } catch (e) {}
 	// system lists on phones (0.8.471): cards or table chosen with the ▦ / ☰ button of this list (?p=<route>) – before drawing
 	try {
 		var lvRoute = (window.location.search.match(/[?&]p=([\w-]+)/) || [])[1] || '';

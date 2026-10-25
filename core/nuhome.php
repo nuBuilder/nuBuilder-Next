@@ -1087,7 +1087,8 @@ final class NuHome
 			$badge = $cat[$key][4] ?? null;
 			$post = is_array($route) && isset($route['post']) ? $route['post'] : null;
 			$href = $post ? null : (is_array($route) ? nu_url($route[0], $route[1]) : nu_url($route));
-			return ['href' => $href, 'post' => $post, 'icon' => $icon, 'label' => $label, 'hint' => $hint, 'color' => '', 'newtab' => (bool)$post, 'proc' => null, 'run' => '',
+			// File Manager (0.8.516): in a new tab, like the database tools – it is a work area of its own
+			return ['href' => $href, 'post' => $post, 'icon' => $icon, 'label' => $label, 'hint' => $hint, 'color' => '', 'newtab' => (bool)$post || $key === 'tfm', 'proc' => null, 'run' => '',
 				'action' => self::actions()[$key] ?? null, 'badge' => $badge, 'kind' => $post ? 'post' : 'page'];
 		}
 		$sub = self::subTiles()[$key] ?? null;

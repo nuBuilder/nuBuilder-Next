@@ -1156,3 +1156,27 @@
 		reload(f, input);
 	}, true);
 })();
+
+/*
+ * Page hook (0.8.523, Admin tools → Custom code → Global JS): every page names itself on <body> (data-nu-page = the ?p= route,
+ * data-nu-mode / data-nu-form on form pages, data-nu-admin="1" for admins). Once the page is ready nuOnPageLoad(page, info) is called
+ * when defined, then the event nu:pageload ({detail: {page, mode, form, admin}}) lets several snippets react. Form pages: the runtime
+ * calls it after nuOnLoad (nuruntime.js); everywhere else: here, when the DOM is ready. Errors are logged, the page keeps working.
+ */
+(function () {
+	'use strict';
+	var done = false;
+	function run() {
+		if (done || !document.body) return;
+		done = true;
+		var d = document.body.dataset, page = d.nuPage || '';
+		var info = {page: page, mode: d.nuMode || null, form: d.nuForm || null, admin: d.nuAdmin === '1'};
+		if (typeof window.nuOnPageLoad === 'function') {
+			try { window.nuOnPageLoad(page, info); } catch (e) { if (window.console) console.error('nuOnPageLoad:', e); }
+		}
+		try { document.dispatchEvent(new CustomEvent('nu:pageload', {detail: info})); } catch (e) { if (window.console) console.error('nu:pageload:', e); }
+	}
+	window.nuNextPageHook = run;
+	if (document.body && document.body.dataset.nuPage === 'form') return;   // the form runtime calls it after nuOnLoad
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else setTimeout(run, 0);
+})();

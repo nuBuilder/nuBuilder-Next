@@ -1,14 +1,74 @@
 <section id="setupcode" data-doc="admin" data-level="advanced">
-	<h2 id="setupcode-h">Setup code</h2>
-	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Header JavaScript, style and include of nuBuilder&#x27;s Setup form.</p>
+	<h2 id="setupcode-h">Custom code</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> JavaScript and CSS for form pages (nuBuilder's Setup) and for every page (Global JS &amp; CSS).</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p><em>Admin tools → Setup code</em> (globeadmin or the admin role right <em>Setup code</em> – a full-access right, because the code runs for every user) edits the three code fields of nuBuilder's Setup form in <code>zzzzsys_setup</code>, so nuBuilder and nuBuilder Next stay in step. Each field has its own tab and code editor; the tab is part of the address (<code>#header</code>, <code>#style</code>, <code>#include</code>) and stays open after <em>Save</em>.</p>
+	<p><em>Admin tools → Custom code</em> (globeadmin or the admin role right <em>Custom code</em> – a full-access right, because the code runs for every user) has two groups of tabs. Each tab has its own code editor; the tab is part of the address (<code>#header</code>, <code>#style</code>, <code>#include</code>, <code>#gjs</code>, <code>#gcss</code>) and stays open after <em>Save</em>.</p>
+
+	<div class="doc-sub" id="setupcode-templates"><h3 id="setupcode-templates-h">Templates</h3>
+<p>Every tab has a <em>Templates</em> menu next to its hint with ready-made code for that tab, grouped by kind: <strong>Buttons &amp; look</strong> (round or coloured buttons, labels, compact forms, striped lists, tabs, navigation bar, side bar, start page tiles, sign-in page), <strong>Page-specific examples</strong> (a banner on the start page, hiding an element on one page, colouring browse rows of one form), <strong>Form helpers</strong> (nuBuilder's hooks, a confirmation before saving, upper-case input, an info bar) and <strong>Ready-made functions</strong> (a toast message, a debounce helper, external links in a new tab, fonts and files to include).</p>
 <ul>
-<li><strong>Header (JavaScript)</strong> – <code>set_header</code>: on every form page after nuBuilder Next's runtime and before the form's own code – your global functions and nuBuilder's <code>nuLoadEditGlobal</code>, <code>nuLoadBrowseGlobal</code>, <code>nuOnLoad</code>.</li>
-<li><strong>Style (CSS)</strong> – <code>set_style</code>: on every form page after nuBuilder Next's styles.</li>
-<li><strong>Include (HTML)</strong> – <code>set_include</code>: its <code>&lt;link&gt;</code>, <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code> elements are added to every form page (after the runtime and <code>$nuConfigIncludeJS</code>, before Header); other text, HTML comments and <code>/* … */</code> blocks – such as nuBuilder's default text – are ignored. Addresses on other servers are allowed by the page's Content-Security-Policy. (nuBuilder 4.9 saves this field, but in our tests did not output it.)</li>
-<li>Only changed fields are written. A field someone else changed since the page was opened (in nuBuilder or another tab) is not overwritten: the page says which one and keeps your text – saving again overwrites. Saves are logged (<em>Setup code changed</em>, with the fields).</li>
+<li>A click on an entry inserts its code at the cursor of the tab's editor, on lines of its own – nothing is saved until you click <em>Save</em>.</li>
+<li><em>Preview all …</em> opens a dialogue with every template of the tab: pick one to read its description and code, then <em>Insert</em> it or <em>Copy</em> it to the clipboard.</li>
+<li>The templates are examples: change the colours, page names and form codes to your own. The JavaScript templates of the global tab use the <a href="#page-hook">page hook</a>, so they run only on the pages they name.</li>
 </ul>
-	<p class="doc-see">See also: <a href="#theming">Theming and CSS</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nusetupcode.php</code></li></ul></details>
+	</div>
+
+	<div class="doc-sub" id="setupcode-forms"><h3 id="setupcode-forms-h">Form pages – nuBuilder's Setup</h3>
+<p>The three code fields of nuBuilder's Setup form in <code>zzzzsys_setup</code>, so nuBuilder and nuBuilder Next stay in step. They run on form pages only (browse and edit), as in nuBuilder. The (i) next to each tab's hint names the field in nuBuilder.</p>
+<ul>
+<li><strong>Form JavaScript</strong> – nuBuilder's <em>Header</em> (<code>set_header</code>): on every form page after nuBuilder Next's runtime and before the form's own code – your global functions and nuBuilder's <code>nuLoadEditGlobal</code>, <code>nuLoadBrowseGlobal</code>, <code>nuOnLoad</code>.</li>
+<li><strong>Form CSS</strong> – nuBuilder's <em>Style</em> (<code>set_style</code>): on every form page after nuBuilder Next's styles.</li>
+<li><strong>Form includes</strong> – nuBuilder's <em>Include</em> (<code>set_include</code>): its <code>&lt;link&gt;</code>, <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code> elements are added to every form page (after the runtime and <code>$nuConfigIncludeJS</code>, before Form JavaScript); other text, HTML comments and <code>/* … */</code> blocks – such as nuBuilder's default text – are ignored. Addresses on other servers are allowed by the page's Content-Security-Policy. (nuBuilder 4.9 saves this field, but in our tests did not output it.)</li>
+</ul>
+	</div>
+
+	<div class="doc-sub" id="setupcode-global"><h3 id="setupcode-global-h">All pages – Global JS &amp; CSS</h3>
+<p>JavaScript and CSS for the pages of nuBuilder Next itself – start page, lists, admin tools, record pages, form pages, and on request the sign-in pages. They are kept in nuBuilder Next's own settings, never in <code>zzzzsys_setup</code>, so nuBuilder is not affected.</p>
+<ul>
+<li><strong>Runs on</strong>: three switches, the same on both tabs – <em>Form pages</em>, <em>Other app pages</em> (on by default) and <em>Sign-in pages</em> (off by default: they are public, so anyone could read the code there – never put secrets into it).</li>
+<li><strong>Never</strong> on the Custom code page itself and on the Update page, so a mistake can always be repaired or a release rolled back.</li>
+<li><strong>Safe mode</strong>: add <code>?safe=1</code> (or <code>&amp;safe=1</code>) to the address – the page opens without Global JS &amp; CSS. It works for the globeadmin and for admins with the right <em>Custom code</em>; everybody else always gets the code.</li>
+<li>The code is delivered as files of this server, so the strict Content-Security-Policy of nuBuilder Next's pages stays on. That is also why there is no Include tab here: code from other servers is not allowed on these pages.</li>
+<li><strong>Global CSS</strong> comes before each page's own styles – on form pages before Form CSS and the form's style, so these win.</li>
+<li><strong>Global JavaScript</strong> comes at the end of the page – on form pages before Form JavaScript and the form's code, so a form's <code>nuOnLoad</code> or <code>nuLoadBrowseGlobal</code> always wins. Do not define nuBuilder's hook names (<code>nuOnLoad</code>, <code>nuLoadBrowseGlobal</code>, <code>nuLoadEditGlobal</code>, <code>nuBeforeSave</code> …) here; the page and the <a href="#compat">Compatibility check</a> warn when you do. Use the <a href="#page-hook">page hook</a> instead.</li>
+<li>jQuery and nuBuilder's functions exist on form pages only. On the other pages write plain JavaScript (<code>document.querySelector</code> …).</li>
+</ul>
+	</div>
+
+	<div class="doc-sub" id="page-hook"><h3 id="page-hook-h">Page hook – which page is this?</h3>
+<p>Every page names itself, so global code can target single pages and skip the ones it was not written for.</p>
+<table class="table table-sm"><thead><tr><th>On <code>&lt;body&gt;</code></th><th>Value</th><th>Set on</th></tr></thead><tbody>
+<tr><td><code>data-nu-page</code></td><td>the page name – the <code>?p=</code> part of the address: <code>home</code>, <code>form</code>, <code>users</code>, <code>reports</code>, <code>login</code> …</td><td>every page</td></tr>
+<tr><td><code>data-nu-mode</code></td><td><code>browse</code> or <code>edit</code></td><td>form pages</td></tr>
+<tr><td><code>data-nu-form</code></td><td>the form code, e.g. <code>customer</code></td><td>form pages</td></tr>
+<tr><td><code>data-nu-admin</code></td><td><code>1</code> for the globeadmin and users with an admin role</td><td>every page, when it applies</td></tr>
+</tbody></table>
+<p>For CSS, select with these attributes – page names stay stable (they are in addresses and bookmarks), class names may change with an update:</p>
+<pre><code>body[data-nu-page="home"] .nuHomeTile { min-height: 140px; }
+body[data-nu-page="login"] { background: #12355b; }
+body[data-nu-form="customer"][data-nu-mode="browse"] #nuBrowseTable { font-size: .9rem; }</code></pre>
+<p>For JavaScript, once the page is ready nuBuilder Next calls <code>nuOnPageLoad(page, info)</code> when it is defined, and then fires the event <code>nu:pageload</code>, so several snippets can react without replacing each other. <code>info</code> (and the event's <code>detail</code>) is <code>{page, mode, form, admin}</code>. On form pages both run after the form's <code>nuOnLoad</code>. Put everything inside them and check <code>page</code> first – a call at the top level such as <code>nuSetTitle()</code> fails on pages without a form.</p>
+<pre><code>function nuOnPageLoad(page, info) {
+    if (page === 'home') {
+        const note = document.createElement('div');
+        note.className = 'alert alert-info';
+        note.textContent = 'Maintenance on Friday from 18:00';
+        document.getElementById('main').prepend(note);
+    }
+    if (page === 'form' &amp;&amp; info.form === 'customer' &amp;&amp; info.mode === 'browse') {
+        nuBrowseLoop([2], function (cell) { if (cell.textContent.trim() === 'US') cell.closest('tr').style.setProperty('--bs-table-bg-type', '#eef5ff'); });
+    }
+}
+
+document.addEventListener('nu:pageload', function (e) {
+    if (e.detail.page === 'reports') { /* … */ }
+});</code></pre>
+<p>Pages that build their own page (error pages, print views of lists, e-mails, page forms) do not get Global JS &amp; CSS.</p>
+	</div>
+
+<ul>
+<li>Only changed fields are written. A field someone else changed since the page was opened (in nuBuilder or another tab) is not overwritten: the page says which one and keeps your text – saving again overwrites. Saves are logged (<em>Custom code (form pages) changed</em> with the fields, <em>Global JS &amp; CSS changed</em> with the parts).</li>
+</ul>
+	<p class="doc-see">See also: <a href="#theming">Theming and CSS</a> · <a href="#form-lifecycle">Form life cycle</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nusetupcode.php</code></li><li><code>core/nucustomcode.php</code></li><li><code>core/nucodetemplates.php</code> (templates)</li><li><code>assets/js/nuapp.js</code> (page hook)</li></ul></details>
 </section>

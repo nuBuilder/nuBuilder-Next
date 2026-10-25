@@ -1280,20 +1280,19 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuNtfLevels .btn-check:checked + .nuNtfLv-danger { background: var(--bs-danger-bg-subtle); border-color: var(--bs-danger-border-subtle); color: var(--bs-danger-text-emphasis); }
 .nuNtfLevels .btn-check:focus-visible + .btn { box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2); }
 
-/* side bar (0.8.460, nu_sidebar() in core/nulayout.php, assets/js/nusidebar.js): favourites and recently used on the left – from 992 px
-   a column next to the page (html.nuSbCollapsed = icon rail), narrower a drawer (body.nuSbOpen) */
+/* side bar (0.8.460, nu_sidebar() in core/nulayout.php, assets/js/nusidebar.js): favourites and recently used on the left – a drawer
+   (body.nuSbOpen) on every screen width since 0.8.513 */
 :root { --nu-sb-w: 260px; --nu-sb-rail: 64px; --nu-nav-h: 57px; --nu-sb-fav: #c27803; --nu-sb-fav-text: #9a5b00; --nu-sb-active: color-mix(in srgb, var(--nu-accent) 10%, var(--nu-surface)); }
 [data-bs-theme="dark"] { --nu-sb-fav: #e3a33b; --nu-sb-fav-text: #e3a33b; --nu-sb-active: color-mix(in srgb, #5ea4e8 16%, var(--nu-surface)); }
 .nuShell { display: flex; align-items: flex-start; min-height: calc(100vh - var(--nu-nav-h)); }
 .nuShellMain { flex: 1 1 auto; min-width: 0; }
 .nuSidebar { flex: none; width: var(--nu-sb-w); position: sticky; top: var(--nu-nav-h); height: calc(100vh - var(--nu-nav-h)); overflow-y: auto; overflow-x: hidden;
-	background: var(--nu-surface); border-right: 1px solid var(--bs-border-color); display: flex; flex-direction: column; transition: width .15s ease; z-index: 1010; }
-.nuSbHead { display: flex; align-items: center; gap: .5rem; padding: .85rem .75rem .85rem 1rem; border-bottom: 1px solid var(--bs-border-color-translucent); }
+	background: var(--nu-surface); border-right: 1px solid var(--bs-border-color); display: flex; flex-direction: column; }
+.nuSbHead { display: flex; align-items: center; gap: .5rem; padding: .85rem 1rem .85rem .75rem; border-bottom: 1px solid var(--bs-border-color-translucent); }
 .nuSbTitle { flex: 1 1 auto; display: flex; align-items: center; gap: .5rem; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-secondary-color); min-width: 0; }
 .nuSbTitle .bi { font-size: 1.05rem; }
-.nuSbCollapse, .nuSbClose, .nuSbClear, .nuSbFav { border: 0; background: none; color: var(--bs-secondary-color); border-radius: .375rem; line-height: 1; padding: .35rem .4rem; }
-.nuSbCollapse:hover, .nuSbClose:hover, .nuSbClear:hover, .nuSbFav:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
-.nuSbClose { display: none; }
+.nuSbClose, .nuSbClear, .nuSbFav { border: 0; background: none; color: var(--bs-secondary-color); border-radius: .375rem; line-height: 1; padding: .35rem .4rem; }
+.nuSbClose:hover, .nuSbClear:hover, .nuSbFav:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
 .nuSbBody { padding: .5rem .5rem 1rem; }
 .nuSbSec { margin-top: .5rem; }
 .nuSbSecTitle { display: flex; align-items: center; gap: .45rem; margin: 0; padding: .55rem .5rem .4rem; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-secondary-color); }
@@ -1325,31 +1324,45 @@ span.nuSbFav { padding: .35rem .4rem; }
 .nuSbItem:not(.fav) .nuSbFav { opacity: 0; }
 .nuSbItem:not(.fav):hover .nuSbFav, .nuSbItem:not(.fav) .nuSbFav:focus-visible { opacity: 1; }
 .nuSbEmpty { margin: 0; padding: .1rem .5rem .4rem; font-size: .8rem; color: var(--bs-secondary-color); }
-.nuSbOpenBtn { display: none; }
-@media (min-width: 992px) {
-	/* icon rail */
-	.nuSbCollapsed .nuSidebar { width: var(--nu-sb-rail); }
-	.nuSbCollapsed .nuSbHead { justify-content: center; padding-left: .5rem; padding-right: .5rem; }
-	.nuSbCollapsed .nuSbTitle, .nuSbCollapsed .nuSbText, .nuSbCollapsed .nuSbLabel, .nuSbCollapsed .nuSbStar, .nuSbCollapsed .nuSbClearForm, .nuSbCollapsed .nuSbEmpty { display: none; }
-	.nuSbCollapsed .nuSbCollapse .bi { display: inline-block; transform: rotate(180deg); }
-	.nuSbCollapsed .nuSbSecTitle { justify-content: center; padding-left: 0; padding-right: 0; }
-	.nuSbCollapsed .nuSbCount { display: none; }
-	.nuSbCollapsed .nuSbLink { justify-content: center; padding-left: 0; padding-right: 0; }
-}
-@media (max-width: 991.98px) {
-	.nuShell { display: block; min-height: 0; }
-	.nuSbOpenBtn { display: inline-block; }
-	.nuSidebar { position: fixed; top: 0; left: 0; bottom: 0; height: 100vh; width: min(var(--nu-sb-w), 85vw); z-index: 1050; transform: translateX(-100%); visibility: hidden;
-		transition: transform .2s ease, visibility .2s; box-shadow: none; }
-	body.nuSbOpen .nuSidebar { transform: none; visibility: visible; box-shadow: 0 0 2rem rgba(0, 0, 0, .25); }
-	body.nuSbOpen { overflow: hidden; }
-	.nuSbCollapse { display: none; }
-	.nuSbClose { display: inline-block; }
-	.nuSbBackdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 1045; }
-	.nuSbItem:not(.fav) .nuSbFav { opacity: 1; }
-}
+/* a drawer on every screen width (0.8.513): opened by the button left of the logo – no column next to the page, no icon rail */
+.nuShell { display: block; min-height: 0; }
+.nuSidebar { position: fixed; top: 0; left: 0; bottom: 0; height: 100vh; width: min(var(--nu-sb-w), 85vw); z-index: 1050; transform: translateX(-100%); visibility: hidden;
+	transition: transform .2s ease, visibility .2s; box-shadow: none; }
+body.nuSbOpen .nuSidebar { transform: none; visibility: visible; box-shadow: 0 0 2rem rgba(0, 0, 0, .25); }
+body.nuSbOpen { overflow: hidden; }
+.nuSbClose { display: inline-block; }
+.nuSbBackdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 1045; }
+@media (hover: none) { .nuSbItem:not(.fav) .nuSbFav { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .nuSidebar { transition: none; } }
 @media print { .nuSidebar, .nuSbOpenBtn { display: none !important; } .nuShell { display: block; } }
+
+/* Admin tools → Custom code (0.8.523): group labels in the tab row – Form pages | All pages */
+.scodeTabs .scodeGroup { display: flex; align-items: center; padding: 0 .35rem 0 .75rem; }
+.scodeTabs .scodeGroup:first-child { padding-left: 0; }
+.scodeGroupLabel { font-size: .7rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--bs-secondary-color); white-space: nowrap; }
+.scodeTabs .scodeGroup:not(:first-child) { border-left: 1px solid var(--bs-border-color); margin-left: .5rem; }
+
+/* Custom code templates (0.8.524): dialogue with list + code preview */
+.scodeTplMenu { max-height: 60vh; overflow-y: auto; }
+.scodeTplBody { min-height: 50vh; }
+.scodeTplList { max-height: 65vh; overflow-y: auto; }
+.scodeTplCat { background: var(--bs-tertiary-bg); font-size: .7rem; letter-spacing: .05em; }
+.scodeTplCode { max-height: 55vh; overflow: auto; padding: .75rem; border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-tertiary-bg); font-size: .8rem; white-space: pre; }
+.scodeHint { max-width: 60rem; }
+
+/* scrollbars (0.8.514): thin, soft grey, rounded – light and dark (data-bs-theme). Chrome / Edge / Safari use the ::-webkit-scrollbar rules
+   (rounded thumb); browsers without them (Firefox) the standard scrollbar-width / scrollbar-color – set only there, because Chromium
+   ignores the ::-webkit-scrollbar rules as soon as scrollbar-color is set */
+:root { --nu-sb-track: #f1f5f9; --nu-sb-thumb: #cbd5e1; --nu-sb-thumb-hover: #94a3b8; }
+[data-bs-theme="dark"] { --nu-sb-track: #1e293b; --nu-sb-thumb: #475569; --nu-sb-thumb-hover: #64748b; }
+@supports not selector(::-webkit-scrollbar) {
+	* { scrollbar-width: thin; scrollbar-color: var(--nu-sb-thumb) var(--nu-sb-track); }
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--nu-sb-track); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--nu-sb-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--nu-sb-thumb-hover); }
+::-webkit-scrollbar-corner { background: var(--nu-sb-track); }
 
 /* accessibility (0.8.368, dev/tests/a11y.js – WCAG AA, text contrast at least 4.5:1): Bootstrap's grey #6c757d of outline buttons,
    its link blue and a few own colours are a little too light on the grey page (#f4f6f9) or too dark in dark mode. */

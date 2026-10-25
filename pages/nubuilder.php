@@ -272,6 +272,8 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<option value="auto"><?= h(t('form_layout_auto')) ?></option>
 						<option value="grid"><?= h(t('form_layout_grid')) ?></option>
 					</select>
+					<?php // tab order (0.8.521): numbers on the objects of the preview, like nuBuilder's arrange mode ?>
+					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbTabOrder" aria-pressed="false" title="<?= h(t('builder_taborder')) ?>" aria-label="<?= h(t('builder_taborder')) ?>"><i class="bi bi-123"></i></button>
 					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbPreviewReload" title="<?= h(t('builder_reload')) ?>" aria-label="<?= h(t('builder_reload')) ?>"><i class="bi bi-arrow-clockwise"></i></button>
 				</div>
 				<div class="nbPreviewBody" id="nbPreviewBody">

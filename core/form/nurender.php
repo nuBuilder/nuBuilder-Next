@@ -68,7 +68,9 @@ final class NuRender
 			$height = max($height, $top + $h + ($o['sob_all_type'] === 'subform' ? 40 : 20));
 			$width  = max($width, $left + $w + 20);
 			$z = $o['sob_all_type'] === 'contentbox' ? 0 : 1;
-			$style = "top:{$top}px;left:{$left}px;width:{$w}px;" . ($h > 0 && !in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'lookup', 'word'], true) ? "height:{$h}px;" : '') . "z-index:$z";
+			// input buttons keep their height like run buttons (as in nuBuilder, 0.8.518) – other inputs size themselves
+			$isBtn = $o['sob_all_type'] === 'input' && (string)($o['sob_input_type'] ?? '') === 'button';
+			$style = "top:{$top}px;left:{$left}px;width:{$w}px;" . ($h > 0 && ($isBtn || !in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'lookup', 'word'], true)) ? "height:{$h}px;" : '') . "z-index:$z";
 			$html .= $this->wrapper($o, 'nuAbs', $style, $this->object($o, 'absolute'));
 		}
 		return '<div class="nuAbsoluteCanvas" style="height:' . $height . 'px;min-width:' . $width . 'px">' . $html . '</div>';
@@ -310,7 +312,7 @@ final class NuRender
 		$fmt = $this->formatOf($o);
 		switch ($it) {
 			case 'button':
-				return '<input type="button" class="btn btn-sm btn-secondary nuButton ' . h($cls) . '"' . $common . ' value="' . h(strip_tags((string)$o['sob_all_label'])) . '"' . ($ro ? ' disabled' : '') . '>';
+				return '<input type="button" class="btn nuFormBtn nuButton ' . h($cls) . '"' . $common . ' value="' . h(strip_tags((string)$o['sob_all_label'])) . '"' . ($ro ? ' disabled' : '') . '>';
 			case 'checkbox':
 				return '<input type="checkbox" class="form-check-input ' . h($cls) . '"' . $common . ' value="1"' . ((string)$value === '1' ? ' checked' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>';
 			case 'nuDate':
@@ -533,7 +535,7 @@ final class NuRender
 			. ' data-nu-run-record="' . h($run['record']) . '" data-nu-run-filter="' . h($run['filter']) . '" data-nu-run-target="' . h($run['target']) . '"'
 			. ($run['hidden'] ? ' data-nu-run-hidden="1"' : '');
 		$icon = ['P' => 'bi-play-fill', 'R' => 'bi-file-earmark-text'][$run['type']] ?? ($run['target'] === '2' ? 'bi-box-arrow-up-right' : ($run['target'] === '3' ? 'bi-window-stack' : ''));
-		return '<button type="button" class="btn btn-sm btn-outline-primary nuRunButton ' . h($cls) . '"' . $common . $data . '>'
+		return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . $data . '>'
 			. ($icon !== '' ? '<i class="bi ' . $icon . ' me-1"></i>' : '') . '<span class="nuButtonLabel">' . h(trim($label) !== '' ? $label : ($run['form'] ?: $run['code'])) . '</span></button>';
 	}
 

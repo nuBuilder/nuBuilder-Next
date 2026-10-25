@@ -376,6 +376,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects (0.8.387)
 	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript (0.8.298)
 	. NuIncludes::jsTags()                                       // $nuConfigIncludeJS (0.8.443): before Setup → Header and the form's code
+	. NuCustomCode::jsTag()                                      // Global JS (0.8.523): before Setup → Header and the form's code – a form's nuOnLoad wins
 	. NuIncludes::setupTags()                                    // Setup → Include (0.8.444): its <link> / <script> / <style> elements
 	. $setupHeader . "\n"
 	. ($mode === 'edit' ? '<script>nuNextRunDeferred(document);</script>' : '')   // scripts of HTML objects (0.8.383, NuRender::deferScripts)
@@ -385,7 +386,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. (!empty($client['builder']) ? '<script src="' . nu_asset('assets/js/nu/nudesigner.js') . '"></script>' : '')
 	;
 
-nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '')]);
+nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '')]);
 ?>
 <div class="nuFormHeader nuTitleBar mb-3">
 	<?php if (!$bare): ?>
@@ -450,7 +451,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
 				<?php endforeach; endif; ?>
 				<?php if (!$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM)): ?>
-					<a class="btn btn-outline-secondary" href="<?= h(nu_url('builder', ['f' => $meta->id])) ?>" title="<?= h(t('builder_title')) ?>"><i class="bi bi-tools"></i></a>
+					<a class="btn btn-outline-secondary" id="nuFormBuilderBtn" href="<?= h(nu_url('builder', ['f' => $meta->id])) ?>" target="_blank" rel="noopener" title="<?= h(t('builder_title')) ?>" aria-label="<?= h(t('builder_title')) ?>"><i class="bi bi-tools"></i></a><?php // new tab (0.8.517) ?>
 				<?php endif; ?>
 			</div>
 			<button type="button" class="btn btn-outline-danger d-none" id="nuJsErrors"><i class="bi bi-bug me-1"></i><span></span></button>

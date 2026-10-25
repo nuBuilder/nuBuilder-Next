@@ -19,6 +19,8 @@ final class NuListView
 {
 	public const TABLE = 'zzzzsys_nunext_list_view';
 	public const BUILTIN = ['default', 'compact', 'all'];
+	/** Keys of the columns the current view shows (set by prepare(); a column may adapt to its neighbours, e.g. the users' name, 0.8.512). */
+	public static array $shown = [];
 	public const PER = [10, 25, 48, 50, 100, 250, 500];
 	public const WIDTHS = ['auto', 'narrow', 'wide'];
 	public const ALIGNS = ['auto', 'start', 'center', 'end'];
@@ -524,6 +526,7 @@ final class NuListView
 		[$from, $params, $order] = self::query($L, $view, [$sort, $dir]);
 
 		$colKeys = array_column($def['columns'], 'key');
+		self::$shown = $colKeys;
 		$cardKeys = array_filter(array_merge([$def['card']['title'], $def['card']['badge']], $def['card']['lines']));
 		$need = array_unique(array_merge($colKeys, $cardKeys, (array)($L['always'] ?? [])));
 		[$selSql, $selParams] = self::select($L, $need);

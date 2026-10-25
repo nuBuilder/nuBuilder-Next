@@ -22,6 +22,24 @@
 }
 .nuEditForm .form-control[readonly]:focus { box-shadow: none; border-color: var(--bs-border-color); }
 .nuButton { white-space: nowrap; }
+/* buttons of forms – input type Button and Run objects (0.8.518): one calm look – light surface, thin border, rounded, dark text;
+   hover a shade darker, keyboard focus ring. Bootstrap's button variables, so a button with its own btn-* class (form code) keeps that */
+.btn.nuFormBtn:not([class*="btn-"]) {
+	--bs-btn-padding-y: .3rem; --bs-btn-padding-x: .9rem; --bs-btn-font-size: .875rem; --bs-btn-font-weight: 500; --bs-btn-border-radius: .55rem;
+	--bs-btn-color: #334155; --bs-btn-bg: #f8fafc; --bs-btn-border-color: #e2e8f0;
+	--bs-btn-hover-color: #1e293b; --bs-btn-hover-bg: #eef2f6; --bs-btn-hover-border-color: #cbd5e1;
+	--bs-btn-active-color: #1e293b; --bs-btn-active-bg: #e2e8f0; --bs-btn-active-border-color: #cbd5e1;
+	--bs-btn-disabled-color: #94a3b8; --bs-btn-disabled-bg: #f8fafc; --bs-btn-disabled-border-color: #e2e8f0;
+	--bs-btn-focus-shadow-rgb: 100, 116, 139; box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+	transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+[data-bs-theme="dark"] .btn.nuFormBtn:not([class*="btn-"]) {
+	--bs-btn-color: #e2e8f0; --bs-btn-bg: #1e293b; --bs-btn-border-color: #334155;
+	--bs-btn-hover-color: #f8fafc; --bs-btn-hover-bg: #273449; --bs-btn-hover-border-color: #475569;
+	--bs-btn-active-color: #f8fafc; --bs-btn-active-bg: #334155; --bs-btn-active-border-color: #475569;
+	--bs-btn-disabled-color: #64748b; --bs-btn-disabled-bg: #1e293b; --bs-btn-disabled-border-color: #334155; box-shadow: none;
+}
+.nuFormBtn .bi { opacity: .75; }
 
 /* ---------------------------------------------------------------- absolute layout (pixel positions like nuBuilder) */
 .nuAbsoluteCanvas { position: relative; }
@@ -30,7 +48,7 @@
 .nuAbs .form-select { padding-right: 1.6rem; background-position: right .3rem center; }
 .nuAbs textarea.form-control, .nuAbs select[multiple].form-select, .nuAbs select.form-select[style*="height"] { padding: .2rem .4rem; }
 .nuAbs .form-check-input { margin-top: 5px; }
-.nuAbs .nuButton, .nuAbs .nuRunButton { height: 100%; min-height: 24px; padding: 0 .6rem; font-size: .85rem; }
+.nuAbs .nuButton, .nuAbs .nuRunButton { height: 100%; min-height: 24px; padding: 0 .75rem; font-size: .85rem; }
 .nuLabelLeft { position: absolute; right: calc(100% + 6px); top: 4px; margin: 0; white-space: nowrap; font-size: .85rem; color: var(--bs-secondary-color); text-align: right; }
 .nuLabelTop { position: absolute; bottom: calc(100% + 2px); left: 0; margin: 0; font-size: .85rem; color: var(--bs-secondary-color); }
 .nuAbs.nuWrap_contentbox { pointer-events: none; }
@@ -302,7 +320,7 @@ input.nuButtonSpinning {
 	padding-left: 1.75rem !important; background-repeat: no-repeat; background-position: .5rem center; background-size: 1em 1em;
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='white' stroke-opacity='.35' stroke-width='3'/%3E%3Cpath d='M12 3a9 9 0 0 1 9 9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='.75s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
 }
-input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-primary, .btn-link, [class*="btn-outline-"]) {
+input.nuButtonSpinning:is(.nuFormBtn:not([class*="btn-"]), .btn-light, .btn-outline-secondary, .btn-outline-primary, .btn-link, [class*="btn-outline-"]) {
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%236c757d' stroke-opacity='.35' stroke-width='3'/%3E%3Cpath d='M12 3a9 9 0 0 1 9 9' fill='none' stroke='%236c757d' stroke-width='3' stroke-linecap='round'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='.75s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
 }
 .nuButtonSpinner { width: .9em; height: .9em; border-width: .15em; vertical-align: -.1em; }
@@ -362,3 +380,10 @@ input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-prima
 	background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); font-size: .85rem; text-align: start; }
 
 /* form info for the globeadmin (0.8.435, core/form/nuforminfo.php) */
+
+/* form builder preview: tab order numbers (0.8.521, nudesigner.js) – red badges at the right end of each object, like nuBuilder */
+.nuDesignOrder { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); z-index: 6; pointer-events: none; min-width: 1.4rem; padding: .05rem .35rem;
+	border-radius: .4rem; background: #dc3545; color: #fff; font-size: .75rem; font-weight: 600; line-height: 1.3; text-align: center; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.nuShowTabOrder .nuWrap { outline: 1px dashed rgba(220, 53, 69, .35); outline-offset: 1px; }
+.nuShowTabOrder .nuWrap:not(.nuAbs) { position: relative; }
+.nuDesignOrder.nuDesignOrderOut { right: auto; left: calc(100% + 4px); }

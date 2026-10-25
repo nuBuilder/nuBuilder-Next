@@ -39,7 +39,8 @@ $routes = [
 	'log'         => [],
 	'notifications' => [],
 	'notifyapi'   => ['json' => true],
-	'homejs'      => ['json' => true],   // JavaScript of the start page hook nu_home (0.8.379, NuHomeHook::serveJs)
+	'homejs'      => ['json' => true],
+	'customcode'  => ['json' => true, 'public' => true],   // Global JS & CSS as files (0.8.523, NuCustomCode::serve)   // JavaScript of the start page hook nu_home (0.8.379, NuHomeHook::serveJs)
 	'audit'       => [],
 	'audithistory' => [],
 	'debug'       => [],

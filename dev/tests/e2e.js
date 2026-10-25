@@ -135,17 +135,17 @@ T.browse_reset = async (s) => {
 	const count = async () => (await p.textContent('.nuListCard .card-footer, .nuBrowseCard')).match(/(\d+)\s+record/)?.[1];
 	await open(p, 'index.php?p=form&f=samplecustomer');
 	expect(await p.locator('#nuSearchReset').count() === 0, 'reset button without a search');
-	await open(p, 'index.php?p=form&f=samplecustomer&q=alpen&sort=1&dir=desc');
+	await open(p, 'index.php?p=form&f=samplecustomer&q=bluepeak&sort=1&dir=desc');
 	expect(await rows() === 1 && await p.locator('#nuSearchReset').count() === 1, 'search + reset button');
 	await Promise.all([p.waitForNavigation(), p.click('#nuSearchReset')]); await p.waitForLoadState('networkidle');
 	let u = new URL(p.url());
 	expect(!u.searchParams.get('q') && u.searchParams.get('sort') === '1' && u.searchParams.get('dir') === 'desc' && await count() === total, 'reset button: ' + p.url() + ' ' + await count());
 	// the field's own × (event "search" with an empty field) and Esc reload without the search words
-	await open(p, 'index.php?p=form&f=samplecustomer&q=alpen');
+	await open(p, 'index.php?p=form&f=samplecustomer&q=bluepeak');
 	await Promise.all([p.waitForNavigation(), p.evaluate(() => { const i = document.getElementById('nuSearchField'); i.value = ''; i.dispatchEvent(new Event('search', { bubbles: true })); })]);
 	await p.waitForLoadState('networkidle');
 	expect(!new URL(p.url()).searchParams.get('q') && await count() === total, 'native ×: ' + p.url());
-	await open(p, 'index.php?p=form&f=samplecustomer&q=alpen');
+	await open(p, 'index.php?p=form&f=samplecustomer&q=bluepeak');
 	await p.focus('#nuSearchField');
 	await Promise.all([p.waitForNavigation(), p.keyboard.press('Escape')]); await p.waitForLoadState('networkidle');
 	expect(!new URL(p.url()).searchParams.get('q') && await count() === total, 'Esc: ' + p.url());
@@ -298,7 +298,7 @@ T.list_footer = async (s) => {
 	await open(p, 'index.php?p=form&f=samplecustomer');
 	let st = await state();
 	if (per > 0 && total > per) expect(st.pager === 1 && st.per === 1 && st.total === 1, 'several pages: ' + JSON.stringify(st));
-	await open(p, 'index.php?p=form&f=samplecustomer&q=alpen');
+	await open(p, 'index.php?p=form&f=samplecustomer&q=bluepeak');
 	st = await state();
 	expect(st.pager === 0 && st.per === 0 && st.total === 1, 'one page (form): ' + JSON.stringify(st));
 	// page size menu (0.8.437): choose 10 → page 1 of several; the choice stays when paging and searching
@@ -341,14 +341,14 @@ T.browse_highlight = async (s) => {
 		return p.evaluate(() => ({ names: [...document.querySelectorAll('td.nuCell[data-nu-column="1"]')].map(t => t.textContent.trim()),
 			marks: [...document.querySelectorAll('td.nuCell mark.nuHighlight')].map(m => m.textContent), cols: [...new Set([...document.querySelectorAll('td.nuCell mark.nuHighlight')].map(m => m.closest('td').dataset.nuColumn))] }));
 	};
-	let r = await look('ag -alpenblick');
-	expect(r.names.includes('Rheinwerk AG') && !r.names.some(n => /Alpenblick/.test(n)) && r.marks.every(m => /^ag$/i.test(m)) && r.marks.length >= 2, 'exclusion: ' + JSON.stringify(r));
-	r = await look('"Mont Blanc"');
-	expect(r.names.length === 1 && r.names[0] === 'Mont Blanc SA' && JSON.stringify(r.marks) === '["Mont Blanc"]', 'phrase: ' + JSON.stringify(r));
-	r = await look('zurcher');
-	expect(r.names.length === 1 && /^Z.rcher Druck$/.test(r.names[0]) && r.marks.length === 1 && /^Z.rcher$/.test(r.marks[0]), 'accent-insensitive: ' + JSON.stringify(r));
-	r = await look('gmbh de');
-	expect(r.names.length >= 2 && r.marks.filter(m => m === 'GmbH').length === r.names.length && r.marks.filter(m => m === 'DE').length === r.names.length, 'two words: ' + JSON.stringify(r));
+	let r = await look('ltd -harbour');
+	expect(r.names.includes('Silverline Logistics Ltd') && !r.names.some(n => /Harbour/.test(n)) && r.marks.every(m => /^ltd$/i.test(m)) && r.marks.length >= 2, 'exclusion: ' + JSON.stringify(r));
+	r = await look('"Maple Ridge"');
+	expect(r.names.length === 1 && r.names[0] === 'Maple Ridge Supply' && JSON.stringify(r.marks) === '["Maple Ridge"]', 'phrase: ' + JSON.stringify(r));
+	r = await look('cafe');
+	expect(r.names.length === 1 && /^Caf. Aurora Ltd$/.test(r.names[0]) && r.marks.length === 1 && /^Caf.$/.test(r.marks[0]), 'accent-insensitive: ' + JSON.stringify(r));
+	r = await look('ltd gb');
+	expect(r.names.length >= 2 && r.marks.filter(m => m === 'Ltd').length === r.names.length && r.marks.filter(m => m === 'GB').length === r.names.length, 'two words: ' + JSON.stringify(r));
 	r = await look('de', '&nsc=2');                                // country not searched: not marked there either
 	expect(!r.cols.includes('2'), 'marks in a column left out of the search: ' + JSON.stringify(r));
 	// nuHighlight from form code: every occurrence, nothing nested, nuUnhighlight takes the marks away
@@ -621,7 +621,10 @@ T.options_menu = async (s) => {
 	await open(p, 'index.php?p=form&f=samplecustomer&r=' + encodeURIComponent(id));
 	await p.click('#nuOptions'); await p.waitForTimeout(200);
 	k = await keys();
-	expect(!k.includes('m') && !k.includes('f') && !k.includes('o') && k.includes('s') && k.includes('y'), 'edit menu: ' + await items());
+	expect(!k.includes('m') && !k.includes('f') && !k.includes('o') && !k.includes('a') && !k.includes('s') && !k.includes('y') && !k.includes('c') && !k.includes('l') && k.includes('r'), 'edit menu: ' + await items());
+	// 0.8.517: no "Arrange objects", Save, Delete, Clone in the menu (buttons on the page do the same; the shortcuts stay) – the form
+	// builder button opens a new tab
+	if (await p.locator('#nuFormBuilderBtn').count()) expect(await p.getAttribute('#nuFormBuilderBtn', 'target') === '_blank', 'form builder button not in a new tab');
 	await p.keyboard.press('Escape'); await p.waitForTimeout(200);
 	await p.keyboard.press('Control+Shift+M'); await p.waitForTimeout(300);
 	expect(await p.isVisible('#nuFormInfo'), 'Ctrl+Shift+M opens the form info panel');
@@ -1138,6 +1141,185 @@ T.report_tomselect = async (s) => {
 	await p.keyboard.press('Escape');
 	expect(await p.inputValue('#sre_zzzzsys_php_id') === sql("SELECT sre_zzzzsys_php_id FROM zzzzsys_report WHERE zzzzsys_report_id = '" + id + "'"), 'data source not preselected');
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.511: access level – the note on $nuConfig2FAUser (and its switch-on button) only while "Use two-factor authentication" is on
+T.access_2fa_note = async (s) => {
+	const p = s.ga;
+	const id = sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE COALESCE(sal_use_2fa, '0') <> '1' ORDER BY sal_code LIMIT 1");
+	if (!id) { s.skip = 'no access level without 2FA'; return; }
+	await open(p, 'index.php?p=accesslevel&id=' + encodeURIComponent(id));
+	expect(await p.locator('#nu2faCfgNote').count() === 1 && !(await p.locator('#nu2faCfgNote').isVisible()), 'note shown while the switch is off');
+	await p.locator('label[for=sal_use_2fa]').click(); await p.waitForTimeout(200);
+	expect(await p.locator('#nu2faCfgNote').isVisible(), 'note not shown after switching on');
+	await p.locator('label[for=sal_use_2fa]').click(); await p.waitForTimeout(200);
+	expect(!(await p.locator('#nu2faCfgNote').isVisible()), 'note still shown after switching off');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.512: users list – with first and last name as columns of their own (view "All columns") the name column shows only the full name
+T.users_fullname = async (s) => {
+	const p = s.ga;
+	const old = sql("SELECT sus_name FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	if (!old) { s.skip = 'no sample user'; return; }
+	sql("UPDATE zzzzsys_user SET sus_name = 'E2E Full Name' WHERE sus_login_name = 'sample_anna'");
+	try {
+		const cell = async (v) => { await open(p, 'index.php?p=users&view=' + v);
+			return p.locator('table tbody tr', { hasText: 'sample_anna' }).first().locator('td').first().innerText(); };
+		const d = await cell('default');
+		expect(/E2E Full Name/.test(d) && d.split('\n').length === 2, 'default view: first + last name with the full name below: ' + JSON.stringify(d));
+		const a = await cell('all');
+		expect(a.trim() === 'E2E Full Name', 'all columns: name column not only the full name: ' + JSON.stringify(a));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally { sql("UPDATE zzzzsys_user SET sus_name = '" + old.replace(/'/g, "''") + "' WHERE sus_login_name = 'sample_anna'"); }
+};
+
+// 0.8.518: input buttons and run buttons of forms look the same (class nuFormBtn); an input button keeps the object's height
+T.form_buttons = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=sampleall&r=sample_all_1');
+	await p.locator('.nuTab', { hasText: 'Miscellaneous' }).click(); await p.waitForTimeout(300);
+	const st = id => p.evaluate(i => { const e = document.getElementById(i), c = getComputedStyle(e), r = e.getBoundingClientRect();
+		return { cls: e.classList.contains('nuFormBtn'), bg: c.backgroundColor, border: c.borderTopColor, radius: c.borderTopLeftRadius, color: c.color, h: Math.round(r.height) }; }, id);
+	const a = await st('all_spin_wait'), b = await st('all_spin_run');
+	expect(a.cls && b.cls, 'class nuFormBtn missing: ' + JSON.stringify([a, b]));
+	expect(a.bg === b.bg && a.border === b.border && a.radius === b.radius && a.color === b.color, 'input and run buttons differ: ' + JSON.stringify([a, b]));
+	expect(a.h === 30 && b.h === 30, 'heights (object 30 px): ' + JSON.stringify([a.h, b.h]));
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.520: a record opened anew starts on the first tab; the last tab is kept only for the same record (reload, Save)
+T.form_first_tab = async (s) => {
+	const p = s.ga;
+	const active = () => p.evaluate(() => { const a = document.querySelector('.nuTab.active'); return a ? a.getAttribute('data-nu-tab') : null; });
+	await open(p, 'index.php?p=form&f=sampleall');
+	await Promise.all([p.waitForNavigation(), p.locator('#nuBrowseTable tbody tr.nuBrowseRow').first().click()]);
+	await p.locator('.nuTab', { hasText: 'Charts' }).click(); await p.waitForTimeout(300);
+	const tab = await active();
+	expect(tab !== '0', 'tab not switched');
+	await p.reload(); await p.waitForLoadState('load'); await p.waitForTimeout(300);
+	expect(await active() === tab, 'reload: tab not kept');
+	await p.goBack(); await p.waitForLoadState('load');
+	await open(p, 'index.php?p=form&f=sampleall');
+	await Promise.all([p.waitForNavigation(), p.locator('#nuBrowseTable tbody tr.nuBrowseRow').first().click()]);
+	await p.waitForTimeout(300);
+	expect(await active() === '0', 'opened again from the list: not on the first tab (' + await active() + ')');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.521: form builder – "Show tab order" numbers the preview's objects in Tab key order; off again; remembered in this browser
+T.builder_taborder = async (s) => {
+	const p = s.ga;
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-builder-taborder'); } catch (e) {} });
+	await open(p, 'index.php?p=builder&f=samplecustomer');
+	const frame = async () => { for (let i = 0; i < 40; i++) { const f = p.frames().find(x => /builder=1/.test(x.url())); if (f && await f.locator('#nuEditForm').count()) return f; await p.waitForTimeout(250); } return null; };
+	let f = await frame();
+	expect(f && await f.locator('.nuDesignOrder').count() === 0, 'numbers shown before the button');
+	await p.click('#nbTabOrder'); await p.waitForTimeout(400);
+	const nums = await f.locator('.nuDesignOrder').allTextContents();
+	expect(nums.length >= 3 && nums.every((n, i) => n === String(i + 1)), 'numbers: ' + JSON.stringify(nums));
+	const first = await f.evaluate(() => document.querySelector('.nuDesignOrder').closest('.nuWrap').id);
+	expect(first === 'nuw_cus_code', 'first stop: ' + first);
+	expect(await p.getAttribute('#nbTabOrder', 'aria-pressed') === 'true', 'button not pressed');
+	await p.click('#nbPreviewReload'); await p.waitForTimeout(1500); f = await frame();
+	await p.waitForTimeout(500);
+	expect(await f.locator('.nuDesignOrder').count() === nums.length, 'numbers gone after reloading the preview');
+	await p.click('#nbTabOrder'); await p.waitForTimeout(300);
+	expect(await f.locator('.nuDesignOrder').count() === 0, 'numbers not removed');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.523: Custom code → Global JS & CSS – files on every page of the chosen scopes, page hook nuOnPageLoad / nu:pageload with the page
+// name (form pages: after nuOnLoad), never on the editor and the Update page, ?safe=1, sign-in pages only when chosen, hook name warning
+T.custom_code = async (s) => {
+	const p = s.ga;
+	const del = () => sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('custom_js', 'custom_css', 'custom_scope')");
+	const setCm = (k, v) => p.evaluate(([k, v]) => { const ta = document.getElementById('scode-' + k); ta.nextElementSibling.CodeMirror.setValue(v); }, [k, v]);
+	const openPage = async (hash) => {
+		await open(p, 'index.php?p=setupcode' + (hash || ''));
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=setupcode' + (hash || '')); }
+	};
+	const look = (u) => open(p, u).then(() => p.waitForTimeout(250)).then(() => p.evaluate(() => ({ page: document.body.dataset.nuPage, mode: document.body.dataset.nuMode || '',
+		form: document.body.dataset.nuForm || '', admin: document.body.dataset.nuAdmin || '', hook: window.e2eHook || null, ev: window.e2eEv || null,
+		css: getComputedStyle(document.body).getPropertyValue('--e2e-gcss').trim(), order: (window.e2eOrder || []).join('>') })));
+	del();
+	try {
+		await openPage('#gjs');
+		expect(await p.locator('#scodePane-gjs.active').count() === 1, 'Global JS tab from the address');
+		await setCm('gjs', "window.e2eOrder = [];\nfunction nuOnPageLoad(page, info) { window.e2eHook = page + '|' + (info.mode || '') + '|' + (info.form || ''); window.e2eOrder.push('page'); }\n"
+			+ "document.addEventListener('nu:pageload', function (e) { window.e2eEv = e.detail.page; });\nfunction nuOnLoad() { window.e2eOrder.push('global-onload'); }");
+		await p.click('#scodeTabBtn-gcss'); await p.waitForTimeout(200);
+		await setCm('gcss', 'body { --e2e-gcss: 7px; }');
+		await Promise.all([p.waitForNavigation(), p.click('#scodeSave')]);
+		expect(/custom_js/.test(sql("SELECT GROUP_CONCAT(zzzzsys_nunext_setting_id) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id LIKE 'custom_%'")), 'not stored');
+		expect(await p.locator('.alert-warning', { hasText: 'nuOnLoad' }).count() >= 1, 'no warning about the nuBuilder hook name');
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_setup WHERE set_header LIKE '%e2eHook%'") === 0, 'written into nuBuilder\'s setup');
+		// the editor itself: no global code
+		let r = await look('index.php?p=setupcode');
+		expect(r.page === 'setupcode' && r.hook === null && r.css === '', 'editor page loads the global code: ' + JSON.stringify(r));
+		// an app page: hook, event, CSS
+		r = await look('index.php?p=users');
+		expect(r.page === 'users' && r.hook === 'users||' && r.ev === 'users' && r.css === '7px' && r.admin === '1', 'users page: ' + JSON.stringify(r));
+		r = await look('index.php?p=update');
+		expect(r.page === 'update' && r.hook === null && r.css === '', 'update page: ' + JSON.stringify(r));
+		r = await look('index.php?p=users&safe=1');
+		expect(r.hook === null && r.css === '', 'safe mode: ' + JSON.stringify(r));
+		// a form page: mode and form code; the form's own nuOnLoad wins, nuOnPageLoad comes after it
+		r = await look('index.php?p=form&f=samplecustomer');
+		expect(r.page === 'form' && r.mode === 'browse' && r.form === 'sample_customer' && r.hook === 'form|browse|sample_customer' && r.css === '7px', 'form page: ' + JSON.stringify(r));
+		// scope: form pages off → no code there, still on other pages; sign-in pages only when switched on
+		await openPage('#gjs');
+		await p.locator('#scodeScope-gjs-forms').uncheck();
+		await Promise.all([p.waitForNavigation(), p.click('#scodeSave')]);
+		r = await look('index.php?p=form&f=samplecustomer');
+		expect(r.hook === null && r.css === '', 'forms switched off: ' + JSON.stringify(r));
+		const anon = await browser.newContext(); const a = await anon.newPage();
+		await a.goto(BASE + 'index.php?p=login'); await a.waitForTimeout(250);
+		let lg = await a.evaluate(() => ({ page: document.body.dataset.nuPage, hook: window.e2eHook || null }));
+		expect(lg.page === 'login' && lg.hook === null, 'sign-in page without the scope: ' + JSON.stringify(lg));
+		expect((await a.goto(BASE + 'index.php?p=customcode&t=js')).status() === 403, 'file readable without a session');
+		await openPage('#gcss');
+		await p.locator('#scodeScope-gcss-login').check();
+		expect(await p.locator('#scodeScope-gjs-login').isChecked(), 'switches not in step');
+		await Promise.all([p.waitForNavigation(), p.click('#scodeSave')]);
+		await a.goto(BASE + 'index.php?p=login'); await a.waitForTimeout(250);
+		lg = await a.evaluate(() => ({ page: document.body.dataset.nuPage, hook: window.e2eHook || null }));
+		expect(lg.hook === 'login||', 'sign-in page with the scope: ' + JSON.stringify(lg));
+		await anon.close();
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally { del(); }
+};
+
+// 0.8.524: Custom code templates – ▾ Templates on every tab inserts at the cursor (red Save), "Preview all" shows description + code
+T.custom_code_templates = async (s) => {
+	const p = s.ga;
+	const openPage = async (hash) => {
+		await open(p, 'index.php?p=setupcode' + hash);
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=setupcode' + hash); }
+	};
+	await openPage('#gjs');
+	for (const tab of ['header', 'style', 'include', 'gjs', 'gcss']) {
+		if (!await p.locator('#scodePane-' + tab).count()) continue;
+		expect(await p.locator(`#scodePane-${tab} .scodeTplMenu .dropdown-item`).count() >= 3, 'no templates on ' + tab);
+	}
+	const val = () => p.evaluate(() => document.getElementById('scode-gjs').value);
+	const before = await val();
+	await p.click('#scodePane-gjs .scodeTpl .dropdown-toggle');
+	await p.locator('#scodePane-gjs .scodeTplMenu .dropdown-item', { hasText: /skeleton|Gerüst/ }).first().click();
+	await p.waitForTimeout(200);
+	expect((await val()).includes('function nuOnPageLoad(page, info)') && await p.locator('#scodeSave.nuSaveEdited').count() === 1, 'template not inserted / Save not red');
+	await p.click('#scodePane-gjs .scodeTpl .dropdown-toggle');
+	await p.locator('#scodePane-gjs .scodeTplMenu .dropdown-item').last().click();
+	await p.waitForSelector('#scodeTplDlg.show');
+	const items = await p.locator('#scodeTplList .list-group-item-action').count();
+	await p.locator('#scodeTplList .list-group-item-action').nth(1).click();
+	const code = await p.textContent('#scodeTplCode');
+	expect(items >= 5 && code.length > 20 && (await p.textContent('#scodeTplDesc')).length > 5, 'preview dialogue: ' + items);
+	await p.click('#scodeTplInsert'); await p.waitForTimeout(400);
+	expect((await val()).includes(code.trim().split('\n')[0]) && !(await p.locator('#scodeTplDlg.show').count()), 'Insert from the dialogue');
+	expect(before === '' || (await val()).startsWith(before.trim().split('\n')[0]), 'existing code changed');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	await p.evaluate(() => { window.nuLeaveGuard.isDirty = () => false; });   // leave without saving (no beforeunload question)
 };
 
 T.notify_format = async (s) => {                        // 0.8.400: "Formatted text" switch – TinyMCE (when installed), HTML cleaned on the server
@@ -2285,7 +2467,7 @@ T.setup_code = async (s) => {
 		const header = sql("SELECT set_header FROM zzzzsys_setup LIMIT 1");
 		await setCm('include', '// Add external CSS/JS file here\n<!-- <script src="nothere.js"></script> -->\n<script>window.e2eSetInc = 1;</script>\n<style>:root { --e2e-setinc: 5px; }</style>\nsome text');
 		await Promise.all([p.waitForNavigation(), p.click('#scodeSave')]);
-		expect(new URL(p.url()).hash === '#include' && /Include/.test(await p.textContent('.alert-success, .toast, body')), 'saved, back on the tab: ' + p.url());
+		expect(new URL(p.url()).hash === '#include' && /include/i.test(await p.textContent('.alert-success, .toast, body')), 'saved, back on the tab: ' + p.url());
 		expect(sql("SELECT set_header FROM zzzzsys_setup LIMIT 1") === header, 'header untouched');
 		// a field changed elsewhere since the page was opened: refused, the typed text stays
 		await openPage('#style');
@@ -2500,6 +2682,7 @@ T.recent_forget = async (s) => {
 		// side bar (switched on for the globeadmin): right-click on an entry
 		sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('sidebar_ga', '1')");
 		await open(p, 'index.php?p=forms');
+		await p.click('#nuSbOpen'); await p.waitForTimeout(300);   // a drawer on every width (0.8.513)
 		await p.locator('#nuSidebar .nuSbSec-recent [data-nu-sb="permissions"] a').click({ button: 'right' }); await p.waitForTimeout(200);
 		expect(await p.locator('.nuSbMenu .dropdown-item').count() === 2, 'side bar: menu without remove / clear');
 		await Promise.all([p.waitForNavigation(), p.locator('.nuSbMenu .dropdown-item').first().click()]);
@@ -3081,7 +3264,7 @@ T.libreq = async (s) => {
 // ?p=upload into the folder of the procedure; executable names refused before any procedure, the hardened template checks type +
 // extension and never overwrites; nothing of it is saved with the record; update step 0020 adds the template rows when missing
 // side bar (0.8.460, core/nusidebar.php): off by default, on per user (user menu) or for everyone (globeadmin); favourites = the start page's ☆,
-// recently used pages and forms on the server (order, rights), ☆ in the side bar, clear, icon rail kept, drawer on phones
+// recently used pages and forms on the server (order, rights), ☆ in the side bar, clear; a drawer on every width (0.8.513: no icon rail)
 T.sidebar = async (s) => {
 	const p = s.ga;
 	const benId = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
@@ -3094,6 +3277,7 @@ T.sidebar = async (s) => {
 	};
 	cleanup();
 	const items = sec => p.locator(`#nuSidebar .nuSbSec-${sec} [data-nu-sb]`).evaluateAll(e => e.map(x => x.getAttribute('data-nu-sb')));
+	const openSb = async () => { if (!await p.evaluate(() => document.body.classList.contains('nuSbOpen'))) { await p.click('#nuSbOpen'); await p.waitForTimeout(300); } };
 	try {
 		await open(p, 'index.php?p=home&tiles=1');
 		expect(await p.locator('#nuSidebar').count() === 0, 'side bar on by default');
@@ -3106,24 +3290,35 @@ T.sidebar = async (s) => {
 		// the current page is marked in each section it is in (Users may also be a favourite, e.g. after home_favourites)
 		expect(await p.locator('#nuSidebar .nuSbSec-recent [data-nu-sb="users"].active a[aria-current="page"]').count() === 1, 'current page not marked');
 		// ☆ on a recently used tile → favourite of the start page; again → gone
+		// desktop (0.8.513): no column next to the page, no icon rail – the drawer opens from the button left of the logo
+		expect(!await p.locator('#nuSidebar').isVisible() && await p.locator('#nuSbCollapse').count() === 0, 'desktop: side bar shown in the page / icon rail button');
+		const leftOfLogo = await p.evaluate(() => { const b = document.getElementById('nuSbOpen').getBoundingClientRect(), l = document.querySelector('.nu-navbar .navbar-brand').getBoundingClientRect();
+			return b.width > 0 && b.right <= l.left + 1; });
+		expect(leftOfLogo, 'desktop: open button not left of the logo');
+		// 0.8.515: the × sits where the open button is – open and close without moving the mouse
+		const ob = await p.locator('#nuSbOpen').boundingBox();
+		await openSb();
+		const cb = await p.locator('#nuSbClose').boundingBox();
+		expect(Math.abs(cb.x - ob.x) < 24 && Math.abs(cb.y - ob.y) < 24, 'close button not at the open button: ' + JSON.stringify([ob, cb]));
+		await p.click('#nuSbClose'); await p.waitForTimeout(300);
+		expect(!await p.evaluate(() => document.body.classList.contains('nuSbOpen')), 'close button did not close the drawer');
 		const wasFav = (await items('fav')).includes('update');
+		await openSb();
 		await Promise.all([p.waitForNavigation(), p.click('#nuSidebar .nuSbSec-recent [data-nu-sb="update"] .nuSbFav', { force: true })]);
 		expect((await items('fav')).includes('update') !== wasFav, 'star did not change the favourite');
 		await open(p, 'index.php?p=home&tiles=1');
 		expect((await p.locator('[data-nu-tile="update"][data-nu-fav="1"]').count() > 0) !== wasFav, 'start page does not show the same favourite');
+		await openSb();
 		await Promise.all([p.waitForNavigation(), p.click('#nuSidebar .nuSbSec-recent [data-nu-sb="update"] .nuSbFav', { force: true })]);
 		expect((await items('fav')).includes('update') === wasFav, 'second star click did not undo');
 		expect(await p.locator('#nuSidebar [data-nu-sb="form:samplecustomer"] .nuSbFav').count() === 0, 'a form that is no tile offers a star');
-		// icon rail kept after a reload; clear empties the list
-		await p.click('#nuSbCollapse');
-		await p.reload(); await p.waitForLoadState('networkidle');
-		expect(await p.evaluate(() => document.documentElement.classList.contains('nuSbCollapsed')), 'icon rail not kept');
-		await p.click('#nuSbCollapse');
+		await openSb();
 		// 0.8.489: right-click on "Recently used" → menu "Clear recently used" (same POST as the ✕ button)
 		await p.click('#nuSidebar .nuSbSec-recent .nuSbSecTitle .nuSbText', { button: 'right' });
 		expect(await p.locator('.nuSbMenu .dropdown-item').count() === 1, 'no context menu on Recently used');
 		await p.keyboard.press('Escape');
 		expect(await p.locator('.nuSbMenu').count() === 0, 'context menu not closed by Esc');
+		await openSb();
 		await p.click('#nuSidebar .nuSbSec-recent .nuSbSecTitle .nuSbText', { button: 'right' });
 		await Promise.all([p.waitForNavigation(), p.click('.nuSbMenu .dropdown-item')]);
 		r = await items('recent');
@@ -3158,7 +3353,6 @@ T.sidebar = async (s) => {
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		cleanup();
-		await p.evaluate(() => { try { localStorage.removeItem('nunext-sidebar-collapsed'); } catch (e) {} });
 	}
 };
 
@@ -3897,6 +4091,9 @@ T.file_manager = async (s) => {
 		// entries: start page tile and admin menu point to ?p=filemanager
 		await open(ga, 'index.php?p=home');
 		expect(await ga.locator('a[href*="p=filemanager"]').count() >= 1, 'no File Manager entry on the start page / menu');
+		// 0.8.516: the start page tile opens it in a new tab
+		const tfmTile = ga.locator('[data-nu-tile="tfm"] a[href*="p=filemanager"], a[data-nu-tile="tfm"][href*="p=filemanager"]');
+		if (await tfmTile.count()) expect(await tfmTile.first().getAttribute('target') === '_blank', 'File Manager tile does not open a new tab');
 		// not set up: the globeadmin creates it
 		await open(ga, 'index.php?p=filemanager');
 		expect(await ga.locator('#fmSetup').count() === 1, 'setup button missing');
@@ -4079,6 +4276,11 @@ T.logout = async (s) => {
 	const s = {};
 	try {
 		sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'");
+		// an installed sample application older than this version's is refreshed first (tests use its current data; put back at the end)
+		if (SITE) {
+			const st = execSync(`php -r 'chdir(${JSON.stringify(SITE)}); require "core/nuapp.php"; $s = NuSample::status(); echo ($s["installed"] && $s["version"] < $s["current"]) ? "old" : "ok";'`).toString().trim();
+			if (st === 'old') execSync(`php -r 'chdir(${JSON.stringify(SITE)}); require "core/nuapp.php"; NuSample::install();'`, { stdio: 'pipe' });
+		}
 		// known password for every sample user (the database is put back at the end)
 		const hash = execSync('php -r ' + JSON.stringify('echo password_hash(' + JSON.stringify(UPW) + ', PASSWORD_BCRYPT);')).toString().trim();
 		sql("UPDATE zzzzsys_user SET sus_login_password = '" + hash + "', sus_change_password = '0' WHERE sus_login_name LIKE 'sample\\_%'");

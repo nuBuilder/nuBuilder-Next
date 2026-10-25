@@ -628,6 +628,18 @@ check('unmet: old needed, installed optional below', array_keys($um) === ['tcpdf
 check('unmet: missing needed', isset(NuLibs::unmet($rq, ['tcpdf' => ''], [])['tcpdf']) && !NuLibs::unmet($rq, ['tcpdf' => '7.0.1', 'adminer' => '5.0.0+nu1'], []));
 check('required: release file valid', NuLibs::required() !== [] && isset(NuLibs::required()['tcpdf']));
 check('required: no manifest entry = nothing', NuLibs::required(['version' => '0.8.400']) === []);
+// Custom code templates (0.8.524): every template has a title and a description in English, a known tab and category, unique ids
+$tplEn = require NU_ROOT . '/lang/en.php';
+$tplIds = [];
+$tplOk = true;
+foreach (NuCodeTemplates::all() as $tab => $list) {
+	if (!in_array($tab, ['header', 'style', 'include', 'gjs', 'gcss'], true)) $tplOk = false;
+	foreach ($list as $tpl) {
+		if (!isset($tplEn['ctpl_' . $tpl['id']], $tplEn['ctpl_' . $tpl['id'] . '_d'], NuCodeTemplates::CATS[$tpl['cat']]) || trim($tpl['code']) === '' || isset($tplIds[$tpl['id']])) { $tplOk = false; echo "  template: {$tpl['id']}\n"; }
+		$tplIds[$tpl['id']] = true;
+	}
+}
+check('custom code templates: texts, tabs, categories, unique ids', $tplOk && count($tplIds) >= 20);
 
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";

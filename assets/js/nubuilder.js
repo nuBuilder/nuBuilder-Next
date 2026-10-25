@@ -1049,7 +1049,20 @@
 	function highlight(o) {
 		try { if (o && frame.contentWindow) frame.contentWindow.postMessage({nuBuilderSelect: o.sob_all_id}, window.location.origin); } catch (e) { /* ignore */ }
 	}
-	frame.addEventListener('load', function () { if (sel.kind === 'object') highlight(objById(sel.id)); });
+	// tab order (0.8.521): the preview numbers its objects in the order the Tab key visits them; on / off remembered in this browser
+	var TO_KEY = 'nunext-builder-taborder', toBtn = $('#nbTabOrder'), tabOrder = false;
+	try { tabOrder = localStorage.getItem(TO_KEY) === '1'; } catch (e) { /* ignore */ }
+	function sendTabOrder() {
+		if (toBtn) { toBtn.classList.toggle('active', tabOrder); toBtn.setAttribute('aria-pressed', tabOrder ? 'true' : 'false'); }
+		try { if (frame.contentWindow) frame.contentWindow.postMessage({nuBuilderTabOrder: tabOrder}, window.location.origin); } catch (e) { /* ignore */ }
+	}
+	if (toBtn) toBtn.addEventListener('click', function () {
+		tabOrder = !tabOrder;
+		try { localStorage.setItem(TO_KEY, tabOrder ? '1' : '0'); } catch (e) { /* ignore */ }
+		sendTabOrder();
+	});
+	sendTabOrder();
+	frame.addEventListener('load', function () { if (sel.kind === 'object') highlight(objById(sel.id)); sendTabOrder(); });
 	// show / hide the preview (small screens): remembered in localStorage; without a stored choice hidden below 992 px
 	var PV_KEY = 'nunext-builder-preview', ws = $('#nbWorkspace'), pvBtn = $('#nbPreviewToggle');
 	function previewOpen() { return !ws.classList.contains('nbPreviewCollapsed'); }

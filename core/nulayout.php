@@ -36,6 +36,7 @@ function nu_head(string $title, string $extraHead = ''): void
 	<link rel="stylesheet" href="<?= nu_asset(NU_BI . '/bootstrap-icons.min.css') ?>">
 	<link rel="stylesheet" href="<?= nu_asset('assets/css/nuapp.css') ?>">
 	<?= NuBranding::headTags() ?>
+	<?= NuCustomCode::cssTag() /* Global CSS (0.8.523): before the page's own styles */ ?>
 	<?= $extraHead ?>
 </head>
 <?php
@@ -95,7 +96,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	$u = NuAuth::user();
 	nu_head($title, $opt['head'] ?? '');
 	if (!empty($opt['bare'])) {
-		echo '<body class="nu-app nu-bare' . h(' ' . ($opt['body_class'] ?? '')) . '"><main id="main" class="' . h($opt['container'] ?? 'container-fluid') . ' py-2">';
+		echo '<body class="nu-app nu-bare' . h(' ' . ($opt['body_class'] ?? '')) . '"' . NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) . '><main id="main" class="' . h($opt['container'] ?? 'container-fluid') . ' py-2">';
 		if (!empty($_SESSION['nu_form_preview'])) echo NuFormDraft::banner(true);       // form drafts (0.8.386): "DRAFT" badge in iframes
 		nu_render_flashes();
 		return;
@@ -117,12 +118,12 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	$sidebar = NuSidebar::enabled() && empty($opt['no_sidebar']);   // side bar (0.8.460, core/nusidebar.php)
 	if (empty($opt['bare'])) NuSidebar::record(NuSidebar::currentKey());   // recently used: side bar and start page (0.8.492)
 	?>
-<body class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?>>
+<body class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?><?= NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) /* page hook (0.8.523) */ ?>>
 <a class="visually-hidden-focusable" href="#main"><?= h(t('skip_to_content')) ?></a>
 <nav class="navbar navbar-expand-md nu-navbar border-bottom sticky-top<?= NuImpersonate::active() ? ' flex-wrap' : '' ?>">
 	<?= NuImpersonate::banner() ?>
 	<div class="container-fluid nuNavInner"><?php // full width (0.8.483): the logo stays at the left edge on every page, the menus at the right ?>
-		<?php if ($sidebar): // side bar (0.8.460): below 992 px a drawer opened here ?>
+		<?php if ($sidebar): // side bar (0.8.460): a drawer opened here, left of the logo, on every screen width (0.8.513) ?>
 			<button type="button" class="btn btn-sm btn-outline-secondary me-2 nuSbOpenBtn" id="nuSbOpen" aria-controls="nuSidebar" aria-expanded="false" title="<?= h(t('sb_open')) ?>" aria-label="<?= h(t('sb_open')) ?>"><i class="bi bi-layout-sidebar"></i></button>
 		<?php endif; ?>
 		<a class="navbar-brand d-flex align-items-center gap-2" href="<?= h(nu_url('home')) ?>">
@@ -242,7 +243,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 <?php
 }
 
-/** The side bar (0.8.460, core/nusidebar.php): favourites and recently used; collapsed to an icon rail (≥ 992 px) or a drawer (narrower). */
+/** The side bar (0.8.460, core/nusidebar.php): favourites and recently used; a drawer on every screen width (0.8.513). */
 function nu_sidebar(): void
 {
 	$d = NuSidebar::data();
@@ -274,10 +275,10 @@ function nu_sidebar(): void
 			. ($items ? '<ul class="nuSbList">' . implode('', array_map($item, $items)) . '</ul>' : '<p class="nuSbEmpty">' . h($empty) . '</p>') . '</section>';
 	};
 	$clear = $d['recent'] ? $post('clear', '<button type="submit" class="nuSbClear" title="' . h(t('sb_recent_clear')) . '" aria-label="' . h(t('sb_recent_clear')) . '"><i class="bi bi-x-circle" aria-hidden="true"></i></button>', [], 'nuSbClearForm') : '';
-	echo '<aside id="nuSidebar" class="nuSidebar" aria-label="' . h(t('sb_title')) . '" data-t-collapse="' . h(t('sb_collapse')) . '" data-t-expand="' . h(t('sb_expand')) . '">'
-		. '<div class="nuSbHead"><span class="nuSbTitle"><i class="bi bi-compass" aria-hidden="true"></i><span class="nuSbText">' . h(t('sb_title')) . '</span></span>'
-		. '<button type="button" class="nuSbCollapse" id="nuSbCollapse" aria-controls="nuSidebar" aria-expanded="true" title="' . h(t('sb_collapse')) . '" aria-label="' . h(t('sb_collapse')) . '"><i class="bi bi-chevron-double-left" aria-hidden="true"></i></button>'
-		. '<button type="button" class="nuSbClose" id="nuSbClose" title="' . h(t('close')) . '" aria-label="' . h(t('close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
+	echo '<aside id="nuSidebar" class="nuSidebar" aria-label="' . h(t('sb_title')) . '">'
+		// × on the left (0.8.515): right where the open button was – opened and closed again without moving the mouse
+		. '<div class="nuSbHead"><button type="button" class="nuSbClose" id="nuSbClose" title="' . h(t('close')) . '" aria-label="' . h(t('close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
+		. '<span class="nuSbTitle"><i class="bi bi-compass" aria-hidden="true"></i><span class="nuSbText">' . h(t('sb_title')) . '</span></span></div>'
 		. '<nav class="nuSbBody" aria-label="' . h(t('sb_title')) . '">'
 		. $section('fav', 'bi-star-fill', t('sb_favourites'), $d['fav'], t($d['canFav'] ? 'sb_fav_none' : 'sb_fav_none_ro'))
 		. $section('recent', 'bi-clock-history', t('sb_recent'), $d['recent'], t('sb_recent_none'), $clear)
@@ -345,6 +346,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
+<?= NuCustomCode::page() !== 'form' ? NuCustomCode::jsTag() : '' /* Global JS (0.8.523) – form pages load it in pages/nuform.php before Setup → Header */ ?>
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
 <?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
@@ -394,6 +396,7 @@ function nu_bell(): void
 function nu_page_minimal(string $title, string $detail = '', bool $withHome = false, bool $withLogout = false): void
 {
 	NuBranding::$off = true;                           // error pages: no database access – the default look
+	NuCustomCode::$context = 'none';                   // and no Global JS & CSS (0.8.523)
 	nu_head($title);
 	?>
 <body class="nu-center">
@@ -568,9 +571,10 @@ function nu_feedback(array $errors, string $field): string
 /** Centered card page (login, 2FA, password reset) – no navigation, no login required. */
 function nu_center_start(string $title, string $subtitle = '', string $icon = ''): void
 {
+	NuCustomCode::$context = 'login';                  // Global JS & CSS: scope "sign-in pages" (0.8.523)
 	nu_head($title);
 	?>
-<body class="nu-center nu-login">
+<body class="nu-center nu-login"<?= NuCustomCode::bodyAttrs() ?>>
 <main class="nu-card-narrow">
 	<div class="d-flex justify-content-end align-items-center gap-2 mb-3">
 		<?= NuBranding::envBadge('me-auto') ?>
@@ -602,6 +606,7 @@ function nu_center_end(string $extraBody = ''): void
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
+<?= NuCustomCode::jsTag() ?>
 <?= $extraBody ?>
 </body>
 </html>

@@ -202,7 +202,7 @@
 			return h('div', {'class': cls || 'col-sm-3'}, [h('label', {'class': 'form-label small mb-1', 'for': i, text: t(label)}),
 				h('input', {'class': 'form-control form-control-sm nfdMono', id: i, value: s[part], placeholder: ph, maxlength: '8', oninput: function () { set(part, this.value.replace(/[0-9|]/g, '')); }})]);
 		}
-		row.appendChild(txt('fmt_prefix', 'prefix', 'CHF '));
+		row.appendChild(txt('fmt_prefix', 'prefix', 'USD '));
 		row.appendChild(sel('fmt_thousands', 'sep', [['', t('fmt_none')], ['\'', '1\'000'], [',', '1,000'], ['.', '1.000'], [' ', '1 000']]));
 		row.appendChild(sel('fmt_decimal', 'dec', [['.', '0.5'], [',', '0,5']]));
 		row.appendChild(sel('fmt_places', 'places', [0, 1, 2, 3, 4, 5, 6].map(function (n) { return [String(n), String(n)]; })));
@@ -229,7 +229,7 @@
 				h('span', {}, [h('code', {text: 'A'}), ' ' + t('fmt_mask_A')]), h('span', {}, [h('code', {text: '*'}), ' ' + t('fmt_mask_star')]),
 				h('span', {}, [h('code', {text: '\\'}), ' ' + t('fmt_mask_escape')])
 			]),
-			h('div', {'class': 'd-flex flex-wrap gap-1 mt-2'}, [['CH99 9999 9999 9999 9999 9', 'IBAN CH'], ['+41 99 999 99 99', t('fmt_ex_phone')], ['9999', t('fmt_ex_zip')],
+			h('div', {'class': 'd-flex flex-wrap gap-1 mt-2'}, [['GB99 AAAA 9999 9999 9999 99', 'IBAN GB'], ['+1 999 999 9999', t('fmt_ex_phone')], ['9999', t('fmt_ex_zip')],
 				['999.9999.9999.99', t('fmt_ex_ahv')], ['AAA-999', t('fmt_ex_code')]].map(function (x) {
 				return h('button', {type: 'button', 'class': 'btn btn-sm btn-light border', onclick: function () { st.format = x[0]; document.getElementById(mid).value = x[0]; update(); }}, [x[1]]);
 			}))

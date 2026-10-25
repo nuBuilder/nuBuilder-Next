@@ -3117,15 +3117,16 @@
 		var T = N.tools || {}, ga = !!N.user.globeadmin, edit = N.mode === 'edit', browse = N.mode === 'browse';
 		var has = function (id) { return !!g(id); };
 		// [key, label key, icon, group, available, action] – group 0: a keyboard shortcut only, not in the options menu (0.8.446: add, print,
-		// search, form info, form properties and object list have buttons of their own on the page)
+		// search, form info, form properties and object list have buttons of their own on the page; 0.8.517: arrange objects = the form
+		// builder button; save / delete / clone = the record buttons; log out = the user menu)
 		return [
-			['a', 'arrange', 'bi-arrows-move', 1, edit && T.design, function () { openTab(builderUrl('arrange')); }],
+			['a', 'arrange', 'bi-arrows-move', 0, edit && T.design, function () { openTab(builderUrl('arrange')); }],
 			['h', 'add_object', 'bi-plus-lg', 1, edit && T.design, function () { openTab(builderUrl('add')); }],
 			['f', 'form_properties', 'bi-gear', 0, T.design, function () { openTab(builderUrl('form')); }],
 			['o', 'object_list', 'bi-list-ul', 0, T.design, function () { openTab(builderUrl('objects')); }],
-			['s', 'save', 'bi-floppy', 3, edit && has('nuSaveButton'), function () { if (document.activeElement) $(document.activeElement).trigger('blur'); nuSaveAction(); }],
-			['y', 'delete', 'bi-trash', 3, edit && has('nuDeleteButton'), function () { nuDeleteAction(); }],
-			['c', 'clone', 'bi-copy', 3, edit && has('nuCloneButton'), function () { nuCloneAction(); }],
+			['s', 'save', 'bi-floppy', 0, edit && has('nuSaveButton'), function () { if (document.activeElement) $(document.activeElement).trigger('blur'); nuSaveAction(); }],
+			['y', 'delete', 'bi-trash', 0, edit && has('nuDeleteButton'), function () { nuDeleteAction(); }],
+			['c', 'clone', 'bi-copy', 0, edit && has('nuCloneButton'), function () { nuCloneAction(); }],
 			['s', 'search', 'bi-search', 0, browse && has('nuSearchField'), function () { nuSearchAction(); }],
 			['a', 'add', 'bi-plus-lg', 0, browse && has('nuAddButton'), function () { $('#nuAddButton').trigger('click'); }],
 			['p', 'print', 'bi-printer', 0, browse && has('nuPrintButton'), function () { openTab($('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href')); }],
@@ -3143,7 +3144,7 @@
 			['', 'inspect', 'bi-table', 5, ga && edit && N.record_id && N.record_id !== '-1' && !!N.form.table, function () {
 				openTab(N.base + '?p=inspect&f=' + encodeURIComponent(N.form.id) + '&r=' + encodeURIComponent(N.record_id));
 			}],
-			['l', 'logout', 'bi-box-arrow-right', 6, !N.iframe, logoutAsk],
+			['l', 'logout', 'bi-box-arrow-right', 0, !N.iframe, logoutAsk],   // 0.8.517: Log out is in the user menu of the top bar
 			// not in the menu (navigation keys, like nuBuilder)
 			['arrowright', 'tab_next', '', 0, edit && $('.nuTab').length > 1, function () { nextTab(1); }],
 			['arrowleft', 'tab_prev', '', 0, edit && $('.nuTab').length > 1, function () { nextTab(-1); }],
@@ -3253,9 +3254,22 @@
 		if (N.mode === 'edit') {
 			if (window.nuOnEditorLoad) { try { window.nuOnEditorLoad(); } catch (x) { reportError(x.message, 'nuOnEditorLoad'); } }
 			else $('#nuEditForm textarea.nuEditor').each(function () { nuInitTinyMCE(this.id); });
+			// the last tab only for the same record shown again (0.8.520): after Save, a reload, back / forward or another layout of it –
+			// a record opened anew (from the list, a link, a lookup …) starts on the first tab
+			var sameRecord = function () {
+				if (N.saved) return true;
+				var nav = window.performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+				if (nav && (nav.type === 'reload' || nav.type === 'back_forward')) return true;
+				try {
+					var ref = new URL(document.referrer), here = new URL(window.location.href);
+					return ref.origin === here.origin && ref.pathname === here.pathname && ref.searchParams.get('p') === 'form'
+						&& ref.searchParams.get('f') === N.form.id && ref.searchParams.get('r') === String(N.record_id);
+				} catch (x) { return false; }
+			};
 			try {
 				var t = sessionStorage.getItem(tabKey());
-				if (t !== null && g('nuTab' + t) && $(g('nuTab' + t)).parent().is(':visible')) nuSelectTab(+t);
+				if (sameRecord() && t !== null && g('nuTab' + t) && $(g('nuTab' + t)).parent().is(':visible')) nuSelectTab(+t);
+				else sessionStorage.removeItem(tabKey());
 			} catch (x) { /* ignore */ }
 			// nuBuilder's Notes form (0.8.508): an existing note with an empty editor but text on the tab Additional opens that tab
 			var only = {nunotes: ['not_content', 'not_text']}[N.form.id];
@@ -3309,6 +3323,7 @@
 		// nuBuilder: global load hooks (setup header), then the form's nuOnLoad(formId, formCode)
 		callHook(N.mode === 'browse' ? 'nuLoadBrowseGlobal' : 'nuLoadEditGlobal', N.form.id, N.form.code);
 		callHook('nuOnLoad', N.form.id, N.form.code);
+		if (typeof window.nuNextPageHook === 'function') window.nuNextPageHook();   // Global JS: nuOnPageLoad / nu:pageload after nuOnLoad (0.8.523)
 		if (N.mode === 'edit') {                                            // nuAfterSave of the save that reloaded this page (0.8.383)
 			try {
 				var as = sessionStorage.getItem('nuNextAfterSave');
