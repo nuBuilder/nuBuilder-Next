@@ -85,6 +85,7 @@
 <thead><tr><th></th><th>Fast release (default)</th><th>Gate (when you say "gate")</th></tr></thead>
 <tbody>
 <tr><td>Command</td><td><code>python3 dev/release.py &lt;version&gt; "&lt;title&gt;" changes.txt</code></td><td>the same with <code>--gate</code></td></tr>
+<tr><td>Before</td><td>the help page of the change</td><td>Claude first brings the documentation up to date: the help pages of everything since the last gate, README, CLAUDE.md, TODO.md and the tutorial</td></tr>
 <tr><td>Checks</td><td><code>php -l</code> of every file, <code>dev/check_lang.php</code>, unit tests <code>dev/tests/run.php</code>, PHPStan, ESLint – plus by hand the e2e tests of the changed areas (<code>ONLY=…</code>) and screenshots</td><td>all of these plus the browser suites on the test installation: smoke test, all e2e tests, the cross-test against nuBuilder 4.9 (<code>compat.js</code>); a failing test stops the release</td></tr>
 <tr><td>Manifest</td><td><code>"gated": false</code> – the update page shows <em>Not fully tested</em></td><td><code>"gated": true</code>, <code>"last_gate"</code></td></tr>
 <tr><td>GitHub</td><td>nothing pushed</td><td>the project is copied to the repository clone, committed and pushed to <code>main</code> – everything since the last gate in one commit</td></tr>

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.547 – a modern front end for nuBuilder 4
+# nuBuilder Next 0.8.550 – a modern front end for nuBuilder 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder 4.**
 
@@ -78,8 +78,8 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.
 - ✅ **Send Notifications** – to chosen users, departments or teams, with read receipts.
-- ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving and inserts missing variables; nuBuilder's Setup code (Header, Style, Include); System status; logged-in users; phpMyAdmin, Adminer and File Manager links; housekeeping cron.
-- ✅ **Easy Start** – installer, setup wizard, a step-by-step tutorial and built-in documentation.
+- ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving and inserts missing variables; Custom code – nuBuilder's Setup code (Header, Style, Include) plus global JavaScript / CSS for every page, with ready-made templates; System status; logged-in users; phpMyAdmin, Adminer and File Manager links; housekeeping cron.
+- ✅ **Easy Start** – installer, setup wizard, a step-by-step tutorial and built-in documentation (F1 opens the page for the screen you are on).
 - ✅ **Branding & Demo Mode** – logo, accent colour and environment label; read-only demo users.
 
 ---

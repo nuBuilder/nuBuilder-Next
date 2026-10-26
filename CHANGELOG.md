@@ -3,6 +3,18 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.550 – Release gate (0.8.548–0.8.549)
+- Release gate: full test run (smoke, all end-to-end tests, compatibility with nuBuilder) for 0.8.548–0.8.549; development notes
+  brought up to date first.
+
+## 0.8.549 – Docs before every gate
+- Development flow: before every gate the documentation is brought up to date first (help pages of all changes since the last gate,
+  README, CLAUDE.md, TODO.md, tutorial). Help → Development with Claude and CLAUDE.md say so.
+
+## 0.8.548 – Notes and README brought up to date
+- README: Custom code (global JavaScript / CSS with templates) and F1 help in the feature list.
+- Development notes (CLAUDE.md, TODO.md): current state up to 0.8.547, searchable selects convention, builder field options.
+
 ## 0.8.547 – API clients as a system list; release gate
 - API clients: the list is a system list like Users – view menu (Default / Compact / All columns, own views), search, filters
   status (active / inactive / expired) and scope, print and export, cards on phones; more columns (client_id, expires, requests /

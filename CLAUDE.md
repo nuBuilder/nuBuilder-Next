@@ -22,6 +22,9 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
 - **Fast releases, gate on request (0.8.389, the owner's rule):** a normal request ends with a FAST release – `dev/release.py` WITHOUT
   `--gate` (php -l, check_lang, unit tests, PHPStan, ESLint; browser suites skipped; manifest `"gated": false` → the update page shows
   "Not fully tested") plus the e2e tests of the changed areas (`ONLY=…`) and a browser look; both zips are sent; **no git push**.
+  **Before every gate (the owner's rule, 0.8.549): bring the documentation up to date first** – the help pages of everything changed
+  since the last gate (`docs/pages/`), README.md (feature list, requirements, install), this file ("Where things stand", architecture,
+  conventions), TODO.md (remove what is done) and the tutorial where it is affected – then run the gate, so the push carries current docs.
   Only when the owner says **"gate"**: a new version with `python3 dev/release.py <version> "<title>" <file> --gate` (full gate: smoke,
   all e2e, compat; manifest `"gated": true`, `last_gate`), then sync to the git mirror, commit and `git push origin main` (everything since
   the last gate in one push). **Account without a GitHub connection (since 0.8.451, the owner's rule):** a gate runs the full test
@@ -406,6 +409,9 @@ Own tables: `zzzzsys_nunext_recent` (side bar, 0.8.460), `zzzzsys_nunext_log`, `
   regex, licence, use key `upd_libuse_*`). Changing a library = change files + registry; `dev/release.py` checks that the file shows the
   registered version and copies the list into the manifest (update page: card Libraries, "Libraries that change").
 - Lists: `nu_list_footer($total, $page, $per, 'route', $params[, class, param, anchor])` = the pager used everywhere.
+- **Long selects** (15+ options: forms, procedures, users, time zones …) are searchable (0.8.536): `<select class="nuListTomSelect">` +
+  `nu_ts_head()` in the head and `nu_ts_foot()` before the page's own script (options may carry `data-sub` = second line); in the form
+  builder `search: true` in the field spec. JS that changes options later calls `sel.tomselect.sync()`.
 
 ### UI patterns (keep them consistent)
 - **(i) tooltip** next to a label (outside the `<label>`, so a click does not toggle a switch):
@@ -497,8 +503,19 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (October 2026, 0.8.462)
-Newest first, details in CHANGELOG.md; last gate 0.8.463 (full test run, pushed, published by the owner as v0.8.463 – creating GitHub releases is refused for this session type, the owner does it by hand):
+## Where things stand (October 2026, 0.8.550)
+Last gate 0.8.550 (full test run, pushed; 0.8.548 / 0.8.549: notes, README, docs-before-gate rule); before it 0.8.547; last GitHub release published by the owner: v0.8.463 (dev/release-notes.md). Newest first,
+details in CHANGELOG.md: 0.8.547 (gate) API clients as a system list (NuListDefs 'apiclients', pseudo form NuAcl::FORM_APICLIENT via the
+admin right apiclients; scopes behind a dropdown button, Popper strategy fixed inside .table-responsive); 0.8.546 custom user fields as a
+system list ('userfields', NuAcl::FORM_USERFIELD); 0.8.545 / 0.8.544 setup wizard field widths (#wizForm rules in nuapp.css), 0.8.543
+wizard language switches at once (action=lang, assets/js/nusetupwizard.js); 0.8.540 Logged-in users: search; 0.8.537 / 0.8.538 form
+browse column filters as labelled selects next to the search (#nuBrowseFilters, max 330 px); 0.8.536 searchable selects for long
+lists – own pages: class nuListTomSelect + nu_ts_head() / nu_ts_foot() (core/nulayout.php, assets/js/nulistselect.js); builder fields:
+spec.search (Tom Select), spec.tip ((i) after the label), spec.trim (blur), spec.pattern + patternErr (red while typing), spec.phKey /
+placeholder (assets/js/nubuilder.js field()); 0.8.534 update page: Install row right below the package title; 0.8.531 builder sections
+as tabs next to the draft bar (.nbBar); 0.8.528 F1 help (NuHelpLink); 0.8.526 (gate); 0.8.523–0.8.525 Custom code (Global JS & CSS,
+page hook, templates, tab names Form JavaScript / Form CSS / Form includes); 0.8.510 / 0.8.492 (gates, not published).
+Before (0.8.462): last gate 0.8.463 (full test run, pushed, published by the owner as v0.8.463 – creating GitHub releases is refused for this session type, the owner does it by hand):
 0.8.464 help in two tabs: Guide / Code reference (docs/nunext-ref.htm, loaded on demand); 0.8.463 (gate, published v0.8.463);
 0.8.462 gap analysis B2 (no own tables from anonymous requests), B5 global hooks, B6 calc in sub-forms, B7 onnuload / onenter, nuFORMdata,
 #USER_NAME#, nuLookupRecord ID, NULL group footer, Compatibility check G1–G8, kit tests; 0.8.461 gap analysis B3 data mode / form type,

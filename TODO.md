@@ -344,7 +344,8 @@
   (subqueries, CASE WHEN EXISTS) not tested on a real server.
 - 0.8.334: forms, procedures, reports, files (tiles / table), items, translations, permission items, prompts, log and e-mail log run on
   list views too – check them once with real data (column choice of the default views, sort, filters, Print). Debug results keep their
-  own message list (selection, delete, auto refresh). Not yet: e-mail templates, SQL builder, dashboards, API clients, logged-in users.
+  own message list (selection, delete, auto refresh). Not yet: e-mail templates, SQL builder, dashboards, logged-in users. 0.8.546 / 0.8.547: custom user fields and API clients run on list
+  views too.
 - Later: form browse lists (key 'form:<id>', columns from the form builder, views per access level).
 
 ## 0.8.328 Tutorial – please verify
