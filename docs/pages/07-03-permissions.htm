@@ -7,6 +7,7 @@
 <li><strong>Ident</strong>: the name used in code, unique (letters, digits and <code>_ . : -</code>). <strong>Group</strong> sorts the items in lists and in the user form.</li>
 <li><strong>Users</strong>: add or remove users directly on the item, or tick the item in the user form – both edit the same assignment (<code>zzzzsys_user_permission</code>, as nuBuilder Forte (4.x)).</li>
 <li><strong>Used in code</strong> lists form code, events and procedures that name the ident in quotes.</li>
+<li><strong>Usage in code</strong> (folded below the description, a click opens it): how to check this item – <code>nuUserHasPermission()</code> in PHP / JavaScript, and in SQL with <code>#USER_PERMISSIONS#</code> or a sub-query (see <a href="#permissions-sql">Permission items in SQL</a>).</li>
 <li>Deleting an item removes it from all users. The globeadmin has every item.</li>
 </ul>
 <p>Checking an item: PHP <code>nuUserHasPermission('ident')</code> or <code>nuGetUserPermissions()</code>, JavaScript <code>nuUserHasPermission('ident')</code> or <code>nuUserPermissions()</code>, SQL / code <code>#USER_PERMISSIONS#</code> (see <a href="#permissions-sql">Permission items in SQL</a>). Check on the server too (Before Save) – a browser check alone can be bypassed.</p>
@@ -14,7 +15,9 @@
 	<h3 id="permissions-sql">Permission items in SQL</h3>
 	<p>Browse SQL, lookups, report and select SQL and access conditions can check an item – the same way as in nuBuilder Forte. <code>#USER_PERMISSIONS#</code> holds the active items of the user, sorted and separated by <code>", "</code> (e.g. <code>CAN_EXPORT, SEE_PRICES</code>). Keep hash variables inside quotes.</p>
 <ul>
-<li><strong>With <code>#USER_PERMISSIONS#</code></strong> (MySQL / MariaDB): <code>REPLACE</code> removes the spaces, otherwise every item after the first is not found.
+<li><strong>With <code>#USER_PERMISSIONS#</code></strong> (MySQL and SQL Server, shown on the permission item's page): commas around the list, so the first and the last item are found too.
+<pre class="doc-code">WHERE ', #USER_PERMISSIONS#,' LIKE '%, SEE_PRICES,%'</pre></li>
+<li><strong>With <code>#USER_PERMISSIONS#</code></strong> with <code>FIND_IN_SET</code> (MySQL / MariaDB only): <code>REPLACE</code> removes the spaces, otherwise every item after the first is not found.
 <pre class="doc-code">WHERE FIND_IN_SET('SEE_PRICES', REPLACE('#USER_PERMISSIONS#', ', ', ',')) &gt; 0</pre></li>
 <li><strong>With the permission tables</strong> (MySQL and SQL Server):
 <pre class="doc-code">WHERE EXISTS (

@@ -88,6 +88,8 @@
 			$$('.nbExisting').forEach(function (e) { e.classList.toggle('d-none', launch || mode() !== 'existing'); });
 			$$('.nbNew').forEach(function (e) { e.classList.toggle('d-none', launch || mode() !== 'new'); });
 			if (mode() === 'new' && !$('#nbColRows').children.length) addCol();
+			var after = $('.nbAfter');                              // User Home button / access levels (0.8.602): not for sub-forms
+			if (after) after.classList.toggle('d-none', $('#nb_type').value === 'subform');
 		}
 		$$('input[name=table_mode]').forEach(function (r) { r.addEventListener('change', applyMode); });
 		$('#nb_type').addEventListener('change', applyMode);
@@ -191,6 +193,8 @@
 					return;
 				}
 			}
+			if ($('#nb_userhome')) d.user_home = $('#nb_userhome').checked;
+			d.levels = $$('.nbLevel:checked').map(function (x) { return x.value; });
 			var btn = form.querySelector('button[type=submit]');
 			btn.disabled = true;
 			api('form.create', d).then(function (r) { window.location.href = 'index.php?p=builder&f=' + encodeURIComponent(r.form_id); })
@@ -204,6 +208,7 @@
 	var S = null;                    // server state: form, tabs, objects, browse, events, php, lookup_php
 	var sel = {kind: 'form'};        // {kind: form|code|tabs|browse|object, id}
 	var RO = !!D.readonly;
+	var PART = !!D.partial;   // nuBuilder Forte's User Home (0.8.605): tabs, objects, events and Before Edit only – no form settings
 	var tableColumns = [];
 
 	var TYPES = ['input', 'select', 'textarea', 'editor', 'lookup', 'calc', 'display', 'subform', 'contentbox', 'html', 'chart', 'word', 'run', 'image'];
@@ -474,16 +479,26 @@
 		}
 		p.appendChild(h('div', {'class': 'alert alert-danger d-none mt-3 mb-0 py-2', id: 'nbPanelError', role: 'alert'}));
 		// the panel's buttons sit in the toolbar at the top, next to "Open form" / "Delete form"
-		var top = $('#nbTopActions');
-		top.innerHTML = '';
+		// toolbar groups (0.8.619): Save next to Undo, other panel buttons (Clone object) before Open form, deleting ones in the row below
+		var top = $('#nbTopActions'), saveSlot = $('#nbTopSave'), danger = $('#nbTopDanger');
+		[top, saveSlot, danger].forEach(function (el) { if (el) el.innerHTML = ''; });
 		curSave = !RO && onSave ? onSave : null;
 		if (!RO && onSave) {
-			(extraButtons || []).forEach(function (b) { top.appendChild(b); });
-			top.appendChild(h('button', {type: 'button', 'class': 'btn nuBtnAct nuBtnSave btn-sm', id: 'nbSave', title: t('save') + ': ' + title + ' (Ctrl+S)', onclick: function () {
+			(extraButtons || []).forEach(function (b) { ((danger && /\bbtn-outline-danger\b/.test(b.className)) ? danger : top).appendChild(b); });
+			(saveSlot || top).appendChild(h('button', {type: 'button', 'class': 'btn nuBtnAct nuBtnSave btn-sm', id: 'nbSave', title: t('save') + ': ' + title + ' (Ctrl+S)', onclick: function () {
 				savePanel().catch(function () { /* error shown */ });
 			}}, [h('i', {'class': 'bi bi-floppy me-1'}), t('save')]));
 		}
+		tbTidy();
 	}
+
+	// empty groups / the empty delete row take no space (and no separator)
+	function tbTidy() {
+		document.querySelectorAll('.nbToolbar .nbTbGroup, .nbToolbar .nbTbDanger').forEach(function (g) {
+			g.classList.toggle('d-none', !g.querySelector('a, button'));
+		});
+	}
+	tbTidy();
 
 	// Ctrl+S / Cmd+S saves the open panel
 	document.addEventListener('keydown', function (e) {
@@ -578,6 +593,10 @@
 			]),
 			section('builder_sec_tabs', [tabsEd.el])
 		]);
+		if (PART) {                                         // User Home: the settings are nuBuilder Forte's (replaced by its updates)
+			$$('input, select, textarea, button', body).forEach(function (e) { if (!tabsEd.el.contains(e)) e.disabled = true; });
+			body.insertBefore(h('div', {'class': 'alert alert-info small py-2', id: 'nbUserHomePart', text: t('builder_userhome_part')}), body.firstChild);
+		}
 		panel(t('builder_sec_form'), body, function () {
 			checkRequired(body);
 			return api('form.save', {fields: collect(body)}).then(function (r) {
@@ -596,6 +615,7 @@
 		var f = S.form;
 		var items = [['sfo_javascript', 'builder_js_both'], ['sfo_edit_javascript', 'builder_js_edit'], ['sfo_browse_javascript', 'builder_js_browse'], ['sfo_style', 'builder_css']]
 			.concat(['BE', 'BS', 'AS', 'BB', 'BD', 'AD'].map(function (x) { return ['php_' + x, 'builder_php_' + x]; }));
+		if (PART) items = [['php_BE', 'builder_php_BE']];  // User Home: only Before Edit is kept by nuBuilder Forte's updates (0.8.605)
 		// buttons in two groups (0.8.566): "JavaScript & CSS" and "PHP" – the button shows the name without its JS / PHP prefix, the full
 		// name is its tooltip and the editor's name
 		var nav = h('div', {'class': 'nbCodeNav mb-2', role: 'tablist'});
@@ -603,7 +623,8 @@
 			groups[key] = h('div', {'class': 'nbCodeBtns d-flex flex-wrap gap-1'});
 			nav.appendChild(h('div', {'class': 'nbCodeGroup', role: 'group', 'aria-label': title}, [h('span', {'class': 'nbCodeGroupLbl', text: title}), groups[key]]));
 		};
-		mk('js', 'JavaScript & CSS'); mk('php', 'PHP');
+		if (!PART) mk('js', 'JavaScript & CSS');            // User Home: no JavaScript / CSS group (0.8.605)
+		mk('php', 'PHP');
 		var areas = h('div', {});
 		items.forEach(function (it, i) {
 			var key = it[0], isPhp = key.indexOf('php_') === 0;
@@ -1074,6 +1095,48 @@
 			}
 			if (d.nuDesigner.height !== undefined) f.sob_all_height = d.nuDesigner.height;
 			saveObject(o, {fields: f}, false);
+		}
+		if (d.nuDesignerBatch) {                               // several objects at once (0.8.606: group move, Arrange panel, keys)
+			var items = [];
+			d.nuDesignerBatch.forEach(function (it) {
+				var ob = objByFieldId(it.id);
+				if (!ob) return;
+				var x = {object_id: ob.zzzzsys_object_id, top: it.top, left: it.left};
+				if (it.width !== undefined) {
+					var wb = it.width;
+					if (ob.sob_all_type === 'lookup') wb -= (ob.sob_lookup_description_width === '' || ob.sob_lookup_description_width == null ? 150 : +ob.sob_lookup_description_width || 0) + 34;
+					x.width = Math.max(10, wb);
+				}
+				if (it.height !== undefined) x.height = it.height;
+				items.push(x);
+			});
+			if (items.length) api('objects.geometry', {items: items}).then(function (r) { load(r); if (sel.kind === 'object') select('object', sel.id); flash(true); })
+				.catch(function (er) { flash(false, er.message); preview(); });
+		}
+		if (d.nuDesignerOrder) {                               // Arrange panel Up / Down: the objects move in the order of their tab (0.8.606)
+			var want = d.nuDesignerOrder.ids.map(objByFieldId).filter(Boolean);
+			if (!want.length) return;
+			var ids = S.objects.map(function (x) { return x.zzzzsys_object_id; });
+			var chosen = want.map(function (x) { return x.zzzzsys_object_id; });
+			var dir = d.nuDesignerOrder.dir < 0 ? -1 : 1;
+			var tabOf = {};
+			S.objects.forEach(function (x) { tabOf[x.zzzzsys_object_id] = x.sob_all_zzzzsys_tab_id; });
+			var order = dir < 0 ? ids.map(function (x, i) { return i; }) : ids.map(function (x, i) { return ids.length - 1 - i; });
+			order.forEach(function (i) {
+				if (chosen.indexOf(ids[i]) < 0) return;
+				for (var j = i + dir; j >= 0 && j < ids.length; j += dir) {
+					if (tabOf[ids[j]] !== tabOf[ids[i]]) continue;          // the next object of the same tab
+					if (chosen.indexOf(ids[j]) >= 0) break;                 // a selected one: keep the block together
+					var tmp = ids[i]; ids[i] = ids[j]; ids[j] = tmp;
+					break;
+				}
+			});
+			api('object.order', {ids: ids}).then(function (r) {
+				load(r);
+				flash(true);
+				// the preview keeps its objects: it reorders them, so Tab and the tab order numbers follow at once (0.8.608)
+				try { frame.contentWindow.postMessage({nuBuilderOrder: S.objects.map(function (x) { return x.sob_all_id; })}, window.location.origin); } catch (e2) { /* ignore */ }
+			}).catch(function (er) { flash(false, er.message); });
 		}
 		if (d.nuDesignerSpan) {                                // grid: width in columns
 			var os = objByFieldId(d.nuDesignerSpan.id);

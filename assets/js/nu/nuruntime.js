@@ -1461,6 +1461,36 @@
 		return $(b);
 	});
 
+	// nuBuilder Forte: nuBrowseRowsPerPageFilter(options) adds a "Rows" select to a browse list – here the list footer has a page size
+	// menu already, so the call replaces the sizes of that menu for this form (0.8.604; Forte's default sizes without options;
+	// insertBeforeTarget / customStyle of Forte's select are not needed). The chosen size stays in the address (?per=).
+	api('nuBrowseRowsPerPageFilter', function (options) {
+		if (N.mode !== 'browse') return;
+		var menu = document.querySelector('.nuLfPerMenu'), tpl = menu && menu.querySelector('a.dropdown-item');
+		if (!tpl) return;
+		var sizes = (Array.isArray(options) && options.length ? options : [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200])
+			.map(Number).filter(function (n) { return n >= 1 && n <= 1000 && Math.floor(n) === n; });
+		if (!sizes.length) return;
+		var act = menu.querySelector('a.dropdown-item.active') || tpl;
+		var cur = Number(new URL(act.getAttribute('href'), location.href).searchParams.get('per')) || 0;
+		if (cur && sizes.indexOf(cur) < 0) sizes.push(cur);
+		sizes = sizes.filter(function (n, i) { return sizes.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+		var text = tpl.textContent, num = text.match(/\d+/);
+		menu.innerHTML = '';
+		sizes.forEach(function (n) {
+			var u = new URL(tpl.getAttribute('href'), location.href);
+			u.searchParams.set('per', String(n));
+			var a = document.createElement('a');
+			a.className = 'dropdown-item' + (n === cur ? ' active' : '');
+			if (n === cur) a.setAttribute('aria-current', 'true');
+			a.href = u.pathname.split('/').pop() + u.search + u.hash;
+			a.textContent = num ? text.replace(num[0], String(n)) : String(n);
+			var li = document.createElement('li');
+			li.appendChild(a);
+			menu.appendChild(li);
+		});
+	});
+
 	api('nuAddActionButton', function (id, value, func, title) {
 		var b = $('<button type="button" class="btn btn-outline-secondary nuActionButton"></button>').attr('id', 'nu' + id + 'Button').attr('title', title || '').html(value);
 		b.on('click', function (e) { if (typeof func === 'function') func(e); else runSnippet(func, e, this); });

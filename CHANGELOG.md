@@ -3,6 +3,106 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.620 – Release gate (0.8.601–0.8.619)
+- Release gate (0.8.601–0.8.619): full test run – smoke, all end-to-end tests and the cross-tests against nuBuilder Forte.
+- Documentation brought up to date: form builder toolbar, README (backup with nuBuilder's zzzzsys_* tables), development notes.
+
+## 0.8.619 – Form builder: cleaner toolbar
+- Form builder: cleaner toolbar – Back | Save · Undo | Clone object · Open form · Change with AI · Data access, groups divided
+  by a thin line; Delete object and Delete form in their own row below. Buttons and icons unchanged; the title wraps on phones.
+
+## 0.8.618 – User Home created when missing
+- User Home is created when the database has none – on installation and with every update, as nuBuilder Forte's installation
+  does: the launch form nuuserhome with its tabs Main and Fast Forms (install/nuuserhome.json, the rows of nuBuilder Forte 4.9's
+  nubuilder4.sql with the same ids). Databases set up by nuBuilder Next's installer had no User Home, so the house icon on the start
+  page, the User Home tile and the wizard's "Add a button to User Home" were missing. An existing User Home is never changed.
+  Database step 0026-user-home; logged as "User Home created".
+
+## 0.8.617 – Help: one-time login link under Sign-in methods
+- Help: the one-time login link has its own section under Authentication and security → Sign-in methods (also a row in the
+  overview table); Configuration keeps a short link to it, the Users page links to it.
+
+## 0.8.616 – Documentation
+- Documentation: permission item page (Usage in code), tutorial lesson on updating (backup with nuBuilder tables), development notes.
+
+## 0.8.615 – Backups: nuBuilder tables
+- Backups: new database choice "nuBuilder tables" = every zzzzsys_* table (nuBuilder Forte's and nuBuilder Next's) – all an update
+  can change; an update never touches the application's own tables. It is the default of the backup before an update (a select
+  next to Install: nuBuilder tables · whole database · none, with an (i) note that application data needs its own backup, e.g. the
+  host's database backup) and is offered in "Back up now" (none · nuBuilder tables · whole database). "nuBuilder Next tables" is no
+  longer offered – it missed changes an update makes to nuBuilder Forte's tables (procedures, settings); older backups keep it.
+- Unattended update (cron.php / REST API): backup auto now means nuBuilder tables without logs; new value nubuilder; sql and
+  sql_nologs stay the whole database.
+
+## 0.8.614 – Permission items: code examples folded
+- Permission item page: the code examples (PHP / JavaScript and SQL) are folded under "Usage in code" – a click shows them.
+
+## 0.8.613 – Permission items: SQL examples
+- Permission item page: besides PHP / JavaScript it shows how to check the item in SQL – with #USER_PERMISSIONS# (MySQL and SQL
+  Server, the globeadmin through #GLOBAL_ACCESS#) and with a sub-query for any user – and links to more examples in the help.
+
+## 0.8.612 – User form: open permission items
+- User form, tab Permission items: a link next to each ident opens that permission item for editing in a new tab (shown with the
+  right to the permission items).
+
+## 0.8.611 – User form: sortable permission items
+- User form, tab Permission items: the list can be sorted – a click on Ident, Group or Description sorts by that column, a second
+  click reverses it; the first column puts the ticked items first. The order is remembered in the browser.
+
+## 0.8.610 – User form: narrower cards
+- User form: the cards Login credentials, Access & roles and Account settings are at most 530 px wide on wide screens.
+
+## 0.8.609 – Form builder: objects resize at once
+- Form builder preview (absolute layout): resizing an object shows the new size at once – run buttons, text areas, editors, HTML
+  objects, charts and lookups grow or shrink with their frame while dragging the handle, with Shift + arrow keys and with Shortest /
+  Tallest / Thinnest / Widest (before, only the dashed frame changed until the preview was reloaded). Labels keep their size.
+
+## 0.8.608 – Form builder: tab order numbers follow Up / Down
+- Form builder preview: Up / Down in the Arrange panel update the tab order numbers (123) and the Tab key order of the preview at
+  once – the objects change places in the page without a reload.
+
+## 0.8.607 – Form builder: movable Arrange panel
+- Form builder preview: the Arrange panel can be dragged by its title row (grip icon) to any place in the preview; the place is kept
+  in the browser, a double-click on the title row puts it back in the top right corner. It stays inside the preview when the window
+  gets smaller.
+
+## 0.8.606 – Form builder: select several objects, Arrange panel
+- Form builder preview (absolute layout): several objects at once, as in nuBuilder Forte's arrange mode – Ctrl/⌘ + click adds or
+  removes an object, dragging on an empty place selects an area, Ctrl/⌘ + A selects all objects of the tab, Esc none; the selection
+  moves together with the mouse or the arrow keys (Alt: 1 px), Shift + arrow keys change the width / height.
+- Arrange panel in the preview: Up / Down (object order), Top / Bottom / Left / Right (align), Vertical / Horizontal (space evenly),
+  Shortest / Tallest / Thinnest / Widest (same size). Several objects are saved in one step (builder action objects.geometry, also in
+  drafts) and undone together.
+- Arrow keys work right after clicking an object in the preview (the preview takes the keyboard focus).
+
+## 0.8.605 – User Home in the form builder, launch form breadcrumb
+- Launch forms: the breadcrumb shows the form's title instead of "New record" (a launch form has no record).
+- User Home (nuuserhome) in the form builder: the builder button shows on User Home; tabs, objects with their events and the Before
+  Edit PHP can be changed (also as a draft) – the parts nuBuilder Forte's updates keep. Form settings, other code, list, layout
+  change and delete stay locked (note in the builder). Help: New form → After creating. e2e userhome_builder.
+
+## 0.8.604 – nuBrowseRowsPerPageFilter
+- nuBuilder Forte's nuBrowseRowsPerPageFilter(options): called in a form's JavaScript, it replaces the page sizes of the browse
+  list footer's menu for that form, e.g. nuBrowseRowsPerPageFilter([25, 50, 100]); without options nuBuilder Forte's sizes
+  (10, 20 … 100, 150, 200). Form browse lists take any page size 1–1000 in ?per= (system lists keep their menu).
+  Function reference entry; e2e rows_per_page_filter, list_footer adjusted.
+
+## 0.8.603 – User Home: house icon and user menu entry
+- Start page: a house icon right of ☆ in the search row opens User Home (nuBuilder Forte's nuuserhome) – for everyone who may open
+  it (the globeadmin, levels with User Home as home form or with rights on it); also an entry "User Home" in the user menu.
+- New form wizard: after "Add a button to User Home" a message says where the button is. e2e user_home extended.
+
+## 0.8.602 – User Home: button for new forms, access levels
+- New form wizard: "After creating" (not for sub-forms) – "Add a button to User Home" (on by default) places a run button for the new
+  form on the tab Fast Forms of nuBuilder Forte's User Home form (nuuserhome), with the same rows as nuBuilder Forte's Fast Form
+  builder, so nuBuilder Forte shows it too; "Access for access levels" gives the ticked levels all rights on the new form, and their
+  users find it on their start page (saved start page layouts get a tile in their first group). Logged.
+- Start page: tile "User Home" (opens nuuserhome). A user whose access level has User Home as home form may open it and finds it
+  on the automatic start page, as in nuBuilder Forte (NuUserHome). Help: New form → After creating. e2e user_home.
+
+## 0.8.601 – Notes: v0.8.600 published
+- Development notes: v0.8.600 published on GitHub (dev/release-notes.md, CLAUDE.md).
+
 ## 0.8.600 – Release gate (0.8.551–0.8.599)
 - Release gate (0.8.551–0.8.599): documentation brought up to date first (README feature list: page forms with draft and versions,
   Insert menu of the code editors, additional access levels, logging out idle users; CLAUDE.md, TODO.md).

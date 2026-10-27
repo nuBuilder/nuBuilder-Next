@@ -50,10 +50,12 @@ if ($meta) {
 	$data['preview_record'] = $preview;
 	$data['hash_catalog'] = NuHash::catalog();
 	$data['db_type'] = $db->type;
-	$data['readonly'] = $meta->isSystem() || !$canSave;
+	$uhPart = $meta->isUserHome();                               // User Home (0.8.605): tabs, objects, events, Before Edit – no form settings
+	$data['readonly'] = ($meta->isSystem() && !$uhPart) || !$canSave;
+	$data['partial'] = $uhPart;
 	$data['globeadmin'] = !empty(NuAuth::user()['globeadmin']);      // tabs: only the globeadmin renames / deletes existing ones
 	// form drafts (0.8.386): the open draft and the rules; ?draft=1 opens the builder on the draft
-	$openDraft = $meta->isSystem() ? null : NuFormDraft::openFor($meta->id);
+	$openDraft = $meta->isSystem() && !$uhPart ? null : NuFormDraft::openFor($meta->id);
 	$data['draft'] = NuFormDraft::info($openDraft);
 	$data['draft_mode'] = $openDraft !== null && ($_GET['draft'] ?? '') === '1';
 	$data['draft_policy'] = ['required' => (bool)NuSecurity::get('form_drafts_required'), 'can_publish' => NuFormDraft::canPublish(),
@@ -185,6 +187,36 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							</div>
 						</div>
 					</div>
+					<?php // after creating (0.8.602): run button on nuBuilder Forte's User Home, rights + start page tile for access levels
+					$uhOk = NuUserHome::available();
+					$nbLevels = NuAcl::can(NuAcl::FORM_ACCESS, 'save') ? nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') : null;
+					if ($uhOk || $nbLevels !== null): ?>
+					<fieldset class="nbAfter border-top mt-4 pt-3">
+						<legend class="form-label fs-6 fw-semibold mb-2"><?= h(t('builder_after')) ?></legend>
+						<?php if ($uhOk): ?>
+						<div class="form-check form-switch mb-3">
+							<input class="form-check-input" type="checkbox" role="switch" id="nb_userhome" value="1" checked>
+							<label class="form-check-label" for="nb_userhome"><?= h(t('builder_userhome')) ?></label>
+							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('builder_userhome_tip')) ?>" title="<?= h(t('builder_userhome_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						</div>
+						<?php endif; ?>
+						<?php if ($nbLevels !== null): ?>
+						<div class="mb-1"><span class="form-label"><?= h(t('builder_levels')) ?></span><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('builder_levels_tip')) ?>" title="<?= h(t('builder_levels_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<?php if (!$nbLevels): ?>
+							<div class="small text-body-secondary"><?= h(t('builder_levels_none')) ?></div>
+						<?php else: ?>
+						<div class="nbLevels border rounded px-3 py-2" id="nbLevels">
+							<?php foreach ($nbLevels as $lv): $lid = 'nb_lv_' . substr(md5((string)$lv['zzzzsys_access_id']), 0, 10); ?>
+							<div class="form-check">
+								<input class="form-check-input nbLevel" type="checkbox" id="<?= h($lid) ?>" value="<?= h((string)$lv['zzzzsys_access_id']) ?>">
+								<label class="form-check-label" for="<?= h($lid) ?>"><?= h((string)$lv['sal_code']) ?><?php if ((string)$lv['sal_description'] !== ''): ?> <span class="text-body-secondary">– <?= h((string)$lv['sal_description']) ?></span><?php endif; ?></label>
+							</div>
+							<?php endforeach; ?>
+						</div>
+						<?php endif; ?>
+						<?php endif; ?>
+					</fieldset>
+					<?php endif; ?>
 					<div class="alert alert-danger mt-3 mb-0 d-none" id="nbNewError" role="alert"></div>
 				</div>
 				<div class="card-footer d-flex justify-content-end gap-2">
@@ -197,22 +229,29 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 <?php else: ?>
 	<?= $crumb ?>
 	<div class="nuTitleBar mb-3">
-		<h1 class="h4 mb-0 d-flex align-items-center gap-2"><i class="bi bi-tools"></i><span id="nbTitle"><?= h($meta->description()) ?></span>
+		<h1 class="h4 mb-0 d-flex flex-wrap align-items-center gap-2"><i class="bi bi-tools"></i><span id="nbTitle"><?= h($meta->description()) ?></span>
 			<span class="badge bg-secondary-subtle text-secondary-emphasis fs-6 fw-normal" id="nbType"><?= h(t('form_type_' . $meta->type())) ?></span>
-			<?php if (!$meta->isSystem()): ?><span class="badge fs-6 fw-normal nbModePill" id="nbModePill"></span><?php endif; ?></h1>
-		<?php if ($meta->isSystem()): ?><span class="badge text-bg-warning"><i class="bi bi-lock me-1"></i><?= h(t('builder_readonly_system')) ?></span><?php endif; ?>
-		<div class="d-flex flex-wrap gap-2 nbTitleButtons"><?php // own row below the title (0.8.447) ?>
-		<a class="btn btn-sm nuBtnAct" href="<?= h(nu_url('forms')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
-		<div class="d-flex flex-wrap gap-2 nbTopActions" id="nbTopActions"></div>
-		<?php if (!$meta->isSystem() && $canSave): ?>
-			<button class="btn btn-sm btn-outline-secondary" type="button" id="nbUndo" title="<?= h(t('builder_undo_hint')) ?>"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('builder_undo')) ?></button>
-		<?php endif; ?>
-		<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('form', ['f' => $meta->id])) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('builder_open_form')) ?></a>
-		<?php if (!$meta->isSystem()): ?><a class="btn btn-sm btn-outline-secondary" id="nbAi" href="<?= h(nu_url('formai', ['f' => $meta->id])) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_change')) ?></a><?php endif; ?>
-		<?php if (!$meta->isSystem() && $meta->type() !== 'page'): ?><a class="btn btn-sm btn-outline-secondary" id="nbDataAccess" href="<?= h(nu_url('dataaccess', ['f' => $meta->id])) ?>"><i class="bi bi-shield-lock me-1"></i><?= h(t('da_title')) ?></a><?php endif; ?>
-		<?php if (!$meta->isSystem() && $canDeleteForm): ?>
-			<button class="btn btn-sm btn-outline-danger" type="button" id="nbDeleteForm"><i class="bi bi-trash me-1"></i><?= h(t('builder_delete_form')) ?></button>
-		<?php endif; ?>
+			<?php if (!$meta->isSystem() || $meta->isUserHome()): ?><span class="badge fs-6 fw-normal nbModePill" id="nbModePill"></span><?php endif; ?></h1>
+		<?php if ($meta->isUserHome()): ?><span class="badge text-bg-info" id="nbUserHomeNote" title="<?= h(t('builder_userhome_part')) ?>"><i class="bi bi-house-door me-1"></i><?= h(t('builder_userhome_badge')) ?></span>
+		<?php elseif ($meta->isSystem()): ?><span class="badge text-bg-warning"><i class="bi bi-lock me-1"></i><?= h(t('builder_readonly_system')) ?></span><?php endif; ?>
+		<?php // toolbar (0.8.619): Back | Save · Undo | Clone object · Open form · AI · Data access – the deleting buttons in their own row below;
+		// the open panel's buttons are put into #nbTopSave / #nbTopActions / #nbTopDanger by nubuilder.js (panel()) ?>
+		<div class="nbToolbar">
+			<div class="nbTbRow">
+				<div class="nbTbGroup"><a class="btn btn-sm nuBtnAct" href="<?= h(nu_url('forms')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a></div>
+				<div class="nbTbGroup" id="nbTopSaveGroup"><span class="nbTbSlot" id="nbTopSave"></span>
+				<?php if ((!$meta->isSystem() || $meta->isUserHome()) && $canSave): ?>
+					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbUndo" title="<?= h(t('builder_undo_hint')) ?>"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('builder_undo')) ?></button>
+				<?php endif; ?></div>
+				<div class="nbTbGroup"><span class="nbTbSlot nbTopActions" id="nbTopActions"></span>
+				<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('form', ['f' => $meta->id])) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('builder_open_form')) ?></a>
+				<?php if (!$meta->isSystem()): ?><a class="btn btn-sm btn-outline-secondary" id="nbAi" href="<?= h(nu_url('formai', ['f' => $meta->id])) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_change')) ?></a><?php endif; ?>
+				<?php if (!$meta->isSystem() && $meta->type() !== 'page'): ?><a class="btn btn-sm btn-outline-secondary" id="nbDataAccess" href="<?= h(nu_url('dataaccess', ['f' => $meta->id])) ?>"><i class="bi bi-shield-lock me-1"></i><?= h(t('da_title')) ?></a><?php endif; ?></div>
+			</div>
+			<div class="nbTbRow nbTbDanger" id="nbTopDangerRow"><span class="nbTbSlot" id="nbTopDanger"></span>
+			<?php if (!$meta->isSystem() && $canDeleteForm): ?>
+				<button class="btn btn-sm btn-outline-danger" type="button" id="nbDeleteForm"><i class="bi bi-trash me-1"></i><?= h(t('builder_delete_form')) ?></button>
+			<?php endif; ?></div>
 		</div>
 	</div>
 
@@ -226,7 +265,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="code"><i class="bi bi-code-slash me-1"></i><?= h(t('builder_sec_code')) ?></button></li>
 			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="history"><i class="bi bi-clock-history me-1"></i><?= h(t('builder_sec_history')) ?></button></li>
 		</ul>
-		<?php if (!$meta->isSystem()): ?><div class="nbDraftBar" id="nbDraftBar" hidden></div><?php endif; ?>
+		<?php if (!$meta->isSystem() || $meta->isUserHome()): ?><div class="nbDraftBar" id="nbDraftBar" hidden></div><?php endif; ?>
 	</div>
 	<div class="row g-3 nbWorkspace" id="nbWorkspace" data-nb-view="objects">
 		<div class="col-xl-3 col-lg-4 nbObjectsCol" id="nbObjectsCol">
@@ -235,7 +274,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 					<div class="d-flex align-items-center justify-content-between mb-2">
 						<h2 class="h6 mb-0"><?= h(t('builder_objects')) ?> <span class="badge text-bg-secondary" id="nbObjCount">0</span></h2>
 						<div class="dropdown">
-							<button class="btn btn-sm nuAddBtn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="nbAddObject"<?= $meta->isSystem() || !$canSave ? ' disabled' : '' ?>><i class="bi bi-plus-lg"></i> <?= h(t('add')) ?></button>
+							<button class="btn btn-sm nuAddBtn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="nbAddObject"<?= ($meta->isSystem() && !$meta->isUserHome()) || !$canSave ? ' disabled' : '' ?>><i class="bi bi-plus-lg"></i> <?= h(t('add')) ?></button>
 							<ul class="dropdown-menu dropdown-menu-end nbAddMenu"></ul>
 						</div>
 					</div>
@@ -285,7 +324,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbPreviewReload" title="<?= h(t('builder_reload')) ?>" aria-label="<?= h(t('builder_reload')) ?>"><i class="bi bi-arrow-clockwise"></i></button>
 				</div>
 				<div class="nbPreviewBody" id="nbPreviewBody">
-					<?php if (!$meta->isSystem() && $canSave): ?><div class="small text-body-secondary px-3 py-1 border-bottom" id="nbDesignerHint"><i class="bi bi-arrows-move me-1"></i><?= h(t('builder_designer_hint')) ?></div><?php endif; ?>
+					<?php if ((!$meta->isSystem() || $meta->isUserHome()) && $canSave): ?><div class="small text-body-secondary px-3 py-1 border-bottom" id="nbDesignerHint"><i class="bi bi-arrows-move me-1"></i><?= h(t('builder_designer_hint')) ?></div><?php endif; ?>
 					<iframe class="nbPreview" id="nbPreview" title="<?= h(t('builder_preview')) ?>"></iframe>
 				</div>
 			</div>

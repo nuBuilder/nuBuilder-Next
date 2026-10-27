@@ -1,0 +1,47 @@
+{
+    "_comment": "nuBuilder Forte 4.9 User Home (launch form nuuserhome) as in its nubuilder4.sql – created by NuUserHome::ensure() when missing (installer, every update)",
+    "form": {
+        "zzzzsys_form_id": "nuuserhome",
+        "sfo_type": "launch",
+        "sfo_code": "nuuserhome",
+        "sfo_description": "User Home",
+        "sfo_group": "nubuilder",
+        "sfo_status": "1",
+        "sfo_breadcrumb_title": null,
+        "sfo_table": "",
+        "sfo_primary_key": "",
+        "sfo_browse_redirect_form_id": "",
+        "sfo_browse_target": null,
+        "sfo_browse_row_height": 0,
+        "sfo_browse_rows_per_page": 0,
+        "sfo_browse_title_multiline": "0",
+        "sfo_browse_autoresize_columns": null,
+        "sfo_browse_sql": "",
+        "sfo_javascript": "nuUserHomeCheckNoObjectsOnForm();\n\nfunction openNuObject() {\n\n    $('#nuMessageDiv').remove();\n    nuPopup('nuobject', '-1', window.nuFORM.getCurrent().form_id);\n\n}\n\nfunction nuUserHomeCheckNoObjectsOnForm() {\n    if (nuSERVERRESPONSE.objects.length === 0 && window.global_access) {\n        const message = `${nuTranslate('There are currently no objects on this form.')}&nbsp;&nbsp;\n            <a href=\"javascript:openNuObject();\">${nuTranslate('Start adding some')}</a>.`;\n        \n        $.nuInfoBar.info(message, {autoClose : false, closeOnClick : true});\n    }\n}",
+        "sfo_browse_javascript": null,
+        "sfo_edit_javascript": null,
+        "sfo_style": null,
+        "sfo_mobile_view": null,
+        "sfo_json": null
+    },
+    "tabs": [
+        {
+            "zzzzsys_tab_id": "nufastforms",
+            "syt_zzzzsys_form_id": "nuuserhome",
+            "syt_title": "Fast Forms",
+            "syt_order": -1,
+            "syt_help": null,
+            "syt_access": null,
+            "syt_json": null
+        },
+        {
+            "zzzzsys_tab_id": "nu5bad6cb374207e3",
+            "syt_zzzzsys_form_id": "nuuserhome",
+            "syt_title": "Main",
+            "syt_order": 20,
+            "syt_help": "",
+            "syt_access": null,
+            "syt_json": null
+        }
+    ]
+}

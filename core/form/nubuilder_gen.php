@@ -98,7 +98,36 @@ final class NuBuilderGen
 			throw $e;
 		}
 		if ($type === 'page') NuPage::save($formId, NuPage::defaults());    // settings row of a page form (0.8.387)
+		// after creating (0.8.602): a run button on nuBuilder Forte's User Home, access + start page tile for chosen access levels
+		if ($type !== 'subform') {
+			if (!empty($in['user_home']) && NuUserHome::addButton($formId, $desc, $type)) nu_flash('success', t('builder_userhome_done', $desc), true);   // 0.8.603
+			$levels = self::grantLevels($formId, is_array($in['levels'] ?? null) ? $in['levels'] : []);
+			if ($levels) NuHome::addFormTile($levels, $formId, $desc, (string)(NuAuth::currentRaw()['login'] ?? ''));
+		}
 		return $formId;
+	}
+
+	/**
+	 * All rights on the new form for these access levels (rows of zzzzsys_access_form as the access level form writes them). Needs
+	 * the right to change access levels; with "Only the globeadmin grants admin rights" not for a level the user holds himself.
+	 * @return list<string> the levels that got the rights
+	 */
+	private static function grantLevels(string $formId, array $levels): array
+	{
+		if (!$levels || !NuAcl::can(NuAcl::FORM_ACCESS, 'save')) return [];
+		$db = nu_db();
+		$known = array_column($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+		$out = [];
+		foreach (array_unique(array_map('strval', $levels)) as $acc) {
+			if (!isset($known[$acc]) || (NuSecurity::restricted() && NuUserAccess::holds($acc))) continue;
+			if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ? AND slf_zzzzsys_form_id = ?', [$acc, $formId])) { $out[] = $acc; continue; }
+			$row = ['zzzzsys_access_form_id' => nu_id(), 'slf_zzzzsys_access_id' => $acc, 'slf_zzzzsys_form_id' => $formId];
+			foreach (NuAcl::RIGHTS as $col) $row[$col] = '1';
+			$db->insert('zzzzsys_access_form', $row);
+			NuLog::write('form_access_granted', 'zzzzsys_access', $acc, ['form' => $formId, 'access' => (string)$known[$acc]]);
+			$out[] = $acc;
+		}
+		return $out;
 	}
 
 	/** Checks name, primary key and column grid of a new table. */

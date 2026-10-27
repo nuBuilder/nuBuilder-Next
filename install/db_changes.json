@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.600",
+    "version": "0.8.620",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -323,6 +323,22 @@
                     "table": "zzzzsys_nunext_user_access",
                     "kind": "table",
                     "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0026-user-home",
+            "description": "nuBuilder Forte's User Home (launch form nuuserhome with the tabs Main and Fast Forms) when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_form",
+                    "kind": "data",
+                    "what": "form nuuserhome (User Home) added when missing – also checked with every later update"
+                },
+                {
+                    "table": "zzzzsys_tab",
+                    "kind": "data",
+                    "what": "its tabs Main and Fast Forms"
                 }
             ]
         }

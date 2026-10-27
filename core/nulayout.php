@@ -172,6 +172,9 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php else: ?>
 						<li><a class="dropdown-item" href="<?= h(nu_url('security')) ?>"><i class="bi bi-shield-lock me-2"></i><?= h(t('sec_title')) ?></a></li>
 						<?php endif; ?>
+						<?php if (NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) ?>
+							<li><a class="dropdown-item" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" id="nuMenuUserHome"><i class="bi bi-house-door me-2"></i><?= h(t('home_userhome')) ?></a></li>
+						<?php endif; ?>
 						<?php if ($u['globeadmin'] && NuHome::globeadminForm() !== null): // $nuConfigGlobeadminHome opens a form – the tile page stays reachable here ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('home', ['tiles' => '1'])) ?>"><i class="bi bi-grid me-2"></i><?= h(t('home_tiles_link')) ?></a></li>
 						<?php endif; ?>
@@ -431,10 +434,12 @@ function nu_page_minimal(string $title, string $detail = '', bool $withHome = fa
 /** Page sizes of the footer's menu (0.8.437); a list reads the choice with nu_per_param(). */
 const NU_PER_MENU = [10, 25, 50, 100, 250, 500];
 
-/** ?per= of a list when it is one of NU_PER_MENU, otherwise 0 (= the list's own page size). */
-function nu_per_param(): int
+/** ?per= of a list when it is one of NU_PER_MENU, otherwise 0 (= the list's own page size). $any: any size 1–1000 (form browse lists,
+ *  whose menu nuBrowseRowsPerPageFilter() may change, 0.8.604). */
+function nu_per_param(bool $any = false): int
 {
 	$v = (int)($_GET['per'] ?? 0);
+	if ($any) return $v >= 1 && $v <= 1000 ? $v : 0;
 	return in_array($v, NU_PER_MENU, true) ? $v : 0;
 }
 

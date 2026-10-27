@@ -165,6 +165,8 @@ final class NuFormMeta
 	public function code(): string        { return (string)$this->form['sfo_code']; }
 	public function description(): string { return (string)$this->form['sfo_description']; }
 	public function isSystem(): bool      { return str_starts_with($this->id, 'nu'); }
+	/** nuBuilder Forte's User Home (0.8.605): a system form whose tabs, objects and Before Edit belong to the application – the builder edits those. */
+	public function isUserHome(): bool    { return $this->id === NuUserHome::FORM; }
 	public function hasBrowse(): bool     { return in_array($this->type(), ['browse', 'browseedit'], true); }
 	public function hasEdit(): bool       { return in_array($this->type(), ['edit', 'browseedit', 'launch'], true); }
 	public function isPage(): bool        { return $this->type() === 'page'; }   // form type "page" (0.8.387, core/nupage.php)
@@ -214,6 +216,7 @@ final class NuFormMeta
 	public function breadcrumb(bool $new, array $hash): string
 	{
 		$parts = explode('|', (string)$this->form['sfo_breadcrumb_title']);
+		if ($this->type() === 'launch') $new = false;        // a launch form has no record: its title, not "New record" (0.8.605)
 		$t     = $new ? ($parts[1] ?? '') : $parts[0];
 		$t     = trim(NuHash::replace($t, $hash));
 		if ($t === '' || preg_match('/^#[^#]+#$/', $t)) $t = $new ? t('form_new_record') : $this->description();

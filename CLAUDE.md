@@ -212,6 +212,14 @@ core/nuuseraccess.php NuUserAccess (0.8.585): additional access levels per user 
                      dashboards), NuAuth::levels2fa (2FA when any level asks); main level only: start page layout, list views, field
                      access by level, #ACCESS_LEVEL_ID#; user form rows xa_acc[] / xa_until[], access level Users card badge, delete
                      blocked while in use, compat G10; e2e user_extra_access. New code that checks rights by access level uses levels()
+core/nuuserhome.php  NuUserHome (0.8.602): nuBuilder Forte's User Home (launch form nuuserhome) – New form wizard "After creating"
+                     (NuBuilderGen::create: user_home → addButton() = Forte's nuFFInsertRunButton rows on tab nufastforms; levels →
+                     grantLevels() all rights + NuHome::addFormTile on saved user layouts), start page tile 'userhome', NuAcl: view when
+                     a level has it as home form (isHomeOf), NuHome::autoLayout shows it; e2e user_home
+                     ensure() (0.8.618): creates the form + tabs Main / Fast Forms from install/nuuserhome.json (Forte 4.9's rows) when
+                     missing – step 0026 and every NuMigrate::run (installation, each update); e2e user_home_ensure
+                     builder (0.8.605): NuFormMeta::isUserHome() – tabs, objects, events, Before Edit editable (also drafts), form
+                     settings / other code / browse / delete refused in pages/nubuilderapi.php, D.partial in nubuilder.js; e2e userhome_builder
 core/nuupload.php    NuUpload (0.8.459): uploads of nuBuilder's file objects with target "File System" (sob_input_file_target 1) with Uppy –
                      NuRender::isUppy / uppyField (div + the object's HTML with nuBuilder's replacements #uppy_div# …, no data-nu-field: never
                      saved / validated / column proposal), Uppy = library pack slot 'uppy' (NuLibs::uppy(), uppyVersion() = core version;
@@ -279,7 +287,7 @@ core/nuadmin.php     admin roles (NuAdmin::RIGHTS, can/require) · core/numail.p
 core/nureportapi.php reports through the REST API: list, run (params → hash), PDF files + public token links (?p=reportfile), e-mail, jobs
 core/nuupdate.php    update page logic: inspect/install/backup/rollback/maintenance, migrations (steps(): '0001-own-tables',
                      '0002-report-tables', '0003-translate-table', '0004-cloner-tables', '0005-setting-primary-db', '0007-drop-vendor-layout',
-                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages', '0017-presence', '0018-home-hook-codes' (0.8.438: procedures nunext_home → nu_home), '0019-user-fields' (0.8.454), '0020-upload-template' (0.8.459), '0021-recent' (0.8.460), '0022-upload-template-folder' (0.8.478), '0023-retire-tfm' (0.8.479), '0024-object-access' (0.8.480) – add new steps at the end; 0006 was removed with the baseline;
+                     '0008-admin-roles', '0009-list-views', '0010-home-layouts', '0011-audit', '0012-notifications', '0013-setting-home-hooks', '0014-database-origin', '0015-form-drafts', '0016-pages', '0017-presence', '0018-home-hook-codes' (0.8.438: procedures nunext_home → nu_home), '0019-user-fields' (0.8.454), '0020-upload-template' (0.8.459), '0021-recent' (0.8.460), '0022-upload-template-folder' (0.8.478), '0023-retire-tfm' (0.8.479), '0024-object-access' (0.8.480), '0025-user-access' (0.8.585), '0026-user-home' (0.8.618; NuUserHome::ensure() also after the steps of every run) – add new steps at the end; 0006 was removed with the baseline;
                      every step needs an entry in NuMigrate::CHANGES – tables + kind + what, release.py stops otherwise), change history,
                      SQL dumps in backups · core/nugithub.php NuGitHub (0.8.374): newest release of a GitHub repository
                      (setting 'github_update', daily look: cron or start / update page of users with the update right, Update tile badge), download into _update/ (only signed kept),
@@ -307,6 +315,11 @@ core/form/*.php      form runtime (meta, render, record, browse, hash variables,
                      NuPageContextV<n> for older supported versions (contextClass), apiInfo() → manifest page_api (release.py), scan() /
                      check() / report() → update page "Pages" card, builder, forms list badge. Never remove or change a $nu method within a
                      version: add, deprecate, or raise NuPageContext::API_VERSION with an adapter
+                     builder preview (0.8.606): assets/js/nu/nudesigner.js – several objects (absolute layout: Ctrl+click, box, Ctrl+A,
+                     arrows / Shift+arrows; keydown in capture, window.focus() on pointerdown), Arrange panel .nuArrange (labels data-labels,
+                     texts dsg_*) → postMessage nuDesignerBatch (api objects.geometry, live + draft) / nuDesignerOrder (object.order); e2e builder_arrange
+                     (0.8.607–0.8.609: panel dragged by its head, place in localStorage; builder answers nuBuilderOrder after object.order →
+                     reorder() of the preview DOM; setSize() changes px width / height of the wrapper's direct children, not labels)
                      page drafts (0.8.599): core/nupageversion.php NuPageVersion – <folder>/_draft/ (copy of the code entries; never _data,
                      _draft, _versions, secrets.php, dot names), viewing() = designer + ?nudraft=1|0 in the session (NuPage::run / asset use
                      file($code, true) / the draft folder; bar #nuPageDraftBar before </body>), publish / restore move the replaced files to
@@ -349,7 +362,8 @@ core/nuxlsx.php      NuXlsx / NuXlsxSheet / NuXlsxCell (0.8.398): own .xlsx writ
                      styles, freeze / autofilter / merge / widths; list exports (NuListExport::writeXlsx, ?export=xlsx, ?cols= = visible
                      columns of the print view), form browse lists (formexport&fmt=xlsx), $nu->excel(), procedures (new NuXlsx). Export menu
                      of lists and form browse lists: NuListExport::buttons() / menu() (HTML page, CSV …, Excel; #nuPrintButton = the group)
-core/nusqldump.php   SQL dump for backups (uses the cloner's export) · core/nusample.php sample application (VERSION constant)
+core/nusqldump.php   SQL dump for backups (uses the cloner's export; scopes none / nubuilder = all zzzzsys_* tables, the default before an
+                     update / nunext (older backups only) / all, 0.8.615) · core/nusample.php sample application (VERSION constant)
 pages/nu*.php        one file per route; POST → action → nu_flash + nu_redirect (post/redirect/get); render with
                      nu_layout_start(title, active) … nu_layout_end('<script src="' . nu_asset('assets/js/x.js') . '"></script>')
 assets/js/nuapp.js   global behaviour: leave guard (form[data-nu-guard]), confirm dialogs (form[data-confirm]), tooltips, pager
@@ -524,8 +538,16 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (October 2026, 0.8.600)
-Last gate 0.8.600 (full test run, pushed: 0.8.551–0.8.599 in one push). Newest first, details in CHANGELOG.md: 0.8.599 page form drafts
+## Where things stand (October 2026, 0.8.620)
+Last gate 0.8.620 (full test run, pushed: 0.8.601–0.8.619 in one push). Newest first, details in CHANGELOG.md: 0.8.619 builder toolbar .nbToolbar (groups #nbTopSave / #nbTopActions, delete row #nbTopDanger, tbTidy()); 0.8.618 User Home created when missing (NuUserHome::ensure, install/nuuserhome.json, step 0026 + every NuMigrate::run; e2e user_home_ensure); 0.8.617 help: one-time login link moved to Sign-in methods (#logintoken); 0.8.615 backups: SQL scope 'nubuilder' = every zzzzsys_* table
+(NuSqlDump::tables, default of the backup before an update – select #updBkDb name backup_db; Back up now none / nubuilder / all; scope
+'nunext' no longer offered, older backups keep it; unattended backup auto = nubuilder; e2e backup_scope); 0.8.613 / 0.8.614 permission
+item page: SQL examples (#USER_PERMISSIONS# with commas + #GLOBAL_ACCESS#, EXISTS sub-query) folded in details#permUsage (e2e
+perm_sql_hint); 0.8.611 / 0.8.612 user form permission items: sortable columns (th.userPermSort, localStorage nunext-user-perm-sort),
+link to the item (a.userPermOpen); 0.8.610 user form right-hand cards max 530 px; 0.8.606–0.8.609 builder preview: several objects,
+Arrange panel (movable, nunext-arrange-pos), tab order numbers follow Up / Down (nuBuilderOrder → reorder()), controls resize with
+their wrapper (setSize); 0.8.604 nuBrowseRowsPerPageFilter; 0.8.602–0.8.605 User Home (NuUserHome, see Architecture); 0.8.601 notes.
+Before: gate 0.8.600 (full test run, pushed: 0.8.551–0.8.599 in one push; published by the owner as v0.8.600 – dev/release-notes.md). Newest first, details in CHANGELOG.md: 0.8.599 page form drafts
 and versions (NuPageVersion); 0.8.597 / 0.8.598 custom user field form wider, shorter "Edited by" options; 0.8.596 "nuBuilder Forte"
 naming (rule above); 0.8.595 Logged-in users: log out idle users; 0.8.592–0.8.594 code editors: toolbar on the left, Insert menu with
 the documented functions + suggestions while typing (nucodetools.js, ?p=fnlist); 0.8.585–0.8.591 user form: additional access levels
@@ -535,7 +557,7 @@ fields as a card; 0.8.583 / 0.8.584 access level Users filter, permission items 
 0.8.575 Settings open on Used, status menu in the forms list; 0.8.574 sourceMappingURL comments removed; 0.8.571–0.8.573 Custom code
 renamed to Global code (?p=globalcode); 0.8.562–0.8.569 object menu on right-click, form builder views / splitter, nuBuilder permalinks,
 absolute layout stacking; 0.8.552–0.8.561 user form and permission items, side bar pin, object icons, run button HTML labels.
-Before: last gate 0.8.550 (full test run, pushed; 0.8.548 / 0.8.549: notes, README, docs-before-gate rule); before it 0.8.547; last GitHub release published by the owner: v0.8.550 (dev/release-notes.md). Newest first,
+Before: last gate 0.8.550 (full test run, pushed; 0.8.548 / 0.8.549: notes, README, docs-before-gate rule); before it 0.8.547; last GitHub release published by the owner: v0.8.550. Newest first,
 details in CHANGELOG.md: 0.8.547 (gate) API clients as a system list (NuListDefs 'apiclients', pseudo form NuAcl::FORM_APICLIENT via the
 admin right apiclients; scopes behind a dropdown button, Popper strategy fixed inside .table-responsive); 0.8.546 custom user fields as a
 system list ('userfields', NuAcl::FORM_USERFIELD); 0.8.545 / 0.8.544 setup wizard field widths (#wizForm rules in nuapp.css), 0.8.543

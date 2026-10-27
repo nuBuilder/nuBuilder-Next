@@ -6,6 +6,14 @@
 <li><strong>Existing table</strong>: pick the table (type part of its name to search the list) and primary key – objects and list columns are generated from its columns.</li>
 <li><strong>New table</strong>: enter columns (name, label, type, length, required). The table gets a nuBuilder-Forte-style text primary key and optionally audit columns (created/updated at/by), filled on every save, and/or nuBuilder Forte's record log <code>&lt;table&gt;_nulog</code> (see below). <i class="bi bi-x-circle"></i> crosses a column out – it is not created; <i class="bi bi-arrow-counterclockwise"></i> brings it back.</li>
 </ul>
+	<p id="form-new-after"><strong>After creating</strong> (not for sub-forms):</p>
+	<ul>
+<li><strong>Add a button to User Home</strong> (on by default): as nuBuilder Forte's Fast Form builder does, a run button for the new form is placed on the tab <em>Fast Forms</em> of nuBuilder Forte's launch form <em>User Home</em> (<code>nuuserhome</code>) – nuBuilder Forte shows the same button; a message after creating says so. <em>User Home</em> opens from the house icon next to ☆ in the start page's search row, the user menu and the start page tile <em>User Home</em>.</li>
+<li><strong>Access for access levels</strong> (with the right to change access levels): the levels you tick get all rights on the new form, and their users find it on their start page – on the automatic one at once, on a saved start page layout as a new tile in its first group.</li>
+<li><strong>Changing User Home</strong>: the form builder button (on the form, or Forms → User Home) opens it like other forms – tabs, objects with their events and the <em>Before Edit</em> PHP can be changed, also as a draft. nuBuilder Forte's updates keep exactly these parts; its form settings, other code and list stay read-only.</li>
+<li><strong>A database without User Home</strong> gets it on installation and with every update – nuBuilder Forte's launch form <code>nuuserhome</code> with its tabs <em>Main</em> and <em>Fast Forms</em>, as nuBuilder Forte's installation creates it. An existing User Home is never changed.</li>
+<li>A user whose access level has <em>User Home</em> as its home form may open it and finds it on the automatic start page, as in nuBuilder Forte.</li>
+</ul>
 	<div class="doc-sub" data-acl="nuform">
 <h3 id="form-ai">Forms with AI</h3>
 <p>A form can be created or changed with any AI chat (Claude, ChatGPT …) – no API key, nothing is sent from nuBuilder Next: <em>Forms → With AI</em> (also in the new-form page) for a new form, <em>Change with AI</em> in the form builder for an existing one.</p>

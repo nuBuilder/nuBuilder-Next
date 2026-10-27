@@ -68,6 +68,8 @@ final class NuAcl
 			return self::$cache[$key] = $r;
 		}
 		$r = self::rightsOf($u, $formId);
+		// nuBuilder Forte's User Home (0.8.602): open for a user whose access level has it as home form – a launch form without data
+		if (!$r['view'] && $formId === NuUserHome::FORM && NuUserHome::isHomeOf($u)) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
 		// admin role (0.8.323): rights on nuBuilder's system forms on top of the access level (core/nuadmin.php)
 		$lvl = class_exists('NuAdmin') ? NuAdmin::formLevel($formId) : '';
 		if ($lvl === 'change') $r = array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true) + self::FREE;

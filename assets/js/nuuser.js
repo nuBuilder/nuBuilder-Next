@@ -68,6 +68,39 @@
 		filter.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });   // do not submit the user form
 	}
 	if (group) group.addEventListener('change', apply);
+	// sortable columns (0.8.611): ident, group, description, or the selected items first; ties by group and ident; kept per browser
+	var SORT_KEY = 'nunext-user-perm-sort', tbody = box.querySelector('.userPermTable tbody');
+	function keyOf(it, col) {
+		if (col === 'sel') return it.querySelector('input[name="perm[]"]').checked ? '0' : '1';
+		if (col === 'ident') return it.querySelector('.userPermIdent label').textContent;
+		if (col === 'group') return it.getAttribute('data-group');
+		var d = it.querySelector('.userPermDescCell');
+		return d ? d.textContent.trim() : '';
+	}
+	function sortBy(col, dir) {
+		if (!tbody) return;
+		var th = box.querySelector('th.userPermSort[data-sort="' + col + '"]');
+		if (!th) return;
+		var cmp = function (a, b) { return a.localeCompare(b, undefined, {sensitivity: 'base', numeric: true}); };
+		var sorted = items.slice().sort(function (a, b) {
+			var r = cmp(keyOf(a, col), keyOf(b, col)) * (dir === 'desc' ? -1 : 1);
+			return r || cmp(keyOf(a, 'group'), keyOf(b, 'group')) || cmp(keyOf(a, 'ident'), keyOf(b, 'ident'));
+		});
+		sorted.forEach(function (it) { tbody.appendChild(it); });
+		box.querySelectorAll('th.userPermSort').forEach(function (o) { o.removeAttribute('aria-sort'); });
+		th.setAttribute('aria-sort', dir === 'desc' ? 'descending' : 'ascending');
+	}
+	box.querySelectorAll('th.userPermSort').forEach(function (th) {
+		th.querySelector('button').addEventListener('click', function () {
+			var col = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
+			sortBy(col, dir);
+			try { localStorage.setItem(SORT_KEY, col + ':' + dir); } catch (e) { /* no storage */ }
+		});
+	});
+	try {
+		var keep = (localStorage.getItem(SORT_KEY) || '').split(':');
+		if (keep[0] && !(keep[0] === 'group' && keep[1] === 'asc')) sortBy(keep[0], keep[1] === 'desc' ? 'desc' : 'asc');
+	} catch (e) { /* no storage */ }
 	// Undo of All / None (0.8.584): the states before the click; a change by hand afterwards ends it
 	var undoBtn = document.getElementById('userPermUndo'), before = null, bulk = false;
 	function setUndo(snap) { before = snap; if (undoBtn) undoBtn.classList.toggle('d-none', !snap); }

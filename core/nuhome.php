@@ -139,6 +139,8 @@ final class NuHome
 			'email'       => ['email', 'bi-envelope', t('nav_email'), t('home_email_hint')],
 			'notifications' => [['notifications', ['tab' => 'manage']], 'bi-bell', t('ntf_title'), t('home_ntf_hint')],
 		];
+		// nuBuilder Forte's User Home (0.8.602): the launch form nuuserhome with the run buttons of the New form wizard
+		if (NuUserHome::available()) $c['userhome'] = [['form', ['f' => NuUserHome::FORM]], 'bi-house-door', t('home_userhome'), t('home_userhome_hint')];
 		if (isset(nu_forms()['nunotes'])) $c['notes'] = [['form', ['f' => 'nunotes']], 'bi-journal-richtext', t('nav_notes'), t('home_notes_hint')];
 		$c['debug'] = ['debug', 'bi-journal-text', t('nav_log'), t('home_log_hint')];
 		$c['update'] = ['update', 'bi-cloud-arrow-up', t('upd_title'), t('home_update_hint')];
@@ -313,7 +315,7 @@ final class NuHome
 		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => (object)[], 'view' => self::VIEW_DEFAULTS,
 			'tabs' => [['id' => 't_home', 'title' => t('nav_home')], ['id' => 't_admin', 'title' => t('vendor_title')]], 'groups' => [
 			['id' => 'g_users', 'title' => t('home_group_users'), 'tab' => 't_home', 'tiles' => ['users', 'access', 'permissions', 'userfields', 'sessions', 'adminroles']],
-			['id' => 'g_dev', 'title' => t('home_group_dev'), 'tab' => 't_home', 'tiles' => ['forms', 'procedures', 'reports', 'debug']],
+			['id' => 'g_dev', 'title' => t('home_group_dev'), 'tab' => 't_home', 'tiles' => ['forms', 'userhome', 'procedures', 'reports', 'debug']],
 			['id' => 'g_comm', 'title' => t('home_group_comm'), 'tab' => 't_home', 'tiles' => ['email', 'notes']],
 		]];
 		foreach (self::ADMIN_GROUPS as $id => [$title, $tiles]) $l['groups'][] = ['id' => $id, 'title' => t($title), 'tab' => 't_admin', 'tiles' => $tiles];
@@ -849,6 +851,7 @@ final class NuHome
 			return $r === 'acl' ? NuAcl::can($lvl) : NuAdmin::can($r, $lvl);
 		}
 		if ($key === 'notes') return NuAcl::can('nunotes');
+		if ($key === 'userhome') return NuAcl::can(NuUserHome::FORM);
 		$c = (array)(((array)$layout['custom'])[$key] ?? []);
 		if (!$c) return false;
 		if (($c['kind'] ?? '') === 'form') return NuAcl::can((string)$c['target']);
@@ -1209,9 +1212,15 @@ final class NuHome
 		foreach ($db->all("SELECT DISTINCT slf_zzzzsys_form_id FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id IN ($qm)", $lvls) as $r) {
 			$fid = (string)$r['slf_zzzzsys_form_id'];
 			$f = $forms[$fid] ?? null;
-			if (!$f || $f['type'] === 'subform' || !empty($f['system']) || str_starts_with($fid, 'nu')) continue;
+			$uh = $fid === NuUserHome::FORM;                    // nuBuilder Forte's User Home is shown (0.8.602), other system forms not
+			if (!$f || $f['type'] === 'subform' || (!$uh && (!empty($f['system']) || str_starts_with($fid, 'nu')))) continue;
 			$fTiles[$fid] = ['label' => mb_substr($f['description'] !== '' ? $f['description'] : $f['code'], 0, 60), 'hint' => $fid === $home ? t('home_form') : '',
 				'icon' => $f['type'] === 'launch' || $f['type'] === 'page' ? 'bi-window' : 'bi-table', 'color' => '', 'kind' => 'form', 'target' => $fid, 'record' => '', 'run' => 'window', 'newtab' => false];
+		}
+		// home form nuuserhome without a row in zzzzsys_access_form: the level may open it all the same (NuAcl::rights, 0.8.602)
+		if ($home === NuUserHome::FORM && !isset($fTiles[$home]) && isset($forms[$home])) {
+			$fTiles[$home] = ['label' => mb_substr($forms[$home]['description'] !== '' ? $forms[$home]['description'] : $forms[$home]['code'], 0, 60), 'hint' => t('home_form'),
+				'icon' => 'bi-house-door', 'color' => '', 'kind' => 'form', 'target' => $home, 'record' => '', 'run' => 'window', 'newtab' => false];
 		}
 		uksort($fTiles, static fn($a, $b) => ($b === $home) <=> ($a === $home) ?: strcasecmp($fTiles[$a]['label'], $fTiles[$b]['label']));
 		$rTiles = [];
@@ -1233,6 +1242,40 @@ final class NuHome
 		}
 		if (!$l['groups']) $l['groups'][] = ['id' => 'g_main', 'title' => '', 'tab' => '', 'tiles' => []];
 		return $l;
+	}
+
+	/**
+	 * New form wizard (0.8.602): a tile for the form on the saved user start pages these access levels show – their own layout, else
+	 * the default one ('*'); levels without a saved layout get it on the automatic page by their rights. The key is the one
+	 * autoLayout() uses, so the tile is not doubled. @return int layouts changed
+	 */
+	public static function addFormTile(array $levels, string $formId, string $label, string $login): int
+	{
+		$rows = self::userRows();
+		$ids = [];
+		foreach ($levels as $acc) {
+			$row = $rows[(string)$acc] ?? ($rows[self::ALL_LEVELS] ?? null);
+			if ($row) $ids[(string)$row['zzzzsys_nunext_list_view_id']] = $row;
+		}
+		$key = 'c_f' . substr(hash('sha256', $formId), 0, 12);
+		$n = 0;
+		foreach ($ids as $id => $row) {
+			$def = json_decode((string)$row['definition'], true);
+			if (!is_array($def)) continue;
+			$custom = (array)($def['custom'] ?? []);
+			if (isset($custom[$key])) continue;
+			$custom[$key] = ['label' => mb_substr($label, 0, 60), 'hint' => '', 'icon' => 'bi-table', 'color' => '', 'kind' => 'form', 'target' => $formId,
+				'record' => '', 'run' => 'window', 'newtab' => false];
+			$def['custom'] = $custom;
+			$def['groups'] = is_array($def['groups'] ?? null) && $def['groups'] ? $def['groups'] : [['id' => 'g_main', 'title' => '', 'tab' => '', 'tiles' => []]];
+			$def['groups'][0]['tiles'][] = $key;
+			nu_db()->update(NuListView::TABLE, ['definition' => json_encode($def, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'updated_at' => date('Y-m-d H:i:s'),
+				'updated_by' => mb_substr($login, 0, 50)], 'zzzzsys_nunext_list_view_id', $id);
+			NuLog::write('home_user_saved', NuListView::TABLE, $id, ['tile' => $label, 'form' => $formId]);
+			$n++;
+		}
+		self::$rows = self::$current = null;
+		return $n;
 	}
 
 	/** May the user see a tile of a user start page? Own tiles only; the editor (preview) sees by the rights of the access level. */

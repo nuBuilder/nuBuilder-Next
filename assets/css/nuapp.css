@@ -782,10 +782,15 @@ button.nu-tile { font: inherit; color: inherit; background: var(--bs-card-bg); c
 .inspTable .inspValue.inspOpen { display: block; max-width: none; white-space: pre-wrap; overflow-wrap: anywhere; cursor: auto; }
 .inspTable .inspValue.inspMasked { filter: blur(5px); user-select: none; cursor: default; }
 .inspTable .inspType { font-size: .8rem; color: var(--bs-secondary-color); }
-.inspSortBtn { font: inherit; color: inherit; text-decoration: none; text-transform: inherit; letter-spacing: inherit; }
-.inspSortBtn:hover { color: var(--bs-primary); }
-th[aria-sort="ascending"] .inspSortBtn::after { content: " \25B2"; font-size: .7em; }
-th[aria-sort="descending"] .inspSortBtn::after { content: " \25BC"; font-size: .7em; }
+.inspSortBtn, .userPermSortBtn { font: inherit; color: inherit; text-decoration: none; text-transform: inherit; letter-spacing: inherit; }
+.inspSortBtn:hover, .userPermSortBtn:hover { color: var(--bs-primary); }
+th[aria-sort="ascending"] .inspSortBtn::after, th[aria-sort="ascending"] .userPermSortBtn::after { content: " \25B2"; font-size: .7em; }
+th[aria-sort="descending"] .inspSortBtn::after, th[aria-sort="descending"] .userPermSortBtn::after { content: " \25BC"; font-size: .7em; }   /* user form permission items (0.8.611) */
+.permUsage > summary { cursor: pointer; color: var(--bs-secondary-color); width: fit-content; }
+.permUsage > summary:hover, .permUsage[open] > summary { color: var(--bs-body-color); }   /* permission item: usage in code (0.8.614) */
+.userPermOpen { color: var(--bs-secondary-color); font-size: .85em; text-decoration: none; }
+@media (min-width: 576px) { .userPermIdent { white-space: nowrap; } }   /* ident + link on one line; phones wrap */
+.userPermOpen:hover, .userPermOpen:focus-visible { color: var(--bs-primary); }
 .inspFacts dt { font-weight: 600; color: var(--bs-secondary-color); }
 .inspFacts dd { margin-bottom: .25rem; }
 
@@ -1344,6 +1349,7 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuSbClear { padding: .15rem .3rem; font-size: .85rem; }
 .nuSbMenu { position: fixed; z-index: 1080; margin: 0; min-width: 12rem; }   /* right-click menu of "Recently used" (0.8.489) */
 .userCardLogin .card-body > div:last-of-type, .userCardAccess .card-body > div:last-of-type, .userCardAccount .card-body > div:last-of-type { margin-bottom: 0 !important; }   /* user form cards (0.8.586) */
+.userCardLogin, .userCardAccess, .userCardAccount { width: 100%; max-width: 530px; }   /* user form: right-hand cards at most 530 px wide (0.8.610) */
 .xaRow > select { flex: 1 1 auto; min-width: 0; }   /* user form: additional access levels (0.8.585) */
 .xaRow > .xaUntil { flex: 0 0 10.5rem; }
 .nuFormStatus { cursor: context-menu; border-radius: var(--bs-border-radius-pill); }   /* forms list: status with right-click menu (0.8.575) */
@@ -1590,3 +1596,11 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 /* API clients list (0.8.547): the scopes of a client in a small menu – never wider than the screen, long descriptions wrap */
 .nuApiScopes .dropdown-menu { max-width: min(92vw, 480px); }
 .nuApiScopes .dropdown-item-text { white-space: normal; }
+
+/* form builder toolbar (0.8.619): groups with a thin divider, the deleting buttons in their own row */
+.nbToolbar { display: flex; flex-direction: column; gap: .5rem; width: 100%; }
+.nbTbRow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.nbTbGroup, .nbTbSlot { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.nbTbSlot:empty { display: none; }
+.nbTbRow > .nbTbGroup:not(.d-none) ~ .nbTbGroup:not(.d-none) { padding-left: .5rem; border-left: 1px solid var(--bs-border-color); }
+@media (max-width: 575.98px) { .nbTbRow > .nbTbGroup:not(.d-none) ~ .nbTbGroup:not(.d-none) { padding-left: 0; border-left: 0; } }

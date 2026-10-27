@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  *
  *   options: url (https; http only for localhost), zip (a file on the server – command line only) or github (the newest release of the
  *            repository set on the update page, 0.8.374 – NuGitHub), sha256 (optional checksum),
- *            backup files|sql|sql_nologs|auto, schema none|missing|safe|all, sample auto|yes|no, reinstall, dry_run
+ *            backup files|nubuilder|sql|sql_nologs|auto (auto = nubuilder: the zzzzsys_* tables without logs, 0.8.615), schema none|missing|safe|all, sample auto|yes|no, reinstall, dry_run
  *
  * Two phases, like the page: run() checks and installs; finish() runs the database steps and the sample refresh with the NEW code,
  * so it must run in a new PHP process – the command line starts one itself, the API's status request (GET …/update/{job}) does it,
@@ -18,7 +18,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuAutoUpdate
 {
-	public const BACKUPS = ['auto', 'files', 'sql', 'sql_nologs'];
+	public const BACKUPS = ['auto', 'files', 'nubuilder', 'sql', 'sql_nologs'];
 	public const SCHEMAS = ['none', 'missing', 'safe', 'all'];
 	public const SAMPLES = ['auto', 'yes', 'no'];
 	private const MAX_DOWNLOAD = 64 * 1048576;
@@ -123,7 +123,7 @@ final class NuAutoUpdate
 			$r['libraries'] = array_values(array_map(static fn($x) => ['library' => $x['slot'], 'min' => $x['min'], 'needed' => $x['needed'], 'installed' => $x['have'],
 				'available' => $x['best']['version'] ?? null], NuLibs::unmet(NuLibs::required((array)$info['manifest']), null, NuLibs::available())));
 			$scope = $o['backup'];
-			if ($scope === 'auto') $scope = NuUpdate::loadDump() && NuSqlDump::available() && NuSqlDump::estimate('all', true) < 50 * 1048576 ? 'sql_nologs' : 'files';
+			if ($scope === 'auto') $scope = 'nubuilder';                      // what an update can change: nuBuilder's zzzzsys_* tables (0.8.615)
 			if ($scope !== 'files' && !(NuUpdate::loadDump() && NuSqlDump::available())) $scope = 'files';
 			$r['backup_mode'] = $scope;
 			if ($r['errors']) return $r;
@@ -137,7 +137,7 @@ final class NuAutoUpdate
 				$r['schema']['done'] = $sr['done'];
 				if ($sr['errors']) throw new RuntimeException('Database structure: ' . implode(' · ', $sr['errors']));
 			}
-			$backup = NuUpdate::install($zip, $info, $scope === 'files' ? 'none' : 'all', $scope !== 'sql');
+			$backup = NuUpdate::install($zip, $info, $scope === 'files' ? 'none' : ($scope === 'nubuilder' ? 'nubuilder' : 'all'), $scope !== 'sql');
 			unset($_SESSION['nu_update']);                                      // the page's finish step is not needed – this job does it
 			$r['backup'] = $backup;
 			$r['ok'] = true;

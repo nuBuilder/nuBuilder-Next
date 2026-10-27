@@ -16,7 +16,7 @@ declare(strict_types=1);
  *     php cron.php update --github [options]   the newest release of the repository set on the update page (0.8.374, NuGitHub)
  *   options:  --dry-run                 check only (signature, requirements, files, database structure, sample data) – nothing changes
  *             --sha256=<hex>            expected checksum of the package
- *             --backup=auto|files|sql|sql_nologs   (auto: whole database without logs when it is smaller than 50 MB)
+ *             --backup=auto|files|nubuilder|sql|sql_nologs   (auto = nubuilder: the zzzzsys_* tables without logs; sql = whole database)
  *             --schema=none|missing|safe|all       database columns to add / widen first (safe = as the update page preselects)
  *             --sample=auto|yes|no      refresh the sample data (auto: when the package brings a newer sample version)
  *             --reinstall               install even when the package is not newer

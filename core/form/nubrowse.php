@@ -398,7 +398,7 @@ function nu_browse_request(): array
 		'sort' => isset($_GET['sort']) && $_GET['sort'] !== '' ? (int)$_GET['sort'] : null,
 		'dir'  => ($_GET['dir'] ?? '') === 'desc' ? 'desc' : 'asc',
 		'pg'   => max(1, (int)($_GET['pg'] ?? 1)),
-		'per'  => nu_per_param(),       // the footer's page size menu (0.8.437); 0 = the form's rows per page
+		'per'  => nu_per_param(true),   // the footer's page size menu (0.8.437; any size since 0.8.604 – nuBrowseRowsPerPageFilter); 0 = the form's rows per page
 		'flt'  => $flt,
 		// nuBuilder nuSetNoSearchColumns / nuSetSearchColumns: column indexes the search skips / is limited to ("1,3")
 		'nsc'  => nu_browse_index_list($_GET['nsc'] ?? ''),

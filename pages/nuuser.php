@@ -700,12 +700,14 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<div class="table-responsive">
 							<table class="table nu-table table-hover align-middle mb-0 userPermTable">
 								<thead><tr>
-									<th class="userPermCheck"><span class="visually-hidden"><?= h(t('perm_title')) ?></span></th>
-									<th><?= h(t('perm_ident')) ?></th>
-									<th class="d-none d-md-table-cell"><?= h(t('perm_group')) ?></th>
-									<th class="d-none d-sm-table-cell"><?= h(t('perm_description')) ?></th>
+									<?php // sortable columns (0.8.611, nuuser.js): a click sorts, a second one reverses; the first column = selected first ?>
+									<th scope="col" class="userPermCheck userPermSort" data-sort="sel"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="<?= h(t('perm_sort_sel')) ?>" aria-label="<?= h(t('perm_sort_sel')) ?>"><i class="bi bi-check2-square"></i></button></th>
+									<th scope="col" class="userPermSort" data-sort="ident"><button type="button" class="btn btn-link p-0 userPermSortBtn"><?= h(t('perm_ident')) ?></button></th>
+									<th scope="col" class="userPermSort d-none d-md-table-cell" data-sort="group" aria-sort="ascending"><button type="button" class="btn btn-link p-0 userPermSortBtn"><?= h(t('perm_group')) ?></button></th>
+									<th scope="col" class="userPermSort d-none d-sm-table-cell" data-sort="desc"><button type="button" class="btn btn-link p-0 userPermSortBtn"><?= h(t('perm_description')) ?></button></th>
 								</tr></thead>
 								<tbody>
+								<?php $permOpen = NuAcl::can(NuAcl::FORM_PERMISSION);   // link to the item in a new tab (0.8.612) ?>
 								<?php foreach ($permItems as $pi):
 									$g = (string)$pi['pme_group'];
 									$pid = (string)$pi['zzzzsys_permission_item_id'];
@@ -714,7 +716,8 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 									$pTitle = $pDesc !== '' ? ' title="' . h($pDesc) . '"' : ''; ?>
 									<tr class="userPermItem" data-group="<?= h($g) ?>" data-search="<?= h(mb_strtolower($pi['pme_ident'] . ' ' . $g . ' ' . $pi['pme_description'])) ?>">
 										<td class="userPermCheck"><input class="form-check-input" type="checkbox" name="perm[]" value="<?= h($pid) ?>" id="perm_<?= h($pid) ?>"<?= in_array($pid, $permSel, true) ? ' checked' : '' ?>></td>
-										<td class="userPermIdent"><label class="font-monospace" for="perm_<?= h($pid) ?>"><?= h($pi['pme_ident']) ?></label>
+										<td class="userPermIdent"><label class="font-monospace" for="perm_<?= h($pid) ?>"><?= h($pi['pme_ident']) ?></label><?php if ($permOpen): ?>
+											<a class="userPermOpen ms-1" href="<?= h(nu_url('permissions', ['id' => $pid])) ?>" target="_blank" rel="noopener" title="<?= h(t('perm_open_item')) ?>" aria-label="<?= h(t('perm_open_item')) ?>"><i class="bi bi-box-arrow-up-right"></i></a><?php endif; ?>
 											<?php if ($pDesc !== ''): // phones: the description below the ident ?><div class="small text-body-secondary userPermDesc userPermDescLine d-sm-none"<?= $pTitle ?>><?= h($pDesc) ?></div><?php endif; ?></td>
 										<td class="text-body-secondary text-nowrap d-none d-md-table-cell"><?= h($g !== '' ? $g : t('no_group')) ?></td>
 										<td class="text-body-secondary userPermDesc userPermDescCell d-none d-sm-table-cell"><div class="userPermDescLine"<?= $pTitle ?>><?= h($pDesc) ?></div></td>

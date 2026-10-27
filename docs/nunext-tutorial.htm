@@ -545,7 +545,7 @@
 		<p>New versions are installed on the <a data-open="update">Update</a> page – no FTP needed:</p>
 		<ol>
 			<li>Choose <code>nunext.zip</code> and click <em>Check package</em>: version, changed files, what's new, database changes, and whether the package is <em>signed by nuBuilder Next</em>. Nothing changes yet.</li>
-			<li><em>Install</em> makes a <strong>backup</strong> (program files, nuBuilder Next's tables, optionally an SQL dump of the whole database), switches on maintenance mode, copies the files and runs the database steps. If copying fails, the backup is put back automatically.</li>
+			<li><em>Install</em> makes a <strong>backup</strong> (program files, nuBuilder Next's tables and an SQL dump of the <em>nuBuilder tables</em> – every <code>zzzzsys_</code> table, all an update can change; or of the whole database), switches on maintenance mode, copies the files and runs the database steps. If copying fails, the backup is put back automatically.</li>
 			<li><strong>Roll back</strong> puts the program files of an earlier backup back. Backups can be downloaded – the SQL dump imports with phpMyAdmin.</li>
 		</ol>
 		<ul>
@@ -554,7 +554,7 @@
 			<li>Updates can also run unattended (command line or REST API) – see the documentation.</li>
 		</ul>
 		<div class="tut-task">
-			<p>Open <a data-open="update">Update</a>, read the change history of the installed version and make a backup with <em>Back up now</em> (database: <em>nuBuilder Next tables</em>).</p>
+			<p>Open <a data-open="update">Update</a>, read the change history of the installed version and make a backup with <em>Back up now</em> (database: <em>nuBuilder tables</em>).</p>
 		</div>
 		<p><a data-help="updating">Updating nuBuilder Next</a></p>
 	</section>

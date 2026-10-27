@@ -383,7 +383,9 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. nu_script(implode("\n", $js), 'php: nuAddJavascript')
 	. ($errors ? '' : $custom)
 	. '<script>nuNextStart();</script>'
-	. (!empty($client['builder']) ? '<script src="' . nu_asset('assets/js/nu/nudesigner.js') . '"></script>' : '')
+	. (!empty($client['builder']) ? '<script src="' . nu_asset('assets/js/nu/nudesigner.js') . '" data-labels="' . h((string)json_encode(array_combine(   // Arrange panel (0.8.606)
+		['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag'],
+		array_map(static fn($k) => t('dsg_' . $k), ['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag'])), JSON_UNESCAPED_UNICODE)) . '"></script>' : '')
 	;
 
 nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '')]);
@@ -450,7 +452,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				<?php if ($mode === 'edit'): foreach (['absolute', 'auto', 'grid'] as $l): ?>
 					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
 				<?php endforeach; endif; ?>
-				<?php if (!$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM)): ?>
+				<?php if ((!$meta->isSystem() || $meta->isUserHome()) && NuAcl::can(NuAcl::FORM_FORM)): // User Home too (0.8.605) ?>
 					<a class="btn btn-outline-secondary" id="nuFormBuilderBtn" href="<?= h(nu_url('builder', ['f' => $meta->id])) ?>" target="_blank" rel="noopener" title="<?= h(t('builder_title')) ?>" aria-label="<?= h(t('builder_title')) ?>"><i class="bi bi-tools"></i></a><?php // new tab (0.8.517) ?>
 				<?php endif; ?>
 			</div>

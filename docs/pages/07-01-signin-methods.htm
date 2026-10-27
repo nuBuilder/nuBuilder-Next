@@ -10,10 +10,22 @@
 		<tr><td>Forgot password</td><td>A link by e-mail, valid for 60 minutes and once.</td><td>always (needs working e-mail and <code>$nuConfigBaseURL</code>)</td></tr>
 		<tr><td>Shared login</td><td>A user already signed in to nuBuilder Forte on the same domain is signed in to nuBuilder Next.</td><td><code>$nuConfigSharedLogin = true</code></td></tr>
 		<tr><td>Auto-login link</td><td>nuBuilder Forte's link <code>index.php?u=&lt;login&gt;&amp;p=&lt;hash&gt;</code>, optionally opening a form and record. Links that expire can be made in the user form.</td><td><code>$nuConfigAutoLogin = true</code> (see <a href="#config">Configuration</a>)</td></tr>
+		<tr><td>One-time login link</td><td>nuBuilder Forte's token link <code>index.php?u=&lt;user&gt;&amp;p=&lt;token&gt;</code> – works once, then the token is replaced. See <a href="#logintoken">below</a>.</td><td>Security check: <em>Accept nuBuilder Forte's one-time login tokens</em> (on by default)</td></tr>
 		<tr><td>Demo users</td><td>Sign in read-only.</td><td><code>$nuConfigDemoUser</code> (see <a href="#demo-mode">Demo mode</a>)</td></tr>
 		<tr><td>REST API</td><td>Clients get short-lived access tokens (OAuth 2.0 client credentials); no interactive login.</td><td><code>$nuConfigApi = true</code> (see <a href="#api">REST API</a>)</td></tr>
 	</tbody>
 </table>
+<div class="doc-sub">
+	<h3 id="logintoken">One-time login link</h3>
+	<p>nuBuilder Forte's <em>Single-User Password Token</em>: <code>index.php?u=&lt;login name or user id&gt;&amp;p=&lt;token&gt;</code> (with <code>&amp;f=</code> / <code>&amp;r=</code> as for the auto-login link, see <a href="#config">Configuration</a>) signs the user in <em>once</em> when the token matches <code>LOGIN_TOKEN</code> in the user's <code>sus_json</code> – like nuBuilder Forte without a second factor; afterwards the token is replaced by a new random one, so the same link never works twice (also not for two clicks at the same moment). Ways to get a token:</p>
+	<ul>
+	<li>User form (globeadmin) → <em>One-time login link</em>: validity 1 hour, 1 day, 7 days, 30 days or no expiry; <em>Create link</em> shows the link once to copy, the envelope sends it to the user's e-mail address (in the user's language), the red button removes the token.</li>
+	<li>In a procedure: <code>nuCreateLoginToken($userId, $minutes = 0, $formId = '', $recordId = '')</code> returns the link ('' when not possible).</li>
+	<li>REST API: <code>POST /v1/users/{id}/login-link</code> (scope <code>users:login_link</code>, see <a href="#api">REST API</a>).</li>
+	<li>Another system writes the token itself, as in nuBuilder Forte's wiki: <code>sus_json</code> → <code>{"LOGIN_TOKEN": "…"}</code>, at least 20 characters; optional <code>"LOGIN_TOKEN_EXPIRES": &lt;Unix time&gt;</code> (nuBuilder Next only – nuBuilder Forte ignores it).</li>
+	</ul>
+	<p>Differences to nuBuilder Forte (all safer, the links stay compatible): exact comparison in constant time, never the globeadmin or an API service user, the user's expiry date and access level apply, wrong tokens count for the login rate limit, every use is logged (<em>Login</em> with <code>via: token</code>), creating, mailing and removing are logged too. Dangerous actions still ask for the password (the session counts as not confirmed). <code>p</code> with 64 hex characters is nuBuilder Next's signed auto-login hash while <code>$nuConfigAutoLogin</code> is on; anything else of 20 characters or more is treated as a token. Switch it off in the Security check (<em>Accept nuBuilder Forte's one-time login tokens</em>); the Security check also shows how many users have a token (stored in plain text, as in nuBuilder Forte) and removes all of them.</p>
+</div>
 <div class="doc-sub">
 	<h3 id="signin-rules">Rules for every method</h3>
 	<ul>

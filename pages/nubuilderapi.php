@@ -87,12 +87,29 @@ function nb_table_info(NuFormMeta $meta): array
 	return $r;
 }
 
+/**
+ * Several objects moved / resized at once in the preview (0.8.606, Arrange panel): [{object_id, top, left, width, height}] → columns
+ * of zzzzsys_object (whole pixels, never below 0 / 10). @return array<string, array<string, int>> object id => fields
+ */
+function nb_geometry(array $items): array
+{
+	$out = [];
+	foreach (array_slice($items, 0, 500) as $it) {
+		if (!is_array($it) || (string)($it['object_id'] ?? '') === '') continue;
+		$f = [];
+		foreach (['top' => 'sob_all_top', 'left' => 'sob_all_left'] as $k => $col) if (isset($it[$k]) && is_numeric($it[$k])) $f[$col] = max(0, (int)round((float)$it[$k]));
+		foreach (['width' => 'sob_all_width', 'height' => 'sob_all_height'] as $k => $col) if (isset($it[$k]) && is_numeric($it[$k])) $f[$col] = max(10, (int)round((float)$it[$k]));
+		if ($f) $out[(string)$it['object_id']] = $f;
+	}
+	return $out;
+}
+
 /** The form being edited – must exist and not be a nuBuilder system form. */
 function nb_form(string $id): NuFormMeta
 {
 	$meta = NuFormMeta::load($id, true);                 // the builder edits the live form (drafts: NuDraftStore)
 	if (!$meta) nb_err(t('form_err_not_found'), 404);
-	if ($meta->isSystem()) nb_err(t('builder_err_system'), 403);
+	if ($meta->isSystem() && !$meta->isUserHome()) nb_err(t('builder_err_system'), 403);   // User Home: tabs, objects, Before Edit (0.8.605)
 	return $meta;
 }
 
@@ -226,6 +243,13 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 			$store->commit('object.delete ' . $label);
 			$out();
 
+		case 'objects.geometry':
+			foreach (nb_geometry(is_array($in['items'] ?? null) ? $in['items'] : []) as $oid => $f) {
+				if ($store->object($oid)) $store->objectSave($oid, $f, null, null, false, null);
+			}
+			$store->commit('objects.geometry');
+			$out();
+
 		case 'object.order':
 			$store->objectOrder(is_array($in['ids'] ?? null) ? $in['ids'] : []);
 			$store->commit('object.order');
@@ -276,13 +300,22 @@ function nb_live_draft(string $formId): ?array
 }
 
 
-const NB_SNAPSHOT_ACTIONS = ['form.save', 'object.save', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
+const NB_SNAPSHOT_ACTIONS = ['form.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
 /** Live changes – refused or confirmed while a draft is open (form drafts, 0.8.386). */
-const NB_WRITE_ACTIONS = ['form.save', 'object.save', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
+const NB_WRITE_ACTIONS = ['form.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
 
 try {
 	// form drafts (0.8.386): with draft_id the action works on the draft; without it on the live form – refused or confirmed while
 	// a draft is open or changes only go through drafts (NuFormDraft::liveEditRefused)
+	// nuBuilder Forte's User Home (0.8.605): its form row is replaced by Forte's updates – no form settings, browse, layout change or
+	// delete; form.save keeps only the Before Edit PHP (Forte keeps nuuserhome_BE, its tabs and objects)
+	if ($formId === NuUserHome::FORM) {
+		if (in_array($action, ['browse.save', 'layout.convert', 'form.delete', 'form.deleteinfo', 'column.add'], true)) nb_err(t('builder_userhome_part'), 403);
+		if ($action === 'form.save') {
+			$in['fields'] = [];
+			$in['php'] = is_array($in['php'] ?? null) ? array_intersect_key($in['php'], ['BE' => 1]) : null;
+		}
+	}
 	$draftId = (string)($in['draft_id'] ?? '');
 	if ($draftId !== '' && !str_starts_with($action, 'draft.publish') && $action !== 'draft.discard' && $action !== 'draft.diff' && $action !== 'draft.conflict') {
 		nb_form($formId);
@@ -546,6 +579,16 @@ try {
 				$db->run('DELETE FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$objectId, $formId]);
 				$db->delete('zzzzsys_event', 'sev_zzzzsys_object_id', $objectId);
 				$db->delete('zzzzsys_php', 'zzzzsys_php_id', $objectId . '_AB');
+			});
+			nb_out(['ok' => true] + nb_state($formId));
+
+		case 'objects.geometry':
+			nb_form($formId);
+			$geo = nb_geometry(is_array($in['items'] ?? null) ? $in['items'] : []);
+			$db->transaction(static function (NuDB $db) use ($geo, $formId) {
+				foreach ($geo as $oid => $f) {
+					if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$oid, $formId])) $db->update('zzzzsys_object', $f, 'zzzzsys_object_id', $oid);
+				}
 			});
 			nb_out(['ok' => true] + nb_state($formId));
 

@@ -151,8 +151,22 @@ nu_layout_start($title, 'users', ['head' => $head]);
 							<textarea class="form-control" id="pme_description" name="pme_description" rows="4"><?= h($v('pme_description')) ?></textarea>
 						</div>
 						<?php if ($item): ?>
-							<div class="mt-3 small text-body-secondary"><?= h(t('perm_code_hint')) ?></div>
-							<pre class="small bg-body-tertiary border rounded p-2 mb-0 mt-1"><code>if (nuUserHasPermission('<?= h((string)$item['pme_ident']) ?>')) { … }</code></pre>
+							<?php // usage in code (0.8.614): folded by default ?>
+							<details class="mt-3 permUsage" id="permUsage">
+								<summary class="small fw-semibold"><i class="bi bi-code-slash me-1"></i><?= h(t('perm_code_usage')) ?></summary>
+								<div class="mt-2 small text-body-secondary"><?= h(t('perm_code_hint')) ?></div>
+								<pre class="small bg-body-tertiary border rounded p-2 mb-0 mt-1"><code>if (nuUserHasPermission('<?= h((string)$item['pme_ident']) ?>')) { … }</code></pre>
+								<?php // SQL (0.8.613): #USER_PERMISSIONS# = the user's idents "a, b, c" – works on MySQL and SQL Server; the sub-query for any user column ?>
+								<div class="mt-3 small text-body-secondary"><?= h(t('perm_code_sql')) ?></div>
+								<pre class="small bg-body-tertiary border rounded p-2 mb-0 mt-1"><code>WHERE (', #USER_PERMISSIONS#,' LIKE '%, <?= h((string)$item['pme_ident']) ?>,%'
+    OR '#GLOBAL_ACCESS#' = '1')</code></pre>
+								<div class="mt-3 small text-body-secondary"><?= h(t('perm_code_sql_user')) ?></div>
+								<pre class="small bg-body-tertiary border rounded p-2 mb-0 mt-1"><code>WHERE EXISTS (SELECT 1 FROM zzzzsys_user_permission
+  JOIN zzzzsys_permission_item ON zzzzsys_permission_item_id = upe_ident
+  WHERE upe_zzzzsys_user_id = '#USER_ID#' AND upe_active = '1'
+    AND pme_ident = '<?= h((string)$item['pme_ident']) ?>')</code></pre>
+								<a class="small d-inline-block mt-2" href="<?= h(nu_url('help')) ?>#permissions-sql" target="_blank" rel="noopener"><i class="bi bi-question-circle me-1"></i><?= h(t('perm_code_more')) ?></a>
+							</details>
 						<?php endif; ?>
 					</div>
 				</div>

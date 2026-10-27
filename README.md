@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.600 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.620 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -110,7 +110,7 @@ nuBuilder Next streamlines everyday database work:
 ## Updating
 **Admin tools → Update** (globeadmin): choose the new `nunext.zip` – or copy it by FTP into the folder `_update/` and pick it
 there, or let the page download the newest release from GitHub – then *Check package* and *Install*. Packages are signed; the check shows "Signed by nuBuilder Next" and refuses a package
-that was changed. A backup is made first (optionally with an SQL dump) and can be rolled back; database steps run automatically.
+that was changed. A backup is made first (with an SQL dump of nuBuilder's `zzzzsys_*` tables – all an update can change – or of the whole database) and can be rolled back; database steps run automatically.
 
 If the update page cannot be used (e.g. PHP may not write to the folder): unpack the new `nunext.zip` over the old folder (your
 `nuconfig.php` and `_backup/` stay) and log in as globeadmin – the database steps run on the first request. Replace **all** files:

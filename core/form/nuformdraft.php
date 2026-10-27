@@ -81,7 +81,7 @@ final class NuFormDraft
 	public static function start(string $formId, string $note = ''): array
 	{
 		if (!self::canEdit()) throw new RuntimeException(t('err_forbidden'));
-		if (str_starts_with($formId, 'nu')) throw new RuntimeException(t('builder_err_system'));
+		if (str_starts_with($formId, 'nu') && $formId !== NuUserHome::FORM) throw new RuntimeException(t('builder_err_system'));   // User Home: 0.8.605
 		NuSchema::ensure();
 		if ($open = self::openFor($formId)) throw new RuntimeException(t('builder_draft_exists', (string)$open['created_by']));
 		$snap = NuFormSnapshot::capture($formId) ?? throw new RuntimeException(t('form_err_not_found'));

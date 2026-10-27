@@ -119,7 +119,8 @@ if (nu_is_post()) {
 				if ($sr['errors']) throw new RuntimeException(t('upd_schema_failed') . ' ' . implode(' · ', $sr['errors'])
 					. ($sr['done'] ? ' ' . t('upd_schema_done', implode(', ', $sr['done'])) : ''));
 			}
-			$backup = NuUpdate::install($zip, $info, nu_check('backup_sql') === '1' ? 'all' : 'none', nu_check('backup_nologs') === '1', nu_check('backup_pages') === '1');
+			$bkDb = in_array(nu_post('backup_db'), ['nubuilder', 'all'], true) ? nu_post('backup_db') : 'none';   // 0.8.615: nuBuilder tables by default
+			$backup = NuUpdate::install($zip, $info, $bkDb, nu_check('backup_nologs') === '1', nu_check('backup_pages') === '1');
 			if ($schemaDone && isset($_SESSION['nu_update'])) $_SESSION['nu_update']['schema'] = $schemaDone;
 			// sample data: refreshed after the update, with the new code (finish request)
 			if (nu_check('sample_refresh') === '1' && isset($_SESSION['nu_update'])) $_SESSION['nu_update']['sample_refresh'] = true;
@@ -138,7 +139,7 @@ if (nu_is_post()) {
 			}
 			unset($_SESSION['nu_backup_once'][$once]);
 			// never two at the same time (two tabs, two globeadmins): NuUpdate::backup() locks and says so
-			$scope = in_array(nu_post('sql'), ['nunext', 'all'], true) ? nu_post('sql') : 'none';
+			$scope = in_array(nu_post('sql'), ['nubuilder', 'all'], true) ? nu_post('sql') : 'none';
 			$name = NuUpdate::backup('manual', $scope, nu_check('nologs') === '1', nu_check('pages') === '1');
 			$sql = NuUpdate::$lastSql;
 			NuLog::write('nunext_backup', '', '', ['file' => $name, 'sql' => $sql ? ['scope' => $scope, 'complete' => $sql['complete'], 'bytes' => $sql['bytes']] : 'none']);
@@ -517,10 +518,16 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 						<?php if (!version_compare($check['version'], NU_VERSION, '>')): ?>
 							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="reinstall" name="reinstall" value="1"><label class="form-check-label small" for="reinstall"><?= h(t('upd_reinstall')) ?></label></div>
 						<?php endif; ?>
-						<?php if (NuUpdate::loadDump() && NuSqlDump::available()): $estAll = NuSqlDump::estimate('all', true); // backup before the update: also the database (pre-ticked when small) ?>
-							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkSql" name="backup_sql" value="1"<?= $estAll < 50 * 1024 * 1024 && empty(nu_cfg('nuConfigDevMode')) ? ' checked' : '' ?>><?php // developer mode: off by default (0.8.499) ?>
-								<label class="form-check-label small" for="updBkSql"><?= h(t('upd_install_sql', NuFile::size($estAll))) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_install_sql_hint')) ?>" title="<?= h(t('upd_install_sql_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<?php if (NuUpdate::loadDump() && NuSqlDump::available()):   // backup before the update (0.8.615): database part – nuBuilder's tables by default ?>
+							<div class="d-flex align-items-center gap-2 me-2">
+								<label class="small text-body-secondary text-nowrap" for="updBkDb"><?= h(t('upd_install_db')) ?></label>
+								<select class="form-select form-select-sm w-auto" id="updBkDb" name="backup_db">
+									<option value="nubuilder" selected><?= h(t('upd_bk_db_nubuilder', NuFile::size(NuSqlDump::estimate('nubuilder', true)))) ?></option>
+									<option value="all"><?= h(t('upd_bk_db_all', NuFile::size(NuSqlDump::estimate('all', true)))) ?></option>
+									<option value="none"><?= h(t('upd_bk_db_none')) ?></option>
+								</select>
+								<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_install_db_hint')) ?>" title="<?= h(t('upd_install_db_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+							</div>
 							<input type="hidden" name="backup_nologs" value="1">
 						<?php endif; ?>
 						<?php if ($hasPages): // page forms (0.8.387): the installation's page folders as a copy in the backup (off by default) ?>
@@ -762,7 +769,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<select class="form-select form-select-sm w-auto" id="updBkScope" name="sql"<?= $sqlOk ? '' : ' disabled title="' . h(t('upd_bk_db_mysql')) . '"' ?>>
 						<option value="none" selected><?= h(t('upd_bk_db_none')) ?></option>
 						<?php if ($sqlOk): ?>
-							<option value="nunext"><?= h(t('upd_bk_db_nunext', NuFile::size(NuSqlDump::estimate('nunext', true)))) ?></option>
+							<option value="nubuilder"><?= h(t('upd_bk_db_nubuilder', NuFile::size(NuSqlDump::estimate('nubuilder', true)))) ?></option>
 							<option value="all"><?= h(t('upd_bk_db_all', NuFile::size(NuSqlDump::estimate('all', true)))) ?></option>
 						<?php endif; ?>
 					</select>

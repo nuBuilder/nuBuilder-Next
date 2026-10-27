@@ -354,6 +354,9 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 		$favTip = $favCount ? t('home_fav_only') : t('home_fav_none'); ?>
 		<button type="button" class="btn btn-outline-secondary nuHomeFavBtn<?= $favOn ? ' active' : '' ?>" id="nuHomeFavOnly" aria-pressed="<?= $favOn ? 'true' : 'false' ?>"<?= $favCount ? '' : ' disabled' ?>
 			title="<?= h($favTip) ?>" aria-label="<?= h($favTip) ?>"><i class="bi <?= $favOn ? 'bi-star-fill' : 'bi-star' ?>"></i></button>
+		<?php if (!$editorPage && NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) ?>
+		<a class="btn btn-outline-secondary nuHomeUhBtn" id="nuHomeUserHome" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" title="<?= h(t('home_userhome')) ?>" aria-label="<?= h(t('home_userhome')) ?>"><i class="bi bi-house-door" aria-hidden="true"></i></a>
+		<?php endif; ?>
 	</div>
 	<?php // one Customise button (0.8.452): the panel #nuHomeViewPanel with the tabs Content (edit mode / Personalise – the two hidden
 	// buttons below start them), Appearance (how the tiles look, before: View) and Layouts (choose, save, share) ?>

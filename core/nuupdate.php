@@ -478,7 +478,8 @@ final class NuUpdate
 
 	/**
 	 * Backup zip: program files + nuBuilder Next's tables (JSON) and, optionally, an SQL dump (db/database.sql.gz, see core/nusqldump.php):
-	 * $sqlScope 'none' | 'nunext' (nuBuilder Next's tables) | 'all' (the whole database); $withoutLogs leaves out the rows of log tables.
+	 * $sqlScope 'none' | 'nubuilder' (all zzzzsys_* tables, 0.8.615) | 'nunext' (nuBuilder Next's tables) | 'all' (the whole database);
+	 * $withoutLogs leaves out the rows of log tables.
 	 * Never two at the same time (lock); while it runs a marker file says so – if the server stops the script (time limit), the next
 	 * page view reports it (interrupted()). Returns the file name inside backupDir().
 	 */
@@ -493,7 +494,7 @@ final class NuUpdate
 		$path = $dir . '/' . $name;
 		$tmp = '';
 		try {
-			$withSql = in_array($sqlScope, ['nunext', 'all'], true) && self::loadDump() && NuSqlDump::available();
+			$withSql = in_array($sqlScope, ['nubuilder', 'nunext', 'all'], true) && self::loadDump() && NuSqlDump::available();
 			@file_put_contents($dir . '/' . self::RUNNING, json_encode(['name' => $name, 'since' => time(), 'reason' => $reason, 'sql' => $withSql ? $sqlScope : 'none']));
 			$sql = null;
 			if ($withSql) {
@@ -855,6 +856,7 @@ final class NuMigrate
 			'0023-retire-tfm' => ['Tiny File Manager removed (File Manager = the page nuFiles): its library packs and the copy in third_party/tinyfilemanager/', static fn() => NuFileManager::retireTfm()],
 			'0024-object-access' => ['Field data access: rules per object (zzzzsys_nunext_object_access)', static fn() => NuSchema::create()],
 			'0025-user-access' => ['Additional access levels per user (zzzzsys_nunext_user_access)', static fn() => NuSchema::create()],
+			'0026-user-home' => ['nuBuilder Forte\'s User Home (launch form nuuserhome with the tabs Main and Fast Forms) when missing', static fn() => NuUserHome::ensure()],
 		];
 	}
 
@@ -894,6 +896,7 @@ final class NuMigrate
 		'0023-retire-tfm' => [['zzzzsys_nunext_log', 'data', 'files only: Tiny File Manager packs (vendor/packs/tinyfilemanager-*, third_party/tinyfilemanager*) deleted, logged']],
 		'0024-object-access' => [['zzzzsys_nunext_object_access', 'table', 'created when missing']],
 		'0025-user-access' => [['zzzzsys_nunext_user_access', 'table', 'created when missing']],
+		'0026-user-home' => [['zzzzsys_form', 'data', 'form nuuserhome (User Home) added when missing – also checked with every later update'], ['zzzzsys_tab', 'data', 'its tabs Main and Fast Forms']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */
@@ -964,6 +967,10 @@ final class NuMigrate
 			$db->insert(self::TABLE, [self::TABLE . '_id' => $id, 'applied_at' => date('Y-m-d H:i:s'),
 				'version' => NU_VERSION, 'description' => mb_substr($desc, 0, 255)]);
 			$applied[] = $id;
+		}
+		// checked with every run (installation, each update), not only once: a database without it gets nuBuilder Forte's User Home (0.8.618)
+		if (!in_array('0026-user-home', $applied, true)) {
+			try { NuUserHome::ensure(); } catch (Throwable $e) { error_log('nuBuilder Next User Home: ' . $e->getMessage()); }
 		}
 		if ($applied) NuLog::write('nunext_migration', self::TABLE, '', ['steps' => $applied]);
 		return $applied;

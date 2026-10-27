@@ -158,3 +158,6 @@
 	.nbSplitting { cursor: col-resize; user-select: none; }
 	.nbSplitting iframe { pointer-events: none; }   /* the preview would swallow the mouse while dragging */
 }
+
+/* New form wizard: access levels to give the new form (0.8.602) */
+.nbLevels { max-height: 14rem; overflow-y: auto; }

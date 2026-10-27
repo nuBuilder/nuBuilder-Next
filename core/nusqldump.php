@@ -14,19 +14,22 @@ final class NuSqlDump
 	public const MARKER = '-- nuBuilder Next SQL dump completed';
 	/** Rows left out with "without logs" (the tables are created, empty). */
 	public const LOG_TABLES = ['zzzzsys_debug', 'zzzzsys_email_log', 'zzzzsys_nunext_log', 'zzzzsys_nunext_form_history'];
-	public const SCOPES = ['none', 'nunext', 'all'];
+	// 'nubuilder' (0.8.615): every zzzzsys_* table – nuBuilder Forte's and nuBuilder Next's, all an update can change; 'nunext' only
+	// nuBuilder Next's own tables (no longer offered, older backups have it)
+	public const SCOPES = ['none', 'nubuilder', 'nunext', 'all'];
 
 	public static function available(): bool
 	{
 		try { return in_array(nu_db()->type, ['mysql', 'sqlsrv'], true); } catch (Throwable) { return false; }
 	}
 
-	/** Tables of a scope ('nunext': nuBuilder Next's own zzzzsys_nunext_* tables; 'all': null = everything). */
+	/** Tables of a scope ('nubuilder': all zzzzsys_* tables; 'nunext': nuBuilder Next's own zzzzsys_nunext_* tables; 'all': null = everything). */
 	public static function tables(string $scope): ?array
 	{
 		if ($scope === 'all') return null;
+		$prefix = $scope === 'nubuilder' ? 'zzzzsys_' : 'zzzzsys_nunext_';
 		$out = [];
-		foreach (NuAppCloner::objects(nu_db()) as $o) if ($o['type'] === 'TABLE' && str_starts_with($o['name'], 'zzzzsys_nunext_')) $out[] = $o['name'];
+		foreach (NuAppCloner::objects(nu_db()) as $o) if ($o['type'] === 'TABLE' && str_starts_with(strtolower($o['name']), $prefix)) $out[] = $o['name'];
 		return $out;
 	}
 
@@ -63,7 +66,7 @@ final class NuSqlDump
 		$parts = $all ? array_keys(NuAppCloner::PARTS) : ['sys_struct', 'sys_rows', 'app_rows'];
 		try {
 			$c = new NuAppCloner(nu_db(), ['export' => true, 'parts' => $parts, 'tables' => self::tables($scope), 'insert' => 'INSERT',
-				'skip_rows' => $withoutLogs ? self::LOG_TABLES : [], 'title' => 'nuBuilder Next backup' . ($all ? '' : ' (nuBuilder Next tables)')]);
+				'skip_rows' => $withoutLogs ? self::LOG_TABLES : [], 'title' => 'nuBuilder Next backup' . ($all ? '' : ($scope === 'nubuilder' ? ' (nuBuilder tables zzzzsys_*)' : ' (nuBuilder Next tables)'))]);
 			$r = $c->run(static function () {}, static function (string $sql) use ($gz) { gzwrite($gz, $sql); });
 			$st = $r['stats'];
 			$res = ['tables' => (int)$st['tables'], 'views' => (int)$st['views'], 'rows' => (int)$st['rows'],
