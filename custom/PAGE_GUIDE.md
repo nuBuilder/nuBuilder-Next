@@ -61,6 +61,9 @@ API version: 1 (`$nu->apiVersion()`, `NuPage.version`). Declare it in every page
     custom/pages/<form code>/assets/       css, js, mjs, map, png, jpg, gif, svg, webp, ico, woff, woff2, ttf, json, txt, pdf
     custom/lib/                            optional shared PHP of the installation
 
+Reserved names in the page folder: `_data/` ($nu->dataDir()), `_draft/` (the draft of the page) and `_versions/` (previous versions).
+A draft runs from `_draft/`: use `__DIR__` / `$nu->dir()` for paths, never the folder name, and `$nu->dataDir()` for data.
+
 The current directory is the page folder while the page runs.
 
 ## Typical index.php

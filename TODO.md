@@ -4,6 +4,41 @@
 - [ ] `nuHideHolders(0)`: hide only the form's button row (nuBuilder's meaning, current) or also nuBuilder Next's top bar (logo, search,
       user menu)? The owner's note says "param 0: top navbar" – to decide (0.8.468).
 
+- [ ] dev / test / prod and git (forum question, 26 Oct 2026): proposals M1–M3 (moving forms / procedures between installations) and
+      G1–G3 (git sync of the application's metadata) – the owner decides later.
+- [ ] Page forms: besides the draft (0.8.599) a "Test copy" (clone of the page form + its folder, publish back) was proposed (option A,
+      not built); a page's draft shares _data, secrets.php and the database with the live version.
+
+## Code in files instead of in the form (suggestion from a user, 26 Oct 2026) – waiting for the owner's decision
+The user's points: nuBuilder 4.x runs form JavaScript with eval() (no top-level const / let, objects survive "refresh" – namespaces
+needed); he prefers JS / PHP in files on disk (overview, no duplicates, git, AI coding agents) with only links in the forms.
+Checked in 0.8.569: in nuBuilder Next every form / record is a new page and the form's JavaScript a normal <script> – top-level
+const / let / class work, nothing survives a refresh (event code runs as a Function; only nuAddJavascript() from PHP uses eval).
+Global includes exist already ($nuConfigIncludeJS / CSS / PHP), page forms live in files. Missing: per-form files. Options (proposed):
+- [ ] **D** Help page "Code in files": the new-page model (point 1), the include variables, a folder layout for a project in git. (recommended first)
+- [ ] **A1** Form settings → *JavaScript files* (e.g. custom/js/customer.js): <script src> after the runtime, before the form's code,
+      version stamp = file time; stored in sfo_json nunext (no new nuBuilder column). **A2** later: ES modules with export onLoad(form) …
+- [ ] **B1** PHP hooks (BE, BS, AS, BB, BD, AD) from a file (e.g. custom/php/customer/before_save.php), same variables as the code in
+      the form (B2: file + code).
+- [ ] **C** Export / import of all form code, procedures and Setup header / style to a folder (code/forms/<code>/edit.js, before_save.php …)
+      with a diff preview; the database stays the source (nuBuilder keeps working); optional automatic import in developer mode.
+- Trade-off: A / B make forms depend on files – nuBuilder 4.x does not run that code; App cloner and backups must copy custom/ (as for
+  page forms). C keeps nuBuilder compatibility but the code exists twice. Recommendation: D, then A1 + B1, then C.
+
+## Open from 26 Oct 2026 (session after 0.8.551)
+- [ ] Drawing order of objects (absolute layout): nuBuilder sorts content boxes first, then sob_all_order, then the tab order, run
+      objects last at the same order, otherwise database order; nuBuilder Next sorts tab, sob_all_order, top, left. Matters only for
+      objects with the same order value (stacking, keyboard Tab order) – align exactly if the owner wants it (0.8.567 fixed the z-index).
+- [ ] Update → Libraries: a clearer message when a GitHub pack does not match its index ("the release does not match its index –
+      publish packs and libraries.json from the same build"); 0.8.556 reads the index again before installing.
+- [ ] Update → Libraries: show the date of the last GitHub check also next to an error, and drop a stored error saved under another
+      PHP / nuBuilder Next version (proposed, not confirmed).
+- [ ] A failed creation of the own tables at the globeadmin's first sign-in only goes to PHP's error log – show it to the globeadmin.
+- [ ] Object menu (right-click): nuBuilder also offers it on words, images, tabs and subform titles – add if wanted.
+- [ ] compat.js: edit:samplecustomer (cus_phone mask: nuBuilder shows the stored value, nuBuilder Next the masked one) and
+      browse:ttcus (nuBuilder git HEAD 23559e7 "complex SQL in Browse Forms" shows no rows) – recorded in compat-known.json for the 0.8.600 gate;
+      still to decide whether nuBuilder Next should show the stored phone value like nuBuilder Forte.
+
 ## Handover of 25 Oct 2026 (security assessment, nuFiles, specs 03–08 – base 0.8.460) – open
 - [x] Step 2 done in 0.8.479 (nuFiles C1–C5, C9; reauth default `code`, data in `custom/pages/nufiles/_data/`). Open from nuFiles:
       C6 page cron hook (trash purge without visitors), C7 Security check entries for risky nuFiles settings, C10 more languages

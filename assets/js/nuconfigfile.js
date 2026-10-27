@@ -50,7 +50,7 @@
 		if (errLine !== null) { cm.removeLineClass(errLine, 'background', 'cfgErrLine'); errLine = null; }
 	});
 	var tools = document.querySelector('.cfgCodeTools');
-	if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: 'PHP', readOnly: ro});
+	if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: 'PHP', readOnly: ro, noInsert: true});   // nuconfig.php: no nuBuilder functions (0.8.593)
 	initInsert(cm);
 })();
 

@@ -35,10 +35,10 @@ final class NuHome
 	/** nuBuilder Next pages an own tile may open (kind page). */
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'email', 'emailtemplates',
 		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'dashboards', 'vendor', 'sample', 'import', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
-		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'setupcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
+		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
 	public const ADMIN_GROUPS = [
-		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'setupcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest']],
+		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest']],
 		'g_adm_look'   => ['home_group_look', ['branding', 'dashboards']],
 		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'appcloner', 'sample']],
 		'g_adm_int'    => ['home_group_integration', ['apiclients', 'prompts', 'compat']],
@@ -75,7 +75,7 @@ final class NuHome
 				['g_watch', 'home_pf_g_monitoring', '', ['sessions', 's_audit', 's_log', 'notifications', 'securitycheck']]]],
 		'operations'  => ['icon' => 'bi-activity', 'display' => 'groups', 'size' => 'compact', 'view' => ['style' => 'compact'],
 			'groups' => [['g_health', 'home_pf_g_health', '', ['vendor', 'securitycheck', 'update', 's_mail_test']],
-				['g_config', 'home_pf_g_config', '', ['settings', 'setupcode', 'configfile', 'branding']],
+				['g_config', 'home_pf_g_config', '', ['settings', 'globalcode', 'configfile', 'branding']],
 				['g_tools', 'home_pf_g_tools', '', ['pma', 'tfm', 's_log', 'sessions', 's_mail_log']]]],
 		'reporting'   => ['icon' => 'bi-bar-chart', 'display' => 'groups', 'size' => 'large',
 			'groups' => [['g_reports', 'rpt_title_list', '', ['reports', 's_report_new', 's_sqlbuilder', 's_sqlbuilder_new']],
@@ -158,7 +158,7 @@ final class NuHome
 		$c += [
 			'securitycheck' => ['securitycheck', 'bi-shield-check', t('secchk_title'), t('secchk_card_hint')],
 			'configfile'    => ['configfile', 'bi-filetype-php', t('cfg_title'), t('cfg_card_hint')],
-			'setupcode'     => ['setupcode', 'bi-code-square', t('scode_title'), t('scode_card_hint')],
+			'globalcode'     => ['globalcode', 'bi-code-square', t('scode_title'), t('scode_card_hint')],
 			'setupwizard'   => ['setupwizard', 'bi-magic', t('wiz_title'), t('wiz_card_hint')],
 			'branding'      => ['branding', 'bi-palette', t('brand_title'), t('brand_card_hint')],
 			'dashboards'    => ['dashboards', 'bi-speedometer2', t('dash_title'), t('dash_card_hint')],
@@ -820,7 +820,7 @@ final class NuHome
 		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'],
 		'email' => ['email', 'view'], 'debug' => ['acl', NuAcl::FORM_DEBUG], 'update' => ['update', 'view'], 'settings' => ['settings', 'view'],
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
-		'configfile' => ['configfile', 'change'], 'setupcode' => ['setupcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'],
+		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'],
 		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'appcloner' => ['appcloner', 'change'], 'sample' => ['sample', 'view'],
 		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'],
 		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'], 's_user_home' => ['homelayout', 'change'],
@@ -831,7 +831,7 @@ final class NuHome
 		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit', 'notifications' => 'notifications', 'update' => 'update',
 		'settings' => 'settings', 'branding' => 'branding', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import',
 		'cloner' => 'forms', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
-		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'setupcode' => 'setupcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
+		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
 		'tutorial' => 'tutorial'];
 
 	/** May the signed-in user see this tile? */
@@ -1201,7 +1201,12 @@ final class NuHome
 		$forms = nu_forms();
 		$home = (string)($db->value('SELECT sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$access]) ?? '');
 		$fTiles = [];
-		foreach ($db->all('SELECT slf_zzzzsys_form_id FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?', [$access]) as $r) {
+		// the signed-in user's own page (not the editor's preview): also the forms / reports of his additional access levels (0.8.585)
+		$u = NuAuth::user();
+		$lvls = empty(self::$for['preview']) && $u && (string)($u['access_id'] ?? '') === $access ? NuUserAccess::levels($u) : [$access];
+		if (!$lvls) $lvls = [$access];
+		$qm = implode(', ', array_fill(0, count($lvls), '?'));
+		foreach ($db->all("SELECT DISTINCT slf_zzzzsys_form_id FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id IN ($qm)", $lvls) as $r) {
 			$fid = (string)$r['slf_zzzzsys_form_id'];
 			$f = $forms[$fid] ?? null;
 			if (!$f || $f['type'] === 'subform' || !empty($f['system']) || str_starts_with($fid, 'nu')) continue;
@@ -1213,7 +1218,7 @@ final class NuHome
 		try {
 			if ($db->tableExists(NuReport::TABLE)) {
 				foreach ($db->all('SELECT r.zzzzsys_report_id, r.sre_code, r.sre_description FROM zzzzsys_report r JOIN zzzzsys_access_report a ON a.sre_zzzzsys_report_id = r.zzzzsys_report_id
-					WHERE a.sre_zzzzsys_access_id = ? ORDER BY r.sre_description, r.sre_code', [$access]) as $r) {
+					WHERE a.sre_zzzzsys_access_id IN (' . $qm . ') ORDER BY r.sre_description, r.sre_code', $lvls) as $r) {
 					$rTiles[(string)$r['zzzzsys_report_id']] = ['label' => mb_substr((string)($r['sre_description'] ?: $r['sre_code']), 0, 60), 'hint' => '', 'icon' => 'bi-file-earmark-richtext',
 						'color' => '', 'kind' => 'report', 'target' => (string)$r['zzzzsys_report_id'], 'record' => '', 'run' => 'window', 'newtab' => false];
 				}
@@ -1255,9 +1260,9 @@ final class NuHome
 				if (!$p) return false;
 				$u = NuAuth::user();
 				if ((string)$p['sph_global'] === '1' || (!$preview && (!empty($u['globeadmin']) || NuAdmin::can('procedures', 'change')))) return true;
-				$level = $preview ? $acc : (string)($u['access_id'] ?? '');
 				if ($preview && $acc === self::ALL_LEVELS) return true;
-				return $db->tableExists('zzzzsys_access_php') && (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php WHERE slp_zzzzsys_access_id = ? AND slp_zzzzsys_php_id = ?', [$level, $target]);
+				[$in, $lv] = $preview ? ['slp_zzzzsys_access_id = ?', [$acc]] : NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // + additional levels (0.8.585)
+				return $db->tableExists('zzzzsys_access_php') && (bool)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, $target]);
 			case 'page':
 				return in_array($target, self::USER_PAGES, true) && !($target === 'security' && NuImpersonate::active());
 			default:

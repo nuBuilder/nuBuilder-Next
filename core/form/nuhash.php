@@ -27,6 +27,7 @@ final class NuHash
 			'USER_ID' => $u['id'], 'LOGIN_NAME' => $u['login'], 'USER_LOGIN' => $u['login'], 'USER_NAME' => $u['display'], 'USER_EMAIL' => $u['email'],
 			'SESSION_ID' => self::sessionId(),
 			'GLOBAL_ACCESS' => $u['globeadmin'] ? '1' : '0', 'ACCESS_LEVEL_ID' => $u['access_id'],
+			'USER_GROUP_ID' => $u['access_id'],   // nuBuilder's name of the access level id (nuGetUserAccess, 0.8.581)
 			'ACCESS_LEVEL_CODE' => '', 'ACCESS_LEVEL_GROUP' => '', 'USER_LANGUAGE' => nu_lang_to_db(nu_lang()),
 			'USER_CODE' => '', 'USER_DEPARTMENT' => '', 'USER_TEAM' => '', 'USER_POSITION' => '',
 			'USER_ADDITIONAL1' => '', 'USER_ADDITIONAL2' => '', 'USER_FIRST_NAME' => '', 'USER_LAST_NAME' => '',
@@ -60,7 +61,7 @@ final class NuHash
 	/** Variables offered by the code editor's "#" menu, grouped and described in the reader's language. */
 	public const CATALOG = [
 		'user'    => ['USER_ID', 'LOGIN_NAME', 'USER_NAME', 'USER_EMAIL', 'USER_CODE', 'USER_FIRST_NAME', 'USER_LAST_NAME', 'USER_POSITION', 'USER_DEPARTMENT',
-			'USER_TEAM', 'USER_ADDITIONAL1', 'USER_ADDITIONAL2', 'USER_LANGUAGE', 'LANGUAGE', 'USER_PERMISSIONS', 'ACCESS_LEVEL_ID', 'ACCESS_LEVEL_CODE',
+			'USER_TEAM', 'USER_ADDITIONAL1', 'USER_ADDITIONAL2', 'USER_LANGUAGE', 'LANGUAGE', 'USER_PERMISSIONS', 'ACCESS_LEVEL_ID', 'USER_GROUP_ID', 'ACCESS_LEVEL_CODE',
 			'ACCESS_LEVEL_GROUP', 'GLOBAL_ACCESS', 'HOME_ID', 'DEV_MODE', 'SESSION_ID'],
 		'form'    => ['FORM_ID', 'FORM_CODE', 'FORM_GROUP', 'RECORD_ID', 'NEW_RECORD', 'PREVIOUS_RECORD_ID', 'TABLE_ID'],
 		'context' => ['ID', 'CODE', 'SUBFORM_ID', 'OBJECT_ID', 'ROW', 'PROCEDURE_CODE'],
@@ -149,7 +150,7 @@ final class NuHash
 	{
 		$h = self::base() + self::now() + $extra + ['FORM_ID' => '', 'FORM_CODE' => '', 'RECORD_ID' => '', 'NEW_RECORD' => '0', 'TABLE_ID' => self::tableId()];
 		foreach ($props + NuHashCookies::all() as $k => $v) if (is_string($k) && $k !== '' && !array_key_exists($k, $h)) $h[$k] = $v;
-		return $h;
+		return $h + self::lowerAliases($h['FORM_ID'], $h['RECORD_ID']);
 	}
 
 	/** Every hash variable with its source (system, user, record, property, global) – for the hash viewer. */
@@ -179,7 +180,17 @@ final class NuHash
 				$src[$k] = $from;
 			}
 		}
+		// nuBuilder's lower-case names (0.8.576): nuBuilder copies the request fields form_id / record_id (and, in hidden procedures,
+		// hash_record_id) into the hash – here the same values as #FORM_ID# / #RECORD_ID#. A field, property or hash cookie of that
+		// name comes first, as in nuBuilder (the edit form's values overwrite them there).
+		foreach (self::lowerAliases($h['FORM_ID'], $h['RECORD_ID']) as $k => $v) if (!array_key_exists($k, $h)) { $h[$k] = $v; $src[$k] = 'system'; }
 		return [$h, $src];
+	}
+
+	/** @return array<string, string> #form_id#, #record_id#, #hash_record_id# */
+	private static function lowerAliases(mixed $formId, mixed $recordId): array
+	{
+		return ['form_id' => (string)$formId, 'record_id' => (string)$recordId, 'hash_record_id' => (string)$recordId];
 	}
 
 	/** Names a property may not take (system and user variables). */

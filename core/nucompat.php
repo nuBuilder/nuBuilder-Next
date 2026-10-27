@@ -167,7 +167,7 @@ final class NuCompat
 	}
 
 	/** Hash variables the server sets (NuHash::base() and the form's own) – safe without quotes; nu_date … too (prefix nu_). */
-	public const SERVER_VARS = ['USER_ID', 'LOGIN_NAME', 'USER_LOGIN', 'USER_NAME', 'USER_EMAIL', 'SESSION_ID', 'GLOBAL_ACCESS', 'ACCESS_LEVEL_ID',
+	public const SERVER_VARS = ['USER_ID', 'LOGIN_NAME', 'USER_LOGIN', 'USER_NAME', 'USER_EMAIL', 'SESSION_ID', 'GLOBAL_ACCESS', 'ACCESS_LEVEL_ID', 'USER_GROUP_ID',
 		'ACCESS_LEVEL_CODE', 'ACCESS_LEVEL_GROUP', 'USER_LANGUAGE', 'USER_CODE', 'USER_DEPARTMENT', 'USER_TEAM', 'USER_POSITION', 'USER_FIRST_NAME',
 		'USER_LAST_NAME', 'HOME_ID', 'LANGUAGE', 'DEV_MODE', 'USER_PERMISSIONS', 'DEPARTMENT', 'TEAM', 'POSITION', 'FIRST_NAME', 'LAST_NAME',
 		'FORM_ID', 'FORM_CODE', 'FORM_GROUP', 'NEW_RECORD', 'TABLE_ID', 'PROCEDURE_CODE', 'OBJECT_ID'];
@@ -231,11 +231,9 @@ final class NuCompat
 				foreach (array_filter(array_merge($m[1], $m[2])) as $n) $custom[$s['lang']][$s['lang'] === 'php' ? strtolower($n) : $n] = true;
 			}
 		}
-		foreach ((array)(nu_cfg('nuConfigIncludePHP') ?? []) as $file) {
-			$file = (string)$file;
-			if ($file !== '' && !str_starts_with($file, '/')) $file = NU_ROOT . '/' . $file;
-			if (is_file($file) && preg_match_all('/function\s+(nu\w+)\s*\(/i', (string)file_get_contents($file), $m)) foreach ($m[1] as $n) $custom['php'][strtolower($n)] = true;
-		}
+		// functions of the include files and the other page-wide code (0.8.578): $nuConfigIncludePHP / $nuConfigIncludeJS (found like the
+		// form page finds them – nuBuilder Next's folder, then nuBuilder's), the scripts of Setup → Include and Global JS
+		foreach (self::definedOutside() as $lang => $names) foreach ($names as $n) $custom[$lang][$lang === 'php' ? strtolower($n) : $n] = true;
 
 		/** @var array<string, array<string, array{status: string, count: int, where: list<string>, forms: list<string>}>> $res */
 		$res = ['js' => [], 'php' => []];
@@ -269,6 +267,52 @@ final class NuCompat
 	}
 
 	/**
+	 * G6 (0.8.580): does the Content Security Policy of form pages (pages/nuform.php) block this element's address? Images from https
+	 * are allowed, scripts / stylesheets from sites named in $nuConfigIncludeJS / CSS or Setup → Include (NuIncludes::cspSources),
+	 * everything from this server; frames and other hosts are blocked. A protocol-relative address (//host) takes the scheme of this server.
+	 */
+	public static function cspBlocked(string $tag, string $url): bool
+	{
+		$scheme = nu_https() ? 'https:' : 'http:';
+		if (!preg_match('~^(https?:)?//([^/?#\s]+)~i', $url, $m)) return false;
+		$origin = ($m[1] !== '' ? strtolower($m[1]) : $scheme) . '//' . strtolower($m[2]);
+		$self = $scheme . '//' . strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+		if ($origin === $self) return false;
+		if ($tag === 'img') return !str_starts_with($origin, 'https:');
+		static $allowed = null;
+		$allowed ??= array_map(static fn($x) => preg_split('/\s+/', trim($x), -1, PREG_SPLIT_NO_EMPTY), NuIncludes::cspSources());
+		if ($tag === 'script') return !in_array($origin, $allowed['script'], true);
+		if ($tag === 'link') return !in_array($origin, $allowed['style'], true);
+		return true;                                          // iframe: only this server
+	}
+
+	/**
+	 * nu… functions defined outside the forms and procedures: include files of nuconfig.php, Setup → Include scripts (inline and local
+	 * files), Global JS. Files larger than 5 MB are skipped. @return array{js: list<string>, php: list<string>}
+	 */
+	public static function definedOutside(): array
+	{
+		$out = ['js' => [], 'php' => []];
+		$scan = static function (string $lang, ?string $code) use (&$out): void {
+			if ($code === null || $code === '') return;
+			$re = $lang === 'php' ? '/function\s+(nu\w+)\s*\(/i' : '/function\s+(nu\w+)\s*\(|\b(nu\w+)\s*=\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>)/';
+			if (preg_match_all($re, $code, $m)) foreach (array_filter(array_merge($m[1], $m[2] ?? [])) as $n) $out[$lang][] = $n;
+		};
+		$read = static fn(?string $f) => $f !== null && is_file($f) && (int)filesize($f) <= 5_000_000 ? (string)file_get_contents($f) : null;
+		foreach (NuIncludes::entries('php') as $e) $scan('php', $read(NuIncludes::phpFile($e)));
+		foreach (NuIncludes::entries('js') as $e) $scan('js', $read(NuIncludes::localFile($e)));
+		foreach (NuIncludes::setupElements() as $el) {
+			if ($el['tag'] !== 'script') continue;
+			if ($el['url'] !== '') $scan('js', $read(NuIncludes::localFile($el['url'])));
+			else $scan('js', (string)preg_replace('~^<script\b[^>]*>|</script\s*>$~i', '', $el['html']));
+		}
+		try { $scan('js', NuCustomCode::get()['js']); } catch (Throwable) { /* no settings table */ }
+		$out['js'] = array_values(array_unique($out['js']));
+		$out['php'] = array_values(array_unique($out['php']));
+		return $out;
+	}
+
+	/**
 	 * nuBuilder 4.9 features of the compatibility report (0.8.382, ids C/M/N as there): where the application uses them, and since
 	 * which version nuBuilder Next supports them (null = not yet – see the Help). SINCE is kept up to date with each fix.
 	 */
@@ -278,16 +322,18 @@ final class NuCompat
 		// gap and migration analysis nuBuilder 4.9 / nuBuilder Next (0.8.462): G1 access data mode / form type (B3), G2 global hook
 		// procedures (B5), G3 calc in sub-forms (B6), G4 events onnuload / onenter (B7), G5 nuFORMdata, G6 external scripts / frames
 		// (the Content Security Policy blocks them), G7 hash variables nuBuilder Next does not set, G8 #RECORD_ID# / #FORM_ID# in hidden procedures
-		'G1' => '0.8.461', 'G2' => '0.8.462', 'G3' => '0.8.462', 'G4' => '0.8.462', 'G5' => '0.8.462', 'G6' => null, 'G7' => null, 'G8' => null,
+		'G1' => '0.8.461', 'G2' => '0.8.462', 'G3' => '0.8.462', 'G4' => '0.8.462', 'G5' => '0.8.462', 'G6' => null, 'G7' => null, 'G8' => '0.8.576',   // G8: set, with other values than nuBuilder's – listed to check comparisons
 		// G9 (0.8.523): Global JS of Custom code defines nuBuilder hook functions (nuOnLoad …) – a form's own function replaces them
-		'G9' => null];
+		'G9' => null,
+		// G10 (0.8.585): users with additional access levels – nuBuilder 4.x gives them only the rights of the main level
+		'G10' => '0.8.585'];
 
 	/** nuBuilder's global hook procedures (by code) – G2. */
 	public const HOOKS = ['nu_before_save', 'nu_before_edit', 'nu_before_delete', 'nu_startup', 'nu_invalid_login', 'nu_check_password_policy',
 		'nu_after_update', 'nu_debug_result_added'];
 
 	/** Hash variables of nuBuilder 4.9 that nuBuilder Next does not set – G7. */
-	public const MISSING_HASH = ['USER_GROUP_ID', 'USER_A11Y', 'form_id', 'record_id', 'browse_sql', 'subforms'];
+	public const MISSING_HASH = ['USER_A11Y', 'browse_sql', 'subforms'];   // form_id / record_id / hash_record_id: set since 0.8.576, USER_GROUP_ID since 0.8.581
 
 	/** @return array<string, list<array{where: string, form: string, detail: string}>> finding id => places (only ids with places) */
 	public static function findings(bool $withSystem = false): array
@@ -373,7 +419,9 @@ final class NuCompat
 				$names[(string)$o['zzzzsys_object_id']] = [$fid, ($forms[$fid]['sfo_code'] ?? $fid) . ' · ' . $o['sob_all_id']];
 				if ($sys($fid)) continue;
 				if ($o['sob_all_type'] === 'calc' && (string)($forms[$fid]['sfo_type'] ?? '') === 'subform') $hit('G3', $names[(string)$o['zzzzsys_object_id']][1], $fid);
-				if ($o['sob_all_type'] === 'html' && preg_match($ext, (string)($o['sob_html_code'] ?? ''), $m)) $hit('G6', $names[(string)$o['zzzzsys_object_id']][1], $fid, $m[3]);
+				if ($o['sob_all_type'] === 'html' && preg_match_all($ext, (string)($o['sob_html_code'] ?? ''), $mm, PREG_SET_ORDER)) {
+					foreach ($mm as $m) if (self::cspBlocked(strtolower($m[1]), $m[3])) { $hit('G6', $names[(string)$o['zzzzsys_object_id']][1], $fid, $m[3]); break; }
+				}
 			}
 			if ($db->tableExists('zzzzsys_event')) {
 				foreach ($db->all("SELECT sev_zzzzsys_object_id, sev_event FROM zzzzsys_event WHERE sev_event IN ('onnuload', 'onenter')") as $e) {
@@ -402,6 +450,13 @@ final class NuCompat
 		}
 		// G9: Global JS (Custom code → All pages) that defines nuBuilder's hook names
 		try { foreach (NuCustomCode::hookClashes() as $n) $hit('G9', 'Custom code · Global JS', '', $n); } catch (Throwable) { /* no settings table */ }
+		// G10: users with additional access levels (NuUserAccess)
+		if (NuUserAccess::ready()) {
+			foreach ($db->all('SELECT x.user_id, u.sus_login_name, a.sal_code FROM ' . NuUserAccess::TABLE . ' x LEFT JOIN zzzzsys_user u ON ' . $db->sameText('u.zzzzsys_user_id', 'x.user_id')
+				. ' LEFT JOIN zzzzsys_access a ON ' . $db->sameText('a.zzzzsys_access_id', 'x.access_id') . ' ORDER BY u.sus_login_name') as $x) {
+				$hit('G10', 'User · ' . ($x['sus_login_name'] ?? $x['user_id']), '', (string)($x['sal_code'] ?? ''));
+			}
+		}
 		// nuconfig.php: M6 own JavaScript / CSS files, M10 SSO
 		foreach (['nuConfigIncludeJS', 'nuConfigIncludeCSS'] as $v) if (!empty(nu_cfg($v))) $hit('M6', 'nuconfig.php · $' . $v, '', implode(', ', (array)nu_cfg($v)));
 		if (in_array(strtolower((string)nu_cfg('nuConfigLogonMode')), ['sso', 'both'], true)) $hit('M10', 'nuconfig.php · $nuConfigLogonMode', '', (string)nu_cfg('nuConfigLogonMode'));

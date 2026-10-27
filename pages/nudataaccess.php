@@ -169,7 +169,7 @@ nu_layout_start(t('da_title_form', $meta->description()), 'forms');
 					<details class="daField border rounded mb-2"<?= $rules ? ' open' : '' ?> id="da_o_<?= h($oid) ?>" data-oid="<?= h($oid) ?>">
 						<summary class="px-3 py-2 d-flex flex-wrap gap-2 align-items-center">
 							<code><?= h((string)$o['sob_all_id']) ?></code> <span><?= h($label($o)) ?></span>
-							<span class="badge text-bg-light border">nuBuilder: <?= h($nubAccess($o)) ?></span>
+							<span class="badge text-bg-light border">nuBuilder Forte: <?= h($nubAccess($o)) ?></span>
 							<?php foreach ($rules as $r): ?>
 								<span class="badge <?= in_array($r['mode'], ['wh', 'mask', 'prot'], true) ? 'text-bg-warning' : 'text-bg-secondary' ?>"><?= h(($r['type'] === 'default' ? t('da_type_default') : t('da_type_' . $r['type']) . ' ' . $subjectName($r['type'], $r['subject'])) . ': ' . $modeLabel($r['mode'])) ?></span>
 							<?php endforeach; ?>

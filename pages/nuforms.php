@@ -31,4 +31,10 @@ if ($tools) {
 	foreach ($tools as [, $url, $icon, $label]) $toolMenu .= '<li><a class="dropdown-item" href="' . h($url) . '"><i class="bi ' . $icon . ' me-2"></i>' . h($label) . '</a></li>';
 	$toolMenu .= '</ul></div>';
 }
-NuListView::page('forms', ['buttons' => $buttons, 'buttons_end' => $toolMenu]);
+// status menu of the list (0.8.575): texts and the builder API for assets/js/nuformstatus.js – only for those who may change forms
+$stFoot = NuFormDraft::canEdit() && !NuImpersonate::readOnly()
+	? '<div id="nuFormStatusData" hidden data-csrf="' . h(nu_csrf_token()) . '" data-url="' . h(nu_url('builderapi')) . '" data-t="' . h((string)json_encode([
+		'1' => t('builder_status_1'), '0' => t('builder_status_0'), '3' => t('builder_status_3'), 'head' => t('forms_status_change'),
+		'done' => t('forms_status_changed'), 'err' => t('forms_status_failed')], JSON_UNESCAPED_UNICODE)) . '"></div><script src="' . h(nu_asset('assets/js/nuformstatus.js')) . '"></script>'
+	: '';
+NuListView::page('forms', ['buttons' => $buttons, 'buttons_end' => $toolMenu, 'foot' => $stFoot]);

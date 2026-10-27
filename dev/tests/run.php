@@ -32,6 +32,27 @@ foreach (['SELECT 1' => true, "SELECT * FROM a JOIN b ON a.x = b.y WHERE s = 'DE
 check('tablesOf', NuDemo::tablesOf('SELECT * FROM zzzzsys_user u JOIN `Orders` o ON 1') === ['zzzzsys_user', 'orders']);
 check('sqlAllowed select', NuDemo::sqlAllowed('SELECT 1'));
 check('sqlAllowed update', !NuDemo::sqlAllowed('UPDATE customer SET a = 1'));
+// source map comments whose map is not delivered (0.8.574): removed on install, kept when the map is there or inline / external
+$no = static fn($r) => false; $yes = static fn($r) => $r === 'js/a.min.js.map';
+check('stripSourceMap js', NuLibs::stripSourceMap('js/a.min.js', "x();\n//# sourceMappingURL=a.min.js.map", $no) === "x();\n");
+check('stripSourceMap css', NuLibs::stripSourceMap('c/a.css', "a{}\n/*# sourceMappingURL=a.css.map */\n", $no) === "a{}\n");
+check('stripSourceMap map delivered', NuLibs::stripSourceMap('js/a.min.js', "x();\n//# sourceMappingURL=a.min.js.map", $yes) === null);
+check('stripSourceMap inline / other files', NuLibs::stripSourceMap('a.js', "x();\n//# sourceMappingURL=data:application/json;base64,e30=", $no) === null
+	&& NuLibs::stripSourceMap('a.php', "<?php //# sourceMappingURL=a.map", $no) === null && NuLibs::stripSourceMap('a.js', 'var s = "//# sourceMappingURL=x.map"; y();', $no) === null);
+// bundled libraries: no source map comment pointing to a map that is not in the package
+$badMaps = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(NU_ROOT . '/vendor/bundled', FilesystemIterator::SKIP_DOTS)) as $bf) {
+	$rel = substr($bf->getPathname(), strlen(NU_ROOT) + 1);
+	if (preg_match('/\.(js|css)$/', $rel) && NuLibs::stripSourceMap($rel, (string)file_get_contents($bf->getPathname()), static fn($r) => is_file(NU_ROOT . '/' . $r)) !== null) $badMaps[] = $rel;
+}
+check('bundled: no missing source maps', $badMaps === [], implode(', ', $badMaps));
+// Global CSS (0.8.557): a surrounding <style>…</style> is removed, plain CSS and CSS that merely mentions style stay as they are
+check('unwrapStyle wrapped', NuCustomCode::unwrapStyle("  <style>\n.a { color: red; }\n</style>\n") === ".a { color: red; }\n");
+check('unwrapStyle attributes, two blocks', NuCustomCode::unwrapStyle('<style type="text/css">.a{}</style><STYLE>.b{}</STYLE>') === ".a{}.b{}\n");
+check('unwrapStyle plain', NuCustomCode::unwrapStyle('.a { color: red; }') === null && NuCustomCode::unwrapStyle('/* <style> */ .a {}') === null);
+// NuListDefs (0.8.553): self::col(…) + ['select' / 'sort' / 'text' / 'label' / 'class' => …] keeps col()'s own key – use array_replace()
+preg_match_all("/self::(?:col|badgeCol)\\([^;\\n]*?\\) \\+ \\[[^\\n]*?'(?:select|sort|text|label|class)' =>/", (string)file_get_contents(NU_ROOT . '/core/nulistdefs.php'), $plusCol);
+check('list columns: no key dropped by +', $plusCol[0] === [], implode(' | ', $plusCol[0]));
 
 // ---------------------------------------------------------------- English variants (0.8.314)
 foreach (['en-US' => 'en-US', 'en' => 'en-US', 'en_CA' => 'en-US', 'en-AU' => 'en-AU', 'en-nz' => 'en-AU', 'en-GB' => 'en-GB', 'en-IE' => 'en-GB', 'en-IN' => 'en-GB', 'de-CH' => 'de-CH', 'de' => 'de-DE', 'de-AT' => 'de-DE', 'fr-CH' => null] as $tag => $want) {

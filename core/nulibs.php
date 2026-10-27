@@ -374,6 +374,7 @@ final class NuLibs
 				fclose($in);
 				fclose($outF);
 				if ($n !== (int)$f['size'] || !hash_equals((string)$f['sha256'], hash_final($h))) throw new RuntimeException(t('lp_err_hash', (string)$rel));
+				if ($n < 30000000 && ($x = self::stripSourceMap((string)$rel, (string)file_get_contents($dest), static fn($r) => isset($i['manifest']['files'][$r]))) !== null) file_put_contents($dest, $x);
 			}
 			$m = $i['manifest'];
 			$m['installed_at'] = date('Y-m-d H:i:s');
@@ -757,6 +758,24 @@ final class NuLibs
 	// ================================================================== self-test
 
 	/** Quick check of the library in use. @return array{0: string, 1: string} status ok|warn|fail, text */
+	/**
+	 * A source map comment at the end of a .js / .css file whose map is not delivered (0.8.574): removed while installing (updates and
+	 * library packs – after the checksum check) and kept out of the package. Browsers' developer tools would load the map and the strict
+	 * Content-Security-Policy reports a blocked request. Only the last 400 bytes are looked at. @param callable(string): bool $hasFile
+	 * @return ?string the changed content, null when nothing to change
+	 */
+	public static function stripSourceMap(string $rel, string $data, callable $hasFile): ?string
+	{
+		if (!preg_match('/\.(js|css)$/i', $rel)) return null;
+		$tail = substr($data, -400);
+		if (!preg_match('~(?:\n|^)[ \t]*(?://[#@][ \t]*sourceMappingURL=([^\s*]+)[ \t]*|/\*[#@][ \t]*sourceMappingURL=([^\s*]+)[ \t]*\*/[ \t]*)\s*$~', $tail, $m, PREG_OFFSET_CAPTURE)) return null;
+		$map = ($m[1][0] ?? '') !== '' ? $m[1][0] : (string)($m[2][0] ?? '');
+		if ($map === '' || preg_match('~^(data:|https?:|//)~i', $map)) return null;          // inline maps and maps of other servers: left alone
+		$mapRel = ltrim((dirname($rel) === '.' ? '' : dirname($rel) . '/') . $map, '/');
+		if ($hasFile($mapRel)) return null;                                                // the map is delivered: keep the comment
+		return substr($data, 0, strlen($data) - strlen($tail) + (int)$m[0][1]) . "\n";
+	}
+
 	public static function selfTest(string $slot): array
 	{
 		try {

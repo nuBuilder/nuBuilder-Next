@@ -84,11 +84,12 @@ final class NuPage
 		return str_starts_with($f, $root) ? substr($f, strlen($root)) : $f;
 	}
 
-	/** The entry file of a page, confined to the pages folder (realpath); null when missing or outside. */
-	public static function file(string $code): ?string
+	/** The entry file of a page, confined to the pages folder (realpath); null when missing or outside. $draft: of its draft (0.8.599). */
+	public static function file(string $code, bool $draft = false): ?string
 	{
 		$folder = self::folder($code);
 		if ($folder === '') return null;
+		if ($draft) $folder .= '/' . NuPageVersion::DRAFT;
 		$base = realpath(dirname($folder));                   // custom/pages/ (or $nuConfigCustomPagesDir), apps/ for the built-in pages
 		$file = realpath($folder . '/index.php');
 		if ($base === false || $file === false || !is_file($file)) return null;
@@ -349,7 +350,8 @@ final class NuPage
 		$u = NuAuth::user();
 		$ga = !empty($u['globeadmin']) && empty($u['demo']);
 		if (!self::validCode($code)) self::fail(500, 'page_code', t('page_err_code_title'), $ga ? t('page_err_code', $code) : '');
-		$file = self::file($code);
+		$draft = NuPageVersion::viewing($code);            // a designer switched to the draft (0.8.599)
+		$file = self::file($code, $draft);
 		if ($file === null) {
 			if ($ga) self::fail(404, 'page_missing', t('page_err_missing_title'), t('page_err_missing', self::shownFolder($code) . 'index.php'));
 			self::fail(404, 'not_found', t('err_not_found'));
@@ -388,9 +390,32 @@ final class NuPage
 		} finally {
 			if ($cwd !== false) @chdir($cwd);
 		}
+		if ($draft && ob_get_level() > self::$obLevel) self::draftBanner($code);
 		while (ob_get_level() > self::$obLevel + 1) ob_end_flush();
 		if (ob_get_level() > self::$obLevel) ob_end_flush();
 		exit;
+	}
+
+	/**
+	 * Draft view (0.8.599): a small bar with a link back to the live version, added before </body> of an HTML answer (not to JSON,
+	 * files or fetch answers). Inline styles – the page's own CSP may drop them; the text and link stay.
+	 */
+	private static function draftBanner(string $code): void
+	{
+		if (self::wantsJson()) return;
+		foreach (headers_list() as $hd) {
+			if (stripos($hd, 'content-type:') === 0 && stripos($hd, 'text/html') === false) return;
+			if (stripos($hd, 'content-disposition:') === 0) return;
+		}
+		$out = (string)ob_get_contents();
+		$pos = strripos($out, '</body>');
+		if ($pos === false) return;
+		$bar = '<div id="nuPageDraftBar" role="status" style="position:fixed;right:12px;bottom:12px;z-index:2147483000;background:#b45309;color:#fff;'
+			. 'font:600 13px/1.4 system-ui,sans-serif;padding:6px 12px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25)">'
+			. h(t('page_draft_bar')) . ' · <a href="' . h(nu_url('page', ['f' => $code, 'nudraft' => '0'] + array_diff_key(self::carried(), ['iframe' => 1]))) . '" style="color:#fff;text-decoration:underline">'
+			. h(t('page_draft_bar_live')) . '</a></div>';
+		ob_clean();
+		echo substr($out, 0, $pos) . $bar . substr($out, $pos);
 	}
 
 	/** A path for error messages: relative to nuBuilder Next or the pages folder. */
@@ -411,6 +436,7 @@ final class NuPage
 		$code = $meta->code();
 		$rel = (string)($_GET['file'] ?? '');
 		$folder = self::folder($code);
+		if ($folder !== '' && NuPageVersion::viewing($code)) $folder .= '/' . NuPageVersion::DRAFT;   // draft view (0.8.599)
 		$ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
 		if ($folder === '' || !self::validAssetPath($rel) || !isset(self::ASSET_TYPES[$ext])) self::fail(404, 'not_found', t('err_not_found'));
 		$base = realpath($folder . '/assets');
@@ -475,7 +501,7 @@ final class NuPage
 		if ($folder === '' || !is_dir($folder)) return $out;
 		$entry = self::file($code);
 		if ($entry !== null) $out['declared'] = self::declaredApi((string)@file_get_contents($entry));
-		$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($folder, FilesystemIterator::SKIP_DOTS));
+		$it = self::codeFiles($folder);
 		foreach ($it as $f) {
 			$ext = strtolower($f->getExtension());
 			if (!in_array($ext, ['php', 'js', 'mjs'], true) || $f->getSize() > 4_000_000 || $f->getFilename() === 'secrets.php') continue;
@@ -490,6 +516,15 @@ final class NuPage
 			}
 		}
 		return $out;
+	}
+
+	/** The files of a page folder without _data, the draft and the versions (0.8.599). */
+	private static function codeFiles(string $folder): RecursiveIteratorIterator
+	{
+		$top = rtrim(str_replace('\\', '/', $folder), '/');
+		return new RecursiveIteratorIterator(new RecursiveCallbackFilterIterator(new RecursiveDirectoryIterator($folder, FilesystemIterator::SKIP_DOTS),
+			static fn(SplFileInfo $f) => !($f->isDir() && dirname(str_replace('\\', '/', $f->getPathname())) === $top
+				&& in_array($f->getFilename(), ['_data', NuPageVersion::DRAFT, NuPageVersion::VERSIONS], true))));
 	}
 
 	/**
@@ -530,7 +565,7 @@ final class NuPage
 		$folder = self::folder($code);
 		if ($folder === '' || !is_dir($folder)) return $out;
 		$n = 0;
-		$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($folder, FilesystemIterator::SKIP_DOTS));
+		$it = self::codeFiles($folder);
 		foreach ($it as $f) {
 			if (strtolower($f->getExtension()) !== 'php' || $f->getFilename() === 'secrets.php' || $f->getSize() > 4_000_000 || ++$n > 500) continue;
 			$src = (string)@file_get_contents($f->getPathname());
@@ -1197,6 +1232,7 @@ class NuPageContext
 	{
 		if ($this->secrets === null) {
 			$f = $this->dir . '/secrets.php';
+			if (!is_file($f)) $f = NuPage::dir() . '/' . $this->meta->code() . '/secrets.php';   // a draft reads the live one (0.8.599)
 			$v = is_file($f) ? (static fn(string $__f) => require $__f)($f) : [];
 			$this->secrets = is_array($v) ? $v : [];
 		}

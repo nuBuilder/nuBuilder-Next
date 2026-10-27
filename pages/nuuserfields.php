@@ -99,7 +99,7 @@ if ($id !== '') {
 			</div>
 		</div>
 		<fieldset<?= $canChange ? '' : ' disabled' ?>>
-		<div class="card shadow-sm nu-card-narrow"><div class="card-body"><div class="row g-3">
+		<div class="card shadow-sm nu-card-narrow ufCard"><div class="card-body"><div class="row g-3">
 			<div class="col-sm-6">
 				<label class="form-label" for="ufLabel"><?= h(t('uf_label')) ?> <span class="text-danger">*</span></label>
 				<?= $fld('label', '<input class="form-control' . $inv('label') . '" id="ufLabel" name="label" maxlength="200" value="' . h($val('label')) . '" required>') ?>
@@ -109,7 +109,7 @@ if ($id !== '') {
 				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('uf_code_tip')) ?>" title="<?= h(t('uf_code_tip')) ?>"><i class="bi bi-info-circle"></i></span>
 				<?= $fld('code', '<input class="form-control font-monospace' . $inv('code') . '" id="ufCode" name="code" maxlength="40" pattern="[a-z][a-z0-9_]*" autocomplete="off" spellcheck="false" value="' . h($val('code')) . '"' . ($f ? ' readonly' : ' required') . '>') ?>
 			</div>
-			<div class="col-sm-6">
+			<div class="col-sm-6 col-lg-4">
 				<label class="form-label" for="ufType"><?= h(t('uf_type')) ?></label>
 				<?php if ($f): ?>
 					<input class="form-control" id="ufType" value="<?= h($typeName($type)) ?>" readonly data-type="<?= h($type) ?>">
@@ -119,9 +119,9 @@ if ($id !== '') {
 					</select>
 				<?php endif; ?>
 			</div>
-			<div class="col-sm-6">
+			<div class="col-sm-6 col-lg-8">
 				<label class="form-label" for="ufEditBy"><?= h(t('uf_edit_by')) ?></label>
-				<select class="form-select" id="ufEditBy" name="edit_by">
+				<select class="form-select ufEditBy" id="ufEditBy" name="edit_by">
 					<?php foreach (NuUserFields::EDIT_BY as $e): ?><option value="<?= h($e) ?>"<?= ($val('edit_by') ?: 'admin') === $e ? ' selected' : '' ?>><?= h($editName($e)) ?></option><?php endforeach; ?>
 				</select>
 			</div>

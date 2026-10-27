@@ -22,7 +22,8 @@ if ($id !== '' && !$existing) {
  */
 $guardAdminUser = static function () use ($existing, $me, $id): void {
 	if (!$existing || !NuSecurity::restricted() || $existing['zzzzsys_user_id'] === $me['id']) return;
-	if (!NuSecurity::adminRightsOf((string)$existing['sus_zzzzsys_access_id'])) return;
+	$lv = [(string)$existing['sus_zzzzsys_access_id'], ...array_column(NuUserAccess::rowsOf((string)$existing['zzzzsys_user_id']), 'access_id')];
+	if (!array_filter($lv, static fn($a) => (bool)NuSecurity::adminRightsOf((string)$a))) return;   // also through additional levels (0.8.585)
 	nu_flash('danger', t('secchk_err_admin_user'));
 	nu_redirect(nu_url('user', ['id' => $id]));
 };
@@ -35,6 +36,16 @@ $backToList = static function (): string {
 };
 
 // ------------------------------------------------------------------ archive: Valid until = yesterday (login no longer possible, data stays)
+// ------------------------------------------------------------------ effective rights (0.8.589): the levels entered in the form, not saved yet
+if (nu_is_post() && nu_post('action') === 'effective') {
+	$rowsIn = [];
+	$xaA = is_array($_POST['xa_acc'] ?? null) ? $_POST['xa_acc'] : [];
+	$xaU = is_array($_POST['xa_until'] ?? null) ? $_POST['xa_until'] : [];
+	foreach ($xaA as $i => $a) if (is_string($a) && trim($a) !== '') $rowsIn[] = [trim($a), is_string($xaU[$i] ?? null) && nu_valid_date(trim($xaU[$i])) ? trim($xaU[$i]) : ''];
+	header('Content-Type: application/json; charset=utf-8');
+	exit((string)json_encode(['ok' => true] + NuUserAccess::effective(nu_post('sus_zzzzsys_access_id'), $rowsIn), JSON_UNESCAPED_UNICODE));
+}
+
 if (nu_is_post() && nu_post('action') === 'archive' && $existing) {
 	NuAcl::require(NuAcl::FORM_USER, 'save');
 	$guardAdminUser();
@@ -64,6 +75,7 @@ if (nu_is_post() && nu_post('action') === 'delete') {
 	NuTwoFA::forgetDevices($id);
 	NuLog::write('user_deleted', 'zzzzsys_user', $id, ['login' => $existing['sus_login_name']]);
 	NuUserFields::forget($id);                                  // custom field values (0.8.454)
+	NuUserAccess::forgetUser($id);                              // additional access levels (0.8.585)
 	nu_flash('success', t('user_deleted', $existing['sus_login_name']));
 	nu_redirect($backToList());
 }
@@ -164,6 +176,10 @@ $admRoleMay = NuAdmin::canManage() && !($existing && $existing['zzzzsys_user_id'
 $admRoleCur = $existing ? (string)(NuAdmin::roleOfUser((string)$existing['zzzzsys_user_id'])['id'] ?? '') : '';
 $admRoleSel = $admRoleCur;
 
+// additional access levels (0.8.585, core/nuuseraccess.php): [access id, valid until] – a clone takes them along
+$xaOld = array_map(static fn($r) => [$r['access_id'], $r['valid_until']], NuUserAccess::rowsOf($existing ? $id : $cloneId));
+$xaSel = $xaOld;
+
 // permission items (nuBuilder subform sf_permission → zzzzsys_user_permission)
 $permItems = NuPermission::items();
 $permOld   = array_keys(array_filter(NuPermission::forUser($existing ? $id : $cloneId), static fn($a) => $a === '1'));
@@ -199,6 +215,12 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	$welcome = $mailOk && nu_check('user_send_welcome_email') === '1';
 	if (NU_FEATURE_ACCESSIBILITY) $v['sus_accessibility_features'] = nu_check('sus_accessibility_features');   // hidden: the stored value stays
 	if (isset($_POST['perm_sent'])) $permSel = array_map('strval', is_array($_POST['perm'] ?? null) ? $_POST['perm'] : []);
+	if (isset($_POST['xa_sent'])) {
+		$xaSel = [];
+		$xaA = is_array($_POST['xa_acc'] ?? null) ? $_POST['xa_acc'] : [];
+		$xaU = is_array($_POST['xa_until'] ?? null) ? $_POST['xa_until'] : [];
+		foreach ($xaA as $i => $a) if (is_string($a) && trim($a) !== '') $xaSel[] = [trim($a), is_string($xaU[$i] ?? null) ? trim($xaU[$i]) : ''];
+	}
 	$pw      = (string)($_POST['password'] ?? '');
 	$confirm = (string)($_POST['password_confirm'] ?? '');
 
@@ -227,6 +249,15 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			$errors['sus_zzzzsys_access_id'] = t('secchk_err_admin_level');
 		}
 	}
+
+	// additional access levels (0.8.585): existing levels, valid dates; restricted admins: not for the own record, no admin-equivalent new ones
+	$xaOldIds = array_column($xaOld, 0);
+	foreach ($xaSel as [$xa, $xu]) {
+		if (!(int)$db->value('SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$xa])) { $errors['xa'] = t('err_invalid'); break; }
+		if ($xu !== '' && !nu_valid_date($xu)) { $errors['xa'] = t('xa_err_date'); break; }
+		if (NuSecurity::restricted() && !in_array($xa, $xaOldIds, true) && NuSecurity::adminRightsOf($xa)) { $errors['xa'] = t('secchk_err_admin_level'); break; }
+	}
+	if (!isset($errors['xa']) && NuSecurity::restricted() && $existing && $existing['zzzzsys_user_id'] === $me['id'] && $xaSel != $xaOld) $errors['xa'] = t('secchk_err_own_level');
 
 	if ($v['sus_email'] !== '' && !isset($errors['sus_email']) && !filter_var($v['sus_email'], FILTER_VALIDATE_EMAIL)) {
 		$errors['sus_email'] = t('user_err_email');
@@ -279,6 +310,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			if ($langVariant !== '' || $cloneId !== '') NuUserJson::set($id, 'NUNEXT_LANG_VARIANT', $langVariant);
 			if ($pw !== '') NuUserJson::passwordChanged($id, 'admin');   // not for the random one of a welcome e-mail
 			$ufDiff = NuUserFields::save($id, $ufNew);
+			foreach (NuUserAccess::save($id, $v['sus_zzzzsys_access_id'], $xaSel) as $xc => $xd) $ufDiff['access_extra:' . $xc] = $xd;   // 0.8.585
 			NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + $ufDiff]);
 			if ($permItems) NuPermission::setUser($id, $permSel);
 			$pa = array_values(array_intersect_key(array_column($permItems, 'pme_ident', 'zzzzsys_permission_item_id'), array_flip($permSel)));
@@ -292,6 +324,9 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			if ($langVariant !== $langVariantOld && NuUserJson::set($id, 'NUNEXT_LANG_VARIANT', $langVariant)) $changes['language_variant'] = [$langVariantOld, $langVariant];
 			if ($newHash) $changes['sus_login_password'] = ['…', '(' . t('log_new_password') . ')'];
 			$changes += NuUserFields::save($id, $ufNew);            // custom fields (0.8.454): "field:<code>" in the log
+			if (isset($_POST['xa_sent']) || $v['sus_zzzzsys_access_id'] !== (string)$existing['sus_zzzzsys_access_id']) {   // additional levels (0.8.585)
+				foreach (NuUserAccess::save($id, $v['sus_zzzzsys_access_id'], $xaSel) as $xc => $xd) $changes['access_extra:' . $xc] = $xd;
+			}
 			if ($changes) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $changes]);
 			if ($permItems && isset($_POST['perm_sent'])) {
 				[$pa, $pr] = NuPermission::setUser($id, $permSel);
@@ -306,7 +341,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			$err = $saved ? NuWelcome::send($saved, $pw) : t('err_not_found');
 			nu_flash($err === null ? 'success' : 'danger', $err === null ? t('welcome_sent', (string)$saved['sus_email']) : t('welcome_failed') . ' ' . $err);
 		}
-		nu_redirect(nu_url('user', ['id' => $id, 'tab' => in_array(nu_post('tab'), ['perm', 'more'], true) ? nu_post('tab') : null]));   // stays on the tab it was saved from
+		nu_redirect(nu_url('user', ['id' => $id, 'tab' => nu_post('tab') === 'perm' ? 'perm' : null]));   // stays on the tab it was saved from
 	}
 	nu_flash('danger', t('err_check_form'));
 }
@@ -389,7 +424,12 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					data-choice-archived="<?= nu_is_expired($existing['sus_expires_on']) ? '1' : '0' ?>"
 					title="<?= h(t('user_remove')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
-			<?= NuFormInfo::record('zzzzsys_user', (string)$id, ['login' => (string)$existing['sus_login_name']]) /* (i): record ID, table, created / changed (0.8.500) */ ?>
+			<?php $pwInfo = '';                                  // password last changed (nuBuilder: sus_json PASSWORD_CHANGED_TIME / _SOURCE) – in the (i) panel (0.8.587)
+			if (($pwTime = (int)NuUserJson::get((string)$id, 'PASSWORD_CHANGED_TIME')) > 0) {
+				$pwSrc = (string)NuUserJson::get((string)$id, 'PASSWORD_CHANGED_SOURCE');
+				$pwInfo = date('d.m.Y H:i', $pwTime) . (in_array($pwSrc, ['user', 'admin', 'reset'], true) ? ' (' . t('user_pw_src_' . $pwSrc) . ')' : '');
+			} ?>
+			<?= NuFormInfo::record('zzzzsys_user', (string)$id, ['login' => (string)$existing['sus_login_name']], 'nuRecInfo', $pwInfo !== '' ? ['pw_changed' => $pwInfo] : []) /* (i): record ID, table, created / changed (0.8.500) */ ?>
 		<?php endif; ?>
 	</div>
 </div>
@@ -403,91 +443,64 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 	<fieldset<?= $ro ?>>
 	<?php // tabs General / Permission items (0.8.438): one form, one Save; ?tab=perm opens the second tab (also after saving there)
 	$userTab = (string)($_GET['tab'] ?? '');
-	if ($errors) $userTab = array_filter(array_keys($errors), static fn($k) => !str_starts_with((string)$k, 'uf_')) ? '' : 'more';   // the tab with the errors
-	if (!in_array($userTab, ['perm', 'more'], true) || ($userTab === 'more' && !$ufAll)) $userTab = '';
+	if ($errors) $userTab = '';                                   // every field with an error is on General (custom fields too since 0.8.591)
+	if ($userTab !== 'perm') $userTab = '';                      // ?tab=more (custom fields tab until 0.8.590) opens General
 	$permTab = $userTab === 'perm';
-	$moreTab = $userTab === 'more';
 	$permCount = count(array_intersect($permSel, array_column($permItems, 'zzzzsys_permission_item_id'))); ?>
 	<input type="hidden" name="tab" id="userTab" value="<?= h($userTab) ?>">
 	<ul class="nav nav-tabs mb-3" id="userTabs" role="tablist">
 		<li class="nav-item" role="presentation"><button class="nav-link<?= $userTab === '' ? ' active' : '' ?>" id="userTabGeneralBtn" data-bs-toggle="tab" data-bs-target="#userTabGeneral" data-nu-tab="" type="button" role="tab" aria-controls="userTabGeneral" aria-selected="<?= $userTab === '' ? 'true' : 'false' ?>"><i class="bi bi-person me-1"></i><?= h(t('user_tab_general')) ?></button></li>
 		<li class="nav-item" role="presentation"><button class="nav-link<?= $permTab ? ' active' : '' ?>" id="userTabPermBtn" data-bs-toggle="tab" data-bs-target="#userTabPerm" data-nu-tab="perm" type="button" role="tab" aria-controls="userTabPerm" aria-selected="<?= $permTab ? 'true' : 'false' ?>"><i class="bi bi-key me-1"></i><?= h(t('perm_title')) ?> <span class="badge rounded-pill text-bg-secondary ms-1" id="userPermTabCount"><?= $permCount ?></span></button></li>
-		<?php if ($ufAll): // custom user fields (0.8.454) ?><li class="nav-item" role="presentation"><button class="nav-link<?= $moreTab ? ' active' : '' ?>" id="userTabMoreBtn" data-bs-toggle="tab" data-bs-target="#userTabMore" data-nu-tab="more" type="button" role="tab" aria-controls="userTabMore" aria-selected="<?= $moreTab ? 'true' : 'false' ?>"><i class="bi bi-ui-checks me-1"></i><?= h(t('user_tab_more')) ?><?= $ufErr ? ' <i class="bi bi-exclamation-circle text-danger ms-1" role="img" aria-label="' . h(t('err_check_form')) . '"></i>' : '' ?></button></li><?php endif; ?>
 	</ul>
 	<div class="tab-content">
 	<div class="tab-pane fade<?= $userTab === '' ? ' show active' : '' ?>" id="userTabGeneral" role="tabpanel" aria-labelledby="userTabGeneralBtn" tabindex="0">
 	<div class="row g-3">
-		<div class="col-lg-6">
-			<div class="card shadow-sm h-100">
+		<div class="col-lg-6 d-flex flex-column gap-3">   <?php // Person + custom fields (0.8.591: card instead of the tab Additional fields) ?>
+			<div class="card shadow-sm">
 				<div class="card-header fw-semibold"><i class="bi bi-person-vcard me-2"></i><?= h(t('user_sec_person')) ?></div>
 				<div class="card-body">
 					<div class="row g-3">
 						<div class="col-12"><?= $input('sus_name', 'text', ['required' => true]) ?></div>
 						<div class="col-sm-6"><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
 						<div class="col-sm-6"><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
-						<div class="col-12"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
+						<div class="col-sm-8"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
+						<div class="col-sm-4"><?= $input('sus_code') ?></div>
 						<div class="col-sm-4"><?= $input('sus_position') ?></div>
 						<div class="col-sm-4"><?= $input('sus_department') ?></div>
 						<div class="col-sm-4"><?= $input('sus_team') ?></div>
-						<div class="col-sm-4"><?= $input('sus_code') ?></div>
-						<div class="col-sm-4"><?= $input('sus_additional1') ?></div>
-						<div class="col-sm-4"><?= $input('sus_additional2') ?></div>
+						<div class="col-sm-6"><?= $input('sus_additional1') ?></div>
+						<div class="col-sm-6"><?= $input('sus_additional2') ?></div>
 					</div>
 				</div>
 			</div>
+			<?php if ($ufAll): // custom user fields (0.8.454) – own card below Person (0.8.591) ?>
+			<div class="card shadow-sm" id="userTabMore">
+				<div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-ui-checks me-2"></i><?= h(t('user_tab_more')) ?></span>
+					<?php if (NuAdmin::can('userfields')): ?><a class="small" href="<?= h(nu_url('userfields')) ?>" id="userFieldsManage"><i class="bi bi-gear me-1"></i><?= h(t('uf_manage')) ?></a><?php endif; ?></div>
+				<div class="card-body"><div class="row g-3">
+					<?php foreach ($ufAll as $code => $f) echo NuUserFields::inputHtml($f, (string)($ufVals[$code] ?? ''), $ufErr[$code] ?? null, !isset($ufEdit[$code]), true); ?>
+				</div></div>
+			</div>
+			<?php endif; ?>
 		</div>
 
-		<div class="col-lg-6">
-			<div class="card shadow-sm h-100">
-				<div class="card-header fw-semibold"><i class="bi bi-shield-lock me-2"></i><?= h(t('user_sec_login')) ?></div>
+		<div class="col-lg-6 d-flex flex-column gap-3">   <?php // three cards (0.8.586): login credentials · access & roles · account settings ?>
+			<div class="card shadow-sm userCardLogin">
+				<div class="card-header fw-semibold"><i class="bi bi-key me-2"></i><?= h(t('user_sec_credentials')) ?></div>
 				<div class="card-body">
 					<div class="mb-3"><?= $input('sus_login_name', 'text', ['required' => true, 'autocomplete' => 'off', 'spellcheck' => 'false']) ?></div>
-
-					<div class="mb-3">
-						<label class="form-label" for="sus_zzzzsys_access_id"><?= h(t('access_level')) ?> <span class="text-danger">*</span></label>
-						<?php $canOpenAccess = NuAcl::can(NuAcl::FORM_ACCESS); $accessUrl = nu_url('accesslevel', ['id' => '__ID__']); ?>
-						<div class="<?= $canOpenAccess ? 'input-group' . (isset($errors['sus_zzzzsys_access_id']) ? ' has-validation' : '') : '' ?>">
-						<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'sus_zzzzsys_access_id') ?>" id="sus_zzzzsys_access_id" name="sus_zzzzsys_access_id" required>
-							<option value=""><?= h(t('please_select')) ?></option>
-							<?php $grp = null; foreach ($accessLevels as $a):
-								$g = (string)$a['sal_group'];
-								if ($g !== $grp) { if ($grp !== null) echo '</optgroup>'; echo '<optgroup label="' . h($g !== '' ? $g : t('no_group')) . '">'; $grp = $g; } ?>
-								<option value="<?= h($a['zzzzsys_access_id']) ?>" data-sub="<?= h((string)$a['sal_description']) ?>"<?= $v['sus_zzzzsys_access_id'] === $a['zzzzsys_access_id'] ? ' selected' : '' ?>><?= h((string)($a['sal_code'] ?: $a['zzzzsys_access_id'])) ?></option>
-							<?php endforeach; if ($grp !== null) echo '</optgroup>'; ?>
-						</select>
-						<?php if ($canOpenAccess):   // opens the chosen access level in a new tab (assets/js/nuuser.js keeps the link in step with the select) ?>
-							<a class="btn btn-outline-secondary nuOpenBtn<?= $v['sus_zzzzsys_access_id'] === '' ? ' disabled' : '' ?>" id="accessOpen" target="_blank" rel="noopener"
-							   data-url="<?= h($accessUrl) ?>" href="<?= h($v['sus_zzzzsys_access_id'] === '' ? '#' : str_replace('__ID__', rawurlencode($v['sus_zzzzsys_access_id']), $accessUrl)) ?>"
-							   <?= $v['sus_zzzzsys_access_id'] === '' ? 'aria-disabled="true" tabindex="-1"' : '' ?> title="<?= h(t('user_access_open')) ?>" aria-label="<?= h(t('user_access_open')) ?>"><i class="bi bi-box-arrow-up-right"></i></a>
-						<?php endif; ?>
-						<?= nu_feedback($errors, 'sus_zzzzsys_access_id') ?>
-						</div>
-					</div>
-					<?php if ($admRoleMay || $admRoleCur !== ''): $admRoles = NuAdmin::roles(); ?>
-					<div class="mb-3" id="admRoleField">
-						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('adm_role_field_tip')) ?>" title="<?= h(t('adm_role_field_tip')) ?>"><i class="bi bi-info-circle"></i></span>
-						<select class="form-select" id="admin_role" name="admin_role"<?= $admRoleMay ? '' : ' disabled' ?>>
-							<option value=""><?= h(t('adm_role_none')) ?></option>
-							<?php foreach ($admRoles as $ar): ?><option value="<?= h($ar['id']) ?>"<?= $admRoleSel === $ar['id'] ? ' selected' : '' ?>><?= h($ar['name'] . (NuAdmin::hasFull($ar['rights']) ? ' ⚠' : '')) ?></option><?php endforeach; ?>
-						</select>
-					</div>
-					<?php endif; ?>
 
 					<div class="row g-3 mb-3">
 						<div class="col-sm-6">
 							<label class="form-label" for="password"><?= h(t('login_password')) ?><?= $isNew ? ' <span class="text-danger">*</span>' : '' ?></label>
 							<div class="input-group<?= isset($errors['password']) ? ' has-validation' : '' ?>">
-								<input type="password" class="form-control<?= nu_invalid($errors, 'password') ?>" id="password" name="password" autocomplete="new-password">
+								<input type="password" class="form-control<?= nu_invalid($errors, 'password') ?>" id="password" name="password" autocomplete="new-password"<?= $isNew ? '' : ' placeholder="' . h(t('user_pw_unchanged')) . '" title="' . h(t('user_pw_keep')) . '"' ?>>
 								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#password" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
 								<?php if ($canSave): ?><button class="btn btn-outline-secondary nuPwGenBtn" type="button" data-bs-toggle="modal" data-bs-target="#nuPwGen" title="<?= h(t('pwg_title')) ?>" aria-label="<?= h(t('pwg_title')) ?>"><i class="bi bi-magic"></i></button><?php endif; ?>
 								<?= nu_feedback($errors, 'password') ?>
 							</div>
-							<div class="form-text" id="passwordHint"><?= h($isNew ? t('pw_min_hint', $min) : t('user_pw_keep')) ?></div>
-							<?php if (!$isNew && ($pwTime = (int)NuUserJson::get($id, 'PASSWORD_CHANGED_TIME')) > 0):     // nuBuilder: sus_json PASSWORD_CHANGED_TIME / _SOURCE
-								$pwSrc = (string)NuUserJson::get($id, 'PASSWORD_CHANGED_SOURCE'); ?>
-								<div class="form-text" id="passwordChanged"><i class="bi bi-clock-history me-1"></i><?= h(t('user_pw_changed', date('d.m.Y H:i', $pwTime))) ?><?php
-									if (in_array($pwSrc, ['user', 'admin', 'reset'], true)): ?> (<?= h(t('user_pw_src_' . $pwSrc)) ?>)<?php endif; ?></div>
-							<?php endif; ?>
+							<?php // existing user (0.8.587): placeholder "(unchanged)" instead of the hint below; "Password last changed" is in the (i) panel ?>
+							<div class="form-text<?= $isNew ? '' : ' d-none' ?>" id="passwordHint"><?= h($isNew ? t('pw_min_hint', $min) : '') ?></div>
 							<?php if (!$isNew && $me['globeadmin'] && empty($me['demo']) && nu_cfg('nuConfigAutoLogin') && (string)($existing['sus_login_password'] ?? '') !== ''): // never for demo visitors: it logs in as that user
 								$alLinks = [];
 								foreach ([7, 1, 30, 90, 0] as $d) $alLinks[$d] = NuAuth::autoLoginLink($existing, $d); ?>
@@ -535,19 +548,87 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<div class="col-sm-6">
 							<label class="form-label" for="password_confirm"><?= h(t('pw_confirm')) ?></label>
 							<div class="input-group<?= isset($errors['password_confirm']) ? ' has-validation' : '' ?>">
-								<input type="password" class="form-control<?= nu_invalid($errors, 'password_confirm') ?>" id="password_confirm" name="password_confirm" autocomplete="new-password">
+								<input type="password" class="form-control<?= nu_invalid($errors, 'password_confirm') ?>" id="password_confirm" name="password_confirm" autocomplete="new-password"<?= $isNew ? '' : ' placeholder="' . h(t('user_pw_unchanged')) . '"' ?>>
 								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#password_confirm" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
 								<?= nu_feedback($errors, 'password_confirm') ?>
 							</div>
 						</div>
 					</div>
 
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" id="sus_change_password" name="sus_change_password" value="1"<?= $v['sus_change_password'] === '1' ? ' checked' : '' ?>>
+						<label class="form-check-label" for="sus_change_password"><?= h(t('user_change_pw')) ?></label>
+					</div>
+				</div>
+			</div>
+			<div class="card shadow-sm userCardAccess">
+				<div class="card-header fw-semibold"><i class="bi bi-shield-lock me-2"></i><?= h(t('user_sec_access')) ?></div>
+				<div class="card-body">
+					<div class="mb-3">
+						<label class="form-label" for="sus_zzzzsys_access_id"><?= h(t('access_level')) ?> <span class="text-danger">*</span></label>
+						<?php $canOpenAccess = NuAcl::can(NuAcl::FORM_ACCESS); $accessUrl = nu_url('accesslevel', ['id' => '__ID__']); ?>
+						<div class="<?= $canOpenAccess ? 'input-group' . (isset($errors['sus_zzzzsys_access_id']) ? ' has-validation' : '') : '' ?>">
+						<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'sus_zzzzsys_access_id') ?>" id="sus_zzzzsys_access_id" name="sus_zzzzsys_access_id" required>
+							<option value=""><?= h(t('please_select')) ?></option>
+							<?php $grp = null; foreach ($accessLevels as $a):
+								$g = (string)$a['sal_group'];
+								if ($g !== $grp) { if ($grp !== null) echo '</optgroup>'; echo '<optgroup label="' . h($g !== '' ? $g : t('no_group')) . '">'; $grp = $g; } ?>
+								<option value="<?= h($a['zzzzsys_access_id']) ?>" data-sub="<?= h((string)$a['sal_description']) ?>"<?= $v['sus_zzzzsys_access_id'] === $a['zzzzsys_access_id'] ? ' selected' : '' ?>><?= h((string)($a['sal_code'] ?: $a['zzzzsys_access_id'])) ?></option>
+							<?php endforeach; if ($grp !== null) echo '</optgroup>'; ?>
+						</select>
+						<?php if ($canOpenAccess):   // opens the chosen access level in a new tab (assets/js/nuuser.js keeps the link in step with the select) ?>
+							<a class="btn btn-outline-secondary nuOpenBtn<?= $v['sus_zzzzsys_access_id'] === '' ? ' disabled' : '' ?>" id="accessOpen" target="_blank" rel="noopener"
+							   data-url="<?= h($accessUrl) ?>" href="<?= h($v['sus_zzzzsys_access_id'] === '' ? '#' : str_replace('__ID__', rawurlencode($v['sus_zzzzsys_access_id']), $accessUrl)) ?>"
+							   <?= $v['sus_zzzzsys_access_id'] === '' ? 'aria-disabled="true" tabindex="-1"' : '' ?> title="<?= h(t('user_access_open')) ?>" aria-label="<?= h(t('user_access_open')) ?>"><i class="bi bi-box-arrow-up-right"></i></a>
+						<?php endif; ?>
+						<?= nu_feedback($errors, 'sus_zzzzsys_access_id') ?>
+						</div>
+					</div>
+					<?php // additional access levels (0.8.585, core/nuuseraccess.php): rows [level, valid until], added / removed in assets/js/nuuser.js ?>
+					<div class="mb-3" id="xaBox">
+						<input type="hidden" name="xa_sent" value="1">
+						<div class="d-flex align-items-center gap-2 mb-1">
+							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('xa_tip')) ?>" title="<?= h(t('xa_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+							<span class="ms-auto d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary<?= $xaSel ? '' : ' d-none' ?>" id="xaEff" data-bs-toggle="modal" data-bs-target="#xaEffDlg"><i class="bi bi-shield-check me-1"></i><?= h(t('eff_btn')) ?></button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" id="xaAdd"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-plus-lg me-1"></i><?= h(t('xa_add')) ?></button></span>
+						</div>
+						<?php $xaOpt = static function (string $sel) use ($accessLevels): string {
+							$o = '<option value="">' . h(t('please_select')) . '</option>';
+							foreach ($accessLevels as $a) $o .= '<option value="' . h($a['zzzzsys_access_id']) . '"' . ($sel === (string)$a['zzzzsys_access_id'] ? ' selected' : '') . '>' . h((string)($a['sal_code'] ?: $a['zzzzsys_access_id']) . ((string)$a['sal_description'] !== '' ? ' – ' . $a['sal_description'] : '')) . '</option>';
+							return $o;
+						}; $xaRow = static function (string $acc, string $until) use ($xaOpt, $canSave): string {
+							$gone = $until !== '' && !NuUserAccess::active($until);
+							return '<div class="input-group input-group-sm mb-1 xaRow' . ($gone ? ' xaExpired' : '') . '">'
+								. '<select class="form-select" name="xa_acc[]" aria-label="' . h(t('access_level')) . '"' . ($canSave ? '' : ' disabled') . '>' . $xaOpt($acc) . '</select>'
+								. '<span class="input-group-text">' . h(t('xa_until')) . '</span>'
+								. '<input type="date" class="form-control xaUntil" name="xa_until[]" value="' . h($until) . '" aria-label="' . h(t('xa_until')) . '"' . ($canSave ? '' : ' disabled') . '>'
+								. ($gone ? '<span class="input-group-text text-body-secondary">' . h(t('user_expired')) . '</span>' : '')
+								. '<button type="button" class="btn btn-outline-danger xaDel" title="' . h(t('remove')) . '" aria-label="' . h(t('remove')) . '"' . ($canSave ? '' : ' disabled') . '><i class="bi bi-x-lg"></i></button></div>';
+						}; ?>
+						<div id="xaRows"><?php foreach ($xaSel as [$xa, $xu]) echo $xaRow((string)$xa, (string)$xu); ?></div>
+						<template id="xaTpl"><?= $xaRow('', '') ?></template>
+						<div class="small text-body-secondary<?= $xaSel ? ' d-none' : '' ?>" id="xaNone"><?= h(t('xa_none')) ?></div>
+						<?php if (isset($errors['xa'])): ?><div class="invalid-feedback d-block"><?= h($errors['xa']) ?></div><?php endif; ?>
+					</div>
+					<?php if ($admRoleMay || $admRoleCur !== ''): $admRoles = NuAdmin::roles(); ?>
+					<div class="mb-3" id="admRoleField">
+						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('adm_role_field_tip')) ?>" title="<?= h(t('adm_role_field_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						<select class="form-select" id="admin_role" name="admin_role"<?= $admRoleMay ? '' : ' disabled' ?>>
+							<option value=""><?= h(t('adm_role_none')) ?></option>
+							<?php foreach ($admRoles as $ar): ?><option value="<?= h($ar['id']) ?>"<?= $admRoleSel === $ar['id'] ? ' selected' : '' ?>><?= h($ar['name'] . (NuAdmin::hasFull($ar['rights']) ? ' ⚠' : '')) ?></option><?php endforeach; ?>
+						</select>
+					</div>
+					<?php endif; ?>
+				</div>
+			</div>
+			<div class="card shadow-sm userCardAccount">
+				<div class="card-header fw-semibold"><i class="bi bi-gear me-2"></i><?= h(t('user_sec_account')) ?></div>
+				<div class="card-body">
 					<div class="row g-3 mb-3">
 						<div class="col-sm-6">
-							<label class="form-label" for="sus_expires_on"><?= h(t('user_expires')) ?></label>
+							<label class="form-label" for="sus_expires_on"><?= h(t('user_expires')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('user_expires_hint')) ?>" title="<?= h(t('user_expires_hint')) ?>"><i class="bi bi-info-circle"></i></span>
 							<input type="date" class="form-control<?= nu_invalid($errors, 'sus_expires_on') ?>" id="sus_expires_on" name="sus_expires_on" value="<?= h($v['sus_expires_on']) ?>">
 							<?= nu_feedback($errors, 'sus_expires_on') ?>
-							<div class="form-text"><?= h(t('user_expires_hint')) ?></div>
 						</div>
 						<div class="col-sm-6">
 							<label class="form-label" for="sus_language"><?= h(t('user_language')) ?></label>
@@ -559,10 +640,6 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						</div>
 					</div>
 
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="sus_change_password" name="sus_change_password" value="1"<?= $v['sus_change_password'] === '1' ? ' checked' : '' ?>>
-						<label class="form-check-label" for="sus_change_password"><?= h(t('user_change_pw')) ?></label>
-					</div>
 					<?php if ($mailOk && $canSave): ?>
 					<div class="form-check form-switch">
 						<input class="form-check-input" type="checkbox" role="switch" id="user_send_welcome_email" name="user_send_welcome_email" value="1"<?= $welcome ? ' checked' : '' ?> aria-describedby="welcomeHint"
@@ -609,8 +686,15 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 									<?php foreach ($permGroups as $pg): ?><option value="<?= h($pg) ?>"><?= h($pg !== '' ? $pg : t('no_group')) ?></option><?php endforeach; ?>
 								</select>
 							<?php endif; ?>
-							<button type="button" class="btn btn-sm btn-outline-secondary" data-perm-all="1"><i class="bi bi-check2-all me-1"></i><?= h(t('perm_all')) ?></button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" data-perm-all="1" data-perm-confirm="<?= h(t('perm_all_confirm')) ?>" data-perm-confirm-ok="<?= h(t('perm_all')) ?>"><i class="bi bi-check2-all me-1"></i><?= h(t('perm_all')) ?></button>
 							<button type="button" class="btn btn-sm btn-outline-secondary" data-perm-all="0"><i class="bi bi-x-lg me-1"></i><?= h(t('perm_none')) ?></button>
+							<?php // Undo (0.8.584): back to the selection before the last All / None – shown until another change (nuuser.js) ?>
+							<button type="button" class="btn btn-sm btn-outline-warning d-none" id="userPermUndo" title="<?= h(t('perm_undo_tip')) ?>"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('perm_undo')) ?></button>
+							<?php // phones: descriptions on / off for a more compact table (remembered per browser, nuuser.js) ?>
+							<div class="form-check form-switch mb-0 d-sm-none" id="userPermDescWrap" data-nu-noguard>
+								<input class="form-check-input" type="checkbox" role="switch" id="userPermDescToggle" checked>
+								<label class="form-check-label small" for="userPermDescToggle"><?= h(t('perm_show_desc')) ?></label>
+							</div>
 						</div>
 						<?php // table (0.8.458): one row per item – a click anywhere on the row toggles it (nuuser.js) ?>
 						<div class="table-responsive">
@@ -618,19 +702,22 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 								<thead><tr>
 									<th class="userPermCheck"><span class="visually-hidden"><?= h(t('perm_title')) ?></span></th>
 									<th><?= h(t('perm_ident')) ?></th>
-									<th class="d-none d-sm-table-cell"><?= h(t('perm_description')) ?></th>
 									<th class="d-none d-md-table-cell"><?= h(t('perm_group')) ?></th>
+									<th class="d-none d-sm-table-cell"><?= h(t('perm_description')) ?></th>
 								</tr></thead>
 								<tbody>
 								<?php foreach ($permItems as $pi):
 									$g = (string)$pi['pme_group'];
-									$pid = (string)$pi['zzzzsys_permission_item_id']; ?>
+									$pid = (string)$pi['zzzzsys_permission_item_id'];
+									// description (0.8.561): one line, as much as fits (CSS: …, the text at most 750 px wide); the full text as tooltip
+									$pDesc = (string)$pi['pme_description'];
+									$pTitle = $pDesc !== '' ? ' title="' . h($pDesc) . '"' : ''; ?>
 									<tr class="userPermItem" data-group="<?= h($g) ?>" data-search="<?= h(mb_strtolower($pi['pme_ident'] . ' ' . $g . ' ' . $pi['pme_description'])) ?>">
 										<td class="userPermCheck"><input class="form-check-input" type="checkbox" name="perm[]" value="<?= h($pid) ?>" id="perm_<?= h($pid) ?>"<?= in_array($pid, $permSel, true) ? ' checked' : '' ?>></td>
-										<td><label class="font-monospace" for="perm_<?= h($pid) ?>"><?= h($pi['pme_ident']) ?></label>
-											<?php if ((string)$pi['pme_description'] !== ''): // phones: the description below the ident ?><div class="small text-body-secondary userPermDesc d-sm-none"><?= h((string)$pi['pme_description']) ?></div><?php endif; ?></td>
-										<td class="text-body-secondary userPermDesc d-none d-sm-table-cell"><?= h((string)$pi['pme_description']) ?></td>
+										<td class="userPermIdent"><label class="font-monospace" for="perm_<?= h($pid) ?>"><?= h($pi['pme_ident']) ?></label>
+											<?php if ($pDesc !== ''): // phones: the description below the ident ?><div class="small text-body-secondary userPermDesc userPermDescLine d-sm-none"<?= $pTitle ?>><?= h($pDesc) ?></div><?php endif; ?></td>
 										<td class="text-body-secondary text-nowrap d-none d-md-table-cell"><?= h($g !== '' ? $g : t('no_group')) ?></td>
+										<td class="text-body-secondary userPermDesc userPermDescCell d-none d-sm-table-cell"><div class="userPermDescLine"<?= $pTitle ?>><?= h($pDesc) ?></div></td>
 									</tr>
 								<?php endforeach; ?>
 								</tbody>
@@ -642,17 +729,6 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 				</div>
 			</div>
 	</div>
-	<?php if ($ufAll): ?>
-	<div class="tab-pane fade<?= $moreTab ? ' show active' : '' ?>" id="userTabMore" role="tabpanel" aria-labelledby="userTabMoreBtn" tabindex="0">
-		<div class="card shadow-sm">
-			<div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-ui-checks me-2"></i><?= h(t('user_tab_more')) ?></span>
-				<?php if (NuAdmin::can('userfields')): ?><a class="small" href="<?= h(nu_url('userfields')) ?>" id="userFieldsManage"><i class="bi bi-gear me-1"></i><?= h(t('uf_manage')) ?></a><?php endif; ?></div>
-			<div class="card-body"><div class="row g-3">
-				<?php foreach ($ufAll as $code => $f) echo NuUserFields::inputHtml($f, (string)($ufVals[$code] ?? ''), $ufErr[$code] ?? null, !isset($ufEdit[$code]), true); ?>
-			</div></div>
-		</div>
-	</div>
-	<?php endif; ?>
 	</div>
 	</fieldset>
 
@@ -720,4 +796,41 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 <?php endif; ?>
 <?php
 if ($existing && $id !== $me['id']) echo nu_user_remove_modal($rights, ['stay' => '1']);
+// effective rights dialog (0.8.589): filled by assets/js/nuuser.js from the POST action "effective" (the levels as entered, not saved yet)
+$effT = ['view' => t('view'), 'add' => t('add'), 'save' => t('save'), 'delete' => t('delete'), 'clone' => t('clone'), 'print' => t('print'),
+	'main' => t('eff_main'), 'expired' => t('user_expired'), 'additional' => t('xa_badge'), 'browse_only' => t('eff_browse_only'), 'edit_only' => t('eff_edit_only'),
+	'none' => t('eff_none'), 'form' => t('eff_form'), 'levels' => t('eff_levels'), 'copied' => t('copy_done'), 'error' => t('err_unexpected')];
+?>
+<div class="modal fade" id="xaEffDlg" tabindex="-1" aria-labelledby="xaEffTitle" aria-hidden="true" data-url="<?= h(nu_url('user', ['id' => $id !== '' ? $id : null])) ?>" data-csrf="<?= h(nu_csrf_token()) ?>" data-t="<?= h((string)json_encode($effT, JSON_UNESCAPED_UNICODE)) ?>">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+		<div class="modal-header">
+			<h2 class="modal-title h5" id="xaEffTitle"><i class="bi bi-shield-check me-2"></i><?= h(t('eff_title')) ?></h2>
+			<span class="nuInfoTip ms-2" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('eff_hint')) ?>" title="<?= h(t('eff_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button>
+		</div>
+		<div class="modal-body">
+			<div class="d-flex flex-wrap gap-2 align-items-center mb-2" id="xaEffLevels"></div>
+			<div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+				<input type="search" class="form-control form-control-sm w-auto" id="xaEffFind" placeholder="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>">
+				<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="xaEffOnly"><label class="form-check-label small" for="xaEffOnly"><?= h(t('eff_only_extra')) ?></label></div>
+			</div>
+			<ul class="nav nav-tabs mb-2" role="tablist">
+				<li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#xaEffForms" type="button" role="tab"><?= h(t('eff_forms')) ?> <span class="badge rounded-pill text-bg-light border" id="xaEffNForms">0</span></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#xaEffProcs" type="button" role="tab"><?= h(t('eff_procs')) ?> <span class="badge rounded-pill text-bg-light border" id="xaEffNProcs">0</span></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#xaEffReports" type="button" role="tab"><?= h(t('eff_reports')) ?> <span class="badge rounded-pill text-bg-light border" id="xaEffNReports">0</span></button></li>
+			</ul>
+			<div class="tab-content">
+				<div class="tab-pane fade show active" id="xaEffForms" role="tabpanel"><div class="table-responsive"><table class="table table-sm nu-table align-middle mb-0 xaEffTable"><thead></thead><tbody></tbody></table></div></div>
+				<div class="tab-pane fade" id="xaEffProcs" role="tabpanel"><div class="table-responsive"><table class="table table-sm nu-table align-middle mb-0 xaEffTable"><tbody></tbody></table></div></div>
+				<div class="tab-pane fade" id="xaEffReports" role="tabpanel"><div class="table-responsive"><table class="table table-sm nu-table align-middle mb-0 xaEffTable"><tbody></tbody></table></div></div>
+			</div>
+			<div class="text-center py-4 d-none" id="xaEffBusy"><div class="spinner-border text-primary" role="status" aria-hidden="true"></div></div>
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-outline-secondary me-auto" id="xaEffCopy"><i class="bi bi-clipboard me-1"></i><?= h(t('copy')) ?></button>
+			<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= h(t('close')) ?></button>
+		</div>
+	</div></div>
+</div>
+<?php
 nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuuser.js') . '"></script>');   // name parts; permission items when present

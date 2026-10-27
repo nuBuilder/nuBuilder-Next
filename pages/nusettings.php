@@ -149,9 +149,11 @@ nu_layout_start(t('set_title'), 'home', ['container' => 'nuContainer']);
 			<div class="col-12">   <?php /* filter by the nuBuilder Next tag, with counts (0.8.280) */ ?>
 				<div class="d-flex flex-wrap align-items-center gap-2" id="setStatus" role="radiogroup" aria-label="<?= h(t('set_st_filter')) ?>">
 					<span class="small text-body-secondary me-1"><?= h(t('set_st_filter')) ?>:</span>
-					<?php $stCount = array_count_values(array_map(static fn($r) => (NuSettings::STATUS[(string)$r['cfg_setting']] ?? [''])[0], $rows));
+					<?php // opens on "Used" (0.8.575); after a save with errors on "All", so no row with an error is hidden
+					$stDefault = $errors ? '' : 'next';
+					$stCount = array_count_values(array_map(static fn($r) => (NuSettings::STATUS[(string)$r['cfg_setting']] ?? [''])[0], $rows));
 					foreach (['' => 'all', 'next' => 'next', 'open' => 'open', 'na' => 'na'] as $v => $k): $rid = 'setSt_' . ($v ?: 'all'); ?>
-						<input type="radio" class="btn-check" name="setStatus" id="<?= $rid ?>" value="<?= $v ?>" autocomplete="off"<?= $v === '' ? ' checked' : '' ?>>
+						<input type="radio" class="btn-check" name="setStatus" id="<?= $rid ?>" value="<?= $v ?>" autocomplete="off"<?= $v === $stDefault ? ' checked' : '' ?>>
 						<label class="btn btn-sm btn-outline-secondary setStBtn<?= $v !== '' ? ' setStBtn-' . $v : '' ?>" for="<?= $rid ?>"><?= h($v === '' ? t('all') : t('set_st_' . $k)) ?>
 							<span class="badge rounded-pill text-bg-light border ms-1"><?= $v === '' ? count($rows) : (int)($stCount[$v] ?? 0) ?></span></label>
 					<?php endforeach; ?>

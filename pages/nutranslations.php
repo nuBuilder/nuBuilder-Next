@@ -144,7 +144,7 @@ nu_layout_start(t('trl_title'), 'forms');
 		<input type="hidden" name="action" value="save"><input type="hidden" name="back" value="<?= h($back) ?>">
 		<div class="nuTitleBar mb-3">
 			<h1 class="h4 mb-0"><?= h($row ? t('trl_edit') : t('trl_new')) ?>
-				<?php if ($isNu): ?><span class="badge bg-info-subtle text-info-emphasis fs-6 align-middle">nuBuilder</span><?php endif; ?></h1>
+				<?php if ($isNu): ?><span class="badge bg-info-subtle text-info-emphasis fs-6 align-middle">nuBuilder Forte</span><?php endif; ?></h1>
 			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
 			<a class="btn nuBtnAct" href="<?= h(($back === 'missing' ? nu_url('translations', ['view' => 'missing', 'lang' => $curLang]) : nu_url('translations'))) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="trlSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>

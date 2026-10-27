@@ -73,6 +73,15 @@
 		return '<a href="' + esc(protocol + url) + '" target="' + esc(target || '_blank') + '" rel="noopener" title="' + esc(title) + '">' + text + '</a>';
 	});
 	api('nuGetURLParameterValue', function (name) { return new URLSearchParams(window.location.search).get(name); });
+	// nuBuilder's permalink in the address bar (0.8.568): here nuBuilder Next's own form address ?p=form&f=…&r=… (F5 opens the same record;
+	// index.php also accepts nuBuilder's ?f=…&r=…&h=…)
+	api('nuSetURLPermaLink', function () {
+		if (window.top !== window.self) return;
+		var c = nuCurrentProperties(), u = new URL(window.location.href);
+		u.search = ''; u.searchParams.set('p', 'form'); u.searchParams.set('f', c.form_id);
+		if (c.record_id !== undefined && c.record_id !== null && c.record_id !== '') u.searchParams.set('r', c.record_id);
+		window.history.replaceState(window.history.state, '', u.toString());
+	});
 	api('nuIsMacintosh', function () {
 		if (navigator.userAgentData && navigator.userAgentData.platform) return /mac/i.test(navigator.userAgentData.platform);
 		return /macintosh|mac os x/i.test(navigator.userAgent);
@@ -165,14 +174,19 @@
 		if (appendToEnd) t.append('&nbsp;' + html); else t.prepend(html + '&nbsp;');
 	});
 	api('nuButtonIcon', function (id) { $(typeof id === 'string' && id.charAt(0) !== '#' ? '#' + id : id).css({'text-align': 'left', 'padding-left': '35px', 'background-size': '30px', 'background-repeat': 'no-repeat'}); });
+	// as nuBuilder: the icon goes INSIDE the button / word, before (or with "a|b" also after) the label – 0.8.559 (before: next to it);
+	// the same markup the server draws for sob_input_icon (NuRender::withIcon)
 	api('nuAddInputIcon', function (id, icon) {
 		if (!icon || nuUserA11Y()) return;
+		var t = $('#' + id);
+		if (!t.length) return;
+		var hasText = t.text().trim() !== '';
 		var add = function (s, after) {
 			s = s.trim();
 			if (s === '') return;
-			var el = /^(fa|bi)/.test(s) ? $('<i>').addClass(/^bi(-|\s)/.test(s) ? 'bi ' + s.replace(/^bi\s+/, '') : s).addClass('nuInputIcon') : $('<span class="nuInputIcon">').html(s);
-			if (after) $('#' + id).after(el); else $('#' + id).before(el);
-			g(id) && g(id).setAttribute('nu-data-icon', s);
+			var el = /^(fa|bi)[\w\s-]*$/.test(s) ? $('<i aria-hidden="true">').addClass('nuObjIcon fa-width-auto ' + (/^bi-/.test(s) ? 'bi ' + s : s)) : $('<span class="nuObjIcon">').html(s);
+			if (after) t.append(hasText ? '&nbsp;' : '', el); else t.prepend(el, hasText ? '&nbsp;' : '');
+			t[0].setAttribute('nu-data-icon', s);
 		};
 		var p = String(icon).split('|');
 		add(p[0], false);

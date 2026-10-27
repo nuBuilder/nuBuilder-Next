@@ -288,9 +288,19 @@ final class NuAuth
 
 		self::applyLanguage((string)$row['sus_language'], (string)$row['zzzzsys_user_id'], true);
 
-		$need2fa = (bool)nu_cfg('nuConfig2FAUser') && (string)$access['sal_use_2fa'] === '1' && !NuDemo::isDemoUser((string)$row['zzzzsys_user_id']);   // demo users: no second factor
+		$need2fa = (bool)nu_cfg('nuConfig2FAUser') && self::levels2fa((string)$access['sal_use_2fa'] === '1', (string)$row['zzzzsys_user_id'])
+			&& !NuDemo::isDemoUser((string)$row['zzzzsys_user_id']);   // demo users: no second factor
 		return self::afterPassword(['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'fp' => self::fingerprint($hash), 'login' => (string)$row['sus_login_name']],
 			$need2fa, (string)$row['sus_email']);
+	}
+
+	/** Two-factor login required: by the main access level or by any active additional level (0.8.585, NuUserAccess). */
+	public static function levels2fa(bool $main, string $userId): bool
+	{
+		if ($main) return true;
+		$extra = NuUserAccess::extraIds($userId);
+		if (!$extra) return false;
+		return (bool)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_access WHERE sal_use_2fa = ? AND zzzzsys_access_id IN (' . implode(', ', array_fill(0, count($extra), '?')) . ')', ['1', ...$extra]);
 	}
 
 	/** Password was correct: log in now, or ask for the second factor. */
@@ -674,7 +684,7 @@ final class NuSharedLogin
 			$auth = ['id' => $uid, 'globeadmin' => false, 'fp' => '', 'login' => (string)$u['sus_login_name']];
 		}
 		$auth += ['via' => 'nubuilder', 'nb_session' => $sid];
-		NuLog::write('login', '', '', ['via' => 'nuBuilder session'], $auth);
+		NuLog::write('login', '', '', ['via' => 'nuBuilder Forte session'], $auth);
 		return $auth;
 	}
 

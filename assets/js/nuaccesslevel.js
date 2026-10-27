@@ -3,6 +3,17 @@
    are greyed out whenever the list opens. */
 (function () {
 	'use strict';
+	// Users card (0.8.583): Active (default) · Archived · All
+	var uf = document.getElementById('accUserFilter'), ul = document.getElementById('accUserList');
+	if (uf && ul) uf.addEventListener('change', function () {
+		var v = (uf.querySelector('input:checked') || {}).value || 'active', n = 0;
+		Array.prototype.forEach.call(ul.querySelectorAll('li[data-st]'), function (li) { li.hidden = v !== 'all' && li.getAttribute('data-st') !== v; if (!li.hidden) n++; });
+		var none = ul.querySelector('.accUserNone');
+		if (none) none.hidden = n > 0;
+	});
+})();
+(function () {
+	'use strict';
 	var sel = document.getElementById('addForm'), body = document.querySelector('.js-rights-body');
 	if (!sel || !body || typeof TomSelect === 'undefined') return;
 	var ts = new TomSelect(sel, {

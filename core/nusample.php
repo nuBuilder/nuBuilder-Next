@@ -622,7 +622,7 @@ final class NuSample
 				// --- Upload: nuBuilder's file object with target "File System" (Uppy, 0.8.506)
 				['tab' => 9, 'type' => 'html', 'id' => 'all_upload_intro', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 150,
 					'html' => '<div class="alert alert-secondary small mb-0 py-2"><b>Upload to the server</b> – a <i>File</i> object with <i>File target</i> = <b>File System</b>: '
-						. 'the files go into a folder on the server, not into the record. nuBuilder\'s procedure <code>nu_upload_file_template</code> stores them in '
+						. 'the files go into a folder on the server, not into the record. nuBuilder Forte\'s procedure <code>nu_upload_file_template</code> stores them in '
 						. '<code>nu_uploads/</code> next to the web root (a second file with the same name gets <code>-1</code>, <code>-2</code> …; .php, .html and other '
 						. 'dangerous types are refused). Copy the procedure to change the folder or the allowed types. Needs the library pack <b>Uppy</b> '
 						. '(Update → Libraries); without it the form shows a notice.</div>'],
@@ -746,7 +746,7 @@ final class NuSample
 					'c_newcust' => $f('New customer', 'sample_customer', 'bi-person-plus', '', '-1'),
 					'c_orders' => $f('Orders', 'sample_order', 'bi-receipt', 'Orders with their items'),
 					'c_products' => $f('Products', 'sample_product', 'bi-box-seam', 'The product catalogue'),
-					'c_allobj' => $f('All object types', 'sample_all', 'bi-ui-checks-grid', 'Every nuBuilder object type in one form'),
+					'c_allobj' => $f('All object types', 'sample_all', 'bi-ui-checks-grid', 'Every nuBuilder Forte object type in one form'),
 					'c_rptcust' => $rep('Customers by country', 'sample_rpt_customers'),
 					'c_rptorders' => $rep('Orders by customer', 'sample_rpt_orders'),
 					'c_hello' => ['label' => 'Run a procedure', 'hint' => 'sample_hello – output in a new tab', 'icon' => 'bi-play-circle', 'color' => '', 'kind' => 'procedure',

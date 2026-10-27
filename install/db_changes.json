@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.550",
+    "version": "0.8.600",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -15,7 +15,7 @@
         },
         {
             "id": "0002-report-tables",
-            "description": "nuBuilder report and SQL builder tables (zzzzsys_report, zzzzsys_access_report, zzzzsys_select, zzzzsys_select_clause) when missing",
+            "description": "nuBuilder Forte report and SQL builder tables (zzzzsys_report, zzzzsys_access_report, zzzzsys_select, zzzzsys_select_clause) when missing",
             "changes": [
                 {
                     "table": "zzzzsys_report",
@@ -41,7 +41,7 @@
         },
         {
             "id": "0003-translate-table",
-            "description": "nuBuilder translation table (zzzzsys_translate) when missing – new installations have it, older ones got it only with the first saved translation",
+            "description": "nuBuilder Forte translation table (zzzzsys_translate) when missing – new installations have it, older ones got it only with the first saved translation",
             "changes": [
                 {
                     "table": "zzzzsys_translate",
@@ -52,7 +52,7 @@
         },
         {
             "id": "0004-cloner-tables",
-            "description": "nuBuilder tables of saved Cloner and App cloner settings (zzzzsys_cloner, zzzzsys_app_cloner) when missing",
+            "description": "nuBuilder Forte tables of saved Cloner and App cloner settings (zzzzsys_cloner, zzzzsys_app_cloner) when missing",
             "changes": [
                 {
                     "table": "zzzzsys_cloner",
@@ -186,7 +186,7 @@
         },
         {
             "id": "0014-database-origin",
-            "description": "Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder database, or installed before 0.8.380)",
+            "description": "Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder Forte database, or installed before 0.8.380)",
             "changes": [
                 {
                     "table": "zzzzsys_nunext_setting",
@@ -257,7 +257,7 @@
         },
         {
             "id": "0020-upload-template",
-            "description": "Uppy uploads: nuBuilder's procedure nu_upload_file_template (hardened) and the snippet nu_upload_file_uppy_code_template when missing",
+            "description": "Uppy uploads: nuBuilder Forte's procedure nu_upload_file_template (hardened) and the snippet nu_upload_file_uppy_code_template when missing",
             "changes": [
                 {
                     "table": "zzzzsys_php",
@@ -310,6 +310,17 @@
             "changes": [
                 {
                     "table": "zzzzsys_nunext_object_access",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0025-user-access",
+            "description": "Additional access levels per user (zzzzsys_nunext_user_access)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_user_access",
                     "kind": "table",
                     "what": "created when missing"
                 }
@@ -1289,6 +1300,39 @@
             ],
             "index": [
                 "user_id"
+            ]
+        },
+        "zzzzsys_nunext_user_access": {
+            "pk": "zzzzsys_nunext_user_access_id",
+            "cols": [
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "access_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "valid_until",
+                    "text",
+                    "10"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "user_id",
+                "access_id"
             ]
         },
         "zzzzsys_nunext_object_access": {

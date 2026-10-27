@@ -126,7 +126,15 @@ if (!$u['globeadmin']) {
 	$access = $db->one('SELECT sal_code, sal_description, sal_group, sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]);
 }
 if ($showRights) {
-	$forms  = $db->all('SELECT slf_zzzzsys_form_id, ' . implode(', ', NuAcl::RIGHTS) . ' FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?', [$u['access_id']]);
+	// main + additional access levels (0.8.585): one row per form, a right ticked when any level grants it
+	[$in, $lv] = NuUserAccess::inSql('slf_zzzzsys_access_id', $u);
+	$forms = [];
+	foreach ($db->all('SELECT slf_zzzzsys_form_id, ' . implode(', ', NuAcl::RIGHTS) . " FROM zzzzsys_access_form WHERE $in", $lv) as $r) {
+		$fk = (string)$r['slf_zzzzsys_form_id'];
+		if (!isset($forms[$fk])) { $forms[$fk] = $r; continue; }
+		foreach (NuAcl::RIGHTS as $col) if ((string)$r[$col] === '1') $forms[$fk][$col] = '1';
+	}
+	$forms = array_values($forms);
 	usort($forms, static fn($a, $b) => strcasecmp(nu_form_label($a['slf_zzzzsys_form_id']), nu_form_label($b['slf_zzzzsys_form_id'])));
 }
 

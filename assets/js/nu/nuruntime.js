@@ -1628,7 +1628,7 @@
 	});
 
 	// =================================================================== label menu (globeadmin): quick changes of an object
-	// Click on a label of the edit form: Object id (click = copy) · Properties… · Rename… · Actions (Delete, Move to tab) · Access · Align · Validation.
+	// Right-click on a label or button of the edit form (0.8.562): Object id (click = copy) · Properties… · Rename… · Actions (Delete, Move to tab) · Access · Align · Validation.
 	// Changes are saved through the builder API and the form is reloaded.
 	(function () {
 		var OM = N.objmenu;
@@ -1748,12 +1748,21 @@
 			menu.find('button').first().trigger('focus');
 		}
 
-		$(document).on('click', '#nuEditForm label[id^="label_"], #nuEditForm .nuContentBoxTitle[id^="label_"]', function (e) {
-			var id = this.id.substring(6);
-			if (!N.objects[id]) return;                              // subform columns and labels without object
+		// right-click as in nuBuilder 4.x (0.8.562 – before: a left click, which kept labels from focusing their field): labels, content
+		// box titles and buttons (input buttons, run buttons); Ctrl + right-click keeps the browser's own menu (inspect); the context-menu
+		// key / Shift+F10 opens it at the element
+		// 0.8.569: also the title an HTML object draws itself (a framed box from the form's CSS: .title, h1–h6, legend, .card-header)
+		var HTML_TITLES = ['.title', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'legend', '.card-header'].map(function (x) { return '#nuEditForm .nuHtml[id] ' + x; }).join(', ');
+		$(document).on('contextmenu', '#nuEditForm label[id^="label_"], #nuEditForm .nuContentBoxTitle[id^="label_"], #nuEditForm button.nuButton[id], #nuEditForm button.nuRunButton[id], ' + HTML_TITLES, function (e) {
+			if (e.ctrlKey) return;
+			var html = $(this).closest('.nuHtml[id]');
+			var id = html.length && !$(this).is('label, button') ? html.attr('id') : (/^label_/.test(this.id) && !$(this).is('button') ? this.id.substring(6) : this.id);
+			if (!N.objects[id]) return;                              // subform columns / rows and labels without object: the browser's menu
 			e.preventDefault();
 			e.stopPropagation();
-			open(id, e.clientX, e.clientY);
+			var x = e.clientX, y = e.clientY;
+			if (!x && !y) { var r = this.getBoundingClientRect(); x = r.left + 8; y = r.bottom; }   // from the keyboard
+			open(id, x, y);
 		});
 		$(document).on('click', function (e) { if (menu && !$(e.target).closest('.nuObjMenu').length) close(); });
 		// keys while the menu is open: on window in the capture phase – before Bootstrap's dropdown handler (capture on document),
@@ -2324,7 +2333,7 @@
 			$('#nuCodeModal').remove();
 			var ro = el.readOnly || el.disabled;
 			var m = $('<div class="modal fade" id="nuCodeModal" tabindex="-1" aria-hidden="true" aria-labelledby="nuCodeModalTitle"><div class="modal-dialog modal-xl modal-fullscreen-lg-down nuCodeDialog"><div class="modal-content">'
-				+ '<div class="modal-header py-2 gap-2 flex-wrap"><h2 class="modal-title fs-6 me-auto" id="nuCodeModalTitle"></h2><span class="nuCodeToolsHost"></span><span class="nuCodeHash"></span><span class="badge text-bg-secondary nuCodeLang"></span>'
+				+ '<div class="modal-header py-2 gap-2 flex-wrap"><h2 class="modal-title fs-6" id="nuCodeModalTitle"></h2><span class="nuCodeToolsHost ms-3"></span><span class="nuCodeHash me-auto"></span><span class="badge text-bg-secondary nuCodeLang"></span>'
 				+ '<button type="button" class="btn-close ms-1" data-bs-dismiss="modal"></button></div>'
 				+ '<div class="modal-body p-0"><textarea></textarea></div>'
 				+ '<div class="modal-footer py-2"><span class="small text-body-secondary me-auto nuCodeHint"></span><button type="button" class="btn btn-outline-secondary btn-sm nuCodeCancel"></button><button type="button" class="btn btn-primary btn-sm nuCodeApply"></button></div>'

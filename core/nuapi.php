@@ -500,6 +500,7 @@ final class NuApi
 			NuTwoFA::forgetDevices($id);
 			NuLog::write('user_deleted', 'zzzzsys_user', $id, ['login' => $old['sus_login_name'], 'via' => 'api']);
 			NuUserFields::forget($id);
+			NuUserAccess::forgetUser($id);   // additional access levels (0.8.585)
 			return [204, null, []];
 		}
 		self::need(NuAcl::FORM_USER, 'save');

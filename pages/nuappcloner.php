@@ -297,7 +297,7 @@ if (($action === 'dry' || $action === 'run') && $dbOk):
 								<input class="form-check-input m-0" type="checkbox" name="tables[]" value="<?= h($tb['name']) ?>"<?= $in['tables_all'] || in_array($tb['name'], $in['tables'], true) ? ' checked' : '' ?>>
 								<span class="font-monospace flex-grow-1 text-truncate"><?= h($tb['name']) ?></span>
 								<?php if ($tb['type'] === 'VIEW'): ?><span class="badge bg-info-subtle text-info-emphasis border fw-normal">VIEW</span><?php endif; ?>
-								<?php if ($tb['system']): ?><span class="badge bg-secondary-subtle text-secondary-emphasis border fw-normal">nuBuilder</span><?php endif; ?>
+								<?php if ($tb['system']): ?><span class="badge bg-secondary-subtle text-secondary-emphasis border fw-normal">nuBuilder Forte</span><?php endif; ?>
 								<?php if ($tb['type'] === 'TABLE'): ?><span class="text-body-secondary">~<?= number_format($tb['rows'], 0, '.', '\'') ?></span><?php endif; ?>
 							</label>
 						<?php endforeach; ?>

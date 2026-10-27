@@ -156,7 +156,7 @@ final class NuFormSpec
 	{
 		$spec = $formId !== '' ? self::fromForm($formId) : null;
 		$db = nu_db()->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
-		$p = "You design a data-entry form for nuBuilder Next (a front end for nuBuilder 4, database: $db).\n"
+		$p = "You design a data-entry form for nuBuilder Next (a front end for nuBuilder Forte 4.x, database: $db).\n"
 			. ($spec ? "Change the existing form below as requested. Return the COMPLETE form in the same format (not only the changes).\n"
 				: "Create a new form as requested.\n")
 			. "Answer with ONE JSON object in a ```json code block and nothing else.\n\n"

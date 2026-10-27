@@ -67,10 +67,12 @@ final class NuRender
 			$h    = (int)$o['sob_all_height'];
 			$height = max($height, $top + $h + ($o['sob_all_type'] === 'subform' ? 40 : 20));
 			$width  = max($width, $left + $w + 20);
-			$z = $o['sob_all_type'] === 'contentbox' ? 0 : 1;
+			// stacking as in nuBuilder (0.8.567): objects get no z-index (they stack in drawing order, and a z-index:-1 inside an HTML object
+			// sends that element behind the others – before, z-index:1 on every wrapper trapped it), content boxes -1; the canvas is isolated
+			$z = $o['sob_all_type'] === 'contentbox' ? 'z-index:-1' : '';
 			// input buttons keep their height like run buttons (as in nuBuilder, 0.8.518) – other inputs size themselves
 			$isBtn = $o['sob_all_type'] === 'input' && (string)($o['sob_input_type'] ?? '') === 'button';
-			$style = "top:{$top}px;left:{$left}px;width:{$w}px;" . ($h > 0 && ($isBtn || !in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'lookup', 'word'], true)) ? "height:{$h}px;" : '') . "z-index:$z";
+			$style = "top:{$top}px;left:{$left}px;width:{$w}px;" . ($h > 0 && ($isBtn || !in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'lookup', 'word'], true)) ? "height:{$h}px;" : '') . $z;
 			$html .= $this->wrapper($o, 'nuAbs', $style, $this->object($o, 'absolute'));
 		}
 		return '<div class="nuAbsoluteCanvas" style="height:' . $height . 'px;min-width:' . $width . 'px">' . $html . '</div>';
@@ -232,8 +234,8 @@ final class NuRender
 		$acc   = $this->access($o);
 		$events ??= $this->eventsOf($o, $prefix !== '' ? 'sub' : 'main');
 		$align = in_array($o['sob_all_align'], ['right', 'center'], true) ? 'text-align:' . $o['sob_all_align'] . ';' : '';
-		$style = $sizeStyle . $align . ($o['sob_all_style_type'] === 'CSS' ? (string)$o['sob_all_style'] : '');
-		$cls   = 'nuObject nu_' . $type . ($o['sob_all_style_type'] === 'Class' && $type !== 'contentbox' ? ' ' . $o['sob_all_style'] : '');
+		$style = $sizeStyle . $align . (($o['sob_all_style_type'] ?? '') === 'CSS' ? (string)($o['sob_all_style'] ?? '') : '');
+		$cls   = 'nuObject nu_' . $type . (($o['sob_all_style_type'] ?? '') === 'Class' && $type !== 'contentbox' ? ' ' . ($o['sob_all_style'] ?? '') : '');
 		$common = ' id="' . h($id) . '" data-nu-field="' . h($field) . '" data-nu-prefix="' . h($prefix) . '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '"'
 			. ' data-nu-type="' . h($type) . '"' . ($o['sob_all_validate'] ? ' data-nu-validate="' . h($o['sob_all_validate']) . '"' : '')
 			. $this->attributes($o) . ($type === 'lookup' ? '' : $events) . ($style !== '' && $type !== 'lookup' ? ' style="' . h($style) . '"' : '');
@@ -288,7 +290,7 @@ final class NuRender
 				return $this->lookup($o, $prefix, $value, $common, $cls, $ro, $sizeStyle, $events);
 
 			case 'word':
-				return '<div class="nuWord ' . h($cls) . '"' . $common . '>' . (string)$o['sob_all_label'] . '</div>';
+				return '<div class="nuWord ' . h($cls) . '"' . $common . self::iconAttr($o) . '>' . self::withIcon((string)$o['sob_all_label'], $o) . '</div>';
 
 			case 'html':
 				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML)) . '</div>';
@@ -312,7 +314,11 @@ final class NuRender
 		$fmt = $this->formatOf($o);
 		switch ($it) {
 			case 'button':
-				return '<input type="button" class="btn nuFormBtn nuButton ' . h($cls) . '"' . $common . ' value="' . h(strip_tags((string)$o['sob_all_label'])) . '"' . ($ro ? ' disabled' : '') . '>';
+				// a <button> with the label as HTML in .nuButtonLabel and the object's icon inside, as nuBuilder 4.9 (nuINPUT, 0.8.559 –
+				// before: <input type="button"> with the label as plain text, no icon)
+				return '<button type="button" class="btn nuFormBtn nuButton ' . h($cls) . '"' . $common . self::iconAttr($o) . ' data-nu-org-label="' . h((string)$o['sob_all_label']) . '"'
+					. self::nameIfIconOnly((string)$o['sob_all_label'], '') . ($ro ? ' disabled' : '') . '>'
+					. self::withIcon('<span class="nuButtonLabel">' . (string)$o['sob_all_label'] . '</span>', $o, (string)$o['sob_all_label']) . '</button>';
 			case 'checkbox':
 				return '<input type="checkbox" class="form-check-input ' . h($cls) . '"' . $common . ' value="1"' . ((string)$value === '1' ? ' checked' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>';
 			case 'nuDate':
@@ -335,7 +341,7 @@ final class NuRender
 		$type    = in_array($it, $allowed, true) ? $it : 'text';
 		if ($type === 'datetime-local' && $value) $value = str_replace(' ', 'T', substr((string)$value, 0, 16));
 		if ($type === 'date' && $value) $value = substr((string)$value, 0, 10);
-		$list = trim((string)$o['sob_input_datalist']) !== '' ? ' list="nuDatalist_' . h($id) . '"' : '';
+		$list = trim((string)($o['sob_input_datalist'] ?? '')) !== '' ? ' list="nuDatalist_' . h($id) . '"' : '';
 		$mask = str_starts_with($fmt, 'T|') && in_array($type, ['text', 'tel', 'search'], true)
 			? ' data-nu-format="' . h($fmt) . '" placeholder="' . h(self::maskPlaceholder(substr($fmt, 2))) . '"' : '';
 		if ($mask !== '') $value = NuFormat::format($value, $fmt);
@@ -458,6 +464,46 @@ final class NuRender
 	 *   sob_run_method           b button, i iframe
 	 *   sob_run_target           0 new breadcrumb, 1 current breadcrumb, 2 new tab, 3 popup
 	 */
+	/**
+	 * nuBuilder's object icon (sob_input_icon, nuAddInputIcon – 0.8.559) inside input buttons, run buttons and words: "fa …" / "bi …" = an
+	 * icon class, anything else = HTML (the developer's, like the label); "left|right" = one before and one after the label. With
+	 * visible text a non-breaking space separates them (as nuBuilder's nuAttachFontAwesome / nuAttachHTML).
+	 */
+	public static function withIcon(string $inner, array $o, ?string $label = null): string
+	{
+		$icon = trim((string)($o['sob_input_icon'] ?? ''));
+		if ($icon === '') return $inner;
+		$parts = explode('|', $icon, 2);
+		$hasText = trim(html_entity_decode(strip_tags($label ?? $inner), ENT_QUOTES, 'UTF-8')) !== '';
+		$one = static function (string $p) : string {
+			$p = trim($p);
+			if ($p === '') return '';
+			if (preg_match('/^(fa|bi)[\w\s-]*$/', $p)) {
+				$cls = preg_match('/^bi-/', $p) ? 'bi ' . $p : $p;                       // "bi-table" as nuBuilder Next's nuAddInputIcon
+				return '<i class="nuObjIcon fa-width-auto ' . h($cls) . '" aria-hidden="true"></i>';
+			}
+			return '<span class="nuObjIcon">' . $p . '</span>';
+		};
+		$l = $one($parts[0]);
+		$r = $one($parts[1] ?? '');
+		$sep = $hasText ? '&nbsp;' : '';
+		return ($l !== '' ? $l . $sep : '') . $inner . ($r !== '' ? $sep . $r : '');
+	}
+
+	/** nuBuilder's nu-data-icon attribute (form code reads it). */
+	private static function iconAttr(array $o): string
+	{
+		$icon = trim((string)($o['sob_input_icon'] ?? ''));
+		return $icon !== '' ? ' nu-data-icon="' . h($icon) . '"' : '';
+	}
+
+	/** A button without visible text (only an icon, or nothing): aria-label + title, from $name (empty: nothing). */
+	private static function nameIfIconOnly(string $label, string $name): string
+	{
+		if (trim(html_entity_decode(strip_tags($label), ENT_QUOTES, 'UTF-8')) !== '' || $name === '') return '';
+		return ' aria-label="' . h($name) . '" title="' . h($name) . '"';
+	}
+
 	public static function runInfo(array $o, array $hash): array
 	{
 		$target = trim((string)$o['sob_run_zzzzsys_form_id']);
@@ -535,8 +581,14 @@ final class NuRender
 			. ' data-nu-run-record="' . h($run['record']) . '" data-nu-run-filter="' . h($run['filter']) . '" data-nu-run-target="' . h($run['target']) . '"'
 			. ($run['hidden'] ? ' data-nu-run-hidden="1"' : '');
 		$icon = ['P' => 'bi-play-fill', 'R' => 'bi-file-earmark-text'][$run['type']] ?? ($run['target'] === '2' ? 'bi-box-arrow-up-right' : ($run['target'] === '3' ? 'bi-window-stack' : ''));
-		return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . $data . '>'
-			. ($icon !== '' ? '<i class="bi ' . $icon . ' me-1"></i>' : '') . '<span class="nuButtonLabel">' . h(trim($label) !== '' ? $label : ($run['form'] ?: $run['code'])) . '</span></button>';
+		// the label is HTML as in nuBuilder (nuRUN: .html(label)) – e.g. only an icon <i class="fa fa-table"></i> (0.8.558: before, the tags
+		// were stripped and an icon-only button showed the target's id); the id / code only when the label is really empty
+		// an empty label gives an empty button as in nuBuilder (0.8.559 – 0.8.558 showed the target's description); the object's icon
+		// (sob_input_icon) goes inside. Without visible text the target's description is the name for screen readers and the tooltip.
+		$raw = (string)$o['sob_all_label'];
+		$fallback = $run['type'] === 'F' && $run['form'] !== '' && ($fm = NuFormMeta::load($run['form'])) ? $fm->description() : ($run['form'] ?: $run['code']);
+		return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . $data . self::iconAttr($o) . self::nameIfIconOnly($raw, $fallback) . '>'
+			. ($icon !== '' ? '<i class="bi ' . $icon . ' me-1"></i>' : '') . self::withIcon('<span class="nuButtonLabel">' . $raw . '</span>', $o, $raw) . '</button>';
 	}
 
 	/**
@@ -748,7 +800,7 @@ final class NuRender
 
 	private function attributes(array $o): string
 	{
-		$raw = trim((string)$o['sob_input_attribute']);
+		$raw = trim((string)($o['sob_input_attribute'] ?? ''));   // older nuBuilder tables / drafts may lack the column
 		if ($raw === '') return '';
 		$out = '';
 		foreach (preg_split('/,(?=\s*[A-Za-z_:][-A-Za-z0-9_:.]*\s*(=|,|$))/', $raw) as $part) {
@@ -861,7 +913,7 @@ final class NuRender
 
 	private function datalist(array $o, string $id): string
 	{
-		$src = trim((string)$o['sob_input_datalist']);
+		$src = trim((string)($o['sob_input_datalist'] ?? ''));
 		if ($src === '') return '';
 		$vals = [];
 		if (preg_match('/^\s*SELECT\b/i', $src)) {

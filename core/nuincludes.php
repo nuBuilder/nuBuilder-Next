@@ -39,6 +39,16 @@ final class NuIncludes
 		return null;
 	}
 
+	/** File on this server of a JS / CSS include (nuBuilder Next's folder, then nuBuilder's), null for an address or a file not found (0.8.578). */
+	public static function localFile(string $e): ?string
+	{
+		if (self::isUrl($e)) return null;
+		$path = (string)preg_replace('/[?#].*$/', '', $e);
+		if ($path === '' || str_contains($path, "\0")) return null;
+		foreach ([NU_ROOT, NuBuilderLib::path()] as $base) if ($base !== '' && is_file($base . '/' . $path)) return $base . '/' . $path;
+		return null;
+	}
+
 	/** Address of a JS / CSS include for the browser (relative to nuBuilder Next's index.php), or null when the file is not found / not reachable. */
 	public static function url(string $e): ?string
 	{

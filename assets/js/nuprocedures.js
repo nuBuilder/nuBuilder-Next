@@ -29,45 +29,16 @@
 		cm.on('change', function () { cm.save(); ta.dispatchEvent(new Event('input', {bubbles: true})); });   // marks the form as changed (red Save)
 		editors[ta.id] = cm;
 		var tools = $('.procCodeTools[data-for="' + ta.id + '"]');
-		if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: ta.getAttribute('data-mode') === 'php' ? 'PHP' : 'JS', db: D.db, readOnly: ro});
-		if (tools && !ro) {
-			if (ta.id === 'sph_php' && window.NuHashVars && D.catalog) NuHashVars.attach(cm, tools, {catalog: D.catalog});
-			snippetMenu(cm, tools, ta.id === 'sph_php' ? 'php' : 'javascript');
-		}
+		// code snippets (zzzzsys_code_snippet) = second tab of the toolbar's Insert menu, next to the help's functions (0.8.593)
+		var snLang = ta.id === 'sph_php' ? 'php' : 'javascript';
+		var snippets = (D.snippets || []).filter(function (x) { return String(x[3] || '').toLowerCase() === snLang; });
+		if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: ta.getAttribute('data-mode') === 'php' ? 'PHP' : 'JS', db: D.db, readOnly: ro, snippets: snippets});
+		if (tools && !ro && ta.id === 'sph_php' && window.NuHashVars && D.catalog) NuHashVars.attach(cm, tools, {catalog: D.catalog});
 	});
 	// editors in hidden tabs need a refresh when shown
 	$$('#procTabs [data-bs-toggle="tab"]').forEach(function (b) {
 		b.addEventListener('shown.bs.tab', function () { Object.keys(editors).forEach(function (k) { editors[k].refresh(); }); });
 	});
-
-	/** "Insert snippet": PHP or JavaScript code snippets (zzzzsys_code_snippet), inserted at the cursor. */
-	function snippetMenu(cm, host, lang) {
-		var list = (D.snippets || []).filter(function (s) { return String(s[3] || '').toLowerCase() === lang; });
-		if (!list.length || !nuBs.ready()) return;
-		// same box as the editor's tool buttons; on phones only the icon (0.8.475 – the label made the row twice as high)
-		var btn = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary procSnippetBtn', 'data-bs-toggle': 'dropdown', 'data-bs-auto-close': 'outside',
-			'aria-expanded': 'false', title: M.snippet, 'aria-label': M.snippet || 'Snippet'},
-			[el('i', {'class': 'bi bi-file-earmark-code', 'aria-hidden': 'true'}), el('span', {'class': 'procSnippetLabel', text: M.snippet || 'Snippet'})]);
-		var search = el('input', {type: 'search', 'class': 'form-control form-control-sm mb-1', placeholder: M.search || '', 'aria-label': M.search || ''});
-		var box = el('div', {'class': 'nuHashVarsList'});
-		var menu = el('div', {'class': 'dropdown-menu dropdown-menu-end p-2 nuHashVarsMenu'}, [search, box]);
-		var wrap = el('div', {'class': 'dropdown procSnippets'}, [btn, menu]);
-		host.appendChild(wrap);
-		var dd = nuBs.dropdown(btn);
-		function render() {
-			var q = search.value.trim().toLowerCase();
-			box.innerHTML = '';
-			list.filter(function (s) { return !q || (s[0] + ' ' + s[1]).toLowerCase().indexOf(q) >= 0; }).forEach(function (s) {
-				var b = el('button', {type: 'button', 'class': 'dropdown-item px-1', 'data-code': s[0]}, [el('div', {'class': 'fw-semibold small', text: s[0]}), el('div', {'class': 'small text-body-secondary text-wrap', text: s[1] || ''})]);
-				b.addEventListener('click', function () { dd.hide(); cm.replaceSelection(s[2] || ''); cm.focus(); });
-				box.appendChild(b);
-			});
-			if (!box.children.length) box.appendChild(el('div', {'class': 'small text-body-secondary p-1', text: M.none || ''}));
-		}
-		btn.addEventListener('show.bs.dropdown', function () { search.value = ''; render(); });
-		btn.addEventListener('shown.bs.dropdown', function () { search.focus(); });
-		search.addEventListener('input', render);
-	}
 
 	// ------------------------------------------------------------------ JS tab: example
 	var ex = $('#procJsExample');

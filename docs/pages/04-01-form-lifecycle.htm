@@ -2,7 +2,7 @@
 	<h2 id="form-lifecycle-h">Form lifecycle and event order</h2>
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Which PHP hooks and JavaScript functions run, and in which order, when a list or a record is opened, saved or deleted.</p>
 	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
-	<p>The same hooks as in nuBuilder 4.9 run, in the same order. PHP hooks run on the server and can stop the step with an error (<code>nuDisplayError()</code>); JavaScript hooks run in the browser, and a hook that returns <code>false</code> cancels the action.</p>
+	<p>The same hooks as in nuBuilder Forte 4.9 run, in the same order. PHP hooks run on the server and can stop the step with an error (<code>nuDisplayError()</code>); JavaScript hooks run in the browser, and a hook that returns <code>false</code> cancels the action.</p>
 <figure class="doc-figure" id="dg-lifecycle"><svg class="doc-flow doc-flow-wide" viewBox="0 0 760 470" role="img" aria-labelledby="dg-lifecycle-title dg-lifecycle-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-lifecycle-title">Form lifecycle and event order</title><desc id="dg-lifecycle-desc">Four sequences from left to right: opening a list, opening a record, saving and deleting. Grey boxes run in the browser, purple ones on the server, amber ones are the hooks with your own PHP.</desc>
 <defs><marker id="dg-lifecycle-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
 <rect x="20" y="14" width="112" height="26" rx="8" class="dg-box dg-n"/>
@@ -90,7 +90,7 @@
 <div class="doc-sub">
 	<h3 id="lifecycle-browse">Opening a list</h3>
 	<ol>
-		<li>PHP: global hook <code>nu_before_save</code> (as in nuBuilder it also runs before every Before Browse), then the form's <strong>Before Browse</strong>.</li>
+		<li>PHP: global hook <code>nu_before_save</code> (as in nuBuilder Forte (4.x) it also runs before every Before Browse), then the form's <strong>Before Browse</strong>.</li>
 		<li>Server: the list query (browse SQL with search, filters, sort and paging) runs; the page is drawn.</li>
 		<li>JavaScript: <code>nuLoadBrowseGlobal()</code> (Setup → Header), then the form's <code>nuOnLoad(formId, formCode)</code>, then <code>nuOnPageLoad(page, info)</code> and the event <code>nu:pageload</code> of Global JS (<a href="#page-hook">page hook</a>).</li>
 	</ol>

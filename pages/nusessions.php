@@ -42,6 +42,25 @@ if (nu_is_post() && in_array(nu_post('action'), ['end_others', 'end_all'], true)
 	nu_redirect(nu_url('sessions'));
 }
 
+// log out idle users (0.8.595): every session (not the own one) whose last activity is longer ago than the chosen hours
+// (only hours below the longest session timeout – older sessions end by themselves: NuSessions::purge, $nuConfigSessionTimeout / …Globeadmin)
+$idleHours = array_values(array_filter([1, 2, 4, 8, 12, 24], static fn($hh) => $hh * 3600 < max(nu_session_timeout(false), nu_session_timeout(true))));
+if (nu_is_post() && nu_post('action') === 'end_idle') {
+	$hours = (int)nu_post('hours');
+	if (!in_array($hours, $idleHours, true)) nu_redirect(nu_url('sessions'));
+	$mine = NuSessions::key();
+	$before = date('Y-m-d H:i:s', time() - $hours * 3600);
+	$n = 0;
+	foreach ($db->all('SELECT zzzzsys_nunext_session_id FROM zzzzsys_nunext_session WHERE last_seen < ?', [$before]) as $r) {
+		$k = (string)$r['zzzzsys_nunext_session_id'];
+		if ($k === $mine) continue;
+		$n += NuSessions::end($k) > 0 ? 1 : 0;
+	}
+	NuLog::write('sessions_ended_idle', 'zzzzsys_nunext_session', '', ['sessions' => $n, 'idle_hours' => $hours]);
+	nu_flash('success', t('sess_ended_idle', $n, $hours));
+	nu_redirect(nu_url('sessions'));
+}
+
 $timeout = intdiv(nu_session_timeout(false), 60);
 $timeoutAdmin = intdiv(nu_session_timeout(true), 60);
 $rows = $db->all('SELECT * FROM zzzzsys_nunext_session ORDER BY last_seen DESC');
@@ -124,6 +143,16 @@ nu_layout_start(t('sess_title'), 'log');
 		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions', (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) + $qp)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
 		<?php $others = count(array_filter($allRows, static fn($r) => (string)$r['zzzzsys_nunext_session_id'] !== $me)); ?>
 		<span class="d-inline-flex flex-wrap gap-2 ms-auto">
+		<?php // idle sessions (0.8.595): pick the hours, the confirmation names them (assets/js/nusessions.js keeps the text in step)
+		if ($idleHours): $idleDefault = in_array(8, $idleHours, true) ? 8 : end($idleHours); ?>
+		<form method="post" class="d-inline-flex gap-1" id="sessIdleForm" data-confirm="<?= h(t('sess_end_idle_confirm', $idleDefault)) ?>" data-confirm-tpl="<?= h(t('sess_end_idle_confirm', 99999)) ?>" data-confirm-ok="<?= h(t('sess_end_idle')) ?>" data-confirm-class="btn btn-danger">
+			<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_idle">
+			<select class="form-select w-auto" name="hours" id="sessIdleHours" aria-label="<?= h(t('sess_idle_for')) ?>" title="<?= h(t('sess_idle_for')) ?>">
+				<?php foreach ($idleHours as $hh): ?><option value="<?= $hh ?>"<?= $hh === $idleDefault ? ' selected' : '' ?>><?= h(t('sess_idle_hours', $hh)) ?></option><?php endforeach; ?>
+			</select>
+			<button class="btn btn-outline-danger fw-normal text-nowrap" type="submit" id="sessIdleBtn"><i class="bi bi-hourglass-split me-1"></i><?= h(t('sess_end_idle')) ?></button>
+		</form>
+		<?php endif; ?>
 		<form method="post" data-confirm="<?= h(t('sess_end_others_confirm', $others)) ?>" data-confirm-ok="<?= h(t('sess_end_others')) ?>" data-confirm-class="btn btn-danger">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_others">
 			<button class="btn btn-outline-danger fw-normal" type="submit"<?= $others ? '' : ' disabled' ?>><i class="bi bi-people me-1"></i><?= h(t('sess_end_others')) ?></button>
@@ -184,7 +213,7 @@ nu_layout_start(t('sess_title'), 'log');
 
 <?php if ($db->tableExists('zzzzsys_session')): ?>
 	<div class="card shadow-sm">
-		<div class="card-header fw-semibold">nuBuilder <span class="badge text-bg-secondary ms-1"><?= count($nb) ?></span></div>
+		<div class="card-header fw-semibold">nuBuilder Forte <span class="badge text-bg-secondary ms-1"><?= count($nb) ?></span></div>
 		<div class="table-responsive">
 			<table class="table align-middle mb-0 nu-table">
 				<thead><tr><?= $th(t('user'), 'user') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th></th></tr></thead>
@@ -205,4 +234,4 @@ nu_layout_start(t('sess_title'), 'log');
 	</div>
 <?php endif; ?>
 <?php
-nu_layout_end();
+nu_layout_end('<script src="' . nu_asset('assets/js/nusessions.js') . '"></script>');

@@ -247,8 +247,8 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				<div class="procResult mb-2" id="procResult" aria-live="polite" hidden></div>
 				<div class="procEditor">
 				<div class="d-flex flex-wrap gap-2 align-items-center mb-1">
-					<label class="form-label small fw-semibold mb-0 me-auto" for="sph_php">PHP <span class="text-danger">*</span></label>
-					<span class="procCodeTools d-flex gap-2" data-for="sph_php"></span>
+					<label class="form-label small fw-semibold mb-0" for="sph_php">PHP <span class="text-danger">*</span></label>
+					<span class="procCodeTools d-flex gap-2 ms-3 me-auto" data-for="sph_php"></span><?php // editor toolbar next to the label (0.8.592: nearer for the mouse) ?>
 				</div>
 				<textarea class="form-control font-monospace procCode<?= $err('sph_php') ?>" id="sph_php" name="sph_php" rows="18" spellcheck="false" data-mode="php"><?= h($v('sph_php')) ?></textarea><?= $fb('sph_php') ?>
 				</div>
@@ -263,9 +263,9 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				<p class="small text-body-secondary"><?= h(t('proc_js_hint')) ?></p>
 				<div class="procEditor">
 				<div class="d-flex flex-wrap gap-2 align-items-center mb-1">
-					<label class="form-label small fw-semibold mb-0 me-auto" for="sph_javascript">JavaScript</label>
+					<label class="form-label small fw-semibold mb-0" for="sph_javascript">JavaScript</label>
+					<span class="procCodeTools d-flex gap-2 ms-3 me-auto" data-for="sph_javascript"></span>
 					<button class="btn btn-sm btn-outline-secondary" type="button" id="procJsExample"><i class="bi bi-magic me-1"></i><?= h(t('proc_js_example')) ?></button>
-					<span class="procCodeTools d-flex gap-2" data-for="sph_javascript"></span>
 				</div>
 				<textarea class="form-control font-monospace procCode" id="sph_javascript" name="sph_javascript" rows="14" spellcheck="false" data-mode="javascript"><?= h($v('sph_javascript')) ?></textarea>
 				</div>

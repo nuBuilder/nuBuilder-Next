@@ -18,7 +18,7 @@
 	      <div class="tut-tip"> / <div class="tut-note">  blue tip / yellow note
 	    </section>
 	  </article>
-	data-right: empty = everybody who may open the tutorial; "ga" = globeadmin only; "acl:<form id>" = view right on that nuBuilder
+	data-right: empty = everybody who may open the tutorial; "ga" = globeadmin only; "acl:<form id>" = view right on that nuBuilder Forte
 	form; otherwise a right of NuAdmin::RIGHTS (view level is enough). Hidden lessons are not counted.
 	Links: <a data-open="route" data-args="k=v&amp;k2=v2">  opens a nuBuilder Next page in a new tab
 	       <a data-help="anchor">                         opens the documentation at that chapter in a new tab
@@ -37,11 +37,11 @@
 
 	<section class="tut-lesson" id="welcome">
 		<h3>Welcome to nuBuilder Next</h3>
-		<p>nuBuilder Next is a modern front end for <strong>nuBuilder 4</strong> applications. It runs on the <em>same database</em> as nuBuilder – the same forms, users, access levels, procedures and reports – so both can be used side by side: an application built in one opens in the other.</p>
+		<p>nuBuilder Next is a modern front end for <strong>nuBuilder Forte 4</strong> applications. It runs on the <em>same database</em> as nuBuilder Forte (4.x) – the same forms, users, access levels, procedures and reports – so both can be used side by side: an application built in one opens in the other.</p>
 		<ul>
-			<li>nuBuilder's tables all start with <code>zzzzsys_</code>. nuBuilder Next reads and writes them in nuBuilder's formats and adds only its own tables (<code>zzzzsys_nunext_…</code>: log, sessions, two-factor data, settings, dashboards …).</li>
+			<li>nuBuilder Forte's tables all start with <code>zzzzsys_</code>. nuBuilder Next reads and writes them in nuBuilder Forte's formats and adds only its own tables (<code>zzzzsys_nunext_…</code>: log, sessions, two-factor data, settings, dashboards …).</li>
 			<li>The <strong>globeadmin</strong> is the main administrator. Its name and password are not stored in a user record but in the configuration file <code>nuconfig.php</code>. The globeadmin may do everything.</li>
-			<li>All other people are <strong>users</strong>. What they may do comes from their <strong>access level</strong> – exactly as in nuBuilder. In addition, nuBuilder Next can give a user an <strong>admin role</strong>: a defined part of the globeadmin's rights.</li>
+			<li>All other people are <strong>users</strong>. What they may do comes from their <strong>access level</strong> – exactly as in nuBuilder Forte. In addition, nuBuilder Next can give a user an <strong>admin role</strong>: a defined part of the globeadmin's rights.</li>
 		</ul>
 		<h4>How this tutorial works</h4>
 		<ul>
@@ -78,9 +78,9 @@
 
 	<section class="tut-lesson" id="sample-data" data-right="sample">
 		<h3>Sample data to practise with</h3>
-		<p>The best way to learn is with a small application to play with. <a data-open="sample">Sample data</a> installs one – in nuBuilder's format, so it also opens in nuBuilder:</p>
+		<p>The best way to learn is with a small application to play with. <a data-open="sample">Sample data</a> installs one – in nuBuilder Forte's format, so it also opens in nuBuilder Forte:</p>
 		<ul>
-			<li><strong>Forms</strong>: customers, products, orders with order lines, a start form, and <em>All objects</em> (<code>sample_all</code>) – a form that shows every object type nuBuilder knows.</li>
+			<li><strong>Forms</strong>: customers, products, orders with order lines, a start form, and <em>All objects</em> (<code>sample_all</code>) – a form that shows every object type nuBuilder Forte knows.</li>
 			<li><strong>Users</strong> <code>sample_anna</code> … <code>sample_eva</code> with different <strong>access levels</strong>: view only, add and change, everything, orders only, with two-factor login.</li>
 			<li>Formats, procedures, an e-mail template, two reports and dashboards.</li>
 		</ul>
@@ -93,7 +93,7 @@
 
 	<section class="tut-lesson" id="working-forms">
 		<h3>Working with forms and lists</h3>
-		<p>Everything your users do happens in <strong>forms</strong>: a <em>list</em> (nuBuilder calls it <em>browse</em>) and an <em>edit form</em> for one record. nuBuilder Next's own pages (users, access levels …) work the same way.</p>
+		<p>Everything your users do happens in <strong>forms</strong>: a <em>list</em> (nuBuilder Forte calls it <em>browse</em>) and an <em>edit form</em> for one record. nuBuilder Next's own pages (users, access levels …) work the same way.</p>
 		<h4>Lists</h4>
 		<ul>
 			<li>Type into the search field and press <kbd>Enter</kbd> – several words must all match. Click a column title to sort; click again to reverse.</li>
@@ -139,7 +139,7 @@
 
 	<section class="tut-lesson" id="rights-model" data-right="users">
 		<h3>How rights work</h3>
-		<p>Before creating users it helps to know the model – it is nuBuilder's:</p>
+		<p>Before creating users it helps to know the model – it is nuBuilder Forte's:</p>
 		<ol>
 			<li>Every user has exactly one <strong>access level</strong>. Without one the login is refused.</li>
 			<li>An access level lists the <strong>forms</strong> the user may open. Per form: <em>view</em> (the row exists), <em>Save</em>, <em>Add / New</em>, <em>Delete</em>, <em>Clone</em> and <em>Print</em>.</li>
@@ -147,7 +147,7 @@
 			<li><strong>Permission items</strong> are named switches your own code checks – for finer rules ("may approve invoices").</li>
 			<li>The globeadmin may do everything.</li>
 		</ol>
-		<p>nuBuilder Next's own pages are protected by nuBuilder's <em>system forms</em>: the users page by <code>nuuser</code>, access levels by <code>nuaccess</code>, the form builder by <code>nuform</code>, procedures by <code>nuprocedure</code> and so on. Give an access level the row <code>nuuser</code> and its users see the users page.</p>
+		<p>nuBuilder Next's own pages are protected by nuBuilder Forte's <em>system forms</em>: the users page by <code>nuuser</code>, access levels by <code>nuaccess</code>, the form builder by <code>nuform</code>, procedures by <code>nuprocedure</code> and so on. Give an access level the row <code>nuuser</code> and its users see the users page.</p>
 		<div class="tut-note"><strong>Admin-equivalent rights:</strong> changing rights on <code>nuform</code>, <code>nuprocedure</code>, <code>nuselect</code>, <code>nusetup</code>, <code>nuuser</code> or <code>nuaccess</code> amount to full control – PHP on the server, SQL on every table, the passwords of all users. With <em>Only the globeadmin grants admin rights</em> (Security check, on by default) only the globeadmin hands them out.</div>
 		<p><a data-help="rights">How rights work</a></p>
 	</section>
@@ -160,7 +160,7 @@
 			<li><strong>Removing</strong> a form crosses its row out; it disappears when you save. Until then the same button brings it back.</li>
 			<li><strong>Procedures</strong> and <strong>reports</strong>: on their own tabs.</li>
 			<li><strong>Use two-factor authentication</strong>: users of this level confirm the login with an authenticator app or an e-mail code.</li>
-			<li>The level's <strong>start form</strong> (nuBuilder's <em>home form</em>) opens in nuBuilder after signing in; in nuBuilder Next it is the first tile of the level's automatic start page (next lesson).</li>
+			<li>The level's <strong>start form</strong> (nuBuilder Forte's <em>home form</em>) opens in nuBuilder Forte after signing in; in nuBuilder Next it is the first tile of the level's automatic start page (next lesson).</li>
 			<li>An access level with users cannot be deleted. <em>Clone</em> copies it with all rights – the quickest way to a similar level.</li>
 		</ul>
 		<div class="tut-task">
@@ -274,8 +274,8 @@
 
 	<section class="tut-lesson" id="forms-overview">
 		<h3>Forms, tables and the forms list</h3>
-		<p>A nuBuilder form shows the records of one <strong>table</strong> (or a view): the list (browse) shows some columns, the edit form all fields. Types: <em>browse and edit</em>, <em>browse</em> only, <em>edit</em> only, <em>launch</em> (a start page or a criteria form without table) and <em>subform</em> (rows inside another form).</p>
-		<p>The <a data-open="forms">forms list</a> shows all forms with group and status (Active, Draft, Archived). Click a form to <em>open</em> it as a user would; the <i class="bi bi-tools"></i> button opens it in the <strong>form builder</strong>. nuBuilder's own forms (<code>nu…</code>) are read-only.</p>
+		<p>A nuBuilder Forte form shows the records of one <strong>table</strong> (or a view): the list (browse) shows some columns, the edit form all fields. Types: <em>browse and edit</em>, <em>browse</em> only, <em>edit</em> only, <em>launch</em> (a start page or a criteria form without table) and <em>subform</em> (rows inside another form).</p>
+		<p>The <a data-open="forms">forms list</a> shows all forms with group and status (Active, Draft, Archived). Click a form to <em>open</em> it as a user would; the <i class="bi bi-tools"></i> button opens it in the <strong>form builder</strong>. nuBuilder Forte's own forms (<code>nu…</code>) are read-only.</p>
 		<div class="tut-task">
 			<p>Open the <a data-open="forms">forms list</a>, filter by status, then open <code>sample_order</code> in the builder (<i class="bi bi-tools"></i>).</p>
 		</div>
@@ -287,7 +287,7 @@
 		<p><a data-open="builder" data-args="new=1">New form</a> offers two ways:</p>
 		<ul>
 			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns.</li>
-			<li><strong>New table</strong>: enter the columns (name, label, type, length, required). The table gets a nuBuilder-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
+			<li><strong>New table</strong>: enter the columns (name, label, type, length, required). The table gets a nuBuilder-Forte-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
 		</ul>
 		<p>Afterwards the form opens in the builder. Give your forms a meaningful <em>code</em> and a <em>group</em> – the forms list and the access level page filter by them.</p>
 		<div class="tut-note">A new form is not yet in any access level: only the globeadmin can open it until you add it to an <a data-lesson="access-levels">access level</a>.</div>
@@ -301,7 +301,7 @@
 		<h3>Working in the form builder</h3>
 		<ul>
 			<li><strong>Left</strong>: the objects per tab – drag them to change the order. <strong>Middle</strong>: the preview – click an object to select it, drag to move, use the handle to resize. <strong>Right</strong>: properties of the selected object, the form's settings, list columns, tabs and code.</li>
-			<li><strong>Layouts</strong>: <em>absolute</em> (pixel positions as in nuBuilder), <em>auto</em> (responsive rows worked out from the positions) and <em>grid</em> (12 columns). Auto and grid work well on phones.</li>
+			<li><strong>Layouts</strong>: <em>absolute</em> (pixel positions as in nuBuilder Forte), <em>auto</em> (responsive rows worked out from the positions) and <em>grid</em> (12 columns). Auto and grid work well on phones.</li>
 			<li><strong>List columns</strong>: what the browse list shows – title, column or SQL expression, width, alignment, format.</li>
 			<li><strong>Save</strong> turns red while the open panel has changes; <kbd>Ctrl</kbd>+<kbd>S</kbd> saves. <strong>Undo / History</strong> keeps the last 100 states of the form – any of them can be restored.</li>
 			<li>If an object's ID has no column in the table yet, the builder offers to add it.</li>
@@ -338,7 +338,7 @@
 
 	<section class="tut-lesson" id="form-code">
 		<h3>Code: events, hash variables and the code editor</h3>
-		<p>Forms come alive with code – exactly as in nuBuilder:</p>
+		<p>Forms come alive with code – exactly as in nuBuilder Forte:</p>
 		<ul>
 			<li><strong>PHP events</strong> on the form's <em>Code</em> tab: <em>Before Browse</em>, <em>Before Edit</em>, <em>Before Save</em>, <em>After Save</em>, <em>Before Delete</em>, <em>After Delete</em>. Typical: check values in Before Save and stop with <code>nuDisplayError('…')</code>.</li>
 			<li><strong>JavaScript</strong> of the form and <strong>object events</strong> (onchange, onclick …) run in the browser.</li>
@@ -346,7 +346,7 @@
 			<li>Code fields open the <strong>code editor</strong> with a double-click: colours, search and replace, <em>Format</em>, full screen.</li>
 			<li>⋮ → <em>Hash variables</em> on any form shows the values available there.</li>
 		</ul>
-		<div class="tut-tip">The <a data-open="prompts">Prompt generator</a> builds a prompt for an AI tool with the right nuBuilder context (scopes, functions, your table columns) – useful when you write code for a new event.</div>
+		<div class="tut-tip">The <a data-open="prompts">Prompt generator</a> builds a prompt for an AI tool with the right nuBuilder Forte context (scopes, functions, your table columns) – useful when you write code for a new event.</div>
 		<div class="tut-task">
 			<p>In <code>tutorial_task</code>, add a <em>Before Save</em> event that refuses a due date in the past:</p>
 			<pre class="small mb-0"><code>if ('#tsk_due#' !== '' &amp;&amp; '#tsk_due#' &lt; date('Y-m-d')) {
@@ -361,7 +361,7 @@
 		<p>The ▾ menu of the <em>Forms</em> tile holds the tools around forms:</p>
 		<ul>
 			<li><a data-open="formats">Formats</a> – date, number and text-mask formats (e.g. <code>dd.mm.yyyy</code>, <code>USD 1,000.00</code>). Changing a format updates every field that uses it.</li>
-			<li><a data-open="items">Items</a> – nuBuilder's value lists. <a data-open="files">Files</a> – images and documents in the database (logos for reports, image objects).</li>
+			<li><a data-open="items">Items</a> – nuBuilder Forte's value lists. <a data-open="files">Files</a> – images and documents in the database (logos for reports, image objects).</li>
 			<li><a data-open="translations">Translations</a> – your labels in other languages; the <em>Missing</em> tab lists what is not translated yet.</li>
 			<li><a data-open="cloner">Cloner</a> – copies a form with its tabs, objects, code, subforms and rights, or creates the SQL to move it to another database.</li>
 			<li><a data-open="import">CSV import</a> – loads a CSV file into a table, with column mapping, date and number conversion and a trial run.</li>
@@ -383,7 +383,7 @@
 		<ul>
 			<li><strong>Access levels</strong> tab: who may run it. <strong>Usage</strong>: which objects and code start it. <strong>History</strong>: every change with the code before and after.</li>
 			<li><em>Hidden</em> / <em>New tab</em> on the page run the saved version as a test.</li>
-			<li>Some codes have a special meaning in nuBuilder: <code>nu_before_save</code> (for every form), <code>nu_startup</code>, <code>nu_check_password_policy</code>, <code>nu_send_welcome_email</code>.</li>
+			<li>Some codes have a special meaning in nuBuilder Forte: <code>nu_before_save</code> (for every form), <code>nu_startup</code>, <code>nu_check_password_policy</code>, <code>nu_send_welcome_email</code>.</li>
 			<li>Debug with <code>nuDebug($value)</code> – the output appears under <a data-open="debug">Debug</a>.</li>
 		</ul>
 		<div class="tut-task">
@@ -394,7 +394,7 @@
 
 	<section class="tut-lesson" id="reports" data-right="reports">
 		<h3>Reports and the SQL builder</h3>
-		<p><a data-open="reports">Reports</a> produce PDFs in nuBuilder's format (they work in both). A report has:</p>
+		<p><a data-open="reports">Reports</a> produce PDFs in nuBuilder Forte's format (they work in both). A report has:</p>
 		<ul>
 			<li>A <strong>data source</strong>: a table or view, an <a data-open="sqlbuilder">SQL builder</a> query, or a procedure that fills a temporary table <code>#TABLE_ID#</code>.</li>
 			<li>An optional <strong>launch form</strong> for criteria (e.g. a date range); its fields are available as hash variables.</li>
@@ -402,7 +402,7 @@
 			<li><strong>Access levels</strong> that may run it.</li>
 		</ul>
 		<p>The <strong>SQL builder</strong> creates queries graphically: add tables, tick columns, drag a column onto another to join, add conditions and sorting. <em>Run</em> shows the first rows.</p>
-		<div class="tut-note">The PDF needs TCPDF – taken from nuBuilder when nuBuilder Next sits in nuBuilder's folder. Without it the report pages say so.</div>
+		<div class="tut-note">The PDF needs TCPDF – taken from nuBuilder Forte when nuBuilder Next sits in nuBuilder Forte's folder. Without it the report pages say so.</div>
 		<div class="tut-task">
 			<p>Open the sample report <code>sample_customers</code> (customers by country) in the designer, look at its bands and run <em>Preview</em>. Then open the SQL builder query <code>sample_orders</code>.</p>
 		</div>
@@ -445,12 +445,12 @@
 
 	<section class="tut-lesson" id="email" data-right="email">
 		<h3>E-mail: settings, test mail and templates</h3>
-		<p>Password links, two-factor codes, welcome e-mails and your own mails need a mail server. <a data-open="email" data-args="tab=settings">E-mail → Settings</a> uses nuBuilder's settings:</p>
+		<p>Password links, two-factor codes, welcome e-mails and your own mails need a mail server. <a data-open="email" data-args="tab=settings">E-mail → Settings</a> uses nuBuilder Forte's settings:</p>
 		<ul>
 			<li>SMTP server, port (465 = SSL/TLS, 587 = STARTTLS), user, password and sender. The password is never shown again – leave the field empty to keep it.</li>
 			<li><a data-open="email" data-args="tab=test">Test mail</a> shows the whole conversation with the server – the fastest way to find a wrong setting.</li>
 			<li><a data-open="email" data-args="tab=log">E-mail log</a>: every mail with its status and error.</li>
-			<li><a data-open="emailtemplates">Templates</a>: subject and body with placeholders (<code>#cus_name#</code>), per language. Clone nuBuilder's <code>nu_send_welcome_email_template</code> to write your own welcome e-mail.</li>
+			<li><a data-open="emailtemplates">Templates</a>: subject and body with placeholders (<code>#cus_name#</code>), per language. Clone nuBuilder Forte's <code>nu_send_welcome_email_template</code> to write your own welcome e-mail.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Enter your mail server and send a <a data-open="email" data-args="tab=test">test mail</a> to yourself. If it fails, read the server conversation.</p>
@@ -476,7 +476,7 @@
 		<h3>Importing and exporting data</h3>
 		<ul>
 			<li><strong>Export</strong>: every list with the Print right has <em>Print</em> – a table in a new tab with <em>Copy</em> (pastes into Excel) and <em>Export CSV</em>. Search, filters and sort apply.</li>
-			<li><strong>Import</strong>: <a data-open="import">CSV import</a> in three steps – file (encoding and separator are detected), mapping (columns matched by name, dates and numbers converted, fixed values, <code>nuID()</code> for nuBuilder ids), check (a complete trial run that changes nothing) and import. Add new records, update existing ones or both.</li>
+			<li><strong>Import</strong>: <a data-open="import">CSV import</a> in three steps – file (encoding and separator are detected), mapping (columns matched by name, dates and numbers converted, fixed values, <code>nuID()</code> for nuBuilder Forte ids), check (a complete trial run that changes nothing) and import. Add new records, update existing ones or both.</li>
 			<li><em>Save configuration</em> keeps the mapping for the next file of the same kind.</li>
 			<li>Users have their own import: <em>Users → Import…</em>.</li>
 		</ul>
@@ -495,21 +495,21 @@
 
 	<section class="tut-lesson" id="config" data-right="configfile">
 		<h3>Configuration: nuconfig.php and the setup wizard</h3>
-		<p><code>nuconfig.php</code> holds the database access, the globeadmin login and many settings – the same file and variable names as nuBuilder. nuBuilder Next's own settings start with <code>$nuConfig…</code> too (session timeouts, password length, two-factor login, base URL …).</p>
+		<p><code>nuconfig.php</code> holds the database access, the globeadmin login and many settings – the same file and variable names as nuBuilder Forte. nuBuilder Next's own settings start with <code>$nuConfig…</code> too (session timeouts, password length, two-factor login, base URL …).</p>
 		<ul>
 			<li>The <a data-open="setupwizard">Setup wizard</a> asks for the most important ones in four steps: language and time zone, look and tools, security, sample data.</li>
 			<li><a data-open="configfile">Configuration file (nuconfig.php)</a> edits the file directly. Saving checks the PHP, runs it and tests the database connection first; the old file is kept as a backup.</li>
 			<li>Important on a live server: <code>$nuConfigBaseURL</code> (the address in e-mail links), <code>$nuConfigSecretKey</code> (encryption key), <code>$nuConfigTimezone</code>.</li>
 		</ul>
-		<div class="tut-note">A broken <code>nuconfig.php</code> stops the whole site – and nuBuilder too, if it reads the same file. The editor refuses to save a file that does not pass its checks; if something still goes wrong, copy a backup from <code>_backup/</code> over it by FTP.</div>
+		<div class="tut-note">A broken <code>nuconfig.php</code> stops the whole site – and nuBuilder Forte too, if it reads the same file. The editor refuses to save a file that does not pass its checks; if something still goes wrong, copy a backup from <code>_backup/</code> over it by FTP.</div>
 		<p><a data-help="config">Configuration</a> · <a data-help="configfile">nuconfig.php editor</a> · <a data-help="setup-wizard">Setup wizard</a></p>
 	</section>
 
 	<section class="tut-lesson" id="settings" data-right="settings">
-		<h3>Settings (nuBuilder's settings table)</h3>
-		<p>nuBuilder can keep its settings in a table instead of <code>nuconfig.php</code>. <a data-open="settings">Settings</a> edits that table; it is only used with <code>$nuConfigSettingsFromDB = true</code> (the page offers to switch it on).</p>
+		<h3>Settings (nuBuilder Forte's settings table)</h3>
+		<p>nuBuilder Forte can keep its settings in a table instead of <code>nuconfig.php</code>. <a data-open="settings">Settings</a> edits that table; it is only used with <code>$nuConfigSettingsFromDB = true</code> (the page offers to switch it on).</p>
 		<ul>
-			<li>A tag after each setting tells what it means for nuBuilder Next: <em>Used</em>, <em>Not yet</em> (only nuBuilder uses it for now) or <em>Not needed</em> (nuBuilder Next has its own solution).</li>
+			<li>A tag after each setting tells what it means for nuBuilder Next: <em>Used</em>, <em>Not yet</em> (only nuBuilder Forte uses it for now) or <em>Not needed</em> (nuBuilder Next has its own solution).</li>
 			<li><em>Import</em> copies the values set in <code>nuconfig.php</code> into the table.</li>
 		</ul>
 		<p><a data-help="settings">Settings in the documentation</a></p>
@@ -563,7 +563,7 @@
 		<h3>System status and database tools</h3>
 		<ul>
 			<li><a data-open="vendor">System status</a> lists what needs a look: the time zone, a missing database tool or File Manager, tables that are not InnoDB, the demo mode. The badge on its tile counts these points.</li>
-			<li><strong>Storage engine</strong>: older nuBuilder databases often still use MyISAM tables, which have no transactions. <em>Convert all to InnoDB</em> fixes that (make a backup first).</li>
+			<li><strong>Storage engine</strong>: older nuBuilder Forte databases often still use MyISAM tables, which have no transactions. <em>Convert all to InnoDB</em> fixes that (make a backup first).</li>
 			<li><strong>Database tools</strong>: phpMyAdmin and / or Adminer and the File Manager open from the user menu and the start page, signed in through nuBuilder Next. They are not part of the package – System status says where to copy them.</li>
 		</ul>
 		<div class="tut-note">phpMyAdmin, Adminer and the File Manager give full access to the database and the web folder. Use them with care, and only as globeadmin or with a role you fully trust.</div>
@@ -588,7 +588,7 @@
 
 <article class="tut-chapter" id="ch-advanced" data-part="admin">
 	<h2>Advanced topics</h2>
-	<p class="tut-intro">Copies of the application, the REST API, demo mode, nuBuilder compatibility and where to go next.</p>
+	<p class="tut-intro">Copies of the application, the REST API, demo mode, nuBuilder Forte compatibility and where to go next.</p>
 
 	<section class="tut-lesson" id="app-cloner" data-right="appcloner">
 		<h3>App cloner: test and development copies</h3>
@@ -597,7 +597,7 @@
 			<li>Choose what is copied: system tables, your own tables, data, views, functions, procedures, triggers, events.</li>
 			<li><strong>Dry run</strong> shows every step without changing anything; <strong>Run</strong> copies and compares the record counts at the end.</li>
 			<li><strong>Download SQL</strong> exports the database as one file instead – for an import elsewhere.</li>
-			<li>Configurations are saved in nuBuilder's table, so nuBuilder's App cloner opens them too.</li>
+			<li>Configurations are saved in nuBuilder Forte's table, so nuBuilder Forte's App cloner opens them too.</li>
 		</ul>
 		<div class="tut-tip">Set the environment label of a test copy in its <code>nuconfig.php</code> (<code>$nuConfigEnvironmentLabel = "TEST";</code>) – a label stored in the database would be copied along with it.</div>
 		<p><a data-help="appcloner">App cloner in the documentation</a></p>
@@ -627,10 +627,10 @@
 	</section>
 
 	<section class="tut-lesson" id="compat" data-right="compat">
-		<h3>Bringing a nuBuilder application to nuBuilder Next</h3>
-		<p>An existing nuBuilder application usually works at once – the database is the same. Before opening it to users:</p>
+		<h3>Bringing a nuBuilder Forte application to nuBuilder Next</h3>
+		<p>An existing nuBuilder Forte application usually works at once – the database is the same. Before opening it to users:</p>
 		<ol>
-			<li>Run the <a data-open="compat">Compatibility check</a>: it scans all JavaScript, events, procedures and SQL for nuBuilder functions and shows whether each one is <em>supported</em>, a <em>stub</em> or <em>missing</em> in nuBuilder Next.</li>
+			<li>Run the <a data-open="compat">Compatibility check</a>: it scans all JavaScript, events, procedures and SQL for nuBuilder Forte functions and shows whether each one is <em>supported</em>, a <em>stub</em> or <em>missing</em> in nuBuilder Next.</li>
 			<li>Fix the <strong>hash variables outside quotes</strong> it lists – <code>WHERE id = #field#</code> lets a user put SQL into a field; write <code>'#field#'</code>.</li>
 			<li>Check <a data-open="vendor">System status</a> (InnoDB, time zone) and the <a data-open="securitycheck">Security check</a>.</li>
 			<li>Act as a few typical users and click through their forms.</li>

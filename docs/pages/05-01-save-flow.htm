@@ -58,7 +58,7 @@
 	<ul>
 		<li>Only objects that save to a column (input, select, lookup, calc, textarea …) and whose id is a column of the table; buttons and file-system uploads never.</li>
 		<li>Existing record: only fields the user <em>edited</em> – so changes others made to other fields are kept.</li>
-		<li>New record: untouched empty fields are not written, so the column default or <code>NULL</code> applies (as in nuBuilder). <em>nuAutoNumber</em> inputs get the next number.</li>
+		<li>New record: untouched empty fields are not written, so the column default or <code>NULL</code> applies (as in nuBuilder Forte (4.x)). <em>nuAutoNumber</em> inputs get the next number.</li>
 		<li>Fields the user may not change (read only, hidden, or limited by <a href="#data-access">field data access</a>) are dropped from the post – never taken from the browser. A clone takes such values from the source record in the database.</li>
 		<li>Values are converted to the column's type (dates, numbers); text with a mask is stored with or without the mask characters, as the format says.</li>
 	</ul>
@@ -67,9 +67,9 @@
 	<h3 id="save-flow-server-cols">Columns set by the server</h3>
 	<ul>
 		<li><strong>Audit columns</strong> <code>created_at</code>, <code>created_by</code>, <code>updated_at</code>, <code>updated_by</code> – on forms created with the audit option.</li>
-		<li><strong>nuBuilder's record log</strong> <code>&lt;table&gt;_nulog</code> – JSON with who added and last edited the record.</li>
+		<li><strong>nuBuilder Forte's record log</strong> <code>&lt;table&gt;_nulog</code> – JSON with who added and last edited the record.</li>
 		<li>"Updated on" of notes and code snippets.</li>
-		<li>New primary keys: a nuBuilder id (<code>nu_id()</code>), or the database's auto increment.</li>
+		<li>New primary keys: a nuBuilder Forte id (<code>nu_id()</code>), or the database's auto increment.</li>
 	</ul>
 </div>
 <div class="doc-sub">

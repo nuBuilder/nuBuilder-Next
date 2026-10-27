@@ -673,15 +673,16 @@ final class NuImport
 				elseif (isset($seen[$lk])) { $addError($line, 'sus_login_name', $login, t('imp_err_dupkey', $seen[$lk])); $bad = true; }
 				else $seen[$lk] = $line;
 			}
+			$accCode = '';
 			if (!$bad) {
 				if (($v['sus_name'] ?? '') === '') $v['sus_name'] = mb_substr(trim(($v['sus_first_name'] ?? '') . ' ' . ($v['sus_last_name'] ?? '')), 0, 50);
 				if ($v['sus_name'] === '') { $addError($line, 'sus_name', '', t('err_required')); $bad = true; }
 				$email = (string)($v['sus_email'] ?? '');
 				if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) { $addError($line, 'sus_email', $email, t('user_err_email')); $bad = true; }
-				$code = mb_strtolower((string)($v['access_level'] ?? ''));
-				if ($code === '') { $addError($line, 'access_level', '', t('err_required')); $bad = true; }
-				elseif (!isset($allLevels[$code])) { $addError($line, 'access_level', (string)$v['access_level'], t('imp_u_err_access')); $bad = true; }
-				elseif (!isset($levels[$code]) && !in_array($allLevels[$code], $levels, true)) { $addError($line, 'access_level', (string)$v['access_level'], t('secchk_err_admin_level')); $bad = true; }
+				$accCode = mb_strtolower((string)($v['access_level'] ?? ''));
+				if ($accCode === '') { $addError($line, 'access_level', '', t('err_required')); $bad = true; }
+				elseif (!isset($allLevels[$accCode])) { $addError($line, 'access_level', (string)$v['access_level'], t('imp_u_err_access')); $bad = true; }
+				elseif (!isset($levels[$accCode]) && !in_array($allLevels[$accCode], $levels, true)) { $addError($line, 'access_level', (string)$v['access_level'], t('secchk_err_admin_level')); $bad = true; }
 				$lang = ['', ''];
 				if (($v['sus_language'] ?? '') !== '') {
 					$lang = self::userLanguage($v['sus_language']);
@@ -711,7 +712,7 @@ final class NuImport
 				continue;
 			}
 			$id = nu_id();
-			$row = ['zzzzsys_user_id' => $id, 'sus_zzzzsys_access_id' => $allLevels[$code]];
+			$row = ['zzzzsys_user_id' => $id, 'sus_zzzzsys_access_id' => $allLevels[$accCode]];
 			foreach (['sus_name', 'sus_first_name', 'sus_last_name', 'sus_email', 'sus_code', 'sus_position', 'sus_department', 'sus_team', 'sus_additional1', 'sus_additional2'] as $c) {
 				$row[$c] = ($v[$c] ?? '') === '' ? null : $v[$c];
 			}

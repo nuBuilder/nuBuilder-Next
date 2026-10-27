@@ -4,7 +4,7 @@
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p><code>index.php?p=form&amp;f=&lt;form id or code&gt;</code> shows a form's list; with <code>&amp;r=&lt;record id&gt;</code> (or <code>-1</code> for a new record) its edit view. Both are drawn on the server by <code>pages/nuform.php</code>:</p>
 <ol>
-	<li><strong>Metadata</strong> – <code>NuFormMeta::load()</code> reads the form, tabs, objects, events, list columns and hooks (a draft instead, while its author previews it). Rights are checked with <code>NuAcl</code>: view, and per action add, save, delete, clone, print; nuBuilder's "browse only" / "edit only" and "no changes to existing records" of the access level apply.</li>
+	<li><strong>Metadata</strong> – <code>NuFormMeta::load()</code> reads the form, tabs, objects, events, list columns and hooks (a draft instead, while its author previews it). Rights are checked with <code>NuAcl</code>: view, and per action add, save, delete, clone, print; nuBuilder Forte's "browse only" / "edit only" and "no changes to existing records" of the access level apply.</li>
 	<li><strong>Hash</strong> – <code>NuHash::forForm()</code> collects the hash variables: user, record, fields of the record, form properties.</li>
 	<li><strong>Hooks</strong> – Before Browse or Before Edit run (after the global hook), and may add JavaScript, set values or properties, or stop with an error.</li>
 	<li><strong>Data</strong>
@@ -14,9 +14,9 @@
 		</ul>
 	</li>
 	<li><strong>Field data access</strong> – fields the user may not see are left out or masked before anything is sent to the browser.</li>
-	<li><strong>HTML</strong> – <code>NuRender</code> writes tabs and objects with nuBuilder's element ids (<code>#cus_name</code>, <code>#label_cus_name</code>, <code>#&lt;lookup&gt;code</code>, <code>#&lt;subform&gt;000&lt;field&gt;</code>, <code>#nuTab0</code> …), so existing JavaScript finds its targets. The layout is chosen per form: <em>absolute</em> (nuBuilder's pixel positions), <em>auto</em> (rows derived from the positions, Bootstrap columns) or <em>grid</em> (explicit rows and spans).</li>
+	<li><strong>HTML</strong> – <code>NuRender</code> writes tabs and objects with nuBuilder Forte's element ids (<code>#cus_name</code>, <code>#label_cus_name</code>, <code>#&lt;lookup&gt;code</code>, <code>#&lt;subform&gt;000&lt;field&gt;</code>, <code>#nuTab0</code> …), so existing JavaScript finds its targets. The layout is chosen per form: <em>absolute</em> (nuBuilder Forte's pixel positions), <em>auto</em> (rows derived from the positions, Bootstrap columns) or <em>grid</em> (explicit rows and spans).</li>
 	<li><strong>Properties</strong> – the page gets a scope key; values set with <code>nuSetProperty()</code> in PHP stay on the server and cannot be changed in the browser (<code>NuProps</code>).</li>
-	<li><strong>Browser</strong> – <code>assets/js/nu/nuruntime.js</code> and the compatibility functions start, run nuBuilder's load hooks and the form's JavaScript, and from then on talk to the <a href="#routing-formapi">form API</a>.</li>
+	<li><strong>Browser</strong> – <code>assets/js/nu/nuruntime.js</code> and the compatibility functions start, run nuBuilder Forte's load hooks and the form's JavaScript, and from then on talk to the <a href="#routing-formapi">form API</a>.</li>
 </ol>
 <figure class="doc-figure" id="dg-rendering"><svg class="doc-flow" viewBox="0 0 680 560" role="img" aria-labelledby="dg-rendering-title dg-rendering-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-rendering-title">Form rendering pipeline</title><desc id="dg-rendering-desc">index.php?p=form goes through metadata and rights, the hash variables, the Before Browse / Before Edit hooks, the data of the list or the record, field data access and NuRender to the HTML page, where nuruntime.js starts.</desc>
 <defs><marker id="dg-rendering-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>

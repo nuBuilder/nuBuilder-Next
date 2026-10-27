@@ -55,5 +55,19 @@
 <li>The cloner copies a page form with its settings, not its files (it shows the folders to copy). The App cloner copies the folders with the files of the installation, but never <code>secrets.php</code>.</li>
 </ul>
 </div>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nupage.php</code></li><li><code>pages/nupage.php</code></li><li><code>custom/PAGE_GUIDE.md</code></li><li><code>custom/pages/_template/</code></li></ul></details>
+	<div class="doc-sub" data-acl="nuform">
+<h3 id="pages-draft">Draft and versions</h3>
+<p>To improve a page that is in use, work on a draft: the users keep the live version until you publish. The card <em>Draft and versions</em> in the form builder of the page:</p>
+<ul>
+<li><strong>Create draft</strong> copies the page's files into <code>custom/pages/&lt;code&gt;/_draft/</code>. Change the files there (File Manager, FTP, git) – the card lists the files that differ from the live version.</li>
+<li><strong>Open draft</strong> shows the page with the draft's files. This view is remembered for the page until you click <em>Show live version</em> in the bar at the bottom right (shown on HTML pages). Only designers (right on the form builder) see a draft; everyone else always gets the live files, even with <code>&amp;nudraft=1</code> in the address.</li>
+<li><strong>Publish draft</strong> makes the draft live. The files it replaces are kept as a version in <code>_versions/</code>.</li>
+<li><strong>Restore</strong> next to a previous version copies it back; the current files become a version first, so a restore can be undone the same way. The newest ten versions are kept.</li>
+<li><strong>Discard draft</strong> deletes the draft.</li>
+<li>Shared by the draft and the live version: the page's data (<code>_data/</code>, <code>$nu-&gt;dataDir()</code>), <code>secrets.php</code> (a draft without its own reads the live one), the page settings and the database. A draft that needs new columns should add them so the live code keeps working.</li>
+<li>Files and folders starting with a dot (<code>.git</code>, <code>.htaccess</code>) stay in the page folder and are never moved. Built-in pages have no draft unless you made your own copy of them in <code>custom/pages/</code>.</li>
+<li>Every step is written to the log (<em>Page draft created / published / discarded</em>, <em>Page version restored</em>).</li>
+</ul>
+</div>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nupage.php</code></li><li><code>core/nupageversion.php</code></li><li><code>pages/nupage.php</code></li><li><code>custom/PAGE_GUIDE.md</code></li><li><code>custom/pages/_template/</code></li></ul></details>
 </section>

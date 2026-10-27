@@ -29,7 +29,7 @@ final class NuLayout
 		}
 
 		$width = 0;
-		foreach ($objects as $o) $width = max($width, (int)$o['sob_all_left'] + self::effectiveWidth($o));
+		foreach ($objects as $o) $width = max($width, (int)($o['sob_all_left'] ?? 0) + self::effectiveWidth($o));
 		return self::tree('', $objects, $parent, max($width, 600), $mode, 0);
 	}
 
@@ -38,8 +38,8 @@ final class NuLayout
 		if ($mode === 'grid' && !empty($o['nunext']['box'])) {
 			foreach ($boxes as $b) if ($b['sob_all_id'] === $o['nunext']['box'] && $b !== $o) return $b['zzzzsys_object_id'];
 		}
-		$cx = (int)$o['sob_all_left'] + max(1, (int)$o['sob_all_width']) / 2;
-		$cy = (int)$o['sob_all_top'] + max(1, (int)$o['sob_all_height']) / 2;
+		$cx = (int)($o['sob_all_left'] ?? 0) + max(1, (int)($o['sob_all_width'] ?? 0)) / 2;
+		$cy = (int)($o['sob_all_top'] ?? 0) + max(1, (int)($o['sob_all_height'] ?? 0)) / 2;
 		$best = '';
 		$bestArea = PHP_INT_MAX;
 		foreach ($boxes as $b) {
@@ -47,7 +47,7 @@ final class NuLayout
 			[$l, $t, $w, $h] = [(int)$b['sob_all_left'], (int)$b['sob_all_top'], (int)$b['sob_all_width'], (int)$b['sob_all_height']];
 			$area = $w * $h;
 			if ($cx >= $l && $cx <= $l + $w && $cy >= $t && $cy <= $t + $h && $area < $bestArea
-				&& ($o['sob_all_type'] !== 'contentbox' || $area > (int)$o['sob_all_width'] * (int)$o['sob_all_height'])) {
+				&& ($o['sob_all_type'] !== 'contentbox' || $area > (int)($o['sob_all_width'] ?? 0) * (int)($o['sob_all_height'] ?? 0))) {
 				$best = $b['zzzzsys_object_id'];
 				$bestArea = $area;
 			}
@@ -80,7 +80,7 @@ final class NuLayout
 		$current = [];
 		$rowTop  = null;
 		foreach ($implicit as $o) {
-			$top = (int)$o['sob_all_top'];
+			$top = (int)($o['sob_all_top'] ?? 0);
 			if ($rowTop !== null && $top - $rowTop > self::ROW_TOLERANCE) {
 				$rows[] = $current;
 				$current = [];
@@ -100,7 +100,7 @@ final class NuLayout
 					'obj'      => $o,
 					'span'     => max(1, min(12, $span)),
 					'children' => $o['sob_all_type'] === 'contentbox'
-						? self::tree($o['zzzzsys_object_id'], $all, $parent, max(200, (int)$o['sob_all_width']), $mode, $depth + 1)
+						? self::tree($o['zzzzsys_object_id'], $all, $parent, max(200, (int)($o['sob_all_width'] ?? 0)), $mode, $depth + 1)
 						: null,
 				];
 			}
@@ -111,7 +111,7 @@ final class NuLayout
 
 	public static function effectiveWidth(array $o): int
 	{
-		$w = (int)$o['sob_all_width'];
+		$w = (int)($o['sob_all_width'] ?? 0);
 		if ($o['sob_all_type'] === 'lookup') $w += NuRender::lookupDescWidth($o) + 30;
 		return max($w, 1);
 	}
@@ -119,7 +119,7 @@ final class NuLayout
 	private static function span(array $o, int $containerWidth): int
 	{
 		$type = $o['sob_all_type'];
-		if (in_array($type, ['subform', 'run', 'html', 'chart'], true) && (int)$o['sob_all_width'] > $containerWidth * 0.75) return 12;
+		if (in_array($type, ['subform', 'run', 'html', 'chart'], true) && (int)($o['sob_all_width'] ?? 0) > $containerWidth * 0.75) return 12;
 		$w = self::effectiveWidth($o);
 		if (in_array($type, ['input', 'select', 'lookup', 'calc', 'display'], true) && !in_array($o['sob_input_type'], ['button', 'checkbox'], true)) {
 			$w = max($w, 140);                                // room for the label above the field

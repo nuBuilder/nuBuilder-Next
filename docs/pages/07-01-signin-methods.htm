@@ -1,6 +1,6 @@
 <section id="signin-methods" data-doc="admin" data-level="advanced">
 	<h2 id="signin-methods-h">Sign-in methods</h2>
-	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Password, two-step login, shared login with nuBuilder, links and tokens – all ways into nuBuilder Next in one place.</p>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Password, two-step login, shared login with nuBuilder Forte (4.x), links and tokens – all ways into nuBuilder Next in one place.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<table class="table table-sm">
 	<thead><tr><th>Method</th><th>How it works</th><th>Switched on by</th></tr></thead>
@@ -8,8 +8,8 @@
 		<tr><td>Password</td><td>Login name and password of <code>zzzzsys_user</code>; the globeadmin's from <code>nuconfig.php</code>. Minimum length <code>$nuConfigPasswordMinLength</code>; the procedure <code>nu_check_password_policy</code> can add rules.</td><td>always</td></tr>
 		<tr><td>Two-step login (2FA)</td><td>After the password: a code from an authenticator app, or a 6-digit code by e-mail when no app is set up. "Remember this device" skips it for <code>$nuConfig2FATrustDays</code> days.</td><td><code>$nuConfig2FAAdmin</code>, <code>$nuConfig2FAUser</code> + the access level's "Use two-factor authentication"</td></tr>
 		<tr><td>Forgot password</td><td>A link by e-mail, valid for 60 minutes and once.</td><td>always (needs working e-mail and <code>$nuConfigBaseURL</code>)</td></tr>
-		<tr><td>Shared login</td><td>A user already signed in to nuBuilder on the same domain is signed in to nuBuilder Next.</td><td><code>$nuConfigSharedLogin = true</code></td></tr>
-		<tr><td>Auto-login link</td><td>nuBuilder's link <code>index.php?u=&lt;login&gt;&amp;p=&lt;hash&gt;</code>, optionally opening a form and record. Links that expire can be made in the user form.</td><td><code>$nuConfigAutoLogin = true</code> (see <a href="#config">Configuration</a>)</td></tr>
+		<tr><td>Shared login</td><td>A user already signed in to nuBuilder Forte on the same domain is signed in to nuBuilder Next.</td><td><code>$nuConfigSharedLogin = true</code></td></tr>
+		<tr><td>Auto-login link</td><td>nuBuilder Forte's link <code>index.php?u=&lt;login&gt;&amp;p=&lt;hash&gt;</code>, optionally opening a form and record. Links that expire can be made in the user form.</td><td><code>$nuConfigAutoLogin = true</code> (see <a href="#config">Configuration</a>)</td></tr>
 		<tr><td>Demo users</td><td>Sign in read-only.</td><td><code>$nuConfigDemoUser</code> (see <a href="#demo-mode">Demo mode</a>)</td></tr>
 		<tr><td>REST API</td><td>Clients get short-lived access tokens (OAuth 2.0 client credentials); no interactive login.</td><td><code>$nuConfigApi = true</code> (see <a href="#api">REST API</a>)</td></tr>
 	</tbody>

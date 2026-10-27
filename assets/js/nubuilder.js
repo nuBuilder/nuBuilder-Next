@@ -268,7 +268,12 @@
 		$('#nbType').textContent = t('form_type_' + (S.form.sfo_type || 'browseedit'));
 		renderTabFilter();
 		renderObjects();
+		// edit and launch forms have no list: no Browse view (0.8.564; the stored values stay as they are)
+		var bt = $('#nbSecBrowse');
+		if (bt) bt.parentNode.classList.toggle('d-none', !hasList());
+		if (sel && sel.kind === 'browse' && !hasList()) select('form');
 	}
+	function hasList() { return ['edit', 'launch'].indexOf(String(S.form.sfo_type || '')) === -1; }
 
 	// ------------------------------------------------------------------ sidebar
 	function renderTabFilter() {
@@ -311,7 +316,7 @@
 			list.appendChild(item);
 		});
 		if (!shown.length) list.appendChild(h('li', {'class': 'list-group-item text-body-secondary small', text: t('builder_no_objects')}));
-		$$('.nbSections [data-nb-section]').forEach(function (b) { b.classList.toggle('active', sel.kind === b.getAttribute('data-nb-section')); });
+		$$('.nbSections [data-nb-section]').forEach(function (b) { b.classList.toggle('active', viewOf(sel.kind) === b.getAttribute('data-nb-section')); });
 	}
 
 	function move(o, dir) {
@@ -393,8 +398,11 @@
 			field1.addEventListener('input', check);
 			check();
 		}
+		if (spec.required) { input.setAttribute('aria-required', 'true'); input.setAttribute('data-nb-required', '1'); }
+		if (spec.noLabel) input.setAttribute('aria-label', t(spec.label));   // no visible label (Code view, 0.8.565): the code toolbar gets a clipboard button
 		var fld = h('div', {'class': 'nbFld ' + (spec.cls || 'col-12')}, [   // nbFld: packed tighter in a wide panel (nubuilder.css, 0.8.449)
-			h('div', {'class': 'd-flex align-items-center'}, [h('label', {'class': 'form-label small mb-1', 'for': id, text: t(spec.label)}), spec.tip ? infoTip(t(spec.tip)) : null]),
+			spec.noLabel ? null : h('div', {'class': 'd-flex align-items-center'}, [h('label', {'class': 'form-label small mb-1', 'for': id}, [t(spec.label),
+				spec.required ? h('span', {'class': 'text-danger ms-1 nbReq', 'aria-hidden': 'true', text: '*'}) : null]), spec.tip ? infoTip(t(spec.tip)) : null]),   // required: red * (0.8.564)
 			input,
 			feedback,
 			spec.help ? h('div', {'class': 'form-text', text: t(spec.help)}) : null
@@ -443,7 +451,8 @@
 		var b = $('#nbSave');
 		if (!curSave || !b) return Promise.reject(new Error(''));
 		b.disabled = true;
-		return Promise.resolve(curSave()).then(function () { flash(true); setDirty(false); b.disabled = false; },
+		// a check that throws (required fields) is shown like a server error
+		return new Promise(function (res) { res(curSave()); }).then(function () { flash(true); setDirty(false); b.disabled = false; },
 			function (e) { flash(false, e.message); b.disabled = false; throw e; });
 	}
 	if (window.nuLeaveGuard) window.nuLeaveGuard.add({
@@ -492,78 +501,90 @@
 	}
 
 	// ------------------------------------------------------------------ panels
-	function select(kind, id) {
-		sel = {kind: kind, id: id};
-		if (kind === 'browse' && S && S.form.sfo_type === 'browseedit' && previewMode() !== 'browse') setPreviewMode('browse', true);   // browse columns: show the list
-		renderObjects();
-		({form: panelForm, code: panelCode, tabs: panelTabs, browse: panelBrowse, object: panelObject, history: panelHistory, compare: panelCompare})[kind](id);
-		upgradeEditors($('#nbPanel'));
-		refreshEditors($('#nbPanel'));
-		if (kind === 'object') highlight(objById(id));
+	// views (0.8.563): Objects · Form settings (with Tabs) · Browse · Code · History – the objects list only on Objects; the view is in the
+	// address (#objects …) and comes back after a reload
+	var VIEWS = ['objects', 'form', 'browse', 'code', 'history'], lastObj = null, autoBrowse = false;
+	function viewOf(kind) { return {object: 'objects', tabs: 'form', compare: 'history'}[kind] || kind; }
+	function setView(v) {
+		var ws = $('#nbWorkspace');
+		if (ws.getAttribute('data-nb-view') !== v) {
+			ws.setAttribute('data-nb-view', v);
+			window.dispatchEvent(new Event('resize'));
+		}
+		if (window.history && window.history.replaceState && location.hash !== '#' + v) window.history.replaceState(null, '', location.pathname + location.search + '#' + v);
+	}
+	function panelObjects() {
+		var o = objById(lastObj) || S.objects[0];
+		if (o) { select('object', o.zzzzsys_object_id); return; }
+		panel(t('builder_objects'), h('p', {'class': 'text-body-secondary mb-0', text: t('builder_no_objects')}), null);
 	}
 
-	var formTab = 'general';   // open tab of the form settings
+	function select(kind, id) {
+		if (kind === 'tabs') { formTabsFocus = true; kind = 'form'; }   // Tabs is a section of Form settings now
+		sel = {kind: kind, id: id};
+		if (kind === 'object') lastObj = id;
+		setView(viewOf(kind));
+		if (kind === 'browse' && S && S.form.sfo_type === 'browseedit' && previewMode() !== 'browse') { setPreviewMode('browse', true, true); autoBrowse = true; }   // browse columns: show the list
+		// objects (0.8.563): back to the record when the Browse view switched the preview to the list by itself (a choice of the user stays)
+		else if (viewOf(kind) === 'objects' && autoBrowse) { autoBrowse = false; if (previewMode() !== 'edit') setPreviewMode('edit', true, true); }
+		renderObjects();
+		({objects: panelObjects, form: panelForm, code: panelCode, browse: panelBrowse, object: panelObject, history: panelHistory, compare: panelCompare})[kind](id);
+		if (kind === 'objects') return;                     // panelObjects selected the object itself
+		upgradeEditors($('#nbPanel'));
+		refreshEditors($('#nbPanel'));
+		if (kind === 'code') fitCode();
+		if (kind === 'object') highlight(objById(id));
+	}
+	// Code view (0.8.563): the visible editor reaches down to the bottom of the window (at least 300 px), as on the Custom code page
+	function fitCode() {
+		if (sel.kind !== 'code' || document.documentElement.classList.contains('nuCodeFullOpen')) return;
+		$$('#nbPanel textarea.nbCode').forEach(function (ta) {
+			var cm = ta.nbCM, w = cm && cm.getWrapperElement();
+			if (!w || !w.offsetParent) return;
+			var bottomGap = 90;                                  // help text below + card padding
+			cm.setSize(null, Math.max(300, Math.floor(window.innerHeight - w.getBoundingClientRect().top - bottomGap)));
+			cm.getScrollerElement().style.minHeight = '';
+		});
+	}
+	window.addEventListener('resize', function () { clearTimeout(fitCode.t); fitCode.t = setTimeout(fitCode, 80); });
+
+	var formTabsFocus = false;   // select('tabs'): Form settings, scrolled to its Tabs section
+	/** Required fields of a panel (data-nb-required, 0.8.564): empty ones are marked and the save stops (as nuBuilder's nuform). */
+	function checkRequired(root) {
+		var bad = $$('[data-nb-required]', root).filter(function (e) { var on = String(e.value || '').trim() === ''; e.classList.toggle('is-invalid', on); return on; });
+		if (!bad.length) return true;
+		bad[0].focus();
+		throw new Error(t('builder_err_required'));
+	}
+	// Form settings (0.8.564: one page – the browse SQL, rows per page and "open records in" moved to the Browse view)
 	function panelForm() {
 		var f = S.form;
-		var general = h('div', {'class': 'nbFormTab', 'data-tab': 'general', role: 'tabpanel'}, [
+		var tabsEd = tabsEditor();
+		var body = h('div', {}, [
 			section('builder_sec_general', [
-				field({key: 'sfo_description', label: 'builder_description', cls: 'col-sm-7'}, f.sfo_description),
-				field({key: 'sfo_code', label: 'builder_code', cls: 'col-sm-5'}, f.sfo_code),
-				field({key: 'sfo_type', label: 'builder_type', kind: 'select', cls: 'col-sm-4', options: ['browseedit', 'browse', 'edit', 'launch', 'subform'].map(function (x) { return [x, t('form_type_' + x)]; })}, f.sfo_type),
+				field({key: 'sfo_description', label: 'builder_description', cls: 'col-sm-7', required: true}, f.sfo_description),
+				field({key: 'sfo_code', label: 'builder_code', cls: 'col-sm-5', required: true}, f.sfo_code),
+				field({key: 'sfo_type', label: 'builder_type', kind: 'select', cls: 'col-sm-4', required: true, options: ['browseedit', 'browse', 'edit', 'launch', 'subform'].map(function (x) { return [x, t('form_type_' + x)]; })}, f.sfo_type),
 				field({key: 'sfo_group', label: 'builder_group', cls: 'col-sm-4'}, f.sfo_group),
 				field({key: 'sfo_status', label: 'builder_status', kind: 'select', cls: 'col-sm-4', options: [['1', t('builder_status_1')], ['0', t('builder_status_0')], ['3', t('builder_status_3')]]}, f.sfo_status || '1'),
 				field({key: 'sfo_table', label: 'builder_table', cls: 'col-sm-7'}, f.sfo_table),
 				field({key: 'sfo_primary_key', label: 'builder_primary_key', cls: 'col-sm-5'}, f.sfo_primary_key),
-				field({key: 'sfo_breadcrumb_title', label: 'builder_breadcrumb', help: 'builder_breadcrumb_help'}, f.sfo_breadcrumb_title)
+				field({key: 'sfo_breadcrumb_title', label: 'builder_breadcrumb', tip: 'builder_breadcrumb_help'}, f.sfo_breadcrumb_title)
 			]),
 			section('form_layout', [
-				field({key: 'layout', label: 'form_layout', kind: 'select', cls: 'col-sm-6', options: ['absolute', 'auto', 'grid'].map(function (x) { return [x, t('form_layout_' + x)]; })}, f.layout),
+				field({key: 'layout', label: 'form_layout', kind: 'select', cls: 'col-sm-6', tip: 'builder_layout_help', options: ['absolute', 'auto', 'grid'].map(function (x) { return [x, t('form_layout_' + x)]; })}, f.layout),
 				h('div', {'class': 'col-sm-6 d-flex align-items-end'}, [RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-secondary btn-sm w-100', onclick: convertGrid},
-					[h('i', {'class': 'bi bi-grid-3x3-gap me-1'}), t('builder_convert_grid')])]),
-				h('div', {'class': 'col-12 form-text', text: t('builder_layout_help')})
+					[h('i', {'class': 'bi bi-grid-3x3-gap me-1'}), t('builder_convert_grid')])])
 			]),
+			section('builder_sec_tabs', [tabsEd.el])
 		]);
-		var browse = h('div', {'class': 'nbFormTab', 'data-tab': 'browse', role: 'tabpanel'}, [
-			h('div', {'class': 'row g-2'}, [
-				field({key: 'sfo_browse_sql', label: 'builder_browse_sql', kind: 'code', rows: 16, help: 'builder_browse_sql_help'}, f.sfo_browse_sql),
-				field({key: 'sfo_browse_rows_per_page', label: 'builder_rows_per_page', kind: 'number', cls: 'col-sm-4'}, f.sfo_browse_rows_per_page),
-				field({key: 'sfo_browse_redirect_form_id', label: 'builder_redirect', kind: 'select', cls: 'col-sm-8', search: true, options: formOptions(['edit', 'browseedit'])}, f.sfo_browse_redirect_form_id)
-			])
-		]);
-		// tabs General / Browse – the open tab stays open after saving
-		var nav = h('ul', {'class': 'nav nav-tabs mb-3 nbFormTabs', role: 'tablist'});
-		var panes = [general, browse];
-		function showTab(name) {
-			formTab = name;
-			Array.prototype.forEach.call(nav.querySelectorAll('.nav-link'), function (l) {
-				var on = l.getAttribute('data-tab') === name;
-				l.classList.toggle('active', on);
-				l.setAttribute('aria-selected', on ? 'true' : 'false');
-			});
-			panes.forEach(function (pn) { pn.classList.toggle('d-none', pn.getAttribute('data-tab') !== name); if (pn.getAttribute('data-tab') === name) refreshEditors(pn); });
-		}
-		[['general', 'builder_sec_general', 'bi-sliders'], ['browse', 'builder_sec_browse', 'bi-table']].forEach(function (tb) {
-			nav.appendChild(h('li', {'class': 'nav-item', role: 'presentation'}, [h('button', {type: 'button', 'class': 'nav-link', role: 'tab', 'data-tab': tb[0],
-				onclick: function () {
-					showTab(tb[0]);
-					if (tb[0] === 'browse' && S.form.sfo_type === 'browseedit' && previewMode() !== 'browse') setPreviewMode('browse', true);   // browse SQL: show the list
-				}}, [h('i', {'class': 'bi ' + tb[2] + ' me-1'}), t(tb[1])])]));
-		});
-		var body = h('div', {}, [nav, general, browse]);
-		// edit and launch forms have no list: no Browse tab (the values stay and are saved unchanged)
-		function syncBrowseTab() {
-			var typeSel = general.querySelector('[data-key="sfo_type"]');
-			var none = typeSel && ['edit', 'launch'].indexOf(typeSel.value) !== -1;
-			nav.querySelector('[data-tab="browse"]').parentNode.classList.toggle('d-none', none);
-			if (none && formTab === 'browse') showTab('general');
-		}
-		var typeSel = general.querySelector('[data-key="sfo_type"]');
-		if (typeSel) typeSel.addEventListener('change', syncBrowseTab);
-		showTab(formTab);
-		syncBrowseTab();
 		panel(t('builder_sec_form'), body, function () {
-			return api('form.save', {fields: collect(body)}).then(function (r) { load(r); preview(); });
+			checkRequired(body);
+			return api('form.save', {fields: collect(body)}).then(function (r) {
+				return tabsEd.changed ? api('tabs.save', {tabs: tabsEd.rows()}) : r;
+			}).then(function (r) { load(r); if (tabsEd.changed) panelForm(); preview(); });
 		});
+		if (formTabsFocus) { formTabsFocus = false; tabsEd.el.scrollIntoView({block: 'center'}); }
 	}
 
 	function convertGrid() {
@@ -575,21 +596,32 @@
 		var f = S.form;
 		var items = [['sfo_javascript', 'builder_js_both'], ['sfo_edit_javascript', 'builder_js_edit'], ['sfo_browse_javascript', 'builder_js_browse'], ['sfo_style', 'builder_css']]
 			.concat(['BE', 'BS', 'AS', 'BB', 'BD', 'AD'].map(function (x) { return ['php_' + x, 'builder_php_' + x]; }));
-		var nav = h('div', {'class': 'nbCodeNav d-flex flex-wrap gap-1 mb-2', role: 'tablist'});
+		// buttons in two groups (0.8.566): "JavaScript & CSS" and "PHP" – the button shows the name without its JS / PHP prefix, the full
+		// name is its tooltip and the editor's name
+		var nav = h('div', {'class': 'nbCodeNav mb-2', role: 'tablist'});
+		var groups = {}, mk = function (key, title) {
+			groups[key] = h('div', {'class': 'nbCodeBtns d-flex flex-wrap gap-1'});
+			nav.appendChild(h('div', {'class': 'nbCodeGroup', role: 'group', 'aria-label': title}, [h('span', {'class': 'nbCodeGroupLbl', text: title}), groups[key]]));
+		};
+		mk('js', 'JavaScript & CSS'); mk('php', 'PHP');
 		var areas = h('div', {});
 		items.forEach(function (it, i) {
 			var key = it[0], isPhp = key.indexOf('php_') === 0;
 			var val = isPhp ? S.php[key.substr(4)] : f[key];
-			var area = h('div', {'class': i ? 'd-none' : ''}, [field({key: key, label: it[1], kind: 'code', rows: 18}, val)]);
+			// no label above the editor (0.8.565): the button row above names it; Copy / paste sits in the toolbar
+			var area = h('div', {'class': i ? 'd-none' : ''}, [field({key: key, label: it[1], kind: 'code', rows: 18, noLabel: true}, val)]);
 			areas.appendChild(area);
-			var b = h('button', {type: 'button', 'class': 'btn btn-sm ' + (i ? 'btn-outline-secondary' : 'btn-secondary') + (val ? ' nbHasCode' : ''), text: t(it[1]), onclick: function () {
-				$$('.nbCodeNav button').forEach(function (x) { x.classList.replace('btn-secondary', 'btn-outline-secondary'); });
-				b.classList.replace('btn-outline-secondary', 'btn-secondary');
+			var full = t(it[1]), short = full.replace(/^(JS|PHP)\s+/, '');
+			var b = h('button', {type: 'button', role: 'tab', 'class': 'btn btn-sm ' + (i ? 'btn-outline-secondary' : 'btn-secondary') + (val ? ' nbHasCode' : ''), text: short,
+				title: full !== short ? full : null, 'aria-label': full, 'aria-selected': i ? 'false' : 'true', onclick: function () {
+				$$('.nbCodeNav button').forEach(function (x) { x.classList.replace('btn-secondary', 'btn-outline-secondary'); x.setAttribute('aria-selected', 'false'); });
+				b.classList.replace('btn-outline-secondary', 'btn-secondary'); b.setAttribute('aria-selected', 'true');
 				Array.prototype.forEach.call(areas.children, function (a) { a.classList.add('d-none'); });
 				area.classList.remove('d-none');
 				refreshEditors(area);
+				fitCode();
 			}});
-			nav.appendChild(b);
+			(isPhp ? groups.php : groups.js).appendChild(b);
 		});
 		var body = h('div', {}, [nav, areas, h('div', {'class': 'form-text', text: t('builder_code_help')})]);
 		panel(t('builder_sec_code'), body, function () {
@@ -625,7 +657,8 @@
 		return s;
 	}
 
-	function panelTabs() {
+	// tabs of the form (0.8.563: a section of Form settings – before its own panel); saved with the form settings
+	function tabsEditor() {
 		var acc = [['0', t('builder_tab_visible')], ['2', t('builder_tab_hidden')], ['3', t('builder_tab_hidden_users')]];
 		var ed = listEditor(S.tabs, ['builder_tab_title', 'builder_tab_access'], function (tb) {
 			var tr = h('tr', {'data-id': tb.zzzzsys_tab_id || ''});
@@ -641,12 +674,13 @@
 			var rb = $('.bi-x-circle', tr);
 			if (rb) rb.closest('button').remove();
 		});
-		var body = h('div', {}, [ed.el, RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-primary btn-sm', onclick: function () { ed.add({syt_title: t('builder_new_tab')}); }},
+		var out = {changed: false};
+		var el = h('div', {'class': 'col-12 nbTabsEditor', id: 'nbTabsEditor'}, [ed.el, RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-primary btn-sm', onclick: function () { ed.add({syt_title: t('builder_new_tab')}); out.changed = true; setDirty(true); }},
 			[h('i', {'class': 'bi bi-plus-lg me-1'}), t('builder_add_tab')]), h('div', {'class': 'form-text', text: t('builder_tabs_help') + (RO || D.globeadmin ? '' : ' ' + t('builder_tabs_globeadmin'))})]);
-		panel(t('builder_sec_tabs'), body, function () {
-			var tabs = $$('tr:not(.nuRowRemoved)', ed.tbody).map(function (tr) { return {id: tr.getAttribute('data-id'), title: $('[data-f=title]', tr).value, access: $('[data-f=access]', tr).value}; });
-			return api('tabs.save', {tabs: tabs}).then(function (r) { load(r); panelTabs(); preview(); });
-		});
+		['input', 'change', 'click'].forEach(function (ev) { el.addEventListener(ev, function (e) { if (ev !== 'click' || e.target.closest('button')) out.changed = true; }); });
+		out.el = el;
+		out.rows = function () { return $$('tr:not(.nuRowRemoved)', ed.tbody).map(function (tr) { return {id: tr.getAttribute('data-id'), title: $('[data-f=title]', tr).value, access: $('[data-f=access]', tr).value}; }); };
+		return out;
 	}
 
 	function panelBrowse() {
@@ -665,15 +699,25 @@
 			tr.appendChild(h('td', {'class': 'text-center'}, [flt]));
 			return tr;
 		});
-		var body = h('div', {}, [ed.el, dl, RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-primary btn-sm', onclick: function () { ed.add({sbr_width: 100}); }},
-			[h('i', {'class': 'bi bi-plus-lg me-1'}), t('builder_add_column')]), h('div', {'class': 'form-text', text: t('builder_browse_help')})]);
+		// the list itself (0.8.564: before on Form settings → Browse): browse SQL, rows per page, the form that opens records
+		var f = S.form, listFields = h('div', {}, [section('builder_sec_list', [
+			field({key: 'sfo_browse_sql', label: 'builder_browse_sql', kind: 'code', rows: 10, help: 'builder_browse_sql_help'}, f.sfo_browse_sql),
+			field({key: 'sfo_browse_rows_per_page', label: 'builder_rows_per_page', kind: 'number', cls: 'col-sm-4'}, f.sfo_browse_rows_per_page),
+			field({key: 'sfo_browse_redirect_form_id', label: 'builder_redirect', kind: 'select', cls: 'col-sm-8', search: true, options: formOptions(['edit', 'browseedit'])}, f.sfo_browse_redirect_form_id)
+		])]);
+		var body = h('div', {}, [listFields, section('builder_sec_columns', [h('div', {'class': 'col-12'}, [ed.el, dl, RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-primary btn-sm', onclick: function () { ed.add({sbr_width: 100}); }},
+			[h('i', {'class': 'bi bi-plus-lg me-1'}), t('builder_add_column')]), h('div', {'class': 'form-text', text: t('builder_browse_help')})])])]);
+		var listWas = JSON.stringify(collect(listFields));
 		panel(t('builder_sec_browse'), body, function () {
 			var cols = $$('tr:not(.nuRowRemoved)', ed.tbody).map(function (tr) {
 				var o = {id: tr.getAttribute('data-id')};
 				$$('[data-f]', tr).forEach(function (e) { o[e.getAttribute('data-f')] = e.type === 'checkbox' ? e.checked : e.value; });
 				return o;
 			});
-			return api('browse.save', {columns: cols}).then(function (r) { load(r); panelBrowse(); preview(); });
+			var lf = collect(listFields);
+			return (JSON.stringify(lf) !== listWas ? api('form.save', {fields: lf}) : Promise.resolve(null))
+				.then(function () { return api('browse.save', {columns: cols}); })
+				.then(function (r) { load(r); panelBrowse(); preview(); });
 		});
 	}
 
@@ -699,6 +743,9 @@
 				{key: 'sob_all_type', label: 'builder_obj_type', kind: 'select', cls: 'col-sm-6', options: TYPES.map(function (x) { return [x, t('bf_type_' + x)]; }), change: true},
 				{key: 'sob_all_id', label: 'builder_obj_id', cls: 'col-sm-6', help: 'builder_obj_id_help', trim: true, pattern: /^[A-Za-z_][A-Za-z0-9_]*$/, patternErr: 'builder_err_id'},
 				{key: 'sob_all_label', label: 'builder_obj_label'},
+				// icon (0.8.559): nuBuilder's sob_input_icon – inside input buttons, run buttons and words (NuRender::withIcon)
+				{key: 'sob_input_icon', label: 'builder_obj_icon', tip: 'builder_obj_icon_tip', placeholder: 'fa fa-table', trim: true,
+					show: type === 'run' || type === 'word' || (type === 'input' && it === 'button')},
 				{key: 'sob_all_zzzzsys_tab_id', label: 'builder_obj_tab', kind: 'select', cls: 'col-sm-6', options: tabs},
 				{key: 'sob_all_access', label: 'builder_obj_access', kind: 'select', cls: 'col-sm-6', options: [['0', t('bf_access_0')], ['1', t('bf_access_1')], ['2', t('bf_access_2')], ['3', t('bf_access_3')], ['4', t('bf_access_4')], ['9', t('bf_access_9')]], change: true},
 				{key: 'sob_all_access_condition', label: 'builder_obj_access_cond', kind: 'code', rows: 2, help: 'builder_obj_access_cond_help', show: String(o.sob_all_access || '') === '9'},
@@ -780,7 +827,7 @@
 
 	function panelObject(id) {
 		var o = objById(id);
-		if (!o) { select('form'); return; }
+		if (!o) { lastObj = null; select('objects'); return; }
 		var draft = Object.assign({}, o);
 		var body = h('div', {});
 		// a file object switched to "File System" with empty HTML code gets the Uppy template (nuBuilder: procedure nu_upload_file_load_uppy_code)
@@ -828,7 +875,7 @@
 		}, RO ? [] : [
 			h('button', {type: 'button', 'class': 'btn btn-outline-danger btn-sm', onclick: function () {
 				if (!confirm(t('builder_delete_object_confirm').replace('%s', o.sob_all_id))) return;
-				api('object.delete', {object_id: o.zzzzsys_object_id}).then(function (r) { load(r); select('form'); preview(); }).catch(function (e) { flash(false, e.message); });
+				api('object.delete', {object_id: o.zzzzsys_object_id}).then(function (r) { load(r); lastObj = null; select('objects'); preview(); }).catch(function (e) { flash(false, e.message); });
 			}}, [h('i', {'class': 'bi bi-trash me-1'}), t('builder_delete_object')]),
 			h('button', {type: 'button', 'class': 'btn btn-outline-secondary btn-sm', onclick: function () { duplicate(o); }}, [h('i', {'class': 'bi bi-copy me-1'}), t('builder_clone_object')])
 		]);
@@ -938,7 +985,7 @@
 			var rows = parseInt(ta.getAttribute('rows'), 10) || 3;
 			cm.getScrollerElement().style.minHeight = Math.max(4.5, Math.min(rows * 1.2, 40)) + 'rem';   // 1.2rem = one line
 			// toolbar: undo / redo, search, replace, comment, invisibles, format – and the "#" menu for SQL, PHP and HTML
-			var bar = h('div', {'class': 'nbCodeBar d-flex justify-content-end gap-2'});
+			var bar = h('div', {'class': 'nbCodeBar d-flex justify-content-start gap-2'});   // left: nearer for the mouse (0.8.592)
 			cm.getWrapperElement().parentNode.insertBefore(bar, cm.getWrapperElement());
 			var lang = {'text/x-sql': 'SQL', 'text/x-php': 'PHP', htmlmixed: 'HTML', css: 'CSS'}[mode] || 'JS';
 			if (ta.getAttribute('data-key') === 'sob_calc_formula') lang = 'TEXT';           // a formula, not a program
@@ -1061,13 +1108,15 @@
 		if (pmMode === null) { pmMode = 'edit'; try { if (localStorage.getItem(PM_KEY) === 'browse') pmMode = 'browse'; } catch (e) { /* no storage */ } }
 		return pmMode;
 	}
-	function setPreviewMode(m, reload) {
+	function setPreviewMode(m, reload, auto) {
 		pmMode = m === 'browse' ? 'browse' : 'edit';
-		try { if (pmMode === 'browse') localStorage.setItem(PM_KEY, 'browse'); else localStorage.removeItem(PM_KEY); } catch (e) { /* no storage */ }
+		// only the user's own choice is remembered (0.8.563: not the switch of the Browse view / back on Objects)
+		if (!auto) { try { if (pmMode === 'browse') localStorage.setItem(PM_KEY, 'browse'); else localStorage.removeItem(PM_KEY); } catch (e) { /* no storage */ } }
 		if (reload) preview();
 	}
 	if (pmBox) pmBox.addEventListener('click', function (e) {
 		var b = e.target.closest('[data-mode]');
+		if (b) autoBrowse = false;                           // the user's own choice
 		if (b && b.getAttribute('data-mode') !== previewMode()) setPreviewMode(b.getAttribute('data-mode'), true);
 	});
 	function preview() {
@@ -1109,6 +1158,50 @@
 	sendTabOrder();
 	frame.addEventListener('load', function () { if (sel.kind === 'object') highlight(objById(sel.id)); sendTabOrder(); });
 	// show / hide the preview (small screens): remembered in localStorage; without a stored choice hidden below 992 px
+	// splitter of the Code view (0.8.565): the share of the code card in % (25–80), per browser
+	(function () {
+		var sp = $('#nbSplit'), box = $('#nbWorkspace'), KEY = 'nunext-builder-split-code', DEF = 60;
+		if (!sp) return;
+		function apply(v, store) {
+			v = Math.max(25, Math.min(80, Math.round(v * 10) / 10));
+			box.style.setProperty('--nb-split', v + '%');
+			sp.setAttribute('aria-valuenow', String(Math.round(v)));
+			if (store) { try { localStorage.setItem(KEY, String(v)); } catch (e) { /* no storage */ } }
+			window.dispatchEvent(new Event('resize'));          // code editors and the preview take the new width
+		}
+		var saved = null;
+		try { saved = parseFloat(localStorage.getItem(KEY)); } catch (e) { /* no storage */ }
+		if (saved) apply(saved, false); else sp.setAttribute('aria-valuenow', String(DEF));
+		function at(x) { var r = box.getBoundingClientRect(); return (x - r.left) / r.width * 100; }
+		sp.addEventListener('pointerdown', function (e) {
+			if (e.button !== 0) return;
+			e.preventDefault();
+			sp.setPointerCapture(e.pointerId);
+			box.classList.add('nbSplitting');
+			var move = function (ev) { apply(at(ev.clientX), false); };
+			var up = function (ev) {
+				sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); sp.removeEventListener('pointercancel', up);
+				box.classList.remove('nbSplitting');
+				apply(at(ev.clientX), true);
+			};
+			sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up); sp.addEventListener('pointercancel', up);
+		});
+		sp.addEventListener('keydown', function (e) {
+			var v = parseFloat(sp.getAttribute('aria-valuenow')) || DEF, step = e.shiftKey ? 10 : 2;
+			if (e.key === 'ArrowLeft') apply(v - step, true);
+			else if (e.key === 'ArrowRight') apply(v + step, true);
+			else if (e.key === 'Home') apply(25, true);
+			else if (e.key === 'End') apply(80, true);
+			else return;
+			e.preventDefault();
+		});
+		sp.addEventListener('dblclick', function () {            // back to the default
+			box.style.removeProperty('--nb-split');
+			sp.setAttribute('aria-valuenow', String(DEF));
+			try { localStorage.removeItem(KEY); } catch (e) { /* no storage */ }
+			window.dispatchEvent(new Event('resize'));
+		});
+	})();
 	var PV_KEY = 'nunext-builder-preview', ws = $('#nbWorkspace'), pvBtn = $('#nbPreviewToggle');
 	function previewOpen() { return !ws.classList.contains('nbPreviewCollapsed'); }
 	function setPreview(open, remember) {
@@ -1394,13 +1487,21 @@
 	api('state', {}).then(function (r) {
 		load(r);
 		renderDraftBar();
-		select('form');
+		var hv = (location.hash || '').replace('#', '');
+		select(VIEWS.indexOf(hv) >= 0 && (hv !== 'browse' || hasList()) ? hv : 'objects');
+		// a link or Back / Forward to another #view (0.8.564)
+		window.addEventListener('hashchange', guarded(function () {
+			var v = (location.hash || '').replace('#', '');
+			if (VIEWS.indexOf(v) >= 0 && v !== viewOf(sel.kind) && (v !== 'browse' || hasList())) select(v);
+		}));
 		preview();
 		// opened from a form's options menu / Ctrl+Shift+A, H, F, O: ?open=arrange | add | form | objects
 		var open = new URLSearchParams(window.location.search).get('open');
 		// opened from a form's label menu (Properties…): ?obj=<zzzzsys_object_id>
 		var objParam = new URLSearchParams(window.location.search).get('obj');
 		if (objParam && objById(objParam)) select('object', objParam);
+		if ((open === 'add' || open === 'objects' || open === 'arrange') && sel.kind !== 'object') select('objects');
+		if (open === 'form') select('form');
 		if (open === 'add') { var tg = document.querySelector('.nbAddMenu') && document.querySelector('.nbAddMenu').previousElementSibling; if (tg && nuBs.ready()) nuBs.dropdown(tg).show(); }
 		if (open === 'objects' && $('#nbObjSearch')) $('#nbObjSearch').focus();
 		if (open === 'arrange') { window.nbShowPreview(); var pv = document.querySelector('.nbPreviewCard'); if (pv) pv.scrollIntoView({block: 'start'}); }

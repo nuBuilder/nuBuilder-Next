@@ -2,13 +2,13 @@
 	<h2 id="demo-mode-h">Demo mode</h2>
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> A read-only installation for visitors.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>Lets visitors look at the whole application – forms, lists, the form builder, the admin pages – without being able to change anything. Like nuBuilder's demo mode, but with a real user:</p>
+	<p>Lets visitors look at the whole application – forms, lists, the form builder, the admin pages – without being able to change anything. Like nuBuilder Forte's demo mode, but with a real user:</p>
 <ol>
 <li>Create a user (e.g. login <code>demo</code>) with a password and any access level – it is only needed to log in.</li>
 <li>In <code>nuconfig.php</code>: <code>$nuConfigDemoUser = "demo";</code> – the login name or the user id. Several demo users are separated by commas.</li>
-<li>Optional: <code>$nuConfigDemoSavingAllowedIds = "form_id,form_code";</code> – forms where demo users may still <em>save</em> (nuBuilder's setting, also in Admin tools → Settings).</li>
+<li>Optional: <code>$nuConfigDemoSavingAllowedIds = "form_id,form_code";</code> – forms where demo users may still <em>save</em> (nuBuilder Forte's setting, also in Admin tools → Settings).</li>
 </ol>
-<p><strong>nuBuilder's demo globeadmin</strong>: with <code>$nuConfigIsDemo = true</code>, <code>$nuConfigDemoDBGlobeadminUsername</code> and <code>$nuConfigDemoDBGlobeadminPassword</code> – the same settings as in nuBuilder – that name and password sign in as a read-only demo globeadmin, also in nuBuilder Next (and the login page offers it under <em>Try the demo</em>). The real globeadmin's name and password always win. Changing the three settings ends running demo globeadmin sessions. Developer mode is never on for a demo session.</p>
+<p><strong>nuBuilder Forte's demo globeadmin</strong>: with <code>$nuConfigIsDemo = true</code>, <code>$nuConfigDemoDBGlobeadminUsername</code> and <code>$nuConfigDemoDBGlobeadminPassword</code> – the same settings as in nuBuilder Forte (4.x) – that name and password sign in as a read-only demo globeadmin, also in nuBuilder Next (and the login page offers it under <em>Try the demo</em>). The real globeadmin's name and password always win. Changing the three settings ends running demo globeadmin sessions. Developer mode is never on for a demo session.</p>
 <p>The login page then shows <strong>Try the demo</strong> (one button per demo user): one click logs in without a password. A demo user can also log in with name and password, or through an auto-login link. In the top bar a badge <em>Demo – read only</em> shows the mode.</p>
 <p>What a demo user can do:</p>
 <ul>
@@ -22,8 +22,8 @@
 <li>Own account: no password change, no "Forgot password" e-mail, no two-step login. The language can be switched for the session.</li>
 </ul>
 <p><strong>Demo data reset</strong>: <em>System status → Demo mode → Demo data</em> lists the tables of the allowed forms and their sub-forms. <em>Take snapshot</em> stores their rows (in the protected backup folder, at most 50,000 rows / 20 MB); <em>Reset now</em> empties the tables and fills them from the snapshot; <em>Reset automatically</em> (never, 6 or 12 hours, 1, 2 or 7 days – default 1 day) lets the housekeeping (<code>cron.php</code>, or now and then a page view) do it. Without a snapshot nothing is reset.</p>
-<p><em>System status → Demo mode</em> shows the demo users and warns when one cannot log in (unknown, expired, no access level), which forms allow saving and which procedures have <em>Demo access</em>. The globeadmin can try it with <em>Act as user</em> on the demo user. A nuBuilder demo session is never taken over by the shared login.</p>
-<p>In form code and procedures, <code>nuDemo()</code> (as in nuBuilder) returns true in a demo session and adds <em>Not available in the demo</em> to the messages; <code>nuDemo(false)</code> only checks.</p>
+<p><em>System status → Demo mode</em> shows the demo users and warns when one cannot log in (unknown, expired, no access level), which forms allow saving and which procedures have <em>Demo access</em>. The globeadmin can try it with <em>Act as user</em> on the demo user. A nuBuilder Forte demo session is never taken over by the shared login.</p>
+<p>In form code and procedures, <code>nuDemo()</code> (as in nuBuilder Forte) returns true in a demo session and adds <em>Not available in the demo</em> to the messages; <code>nuDemo(false)</code> only checks.</p>
 <p>Keep in mind: demo users see all data and code of the application – use a database with demo data.</p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudemo.php</code></li></ul></details>
 </section>

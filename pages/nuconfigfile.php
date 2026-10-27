@@ -136,11 +136,11 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'head' =>
 		<div class="alert alert-danger rounded-0 border-start-0 border-end-0 mb-0 text-break" id="cfgLive" role="alert" hidden></div>
 		<div class="cfgEditor">
 			<div class="d-flex flex-wrap gap-2 align-items-center px-3 py-2 border-bottom cfgToolbar">
-				<label class="form-label small fw-semibold mb-0 me-auto" for="cfgContent">PHP</label>
+				<label class="form-label small fw-semibold mb-0" for="cfgContent">PHP</label>
+				<span class="cfgCodeTools d-flex gap-2 ms-3 me-auto"></span><?php // editor toolbar next to the label (0.8.592) ?>
 				<?php if ($writable): ?>
 					<button type="button" class="btn btn-sm btn-outline-secondary" id="cfgInsertBtn" data-bs-toggle="modal" data-bs-target="#cfgInsert"><i class="bi bi-plus-square me-1"></i><?= h(t('cfg_ins_btn')) ?></button>
 				<?php endif; ?>
-				<span class="cfgCodeTools d-flex gap-2"></span>
 			</div>
 			<textarea class="form-control font-monospace border-0 rounded-0 cfgCode" name="content" id="cfgContent" rows="28" spellcheck="false" aria-label="nuconfig.php"
 				<?= $writable ? '' : 'readonly' ?>><?= h($text) ?></textarea>

@@ -1,12 +1,12 @@
 <section id="migration" data-doc="admin">
-	<h2 id="migration-h">Migrating from nuBuilder 4.9</h2>
-	<p class="doc-lead">Running an existing nuBuilder application in nuBuilder Next.</p>
+	<h2 id="migration-h">Migrating from nuBuilder Forte 4.9</h2>
+	<p class="doc-lead">Running an existing nuBuilder Forte (4.x) application in nuBuilder Next.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>nuBuilder Next works on the database of a nuBuilder 4.9 application without converting it. Forms, rights, procedures and reports stay where they are, and nuBuilder can keep running on the same database while you check the application in nuBuilder Next.</p>
+	<p>nuBuilder Next works on the database of a nuBuilder Forte 4.9 application without converting it. Forms, rights, procedures and reports stay where they are, and nuBuilder Forte can keep running on the same database while you check the application in nuBuilder Next.</p>
 <ol>
 	<li><strong>Back up</strong> the database.</li>
-	<li><strong>Install</strong> nuBuilder Next, ideally as a sub-folder of nuBuilder (e.g. <code>/nubuilder4/nunext/</code>), so it finds nuBuilder's <code>nuconfig.php</code> and libraries (<a href="#install">Installation</a>). An existing nuBuilder database must be allowed with <code>$nuConfigAllowExistingNuDB</code>.</li>
-	<li><strong>Run the <a href="#compat">Compatibility check</a></strong>: it scans all code of the application for nuBuilder functions and shows whether each is supported.</li>
+	<li><strong>Install</strong> nuBuilder Next, ideally as a sub-folder of nuBuilder Forte (e.g. <code>/nubuilder4/nunext/</code>), so it finds nuBuilder Forte's <code>nuconfig.php</code> and libraries (<a href="#install">Installation</a>). An existing nuBuilder Forte database must be allowed with <code>$nuConfigAllowExistingNuDB</code>.</li>
+	<li><strong>Run the <a href="#compat">Compatibility check</a></strong>: it scans all code of the application for nuBuilder Forte functions and shows whether each is supported.</li>
 	<li><strong>Read the <a href="#porting">differences</a></strong> for the functions your code uses.</li>
 	<li><strong>Test</strong> on a copy first – the <a href="#appcloner">App cloner</a> makes one.</li>
 	<li>Optional: switch forms to the automatic layout to make them work on phones.</li>

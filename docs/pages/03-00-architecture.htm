@@ -2,7 +2,7 @@
 	<h2 id="architecture-h">Architecture</h2>
 	<p class="doc-lead">How a request travels through nuBuilder Next – for developers who extend or debug it.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>nuBuilder Next is a plain PHP application (PHP 8.1+) without a framework: one front controller, server-rendered pages, and small JSON endpoints that the page scripts call. It uses jQuery and Bootstrap 5 in the browser, and runs nuBuilder's form code through a compatibility layer.</p>
+	<p>nuBuilder Next is a plain PHP application (PHP 8.1+) without a framework: one front controller, server-rendered pages, and small JSON endpoints that the page scripts call. It uses jQuery and Bootstrap 5 in the browser, and runs nuBuilder Forte's form code through a compatibility layer.</p>
 <figure class="doc-figure"><svg class="doc-flow" viewBox="0 0 680 530" role="img" aria-labelledby="arch-flow-title arch-flow-desc" xmlns="http://www.w3.org/2000/svg"><title id="arch-flow-title">nuBuilder Next request flow</title><desc id="arch-flow-desc">Browser requests go through index.php to nuform.php, which loads form metadata and renders HTML; page scripts then call nuformapi.php, which saves records in a transaction and returns JSON.</desc>
 <defs><marker id="arch-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
 <text x="115" y="44" class="dg-t dg-n">Browser</text>

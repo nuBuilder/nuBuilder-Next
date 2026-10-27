@@ -19,13 +19,13 @@
 <div class="doc-sub">
 	<h3 id="theming-where">Where your CSS goes</h3>
 	<ul>
-		<li><strong>All forms</strong>: Setup → <em>Style</em> (<a href="#setupcode">Custom code</a>) or <code>$nuConfigIncludeCSS</code> – loaded after nuBuilder Next's styles, so they can override them.</li>
-		<li><strong>All pages</strong>: <em>Global CSS</em> (<a href="#setupcode-global">Custom code → All pages</a>) – target single pages with <code>body[data-nu-page="…"]</code>.</li>
+		<li><strong>All forms</strong>: Setup → <em>Style</em> (<a href="#globalcode">Global code</a>) or <code>$nuConfigIncludeCSS</code> – loaded after nuBuilder Next's styles, so they can override them.</li>
+		<li><strong>All pages</strong>: <em>Global CSS</em> (<a href="#globalcode-global">Global code → All pages</a>) – target single pages with <code>body[data-nu-page="…"]</code>.</li>
 		<li><strong>One form</strong>: the form's style in the form builder.</li>
 		<li><strong>Pages</strong>: their own CSS files in the page folder – nuBuilder Next adds nothing (<a href="#pages">Pages</a>).</li>
 	</ul>
-	<p>Do not edit the files in <code>assets/css/</code>: an update replaces them. The element ids of forms are nuBuilder's (see <a href="#form-rendering">Form rendering pipeline</a>), so CSS written for nuBuilder mostly applies; forms with the automatic or grid layout use Bootstrap rows and columns instead of pixel positions.</p>
+	<p>Do not edit the files in <code>assets/css/</code>: an update replaces them. The element ids of forms are nuBuilder Forte's (see <a href="#form-rendering">Form rendering pipeline</a>), so CSS written for nuBuilder Forte (4.x) mostly applies; forms with the automatic or grid layout use Bootstrap rows and columns instead of pixel positions.</p>
 </div>
-	<p class="doc-see">See also: <a href="#branding">Branding</a> · <a href="#setupcode">Custom code</a></p>
+	<p class="doc-see">See also: <a href="#branding">Branding</a> · <a href="#globalcode">Global code</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>assets/css/nuapp.css</code></li><li><code>assets/css/nuform.css</code></li><li><code>assets/js/nutheme.js</code></li><li><code>core/nubranding.php</code></li></ul></details>
 </section>

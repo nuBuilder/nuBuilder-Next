@@ -1,4 +1,4 @@
-/* Admin tools → Custom code (pages/nusetupcode.php, 0.8.444; Global JS & CSS 0.8.523): a CodeMirror editor per tab (JavaScript, CSS, HTML); the open tab is sent with
+/* Admin tools → Custom code (pages/nuglobalcode.php, 0.8.444; Global JS & CSS 0.8.523): a CodeMirror editor per tab (JavaScript, CSS, HTML); the open tab is sent with
  * Save, so the page comes back to it. Tabs in the address: nuapp.js (data-nu-hash-tabs). */
 (function () {
 	'use strict';
@@ -14,11 +14,28 @@
 			cm.on('change', function () { cm.save(); ta.dispatchEvent(new Event('input', {bubbles: true})); });   // red Save, leave guard
 			editors.push(cm);
 			byTab[ta.id.replace(/^scode-/, '')] = cm;
+			// toolbar (0.8.554): undo / redo, search, replace, comment, invisibles, format, full screen
+			var tools = form.querySelector('.scodeTools[data-for="' + ta.id + '"]');
+			if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: {css: 'CSS', htmlmixed: 'HTML'}[ta.getAttribute('data-mode')] || 'JS', readOnly: ro});
 		});
 	}
+	// height (0.8.554): the editor of the open tab reaches down to the bottom of the window (at least 360 px), also after resizing;
+	// not while the toolbar's full screen is on – that one sizes the editor itself
+	var MIN_H = 360, GAP = 24;
+	function fit() {
+		if (document.documentElement.classList.contains('nuCodeFullOpen')) return;
+		editors.forEach(function (cm) {
+			var w = cm.getWrapperElement();
+			if (!w.offsetParent) return;                                     // hidden tab: sized when it is shown
+			cm.setSize(null, Math.max(MIN_H, Math.floor(window.innerHeight - (w.getBoundingClientRect().top + window.scrollY) - GAP)));
+		});
+	}
+	var fitTimer = null;
+	window.addEventListener('resize', function () { clearTimeout(fitTimer); fitTimer = setTimeout(fit, 80); });
+	fit();
 	var tabs = document.getElementById('scodeTabs'), field = document.getElementById('scodeTab');
 	function current() { var a = tabs && tabs.querySelector('.nav-link.active'); return a ? a.getAttribute('data-nu-tab') || '' : ''; }
-	if (tabs) tabs.addEventListener('shown.bs.tab', function () { editors.forEach(function (cm) { cm.refresh(); }); field.value = current(); });   // hidden editors have no size
+	if (tabs) tabs.addEventListener('shown.bs.tab', function () { fit(); editors.forEach(function (cm) { cm.refresh(); }); field.value = current(); });   // hidden editors have no size
 	form.addEventListener('submit', function () { editors.forEach(function (cm) { cm.save(); }); field.value = current(); });
 	field.value = current();
 	// Templates (0.8.524, core/nucodetemplates.php): ▾ Templates per tab – a click inserts at the cursor; "Preview…" opens a dialogue

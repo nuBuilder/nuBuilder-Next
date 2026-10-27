@@ -27,6 +27,7 @@ final class NuDemo
 	/** Posts that only read (page => actions); every other post of a demo session is refused. */
 	private const READ_POSTS = [
 		'procedures'     => ['run'],
+		'user'           => ['effective'],   // user form: effective rights of the levels entered (0.8.589)
 		'notifications'  => ['state', 'readall', 'count'],   // own read / hidden state (the session only), number of recipients          // runs a procedure: only with "Demo access", and it cannot write (NuPhp::procedure, NuDB)
 		'prompts'        => ['build'],        // prompt generator: builds the text, saves nothing
 		'builder'        => ['prompt'],
@@ -35,7 +36,7 @@ final class NuDemo
 		'reportdesigner' => ['preview', 'fields'],   // report designer: PDF preview of the layout, field list of the data source
 		'sqlbuilder'     => ['preview'],      // SQL builder: runs the SELECT (NuDB lets only reading statements through)
 		'impersonate'    => ['stop'],
-		'sidebar'        => ['toggle', 'clear', 'fav', 'used', 'forget'],   // side bar (0.8.460): on / off, recently used and ☆ – kept in the session for demo visitors
+		'sidebar'        => ['toggle', 'clear', 'fav', 'used', 'forget', 'pin'],   // side bar (0.8.460): on / off, recently used and ☆ – kept in the session for demo visitors
 		'tutorial'       => ['done', 'undo', 'hide', 'show', 'reset'],   // own progress – kept in the session for demo users         // the globeadmin acting as the demo user goes back
 	];
 

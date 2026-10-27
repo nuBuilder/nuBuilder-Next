@@ -54,6 +54,35 @@ final class NuFormInfo
 		return [$one(" AND action IN ('insert', 'clone')", 'ASC'), $one('', 'DESC')];
 	}
 
+	/** Log events that only name a record without creating it (a login link for a user, a playground request). */
+	private const NOT_CREATED = ['login_token_created', 'apg_request_created'];
+
+	/**
+	 * Created / last changed of a record from nuBuilder Next's log (0.8.553): first "…_created" / "…_added" event, last "…_updated" /
+	 * "…_changed" / "user_permissions" event of that table + id – "dd.mm.yyyy hh:mm:ss · login", '' when not logged (e.g. made in nuBuilder,
+	 * or the log row was purged by the retention). @return array{string, string}
+	 */
+	public static function logged(string $table, string $recordId): array
+	{
+		try {
+			$db = nu_db();
+			if ($recordId === '' || !$db->tableExists('zzzzsys_nunext_log')) return ['', ''];
+			$in = implode(', ', array_fill(0, count(self::NOT_CREATED), '?'));
+			$one = static function (string $where, array $args, string $order) use ($db, $table, $recordId): string {
+				$r = $db->page('SELECT log_time, login FROM zzzzsys_nunext_log WHERE object = ? AND record_id = ? AND (' . $where . ')',
+					array_merge([$table, $recordId], $args), 'log_time ' . $order, 1, 0)[0] ?? null;
+				if (!$r) return '';
+				return date('d.m.Y H:i:s', (int)strtotime((string)$r['log_time'])) . ((string)$r['login'] !== '' ? ' · ' . $r['login'] : '');
+			};
+			return [
+				$one("(event LIKE '%_created' OR event LIKE '%_added') AND event NOT IN ($in)", self::NOT_CREATED, 'ASC'),
+				$one("event LIKE '%_updated' OR event LIKE '%_changed' OR event = 'user_permissions'", [], 'DESC'),
+			];
+		} catch (Throwable) {
+			return ['', ''];
+		}
+	}
+
 	/** The button with its panel (a Bootstrap dropdown: closes on Esc and on a click outside). */
 	public static function html(NuFormMeta $meta, string $mode, ?string $recordId): string
 	{
@@ -64,7 +93,8 @@ final class NuFormInfo
 	 * Record info of nuBuilder Next's own record pages (0.8.500: user, procedure): the record ID, the table and created / last changed
 	 * from the audit trail, plus $extra rows ['key' => value] (labels fi_<key>). The same (i) panel as the form info.
 	 */
-	public static function record(string $table, string $id, array $extra = [], string $idBase = 'nuRecInfo'): string
+	/** $after: more rows [key => value] after created / changed (plain text, label t('fi_<key>'), 0.8.587) */
+	public static function record(string $table, string $id, array $extra = [], string $idBase = 'nuRecInfo', array $after = []): string
 	{
 		$rows = [];
 		$add = static function (string $key, string $value, bool $code = true) use (&$rows): void {
@@ -74,8 +104,14 @@ final class NuFormInfo
 		foreach ($extra as $k => $v) $add((string)$k, (string)$v);
 		$add('table', $table);
 		[$created, $changed] = self::audit($table, $id);              // only when the audit trail has the record (own pages are not audited)
+		if ($created === '' || $changed === '') {                    // own record pages write the log instead (0.8.553)
+			[$lc, $lu] = self::logged($table, $id);
+			if ($created === '') $created = $lc;
+			if ($changed === '') $changed = $lu;
+		}
 		if ($created !== '') $add('created', $created, false);
 		if ($changed !== '') $add('changed', $changed, false);
+		foreach ($after as $k => $v) $add((string)$k, (string)$v, false);
 		return self::panel($rows, t('fi_record_title'), $idBase);
 	}
 

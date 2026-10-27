@@ -165,7 +165,7 @@ final class NuConfigFile
 		'E-mail'             => '/^(SMTP|MailLog|PHPMailer)/',
 		'REST API'           => '/^Api/',
 		'Demo mode'          => '/^(Demo|IsDemo)/',
-		'nuBuilder'          => '/^(SharedLogin|NuBuilder|FontAwesome)/',
+		'nuBuilder Forte'    => '/^(SharedLogin|NuBuilder|FontAwesome)/',
 		'Includes'           => '/^Include(JS|CSS|PHP)$/',
 		'Admin tools'        => '/^(PMAURL|TFMURL|PrimaryDatabase|BackupPath|EnableDatabaseUpdate|TCPDFPath|ShowInstaller|DevMode|Debug$|SettingsFromDB)/',
 	];
@@ -173,19 +173,19 @@ final class NuConfigFile
 	/** Variables nuBuilder Next reads that nuconfig-sample.php does not show: name => [default (PHP code), comment]. */
 	public const EXTRA = [
 		'nuConfigTitle'                    => ['""', 'Application title in the browser tab and the header (empty: nuBuilder Next).'],
-		'nuConfigGlobeadminHome'           => ['""', 'nuBuilder: id or code of a launch form opened as the globeadmin\'s start page instead of the tile page.'],
-		'nuConfigIncludeJS'                => ['\'\'', 'nuBuilder: own JavaScript file(s) for form pages, e.g. \'myjslib.js\' or [\'a.js\', \'b.js\'] – relative to nuBuilder Next, else nuBuilder\'s folder; https:// addresses too.'],
-		'nuConfigIncludeCSS'               => ['\'\'', 'nuBuilder: own CSS file(s) for form pages, e.g. \'mystyles.css\' or [\'a.css\', \'b.css\'] – relative to nuBuilder Next, else nuBuilder\'s folder.'],
+		'nuConfigGlobeadminHome'           => ['""', 'nuBuilder Forte: id or code of a launch form opened as the globeadmin\'s start page instead of the tile page.'],
+		'nuConfigIncludeJS'                => ['\'\'', 'nuBuilder Forte: own JavaScript file(s) for form pages, e.g. \'myjslib.js\' or [\'a.js\', \'b.js\'] – relative to nuBuilder Next, else nuBuilder Forte\'s folder; https:// addresses too.'],
+		'nuConfigIncludeCSS'               => ['\'\'', 'nuBuilder Forte: own CSS file(s) for form pages, e.g. \'mystyles.css\' or [\'a.css\', \'b.css\'] – relative to nuBuilder Next, else nuBuilder Forte\'s folder.'],
 		'nuConfigCSVSeparator'             => ['";"', 'Default delimiter of the Export CSV dialog: ";" "," "|" or "\t".'],
-		'nuConfigIncludeApexCharts'        => ['false', 'nuBuilder: true loads ApexCharts on form pages (new ApexCharts(element, options).render() in form code).'],
-		'nuConfigIntegerPKsAuto'           => ['false', 'nuBuilder: integer primary keys count as auto-increment when the column does not say so.'],
+		'nuConfigIncludeApexCharts'        => ['false', 'nuBuilder Forte: true loads ApexCharts on form pages (new ApexCharts(element, options).render() in form code).'],
+		'nuConfigIntegerPKsAuto'           => ['false', 'nuBuilder Forte: integer primary keys count as auto-increment when the column does not say so.'],
 		'nuConfigCustomPagesDir'           => ['""', 'Absolute path of the folder with the page forms (default: custom/pages/ of nuBuilder Next).'],
 		'nuConfigHomeHooks'                => ['true', 'false: the start page hooks nu_home / nu_home_user (PHP and JavaScript) do not run.'],
-		'nuConfigEnableDatabaseUpdate'     => ['true', 'nuBuilder: false switches updates off (Admin tools → Update refuses to install).'],
+		'nuConfigEnableDatabaseUpdate'     => ['true', 'nuBuilder Forte: false switches updates off (Admin tools → Update refuses to install).'],
 		'nuConfigTCPDFPath'                => ['""', 'Folder of TCPDF (tcpdf.php) for reports – overrides the library pack and the search.'],
-		'nuConfigIsDemo'                   => ['false', 'nuBuilder demo: true lets the demo globeadmin below sign in read only.'],
-		'nuConfigDemoDBGlobeadminUsername' => ['""', 'nuBuilder demo: login name of the demo globeadmin (with $nuConfigIsDemo = true).'],
-		'nuConfigDemoDBGlobeadminPassword' => ['""', 'nuBuilder demo: password of the demo globeadmin.'],
+		'nuConfigIsDemo'                   => ['false', 'nuBuilder Forte demo: true lets the demo globeadmin below sign in read only.'],
+		'nuConfigDemoDBGlobeadminUsername' => ['""', 'nuBuilder Forte demo: login name of the demo globeadmin (with $nuConfigIsDemo = true).'],
+		'nuConfigDemoDBGlobeadminPassword' => ['""', 'nuBuilder Forte demo: password of the demo globeadmin.'],
 	];
 
 	/**

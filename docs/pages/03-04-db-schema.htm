@@ -1,14 +1,14 @@
 <section id="db-schema" data-doc="admin">
 	<h2 id="db-schema-h">Database schema</h2>
-	<p class="doc-lead">nuBuilder&#x27;s system tables that nuBuilder Next shares, and the tables it adds.</p>
+	<p class="doc-lead">nuBuilder Forte&#x27;s system tables that nuBuilder Next shares, and the tables it adds.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p>The database holds three kinds of tables:</p>
 <ol>
 	<li><strong>Your application's tables</strong> – the data your forms show and save.</li>
-	<li><strong>nuBuilder's system tables</strong> <code>zzzzsys_*</code> – the definition of the application (forms, objects, users, rights …). nuBuilder Next reads and writes them exactly as nuBuilder 4.9 does, so both can work on the same database.</li>
+	<li><strong>nuBuilder Forte's system tables</strong> <code>zzzzsys_*</code> – the definition of the application (forms, objects, users, rights …). nuBuilder Next reads and writes them exactly as nuBuilder Forte 4.9 does, so both can work on the same database.</li>
 	<li><strong>nuBuilder Next's own tables</strong> <code>zzzzsys_nunext_*</code> – everything only nuBuilder Next needs.</li>
 </ol>
-<figure class="doc-figure"><svg class="doc-flow" viewBox="0 0 680 640" role="img" aria-labelledby="db-tables-title db-tables-desc" xmlns="http://www.w3.org/2000/svg"><title id="db-tables-title">nuBuilder metadata tables</title><desc id="db-tables-desc">Form tables: zzzzsys_form has tabs, browse columns and PHP hooks named form id plus suffix; tabs hold objects, which have events and lookup PHP. Access tables: users link to an access level with form, PHP and report rights, and to permission items.</desc>
+<figure class="doc-figure"><svg class="doc-flow" viewBox="0 0 680 640" role="img" aria-labelledby="db-tables-title db-tables-desc" xmlns="http://www.w3.org/2000/svg"><title id="db-tables-title">nuBuilder Forte (4.x) metadata tables</title><desc id="db-tables-desc">Form tables: zzzzsys_form has tabs, browse columns and PHP hooks named form id plus suffix; tabs hold objects, which have events and lookup PHP. Access tables: users link to an access level with form, PHP and report rights, and to permission items.</desc>
 <defs><marker id="db-tables-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
 <text x="40" y="40" class="dg-t dg-n dg-start">Form definition</text>
 <rect x="40" y="60" width="120" height="56" rx="8" class="dg-box dg-p"/><text x="100" y="78" dy=".35em" class="dg-t dg-p">zzzzsys_form</text><text x="100" y="98" dy=".35em" class="dg-s dg-p">One per form</text>
@@ -44,15 +44,15 @@
 <div class="doc-sub">
 	<h3 id="db-schema-ids">Keys and conventions</h3>
 	<ul>
-		<li>Every system table has a text primary key <code>&lt;table&gt;_id</code> (e.g. <code>zzzzsys_form_id</code>); nuBuilder's ids are 25-character strings, made with <code>nu_id()</code> in nuBuilder Next. Ids of nuBuilder's own records start with <code>nu</code>.</li>
+		<li>Every system table has a text primary key <code>&lt;table&gt;_id</code> (e.g. <code>zzzzsys_form_id</code>); nuBuilder Forte's ids are 25-character strings, made with <code>nu_id()</code> in nuBuilder Next. Ids of nuBuilder Forte's own records start with <code>nu</code>.</li>
 		<li>Column names carry a short prefix of their table: <code>sfo_</code> form, <code>syt_</code> tab, <code>sob_</code> object, <code>sbr_</code> browse column, <code>sph_</code> PHP, <code>sev_</code> event, <code>sus_</code> user, <code>sal_</code> access level, <code>slf_</code> access form.</li>
 		<li>A form hook is a <code>zzzzsys_php</code> row whose id is <code>&lt;form id&gt;_&lt;hook&gt;</code>; that is why sample form ids contain no underscore.</li>
-		<li>nuBuilder Next stores its own options of a nuBuilder row as JSON under the key <code>nunext</code> in nuBuilder's JSON columns (e.g. a form's layout, an object's grid position or a format's options), so nuBuilder ignores them.</li>
+		<li>nuBuilder Next stores its own options of a nuBuilder Forte row as JSON under the key <code>nunext</code> in nuBuilder Forte's JSON columns (e.g. a form's layout, an object's grid position or a format's options), so nuBuilder Forte ignores them.</li>
 	</ul>
 </div>
 <div class="doc-sub">
 	<h3 id="db-schema-own">How nuBuilder Next's tables are created</h3>
-	<p>nuBuilder Next's tables are defined in code (<code>core/nuinfra.php</code>) and created on first use on MySQL / MariaDB and SQL Server; missing columns of existing own tables are added by updates. nuBuilder never reads them, its update keeps them, and its app cloner and backups treat them as system tables. <em>Admin tools → Self-test</em> and the update page compare the actual structure with <code>install/schema_expected.json</code>.</p>
+	<p>nuBuilder Next's tables are defined in code (<code>core/nuinfra.php</code>) and created on first use on MySQL / MariaDB and SQL Server; missing columns of existing own tables are added by updates. nuBuilder Forte never reads them, its update keeps them, and its app cloner and backups treat them as system tables. <em>Admin tools → Self-test</em> and the update page compare the actual structure with <code>install/schema_expected.json</code>.</p>
 	<p>Every table with its purpose: <a href="#table-ref">Database table reference</a>.</p>
 </div>
 	<p class="doc-see">See also: <a href="#table-ref">Database table reference</a> · <a href="#databases">Databases: MySQL, MariaDB and SQL Server</a></p>

@@ -97,6 +97,7 @@ wiki-style cards with signature, parameters, returns, example, result / console.
   `dev/lang_variants.php` (word list, run by release.py – never edit it), `lang/en-AU.php` is a hand-kept overlay (usually empty).
   Variants: `NU_LANG_VARIANTS`, `nu_lang()` stays 'en' / 'de', `nu_lang_variant()` / `nu_lang_choice()` = en-GB / en-AU / en-US,
   de-DE / de-CH (0.8.314 / 0.8.315).
+- **Product names:** nuBuilder 4.x is "nuBuilder Forte" in all texts (docs: "nuBuilder Forte (4.x)" at the first mention of a page, "nuBuilder Forte 4.9" for a version); plain "nuBuilder" only where both products are meant. Code identifiers, paths and field names stay unchanged.
 - **Update the docs** (English only; the matching page in `docs/pages/` – a new page = a new file + an entry in `docs/toc.json`; mark advanced topics
   with `data-level="advanced"`; **no version numbers in the text** – history is CHANGELOG.md; page template and rules in the comment of toc.json), the **tutorial** (`docs/nunext-tutorial.htm`, 0.8.328 – lessons for the
   globeadmin, structure in its header comment; lesson ids are progress keys, never rename them) and **`TODO.md`** when relevant; remove TODO points that are done or
@@ -191,8 +192,8 @@ core/nuhomehook.php  start page hooks (0.8.378): procedure nu_home runs while th
                      ?p=homejs&v=<hash> (pages/nuhomejs.php, NuHomeHook::serveJs) after nuhome.js, which exposes window.nuHome (on / off / tiles /
                      tile / data; tile objects from the data-nu-* attributes of the tile markup)
 core/nuincludes.php  NuIncludes (0.8.443/0.8.444): $nuConfigIncludeJS / CSS / PHP (nuBuilder Next's folder, then nuBuilder's), Setup → Include
-                     elements (setupElements), CSP sources for form pages, missing() for the Security check; page ?p=setupcode
-                     (pages/nusetupcode.php, admin right setupcode) edits set_header / set_style / set_include. Tabs that a script opens
+                     elements (setupElements), CSP sources for form pages, missing() for the Security check; page ?p=globalcode
+                     (pages/nuglobalcode.php, admin right globalcode) edits set_header / set_style / set_include. Tabs that a script opens
                      after loading: data-nu-tab-restore (hidden by nutheme.js until DOMContentLoaded, 0.8.444)
 core/numailoauth.php NuMailOAuth (0.8.445): SMTP login with OAuth 2 (auth type XOAUTH2) – Google / Microsoft 365 / other; settings row mail_oauth
                      (secrets sealed with $nuConfigSecretKey, else "plain:"), consent via pages/numailoauth.php (?p=mailoauth&go=1 → meta refresh,
@@ -202,9 +203,15 @@ core/numailoauth.php NuMailOAuth (0.8.445): SMTP login with OAuth 2 (auth type X
 core/nuuserfields.php NuUserFields (0.8.454): custom user fields – definitions zzzzsys_nunext_user_field (step 0019), values
                      zzzzsys_nunext_user_ext (one row per user, one REAL column per field, made with NuDDL in the collation of zzzzsys_user –
                      joinable USING (zzzzsys_user_id)); page ?p=userfields (admin right userfields, CSV of a field before deleting), user form
-                     tab Additional fields (type in brackets), ?p=account (My account: edit_by 'user'), users list columns / filters (NuListDefs, in_list), CSV import,
+                     card Additional fields below Person on General (0.8.591, was a tab; type in brackets), ?p=account (My account: edit_by 'user'), users list columns / filters (NuListDefs, in_list), CSV import,
                      #USER_<CODE># (NuHash), nuNextUserField / nuNextSetUserField (PHP), nuNextUserField (JS, N.user.fields), REST "fields",
                      start page cond.fields; e2e user_fields
+core/nuuseraccess.php NuUserAccess (0.8.585): additional access levels per user – zzzzsys_nunext_user_access (user_id, access_id, valid_until,
+                     step 0025); levels() = main + active extras; NuAcl::rightsOf combines them (any level grants; no_edits only when all
+                     say so); inSql() for zzzzsys_access_php / _report / _form queries (procedures, reports, forms list, auto start page,
+                     dashboards), NuAuth::levels2fa (2FA when any level asks); main level only: start page layout, list views, field
+                     access by level, #ACCESS_LEVEL_ID#; user form rows xa_acc[] / xa_until[], access level Users card badge, delete
+                     blocked while in use, compat G10; e2e user_extra_access. New code that checks rights by access level uses levels()
 core/nuupload.php    NuUpload (0.8.459): uploads of nuBuilder's file objects with target "File System" (sob_input_file_target 1) with Uppy –
                      NuRender::isUppy / uppyField (div + the object's HTML with nuBuilder's replacements #uppy_div# …, no data-nu-field: never
                      saved / validated / column proposal), Uppy = library pack slot 'uppy' (NuLibs::uppy(), uppyVersion() = core version;
@@ -222,12 +229,12 @@ core/nusidebar.php   NuSidebar (0.8.460): optional left side bar – favourites 
                      user (sus_json NUNEXT_SIDEBAR, globeadmin: setting sidebar_ga, demo: session), default sidebar_default (globeadmin, user menu);
                      drawn by nu_sidebar() in core/nulayout.php (.nuShell wrapper), POST route ?p=sidebar (toggle / default / clear / fav, demo READ_POSTS),
                      assets/js/nusidebar.js (drawer, button #nuSbOpen left of the logo); e2e sidebar
-core/nucustomcode.php NuCustomCode (0.8.523): Admin tools → Custom code (pages/nusetupcode.php, route setupcode, right setupcode) – Form pages =
+core/nucustomcode.php NuCustomCode (0.8.523): Admin tools → Global code (pages/nuglobalcode.php, route globalcode, right globalcode) – Form pages =
                      nuBuilder's Setup Header / Style / Include (form-only, unchanged), All pages = Global JS & CSS in settings rows custom_js /
-                     custom_css / custom_scope {forms, app, login}; served as files ?p=customcode&t=js|css&v=<hash> (public route; without a session
+                     custom_css / custom_scope {forms, app, login}; served as files ?p=globalcodefile&t=js|css&v=<hash> (public route; without a session
                      only while scope login is on); CSS in nu_head before the page's styles, JS after nuapp.js (form pages: in pages/nuform.php
-                     before Setup → Include / Header, so a form's nuOnLoad wins); never on setupcode / update, ?safe=1 (globeadmin / right
-                     setupcode); $context app / login (nu_center_start, login page) / none (error pages). Page hook: <body data-nu-page
+                     before Setup → Include / Header, so a form's nuOnLoad wins); never on globalcode / update, ?safe=1 (globeadmin / right
+                     globalcode); $context app / login (nu_center_start, login page) / none (error pages). Page hook: <body data-nu-page
                      data-nu-mode data-nu-form data-nu-admin> (bodyAttrs) + nuOnPageLoad(page, info) / event nu:pageload (assets/js/nuapp.js;
                      form pages: nuruntime.js after nuOnLoad); hookClashes() → editor warning + compatibility check G9; e2e custom_code
 core/nufilemanager.php NuFileManager (0.8.479, handover nuFiles): File Manager = the page form nufiles (built-in page apps/nufiles/,
@@ -258,9 +265,13 @@ core/nuprocedure.php NuProcedure::hook(code, hash, vars) (0.8.462, gap analysis 
                      (NuRecord::nuFormData / applyFormData), #USER_NAME# = sus_name, nuLookupRecord()->ID, blank SUM of an empty (NULL)
                      report group (NuReportEngine::fieldValue), Compatibility check G1–G8 (NuCompat). Test application of the analysis:
                      dev/tests/gapkit/ (testapp.sql, t08_fixture.sql; e2e ttInstall / ttRemove, tests gap_*; compat.js loads it, GAPKIT=0 not)
-core/nucodetemplates.php NuCodeTemplates (0.8.524): built-in templates of the Custom code page – all() = tab → [id, cat, code], CATS
-                     (look / page / form / fn), texts ctpl_<id> + ctpl_<id>_d; ▾ Templates per tab + preview dialogue #scodeTplDlg (nusetupcode.js);
+core/nucodetemplates.php NuCodeTemplates (0.8.524): built-in templates of the Global code page – all() = tab → [id, cat, code], CATS
+                     (look / page / form / fn), texts ctpl_<id> + ctpl_<id>_d; ▾ Templates per tab + preview dialogue #scodeTplDlg (nuglobalcode.js);
                      a new template = an entry + its two texts (run.php checks); e2e custom_code_templates
+assets/js/nu/nucodetools.js toolbar of every code editor (attach(cm, host, opt)); Insert menu + suggestions while typing (0.8.593): functions
+                     of docs/nunext-functions.json via the JSON route ?p=fnlist&lang=php|js (pages/nufnlist.php), opt.snippets = second tab
+                     (procedures), opt.noInsert (nuconfig.php editor); suggestions = CodeMirror show-hint (appended to codemirror-addons.js /
+                     codemirror.css of the bundle); e2e code_insert
 core/nuhelplink.php  NuHelpLink (0.8.528): F1 help – MAP route → section id of docs/pages (home: admins home-page, else navigation-p);
                      <body data-nu-help> (NuCustomCode::bodyAttrs, app pages only), assets/js/nuapp.js opens it in a new tab; a new page = an
                      entry here (run.php checks route + id); e2e help_f1
@@ -296,6 +307,10 @@ core/form/*.php      form runtime (meta, render, record, browse, hash variables,
                      NuPageContextV<n> for older supported versions (contextClass), apiInfo() → manifest page_api (release.py), scan() /
                      check() / report() → update page "Pages" card, builder, forms list badge. Never remove or change a $nu method within a
                      version: add, deprecate, or raise NuPageContext::API_VERSION with an adapter
+                     page drafts (0.8.599): core/nupageversion.php NuPageVersion – <folder>/_draft/ (copy of the code entries; never _data,
+                     _draft, _versions, secrets.php, dot names), viewing() = designer + ?nudraft=1|0 in the session (NuPage::run / asset use
+                     file($code, true) / the draft folder; bar #nuPageDraftBar before </body>), publish / restore move the replaced files to
+                     _versions/<Ymd-His>/ (.version.json, KEEP 10); builder card #pgDraft; e2e page_draft
                      concurrent edits (0.8.401): core/form/nuconflict.php NuConflict – signatures of the record + sub-form rows as opened
                      (nuNext.cc, forRecord()), save payload cc = signatures of the EDITED fields, check() before Before Save and again with a
                      row lock in the save transaction (NuConflictFound rolls back) → {conflict: {fields, by, at}} → dialog in nuruntime.js
@@ -408,6 +423,8 @@ Own tables: `zzzzsys_nunext_recent` (side bar, 0.8.460), `zzzzsys_nunext_log`, `
 - **Libraries**: every library in `vendor/bundled/` has an entry in `vendor/bundled/libraries.json` (name, version, dir, file, detect
   regex, licence, use key `upd_libuse_*`). Changing a library = change files + registry; `dev/release.py` checks that the file shows the
   registered version and copies the list into the manifest (update page: card Libraries, "Libraries that change").
+- **NuListDefs columns**: override a key of `self::col()` / `badgeCol()` with `array_replace(self::col(…), [...])` – `col() + [...]`
+  keeps col()'s own `select` / `sort` / `text` and silently drops yours (0.8.553); `+` only for keys col() does not set (`html`, `main` …).
 - Lists: `nu_list_footer($total, $page, $per, 'route', $params[, class, param, anchor])` = the pager used everywhere.
 - **Long selects** (15+ options: forms, procedures, users, time zones …) are searchable (0.8.536): `<select class="nuListTomSelect">` +
   `nu_ts_head()` in the head and `nu_ts_foot()` before the page's own script (options may carry `data-sub` = second line); in the form
@@ -451,7 +468,11 @@ Nothing of the earlier test setup survives; this is how it was done (Linux conta
    `/nunext/…` like on the live server (cookie path!). Import `nub/nubuilder4.sql`, then Admin tools → *Sample data* installs the sample
    application (users sample_anna … sample_eva, random passwords: set known ones with `UPDATE zzzzsys_user SET sus_login_password = …`).
 4. Web server (from the nuBuilder folder, larger uploads for update packages):
-   `(cd <scratch>/nub && setsid nohup php -d upload_max_filesize=32M -d post_max_size=32M -S 127.0.0.1:8099 -t . > <scratch>/srv.log 2>&1 &)`
+   `(cd <scratch>/nub && setsid nohup php -d display_errors=1 -d error_reporting=-1 -d upload_max_filesize=32M -d post_max_size=32M -S 127.0.0.1:8099 -t . > <scratch>/srv.log 2>&1 &)`
+   – **with `display_errors=1`** (0.8.553): PHP warnings then land in the page as on many live servers, and smoke / e2e fail on them;
+   without it they only go to srv.log (an "Undefined array key" in the procedures list went unnoticed this way).
+   **Exception: `compat.js`** – nuBuilder (same server) prints its own deprecation notices into its JSON answers (4.9.2 git HEAD,
+   `nuSqlString::$originalSQL`) and its pages time out: run compat with a server started without `display_errors` (0.8.559).
    → `http://127.0.0.1:8099/nunext/`. MariaDB and the PHP server **stop between turns** – restart both before testing
    (`service mariadb start; curl -s -o /dev/null http://127.0.0.1:8099/nunext/ || (…start the server…)`).
    Known passwords for the sample users (the tests used `Test1234!`):
@@ -503,8 +524,18 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (October 2026, 0.8.550)
-Last gate 0.8.550 (full test run, pushed; 0.8.548 / 0.8.549: notes, README, docs-before-gate rule); before it 0.8.547; last GitHub release published by the owner: v0.8.463 (dev/release-notes.md). Newest first,
+## Where things stand (October 2026, 0.8.600)
+Last gate 0.8.600 (full test run, pushed: 0.8.551–0.8.599 in one push). Newest first, details in CHANGELOG.md: 0.8.599 page form drafts
+and versions (NuPageVersion); 0.8.597 / 0.8.598 custom user field form wider, shorter "Edited by" options; 0.8.596 "nuBuilder Forte"
+naming (rule above); 0.8.595 Logged-in users: log out idle users; 0.8.592–0.8.594 code editors: toolbar on the left, Insert menu with
+the documented functions + suggestions while typing (nucodetools.js, ?p=fnlist); 0.8.585–0.8.591 user form: additional access levels
+with Valid until (NuUserAccess), effective rights dialogue, three cards (Login credentials, Access & roles, Account settings), custom
+fields as a card; 0.8.583 / 0.8.584 access level Users filter, permission items Undo; 0.8.576–0.8.581 lower-case #form_id# /
+#record_id#, #USER_GROUP_ID#, compatibility check (include files, links in a new tab, G6 only what the CSP blocks, G8 supported);
+0.8.575 Settings open on Used, status menu in the forms list; 0.8.574 sourceMappingURL comments removed; 0.8.571–0.8.573 Custom code
+renamed to Global code (?p=globalcode); 0.8.562–0.8.569 object menu on right-click, form builder views / splitter, nuBuilder permalinks,
+absolute layout stacking; 0.8.552–0.8.561 user form and permission items, side bar pin, object icons, run button HTML labels.
+Before: last gate 0.8.550 (full test run, pushed; 0.8.548 / 0.8.549: notes, README, docs-before-gate rule); before it 0.8.547; last GitHub release published by the owner: v0.8.550 (dev/release-notes.md). Newest first,
 details in CHANGELOG.md: 0.8.547 (gate) API clients as a system list (NuListDefs 'apiclients', pseudo form NuAcl::FORM_APICLIENT via the
 admin right apiclients; scopes behind a dropdown button, Popper strategy fixed inside .table-responsive); 0.8.546 custom user fields as a
 system list ('userfields', NuAcl::FORM_USERFIELD); 0.8.545 / 0.8.544 setup wizard field widths (#wizForm rules in nuapp.css), 0.8.543
@@ -513,7 +544,7 @@ browse column filters as labelled selects next to the search (#nuBrowseFilters, 
 lists – own pages: class nuListTomSelect + nu_ts_head() / nu_ts_foot() (core/nulayout.php, assets/js/nulistselect.js); builder fields:
 spec.search (Tom Select), spec.tip ((i) after the label), spec.trim (blur), spec.pattern + patternErr (red while typing), spec.phKey /
 placeholder (assets/js/nubuilder.js field()); 0.8.534 update page: Install row right below the package title; 0.8.531 builder sections
-as tabs next to the draft bar (.nbBar); 0.8.528 F1 help (NuHelpLink); 0.8.526 (gate); 0.8.523–0.8.525 Custom code (Global JS & CSS,
+as tabs next to the draft bar (.nbBar); 0.8.528 F1 help (NuHelpLink); 0.8.526 (gate); 0.8.523–0.8.525 Global code (Global JS & CSS,
 page hook, templates, tab names Form JavaScript / Form CSS / Form includes); 0.8.510 / 0.8.492 (gates, not published).
 Before (0.8.462): last gate 0.8.463 (full test run, pushed, published by the owner as v0.8.463 – creating GitHub releases is refused for this session type, the owner does it by hand):
 0.8.464 help in two tabs: Guide / Code reference (docs/nunext-ref.htm, loaded on demand); 0.8.463 (gate, published v0.8.463);

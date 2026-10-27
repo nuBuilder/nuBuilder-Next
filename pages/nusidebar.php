@@ -10,12 +10,18 @@ defined('NU_ROOT') || exit;
  *   forget   one entry (key) out of my "Recently used"
  *   fav      ☆ of a start page tile (key) – the start page's favourites
  *   used     a start page tile was opened (key; sent with navigator.sendBeacon, answers 204 – 0.8.492)
+ *   pin      keep the side bar open next to the page, or not (on = 1 / 0; sent with fetch from nusidebar.js, answers 204 – 0.8.556)
  */
 
 $u = NuAuth::user();
 $back = NuAuth::validNext(nu_post('back')) ?? nu_url('home');
 if (!nu_is_post()) nu_redirect($back);
 
+if (nu_post('action') === 'pin') {
+	NuSidebar::setPinned(nu_post('on') === '1');
+	http_response_code(204);
+	exit;
+}
 if (nu_post('action') === 'used') {
 	NuSidebar::recordTile(nu_post('key'));
 	http_response_code(204);

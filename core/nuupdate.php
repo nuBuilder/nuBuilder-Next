@@ -399,6 +399,8 @@ final class NuUpdate
 			foreach ($info['manifest']['files'] as $rel => $f) {
 				$data = $z->getFromName($info['prefix'] . $rel);
 				if ($data === false || !hash_equals((string)$f['sha256'], hash('sha256', $data))) throw new RuntimeException(t('upd_err_checksum', (string)$rel));
+				$files = $info['manifest']['files'];                          // a source map comment whose map is not delivered (0.8.574)
+				if (($x = NuLibs::stripSourceMap((string)$rel, $data, static fn($r) => isset($files[$r]))) !== null) $data = $x;
 				$dest = $stage . '/' . $rel;
 				if (!is_dir(dirname($dest))) mkdir(dirname($dest), 0700, true);
 				file_put_contents($dest, $data);
@@ -827,9 +829,9 @@ final class NuMigrate
 	{
 		return [
 			'0001-own-tables' => ['nuBuilder Next tables: log, form history, 2FA, tokens, sessions, API, dashboards …', static fn() => NuSchema::create()],
-			'0002-report-tables' => ['nuBuilder report and SQL builder tables (zzzzsys_report, zzzzsys_access_report, zzzzsys_select, zzzzsys_select_clause) when missing', static fn() => NuReport::ensureTables()],
-			'0003-translate-table' => ['nuBuilder translation table (zzzzsys_translate) when missing – new installations have it, older ones got it only with the first saved translation', static fn() => NuTranslate::ensureTable()],
-			'0004-cloner-tables' => ['nuBuilder tables of saved Cloner and App cloner settings (zzzzsys_cloner, zzzzsys_app_cloner) when missing', static function (): void { NuClonerConfig::ensureTable(); NuAppClonerConfig::ensureTable(); }],
+			'0002-report-tables' => ['nuBuilder Forte report and SQL builder tables (zzzzsys_report, zzzzsys_access_report, zzzzsys_select, zzzzsys_select_clause) when missing', static fn() => NuReport::ensureTables()],
+			'0003-translate-table' => ['nuBuilder Forte translation table (zzzzsys_translate) when missing – new installations have it, older ones got it only with the first saved translation', static fn() => NuTranslate::ensureTable()],
+			'0004-cloner-tables' => ['nuBuilder Forte tables of saved Cloner and App cloner settings (zzzzsys_cloner, zzzzsys_app_cloner) when missing', static function (): void { NuClonerConfig::ensureTable(); NuAppClonerConfig::ensureTable(); }],
 			'0005-setting-primary-db' => ['Settings table: row $nuConfigPrimaryDatabaseManagement (phpMyAdmin or Adminer) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
 			// steps of nuBuilder Next itself start again after the upgrade baseline 0.8.321 (no paths from earlier versions)
 			'0007-drop-vendor-layout' => ['Settings of nuBuilder Next: row vendor_layout of the former Admin tools view removed', static function (): void {
@@ -841,17 +843,18 @@ final class NuMigrate
 			'0011-audit' => ['Audit trail (zzzzsys_nunext_audit): table created, the record changes of the log copied into it', static fn() => NuAudit::copyFromLog()],
 			'0012-notifications' => ['Notification centre (zzzzsys_nunext_notification, zzzzsys_nunext_notification_user); permission items NUNEXT_NOTIFY and NUNEXT_NOTIFY_OWN', static fn() => NuNotify::install()],
 			'0013-setting-home-hooks' => ['Settings table: row $nuConfigHomeHooks (start page hooks on / off) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
-			'0014-database-origin' => ['Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder database, or installed before 0.8.380)', static fn() => NuInstall::markOrigin(self::$earlier)],
+			'0014-database-origin' => ['Settings of nuBuilder Next: row db_origin (new database, existing nuBuilder Forte database, or installed before 0.8.380)', static fn() => NuInstall::markOrigin(self::$earlier)],
 			'0015-form-drafts' => ['Form drafts (zzzzsys_nunext_form_draft)', static fn() => NuSchema::create()],
 			'0016-pages' => ['Page forms (zzzzsys_nunext_page)', static fn() => NuSchema::create()],
 			'0017-presence' => ['Who has a record open (zzzzsys_nunext_presence)', static fn() => NuSchema::create()],
 			'0018-home-hook-codes' => ['Start page hooks renamed: procedures nunext_home → nu_home, nunext_home_user → nu_home_user', static fn() => self::renameHomeHooks()],
 			'0019-user-fields' => ['Custom user fields (zzzzsys_nunext_user_field); their values table is created with the first field', static fn() => NuSchema::create()],
-			'0020-upload-template' => ['Uppy uploads: nuBuilder\'s procedure nu_upload_file_template (hardened) and the snippet nu_upload_file_uppy_code_template when missing', static fn() => NuUpload::ensureTemplates()],
+			'0020-upload-template' => ['Uppy uploads: nuBuilder Forte\'s procedure nu_upload_file_template (hardened) and the snippet nu_upload_file_uppy_code_template when missing', static fn() => NuUpload::ensureTemplates()],
 			'0021-recent' => ['Side bar: recently used pages and forms per user (zzzzsys_nunext_recent)', static fn() => NuSchema::create()],
 			'0022-upload-template-folder' => ['Upload procedure nu_upload_file_template: files no longer in the web root (only an unchanged copy of the earlier template is replaced)', static fn() => NuUpload::replaceOldProcedure()],
 			'0023-retire-tfm' => ['Tiny File Manager removed (File Manager = the page nuFiles): its library packs and the copy in third_party/tinyfilemanager/', static fn() => NuFileManager::retireTfm()],
 			'0024-object-access' => ['Field data access: rules per object (zzzzsys_nunext_object_access)', static fn() => NuSchema::create()],
+			'0025-user-access' => ['Additional access levels per user (zzzzsys_nunext_user_access)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -890,6 +893,7 @@ final class NuMigrate
 		'0022-upload-template-folder' => [['zzzzsys_php', 'data', 'nu_upload_file_template replaced when it is an unchanged earlier template']],
 		'0023-retire-tfm' => [['zzzzsys_nunext_log', 'data', 'files only: Tiny File Manager packs (vendor/packs/tinyfilemanager-*, third_party/tinyfilemanager*) deleted, logged']],
 		'0024-object-access' => [['zzzzsys_nunext_object_access', 'table', 'created when missing']],
+		'0025-user-access' => [['zzzzsys_nunext_user_access', 'table', 'created when missing']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

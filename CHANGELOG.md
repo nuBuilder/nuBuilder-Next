@@ -3,6 +3,323 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.600 – Release gate (0.8.551–0.8.599)
+- Release gate (0.8.551–0.8.599): documentation brought up to date first (README feature list: page forms with draft and versions,
+  Insert menu of the code editors, additional access levels, logging out idle users; CLAUDE.md, TODO.md).
+- Full test run: smoke, all 163 end-to-end tests, comparison with nuBuilder Forte 4.9 (31 tests). Two known differences recorded in
+  dev/tests/compat-known.json: the phone input mask of the sample customer form, and a test-kit list that nuBuilder Forte's current
+  version shows without rows.
+
+## 0.8.599 – Page forms: draft and versions
+- Page forms: draft and versions. In the form builder of a page, "Create draft" copies the page's files to _draft/; designers open the
+  draft ("Open draft", remembered until "Show live version"), everyone else keeps the live files. "Publish draft" makes it live and keeps
+  the replaced files as a version; "Restore" brings a previous version back (the current files become a version first); the newest ten
+  versions are kept. _data, secrets.php and the database are shared. Logged; help page "Page forms → Draft and versions".
+
+## 0.8.598 – Edited by field wider
+- Custom user fields: on desktop, "Edited by" is wider (at most 360 px) and "Type" narrower.
+- The "Edited by" options are shorter in all languages (e.g. "User (My account) and admins"), so they are fully visible.
+
+## 0.8.597 – Wider custom user field form
+Custom user fields: the edit form is about 50 % wider on desktop screens, so its fields are wider too.
+
+## 0.8.596 – nuBuilder Forte naming
+nuBuilder 4.x is now called "nuBuilder Forte" in all texts: help pages, tutorial, README, function reference, Logged-in users, Installation, Update, Data access, Translations, App cloner, settings catalogue and messages (11 languages).
+Help pages name it "nuBuilder Forte (4.x)" at the first mention; plain "nuBuilder" remains only where both products are meant.
+
+## 0.8.595 – Logged-in users: log out idle users
+- Logged-in users: "Log out idle users" with a choice of the last activity – more than 1, 2, 4, 8, 12 or 24 hours (only times below
+  the longest session timeout; older sessions end by themselves). Ends every nuBuilder Next session idle for longer, never the own;
+  the confirmation names the hours; log event "Idle sessions ended". e2e sessions_idle.
+
+## 0.8.594 – Insert menu: detail next to the list
+- Code editors → Insert: on wide screens (900 px and more) the detail with signature, parameters, example and result is shown to
+  the right of the list, each scrolling on its own – no more scrolling below the fold; narrow screens keep it below the list (more
+  room for the detail). The menu always stays fully inside the window.
+
+## 0.8.593 – Code editors: insert functions, suggestions while typing
+- Code editors: "Insert" next to the toolbar (PHP, JavaScript and HTML editors – procedures, form builder, Global code, the form's
+  double-click editor): the functions of the help's function reference (route ?p=fnlist, docs/nunext-functions.json) – search, group,
+  detail with signature, description, parameters, return value, example and sample result; Insert call (Enter, required parameters,
+  the first one selected), Insert example (Shift+Enter), Help (the entry in a new tab). The procedures page shows its code snippets
+  as a second tab (the former "Insert snippet" button).
+- Suggestions while typing: nu… / db_… functions after two letters (not in strings and comments), with signature and description
+  next to the list; Ctrl+Space suggests for any word. CodeMirror's show-hint add-on (5.65.21) added to the bundled CodeMirror.
+  e2e code_insert.
+
+## 0.8.592 – Code editors: toolbar on the left
+- Code editors: the toolbar (undo / redo, search, replace, comment, invisibles, format, full screen, # menu, snippets) now sits on
+  the left, right after the label with some spacing, instead of at the right edge – nearer for the mouse: procedures (PHP and
+  JavaScript; "Example" stays on the right), Configuration file, Global code (below the hint, right above the editor), form
+  builder property editors and the double-click editor of the form runtime. On narrow screens the toolbar takes a line of its own.
+
+## 0.8.591 – User form: additional fields as a card
+- User form: the custom user fields are a card "Additional fields" on the tab General, below Person (with "Manage fields"), instead
+  of a tab of their own; the tabs are General and Permission items. An old address with tab=more opens General, a field with an error
+  shows there. e2e user_fields.
+
+## 0.8.590 – Update page: upload card above the result (developer mode)
+- Update page, developer mode: after an update the card "Install a new version" now comes first, the result ("Updated from … to
+  …") below it.
+
+## 0.8.589 – User form: effective rights
+- User form → Access & roles: button "Effective rights" (shown once there is an additional access level) opens a dialog with the
+  combined rights of the main and the additional levels as entered in the form, also before saving (POST action effective,
+  NuUserAccess::effective – NuAcl::levelRights per level, combined like NuAcl): forms with View / Add / Save / Delete / Clone /
+  Print (badge "Additional" for forms only an additional level grants, the level's name next to a tick only it grants, list only /
+  edit only), procedures and reports with their levels; search, "Only from additional levels", Copy (tab-separated); expired levels
+  crossed out and not counted. e2e effective_rights.
+
+## 0.8.588 – Update page: upload card after an update (developer mode)
+- Update page, developer mode ($nuConfigDevMode): after an update the card "Install a new version" is shown again below the
+  result ("Updated from … to …"), so the next package can be uploaded without going back first.
+
+## 0.8.587 – User form: password placeholder, hints in (i)
+- User form, existing user: the password fields show the placeholder "(unchanged)" instead of the text "Leave empty to keep the
+  current password." below; "Password last changed" (date and how) moved into the record info (i) next to Delete
+  (NuFormInfo::record $after rows).
+- User form: the hint of "Valid until" ("Empty = unlimited. Login is possible through this day.") is the tooltip of an (i) next to
+  the label instead of a text below the field. e2e user_pw_info.
+
+## 0.8.586 – User form: three cards
+- User form: the card "Login & access" is split into three – Login credentials (login name, password, auto-login / one-time
+  login link, change password at next login), Access & roles (access level, additional access levels, admin role) and Account
+  settings (valid until, language, welcome e-mail). Fields, names and behaviour unchanged.
+
+## 0.8.585 – Additional access levels per user
+- Additional access levels per user: the user form gets "Additional access levels" below the access level – Add a level and,
+  optionally, a date "until"; the rights of all active levels are combined (they only add): form rights (NuAcl), procedures,
+  reports, dashboards, the forms list and the automatic start page. Start page layout, list views, field data access by level and
+  #ACCESS_LEVEL_ID# stay with the main level; two-factor login is required when any level asks for it. New own table
+  zzzzsys_nunext_user_access (step 0025-user-access, NuUserAccess).
+- Security: with "Only the globeadmin grants admin rights" only the globeadmin adds a level with admin rights, nobody changes the
+  additional levels of his own account or the rights of a level he holds, users with such a level are changed by the globeadmin
+  only. Changes are logged (User changed, access_extra:<code>).
+- Access level form: the Users card lists users with the level as an additional one (badge "Additional", expired under
+  Archived); Delete is blocked while it is in use. Compatibility check G10 lists these users (nuBuilder 4.x gives them only the
+  main level). Help: Access levels → Additional access levels, Users, Differences. e2e user_extra_access.
+
+## 0.8.584 – Permission items: Undo after All / None
+- User form, Permission items: after "All" or "None" an Undo button brings back the ticks from before (all items, also the ones
+  filtered out); a change by hand ends it. e2e perm_undo.
+
+## 0.8.583 – Access level: users filter
+- Access level form, Users card: filter Active (default) · Archived · All with counts – archived = "Valid until" in the past, as in
+  the users list; archived users carry a badge. Up to 500 users are listed (was 50). e2e access_users_filter.
+
+## 0.8.582 – Help: permission items in SQL
+- Help → Permission items: new section "Permission items in SQL" – #USER_PERMISSIONS# with FIND_IN_SET (MySQL), an EXISTS query on
+  the permission tables (MySQL and SQL Server), the globeadmin (#GLOBAL_ACCESS#) and a column shown only to some users; linked from
+  the hash variables.
+
+## 0.8.581 – #USER_GROUP_ID#
+- Hash variables: #USER_GROUP_ID# (nuBuilder's name of the access level id, nuGetUserAccess) is set – the same value as
+  #ACCESS_LEVEL_ID#, in forms, procedures, SQL and reports; offered in the code editor's "#" menu. Compatibility check G7 no longer
+  lists it. e2e hidden_lower_hash.
+
+## 0.8.580 – Compatibility check: G6 only what is blocked
+- Compatibility check G6: lists only addresses the form page's Content Security Policy really blocks (NuCompat::cspBlocked) – images
+  from https, this server and the sites of scripts / stylesheets named in $nuConfigIncludeJS / CSS or Setup → Include are allowed and
+  no longer listed; every address of an HTML object is checked, not only the first. The text says how to allow a site. e2e gap_compat.
+
+## 0.8.579 – Compatibility check: links in a new tab
+- Compatibility check: the links to the form builder (functions, features, hash variables) open in a new tab, so the list stays open.
+
+## 0.8.578 – Compatibility check reads include files
+- Compatibility check: functions defined in the files of $nuConfigIncludeJS (and $nuConfigIncludePHP, now also from nuBuilder's
+  folder), in the scripts of Setup → Include (inline or local files) and in Global JS count as "your own" instead of missing
+  (NuCompat::definedOutside, NuIncludes::localFile – same lookup as the form page: nuBuilder Next's folder, then nuBuilder's).
+  e2e config_includes.
+
+## 0.8.577 – Compatibility check: G8 as supported
+- Compatibility check: G8 (hidden procedures that read #RECORD_ID# / #FORM_ID#) is shown as supported since 0.8.576 – the values are
+  set, to the open record and form (nuBuilder: the procedure code and "doesntmatter"); the places stay listed to check code that
+  compares with nuBuilder's values. G7 text without #form_id# / #record_id# (set since 0.8.576).
+
+## 0.8.576 – Lower-case #form_id# / #record_id#
+- Hash variables: nuBuilder's lower-case #form_id#, #record_id# and #hash_record_id# now hold the same values as #FORM_ID# /
+  #RECORD_ID# (NuHash::build / plain). nuBuilder code that reads them in hidden procedures – the usual way there, because nuBuilder
+  fills #RECORD_ID# with the procedure code and #FORM_ID# with "doesntmatter" – works unchanged. A field, property or hash cookie
+  of the same name comes first, as in nuBuilder. Compatibility check G7 no longer lists them. e2e hidden_lower_hash.
+
+## 0.8.575 – Settings open on Used, status menu in the forms list
+- Settings: the page opens with the filter "Used" (after a save with errors: "All", so no field with an error is hidden).
+- Forms list: form designers right-click the status (long press on touch screens, Enter / Space on the focused status) and pick
+  Active / Draft / Archived. Saved through the builder API (form.save, sfo_status) – same rights, draft rules (open draft: confirmation
+  for the globeadmin, refused for others; "Only through drafts") and form history as the builder; the badge changes in place
+  (assets/js/nuformstatus.js). e2e settings_used, forms_status_menu.
+
+## 0.8.574 – Source map comments removed
+- Libraries: the `sourceMappingURL` comment is removed from minified JS / CSS files whose .map file is not delivered
+  (NuLibs::stripSourceMap) – in the bundled files (Bootstrap, Tom Select, sql-formatter), during an update and when a library
+  pack is installed. The browser's developer tools no longer ask for the missing .map files (CSP error in the console).
+  Packs installed earlier are cleaned on the next install. Unit test: no bundled file points to a missing map.
+
+## 0.8.573 – Global code: file address
+- Global code: the Global JavaScript / CSS files are served at `?p=globalcodefile&t=js|css` (was ?p=customcode; page file
+  pages/nuglobalcodefile.php). Pages load them from there by themselves – nothing to change; the old address answers 404.
+
+## 0.8.572 – Global code: address ?p=globalcode
+- Global code: address `?p=globalcode` (was ?p=setupcode); files pages/nuglobalcode.php, assets/js/nuglobalcode.js, help page
+  docs/pages/08-05-globalcode.htm (anchors #globalcode …); the admin right and the start page tile are called `globalcode` too.
+  No compatibility path (alpha): the old address answers 404, admin roles need the right *Global code* ticked again, a saved start
+  page layout loses the old tile (Customise → Add tile adds it again).
+
+## 0.8.571 – Custom code renamed to Global code
+- Admin tools → *Custom code* is now called *Global code* (all eleven languages: German *Globaler Code*) – nuBuilder uses "Custom
+  Code" for a form's own JavaScript. Page title, start page tile and search, admin role right, saved / log messages, compatibility check,
+  help, README. Unchanged: the address ?p=setupcode, the admin right, the stored settings – links and roles keep working.
+
+## 0.8.570 – Notes: code in files, open points
+- Development notes: TODO.md – the suggestion "code in files instead of in the form" (options A–D, waiting for a decision) and the
+  open points of this session (drawing order, library messages, first sign-in errors, object menu on more types, compat differences).
+
+## 0.8.569 – Object menu on titles of HTML objects
+- Forms (globeadmin): the object menu (right-click) also opens on a title an HTML object draws itself – an element with class
+  `title`, `h1`–`h6`, `legend` or `card-header` inside it (framed boxes built with the form's CSS); it is the HTML object's menu.
+  Elsewhere in an HTML object the browser's own menu stays. Content box titles keep their menu.
+- Tests: e2e label_menu_rightclick (title inside an HTML object).
+
+## 0.8.568 – nuBuilder permalinks open the form
+- Fixed: nuBuilder's permalinks `index.php?f=<form>&r=<record>[&h=<home>]` (written by nuBuilder's URL permalink option and its
+  "Copy permalink") opened the start page – also on F5 of such an address. They open that form and record now (signed out: after the
+  sign-in); `h` is not used, values such as `undefined` count as empty (r empty = the list).
+- `nuSetURLPermaLink()` for form code: puts nuBuilder Next's own address of the open form and record into the address bar.
+- Tests: e2e permalink.
+
+## 0.8.567 – Absolute layout: stacking as in nuBuilder
+- Fixed: in the absolute layout, HTML objects covered the other objects when their content draws its own box behind the form (an
+  element with `z-index: -1`, e.g. framed boxes from Setup → Style). Every object had `z-index: 1`, which kept such an element inside
+  its own object. Now objects stack as in nuBuilder: no z-index, in drawing order; content boxes `z-index: -1`; the canvas is its own
+  stacking layer, so these boxes lie behind the other objects but stay in front of the form's background.
+- Fixed: PHP warnings for objects without style / attribute / datalist columns (older nuBuilder tables, drafts).
+- Tests: e2e object_stacking.
+
+## 0.8.566 – Form builder Code: grouped buttons
+- Form builder → Code: the buttons in two groups with a heading – JavaScript & CSS (Browse & Edit, Edit, Browse, CSS) and PHP (Before
+  Edit, Before Save, After Save, Before Browse, Before Delete, After Delete); the buttons show the name without JS / PHP, the full name
+  is the tooltip and the editor's name; the buttons of both groups start in the same column.
+- Tests: e2e builder_code_split (groups, names).
+
+## 0.8.565 – Form builder Code: toolbar, splitter
+- Form builder → Code: no label above the editor (the row of buttons names it); Copy / paste is a clipboard button in the editor
+  toolbar, which sits on the left of the editor.
+- Form builder → Code: a splitter between the code and the preview (from 1200 px) – drag it or use the arrow keys (Shift = bigger steps,
+  Home / End), a double-click goes back to the default (60 % code); the width is remembered in this browser (localStorage).
+- Tests: e2e builder_code_split.
+
+## 0.8.564 – Form builder: view order, one-page form settings
+- Form builder: views in the order Form settings · Browse · Objects · Code · History (the builder still opens on Objects, or on the view
+  in the address); no vertical scrollbar on the row of views; #view links and Back / Forward switch the view.
+- Form builder → Form settings on one page (no inner tabs General / Browse): Description, Code and Type are required as in nuBuilder –
+  red *, checked before saving and on the server; Breadcrumb title and Layout explain themselves in an (i) instead of a line of text.
+- Form builder → Browse: the list settings (browse SQL, rows per page, open records in form) moved here from Form settings → Browse,
+  above the columns – one Save for both. Edit and launch forms have no Browse view.
+- Tests: e2e builder_form_settings; builder_views and builder_redirect_search follow the new places.
+
+## 0.8.563 – Form builder: views and wider layout
+- Form builder: views Objects · Form settings · Browse · Code · History. The objects list shows only on the new first view
+  *Objects* (with the chosen object and the preview); the other views have no objects list. The former *Tabs* view is a section of
+  Form settings (titles, visibility, order – saved with the form settings, one Save). Code comes after Browse.
+- Form builder, wide screens: no width cap any more; from 1200 px the objects list and the middle card keep their width and the preview
+  takes the rest; Code gives the editors the larger share and fits them to the window height (code editors also keep the full width of
+  a wide panel now). The preview can still be folded away.
+- Form builder: the open view is in the address (#objects, #form, #browse, #code, #history) and comes back after a reload; a click on
+  an object in the preview or Properties… in a form's right-click menu opens it on Objects. Objects switches the preview back to the
+  record when Browse had switched it to the list; only your own choice of Browse / Edit in the preview is remembered.
+- Tests: e2e builder_views.
+
+## 0.8.562 – Object menu on right-click, also on buttons
+- Forms (globeadmin): the object menu (Object · Properties… · Rename… · Actions · Access · Align · Validation) opens with a right-click,
+  as in nuBuilder 4.x – on labels, content box titles and now also on buttons (input and run buttons). A left click on a label focuses
+  its field again; Ctrl + right-click shows the browser's own menu; the context-menu key / Shift+F10 opens it at the element.
+- Tests: e2e label_menu_rightclick.
+
+## 0.8.561 – Permission items: description as wide as fits
+- User form → Permission items: the description shows on one line, as much as fits in its column, and ends with … when cut – the
+  text is at most 750 px wide (replaces the 80-character limit of 0.8.560); the full text is the tooltip. Phones: the line below the
+  ident works the same way.
+- Tests: e2e user_perm_all (one line, ≤ 750 px, no sideways scrolling).
+
+## 0.8.560 – User form: permission items columns
+- User form → Permission items: columns in the order Ident · Group · Description; descriptions longer than 80 characters end
+  with …, the full text is the tooltip (also on phones, below the ident). The search still looks at the whole description.
+- Tests: e2e user_perm_all (column order, long description).
+
+## 0.8.559 – Object icons (sob_input_icon), buttons as in nuBuilder 4.9
+- Form builder: field *Icon* (nuBuilder's `sob_input_icon`) for input buttons, run buttons and words, with an (i) on the syntax:
+  `fa fa-table` = Font Awesome, `bi-table` = Bootstrap icon, anything else = HTML, `left|right` = one before and one after the label
+  (at most 50 characters). The icon is drawn inside the object, before the label, as in nuBuilder – in forms and in the preview
+  (before: the column was ignored).
+- Input buttons are `<button>` elements with the label as HTML in `.nuButtonLabel`, as in nuBuilder 4.9 (before: `<input type="button">`
+  with the label as plain text). Form code reading a button's `.value` should read its text instead – as for nuBuilder 4.9.
+- Run buttons: an empty label gives an empty button as in nuBuilder (0.8.558 showed the target form's description); without visible
+  text the description is the tooltip and the name for screen readers.
+- `nuAddInputIcon()` puts the icon inside the button / word (before: next to it), as nuBuilder.
+- Tests: e2e object_icons, run_button_label. CLAUDE.md: compat.js runs without display_errors (nuBuilder's own notices).
+
+## 0.8.558 – Run buttons: HTML labels (icon-only)
+- Fixed: run buttons with an icon-only label (e.g. `<i class="fa fa-table" aria-hidden="true"></i>`) showed the target form's id –
+  in forms and the form builder's preview. The label is HTML now, as in nuBuilder (nuRUN): icons and markup show; an icon-only button
+  gets the target form's description as its name and tooltip; an empty label shows that description (before: the id).
+- Tests: e2e run_button_label.
+
+## 0.8.557 – Global CSS: remove surrounding style tags
+- Custom code → Global CSS: a surrounding `<style>…</style>` (e.g. pasted from Form CSS, where both forms work as in nuBuilder) is
+  removed on Save, with a note – Global CSS is loaded as a .css file, where the tag is no CSS and made the browser skip the first
+  rule. `NuCustomCode::unwrapStyle()`.
+- Tests: unit tests unwrapStyle; e2e custom_code saves wrapped CSS.
+
+## 0.8.556 – Side bar: pin; libraries install reads the GitHub index again
+- Side bar: pin button in its header (screens from 992 px) – the side bar stays open as a column next to the page, on every page,
+  sticky below the top bar, until unpinned (pin again, or the button left of the logo). Stored per user (sus_json
+  NUNEXT_SIDEBAR_PIN; the globeadmin: setting sidebar_pin_ga; demo visitors: the session). Narrower screens keep the drawer.
+- Fixed: Update → Libraries → *Install / update* compared the downloaded packs with the index saved at the last *Look on GitHub*:
+  after the release "libraries" got new zips with the same names it reported "does not match the index" / "download is
+  incomplete" (and newer packs such as Uppy were missing). Installing from GitHub now reads the index again first.
+- Tests: e2e sidebar_pin.
+
+## 0.8.555 – Users list: readable e-mail column
+- Users list: the E-mail column keeps a readable width (12–20 rem) when many columns are shown – long addresses take at most two
+  lines and end with …, the full address is the tooltip (before: the column shrank to a few characters and rows grew very high).
+  Export and print keep the full address. New helper class `nuClamp2` (two lines, then …).
+- Tests: e2e users_email_col.
+
+## 0.8.554 – Custom code: taller editors with toolbar
+- Custom code: the editor of the open tab reaches down to the bottom of the window (at least 360 px), also after resizing the window
+  – a taller screen shows more lines (before: CodeMirror's 300 px won over the page's height rule).
+- Custom code: every tab has the code editor toolbar of the procedures page – undo / redo, search, replace, toggle comment, show
+  spaces and tabs, format (JavaScript, CSS, HTML), copy / paste and full screen (F11).
+- Tests: e2e custom_code (height, toolbar, full screen on / off).
+
+## 0.8.553 – Procedures list warning, user import access level, Created in (i)
+- Fixed: the procedures list showed "Undefined array key "sph_template"" in every row on servers that display PHP warnings – the
+  template badge column never selected its value (a list column's own `select` was dropped by `+`). The same mistake had silently
+  dropped eight secondary sort orders (forms / procedures / reports / files / permission items by group, items by form,
+  translations by language) and made the API clients' IP column sortable.
+- Fixed: CSV import of users with custom user fields gave the new users a wrong (or no) access level – the field loop overwrote the
+  access level code.
+- Fixed: PHP warnings for objects without position / size / order in form drafts (form builder preview and published drafts).
+- User form and the other record pages: the (i) panel shows *Created* and *Changed* (date and login) from the Log when the audit trail
+  has nothing – e.g. users created in nuBuilder Next. nuBuilder keeps no creation date, so users made there show no *Created*.
+- Tests: the test server shows PHP warnings in the page (`display_errors=1`, CLAUDE.md), so smoke / e2e fail on them; unit test
+  against list columns whose keys `+` drops; e2e record_info (Created / Changed from the log), user_fields (imported access level).
+
+## 0.8.552 – User form: code after e-mail, permission items; installer fix
+- User form: *Code* now sits right after *E-mail* (same row); Position, Department and Team follow, then Additional 1 and 2.
+- User form → Permission items: *All* asks first when more than five items are shown (the dialog names the number; *None* and
+  smaller filtered lists still act at once).
+- User form → Permission items on phones: switch *Descriptions* hides the descriptions for a more compact table; the choice is
+  remembered in that browser and does not count as an unsaved change.
+- Fixed: the installer showed "nuconfig.php not found" instead of its first page (since 0.8.523: Global CSS of Custom code was
+  looked up in the database before nuconfig.php existed).
+- Record pages (user, access level): switches marked `data-nu-noguard` no longer turn Save red; new script helper
+  `nuConfirmAsk(text, onOk[, okLabel, okClass])` opens the common confirmation dialog.
+- Tests: e2e `user_perm_all`.
+
+## 0.8.551 – Notes: v0.8.550 published
+- Development notes: v0.8.550 is the last published GitHub release (release notes template and CLAUDE.md).
+
 ## 0.8.550 – Release gate (0.8.548–0.8.549)
 - Release gate: full test run (smoke, all end-to-end tests, compatibility with nuBuilder) for 0.8.548–0.8.549; development notes
   brought up to date first.

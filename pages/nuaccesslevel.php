@@ -17,6 +17,8 @@ if ($id !== '' && !$existing) {
 }
 
 $userCount = $existing ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id]) : 0;
+$xaUsers = $existing ? NuUserAccess::usersOf($id) : [];          // users with this level as an additional one (0.8.585)
+$userCount += count($xaUsers);                                   // also blocks Delete
 
 // ------------------------------------------------------------------ delete (with child rows, like nuBuilder)
 if (nu_is_post() && nu_post('action') === 'delete') {
@@ -141,7 +143,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	// admin-equivalent rights (NuSecurity::ADMIN_FORMS): with "Only the globeadmin grants admin rights" nobody else adds them,
 	// and nobody changes the rights of his own access level
 	if (!$errors && NuSecurity::restricted()) {
-		if (!$isNew && $id === (string)NuAuth::user()['access_id']) {
+		if (!$isNew && NuUserAccess::holds($id)) {                   // main or additional level of the own account (0.8.585)
 			$errors['rights'] = t('secchk_err_own_rights');
 		} else {
 			$before = $isNew ? [] : NuSecurity::adminRightsOf($id);
@@ -217,7 +219,22 @@ uasort($rows, static fn($a, $b) => strcasecmp(nu_form_label($a['form']), nu_form
 $phpCount = $existing ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php WHERE slp_zzzzsys_access_id = ?', [$id])
 	: ($cloneId !== '' ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php WHERE slp_zzzzsys_access_id = ?', [$cloneId]) : 0);
 $rptCount = $db->tableExists('zzzzsys_access_report') && ($existing || $cloneId !== '') ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_report WHERE sre_zzzzsys_access_id = ?', [$existing ? $id : $cloneId]) : 0;
-$users = $existing ? $db->page('SELECT zzzzsys_user_id, sus_login_name, sus_first_name, sus_last_name FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id], 'sus_login_name', 50, 0) : [];
+// Users card (0.8.583): up to 500 users with their state – archived = "Valid until" in the past (nu_is_expired, as the users list);
+// filter Active (default) · Archived · All in assets/js/nuaccesslevel.js
+$users = $existing ? $db->page('SELECT zzzzsys_user_id, sus_login_name, sus_first_name, sus_last_name, sus_expires_on FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id], 'sus_login_name', 500, 0) : [];
+foreach ($users as &$us) { $us['archived'] = nu_is_expired($us['sus_expires_on'] ?? null); $us['extra'] = null; }
+unset($us);
+// additional level (0.8.585): listed with a badge; archived when the user or the assignment ("until") has expired
+if ($xaUsers) {
+	$xaBy = array_column($xaUsers, null, 'user_id');
+	$qm = implode(', ', array_fill(0, count($xaBy), '?'));
+	foreach ($db->all("SELECT zzzzsys_user_id, sus_login_name, sus_first_name, sus_last_name, sus_expires_on FROM zzzzsys_user WHERE zzzzsys_user_id IN ($qm)", array_keys($xaBy)) as $xu) {
+		$x = $xaBy[(string)$xu['zzzzsys_user_id']];
+		$users[] = $xu + ['archived' => nu_is_expired($xu['sus_expires_on'] ?? null) || !$x['active'], 'extra' => $x['valid_until']];
+	}
+	usort($users, static fn($a, $b) => strcasecmp((string)$a['sus_login_name'], (string)$b['sus_login_name']));
+}
+$usArchived = count(array_filter($users, static fn($u) => $u['archived']));
 
 $groups = array_column($db->all("SELECT DISTINCT sal_group AS g FROM zzzzsys_access WHERE sal_group IS NOT NULL AND sal_group <> '' ORDER BY sal_group"), 'g');
 
@@ -369,15 +386,24 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 				<?php if (!$users): ?>
 					<div class="card-body small text-body-secondary"><?= h(t('access_no_users')) ?></div>
 				<?php else: ?>
-					<ul class="list-group list-group-flush small nu-scroll">
+					<div class="card-body py-2 border-bottom">
+						<div class="d-flex flex-wrap gap-2" id="accUserFilter" role="radiogroup" aria-label="<?= h(t('access_users_filter')) ?>">
+							<?php foreach (['active' => [t('user_active'), count($users) - $usArchived], 'archived' => [t('access_users_archived'), $usArchived], 'all' => [t('all'), count($users)]] as $v => [$lbl, $n]): ?>
+								<input type="radio" class="btn-check" name="accUserFilter" id="accUf_<?= $v ?>" value="<?= $v ?>" autocomplete="off"<?= $v === 'active' ? ' checked' : '' ?>>
+								<label class="btn btn-sm btn-outline-secondary" for="accUf_<?= $v ?>"><?= h($lbl) ?> <span class="badge rounded-pill text-bg-light border ms-1"><?= $n ?></span></label>
+							<?php endforeach; ?>
+						</div>
+					</div>
+					<ul class="list-group list-group-flush small nu-scroll" id="accUserList">
 						<?php foreach ($users as $us): $nm = trim($us['sus_first_name'] . ' ' . $us['sus_last_name']); ?>
-							<li class="list-group-item d-flex justify-content-between gap-2">
+							<li class="list-group-item d-flex justify-content-between gap-2" data-st="<?= $us['archived'] ? 'archived' : 'active' ?>"<?= $us['archived'] ? ' hidden' : '' ?>>
 								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?>
-									<a class="text-decoration-none" href="<?= h(nu_url('user', ['id' => $us['zzzzsys_user_id']])) ?>"><?= h($us['sus_login_name']) ?></a>
+									<a class="text-decoration-none<?= $us['archived'] ? ' text-body-secondary' : '' ?>" href="<?= h(nu_url('user', ['id' => $us['zzzzsys_user_id']])) ?>"><?= h($us['sus_login_name']) ?></a>
 								<?php else: ?><span><?= h($us['sus_login_name']) ?></span><?php endif; ?>
-								<span class="text-body-secondary text-truncate"><?= h($nm) ?></span>
+								<span class="text-body-secondary text-truncate"><?= h($nm) ?><?php if ($us['extra'] !== null): ?> <span class="badge text-bg-info ms-1" title="<?= h(t('xa_badge_tip') . ($us['extra'] !== '' ? ' – ' . t('xa_until') . ' ' . date('d.m.Y', (int)strtotime($us['extra'])) : '')) ?>"><?= h(t('xa_badge')) ?></span><?php endif; ?><?php if ($us['archived']): ?> <span class="badge text-bg-secondary ms-1"><?= h(t('access_users_archived')) ?></span><?php endif; ?></span>
 							</li>
 						<?php endforeach; ?>
+						<li class="list-group-item text-body-secondary accUserNone"<?= count($users) - $usArchived > 0 ? ' hidden' : '' ?>><?= h(t('no_records')) ?></li>
 						<?php if ($userCount > count($users)): ?><li class="list-group-item text-body-secondary">+ <?= $userCount - count($users) ?></li><?php endif; ?>
 					</ul>
 				<?php endif; ?>

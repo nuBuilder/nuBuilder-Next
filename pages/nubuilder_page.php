@@ -25,6 +25,13 @@ if (nu_is_post()) {
 		nu_flash($r['ok'] ? 'success' : 'warning', $r['message']);
 		nu_redirect(nu_url('builder', ['f' => $formId]));
 	}
+	// draft and versions of the page files (0.8.599, NuPageVersion)
+	$verAct = ['draft_create' => 'createDraft', 'draft_publish' => 'publish', 'draft_discard' => 'discard'];
+	if (isset($verAct[$action]) || $action === 'version_restore') {
+		$r = $action === 'version_restore' ? NuPageVersion::restore($meta->code(), nu_post('version')) : NuPageVersion::{$verAct[$action]}($meta->code());
+		nu_flash($r['ok'] ? 'success' : 'warning', $r['message']);
+		nu_redirect(nu_url('builder', ['f' => $formId]) . '#pgDraft');
+	}
 	if ($action === 'delete') {
 		if (!$canDeleteForm) { http_response_code(403); nu_fatal(t('builder_delete_globeadmin'), '', true); }
 		NuPage::deleteForm($meta);
@@ -232,6 +239,77 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 				<?php endif; ?>
 			</div>
 		</div>
+		<?php if ($info['exists'] && NuPageVersion::available($meta->code())): // draft and versions (0.8.599)
+			$pc = $meta->code();
+			$hasDraft = NuPageVersion::hasDraft($pc);
+			$diff = $hasDraft ? NuPageVersion::diff($pc) : null;
+			$vers = NuPageVersion::versions($pc);
+			$canWrite = !$ro && NuPageVersion::writable($pc);
+			$draftPath = NuPage::shownFolder($pc) . NuPageVersion::DRAFT . '/'; ?>
+		<div class="card shadow-sm mb-3" id="pgDraft">
+			<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-pencil-square"></i><span class="me-auto"><?= h(t('page_sec_draft')) ?></span>
+				<?php if ($hasDraft): ?><span class="badge text-bg-warning" id="pgDraftBadge"><?= h(t('page_draft_bar')) ?></span><?php endif; ?></div>
+			<div class="card-body small">
+				<?php if (!$hasDraft): ?>
+					<p class="mb-2" id="pgDraftIntro"><?= h(t('page_draft_intro', $draftPath)) ?></p>
+					<?php if ($canWrite): ?>
+						<form method="post"><?= nu_csrf_field() ?><input type="hidden" name="action" value="draft_create">
+							<button class="btn nuBtnAct" type="submit" id="pgDraftCreate"><i class="bi bi-files me-1"></i><?= h(t('page_draft_create')) ?></button></form>
+					<?php elseif (!$ro): ?>
+						<div class="text-warning-emphasis"><?= h(t('page_tpl_not_writable', NuPage::shownFolder($pc))) ?></div>
+					<?php endif; ?>
+				<?php else: ?>
+					<p class="mb-2"><?= h(t('page_draft_state')) ?> <code><?= h($draftPath) ?></code></p>
+					<?php $n = count($diff['added']) + count($diff['changed']) + count($diff['removed']); ?>
+					<?php if ($n === 0): ?>
+						<p class="text-body-secondary mb-2" id="pgDraftSame"><?= h(t('page_draft_same')) ?></p>
+					<?php else: ?>
+						<ul class="list-unstyled mb-2" id="pgDraftDiff">
+							<?php foreach (['changed' => 'bi-pencil text-primary', 'added' => 'bi-plus-circle text-success', 'removed' => 'bi-dash-circle text-danger'] as $k => $ic):
+								if (!$diff[$k]) continue;
+								$shown = array_slice($diff[$k], 0, 8); ?>
+								<li class="pgDraft-<?= $k ?>"><i class="bi <?= $ic ?> me-1"></i><?= h(t('page_draft_' . $k, implode(', ', $shown))) ?><?= count($diff[$k]) > 8 ? ' ' . h(t('page_draft_files_more', count($diff[$k]) - 8)) : '' ?></li>
+							<?php endforeach; ?>
+						</ul>
+					<?php endif; ?>
+					<div class="d-flex flex-wrap gap-2">
+						<a class="btn nuBtnAct" href="<?= h(nu_url('page', ['f' => $pc, 'nudraft' => '1'])) ?>" target="_blank" rel="noopener" id="pgDraftOpen"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('page_draft_open')) ?></a>
+						<?php if ($canWrite): ?>
+							<form method="post" data-confirm="<?= h(t('page_draft_publish_confirm')) ?>" data-confirm-ok="<?= h(t('page_draft_publish')) ?>">
+								<?= nu_csrf_field() ?><input type="hidden" name="action" value="draft_publish">
+								<button class="btn btn-primary" type="submit" id="pgDraftPublish"><i class="bi bi-upload me-1"></i><?= h(t('page_draft_publish')) ?></button></form>
+							<form method="post" data-confirm="<?= h(t('page_draft_discard_confirm')) ?>" data-confirm-ok="<?= h(t('page_draft_discard')) ?>" data-confirm-class="btn btn-danger">
+								<?= nu_csrf_field() ?><input type="hidden" name="action" value="draft_discard">
+								<button class="btn nuBtnAct nuBtnDel" type="submit" id="pgDraftDiscard"><i class="bi bi-trash me-1"></i><?= h(t('page_draft_discard')) ?></button></form>
+						<?php endif; ?>
+					</div>
+				<?php endif; ?>
+				<hr>
+				<div class="fw-semibold mb-1"><?= h(t('page_versions')) ?><?= $tip(t('page_versions_tip', NuPageVersion::KEEP)) ?></div>
+				<?php if (!$vers): ?>
+					<div class="text-body-secondary" id="pgVersionsNone"><?= h(t('page_versions_none')) ?></div>
+				<?php else: ?>
+					<div class="table-responsive"><table class="table table-sm nu-table mb-0 align-middle" id="pgVersions">
+						<tbody>
+						<?php foreach ($vers as $vv): $lbl = NuPageVersion::label($vv['id']); ?>
+							<tr data-version="<?= h($vv['id']) ?>">
+								<td class="text-nowrap"><?= h($lbl) ?></td>
+								<td class="text-body-secondary"><?= h(trim($vv['by'] . ($vv['kind'] !== '' ? ' · ' . t('page_version_kind_' . ($vv['kind'] === 'restore' ? 'restore' : 'publish')) : ''), ' ·')) ?></td>
+								<td class="text-end">
+									<?php if ($canWrite): ?>
+									<form method="post" class="d-inline" data-confirm="<?= h(t('page_version_restore_confirm', $lbl)) ?>" data-confirm-ok="<?= h(t('page_version_restore')) ?>">
+										<?= nu_csrf_field() ?><input type="hidden" name="action" value="version_restore"><input type="hidden" name="version" value="<?= h($vv['id']) ?>">
+										<button class="btn btn-sm btn-outline-secondary pgRestore" type="submit"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('page_version_restore')) ?></button></form>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table></div>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php endif; ?>
 		<div class="card shadow-sm">
 			<div class="card-body small">
 				<p class="mb-2"><?= h(t('page_help_intro')) ?></p>

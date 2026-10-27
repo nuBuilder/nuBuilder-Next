@@ -47,7 +47,7 @@
 <li><strong>Rights</strong>: anybody who may change the form may start and edit a draft; <strong>publishing</strong> needs the globeadmin or the admin right <em>Publish forms (drafts)</em> (see <a href="#admin-roles">Admin roles</a>).</li>
 <li><strong>Only through drafts</strong> (security setting): the builder then edits a draft for every published form, and <em>new forms</em> start as drafts (status <em>Draft</em>: only form designers can open them until they are published). The globeadmin may still change a form live after a confirmation. While a draft is open, changing the form live asks first, and deleting the form is refused.</li>
 </ul>
-<p>Drafts are stored in <code>zzzzsys_nunext_form_draft</code> (database step 0015); nuBuilder itself only ever sees the published form.</p>
+<p>Drafts are stored in <code>zzzzsys_nunext_form_draft</code> (database step 0015); nuBuilder Forte (4.x) itself only ever sees the published form.</p>
 	<p class="doc-see">See also: <a href="#admin-roles">Admin roles</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nuformdraft.php</code></li><li><code>core/form/nuformstore.php</code></li><li><code>core/form/nusnapshot.php</code></li></ul></details>
 </section>

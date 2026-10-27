@@ -463,7 +463,10 @@
 	// ---------------------------------------------------------------- record pages (user, access level): Save turns red on changes
 	var recForm = $('#nuRecordForm');
 	if (recForm) {
-		var markDirty = function () { $$('button[form="nuRecordForm"]').forEach(function (b) { b.classList.add('nuSaveEdited'); }); };
+		var markDirty = function (e) {
+			if (e && e.target && e.target.closest && e.target.closest('[data-nu-noguard]')) return;   // view switches, not data (0.8.552)
+			$$('button[form="nuRecordForm"]').forEach(function (b) { b.classList.add('nuSaveEdited'); });
+		};
 		recForm.addEventListener('input', markDirty);
 		recForm.addEventListener('change', markDirty);
 		recForm.addEventListener('click', function (e) { if (e.target.closest('.js-remove-row, .js-add-form')) markDirty(); });
@@ -609,6 +612,7 @@
 			var f = pending; pending = null;
 			modal.hide();
 			if (!f) return;
+			if (typeof f === 'function') { f(); return; }   // nuConfirmAsk() below
 			f.dataset.confirmed = '1';
 			// send-once forms: requestSubmit fires the submit event again, so the button shows its spinner (form[data-nu-once] below)
 			if (f.hasAttribute('data-nu-once') && f.requestSubmit) f.requestSubmit(f.querySelector('[type="submit"][data-nu-busy]') || undefined);
@@ -627,6 +631,14 @@
 				modal.show();
 			});
 		});
+		/** The same dialog for a script: nuConfirmAsk(text, onOk[, okLabel, okClass]) – onOk runs after OK, nothing on Cancel. */
+		window.nuConfirmAsk = function (text, onOk, okLabel, cls) {
+			pending = onOk;
+			$('.js-confirm-text', modalEl).textContent = text;
+			okBtn.textContent = okLabel || okText;
+			okBtn.className = (cls || okClass.replace(/\bjs-confirm-ok\b/, '').trim()) + ' js-confirm-ok';
+			modal.show();
+		};
 	}
 
 	/** Opens url in a new tab that comes to the front, also from a Ctrl+click (see below why setTimeout). */

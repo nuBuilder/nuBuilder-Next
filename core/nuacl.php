@@ -60,7 +60,7 @@ final class NuAcl
 		if (!$u) return self::none();
 		if ($u['globeadmin']) return array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true) + self::FREE;
 
-		$key = $u['access_id'] . '|' . $formId;
+		$key = (string)($u['id'] ?? '') . '|' . $u['access_id'] . '|' . $formId;
 		if (isset(self::$cache[$key])) return self::$cache[$key];
 		if (NuImpersonate::readOnly()) {                        // globeadmin acting as a user, view only
 			$r = self::rightsOf($u, $formId);
@@ -81,8 +81,28 @@ final class NuAcl
 		return self::rightsOf(['access_id' => $accessId], $formId);
 	}
 
+	/**
+	 * Rights of the user's levels combined (0.8.585): the main level plus active additional levels (NuUserAccess) – a right any level
+	 * grants counts; browse / edit when any level allows it; "no changes to existing records" only when every level with the form says so.
+	 */
 	private static function rightsOf(array $u, string $formId): array
 	{
+		$levels = isset($u['id']) ? NuUserAccess::levels($u) : [(string)($u['access_id'] ?? '')];
+		if (count($levels) <= 1) return self::levelRow((string)($levels[0] ?? ($u['access_id'] ?? '')), $formId);
+		$out = null;
+		foreach ($levels as $lv) {
+			$r = self::levelRow($lv, $formId);
+			if (!$r['view']) continue;
+			if ($out === null) { $out = $r; continue; }
+			foreach ($r as $k => $v) $out[$k] = $k === 'no_edits' ? ($out[$k] && $v) : ($out[$k] || $v);
+		}
+		return $out ?? self::none();
+	}
+
+	/** Rights one access level gives on a form (zzzzsys_access_form). */
+	private static function levelRow(string $accessId, string $formId): array
+	{
+		$u = ['access_id' => $accessId];
 
 		$row = nu_db()->one('SELECT ' . implode(', ', self::RIGHTS) . '
 			FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ? AND slf_zzzzsys_form_id = ?', [$u['access_id'], $formId]);

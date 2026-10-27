@@ -14,7 +14,7 @@ final class NuApiClient
 		'users:read'        => 'Read users',
 		'users:write'       => 'Create, change, archive and delete users',
 		'users:password'    => 'Set passwords / send welcome e-mails',
-		'users:login_link'  => 'Create one-time login links (nuBuilder\'s LOGIN_TOKEN)',
+		'users:login_link'  => 'Create one-time login links (nuBuilder Forte\'s LOGIN_TOKEN)',
 		'reports:run'       => 'Run reports (PDF download links, PDF, e-mail)',
 		'notifications:write' => 'Send notifications to users (bell) and read their read receipts',
 		'access:read'       => 'Read access levels and their form rights',

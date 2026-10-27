@@ -2,14 +2,34 @@
 	<h2 id="permissions-h">Permission items</h2>
 	<p class="doc-lead">Named switches your own code checks.</p>
 	<p class="doc-for" data-doc="admin">For: Users with rights on: nupermissionitem</p>
-	<p>Start page tile <em>Permission items</em>, or <em>Manage</em> at the permission items of the user form (rights of nuBuilder's form <code>nupermissionitem</code>). A permission item is a named switch that your own code checks – for things an access level cannot express, e.g. "may approve invoices" for some users of the same access level.</p>
+	<p>Start page tile <em>Permission items</em>, or <em>Manage</em> at the permission items of the user form (rights of nuBuilder Forte's form <code>nupermissionitem</code>). A permission item is a named switch that your own code checks – for things an access level cannot express, e.g. "may approve invoices" for some users of the same access level.</p>
 <ul>
 <li><strong>Ident</strong>: the name used in code, unique (letters, digits and <code>_ . : -</code>). <strong>Group</strong> sorts the items in lists and in the user form.</li>
-<li><strong>Users</strong>: add or remove users directly on the item, or tick the item in the user form – both edit the same assignment (<code>zzzzsys_user_permission</code>, as nuBuilder).</li>
+<li><strong>Users</strong>: add or remove users directly on the item, or tick the item in the user form – both edit the same assignment (<code>zzzzsys_user_permission</code>, as nuBuilder Forte (4.x)).</li>
 <li><strong>Used in code</strong> lists form code, events and procedures that name the ident in quotes.</li>
 <li>Deleting an item removes it from all users. The globeadmin has every item.</li>
 </ul>
-<p>Checking an item: PHP <code>nuUserHasPermission('ident')</code> or <code>nuGetUserPermissions()</code>, JavaScript <code>nuUserHasPermission('ident')</code> or <code>nuUserPermissions()</code>, SQL / code <code>#USER_PERMISSIONS#</code>. Check on the server too (Before Save) – a browser check alone can be bypassed.</p>
-	<p class="doc-see">See also: <a href="#users">Users</a></p>
+<p>Checking an item: PHP <code>nuUserHasPermission('ident')</code> or <code>nuGetUserPermissions()</code>, JavaScript <code>nuUserHasPermission('ident')</code> or <code>nuUserPermissions()</code>, SQL / code <code>#USER_PERMISSIONS#</code> (see <a href="#permissions-sql">Permission items in SQL</a>). Check on the server too (Before Save) – a browser check alone can be bypassed.</p>
+<div class="doc-sub">
+	<h3 id="permissions-sql">Permission items in SQL</h3>
+	<p>Browse SQL, lookups, report and select SQL and access conditions can check an item – the same way as in nuBuilder Forte. <code>#USER_PERMISSIONS#</code> holds the active items of the user, sorted and separated by <code>", "</code> (e.g. <code>CAN_EXPORT, SEE_PRICES</code>). Keep hash variables inside quotes.</p>
+<ul>
+<li><strong>With <code>#USER_PERMISSIONS#</code></strong> (MySQL / MariaDB): <code>REPLACE</code> removes the spaces, otherwise every item after the first is not found.
+<pre class="doc-code">WHERE FIND_IN_SET('SEE_PRICES', REPLACE('#USER_PERMISSIONS#', ', ', ',')) &gt; 0</pre></li>
+<li><strong>With the permission tables</strong> (MySQL and SQL Server):
+<pre class="doc-code">WHERE EXISTS (
+    SELECT 1
+    FROM zzzzsys_user_permission up
+    JOIN zzzzsys_permission_item pi ON pi.zzzzsys_permission_item_id = up.upe_ident
+    WHERE up.upe_zzzzsys_user_id = '#USER_ID#'
+      AND up.upe_active = '1'
+      AND pi.pme_ident = 'SEE_PRICES'
+)</pre></li>
+<li><strong>The globeadmin</strong> has no items in the tables and an empty <code>#USER_PERMISSIONS#</code> (as in nuBuilder Forte) – add <code>OR '#GLOBAL_ACCESS#' = '1'</code> to let the globeadmin through.</li>
+<li><strong>A column only for some users</strong>:
+<pre class="doc-code">CASE WHEN FIND_IN_SET('SEE_PRICES', REPLACE('#USER_PERMISSIONS#', ', ', ',')) &gt; 0 THEN price ELSE NULL END AS price</pre></li>
+</ul>
+</div>
+	<p class="doc-see">See also: <a href="#users">Users</a>, <a href="#hash-variables">Hash variables</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nupermission.php</code></li></ul></details>
 </section>

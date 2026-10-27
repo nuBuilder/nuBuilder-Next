@@ -219,16 +219,17 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 	<?php // one row above the workspace (0.8.531): the form's sections as tabs on the left, the draft bar (form drafts, 0.8.386) on the right ?>
 	<div class="nbBar mb-3" id="nbBar">
 		<ul class="nav nav-tabs nbSections" role="list">
+			<?php // 0.8.563: the objects list only on Objects, Tabs inside Form settings; 0.8.564 order Form settings · Browse · Objects · Code · History ?>
 			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="form"><i class="bi bi-sliders me-1"></i><?= h(t('builder_sec_form')) ?></button></li>
+			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="browse" id="nbSecBrowse"><i class="bi bi-table me-1"></i><?= h(t('builder_sec_browse')) ?></button></li>
+			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="objects"><i class="bi bi-ui-checks-grid me-1"></i><?= h(t('builder_objects')) ?></button></li>
 			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="code"><i class="bi bi-code-slash me-1"></i><?= h(t('builder_sec_code')) ?></button></li>
-			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="tabs"><i class="bi bi-folder2 me-1"></i><?= h(t('builder_sec_tabs')) ?></button></li>
-			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="browse"><i class="bi bi-table me-1"></i><?= h(t('builder_sec_browse')) ?></button></li>
 			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="history"><i class="bi bi-clock-history me-1"></i><?= h(t('builder_sec_history')) ?></button></li>
 		</ul>
 		<?php if (!$meta->isSystem()): ?><div class="nbDraftBar" id="nbDraftBar" hidden></div><?php endif; ?>
 	</div>
-	<div class="row g-3 nbWorkspace" id="nbWorkspace">
-		<div class="col-xl-3 col-lg-4">
+	<div class="row g-3 nbWorkspace" id="nbWorkspace" data-nb-view="objects">
+		<div class="col-xl-3 col-lg-4 nbObjectsCol" id="nbObjectsCol">
 			<div class="card shadow-sm nbSidebar">
 				<div class="card-body pb-2">
 					<div class="d-flex align-items-center justify-content-between mb-2">
@@ -257,6 +258,9 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 			</div>
 		</div>
 
+		<?php // splitter (0.8.565): Code view from 1200 px – drag, arrow keys, double-click = back to the default; remembered in localStorage ?>
+		<div class="nbSplit" id="nbSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-controls="nbPanelCol nbPreviewCol"
+			aria-valuemin="25" aria-valuemax="80" aria-valuenow="60" aria-label="<?= h(t('builder_split')) ?>" title="<?= h(t('builder_split_tip')) ?>"></div>
 		<div class="col-xl-5 nbPreviewCol" id="nbPreviewCol">
 			<div class="card shadow-sm nbPreviewCard">
 				<div class="card-header d-flex flex-wrap align-items-center gap-2">

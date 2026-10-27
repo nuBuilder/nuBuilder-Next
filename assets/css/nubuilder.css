@@ -1,8 +1,8 @@
 /* nuBuilder Next form builder */
-.nuBuilderContainer { max-width: 1900px; }
+.nuBuilderContainer { max-width: none; }   /* 0.8.563: no cap – the preview takes the extra width */
 .nbSidebar { position: sticky; top: 4.5rem; max-height: calc(100vh - 6rem); display: flex; flex-direction: column; }
 .nbBar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; border-bottom: 1px solid var(--bs-border-color); }   /* sections + draft bar (0.8.531) */
-.nbBar .nbSections { border-bottom: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+.nbBar .nbSections { border-bottom: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }   /* overflow-y: no vertical scrollbar (0.8.564) */
 .nbBar .nbSections .nav-link { white-space: nowrap; }
 .nbBar .nbDraftBar { margin: 0 0 .4rem auto; padding: .3rem .6rem; }
 .nbBar .nbDraftBar:not(.nbDraftActive):not(.nbDraftInfo) { background: none; border-color: transparent; padding: 0; }   /* idle: only (i) + Start draft */
@@ -23,6 +23,10 @@
 .nbLegend { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--bs-secondary-color); font-weight: 600; margin-bottom: .35rem; float: none; width: auto; }
 .nbCode { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; tab-size: 4; }
 .nbCodeNav .btn { font-size: .75rem; padding: .15rem .5rem; }
+/* groups JavaScript & CSS · PHP (0.8.566): the headings in a column of their own, the buttons of both groups start at the same place */
+.nbCodeNav { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem .75rem; align-items: start; }
+.nbCodeGroup { display: contents; }
+.nbCodeGroupLbl { font-size: .68rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--bs-secondary-color); padding-top: .3rem; white-space: nowrap; }
 .nbCodeNav .nbHasCode::after { content: '●'; margin-inline-start: .3rem; font-size: .6rem; vertical-align: middle; color: var(--bs-success); }
 .nbListTable td { padding: .2rem; }
 .nbListTable .nbNum { width: 5rem; }
@@ -123,5 +127,34 @@
 	.nbFld.col-sm-8 { width: 40%; }
 	.nbFld.col-3 { width: 12.5%; }
 	.nbFld.col-12:not(.form-switch):not(:has(textarea)):not(:has(.nuAttrBtn, .nbAttrBtn)) { width: 50%; }
-	.nbFld.col-12:has(textarea) { flex: 0 0 auto; width: 75%; }
+	.nbFld.col-12:has(textarea):not(:has(textarea.nbCode)) { flex: 0 0 auto; width: 75%; }   /* code editors keep the full width (0.8.563) */
+}
+
+/* views (0.8.563, data-nb-view on #nbWorkspace, nubuilder.js select()): the objects list only on Objects; from 1200 px a grid where the
+   list and the middle card keep their width and the preview takes the rest (Code: the editors get the larger share) */
+.nbWorkspace:not([data-nb-view="objects"]) .nbObjectsCol { display: none; }
+@media (min-width: 992px) and (max-width: 1199.98px) {
+	.nbWorkspace:not([data-nb-view="objects"]) .nbPanelCol { flex: 0 0 auto; width: 100%; }
+}
+@media (min-width: 1200px) {
+	.nbWorkspace { display: grid; grid-template-columns: 320px minmax(420px, 540px) minmax(0, 1fr); align-items: start; }
+	.nbWorkspace > * { width: auto; max-width: none; min-width: 0; }
+	.nbWorkspace[data-nb-view="form"], .nbWorkspace[data-nb-view="history"] { grid-template-columns: minmax(460px, 680px) minmax(0, 1fr); }
+	.nbWorkspace[data-nb-view="browse"] { grid-template-columns: minmax(560px, 980px) minmax(0, 1fr); }
+	.nbWorkspace[data-nb-view="code"] { grid-template-columns: minmax(360px, var(--nb-split, 60%)) 12px minmax(320px, 1fr); }   /* splitter (0.8.565) */
+	/* preview folded away: the middle card takes the space */
+	.nbWorkspace.nbPreviewCollapsed { grid-template-columns: 320px minmax(0, 1fr) auto; }
+	.nbWorkspace.nbPreviewCollapsed:not([data-nb-view="objects"]) { grid-template-columns: minmax(0, 1fr) auto; }
+}
+.nbWorkspace[data-nb-view="code"] .nbCM .CodeMirror-scroll { max-height: none; }   /* Code view: the editor height comes from fitCode() */
+.nbWorkspace[data-nb-view="code"] .nbCodeBar { justify-content: flex-start !important; }   /* Code view: the toolbar on the left (0.8.565) */
+/* splitter between the code and the preview (0.8.565, Code view from 1200 px) */
+.nbSplit { display: none; }
+@media (min-width: 1200px) {
+	.nbWorkspace[data-nb-view="code"]:not(.nbPreviewCollapsed) > .nbSplit { display: block; align-self: stretch; padding: 0; cursor: col-resize; position: relative; touch-action: none; min-height: 12rem; }
+	.nbSplit::after { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--bs-border-color); transition: background .15s; }
+	.nbSplit:hover::after, .nbSplit:focus-visible::after, .nbSplitting .nbSplit::after { background: var(--bs-primary); }
+	.nbSplit:focus-visible { outline: none; }
+	.nbSplitting { cursor: col-resize; user-select: none; }
+	.nbSplitting iframe { pointer-events: none; }   /* the preview would swallow the mouse while dragging */
 }

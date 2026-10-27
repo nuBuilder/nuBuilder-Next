@@ -17,16 +17,19 @@ final class NuSidebar
 	public const JSON        = 'NUNEXT_SIDEBAR';
 	public const SETTING_GA  = 'sidebar_ga';
 	public const SETTING_DEF = 'sidebar_default';
+	public const JSON_PIN    = 'NUNEXT_SIDEBAR_PIN';
+	public const SETTING_PIN_GA = 'sidebar_pin_ga';
 	public const TABLE       = 'zzzzsys_nunext_recent';
 	public const KEEP        = 10;
 	/** Pages recorded under their start page tile key (the key is the route). */
 	public const PAGE_KEYS   = ['users', 'access', 'permissions', 'sessions', 'adminroles', 'userfields', 'forms', 'procedures', 'reports', 'prompts',
-		'apiclients', 'email', 'notifications', 'debug', 'update', 'settings', 'securitycheck', 'configfile', 'setupcode', 'setupwizard', 'branding',
+		'apiclients', 'email', 'notifications', 'debug', 'update', 'settings', 'securitycheck', 'configfile', 'globalcode', 'setupwizard', 'branding',
 		'dashboards', 'import', 'appcloner', 'sample', 'compat', 'vendor', 'tutorial', 'todo', 'selftest'];
 
 	/** True while the side bar is drawn (nu_layout_end closes its wrapper). */
 	public static bool $drawn = false;
 	private static ?bool $on = null;
+	private static ?bool $pin = null;
 
 	// ------------------------------------------------------------------ on / off
 
@@ -53,6 +56,35 @@ final class NuSidebar
 		elseif ($u['globeadmin']) self::setSetting(self::SETTING_GA, $on ? '1' : '0');
 		else NuUserJson::set((string)$u['id'], self::JSON, $on ? '1' : '0');
 		self::$on = $on;
+	}
+
+	/**
+	 * Pinned (0.8.556): the side bar stays open as a column next to the page (from 992 px; narrower screens keep the drawer) – per user
+	 * like on / off: sus_json NUNEXT_SIDEBAR_PIN, the globeadmin's in the setting row sidebar_pin_ga, demo visitors in the session.
+	 */
+	public static function pinned(): bool
+	{
+		if (self::$pin !== null) return self::$pin;
+		$u = NuAuth::user();
+		if (!$u) return self::$pin = false;
+		try {
+			if (!empty($u['demo'])) $v = $_SESSION['nu_sidebar_pin'] ?? '';
+			elseif ($u['globeadmin']) $v = (string)(self::setting(self::SETTING_PIN_GA) ?? '');
+			else $v = (string)NuUserJson::get((string)$u['id'], self::JSON_PIN);
+		} catch (Throwable) {
+			$v = '';
+		}
+		return self::$pin = $v === '1';
+	}
+
+	public static function setPinned(bool $on): void
+	{
+		$u = NuAuth::user();
+		if (!$u) return;
+		if (!empty($u['demo'])) $_SESSION['nu_sidebar_pin'] = $on ? '1' : '0';
+		elseif ($u['globeadmin']) self::setSetting(self::SETTING_PIN_GA, $on ? '1' : '0');
+		else NuUserJson::set((string)$u['id'], self::JSON_PIN, $on ? '1' : '0');
+		self::$pin = $on;
 	}
 
 	/** The default for users without an own choice (the globeadmin sets it; off when never set). */

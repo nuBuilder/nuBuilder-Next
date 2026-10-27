@@ -2,11 +2,11 @@
 	<h2 id="innodb-h">Storage engine (InnoDB)</h2>
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Converting old MyISAM tables.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>All tables should use <strong>InnoDB</strong> (transactions, row locking, crash safety). nuBuilder Next creates every new table – its own, the ones of new forms and <code>nuCreateTableFromSelect()</code> – as InnoDB, whatever <code>$nuConfigDBEngine</code> says. Older nuBuilder databases often still contain MyISAM tables.</p>
+	<p>All tables should use <strong>InnoDB</strong> (transactions, row locking, crash safety). nuBuilder Next creates every new table – its own, the ones of new forms and <code>nuCreateTableFromSelect()</code> – as InnoDB, whatever <code>$nuConfigDBEngine</code> says. Older nuBuilder Forte (4.x) databases often still contain MyISAM tables.</p>
 <ul>
 <li><em>System status</em> → <em>Storage engine</em> lists every table that is not InnoDB with its engine and approximate row count.</li>
 <li><em>Convert all to InnoDB</em> runs <code>ALTER TABLE … ENGINE=InnoDB</code> table by table. Tables that fail are listed; the others are converted. Make a backup first; large tables take time.</li>
-<li>Keep <code>$nuConfigDBEngine = "InnoDB"</code> in <code>nuconfig.php</code>: nuBuilder's update converts its system tables to that engine.</li>
+<li>Keep <code>$nuConfigDBEngine = "InnoDB"</code> in <code>nuconfig.php</code>: nuBuilder Forte's update converts its system tables to that engine.</li>
 </ul>
 	<p class="doc-see">See also: <a href="#databases">Databases: MySQL, MariaDB and SQL Server</a></p>
 </section>

@@ -3,14 +3,14 @@
 	<p class="doc-lead">Short answers to frequent questions.</p>
 	<p class="doc-for" data-doc="admin">For: Everyone</p>
 	<dl class="doc-faq">
-	<dt>Can nuBuilder and nuBuilder Next run on the same database at the same time?</dt>
-	<dd>Yes. They share forms, users, rights and data; nuBuilder Next keeps its own extras in <code>zzzzsys_nunext_*</code> tables that nuBuilder ignores. See <a href="#overview-same-db">nuBuilder and nuBuilder Next</a>.</dd>
-	<dt>Does my nuBuilder JavaScript and PHP still work?</dt>
-	<dd>Mostly – nuBuilder's functions are implemented for form code, hooks and procedures. The <a href="#compat">Compatibility check</a> lists what your application uses, and <a href="#porting">Differences</a> what behaves differently.</dd>
+	<dt>Can nuBuilder Forte (4.x) and nuBuilder Next run on the same database at the same time?</dt>
+	<dd>Yes. They share forms, users, rights and data; nuBuilder Next keeps its own extras in <code>zzzzsys_nunext_*</code> tables that nuBuilder Forte ignores. See <a href="#overview-same-db">nuBuilder Forte and nuBuilder Next</a>.</dd>
+	<dt>Does my nuBuilder Forte JavaScript and PHP still work?</dt>
+	<dd>Mostly – nuBuilder Forte's functions are implemented for form code, hooks and procedures. The <a href="#compat">Compatibility check</a> lists what your application uses, and <a href="#porting">Differences</a> what behaves differently.</dd>
 	<dt>Why can a user not see a form, a button or a field?</dt>
 	<dd>Rights: the form must be in the user's access level (with the button), and <a href="#data-access">field data access</a> may hide a field. Check it with <a href="#impersonate">Acting as another user</a>.</dd>
 	<dt>Where do I put code that should run for every form?</dt>
-	<dd>JavaScript and CSS: <a href="#setupcode">Custom code</a> (form pages, or every page with Global JS &amp; CSS and the page hook). PHP: the global hooks <code>nu_before_save</code> / <code>nu_before_edit</code> (<a href="#hooks">Hooks</a>).</dd>
+	<dd>JavaScript and CSS: <a href="#globalcode">Global code</a> (form pages, or every page with Global JS &amp; CSS and the page hook). PHP: the global hooks <code>nu_before_save</code> / <code>nu_before_edit</code> (<a href="#hooks">Hooks</a>).</dd>
 	<dt>How do I make a form work on phones?</dt>
 	<dd>Switch its layout from absolute to automatic or grid in the form builder. See <a href="#phones">Phones and small screens</a>.</dd>
 	<dt>How do I change a live form without disturbing users?</dt>

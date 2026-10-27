@@ -38,9 +38,38 @@
 		var first = sb.querySelector('.nuSbLink, .nuSbClose');
 		if (first) first.focus();
 	}
-	if (openBtn) openBtn.addEventListener('click', function () { if (document.body.classList.contains('nuSbOpen')) close(); else open(); });
+	// ---------------------------------------------------------------- pinned (0.8.556): a column next to the page from 992 px
+	var shell = sb.closest('.nuShell'), pinBtn = document.getElementById('nuSbPin'), wide = window.matchMedia('(min-width: 992px)');
+	function isPinned() { return !!shell && shell.classList.contains('nuSbPinned') && wide.matches; }
+	function showPin(on) {
+		if (!pinBtn) return;
+		var label = pinBtn.getAttribute(on ? 'data-t-unpin' : 'data-t-pin') || '';
+		pinBtn.title = label; pinBtn.setAttribute('aria-label', label);
+		pinBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+		pinBtn.querySelector('i').className = 'bi ' + (on ? 'bi-pin-angle-fill' : 'bi-pin-angle');
+		if (openBtn) openBtn.setAttribute('aria-expanded', on || document.body.classList.contains('nuSbOpen') ? 'true' : 'false');
+	}
+	function setPin(on) {
+		if (!shell) return;
+		if (on) close();                                     // the drawer becomes the column: no backdrop, page scrolls again
+		shell.classList.toggle('nuSbPinned', on);
+		showPin(on);
+		var fd = new FormData();
+		fd.append('_csrf', pinBtn.getAttribute('data-csrf') || ''); fd.append('action', 'pin'); fd.append('on', on ? '1' : '0');
+		fetch(pinBtn.getAttribute('data-url'), {method: 'POST', body: fd, credentials: 'same-origin'}).catch(function () { /* stays for this page */ });
+		window.dispatchEvent(new Event('resize'));           // editors, charts and tables next to it take the new width
+	}
+	if (pinBtn) pinBtn.addEventListener('click', function () { setPin(!(shell && shell.classList.contains('nuSbPinned'))); });
+	if (openBtn && isPinned()) openBtn.setAttribute('aria-expanded', 'true');
+
+	// the button left of the logo: drawer open / close – while pinned it unpins (the column goes away)
+	if (openBtn) openBtn.addEventListener('click', function () {
+		if (isPinned()) { setPin(false); return; }
+		if (document.body.classList.contains('nuSbOpen')) close(); else open();
+	});
 	if (closeBtn) closeBtn.addEventListener('click', close);
 	document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+	wide.addEventListener('change', function () { if (wide.matches && shell && shell.classList.contains('nuSbPinned')) close(); });   // drawer → column
 
 	// ---------------------------------------------------------------- right-click / long press menu of "Recently used" (0.8.489, 0.8.498)
 	// On an entry: Remove from recently used (POST ?p=sidebar action forget, then reload); everywhere in the list: Clear recently used

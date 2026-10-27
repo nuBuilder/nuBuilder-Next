@@ -167,8 +167,8 @@ final class NuPhp
 		// demo mode: only procedures with "Demo access" (nuBuilder's sph_demo, on when the column is missing) – and they cannot write
 		if (NuDemo::active() && (string)($php['sph_demo'] ?? '1') !== '1') return ['ok' => false, 'error' => t('demo_not_available')];
 		if (!$u['globeadmin'] && !NuAdmin::can('procedures', 'change') && (string)$php['sph_global'] !== '1') {   // admin role "Procedures: change": every one
-			$granted = (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php WHERE slp_zzzzsys_access_id = ? AND slp_zzzzsys_php_id = ?',
-				[$u['access_id'], $php['zzzzsys_php_id']]);
+			[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // main + additional access levels (0.8.585)
+			$granted = (int)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, $php['zzzzsys_php_id']]);
 			if (!$granted) return ['ok' => false, 'error' => t('form_err_proc_denied', $codeOrId)];
 		}
 		self::run((string)$php['sph_php'], $hash + ['PROCEDURE_CODE' => $php['sph_code']], (string)$php['sph_code']);

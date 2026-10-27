@@ -40,7 +40,7 @@ $routes = [
 	'notifications' => [],
 	'notifyapi'   => ['json' => true],
 	'homejs'      => ['json' => true],
-	'customcode'  => ['json' => true, 'public' => true],   // Global JS & CSS as files (0.8.523, NuCustomCode::serve)   // JavaScript of the start page hook nu_home (0.8.379, NuHomeHook::serveJs)
+	'globalcodefile' => ['json' => true, 'public' => true],   // Global JS & CSS as files (0.8.523, NuCustomCode::serve; ?p=customcode until 0.8.573)   // JavaScript of the start page hook nu_home (0.8.379, NuHomeHook::serveJs)
 	'audit'       => [],
 	'audithistory' => [],
 	'debug'       => [],
@@ -54,7 +54,7 @@ $routes = [
 	'apiplayground' => [],
 	'settings'    => [],
 	'configfile'  => [],
-	'setupcode'   => [],
+	'globalcode'   => [],
 	'userfields'  => [],   // custom user fields (0.8.454)
 	'account'     => [],   // My account: the custom fields a user fills in himself (0.8.454)
 	'todo'        => [],
@@ -96,6 +96,7 @@ $routes = [
 	'file'        => [],
 	'translations' => [],
 	'formatapi'   => ['json' => true],
+	'fnlist'      => ['json' => true],   // function list of the code editors (0.8.593, pages/nufnlist.php)
 	'builder'     => [],
 	'formai'      => [],                     // form with AI (0.8.403)
 	'dataaccess'  => [],                     // field data access + column visibility of a form (0.8.480)
@@ -109,6 +110,16 @@ $routes = [
 if (is_string($_GET['u'] ?? null) && !isset($routes[(string)($_GET['p'] ?? '')]) && !nu_is_post()) {
 	require __DIR__ . '/pages/nuautologin.php';
 	exit;
+}
+
+// nuBuilder's permalink (nuSetURLPermaLink, "Copy permalink"): index.php?f=<form>&r=<record>[&h=<home>] – the same form here (0.8.568;
+// before: the start page, also on F5 of such an address). h (nuBuilder's home form) is not used; "undefined" / "null" count as empty.
+if (!isset($_GET['p']) && is_string($_GET['f'] ?? null) && $_GET['f'] !== '' && !nu_is_post()) {
+	$clean = static fn($v) => is_string($v) && !in_array(strtolower(trim($v)), ['', 'undefined', 'null'], true) ? trim($v) : null;
+	if (($pf = $clean($_GET['f'])) !== null && preg_match('/^[A-Za-z0-9_\-]{1,50}$/', $pf)) {
+		$pr = $clean($_GET['r'] ?? null);
+		nu_redirect(nu_url('form', ['f' => $pf, 'r' => $pr !== null && preg_match('/^[A-Za-z0-9_\-.]{1,100}$/', $pr) ? $pr : null]));
+	}
 }
 
 $p = $_GET['p'] ?? 'home';

@@ -237,6 +237,14 @@ if (nu_is_post()) {
 			if ($action === 'lp_install') {
 				nu_ignore_abort();
 				$ov = NuLibs::overview();
+				// packs from GitHub: read the index again first (0.8.556) – the saved one may be older than the release's files (same names,
+				// new sizes / checksums → "does not match the index"); on an error the saved index stays as before
+				$fromGh = false;
+				foreach ($slots as $sl) if (($ov[$sl]['best']['where'] ?? '') === 'github' || empty($ov[$sl]['best'])) $fromGh = true;
+				if ($fromGh && NuLibs::ghState()['repo'] !== '') {
+					$g = NuLibs::ghCheck();
+					if ($g['error'] === '') $ov = NuLibs::overview(false, $g);
+				}
 				$done = $fail = [];
 				foreach ($slots as $sl) {
 					$best = $ov[$sl]['best'] ?? null;
@@ -473,7 +481,7 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 </ul>
 <div class="tab-content" id="updPanes" data-nu-tab-restore>
 <div class="tab-pane fade<?= $updTab === 'update' ? ' show active' : '' ?>" id="updPane-update" role="tabpanel" aria-labelledby="updTabBtn-update" tabindex="0">
-<?php if ($finished): ?>
+<?php ob_start(); if ($finished): ?>
 	<div class="card shadow-sm mb-4 border-<?= $finished['ok'] ? 'success' : 'danger' ?>" id="updFinished">
 		<div class="card-body">
 			<h2 class="h5 <?= $finished['ok'] ? 'text-success' : 'text-danger' ?>"><i class="bi <?= $finished['ok'] ? 'bi-check-circle' : 'bi-x-circle' ?> me-2"></i><?= h(t($finished['ok'] ? 'upd_done' : 'upd_done_db_error', $finished['from'], $finished['to'])) ?></h2>
@@ -488,7 +496,11 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 			<?php endif; ?>
 		</div>
 	</div>
-<?php endif; ?>
+<?php endif;
+// developer mode (0.8.588 / 0.8.590): after an update the upload card comes first, the result of the update below it
+$finishedHtml = (string)ob_get_clean();
+$devUploadFirst = $finished && !$check && $updOn && !empty(nu_cfg('nuConfigDevMode'));
+if (!$devUploadFirst) echo $finishedHtml; ?>
 
 <?php if ($check): ?>
 	<div class="card shadow-sm mb-4" id="updCheck">
@@ -627,7 +639,7 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 			<?php endif; ?>
 		</div>
 	</div>
-<?php elseif (!$finished && $updOn): ?>
+<?php elseif ((!$finished || !empty(nu_cfg('nuConfigDevMode'))) && $updOn):   // developer mode: the upload card also right after an update, ABOVE its result (0.8.590) ?>
 	<?php $folderPk = NuUpdate::folderPackages(); $folderReady = (bool)array_filter($folderPk, static fn($x) => $x['ok']); ?>
 	<div class="card shadow-sm mb-4" id="updInstall">
 		<div class="card-body">
@@ -719,6 +731,7 @@ if (!isset($tabs[$updTab])) $updTab = 'update'; ?>
 			</div>
 		</div>
 	</div>
+<?php if ($devUploadFirst) echo $finishedHtml; ?>
 <?php endif; ?>
 
 <?php if ($reqOk): ?>

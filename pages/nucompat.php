@@ -9,7 +9,7 @@ NuAdmin::require('compat', 'view');            // the scan (POST) only reads
 
 $withSystem = ($_GET['sys'] ?? '') === '1';
 $all        = ($_GET['all'] ?? '') === '1';
-$res        = NuCompat::scan($withSystem);
+$res        = NuCompat::scan($withSystem);   // links to the form builder open in a new tab (0.8.579)
 $nb         = ['js' => NuCompat::nuBuilderFunctions('js'), 'php' => NuCompat::nuBuilderFunctions('php')];
 $forms      = nu_forms();
 
@@ -69,7 +69,7 @@ nu_layout_start(t('compat_title'), 'home');
 							$links = [];
 							foreach (array_slice($r['forms'], 0, 6) as $fid) {
 								$label = $forms[$fid]['code'] ?? $fid;
-								$links[] = isset($forms[$fid]) && !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '">' . h($label) . '</a>' : h($label);
+								$links[] = isset($forms[$fid]) && !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($label) . '</a>' : h($label);
 							}
 							echo implode(', ', $links);
 							?>
@@ -102,7 +102,7 @@ nu_layout_start(t('compat_title'), 'home');
 					<td><?= $since ? '<span class="badge text-bg-success">' . h(t('compat_f_since', $since)) . '</span>' : '<span class="badge text-bg-danger">' . h(t('compat_f_not_yet')) . '</span>' ?></td>
 					<td class="small">
 						<?php $links = [];
-						foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
+						foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
 						echo implode(', ', array_slice($links, 0, 6)); ?>
 						<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($places) ?> <?= h(t('compat_places')) ?></summary>
 							<ul class="mb-0 ps-3"><?php foreach (array_slice($places, 0, 60) as $pl): ?><li><?= h($pl['where']) ?><?php if ($pl['detail'] !== ''): ?> – <code class="text-break"><?= h($pl['detail']) ?></code><?php endif; ?></li><?php endforeach; ?></ul></details>
@@ -127,7 +127,7 @@ nu_layout_start(t('compat_title'), 'home');
 			<tbody>
 			<?php foreach ($unq as $u): $fid = $u['form']; ?>
 				<tr>
-					<td class="small"><?php if ($fid !== '' && isset($forms[$fid]) && !str_starts_with($fid, 'nu')): ?><a href="<?= h(nu_url('builder', ['f' => $fid])) ?>"><?= h($u['where']) ?></a><?php else: ?><?= h($u['where']) ?><?php endif; ?></td>
+					<td class="small"><?php if ($fid !== '' && isset($forms[$fid]) && !str_starts_with($fid, 'nu')): ?><a href="<?= h(nu_url('builder', ['f' => $fid])) ?>" target="_blank" rel="noopener"><?= h($u['where']) ?></a><?php else: ?><?= h($u['where']) ?><?php endif; ?></td>
 					<td><span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h(strtoupper($u['lang'])) ?></span></td>
 					<td><?php foreach ($u['vars'] as $vn): ?><code class="me-2">#<?= h($vn) ?>#</code><?php endforeach; ?></td>
 				</tr>

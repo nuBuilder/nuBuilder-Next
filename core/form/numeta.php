@@ -76,8 +76,8 @@ final class NuFormMeta
 
 		$objects = $snap !== null ? array_values((array)($snap['objects'] ?? [])) : $db->all('SELECT * FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$this->id]);
 		usort($objects, static fn($a, $b) =>
-			[$tabOrder[$a['sob_all_zzzzsys_tab_id']] ?? 999, (int)$a['sob_all_order'], (int)$a['sob_all_top'], (int)$a['sob_all_left']]
-			<=> [$tabOrder[$b['sob_all_zzzzsys_tab_id']] ?? 999, (int)$b['sob_all_order'], (int)$b['sob_all_top'], (int)$b['sob_all_left']]);
+			[$tabOrder[$a['sob_all_zzzzsys_tab_id']] ?? 999, (int)($a['sob_all_order'] ?? 0), (int)($a['sob_all_top'] ?? 0), (int)($a['sob_all_left'] ?? 0)]
+			<=> [$tabOrder[$b['sob_all_zzzzsys_tab_id']] ?? 999, (int)($b['sob_all_order'] ?? 0), (int)($b['sob_all_top'] ?? 0), (int)($b['sob_all_left'] ?? 0)]);
 
 		foreach ($objects as $o) {
 			$o['nunext'] = self::nunextJson($o['sob_all_json'] ?? null);

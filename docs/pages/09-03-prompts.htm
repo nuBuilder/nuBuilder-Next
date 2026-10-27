@@ -2,9 +2,9 @@
 	<h2 id="prompts-h">AI: prompt generator and forms with AI</h2>
 	<p class="doc-lead">Building prompts for AI tools; nuBuilder Next itself never calls an AI.</p>
 	<p class="doc-for" data-doc="admin">For: Users with rights on: nupromptgenerator</p>
-	<p><em>Forms → Tools → Prompt generator</em> (also a start page tile; rights on nuBuilder's form <code>nupromptgenerator</code>) builds a prompt for an AI tool – nuBuilder Next does not call any AI, you copy the prompt. Prompts are stored in nuBuilder's table <code>zzzzsys_prompt_generator</code> (created if missing), so they are shared with nuBuilder.</p>
+	<p><em>Forms → Tools → Prompt generator</em> (also a start page tile; rights on nuBuilder Forte's form <code>nupromptgenerator</code>) builds a prompt for an AI tool – nuBuilder Next does not call any AI, you copy the prompt. Prompts are stored in nuBuilder Forte's table <code>zzzzsys_prompt_generator</code> (created if missing), so they are shared with nuBuilder Forte (4.x).</p>
 <ul>
-<li><strong>Prompt</strong>: what the AI should do. <strong>Languages</strong>, <strong>Scopes</strong> (where the code runs: procedure, Before Save …) and <strong>Topics</strong> add short nuBuilder notes and wiki links; <strong>Tables</strong> add the column list with types and keys (no data, at most 15 tables).</li>
+<li><strong>Prompt</strong>: what the AI should do. <strong>Languages</strong>, <strong>Scopes</strong> (where the code runs: procedure, Before Save …) and <strong>Topics</strong> add short nuBuilder Forte notes and wiki links; <strong>Tables</strong> add the column list with types and keys (no data, at most 15 tables).</li>
 <li>The magic-wand button suggests topics, languages and scopes from words in the prompt (English and German), e.g. "before save" → PHP Before Save, "2FA" → Two Factor Authentication.</li>
 <li><strong>Instruction</strong> (first field) is the general instruction at the top of the prompt. <strong>Complete prompt</strong> updates while you type: instruction, context, then the request at the end. <em>Copy prompt</em> puts it on the clipboard; the counter shows the number of characters.</li>
 <li><strong>Code</strong> is only needed to save. <strong>Template</strong> marks a reusable starting point (filter in the list); <em>Clone</em> copies a prompt.</li>

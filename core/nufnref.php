@@ -180,7 +180,7 @@ final class NuFnRef
 		$v = (string)($it['v'] ?? '');
 		$badge = $next
 			? '<span class="badge nuFnNext">nuBuilder Next</span>'   // the version ("v") stays in the JSON for the changelog, not in the help
-			: ($kind === 'hook' ? '<span class="badge nuFnHook">hook</span>' : '<span class="badge nuFnNb">nuBuilder</span>');
+			: ($kind === 'hook' ? '<span class="badge nuFnHook">hook</span>' : '<span class="badge nuFnNb">nuBuilder Forte</span>');
 		if ($kind === 'method' && !$next) $badge .= '<span class="badge nuFnKind">method</span>';
 		$h = '<article class="nuFn" id="' . h(self::anchor($lang, $n)) . '" data-nu-fn="' . h(strtolower($n)) . '">'
 			. '<header class="nuFnHead"><h5 class="nuFnName">' . h($n) . '</h5>' . $badge

@@ -2,13 +2,13 @@
 	<h2 id="cloner-h">Cloner (copy a form)</h2>
 	<p class="doc-lead">Copying a form with its objects and code.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p><em>Forms → Tools → Cloner</em>, or the copy button of a form in the list (globeadmin), copies a form – as nuBuilder's cloner:</p>
+	<p><em>Forms → Tools → Cloner</em>, or the copy button of a form in the list (globeadmin), copies a form – as nuBuilder Forte's cloner:</p>
 <ul>
 <li><strong>What</strong>: the form with its browse columns and PHP (Before Browse, Before Save …), the chosen <strong>tabs</strong> with their objects, events and object PHP (e.g. lookup After Browse); optionally its <strong>subforms</strong> and <strong>iframe forms</strong> (each copied once, the copied objects point to the copies – the original stays untouched) and the <strong>access level rights</strong>.</li>
 <li><strong>Where</strong>: as a <em>new form</em> (code and description can be changed; default <code>code_clone_1</code>, the first free number) or <em>into an existing form</em> – the tabs come after its own, object ids that exist there get <code>_2</code>, <code>_3</code> … (listed afterwards).</li>
 <li><strong>Only create SQL</strong>: instead of cloning, the INSERT statements are shown to copy or download (optionally with the same primary keys, REPLACE INTO and notes) – e.g. to move a form to another database.</li>
 <li>Everything runs in one transaction: an error changes nothing. The copy uses the same table as the source. The result links to the new form and the form designer; the form history and the Log record it.</li>
-<li><strong>Saved settings</strong>: the Cloner opens with a list of saved settings – <em>Add</em> (or the copy button of a form) opens a new one, <em>Save</em> keeps source form, destination, tabs, subforms, iframe forms and the options; <em>Clone</em> copies them, <em>Delete</em> removes them. They are stored in nuBuilder's table <code>zzzzsys_cloner</code> – the same settings nuBuilder's Cloner opens, and the other way round. <em>Clone</em> / <em>Create SQL</em> work with the values on the page, saved or not. The code of a new form is not saved – a free one is suggested each time.</li>
+<li><strong>Saved settings</strong>: the Cloner opens with a list of saved settings – <em>Add</em> (or the copy button of a form) opens a new one, <em>Save</em> keeps source form, destination, tabs, subforms, iframe forms and the options; <em>Clone</em> copies them, <em>Delete</em> removes them. They are stored in nuBuilder Forte's table <code>zzzzsys_cloner</code> – the same settings nuBuilder Forte's Cloner opens, and the other way round. <em>Clone</em> / <em>Create SQL</em> work with the values on the page, saved or not. The code of a new form is not saved – a free one is suggested each time.</li>
 </ul>
 	<p class="doc-see">See also: <a href="#appcloner">App cloner (copy the whole application)</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nucloner.php</code></li><li><code>core/nuclonerconfig.php</code></li></ul></details>

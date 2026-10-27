@@ -5,6 +5,8 @@
   {"kind": "value", "form": "*", "field": ".*", "nub": "^\\S*\\s?-[\\d.,]+$", "next": "^\\(.*\\)$", "reason": "nuBuilder Next: format option 'negative' = brackets / red_brackets (Formats page) – nuBuilder has no such option and shows a minus"},
   {"kind": "cell",  "form": "*", "field": ".*", "nub": "^\\S*\\s?-[\\d.,]+$", "next": "^\\(.*\\)$", "reason": "as above, in browse lists"},
   {"kind": "value", "form": "*", "field": ".*", "nub": "^-?[\\d.,]+$", "next": "^-?[\\d.,]+ ?%$", "reason": "nuBuilder Next shows the suffix of a number format (1000.0 %) – nuBuilder drops it"},
-  {"kind": "cell",  "form": "*", "field": ".*", "nub": "^-?[\\d.,]+$", "next": "^-?[\\d.,]+ ?%$", "reason": "as above, in browse lists"}
+  {"kind": "cell",  "form": "*", "field": ".*", "nub": "^-?[\\d.,]+$", "next": "^-?[\\d.,]+ ?%$", "reason": "as above, in browse lists"},
+  {"kind": "value", "form": "samplecustomer", "field": "cus_phone", "reason": "input mask of the field: nuBuilder Forte shows the stored value when the record opens, nuBuilder Next the masked one (the saved value is the same) – open point in TODO.md, to be decided"},
+  {"kind": "records", "form": "ttcus", "field": "rows", "nub": "^$", "reason": "test kit form with complex browse SQL: nuBuilder Forte's git HEAD (23559e7, \"complex SQL in Browse Forms\") shows no rows – a nuBuilder Forte problem, nuBuilder Next shows the records; open point in TODO.md"}
  ]
 }

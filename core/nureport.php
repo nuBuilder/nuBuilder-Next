@@ -78,8 +78,8 @@ final class NuReport
 		if (!$u) return false;
 		if ($u['globeadmin']) return true;
 		if (!nu_db()->tableExists(self::ACCESS)) return false;
-		return (bool)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_access_report WHERE sre_zzzzsys_access_id = ? AND sre_zzzzsys_report_id = ?',
-			[(string)$u['access_id'], (string)$r['zzzzsys_report_id']]);
+		[$in, $lv] = NuUserAccess::inSql('sre_zzzzsys_access_id', $u);   // main + additional access levels (0.8.585)
+		return (bool)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_access_report WHERE $in AND sre_zzzzsys_report_id = ?", [...$lv, (string)$r['zzzzsys_report_id']]);
 	}
 
 	/** Access levels with [zzzzsys_access_id, sal_code, sal_description, sal_group, granted]. */

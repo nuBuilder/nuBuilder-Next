@@ -115,7 +115,7 @@ final class NuDashboard
 		if (!$u) return false;
 		if ($u['globeadmin'] || NuAdmin::can('dashboards', 'view')) return true;
 		$a = self::access($d);
-		return !$a || in_array((string)$u['access_id'], $a, true);
+		return !$a || (bool)array_intersect(NuUserAccess::levels($u), $a);   // main or additional access level (0.8.585)
 	}
 
 	/** Dashboards on the start page of the current user (not for the globeadmin – his start page is the tiles). */

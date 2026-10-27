@@ -6,10 +6,10 @@ defined('NU_ROOT') || exit;
  * Global JS & CSS (0.8.523) – the second layer of Admin tools → Custom code: JavaScript and CSS for every page of nuBuilder Next,
  * next to nuBuilder's Setup → Header / Style / Include (which stay form-only, as in nuBuilder).
  *   storage   settings rows custom_js, custom_css, custom_scope ({"forms":1,"app":1,"login":0}) – never zzzzsys_setup, so nuBuilder is untouched
- *   output    as files of this server (?p=customcode&t=js|css&v=<hash>) – the strict Content-Security-Policy of nuBuilder Next's pages
+ *   output    as files of this server (?p=globalcodefile&t=js|css&v=<hash>) – the strict Content-Security-Policy of nuBuilder Next's pages
  *             stays; CSS in the head (before the page's own styles), JS before </body> (on form pages before Setup → Header and the
  *             form's code, so nuOnLoad / nuLoadBrowseGlobal of a form always win)
- *   never     on the Custom code page itself and the Update page, and not with ?safe=1 (globeadmin / admin right setupcode)
+ *   never     on the Custom code page itself and the Update page, and not with ?safe=1 (globeadmin / admin right globalcode)
  *   hook      <body data-nu-page data-nu-mode data-nu-form data-nu-admin> + nuOnPageLoad(page, info) and the event nu:pageload
  *             (assets/js/nuapp.js; on form pages called by the runtime after nuOnLoad)
  */
@@ -19,7 +19,7 @@ final class NuCustomCode
 	public const SCOPE_KEY = 'custom_scope';
 	public const SCOPES = ['forms' => true, 'app' => true, 'login' => false];   // defaults
 	/** Pages that never load global code: the editor (to repair it) and the update page (to roll back a release). */
-	public const EXCLUDED = ['setupcode', 'update'];
+	public const EXCLUDED = ['globalcode', 'update'];
 	/** nuBuilder's hook names – global code should not define them (the compatibility check warns). */
 	public const NB_HOOKS = ['nuOnLoad', 'nuLoadBrowseGlobal', 'nuLoadEditGlobal', 'nuBeforeSave', 'nuAfterSave', 'nuBeforeDelete', 'nuAfterDelete',
 		'nuOnSave', 'nuOnClone', 'nuBeforeSaveGlobal', 'nuAfterSaveGlobal', 'nuSelectBrowse', 'nuOnSetSaved', 'nuOnTabSelected'];
@@ -34,7 +34,8 @@ final class NuCustomCode
 		if (self::$cache !== null) return self::$cache;
 		$out = ['js' => '', 'css' => '', 'scope' => self::SCOPES];
 		try {
-			if (!nu_db()->tableExists('zzzzsys_nunext_setting')) return self::$cache = $out;
+			// installer (no nuconfig.php yet): nu_db() would end the request with "nuconfig.php not found" (0.8.552)
+			if (!is_file(nu_config_path()) || !nu_db()->tableExists('zzzzsys_nunext_setting')) return self::$cache = $out;
 			$rows = nu_db()->all('SELECT zzzzsys_nunext_setting_id AS k, setting_value AS v FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN (?, ?, ?)',
 				[self::KEYS['js'], self::KEYS['css'], self::SCOPE_KEY]);
 			foreach ($rows as $r) {
@@ -57,6 +58,18 @@ final class NuCustomCode
 	}
 
 	/** Save JS, CSS and scope; returns the names of the changed parts. */
+	/**
+	 * Global CSS is served as a .css file, where <style> is not CSS (the browser skips the rule it runs into). CSS pasted from Form CSS
+	 * often comes wrapped: when the text starts with <style …> and ends with </style>, every <style …> / </style> tag is removed
+	 * (several blocks too). @return ?string the CSS without the tags, null when it was not wrapped (0.8.557)
+	 */
+	public static function unwrapStyle(string $css): ?string
+	{
+		$t = trim($css);
+		if (!preg_match('#^<style\b[^>]*>#i', $t) || !preg_match('#</style>$#i', $t)) return null;
+		return trim((string)preg_replace('#</?style\b[^>]*>#i', '', $t)) . "\n";
+	}
+
 	public static function save(?string $js, ?string $css, ?array $scope): array
 	{
 		NuSchema::ensure();
@@ -93,7 +106,7 @@ final class NuCustomCode
 		if (($_GET['safe'] ?? '') !== '1') return false;
 		try {
 			$u = NuAuth::user();
-			return $u !== null && (!empty($u['globeadmin']) || NuAdmin::can('setupcode', 'view'));
+			return $u !== null && (!empty($u['globeadmin']) || NuAdmin::can('globalcode', 'view'));
 		} catch (Throwable) {
 			return false;
 		}
@@ -111,7 +124,7 @@ final class NuCustomCode
 
 	public static function url(string $kind): string
 	{
-		return nu_url('customcode', ['t' => $kind, 'v' => self::hash(self::get()[$kind])]);
+		return nu_url('globalcodefile', ['t' => $kind, 'v' => self::hash(self::get()[$kind])]);
 	}
 
 	public static function cssTag(): string
@@ -139,7 +152,7 @@ final class NuCustomCode
 		return $a;
 	}
 
-	/** ?p=customcode&t=js|css&v=<hash> – the file. Signed-in users; without a session only while the scope "sign-in pages" is on. */
+	/** ?p=globalcodefile&t=js|css&v=<hash> – the file. Signed-in users; without a session only while the scope "sign-in pages" is on. */
 	public static function serve(): never
 	{
 		$kind = ($_GET['t'] ?? '') === 'css' ? 'css' : 'js';

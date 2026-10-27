@@ -53,7 +53,7 @@ $hasTotp  = NuTwoFA::hasTotp($uid);
 $setup    = $_SESSION['nu_totp_setup'] ?? null;
 $devices  = NuTwoFA::deviceCount($uid);
 $required = $u['globeadmin'] ? (bool)nu_cfg('nuConfig2FAAdmin')
-	: ((bool)nu_cfg('nuConfig2FAUser') && (string)nu_db()->value('SELECT sal_use_2fa FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]) === '1');
+	: ((bool)nu_cfg('nuConfig2FAUser') && NuAuth::levels2fa((string)nu_db()->value('SELECT sal_use_2fa FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]) === '1', (string)$u['id']));
 $email    = $u['globeadmin'] ? (string)(nu_cfg('nuConfigGlobeadminEmail') ?: NuMail::settings()['from']) : $u['email'];
 
 $foot = $setup ? '<script src="' . nu_asset(NU_QRCODE . '/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>' : '';

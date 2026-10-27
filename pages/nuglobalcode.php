@@ -7,12 +7,12 @@ defined('NU_ROOT') || exit;
  *   Form pages (Form JavaScript / Form CSS / Form includes): nuBuilder's Setup → Header, Style and Include (<link> / <script> tags) – the same
  * columns of zzzzsys_setup, so nuBuilder and nuBuilder Next stay in step. Used on every form page (pages/nuform.php, NuIncludes::setupTags).
  * POST action save: only changed fields are written; a field someone else changed since the page was opened is refused (hash of the
- * loaded values). Tabs in the address (#header, #style, #include – nuapp.js data-nu-hash-tabs); editors: assets/js/nusetupcode.js.
+ * loaded values). Tabs in the address (#header, #style, #include – nuapp.js data-nu-hash-tabs); editors: assets/js/nuglobalcode.js.
  *   All pages (0.8.523): Global JS (#gjs) and Global CSS (#gcss) + where they run (scope) – NuCustomCode, nuBuilder Next's own settings.
  */
 
-NuAdmin::require('setupcode');
-NuSecurity::requireRecentAuth(nu_url('setupcode'));   // code for every user's form pages: password again after 15 minutes
+NuAdmin::require('globalcode');
+NuSecurity::requireRecentAuth(nu_url('globalcode'));   // code for every user's form pages: password again after 15 minutes
 
 const NU_SETUP_CODE = ['header' => 'set_header', 'style' => 'set_style', 'include' => 'set_include'];
 
@@ -34,13 +34,16 @@ $global = NuCustomCode::get();
 $gValues = ['gjs' => str_replace("\r\n", "\n", $global['js']), 'gcss' => str_replace("\r\n", "\n", $global['css'])];
 
 if (nu_is_post() && nu_post('action') === 'save') {
-	NuAdmin::require('setupcode', 'change');
+	NuAdmin::require('globalcode', 'change');
 	$set = [];
 	$conflict = [];
 	$gNew = ['gjs' => null, 'gcss' => null];
+	$unwrapped = false;
 	foreach ($gValues as $k => $old) {
 		if (!isset($_POST['code'][$k]) || !is_string($_POST['code'][$k])) continue;
 		$new = str_replace("\r\n", "\n", $_POST['code'][$k]);
+		// Global CSS: a surrounding <style>…</style> is removed – it is served as a .css file (0.8.557)
+		if ($k === 'gcss' && ($plain = NuCustomCode::unwrapStyle($new)) !== null) { $new = $plain; $unwrapped = true; }
 		if ($new === $old) continue;
 		if ((string)($_POST['hash'][$k] ?? '') !== $hashOf($old)) { $conflict[] = $k; continue; }
 		$gNew[$k] = $new;
@@ -60,6 +63,9 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			'chars' => array_filter(['js' => $gNew['gjs'] !== null ? mb_strlen($gNew['gjs']) : null, 'css' => $gNew['gcss'] !== null ? mb_strlen($gNew['gcss']) : null], static fn($v) => $v !== null)]);
 		if ($gNew['gjs'] !== null && ($clash = NuCustomCode::hookClashes($gNew['gjs']))) nu_flash('warning', t('scode_hook_clash', implode(', ', $clash)));
 	}
+	if ($unwrapped && !$conflict) {
+		nu_flash('info', t('scode_css_unwrapped'));
+	}
 	$gNames = array_map(static fn($k) => t('scode_tab_' . ['js' => 'gjs', 'css' => 'gcss', 'scope' => 'scope'][$k]), $gChanged);
 	if ($conflict) {
 		nu_flash('danger', t('scode_conflict', implode(', ', array_map(static fn($k) => t('scode_tab_' . $k), $conflict))));
@@ -68,7 +74,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	} elseif (!$set && !$gChanged) {
 		nu_flash('info', t('scode_unchanged'));
 		$st = preg_replace('/[^a-z]/', '', (string)nu_post('tab'));
-		nu_redirect(nu_url('setupcode', $st !== '' ? ['tab' => $st] : []) . ($st !== '' ? '#' . $st : ''));   // ?tab=: the server opens it (0.8.451)
+		nu_redirect(nu_url('globalcode', $st !== '' ? ['tab' => $st] : []) . ($st !== '' ? '#' . $st : ''));   // ?tab=: the server opens it (0.8.451)
 	} else {
 		$names = [];
 		if ($set && $row !== null) {
@@ -79,11 +85,11 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		}
 		nu_flash('success', t('scode_saved', implode(', ', array_merge($names, $gNames))));
 		$st = preg_replace('/[^a-z]/', '', (string)nu_post('tab'));
-		nu_redirect(nu_url('setupcode', $st !== '' ? ['tab' => $st] : []) . ($st !== '' ? '#' . $st : ''));   // ?tab=: the server opens it (0.8.451)
+		nu_redirect(nu_url('globalcode', $st !== '' ? ['tab' => $st] : []) . ($st !== '' ? '#' . $st : ''));   // ?tab=: the server opens it (0.8.451)
 	}
 }
 
-$canChange = NuAdmin::can('setupcode', 'change') && empty(NuAuth::user()['demo']);
+$canChange = NuAdmin::can('globalcode', 'change') && empty(NuAuth::user()['demo']);
 $tabs = ['header' => ['bi-filetype-js', 'javascript'], 'style' => ['bi-filetype-css', 'css'], 'include' => ['bi-code-slash', 'htmlmixed'],
 	'gjs' => ['bi-filetype-js', 'javascript'], 'gcss' => ['bi-filetype-css', 'css']];
 $cols += ['gjs' => 'custom_js', 'gcss' => 'custom_css'];                // the global tabs are always there
@@ -93,7 +99,7 @@ $tplData = NuCodeTemplates::forPage();
 
 nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'head' => '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">']);
 ?>
-<form method="post" action="<?= h(nu_url('setupcode')) ?>" id="scodeForm" data-nu-guard>
+<form method="post" action="<?= h(nu_url('globalcode')) ?>" id="scodeForm" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="tab" id="scodeTab" value="">
 	<div class="nuTitleBar mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-code-square me-2"></i><?= h(t('scode_title')) ?></h1>
@@ -122,8 +128,10 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'head' 
 		<?php foreach ($tabs as $k => [, $mode]): if (!isset($cols[$k])) continue; $global = $k === 'gjs' || $k === 'gcss'; ?>
 			<div class="tab-pane fade<?= $k === $scTab ? ' show active' : '' ?>" id="scodePane-<?= $k ?>" role="tabpanel" aria-labelledby="scodeTabBtn-<?= $k ?>" tabindex="0">
 				<div class="d-flex flex-wrap align-items-start gap-2 mb-2">
-					<p class="small text-body-secondary mb-0 me-auto scodeHint"><?= h(t('scode_hint_' . $k)) ?><?php if (!$global): $nbTip = t('scode_nb_field', ['header' => 'Header', 'style' => 'Style', 'include' => 'Include'][$k], NU_SETUP_CODE[$k] ?? $k); // nuBuilder's name of the field (0.8.525) ?>
+					<p class="small text-body-secondary mb-0 scodeHint"><?= h(t('scode_hint_' . $k)) ?><?php if (!$global): $nbTip = t('scode_nb_field', ['header' => 'Header', 'style' => 'Style', 'include' => 'Include'][$k], NU_SETUP_CODE[$k] ?? $k); // nuBuilder's name of the field (0.8.525) ?>
 						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($nbTip) ?>" title="<?= h($nbTip) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?></p>
+					<div class="w-100" aria-hidden="true"></div>
+					<span class="scodeTools d-flex gap-2" data-for="scode-<?= $k ?>"></span><?php // hint on its own line, the toolbar below it on the left, right above the editor (0.8.592) ?><?php // editor toolbar (0.8.554): undo / redo, search, comment, format, full screen – nucodetools.js ?>
 					<?php if ($canChange && !empty($tplData['tabs'][$k])): // templates (0.8.524, core/nucodetemplates.php): insert at the cursor or preview ?>
 						<div class="dropdown scodeTpl" data-tab="<?= $k ?>">
 							<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-magic me-1"></i><?= h(t('ctpl_menu')) ?></button>
@@ -135,7 +143,7 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'head' 
 					<?php if ($k === 'gjs' && ($clash = NuCustomCode::hookClashes((string)$values['gjs']))): ?>
 						<div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('scode_hook_clash', implode(', ', $clash))) ?></div>
 					<?php endif; ?>
-					<?php // where it runs – the same three switches on both global tabs, kept in step by nusetupcode.js (only the first is sent) ?>
+					<?php // where it runs – the same three switches on both global tabs, kept in step by nuglobalcode.js (only the first is sent) ?>
 					<fieldset class="scodeScope mb-2 d-flex flex-wrap align-items-center gap-3 small"<?= $canChange ? '' : ' disabled' ?>>
 						<legend class="visually-hidden"><?= h(t('scode_scope')) ?></legend>
 						<span class="fw-semibold"><?= h(t('scode_scope')) ?>:</span>
@@ -154,7 +162,7 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'head' 
 		<?php endforeach; ?>
 	</div>
 </form>
-<?php if ($canChange): // templates: data for assets/js/nusetupcode.js and the preview dialogue (0.8.524) ?>
+<?php if ($canChange): // templates: data for assets/js/nuglobalcode.js and the preview dialogue (0.8.524) ?>
 <div id="scodeTplData" hidden data-json="<?= h((string)json_encode($tplData, JSON_UNESCAPED_UNICODE)) ?>"
 	data-t="<?= h((string)json_encode(['preview' => t('ctpl_preview'), 'copied' => t('ctpl_copied')], JSON_UNESCAPED_UNICODE)) ?>"></div>
 <div class="modal fade" id="scodeTplDlg" tabindex="-1" aria-labelledby="scodeTplDlgTitle" aria-hidden="true">
@@ -176,4 +184,5 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'head' 
 <?php endif; ?>
 <?php
 nu_layout_end('<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script><script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/js/nusetupcode.js') . '"></script>');
+	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nuglobalcode.js') . '"></script>');

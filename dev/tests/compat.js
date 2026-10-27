@@ -38,7 +38,7 @@ let browser, nub, nx;
 function expect(cond, msg) { if (!cond) throw new Error(msg); }
 const norm = v => v === undefined || v === null ? '' : String(v).replace(/\s+/g, ' ').trim();
 
-/** Accepted difference? kind 'value' | 'cell' | 'column'; matched by form and field (* = any), optional values (regex on both sides). */
+/** Accepted difference? kind 'value' | 'cell' | 'column' | 'records' (browse list rows, field 'rows'); matched by form and field (* = any), optional values (regex on both sides). */
 function known(kind, form, field, a, b) {
 	return KNOWN.find(k => k.kind === kind && (k.form === '*' || k.form === form) && new RegExp('^(' + k.field + ')$').test(field)
 		&& (!k.nub || new RegExp(k.nub).test(a)) && (!k.next || new RegExp(k.next).test(b)));
@@ -184,7 +184,7 @@ for (const form of formsToTest()) {
 	if (info.type !== 'edit') T.push(['browse:' + form, async (s) => {
 		await nubOpen(form, ''); const a = await nub.evaluate(grabBrowse);
 		await nxOpen(form, ''); const b = await nx.evaluate(grabBrowse);
-		expect(a.rows.join(',') === b.rows.join(','), 'records differ – nuBuilder: ' + a.rows.slice(0, 5).join(',') + ' · nuBuilder Next: ' + b.rows.slice(0, 5).join(','));
+		expect(a.rows.join(',') === b.rows.join(',') || known('records', form, 'rows', a.rows.join(','), b.rows.join(',')), 'records differ – nuBuilder: ' + a.rows.slice(0, 5).join(',') + ' · nuBuilder Next: ' + b.rows.slice(0, 5).join(','));
 		const d = Object.keys(a.cells).filter(k => norm(a.cells[k]) !== norm(b.cells[k]) && !known('cell', form, k, norm(a.cells[k]), norm(b.cells[k])));
 		expect(!d.length, d.slice(0, 4).map(k => k + ' ' + JSON.stringify(norm(a.cells[k])) + ' / ' + JSON.stringify(norm(b.cells[k]))).join(' · '));
 		s.rows[form] = a.rows;

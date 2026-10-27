@@ -4,7 +4,7 @@
 	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
 	<ul>
 <li><strong>Existing table</strong>: pick the table (type part of its name to search the list) and primary key – objects and list columns are generated from its columns.</li>
-<li><strong>New table</strong>: enter columns (name, label, type, length, required). The table gets a nuBuilder-style text primary key and optionally audit columns (created/updated at/by), filled on every save, and/or nuBuilder's record log <code>&lt;table&gt;_nulog</code> (see below). <i class="bi bi-x-circle"></i> crosses a column out – it is not created; <i class="bi bi-arrow-counterclockwise"></i> brings it back.</li>
+<li><strong>New table</strong>: enter columns (name, label, type, length, required). The table gets a nuBuilder-Forte-style text primary key and optionally audit columns (created/updated at/by), filled on every save, and/or nuBuilder Forte's record log <code>&lt;table&gt;_nulog</code> (see below). <i class="bi bi-x-circle"></i> crosses a column out – it is not created; <i class="bi bi-arrow-counterclockwise"></i> brings it back.</li>
 </ul>
 	<div class="doc-sub" data-acl="nuform">
 <h3 id="form-ai">Forms with AI</h3>
@@ -17,7 +17,7 @@
 <ul>
 <li>The format describes inputs (all input types), textareas, selects (options or SQL), lookups, sub-forms (an existing form of type sub-form), display and HTML objects and words, tabs and the list columns. Other objects (calculations, run buttons, charts …) are marked “keep” and stay unchanged, as do events, custom code, hooks and the SQL builder rows.</li>
 <li>Existing objects keep their place; new ones are placed below the object before them (or next to it with <code>same_row</code>) and move the following ones down.</li>
-<li>Not for nuBuilder's system forms and page forms. Since the prompt contains the table names and columns, check what your AI provider may receive.</li>
+<li>Not for nuBuilder Forte's system forms and page forms. Since the prompt contains the table names and columns, check what your AI provider may receive.</li>
 </ul>
 </div>
 	<p class="doc-see">See also: <a href="#builder-work">Working in the form builder</a> · <a href="#prompts">AI: prompt generator and forms with AI</a></p>

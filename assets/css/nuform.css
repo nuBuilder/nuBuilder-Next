@@ -42,7 +42,7 @@
 .nuFormBtn .bi { opacity: .75; }
 
 /* ---------------------------------------------------------------- absolute layout (pixel positions like nuBuilder) */
-.nuAbsoluteCanvas { position: relative; }
+.nuAbsoluteCanvas { position: relative; isolation: isolate; }   /* own stacking layer (0.8.567): z-index:-1 (content boxes, elements in HTML objects) lies behind the other objects, in front of the form's background – as nuBuilder's #nuRECORD */
 .nuAbs { position: absolute; }
 .nuAbs .form-control, .nuAbs .form-select { height: 26px; min-height: 0; padding: 0 .4rem; font-size: .85rem; border-radius: .3rem; }
 .nuAbs .form-select { padding-right: 1.6rem; background-position: right .3rem center; }
@@ -260,7 +260,6 @@ textarea.nuCodeField { font-family: SFMono-Regular, Menlo, Consolas, "Liberation
 
 /* globeadmin: label menu (quick changes of an object) */
 body.nuObjMenuOn #nuEditForm label[id^="label_"], body.nuObjMenuOn #nuEditForm .nuContentBoxTitle[id^="label_"] { cursor: context-menu; }
-body.nuObjMenuOn #nuEditForm label[id^="label_"]:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
 .nuObjMenu { min-width: 14rem; font-size: .9rem; }
 .nuObjMenu .nuOmHead { cursor: copy; }
 .nuObjMenu .nuOmHead b { font-family: var(--bs-font-monospace); font-weight: 600; }

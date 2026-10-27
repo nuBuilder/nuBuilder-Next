@@ -1,8 +1,8 @@
 <section id="sessions-arch" data-doc="admin">
 	<h2 id="sessions-arch-h">Sessions and sign-in flow</h2>
-	<p class="doc-lead">How nuBuilder Next signs users in and keeps its own sessions next to nuBuilder&#x27;s.</p>
+	<p class="doc-lead">How nuBuilder Next signs users in and keeps its own sessions next to nuBuilder Forte&#x27;s.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>nuBuilder Next has its own sessions and does not use nuBuilder's <code>zzzzsys_session</code> table for its users (it only reads it for the shared login). The login is checked against <code>zzzzsys_user</code> (login name and password) and, for the globeadmin, against <code>nuconfig.php</code>.</p>
+	<p>nuBuilder Next has its own sessions and does not use nuBuilder Forte's <code>zzzzsys_session</code> table for its users (it only reads it for the shared login). The login is checked against <code>zzzzsys_user</code> (login name and password) and, for the globeadmin, against <code>nuconfig.php</code>.</p>
 <figure class="doc-figure" id="dg-sessions"><svg class="doc-flow" viewBox="0 0 680 500" role="img" aria-labelledby="dg-sessions-title dg-sessions-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-sessions-title">Sign-in and sessions</title><desc id="dg-sessions-desc">The login form goes to NuAuth, which checks the password and the account; a second factor is asked when needed. The PHP session nunext is noted in zzzzsys_nunext_session and the log. Every later request is checked by NuAuth::user(): time-out, password changed elsewhere or session ended lead back to the sign-in page.</desc>
 <defs><marker id="dg-sessions-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
 <text x="115" y="40" dy=".35em" class="dg-t dg-n">Browser</text>
@@ -52,11 +52,11 @@
 <path d="M345 402 L345 428" class="dg-line" marker-end="url(#dg-sessions-arrow)"/>
 </svg></figure>
 <ul>
-	<li><strong>Passwords</strong>: <code>password_hash()</code> hashes (bcrypt / argon2) and nuBuilder's old md5 hashes are accepted. md5 hashes are upgraded at login unless nuBuilder must still read them (<code>$nuConfigPasswordUpgrade</code>, <code>$nuUseMd5PasswordHash</code>).</li>
-	<li><strong>Password changed elsewhere</strong>: the session keeps a short fingerprint of the stored hash; when the password is changed (also in nuBuilder), the session ends.</li>
+	<li><strong>Passwords</strong>: <code>password_hash()</code> hashes (bcrypt / argon2) and nuBuilder Forte's old md5 hashes are accepted. md5 hashes are upgraded at login unless nuBuilder Forte (4.x) must still read them (<code>$nuConfigPasswordUpgrade</code>, <code>$nuUseMd5PasswordHash</code>).</li>
+	<li><strong>Password changed elsewhere</strong>: the session keeps a short fingerprint of the stored hash; when the password is changed (also in nuBuilder Forte), the session ends.</li>
 	<li><strong>Time-outs</strong>: <code>$nuConfigSessionTimeout</code> (users) and <code>$nuConfigSessionTimeoutGlobeadmin</code>. Passive background requests do not extend them.</li>
 	<li><strong>Logged-in users</strong>: one row per session in <code>zzzzsys_nunext_session</code>, updated at most every 30 seconds; the key is a hash of the PHP session id, the id itself is never stored. The globeadmin can end sessions (<a href="#sessions">Logged-in users</a>).</li>
-	<li><strong>Login hooks</strong>: nuBuilder's procedures <code>nu_startup</code> and <code>nu_invalid_login</code> run as in nuBuilder; <code>nu_check_password_policy</code> checks new passwords.</li>
+	<li><strong>Login hooks</strong>: nuBuilder Forte's procedures <code>nu_startup</code> and <code>nu_invalid_login</code> run as in nuBuilder Forte; <code>nu_check_password_policy</code> checks new passwords.</li>
 </ul>
 <p>All ways to sign in (shared login, auto-login links, tokens) are on <a href="#signin-methods">Sign-in methods</a>.</p>
 	<p class="doc-see">See also: <a href="#signin-methods">Sign-in methods</a> · <a href="#sessions">Logged-in users</a></p>

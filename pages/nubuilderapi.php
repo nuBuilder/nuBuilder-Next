@@ -49,7 +49,7 @@ const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_al
 	'sob_calc_formula', 'sob_calc_format', 'sob_run_zzzzsys_form_id', 'sob_run_method', 'sob_run_type', 'sob_run_target', 'sob_run_id', 'sob_run_filter', 'sob_display_sql', 'sob_display_procedure', 'sob_select_multiple', 'sob_select_sql',
 	'sob_lookup_code', 'sob_lookup_description', 'sob_lookup_description_width', 'sob_lookup_zzzzsys_form_id', 'sob_lookup_javascript', 'sob_lookup_table',
 	'sob_subform_zzzzsys_form_id', 'sob_subform_foreign_key', 'sob_subform_add', 'sob_subform_delete', 'sob_subform_type', 'sob_subform_table',
-	'sob_input_format', 'sob_input_type', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_input_file_target', 'sob_html_code',
+	'sob_input_format', 'sob_input_type', 'sob_input_icon', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_input_file_target', 'sob_html_code',
 	'sob_html_chart_type', 'sob_html_javascript', 'sob_html_title', 'sob_html_vertical_label', 'sob_html_horizontal_label',
 	'sob_select_2', 'sob_image_zzzzsys_file_id'];
 
@@ -391,6 +391,8 @@ try {
 		case 'form.save':
 			$meta   = nb_form($formId);
 			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
+			// required as in nuBuilder's form properties (nuform: description, code, type – 0.8.564); nb_clean turned '' into null
+			foreach (['sfo_description', 'sfo_code', 'sfo_type'] as $rk) if (array_key_exists($rk, $fields) && trim((string)$fields[$rk]) === '') nb_err(t('builder_err_required'));
 			if (isset($fields['sfo_code']) && (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$fields['sfo_code'], $formId])) {
 				nb_err(t('builder_err_code_taken'));
 			}
@@ -463,6 +465,7 @@ try {
 			}
 
 			if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);   // spaces at the ends (0.8.536)
+			if (isset($fields['sob_input_icon']) && mb_strlen((string)$fields['sob_input_icon']) > 50) nb_err(t('builder_obj_icon') . ': ' . t('err_too_long', 50));   // VARCHAR(50) in nuBuilder (0.8.559)
 			$type = (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '');
 			$fid  = (string)($fields['sob_all_id'] ?? $existing['sob_all_id'] ?? '');
 			if (!in_array($type, NB_TYPES, true)) nb_err(t('builder_err_type'));

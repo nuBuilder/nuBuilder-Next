@@ -343,8 +343,8 @@ if (!function_exists('db_fetch_value')) {
 		if (!is_object($phpObj)) return false;
 		$u = NuAuth::user();
 		if ($u['globeadmin'] || NuAdmin::can('procedures', 'change') || (string)($phpObj->sph_global ?? '') === '1') return true;
-		return (bool)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_access_php WHERE slp_zzzzsys_access_id = ? AND slp_zzzzsys_php_id = ?',
-			[(string)$u['access_id'], (string)$phpObj->zzzzsys_php_id]);
+		[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // main + additional access levels (0.8.585)
+		return (bool)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, (string)$phpObj->zzzzsys_php_id]);
 	}
 
 	/**

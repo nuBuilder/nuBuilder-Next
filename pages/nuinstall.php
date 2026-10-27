@@ -563,7 +563,7 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 					<dt class="col-sm-4"><?= h(t('ins_step_admin')) ?></dt><dd class="col-sm-8"><?= h($S['admin']['user']) ?><?= $S['admin']['email'] !== '' ? ' · ' . h($S['admin']['email']) : '' ?><?= $S['admin']['twofa'] ? ' · 2FA' : '' ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_opt_url')) ?></dt><dd class="col-sm-8 text-break"><?= h($S['opt']['base_url']) ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_opt_timezone')) ?></dt><dd class="col-sm-8"><?= h($S['opt']['timezone']) ?> · <?= (int)$S['opt']['timeout'] ?> min</dd>
-					<dt class="col-sm-4">nuBuilder</dt><dd class="col-sm-8 text-break"><?= h($S['opt']['nub_path'] ?: '–') ?><?= $S['opt']['shared'] ? ' · ' . h(t('ins_opt_shared_short')) : '' ?></dd>
+					<dt class="col-sm-4">nuBuilder Forte</dt><dd class="col-sm-8 text-break"><?= h($S['opt']['nub_path'] ?: '–') ?><?= $S['opt']['shared'] ? ' · ' . h(t('ins_opt_shared_short')) : '' ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_step_libs')) ?></dt><dd class="col-sm-8" id="insSumLibs"><?= h(($S['libs'] ?? []) ? implode(', ', array_map(static fn($x) => NuLibs::SLOTS[$x]['title'], $S['libs'])) : '–') ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_config_file')) ?></dt><dd class="col-sm-8 text-break"><code><?= h(NuInstall::configPath()) ?></code></dd>
 				</dl>

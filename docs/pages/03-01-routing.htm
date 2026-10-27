@@ -16,7 +16,7 @@
 	<ol>
 		<li>No <code>nuconfig.php</code> yet → the installer.</li>
 		<li><code>nu_boot()</code> – configuration, security headers, session (see <a href="#startup">Startup</a>).</li>
-		<li>nuBuilder's auto-login link (<code>index.php?u=…</code>) is handed to <code>pages/nuautologin.php</code>.</li>
+		<li>nuBuilder Forte's auto-login link (<code>index.php?u=…</code>) is handed to <code>pages/nuautologin.php</code>.</li>
 		<li>Every POST must carry the page's CSRF token (form field <code>_csrf</code> or header <code>X-CSRF-Token</code>).</li>
 		<li>Routes that are not public need a signed-in user; otherwise the address is remembered and the login page opens (JSON routes: <code>401</code>).</li>
 		<li>During an update only the globeadmin (and admin roles with the right <em>Update</em>) may work; everybody else gets <code>503</code>.</li>

@@ -60,6 +60,8 @@ html.nu-env .nu-navbar, html.nu-env body:not(.nu-app) { border-top: 4px solid va
 /* centered pages (login, errors) */
 .nu-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem 1rem; }
 .nu-card-narrow { width: 100%; max-width: 26rem; }
+.nu-card-narrow.ufCard { max-width: 39rem; }  /* custom user field edit form (0.8.597): 50 % wider */
+.ufCard .ufEditBy { max-width: 360px; }   /* 0.8.598: wider "Edited by" on desktop (Type gets col-lg-4), the long option fits */
 .nu-login { background:
 	radial-gradient(60rem 30rem at 10% -10%, rgba(47, 111, 214, .12), transparent 60%),
 	radial-gradient(50rem 30rem at 110% 110%, rgba(31, 163, 154, .12), transparent 60%),
@@ -417,14 +419,42 @@ mark.nuHighlight { padding: 0 .05em; margin: 0 -.05em; border-radius: .2em; back
 	display: inline-flex; align-items: center; justify-content: center; width: 1.925rem; height: 1.9375rem; }
 .nuHashVarsMenu { width: min(26rem, 90vw); }
 /* procedure editor tools (0.8.475): one row height – the buttons keep their own size instead of stretching to the tallest one */
-.procCodeTools { flex-wrap: wrap; align-items: center; }
+.procCodeTools { flex-wrap: wrap; align-items: center; flex-shrink: 0; }   /* next to the label (0.8.592) – a whole line of its own when it does not fit */
+.cfgCodeTools { flex-shrink: 0; }
 .procCodeTools .nuCodeTools, .procCodeTools .dropdown { align-self: center; }
-.procSnippetBtn { display: inline-flex; align-items: center; gap: .3rem; height: 1.9375rem; padding: .15rem .45rem; font-size: .8125rem; line-height: 1; white-space: nowrap; }
-.procSnippetBtn .bi { font-size: .9rem; }
+/* Insert menu of the code editors (0.8.593, nucodetools.js): functions of the help + snippets; same box as the tool buttons */
+.nuCtInsert { display: inline-flex; align-items: center; height: 1.9375rem; padding: .15rem .45rem; font-size: .8125rem; line-height: 1; white-space: nowrap; }
+.nuCtInsert .bi { font-size: .9rem; }
 @media (max-width: 575.98px) {
-	.procSnippetBtn { width: 1.925rem; padding: 0; justify-content: center; }
-	.procSnippetLabel { display: none; }
+	.nuCtInsert { width: 1.925rem; padding: 0; justify-content: center; }
+	.nuCtInsertLabel { display: none; }
 }
+.nuInsMenu { position: fixed; z-index: 1090; width: min(36rem, calc(100vw - 8px)); margin: 0; max-height: calc(100vh - 8px); overflow-y: auto; }
+.nuInsList { max-height: 26vh; overflow-y: auto; }
+.nuInsList .list-group-item.active .nuInsSub { color: inherit; opacity: .85; }
+.nuInsSub { color: var(--bs-secondary-color); }
+.nuInsInfo { max-height: 42vh; overflow-y: auto; }
+.nuInsInfo:empty { display: none; }
+.nuInsSig { white-space: pre-wrap; word-break: break-word; }
+.nuInsCode { font-size: .8rem; background: var(--bs-tertiary-bg); border-radius: var(--bs-border-radius-sm); padding: .35rem .5rem; white-space: pre-wrap; word-break: break-word; max-height: 12rem; overflow: auto; }
+.nuInsParams { display: grid; grid-template-columns: auto 1fr; gap: .1rem .6rem; }
+.nuInsParams dt { font-family: var(--bs-font-monospace); font-weight: 500; }
+.nuInsParams dd { margin: 0; }
+.nuInsTabs .nav-link { font-size: .85rem; }
+/* wide screens (0.8.594): list on the left, detail with the example on the right – both scroll on their own, nothing below the fold */
+@media (min-width: 900px) {
+	.nuInsMenu { width: min(62rem, calc(100vw - 8px)); }
+	.nuInsBody { display: grid; grid-template-columns: minmax(16rem, 22rem) 1fr; gap: .75rem; align-items: start; }
+	.nuInsList, .nuInsInfo { max-height: min(60vh, 34rem); }
+	.nuInsInfo { border-top: 0 !important; border-left: 1px solid var(--bs-border-color); margin-top: 0 !important; padding-top: 0 !important; padding-left: .75rem; }
+	.nuInsInfo .nuInsCode { max-height: 16rem; }
+}
+/* suggestions while typing (CodeMirror show-hint) – above modals, in the theme's colours */
+.CodeMirror-hints { z-index: 2000; background: var(--bs-body-bg); border-color: var(--bs-border-color); font-size: .85rem; max-width: 34rem; }
+li.CodeMirror-hint { color: var(--bs-body-color); max-width: 34rem; overflow: hidden; text-overflow: ellipsis; }
+li.CodeMirror-hint-active { background: var(--bs-primary); color: #fff; }
+.nuHintSig { opacity: .65; }
+.nuHintTip { position: fixed; z-index: 2001; max-width: 26rem; background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); padding: .4rem .55rem; font-size: .8rem; }
 .nuHashVarsMenu .form-control { margin-bottom: .35rem; }
 .nuHashVarsList { max-height: 50vh; overflow-y: auto; }
 .nuHashVarsList .dropdown-header { position: sticky; top: 0; background: var(--bs-dropdown-bg); font-weight: 600; }
@@ -481,11 +511,21 @@ body.nu-print-list { background: var(--bs-body-bg); font-size: .85rem; }
 
 /* user form: permission items */
 .userPermSearch { max-width: 260px; }
+/* list cells (0.8.555): at most two lines, then … (full text in the title); the e-mail column keeps a readable width instead of
+   breaking after every few characters when many columns are shown */
+.nuClamp2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+td.nuColEmail { min-width: 12rem; max-width: 20rem; }
 .permField { max-width: 350px; }   /* permission item: Ident and Group (0.8.507) */
 #userPerms .userPermItem, #userPerms .userPermItem label { cursor: pointer; }
 #userPerms .userPermCheck { width: 2.5rem; }
 #userPerms .userPermItem label { margin: 0; }
 #userPerms .userPermTable .userPermDesc { white-space: normal; }   /* the description wraps (lists keep nowrap on phones) */
+/* description (0.8.561): one line, as much as fits, then … (full text as tooltip); the column takes the rest of the row and its text is
+   at most 750 px wide – max-width 0 lets the cell shrink instead of widening the table */
+#userPerms .userPermTable td.userPermDescCell { width: 100%; max-width: 0; }
+#userPerms .userPermTable .userPermDescLine { max-width: 750px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 575.98px) { #userPerms .userPermTable td.userPermIdent { width: 100%; max-width: 0; } }   /* phones: the line below the ident */
+#userPerms.userPermNoDesc .userPermDesc { display: none !important; }   /* phones: switch "Descriptions" off – compact table */
 
 /* hamburger: Bootstrap draws a 0.25rem ring on every :focus (also after a tap) – only for keyboard focus, and thinner */
 .navbar-toggler:focus { box-shadow: none; }
@@ -1303,6 +1343,13 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuSbClearForm { display: inline-flex; }
 .nuSbClear { padding: .15rem .3rem; font-size: .85rem; }
 .nuSbMenu { position: fixed; z-index: 1080; margin: 0; min-width: 12rem; }   /* right-click menu of "Recently used" (0.8.489) */
+.userCardLogin .card-body > div:last-of-type, .userCardAccess .card-body > div:last-of-type, .userCardAccount .card-body > div:last-of-type { margin-bottom: 0 !important; }   /* user form cards (0.8.586) */
+.xaRow > select { flex: 1 1 auto; min-width: 0; }   /* user form: additional access levels (0.8.585) */
+.xaRow > .xaUntil { flex: 0 0 10.5rem; }
+.nuFormStatus { cursor: context-menu; border-radius: var(--bs-border-radius-pill); }   /* forms list: status with right-click menu (0.8.575) */
+.nuFormStatus:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.nuFormStatusBusy { opacity: .5; }
+.nuFormStatusToast { z-index: 1090; }
 .nuSbList { list-style: none; margin: 0; padding: 0; }
 .nuSbItem { display: flex; align-items: center; border-radius: .5rem; border: 1px solid transparent; margin: 1px 0; }
 .nuSbItem:hover { background: var(--bs-tertiary-bg); }
@@ -1333,6 +1380,18 @@ body.nuSbOpen { overflow: hidden; }
 .nuSbClose { display: inline-block; }
 .nuSbBackdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 1045; }
 @media (hover: none) { .nuSbItem:not(.fav) .nuSbFav { opacity: 1; } }
+/* pinned (0.8.556, .nuShell.nuSbPinned): from 992 px a column next to the page that stays on every page – sticky below the top bar,
+   no backdrop; below 992 px the drawer as before. The pin button shows only where pinning works. */
+.nuSbPin { display: none; border: 0; background: none; color: var(--bs-secondary-color); border-radius: .375rem; line-height: 1; padding: .35rem .4rem; }
+.nuSbPin:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+.nuSbPin[aria-pressed="true"] { color: var(--nu-accent); }
+@media (min-width: 992px) {
+	.nuSbPin { display: inline-block; }
+	.nuShell.nuSbPinned { display: flex; align-items: flex-start; min-height: calc(100vh - var(--nu-nav-h)); }
+	.nuShell.nuSbPinned .nuSidebar { position: sticky; top: var(--nu-nav-h); bottom: auto; height: calc(100vh - var(--nu-nav-h)); width: var(--nu-sb-w); z-index: 1;
+		transform: none; visibility: visible; box-shadow: none; transition: none; }
+	.nuShell.nuSbPinned .nuSbClose { display: none; }
+}
 @media (prefers-reduced-motion: reduce) { .nuSidebar { transition: none; } }
 @media print { .nuSidebar, .nuSbOpenBtn { display: none !important; } .nuShell { display: block; } }
 
@@ -1466,7 +1525,8 @@ body.nuSbOpen { overflow: hidden; }
 .cfgInsItem code { color: var(--bs-body-color); }
 /* tabs a script opens after loading – hidden until then (0.8.444, nutheme.js / nuapp.js) */
 html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
-.scodeCM { height: calc(100vh - 400px); min-height: 360px; }
+.CodeMirror.scodeCM { height: calc(100vh - 400px); min-height: 360px; }   /* without JS; nuglobalcode.js fits it to the window (0.8.554) – .CodeMirror: codemirror.css loads later */
+.scodeTools:empty { display: none; }
 .updBkSelCol { width: 2.5rem; padding-inline-start: 1rem !important; }
 
 /* access level: data mode / form type per form (0.8.461) – the whole option text visible (the table scrolls on small screens) */

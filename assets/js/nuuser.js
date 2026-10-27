@@ -68,24 +68,63 @@
 		filter.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });   // do not submit the user form
 	}
 	if (group) group.addEventListener('change', apply);
-	box.addEventListener('change', function (e) { if (e.target.name === 'perm[]') update(); });
+	// Undo of All / None (0.8.584): the states before the click; a change by hand afterwards ends it
+	var undoBtn = document.getElementById('userPermUndo'), before = null, bulk = false;
+	function setUndo(snap) { before = snap; if (undoBtn) undoBtn.classList.toggle('d-none', !snap); }
+	box.addEventListener('change', function (e) {
+		if (e.target.name !== 'perm[]') return;
+		update();
+		if (!bulk && before) setUndo(null);
+	});
+	if (undoBtn) undoBtn.addEventListener('click', function () {
+		var snap = before;
+		if (!snap) return;
+		bulk = true;
+		snap.forEach(function (x) { if (x[0].checked !== x[1]) { x[0].checked = x[1]; x[0].dispatchEvent(new Event('change', {bubbles: true})); } });
+		bulk = false;
+		update();
+		setUndo(null);
+	});
 	box.addEventListener('click', function (e) {   // table (0.8.458): a click on the row toggles its checkbox (not on the box / label themselves)
 		var row = e.target.closest('.userPermItem');
 		if (!row || e.target.closest('input, label, a, button')) return;
 		var cb = row.querySelector('input[name="perm[]"]');
 		if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change', {bubbles: true})); }
 	});
+	var CONFIRM_ABOVE = 5;   // "All" asks first when more than this many items are shown
 	box.querySelectorAll('[data-perm-all]').forEach(function (b) {
 		b.addEventListener('click', function () {
 			var on = b.getAttribute('data-perm-all') === '1';
-			items.forEach(function (it) {
-				if (it.classList.contains('d-none')) return;
-				var cb = it.querySelector('input[type=checkbox]');
-				if (cb && cb.checked !== on) { cb.checked = on; cb.dispatchEvent(new Event('change', {bubbles: true})); }
-			});
-			update();
+			var shown = items.filter(function (it) { return !it.classList.contains('d-none'); });
+			function run() {
+				var snap = Array.prototype.map.call(box.querySelectorAll('input[name="perm[]"]'), function (cb) { return [cb, cb.checked]; }), changed = 0;
+				bulk = true;
+				shown.forEach(function (it) {
+					var cb = it.querySelector('input[type=checkbox]');
+					if (cb && cb.checked !== on) { cb.checked = on; cb.dispatchEvent(new Event('change', {bubbles: true})); changed++; }
+				});
+				bulk = false;
+				update();
+				if (changed) setUndo(snap);
+			}
+			var ask = b.getAttribute('data-perm-confirm');
+			if (on && ask && shown.length > CONFIRM_ABOVE && typeof window.nuConfirmAsk === 'function') {
+				window.nuConfirmAsk(ask.replace('%d', String(shown.length)), run, b.getAttribute('data-perm-confirm-ok') || '', 'btn btn-primary');
+			} else run();
 		});
 	});
+
+	// phones: descriptions on / off (compact table); the choice stays in this browser
+	var descToggle = document.getElementById('userPermDescToggle'), DESC_KEY = 'nunext-perm-desc';
+	if (descToggle) {
+		try { if (localStorage.getItem(DESC_KEY) === '0') descToggle.checked = false; } catch (e) { /* no storage */ }
+		var setDesc = function () { box.classList.toggle('userPermNoDesc', !descToggle.checked); };
+		setDesc();
+		descToggle.addEventListener('change', function () {
+			setDesc();
+			try { localStorage.setItem(DESC_KEY, descToggle.checked ? '1' : '0'); } catch (e) { /* no storage */ }
+		});
+	}
 })();
 
 /*
@@ -269,7 +308,7 @@
 		});
 		copy(pw).then(function (ok) {
 			var hint = $id('passwordHint');
-			if (hint) { hint.textContent = ok ? modal.dataset.usedCopied : modal.dataset.used; hint.classList.add('text-success'); }
+			if (hint) { hint.textContent = ok ? modal.dataset.usedCopied : modal.dataset.used; hint.classList.add('text-success'); hint.classList.remove('d-none'); }
 		});
 		if (nuBs.ready()) nuBs.modal(modal).hide();
 	});
@@ -371,4 +410,145 @@
 		nuBs.toast(t, {delay: 7000}).show();
 	}
 	box.addEventListener('change', function () { if (box.checked) show(); });
+})();
+
+/* Additional access levels (0.8.585): add a row from the template, remove a row; "none" text while there is no row. */
+(function () {
+	'use strict';
+	var box = document.getElementById('xaBox'), rows = document.getElementById('xaRows'), tpl = document.getElementById('xaTpl'), add = document.getElementById('xaAdd');
+	if (!box || !rows || !tpl) return;
+	var none = document.getElementById('xaNone');
+	function changed() {
+		if (none) none.classList.toggle('d-none', rows.querySelector('.xaRow') !== null);
+		var f = box.closest('form');
+		if (f) f.dispatchEvent(new Event('change', {bubbles: true}));   // leave guard and the red Save
+	}
+	if (add) add.addEventListener('click', function () {
+		rows.appendChild(tpl.content.cloneNode(true));
+		var sel = rows.lastElementChild && rows.lastElementChild.querySelector('select');
+		if (sel) sel.focus();
+		changed();
+	});
+	rows.addEventListener('click', function (e) {
+		var b = e.target.closest('.xaDel');
+		if (!b) return;
+		b.closest('.xaRow').remove();
+		changed();
+	});
+})();
+
+/* Effective rights (0.8.589): the rights of the main and the additional access levels together, as entered in the form (not saved
+   yet) – asked from the server (POST action "effective"); a tick names the additional levels it comes from. */
+(function () {
+	'use strict';
+	var dlg = document.getElementById('xaEffDlg'), btn = document.getElementById('xaEff'), rows = document.getElementById('xaRows');
+	if (!dlg) return;
+	var T = {};
+	try { T = JSON.parse(dlg.getAttribute('data-t') || '{}'); } catch (e) { T = {}; }
+	var KEYS = ['view', 'add', 'save', 'delete', 'clone', 'print'], data = null, mainCode = '';
+	var $ = function (id) { return document.getElementById(id); };
+	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+	function badge(text, cls) { return el('span', 'badge ' + (cls || 'text-bg-info') + ' fw-normal ms-1', text); }
+
+	// the button only while there is an additional level row
+	function syncBtn() { if (btn && rows) btn.classList.toggle('d-none', !rows.querySelector('.xaRow')); }
+	if (rows) new MutationObserver(syncBtn).observe(rows, {childList: true});
+
+	function fromExtra(levels) { return levels.filter(function (c) { return c !== mainCode; }); }
+	function onlyExtra(levels) { return levels.length > 0 && levels.indexOf(mainCode) < 0; }
+
+	function cell(levels) {
+		var td = el('td', 'text-center text-nowrap');
+		if (!levels.length) { td.appendChild(el('i', 'bi bi-dash text-body-tertiary')); return td; }
+		var i = el('i', 'bi bi-check-circle-fill text-success');
+		i.setAttribute('role', 'img'); i.setAttribute('aria-label', levels.join(', ')); i.title = levels.join(', ');
+		td.appendChild(i);
+		if (onlyExtra(levels)) fromExtra(levels).forEach(function (c) { td.appendChild(badge(c)); });   // badge only where the main level does not grant it
+		return td;
+	}
+	function render() {
+		if (!data) return;
+		var q = ($('xaEffFind').value || '').toLowerCase().trim(), only = $('xaEffOnly').checked;
+		var match = function (s) { return q === '' || s.toLowerCase().indexOf(q) >= 0; };
+		// levels legend
+		var lv = $('xaEffLevels'); lv.textContent = '';
+		data.levels.forEach(function (l) {
+			var b = el('span', 'badge border fw-normal ' + (l.main ? 'text-bg-primary' : (l.active ? 'text-bg-info' : 'text-bg-light text-decoration-line-through')), l.code);
+			b.title = l.description + (l.main ? ' – ' + T.main : (l.active ? '' : ' – ' + T.expired + ' ' + l.until));
+			lv.appendChild(b);
+		});
+		// forms
+		var ft = document.querySelector('#xaEffForms table'), head = ft.tHead, body = ft.tBodies[0], n = 0;
+		head.textContent = ''; body.textContent = '';
+		var hr = el('tr'); hr.appendChild(el('th', '', T.form)); KEYS.forEach(function (k) { hr.appendChild(el('th', 'text-center', T[k])); }); head.appendChild(hr);
+		data.forms.forEach(function (f) {
+			var extra = KEYS.some(function (k) { return onlyExtra(f.rights[k]); });
+			if (!match(f.label + ' ' + f.code) || (only && !extra)) return;
+			var tr = el('tr'), th = el('td');
+			th.appendChild(el('span', 'fw-semibold', f.label));
+			if (onlyExtra(f.rights.view)) th.appendChild(badge(T.additional, 'text-bg-warning'));
+			if (!f.edit) th.appendChild(badge(T.browse_only, 'text-bg-light border'));
+			else if (!f.browse) th.appendChild(badge(T.edit_only, 'text-bg-light border'));
+			tr.appendChild(th);
+			KEYS.forEach(function (k) { tr.appendChild(cell(f.rights[k])); });
+			body.appendChild(tr); n++;
+		});
+		if (!n) { var tr0 = el('tr'), td0 = el('td', 'text-center text-body-secondary py-3', T.none); td0.colSpan = 7; tr0.appendChild(td0); body.appendChild(tr0); }
+		$('xaEffNForms').textContent = n;
+		// procedures / reports
+		[['procs', 'xaEffProcs', 'xaEffNProcs'], ['reports', 'xaEffReports', 'xaEffNReports']].forEach(function (x) {
+			var b = document.querySelector('#' + x[1] + ' tbody'), m = 0;
+			b.textContent = '';
+			data[x[0]].forEach(function (p) {
+				if (!match(p.code + ' ' + p.description) || (only && !onlyExtra(p.levels))) return;
+				var tr = el('tr'), td = el('td');
+				td.appendChild(el('span', 'fw-semibold', p.code));
+				if (p.description) td.appendChild(el('div', 'small text-body-secondary', p.description));
+				tr.appendChild(td);
+				var tl = el('td', 'text-end');
+				p.levels.forEach(function (c) { tl.appendChild(badge(c, c === mainCode ? 'text-bg-primary' : 'text-bg-info')); });
+				tr.appendChild(tl);
+				b.appendChild(tr); m++;
+			});
+			if (!m) { var tr1 = el('tr'), td1 = el('td', 'text-center text-body-secondary py-3', T.none); td1.colSpan = 2; tr1.appendChild(td1); b.appendChild(tr1); }
+			$(x[2]).textContent = m;
+		});
+	}
+	function load() {
+		var fd = new FormData(), sel = $('sus_zzzzsys_access_id');
+		fd.append('_csrf', dlg.getAttribute('data-csrf') || '');
+		fd.append('action', 'effective');
+		fd.append('sus_zzzzsys_access_id', sel ? sel.value : '');
+		document.querySelectorAll('#xaRows .xaRow').forEach(function (r) {
+			fd.append('xa_acc[]', (r.querySelector('select') || {}).value || '');
+			fd.append('xa_until[]', (r.querySelector('.xaUntil') || {}).value || '');
+		});
+		data = null;
+		$('xaEffBusy').classList.remove('d-none');
+		fetch(dlg.getAttribute('data-url'), {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+			.then(function (r) { return r.json(); })
+			.then(function (j) {
+				$('xaEffBusy').classList.add('d-none');
+				if (!j || !j.ok) throw new Error('x');
+				data = j;
+				mainCode = ((j.levels || []).filter(function (l) { return l.main; })[0] || {}).code || '';
+				render();
+			})
+			.catch(function () { $('xaEffBusy').classList.add('d-none'); $('xaEffLevels').textContent = T.error || ''; });
+	}
+	dlg.addEventListener('show.bs.modal', load);
+	$('xaEffFind').addEventListener('input', render);
+	$('xaEffOnly').addEventListener('change', render);
+	// Copy: tab-separated, one line per form / procedure / report
+	$('xaEffCopy').addEventListener('click', function () {
+		if (!data) return;
+		var lines = [[T.form].concat(KEYS.map(function (k) { return T[k]; })).join('\t')];
+		data.forms.forEach(function (f) { lines.push([f.label + ' (' + f.code + ')'].concat(KEYS.map(function (k) { return f.rights[k].join(' + '); })).join('\t')); });
+		['procs', 'reports'].forEach(function (k) {
+			lines.push('');
+			data[k].forEach(function (p) { lines.push(p.code + '\t' + p.levels.join(' + ')); });
+		});
+		var b = $('xaEffCopy');
+		if (navigator.clipboard) navigator.clipboard.writeText(lines.join('\n')).then(function () { b.title = T.copied; b.classList.add('btn-success'); setTimeout(function () { b.classList.remove('btn-success'); }, 1200); });
+	});
 })();

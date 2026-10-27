@@ -221,7 +221,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 							<li><a class="dropdown-item small text-body-secondary" href="<?= h(nu_url('update')) ?>#updHistory" id="nuVersionLink"><i class="bi bi-clock-history me-2"></i><?= h(t('upd_version_link', NU_VERSION)) ?></a></li>
 						<?php endif; ?>
 						<?php if (NuSharedLogin::url() !== ''): ?>
-							<li><a class="dropdown-item" href="<?= h(NuSharedLogin::url()) ?>"><i class="bi bi-box-arrow-up-right me-2"></i>nuBuilder</a></li>
+							<li><a class="dropdown-item" href="<?= h(NuSharedLogin::url()) ?>"><i class="bi bi-box-arrow-up-right me-2"></i>nuBuilder Forte</a></li>
 						<?php endif; ?>
 						<li><hr class="dropdown-divider"></li>
 						<li>
@@ -237,7 +237,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	</div>
 </nav>
 <?= !empty($_SESSION['nu_form_preview']) ? NuFormDraft::banner(false) : '' /* form drafts (0.8.386): preview banner */ ?>
-<?php if ($sidebar) { echo '<div class="nuShell">'; nu_sidebar(); NuSidebar::$drawn = true; } ?>
+<?php if ($sidebar) { echo '<div class="nuShell' . (NuSidebar::pinned() ? ' nuSbPinned' : '') . '">'; nu_sidebar(); NuSidebar::$drawn = true; }   // pinned: a column from 992 px (0.8.556) ?>
 <main id="main" class="<?= h($opt['container'] ?? 'nuContainer') ?> py-4<?= $sidebar ? ' nuShellMain' : '' ?>">
 	<?php nu_render_flashes(); ?>
 <?php
@@ -247,6 +247,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 function nu_sidebar(): void
 {
 	$d = NuSidebar::data();
+	$pinned = NuSidebar::pinned();
 	$back = 'index.php?' . (string)($_SERVER['QUERY_STRING'] ?? '');
 	$post = static fn(string $action, string $inner, array $extra = [], string $cls = '') => '<form method="post" action="' . h(nu_url('sidebar')) . '" class="nuSbForm' . ($cls !== '' ? ' ' . $cls : '') . '">'
 		. nu_csrf_field() . '<input type="hidden" name="action" value="' . h($action) . '"><input type="hidden" name="back" value="' . h($back) . '">'
@@ -278,7 +279,10 @@ function nu_sidebar(): void
 	echo '<aside id="nuSidebar" class="nuSidebar" aria-label="' . h(t('sb_title')) . '">'
 		// × on the left (0.8.515): right where the open button was – opened and closed again without moving the mouse
 		. '<div class="nuSbHead"><button type="button" class="nuSbClose" id="nuSbClose" title="' . h(t('close')) . '" aria-label="' . h(t('close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
-		. '<span class="nuSbTitle"><i class="bi bi-compass" aria-hidden="true"></i><span class="nuSbText">' . h(t('sb_title')) . '</span></span></div>'
+		. '<span class="nuSbTitle"><i class="bi bi-compass" aria-hidden="true"></i><span class="nuSbText">' . h(t('sb_title')) . '</span></span>'
+		// pin (0.8.556): keep it open next to the page – the button is shown from 992 px only (CSS), the state is the user's (POST action pin)
+		. '<button type="button" class="nuSbPin" id="nuSbPin" data-url="' . h(nu_url('sidebar')) . '" data-csrf="' . h(nu_csrf_token()) . '" data-t-pin="' . h(t('sb_pin')) . '" data-t-unpin="' . h(t('sb_unpin')) . '"'
+		. ' title="' . h(t($pinned ? 'sb_unpin' : 'sb_pin')) . '" aria-label="' . h(t($pinned ? 'sb_unpin' : 'sb_pin')) . '" aria-pressed="' . ($pinned ? 'true' : 'false') . '"><i class="bi ' . ($pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle') . '" aria-hidden="true"></i></button></div>'
 		. '<nav class="nuSbBody" aria-label="' . h(t('sb_title')) . '">'
 		. $section('fav', 'bi-star-fill', t('sb_favourites'), $d['fav'], t($d['canFav'] ? 'sb_fav_none' : 'sb_fav_none_ro'))
 		. $section('recent', 'bi-clock-history', t('sb_recent'), $d['recent'], t('sb_recent_none'), $clear)
