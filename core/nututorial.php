@@ -8,7 +8,11 @@ defined('NU_ROOT') || exit;
  * - Text (English, like the documentation): docs/nunext-tutorial.htm – <article class="tut-chapter"> with <section class="tut-lesson">
  *   (see the comment at the top of that file). Lessons a user with an admin role has no right for are left out (data-right).
  * - Progress per reader: the globeadmin in zzzzsys_nunext_setting (id tutorial_ga), other users in their sus_json (NUNEXT_TUTORIAL),
- *   demo users in the session only. {done: [lesson ids], hidden: bool} – "hidden" hides the start page banner.
+ *   demo users in the session only. {done: [lesson ids], hidden: bool, track: '' | basic | advanced} – "hidden" hides the start page
+ *   banner, "track" is the reader's choice (0.8.622).
+ * - Three tracks (0.8.622 / 0.8.635): basic = the essentials, advanced = every lesson, forte = what is different from nuBuilder Forte and
+ *   what is new (chapters with data-track="forte" only – they are in no other track). A lesson or chapter with data-level="advanced" is in
+ *   the advanced track only; the reader chooses on first opening (choice screen) and switches any time. Progress is shared.
  */
 final class NuTutorial
 {
@@ -16,8 +20,10 @@ final class NuTutorial
 	private const SETTING = 'tutorial_ga';
 	private const JSON_KEY = 'NUNEXT_TUTORIAL';
 	private const SESSION = 'nu_tutorial';
+	public const TRACKS = ['basic', 'advanced', 'forte'];   // forte (0.8.635): "Coming from nuBuilder Forte" – only chapters with data-track="forte"
 
-	private static ?array $chapters = null;
+	/** @var array<string, list<array<string, mixed>>> chapters per track */
+	private static array $chapters = [];
 
 	/** May the signed-in user use the tutorial? */
 	public static function allowed(): bool
@@ -37,14 +43,15 @@ final class NuTutorial
 	}
 
 	/**
-	 * Chapters with the lessons of this reader.
-	 * @return list<array{id: string, title: string, part: string, intro: string, lessons: list<array{id: string, title: string, html: string}>}>
+	 * Chapters with the lessons of this reader in a track (null = the reader's track; not chosen yet = basic).
+	 * @return list<array{id: string, title: string, part: string, intro: string, lessons: list<array{id: string, title: string, html: string, advanced: bool}>}>
 	 */
-	public static function chapters(): array
+	public static function chapters(?string $track = null): array
 	{
-		if (self::$chapters !== null) return self::$chapters;
+		$track = self::cleanTrack($track ?? self::track()) ?: 'basic';
+		if (isset(self::$chapters[$track])) return self::$chapters[$track];
 		$file = NU_ROOT . '/' . self::FILE;
-		if (!is_file($file)) return self::$chapters = [];
+		if (!is_file($file)) return self::$chapters[$track] = [];
 		$dom = new DOMDocument();
 		libxml_use_internal_errors(true);
 		$dom->loadHTML('<?xml encoding="utf-8"?>' . (string)file_get_contents($file), LIBXML_NONET);
@@ -54,22 +61,38 @@ final class NuTutorial
 		$out = [];
 		foreach ($xp->query('//article[contains(concat(" ", @class, " "), " tut-chapter ")]') ?: [] as $art) {
 			if (!$art instanceof DOMElement || !self::visible($art->getAttribute('data-right'))) continue;
+			$artAdv = $art->getAttribute('data-level') === 'advanced';
+			if ($artAdv && $track === 'basic') continue;
+			if (($art->getAttribute('data-track') === 'forte') !== ($track === 'forte')) continue;   // the nuBuilder Forte track has its own chapters
 			$h = $xp->query('./h2', $art)->item(0);
 			$intro = $xp->query('./p[contains(@class, "tut-intro")]', $art)->item(0);
 			$lessons = [];
 			foreach ($xp->query('./section[contains(concat(" ", @class, " "), " tut-lesson ")]', $art) ?: [] as $sec) {
 				if (!$sec instanceof DOMElement || !self::visible($sec->getAttribute('data-right'))) continue;
+				$adv = $track !== 'forte' && ($artAdv || $sec->getAttribute('data-level') === 'advanced');
+				if ($adv && $track === 'basic') continue;
 				$h3 = $xp->query('./h3', $sec)->item(0);
 				if ($h3) $sec->removeChild($h3);
 				$html = '';
 				foreach (iterator_to_array($sec->childNodes) as $n) $html .= $dom->saveHTML($n);
-				$lessons[] = ['id' => $sec->getAttribute('id'), 'title' => trim((string)$h3?->textContent), 'html' => trim($html)];
+				$lessons[] = ['id' => $sec->getAttribute('id'), 'title' => trim((string)$h3?->textContent), 'html' => trim($html), 'advanced' => $adv];
 			}
 			if (!$lessons) continue;
 			$out[] = ['id' => $art->getAttribute('id'), 'title' => trim((string)$h?->textContent), 'part' => $art->getAttribute('data-part'),
 				'intro' => $intro ? trim((string)$intro->textContent) : '', 'lessons' => $lessons];
 		}
-		return self::$chapters = $out;
+		return self::$chapters[$track] = $out;
+	}
+
+	private static function cleanTrack(mixed $t): string
+	{
+		return is_string($t) && in_array($t, self::TRACKS, true) ? $t : '';
+	}
+
+	/** The reader's track: 'basic' | 'advanced' | '' (not chosen yet). */
+	public static function track(): string
+	{
+		return self::progress()['track'];
 	}
 
 	/**
@@ -115,18 +138,27 @@ final class NuTutorial
 		}
 	}
 
-	/** All lessons of the reader in order: id => [chapter index, lesson index]. */
-	public static function order(): array
+	/** Every lesson the reader may see, in all tracks: id => track it belongs to ('advanced' or 'forte'). */
+	public static function allLessons(): array
+	{
+		return array_map(static fn() => 'advanced', self::order('advanced')) + array_map(static fn() => 'forte', self::order('forte'));
+	}
+
+	/** All lessons of the reader in order: id => [chapter index, lesson index] (null = the reader's track). */
+	public static function order(?string $track = null): array
 	{
 		$o = [];
-		foreach (self::chapters() as $ci => $c) foreach ($c['lessons'] as $li => $l) $o[$l['id']] = [$ci, $li];
+		foreach (self::chapters($track) as $ci => $c) foreach ($c['lessons'] as $li => $l) $o[$l['id']] = [$ci, $li];
 		return $o;
 	}
 
 	// ------------------------------------------------------------------ progress
 
+	private static ?array $prog = null;
+
 	public static function progress(): array
 	{
+		if (self::$prog !== null) return self::$prog;
 		$u = NuAuth::user();
 		$p = [];
 		try {
@@ -139,12 +171,14 @@ final class NuTutorial
 			}
 		} catch (Throwable) { $p = []; }
 		$p = is_array($p) ? $p : [];
-		return ['done' => array_values(array_filter((array)($p['done'] ?? []), 'is_string')), 'hidden' => !empty($p['hidden'])];
+		return self::$prog = ['done' => array_values(array_filter((array)($p['done'] ?? []), 'is_string')), 'hidden' => !empty($p['hidden']),
+			'track' => self::cleanTrack($p['track'] ?? '')];
 	}
 
 	public static function save(array $p): void
 	{
-		$p = ['done' => array_values(array_unique($p['done'])), 'hidden' => (bool)$p['hidden']];
+		$p = ['done' => array_values(array_unique($p['done'])), 'hidden' => (bool)$p['hidden'], 'track' => self::cleanTrack($p['track'] ?? '')];
+		self::$prog = $p;
 		$u = NuAuth::user();
 		if (!empty($u['demo'])) { $_SESSION[self::SESSION] = $p; return; }
 		if (!empty($u['globeadmin'])) {
@@ -158,11 +192,11 @@ final class NuTutorial
 		NuUserJson::set((string)$u['id'], self::JSON_KEY, $p);
 	}
 
-	/** [done, total] for the lessons this reader sees. */
-	public static function counts(?array $p = null): array
+	/** [done, total] for the lessons this reader sees in a track (null = the reader's track). */
+	public static function counts(?array $p = null, ?string $track = null): array
 	{
 		$p ??= self::progress();
-		$ids = array_keys(self::order());
+		$ids = array_keys(self::order($track ?? ($p['track'] ?: null)));
 		return [count(array_intersect($ids, $p['done'])), count($ids)];
 	}
 
@@ -170,7 +204,8 @@ final class NuTutorial
 	public static function nextOpen(?array $p = null): string
 	{
 		$p ??= self::progress();
-		foreach (array_keys(self::order()) as $id) if (!in_array($id, $p['done'], true)) return (string)$id;
+		if ($p['track'] === '') return '';                                 // not chosen yet: the overview asks first
+		foreach (array_keys(self::order($p['track'])) as $id) if (!in_array($id, $p['done'], true)) return (string)$id;
 		return '';
 	}
 

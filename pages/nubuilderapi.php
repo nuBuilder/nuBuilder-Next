@@ -293,6 +293,57 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 	nb_err('Unknown action');
 }
 
+/**
+ * Change the database column of an object (0.8.623, NuColumnChange): column.info → the column as it is; column.check → the ALTER TABLE
+ * for a type / length (or the globeadmin's own statement) and the data check; column.change → runs it (recent password; in a draft also
+ * listed for the publish summary). Works on the table, so the same in live mode and in a draft.
+ */
+function nb_column(string $formId, string $action, array $in): never
+{
+	$meta = nb_form($formId);
+	$table = $meta->table();
+	$column = trim((string)($in['column'] ?? ''));
+	if ($table === '' || $column === '') nb_err(t('builder_colchg_err_missing', $column, $table));
+	try {
+		$info = NuColumnChange::info($table, $column);
+	} catch (Throwable $e) {
+		nb_err($e->getMessage());
+	}
+	$ga = !empty(NuAuth::user()['globeadmin']);
+	$public = array_diff_key($info, ['raw' => 1]);
+	$usedBy = array_column(nu_db()->all('SELECT sfo_code FROM zzzzsys_form WHERE sfo_table = ? AND zzzzsys_form_id <> ? ORDER BY sfo_code', [$table, $formId]), 'sfo_code');
+	if ($action === 'column.info') {
+		$reauth = !NuSecurity::recentAuth();
+		if ($reauth) $_SESSION['nu_reauth_next'] = nu_url('builder', ['f' => $formId, 'colchg' => $column]);
+		nb_out(['ok' => true, 'info' => $public, 'free_sql' => $ga, 'used_by' => $usedBy, 'reauth' => $reauth] + ($reauth ? ['reauth_url' => nu_url('reauth')] : []));
+	}
+	$free = trim((string)($in['sql'] ?? ''));
+	try {
+		if ($free !== '') {
+			if (!$ga) nb_err(t('err_forbidden'), 403);
+			$plan = ['sql' => NuColumnChange::checkFreeSql($free, $table), 'checks' => [], 'same' => false, 'target' => '', 'free' => true];
+		} else {
+			$plan = NuColumnChange::plan($info, (string)($in['type'] ?? ''), trim((string)($in['length'] ?? ''))) + ['free' => false];
+		}
+	} catch (Throwable $e) {
+		nb_err($e->getMessage());
+	}
+	if ($action === 'column.check') nb_out(['ok' => true, 'plan' => $plan, 'info' => $public]);
+	// column.change
+	if ($plan['same']) nb_err(t('builder_colchg_err_same'));
+	if (!NuSecurity::recentAuth()) nb_out(['ok' => false, 'error' => t('reauth_needed'), 'code' => 'reauth', 'reauth_url' => nu_url('reauth')], 403);
+	if ($plan['checks'] && empty($in['accept_loss'])) nb_out(['ok' => false, 'error' => t('builder_colchg_err_accept'), 'code' => 'accept', 'plan' => $plan], 409);
+	try {
+		NuColumnChange::run($info, $plan['sql'], $plan['free'] ? 'SQL' : $plan['target']);
+	} catch (Throwable $e) {
+		nb_err(t('builder_colchg_err_run', $e->getMessage()));
+	}
+	$draftId = (string)($in['draft_id'] ?? '');
+	if ($draftId !== '') NuFormDraft::addDdl($draftId, $table, $info['column'], (string)($in['type'] ?? ''), trim((string)($in['length'] ?? '')), $info['sql_type'] . ' → ' . ($plan['free'] ? 'SQL' : $plan['target']));
+	$after = NuColumnChange::info($table, $column);
+	nb_out(['ok' => true, 'info' => array_diff_key($after, ['raw' => 1])]);
+}
+
 /** Info of the open draft of a form for live mode (the builder's info bar), null when there is none. */
 function nb_live_draft(string $formId): ?array
 {
@@ -316,6 +367,7 @@ try {
 			$in['php'] = is_array($in['php'] ?? null) ? array_intersect_key($in['php'], ['BE' => 1]) : null;
 		}
 	}
+	if (in_array($action, ['column.info', 'column.check', 'column.change'], true)) nb_column($formId, $action, $in);   // table-level (0.8.623)
 	$draftId = (string)($in['draft_id'] ?? '');
 	if ($draftId !== '' && !str_starts_with($action, 'draft.publish') && $action !== 'draft.discard' && $action !== 'draft.diff' && $action !== 'draft.conflict') {
 		nb_form($formId);

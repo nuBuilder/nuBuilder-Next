@@ -1,16 +1,17 @@
 <section id="branding" data-doc="admin">
 	<h2 id="branding-h">Branding</h2>
-	<p class="doc-lead">Logo, accent colour and environment label.</p>
+	<p class="doc-lead">Logo, title and environment label.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p><em>Admin tools → Branding</em> (globeadmin) gives this installation its own look – on the sign-in pages and in the top bar:</p>
 <ul>
 <li><strong>Logo</strong> and optional <strong>logo for dark mode</strong>: PNG, JPG, WebP, GIF or SVG up to 512 KB, any aspect ratio (at most 32 px high in the top bar, 72 px on the sign-in pages). They are stored in nuBuilder Forte's file table <code>zzzzsys_file</code> (codes <code>nunext_logo</code> and <code>nunext_logo_dark</code>), so they are part of backups and App cloner copies and can also be replaced in <em>Forms → Files</em>. If a logo is deleted there, nuBuilder Next's logo is shown again. An SVG logo is always served with a sandbox policy, so script inside it cannot run.</li>
+<li><strong>Show logo</strong>: everywhere (top bar and sign-in pages), only on the sign-in pages, or nowhere – for the own logo and nuBuilder Next's. Without a logo in the top bar the title stands there when it is switched on (below); Home is then reached through the menu.</li>
 <li><strong>Show the title next to the logo</strong>: the title of nuBuilder Forte's settings (<code>$nuConfigTitle</code>) in the top bar.</li>
 <li><strong>Use the logo as browser icon</strong> instead of nuBuilder Next's icon (square logos work best).</li>
-<li><strong>Own accent colour</strong>: buttons, links, switches and checkboxes, active tabs, focus rings and highlights (Bootstrap's <em>primary</em> colour). Dark mode gets a lighter version; links are darkened automatically where they would be hard to read on white, and buttons get black text when the colour is very light. The colours come from a small generated stylesheet (the strict Content Security Policy allows no inline styles) that the browser caches until the next change.</li>
+<li><strong>Accent colour</strong> and the other colours are part of the <a href="#themes">themes</a> (Admin tools → Themes); an accent colour set here before is kept as the own theme "My theme".</li>
 <li><strong>Environment label</strong>, e.g. <code>TEST</code> or <code>DEV</code>, with its own colour: a badge in the top bar and on the sign-in pages, a line of its colour at the top of every page and <code>[TEST]</code> in the browser tab title – so a test copy is not mistaken for the live system. <code>$nuConfigEnvironmentLabel</code> and <code>$nuConfigEnvironmentColor</code> in <code>nuconfig.php</code> take priority over the page (the field is then read-only): the label belongs to the server, and a database copied to a test server with the App cloner would otherwise bring the label of the server it came from. Example: <code>$nuConfigEnvironmentLabel = "TEST"; $nuConfigEnvironmentColor = "#e67e22";</code></li>
 <li>The <strong>preview</strong> on the page shows logo, title, colours and label before saving. <em>Reset</em> removes the logos and all branding settings. Error pages and the installer always use nuBuilder Next's look; a login page from <code>$nuWelcomeBodyInnerHTML</code> keeps its own HTML (accent colour and label apply). nuBuilder Forte (4.x) itself is not affected.</li>
 </ul>
-	<p class="doc-see">See also: <a href="#theming">Theming and CSS</a></p>
+	<p class="doc-see">See also: <a href="#themes">Themes</a> · <a href="#theming">Theming and CSS</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nubranding.php</code></li></ul></details>
 </section>

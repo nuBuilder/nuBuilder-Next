@@ -225,7 +225,7 @@ if (($action === 'dry' || $action === 'run') && $dbOk):
 		</div>
 	</div>
 	<div class="card shadow-sm mb-3"><div class="card-body"><div class="row g-2">
-		<div class="col-md-4"><label class="form-label small" for="acCode"><?= h(t('ac_code')) ?> <span class="text-danger">*</span><?= $tip(t('ac_code_info')) ?></label>
+		<div class="col-md-4"><label class="form-label small" for="acCode"><?= h(t('ac_code')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?><?= $tip(t('ac_code_info')) ?></label>
 			<input class="form-control<?= $err('code') ?>" id="acCode" name="code" maxlength="100" value="<?= h($in['code']) ?>" autocomplete="off"><?= $fb('code') ?></div>
 		<div class="col-md-8"><label class="form-label small" for="acDesc"><?= h(t('ac_description')) ?></label>
 			<input class="form-control<?= $err('description') ?>" id="acDesc" name="description" maxlength="100" value="<?= h($in['description']) ?>" autocomplete="off"><?= $fb('description') ?></div>

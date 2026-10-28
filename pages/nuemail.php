@@ -379,11 +379,21 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head()]);
 				<?php $canSave = NuAcl::can(NuAcl::FORM_SETUP, 'save'); // copy / paste as JSON without the password (assets/js/nuemail.js) ?>
 				<div class="card-footer d-flex flex-wrap justify-content-end gap-2">
 					<span id="nuMailClipStatus" class="small me-auto align-self-center" role="status" aria-live="polite"></span>
-					<button type="button" class="btn btn-outline-secondary" id="nuMailCopy" title="<?= h(t('mail_copy_settings_help')) ?>"
-						data-copied="<?= h(t('mail_copied')) ?>" data-failed="<?= h(t('mail_copy_failed')) ?>"><i class="bi bi-clipboard me-1"></i><?= h(t('mail_copy_settings')) ?></button>
+					<div class="dropdown" id="nuMailXfer"><!-- copy / paste / download as JSON (0.8.629, before: two buttons) -->
+						<button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="nuMailXferBtn"><i class="bi bi-arrow-left-right me-1"></i><?= h(t('mail_xfer')) ?></button>
+						<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nuMailXferBtn">
+							<li><button type="button" class="dropdown-item" id="nuMailCopy" title="<?= h(t('mail_copy_settings_help')) ?>"
+								data-copied="<?= h(t('mail_copied')) ?>" data-failed="<?= h(t('mail_copy_failed')) ?>"><i class="bi bi-clipboard me-2"></i><?= h(t('mail_copy_settings')) ?></button></li>
+							<?php if ($canSave): ?>
+							<li><button type="button" class="dropdown-item" id="nuMailPaste" title="<?= h(t('mail_paste_settings_help')) ?>"
+								data-pasted="<?= h(t('mail_pasted')) ?>" data-invalid="<?= h(t('mail_paste_invalid')) ?>"><i class="bi bi-clipboard-check me-2"></i><?= h(t('mail_paste_settings')) ?></button></li>
+							<?php endif; ?>
+							<li><hr class="dropdown-divider"></li>
+							<li><button type="button" class="dropdown-item" id="nuMailDownload" title="<?= h(t('mail_download_settings_help')) ?>"
+								data-done="<?= h(t('mail_downloaded')) ?>"><i class="bi bi-download me-2"></i><?= h(t('mail_download_settings')) ?></button></li>
+						</ul>
+					</div>
 					<?php if ($canSave): ?>
-						<button type="button" class="btn btn-outline-secondary" id="nuMailPaste" title="<?= h(t('mail_paste_settings_help')) ?>"
-							data-pasted="<?= h(t('mail_pasted')) ?>" data-invalid="<?= h(t('mail_paste_invalid')) ?>"><i class="bi bi-clipboard-check me-1"></i><?= h(t('mail_paste_settings')) ?></button>
 						<button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 					<?php endif; ?>
 					<?php if (NuAcl::can(NuAcl::FORM_SETUP)): ?>

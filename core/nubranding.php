@@ -22,9 +22,11 @@ final class NuBranding
 	/** Largest logo (bytes). */
 	public const MAX_BYTES = 524288;
 	public const TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
-	public const DEFAULTS = ['accent' => '', 'logo' => false, 'logo_dark' => false, 'show_title' => false, 'favicon' => false,
+	public const DEFAULTS = ['accent' => '', 'logo' => false, 'logo_dark' => false, 'show_title' => false, 'favicon' => false, 'logo_show' => 'all',
 		'env_label' => '', 'env_color' => '#dc3545', 'rev' => ''];
 	public const ENV_LEN = 20;
+	/** Where the logo shows (0.8.630): all = top bar and sign-in pages, login = sign-in pages only, none = nowhere. */
+	public const LOGO_SHOW = ['all', 'login', 'none'];
 
 	private static ?array $cache = null;
 	private static bool $busy = false;
@@ -54,6 +56,7 @@ final class NuBranding
 		$out['accent'] = self::hex($out['accent']);
 		$out['env_color'] = self::hex($out['env_color']) ?: self::DEFAULTS['env_color'];
 		$out['env_label'] = mb_substr(trim($out['env_label']), 0, self::ENV_LEN);
+		if (!in_array($out['logo_show'], self::LOGO_SHOW, true)) $out['logo_show'] = 'all';
 		return self::$cache = $out;
 	}
 
@@ -111,6 +114,20 @@ final class NuBranding
 		return '<span class="' . $cls . '">' . $img . '</span>' . $text;
 	}
 
+	/** Is the logo shown in the top bar ('') or on the sign-in pages ('lg')? (0.8.630) */
+	public static function logoShown(string $size = ''): bool
+	{
+		$w = self::get()['logo_show'];
+		return $w === 'all' || ($w === 'login' && $size === 'lg');
+	}
+
+	/** Top bar without logo: the title alone when "show title" is on. */
+	public static function titleNoLogo(): string
+	{
+		$b = self::get();
+		return $b['show_title'] && nu_app_title(true) !== '' ? '<span class="nu-brand-title">' . h(nu_app_title(true)) . '</span>' : '';
+	}
+
 	/** Title next to nuBuilder Next's own logo (top bar) when "show title" is on but no own logo was uploaded. */
 	public static function titleOnly(): string
 	{
@@ -127,7 +144,7 @@ final class NuBranding
 
 	// ------------------------------------------------------------------ colours
 
-	private static function rgb(string $hex): array
+	public static function rgb(string $hex): array
 	{
 		return [hexdec(substr($hex, 1, 2)), hexdec(substr($hex, 3, 2)), hexdec(substr($hex, 5, 2))];
 	}
@@ -172,46 +189,13 @@ final class NuBranding
 		return $c;
 	}
 
-	/** The generated stylesheet: accent colour (Bootstrap's primary in all its uses, nuBuilder Next's accent and tab line) and the label. */
+	/** The generated stylesheet: accent colour (Bootstrap's primary in all its uses, nuBuilder Next's accent and tab line, --nu-on-accent = text on
+	 *  it, e.g. form buttons) and the label. */
 	public static function css(): string
 	{
 		$b = self::get();
 		$o = "/* nuBuilder Next – branding of this installation (Admin tools → Branding) */\n";
-		if (($c = $b['accent']) !== '') {
-			$rgb = implode(', ', self::rgb($c));
-			$on = self::onColor($c);
-			$link = self::readable($c, '#ffffff', 4.5, '#000000');                 // links stay readable on white
-			$linkD = self::readable(self::mix($c, '#ffffff', 0.4), '#212529', 4.5, '#ffffff');
-			$hover = self::mix($c, '#000000', 0.15); $active = self::mix($c, '#000000', 0.2);
-			$focus = self::mix($c, '#ffffff', 0.5);
-			$o .= ":root, [data-bs-theme=\"light\"] {\n"
-				. "\t--bs-primary: $c; --bs-primary-rgb: $rgb; --nu-accent: $c; --nu-tab-active: $c;\n"
-				. "\t--bs-primary-text-emphasis: " . self::mix($c, '#000000', 0.6) . '; --bs-primary-bg-subtle: ' . self::mix($c, '#ffffff', 0.8)
-				. '; --bs-primary-border-subtle: ' . self::mix($c, '#ffffff', 0.6) . ";\n"
-				. "\t--bs-link-color: $link; --bs-link-color-rgb: " . implode(', ', self::rgb($link)) . '; --bs-link-hover-color: ' . self::mix($link, '#000000', 0.2)
-				. '; --bs-link-hover-color-rgb: ' . implode(', ', self::rgb(self::mix($link, '#000000', 0.2))) . ";\n"
-				. "\t--bs-focus-ring-color: rgba($rgb, .25);\n}\n"
-				. "[data-bs-theme=\"dark\"] {\n"
-				. "\t--bs-primary: $c; --bs-primary-rgb: $rgb; --nu-accent: $c; --nu-tab-active: " . self::mix($c, '#ffffff', 0.3) . ";\n"
-				. "\t--bs-primary-text-emphasis: " . self::mix($c, '#ffffff', 0.4) . '; --bs-primary-bg-subtle: ' . self::mix($c, '#000000', 0.8)
-				. '; --bs-primary-border-subtle: ' . self::mix($c, '#000000', 0.4) . ";\n"
-				. "\t--bs-link-color: $linkD; --bs-link-color-rgb: " . implode(', ', self::rgb($linkD)) . '; --bs-link-hover-color: ' . self::mix($linkD, '#ffffff', 0.2)
-				. '; --bs-link-hover-color-rgb: ' . implode(', ', self::rgb(self::mix($linkD, '#ffffff', 0.2))) . ";\n}\n"
-				. ".btn-primary { --bs-btn-color: $on; --bs-btn-bg: $c; --bs-btn-border-color: $c; --bs-btn-hover-color: $on; --bs-btn-hover-bg: $hover; --bs-btn-hover-border-color: $active;"
-				. " --bs-btn-focus-shadow-rgb: $rgb; --bs-btn-active-color: $on; --bs-btn-active-bg: $active; --bs-btn-active-border-color: $active;"
-				. " --bs-btn-disabled-color: $on; --bs-btn-disabled-bg: $c; --bs-btn-disabled-border-color: $c; }\n"
-				. ".btn-outline-primary { --bs-btn-color: var(--bs-link-color); --bs-btn-border-color: $c; --bs-btn-hover-color: $on; --bs-btn-hover-bg: $c; --bs-btn-hover-border-color: $c;"
-				. " --bs-btn-focus-shadow-rgb: $rgb; --bs-btn-active-color: $on; --bs-btn-active-bg: $c; --bs-btn-active-border-color: $c; --bs-btn-disabled-color: $c; --bs-btn-disabled-border-color: $c; }\n"
-				. ".text-bg-primary { color: $on !important; background-color: RGBA($rgb, var(--bs-bg-opacity, 1)) !important; }\n"
-				. ".form-check-input:checked { background-color: $c; border-color: $c; }\n"
-				. ".form-check-input:focus, .form-control:focus, .form-select:focus { border-color: $focus; box-shadow: 0 0 0 .25rem rgba($rgb, .25); }\n"
-				. ".nav-pills { --bs-nav-pills-link-active-bg: $c; --bs-nav-pills-link-active-color: $on; }\n"
-				. ".dropdown-menu { --bs-dropdown-link-active-bg: $c; --bs-dropdown-link-active-color: $on; }\n"
-				. ".list-group { --bs-list-group-active-bg: $c; --bs-list-group-active-border-color: $c; --bs-list-group-active-color: $on; }\n"
-				. ".pagination { --bs-pagination-active-bg: $c; --bs-pagination-active-border-color: $c; --bs-pagination-active-color: $on; }\n"
-				. ".progress, .progress-stacked { --bs-progress-bar-bg: $c; }\n"
-				. ".form-range::-webkit-slider-thumb { background-color: $c; }\n.form-range::-moz-range-thumb { background-color: $c; }\n";
-		}
+		if (($c = $b['accent']) !== '') $o .= self::accentCss($c);
 		if ($b['env_label'] !== '') {
 			$e = $b['env_color'];
 			$o .= ":root { --nu-env: $e; }\n"
@@ -264,6 +248,7 @@ final class NuBranding
 		$new['accent'] = $accent;
 		$new['show_title'] = !empty($in['show_title']);
 		$new['favicon'] = !empty($in['favicon']);
+		$new['logo_show'] = in_array((string)($in['logo_show'] ?? 'all'), self::LOGO_SHOW, true) ? (string)$in['logo_show'] : 'all';
 		if (!self::envFromConfig()) $new['env_label'] = $label;
 		$new['env_color'] = $envColor;
 		if ($accent !== '' && self::contrast($accent, '#ffffff') < 3) $warn[] = t('brand_warn_light');
@@ -306,6 +291,45 @@ final class NuBranding
 		$db->run('DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
 		self::$cache = null;
 		NuLog::write('branding_reset', 'zzzzsys_nunext_setting', self::SETTING);
+	}
+
+	/** CSS of an accent colour (Bootstrap's primary in all its uses, --nu-accent, --nu-on-accent, tab line) – Branding and themes (0.8.632). */
+	public static function accentCss(string $c): string
+	{
+		$rgb = implode(', ', self::rgb($c));
+		$on = self::onColor($c);
+		$link = self::readable($c, '#ffffff', 4.5, '#000000');                 // links stay readable on white
+		$linkD = self::readable(self::mix($c, '#ffffff', 0.4), '#212529', 4.5, '#ffffff');
+		$hover = self::mix($c, '#000000', 0.15); $active = self::mix($c, '#000000', 0.2);
+		$focus = self::mix($c, '#ffffff', 0.5);
+		$o = ":root, [data-bs-theme=\"light\"] {\n"
+			. "\t--bs-primary: $c; --bs-primary-rgb: $rgb; --nu-accent: $c; --nu-on-accent: $on; --nu-tab-active: $c;\n"
+			. "\t--bs-primary-text-emphasis: " . self::mix($c, '#000000', 0.6) . '; --bs-primary-bg-subtle: ' . self::mix($c, '#ffffff', 0.8)
+			. '; --bs-primary-border-subtle: ' . self::mix($c, '#ffffff', 0.6) . ";\n"
+			. "\t--bs-link-color: $link; --bs-link-color-rgb: " . implode(', ', self::rgb($link)) . '; --bs-link-hover-color: ' . self::mix($link, '#000000', 0.2)
+			. '; --bs-link-hover-color-rgb: ' . implode(', ', self::rgb(self::mix($link, '#000000', 0.2))) . ";\n"
+			. "\t--bs-focus-ring-color: rgba($rgb, .25);\n}\n"
+			. "[data-bs-theme=\"dark\"] {\n"
+			. "\t--bs-primary: $c; --bs-primary-rgb: $rgb; --nu-accent: $c; --nu-on-accent: $on; --nu-tab-active: " . self::mix($c, '#ffffff', 0.3) . ";\n"
+			. "\t--bs-primary-text-emphasis: " . self::mix($c, '#ffffff', 0.4) . '; --bs-primary-bg-subtle: ' . self::mix($c, '#000000', 0.8)
+			. '; --bs-primary-border-subtle: ' . self::mix($c, '#000000', 0.4) . ";\n"
+			. "\t--bs-link-color: $linkD; --bs-link-color-rgb: " . implode(', ', self::rgb($linkD)) . '; --bs-link-hover-color: ' . self::mix($linkD, '#ffffff', 0.2)
+			. '; --bs-link-hover-color-rgb: ' . implode(', ', self::rgb(self::mix($linkD, '#ffffff', 0.2))) . ";\n}\n"
+			. ".btn-primary { --bs-btn-color: $on; --bs-btn-bg: $c; --bs-btn-border-color: $c; --bs-btn-hover-color: $on; --bs-btn-hover-bg: $hover; --bs-btn-hover-border-color: $active;"
+			. " --bs-btn-focus-shadow-rgb: $rgb; --bs-btn-active-color: $on; --bs-btn-active-bg: $active; --bs-btn-active-border-color: $active;"
+			. " --bs-btn-disabled-color: $on; --bs-btn-disabled-bg: $c; --bs-btn-disabled-border-color: $c; }\n"
+			. ".btn-outline-primary { --bs-btn-color: var(--bs-link-color); --bs-btn-border-color: $c; --bs-btn-hover-color: $on; --bs-btn-hover-bg: $c; --bs-btn-hover-border-color: $c;"
+			. " --bs-btn-focus-shadow-rgb: $rgb; --bs-btn-active-color: $on; --bs-btn-active-bg: $c; --bs-btn-active-border-color: $c; --bs-btn-disabled-color: $c; --bs-btn-disabled-border-color: $c; }\n"
+			. ".text-bg-primary { color: $on !important; background-color: RGBA($rgb, var(--bs-bg-opacity, 1)) !important; }\n"
+			. ".form-check-input:checked { background-color: $c; border-color: $c; }\n"
+			. ".form-check-input:focus, .form-control:focus, .form-select:focus { border-color: $focus; box-shadow: 0 0 0 .25rem rgba($rgb, .25); }\n"
+			. ".nav-pills { --bs-nav-pills-link-active-bg: $c; --bs-nav-pills-link-active-color: $on; }\n"
+			. ".dropdown-menu { --bs-dropdown-link-active-bg: $c; --bs-dropdown-link-active-color: $on; }\n"
+			. ".list-group { --bs-list-group-active-bg: $c; --bs-list-group-active-border-color: $c; --bs-list-group-active-color: $on; }\n"
+			. ".pagination { --bs-pagination-active-bg: $c; --bs-pagination-active-border-color: $c; --bs-pagination-active-color: $on; }\n"
+			. ".progress, .progress-stacked { --bs-progress-bar-bg: $c; }\n"
+			. ".form-range::-webkit-slider-thumb { background-color: $c; }\n.form-range::-moz-range-thumb { background-color: $c; }\n";
+		return $o;
 	}
 
 	// ------------------------------------------------------------------ public route ?p=brand

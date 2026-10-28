@@ -1202,3 +1202,172 @@
 	if (document.body && document.body.dataset.nuPage === 'form') return;   // the form runtime calls it after nuOnLoad
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else setTimeout(run, 0);
 })();
+
+// Pin of the ☰ menu (0.8.637, phones / tablets): pinned = the collapsed top bar menu stays open on every page (localStorage nunext-nav-pin)
+(function () {
+	'use strict';
+	var pin = document.getElementById('nuNavPin'), nav = document.getElementById('nuNav');
+	if (!pin || !nav) return;
+	var KEY = 'nunext-nav-pin', toggler = document.querySelector('.navbar-toggler[data-bs-target="#nuNav"]');
+	var get = function () { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+	function show(on) {
+		pin.setAttribute('aria-pressed', on ? 'true' : 'false');
+		pin.classList.toggle('active', on);
+		pin.querySelector('.bi').className = 'bi ' + (on ? 'bi-pin-angle-fill' : 'bi-pin-angle');
+		var label = pin.getAttribute(on ? 'data-on' : 'data-off');
+		pin.title = label; pin.setAttribute('aria-label', label);
+	}
+	var on = get();
+	show(on);
+	if (on && !nav.classList.contains('show')) {                 // open without the slide, as if it had never closed
+		nav.classList.add('show');
+		if (toggler) { toggler.classList.remove('collapsed'); toggler.setAttribute('aria-expanded', 'true'); }
+	}
+	pin.addEventListener('click', function () {
+		on = !on;
+		try { if (on) localStorage.setItem(KEY, '1'); else localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+		show(on);
+	});
+})();
+
+// Sections of a tab (0.8.638): a long tap on a tab (or right-click) lists the cards of its page – Login credentials, Access & roles …;
+// a tap on one opens the tab and scrolls to that card. Only for tabs whose page has at least two cards with a header.
+(function () {
+	'use strict';
+	var open = null;
+	function close() { if (open) { open.remove(); open = null; } }
+	function sections(tab) {
+		var sel = tab.getAttribute('data-bs-target') || tab.getAttribute('href') || '';
+		var pane = sel.charAt(0) === '#' ? document.querySelector(sel) : null;
+		if (!pane) return [];
+		return Array.prototype.filter.call(pane.querySelectorAll('.card > .card-header'), function (h) {
+			return !h.closest('.modal') && !h.closest('.card.d-none') && h.closest('.tab-pane') === pane && (h.textContent || '').trim() !== '';
+		});
+	}
+	function title(h) {
+		var main = h.querySelector('.fw-semibold') || h;
+		return (main.textContent || '').replace(/\s+/g, ' ').trim();
+	}
+	function show(tab) {
+		var list = sections(tab);
+		if (list.length < 2) return false;
+		close();
+		var ul = document.createElement('ul');
+		ul.className = 'dropdown-menu show shadow nuTabSections';
+		ul.setAttribute('role', 'menu');
+		list.forEach(function (h) {
+			var li = document.createElement('li'), b = document.createElement('button');
+			b.type = 'button'; b.className = 'dropdown-item'; b.setAttribute('role', 'menuitem');
+			var ic = h.querySelector('.bi');
+			if (ic) { var i = document.createElement('i'); i.className = ic.className.replace(/\bme-\d\b/g, '') + ' me-2'; b.appendChild(i); }
+			b.appendChild(document.createTextNode(title(h)));
+			b.addEventListener('click', function () {
+				close();
+				if (!tab.classList.contains('active') && window.nuBs) nuBs.tab(tab).show();
+				setTimeout(function () {
+					var card = h.closest('.card'), nav = document.querySelector('.nu-navbar.sticky-top'), bar = document.querySelector('.nuStickyBar');
+					var y = card.getBoundingClientRect().top + window.scrollY - (nav ? nav.offsetHeight : 0) - (bar ? bar.offsetHeight + 16 : 0) - 8;   // below the sticky button row (0.8.642)
+					window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+					var f = card.querySelector('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+					card.classList.add('nuSectionFlash'); setTimeout(function () { card.classList.remove('nuSectionFlash'); }, 1200);
+					if (f && !('ontouchstart' in window)) f.focus({ preventScroll: true });
+				}, 60);
+			});
+			li.appendChild(b); ul.appendChild(li);
+		});
+		document.body.appendChild(ul);
+		var r = tab.getBoundingClientRect(), w = ul.offsetWidth;
+		ul.style.position = 'absolute';
+		ul.style.top = (r.bottom + window.scrollY + 4) + 'px';
+		ul.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - w - 8)) + 'px';
+		ul.style.zIndex = 1080;
+		open = ul;
+		var first = ul.querySelector('.dropdown-item');
+		if (first) first.focus({ preventScroll: true });
+		return true;
+	}
+	var timer = null, startX = 0, startY = 0, fired = false;
+	document.addEventListener('touchstart', function (e) {
+		var tab = e.target.closest && e.target.closest('.nav-tabs [data-bs-toggle="tab"]');
+		if (!tab || e.touches.length !== 1) return;
+		fired = false; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+		clearTimeout(timer);
+		timer = setTimeout(function () { fired = show(tab); if (fired && navigator.vibrate) { try { navigator.vibrate(15); } catch (x) { /* ignore */ } } }, 550);
+	}, { passive: true });
+	document.addEventListener('touchmove', function (e) {
+		if (timer && (Math.abs(e.touches[0].clientX - startX) > 10 || Math.abs(e.touches[0].clientY - startY) > 10)) { clearTimeout(timer); timer = null; }
+	}, { passive: true });
+	document.addEventListener('touchend', function (e) {
+		clearTimeout(timer); timer = null;
+		if (fired) { e.preventDefault(); fired = false; }            // the long tap does not switch the tab as well
+	});
+	document.addEventListener('contextmenu', function (e) {
+		var tab = e.target.closest && e.target.closest('.nav-tabs [data-bs-toggle="tab"]');
+		if (tab && (open || show(tab))) e.preventDefault();
+	});
+	// a small ▾ in the tab shows that there is a menu (0.8.639) – a tap on it opens the list at once
+	var label = (document.body && document.body.getAttribute('data-nu-tab-sections')) || '';
+	function arrows() {
+		document.querySelectorAll('.nav-tabs [data-bs-toggle="tab"]').forEach(function (tab) {
+			if (tab.querySelector('.nuTabSecArrow') || sections(tab).length < 2) return;
+			var a = document.createElement('span');
+			a.className = 'nuTabSecArrow'; a.setAttribute('role', 'button'); a.tabIndex = -1;
+			if (label) { a.title = label; a.setAttribute('aria-label', label); }
+			a.innerHTML = '<i class="bi bi-chevron-down" aria-hidden="true"></i>';
+			a.addEventListener('click', function (e) {
+				e.preventDefault(); e.stopPropagation();
+				if (!tab.classList.contains('active') && window.nuBs) nuBs.tab(tab).show();
+				if (open) close(); else show(tab);
+			});
+			tab.appendChild(a);
+		});
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrows); else arrows();
+	document.addEventListener('click', function (e) { if (open && !open.contains(e.target) && !(e.target.closest && e.target.closest('.nuTabSecArrow'))) close(); }, true);
+	document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+	window.addEventListener('resize', close);
+})();
+
+// ---------------------------------------------------------------- sticky button row (0.8.642): the header row of form pages and of record pages
+// (breadcrumb / title · Back · Save · …) stays under the top bar while the page scrolls; .nuStuck adds the background edge once it sticks
+(function () {
+	'use strict';
+	var KEY = '[data-nu-save], .nuBtnSave, #nuBackButton, .nuBackBtn, a.btn > .bi-arrow-left, button.btn > .bi-arrow-left';
+	var bars = [];
+	function find() {
+		document.querySelectorAll('.nuFormHeader, main .nuTitleBar').forEach(function (b) {
+			if (b.classList.contains('nuStickyBar') || b.closest('.card, .modal, .dropdown-menu, .offcanvas')) return;
+			if (!b.classList.contains('nuFormHeader') && !b.querySelector(KEY)) return;
+			if (b.parentElement && b.parentElement.closest('.nuStickyBar')) return;
+			b.classList.add('nuStickyBar');
+			bars.push(b);
+			if (window.ResizeObserver) new ResizeObserver(measure).observe(b);
+		});
+		var banner = document.querySelector('body:not(.nu-bare) > .nuDraftBanner');
+		if (banner && window.ResizeObserver && !banner.nuObs) { banner.nuObs = true; new ResizeObserver(measure).observe(banner); }
+		measure();
+	}
+	// --nu-sticky-top: where the row sticks (below the top bar and a form-draft banner); --nu-sticky-h: the room it takes, so
+	// sticky side panels (help, preview, field lists) stop below it
+	function measure() {
+		var root = document.documentElement, banner = document.querySelector('body:not(.nu-bare) > .nuDraftBanner');
+		var nav = parseFloat(getComputedStyle(root).getPropertyValue('--nu-nav-h')) || 0;
+		root.style.setProperty('--nu-sticky-top', (nav + (banner ? banner.offsetHeight : 0)) + 'px');
+		root.style.setProperty('--nu-sticky-h', bars.length ? (bars[0].offsetHeight + 8) + 'px' : '0px');
+		check();
+	}
+	var queued = false;
+	function check() {
+		queued = false;
+		var top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nu-sticky-top')) || 0) + 8;
+		if (document.body.classList.contains('nu-bare')) top = 8;
+		bars.forEach(function (b) {
+			var y = b.getBoundingClientRect().top, stuck = window.scrollY > 0 && y <= top + 1 && y >= top - 1;
+			b.classList.toggle('nuStuck', stuck);
+		});
+	}
+	window.addEventListener('scroll', function () { if (!queued && bars.length) { queued = true; requestAnimationFrame(check); } }, {passive: true});
+	window.addEventListener('resize', measure);
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', find); else find();
+	window.addEventListener('load', find);   // form pages: buttons added by nuOnLoad
+})();

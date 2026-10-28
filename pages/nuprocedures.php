@@ -149,7 +149,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 	// label above the field (full width on phones, two columns from md)
 	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
 		'<div class="procField"><label class="form-label procLabel" for="' . $k . '">' . h($label)
-		. ($req ? ' <span class="text-danger">*</span>' : '') . '</label>' . $control . '</div>';
+		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sph_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique (0.8.627)
 	$distinct = static fn(string $c) => array_column($db->all("SELECT DISTINCT $c AS v FROM $T WHERE $c IS NOT NULL AND $c <> '' AND " . NuProcedure::listCondition() . " ORDER BY $c"), 'v');
 	$forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE COALESCE(sfo_type,'') <> 'subform' ORDER BY sfo_code");
 	$access = NuProcedure::access($proc ? $id : '');

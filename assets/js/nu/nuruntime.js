@@ -59,7 +59,7 @@
 		catch (e) { reportError(e.message, 'event code'); console.error(e); }
 	}
 	function api(name, fn) { window[name] = fn; }
-	/** Label text without the validation markers (* / ◆ and their screen reader words). */
+	/** Label text without the validation markers (* / key and their screen reader words). */
 	function labelText(id) { return $('#label_' + id).first().clone().find('.nuMarks, .nuRequired').remove().end().text().trim(); }
 
 	// =================================================================== error collection (shown to globeadmin)
@@ -326,7 +326,7 @@
 		if (t === undefined || t === null) t = labelText(id);
 		$('#' + id + ($('#' + id).attr('data-nu-type') === 'lookup' ? 'code' : '')).attr('placeholder', translate === false ? t : nuTranslate(t));
 	});
-	// keeps the validation markers (* / ◆) after the new text
+	// keeps the validation markers (* / key) after the new text
 	api('nuSetLabelText', function (id, t, translate) {
 		var l = $('#label_' + id), marks = l.children('.nuMarks').detach();
 		l.empty().append(safeFrag(translate ? nuTranslate(t) : t)).append(marks);
@@ -939,6 +939,7 @@
 		var row = g(sf + nuPad3(n));
 		nuNextRunDeferred(row);
 		initSelects(row);
+		fitButtons(row);
 		var ev = ((N.events || {})[sf] || {}).afterinsertrow;
 		if (ev) runSnippet(ev, {target: row}, row);
 		return row;
@@ -1434,14 +1435,30 @@
 		if (window.nuOnClone) window.nuOnClone();
 	});
 
-	api('nuAttachSaveButtonTo', function (id) {
+	// nuBuilder Forte: nuAttachSaveButtonTo(id, dx, dy, height, width, fontSize) – Save below the object (15 px gap + dy, left + dx);
+	// the canvas of the tab grows when the button would end below it (0.8.633: was cut off)
+	api('nuAttachSaveButtonTo', function (id, dx, dy, h, w, fs) {
 		var b = g('nuSaveButton'), target = g('nuw_' + id) || g(id);
-		if (!b || !target) return;
+		if (!b || !target) return $(b);
 		var holder = $('<div class="nuAttachedSave"></div>').append(b);
-		if (target.classList.contains('nuAbs')) {
-			holder.addClass('nuAbs').css({top: (target.offsetTop + target.offsetHeight + 8) + 'px', left: target.style.left});
-		}
 		$(target).after(holder);
+		if (Number(w) > 0) b.style.width = Number(w) + 'px';
+		if (Number(h) > 0) { b.style.height = Number(h) + 'px'; b.style.minHeight = '0'; b.style.paddingTop = '0'; b.style.paddingBottom = '0'; }
+		if (fs !== undefined && fs !== null) { if (typeof fs === 'number') b.style.fontSize = fs + 'px'; else $(b).css(fs); }
+		if (Number(w) > 0 || Number(h) > 0) {
+			b.classList.add('nuSaveSized');                                     // one line in the given size; the icon goes when the label needs the room
+			if (b.scrollWidth > b.clientWidth + 1) b.classList.add('nuSaveNoIcon');
+		}
+		if (target.classList.contains('nuAbs')) {
+			var top = target.offsetTop + target.offsetHeight + 15 + (Number(dy) || 0), left = target.offsetLeft + (Number(dx) || 0);
+			holder.addClass('nuAbs').css({top: top + 'px', left: left + 'px'});
+			var canvas = target.closest('.nuAbsoluteCanvas');
+			if (canvas) {
+				var need = top + (Number(h) > 0 ? Number(h) : b.offsetHeight) + 15;
+				if (canvas.offsetHeight < need) canvas.style.minHeight = need + 'px';
+			}
+		}
+		return $(b);
 	});
 
 	// nuBuilder: nuSetSaveButtonPosition(top, left, height, width, fontSize or css) – the Save button moves onto the first tab of an
@@ -1742,7 +1759,7 @@
 			var align = [['left', 'bi-text-left'], ['center', 'bi-text-center'], ['right', 'bi-text-right']].map(function (a) {
 				return item(a[1], T[a[0]], function () { change(o, {sob_all_align: a[0]}); }, {current: (o.align || 'left') === a[0]});
 			});
-			var valIcons = ['bi-globe', 'bi-input-cursor', 'bi-diamond-fill', 'bi-star-fill'];
+			var valIcons = ['bi-globe', 'bi-input-cursor', 'bi-key', 'bi-star-fill'];
 			var validate = T.validate_v.map(function (txt, i) { return item(valIcons[i], txt, function () { change(o, {sob_all_validate: String(i)}); }, {current: String(o.validate || '0') === String(i)}); });
 
 			menu = $('<ul class="dropdown-menu show nuObjMenu shadow" role="menu"></ul>').append(
@@ -2081,6 +2098,57 @@
 		});
 	}
 	N.initCharts = initCharts;
+
+	// =================================================================== form buttons (input + run objects, 0.8.621)
+	// 1. Text colour: a button the form's CSS gives its own background (as usual for nuBuilder Forte – #id { background-color: … })
+	//    keeps white text as in nuBuilder Forte, dark text only on a light background (white below 2.4:1). Only while the text colour
+	//    is still ours (--nu-btn-ink): a colour the form's CSS sets itself stays. Classes nuBtnInkLight / nuBtnInkDark (nuform.css).
+	// 2. One line: a label cut off with … gets the full label (+ the new-tab / popup hint) as tooltip, checked again when the size
+	//    changes (a button on a hidden tab has no size until the tab is shown).
+	var btnProbe = null, btnSizes = window.ResizeObserver ? new ResizeObserver(function (es) { es.forEach(function (e) { fitButtonTitle(e.target); }); }) : null;
+	function cssRgb(v) {                                               // any CSS colour → [r, g, b, a] (through a probe element)
+		v = String(v || '').trim();
+		if (!v) return null;
+		if (!btnProbe) { btnProbe = document.createElement('span'); btnProbe.hidden = true; document.body.appendChild(btnProbe); }
+		btnProbe.style.color = ''; btnProbe.style.color = v;
+		if (!btnProbe.style.color) return null;
+		var m = getComputedStyle(btnProbe).color.match(/[\d.]+/g);
+		return m && m.length >= 3 ? [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1] : null;
+	}
+	function sameRgb(a, b) { return !!a && !!b && Math.abs(a[0] - b[0]) < 2 && Math.abs(a[1] - b[1]) < 2 && Math.abs(a[2] - b[2]) < 2; }
+	function luminance(c) {
+		var f = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+		return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+	}
+	function fitButtonInk(b) {
+		b.classList.remove('nuBtnInkLight', 'nuBtnInkDark');
+		var c = getComputedStyle(b);
+		if (c.backgroundImage && c.backgroundImage !== 'none') return;            // gradient / image: cannot judge it
+		var bg = cssRgb(c.backgroundColor);
+		if (!bg || bg[3] < 0.5 || sameRgb(bg, cssRgb(c.getPropertyValue('--bs-btn-bg')))) return;   // transparent, or the look's own colour
+		if (!sameRgb(cssRgb(c.color), cssRgb(c.getPropertyValue('--nu-btn-ink')))) return;           // text colour set by the form's CSS
+		b.classList.add(1.05 / (luminance(bg) + 0.05) >= 2.4 ? 'nuBtnInkLight' : 'nuBtnInkDark');
+	}
+	function fitButtonTitle(b) {
+		if (!b.hasAttribute('data-nu-title0')) b.setAttribute('data-nu-title0', b.getAttribute('title') || '');
+		if (!b.clientWidth) return;
+		var t0 = b.getAttribute('data-nu-title0'), hint = b.getAttribute('data-nu-run-hint') || '';
+		var lab = b.querySelector('.nuButtonLabel'), text = (lab ? lab.textContent : b.textContent).replace(/\s+/g, ' ').trim();
+		if (b.scrollWidth > b.clientWidth + 1 && text) b.setAttribute('title', text + (hint ? ' – ' + hint : ''));
+		else if (t0) b.setAttribute('title', t0);
+		else b.removeAttribute('title');
+	}
+	function fitButtons(root) {
+		$(root || document).find('.btn.nuFormBtn').each(function () {
+			if (this.closest('template') || /(^|\s)btn-/.test(this.className)) return;
+			try { fitButtonInk(this); } catch (x) { /* ignore */ }
+			fitButtonTitle(this);
+			if (btnSizes) btnSizes.observe(this);
+		});
+	}
+	N.fitButtons = fitButtons;
+	new MutationObserver(function () { if (N.mode === 'edit') fitButtons(document); })
+		.observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
 
 	// =================================================================== searchable / multiple selects (Tom Select)
 	function initSelects(root) {
@@ -2482,7 +2550,7 @@
 			pane.querySelectorAll('.nuWrap').forEach(function (w) {
 				if (w !== wrap && !wrap.contains(w) && w.offsetParent !== null && w.getBoundingClientRect().top >= rect.bottom - 2) below = true;
 			});
-			// everything that follows the editor on the page (padding of the tab, the legend nuMarksLegend, the page's bottom margin)
+			// everything that follows the editor on the page (padding of the tab, the page's bottom margin)
 			// must stay visible too: free = window height − editor top − that rest
 			var main = document.querySelector('main') || document.body;
 			var rest = Math.max(0, main.getBoundingClientRect().bottom - Math.max(rect.bottom, prect.top + edH));
@@ -3387,6 +3455,8 @@
 		if (typeof window.nuAttachToolTip === 'function') { try { window.nuAttachToolTip(); } catch (x) { reportError(x.message, 'nuAttachToolTip'); } }
 		// chart objects – after nuOnLoad, so the form's code can still set the data arrays
 		if (N.mode === 'edit') initCharts(document);
+		// form buttons: text colour on backgrounds of the form's CSS, tooltip for cut-off labels – after nuOnLoad, which may restyle them
+		if (N.mode === 'edit') fitButtons(document);
 		// first field gets the focus (mouse / trackpad only, see nuFocusFirst in assets/js/nuapp.js) – after nuOnLoad, which may set its own
 		// (in a popup yes, in an iframe object embedded in another form no – it would take the focus away from that form)
 		var embedded = false;

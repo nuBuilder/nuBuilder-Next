@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 19;
+	public const VERSION = 20;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -134,6 +134,10 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_recent_id',
 			'cols' => [['user_id', 'text', '25'], ['item', 'text', '100'], ['used_at', 'datetime'], ['stamp', 'text', '20']],   // stamp: YmdHis + microseconds (order)
 			'index' => ['user_id'],
+		],
+		'zzzzsys_nunext_theme' => [                               // themes (0.8.632, core/nutheme.php): own themes; the five built-in ones are in the code
+			'pk' => 'zzzzsys_nunext_theme_id',
+			'cols' => [['name', 'text', '100'], ['base', 'text', '25'], ['vals', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 		],
 		'zzzzsys_nunext_user_access' => [                         // additional access levels per user (0.8.585, core/nuuseraccess.php)
 			'pk' => 'zzzzsys_nunext_user_access_id',

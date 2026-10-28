@@ -1,0 +1,18 @@
+<section id="db-reset" data-doc="admin" data-level="advanced">
+	<h2 id="db-reset-h">Reset database</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Start a development database again from a nuBuilder Forte SQL file.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin) in developer mode</p>
+	<p><em>Admin tools → Reset database</em> (<code>index.php?p=dbreset</code>) is shown only to the globeadmin while <code>$nuConfigDevMode = true</code>, and only on MySQL / MariaDB. It <strong>deletes all tables and views of the database</strong> – nuBuilder Forte's, nuBuilder Next's and the application's – imports a nuBuilder Forte (4.x) SQL file and creates nuBuilder Next's tables, as a new installation does. Use it on development and test installations to start again from a clean nuBuilder or from a copy of a real one – never with live data.</p>
+<ol>
+<li><strong>Choose the file</strong>: <code>nubuilder4.sql</code> of a nuBuilder Forte folder next to nuBuilder Next, a <code>.sql</code>, <code>.sql.gz</code> or <code>.zip</code> copied into <code>_install/</code> or <code>_update/</code>, or an upload. Either nuBuilder's own <code>nubuilder4.sql</code> (any 4.x – it is brought to 4.9 like in the installer) or a <strong>complete dump</strong> of a nuBuilder database with the application's tables (e.g. from phpMyAdmin or <code>mysqldump</code>).</li>
+<li><strong>Check file</strong> reads and checks it – nothing changes yet. As in the installer only plain statements are allowed: <code>CREATE</code> / <code>DROP</code> / <code>ALTER TABLE</code>, <code>INSERT</code> with literal values, <code>SET</code>, <code>LOCK TABLES</code> and nuBuilder 4.5's views; refused are other databases (<code>USE</code>), users and rights, files (<code>INTO OUTFILE</code>, <code>LOAD DATA</code>), triggers, routines, events and <code>DEFINER</code>. The page shows what the file creates (tables, of them the application's, forms, users) and lists every table that would be deleted.</li>
+<li>Options: <strong>Back up the whole database first</strong> (ticked; the backup is under <em>Update → Backups</em> and can be loaded there) and <strong>Install the sample application afterwards</strong> (see <a href="#sample-data">Sample data</a> – the sample users get random passwords).</li>
+<li>Type the <strong>database name</strong> to confirm and <em>Delete all tables and import</em> (the password must have been confirmed recently).</li>
+</ol>
+<p>Afterwards the database counts as <strong>set up by nuBuilder Next</strong> (not as an existing nuBuilder database, so nothing is blocked), with the security defaults of a new installation (records only through the form's list, read-only and hidden fields never saved from the browser). You stay signed in; <em>Open the setup wizard</em> sets up the rest (<a href="#install">Installation</a>). <code>nuconfig.php</code> – the connection and the globeadmin – files, library packs, custom pages and backups are not touched. The reset is written to the log (<code>database_reset</code>).</p>
+<p>On the command line (also only with <code>$nuConfigDevMode = true</code>):</p>
+<pre><code>php cron.php reset --sql=/path/nubuilder4.sql --check          # check only, list what would be deleted
+php cron.php reset --sql=/path/dump.sql.gz --backup --sample --yes</code></pre>
+<p>Without <code>--yes</code> nothing is deleted. Exit code: 0 = done / checked, 1 = failed, 2 = wrong call or developer mode off.</p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudbreset.php</code></li><li><code>pages/nudbreset.php</code></li><li><code>cron.php</code></li></ul></details>
+</section>

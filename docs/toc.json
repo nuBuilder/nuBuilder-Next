@@ -363,6 +363,11 @@
      "id": "demo-mode",
      "title": "Demo mode",
      "file": "08-14-demo-mode.htm"
+    },
+    {
+     "id": "db-reset",
+     "title": "Reset database",
+     "file": "08-15-db-reset.htm"
     }
    ]
   },
@@ -400,7 +405,7 @@
     },
     {
      "id": "cloner",
-     "title": "Cloner (copy a form)",
+     "title": "Form cloner (copy a form)",
      "file": "09-06-cloner.htm"
     },
     {
@@ -412,6 +417,11 @@
      "id": "branding",
      "title": "Branding",
      "file": "09-08-branding.htm"
+    },
+    {
+     "id": "themes",
+     "title": "Themes",
+     "file": "09-09-themes.htm"
     }
    ]
   },

@@ -103,7 +103,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							<input class="form-control" id="nb_desc" name="description" required maxlength="300">
 						</div>
 						<div class="col-sm-5">
-							<label class="form-label" for="nb_code"><?= h(t('builder_code')) ?> <span class="text-danger">*</span></label>
+							<label class="form-label" for="nb_code"><?= h(t('builder_code')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label>
 							<input class="form-control" id="nb_code" name="code" required maxlength="300" pattern="[A-Za-z0-9_]+" autocomplete="off" spellcheck="false">
 						</div>
 						<div class="col-sm-6 col-lg-4">
@@ -156,7 +156,13 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						</div>
 						<div class="col-sm-5 nbNew d-none">
 							<label class="form-label" for="nb_new_pk"><?= h(t('builder_primary_key')) ?></label>
-							<input class="form-control" id="nb_new_pk" maxlength="64" autocomplete="off" spellcheck="false">
+							<div class="input-group">
+								<input class="form-control" id="nb_new_pk" maxlength="64" autocomplete="off" spellcheck="false">
+								<select class="form-select flex-grow-0 w-auto" id="nb_new_pk_type" aria-label="<?= h(t('builder_pk_type')) ?>">
+									<option value="id"><?= h(t('builder_pk_type_id')) ?></option>
+									<option value="uuid"><?= h(t('builder_pk_type_uuid')) ?></option>
+								</select>
+							</div>
 							<div class="form-text"><?= h(t('builder_new_pk_help')) ?></div>
 						</div>
 						<div class="col-12 nbNew d-none">

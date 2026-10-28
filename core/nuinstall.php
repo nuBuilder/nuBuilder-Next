@@ -283,6 +283,23 @@ final class NuInstall
 		return $n;
 	}
 
+	/** Runs SQL text statement by statement (0.8.628: a .sql.gz / .zip read with dumpSql()). @return int statements */
+	public static function importSql(NuDB $db, string $sql, string $name = 'SQL'): int
+	{
+		nu_time_limit(600);
+		$n = 0;
+		foreach (self::splitSql($sql) as $stmt) {
+			if ($db->type === 'mysql') $stmt = (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt);
+			try {
+				$db->exec($stmt);
+			} catch (PDOException $e) {
+				throw new RuntimeException($name . ', ' . t('ins_err_statement', $n + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
+			}
+			$n++;
+		}
+		return $n;
+	}
+
 	/** Splits SQL on ";" outside strings, quoted names and comments (MySQL's /*! … *\/ stays code). */
 	public static function splitSql(string $sql): array
 	{
@@ -384,24 +401,26 @@ final class NuInstall
 	 * Checks a nubuilder4.sql before it runs: only nuBuilder's own tables (zzzzsys_…) are created, filled, changed or dropped, besides
 	 * SET, transactions, LOCK TABLES and nuBuilder 4.5's views. Refused: other tables, other databases (USE, CREATE / DROP DATABASE),
 	 * users and rights, files (INTO OUTFILE, LOAD DATA), triggers, routines, events and an explicit DEFINER.
-	 * @return array{ok: bool, error: string, tables: int, forms: int}
+	 * $anyTable (0.8.628, Reset database in developer mode): tables of the application too (a complete dump of a nuBuilder database);
+	 * the other rules stay. @return array{ok: bool, error: string, tables: int, forms: int, users: int, app: int}
 	 */
-	public static function checkDump(string $sql): array
+	public static function checkDump(string $sql, bool $anyTable = false): array
 	{
-		$res = ['ok' => false, 'error' => '', 'tables' => 0, 'forms' => 0];
+		$res = ['ok' => false, 'error' => '', 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0];
 		$created = [];
-		$tbl = '`?(zzzzsys_\w+)`?';
+		$tbl = $anyTable ? '`?(\w+)`?' : '`?(zzzzsys_\w+)`?';
 		$insert = '/^(INSERT|REPLACE)\s+INTO\s+' . $tbl . '\s*(\([^)]*\)\s*)?VALUES\b/i';
 		foreach (self::splitSql($sql) as $stmt) {
 			$s = trim((string)preg_replace('#^/\*!\d*\s*(.*?)\s*\*/$#s', '$1', trim($stmt)));
 			if ($s === '') continue;
-			$bad = static fn() => ['ok' => false, 'error' => t('ins_dump_err_stmt', mb_substr((string)preg_replace('/\s+/', ' ', $s), 0, 80)), 'tables' => 0, 'forms' => 0];
+			$bad = static fn() => ['ok' => false, 'error' => t('ins_dump_err_stmt', mb_substr((string)preg_replace('/\s+/', ' ', $s), 0, 80)), 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0];
 			if (preg_match($insert, $s, $m)) {
 				// VALUES with literals only (strings, numbers, NULL, hex) – no sub-queries or functions such as LOAD_FILE()
 				$vals = (string)preg_replace("/'(?:[^'\\\\]|\\\\.|'')*'/s", "''", substr($s, strlen($m[0])));
 				$vals = (string)preg_replace('/\b(NULL|TRUE|FALSE|0x[0-9a-f]+|_(binary|utf8mb4|utf8mb3|utf8|latin1))\b|-?\d+(\.\d+)?(e[+-]?\d+)?|\'\'/i', '', $vals);
 				if (!preg_match('/^[\s(),]*$/', $vals)) return $bad();
 				if (strtolower($m[2]) === 'zzzzsys_form') $res['forms'] += preg_match_all('/\)\s*,\s*\(/', $s) + 1;
+				if (strtolower($m[2]) === 'zzzzsys_user') $res['users'] += preg_match_all('/\)\s*,\s*\(/', $s) + 1;
 				continue;
 			}
 			if (preg_match('/\b(INTO\s+(OUT|DUMP)FILE|LOAD_FILE\s*\(|DEFINER\s*=)/i', $s)) return $bad();
@@ -418,6 +437,7 @@ final class NuInstall
 		if ($missing) { $res['error'] = t('ins_dump_err_core', implode(', ', $missing)); return $res; }
 		$res['ok'] = true;
 		$res['tables'] = count($created);
+		$res['app'] = count(array_filter(array_keys($created), static fn($t) => !str_starts_with($t, 'zzzzsys_')));
 		return $res;
 	}
 

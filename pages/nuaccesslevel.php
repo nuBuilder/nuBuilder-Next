@@ -330,7 +330,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 				<div class="card-header fw-semibold"><i class="bi bi-card-text me-2"></i><?= h(t('access_sec_general')) ?></div>
 				<div class="card-body">
 					<div class="mb-3">
-						<label class="form-label" for="sal_code"><?= h(t('access_code')) ?> <span class="text-danger">*</span></label>
+						<label class="form-label" for="sal_code"><?= h(t('access_code')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label>
 						<input class="form-control<?= nu_invalid($errors, 'sal_code') ?>" id="sal_code" name="sal_code" value="<?= h($v['sal_code']) ?>" maxlength="50" required autocomplete="off">
 						<?= nu_feedback($errors, 'sal_code') ?>
 					</div>

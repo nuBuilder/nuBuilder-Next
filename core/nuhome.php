@@ -34,13 +34,13 @@ final class NuHome
 	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'email', 'emailtemplates',
-		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'dashboards', 'vendor', 'sample', 'import', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
+		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
 		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
 	public const ADMIN_GROUPS = [
-		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest']],
-		'g_adm_look'   => ['home_group_look', ['branding', 'dashboards']],
-		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'appcloner', 'sample']],
+		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest', 'dbreset']],
+		'g_adm_look'   => ['home_group_look', ['branding', 'themes', 'dashboards']],
+		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'cloner', 'appcloner', 'sample']],
 		'g_adm_int'    => ['home_group_integration', ['apiclients', 'prompts', 'compat']],
 	];
 	/**
@@ -59,8 +59,8 @@ final class NuHome
 				['g_code', 'home_pf_g_code', 't_build', ['procedures', 's_proc_new', 'reports', 's_report_new', 's_sqlbuilder', 'prompts']],
 				// the pages Debug and Log – not the tile "Log" (it opens Debug; next to the page Log there would be two tiles called "Log")
 				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
-				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'appcloner', 'sample']],
-				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest']],
+				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'cloner', 'appcloner', 'sample']],
+				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest', 'dbreset']],
 				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'compat', 's_mail_test']],
 			],
 			'fav' => ['forms', 'procedures', 's_debug', 'pma']],
@@ -163,8 +163,10 @@ final class NuHome
 			'globalcode'     => ['globalcode', 'bi-code-square', t('scode_title'), t('scode_card_hint')],
 			'setupwizard'   => ['setupwizard', 'bi-magic', t('wiz_title'), t('wiz_card_hint')],
 			'branding'      => ['branding', 'bi-palette', t('brand_title'), t('brand_card_hint')],
+			'themes'        => ['themes', 'bi-brush', t('theme_title'), t('theme_card_hint')],
 			'dashboards'    => ['dashboards', 'bi-speedometer2', t('dash_title'), t('dash_card_hint')],
 			'import'        => ['import', 'bi-filetype-csv', t('imp_title'), t('imp_card_hint')],
+			'cloner'        => ['cloner', 'bi-files', t('cl_title'), t('cl_card_hint')],   // 0.8.633: a tile of its own (before: only Forms ▾ → Clone form)
 			'appcloner'     => ['appcloner', 'bi-copy', t('ac_title'), t('ac_card_hint')],
 			'sample'        => ['sample', 'bi-box-seam', t('smp_title'), t('smp_card_hint'), $b['sample'] ?? null],
 			'compat'        => ['compat', 'bi-puzzle', t('compat_title'), t('compat_hint')],
@@ -173,6 +175,7 @@ final class NuHome
 		$c['tutorial'] = ['tutorial', 'bi-mortarboard', t('tut_title'), t('tut_card_hint'), self::tutorialBadge()];
 		if (NuHash::devMode()) $c['todo'] = ['todo', 'bi-list-check', t('todo_title'), t('todo_card_hint'), ['Dev', 'secondary']];
 		if (NuHash::devMode()) $c['selftest'] = ['selftest', 'bi-clipboard2-pulse', t('st_title'), t('st_card_hint'), ['Dev', 'secondary']];   // 0.8.361
+		if (NuHash::devMode() && NuDbReset::available()) $c['dbreset'] = ['dbreset', 'bi-database-x', t('dbr_title'), t('dbr_card_hint'), ['Dev', 'secondary']];   // 0.8.628
 		return $c;
 	}
 
@@ -461,7 +464,7 @@ final class NuHome
 		$l['hidden'] = array_values(array_filter($l['hidden'], static fn($k) => in_array($k, $knownAll, true)));
 		$missing = array_values(array_diff($known, $placed));
 		// tiles of a later version next to their neighbour when it is placed (reports after procedures, 0.8.183)
-		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'userfields' => 'permissions'] as $tile => $after) {
+		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'userfields' => 'permissions'] as $tile => $after) {
 			if (!in_array($tile, $missing, true)) continue;
 			foreach ($l['groups'] as &$g) {
 				$i = array_search($after, $g['tiles'], true);
@@ -822,17 +825,17 @@ final class NuHome
 		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'],
 		'email' => ['email', 'view'], 'debug' => ['acl', NuAcl::FORM_DEBUG], 'update' => ['update', 'view'], 'settings' => ['settings', 'view'],
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
-		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'],
-		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'appcloner' => ['appcloner', 'change'], 'sample' => ['sample', 'view'],
-		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'],
+		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'], 'themes' => ['branding', 'view'],
+		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'appcloner' => ['appcloner', 'change'], 'cloner' => ['forms', 'change'], 'sample' => ['sample', 'view'],
+		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'],
 		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'], 's_user_home' => ['homelayout', 'change'],
 	];
 	/** Pages an own tile (kind page) may open => the tile whose right decides. */
 	private const PAGE_TILE = ['users' => 'users', 'access' => 'access', 'permissions' => 'permissions', 'sessions' => 'sessions', 'forms' => 'forms',
 		'procedures' => 'procedures', 'reports' => 'reports', 'sqlbuilder' => 'reports', 'prompts' => 'prompts', 'apiclients' => 'apiclients',
 		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit', 'notifications' => 'notifications', 'update' => 'update',
-		'settings' => 'settings', 'branding' => 'branding', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import',
-		'cloner' => 'forms', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
+		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import',
+		'cloner' => 'cloner', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
 		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
 		'tutorial' => 'tutorial'];
 

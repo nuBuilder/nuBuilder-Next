@@ -123,7 +123,7 @@ $tcpdf = NuReport::tcpdfDir();
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
-		'<div class="procField mb-3"><label class="form-label procLabel" for="' . $k . '">' . h($label) . ($req ? ' <span class="text-danger">*</span>' : '') . '</label>' . $control . '</div>';
+		'<div class="procField mb-3"><label class="form-label procLabel" for="' . $k . '">' . h($label) . ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sre_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique (0.8.627)
 	$access = NuReport::access($report ? $id : '');
 	if ($posted) { $sent = array_flip(array_filter((array)($_POST['access'] ?? []), 'is_string')); foreach ($access as &$a) $a['granted'] = isset($sent[$a['zzzzsys_access_id']]); unset($a); }
 	$usage = $report ? NuReport::usage($id, (string)$report['sre_code']) : [];

@@ -173,6 +173,12 @@ if (!function_exists('nuRunQuery')) {
 		return nu_id();
 	}
 
+	/** nuBuilder Next (0.8.622): a UUID v7 – the key new records get when the primary key is a 36-character column. */
+	function nuNextUUID(): string
+	{
+		return nu_uuid();
+	}
+
 	function nuGlobalAccess(): bool
 	{
 		return (bool)NuAuth::user()['globeadmin'];

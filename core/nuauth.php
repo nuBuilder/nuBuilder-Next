@@ -71,6 +71,11 @@ final class NuAuth
 			return 'login_err_locked';
 		}
 
+		// database not set up yet (0.8.645, NuDbState): only the globeadmin of nuconfig.php can sign in – he is sent to the set-up
+		if (!NuDbState::ready() && !hash_equals((string)nu_cfg('nuConfigDBGlobeadminUsername'), $login)) {
+			password_hash($password, PASSWORD_DEFAULT);
+			return 'login_not_ready';
+		}
 		$result = self::attempt($login, $password, $byHash);
 
 		if ($result !== null && $result !== '2fa') {
@@ -386,7 +391,7 @@ final class NuAuth
 
 	private static function start(array $data): void
 	{
-		if (!empty($data['globeadmin']) && !NuInstall::existingBlocked()) {   // the globeadmin's first sign-in sets up the own tables (0.8.462, B2)
+		if (!empty($data['globeadmin']) && !NuInstall::existingBlocked() && NuDbState::ready()) {   // the globeadmin's first sign-in sets up the own tables (0.8.462, B2) – not before the database is set up (0.8.645)
 			NuSchema::allow();
 			NuSchema::ensure();
 		}
@@ -461,6 +466,19 @@ final class NuAuth
 	 * The logged-in user, re-validated against the DB on every request, so a deleted, expired
 	 * or re-passworded account (also when changed in nuBuilder) is logged out immediately.
 	 */
+	/**
+	 * Unique user code (0.8.626): the user (id, name) that already has $code – trimmed, case-insensitive, empty codes never clash –
+	 * or null. nuBuilder Forte does not check it and the column has no unique index (existing duplicates stay until a user is saved).
+	 * @return array{id: string, name: string}|null
+	 */
+	public static function userCodeOwner(string $code, string $exceptId = ''): ?array
+	{
+		$code = trim($code);
+		if ($code === '') return null;
+		$r = nu_db()->one('SELECT zzzzsys_user_id AS id, sus_name AS name, sus_login_name AS login FROM zzzzsys_user WHERE LOWER(TRIM(sus_code)) = LOWER(?) AND zzzzsys_user_id <> ?', [$code, $exceptId]);
+		return $r ? ['id' => (string)$r['id'], 'name' => trim((string)$r['name']) !== '' ? (string)$r['name'] : (string)$r['login']] : null;
+	}
+
 	public static function user(): ?array
 	{
 		if (self::$loaded) return self::$user;

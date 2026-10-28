@@ -17,6 +17,9 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
 - **Signing key**: `../nunext-signing.key` (outside the project, never in a zip; also `$NUNEXT_SIGNING_KEY` or `~/.nunext-signing.key`).
   The owner keeps it and uploads it with the dev zip – put it next to the project folder. Without it the release is unsigned (the
   update page warns). Public key: `NuUpdate::SIGN_PUBLIC`. Several requests in one turn can share one version.
+- **Library packs in nunext.zip** (`_install/`, built from `dev/libsrc/<slot>/` – today PHPMailer): release.py warns when a version differs
+  from the GitHub release `libraries` (0.8.625) – then build the pack + a new signed index with `php dev/libpack.php <out>
+  ../nunext-signing.key <slot>=dev/libsrc/<slot> --keep=<libraries.json from GitHub>` and give both to the owner to upload.
 - Before releasing also: a test in the browser (see "Test environment"), and after it **`php dev/inspect.php <test installation>
   ../nunext.zip`** (= `NuUpdate::inspect`): `ok=true`, the new version, `signature=valid`, `errors=[]`.
 - **Fast releases, gate on request (0.8.389, the owner's rule):** a normal request ends with a FAST release – `dev/release.py` WITHOUT
@@ -168,6 +171,21 @@ core/nunotify.php    notification centre (0.8.357): zzzzsys_nunext_notification 
                      refresh the idle time – NU_PASSIVE), pages/nunotifications.php (mine / manage / edit / receipts), nuNextNotify(), API /v1/notifications
 core/nuselftest.php  self-test (?p=selftest, developer mode only): integration checks in groups system / data / forms / rights / features;
                      form checks write into the sample application and clean up (also audit rows); new checks = entries in checks()
+core/nudbreset.php   Reset database (0.8.628, ?p=dbreset + `php cron.php reset --sql=<file> [--check] [--backup] [--sample] --yes`, developer
+                     mode + MySQL only): drops ALL tables / views, imports a nuBuilder Forte SQL file (NuInstall::checkDump($sql, true) = any table,
+                     importSql), upgradeTo49, then as nu_install_finish (NuSchema, origin 'nunext', security defaults, NuMigrate); session re-touched
+core/nudbstate.php   NuDbState (0.8.645): is the database ready? check() → ok / empty (no zzzzsys_form/_user/_access/_setup) / partial (a table of
+                     the install scripts missing) / old (MySQL: a column of install/nubuilder49_tables.sql missing = Forte < 4.9); ready() cached in
+                     the session (nu_db_ready = version|host|db). index.php: globeadmin → ?p=dbsetup (pages/nudbsetup.php, public route: globeadmin
+                     or setup token / install.allow; empty → install scripts or Forte dump + upgradeTo49, partial → scripts again (IF NOT EXISTS /
+                     INSERT IGNORE), old → explained only; setUp() then NuSettings / NuSchema / origin nunext / NuMigrate), others 503; NuAuth::login
+                     refuses non-globeadmins (login_not_ready), NuAuth::start creates own tables only when ready; login hint #nuLoginDbSetup; e2e db_setup
+core/nutheme.php     Themes (0.8.632, ?p=themes, admin right branding): KEYS (colours light + dark, selects, ranges), 5 BUILTIN ('b:<id>'), own in
+                     zzzzsys_nunext_theme (vals {v, d}, step 0027 – Branding's accent → "My theme"); setting 'theme' {default, levels, user_choice,
+                     allowed}, own pick sus_json NUNEXT_THEME / theme_ga / session; css() = variables (--nu-btn-*, --nu-input-*, --nu-fbtn-*,
+                     --nu-nav-*, Bootstrap vars) + rules, served ?p=brand&a=theme&t=<id>&v= (nu_head after branding, before Global CSS);
+                     light block :root:not([data-bs-theme=dark]) – never bare :root (would beat the dark values); editor preview iframe
+                     ?p=themes&preview=1 (frame-ancestors 'self') with t=draft from the session (POST JSON action=draft); e2e themes
 core/nulogintoken.php nuBuilder's single-use LOGIN_TOKEN in sus_json (+ LOGIN_TOKEN_EXPIRES): create, link, rotate (compare and swap), clear
 core/nulistview.php  list views of the system lists (NuListView: prepare/card/page, views, editor, defaults); core/nulistdefs.php the lists
                      (columns, filters, card layout, SQL) – a new system list is a NuListDefs entry, not hand-written HTML
@@ -280,6 +298,15 @@ assets/js/nu/nucodetools.js toolbar of every code editor (attach(cm, host, opt))
                      of docs/nunext-functions.json via the JSON route ?p=fnlist&lang=php|js (pages/nufnlist.php), opt.snippets = second tab
                      (procedures), opt.noInsert (nuconfig.php editor); suggestions = CodeMirror show-hint (appended to codemirror-addons.js /
                      codemirror.css of the bundle); e2e code_insert
+core/nututorial.php  tutorial (0.8.328); two tracks (0.8.622): data-level="advanced" on a lesson / chapter = advanced only, part "advanced"
+                     (In depth) + "end" (Next steps, no heading); progress {done, hidden, track}; track '' = choice screen (pages/nututorial.php,
+                     POST action track, lesson link keeps l); order()/chapters()/counts() take a track; e2e tutorial_tracks
+nu_new_key() / nu_uuid() (core/nuapp.php, 0.8.622): new primary keys of application tables – UUID v7 for a 36-character text key
+                     (NuDB::columns() 'length', uniqueidentifier), else nu_id(); NuRecord save / sub-form rows, CSV import 'nuid'; builder new
+                     table key type id | uuid, column type uuid (NuDDL); PHP nuNextUUID(); e2e uuid_keys
+core/form/nucolumnchange.php NuColumnChange (0.8.623): builder "Change column…" – info() / plan() (ALTER + data checks) / checkFreeSql() /
+                     run(); API column.info / column.check / column.change in pages/nubuilderapi.php nb_column() (before the draft dispatch,
+                     recent password, accept_loss, NuFormDraft::addDdl with change); dialog openColumnChange() in nubuilder.js; e2e column_change
 core/nuhelplink.php  NuHelpLink (0.8.528): F1 help – MAP route → section id of docs/pages (home: admins home-page, else navigation-p);
                      <body data-nu-help> (NuCustomCode::bodyAttrs, app pages only), assets/js/nuapp.js opens it in a new tab; a new page = an
                      entry here (run.php checks route + id); e2e help_f1
@@ -448,6 +475,12 @@ Own tables: `zzzzsys_nunext_recent` (side bar, 0.8.460), `zzzzsys_nunext_log`, `
 - **(i) tooltip** next to a label (outside the `<label>`, so a click does not toggle a switch):
   `<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="…" title="…"><i class="bi bi-info-circle"></i></span>`
   Tooltips are initialised globally in `nuapp.js`.
+- **Buttons of forms** (input button + run objects, `.btn.nuFormBtn`, 0.8.621 – nuBuilder Forte's solid look): accent colour
+  (`--nu-accent`, text `--nu-on-accent` from NuBranding), hover / pressed through `filter` (works on backgrounds of the form's CSS),
+  one line with … ; nuruntime.js `fitButtons()` (after nuOnLoad, new sub-form rows, theme switch; `nuNext.fitButtons`) sets
+  `nuBtnInkLight` / `nuBtnInkDark` on backgrounds the form's CSS sets and the full label as tooltip when cut. Run buttons get no
+  icon of their own (new tab / popup = `data-nu-run-hint` + title). HTML objects: Forte's typography (nuform.css: 13 px in `.nuAbs`,
+  headings / p with the browser's margins, specificity of a plain tag). The former light look = Global code template `s_btn_light`.
 - **Record buttons** (0.8.199, nuBuilder style): `btn nuBtnAct nuBtnSave` + `bi-floppy`, `btn nuBtnAct` + `bi-copy` (Clone),
   `btn nuBtnAct nuBtnDel` + `bi-trash`. Save turns red via class `nuSaveEdited` – set automatically for `.nuBtnSave` when its form
   changes (nuapp.js); on phones the three show only their icon. Save buttons carry `data-nu-save` (Ctrl+S).
@@ -538,7 +571,23 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (October 2026, 0.8.620)
+## Where things stand (October 2026, 0.8.647)
+Last gate 0.8.647 (full test run, pushed: 0.8.621–0.8.646 in one push). Newest first, details in CHANGELOG.md: 0.8.646 docs / README / these notes checked;
+0.8.645 database set-up when nuconfig.php was written by hand (NuDbState, ?p=dbsetup), GitHub download names the real reason (zip / sodium /
+unsigned / invalid / not a package; without sodium the zip is kept), Security check row php_update_ext; 0.8.644 user form permission items always
+open on "Assigned" (also after reload / back); 0.8.643 themes "Use for me" (globeadmin always: NuTheme::choices() = all; badge .thMine,
+⋯ Stop using for me), complete export (NuTheme::DEFAULTS light / dark + full()); 0.8.642 sticky header row of form / record pages (.nuStickyBar,
+.nuStuck, --nu-sticky-top / --nu-sticky-h, html scroll-padding-top; sticky side panels stop below it), permission filter #userPermState
+(assigned / all / unassigned), User Home icon aligned; 0.8.636–0.8.641 phones: user button icon only, pin #nuNavPin keeps the ☰ menu open
+(localStorage nunext-nav-pin), long tap / ▾ on tabs with several cards lists the sections (data-nu-tab-sections, .nuTabSecArrow), lighter
+greys; 0.8.635 tutorial track "Coming from nuBuilder Forte" (data-track="forte"); 0.8.634 TEMPORARY header layout switcher in developer
+mode (assets/js/nuheadervariant.js, nuapp.css block "header layouts (test)", texts hlt_*, mockup outside the project – remove on the owner's
+word, see TODO.md); 0.8.633 Form cloner (SQL only by default, home tile), nuAttachSaveButtonTo grows the tab canvas, Form AI tables in the
+prompt (Tom Select), builder clone / change column / delete in the object's ⋮ menu; 0.8.632 themes (NuTheme, see Architecture); 0.8.631
+.nuActionButton for form code; 0.8.630 Branding "Show logo"; 0.8.629 e-mail settings export / import menu; 0.8.628 Reset database (developer
+mode, NuDbReset); 0.8.626 / 0.8.627 unique user code, key marker for unique fields; 0.8.623 Change column in the builder (NuColumnChange);
+0.8.622 tutorial tracks, UUID keys (nu_new_key); 0.8.621 form buttons and HTML objects like nuBuilder Forte.
+Before:
 Last gate 0.8.620 (full test run, pushed: 0.8.601–0.8.619 in one push). Newest first, details in CHANGELOG.md: 0.8.619 builder toolbar .nbToolbar (groups #nbTopSave / #nbTopActions, delete row #nbTopDanger, tbTidy()); 0.8.618 User Home created when missing (NuUserHome::ensure, install/nuuserhome.json, step 0026 + every NuMigrate::run; e2e user_home_ensure); 0.8.617 help: one-time login link moved to Sign-in methods (#logintoken); 0.8.615 backups: SQL scope 'nubuilder' = every zzzzsys_* table
 (NuSqlDump::tables, default of the backup before an update – select #updBkDb name backup_db; Back up now none / nubuilder / all; scope
 'nunext' no longer offered, older backups keep it; unattended backup auto = nubuilder; e2e backup_scope); 0.8.613 / 0.8.614 permission

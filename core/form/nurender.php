@@ -50,7 +50,7 @@ final class NuRender
 				. ($this->layout === 'absolute' ? $this->absolute($objects) : $this->flow($objects)) . '</div>';
 		}
 		$navHtml = count($tabs) > 1 || $this->meta->tabs === [] ? '<ul class="nav nav-tabs nuTabHolder" id="nuTabHolder" role="tablist">' . $nav . '</ul>' : '<ul class="nav nav-tabs nuTabHolder d-none" id="nuTabHolder" role="tablist">' . $nav . '</ul>';
-		return $navHtml . '<div class="tab-content nuLayout-' . $this->layout . '" id="nuRECORD">' . $panes . '</div>' . $this->marksLegend();
+		return $navHtml . '<div class="tab-content nuLayout-' . $this->layout . '" id="nuRECORD">' . $panes . '</div>';   // no legend below the form any more (0.8.627)
 	}
 
 	// ================================================================= layouts
@@ -162,7 +162,6 @@ final class NuRender
 
 	// ================================================================= validation markers (sob_all_validate) – display only
 
-	private array $marksUsed = [];          // 'req' / 'uni' shown on this form → legend
 
 	/** 1 = no blanks, 2 = no duplicates, 3 = both: [required, unique]. */
 	private static function rules(array $o): array
@@ -177,8 +176,9 @@ final class NuRender
 	}
 
 	/**
-	 * Red * (no blanks) and blue ◆ (no duplicates) after a label. The symbols are aria-hidden with a title (tooltip);
-	 * screen readers get the words. Not on forms the user cannot edit. The validation itself (NuRecord::validate) is unchanged.
+	 * Red * (no blanks, title "Required field") and a key (no duplicates, 0.8.627 – before a blue ◆) after a label; the key has its own
+	 * tooltip (nu_unique_mark: unique / required and unique) and is focusable. Screen readers get "required" and the key's name. Not on
+	 * forms the user cannot edit. The validation itself (NuRecord::validate) is unchanged.
 	 */
 	private function marks(array $o): string
 	{
@@ -186,26 +186,9 @@ final class NuRender
 		[$req, $uni] = self::rules($o);
 		if (!$req && !$uni) return '';
 		$out = '';
-		if ($req) {
-			$this->marksUsed['req'] = true;
-			$out .= '<span class="nuMark nuMarkRequired" title="' . h(t('val_required')) . '" aria-hidden="true">*</span>';
-		}
-		if ($uni) {
-			$this->marksUsed['uni'] = true;
-			$out .= '<i class="bi bi-diamond-fill nuMark nuMarkUnique" title="' . h(t('val_unique')) . '" aria-hidden="true"></i>';
-		}
-		$sr = implode(', ', array_filter([$req ? t('val_required_sr') : '', $uni ? t('val_unique_sr') : '']));
-		return '<span class="nuMarks">' . $out . '<span class="visually-hidden"> (' . h($sr) . ')</span></span>';
-	}
-
-	/** Legend below the form for the symbols that are shown. */
-	private function marksLegend(): string
-	{
-		if (!$this->marksUsed) return '';
-		$items = '';
-		if (isset($this->marksUsed['req'])) $items .= '<span class="nuMarksLegendItem"><span class="nuMark nuMarkRequired" aria-hidden="true">*</span> ' . h(t('val_legend_required')) . '</span>';
-		if (isset($this->marksUsed['uni'])) $items .= '<span class="nuMarksLegendItem"><i class="bi bi-diamond-fill nuMark nuMarkUnique" aria-hidden="true"></i> ' . h(t('val_legend_unique')) . '</span>';
-		return '<div class="nuMarksLegend small text-body-secondary" id="nuMarksLegend">' . $items . '</div>';
+		if ($req) $out .= '<span class="nuMark nuMarkRequired" title="' . h(t('val_required')) . '" aria-hidden="true">*</span><span class="visually-hidden"> (' . h(t('val_required_sr')) . ')</span>';
+		if ($uni) $out .= nu_unique_mark($req);
+		return '<span class="nuMarks">' . $out . '</span>';
 	}
 
 	private function ariaRequired(array $o, bool $ro): string
@@ -580,15 +563,21 @@ final class NuRender
 		$data = ' data-nu-run-type="' . h($run['type']) . '" data-nu-run-form="' . h($run['form']) . '" data-nu-run-code="' . h($run['code']) . '"'
 			. ' data-nu-run-record="' . h($run['record']) . '" data-nu-run-filter="' . h($run['filter']) . '" data-nu-run-target="' . h($run['target']) . '"'
 			. ($run['hidden'] ? ' data-nu-run-hidden="1"' : '');
-		$icon = ['P' => 'bi-play-fill', 'R' => 'bi-file-earmark-text'][$run['type']] ?? ($run['target'] === '2' ? 'bi-box-arrow-up-right' : ($run['target'] === '3' ? 'bi-window-stack' : ''));
 		// the label is HTML as in nuBuilder (nuRUN: .html(label)) – e.g. only an icon <i class="fa fa-table"></i> (0.8.558: before, the tags
 		// were stripped and an icon-only button showed the target's id); the id / code only when the label is really empty
 		// an empty label gives an empty button as in nuBuilder (0.8.559 – 0.8.558 showed the target's description); the object's icon
 		// (sob_input_icon) goes inside. Without visible text the target's description is the name for screen readers and the tooltip.
+		// No icon of our own any more (0.8.621, as nuBuilder Forte: the ▶ / page / ⧉ icons took room, labels wrapped); a new tab or a
+		// popup is said in the tooltip instead (data-nu-run-hint – nuruntime.js adds the label when it is cut off).
 		$raw = (string)$o['sob_all_label'];
 		$fallback = $run['type'] === 'F' && $run['form'] !== '' && ($fm = NuFormMeta::load($run['form'])) ? $fm->description() : ($run['form'] ?: $run['code']);
-		return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . $data . self::iconAttr($o) . self::nameIfIconOnly($raw, $fallback) . '>'
-			. ($icon !== '' ? '<i class="bi ' . $icon . ' me-1"></i>' : '') . self::withIcon('<span class="nuButtonLabel">' . $raw . '</span>', $o, $raw) . '</button>';
+		$hint = ['2' => t('run_hint_tab'), '3' => t('run_hint_popup')][$run['target']] ?? '';
+		$name = self::nameIfIconOnly($raw, $fallback);
+		if ($hint !== '' && !str_contains($common, ' title="'))                 // an own title (object attributes) stays
+			$name = $name !== '' ? ' aria-label="' . h($fallback) . '" title="' . h($fallback . ' – ' . $hint) . '"' : ' title="' . h($hint) . '"';
+		return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . $data . self::iconAttr($o) . $name
+			. ($hint !== '' ? ' data-nu-run-hint="' . h($hint) . '"' : '') . '>'
+			. self::withIcon('<span class="nuButtonLabel">' . $raw . '</span>', $o, $raw) . '</button>';
 	}
 
 	/**

@@ -122,7 +122,7 @@ nu_layout_start(t('file_title'), 'forms');
 	$used = $file ? NuFile::usage($id) : [];
 	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
 		'<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
-		. ($req ? ' <span class="text-danger">*</span>' : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';
+		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sfi_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique (0.8.627)
 	$groupList = array_column($db->all("SELECT DISTINCT sfi_group FROM $T WHERE sfi_group IS NOT NULL AND sfi_group <> '' ORDER BY sfi_group"), 'sfi_group');
 	?>
 	<form method="post" data-nu-focus-first data-nu-guard id="fileForm" enctype="multipart/form-data" novalidate data-max="<?= NuFile::maxBytes() ?>" data-too-big="<?= h(t('file_err_size', (int)(NuFile::maxBytes() / 1024))) ?>">

@@ -52,16 +52,27 @@
 		if (tabCount) tabCount.textContent = count.textContent;
 	}
 	var group = document.getElementById('userPermGroup');   // group filter (0.8.260) – combined with the search
+	// assigned / all / not assigned (0.8.642): taken when the filter changes – a box ticked or cleared afterwards stays in the list
+	var state = document.getElementById('userPermState');
 	function apply() {
-		var q = (filter.value || '').toLowerCase().trim(), g = group ? group.value : '*', shown = 0;
+		var q = (filter.value || '').toLowerCase().trim(), g = group ? group.value : '*', st = state ? state.value : 'all', shown = 0;
 		items.forEach(function (it) {
-			var on = (q === '' || it.getAttribute('data-search').indexOf(q) !== -1) && (g === '*' || it.getAttribute('data-group') === g);
+			var cb = it.querySelector('input[name="perm[]"]'), sel = !!(cb && cb.checked);
+			var on = (q === '' || it.getAttribute('data-search').indexOf(q) !== -1) && (g === '*' || it.getAttribute('data-group') === g)
+				&& (st === 'all' || (st === 'assigned') === sel);
 			it.classList.toggle('d-none', !on);
 			if (on) shown++;
 		});
 		var table = box.querySelector('.userPermTable');
 		if (table) table.classList.toggle('d-none', shown === 0);
 		empty.classList.toggle('d-none', shown > 0);
+		empty.textContent = st === 'assigned' && q === '' && g === '*' ? empty.getAttribute('data-none-assigned') : empty.getAttribute('data-none');
+	}
+	if (state) {
+		state.addEventListener('change', apply);
+		state.value = 'assigned';   // the record opens on "Assigned" (0.8.644) – also when the browser restores the last choice (reload, back button)
+		apply();
+		window.addEventListener('pageshow', function (e) { if (e.persisted) { state.value = 'assigned'; apply(); } });
 	}
 	if (filter) {
 		filter.addEventListener('input', apply);

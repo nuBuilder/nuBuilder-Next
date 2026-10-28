@@ -23,8 +23,8 @@ final class NuSidebar
 	public const KEEP        = 10;
 	/** Pages recorded under their start page tile key (the key is the route). */
 	public const PAGE_KEYS   = ['users', 'access', 'permissions', 'sessions', 'adminroles', 'userfields', 'forms', 'procedures', 'reports', 'prompts',
-		'apiclients', 'email', 'notifications', 'debug', 'update', 'settings', 'securitycheck', 'configfile', 'globalcode', 'setupwizard', 'branding',
-		'dashboards', 'import', 'appcloner', 'sample', 'compat', 'vendor', 'tutorial', 'todo', 'selftest'];
+		'apiclients', 'email', 'notifications', 'debug', 'update', 'settings', 'securitycheck', 'configfile', 'globalcode', 'setupwizard', 'branding', 'themes',
+		'dashboards', 'import', 'cloner', 'appcloner', 'sample', 'compat', 'vendor', 'tutorial', 'todo', 'selftest', 'dbreset'];
 
 	/** True while the side bar is drawn (nu_layout_end closes its wrapper). */
 	public static bool $drawn = false;

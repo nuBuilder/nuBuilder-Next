@@ -20,8 +20,8 @@ final class NuHelpLink
 		'dashboards' => 'dashboards', 'reports' => 'reports', 'report' => 'reports', 'reportdesigner' => 'reports', 'sqlbuilder' => 'sql-builder',
 		'procedures' => 'procedures', 'prompts' => 'prompts', 'email' => 'email', 'mailoauth' => 'email', 'emailtemplates' => 'email-templates',
 		'translations' => 'translations', 'files' => 'files', 'filemanager' => 'file-manager', 'cloner' => 'cloner', 'appcloner' => 'appcloner',
-		'branding' => 'branding', 'brand' => 'branding', 'settings' => 'settings', 'configfile' => 'configfile', 'globalcode' => 'globalcode',
-		'setupwizard' => 'install', 'sample' => 'sample-data', 'inspect' => 'inspect', 'selftest' => 'selftest', 'compat' => 'compat',
+		'branding' => 'branding', 'brand' => 'branding', 'themes' => 'themes', 'settings' => 'settings', 'configfile' => 'configfile', 'globalcode' => 'globalcode',
+		'setupwizard' => 'install', 'sample' => 'sample-data', 'inspect' => 'inspect', 'selftest' => 'selftest', 'dbreset' => 'db-reset', 'compat' => 'compat',
 		'update' => 'updating-p', 'apiclients' => 'api', 'apiplayground' => 'api-playground', 'debug' => 'debugging-p',
 		'password' => 'password', 'account' => 'password', 'tutorial' => 'tutorial-doc', 'listview' => 'list-views',
 	];

@@ -36,6 +36,7 @@ function nu_head(string $title, string $extraHead = ''): void
 	<link rel="stylesheet" href="<?= nu_asset(NU_BI . '/bootstrap-icons.min.css') ?>">
 	<link rel="stylesheet" href="<?= nu_asset('assets/css/nuapp.css') ?>">
 	<?= NuBranding::headTags() ?>
+	<?= NuTheme::headTag() /* theme (0.8.632): after branding, before Global CSS */ ?>
 	<?= NuCustomCode::cssTag() /* Global CSS (0.8.523): before the page's own styles */ ?>
 	<?= $extraHead ?>
 </head>
@@ -46,6 +47,7 @@ function nu_head(string $title, string $extraHead = ''): void
 /** The nuBuilder Next logo (icon + name): a light and a dark version, CSS shows the one of the current theme. $size: '' (top bar) | 'lg' (sign-in pages). */
 function nu_brand_logo(string $size = ''): string
 {
+	if (!NuBranding::logoShown($size)) return $size === '' ? NuBranding::titleNoLogo() : '';   // Branding → Show logo (0.8.630)
 	if (($own = NuBranding::logo($size)) !== '') return $own;      // own logo of this installation (Admin tools → Branding, 0.8.297)
 	$cls = 'nu-brand' . ($size === 'lg' ? ' nu-brand-lg' : '');
 	return '<span class="' . $cls . '"><img class="nu-brand-light" src="' . h(nu_asset('assets/img/nunext-logo.png')) . '" alt="nuBuilder Next" width="446" height="96">'
@@ -86,6 +88,13 @@ function nu_theme_menu(string $btnClass = 'btn btn-sm btn-outline-secondary'): v
 			<li><button class="dropdown-item" type="button" data-theme-set="light"><i class="bi bi-sun me-2"></i><?= h(t('theme_light')) ?></button></li>
 			<li><button class="dropdown-item" type="button" data-theme-set="dark"><i class="bi bi-moon-stars me-2"></i><?= h(t('theme_dark')) ?></button></li>
 			<li><button class="dropdown-item" type="button" data-theme-set="auto"><i class="bi bi-circle-half me-2"></i><?= h(t('theme_auto')) ?></button></li>
+			<?php $themes = NuAuth::user() ? NuTheme::choices() : []; if ($themes): $pick = NuTheme::userPick(); if (!isset($themes[$pick])) $pick = ''; // own theme (0.8.632) ?>
+			<li><hr class="dropdown-divider"></li>
+			<li><h6 class="dropdown-header"><?= h(t('theme_title')) ?></h6></li>
+			<?php foreach (['' => t('theme_pick_default')] + array_map(static fn($x) => $x['name'], $themes) as $tid => $tname): ?>
+			<li><form method="post" action="<?= h(nu_url('themes')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="pick"><input type="hidden" name="theme" value="<?= h((string)$tid) ?>"><input type="hidden" name="back" value="<?= h('index.php?' . nu_return_query()) ?>">
+				<button class="dropdown-item<?= $pick === (string)$tid ? ' active' : '' ?>" type="submit" data-nu-theme-pick="<?= h((string)$tid) ?>"><i class="bi bi-brush me-2"></i><?= h($tname) ?></button></form></li>
+			<?php endforeach; endif; ?>
 		</ul>
 	</div>
 	<?php
@@ -155,10 +164,12 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 				<?php nu_bell(); ?>
 				<?php nu_theme_menu(); ?>
 				<?php nu_lang_menu(); ?>
+				<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nuNavPin" aria-pressed="false" data-on="<?= h(t('nav_pin_on')) ?>" data-off="<?= h(t('nav_pin_off')) ?>"
+					title="<?= h(t('nav_pin_off')) ?>" aria-label="<?= h(t('nav_pin_off')) ?>"><i class="bi bi-pin-angle"></i></button><?php // phones / tablets (0.8.637): keep the ☰ menu open on every page (nuapp.js, localStorage nunext-nav-pin) ?>
 				<div class="dropdown">
-					<button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+					<button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2 nuUserBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h($u['display']) ?>" aria-label="<?= h($u['display']) ?>">
 						<i class="bi <?= $u['globeadmin'] ? 'bi-person-gear' : 'bi-person-circle' ?>"></i>
-						<span class="text-truncate nu-user-name"><?= h($u['display']) ?></span>
+						<span class="text-truncate nu-user-name d-none d-sm-inline"><?= h($u['display']) ?></span><?php // phones: the icon only (0.8.636), the name stays the tooltip ?>
 					</button>
 					<ul class="dropdown-menu dropdown-menu-end">
 						<li><h6 class="dropdown-header"><?= h($u['login']) ?></h6></li>
@@ -188,6 +199,13 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<li><hr class="dropdown-divider"></li>
 						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
+						<?php if (NuHash::devMode()): // TEMPORARY (0.8.634): header layouts of the mockup – assets/js/nuheadervariant.js ?>
+							<li><hr class="dropdown-divider"></li>
+							<li><h6 class="dropdown-header" data-nu-hv-labels data-more="<?= h(t('hlt_more')) ?>"><i class="bi bi-layout-text-window me-1"></i><?= h(t('hlt_title')) ?> <span class="badge text-bg-secondary">Dev</span></h6></li>
+							<?php foreach (['now', 'a', 'b', 'c', 'd', 'e'] as $hv): ?>
+								<li><button class="dropdown-item small" type="button" data-nu-hv="<?= $hv ?>"><?= h(t('hlt_' . $hv)) ?></button></li>
+							<?php endforeach; ?>
+						<?php endif; ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('password')) ?>"><i class="bi bi-key me-2"></i><?= h(t('nav_change_password')) ?></a></li>
 						<?php endif; ?>
@@ -357,6 +375,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
 <?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
+<?php if (NuHash::devMode()): // TEMPORARY (0.8.634): header layouts to try ?><script src="<?= nu_asset('assets/js/nuheadervariant.js') ?>"></script><?php endif; ?>
 <?= $extraBody ?>
 </body>
 </html>
@@ -554,6 +573,17 @@ function nu_ts_head(): string
 function nu_ts_foot(): string
 {
 	return '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script>';
+}
+
+/**
+ * Key after the label of a field whose value must be unique (0.8.627): small neutral Bootstrap icon, focusable, with its own tooltip –
+ * "Must be unique …" or, with $required (after the red *), "Required, and must be unique …". Used by the form runtime (NuRender::marks)
+ * and nuBuilder Next's own record pages. Tooltips are initialised globally (assets/js/nuapp.js).
+ */
+function nu_unique_mark(bool $required = false): string
+{
+	$tip = t($required ? 'val_unique_req_tip' : 'val_unique_tip');
+	return '<span class="nuMark nuMarkUnique" tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-key" aria-hidden="true"></i></span>';
 }
 
 function nu_back_button(?string $route = null, ?string $url = null, string $class = ''): string

@@ -73,7 +73,7 @@ $nuConfigDemoUser						= "";						//-- Demo mode: login name or user id of a use
 $nuConfigDemoSavingAllowedIds			= "";						//-- Demo mode (nuBuilder's setting): ids or codes of forms where demo users may still save (never delete), comma-separated.
 $nuConfigSettingsFromDB					= false;					//-- true: nuBuilder's settings table (Admin tools → Settings) replaces the values set here, as in nuBuilder.
 //$nuConfigShowInstaller				= false;					//-- Setup wizard after the globeadmin's login: false = done (the wizard writes it), true = show it again; missing = show it once.
-$nuConfigValidationMarkers				= true;						//-- Edit forms: red * after labels of required fields (No blanks), blue ◆ for unique values (No duplicates), legend below.
+$nuConfigValidationMarkers				= true;						//-- Edit forms: red * after labels of required fields (No blanks), a key for unique values (No duplicates).
 $nuConfigApi								= false;					//-- true: REST API api.php/v1/… (clients: Admin tools → API clients). HTTPS only.
 $nuConfigApiTokenMinutes				= 15;						//-- Lifetime of API access tokens in minutes.
 //$nuConfigApiAllowHttp					= false;					//-- true: allow the API without HTTPS (tests only).

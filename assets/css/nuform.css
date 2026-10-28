@@ -22,24 +22,35 @@
 }
 .nuEditForm .form-control[readonly]:focus { box-shadow: none; border-color: var(--bs-border-color); }
 .nuButton { white-space: nowrap; }
-/* buttons of forms – input type Button and Run objects (0.8.518): one calm look – light surface, thin border, rounded, dark text;
-   hover a shade darker, keyboard focus ring. Bootstrap's button variables, so a button with its own btn-* class (form code) keeps that */
+/* buttons of forms – input type Button and Run objects (0.8.621, before: light 0.8.518): solid as in nuBuilder Forte, in the accent
+   colour (Admin tools → Branding), white text (--nu-on-accent: black on a light accent), rounded, a light shadow; hover / pressed a
+   shade darker through filter, so buttons the form's CSS colours (background-color only, as usual for nuBuilder Forte) react too;
+   focus ring for the keyboard. One line: a label too long for the button ends with … (full text as tooltip – nuruntime.js fitButtons,
+   which also picks the text colour on a background set by the form's CSS: nuBtnInkDark / nuBtnInkLight).
+   Bootstrap's button variables, so a button with its own btn-* class (form code) keeps that look */
 .btn.nuFormBtn:not([class*="btn-"]) {
-	--bs-btn-padding-y: .3rem; --bs-btn-padding-x: .9rem; --bs-btn-font-size: .875rem; --bs-btn-font-weight: 500; --bs-btn-border-radius: .55rem;
-	--bs-btn-color: #334155; --bs-btn-bg: #f8fafc; --bs-btn-border-color: #e2e8f0;
-	--bs-btn-hover-color: #1e293b; --bs-btn-hover-bg: #eef2f6; --bs-btn-hover-border-color: #cbd5e1;
-	--bs-btn-active-color: #1e293b; --bs-btn-active-bg: #e2e8f0; --bs-btn-active-border-color: #cbd5e1;
-	--bs-btn-disabled-color: #94a3b8; --bs-btn-disabled-bg: #f8fafc; --bs-btn-disabled-border-color: #e2e8f0;
-	--bs-btn-focus-shadow-rgb: 100, 116, 139; box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
-	transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+	--nu-btn-ink: var(--nu-on-accent, #fff);
+	--bs-btn-padding-y: .3rem; --bs-btn-padding-x: .9rem; --bs-btn-font-size: .875rem; --bs-btn-font-weight: 500; --bs-btn-border-radius: .45rem;
+	--bs-btn-color: var(--nu-btn-ink); --bs-btn-bg: var(--nu-accent); --bs-btn-border-color: transparent;
+	--bs-btn-hover-color: var(--nu-btn-ink); --bs-btn-hover-bg: var(--nu-accent); --bs-btn-hover-border-color: transparent;
+	--bs-btn-active-color: var(--nu-btn-ink); --bs-btn-active-bg: var(--nu-accent); --bs-btn-active-border-color: transparent;
+	--bs-btn-disabled-color: var(--nu-btn-ink); --bs-btn-disabled-bg: var(--nu-accent); --bs-btn-disabled-border-color: transparent;
+	--bs-btn-disabled-opacity: .55;
+	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, .16), inset 0 -1px 0 rgba(0, 0, 0, .14);
+	transition: filter .15s ease, box-shadow .15s ease;
 }
-[data-bs-theme="dark"] .btn.nuFormBtn:not([class*="btn-"]) {
-	--bs-btn-color: #e2e8f0; --bs-btn-bg: #1e293b; --bs-btn-border-color: #334155;
-	--bs-btn-hover-color: #f8fafc; --bs-btn-hover-bg: #273449; --bs-btn-hover-border-color: #475569;
-	--bs-btn-active-color: #f8fafc; --bs-btn-active-bg: #334155; --bs-btn-active-border-color: #475569;
-	--bs-btn-disabled-color: #64748b; --bs-btn-disabled-bg: #1e293b; --bs-btn-disabled-border-color: #334155; box-shadow: none;
-}
-.nuFormBtn .bi { opacity: .75; }
+.btn.nuFormBtn:not([class*="btn-"]):hover { filter: brightness(.92); box-shadow: 0 2px 6px rgba(15, 23, 42, .2), inset 0 -1px 0 rgba(0, 0, 0, .14); }
+.btn.nuFormBtn:not([class*="btn-"]):active { filter: brightness(.85); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .22); }
+.btn.nuFormBtn:not([class*="btn-"]):focus-visible { box-shadow: 0 0 0 2px var(--bs-body-bg), 0 0 0 4px rgba(var(--bs-primary-rgb), .65); }
+/* a little more room between the object's icon and the label than nuBuilder's &nbsp; alone */
+.btn.nuFormBtn .nuObjIcon:first-child:not(:last-child) { margin-inline-end: .2rem; }
+.btn.nuFormBtn .nuButtonLabel ~ .nuObjIcon { margin-inline-start: .2rem; }
+.btn.nuFormBtn.nuBtnInkDark:not([class*="btn-"]) { --nu-btn-ink: #1e293b; }
+.btn.nuFormBtn.nuBtnInkLight:not([class*="btn-"]) { --nu-btn-ink: #fff; }
+[data-bs-theme="dark"] .btn.nuFormBtn:not([class*="btn-"]) { box-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 -1px 0 rgba(0, 0, 0, .2); }
+[data-bs-theme="dark"] .btn.nuFormBtn:not([class*="btn-"]):hover { filter: brightness(1.1); }
+[data-bs-theme="dark"] .btn.nuFormBtn:not([class*="btn-"]):active { filter: brightness(.9); }
 
 /* ---------------------------------------------------------------- absolute layout (pixel positions like nuBuilder) */
 .nuAbsoluteCanvas { position: relative; isolation: isolate; }   /* own stacking layer (0.8.567): z-index:-1 (content boxes, elements in HTML objects) lies behind the other objects, in front of the form's background – as nuBuilder's #nuRECORD */
@@ -48,7 +59,14 @@
 .nuAbs .form-select { padding-right: 1.6rem; background-position: right .3rem center; }
 .nuAbs textarea.form-control, .nuAbs select[multiple].form-select, .nuAbs select.form-select[style*="height"] { padding: .2rem .4rem; }
 .nuAbs .form-check-input { margin-top: 5px; }
-.nuAbs .nuButton, .nuAbs .nuRunButton { height: 100%; min-height: 24px; padding: 0 .75rem; font-size: .85rem; }
+.nuAbs .nuButton, .nuAbs .nuRunButton { height: 100%; min-height: 24px; padding: 0 .5rem; font-size: .875rem; }
+/* HTML objects as in nuBuilder Forte, which loads no Bootstrap (0.8.621): in the pixel layout its 13 px text and normal line height,
+   so the content fits the object's size; headings bold in the browser's sizes and margins (not Bootstrap's large, thin ones) and
+   paragraphs with the browser's margins. Specificity of a plain h3 / p: wins over Bootstrap (loaded before), the form's own CSS
+   (Setup → Style, form Style – loaded after, or with a class) wins over it. Not in dashboards (their own look) */
+.nuAbs.nuWrap_html:not(:has([data-nu-dashboard])) { font-size: 13px; line-height: normal; }
+:where(.nuHtml:not(:has([data-nu-dashboard]))) :is(h1, h2, h3, h4, h5, h6) { font-size: revert; font-weight: bold; line-height: normal; margin: revert; }
+:where(.nuHtml:not(:has([data-nu-dashboard]))) p { margin: revert; }
 .nuLabelLeft { position: absolute; right: calc(100% + 6px); top: 4px; margin: 0; white-space: nowrap; font-size: .85rem; color: var(--bs-secondary-color); text-align: right; }
 .nuLabelTop { position: absolute; bottom: calc(100% + 2px); left: 0; margin: 0; font-size: .85rem; color: var(--bs-secondary-color); }
 .nuAbs.nuWrap_contentbox { pointer-events: none; }
@@ -318,7 +336,7 @@ input.nuButtonSpinning {
 	padding-left: 1.75rem !important; background-repeat: no-repeat; background-position: .5rem center; background-size: 1em 1em;
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='white' stroke-opacity='.35' stroke-width='3'/%3E%3Cpath d='M12 3a9 9 0 0 1 9 9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='.75s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
 }
-input.nuButtonSpinning:is(.nuFormBtn:not([class*="btn-"]), .btn-light, .btn-outline-secondary, .btn-outline-primary, .btn-link, [class*="btn-outline-"]) {
+input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-primary, .btn-link, [class*="btn-outline-"]) {
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%236c757d' stroke-opacity='.35' stroke-width='3'/%3E%3Cpath d='M12 3a9 9 0 0 1 9 9' fill='none' stroke='%236c757d' stroke-width='3' stroke-linecap='round'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='.75s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
 }
 .nuButtonSpinner { width: .9em; height: .9em; border-width: .15em; vertical-align: -.1em; }
@@ -405,3 +423,7 @@ input.nuButtonSpinning:is(.nuFormBtn:not([class*="btn-"]), .btn-light, .btn-outl
 .nuArrangeTip { cursor: help; color: var(--bs-secondary-color); }
 .nuArrangeGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; }
 .nuArrangeBtn { text-align: left; white-space: nowrap; padding: .15rem .4rem; font-size: .78rem; }
+
+/* nuAttachSaveButtonTo(id, dx, dy, height, width) with a size (0.8.633): one line, centred; without the icon when the label needs the room */
+.btn.nuSaveSized { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-inline: .45rem; line-height: 1; font-size: .875rem; }
+.btn.nuSaveSized.nuSaveNoIcon > .bi { display: none; }

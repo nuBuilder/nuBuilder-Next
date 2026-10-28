@@ -114,7 +114,7 @@ nu_layout_start(t('adm_title'), 'home');
 	<?php if ($own): ?><div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i><?= h(t('adm_err_own_role')) ?></div><?php endif; ?>
 	<div class="card shadow-sm mb-3"><div class="card-body">
 		<div class="row g-3">
-			<div class="col-md-4"><label class="form-label" for="code"><?= h(t('adm_code')) ?> *</label>
+			<div class="col-md-4"><label class="form-label" for="code"><?= h(t('adm_code')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label>
 				<input class="form-control<?= isset($errors['code']) ? ' is-invalid' : '' ?>" id="code" name="code" maxlength="50" value="<?= h($role['code']) ?>" pattern="[a-z][a-z0-9_]*" required>
 				<?php if (isset($errors['code'])): ?><div class="invalid-feedback"><?= h($errors['code']) ?></div><?php endif; ?></div>
 			<div class="col-md-8"><label class="form-label" for="name"><?= h(t('adm_name')) ?></label><?= $tip(t('adm_name_tip')) ?>

@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.620",
+    "version": "0.8.647",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -339,6 +339,22 @@
                     "table": "zzzzsys_tab",
                     "kind": "data",
                     "what": "its tabs Main and Fast Forms"
+                }
+            ]
+        },
+        {
+            "id": "0027-themes",
+            "description": "Themes (zzzzsys_nunext_theme); an accent colour of Branding becomes the own theme \"My theme\", used by everyone",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_theme",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_setting",
+                    "kind": "data",
+                    "what": "Branding's accent colour (if set) moved into the own theme \"My theme\" (row theme)"
                 }
             ]
         }
@@ -1316,6 +1332,34 @@
             ],
             "index": [
                 "user_id"
+            ]
+        },
+        "zzzzsys_nunext_theme": {
+            "pk": "zzzzsys_nunext_theme_id",
+            "cols": [
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "base",
+                    "text",
+                    "25"
+                ],
+                [
+                    "vals",
+                    "longtext"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
             ]
         },
         "zzzzsys_nunext_user_access": {

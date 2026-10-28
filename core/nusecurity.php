@@ -475,6 +475,9 @@ final class NuSecurity
 		$fix = self::phpFixNote();                         // 0.8.362: PHP2Shell – a version without the fix is a red point
 		$add('php', $fix !== '' ? 'bad' : (PHP_VERSION_ID >= 80200 ? 'ok' : 'warn'), 'secchk_chk_php',
 			PHP_VERSION . (PHP_VERSION_ID < 80200 && $fix === '' ? ' – ' . t('secchk_php_old') : '') . ($fix !== '' ? ' – ' . $fix : ''));
+		// updates (0.8.645): packages are zips with an Ed25519 signature – without zip nothing can be read, without sodium the signature is not checked
+		$zip = class_exists('ZipArchive'); $sod = function_exists('sodium_crypto_sign_verify_detached');
+		$add('php_update_ext', $zip && $sod ? 'ok' : ($zip ? 'warn' : 'bad'), 'secchk_chk_update_ext', $zip && $sod ? 'zip · sodium' : implode(' ', array_filter([$zip ? '' : t('secchk_chk_nozip'), $sod ? '' : t('secchk_chk_nosodium')])));
 		if (nu_cfg('nuConfigApiAllowHttp')) $add('api_http', 'bad', 'secchk_chk_api_http', t('secchk_chk_api_http_on'));
 		if (NuDemo::configured()) $add('demo', 'warn', 'secchk_chk_demo', t('secchk_chk_demo_on'), nu_url('vendor') . '#demomode');
 		if (nu_cfg('nuConfigAutoLogin')) $add('autologin', 'info', 'secchk_chk_autologin', t('secchk_chk_autologin_on'));

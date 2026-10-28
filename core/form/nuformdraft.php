@@ -130,12 +130,13 @@ final class NuFormDraft
 	}
 
 	/** A column added for the draft (DDL runs at once – additive and nullable); listed in the publish summary. */
-	public static function addDdl(string $id, string $table, string $column, string $type, string $length): void
+	/** $change (0.8.623): a changed column, e.g. "varchar(25) → varchar(50)" ('' = a column added). */
+	public static function addDdl(string $id, string $table, string $column, string $type, string $length, string $change = ''): void
 	{
 		$d = self::get($id);
 		if (!$d) return;
 		$ddl = json_decode((string)($d['ddl'] ?? '[]'), true) ?: [];
-		$ddl[] = ['table' => $table, 'column' => $column, 'type' => $type, 'length' => $length, 'at' => self::now(), 'login' => self::login()];
+		$ddl[] = ['table' => $table, 'column' => $column, 'type' => $type, 'length' => $length, 'at' => self::now(), 'login' => self::login()] + ($change !== '' ? ['change' => $change] : []);
 		nu_db()->update(self::TABLE, ['ddl' => self::json($ddl)], 'zzzzsys_nunext_form_draft_id', $id);
 	}
 

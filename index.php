@@ -20,6 +20,7 @@ nu_boot();
 
 $routes = [
 	'login'       => ['public' => true],
+	'dbsetup'     => ['public' => true],   // database not set up yet (0.8.645, NuDbState): globeadmin or setup token
 	'lang'        => ['public' => true],
 	'logout'      => ['public' => true],
 	'twofa'       => ['public' => true],
@@ -59,6 +60,8 @@ $routes = [
 	'account'     => [],   // My account: the custom fields a user fills in himself (0.8.454)
 	'todo'        => [],
 	'selftest'    => [],
+	'dbreset'     => [],
+	'themes'      => [],                     // themes (0.8.632, core/nutheme.php)                     // Reset database (0.8.628, developer mode)
 	'help'        => [],
 	'tutorial'    => [],
 	'listview'    => [],
@@ -187,7 +190,21 @@ if (empty($routes[$p]['public'])) {
 			header('Content-Type: application/json');
 			exit(json_encode(['ok' => false, 'errors' => [['message' => t('existing_db_blocked'), 'field' => '']]]));
 		}
-		nu_page_minimal(t('existing_db_title'), t('existing_db_blocked'), false, true);
+		nu_page_minimal(t('existing_db_title'), t('existing_db_blocked') . ' ' . t('existing_db_how'), false, true);   // how to go on (0.8.645)
+		exit;
+	}
+
+	// database not set up (nuconfig.php written by hand for an empty database, tables missing, nuBuilder Forte older than 4.9 – 0.8.645,
+	// NuDbState): the globeadmin goes to the set-up page, everybody else gets a notice
+	if (!NuDbState::ready() && $p !== 'logout') {
+		if (!empty($routes[$p]['json'])) {
+			http_response_code(503);
+			header('Content-Type: application/json');
+			exit(json_encode(['ok' => false, 'errors' => [['message' => t('dbs_not_ready'), 'field' => '']]]));
+		}
+		if ($user['globeadmin'] && empty($user['demo'])) nu_redirect(nu_url('dbsetup'));
+		http_response_code(503);
+		nu_page_minimal(t('dbs_title'), t('dbs_not_ready'), false, true);
 		exit;
 	}
 

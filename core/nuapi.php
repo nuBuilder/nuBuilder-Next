@@ -382,6 +382,7 @@ final class NuApi
 		if ($login === '') $errors['login'] = 'required';
 		elseif (strcasecmp($login, (string)nu_cfg('nuConfigDBGlobeadminUsername')) === 0) $errors['login'] = 'not allowed';
 		elseif ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_login_name = ? AND zzzzsys_user_id <> ?', [$login, (string)($old['zzzzsys_user_id'] ?? '')])) $errors['login'] = 'already used';
+		if (array_key_exists('sus_code', $row) && NuAuth::userCodeOwner((string)$row['sus_code'], (string)($old['zzzzsys_user_id'] ?? '')) !== null) $errors['code'] = 'already used';   // 0.8.626
 		$name = array_key_exists('sus_name', $row) ? (string)$row['sus_name'] : (string)($old['sus_name'] ?? '');
 		if (trim($name) === '') $errors['name'] = 'required';
 		if (!empty($row['sus_email']) && !filter_var($row['sus_email'], FILTER_VALIDATE_EMAIL)) $errors['email'] = 'not a valid e-mail address';

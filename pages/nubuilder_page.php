@@ -111,7 +111,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 						<?= nu_feedback($errors, 'description') ?>
 					</div>
 					<div class="col-md-5">
-						<label class="form-label" for="pg_code"><?= h(t('builder_code')) ?> <span class="text-danger">*</span></label><?= $tip(t('page_code_tip')) ?>
+						<label class="form-label" for="pg_code"><?= h(t('builder_code')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label><?= $tip(t('page_code_tip')) ?>
 						<input class="form-control font-monospace<?= nu_invalid($errors, 'code') ?>" id="pg_code" name="code" maxlength="64" required spellcheck="false" autocomplete="off"
 							pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,63}" value="<?= h($v('code', $meta->code())) ?>" data-old="<?= h($meta->code()) ?>" data-warn="<?= h(t('page_code_rename_hint')) ?>"<?= $ro ? ' readonly' : '' ?>>
 						<?= nu_feedback($errors, 'code') ?>

@@ -19,12 +19,24 @@ final class NuCodeTemplates
 			// ------------------------------------------------------------------ Form pages: Setup → Style (CSS)
 			'style' => [
 				['id' => 's_btn_round', 'cat' => 'look', 'code' => <<<'CSS'
-/* Form buttons (input + run): rounded, accent colour */
+/* Form buttons (input + run): fully rounded, in an accent colour of their own (the default is the Branding accent) */
 .btn.nuFormBtn:not([class*="btn-"]) {
 	--bs-btn-border-radius: 2rem;
-	--bs-btn-bg: #2f6fd6; --bs-btn-color: #fff; --bs-btn-border-color: #2f6fd6;
-	--bs-btn-hover-bg: #275db4; --bs-btn-hover-color: #fff; --bs-btn-hover-border-color: #275db4;
-	--bs-btn-active-bg: #214f99; --bs-btn-active-color: #fff; --bs-btn-active-border-color: #214f99;
+	--bs-btn-bg: #2f6fd6; --bs-btn-hover-bg: #2f6fd6; --bs-btn-active-bg: #2f6fd6; --bs-btn-disabled-bg: #2f6fd6;
+}
+CSS],
+				['id' => 's_btn_light', 'cat' => 'look', 'code' => <<<'CSS'
+/* Form buttons (input + run): light surface, thin border, dark text – instead of the solid accent colour */
+.btn.nuFormBtn:not([class*="btn-"]) {
+	--nu-btn-ink: #334155; --bs-btn-bg: #f8fafc; --bs-btn-border-color: #e2e8f0; --bs-btn-border-radius: .55rem;
+	--bs-btn-hover-bg: #eef2f6; --bs-btn-hover-border-color: #cbd5e1; --bs-btn-active-bg: #e2e8f0; --bs-btn-active-border-color: #cbd5e1;
+	--bs-btn-disabled-bg: #f8fafc; --bs-btn-disabled-border-color: #e2e8f0;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.btn.nuFormBtn:not([class*="btn-"]):hover, .btn.nuFormBtn:not([class*="btn-"]):active { filter: none; box-shadow: 0 1px 2px rgba(15, 23, 42, .04); }
+[data-bs-theme="dark"] .btn.nuFormBtn:not([class*="btn-"]) {
+	--nu-btn-ink: #e2e8f0; --bs-btn-bg: #1e293b; --bs-btn-border-color: #334155; --bs-btn-hover-bg: #273449; --bs-btn-hover-border-color: #475569;
+	--bs-btn-active-bg: #334155; --bs-btn-active-border-color: #475569; --bs-btn-disabled-bg: #1e293b; --bs-btn-disabled-border-color: #334155; box-shadow: none;
 }
 CSS],
 				['id' => 's_btn_save', 'cat' => 'look', 'code' => <<<'CSS'

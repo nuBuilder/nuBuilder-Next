@@ -27,7 +27,12 @@
 <li>Sign in as globeadmin: the <a href="#setup-wizard">setup wizard</a> follows with nuBuilder Next's own settings (language, look, security, sample data).</li>
 <li>Libraries not installed now: <em>Update → Libraries</em> (next chapter).</li>
 </ol>
-<p>By hand instead: rename <code>nuconfig-sample.php</code> to <code>nuconfig.php</code>, enter the settings (an existing nuBuilder Forte <code>nuconfig.php</code> works unchanged) and, for an empty database, run <code>install/schema_mysql.sql</code>, <code>schema_mysql_forms.sql</code> and <code>notes_snippets_mysql.sql</code> (MSSQL: <code>schema_mssql.sql</code>).</p>
+<p>By hand instead: rename <code>nuconfig-sample.php</code> to <code>nuconfig.php</code> and enter the settings (an existing nuBuilder Forte <code>nuconfig.php</code> works unchanged). When the database is not ready, nuBuilder Next says so instead of failing: the sign-in page shows a hint, users cannot sign in, and the globeadmin of <code>nuconfig.php</code> – or whoever enters the setup token from <code>_install/setup-token.txt</code> (or creates <code>install.allow</code>) – gets the page <em>Set up the database</em>:</p>
+<ul>
+<li><strong>Empty database</strong> (none of nuBuilder's tables): create them with nuBuilder Next's install scripts, or (MySQL) import a SQL dump of your nuBuilder Forte – any 4.x version, brought to the structure of 4.9. The scripts can also be run by hand: <code>install/schema_mysql.sql</code>, <code>schema_mysql_forms.sql</code> and <code>notes_snippets_mysql.sql</code> (MSSQL: <code>schema_mssql.sql</code>).</li>
+<li><strong>Tables missing</strong>: <em>Create missing tables</em> adds only what is missing – existing tables and data stay.</li>
+<li><strong>nuBuilder Forte older than 4.9</strong> (columns of 4.9 missing): nothing is changed; the page explains the two ways on – a new, empty database with your SQL dump, or nuBuilder Forte's own update to 4.9 first.</li>
+</ul>
 <p>nuBuilder Next's own tables (<code>zzzzsys_nunext_*</code>: log, form history, 2FA, tokens, sessions) are created automatically on first use, as InnoDB.</p>
 </div>
 	<div class="doc-sub" data-doc="admin">

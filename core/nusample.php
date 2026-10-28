@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 17;             // 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 18;             // 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -585,16 +585,16 @@ final class NuSample
 				$i('text', 'all_unique', 'No duplicates (validate 2)', ['tab' => 6, 'validate' => 2]),
 				// --- Miscellaneous (tooltips, info bar, button spinner) and Charts
 				['tab' => 8, 'type' => 'html', 'id' => 'all_new_intro', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 112,
-					'html' => '<div class="alert alert-secondary small mb-0 py-2"><b>Also new:</b> <b>Inspect record</b> – options menu <i class="bi bi-three-dots-vertical"></i> → Inspect record (globeadmin): all columns of this record with type and value, in a new tab. '
+					'html' => '<div class="alert alert-secondary mb-0 py-2"><b>Also new:</b> <b>Inspect record</b> – options menu <i class="bi bi-three-dots-vertical"></i> → Inspect record (globeadmin): all columns of this record with type and value, in a new tab. '
 						. '<b>Attribute editor</b> – in the builder select an object and click <i class="bi bi-sliders"></i> next to “HTML attributes”. '
 						. '<b>Ctrl+Shift+S</b> saves on nuBuilder Next\'s own edit pages too.</div>'],
-				['tab' => 8, 'type' => 'html', 'id' => 'all_new_h_tip', 'label' => '', 'left' => 20, 'top' => 146, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fw-semibold mb-0 border-bottom pb-1">Tooltip icons – attribute nu-tooltip-icon</h6>'],
+				['tab' => 8, 'type' => 'html', 'id' => 'all_new_h_tip', 'label' => '', 'left' => 20, 'top' => 146, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fs-6 fw-semibold m-0 border-bottom pb-1">Tooltip icons – attribute nu-tooltip-icon</h6>'],
 				$i('text', 'all_tip_text', 'Code', ['tab' => 8, 'top' => 182, 'w' => 200, 'attribute' => 'nu-tooltip-icon="<b>Code</b><br>4–20 letters or digits, e.g. <code>AB12</code>."']),
 				$i('text', 'all_tip_theme', 'Theme blue, right', ['tab' => 8, 'top' => 218, 'w' => 200, 'attribute' => 'nu-tooltip-icon="Tooltip on the right in the blue theme.", nu-tooltip-position="right", nu-tooltip-theme="blue"']),
 				['tab' => 8, 'type' => 'select', 'id' => 'all_tip_select', 'label' => 'nuOnToolTipIcon', 'top' => 254, 'w' => 200, 'options' => 'a|Normal|b|Urgent',
 					'attribute' => 'nu-tooltip-icon="Icon, colour and size changed in nuOnToolTipIcon(); a click calls onClick.", nu-tooltip-position="bottom"'],
 				$i('text', 'all_tip_field', 'Tooltip on the field', ['tab' => 8, 'top' => 290, 'w' => 200, 'attribute' => 'nu-tooltip="nu-tooltip: the tooltip is on the field itself, no icon.", placeholder="Point at me"']),
-				['tab' => 8, 'type' => 'html', 'id' => 'all_new_h_bar', 'label' => '', 'left' => 20, 'top' => 334, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fw-semibold mb-0 border-bottom pb-1">Info bar – $.nuInfoBar</h6>'],
+				['tab' => 8, 'type' => 'html', 'id' => 'all_new_h_bar', 'label' => '', 'left' => 20, 'top' => 334, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fs-6 fw-semibold m-0 border-bottom pb-1">Info bar – $.nuInfoBar</h6>'],
 				$i('button', 'all_ib_types', 'Info / success / warning / error', ['tab' => 8, 'left' => 20, 'top' => 370, 'w' => 220, 'h' => 30, 'events' => ['onclick' =>
 					"['info', 'success', 'warning', 'error'].forEach(function (t, n) {\n\tsetTimeout(function () { $.nuInfoBar[t]('Message of type <b>' + t + '</b>.', {allowMultiple: true, autoCloseDelay: 4000 + n * 500}); }, n * 250);\n});"]]),
 				$i('button', 'all_ib_dark', 'Dark, shake, no auto-close', ['tab' => 8, 'left' => 250, 'top' => 370, 'w' => 210, 'h' => 30, 'events' => ['onclick' =>
@@ -606,13 +606,13 @@ final class NuSample
 				$i('button', 'all_ib_bottom', 'Bottom, fade, light', ['tab' => 8, 'left' => 250, 'top' => 408, 'w' => 210, 'h' => 30, 'events' => ['onclick' =>
 					"$.nuInfoBar.success('Saved at the bottom of the window.', {position: 'bottom', animationType: 'fade', autoCloseDelay: 3000});"]]),
 				$i('button', 'all_ib_close', 'Close all', ['tab' => 8, 'left' => 470, 'top' => 408, 'w' => 210, 'h' => 30, 'events' => ['onclick' => "$.nuInfoBar.closeAll();"]]),
-				['tab' => 8, 'type' => 'html', 'id' => 'all_new_h_spin', 'label' => '', 'left' => 20, 'top' => 456, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fw-semibold mb-0 border-bottom pb-1">Button spinner – nuButtonLoading()</h6>'],
+				['tab' => 8, 'type' => 'html', 'id' => 'all_new_h_spin', 'label' => '', 'left' => 20, 'top' => 456, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fs-6 fw-semibold m-0 border-bottom pb-1">Button spinner – nuButtonLoading()</h6>'],
 				$i('button', 'all_spin_auto', 'Spinner, enabled after 3 s', ['tab' => 8, 'left' => 20, 'top' => 492, 'w' => 220, 'h' => 30, 'events' => ['onclick' => "nuButtonLoading('all_spin_auto', true, 3);"]]),
 				$i('button', 'all_spin_wait', 'Run a task (2 s)', ['tab' => 8, 'left' => 250, 'top' => 492, 'w' => 210, 'h' => 30, 'events' => ['onclick' =>
 					"nuButtonLoading('all_spin_wait', true);\nsetTimeout(function () {\n\tnuButtonLoading('all_spin_wait', false);\n\t$.nuInfoBar.success('Task finished.', {autoCloseDelay: 2500});\n}, 2000);"]]),
 				['tab' => 8, 'type' => 'run', 'id' => 'all_spin_run', 'label' => 'Procedure with spinner', 'run' => 'sample_proc_hello', 'run_type' => 'P', 'left' => 470, 'top' => 492, 'w' => 210,
 					'events' => ['onclick' => "nuButtonLoading('all_spin_run', true, 2);"]],
-				['tab' => 7, 'type' => 'html', 'id' => 'all_new_h_chart', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fw-semibold mb-0 border-bottom pb-1">Charts – object type chart (Google Charts)</h6>'],
+				['tab' => 7, 'type' => 'html', 'id' => 'all_new_h_chart', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 26, 'html' => '<h6 class="fs-6 fw-semibold m-0 border-bottom pb-1">Charts – object type chart (Google Charts)</h6>'],
 				['tab' => 7, 'type' => 'chart', 'id' => 'all_chart_bars', 'label' => '', 'left' => 20, 'top' => 56, 'w' => 400, 'h' => 240, 'chart' => 'b', 'chart_data' => 'sampleMonths',
 					'chart_title' => 'Sales and costs (array in the form JavaScript)', 'chart_h' => 'Month', 'chart_v' => 'USD'],
 				['tab' => 7, 'type' => 'chart', 'id' => 'all_chart_pie', 'label' => '', 'left' => 430, 'top' => 56, 'w' => 250, 'h' => 240, 'chart' => 'p', 'chart_data' => 'sampleOrderStatus',
@@ -621,7 +621,7 @@ final class NuSample
 					'chart_data' => "[['Team', 'Done', 'Open'], ['Sales', 8, 3], ['Support', 5, 6], ['Admin', 2, 1]]", 'chart_title' => 'Tasks per team (array in the object, stacked)', 'chart_h' => 'Tasks'],
 				// --- Upload: nuBuilder's file object with target "File System" (Uppy, 0.8.506)
 				['tab' => 9, 'type' => 'html', 'id' => 'all_upload_intro', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 150,
-					'html' => '<div class="alert alert-secondary small mb-0 py-2"><b>Upload to the server</b> – a <i>File</i> object with <i>File target</i> = <b>File System</b>: '
+					'html' => '<div class="alert alert-secondary mb-0 py-2"><b>Upload to the server</b> – a <i>File</i> object with <i>File target</i> = <b>File System</b>: '
 						. 'the files go into a folder on the server, not into the record. nuBuilder Forte\'s procedure <code>nu_upload_file_template</code> stores them in '
 						. '<code>nu_uploads/</code> next to the web root (a second file with the same name gets <code>-1</code>, <code>-2</code> …; .php, .html and other '
 						. 'dangerous types are refused). Copy the procedure to change the folder or the allowed types. Needs the library pack <b>Uppy</b> '
@@ -1037,10 +1037,11 @@ ORDER BY
 .nuWord.sampleSection { text-transform: uppercase; letter-spacing: .07em; font-size: .82rem; font-weight: 700; color: var(--bs-secondary-color); padding-top: .25rem; }
 .btn.nuRunButton.sampleTile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .65rem; width: 100%; height: 100%; min-height: 7.5rem;
 	padding: 1rem .75rem; border: 1px solid var(--bs-border-color); border-radius: .85rem; background: var(--bs-body-bg); color: var(--bs-body-color);
-	font-size: 1.1rem; font-weight: 500; box-shadow: 0 1px 2px rgba(15, 23, 42, .05); transition: border-color .15s, box-shadow .15s, transform .15s; }
+	font-size: 1.1rem; font-weight: 500; box-shadow: 0 1px 2px rgba(15, 23, 42, .05); transition: border-color .15s, box-shadow .15s, transform .15s;
+	white-space: normal; overflow: visible; }
 .btn.nuRunButton.sampleTile:hover, .btn.nuRunButton.sampleTile:focus-visible { border-color: #2563eb; color: var(--bs-body-color); background: var(--bs-body-bg);
-	box-shadow: 0 6px 16px rgba(37, 99, 235, .14); transform: translateY(-2px); }
-.btn.nuRunButton.sampleTile:active { transform: none; }
+	box-shadow: 0 6px 16px rgba(37, 99, 235, .14); transform: translateY(-2px); filter: none; }
+.btn.nuRunButton.sampleTile:active { transform: none; filter: none; }
 .btn.nuRunButton.sampleTile > i { margin: 0 !important; font-size: 1.75rem; line-height: 1; color: #2563eb; }
 .btn.nuRunButton.sampleTile::before { font-family: bootstrap-icons; font-size: 1.75rem; line-height: 1; color: #2563eb; }
 [data-bs-theme="dark"] .btn.nuRunButton.sampleTile > i, [data-bs-theme="dark"] .btn.nuRunButton.sampleTile::before { color: #6ea8fe; }
@@ -1049,7 +1050,10 @@ ORDER BY
 #home_orders::before { content: "\f23d"; }      /* cart-fill */
 #home_all::before { content: "\f3d8"; }         /* folder2-open */
 #home_new_order::before { content: "\f64d"; }   /* plus-lg */
-#home_hidden > i::before { content: "\f33f"; }  /* eye-slash-fill instead of the play icon */
+#home_window::before { content: "\f1c5"; }      /* box-arrow-up-right: opens in a new tab */
+#home_hello::before { content: "\f4f4"; }       /* play-fill: procedure */
+#home_hidden::before { content: "\f33f"; }      /* eye-slash-fill: hidden procedure */
+#home_rpt_customers::before, #home_rpt_orders::before { content: "\f38b"; }   /* file-earmark-text: report */
 .sampleNote { padding: .75rem 1rem; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-tertiary-bg); font-size: .92rem; }
 .btn.sampleButton { border-radius: .6rem; }
 /* layout Auto / Grid: no label space above these objects, logo next to the title, two tiles per row on phones */

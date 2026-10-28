@@ -76,7 +76,7 @@
 		var form = $('#nbNewForm');
 		var stale = $('#nbStale');
 		if (stale) stale.remove();                    // this script is current: no "outdated files" warning
-		var COLTYPES = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id'];
+		var COLTYPES = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id', 'uuid'];
 		var DEFLEN = {text: '255', decimal: '15,2'};
 
 		function mode() { return $('#nb_mode_new').checked ? 'new' : 'existing'; }
@@ -180,6 +180,7 @@
 			} else {
 				d.table = $('#nb_new_table').value.trim();
 				d.primary_key = $('#nb_new_pk').value.trim();
+				d.pk_type = $('#nb_new_pk_type').value;
 				d.audit = $('#nb_audit').checked;
 				d.nulog = $('#nb_nulog').checked;
 				d.columns = $$('#nbColRows tr:not(.nuRowRemoved)').map(function (tr) {
@@ -316,7 +317,8 @@
 				RO ? null : h('span', {'class': 'nbObjMove'}, [
 					h('button', {type: 'button', 'class': 'btn btn-link btn-sm', title: t('builder_up'), 'aria-label': t('builder_up'), onclick: function () { move(o, -1); }}, [h('i', {'class': 'bi bi-chevron-up'})]),
 					h('button', {type: 'button', 'class': 'btn btn-link btn-sm', title: t('builder_down'), 'aria-label': t('builder_down'), onclick: function () { move(o, 1); }}, [h('i', {'class': 'bi bi-chevron-down'})])
-				])
+				]),
+				RO ? null : objectMenu(o)
 			]);
 			list.appendChild(item);
 		});
@@ -484,7 +486,7 @@
 		[top, saveSlot, danger].forEach(function (el) { if (el) el.innerHTML = ''; });
 		curSave = !RO && onSave ? onSave : null;
 		if (!RO && onSave) {
-			(extraButtons || []).forEach(function (b) { ((danger && /\bbtn-outline-danger\b/.test(b.className)) ? danger : top).appendChild(b); });
+			(extraButtons || []).filter(Boolean).forEach(function (b) { ((danger && /\bbtn-outline-danger\b/.test(b.className)) ? danger : top).appendChild(b); });
 			(saveSlot || top).appendChild(h('button', {type: 'button', 'class': 'btn nuBtnAct nuBtnSave btn-sm', id: 'nbSave', title: t('save') + ': ' + title + ' (Ctrl+S)', onclick: function () {
 				savePanel().catch(function () { /* error shown */ });
 			}}, [h('i', {'class': 'bi bi-floppy me-1'}), t('save')]));
@@ -893,18 +895,139 @@
 			var payload = {object_id: o.zzzzsys_object_id, fields: fields, grid: grid, events: events};
 			if ('lookup_php' in v) payload.lookup_php = v.lookup_php;
 			return api('object.save', payload).then(function (r) { load(r); select('object', r.object_id); preview(); if (r.missing_column) offerColumn(r.object_id, r.missing_column); });
-		}, RO ? [] : [
-			h('button', {type: 'button', 'class': 'btn btn-outline-danger btn-sm', onclick: function () {
-				if (!confirm(t('builder_delete_object_confirm').replace('%s', o.sob_all_id))) return;
-				api('object.delete', {object_id: o.zzzzsys_object_id}).then(function (r) { load(r); lastObj = null; select('objects'); preview(); }).catch(function (e) { flash(false, e.message); });
-			}}, [h('i', {'class': 'bi bi-trash me-1'}), t('builder_delete_object')]),
-			h('button', {type: 'button', 'class': 'btn btn-outline-secondary btn-sm', onclick: function () { duplicate(o); }}, [h('i', {'class': 'bi bi-copy me-1'}), t('builder_clone_object')])
+		}, []);   // Clone / Change column / Delete: the ⋮ menu of the object in the objects list (0.8.633, before: toolbar buttons)
+	}
+
+	function deleteObject(o) {
+		if (!confirm(t('builder_delete_object_confirm').replace('%s', o.sob_all_id))) return;
+		api('object.delete', {object_id: o.zzzzsys_object_id}).then(function (r) { load(r); lastObj = null; select('objects'); preview(); }).catch(function (e) { flash(false, e.message); });
+	}
+
+	/** ⋮ menu of an object in the objects list (0.8.633): Clone object, Change column…, Delete object. */
+	function objectMenu(o) {
+		var item = function (icon, label, fn, cls, id) {
+			return h('li', {}, [h('button', {type: 'button', 'class': 'dropdown-item' + (cls ? ' ' + cls : ''), id: id || null, 'data-nb-obj-action': id ? null : icon, onclick: guarded(fn)},
+				[h('i', {'class': 'bi ' + icon + ' me-2'}), t(label)])]);
+		};
+		return h('span', {'class': 'dropdown nbObjMenu'}, [
+			h('button', {type: 'button', 'class': 'btn btn-link btn-sm nbObjMenuBtn', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', title: t('builder_obj_actions'), 'aria-label': t('builder_obj_actions') + ': ' + o.sob_all_id},
+				[h('i', {'class': 'bi bi-three-dots-vertical'})]),
+			h('ul', {'class': 'dropdown-menu dropdown-menu-end'}, [
+				item('bi-copy', 'builder_clone_object', function () { duplicate(o); }, '', 'nbObjClone_' + o.sob_all_id),
+				storesValue(o) ? item('bi-database-gear', 'builder_colchg_btn', function () { select('object', o.zzzzsys_object_id); openColumnChange(o.sob_all_id); }, '', 'nbObjCol_' + o.sob_all_id) : null,
+				h('li', {}, [h('hr', {'class': 'dropdown-divider'})]),
+				item('bi-trash', 'builder_delete_object', function () { deleteObject(o); }, 'text-danger', 'nbObjDel_' + o.sob_all_id)
+			])
 		]);
 	}
 
+	/** Objects whose value is a column of the form's table (the same rule as NuDDL::typeForObject). */
+	function storesValue(o) {
+		if (!S || !S.form || !String(S.form.sfo_table || '').trim() || S.form.sfo_type === 'launch') return false;
+		var tp = o.sob_all_type;
+		if (tp === 'input') return o.sob_input_type !== 'button' && !(o.sob_input_type === 'file' && String(o.sob_input_file_target || '0') === '1');
+		return ['select', 'textarea', 'editor', 'lookup', 'calc'].indexOf(tp) >= 0;
+	}
+
+	// ------------------------------------------------------------------ change the database column of an object (0.8.623)
+	// column.info → current type; type / length (or the globeadmin's own ALTER TABLE) → column.check: the statement and the values that
+	// would be cut, rounded or lost; Run → column.change (recent password; values lost only after the tick)
+	function openColumnChange(column) {
+		if (!nuBs.ready()) return;
+		var TY = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id', 'uuid'];
+		var info = null, plan = null, timer = 0, busy = false;
+		var cur = h('div', {'class': 'mb-3', id: 'nbColCur'});
+		var type = sel2(TY.map(function (x) { return [x, t('builder_coltype_' + x)]; }), '', {'aria-label': t('builder_col_type'), id: 'nbColType'});
+		var len = inp({'class': 'form-control form-control-sm', 'aria-label': t('builder_col_length'), maxlength: 8, id: 'nbColLen', placeholder: t('builder_col_length')});
+		var free = h('textarea', {'class': 'form-control form-control-sm font-monospace', rows: 3, id: 'nbColSql', spellcheck: 'false', 'aria-label': t('builder_colchg_free')});
+		var freeBox = h('details', {'class': 'mt-3 d-none', id: 'nbColFree'}, [h('summary', {'class': 'small', text: t('builder_colchg_free')}),
+			h('div', {'class': 'form-text mb-1', text: t('builder_colchg_free_hint')}), free]);
+		var sqlBox = h('pre', {'class': 'small bg-body-tertiary border rounded p-2 mb-2 text-wrap', id: 'nbColPlan'});
+		var res = h('div', {id: 'nbColChecks'});
+		var accept = h('input', {type: 'checkbox', 'class': 'form-check-input', id: 'nbColAccept'});
+		var acceptBox = h('div', {'class': 'form-check mt-2 d-none'}, [accept, h('label', {'class': 'form-check-label', 'for': 'nbColAccept', text: t('builder_colchg_accept')})]);
+		var reauth = h('div', {'class': 'alert alert-warning py-2 d-none', id: 'nbColReauth'}, [h('i', {'class': 'bi bi-shield-lock me-1'}), t('builder_colchg_reauth') + ' ',
+			h('a', {href: 'index.php?p=reauth', id: 'nbColReauthLink', text: t('builder_colchg_reauth_link')})]);
+		var err = h('div', {'class': 'alert alert-danger py-2 d-none', role: 'alert'});
+		var run = h('button', {type: 'button', 'class': 'btn btn-warning', id: 'nbColRun', disabled: true}, [h('i', {'class': 'bi bi-database-gear me-1'}), t('builder_colchg_run')]);
+		var title = h('h2', {'class': 'modal-title h5', text: t('builder_colchg_title').replace('%s', column)});
+		var modal = h('div', {'class': 'modal fade', tabindex: '-1', 'aria-hidden': 'true', id: 'nbColModal'}, [h('div', {'class': 'modal-dialog modal-lg modal-dialog-scrollable'}, [h('div', {'class': 'modal-content'}, [
+			h('div', {'class': 'modal-header'}, [title, h('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('cancel')})]),
+			h('div', {'class': 'modal-body'}, [err, reauth, cur,
+				h('div', {'class': 'd-flex flex-wrap gap-2 align-items-end'}, [
+					h('div', {}, [h('label', {'class': 'form-label small mb-1', 'for': 'nbColType', text: t('builder_colchg_new')}), type]),
+					h('div', {'class': 'nbColLenBox'}, [h('label', {'class': 'form-label small mb-1', 'for': 'nbColLen', text: t('builder_col_length')}), len])]),
+				freeBox,
+				h('div', {'class': 'small fw-semibold mt-3 mb-1', text: t('builder_colchg_sql')}), sqlBox, res, acceptBox]),
+			h('div', {'class': 'modal-footer'}, [h('button', {type: 'button', 'class': 'btn btn-outline-secondary', 'data-bs-dismiss': 'modal', text: t('cancel')}), run])
+		])])]);
+		document.body.appendChild(modal);
+		var bm = nuBs.modal(modal);
+		modal.addEventListener('hidden.bs.modal', function () { modal.remove(); });
+		function showErr(m) { err.textContent = m || ''; err.classList.toggle('d-none', !m); }
+		function syncLen() { var uses = type.value === 'text' || type.value === 'decimal'; len.disabled = !uses; if (!uses) len.value = ''; else if (!len.value) len.value = type.value === 'text' ? '255' : '15,2'; }
+		function fmtN(n) { return Number(n).toLocaleString(); }
+		function syncRun() { run.disabled = busy || !info || info.reauth || !plan || plan.same || (plan.checks.length > 0 && !accept.checked); }
+		function check() {
+			clearTimeout(timer);
+			timer = setTimeout(function () {
+				var data = {column: column};
+				if (free.value.trim() && free.dataset.edited === '1') data.sql = free.value; else { data.type = type.value; data.length = len.value; }
+				api('column.check', data).then(function (r) {
+					plan = r.plan; showErr('');
+					sqlBox.textContent = plan.sql + ';';
+					if (free.dataset.edited !== '1') free.value = plan.sql;
+					res.innerHTML = '';
+					if (plan.same) res.appendChild(h('div', {'class': 'alert alert-secondary py-2', text: t('builder_colchg_same')}));
+					else if (plan.free) res.appendChild(h('div', {'class': 'alert alert-warning py-2', text: t('builder_colchg_free_nocheck')}));
+					else if (!plan.checks.length) res.appendChild(h('div', {'class': 'alert alert-success py-2', id: 'nbColOk'}, [h('i', {'class': 'bi bi-check-circle me-1'}), t('builder_colchg_ok')]));
+					else res.appendChild(h('div', {'class': 'alert alert-warning py-2', id: 'nbColLoss'}, [h('div', {'class': 'fw-semibold mb-1', text: t('builder_colchg_loss')}),
+						h('ul', {'class': 'mb-0 small'}, plan.checks.map(function (c) {
+							return h('li', {'data-check': c.key}, [t('builder_colchg_chk_' + c.key).replace('%1$s', fmtN(c.n)).replace('%2$s', c.arg),
+								c.samples.length ? h('span', {'class': 'text-body-secondary', text: ' – ' + t('builder_colchg_eg') + ' ' + c.samples.map(function (v) { return '«' + v + '»'; }).join(', ')}) : null]);
+						}))]));
+					acceptBox.classList.toggle('d-none', !(plan.checks.length > 0));
+					accept.checked = false;
+					syncRun();
+				}).catch(function (e) { plan = null; showErr(e.message); syncRun(); });
+			}, 250);
+		}
+		type.addEventListener('change', function () { len.value = ''; syncLen(); free.dataset.edited = ''; check(); });
+		len.addEventListener('input', function () { free.dataset.edited = ''; check(); });
+		free.addEventListener('input', function () { free.dataset.edited = '1'; check(); });
+		accept.addEventListener('change', syncRun);
+		run.addEventListener('click', function () {
+			busy = true; syncRun();
+			var data = {column: column, accept_loss: accept.checked};
+			if (free.dataset.edited === '1' && free.value.trim()) data.sql = free.value; else { data.type = type.value; data.length = len.value; }
+			api('column.change', data).then(function (r) {
+				busy = false; bm.hide(); flash(true);
+				if (window.nuToast) window.nuToast(t('builder_colchg_done').replace('%s', r.info.sql_type), 'success');
+				preview();
+			}).catch(function (e) { busy = false; showErr(e.message); syncRun(); });
+		});
+		api('column.info', {column: column}).then(function (r) {
+			info = Object.assign(r.info, {reauth: r.reauth});
+			cur.innerHTML = '';
+			cur.appendChild(h('div', {}, [t('builder_colchg_current') + ' ', h('code', {id: 'nbColCurType', text: info.sql_type}), ' · ' + (info.nullable ? 'NULL' : 'NOT NULL'),
+				info.rows !== null ? ' · ' + t('builder_colchg_rows').replace('%s', fmtN(info.rows)) : '',
+				info.pk ? h('span', {'class': 'badge text-bg-light border ms-2', text: t('builder_colchg_pk')}) : null]));
+			if (r.used_by && r.used_by.length) cur.appendChild(h('div', {'class': 'small text-body-secondary mt-1', text: t('builder_colchg_used').replace('%s', r.used_by.join(', '))}));
+			cur.appendChild(h('div', {'class': 'small text-body-secondary mt-1', text: t('builder_colchg_backup')}));
+			if (r.reauth) { reauth.classList.remove('d-none'); if (r.reauth_url) $('#nbColReauthLink', modal).href = r.reauth_url; }
+			if (r.free_sql) freeBox.classList.remove('d-none');
+			type.value = info.type || 'text';
+			len.value = info.length || '';
+			syncLen();
+			check();
+		}).catch(function (e) { showErr(e.message); });
+		bm.show();
+	}
+	window.nbColumnChange = openColumnChange;
+
 	/** Shown when a saved object has no column in the form's table: propose a type and add it on confirm. */
 	function offerColumn(objectId, mc) {
-		var types = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id'];
+		var types = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id', 'uuid'];
 		var type = sel2(types.map(function (x) { return [x, t('builder_coltype_' + x)]; }), mc.type, {'aria-label': t('builder_col_type')});
 		var len = inp({value: mc.length || '', 'class': 'form-control form-control-sm nbLen', 'aria-label': t('builder_col_length'), maxlength: 8});
 		function syncLen() { var uses = type.value === 'text' || type.value === 'decimal'; len.disabled = !uses; if (!uses) len.value = ''; else if (!len.value) len.value = type.value === 'text' ? '255' : '15,2'; }
@@ -1343,6 +1466,8 @@
 	}
 	if (del) del.addEventListener('click', openDelete);
 	if (del && new URLSearchParams(window.location.search).get('delete') === '1') openDelete();   // back from the password confirmation
+	var colBack = new URLSearchParams(window.location.search).get('colchg');                           // back from the password confirmation (0.8.623)
+	if (colBack && !RO) openColumnChange(colBack);
 
 	// ------------------------------------------------------------------ form drafts (0.8.386)
 	// Live mode: pill LIVE, "Start draft" (or the info bar of an open draft); draft mode: pill DRAFT and the amber bar with Preview,
@@ -1487,7 +1612,7 @@
 			body.innerHTML = '';
 			body.appendChild(h('p', {'class': 'small text-body-secondary', text: t('builder_draft_changes_n').replace('%s', r.diff.counts.total)}));
 			body.appendChild(diffView(r.diff));
-			if (r.ddl && r.ddl.length) body.appendChild(h('p', {'class': 'small mt-2'}, [t('builder_draft_ddl') + ' ', r.ddl.map(function (x) { return x.table + '.' + x.column; }).join(', ')]));
+			if (r.ddl && r.ddl.length) body.appendChild(h('p', {'class': 'small mt-2'}, [t('builder_draft_ddl') + ' ', r.ddl.map(function (x) { return x.table + '.' + x.column + (x.change ? ' (' + x.change + ')' : ''); }).join(', ')]));
 		}).catch(function (e) { body.textContent = e.message; });
 	}
 

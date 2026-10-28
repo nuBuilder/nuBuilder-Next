@@ -193,7 +193,7 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 		<input type="hidden" name="clauses" id="sqbClauses" value="">
 		<fieldset<?= $locked ? ' disabled' : '' ?>>
 		<div class="row g-3 mb-3">
-			<div class="col-md-3"><label class="form-label fw-semibold small" for="sse_code"><?= h(t('sqb_code')) ?></label>
+			<div class="col-md-3"><label class="form-label fw-semibold small" for="sse_code"><?= h(t('sqb_code')) ?><?= nu_unique_mark() ?></label>
 				<input class="form-control<?= $err('sse_code') ?>" id="sse_code" name="sse_code" maxlength="50" value="<?= h($v('sse_code')) ?>" spellcheck="false" autocomplete="off"><div class="invalid-feedback"><?= h($errors['sse_code'] ?? '') ?></div></div>
 			<div class="col-md-9"><label class="form-label fw-semibold small" for="sse_description"><?= h(t('sqb_description')) ?> <span class="text-danger">*</span></label>
 				<input class="form-control<?= $err('sse_description') ?>" id="sse_description" name="sse_description" maxlength="300" required value="<?= h($v('sse_description')) ?>"<?= $isNew ? ' autofocus' : '' ?>><div class="invalid-feedback"><?= h($errors['sse_description'] ?? '') ?></div></div>

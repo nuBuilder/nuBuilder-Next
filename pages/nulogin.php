@@ -143,6 +143,10 @@ nu_head(t('login_title'));
 			<?php if ($error): ?>
 				<div class="alert alert-danger d-flex gap-2 py-2" role="alert"><i class="bi bi-exclamation-octagon mt-1"></i><div><?= h(t($error)) ?></div></div>
 			<?php endif; ?>
+			<?php if (!NuInstall::existingBlocked() && !NuDbState::ready() && NuDbState::check()['error'] === ''):   // database not set up (0.8.645) ?>
+				<div class="alert alert-info d-flex gap-2 py-2 small" role="status" id="nuLoginDbSetup"><i class="bi bi-database-gear mt-1"></i><div><?= h(t('dbs_login_hint')) ?>
+					<a href="<?= h(nu_url('dbsetup')) ?>" class="alert-link"><?= h(t('dbs_login_link')) ?></a></div></div>
+			<?php endif; ?>
 
 			<form method="post" action="<?= h($loginAction) ?>" novalidate>
 				<?= nu_csrf_field() ?>

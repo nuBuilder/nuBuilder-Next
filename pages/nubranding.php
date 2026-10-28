@@ -19,6 +19,7 @@ $upload = static function (string $field, array &$errors): ?array {
 	return ['content' => (string)file_get_contents($f['tmp_name']), 'name' => (string)$f['name']];
 };
 
+$b0 = NuBranding::get();
 if (nu_is_post()) {
 	$action = nu_post('action');
 	if ($action === 'reset') {
@@ -30,8 +31,9 @@ if (nu_is_post()) {
 		$files = ['light' => $upload('logo_light', $errors), 'dark' => $upload('logo_dark', $errors)];
 		if (!$errors) {
 			[$errors, $warn] = NuBranding::save([
-				'accent_on' => nu_check('accent_on') === '1', 'accent' => nu_post('accent'), 'show_title' => nu_check('show_title') === '1',
-				'favicon' => nu_check('favicon') === '1', 'env_label' => nu_post('env_label'), 'env_color' => nu_post('env_color'),
+				'accent_on' => $b0['accent'] !== '', 'accent' => $b0['accent'],   // the accent colour is part of the themes (0.8.632) – an older one is kept
+				 'show_title' => nu_check('show_title') === '1',
+				'favicon' => nu_check('favicon') === '1', 'logo_show' => nu_post('logo_show'), 'env_label' => nu_post('env_label'), 'env_color' => nu_post('env_color'),
 			], $files, ['light' => nu_check('remove_light') === '1', 'dark' => nu_check('remove_dark') === '1']);
 			if (!$errors) {
 				nu_flash('success', t('brand_saved'));
@@ -85,6 +87,12 @@ nu_layout_start(t('brand_title'), 'home');
 					</div>
 					<?php endforeach; ?>
 
+					<div class="mb-3">
+						<label class="form-label fw-semibold" for="logo_show"><?= h(t('brand_logo_show')) ?></label><?= $tip(t('brand_logo_show_tip')) ?>
+						<select class="form-select brandLogoShow" id="logo_show" name="logo_show">
+							<?php foreach (NuBranding::LOGO_SHOW as $w): ?><option value="<?= $w ?>"<?= $b['logo_show'] === $w ? ' selected' : '' ?>><?= h(t('brand_logo_show_' . $w)) ?></option><?php endforeach; ?>
+						</select>
+					</div>
 					<div class="form-check form-switch mb-2 d-flex align-items-center gap-1">
 						<input class="form-check-input me-1" type="checkbox" role="switch" id="show_title" name="show_title" value="1"<?= $b['show_title'] ? ' checked' : '' ?>>
 						<label class="form-check-label" for="show_title"><?= h(t('brand_show_title')) ?></label><?= $tip(t('brand_show_title_tip', $appTitle !== '' ? $appTitle : t('brand_title_unset'))) ?>
@@ -94,17 +102,8 @@ nu_layout_start(t('brand_title'), 'home');
 						<label class="form-check-label" for="favicon"><?= h(t('brand_favicon')) ?></label><?= $tip(t('brand_favicon_tip')) ?>
 					</div>
 
-					<div class="mb-4">
-						<div class="form-check form-switch mb-2 d-flex align-items-center gap-1">
-							<input class="form-check-input me-1" type="checkbox" role="switch" id="accent_on" name="accent_on" value="1"<?= $b['accent'] !== '' ? ' checked' : '' ?>>
-							<label class="form-check-label fw-semibold" for="accent_on"><?= h(t('brand_accent_on')) ?></label><?= $tip(t('brand_accent_tip')) ?>
-						</div>
-						<div class="d-flex align-items-center gap-2">
-							<input class="form-control form-control-color<?= $inv('accent') ?>" type="color" id="accent" name="accent" value="<?= h($accent) ?>" aria-label="<?= h(t('brand_accent')) ?>">
-							<code id="accentHex"><?= h($accent) ?></code>
-						</div>
-						<?= $fb('accent') ?>
-					</div>
+					<div class="alert alert-light border small d-flex align-items-center gap-2 mb-4" id="brandThemeNote"><i class="bi bi-brush"></i>
+						<span><?= h(t('brand_theme_note')) ?> <a href="<?= h(nu_url('themes')) ?>" id="brandThemeLink"><?= h(t('theme_title')) ?></a></span></div>
 
 					<div class="mb-2">
 						<label class="form-label fw-semibold" for="env_label"><?= h(t('brand_env')) ?></label><?= $tip(t('brand_env_field_tip')) ?>

@@ -233,6 +233,9 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		$errors['sus_login_name'] = t('user_err_login_taken');
 	}
 
+	// code (sus_code): unique when set (0.8.626)
+	if (($owner = NuAuth::userCodeOwner((string)($v['sus_code'] ?? ''), $id)) !== null) $errors['sus_code'] = t('user_err_code_taken', $owner['name']);
+
 	// full name (sus_name): required
 	if (trim($v['sus_name']) === '' && !isset($errors['sus_name'])) $errors['sus_name'] = t('err_required');
 
@@ -375,7 +378,9 @@ $ro    = $canSave ? '' : ' disabled';
 
 $input = static function (string $col, string $type = 'text', array $attr = []) use ($v, $errors, $text, $suggest): string {
 	$max  = $text[$col][0] ?? null;
-	$html = '<label class="form-label" for="' . $col . '">' . h(t($text[$col][1])) . (!empty($attr['required']) ? ' <span class="text-danger">*</span>' : '') . '</label>'
+	$uni = !empty($attr['unique']);                                   // key after the label: unique (0.8.627) – not an HTML attribute
+	unset($attr['unique']);
+	$html = '<label class="form-label" for="' . $col . '">' . h(t($text[$col][1])) . (!empty($attr['required']) ? ' <span class="text-danger">*</span>' : '') . ($uni ? nu_unique_mark(!empty($attr['required'])) : '') . '</label>'
 		. '<input type="' . $type . '" class="form-control' . nu_invalid($errors, $col) . '" id="' . $col . '" name="' . $col . '" value="' . h($v[$col]) . '"'
 		. ($max ? ' maxlength="' . $max . '"' : '')
 		. (isset($suggest[$col]) ? ' list="dl_' . $col . '"' : '');
@@ -464,7 +469,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<div class="col-sm-6"><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
 						<div class="col-sm-6"><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
 						<div class="col-sm-8"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
-						<div class="col-sm-4"><?= $input('sus_code') ?></div>
+						<div class="col-sm-4"><?= $input('sus_code', 'text', ['unique' => true]) ?></div>
 						<div class="col-sm-4"><?= $input('sus_position') ?></div>
 						<div class="col-sm-4"><?= $input('sus_department') ?></div>
 						<div class="col-sm-4"><?= $input('sus_team') ?></div>
@@ -488,7 +493,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<div class="card shadow-sm userCardLogin">
 				<div class="card-header fw-semibold"><i class="bi bi-key me-2"></i><?= h(t('user_sec_credentials')) ?></div>
 				<div class="card-body">
-					<div class="mb-3"><?= $input('sus_login_name', 'text', ['required' => true, 'autocomplete' => 'off', 'spellcheck' => 'false']) ?></div>
+					<div class="mb-3"><?= $input('sus_login_name', 'text', ['required' => true, 'unique' => true, 'autocomplete' => 'off', 'spellcheck' => 'false']) ?></div>
 
 					<div class="row g-3 mb-3">
 						<div class="col-sm-6">
@@ -679,6 +684,10 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 								<span class="input-group-text"><i class="bi bi-search"></i></span>
 								<input type="search" class="form-control" id="userPermFilter" placeholder="<?= h(t('search')) ?>" aria-label="<?= h(t('perm_search')) ?>">
 							</div>
+							<?php // assigned / all / not assigned (0.8.642): assigned by default – all when the user has none yet ?>
+							<select class="form-select form-select-sm w-auto" id="userPermState" autocomplete="off" aria-label="<?= h(t('perm_state')) ?>">
+								<?php foreach (['assigned', 'all', 'unassigned'] as $ps): // always "Assigned" when the record opens (0.8.644) ?><option value="<?= $ps ?>"<?= $ps === 'assigned' ? ' selected' : '' ?>><?= h(t('perm_state_' . $ps)) ?></option><?php endforeach; ?>
+							</select>
 							<?php $permGroups = array_values(array_unique(array_map(static fn($pi) => (string)$pi['pme_group'], $permItems))); ?>
 							<?php if ($permGroups):   // group filter (0.8.260, always shown since 0.8.261): All / None then apply to that group only ?>
 								<select class="form-select form-select-sm w-auto" id="userPermGroup" aria-label="<?= h(t('perm_group')) ?>">
@@ -726,7 +735,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 								</tbody>
 							</table>
 						</div>
-						<div class="text-body-secondary small d-none" id="userPermEmpty"><?= h(t('no_records')) ?></div>
+						<div class="text-body-secondary small d-none" id="userPermEmpty" data-none-assigned="<?= h(t('perm_none_assigned')) ?>" data-none="<?= h(t('no_records')) ?>"><?= h(t('no_records')) ?></div>
 						<div class="form-text mt-2"><?= h(t('perm_user_hint')) ?></div>
 					<?php endif; ?>
 				</div>

@@ -114,7 +114,7 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 	$fb  = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	$row = static function (string $k, string $label, string $control, bool $req = false): string {
 		return '<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
-			. ($req ? ' <span class="text-danger">*</span>' : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';
+			. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'pge_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique (0.8.627)
 	};
 	$multi = static function (string $k, array $options, array $selected, string $extra = '') use ($err): string {
 		$h = '<select class="form-select pgMulti' . $err($k) . '" id="' . $k . '" name="' . $k . '[]" multiple placeholder="' . h(t('pg_select_ph')) . '"' . $extra . '>';

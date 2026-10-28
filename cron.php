@@ -24,6 +24,12 @@ declare(strict_types=1);
  *     php cron.php update --status [job]     the last jobs / one job
  *     php cron.php update --finish=<job>     database steps of an installed job (started automatically in a new process)
  *   Exit code: 0 = done / checked, 1 = failed, 2 = wrong call.
+ *
+ * Reset database (0.8.628, only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
+ * Forte (4.x) SQL file (nubuilder4.sql or a complete dump, .sql / .sql.gz / .zip) and creates nuBuilder Next's tables:
+ *     php cron.php reset --sql=<file> [--check] [--backup] [--sample] --yes
+ *   --check  read and check the file only, list the tables that would be deleted – nothing changes (no --yes needed)
+ *   --backup a backup with the whole database first (Update → Backups)      --sample  install the sample application afterwards
  */
 if (PHP_SAPI !== 'cli') {
 	http_response_code(404);
@@ -36,6 +42,32 @@ nu_apply_timezone();
 $_SESSION = [];
 
 $args = array_slice($argv, 1);
+if (($args[0] ?? '') === 'reset') {
+	$ro = [];
+	foreach (array_slice($args, 1) as $a) if (preg_match('/^--([a-z]+)(?:=(.*))?$/s', $a, $m)) $ro[$m[1]] = $m[2] ?? true;
+	$usage = "Usage: php cron.php reset --sql=<file> [--check] [--backup] [--sample] --yes\n";
+	if (!NuDbReset::available()) { fwrite(STDERR, "Reset database needs \$nuConfigDevMode = true in nuconfig.php and a MySQL / MariaDB database.\n"); exit(2); }
+	$file = is_string($ro['sql'] ?? null) ? (string)$ro['sql'] : '';
+	if ($file === '' || !is_file($file)) { fwrite(STDERR, ($file === '' ? 'No --sql=<file>.' : 'File not found: ' . $file) . "\n" . $usage); exit(2); }
+	$chk = NuDbReset::check($file);
+	echo str_pad('database', 14) . ($chk['database'] ?? '') . "\n" . str_pad('file', 14) . basename($file) . "\n";
+	if (!$chk['ok']) { fwrite(STDERR, 'The file cannot be imported: ' . $chk['error'] . "\n"); exit(1); }
+	echo str_pad('creates', 14) . $chk['tables'] . ' table(s), ' . $chk['app'] . ' of the application, ' . $chk['forms'] . ' form(s), ' . $chk['users'] . " user(s)\n";
+	echo str_pad('deletes', 14) . count($chk['current']) . ' table(s) / view(s) now in the database' . "\n";
+	if (!empty($ro['check'])) exit(0);
+	if (empty($ro['yes'])) { fwrite(STDERR, "Nothing done: add --yes to delete all tables and import the file.\n" . $usage); exit(2); }
+	try {
+		$r = NuDbReset::run($file, !empty($ro['backup']), !empty($ro['sample']), 'cli');
+	} catch (Throwable $e) {
+		fwrite(STDERR, 'Failed: ' . $e->getMessage() . "\n");
+		exit(1);
+	}
+	if ($r['backup'] !== '') echo str_pad('backup', 14) . $r['backup'] . "\n";
+	echo str_pad('dropped', 14) . $r['dropped'] . "\n" . str_pad('statements', 14) . $r['statements'] . "\n" . str_pad('steps', 14) . count($r['steps']) . "\n";
+	if ($r['sample'] !== '') echo str_pad('sample', 14) . ($r['sample'] === 'ok' ? 'installed (Admin tools → Sample data → New passwords)' : 'failed: ' . $r['sample']) . "\n";
+	echo "Done. Open index.php?p=setupwizard to set up the installation.\n";
+	exit(0);
+}
 if (($args[0] ?? '') !== 'update') {
 	$done = NuHousekeeping::run('cron');
 	foreach ($done as $k => $n) echo str_pad($k, 14) . ($n < 0 ? 'error (see the PHP error log)' : $n) . "\n";

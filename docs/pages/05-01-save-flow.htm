@@ -69,7 +69,7 @@
 		<li><strong>Audit columns</strong> <code>created_at</code>, <code>created_by</code>, <code>updated_at</code>, <code>updated_by</code> – on forms created with the audit option.</li>
 		<li><strong>nuBuilder Forte's record log</strong> <code>&lt;table&gt;_nulog</code> – JSON with who added and last edited the record.</li>
 		<li>"Updated on" of notes and code snippets.</li>
-		<li>New primary keys: a nuBuilder Forte id (<code>nu_id()</code>), or the database's auto increment.</li>
+		<li id="uuid-keys">New primary keys: the database's auto increment; a <strong>UUID</strong> (version 7, time-ordered, e.g. <code>019a2b4c-7d1e-7f3a-9b2c-4d5e6f708192</code>) when the key is a text column of exactly 36 characters (<code>VARCHAR(36)</code> / <code>CHAR(36)</code>, on SQL Server also <code>NVARCHAR(36)</code> and <code>uniqueidentifier</code>); otherwise a nuBuilder Forte id (<code>nu_id()</code>). The same for sub-form rows, clones and the CSV import's generated ids. UUIDs make records easy to exchange with other systems: a key made here can be exported unchanged, and a UUID that comes from another system can be imported unchanged and used to find the record later. <code>nuNextUUID()</code> gives one in your own PHP code. nuBuilder Forte (4.x) itself still gives such tables its own ids; a sub-form's foreign key column must then be 36 characters long too (column type <em>Record ID – UUID</em>).</li>
 	</ul>
 </div>
 <div class="doc-sub">

@@ -135,7 +135,7 @@ nu_layout_start($title, 'users', ['head' => $head]);
 					<div class="card-header fw-semibold"><i class="bi bi-key me-2"></i><?= h(t('perm_item')) ?></div>
 					<div class="card-body">
 						<div class="mb-3">
-							<label class="form-label" for="pme_ident"><?= h(t('perm_ident')) ?> <span class="text-danger">*</span></label>
+							<label class="form-label" for="pme_ident"><?= h(t('perm_ident')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label>
 							<input class="form-control permField font-monospace<?= nu_invalid($errors, 'pme_ident') ?>" id="pme_ident" name="pme_ident" maxlength="50" required spellcheck="false" autocomplete="off" value="<?= h($v('pme_ident')) ?>"<?= $isNew ? ' autofocus' : '' ?>>
 							<?= nu_feedback($errors, 'pme_ident') ?>
 							<div class="form-text"><?= h(t('perm_ident_hint')) ?></div>

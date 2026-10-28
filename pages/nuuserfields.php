@@ -105,7 +105,7 @@ if ($id !== '') {
 				<?= $fld('label', '<input class="form-control' . $inv('label') . '" id="ufLabel" name="label" maxlength="200" value="' . h($val('label')) . '" required>') ?>
 			</div>
 			<div class="col-sm-6">
-				<label class="form-label" for="ufCode"><?= h(t('uf_code')) ?><?= $f ? '' : ' <span class="text-danger">*</span>' ?></label>
+				<label class="form-label" for="ufCode"><?= h(t('uf_code')) ?><?= $f ? '' : ' <span class="text-danger">*</span>' ?><?= nu_unique_mark(!$f) ?></label>
 				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('uf_code_tip')) ?>" title="<?= h(t('uf_code_tip')) ?>"><i class="bi bi-info-circle"></i></span>
 				<?= $fld('code', '<input class="form-control font-monospace' . $inv('code') . '" id="ufCode" name="code" maxlength="40" pattern="[a-z][a-z0-9_]*" autocomplete="off" spellcheck="false" value="' . h($val('code')) . '"' . ($f ? ' readonly' : ' required') . '>') ?>
 			</div>

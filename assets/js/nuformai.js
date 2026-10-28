@@ -15,7 +15,10 @@
 	function post(data) {
 		var body = new URLSearchParams();
 		body.set('_csrf', csrf ? csrf.value : '');
-		Object.keys(data).forEach(function (k) { body.set(k, data[k]); });
+		Object.keys(data).forEach(function (k) {
+			if (Array.isArray(data[k])) data[k].forEach(function (v) { body.append(k + '[]', v); });   // tables[] (0.8.633)
+			else body.set(k, data[k]);
+		});
 		return fetch(window.location.href, {method: 'POST', body: body, credentials: 'same-origin', headers: {Accept: 'application/json'}})
 			.then(function (r) { return r.json(); });
 	}
@@ -36,7 +39,8 @@
 	$('faCopy').addEventListener('click', function () {
 		var b = this, msg = $('faCopyMsg');
 		b.disabled = true; msg.textContent = '';
-		post({action: 'prompt', request: reqEl.value}).then(function (d) {
+		var tsel = $('faTables'), tables = tsel ? Array.prototype.filter.call(tsel.options, function (o) { return o.selected; }).map(function (o) { return o.value; }) : [];
+		post({action: 'prompt', request: reqEl.value, tables: tables}).then(function (d) {
 			if (!d.ok) { msg.textContent = d.error || ''; msg.className = 'small text-danger'; return; }
 			$('faPrompt').value = d.text;
 			$('faPromptBox').hidden = false;

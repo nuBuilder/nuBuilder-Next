@@ -188,8 +188,8 @@ final class NuRecord
 
 			if ($isNew) {
 				$pkCol = self::column($columns, $meta->primaryKey());
-				if ($pkCol !== null && !$columns[$pkCol]['auto']) $row = [$pkCol => nu_id()] + $row;
-				$db->insert($table, $row ?: [$pk => nu_id()]);
+				if ($pkCol !== null && !$columns[$pkCol]['auto']) $row = [$pkCol => nu_new_key($columns[$pkCol])] + $row;   // UUID for a 36-character key (0.8.622)
+				$db->insert($table, $row ?: [$pk => nu_new_key($pkCol !== null ? $columns[$pkCol] : null)]);
 				$id = isset($row[$pkCol]) && !$columns[$pkCol]['auto'] ? (string)$row[$pkCol] : $db->lastInsertId();
 				NuAudit::record('insert', $meta->table(), (string)$id, [], $written, array_filter($audit));
 			} else {
@@ -294,7 +294,7 @@ final class NuRecord
 				}
 				$data[$fkCol] = $parentId;
 				if ($nl !== null) $data[$nl] = self::nulogAdded();
-				if (!$columns[$pkCol]['auto']) $data = [$pkCol => nu_id()] + $data;
+				if (!$columns[$pkCol]['auto']) $data = [$pkCol => nu_new_key($columns[$pkCol])] + $data;
 				$db->insert($table, $data);
 				if ($auditOn) NuAudit::record('insert', $tName, (string)($columns[$pkCol]['auto'] ? $db->lastInsertId() : $data[$pkCol]), [], $data, $ctx);
 			} elseif ($data) {

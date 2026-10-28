@@ -519,9 +519,9 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="reinstall" name="reinstall" value="1"><label class="form-check-label small" for="reinstall"><?= h(t('upd_reinstall')) ?></label></div>
 						<?php endif; ?>
 						<?php if (NuUpdate::loadDump() && NuSqlDump::available()):   // backup before the update (0.8.615): database part – nuBuilder's tables by default ?>
-							<div class="d-flex align-items-center gap-2 me-2">
+							<div class="d-flex flex-wrap align-items-center gap-2 me-2 updBkDbRow">
 								<label class="small text-body-secondary text-nowrap" for="updBkDb"><?= h(t('upd_install_db')) ?></label>
-								<select class="form-select form-select-sm w-auto" id="updBkDb" name="backup_db">
+								<select class="form-select form-select-sm updBkDbSel" id="updBkDb" name="backup_db">
 									<option value="nubuilder" selected><?= h(t('upd_bk_db_nubuilder', NuFile::size(NuSqlDump::estimate('nubuilder', true)))) ?></option>
 									<option value="all"><?= h(t('upd_bk_db_all', NuFile::size(NuSqlDump::estimate('all', true)))) ?></option>
 									<option value="none"><?= h(t('upd_bk_db_none')) ?></option>
@@ -766,7 +766,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 				<form method="post" action="<?= h(nu_url('update')) ?>" class="d-flex flex-wrap gap-2 align-items-center" id="updBackupForm" data-nu-once>
 					<?= nu_csrf_field() ?><input type="hidden" name="action" value="backup"><input type="hidden" name="once" value="<?= h($bkOnce) ?>">
 					<label class="small text-body-secondary" for="updBkScope"><?= h(t('upd_bk_db')) ?></label>
-					<select class="form-select form-select-sm w-auto" id="updBkScope" name="sql"<?= $sqlOk ? '' : ' disabled title="' . h(t('upd_bk_db_mysql')) . '"' ?>>
+					<select class="form-select form-select-sm updBkDbSel" id="updBkScope" name="sql"<?= $sqlOk ? '' : ' disabled title="' . h(t('upd_bk_db_mysql')) . '"' ?>>
 						<option value="none" selected><?= h(t('upd_bk_db_none')) ?></option>
 						<?php if ($sqlOk): ?>
 							<option value="nubuilder"><?= h(t('upd_bk_db_nubuilder', NuFile::size(NuSqlDump::estimate('nubuilder', true)))) ?></option>

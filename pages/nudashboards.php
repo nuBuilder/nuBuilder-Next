@@ -308,7 +308,7 @@ nu_layout_start(t('dash_title'), 'home');
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 			<div class="row g-3">
 				<div class="col-md-3">
-					<label class="form-label" for="dCode"><?= h(t('dash_code')) ?></label><?= $tip(t('dash_code_tip')) ?>
+					<label class="form-label" for="dCode"><?= h(t('dash_code')) ?><?= nu_unique_mark() ?></label><?= $tip(t('dash_code_tip')) ?>
 					<input class="form-control font-monospace<?= $inv('code') ?>" id="dCode" name="code" maxlength="50" required value="<?= h($cur['code']) ?>"><?= $fb('code') ?>
 				</div>
 				<div class="col-md-6">

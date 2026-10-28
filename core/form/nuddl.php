@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuDDL
 {
-	public const TYPES = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id'];
+	public const TYPES = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id', 'uuid'];
 
 	/** Standard audit columns, filled by NuRecord::save when the form has {"nunext":{"audit":true}}. */
 	public const AUDIT = [
@@ -51,6 +51,8 @@ final class NuDDL
 				return $driver === 'sqlsrv' ? "NVARCHAR($n)" : ($driver === 'mysql' ? "VARCHAR($n)" : 'TEXT');
 			case 'id':
 				return $driver === 'sqlsrv' ? 'NVARCHAR(25)' : ($driver === 'mysql' ? 'VARCHAR(25)' : 'TEXT');
+			case 'uuid':                                   // 36 characters: new keys are UUIDs (nu_new_key, 0.8.622)
+				return $driver === 'sqlsrv' ? 'NVARCHAR(36)' : 'VARCHAR(36)';
 			case 'longtext':
 				return $driver === 'sqlsrv' ? 'NVARCHAR(MAX)' : ($driver === 'mysql' ? 'LONGTEXT' : 'TEXT');
 			case 'int':
@@ -77,10 +79,11 @@ final class NuDDL
 	/**
 	 * @param array $columns [['name' => …, 'type' => …, 'length' => …], …]  (primary key excluded)
 	 */
-	public static function createTable(string $table, string $pk, array $columns, bool $audit, bool $nulog = false): void
+	/** $pkType 'id' (nuBuilder's id, VARCHAR(25)) or 'uuid' (VARCHAR(36): new records get a UUID, 0.8.622). */
+	public static function createTable(string $table, string $pk, array $columns, bool $audit, bool $nulog = false, string $pkType = 'id'): void
 	{
 		$db = nu_db();
-		$lines = [NuDB::ident($pk) . ' ' . self::sqlType('id') . ' NOT NULL PRIMARY KEY'];
+		$lines = [NuDB::ident($pk) . ' ' . self::sqlType($pkType === 'uuid' ? 'uuid' : 'id') . ' NOT NULL PRIMARY KEY'];
 		foreach ($columns as $c) $lines[] = NuDB::ident($c['name']) . ' ' . self::sqlType($c['type'], (string)($c['length'] ?? '')) . ' NULL';
 		if ($audit) {
 			foreach (self::AUDIT as $name => $t) {

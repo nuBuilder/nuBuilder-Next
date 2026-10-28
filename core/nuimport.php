@@ -474,7 +474,7 @@ final class NuImport
 				$res['rows']++;
 				$row = []; $bad = false;
 				foreach ($map as $col => $m) {
-					if ($m['src'] === 'nuid') { $row[$col] = nu_id(); continue; }
+					if ($m['src'] === 'nuid') { $row[$col] = nu_new_key($cols[$col] ?? null); continue; }   // UUID for a 36-character key (0.8.622)
 					$raw = $m['src'] === 'csv' ? ($r[$m['idx']] ?? '') : $m['value'];
 					[$v, $e] = self::convert($raw, $cols[$col], $opt, $m['fmt'] ?? '');
 					if ($e !== null) { $addError($line, $col, $raw, $e); $bad = true; continue; }
@@ -642,7 +642,7 @@ final class NuImport
 		$addError = static function (int $line, string $col, string $value, string $msg) use (&$res): void {
 			if (count($res['errors']) < self::MAX_ERRORS) $res['errors'][] = ['line' => $line, 'column' => $col, 'value' => mb_strimwidth($value, 0, 80, '…'), 'message' => $msg];
 		};
-		$seen = []; $ufSeen = [];                                   // logins / unique custom field values of this file
+		$seen = []; $ufSeen = []; $codeSeen = [];                   // logins / unique custom field values / user codes of this file
 		$created = [];                                               // [id, login, row, password given, welcome]
 
 		// 1. check every row (nothing is written: zzzzsys_user is often MyISAM, where a transaction cannot be rolled back)
@@ -677,6 +677,13 @@ final class NuImport
 			if (!$bad) {
 				if (($v['sus_name'] ?? '') === '') $v['sus_name'] = mb_substr(trim(($v['sus_first_name'] ?? '') . ' ' . ($v['sus_last_name'] ?? '')), 0, 50);
 				if ($v['sus_name'] === '') { $addError($line, 'sus_name', '', t('err_required')); $bad = true; }
+				$uc = trim((string)($v['sus_code'] ?? ''));                       // user code: unique (0.8.626), also within the file
+				if ($uc !== '') {
+					$ucK = mb_strtolower($uc);
+					if (($owner = NuAuth::userCodeOwner($uc)) !== null) { $addError($line, 'sus_code', $uc, t('user_err_code_taken', $owner['name'])); $bad = true; }
+					elseif (isset($codeSeen[$ucK])) { $addError($line, 'sus_code', $uc, t('imp_err_dupkey', $codeSeen[$ucK])); $bad = true; }
+					else $codeSeen[$ucK] = $line;
+				}
 				$email = (string)($v['sus_email'] ?? '');
 				if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) { $addError($line, 'sus_email', $email, t('user_err_email')); $bad = true; }
 				$accCode = mb_strtolower((string)($v['access_level'] ?? ''));

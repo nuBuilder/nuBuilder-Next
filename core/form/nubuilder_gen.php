@@ -52,7 +52,7 @@ final class NuBuilderGen
 					$fields[] = $f;
 				}
 			}
-			NuDDL::createTable($table, $pk, $spec['columns'], $audit, $nulog);   // DDL commits implicitly on MySQL – keep it outside the transaction
+			NuDDL::createTable($table, $pk, $spec['columns'], $audit, $nulog, ($in['pk_type'] ?? '') === 'uuid' ? 'uuid' : 'id');   // DDL commits implicitly on MySQL – keep it outside the transaction
 		} else {
 			$table = '';
 			$pk    = '';

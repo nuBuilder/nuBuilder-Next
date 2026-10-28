@@ -6,10 +6,11 @@
 <h3 id="editing">Editing a record</h3>
 <ul>
 <li><strong>Save</strong>, <strong>Clone</strong> and <strong>Delete</strong> look the same (light buttons with icon and text, as in nuBuilder Forte (4.x)). As soon as you change something, <strong>Save</strong> turns <span class="doc-red">red</span> – red text on a light red background: there are unsaved changes. After saving it looks like the others again. On phones the three show only their icon.</li>
+<li>The row with the breadcrumb and the buttons (<strong>Back</strong>, <strong>Save</strong>, <strong>Delete</strong> …) stays at the top of the screen while you scroll down – on form pages and on nuBuilder Next's own edit pages, on computers and phones.</li>
 <li>After saving, deleting or cloning, a short message appears at the bottom right.</li>
 <li><strong>Tabs</strong>: a record opened from the list (or a link) starts on its first tab. After saving or reloading the page, the tab you were on stays open.</li>
 <li>On phones, <strong>Save</strong>, <strong>Clone</strong> and <strong>Delete</strong> show only their icon (Save as a floppy disk); the text appears as tooltip.</li>
-<li>Required fields are marked with <span class="doc-red">*</span>, fields whose value must be unique with a blue ◆ (see <em>Markers after labels</em> below). If something is missing or invalid, a message tells you which field, and the field is highlighted.</li>
+<li>Required fields are marked with <span class="doc-red">*</span>, fields whose value must be unique with a key <i class="bi bi-key"></i> (see <em>Markers after labels</em> below). If something is missing or invalid, a message tells you which field, and the field is highlighted.</li>
 <li>Fields with a <strong>mask</strong> (e.g. IBAN, phone) only accept the expected characters; the separators are added for you.</li>
 <li>If you leave a record with unsaved changes, the browser asks first.</li>
 <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> (Mac ⌃⇧S) saves – in forms and on nuBuilder Next's own edit pages (user, access level, procedure, prompt, e-mail template …), also while you are typing in a field; the tooltip of the Save button shows it.</li>
@@ -30,7 +31,7 @@
 <ul>
 <li><strong>Sub-forms</strong> (rows inside a record): typing in the empty last row adds a new row; switch <em>Delete</em> on to remove a row when saving.</li>
 <li><strong>Lookups</strong>: type a code or click the search button to pick a record from a list. With a description width of 0 (form builder) only the code is shown.</li>
-<li><strong>Markers after labels</strong>: a red <span class="nuMark nuMarkRequired">*</span> means the field must not be empty, a blue <i class="bi bi-diamond-fill nuMark nuMarkUnique"></i> means its value must be unique (both can appear). Hover a marker for its meaning; the legend below the form lists the markers in use. They come from the object's <em>Validation</em> setting (No blanks / No duplicates / No duplicates and blanks), also in subform column titles, and are not shown when the form can only be viewed. <code>$nuConfigValidationMarkers = false</code> in <code>nuconfig.php</code> switches them off.</li>
+<li><strong>Markers after labels</strong>: a red <span class="nuMark nuMarkRequired">*</span> means the field must not be empty, a key <i class="bi bi-key"></i> means its value must be unique – no other record may have the same value (both can appear: <code>* 🔑</code>). Hover or focus the key for its meaning (required and unique, or unique only); the * says "Required field". They come from the object's <em>Validation</em> setting (No blanks / No duplicates / No duplicates and blanks), also in subform column titles, and are not shown when the form can only be viewed. <code>$nuConfigValidationMarkers = false</code> in <code>nuconfig.php</code> switches them off. nuBuilder Next's own pages show the key at their unique fields too – login name and code of users, codes of access levels, procedures, reports, files, dashboards, prompts, SQL builder queries and custom user fields, permission item idents, the code of a new form.</li>
 <li><strong>Files</strong>: choose a file to upload; download or remove it with the buttons next to the field.</li>
 <li><strong>Breadcrumbs</strong> (top left) show where you came from; click an entry to go back.</li>
 </ul>

@@ -32,7 +32,7 @@ if ($id !== '' && $id !== 'new') {
 $listMode = $id === '' && !isset($_GET['f']) && !nu_is_post();
 
 $def = ['source' => (string)($_GET['f'] ?? ''), 'dest_mode' => 'new', 'dest' => '', 'code' => '', 'description' => '', 'tabs' => [], 'objects' => true,
-	'subforms' => false, 'subform_ids' => [], 'iframes' => false, 'iframe_ids' => [], 'access' => false, 'dump' => false, 'keep_pks' => false, 'replace' => false, 'notes' => ''];
+	'subforms' => false, 'subform_ids' => [], 'iframes' => false, 'iframe_ids' => [], 'access' => false, 'dump' => true, 'keep_pks' => false, 'replace' => false, 'notes' => ''];   // dump: ticked by default (0.8.633)
 if (nu_is_post()) {
 	$in = [
 		'source' => nu_post('source'),

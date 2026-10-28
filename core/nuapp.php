@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.620');
+define('NU_VERSION', '0.8.647');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -27,7 +27,7 @@ define('NU_FEATURE_ACCESSIBILITY', false);   // user form switch "Accessibility 
 const NU_AUTOLOAD = [
 	'NuCompat' => 'core/nucompat.php', 'NuSchemaCheck' => 'core/nuschemacheck.php', 'NuSettings' => 'core/nusettings.php', 'NuBranding' => 'core/nubranding.php', 'NuDashboard' => 'core/nudashboard.php', 'NuAutoUpdate' => 'core/nuautoupdate.php', 'NuGitHub' => 'core/nugithub.php', 'NuHomeHook' => 'core/nuhomehook.php',
 	'NuHome' => 'core/nuhome.php', 'NuApi' => 'core/nuapi.php', 'NuApiError' => 'core/nuapi.php', 'NuApiClient' => 'core/nuapiclient.php',
-	'NuApiPlayground' => 'core/nuapiplayground.php', 'NuInstall' => 'core/nuinstall.php', 'NuConfigFile' => 'core/nuconfigfile.php', 'NuSetupWizard' => 'core/nusetupwizard.php', 'NuPalette' => 'core/nupalette.php', 'NuAdmin' => 'core/nuadmin.php', 'NuTutorial' => 'core/nututorial.php', 'NuListView' => 'core/nulistview.php', 'NuListDefs' => 'core/nulistdefs.php', 'NuLoginToken' => 'core/nulogintoken.php', 'NuReportApi' => 'core/nureportapi.php', 'NuDemoData' => 'core/nudemodata.php', 'NuDbChanges' => 'core/nudbchanges.php', 'NuAudit' => 'core/nuaudit.php', 'NuIncludes' => 'core/nuincludes.php', 'NuMailOAuth' => 'core/numailoauth.php', 'NuUserFields' => 'core/nuuserfields.php', 'NuUserAccess' => 'core/nuuseraccess.php', 'NuUpload' => 'core/nuupload.php', 'NuCustomCode' => 'core/nucustomcode.php', 'NuCodeTemplates' => 'core/nucodetemplates.php', 'NuHelpLink' => 'core/nuhelplink.php', 'NuSidebar' => 'core/nusidebar.php', 'NuFormInfo' => 'core/form/nuforminfo.php', 'NuNotify' => 'core/nunotify.php', 'NuSelfTest' => 'core/nuselftest.php',
+	'NuApiPlayground' => 'core/nuapiplayground.php', 'NuInstall' => 'core/nuinstall.php', 'NuConfigFile' => 'core/nuconfigfile.php', 'NuSetupWizard' => 'core/nusetupwizard.php', 'NuPalette' => 'core/nupalette.php', 'NuAdmin' => 'core/nuadmin.php', 'NuTutorial' => 'core/nututorial.php', 'NuListView' => 'core/nulistview.php', 'NuListDefs' => 'core/nulistdefs.php', 'NuLoginToken' => 'core/nulogintoken.php', 'NuReportApi' => 'core/nureportapi.php', 'NuDemoData' => 'core/nudemodata.php', 'NuDbChanges' => 'core/nudbchanges.php', 'NuAudit' => 'core/nuaudit.php', 'NuIncludes' => 'core/nuincludes.php', 'NuMailOAuth' => 'core/numailoauth.php', 'NuUserFields' => 'core/nuuserfields.php', 'NuUserAccess' => 'core/nuuseraccess.php', 'NuUpload' => 'core/nuupload.php', 'NuCustomCode' => 'core/nucustomcode.php', 'NuCodeTemplates' => 'core/nucodetemplates.php', 'NuHelpLink' => 'core/nuhelplink.php', 'NuSidebar' => 'core/nusidebar.php', 'NuFormInfo' => 'core/form/nuforminfo.php', 'NuColumnChange' => 'core/form/nucolumnchange.php', 'NuDbReset' => 'core/nudbreset.php', 'NuDbState' => 'core/nudbstate.php', 'NuTheme' => 'core/nutheme.php', 'NuNotify' => 'core/nunotify.php', 'NuSelfTest' => 'core/nuselftest.php',
 	'NuSample' => 'core/nusample.php', 'NuListExport' => 'core/nulistexport.php', 'NuProcedure' => 'core/nuprocedure.php',
 	'NuReport' => 'core/nureport.php', 'NuReportEngine' => 'core/nureportengine.php', 'NuReportSection' => 'core/nureportengine.php',
 	'NuSqlSelect' => 'core/nusqlselect.php', 'NuPrompt' => 'core/nuprompt.php', 'NuImport' => 'core/nuimport.php',
@@ -305,6 +305,31 @@ function nu_id(): string
 	static $n = 0;
 	$n = ($n + 1) % 100;
 	return uniqid() . sprintf('%02d', $n);
+}
+
+/**
+ * UUID version 7 (RFC 9562, 0.8.622): 48 bits Unix time in milliseconds, then random – 36 characters (8-4-4-4-12), sorted by time,
+ * so new rows go to the end of an index. For primary keys of application tables that are exchanged with other systems.
+ */
+function nu_uuid(): string
+{
+	$ms = (int)floor(microtime(true) * 1000);
+	$b = substr(pack('J', $ms), 2, 6) . random_bytes(10);
+	$b[6] = chr((ord($b[6]) & 0x0f) | 0x70);                                          // version 7
+	$b[8] = chr((ord($b[8]) & 0x3f) | 0x80);                                          // RFC variant
+	$h = bin2hex($b);
+	return substr($h, 0, 8) . '-' . substr($h, 8, 4) . '-' . substr($h, 12, 4) . '-' . substr($h, 16, 4) . '-' . substr($h, 20, 12);
+}
+
+/**
+ * A new primary key for a column of NuDB::columns() (0.8.622): a UUID for text columns of exactly 36 characters (CHAR / VARCHAR /
+ * NCHAR / NVARCHAR(36)) and SQL Server's uniqueidentifier – otherwise nuBuilder's id (nu_id). Auto-increment keys never come here.
+ */
+function nu_new_key(?array $column): string
+{
+	$t = strtolower((string)($column['type'] ?? ''));
+	$uuid = $t === 'uniqueidentifier' || (in_array($t, ['char', 'varchar', 'nchar', 'nvarchar', 'character', 'character varying'], true) && ($column['length'] ?? null) === 36);
+	return $uuid ? nu_uuid() : nu_id();
 }
 
 function nu_post(string $key, string $default = ''): string

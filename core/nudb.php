@@ -293,6 +293,7 @@ final class NuDB
 
 	public static function forgetColumns(string $table): void
 	{
+		if ($table === '') { self::$columnCache = []; return; }     // '' = all tables (Reset database, 0.8.628)
 		unset(self::$columnCache[strtolower($table)]);
 	}
 
@@ -302,12 +303,14 @@ final class NuDB
 		if (isset(self::$columnCache[$key])) return self::$columnCache[$key];
 
 		$rows = match ($this->type) {
-			'mysql'  => $this->all("SELECT COLUMN_NAME AS n, DATA_TYPE AS t, EXTRA AS x FROM information_schema.COLUMNS
+			'mysql'  => $this->all("SELECT COLUMN_NAME AS n, DATA_TYPE AS t, EXTRA AS x, CHARACTER_MAXIMUM_LENGTH AS l FROM information_schema.COLUMNS
 				WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION", [$table]),
 			'sqlsrv' => $this->all("SELECT c.COLUMN_NAME AS n, c.DATA_TYPE AS t,
-				CASE WHEN COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') = 1 THEN 'auto_increment' ELSE '' END AS x
+				CASE WHEN COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') = 1 THEN 'auto_increment' ELSE '' END AS x,
+				c.CHARACTER_MAXIMUM_LENGTH AS l
 				FROM INFORMATION_SCHEMA.COLUMNS c WHERE c.TABLE_NAME = ? ORDER BY c.ORDINAL_POSITION", [$table]),
-			default  => array_map(static fn($r) => ['n' => $r['name'], 't' => strtolower((string)$r['type']), 'x' => $r['pk'] ? 'auto_increment' : ''],
+			default  => array_map(static fn($r) => ['n' => $r['name'], 't' => strtolower((string)preg_replace('/\s*\(.*$/', '', (string)$r['type'])),
+				'x' => $r['pk'] ? 'auto_increment' : '', 'l' => preg_match('/\((\d+)\)/', (string)$r['type'], $m) ? (int)$m[1] : null],
 				$this->all('PRAGMA table_info(' . self::word($table) . ')')),
 		};
 
@@ -319,6 +322,7 @@ final class NuDB
 				'auto'     => str_contains(strtolower((string)$r['x']), 'auto_increment'),
 				'numeric'  => (bool)preg_match('/int|dec|num|float|double|real|money|bit/', $t),
 				'temporal' => (bool)preg_match('/date|time|year/', $t),
+				'length'   => isset($r['l']) && $r['l'] !== null && (int)$r['l'] > 0 ? (int)$r['l'] : null,   // characters of text columns (0.8.622)
 			];
 		}
 		return self::$columnCache[$key] = $cols;

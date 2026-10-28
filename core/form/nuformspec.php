@@ -121,7 +121,8 @@ final class NuFormSpec
 	// ================================================================= the prompt
 
 	/** User tables with their columns (name type), for the prompt – at most $max tables, the form's own table first. */
-	public static function schemaText(string $first = '', int $max = 80): string
+	/** Tables of the application (no zzzzsys_ tables), sorted. */
+	public static function appTables(): array
 	{
 		$db = nu_db();
 		$tables = match ($db->type) {
@@ -129,7 +130,15 @@ final class NuFormSpec
 			'mysql'  => array_column($db->all('SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME'), 't'),
 			default  => array_column($db->all("SELECT name AS t FROM sqlite_master WHERE type IN ('table','view') ORDER BY name"), 't'),
 		};
-		$tables = array_values(array_filter($tables, static fn($t) => stripos((string)$t, 'zzzzsys_') !== 0));
+		return array_values(array_filter(array_map('strval', $tables), static fn($t) => stripos($t, 'zzzzsys_') !== 0));
+	}
+
+	/** $only (0.8.633, "Tables in the prompt"): just these tables; [] = all (up to $max). */
+	public static function schemaText(string $first = '', int $max = 80, array $only = []): string
+	{
+		$db = nu_db();
+		$tables = self::appTables();
+		if ($only) { $want = array_flip(array_map('strtolower', $only)); $tables = array_values(array_filter($tables, static fn($t) => isset($want[strtolower($t)]))); }
 		if ($first !== '' && ($i = array_search($first, $tables, true)) !== false) { unset($tables[$i]); array_unshift($tables, $first); }
 		$lines = [];
 		foreach (array_slice($tables, 0, $max) as $t) {
@@ -152,7 +161,7 @@ final class NuFormSpec
 	}
 
 	/** The text for the AI chat. $formId: change an existing form; '' = new form. */
-	public static function prompt(string $request, string $formId = ''): string
+	public static function prompt(string $request, string $formId = '', array $tables = []): string
 	{
 		$spec = $formId !== '' ? self::fromForm($formId) : null;
 		$db = nu_db()->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
@@ -162,7 +171,7 @@ final class NuFormSpec
 			. "Answer with ONE JSON object in a ```json code block and nothing else.\n\n"
 			. "## The request\n" . trim($request) . "\n\n"
 			. "## Format \"" . self::FORMAT . "\"\n" . self::formatHelp() . "\n\n"
-			. "## Database tables (name: columns)\n" . self::schemaText($spec['form']['table'] ?? '') . "\n\n"
+			. "## Database tables (name: columns)\n" . self::schemaText($spec['form']['table'] ?? '', 80, $tables) . "\n\n"
 			. "## Existing forms (for lookup and sub-form references, by code)\n" . self::formsText() . "\n";
 		if ($spec) $p .= "\n## The current form\n```json\n" . json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n```\n";
 		return $p;

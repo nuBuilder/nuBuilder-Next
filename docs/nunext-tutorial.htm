@@ -8,16 +8,19 @@
 	never link this file directly. For the globeadmin and users with an admin role.
 
 	Structure:
-	  <article class="tut-chapter" id="ch-…" data-part="basics|build|admin" [data-right="…"]>
+	  <article class="tut-chapter" id="ch-…" data-part="basics|build|admin|advanced|changes|new|end" [data-right="…"] [data-level="advanced"]>
 	    <h2>Chapter title</h2>
 	    <p class="tut-intro">One sentence shown in the overview.</p>
-	    <section class="tut-lesson" id="…" [data-right="…"]>   id = stable key of the reader's progress – never rename
+	    <section class="tut-lesson" id="…" [data-right="…"] [data-level="advanced"]>   id = stable key of the reader's progress – never rename
 	      <h3>Lesson title</h3>
 	      … text …
 	      <div class="tut-task"> … </div>            "Try it" box (heading added in the reader's language)
 	      <div class="tut-tip"> / <div class="tut-note">  blue tip / yellow note
 	    </section>
 	  </article>
+	Three tracks (0.8.622 / 0.8.635): the reader chooses Basic, Advanced or "Coming from nuBuilder Forte". data-level="advanced"
+	(lesson or whole chapter) = only in the advanced track; data-track="forte" (chapter) = only in the nuBuilder Forte track (parts
+	"changes" / "new"), which has no other chapters; everything else is in Basic and Advanced. Part "advanced" (In depth) holds the advanced-only chapters, part "end" has no heading.
 	data-right: empty = everybody who may open the tutorial; "ga" = globeadmin only; "acl:<form id>" = view right on that nuBuilder Forte
 	form; otherwise a right of NuAdmin::RIGHTS (view level is enough). Hidden lessons are not counted.
 	Links: <a data-open="route" data-args="k=v&amp;k2=v2">  opens a nuBuilder Next page in a new tab
@@ -45,7 +48,8 @@
 		</ul>
 		<h4>How this tutorial works</h4>
 		<ul>
-			<li>The tutorial is split into three parts: <strong>Basics</strong> (finding your way, users and rights), <strong>Building applications</strong> (forms, code, reports, e-mail) and <strong>Administration</strong> (settings, security, updates and advanced topics).</li>
+			<li>There are three tutorials: <strong>Basic</strong> – the essentials –, <strong>Advanced</strong> – everything in Basic plus in-depth lessons for developers and administrators (marked <em>Advanced</em>) – and <strong>Coming from nuBuilder Forte</strong> – what works differently and what is new, for people who know nuBuilder Forte. The buttons at the top switch at any time; lessons you have done stay done.</li>
+			<li>The lessons come in parts: <strong>Basics</strong> (finding your way, users and rights), <strong>Building applications</strong> (forms, code, reports, e-mail), <strong>Administration</strong> (settings, security, updates) and – in the advanced version – <strong>In depth</strong> (event order, code functions, drafts, data access, operations).</li>
 			<li>Each lesson explains one topic. Links with <i class="bi bi-box-arrow-up-right"></i> open the page in a <em>new tab</em>, so this lesson stays open; links with <i class="bi bi-book"></i> open the matching chapter of the documentation.</li>
 			<li>A green <em>Try it</em> box suggests a small exercise. When you are done, click <em>Done – next lesson</em>. Your progress is saved; the start page tile shows it.</li>
 			<li>The tutorial is in English, like the documentation. The pages themselves follow your language.</li>
@@ -104,7 +108,7 @@
 		<ul>
 			<li>As soon as something changes, <strong>Save</strong> turns red. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves. Leaving with unsaved changes asks first.</li>
 			<li><strong>Clone</strong> copies the record into a new, unsaved one (yellow frame); <strong>Delete</strong> asks first.</li>
-			<li>A red <code>*</code> after a label means "required", a blue ◆ means "must be unique".</li>
+			<li>A red <code>*</code> after a label means "required", a key <i class="bi bi-key"></i> means "must be unique" – hover it for the explanation.</li>
 			<li>The <strong>⋮</strong> button at the end of the toolbar lists everything you can do on this form, each with its keyboard shortcut. As globeadmin you also find the builder shortcuts, <em>Inspect record</em> and the hash variables there.</li>
 			<li>Sub-forms (rows inside a record): typing in the empty last row adds a row. Lookups: type a code or click the search button.</li>
 		</ul>
@@ -172,7 +176,7 @@
 		<p><a data-help="access">Access levels in the documentation</a></p>
 	</section>
 
-	<section class="tut-lesson" id="user-start-pages" data-right="homelayout">
+	<section class="tut-lesson" id="user-start-pages" data-right="homelayout" data-level="advanced">
 		<h3>Start pages of users</h3>
 		<p>Users without an admin role get a tile start page of their access level. Until you set one up, it shows the level's forms and reports automatically. Each access level can have its own page, and one default page serves all levels without their own.</p>
 		<ul>
@@ -239,7 +243,7 @@
 		<p><a data-help="impersonate">Acting as another user</a></p>
 	</section>
 
-	<section class="tut-lesson" id="sessions" data-right="sessions">
+	<section class="tut-lesson" id="sessions" data-right="sessions" data-level="advanced">
 		<h3>Logged-in users</h3>
 		<p><a data-open="sessions">Logged-in users</a> shows every active session: user, address, browser, login time and last activity (green = active in the last five minutes).</p>
 		<ul>
@@ -250,7 +254,7 @@
 		<p><a data-help="sessions">Logged-in users in the documentation</a></p>
 	</section>
 
-	<section class="tut-lesson" id="admin-roles" data-right="adminroles">
+	<section class="tut-lesson" id="admin-roles" data-right="adminroles" data-level="advanced">
 		<h3>Admin roles: sharing the administration</h3>
 		<p>Nobody but the globeadmin should know the globeadmin password. When others need to help – a colleague who manages users, a developer, support – give them an <a data-open="adminroles">admin role</a>.</p>
 		<ul>
@@ -356,20 +360,20 @@
 		<p><a data-help="hooks">PHP hooks and procedures</a> · <a data-help="hash-variables">Hash variables</a> · <a data-help="js-api">JavaScript functions</a></p>
 	</section>
 
-	<section class="tut-lesson" id="form-tools" data-right="forms">
+	<section class="tut-lesson" id="form-tools" data-right="forms" data-level="advanced">
 		<h3>Formats, items, files, translations and the cloner</h3>
 		<p>The ▾ menu of the <em>Forms</em> tile holds the tools around forms:</p>
 		<ul>
 			<li><a data-open="formats">Formats</a> – date, number and text-mask formats (e.g. <code>dd.mm.yyyy</code>, <code>USD 1,000.00</code>). Changing a format updates every field that uses it.</li>
 			<li><a data-open="items">Items</a> – nuBuilder Forte's value lists. <a data-open="files">Files</a> – images and documents in the database (logos for reports, image objects).</li>
 			<li><a data-open="translations">Translations</a> – your labels in other languages; the <em>Missing</em> tab lists what is not translated yet.</li>
-			<li><a data-open="cloner">Cloner</a> – copies a form with its tabs, objects, code, subforms and rights, or creates the SQL to move it to another database.</li>
+			<li><a data-open="cloner">Form cloner</a> – copies a form with its tabs, objects, code, subforms and rights, or creates the SQL to move it to another database.</li>
 			<li><a data-open="import">CSV import</a> – loads a CSV file into a table, with column mapping, date and number conversion and a trial run.</li>
 		</ul>
 		<div class="tut-task">
-			<p>Clone <code>tutorial_task</code> with the <a data-open="cloner">Cloner</a> as <code>tutorial_task_copy</code>, then delete the copy in the builder (<em>Delete form</em>, without the table).</p>
+			<p>Clone <code>tutorial_task</code> with the <a data-open="cloner">Form cloner</a> as <code>tutorial_task_copy</code>, then delete the copy in the builder (<em>Delete form</em>, without the table).</p>
 		</div>
-		<p><a data-help="formats">Formats</a> · <a data-help="translations">Translations</a> · <a data-help="cloner">Cloner</a> · <a data-help="csv-import">CSV import</a></p>
+		<p><a data-help="formats">Formats</a> · <a data-help="translations">Translations</a> · <a data-help="cloner">Form cloner</a> · <a data-help="csv-import">CSV import</a></p>
 	</section>
 </article>
 
@@ -409,7 +413,7 @@
 		<p><a data-help="reports">Reports</a> · <a data-help="report-designer">Report designer</a> · <a data-help="sql-builder">SQL builder</a></p>
 	</section>
 
-	<section class="tut-lesson" id="dashboards" data-right="dashboards">
+	<section class="tut-lesson" id="dashboards" data-right="dashboards" data-level="advanced">
 		<h3>Dashboards</h3>
 		<p><a data-open="dashboards">Dashboards</a> show key figures, charts and tables – on the start page of users (per access level) or inside any form.</p>
 		<ul>
@@ -423,7 +427,7 @@
 		</div>
 		<p><a data-help="dashboards">Dashboards in the documentation</a></p>
 	</section>
-	<section class="tut-lesson" id="home-hooks" data-right="ga">
+	<section class="tut-lesson" id="home-hooks" data-right="ga" data-level="advanced">
 		<h3>Start page hooks</h3>
 		<p>A procedure with the code <code>nu_home</code> runs every time the tile start page is built (<code>nu_home_user</code> on the start pages of users). Its PHP can put a badge on a tile (an open count, a warning), change a description, hide a tile for some admin roles, add a group with extra tiles or show a banner above the tiles – only for that page view, nothing is saved into the layout.</p>
 		<div class="tut-task">
@@ -493,7 +497,7 @@
 	<h2>Running the installation</h2>
 	<p class="tut-intro">Settings, security, logs, updates and backups – what keeps an installation healthy.</p>
 
-	<section class="tut-lesson" id="config" data-right="configfile">
+	<section class="tut-lesson" id="config" data-right="configfile" data-level="advanced">
 		<h3>Configuration: nuconfig.php and the setup wizard</h3>
 		<p><code>nuconfig.php</code> holds the database access, the globeadmin login and many settings – the same file and variable names as nuBuilder Forte. nuBuilder Next's own settings start with <code>$nuConfig…</code> too (session timeouts, password length, two-factor login, base URL …).</p>
 		<ul>
@@ -559,7 +563,7 @@
 		<p><a data-help="updating">Updating nuBuilder Next</a></p>
 	</section>
 
-	<section class="tut-lesson" id="system-status" data-right="status">
+	<section class="tut-lesson" id="system-status" data-right="status" data-level="advanced">
 		<h3>System status and database tools</h3>
 		<ul>
 			<li><a data-open="vendor">System status</a> lists what needs a look: the time zone, a missing database tool or File Manager, tables that are not InnoDB, the demo mode. The badge on its tile counts these points.</li>
@@ -570,7 +574,7 @@
 		<p><a data-help="admin-tools">System status and tools</a> · <a data-help="innodb">Storage engine</a></p>
 	</section>
 
-	<section class="tut-lesson" id="housekeeping" data-right="ga">
+	<section class="tut-lesson" id="housekeeping" data-right="ga" data-level="advanced">
 		<h3>Housekeeping and the live-server checklist</h3>
 		<p><code>cron.php</code> removes expired tokens and sessions, old log entries and temporary files. Run it every 15 minutes as the web server's user:</p>
 		<pre class="small"><code>*/15 * * * * sudo -u www-data php /var/www/html/nunext/cron.php &gt; /dev/null</code></pre>
@@ -586,9 +590,9 @@
 	</section>
 </article>
 
-<article class="tut-chapter" id="ch-advanced" data-part="admin">
+<article class="tut-chapter" id="ch-advanced" data-part="admin" data-level="advanced">
 	<h2>Advanced topics</h2>
-	<p class="tut-intro">Copies of the application, the REST API, demo mode, nuBuilder Forte compatibility and where to go next.</p>
+	<p class="tut-intro">Copies of the application, the REST API, demo mode and nuBuilder Forte compatibility.</p>
 
 	<section class="tut-lesson" id="app-cloner" data-right="appcloner">
 		<h3>App cloner: test and development copies</h3>
@@ -638,20 +642,400 @@
 		<p><a data-help="compat">Compatibility check</a> · <a data-help="trouble">Troubleshooting</a></p>
 	</section>
 
+
+</article>
+
+<!-- ============================================================================================ PART 4: IN DEPTH (advanced track only) -->
+
+<article class="tut-chapter" id="ch-dev" data-part="advanced" data-level="advanced" data-right="acl:nuform">
+	<h2>Developing in depth</h2>
+	<p class="tut-intro">Which code runs when, the function references, global code, page forms and forms written with an AI.</p>
+
+	<section class="tut-lesson" id="adv-lifecycle">
+		<h3>Event order: what runs when</h3>
+		<p>The same hooks as in nuBuilder Forte 4.9 run, in the same order. PHP hooks run on the server and stop a step with <code>nuDisplayError()</code>; a JavaScript hook that returns <code>false</code> cancels the action.</p>
+		<ul>
+			<li><strong>Opening a list</strong>: global hook <code>nu_before_save</code> (as in nuBuilder Forte), the form's <em>Before Browse</em>, the list query – then in the browser <code>nuLoadBrowseGlobal()</code>, the form's <code>nuOnLoad(formId, formCode)</code> and the page hook of Global JS.</li>
+			<li><strong>Opening a record</strong> (a new one has the id <code>-1</code>): <code>nu_before_edit</code>, <em>Before Edit</em> (<code>nuSetFormValue()</code> changes what is shown, <code>nuAddJavascript()</code> adds code), the objects are drawn – then scripts in HTML objects, <code>nuLoadEditGlobal()</code>, <code>nuOnLoad()</code>. Values set while loading do not mark the form as changed.</li>
+			<li><strong>Saving</strong>: <code>nuBeforeSaveGlobal()</code> and <code>nuBeforeSave()</code> in the browser; on the server the concurrent-edit check, validation, <code>nu_before_save</code>, <em>Before Save</em>, one transaction for the record, its sub-form rows and the audit trail, then <em>After Save</em>; the form reloads and runs <code>nuOnLoad()</code>, then <code>nuAfterSave()</code>.</li>
+			<li><strong>Deleting</strong>: <code>nuBeforeDelete()</code>, <em>Before Delete</em>, one transaction, <em>After Delete</em>, <code>nuAfterDelete()</code>.</li>
+		</ul>
+		<div class="tut-tip">Only the fields a user edited are written when an existing record is saved – changes others made to other fields stay. In <em>Before Save</em>, <code>nuGetNuDataValue()</code> / <code>nuSetNuDataValue()</code> read and change the posted values.</div>
+		<div class="tut-task">
+			<p>In <code>tutorial_task</code>, add to the form's JavaScript:</p>
+			<pre class="small mb-0"><code>function nuOnLoad(formId, formCode) { console.log('loaded', formId); }
+function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
+			<p class="mb-0 mt-2">Open a record with the browser's console open, change a field and save – cancel once, confirm once.</p>
+		</div>
+		<p><a data-help="form-lifecycle">Form lifecycle and event order</a> · <a data-help="save-flow">How a save works</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-code-api">
+		<h3>Code functions, hash variables and debugging</h3>
+		<p>Forms written for nuBuilder Forte run their code unchanged – nuBuilder Next has nuBuilder Forte's PHP and JavaScript functions, plus a few of its own.</p>
+		<ul>
+			<li>The <a data-open="help" data-args="tab=ref">Code reference</a> (tab of the help) lists every PHP and JavaScript function with parameters, return value, an example and a sample result.</li>
+			<li>In every code editor, <em>Insert</em> in the toolbar offers these functions, and suggestions appear while you type.</li>
+			<li><strong>Hash variables</strong> (<code>#RECORD_ID#</code>, <code>#USER_ID#</code>, <code>#ACCESS_LEVEL_CODE#</code>, fields of the record, values set with <code>nuSetProperty()</code>) are replaced in SQL, PHP and HTML – not in JavaScript, where <code>nuGetProperty('name')</code> reads them.</li>
+			<li><strong>Debugging</strong>: <code>nuDebug($a, $b)</code> writes to <a data-open="debug">Debug results</a>; the globeadmin's right-click on a label opens the object menu (properties, rename, access, validation).</li>
+		</ul>
+		<div class="tut-task">
+			<p>Add <code>nuDebug('#tsk_title#', '#USER_ID#');</code> to the <em>Before Save</em> of <code>tutorial_task</code>, save a record and look at <a data-open="debug">Debug results</a>. Remove the line afterwards.</p>
+		</div>
+		<p><a data-help="php-api-p">PHP functions</a> · <a data-help="js-api-p">JavaScript functions</a> · <a data-help="hash-variables">Hash variables</a> · <a data-help="debug">Debug results</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-global-code" data-right="globalcode">
+		<h3>Global code: JavaScript and CSS for many pages</h3>
+		<p><a data-open="globalcode">Global code</a> has two groups of tabs:</p>
+		<ul>
+			<li><strong>Form pages</strong> – nuBuilder Forte's Setup, shared with it: <em>Form JavaScript</em> (Header: your global functions, <code>nuLoadEditGlobal</code> …), <em>Form CSS</em> (Style) and <em>Form includes</em> (<code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> elements).</li>
+			<li><strong>All pages</strong> – <em>Global JS</em> and <em>Global CSS</em> for nuBuilder Next's own pages (start page, lists, admin tools …), kept apart from nuBuilder Forte. Switches decide where they run. <code>nuOnPageLoad(page, info)</code> tells the code which page is open.</li>
+			<li>Each tab has <em>Templates</em> – ready-made code to insert. Never on the Global code page itself and the Update page, so a mistake can always be repaired; <code>?safe=1</code> opens any page without it.</li>
+		</ul>
+		<div class="tut-task">
+			<p>On <em>Form CSS</em>, insert the template <em>Light form buttons</em> and save. Open <code>tutorial_task</code> – its buttons are light now. Remove the code again.</p>
+		</div>
+		<p><a data-help="globalcode">Global code</a> · <a data-help="page-hook">Page hook</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-page-forms">
+		<h3>Page forms: your own PHP apps</h3>
+		<p>A form of the type <strong>Page (custom PHP)</strong> is a PHP app of your own (or written by an AI) in <code>custom/pages/&lt;code&gt;/</code>. nuBuilder Next checks the login and the access level's right on the form before any of its code runs, and hands the page one object, <code>$nu</code>: the user, the context, the database, settings and secrets.</p>
+		<ul>
+			<li><em>Create from template</em> copies a working example; <em>Copy AI prompt</em> puts the guide and your tables into the clipboard for an AI.</li>
+			<li>It opens like any form – menu, tile, run button, iframe object – in a new tab, inside nuBuilder Next or in the whole window.</li>
+			<li><em>Settings (JSON)</em> configure the app, <code>secrets.php</code> holds API keys. A <em>draft</em> of the page's files can be tested before it is published.</li>
+		</ul>
+		<div class="tut-task">
+			<p>In <a data-open="forms">Forms</a> → <em>Add</em>, create a form of the type <em>Page (custom PHP)</em> with the code <code>tutorial_page</code>, click <em>Create from template</em> and open it.</p>
+		</div>
+		<p><a data-help="pages">Pages (custom PHP)</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-form-ai">
+		<h3>Forms with AI</h3>
+		<p>A form can be created or changed with any AI chat (Claude, ChatGPT …) – no API key, nothing is sent from nuBuilder Next:</p>
+		<ul>
+			<li><a data-open="formai">Forms → With AI</a>: describe the form, copy the prompt into the AI, paste its answer, <em>Check</em> – the plan lists tables, columns and objects – then create it as a draft.</li>
+			<li>In the builder, <em>Change with AI</em> sends the current form along; the plan shows only what changes, and the result is a draft you preview before publishing.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Ask an AI for a form <em>tutorial_contact</em> (name, e-mail, phone, a select for the type) with <a data-open="formai">With AI</a>, check the answer and create the draft.</p>
+		</div>
+		<p><a data-help="form-ai">Forms with AI</a></p>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-control" data-part="advanced" data-level="advanced">
+	<h2>Change control and data protection</h2>
+	<p class="tut-intro">Drafts of forms, who sees which field, two people on one record and the full change history.</p>
+
+	<section class="tut-lesson" id="adv-drafts" data-right="acl:nuform">
+		<h3>Drafts: change a form without disturbing users</h3>
+		<p>In the builder, <em>Start draft</em> copies the whole form. Users keep working with the live form while you change the draft; <em>Publish</em> replaces it in one step.</p>
+		<ul>
+			<li><em>Save</em> and <em>Undo</em> (20 steps) work in the draft only; <em>Preview</em> shows the draft to you alone, with a yellow banner.</li>
+			<li><em>Compare with live</em> lists every change – objects, events, code line by line, list columns.</li>
+			<li><em>Publish…</em> checks the draft, asks for a note and keeps the live form in the history first. Publishing needs the globeadmin or the admin right <em>Publish forms (drafts)</em>.</li>
+			<li>The Security setting <em>Only through drafts</em> makes drafts the rule.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Start a draft of <code>tutorial_task</code>, rename a label, <em>Preview</em> it, look at <em>Compare with live</em> and publish it with a note.</p>
+		</div>
+		<p><a data-help="form-drafts">Drafts and publishing</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-data-access" data-right="acl:nuform">
+		<h3>Data access: fields and list columns per user</h3>
+		<p>nuBuilder Forte's <em>read only</em> and <em>hidden</em> only change the display. <strong>Data access</strong> (form builder → <em>Data access</em>) is enforced on the server:</p>
+		<ul>
+			<li>Modes per field: <em>Editable</em>, <em>Protected</em> (never saved from the browser), <em>Insert only</em> / <em>Update only</em>, <em>Masked</em> (e.g. <code>•••• 1234</code>) and <em>Withheld</em> (not sent at all).</li>
+			<li>A default plus rules for an access level, a user, a permission item, a team or a department – the most specific rule wins; a rule can have an SQL condition.</li>
+			<li>List columns can be hidden per subject: a hidden column is not read, searched, sorted or exported.</li>
+			<li><em>Preview as user</em> shows what a user gets and which rule decided it.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open <code>tutorial_task</code> → <em>Data access</em>, set <code>tsk_due</code> to <em>Protected</em> for <code>tutorial_level</code>, then check it with <em>Preview as user</em> for <code>tutorial_user</code>.</p>
+		</div>
+		<p><a data-help="data-access">Data access</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-concurrent">
+		<h3>Two people editing the same record</h3>
+		<ul>
+			<li>A yellow note above the form shows who else has the record open (checked every 30 seconds, it never blocks anybody).</li>
+			<li>Only the fields you changed are saved. If someone saved the same field after you opened the record, <em>Changed meanwhile</em> shows who, when and both values – pick <em>Mine</em> or <em>Theirs</em> per field.</li>
+			<li>Changes made in nuBuilder Forte, by procedures or directly in the database are noticed too.</li>
+			<li>Off: <code>$nuConfigEditConflictCheck</code> / <code>$nuConfigEditPresence</code> in nuconfig.php, per form <code>nuNextConflictCheck(false)</code> in <em>Before Edit</em>.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open the same <code>tutorial_task</code> record in two browser tabs, change <code>tsk_title</code> in both and save both – resolve the conflict.</p>
+		</div>
+		<p><a data-help="concurrent-edits">Two people editing the same record</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-audit" data-right="audit">
+		<h3>Audit trail: every change, with restore</h3>
+		<p>The <a data-open="audit">Audit trail</a> records every change nuBuilder Next makes to your tables – one row per changed column: who, when, from where, old and new value.</p>
+		<ul>
+			<li>⋮ → <em>History of this record</em> shows its changes; ↺ puts an old value back (only while nobody changed it since) or a deleted row.</li>
+			<li>Settings: on / off, how many days to keep, tables to leave out (e.g. big imports).</li>
+			<li>Not recorded: changes by your own SQL in procedures, by nuBuilder Forte itself or by phpMyAdmin.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Change a <code>tutorial_task</code> record twice, open ⋮ → <em>History of this record</em> and put the first value back.</p>
+		</div>
+		<p><a data-help="audit-trail">Audit trail</a> · <a data-help="log">Log</a></p>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-ops" data-part="advanced" data-level="advanced">
+	<h2>Operations</h2>
+	<p class="tut-intro">Notifications, more about users, library packs, the File Manager, unattended updates and the self-test.</p>
+
+	<section class="tut-lesson" id="adv-notifications" data-right="notifications">
+		<h3>Notifications to users</h3>
+		<p>The bell in the top bar shows unread notifications. <a data-open="notifications" data-args="tab=manage">Notifications → Manage</a> sends them:</p>
+		<ul>
+			<li>Title, text (plain or formatted), level, an optional link; <em>Must confirm</em> shows it as a dialogue until <em>Got it</em> is clicked – with read receipts.</li>
+			<li>Recipients: everybody, users, departments, teams, positions, access levels – combined, each user once; optionally by e-mail too.</li>
+			<li>Who may send: the globeadmin, the admin right <em>Notifications</em>, or the permission items <code>NUNEXT_NOTIFY</code> / <code>NUNEXT_NOTIFY_OWN</code> (own department / team). From code: <code>nuNextNotify()</code>.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Send a notification with <em>Must confirm</em> to <code>tutorial_user</code>, sign in as that user (or <em>Act as user</em>) and confirm it; look at the read receipt.</p>
+		</div>
+		<p><a data-help="notifications">Notifications</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-users-more" data-right="users">
+		<h3>Custom user fields and additional access levels</h3>
+		<ul>
+			<li><a data-open="userfields">Custom user fields</a> add fields of your own to the user form – location, cost centre, badge number: text, numbers, dates, yes / no, choice lists. They are real columns (table <code>zzzzsys_nunext_user_ext</code>), hash variables <code>#USER_&lt;CODE&gt;#</code>, list columns and filters; a field can be editable by the user in <em>My account</em>.</li>
+			<li><strong>Additional access levels</strong> (user form, below the access level): more levels on top of the main one, optionally until a date – any level grants a right.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Add a custom user field <em>Location</em> (code <code>location</code>), fill it for <code>tutorial_user</code> and give that user an additional access level until the end of the month.</p>
+		</div>
+		<p><a data-help="user-fields">Custom user fields</a> · <a data-help="access-additional">Additional access levels</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-libraries" data-right="update">
+		<h3>Library packs and the File Manager</h3>
+		<ul>
+			<li>Six libraries are not in the package but come as signed <strong>library packs</strong>: TCPDF (reports), PHPMailer (e-mail), TinyMCE (editor fields), and optionally phpMyAdmin, Adminer and Uppy (uploads). <a data-open="update" data-args="tab=libraries">Update → Libraries</a> installs them from GitHub or as an uploaded zip, tests and rolls them back.</li>
+			<li>The <strong>File Manager</strong> (nuFiles) is a page form that comes with nuBuilder Next: it runs on the nuBuilder Next login, shows <em>shares</em> (folders) per permission item or access level, and has a recycle bin and older versions. The globeadmin sets it up with one click.</li>
+		</ul>
+		<div class="tut-task">
+			<p>Open <a data-open="update" data-args="tab=libraries">Update → Libraries</a> and check which packs are installed; then open the <a data-open="filemanager">File Manager</a> (set it up if asked).</p>
+		</div>
+		<p><a data-help="copy-files-p">Library packs</a> · <a data-help="file-manager">File Manager</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-unattended" data-right="update">
+		<h3>Updates from GitHub and the command line</h3>
+		<ul>
+			<li><em>Update from GitHub</em> finds the newest release and checks once a day; a new version shows a badge on the Update tile. Only signed packages can be installed.</li>
+			<li>A package can also be copied by FTP into the folder <code>_update</code> – useful for a small upload limit.</li>
+			<li>Unattended: <code>php cron.php update --github</code> (or <code>--zip=…</code>, <code>--dry-run</code>, <code>--backup=…</code>) – run it as the web server's user. The same is possible through the REST API.</li>
+			<li>Every update makes a backup first (default: all <code>zzzzsys_*</code> tables); <em>Rollback</em> brings back the program files.</li>
+		</ul>
+		<div class="tut-task">
+			<p>On the <a data-open="update">Update</a> page, look at <em>Update from GitHub</em> and the <em>Backups</em> tab. If you have shell access, run <code>php cron.php update --github --dry-run</code>.</p>
+		</div>
+		<p><a data-help="updating-p">Updating nuBuilder Next</a></p>
+	</section>
+
+	<section class="tut-lesson" id="adv-selftest" data-right="ga">
+		<h3>Self-test of the installation</h3>
+		<p>With <code>$nuConfigDevMode = true</code>, the globeadmin gets <a data-open="selftest">Self-test</a>: it checks the system (PHP, folders, tables, database steps, languages, Security check), data (lists, a report), forms (save, validation, sub-form rows, hash variables, audit trail, delete) and rights – and cleans up after itself.</p>
+		<div class="tut-task">
+			<p>Run the <a data-open="selftest">Self-test</a> on a development installation and look at any warning.</p>
+		</div>
+		<p><a data-help="selftest">Self-test</a></p>
+	</section>
+</article>
+
+<!-- ============================================================================================ FROM NUBUILDER FORTE (third track, 0.8.635) -->
+<!-- data-track="forte": these chapters form the tutorial "Coming from nuBuilder Forte" only – they are not in Basic / Advanced, and the
+     other chapters are not in it. Part "changes" = what works differently, part "new" = what nuBuilder Forte does not have. -->
+
+<article class="tut-chapter" id="ch-forte-changes" data-part="changes" data-track="forte">
+	<h2>Familiar things, new places</h2>
+	<p class="tut-intro">Your nuBuilder Forte application in nuBuilder Next: what stays, and what you find somewhere else.</p>
+
+	<section class="tut-lesson" id="forte-welcome">
+		<h3>Same application, new front end</h3>
+		<p>nuBuilder Next opens the <strong>same database</strong> as nuBuilder Forte (4.x): the same forms, objects, users, access levels, procedures, reports and SQL builder queries – stored in the same <code>zzzzsys_</code> tables and formats. Both can run side by side on one database: what you build or change in one opens in the other.</p>
+		<ul>
+			<li>Your forms keep their code: Before Browse, Before Edit, Before Save, After Save, Before Delete, the form's JavaScript, <code>nuOnLoad</code>, object events and procedures run as in nuBuilder Forte, with nuBuilder Forte's PHP and JavaScript function names.</li>
+			<li>nuBuilder Next only adds its own tables (<code>zzzzsys_nunext_…</code>) for what nuBuilder Forte does not have – log, sessions, settings, dashboards, audit trail …</li>
+			<li>This tutorial has two parts: <strong>What works differently</strong> (where familiar things are now) and <strong>New in nuBuilder Next</strong>. Each lesson links to the page and to the documentation.</li>
+		</ul>
+		<div class="tut-tip"><p class="mb-0">Functions that behave differently or were not ported are listed with the reason in the documentation: <a data-help="porting">Differences and functions not ported</a>.</p></div>
+		<div class="tut-task">
+			<p class="mb-0">Run the <a data-open="compat">Compatibility check</a>: it scans your application's code for things that need attention in nuBuilder Next.</p>
+		</div>
+	</section>
+
+	<section class="tut-lesson" id="forte-navigation">
+		<h3>Start page and navigation</h3>
+		<p>Instead of nuBuilder Forte's home form with its launch buttons, nuBuilder Next opens a <strong>start page with tiles</strong>.</p>
+		<ul>
+			<li>Administrators see the admin tools as tiles (users, forms, procedures, reports, settings …); <em>Customise</em> arranges them, saves layouts and marks favourites.</li>
+			<li>Users get a start page per access level with tiles for their forms and reports – made automatically from their rights or arranged by you (<a data-help="home-users">user start pages</a>). A level's home form from nuBuilder Forte still works.</li>
+			<li>The <strong>top bar</strong> has a search (<kbd>Ctrl</kbd>+<kbd>K</kbd>: any page, form, procedure, report), notifications, light / dark mode, language and the user menu. An optional side bar shows favourites and recently used pages.</li>
+			<li>The <strong>breadcrumb</strong> above each page replaces nuBuilder Forte's breadcrumb and Back – the browser's Back button works too.</li>
+			<li>Everything works on phones: lists become cards, the menus fold.</li>
+		</ul>
+		<div class="tut-task"><p class="mb-0">Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, type the code of one of your forms and open it.</p></div>
+	</section>
+
+	<section class="tut-lesson" id="forte-forms">
+		<h3>Forms at work</h3>
+		<p>Your forms open as they are; the frame around them is nuBuilder Next's (<a data-help="forms-use">Working with forms</a>).</p>
+		<ul>
+			<li><strong>Buttons</strong>: <em>Back</em>, <em>Save</em> (turns red with unsaved changes, <kbd>Ctrl</kbd>+<kbd>S</kbd>), <em>Clone</em>, <em>New</em>, <em>Delete</em> – as nuBuilder Forte's action buttons. Leaving with unsaved changes asks first.</li>
+			<li><strong>Layout</strong>: <em>Absolute</em> shows the pixel positions of nuBuilder Forte; <em>Auto</em> and <em>Grid</em> arrange the same objects in rows – useful on small screens. The choice is kept per form.</li>
+			<li><strong>Browse lists</strong>: the form's browse SQL runs unchanged; search, sortable columns, column filters, page size and an export menu (HTML page, CSV, Excel) are built in.</li>
+			<li><strong>Validation</strong>: <em>No blanks</em> shows a red <code>*</code>, <em>No duplicates</em> a key symbol – both are checked again on the server.</li>
+			<li><strong>Two people on one record</strong>: nuBuilder Next shows who else has it open and, on Save, which fields someone else changed meanwhile (<a data-help="concurrent-edits-p">concurrent edits</a>).</li>
+		</ul>
+		<div class="tut-task"><p class="mb-0">Open a record of one of your forms, switch between <em>Absolute</em>, <em>Auto</em> and <em>Grid</em>, and change a field without saving – then try to leave the page.</p></div>
+	</section>
+
+	<section class="tut-lesson" id="forte-builder" data-right="acl:nuform">
+		<h3>Building forms</h3>
+		<p>nuBuilder Forte's form and object property screens are replaced by the <a data-open="forms">form builder</a> (<a data-help="builder-work-p">Working in the form builder</a>).</p>
+		<ul>
+			<li>One page per form: form settings, browse columns, objects, code and history. The <strong>preview</strong> next to the properties shows the form – drag objects there to move or resize them; several at once with <kbd>Ctrl</kbd>.</li>
+			<li>The <strong>objects list</strong> shows every object per tab; its ⋮ menu clones an object, changes its database column or deletes it.</li>
+			<li><strong>Drafts</strong>: changes can be made in a draft, previewed and compared, and published when they are ready – the live form stays as it is meanwhile (<a data-help="form-drafts">form drafts</a>). Every published change is kept in the history and can be restored.</li>
+			<li><strong>New form</strong> replaces Fast Form: table (new or existing), fields, list columns and the place on the User Home in one wizard. The <em>Form cloner</em> copies forms as nuBuilder Forte's Cloner does.</li>
+			<li>What the builder offers is stored in nuBuilder Forte's tables – a form built here opens in nuBuilder Forte.</li>
+		</ul>
+		<div class="tut-task"><p class="mb-0">Open one of your forms in the form builder, select an object in the preview and move it with the arrow keys – then use <em>Undo</em>.</p></div>
+	</section>
+
+	<section class="tut-lesson" id="forte-code" data-right="acl:nuform">
+		<h3>Code: what stays, what changed</h3>
+		<ul>
+			<li><strong>Same events and functions</strong>: PHP hooks and procedures use nuBuilder Forte's functions (<code>nuRunQuery</code>, <code>nuSetProperty</code>, <code>nuGetProperty</code>, <code>nuDisplayError</code> …), form JavaScript nuBuilder Forte's (<code>nuGetValue</code>, <code>nuSetValue</code>, <code>nuHide</code>, <code>nuMessage</code> …). Hash variables (<code>#RECORD_ID#</code>, <code>#USER_ID#</code> …) work as before.</li>
+			<li><strong>Code editors</strong> with syntax colours, an <em>Insert</em> menu of all documented functions and suggestions while typing; the documentation has a function reference with examples (<a data-help="ref">Code reference</a>).</li>
+			<li><strong>Security</strong>: nuBuilder Next's own pages allow no inline scripts or styles (Content Security Policy). Form pages still run your form code as nuBuilder Forte does.</li>
+			<li><strong>Setup → Header / Style / Include</strong> still apply to forms; code for <em>all</em> pages (also the start page and the admin pages) goes into <a data-open="globalcode">Global code</a>.</li>
+			<li>A few nuBuilder Forte functions behave differently or were left out on purpose – each with its reason: <a data-help="porting">Differences and functions not ported</a>.</li>
+		</ul>
+		<div class="tut-task"><p class="mb-0">Open a procedure, place the cursor in the PHP code and pick a function from the <em>Insert</em> menu.</p></div>
+	</section>
+
+	<section class="tut-lesson" id="forte-admin">
+		<h3>Users, rights and settings</h3>
+		<ul>
+			<li>The <a data-open="users">user form</a> is laid out in cards: person, login, access and account settings; a user can have <strong>additional access levels</strong> with an end date, and <strong>custom user fields</strong> extend it without changing <code>zzzzsys_user</code>.</li>
+			<li><strong>Access levels</strong> work as in nuBuilder Forte. New: <a data-help="admin-roles">admin roles</a> give a user part of the globeadmin's tools (e.g. only users, or only reports) – in nuBuilder Forte that was all or nothing.</li>
+			<li><strong>Settings</strong>: nuBuilder Forte's Setup form is split into <a data-open="settings">Settings</a> (also the values of <code>nuconfig.php</code>, with descriptions), <a data-open="email">E-mail</a> (with a connection check and test mail), <a data-open="branding">Branding</a> and <a data-open="themes">Themes</a>.</li>
+			<li><strong>Updating</strong>: instead of copying files, <a data-open="update">Update</a> installs a signed package – with a backup first, a check of the database changes and a way back.</li>
+		</ul>
+		<div class="tut-task"><p class="mb-0">Open <a data-open="settings">Settings</a> and find a setting you know from <code>nuconfig.php</code>.</p></div>
+	</section>
+
+	<section class="tut-lesson" id="forte-reports">
+		<h3>Reports and the SQL builder</h3>
+		<ul>
+			<li>Reports use nuBuilder Forte's layout format: the <a data-open="reports">report designer</a> was rebuilt, but a report saved in either product prints the same in both (PDF with TCPDF).</li>
+			<li>The <a data-open="sqlbuilder">SQL builder</a> stores its queries in nuBuilder Forte's format – tables, joins, clauses – with a preview of the result.</li>
+			<li>New: reports can be run through the REST API and sent as e-mail; dashboards show numbers and charts from SQL, SQL builder queries or procedures.</li>
+		</ul>
+		<div class="tut-task"><p class="mb-0">Open one of your reports in the report designer and print it as PDF.</p></div>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-forte-new" data-part="new" data-track="forte">
+	<h2>What nuBuilder Forte does not have</h2>
+	<p class="tut-intro">Features that are new in nuBuilder Next.</p>
+
+	<section class="tut-lesson" id="forte-new-security">
+		<h3>Security and sign-in</h3>
+		<ul>
+			<li>The <a data-open="securitycheck">Security check</a> lists weak points of the installation with a fix for each (passwords, file rights, settings, libraries).</li>
+			<li>Two-factor sign-in per access level, a limit for wrong passwords, one-time login links and password reset by e-mail (<a data-help="signin-methods">sign-in methods</a>).</li>
+			<li>Dangerous actions ask for the password again; <a data-open="sessions">Logged-in users</a> shows who is signed in and can sign them out.</li>
+			<li><strong>Work as a user</strong> (<a data-help="impersonate">impersonate</a>): see what a user sees – read only or with full access – without knowing the password.</li>
+			<li>Field data access: per field and access level – edit, read only, hidden or masked (<a data-help="data-access">data access</a>).</li>
+		</ul>
+	</section>
+
+	<section class="tut-lesson" id="forte-new-trace">
+		<h3>Audit trail, log and notifications</h3>
+		<ul>
+			<li>The <a data-open="audit">audit trail</a> records every changed field – old and new value, who and when – with a history per record and a restore.</li>
+			<li>The <a data-open="log">log</a> records sign-ins, changes to forms, settings and users.</li>
+			<li><a data-open="notifications">Notifications</a> reach users in the bell of the top bar – for everybody, departments, teams or access levels, optionally with a confirmation of reading; also from your PHP code (<code>nuNextNotify()</code>).</li>
+		</ul>
+	</section>
+
+	<section class="tut-lesson" id="forte-new-data">
+		<h3>Working with data</h3>
+		<ul>
+			<li><a data-open="import">CSV import</a> into any table with a field mapping and a dry run; Excel export of every list.</li>
+			<li><strong>List views</strong>: users save their own columns, filters and sort order of the system lists (<a data-help="list-views">list views</a>).</li>
+			<li><a data-open="dashboards">Dashboards</a> with numbers, tables and charts on the start page.</li>
+			<li>Forms with AI: describe a form, copy the prompt into any AI chat and paste the answer back – it becomes a draft (<a data-help="new-form-p">new form</a>).</li>
+			<li>New tables can use UUID keys.</li>
+		</ul>
+	</section>
+
+	<section class="tut-lesson" id="forte-new-integration">
+		<h3>Integration</h3>
+		<ul>
+			<li>A <a data-help="api">REST API</a> with clients, scopes and tokens: records of forms, users, reports as PDF, notifications – and the <a data-open="apiplayground">API playground</a> to try it in the browser.</li>
+			<li><strong>Page forms</strong>: a form type for your own PHP pages inside nuBuilder Next, with drafts and versions (<a data-help="pages">pages</a>).</li>
+			<li>E-mail with OAuth 2 (Google, Microsoft 365) and e-mail templates.</li>
+		</ul>
+	</section>
+
+	<section class="tut-lesson" id="forte-new-ops">
+		<h3>Operation and administration</h3>
+		<ul>
+			<li><strong>Updates</strong> from a signed package or GitHub, with a backup first and a preview of the database changes – also unattended by cron (<a data-help="updating-p">updating</a>).</li>
+			<li>The <a data-open="appcloner">App cloner</a> copies the whole application – database and files – to a test installation.</li>
+			<li><a data-open="branding">Branding</a> and <a data-open="themes">Themes</a>: own logo, colours, fonts and density, per access level.</li>
+			<li><a data-open="sample">Sample data</a>, the <a data-open="selftest">self-test</a> (developer mode) and this tutorial help to learn and check an installation.</li>
+			<li>Translations in eleven languages, light and dark mode, and an accessible layout.</li>
+		</ul>
+	</section>
+
+	<section class="tut-lesson" id="forte-next">
+		<h3>Next steps</h3>
+		<ul>
+			<li>Switch to <em>Basic</em> or <em>Advanced</em> at the top for the full tutorial – lessons you have done stay done.</li>
+			<li>Before moving a live nuBuilder Forte application: run the <a data-open="compat">Compatibility check</a>, read <a data-help="porting">Differences and functions not ported</a> and <a data-help="migration">Migration</a>, and try the application on a copy (App cloner).</li>
+		</ul>
+		<div class="tut-task"><p class="mb-0">Mark this lesson as done.</p></div>
+	</section>
+</article>
+
+<article class="tut-chapter" id="ch-end" data-part="end">
+	<h2>Next steps</h2>
+	<p class="tut-intro">Where to go from here.</p>
+
 	<section class="tut-lesson" id="next-steps">
 		<h3>Where to go next</h3>
-		<p>You have seen every part of nuBuilder Next. From here:</p>
+		<p>You have finished the tutorial. From here:</p>
 		<ul>
 			<li>The <a data-open="help">documentation</a> describes every page in detail – including the developer reference with all PHP and JavaScript functions.</li>
+			<li>Read in the basic version? <em>Advanced</em> at the top adds in-depth lessons on event order, code functions, drafts, data access and operations – your progress is kept.</li>
 			<li><kbd>Ctrl</kbd>+<kbd>K</kbd> finds any page, form, procedure or report in a moment.</li>
 			<li>The <em>Update</em> page's change history shows what each new version brings.</li>
-			<li>Clean up what this tutorial created when you no longer need it: the form and table <code>tutorial_task</code>, the procedure <code>tutorial_hello</code>, the user <code>tutorial_user</code> and the access level <code>tutorial_level</code> – and the sample data (<em>Sample data → Remove</em>).</li>
+			<li>Clean up what this tutorial created when you no longer need it: the form and table <code>tutorial_task</code>, the procedure <code>tutorial_hello</code>, the user <code>tutorial_user</code> and the access level <code>tutorial_level</code> (from the advanced lessons also <code>tutorial_page</code>, <code>tutorial_contact</code> and the custom user field <code>location</code>) – and the sample data (<em>Sample data → Remove</em>).</li>
 		</ul>
 		<div class="tut-task">
 			<p>Mark this lesson as done – and start building your own application.</p>
 		</div>
 	</section>
 </article>
+
 
 </main>
 </body>

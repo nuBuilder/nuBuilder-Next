@@ -277,6 +277,15 @@ foreach (['other table' => 'CREATE TABLE customers (a int)', 'insert into other 
 	check('dump: refused ' . $what, !NuInstall::checkDump($okDump . $stmt . ";\n")['ok']);
 }
 check('dump: strings with SQL in VALUES', NuInstall::checkDump($okDump . "INSERT INTO `zzzzsys_object` VALUES ('x', 'SELECT * FROM t; DROP TABLE y', 'it''s', 'a\\'b', NULL, -1.5, 0x1F);\n")['ok']);
+// Reset database (0.8.628): a complete dump – the application's tables allowed, the other rules stay
+$full = $okDump . "CREATE TABLE `customers` (`id` int);\nLOCK TABLES `customers` WRITE;\nINSERT INTO `customers` VALUES (1),(2);\nUNLOCK TABLES;\nINSERT INTO `zzzzsys_user` (`zzzzsys_user_id`) VALUES ('u1'),('u2'),('u3');\n";
+check('dump: application tables refused for the installer', !NuInstall::checkDump($full)['ok']);
+$r = NuInstall::checkDump($full, true);
+check('dump: complete dump for Reset database', $r['ok'] && $r['app'] === 1 && $r['tables'] === 6 && $r['users'] === 3, json_encode($r));
+foreach (['USE' => 'USE mysql', 'GRANT' => "GRANT ALL ON *.* TO 'x'@'%'", 'OUTFILE' => "SELECT * FROM customers INTO OUTFILE '/tmp/x'", 'trigger' => 'CREATE TRIGGER t BEFORE INSERT ON customers FOR EACH ROW SET @a = 1',
+	'other database' => 'CREATE TABLE mysql.x (a int)', 'INSERT … SELECT' => 'INSERT INTO customers SELECT * FROM mysql.user'] as $what => $stmt) {
+	check('dump (any table): refused ' . $what, !NuInstall::checkDump($full . $stmt . ";\n", true)['ok']);
+}
 check('dump: 4.9 table definitions', count(NuInstall::tables49()) === 35 && isset(NuInstall::tables49()['zzzzsys_object']['sob_all_access_condition']));
 
 // ---------------------------------------------------------------- form drafts: snapshot canonical form, hash, diff (0.8.386)
@@ -668,6 +677,14 @@ foreach (NuCodeTemplates::all() as $tab => $list) {
 	}
 }
 check('custom code templates: texts, tabs, categories, unique ids', $tplOk && count($tplIds) >= 20);
+
+// 0.8.622: UUID v7 keys for 36-character primary key columns
+$u1 = nu_uuid(); usleep(2000); $u2 = nu_uuid();
+check('nu_uuid: format, version 7, variant', (bool)preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $u1) && $u1 !== $u2);
+check('nu_uuid: sorted by time', strcmp($u1, $u2) < 0 && abs(hexdec(substr(str_replace('-', '', $u1), 0, 12)) - (int)(microtime(true) * 1000)) < 5000);
+check('nu_new_key: UUID for (n)(var)char(36) / uniqueidentifier, else nu_id', strlen(nu_new_key(['type' => 'varchar', 'length' => 36])) === 36
+	&& strlen(nu_new_key(['type' => 'nchar', 'length' => 36])) === 36 && strlen(nu_new_key(['type' => 'uniqueidentifier', 'length' => null])) === 36
+	&& strlen(nu_new_key(['type' => 'varchar', 'length' => 25])) < 36 && strlen(nu_new_key(['type' => 'varchar', 'length' => 40])) < 36 && strlen(nu_new_key(null)) < 36);
 
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";

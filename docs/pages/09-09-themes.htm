@@ -1,0 +1,35 @@
+<section id="themes" data-doc="admin">
+	<h2 id="themes-h">Themes</h2>
+	<p class="doc-lead">The look of buttons, fields, tabs, lists and forms – five built-in themes, own ones, per access level or chosen by the users.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles with the right Branding)</p>
+	<p><em>Admin tools → Themes</em> (<code>index.php?p=themes</code>) sets the look of nuBuilder Next's own pages and of the forms of your application. A theme is a set of values; an empty value keeps nuBuilder Next's own look.</p>
+	<div class="doc-sub" id="themes-builtin">
+	<h3 id="themes-builtin-h">Built-in themes</h3>
+<ul>
+<li><strong>nuBuilder Next</strong> – the normal look.</li>
+<li><strong>Forte Classic</strong> – close to nuBuilder Forte 4.9: Segoe UI 13 px, small corners, no shadows, light action buttons, tabs as boxes, Forte's blue form buttons.</li>
+<li><strong>Corporate</strong> – dark blue top bar, square corners, compact spacing, semi-bold buttons and labels.</li>
+<li><strong>Soft</strong> – rounded corners, light violet surfaces, more spacing, tabs as pills.</li>
+<li><strong>High contrast</strong> – black text and borders, 16 px Verdana, a yellow focus ring, strong list headers; a dark version with white on black.</li>
+</ul>
+	<p>Built-in themes cannot be changed: <em>Duplicate</em> makes an editable copy (also of an own theme).</p>
+	</div>
+	<div class="doc-sub" id="themes-edit">
+	<h3 id="themes-edit-h">Editing a theme</h3>
+	<p>The editor groups the values: <strong>General</strong> (accent colour, page background, cards and fields background, text, secondary text, borders, corner radius 0–16 px, shadow of cards), <strong>Font and spacing</strong> (font – system fonts only, since the Content Security Policy loads fonts only from this server –, size 12–16 px, density compact / comfortable), <strong>Top bar</strong> (background, text and icons – on a dark bar nuBuilder Next's logo switches to its light version), <strong>Buttons of the pages</strong> (Back / Save / Clone and toolbar buttons, nuBuilder Forte's <code>nuActionButton</code>), <strong>Fields and labels</strong> (background, text, border, focus colour, labels and their weight, the required mark), <strong>Tabs</strong> (style: underline, boxes as in nuBuilder Forte, or pills; colours), <strong>Lists</strong> (header, row under the mouse, stripes) and <strong>Forms</strong> (background and text of form buttons – without a text colour it is white or black, whichever is readable –, labels of form fields).</p>
+	<p>Every colour has a value for <strong>light</strong> and one for <strong>dark</strong> mode; an empty dark colour keeps nuBuilder Next's dark colour, so the dark mode switch works with every theme. The <strong>preview</strong> on the right changes while you type and switches between light and dark; below it, pairs that are hard to read (e.g. button text on its background) are named with their contrast ratio. Changes apply to everyone after <em>Save</em>.</p>
+	<p>Themes can be moved to another installation: ⋯ → <em>Export</em> saves a JSON file, <em>Import</em> creates a new own theme from it. The file holds every colour, light and dark – also those the theme leaves to nuBuilder Next (so the built-in <em>nuBuilder Next</em> theme exports its own colours) – and the other values (corners, font, density …) the theme sets.</p>
+	</div>
+	<div class="doc-sub" id="themes-who">
+	<h3 id="themes-who-h">Who uses which theme</h3>
+<ul>
+<li><strong>Theme for everyone</strong> (also <em>Use for everyone</em> on a theme) – also on the sign-in pages.</li>
+<li><strong>Per access level</strong> – users of the level get this theme instead (their main access level).</li>
+<li><strong>Users may choose their theme</strong> – the ticked themes (none ticked = all) appear in the menu with light / dark mode; <em>As set for me</em> goes back. A user's choice wins over the theme of the access level. The globeadmin's choice is kept in the settings, demo visitors' in the session.</li>
+<li><strong>Use for me</strong> on a theme (also in the light / dark menu) – only for you. The globeadmin can always choose any theme, also when users may not choose; others get the button when users may choose and the theme is allowed. The badge <em>Yours</em> marks the theme you see; ⋯ → <em>Stop using for me</em> goes back.</li>
+</ul>
+	<p>A theme in use (for everyone or an access level) cannot be deleted. The theme is a small generated stylesheet the browser caches until the theme changes. It is loaded before Global code CSS, so your own CSS – Global code, Setup → Style, a form's Style – still wins; nuBuilder Forte (4.x) itself is not affected. The accent colour of earlier versions (Branding) became the own theme "My theme".</p>
+	</div>
+	<p class="doc-see">See also: <a href="#branding">Branding</a> · <a href="#form-buttons">Look of buttons and HTML objects</a> · <a href="#theming">Theming and CSS</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nutheme.php</code></li><li><code>pages/nuthemes.php</code></li><li><code>assets/js/nuthemes.js</code></li></ul></details>
+</section>

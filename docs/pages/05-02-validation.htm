@@ -9,7 +9,7 @@
 		<thead><tr><th>Check</th><th>Marker after the label</th><th>Message</th></tr></thead>
 		<tbody>
 			<tr><td>Required (no blanks)</td><td><code>*</code></td><td>"… cannot be blank."</td></tr>
-			<tr><td>Unique (no duplicates in the table)</td><td>blue ◆</td><td>"… must be unique – this value already exists."</td></tr>
+			<tr><td>Unique (no duplicates in the table)</td><td>key <i class="bi bi-key"></i> (after the <code>*</code> when also required)</td><td>"… must be unique – this value already exists."</td></tr>
 			<tr><td>Text mask complete (format with the option "complete")</td><td>–</td><td>names the field (and the row of a sub-form)</td></tr>
 		</tbody>
 	</table>
@@ -23,6 +23,35 @@
 		<li><strong>Who may change what</strong> belongs into rights, not code: access levels, <a href="#data-access">field data access</a>, permission items (<code>nuUserHasPermission()</code>).</li>
 	</ul>
 </div>
+	<div class="doc-sub" id="own-page-rules" data-doc="admin">
+	<h3 id="own-page-rules-h">Required and unique fields of nuBuilder Next's pages</h3>
+	<p>The record pages of nuBuilder Next itself check these fields on the server; the label shows a red <code>*</code> for required and a key <i class="bi bi-key"></i> for unique (the tooltip of the key explains it). Unique values are compared as stored; the user code ignores spaces at the ends and upper / lower case. Values that must be unique only together with others (e-mail templates, translations) carry no key.</p>
+	<div class="table-responsive"><table class="table table-sm">
+		<thead><tr><th>Page</th><th>Required</th><th>Required and unique</th><th>Unique (may be empty)</th></tr></thead>
+		<tbody>
+			<tr><td>Users</td><td>Full name, access level, password (new user)</td><td>Login name</td><td>Code</td></tr>
+			<tr><td>Access levels</td><td>–</td><td>Code</td><td>–</td></tr>
+			<tr><td>Permission items</td><td>–</td><td>Ident</td><td>–</td></tr>
+			<tr><td>Admin roles</td><td>–</td><td>Code</td><td>–</td></tr>
+			<tr><td>Custom user fields</td><td>Label; choices (choice list)</td><td>Code</td><td>–</td></tr>
+			<tr><td>Procedures</td><td>–</td><td>Code</td><td>–</td></tr>
+			<tr><td>Reports</td><td>Description, data source</td><td>Code</td><td>–</td></tr>
+			<tr><td>Files</td><td>–</td><td>Code</td><td>–</td></tr>
+			<tr><td>Dashboards</td><td>The source of the chosen kind (SQL, SQL builder query or procedure)</td><td>Code</td><td>–</td></tr>
+			<tr><td>Prompts</td><td>Prompt</td><td>Code</td><td>–</td></tr>
+			<tr><td>SQL builder</td><td>Description</td><td>–</td><td>Code (when set)</td></tr>
+			<tr><td>E-mail templates</td><td>Code</td><td>–</td><td>Code + group + language together</td></tr>
+			<tr><td>Translations</td><td>English text, language, translation</td><td>–</td><td>English text + language together</td></tr>
+			<tr><td>Formats</td><td>Type</td><td>Format (built in the format designer, no key)</td><td>–</td></tr>
+			<tr><td>API clients</td><td>Name, service user (a new one: login name and access level)</td><td>–</td><td>Service user (one client each), login name of a new service user</td></tr>
+			<tr><td>Notifications</td><td>Title, recipients</td><td>–</td><td>–</td></tr>
+			<tr><td>Form builder – new form, page forms</td><td>Description</td><td>Code</td><td>–</td></tr>
+			<tr><td>App cloner configurations</td><td>–</td><td>Code</td><td>–</td></tr>
+			<tr><td>Cloner configurations</td><td>Source, destination</td><td>–</td><td>–</td></tr>
+		</tbody>
+	</table></div>
+	<p>Forms of your application follow the <em>Validation</em> setting of each object (table above).</p>
+	</div>
 	<p class="doc-see">See also: <a href="#save-flow">How a save works</a> · <a href="#hooks">PHP hooks and procedures</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nurecord.php</code></li><li><code>core/form/nuformat.php</code></li></ul></details>
 </section>

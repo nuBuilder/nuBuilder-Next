@@ -857,6 +857,7 @@ final class NuMigrate
 			'0024-object-access' => ['Field data access: rules per object (zzzzsys_nunext_object_access)', static fn() => NuSchema::create()],
 			'0025-user-access' => ['Additional access levels per user (zzzzsys_nunext_user_access)', static fn() => NuSchema::create()],
 			'0026-user-home' => ['nuBuilder Forte\'s User Home (launch form nuuserhome with the tabs Main and Fast Forms) when missing', static fn() => NuUserHome::ensure()],
+			'0027-themes' => ['Themes (zzzzsys_nunext_theme); an accent colour of Branding becomes the own theme "My theme", used by everyone', static fn() => NuTheme::migrateBranding()],
 		];
 	}
 
@@ -897,6 +898,7 @@ final class NuMigrate
 		'0024-object-access' => [['zzzzsys_nunext_object_access', 'table', 'created when missing']],
 		'0025-user-access' => [['zzzzsys_nunext_user_access', 'table', 'created when missing']],
 		'0026-user-home' => [['zzzzsys_form', 'data', 'form nuuserhome (User Home) added when missing – also checked with every later update'], ['zzzzsys_tab', 'data', 'its tabs Main and Fast Forms']],
+		'0027-themes' => [['zzzzsys_nunext_theme', 'table', 'created when missing'], ['zzzzsys_nunext_setting', 'data', 'Branding\'s accent colour (if set) moved into the own theme "My theme" (row theme)']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

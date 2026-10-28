@@ -3,6 +3,207 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.647 – Release gate (0.8.621–0.8.646)
+- Release gate (0.8.621–0.8.646): full test run – smoke, all end-to-end tests and the cross-tests against nuBuilder Forte.
+- Form builder: the objects list and the preview stay below the sticky header row again while the page scrolls (the view grid gave
+  their columns no room to stick), and the preview's height leaves room for that row – the top of the preview and the Arrange panel
+  were hidden under the header on windows up to ~900 px high.
+- Development notes: state since the last gate.
+
+## 0.8.646 – Docs check
+- Documentation, README and the development notes checked and brought up to date (designs, form builder, cloner, AI, tutorial versions,
+  database set-up, branding logo; CLAUDE.md: NuDbState, state since the last gate).
+
+## 0.8.645 – Database set-up when nuconfig.php was written by hand
+Database not set up (nuconfig.php written by hand or copied from nuBuilder Forte): nuBuilder Next now checks once per session whether
+  the database is ready instead of failing with "Base table … not found" / "Unknown column". The sign-in page shows a hint, users
+  cannot sign in, the globeadmin is sent to the new page Set up the database (?p=dbsetup; also reachable with the setup token from
+  _install/setup-token.txt or install.allow):
+  empty database → nuBuilder Next's install scripts or (MySQL) a nuBuilder Forte SQL dump of any 4.x, brought to 4.9;
+  tables missing → "Create missing tables" (adds only what is missing);
+  nuBuilder Forte older than 4.9 (4.9 columns missing) → explained (new empty database + dump, or Forte's own update), nothing changed.
+  The globeadmin's sign-in no longer creates the own tables on a database that is not ready (core/nudbstate.php NuDbState).
+Existing nuBuilder Forte database (still blocked): the notice now says how to go on.
+Update from GitHub: the error names the real reason (not signed, signature not valid, not a package, PHP zip missing) instead of
+  always "no valid signature"; without PHP sodium the download is kept and Check package warns, as for an uploaded zip.
+Security check: PHP extensions for updates (zip, sodium).
+Docs: installation, updating, README. e2e: db_setup.
+
+## 0.8.644 – Permission items: always Assigned on open
+User form → Permission items: always opens on "Assigned" – also for a user without any items (a hint says to choose "All items"), after a reload and after the browser's back button (the browser no longer restores the last choice).
+Docs: users. e2e: user_perm_state.
+
+## 0.8.643 – Themes: use for me, complete export
+Themes: "Use for me" on every theme – the globeadmin can always pick any theme for himself (also when users may not choose; also in the light / dark menu); other admins when users may choose. Badge "Yours" marks the theme you see, ⋯ → "Stop using for me" goes back.
+Themes → Export: the JSON holds every colour, light and dark – the theme's own values plus nuBuilder Next's for the rest (colours that follow the accent follow the theme's accent); other values as far as the theme sets them. The built-in nuBuilder Next theme no longer exports an empty file.
+Docs: themes. e2e: theme_mine.
+
+## 0.8.642 – Sticky button row, permission filter
+Record and form pages: the row with breadcrumb / title and the buttons (Back, Save, Delete, ⋮ …) stays at the top while scrolling – desktop and mobile; a thin line below it once it sticks. Sticky side panels (help, previews, field lists, builder sidebar), anchors and the tab-sections jump stop below it; a form-draft banner is taken into account.
+User form → Permission items: new selection Assigned (default) / All items / Not assigned; a user without any items opens on All items. The selection applies when chosen, so an unticked item stays in view until it changes.
+Start page: the User Home icon (house) is aligned with the star next to it.
+Docs: editing records (sticky row), users (permission filter). e2e: tests adapted to the permission filter.
+
+## 0.8.641 – Pinned menu pin: light look
+- Pin of the ☰ menu when pinned: a grey (filled) pin on a light background instead of the filled grey button.
+
+## 0.8.640 – Lighter grey for selected buttons and badges
+- Light mode: pressed / selected grey buttons (the pin of the ☰ menu, Active / Archived / All, tutorial Basic / Advanced …) and grey
+  badges (counters) use a lighter grey (#8a939b instead of #6c757d).
+
+## 0.8.639 – Arrow for tab sections
+- Tabs with several cards show a small ▾ next to their name, so it is visible that they have a sections menu; a tap on the ▾
+  opens it at once (as the long tap / right-click).
+
+## 0.8.638 – Tab sections on a long tap
+- Tabs with several cards (e.g. General of the user form): a long tap on the tab (right-click on a computer) lists its sections –
+  Person, Login credentials, Access & roles, Account settings …; a tap opens the tab and scrolls to that card, which lights up
+  briefly. Help: Phones and small screens.
+
+## 0.8.637 – Pin for the ☰ menu
+- Top bar on phones and tablets: a pin button left of the user button keeps the ☰ menu open on every page (kept in this browser);
+  click it again and the menu closes as before.
+
+## 0.8.636 – User button on phones: icon only
+- Top bar on phones (inside the ☰ menu): the user button shows only its icon, without the name – the name stays as tooltip.
+
+## 0.8.635 – Tutorial: Coming from nuBuilder Forte
+- Tutorial: a third tutorial "Coming from nuBuilder Forte" for people who know nuBuilder Forte – part "What works differently"
+  (same database and code, start page and navigation, forms at work, form builder, code, users / rights / settings, reports and SQL
+  builder) and part "New in nuBuilder Next" (security and sign-in, audit trail / log / notifications, working with data,
+  integration, operation), 13 lessons with links to the pages and the documentation.
+- The tutorial's start screen offers the three tutorials (Basic, Advanced, Coming from nuBuilder Forte); the buttons at the top
+  switch between them, lessons done stay done. A link to a lesson of another tutorial opens it with a note and a switch button.
+
+## 0.8.634 – Header layouts to try (developer mode)
+- Temporary, developer mode only: user menu → "Header layout (test)" switches the header of the pages (breadcrumb, title, buttons)
+  to the variants of the layout mockup – A: title and buttons in one row; B: the breadcrumb is the title; C: Save + ⋮ menu (on
+  phones Save in a bar at the bottom); D: header stays visible while scrolling; E: C + compact spacing; "Today" goes back. Works
+  on record pages, form pages and lists; the choice is kept in this browser. Buttons in the ⋮ menu stay in the page (hidden), so
+  form code that uses them keeps working. Will be removed once a layout is chosen.
+
+## 0.8.633 – Form cloner, attached Save, AI tables, object menu
+- Form cloner (renamed from Cloner – clearer next to the App cloner): "Only create SQL (dump), do not clone" is ticked by default;
+  a tile of its own on the start page (Admin tools, group Data) – before it was only in the ▾ menu of Forms ("Clone form") and in
+  the forms list.
+- nuAttachSaveButtonTo(id, dx, dy, height, width, fontSize) as in nuBuilder Forte: Save 15 px below the object (dx / dy shift it),
+  in the given size and font size, on one line (the icon goes when the label needs the room). In the absolute layout the tab grows
+  when the button would end below it – before it was cut off.
+- Change / new form with AI: "Tables in the prompt" below the description – a searchable choice of several tables (the form's own
+  table preselected); only those tables and their columns go into the prompt. None chosen = all tables, as before.
+- Form builder: Clone object, Change column… and Delete object left the toolbar – they are in the ⋮ menu of each object in the
+  objects list.
+
+## 0.8.632 – Themes
+- Themes (Admin tools → Themes): the look of nuBuilder Next's pages and of the forms of your application. Five built-in themes –
+  nuBuilder Next, Forte Classic (close to nuBuilder Forte 4.9), Corporate, Soft, High contrast – and own ones: Duplicate makes an
+  editable copy. Values: accent colour, page / card backgrounds, text, borders, corner radius, shadow, font (system fonts), font
+  size, density, top bar, buttons of the pages (also nuActionButton), fields and labels, required mark, tabs (underline, boxes as in
+  nuBuilder Forte, pills), lists, and the buttons and labels of forms. Every colour for light and dark mode – empty keeps nuBuilder
+  Next's own colour.
+- Editor with a live preview (top bar, buttons, fields, tabs, a list and a form, light / dark) and warnings for text that is hard to
+  read. Export as JSON file and import.
+- Who uses which theme: a theme for everyone (also on the sign-in pages), a theme per access level, and optionally users choose
+  their theme from the allowed ones in the menu next to light / dark ("As set for me" goes back).
+- Own CSS (Global code, Setup → Style, a form's Style) still wins over a theme. The accent colour moved from Branding into the
+  themes: one set before becomes the own theme "My theme", used for everyone (database step 0027).
+- Help: new page Extended features → Themes.
+
+## 0.8.631 – nuActionButton class for form code
+- nuBuilder Forte's CSS class nuActionButton now has a look of its own: buttons that form code creates itself
+  (e.g. $('<button class="nuActionButton">')) get nuBuilder Forte's size and spacing (31 px high, 8 px left margin, light surface,
+  thin border, rounded corners), in light and dark mode; span.nuActionButton and .nuActionButtonIcon as in nuBuilder Forte.
+  A rule .nuActionButton { … } in Setup → Style, the form's Style or Global code still wins. nuBuilder Next's own buttons that
+  carry the class are unchanged.
+
+## 0.8.630 – Branding: Show logo
+- Admin tools → Branding: new setting "Show logo" – everywhere (top bar and sign-in pages, as before), only on the sign-in pages,
+  or nowhere. Applies to an own logo and to nuBuilder Next's. Without a logo in the top bar the title stands there when "Show the
+  title next to the logo" is on; Home is then reached through the menu. The preview follows the choice.
+
+## 0.8.629 – E-mail settings: Export / import menu
+- E-mail → Settings: "Copy settings" and "Paste settings" are now in one button "Export / import" with a menu, next to Save. New
+  entry "Download settings (file)": the same JSON as Copy settings, saved as smtp-settings-<server>.json – without the password;
+  its content can be pasted again with Paste settings.
+
+## 0.8.628 – Reset database (developer mode)
+- Admin tools → Reset database (developer mode only, `$nuConfigDevMode = true`, MySQL / MariaDB): deletes all tables and views of the
+  database and imports a nuBuilder Forte (4.x) SQL file – nuBuilder's nubuilder4.sql (any 4.x, brought to 4.9) or a complete dump of a
+  nuBuilder database with the application's tables (.sql, .sql.gz or .zip from _install/, _update/, the nuBuilder Forte folder or an
+  upload). Then nuBuilder Next's tables are created as in a new installation; the database counts as set up by nuBuilder Next.
+- The file is checked first (nothing changes): what it creates, and the list of every table that would be deleted. Only plain
+  statements are allowed, as in the installer. Options: a backup of the whole database first (ticked) and the sample application
+  afterwards. The database name must be typed to confirm. You stay signed in; "Open the setup wizard" sets up the rest – nuconfig.php,
+  files and backups are not touched. The reset is logged.
+- Command line: `php cron.php reset --sql=<file> [--check] [--backup] [--sample] --yes` (developer mode only).
+- Help: new page Administration → Reset database.
+
+## 0.8.627 – Key for unique fields
+- Unique fields show a small key after the label instead of the blue ◆ – after the red * when the field is also required
+  (Code * 🔑). The key has its own tooltip: "Must be unique – no other record may have the same value." or "Required, and must be
+  unique – …"; it can be reached with the keyboard. The * keeps its tooltip "Required field". Edit forms, form sub-forms and grid
+  sub-form column titles; the legend below forms is gone. The validation itself is unchanged.
+- nuBuilder Next's own pages show the key at their unique fields too: login name and code of users, codes of access levels, admin
+  roles, procedures, reports, files, dashboards, prompts, SQL builder queries, custom user fields, App cloner configurations, page
+  forms and new forms, permission item idents.
+- Help → Validation: a table of the required and unique fields of every nuBuilder Next page.
+
+## 0.8.626 – Unique user code
+- Users: the code is unique – the user form, the CSV user import (also within the file) and the REST API refuse a code another user
+  already has (trimmed, upper / lower case ignored; empty is always allowed) and name that user. nuBuilder Forte does not check
+  it; codes already doubled stay until such a user is saved.
+
+## 0.8.625 – Release check: library packs and GitHub
+- Development: dev/release.py compares the library packs nunext.zip brings in _install/ (PHPMailer) with the GitHub release
+  "libraries" and warns when a version differs – new installations and updates would otherwise get different versions.
+
+## 0.8.624 – Update page: backup choice on phones
+- Update page on phones: "Database in the backup" goes below its label and the select fits the screen (before it was cut off at
+  the right edge); the database choice of "Back up now" never gets wider than the screen either.
+
+## 0.8.623 – Change column in the form builder
+- Form builder: "Change column…" in the object panel changes the database column of an object (as nuBuilder Forte's "Alter
+  Database Column"): the current type, rows, primary key and other forms of the table are shown; pick a new type and length and the
+  dialog shows the ALTER TABLE and checks the data first – values longer than the new length, texts that are not numbers or dates,
+  numbers too big or rounded, dates losing their time, values that are not 0 / 1, empty texts in a NOT NULL column, each with the
+  count and examples. When values would change, a tick is needed. Nullability, default and comment are kept.
+- The globeadmin can write his own ALTER TABLE for the table instead (one statement, no DROP / DELETE …, no data check).
+- Needs the password again after the confirmation time, runs at once (no undo), is logged ("Column changed") and listed in the
+  publish summary of a draft. MySQL / MariaDB and SQL Server; not for auto-increment columns or nuBuilder's zzzzsys_ tables.
+- The builder's "add missing column" offers the column type "Record ID – UUID" too.
+
+## 0.8.622 – Tutorial in two versions, UUID keys
+- Tutorial in two versions: on first opening it asks "Basic" (the essentials, 25 lessons) or "Advanced" (every lesson, 52). The
+  buttons Basic / Advanced at the top switch at any time; lessons done count in both, the choice is kept with the progress.
+  Lessons only in the advanced version carry the badge "Advanced"; an advanced lesson linked from Basic opens with a note and
+  "Switch to Advanced".
+- 15 new lessons in the part "In depth" (advanced version): event order, code functions and debugging, global code, page forms,
+  forms with AI, drafts, data access, two people on one record, audit trail, notifications, custom user fields and additional
+  access levels, library packs and the File Manager, updates from GitHub and the command line, self-test. "Next steps" is now a
+  chapter of its own at the end.
+- UUID primary keys (suggestion from a forum user): when the primary key of an application table is a text column of exactly
+  36 characters (VARCHAR(36) / CHAR(36); SQL Server also NVARCHAR(36) and uniqueidentifier), new records get a UUID (version 7,
+  time-ordered) instead of a nuBuilder id – main records, sub-form rows, clones and generated ids of the CSV import. Records can
+  so be exchanged with other systems with the same key. Every other key works as before.
+- Form builder → new form with a new table: key type nuBuilder ID (VARCHAR(25)) or UUID (VARCHAR(36)); new column type
+  "Record ID – UUID" for columns that point to such records. PHP: nuNextUUID().
+
+## 0.8.621 – Form buttons and HTML objects like nuBuilder Forte
+- Form buttons (input buttons and run objects) are solid again, as in nuBuilder Forte: the accent colour of Branding with white
+  text (black on a very light accent), rounded corners, a light shadow, a shade darker on mouse over and when pressed, a focus
+  ring for the keyboard, dark mode included. Before: light surface with dark text – still available as the Global code template
+  "Light form buttons" (Form CSS).
+- Buttons coloured by the form's CSS (background colour only, as usual for nuBuilder Forte) keep readable text: white, dark only
+  on a light background; a text colour the CSS sets itself is kept. Before, they had dark text on the coloured background.
+- Run buttons show only their label and their own icon – no extra symbol for procedures, reports and new tabs any more (as
+  nuBuilder Forte; it took room and made labels wrap). A new tab or a popup is said in the tooltip.
+- Labels of form buttons stay on one line; a label too long for its button ends with … and shows in full as tooltip.
+- HTML objects show their content as in nuBuilder Forte, which loads no Bootstrap: 13 px text and normal line height in the
+  absolute layout, headings bold in the browser's sizes and margins, paragraphs with the browser's margins – content made for
+  nuBuilder Forte fits its object again (before: large, thin headings, text running out of boxes). Own CSS and Bootstrap classes
+  still win.
+- Sample data 18: start tiles with their own icons for new tab, procedure and report; headings and notes of "all objects" adapted.
+
 ## 0.8.620 – Release gate (0.8.601–0.8.619)
 - Release gate (0.8.601–0.8.619): full test run – smoke, all end-to-end tests and the cross-tests against nuBuilder Forte.
 - Documentation brought up to date: form builder toolbar, README (backup with nuBuilder's zzzzsys_* tables), development notes.

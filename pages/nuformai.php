@@ -29,7 +29,8 @@ if (nu_is_post()) {
 		if ($action === 'prompt') {
 			$req = trim(nu_post('request'));
 			if ($req === '') $out(['ok' => false, 'error' => t('fai_err_request')]);
-			$out(['ok' => true, 'text' => NuFormSpec::prompt($req, $formId)]);
+			$tables = array_values(array_filter(array_map('strval', (array)($_POST['tables'] ?? [])), static fn($t) => $t !== ''));
+			$out(['ok' => true, 'text' => NuFormSpec::prompt($req, $formId, $tables)]);
 		}
 		if ($action === 'check' || $action === 'create') {
 			$spec = NuFormSpec::parse(nu_post('answer'));
@@ -54,7 +55,7 @@ $labels = [];
 foreach (['fai_copied', 'fai_copy_failed', 'fai_ok', 'fai_errors', 'fai_warnings', 'fai_plan', 'fai_plan_new_table', 'fai_plan_columns', 'fai_plan_added', 'fai_plan_changed',
 	'fai_plan_removed', 'fai_plan_moved', 'fai_plan_form', 'fai_plan_browse', 'fai_plan_tabs', 'fai_plan_none', 'fai_ddl_ok', 'fai_create', 'fai_creating', 'fai_note'] as $k) $labels[$k] = t($k);
 
-nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms');
+nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms', ['head' => nu_ts_head()]);
 ?>
 <div class="nuTitleBar mb-3">
 	<h1 class="h3 mb-0"><i class="bi bi-stars me-2"></i><?= h(t($meta ? 'fai_title_change' : 'fai_title_new')) ?></h1>
@@ -73,6 +74,13 @@ nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms');
 			<p class="small text-body-secondary"><?= h(t($meta ? 'fai_step1_help_change' : 'fai_step1_help_new')) ?></p>
 			<label class="form-label visually-hidden" for="faRequest"><?= h(t('fai_step1')) ?></label>
 			<textarea class="form-control mb-2" id="faRequest" rows="7" placeholder="<?= h(t($meta ? 'fai_request_ph_change' : 'fai_request_ph_new')) ?>"></textarea>
+			<?php $appTables = []; try { $appTables = NuFormSpec::appTables(); } catch (Throwable) {} $formTable = $meta ? (string)$meta->table() : ''; // tables in the prompt (0.8.633) ?>
+			<div class="mb-3">
+				<label class="form-label small fw-semibold mb-1" for="faTables"><?= h(t('fai_tables')) ?></label><?= NuListView::infoTip(t('fai_tables_tip')) ?>
+				<select class="nuListTomSelect" id="faTables" name="tables[]" multiple placeholder="<?= h(t('fai_tables_all')) ?>">
+					<?php foreach ($appTables as $tb): ?><option value="<?= h($tb) ?>"<?= $tb === $formTable ? ' selected' : '' ?>><?= h($tb) ?></option><?php endforeach; ?>
+				</select>
+			</div>
 			<div class="d-flex flex-wrap gap-2 align-items-center">
 				<button type="button" class="btn btn-primary" id="faCopy"><i class="bi bi-clipboard me-1"></i><?= h(t('fai_copy')) ?></button>
 				<span class="small text-body-secondary" id="faCopyMsg" aria-live="polite"></span>
@@ -107,4 +115,4 @@ nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms');
 	</div>
 </form>
 <?php
-nu_layout_end('<script src="' . nu_asset('assets/js/nuformai.js') . '"></script>');
+nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuformai.js') . '"></script>');

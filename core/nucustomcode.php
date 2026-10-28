@@ -143,6 +143,7 @@ final class NuCustomCode
 		$a = ' data-nu-page="' . h(self::$context === 'login' && self::page() === 'home' ? 'login' : self::page()) . '"';
 		if ($form) $a .= ' data-nu-mode="' . h((string)$form[0]) . '" data-nu-form="' . h((string)$form[1]) . '"';
 		if (self::$context === 'app' && ($help = NuHelpLink::url(self::page())) !== '') $a .= ' data-nu-help="' . h($help) . '"';   // F1 (0.8.528)
+		if (self::$context === 'app') $a .= ' data-nu-tab-sections="' . h(t('tab_sections')) . '"';   // label of the ▾ in tabs (0.8.639, nuapp.js)
 		try {
 			$u = NuAuth::user();
 			if ($u !== null && (!empty($u['globeadmin']) || NuAdmin::any())) $a .= ' data-nu-admin="1"';

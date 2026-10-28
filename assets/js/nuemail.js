@@ -79,6 +79,18 @@
 		else fallback();
 	});
 
+	// download as a JSON file (0.8.629) – the same content as "Copy settings", without the password
+	var dlBtn = document.getElementById('nuMailDownload');
+	if (dlBtn) dlBtn.addEventListener('click', function () {
+		var o = current(), a = document.createElement('a');
+		var host = String(o.host || '').replace(/[^A-Za-z0-9.\-]+/g, '_');
+		a.href = URL.createObjectURL(new Blob([JSON.stringify(o, null, 2) + '\n'], { type: 'application/json' }));
+		a.download = 'smtp-settings' + (host ? '-' + host : '') + '.json';
+		document.body.appendChild(a); a.click(); a.remove();
+		setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+		say(dlBtn.getAttribute('data-done'), 'success');
+	});
+
 	var modalEl = document.getElementById('nuMailPasteModal');
 	var area = document.getElementById('nuMailPasteText');
 	function dialog() {

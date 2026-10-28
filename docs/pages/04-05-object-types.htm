@@ -27,13 +27,24 @@
 <h3 id="run-objects">Run objects</h3>
 <ul>
 <li><strong>Open form</strong>: record ID empty = list, <code>-1</code> = new record, otherwise that record (<code>#field#</code> placeholders allowed). <em>Filter</em> = search words always applied to the list.</li>
-<li><strong>Open in</strong>: new breadcrumb, current breadcrumb, new browser tab, popup.</li>
+<li><strong>Open in</strong>: new breadcrumb, current breadcrumb, new browser tab, popup. A button that opens a new tab or a popup says so in its tooltip.</li>
 <li><strong>Label</strong> and <strong>Icon</strong> (as in nuBuilder Forte): the label is HTML – e.g. only <code>&lt;i class="fa fa-table"&gt;&lt;/i&gt;</code>; an empty label gives an empty button. <em>Icon</em> (also for input buttons and words; nuBuilder Forte's <code>sob_input_icon</code>) is drawn inside, before the label: <code>fa fa-table</code> = a Font Awesome icon, <code>bi-table</code> = a Bootstrap icon, anything else = HTML, <code>left|right</code> = one before and one after the label. A button without visible text gets its target's description as tooltip and name for screen readers.</li>
 <li><strong>Run procedure</strong>: hidden procedures run in the background, others show their output in a new window.</li>
 <li><strong>Run report</strong>: the PDF opens in a new tab – or the report's launch form first (see <a href="#reports">Reports</a>).</li>
 <li><strong>Method</strong> <em>button</em> or <em>iframe</em> (for forms, procedures and reports): an iframe shows the result inside the form when it opens – the form, the procedure's output (with the form's hash variables; errors appear inside the iframe) or the report's launch form / PDF. Access rights are the same as for a button.</li>
 </ul>
 </div>
+	<div class="doc-sub" id="form-buttons" data-acl="nuform">
+<h3 id="form-buttons-h">Look of buttons and HTML objects</h3>
+<ul>
+<li><strong>Buttons</strong> (input objects of type <em>button</em> and run objects) are solid, as in nuBuilder Forte: the accent colour of <a href="#branding">Branding</a> with white text (black on a very light accent), rounded corners and a light shadow; a shade darker on mouse over and when pressed, a ring when reached with the keyboard; dark mode included. Run buttons show only their label and their own <em>Icon</em> – no extra symbol for procedures, reports or a new tab.</li>
+<li><strong>Your own colours</strong>: CSS that gives a button its own background (e.g. <code>#my_button { background-color: #4cae4c; }</code> in the form's <em>Style</em> or Setup → Style, as usual for nuBuilder Forte) keeps working. The text stays white – on a light background it turns dark by itself, so it stays readable; a text colour your CSS sets itself is kept. A button with a Bootstrap class of its own (<code>btn-…</code>) keeps that look.</li>
+<li><strong>One line</strong>: the label never wraps. A label too long for its button ends with … and shows in full as tooltip.</li>
+<li><strong>HTML objects</strong> show their content as nuBuilder Forte does, which loads no Bootstrap: in the absolute layout with 13 px text and normal line height, so content made for nuBuilder Forte fits the object's size; headings (<code>h1</code>–<code>h6</code>) bold in the browser's sizes and margins, paragraphs with the browser's margins. Your own CSS – and Bootstrap classes such as <code>fs-6</code> or <code>m-0</code> – still win.</li>
+<li><strong>Buttons made by your code</strong> with nuBuilder Forte's class <code>nuActionButton</code> (e.g. <code>$('&lt;button class="nuActionButton"&gt;Export&lt;/button&gt;')</code>, also on a <code>span</code>) look like nuBuilder Forte's action buttons: 31 px high, a light surface with a thin border, 8 px space on the left, dark mode included. A rule <code>.nuActionButton { … }</code> in Setup → Style, the form's Style or Global code overrides it, as in nuBuilder Forte; <code>.nuActionButtonIcon</code> exists too.</li>
+<li>The earlier light look (light surface, thin border, dark text) is a template under Admin tools → <a href="#globalcode-templates">Global code</a> → Form CSS: <em>Light form buttons</em>.</li>
+</ul>
+	</div>
 	<p class="doc-see">See also: <a href="#formats">Formats</a> · <a href="#form-lifecycle">Form lifecycle and event order</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nurender.php</code></li><li><code>core/form/nulookup.php</code></li></ul></details>
 </section>

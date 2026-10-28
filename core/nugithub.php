@@ -155,9 +155,13 @@ final class NuGitHub
 			if (is_file($tmp)) @unlink($tmp);
 		}
 		$p = array_values(array_filter(NuUpdate::folderPackages(), static fn($x) => $x['name'] === $name))[0] ?? null;
-		if (!$p || !$p['ok']) {
+		// the reason (0.8.645 – before: always "no valid signature"); a package whose signature PHP cannot check (no sodium) is kept,
+		// as for an uploaded one – Check package shows the warning
+		$why = !class_exists('ZipArchive') ? 'gh_err_nozip' : (!$p || $p['version'] === '' ? 'gh_err_notpkg'
+			: ($p['signature'] === 'unchecked' ? '' : ($p['signature'] === 'unsigned' ? 'gh_err_unsigned' : ($p['ok'] ? '' : 'gh_err_signature'))));
+		if ($why !== '') {
 			@unlink($dir . '/' . $name);
-			throw new RuntimeException(t('gh_err_signature'));
+			throw new RuntimeException(t($why));
 		}
 		NuLog::write('nunext_github_download', '', '', ['version' => $p['version'], 'file' => $name, 'url' => (string)$rel['url']]);
 		return $name;

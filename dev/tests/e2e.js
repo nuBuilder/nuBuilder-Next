@@ -199,6 +199,50 @@ T.mail_check = async (s) => {
 // OAuth 2 for the SMTP login (0.8.445): "Other provider" against a local fake provider (dev/tests/fakeoauth.py) and fake SMTP server with
 // XOAUTH2 – Save and connect → consent → oauth.php → connected mailbox, Check connection and a test mail log in with the access token,
 // the token is refreshed when it ran out, a foreign state is refused, Disconnect
+// E-mail settings (0.8.629): Export / import menu – copy, paste (dialog without clipboard access), download as JSON without the password
+// nuBuilder Forte's class nuActionButton (0.8.631): a button made by form code gets Forte's size and a visible look; Setup → Style wins
+T.action_button_class = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=samplecustomer&r=-1');
+	const r = await p.evaluate(() => {
+		const b = document.createElement('button'); b.type = 'button'; b.className = 'nuActionButton'; b.textContent = 'Legacy'; b.style.transition = 'none';
+		document.body.appendChild(b);
+		const cs = getComputedStyle(b), own = getComputedStyle(document.querySelector('#nuAddButton, #nuBackButton, .nuBtnAct') || b);
+		const out = { h: cs.height, bg: cs.backgroundColor, border: cs.borderTopStyle, ml: cs.marginLeft, ownH: own.height };
+		const sheets = [...document.styleSheets].filter(x => { try { return x.href && x.cssRules && true; } catch (e) { return false; } });   // CSSOM: allowed by the CSP
+		const last = sheets[sheets.length - 1], i = last.insertRule('.nuActionButton { background-color: rgb(87, 156, 183); }', last.cssRules.length);
+		out.over = getComputedStyle(b).backgroundColor;
+		last.deleteRule(i); b.remove();
+		return out;
+	});
+	expect(r.h === '31px' && r.ml === '8px' && r.border === 'solid', 'nuActionButton look: ' + JSON.stringify(r));
+	expect(!/rgba\(0, 0, 0, 0\)|transparent/.test(r.bg), 'no background: ' + r.bg);
+	expect(r.over === 'rgb(87, 156, 183)', 'a .nuActionButton rule of the form does not win: ' + r.over);
+};
+
+T.mail_xfer = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=email');
+	if (!await p.locator('#nuMailXferBtn').count()) { s.skip = 'no settings tab'; return; }
+	expect(!await p.isVisible('#nuMailCopy'), 'menu items shown without opening the menu');
+	await p.click('#nuMailXferBtn');
+	expect(await p.isVisible('#nuMailCopy') && await p.isVisible('#nuMailPaste') && await p.isVisible('#nuMailDownload'), 'menu: copy / paste / download missing');
+	const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#nuMailDownload')]);
+	const file = await dl.path(), j = JSON.parse(fs.readFileSync(file, 'utf8'));
+	expect(/^smtp-settings.*\.json$/.test(dl.suggestedFilename()), 'file name: ' + dl.suggestedFilename());
+	expect(j.type === 'nunext-smtp' && j.host === await p.inputValue('#m_host') && !('password' in j), 'file content: ' + JSON.stringify(j));
+	expect(/./.test(await p.textContent('#nuMailClipStatus')), 'no status after the download');
+	const before = await p.inputValue('#m_fromname');
+	await p.click('#nuMailXferBtn');
+	await p.click('#nuMailPaste');
+	await p.waitForSelector('#nuMailPasteModal.show', { timeout: 5000 });
+	await p.fill('#nuMailPasteText', JSON.stringify(Object.assign({}, j, { from_name: 'E2E xfer' })));
+	await p.click('#nuMailPasteApply');
+	expect(await p.inputValue('#m_fromname') === 'E2E xfer', 'pasted file content not applied');
+	await p.fill('#m_fromname', before);
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.mail_oauth = async (s) => {
 	const p = s.ga, sport = 2600 + Math.floor(Math.random() * 300), oport = sport + 400;
 	const slog = path.join(os.tmpdir(), 'e2e-osmtp-' + Date.now() + '.log'), olog = path.join(os.tmpdir(), 'e2e-oauth-' + Date.now() + '.log');
@@ -519,6 +563,7 @@ T.user_tabs = async (s) => {
 	const p = s.ga, id = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
 	if (!id || +sql('SELECT COUNT(*) FROM zzzzsys_permission_item') === 0) { s.skip = 'no sample user or permission items'; return; }
 	await open(p, 'index.php?p=user&id=' + id);
+	await p.evaluate(() => { const s = document.getElementById('userPermState'); if (s) { s.value = 'all'; s.dispatchEvent(new Event('change')); } });   // 0.8.642: the list opens on "Assigned"
 	expect(await p.isVisible('#userTabGeneral') && !await p.isVisible('#userPerms'), 'General first');
 	const cw = await p.evaluate(() => ['.userCardLogin', '.userCardAccess', '.userCardAccount'].map(c => Math.round(document.querySelector(c).getBoundingClientRect().width)));
 	expect(cw.every(w => w > 300 && w <= 530), 'right-hand cards at most 530 px (0.8.610): ' + cw.join(', '));
@@ -537,7 +582,7 @@ T.user_tabs = async (s) => {
 	await p.click('th.userPermSort[data-sort="sel"] button');
 	const sel = await p.$$eval('#userPerms tr.userPermItem input[name="perm[]"]', bs => bs.map(b => b.checked));
 	expect(sel.indexOf(false) < 0 || sel.lastIndexOf(true) < sel.indexOf(false), 'selected first: ' + sel.join());
-	await p.reload(); await p.click('#userTabPermBtn'); await p.waitForTimeout(300);
+	await p.reload(); await p.click('#userTabPermBtn'); await p.waitForTimeout(300); await p.evaluate(() => { const s = document.getElementById('userPermState'); if (s) { s.value = 'all'; s.dispatchEvent(new Event('change')); } });
 	expect(await p.getAttribute('th[data-sort="sel"]', 'aria-sort') === 'ascending', 'sort kept after reload');
 	await p.click('th.userPermSort[data-sort="group"] button');   // back to the default order (group, ident)
 	// link next to the ident (0.8.612): the item's edit page in a new tab; the row is not ticked by it
@@ -589,6 +634,61 @@ T.user_pw_info = async (s) => {
 	}
 };
 
+// 0.8.627: a key after the label of unique fields (after the red * when also required) with its own tooltip; no legend below the form;
+// the key also on nuBuilder Next's own pages (user form: login name, code)
+T.unique_key_mark = async (s) => {
+	const p = s.ga;
+	const cust = sql('SELECT MIN(sample_customer_id) FROM sample_customer');
+	await open(p, 'index.php?p=form&f=samplecustomer&r=' + cust);
+	const m = id => p.evaluate(i => { const l = document.getElementById('label_' + i); if (!l) return null; const marks = l.querySelector('.nuMarks');
+		const k = l.querySelector('.nuMarkUnique');
+		return { order: marks ? Array.from(marks.querySelectorAll('.nuMarkRequired, .nuMarkUnique')).map(e => e.classList.contains('nuMarkUnique') ? 'key' : '*').join(' ') : '',
+			icon: k ? !!k.querySelector('i.bi-key') : false, tip: k ? (k.getAttribute('data-bs-original-title') || k.getAttribute('title') || '') : '', aria: k ? k.getAttribute('aria-label') : '',
+			focus: k ? k.tabIndex : -1, reqTitle: (l.querySelector('.nuMarkRequired') || {}).title || '' }; }, id);
+	const code = await m('cus_code'), name = await m('cus_name');
+	expect(code && code.order === '* key' && code.icon && /^Required, and must be unique/.test(code.aria) && code.focus === 0, 'required + unique: ' + JSON.stringify(code));
+	expect(name && name.order === '*' && name.reqTitle === 'Required field', 'required only: ' + JSON.stringify(name));
+	expect(await p.locator('#nuMarksLegend').count() === 0 && await p.locator('.bi-diamond-fill').count() === 0, 'legend / diamond still there');
+	await p.hover('#label_cus_code .nuMarkUnique'); await p.waitForTimeout(400);
+	expect(/must be unique/.test(await p.locator('.tooltip').first().textContent().catch(() => '')), 'no tooltip on the key');
+	const ord = sql('SELECT MIN(sample_order_id) FROM sample_order');
+	await open(p, 'index.php?p=form&f=sampleorder&r=' + ord);
+	const num = await m('ord_number');
+	expect(num && num.order === 'key' && /^Must be unique/.test(num.aria), 'unique only: ' + JSON.stringify(num));
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	await open(p, 'index.php?p=user&id=' + uid);
+	expect(await p.locator('label[for=sus_login_name] .nuMarkUnique i.bi-key').count() === 1 && await p.locator('label[for=sus_code] .nuMarkUnique').count() === 1, 'user form: no key');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.626: the user code is unique (trimmed, case-insensitive; empty never clashes) – user form and REST validation
+T.user_code_unique = async (s) => {
+	const p = s.ga;
+	const ben = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'"), anna = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	if (!ben || !anna) { s.skip = 'no sample users'; return; }
+	const old = sql(`SELECT CONCAT(IFNULL(sus_code, '~'), '|', (SELECT IFNULL(sus_code, '~') FROM zzzzsys_user WHERE zzzzsys_user_id = '${anna}')) FROM zzzzsys_user WHERE zzzzsys_user_id = '${ben}'`).split('|');
+	const code = id => sql(`SELECT IFNULL(sus_code, '') FROM zzzzsys_user WHERE zzzzsys_user_id = '${id}'`);
+	try {
+		sql(`UPDATE zzzzsys_user SET sus_code = 'E2EBEN' WHERE zzzzsys_user_id = '${ben}'`);
+		await open(p, 'index.php?p=user&id=' + anna);
+		await p.fill('#sus_code', ' e2eben ');
+		await Promise.all([p.waitForNavigation(), p.click('.nuBtnSave')]);
+		expect(await p.locator('#sus_code.is-invalid').count() === 1 && /Ben/.test(await p.textContent('#sus_code ~ .invalid-feedback')), 'duplicate code accepted / no message');
+		expect(code(anna) !== 'e2eben' && code(anna).trim().toLowerCase() !== 'e2eben', 'duplicate code saved');
+		await open(p, 'index.php?p=user&id=' + anna);
+		await p.fill('#sus_code', 'E2EANNA');
+		await Promise.all([p.waitForNavigation(), p.click('.nuBtnSave')]);
+		expect(code(anna) === 'E2EANNA', 'unique code not saved: ' + code(anna));
+		sql(`UPDATE zzzzsys_user SET sus_code = NULL WHERE zzzzsys_user_id IN ('${ben}', '${anna}')`);
+		await open(p, 'index.php?p=user&id=' + anna);
+		await Promise.all([p.waitForNavigation(), p.click('.nuBtnSave')]);
+		expect(await p.locator('#sus_code.is-invalid').count() === 0, 'empty codes clash');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql(`UPDATE zzzzsys_user SET sus_code = ${old[0] === '~' ? 'NULL' : `'${old[0]}'`} WHERE zzzzsys_user_id = '${ben}'; UPDATE zzzzsys_user SET sus_code = ${old[1] === '~' ? 'NULL' : `'${old[1]}'`} WHERE zzzzsys_user_id = '${anna}'`);
+	}
+};
+
 // permission items: Undo after All / None (0.8.584) – back to the ticks before; a change by hand ends it
 // permission item page (0.8.613): how to check the item in PHP / JavaScript and in SQL (#USER_PERMISSIONS# and the sub-query); the SQL runs
 T.perm_sql_hint = async (s) => {
@@ -613,6 +713,7 @@ T.perm_undo = async (s) => {
 	const p = s.ga, id = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
 	if (!id || +sql('SELECT COUNT(*) FROM zzzzsys_permission_item') < 2) { s.skip = 'no sample user or permission items'; return; }
 	await open(p, 'index.php?p=user&id=' + id + '&tab=perm');
+	await p.evaluate(() => { const s = document.getElementById('userPermState'); if (s) { s.value = 'all'; s.dispatchEvent(new Event('change')); } });   // 0.8.642: the list opens on "Assigned"
 	const states = () => p.$$eval('#userPerms input[name="perm[]"]', a => a.map(c => c.checked).join(''));
 	const undoShown = () => p.isVisible('#userPermUndo');
 	const s0 = await states();
@@ -967,6 +1068,7 @@ T.user_perm_all = async (s) => {
 		"('e2e_pa1', 'e2e_pa1', 'E2E item one', 'e2e'), ('e2e_pa2', 'e2e_pa2', 'E2E item two', 'e2e'), ('e2e_pa3', 'e2e_pa3', '" + 'E2E long description '.repeat(12).trim() + "', 'e2e')");
 	try {
 		await open(p, 'index.php?p=user&id=' + id);
+		await p.evaluate(() => { const s = document.getElementById('userPermState'); if (s) { s.value = 'all'; s.dispatchEvent(new Event('change')); } });   // 0.8.642: the list opens on "Assigned"
 		const order = await p.$$eval('#userTabGeneral input[id^="sus_"]', a => a.map(e => e.id));
 		expect(order.indexOf('sus_code') === order.indexOf('sus_email') + 1, 'Code after E-mail: ' + order.join(','));
 		await p.click('#userTabPermBtn'); await p.waitForTimeout(300);
@@ -998,11 +1100,13 @@ T.user_perm_all = async (s) => {
 		await open(p, 'index.php?p=home');   // nothing saved
 		const m = await login(GA[0], GA[1], { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 		await open(m, 'index.php?p=user&id=' + id + '&tab=perm');
+		await m.evaluate(() => { const s = document.getElementById('userPermState'); if (s) { s.value = 'all'; s.dispatchEvent(new Event('change')); } });
 		const desc = m.locator('#userPerms .userPermDesc').first();
 		expect(await m.isVisible('#userPermDescToggle') && await desc.isVisible(), 'phone: switch and descriptions shown');
 		await m.click('label[for="userPermDescToggle"]'); await m.waitForTimeout(200);
 		expect(!await desc.isVisible() && !await m.locator('[data-nu-save].nuSaveEdited').count(), 'switch off: hidden, Save not red');
 		await open(m, 'index.php?p=user&id=' + id + '&tab=perm');
+		await m.evaluate(() => { const s = document.getElementById('userPermState'); if (s) { s.value = 'all'; s.dispatchEvent(new Event('change')); } });
 		expect(!await m.isChecked('#userPermDescToggle') && !await desc.isVisible(), 'remembered after reload');
 		await m.click('label[for="userPermDescToggle"]');
 		expect(m.errors.length === 0, m.errors.slice(0, 2).join(' | '));
@@ -1893,17 +1997,67 @@ T.users_fullname = async (s) => {
 };
 
 // 0.8.518: input buttons and run buttons of forms look the same (class nuFormBtn); an input button keeps the object's height
+// 0.8.621: solid in the accent colour with white text; no icons of our own on run buttons (new tab = tooltip); text colour on a background
+// of the form's CSS (white, dark on light ones; a colour of the form's CSS stays); one line, cut-off label as tooltip; HTML object headings
 T.form_buttons = async (s) => {
 	const p = s.ga;
-	await open(p, 'index.php?p=form&f=sampleall&r=sample_all_1');
-	await p.locator('.nuTab', { hasText: 'Miscellaneous' }).click(); await p.waitForTimeout(300);
-	const st = id => p.evaluate(i => { const e = document.getElementById(i), c = getComputedStyle(e), r = e.getBoundingClientRect();
-		return { cls: e.classList.contains('nuFormBtn'), bg: c.backgroundColor, border: c.borderTopColor, radius: c.borderTopLeftRadius, color: c.color, h: Math.round(r.height) }; }, id);
-	const a = await st('all_spin_wait'), b = await st('all_spin_run');
-	expect(a.cls && b.cls, 'class nuFormBtn missing: ' + JSON.stringify([a, b]));
-	expect(a.bg === b.bg && a.border === b.border && a.radius === b.radius && a.color === b.color, 'input and run buttons differ: ' + JSON.stringify([a, b]));
-	expect(a.h === 30 && b.h === 30, 'heights (object 30 px): ' + JSON.stringify([a.h, b.h]));
-	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	const oldTarget = sql("SELECT sob_run_target FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'sampleall' AND sob_all_id = 'all_run_form'");
+	try {
+		sql("UPDATE zzzzsys_object SET sob_run_target = '2' WHERE sob_all_zzzzsys_form_id = 'sampleall' AND sob_all_id = 'all_run_form'");
+		await open(p, 'index.php?p=form&f=sampleall&r=sample_all_1');
+		await p.locator('.nuTab', { hasText: 'Miscellaneous' }).click(); await p.waitForTimeout(300);
+		const st = id => p.evaluate(i => { const e = document.getElementById(i), c = getComputedStyle(e), r = e.getBoundingClientRect();
+			return { cls: e.classList.contains('nuFormBtn'), bg: c.backgroundColor, border: c.borderTopColor, radius: c.borderTopLeftRadius, color: c.color, h: Math.round(r.height),
+				ws: c.whiteSpace, accent: getComputedStyle(document.documentElement).getPropertyValue('--nu-accent').trim(), ink: e.className }; }, id);
+		const a = await st('all_spin_wait'), b = await st('all_spin_run');
+		expect(a.cls && b.cls, 'class nuFormBtn missing: ' + JSON.stringify([a, b]));
+		expect(a.bg === b.bg && a.border === b.border && a.radius === b.radius && a.color === b.color, 'input and run buttons differ: ' + JSON.stringify([a, b]));
+		expect(a.h === 30 && b.h === 30, 'heights (object 30 px): ' + JSON.stringify([a.h, b.h]));
+		const hex = a.accent.replace('#', ''), acc = 'rgb(' + [0, 2, 4].map(i => parseInt(hex.substr(i, 2), 16)).join(', ') + ')';
+		expect(a.bg === acc && a.color === 'rgb(255, 255, 255)' && a.ws === 'nowrap', 'not solid accent / white / one line: ' + JSON.stringify(a) + ' ' + acc);
+		// a background of the form's CSS: light → dark text, dark → white; a text colour of the form's CSS stays
+		const ink = await p.evaluate(() => {
+			const st = document.createElement('style');
+			st.textContent = '#all_spin_wait { background-color: #ffd54a; } #all_spin_auto { background-color: #4cae4c; } #all_spin_run { background-color: #2e7d32; color: rgb(255, 255, 0); }';
+			document.head.appendChild(st);
+			window.nuNext.fitButtons(document);
+			const c = id => { const e = document.getElementById(id); return [e.classList.contains('nuBtnInkDark') ? 'dark' : e.classList.contains('nuBtnInkLight') ? 'light' : '', getComputedStyle(e).color]; };
+			const r = { wait: c('all_spin_wait'), auto: c('all_spin_auto'), run: c('all_spin_run') };
+			st.remove(); window.nuNext.fitButtons(document);
+			r.after = c('all_spin_wait');
+			return r;
+		});
+		expect(ink.wait[0] === 'dark' && ink.wait[1] === 'rgb(30, 41, 59)', 'light background: no dark text ' + JSON.stringify(ink));
+		expect(ink.auto[0] === 'light' && ink.auto[1] === 'rgb(255, 255, 255)', 'green background: no white text ' + JSON.stringify(ink));
+		expect(ink.run[0] === '' && ink.run[1] === 'rgb(255, 255, 0)', 'own text colour replaced ' + JSON.stringify(ink));
+		expect(ink.after[0] === '' && ink.after[1] === 'rgb(255, 255, 255)', 'class kept after the colour went ' + JSON.stringify(ink));
+		// a label too long for its button: … and the full label as tooltip; wide again: no tooltip
+		const cut = await p.evaluate(async () => {
+			const e = document.getElementById('all_spin_wait'), w = e.parentNode.style.width;
+			e.parentNode.style.width = '70px'; await new Promise(r => setTimeout(r, 250));
+			const t1 = e.getAttribute('title'), ov = getComputedStyle(e).textOverflow;
+			e.parentNode.style.width = w; await new Promise(r => setTimeout(r, 250));
+			return { t1, ov, t2: e.getAttribute('title'), label: e.querySelector('.nuButtonLabel').textContent.trim() };
+		});
+		expect(cut.t1 === cut.label && cut.ov === 'ellipsis' && cut.t2 === null, 'cut-off label: ' + JSON.stringify(cut));
+		// HTML objects: a heading is bold in the browser's size (13 px text in the pixel layout, as nuBuilder Forte), the sample's fs-6 heading keeps 16 px
+		const hd = await p.evaluate(() => {
+			const box = document.querySelector('#nuw_all_new_h_spin .nuHtml'), h = document.createElement('h3');
+			h.textContent = 'e2e'; box.appendChild(h);
+			const c = getComputedStyle(h), r = { w: c.fontWeight, fs: c.fontSize, six: getComputedStyle(box.querySelector('h6')).fontSize };
+			h.remove(); return r;
+		});
+		expect(+hd.w >= 700 && Math.abs(parseFloat(hd.fs) - 15.21) < 0.2 && hd.six === '16px', 'HTML object headings: ' + JSON.stringify(hd));
+		// run buttons: no icon of our own; a new tab is said in the tooltip
+		await p.locator('.nuTab', { hasText: /^\s*Run\s*$/ }).click(); await p.waitForTimeout(300);
+		const run = await p.evaluate(() => ['all_run_form', 'all_run_proc', 'all_run_report'].map(id => { const e = document.getElementById(id);
+			return { id, icons: e.querySelectorAll('i.bi').length, hint: e.getAttribute('data-nu-run-hint') || '', title: e.getAttribute('title') || '' }; }));
+		expect(run.every(r => r.icons === 0), 'icons on run buttons: ' + JSON.stringify(run));
+		expect(run[0].hint !== '' && run[0].title === run[0].hint && run[1].hint === '' && run[1].title === '', 'new-tab hint: ' + JSON.stringify(run));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("UPDATE zzzzsys_object SET sob_run_target = " + (oldTarget === 'NULL' || oldTarget === '' ? "'0'" : "'" + oldTarget + "'") + " WHERE sob_all_zzzzsys_form_id = 'sampleall' AND sob_all_id = 'all_run_form'");
+	}
 };
 
 // 0.8.520: a record opened anew starts on the first tab; the last tab is kept only for the same record (reload, Save)
@@ -1962,7 +2116,9 @@ T.builder_arrange = async (s) => {
 		const frame = async () => { for (let i = 0; i < 40; i++) { const f = p.frames().find(x => /builder=1/.test(x.url())); if (f && await f.locator('#nuEditForm').count()) return f; await p.waitForTimeout(250); } return null; };
 		// toolbar (0.8.619): Save next to Undo, Clone object before Open form, the deleting buttons in the row below
 		await p.click('.nbObjItem >> nth=0').catch(() => {}); await p.waitForTimeout(400);
-		expect(await p.locator('#nbTopSaveGroup #nbSave').count() === 1 && await p.locator('#nbTopDanger .btn-outline-danger').count() === 1 && await p.locator('#nbTopDangerRow #nbDeleteForm').count() === 1 && await p.locator('#nbTopActions .bi-copy').count() === 1, 'toolbar groups');
+		// 0.8.633: Clone / Change column / Delete object left the toolbar – the ⋮ menu of each object in the objects list
+		expect(await p.locator('#nbTopSaveGroup #nbSave').count() === 1 && await p.locator('#nbTopDanger .btn-outline-danger').count() === 0 && await p.locator('#nbTopDangerRow #nbDeleteForm').count() === 1 && await p.locator('#nbTopActions .bi-copy').count() === 0, 'toolbar groups');
+		expect(await p.locator('#nbObjectList .nbObjMenu').count() > 0, 'no object menu in the objects list');
 		const f = await frame();
 		expect(f && await f.locator('.nuArrange').count() === 1, 'no Arrange panel');
 		await f.click('#nuw_cus_code .nuDesignOverlay', LEFT);
@@ -2489,6 +2645,175 @@ T.edit_conflict = async (s) => {                        // 0.8.401: concurrent e
 	} finally {
 		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'samplecustomer_BE'");
 		await B.context().close();
+	}
+};
+
+// 0.8.633: Form cloner – SQL only ticked by default, a tile on the start page; Form with AI – only the chosen tables in the prompt;
+// builder – Clone / Delete object in the ⋮ menu of the objects list; nuAttachSaveButtonTo – the tab grows with the attached Save
+// TEMPORARY (0.8.634): header layouts to try (developer mode, user menu) – variant C: Save stays, Clone goes into the ⋮ menu and still works
+T.header_variants = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	if (!await p.locator('[data-nu-hv="c"]').count()) { s.skip = 'developer mode off'; return; }
+	try {
+		await p.evaluate(() => localStorage.setItem('nunext-hv', 'c'));
+		await open(p, 'index.php?p=user&id=sample_ben');
+		expect(await p.evaluate(() => document.documentElement.classList.contains('nuHv-c')), 'variant class missing');
+		expect(await p.locator('.nuHvCrumbTitle').count() === 1 && await p.isVisible('.nuBtnSave'), 'title in the breadcrumb / Save visible');
+		await p.click('.nuHvMoreBtn');
+		await Promise.all([p.waitForNavigation(), p.locator('.nuHvMore .dropdown-item:has(.bi-copy)').click()]);
+		expect(/clone=/.test(p.url()), 'Clone from the menu: ' + p.url());
+		for (const v of ['a', 'b', 'd', 'e']) {
+			await p.evaluate((x) => localStorage.setItem('nunext-hv', x), v);
+			await open(p, 'index.php?p=form&f=samplecustomer&r=-1');
+			expect(await p.evaluate((x) => document.documentElement.classList.contains('nuHv-' + x), v) && await p.isVisible('#nuSaveButton'), 'variant ' + v + ' on a form page');
+		}
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		await p.evaluate(() => localStorage.removeItem('nunext-hv'));
+	}
+};
+
+// 0.8.637: phones – pin of the ☰ menu keeps it open on the next page; unpinned it is closed again
+T.nav_pin = async (s) => {
+	const ctx = await s.ga.context().browser().newContext({ viewport: { width: 390, height: 800 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		await p.goto(BASE + 'index.php?p=home');
+		expect(!(await p.isVisible('#nuNavPin')), 'pin visible while the menu is closed');
+		await p.click('.navbar-toggler'); await p.waitForTimeout(500);
+		expect(await p.isVisible('#nuNavPin') && await p.getAttribute('#nuNavPin', 'aria-pressed') === 'false', 'pin not shown in the open menu');
+		expect(await p.locator('.nuUserBtn .nu-user-name').isHidden(), 'user name shown on a phone');
+		await p.click('#nuNavPin');
+		await p.goto(BASE + 'index.php?p=users');
+		expect(await p.locator('#nuNav.show').count() === 1 && await p.getAttribute('#nuNavPin', 'aria-pressed') === 'true', 'pinned menu closed on the next page');
+		await p.click('#nuNavPin');
+		await p.goto(BASE + 'index.php?p=home');
+		expect(await p.locator('#nuNav.show').count() === 0, 'unpinned menu still open');
+	} finally { await ctx.close(); }
+};
+
+// 0.8.638: long tap on a tab lists its sections (cards); a tap scrolls to the card – user form, phone
+T.tab_sections = async (s) => {
+	const ctx = await s.ga.context().browser().newContext({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		await p.goto(BASE + 'index.php?p=user&id=sample_ben');
+		await p.evaluate(async () => {
+			const el = document.getElementById('userTabGeneralBtn'), r = el.getBoundingClientRect();
+			const t = new Touch({ identifier: 1, target: el, clientX: r.left + 10, clientY: r.top + 10 });
+			el.dispatchEvent(new TouchEvent('touchstart', { touches: [t], targetTouches: [t], changedTouches: [t], bubbles: true, cancelable: true }));
+			await new Promise(ok => setTimeout(ok, 700));
+			el.dispatchEvent(new TouchEvent('touchend', { touches: [], targetTouches: [], changedTouches: [t], bubbles: true, cancelable: true }));
+		});
+		const items = await p.locator('.nuTabSections .dropdown-item').allTextContents();
+		expect(items.length >= 4 && items.some(x => /Login|Anmelde/.test(x)), 'sections: ' + JSON.stringify(items));
+		const before = await p.evaluate(() => window.scrollY);
+		await p.locator('.nuTabSections .dropdown-item').nth(items.length - 1).click();
+		await p.waitForTimeout(900);
+		expect(await p.evaluate(() => window.scrollY) > before + 200 && await p.locator('.nuTabSections').count() === 0, 'no jump to the last section');
+		// 0.8.639: the ▾ in the tab opens the list with a short tap; tabs with one card have none
+		expect(await p.locator('#userTabGeneralBtn .nuTabSecArrow').count() === 1 && await p.locator('#userTabPermBtn .nuTabSecArrow').count() === 0, 'arrow in the tabs');
+		await p.click('#userTabGeneralBtn .nuTabSecArrow');
+		expect(await p.locator('.nuTabSections .dropdown-item').count() === items.length, 'arrow does not open the list');
+		await p.keyboard.press('Escape');
+		await p.click('#userTabPermBtn'); await p.waitForTimeout(300);
+		await p.dispatchEvent('#userTabPermBtn', 'contextmenu');
+		expect(await p.locator('.nuTabSections').count() === 0, 'menu for a tab with one section');
+	} finally { await ctx.close(); }
+};
+
+// 0.8.642: user form → Permission items opens on "Assigned" (0.8.644: always); "Not assigned"; a box cleared stays in the list until the filter changes
+T.user_perm_state = async (s) => {
+	const p = s.ga;
+	const id = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	if (!id || sql('SELECT COUNT(*) FROM zzzzsys_permission_item') === '0') { s.skip = 'no items'; return; }
+	await open(p, 'index.php?p=user&id=' + id + '&tab=perm');
+	const vis = () => p.$$eval('#userPerms tr.userPermItem:not(.d-none) input[name="perm[]"]', a => a.map(c => c.checked));
+	const total = await p.locator('#userPerms tr.userPermItem').count(), assigned = await p.locator('#userPerms input[name="perm[]"]:checked').count();
+	expect(await p.inputValue('#userPermState') === 'assigned', 'default filter: ' + await p.inputValue('#userPermState'));   // 0.8.644: always, also without any
+	if (!assigned) expect((await vis()).length === 0 && await p.isVisible('#userPermEmpty'), 'none assigned: the empty message');
+	if (assigned) {
+		let v = await vis();
+		expect(v.length === assigned && v.every(Boolean), 'Assigned shows others: ' + JSON.stringify(v));
+		await p.locator('#userPerms tr.userPermItem:not(.d-none) input[name="perm[]"]').first().click();
+		expect((await vis()).length === assigned, 'a cleared box left the list at once');
+		await p.locator('#userPerms tr.userPermItem:not(.d-none) input[name="perm[]"]').first().click();
+	}
+	await p.selectOption('#userPermState', 'unassigned');
+	let v = await vis();
+	expect(v.length === total - assigned && v.every(x => !x), 'Not assigned: ' + v.length + ' of ' + (total - assigned));
+	await p.selectOption('#userPermState', 'all');
+	expect((await vis()).length === total, 'All items');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.cloner_defaults = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=cloner&id=new');
+	expect(await p.isChecked('#clDump'), '"Only create SQL" not ticked by default');
+	await open(p, 'index.php?p=home');
+	expect(await p.locator('.nuHomeTile[data-key="cloner"], [data-nu-tile="cloner"], a.nuTile[href$="p=cloner"]').count() > 0 || await p.locator('a[href$="p=cloner"]').count() > 0, 'no Form cloner on the start page');
+};
+
+T.form_ai_tables = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=formai&f=samplecustomer');
+	expect(await p.locator('#faTables option[value="sample_customer"][selected]').count() === 1, 'the form\'s table is not preselected');
+	const prompt = (tables) => p.evaluate(async (tb) => { const b = new URLSearchParams(); b.set('_csrf', document.querySelector('input[name=_csrf]').value); b.set('action', 'prompt'); b.set('request', 'add a field');
+		tb.forEach(x => b.append('tables[]', x)); return (await fetch(location.href, { method: 'POST', body: b })).json(); }, tables);
+	let r = await prompt(['sample_customer']);
+	expect(r.ok && /\n- sample_customer: /.test(r.text) && !/\n- sample_product: /.test(r.text), 'only the chosen table: ' + (r.text || '').slice(0, 80));
+	r = await prompt([]);
+	expect(r.ok && /\n- sample_product: /.test(r.text), 'none chosen = all tables');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.builder_obj_menu = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-objmenu.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_object zzzzsys_event zzzzsys_nunext_form_history > ' + keep);
+	const n = () => sql(`SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${F}'`);
+	try {
+		await open(p, 'index.php?p=builder&f=' + F);
+		await p.waitForSelector('#nbObjectList .nbObjMenu');
+		const before = n();
+		await p.click('#nbObjectList li:has-text("cus_phone") .nbObjMenuBtn');
+		await p.click('#nbObjClone_cus_phone');
+		await p.waitForFunction((b) => document.querySelectorAll('#nbObjectList .nbObj').length > b, Number(before), { timeout: 8000 }).catch(() => {});
+		await p.waitForTimeout(600);
+		expect(Number(n()) === Number(before) + 1, 'clone via menu: ' + n() + ' of ' + before);
+		const copyId = sql(`SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${F}' AND sob_all_id LIKE 'cus_phone_%' LIMIT 1`);
+		expect(copyId !== '', 'no copy of cus_phone');
+		await p.click(`#nbObjectList li:has-text("${copyId}") .nbObjMenuBtn`);
+		await p.click('#nbObjDel_' + copyId);
+		await p.waitForTimeout(1200);
+		expect(Number(n()) === Number(before), 'delete via menu: ' + n());
+		expect(await p.locator('#nbTopActions .bi-copy, #nbTopDanger .btn-outline-danger, #nbColChange').count() === 0, 'object buttons still in the toolbar');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, { input: fs.readFileSync(keep) });
+	}
+};
+
+T.attach_save_button = async (s) => {
+	const p = s.ga;
+	const dump = path.join(__dirname, 'fixtures', 'attach_save_clone.sql');
+	if (!fs.existsSync(dump)) { s.skip = 'fixture missing'; return; }
+	try {
+		sql("CREATE TABLE IF NOT EXISTS bmw_falscher_mahnstopp_erfassung (bmw_falscher_mahnstopp_erfassung_id VARCHAR(25) PRIMARY KEY, vertrags_nr VARCHAR(50)); REPLACE INTO bmw_falscher_mahnstopp_erfassung VALUES ('r1','5002010451')");
+		sql("DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '6ae159ab6d51101'; DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '6ae159ab6d51101'; DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '6ae159ab6d51101'; DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = '6ae159ab6d51101_AS'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '6ae159ab6d51101'");
+		execSync('mysql ' + DB, { input: fs.readFileSync(dump) });
+		await open(p, 'index.php?p=form&f=6ae159ab6d51101&r=r1');
+		await p.waitForTimeout(500);
+		const r = await p.evaluate(() => { const b = document.getElementById('nuSaveButton').getBoundingClientRect(), c = document.querySelector('.nuAbsoluteCanvas').getBoundingClientRect(),
+			f = document.getElementById('nuw_vertrags_nr').getBoundingClientRect(); return { bt: b.top, bb: b.bottom, bw: b.width, bh: b.height, cb: c.bottom, fb: f.bottom, fl: f.left, bl: b.left }; });
+		expect(Math.round(r.bw) === 80 && Math.round(r.bh) === 24, 'size of the attached Save: ' + JSON.stringify(r));
+		expect(r.bt - r.fb >= 13 && r.bt - r.fb <= 19 && Math.abs(r.bl - r.fl) < 1.5, 'place below the field: ' + JSON.stringify(r));
+		expect(r.cb >= r.bb + 5, 'the tab is not high enough – Save cut off: ' + JSON.stringify(r));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '6ae159ab6d51101'; DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '6ae159ab6d51101'; DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '6ae159ab6d51101'; DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = '6ae159ab6d51101_AS'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '6ae159ab6d51101'; DROP TABLE IF EXISTS bmw_falscher_mahnstopp_erfassung");
 	}
 };
 
@@ -3020,6 +3345,119 @@ T.branding = async (s) => {                              // environment label of
 	await Promise.all([p.waitForLoadState('networkidle'), p.click('#brandSave')]);
 };
 
+// Branding → Show logo (0.8.630): everywhere / sign-in pages only / nowhere; the title stands in the top bar without a logo
+T.branding_logo_show = async (s) => {
+	const p = s.ga;
+	const keep = sql("SELECT IFNULL(setting_value, '') FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
+	const save = async (w, title) => {
+		await open(p, 'index.php?p=branding');
+		await p.selectOption('#logo_show', w);
+		if (title !== undefined) { if (title) await p.check('#show_title'); else await p.uncheck('#show_title'); }
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('#brandSave')]);
+	};
+	const loginLogo = async () => { const c = await p.context().browser().newContext(); const q = await c.newPage(); await q.goto(BASE + 'index.php?p=login'); const n = await q.locator('.nu-brand').count(); await c.close(); return n; };
+	try {
+		await save('login');
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('.nuNavInner .nu-brand').count() === 0, 'login only: logo still in the top bar');
+		expect(await loginLogo() === 1, 'login only: no logo on the sign-in page');
+		await open(p, 'index.php?p=branding');
+		expect(await p.locator('#prevLogo').isHidden(), 'preview shows the logo');
+		await save('none', true);
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('.nuNavInner .nu-brand').count() === 0, 'none: logo in the top bar');
+		expect(await loginLogo() === 0, 'none: logo on the sign-in page');
+		const t = await (async () => { await open(p, 'index.php?p=branding'); const v = (await p.textContent('#prevTitle')).trim(); await open(p, 'index.php?p=home'); return v; })();
+		if (t) expect(await p.locator('.nuNavInner .nu-brand-title').count() === 1, 'none: no title in the top bar');
+		await save('all', false);
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('.nuNavInner .nu-brand').count() === 1, 'all: no logo in the top bar');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		if (keep) sql(`UPDATE zzzzsys_nunext_setting SET setting_value = '${keep.replace(/'/g, "''")}' WHERE zzzzsys_nunext_setting_id = 'branding'`);
+		else sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
+	}
+};
+
+// Themes (0.8.632): duplicate a built-in theme, edit and save, use for everyone, per access level, the user's own pick, export, delete
+// themes (0.8.643): the globeadmin picks a theme for himself ("Use for me", badge "Yours") – also without "users may choose";
+// the export of a theme holds every colour, light and dark (also the built-in nuBuilder Next theme)
+T.theme_mine = async (s) => {
+	const p = s.ga;
+	const keepGa = sql("SELECT IFNULL(MAX(setting_value), '') FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'theme_ga'");
+	try {
+		await open(p, 'index.php?p=themes');
+		const mine = () => p.$$eval('.thMine', a => a.map(e => e.closest('.thCard').dataset.theme));
+		expect(await p.locator('.thCard[data-theme="b:corporate"] .thUseMe').count() === 1, 'Use for me on a built-in theme');
+		await Promise.all([p.waitForNavigation(), p.click('.thCard[data-theme="b:corporate"] .thUseMe')]);
+		expect((await mine()).join() === 'b:corporate', 'badge Yours on Corporate: ' + (await mine()).join());
+		expect(await p.$eval('.nu-navbar', e => getComputedStyle(e).backgroundColor) === 'rgb(27, 54, 93)', 'Corporate top bar');
+		expect(await p.locator('[data-nu-theme-pick="b:corporate"].active').count() === 1, 'chosen in the light / dark menu');
+		await p.click('.thCard[data-theme="b:next"] [data-bs-toggle=dropdown]');
+		const [dl] = await Promise.all([p.waitForEvent('download'), p.click('.thCard[data-theme="b:next"] .thExport')]);
+		const j = JSON.parse(require('fs').readFileSync(await dl.path(), 'utf8'));
+		expect(Object.keys(j.values).length >= 26 && Object.keys(j.dark).length >= 26 && j.values.accent === '#2f6fd6' && j.dark.page_bg === '#14171c', 'complete export: ' + JSON.stringify(j).slice(0, 120));
+		await p.goto(BASE + 'index.php?p=themes');
+		await p.click('.thCard[data-theme="b:corporate"] [data-bs-toggle=dropdown]');
+		await Promise.all([p.waitForNavigation(), p.click('.thCard[data-theme="b:corporate"] .thUseMeOff')]);
+		expect(!(await mine()).includes('b:corporate'), 'Stop using for me');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + keepGa.replace(/'/g, "''") + "' WHERE zzzzsys_nunext_setting_id = 'theme_ga'");
+	}
+};
+T.themes = async (s) => {
+	const p = s.ga;
+	const keep = sql("SELECT IFNULL(MAX(setting_value), '') FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'theme'");
+	const themeOf = async (q) => q.evaluate(() => { const l = document.getElementById('nuThemeCss'); return l ? new URL(l.href).searchParams.get('t') : ''; });
+	const anna = () => login('sample_anna', UPW);
+	try {
+		await open(p, 'index.php?p=themes');
+		expect(await p.locator('.thCard[data-theme^="b:"]').count() === 5, 'not five built-in themes');
+		await Promise.all([p.waitForNavigation(), p.locator('.thCard[data-theme="b:soft"] .thDup').click()]);
+		expect(/edit=/.test(p.url()), 'duplicate did not open the editor: ' + p.url());
+		await p.fill('#thName', 'E2E theme');
+		await p.fill('#v_accent', '#123456');
+		await p.waitForFunction(() => { const f = document.getElementById('thPreview'); const d = f && f.contentDocument; return d && getComputedStyle(d.documentElement).getPropertyValue('--nu-accent').trim() === '#123456'; }, null, { timeout: 8000 });
+		await Promise.all([p.waitForNavigation(), p.click('#thSave')]);
+		const id = sql("SELECT zzzzsys_nunext_theme_id FROM zzzzsys_nunext_theme WHERE name = 'E2E theme'");
+		expect(id !== '', 'theme not saved');
+		await Promise.all([p.waitForNavigation(), p.locator(`.thCard[data-theme="${id}"] .thUse`).click()]);
+		await open(p, 'index.php?p=users');
+		expect(await themeOf(p) === id, 'theme for everyone not used: ' + await themeOf(p));
+		expect((await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--nu-accent'))).trim() === '#123456', 'accent of the theme not applied');
+		// per access level
+		const viewer = sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE sal_code = 'sample_viewer'");
+		await open(p, 'index.php?p=themes');
+		await p.selectOption(`select[name="level[${viewer}]"]`, 'b:contrast');
+		await p.check('#thChoice');
+		await p.check('#thA_b_forte');
+		await Promise.all([p.waitForNavigation(), p.click('#thWhoSave')]);
+		let u = await anna();
+		await open(u, 'index.php?p=home');
+		expect(await themeOf(u) === 'b:contrast', 'theme of the access level not used: ' + await themeOf(u));
+		// the user's own pick (menu next to light / dark)
+		expect(await u.locator('[data-nu-theme-pick="b:forte"]').count() === 1 && await u.locator('[data-nu-theme-pick="b:soft"]').count() === 0, 'menu: only the allowed themes');
+		await Promise.all([u.waitForNavigation(), u.evaluate(() => document.querySelector('[data-nu-theme-pick="b:forte"]').form.submit())]);
+		expect(await themeOf(u) === 'b:forte', 'own pick not used: ' + await themeOf(u));
+		await Promise.all([u.waitForNavigation(), u.evaluate(() => document.querySelector('[data-nu-theme-pick=""]').form.submit())]);
+		expect(await themeOf(u) === 'b:contrast', 'back to the access level\'s theme: ' + await themeOf(u));
+		await u.context().close();
+		// export, delete (refused while in use)
+		await open(p, 'index.php?p=themes');
+		const exp = await p.evaluate(async (tid) => { const fd = new FormData(); fd.append('_csrf', document.querySelector('input[name=_csrf]').value); fd.append('action', 'export'); fd.append('id', tid);
+			return (await fetch('index.php?p=themes', { method: 'POST', body: fd })).text(); }, id);
+		expect(/"type": "nunext-theme"/.test(exp) && /#123456/.test(exp), 'export: ' + exp.slice(0, 100));
+		await Promise.all([p.waitForNavigation(), p.evaluate((tid) => { const f = [...document.querySelectorAll('input[name=action][value=delete]')].map(i => i.form).find(f => f.querySelector('input[name=id]').value === tid); f.removeAttribute('data-confirm'); f.submit(); }, id)]);
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_theme WHERE zzzzsys_nunext_theme_id = '${id}'`) === '1', 'a theme in use was deleted');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		if (keep) sql(`UPDATE zzzzsys_nunext_setting SET setting_value = '${keep.replace(/'/g, "''")}' WHERE zzzzsys_nunext_setting_id = 'theme'`);
+		else sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('theme', 'theme_ga')");
+		sql("DELETE FROM zzzzsys_nunext_theme WHERE name LIKE 'E2E theme%' OR name LIKE '%(copy)%' OR name LIKE '%(Kopie)%'");
+	}
+};
+
 T.dashboard = async () => {                              // sample dashboard: data for its access levels, refused for others
 	const dash = async (user) => {
 		const p = await login(user, UPW);
@@ -3214,6 +3652,148 @@ T.github_update = async (s) => {                        // 0.8.374: newest relea
 			expect(await p.locator('.nuFlashToast.show').count() === 1, 'no toast with the answer of GitHub');   // 0.8.377
 		}
 	} finally { put(null); }
+};
+
+// 0.8.622: UUID keys – a new table with key type UUID (VARCHAR(36)); a record saved in its form gets a UUID v7, a 25-character key still nu_id
+T.uuid_keys = async (s) => {
+	const p = s.ga;
+	const meta = ['zzzzsys_form', 'zzzzsys_object', 'zzzzsys_tab', 'zzzzsys_event', 'zzzzsys_browse', 'zzzzsys_php', 'zzzzsys_access_form'];
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-uuid.sql');
+	execSync('mysqldump ' + DB + ' ' + meta.join(' ') + ' > ' + keep);
+	try {
+		await open(p, 'index.php?p=builder&f=samplecustomer');
+		const api = (body) => p.evaluate(async (bd) => {
+			const csrf = JSON.parse(document.getElementById('nuBuilderData').textContent).csrf;
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(bd) });
+			return Object.assign({ status: r.status }, await r.json());
+		}, body);
+		const mk = async (code, pkType) => {
+			const r = await api({ action: 'form.create', description: 'E2E ' + code, code, type: 'browseedit', layout: 'absolute', table_mode: 'new', table: code, primary_key: '', pk_type: pkType,
+				audit: false, nulog: false, columns: [{ name: code + '_name', type: 'text', length: '50', required: false, label: 'Name' }, { name: code + '_ref', type: 'uuid', length: '', required: false, label: 'Ref' }], levels: [] });
+			expect(r.ok && r.form_id, 'form.create ' + code + ': ' + (r.error || JSON.stringify(r).slice(0, 200)));
+			return r.form_id;
+		};
+		const fu = await mk('e2e_uuid', 'uuid'), fi = await mk('e2e_nuid', 'id');
+		const colType = (t, c) => sql("SELECT CONCAT(DATA_TYPE, '(', CHARACTER_MAXIMUM_LENGTH, ')') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + t + "' AND COLUMN_NAME = '" + c + "'");
+		expect(colType('e2e_uuid', 'e2e_uuid_id') === 'varchar(36)' && colType('e2e_nuid', 'e2e_nuid_id') === 'varchar(25)' && colType('e2e_uuid', 'e2e_uuid_ref') === 'varchar(36)', 'column types');
+		const save = async (f, field) => {
+			await open(p, 'index.php?p=form&f=' + f + '&r=-1');
+			return p.evaluate(async ([fld]) => { const r = await fetch('index.php?p=formapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': nuNext.csrf },
+				body: JSON.stringify({ action: 'save', form_id: nuNext.form.id, record_id: '-1', values: { [fld]: 'E2E' }, edited: [fld] }) }); return r.json(); }, [field]);
+		};
+		const a = await save(fu, 'e2e_uuid_name'), b = await save(fi, 'e2e_nuid_name');
+		expect(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(String(a.record_id)), 'UUID key: ' + JSON.stringify(a));
+		expect(b.record_id && String(b.record_id).length < 36 && !/-/.test(String(b.record_id)), 'nuBuilder key: ' + JSON.stringify(b));
+		expect(sql("SELECT e2e_uuid_name FROM e2e_uuid WHERE e2e_uuid_id = '" + a.record_id + "'") === 'E2E', 'UUID record not stored');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+		sql('DROP TABLE IF EXISTS e2e_uuid, e2e_nuid');
+	}
+};
+
+// 0.8.623: change the database column of an object – info, data check (too long, not a number), change (logged, needs the tick when
+// values change), the globeadmin's own ALTER TABLE (DROP refused), the dialog in the builder
+T.column_change = async (s) => {
+	const p = s.ga;
+	const meta = ['zzzzsys_form', 'zzzzsys_object', 'zzzzsys_tab', 'zzzzsys_event', 'zzzzsys_browse', 'zzzzsys_php', 'zzzzsys_access_form'];
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-colchg.sql');
+	execSync('mysqldump ' + DB + ' ' + meta.join(' ') + ' > ' + keep);
+	try {
+		await open(p, 'index.php?p=builder&f=samplecustomer');
+		const api = (body) => p.evaluate(async (bd) => {
+			const csrf = JSON.parse(document.getElementById('nuBuilderData').textContent).csrf;
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(bd) });
+			return Object.assign({ status: r.status }, await r.json());
+		}, body);
+		let r = await api({ action: 'form.create', description: 'E2E colchg', code: 'e2e_colchg', type: 'browseedit', layout: 'absolute', table_mode: 'new', table: 'e2e_colchg', primary_key: '', pk_type: 'id',
+			audit: false, nulog: false, columns: [{ name: 'cc_name', type: 'text', length: '50', required: false, label: 'Name' }, { name: 'cc_num', type: 'text', length: '20', required: false, label: 'Num' }], levels: [] });
+		expect(r.ok, 'form.create: ' + (r.error || ''));
+		const F = r.form_id;
+		sql("INSERT INTO e2e_colchg (e2e_colchg_id, cc_name, cc_num) VALUES ('a1', 'short', '12'), ('a2', 'a name longer than ten', 'x7'), ('a3', NULL, '')");
+		const call = (action, extra) => api(Object.assign({ action, form_id: F, column: 'cc_name' }, extra));
+		r = await call('column.info');
+		expect(r.ok && r.info.sql_type === 'varchar(50)' && r.info.type === 'text' && r.info.length === '50' && r.info.rows === 3 && r.free_sql === true, 'info: ' + JSON.stringify(r).slice(0, 300));
+		r = await call('column.check', { type: 'text', length: '10' });
+		const tl = r.ok && r.plan.checks.find(c => c.key === 'too_long');
+		expect(tl && tl.n === 1 && tl.arg === '10' && tl.samples[0] === 'a name longer than ten' && /MODIFY cc_name VARCHAR\(10\) NULL/.test(r.plan.sql), 'check too long: ' + JSON.stringify(r.plan || r));
+		r = await call('column.check', { type: 'int', length: '' , column: 'cc_num' });
+		const nn = r.ok && r.plan.checks.find(c => c.key === 'not_number');
+		expect(nn && nn.n === 1 && nn.samples[0] === 'x7', 'check not a number: ' + JSON.stringify(r.plan || r));
+		r = await call('column.change', { type: 'text', length: '10' });
+		expect(!r.ok && r.code === 'accept' && r.status === 409, 'loss without the tick: ' + JSON.stringify(r).slice(0, 200));
+		r = await call('column.change', { type: 'text', length: '100' });
+		expect(r.ok && r.info.sql_type === 'varchar(100)', 'widen: ' + JSON.stringify(r).slice(0, 200));
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'column_changed' AND object = 'e2e_colchg' AND record_id = 'cc_name'") === '1', 'not logged');
+		r = await call('column.change', { type: 'text', length: '100' });
+		expect(!r.ok, 'same type accepted');
+		r = await call('column.check', { sql: 'ALTER TABLE e2e_colchg DROP COLUMN cc_name' });
+		expect(!r.ok, 'DROP in own SQL accepted');
+		r = await call('column.change', { sql: 'ALTER TABLE `e2e_colchg` MODIFY `cc_name` VARCHAR(120) NULL' });
+		expect(r.ok && r.info.sql_type === 'varchar(120)', 'own SQL: ' + JSON.stringify(r).slice(0, 200));
+		// the dialog
+		await open(p, 'index.php?p=builder&f=' + F);
+		await p.click('#nbObjectList li:has-text("cc_num")'); await p.waitForTimeout(500);
+		await p.click('#nbObjectList li:has-text("cc_num") .nbObjMenuBtn'); await p.click('#nbObjCol_cc_num'); await p.waitForSelector('#nbColCurType');
+		expect(await p.textContent('#nbColCurType') === 'varchar(20)', 'dialog: current type');
+		await p.fill('#nbColLen', '40'); await p.waitForSelector('#nbColOk', { timeout: 5000 });
+		expect(await p.locator('#nbColRun').isEnabled(), 'dialog: Run disabled without loss');
+		await p.selectOption('#nbColType', 'int'); await p.waitForSelector('#nbColLoss', { timeout: 5000 });
+		expect(!(await p.locator('#nbColRun').isEnabled()), 'dialog: Run enabled without the tick');
+		await p.selectOption('#nbColType', 'text'); await p.fill('#nbColLen', '40'); await p.waitForSelector('#nbColOk', { timeout: 5000 });
+		await p.click('#nbColRun'); await p.waitForTimeout(800);
+		expect(sql("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_colchg' AND COLUMN_NAME = 'cc_num'") === '40', 'dialog: not changed');
+		expect(await p.locator('#nbColModal').count() === 0, 'dialog not closed');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+		sql("DROP TABLE IF EXISTS e2e_colchg; DELETE FROM zzzzsys_nunext_log WHERE event = 'column_changed' AND object = 'e2e_colchg'");
+	}
+};
+
+// 0.8.622: tutorial in two versions – choice on first opening (a lesson link keeps the lesson), Basic leaves the advanced lessons out,
+// an advanced lesson opened from Basic has a note + switch, the switch keeps the progress
+T.tutorial_tracks = async (s) => {
+	const p = s.ga;
+	const old = sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'tutorial_ga'");
+	const put = v => sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'tutorial_ga';"
+		+ (v && v !== 'NULL' ? " INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value, updated_at, updated_by) VALUES ('tutorial_ga', '" + v.replace(/'/g, "''") + "', NOW(), 'e2e')" : ''));
+	try {
+		put('{"done":["welcome"],"hidden":false}');
+		await open(p, 'index.php?p=tutorial');
+		expect(await p.locator('#tutChoose .tutChoice').count() === 3 && await p.locator('#tutTrack').count() === 0, 'no choice screen with three tutorials on first opening');
+		await open(p, 'index.php?p=tutorial&l=adv-drafts');
+		expect(await p.locator('#tutChoose input[name=l]').first().inputValue() === 'adv-drafts', 'lesson link: the lesson is not kept on the choice screen');
+		await open(p, 'index.php?p=tutorial');
+		await Promise.all([p.waitForNavigation(), p.click('#tutChoose_basic')]);
+		expect(/[?&]l=start-page/.test(p.url()), 'Basic: not on the first open lesson: ' + p.url());
+		expect(await p.locator('#tutTrack button[data-track=basic][aria-pressed=true]').count() === 1, 'switch does not show Basic');
+		const basic = await p.locator('.tutLessonLink').count();
+		expect(await p.locator('.tutLessonLink[href*="l=adv-lifecycle"]').count() === 0 && await p.locator('.tutLessonLink[href*="l=sessions"]').count() === 0, 'Basic lists advanced lessons');
+		expect(await p.locator('.tutLessonLink[href*="l=next-steps"]').count() === 1, 'Basic: no Next steps');
+		await open(p, 'index.php?p=tutorial&l=adv-lifecycle');
+		expect(await p.locator('#tutOutside').count() === 1 && await p.locator('.tutLesson .tutAdvBadge').count() === 1, 'advanced lesson in Basic: no note / badge');
+		await Promise.all([p.waitForNavigation(), p.click('#tutOutside button[type=submit]')]);
+		expect(/[?&]l=adv-lifecycle/.test(p.url()) && await p.locator('#tutOutside').count() === 0, 'switch from the note: not on the lesson in Advanced ' + p.url());
+		const adv = await p.locator('.tutLessonLink').count();
+		expect(adv > basic + 10 && await p.locator('.tutLessonLink[href*="l=adv-lifecycle"]').count() === 1, 'Advanced: lessons ' + basic + ' / ' + adv);
+		const st = JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'tutorial_ga'"));
+		expect(st.track === 'advanced' && st.done.includes('welcome'), 'progress / track not kept: ' + JSON.stringify(st));
+		await Promise.all([p.waitForNavigation(), p.click('#tutTrack button[data-track=basic]')]);
+		expect(/[?&]l=adv-lifecycle/.test(p.url()) && await p.locator('#tutOutside').count() === 1, 'switch back to Basic on an advanced lesson ' + p.url());
+		// 0.8.635: third tutorial "Coming from nuBuilder Forte" – own chapters (parts What works differently / New), none of the others
+		await Promise.all([p.waitForNavigation(), p.click('#tutTrack button[data-track=forte]')]);
+		await open(p, 'index.php?p=tutorial');
+		expect(await p.locator('.tutLessonLink[href*="l=forte-welcome"]').count() === 1 && await p.locator('.tutLessonLink[href*="l=forte-new-ops"]').count() === 1, 'Forte tutorial: lessons missing');
+		expect(await p.locator('.tutLessonLink[href*="l=start-page"]').count() === 0 && await p.locator('.tutLessonLink[href*="l=adv-lifecycle"]').count() === 0, 'Forte tutorial lists other lessons');
+		expect(await p.locator('.tutLessonLink').count() < basic, 'Forte tutorial longer than Basic');
+		await Promise.all([p.waitForNavigation(), p.click('#tutTrack button[data-track=basic]')]);
+		await open(p, 'index.php?p=tutorial');
+		expect(await p.locator('.tutLessonLink[href*="l=forte-welcome"]').count() === 0, 'Basic lists a lesson of the Forte tutorial');
+		await open(p, 'index.php?p=tutorial&l=forte-code');
+		expect(await p.locator('#tutOutside input[name=track][value=forte]').count() === 1, 'Forte lesson in Basic: no switch to the Forte tutorial');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally { put(old); }
 };
 
 T.docs_newer = async (s) => {                           // 0.8.393: help and tutorial say when GitHub has a newer version
@@ -4093,6 +4673,47 @@ T.user_fields = async (s) => {
 		sql("DELETE FROM zzzzsys_nunext_user_field WHERE code LIKE 'e2e_%'");
 		sql('DROP TABLE IF EXISTS zzzzsys_nunext_user_ext');
 		if (sql("SELECT COUNT(*) FROM zzzzsys_nunext_user_field") !== '0') s.note = 'other custom fields exist – their values table was dropped';
+	}
+};
+
+// database not set up (0.8.645, NuDbState / ?p=dbsetup): a table missing → the sign-in page says so, users cannot sign in, the globeadmin
+// lands on the set-up page ("partial"), "Create missing tables" adds it; a nuBuilder Forte column missing → "old", nothing changed
+T.db_setup = async (s) => {
+	const has = () => sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'zzzzsys_file'") === '1';
+	sql('RENAME TABLE zzzzsys_file TO e2e_file_keep');
+	let ga = null, ga2 = null;
+	try {
+		const anon = await (await browser.newContext({ locale: 'en-GB' })).newPage();
+		await anon.goto(BASE + 'index.php?p=login');
+		expect(await anon.locator('#nuLoginDbSetup').count() === 1, 'sign-in page: no hint that the database is not set up');
+		await anon.fill('#username', 'sample_ben'); await anon.fill('#password', UPW);
+		await Promise.all([anon.waitForLoadState('networkidle'), anon.click('form button[type=submit]')]);
+		expect(/not set up/i.test(await anon.textContent('.alert-danger')), 'a user could sign in while the database is not set up');
+		await anon.context().close();
+		ga = await login(GA[0], GA[1]);
+		expect(/p=dbsetup/.test(ga.url()) && await ga.getAttribute('#dbsPage', 'data-state') === 'partial', 'globeadmin not sent to the set-up: ' + ga.url());
+		expect((await ga.locator('#dbsMissing li').allTextContents()).join() === 'zzzzsys_file', 'missing tables listed');
+		await open(ga, 'index.php?p=users');
+		expect(/p=dbsetup/.test(ga.url()), 'other pages open while the database is not set up');
+		await Promise.all([ga.waitForNavigation(), ga.click('#dbsRepair')]);
+		expect(await ga.getAttribute('#dbsPage', 'data-state') === 'done' && has(), 'missing table not created');
+		await open(ga, 'index.php?p=users');
+		expect(/p=users/.test(ga.url()), 'users after the repair: ' + ga.url());
+		// nuBuilder Forte older than 4.9: explained only
+		sql('ALTER TABLE zzzzsys_form CHANGE sfo_status e2e_sfo_status varchar(1) DEFAULT NULL');
+		try {
+			ga2 = await login(GA[0], GA[1]);
+			expect(await ga2.getAttribute('#dbsPage', 'data-state') === 'old' && /zzzzsys_form\.sfo_status/.test(await ga2.textContent('#dbsPage')), 'old database not explained');
+			expect(await ga2.locator('#dbsSetup, #dbsRepair').count() === 0, 'old database: an action is offered');
+		} finally {
+			sql('ALTER TABLE zzzzsys_form CHANGE e2e_sfo_status sfo_status varchar(1) DEFAULT NULL');
+		}
+		expect(ga.errors.length === 0, ga.errors.slice(0, 2).join(' | '));
+	} finally {
+		if (has()) sql('DROP TABLE zzzzsys_file');                  // the one the repair created – the original comes back with its rows
+		sql('RENAME TABLE e2e_file_keep TO zzzzsys_file');
+		if (ga) await ga.context().close();
+		if (ga2) await ga2.context().close();
 	}
 };
 
@@ -5498,6 +6119,48 @@ T.selftest = async (s) => {
 	});
 	const failed = res.results.filter(x => x.status === 'fail').map(x => x.id + ': ' + x.detail);
 	expect(res.ok, 'self-test: ' + failed.join(' | '));
+};
+
+// Reset database (0.8.628, developer mode): a complete dump of the test database uploaded, checked, a wrong database name refused,
+// then all tables deleted and the dump imported – a table not in the dump is gone, the admin stays signed in; the database is put back
+T.db_reset = async (s) => {
+	const p = s.ga;
+	const r = await open(p, 'index.php?p=dbreset');
+	if (r.status() === 404) { s.skip = 'developer mode off / not MySQL'; return; }
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nudbr-')), dump = path.join(tmp, 'e2e-full.sql');
+	execSync('mysqldump ' + DB + ' > ' + dump);
+	const forms = sql('SELECT COUNT(*) FROM zzzzsys_form');
+	try {
+		sql('CREATE TABLE e2e_dbr_marker (id INT PRIMARY KEY)');
+		await open(p, 'index.php');
+		expect(await p.locator('a[href*="p=dbreset"]').count() > 0, 'no Reset database tile in developer mode');
+		await open(p, 'index.php?p=dbreset');
+		await p.setInputFiles('#dbrUpload', dump);
+		await p.uncheck('#dbrBackup0');
+		await Promise.all([p.waitForNavigation(), p.click('#dbrCheckBtn')]);
+		expect(await p.locator('#dbrWarn').count() === 1, 'check: no warning / ' + (await p.locator('.alert').allTextContents()).join(' | '));
+		expect(await p.locator('#dbrTables code', { hasText: 'e2e_dbr_marker' }).count() === 1, 'marker table not listed as deleted');
+		await p.fill('#dbrConfirm', 'not-the-db');
+		await Promise.all([p.waitForNavigation(), p.click('#dbrRun')]);
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=dbreset'); }
+		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_marker'") === '1', 'wrong database name: tables deleted');
+		await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
+		expect(await p.locator('#dbrDone').count() === 1, 'no result: ' + (await p.locator('.alert').allTextContents()).join(' | '));
+		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_marker'") === '0', 'table not in the dump still there');
+		expect(sql('SELECT COUNT(*) FROM zzzzsys_form') === forms, 'forms after the import: ' + sql('SELECT COUNT(*) FROM zzzzsys_form') + ' of ' + forms);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'database_reset'") !== '0', 'reset not logged');
+		await Promise.all([p.waitForNavigation(), p.click('#dbrWizard')]);
+		expect(/p=setupwizard/.test(p.url()), 'not in the setup wizard: ' + p.url());
+		const u = await open(p, 'index.php?p=users');
+		expect(u.status() === 200 && /p=users/.test(p.url()), 'signed out after the reset: ' + p.url());
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, { input: fs.readFileSync(dump) });
+		sql('DROP TABLE IF EXISTS e2e_dbr_marker');
+		if (SITE) for (const f of fs.readdirSync(path.join(SITE, '_update'))) if (/^dbreset-/.test(f)) fs.unlinkSync(path.join(SITE, '_update', f));
+		fs.rmSync(tmp, { recursive: true, force: true });
+	}
 };
 
 T.csrf = async (s) => {

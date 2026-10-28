@@ -1,6 +1,6 @@
 /* nuBuilder Next form builder */
 .nuBuilderContainer { max-width: none; }   /* 0.8.563: no cap – the preview takes the extra width */
-.nbSidebar { position: sticky; top: 4.5rem; max-height: calc(100vh - 6rem); display: flex; flex-direction: column; }
+.nbSidebar { position: sticky; top: calc(var(--nu-sticky-top, 57px) + var(--nu-sticky-h, 0px) + 1rem); max-height: calc(100vh - var(--nu-sticky-top, 57px) - var(--nu-sticky-h, 0px) - 2rem); display: flex; flex-direction: column; }
 .nbBar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; border-bottom: 1px solid var(--bs-border-color); }   /* sections + draft bar (0.8.531) */
 .nbBar .nbSections { border-bottom: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }   /* overflow-y: no vertical scrollbar (0.8.564) */
 .nbBar .nbSections .nav-link { white-space: nowrap; }
@@ -30,8 +30,8 @@
 .nbCodeNav .nbHasCode::after { content: '●'; margin-inline-start: .3rem; font-size: .6rem; vertical-align: middle; color: var(--bs-success); }
 .nbListTable td { padding: .2rem; }
 .nbListTable .nbNum { width: 5rem; }
-.nbPreviewCard { position: sticky; top: 4.5rem; }
-.nbPreview { width: 100%; height: calc(100vh - 10rem); min-height: 420px; border: 0; display: block; background: var(--bs-body-bg); border-radius: 0 0 var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius); }
+.nbPreviewCard { position: sticky; top: calc(var(--nu-sticky-top, 57px) + var(--nu-sticky-h, 0px) + 1rem); }
+.nbPreview { width: 100%; height: calc(100vh - var(--nu-sticky-top, 57px) - var(--nu-sticky-h, 0px) - 6.5rem); min-height: 420px; border: 0; display: block; background: var(--bs-body-bg); border-radius: 0 0 var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius); }
 .nbPreviewRecord { width: 6rem; }
 .nbPreviewLayout { width: auto; }
 @media (max-width: 1199.98px) { .nbSidebar, .nbPreviewCard { position: static; max-height: none; } .nbPreview { height: 70vh; } }
@@ -139,6 +139,7 @@
 @media (min-width: 1200px) {
 	.nbWorkspace { display: grid; grid-template-columns: 320px minmax(420px, 540px) minmax(0, 1fr); align-items: start; }
 	.nbWorkspace > * { width: auto; max-width: none; min-width: 0; }
+	.nbWorkspace > .nbObjectsCol, .nbWorkspace > .nbPreviewCol { align-self: stretch; }   /* room for the sticky objects list / preview card below the sticky header */
 	.nbWorkspace[data-nb-view="form"], .nbWorkspace[data-nb-view="history"] { grid-template-columns: minmax(460px, 680px) minmax(0, 1fr); }
 	.nbWorkspace[data-nb-view="browse"] { grid-template-columns: minmax(560px, 980px) minmax(0, 1fr); }
 	.nbWorkspace[data-nb-view="code"] { grid-template-columns: minmax(360px, var(--nb-split, 60%)) 12px minmax(320px, 1fr); }   /* splitter (0.8.565) */
@@ -161,3 +162,9 @@
 
 /* New form wizard: access levels to give the new form (0.8.602) */
 .nbLevels { max-height: 14rem; overflow-y: auto; }
+
+/* objects list: ⋮ menu per object – Clone object, Change column…, Delete object (0.8.633) */
+.nbObjMenu { display: flex; align-items: center; padding-inline-end: .2rem; }
+.nbObjMenuBtn { padding: .15rem .3rem; line-height: 1; color: var(--bs-secondary-color); }
+.nbObjMenuBtn:hover, .nbObjMenuBtn[aria-expanded="true"] { color: var(--bs-emphasis-color); background: var(--bs-secondary-bg); }
+.nbObj.active .nbObjMenuBtn { color: inherit; }

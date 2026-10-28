@@ -13,6 +13,7 @@
 	const onColor = (hex) => ((1.05) / (lum(hex) + 0.05) >= 3 ? '#fff' : '#000');
 
 	function accent() {
+		if (!$('accent_on')) return;                              // 0.8.632: the accent colour is in the themes
 		const on = $('accent_on').checked;
 		const c = $('accent').value;
 		$('accentHex').textContent = c;
@@ -49,13 +50,20 @@
 		}
 	}
 
+	// Show logo (0.8.630): the preview is the top bar – no logo there unless "everywhere"
+	function logoShow() { $('prevLogo').hidden = $('logo_show').value !== 'all'; }
+	$('logo_show').addEventListener('change', logoShow);
+	logoShow();
+
 	function title() {
 		const t = $('prevTitle');
 		t.hidden = !$('show_title').checked || t.textContent.trim() === '';
 	}
 
-	['accent_on', 'accent'].forEach((id) => $(id).addEventListener('input', accent));
-	$('accent_on').addEventListener('change', accent);
+	if ($('accent_on')) {
+		['accent_on', 'accent'].forEach((id) => $(id).addEventListener('input', accent));
+		$('accent_on').addEventListener('change', accent);
+	}
 	['env_label', 'env_color'].forEach((id) => $(id).addEventListener('input', env));
 	$('logo_light').addEventListener('change', logo);
 	if ($('remove_light')) $('remove_light').addEventListener('change', logo);

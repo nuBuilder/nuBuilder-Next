@@ -199,7 +199,40 @@ def bundled_packs(keyfile):
     code, msg = run(['php', 'dev/libpack.php', out, keyfile] + args)
     if code != 0:
         sys.exit('library packs: ' + msg)
-    return sorted(os.path.join(out, f) for f in os.listdir(out) if f.startswith('nunext-lib-') and f.endswith('.zip'))
+    packs = sorted(os.path.join(out, f) for f in os.listdir(out) if f.startswith('nunext-lib-') and f.endswith('.zip'))
+    check_github_packs(packs)
+    return packs
+
+
+GITHUB_LIBS = 'https://github.com/' + os.environ.get('NUNEXT_GITHUB_REPO', 'nuBuilder/nuBuilder-Next') + '/releases/download/libraries/libraries.json'
+
+
+def check_github_packs(packs):
+    """0.8.625: warns when a pack in nunext.zip (_install/, e.g. PHPMailer) has another version than the GitHub release "libraries" –
+    new installations would get one version, existing ones (Update → Libraries) the other. Publish the pack + libraries.json
+    (php dev/libpack.php <out> ../nunext-signing.key <slot>=dev/libsrc/<slot> --keep=<current libraries.json>). Never stops the release."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(GITHUB_LIBS, timeout=20) as r:
+            index = json.loads(r.read().decode('utf-8'))
+        gh = {str(l.get('name')): str(l.get('version')) for l in index.get('libs', []) if isinstance(l, dict)}
+    except Exception as e:                                   # offline, rate limit … – only a note
+        print(f'library packs: GitHub release "libraries" not checked ({e.__class__.__name__}: {e})')
+        return
+    for f in packs:
+        m = re.match(r'^nunext-lib-([a-z0-9]+)-(.+)\.zip$', os.path.basename(f))
+        if not m:
+            continue
+        slot = m.group(1)
+        with zipfile.ZipFile(f) as z:
+            ver = str(json.loads(z.read('nunext-lib.json').decode('utf-8')).get('version', m.group(2)))
+        if slot not in gh:
+            print(f'WARNING: library pack {slot} {ver} is in nunext.zip but not in the GitHub release "libraries" – publish it there')
+        elif gh[slot] != ver:
+            print(f'WARNING: library pack {slot}: nunext.zip brings {ver}, the GitHub release "libraries" has {gh[slot]} – '
+                  f'new installations and updates would differ; publish nunext-lib-{slot}-{ver}.zip and a new libraries.json')
+        else:
+            print(f'library packs: {slot} {ver} = GitHub release "libraries"')
 
 
 def signing_key():

@@ -9,6 +9,32 @@
 - [ ] Page forms: besides the draft (0.8.599) a "Test copy" (clone of the page form + its folder, publish back) was proposed (option A,
       not built); a page's draft shares _data, secrets.php and the database with the live version.
 
+## 0.8.634 Header layouts to try – TEMPORARY, remove when the owner has chosen
+- [ ] User menu → *Header layout (test)* (developer mode, globeadmin; choice in localStorage nunext-hv): variants A–E of the mockup
+      (`../mockups/layout-mockup.html`, outside the project) on record pages, form pages and lists. Once one is chosen: build it properly
+      and delete assets/js/nuheadervariant.js, the CSS block "header layouts (test)" at the end of nuapp.css, the menu entries / script
+      tag in core/nulayout.php, the texts hlt_*, the e2e test header_variants and the mockup folder.
+
+## 0.8.623 Change column in the form builder – please verify
+- [ ] Builder → object → *Change column…* on a copy of a real table: widen a varchar, shorten one (data check, tick), text → number /
+      date; MySQL 8 (column default written back without quotes check), SQL Server (`ALTER COLUMN`, defaults are constraints – kept;
+      indexes / keys on the column make it fail with a message) – not tested here.
+
+## 0.8.622 Tutorial in two versions, UUID keys – please verify
+- [ ] Tutorial: first opening shows Basic / Advanced; read a few of the new *In depth* lessons (wording, exercises) – they were written
+      from the documentation and not walked through on a real installation yet.
+- [ ] UUID keys (suggestion of a forum user): a table with a `VARCHAR(36)` key – new records, sub-form rows, clone, CSV import with a
+      generated id get a UUID v7; an imported UUID stays unchanged. SQL Server (`NVARCHAR(36)`, `uniqueidentifier`) not tested here.
+- [ ] Answer the forum user (UUID keys built in 0.8.622, v7 instead of v4: same format, time-ordered for the index).
+
+## 0.8.621 Form buttons and HTML objects like nuBuilder Forte – please verify
+- [ ] Your portal form (copied from nuBuilder Forte): buttons solid in the accent colour; TimeTrack / Bonus Program / TP E-Mail keep
+      their colours with white text; "E-Mail Notifications (23)" on one line; headings and the "Offenes Ohr" box as in nuBuilder Forte.
+- [ ] Forms made in nuBuilder Next with HTML objects: headings and paragraphs now have the browser's margins and sizes (as nuBuilder
+      Forte), the absolute layout 13 px text – check that nothing moved; Bootstrap classes (`m-0`, `fs-6` …) or own CSS fix it.
+- [ ] Dark mode and your Branding accent colour on a form with buttons; a very light accent gives black button text.
+- [ ] Sample data 18: Admin tools → Sample data → *Refresh* (start tiles get their icons back as own CSS).
+
 ## Code in files instead of in the form (suggestion from a user, 26 Oct 2026) – waiting for the owner's decision
 The user's points: nuBuilder 4.x runs form JavaScript with eval() (no top-level const / let, objects survive "refresh" – namespaces
 needed); he prefers JS / PHP in files on disk (overview, no duplicates, git, AI coding agents) with only links in the forms.

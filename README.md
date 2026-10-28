@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.620 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.647 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -54,19 +54,19 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
 - ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists them all.
 - ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code) and *Forgot password* with a one-time e-mail link.
-- ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left), light, dark or automatic mode; checked against WCAG 2.1 A/AA.
+- ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left), light, dark or automatic mode, five built-in designs plus your own (colours, buttons, fields, tabs, fonts – per access level or chosen by the user); checked against WCAG 2.1 A/AA.
 
 ### 🏗️ For Building Business Applications
 
-- ✅ **Low-Code Form Builder** – inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; nuBuilder Forte's form events keep working.
+- ✅ **Low-Code Form Builder** – inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
 - ✅ **Page Forms** – your own PHP apps inside nuBuilder Next, with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
 - ✅ **Report Designer & SQL Builder** – design reports visually, build queries without writing SQL and run reports as PDF.
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
 - ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with syntax colours, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
 - ✅ **E-mail & Templates** – SMTP settings with a test mail and a connection check that sends nothing, login with OAuth 2 (Google, Microsoft 365), e-mail templates with field placeholders and an e-mail log.
 - ✅ **CSV Import** – into any table, with automatic encoding / separator detection and column mapping.
-- ✅ **Cloner & App Cloner** – copy a single form or the whole application.
-- ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool.
+- ✅ **Form Cloner & App Cloner** – copy a single form (or just write its SQL) or the whole application.
+- ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms written by an AI, checked before they are created.
 - ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
 - ✅ **Compatibility Check** – scans the code of your nuBuilder Forte application and shows which functions are supported.
 - ✅ **Sample Application** – customers, orders, reports and dashboards to learn from.
@@ -80,8 +80,8 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.
 - ✅ **Send Notifications** – to chosen users, departments or teams, with read receipts.
 - ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving and inserts missing variables; Global code – nuBuilder Forte's Setup code (Header, Style, Include) plus global JavaScript / CSS for every page, with ready-made templates; System status; logged-in users (log out idle ones); phpMyAdmin, Adminer and File Manager links; housekeeping cron.
-- ✅ **Easy Start** – installer, setup wizard, a step-by-step tutorial and built-in documentation (F1 opens the page for the screen you are on).
-- ✅ **Branding & Demo Mode** – logo, accent colour and environment label; read-only demo users.
+- ✅ **Easy Start** – installer (also a database set-up when `nuconfig.php` was written by hand), setup wizard, a tutorial in three versions (basic, in depth, coming from nuBuilder Forte) and built-in documentation (F1 opens the page for the screen you are on).
+- ✅ **Branding & Demo Mode** – logo (shown everywhere, only on the sign-in pages or nowhere) and environment label; read-only demo users.
 
 ---
 
@@ -96,8 +96,8 @@ nuBuilder Next streamlines everyday database work:
 2. Open it in the browser: while `nuconfig.php` is missing, the **installer** runs and writes `nuconfig.php`. It asks for the setup
    token from `_install/setup-token.txt` (read it by SFTP) – or create an empty file `install.allow` first.
    By hand instead: rename `nuconfig-sample.php` to `nuconfig.php` and enter your settings (an existing nuBuilder Forte `nuconfig.php`
-   also works); for an empty database run `install/schema_mysql.sql` (+ `schema_mysql_forms.sql`, + `notes_snippets_mysql.sql`) or
-   `install/schema_mssql.sql`. The package ships only the sample, so a new version never overwrites your `nuconfig.php`.
+   also works); on an empty database (or with tables missing) the globeadmin then gets the page *Set up the database* –
+   or run `install/schema_mysql.sql` (+ `schema_mysql_forms.sql`, + `notes_snippets_mysql.sql`) or `install/schema_mssql.sql` yourself. The package ships only the sample, so a new version never overwrites your `nuconfig.php`.
 3. Sign in as globeadmin or with any nuBuilder Forte user.
 4. Open **Admin tools → Security check** and fix what is red: HTTPS, a long globeadmin password, `$nuConfigBaseURL`, "Files on
    the web" (the web server must not hand out `core/`, `install/`, `README.md` …) and the PHP version.
