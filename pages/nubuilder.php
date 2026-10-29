@@ -3,15 +3,14 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Form builder: object list + properties panel + live preview (?f=<form id>), or the "new form" wizard (?new=1).
- * All behaviour lives in assets/js/nubuilder.js; this page only renders the frame and hands over the data.
+ * "New form" wizard (?new=1, assets/js/nubuilder.js). ?f=<form id>: page forms open their own editor (pages/nubuilder_page.php), every
+ * other form is designed in design mode on the form page (0.8.670 – the builder's editor was replaced by it, core/form/nudesign.php).
  */
 
 NuAcl::require(NuAcl::FORM_FORM);
 $canSave = NuAcl::can(NuAcl::FORM_FORM, 'save');
-$canDeleteForm = $canSave && !empty(NuAuth::user()['globeadmin']);     // deleting a whole form: globeadmin only (0.8.246)
 $db      = nu_db();
-$isNew   = ($_GET['new'] ?? '') === '1';
+$isNew   = ($_GET['new'] ?? '') === '1' || (string)($_GET['f'] ?? '') === '';
 $meta    = null;
 
 if (!$isNew) {
@@ -28,65 +27,27 @@ if ($meta && $meta->isPage()) {
 	exit;
 }
 
+// every other form is designed where it runs (0.8.670: the builder was replaced by design mode, core/form/nudesign.php) – old links and
+// bookmarks (?obj=, ?open=, ?colchg=, ?delete=1) lead to the matching place in design mode
+if ($meta) nu_redirect(NuDesign::fromBuilder($meta, $_GET));
+
 // labels for builder.js
 $keys = ['save', 'delete', 'cancel', 'add', 'remove', 'remove_undo', 'remove_pending', 'saved', 'clone', 'back', 'please_select', 'search', 'yes', 'no', 'no_records'];
 foreach ([__DIR__ . '/../lang/en.php'] as $f) foreach (array_keys(require $f) as $k) if (str_starts_with($k, 'builder_') || str_starts_with($k, 'bf_') || str_starts_with($k, 'form_type_') || str_starts_with($k, 'form_layout')) $keys[] = $k;
 $labels = [];
 foreach ($keys as $k) $labels[$k] = t($k);
 
-$data = ['csrf' => nu_csrf_token(), 'labels' => $labels, 'can_save' => $canSave, 'new' => $isNew,
-	'formats' => NuFormat::choices(), 'formatDesigner' => nu_format_designer_data()];
-if ($meta) {
-	$preview = '-1';
-	if ($meta->table() !== '' && $meta->primaryKey() !== '' && $meta->type() !== 'launch') {
-		try {
-			$pk = $db->page('SELECT ' . NuDB::ident($meta->primaryKey()) . ' AS pk FROM ' . NuDB::ident($meta->table()), [], NuDB::ident($meta->primaryKey()), 1, 0);
-			if ($pk) $preview = (string)$pk[0]['pk'];
-		} catch (Throwable) {
-		}
-	}
-	$data['form_id'] = $meta->id;
-	$data['uppy_template'] = NuUpload::htmlTemplate();          // file objects with target "File System" (0.8.459)
-	$data['preview_record'] = $preview;
-	$data['hash_catalog'] = NuHash::catalog();
-	$data['db_type'] = $db->type;
-	$uhPart = $meta->isUserHome();                               // User Home (0.8.605): tabs, objects, events, Before Edit – no form settings
-	$data['readonly'] = ($meta->isSystem() && !$uhPart) || !$canSave;
-	$data['partial'] = $uhPart;
-	$data['globeadmin'] = !empty(NuAuth::user()['globeadmin']);      // tabs: only the globeadmin renames / deletes existing ones
-	// form drafts (0.8.386): the open draft and the rules; ?draft=1 opens the builder on the draft
-	$openDraft = $meta->isSystem() && !$uhPart ? null : NuFormDraft::openFor($meta->id);
-	$data['draft'] = NuFormDraft::info($openDraft);
-	$data['draft_mode'] = $openDraft !== null && ($_GET['draft'] ?? '') === '1';
-	$data['draft_policy'] = ['required' => (bool)NuSecurity::get('form_drafts_required'), 'can_publish' => NuFormDraft::canPublish(),
-		'unpublished' => (string)($meta->form['sfo_status'] ?? '') === '0', 'live_url' => nu_url('builder', ['f' => $meta->id]),
-		'draft_url' => nu_url('builder', ['f' => $meta->id, 'draft' => '1'])];
-	$data['procedures'] = array_map(static fn($p) => [$p['zzzzsys_php_id'], $p['sph_code'] . ($p['sph_description'] ? ' – ' . $p['sph_description'] : '')],
-		array_values(array_filter($db->all("SELECT zzzzsys_php_id, sph_code, sph_description FROM zzzzsys_php WHERE zzzzsys_php_id NOT LIKE 'nu%' AND COALESCE(sph_system, '') <> '1' ORDER BY sph_code"),
-			static fn($p) => !preg_match('/_(BB|BE|BS|AS|BD|AD|AB)$/', (string)$p['zzzzsys_php_id']))));
-	$data['reports'] = NuReport::available() ? array_map(static fn($r) => [(string)$r['zzzzsys_report_id'], $r['sre_code'] . ($r['sre_description'] ? ' – ' . $r['sre_description'] : '')],
-		$db->all('SELECT zzzzsys_report_id, sre_code, sre_description FROM zzzzsys_report ORDER BY sre_code')) : [];
-	$data['forms'] = array_map(static fn($f) => [$f['zzzzsys_form_id'], $f['sfo_code'] . ' – ' . $f['sfo_description'], $f['sfo_type']],
-		$db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' ORDER BY sfo_code"));
-}
+$data = ['csrf' => nu_csrf_token(), 'labels' => $labels, 'can_save' => $canSave, 'new' => true];
 
-$head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">'
-	. '<link rel="stylesheet" href="' . nu_asset('assets/css/nubuilder.css') . '">'
+$head = '<link rel="stylesheet" href="' . nu_asset('assets/css/nubuilder.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';   // searchable selects: Table (new form), form lists (0.8.535)
 $foot = '<script type="application/json" id="nuBuilderData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
 	. '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>'
-	. ($isNew ? '' : '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
-		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
-		. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>')
-	. '<script src="' . nu_asset('assets/js/nu/nuformat.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/js/nuformatdesigner.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/js/nuattreditor.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nubuilder.js') . '"></script>';
 
-nu_layout_start($meta ? $meta->description() . ' · ' . t('builder_title') : t('builder_new_form'), 'forms', ['head' => $head, 'container' => 'container-fluid nuBuilderContainer']);
+nu_layout_start(t('builder_new_form'), 'forms', ['head' => $head, 'container' => 'container-fluid nuBuilderContainer']);
 $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li class="breadcrumb-item"><a href="' . h(nu_url('forms')) . '">' . h(t('nav_forms')) . '</a></li>'
-	. '<li class="breadcrumb-item active" aria-current="page">' . h($meta ? $meta->description() : t('builder_new_form')) . '</li></ol></nav>';
+	. '<li class="breadcrumb-item active" aria-current="page">' . h(t('builder_new_form')) . '</li></ol></nav>';
 ?>
 <?php if ($isNew): ?>
 	<div class="row justify-content-center">
@@ -97,7 +58,13 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 			<form class="card shadow-sm" id="nbNewForm" novalidate>
 				<div class="card-body p-4">
 					<div class="alert alert-warning nbStale" id="nbStale" role="alert"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('builder_stale_assets')) ?></div>
-					<div class="row g-3">
+					<?php // three steps (0.8.663): Form · Table and fields · Layout and access – nubuilder.js shows one at a time ?>
+					<ol class="nbSteps" id="nbSteps" aria-label="<?= h(t('nf_steps')) ?>">
+						<?php foreach (['nf_step_form', 'nf_step_table', 'nf_step_layout'] as $si => $sk): ?>
+							<li class="nbStepMark<?= $si === 0 ? ' active' : '' ?>" data-step="<?= $si + 1 ?>"<?= $si === 0 ? ' aria-current="step"' : '' ?>><span class="nbStepNo"><?= h(t('nf_step_n', $si + 1)) ?></span><?= h(t($sk)) ?></li>
+						<?php endforeach; ?>
+					</ol>
+					<div class="row g-3 nbStep" data-step="1">
 						<div class="col-sm-7">
 							<label class="form-label" for="nb_desc"><?= h(t('builder_description')) ?> <span class="text-danger">*</span></label>
 							<input class="form-control" id="nb_desc" name="description" required maxlength="300">
@@ -112,14 +79,9 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 								<?php foreach (['browseedit', 'edit', 'browse', 'subform', 'launch', 'page'] as $tp): ?><option value="<?= $tp ?>"><?= h(t('form_type_' . $tp)) ?></option><?php endforeach; ?>
 							</select>
 						</div>
-						<div class="col-sm-6 col-lg-4">
-							<label class="form-label" for="nb_layout"><?= h(t('form_layout')) ?></label>
-							<select class="form-select" id="nb_layout" name="layout">
-								<option value="auto"><?= h(t('form_layout_auto')) ?></option>
-								<option value="absolute"><?= h(t('form_layout_absolute')) ?></option>
-								<option value="grid"><?= h(t('form_layout_grid')) ?></option>
-							</select>
-						</div>
+					</div>
+					<div class="row g-3 nbStep" data-step="2" hidden>
+						<div class="col-12 nbNoTable d-none"><p class="text-body-secondary mb-0"><?= h(t('nf_no_table')) ?></p></div>
 						<div class="col-12 nbTableSection">
 							<fieldset>
 								<legend class="form-label fs-6 mb-1"><?= h(t('builder_table')) ?></legend>
@@ -147,6 +109,26 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 								<label class="form-check-label" for="nb_generate"><?= h(t('builder_generate')) ?></label>
 							</div>
 							<div class="form-text" id="nbColumnInfo"></div>
+							<?php // chosen columns (0.8.675): which columns get an object / a list column, label, order – filled by nubuilder.js pickBuild() ?>
+							<div class="nbPickWrap mt-2" id="nbPickWrap" hidden>
+								<button class="btn btn-link px-0 text-decoration-none nuChevToggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#nbPick" aria-expanded="false" aria-controls="nbPick" id="nbPickBtn"><i class="bi bi-chevron-right me-1"></i><?= h(t('builder_pick_toggle')) ?> <span class="badge rounded-pill text-bg-secondary ms-1" id="nbPickCount"></span></button>
+								<div class="collapse" id="nbPick">
+									<p class="small text-body-secondary mb-2"><?= h(t('builder_pick_hint')) ?></p>
+									<div class="table-responsive border rounded nbPickBox">
+										<table class="table table-sm align-middle mb-0 nbPickGrid">
+											<thead><tr>
+												<th scope="col" class="nbPickC"><input class="form-check-input" type="checkbox" id="nbPickAll" aria-label="<?= h(t('builder_pick_all')) ?>" title="<?= h(t('builder_pick_all')) ?>"></th>
+												<th scope="col" class="small"><?= h(t('builder_pick_col')) ?></th>
+												<th scope="col" class="small"><?= h(t('builder_obj_label')) ?></th>
+												<th scope="col" class="small text-center text-nowrap"><input class="form-check-input me-1" type="checkbox" id="nbPickAllList" aria-label="<?= h(t('builder_pick_all_list')) ?>" title="<?= h(t('builder_pick_all_list')) ?>"><?= h(t('builder_pick_list')) ?></th>
+												<th scope="col"><span class="visually-hidden"><?= h(t('actions')) ?></span></th>
+											</tr></thead>
+											<tbody id="nbPickRows"></tbody>
+										</table>
+									</div>
+									<button class="btn btn-sm btn-outline-secondary mt-2" type="button" id="nbPickReset"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('builder_pick_reset')) ?></button>
+								</div>
+							</div>
 						</div>
 
 						<!-- new table -->
@@ -155,7 +137,8 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							<input class="form-control" id="nb_new_table" maxlength="64" pattern="[A-Za-z_][A-Za-z0-9_]*" autocomplete="off" spellcheck="false">
 						</div>
 						<div class="col-sm-5 nbNew d-none">
-							<label class="form-label" for="nb_new_pk"><?= h(t('builder_primary_key')) ?></label>
+							<label class="form-label" for="nb_new_pk"><?= h(t('builder_primary_key')) ?></label><?php // the help as (i) next to the label (0.8.656, was a line below the field) ?>
+							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('builder_new_pk_help')) ?>" title="<?= h(t('builder_new_pk_help')) ?>"><i class="bi bi-info-circle"></i></span>
 							<div class="input-group">
 								<input class="form-control" id="nb_new_pk" maxlength="64" autocomplete="off" spellcheck="false">
 								<select class="form-select flex-grow-0 w-auto" id="nb_new_pk_type" aria-label="<?= h(t('builder_pk_type')) ?>">
@@ -163,7 +146,6 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 									<option value="uuid"><?= h(t('builder_pk_type_uuid')) ?></option>
 								</select>
 							</div>
-							<div class="form-text"><?= h(t('builder_new_pk_help')) ?></div>
 						</div>
 						<div class="col-12 nbNew d-none">
 							<label class="form-label mb-1"><?= h(t('builder_new_columns')) ?></label>
@@ -193,9 +175,20 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							</div>
 						</div>
 					</div>
+					<div class="nbStep" data-step="3" hidden>
+					<div class="row g-3">
+						<div class="col-sm-6 col-lg-4">
+							<label class="form-label" for="nb_layout"><?= h(t('form_layout')) ?></label>
+							<select class="form-select" id="nb_layout" name="layout">
+								<option value="auto"><?= h(t('form_layout_auto')) ?></option>
+								<option value="absolute"><?= h(t('form_layout_absolute')) ?></option>
+								<option value="grid"><?= h(t('form_layout_grid')) ?></option>
+							</select>
+						</div>
+					</div>
 					<?php // after creating (0.8.602): run button on nuBuilder Forte's User Home, rights + start page tile for access levels
 					$uhOk = NuUserHome::available();
-					$nbLevels = NuAcl::can(NuAcl::FORM_ACCESS, 'save') ? nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') : null;
+					$nbLevels = NuAcl::can(NuAcl::FORM_ACCESS, 'save') ? nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_code') : null;
 					if ($uhOk || $nbLevels !== null): ?>
 					<fieldset class="nbAfter border-top mt-4 pt-3">
 						<legend class="form-label fs-6 fw-semibold mb-2"><?= h(t('builder_after')) ?></legend>
@@ -211,9 +204,26 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<?php if (!$nbLevels): ?>
 							<div class="small text-body-secondary"><?= h(t('builder_levels_none')) ?></div>
 						<?php else: ?>
+						<?php // select all + filter by sal_group (0.8.674); "select all" works on the levels shown, hidden ones keep their tick
+						$nbGroups = array_values(array_unique(array_map(static fn($x) => trim((string)($x['sal_group'] ?? '')), $nbLevels)));
+						usort($nbGroups, static fn($a, $b) => $a === '' ? 1 : ($b === '' ? -1 : strcasecmp($a, $b))); ?>
+						<div class="d-flex flex-wrap align-items-center gap-3 mb-2 nbLevelsBar">
+							<div class="form-check mb-0">
+								<input class="form-check-input" type="checkbox" id="nbLvAll">
+								<label class="form-check-label" for="nbLvAll"><?= h(t('builder_levels_all')) ?></label>
+							</div>
+							<?php if (count($nbGroups) > 1 || ($nbGroups[0] ?? '') !== ''): ?>
+							<label class="visually-hidden" for="nbLvGroup"><?= h(t('builder_levels_group')) ?></label>
+							<select class="form-select form-select-sm w-auto" id="nbLvGroup">
+								<option value="*"><?= h(t('builder_levels_groups')) ?></option>
+								<?php foreach ($nbGroups as $g): ?><option value="<?= h($g) ?>"><?= h($g === '' ? t('builder_levels_nogroup') : $g) ?></option><?php endforeach; ?>
+							</select>
+							<?php endif; ?>
+							<span class="small text-body-secondary ms-auto" id="nbLvCount" aria-live="polite"><?= h(t('builder_levels_count', '0', (string)count($nbLevels))) ?></span>
+						</div>
 						<div class="nbLevels border rounded px-3 py-2" id="nbLevels">
 							<?php foreach ($nbLevels as $lv): $lid = 'nb_lv_' . substr(md5((string)$lv['zzzzsys_access_id']), 0, 10); ?>
-							<div class="form-check">
+							<div class="form-check nbLevelRow" data-group="<?= h(trim((string)($lv['sal_group'] ?? ''))) ?>">
 								<input class="form-check-input nbLevel" type="checkbox" id="<?= h($lid) ?>" value="<?= h((string)$lv['zzzzsys_access_id']) ?>">
 								<label class="form-check-label" for="<?= h($lid) ?>"><?= h((string)$lv['sal_code']) ?><?php if ((string)$lv['sal_description'] !== ''): ?> <span class="text-body-secondary">– <?= h((string)$lv['sal_description']) ?></span><?php endif; ?></label>
 							</div>
@@ -223,152 +233,18 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<?php endif; ?>
 					</fieldset>
 					<?php endif; ?>
+					</div>
 					<div class="alert alert-danger mt-3 mb-0 d-none" id="nbNewError" role="alert"></div>
 				</div>
-				<div class="card-footer d-flex justify-content-end gap-2">
-					<a class="btn btn-outline-secondary" href="<?= h(nu_url('forms')) ?>"><?= h(t('cancel')) ?></a>
-					<button class="btn btn-primary" type="submit"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-check-lg me-1"></i><?= h(t('builder_create')) ?></button>
+				<div class="card-footer d-flex flex-wrap justify-content-end gap-2">
+					<a class="btn btn-outline-secondary me-auto" href="<?= h(nu_url('forms')) ?>"><?= h(t('cancel')) ?></a>
+					<button class="btn btn-outline-secondary" type="button" id="nbStepBack" hidden><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></button>
+					<button class="btn btn-primary" type="button" id="nbStepNext"><?= h(t('nf_next')) ?><i class="bi bi-arrow-right ms-1"></i></button>
+					<button class="btn btn-primary" type="submit" id="nbCreate" hidden<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-check-lg me-1"></i><?= h(t('builder_create')) ?></button>
 				</div>
 			</form>
 		</div>
 	</div>
-<?php else: ?>
-	<?= $crumb ?>
-	<div class="nuTitleBar mb-3">
-		<h1 class="h4 mb-0 d-flex flex-wrap align-items-center gap-2"><i class="bi bi-tools"></i><span id="nbTitle"><?= h($meta->description()) ?></span>
-			<span class="badge bg-secondary-subtle text-secondary-emphasis fs-6 fw-normal" id="nbType"><?= h(t('form_type_' . $meta->type())) ?></span>
-			<?php if (!$meta->isSystem() || $meta->isUserHome()): ?><span class="badge fs-6 fw-normal nbModePill" id="nbModePill"></span><?php endif; ?></h1>
-		<?php if ($meta->isUserHome()): ?><span class="badge text-bg-info" id="nbUserHomeNote" title="<?= h(t('builder_userhome_part')) ?>"><i class="bi bi-house-door me-1"></i><?= h(t('builder_userhome_badge')) ?></span>
-		<?php elseif ($meta->isSystem()): ?><span class="badge text-bg-warning"><i class="bi bi-lock me-1"></i><?= h(t('builder_readonly_system')) ?></span><?php endif; ?>
-		<?php // toolbar (0.8.619): Back | Save · Undo | Clone object · Open form · AI · Data access – the deleting buttons in their own row below;
-		// the open panel's buttons are put into #nbTopSave / #nbTopActions / #nbTopDanger by nubuilder.js (panel()) ?>
-		<div class="nbToolbar">
-			<div class="nbTbRow">
-				<div class="nbTbGroup"><a class="btn btn-sm nuBtnAct" href="<?= h(nu_url('forms')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a></div>
-				<div class="nbTbGroup" id="nbTopSaveGroup"><span class="nbTbSlot" id="nbTopSave"></span>
-				<?php if ((!$meta->isSystem() || $meta->isUserHome()) && $canSave): ?>
-					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbUndo" title="<?= h(t('builder_undo_hint')) ?>"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('builder_undo')) ?></button>
-				<?php endif; ?></div>
-				<div class="nbTbGroup"><span class="nbTbSlot nbTopActions" id="nbTopActions"></span>
-				<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('form', ['f' => $meta->id])) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('builder_open_form')) ?></a>
-				<?php if (!$meta->isSystem()): ?><a class="btn btn-sm btn-outline-secondary" id="nbAi" href="<?= h(nu_url('formai', ['f' => $meta->id])) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_change')) ?></a><?php endif; ?>
-				<?php if (!$meta->isSystem() && $meta->type() !== 'page'): ?><a class="btn btn-sm btn-outline-secondary" id="nbDataAccess" href="<?= h(nu_url('dataaccess', ['f' => $meta->id])) ?>"><i class="bi bi-shield-lock me-1"></i><?= h(t('da_title')) ?></a><?php endif; ?></div>
-			</div>
-			<div class="nbTbRow nbTbDanger" id="nbTopDangerRow"><span class="nbTbSlot" id="nbTopDanger"></span>
-			<?php if (!$meta->isSystem() && $canDeleteForm): ?>
-				<button class="btn btn-sm btn-outline-danger" type="button" id="nbDeleteForm"><i class="bi bi-trash me-1"></i><?= h(t('builder_delete_form')) ?></button>
-			<?php endif; ?></div>
-		</div>
-	</div>
-
-	<?php // one row above the workspace (0.8.531): the form's sections as tabs on the left, the draft bar (form drafts, 0.8.386) on the right ?>
-	<div class="nbBar mb-3" id="nbBar">
-		<ul class="nav nav-tabs nbSections" role="list">
-			<?php // 0.8.563: the objects list only on Objects, Tabs inside Form settings; 0.8.564 order Form settings · Browse · Objects · Code · History ?>
-			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="form"><i class="bi bi-sliders me-1"></i><?= h(t('builder_sec_form')) ?></button></li>
-			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="browse" id="nbSecBrowse"><i class="bi bi-table me-1"></i><?= h(t('builder_sec_browse')) ?></button></li>
-			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="objects"><i class="bi bi-ui-checks-grid me-1"></i><?= h(t('builder_objects')) ?></button></li>
-			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="code"><i class="bi bi-code-slash me-1"></i><?= h(t('builder_sec_code')) ?></button></li>
-			<li class="nav-item"><button type="button" class="nav-link" data-nb-section="history"><i class="bi bi-clock-history me-1"></i><?= h(t('builder_sec_history')) ?></button></li>
-		</ul>
-		<?php if (!$meta->isSystem() || $meta->isUserHome()): ?><div class="nbDraftBar" id="nbDraftBar" hidden></div><?php endif; ?>
-	</div>
-	<div class="row g-3 nbWorkspace" id="nbWorkspace" data-nb-view="objects">
-		<div class="col-xl-3 col-lg-4 nbObjectsCol" id="nbObjectsCol">
-			<div class="card shadow-sm nbSidebar">
-				<div class="card-body pb-2">
-					<div class="d-flex align-items-center justify-content-between mb-2">
-						<h2 class="h6 mb-0"><?= h(t('builder_objects')) ?> <span class="badge text-bg-secondary" id="nbObjCount">0</span></h2>
-						<div class="dropdown">
-							<button class="btn btn-sm nuAddBtn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="nbAddObject"<?= ($meta->isSystem() && !$meta->isUserHome()) || !$canSave ? ' disabled' : '' ?>><i class="bi bi-plus-lg"></i> <?= h(t('add')) ?></button>
-							<ul class="dropdown-menu dropdown-menu-end nbAddMenu"></ul>
-						</div>
-					</div>
-					<div class="d-flex gap-2 mb-2">
-						<select class="form-select form-select-sm" id="nbTabFilter" aria-label="<?= h(t('builder_sec_tabs')) ?>"></select>
-						<input type="search" class="form-control form-control-sm" id="nbObjSearch" placeholder="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>">
-					</div>
-				</div>
-				<ul class="list-group list-group-flush nbObjectList" id="nbObjectList" role="listbox" aria-label="<?= h(t('builder_objects')) ?>"></ul>
-			</div>
-		</div>
-
-		<div class="col-xl-4 col-lg-8 nbPanelCol" id="nbPanelCol">
-			<div class="card shadow-sm nbPanel">
-				<div class="card-header d-flex align-items-center gap-2">
-					<span class="fw-semibold me-auto" id="nbPanelTitle"></span>
-					<span class="small text-success d-none" id="nbSavedHint"><i class="bi bi-check-circle me-1"></i><?= h(t('saved')) ?></span>
-				</div>
-				<div class="card-body" id="nbPanel"></div>
-			</div>
-		</div>
-
-		<?php // splitter (0.8.565): Code view from 1200 px – drag, arrow keys, double-click = back to the default; remembered in localStorage ?>
-		<div class="nbSplit" id="nbSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-controls="nbPanelCol nbPreviewCol"
-			aria-valuemin="25" aria-valuemax="80" aria-valuenow="60" aria-label="<?= h(t('builder_split')) ?>" title="<?= h(t('builder_split_tip')) ?>"></div>
-		<div class="col-xl-5 nbPreviewCol" id="nbPreviewCol">
-			<div class="card shadow-sm nbPreviewCard">
-				<div class="card-header d-flex flex-wrap align-items-center gap-2">
-					<button class="btn btn-sm btn-outline-secondary nbPreviewToggle" type="button" id="nbPreviewToggle" aria-controls="nbPreviewBody" aria-expanded="true"
-						data-show="<?= h(t('builder_preview_show')) ?>" data-hide="<?= h(t('builder_preview_hide')) ?>" title="<?= h(t('builder_preview_hide')) ?>" aria-label="<?= h(t('builder_preview_hide')) ?>"><i class="bi bi-chevron-bar-right"></i></button>
-					<span class="fw-semibold me-auto nbPreviewTitle"><i class="bi bi-eye me-1"></i><?= h(t('builder_preview')) ?></span>
-					<?php // Browse and edit forms: the preview shows the list or a record (0.8.439, nubuilder.js previewMode) ?>
-					<div class="btn-group btn-group-sm d-none" id="nbPreviewMode" role="group" aria-label="<?= h(t('builder_pv_mode')) ?>">
-						<button type="button" class="btn btn-outline-secondary" data-mode="browse" aria-pressed="false"><i class="bi bi-list-ul me-1"></i><?= h(t('builder_pv_browse')) ?></button>
-						<button type="button" class="btn btn-outline-secondary" data-mode="edit" aria-pressed="false"><i class="bi bi-pencil-square me-1"></i><?= h(t('builder_pv_edit')) ?></button>
-					</div>
-					<label class="small text-body-secondary" for="nbPreviewRecord"><?= h(t('builder_record')) ?></label>
-					<input class="form-control form-control-sm nbPreviewRecord" id="nbPreviewRecord" value="">
-					<select class="form-select form-select-sm nbPreviewLayout" id="nbPreviewLayout" aria-label="<?= h(t('form_layout')) ?>">
-						<option value=""><?= h(t('builder_layout_saved')) ?></option>
-						<option value="absolute"><?= h(t('form_layout_absolute')) ?></option>
-						<option value="auto"><?= h(t('form_layout_auto')) ?></option>
-						<option value="grid"><?= h(t('form_layout_grid')) ?></option>
-					</select>
-					<?php // tab order (0.8.521): numbers on the objects of the preview, like nuBuilder's arrange mode ?>
-					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbTabOrder" aria-pressed="false" title="<?= h(t('builder_taborder')) ?>" aria-label="<?= h(t('builder_taborder')) ?>"><i class="bi bi-123"></i></button>
-					<button class="btn btn-sm btn-outline-secondary" type="button" id="nbPreviewReload" title="<?= h(t('builder_reload')) ?>" aria-label="<?= h(t('builder_reload')) ?>"><i class="bi bi-arrow-clockwise"></i></button>
-				</div>
-				<div class="nbPreviewBody" id="nbPreviewBody">
-					<?php if ((!$meta->isSystem() || $meta->isUserHome()) && $canSave): ?><div class="small text-body-secondary px-3 py-1 border-bottom" id="nbDesignerHint"><i class="bi bi-arrows-move me-1"></i><?= h(t('builder_designer_hint')) ?></div><?php endif; ?>
-					<iframe class="nbPreview" id="nbPreview" title="<?= h(t('builder_preview')) ?>"></iframe>
-				</div>
-			</div>
-		</div>
-	</div>
-	<?php if (!$meta->isSystem() && $canDeleteForm):   // "Delete form" (0.8.245, globeadmin only since 0.8.246): optionally with its table – then the table name must be typed (assets/js/nubuilder.js) ?>
-	<div class="modal fade" id="nbDeleteModal" tabindex="-1" aria-labelledby="nbDeleteTitle" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h1 class="modal-title fs-5" id="nbDeleteTitle"><i class="bi bi-trash me-2"></i><?= h(t('builder_delete_form')) ?></h1>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button>
-				</div>
-				<div class="modal-body">
-					<p><?= h(t('builder_delete_form_text')) ?></p>
-					<div class="small text-body-secondary d-none" id="nbDelTableNote"></div>
-					<div class="d-none" id="nbDelTableBox">
-						<div class="form-check">
-							<input class="form-check-input" type="checkbox" id="nbDelTable">
-							<label class="form-check-label" for="nbDelTable" id="nbDelTableLabel"></label>
-						</div>
-						<div class="d-none mt-2" id="nbDelConfirmBox">
-							<div class="alert alert-danger py-2 small mb-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('builder_drop_warning')) ?></div>
-							<label class="form-label small" for="nbDelTyped" id="nbDelTypedLabel"></label>
-							<input class="form-control font-monospace" type="text" id="nbDelTyped" autocomplete="off" autocapitalize="off" spellcheck="false">
-						</div>
-						<div class="alert alert-warning py-2 small mt-2 mb-0 d-none" id="nbDelReauth"><i class="bi bi-shield-lock me-1"></i><?= h(t('builder_drop_reauth')) ?>
-							<a class="alert-link" href="#" id="nbDelReauthLink"><?= h(t('builder_drop_reauth_link')) ?></a></div>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
-					<button type="button" class="btn btn-danger" id="nbDelOk"><i class="bi bi-trash me-1"></i><span id="nbDelOkText"><?= h(t('builder_delete_form')) ?></span></button>
-				</div>
-			</div>
-		</div>
-	</div>
-	<?php endif; ?>
 <?php endif; ?>
 <?php
 nu_layout_end($foot);

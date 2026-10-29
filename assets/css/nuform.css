@@ -178,6 +178,7 @@ img.nuImage { max-width: 100%; height: auto; display: block; }
 .nuFilterActive { border-color: var(--bs-primary); box-shadow: 0 0 0 .1rem rgba(var(--bs-primary-rgb), .25); }
 .nuBrowseFilterSelect { margin-top: .25rem; }
 .nuBrowseTitle.nuFiltered > a { color: var(--bs-primary); }
+/* column widths by dragging a title (0.8.650): the rules are in nuapp.css ("column widths", nuColResize) – the browse titles are th.nuBrowseTitle */
 
 /* print view (new tab from Print): only title, Print / Export CSV and the table – like nuBuilder */
 .nuPrintHead { padding: .25rem 0; }
@@ -427,3 +428,16 @@ input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-prima
 /* nuAttachSaveButtonTo(id, dx, dy, height, width) with a size (0.8.633): one line, centred; without the icon when the label needs the room */
 .btn.nuSaveSized { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-inline: .45rem; line-height: 1; font-size: .875rem; }
 .btn.nuSaveSized.nuSaveNoIcon > .bi { display: none; }
+/* Arrange panel: spacing with a fixed gap (0.8.664) */
+.nuArrangeGaps { display: grid; gap: .25rem; margin-top: .35rem; padding-top: .35rem; border-top: 1px solid var(--bs-border-color); }
+.nuArrangeGapRow .form-control { min-width: 3.5rem; }
+.nuArrangeGapRow .nuArrangeBtn { flex: 0 0 auto; }
+/* designer: a content box is picked by its frame and title, the objects inside it stay selectable (0.8.665) */
+.nuDesignOverlayBox { pointer-events: none; }
+.nuDesignOverlayBox:has(> .nuDesignEdge:hover) { outline: 1px dashed rgba(var(--bs-primary-rgb), .6); }
+.nuDesignEdge { position: absolute; pointer-events: auto; cursor: move; }
+.nuDesignEdgeT { top: -.9rem; left: 0; right: 0; height: 1.75rem; }
+.nuDesignEdgeB { bottom: 0; left: 0; right: 0; height: 8px; }
+.nuDesignEdgeL { top: 0; bottom: 0; left: 0; width: 8px; }
+.nuDesignEdgeR { top: 0; bottom: 0; right: 0; width: 8px; }
+.nuDesigning .nuWrap_contentbox > .nuDesignHandle { pointer-events: auto; }

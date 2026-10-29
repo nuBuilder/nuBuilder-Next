@@ -79,7 +79,10 @@ final class NuFormMeta
 			[$tabOrder[$a['sob_all_zzzzsys_tab_id']] ?? 999, (int)($a['sob_all_order'] ?? 0), (int)($a['sob_all_top'] ?? 0), (int)($a['sob_all_left'] ?? 0)]
 			<=> [$tabOrder[$b['sob_all_zzzzsys_tab_id']] ?? 999, (int)($b['sob_all_order'] ?? 0), (int)($b['sob_all_top'] ?? 0), (int)($b['sob_all_left'] ?? 0)]);
 
+		// a draft's new rows hold only the columns that were set (NuDraftStore::row): the others are NULL, as in the table (0.8.663)
+		$blank = $snap !== null ? array_fill_keys(array_keys($db->columns('zzzzsys_object') ?: []), null) : [];
 		foreach ($objects as $o) {
+			if ($blank) $o += $blank;
 			$o['nunext'] = self::nunextJson($o['sob_all_json'] ?? null);
 			$o['tab_index'] = $tabOrder[$o['sob_all_zzzzsys_tab_id']] ?? 0;
 			$this->objects[] = $o;

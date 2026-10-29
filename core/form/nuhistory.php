@@ -43,6 +43,16 @@ final class NuFormHistory
 			'created_at DESC, zzzzsys_nunext_form_history_id DESC', $limit, 0);
 	}
 
+	/** The stored snapshot of a history row (design mode's compare, 0.8.668). */
+	public static function get(string $formId, string $historyId): array
+	{
+		NuSchema::ensure();
+		$row = nu_db()->one('SELECT snapshot FROM zzzzsys_nunext_form_history WHERE zzzzsys_nunext_form_history_id = ? AND form_id = ?', [$historyId, $formId]);
+		$snap = $row ? json_decode((string)$row['snapshot'], true) : null;
+		if (!is_array($snap) || empty($snap['form'])) throw new RuntimeException(t('record_not_found'));
+		return $snap;
+	}
+
 	/** Restores a snapshot (the current state is saved first, so a restore can be undone). */
 	public static function restore(string $formId, string $historyId): void
 	{

@@ -214,9 +214,14 @@ nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : 
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	?>
-	<?php if ($isTemplate): ?><div class="alert alert-info small py-2"><i class="bi bi-info-circle me-1"></i><?= h(t('emt_is_template')) ?><?php
+	<?php // read-only: nuBuilder Next's welcome templates (group nunext, 0.8.658) or one shipped with nuBuilder Forte; Forte's welcome template sends a
+	// password, nuBuilder Next does not use it (NuWelcome)
+	$isNext = $isTemplate && (string)($tpl['emt_group'] ?? '') === NuWelcome::STD_GROUP && (string)$tpl['emt_code'] === NuWelcome::STD;
+	$isForteWelcome = $isTemplate && !$isNext && (string)$tpl['emt_code'] === NuWelcome::STD; ?>
+	<?php if ($isTemplate): ?><div class="alert alert-info small py-2"><i class="bi bi-info-circle me-1"></i><?= h(t($isNext ? 'emt_is_template_next' : 'emt_is_template')) ?><?php
 		$cloneCode = preg_replace('/_template$/', '', (string)$tpl['emt_code']);
 		if ($cloneCode !== (string)$tpl['emt_code']): ?> <?= h(t('emt_clone_code', $cloneCode)) ?><?php endif; ?></div><?php endif; ?>
+	<?php if ($isForteWelcome): ?><div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('emt_forte_welcome')) ?></div><?php endif; ?>
 	<?php if ($tpl && !$isTemplate && (string)$tpl['emt_code'] === NuWelcome::TEMPLATE): ?>
 		<div class="alert alert-secondary small py-2"><i class="bi bi-envelope-check me-1"></i><?= h(t('emt_welcome_hint')) ?></div>
 	<?php endif; ?>

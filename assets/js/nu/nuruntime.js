@@ -1530,9 +1530,30 @@
 	api('nuBrowseLoop', function (cols, fn) {
 		arr(cols).forEach(function (c) { $('td.nuCell[data-nu-column="' + c + '"]').each(function () { fn(this); }); });
 	});
+	// column widths by dragging the title (0.8.650, as nuBuilder Forte) – window.nuColResize of assets/js/nuapp.js (also the system lists, 0.8.651):
+	// kept for this browser tab per form and lookup (sessionStorage), restored after nuOnLoad (the widths of this tab win over the form's code);
+	// the cells of a column = its data-nu-column elements (the browse cells have a max-width of their own); nuDisableBrowseResize() switches it off
+	var BR = {ctl: null, off: false};
+	function brTable() { return document.getElementById('nuBrowseTable'); }
+	function brInit() {
+		var t = brTable();
+		if (BR.ctl || !t || N.mode !== 'browse' || typeof window.nuColResize !== 'function') return BR.ctl;
+		BR.ctl = window.nuColResize(t, {key: 'nunext-browse-w:' + N.form.id + (N.lookup ? ':lookup' : ''), titles: 'thead th.nuBrowseTitle',
+			id: function (th) { return th.getAttribute('data-nu-column'); }, cells: function (c) { return t.querySelectorAll('[data-nu-column="' + c + '"]'); },
+			fixedClass: 'nuBrowseFixed'});
+		if (BR.ctl && BR.off) BR.ctl.off();
+		return BR.ctl;
+	}
+	function brRestore() { if (brInit() && !BR.off) BR.ctl.restore(); }
+	$(brInit);
+	api('nuDisableBrowseResize', function () {
+		BR.off = true;
+		if (BR.ctl) BR.ctl.off();
+	});
 	api('nuSetBrowseColumnSize', function (c, w) {
 		var cells = $('[data-nu-column="' + c + '"]');
-		if (+w === 0) cells.hide(); else cells.show().css('width', w + 'px');
+		if (+w === 0) cells.hide(); else { cells.show().css('width', w + 'px'); if (BR.ctl) BR.ctl.set(String(c), w); }
+		if (BR.ctl) BR.ctl.fit();
 	});
 
 	function openRow(tr, newTab) {
@@ -1698,6 +1719,7 @@
 				});
 		}
 		function change(o, fields) {
+			if (N.objMenuHook) { N.objMenuHook('save', o, fields); return; }      // design mode (0.8.664): its draft, its reload
 			if (N.edited && !window.confirm(T.unsaved)) return;
 			builderCall('object.save', {object_id: o.object_id, fields: fields}).then(function () { N.edited = false; window.location.reload(); })
 				.catch(function (e) { nuMessage([esc(e.message)]); });
@@ -1748,6 +1770,7 @@
 				return item('bi-folder2', t[1] || t[0], function () { change(o, {sob_all_zzzzsys_tab_id: t[0]}); });
 			});
 			var actions = [item('bi-trash', T.delete, function () {
+				if (N.objMenuHook) { N.objMenuHook('delete', o); return; }
 				if (!window.confirm(T.delete_confirm.replace('%s', id))) return;
 				if (N.edited && !window.confirm(T.unsaved)) return;
 				builderCall('object.delete', {object_id: o.object_id}).then(function () { N.edited = false; window.location.reload(); })
@@ -1764,7 +1787,7 @@
 
 			menu = $('<ul class="dropdown-menu show nuObjMenu shadow" role="menu"></ul>').append(
 				head, divider(),
-				item('bi-sliders', T.properties, function () { window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id), '_blank'); }),
+				item('bi-sliders', T.properties, function () { if (N.objMenuHook) { N.objMenuHook('properties', o); return; } window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id), '_blank'); }),
 				item('bi-input-cursor-text', T.rename, function () {
 					var cur = labelText(id);
 					var v = window.prompt(T.rename_prompt.replace('%s', id), cur);
@@ -1811,6 +1834,7 @@
 			if (!x && !y) { var r = this.getBoundingClientRect(); x = r.left + 8; y = r.bottom; }   // from the keyboard
 			open(id, x, y);
 		});
+		N.objMenuOpen = open;                                                // design mode opens it from the object's overlay (0.8.664)
 		$(document).on('click', function (e) { if (menu && !$(e.target).closest('.nuObjMenu').length) close(); });
 		// keys while the menu is open: on window in the capture phase – before Bootstrap's dropdown handler (capture on document),
 		// which would look for a toggle button of our menu and fail
@@ -3430,6 +3454,7 @@
 		// nuBuilder: global load hooks (setup header), then the form's nuOnLoad(formId, formCode)
 		callHook(N.mode === 'browse' ? 'nuLoadBrowseGlobal' : 'nuLoadEditGlobal', N.form.id, N.form.code);
 		callHook('nuOnLoad', N.form.id, N.form.code);
+		brRestore();                                                       // column widths dragged in this tab (0.8.650)
 		if (typeof window.nuNextPageHook === 'function') window.nuNextPageHook();   // Global JS: nuOnPageLoad / nu:pageload after nuOnLoad (0.8.523)
 		if (N.mode === 'edit') {                                            // nuAfterSave of the save that reloaded this page (0.8.383)
 			try {

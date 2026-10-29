@@ -16,7 +16,7 @@ const FAIL = (process.env.LEVEL || 'critical,serious').split(',');
 const ROUTES = ['login', 'home', 'users', 'user&id=new', 'access', 'accesslevel', 'permissions', 'forms', 'builder&new=1', 'items', 'files', 'formats',
 	'translations', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'import', 'email', 'emailtemplates', 'log', 'sessions', 'vendor', 'settings',
 	'branding', 'dashboards', 'configfile', 'help', 'tutorial', 'compat', 'update', 'sample', 'securitycheck', 'audit', 'notifications',
-	'notifications&tab=manage', 'apiclients', 'adminroles', 'form&f=samplecustomer', 'form&f=samplecustomer&r=-1', 'form&f=sampleorder&r=-1', 'form&f=sampleall&r=-1'];
+	'notifications&tab=manage', 'apiclients', 'adminroles', 'form&f=samplecustomer', 'form&f=samplecustomer&r=-1', 'form&f=sampleorder&r=-1', 'form&f=sampleall&r=-1', 'form&f=samplecustomer&r=-1&design=1'];
 const ONLY = (process.env.ONLY || '').split(',').filter(Boolean);
 const src = fs.readFileSync(AXE, 'utf8');
 

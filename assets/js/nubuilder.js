@@ -1,4 +1,5 @@
-/* nuBuilder Next form builder: object list + properties panel + live preview. Talks to index.php?p=builderapi. */
+/* nuBuilder Next: the "New form" wizard (index.php?p=builder&new=1). Forms are changed in design mode on the form page (0.8.670,
+ * assets/js/nu/nudesign.js) – the former builder (object list, properties panel, preview) was replaced by it. Talks to index.php?p=builderapi. */
 (function () {
 	'use strict';
 
@@ -7,6 +8,139 @@
 	function t(k) { return L[k] || k; }
 
 	// ------------------------------------------------------------------ helpers
+	// chosen columns of an existing table (0.8.675): object yes / no, label, list column, order (drag, arrows, Alt+↑ / ↓).
+	// Untouched, nothing is sent and the server makes its default (every column, the auto key left out, six list columns).
+	function pickList() {
+		var wrap = $('#nbPickWrap'), body = $('#nbPickRows'), all = $('#nbPickAll'), allL = $('#nbPickAllList');
+		var cols = [], touched = false, dragged = null;
+		var TEXT = ['text', 'mediumtext', 'longtext', 'ntext'];
+		function rows() { return $$('tr', body); }
+		function autoPk() {
+			var v = $('#nb_pk').value;
+			var a = cols.filter(function (c) { return c.auto; })[0];
+			return v === '' ? (a ? a.name : '') : (cols.filter(function (c) { return c.name === v && c.auto; })[0] ? v : '');
+		}
+		function sync() {
+			var r = rows(), on = r.filter(function (x) { return $('.nbPickOn', x).checked; });
+			var ls = on.filter(function (x) { return $('.nbPickList', x).checked; });
+			$('#nbPickCount').textContent = t('builder_pick_count').replace('%s', String(on.length)).replace('%s', String(r.length));
+			all.checked = r.length > 0 && on.length === r.length; all.indeterminate = on.length > 0 && on.length < r.length;
+			allL.checked = on.length > 0 && ls.length === on.length; allL.indeterminate = ls.length > 0 && ls.length < on.length;
+			allL.disabled = on.length === 0;
+			r.forEach(function (x, i) {
+				var off = !$('.nbPickOn', x).checked;
+				x.classList.toggle('nbPickOff', off);
+				$('.nbPickList', x).disabled = off; $('.nbPickLabel', x).disabled = off;
+				$('.nbPickUp', x).disabled = i === 0; $('.nbPickDown', x).disabled = i === r.length - 1;
+			});
+		}
+		function touch() { touched = true; sync(); }
+		function move(tr, dir, focusCls) {
+			var to = dir < 0 ? tr.previousElementSibling : tr.nextElementSibling;
+			if (!to) return;
+			body.insertBefore(tr, dir < 0 ? to : to.nextElementSibling);
+			touch();
+			var f = $(focusCls || '.nbPickUp', tr);
+			if (f && f.disabled) f = $(dir < 0 ? '.nbPickDown' : '.nbPickUp', tr);
+			if (f) f.focus();
+		}
+		function row(c, on, list) {
+			var tr = h('tr', {'data-name': c.name});
+			var cb = h('input', {type: 'checkbox', 'class': 'form-check-input nbPickOn', 'aria-label': t('builder_pick_obj') + ': ' + c.name});
+			cb.checked = on;
+			var lb = h('input', {'class': 'form-control form-control-sm nbPickLabel', maxlength: 100, placeholder: c.label || c.name, 'aria-label': t('builder_obj_label') + ': ' + c.name});
+			var ls = h('input', {type: 'checkbox', 'class': 'form-check-input nbPickList', 'aria-label': t('builder_pick_list') + ': ' + c.name});
+			ls.checked = list;
+			var up = h('button', {type: 'button', 'class': 'btn btn-link btn-sm px-1 nbPickUp', title: t('builder_pick_up'), 'aria-label': t('builder_pick_up')}, [h('i', {'class': 'bi bi-arrow-up'})]);
+			var dn = h('button', {type: 'button', 'class': 'btn btn-link btn-sm px-1 nbPickDown', title: t('builder_pick_down'), 'aria-label': t('builder_pick_down')}, [h('i', {'class': 'bi bi-arrow-down'})]);
+			up.addEventListener('click', function () { move(tr, -1, '.nbPickUp'); });
+			dn.addEventListener('click', function () { move(tr, 1, '.nbPickDown'); });
+			[cb, ls].forEach(function (x) { x.addEventListener('change', touch); });
+			lb.addEventListener('input', function () { touched = true; });
+			tr.addEventListener('keydown', function (e) {
+				if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+				e.preventDefault();
+				var keep = document.activeElement;
+				move(tr, e.key === 'ArrowUp' ? -1 : 1);
+				if (keep && tr.contains(keep)) keep.focus();
+			});
+			// only the grip is draggable (the row is the drag image) – text in the label field stays selectable
+			var grip = h('span', {'class': 'nbPickGrip me-1', title: t('builder_pick_drag'), 'aria-hidden': 'true', draggable: 'true'}, [h('i', {'class': 'bi bi-grip-vertical'})]);
+			grip.addEventListener('dragstart', function (e) {
+				dragged = tr; tr.classList.add('nbPickDragging');
+				try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.setDragImage(tr, 10, 10); } catch (x) { /* old browsers */ }
+			});
+			grip.addEventListener('dragend', function () { tr.classList.remove('nbPickDragging'); dragged = null; touch(); });
+			tr.appendChild(h('td', {'class': 'nbPickC'}, [grip, cb]));
+			tr.appendChild(h('td', {}, [h('code', {'class': 'nbPickName', text: c.name}), h('span', {'class': 'small text-body-secondary ms-1', text: c.type || ''})]));
+			tr.appendChild(h('td', {}, [lb]));
+			tr.appendChild(h('td', {'class': 'text-center'}, [ls]));
+			tr.appendChild(h('td', {'class': 'text-nowrap text-end'}, [up, dn]));
+			return tr;
+		}
+		function defaults() {
+			body.innerHTML = '';
+			var pk = autoPk(), n = 0;
+			cols.forEach(function (c) {
+				var on = c.name !== pk;
+				var list = on && n < 6 && TEXT.indexOf(String(c.type).toLowerCase()) < 0;
+				if (list) n++;
+				body.appendChild(row(c, on, list));
+			});
+			touched = false;
+			sync();
+		}
+		body.addEventListener('dragover', function (e) {
+			if (!dragged) return;
+			e.preventDefault();
+			var over = e.target.closest ? e.target.closest('tr') : null;
+			if (!over || over === dragged || over.parentNode !== body) return;
+			var b = over.getBoundingClientRect();
+			body.insertBefore(dragged, e.clientY > b.top + b.height / 2 ? over.nextElementSibling : over);
+		});
+		body.addEventListener('drop', function (e) { if (dragged) e.preventDefault(); });
+		all.addEventListener('change', function () { rows().forEach(function (x) { $('.nbPickOn', x).checked = all.checked; }); touch(); });
+		allL.addEventListener('change', function () { rows().forEach(function (x) { if ($('.nbPickOn', x).checked) $('.nbPickList', x).checked = allL.checked; }); touch(); });
+		$('#nbPickReset').addEventListener('click', defaults);
+		$('#nb_pk').addEventListener('change', function () { if (!touched) defaults(); });
+		var gen = $('#nb_generate');
+		function genSync() { wrap.hidden = !cols.length || !gen.checked; }
+		gen.addEventListener('change', genSync);
+		return {
+			build: function (c) { cols = c || []; defaults(); genSync(); },
+			touched: function () { return touched; },
+			value: function () {
+				return rows().filter(function (x) { return $('.nbPickOn', x).checked; }).map(function (x) {
+					return {name: x.getAttribute('data-name'), label: $('.nbPickLabel', x).value.trim(), browse: $('.nbPickList', x).checked};
+				});
+			}
+		};
+	}
+
+	// access levels of the wizard (0.8.674): "Select all" ticks / clears the levels shown, the group select filters by sal_group
+	function levelsBar() {
+		var all = document.getElementById('nbLvAll');
+		if (!all) return;
+		var grp = document.getElementById('nbLvGroup'), cnt = document.getElementById('nbLvCount');
+		var rows = $$('.nbLevelRow');
+		function shown() { return rows.filter(function (r) { return !r.hidden; }).map(function (r) { return r.querySelector('.nbLevel'); }); }
+		function sync() {
+			var v = shown(), on = v.filter(function (x) { return x.checked; }).length;
+			all.checked = v.length > 0 && on === v.length;
+			all.indeterminate = on > 0 && on < v.length;
+			all.disabled = v.length === 0;
+			var n = $$('.nbLevel:checked').length;
+			if (cnt) cnt.textContent = t('builder_levels_count').replace('%s', String(n)).replace('%s', String(rows.length));
+		}
+		all.addEventListener('change', function () { shown().forEach(function (x) { x.checked = all.checked; }); sync(); });
+		if (grp) grp.addEventListener('change', function () {
+			rows.forEach(function (r) { r.hidden = grp.value !== '*' && r.getAttribute('data-group') !== grp.value; });
+			sync();
+		});
+		rows.forEach(function (r) { r.querySelector('.nbLevel').addEventListener('change', sync); });
+		sync();
+	}
+
 	function h(tag, attrs, kids) {
 		var e = document.createElement(tag);
 		Object.keys(attrs || {}).forEach(function (k) {
@@ -31,48 +165,21 @@
 		var b = h('button', {type: 'button', 'class': cls || 'btn btn-link btn-sm px-1 text-danger', title: t('remove'), 'aria-label': t('remove'), 'aria-pressed': 'false'}, [h('i', {'class': 'bi bi-x-circle'})]);
 		b.addEventListener('click', function () {
 			window.nuToggleRemoved(row, b, {remove: t('remove'), undo: t('remove_undo'), pending: t('remove_pending')});
-			setDirty(true);
 		});
 		return b;
 	}
 
-	// form drafts (0.8.386): DR = the draft the builder works on (draft mode), LD = the open draft shown in live mode
-	var DR = D.draft_mode ? D.draft : null, LD = D.draft_mode ? null : (D.draft || null);
-	var DP = D.draft_policy || {};
-
 	function api(action, data) {
-		data = data || {};
-		var send = Object.assign({action: action, form_id: D.form_id}, DR && !data.no_draft ? {draft_id: DR.id, rev: DR.rev} : {}, data);
 		return fetch('index.php?p=builderapi', {
 			method: 'POST', credentials: 'same-origin',
 			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf},
-			body: JSON.stringify(send)
+			body: JSON.stringify(Object.assign({action: action}, data || {}))
 		}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); })
-			.then(function (j) {
-				if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok) {          // live change while a draft is open (globeadmin)
-					if (window.confirm(j.error)) return api(action, Object.assign({}, data, {live_ok: true}));
-					throw new Error('');
-				}
-				if (!j.ok && j.code === 'draft_rev' && DR) {                             // changed by somebody else meanwhile: reload
-					return api('state', {}).then(function (st) { if (window.nbLoad) window.nbLoad(st); throw new Error(j.error); });
-				}
-				if (!j.ok) throw new Error(j.error || 'Error');
-				if (DR && j.draft) DR = j.draft;
-				if (!DR && j.live_draft !== undefined) LD = j.live_draft;
-				if (window.nbRenderDraftBar) window.nbRenderDraftBar();
-				return j;
-			});
-	}
-
-	function flash(ok, msg) {
-		var hint = $('#nbSavedHint');
-		if (ok && hint) { hint.classList.remove('d-none'); clearTimeout(flash.t); flash.t = setTimeout(function () { hint.classList.add('d-none'); }, 2200); }
-		var box = $('#nbPanelError');
-		if (box) { box.classList.toggle('d-none', ok); box.textContent = ok ? '' : msg; }
+			.then(function (j) { if (!j.ok) throw new Error(j.error || 'Error'); return j; });
 	}
 
 	// ------------------------------------------------------------------ "new form" wizard
-	if (D['new']) {
+	if (D['new'] || document.getElementById('nbNewForm')) {
 		var form = $('#nbNewForm');
 		var stale = $('#nbStale');
 		if (stale) stale.remove();                    // this script is current: no "outdated files" warning
@@ -90,7 +197,48 @@
 			if (mode() === 'new' && !$('#nbColRows').children.length) addCol();
 			var after = $('.nbAfter');                              // User Home button / access levels (0.8.602): not for sub-forms
 			if (after) after.classList.toggle('d-none', $('#nb_type').value === 'subform');
+			var noTable = $('.nbNoTable');                          // step 2 of a launch / page form: nothing to choose (0.8.663)
+			if (noTable) noTable.classList.toggle('d-none', !launch);
 		}
+
+		// three steps (0.8.663): Form · Table and fields · Layout and access; Next checks the step, Enter = Next until the last one
+		var step = 1;
+		function showStep(n) {
+			step = n;
+			$$('.nbStep').forEach(function (e) { e.hidden = +e.getAttribute('data-step') !== n; });
+			$$('.nbStepMark').forEach(function (li) {
+				var k = +li.getAttribute('data-step');
+				li.classList.toggle('active', k === n);
+				li.classList.toggle('done', k < n);
+				if (k === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+			});
+			$('#nbStepBack').hidden = n === 1;
+			$('#nbStepNext').hidden = n === 3;
+			$('#nbCreate').hidden = n !== 3;
+			$('#nbNewError').classList.add('d-none');
+			var first = $$('.nbStep[data-step="' + n + '"] input:not([type=radio]):not([type=checkbox]), .nbStep[data-step="' + n + '"] select').filter(function (x) { return x.offsetParent !== null; })[0];
+			if (first && n > 1) first.focus();
+		}
+		function stepError(msg) { var err = $('#nbNewError'); err.textContent = msg; err.classList.remove('d-none'); }
+		function stepOk(n) {
+			if (n === 1) return [$('#nb_desc'), $('#nb_code')].every(function (x) { x.value = x.value.trim(); return x.reportValidity(); });
+			if (n === 2 && !$('.nbTableSection').classList.contains('d-none')) {
+				if (mode() === 'existing' && !$('#nb_table').value) { stepError(t('builder_nf_err_table')); return false; }
+				if (mode() === 'new') {
+					var tn = $('#nb_new_table');
+					tn.value = tn.value.trim();
+					if (!tn.value) { stepError(t('builder_nf_err_table')); tn.focus(); return false; }
+					if (!tn.reportValidity()) return false;
+					if (existingTables.indexOf(tn.value.toLowerCase()) >= 0) { stepError(t('builder_err_table_exists').replace('%s', tn.value)); return false; }
+				}
+			}
+			return true;
+		}
+		$('#nbStepNext').addEventListener('click', function () { if (stepOk(step)) showStep(step + 1); });
+		$('#nbStepBack').addEventListener('click', function () { showStep(Math.max(1, step - 1)); });
+		$$('.nbStepMark').forEach(function (li) {
+			li.addEventListener('click', function () { var k = +li.getAttribute('data-step'); if (k < step) showStep(k); });
+		});
 		$$('input[name=table_mode]').forEach(function (r) { r.addEventListener('change', applyMode); });
 		$('#nb_type').addEventListener('change', applyMode);
 
@@ -109,14 +257,18 @@
 			pk.innerHTML = '';
 			pk.appendChild(h('option', {value: '', text: t('builder_pk_auto')}));
 			info.textContent = '';
+			pick.build([]);
 			if (!this.value) return;
 			api('columns', {table: this.value}).then(function (r) {
+				pick.build(r.columns);
 				var auto = r.columns.filter(function (c) { return c.auto; })[0];
 				r.columns.forEach(function (c) { pk.appendChild(h('option', {value: c.name, text: c.name + (c.auto ? ' (auto)' : '')})); });
 				pk.options[0].textContent = t('builder_pk_auto') + (auto ? ': ' + auto.name : '');
 				info.textContent = t('builder_columns_found').replace('%d', r.columns.length);
 			}).catch(function (e) { info.textContent = e.message; });
 		});
+
+		var pick = pickList();
 
 		// new table: column grid
 		function addCol(c) {
@@ -170,6 +322,7 @@
 
 		form.addEventListener('submit', function (e) {
 			e.preventDefault();
+			if (step < 3) { if (stepOk(step)) showStep(step + 1); return; }
 			var err = $('#nbNewError');
 			err.classList.add('d-none');
 			var d = {description: $('#nb_desc').value.trim(), code: $('#nb_code').value.trim(), type: $('#nb_type').value, layout: $('#nb_layout').value, table_mode: mode()};
@@ -177,6 +330,7 @@
 				d.table = $('#nb_table').value;
 				d.primary_key = $('#nb_pk').value;
 				d.generate = $('#nb_generate').checked;
+				if (d.generate && pick.touched()) d.pick = pick.value();
 			} else {
 				d.table = $('#nb_new_table').value.trim();
 				d.primary_key = $('#nb_new_pk').value.trim();
@@ -198,1502 +352,14 @@
 			d.levels = $$('.nbLevel:checked').map(function (x) { return x.value; });
 			var btn = form.querySelector('button[type=submit]');
 			btn.disabled = true;
-			api('form.create', d).then(function (r) { window.location.href = 'index.php?p=builder&f=' + encodeURIComponent(r.form_id); })
+			api('form.create', d).then(function (r) {
+				// the new form opens in design mode (0.8.670: pages/nubuilder.php → NuDesign::fromBuilder; page forms: their own editor)
+				window.location.href = 'index.php?p=builder&f=' + encodeURIComponent(r.form_id);
+			})
 				.catch(function (x) { err.textContent = x.message; err.classList.remove('d-none'); btn.disabled = false; });
 		});
+		levelsBar();
 		applyMode();
 		return;
 	}
-
-	// ------------------------------------------------------------------ workspace state
-	var S = null;                    // server state: form, tabs, objects, browse, events, php, lookup_php
-	var sel = {kind: 'form'};        // {kind: form|code|tabs|browse|object, id}
-	var RO = !!D.readonly;
-	var PART = !!D.partial;   // nuBuilder Forte's User Home (0.8.605): tabs, objects, events and Before Edit only – no form settings
-	var tableColumns = [];
-
-	var TYPES = ['input', 'select', 'textarea', 'editor', 'lookup', 'calc', 'display', 'subform', 'contentbox', 'html', 'chart', 'word', 'run', 'image'];
-	var FILES = [];
-	var ICON = {input: 'bi-input-cursor-text', select: 'bi-menu-button-wide', textarea: 'bi-textarea-t', editor: 'bi-journal-richtext', display: 'bi-display', calc: 'bi-calculator',
-		lookup: 'bi-search', subform: 'bi-table', html: 'bi-code', word: 'bi-fonts', contentbox: 'bi-bounding-box', run: 'bi-play-btn', image: 'bi-image'};
-	var INPUT_TYPES = ['text', 'nuDate', 'nuNumber', 'number', 'checkbox', 'button', 'date', 'datetime-local', 'time', 'email', 'tel', 'url', 'password', 'month', 'week', 'color', 'range', 'file', 'nuAutoNumber', 'nuScroll'];
-	var FMT_TYPES = {D: 'Date', N: 'Number', T: 'Text'};
-	if (window.NuFormatDesigner && D.formatDesigner) NuFormatDesigner.init(D.formatDesigner);
-
-	/**
-	 * Format picker: select with saved formats (zzzzsys_format) and built-ins, "+" opens the format designer,
-	 * the pencil edits the selected saved format. letters: 'D', 'N', 'T' or combinations.
-	 */
-	function formatPicker(value, letters, attrs) {
-		var sel = h('select', Object.assign({'class': 'form-select form-select-sm'}, attrs || {}));
-		function fill(v) {
-			sel.innerHTML = '';
-			sel.appendChild(h('option', {value: '', text: '—'}));
-			var list = (D.formats || []).filter(function (f) { return letters.indexOf(f.value.charAt(0)) >= 0; });
-			var saved = h('optgroup', {label: t('builder_fmt_saved')}), builtin = h('optgroup', {label: t('builder_fmt_builtin')});
-			list.forEach(function (f) {
-				(f.saved ? saved : builtin).appendChild(h('option', {value: f.value, text: f.value + (f['default'] ? ' ★' : '') + (f.description ? ' – ' + f.description : '')}));
-			});
-			if (saved.children.length) sel.appendChild(saved);
-			if (builtin.children.length) sel.appendChild(builtin);
-			if (v && !list.some(function (f) { return f.value === v; })) sel.appendChild(h('option', {value: v, text: v}));
-			sel.value = v || '';
-			sync();
-		}
-		var rights = (D.formatDesigner || {}).rights || {};
-		var types = letters.split('').map(function (l) { return FMT_TYPES[l]; });
-		function changed(v) { fill(v); sel.dispatchEvent(new Event('change', {bubbles: true})); }
-		var add = h('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', title: t('builder_fmt_new'), 'aria-label': t('builder_fmt_new'), disabled: RO || !rights.create || !window.NuFormatDesigner,
-			onclick: function () { NuFormatDesigner.open({types: types, type: FMT_TYPES[(sel.value || letters).charAt(0)], onSaved: function (f, all) { D.formats = all; changed(f.key); }}); }},
-			[h('i', {'class': 'bi bi-plus-lg'})]);
-		var edit = h('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', title: t('builder_fmt_edit'), 'aria-label': t('builder_fmt_edit'),
-			onclick: function () {
-				var f = (D.formats || []).filter(function (x) { return x.value === sel.value; })[0];
-				if (!f) return;
-				if (f.saved) NuFormatDesigner.open({id: f.id, onSaved: function (n, all) { D.formats = all; changed(n.key); }, onDeleted: function (all) { D.formats = all; changed(''); }});
-				else NuFormatDesigner.open({types: types, type: FMT_TYPES[f.value.charAt(0)], format: f.value.substring(2), onSaved: function (n, all) { D.formats = all; changed(n.key); }});
-			}}, [h('i', {'class': 'bi bi-pencil'})]);
-		function sync() {
-			var f = (D.formats || []).filter(function (x) { return x.value === sel.value; })[0];
-			edit.disabled = RO || !f || !window.NuFormatDesigner || !(f.saved ? rights.save || rights['delete'] : rights.create);
-		}
-		sel.addEventListener('change', sync);
-		fill(value);
-		return {el: h('div', {'class': 'nbFormatPick'}, [sel, add, edit]), select: sel};
-	}
-	var EVENTS = ['onchange', 'onclick', 'onblur', 'onfocus', 'oninput', 'onkeydown', 'onkeyup', 'ondblclick', 'afterinsertrow', 'clickdelete'];
-
-	function objById(id) { return S.objects.filter(function (o) { return o.zzzzsys_object_id === id; })[0]; }
-	function nunext(o) { try { var j = JSON.parse(o.sob_all_json || '{}'); return (j && j.nunext) || {}; } catch (e) { return {}; } }
-
-	function load(state) {
-		S = state;
-		if (DR && state.draft) DR = state.draft;
-		if (!DR && state.live_draft !== undefined) LD = state.live_draft;
-		$('#nbTitle').textContent = S.form.sfo_description || '';
-		$('#nbType').textContent = t('form_type_' + (S.form.sfo_type || 'browseedit'));
-		renderTabFilter();
-		renderObjects();
-		// edit and launch forms have no list: no Browse view (0.8.564; the stored values stay as they are)
-		var bt = $('#nbSecBrowse');
-		if (bt) bt.parentNode.classList.toggle('d-none', !hasList());
-		if (sel && sel.kind === 'browse' && !hasList()) select('form');
-	}
-	function hasList() { return ['edit', 'launch'].indexOf(String(S.form.sfo_type || '')) === -1; }
-
-	// ------------------------------------------------------------------ sidebar
-	function renderTabFilter() {
-		var f = $('#nbTabFilter'), cur = f.value;
-		f.innerHTML = '';
-		f.appendChild(h('option', {value: '', text: t('builder_all_tabs')}));
-		S.tabs.forEach(function (tb) { f.appendChild(h('option', {value: tb.zzzzsys_tab_id, text: tb.syt_title})); });
-		f.value = cur && S.tabs.some(function (tb) { return tb.zzzzsys_tab_id === cur; }) ? cur : '';
-	}
-
-	function tabTitle(id) { var tb = S.tabs.filter(function (x) { return x.zzzzsys_tab_id === id; })[0]; return tb ? tb.syt_title : '—'; }
-
-	function renderObjects() {
-		var list = $('#nbObjectList'), tab = $('#nbTabFilter').value, q = $('#nbObjSearch').value.trim().toLowerCase();
-		list.innerHTML = '';
-		var shown = S.objects.filter(function (o) {
-			if (tab && o.sob_all_zzzzsys_tab_id !== tab) return false;
-			return !q || (o.sob_all_id + ' ' + (o.sob_all_label || '') + ' ' + o.sob_all_type).toLowerCase().indexOf(q) >= 0;
-		});
-		$('#nbObjCount').textContent = S.objects.length;
-		var lastTab = null;
-		shown.forEach(function (o) {
-			if (!tab && o.sob_all_zzzzsys_tab_id !== lastTab) {
-				lastTab = o.sob_all_zzzzsys_tab_id;
-				list.appendChild(h('li', {'class': 'list-group-item nbTabHeader', text: tabTitle(lastTab)}));
-			}
-			var active = sel.kind === 'object' && sel.id === o.zzzzsys_object_id;
-			var label = String(o.sob_all_label || '').replace(/<[^>]*>/g, '').trim();
-			var item = h('li', {'class': 'list-group-item nbObj' + (active ? ' active' : ''), role: 'option', 'aria-selected': active ? 'true' : 'false', 'data-id': o.zzzzsys_object_id}, [
-				h('button', {type: 'button', 'class': 'nbObjMain', onclick: guarded(function () { select('object', o.zzzzsys_object_id); })}, [
-					h('i', {'class': 'bi ' + (ICON[o.sob_all_type] || 'bi-square') + ' nbObjIcon', 'aria-hidden': 'true'}),
-					h('span', {'class': 'nbObjText'}, [h('span', {'class': 'nbObjId', text: o.sob_all_id}), label ? h('span', {'class': 'nbObjLabel', text: label}) : null]),
-					h('span', {'class': 'badge nbObjType', text: o.sob_all_type + (o.sob_all_type === 'input' && o.sob_input_type ? ':' + o.sob_input_type : '')})
-				]),
-				RO ? null : h('span', {'class': 'nbObjMove'}, [
-					h('button', {type: 'button', 'class': 'btn btn-link btn-sm', title: t('builder_up'), 'aria-label': t('builder_up'), onclick: function () { move(o, -1); }}, [h('i', {'class': 'bi bi-chevron-up'})]),
-					h('button', {type: 'button', 'class': 'btn btn-link btn-sm', title: t('builder_down'), 'aria-label': t('builder_down'), onclick: function () { move(o, 1); }}, [h('i', {'class': 'bi bi-chevron-down'})])
-				]),
-				RO ? null : objectMenu(o)
-			]);
-			list.appendChild(item);
-		});
-		if (!shown.length) list.appendChild(h('li', {'class': 'list-group-item text-body-secondary small', text: t('builder_no_objects')}));
-		$$('.nbSections [data-nb-section]').forEach(function (b) { b.classList.toggle('active', viewOf(sel.kind) === b.getAttribute('data-nb-section')); });
-	}
-
-	function move(o, dir) {
-		var same = S.objects.filter(function (x) { return x.sob_all_zzzzsys_tab_id === o.sob_all_zzzzsys_tab_id; });
-		var i = same.indexOf(o), j = i + dir;
-		if (j < 0 || j >= same.length) return;
-		var ids = S.objects.map(function (x) { return x.zzzzsys_object_id; });
-		var a = ids.indexOf(o.zzzzsys_object_id), b = ids.indexOf(same[j].zzzzsys_object_id);
-		ids[a] = same[j].zzzzsys_object_id; ids[b] = o.zzzzsys_object_id;
-		api('object.order', {ids: ids}).then(function (r) { load(r); preview(); }).catch(function (e) { alert(e.message); });
-	}
-
-	$('#nbTabFilter').addEventListener('change', renderObjects);
-	$('#nbObjSearch').addEventListener('input', renderObjects);
-	$$('.nbSections [data-nb-section]').forEach(function (b) { b.addEventListener('click', guarded(function () { select(b.getAttribute('data-nb-section')); })); });
-
-	var addMenu = $('.nbAddMenu');
-	TYPES.forEach(function (tp) {
-		addMenu.appendChild(h('li', {}, [h('button', {type: 'button', 'class': 'dropdown-item', onclick: function () { addObject(tp); }},
-			[h('i', {'class': 'bi ' + ICON[tp] + ' me-2'}), t('bf_type_' + tp)])]));
-	});
-
-	// ------------------------------------------------------------------ field rendering
-	/** spec: {key, label, kind: text|number|select|textarea|code|switch, options:[[v,l]], list:[..], help, cls} */
-	function field(spec, value) {
-		var id = nextId(), input;
-		var v = value === null || value === undefined ? '' : String(value);
-		var common = {id: id, 'data-key': spec.key, 'class': '', disabled: RO || spec.disabled};
-		if (spec.kind === 'select') {
-			input = h('select', Object.assign(common, {'class': 'form-select form-select-sm'}));
-			(spec.options || []).forEach(function (o) { input.appendChild(h('option', {value: o[0], text: o[1]})); });
-			if (v !== '' && !(spec.options || []).some(function (o) { return String(o[0]) === v; })) input.appendChild(h('option', {value: v, text: v}));
-			input.value = v;
-			if (spec.search && window.TomSelect) searchable(input);
-		} else if (spec.kind === 'format') {
-			var fp = formatPicker(v, spec.letters || 'DNT', Object.assign(common, {'class': 'form-select form-select-sm'}));
-			input = fp.el;
-		} else if (spec.kind === 'textarea' || spec.kind === 'code') {
-			input = h('textarea', Object.assign(common, {'class': 'form-control form-control-sm' + (spec.kind === 'code' ? ' nbCode' : ''), rows: spec.rows || (spec.kind === 'code' ? 6 : 3), spellcheck: spec.kind === 'code' ? 'false' : null, placeholder: spec.placeholder || null}));
-			input.value = v;
-		} else if (spec.kind === 'switch') {
-			input = h('input', Object.assign(common, {type: 'checkbox', role: 'switch', 'class': 'form-check-input'}));
-			input.checked = v === '1' || (v === '' && spec.default === '1');
-			return h('div', {'class': 'form-check form-switch nbFld ' + (spec.cls || 'col-12')}, [input, h('label', {'class': 'form-check-label', 'for': id, text: t(spec.label)})]);
-		} else {
-			input = h('input', Object.assign(common, {type: spec.kind === 'number' ? 'number' : 'text', 'class': 'form-control form-control-sm', value: v, autocomplete: 'off', spellcheck: 'false',
-				placeholder: spec.phKey ? t(spec.phKey) : (spec.placeholder || null)}));
-			if (spec.list) {
-				var dl = h('datalist', {id: id + '_dl'});
-				spec.list.forEach(function (x) { dl.appendChild(h('option', {value: x})); });
-				input.setAttribute('list', id + '_dl');
-				input = h('div', {}, [input, dl]);
-			}
-			// HTML attributes: button that opens the attribute editor (assets/js/nuattreditor.js)
-			if (spec.attrEditor && window.nuAttributeEditor) {
-				var attrIn = input;
-				var attrBtn = h('button', {type: 'button', 'class': 'btn btn-outline-secondary nbAttrBtn', title: t('builder_attr_title'), 'aria-label': t('builder_attr_title'), disabled: RO || spec.disabled},
-					[h('i', {'class': 'bi bi-sliders'})]);
-				attrBtn.addEventListener('click', function () {
-					window.nuAttributeEditor.open(attrIn.value, function (v) {
-						attrIn.value = v;
-						attrIn.dispatchEvent(new Event('input', {bubbles: true}));
-						attrIn.dispatchEvent(new Event('change', {bubbles: true}));
-						attrIn.focus();
-					}, L);
-				});
-				input = h('div', {'class': 'input-group input-group-sm'}, [attrIn, attrBtn]);
-			}
-		}
-		// spec.trim: spaces at both ends removed when leaving the field; spec.pattern: checked while typing, red with spec.patternErr (0.8.536)
-		var feedback = null, field1 = input.tagName === 'INPUT' ? input : null;
-		if (field1 && spec.trim) field1.addEventListener('blur', function () {
-			var v2 = field1.value.trim();
-			if (v2 !== field1.value) { field1.value = v2; field1.dispatchEvent(new Event('input', {bubbles: true})); field1.dispatchEvent(new Event('change', {bubbles: true})); }
-		});
-		if (field1 && spec.pattern) {
-			feedback = h('div', {'class': 'invalid-feedback', text: t(spec.patternErr)});
-			var check = function () { var bad = field1.value.trim() !== '' && !spec.pattern.test(field1.value.trim()); field1.classList.toggle('is-invalid', bad); field1.setAttribute('aria-invalid', bad ? 'true' : 'false'); };
-			field1.addEventListener('input', check);
-			check();
-		}
-		if (spec.required) { input.setAttribute('aria-required', 'true'); input.setAttribute('data-nb-required', '1'); }
-		if (spec.noLabel) input.setAttribute('aria-label', t(spec.label));   // no visible label (Code view, 0.8.565): the code toolbar gets a clipboard button
-		var fld = h('div', {'class': 'nbFld ' + (spec.cls || 'col-12')}, [   // nbFld: packed tighter in a wide panel (nubuilder.css, 0.8.449)
-			spec.noLabel ? null : h('div', {'class': 'd-flex align-items-center'}, [h('label', {'class': 'form-label small mb-1', 'for': id}, [t(spec.label),
-				spec.required ? h('span', {'class': 'text-danger ms-1 nbReq', 'aria-hidden': 'true', text: '*'}) : null]), spec.tip ? infoTip(t(spec.tip)) : null]),   // required: red * (0.8.564)
-			input,
-			feedback,
-			spec.help ? h('div', {'class': 'form-text', text: t(spec.help)}) : null
-		]);
-		upgradeSearch(fld);
-		return fld;
-	}
-
-	/** Searchable select (Tom Select, 0.8.535) for long lists – spec.search; the select keeps its value and change event. Called before
-	 *  the select is in a wrapper, so Tom Select is created once the field's div exists (setTimeout 0 would miss collect()). */
-	function searchable(sel) {
-		sel.nbSearch = true;
-	}
-	function upgradeSearch(root) {
-		$$('select[data-key]', root).forEach(function (sel) {
-			if (!sel.nbSearch || sel.tomselect) return;
-			new TomSelect(sel, {create: false, maxOptions: null, allowEmptyOption: true, searchField: ['text'], sortField: [{field: '$order'}],
-				render: {no_results: function () { return '<div class="no-results">' + t('no_records') + '</div>'; }}});
-		});
-	}
-
-	/** (i) next to a field label (0.8.532: spec.tip instead of a line of help text) */
-	function infoTip(text) {
-		var tip = h('span', {'class': 'nuInfoTip ms-1 mb-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': text, title: text},
-			[h('i', {'class': 'bi bi-info-circle'})]);
-		if (window.nuBs && nuBs.tooltip) nuBs.tooltip(tip);
-		return tip;
-	}
-
-	function collect(root) {
-		var out = {};
-		$$('[data-key]', root).forEach(function (e) { out[e.getAttribute('data-key')] = e.type === 'checkbox' ? (e.checked ? '1' : '0') : e.value; });
-		return out;
-	}
-
-	function section(title, kids) {
-		return h('fieldset', {'class': 'nbFieldset'}, [h('legend', {'class': 'nbLegend', text: t(title)}), h('div', {'class': 'row g-2'}, kids)]);
-	}
-
-	// unsaved changes in the open panel: the Save button turns red
-	function setDirty(on) { var b = $('#nbSave'); if (b) b.classList.toggle('nbDirty', !!on); }
-	function isDirty() { return !!$('#nbSave.nbDirty'); }
-	var curSave = null;   // save function of the open panel
-	// unsaved panel: leaving the page or opening another panel asks Save / Discard / Keep editing (nuLeaveGuard, assets/js/nuapp.js)
-	function savePanel() {
-		var b = $('#nbSave');
-		if (!curSave || !b) return Promise.reject(new Error(''));
-		b.disabled = true;
-		// a check that throws (required fields) is shown like a server error
-		return new Promise(function (res) { res(curSave()); }).then(function () { flash(true); setDirty(false); b.disabled = false; },
-			function (e) { flash(false, e.message); b.disabled = false; throw e; });
-	}
-	if (window.nuLeaveGuard) window.nuLeaveGuard.add({
-		dirty: isDirty,
-		discard: function () { setDirty(false); },
-		save: function (go) { savePanel().then(function () { if (typeof go === 'function') go(); else window.location.href = go; }, function () { /* error shown */ }); }
-	});
-	function guarded(fn) { return function () { var a = arguments, me = this; if (isDirty() && window.nuLeaveGuard) window.nuLeaveGuard.ask(function () { fn.apply(me, a); }); else fn.apply(me, a); }; }
-
-	function panel(title, body, onSave, extraButtons) {
-		$('#nbPanelTitle').textContent = title;
-		var p = $('#nbPanel');
-		p.innerHTML = '';
-		p.appendChild(body);
-		if (!p.nbDirtyBound) {
-			p.nbDirtyBound = true;
-			p.addEventListener('input', function (e) { if (e.isTrusted) setDirty(true); });
-			p.addEventListener('change', function (e) { if (e.isTrusted) setDirty(true); });
-		}
-		p.appendChild(h('div', {'class': 'alert alert-danger d-none mt-3 mb-0 py-2', id: 'nbPanelError', role: 'alert'}));
-		// the panel's buttons sit in the toolbar at the top, next to "Open form" / "Delete form"
-		// toolbar groups (0.8.619): Save next to Undo, other panel buttons (Clone object) before Open form, deleting ones in the row below
-		var top = $('#nbTopActions'), saveSlot = $('#nbTopSave'), danger = $('#nbTopDanger');
-		[top, saveSlot, danger].forEach(function (el) { if (el) el.innerHTML = ''; });
-		curSave = !RO && onSave ? onSave : null;
-		if (!RO && onSave) {
-			(extraButtons || []).filter(Boolean).forEach(function (b) { ((danger && /\bbtn-outline-danger\b/.test(b.className)) ? danger : top).appendChild(b); });
-			(saveSlot || top).appendChild(h('button', {type: 'button', 'class': 'btn nuBtnAct nuBtnSave btn-sm', id: 'nbSave', title: t('save') + ': ' + title + ' (Ctrl+S)', onclick: function () {
-				savePanel().catch(function () { /* error shown */ });
-			}}, [h('i', {'class': 'bi bi-floppy me-1'}), t('save')]));
-		}
-		tbTidy();
-	}
-
-	// empty groups / the empty delete row take no space (and no separator)
-	function tbTidy() {
-		document.querySelectorAll('.nbToolbar .nbTbGroup, .nbToolbar .nbTbDanger').forEach(function (g) {
-			g.classList.toggle('d-none', !g.querySelector('a, button'));
-		});
-	}
-	tbTidy();
-
-	// Ctrl+S / Cmd+S saves the open panel
-	document.addEventListener('keydown', function (e) {
-		if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 's' || e.key === 'S')) {
-			var b = $('#nbSave');
-			if (!b) return;
-			e.preventDefault();
-			if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit CodeMirror / inputs
-			if (!b.disabled) b.click();
-		}
-	});
-
-	function formOptions(filterType) {
-		return [['', t('please_select')]].concat((D.forms || []).filter(function (f) { return !filterType || filterType.indexOf(f[2]) >= 0; }).map(function (f) { return [f[0], f[1]]; }));
-	}
-
-	// ------------------------------------------------------------------ panels
-	// views (0.8.563): Objects · Form settings (with Tabs) · Browse · Code · History – the objects list only on Objects; the view is in the
-	// address (#objects …) and comes back after a reload
-	var VIEWS = ['objects', 'form', 'browse', 'code', 'history'], lastObj = null, autoBrowse = false;
-	function viewOf(kind) { return {object: 'objects', tabs: 'form', compare: 'history'}[kind] || kind; }
-	function setView(v) {
-		var ws = $('#nbWorkspace');
-		if (ws.getAttribute('data-nb-view') !== v) {
-			ws.setAttribute('data-nb-view', v);
-			window.dispatchEvent(new Event('resize'));
-		}
-		if (window.history && window.history.replaceState && location.hash !== '#' + v) window.history.replaceState(null, '', location.pathname + location.search + '#' + v);
-	}
-	function panelObjects() {
-		var o = objById(lastObj) || S.objects[0];
-		if (o) { select('object', o.zzzzsys_object_id); return; }
-		panel(t('builder_objects'), h('p', {'class': 'text-body-secondary mb-0', text: t('builder_no_objects')}), null);
-	}
-
-	function select(kind, id) {
-		if (kind === 'tabs') { formTabsFocus = true; kind = 'form'; }   // Tabs is a section of Form settings now
-		sel = {kind: kind, id: id};
-		if (kind === 'object') lastObj = id;
-		setView(viewOf(kind));
-		if (kind === 'browse' && S && S.form.sfo_type === 'browseedit' && previewMode() !== 'browse') { setPreviewMode('browse', true, true); autoBrowse = true; }   // browse columns: show the list
-		// objects (0.8.563): back to the record when the Browse view switched the preview to the list by itself (a choice of the user stays)
-		else if (viewOf(kind) === 'objects' && autoBrowse) { autoBrowse = false; if (previewMode() !== 'edit') setPreviewMode('edit', true, true); }
-		renderObjects();
-		({objects: panelObjects, form: panelForm, code: panelCode, browse: panelBrowse, object: panelObject, history: panelHistory, compare: panelCompare})[kind](id);
-		if (kind === 'objects') return;                     // panelObjects selected the object itself
-		upgradeEditors($('#nbPanel'));
-		refreshEditors($('#nbPanel'));
-		if (kind === 'code') fitCode();
-		if (kind === 'object') highlight(objById(id));
-	}
-	// Code view (0.8.563): the visible editor reaches down to the bottom of the window (at least 300 px), as on the Custom code page
-	function fitCode() {
-		if (sel.kind !== 'code' || document.documentElement.classList.contains('nuCodeFullOpen')) return;
-		$$('#nbPanel textarea.nbCode').forEach(function (ta) {
-			var cm = ta.nbCM, w = cm && cm.getWrapperElement();
-			if (!w || !w.offsetParent) return;
-			var bottomGap = 90;                                  // help text below + card padding
-			cm.setSize(null, Math.max(300, Math.floor(window.innerHeight - w.getBoundingClientRect().top - bottomGap)));
-			cm.getScrollerElement().style.minHeight = '';
-		});
-	}
-	window.addEventListener('resize', function () { clearTimeout(fitCode.t); fitCode.t = setTimeout(fitCode, 80); });
-
-	var formTabsFocus = false;   // select('tabs'): Form settings, scrolled to its Tabs section
-	/** Required fields of a panel (data-nb-required, 0.8.564): empty ones are marked and the save stops (as nuBuilder's nuform). */
-	function checkRequired(root) {
-		var bad = $$('[data-nb-required]', root).filter(function (e) { var on = String(e.value || '').trim() === ''; e.classList.toggle('is-invalid', on); return on; });
-		if (!bad.length) return true;
-		bad[0].focus();
-		throw new Error(t('builder_err_required'));
-	}
-	// Form settings (0.8.564: one page – the browse SQL, rows per page and "open records in" moved to the Browse view)
-	function panelForm() {
-		var f = S.form;
-		var tabsEd = tabsEditor();
-		var body = h('div', {}, [
-			section('builder_sec_general', [
-				field({key: 'sfo_description', label: 'builder_description', cls: 'col-sm-7', required: true}, f.sfo_description),
-				field({key: 'sfo_code', label: 'builder_code', cls: 'col-sm-5', required: true}, f.sfo_code),
-				field({key: 'sfo_type', label: 'builder_type', kind: 'select', cls: 'col-sm-4', required: true, options: ['browseedit', 'browse', 'edit', 'launch', 'subform'].map(function (x) { return [x, t('form_type_' + x)]; })}, f.sfo_type),
-				field({key: 'sfo_group', label: 'builder_group', cls: 'col-sm-4'}, f.sfo_group),
-				field({key: 'sfo_status', label: 'builder_status', kind: 'select', cls: 'col-sm-4', options: [['1', t('builder_status_1')], ['0', t('builder_status_0')], ['3', t('builder_status_3')]]}, f.sfo_status || '1'),
-				field({key: 'sfo_table', label: 'builder_table', cls: 'col-sm-7'}, f.sfo_table),
-				field({key: 'sfo_primary_key', label: 'builder_primary_key', cls: 'col-sm-5'}, f.sfo_primary_key),
-				field({key: 'sfo_breadcrumb_title', label: 'builder_breadcrumb', tip: 'builder_breadcrumb_help'}, f.sfo_breadcrumb_title)
-			]),
-			section('form_layout', [
-				field({key: 'layout', label: 'form_layout', kind: 'select', cls: 'col-sm-6', tip: 'builder_layout_help', options: ['absolute', 'auto', 'grid'].map(function (x) { return [x, t('form_layout_' + x)]; })}, f.layout),
-				h('div', {'class': 'col-sm-6 d-flex align-items-end'}, [RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-secondary btn-sm w-100', onclick: convertGrid},
-					[h('i', {'class': 'bi bi-grid-3x3-gap me-1'}), t('builder_convert_grid')])])
-			]),
-			section('builder_sec_tabs', [tabsEd.el])
-		]);
-		if (PART) {                                         // User Home: the settings are nuBuilder Forte's (replaced by its updates)
-			$$('input, select, textarea, button', body).forEach(function (e) { if (!tabsEd.el.contains(e)) e.disabled = true; });
-			body.insertBefore(h('div', {'class': 'alert alert-info small py-2', id: 'nbUserHomePart', text: t('builder_userhome_part')}), body.firstChild);
-		}
-		panel(t('builder_sec_form'), body, function () {
-			checkRequired(body);
-			return api('form.save', {fields: collect(body)}).then(function (r) {
-				return tabsEd.changed ? api('tabs.save', {tabs: tabsEd.rows()}) : r;
-			}).then(function (r) { load(r); if (tabsEd.changed) panelForm(); preview(); });
-		});
-		if (formTabsFocus) { formTabsFocus = false; tabsEd.el.scrollIntoView({block: 'center'}); }
-	}
-
-	function convertGrid() {
-		if (!confirm(t('builder_convert_confirm'))) return;
-		api('layout.convert', {}).then(function (r) { load(r); select('form'); $('#nbPreviewLayout').value = ''; preview(); flash(true); }).catch(function (e) { flash(false, e.message); });
-	}
-
-	function panelCode() {
-		var f = S.form;
-		var items = [['sfo_javascript', 'builder_js_both'], ['sfo_edit_javascript', 'builder_js_edit'], ['sfo_browse_javascript', 'builder_js_browse'], ['sfo_style', 'builder_css']]
-			.concat(['BE', 'BS', 'AS', 'BB', 'BD', 'AD'].map(function (x) { return ['php_' + x, 'builder_php_' + x]; }));
-		if (PART) items = [['php_BE', 'builder_php_BE']];  // User Home: only Before Edit is kept by nuBuilder Forte's updates (0.8.605)
-		// buttons in two groups (0.8.566): "JavaScript & CSS" and "PHP" – the button shows the name without its JS / PHP prefix, the full
-		// name is its tooltip and the editor's name
-		var nav = h('div', {'class': 'nbCodeNav mb-2', role: 'tablist'});
-		var groups = {}, mk = function (key, title) {
-			groups[key] = h('div', {'class': 'nbCodeBtns d-flex flex-wrap gap-1'});
-			nav.appendChild(h('div', {'class': 'nbCodeGroup', role: 'group', 'aria-label': title}, [h('span', {'class': 'nbCodeGroupLbl', text: title}), groups[key]]));
-		};
-		if (!PART) mk('js', 'JavaScript & CSS');            // User Home: no JavaScript / CSS group (0.8.605)
-		mk('php', 'PHP');
-		var areas = h('div', {});
-		items.forEach(function (it, i) {
-			var key = it[0], isPhp = key.indexOf('php_') === 0;
-			var val = isPhp ? S.php[key.substr(4)] : f[key];
-			// no label above the editor (0.8.565): the button row above names it; Copy / paste sits in the toolbar
-			var area = h('div', {'class': i ? 'd-none' : ''}, [field({key: key, label: it[1], kind: 'code', rows: 18, noLabel: true}, val)]);
-			areas.appendChild(area);
-			var full = t(it[1]), short = full.replace(/^(JS|PHP)\s+/, '');
-			var b = h('button', {type: 'button', role: 'tab', 'class': 'btn btn-sm ' + (i ? 'btn-outline-secondary' : 'btn-secondary') + (val ? ' nbHasCode' : ''), text: short,
-				title: full !== short ? full : null, 'aria-label': full, 'aria-selected': i ? 'false' : 'true', onclick: function () {
-				$$('.nbCodeNav button').forEach(function (x) { x.classList.replace('btn-secondary', 'btn-outline-secondary'); x.setAttribute('aria-selected', 'false'); });
-				b.classList.replace('btn-outline-secondary', 'btn-secondary'); b.setAttribute('aria-selected', 'true');
-				Array.prototype.forEach.call(areas.children, function (a) { a.classList.add('d-none'); });
-				area.classList.remove('d-none');
-				refreshEditors(area);
-				fitCode();
-			}});
-			(isPhp ? groups.php : groups.js).appendChild(b);
-		});
-		var body = h('div', {}, [nav, areas, h('div', {'class': 'form-text', text: t('builder_code_help')})]);
-		panel(t('builder_sec_code'), body, function () {
-			var v = collect(body), fields = {}, php = {};
-			Object.keys(v).forEach(function (k) { if (k.indexOf('php_') === 0) php[k.substr(4)] = v[k]; else fields[k] = v[k]; });
-			return api('form.save', {fields: fields, php: php}).then(function (r) { load(r); preview(); });
-		});
-	}
-
-	function listEditor(rows, columns, makeRow) {
-		var tbody = h('tbody', {});
-		function addRow(r) {
-			var tr = makeRow(r);
-			if (!RO) tr.appendChild(h('td', {'class': 'text-nowrap'}, [
-				h('button', {type: 'button', 'class': 'btn btn-link btn-sm px-1', 'aria-label': t('builder_up'), onclick: function () { if (tr.previousElementSibling) tbody.insertBefore(tr, tr.previousElementSibling); }}, [h('i', {'class': 'bi bi-chevron-up'})]),
-				h('button', {type: 'button', 'class': 'btn btn-link btn-sm px-1', 'aria-label': t('builder_down'), onclick: function () { if (tr.nextElementSibling) tbody.insertBefore(tr.nextElementSibling, tr); }}, [h('i', {'class': 'bi bi-chevron-down'})]),
-				removeBtn(tr)
-			]));
-			tbody.appendChild(tr);
-		}
-		rows.forEach(addRow);
-		var table = h('div', {'class': 'table-responsive'}, [h('table', {'class': 'table table-sm align-middle nbListTable'}, [
-			h('thead', {}, [h('tr', {}, columns.map(function (c) { return h('th', {'class': 'small', text: t(c)}); }).concat([h('th', {})]))]), tbody])]);
-		return {el: table, tbody: tbody, add: addRow};
-	}
-
-	function cell(input) { return h('td', {}, [input]); }
-	function inp(attrs) { return h('input', Object.assign({'class': 'form-control form-control-sm', disabled: RO, autocomplete: 'off'}, attrs)); }
-	function sel2(options, value, attrs) {
-		var s = h('select', Object.assign({'class': 'form-select form-select-sm', disabled: RO}, attrs));
-		options.forEach(function (o) { s.appendChild(h('option', {value: o[0], text: o[1]})); });
-		s.value = value || options[0][0];
-		return s;
-	}
-
-	// tabs of the form (0.8.563: a section of Form settings – before its own panel); saved with the form settings
-	function tabsEditor() {
-		var acc = [['0', t('builder_tab_visible')], ['2', t('builder_tab_hidden')], ['3', t('builder_tab_hidden_users')]];
-		var ed = listEditor(S.tabs, ['builder_tab_title', 'builder_tab_access'], function (tb) {
-			var tr = h('tr', {'data-id': tb.zzzzsys_tab_id || ''});
-			tr.appendChild(cell(inp({value: tb.syt_title || '', 'data-f': 'title', 'aria-label': t('builder_tab_title')})));
-			tr.appendChild(cell(sel2(acc, tb.syt_access || '0', {'data-f': 'access', 'aria-label': t('builder_tab_access')})));
-			return tr;
-		});
-		// existing tabs: only the globeadmin renames or removes them (new, unsaved rows stay editable)
-		if (!RO && !D.globeadmin) $$('tr[data-id]', ed.tbody).forEach(function (tr) {
-			if (!tr.getAttribute('data-id')) return;
-			var ti = $('[data-f=title]', tr);
-			ti.readOnly = true; ti.title = t('builder_tabs_globeadmin');
-			var rb = $('.bi-x-circle', tr);
-			if (rb) rb.closest('button').remove();
-		});
-		var out = {changed: false};
-		var el = h('div', {'class': 'col-12 nbTabsEditor', id: 'nbTabsEditor'}, [ed.el, RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-primary btn-sm', onclick: function () { ed.add({syt_title: t('builder_new_tab')}); out.changed = true; setDirty(true); }},
-			[h('i', {'class': 'bi bi-plus-lg me-1'}), t('builder_add_tab')]), h('div', {'class': 'form-text', text: t('builder_tabs_help') + (RO || D.globeadmin ? '' : ' ' + t('builder_tabs_globeadmin'))})]);
-		['input', 'change', 'click'].forEach(function (ev) { el.addEventListener(ev, function (e) { if (ev !== 'click' || e.target.closest('button')) out.changed = true; }); });
-		out.el = el;
-		out.rows = function () { return $$('tr:not(.nuRowRemoved)', ed.tbody).map(function (tr) { return {id: tr.getAttribute('data-id'), title: $('[data-f=title]', tr).value, access: $('[data-f=access]', tr).value}; }); };
-		return out;
-	}
-
-	function panelBrowse() {
-		var listId = nextId('cols');
-		var dl = h('datalist', {id: listId});
-		tableColumns.forEach(function (c) { dl.appendChild(h('option', {value: c})); });
-		var ed = listEditor(S.browse, ['builder_col_title', 'builder_col_display', 'builder_col_align', 'builder_col_format', 'builder_col_width', 'builder_col_filter'], function (b) {
-			var tr = h('tr', {'data-id': b.zzzzsys_browse_id || ''});
-			tr.appendChild(cell(inp({value: b.sbr_title || '', 'data-f': 'title', 'aria-label': t('builder_col_title')})));
-			tr.appendChild(cell(inp({value: b.sbr_display || '', 'data-f': 'display', list: listId, spellcheck: 'false', 'aria-label': t('builder_col_display')})));
-			tr.appendChild(cell(sel2([['l', '←'], ['c', '↔'], ['r', '→']], b.sbr_align || 'l', {'data-f': 'align', 'aria-label': t('builder_col_align')})));
-			tr.appendChild(h('td', {}, [formatPicker(b.sbr_format || '', 'DNT', {'data-f': 'format', disabled: RO, 'aria-label': t('builder_col_format')}).el]));
-			tr.appendChild(cell(inp({value: b.sbr_width === undefined ? 100 : b.sbr_width, type: 'number', min: 0, 'data-f': 'width', 'class': 'form-control form-control-sm nbNum', 'aria-label': t('builder_col_width')})));
-			var flt = h('input', {type: 'checkbox', 'class': 'form-check-input', 'data-f': 'filter', disabled: RO, 'aria-label': t('builder_col_filter')});
-			try { flt.checked = !!((JSON.parse(b.sbr_json || '{}').nunext || {}).filter); } catch (e) { flt.checked = false; }
-			tr.appendChild(h('td', {'class': 'text-center'}, [flt]));
-			return tr;
-		});
-		// the list itself (0.8.564: before on Form settings → Browse): browse SQL, rows per page, the form that opens records
-		var f = S.form, listFields = h('div', {}, [section('builder_sec_list', [
-			field({key: 'sfo_browse_sql', label: 'builder_browse_sql', kind: 'code', rows: 10, help: 'builder_browse_sql_help'}, f.sfo_browse_sql),
-			field({key: 'sfo_browse_rows_per_page', label: 'builder_rows_per_page', kind: 'number', cls: 'col-sm-4'}, f.sfo_browse_rows_per_page),
-			field({key: 'sfo_browse_redirect_form_id', label: 'builder_redirect', kind: 'select', cls: 'col-sm-8', search: true, options: formOptions(['edit', 'browseedit'])}, f.sfo_browse_redirect_form_id)
-		])]);
-		var body = h('div', {}, [listFields, section('builder_sec_columns', [h('div', {'class': 'col-12'}, [ed.el, dl, RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-primary btn-sm', onclick: function () { ed.add({sbr_width: 100}); }},
-			[h('i', {'class': 'bi bi-plus-lg me-1'}), t('builder_add_column')]), h('div', {'class': 'form-text', text: t('builder_browse_help')})])])]);
-		var listWas = JSON.stringify(collect(listFields));
-		panel(t('builder_sec_browse'), body, function () {
-			var cols = $$('tr:not(.nuRowRemoved)', ed.tbody).map(function (tr) {
-				var o = {id: tr.getAttribute('data-id')};
-				$$('[data-f]', tr).forEach(function (e) { o[e.getAttribute('data-f')] = e.type === 'checkbox' ? e.checked : e.value; });
-				return o;
-			});
-			var lf = collect(listFields);
-			return (JSON.stringify(lf) !== listWas ? api('form.save', {fields: lf}) : Promise.resolve(null))
-				.then(function () { return api('browse.save', {columns: cols}); })
-				.then(function (r) { load(r); panelBrowse(); preview(); });
-		});
-	}
-
-	// ------------------------------------------------------------------ object panel
-	function objectSpecs(o) {
-		var type = o.sob_all_type, it = o.sob_input_type || 'text';
-		var tabs = S.tabs.map(function (tb) { return [tb.zzzzsys_tab_id, tb.syt_title]; });
-		var boxes = [['', '—']].concat(S.objects.filter(function (x) { return x.sob_all_type === 'contentbox' && x !== o; }).map(function (x) { return [x.sob_all_id, x.sob_all_id]; }));
-		var g = nunext(o);
-		// run objects: type F form / P procedure / R report (nuBuilder detects it from the id when sob_run_type is empty)
-		var run = {id: o.sob_run_zzzzsys_form_id || ''};
-		run.isProc = (D.procedures || []).some(function (p) { return p[0] === run.id; });
-		run.isReport = (D.reports || []).some(function (p) { return p[0] === run.id; });
-		run.type = String(o.sob_run_type || '').toUpperCase() || (run.isProc ? 'P' : (run.isReport ? 'R' : 'F'));
-		if (o.sob_run_method === 'w') { o.sob_run_method = 'b'; if (!o.sob_run_target) o.sob_run_target = '2'; }     // nuBuilder Next 0.2 "new window"
-		run.method = o.sob_run_method === 'i' ? 'i' : 'b';
-		if (type === 'run') { o.sob_run_type = run.type; if (!o.sob_run_target) o.sob_run_target = '0'; }
-		// display objects: procedure (stored as id; nuBuilder also finds it by code) – a value not in the list stays selectable
-		var dispProc = String(o.sob_display_procedure || ''), dispOpts = [['', t('builder_display_proc_none')]].concat(D.procedures || []);
-		if (dispProc !== '' && !dispOpts.some(function (p) { return p[0] === dispProc; })) dispOpts.push([dispProc, dispProc]);
-		var spec = [
-			['builder_sec_general', [
-				{key: 'sob_all_type', label: 'builder_obj_type', kind: 'select', cls: 'col-sm-6', options: TYPES.map(function (x) { return [x, t('bf_type_' + x)]; }), change: true},
-				{key: 'sob_all_id', label: 'builder_obj_id', cls: 'col-sm-6', help: 'builder_obj_id_help', trim: true, pattern: /^[A-Za-z_][A-Za-z0-9_]*$/, patternErr: 'builder_err_id'},
-				{key: 'sob_all_label', label: 'builder_obj_label'},
-				// icon (0.8.559): nuBuilder's sob_input_icon – inside input buttons, run buttons and words (NuRender::withIcon)
-				{key: 'sob_input_icon', label: 'builder_obj_icon', tip: 'builder_obj_icon_tip', placeholder: 'fa fa-table', trim: true,
-					show: type === 'run' || type === 'word' || (type === 'input' && it === 'button')},
-				{key: 'sob_all_zzzzsys_tab_id', label: 'builder_obj_tab', kind: 'select', cls: 'col-sm-6', options: tabs},
-				{key: 'sob_all_access', label: 'builder_obj_access', kind: 'select', cls: 'col-sm-6', options: [['0', t('bf_access_0')], ['1', t('bf_access_1')], ['2', t('bf_access_2')], ['3', t('bf_access_3')], ['4', t('bf_access_4')], ['9', t('bf_access_9')]], change: true},
-				{key: 'sob_all_access_condition', label: 'builder_obj_access_cond', kind: 'code', rows: 2, help: 'builder_obj_access_cond_help', show: String(o.sob_all_access || '') === '9'},
-				{key: 'sob_all_validate', label: 'builder_obj_validate', kind: 'select', cls: 'col-sm-6', options: [['0', t('bf_validate_0')], ['1', t('bf_validate_1')], ['2', t('bf_validate_2')], ['3', t('bf_validate_3')]], types: ['input', 'select', 'textarea', 'lookup', 'calc']},
-				{key: 'sob_all_align', label: 'builder_obj_align', kind: 'select', cls: 'col-sm-6', options: [['left', '←'], ['center', '↔'], ['right', '→']]},
-				{key: 'sob_all_cloneable', label: 'builder_obj_cloneable', kind: 'switch', 'default': '1'}
-			]],
-			['builder_sec_type', [
-				{key: 'sob_input_type', label: 'builder_input_type', kind: 'select', cls: 'col-sm-6', options: INPUT_TYPES.map(function (x) { return [x, x]; }), types: ['input'], change: true},
-				{key: 'sob_input_format', label: 'builder_input_format', cls: 'col-sm-6', kind: 'format', letters: it === 'nuDate' ? 'D' : (it === 'nuNumber' ? 'N' : 'T'),
-					types: ['input'], show: ['nuDate', 'nuNumber', 'text', 'tel', 'search'].indexOf(it) >= 0, help: ['text', 'tel', 'search'].indexOf(it) >= 0 ? 'builder_input_mask_help' : null},
-				{key: 'sob_input_datalist', label: 'builder_input_datalist', kind: 'textarea', types: ['input'], tip: 'builder_input_datalist_help', placeholder: 'Red, Green, Blue', show: ['text', 'number', 'email', 'tel', 'url'].indexOf(it) >= 0},
-				{key: 'sob_input_javascript', label: 'builder_input_scroll', kind: 'code', rows: 2, types: ['input'], show: it === 'nuScroll'},
-				{key: 'sob_input_count', label: 'builder_input_count', cls: 'col-sm-6', types: ['input'], show: it === 'nuAutoNumber', help: 'builder_input_count_help'},
-				// file objects (0.8.459): target Database (the file in the record) or File System (Uppy uploads to a server folder, HTML code = Uppy template)
-				{key: 'sob_input_file_target', label: 'builder_file_target', kind: 'select', cls: 'col-sm-6', types: ['input'], show: it === 'file', change: true, help: 'builder_file_target_help',
-					options: [['0', t('builder_file_target_0')], ['1', t('builder_file_target_1')]], value: String(o.sob_input_file_target || '0') === '1' ? '1' : '0'},
-				{key: 'sob_html_code', label: 'builder_html', kind: 'code', rows: 8, types: ['input'], show: it === 'file' && String(o.sob_input_file_target || '0') === '1', help: 'builder_file_uppy_help'},
-				{key: 'sob_select_sql', label: 'builder_select_sql', kind: 'code', types: ['select'], help: 'builder_select_sql_help'},
-				{key: 'sob_select_multiple', label: 'builder_select_multiple', kind: 'switch', cls: 'col-sm-6', types: ['select']},
-				{key: 'sob_select_2', label: 'builder_select_search', kind: 'switch', cls: 'col-sm-6', types: ['select']},
-				{key: 'sob_display_procedure', label: 'builder_display_proc', kind: 'select', search: true, options: dispOpts, types: ['display'], help: 'builder_display_proc_help'},
-				{key: 'sob_display_sql', label: 'builder_display_sql', kind: 'code', types: ['display']},
-				{key: 'sob_calc_formula', label: 'builder_calc_formula', kind: 'code', rows: 2, types: ['calc'], help: 'builder_calc_help'},
-				{key: 'sob_calc_format', label: 'builder_input_format', kind: 'format', letters: 'N', types: ['calc']},
-				{key: 'sob_lookup_zzzzsys_form_id', label: 'builder_lookup_form', kind: 'select', search: true, options: formOptions(['browse', 'browseedit']), types: ['lookup']},
-				{key: 'sob_lookup_code', label: 'builder_lookup_code', cls: 'col-sm-6', types: ['lookup']},
-				{key: 'sob_lookup_description', label: 'builder_lookup_description', cls: 'col-sm-6', types: ['lookup']},
-				{key: 'sob_lookup_description_width', label: 'builder_lookup_desc_width', kind: 'number', cls: 'col-sm-6', types: ['lookup']},
-				{key: 'sob_lookup_table', label: 'builder_table', cls: 'col-sm-6', types: ['lookup']},
-				{key: 'sob_lookup_javascript', label: 'builder_lookup_js', kind: 'code', rows: 3, types: ['lookup']},
-				{key: 'lookup_php', label: 'builder_lookup_php', kind: 'code', rows: 4, types: ['lookup'], help: 'builder_lookup_php_help'},
-				{key: 'sob_subform_zzzzsys_form_id', label: 'builder_subform_form', kind: 'select', search: true, options: formOptions(['subform']), types: ['subform']},
-				{key: 'sob_subform_type', label: 'builder_subform_type', kind: 'select', cls: 'col-sm-6', options: [['g', t('builder_subform_grid')], ['f', t('builder_subform_formlayout')]], types: ['subform']},
-				{key: 'sob_subform_foreign_key', label: 'builder_subform_fk', cls: 'col-sm-6', types: ['subform']},
-				{key: 'sob_subform_table', label: 'builder_table', cls: 'col-sm-6', types: ['subform']},
-				{key: 'sob_subform_add', label: 'builder_subform_add', kind: 'switch', cls: 'col-sm-6', types: ['subform'], 'default': '1'},
-				{key: 'sob_subform_delete', label: 'builder_subform_delete', kind: 'switch', cls: 'col-sm-6', types: ['subform'], 'default': '1'},
-				{key: 'sob_html_code', label: 'builder_html', kind: 'code', rows: 8, types: ['html']},
-				{key: 'sob_html_chart_type', label: 'builder_chart_type', kind: 'select', types: ['chart'], options: [['', t('please_select')], ['p', t('builder_chart_p')], ['l', t('builder_chart_l')],
-					['b', t('builder_chart_b')], ['bs', t('builder_chart_bs')], ['bh', t('builder_chart_bh')], ['bhs', t('builder_chart_bhs')]]},
-				{key: 'sob_html_javascript', label: 'builder_chart_data', kind: 'code', rows: 4, types: ['chart'], help: 'builder_chart_data_help'},
-				{key: 'sob_html_title', label: 'builder_chart_title', types: ['chart']},
-				{key: 'sob_html_vertical_label', label: 'builder_chart_vlabel', cls: 'col-sm-6', types: ['chart']},
-				{key: 'sob_html_horizontal_label', label: 'builder_chart_hlabel', cls: 'col-sm-6', types: ['chart']},
-				{key: 'sob_image_zzzzsys_file_id', label: 'builder_image_file', kind: 'select', options: [['', t('please_select')]].concat(FILES), types: ['image'], help: 'builder_image_help'},
-				{key: 'sob_run_type', label: 'builder_run_type', kind: 'select', cls: run.type === 'F' ? 'col-sm-7' : 'col-12', types: ['run'], change: true,
-					options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')]]},
-				{key: 'sob_run_method', label: 'builder_run_method', kind: 'select', cls: run.type === 'F' ? 'col-sm-5' : 'col-12', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]], types: ['run'], change: true},
-				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_form', kind: 'select', search: true, options: formOptions(), value: run.type === 'F' && !run.isProc ? run.id : '', types: ['run'], show: run.type === 'F'},
-				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_procedure', kind: 'select', options: [['', t('please_select')]].concat(D.procedures || []), value: run.isProc ? run.id : '',
-					types: ['run'], show: run.type === 'P', help: 'builder_run_procedure_help'},
-				{key: 'sob_run_zzzzsys_form_id', label: 'builder_run_report', kind: 'select', search: true, value: run.type === 'R' ? run.id : '', types: ['run'], show: run.type === 'R', help: 'builder_run_report_help',
-					options: [['', t('please_select')]].concat(D.reports || []).concat(run.type === 'R' && run.id && !run.isReport ? [[run.id, run.id]] : [])},
-				{key: 'sob_run_id', label: 'builder_run_record', cls: 'col-sm-6', types: ['run'], show: run.type === 'F', help: 'builder_run_record_help'},
-				{key: 'sob_run_filter', label: 'builder_run_filter', cls: 'col-sm-6', types: ['run'], show: run.type === 'F', help: 'builder_run_filter_help'},
-				{key: 'sob_run_target', label: 'builder_run_target', kind: 'select', types: ['run'], show: run.type === 'F' && run.method === 'b',
-					options: [['0', t('builder_run_target_0')], ['1', t('builder_run_target_1')], ['2', t('builder_run_target_2')], ['3', t('builder_run_target_3')]]}
-			]],
-			['builder_sec_position', [
-				{key: 'sob_all_top', label: 'builder_top', kind: 'number', cls: 'col-3'},
-				{key: 'sob_all_left', label: 'builder_left', kind: 'number', cls: 'col-3'},
-				{key: 'sob_all_width', label: 'builder_width', kind: 'number', cls: 'col-3'},
-				{key: 'sob_all_height', label: 'builder_height', kind: 'number', cls: 'col-3'},
-				{key: 'grid_row', label: 'builder_grid_row', kind: 'number', cls: 'col-3', value: g.row},
-				{key: 'grid_col', label: 'builder_grid_col', kind: 'number', cls: 'col-3', value: g.col},
-				{key: 'grid_span', label: 'builder_grid_span', kind: 'select', cls: 'col-3', value: g.span, options: [['', 'auto']].concat([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(function (n) { return [String(n), String(n)]; }))},
-				{key: 'grid_box', label: 'builder_grid_box', kind: 'select', cls: 'col-3', value: g.box, options: boxes},
-				{note: 'builder_position_help'}
-			]],
-			['builder_sec_style', [
-				{key: 'sob_all_style_type', label: 'builder_style_type', kind: 'select', cls: 'col-sm-4', options: [['', '—'], ['CSS', 'CSS'], ['Class', 'Class']]},
-				{key: 'sob_all_style', label: 'builder_style', cls: 'col-sm-8'},
-				{key: 'sob_input_attribute', label: 'builder_attributes', phKey: 'builder_attributes_help', attrEditor: true}
-			]]
-		];
-		return spec;
-	}
-
-	function panelObject(id) {
-		var o = objById(id);
-		if (!o) { lastObj = null; select('objects'); return; }
-		var draft = Object.assign({}, o);
-		var body = h('div', {});
-		// a file object switched to "File System" with empty HTML code gets the Uppy template (nuBuilder: procedure nu_upload_file_load_uppy_code)
-		function uppyTemplate(d) {
-			if (d.sob_all_type === 'input' && d.sob_input_type === 'file' && String(d.sob_input_file_target || '0') === '1' && !String(d.sob_html_code || '').trim() && D.uppy_template) {
-				d.sob_html_code = D.uppy_template;
-			}
-		}
-		function build() {
-			body.innerHTML = '';
-			objectSpecs(draft).forEach(function (sec) {
-				var kids = [];
-				sec[1].forEach(function (s) {
-					if (s.note) { kids.push(h('div', {'class': 'col-12 form-text mt-0', text: t(s.note)})); return; }
-					if (s.types && s.types.indexOf(draft.sob_all_type) < 0) return;
-					if (s.show === false) return;
-					var val = 'value' in s ? s.value : (s.key === 'lookup_php' ? S.lookup_php[o.zzzzsys_object_id] : draft[s.key]);
-					var f = field(s, val);
-					if (s.change) $('[data-key]', f).addEventListener('change', function () { Object.assign(draft, collect(body)); uppyTemplate(draft); build(); });
-					kids.push(f);
-				});
-				if (kids.length) body.appendChild(section(sec[0], kids));
-			});
-			// Style (0.8.533): the placeholder follows the style type – CSS declarations or class names
-			var stType = $('[data-key=sob_all_style_type]', body), stField = $('[data-key=sob_all_style]', body);
-			if (stType && stField) {
-				var stPh = function () { stField.placeholder = stType.value === 'CSS' ? t('builder_style_ph_css') : (stType.value === 'Class' ? t('builder_style_ph_class') : ''); stField.title = stField.placeholder; };   // title: the whole hint in a narrow field
-				stType.addEventListener('change', stPh);
-				stPh();
-			}
-			body.appendChild(eventsEditor(o));
-			if (body.isConnected) { upgradeEditors(body); refreshEditors(body); }
-		}
-		build();
-		panel(o.sob_all_id + ' · ' + t('bf_type_' + o.sob_all_type), body, function () {
-			var v = collect(body), fields = {}, grid = {}, events = [];
-			Object.keys(v).forEach(function (k) {
-				if (k.indexOf('grid_') === 0) grid[k.substr(5)] = v[k];
-				else if (k !== 'lookup_php' && k.indexOf('ev_') !== 0) fields[k] = v[k];
-			});
-			$$('.nbEventRow:not(.nuRowRemoved)', body).forEach(function (r) { events.push({event: $('select', r).value, js: $('textarea', r).value}); });
-			var payload = {object_id: o.zzzzsys_object_id, fields: fields, grid: grid, events: events};
-			if ('lookup_php' in v) payload.lookup_php = v.lookup_php;
-			return api('object.save', payload).then(function (r) { load(r); select('object', r.object_id); preview(); if (r.missing_column) offerColumn(r.object_id, r.missing_column); });
-		}, []);   // Clone / Change column / Delete: the ⋮ menu of the object in the objects list (0.8.633, before: toolbar buttons)
-	}
-
-	function deleteObject(o) {
-		if (!confirm(t('builder_delete_object_confirm').replace('%s', o.sob_all_id))) return;
-		api('object.delete', {object_id: o.zzzzsys_object_id}).then(function (r) { load(r); lastObj = null; select('objects'); preview(); }).catch(function (e) { flash(false, e.message); });
-	}
-
-	/** ⋮ menu of an object in the objects list (0.8.633): Clone object, Change column…, Delete object. */
-	function objectMenu(o) {
-		var item = function (icon, label, fn, cls, id) {
-			return h('li', {}, [h('button', {type: 'button', 'class': 'dropdown-item' + (cls ? ' ' + cls : ''), id: id || null, 'data-nb-obj-action': id ? null : icon, onclick: guarded(fn)},
-				[h('i', {'class': 'bi ' + icon + ' me-2'}), t(label)])]);
-		};
-		return h('span', {'class': 'dropdown nbObjMenu'}, [
-			h('button', {type: 'button', 'class': 'btn btn-link btn-sm nbObjMenuBtn', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', title: t('builder_obj_actions'), 'aria-label': t('builder_obj_actions') + ': ' + o.sob_all_id},
-				[h('i', {'class': 'bi bi-three-dots-vertical'})]),
-			h('ul', {'class': 'dropdown-menu dropdown-menu-end'}, [
-				item('bi-copy', 'builder_clone_object', function () { duplicate(o); }, '', 'nbObjClone_' + o.sob_all_id),
-				storesValue(o) ? item('bi-database-gear', 'builder_colchg_btn', function () { select('object', o.zzzzsys_object_id); openColumnChange(o.sob_all_id); }, '', 'nbObjCol_' + o.sob_all_id) : null,
-				h('li', {}, [h('hr', {'class': 'dropdown-divider'})]),
-				item('bi-trash', 'builder_delete_object', function () { deleteObject(o); }, 'text-danger', 'nbObjDel_' + o.sob_all_id)
-			])
-		]);
-	}
-
-	/** Objects whose value is a column of the form's table (the same rule as NuDDL::typeForObject). */
-	function storesValue(o) {
-		if (!S || !S.form || !String(S.form.sfo_table || '').trim() || S.form.sfo_type === 'launch') return false;
-		var tp = o.sob_all_type;
-		if (tp === 'input') return o.sob_input_type !== 'button' && !(o.sob_input_type === 'file' && String(o.sob_input_file_target || '0') === '1');
-		return ['select', 'textarea', 'editor', 'lookup', 'calc'].indexOf(tp) >= 0;
-	}
-
-	// ------------------------------------------------------------------ change the database column of an object (0.8.623)
-	// column.info → current type; type / length (or the globeadmin's own ALTER TABLE) → column.check: the statement and the values that
-	// would be cut, rounded or lost; Run → column.change (recent password; values lost only after the tick)
-	function openColumnChange(column) {
-		if (!nuBs.ready()) return;
-		var TY = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id', 'uuid'];
-		var info = null, plan = null, timer = 0, busy = false;
-		var cur = h('div', {'class': 'mb-3', id: 'nbColCur'});
-		var type = sel2(TY.map(function (x) { return [x, t('builder_coltype_' + x)]; }), '', {'aria-label': t('builder_col_type'), id: 'nbColType'});
-		var len = inp({'class': 'form-control form-control-sm', 'aria-label': t('builder_col_length'), maxlength: 8, id: 'nbColLen', placeholder: t('builder_col_length')});
-		var free = h('textarea', {'class': 'form-control form-control-sm font-monospace', rows: 3, id: 'nbColSql', spellcheck: 'false', 'aria-label': t('builder_colchg_free')});
-		var freeBox = h('details', {'class': 'mt-3 d-none', id: 'nbColFree'}, [h('summary', {'class': 'small', text: t('builder_colchg_free')}),
-			h('div', {'class': 'form-text mb-1', text: t('builder_colchg_free_hint')}), free]);
-		var sqlBox = h('pre', {'class': 'small bg-body-tertiary border rounded p-2 mb-2 text-wrap', id: 'nbColPlan'});
-		var res = h('div', {id: 'nbColChecks'});
-		var accept = h('input', {type: 'checkbox', 'class': 'form-check-input', id: 'nbColAccept'});
-		var acceptBox = h('div', {'class': 'form-check mt-2 d-none'}, [accept, h('label', {'class': 'form-check-label', 'for': 'nbColAccept', text: t('builder_colchg_accept')})]);
-		var reauth = h('div', {'class': 'alert alert-warning py-2 d-none', id: 'nbColReauth'}, [h('i', {'class': 'bi bi-shield-lock me-1'}), t('builder_colchg_reauth') + ' ',
-			h('a', {href: 'index.php?p=reauth', id: 'nbColReauthLink', text: t('builder_colchg_reauth_link')})]);
-		var err = h('div', {'class': 'alert alert-danger py-2 d-none', role: 'alert'});
-		var run = h('button', {type: 'button', 'class': 'btn btn-warning', id: 'nbColRun', disabled: true}, [h('i', {'class': 'bi bi-database-gear me-1'}), t('builder_colchg_run')]);
-		var title = h('h2', {'class': 'modal-title h5', text: t('builder_colchg_title').replace('%s', column)});
-		var modal = h('div', {'class': 'modal fade', tabindex: '-1', 'aria-hidden': 'true', id: 'nbColModal'}, [h('div', {'class': 'modal-dialog modal-lg modal-dialog-scrollable'}, [h('div', {'class': 'modal-content'}, [
-			h('div', {'class': 'modal-header'}, [title, h('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('cancel')})]),
-			h('div', {'class': 'modal-body'}, [err, reauth, cur,
-				h('div', {'class': 'd-flex flex-wrap gap-2 align-items-end'}, [
-					h('div', {}, [h('label', {'class': 'form-label small mb-1', 'for': 'nbColType', text: t('builder_colchg_new')}), type]),
-					h('div', {'class': 'nbColLenBox'}, [h('label', {'class': 'form-label small mb-1', 'for': 'nbColLen', text: t('builder_col_length')}), len])]),
-				freeBox,
-				h('div', {'class': 'small fw-semibold mt-3 mb-1', text: t('builder_colchg_sql')}), sqlBox, res, acceptBox]),
-			h('div', {'class': 'modal-footer'}, [h('button', {type: 'button', 'class': 'btn btn-outline-secondary', 'data-bs-dismiss': 'modal', text: t('cancel')}), run])
-		])])]);
-		document.body.appendChild(modal);
-		var bm = nuBs.modal(modal);
-		modal.addEventListener('hidden.bs.modal', function () { modal.remove(); });
-		function showErr(m) { err.textContent = m || ''; err.classList.toggle('d-none', !m); }
-		function syncLen() { var uses = type.value === 'text' || type.value === 'decimal'; len.disabled = !uses; if (!uses) len.value = ''; else if (!len.value) len.value = type.value === 'text' ? '255' : '15,2'; }
-		function fmtN(n) { return Number(n).toLocaleString(); }
-		function syncRun() { run.disabled = busy || !info || info.reauth || !plan || plan.same || (plan.checks.length > 0 && !accept.checked); }
-		function check() {
-			clearTimeout(timer);
-			timer = setTimeout(function () {
-				var data = {column: column};
-				if (free.value.trim() && free.dataset.edited === '1') data.sql = free.value; else { data.type = type.value; data.length = len.value; }
-				api('column.check', data).then(function (r) {
-					plan = r.plan; showErr('');
-					sqlBox.textContent = plan.sql + ';';
-					if (free.dataset.edited !== '1') free.value = plan.sql;
-					res.innerHTML = '';
-					if (plan.same) res.appendChild(h('div', {'class': 'alert alert-secondary py-2', text: t('builder_colchg_same')}));
-					else if (plan.free) res.appendChild(h('div', {'class': 'alert alert-warning py-2', text: t('builder_colchg_free_nocheck')}));
-					else if (!plan.checks.length) res.appendChild(h('div', {'class': 'alert alert-success py-2', id: 'nbColOk'}, [h('i', {'class': 'bi bi-check-circle me-1'}), t('builder_colchg_ok')]));
-					else res.appendChild(h('div', {'class': 'alert alert-warning py-2', id: 'nbColLoss'}, [h('div', {'class': 'fw-semibold mb-1', text: t('builder_colchg_loss')}),
-						h('ul', {'class': 'mb-0 small'}, plan.checks.map(function (c) {
-							return h('li', {'data-check': c.key}, [t('builder_colchg_chk_' + c.key).replace('%1$s', fmtN(c.n)).replace('%2$s', c.arg),
-								c.samples.length ? h('span', {'class': 'text-body-secondary', text: ' – ' + t('builder_colchg_eg') + ' ' + c.samples.map(function (v) { return '«' + v + '»'; }).join(', ')}) : null]);
-						}))]));
-					acceptBox.classList.toggle('d-none', !(plan.checks.length > 0));
-					accept.checked = false;
-					syncRun();
-				}).catch(function (e) { plan = null; showErr(e.message); syncRun(); });
-			}, 250);
-		}
-		type.addEventListener('change', function () { len.value = ''; syncLen(); free.dataset.edited = ''; check(); });
-		len.addEventListener('input', function () { free.dataset.edited = ''; check(); });
-		free.addEventListener('input', function () { free.dataset.edited = '1'; check(); });
-		accept.addEventListener('change', syncRun);
-		run.addEventListener('click', function () {
-			busy = true; syncRun();
-			var data = {column: column, accept_loss: accept.checked};
-			if (free.dataset.edited === '1' && free.value.trim()) data.sql = free.value; else { data.type = type.value; data.length = len.value; }
-			api('column.change', data).then(function (r) {
-				busy = false; bm.hide(); flash(true);
-				if (window.nuToast) window.nuToast(t('builder_colchg_done').replace('%s', r.info.sql_type), 'success');
-				preview();
-			}).catch(function (e) { busy = false; showErr(e.message); syncRun(); });
-		});
-		api('column.info', {column: column}).then(function (r) {
-			info = Object.assign(r.info, {reauth: r.reauth});
-			cur.innerHTML = '';
-			cur.appendChild(h('div', {}, [t('builder_colchg_current') + ' ', h('code', {id: 'nbColCurType', text: info.sql_type}), ' · ' + (info.nullable ? 'NULL' : 'NOT NULL'),
-				info.rows !== null ? ' · ' + t('builder_colchg_rows').replace('%s', fmtN(info.rows)) : '',
-				info.pk ? h('span', {'class': 'badge text-bg-light border ms-2', text: t('builder_colchg_pk')}) : null]));
-			if (r.used_by && r.used_by.length) cur.appendChild(h('div', {'class': 'small text-body-secondary mt-1', text: t('builder_colchg_used').replace('%s', r.used_by.join(', '))}));
-			cur.appendChild(h('div', {'class': 'small text-body-secondary mt-1', text: t('builder_colchg_backup')}));
-			if (r.reauth) { reauth.classList.remove('d-none'); if (r.reauth_url) $('#nbColReauthLink', modal).href = r.reauth_url; }
-			if (r.free_sql) freeBox.classList.remove('d-none');
-			type.value = info.type || 'text';
-			len.value = info.length || '';
-			syncLen();
-			check();
-		}).catch(function (e) { showErr(e.message); });
-		bm.show();
-	}
-	window.nbColumnChange = openColumnChange;
-
-	/** Shown when a saved object has no column in the form's table: propose a type and add it on confirm. */
-	function offerColumn(objectId, mc) {
-		var types = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id', 'uuid'];
-		var type = sel2(types.map(function (x) { return [x, t('builder_coltype_' + x)]; }), mc.type, {'aria-label': t('builder_col_type')});
-		var len = inp({value: mc.length || '', 'class': 'form-control form-control-sm nbLen', 'aria-label': t('builder_col_length'), maxlength: 8});
-		function syncLen() { var uses = type.value === 'text' || type.value === 'decimal'; len.disabled = !uses; if (!uses) len.value = ''; else if (!len.value) len.value = type.value === 'text' ? '255' : '15,2'; }
-		type.addEventListener('change', function () { len.value = ''; syncLen(); });
-		syncLen();
-		var box = h('div', {'class': 'alert alert-warning nbMissingColumn', role: 'alert'}, [
-			h('div', {'class': 'fw-semibold mb-1'}, [h('i', {'class': 'bi bi-exclamation-triangle me-1'}), t('builder_missing_column').replace('%1$s', mc.name).replace('%2$s', mc.table)]),
-			h('div', {'class': 'small mb-2', text: t('builder_missing_column_help')}),
-			h('div', {'class': 'd-flex flex-wrap gap-2 align-items-center'}, [
-				h('div', {'class': 'nbMcType'}, [type]), h('div', {'class': 'nbMcLen'}, [len]),
-				h('button', {type: 'button', 'class': 'btn btn-warning btn-sm', onclick: function () {
-					var b = this; b.disabled = true;
-					api('column.add', {object_id: objectId, type: type.value, length: len.value}).then(function (r) {
-						load(r); box.remove(); flash(true); preview();
-					}).catch(function (e) { b.disabled = false; flash(false, e.message); });
-				}}, [h('i', {'class': 'bi bi-plus-lg me-1'}), t('builder_add_column_btn')]),
-				h('button', {type: 'button', 'class': 'btn btn-link btn-sm', text: t('builder_not_now'), onclick: function () { box.remove(); }})
-			])
-		]);
-		var p = $('#nbPanel');
-		p.insertBefore(box, p.firstChild);
-		box.scrollIntoView({block: 'nearest'});
-	}
-
-	function eventsEditor(o) {
-		var rows = h('div', {'class': 'nbEvents'});
-		function add(ev) {
-			var r = h('div', {'class': 'nbEventRow row g-2 mb-2'}, [
-				h('div', {'class': 'col-sm-4'}, [sel2(EVENTS.map(function (x) { return [x, x]; }), ev.event || 'onchange', {'aria-label': t('builder_event')})]),
-				h('div', {'class': 'col-sm-7'}, [(function () { var ta = h('textarea', {'class': 'form-control form-control-sm nbCode', rows: 2, spellcheck: 'false', disabled: RO, 'aria-label': 'JavaScript'}); ta.value = ev.js || ''; return ta; })()]),
-				h('div', {'class': 'col-sm-1'})
-			]);
-			if (!RO) r.lastChild.appendChild(removeBtn(r, 'btn btn-link btn-sm text-danger'));
-			rows.appendChild(r);
-			upgradeEditors(r);
-		}
-		(S.events[o.zzzzsys_object_id] || []).forEach(add);
-		return h('fieldset', {'class': 'nbFieldset'}, [h('legend', {'class': 'nbLegend', text: t('builder_sec_events')}), rows,
-			RO ? null : h('button', {type: 'button', 'class': 'btn btn-outline-primary btn-sm', onclick: function () { add({}); }}, [h('i', {'class': 'bi bi-plus-lg me-1'}), t('builder_add_event')])]);
-	}
-
-	function uniqueId(base) {
-		var ids = S.objects.map(function (x) { return x.sob_all_id; }), n = 1, id = base;
-		while (ids.indexOf(id) >= 0) id = base + '_' + (++n);
-		return id;
-	}
-
-	function bottomOf(tabId) {
-		return S.objects.filter(function (x) { return x.sob_all_zzzzsys_tab_id === tabId && x.sob_all_type !== 'contentbox'; })
-			.reduce(function (m, x) { return Math.max(m, (+x.sob_all_top || 0) + (+x.sob_all_height || 0)); }, 0);
-	}
-
-	function addObject(type) {
-		var tab = $('#nbTabFilter').value || (sel.kind === 'object' && objById(sel.id) ? objById(sel.id).sob_all_zzzzsys_tab_id : (S.tabs[0] || {}).zzzzsys_tab_id);
-		var size = {textarea: [400, 60], editor: [700, 300], subform: [700, 200], contentbox: [600, 200], html: [400, 60], run: [150, 30], lookup: [100, 22]}[type] || [250, 22];
-		var maxOrder = S.objects.reduce(function (m, x) { return Math.max(m, +x.sob_all_order || 0); }, 0);
-		var fields = {sob_all_type: type, sob_all_id: uniqueId(type === 'contentbox' ? 'box' : 'new_' + type), sob_all_label: t('bf_type_' + type),
-			sob_all_zzzzsys_tab_id: tab, sob_all_order: maxOrder + 10, sob_all_top: bottomOf(tab) + 12, sob_all_left: 170,
-			sob_all_width: size[0], sob_all_height: size[1], sob_all_align: 'left', sob_input_type: type === 'input' ? 'text' : '',
-			sob_subform_add: type === 'subform' ? '1' : '', sob_subform_delete: type === 'subform' ? '1' : '', sob_subform_type: type === 'subform' ? 'g' : '',
-			sob_run_method: type === 'run' ? 'b' : '', sob_run_type: type === 'run' ? 'F' : '', sob_run_target: type === 'run' ? '0' : '', sob_lookup_description_width: type === 'lookup' ? '200' : ''};
-		api('object.save', {object_id: '', fields: fields}).then(function (r) { load(r); select('object', r.object_id); preview(); }).catch(function (e) { alert(e.message); });
-		// the column is offered once the user has given the object its real ID and saved it
-	}
-
-	function duplicate(o) {
-		var fields = {};
-		Object.keys(o).forEach(function (k) { if (k.indexOf('sob_') === 0 && k !== 'sob_all_json' && k !== 'sob_json' && k !== 'sob_all_zzzzsys_form_id') fields[k] = o[k]; });
-		fields.sob_all_id = uniqueId(o.sob_all_id);
-		fields.sob_all_top = (+o.sob_all_top || 0) + (+o.sob_all_height || 20) + 8;
-		fields.sob_all_order = (+o.sob_all_order || 0) + 1;
-		var events = (S.events[o.zzzzsys_object_id] || []).map(function (e) { return {event: e.event, js: e.js}; });
-		api('object.save', {object_id: '', fields: fields, events: events}).then(function (r) { load(r); select('object', r.object_id); preview(); if (r.missing_column) offerColumn(r.object_id, r.missing_column); }).catch(function (e) { flash(false, e.message); });
-	}
-
-	// ------------------------------------------------------------------ code editors (CodeMirror 5)
-	var MODES = {sfo_javascript: 'javascript', sfo_edit_javascript: 'javascript', sfo_browse_javascript: 'javascript', sob_lookup_javascript: 'javascript',
-		sob_calc_formula: 'javascript', sob_input_javascript: 'javascript', sob_html_javascript: 'javascript', sfo_style: 'css', sob_html_code: 'htmlmixed', lookup_php: 'text/x-php'};
-	function modeFor(ta) {
-		var k = ta.getAttribute('data-key') || '';
-		if (MODES[k]) return MODES[k];
-		if (k.indexOf('php_') === 0) return 'text/x-php';
-		if (/_sql$/.test(k)) return 'text/x-sql';
-		return 'javascript';                                   // event code
-	}
-	function upgradeEditors(root) {
-		if (!window.CodeMirror) return;
-		$$('textarea.nbCode', root).forEach(function (ta) {
-			if (ta.nbCM) return;
-			var mode = modeFor(ta);
-			var cm = CodeMirror.fromTextArea(ta, {
-				mode: mode === 'text/x-php' ? {name: 'php', startOpen: true} : mode, lineNumbers: true, lineWrapping: true,
-				matchBrackets: true, autoCloseBrackets: true, indentUnit: 4, tabSize: 4, indentWithTabs: true, viewportMargin: Infinity,
-				readOnly: RO || ta.disabled ? 'nocursor' : false
-			});
-			cm.on('change', function () { cm.save(); setDirty(true); });
-			cm.getWrapperElement().classList.add('nbCM');
-			// height: at least the textarea's rows (CodeMirror grows with the content up to 62vh)
-			var rows = parseInt(ta.getAttribute('rows'), 10) || 3;
-			cm.getScrollerElement().style.minHeight = Math.max(4.5, Math.min(rows * 1.2, 40)) + 'rem';   // 1.2rem = one line
-			// toolbar: undo / redo, search, replace, comment, invisibles, format – and the "#" menu for SQL, PHP and HTML
-			var bar = h('div', {'class': 'nbCodeBar d-flex justify-content-start gap-2'});   // left: nearer for the mouse (0.8.592)
-			cm.getWrapperElement().parentNode.insertBefore(bar, cm.getWrapperElement());
-			var lang = {'text/x-sql': 'SQL', 'text/x-php': 'PHP', htmlmixed: 'HTML', css: 'CSS'}[mode] || 'JS';
-			if (ta.getAttribute('data-key') === 'sob_calc_formula') lang = 'TEXT';           // a formula, not a program
-			if (window.NuCodeTools) NuCodeTools.attach(cm, bar, {lang: lang, db: D.db_type, readOnly: RO || ta.disabled});
-			if (!RO && !ta.disabled && window.NuHashVars && D.hash_catalog && (mode === 'text/x-sql' || mode === 'text/x-php' || mode === 'htmlmixed')) {
-				NuHashVars.attach(cm, bar, {catalog: D.hash_catalog, fields: function () {
-					return S.objects.filter(function (o) { return ['input', 'select', 'lookup', 'textarea', 'calc', 'display', 'editor'].indexOf(o.sob_all_type) >= 0 && o.sob_input_type !== 'button'; })
-						.map(function (o) { return [o.sob_all_id, String(o.sob_all_label || '').replace(/<[^>]*>/g, '').trim()]; });
-				}});
-			}
-			ta.nbCM = cm;
-		});
-	}
-	function refreshEditors(root) { $$('textarea.nbCode', root).forEach(function (ta) { if (ta.nbCM) ta.nbCM.refresh(); }); }
-	window.nbRefreshEditors = refreshEditors;
-
-	// ------------------------------------------------------------------ history
-	function panelHistory() {
-		var body = h('div', {}, [h('div', {'class': 'text-body-secondary small', text: '…'})]);
-		panel(t('builder_sec_history'), body, null);
-		api('history.list', {}).then(function (r) {
-			body.innerHTML = '';
-			if (!r.history.length) { body.appendChild(h('p', {'class': 'text-body-secondary', text: t('builder_history_empty')})); return; }
-			body.appendChild(h('p', {'class': 'small text-body-secondary', text: t('builder_history_help')}));
-			var list = h('ul', {'class': 'list-group nbHistory'});
-			r.history.forEach(function (it) {
-				var ver = /^published v(\d+)/.exec(it.action || '');                 // versions of form drafts (0.8.386)
-				list.appendChild(h('li', {'class': 'list-group-item d-flex align-items-center gap-2'}, [
-					h('div', {'class': 'flex-grow-1 small'}, [
-						h('div', {'class': 'fw-semibold'}, [ver ? h('span', {'class': 'badge text-bg-success me-2', text: 'v' + ver[1]}) : null, it.action]),
-						h('div', {'class': 'text-body-secondary', text: it.created_at + ' · ' + (it.login || '')})
-					]),
-					RO || DR ? null : h('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', text: t('builder_restore'), onclick: function () {
-						if (!confirm(t('builder_restore_confirm'))) return;
-						api('history.restore', {id: it.id}).then(function (s2) { load(s2); select('history'); preview(); flash(true); }).catch(function (e) { flash(false, e.message); });
-					}})
-				]));
-			});
-			body.appendChild(list);
-		}).catch(function (e) { body.textContent = e.message; });
-	}
-
-	var undoBtn = $('#nbUndo');
-	if (undoBtn && DR) undoBtn.hidden = true;                   // draft mode: the draft bar has its own Undo
-	if (DR && $('#nbDeleteForm')) $('#nbDeleteForm').hidden = true;   // a form with an open draft is not deleted
-	if (undoBtn) undoBtn.addEventListener('click', function () {
-		undoBtn.disabled = true;
-		api('history.undo', {}).then(function (r) {
-			load(r);
-			select(sel.kind === 'object' && objById(sel.id) ? 'object' : (sel.kind === 'object' ? 'form' : sel.kind), sel.id);
-			preview();
-			flash(true);
-		}).catch(function (e) { alert(e.message); }).then(function () { undoBtn.disabled = false; });
-	});
-
-	// ------------------------------------------------------------------ designer in the preview (drag & drop)
-	function objByFieldId(fid) { return S.objects.filter(function (x) { return x.sob_all_id === fid; })[0]; }
-
-	function ensureGrid() {
-		if (S.form.layout === 'grid') return Promise.resolve();
-		if (!confirm(t('builder_designer_convert'))) return Promise.reject(new Error(''));
-		return api('layout.convert', {}).then(function (r) { load(r); $('#nbPreviewLayout').value = ''; });
-	}
-
-	function saveObject(o, payload, reloadPreview) {
-		return api('object.save', Object.assign({object_id: o.zzzzsys_object_id}, payload)).then(function (r) {
-			load(r);
-			if (sel.kind === 'object' && sel.id === o.zzzzsys_object_id) select('object', o.zzzzsys_object_id);
-			if (reloadPreview) preview();
-			flash(true);
-		}).catch(function (e) { flash(false, e.message); preview(); });
-	}
-
-	window.addEventListener('message', function (e) {
-		if (e.origin !== window.location.origin || !e.data || RO) return;
-		var d = e.data;
-		if (d.nuDesigner) {                                    // absolute layout: position / size
-			var o = objByFieldId(d.nuDesigner.id);
-			if (!o) return;
-			var f = {};
-			if (d.nuDesigner.top !== undefined) { f.sob_all_top = d.nuDesigner.top; f.sob_all_left = d.nuDesigner.left; }
-			if (d.nuDesigner.width !== undefined) {
-				var w = d.nuDesigner.width;
-				if (o.sob_all_type === 'lookup') w -= (o.sob_lookup_description_width === '' || o.sob_lookup_description_width == null ? 150 : +o.sob_lookup_description_width || 0) + 34;   // 0 = description hidden
-				f.sob_all_width = Math.max(10, w);
-			}
-			if (d.nuDesigner.height !== undefined) f.sob_all_height = d.nuDesigner.height;
-			saveObject(o, {fields: f}, false);
-		}
-		if (d.nuDesignerBatch) {                               // several objects at once (0.8.606: group move, Arrange panel, keys)
-			var items = [];
-			d.nuDesignerBatch.forEach(function (it) {
-				var ob = objByFieldId(it.id);
-				if (!ob) return;
-				var x = {object_id: ob.zzzzsys_object_id, top: it.top, left: it.left};
-				if (it.width !== undefined) {
-					var wb = it.width;
-					if (ob.sob_all_type === 'lookup') wb -= (ob.sob_lookup_description_width === '' || ob.sob_lookup_description_width == null ? 150 : +ob.sob_lookup_description_width || 0) + 34;
-					x.width = Math.max(10, wb);
-				}
-				if (it.height !== undefined) x.height = it.height;
-				items.push(x);
-			});
-			if (items.length) api('objects.geometry', {items: items}).then(function (r) { load(r); if (sel.kind === 'object') select('object', sel.id); flash(true); })
-				.catch(function (er) { flash(false, er.message); preview(); });
-		}
-		if (d.nuDesignerOrder) {                               // Arrange panel Up / Down: the objects move in the order of their tab (0.8.606)
-			var want = d.nuDesignerOrder.ids.map(objByFieldId).filter(Boolean);
-			if (!want.length) return;
-			var ids = S.objects.map(function (x) { return x.zzzzsys_object_id; });
-			var chosen = want.map(function (x) { return x.zzzzsys_object_id; });
-			var dir = d.nuDesignerOrder.dir < 0 ? -1 : 1;
-			var tabOf = {};
-			S.objects.forEach(function (x) { tabOf[x.zzzzsys_object_id] = x.sob_all_zzzzsys_tab_id; });
-			var order = dir < 0 ? ids.map(function (x, i) { return i; }) : ids.map(function (x, i) { return ids.length - 1 - i; });
-			order.forEach(function (i) {
-				if (chosen.indexOf(ids[i]) < 0) return;
-				for (var j = i + dir; j >= 0 && j < ids.length; j += dir) {
-					if (tabOf[ids[j]] !== tabOf[ids[i]]) continue;          // the next object of the same tab
-					if (chosen.indexOf(ids[j]) >= 0) break;                 // a selected one: keep the block together
-					var tmp = ids[i]; ids[i] = ids[j]; ids[j] = tmp;
-					break;
-				}
-			});
-			api('object.order', {ids: ids}).then(function (r) {
-				load(r);
-				flash(true);
-				// the preview keeps its objects: it reorders them, so Tab and the tab order numbers follow at once (0.8.608)
-				try { frame.contentWindow.postMessage({nuBuilderOrder: S.objects.map(function (x) { return x.sob_all_id; })}, window.location.origin); } catch (e2) { /* ignore */ }
-			}).catch(function (er) { flash(false, er.message); });
-		}
-		if (d.nuDesignerSpan) {                                // grid: width in columns
-			var os = objByFieldId(d.nuDesignerSpan.id);
-			if (!os) return;
-			ensureGrid().then(function () { saveObject(objByFieldId(d.nuDesignerSpan.id), {grid: Object.assign(nunext(objByFieldId(d.nuDesignerSpan.id)), {span: d.nuDesignerSpan.span})}, true); }).catch(function () { preview(); });
-		}
-		if (d.nuDesignerMove) {                                // grid: new place
-			ensureGrid().then(function () {
-				var m = d.nuDesignerMove, o2 = objByFieldId(m.id), tgt = objByFieldId(m.target);
-				if (!o2 || !tgt) return;
-				var tg = nunext(tgt), g = nunext(o2), place;
-				if (m.side === 'into') {
-					var inBox = S.objects.filter(function (x) { return nunext(x).box === tgt.sob_all_id; });
-					var maxRow = inBox.reduce(function (mx, x) { return Math.max(mx, +nunext(x).row || 0); }, 0);
-					place = {row: maxRow + 10, col: 10, box: tgt.sob_all_id};
-				} else if (m.side === 'below') {
-					place = {row: (+tg.row || 0) + 5, col: 10, box: tg.box || ''};
-				} else {
-					place = {row: +tg.row || 10, col: (+tg.col || 10) + (m.side === 'before' ? -5 : 5), box: tg.box || ''};
-				}
-				saveObject(o2, {fields: {sob_all_zzzzsys_tab_id: tgt.sob_all_zzzzsys_tab_id}, grid: {row: place.row, col: place.col, span: g.span || '', box: place.box}}, true);
-			}).catch(function () { preview(); });
-		}
-	});
-
-	// ------------------------------------------------------------------ preview
-	var frame = $('#nbPreview');
-	$('#nbPreviewRecord').value = D.preview_record || '-1';
-	// Browse and edit forms (0.8.439): the preview shows the list (Browse) or a record (Edit) – remembered per form in this browser
-	var PM_KEY = 'nunext-builder-pvmode-' + D.form_id, pmBox = $('#nbPreviewMode'), pmMode = null;
-	function previewMode() {
-		if (pmMode === null) { pmMode = 'edit'; try { if (localStorage.getItem(PM_KEY) === 'browse') pmMode = 'browse'; } catch (e) { /* no storage */ } }
-		return pmMode;
-	}
-	function setPreviewMode(m, reload, auto) {
-		pmMode = m === 'browse' ? 'browse' : 'edit';
-		// only the user's own choice is remembered (0.8.563: not the switch of the Browse view / back on Objects)
-		if (!auto) { try { if (pmMode === 'browse') localStorage.setItem(PM_KEY, 'browse'); else localStorage.removeItem(PM_KEY); } catch (e) { /* no storage */ } }
-		if (reload) preview();
-	}
-	if (pmBox) pmBox.addEventListener('click', function (e) {
-		var b = e.target.closest('[data-mode]');
-		if (b) autoBrowse = false;                           // the user's own choice
-		if (b && b.getAttribute('data-mode') !== previewMode()) setPreviewMode(b.getAttribute('data-mode'), true);
-	});
-	function preview() {
-		var type = S.form.sfo_type, both = type === 'browseedit';
-		var browse = type === 'browse' || (both && previewMode() === 'browse');
-		if (pmBox) {
-			pmBox.classList.toggle('d-none', !both);
-			pmBox.querySelectorAll('[data-mode]').forEach(function (b) {
-				var on = b.getAttribute('data-mode') === previewMode();
-				b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
-			});
-		}
-		var hint = $('#nbDesignerHint');
-		if (hint) hint.classList.toggle('d-none', browse);   // dragging objects needs the edit form
-		var rec = browse ? '' : ($('#nbPreviewRecord').value.trim() || '-1');
-		$('#nbPreviewRecord').disabled = browse;
-		var q = {p: 'form', f: D.form_id, iframe: '1', builder: '1', draft: DR ? DR.id : 'off'};   // draft mode: the preview shows the draft (0.8.386)
-		if (rec !== '') q.r = rec;
-		if ($('#nbPreviewLayout').value) q.layout = $('#nbPreviewLayout').value;
-		if (type === 'subform') { frame.removeAttribute('src'); frame.srcdoc = '<p style="font:14px sans-serif;padding:1rem;color:#666">' + t('builder_preview_subform') + '</p>'; return; }
-		frame.removeAttribute('srcdoc');
-		frame.src = 'index.php?' + new URLSearchParams(q).toString();
-	}
-	function highlight(o) {
-		try { if (o && frame.contentWindow) frame.contentWindow.postMessage({nuBuilderSelect: o.sob_all_id}, window.location.origin); } catch (e) { /* ignore */ }
-	}
-	// tab order (0.8.521): the preview numbers its objects in the order the Tab key visits them; on / off remembered in this browser
-	var TO_KEY = 'nunext-builder-taborder', toBtn = $('#nbTabOrder'), tabOrder = false;
-	try { tabOrder = localStorage.getItem(TO_KEY) === '1'; } catch (e) { /* ignore */ }
-	function sendTabOrder() {
-		if (toBtn) { toBtn.classList.toggle('active', tabOrder); toBtn.setAttribute('aria-pressed', tabOrder ? 'true' : 'false'); }
-		try { if (frame.contentWindow) frame.contentWindow.postMessage({nuBuilderTabOrder: tabOrder}, window.location.origin); } catch (e) { /* ignore */ }
-	}
-	if (toBtn) toBtn.addEventListener('click', function () {
-		tabOrder = !tabOrder;
-		try { localStorage.setItem(TO_KEY, tabOrder ? '1' : '0'); } catch (e) { /* ignore */ }
-		sendTabOrder();
-	});
-	sendTabOrder();
-	frame.addEventListener('load', function () { if (sel.kind === 'object') highlight(objById(sel.id)); sendTabOrder(); });
-	// show / hide the preview (small screens): remembered in localStorage; without a stored choice hidden below 992 px
-	// splitter of the Code view (0.8.565): the share of the code card in % (25–80), per browser
-	(function () {
-		var sp = $('#nbSplit'), box = $('#nbWorkspace'), KEY = 'nunext-builder-split-code', DEF = 60;
-		if (!sp) return;
-		function apply(v, store) {
-			v = Math.max(25, Math.min(80, Math.round(v * 10) / 10));
-			box.style.setProperty('--nb-split', v + '%');
-			sp.setAttribute('aria-valuenow', String(Math.round(v)));
-			if (store) { try { localStorage.setItem(KEY, String(v)); } catch (e) { /* no storage */ } }
-			window.dispatchEvent(new Event('resize'));          // code editors and the preview take the new width
-		}
-		var saved = null;
-		try { saved = parseFloat(localStorage.getItem(KEY)); } catch (e) { /* no storage */ }
-		if (saved) apply(saved, false); else sp.setAttribute('aria-valuenow', String(DEF));
-		function at(x) { var r = box.getBoundingClientRect(); return (x - r.left) / r.width * 100; }
-		sp.addEventListener('pointerdown', function (e) {
-			if (e.button !== 0) return;
-			e.preventDefault();
-			sp.setPointerCapture(e.pointerId);
-			box.classList.add('nbSplitting');
-			var move = function (ev) { apply(at(ev.clientX), false); };
-			var up = function (ev) {
-				sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); sp.removeEventListener('pointercancel', up);
-				box.classList.remove('nbSplitting');
-				apply(at(ev.clientX), true);
-			};
-			sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up); sp.addEventListener('pointercancel', up);
-		});
-		sp.addEventListener('keydown', function (e) {
-			var v = parseFloat(sp.getAttribute('aria-valuenow')) || DEF, step = e.shiftKey ? 10 : 2;
-			if (e.key === 'ArrowLeft') apply(v - step, true);
-			else if (e.key === 'ArrowRight') apply(v + step, true);
-			else if (e.key === 'Home') apply(25, true);
-			else if (e.key === 'End') apply(80, true);
-			else return;
-			e.preventDefault();
-		});
-		sp.addEventListener('dblclick', function () {            // back to the default
-			box.style.removeProperty('--nb-split');
-			sp.setAttribute('aria-valuenow', String(DEF));
-			try { localStorage.removeItem(KEY); } catch (e) { /* no storage */ }
-			window.dispatchEvent(new Event('resize'));
-		});
-	})();
-	var PV_KEY = 'nunext-builder-preview', ws = $('#nbWorkspace'), pvBtn = $('#nbPreviewToggle');
-	function previewOpen() { return !ws.classList.contains('nbPreviewCollapsed'); }
-	function setPreview(open, remember) {
-		var was = previewOpen();
-		ws.classList.toggle('nbPreviewCollapsed', !open);
-		var label = pvBtn.getAttribute(open ? 'data-hide' : 'data-show');
-		pvBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-		pvBtn.setAttribute('title', label); pvBtn.setAttribute('aria-label', label);
-		pvBtn.querySelector('i').className = 'bi ' + (open ? 'bi-chevron-bar-right' : 'bi-eye');
-		if (remember) { try { localStorage.setItem(PV_KEY, open ? 'open' : 'closed'); } catch (e) { /* private mode */ } }
-		if (open && !was && S) preview();                  // reload: a hidden iframe has no size
-		window.dispatchEvent(new Event('resize'));
-	}
-	var pvStored = null;
-	try { pvStored = localStorage.getItem(PV_KEY); } catch (e) { /* ignore */ }
-	setPreview(pvStored ? pvStored === 'open' : window.matchMedia('(min-width: 992px)').matches, false);
-	pvBtn.addEventListener('click', function () { setPreview(!previewOpen(), true); });
-	window.nbShowPreview = function () { if (!previewOpen()) setPreview(true, false); };
-
-	$('#nbPreviewRecord').addEventListener('change', preview);
-	$('#nbPreviewLayout').addEventListener('change', preview);
-	$('#nbPreviewReload').addEventListener('click', preview);
-	window.addEventListener('message', function (e) {
-		if (e.origin !== window.location.origin || !e.data || !e.data.nuBuilderPick) return;
-		var o = S.objects.filter(function (x) { return x.sob_all_id === e.data.nuBuilderPick; })[0];
-		if (o) select('object', o.zzzzsys_object_id);
-	});
-
-	// "Delete form" (0.8.245): a dialog that can also delete the form's table – only after its name is typed exactly
-	var del = $('#nbDeleteForm'), dm = $('#nbDeleteModal');
-	function openDelete() {
-		if (!dm || !nuBs.ready()) {                      // fallback without the dialog: the form only, as before
-			if (confirm(t('builder_delete_form_confirm'))) api('form.delete', {}).then(function () { window.location.href = 'index.php?p=forms'; }).catch(function (e) { alert(e.message); });
-			return;
-		}
-		var note = $('#nbDelTableNote'), box = $('#nbDelTableBox'), chk = $('#nbDelTable'), cbox = $('#nbDelConfirmBox'), typed = $('#nbDelTyped'),
-			ok = $('#nbDelOk'), okText = $('#nbDelOkText'), reauth = $('#nbDelReauth'), info = null;
-		var sync = function () {
-			var drop = !!(info && info.can_drop && chk.checked);
-			cbox.classList.toggle('d-none', !drop || info.reauth);
-			reauth.classList.toggle('d-none', !drop || !info.reauth);
-			okText.textContent = drop ? t('builder_delete_form_table') : t('builder_delete_form');
-			ok.disabled = !info || (drop && (info.reauth || typed.value !== info.table));
-		};
-		note.classList.add('d-none'); box.classList.add('d-none'); chk.checked = false; typed.value = ''; ok.disabled = true;
-		chk.onchange = function () { sync(); if (chk.checked && !info.reauth) typed.focus(); };
-		typed.oninput = sync;
-		typed.onpaste = function (e) { e.preventDefault(); };   // typed, not pasted
-		ok.onclick = function () {
-			var drop = info && info.can_drop && chk.checked ? typed.value : '';
-			ok.disabled = true;
-			api('form.delete', {drop_table: drop}).then(function (r) {
-				if (r.warning) alert(r.warning);
-				window.location.href = 'index.php?p=forms';
-			}).catch(function (e) { ok.disabled = false; alert(e.message); });
-		};
-		api('form.deleteinfo', {}).then(function (r) {
-			info = r;
-			var msg = '';
-			if (!r.table) msg = t('builder_drop_no_table');
-			else if (!r.exists) msg = t('builder_drop_missing').replace('%s', r.table);
-			else if (r.reason === 'used') msg = t('builder_drop_used').replace('%s', r.table).replace('%s', r.used_by.join(', '));
-			else if (r.reason === 'view') msg = t('builder_drop_view').replace('%s', r.table);
-			else if (r.reason) msg = t('builder_drop_kept').replace('%s', r.table);
-			if (msg) { note.textContent = msg; note.classList.remove('d-none'); }
-			if (r.can_drop) {
-				$('#nbDelTableLabel').textContent = t('builder_drop_table').replace('%s', r.table).replace('%s', r.rows === null ? '?' : String(r.rows));
-				$('#nbDelTypedLabel').textContent = t('builder_drop_type').replace('%s', r.table);
-				typed.placeholder = r.table;
-				if (r.reauth_url) $('#nbDelReauthLink').href = r.reauth_url;
-				box.classList.remove('d-none');
-			}
-			sync();
-		}).catch(function (e) { note.textContent = e.message; note.classList.remove('d-none'); info = {can_drop: false}; sync(); });
-		nuBs.modal(dm).show();
-	}
-	if (del) del.addEventListener('click', openDelete);
-	if (del && new URLSearchParams(window.location.search).get('delete') === '1') openDelete();   // back from the password confirmation
-	var colBack = new URLSearchParams(window.location.search).get('colchg');                           // back from the password confirmation (0.8.623)
-	if (colBack && !RO) openColumnChange(colBack);
-
-	// ------------------------------------------------------------------ form drafts (0.8.386)
-	// Live mode: pill LIVE, "Start draft" (or the info bar of an open draft); draft mode: pill DRAFT and the amber bar with Preview,
-	// Compare, Undo, "Saving in the preview", Publish… and Discard. Switching between the modes reloads the page.
-	window.nbLoad = function (st) { load(st); select(sel.kind === 'object' && objById(sel.id) ? 'object' : (sel.kind === 'object' ? 'form' : sel.kind), sel.id); preview(); };
-	function fmtTime(s) { return String(s || '').replace(/^(\d{4})-(\d\d)-(\d\d) (\d\d:\d\d).*$/, '$3.$2. $4'); }
-	function go(url) { if (window.nuLeaveGuard && isDirty()) window.nuLeaveGuard.ask(function () { window.location.href = url; }); else window.location.href = url; }
-	function renderDraftBar() {
-		var pill = $('#nbModePill'), bar = $('#nbDraftBar');
-		if (!pill || !bar || !S) return;
-		pill.className = 'badge fs-6 fw-normal nbModePill ' + (DR ? 'text-bg-warning' : 'text-bg-success');
-		pill.textContent = DR ? t('builder_draft_draft') : t('builder_draft_live');
-		bar.innerHTML = '';
-		bar.className = 'nbDraftBar';
-		var btn = function (cls, icon, label, fn, attrs) { return h('button', Object.assign({type: 'button', 'class': 'btn btn-sm ' + cls, onclick: fn}, attrs || {}), [h('i', {'class': 'bi ' + icon + ' me-1'}), label]); };
-		if (!DR) {
-			var items = [];
-			if (LD) {
-				bar.classList.add('nbDraftInfo');
-				items.push(h('i', {'class': 'bi bi-cone-striped'}), h('span', {'class': 'me-auto', text: t('builder_draft_open_info').replace('%s', LD.created_by).replace('%s', fmtTime(LD.created_at))}));
-				items.push(btn('btn-primary', 'bi-pencil-square', t('builder_draft_open_btn'), function () { go(DP.draft_url); }, {id: 'nbDraftOpen'}));
-			} else if (!RO && D.can_save) {
-				// next to the section tabs (0.8.531): the explanation as (i) tooltip instead of a line of text
-				var tip = h('span', {'class': 'nuInfoTip', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide',
-					'aria-label': t('builder_draft_start_tip'), title: t('builder_draft_start_tip')}, [h('i', {'class': 'bi bi-info-circle'})]);
-				if (window.nuBs && nuBs.tooltip) nuBs.tooltip(tip);
-				items.push(tip);
-				if (DP.unpublished && DP.can_publish) items.push(btn('btn-outline-success', 'bi-rocket-takeoff', t('builder_draft_publish_new'), publishNew, {id: 'nbPublishNew'}));
-				items.push(btn(DP.required ? 'btn-primary' : 'btn-outline-primary', 'bi-cone-striped', t('builder_draft_start'), startDraft, {id: 'nbDraftStart', title: t('builder_draft_start_tip')}));
-			}
-			bar.hidden = !items.length;
-			items.forEach(function (x) { bar.appendChild(x); });
-			return;
-		}
-		bar.hidden = false;
-		bar.classList.add('nbDraftActive');
-		var info = t('builder_draft_bar').replace('%s', DR.created_by).replace('%s', fmtTime(DR.created_at)).replace('%s', fmtTime(DR.updated_at)).replace('%s', DR.changes);
-		var saves = h('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: 'nbDraftSaves', checked: DR.preview_saves ? 'checked' : null});
-		saves.addEventListener('change', function () {
-			if (saves.checked && !window.confirm(t('builder_draft_saves_confirm'))) { saves.checked = false; return; }
-			api('draft.settings', {preview_saves: saves.checked}).then(function (r) { load(r); flash(true); }).catch(function (e) { flash(false, e.message); });
-		});
-		[h('i', {'class': 'bi bi-cone-striped'}),
-			h('span', {'class': 'me-auto'}, [info, DR.conflict ? h('span', {'class': 'badge text-bg-danger ms-2', id: 'nbDraftConflict', text: t('builder_draft_conflict')}) : null]),
-			btn('btn-outline-dark', 'bi-box-arrow-up-right', t('builder_draft_preview'), function () { window.open(DR.preview_url, '_blank', 'noopener'); }, {id: 'nbDraftPreview'}),
-			btn('btn-outline-dark', 'bi-file-diff', t('builder_draft_compare'), function () { guarded(function () { select('compare'); })(); }, {id: 'nbDraftCompare'}),
-			btn('btn-outline-dark', 'bi-arrow-counterclockwise', t('builder_draft_undo'), draftUndo, {id: 'nbDraftUndo', disabled: DR.undo_count ? null : 'disabled', title: DR.undo_label || null}),
-			h('div', {'class': 'form-check form-switch mb-0 small'}, [saves, h('label', {'class': 'form-check-label', 'for': 'nbDraftSaves', text: t('builder_draft_saves')})]),
-			DP.can_publish ? btn('btn-success', 'bi-rocket-takeoff', t('builder_draft_publish'), publishDialog, {id: 'nbDraftPublish'}) : null,
-			btn('btn-outline-danger', 'bi-trash', t('builder_draft_discard'), discardDraft, {id: 'nbDraftDiscard'}),
-			h('a', {'class': 'btn btn-sm btn-link', href: DP.live_url, text: t('builder_draft_live')})
-		].forEach(function (x) { if (x) bar.appendChild(x); });
-	}
-	window.nbRenderDraftBar = renderDraftBar;
-	function startDraft() {
-		var note = window.prompt(t('builder_draft_note_prompt'), '');
-		if (note === null) return;
-		api('draft.start', {note: note, no_draft: true}).then(function () { window.location.href = DP.draft_url; }).catch(function (e) { alert(e.message); });
-	}
-	function publishNew() {
-		api('form.publishnew', {no_draft: true}).then(function (r) { alert(t('builder_draft_published').replace('%s', r.version)); window.location.href = DP.live_url; }).catch(function (e) { alert(e.message); });
-	}
-	function draftUndo() {
-		api('draft.undo', {}).then(function (r) { window.nbLoad(r); flash(true); }).catch(function (e) { if (e.message) alert(e.message); });
-	}
-	function discardDraft() {
-		if (!window.confirm(t('builder_draft_discard_confirm'))) return;
-		api('draft.discard', {}).then(function () { setDirty(false); window.location.href = DP.live_url; }).catch(function (e) { alert(e.message); });
-	}
-
-	/** Line diff (LCS) of two texts: [['=', line] | ['-', line] | ['+', line]]; null when too large. */
-	function lineDiff(a, b) {
-		var x = String(a || '').split('\n'), y = String(b || '').split('\n');
-		if (x.length * y.length > 4000000) return null;
-		var n = x.length, m = y.length, L = [], i, j;
-		for (i = 0; i <= n; i++) { L.push(new Uint32Array(m + 1)); }
-		for (i = n - 1; i >= 0; i--) for (j = m - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
-		var out = []; i = 0; j = 0;
-		while (i < n && j < m) {
-			if (x[i] === y[j]) { out.push(['=', x[i]]); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) { out.push(['-', x[i++]]); } else { out.push(['+', y[j++]]); }
-		}
-		while (i < n) out.push(['-', x[i++]]);
-		while (j < m) out.push(['+', y[j++]]);
-		return out;
-	}
-	function codeDiff(oldText, newText) {
-		var d = lineDiff(oldText, newText);
-		if (!d) return h('div', {'class': 'small text-body-secondary', text: t('builder_draft_diff_large')});
-		// unchanged lines far from a change are folded
-		var keep = d.map(function () { return false; });
-		d.forEach(function (r, k) { if (r[0] !== '=') for (var q = Math.max(0, k - 2); q <= Math.min(d.length - 1, k + 2); q++) keep[q] = true; });
-		var pre = h('pre', {'class': 'nbDiffCode'}), folded = false;
-		d.forEach(function (r, k) {
-			if (!keep[k]) { if (!folded) pre.appendChild(h('div', {'class': 'nbDiffFold', text: '…'})); folded = true; return; }
-			folded = false;
-			pre.appendChild(h('div', {'class': r[0] === '+' ? 'nbDiffAdd' : (r[0] === '-' ? 'nbDiffDel' : ''), text: (r[0] === '=' ? '  ' : r[0] + ' ') + r[1]}));
-		});
-		return pre;
-	}
-	var CODE_COLS = ['sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_browse_sql', 'sfo_style', 'sob_select_sql', 'sob_display_sql', 'sob_html_code',
-		'sob_input_javascript', 'sob_lookup_javascript', 'sob_html_javascript', 'sob_all_access_condition', 'sob_calc_formula'];
-	function fieldRows(fields) {
-		return h('div', {}, fields.map(function (f) {
-			if (CODE_COLS.indexOf(f[0]) >= 0) return h('div', {'class': 'mt-1'}, [h('div', {'class': 'small fw-semibold', text: f[0]}), codeDiff(f[1], f[2])]);
-			return h('div', {'class': 'small'}, [h('code', {text: f[0]}), ': ', h('span', {'class': 'nbDiffDel px-1', text: f[1] === null ? '∅' : f[1]}), ' → ', h('span', {'class': 'nbDiffAdd px-1', text: f[2] === null ? '∅' : f[2]})]);
-		}));
-	}
-	/** The differences (NuFormSnapshot::diff) as lists – compare panel, publish dialog and conflicts. */
-	function diffView(d) {
-		var box = h('div', {'class': 'nbDiff'});
-		if (!d.counts.total) { box.appendChild(h('p', {'class': 'text-body-secondary mb-0', text: t('builder_draft_no_changes')})); return box; }
-		var sec = function (title, kids) { if (kids.length) box.appendChild(h('details', {'class': 'mb-2', open: 'open'}, [h('summary', {'class': 'fw-semibold', text: title})].concat(kids))); };
-		var li = function (cls, text, extra) { return h('div', {'class': 'small ' + cls}, [text].concat(extra || [])); };
-		sec(t('builder_sec_form'), d.form.length ? [fieldRows(d.form)] : []);
-		var tabs = [];
-		d.tabs.added.forEach(function (x) { tabs.push(li('nbDiffAdd', '+ ' + x.title)); });
-		d.tabs.removed.forEach(function (x) { tabs.push(li('nbDiffDel', '− ' + x.title)); });
-		d.tabs.changed.forEach(function (x) { tabs.push(li('', '~ ' + x.title, [fieldRows(x.fields)])); });
-		if (d.tabs.order) tabs.push(li('', t('builder_draft_order')));
-		sec(t('builder_sec_tabs'), tabs);
-		var objs = [];
-		d.objects.added.forEach(function (x) { objs.push(li('nbDiffAdd', '+ ' + x.sob_all_id + ' (' + x.type + ') ' + (x.label || ''))); });
-		d.objects.removed.forEach(function (x) { objs.push(li('nbDiffDel', '− ' + x.sob_all_id + ' (' + x.type + ')')); });
-		d.objects.changed.forEach(function (x) { objs.push(li('', '~ ' + x.sob_all_id, [fieldRows(x.fields)])); });
-		if (d.objects.moved) objs.push(li('', t('builder_draft_moved').replace('%s', d.objects.moved)));
-		sec(t('builder_objects'), objs);
-		sec(t('builder_sec_events'), d.events.map(function (x) { return li('', x.sob_all_id + ' · ' + x.event, [codeDiff(x.old, x.new)]); }));
-		sec('PHP', d.php.map(function (x) { return li('', x.hook === 'AB' ? x.id : x.hook, [codeDiff(x.old, x.new)]); }));
-		var br = [];
-		d.browse.added.forEach(function (x) { br.push(li('nbDiffAdd', '+ ' + (x.title || x.display))); });
-		d.browse.removed.forEach(function (x) { br.push(li('nbDiffDel', '− ' + (x.title || x.display))); });
-		d.browse.changed.forEach(function (x) { br.push(li('', '~ ' + x.title, [fieldRows(x.fields)])); });
-		if (d.browse.order) br.push(li('', t('builder_draft_order')));
-		sec(t('builder_sec_browse'), br);
-		if (d.sql_builder) sec('SQL builder', [li('', t('builder_draft_sql_builder'))]);
-		return box;
-	}
-	function panelCompare() {
-		var body = h('div', {}, [h('div', {'class': 'text-body-secondary small', text: '…'})]);
-		panel(t('builder_draft_summary'), body, null);
-		api('draft.diff', {}).then(function (r) {
-			body.innerHTML = '';
-			body.appendChild(h('p', {'class': 'small text-body-secondary', text: t('builder_draft_changes_n').replace('%s', r.diff.counts.total)}));
-			body.appendChild(diffView(r.diff));
-			if (r.ddl && r.ddl.length) body.appendChild(h('p', {'class': 'small mt-2'}, [t('builder_draft_ddl') + ' ', r.ddl.map(function (x) { return x.table + '.' + x.column + (x.change ? ' (' + x.change + ')' : ''); }).join(', ')]));
-		}).catch(function (e) { body.textContent = e.message; });
-	}
-
-	/** Publish…: change note, summary, checks; conflict → overwrite only with the typed form code. */
-	function publishDialog() {
-		var wrap = h('div', {'class': 'modal fade', tabindex: '-1', id: 'nbPublishModal'});
-		var note = h('textarea', {'class': 'form-control', id: 'nbPublishNote', rows: '2', maxlength: '1000'});
-		note.value = DR.note || '';
-		var summary = h('div', {'class': 'nbPublishSummary'}, [h('div', {'class': 'text-body-secondary small', text: '…'})]);
-		var msg = h('div', {'class': 'nbPublishMsg'});
-		var ok = h('button', {type: 'button', 'class': 'btn btn-success', id: 'nbPublishGo'}, [h('i', {'class': 'bi bi-rocket-takeoff me-1'}), t('builder_draft_publish_btn')]);
-		var state = {warnings_ok: false, force: false, confirm_code: ''};
-		wrap.appendChild(h('div', {'class': 'modal-dialog modal-lg modal-dialog-scrollable'}, [h('div', {'class': 'modal-content'}, [
-			h('div', {'class': 'modal-header'}, [h('h2', {'class': 'modal-title h5', text: t('builder_draft_publish')}), h('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('cancel')})]),
-			h('div', {'class': 'modal-body'}, [h('label', {'class': 'form-label', 'for': 'nbPublishNote', text: t('builder_draft_note')}), note,
-				h('h3', {'class': 'h6 mt-3', text: t('builder_draft_summary')}), summary, msg]),
-			h('div', {'class': 'modal-footer'}, [h('button', {type: 'button', 'class': 'btn btn-outline-secondary', 'data-bs-dismiss': 'modal', text: t('cancel')}), ok])
-		])]));
-		document.body.appendChild(wrap);
-		wrap.addEventListener('hidden.bs.modal', function () { wrap.remove(); });
-		nuBs.modal(wrap).show();
-		api('draft.diff', {}).then(function (r) {
-			summary.innerHTML = '';
-			summary.appendChild(diffView(r.diff));
-			if (r.validation.errors.length) summary.appendChild(h('div', {'class': 'alert alert-danger small mt-2 mb-0'}, [t('builder_draft_errors'), h('ul', {'class': 'mb-0'}, r.validation.errors.map(function (x) { return h('li', {text: x}); }))]));
-		}).catch(function (e) { summary.textContent = e.message; });
-		var list = function (cls, title, items) { return h('div', {'class': 'alert ' + cls + ' small mt-3 mb-0'}, [title, h('ul', {'class': 'mb-0'}, items.map(function (x) { return h('li', {text: x}); }))]); };
-		ok.addEventListener('click', function () {
-			msg.innerHTML = '';
-			if (!note.value.trim()) { msg.appendChild(h('div', {'class': 'alert alert-danger small mt-3 mb-0', text: t('builder_draft_note_required')})); note.focus(); return; }
-			ok.disabled = true;
-			fetch('index.php?p=builderapi', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf},
-				body: JSON.stringify(Object.assign({action: 'draft.publish', form_id: D.form_id, draft_id: DR.id, note: note.value}, state))})
-				.then(function (r) { return r.json(); }).then(function (j) {
-					ok.disabled = false;
-					if (j.ok) { setDirty(false); alert(t('builder_draft_published').replace('%s', j.version)); window.location.href = DP.live_url; return; }
-					if (j.error) { msg.appendChild(h('div', {'class': 'alert alert-danger small mt-3 mb-0', text: j.error})); return; }
-					if (j.errors) { msg.appendChild(list('alert-danger', t('builder_draft_errors'), j.errors)); return; }
-					if (j.conflict) {
-						var code = h('input', {'class': 'form-control form-control-sm mt-2', id: 'nbPublishCode', autocomplete: 'off', 'aria-label': t('builder_draft_overwrite')});
-						msg.appendChild(h('div', {'class': 'alert alert-danger small mt-3 mb-0'}, [h('strong', {text: t('builder_draft_conflict')}), h('p', {'class': 'mb-1', text: t('builder_draft_conflict_text')}),
-							diffView(j.changes), h('div', {'class': 'mt-2', text: t('builder_draft_overwrite_type').replace('%s', S.form.sfo_code)}), code]));
-						state.force = true;
-						code.addEventListener('input', function () { state.confirm_code = code.value; });
-						ok.lastChild.textContent = t('builder_draft_overwrite');
-						ok.className = 'btn btn-danger';
-						return;
-					}
-					if (j.warnings) {
-						var cb = h('input', {'class': 'form-check-input', type: 'checkbox', id: 'nbPublishWarn'});
-						cb.addEventListener('change', function () { state.warnings_ok = cb.checked; });
-						msg.appendChild(h('div', {'class': 'alert alert-warning small mt-3 mb-0'}, [t('builder_draft_warnings'), h('ul', {}, j.warnings.map(function (x) { return h('li', {text: x}); })),
-							h('div', {'class': 'form-check'}, [cb, h('label', {'class': 'form-check-label', 'for': 'nbPublishWarn', text: t('builder_draft_warnings_ok')})])]));
-					}
-				}).catch(function (e) { ok.disabled = false; msg.textContent = e.message; });
-		});
-	}
-
-	// ------------------------------------------------------------------ start
-	api('state', {}).then(function (r) {
-		load(r);
-		renderDraftBar();
-		var hv = (location.hash || '').replace('#', '');
-		select(VIEWS.indexOf(hv) >= 0 && (hv !== 'browse' || hasList()) ? hv : 'objects');
-		// a link or Back / Forward to another #view (0.8.564)
-		window.addEventListener('hashchange', guarded(function () {
-			var v = (location.hash || '').replace('#', '');
-			if (VIEWS.indexOf(v) >= 0 && v !== viewOf(sel.kind) && (v !== 'browse' || hasList())) select(v);
-		}));
-		preview();
-		// opened from a form's options menu / Ctrl+Shift+A, H, F, O: ?open=arrange | add | form | objects
-		var open = new URLSearchParams(window.location.search).get('open');
-		// opened from a form's label menu (Properties…): ?obj=<zzzzsys_object_id>
-		var objParam = new URLSearchParams(window.location.search).get('obj');
-		if (objParam && objById(objParam)) select('object', objParam);
-		if ((open === 'add' || open === 'objects' || open === 'arrange') && sel.kind !== 'object') select('objects');
-		if (open === 'form') select('form');
-		if (open === 'add') { var tg = document.querySelector('.nbAddMenu') && document.querySelector('.nbAddMenu').previousElementSibling; if (tg && nuBs.ready()) nuBs.dropdown(tg).show(); }
-		if (open === 'objects' && $('#nbObjSearch')) $('#nbObjSearch').focus();
-		if (open === 'arrange') { window.nbShowPreview(); var pv = document.querySelector('.nbPreviewCard'); if (pv) pv.scrollIntoView({block: 'start'}); }
-		api('files', {}).then(function (f) { FILES.length = 0; Array.prototype.push.apply(FILES, f.files); }).catch(function () {});
-		if (S.form.sfo_table) api('columns', {table: S.form.sfo_table}).then(function (c) { tableColumns = c.columns.map(function (x) { return x.name; }); }).catch(function () {});
-	}).catch(function (e) { $('#nbPanel').textContent = e.message; });
 })();

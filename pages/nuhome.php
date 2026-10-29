@@ -515,6 +515,8 @@ if ($admin || $userPage) {
 	$data = [
 		'url' => $selfUrl, 'csrf' => nu_csrf_token(), 'layout' => $layout, 'mode' => $mode, 'usedUrl' => $editorPage ? '' : nu_url('sidebar'),
 		'favUrl' => !$editorPage && NuSidebar::canFav() ? nu_url('sidebar') : '',   // right-click / long press → add to / remove from favourites (0.8.497)
+		// … and Hide (0.8.652): in the layout on admin start pages, for me on user start pages (same rights as the ☆)
+		'hideMode' => !$editorPage && NuSidebar::canFav() ? ($mode === 'user' ? 'me' : 'layout') : '',
 		// a user's own favourites and hidden tiles (0.8.425)
 		'mine' => $mode === 'user' ? ['fav' => $myFav, 'hide' => array_values(array_map('strval', array_keys($mineHidden))), 'own' => array_key_exists('fav', $mine) || $hideList !== []] : null,
 		// View panel (0.8.420): the layout's view, this person's own changes, where a change may go, the saved layouts
@@ -527,7 +529,7 @@ if ($admin || $userPage) {
 			'roles' => $hlManage && !$userPage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'presets' => $userPage ? (object)[] : NuHome::presets(), 'catalog' => (object)$cat,
 		'forms' => $formList, 'pages' => $userPage ? NuHome::USER_PAGES : NuHome::PAGES, 'procedures' => $procs, 'reports' => $reportList, 'cond' => $condOpts, 'icons' => NuHome::ICONS,
 		'procUrl' => $userPage ? nu_url('home', ['for' => $for, 'run' => '__ID__']) : nu_url('procedures', ['id' => '__ID__']),
-		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_size_list', 'home_size_listwide', 'home_size_list2',
+		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_size_list', 'home_size_listwide', 'home_size_list2',
 			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned', 'home_unpinned', 'home_hidden', 'home_hidden_hint', 'home_group_title', 'home_group_new', 'home_group_untitled',
 			'home_group_delete', 'home_move_up', 'home_move_down', 'home_move_left', 'home_move_right', 'home_hide', 'home_show', 'home_edit_tile', 'home_delete_tile',
 			'home_tile_new', 'home_tile_label', 'home_tile_hint', 'home_tile_icon', 'home_tile_color', 'home_tile_no_color', 'home_tile_kind', 'home_kind_form', 'home_kind_page',
@@ -559,5 +561,14 @@ if ($admin || $userPage) {
 		. '<script src="' . nu_asset('assets/js/nuhome.js') . '"></script>'
 		// JavaScript of the start page hook (0.8.379): the procedure nu_home's JavaScript, served as a file (CSP: no inline scripts)
 		. (($hookJs = NuHomeHook::jsUrl()) !== null ? '<script src="' . h($hookJs) . '"></script>' : '');
+}
+// message after "Hide" in the tile menu (0.8.652): once, with Undo (POST ?p=sidebar action unhide); shown by nuapp.js like the flash messages
+if (!$editorPage && ($undo = NuSidebar::undoMessage()) !== null) {
+	[$uKey, $uLabel, $uMine] = $undo;
+	echo '<div class="toast-container position-fixed bottom-0 end-0 p-3 nuHomeUndoToasts"><div class="toast nuFlashToast" id="nuHomeHideUndo" role="status" aria-live="polite" data-bs-delay="12000">'
+		. '<div class="d-flex align-items-center gap-2 p-2"><i class="bi bi-eye-slash ms-1" aria-hidden="true"></i><div class="toast-body p-1 me-auto">' . h(t($uMine ? 'home_ctx_hidden_me' : 'home_ctx_hidden', $uLabel)) . '</div>'
+		. '<form method="post" action="' . h(nu_url('sidebar')) . '" class="m-0">' . nu_csrf_field() . '<input type="hidden" name="action" value="unhide"><input type="hidden" name="key" value="' . h($uKey) . '">'
+		. '<input type="hidden" name="back" value="' . h((string)($_SERVER['REQUEST_URI'] ?? '')) . '"><button type="submit" class="btn btn-sm btn-primary" id="nuHomeHideUndoBtn"><i class="bi bi-arrow-counterclockwise me-1"></i>' . h(t('home_ctx_undo')) . '</button></form>'
+		. '<button type="button" class="btn-close me-1" data-bs-dismiss="toast" aria-label="' . h(t('close')) . '"></button></div></div></div>';
 }
 nu_layout_end($foot);

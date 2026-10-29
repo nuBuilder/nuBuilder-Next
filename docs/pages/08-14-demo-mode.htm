@@ -2,7 +2,7 @@
 	<h2 id="demo-mode-h">Demo mode</h2>
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> A read-only installation for visitors.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>Lets visitors look at the whole application – forms, lists, the form builder, the admin pages – without being able to change anything. Like nuBuilder Forte's demo mode, but with a real user:</p>
+	<p>Lets visitors look at the whole application – forms, lists, the design mode, the admin pages – without being able to change anything. Like nuBuilder Forte's demo mode, but with a real user:</p>
 <ol>
 <li>Create a user (e.g. login <code>demo</code>) with a password and any access level – it is only needed to log in.</li>
 <li>In <code>nuconfig.php</code>: <code>$nuConfigDemoUser = "demo";</code> – the login name or the user id. Several demo users are separated by commas.</li>
@@ -12,8 +12,8 @@
 <p>The login page then shows <strong>Try the demo</strong> (one button per demo user): one click logs in without a password. A demo user can also log in with name and password, or through an auto-login link. In the top bar a badge <em>Demo – read only</em> shows the mode.</p>
 <p>What a demo user can do:</p>
 <ul>
-<li><strong>See everything the globeadmin sees</strong> – all forms and records, the form builder, procedures, settings, log. All buttons are there.</li>
-<li><strong>Change nothing</strong>: whatever would change data answers <em>Not available in the demo</em> – saving (except in the allowed forms), deleting (never, also not sub-form rows), the builder, user and access level pages, settings, update, CSV import, cloner, phpMyAdmin and File Manager, acting as another user.</li>
+<li><strong>See everything the globeadmin sees</strong> – all forms and records, the design mode, procedures, settings, log. All buttons are there.</li>
+<li><strong>Change nothing</strong>: whatever would change data answers <em>Not available in the demo</em> – saving (except in the allowed forms), deleting (never, also not sub-form rows), design mode, user and access level pages, settings, update, CSV import, cloner, phpMyAdmin and File Manager, acting as another user.</li>
 <li><strong>Saving</strong> in the allowed forms: at most 10 times per hour per visitor (IP address) and 100 times per hour for all demo visitors together – then <em>at most 10 saves per hour</em>.</li>
 <li><strong>Procedures</strong> run only when <em>Demo access</em> is switched on (procedure form) – and they cannot write either. No e-mails are sent.</li>
 <li>The database refuses every change of a demo session (also from PHP in forms – <em>Before Browse</em> / <em>Before Edit</em> code that writes ends with the demo message). Exceptions: nuBuilder Next's session and log tables and temporary tables (<code>#TABLE_ID#</code>).</li>

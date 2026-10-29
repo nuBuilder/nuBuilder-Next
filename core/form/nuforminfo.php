@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuFormInfo
 {
-	/** @return list<array{key: string, label: string, value: string, code: bool, long?: bool}> */
+	/** @return list<array{key: string, label: string, value: string, code: bool, long?: bool, edit?: string}> */
 	public static function rows(NuFormMeta $meta, string $mode, ?string $recordId): array
 	{
 		$f = $meta->form;
@@ -27,7 +27,11 @@ final class NuFormInfo
 			$add('pk', $meta->primaryKey());
 		}
 		$sql = trim((string)($f['sfo_browse_sql'] ?? ''));
-		if ($meta->hasBrowse() && $sql !== '') $add('browse_sql', $sql, true, true);
+		if ($meta->hasBrowse() && $sql !== '') {
+			$add('browse_sql', $sql, true, true);
+			// larger view + "Edit the SQL" in design mode, new tab (0.8.676): the list designer opens Code on the browse SQL
+			if (NuDesign::allowed($meta)) $rows[count($rows) - 1]['edit'] = nu_url('form', ['f' => $meta->id, 'design' => '1', 'dswork' => 'code', 'dsitem' => 'sfo_browse_sql']);
+		}
 
 		if ($mode === 'edit' && $meta->type() !== 'launch') {
 			$new = $recordId === null || $recordId === '' || $recordId === '-1';
@@ -115,11 +119,12 @@ final class NuFormInfo
 		return self::panel($rows, t('fi_record_title'), $idBase);
 	}
 
-	/** @param list<array{key: string, label: string, value: string, code: bool, long?: bool}> $rows */
+	/** @param list<array{key: string, label: string, value: string, code: bool, long?: bool, edit?: string}> $rows */
 	public static function panel(array $rows, string $title, string $idBase): string
 	{
 		$all = [];
 		$items = '';
+		$dialogs = '';
 		foreach ($rows as $r) {
 			$v = $r['value'];
 			if ($r['key'] === 'record_id' && $v === '-1') $shown = '<span class="text-body-secondary">' . h(t('fi_new_record')) . '</span>';
@@ -129,6 +134,21 @@ final class NuFormInfo
 			$copy = $v !== '' && !($r['key'] === 'record_id' && $v === '-1')
 				? '<button type="button" class="btn btn-sm btn-link nuFormInfoCopy" data-nu-copy-text="' . h($v) . '" title="' . h(t('copy')) . '" aria-label="' . h(t('copy') . ': ' . $r['label']) . '"><i class="bi bi-clipboard"></i></button>'
 				: '';
+			if (!empty($r['long']) && $v !== '') {                   // long values (browse SQL): a larger view in a dialogue, edit link (0.8.676)
+				$dlg = $idBase . 'Dlg_' . preg_replace('/[^a-z0-9_]/i', '', $r['key']);
+				$copy = '<div class="nuFormInfoActs">' . $copy
+					. '<button type="button" class="btn btn-sm btn-link nuFormInfoView" data-bs-toggle="modal" data-bs-target="#' . h($dlg) . '" title="' . h(t('fi_sql_view')) . '" aria-label="' . h(t('fi_sql_view') . ': ' . $r['label']) . '"><i class="bi bi-arrows-angle-expand"></i></button>'
+					. (!empty($r['edit']) ? '<a class="btn btn-sm btn-link nuFormInfoEdit" href="' . h($r['edit']) . '" target="_blank" rel="noopener" title="' . h(t('fi_sql_edit')) . '" aria-label="' . h(t('fi_sql_edit') . ': ' . $r['label']) . '"><i class="bi bi-pencil-square"></i></a>' : '')
+					. '</div>';
+				$dialogs .= '<div class="modal fade" id="' . h($dlg) . '" tabindex="-1" aria-labelledby="' . h($dlg) . 'T" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">'
+					. '<div class="modal-header"><h2 class="modal-title fs-5" id="' . h($dlg) . 'T">' . h($r['label']) . '</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(t('close')) . '"></button></div>'
+					. '<div class="modal-body"><pre class="nuFormInfoSqlBig mb-0" tabindex="0">' . h($v) . '</pre></div>'
+					. '<div class="modal-footer">'
+					. (!empty($r['edit']) ? '<a class="btn btn-outline-primary me-auto" href="' . h($r['edit']) . '" target="_blank" rel="noopener"><i class="bi bi-pencil-square me-1"></i>' . h(t('fi_sql_edit')) . '</a>' : '')
+					. '<button type="button" class="btn btn-outline-secondary" data-nu-copy-text="' . h($v) . '"><i class="bi bi-clipboard me-1"></i>' . h(t('copy')) . '</button>'
+					. '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . h(t('close')) . '</button></div>'
+					. '</div></div></div>';
+			}
 			if ($v !== '') $all[] = $r['label'] . ': ' . $v;
 			$items .= '<div class="nuFormInfoRow" data-key="' . h($r['key']) . '"><dt>' . h($r['label']) . '</dt><dd>' . $shown . '</dd>' . $copy . '</div>';
 		}
@@ -138,6 +158,6 @@ final class NuFormInfo
 			. '<div class="px-3 py-2 border-bottom fw-semibold small">' . h($title) . '</div>'
 			. '<dl class="nuFormInfoList small mb-0">' . $items . '</dl>'
 			. '<div class="border-top px-3 py-2 text-end"><button type="button" class="btn btn-sm btn-outline-secondary" id="' . h($idBase) . 'CopyAll" data-nu-copy-text="' . h(implode("\n", $all)) . '"><i class="bi bi-clipboard me-1"></i>' . h(t('fi_copy_all')) . '</button></div>'
-			. '</div></div>';
+			. '</div></div>' . $dialogs;
 	}
 }

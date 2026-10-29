@@ -31,7 +31,7 @@ $in = json_decode((string)file_get_contents('php://input'), true);
 if (!is_array($in)) nb_err('Invalid request');
 
 // reading needs view rights on "nuform", every change needs save rights
-$readOnly = in_array($in['action'] ?? '', ['state', 'tables', 'columns', 'files', 'history.list', 'draft.diff', 'draft.conflict'], true);
+$readOnly = in_array($in['action'] ?? '', ['state', 'tables', 'columns', 'files', 'history.list', 'history.diff', 'draft.diff', 'draft.conflict'], true);
 // publishing (form drafts, 0.8.386) needs the right "Publish forms" – checked in NuFormDraft – and view rights on the builder
 $publish  = in_array($in['action'] ?? '', ['draft.publish', 'form.publishnew'], true);
 if (!NuAcl::can(NuAcl::FORM_FORM, $readOnly || $publish ? 'view' : 'save')) nb_err(t('err_forbidden'), 403);
@@ -102,6 +102,13 @@ function nb_geometry(array $items): array
 		if ($f) $out[(string)$it['object_id']] = $f;
 	}
 	return $out;
+}
+
+/** Design mode (0.8.669): where the password confirmation leads back to – only a form page of this installation (no other site). */
+function nb_back(array $in): ?string
+{
+	$b = (string)($in['back'] ?? '');
+	return preg_match('/^index\.php\?p=form&[A-Za-z0-9_&=%.\-]*$/', $b) ? $b : null;
 }
 
 /** The form being edited – must exist and not be a nuBuilder system form. */
@@ -198,6 +205,9 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 		case 'history.list':
 			nb_out(['ok' => true, 'history' => NuFormHistory::list($store->formId)]);
 
+		case 'history.diff':           // design mode (0.8.668): what changed from a history entry to the draft
+			nb_out(['ok' => true, 'diff' => NuFormSnapshot::diff(NuFormHistory::get($store->formId, (string)($in['id'] ?? '')), $store->snapshot())]);
+
 		case 'history.restore':
 		case 'history.undo':
 			nb_err(t('builder_draft_use_undo'));
@@ -216,6 +226,9 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 				if (isset($fields[$fk]) && mb_strlen((string)$fields[$fk]) > NuFormat::MAX_KEY) nb_err(t('fmt_err_length', NuFormat::MAX_KEY - 2));
 				NuFormat::ensureSaved($fields[$fk] ?? null);       // shared format row – harmless while drafting
 			}
+			// the same checks as the live save (0.8.670: design mode saves into drafts)
+			if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);
+			if (isset($fields['sob_input_icon']) && mb_strlen((string)$fields['sob_input_icon']) > 50) nb_err(t('builder_obj_icon') . ': ' . t('err_too_long', 50));
 			$oid = $store->objectSave((string)($in['object_id'] ?? ''), $fields, is_array($in['grid'] ?? null) ? $in['grid'] : null,
 				is_array($in['events'] ?? null) ? $in['events'] : null, array_key_exists('lookup_php', $in), ($in['lookup_php'] ?? null) === null ? null : (string)$in['lookup_php']);
 			$store->commit('object.save ' . (string)($store->object($oid)['sob_all_id'] ?? ''));
@@ -314,7 +327,7 @@ function nb_column(string $formId, string $action, array $in): never
 	$usedBy = array_column(nu_db()->all('SELECT sfo_code FROM zzzzsys_form WHERE sfo_table = ? AND zzzzsys_form_id <> ? ORDER BY sfo_code', [$table, $formId]), 'sfo_code');
 	if ($action === 'column.info') {
 		$reauth = !NuSecurity::recentAuth();
-		if ($reauth) $_SESSION['nu_reauth_next'] = nu_url('builder', ['f' => $formId, 'colchg' => $column]);
+		if ($reauth) $_SESSION['nu_reauth_next'] = nb_back($in) ?? nu_url('builder', ['f' => $formId, 'colchg' => $column]);
 		nb_out(['ok' => true, 'info' => $public, 'free_sql' => $ga, 'used_by' => $usedBy, 'reauth' => $reauth] + ($reauth ? ['reauth_url' => nu_url('reauth')] : []));
 	}
 	$free = trim((string)($in['sql'] ?? ''));
@@ -395,6 +408,10 @@ try {
 		case 'history.list':
 			nb_out(['ok' => true, 'history' => NuFormHistory::list($formId)]);
 
+		case 'history.diff':           // design mode (0.8.668): what changed from a history entry to the live form
+			nb_form($formId);
+			nb_out(['ok' => true, 'diff' => NuFormSnapshot::diff(NuFormHistory::get($formId, (string)($in['id'] ?? '')), NuFormSnapshot::capture($formId) ?? [])]);
+
 		case 'history.restore':
 			nb_form($formId);
 			NuFormHistory::restore($formId, (string)($in['id'] ?? ''));
@@ -412,6 +429,7 @@ try {
 		case 'draft.start':
 			nb_form($formId);
 			$d = NuFormDraft::start($formId, (string)($in['note'] ?? ''));
+			if (!empty($in['preview'])) NuFormDraft::startPreview((string)$d['zzzzsys_nunext_form_draft_id']);   // design mode (0.8.662): this session shows the draft
 			nb_out(['ok' => true] + NuDraftStore::open((string)$d['zzzzsys_nunext_form_draft_id'], $formId, -1)->state(NB_HOOKS));
 
 		case 'draft.diff':
@@ -467,7 +485,8 @@ try {
 
 		case 'columns':
 			$cols = $db->columns(NuDB::ident((string)($in['table'] ?? '')));
-			nb_out(['ok' => true, 'columns' => array_map(static fn($n, $c) => ['name' => $n] + $c, array_keys($cols), $cols)]);
+			$lbl  = NuBuilderGen::defaultLabels(array_map('strval', array_keys($cols)));     // placeholder labels of the wizard's column list (0.8.675)
+			nb_out(['ok' => true, 'columns' => array_map(static fn($n, $c) => ['name' => $n, 'label' => $lbl[(string)$n] ?? ''] + $c, array_keys($cols), $cols)]);
 
 		// --------------------------------------------------------------- form
 		case 'form.create':
@@ -495,7 +514,7 @@ try {
 			if (empty(NuAuth::user()['globeadmin'])) nb_err(t('builder_delete_globeadmin'), 403);
 			if (NuFormDraft::openFor($formId)) nb_err(t('builder_draft_delete_first'));
 			$info = nb_table_info(nb_form($formId));
-			if ($info['reauth']) $_SESSION['nu_reauth_next'] = nu_url('builder', ['f' => $formId, 'delete' => '1']);
+			if ($info['reauth']) $_SESSION['nu_reauth_next'] = nb_back($in) ?? nu_url('builder', ['f' => $formId, 'delete' => '1']);
 			nb_out(['ok' => true] + $info + ($info['reauth'] ? ['reauth_url' => nu_url('reauth')] : []));
 
 		case 'form.delete':

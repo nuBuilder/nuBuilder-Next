@@ -1,8 +1,10 @@
 # Minimal SMTP server for the e2e tests of the e-mail connection check (0.8.432) and OAuth 2 (0.8.445):
 # python3 fakesmtp.py <log file> [port]. Answers EHLO with AUTH, AUTH PLAIN / LOGIN (user u / password p), AUTH XOAUTH2 (any user,
 # "auth=Bearer tok-…" – the tokens of fakeoauth.py), MAIL, RCPT, DATA, RSET, QUIT. Logs the commands; for XOAUTH2 also "XOAUTH2 <user>".
+# Optional third argument (0.8.658): a file the message data (headers + body) of every DATA is appended to (the welcome e-mail test).
 import socketserver, base64, sys
 LOG = sys.argv[1]
+DATA = sys.argv[3] if len(sys.argv) > 3 else ''
 class H(socketserver.StreamRequestHandler):
     def w(self, s): self.wfile.write((s + '\r\n').encode())
     def handle(self):
@@ -33,9 +35,13 @@ class H(socketserver.StreamRequestHandler):
             elif cmd == 'RCPT': self.w('250 recipient ok')
             elif cmd == 'DATA':
                 self.w('354 go on')
+                msg = []
                 while True:
                     d = self.rfile.readline()
                     if not d or d.rstrip(b'\r\n') == b'.': break
+                    msg.append(d)
+                if DATA:
+                    with open(DATA, 'ab') as f: f.write(b''.join(msg) + b'\n=====END=====\n')
                 self.w('250 queued')
             elif cmd in ('RSET', 'NOOP'): self.w('250 ok')
             elif cmd == 'QUIT': self.w('221 bye'); break

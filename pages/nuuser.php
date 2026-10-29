@@ -46,6 +46,16 @@ if (nu_is_post() && nu_post('action') === 'effective') {
 	exit((string)json_encode(['ok' => true] + NuUserAccess::effective(nu_post('sus_zzzzsys_access_id'), $rowsIn), JSON_UNESCAPED_UNICODE));
 }
 
+// ------------------------------------------------------------------ permission items of another user (0.8.649): "Copy from user…" ticks them
+// in the form (Replace / Add, assets/js/nuuser.js) – nothing is saved here, the form's Save writes them as usual
+if (nu_is_post() && nu_post('action') === 'perm_of') {
+	$from  = nu_post('from');
+	$known = $from !== '' && (int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$from]) > 0;
+	$ids   = $known ? array_map('strval', array_keys(array_filter(NuPermission::forUser($from), static fn($a) => $a === '1'))) : [];
+	header('Content-Type: application/json; charset=utf-8');
+	exit((string)json_encode($known ? ['ok' => true, 'items' => $ids] : ['ok' => false], JSON_UNESCAPED_UNICODE));
+}
+
 if (nu_is_post() && nu_post('action') === 'archive' && $existing) {
 	NuAcl::require(NuAcl::FORM_USER, 'save');
 	$guardAdminUser();
@@ -184,6 +194,11 @@ $xaSel = $xaOld;
 $permItems = NuPermission::items();
 $permOld   = array_keys(array_filter(NuPermission::forUser($existing ? $id : $cloneId), static fn($a) => $a === '1'));
 $permSel   = array_map('strval', $permOld);
+// "Copy from user…" (0.8.649): the other users with at least one active permission item, with their number of items
+$permFrom  = $permItems ? $db->all('SELECT u.zzzzsys_user_id AS id, u.sus_name AS name, u.sus_login_name AS login, COUNT(DISTINCT i.zzzzsys_permission_item_id) AS n'
+	. ' FROM zzzzsys_user u JOIN ' . NuPermission::USER . ' p ON ' . $db->sameText('p.upe_zzzzsys_user_id', 'u.zzzzsys_user_id')
+	. ' JOIN ' . NuPermission::ITEM . ' i ON ' . $db->sameText('i.zzzzsys_permission_item_id', 'p.upe_ident')
+	. " WHERE p.upe_active = '1' AND u.zzzzsys_user_id <> ? GROUP BY u.zzzzsys_user_id, u.sus_name, u.sus_login_name ORDER BY u.sus_name, u.sus_login_name", [$id]) : [];
 
 // custom user fields (0.8.454, core/nuuserfields.php): tab More; a clone takes the values along except unique ones, a new user the defaults
 $ufAll = NuUserFields::all();
@@ -645,14 +660,17 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						</div>
 					</div>
 
-					<?php if ($mailOk && $canSave): ?>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="user_send_welcome_email" name="user_send_welcome_email" value="1"<?= $welcome ? ' checked' : '' ?> aria-describedby="welcomeHint"
-							data-nu-welcome="<?= h((string)json_encode(NuWelcome::sources(), JSON_UNESCAPED_UNICODE)) ?>"
-							data-nu-welcome-t="<?= h((string)json_encode(['title' => t('welcome_option'), 'proc' => t('welcome_src_proc'), 'tpl' => t('welcome_src_tpl'), 'builtin' => t('welcome_src_builtin'), 'close' => t('close')], JSON_UNESCAPED_UNICODE)) ?>">
+					<?php if ($canSave):
+						// 0.8.657: always shown – greyed out while e-mail is not set up, the (i) says so and a link leads to the E-mail settings (with that right)
+						$wHint = $mailOk ? t('welcome_option_hint', NuWelcome::hours()) : t('welcome_need_mail'); ?>
+					<div class="form-check form-switch" id="userWelcomeWrap">
+						<input class="form-check-input" type="checkbox" role="switch" id="user_send_welcome_email" name="user_send_welcome_email" value="1"<?= $welcome ? ' checked' : '' ?><?= $mailOk ? '' : ' disabled' ?> aria-describedby="welcomeHint"
+							<?php if ($mailOk): ?>data-nu-welcome="<?= h((string)json_encode(NuWelcome::sources(), JSON_UNESCAPED_UNICODE)) ?>"
+							data-nu-welcome-t="<?= h((string)json_encode(['title' => t('welcome_option'), 'proc' => t('welcome_src_proc'), 'tpl' => t('welcome_src_tpl'), 'std' => t('welcome_src_std'), 'builtin' => t('welcome_src_builtin'), 'close' => t('close')], JSON_UNESCAPED_UNICODE)) ?>"<?php endif; ?>>
 						<label class="form-check-label" for="user_send_welcome_email"><?= h(t('welcome_option')) ?></label><?php // hint as tooltip of the (i), outside the label (a click does not toggle) ?>
-						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('info')) ?>" title="<?= h(t('welcome_option_hint', NuWelcome::hours())) ?>"><i class="bi bi-info-circle"></i></span>
-						<span class="visually-hidden" id="welcomeHint"><?= h(t('welcome_option_hint', NuWelcome::hours())) ?></span>
+						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('info')) ?>" title="<?= h($wHint) ?>"><i class="bi bi-info-circle"></i></span>
+						<?php if (!$mailOk && NuAcl::can(NuAcl::FORM_SETUP)): ?><a class="small ms-2" id="userWelcomeMailLink" href="<?= h(nu_url('email', ['tab' => 'settings'])) ?>"><i class="bi bi-envelope-at me-1"></i><?= h(t('welcome_mail_settings')) ?></a><?php endif; ?>
+						<span class="visually-hidden" id="welcomeHint"><?= h($wHint) ?></span>
 					</div>
 					<?php endif; ?>
 					<?php if (NU_FEATURE_ACCESSIBILITY): ?>
@@ -697,6 +715,9 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 							<?php endif; ?>
 							<button type="button" class="btn btn-sm btn-outline-secondary" data-perm-all="1" data-perm-confirm="<?= h(t('perm_all_confirm')) ?>" data-perm-confirm-ok="<?= h(t('perm_all')) ?>"><i class="bi bi-check2-all me-1"></i><?= h(t('perm_all')) ?></button>
 							<button type="button" class="btn btn-sm btn-outline-secondary" data-perm-all="0"><i class="bi bi-x-lg me-1"></i><?= h(t('perm_none')) ?></button>
+							<?php if ($permFrom): // the items of another user (0.8.649): dialog #userPermCopyDlg – Replace / Add, saved with Save, Undo as for All / None ?>
+							<button type="button" class="btn btn-sm btn-outline-secondary" id="userPermCopy" data-bs-toggle="modal" data-bs-target="#userPermCopyDlg"><i class="bi bi-person-down me-1"></i><?= h(t('perm_copy')) ?></button>
+							<?php endif; ?>
 							<?php // Undo (0.8.584): back to the selection before the last All / None – shown until another change (nuuser.js) ?>
 							<button type="button" class="btn btn-sm btn-outline-warning d-none" id="userPermUndo" title="<?= h(t('perm_undo_tip')) ?>"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('perm_undo')) ?></button>
 							<?php // phones: descriptions on / off for a more compact table (remembered per browser, nuuser.js) ?>
@@ -844,5 +865,29 @@ $effT = ['view' => t('view'), 'add' => t('add'), 'save' => t('save'), 'delete' =
 		</div>
 	</div></div>
 </div>
-<?php
+<?php if ($permFrom): // copy the permission items of another user (0.8.649) – filled by assets/js/nuuser.js from the POST action "perm_of"
+	$pcT = ['info' => t('perm_copy_info'), 'error' => t('err_unexpected')]; ?>
+<div class="modal fade" id="userPermCopyDlg" tabindex="-1" aria-labelledby="userPermCopyTitle" aria-hidden="true" data-url="<?= h(nu_url('user', ['id' => $id !== '' ? $id : null])) ?>" data-csrf="<?= h(nu_csrf_token()) ?>" data-t="<?= h((string)json_encode($pcT, JSON_UNESCAPED_UNICODE)) ?>">
+	<div class="modal-dialog"><div class="modal-content">
+		<div class="modal-header">
+			<h2 class="modal-title h5" id="userPermCopyTitle"><i class="bi bi-person-down me-2"></i><?= h(t('perm_copy_title')) ?></h2>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button>
+		</div>
+		<div class="modal-body">
+			<label class="form-label" for="userPermCopyFrom"><?= h(t('perm_copy_user')) ?></label>
+			<select class="form-select nuListTomSelect" id="userPermCopyFrom" autocomplete="off">
+				<option value=""><?= h(t('perm_copy_choose')) ?></option>
+				<?php foreach ($permFrom as $pf): ?><option value="<?= h((string)$pf['id']) ?>" data-sub="<?= h((string)$pf['login'] . ' · ' . t('perm_copy_n', (int)$pf['n'])) ?>"><?= h((string)($pf['name'] !== '' && $pf['name'] !== null ? $pf['name'] : $pf['login'])) ?></option><?php endforeach; ?>
+			</select>
+			<div class="form-text" id="userPermCopyInfo" aria-live="polite"></div>
+			<p class="small text-body-secondary mt-3 mb-0"><?= h(t('perm_copy_hint')) ?></p>
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
+			<button type="button" class="btn btn-outline-primary" id="userPermCopyAdd" disabled><i class="bi bi-plus-lg me-1"></i><?= h(t('perm_copy_add')) ?></button>
+			<button type="button" class="btn btn-primary" id="userPermCopyReplace" disabled><i class="bi bi-arrow-repeat me-1"></i><?= h(t('perm_copy_replace')) ?></button>
+		</div>
+	</div></div>
+</div>
+<?php endif;
 nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuuser.js') . '"></script>');   // name parts; permission items when present

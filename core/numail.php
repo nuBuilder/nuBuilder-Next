@@ -706,8 +706,11 @@ final class NuMail
 
 /**
  * Welcome e-mail for a user (user form → "Send welcome e-mail", like nuBuilder's user_send_welcome_email).
- * Order, as in nuBuilder: own procedure nu_send_welcome_email (zzzzsys_php) → e-mail template nu_send_welcome_email
- * (zzzzsys_email_template – a clone of nuBuilder's nu_send_welcome_email_template; user's language first) → built-in text in the user's language.
+ * Order, as in nuBuilder Forte (0.8.658): own procedure nu_send_welcome_email (zzzzsys_php; Forte's shipped rows "nu…" are not own) →
+ * own e-mail template nu_send_welcome_email (a clone of the read-only template below; user's language first) → nuBuilder Next's read-only
+ * e-mail template nu_send_welcome_email_template (group nunext, one per language, ids nx_welcome_<lang> – a Forte update keeps them;
+ * ensureTemplates()) → the built-in text (only while those rows are missing). Forte's own template row (group nubuilder, a password in the
+ * mail) and its procedure nu_send_welcome_email_template are not used: nuBuilder Next sends a link to set the password instead.
  * Instead of a password the mail carries a personal link to set one (reset page, valid $nuConfigWelcomeLinkHours, once).
  * Placeholders: every sus_… field, #RECORD_ID#, #LOGIN_URL#, #NUNEXT_URL#, #NUBUILDER_URL#, #SET_PASSWORD_URL#,
  * #SET_PASSWORD_HOURS#, #PASSWORD_MIN_LENGTH# and #check_password# (the password typed in the form – only for old templates).
@@ -716,6 +719,11 @@ final class NuWelcome
 {
 	public const PROCEDURE = 'nu_send_welcome_email';
 	public const TEMPLATE  = 'nu_send_welcome_email';       // nuBuilder: clone of nu_send_welcome_email_template
+	public const STD       = 'nu_send_welcome_email_template';   // nuBuilder Next's read-only templates (0.8.658) …
+	public const STD_GROUP = 'nunext';                           // … in this group, one per language
+	public const STD_ID    = 'nx_welcome_';                      // + language code; not "nu…": a nuBuilder Forte update replaces only its own rows
+	/** Forte's shipped rows have ids "nu…" (replaced by every nuBuilder Forte update) – only the user's own procedure counts. */
+	private const NOT_FORTE = "zzzzsys_php_id NOT LIKE 'nu%'";
 
 	public static function hours(): int
 	{
@@ -744,7 +752,7 @@ final class NuWelcome
 
 		// 1. own procedure (nuBuilder: nuRunProcedure('nu_send_welcome_email'))
 		$db = nu_db();
-		$proc = $db->tableExists('zzzzsys_php') ? $db->one('SELECT sph_php FROM zzzzsys_php WHERE sph_code = ?', [self::PROCEDURE]) : null;
+		$proc = self::ownProcedure() ? $db->one('SELECT sph_php FROM zzzzsys_php WHERE sph_code = ? AND ' . self::NOT_FORTE, [self::PROCEDURE]) : null;
 		if ($proc) {
 			NuPhp::reset();
 			$ok = NuPhp::run((string)$proc['sph_php'], $hash, self::PROCEDURE);
@@ -753,7 +761,7 @@ final class NuWelcome
 			return $err;
 		}
 
-		// 2. e-mail template, 3. built-in text – both in the user's language
+		// 2. own e-mail template, 3. the read-only template, 4. built-in text – in the user's language
 		$lang = nu_lang_from_db((string)($user['sus_language'] ?? '')) ?? nu_lang();
 		$prev = $_SESSION['nu_lang'] ?? null;
 		$prevVar = $_SESSION['nu_lang_variant'] ?? null;
@@ -774,23 +782,28 @@ final class NuWelcome
 
 	/**
 	 * What send() will use (0.8.508, toast of the user form): {proc: code|null, tpl: {emt_language: "code (language) – description"},
-	 * fallback: database language of the current session (used when the user has none), code: TEMPLATE}.
+	 * std: {emt_language: "nu_send_welcome_email_template (language)"} (0.8.658), fallback: database language of the current session
+	 * (used when the user has none), code: TEMPLATE}.
 	 */
 	public static function sources(): array
 	{
 		$db = nu_db();
-		$proc = $db->tableExists('zzzzsys_php') && $db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE sph_code = ?', [self::PROCEDURE]) ? self::PROCEDURE : null;
-		$tpl = [];
+		$proc = self::ownProcedure() ? self::PROCEDURE : null;
+		$tpl = $std = [];
 		if ($db->tableExists(NuEmailTemplate::TABLE)) {
 			foreach ($db->all('SELECT emt_language, emt_description FROM ' . NuEmailTemplate::TABLE . " WHERE emt_code = ? AND COALESCE(emt_template,'') <> '1'", [self::TEMPLATE]) as $r) {
 				$l = trim((string)$r['emt_language']);
 				$tpl[$l] = self::TEMPLATE . ($l !== '' ? ' (' . $l . ')' : '') . (trim((string)$r['emt_description']) !== '' ? ' – ' . trim((string)$r['emt_description']) : '');
 			}
+			foreach ($db->all('SELECT emt_language FROM ' . NuEmailTemplate::TABLE . " WHERE emt_code = ? AND emt_group = ? AND emt_template = '1'", [self::STD, self::STD_GROUP]) as $r) {
+				$l = trim((string)$r['emt_language']);
+				$std[$l] = self::STD . ($l !== '' ? ' (' . $l . ')' : '');
+			}
 		}
-		return ['proc' => $proc, 'tpl' => (object)$tpl, 'fallback' => nu_lang_to_db(nu_lang()), 'code' => self::TEMPLATE];
+		return ['proc' => $proc, 'tpl' => (object)$tpl, 'std' => (object)$std, 'fallback' => nu_lang_to_db(nu_lang()), 'code' => self::TEMPLATE];
 	}
 
-	/** @return array{0: string, 1: string, 2: string} subject, HTML, source ('template' / 'builtin') */
+	/** @return array{0: string, 1: string, 2: string} subject, HTML, source ('template' / 'standard' / 'builtin') */
 	private static function content(array $user, array $hash, string $lang): array
 	{
 		$db = nu_db();
@@ -800,27 +813,92 @@ final class NuWelcome
 			foreach ($langs as $l) {
 				$tpl ??= $db->one('SELECT * FROM ' . NuEmailTemplate::TABLE . " WHERE emt_code = ? AND COALESCE(emt_language,'') = ? AND COALESCE(emt_template,'') <> '1'", [self::TEMPLATE, $l]);
 			}
+			$src = 'template';
+			if (!$tpl) {                                                       // nuBuilder Next's read-only template (0.8.658)
+				foreach (array_values(array_unique([trim((string)($user['sus_language'] ?? '')), nu_lang_to_db($lang), 'English'])) as $l) {
+					$tpl ??= $db->one('SELECT * FROM ' . NuEmailTemplate::TABLE . " WHERE emt_code = ? AND emt_group = ? AND emt_template = '1' AND COALESCE(emt_language,'') = ?", [self::STD, self::STD_GROUP, $l]);
+				}
+				$src = 'standard';
+			}
 			if ($tpl) {
 				$esc = []; foreach ($hash as $k => $v) $esc[$k] = h($v);              // values are text in an HTML mail
 				$body = NuHash::replace((string)$tpl['emt_body'], $esc, NuHash::RAW);
 				if ($body === strip_tags($body)) $body = nl2br($body);                // plain text template (like nuBuilder)
 				$subject = NuHash::replace((string)$tpl['emt_subject'], $hash, NuHash::RAW) ?: t('welcome_subject');
-				return [$subject, NuMail::layout($subject, $body), 'template'];
+				return [$subject, NuMail::layout($subject, $body), $src];
 			}
 		}
 		$name = trim((string)($user['sus_name'] ?? '')) ?: (string)$user['sus_login_name'];
+		$body = self::body(h($name), h((string)$user['sus_login_name']), h($hash['SET_PASSWORD_URL']), h($hash['LOGIN_URL']),
+			h(t('welcome_valid', self::hours(), $hash['PASSWORD_MIN_LENGTH'])));
+		return [t('welcome_subject'), NuMail::layout(t('welcome_title'), $body), 'builtin'];
+	}
+
+	/** The welcome text in the current language – built-in mail and the read-only templates (0.8.658); every argument is HTML already. */
+	private static function body(string $name, string $login, string $setUrl, string $loginUrl, string $valid): string
+	{
 		$p = static fn(string $s) => '<p style="margin:0 0 14px">' . $s . '</p>';
-		$body = $p(h(t('welcome_hello', $name)))
+		$small = static fn(string $s) => $p('<span style="font-size:13px;color:#7a8394">' . $s . '</span>');
+		return $p(str_replace('%s', $name, h(t('welcome_hello'))))
 			. $p(h(t('welcome_intro')))
 			. '<table style="border-collapse:collapse;margin:0 0 18px;font-size:14px"><tr><td style="padding:4px 14px 4px 0;color:#7a8394">' . h(t('user_login_name'))
-			. '</td><td style="padding:4px 0;font-weight:600">' . h((string)$user['sus_login_name']) . '</td></tr></table>'
+			. '</td><td style="padding:4px 0;font-weight:600">' . $login . '</td></tr></table>'
 			. $p(h(t('welcome_step')))
-			. '<p style="margin:22px 0"><a href="' . h($hash['SET_PASSWORD_URL']) . '" style="background:#2f6fd6;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">'
+			. '<p style="margin:22px 0"><a href="' . $setUrl . '" style="background:#2f6fd6;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">'
 			. h(t('welcome_button')) . '</a></p>'
-			. $p('<span style="font-size:13px;color:#7a8394">' . h(t('welcome_valid', self::hours(), $hash['PASSWORD_MIN_LENGTH'])) . '</span>')
-			. $p('<span style="font-size:13px;color:#7a8394">' . h(t('welcome_later')) . ' <a href="' . h($hash['LOGIN_URL']) . '">' . h($hash['LOGIN_URL']) . '</a></span>')
-			. $p('<span style="font-size:13px;color:#7a8394">' . h(t('welcome_ignore')) . '</span>');
-		return [t('welcome_subject'), NuMail::layout(t('welcome_title'), $body), 'builtin'];
+			. $small($valid)
+			. $small(h(t('welcome_later')) . ' <a href="' . $loginUrl . '">' . $loginUrl . '</a>')
+			. $small(h(t('welcome_ignore')));
+	}
+
+	private static function ownProcedure(): bool
+	{
+		$db = nu_db();
+		return $db->tableExists('zzzzsys_php') && (int)$db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE sph_code = ? AND ' . self::NOT_FORTE, [self::PROCEDURE]) > 0;
+	}
+
+	/** Runs $fn with $lang (and its default variant) as the session language – as send() does for the user's language. */
+	private static function inLang(string $lang, callable $fn): mixed
+	{
+		$prev = $_SESSION['nu_lang'] ?? null;
+		$prevVar = $_SESSION['nu_lang_variant'] ?? null;
+		$_SESSION['nu_lang'] = $lang;
+		// the language's own default (en-GB, de-DE) – not NuSetupWizard::defaultVariant(): it reads the settings, which may start the
+		// database steps once more while one of them (ensureTemplates) is running
+		if (isset(NU_LANG_VARIANT_DEFAULT[$lang])) $_SESSION['nu_lang_variant'] = NU_LANG_VARIANT_DEFAULT[$lang]; else unset($_SESSION['nu_lang_variant']);
+		try {
+			return $fn();
+		} finally {
+			if ($prev === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev;
+			if ($prevVar === null) unset($_SESSION['nu_lang_variant']); else $_SESSION['nu_lang_variant'] = $prevVar;
+		}
+	}
+
+	/**
+	 * nuBuilder Next's read-only welcome templates (0.8.658, step 0028 and every NuMigrate::run): one row per language – code
+	 * nu_send_welcome_email_template, group nunext, emt_template 1, id nx_welcome_<lang> – added when missing, never changed. They are
+	 * cloned like nuBuilder Forte's templates: the copy is called nu_send_welcome_email, can be edited and is used first.
+	 * @return int rows added
+	 */
+	public static function ensureTemplates(): int
+	{
+		$db = nu_db();
+		if (!$db->tableExists(NuEmailTemplate::TABLE)) return 0;
+		$cols = $db->columns(NuEmailTemplate::TABLE);
+		$n = 0;
+		foreach (array_keys(NU_LANGS) as $l) {
+			$id = self::STD_ID . $l;
+			$row = self::inLang($l, static fn() => [
+				'zzzzsys_email_template_id' => $id, 'emt_code' => self::STD, 'emt_group' => self::STD_GROUP, 'emt_category' => 'Email', 'emt_template' => '1',
+				'emt_language' => nu_lang_to_db($l), 'emt_description' => mb_substr(t('welcome_tpl_desc'), 0, 200), 'emt_subject' => t('welcome_subject'),
+				'emt_body' => self::body('#sus_name#', '#sus_login_name#', '#SET_PASSWORD_URL#', '#LOGIN_URL#',
+					str_replace(['99999', '88888'], ['#SET_PASSWORD_HOURS#', '#PASSWORD_MIN_LENGTH#'], h(t('welcome_valid', 99999, '88888')))),
+				'emt_to' => '#sus_email#', 'emt_cc' => '', 'emt_bcc' => '', 'emt_form_id' => NuAcl::FORM_USER]);   // the user form's fields as placeholders
+			if ((int)$db->value('SELECT COUNT(*) FROM ' . NuEmailTemplate::TABLE . ' WHERE zzzzsys_email_template_id = ?', [$id]) > 0) continue;   // never changed
+			$db->insert(NuEmailTemplate::TABLE, array_intersect_key($row, $cols));
+			$n++;
+		}
+		return $n;
 	}
 
 	private static function log(string $uid, string $email, string $source, ?string $err): void

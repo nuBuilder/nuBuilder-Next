@@ -93,7 +93,7 @@ final class NuHome
 	public const VIEW_NAVS = ['groups', 'tabs', 'sidebar', 'none'];
 	public const VIEW_DENSITIES = ['comfortable', 'cozy', 'dense'];
 	public const VIEW_ICONS = ['soft', 'solid', 'outline', 'mono', 'none'];
-	public const VIEW_LIST_COLS = ['1', '2', 'auto'];
+	public const VIEW_LIST_COLS = ['1', '2', '3', '4', 'auto'];   // 3 / 4 (0.8.659): fewer on narrow screens (nuhome.css)
 	public const VIEW_LIST_WIDTHS = ['readable', 'full'];
 	public const VIEW_LINES = [0, 1, 2, 3];
 	public const VIEW_DELAYS = [0, 300, 800];
@@ -159,7 +159,7 @@ final class NuHome
 		$c['update'][4] = $b['update'] ?? null;
 		$c += [
 			'securitycheck' => ['securitycheck', 'bi-shield-check', t('secchk_title'), t('secchk_card_hint')],
-			'configfile'    => ['configfile', 'bi-filetype-php', t('cfg_title'), t('cfg_card_hint')],
+			'configfile'    => ['configfile', 'bi-filetype-php', t('cfg_tile'), t('cfg_card_hint')],   // short name (0.8.659) – the description names nuconfig.php
 			'globalcode'     => ['globalcode', 'bi-code-square', t('scode_title'), t('scode_card_hint')],
 			'setupwizard'   => ['setupwizard', 'bi-magic', t('wiz_title'), t('wiz_card_hint')],
 			'branding'      => ['branding', 'bi-palette', t('brand_title'), t('brand_card_hint')],
@@ -787,7 +787,7 @@ final class NuHome
 			nu_db()->update(NuListView::TABLE, ['definition' => json_encode($layout, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
 				'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)], 'zzzzsys_nunext_list_view_id', $id);
 		}
-		self::$current = null;
+		self::$current = self::$rows = null;                       // 0.8.652: also the rows – a stored copy of the built-in layout is current from now on
 		NuLog::write($event, NuListView::TABLE, $id, $details ?? ['groups' => count($layout['groups']), 'hidden' => count($layout['hidden']), 'own' => count((array)$layout['custom'])]);
 		return [];
 	}

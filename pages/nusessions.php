@@ -142,26 +142,28 @@ nu_layout_start(t('sess_title'), 'log');
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions', (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) + $qp)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
 		<?php $others = count(array_filter($allRows, static fn($r) => (string)$r['zzzzsys_nunext_session_id'] !== $me)); ?>
-		<span class="d-inline-flex flex-wrap gap-2 ms-auto">
-		<?php // idle sessions (0.8.595): pick the hours, the confirmation names them (assets/js/nusessions.js keeps the text in step)
-		if ($idleHours): $idleDefault = in_array(8, $idleHours, true) ? 8 : end($idleHours); ?>
-		<form method="post" class="d-inline-flex gap-1" id="sessIdleForm" data-confirm="<?= h(t('sess_end_idle_confirm', $idleDefault)) ?>" data-confirm-tpl="<?= h(t('sess_end_idle_confirm', 99999)) ?>" data-confirm-ok="<?= h(t('sess_end_idle')) ?>" data-confirm-class="btn btn-danger">
-			<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_idle">
-			<select class="form-select w-auto" name="hours" id="sessIdleHours" aria-label="<?= h(t('sess_idle_for')) ?>" title="<?= h(t('sess_idle_for')) ?>">
-				<?php foreach ($idleHours as $hh): ?><option value="<?= $hh ?>"<?= $hh === $idleDefault ? ' selected' : '' ?>><?= h(t('sess_idle_hours', $hh)) ?></option><?php endforeach; ?>
-			</select>
-			<button class="btn btn-outline-danger fw-normal text-nowrap" type="submit" id="sessIdleBtn"><i class="bi bi-hourglass-split me-1"></i><?= h(t('sess_end_idle')) ?></button>
-		</form>
-		<?php endif; ?>
-		<form method="post" data-confirm="<?= h(t('sess_end_others_confirm', $others)) ?>" data-confirm-ok="<?= h(t('sess_end_others')) ?>" data-confirm-class="btn btn-danger">
-			<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_others">
-			<button class="btn btn-outline-danger fw-normal" type="submit"<?= $others ? '' : ' disabled' ?>><i class="bi bi-people me-1"></i><?= h(t('sess_end_others')) ?></button>
-		</form>
-		<form method="post" data-confirm="<?= h(t('sess_end_all_confirm', count($allRows))) ?>" data-confirm-ok="<?= h(t('sess_end_all')) ?>" data-confirm-class="btn btn-danger">
-			<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_all">
-			<button class="btn btn-outline-danger fw-normal" type="submit"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('sess_end_all')) ?></button>
-		</form>
-		</span>
+		<?php // one "Log out" button (0.8.653 phones, 0.8.654 every width): its menu holds the actions – idle users with one entry per time, all others,
+		// everyone incl. me; each asks first (data-confirm) ?>
+		<div class="dropdown ms-auto" id="sessLogoutMenu">
+			<button class="btn btn-outline-danger fw-normal dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('nav_logout')) ?></button>
+			<ul class="dropdown-menu dropdown-menu-end">
+				<?php if ($idleHours): ?>
+				<li><h6 class="dropdown-header"><i class="bi bi-hourglass-split me-1"></i><?= h(t('sess_end_idle')) ?></h6></li>
+				<?php foreach ($idleHours as $hh): ?>
+				<li><form method="post" class="m-0" data-confirm="<?= h($hh === 1 ? t('sess_end_idle_confirm_1') : t('sess_end_idle_confirm', $hh)) ?>" data-confirm-ok="<?= h(t('sess_end_idle')) ?>" data-confirm-class="btn btn-danger">
+					<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_idle"><input type="hidden" name="hours" value="<?= (int)$hh ?>">
+					<button class="dropdown-item ps-4" type="submit" data-hours="<?= (int)$hh ?>"><?= h(t('sess_idle_hours', $hh)) ?></button></form></li>
+				<?php endforeach; ?>
+				<li><hr class="dropdown-divider"></li>
+				<?php endif; ?>
+				<li><form method="post" class="m-0" data-confirm="<?= h(t('sess_end_others_confirm', $others)) ?>" data-confirm-ok="<?= h(t('sess_end_others')) ?>" data-confirm-class="btn btn-danger">
+					<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_others">
+					<button class="dropdown-item text-danger" type="submit"<?= $others ? '' : ' disabled' ?>><i class="bi bi-people me-2"></i><?= h(t('sess_end_others')) ?></button></form></li>
+				<li><form method="post" class="m-0" data-confirm="<?= h(t('sess_end_all_confirm', count($allRows))) ?>" data-confirm-ok="<?= h(t('sess_end_all')) ?>" data-confirm-class="btn btn-danger">
+					<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_all">
+					<button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right me-2"></i><?= h(t('sess_end_all')) ?></button></form></li>
+			</ul>
+		</div>
 	</div>
 	</div>
 	<form class="nuListFilter" method="get" action="index.php" role="search" id="sessSearch">
@@ -234,4 +236,4 @@ nu_layout_start(t('sess_title'), 'log');
 	</div>
 <?php endif; ?>
 <?php
-nu_layout_end('<script src="' . nu_asset('assets/js/nusessions.js') . '"></script>');
+nu_layout_end();

@@ -310,4 +310,70 @@ final class NuSidebar
 		$errors = NuHome::save($layout, (string)NuAuth::user()['login'], 'home_layout_saved', ['favourite' => $key, 'on' => $on, 'via' => 'side bar']);
 		return $errors ? null : $on;
 	}
+
+	/** Session key of the last tile hidden with the start page's tile menu (0.8.652): what Undo needs and whether its message is still to show. */
+	public const UNDO = 'nu_home_hide_undo';
+
+	/**
+	 * "Hide" in the right-click / long-press menu of a start page tile (0.8.652): on an admin start page the tile goes to the layout's hidden
+	 * tiles (as Edit tiles and groups – everyone who uses the layout); on a user start page it is hidden for this user (as Personalise). Same
+	 * rights as the ☆ (canFav). The place is kept in the session for Undo. @return bool false = not possible here
+	 */
+	public static function hideTile(string $key): bool
+	{
+		[$layout, $userPage, $mine] = self::startPage();
+		if (!self::canFav()) return false;
+		$at = null;
+		foreach ($layout['groups'] as $gi => $g) {
+			$pos = array_search($key, (array)$g['tiles'], true);
+			if ($pos !== false) { $at = [(int)$gi, (int)$pos, (string)($g['id'] ?? '')]; break; }
+		}
+		if ($at === null || !NuHome::visible($key, $layout)) return false;
+		$lid = (string)NuHome::current()['id'];
+		if ($userPage) {
+			$hide = (array)($mine['hide'] ?? []);
+			if (!in_array($key, $hide, true)) $hide[] = $key;
+			if (!NuHome::setMine($lid, array_key_exists('fav', $mine) ? (array)$mine['fav'] : null, $hide)) return false;
+		} else {
+			array_splice($layout['groups'][$at[0]]['tiles'], $at[1], 1);
+			$layout['hidden'][] = $key;
+			if (NuHome::save($layout, (string)NuAuth::user()['login'], 'home_layout_saved', ['hidden' => $key, 'via' => 'tile menu'])) return false;
+			$lid = (string)NuHome::current()['id'];                  // the built-in layout: its stored copy (first save)
+		}
+		$_SESSION[self::UNDO] = ['key' => $key, 'layout' => $lid, 'user' => $userPage, 'gi' => $at[0], 'pos' => $at[1], 'group' => $at[2], 'show' => true];
+		return true;
+	}
+
+	/** Undo of the last hideTile() (same key and layout): back to its group and place, or out of the user's hidden tiles. */
+	public static function unhideTile(string $key): bool
+	{
+		$u = $_SESSION[self::UNDO] ?? null;
+		if (!is_array($u) || ($u['key'] ?? '') !== $key) return false;
+		[$layout, $userPage, $mine] = self::startPage();
+		if (!self::canFav() || (string)NuHome::current()['id'] !== (string)$u['layout'] || $userPage !== (bool)$u['user']) return false;
+		if ($userPage) {
+			$hide = array_values(array_diff((array)($mine['hide'] ?? []), [$key]));
+			if (!NuHome::setMine((string)$u['layout'], array_key_exists('fav', $mine) ? (array)$mine['fav'] : null, $hide)) return false;
+		} else {
+			if (!in_array($key, (array)$layout['hidden'], true)) return false;   // shown again meanwhile (Edit tiles and groups)
+			$layout['hidden'] = array_values(array_diff((array)$layout['hidden'], [$key]));
+			$gi = null;
+			foreach ($layout['groups'] as $i => $g) if ((string)($g['id'] ?? '') === (string)$u['group']) $gi = $i;
+			$gi ??= isset($layout['groups'][(int)$u['gi']]) ? (int)$u['gi'] : array_key_last($layout['groups']);
+			if ($gi === null) return false;
+			array_splice($layout['groups'][$gi]['tiles'], min((int)$u['pos'], count($layout['groups'][$gi]['tiles'])), 0, [$key]);
+			if (NuHome::save($layout, (string)NuAuth::user()['login'], 'home_layout_saved', ['shown' => $key, 'via' => 'tile menu (undo)'])) return false;
+		}
+		unset($_SESSION[self::UNDO]);
+		return true;
+	}
+
+	/** The message after hideTile() (once): [key, label, user page] or null. */
+	public static function undoMessage(): ?array
+	{
+		$u = $_SESSION[self::UNDO] ?? null;
+		if (!is_array($u) || empty($u['show'])) return null;
+		$_SESSION[self::UNDO]['show'] = false;
+		return [(string)$u['key'], (string)($u['label'] ?? '') !== '' ? (string)$u['label'] : (string)$u['key'], (bool)$u['user']];
+	}
 }

@@ -22,6 +22,12 @@ if (!$meta) {
 	nu_fatal(t('form_err_not_found'), $fParam, true);
 }
 NuAcl::require($meta->id);
+// design mode (0.8.662, core/form/nudesign.php): an open draft of the form is shown while designing
+$designReq = ($_GET['design'] ?? '') === '1' && NuDesign::allowed($meta);
+if ($designReq && NuDesign::previewOpenDraft($meta)) {
+	NuFormMeta::forget($meta->id);
+	$meta = NuFormMeta::load($meta->id) ?? $meta;
+}
 // a form never published (status Draft, 0.8.386) opens for designers only
 if ((string)($meta->form['sfo_status'] ?? '') === '0' && !$meta->isDraft() && !NuAcl::can(NuAcl::FORM_FORM, 'view')) {
 	http_response_code(403);
@@ -51,6 +57,8 @@ if ($r === null || $r === '') {
 	if (!$meta->hasBrowse()) $r = '-1';          // edit / launch forms open directly
 }
 $mode = ($r === null || $r === '') ? 'browse' : 'edit';
+$design = $designReq && ($mode === 'edit' || $mode === 'browse') && !$bare && empty($_GET['print']);   // browse (0.8.669): the list's columns
+$safe   = $design && NuDesign::safe();       // design mode without the form's own code (0.8.667): to fix a form whose code breaks it
 // access level form type (0.8.461, as nuBuilder 4.9): "browse only" opens no record (also no new one), "edit only" no browse list
 if ($meta->type() !== 'launch' && !$rights[$mode]) {
 	http_response_code(403);
@@ -130,7 +138,7 @@ if ($mode === 'edit') {
 	NuPhp::reset();
 	NuConflict::$formCheck = NuConflict::$formPresence = null;
 	// global hook nu_before_edit first (0.8.462, as nuBuilder 4.9); an error stops the form's Before Edit
-	if (!NuProcedure::hook('nu_before_edit', $hash) || !NuPhp::run($meta->php('BE'), $hash, 'Before Edit')) $errors = NuPhp::$errors ?: [['message' => NuPhp::$error, 'field' => '']];
+	if (!NuProcedure::hook('nu_before_edit', $hash) || (!$safe && !NuPhp::run($meta->php('BE'), $hash, 'Before Edit'))) $errors = NuPhp::$errors ?: [['message' => NuPhp::$error, 'field' => '']];
 	$js   = NuPhp::$js;
 	$hash = NuPhp::$hash + $hash;
 	foreach (NuPhp::$formValues as $k => $v) $row[$k] = $v;          // nuSetFormValue in BE
@@ -178,7 +186,8 @@ $client = [
 		'table' => $meta->table(), 'primary_key' => $meta->primaryKey(), 'layout' => $layout,
 		'redirect' => trim((string)$meta->form['sfo_browse_redirect_form_id']),
 	],
-	'builder' => ($_GET['builder'] ?? '') === '1' && NuAcl::can(NuAcl::FORM_FORM),
+	'builder' => (($_GET['builder'] ?? '') === '1' && NuAcl::can(NuAcl::FORM_FORM)) || ($design && $mode === 'edit'),
+	'design' => $design ? NuDesign::client($meta, (string)$r) : null,          // design mode (0.8.662): assets/js/nu/nudesign.js
 	'draft' => NuFormDraft::previewInfo($meta->id),          // form drafts (0.8.386): the draft shown (label menu, Save in the preview)
 	// launch form of a report (?p=report&c=…): its fields are the criteria, a button runs the report
 	'report' => $mode === 'edit' && is_string($_GET['rpt'] ?? null) && ($rp = NuReport::load((string)$_GET['rpt'])) && NuReport::canRun($rp)
@@ -215,7 +224,7 @@ $client = [
 		'sessions' => NuAdmin::can('sessions'),
 		'version' => $u['globeadmin'] ? 'nuBuilder Next ' . NU_VERSION . ' · PHP ' . PHP_VERSION . ' · ' . nu_db()->type : '',
 	],
-	'shortcuts' => nu_shortcut_labels(), 'dev_mode' => NuHash::devMode(), 'db_type' => nu_db()->type, 'db_name' => $u['globeadmin'] && empty($u['demo']) ? (string)nu_cfg('nuConfigDBName') : '', 'hashCatalog' => $mode === 'edit' ? NuHash::catalog() : null,
+	'shortcuts' => nu_shortcut_labels(), 'dev_mode' => NuHash::devMode(), 'db_type' => nu_db()->type, 'db_name' => $u['globeadmin'] && empty($u['demo']) ? (string)nu_cfg('nuConfigDBName') : '', 'hashCatalog' => $mode === 'edit' || $design ? NuHash::catalog() : null,
 	'formats' => (object)NuFormat::clientRegistry(), 'tinymceBase' => NuLibs::tinymce() ?: NU_TINYMCE,
 	// audit trail (0.8.350): "History of this record" in the ⋮ menu
 	'audit' => $mode === 'edit' && $r !== null && $r !== '-1' && NuAudit::on() && NuAudit::audited($meta->table())
@@ -227,8 +236,9 @@ $client = [
 		$fmt = static fn(?array $e, string $key) => $e ? t($key, $e['name'] === 'unknown' ? t('nulog_unknown') : $e['name'], $e['when'] !== '' ? $e['when'] : '–') : null;
 		return ['column' => $i['column'], 'added' => $fmt($i['added'], 'nulog_added'), 'edited' => $fmt($i['edited'], 'nulog_edited'), 'none' => t('nulog_none')];
 	})() : null,
-	// globeadmin: menu on the labels of the edit form for quick changes of an object (nuBuilder's label context menu)
-	'objmenu' => $mode === 'edit' && $u['globeadmin'] && !$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM, 'save') ? [
+	// globeadmin: menu on the labels of the edit form for quick changes of an object (nuBuilder's label context menu); also on User Home,
+	// whose objects the builder edits (0.8.605) – 0.8.659
+	'objmenu' => $mode === 'edit' && ($u['globeadmin'] || $design) && (!$meta->isSystem() || $meta->isUserHome()) && NuAcl::can(NuAcl::FORM_FORM, 'save') ? [
 		'tabs' => array_map(static fn($t) => [(string)$t['zzzzsys_tab_id'], trim(strip_tags((string)$t['syt_title']))], $meta->tabs),
 		'm' => ['object' => t('om_object'), 'copied' => t('om_copied'), 'properties' => t('om_properties'), 'rename' => t('om_rename'), 'rename_prompt' => t('om_rename_prompt'),
 			'actions' => t('om_actions'), 'delete' => t('delete'), 'delete_confirm' => t('om_delete_confirm'), 'move' => t('om_move_tab'), 'access' => t('om_access'),
@@ -327,10 +337,11 @@ function nu_setup_header(string $header, string $style): string
 $head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset(NU_JQCONFIRM . '/jquery-confirm.min.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset('assets/css/nuform.css') . '">'
+	. ($design ? '<link rel="stylesheet" href="' . nu_asset('assets/css/nudesign.css') . '">' : '')
 	. NuIncludes::cssTags()                                     // $nuConfigIncludeCSS (0.8.443)
-	. (trim((string)$meta->form['sfo_style']) !== '' ? '<style data-nu-source="sfo_style">' . str_ireplace('</style', '<\/style', (string)$meta->form['sfo_style']) . '</style>' : '');
+	. (!$safe && trim((string)$meta->form['sfo_style']) !== '' ? '<style data-nu-source="sfo_style">' . str_ireplace('</style', '<\/style', (string)$meta->form['sfo_style']) . '</style>' : '');
 
-$custom = nu_script((string)$meta->form['sfo_javascript'], 'sfo_javascript')
+$custom = $safe ? '' : nu_script((string)$meta->form['sfo_javascript'], 'sfo_javascript')
 	. nu_script((string)$meta->form[$mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript'], $mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript');
 
 // WYSIWYG editor objects need TinyMCE (not bundled – a library pack, or the old hand copy in assets/vendor/tinymce)
@@ -377,18 +388,21 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript (0.8.298)
 	. NuIncludes::jsTags()                                       // $nuConfigIncludeJS (0.8.443): before Setup → Header and the form's code
 	. NuCustomCode::jsTag()                                      // Global JS (0.8.523): before Setup → Header and the form's code – a form's nuOnLoad wins
-	. NuIncludes::setupTags()                                    // Setup → Include (0.8.444): its <link> / <script> / <style> elements
-	. $setupHeader . "\n"
-	. ($mode === 'edit' ? '<script>nuNextRunDeferred(document);</script>' : '')   // scripts of HTML objects (0.8.383, NuRender::deferScripts)
+	. ($safe ? '' : NuIncludes::setupTags())                     // Setup → Include (0.8.444): its <link> / <script> / <style> elements
+	. ($safe ? '' : $setupHeader) . "\n"
+	. ($mode === 'edit' && !$safe ? '<script>nuNextRunDeferred(document);</script>' : '')   // scripts of HTML objects (0.8.383, NuRender::deferScripts)
 	. nu_script(implode("\n", $js), 'php: nuAddJavascript')
 	. ($errors ? '' : $custom)
 	. '<script>nuNextStart();</script>'
 	. (!empty($client['builder']) ? '<script src="' . nu_asset('assets/js/nu/nudesigner.js') . '" data-labels="' . h((string)json_encode(array_combine(   // Arrange panel (0.8.606)
-		['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag'],
-		array_map(static fn($k) => t('dsg_' . $k), ['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag'])), JSON_UNESCAPED_UNICODE)) . '"></script>' : '')
+		['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag', 'hgap', 'vgap', 'apply', 'gap_tip'],
+		array_map(static fn($k) => t('dsg_' . $k), ['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag', 'hgap', 'vgap', 'apply', 'gap_tip'])), JSON_UNESCAPED_UNICODE)) . '"></script>' : '')
+	. ($design ? '<script src="' . nu_asset('assets/js/nuformatdesigner.js') . '"></script>'     // format designer + attribute editor of the panel (0.8.669)
+		. '<script src="' . nu_asset('assets/js/nuattreditor.js') . '"></script>'
+		. '<script src="' . nu_asset('assets/js/nu/nudesign.js') . '"></script>' : '')
 	;
 
-nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '')]);
+nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '') . ($design ? ' nuDesignMode' : '')]);
 ?>
 <div class="nuFormHeader nuTitleBar mb-3">
 	<?php if (!$bare): ?>
@@ -446,15 +460,15 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				<button type="button" class="btn nuBtnAct nuBtnDel nuActionButton" id="nuDeleteButton"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
 		<?php endif; ?>
+		<?php if (($mode === 'edit' || ($mode === 'browse' && $lookupTo === '')) && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta)): // design mode (0.8.662; the list 0.8.669) ?>
+			<a class="btn btn-outline-primary nuActionButton" id="nuDesignButton" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $mode === 'edit' ? $r : null, 'design' => '1'])) ?>" title="<?= h(t('ds_design_tip')) ?>"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i><?= h(t('ds_design')) ?></a>
+		<?php endif; ?>
 		<?php if ($u['globeadmin'] && !$bare): ?>
 			<?= NuFormInfo::html($meta, $mode, $r) /* (i) form info for the globeadmin (0.8.435) */ ?>
 			<div class="btn-group" role="group" aria-label="<?= h(t('form_layout')) ?>">
 				<?php if ($mode === 'edit'): foreach (['absolute', 'auto', 'grid'] as $l): ?>
 					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
 				<?php endforeach; endif; ?>
-				<?php if ((!$meta->isSystem() || $meta->isUserHome()) && NuAcl::can(NuAcl::FORM_FORM)): // User Home too (0.8.605) ?>
-					<a class="btn btn-outline-secondary" id="nuFormBuilderBtn" href="<?= h(nu_url('builder', ['f' => $meta->id])) ?>" target="_blank" rel="noopener" title="<?= h(t('builder_title')) ?>" aria-label="<?= h(t('builder_title')) ?>"><i class="bi bi-tools"></i></a><?php // new tab (0.8.517) ?>
-				<?php endif; ?>
 			</div>
 			<button type="button" class="btn btn-outline-danger d-none" id="nuJsErrors"><i class="bi bi-bug me-1"></i><span></span></button>
 		<?php endif; ?>

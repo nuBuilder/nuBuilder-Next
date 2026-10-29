@@ -15,8 +15,107 @@
       and delete assets/js/nuheadervariant.js, the CSS block "header layouts (test)" at the end of nuapp.css, the menu entries / script
       tag in core/nulayout.php, the texts hlt_*, the e2e test header_variants and the mockup folder.
 
-## 0.8.623 Change column in the form builder – please verify
-- [ ] Builder → object → *Change column…* on a copy of a real table: widen a varchar, shorten one (data check, tick), text → number /
+## Form designer – open
+- Editing sub-form columns inside the sub-form; default values (nuBuilder Forte has no such field – would need sob_all_json).
+- New form, new table: no reordering of the column grid yet (the existing-table column list has it, 0.8.675).
+
+## 0.8.676 Form info: browse SQL larger + edit – please verify
+- Form (i) panel → Browse SQL: the expand button shows the SQL in a large dialogue (Copy, Edit), the pencil opens a new tab with
+  design mode of the list and Code on the browse SQL (?…&design=1&dswork=code&dsitem=sfo_browse_sql).
+
+## 0.8.675 New form: choose columns, labels, list columns and order – please verify
+- New form → Existing table → "Choose columns and order" (folded): untick columns, own labels, In the list, order by drag (grip),
+  arrows, Alt+↑ / ↓; the created form has only the ticked objects in that order, list columns as ticked (no limit of six then).
+  Untouched = the former default.
+
+## 0.8.674 New form: access levels Select all + group filter – please verify
+- New form → step 3 → Access for access levels: "Select all" ticks / clears the levels shown; the group select (only when a level has
+  a group, sal_group) filters the list; ticks of hidden levels are kept and created with the form; counter "x of y selected".
+
+## 0.8.673 Update from GitHub: settings button, automatic check interval – please verify
+- Update page → Update from GitHub: the Settings button sits right after the title; Settings → "Check for updates automatically"
+  (Never / Once a day / Once a week / Once a month) is saved and shown in "Last looked" ("checks once a week"); after the update an
+  installation that had "Look once a day" off shows Never, on shows Once a day.
+
+## 0.8.672 Design mode on the list: column menu – please verify
+- Right-click a column title: Object name (copy), Properties, Rename, Align ▸, Width (Enter), Filter, Move left / right, Hide / Show, Delete.
+
+## 0.8.671 Design mode: Structure filters, folding, shortcuts – please verify
+- Structure: Tab / Object type filters below the search; a click on a tab title folds it (count of its objects).
+- Ctrl/⌘ + arrows move 20 px; F2 rename dialog; Tab / Shift+Tab next object; Ctrl+C / X / V objects (also into another form); Ctrl+Z
+  undo; Ctrl+S message; ? shortcut list (also the keyboard icon at the bottom of the icon bar).
+- If Ctrl+↑ / ↓ still do nothing: an operating-system or browser-extension shortcut takes them before the page (macOS Mission Control).
+
+## 0.8.670 The form builder replaced by design mode – please verify
+- Forms list / old links / bookmarks ?p=builder&f=… open design mode (an object, Code, History, Structure, Add, the list as in the link).
+- New form wizard: always opens the new form in design mode (browse forms on the list, page forms their editor).
+- Form AI: the created form / draft opens in design mode; Data access and AI "Back" lead to design mode.
+
+## 0.8.669 Design mode: all settings, the list, tools – please verify
+- Form settings (type, status, group, table, primary key, list, breadcrumb), tab order switch, Tools (AI, Data access, Delete form).
+- Object properties of every type (formats with + / pencil, masks, datalist, lookup PHP, sub-form add / delete, chart, image, run id / filter, grid).
+- Change column… from an object's Tools; password confirmation leads back to design mode (&dscolchg=).
+- The list: Design on the list page, click a title, edit / move / add / remove columns – in the draft.
+
+## 0.8.668 Design mode: Code, History, Changes of the draft – please verify
+- Icon bar → Code: all code parts in one editor, dots for parts with code / unsaved changes, Ctrl+S saves all; back to the form reloads it.
+- History: Compare (to now / to the draft), Restore (only without a draft); Changes of the draft (bar button) with the conflict warning.
+- Publish dialog shows the summary; after a change of the published form it asks for the form code to overwrite.
+
+## 0.8.667 Design mode for users with form rights, safe mode – please verify
+- A user whose access level has save rights on nuform sees Design; tab rename / delete greyed; no Publish without the right formpublish.
+- 🛡 in the bar: form without its JavaScript, CSS, Before Edit PHP, Setup header / include; the badge shows it; the button leaves it.
+
+## 0.8.666 Design mode: navbar menus (theme, language, user) open above the designer – please verify
+
+## 0.8.665 Design mode: no reloads, content boxes, code window – please verify
+- Add an object, change access / tab / type …: the form is drawn again in place (no page reload); ⟳ in the bar reloads fully.
+- A content box: click its title or frame to select, drag it by them; objects inside stay clickable (also in the builder preview).
+- ⤢ next to a code field's label (options / display SQL, HTML, calculation, access condition, event JavaScript): code window.
+
+## 0.8.664 Design mode: live fields, fixed gaps, object menu – please verify
+- Typing a label / top / left / width / height in the panel changes the form at once; Esc = back; saved once (Enter / leaving the field).
+- Arrange: Horizontal / Vertical gap (px) + Apply, in design mode and in the builder preview; horizontal measured to the next label.
+- Right-click an object in design mode: the form's object menu, changes go into the draft.
+
+## 0.8.663 Form designer stages 2–6 – please verify
+- Structure (icon bar, Ctrl+K): search, click selects, drag a row before another / onto a tab title. Add: free table columns, every
+  type, click = bottom of the tab, drag = drop point (absolute); missing column offer; Ctrl+D.
+- Tabs: double-click renames, "+" adds, drag reorders, right-click Hide / Hide for users / Move / Delete; hidden tabs faded.
+- Panel: lookup / sub-form / run lists (Tom Select), formats, Edit events…, Style section, Arrange section for several objects,
+  Order (Up / Down) for one; phones: sections as tabs in the bottom sheet, Structure / Add in the bar.
+- New form: three steps, Next checks each; the globeadmin lands in design mode (switch in step 3).
+
+## 0.8.662 Design mode on the form – please verify
+- A record → Design: bar + panel; change a label → "Draft · 1 change", other users still see the published form; Publish asks for a
+  note; Discard; Done. A form never published: changes are saved at once, "Publish form".
+- Drag / resize / arrow keys / Arrange panel save in the draft; Esc = form settings; several objects = common access / validation.
+
+## 0.8.658 Welcome e-mail templates – please verify
+- [ ] After the update: E-mail templates shows nu_send_welcome_email_template in the group nunext (one per language); a user with e-mail,
+      "Send welcome e-mail" → the mail in the user's language with the Set password button; clone the template, change the text, send again.
+- [ ] Your live database: is there a procedure nu_send_welcome_email? An own one (id not "nu…") is used first – as before; nuBuilder Forte's
+      shipped example (id nu68c8e03bd841c4a in nubuilder4.sql) is ignored now.
+
+## 0.8.652 Start page: Hide tile in the tile menu – please verify
+- [ ] Admin start page (a layout used by several admins / roles): right-click → *Hide tile*, the message, *Undo*; hide again and bring it
+      back with Edit tiles and groups → Hidden. A user's start page: long press on a phone → *Hide for me*, *Undo*, Personalise.
+
+## 0.8.651 Own lists: column widths by dragging the title – please verify
+- [ ] Users, forms, procedures, log, audit trail …: drag titles narrower / wider, switch the list view (each view keeps its own widths for the
+      tab), page and sort; on a phone the lists show cards (nothing to resize) – with "Table on phones" a sideways drag on a title resizes.
+
+## 0.8.650 Browse lists: column widths by dragging the title – please verify
+- [ ] A browse list of your application (and a lookup): drag titles wider / narrower with the mouse and on a phone or tablet (a sideways
+      drag on a title resizes, a vertical swipe still scrolls the page); a click still sorts; paging / sorting keeps the widths; a form
+      that sets widths in its JavaScript (nuSetBrowseColumnSize) – the dragged widths win after the form's code.
+
+## 0.8.649 Permission items: copy from another user – please verify
+- [ ] User form → Permission items → *Copy from user…* on your installation: choose a user with many items, *Add* and *Replace*,
+      *Undo*, then *Save*; with an admin role (not the globeadmin) and with "Only the globeadmin grants admin rights" on.
+
+## 0.8.623 Change column (design mode) – please verify
+- [ ] Design mode → object → Tools → *Change column…* on a copy of a real table: widen a varchar, shorten one (data check, tick), text → number /
       date; MySQL 8 (column default written back without quotes check), SQL Server (`ALTER COLUMN`, defaults are constraints – kept;
       indexes / keys on the column make it fail with a message) – not tested here.
 

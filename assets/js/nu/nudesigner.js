@@ -8,7 +8,8 @@
  *     widest) and moves them up / down in the object order
  *   auto / grid layout: drag an object onto another to place it before/after it or into a new row below,
  *                       drag the right handle to change its width (1–12 columns)
- * Changes are sent to the builder window with postMessage; the builder saves them (several objects in one step: nuDesignerBatch).
+ * Changes are sent to the builder window with postMessage; the builder saves them (several objects in one step: nuDesignerBatch; the Delete key:
+ * nuDesignerDelete with the selected ids – the builder asks first, 0.8.661).
  */
 (function () {
 	'use strict';
@@ -33,21 +34,39 @@
 
 	document.documentElement.classList.add('nuDesigning');
 
-	// every object gets an overlay that catches the mouse (inputs stay inert while designing)
+	// every object gets an overlay that catches the mouse (inputs stay inert while designing); a content box only on its frame and
+	// title (0.8.665), so the objects inside it stay selectable
 	var wraps = [];
-	document.querySelectorAll('#nuEditForm .nuWrap').forEach(function (w) {
-		if (w.closest('.nuSubformCard')) return;
-		wraps.push(w);
-		var ov = document.createElement('div');
-		ov.className = 'nuDesignOverlay';
-		ov.title = idOf(w);
-		w.appendChild(ov);
-		var handle = document.createElement('div');
-		handle.className = 'nuDesignHandle ' + (absolute ? 'nuDesignHandleCorner' : 'nuDesignHandleRight');
-		w.appendChild(handle);
-		ov.addEventListener('pointerdown', function (e) { startMove(e, w); });
-		handle.addEventListener('pointerdown', function (e) { startResize(e, w); });
-	});
+	function scan() {
+		wraps = [];
+		document.querySelectorAll('#nuEditForm .nuWrap').forEach(function (w) {
+			if (w.closest('.nuSubformCard')) return;
+			wraps.push(w);
+			if (w.querySelector(':scope > .nuDesignOverlay')) return;
+			var ov = document.createElement('div');
+			ov.className = 'nuDesignOverlay';
+			ov.title = idOf(w);
+			if (w.classList.contains('nuWrap_contentbox')) {
+				ov.classList.add('nuDesignOverlayBox');
+				['T', 'R', 'B', 'L'].forEach(function (k) { var e = document.createElement('i'); e.className = 'nuDesignEdge nuDesignEdge' + k; ov.appendChild(e); });
+			}
+			w.appendChild(ov);
+			var handle = document.createElement('div');
+			handle.className = 'nuDesignHandle ' + (absolute ? 'nuDesignHandleCorner' : 'nuDesignHandleRight');
+			w.appendChild(handle);
+			ov.addEventListener('pointerdown', function (e) { startMove(e, w); });
+			handle.addEventListener('pointerdown', function (e) { startResize(e, w); });
+		});
+	}
+	scan();
+	// design mode (0.8.665): the form's body was drawn again without a reload – new overlays, the selection by object ids
+	window.nuDesignerRescan = function (ids) {
+		scan();
+		sel = (ids || []).map(function (id) { return document.getElementById('nuw_' + id); }).filter(function (w) { return w && wraps.indexOf(w) >= 0; });
+		selected = sel[sel.length - 1] || null;
+		paint();
+		if (document.documentElement.classList.contains('nuShowTabOrder')) showTabOrder(true);
+	};
 
 	function paint() {
 		wraps.forEach(function (w) {
@@ -55,6 +74,7 @@
 			w.classList.toggle('nuDesignSelected', sel.indexOf(w) >= 0 && w !== selected);
 		});
 		panelState();
+		send({nuDesignerSel: sel.map(idOf)});   // the builder page's Delete key deletes the whole selection (0.8.661)
 	}
 	function select(w, notify) {
 		selected = w;
@@ -115,6 +135,14 @@
 	window.addEventListener('message', function (e) {
 		if (e.origin === origin && e.data && 'nuBuilderTabOrder' in e.data) { showTabOrder(e.data.nuBuilderTabOrder); return; }
 		if (e.origin === origin && e.data && Array.isArray(e.data.nuBuilderOrder)) { reorder(e.data.nuBuilderOrder); return; }
+		if (e.origin === origin && e.data && e.data.nuBuilderSelectNone) { select(null, false); return; }   // design mode: Form settings (0.8.663)
+		// design mode (0.8.664): spacing with a fixed gap from the properties panel; the size typed in the panel, shown at once
+		if (e.origin === origin && e.data && e.data.nuBuilderArrange) { arrange(String(e.data.nuBuilderArrange.what || ''), e.data.nuBuilderArrange.gap); return; }
+		if (e.origin === origin && e.data && e.data.nuBuilderSize) {
+			var ws = document.getElementById('nuw_' + e.data.nuBuilderSize.id), sz = e.data.nuBuilderSize;
+			if (ws) setSize(ws, sz.width === undefined ? null : Math.max(10, +sz.width || 10), sz.height === undefined || !ws.style.height ? null : Math.max(10, +sz.height || 10));
+			return;
+		}
 		if (e.origin !== origin || !e.data || !e.data.nuBuilderSelect) return;
 		var w = document.getElementById('nuw_' + e.data.nuBuilderSelect);
 		if (!w) return;
@@ -303,9 +331,15 @@
 
 	// ----------------------------------------------------------------- keyboard (absolute layout)
 	function onKey(e) {
-		if (!absolute) return;
 		var tag = e.target && e.target.tagName;
 		if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
+		// Delete (Backspace on a Mac) with objects selected (0.8.661, every layout): the builder asks first and deletes them (nuDesignerDelete)
+		if ((e.key === 'Delete' || e.key === 'Backspace') && !mod(e) && sel.length) {
+			e.preventDefault();
+			send({nuDesignerDelete: sel.map(idOf)});
+			return;
+		}
+		if (!absolute) return;
 		if (mod(e) && (e.key === 'a' || e.key === 'A')) {               // all objects of the tab (0.8.606)
 			e.preventDefault();
 			var pane = activePane();
@@ -317,7 +351,7 @@
 		if (e.key === 'Escape' && sel.length) { select(null, false); return; }
 		if (!sel.length || ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) < 0) return;
 		e.preventDefault();
-		var step = e.altKey ? 1 : GRID;
+		var step = e.altKey ? 1 : (mod(e) ? 4 * GRID : GRID);       // Ctrl / ⌘: 20 px (0.8.671), Alt: 1 px
 		var dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
 		var dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
 		sel.forEach(function (w) {
@@ -382,7 +416,61 @@
 			grid.appendChild(b);
 		});
 		panel.appendChild(grid);
+		// fixed gap (0.8.664): the first object stays, each next one follows the previous one at exactly this distance
+		var gaps = savedGaps();
+		var gapRows = document.createElement('div');
+		gapRows.className = 'nuArrangeGaps';
+		[['hgap', 'bi-distribute-horizontal', 'h'], ['vgap', 'bi-distribute-vertical', 'v']].forEach(function (a) {
+			var row = document.createElement('div');
+			row.className = 'input-group input-group-sm nuArrangeGapRow';
+			var ic = document.createElement('span');
+			ic.className = 'input-group-text';
+			ic.title = lbl(a[0], a[0]);
+			var ii = document.createElement('i');
+			ii.className = 'bi ' + a[1];
+			ii.setAttribute('aria-hidden', 'true');
+			ic.appendChild(ii);
+			var inp = document.createElement('input');
+			inp.type = 'number';
+			inp.min = '0';
+			inp.max = '500';
+			inp.className = 'form-control nuArrangeGapInput';
+			inp.setAttribute('data-gap', a[2]);
+			inp.setAttribute('aria-label', lbl(a[0], a[0]) + ' (px)');
+			inp.value = String(gaps[a[2]]);
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.className = 'btn btn-outline-secondary nuArrangeBtn';
+			b.setAttribute('data-arrange', a[0]);
+			b.title = lbl('gap_tip', '');
+			b.textContent = lbl('apply', 'Apply');
+			b.addEventListener('click', function () { arrange(a[0], inp.value); });
+			btns[a[0]] = [b, 2];
+			row.appendChild(ic);
+			row.appendChild(inp);
+			row.appendChild(b);
+			gapRows.appendChild(row);
+		});
+		panel.appendChild(gapRows);
 		document.body.appendChild(panel);
+	}
+	var GAP_KEY = 'nunext-arrange-gap';
+	function savedGaps() {
+		try { var v = JSON.parse(window.localStorage.getItem(GAP_KEY) || 'null'); if (v && isFinite(v.h) && isFinite(v.v)) return {h: +v.h, v: +v.v}; } catch (e) { /* no storage */ }
+		return {h: 10, v: 10};
+	}
+	function saveGap(k, val) {
+		var g = savedGaps();
+		g[k] = val;
+		try { window.localStorage.setItem(GAP_KEY, JSON.stringify(g)); } catch (e) { /* no storage */ }
+		document.querySelectorAll('.nuArrangeGapInput[data-gap="' + k + '"]').forEach(function (x) { x.value = String(val); });
+	}
+	// what sits in front of an object outside its box: a label on the left (horizontal) or above (sub-forms, vertical)
+	function lead(w, horizontal) {
+		var l = w.querySelector(':scope > .nuLabelLeft, :scope > .nuLabelTop');
+		if (!l || !visible(l)) return 0;
+		var a = w.getBoundingClientRect(), b = l.getBoundingClientRect();
+		return Math.max(0, Math.round(horizontal ? a.left - b.left : a.top - b.top));
 	}
 	// the panel can be dragged by its title row (0.8.607); the place is kept per browser, double-click = back to the corner
 	var POS_KEY = 'nunext-arrange-pos';
@@ -424,8 +512,9 @@
 		Object.keys(btns).forEach(function (k) { btns[k][0].disabled = sel.length < btns[k][1]; });
 	}
 
-	function arrange(what) {
+	function arrange(what, gap) {
 		if (!sel.length) return;
+		if ((what === 'hgap' || what === 'vgap') && sel.length < 2) return;
 		if (what === 'up' || what === 'down') { send({nuDesignerOrder: {ids: sel.map(idOf), dir: what === 'up' ? -1 : 1}}); return; }
 		var g = sel.map(function (w) { return {w: w, t: w.offsetTop, l: w.offsetLeft, wd: w.offsetWidth, ht: w.offsetHeight, hh: !!w.style.height}; });
 		var min = function (f) { return Math.min.apply(null, g.map(f)); }, max = function (f) { return Math.max.apply(null, g.map(f)); };
@@ -442,6 +531,16 @@
 			if (hs.length) {
 				var ht = what === 'shortest' ? Math.min.apply(null, hs.map(function (x) { return x.ht; })) : Math.max.apply(null, hs.map(function (x) { return x.ht; }));
 				hs.forEach(function (x) { setSize(x.w, null, ht); });
+			}
+		}
+		if (what === 'hgap' || what === 'vgap') {                // fixed gap (0.8.664): from the previous object's edge to the next one's label
+			var hz = what === 'hgap', gp = Math.max(0, Math.min(500, Math.round(+gap || 0)));
+			saveGap(hz ? 'h' : 'v', gp);
+			g.sort(function (a, b) { return hz ? a.l - b.l || a.t - b.t : a.t - b.t || a.l - b.l; });
+			for (var k = 1; k < g.length; k++) {
+				var pv = g[k - 1], at2 = hz ? pv.l + pv.wd + gp + lead(g[k].w, true) : pv.t + pv.ht + gp + lead(g[k].w, false);
+				g[k].w.style[hz ? 'left' : 'top'] = at2 + 'px';
+				if (hz) g[k].l = at2; else g[k].t = at2;
 			}
 		}
 		if (what === 'vertical' || what === 'horizontal') {

@@ -30,7 +30,7 @@
 <h3 id="subforms">Sub-forms, lookups, files</h3>
 <ul>
 <li><strong>Sub-forms</strong> (rows inside a record): typing in the empty last row adds a new row; switch <em>Delete</em> on to remove a row when saving.</li>
-<li><strong>Lookups</strong>: type a code or click the search button to pick a record from a list. With a description width of 0 (form builder) only the code is shown.</li>
+<li><strong>Lookups</strong>: type a code or click the search button to pick a record from a list. With a description width of 0 (design mode) only the code is shown.</li>
 <li><strong>Markers after labels</strong>: a red <span class="nuMark nuMarkRequired">*</span> means the field must not be empty, a key <i class="bi bi-key"></i> means its value must be unique – no other record may have the same value (both can appear: <code>* 🔑</code>). Hover or focus the key for its meaning (required and unique, or unique only); the * says "Required field". They come from the object's <em>Validation</em> setting (No blanks / No duplicates / No duplicates and blanks), also in subform column titles, and are not shown when the form can only be viewed. <code>$nuConfigValidationMarkers = false</code> in <code>nuconfig.php</code> switches them off. nuBuilder Next's own pages show the key at their unique fields too – login name and code of users, codes of access levels, procedures, reports, files, dashboards, prompts, SQL builder queries and custom user fields, permission item idents, the code of a new form.</li>
 <li><strong>Files</strong>: choose a file to upload; download or remove it with the buttons next to the field.</li>
 <li><strong>Breadcrumbs</strong> (top left) show where you came from; click an entry to go back.</li>

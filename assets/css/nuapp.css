@@ -1451,6 +1451,20 @@ body.nuSbOpen { overflow: hidden; }
 ::-webkit-scrollbar-thumb:hover { background: var(--nu-sb-thumb-hover); }
 ::-webkit-scrollbar-corner { background: var(--nu-sb-track); }
 
+/* column widths by dragging a title (0.8.650 browse lists, 0.8.651 system lists – window.nuColResize in nuapp.js): pan-y leaves the sideways
+   move to the drag on touch screens; the right edge shows the resize cursor; after the first drag the widths are fixed (nuColFixed), titles
+   and cells end with … when narrow */
+table.nuColResize > thead > tr > th:is(.nuBrowseTitle, [data-nu-col]) { position: relative; touch-action: pan-y; }
+table.nuColResize > thead > tr > th:is(.nuBrowseTitle, [data-nu-col])::after { content: ''; position: absolute; top: 0; bottom: 0; inset-inline-end: 0; width: 8px; cursor: col-resize; }
+table > thead > tr > th.nuColResizing { box-shadow: inset -2px 0 0 var(--bs-primary); }
+[dir="rtl"] table > thead > tr > th.nuColResizing { box-shadow: inset 2px 0 0 var(--bs-primary); }
+table.nuColFixed { table-layout: fixed; }
+table.nuColFixed > thead > tr > th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+table.nuColFixed > tbody > tr > td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+table.nuColFixed > tbody > tr > td :is(div, p) { overflow: hidden; text-overflow: ellipsis; }
+table.nuColFixed > tbody > tr > td[colspan] { white-space: normal; }   /* "No records" */
+body.nuColResizingBody, body.nuColResizingBody * { cursor: col-resize !important; user-select: none; }
+
 /* accessibility (0.8.368, dev/tests/a11y.js – WCAG AA, text contrast at least 4.5:1): Bootstrap's grey #6c757d of outline buttons,
    its link blue and a few own colours are a little too light on the grey page (#f4f6f9) or too dark in dark mode. */
 :root:not([data-bs-theme="dark"]) .btn-outline-secondary { --bs-btn-color: #5c636a; }
@@ -1597,6 +1611,8 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 .nuFormInfoRow code { color: var(--bs-body-color); }
 .nuFormInfoCopy { padding: 0 .35rem; line-height: 1.6; color: var(--bs-secondary-color); }
 .nuFormInfoCopy:hover, .nuFormInfoCopy:focus-visible { color: var(--bs-primary); }
+.nuFormInfoActs { display: flex; flex-direction: column; align-items: center; }
+.nuFormInfoSqlBig { white-space: pre-wrap; word-break: break-word; font-size: .875rem; background: var(--bs-tertiary-bg); padding: .75rem 1rem; border-radius: .375rem; min-height: 8rem; }
 .nuFormInfoSql { max-height: 8rem; overflow: auto; white-space: pre-wrap; font-size: .8em; background: var(--bs-tertiary-bg); padding: .25rem .4rem; border-radius: .25rem; }
 
 /* a form whose fields join the flex row around it (update page: options, then Install + Cancel on their own row, 0.8.505) */

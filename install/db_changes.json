@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.647",
+    "version": "0.8.677",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -355,6 +355,17 @@
                     "table": "zzzzsys_nunext_setting",
                     "kind": "data",
                     "what": "Branding's accent colour (if set) moved into the own theme \"My theme\" (row theme)"
+                }
+            ]
+        },
+        {
+            "id": "0028-welcome-templates",
+            "description": "Read-only welcome e-mail templates nu_send_welcome_email_template (group nunext, one per language) when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_email_template",
+                    "kind": "data",
+                    "what": "read-only templates nu_send_welcome_email_template, group nunext, one per language (ids nx_welcome_…) added when missing – also checked with every later update"
                 }
             ]
         }

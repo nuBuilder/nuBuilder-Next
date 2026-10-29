@@ -636,13 +636,15 @@ final class NuListView
 			<div class="row g-3 nuLvGrid"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>><?php foreach ($rows as $r): ?><?= ($L['grid'])($r, ($L['link'])($r)) ?><?php endforeach; ?></div><?php endif; ?></div>
 	<?php else: ?>
 	<div class="table-responsive nuLvTableWrap">
-		<table class="table table-hover align-middle mb-0 nu-table<?= !empty($L['table_class']) ? ' ' . h($L['table_class']) : '' ?>">
+		<?php // column widths by dragging a title (0.8.651, window.nuColResize in nuapp.js): kept for this browser tab per list and view ?>
+		<table class="table table-hover align-middle mb-0 nu-table<?= !empty($L['table_class']) ? ' ' . h($L['table_class']) : '' ?>" data-nu-resize="<?= h($route . ':' . (string)$view['id']) ?>">
 			<thead><tr>
 				<?php foreach ($def['columns'] as $c): $cd = $cols[$c['key']]; $cls = trim($wCls[$c['width']] . $aCls($c['align'], $cd));
+					$rz = $cd['label'] !== '' ? ' data-nu-col="' . h((string)$c['key']) . '"' : '';   // titleless columns (buttons) keep their width
 					if (!empty($cd['sort'])): ?>
-					<?= nu_sort_th($cd['label'], $c['key'], $sort, $dir, $route, $rp + $keep, $cls) ?>
+					<?= nu_sort_th($cd['label'], $c['key'], $sort, $dir, $route, $rp + $keep, $cls, $rz) ?>
 				<?php else: ?>
-					<th scope="col"<?= $cls !== '' ? ' class="' . h($cls) . '"' : '' ?>><?= $cd['label'] !== '' ? h($cd['label']) : '<span class="visually-hidden">' . h(t('actions')) . '</span>' ?></th>
+					<th scope="col"<?= $cls !== '' ? ' class="' . h($cls) . '"' : '' ?><?= $rz ?>><?= $cd['label'] !== '' ? h($cd['label']) : '<span class="visually-hidden">' . h(t('actions')) . '</span>' ?></th>
 				<?php endif; endforeach; ?>
 			</tr></thead>
 			<tbody<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>>

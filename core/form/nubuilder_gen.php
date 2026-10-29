@@ -34,9 +34,27 @@ final class NuBuilderGen
 			if (NuRecord::column($cols, $pk) === null) nb_err(t('builder_err_pk'));
 			if (!empty($in['generate'])) {
 				$prefix = self::commonPrefix(array_keys($cols));
-				foreach ($cols as $name => $c) {
-					if ($name === $pk && $c['auto']) continue;
-					$fields[] = self::fromColumn($name, $c, self::label($name, $prefix));
+				$pick = is_array($in['pick'] ?? null) ? $in['pick'] : null;
+				if ($pick === null) {
+					foreach ($cols as $name => $c) {
+						if ($name === $pk && $c['auto']) continue;
+						$fields[] = self::fromColumn($name, $c, self::label($name, $prefix));
+					}
+				} else {
+					// chosen columns (0.8.675): only these, in this order, own label, list column on / off – unknown names and doubles are skipped
+					$seen = [];
+					foreach ($pick as $p) {
+						if (!is_array($p)) continue;
+						$name = (string)($p['name'] ?? '');
+						$real = NuRecord::column($cols, $name);
+						if ($real === null || isset($seen[strtolower($real)])) continue;
+						$seen[strtolower($real)] = true;
+						$label = mb_substr(trim((string)($p['label'] ?? '')), 0, 100);
+						$f = self::fromColumn($real, $cols[$real], $label !== '' ? $label : self::label($real, $prefix));
+						$f['browse'] = !empty($p['browse']);
+						$f['pick'] = true;
+						$fields[] = $f;
+					}
 				}
 			}
 		} elseif ($mode === 'new') {
@@ -84,7 +102,8 @@ final class NuBuilderGen
 						'sob_input_type' => $f['otype'] === 'input' ? $f['itype'] : null, 'sob_input_format' => $f['fmt'],
 					]);
 					$top += $f['h'] + 10; $order += 10;
-					if ($f['browse'] && $browse < 6 && $f['otype'] !== 'textarea' && $type !== 'edit' && $type !== 'subform') {
+					$inList = !empty($f['pick']) ? $f['browse'] : ($f['browse'] && $browse < 6 && $f['otype'] !== 'textarea');   // chosen columns: as ticked
+					if ($inList && $type !== 'edit' && $type !== 'subform') {
 						$db->insert('zzzzsys_browse', ['zzzzsys_browse_id' => nu_id(), 'sbr_zzzzsys_form_id' => $formId, 'sbr_title' => $f['label'],
 							'sbr_display' => $f['name'], 'sbr_align' => $f['numeric'] ? 'r' : 'l', 'sbr_format' => $f['fmt'], 'sbr_order' => ($browse + 1) * 10, 'sbr_width' => min(250, max(80, $f['w']))]);
 						$browse++;
@@ -194,6 +213,15 @@ final class NuBuilderGen
 		if (in_array($t, ['datetime', 'datetime2', 'timestamp', 'smalldatetime'], true)) return self::field($name, $label, 'input', 'nuDate', 'D|dd.mm.yyyy hh:nn', 150, 22, false);
 		if ($c['numeric']) return self::field($name, $label, 'input', 'number', null, 100, 22, true);
 		return self::field($name, $label, 'input', 'text', null, 250, 22, false);
+	}
+
+	/** The label each column gets when none is typed (wizard: placeholder of the column list). @return array<string, string> */
+	public static function defaultLabels(array $names): array
+	{
+		$prefix = self::commonPrefix($names);
+		$out = [];
+		foreach ($names as $n) $out[(string)$n] = self::label((string)$n, $prefix);
+		return $out;
 	}
 
 	/** "tpemp_" when most columns start with it. */

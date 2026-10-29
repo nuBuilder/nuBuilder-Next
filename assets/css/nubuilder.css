@@ -1,170 +1,35 @@
-/* nuBuilder Next form builder */
+/* New form wizard (pages/nubuilder.php, assets/js/nubuilder.js). The form builder's editor was replaced by design mode (0.8.670,
+ * assets/css/nudesign.css); the attribute editor's rules moved there too. */
 .nuBuilderContainer { max-width: none; }   /* 0.8.563: no cap – the preview takes the extra width */
-.nbSidebar { position: sticky; top: calc(var(--nu-sticky-top, 57px) + var(--nu-sticky-h, 0px) + 1rem); max-height: calc(100vh - var(--nu-sticky-top, 57px) - var(--nu-sticky-h, 0px) - 2rem); display: flex; flex-direction: column; }
-.nbBar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; border-bottom: 1px solid var(--bs-border-color); }   /* sections + draft bar (0.8.531) */
-.nbBar .nbSections { border-bottom: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }   /* overflow-y: no vertical scrollbar (0.8.564) */
-.nbBar .nbSections .nav-link { white-space: nowrap; }
-.nbBar .nbDraftBar { margin: 0 0 .4rem auto; padding: .3rem .6rem; }
-.nbBar .nbDraftBar:not(.nbDraftActive):not(.nbDraftInfo) { background: none; border-color: transparent; padding: 0; }   /* idle: only (i) + Start draft */
-.nbObjectList { overflow-y: auto; flex: 1 1 auto; min-height: 8rem; }
-.nbTabHeader { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); background: var(--bs-tertiary-bg); padding: .3rem .75rem; }
-.nbObj { display: flex; align-items: center; gap: .25rem; padding: 0; }
-.nbObj.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: var(--bs-border-color-translucent); }
-.nbObjMain { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: .5rem; padding: .4rem .5rem .4rem .75rem; background: none; border: 0; text-align: start; color: inherit; }
-.nbObjIcon { color: var(--bs-secondary-color); }
-.nbObjText { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; line-height: 1.2; }
-.nbObjId { font-weight: 600; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nbObjLabel { font-size: .75rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nbObjType { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); font-weight: 500; font-size: .68rem; }
-.nbObjMove { display: flex; flex-direction: column; padding-inline-end: .25rem; }
-.nbObjMove .btn { padding: 0 .25rem; line-height: 1; color: var(--bs-secondary-color); }
-.nbPanel .card-body { max-height: calc(100vh - 9rem); overflow-y: auto; }
-.nbFieldset { border: 0; padding: 0; margin: 0 0 1rem; }
-.nbLegend { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--bs-secondary-color); font-weight: 600; margin-bottom: .35rem; float: none; width: auto; }
-.nbCode { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; tab-size: 4; }
-.nbCodeNav .btn { font-size: .75rem; padding: .15rem .5rem; }
-/* groups JavaScript & CSS · PHP (0.8.566): the headings in a column of their own, the buttons of both groups start at the same place */
-.nbCodeNav { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem .75rem; align-items: start; }
-.nbCodeGroup { display: contents; }
-.nbCodeGroupLbl { font-size: .68rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--bs-secondary-color); padding-top: .3rem; white-space: nowrap; }
-.nbCodeNav .nbHasCode::after { content: '●'; margin-inline-start: .3rem; font-size: .6rem; vertical-align: middle; color: var(--bs-success); }
 .nbListTable td { padding: .2rem; }
 .nbListTable .nbNum { width: 5rem; }
-.nbPreviewCard { position: sticky; top: calc(var(--nu-sticky-top, 57px) + var(--nu-sticky-h, 0px) + 1rem); }
-.nbPreview { width: 100%; height: calc(100vh - var(--nu-sticky-top, 57px) - var(--nu-sticky-h, 0px) - 6.5rem); min-height: 420px; border: 0; display: block; background: var(--bs-body-bg); border-radius: 0 0 var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius); }
-.nbPreviewRecord { width: 6rem; }
-.nbPreviewLayout { width: auto; }
-@media (max-width: 1199.98px) { .nbSidebar, .nbPreviewCard { position: static; max-height: none; } .nbPreview { height: 70vh; } }
 .nbColGrid td { padding: .2rem; }
 .nbColGrid .nbLen, .nbMcLen .nbLen { width: 5.5rem; }
 .nbColGrid td:first-child { min-width: 9rem; }
 .nbColGrid td:nth-child(2) { min-width: 8.5rem; }   /* label */
 .nbColGrid td:nth-child(3) { min-width: 10.5rem; }  /* type: the longest name ("Record ID (lookup)") fits; the grid scrolls sideways on phones */
 .nbMcType { min-width: 10rem; }
-
-/* "new form" wizard: the table switch also works without JavaScript (CSS :has) */
 #nbNewForm:has(#nb_mode_new:checked) .nbExisting { display: none !important; }
 #nbNewForm:has(#nb_mode_new:checked):not(:has(#nb_type option[value="launch"]:checked)) .nbNew { display: block !important; }
 #nbNewForm:has(#nb_mode_existing:checked) .nbNew { display: none !important; }
-
-/* shown only if builder.js did not start (outdated cache / blocked script) */
 .nbStale { display: none; }
 @keyframes nbStaleShow { to { visibility: visible; } }
 #nbNewForm .nbStale { display: block; visibility: hidden; animation: nbStaleShow 0s 2s forwards; }
-
-/* code editors */
-.nbCM.CodeMirror { height: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; background: var(--bs-body-bg); color: var(--bs-body-color); }
-.nbCM .CodeMirror-scroll { min-height: 4.5rem; max-height: 62vh; }
-.nbCM .CodeMirror-gutters { background: var(--bs-tertiary-bg); border-right: 1px solid var(--bs-border-color-translucent); }
-.nbCM .CodeMirror-linenumber { color: var(--bs-secondary-color); }
-.nbCM .CodeMirror-cursor { border-left-color: var(--bs-body-color); }
-.nbCM.CodeMirror-focused { border-color: #86b7fe; box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .2); }
-[data-bs-theme="dark"] .nbCM .cm-keyword { color: #c792ea; }
-[data-bs-theme="dark"] .nbCM .cm-string, [data-bs-theme="dark"] .nbCM .cm-string-2 { color: #c3e88d; }
-[data-bs-theme="dark"] .nbCM .cm-number { color: #f78c6c; }
-[data-bs-theme="dark"] .nbCM .cm-comment { color: #7f8a9e; }
-[data-bs-theme="dark"] .nbCM .cm-def, [data-bs-theme="dark"] .nbCM .cm-variable-2 { color: #82aaff; }
-[data-bs-theme="dark"] .nbCM .cm-variable, [data-bs-theme="dark"] .nbCM .cm-property { color: #e0e6f0; }
-[data-bs-theme="dark"] .nbCM .cm-tag, [data-bs-theme="dark"] .nbCM .cm-atom { color: #ff9cac; }
-[data-bs-theme="dark"] .nbCM .cm-attribute, [data-bs-theme="dark"] .nbCM .cm-builtin { color: #ffcb6b; }
-[data-bs-theme="dark"] .nbCM .CodeMirror-matchingbracket { color: #fff !important; background: rgba(130, 170, 255, .3); }
-[data-bs-theme="dark"] .nbCM .CodeMirror-selected { background: rgba(130, 170, 255, .25); }
-.nbHistory .list-group-item { padding: .45rem .7rem; }
-
-/* preview can be hidden (button in its header, remembered in localStorage) */
-.nbPreviewCollapsed .nbPreviewBody { display: none; }
-.nbPreviewCollapsed .nbPreviewCard .card-header > :not(.nbPreviewToggle):not(.nbPreviewTitle) { display: none; }
-.nbPreviewCollapsed .nbPreviewCard .card-header { border-bottom: 0; }
-@media (min-width: 1200px) {
-	.nbPreviewCollapsed .nbPreviewCol { flex: 0 0 auto; width: auto; }
-	.nbPreviewCollapsed .nbPanelCol { flex: 1 1 0; width: auto; }
-	.nbPreviewCollapsed .nbPreviewTitle { display: none; }
-	.nbPreviewCollapsed .nbPreviewCard .card-header { padding: .5rem; }
-}
-
-/* attribute editor (assets/js/nuattreditor.js) */
-.nuAttrPreviewBox { padding: .4rem .6rem; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-tertiary-bg); overflow-wrap: anywhere; }
-.nuAttrPreview { color: var(--bs-body-color); font-size: .8rem; white-space: pre-wrap; }
-.nuAttrHead { padding-inline-end: 2.6rem; }
-.input-group > .btn-outline-secondary.nbAttrBtn { --bs-btn-border-color: var(--bs-border-color); --bs-btn-color: var(--bs-secondary-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-border-color); }
-
-/* new form: Table select with search (Tom Select) */
 .nbExisting .ts-wrapper.form-select { padding: 0; }
 .nbExisting .ts-wrapper.single .ts-control { padding-inline-end: 2.25rem; }
-
-/* tabs the user may not rename (only the globeadmin – 0.8.247) */
-.nbListTable input[readonly] { background-color: var(--bs-secondary-bg); color: var(--bs-secondary-color); cursor: not-allowed; }
-
-/* form drafts (0.8.386): mode pill, draft bar, compare / publish diff */
-.nbDraftBar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .55rem .85rem; border-radius: .6rem;
-	background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
-.nbDraftBar.nbDraftActive { background: var(--bs-warning-bg-subtle); border-color: var(--bs-warning-border-subtle); color: var(--bs-warning-text-emphasis); }
-.nbDraftBar.nbDraftInfo { background: var(--bs-info-bg-subtle); border-color: var(--bs-info-border-subtle); color: var(--bs-info-text-emphasis); }
-.nbDraftBar .btn-outline-dark { --bs-btn-color: var(--bs-warning-text-emphasis); --bs-btn-border-color: var(--bs-warning-border-subtle); }
-.nbModePill { letter-spacing: .03em; text-transform: uppercase; }
-.nbDiff details > summary { cursor: pointer; }
-.nbDiffAdd { background: var(--bs-success-bg-subtle); }
-.nbDiffDel { background: var(--bs-danger-bg-subtle); }
-.nbDiffFold { color: var(--bs-secondary-color); }
-.nbDiffCode { max-height: 22rem; overflow: auto; margin: .25rem 0 .5rem; padding: .35rem .5rem; border: 1px solid var(--bs-border-color); border-radius: .4rem;
-	font-size: .8rem; white-space: pre; background: var(--bs-body-bg); }
-.nbDiffCode > div { min-height: 1.2em; }
-
-/* properties panel (0.8.449): fields packed tighter when the panel is wide (preview hidden, wide screens) – container query on the
-   panel's width: half-width fields become a third / a quarter, single-line full-width fields two thirds / half; text and code areas
-   and switches keep the full width */
-#nbPanel { container: nbpanel / inline-size; }
-@container nbpanel (min-width: 44rem) {
-	.nbFld.col-sm-5, .nbFld.col-sm-6, .nbFld.col-sm-7 { flex: 0 0 auto; width: 33.3333%; }
-	.nbFld.col-sm-4 { flex: 0 0 auto; width: 25%; }
-	.nbFld.col-sm-8 { flex: 0 0 auto; width: 50%; }
-	.nbFld.col-3 { flex: 0 0 auto; width: 16.6667%; }
-	.nbFld.col-12:not(.form-switch):not(:has(textarea)):not(:has(.nuAttrBtn, .nbAttrBtn)) { flex: 0 0 auto; width: 66.6667%; }
-}
-@container nbpanel (min-width: 72rem) {
-	.nbFld.col-sm-5, .nbFld.col-sm-6, .nbFld.col-sm-7 { width: 25%; }
-	.nbFld.col-sm-4 { width: 20%; }
-	.nbFld.col-sm-8 { width: 40%; }
-	.nbFld.col-3 { width: 12.5%; }
-	.nbFld.col-12:not(.form-switch):not(:has(textarea)):not(:has(.nuAttrBtn, .nbAttrBtn)) { width: 50%; }
-	.nbFld.col-12:has(textarea):not(:has(textarea.nbCode)) { flex: 0 0 auto; width: 75%; }   /* code editors keep the full width (0.8.563) */
-}
-
-/* views (0.8.563, data-nb-view on #nbWorkspace, nubuilder.js select()): the objects list only on Objects; from 1200 px a grid where the
-   list and the middle card keep their width and the preview takes the rest (Code: the editors get the larger share) */
-.nbWorkspace:not([data-nb-view="objects"]) .nbObjectsCol { display: none; }
-@media (min-width: 992px) and (max-width: 1199.98px) {
-	.nbWorkspace:not([data-nb-view="objects"]) .nbPanelCol { flex: 0 0 auto; width: 100%; }
-}
-@media (min-width: 1200px) {
-	.nbWorkspace { display: grid; grid-template-columns: 320px minmax(420px, 540px) minmax(0, 1fr); align-items: start; }
-	.nbWorkspace > * { width: auto; max-width: none; min-width: 0; }
-	.nbWorkspace > .nbObjectsCol, .nbWorkspace > .nbPreviewCol { align-self: stretch; }   /* room for the sticky objects list / preview card below the sticky header */
-	.nbWorkspace[data-nb-view="form"], .nbWorkspace[data-nb-view="history"] { grid-template-columns: minmax(460px, 680px) minmax(0, 1fr); }
-	.nbWorkspace[data-nb-view="browse"] { grid-template-columns: minmax(560px, 980px) minmax(0, 1fr); }
-	.nbWorkspace[data-nb-view="code"] { grid-template-columns: minmax(360px, var(--nb-split, 60%)) 12px minmax(320px, 1fr); }   /* splitter (0.8.565) */
-	/* preview folded away: the middle card takes the space */
-	.nbWorkspace.nbPreviewCollapsed { grid-template-columns: 320px minmax(0, 1fr) auto; }
-	.nbWorkspace.nbPreviewCollapsed:not([data-nb-view="objects"]) { grid-template-columns: minmax(0, 1fr) auto; }
-}
-.nbWorkspace[data-nb-view="code"] .nbCM .CodeMirror-scroll { max-height: none; }   /* Code view: the editor height comes from fitCode() */
-.nbWorkspace[data-nb-view="code"] .nbCodeBar { justify-content: flex-start !important; }   /* Code view: the toolbar on the left (0.8.565) */
-/* splitter between the code and the preview (0.8.565, Code view from 1200 px) */
-.nbSplit { display: none; }
-@media (min-width: 1200px) {
-	.nbWorkspace[data-nb-view="code"]:not(.nbPreviewCollapsed) > .nbSplit { display: block; align-self: stretch; padding: 0; cursor: col-resize; position: relative; touch-action: none; min-height: 12rem; }
-	.nbSplit::after { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--bs-border-color); transition: background .15s; }
-	.nbSplit:hover::after, .nbSplit:focus-visible::after, .nbSplitting .nbSplit::after { background: var(--bs-primary); }
-	.nbSplit:focus-visible { outline: none; }
-	.nbSplitting { cursor: col-resize; user-select: none; }
-	.nbSplitting iframe { pointer-events: none; }   /* the preview would swallow the mouse while dragging */
-}
-
-/* New form wizard: access levels to give the new form (0.8.602) */
 .nbLevels { max-height: 14rem; overflow-y: auto; }
-
-/* objects list: ⋮ menu per object – Clone object, Change column…, Delete object (0.8.633) */
-.nbObjMenu { display: flex; align-items: center; padding-inline-end: .2rem; }
-.nbObjMenuBtn { padding: .15rem .3rem; line-height: 1; color: var(--bs-secondary-color); }
-.nbObjMenuBtn:hover, .nbObjMenuBtn[aria-expanded="true"] { color: var(--bs-emphasis-color); background: var(--bs-secondary-bg); }
-.nbObj.active .nbObjMenuBtn { color: inherit; }
+.nbSteps { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.nbStepMark { padding: .45rem .1rem 0; border-top: 3px solid var(--bs-border-color); color: var(--bs-secondary-color); font-size: .9rem; }
+.nbStepMark .nbStepNo { display: block; font-size: .75rem; font-weight: 600; }
+.nbStepMark.active { border-top-color: var(--nu-accent, var(--bs-primary)); color: var(--bs-body-color); font-weight: 600; }
+.nbStepMark.done { border-top-color: var(--nu-accent-2, var(--bs-success)); cursor: pointer; }
+.nbStepMark.done:hover { color: var(--bs-body-color); }
+/* New form: chosen columns of an existing table (0.8.675) */
+.nbPickBox { max-height: 22rem; overflow-y: auto; }
+.nbPickGrid thead th { position: sticky; top: 0; z-index: 1; background: var(--bs-body-bg); }
+.nbPickGrid td { padding: .2rem .4rem; }
+.nbPickGrid .nbPickC { width: 3.2rem; white-space: nowrap; }
+.nbPickGrid td:nth-child(3) { min-width: 10rem; }
+.nbPickGrip { cursor: grab; color: var(--bs-secondary-color); }
+.nbPickDragging { opacity: .5; }
+.nbPickOff .nbPickName { color: var(--bs-secondary-color); text-decoration: line-through; }

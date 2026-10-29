@@ -1,7 +1,7 @@
 /* nuBuilder Next – start page of the globeadmin / admin roles (0.8.420): tile styles, navigation, descriptions and the View panel.
    pages/nuhome.php draws every tile once with the same markup; assets/js/nuhome.js switches the view with classes:
    on #nuHomeView  nuHomeNav-<groups|tabs|sidebar|none> nuHomeDesc-<auto|inline|tooltip|hovercard|info|off> nuHomeDens-<…> nuHomeIcn-<…>
-                   nuHomeGcol nuHomeNoBadges nuHomeNoActions nuHomeListCols-<1|2|auto> nuHomeListFull, --nu-lines
+                   nuHomeGcol nuHomeNoBadges nuHomeNoActions nuHomeListCols-<1|2|3|4|auto> nuHomeListFull, --nu-lines
    style class     nuHomeStyle-<large|cards|compact|list|launcher|panels|table> on .nuHomeMain (groups / no groups) or on each .nuHomePane
                    (tabs / sidebar – a tab may have its own style).
    Colours: --nu-gc = colour of the group (section, set from data-nu-gcolor), --nu-c = own colour of a tile (data-nu-color). No inline
@@ -200,13 +200,23 @@
 .nuHomeStyle-list :is(.nuHomeAction, .nuHomeInfo) { position: static; transform: none; flex: none; }
 .nuHomeStyle-list .nuHomeAction { margin-inline-end: .75rem; }
 .nuHomeStyle-list .nuHomeInfo { margin-inline-end: .35rem; }
-#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTiles,
-#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto).nuHomeNav-none .nuHomeMain.nuHomeStyle-list {
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-3, .nuHomeListCols-4, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTiles,
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-3, .nuHomeListCols-4, .nuHomeListCols-auto).nuHomeNav-none .nuHomeMain.nuHomeStyle-list {
 	display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; max-width: none; overflow: visible; background: none; border: 0; box-shadow: none; }
 #nuHomeView.nuHomeListCols-auto .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-auto.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
-#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTileWrap {
+/* 3 / 4 columns (0.8.659) – fewer where the page is narrow (the 560 px rule below makes it one) */
+#nuHomeView.nuHomeListCols-3 .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-3.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#nuHomeView.nuHomeListCols-4 .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-4.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@container (max-width: 900px) {   /* the start page is at most 1100 px wide: 4 columns from 900 px (≈ 225 px a tile) */
+	#nuHomeView.nuHomeListCols-4 .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-4.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container (max-width: 640px) {
+	#nuHomeView:is(.nuHomeListCols-3, .nuHomeListCols-4) .nuHomeStyle-list .nuHomeTiles,
+	#nuHomeView:is(.nuHomeListCols-3, .nuHomeListCols-4).nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-3, .nuHomeListCols-4, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTileWrap {
 	background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color-translucent); border-radius: .6rem; box-shadow: var(--bs-box-shadow-sm); }
-#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTileWrap:hover { background: color-mix(in srgb, var(--nu-surface, var(--bs-body-bg)) 93%, var(--bs-body-color)); }
+#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-3, .nuHomeListCols-4, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTileWrap:hover { background: color-mix(in srgb, var(--nu-surface, var(--bs-body-bg)) 93%, var(--bs-body-color)); }
 
 /* Launcher: big icons, short names */
 .nuHomeStyle-launcher .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-launcher { display: grid; gap: calc(var(--nu-gap) * .6); grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); }
@@ -227,8 +237,8 @@
 	.nuHomeStyle-launcher .nuHomeIcon { width: 3rem; height: 3rem; font-size: 1.35rem; }
 	.nuHomeStyle-cards .nuHomeTiles, #nuHomeView.nuHomeNav-none .nuHomeMain.nuHomeStyle-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.nuHomeStyle-cards .nuHomeTile { min-height: 0; }
-	#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTiles,
-	#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-auto).nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: minmax(0, 1fr); }
+	#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-3, .nuHomeListCols-4, .nuHomeListCols-auto) .nuHomeStyle-list .nuHomeTiles,
+	#nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-3, .nuHomeListCols-4, .nuHomeListCols-auto).nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Panels: one card per group with a list of links */

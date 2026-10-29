@@ -43,7 +43,8 @@ if (nu_is_post()) {
 			if (!$canCreate) $out(['ok' => false, 'errors' => [t('err_forbidden')]]);
 			if ($openDraft) $out(['ok' => false, 'errors' => [t('builder_draft_exists', (string)$openDraft['created_by'])]]);
 			$res = NuFormSpec::create($spec, $formId, nu_post('ddl_ok') === '1', nu_post('note'));
-			$out(['ok' => true, 'url' => nu_url('builder', $res['draft_id'] !== '' ? ['f' => $res['form_id'], 'draft' => '1'] : ['f' => $res['form_id']])]);
+			$newMeta = NuFormMeta::load((string)$res['form_id'], true);            // design mode (0.8.670): the new form or the draft of the change
+			$out(['ok' => true, 'url' => $newMeta ? NuDesign::fromBuilder($newMeta, []) : nu_url('forms')]);
 		}
 	} catch (Throwable $e) {
 		$out(['ok' => false, 'errors' => explode("\n", $e->getMessage()), 'warnings' => []]);

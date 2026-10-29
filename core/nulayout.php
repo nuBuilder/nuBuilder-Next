@@ -599,13 +599,14 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
 	return '<a class="btn nuBtnAct nuBackBtn' . ($class !== '' ? ' ' . $class : '') . '" href="' . h($url) . '"><i class="bi bi-arrow-left me-1"></i>' . h(t('back')) . '</a>';
 }
 
-function nu_sort_th(string $label, string $col, string $sort, string $dir, string $route, array $params, string $class = ''): string
+/** $attrs (0.8.651): more attributes of the th, already escaped (e.g. ' data-nu-col="name"' for the column widths of NuListView) */
+function nu_sort_th(string $label, string $col, string $sort, string $dir, string $route, array $params, string $class = '', string $attrs = ''): string
 {
 	$isCur = $sort === $col;
 	$next  = ($isCur && $dir === 'asc') ? 'desc' : 'asc';
 	$icon  = $isCur ? ($dir === 'asc' ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>') : '';
 	$aria  = $isCur ? ' aria-sort="' . ($dir === 'asc' ? 'ascending' : 'descending') . '"' : '';
-	return '<th scope="col"' . ($class !== '' ? ' class="' . h($class) . '"' : '') . $aria . '><a class="nu-sort" href="' . h(nu_url($route, ['sort' => $col, 'dir' => $next] + $params)) . '">' . h($label) . $icon . '</a></th>';
+	return '<th scope="col"' . ($class !== '' ? ' class="' . h($class) . '"' : '') . $attrs . $aria . '><a class="nu-sort" href="' . h(nu_url($route, ['sort' => $col, 'dir' => $next] + $params)) . '">' . h($label) . $icon . '</a></th>';
 }
 
 function nu_invalid(array $errors, string $field): string

@@ -590,7 +590,8 @@
 		var fd = new FormData();
 		fd.append('_csrf', D.csrf); fd.append('back', location.pathname + location.search);
 		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
-		fetch(url, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function () { location.reload(); }, function () { location.reload(); });
+		// redirect manual (0.8.652): following it would load the start page once in the background – and use up a one-time message (Undo of Hide)
+		fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
 	}
 	function ctxItem(iconCls, text, run) {
 		var b = el('button', {type: 'button', 'class': 'dropdown-item', role: 'menuitem'}, [el('i', {'class': 'bi ' + iconCls + ' me-2', 'aria-hidden': 'true'}), text]);
@@ -609,6 +610,9 @@
 			var fav = tile.getAttribute('data-nu-fav') === '1' || src.hasAttribute('data-nu-chip');
 			label = tile.getAttribute('data-nu-label') || key; desc = tile.getAttribute('data-nu-desc') || '';
 			items.push(ctxItem(fav ? 'bi-star' : 'bi-star-fill text-warning', t(fav ? 'home_unfav' : 'home_fav_add'), function () { ctxPost(D.favUrl, {action: 'fav', key: key}); }));
+			// Hide (0.8.652): admin start pages – in the layout (as Edit tiles and groups), user start pages – for me (as Personalise);
+			// after the reload a message with Undo (pages/nuhome.php, NuSidebar::hideTile)
+			if (D.hideMode) items.push(ctxItem('bi-eye-slash', t(D.hideMode === 'me' ? 'home_u_mine_hide' : 'home_ctx_hide'), function () { ctxPost(D.favUrl, {action: 'hide', key: key, label: label}); }));
 		}
 		ctxMenu = el('div', {'class': 'dropdown-menu show nuHomeCtx', role: 'menu', 'aria-label': label},
 			[el('div', {'class': 'nuHomeCtxHead'}, [el('div', {'class': 'fw-semibold', text: label})].concat(desc ? [el('div', {'class': 'small text-body-secondary', text: desc})] : [])),
@@ -879,7 +883,7 @@
 				[thumb(s), el('span', {text: t('home_v_style_' + s)})]);
 		})), el('p', {'class': 'nuHomeVpHelp', text: t('home_v_style_' + st + '_hint')})];
 		if (st === 'list') {
-			stl.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_list_cols')}), seg('listCols', [['1', '1'], ['2', '2'], ['auto', t('home_v_auto')]], v.listCols, function (x) { setOpt('listCols', x); })]));
+			stl.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_list_cols')}), seg('listCols', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['auto', t('home_v_auto')]], v.listCols, function (x) { setOpt('listCols', x); })]));
 			if (v.listCols === '1') stl.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_list_width')}), seg('listWidth', [['readable', t('home_v_readable')], ['full', t('home_v_full')]], v.listWidth, function (x) { setOpt('listWidth', x); })]));
 		}
 		if (tabbed && VP.scopeDev === 'all' && (VS.units || []).length > 1) {

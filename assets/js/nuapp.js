@@ -370,6 +370,18 @@
 		});
 	});
 
+	// ---------------------------------------------------------------- dialogues opened from inside a toolbar / dropdown (0.8.676, form info):
+	// a sticky toolbar is its own stacking context, so the dialogue moves to <body> first (else it sits below its backdrop), and the
+	// dropdown it was opened from closes
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest && e.target.closest('[data-bs-toggle="modal"][data-bs-target]');
+		if (!b) return;
+		var m = document.querySelector(b.getAttribute('data-bs-target'));
+		if (m && m.parentNode !== document.body) document.body.appendChild(m);
+		var menu = b.closest('.dropdown-menu'), tg = menu && menu.parentNode ? menu.parentNode.querySelector('[data-bs-toggle="dropdown"]') : null;
+		if (tg && window.nuBs) try { nuBs.dropdown(tg).hide(); } catch (x) { /* not a dropdown */ }
+	}, true);
+
 	// ---------------------------------------------------------------- copy a text: data-nu-copy-text="…" (form info, 0.8.435)
 	function nuCopyText(text) {
 		if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return fallback(); });
@@ -1370,4 +1382,117 @@
 	window.addEventListener('resize', measure);
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', find); else find();
 	window.addEventListener('load', find);   // form pages: buttons added by nuOnLoad
+})();
+
+// ---------------------------------------------------------------- column widths by dragging a title (0.8.650 browse lists, 0.8.651 system lists)
+// nuColResize(table, opt) – as nuBuilder Forte: drag anywhere on a title to the left / right (mouse, pen, touch), at least opt.min (40) px; a click
+// without moving still sorts, the drag does not. Kept for this browser tab only (sessionStorage opt.key – paging, sort and search reload the page),
+// never stored anywhere else. The first drag fixes the widths as shown (table-layout: fixed + opt.fixedClass), so a column can get narrower
+// than its content. opt: key, titles (selector of the resizable titles), id(th) → column id, cells(id) → elements to size (default: the title),
+// fixedClass, min. Returns {restore(), off(), fit(), set(id, w), fixed()}; window.nuColResize.css (nuapp.css "column widths")
+window.nuColResize = function (table, opt) {
+	'use strict';
+	if (!table) return null;
+	opt = opt || {};
+	var MIN = opt.min || 40, off = false, fixed = false, drag = null, swallow = false;
+	var titles = function () { return Array.prototype.slice.call(table.querySelectorAll(opt.titles || 'thead th')); };
+	var idOf = opt.id || function (th) { return String(th.cellIndex); };
+	var shown = function (el) { return !!el && window.getComputedStyle(el).display !== 'none'; };
+	var titleOf = function (id) { return titles().filter(function (th) { return idOf(th) === id; })[0] || null; };
+	function set(id, w) {
+		var els = opt.cells ? Array.prototype.slice.call(opt.cells(id)) : [titleOf(id)];
+		els.forEach(function (el) { if (el) { el.style.width = w + 'px'; el.style.minWidth = w + 'px'; el.style.maxWidth = w + 'px'; } });
+	}
+	function fit() {   // fixed layout: the table is as wide as the widths set (not as shown – a fixed table spreads its width over the columns)
+		if (!fixed) return;
+		var sum = 0;
+		table.querySelectorAll('thead > tr > th').forEach(function (th) { if (shown(th)) sum += parseFloat(th.style.width) || th.getBoundingClientRect().width; });
+		table.style.width = Math.ceil(sum) + 'px';
+	}
+	function freeze() {
+		if (fixed) return;
+		var ws = Array.prototype.map.call(table.querySelectorAll('thead > tr > th'), function (th) { return [th, th.getBoundingClientRect().width]; });
+		ws.forEach(function (x) {
+			var th = x[0];
+			if (!(x[1] > 0)) return;
+			if (titles().indexOf(th) >= 0) set(idOf(th), Math.round(x[1])); else th.style.width = Math.ceil(x[1]) + 'px';   // other titles keep their width
+		});
+		table.classList.add('nuColFixed');
+		if (opt.fixedClass) table.classList.add(opt.fixedClass);
+		fixed = true;
+		fit();
+	}
+	function save() {
+		if (!opt.key) return;
+		var o = {};
+		titles().forEach(function (th) { if (shown(th)) o[idOf(th)] = Math.round(th.getBoundingClientRect().width); });
+		try { sessionStorage.setItem(opt.key, JSON.stringify(o)); } catch (x) { /* no storage */ }
+	}
+	function restore() {
+		var o = null;
+		if (off || !opt.key) return;
+		try { o = JSON.parse(sessionStorage.getItem(opt.key) || 'null'); } catch (x) { o = null; }
+		if (!o || typeof o !== 'object') return;
+		freeze();
+		Object.keys(o).forEach(function (id) { var th = titleOf(id); if (shown(th) && isFinite(o[id])) set(id, Math.max(MIN, Math.round(+o[id]))); });
+		fit();
+	}
+	table.addEventListener('pointerdown', function (e) {
+		var th = e.target.closest && e.target.closest('th');
+		if (off || e.button !== 0 || !th || titles().indexOf(th) < 0 || e.target.closest('select, input, button')) return;
+		drag = {th: th, id: idOf(th), x: e.clientX, w: 0, on: false, pid: e.pointerId};
+	});
+	table.addEventListener('dragstart', function (e) { if (!off && e.target.closest && e.target.closest('thead')) e.preventDefault(); });   // the sort link would be dragged
+	document.addEventListener('pointermove', function (e) {
+		var d = drag;
+		if (!d || e.pointerId !== d.pid) return;
+		if (!d.on) {
+			if (Math.abs(e.clientX - d.x) < 4) return;                      // below 4 px it is a click (sorts)
+			d.on = true;
+			freeze();
+			d.w = parseFloat(d.th.style.width) || d.th.getBoundingClientRect().width;   // from the pointer-down point: the width follows the pointer
+			d.th.classList.add('nuColResizing');
+			document.body.classList.add('nuColResizingBody');
+			try { d.th.setPointerCapture(e.pointerId); } catch (x) { /* older browsers */ }
+		}
+		var rtl = document.documentElement.dir === 'rtl';
+		set(d.id, Math.max(MIN, Math.round(d.w + (e.clientX - d.x) * (rtl ? -1 : 1))));
+		fit();
+	});
+	function end(e) {
+		var d = drag;
+		if (!d || (e && e.pointerId !== d.pid)) return;
+		drag = null;
+		d.th.classList.remove('nuColResizing');
+		document.body.classList.remove('nuColResizingBody');
+		if (!d.on) return;
+		swallow = true;                                                      // the click that ends a drag does not sort
+		setTimeout(function () { swallow = false; }, 0);
+		save();
+	}
+	document.addEventListener('pointerup', end);
+	document.addEventListener('pointercancel', end);
+	table.addEventListener('click', function (e) {
+		if (swallow && e.target.closest && e.target.closest('thead')) { e.preventDefault(); e.stopPropagation(); swallow = false; }
+	}, true);
+	table.classList.add('nuColResize');
+	return {
+		restore: restore, fit: fit, fixed: function () { return fixed; },
+		set: function (id, w) { if (fixed) set(id, Math.max(1, Math.round(+w))); },
+		off: function () { off = true; drag = null; table.classList.remove('nuColResize'); table.classList.add('nuNoResize'); }
+	};
+};
+
+// system lists (NuListView, 0.8.651): <table data-nu-resize="<route>:<view>">, titles th[data-nu-col]
+(function () {
+	'use strict';
+	function init() {
+		document.querySelectorAll('table[data-nu-resize]').forEach(function (t) {
+			if (t.nuColResize) return;
+			t.nuColResize = window.nuColResize(t, {key: 'nunext-list-w:' + t.getAttribute('data-nu-resize'), titles: 'thead th[data-nu-col]',
+				id: function (th) { return th.getAttribute('data-nu-col'); }});
+			if (t.nuColResize) t.nuColResize.restore();
+		});
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

@@ -7,7 +7,7 @@ defined('NU_ROOT') || exit;
  * GitHub's REST API (public repository, no token), its asset nunext.zip is downloaded into the folder _update/ and installed from
  * there like any other package (update page → "Update from the folder"). The download is only kept when its signature is valid –
  * the Ed25519 signature, not GitHub, is what makes a package trusted.
- *   setting 'github_update' (JSON): repo, pre (pre-releases count, default on – nuBuilder Next is alpha), auto (look once a day –
+ *   setting 'github_update' (JSON): repo, pre (pre-releases count, default on – nuBuilder Next is alpha), every (automatic check: never / day / week / month, default day; auto = every ≠ never, older rows only had auto –
  *   cron.php, or the start page / update page of a user with the update right; never in the page view of anybody else; default on), checked_at, latest {version, tag, name, url, size, published, page, pre} | null, error
  * Downloads only from https://github.com and GitHub's download hosts (HOSTS), 64 MB at most. Used by the update page, the start
  * page badge, cron.php update --github and POST api.php/v1/system/update {"github": true}.
@@ -20,19 +20,23 @@ final class NuGitHub
 	private const API = 'https://api.github.com/repos/%s/releases?per_page=30';
 	private const HOSTS = ['github.com', 'api.github.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com', 'github-releases.githubusercontent.com', 'codeload.github.com'];
 	private const MAX_DOWNLOAD = 64 * 1048576;
-	private const AUTO_HOURS = 24;
+	/** Automatic check (0.8.673; before: on / off = once a day): never, once a day, a week or a month – value = days. */
+	public const EVERY = ['never' => 0, 'day' => 1, 'week' => 7, 'month' => 30];
 
-	/** @return array{repo: string, pre: bool, auto: bool, checked_at: int, latest: ?array, error: string} */
+	/** @return array{repo: string, pre: bool, auto: bool, every: string, checked_at: int, latest: ?array, error: string} */
 	public static function settings(): array
 	{
-		$s = ['repo' => self::DEFAULT_REPO, 'pre' => true, 'auto' => true, 'checked_at' => 0, 'latest' => null, 'error' => ''];
+		$s = ['repo' => self::DEFAULT_REPO, 'pre' => true, 'auto' => true, 'every' => 'day', 'checked_at' => 0, 'latest' => null, 'error' => ''];
 		try {
 			NuSchema::ensure();
 			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
 			$j = is_string($v) ? json_decode($v, true) : null;
 			if (is_array($j)) {
 				if (self::validRepo((string)($j['repo'] ?? ''))) $s['repo'] = (string)$j['repo'];
-				foreach (['pre', 'auto'] as $k) if (isset($j[$k])) $s[$k] = (bool)$j[$k];
+				if (isset($j['pre'])) $s['pre'] = (bool)$j['pre'];
+				if (isset(self::EVERY[(string)($j['every'] ?? '')])) $s['every'] = (string)$j['every'];
+				elseif (isset($j['auto'])) $s['every'] = $j['auto'] ? 'day' : 'never';            // stored before 0.8.673
+				$s['auto'] = $s['every'] !== 'never';
 				$s['checked_at'] = (int)($j['checked_at'] ?? 0);
 				$s['latest'] = is_array($j['latest'] ?? null) ? $j['latest'] : null;
 				$s['error'] = (string)($j['error'] ?? '');
@@ -60,16 +64,18 @@ final class NuGitHub
 	}
 
 	/** Saves repository and switches; a changed repository forgets the last result. @return bool changed */
-	public static function saveSettings(string $repo, bool $pre, bool $auto): bool
+	public static function saveSettings(string $repo, bool $pre, string $every): bool
 	{
 		$repo = trim($repo);
 		if (!self::validRepo($repo)) throw new RuntimeException(t('gh_err_repo'));
 		$s = self::settings();
-		$new = ['repo' => $repo, 'pre' => $pre, 'auto' => $auto] + $s;
+		if (!isset(self::EVERY[$every])) $every = $s['every'];                                     // not sent / unknown: unchanged
+		$auto = $every !== 'never';
+		$new = ['repo' => $repo, 'pre' => $pre, 'auto' => $auto, 'every' => $every] + $s;
 		if (strcasecmp($repo, $s['repo']) !== 0 || $pre !== $s['pre']) { $new['latest'] = null; $new['checked_at'] = 0; $new['error'] = ''; }
 		if ($new === $s) return false;
 		self::save($new);
-		NuLog::write('nunext_github_settings', 'zzzzsys_nunext_setting', self::SETTING, ['repo' => $repo, 'pre' => $pre, 'auto' => $auto]);
+		NuLog::write('nunext_github_settings', 'zzzzsys_nunext_setting', self::SETTING, ['repo' => $repo, 'pre' => $pre, 'every' => $every]);
 		return true;
 	}
 
@@ -122,11 +128,12 @@ final class NuGitHub
 		return $best;
 	}
 
-	/** Looks again when the last look is older than a day and the daily check is on (housekeeping). @return int 1 = looked */
+	/** Looks again when the automatic check is on and the last look is older than its interval (housekeeping). @return int 1 = looked */
 	public static function autoCheck(): int
 	{
 		$s = self::settings();
-		if (!$s['auto'] || $s['checked_at'] > time() - self::AUTO_HOURS * 3600) return 0;
+		$days = self::EVERY[$s['every']] ?? 1;
+		if (!$days || $s['checked_at'] > time() - $days * 86400) return 0;
 		self::check();
 		try { NuLibs::ghCheck($s['repo']); } catch (Throwable) { /* shown on the update page */ }    // library packs (0.8.405)
 		return 1;

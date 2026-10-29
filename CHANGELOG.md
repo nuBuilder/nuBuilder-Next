@@ -3,6 +3,242 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.677 – Release gate (0.8.648–0.8.676)
+- Release gate: the full test run (smoke, all end-to-end tests, the cross-test against nuBuilder Forte) for 0.8.648–0.8.676.
+- Documentation brought up to date first: help pages, tutorial (design mode instead of the builder in the nuBuilder Forte lessons, New
+  form column choice), README feature list, the open points list.
+
+## 0.8.676 – Form info: browse SQL larger view and edit
+- Form info (i) → Browse SQL: two new buttons next to Copy – "Show larger" opens the SQL in a large dialogue (with Copy and Edit),
+  "Edit the SQL (new tab)" opens the form's list in design mode in a new tab with the code window on the browse SQL.
+- Design mode links can name the code part to open first (&dswork=code&dsitem=<column>).
+- Dialogues opened from a toolbar dropdown are no longer covered by their own dark backdrop, and the dropdown closes.
+
+## 0.8.675 – New form: choose columns and their order
+- New form on an existing table: next to "Create an object and a browse column for each table column" a folded area "Choose
+  columns and order" lists the table's columns – untick the ones you do not need, type your own labels (the default label is shown
+  as a placeholder), choose which go into the list, and change the order by dragging a row (grip), with the arrows or Alt+↑ / Alt+↓.
+  "All columns" / "All in the list" tick or clear everything, Reset goes back to the default.
+- The new form gets only the ticked columns as objects, in that order, and list columns exactly as ticked. Without opening the
+  area nothing changes: every column (without an auto-increment key) and six list columns, as before.
+
+## 0.8.674 – New form: select all access levels, group filter
+- New form → Access for access levels: a "Select all" checkbox above the list ticks or clears all levels shown (shows a partly
+  ticked state when only some are ticked).
+- A group filter (the access levels' group, sal_group) next to it shows only the levels of one group; it appears when at least one
+  access level has a group. Levels ticked in another group stay ticked, a counter shows "x of y selected".
+
+## 0.8.673 – GitHub update check interval
+- Update page → Update from GitHub: the Settings button now sits right after the title instead of at the far right edge.
+- "Look once a day" became "Check for updates automatically" with a dropdown: Never, Once a day (default), Once a week, Once a month.
+  The info line shows the choice ("checks once a week"); the housekeeping looks again only when that time has passed (library packs
+  follow the same interval). Existing settings are kept: the former switch on = Once a day, off = Never.
+- Settings form laid out in one row: repository, interval, pre-releases, Save (stacked on phones).
+
+## 0.8.672 – Design mode: column menu of the list
+- Design mode on the list: a right-click on a column title opens the column menu, as in nuBuilder Forte – the object name (click to
+  copy), Properties…, Rename…, Align (left / right / centre), Width (type and Enter), Filter, Move left / right, Hide / Show, Delete;
+  same look and keys as the form's object menu; Ctrl + right-click keeps the browser's menu.
+
+## 0.8.671 – Design mode: Structure filters, shortcuts
+- Design mode → Structure: filters by tab and object type below the search; tab sections fold with a click on their title (with the
+  number of their objects); a search or type filter shows the matches anyway.
+- Design mode keys: Ctrl/⌘ + arrows move the selected objects by 20 px (all four directions), F2 opens a rename dialog (label and ID;
+  on the list the column title), Tab / Shift+Tab select the next / previous object in tab order, Ctrl+C / Ctrl+X / Ctrl+V copy, cut
+  and paste objects with their properties and events (onto the open tab, also of another form), Ctrl+Z undoes the last change,
+  Ctrl+S says that every change is saved at once, ? (or the keyboard icon at the bottom of the icon bar) lists all shortcuts.
+
+## 0.8.670 – The form builder replaced by design mode
+- The form builder is replaced by design mode: every form is designed where it runs. Links to the builder (forms list, bookmarks,
+  shortcuts Ctrl+Shift+A / H / F / O, Data access and Form AI "Back", the compatibility check, procedure / report usage lists) open
+  design mode – the object, Code, History, Structure or Add when the link asked for it, the list for browse-only forms.
+- The New form wizard opens the new form in design mode (browse forms on their list, page forms in their own editor); the switch
+  "Open the new form in design mode" is gone. Form AI opens the created form or the draft of a change in design mode.
+- Page forms keep their own editor. The builder API stays and is design mode's API.
+- Draft saves of objects check the icon length and trim the object ID as live saves do.
+- Help: "Working in the form builder" became "Designing a form"; the tutorial, README and the other help pages speak of design mode.
+- Tests: the builder's UI tests were removed or moved to design mode (arrange, icons, searchable lists, Change column, access 9, User
+  Home, Form AI); compat.js checks a published draft whose change was undone leaves nuBuilder Forte's rows unchanged.
+
+## 0.8.669 – Design mode: all settings, the list, tools
+- Design mode: all form settings in the panel – description, code, group, type, status, breadcrumb title, table, primary key, the list's
+  rows per page and redirect form, layout, "Show tab order"; tools: Change with AI, Data access, Delete form (with its table).
+- Design mode: every object property – formats with the format designer, text masks, datalists, nuScroll, auto-number start, file target
+  with the Uppy template, display procedure, lookup table / JavaScript / After Browse PHP, sub-form table and Add / Delete rows, chart
+  settings, image file, run record id and filter, grid row / column / content box, HTML attributes with the attribute editor.
+- Design mode: Change column… in an object's tools; the password confirmation leads back to design mode.
+- Design mode on the list: Design on a form's list page – click a column title, change title / display / format / width / alignment /
+  filter, drag or move columns, add and remove them; all in the draft.
+- Sub-forms: "Design the sub-form" opens the sub-form's own form in design mode.
+- Steps 3–5 of replacing the form builder (plan in TODO.md).
+
+## 0.8.668 – Design mode: code, history, changes of the draft
+- Design mode: Code in the icon bar – the form's JavaScript (browse & edit, edit, browse), CSS, the PHP hooks and the browse SQL in one
+  full-width editor with the code editors' toolbar; dots show which parts hold code and which are changed; Save / Ctrl+S saves all of
+  them into the draft; going back to the form reloads it so the new code runs.
+- Design mode: History – the saved states of the form with Compare (to now, or to the draft) and Restore (without an open draft).
+- Design mode: Changes of the draft (button in the bar) – what the draft changes against the published form, code line by line, the
+  checks before publishing and a warning when the published form was changed meanwhile.
+- Publish in design mode shows the summary of the changes; after a change of the published form it overwrites only with the typed
+  form code (as in the builder).
+- Builder API: history.diff. Fix: the safe mode button is announced as a toggle button (accessibility).
+- Step 2 of replacing the form builder (plan in TODO.md).
+
+## 0.8.667 – Design mode for users with form rights, safe mode
+- Design mode for everybody with the save right on the form builder, not only the globeadmin. The builder's limits stay: only the
+  globeadmin renames or deletes tabs (greyed in the tab menu), Publish needs the admin right "Publish form drafts", changes of a
+  published form go into a draft. The object menu (right-click) works in design mode for these users too.
+- Safe mode in design mode (shield button in the bar, ?safe=1): the form opens without its own JavaScript, CSS, Before Edit PHP,
+  Setup header / include and scripts of HTML objects – to fix a form whose code breaks the page.
+- Step 1 of replacing the form builder with the designer (plan in TODO.md).
+
+## 0.8.666 – Design mode: navigation bar menus above the designer
+- Design mode: the menus of the navigation bar (light / dark, language, user) open fully above the designer – the design bar,
+  the properties panel and the Structure / Add panels now sit below the navigation bar.
+
+## 0.8.665 – Design mode without reloads, content boxes, code window
+- Design mode no longer reloads the whole page after a change (adding an object, access, tab, type, tabs, Undo, Publish …):
+  only the form's body is drawn again, the selection, tab and scroll position stay. The form's own JavaScript does not run again
+  until the new "Reload the form" button in the bar.
+- Content boxes: selected by a click on their title or frame and dragged by them, like the other objects – the objects inside a
+  box stay selectable (design mode and the form builder preview).
+- Code fields in the properties panel (options and display SQL, HTML, calculation, access condition, the events' JavaScript)
+  have a button next to their label that opens a larger code window with CodeMirror, the code editors' toolbar and, for SQL and
+  HTML, the # menu of hash variables.
+
+## 0.8.664 – Design mode: live properties, fixed gaps, object menu
+- Design mode: label, top, left, width and height change on the form while you type in the properties panel; Esc puts the
+  saved value back. The change is saved once (Enter or leaving the field), and a label change no longer reloads the page.
+- Arrange with a fixed gap: "Horizontal gap" and "Vertical gap" (px) with Apply – in the design mode panel and in the form
+  builder preview's Arrange panel. The first object stays, each next one follows at exactly that distance; horizontally the gap
+  is measured to the next object's label, so labels never overlap. The gaps are remembered in the browser.
+- Design mode: right-click an object for the form's object menu again (properties, rename, actions, access, alignment,
+  validation); its changes go into the draft like the panel's.
+
+## 0.8.663 – Form designer: structure, add, tabs, full panel, new form in steps
+- Form designer, stages 2–6 (design mode on the form, the globeadmin):
+- Icon bar on the left: Structure (Ctrl+K) lists the tabs and their objects – search, click to select, drag to change the order
+  or onto another tab; Add lists the table's columns that are not on the form yet (with a matching type) and every object type –
+  click adds at the bottom of the open tab, drag places it where it is dropped. A new object without a column in the table gets
+  the offer to add it. Ctrl+D duplicates the selected objects with their events. On phones both are buttons in the bar.
+- Tabs on the form: double-click renames, "+" adds a tab, drag reorders; right-click for Hide / Show, Hide for users, Move left /
+  right and Delete. Hidden tabs are shown faded while designing.
+- Properties panel: lookup, sub-form and run objects choose their form, procedure or report in searchable lists; dates, numbers
+  and calculations their format; "Edit events…" edits an object's events in a dialog; new Style section (alignment, icon, style
+  type and value, HTML attributes); several objects get an Arrange section (align, space, same size, up / down) and their tab;
+  one object gets Order (up / down). The designer's floating Arrange panel is not shown in design mode any more.
+- Phones: the properties panel is a bottom sheet with its sections as tabs.
+- New form in three steps – Form, Table and fields, Layout and access; Next checks each step. The globeadmin's new form opens in
+  design mode on an empty record (switch in the last step).
+- Fixed: a new object added in a draft no longer shows PHP warnings about missing fields in the preview.
+
+## 0.8.662 – Form designer: design mode on the form (stage 1)
+- Form designer, stage 1: design mode on the form itself. On a record the globeadmin clicks Design in the form's toolbar; the
+  form stays as it is (data, tabs) and gets a bar at the top and a properties panel on the right (a bottom sheet on phones).
+- Objects are selected, moved and resized on the form (Ctrl+click, box selection, arrow keys, Arrange panel, Delete with a
+  question); buttons and links do not run while designing; objects the form's JavaScript hides are shown faded with
+  "Hidden by form code".
+- Properties panel: Content (ID / field, label, input type, options, HTML), Behaviour (access, validation, events) and Layout
+  (position and size in absolute layout, column width in auto / grid, tab), with "More settings" for the rest; the form's
+  description, code, table and layout when nothing is selected; common access and validation for several objects; a link to
+  all properties in the form builder.
+- Changes of a published form go into a draft, started by the first change (an open draft is continued): users keep the
+  published form until Publish (with a change note); Undo and Discard in the bar. A form never published is changed directly.
+
+## 0.8.661 – Form builder: Delete key with confirmation
+- Form builder: the Delete key (or Backspace) deletes the selected objects – the object open on Objects, or all objects
+  selected in the preview – after a question that names them. In a field or code editor the key works as usual.
+
+## 0.8.660 – Form builder: open the chosen form
+- Form builder → object: next to the form of a lookup, a sub-form and a run object (form) a button (↗) opens that form in the form
+  builder in a new tab – as the access level on the user form; it follows the choice and is greyed out while none is chosen.
+- Help: Form builder – working with objects.
+
+## 0.8.659 – Label menu on User Home
+- Form pages: the label menu of the globeadmin (right-click on a label or button – Rename…, Actions, Access, Align, Validation) also
+  on nuBuilder Forte's User Home (nuuserhome), whose objects the form builder edits; other nuBuilder Forte system forms still have none.
+- Help: Hash variables and the label menu.
+
+## 0.8.658 – Welcome e-mail templates, start page columns 1–4
+- Welcome e-mail as in nuBuilder Forte: nuBuilder Next ships its own read-only e-mail template nu_send_welcome_email_template (group
+  nunext, one per language – the text of the welcome e-mail with the "Set password" button, linked to the user form for the
+  placeholders). Clone it under E-mail templates – the copy is called nu_send_welcome_email, can be changed and is used from then on.
+  Order: own procedure nu_send_welcome_email → own template nu_send_welcome_email → the read-only template in the user's language
+  (otherwise English) → the built-in text (only while the templates are missing).
+- The templates come with this update (step 0028) and are added again whenever one is missing; they are never changed, and a nuBuilder
+  Forte update keeps them (ids nx_welcome_…).
+- nuBuilder Forte's shipped rows are not used for it: its template (group nubuilder, "Temporary OTP Password") and its procedure
+  template send the password itself; a procedure nu_send_welcome_email shipped with nuBuilder Forte (id "nu…", its example) is ignored –
+  only an own procedure counts. Opening Forte's template says so.
+- User form: ticking "Send welcome e-mail" names the read-only template when it is the one used. E-mail templates: the read-only
+  templates of nuBuilder Next say "nuBuilder Next's welcome e-mail" instead of "shipped with nuBuilder Forte".
+- Help: Users – welcome e-mail.
+- Start page: the tile "Configuration file (nuconfig.php)" is called "Configuration file"; nuconfig.php is named in its description
+  (shown on mouse over when descriptions are on). The page itself keeps the full title.
+- Start page → Customise → Appearance → List: *Columns* 1, 2, 3, 4 or Auto (before: 1, 2, Auto). 4 columns need at least 900 px for
+  the tiles (else 3), 3 and 4 at least 640 px (else 2), below 560 px one – the start page is at most 1100 px wide.
+- Test: sessions_idle counts every session idle for longer than 4 hours (a long test session failed it).
+
+## 0.8.657 – User form: welcome e-mail always shown
+- User form: *Send welcome e-mail* is always shown – greyed out while e-mail is not set up (no SMTP host, no $nuConfigMailLog); its (i)
+  then says "Set up e-mail first" and, with the right to the e-mail settings, a link *E-mail settings* leads there. Before, the
+  switch was hidden without a word.
+- Help: Users – welcome e-mail.
+
+## 0.8.656 – New form: primary key help as (i)
+- New form → New table: the help for *Primary key* (nuBuilder Forte ID or UUID, empty = <table>_id) is the tooltip of an (i) next to
+  the label instead of a line below the field.
+
+## 0.8.655 – Logged-in users: 1 hour in the singular
+- Logged-in users: the confirmation of "Log out idle users" for more than one hour now says "1 hour" (before: "1 hours") – own text
+  in all languages.
+
+## 0.8.654 – Logged-in users: Log out menu at every width
+- Logged-in users: the one *Log out* button with its menu (idle users with one entry per time, all others, everyone incl. me) is now
+  used at every screen width; the time choice and the three separate buttons are gone. Each entry still asks first.
+- Help: Logged-in users.
+
+## 0.8.653 – Logged-in users: Log out menu on phones
+- Logged-in users on phones and narrow screens (below 768 px): one *Log out* button with a menu instead of the time choice and three
+  buttons – *Log out idle users* with one entry per time (> 1 h, > 2 h …), *Log out all others*, *Log out everyone (incl. me)*; each
+  asks first, as before. Wider screens unchanged.
+- Help: Logged-in users.
+
+## 0.8.652 – Start page: Hide tile in the tile menu
+- Start page: the right-click / long-press menu of a tile has *Hide tile* below *Add to favourites* – on the admin start page it takes
+  the tile off the layout as Edit tiles and groups does (for everyone who uses that layout); on a user's start page *Hide for me*
+  hides it for that user only, as Personalise does. Same rights as the favourites in that menu. Afterwards a message with *Undo* puts
+  the tile back in its group and place; it shows once.
+- Fix: a layout saved for the first time (the built-in layout becomes a stored copy) is also the current one for the rest of that request.
+- Help: Navigation – favourites and hiding by right-click.
+
+## 0.8.651 – Own lists: column widths by dragging
+- nuBuilder Next's own lists (users, forms, procedures, reports, log, audit trail …): column widths by dragging a column title, as in the
+  browse lists – mouse, pen or finger, at least 40 px, a click without moving still sorts. Kept per list and list view while paging,
+  sorting and searching in that browser tab, never saved (the column widths of a saved list view stay as they are); narrow cells end with …
+  Columns without a title (buttons) keep their width.
+- Browse lists and own lists use one helper (nuColResize in assets/js/nuapp.js); the CSS moved from nuform.css to nuapp.css.
+- Help: Lists – column width also for the own lists.
+
+## 0.8.650 – Browse lists: column widths by dragging
+- Browse lists (forms and lookups): column widths can be changed by dragging a column title to the left or right, as in nuBuilder
+  Forte – with the mouse, a pen or a finger, at least 40 px; the right edge of a title shows the resize cursor. A click without moving
+  still sorts. The widths stay while paging, sorting and searching in that list (for the browser tab only) and are never saved; a
+  new tab starts with the form's widths. A narrowed column ends with …
+- nuDisableBrowseResize() (nuBuilder Forte) switches it off from the form's JavaScript; nuSetBrowseColumnSize() keeps working with
+  changed widths.
+- Help: Lists – column width; function reference: nuDisableBrowseResize().
+
+## 0.8.649 – Permission items: copy from another user
+- User form → Permission items: new button *Copy from user…* – takes over the permission items of another user. The dialogue lists
+  the users with at least one item (searchable, with their number of items) and says how many of the chosen user's items are not
+  ticked yet; *Replace* ticks exactly that user's items, *Add* keeps the ticked ones and adds theirs. Nothing is saved until *Save*;
+  *Undo* goes back as after *All* / *None*. Only active items are copied.
+- Help: Users → Permission items describes the copy.
+
+## 0.8.648 – Notes: v0.8.647 published
+- Development notes: v0.8.647 published on GitHub (pre-release); the release notes template now counts from it.
+
 ## 0.8.647 – Release gate (0.8.621–0.8.646)
 - Release gate (0.8.621–0.8.646): full test run – smoke, all end-to-end tests and the cross-tests against nuBuilder Forte.
 - Form builder: the objects list and the preview stay below the sticky header row again while the page scrolls (the view grid gave

@@ -158,6 +158,67 @@
 		});
 	});
 
+	// Copy from user… (0.8.649): the chosen user's active items (POST action "perm_of", nothing saved) are ticked here – Replace = exactly
+	// theirs, Add = the ticked ones stay; saved with Save, Undo as after All / None
+	var cdlg = document.getElementById('userPermCopyDlg');
+	if (cdlg) {
+		var CT = {};
+		try { CT = JSON.parse(cdlg.getAttribute('data-t') || '{}'); } catch (e) { /* defaults */ }
+		var csel = document.getElementById('userPermCopyFrom'), cinfo = document.getElementById('userPermCopyInfo');
+		var cAdd = document.getElementById('userPermCopyAdd'), cRep = document.getElementById('userPermCopyReplace'), cItems = null;
+		var boxes = function () { return Array.prototype.slice.call(box.querySelectorAll('input[name="perm[]"]')); };
+		var ready = function (on) { cAdd.disabled = !on; cRep.disabled = !on; };
+		var cload = function () {
+			cItems = null;
+			ready(false);
+			cinfo.textContent = '';
+			var from = csel.value;
+			if (!from) return;
+			var fd = new FormData();
+			fd.append('_csrf', cdlg.getAttribute('data-csrf') || '');
+			fd.append('action', 'perm_of');
+			fd.append('from', from);
+			fetch(cdlg.getAttribute('data-url'), {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+				.then(function (r) { return r.json(); })
+				.then(function (j) {
+					if (csel.value !== from) return;                      // another user was chosen meanwhile
+					if (!j || !j.ok || !Array.isArray(j.items)) throw new Error('x');
+					var here = {};
+					boxes().forEach(function (cb) { here[cb.value] = cb; });
+					cItems = j.items.filter(function (id) { return here[id]; });
+					var fresh = cItems.filter(function (id) { return !here[id].checked; }).length;
+					cinfo.textContent = (CT.info || '%d / %d').replace('%d', String(cItems.length)).replace('%d', String(fresh));
+					ready(true);
+				})
+				.catch(function () { if (csel.value === from) cinfo.textContent = CT.error || ''; });
+		};
+		csel.addEventListener('change', cload);
+		cdlg.addEventListener('show.bs.modal', function () {
+			if (csel.tomselect) csel.tomselect.clear(true); else csel.value = '';
+			cload();
+		});
+		cdlg.addEventListener('shown.bs.modal', function () { if (csel.tomselect) csel.tomselect.focus(); else csel.focus(); });
+		var capply = function (replace) {
+			if (!cItems) return;
+			var want = {}, all = boxes(), changed = 0;
+			cItems.forEach(function (id) { want[id] = true; });
+			var snap = all.map(function (cb) { return [cb, cb.checked]; });
+			bulk = true;
+			all.forEach(function (cb) {
+				var on = want[cb.value] ? true : (replace ? false : cb.checked);
+				if (cb.checked !== on) { cb.checked = on; cb.dispatchEvent(new Event('change', {bubbles: true})); changed++; }
+			});
+			bulk = false;
+			update();
+			apply();                                                     // the list shows the result (also with "Assigned")
+			if (changed) setUndo(snap);
+			var m = window.nuBs && nuBs.modal(cdlg);
+			if (m) m.hide();
+		};
+		cAdd.addEventListener('click', function () { capply(false); });
+		cRep.addEventListener('click', function () { capply(true); });
+	}
+
 	// phones: descriptions on / off (compact table); the choice stays in this browser
 	var descToggle = document.getElementById('userPermDescToggle'), DESC_KEY = 'nunext-perm-desc';
 	if (descToggle) {
@@ -427,6 +488,11 @@
 		var tries = [lang, lang === '' ? src.fallback : null, ''];
 		for (var i = 0; i < tries.length; i++) {
 			if (tries[i] !== null && Object.prototype.hasOwnProperty.call(src.tpl, tries[i])) return tx.tpl.replace('%s', src.tpl[tries[i]]);
+		}
+		// nuBuilder Next's read-only template nu_send_welcome_email_template (0.8.658): user's language, the session's, English
+		var std = src.std || {}, tries2 = [lang, src.fallback, 'English'];
+		for (var j = 0; j < tries2.length; j++) {
+			if (tries2[j] && Object.prototype.hasOwnProperty.call(std, tries2[j])) return tx.std.replace('%s', std[tries2[j]]);
 		}
 		return tx.builtin.replace('%s', src.code);
 	}

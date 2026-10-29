@@ -7,7 +7,7 @@
 <h3 id="pages-create">Creating a page</h3>
 <ol>
 <li><em>Forms → Add</em>, type <em>Page (custom PHP)</em>. The <strong>code is the folder name</strong>: letters, digits, <code>_</code> and <code>-</code>, starting with a letter or digit, at most 64 characters (names starting with <code>_</code> are reserved).</li>
-<li>The builder of a page form shows the folder <code>custom/pages/&lt;code&gt;/</code> and whether <code>index.php</code> is there. <strong>Create from template</strong> copies <code>custom/pages/_template/</code> there (when the folder is writable; otherwise copy it by FTP).</li>
+<li>The editor of a page form shows the folder <code>custom/pages/&lt;code&gt;/</code> and whether <code>index.php</code> is there. <strong>Create from template</strong> copies <code>custom/pages/_template/</code> there (when the folder is writable; otherwise copy it by FTP).</li>
 <li>Give access levels the right on the page form, as for any form (<em>view</em> = may open it; the other rights can be read by the page with <code>$nu-&gt;rights()</code> and used as the app's roles).</li>
 <li>Write the app in <code>index.php</code> (more files, <code>assets/</code> for css / js / images). <strong>Copy AI prompt</strong> puts the guide, this page and the list of your tables into the clipboard – paste it into any AI together with a description of the app.</li>
 </ol>
@@ -16,7 +16,7 @@
 <h3 id="pages-settings">Settings of a page</h3>
 <ul>
 <li><strong>Open in</strong>: <em>New tab</em> (default – menus, tiles and run buttons open it in a new browser tab), <em>Inside nuBuilder Next</em> (the page in an iframe below the top bar and breadcrumbs; <em>Iframe height</em> <code>auto</code> = the page reports its height, or a fixed height like <code>800px</code>) or <em>Whole window</em>.</li>
-<li><strong>Settings (JSON)</strong>: the app's configuration (lists, colours, limits), read with <code>$nu-&gt;setting('key')</code> (dot paths). Invalid JSON is not saved. <strong>No secrets</strong> here – the settings are copied by the cloners. Below the field the builder lists the <strong>keys the page reads</strong> (every <code>$nu-&gt;setting('key', default)</code> in its files) with the default in the code, the file and whether the key is set, and it names keys that are set but never read. When the page folder has a <code>settings.example.json</code>, <em>Insert example</em> fills the field with it (the template has one).</li>
+<li><strong>Settings (JSON)</strong>: the app's configuration (lists, colours, limits), read with <code>$nu-&gt;setting('key')</code> (dot paths). Invalid JSON is not saved. <strong>No secrets</strong> here – the settings are copied by the cloners. Below the field the page editor lists the <strong>keys the page reads</strong> (every <code>$nu-&gt;setting('key', default)</code> in its files) with the default in the code, the file and whether the key is set, and it names keys that are set but never read. When the page folder has a <code>settings.example.json</code>, <em>Insert example</em> fills the field with it (the template has one).</li>
 <li><strong>Secrets</strong> (API keys, passwords): <code>secrets.php</code> in the page folder (guard line first, <code>return ['key' =&gt; '…'];</code>), read with <code>$nu-&gt;secret('key')</code>. Never in a package, a cloner copy or the builder (it only says whether the file exists).</li>
 <li><strong>Content-Security-Policy</strong> (optional): added to <code>frame-ancestors 'self'</code>, which every page gets.</li>
 <li><strong>Notes</strong>: for the developers.</li>
@@ -41,7 +41,7 @@
 <li><strong>Unsupported version</strong>: the page does not run; the globeadmin sees which version it needs and what this nuBuilder Next supports, other users a short error.</li>
 <li><strong>Deprecated methods</strong> keep working; each call writes a notice to <em>Debug results</em> (once a day per page and method), deprecated <code>NuPage</code> names a warning in the browser console.</li>
 <li><strong>Before an update</strong>: <em>Check package</em> on the update page lists every page the new version would break (unsupported version, unknown or removed <code>$nu-&gt;…</code> / <code>NuPage.…</code> calls) or that uses deprecated ones. The update can still be installed.</li>
-<li><strong>Form builder</strong> of a page form: the declared version and the problems with this version; the forms list shows a warning next to the type of such pages.</li>
+<li><strong>Page editor</strong> of a page form: the declared version and the problems with this version; the forms list shows a warning next to the type of such pages.</li>
 <li>Only calls written as <code>$nu-&gt;name(</code> and <code>NuPage.name</code> are found – keep the variable name <code>$nu</code>.</li>
 </ul>
 </div>
@@ -50,17 +50,17 @@
 <ul>
 <li>Pages live in <code>custom/pages/&lt;code&gt;/</code>, uploaded by FTP. <code>$nuConfigCustomPagesDir</code> in <code>nuconfig.php</code> (an absolute path) moves the pages folder, e.g. outside the web root – the safest setup.</li>
 <li><strong>Updates never touch</strong> <code>custom/pages/</code> and <code>custom/lib/</code> – only <code>custom/.htaccess</code>, <code>custom/PAGE_GUIDE.md</code> and <code>custom/pages/_template/</code> come with nuBuilder Next. A rollback does not change them either. <em>Include custom pages</em> (update page, backups) puts a copy of the folders into a backup.</li>
-<li>Direct requests of files in <code>custom/</code> are blocked three ways: the guard line <code>defined('NU_PAGE') || exit;</code> at the top of every PHP file (the builder warns when <code>index.php</code> lacks it), <code>custom/.htaccess</code> (Apache) and the nginx rule in <a href="#security-nginx">Web server rules</a>. <em>Security check</em> tests that the folder cannot be reached.</li>
-<li>Renaming the code of a page form: rename its folder by FTP too (the builder says so). Deleting a page form keeps its files.</li>
+<li>Direct requests of files in <code>custom/</code> are blocked three ways: the guard line <code>defined('NU_PAGE') || exit;</code> at the top of every PHP file (the page editor warns when <code>index.php</code> lacks it), <code>custom/.htaccess</code> (Apache) and the nginx rule in <a href="#security-nginx">Web server rules</a>. <em>Security check</em> tests that the folder cannot be reached.</li>
+<li>Renaming the code of a page form: rename its folder by FTP too (the page editor says so). Deleting a page form keeps its files.</li>
 <li>The cloner copies a page form with its settings, not its files (it shows the folders to copy). The App cloner copies the folders with the files of the installation, but never <code>secrets.php</code>.</li>
 </ul>
 </div>
 	<div class="doc-sub" data-acl="nuform">
 <h3 id="pages-draft">Draft and versions</h3>
-<p>To improve a page that is in use, work on a draft: the users keep the live version until you publish. The card <em>Draft and versions</em> in the form builder of the page:</p>
+<p>To improve a page that is in use, work on a draft: the users keep the live version until you publish. The card <em>Draft and versions</em> in the editor of the page:</p>
 <ul>
 <li><strong>Create draft</strong> copies the page's files into <code>custom/pages/&lt;code&gt;/_draft/</code>. Change the files there (File Manager, FTP, git) – the card lists the files that differ from the live version.</li>
-<li><strong>Open draft</strong> shows the page with the draft's files. This view is remembered for the page until you click <em>Show live version</em> in the bar at the bottom right (shown on HTML pages). Only designers (right on the form builder) see a draft; everyone else always gets the live files, even with <code>&amp;nudraft=1</code> in the address.</li>
+<li><strong>Open draft</strong> shows the page with the draft's files. This view is remembered for the page until you click <em>Show live version</em> in the bar at the bottom right (shown on HTML pages). Only designers (save right on the Form form, nuform) see a draft; everyone else always gets the live files, even with <code>&amp;nudraft=1</code> in the address.</li>
 <li><strong>Publish draft</strong> makes the draft live. The files it replaces are kept as a version in <code>_versions/</code>.</li>
 <li><strong>Restore</strong> next to a previous version copies it back; the current files become a version first, so a restore can be undone the same way. The newest ten versions are kept.</li>
 <li><strong>Discard draft</strong> deletes the draft.</li>

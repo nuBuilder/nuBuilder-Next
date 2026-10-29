@@ -66,7 +66,7 @@ if (nu_is_post()) {
 		// a package of the folder _update/ (0.8.372): copied to the pending package and checked like an upload; only signed packages
 		// GitHub (0.8.374, core/nugithub.php): settings, look for a newer release, download it into _update/ and check it from there
 		if ($action === 'github_settings') {
-			$changed = NuGitHub::saveSettings(nu_post('repo'), nu_check('pre') === '1', nu_check('auto') === '1');
+			$changed = NuGitHub::saveSettings(nu_post('repo'), nu_check('pre') === '1', nu_post('every'));
 			nu_flash('success', $changed ? t('gh_saved') : t('aud_set_nochange'), true);
 			nu_redirect(nu_url('update'));
 		}
@@ -656,9 +656,9 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 			<div class="border rounded-3 p-3 p-sm-4 mb-3" id="updGitHub">
 				<?php // collapsible (0.8.450): open by default, folded state remembered in this browser; a newer release keeps it open ?>
 				<div class="d-flex flex-wrap align-items-center gap-2">
-					<h3 class="h5 d-inline-flex align-items-center gap-1 mb-0 me-auto"><button class="btn btn-link p-0 text-decoration-none text-reset fs-5 nuChevToggle d-inline-flex align-items-center"
+					<h3 class="h5 d-inline-flex align-items-center gap-1 mb-0"><button class="btn btn-link p-0 text-decoration-none text-reset fs-5 nuChevToggle d-inline-flex align-items-center"
 						type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubBody" aria-expanded="true" aria-controls="updGitHubBody" id="updGitHubToggle"><i class="bi bi-chevron-right me-1"></i><i class="bi bi-github me-2"></i><?= h(t('gh_title')) ?></button><?= NuListView::infoTip(t('gh_tip')) ?></h3>
-					<button class="btn nuBtnAct" type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubSet" aria-expanded="false" aria-controls="updGitHubSet" id="updGitHubSetBtn" data-nu-open-first="#updGitHubBody"><i class="bi bi-gear me-1"></i><?= h(t('gh_settings')) ?></button>
+					<button class="btn nuBtnAct ms-sm-2" type="button" data-bs-toggle="collapse" data-bs-target="#updGitHubSet" aria-expanded="false" aria-controls="updGitHubSet" id="updGitHubSetBtn" data-nu-open-first="#updGitHubBody"><i class="bi bi-gear me-1"></i><?= h(t('gh_settings')) ?></button>
 				</div>
 				<div class="collapse show" id="updGitHubBody" data-nu-remember-open="nunext-upd-github"<?= $gNew ? ' data-nu-force-open' : '' ?>><div class="pt-3">
 				<?php if ($gs['error'] !== ''): ?><div class="alert alert-warning small py-2 mb-2" id="updGitHubError"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('gh_err_check', $gs['error'])) ?></div><?php endif; ?>
@@ -666,7 +666,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<dt><?= h(t('gh_repo')) ?></dt>
 					<dd><a href="<?= h($repoUrl) ?>" target="_blank" rel="noopener" id="updGitHubRepo"><?= h($gs['repo']) ?></a></dd>
 					<dt><?= h(t('gh_lbl_checked')) ?></dt>
-					<dd id="updGitHubChecked"><?= h($gs['checked_at'] ? date('d.m.Y H:i', $gs['checked_at']) : t('gh_never')) ?><?= $gs['auto'] ? ' · ' . h(t('gh_auto_on')) : '' ?>
+					<dd id="updGitHubChecked"><?= h($gs['checked_at'] ? date('d.m.Y H:i', $gs['checked_at']) : t('gh_never')) ?><?= $gs['auto'] ? ' · ' . h(t('gh_auto_every', (static fn(string $x): string => mb_strtolower(mb_substr($x, 0, 1)) . mb_substr($x, 1))(t('gh_every_' . $gs['every'])))) : '' ?>
 						<form method="post" action="<?= h(nu_url('update')) ?>" class="d-inline" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_check">
 							<button class="btn btn-link p-0 ms-2 align-baseline nuGhAgain" type="submit" id="updGitHubCheck" data-nu-busy="<?= h(t('gh_checking')) ?>"><i class="bi bi-arrow-repeat me-1"></i><?= h(t('gh_check_again')) ?></button></form></dd>
 					<?php if ($gl): $gCmp = version_compare((string)$gl['version'], NU_VERSION); ?>
@@ -688,11 +688,13 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 				<div class="collapse" id="updGitHubSet">
 					<form method="post" action="<?= h(nu_url('update')) ?>" class="border rounded p-3 mt-3 bg-body-tertiary" id="updGitHubSetForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_settings">
 						<div class="row g-3 align-items-end">
-							<div class="col-md-5"><label class="form-label small mb-1" for="ghRepo"><?= h(t('gh_repo')) ?></label><?= NuListView::infoTip(t('gh_repo_tip')) ?>
+							<div class="col-md-4"><label class="form-label small mb-1" for="ghRepo"><?= h(t('gh_repo')) ?></label><?= NuListView::infoTip(t('gh_repo_tip')) ?>
 								<input type="text" class="form-control form-control-sm" name="repo" id="ghRepo" value="<?= h($gs['repo']) ?>" maxlength="140" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+" spellcheck="false" autocomplete="off"></div>
-							<div class="col-md-5">
-								<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="pre" value="1" id="ghPre"<?= $gs['pre'] ? ' checked' : '' ?>><label class="form-check-label small" for="ghPre"><?= h(t('gh_set_pre')) ?></label></div>
-								<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="auto" value="1" id="ghAuto"<?= $gs['auto'] ? ' checked' : '' ?>><label class="form-check-label small" for="ghAuto"><?= h(t('gh_set_auto')) ?></label></div>
+							<div class="col-sm-6 col-md-3"><label class="form-label small mb-1" for="ghEvery"><?= h(t('gh_set_every')) ?></label>
+								<select class="form-select form-select-sm" name="every" id="ghEvery"><?php foreach (array_keys(NuGitHub::EVERY) as $ev): ?>
+									<option value="<?= h($ev) ?>"<?= $gs['every'] === $ev ? ' selected' : '' ?>><?= h(t('gh_every_' . $ev)) ?></option><?php endforeach; ?></select></div>
+							<div class="col-sm-6 col-md-3">
+								<div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" role="switch" name="pre" value="1" id="ghPre"<?= $gs['pre'] ? ' checked' : '' ?>><label class="form-check-label small" for="ghPre"><?= h(t('gh_set_pre')) ?></label></div>
 							</div>
 							<div class="col-md-2 text-md-end"><button type="submit" class="btn btn-sm nuBtnAct nuBtnSave" id="ghSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div>
 						</div>

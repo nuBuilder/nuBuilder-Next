@@ -109,7 +109,7 @@
 			<li>As soon as something changes, <strong>Save</strong> turns red. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves. Leaving with unsaved changes asks first.</li>
 			<li><strong>Clone</strong> copies the record into a new, unsaved one (yellow frame); <strong>Delete</strong> asks first.</li>
 			<li>A red <code>*</code> after a label means "required", a key <i class="bi bi-key"></i> means "must be unique" – hover it for the explanation.</li>
-			<li>The <strong>⋮</strong> button at the end of the toolbar lists everything you can do on this form, each with its keyboard shortcut. As globeadmin you also find the builder shortcuts, <em>Inspect record</em> and the hash variables there.</li>
+			<li>The <strong>⋮</strong> button at the end of the toolbar lists everything you can do on this form, each with its keyboard shortcut. As globeadmin you also find the design shortcuts, <em>Inspect record</em> and the hash variables there.</li>
 			<li>Sub-forms (rows inside a record): typing in the empty last row adds a row. Lookups: type a code or click the search button.</li>
 		</ul>
 		<div class="tut-task">
@@ -151,7 +151,7 @@
 			<li><strong>Permission items</strong> are named switches your own code checks – for finer rules ("may approve invoices").</li>
 			<li>The globeadmin may do everything.</li>
 		</ol>
-		<p>nuBuilder Next's own pages are protected by nuBuilder Forte's <em>system forms</em>: the users page by <code>nuuser</code>, access levels by <code>nuaccess</code>, the form builder by <code>nuform</code>, procedures by <code>nuprocedure</code> and so on. Give an access level the row <code>nuuser</code> and its users see the users page.</p>
+		<p>nuBuilder Next's own pages are protected by nuBuilder Forte's <em>system forms</em>: the users page by <code>nuuser</code>, access levels by <code>nuaccess</code>, design mode by <code>nuform</code>, procedures by <code>nuprocedure</code> and so on. Give an access level the row <code>nuuser</code> and its users see the users page.</p>
 		<div class="tut-note"><strong>Admin-equivalent rights:</strong> changing rights on <code>nuform</code>, <code>nuprocedure</code>, <code>nuselect</code>, <code>nusetup</code>, <code>nuuser</code> or <code>nuaccess</code> amount to full control – PHP on the server, SQL on every table, the passwords of all users. With <em>Only the globeadmin grants admin rights</em> (Security check, on by default) only the globeadmin hands them out.</div>
 		<p><a data-help="rights">How rights work</a></p>
 	</section>
@@ -274,26 +274,26 @@
 
 <article class="tut-chapter" id="ch-forms" data-part="build" data-right="acl:nuform">
 	<h2>Building forms</h2>
-	<p class="tut-intro">From a database table to a working form: the form builder, objects, layouts and run buttons.</p>
+	<p class="tut-intro">From a database table to a working form: design mode, objects, layouts and run buttons.</p>
 
 	<section class="tut-lesson" id="forms-overview">
 		<h3>Forms, tables and the forms list</h3>
 		<p>A nuBuilder Forte form shows the records of one <strong>table</strong> (or a view): the list (browse) shows some columns, the edit form all fields. Types: <em>browse and edit</em>, <em>browse</em> only, <em>edit</em> only, <em>launch</em> (a start page or a criteria form without table) and <em>subform</em> (rows inside another form).</p>
-		<p>The <a data-open="forms">forms list</a> shows all forms with group and status (Active, Draft, Archived). Click a form to <em>open</em> it as a user would; the <i class="bi bi-tools"></i> button opens it in the <strong>form builder</strong>. nuBuilder Forte's own forms (<code>nu…</code>) are read-only.</p>
+		<p>The <a data-open="forms">forms list</a> shows all forms with group and status (Active, Draft, Archived). Click a form to <em>open</em> it as a user would; the <i class="bi bi-tools"></i> button opens it in <strong>design mode</strong>. nuBuilder Forte's own forms (<code>nu…</code>) are not changed here.</p>
 		<div class="tut-task">
-			<p>Open the <a data-open="forms">forms list</a>, filter by status, then open <code>sample_order</code> in the builder (<i class="bi bi-tools"></i>).</p>
+			<p>Open the <a data-open="forms">forms list</a>, filter by status, then open <code>sample_order</code> in design mode (<i class="bi bi-tools"></i>).</p>
 		</div>
-		<p><a data-help="builder">Forms and the form builder</a></p>
+		<p><a data-help="builder">Forms and design mode</a></p>
 	</section>
 
 	<section class="tut-lesson" id="new-form">
 		<h3>Creating a form</h3>
-		<p><a data-open="builder" data-args="new=1">New form</a> offers two ways:</p>
+		<p><a data-open="builder" data-args="new=1">New form</a> asks in three steps: the form (description, code, type), the table and its fields, then the layout and who may use it. For the table there are two ways:</p>
 		<ul>
-			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns.</li>
+			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns; <em>Choose columns and order</em> picks only some of them, their labels and their order.</li>
 			<li><strong>New table</strong>: enter the columns (name, label, type, length, required). The table gets a nuBuilder-Forte-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
 		</ul>
-		<p>Afterwards the form opens in the builder. Give your forms a meaningful <em>code</em> and a <em>group</em> – the forms list and the access level page filter by them.</p>
+		<p>Afterwards the form opens in <a data-lesson="design-mode">design mode</a>. Give your forms a meaningful <em>code</em> and a <em>group</em> – the forms list and the access level page filter by them.</p>
 		<div class="tut-note">A new form is not yet in any access level: only the globeadmin can open it until you add it to an <a data-lesson="access-levels">access level</a>.</div>
 		<div class="tut-task">
 			<p>Create a form <code>tutorial_task</code> with a <em>new table</em> <code>tutorial_task</code> and the columns <code>tsk_title</code> (text, required), <code>tsk_due</code> (date) and <code>tsk_done</code> (checkbox), with audit columns. Open it and add two records.</p>
@@ -302,23 +302,43 @@
 	</section>
 
 	<section class="tut-lesson" id="form-builder">
-		<h3>Working in the form builder</h3>
+		<h3>Settings, the list, code and history</h3>
 		<ul>
-			<li><strong>Left</strong>: the objects per tab – drag them to change the order. <strong>Middle</strong>: the preview – click an object to select it, drag to move, use the handle to resize. <strong>Right</strong>: properties of the selected object, the form's settings, list columns, tabs and code.</li>
+			<li><strong>Form settings</strong>: in design mode with nothing selected (or the window icon in the icon bar) – description, code, group, type, status, table, the list's rows per page, the layout and <em>Show tab order</em>; <em>Tools</em> leads to <em>Change with AI</em>, <em>Data access</em> and <em>Delete form</em>.</li>
 			<li><strong>Layouts</strong>: <em>absolute</em> (pixel positions as in nuBuilder Forte), <em>auto</em> (responsive rows worked out from the positions) and <em>grid</em> (12 columns). Auto and grid work well on phones.</li>
-			<li><strong>List columns</strong>: what the browse list shows – title, column or SQL expression, width, alignment, format.</li>
-			<li><strong>Save</strong> turns red while the open panel has changes; <kbd>Ctrl</kbd>+<kbd>S</kbd> saves. <strong>Undo / History</strong> keeps the last 100 states of the form – any of them can be restored.</li>
-			<li>If an object's ID has no column in the table yet, the builder offers to add it.</li>
+			<li><strong>The list</strong>: <em>Design</em> on the form's list – click a column title to change its title, column or SQL expression, width, alignment and format; drag titles to reorder, <em>+</em> adds a column.</li>
+			<li><strong>Code</strong> (icon bar): the form's JavaScript, CSS, PHP hooks and browse SQL in one editor; <kbd>Ctrl</kbd>+<kbd>S</kbd> saves. <strong>History</strong> keeps the last 100 states of the form – compare any of them with now or restore it.</li>
+			<li>If an object's ID has no column in the table yet, the panel offers to add it; <em>Change column…</em> in an object's <em>Tools</em> changes its type.</li>
 		</ul>
-		<div class="tut-tip">On any form page, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> opens the builder to arrange objects, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> to add an object, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> the form properties.</div>
+		<div class="tut-tip">On any form page, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> opens design mode, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> with <em>Add</em>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> with <em>Structure</em>.</div>
 		<div class="tut-task">
 			<ol>
-				<li>Open <code>tutorial_task</code> in the builder, change the label of <code>tsk_title</code> and make it wider.</li>
-				<li>Switch the layout to <em>auto</em> and look at the preview; undo it with <em>History</em>.</li>
-				<li>Add a list column for <code>tsk_due</code> with a date format.</li>
+				<li>Open <code>tutorial_task</code> in design mode, switch the layout to <em>auto</em> and look at the form; undo it with <em>Undo</em>.</li>
+				<li>Open the list in design mode and add a column for <code>tsk_due</code> with a date format.</li>
+				<li>Open <em>Code</em> and <em>History</em> from the icon bar and look at what your changes stored.</li>
 			</ol>
 		</div>
-		<p><a data-help="builder-work">Working in the builder</a></p>
+		<p><a data-help="builder-work">Designing a form</a></p>
+	</section>
+
+	<section class="tut-lesson" id="design-mode">
+		<h3>Design mode: changing a form where it runs</h3>
+		<p>Open a record and click <em>Design</em> in the form's toolbar. The form stays as it is – with its data and tabs – and gets a bar at the top, an icon bar on the left and a properties panel on the right.</p>
+		<ul>
+			<li><strong>Select and move</strong>: click an object, <kbd>Ctrl</kbd>+click for more, drag to move, the corner handle to resize, arrow keys for small steps; <kbd>Delete</kbd> deletes after a question, <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates.</li>
+			<li><strong>Properties</strong>: Content, Behaviour (access, validation, events), Layout and Style – <em>More settings</em> opens the rest. With nothing selected the panel shows the form's settings.</li>
+			<li><strong>Structure</strong> (icon bar, <kbd>Ctrl</kbd>+<kbd>K</kbd>) lists the tabs and objects – search, click to select, drag to change the order. <strong>Add</strong> lists the table's columns that are not on the form yet and every object type: click to add, or drag onto the form.</li>
+			<li><strong>Tabs</strong>: double-click a tab to rename it, <em>+</em> adds one, drag to reorder; right-click to hide, move or delete it.</li>
+			<li>Changes of a published form go into a <a data-lesson="adv-drafts">draft</a>: users keep the published form until you click <em>Publish</em>.</li>
+		</ul>
+		<div class="tut-task">
+			<ol>
+				<li>Open a record of <code>tutorial_task</code> and click <em>Design</em>.</li>
+				<li>Rename the label of <code>tsk_title</code> in the panel and drag <code>tsk_done</code> next to it.</li>
+				<li>Add a <em>Word / text</em> object from <em>Add</em>, then <em>Publish</em> with a short note – or <em>Discard</em> to throw the changes away.</li>
+			</ol>
+		</div>
+		<p><a data-help="design-mode">Design mode</a></p>
 	</section>
 
 	<section class="tut-lesson" id="object-types">
@@ -335,7 +355,7 @@
 		</ul>
 		<p>Every object has an <strong>access</strong> setting (editable, read only, hidden, hidden for users, globeadmin only) and a <strong>validation</strong> (none, required, unique, both) – checked on the server, too.</p>
 		<div class="tut-task">
-			<p>Open the sample form <a data-open="form" data-args="f=sampleall">All objects</a> and click through its tabs – every object type is there. Then open it in the builder to see how each is set up.</p>
+			<p>Open the sample form <a data-open="form" data-args="f=sampleall">All objects</a> and click through its tabs – every object type is there. Then open it in design mode to see how each is set up.</p>
 		</div>
 		<p><a data-help="object-types">Object types</a> · <a data-help="run-objects">Run objects</a></p>
 	</section>
@@ -371,7 +391,7 @@
 			<li><a data-open="import">CSV import</a> – loads a CSV file into a table, with column mapping, date and number conversion and a trial run.</li>
 		</ul>
 		<div class="tut-task">
-			<p>Clone <code>tutorial_task</code> with the <a data-open="cloner">Form cloner</a> as <code>tutorial_task_copy</code>, then delete the copy in the builder (<em>Delete form</em>, without the table).</p>
+			<p>Clone <code>tutorial_task</code> with the <a data-open="cloner">Form cloner</a> as <code>tutorial_task_copy</code>, then delete the copy in design mode (form settings → <em>Tools</em> → <em>Delete form</em>, without the table).</p>
 		</div>
 		<p><a data-help="formats">Formats</a> · <a data-help="translations">Translations</a> · <a data-help="cloner">Form cloner</a> · <a data-help="csv-import">CSV import</a></p>
 	</section>
@@ -718,7 +738,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<p>A form can be created or changed with any AI chat (Claude, ChatGPT …) – no API key, nothing is sent from nuBuilder Next:</p>
 		<ul>
 			<li><a data-open="formai">Forms → With AI</a>: describe the form, copy the prompt into the AI, paste its answer, <em>Check</em> – the plan lists tables, columns and objects – then create it as a draft.</li>
-			<li>In the builder, <em>Change with AI</em> sends the current form along; the plan shows only what changes, and the result is a draft you preview before publishing.</li>
+			<li>In design mode, <em>Change with AI</em> (form settings → <em>Tools</em>) sends the current form along; the plan shows only what changes, and the result is a draft you preview before publishing.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Ask an AI for a form <em>tutorial_contact</em> (name, e-mail, phone, a select for the type) with <a data-open="formai">With AI</a>, check the answer and create the draft.</p>
@@ -733,7 +753,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 
 	<section class="tut-lesson" id="adv-drafts" data-right="acl:nuform">
 		<h3>Drafts: change a form without disturbing users</h3>
-		<p>In the builder, <em>Start draft</em> copies the whole form. Users keep working with the live form while you change the draft; <em>Publish</em> replaces it in one step.</p>
+		<p>In design mode, the first change starts a draft – a copy of the whole form. Users keep working with the live form while you change the draft; <em>Publish</em> replaces it in one step.</p>
 		<ul>
 			<li><em>Save</em> and <em>Undo</em> (20 steps) work in the draft only; <em>Preview</em> shows the draft to you alone, with a yellow banner.</li>
 			<li><em>Compare with live</em> lists every change – objects, events, code line by line, list columns.</li>
@@ -748,7 +768,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 
 	<section class="tut-lesson" id="adv-data-access" data-right="acl:nuform">
 		<h3>Data access: fields and list columns per user</h3>
-		<p>nuBuilder Forte's <em>read only</em> and <em>hidden</em> only change the display. <strong>Data access</strong> (form builder → <em>Data access</em>) is enforced on the server:</p>
+		<p>nuBuilder Forte's <em>read only</em> and <em>hidden</em> only change the display. <strong>Data access</strong> (design mode → <em>Tools</em> → <em>Data access</em>) is enforced on the server:</p>
 		<ul>
 			<li>Modes per field: <em>Editable</em>, <em>Protected</em> (never saved from the browser), <em>Insert only</em> / <em>Update only</em>, <em>Masked</em> (e.g. <code>•••• 1234</code>) and <em>Withheld</em> (not sent at all).</li>
 			<li>A default plus rules for an access level, a user, a permission item, a team or a department – the most specific rule wins; a rule can have an SQL condition.</li>
@@ -906,15 +926,16 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 
 	<section class="tut-lesson" id="forte-builder" data-right="acl:nuform">
 		<h3>Building forms</h3>
-		<p>nuBuilder Forte's form and object property screens are replaced by the <a data-open="forms">form builder</a> (<a data-help="builder-work-p">Working in the form builder</a>).</p>
+		<p>nuBuilder Forte's form and object property screens are replaced by <a data-open="forms">design mode</a> on the form itself (<a data-help="builder-work-p">Designing a form</a>).</p>
 		<ul>
-			<li>One page per form: form settings, browse columns, objects, code and history. The <strong>preview</strong> next to the properties shows the form – drag objects there to move or resize them; several at once with <kbd>Ctrl</kbd>.</li>
-			<li>The <strong>objects list</strong> shows every object per tab; its ⋮ menu clones an object, changes its database column or deletes it.</li>
+			<li><strong>Design mode</strong> (the globeadmin and users with the save right on forms): <em>Design</em> on a record changes the form where it runs – select, move, a properties panel, tabs, new objects from the table's columns – like nuBuilder Forte's arrange mode and object properties in one (<a data-help="design-mode">design mode</a>).</li>
+			<li><strong>Everything in one place</strong>: form settings, the list's columns (<em>Design</em> on the list, right-click a title for its menu), objects, tabs, code and history – all in design mode; <em>Structure</em> in the icon bar lists every object per tab, <kbd>?</kbd> shows the keyboard shortcuts.</li>
+			<li>An object's ⋮ menu (or a right-click on it) clones it, changes its database column or deletes it; several objects move together with <kbd>Ctrl</kbd> + click and the arrow keys.</li>
 			<li><strong>Drafts</strong>: changes can be made in a draft, previewed and compared, and published when they are ready – the live form stays as it is meanwhile (<a data-help="form-drafts">form drafts</a>). Every published change is kept in the history and can be restored.</li>
 			<li><strong>New form</strong> replaces Fast Form: table (new or existing), fields, list columns and the place on the User Home in one wizard. The <em>Form cloner</em> copies forms as nuBuilder Forte's Cloner does.</li>
-			<li>What the builder offers is stored in nuBuilder Forte's tables – a form built here opens in nuBuilder Forte.</li>
+			<li>What design mode offers is stored in nuBuilder Forte's tables – a form built here opens in nuBuilder Forte.</li>
 		</ul>
-		<div class="tut-task"><p class="mb-0">Open one of your forms in the form builder, select an object in the preview and move it with the arrow keys – then use <em>Undo</em>.</p></div>
+		<div class="tut-task"><p class="mb-0">Open one of your forms in design mode, select an object and move it with the arrow keys – then use <em>Undo</em>.</p></div>
 	</section>
 
 	<section class="tut-lesson" id="forte-code" data-right="acl:nuform">

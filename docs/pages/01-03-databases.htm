@@ -17,7 +17,7 @@
 		<li><strong>Update checks</strong>: before an update, column <em>types</em> are compared on MySQL / MariaDB only; on SQL Server only missing columns are found.</li>
 		<li><strong>App cloner and backups</strong>: source and target are always the same kind of database. On SQL Server the export uses collations instead of character sets, <code>INSERT</code> only, and batches separated by <code>GO</code> – run it with SQL Server Management Studio or <code>sqlcmd</code>; SQL Server Agent jobs are not copied (see <a href="#appcloner">App cloner</a>).</li>
 		<li><strong>Database tools</strong>: phpMyAdmin works with MySQL / MariaDB only; Adminer works with both (see <a href="#admin-tools">Admin tools</a>).</li>
-		<li><strong>Form builder</strong>: new tables and columns are created with abstract types (text, long text, int, decimal, date …) that are mapped to each database (<code>core/form/nuddl.php</code>).</li>
+		<li><strong>Design mode</strong>: new tables and columns are created with abstract types (text, long text, int, decimal, date …) that are mapped to each database (<code>core/form/nuddl.php</code>).</li>
 	</ul>
 </div>
 <div class="doc-sub">

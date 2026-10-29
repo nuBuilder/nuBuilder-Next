@@ -305,8 +305,6 @@ const META = [
 	['report', 'index.php?p=reportdesigner&id=', '.nuBtnSave', 'zzzzsys_report', 'zzzzsys_report_id', "SELECT zzzzsys_report_id FROM zzzzsys_report WHERE zzzzsys_report_id NOT LIKE 'nu%' ORDER BY 1 LIMIT 1", [], 'nubuildreport'],
 	['permission', 'index.php?p=permissions&id=', '[data-nu-save]', 'zzzzsys_permission_item', 'zzzzsys_permission_item_id', 'SELECT zzzzsys_permission_item_id FROM zzzzsys_permission_item ORDER BY 1 LIMIT 1', [], 'nupermissionitem'],
 	['emailtemplate', 'index.php?p=emailtemplates&id=', '[data-nu-save]', 'zzzzsys_email_template', 'zzzzsys_email_template_id', "SELECT zzzzsys_email_template_id FROM zzzzsys_email_template WHERE emt_code NOT LIKE '%_template' ORDER BY 1 LIMIT 1", [], 'nuemailtemplate'],
-	['builder', 'index.php?p=builder&f=', '#nbSave', 'zzzzsys_form', 'zzzzsys_form_id', "SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' AND sfo_type = 'browseedit' ORDER BY 1 LIMIT 1",
-		[['zzzzsys_object', 'sob_all_zzzzsys_form_id'], ['zzzzsys_tab', 'syt_zzzzsys_form_id'], ['zzzzsys_browse', 'sbr_zzzzsys_form_id']], 'nuform'],
 ];
 /** Rows by primary key (first column); JSON values parsed, so the comparison is by meaning, not by spacing or key order. */
 function metaRows(table, where) {
@@ -365,6 +363,47 @@ for (const [kind, url, btn, table, pk, pick, children, nubForm] of META) {
 		expect(nub.errors.length === n0, 'nuBuilder: ' + nub.errors.slice(n0).join(' | '));
 	}]);
 }
+
+// ------------------------------------------------------------------ design mode (0.8.670, replaces the builder's save-without-change)
+// A draft of a form whose change is undone again (label → other text → back) is published: nuBuilder's rows of the form stay as they
+// were, and nuBuilder still opens the form in its own form editor.
+T.push(['meta:design', async (s) => {
+	if (!WRITE) { s.skip = 'WRITE=0'; return; }
+	const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' AND sfo_type = 'browseedit' AND sfo_status = '1' ORDER BY 1 LIMIT 1");
+	if (!id) { s.skip = 'no form'; return; }
+	const obj = sql(`SELECT zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ${q(id)} AND sob_all_type = 'input' ORDER BY 1 LIMIT 1`);
+	if (!obj) { s.skip = 'no input object'; return; }
+	const children = [['zzzzsys_object', 'sob_all_zzzzsys_form_id'], ['zzzzsys_tab', 'syt_zzzzsys_form_id'], ['zzzzsys_browse', 'sbr_zzzzsys_form_id']];
+	const snap = () => {
+		const o = { zzzzsys_form: metaRows('zzzzsys_form', '`zzzzsys_form_id` = ' + q(id)) };
+		for (const [t, fk] of children) o[t] = metaRows(t, '`' + fk + '` = ' + q(id));
+		return o;
+	};
+	const before = snap();
+	sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = ${q(id)}`);
+	await nx.goto(BASE + 'index.php?p=form&f=' + encodeURIComponent(id) + '&r=-1&design=1'); await nx.waitForLoadState('networkidle'); await nx.waitForTimeout(800);
+	expect(await nx.locator('#nuDsBar').count() === 1, 'design mode did not open');
+	const res = await nx.evaluate(async ([formId, objectId]) => {
+		const call = (body) => fetch('index.php?p=builderapi', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': nuNext.csrf },
+			body: JSON.stringify(Object.assign({ form_id: formId }, body)) }).then(r => r.json());
+		let j = await call({ action: 'draft.start', preview: true });
+		if (!j.ok) return 'start: ' + j.error;
+		const orig = (j.objects.filter(o => o.zzzzsys_object_id === objectId)[0] || {}).sob_all_label;
+		j = await call({ action: 'object.save', draft_id: j.draft.id, rev: j.draft.rev, object_id: objectId, fields: { sob_all_label: 'compat design' } });
+		if (!j.ok) return 'save 1: ' + j.error;
+		j = await call({ action: 'object.save', draft_id: j.draft.id, rev: j.draft.rev, object_id: objectId, fields: { sob_all_label: orig } });
+		if (!j.ok) return 'save 2: ' + j.error;
+		j = await call({ action: 'draft.publish', draft_id: j.draft.id, note: 'compat', warnings_ok: true });
+		return j.ok ? '' : 'publish: ' + (j.error || JSON.stringify(j.errors || j.warnings || j.conflict));
+	}, [id, obj]);
+	expect(res === '', res);
+	const after = snap();
+	const d = Object.keys(before).flatMap(t => metaDiff(before[t], after[t], t));
+	expect(!d.length, d.length + ' change(s): ' + d.slice(0, 4).join(' · '));
+	const n0 = nub.errors.length;
+	await nubOpen('nuform', id);
+	expect(nub.errors.length === n0, 'nuBuilder: ' + nub.errors.slice(n0).join(' | '));
+}]);
 
 // ------------------------------------------------------------------ logins across both (0.8.365)
 T.push(['login_cross', async (s) => {
