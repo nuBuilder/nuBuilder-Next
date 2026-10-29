@@ -3,6 +3,159 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.692 – Release gate (0.8.678–0.8.691)
+- Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte 4.9) for 0.8.678–0.8.691.
+- README: lists with filters and coloured badges, Clone as an unsaved copy, welcome e-mail preview, the access levels of a form in one
+  dialogue, filters and links between users, access levels, permission items and the log.
+- Ticket sample (version 4): the list's columns Requester, Category and Assigned to no longer use the browse SQL's table aliases, so
+  nuBuilder Forte (which wraps such a browse SQL) shows the tickets too; refresh the sample to get it.
+- Lists: a cell whose badge shows a label instead of the stored value keeps the value in data-nu-raw (used by the cross-test).
+- Cross-test against nuBuilder Forte: badge labels compare by the stored value; the ticket list's other order in nuBuilder Forte is
+  recorded as a known difference and its cells are compared per record.
+
+## 0.8.691 – Samples as a showcase: badges, filters, links
+- Sales sample (Refresh it on the Sample data page): orders show the status as coloured badges and have the filters Customer and Status
+  (design mode settings, no code); the customer name opens the customer (the list's JavaScript); products show Active as a green / grey
+  badge with the filter Category; customers have the filter Country and credit limits above 30,000 in red (nuBrowseStyleBadge with a
+  test rule); in All objects the Select and Checkbox columns show labelled badges; the start form ends with a box "What to look at".
+- Ticket sample: the ticket list also filters by Assigned to and Requester and shows overdue due dates as a red badge; the knowledge base
+  shows Visibility as Public / Internal badges with the filter Category; categories show Active as a badge with the filter Team; the
+  team's start page has a "What to look at" box.
+- Help (Sample data) and tutorial describe what each sample list shows.
+- Tests: e2e sample_showcase; new_form_levels counts the sales sample's levels (the ticket sample brings its own), sample_ticket runs before the logout test.
+
+## 0.8.690 – Admin tool lists: log, audit, e-mail log, notifications, dashboards
+- Log: new filter Object (users, access levels, forms, procedures, reports …), the record number opens the user, access level, form,
+  procedure, report or permission item while it still exists, long details fold to three lines with "more".
+- Audit trail: the filter User is a searchable select of the logins in the audit trail.
+- E-mail log: the filter Tag is shown in the Default view (and translated), a recipient that belongs to exactly one user opens that user.
+- Notifications → Manage is a system list: search, views, export, filters Status, Must confirm, level and period, a "Must confirm"
+  badge, read count → read receipts, the ⋯ actions as before.
+- Dashboards: the list is a system list with the filters On the start page and Access levels; the widget count opens the widgets.
+- Form cloner / App cloner: the search above the saved settings appears only when there are more than ten.
+- Update from GitHub: the update page looks again when the release it knows is not newer than the installed version and the last look
+  is more than an hour old – the card no longer shows an old release as "older than installed" for up to a day after a new one is out.
+- Tests: e2e admin_lists.
+
+## 0.8.689 – Help and tutorial review points D1–D14
+- Help: object types say "design mode" instead of "the builder" (suggestions, File System upload); lists: some views open with their
+  filters shown; log: the filters Event, User, From / To and the Compact view's Period described; sample data: what to look at in the
+  sample lists (filters, badges, dashboard row links).
+- Function reference: "Also see" can name functions and a help section by hand – nuBrowseStyleBadge now links nuBrowseLoop and the help
+  section "Badges in a browse column"; that section points to design mode's Show as badge.
+- Tutorial: the ticket system in "Sample data" (four roles, what to try with each user), the welcome e-mail preview, Access levels… on a
+  form as the quick way to give a form to several levels, Clone on nuBuilder Next's own pages, a task with nuBrowseStyleBadge rules,
+  dashboard tables that open a record (nu_record_id, new tab).
+- Notes: TODO.md has one short "please verify" list (SQL Server, live server, browsers, real data) plus the sections since the last gate;
+  the older sections moved unchanged to dev/TODO-archive.md. CLAUDE.md "Where things stand" tidied (one line per release since the gate).
+
+## 0.8.688 – Forms and code lists: filters, links, badges
+- Forms list: new column Access levels (number of levels that have the form) – a click opens the dialogue to change them; the table opens
+  in the database tool; filter Draft (forms with an open draft) shown by default.
+- Procedures: filter Run (button / hidden / new tab), Category shown by default; the access count opens the Access levels tab.
+- Reports: filters Source type and Source; the source links to its SQL builder query or procedure, the launch form to its form, the
+  access count to the Access levels tab.
+- SQL builder: the list is a system list (views, search, export) with filters SQL (from the builder / edited by hand) and Used by reports;
+  the report count opens the reports list filtered to that query.
+- E-mail templates: the list is a system list with filters Group, Category, Language, Form and Template, the form as a link and a badge
+  "welcome" on the template the welcome e-mail uses.
+- Files: filters Type (image, PDF, other) and Used by image objects, a column with the count that opens the file's Used by card.
+- Items: filter Form shown by default, the form as a link. Formats: the Used number opens a menu of the forms using the format.
+- Design mode, list columns: "Show as badge" with colour rules (is / contains / starts with / any other value → colour), stored in the
+  column's sbr_json and drawn with nuBrowseStyleBadge before the form's nuOnLoad (nuBuilder Forte ignores it).
+- New form wizard: a Filter tick per list column in the column list.
+- Tests: e2e code_lists, design_list_badge; new_form_pick checks the filter; sample_ticket waits for its navigations.
+
+## 0.8.687 – Users, access levels and permission items linked; admin roles list; sessions per user
+- Users list: new filters Permission item (users who have it active) and Access level (also additional); Department and Team are
+  shown in the Default view; the access level badge opens that access level. A filter set by a link from another page is shown even
+  when the list view hides it.
+- User form: the (i) record info has links Log of this user, Changes to this user (log) and Sessions of this user; the permission
+  items' group filter is at most 450 px wide.
+- Access levels list: the counts Form rights, Procedures and Reports open the level; new filter Can open form. Access level: the Users
+  card links to the users list with every user of the level (also as additional level).
+- Permission items: the Users count opens the users list filtered by the item; the item page lists its saved users with a search and
+  Active / Archived / All, each opening the user, and links to the users list.
+- Admin roles: a system list (search, list views, export, filter Has users); the Users count opens the users list filtered by the role.
+- Logged-in users: filters User and Status (active / idle); a user with several sessions is one folded row with the number of
+  sessions and End sessions (all of them except your own); the user name opens the user record.
+- Fix: rows hidden by a filter stayed visible when they carried Bootstrap's d-flex (e.g. archived users of an access level).
+- e2e test users_access_links.
+
+## 0.8.686 – Log filters event and user
+- Log: the filters Event and User are searchable selects (User lists the logins found in the log; it was a text field) and the filter
+  row is open by default in the built-in views Default and All (saved own views keep their setting).
+- e2e test log_filters.
+
+## 0.8.685 – Permission items filter width, Log out position
+- Permission items list: the group filter is at most 450 px wide (system list filters get the class nuLvFlt-<list key>).
+- Logged-in users: the Log out button sits right of Refresh instead of at the far right of the title bar.
+
+## 0.8.684 – Welcome e-mail preview
+- User form: "Preview the e-mail before sending" below "Send welcome e-mail" (off by default, remembered per browser). With it on,
+  Save first runs every check of the form (errors are shown as usual) and then opens the welcome e-mail instead of saving: recipient,
+  Cc / Bcc of the template, a template to switch to (Automatic, every nu_send_welcome_email and read-only template, the other e-mail
+  templates of the user form, the built-in text), the subject and the e-mail with all placeholders replaced. Click into the e-mail to
+  change it or edit it as HTML. The set-password link stays #SET_PASSWORD_URL# until it is sent (the user does not exist yet) and must
+  be kept. "Save and send" saves the user and sends the edited e-mail; Cancel goes back to the form without saving. Not offered while an
+  own procedure nu_send_welcome_email sends the mail. Also for existing users (sending the welcome e-mail again).
+- When sending fails, the e-mail log keeps the edited e-mail (with the placeholder instead of the link).
+- Welcome templates: their Cc / Bcc are used (also without the preview).
+- e2e test welcome_preview.
+
+## 0.8.683 – Access levels of a form
+- Access levels of one form: on the open form (list or record) ⋮ → Access levels…, and in design mode Form settings → Tools → Access
+  levels, open a dialog with every access level – Open (the level may use the form), its buttons (Add, Save, Delete, Clone, New, Print),
+  data mode and form type; search, group filter, Select all and a toggle per button column. A level that gets the form starts with Open
+  only. Save writes only the changed levels into nuBuilder Forte's zzzzsys_access_form (the same rows as the access level page) and logs
+  each one; the arrow opens the level. Needs the right to view access levels (changes: their Save right); with "Only the globeadmin
+  grants admin rights" own levels and new admin-equivalent rights are refused as on the access level page.
+- e2e test form_access_dialog.
+
+## 0.8.682 – Ticket sample: filters, badges, attachments, row links
+- Ticket sample (version 2 – Sample data → Refresh): the ticket list has filters for category, priority and status and coloured badges
+  for priority and status (nuBrowseStyleBadge with rules); the attachments sub-form is on the Attachments tab (it was placed on
+  Conversation by mistake), so files can be attached while a new ticket is written; the rows of "Due next" and "My latest tickets" open
+  the ticket in a new tab.
+- Dashboards: a table widget linked to a form makes each row open its record when the query has a column nu_record_id (the primary
+  key, not shown). New widget option "Open in a new tab" for the title link and these rows (Ctrl+click / middle button always opens one).
+- File fields: the remove button (×) lost its icon once a file was chosen – fixed.
+
+## 0.8.681 – nuBrowseStyleBadge with rules
+- nuBrowseStyleBadge(column, rules, options): badges of a browse column with colours by value. rules is either a map of exact values
+  ({open: '#cfe2ff', closed: {bg: '#d1e7dd', color: '#0f5132'}}) or a list of rules – the first that matches wins: equals, contains,
+  startsWith, endsWith, regex, test: (value, row) => …, default: true; each sets bg, color, border (any CSS colour, or '$value' = the
+  cell's value as colour), class (e.g. text-bg-danger), label, icon (Bootstrap Icons), title or badge: false; ignoreCase per rule or for
+  all. With only bg the text colour is chosen for contrast. Without rules it works as before; nuBuilder Forte ignores the extra parameters.
+- Help: JavaScript functions → Badges in a browse column; function reference with examples. e2e test browse_badge_rules.
+
+## 0.8.680 – Clone as in nuBuilder Forte
+- Clone works as in nuBuilder Forte on nuBuilder Next's own record pages: procedures, reports, SQL builder, permission items, e-mail
+  templates, files, items, prompts and the saved settings of the Form cloner and App cloner. *Clone* now opens an unsaved copy (free code,
+  access levels, report layout, query, stored file) with the badge "Clone – not saved yet" and a red Save – nothing is stored until Save.
+  Before, Clone saved the copy at once.
+- Users and access levels (already unsaved copies) show the same badge and red Save; leaving a clone asks before the copy is lost.
+- e2e test record_clone.
+
+## 0.8.679 – Ticket system sample
+- New sample application: a ticket system for a support desk (Admin tools → Sample data, its own card next to the sales sample).
+  Four roles with their own start pages – customers (report problems, follow and answer their own tickets, rate the solution),
+  1st-level agents, a 2nd-level specialist and the team lead; tickets with automatic numbers, SLA due dates from the category,
+  a conversation sub-form with internal notes customers never see, attachments, a knowledge base, row-level security through the
+  browse SQL and Before Edit, field access rules, permission items, three e-mail templates sent after saving, notifications on
+  assignment and escalation, the buttons "Take ticket" and "Escalate", two dashboards, a PDF report and 60 sample tickets whose
+  dates are moved to today when installed. Built entirely with design mode – open any form with Design to see how it is made.
+- Further samples are stored as JSON (install/samples/<key>.json) and installed / removed exactly by NuSampleSet; the developer tool
+  dev/sample_capture.php captures an application built in design mode with readable ids.
+- Fixed: adding a sub-form object to a form draft in design mode failed on servers that show PHP warnings (no answer, nothing added).
+- Fixed: a dashboard on a form that the user's role may not see answered with an error (403) in the browser console; it is now
+  hidden quietly.
+- Release gate: the update check and library requirement tests now run with the last built package.
+- Help: Sample data describes the ticket system; README lists both samples.
+
+## 0.8.678 – Notes: v0.8.677 published
+- Notes: v0.8.677 published on GitHub (pre-release); the release notes template records it as the last published release.
+
 ## 0.8.677 – Release gate (0.8.648–0.8.676)
 - Release gate: the full test run (smoke, all end-to-end tests, the cross-test against nuBuilder Forte) for 0.8.648–0.8.676.
 - Documentation brought up to date first: help pages, tutorial (design mode instead of the builder in the nuBuilder Forte lessons, New

@@ -244,3 +244,29 @@
 	});
 	mark();
 })();
+
+// long cells fold to three lines with "more" / "less" (0.8.690): <div class="nuLvClamp" data-more data-less> – the log's details
+(function () {
+	'use strict';
+	var boxes = document.querySelectorAll('.nuLvClamp');
+	if (!boxes.length) return;
+	function setup(box) {
+		if (box.getAttribute('data-clamp-done')) return;
+		box.classList.add('nuLvClamped');
+		if (box.scrollHeight <= box.clientHeight + 2) { box.classList.remove('nuLvClamped'); return; }   // short: nothing to fold
+		box.setAttribute('data-clamp-done', '1');
+		var b = document.createElement('button');
+		b.type = 'button';
+		b.className = 'btn btn-link btn-sm p-0 nuLvMore';
+		b.textContent = box.getAttribute('data-more') || '…';
+		b.setAttribute('aria-expanded', 'false');
+		b.addEventListener('click', function (e) {
+			e.preventDefault(); e.stopPropagation();          // the row opens the record otherwise
+			var open = box.classList.toggle('nuLvClamped') === false;
+			b.textContent = open ? (box.getAttribute('data-less') || '…') : (box.getAttribute('data-more') || '…');
+			b.setAttribute('aria-expanded', open ? 'true' : 'false');
+		});
+		box.insertAdjacentElement('afterend', b);
+	}
+	boxes.forEach(setup);
+})();

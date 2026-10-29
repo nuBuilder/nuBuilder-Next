@@ -46,37 +46,12 @@ $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" rol
 $fullBadge = '<span class="badge text-bg-danger ms-1 nuAdmFull" title="' . h(t('adm_full_tip')) . '">' . h(t('adm_full')) . '</span>';
 
 // ------------------------------------------------------------------ list
-if ($id === '') {
-	$roles = NuAdmin::roles();
-	nu_layout_start(t('adm_title'), 'home');
-	?>
-<div class="card shadow-sm nuListCard">
-	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold"><i class="bi bi-person-badge me-2"></i><?= h(t('adm_title')) ?><?= $tip(t('adm_title_tip')) ?></h1>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
-			<a class="btn nuAddBtn" href="<?= h(nu_url('adminroles', ['id' => 'new'])) ?>" id="admNew"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a>
-		</div>
-	</div>
-	<div class="table-responsive">
-		<table class="table nu-table mb-0" id="admList">
-			<thead><tr><th><?= h(t('adm_role')) ?></th><th><?= h(t('adm_code')) ?></th><th><?= h(t('adm_rights')) ?></th><th class="text-end"><?= h(t('nav_users')) ?></th></tr></thead>
-			<tbody>
-			<?php foreach ($roles as $r): ?>
-				<tr data-href="<?= h(nu_url('adminroles', ['id' => $r['id']])) ?>">
-					<td><a class="fw-semibold text-decoration-none" href="<?= h(nu_url('adminroles', ['id' => $r['id']])) ?>"><?= h($r['name']) ?></a>
-						<?php if ($mine && $mine['id'] === $r['id']): ?><span class="badge text-bg-secondary ms-1"><?= h(t('adm_yours')) ?></span><?php endif; ?></td>
-					<td class="text-body-secondary"><code><?= h($r['code']) ?></code></td>
-					<td><?= count($r['rights']) ?> / <?= count(NuAdmin::RIGHTS) ?><?= NuAdmin::hasFull($r['rights']) ? $fullBadge : '' ?></td>
-					<td class="text-end"><?= (int)$r['users'] ?></td>
-				</tr>
-			<?php endforeach; ?>
-			<?php if (!$roles): ?><tr><td colspan="4" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
-			</tbody>
-		</table>
-	</div>
-</div>
-	<?php
-	nu_layout_end();
+if ($id === '') {                                          // a system list (0.8.687): search, views, export, filters (core/nulistdefs.php)
+	NuListView::page('adminroles', [
+		'before' => NuListView::crumbs([[t('nav_users'), nu_url('users')], [t('adm_title')]]), 'active' => 'home',
+		'title_extra' => NuListView::infoTip(t('adm_title_tip')),
+		'buttons' => '<a class="btn nuAddBtn" href="' . h(nu_url('adminroles', ['id' => 'new'])) . '" id="admNew"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>',
+	]);
 	return;
 }
 

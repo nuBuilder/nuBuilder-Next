@@ -213,11 +213,30 @@ final class NuFnRef
 			$out = $lang === 'js' && str_contains((string)($it['e'] ?? ''), 'console.log(') ? 'console.log()' : 'Result';
 			$h .= '<div class="nuFnBlock nuFnOut"><div class="nuFnBlockHead"><span>' . h($out) . '</span></div><pre class="nuFnCode"><code>' . h((string)$it['x']) . '</code></pre></div>';
 		}
-		$see = self::related($n, $group);
-		if ($see) {
-			$h .= '<p class="nuFnSee"><span>Also see:</span> ' . implode(', ', array_map(static fn($x) => '<a href="#' . h(self::anchor($lang, $x)) . '">' . h($x) . '</a>', $see)) . '</p>';
+		// "a": functions named by hand come first, "h": a section of the Guide (id of docs/pages) – 0.8.689
+		$names = array_column($group, 'n');
+		$see = array_values(array_unique(array_merge(array_filter((array)($it['a'] ?? []), static fn($x) => in_array($x, $names, true)), self::related($n, $group))));
+		$links = array_map(static fn($x) => '<a href="#' . h(self::anchor($lang, $x)) . '">' . h($x) . '</a>', array_slice($see, 0, 5));
+		if (!empty($it['h'])) $links[] = '<a href="#' . h((string)$it['h']) . '">' . h(self::helpTitle((string)$it['h'])) . '</a>';
+		if ($links) {
+			$h .= '<p class="nuFnSee"><span>Also see:</span> ' . implode(', ', $links) . '</p>';
 		}
 		return $h . '</article>';
+	}
+
+	/** Title of a help section (its h2 / h3 in docs/pages) for an "Also see" link; the id when none is found. */
+	public static function helpTitle(string $id): string
+	{
+		static $titles = null;
+		if ($titles === null) {
+			$titles = [];
+			foreach (glob(NU_ROOT . '/docs/pages/*.htm') ?: [] as $f) {
+				if (preg_match_all('/<h[23] id="([^"]+)"[^>]*>(.*?)<\/h[23]>/s', (string)file_get_contents($f), $m, PREG_SET_ORDER)) {
+					foreach ($m as $x) $titles[$x[1]] = trim(html_entity_decode(strip_tags($x[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+				}
+			}
+		}
+		return $titles[$id] ?? $id;
 	}
 
 	/** Signature with the function name in bold: "nuGetValue(id, method)". */

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.677 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.692 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -48,8 +48,8 @@ nuBuilder Next streamlines everyday database work:
 ### 👥 For Everyone
 
 - ✅ **Responsive** – works on phones, tablets and desktops; menus, lists and toolbars adapt to the screen.
-- ✅ **Fast Lists** – search, sort and page through records; Print, Copy (pastes as a table into Excel or Word) and CSV export.
-- ✅ **Comfortable Editing** – sub-forms, lookups and file uploads; required and unique fields are marked; unsaved changes are shown; Clone in one click.
+- ✅ **Fast Lists** – search, filter, sort and page through records; coloured badges for status values; Print, Copy (pastes as a table into Excel or Word), CSV and Excel export.
+- ✅ **Comfortable Editing** – sub-forms, lookups and file uploads; required and unique fields are marked; unsaved changes are shown; Clone opens an unsaved copy, as in nuBuilder Forte.
 - ✅ **Dashboards on the Start Page** – KPI tiles, charts and tables for your access level.
 - ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
 - ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists them all.
@@ -58,7 +58,7 @@ nuBuilder Next streamlines everyday database work:
 
 ### 🏗️ For Building Business Applications
 
-- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself, code and history in one place, drafts you publish when ready, keyboard shortcuts (rename, copy and paste objects – also between forms –, undo) and a safe mode for broken form code; a New form wizard that picks the table's columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
+- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, drafts you publish when ready, keyboard shortcuts (rename, copy and paste objects – also between forms –, undo) and a safe mode for broken form code; a New form wizard that picks the table's columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
 - ✅ **Page Forms** – your own PHP apps inside nuBuilder Next, with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
 - ✅ **Report Designer & SQL Builder** – design reports visually, build queries without writing SQL and run reports as PDF.
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
@@ -69,12 +69,12 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms written by an AI, checked before they are created.
 - ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
 - ✅ **Compatibility Check** – scans the code of your nuBuilder Forte application and shows which functions are supported.
-- ✅ **Sample Application** – customers, orders, reports and dashboards to learn from.
+- ✅ **Sample Applications** – a sales sample (customers, orders, every object type, reports, dashboards, lists with badges and filters) and a ticket system for a support desk (customers, agents, specialists, team lead; SLA, conversation with internal notes, attachments, e-mail templates, notifications, field access, dashboards per role), both built to learn from.
 
 ### 🛡️ For Administrators
 
 - ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, search with Ctrl+K. Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
-- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; CSV user import with a template; a welcome e-mail with a set-password link; own and shared list views.
+- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; CSV user import with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; the access levels of a form in one dialogue; own and shared list views; filters and links between users, access levels, permission items and the log.
 - ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit and a built-in Security check.
 - ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.

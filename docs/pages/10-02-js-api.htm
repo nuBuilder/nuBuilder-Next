@@ -58,6 +58,22 @@ $.nuInfoBar.modal.warning('Please confirm first');</pre>
 <pre class="doc-code">nuButtonLoading('btn_export', true);
 nuRunPHPHidden('export_orders');   // the procedure ends it: nuAddJavascript("nuButtonLoading('btn_export', false);")</pre>
 </div>
+	<div class="doc-sub" data-doc="admin">
+<h3 id="js-browse-badge">Badges in a browse column (nuBrowseStyleBadge)</h3>
+<p><code>nuBrowseStyleBadge(column)</code> shows the values of a browse column as badges, as in nuBuilder Forte. nuBuilder Next adds an optional second parameter with colours by value (nuBuilder Forte ignores it and draws its plain badge, so the form keeps working there). Put the call in the form's JavaScript (browse). Without code, design mode gives a list column the same badge: <a href="#design-list">Show as badge</a>, with colour rules.</p>
+<ul>
+<li><strong>A map</strong> for exact values: <code>{open: '#cfe2ff', closed: {bg: '#d1e7dd', color: '#0f5132'}}</code>.</li>
+<li><strong>A list of rules</strong>: the first rule that matches wins. Tests: <code>equals</code>, <code>contains</code>, <code>startsWith</code>, <code>endsWith</code> (text), <code>regex</code>, <code>test: (value, row) =&gt; …</code> (<code>row</code> = the texts of the row by column number), <code>default: true</code>. What to set: <code>bg</code>, <code>color</code>, <code>border</code> (any CSS colour, or <code>'$value'</code> = the cell's value as colour), <code>class</code> (e.g. <code>text-bg-danger</code>, follows dark mode), <code>label</code> (other text – the value stays the tooltip), <code>icon</code> (Bootstrap Icons name), <code>title</code>, <code>badge: false</code> (plain text). <code>ignoreCase: true</code> per rule, or as third parameter for all.</li>
+<li>Values no rule matches keep the plain badge. With only <code>bg</code> the text colour is chosen for contrast. An invalid colour is left out; the text is always shown as text.</li>
+</ul>
+<pre class="doc-code">nuBrowseStyleBadge(3, [
+  {equals: 'abc', bg: '#d4edda', color: '#155724'},
+  {contains: 'urgent', bg: '#FAA'},
+  {test: (v) =&gt; Number(v) &gt; 100, bg: '#fff3cd', title: 'over 100'},
+  {equals: '1', label: 'Active', icon: 'check-circle', class: 'text-bg-success'},
+  {default: true, bg: '#eee'}
+], {ignoreCase: true});</pre>
+</div>
 	<p class="doc-see">See also: <a href="#ref">Function reference</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>assets/js/nu/nuruntime.js</code></li><li><code>assets/js/nu/nucompat.js</code></li><li><code>assets/js/nu/nuinfobar.js</code></li><li><code>assets/js/nu/nutooltip.js</code></li></ul></details>
 </section>

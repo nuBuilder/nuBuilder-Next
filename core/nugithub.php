@@ -129,11 +129,14 @@ final class NuGitHub
 	}
 
 	/** Looks again when the automatic check is on and the last look is older than its interval (housekeeping). @return int 1 = looked */
-	public static function autoCheck(): int
+	public static function autoCheck(bool $updatePage = false): int
 	{
 		$s = self::settings();
 		$days = self::EVERY[$s['every']] ?? 1;
-		if (!$days || $s['checked_at'] > time() - $days * 86400) return 0;
+		// the update page (0.8.690): a known release that is not newer than this installation is likely stale (a newer one was published
+		// after the last look) – look again when the last look is more than an hour old, instead of waiting for the next interval
+		$stale = $updatePage && $days && $s['error'] === '' && version_compare((string)($s['latest']['version'] ?? '0'), NU_VERSION, '<=') && $s['checked_at'] < time() - 3600;
+		if (!$days || (!$stale && $s['checked_at'] > time() - $days * 86400)) return 0;
 		self::check();
 		try { NuLibs::ghCheck($s['repo']); } catch (Throwable) { /* shown on the update page */ }    // library packs (0.8.405)
 		return 1;

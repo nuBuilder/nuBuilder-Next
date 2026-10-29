@@ -52,6 +52,7 @@ final class NuBuilderGen
 						$label = mb_substr(trim((string)($p['label'] ?? '')), 0, 100);
 						$f = self::fromColumn($real, $cols[$real], $label !== '' ? $label : self::label($real, $prefix));
 						$f['browse'] = !empty($p['browse']);
+						$f['filter'] = !empty($p['browse']) && !empty($p['filter']);   // column filter of the list (0.8.688)
 						$f['pick'] = true;
 						$fields[] = $f;
 					}
@@ -105,7 +106,8 @@ final class NuBuilderGen
 					$inList = !empty($f['pick']) ? $f['browse'] : ($f['browse'] && $browse < 6 && $f['otype'] !== 'textarea');   // chosen columns: as ticked
 					if ($inList && $type !== 'edit' && $type !== 'subform') {
 						$db->insert('zzzzsys_browse', ['zzzzsys_browse_id' => nu_id(), 'sbr_zzzzsys_form_id' => $formId, 'sbr_title' => $f['label'],
-							'sbr_display' => $f['name'], 'sbr_align' => $f['numeric'] ? 'r' : 'l', 'sbr_format' => $f['fmt'], 'sbr_order' => ($browse + 1) * 10, 'sbr_width' => min(250, max(80, $f['w']))]);
+							'sbr_display' => $f['name'], 'sbr_align' => $f['numeric'] ? 'r' : 'l', 'sbr_format' => $f['fmt'], 'sbr_order' => ($browse + 1) * 10, 'sbr_width' => min(250, max(80, $f['w'])),
+							'sbr_json' => !empty($f['filter']) ? NuFormMeta::mergeNunextJson(null, ['filter' => true]) : null]);
 						$browse++;
 					}
 				}

@@ -1173,6 +1173,8 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuDashErr { color: var(--bs-danger-text-emphasis); text-align: start; overflow-wrap: anywhere; }
 .nuDashWait { font-style: italic; }
 .nuDashTable { max-height: 22rem; overflow: auto; }
+.nuDashRowLink { cursor: pointer; }
+.nuDashRowLink:hover > td, .nuDashRowLink:focus-visible > td { background: var(--bs-tertiary-bg); }
 .nuDashChart { min-height: 120px; }
 .nuDashChart .apexcharts-tooltip { color: #212529; }
 [data-bs-theme="dark"] .nuDashChart .apexcharts-tooltip { color: #f8f9fa; }
@@ -1741,3 +1743,18 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 .nuStickyBar.nuStuck { box-shadow: 0 0 0 .5rem var(--nu-page), 0 1px 0 .5rem var(--bs-border-color); }
 @media print { .nuStickyBar { position: static; box-shadow: none !important; } }
 html { scroll-padding-top: calc(var(--nu-sticky-top, 57px) + var(--nu-sticky-h, 0px) + .5rem); }   /* anchors / scrollIntoView land below the sticky rows */
+
+/* welcome e-mail preview of the user form (0.8.684, assets/js/nuuser.js) – the mail in an iframe of its own, editable */
+.nuWpvFrame { display: block; width: 100%; height: min(60vh, 34rem); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: #f4f6f9; }
+.nuWpvSource { height: min(60vh, 34rem); font-size: .8125rem; }
+
+/* system list filters: per list (class nuLvFlt-<list key> on #nuLvFilters, core/nulistview.php) – permission items: the group filter (0.8.685) */
+.nuLvFlt-permissions #lvf_group, .nuLvFlt-permissions #lvf_group + .ts-wrapper { max-width: 450px; }
+#userPermGroup { max-width: 450px; }   /* user form permission items: group filter (0.8.687) */
+/* [hidden] wins over Bootstrap's display utilities (.d-flex / .d-inline-flex / .d-block are !important too; 0.8.687 – list rows hidden by a filter) */
+.d-flex[hidden], .d-inline-flex[hidden], .d-block[hidden], .d-inline-block[hidden], .d-grid[hidden] { display: none !important; }
+
+/* long list cells fold to three lines (0.8.690, .nuLvClamp – the log's details) */
+.nuLvClamp.nuLvClamped { max-height: 4.6em; overflow: hidden; position: relative; }
+.nuLvClamp.nuLvClamped::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1.4em; background: linear-gradient(to bottom, transparent, var(--bs-body-bg)); pointer-events: none; }
+.nuLvMore { font-size: inherit; text-decoration: none; }

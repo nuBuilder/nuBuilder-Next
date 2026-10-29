@@ -40,34 +40,30 @@ if ($id !== '' && !$isNew) {
 	$item = $db->one("SELECT * FROM $T i WHERE i.zzzzsys_item_id = ?$hideNu", [$id]);
 	if (!$item) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy that is saved only with Save
+$cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
+$src = null;
+if ($cloneId !== '') {
+	NuAcl::require(NuAcl::FORM_ITEM, 'clone');
+	$src = $db->one("SELECT * FROM $T i WHERE i.zzzzsys_item_id = ?$hideNu", [$cloneId]);
+	if (!$src) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+}
 $errors = [];
 
 if (nu_is_post()) {
 	$action = nu_post('action');
 	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_ITEM, $item ? 'save' : 'create');
+		NuAcl::require(NuAcl::FORM_ITEM, $item ? 'save' : ($src ? 'clone' : 'create'));
 		$in = [];
 		foreach (array_keys(NuItem::FIELDS) as $k) $in[$k] = is_string($_POST[$k] ?? null) ? str_replace("\r\n", "\n", (string)$_POST[$k]) : '';
 		$in['itm_active'] = nu_check('itm_active');
 		[$newId, $errors] = NuItem::save($in, $item ? $id : '');
 		if (!$errors) {
 			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_item_id = ?", [$newId]) ?? [];
-			NuLog::write($item ? 'item_changed' : 'item_created', $T, (string)$newId, $item ? ['fields' => NuLog::diff($item, $after)] : ['value' => $in['itm_value']]);
+			NuLog::write($item ? 'item_changed' : 'item_created', $T, (string)$newId, $item ? ['fields' => NuLog::diff($item, $after)] : ['value' => $in['itm_value']] + ($src ? ['clone_of' => $cloneId] : []));
 			nu_flash('success', t('saved'));
 			nu_redirect(nu_url('items', ['id' => $newId, 'tab' => nu_post('tab') ?: null]));
 		}
-	}
-	if ($action === 'clone' && $item) {
-		NuAcl::require(NuAcl::FORM_ITEM, 'clone');
-		$copy = $item;
-		unset($copy['zzzzsys_item_id']);
-		[$newId, $e] = NuItem::save($copy);
-		if ($newId) {
-			NuLog::write('item_created', $T, $newId, ['clone_of' => $id]);
-			nu_flash('success', t('item_cloned'));
-			nu_redirect(nu_url('items', ['id' => $newId]));
-		}
-		$errors = $e;
 	}
 	if ($action === 'delete' && $item) {
 		NuAcl::require(NuAcl::FORM_ITEM, 'delete');
@@ -108,22 +104,22 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 <?php else: ?>
 	<?php
 	// ------------------------------------------------------------------ edit (Main / Additional, like nuBuilder)
-	$v = static fn(string $k) => nu_is_post() && nu_post('action') === 'save' ? (string)($_POST[$k] ?? '') : (string)($item[$k] ?? '');
-	$locked = !($item ? $rights['save'] : $rights['create']);
+	$v = static fn(string $k) => nu_is_post() && nu_post('action') === 'save' ? (string)($_POST[$k] ?? '') : (string)(($item ?? $src)[$k] ?? '');   // a clone shows the values of its source
+	$locked = !($item ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	$tab = (string)($_GET['tab'] ?? (nu_is_post() ? nu_post('tab') : 'main')) === 'additional' ? 'additional' : 'main';
 	$obj = null;
 	$objId = $v('itm_object_id');
 	if ($objId !== '') $obj = $db->one('SELECT o.zzzzsys_object_id, o.sob_all_id, o.sob_all_label, f.sfo_code FROM zzzzsys_object o LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id WHERE o.zzzzsys_object_id = ?', [$objId]);
-	$active = nu_is_post() ? nu_check('itm_active') === '1' : ($item ? (string)$item['itm_active'] !== '0' : true);
+	$active = nu_is_post() ? nu_check('itm_active') === '1' : (($item ?? $src) ? (string)($item ?? $src)['itm_active'] !== '0' : true);
 	$dt = static fn($x) => $x ? date('d.m.Y H:i:s', strtotime((string)$x)) : '';
 	$row = static function (string $k, string $label, string $control, bool $req = false) {
 		return '<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
 			. ($req ? ' <span class="text-danger">*</span>' : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';
 	};
 	?>
-	<form method="post" data-nu-focus-first data-nu-guard id="itemForm" novalidate>
+	<form method="post" data-nu-focus-first data-nu-guard id="itemForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="action" value="save">
 		<input type="hidden" name="tab" id="itemTab" value="<?= h($tab) ?>">
@@ -133,7 +129,7 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 			<a class="btn nuBtnAct" href="<?= h(nu_url('items')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="itemSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($item && $rights['clone']): ?>
-				<button class="btn nuBtnAct" type="submit" name="action" value="clone" formnovalidate><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
+				<a class="btn nuBtnAct" href="<?= h(nu_url('items', ['id' => 'new', 'clone' => $id])) ?>" id="itemClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($item && $rights['delete']): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('item_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>

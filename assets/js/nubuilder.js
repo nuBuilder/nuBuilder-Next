@@ -31,6 +31,7 @@
 				var off = !$('.nbPickOn', x).checked;
 				x.classList.toggle('nbPickOff', off);
 				$('.nbPickList', x).disabled = off; $('.nbPickLabel', x).disabled = off;
+				$('.nbPickFlt', x).disabled = off || !$('.nbPickList', x).checked;   // a filter needs the list column (0.8.688)
 				$('.nbPickUp', x).disabled = i === 0; $('.nbPickDown', x).disabled = i === r.length - 1;
 			});
 		}
@@ -51,11 +52,12 @@
 			var lb = h('input', {'class': 'form-control form-control-sm nbPickLabel', maxlength: 100, placeholder: c.label || c.name, 'aria-label': t('builder_obj_label') + ': ' + c.name});
 			var ls = h('input', {type: 'checkbox', 'class': 'form-check-input nbPickList', 'aria-label': t('builder_pick_list') + ': ' + c.name});
 			ls.checked = list;
+			var fl = h('input', {type: 'checkbox', 'class': 'form-check-input nbPickFlt', 'aria-label': t('builder_col_filter') + ': ' + c.name});
 			var up = h('button', {type: 'button', 'class': 'btn btn-link btn-sm px-1 nbPickUp', title: t('builder_pick_up'), 'aria-label': t('builder_pick_up')}, [h('i', {'class': 'bi bi-arrow-up'})]);
 			var dn = h('button', {type: 'button', 'class': 'btn btn-link btn-sm px-1 nbPickDown', title: t('builder_pick_down'), 'aria-label': t('builder_pick_down')}, [h('i', {'class': 'bi bi-arrow-down'})]);
 			up.addEventListener('click', function () { move(tr, -1, '.nbPickUp'); });
 			dn.addEventListener('click', function () { move(tr, 1, '.nbPickDown'); });
-			[cb, ls].forEach(function (x) { x.addEventListener('change', touch); });
+			[cb, ls, fl].forEach(function (x) { x.addEventListener('change', touch); });
 			lb.addEventListener('input', function () { touched = true; });
 			tr.addEventListener('keydown', function (e) {
 				if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
@@ -75,6 +77,7 @@
 			tr.appendChild(h('td', {}, [h('code', {'class': 'nbPickName', text: c.name}), h('span', {'class': 'small text-body-secondary ms-1', text: c.type || ''})]));
 			tr.appendChild(h('td', {}, [lb]));
 			tr.appendChild(h('td', {'class': 'text-center'}, [ls]));
+			tr.appendChild(h('td', {'class': 'text-center'}, [fl]));
 			tr.appendChild(h('td', {'class': 'text-nowrap text-end'}, [up, dn]));
 			return tr;
 		}
@@ -111,7 +114,8 @@
 			touched: function () { return touched; },
 			value: function () {
 				return rows().filter(function (x) { return $('.nbPickOn', x).checked; }).map(function (x) {
-					return {name: x.getAttribute('data-name'), label: $('.nbPickLabel', x).value.trim(), browse: $('.nbPickList', x).checked};
+					return {name: x.getAttribute('data-name'), label: $('.nbPickLabel', x).value.trim(), browse: $('.nbPickList', x).checked,
+						filter: $('.nbPickList', x).checked && $('.nbPickFlt', x).checked};
 				});
 			}
 		};

@@ -37,4 +37,6 @@ $stFoot = NuFormDraft::canEdit() && !NuImpersonate::readOnly()
 		'1' => t('builder_status_1'), '0' => t('builder_status_0'), '3' => t('builder_status_3'), 'head' => t('forms_status_change'),
 		'done' => t('forms_status_changed'), 'err' => t('forms_status_failed')], JSON_UNESCAPED_UNICODE)) . '"></div><script src="' . h(nu_asset('assets/js/nuformstatus.js')) . '"></script>'
 	: '';
+// "Access levels of this form" from the column Access levels (0.8.688)
+if (NuAcl::can(NuAcl::FORM_ACCESS)) $stFoot .= '<div id="nuFacData" hidden data-csrf="' . h(nu_csrf_token()) . '"></div><script src="' . h(nu_asset('assets/js/nu/nuformaccess.js')) . '"></script>';
 NuListView::page('forms', ['buttons' => $buttons, 'buttons_end' => $toolMenu, 'foot' => $stFoot]);

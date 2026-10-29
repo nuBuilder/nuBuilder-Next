@@ -32,6 +32,17 @@ if ($id !== '' && !$isNew) {
 	$file = $db->one("SELECT * FROM $T WHERE zzzzsys_file_id = ?$hideNu", [$id]);
 	if (!$file) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy (with the stored file) that is saved only with Save
+$cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
+$src = null;
+if ($cloneId !== '') {
+	NuAcl::require(NuAcl::FORM_FILE, 'clone');
+	$src = $db->one("SELECT * FROM $T WHERE zzzzsys_file_id = ?$hideNu", [$cloneId]);
+	if (!$src) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	$code = (string)$src['sfi_code'];
+	for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sfi_code = ?", [mb_substr($code, 0, 290) . '_' . $n]); $n++);
+	$src['sfi_code'] = mb_substr($code, 0, 290) . '_' . $n;
+}
 $sysLocked = $file && $isSystem($file) && !$ga;
 $errors = [];
 
@@ -48,27 +59,15 @@ if (nu_is_post()) {
 	$action = nu_post('action');
 	if ($sysLocked && in_array($action, ['save', 'delete'], true)) NuAcl::require('__globeadmin_only__');
 	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_FILE, $file ? 'save' : 'create');
+		NuAcl::require(NuAcl::FORM_FILE, $file ? 'save' : ($src ? 'clone' : 'create'));
 		$in = ['sfi_code' => nu_post('sfi_code'), 'sfi_description' => nu_post('sfi_description'), 'sfi_group' => nu_post('sfi_group')];
 		$up = $upload($errors);
-		if (!$errors) [$newId, $errors] = NuFile::save($in, $up, $file ? $id : '', $file['sfi_json'] ?? null);
+		if (!$errors) [$newId, $errors] = NuFile::save($in, $up, $file ? $id : '', ($file ?? $src)['sfi_json'] ?? null);   // a clone keeps the file of its source
 		if (!$errors) {
-			NuLog::write($file ? 'file_changed' : 'file_created', $T, (string)$newId, ['code' => $in['sfi_code']] + ($up ? ['name' => NuFile::cleanName($up['name']), 'size' => strlen($up['content'])] : []));
+			NuLog::write($file ? 'file_changed' : 'file_created', $T, (string)$newId, ['code' => $in['sfi_code']] + ($src ? ['clone_of' => $cloneId] : []) + ($up ? ['name' => NuFile::cleanName($up['name']), 'size' => strlen($up['content'])] : []));
 			nu_flash('success', t('saved'));
 			nu_redirect(nu_url('files', ['id' => $newId]));
 		}
-	}
-	if ($action === 'clone' && $file) {
-		NuAcl::require(NuAcl::FORM_FILE, 'clone');
-		$code = (string)$file['sfi_code'];
-		for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sfi_code = ?", [$code . '_' . $n]); $n++);
-		[$newId, $e] = NuFile::save(['sfi_code' => mb_substr($code, 0, 290) . '_' . $n] + $file, null, '', (string)$file['sfi_json']);
-		if ($newId) {
-			NuLog::write('file_created', $T, $newId, ['clone_of' => $id]);
-			nu_flash('success', t('file_cloned'));
-			nu_redirect(nu_url('files', ['id' => $newId]));
-		}
-		$errors = $e;
 	}
 	if ($action === 'delete' && $file) {
 		NuAcl::require(NuAcl::FORM_FILE, 'delete');
@@ -114,18 +113,19 @@ nu_layout_start(t('file_title'), 'forms');
 <?php else: ?>
 	<?php
 	// ------------------------------------------------------------------ edit
-	$v = static fn(string $k) => nu_is_post() && nu_post('action') === 'save' ? (string)($_POST[$k] ?? '') : (string)($file[$k] ?? '');
-	$locked = $sysLocked || !($file ? $rights['save'] : $rights['create']);
+	$v = static fn(string $k) => nu_is_post() && nu_post('action') === 'save' ? (string)($_POST[$k] ?? '') : (string)(($file ?? $src)[$k] ?? '');   // a clone shows the values of its source
+	$locked = $sysLocked || !($file ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
-	$info = $file ? NuFile::info((string)$file['sfi_json']) : [];
+	$info = $file || $src ? NuFile::info((string)($file ?? $src)['sfi_json']) : [];
+	$rawId = $file ? $id : $cloneId;
 	$used = $file ? NuFile::usage($id) : [];
 	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
 		'<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
 		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sfi_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique (0.8.627)
 	$groupList = array_column($db->all("SELECT DISTINCT sfi_group FROM $T WHERE sfi_group IS NOT NULL AND sfi_group <> '' ORDER BY sfi_group"), 'sfi_group');
 	?>
-	<form method="post" data-nu-focus-first data-nu-guard id="fileForm" enctype="multipart/form-data" novalidate data-max="<?= NuFile::maxBytes() ?>" data-too-big="<?= h(t('file_err_size', (int)(NuFile::maxBytes() / 1024))) ?>">
+	<form method="post" data-nu-focus-first data-nu-guard id="fileForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> enctype="multipart/form-data" novalidate data-max="<?= NuFile::maxBytes() ?>" data-too-big="<?= h(t('file_err_size', (int)(NuFile::maxBytes() / 1024))) ?>">
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="MAX_FILE_SIZE" value="<?= NuFile::maxBytes() ?>">
 		<input type="hidden" name="action" value="save">
@@ -136,7 +136,7 @@ nu_layout_start(t('file_title'), 'forms');
 			<a class="btn nuBtnAct" href="<?= h(nu_url('files')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="fileSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($file && $rights['clone']): ?>
-				<button class="btn nuBtnAct" type="submit" name="action" value="clone" formnovalidate><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
+				<a class="btn nuBtnAct" href="<?= h(nu_url('files', ['id' => 'new', 'clone' => $id])) ?>" id="fileClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($file && $rights['delete'] && !$sysLocked): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('file_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
@@ -154,8 +154,8 @@ nu_layout_start(t('file_title'), 'forms');
 					<?= $row('sfi_group', t('file_group'), '<input class="form-control' . $err('sfi_group') . '" id="sfi_group" name="sfi_group" maxlength="300" list="fileGroups" value="' . h($v('sfi_group')) . '">' . $fb('sfi_group')
 						. '<datalist id="fileGroups">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', $groupList)) . '</datalist>') ?>
 					<?= $row('file', t('file_file'), '<div class="nuFileDrop' . $err('file') . '" id="fileDrop" tabindex="0">'
-						. '<input class="form-control' . $err('file') . '" type="file" id="file" name="file"' . ($isNew ? ' required' : '') . '>'
-						. '<div class="small text-body-secondary mt-1">' . h(t('file_drop_hint', (int)(NuFile::maxBytes() / 1024))) . '</div></div>' . $fb('file'), $isNew) ?>
+						. '<input class="form-control' . $err('file') . '" type="file" id="file" name="file"' . ($isNew && !$src ? ' required' : '') . '>'
+						. '<div class="small text-body-secondary mt-1">' . h(t('file_drop_hint', (int)(NuFile::maxBytes() / 1024))) . '</div></div>' . $fb('file'), $isNew && !$src) ?>
 				</fieldset>
 			</div>
 			<div class="col-lg-5">
@@ -163,7 +163,7 @@ nu_layout_start(t('file_title'), 'forms');
 					<div class="card-header small fw-semibold"><?= h(t('file_preview')) ?></div>
 					<div class="card-body">
 						<div class="nuFilePreview mb-2" id="filePreview">
-							<?php if ($info['image'] ?? false): ?><img src="<?= h(nu_url('files', ['raw' => $id])) ?>" alt="<?= h($info['name']) ?>">
+							<?php if ($info['image'] ?? false): ?><img src="<?= h(nu_url('files', ['raw' => $rawId])) ?>" alt="<?= h($info['name']) ?>">
 							<?php elseif ($info): ?><i class="bi bi-file-earmark display-3 text-body-secondary"></i>
 							<?php else: ?><span class="text-body-secondary small"><?= h(t('file_none')) ?></span><?php endif; ?>
 						</div>
@@ -171,13 +171,13 @@ nu_layout_start(t('file_title'), 'forms');
 							<?php if ($info): ?>
 								<div class="fw-semibold text-break"><?= h($info['name']) ?></div>
 								<div class="text-body-secondary"><?= h($info['type']) ?> · <?= h(NuFile::size($info['size'])) ?></div>
-								<a class="btn btn-sm btn-outline-secondary mt-2" href="<?= h(nu_url('files', ['raw' => $id, 'dl' => '1'])) ?>"><i class="bi bi-download me-1"></i><?= h(t('file_download')) ?></a>
+								<a class="btn btn-sm btn-outline-secondary mt-2" href="<?= h(nu_url('files', ['raw' => $rawId, 'dl' => '1'])) ?>"><i class="bi bi-download me-1"></i><?= h(t('file_download')) ?></a>
 							<?php endif; ?>
 						</div>
 					</div>
 				</div>
 				<?php if ($file): ?>
-					<div class="card shadow-sm mt-3">
+					<div class="card shadow-sm mt-3" id="fileUsedBy">
 						<div class="card-header small fw-semibold"><?= h(t('file_used_by')) ?></div>
 						<div class="card-body small">
 							<?php if (!$used): ?><span class="text-body-secondary"><?= h(t('file_unused')) ?></span>

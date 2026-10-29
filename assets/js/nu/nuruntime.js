@@ -1947,7 +1947,7 @@
 
 	function renderFileInfo(field, json) {
 		var box = $(field).find('.nuFileInfo');
-		box.find(':not(.nuFileRemove)').remove();
+		box.children(':not(.nuFileRemove)').remove();   // children only: find() also took the remove button's icon (0.8.682)
 		var d = null;
 		try { d = json ? JSON.parse(json) : null; } catch (e) { d = null; }
 		if (!d || !d.file) { box.addClass('d-none'); return; }
@@ -2866,10 +2866,64 @@
 	});
 
 	// ---- browse
-	api('nuBrowseStyleBadge', function (column) {
-		nuBrowseLoop([column], function (cell) {
+	// nuBrowseStyleBadge(column[, rules[, options]]) – nuBuilder Forte's badge column; rules (0.8.681, nuBuilder Next only – Forte ignores them):
+	//   an object {value: colour | {bg, color, …}} = exact values, or an array of rules (the first that matches wins):
+	//   {equals | contains | startsWith | endsWith: text, regex: /…/, test: fn(value, row), default: true, ignoreCase: true,
+	//    bg, color, border, class, label, icon, title, badge: false}; bg / color / border '$value' = the cell's own value as colour;
+	//   options {ignoreCase}. Only bg → the text colour is chosen for contrast. Text stays text; colours go through element.style.
+	function badgeRuleOk(r, v, row, ic) {
+		var cmp = function (x) { return ic ? String(x).toLowerCase() : String(x); }, val = cmp(v);
+		if (r.default) return true;
+		if (r.equals !== undefined && val !== cmp(r.equals)) return false;
+		if (r.contains !== undefined && val.indexOf(cmp(r.contains)) < 0) return false;
+		if (r.startsWith !== undefined && val.indexOf(cmp(r.startsWith)) !== 0) return false;
+		if (r.endsWith !== undefined && (val.length < cmp(r.endsWith).length || val.slice(-cmp(r.endsWith).length) !== cmp(r.endsWith))) return false;
+		if (r.regex !== undefined && !(r.regex instanceof RegExp ? r.regex : new RegExp(String(r.regex), ic ? 'i' : '')).test(String(v))) return false;
+		if (typeof r.test === 'function' && !r.test(v, row)) return false;
+		return r.equals !== undefined || r.contains !== undefined || r.startsWith !== undefined || r.endsWith !== undefined || r.regex !== undefined || typeof r.test === 'function';
+	}
+	function badgeRules(rules) {
+		if (!rules) return [];
+		if (Array.isArray(rules)) return rules.filter(function (r) {
+			var ok = r && typeof r === 'object';
+			if (!ok && N.dev_mode) console.warn('nuBrowseStyleBadge: rule skipped', r);
+			return ok;
+		});
+		if (typeof rules === 'object') return Object.keys(rules).map(function (k) {
+			var x = rules[k];
+			return $.extend({equals: k}, typeof x === 'string' ? {bg: x} : (x && typeof x === 'object' ? x : {}));
+		});
+		return [];
+	}
+	api('nuBrowseStyleBadge', function (column, rules, options) {
+		var list = badgeRules(rules), icAll = !!(options && options.ignoreCase);
+		nuBrowseLoop(arr(column), function (cell) {
 			var txt = $(cell).text().trim();
-			if (txt) $(cell).html($('<span class="badge rounded-pill nuBrowseBadge"></span>').text(txt));
+			if (!txt) return;
+			var tr = cell.closest('tr'), row = [];
+			if (tr) tr.querySelectorAll('td.nuCell[data-nu-column]').forEach(function (td) { row[+td.getAttribute('data-nu-column')] = td.textContent.trim(); });
+			var hit = null;
+			for (var i = 0; i < list.length && !hit; i++) {
+				try { if (badgeRuleOk(list[i], txt, row, list[i].ignoreCase !== undefined ? !!list[i].ignoreCase : icAll)) hit = list[i]; }
+				catch (e) { if (N.dev_mode) console.warn('nuBrowseStyleBadge: rule failed', list[i], e); }
+			}
+			if (hit && hit.badge === false) return;
+			var span = $('<span class="badge rounded-pill nuBrowseBadge"></span>'), el = span[0];
+			if (hit && hit.icon) span.append($('<i class="me-1" aria-hidden="true"></i>').addClass('bi ' + (/^bi-/.test(hit.icon) ? hit.icon : 'bi-' + hit.icon)));
+			span.append(document.createTextNode(hit && hit.label !== undefined && hit.label !== null ? String(hit.label) : txt));
+			if (hit) {
+				var col = function (c) { c = c === '$value' ? txt : c; return c !== undefined && c !== null && cssRgb(String(c)) ? String(c) : ''; };
+				if (hit.class) { el.classList.remove('nuBrowseBadge'); String(hit.class).split(/\s+/).filter(Boolean).forEach(function (k) { el.classList.add(k); }); }
+				var bg = col(hit.bg), fg = col(hit.color), bd = col(hit.border);
+				if (bg) { el.style.background = bg; el.classList.remove('nuBrowseBadge'); }
+				if (fg) el.style.color = fg;
+				else if (bg) { var L = luminance(cssRgb(bg)); el.style.color = 1.05 / (L + 0.05) >= (L + 0.05) / 0.066 ? '#fff' : '#212529'; }   // the better contrast
+				if (bd) el.style.border = '1px solid ' + bd;
+				if (hit.title) el.title = String(hit.title);
+				else if (hit.label !== undefined && String(hit.label) !== txt) el.title = txt;
+			}
+			if (span.text() !== txt) cell.setAttribute('data-nu-raw', txt);   // the stored value, when a label replaces it (read by dev/tests/compat.js)
+			$(cell).empty().append(span);
 		});
 	});
 
@@ -3253,6 +3307,7 @@
 		return [
 			['a', 'arrange', 'bi-arrows-move', 0, edit && T.design, function () { openTab(builderUrl('arrange')); }],
 			['h', 'add_object', 'bi-plus-lg', 1, edit && T.design, function () { openTab(builderUrl('add')); }],
+			['', 'form_access', 'bi-people', 1, !!T.formaccess && typeof window.nuFormAccessOpen === 'function', function () { window.nuFormAccessOpen(N.form.id); }],   // 0.8.683
 			['f', 'form_properties', 'bi-gear', 0, T.design, function () { openTab(builderUrl('form')); }],
 			['o', 'object_list', 'bi-list-ul', 0, T.design, function () { openTab(builderUrl('objects')); }],
 			['s', 'save', 'bi-floppy', 0, edit && has('nuSaveButton'), function () { if (document.activeElement) $(document.activeElement).trigger('blur'); nuSaveAction(); }],
@@ -3453,6 +3508,11 @@
 		}
 		// nuBuilder: global load hooks (setup header), then the form's nuOnLoad(formId, formCode)
 		callHook(N.mode === 'browse' ? 'nuLoadBrowseGlobal' : 'nuLoadEditGlobal', N.form.id, N.form.code);
+		// list columns shown as badges in design mode (0.8.688) – before nuOnLoad, so the form's own nuBrowseStyleBadge call still wins
+		if (N.browse && N.browse.badges) Object.keys(N.browse.badges).forEach(function (i) {
+			try { window.nuBrowseStyleBadge(+i, N.browse.badges[i] && N.browse.badges[i].length ? N.browse.badges[i] : undefined); }
+			catch (e) { if (N.dev_mode) console.warn('badge', i, e); }
+		});
 		callHook('nuOnLoad', N.form.id, N.form.code);
 		brRestore();                                                       // column widths dragged in this tab (0.8.650)
 		if (typeof window.nuNextPageHook === 'function') window.nuNextPageHook();   // Global JS: nuOnPageLoad / nu:pageload after nuOnLoad (0.8.523)

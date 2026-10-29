@@ -150,6 +150,37 @@ final class NuFormMeta
 		return is_array($d) && isset($d['nunext']) && is_array($d['nunext']) ? $d['nunext'] : [];
 	}
 
+	/**
+	 * Badge of a list column (0.8.688, sbr_json nunext.badge – set in design mode): true = nuBrowseStyleBadge's look, or a list of rules
+	 * of nuBrowseStyleBadge(column, rules) in their JSON form. clean() keeps the keys the runtime knows and drops the rest; null = no badge.
+	 */
+	public const BADGE_KEYS = ['equals', 'contains', 'startsWith', 'endsWith', 'regex', 'default', 'ignoreCase', 'bg', 'color', 'border', 'label', 'icon', 'title', 'badge'];
+	public static function cleanBadge(mixed $v): bool|array|null
+	{
+		if ($v === null || $v === false || $v === '' || $v === '0' || $v === 0) return null;
+		if (!is_array($v)) return true;
+		$out = [];
+		foreach (array_slice(array_values($v), 0, 30) as $r) {
+			if (!is_array($r)) continue;
+			$x = [];
+			foreach (self::BADGE_KEYS as $k) {
+				if (!array_key_exists($k, $r)) continue;
+				$val = $r[$k];
+				if (in_array($k, ['default', 'ignoreCase', 'badge'], true)) $x[$k] = (bool)$val;
+				elseif (is_scalar($val) && (string)$val !== '') $x[$k] = mb_substr((string)$val, 0, 200);
+			}
+			if (isset($x['icon']) && !preg_match('/^(bi-)?[a-z0-9-]+$/', $x['icon'])) unset($x['icon']);
+			if ($x) $out[] = $x;
+		}
+		return $out ?: true;
+	}
+	/** The badge of a browse row's sbr_json: null, [] (default look) or the rules. */
+	public static function badgeOf(?string $json): ?array
+	{
+		$b = self::cleanBadge(self::nunextJson($json)['badge'] ?? null);
+		return $b === null ? null : ($b === true ? [] : $b);
+	}
+
 	/** Merges $nunext into the existing JSON value without touching other keys. */
 	public static function mergeNunextJson(?string $json, array $nunext): ?string
 	{

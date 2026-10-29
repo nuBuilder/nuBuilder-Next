@@ -109,6 +109,7 @@ final class NuDesign
 			'formats_all' => NuFormat::choices(), 'format_designer' => nu_format_designer_data(),
 			'ai' => $meta->isSystem() ? '' : nu_url('formai', ['f' => $meta->id]),
 			'dataaccess' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
+			'formaccess' => NuAcl::can(NuAcl::FORM_ACCESS),            // Tools → Access levels (0.8.683, the dialog of the ⋮ menu)
 			'can_delete_form' => !empty(NuAuth::user()['globeadmin']) && !$meta->isSystem(),
 			'live_url' => nu_url('form', ['f' => $meta->id, 'r' => $record]),
 			'list_url' => $meta->hasBrowse() ? nu_url('form', ['f' => $meta->id, 'design' => '1']) : '',          // the list's columns (0.8.669)

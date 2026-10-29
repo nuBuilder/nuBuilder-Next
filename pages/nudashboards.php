@@ -66,41 +66,9 @@ foreach ($accessLevels as $a) $accName[(string)$a['zzzzsys_access_id']] = (strin
 $foot = '';
 
 // ====================================================================== list
-if ($id === '') {
-	$rows = NuDashboard::all();
-	nu_layout_start(t('dash_title'), 'home');
-	?>
-	<div class="nuTitleBar mb-3">
-		<h1 class="h4 mb-0"><i class="bi bi-speedometer2 me-2"></i><?= h(t('dash_title')) ?><?= $tip(t('dash_info')) ?></h1>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
-	</div>
-	<div class="card shadow-sm">
-		<div class="card-header nuTitleBar">
-			<span class="small text-body-secondary"><?= h(t('n_records', count($rows))) ?></span>
-			<div class="d-flex flex-wrap gap-2"><a class="btn nuAddBtn" id="dashAdd" href="<?= h(nu_url('dashboards', ['id' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a></div>
-		</div>
-		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 nu-table">
-				<thead><tr><th><?= h(t('dash_code')) ?></th><th><?= h(t('dash_title_col')) ?></th><th><?= h(t('dash_where')) ?></th><th class="text-end"><?= h(t('dash_widgets')) ?></th></tr></thead>
-				<tbody>
-				<?php if (!$rows): ?><tr><td colspan="4" class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
-				<?php foreach ($rows as $r): $edit = nu_url('dashboards', ['id' => (string)$r['zzzzsys_nunext_dashboard_id']]); $acc = NuDashboard::access($r); ?>
-					<tr data-href="<?= h($edit) ?>" tabindex="0">
-						<td class="fw-semibold nuMainCol font-monospace"><a class="text-decoration-none" href="<?= h($edit) ?>"><?= h($r['code']) ?></a></td>
-						<td><?= h($r['title']) ?></td>
-						<td class="small">
-							<?php if ((string)$r['on_home'] === '1'): ?><span class="badge text-bg-primary me-1"><i class="bi bi-house me-1"></i><?= h(t('dash_home_badge')) ?></span><?php endif; ?>
-							<span class="text-body-secondary"><?= h($acc ? implode(', ', array_map(static fn($a) => $accName[$a] ?? $a, $acc)) : t('dash_access_all')) ?></span>
-						</td>
-						<td class="text-end"><?= (int)$r['widgets'] ?></td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
-	</div>
-	<?php
-	nu_layout_end();
+if ($id === '') {                                          // a system list (0.8.690, core/nulistdefs.php 'dashboards'): search, views, export, filters
+	NuListView::page('dashboards', ['active' => 'home', 'title_extra' => $tip(t('dash_info')),
+		'buttons' => '<a class="btn nuAddBtn" id="dashAdd" href="' . h(nu_url('dashboards', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>']);
 	return;
 }
 
@@ -240,7 +208,10 @@ if ($d && $wid !== '') {
 							data-reports="<?= h(json_encode(array_map(static fn($r) => [$r['sre_code'], $r['sre_description']], $reports), JSON_UNESCAPED_UNICODE)) ?>"></datalist>
 						<?= $fb('link') ?>
 					</div>
-					<div class="col-md-3"></div>
+					<div class="col-md-3">
+						<div class="form-check form-switch mt-md-4 pt-md-2"><input type="hidden" name="opt[new_tab]" value="0"><input class="form-check-input" type="checkbox" role="switch" id="dNewTab" name="opt[new_tab]" value="1"<?= $opt['new_tab'] ? ' checked' : '' ?>>
+							<label class="form-check-label" for="dNewTab"><?= h(t('dash_new_tab')) ?></label><?= $tip(t('dash_new_tab_tip')) ?></div>
+					</div>
 					<div class="col-md-3">
 						<label class="form-label" for="dCache"><?= h(t('dash_cache')) ?></label><?= $tip(t('dash_cache_tip')) ?>
 						<input class="form-control" type="number" min="0" max="86400" id="dCache" name="opt[cache]" value="<?= (int)$opt['cache'] ?>">

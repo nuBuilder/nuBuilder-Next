@@ -72,7 +72,7 @@
 	// ------------------------------------------------------------------ remember the tab
 	var TAB_KEY = 'nunext-proc-tab';
 	try {
-		var last = localStorage.getItem(TAB_KEY);
+		var last = /^#(php|js|access|usage|history)$/.test(location.hash) ? location.hash.slice(1) : localStorage.getItem(TAB_KEY);   // #access: link of the procedures list (0.8.688)
 		var tb = last && $('#procTabs [data-tab="' + last + '"]');
 		if (tb && nuBs.ready() && !form.querySelector('.is-invalid')) nuBs.tab(tb).show();
 	} catch (e) { /* ignore */ }

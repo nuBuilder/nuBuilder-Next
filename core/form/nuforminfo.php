@@ -98,7 +98,8 @@ final class NuFormInfo
 	 * from the audit trail, plus $extra rows ['key' => value] (labels fi_<key>). The same (i) panel as the form info.
 	 */
 	/** $after: more rows [key => value] after created / changed (plain text, label t('fi_<key>'), 0.8.587) */
-	public static function record(string $table, string $id, array $extra = [], string $idBase = 'nuRecInfo', array $after = []): string
+	/** @param list<array{0: string, 1: string, 2: string}> $links [icon, label, href] shown below the rows (0.8.687: user form – log, sessions) */
+	public static function record(string $table, string $id, array $extra = [], string $idBase = 'nuRecInfo', array $after = [], array $links = []): string
 	{
 		$rows = [];
 		$add = static function (string $key, string $value, bool $code = true) use (&$rows): void {
@@ -116,11 +117,11 @@ final class NuFormInfo
 		if ($created !== '') $add('created', $created, false);
 		if ($changed !== '') $add('changed', $changed, false);
 		foreach ($after as $k => $v) $add((string)$k, (string)$v, false);
-		return self::panel($rows, t('fi_record_title'), $idBase);
+		return self::panel($rows, t('fi_record_title'), $idBase, $links);
 	}
 
 	/** @param list<array{key: string, label: string, value: string, code: bool, long?: bool, edit?: string}> $rows */
-	public static function panel(array $rows, string $title, string $idBase): string
+	public static function panel(array $rows, string $title, string $idBase, array $links = []): string
 	{
 		$all = [];
 		$items = '';
@@ -157,6 +158,7 @@ final class NuFormInfo
 			. '<div class="dropdown-menu dropdown-menu-end p-0 nuFormInfo" id="' . h($idBase) . '">'
 			. '<div class="px-3 py-2 border-bottom fw-semibold small">' . h($title) . '</div>'
 			. '<dl class="nuFormInfoList small mb-0">' . $items . '</dl>'
+			. ($links ? '<div class="border-top py-1 nuFormInfoLinks">' . implode('', array_map(static fn($l) => '<a class="dropdown-item small" href="' . h((string)$l[2]) . '"><i class="bi ' . h((string)$l[0]) . ' me-2" aria-hidden="true"></i>' . h((string)$l[1]) . '</a>', $links)) . '</div>' : '')
 			. '<div class="border-top px-3 py-2 text-end"><button type="button" class="btn btn-sm btn-outline-secondary" id="' . h($idBase) . 'CopyAll" data-nu-copy-text="' . h(implode("\n", $all)) . '"><i class="bi bi-clipboard me-1"></i>' . h(t('fi_copy_all')) . '</button></div>'
 			. '</div></div>' . $dialogs;
 	}

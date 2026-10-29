@@ -7,6 +7,7 @@
   {"kind": "value", "form": "*", "field": ".*", "nub": "^-?[\\d.,]+$", "next": "^-?[\\d.,]+ ?%$", "reason": "nuBuilder Next shows the suffix of a number format (1000.0 %) – nuBuilder drops it"},
   {"kind": "cell",  "form": "*", "field": ".*", "nub": "^-?[\\d.,]+$", "next": "^-?[\\d.,]+ ?%$", "reason": "as above, in browse lists"},
   {"kind": "value", "form": "samplecustomer", "field": "cus_phone", "reason": "input mask of the field: nuBuilder Forte shows the stored value when the record opens, nuBuilder Next the masked one (the saved value is the same) – open point in TODO.md, to be decided"},
+  {"kind": "records", "form": "tktticket", "field": "rows", "nub": "^tkt_tic_", "next": "^tkt_tic_", "reason": "ticket sample: the browse SQL has joins and OR conditions, so nuBuilder Forte's git HEAD wraps it as complex SQL and ignores its ORDER BY t.created_at DESC (other order of the same tickets); nuBuilder Next keeps the order – open point in TODO.md"},
   {"kind": "records", "form": "ttcus", "field": "rows", "nub": "^$", "reason": "test kit form with complex browse SQL: nuBuilder Forte's git HEAD (23559e7, \"complex SQL in Browse Forms\") shows no rows – a nuBuilder Forte problem, nuBuilder Next shows the records; open point in TODO.md"}
  ]
 }

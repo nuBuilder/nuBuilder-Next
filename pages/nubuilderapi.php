@@ -714,6 +714,7 @@ try {
 					// filter off is stored as false where nuBuilder Next has a default filter (NuFormMeta::DEFAULT_FILTERS), otherwise left out
 					$defFilter = in_array(strtolower(trim((string)($c['display'] ?? ''))), NuFormMeta::DEFAULT_FILTERS[$formId] ?? [], true);
 					$data['sbr_json'] = NuFormMeta::mergeNunextJson($existingJson, ['filter' => !empty($c['filter']) ? true : ($defFilter ? false : null)]);
+					if (array_key_exists('badge', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['badge' => NuFormMeta::cleanBadge($c['badge'])]);
 					if (trim($data['sbr_display']) === '') continue;
 					$id = (string)($c['id'] ?? '');
 					if ($id !== '' && (int)$db->value('SELECT COUNT(*) FROM zzzzsys_browse WHERE zzzzsys_browse_id = ? AND sbr_zzzzsys_form_id = ?', [$id, $formId])) {

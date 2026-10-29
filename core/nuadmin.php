@@ -40,19 +40,19 @@ final class NuAdmin
 		'formpublish'   => ['dev', 'adm_r_formpublish', true, 'c', []],   // form drafts (0.8.386): publishing puts PHP / JavaScript live – full access
 		'procedures'    => ['dev', 'proc_title', true, 'vc', [NuAcl::FORM_PROCEDURE]],
 		'reports'       => ['dev', 'adm_r_reports', false, 'vc', [NuAcl::FORM_REPORT, NuAcl::FORM_SELECT]],
-		'dashboards'    => ['dev', 'dash_title', false, 'vc', []],
+		'dashboards'    => ['dev', 'dash_title', false, 'vc', [NuAcl::FORM_DASHBOARD]],   // list: system list (0.8.690)
 		'prompts'       => ['dev', 'pg_title', false, 'vc', [NuAcl::FORM_PROMPT]],
 		'users'         => ['users', 'adm_r_users', false, 'vc', [NuAcl::FORM_USER, NuAcl::FORM_PERMISSION]],
 		'access'        => ['users', 'nav_access', false, 'vc', [NuAcl::FORM_ACCESS]],
 		'userfields'    => ['users', 'uf_title', false, 'vc', [NuAcl::FORM_USERFIELD]],   // custom user fields (0.8.454): change = add / change / delete fields
 		'sessions'      => ['users', 'sess_title', false, 'vc', []],
 		'impersonate'   => ['users', 'adm_r_impersonate', true, 'c', []],
-		'adminroles'    => ['users', 'adm_title', true, 'c', []],
+		'adminroles'    => ['users', 'adm_title', true, 'c', [NuAcl::FORM_ADMINROLE]],   // list: system list (0.8.687)
 		'branding'      => ['look', 'brand_title', false, 'vc', []],
 		'homelayout'    => ['look', 'adm_r_homelayout', false, 'c', []],
 		'listviews'     => ['look', 'adm_r_listviews', false, 'c', []],   // shared list views, default view of a list (0.8.329)
 		'email'         => ['comm', 'nav_email', false, 'vc', [NuAcl::FORM_SETUP, NuAcl::FORM_EMAILLOG, NuAcl::FORM_EMAILTEMPLATE]],
-		'notifications' => ['comm', 'ntf_title', false, 'vc', []],   // notification centre (0.8.357): view = all + read receipts, change = send
+		'notifications' => ['comm', 'ntf_title', false, 'vc', [NuAcl::FORM_NOTIFY]],   // notification centre (0.8.357): view = all + read receipts, change = send
 		'apiclients'    => ['integration', 'api_title', true, 'vc', [NuAcl::FORM_APICLIENT]],
 		'log'           => ['logs', 'adm_r_log', false, 'vc', [NuAcl::FORM_LOG]],
 		'audit'         => ['logs', 'aud_title', true, 'vc', [NuAcl::FORM_AUDIT]],   // audit trail (0.8.350): change = its settings

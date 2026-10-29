@@ -98,10 +98,11 @@ final class NuAppClonerConfig
 	}
 
 	/**
-	 * Saves the page's input; $id '' = new row. @return array{0: ?string, 1: array<string, string>} [id, errors]
+	 * Saves the page's input; $id '' = new row – with $from (a clone, 0.8.680) its other columns (nuBuilder's password, log file …)
+	 * come from that row. @return array{0: ?string, 1: array<string, string>} [id, errors]
 	 * @param array<string, mixed> $in
 	 */
-	public static function save(array $in, string $id = ''): array
+	public static function save(array $in, string $id = '', ?array $from = null): array
 	{
 		$db = nu_db();
 		$row = [
@@ -127,7 +128,9 @@ final class NuAppClonerConfig
 			$db->update(self::TABLE, $row, 'zzzzsys_app_cloner_id', $id);              // nuBuilder's own columns (password, log file …) stay
 		} else {
 			$id = nu_id();
-			$db->insert(self::TABLE, ['zzzzsys_app_cloner_id' => $id, 'cla_excluded_files' => '', 'cla_dry_run' => '0', 'cla_show_progress' => '1', 'cla_transaction_mode' => '0'] + $row);
+			$rest = $from ? array_diff_key($from, ['zzzzsys_app_cloner_id' => 1])
+				: ['cla_excluded_files' => '', 'cla_dry_run' => '0', 'cla_show_progress' => '1', 'cla_transaction_mode' => '0'];
+			$db->insert(self::TABLE, ['zzzzsys_app_cloner_id' => $id] + $row + $rest);
 		}
 		return [$id, []];
 	}

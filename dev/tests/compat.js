@@ -105,16 +105,17 @@ function grabFields(ids) {
 }
 /** Browse page 1: record ids in order and the text of every cell. */
 function grabBrowse() {
-	const rows = [], cells = {};
+	const rows = [], cells = {}, byPk = {};
 	document.querySelectorAll('[id^="nucell_"]').forEach(c => {
 		const m = c.id.match(/^nucell_(\d+)_(\d+)$/);
 		if (!m) return;
 		const pk = c.getAttribute('data-nu-primary-key') || '';
 		if (!pk) return;
 		if (m[2] === '0') rows[Number(m[1])] = pk;
-		cells[c.id] = c.textContent;
+		cells[c.id] = c.hasAttribute('data-nu-raw') ? c.getAttribute('data-nu-raw') : c.textContent;   // a badge label (nuBuilder Next) stands for the stored value
+		byPk[pk + '|' + m[2]] = cells[c.id];
 	});
-	return { rows: rows.filter(x => x !== undefined), cells };
+	return { rows: rows.filter(x => x !== undefined), cells, byPk };
 }
 
 // ------------------------------------------------------------------ database helpers
@@ -184,9 +185,12 @@ for (const form of formsToTest()) {
 	if (info.type !== 'edit') T.push(['browse:' + form, async (s) => {
 		await nubOpen(form, ''); const a = await nub.evaluate(grabBrowse);
 		await nxOpen(form, ''); const b = await nx.evaluate(grabBrowse);
-		expect(a.rows.join(',') === b.rows.join(',') || known('records', form, 'rows', a.rows.join(','), b.rows.join(',')), 'records differ – nuBuilder: ' + a.rows.slice(0, 5).join(',') + ' · nuBuilder Next: ' + b.rows.slice(0, 5).join(','));
-		const d = Object.keys(a.cells).filter(k => norm(a.cells[k]) !== norm(b.cells[k]) && !known('cell', form, k, norm(a.cells[k]), norm(b.cells[k])));
-		expect(!d.length, d.slice(0, 4).map(k => k + ' ' + JSON.stringify(norm(a.cells[k])) + ' / ' + JSON.stringify(norm(b.cells[k]))).join(' · '));
+		const same = a.rows.join(',') === b.rows.join(',');
+		expect(same || known('records', form, 'rows', a.rows.join(','), b.rows.join(',')), 'records differ – nuBuilder: ' + a.rows.slice(0, 5).join(',') + ' · nuBuilder Next: ' + b.rows.slice(0, 5).join(','));
+		// another order accepted (compat-known.json): the cells are compared per record (records on both first pages), not per position
+		const A = same ? a.cells : a.byPk, B = same ? b.cells : b.byPk;
+		const d = Object.keys(A).filter(k => (same || k in B) && norm(A[k]) !== norm(B[k]) && !known('cell', form, k, norm(A[k]), norm(B[k])));
+		expect(!d.length, d.slice(0, 4).map(k => k + ' ' + JSON.stringify(norm(A[k])) + ' / ' + JSON.stringify(norm(B[k]))).join(' · '));
 		s.rows[form] = a.rows;
 	}]);
 	T.push(['edit:' + form, async (s) => {

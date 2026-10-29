@@ -308,7 +308,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 	<div class="alert alert-info d-flex gap-2"><i class="bi bi-eye mt-1"></i><div><?= h(t('read_only')) ?></div></div>
 <?php endif; ?>
 
-<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" action="<?= h(nu_url('accesslevel', $isNew ? ($cloneId !== '' ? ['clone' => $cloneId] : []) : ['id' => $id])) ?>" novalidate>
+<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" action="<?= h(nu_url('accesslevel', $isNew ? ($cloneId !== '' ? ['clone' => $cloneId] : []) : ['id' => $id])) ?>"<?= $isNew && $cloneId !== '' ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 	<fieldset<?= $ro ?>>
 	<?php
@@ -406,11 +406,14 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 						<li class="list-group-item text-body-secondary accUserNone"<?= count($users) - $usArchived > 0 ? ' hidden' : '' ?>><?= h(t('no_records')) ?></li>
 						<?php if ($userCount > count($users)): ?><li class="list-group-item text-body-secondary">+ <?= $userCount - count($users) ?></li><?php endif; ?>
 					</ul>
+					<?php if (NuAcl::can(NuAcl::FORM_USER)): // the users list filtered by this level – main and additional (0.8.687) ?>
+					<div class="card-footer small py-2"><a class="text-decoration-none" id="accUsersList" href="<?= h(nu_url('users', ['anyacc' => $id, 'state' => 'all'])) ?>"><i class="bi bi-list-ul me-1"></i><?= h(t('access_users_in_list')) ?></a></div>
+					<?php endif; ?>
 				<?php endif; ?>
 			</div>
 			<?php endif; ?>
 
-			<div class="small text-body-secondary px-1">
+			<div class="small text-body-secondary px-1" id="accProcRights">
 				<i class="bi bi-filetype-php me-1"></i><?= h(t('access_php_info', $phpCount)) ?>
 				<?php if (NuReport::available()): ?><br><i class="bi bi-file-earmark-richtext me-1"></i><?php if (NuAcl::can(NuAcl::FORM_REPORT)): ?><a href="<?= h(nu_url('reports')) ?>"><?= h(t('access_rpt_info', $rptCount)) ?></a><?php else: ?><?= h(t('access_rpt_info', $rptCount)) ?><?php endif; ?><?php endif; ?>
 			</div>

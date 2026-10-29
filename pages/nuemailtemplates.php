@@ -34,6 +34,22 @@ if ($id !== '' && !$isNew) {
 	$tpl = $db->one("SELECT * FROM $T WHERE zzzzsys_email_template_id = ?", [$id]);
 	if (!$tpl) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy with a free code that is saved only with Save
+$cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
+$src = null;
+if ($cloneId !== '') {
+	NuAcl::require(NuAcl::FORM_EMAILTEMPLATE, 'clone');
+	$src = $db->one("SELECT * FROM $T WHERE zzzzsys_email_template_id = ?", [$cloneId]);
+	if (!$src) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	$src['emt_template'] = '0';
+	$code = (string)$src['emt_code'];
+	if (str_ends_with($code, '_template')) $code = substr($code, 0, -9);          // nuBuilder templates end with "_template"
+	$n = 0;
+	do { $try = $code . ($n ? '_' . $n : ''); $n++; }
+	while ((int)$db->value("SELECT COUNT(*) FROM $T WHERE COALESCE(emt_code,'') = ? AND COALESCE(emt_group,'') = ? AND COALESCE(emt_language,'') = ?",
+		[$try, (string)$src['emt_group'], (string)$src['emt_language']]) && $n < 50);
+	$src['emt_code'] = $try;
+}
 $errors = [];
 
 // ------------------------------------------------------------------ POST
@@ -67,39 +83,19 @@ if (nu_is_post()) {
 	}
 
 	if ($action === 'save') {
-		if (!NuAcl::can(NuAcl::FORM_EMAILTEMPLATE, $tpl ? 'save' : 'create')) NuAcl::require(NuAcl::FORM_EMAILTEMPLATE, $tpl ? 'save' : 'create');
+		$need = $tpl ? 'save' : ($src ? 'clone' : 'create');
+		if (!NuAcl::can(NuAcl::FORM_EMAILTEMPLATE, $need)) NuAcl::require(NuAcl::FORM_EMAILTEMPLATE, $need);
 		if ($tpl && (string)$tpl['emt_template'] === '1') {                // nuBuilder's templates are read-only – clone them
 			$errors['_'] = t('emt_err_template');
 		} else {
 			[$newId, $errors] = NuEmailTemplate::save($in, $tpl ? $id : '');
 			if (!$errors) {
 				NuLog::write($tpl ? 'email_template_changed' : 'email_template_created', $T, (string)$newId,
-					$tpl ? ['fields' => NuLog::diff($tpl, $db->one("SELECT * FROM $T WHERE zzzzsys_email_template_id = ?", [$newId]) ?? [])] : ['code' => $in['emt_code']]);
+					$tpl ? ['fields' => NuLog::diff($tpl, $db->one("SELECT * FROM $T WHERE zzzzsys_email_template_id = ?", [$newId]) ?? [])] : ['code' => $in['emt_code']] + ($src ? ['clone_of' => $cloneId] : []));
 				nu_flash('success', t('saved'));
 				nu_redirect(nu_url('emailtemplates', ['id' => $newId]));
 			}
 		}
-	}
-
-	if ($action === 'clone' && $tpl) {
-		NuAcl::require(NuAcl::FORM_EMAILTEMPLATE, 'clone');
-		$copy = $tpl;
-		$copy['emt_template'] = '0';
-		$code = (string)$tpl['emt_code'];
-		if (str_ends_with($code, '_template')) $code = substr($code, 0, -9);          // nuBuilder templates end with "_template"
-		$n = 0;
-		do { $try = $code . ($n ? '_' . $n : ''); $n++; }
-		while ((int)$db->value("SELECT COUNT(*) FROM $T WHERE COALESCE(emt_code,'') = ? AND COALESCE(emt_group,'') = ? AND COALESCE(emt_language,'') = ?",
-			[$try, (string)$tpl['emt_group'], (string)$tpl['emt_language']]) && $n < 50);
-		$copy['emt_code'] = $try;
-		[$newId, $e] = NuEmailTemplate::save($copy);
-		if ($newId) {
-			NuLog::write('email_template_created', $T, $newId, ['code' => $try, 'clone_of' => $id]);
-			nu_flash('success', t('emt_cloned'));
-			nu_redirect(nu_url('emailtemplates', ['id' => $newId]));
-		}
-		nu_flash('danger', implode(' ', array_unique(array_values($e))));
-		nu_redirect(nu_url('emailtemplates', ['id' => $id]));
 	}
 
 	if ($action === 'delete' && $tpl) {
@@ -116,31 +112,11 @@ $forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsy
 
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '') {
-	$q = trim((string)($_GET['q'] ?? ''));
-	$group = (string)($_GET['group'] ?? '');
-	$cat = (string)($_GET['category'] ?? '');
-	$where = []; $params = [];
-	if ($group !== '') { $where[] = "COALESCE(emt_group,'') = ?"; $params[] = $group; }
-	if ($cat !== '') { $where[] = "COALESCE(emt_category,'') = ?"; $params[] = $cat; }
-	if ($q !== '') { $where[] = "(emt_code LIKE ? ESCAPE '!' OR emt_description LIKE ? ESCAPE '!' OR emt_subject LIKE ? ESCAPE '!' OR emt_to LIKE ? ESCAPE '!')"; array_push($params, ...array_fill(0, 4, NuDB::like($q))); }
-	$rows = $db->all("SELECT t.*, f.sfo_code FROM $T t LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = t.emt_form_id" . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
-		. " ORDER BY emt_group, emt_category, emt_code, emt_language", $params);
-	$groups = array_column($db->all("SELECT DISTINCT emt_group FROM $T WHERE emt_group IS NOT NULL AND emt_group <> '' ORDER BY emt_group"), 'emt_group');
-	$cats = array_column($db->all("SELECT DISTINCT emt_category FROM $T WHERE emt_category IS NOT NULL AND emt_category <> '' ORDER BY emt_category"), 'emt_category');
-	$keep = ['q' => $q, 'group' => $group, 'category' => $cat];
-	NuListExport::handle(NuAcl::FORM_EMAILTEMPLATE, t('emt_title'), [
-		t('emt_code')     => static fn($r) => $r['emt_code'],
-		t('emt_description') => static fn($r) => $r['emt_description'],
-		t('emt_group')    => static fn($r) => $r['emt_group'],
-		t('emt_category') => static fn($r) => $r['emt_category'],
-		t('emt_language') => static fn($r) => $r['emt_language'],
-		t('emt_form')     => static fn($r) => $r['sfo_code'],
-		t('mail_subject') => static fn($r) => $r['emt_subject'],
-		t('mail_to')      => static fn($r) => $r['emt_to'],
-	], static fn(int $limit) => array_slice($rows, 0, $limit), NuListExport::filterText([t('search') => $q, t('emt_group') => $group, t('emt_category') => $cat]));
+	// a system list (0.8.688, core/nulistdefs.php → emailtemplates): search, list views, filters, Print / CSV / Excel end here
+	$lvState = NuListView::prepare('emailtemplates');
 }
 
-nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : '']);
+nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : NuListView::head()]);
 ?>
 <div class="nuTitleBar mb-3">
 	<h1 class="h3 mb-0"><?= h(t('nav_email')) ?></h1>
@@ -159,54 +135,15 @@ nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : 
 <?php if (isset($errors['_'])): ?><div class="alert alert-danger"><?= h($errors['_']) ?></div><?php endif; ?>
 
 <?php if ($id === ''): ?>
-	<form class="card card-body shadow-sm mb-3 py-3" method="get" action="index.php" role="search">
-		<input type="hidden" name="p" value="emailtemplates">
-		<div class="row g-2 align-items-end">
-			<?php $filtered = $group !== '' || $cat !== ''; ?>
-			<div class="col-md-6"><?= nu_list_search($q, '', 'nuEmtFilters', $filtered, $q !== '' || $filtered ? nu_url('emailtemplates') : null) ?></div>
-			<div class="col-md-5 collapse<?= $filtered ? ' show' : '' ?>" id="nuEmtFilters"><div class="row g-2">
-				<div class="col-sm-6"><label class="form-label small mb-1" for="f_g"><?= h(t('emt_group')) ?></label>
-					<select class="form-select js-autosubmit" id="f_g" name="group"><option value=""><?= h(t('all')) ?></option><?php foreach ($groups as $g): ?><option<?= $g === $group ? ' selected' : '' ?>><?= h($g) ?></option><?php endforeach; ?></select></div>
-				<div class="col-sm-6"><label class="form-label small mb-1" for="f_c"><?= h(t('emt_category')) ?></label>
-					<select class="form-select js-autosubmit" id="f_c" name="category"><option value=""><?= h(t('all')) ?></option><?php foreach ($cats as $c): ?><option<?= $c === $cat ? ' selected' : '' ?>><?= h($c) ?></option><?php endforeach; ?></select></div>
-			</div></div>
-		</div>
-	</form>
-	<div class="card shadow-sm">
-		<div class="card-header nuTitleBar">
-			<span class="small text-body-secondary"><?= h(t('n_records', count($rows))) ?></span>
-			<div class="d-flex flex-wrap gap-2"><?php if ($rights['add']): ?><a class="btn btn-sm nuAddBtn" title="<?= h(t('emt_new')) ?>" aria-label="<?= h(t('emt_new')) ?>" href="<?= h(nu_url('emailtemplates', ['id' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a><?php endif; ?>
-						<?= NuListExport::buttons(NuAcl::FORM_EMAILTEMPLATE, 'emailtemplates', $keep, true) ?></div>
-		</div>
-		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 nu-table">
-				<thead><tr><th><?= h(t('emt_code')) ?></th><th><?= h(t('emt_group')) ?></th><th><?= h(t('emt_category')) ?></th><th><?= h(t('emt_language')) ?></th>
-					<th><?= h(t('emt_form')) ?></th><th><?= h(t('mail_subject')) ?></th><th><?= h(t('mail_to')) ?></th></tr></thead>
-				<tbody>
-				<?php if (!$rows): ?><tr><td colspan="7" class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
-				<?php foreach ($rows as $r): ?>
-					<tr data-href="<?= h(nu_url('emailtemplates', ['id' => (string)$r['zzzzsys_email_template_id']])) ?>" tabindex="0">
-						<td class="fw-semibold"><?= h($r['emt_code']) ?><?php if ((string)$r['emt_template'] === '1'): ?> <span class="badge text-bg-light border"><?= h(t('emt_template_badge')) ?></span><?php endif; ?>
-							<?php if ((string)$r['emt_description'] !== ''): ?><div class="small text-body-secondary fw-normal"><?= h($r['emt_description']) ?></div><?php endif; ?></td>
-						<td><?php if ((string)$r['emt_group'] !== ''): ?><span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h($r['emt_group']) ?></span><?php endif; ?></td>
-						<td class="small"><?= h($r['emt_category']) ?></td>
-						<td class="small"><?= h($r['emt_language']) ?></td>
-						<td class="small"><?= h($r['sfo_code']) ?></td>
-						<td class="small text-break"><?= h(mb_strimwidth((string)$r['emt_subject'], 0, 80, '…')) ?></td>
-						<td class="small text-break"><?= h(mb_strimwidth((string)$r['emt_to'], 0, 50, '…')) ?></td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
-	</div>
+	<?= NuListView::card($lvState, ['title' => '', 'back' => false, 'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('emt_new')) . '" href="' . h(nu_url('emailtemplates', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '']) ?>
 
 <?php else: ?>
 	<?php
 	// ------------------------------------------------------------------ edit
-	$v = static fn(string $k) => nu_is_post() ? (string)($_POST[$k] ?? '') : (string)($tpl[$k] ?? '');
+	$rec = $tpl ?? $src;                                    // a clone shows the values of its source
+	$v = static fn(string $k) => nu_is_post() ? (string)($_POST[$k] ?? '') : (string)($rec[$k] ?? '');
 	$isTemplate = (string)($tpl['emt_template'] ?? '') === '1';
-	$locked = $isTemplate || !($tpl ? $rights['save'] : $rights['create']);   // nuBuilder's templates: read-only view
+	$locked = $isTemplate || !($tpl ? $rights['save'] : $rights[$src ? 'clone' : 'create']);   // nuBuilder's templates: read-only view
 	$langs = NuEmailTemplate::languages();
 	$data = ['toLabel' => t('mail_to'), 'csrf' => nu_csrf_token(), 'system' => NuEmailTemplate::SYSTEM_FIELDS, 'fieldsUrl' => nu_url('emailtemplates') . '&fields=',
 		'labels' => ['insert' => t('emt_insert_hint'), 'no_fields' => t('emt_no_fields'), 'system' => t('emt_system_fields'), 'sent' => t('mail_test_ok'),
@@ -225,7 +162,7 @@ nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : 
 	<?php if ($tpl && !$isTemplate && (string)$tpl['emt_code'] === NuWelcome::TEMPLATE): ?>
 		<div class="alert alert-secondary small py-2"><i class="bi bi-envelope-check me-1"></i><?= h(t('emt_welcome_hint')) ?></div>
 	<?php endif; ?>
-	<form method="post" data-nu-focus-first data-nu-guard id="emtForm" novalidate>
+	<form method="post" data-nu-focus-first data-nu-guard id="emtForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="action" value="save">
 		<div class="nuTitleBar mb-3">
@@ -237,7 +174,7 @@ nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : 
 				<button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="emtSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 			<?php endif; ?>
 			<?php if ($tpl && $rights['clone']): ?>
-				<button class="btn nuBtnAct" type="submit" name="action" value="clone" formnovalidate><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
+				<a class="btn nuBtnAct" href="<?= h(nu_url('emailtemplates', ['id' => 'new', 'clone' => $id])) ?>" id="emtClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($tpl && $rights['delete'] && !$locked): ?>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('emt_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
@@ -335,4 +272,4 @@ nu_layout_start(t('emt_title'), 'email', ['head' => $id !== '' ? nu_ts_head() : 
 	<script type="application/json" id="emtData"><?= json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endif; ?>
 <?php
-nu_layout_end($id !== '' ? nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuemailtemplates.js') . '"></script>' : '');   // Form: searchable (0.8.536)
+nu_layout_end($id !== '' ? nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuemailtemplates.js') . '"></script>' : NuListView::foot());   // Form: searchable (0.8.536)

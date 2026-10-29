@@ -10,6 +10,17 @@ $db     = nu_db();
 $id      = (string)($_GET['id'] ?? '');
 $cloneId = (string)($_GET['clone'] ?? '');
 
+// welcome e-mail preview (0.8.684): the rendered mail for the iframe of the preview dialog – from the session, with a CSP of its own
+// (mails carry inline styles; no scripts); assets/js/nuuser.js makes it editable (designMode) and reads it back
+if (isset($_GET['welcome_frame'])) {
+	$html = $_SESSION['nu_welcome_pv'][(string)$_GET['welcome_frame']] ?? null;
+	if (!is_string($html)) { http_response_code(404); exit; }
+	header('X-Frame-Options: SAMEORIGIN', true);
+	header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data: https: http:; font-src data: https:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'", true);
+	header('Content-Type: text/html; charset=utf-8');
+	exit($html);
+}
+
 $existing = $id !== '' ? $db->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$id]) : null;
 if ($id !== '' && !$existing) {
 	nu_flash('warning', t('record_not_found'));
@@ -303,7 +314,22 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	} else {
 		$ufNew = [];
 	}
+	// welcome e-mail edited in the preview (0.8.684): it must keep the set-password link when it had one
+	$wEdit = $welcome && nu_post('welcome_edit') === '1' && !NuWelcome::hasProcedure();
+	$wHtml = $wEdit ? str_replace("\r\n", "\n", (string)($_POST['welcome_html'] ?? '')) : '';
+	if ($wEdit && nu_post('welcome_link') === '1' && !str_contains($wHtml . nu_post('welcome_subject'), NuWelcome::MARKER)) $errors['welcome'] = t('welcome_pv_err_link', NuWelcome::MARKER);
 	if ($isNew) foreach ($ufAll as $code => $f) if (!isset($ufNew[$code]) && !isset($ufErr[$code]) && !isset($ufEdit[$code]) && ($ufVals[$code] ?? '') !== '') $ufNew[$code] = $ufVals[$code];   // defaults of fields this admin may not edit
+
+	// preview of the welcome e-mail (0.8.684, JSON for assets/js/nuuser.js): every check above ran, nothing is written
+	if (nu_post('welcome_check') === '1') {
+		header('Content-Type: application/json; charset=utf-8');
+		if ($errors || !$welcome || NuWelcome::hasProcedure()) exit((string)json_encode(['ok' => false, 'errors' => count($errors)]));
+		$pv = NuWelcome::preview($v + ['zzzzsys_user_id' => $isNew ? '' : $id, 'NUNEXT_LANG_VARIANT' => $langVariant], $pw, nu_post('welcome_choice') ?: 'auto');
+		$key = bin2hex(random_bytes(8));
+		$_SESSION['nu_welcome_pv'] = array_slice(($_SESSION['nu_welcome_pv'] ?? []) + [$key => $pv['html']], -5, null, true);
+		exit((string)json_encode(['ok' => true, 'frame' => nu_url('user', ['welcome_frame' => $key]), 'choices' => NuWelcome::choices()]
+			+ array_diff_key($pv, ['html' => 1]), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+	}
 
 	if (!$errors) {
 		$row = [];
@@ -356,7 +382,12 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		}
 		if ($welcome) {                                        // after the save, like nuBuilder's After Save
 			$saved = $db->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$id]);
-			$err = $saved ? NuWelcome::send($saved, $pw) : t('err_not_found');
+			if ($saved && $wEdit) {                            // the e-mail edited in the preview; cc / bcc of the chosen template, as previewed
+				$pvRec = NuWelcome::preview($saved, $pw, nu_post('welcome_choice') ?: 'auto');
+				$err = NuWelcome::sendEdited($saved, nu_post('welcome_subject'), $wHtml, $pvRec['cc'], $pvRec['bcc'], $pvRec['source']);
+			} else {
+				$err = $saved ? NuWelcome::send($saved, $pw) : t('err_not_found');
+			}
 			nu_flash($err === null ? 'success' : 'danger', $err === null ? t('welcome_sent', (string)$saved['sus_email']) : t('welcome_failed') . ' ' . $err);
 		}
 		nu_redirect(nu_url('user', ['id' => $id, 'tab' => nu_post('tab') === 'perm' ? 'perm' : null]));   // stays on the tab it was saved from
@@ -449,7 +480,14 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 				$pwSrc = (string)NuUserJson::get((string)$id, 'PASSWORD_CHANGED_SOURCE');
 				$pwInfo = date('d.m.Y H:i', $pwTime) . (in_array($pwSrc, ['user', 'admin', 'reset'], true) ? ' (' . t('user_pw_src_' . $pwSrc) . ')' : '');
 			} ?>
-			<?= NuFormInfo::record('zzzzsys_user', (string)$id, ['login' => (string)$existing['sus_login_name']], 'nuRecInfo', $pwInfo !== '' ? ['pw_changed' => $pwInfo] : []) /* (i): record ID, table, created / changed (0.8.500) */ ?>
+			<?php // (i) links to the activity of this user (0.8.687): its log entries, the log about this record, its sessions
+			$riLinks = [];
+			if (NuAcl::can(NuAcl::FORM_LOG)) {
+				$riLinks[] = ['bi-journal-text', t('user_ri_log'), nu_url('log', ['login' => (string)$existing['sus_login_name']])];
+				$riLinks[] = ['bi-clock-history', t('user_ri_changes'), nu_url('log', ['q' => (string)$id])];
+			}
+			if (NuAdmin::can('sessions')) $riLinks[] = ['bi-people', t('user_ri_sessions'), nu_url('sessions', ['user' => (string)$id])]; ?>
+			<?= NuFormInfo::record('zzzzsys_user', (string)$id, ['login' => (string)$existing['sus_login_name']], 'nuRecInfo', $pwInfo !== '' ? ['pw_changed' => $pwInfo] : [], $riLinks) /* (i): record ID, table, created / changed (0.8.500) */ ?>
 		<?php endif; ?>
 	</div>
 </div>
@@ -458,7 +496,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 	<div class="alert alert-info d-flex gap-2"><i class="bi bi-eye mt-1"></i><div><?= h(t('read_only')) ?></div></div>
 <?php endif; ?>
 
-<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" action="<?= h(nu_url('user', $isNew ? ($cloneId !== '' ? ['clone' => $cloneId] : []) : ['id' => $id])) ?>" data-nu-new="<?= $isNew ? '1' : '0' ?>" novalidate>
+<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" action="<?= h(nu_url('user', $isNew ? ($cloneId !== '' ? ['clone' => $cloneId] : []) : ['id' => $id])) ?>"<?= $isNew && $cloneId !== '' ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> data-nu-new="<?= $isNew ? '1' : '0' ?>" novalidate>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 	<fieldset<?= $ro ?>>
 	<?php // tabs General / Permission items (0.8.438): one form, one Save; ?tab=perm opens the second tab (also after saving there)
@@ -672,6 +710,14 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<?php if (!$mailOk && NuAcl::can(NuAcl::FORM_SETUP)): ?><a class="small ms-2" id="userWelcomeMailLink" href="<?= h(nu_url('email', ['tab' => 'settings'])) ?>"><i class="bi bi-envelope-at me-1"></i><?= h(t('welcome_mail_settings')) ?></a><?php endif; ?>
 						<span class="visually-hidden" id="welcomeHint"><?= h($wHint) ?></span>
 					</div>
+					<?php if ($mailOk): $wProc = NuWelcome::hasProcedure(); // preview before sending (0.8.684) – shown while the switch above is on ?>
+					<div class="form-check form-switch ms-4" id="userWelcomePvWrap"<?= $welcome ? '' : ' hidden' ?>>
+						<input class="form-check-input" type="checkbox" role="switch" id="user_welcome_preview" data-nu-noguard<?= $wProc ? ' disabled' : '' ?>>
+						<label class="form-check-label" for="user_welcome_preview"><?= h(t('welcome_pv_option')) ?></label>
+						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('info')) ?>" title="<?= h($wProc ? t('welcome_pv_proc', NuWelcome::PROCEDURE) : t('welcome_pv_option_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+					</div>
+					<?php endif; ?>
+					<?php if (isset($errors['welcome'])): ?><div class="invalid-feedback d-block" id="userWelcomeErr"><?= h($errors['welcome']) ?></div><?php endif; ?>
 					<?php endif; ?>
 					<?php if (NU_FEATURE_ACCESSIBILITY): ?>
 					<div class="form-check form-switch">
@@ -865,6 +911,40 @@ $effT = ['view' => t('view'), 'add' => t('add'), 'save' => t('save'), 'delete' =
 		</div>
 	</div></div>
 </div>
+<?php if ($canSave && $mailOk): // welcome e-mail preview (0.8.684) – filled by assets/js/nuuser.js from the JSON check of the save ?>
+<div class="modal fade" id="userWelcomePvDlg" tabindex="-1" aria-labelledby="userWelcomePvTitle" aria-hidden="true" data-bs-backdrop="static"
+	data-t="<?= h((string)json_encode(['replace' => t('welcome_pv_replace'), 'failed' => t('welcome_pv_failed'), 'link' => t('welcome_pv_err_link', NuWelcome::MARKER), 'marker' => NuWelcome::MARKER], JSON_UNESCAPED_UNICODE)) ?>">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+		<div class="modal-header">
+			<h2 class="modal-title h5" id="userWelcomePvTitle"><i class="bi bi-envelope-open me-2"></i><?= h(t('welcome_pv_title')) ?></h2>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('cancel')) ?>"></button>
+		</div>
+		<div class="modal-body">
+			<div class="row g-2 mb-2">
+				<div class="col-md-6"><label class="form-label small mb-1" for="userWpvTo"><?= h(t('welcome_pv_to')) ?></label><input class="form-control" id="userWpvTo" readonly></div>
+				<div class="col-md-6"><label class="form-label small mb-1" for="userWpvTpl"><?= h(t('welcome_pv_template')) ?></label><select class="form-select" id="userWpvTpl"></select></div>
+				<div class="col-md-6" id="userWpvCcWrap" hidden><label class="form-label small mb-1" for="userWpvCc"><?= h(t('welcome_pv_cc')) ?></label><input class="form-control" id="userWpvCc" readonly></div>
+				<div class="col-md-6" id="userWpvBccWrap" hidden><label class="form-label small mb-1" for="userWpvBcc"><?= h(t('welcome_pv_bcc')) ?></label><input class="form-control" id="userWpvBcc" readonly></div>
+				<div class="col-12"><label class="form-label small mb-1" for="userWpvSubject"><?= h(t('welcome_pv_subject')) ?></label><input class="form-control" id="userWpvSubject" maxlength="300"></div>
+			</div>
+			<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+				<span class="small text-body-secondary me-auto" id="userWpvHint"><?= h(t('welcome_pv_edit_hint')) ?> <span id="userWpvLinkHint"><?= h(t('welcome_pv_link_hint', NuWelcome::MARKER)) ?></span></span>
+				<div class="btn-group btn-group-sm" role="group" aria-label="<?= h(t('welcome_pv_title')) ?>">
+					<input type="radio" class="btn-check" name="userWpvMode" id="userWpvModeView" value="view" checked><label class="btn btn-outline-secondary" for="userWpvModeView"><i class="bi bi-eye me-1"></i><?= h(t('welcome_pv_view')) ?></label>
+					<input type="radio" class="btn-check" name="userWpvMode" id="userWpvModeHtml" value="html"><label class="btn btn-outline-secondary" for="userWpvModeHtml"><i class="bi bi-code-slash me-1"></i><?= h(t('welcome_pv_html')) ?></label>
+				</div>
+			</div>
+			<iframe class="nuWpvFrame" id="userWpvFrame" title="<?= h(t('welcome_pv_title')) ?>"></iframe>
+			<textarea class="form-control nfdMono nuWpvSource" id="userWpvSource" rows="18" hidden aria-label="<?= h(t('welcome_pv_html')) ?>" spellcheck="false"></textarea>
+			<div class="invalid-feedback d-block" id="userWpvErr" aria-live="polite"></div>
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal" id="userWpvCancel"><?= h(t('cancel')) ?></button>
+			<button type="button" class="btn btn-primary" id="userWpvSend"><i class="bi bi-send me-1"></i><?= h(t('welcome_pv_send')) ?></button>
+		</div>
+	</div></div>
+</div>
+<?php endif; ?>
 <?php if ($permFrom): // copy the permission items of another user (0.8.649) – filled by assets/js/nuuser.js from the POST action "perm_of"
 	$pcT = ['info' => t('perm_copy_info'), 'error' => t('err_unexpected')]; ?>
 <div class="modal fade" id="userPermCopyDlg" tabindex="-1" aria-labelledby="userPermCopyTitle" aria-hidden="true" data-url="<?= h(nu_url('user', ['id' => $id !== '' ? $id : null])) ?>" data-csrf="<?= h(nu_csrf_token()) ?>" data-t="<?= h((string)json_encode($pcT, JSON_UNESCAPED_UNICODE)) ?>">

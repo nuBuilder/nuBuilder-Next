@@ -16,3 +16,21 @@
 		if (f) f.dispatchEvent(new Event('input', {bubbles: true}));      // marks the save button (nuSaveEdited)
 	});
 })();
+
+/* Users that have the item (0.8.687): search and Active / Archived / All. */
+(function () {
+	'use strict';
+	var ul = document.getElementById('permUserList'), q = document.getElementById('permUserSearch'), st = document.getElementById('permUserState');
+	if (!ul) return;
+	function apply() {
+		var s = q ? q.value.trim().toLowerCase() : '', v = st ? ((st.querySelector('input:checked') || {}).value || 'active') : 'all', n = 0;
+		Array.prototype.forEach.call(ul.querySelectorAll('li[data-st]'), function (li) {
+			li.hidden = (v !== 'all' && li.getAttribute('data-st') !== v) || (s !== '' && (li.getAttribute('data-q') || '').indexOf(s) < 0);
+			if (!li.hidden) n++;
+		});
+		var none = ul.querySelector('.permUserNone');
+		if (none) none.hidden = n > 0;
+	}
+	if (q) q.addEventListener('input', apply);
+	if (st) st.addEventListener('change', apply);
+})();

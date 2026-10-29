@@ -99,7 +99,8 @@ $routes = [
 	'file'        => [],
 	'translations' => [],
 	'formatapi'   => ['json' => true],
-	'fnlist'      => ['json' => true],   // function list of the code editors (0.8.593, pages/nufnlist.php)
+	'fnlist'      => ['json' => true],
+	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (0.8.683, pages/nuformaccess.php)   // function list of the code editors (0.8.593, pages/nufnlist.php)
 	'builder'     => [],
 	'formai'      => [],                     // form with AI (0.8.403)
 	'dataaccess'  => [],                     // field data access + column visibility of a form (0.8.480)

@@ -17,7 +17,10 @@ final class NuAcl
 	public const FORM_FORM   = 'nuform';      // form builder
 	public const FORM_LOG    = 'nunextlog';   // login & change log (nuBuilder Next only)
 	public const FORM_AUDIT  = 'nunextaudit'; // audit trail (nuBuilder Next only, 0.8.350)
+	public const FORM_ADMINROLE = 'nunextadminrole'; // admin roles list (nuBuilder Next only, 0.8.687) – right through the admin right adminroles
 	public const FORM_APICLIENT = 'nunextapiclient'; // API clients list (nuBuilder Next only, 0.8.547) – right through the admin right apiclients
+	public const FORM_DASHBOARD = 'nunextdashboard'; // dashboards list (nuBuilder Next only, 0.8.690) – right through the admin right dashboards
+	public const FORM_NOTIFY = 'nunextnotify';       // notifications → Manage list (0.8.690) – view / print for everybody NuNotify::canManage() lets in
 	public const FORM_USERFIELD = 'nunextuserfield'; // custom user fields list (nuBuilder Next only, 0.8.546) – right through the admin right userfields
 	public const FORM_SETUP  = 'nusetup';     // nuBuilder setup form (e-mail settings, test mail)
 	public const FORM_EMAILLOG = 'nuemaillog'; // nuBuilder e-mail log
@@ -70,6 +73,8 @@ final class NuAcl
 		$r = self::rightsOf($u, $formId);
 		// nuBuilder Forte's User Home (0.8.602): open for a user whose access level has it as home form – a launch form without data
 		if (!$r['view'] && $formId === NuUserHome::FORM && NuUserHome::isHomeOf($u)) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
+		// notification centre → Manage (0.8.690): senders and viewers (admin right, permission items) see the list – the rows are filtered by NuNotify
+		if (!$r['view'] && $formId === self::FORM_NOTIFY && NuNotify::canManage()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
 		// admin role (0.8.323): rights on nuBuilder's system forms on top of the access level (core/nuadmin.php)
 		$lvl = class_exists('NuAdmin') ? NuAdmin::formLevel($formId) : '';
 		if ($lvl === 'change') $r = array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true) + self::FREE;

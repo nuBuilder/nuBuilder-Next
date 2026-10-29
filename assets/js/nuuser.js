@@ -662,3 +662,103 @@
 		if (navigator.clipboard) navigator.clipboard.writeText(lines.join('\n')).then(function () { b.title = T.copied; b.classList.add('btn-success'); setTimeout(function () { b.classList.remove('btn-success'); }, 1200); });
 	});
 })();
+
+/* Welcome e-mail preview (0.8.684): with "Preview the e-mail before sending" on, Save first asks the server (welcome_check=1: every check
+   of the save, nothing written) for the e-mail; errors → the normal save shows them. The dialog shows recipient, template, subject and the
+   mail (iframe ?p=user&welcome_frame=… with a CSP of its own, editable through designMode – or as HTML). "Save and send" submits the form
+   with the edited mail (welcome_edit, welcome_subject, welcome_html, welcome_choice, welcome_link); Cancel leaves the form as it was.
+   The set-password link is the marker #SET_PASSWORD_URL# until it is sent. The switch is remembered per browser. */
+(function () {
+	'use strict';
+	var form = document.getElementById('nuRecordForm'), box = document.getElementById('user_send_welcome_email');
+	var pv = document.getElementById('user_welcome_preview'), wrap = document.getElementById('userWelcomePvWrap'), dlg = document.getElementById('userWelcomePvDlg');
+	if (!form || !box || !pv || !wrap || !dlg) return;
+	var T = {};
+	try { T = JSON.parse(dlg.getAttribute('data-t') || '{}'); } catch (e) { T = {}; }
+	var $ = function (id) { return document.getElementById(id); };
+	var KEY = 'nunext-welcome-preview';
+	try { if (!pv.disabled && localStorage.getItem(KEY) === '1') pv.checked = true; } catch (e) { /* private mode */ }
+	pv.addEventListener('change', function () { try { localStorage.setItem(KEY, pv.checked ? '1' : '0'); } catch (e) { /* ignore */ } });
+	function syncWrap() { wrap.hidden = !box.checked; }
+	box.addEventListener('change', syncWrap);
+	syncWrap();
+
+	var frame = $('userWpvFrame'), src = $('userWpvSource'), err = $('userWpvErr'), tpl = $('userWpvTpl'), subj = $('userWpvSubject');
+	var state = {choice: 'auto', link: false, edited: false, ok: false, source: ''};
+	var doc = function () { try { return frame.contentDocument; } catch (e) { return null; } };
+	function html() {
+		if (!src.hidden) return src.value;
+		var d = doc();
+		return d && d.documentElement ? '<!doctype html>\n' + d.documentElement.outerHTML : '';
+	}
+	function editable() {
+		var d = doc();
+		if (!d || !d.body) return;
+		d.designMode = 'on';
+		d.addEventListener('input', function () { state.edited = true; });
+	}
+	frame.addEventListener('load', editable);
+	function load(url) { frame.src = url; }
+	function setMode(m) {
+		if (m === 'html') { src.value = html(); src.hidden = false; frame.hidden = true; }
+		else {
+			var d = doc();
+			if (!src.hidden && d) { d.open(); d.write(src.value); d.close(); editable(); }
+			src.hidden = true; frame.hidden = false;
+		}
+	}
+	document.querySelectorAll('input[name="userWpvMode"]').forEach(function (r) { r.addEventListener('change', function () { if (r.checked) setMode(r.value); }); });
+	src.addEventListener('input', function () { state.edited = true; });
+	subj.addEventListener('input', function () { state.edited = true; });
+
+	function check(choice) {
+		var fd = new FormData(form);
+		fd.set('welcome_check', '1');
+		fd.set('welcome_choice', choice || 'auto');
+		return fetch(form.getAttribute('action') || window.location.href, {method: 'POST', body: fd, credentials: 'same-origin', headers: {Accept: 'application/json'}})
+			.then(function (r) { return r.json(); });
+	}
+	function fill(d) {
+		state.choice = d.choice; state.link = !!d.link; state.edited = false; state.source = d.source;
+		$('userWpvTo').value = d.to;
+		$('userWpvCc').value = (d.cc || []).join(', '); $('userWpvCcWrap').hidden = !(d.cc || []).length;
+		$('userWpvBcc').value = (d.bcc || []).join(', '); $('userWpvBccWrap').hidden = !(d.bcc || []).length;
+		tpl.textContent = '';
+		(d.choices || []).forEach(function (c) { var o = new Option(c[1], c[0]); if (c[0] === d.choice) o.selected = true; tpl.appendChild(o); });
+		subj.value = d.subject;
+		$('userWpvLinkHint').hidden = !state.link;
+		err.textContent = '';
+		$('userWpvModeView').checked = true; src.hidden = true; frame.hidden = false;
+		load(d.frame);
+	}
+	function plainSubmit() { state.ok = true; form.requestSubmit ? form.requestSubmit() : form.submit(); }
+
+	form.addEventListener('submit', function (e) {
+		if (state.ok || !box.checked || !pv.checked || pv.disabled) return;
+		e.preventDefault();
+		check('auto').then(function (d) {
+			if (!d || !d.ok) { plainSubmit(); return; }          // errors: the normal save shows them in the form
+			fill(d);
+			nuBs.modal(dlg).show();
+		}).catch(function () { plainSubmit(); });
+	});
+	tpl.addEventListener('change', function () {
+		var want = tpl.value;
+		if (state.edited && !window.confirm(T.replace)) { tpl.value = state.choice; return; }
+		check(want).then(function (d) { if (d && d.ok) fill(d); else err.textContent = T.failed; }).catch(function () { err.textContent = T.failed; });
+	});
+	$('userWpvSend').addEventListener('click', function () {
+		var body = html();
+		if (state.link && (body + subj.value).indexOf(T.marker) < 0) { err.textContent = T.link; return; }
+		var put = function (n, v) {
+			var i = form.querySelector('input[type="hidden"][name="' + n + '"]') || form.appendChild(Object.assign(document.createElement('input'), {type: 'hidden', name: n}));
+			i.value = v;
+		};
+		put('welcome_edit', '1'); put('welcome_subject', subj.value); put('welcome_html', body);
+		put('welcome_choice', state.choice); put('welcome_link', state.link ? '1' : '0');
+		$('userWpvSend').disabled = true;
+		nuBs.modal(dlg).hide();
+		plainSubmit();
+	});
+	dlg.addEventListener('hidden.bs.modal', function () { if (!state.ok) frame.removeAttribute('src'); });
+})();

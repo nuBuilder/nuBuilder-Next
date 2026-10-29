@@ -15,8 +15,22 @@ foreach (NuFormat::choices() as $c) {
 	$rows[] = $c;
 }
 $reg = NuFormat::registry();
-$usage = [];
-foreach ($rows as $c) if ($c['saved']) $usage[$c['value']] = count(NuFormat::usage($c['value']));
+$usage = $usedBy = [];
+foreach ($rows as $c) if ($c['saved']) { $usedBy[$c['value']] = NuFormat::usage($c['value']); $usage[$c['value']] = count($usedBy[$c['value']]); }
+$canDesign = NuAcl::can(NuAcl::FORM_FORM);
+/** The Used count: a menu of the forms / objects / list columns that use the format, each opening the form (design mode for designers, 0.8.688). */
+$usedCell = static function (string $key) use ($usage, $usedBy, $canDesign): string {
+	$n = (int)($usage[$key] ?? 0);
+	if ($n === 0) return '0';
+	$items = '';
+	foreach ($usedBy[$key] as $u) {
+		$label = trim((nu_forms()[$u['form']]['code'] ?? $u['form']) . ' · ' . $u['object']);
+		$href = $canDesign ? nu_url('form', ['f' => $u['form'], 'r' => '-1', 'design' => '1']) : nu_url('form', ['f' => $u['form']]);
+		$items .= '<li><a class="dropdown-item small" href="' . h($href) . '">' . h($label) . '</a></li>';
+	}
+	return '<div class="dropdown nuFmtUsed d-inline-block"><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-bs-toggle="dropdown" data-bs-popper-config="{&quot;strategy&quot;:&quot;fixed&quot;}" aria-expanded="false" title="' . h(t('fmt_used_show')) . '">' . $n . '</button>'
+		. '<ul class="dropdown-menu dropdown-menu-end">' . $items . '</ul></div>';
+};
 
 /** Sample output for the list. */
 function nu_format_examples(string $key): array
@@ -103,7 +117,7 @@ nu_layout_start(t('fmt_title'), 'forms');
 						<?php if ($c['value'][0] === 'T'): ?><span class="text-body-secondary"><?= h(implode('', array_map(static fn($t) => $t[0] === 'L' ? $t[1] : '_', NuFormat::maskTokens(substr($c['value'], 2))))) ?></span><?php endif; ?>
 					</td>
 					<td class="small"><?= h($c['description']) ?></td>
-					<td class="text-end small"><?= $c['saved'] ? (int)$usage[$c['value']] : '' ?></td>
+					<td class="text-end small"><?= $c['saved'] ? $usedCell($c['value']) : '' ?></td>
 				</tr>
 			<?php endforeach; ?>
 			</tbody>

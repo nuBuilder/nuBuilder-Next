@@ -18,47 +18,46 @@ $T      = NuReport::TABLE;
 $id     = (string)($_GET['id'] ?? '');
 $isNew  = $id === 'new';
 $report = null;
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy (with its layout and access levels) that is saved only with Save
+$cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
+$src = null;
+if ($cloneId !== '') {
+	NuAcl::require(NuAcl::FORM_REPORT, 'clone');
+	$src = $db->one("SELECT * FROM $T WHERE zzzzsys_report_id = ?", [$cloneId]);
+	if (!$src) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	$code = (string)$src['sre_code'];
+	$new = $code;
+	for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sre_code = ?", [$new]); $n++) $new = mb_substr($code, 0, 290) . '_' . $n;
+	$src['sre_code'] = $new;
+}
 if ($id !== '' && !$isNew) {
 	$report = $db->one("SELECT * FROM $T WHERE zzzzsys_report_id = ?", [$id]);
 	if (!$report) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
-$locked = !($report ? $rights['save'] : $rights['create']);
+$locked = !($report ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 $errors = [];
 
 // ------------------------------------------------------------------ save / clone / delete
 if (nu_is_post()) {
 	$action = nu_post('action');
 	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_REPORT, $report ? 'save' : 'create');
+		NuAcl::require(NuAcl::FORM_REPORT, $report ? 'save' : ($src ? 'clone' : 'create'));
 		$in = [];
 		foreach (['sre_code', 'sre_description', 'sre_group', 'sre_zzzzsys_form_id', 'sre_zzzzsys_php_id'] as $f) $in[$f] = $_POST[$f] ?? '';
 		[$newId, $errors] = NuReport::save($in, $report ? $id : '');
 		if (!$errors) {
+			// a clone takes the layout of its source as stored (as nuBuilder Forte copies the field)
+			if (!$report && $src) $db->update($T, ['sre_layout' => $src['sre_layout']], 'zzzzsys_report_id', (string)$newId);
 			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_report_id = ?", [$newId]) ?? [];
 			$acc = isset($_POST['access_sent']) ? NuReport::setAccess($newId, array_filter((array)($_POST['access'] ?? []), 'is_string')) : ['added' => [], 'removed' => []];
 			$details = ['code' => (string)$after['sre_code'], 'fields' => NuReport::diff($report, $after)];
 			if ($acc['added']) $details['access_added'] = implode(', ', $acc['added']);
 			if ($acc['removed']) $details['access_removed'] = implode(', ', $acc['removed']);
+			if ($src) $details['clone_of'] = (string)$db->value("SELECT sre_code FROM $T WHERE zzzzsys_report_id = ?", [$cloneId]);
 			if ($details['fields'] || count($details) > 2 || !$report) NuLog::write($report ? 'report_changed' : 'report_created', $T, $newId, $details);
 			nu_flash('success', t('saved'));
 			nu_redirect(nu_post('then') === 'design' ? nu_url('reportdesigner', ['id' => $newId]) : nu_url('reports', ['id' => $newId]));
 		}
-	}
-	if ($action === 'clone' && $report) {
-		NuAcl::require(NuAcl::FORM_REPORT, 'clone');
-		$code = (string)$report['sre_code'];
-		$new = $code;
-		for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sre_code = ?", [$new]); $n++) $new = mb_substr($code, 0, 290) . '_' . $n;
-		$in = $report;
-		$in['sre_code'] = $new;
-		[$newId, $e] = NuReport::save($in);
-		if (!$e) {
-			NuReport::setAccess($newId, array_column(array_filter(NuReport::access($id), static fn($a) => $a['granted']), 'zzzzsys_access_id'));
-			NuLog::write('report_created', $T, $newId, ['code' => $new, 'clone_of' => $code]);
-			nu_flash('success', t('rpt_cloned'));
-			nu_redirect(nu_url('reports', ['id' => $newId]));
-		}
-		$errors = ['_' => implode(' ', $e)];
 	}
 	if ($action === 'delete' && $report) {
 		NuAcl::require(NuAcl::FORM_REPORT, 'delete');
@@ -119,12 +118,13 @@ $tcpdf = NuReport::tcpdfDir();
 <?php else: ?>
 	<?php
 	$posted = nu_is_post() && nu_post('action') === 'save';
-	$v = static fn(string $k) => $posted ? (string)($_POST[$k] ?? '') : (string)($report[$k] ?? '');
+	$rec = $report ?? $src;                                 // a clone shows the values of its source
+	$v = static fn(string $k) => $posted ? (string)($_POST[$k] ?? '') : (string)($rec[$k] ?? '');
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
 		'<div class="procField mb-3"><label class="form-label procLabel" for="' . $k . '">' . h($label) . ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sre_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique (0.8.627)
-	$access = NuReport::access($report ? $id : '');
+	$access = NuReport::access($report ? $id : $cloneId);
 	if ($posted) { $sent = array_flip(array_filter((array)($_POST['access'] ?? []), 'is_string')); foreach ($access as &$a) $a['granted'] = isset($sent[$a['zzzzsys_access_id']]); unset($a); }
 	$usage = $report ? NuReport::usage($id, (string)$report['sre_code']) : [];
 	$history = $report ? NuReport::history($id) : [];
@@ -149,8 +149,7 @@ $tcpdf = NuReport::tcpdfDir();
 			<a class="btn btn-outline-secondary" href="<?= h(nu_url('report', ['c' => (string)$report['sre_code']])) ?>" target="_blank" rel="noopener" id="rptRun"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rpt_run')) ?></a>
 		<?php endif; ?>
 		<?php if ($report && $rights['clone']): ?>
-			<form method="post" action="<?= h(nu_url('reports', ['id' => $id])) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="clone">
-				<button class="btn nuBtnAct" type="submit" id="rptClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button></form>
+			<a class="btn nuBtnAct" href="<?= h(nu_url('reports', ['id' => 'new', 'clone' => $id])) ?>" id="rptClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 		<?php endif; ?>
 		<?php if ($report && $rights['delete']): ?>
 			<form method="post" action="<?= h(nu_url('reports', ['id' => $id])) ?>" data-confirm="<?= h(t('rpt_delete_confirm', (string)$report['sre_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
@@ -161,7 +160,7 @@ $tcpdf = NuReport::tcpdfDir();
 		</div>
 	</div>
 
-	<form method="post" action="<?= h(nu_url('reports', ['id' => $id])) ?>" id="nuRecordForm" data-nu-focus-first data-nu-guard novalidate>
+	<form method="post" action="<?= h(nu_url('reports', ['id' => $id, 'clone' => $cloneId])) ?>" id="nuRecordForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> data-nu-focus-first data-nu-guard novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="access_sent" value="1">
 		<ul class="nav nav-tabs" role="tablist" id="rptTabs">
 			<li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#rptTabMain" role="tab"><?= h(t('rpt_tab_report')) ?></button></li>

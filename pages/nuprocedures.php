@@ -15,11 +15,23 @@ $T      = NuProcedure::TABLE;
 $id    = (string)($_GET['id'] ?? '');
 $isNew = $id === 'new';
 $proc  = null;
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy that is saved only with Save
+$cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
+$src = null;
+if ($cloneId !== '') {
+	NuAcl::require(NuAcl::FORM_PROCEDURE, 'clone');
+	$src = NuProcedure::load($cloneId);
+	if (!$src || ((string)$src['sph_system'] === '1' && !NuHash::devMode())) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	$code = preg_replace('/_template$/', '', (string)$src['sph_code']) ?: 'procedure';
+	$new = $code;
+	for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sph_code = ? OR zzzzsys_php_id = ?", [$new, $new]); $n++) $new = mb_substr($code, 0, 290) . '_' . $n;
+	$src['sph_code'] = $new;
+}
 if ($id !== '' && !$isNew) {
 	$proc = NuProcedure::load($id);
 	if (!$proc || ((string)$proc['sph_system'] === '1' && !NuHash::devMode())) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
-$locked = ($proc && NuProcedure::locked($proc)) || !($proc ? $rights['save'] : $rights['create']);
+$locked = ($proc && NuProcedure::locked($proc)) || !($proc ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 $errors = [];
 
 // ------------------------------------------------------------------ test run (JSON)
@@ -37,7 +49,7 @@ if (nu_is_post() && nu_post('action') === 'run') {
 if (nu_is_post()) {
 	$action = nu_post('action');
 	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_PROCEDURE, $proc ? 'save' : 'create');
+		NuAcl::require(NuAcl::FORM_PROCEDURE, $proc ? 'save' : ($src ? 'clone' : 'create'));
 		if ($proc && NuProcedure::locked($proc)) NuAcl::require('__globeadmin_only__');
 		$in = [];
 		foreach (NuProcedure::FIELDS as $f) $in[$f] = $_POST[$f] ?? '';
@@ -49,27 +61,11 @@ if (nu_is_post()) {
 			$details = ['code' => (string)$after['sph_code'], 'fields' => NuProcedure::diff($proc, $after)];
 			if ($acc['added']) $details['access_added'] = implode(', ', $acc['added']);
 			if ($acc['removed']) $details['access_removed'] = implode(', ', $acc['removed']);
+			if ($src) $details['clone_of'] = (string)($src['sph_code'] ?? '');
 			if ($details['fields'] || count($details) > 2 || !$proc) NuLog::write($proc ? 'procedure_changed' : 'procedure_created', $T, $newId, $details);
 			nu_flash('success', t('saved'));
 			nu_redirect(nu_url('procedures', ['id' => $newId]));
 		}
-	}
-	if ($action === 'clone' && $proc) {
-		NuAcl::require(NuAcl::FORM_PROCEDURE, 'clone');
-		$code = preg_replace('/_template$/', '', (string)$proc['sph_code']) ?: 'procedure';
-		$new = $code;
-		for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sph_code = ? OR zzzzsys_php_id = ?", [$new, $new]); $n++) $new = mb_substr($code, 0, 290) . '_' . $n;
-		$in = $proc;
-		$in['sph_code'] = $new;
-		foreach (['sph_javascript_active', 'sph_global', 'sph_demo'] as $f) $in[$f] = (string)($proc[$f] ?? '') === '1';
-		[$newId, $e] = NuProcedure::save($in);
-		if (!$e) {
-			NuProcedure::setAccess($newId, array_column(array_filter(NuProcedure::access($id), static fn($a) => $a['granted']), 'zzzzsys_access_id'));
-			NuLog::write('procedure_created', $T, $newId, ['code' => $new, 'clone_of' => (string)$proc['sph_code'], 'fields' => NuProcedure::diff(null, $db->one("SELECT * FROM $T WHERE zzzzsys_php_id = ?", [$newId]) ?? [])]);
-			nu_flash('success', t('proc_cloned'));
-			nu_redirect(nu_url('procedures', ['id' => $newId]));
-		}
-		$errors = ['_' => implode(' ', $e)];
 	}
 	if ($action === 'delete' && $proc) {
 		NuAcl::require(NuAcl::FORM_PROCEDURE, 'delete');
@@ -142,8 +138,9 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 <?php else: ?>
 	<?php
 	$posted = nu_is_post() && nu_post('action') === 'save';
-	$v = static fn(string $k) => $posted ? (string)($_POST[$k] ?? '') : (string)($proc[$k] ?? ($k === 'sph_status' ? '1' : ''));
-	$chk = static fn(string $k) => $posted ? nu_check($k) === '1' : (string)($proc[$k] ?? ($k === 'sph_demo' ? '1' : '0')) === '1';
+	$rec = $proc ?? $src;                                   // a clone shows the values of its source
+	$v = static fn(string $k) => $posted ? (string)($_POST[$k] ?? '') : (string)($rec[$k] ?? ($k === 'sph_status' ? '1' : ''));
+	$chk = static fn(string $k) => $posted ? nu_check($k) === '1' : (string)($rec[$k] ?? ($k === 'sph_demo' ? '1' : '0')) === '1';
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	// label above the field (full width on phones, two columns from md)
@@ -152,7 +149,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sph_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique (0.8.627)
 	$distinct = static fn(string $c) => array_column($db->all("SELECT DISTINCT $c AS v FROM $T WHERE $c IS NOT NULL AND $c <> '' AND " . NuProcedure::listCondition() . " ORDER BY $c"), 'v');
 	$forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE COALESCE(sfo_type,'') <> 'subform' ORDER BY sfo_code");
-	$access = NuProcedure::access($proc ? $id : '');
+	$access = NuProcedure::access($proc ? $id : $cloneId);
 	if ($posted) { $sent = array_flip(array_filter((array)($_POST['access'] ?? []), 'is_string')); foreach ($access as &$a) $a['granted'] = isset($sent[$a['zzzzsys_access_id']]); unset($a); }
 	$usage = $proc ? NuProcedure::usage($id, (string)$proc['sph_code']) : [];
 	$history = $proc ? NuProcedure::history($id) : [];
@@ -179,8 +176,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 		<a class="btn nuBtnAct" href="<?= h(nu_url('procedures')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="procSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if ($proc && $rights['clone']): ?>
-			<form method="post" action="<?= h(nu_url('procedures', ['id' => $id])) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="clone">
-				<button class="btn nuBtnAct" type="submit" id="procClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button></form>
+			<a class="btn nuBtnAct" href="<?= h(nu_url('procedures', ['id' => 'new', 'clone' => $id])) ?>" id="procClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 		<?php endif; ?>
 		<?php if ($proc && $rights['delete'] && !NuProcedure::locked($proc)): ?>
 			<form method="post" action="<?= h(nu_url('procedures', ['id' => $id])) ?>" data-confirm="<?= h(t('proc_delete_confirm', (string)$proc['sph_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
@@ -192,7 +188,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 	</div>
 	<?php if ($proc && NuProcedure::locked($proc)): ?><div class="alert alert-info py-2 small"><?= h(t('proc_template_locked')) ?></div><?php endif; ?>
 
-	<form method="post" action="<?= h(nu_url('procedures', ['id' => $id])) ?>" id="nuRecordForm" data-nu-focus-first data-nu-guard novalidate>
+	<form method="post" action="<?= h(nu_url('procedures', ['id' => $id, 'clone' => $cloneId])) ?>" id="nuRecordForm" data-nu-focus-first data-nu-guard<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="access_sent" value="1">
 		<ul class="nav nav-tabs" role="tablist" id="procTabs" data-nu-tab-restore>
 			<li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#procTabPhp" role="tab" data-tab="php">PHP</button></li>

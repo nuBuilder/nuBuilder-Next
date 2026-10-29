@@ -82,17 +82,26 @@
 
 	<section class="tut-lesson" id="sample-data" data-right="sample">
 		<h3>Sample data to practise with</h3>
-		<p>The best way to learn is with a small application to play with. <a data-open="sample">Sample data</a> installs one – in nuBuilder Forte's format, so it also opens in nuBuilder Forte:</p>
+		<p>The best way to learn is with a small application to play with. <a data-open="sample">Sample data</a> installs two – in nuBuilder Forte's format, so they also open in nuBuilder Forte. The <strong>sales sample</strong>:</p>
 		<ul>
 			<li><strong>Forms</strong>: customers, products, orders with order lines, a start form, and <em>All objects</em> (<code>sample_all</code>) – a form that shows every object type nuBuilder Forte knows.</li>
 			<li><strong>Users</strong> <code>sample_anna</code> … <code>sample_eva</code> with different <strong>access levels</strong>: view only, add and change, everything, orders only, with two-factor login.</li>
 			<li>Formats, procedures, an e-mail template, two reports and dashboards.</li>
+			<li>Lists with coloured badges and filters (orders, products, customers) – the box <em>What to look at</em> at the end of the sample start form lists them.</li>
 		</ul>
+		<p>The <strong>ticket system</strong> (everything starts with <code>tkt_</code>) is a support desk with four roles – sign in as each user and compare:</p>
+		<ul>
+			<li><strong>Customer</strong> <code>tkt_clara</code> / <code>tkt_oscar</code>: report a problem, see only your own tickets, answer and rate the solution, read public articles. The tab <em>Handling</em> and internal notes are not shown.</li>
+			<li><strong>Agent</strong> (1st level) <code>tkt_alex</code> / <code>tkt_mia</code>: the ticket list with filters for category, priority, status, agent and requester and coloured badges (overdue tickets in red); answer, add internal notes, escalate.</li>
+			<li><strong>Specialist</strong> (2nd level) <code>tkt_sam</code>: gets the escalated tickets.</li>
+			<li><strong>Team lead</strong> <code>tkt_lea</code>: everything – assign tickets, categories with SLA hours, the dashboard <em>Support desk</em> and the report <em>Tickets by status</em>.</li>
+		</ul>
+		<p>Every form of the ticket system was made in <a data-lesson="design-mode">design mode</a>: open one with <em>Design</em> to see how its lists, rules and access are built.</p>
 		<div class="tut-note">The passwords of the sample users are random and shown <strong>only once</strong> after installing – copy them. <em>New passwords</em> on the same page creates new ones at any time. <em>Remove</em> deletes everything the sample data installed.</div>
 		<div class="tut-task">
-			<p>Open <a data-open="sample">Sample data</a> and install it (or check that it is installed). Note one sample user and password – you will use them in the lesson about acting as another user.</p>
+			<p>Open <a data-open="sample">Sample data</a> and install the sales sample (or check that it is installed). Note one sample user and password – you will use them in the lesson about acting as another user. Install the ticket system too, sign in as <code>tkt_clara</code> in a private window, report a ticket, then open it as <code>tkt_alex</code> and answer.</p>
 		</div>
-		<p><a data-help="sample-data">Sample data in the documentation</a></p>
+		<p><a data-help="sample-data">Sample data in the documentation</a> · <a data-help="sample-ticket">The ticket system</a></p>
 	</section>
 
 	<section class="tut-lesson" id="working-forms">
@@ -107,7 +116,7 @@
 		<h4>Edit forms</h4>
 		<ul>
 			<li>As soon as something changes, <strong>Save</strong> turns red. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves. Leaving with unsaved changes asks first.</li>
-			<li><strong>Clone</strong> copies the record into a new, unsaved one (yellow frame); <strong>Delete</strong> asks first.</li>
+			<li><strong>Clone</strong> copies the record into a new, unsaved one (yellow frame) – nuBuilder Next's own pages (procedures, reports, access levels …) do the same: the copy is only stored when you save it. <strong>Delete</strong> asks first.</li>
 			<li>A red <code>*</code> after a label means "required", a key <i class="bi bi-key"></i> means "must be unique" – hover it for the explanation.</li>
 			<li>The <strong>⋮</strong> button at the end of the toolbar lists everything you can do on this form, each with its keyboard shortcut. As globeadmin you also find the design shortcuts, <em>Inspect record</em> and the hash variables there.</li>
 			<li>Sub-forms (rows inside a record): typing in the empty last row adds a row. Lookups: type a code or click the search button.</li>
@@ -163,6 +172,7 @@
 			<li><strong>Forms</strong>: add a single form from the list, or <em>Several…</em> to pick many at once (search, filter by group and type) and set the buttons they get – e.g. everything but Delete.</li>
 			<li><strong>Removing</strong> a form crosses its row out; it disappears when you save. Until then the same button brings it back.</li>
 			<li><strong>Procedures</strong> and <strong>reports</strong>: on their own tabs.</li>
+			<li><strong>From the form</strong>: on any form, ⋮ → <em>Access levels…</em> (or <em>Tools</em> in design mode, or the number in the forms list's column <em>Access levels</em>) shows every level for that one form – the quick way to give a new form to several levels at once.</li>
 			<li><strong>Use two-factor authentication</strong>: users of this level confirm the login with an authenticator app or an e-mail code.</li>
 			<li>The level's <strong>start form</strong> (nuBuilder Forte's <em>home form</em>) opens in nuBuilder Forte after signing in; in nuBuilder Next it is the first tile of the level's automatic start page (next lesson).</li>
 			<li>An access level with users cannot be deleted. <em>Clone</em> copies it with all rights – the quickest way to a similar level.</li>
@@ -201,7 +211,7 @@
 		<p><a data-open="users">Users</a> lists everybody who may sign in (active users by default; the filter shows expired and archived ones).</p>
 		<ul>
 			<li><strong>New user</strong>: full name (it fills first and last name), e-mail, login name (unique), access level and a password – the magic wand creates a strong one. <em>Change password at next login</em> makes the user choose his own.</li>
-			<li><strong>Welcome e-mail</strong> (when e-mail is set up): instead of telling the user a password, send a personal link to set one. The password field can then stay empty.</li>
+			<li><strong>Welcome e-mail</strong> (when e-mail is set up): instead of telling the user a password, send a personal link to set one. The password field can then stay empty. With <em>Preview the e-mail before sending</em> you see the mail before the user is saved – recipient, subject and text with every placeholder filled in; you can change the text or choose another template, and the link to set the password stays in place.</li>
 			<li><strong>Valid until</strong>: the login works through that day. <strong>Archive</strong> sets it to yesterday – the user can no longer sign in, but all data stays. <strong>Delete</strong> removes the user for good.</li>
 			<li><strong>Language</strong>: the user's interface language (empty = browser). <strong>Position, department, team</strong> suggest values of the other users.</li>
 			<li><strong>Reset 2FA</strong> removes the user's authenticator app – e.g. after a lost phone.</li>
@@ -377,7 +387,15 @@
     nuDisplayError('The due date is in the past.');
 }</code></pre>
 		</div>
-		<p><a data-help="hooks">PHP hooks and procedures</a> · <a data-help="hash-variables">Hash variables</a> · <a data-help="js-api">JavaScript functions</a></p>
+		<div class="tut-task">
+			<p>Show <code>tsk_done</code> as a coloured badge in the list of <code>tutorial_task</code>: add it as a list column if it is not one, then put this into the list's JavaScript (<em>Code</em> in design mode) – the number is the column's position, counted from 0:</p>
+			<pre class="small mb-0"><code>nuBrowseStyleBadge(2, [
+    {equals: '1', label: 'Done', bg: '#d1e7dd', icon: 'check'},
+    {default: true, label: 'Open', bg: '#cfe2ff'}
+]);</code></pre>
+			<p class="mb-0">The first rule that matches wins. Without code, design mode does the same: select the column title → <em>Show as badge</em> → <em>Colour rule</em>.</p>
+		</div>
+		<p><a data-help="hooks">PHP hooks and procedures</a> · <a data-help="hash-variables">Hash variables</a> · <a data-help="js-api">JavaScript functions</a> · <a data-help="js-browse-badge">Badges in a list</a></p>
 	</section>
 
 	<section class="tut-lesson" id="form-tools" data-right="forms" data-level="advanced">
@@ -441,6 +459,7 @@
 			<li>Data comes from one <strong>SELECT</strong>, an SQL builder query or a PHP procedure – always read-only.</li>
 			<li><code>#DATE_FROM#</code> / <code>#DATE_TO#</code> add a date filter; on forms <code>#RECORD_ID#</code> and the record's fields filter the data.</li>
 			<li>On a form: an HTML object with <code>&lt;div data-nu-dashboard="CODE"&gt;&lt;/div&gt;</code>.</li>
+			<li><strong>Tables that open a record</strong>: give the table's query a column <code>nu_record_id</code> (the record's key – it is not shown) and choose the form: a click on a row opens that record, with <em>Open in a new tab</em> in a tab of its own.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Open the sample dashboard <code>sample_sales</code>, look at a widget's SQL and use <em>Test</em>. Then act as <code>sample_carla</code> (view only) to see it on her start page.</p>

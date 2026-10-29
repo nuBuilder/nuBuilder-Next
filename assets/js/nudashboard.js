@@ -154,7 +154,8 @@
 				const ch = el('div', 'nuDashCardHead');
 				ch.appendChild(el('span', 'nuDashCardTitle', /#\w+#/.test(w.title) ? '' : w.title));   // hash variables: the server's title comes with the data
 				if (w.link) {
-					const a = el('a', 'nuDashLink'); a.href = w.link; a.title = w.title; a.setAttribute('aria-label', w.title); a.appendChild(icon('bi-box-arrow-up-right'));
+					const a = el('a', 'nuDashLink'); a.href = w.link;
+					if (w.opt.new_tab) { a.target = '_blank'; a.rel = 'noopener'; } a.title = w.title; a.setAttribute('aria-label', w.title); a.appendChild(icon('bi-box-arrow-up-right'));
 					ch.appendChild(a);
 				}
 				const body = el('div', 'nuDashBody');
@@ -219,12 +220,26 @@
 		if (w.type === 'table') {
 			const wrap = el('div', 'table-responsive nuDashTable');
 			const t = el('table', 'table table-sm nu-table mb-0'), th = el('thead'), tr = el('tr');
-			cols.forEach((n, i) => tr.appendChild(el('th', typeof rows[0][i] === 'number' ? 'text-end' : '', n)));
+			// a column nu_record_id (0.8.682): hidden; with a form link each row opens its record (new tab with the widget's option)
+			const rid = cols.findIndex((n) => String(n).toLowerCase() === 'nu_record_id');
+			const open = (id, newTab) => {
+				const href = w.row_link.replace('__NU_RID__', encodeURIComponent(id));
+				if (newTab) window.open(href, '_blank', 'noopener'); else window.location.href = href;
+			};
+			cols.forEach((n, i) => { if (i !== rid) tr.appendChild(el('th', typeof rows[0][i] === 'number' ? 'text-end' : '', n)); });
 			th.appendChild(tr); t.appendChild(th);
 			const tb = el('tbody');
 			rows.forEach((r) => {
 				const row = el('tr');
-				r.forEach((v, i) => row.appendChild(el('td', typeof v === 'number' ? 'text-end' : '', typeof v === 'number' && i > 0 ? fmt(v, o) : (v === null ? '' : v))));
+				r.forEach((v, i) => { if (i !== rid) row.appendChild(el('td', typeof v === 'number' ? 'text-end' : '', typeof v === 'number' && i > 0 ? fmt(v, o) : (v === null ? '' : v))); });
+				const id = rid >= 0 && r[rid] !== null ? String(r[rid]) : '';
+				if (id !== '' && w.row_link) {
+					row.className = 'nuDashRowLink'; row.tabIndex = 0;
+					row.title = M.open_record || '';
+					row.addEventListener('click', (e) => open(id, o.new_tab || e.ctrlKey || e.metaKey || e.button === 1));
+					row.addEventListener('auxclick', (e) => { if (e.button === 1) open(id, true); });
+					row.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(id, o.new_tab || e.ctrlKey || e.metaKey); });
+				}
 				tb.appendChild(row);
 			});
 			t.appendChild(tb); wrap.appendChild(t); c.body.appendChild(wrap);

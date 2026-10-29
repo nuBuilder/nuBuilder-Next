@@ -209,3 +209,9 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuObjMenu .nuOmWidth { width: 5.5rem; }
 .nuObjMenu .nuOmWidthRow .dropdown-item { cursor: default; }
 .nuDsBrowse th.nuBrowseTitle { cursor: context-menu; }
+
+/* badge rules of a list column (0.8.688) */
+.nuDsBadgeRules { display: flex; flex-direction: column; gap: .35rem; margin-top: .35rem; }
+.nuDsBadgeRule { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.2rem auto; gap: .3rem; align-items: center; }
+.nuDsBadgeRule .form-control-color { padding: .15rem; height: calc(1.5em + .5rem + 2px); }
+.nuDsBadgeRules #nuDsBadgeAdd { align-self: flex-start; }

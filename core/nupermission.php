@@ -109,7 +109,7 @@ final class NuPermission
 	public static function users(string $itemId): array
 	{
 		if (!self::exists()) return [];
-		return nu_db()->all('SELECT u.zzzzsys_user_id, u.sus_login_name, u.sus_name, u.sus_first_name, u.sus_last_name, a.sal_code FROM ' . self::USER . ' p
+		return nu_db()->all('SELECT u.zzzzsys_user_id, u.sus_login_name, u.sus_name, u.sus_first_name, u.sus_last_name, u.sus_expires_on, a.sal_code FROM ' . self::USER . ' p
 			JOIN zzzzsys_user u ON u.zzzzsys_user_id = p.upe_zzzzsys_user_id LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id
 			WHERE p.upe_ident = ? AND p.upe_active = \'1\' ORDER BY u.sus_login_name', [$itemId]);
 	}

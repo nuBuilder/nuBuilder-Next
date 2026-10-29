@@ -15,7 +15,7 @@
 		}
 	}
 	document.querySelectorAll('#fmtTable tbody tr').forEach(function (tr) {
-		tr.addEventListener('click', function () { openRow(tr); });
-		tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') openRow(tr); });
+		tr.addEventListener('click', function (e) { if (!e.target.closest('.nuFmtUsed')) openRow(tr); });   // the Used menu keeps its own clicks (0.8.688)
+		tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.target.closest('.nuFmtUsed')) openRow(tr); });
 	});
 })();

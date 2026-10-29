@@ -150,7 +150,7 @@
 		window.nuLeaveGuard.leave();
 	});
 	$$('form[data-nu-guard]').forEach(function (f) {
-		var changed = false;
+		var changed = f.hasAttribute('data-nu-clone');                  // a clone that is not saved yet counts as changed (0.8.680)
 		var mark = function (e) {
 			var el = e.target;
 			if (!el || !(f.contains(el) || el.form === f) || (el.closest && el.closest('[data-nu-noguard]'))) return;
@@ -1020,6 +1020,20 @@
 	}
 	document.addEventListener('input', mark, true);
 	document.addEventListener('change', mark, true);
+	// own record pages opened as a clone (0.8.680, as nuBuilder Forte): the copy is not saved yet – red Save, a badge next to the title
+	document.querySelectorAll('form[data-nu-clone]').forEach(function (f) {
+		document.querySelectorAll('.nuBtnSave').forEach(function (b) {
+			if (b.form === f || (f.id && b.getAttribute('form') === f.id)) b.classList.add('nuSaveEdited');
+		});
+		var h = document.querySelector('.nuTitleBar h1, .nuTitleBar h2');
+		if (h && !h.querySelector('.nuCloneBadge')) {
+			var bd = document.createElement('span');
+			bd.className = 'badge text-bg-warning ms-2 align-middle fs-6 nuCloneBadge';
+			bd.innerHTML = '<i class="bi bi-copy me-1" aria-hidden="true"></i>';
+			bd.appendChild(document.createTextNode(f.getAttribute('data-nu-clone') || 'Clone'));
+			h.appendChild(bd);
+		}
+	});
 })();
 
 // accessibility (0.8.368, dev/tests/a11y.js): fields without a name get one from their label, the sub-form column title or the

@@ -288,7 +288,7 @@ if (nu_is_post()) {
 }
 
 // unattended update (command line / API) whose database steps are still pending: finish it now (0.8.301)
-if (!nu_is_post()) { try { NuGitHub::autoCheck(); } catch (Throwable) { /* shown in the GitHub section */ } }
+if (!nu_is_post()) { try { NuGitHub::autoCheck(true); } catch (Throwable) { /* shown in the GitHub section */ } }
 if (!nu_is_post()) { try { NuAutoUpdate::finishPending(); } catch (Throwable $e) { error_log('nuBuilder Next update job: ' . $e->getMessage()); } }
 
 // ------------------------------------------------------------------ finish (new code): database steps, maintenance off

@@ -279,63 +279,22 @@ if ($tab === 'manage' && $id !== '' && isset($_GET['receipts'])) {
 }
 
 // ------------------------------------------------------------------ manage list
+// a system list (0.8.690, core/nulistdefs.php 'notifications'): search, views, export, filters Status / Must confirm / Level
 if ($tab === 'manage') {
-	$rows = NuNotify::managed();
 	$canSet = $u['globeadmin'] || NuAdmin::can('notifications', 'change');
 	$keep = NuNotify::settings()['keep_days'];
-	nu_layout_start(t('ntf_manage'), 'notifications');
-	echo $tabs;
-	?>
-<div class="card shadow-sm nuListCard">
-	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('ntf_manage')) ?><?= NuListView::infoTip(t('ntf_manage_hint')) ?></h1>
-		<div class="d-flex flex-wrap gap-2">
-			<?= nu_back_button() ?>
-			<?php if ($canSend): ?><a class="btn btn-outline-secondary" href="<?= h(nu_url('notifications', ['id' => 'new'])) ?>" id="ntfNew"><i class="bi bi-plus-lg me-1"></i><?= h(t('ntf_new')) ?></a><?php endif; ?>
-			<?php if ($canSet): ?><button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#ntfSettings" aria-expanded="false" aria-controls="ntfSettings" id="ntfSettingsBtn" title="<?= h(t('aud_settings')) ?>" aria-label="<?= h(t('aud_settings')) ?>"><i class="bi bi-gear me-sm-1" aria-hidden="true"></i><span class="d-none d-sm-inline"><?= h(t('aud_settings')) ?></span></button><?php endif; ?>
-		</div>
-	</div>
-	<?php if ($canSet): ?>
-	<div class="collapse" id="ntfSettings"><form method="post" class="border-bottom p-3 bg-body-tertiary d-flex flex-wrap align-items-end gap-3"><?= nu_csrf_field() ?><input type="hidden" name="action" value="settings">
-		<div><label class="form-label small mb-1" for="ntf_keep"><?= h(t('ntf_keep')) ?></label><?= NuListView::infoTip(t('ntf_keep_tip')) ?>
-			<select class="form-select form-select-sm" name="keep_days" id="ntf_keep"><?php foreach ([0, 30, 90, 180, 365, 730] as $d): ?><option value="<?= $d ?>"<?= $d === $keep ? ' selected' : '' ?>><?= h($d ? t('aud_keep_days', $d) : t('aud_keep_ever')) ?></option><?php endforeach; ?></select></div>
-		<button type="submit" class="btn btn-sm nuBtnAct nuBtnSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
-	</form></div>
-	<?php endif; ?>
-	<div class="table-responsive"><table class="table table-hover align-middle mb-0 nu-table nuNtfManage">
-		<thead><tr><th></th><th><?= h(t('ntf_f_title')) ?></th><th><?= h(t('ntf_status')) ?></th><th><?= h(t('ntf_f_audience')) ?></th><th class="text-end"><?= h(t('ntf_read')) ?></th><th><?= h(t('ntf_created')) ?></th><th></th></tr></thead>
-		<tbody>
-		<?php foreach ($rows as $r): $st = NuNotify::state($r); $nid = (string)$r['zzzzsys_nunext_notification_id']; $edit = NuNotify::canEdit($r); ?>
-			<tr data-ntf="<?= h($nid) ?>">
-				<td class="text-center"><?= $levelBadge((string)$r['level']) ?></td>
-				<td><a class="fw-semibold text-decoration-none" href="<?= h(nu_url('notifications', $edit ? ['id' => $nid] : ['id' => $nid, 'receipts' => '1'])) ?>"><?= h((string)$r['title']) ?></a>
-					<?php if ((string)$r['pinned'] === '1'): ?><i class="bi bi-pin-angle-fill text-body-secondary ms-1" title="<?= h(t('ntf_pinned')) ?>"></i><?php endif; ?>
-					<?php if ((string)$r['must_confirm'] === '1'): ?><i class="bi bi-check2-square text-body-secondary ms-1" title="<?= h(t('ntf_f_must_confirm')) ?>"></i><?php endif; ?>
-					<?php if ((string)$r['email'] === '1'): ?><i class="bi bi-envelope text-body-secondary ms-1" title="<?= h(t('ntf_f_email')) ?>"></i><?php endif; ?></td>
-				<td><?= $stateBadge($st) ?><?php if ($st === 'scheduled'): ?><div class="small text-body-secondary"><?= h($dt($r['publish_at'])) ?></div><?php elseif ((string)$r['expires_at'] !== '' && $st === 'published'): ?><div class="small text-body-secondary"><?= h(t('ntf_until', $dt($r['expires_at']))) ?></div><?php endif; ?></td>
-				<td class="small"><?= h(NuNotify::audienceText($r['aud'])) ?></td>
-				<td class="text-end small text-nowrap"><a class="text-decoration-none" href="<?= h(nu_url('notifications', ['id' => $nid, 'receipts' => '1'])) ?>" title="<?= h(t('ntf_receipts')) ?>"><?= (int)$r['n_read'] ?> / <?= (int)$r['n_total'] ?></a></td>
-				<td class="small text-nowrap"><?= h($dt($r['created_at'])) ?><div class="text-body-secondary"><?= h((string)$r['created_by']) ?></div></td>
-				<td class="text-end text-nowrap">
-					<?php if ($edit): ?>
-					<div class="dropdown"><button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= h(t('actions')) ?>"><i class="bi bi-three-dots"></i></button>
-						<ul class="dropdown-menu dropdown-menu-end">
-							<li><a class="dropdown-item" href="<?= h(nu_url('notifications', ['id' => $nid])) ?>"><i class="bi bi-pencil me-2"></i><?= h(t('edit')) ?></a></li>
-							<li><a class="dropdown-item" href="<?= h(nu_url('notifications', ['id' => $nid, 'receipts' => '1'])) ?>"><i class="bi bi-people me-2"></i><?= h(t('ntf_receipts')) ?></a></li>
-							<?php foreach ([['copy', 'bi-copy', 'ntf_copy', ''], $r['status'] === 'published' ? ['withdraw', 'bi-eye-slash', 'ntf_withdraw', ''] : ['publish', 'bi-send', 'ntf_publish', ''], ['delete', 'bi-trash', 'delete', t('ntf_delete_confirm')]] as [$act, $ic, $lb, $conf]): ?>
-								<li><form method="post"<?= $conf !== '' ? ' data-confirm="' . h($conf) . '" data-confirm-ok="' . h(t('delete')) . '" data-confirm-class="btn btn-danger"' : '' ?>><?= nu_csrf_field() ?><input type="hidden" name="action" value="<?= $act ?>"><input type="hidden" name="id" value="<?= h($nid) ?>">
-									<button type="submit" class="dropdown-item<?= $act === 'delete' ? ' text-danger' : '' ?>"><i class="bi <?= $ic ?> me-2"></i><?= h(t($lb)) ?></button></form></li>
-							<?php endforeach; ?>
-						</ul></div>
-					<?php endif; ?>
-				</td>
-			</tr>
-		<?php endforeach; ?>
-		<?php if (!$rows): ?><tr><td colspan="7" class="text-body-secondary small py-4 text-center"><?= h(t('ntf_none_sent')) ?></td></tr><?php endif; ?>
-		</tbody></table></div>
-</div>
-	<?php
-	nu_layout_end();
+	$settings = '';
+	if ($canSet) {
+		$opts = '';
+		foreach ([0, 30, 90, 180, 365, 730] as $d) $opts .= '<option value="' . $d . '"' . ($d === $keep ? ' selected' : '') . '>' . h($d ? t('aud_keep_days', $d) : t('aud_keep_ever')) . '</option>';
+		$settings = '<div class="collapse" id="ntfSettings"><div class="card shadow-sm mb-3"><form method="post" class="p-3 bg-body-tertiary d-flex flex-wrap align-items-end gap-3">' . nu_csrf_field() . '<input type="hidden" name="action" value="settings">'
+			. '<div><label class="form-label small mb-1" for="ntf_keep">' . h(t('ntf_keep')) . '</label>' . NuListView::infoTip(t('ntf_keep_tip'))
+			. '<select class="form-select form-select-sm" name="keep_days" id="ntf_keep">' . $opts . '</select></div>'
+			. '<button type="submit" class="btn btn-sm nuBtnAct nuBtnSave"><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button></form></div></div>';
+	}
+	$buttons = ($canSend ? '<a class="btn nuAddBtn" href="' . h(nu_url('notifications', ['id' => 'new'])) . '" id="ntfNew"><i class="bi bi-plus-lg me-1"></i>' . h(t('ntf_new')) . '</a>' : '')
+		. ($canSet ? '<button class="btn btn-outline-secondary nuToolBtn" type="button" data-bs-toggle="collapse" data-bs-target="#ntfSettings" aria-expanded="false" aria-controls="ntfSettings" id="ntfSettingsBtn" title="' . h(t('aud_settings')) . '" aria-label="' . h(t('aud_settings')) . '"><i class="bi bi-gear me-sm-1" aria-hidden="true"></i><span class="d-none d-sm-inline">' . h(t('aud_settings')) . '</span></button>' : '');
+	NuListView::page('notifications', ['before' => $tabs . $settings, 'active' => 'notifications', 'title_extra' => NuListView::infoTip(t('ntf_manage_hint')), 'buttons' => $buttons]);
 	return;
 }
 

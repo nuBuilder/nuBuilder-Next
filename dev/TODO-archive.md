@@ -1,0 +1,700 @@
+# nuBuilder Next – archived "please verify" notes
+
+Moved here unchanged from TODO.md on 29 Oct 2026 (sections up to 0.8.677, all covered by a full gate since). The points that still
+need a real environment are collected in TODO.md → "Please verify – short list". Kept for reference only.
+
+## 0.8.676 Form info: browse SQL larger + edit – please verify
+- Form (i) panel → Browse SQL: the expand button shows the SQL in a large dialogue (Copy, Edit), the pencil opens a new tab with
+  design mode of the list and Code on the browse SQL (?…&design=1&dswork=code&dsitem=sfo_browse_sql).
+
+## 0.8.675 New form: choose columns, labels, list columns and order – please verify
+- New form → Existing table → "Choose columns and order" (folded): untick columns, own labels, In the list, order by drag (grip),
+  arrows, Alt+↑ / ↓; the created form has only the ticked objects in that order, list columns as ticked (no limit of six then).
+  Untouched = the former default.
+
+## 0.8.674 New form: access levels Select all + group filter – please verify
+- New form → step 3 → Access for access levels: "Select all" ticks / clears the levels shown; the group select (only when a level has
+  a group, sal_group) filters the list; ticks of hidden levels are kept and created with the form; counter "x of y selected".
+
+## 0.8.673 Update from GitHub: settings button, automatic check interval – please verify
+- Update page → Update from GitHub: the Settings button sits right after the title; Settings → "Check for updates automatically"
+  (Never / Once a day / Once a week / Once a month) is saved and shown in "Last looked" ("checks once a week"); after the update an
+  installation that had "Look once a day" off shows Never, on shows Once a day.
+
+## 0.8.672 Design mode on the list: column menu – please verify
+- Right-click a column title: Object name (copy), Properties, Rename, Align ▸, Width (Enter), Filter, Move left / right, Hide / Show, Delete.
+
+## 0.8.671 Design mode: Structure filters, folding, shortcuts – please verify
+- Structure: Tab / Object type filters below the search; a click on a tab title folds it (count of its objects).
+- Ctrl/⌘ + arrows move 20 px; F2 rename dialog; Tab / Shift+Tab next object; Ctrl+C / X / V objects (also into another form); Ctrl+Z
+  undo; Ctrl+S message; ? shortcut list (also the keyboard icon at the bottom of the icon bar).
+- If Ctrl+↑ / ↓ still do nothing: an operating-system or browser-extension shortcut takes them before the page (macOS Mission Control).
+
+## 0.8.670 The form builder replaced by design mode – please verify
+- Forms list / old links / bookmarks ?p=builder&f=… open design mode (an object, Code, History, Structure, Add, the list as in the link).
+- New form wizard: always opens the new form in design mode (browse forms on the list, page forms their editor).
+- Form AI: the created form / draft opens in design mode; Data access and AI "Back" lead to design mode.
+
+## 0.8.669 Design mode: all settings, the list, tools – please verify
+- Form settings (type, status, group, table, primary key, list, breadcrumb), tab order switch, Tools (AI, Data access, Delete form).
+- Object properties of every type (formats with + / pencil, masks, datalist, lookup PHP, sub-form add / delete, chart, image, run id / filter, grid).
+- Change column… from an object's Tools; password confirmation leads back to design mode (&dscolchg=).
+- The list: Design on the list page, click a title, edit / move / add / remove columns – in the draft.
+
+## 0.8.668 Design mode: Code, History, Changes of the draft – please verify
+- Icon bar → Code: all code parts in one editor, dots for parts with code / unsaved changes, Ctrl+S saves all; back to the form reloads it.
+- History: Compare (to now / to the draft), Restore (only without a draft); Changes of the draft (bar button) with the conflict warning.
+- Publish dialog shows the summary; after a change of the published form it asks for the form code to overwrite.
+
+## 0.8.667 Design mode for users with form rights, safe mode – please verify
+- A user whose access level has save rights on nuform sees Design; tab rename / delete greyed; no Publish without the right formpublish.
+- 🛡 in the bar: form without its JavaScript, CSS, Before Edit PHP, Setup header / include; the badge shows it; the button leaves it.
+
+## 0.8.666 Design mode: navbar menus (theme, language, user) open above the designer – please verify
+
+## 0.8.665 Design mode: no reloads, content boxes, code window – please verify
+- Add an object, change access / tab / type …: the form is drawn again in place (no page reload); ⟳ in the bar reloads fully.
+- A content box: click its title or frame to select, drag it by them; objects inside stay clickable (also in the builder preview).
+- ⤢ next to a code field's label (options / display SQL, HTML, calculation, access condition, event JavaScript): code window.
+
+## 0.8.664 Design mode: live fields, fixed gaps, object menu – please verify
+- Typing a label / top / left / width / height in the panel changes the form at once; Esc = back; saved once (Enter / leaving the field).
+- Arrange: Horizontal / Vertical gap (px) + Apply, in design mode and in the builder preview; horizontal measured to the next label.
+- Right-click an object in design mode: the form's object menu, changes go into the draft.
+
+## 0.8.663 Form designer stages 2–6 – please verify
+- Structure (icon bar, Ctrl+K): search, click selects, drag a row before another / onto a tab title. Add: free table columns, every
+  type, click = bottom of the tab, drag = drop point (absolute); missing column offer; Ctrl+D.
+- Tabs: double-click renames, "+" adds, drag reorders, right-click Hide / Hide for users / Move / Delete; hidden tabs faded.
+- Panel: lookup / sub-form / run lists (Tom Select), formats, Edit events…, Style section, Arrange section for several objects,
+  Order (Up / Down) for one; phones: sections as tabs in the bottom sheet, Structure / Add in the bar.
+- New form: three steps, Next checks each; the globeadmin lands in design mode (switch in step 3).
+
+## 0.8.662 Design mode on the form – please verify
+- A record → Design: bar + panel; change a label → "Draft · 1 change", other users still see the published form; Publish asks for a
+  note; Discard; Done. A form never published: changes are saved at once, "Publish form".
+- Drag / resize / arrow keys / Arrange panel save in the draft; Esc = form settings; several objects = common access / validation.
+
+## 0.8.658 Welcome e-mail templates – please verify
+- [ ] After the update: E-mail templates shows nu_send_welcome_email_template in the group nunext (one per language); a user with e-mail,
+      "Send welcome e-mail" → the mail in the user's language with the Set password button; clone the template, change the text, send again.
+- [ ] Your live database: is there a procedure nu_send_welcome_email? An own one (id not "nu…") is used first – as before; nuBuilder Forte's
+      shipped example (id nu68c8e03bd841c4a in nubuilder4.sql) is ignored now.
+
+## 0.8.652 Start page: Hide tile in the tile menu – please verify
+- [ ] Admin start page (a layout used by several admins / roles): right-click → *Hide tile*, the message, *Undo*; hide again and bring it
+      back with Edit tiles and groups → Hidden. A user's start page: long press on a phone → *Hide for me*, *Undo*, Personalise.
+
+## 0.8.651 Own lists: column widths by dragging the title – please verify
+- [ ] Users, forms, procedures, log, audit trail …: drag titles narrower / wider, switch the list view (each view keeps its own widths for the
+      tab), page and sort; on a phone the lists show cards (nothing to resize) – with "Table on phones" a sideways drag on a title resizes.
+
+## 0.8.650 Browse lists: column widths by dragging the title – please verify
+- [ ] A browse list of your application (and a lookup): drag titles wider / narrower with the mouse and on a phone or tablet (a sideways
+      drag on a title resizes, a vertical swipe still scrolls the page); a click still sorts; paging / sorting keeps the widths; a form
+      that sets widths in its JavaScript (nuSetBrowseColumnSize) – the dragged widths win after the form's code.
+
+## 0.8.649 Permission items: copy from another user – please verify
+- [ ] User form → Permission items → *Copy from user…* on your installation: choose a user with many items, *Add* and *Replace*,
+      *Undo*, then *Save*; with an admin role (not the globeadmin) and with "Only the globeadmin grants admin rights" on.
+
+## 0.8.623 Change column (design mode) – please verify
+- [ ] Design mode → object → Tools → *Change column…* on a copy of a real table: widen a varchar, shorten one (data check, tick), text → number /
+      date; MySQL 8 (column default written back without quotes check), SQL Server (`ALTER COLUMN`, defaults are constraints – kept;
+      indexes / keys on the column make it fail with a message) – not tested here.
+
+## 0.8.622 Tutorial in two versions, UUID keys – please verify
+- [ ] Tutorial: first opening shows Basic / Advanced; read a few of the new *In depth* lessons (wording, exercises) – they were written
+      from the documentation and not walked through on a real installation yet.
+- [ ] UUID keys (suggestion of a forum user): a table with a `VARCHAR(36)` key – new records, sub-form rows, clone, CSV import with a
+      generated id get a UUID v7; an imported UUID stays unchanged. SQL Server (`NVARCHAR(36)`, `uniqueidentifier`) not tested here.
+- [ ] Answer the forum user (UUID keys built in 0.8.622, v7 instead of v4: same format, time-ordered for the index).
+
+## 0.8.621 Form buttons and HTML objects like nuBuilder Forte – please verify
+- [ ] Your portal form (copied from nuBuilder Forte): buttons solid in the accent colour; TimeTrack / Bonus Program / TP E-Mail keep
+      their colours with white text; "E-Mail Notifications (23)" on one line; headings and the "Offenes Ohr" box as in nuBuilder Forte.
+- [ ] Forms made in nuBuilder Next with HTML objects: headings and paragraphs now have the browser's margins and sizes (as nuBuilder
+      Forte), the absolute layout 13 px text – check that nothing moved; Bootstrap classes (`m-0`, `fs-6` …) or own CSS fix it.
+- [ ] Dark mode and your Branding accent colour on a form with buttons; a very light accent gives black button text.
+- [ ] Sample data 18: Admin tools → Sample data → *Refresh* (start tiles get their icons back as own CSS).
+
+## 0.8.480 Data access (fields + list columns) – please verify
+- [ ] Form builder → Data access on a real form: Withheld / Masked / Protected / Insert only / Update only for an access level, a user,
+      a team; the user's edit form, list, export (Excel / CSV / print) and the record history show no withheld value.
+- [ ] Forms whose JavaScript reads a field that is now withheld (nuGetValue returns '' – the control is gone).
+- [ ] Preview as user matches what that user really gets; "Act as user" too.
+- [ ] Lookup objects set to Masked show a locked text (the lookup button is gone).
+
+## 0.8.479 File Manager = nuFiles – please verify
+- [ ] After the update: `third_party/tinyfilemanager/` and `vendor/packs/tinyfilemanager-*` of nuBuilder Next are gone (Security check
+      red if one is left); nuBuilder's own `third_party/tinyfilemanager/` is untouched.
+- [ ] Start page → File Manager → *Set up the File Manager*: the Uploads share points to the folder of the upload procedure
+      (`nu_uploads/` next to or inside the web root); the Web root share asks for the password when it was last entered > 15 min ago.
+- [ ] Give the form `nufiles` to an access level and a grant in the settings; that user sees only the granted share.
+- [ ] nginx: `location ^~ /custom/ { deny all; }` covers `custom/pages/nufiles/_data/`; add `apps` to the deny rule (built-in pages, 0.8.481).
+
+## 0.8.478 Security quick wins – please verify
+- [ ] Update on the live server: step 0022 replaces `nu_upload_file_template` only when it is an unchanged copy; otherwise the Security
+      check shows it red – then set `$targetDirectory` to a folder outside the web root. Files uploaded before stay where they are
+      (in the web root): move them and delete them there.
+- [ ] InfinityFree: `nu_uploads/` next to `htdocs` cannot be created → it is made inside `htdocs` with a deny-all `.htaccess`; check that
+      `https://<site>/nu_uploads/<file>` answers 403.
+- [ ] Apache: a folder without index page (e.g. `vendor/bundled/`) shows an empty listing; no error 500 from the new `IndexIgnore` line.
+- [ ] Forms whose JavaScript puts `onclick` buttons into `nuMessage`: add `nuNextSafeHtml(false);` (the browser console names removed parts).
+- [ ] Image objects: users still see the images of the forms they can open; a file used by an image object on another form now answers 404.
+- [ ] Decide for existing installations: switch on *Records only through the form's list* and *Do not save read-only and hidden fields*
+      (Security check marks both orange while off) after checking the applications.
+
+## 0.8.462 Gap analysis B2, B5–B7 and smaller differences – please verify
+- [ ] B2: a copy of nuBuilder Next next to a live nuBuilder (on a COPY of its database): the login page and a failed sign-in create no
+      `zzzzsys_nunext_*` tables; the globeadmin's first sign-in creates them; with an existing nuBuilder database and without
+      `$nuConfigAllowExistingNuDB` nothing is written. Users see "not set up yet" until the globeadmin has signed in once.
+- [ ] B5: your global hook procedures (`nu_before_save`, `nu_before_edit`, `nu_before_delete`, `nu_startup`, `nu_invalid_login`,
+      `nu_check_password_policy`, `nu_after_update`, `nu_debug_result_added`) run as in nuBuilder – Compatibility check → G2 lists them.
+- [ ] B6: forms with calc objects in grid sub-forms show the same row values and totals as nuBuilder; a new record with such a
+      sub-form saves (the blank row stays blank); `afterinsertrow` runs once per new row.
+- [ ] B7: `onnuload` / `onenter` events of your forms (Compatibility check → G4).
+- [ ] Before Save code with `nuFORMdata` / `nuGetNuDataValue` / `nuSetNuDataValue`; `#USER_NAME#` (now `sus_name`); lookups that
+      read `nuLookupRecord()->ID`; report group footers of empty (NULL) groups are blank.
+- [ ] Before the login limit counts failed sign-ins the own tables must exist (B2) – on a new installation the globeadmin signs in first.
+- [ ] Open from the analysis: B1 (existing nuBuilder databases are still blocked – the owner decides), hidden procedures' `#RECORD_ID#` /
+      `#FORM_ID#` (G8, kept on purpose), external scripts / frames (G6, Content Security Policy).
+
+## 0.8.461 Gap analysis B3 / B4 (data mode, form type, access condition on save) – please verify
+- [ ] An access level with *No changes to existing records* on a form: as a user of it, existing records are read only, a new record saves.
+- [ ] *Browse only* / *Edit only*: as a user the list resp. a record is refused; the same access level in nuBuilder behaves the same.
+- [ ] A form with an object of access 9 (condition) on your live database: Save works, After Save runs, sub-form rows are saved.
+- [ ] SQL Server: the access condition inside the save transaction uses SAVE TRANSACTION / ROLLBACK TRANSACTION – not tested on a real SQL Server.
+
+## 0.8.460 Side bar (favourites, recently used) – please verify
+- [ ] User menu → *Side bar* on your server, as globeadmin and as a normal user (start page of his access level): favourites = the ☆ tiles,
+      ☆ in the side bar changes the start page too; recently used fills while you work; « icon strip; phone drawer.
+- [ ] *Side bar for everyone by default* – users without an own choice get it; one who switched it off keeps it off.
+- [ ] Decide: should records count as "recently used" too (e.g. "Customer · Alpenblick AG")? Today only pages and forms.
+- [ ] SQL Server: table zzzzsys_nunext_recent (step 0021) – not tested on a real SQL Server.
+- [ ] `dev/tests/a11y.js` (side bar on): side bar clean; still open from before – contrast of `#nuMailCheckBtn2` (E-mail / Update, light, phone)
+      and the CodeMirror scroll box of the nuconfig.php editor.
+
+## 0.8.459 Uploads with Uppy (file target "File System") – please verify
+- [ ] Publish the Uppy pack: attach `nunext-lib-uppy-4.2.0.zip` and the new `libraries.json` (signed, keeps the six packs) to the
+      GitHub release `libraries` – until then install it by hand: Update → Libraries → *Upload a pack*.
+- [ ] On the live server: a nuBuilder form with an Uppy object (file input, target File System) – the drop area shows, files land in
+      the folder of `nu_upload_file_template`, `nuOnFileUploadComplete` runs; the same form still uploads in nuBuilder itself.
+- [ ] Your database keeps nuBuilder's `nu_upload_file_template` (web root, accepts HTML / JavaScript / SVG): replace it with the
+      hardened text (`NuUpload::PROCEDURE`, Help → Forms → File uploads) or point `$targetDirectory` to an upload folder.
+- [ ] A refused file shows only "Error uploading file(s)." – nuBuilder's template swallows the reason (it is in the log). Change the
+      template's `onAfterResponse` to show `jsonData.message`? (Then nuBuilder and nuBuilder Next show it.)
+- [ ] Uppy version: the pack is the build nuBuilder 4.9.2 ships (Uppy core 4.2.0). A newer Uppy: new pack (`../libsrc/uppy/`,
+      `php dev/libpack.php`), nothing in nuBuilder Next changes.
+- [ ] SQL Server: step 0020 inserts the template rows – not tested on a real SQL Server.
+
+## 0.8.454 Custom user fields – please verify
+- [ ] Users → Custom user fields: add a text, a choice list and a yes / no field; the user form shows them on the tab More.
+- [ ] A field edited by the user himself appears in My account (user menu) for a normal user.
+- [ ] Browse SQL / report: `LEFT JOIN zzzzsys_nunext_user_ext USING (zzzzsys_user_id)` works on the live database (collation).
+- [ ] SQL Server: adding / deleting a field (ALTER TABLE) – not testable here.
+
+## 0.8.451 Backups: delete several, clean-up rule – please verify
+- [ ] Update → Backups: tick a few, Delete selected; the newest backup and the newest "before rollback" backup show a lock.
+- [ ] Clean up…: preview matches what Delete now removes; "Apply automatically after each update" runs after the next update.
+- [ ] Paging the backups or history list no longer blanks the tab for a moment.
+
+## 0.8.445 SMTP login with OAuth 2 – please verify
+- [ ] Google: register the OAuth client (Help → E-mail → OAuth 2), connect, Check connection, send a test mail; note: an external app in "Testing" loses the permission after 7 days.
+- [ ] Microsoft 365: app registration with SMTP.Send, Authenticated SMTP on for the mailbox, connect, Check connection, test mail.
+- [ ] Set $nuConfigSecretKey on the server first, so client secret and tokens are stored encrypted.
+
+## 0.8.435 Form info for the globeadmin – please verify
+- [ ] (i) next to Delete in a form (browse and edit): values right, copy buttons and *Copy all* work on your server (https: clipboard API; http: fallback).
+
+## 0.8.432 E-mail: check connection, fold template fields – please verify
+- [ ] E-mail → Test → *Check connection* with your real server: all four steps green, no mail arrives; a wrong password shows the login step red.
+- [ ] E-mail templates: fold *Template and recipients*, reload – stays folded; a template with an empty code opens it.
+
+## 0.8.431 Tiny File Manager status – please do
+- [ ] On the server: `NUNEXT-VERSION.txt` in the Tiny File Manager folder with `version: 2.6+git.4149143.nu3` and `CVE-2025-15138: patched …`
+      → Security check and Update → Libraries show OK (with a note on CVE-2025-46651 / CVE-2026-108801).
+- [ ] Decide on the two newer reports (no upstream fix, vendor silent): check them against the nu3 patch – CVE-2026-108801 uses the same
+      `fullpath` upload path; CVE-2025-46651 is "upload from URL" (switch it off?) – then mark them `patched` in NUNEXT-VERSION.txt.
+
+## 0.8.430 PHP 8.1: GitHub download – please verify
+- [ ] On the PHP 8.1 server: installer step *Libraries* and Update → *Look on GitHub* reach GitHub again (before: "Undefined constant
+      CURLOPT_XFERINFOFUNCTION"); the unattended update (`php cron.php update --github`) downloads. Tested here only with PHP 8.3, where the
+      PHP 8.1 option (CURLOPT_PROGRESSFUNCTION) downloads and stops at the size limit as before.
+
+## 0.8.428 Back to all records – please verify
+- [ ] Form lists: the × button right of the search (also with a column filter set), Esc in the search field, the browser's × in the field
+      (Chrome / Edge / Safari; Firefox shows none); in a lookup window Esc in an empty search field still closes it.
+
+## 0.8.427 Search highlighting, nuBuilder search syntax – please verify
+- [ ] Browse lists of your forms: search with several words, `"phrases"` and `-exclusions` – same rows as in nuBuilder? The marks: only in
+      searched columns, also inside formatted cells (badges, links); dark mode colour; print view.
+- [ ] Forms with own CSS for nuBuilder's `.nuBrowseSearch` highlight span: in nuBuilder Next the marks are `mark.nuHighlight`.
+- [ ] Very large print views (thousands of rows): highlighting stops after 20,000 text pieces – fast enough?
+
+## 0.8.425 Start pages of users – please verify
+- [ ] Log in as a normal user (no admin role) on the live server: the automatic start page shows the forms and reports of the access level
+      (home form first); the table "My forms and rights" is gone – it appears only while the globeadmin acts as the user (collapsed).
+- [ ] Access levels → a level → *Start page*: Customise, tiles for a form, a report (with and without launch form), a procedure (granted to
+      the level / global) and a link; *Only for* on a tile and on a group (permission item, team, department, position); *Use the default*;
+      the default for all access levels. Check one of your real access levels with "act as user".
+- [ ] Users: *Personalise* (star, hide, *Hidden by you*, *Back to the standard*) and *View* on desktop and phone.
+- [ ] 0.8.426 sample data 15: Admin tools → Sample data → *Refresh*, then sign in as sample_dario, sample_carla, sample_ben (the three example
+      start pages) and sample_anna (automatic page); remove the permission item sample_discount from Dario – the group *Pricing* goes.
+- [ ] The procedure `nu_home_user` (hook of user start pages) with `#HOME_ACCESS#`; `nu_home` still runs only on the admin page.
+- [ ] Decide: should users with an admin role also see their access level's page (today: the admin tile page)? Should the access level's
+      home form open after login as in nuBuilder (today: the first tile)? SQL rules for tiles (like `visible_sql` of a custom page) – later?
+- [ ] SQL Server: the new list key `home_user` uses the existing table zzzzsys_nunext_list_view – not tested on a real SQL Server.
+- [ ] `dev/tests/a11y.js` reports three serious points that were already there in 0.8.424 (not from this change): CodeMirror scroll box
+      not focusable (nuconfig.php editor, help), contrast of `#updReqLine` (update page), help page 420 px wide on phones (API table).
+
+## 0.8.420 Start page View panel – please verify
+- [ ] On the live server: your layouts look as before (tile size → style, display → navigation); open *View* (button or key V) and try the
+      styles, descriptions and navigation at desktop, tablet and phone width; light and dark.
+- [ ] A user with an admin role but without *Start page layout*: changes in *View* stay his own (the shared layout is unchanged for others),
+      *Undo my changes* goes back. As globeadmin on a shared layout: *Only me* is the default, *Everyone* writes the layout (Undo in the toast).
+- [ ] Open the start page in Microsoft Edge / Safari / Firefox (container queries, `:has()`, `color-mix()` – browsers from 2023 on).
+- [ ] Next release: drop the deprecated POST action `size` and the texts `home_size_*` (still used by Customise's tile size select – check
+      first), and decide on a colour field per group in Customise (layouts already accept `groups[].color`).
+
+## 0.8.409 Library folders vendor/ – please verify
+- [ ] Update the live server: pages load (Bootstrap, icons, Tom Select, CodeMirror, formatters, QR code, ApexCharts) from `vendor/bundled/`;
+      the old `assets/vendor/` stays (delete it by hand once everything works – a later version removes it).
+- [ ] Packs installed with 0.8.405–0.8.408 in `third_party/<name>-<version>/` still work (shown as pack); a new install of that library
+      goes to `vendor/packs/`. phpMyAdmin / Tiny File Manager from `vendor/packs/` reach `nuconfig.php` through `vendor/nuconfig.php`.
+- [ ] Apache: `vendor/packs/nunext-libs.php`, `vendor/packs/tcpdf-*/…`, `vendor/packs/phpmailer-*/…`, `vendor/nuconfig.php` → 403;
+      `vendor/packs/tinymce-*/tinymce.min.js`, `vendor/packs/nudb-*/` → 200 (Security check probes the closed ones). nginx: new rules in Help.
+- [ ] Fresh install from `nunext.zip`: the step Libraries offers PHPMailer from `_install/` without internet.
+- [ ] Forms with `fa fa-…` icons without nuBuilder next to nuBuilder Next: the bundled Font Awesome 7.0.0.
+
+## 0.8.405 Library packs – please verify
+- [ ] Create the GitHub release with the tag `libraries` and attach the packs + `libraries.json` (built on the development installation:
+      Update → Libraries → *Build library packs*, or `php dev/libpack.php`). Sources: TCPDF 7 Composer folder, PHPMailer, TinyMCE,
+      phpMyAdmin with nuBuilder's `config.inc.php` (no `blowfish_secret`), Adminer, the patched Tiny File Manager with its `NUNEXT-VERSION.txt`.
+- [ ] Update → Libraries on the live server: *Look on GitHub*, install all, self-test each; reports (PDF), test mail, an editor field,
+      Database (phpMyAdmin / Adminer) and File Manager open from their new folders `third_party/<name>-<version>/`.
+- [ ] Afterwards remove the old copies (`third_party/tcpdf`, `nudb`, `adminer`, `tinyfilemanager`, `assets/vendor/tinymce`, `lib/PHPMailer`) – they are only
+      used while no pack is installed. phpMyAdmin keeps its own cookies per folder: a new version means one new phpMyAdmin login cookie.
+- [ ] Installer: step *Libraries* with packs from GitHub and with zips copied into `_install/` (no internet).
+- [ ] nginx: TinyMCE, phpMyAdmin and Tiny File Manager are served from `third_party/<name>-<version>/`; TCPDF, PHPMailer and Adminer folders
+      carry a deny-all `.htaccess` – nginx needs the rule in Help → Security check → Web server rules.
+
+## 0.8.403 Forms with AI – please verify
+- [ ] Forms → *With AI*: describe a form, copy the prompt into Claude / ChatGPT, paste the answer, Check, Create draft – new table, lookup, select.
+- [ ] Builder → *Change with AI* on a real form: the plan lists only what changed; the draft preview looks right; publish.
+- [ ] Answers with mistakes (unknown forms, columns, types): readable errors; asking the AI to fix them works.
+- [ ] SQL Server: new table / columns from the spec.
+
+## 0.8.401 Concurrent edits – please verify
+- [ ] Two browsers (two users), same record: the yellow "also open" note appears within 30 s and goes ~75 s after the other closes it.
+- [ ] Same field saved by both: dialog *Changed meanwhile* with who / when (audit trail on vs. off), Mine / Theirs, Reload.
+- [ ] Sub-form rows (same field, row deleted by the other, row deleted here but changed there); Delete of a changed record asks.
+- [ ] `$nuConfigEditConflictCheck = false` / `$nuConfigEditPresence = false` and `nuNextConflictCheck(false)` / `nuNextPresence(false)` in Before Edit.
+- [ ] SQL Server (row lock WITH (UPDLOCK, ROWLOCK)) – not testable here.
+
+## 0.8.398 Excel export, Export menu – please verify
+- Open an exported .xlsx in Excel (and LibreOffice): bold frozen header, autofilter, numbers right-aligned as numbers, dates as dates.
+- Export menu (HTML page, CSV …, Excel) in the system lists, the debug results, formats, e-mail templates and form browse lists;
+  on phones in the ⋮ menu. Excel of a form browse list: formatted values (USD 50,000.00, 21.09.2026) stay text – only plain numbers
+  become numbers; the system lists' print view gives Excel / CSV only the visible columns.
+- NuXlsx in a procedure: `NuXlsx::create('x')->sheet('a')->header([...])->rows([...])` + download / save.
+
+## 0.8.387 Page forms (custom PHP) – please verify
+- Create a page form (Forms → Add, type "Page (custom PHP)"), Create from template, open it in the three open modes (new tab, inside
+  nuBuilder Next, whole window); menu, start page tile, run button and iframe run object of another form (parent form / record).
+- nginx: the rule for custom/ (Help → Security → Web server rules); the security check warns when custom/ is reachable directly.
+- An update with a page folder installed: custom/pages/<code>/ stays; a backup with "Include custom pages".
+- Copy AI prompt: paste into an AI with a short description and run the page it writes.
+- 0.8.388 API versions: a page with $nu->api(1) runs; change it to $nu->api(2) → clear error. "Check package" with the next
+  package lists a page that calls a non-existing $nu method. When a method is deprecated for real: add it to NuPage::API_DEPRECATED
+  and call $this->deprecated('name') at its start (JS: deprecated('name', 'replacement') in nupage.js + NuPage::JS_DEPRECATED).
+- 0.8.391 settings keys: the builder lists the $nu->setting() keys of a page (set / not set, unused keys); Insert example
+  (settings.example.json, also in the template).
+- Phase 2 (not built): table restriction (tables_json stored, not enforced), pages on another server (launch token + per-user REST),
+  page cron hooks, settings form from a JSON schema.
+
+## 0.8.386 Form drafts (phase 1) – please verify
+- Start a draft, change objects / code / list columns, Compare, Preview (banner, read-only; with saving allowed: confirmation), Publish with a note.
+- Conflict: change the live form after the draft was started (other window, "Change live anyway") – Publish asks for the form code.
+- Security setting "only through drafts": new forms start as Draft (status 0, only designers open them), live changes need a confirmation (globeadmin).
+- Admin role with "Publish forms (drafts)"; a user with form rights but without it can edit a draft but not publish.
+- Not built (phase 2 / 3 of the brief): review / approval (`form_publish_review`), testers, rebase of a draft onto the new live form,
+  change sets over several forms, scheduled publishing, export / import of a draft. The live builder code was left as it was (no shared
+  store class); `dev/tests/e2e.js` form_drafts_parity checks that the same edits give the same rows live and through a published draft.
+
+## 0.8.372 Update from the folder _update – please verify
+- Copy nunext.zip by FTP into <nuBuilder Next>/_update/ (the Update page creates the folder with a deny-all .htaccess – check once
+  that https://…/nunext/_update/<file>.zip is refused, Security check → Files on the web), then Update → "Packages in the folder
+  _update" → Check package → Install. The zip is deleted there after the install; unsigned zips are listed but cannot be chosen.
+
+## 0.8.371 Users list on phones – please verify
+- Below 576 px: Import and Print sit in a ⋮ menu right of Add (Back, Add, ⋮, view menu); larger screens unchanged.
+- Other lists with several buttons (forms, procedures, reports …) can use the same option ('more') – say which ones.
+
+## 0.8.370 nuSetSelect2 / $.fn.select2 – please verify
+- Form code that calls nuSetSelect2(id, obj) or uses Select2 itself ($('#x').select2({…}), .select2('open' | 'data' | 'destroy' …))
+  gets Tom Select now (before: a placeholder that did nothing). Admin tools → Compatibility check lists the form code that calls it –
+  open those forms once. Select2 options without a Tom Select counterpart (templateResult, ajax, matcher …) are ignored.
+
+## 0.8.369 nuScroll – please verify
+- Input type nuScroll did nothing in nuBuilder Next (plain text field). Now ↑ / ↓ step through the object's list as in nuBuilder (a
+  value not in the list: ↓ starts with the first entry, ↑ with the last – nuBuilder skipped the first), own text still possible.
+- The list is also a <datalist>: on a phone tap the field and choose (iOS Safari / Android Chrome show it above the keyboard or as a
+  menu); on a desktop a small arrow in the field. Try it once on your phone – the look depends on the browser.
+
+## 0.8.368 Accessibility, PHPStan level 3 – please verify
+- Colours: grey outline buttons, "+ Add", links on the grey page, the active tab and the red Save are a shade darker in light mode,
+  red / green texts and buttons lighter in dark mode (WCAG AA 4.5:1) – look at a few pages in both modes.
+- CodeMirror has dark colours in dark mode now (it kept the light ones everywhere): procedures, form code, builder, nuconfig.php.
+- Screen readers: fields without a label (sub-form cells, lookup code / description, selects with search) get a name; the logo
+  link in dark mode, pager buttons and status icons too. Tables and boxes that scroll can be reached with Tab.
+- Phones: help tables scroll inside their box, the update page's file field fits.
+- dev/tests/a11y.js finds no critical / serious points on ~40 pages (light, dark, phone). Moderate / minor points are listed but
+  not fixed yet (e.g. heading order, landmark regions) – run it with LEVEL=critical,serious,moderate to see them.
+
+## 0.8.367 Security review of the parts after 0.8.207 – please verify
+- Fixed: the history of a record (audit trail) showed every audited column to whoever could open the form – also admin-only /
+  hidden fields and columns that only other forms show. Now only the columns of the form and its sub-forms the user sees
+  (globeadmin and the audit right: all). Restore: refused for a field the user does not see or may not change (read-only, hidden)
+  and for a record his list does not show ("Records only through the form's list").
+- Fixed (defence in depth): a notification link that is not http(s)://, index.php… or ?… (written past the form, e.g. by SQL) is not
+  sent to the bell / page / e-mail.
+- Checked, no change needed: notifications (rights to send / see / change, own department / team only, CSRF on the bell's POST),
+  report download links (random token stored as hash, download counted in one statement, jobs bound to the API client), one-time
+  login tokens (constant-time compare, compare-and-swap, counted for the login limit, masked for demo visitors), REST API (scopes
+  AND the service user's rights, admin-equivalent levels only by the globeadmin, service users not changeable, HMAC secrets, report
+  runs per minute, unattended update only with a signed package, https only, redirects https only).
+- Open (decide): the history of a DELETED record is shown to whoever can open the form – "Records only through the form's list"
+  cannot check a record that is gone. The record ids are random, the list of deleted records needs the audit right.
+- Open (decide): POST /v1/system/update downloads from any https address the API client names (also internal addresses of the
+  server's network) – the package must be signed anyway; an allow-list of hosts would close it completely.
+
+## 0.8.366 Large data, indexes, browser cache – please verify
+- Load test (dev/tests/load.js, 500 users, 100,000 customers / orders, 100,000 audit rows, 1,000 notifications, 200,000 log rows):
+  every page ≤ 330 ms, the bell 8 ms per check – the notification and audit volume points above are covered. On the live server the
+  numbers depend on the host (InfinityFree: shared CPU); the slowest are full-text searches of the log and of big browse lists.
+- Sub-form link columns get an index: the form builder adds it when a sub-form is saved; the sample application on install / refresh.
+  Existing forms built before 0.8.366: open each sub-form object in the builder and save, or add the index by hand.
+- Browser cache: assets/.htaccess (mod_headers / mod_expires) – Lighthouse "efficient cache lifetimes" should be gone on Apache;
+  check the response headers of a .css file once (Cache-Control: public, max-age=31536000, immutable). nginx: rule in Help → Security.
+
+## 0.8.365 More automatic tests – please verify
+- The user form's "Create login link" did nothing unless `$nuConfigAutoLogin` was on (its form was only rendered then) – fixed; try it once.
+- Now tested at every release (dev/tests/e2e.js, 37 tests): nuBuilder hooks (Before Save / Before Delete / After Save / Before Edit,
+  a lookup's After Browse with #ROW#, an object's JavaScript event, a hidden procedure), lookup by code, permission items, admin
+  roles (view only, 403 elsewhere), demo mode ("Try the demo", no save), one-time login link (once only), user CSV import (the new
+  user logs in), branding, dashboards (data per access level), login rate limit. compat.js: logins across both (25 tests).
+
+## 0.8.364 Cross-tests against nuBuilder – please verify
+- New records: fields you did not touch and that are empty are no longer written (column default / NULL, as nuBuilder) – forms whose
+  code relies on '' instead of NULL in new records (e.g. `WHERE x = ''`) behave like in nuBuilder now.
+- Negative numbers show the minus after the prefix as nuBuilder: `€ -99,95`, `USD -500.00` (brackets formats unchanged).
+- SQL builder: the SQL text is rebuilt only after a change in the builder; clause rows keep their ids.
+- Later, on a COPY of a real nuBuilder database: `dev/tests/compat.js` (see CLAUDE.md) – it tests every application form in both.
+
+## 0.8.363 Start page: list in 2 columns – please verify
+- Customise → Tiles (or ▾ next to Customise) → "List in 2 columns": full width, row by row; one column below 768 px. Dragging tiles in
+  Customise, favourites filter, tabs display, dark mode.
+
+## 0.8.362 PHP2Shell warning – please verify
+- Update PHP on every server (8.2.35 / 8.3.36 / 8.4.27 / 8.5.12 or newer, or the distribution's / host's patched package), then restart
+  PHP-FPM / Apache. Security check → "PHP version" must be green; the self-test's PHP check must be OK.
+- Distribution packages with a backported fix keep a lower version number (e.g. Ubuntu's 8.3.6) and still show red – a newer
+  check could read the distribution's patch level; decide whether that is wanted.
+- Open decision: raise the minimum for install / update from PHP 8.1 to 8.2 (8.1 gets no official fix).
+
+## 0.8.361 Tests – please verify
+- Self-test (developer mode → Admin tools → Self-test) on the development server: all OK? Warnings for e-mail / housekeeping are expected
+  where those are not set up.
+
+## 0.8.357 Notification centre – please verify
+- Polling every 60 s per open tab: on large installations (hundreds of users online) watch the server load; the interval is NuNotify::POLL.
+- "Live" notifications are matched in PHP against the last 300 current notifications of the installation – enough for now; a SQL filter would be the next step.
+- E-mails go out in the request that publishes (up to 2000 recipients) – for big audiences a queue would be better.
+- SQL Server not tested (tables and queries are plain).
+
+## 0.8.350 Audit trail – please verify
+- On SQL Server: restoring a deleted row of a table with an IDENTITY key is refused (no `SET IDENTITY_INSERT`); MySQL / MariaDB tested.
+- Large imports: one audit row per changed column – a 100 000-row CSV import with 10 columns writes 1 000 000 rows (exclude the table if not wanted).
+- Not captured: changes by PHP code / procedures with their own SQL (nuRunQuery …), nuBuilder itself, phpMyAdmin. Database triggers would be the next step if needed.
+
+## 0.8.346 Database changes of an update – please verify
+- The first package that shows the list is the one AFTER 0.8.346 (an installation must already run 0.8.346 to read install/db_changes.json); older packages show "not described".
+- New step = new entry in `NuMigrate::CHANGES` (release.py stops otherwise). Own tables: missing columns are now added automatically (NuSchema::create) – check on SQL Server.
+
+## 0.8.341 Demo mode – please verify
+- `$nuConfigIsDemo`: the demo globeadmin login of a live nuBuilder config works in both apps (same name / password).
+- Demo data reset on SQL Server: tables with an IDENTITY column need `SET IDENTITY_INSERT` – not handled yet; MySQL / MariaDB tested.
+- Save limit counts per IP address: visitors behind one proxy / company network share the 10 saves (`$nuConfigTrustProxy` for the real address).
+
+## 0.8.340 Reports through the REST API – please verify
+- `"async": true` on PHP-FPM: the report should run right after the 202 answer (`fastcgi_finish_request`); tested only with PHP's built-in server, where the job runs at the first status request.
+- E-mail delivery (`"email": {…}`) – not sent in the test environment (no mail server).
+- Very large reports: memory and time limit (`nu_time_limit(300)`); async jobs on servers without PHP-FPM still run inside the status request.
+- Possible next step: report runs in the API playground show the PDF (the playground reads JSON only, so `Accept: application/pdf` is not offered there).
+
+## 0.8.339 One-time login link (nuBuilder's LOGIN_TOKEN) – please verify
+- A link from nuBuilder (or another system that writes `sus_json` LOGIN_TOKEN) logs in once in nuBuilder Next. The other direction
+  (a link made in nuBuilder Next logs in to nuBuilder, a password set in nuBuilder Next works there) is tested automatically since 0.8.365.
+- SQL Server: the token is replaced with `UPDATE … WHERE sus_json = ?` (compare and swap on NVARCHAR(MAX)) – not tested on a real SQL Server.
+- E-mail with the link (user form envelope, API `"email": true`): not sent in the test environment (no mail server) – check the text and the button.
+- nuBuilder's older md5 login path compares the token with `LIKE` and the typed password (`%` may match any token) – consider reporting it to nuBuilder.
+
+## 0.8.329 List views – please verify / next steps
+- Users and Access levels lists run on core/nulistview.php + core/nulistdefs.php; tested with Chromium (views, editor, phone cards,
+  shared views for an access level, defaults, Print with the view's columns, export / import). SQL Server: the catalogue SQL
+  (subqueries, CASE WHEN EXISTS) not tested on a real server.
+- 0.8.334: forms, procedures, reports, files (tiles / table), items, translations, permission items, prompts, log and e-mail log run on
+  list views too – check them once with real data (column choice of the default views, sort, filters, Print). Debug results keep their
+  own message list (selection, delete, auto refresh). Not yet: e-mail templates, SQL builder, dashboards, logged-in users. 0.8.546 / 0.8.547: custom user fields and API clients run on list
+  views too.
+- Later: form browse lists (key 'form:<id>', columns from the form builder, views per access level).
+
+## 0.8.328 Tutorial – please verify
+- Read the tutorial (docs/nunext-tutorial.htm, 36 lessons) once as the owner: wording, order, exercises; add screenshots later
+  (asked for "no pictures for now"). Keep it in step with new features – like the docs.
+- Tested with Chromium: every lesson renders, every page link answers 200, every documentation anchor exists, progress / banner /
+  hide, role user (sample_anna, 15 lessons), user without role (403), phone width.
+
+## 0.8.327 User import – please verify
+- Users → Import… (new tab) → target "Users": skipped logins, access level by code or for all, passwords hashed + change at first
+  login, welcome e-mail option. Tested with Chromium on MariaDB (zzzzsys_user is MyISAM there: the user import checks all rows
+  first and writes afterwards, no transaction needed). Welcome e-mails from the import not tested with a real mail server.
+- SQL Server / SQLite not tested for the user import.
+
+## 0.8.323 Admin roles – please verify
+- Default roles, user form "Admin role", start page / Ctrl+K / help filtered, pages refused (403) without the right, "View only" pages,
+  no over-granting, own role locked – tested with Chromium (sample_anna as Developer and manager role, sample_carla as Support).
+- Go through the pages once with a view-only role: some pages may still offer a button that only fails on the server (403).
+- Not in the roles yet: the form runtime's developer menu (⋮ → arrange objects, Properties) stays globeadmin only; error details
+  (SQL messages) are shown to the globeadmin only.
+
+## 0.8.321 Start page search, pins, Ctrl+K – please verify
+- Pin entries of ▾ menus, Customize → Add tile → "Page of nuBuilder Next", start page search (English words too), Ctrl+K on every
+  page (globeadmin). Tested with Chromium; Safari / Firefox: Ctrl+K vs. Cmd+K, the search field's clear button.
+- Ideas: Ctrl+K for users (limited to their rights), help chapters and records (e.g. a customer by name) in the search.
+
+## 0.8.316 Admin tools on the start page – please verify
+- Fresh start page: groups System, Look, Data, Integration (display Tabs: own tab "Admin tools"); a start page customized before gets
+  them once at the end (only tools not placed yet; saved right away, layout v2). System status (?p=vendor): time zone, missing tools,
+  InnoDB, demo mode; its badge is cached 5 minutes in the session.
+- Texts that still say "Admin tools → X" mean the tab / group of that name – check that they read well.
+
+## 0.8.315 Deutsch (DE / CH) – please verify
+- lang/de.php is German German now (ß after a long vowel / diphthong from a word list – außerhalb, Größe, schließen; „quotes“);
+  lang/de-CH.php is generated (ß → ss, „“ → «»). Read the German texts once for ß words the list missed (php dev/lang_variants.php --de
+  finds known Swiss spellings). Shortcuts stay "Ctrl" (German keyboards say "Strg").
+- Austria / Liechtenstein: no own version yet (browser de-AT / de-LI → Deutsch (DE)).
+
+## 0.8.314 English (UK / Australia / US) – please verify
+- lang/en.php is British English now; lang/en-US.php is generated (dev/lang_variants.php, word list + exceptions) – read the generated
+  texts once; lang/en-AU.php is empty (Australia spells like the UK) – add texts by hand if needed.
+- Variant per user (sus_json NUNEXT_LANG_VARIANT): user form, language menu, e-mails in the recipient's variant; nuBuilder keeps "English".
+
+## 0.8.312 Setup wizard – please verify
+- First sign-in after a new installation and on an existing nuBuilder (nuconfig.php present): language, time zone, title, label,
+  password change (signs out), 2FA, sample data. Tested here with Chromium on PHP's built-in server, also with a read-only nuconfig.php.
+- $nuConfigSettingsFromDB = true: values go to zzzzsys_config where the row exists – not tested with a filled settings table.
+- Tabs in the underline look (0.8.312): check nuBuilder form tabs, vertical tabs and dark mode on a real application.
+
+## 0.8.301 Unattended update (command line / API) – please verify
+- On a real server: php cron.php update as the web server's user (file owner), with --url over https and a proxy; disabled
+  proc_open (second phase then on the next cron run / update page); the API through a TLS proxy; OPcache with validate_timestamps=0.
+- Idea for later: update feed (a URL with the newest version; cron checks, e-mails or installs within a time window).
+
+## 0.8.298 Dashboards – please verify
+- Start page per access level (user), HTML object <div data-nu-dashboard="CODE"> on launch and edit forms, new record ("after saving"),
+  SQL / SQL builder / PHP procedure sources, date filter, test run – tested here with the sample data (Chromium, MariaDB).
+- Safari: style-src-attr / style nonce for ApexCharts on the start page (Chrome tested); SQL Server: read-only run of widgets
+  (BEGIN TRAN … ROLLBACK) and the new tables – not tested on a real SQL Server.
+- Ideas for later: drag & drop of widgets, more chart types (heatmap, mixed), CSV export of a widget, filters besides the date.
+
+## 0.8.297 Branding – please verify
+- Upload a logo (PNG / SVG) and a dark-mode logo, accent colour, label: top bar, sign-in pages (also with $nuWelcomeBodyInnerHTML),
+  form pages, dark mode, phone. Tested here with Chromium on PHP's built-in server.
+- $nuConfigEnvironmentLabel / $nuConfigEnvironmentColor in nuconfig.php on the test copy: label read-only on the page and wins.
+- SQL Server: logos in zzzzsys_file and the setting row – not tested on a real SQL Server.
+
+## 0.8.295 App cloner: snapshot, streaming, size-limited batches, UTC – please verify
+- Verified on MariaDB 10.11: direct copy and SQL file 0 differences, also with the source session in time zone +05:00, a table with
+  1.5 MB BLOB rows and max_allowed_packet 4 MB, "Empty it first", and while another process kept writing (both tables equal in the copy).
+- Please verify on MySQL 8 and on shared hosting: START TRANSACTION WITH CONSISTENT SNAPSHOT and unbuffered queries are allowed there
+  (if the snapshot cannot be started, the clone runs without it).
+
+## 0.8.291 App cloner 1:1 – verified on MariaDB 10.11, please verify on MySQL 8
+- Test database with every object kind (dev: see changelog 0.8.291) cloned directly and as SQL file: 0 differences (definitions, every
+  byte of every row, sequences, views, routines incl. sql_mode, trigger order, events); also on a server in strict MySQL-8-like
+  sql_mode, with "Empty it first", and for the full nuBuilder test database (157 objects).
+- MySQL 8 differences not tested here: invisible columns / functional indexes, DEFAULT (expression), utf8mb4_0900 collations.
+
+## 0.8.282 Adminer – please verify
+- Apache: third_party/adminer/ gets a deny-all .htaccess – check that adminer.php is not served directly (Security check probes it);
+  nginx: block it by hand.
+- SQL Server: Adminer through dbadmin.php (driver mssql, pdo_sqlsrv / sqlsrv extension) and zzzzsys_session created by NuVendor on
+  SQL Server – not tested on a real SQL Server.
+
+## 0.8.276 saved Cloner / App cloner settings – please verify
+- Open a configuration saved with nuBuilder's App cloner / Cloner in nuBuilder Next and the other way round (zzzzsys_app_cloner,
+  zzzzsys_cloner) – especially the tables list (cla_opt_2_include) and subforms / iframe forms (clo_subforms: form ids).
+- SQL Server: both tables created by update step 0004 (TINYINT / NVARCHAR) – not tested on a real SQL Server.
+
+## 0.8.207 security review – done, please verify
+All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in CHANGELOG.md "0.8.207" and Help → Security. To check on the live server:
+- [ ] **Files on the web** (Admin tools → Security check): all green? On Debian / Ubuntu Apache's default `AllowOverride None` ignores every
+      `.htaccess` – set `AllowOverride All` for the web folder, or nginx rules (Help → Security). If the site answers 500 after the update,
+      the server forbids a directive of the new root `.htaccess` (`<FilesMatch>` / `Require`): delete that file by SFTP and report it.
+- [ ] The globeadmin is logged out once after the update (session now bound to name + password); new session cookies belong to the
+      nuBuilder Next folder only. Shared login with nuBuilder ($nuConfigSharedLogin) and phpMyAdmin / File Manager still work?
+- [ ] "Only the globeadmin grants admin rights" is **on** by default: users who manage users or access levels (nuuser / nuaccess rights)
+      can no longer change admin-equivalent users, their own level or its rights – intended for your users?
+- [ ] "Forgot password" without `$nuConfigBaseURL`: uses the address the globeadmin last used; set `$nuConfigBaseURL` to be sure.
+- [ ] Before switching on "Do not save read-only and hidden fields" / "Records only through the form's list": try your forms as a user
+      (JavaScript that fills hidden fields; browse SQL that needs Before Browse code is not checked).
+- [ ] Cron: `*/15 * * * * sudo -u www-data php /var/www/html/nunext/cron.php` – run as the web server's user (files it creates must stay
+      writable for PHP).
+- [ ] **Signing key**: `nunext-signing.key` (Ed25519, delivered separately with 0.8.207) signs the packages; keep it private and outside the
+      project. A new development session needs it next to the project folder (`../nunext-signing.key`) – without it `dev/release.py`
+      builds unsigned packages (warning on the update page). Losing it means: new key pair + `NuUpdate::SIGN_PUBLIC` in a release.
+- [ ] Continue development from **`nunext-dev.zip`** (with CLAUDE.md, TODO.md, dev/, .github/); `nunext.zip` is only for installing.
+- [ ] Update from GitHub (0.8.374): on the live servers check that the host allows outgoing HTTPS to github.com (InfinityFree may not) –
+      the section shows the error otherwise; a cron with `php cron.php update --github` updates unattended.
+- [ ] B1/B4: the project is on GitHub now (nuBuilder/nuBuilder-Next, public) – `.github/workflows/ci.yml` runs lint, PHPStan,
+      ESLint, unit tests and the browser smoke test on MariaDB; the SQL Server job is written but not verified (no form tables in
+      `schema_mssql.sql`, see "Install scripts").
+- [ ] SQL Server (untested here): read-only preview (BEGIN TRAN … ROLLBACK, `PDO::SQLSRV_ATTR_QUERY_TIMEOUT`), `NuDB::escapeString`.
+- [ ] B8 only partly done: `NuApiClient`, `NuApiPlayground` and `NuReportEngine` are in their own files; the pages with most logic
+      (`pages/nuuser.php`, `nuemail.php`, `nuform.php`) still mix actions and HTML – move the actions into core classes step by step.
+- [ ] Since 0.8.224 the package contains all libraries of `vendor/bundled/` (assets/vendor/ before 0.8.409; except TinyMCE). They were rebuilt from the official packages
+      (CodeMirror 5.65.21 bundle = core + matchbrackets + closebrackets + modes xml/javascript/css/htmlmixed/clike/php/sql; add-ons file =
+      comment/dialog/searchcursor/search/jump-to-line; formatter = nuBuilder's beautify / sql-formatter + Prettier 3.3.3 + plugin-php 0.25.0).
+      Check the code editors (procedures, form builder, double-click editor) and Format on the live server. The package is now ~2.4 MB:
+      PHP's default upload_max_filesize of 2M is too small (update page → Server → PHP upload limit).
+- [ ] TCPDF 7 (0.8.232, optional): with the Composer bundle tcpdf-7.0.19-for-nunext.zip in `<nuBuilder Next>/third_party/tcpdf/` (PHP ≥ 8.2)
+      run your own reports once and compare with TCPDF 6 – the samples are identical, other features (HTML cells, barcodes, images)
+      go through TCPDF 7's compatibility layer. nuBuilder itself keeps TCPDF 6. TCPDF 6 gets no more fixes (end of life).
+- [ ] Tiny File Manager ≤ 2.6 (nuBuilder ships 2.6) has an upstream-unfixed path traversal (CVE-2025-15138), patched locally in the own
+      build 2.6+git.4149143.nu3 (upload destination checked with realpath() before and after mkdir, allow-list on the destination name,
+      two XSS escapes). Verify: build and publish the nu3 pack, Security check shows no Tiny File Manager warning; watch for an upstream fix.
+
+## For the developer to verify (assumptions made in 0.7)
+- [ ] **phpMyAdmin** (since 0.8.405 a library pack, same config): copy `<nuBuilder>/third_party/nudb/` to `<nuBuilder Next>/third_party/nudb/` (with nuBuilder's `config.inc.php`).
+      Assumption: the unchanged nuBuilder config works, because it reads `../../nuconfig.php` (= nuBuilder Next's) and checks cookie `nu_PMA`
+      against a `zzzzsys_session` row with `global_access = 1`. Tested locally with nuBuilder 4.9's nudb.
+- [ ] **Tiny File Manager**: copy `<nuBuilder>/third_party/tinyfilemanager/` to `<nuBuilder Next>/third_party/tinyfilemanager/` (with `config.php`).
+      Same mechanism, cookie `nu_TFM`. Assumptions to check:
+  - [ ] It opens with `$root_path = $_SERVER['DOCUMENT_ROOT']` (nuBuilder's setting) – the whole web root. Restrict in `config.php` if wanted.
+  - [ ] Its CSS/JS come from CDNs (jsdelivr, cdnjs) – the server must be allowed to load them.
+  - [ ] Only the globeadmin gets the menu entry; nuBuilder's `$nuConfigFileMangerUsers` (non-admin users) is not supported.
+- [ ] The tool login row in `zzzzsys_session` (`zzzzsys_session_id` = `nx…`, `sss_access.session.nunext_vendor`) – check that nuBuilder's own
+      session clean-up does not trip over it, and that the nuBuilder list on *Logged-in users* hides it.
+- [ ] Cookie path `/` (as nuBuilder): opening phpMyAdmin from nuBuilder and from nuBuilder Next overwrites the same cookie – harmless, but test both.
+- [ ] Tools in another place (e.g. directly inside nuBuilder): `$nuConfigPMAURL` / `$nuConfigTFMURL` – untested.
+- [ ] Logged-in users: an ended session now logs the user out with the very next request (one indexed read per request).
+- [ ] Since 0.8.207 `.htaccess` files block core/, pages/, lang/, install/, docs/, dev/ and the notes (Apache 2.2 + 2.4) – nginx: rules in Help → Security.
+
+## 0.8.160 nuconfig.php editor – please verify
+- [ ] On the live server (InfinityFree etc.): the web server may write nuconfig.php and its folder – otherwise the page is read only.
+- [ ] A `nuconfig.php` shared with nuBuilder (NU_CONFIG or nuBuilder's own file): saving changes nuBuilder's settings too.
+- [ ] Demo mode: the page refuses demo users (tested in code only, not with a demo login).
+- [ ] MSSQL: the database check of the new settings – only tested on MySQL / MariaDB.
+
+## 0.8.140 demo mode – please verify
+- [ ] Demo visitors see all data and code of the application (as in nuBuilder) – use a database with demo data, and check procedures /
+      form code for passwords or API keys before switching it on.
+- [ ] Procedures with "Demo access" (nuBuilder's default for new procedures is on) run read only: those that write now end with
+      "Not available in the demo" instead of writing (nuBuilder lets them write) – intended?
+- [ ] Form code (Before Browse / Before Edit) that writes to real tables shows the demo message instead of the list; temporary tables
+      (#TABLE_ID#) work. Check your forms as the demo user (Act as user on the demo user).
+- [ ] MSSQL: the database guard was tested on MySQL / MariaDB only (temporary tables #… and SELECT … INTO are handled).
+
+## 0.8.134 buttons after the title – please verify
+- [ ] Forms with their own CSS or JavaScript that relied on the action buttons sitting at the right edge (e.g. absolute positions
+      inside `#nuActionHolder`, or `nuSetToolbarStyle`-like tweaks in the setup header): check them on a wide screen.
+
+## 0.8.17 act as user – please verify
+- [ ] Full access: records saved while acting carry the user in nuBuilder's audit columns (by design); only nuBuilder Next's log knows it was the globeadmin.
+- [ ] nuBuilder hooks (Before Edit / Before Browse) still run in view-only mode – PHP that writes data on opening a form would still write.
+
+## 0.8.14 permission items – please verify
+- [ ] Permission items on your nuBuilder database: users with items assigned in nuBuilder show them ticked in nuBuilder Next, and nuBuilder still sees changes made in nuBuilder Next.
+- [ ] MSSQL: tables created by nuBuilder Next (`NuPermission::ensureTables`) – only tested on MySQL / MariaDB.
+
+## 0.8.12 code formatter – please verify
+- [ ] Format your own PHP procedures / events: Prettier rewrites style (spacing, quotes, braces) – check that the result suits you; Undo reverts it.
+- [ ] T-SQL formatting (MSSQL) – only tested with simple statements.
+
+## Install scripts
+- [ ] MSSQL: `install/schema_mssql.sql` has no form tables (`zzzzsys_form`, `zzzzsys_tab`, `zzzzsys_browse`, `zzzzsys_object`, `zzzzsys_event`, `zzzzsys_php`) –
+      on an empty MSSQL database the form builder and forms do not work yet (MySQL: `schema_mysql_forms.sql`).
+
+## 0.8.4 hash variables – please verify
+- [ ] Setup → Header on the live server: now run as JavaScript (as nuBuilder). Check that your global functions (nuLoadEditGlobal …) work and nothing shows as text.
+- [ ] `#USER_PERMISSIONS#` reads nuBuilder's `zzzzsys_user_permission` / `zzzzsys_permission_item` – untested with real permission data.
+- [ ] Code that relied on raw (unescaped) hash values, e.g. a field holding a list `'a','b'` used in `IN (#list#)`, gets escaped quotes – use a property set in PHP instead.
+
+## 0.8.2 sample data – please verify
+- [ ] Install the sample data on the live server and click through all sample forms in nuBuilder Next **and** nuBuilder (Admin tools → Sample data).
+- [ ] Sample data on MSSQL – only tested on MySQL / MariaDB (nuBuilder database and nuBuilder Next's install scripts).
+- [ ] The sample procedures and the start page use hash variables `#USER_FIRST_NAME#` etc. – empty for the globeadmin (as in nuBuilder).
+
+## 0.8.1 installer – please verify
+- [ ] On the live server: the installer only appears while `nuconfig.php` is missing – keep a copy of yours when testing.
+- [ ] Since 0.8.207 every visitor needs the token (or install.allow), except PHP's built-in server opened from the same computer.
+- [ ] `_install/.htaccess` denies access to the token on Apache 2.4; on nginx the token file is readable while the installer runs (add a rule or install from localhost).
+- [ ] MSSQL install with nuBuilder Next's scripts (`schema_mssql.sql`) – only tested on MySQL/MariaDB here.
+- [ ] Import of `nubuilder4.sql` on shared hosting with low `max_execution_time` (the installer asks for 600 s).
+
+## 0.8.0 – please verify
+- [ ] First update to 0.8.0 by hand (the update page comes with it); from then on Admin tools → Update.
+- [ ] On the live server: is the nuBuilder Next folder writable for PHP (Update page → Server)? Otherwise updates stay manual.
+- [ ] nginx or other servers that ignore `.htaccess`: set `$nuConfigBackupPath` outside the web root (backups contain nuBuilder Next's tables, incl. 2FA data).
+- [ ] Rollback restores program files only; database steps are not undone (they are additive so far).
+- [ ] Since 0.8.207 packages are signed (Ed25519) and checked; unsigned ones show a warning.
+
+## 0.7.2 – please verify
+- [ ] Delete the old file names after the update (list in CHANGELOG.md, section 0.7.2).
+- [ ] `nuRefreshSelectObject` with a subform's form id and no prefix refreshes that field in every row (nuBuilder only refreshes `#selectId`).
+- [ ] `nuRefreshDisplayObject` does not mark the form as edited (display objects are not saved); nuBuilder uses nuSetValue, which does.
+- [ ] `nuSubformAddFilter` on form-layout subforms puts the filters in a bar above the rows (nuBuilder only has grid subforms).
+
+## Translations (0.7.1) – please verify
+- [ ] Not translated yet: options of static select lists, placeholders, nuBuilder Next's own messages (they come from `lang/de.php` / `en.php`).
+- [ ] Switching the menu language to EN writes `sus_language = 'English'` → no translations for that user (also in nuBuilder).
+
+## 0.8.183 reports – please verify
+- [ ] Compare a few of your nuBuilder reports printed by nuBuilder and by nuBuilder Next (same TCPDF): page breaks, grown fields, group sums.
+- [ ] Sorting and grouping happen in PHP (NULL first, numbers as numbers, text case-insensitive) – nuBuilder sorts in MySQL with the table's collation.
+- [ ] Text wrapping counts UTF-8 characters correctly (nuBuilder measures bytes) – long non-ASCII texts may break at a different place.
+- [ ] Report sections are printed without their designer color (nuBuilder draws no section background either).
+- [ ] `nuPreviewReport(code)` and `nuEmailReportPDF(code, to, subject, body, fileName, callback)` are nuBuilder Next functions (nuBuilder has no such functions) – are these the signatures you want?
+- [ ] Not ported: nuBuilder's "Fast report" (form nufrlaunch) and the SQL builder of a form's browse SQL (zzzzsys_select rows with sse_system).
+- [ ] TCPDF is taken from nuBuilder (third_party/tcpdf) – not bundled (27 MB with fonts). Bundle a slim copy?
+
+## 0.8.197 backups with database – please verify
+- [ ] Restoring the database from a backup is manual (SQL only download → phpMyAdmin). An automatic "Restore database" (dry run, type the database name, backup first) was left out on purpose – build it?
+- [ ] Time limits on shared hosting: a large dump can be stopped by the server; the next page view reports it. Check with your largest database.
+- [ ] SQLite: no SQL dump – the option is greyed out. (SQL Server: supported since 0.8.198, see below.)
+
+## 0.8.198 App cloner on SQL Server – please verify (written without an SQL Server to test against)
+The SQL generation was checked with simulated catalog data and a T-SQL parser; a real SQL Server was not available. Please try:
+- [ ] Dry run and Run into a new database on the same server (same login): tables, row counts compared at the end, the app opens with the copy's nuconfig.php.
+- [ ] Download SQL and run the file with SSMS or `sqlcmd -i` into an empty database; run it a second time on the same database (it should replace everything).
+- [ ] A table with IDENTITY, a varbinary / image column (e.g. files), nvarchar with umlauts, datetime / datetime2 values.
+- [ ] A view that uses a function, a procedure, a DML trigger, a foreign key with ON DELETE CASCADE.
+- [ ] Mode "Add to it" on a database that has the tables already (tables are left as they are, rows are added – duplicates fail).
+- [ ] Rights: a login without VIEW DEFINITION – functions / views should be reported, not break the run.
+- [ ] Backups with "whole database" on SQL Server (Update page) and the estimate shown next to the option.
+
+## 0.8.245 delete form with its table – please verify
+- [ ] Form builder → Delete form → "Also delete the table": after more than 15 minutes without password confirmation the dialog
+      shows "Confirm password" and comes back to the dialog afterwards (not tested here). On SQL Server: DROP TABLE of the form's table.
+
+## 0.8.263 start page edit mode – please verify
+- [ ] Customize on a real phone / tablet (iOS Safari, Android Chrome): hold a tile, drag it to another group, into Hidden and over a
+      tab title; a quick swipe must still scroll. Tested here with Chromium and simulated touch only.
+
+## 0.8.264 tool cookies – please verify
+- [ ] phpMyAdmin / Tiny File Manager open from the start page after the update (cookie now only for their folder, SameSite=Strict;
+      the old cookies with path / are removed on the next launch). With $nuConfigPMAURL / $nuConfigTFMURL: path of that URL.
+- [ ] Hardened Tiny File Manager config.php (tfm-config-hardened.zip, NUNEXT-VERSION 2.6+git.4149143.nu2) deployed on the server.
+- [ ] Hardened phpMyAdmin config.inc.php (pma-config-hardened.zip, NUNEXT-VERSION 5.2.3+nu2) deployed in third_party/nudb.

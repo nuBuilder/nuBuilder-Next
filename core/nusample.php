@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 18;             // 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 19;             // 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -299,7 +299,8 @@ final class NuSample
 
 	/**
 	 * zzzzsys_form / tab / browse / object / event / php rows of a compact form definition:
-	 *   id, type, table, desc, layout (null = nuBuilder positions | auto | grid), tabs [title, …], browse [[title, column, align, format, width]],
+	 *   id, type, table, desc, layout (null = nuBuilder positions | auto | grid), tabs [title, …], browse [[title, column, align, format, width, nunext]]
+	 *   (nunext = sbr_json's nunext part: ['filter' => true] and / or ['badge' => true | rules] – design mode's column filter and badge),
 	 *   objects [['tab' => 0, 'type' => …, 'id' => field, 'label' => …, …]], php ['BE' => code, …], js, browse_js, edit_js, style
 	 */
 	private static function formRows(array $f): array
@@ -327,7 +328,8 @@ final class NuSample
 		}
 		foreach ($f['browse'] ?? [] as $i => $b) {
 			$rows[] = ['zzzzsys_browse', ['zzzzsys_browse_id' => 'sample_' . $short . '_b' . ($i + 1), 'sbr_zzzzsys_form_id' => $fid, 'sbr_title' => $b[0], 'sbr_display' => $b[1],
-				'sbr_align' => $b[2] ?? 'l', 'sbr_format' => $b[3] ?? '', 'sbr_order' => ($i + 1) * 10, 'sbr_width' => $b[4] ?? 150]];
+				'sbr_align' => $b[2] ?? 'l', 'sbr_format' => $b[3] ?? '', 'sbr_order' => ($i + 1) * 10, 'sbr_width' => $b[4] ?? 150,
+				'sbr_json' => !empty($b[5]) ? json_encode(['nunext' => $b[5]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null]];
 		}
 		$top = [];
 		$ev = 0;
@@ -424,6 +426,16 @@ final class NuSample
 						'events' => ['onchange' => "// a launch form's field as criterion: the dashboard reads #home_country# again\nif (window.nuNextDashboardRefresh) nuNextDashboardRefresh('sample_country');"]],
 					['type' => 'html', 'id' => 'home_dashboard', 'label' => '', 'left' => 20, 'top' => 900, 'w' => 900, 'h' => 560,
 						'html' => '<div data-nu-dashboard="sample_country"></div>'],
+					// what to look at (0.8.691): which lists show badges, filters, links and dashboards – nuForm() opens the list (also in nuBuilder Forte)
+					['type' => 'word', 'id' => 'home_lookword', 'label' => 'What to look at', 'left' => 20, 'top' => 1484, 'w' => 760, 'style_type' => 'Class', 'style' => 'sampleSection'],
+					['type' => 'html', 'id' => 'home_look', 'label' => '', 'left' => 20, 'top' => 1512, 'w' => 900, 'h' => 250,
+						'html' => '<div class="sampleNote sampleLook"><ul>'
+							. '<li><a href="#" onclick="nuForm(\'sampleorder\', \'\'); return false;">Orders</a>: <b>Status</b> as coloured badges and the filters <b>Customer</b> / <b>Status</b> – set in design mode (column → <i>Show as badge</i>, <i>Filter</i>), no code; the customer name opens the customer (the list\'s JavaScript, <code>nuBrowseLoop</code> + <code>nuForm</code>).</li>'
+							. '<li><a href="#" onclick="nuForm(\'sampleproduct\', \'\'); return false;">Products</a>: <b>Active</b> as a green / grey badge, filter <b>Category</b>.</li>'
+							. '<li><a href="#" onclick="nuForm(\'samplecustomer\', \'\'); return false;">Customers</a>: filter <b>Country</b>; credit limits above 30,000 in red – <code>nuBrowseStyleBadge</code> with a <code>test</code> rule in the list\'s JavaScript; tab <i>Statistics</i> = a dashboard.</li>'
+							. '<li><a href="#" onclick="nuForm(\'sampleall\', \'\'); return false;">All objects</a>: the <b>Select</b> and <b>Checkbox</b> columns as labelled badges instead of raw values (b → Option B, 1 → ✓).</li>'
+							. '<li><b>Dashboards</b>: above on this page (with the country as criterion), on the start pages of <code>sample_sales</code> and <code>sample_manager</code>, and on the customer form.</li>'
+							. '</ul><p>Open a list with <i>Design</i> to see how it is made. Badges, filters and dashboards are nuBuilder Next features – nuBuilder Forte shows the same lists without them.</p></div>'],
 					['type' => 'input', 'input' => 'button', 'id' => 'home_colour', 'label' => 'Set hash cookie sample_colour', 'left' => 20, 'top' => 604, 'w' => 260, 'style_type' => 'Class', 'style' => 'sampleButton',
 						'events' => ['onclick' => "var c = ['red', 'green', 'blue'][Math.floor(Math.random() * 3)];\nnuSetProperty('sample_colour', c, true).then(function () {\n\tnuMessage(['Global hash cookie sample_colour = ' + nuGetProperty('sample_colour'), 'It is now replaced in every form until you log out.']);\n});"]],
 				],
@@ -434,7 +446,9 @@ final class NuSample
 			[
 				'id' => 'sample_customer', 'type' => 'browseedit', 'table' => 'sample_customer', 'desc' => 'Sample: customers', 'layout' => null,
 				'breadcrumb' => '#cus_name#|New customer', 'rows_per_page' => 10, 'create' => $cust, 'tabs' => ['Customer', 'Details', 'Statistics'],
-				'browse' => [['Code', 'cus_code', 'l', '', 90], ['Name', 'cus_name', 'l', '', 220], ['Country', 'cus_country', 'c', '', 80], ['Since', 'cus_since', 'l', 'D|dd.mm.yyyy', 110], ['Credit', 'cus_credit', 'r', "N|USD 1,000.00", 130]],
+				'browse' => [['Code', 'cus_code', 'l', '', 90], ['Name', 'cus_name', 'l', '', 220], ['Country', 'cus_country', 'c', '', 80, ['filter' => true]], ['Since', 'cus_since', 'l', 'D|dd.mm.yyyy', 110], ['Credit', 'cus_credit', 'r', "N|USD 1,000.00", 130]],
+				// a numeric rule needs code: nuBrowseStyleBadge with a test (nuBuilder Next – nuBuilder Forte would show every value as a plain badge, hence the check)
+				'browse_js' => "// credit limits above 30,000 in red, negative ones in grey (column 4 = Credit)\nif (window.nuNext) nuBrowseStyleBadge(4, [\n  {test: function (v) { return parseFloat(v.replace(/[^0-9.-]/g, '')) > 30000; }, bg: '#f8d7da', color: '#842029', title: 'above 30,000'},\n  {test: function (v) { return parseFloat(v.replace(/[^0-9.-]/g, '')) < 0; }, bg: '#e2e3e5', color: '#41464b', title: 'negative'},\n  {default: true, badge: false}\n]);",
 				'objects' => [
 					['type' => 'input', 'id' => 'cus_code', 'label' => 'Code', 'w' => 100, 'validate' => 3],
 					['type' => 'input', 'id' => 'cus_name', 'label' => 'Name', 'w' => 300, 'validate' => 1],
@@ -461,7 +475,9 @@ final class NuSample
 				'breadcrumb' => '#pro_name#|New product',
 				'create' => [['name' => 'pro_code', 'type' => 'text', 'length' => '20'], ['name' => 'pro_name', 'type' => 'text', 'length' => '100'],
 					['name' => 'pro_category', 'type' => 'text', 'length' => '30'], ['name' => 'pro_price', 'type' => 'decimal', 'length' => '15,2'], ['name' => 'pro_active', 'type' => 'bool', 'length' => '']],
-				'browse' => [['Code', 'pro_code', 'l', '', 90], ['Product', 'pro_name', 'l', '', 240], ['Category', 'pro_category', 'l', '', 130], ['Price', 'pro_price', 'r', "N|USD 1,000.00", 120], ['Active', "CASE WHEN pro_active = 1 THEN 'yes' ELSE 'no' END", 'c', '', 70]],
+				'browse' => [['Code', 'pro_code', 'l', '', 90], ['Product', 'pro_name', 'l', '', 240], ['Category', 'pro_category', 'l', '', 130, ['filter' => true]], ['Price', 'pro_price', 'r', "N|USD 1,000.00", 120],
+					// design mode → the column → Show as badge, with two colour rules (no code)
+					['Active', "CASE WHEN pro_active = 1 THEN 'yes' ELSE 'no' END", 'c', '', 80, ['badge' => [['equals' => 'yes', 'label' => 'Active', 'bg' => '#d1e7dd', 'color' => '#0f5132'], ['default' => true, 'label' => 'Inactive', 'bg' => '#e2e3e5', 'color' => '#41464b']]]]],
 				'objects' => [
 					['type' => 'input', 'id' => 'pro_code', 'label' => 'Code', 'validate' => 3, 'grid' => ['row' => 1, 'span' => 4]],
 					['type' => 'input', 'id' => 'pro_name', 'label' => 'Product', 'validate' => 1, 'grid' => ['row' => 1, 'span' => 8]],
@@ -478,7 +494,13 @@ final class NuSample
 				'create' => [['name' => 'ord_number', 'type' => 'text', 'length' => '20'], ['name' => 'ord_sample_customer_id', 'type' => 'id', 'length' => ''],
 					['name' => 'ord_date', 'type' => 'date', 'length' => ''], ['name' => 'ord_status', 'type' => 'text', 'length' => '20'],
 					['name' => 'ord_total', 'type' => 'decimal', 'length' => '15,2'], ['name' => 'ord_note', 'type' => 'longtext', 'length' => '']],
-				'browse' => [['Number', 'ord_number', 'l', '', 100], ['Date', 'ord_date', 'l', 'D|dd.mm.yyyy', 110], ['Customer', 'cus_name', 'l', '', 220], ['Status', 'ord_status', 'l', '', 100], ['Total', 'ord_total', 'r', "N|USD 1,000.00", 130]],
+				'browse' => [['Number', 'ord_number', 'l', '', 100], ['Date', 'ord_date', 'l', 'D|dd.mm.yyyy', 110], ['Customer', 'cus_name', 'l', '', 220, ['filter' => true]],
+					// status: filter + badge with one colour per value (design mode, no code)
+					['Status', 'ord_status', 'l', '', 110, ['filter' => true, 'badge' => [['equals' => 'new', 'label' => 'New', 'bg' => '#cfe2ff', 'color' => '#084298'],
+						['equals' => 'confirmed', 'label' => 'Confirmed', 'bg' => '#e0cffc', 'color' => '#3d0a91'], ['equals' => 'shipped', 'label' => 'Shipped', 'bg' => '#ffe5d0', 'color' => '#984c0c', 'icon' => 'truck'],
+						['equals' => 'paid', 'label' => 'Paid', 'bg' => '#d1e7dd', 'color' => '#0f5132', 'icon' => 'check-circle']]]],
+					['Total', 'ord_total', 'r', "N|USD 1,000.00", 130], ['Customer id', 'ord_sample_customer_id', 'l', '', 0]],   // width 0: hidden, read by the list's JavaScript
+				'browse_js' => "// the customer name opens the customer (column 2; its id is in the hidden column 5) – nuForm works in nuBuilder Forte too\nnuBrowseLoop([2], function (cell) {\n  var row = cell.id.split('_')[1], id = $('#nucell_' + row + '_5').text().trim(), name = $(cell).text().trim();\n  if (!id || !name) return;\n  var a = $('<a href=\"#\" class=\"sampleCustomerLink\"></a>').text(name).attr('title', 'Open the customer');\n  a.on('click', function (e) { e.preventDefault(); e.stopPropagation(); nuForm('samplecustomer', id); });\n  $(cell).empty().append(a);\n});",
 				'objects' => [
 					['type' => 'input', 'id' => 'ord_number', 'label' => 'Number', 'w' => 120, 'validate' => 2, 'top' => 20],
 					['type' => 'input', 'input' => 'nuDate', 'id' => 'ord_date', 'label' => 'Date', 'w' => 110, 'format' => 'D|dd.mm.yyyy', 'left' => 470, 'top' => 20],
@@ -519,7 +541,8 @@ final class NuSample
 		return [
 			'id' => 'sample_all', 'type' => 'browseedit', 'table' => 'sample_all', 'desc' => 'Sample: all objects', 'layout' => null,
 			'breadcrumb' => '#all_text#|New record', 'tabs' => ['Inputs', 'Numbers & dates', 'Choices', 'Display', 'Run', 'Subform', 'Access', 'Charts', 'Miscellaneous', 'Upload'],
-			'browse' => [['Text', 'all_text', 'l', '', 200], ['Number', 'all_nunumber', 'r', "N|USD 1,000.00", 120], ['Date', 'all_nudate', 'l', 'D|dd.mm.yyyy', 110], ['Select', 'all_select', 'l', '', 120], ['Checkbox', 'all_checkbox', 'c', '', 80]],
+			'browse' => [['Text', 'all_text', 'l', '', 200], ['Number', 'all_nunumber', 'r', "N|USD 1,000.00", 120], ['Date', 'all_nudate', 'l', 'D|dd.mm.yyyy', 110], ['Select', 'all_select', 'l', '', 120, ['badge' => [['equals' => 'a', 'label' => 'Option A', 'bg' => '#cfe2ff', 'color' => '#084298'], ['equals' => 'b', 'label' => 'Option B', 'bg' => '#d1e7dd', 'color' => '#0f5132'], ['equals' => 'c', 'label' => 'Option C', 'bg' => '#fff3cd', 'color' => '#664d03']]]],
+				['Checkbox', 'all_checkbox', 'c', '', 80, ['badge' => [['equals' => '1', 'label' => '✓', 'title' => 'ticked', 'bg' => '#d1e7dd', 'color' => '#0f5132'], ['default' => true, 'label' => '–', 'title' => 'not ticked', 'bg' => '#f8f9fa', 'color' => '#6c757d']]]]],
 			'objects' => [
 				// --- Inputs
 				$i('text', 'all_text', 'Text', ['w' => 300, 'validate' => 1]),
@@ -1056,6 +1079,7 @@ ORDER BY
 #home_rpt_customers::before, #home_rpt_orders::before { content: "\f38b"; }   /* file-earmark-text: report */
 .sampleNote { padding: .75rem 1rem; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-tertiary-bg); font-size: .92rem; }
 .btn.sampleButton { border-radius: .6rem; }
+.sampleLook ul { margin: 0 0 .5rem; padding-left: 1.2rem; } .sampleLook li { margin-bottom: .25rem; } .sampleLook p { margin: 0; color: var(--bs-secondary-color); }
 /* layout Auto / Grid: no label space above these objects, logo next to the title, two tiles per row on phones */
 .nuWrap_run:has(.sampleTile) > .nuLabelSpacer, .nuWrap_word:has(.sampleSection) > .nuLabelSpacer,
 .nuWrap_html:has(.sampleIntro, .sampleNote) > .nuLabelSpacer, .nuWrap_input:has(.sampleButton) > .nuLabelSpacer { display: none; }

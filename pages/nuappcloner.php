@@ -31,6 +31,10 @@ $defPort = $isMs ? 1433 : 3306;
 $nubPath = NuBuilderLib::path();
 $stamp   = date('Y-m-d');
 
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy of a configuration that is saved only with Save
+$cloneId = $id === 'new' ? (string)($_GET['clone'] ?? '') : '';
+$src = $cloneId !== '' ? NuAppClonerConfig::get($cloneId) : null;
+if ($cloneId !== '' && !$src) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 $def = [
 	'code' => '', 'description' => '', 'same_login' => true,
 	'host' => (string)$cfg['nuConfigDBHost'], 'port' => (string)($cfg['nuConfigDBPort'] ?: $defPort), 'user' => (string)$cfg['nuConfigDBUser'], 'password' => '',
@@ -57,14 +61,15 @@ if (nu_is_post()) {
 		'source_path' => nu_post('source_path') ?: $nubPath, 'target_path' => nu_post('target_path') ?: $def['target_path'],
 		'file_mode' => in_array(nu_post('file_mode'), ['fail', 'clear', 'merge'], true) ? nu_post('file_mode') : 'fail',
 		'excludes' => (string)($_POST['excludes'] ?? ''),
-		'stored_password' => $row && trim((string)$row['cla_target_password']) !== '',
+		'stored_password' => ($row ?? $src) && trim((string)($row ?? $src)['cla_target_password']) !== '',
 	];
 } else {
-	$in = $row ? NuAppClonerConfig::toInput($row, $def, $cfg, $defPort) : $def;
+	$in = $row || $src ? NuAppClonerConfig::toInput($row ?? $src, $def, $cfg, $defPort) : $def;
+	if ($src) $in['code'] = NuAppClonerConfig::cloneCode((string)$src['cla_code']);
 }
 if ($in['same_login']) { $in['host'] = $def['host']; $in['port'] = $def['port']; $in['user'] = $def['user']; }
 // the target password: nuconfig.php's with "same login", else the one typed – or the one nuBuilder saved in the configuration
-$targetPw = $in['same_login'] ? (string)$cfg['nuConfigDBPassword'] : ($in['password'] !== '' ? $in['password'] : (string)($row['cla_target_password'] ?? ''));
+$targetPw = $in['same_login'] ? (string)$cfg['nuConfigDBPassword'] : ($in['password'] !== '' ? $in['password'] : (string)(($row ?? $src)['cla_target_password'] ?? ''));
 $errors = [];
 
 $action = nu_is_post() ? nu_post('action') : '';
@@ -78,22 +83,13 @@ $options = static fn(bool $dry, bool $export) => [
 
 // ------------------------------------------------------------------ saved configurations: save / clone / delete
 if ($action === 'save') {
-	[$newId, $errors] = NuAppClonerConfig::save($in, $row ? $id : '');
+	[$newId, $errors] = NuAppClonerConfig::save($in, $row ? $id : '', $row ? null : $src);
 	if (!$errors) {
 		NuLog::write($row ? 'app_cloner_changed' : 'app_cloner_created', $CT, (string)$newId, $row
-			? ['fields' => NuLog::diff($row, NuAppClonerConfig::get((string)$newId) ?? [])] : ['code' => trim((string)$in['code'])]);
+			? ['fields' => NuLog::diff($row, NuAppClonerConfig::get((string)$newId) ?? [])] : ['code' => trim((string)$in['code'])] + ($src ? ['clone_of' => $cloneId] : []));
 		nu_flash('success', t('saved'));
 		nu_redirect(nu_url('appcloner', ['id' => $newId]));
 	}
-}
-if ($action === 'clone' && $row) {
-	$copy = $row;
-	$copy['zzzzsys_app_cloner_id'] = nu_id();
-	$copy['cla_code'] = NuAppClonerConfig::cloneCode((string)$row['cla_code']);
-	$db->insert($CT, $copy);
-	NuLog::write('app_cloner_created', $CT, $copy['zzzzsys_app_cloner_id'], ['code' => $copy['cla_code'], 'clone_of' => $id]);
-	nu_flash('success', t('ac_cloned'));
-	nu_redirect(nu_url('appcloner', ['id' => $copy['zzzzsys_app_cloner_id']]));
 }
 if ($action === 'delete' && $row) {
 	$db->delete($CT, 'zzzzsys_app_cloner_id', $id);
@@ -137,10 +133,12 @@ $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" rol
 		<h1 class="h4 mb-0"><i class="bi bi-copy me-2"></i><?= h(t('ac_title')) ?><?= $tip(t('ac_configs_info')) ?></h1>
 		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
 	</div>
+	<?php if (count($rows) > 10 || $q !== ''): // the search only when there is something to search (0.8.690) ?>
 	<form class="card card-body shadow-sm mb-3 py-3" method="get" action="index.php" role="search">
 		<input type="hidden" name="p" value="appcloner">
 		<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($q, '', '', false, $q !== '' ? nu_url('appcloner') : null) ?></div></div>
 	</form>
+	<?php endif; ?>
 	<div class="card shadow-sm">
 		<div class="card-header nuTitleBar">
 			<span class="small text-body-secondary"><?= h(t('n_records', count($rows))) ?></span>
@@ -212,14 +210,14 @@ if (($action === 'dry' || $action === 'run') && $dbOk):
 		'source_path' => t('ac_source_path'), 'target_path' => t('ac_target_path'), 'excludes' => t('ac_excludes')];
 	?>
 <?php if ($other): ?><div class="alert alert-danger"><?php foreach ($other as $k => $m): ?><div><?= h(($labels[$k] ?? $k) . ': ' . $m) ?></div><?php endforeach; ?></div><?php endif; ?>
-<form method="post" action="<?= h(nu_url('appcloner', ['id' => $row ? $id : 'new'])) ?>" id="acForm" data-nu-guard data-confirm-run="<?= h(t('ac_confirm_run')) ?>">
+<form method="post" action="<?= h(nu_url('appcloner', ['id' => $row ? $id : 'new', 'clone' => $cloneId])) ?>" id="acForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> data-nu-guard data-confirm-run="<?= h(t('ac_confirm_run')) ?>">
 	<?= nu_csrf_field() ?>
 	<div class="nuTitleBar mb-3">
 		<h2 class="h5 mb-0"><?= h($row ? (string)$row['cla_code'] : t('ac_new')) ?></h2>
 		<div class="d-flex flex-wrap gap-2">
 			<button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" name="action" value="save" formnovalidate><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 			<?php if ($row): ?>
-				<button class="btn nuBtnAct" type="submit" name="action" value="clone" formnovalidate><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
+				<a class="btn nuBtnAct" href="<?= h(nu_url('appcloner', ['id' => 'new', 'clone' => $id])) ?>" id="acClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('ac_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
 		</div>

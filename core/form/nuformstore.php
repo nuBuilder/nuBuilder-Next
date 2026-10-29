@@ -178,8 +178,8 @@ final class NuDraftStore
 	{
 		$o = $this->object($objectId);
 		if (!$o || $o['sob_all_type'] !== 'subform') return;
-		$table = (string)nu_db()->value('SELECT sfo_table FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [(string)$o['sob_subform_zzzzsys_form_id']]);
-		$fk = trim((string)$o['sob_subform_foreign_key']);
+		$table = (string)nu_db()->value('SELECT sfo_table FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [(string)($o['sob_subform_zzzzsys_form_id'] ?? '')]);
+		$fk = trim((string)($o['sob_subform_foreign_key'] ?? ''));   // a new sub-form object of a draft has neither yet (0.8.679)
 		if (trim($table) === '' || $fk === '') return;
 		try { NuDDL::ensureIndex($table, $fk); } catch (Throwable $e) { error_log('nuBuilder Next index: ' . $e->getMessage()); }
 	}
@@ -237,6 +237,7 @@ final class NuDraftStore
 			$i = $id !== '' ? $this->find('browse', 'zzzzsys_browse_id', $id) : null;
 			$defFilter = in_array(strtolower(trim($data['sbr_display'])), NuFormMeta::DEFAULT_FILTERS[$this->formId] ?? [], true);
 			$data['sbr_json'] = NuFormMeta::mergeNunextJson($i !== null ? ($this->snap['browse'][$i]['sbr_json'] ?? null) : null, ['filter' => !empty($c['filter']) ? true : ($defFilter ? false : null)]);
+			if (array_key_exists('badge', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['badge' => NuFormMeta::cleanBadge($c['badge'])]);
 			if (trim($data['sbr_display']) === '') continue;
 			$out[] = $i !== null ? self::set($this->snap['browse'][$i], $data) : self::row('zzzzsys_browse', ['zzzzsys_browse_id' => nu_id(), 'sbr_zzzzsys_form_id' => $this->formId] + $data);
 		}

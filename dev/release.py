@@ -108,6 +108,8 @@ def browser_tests():
     db = os.environ.get('NUNEXT_TEST_DB', '-unu -pnu nutest')
     nub = os.environ.get('NUNEXT_TEST_NUB', '')
     env = dict(os.environ, BASE=base, DB=db, NUB=nub, SITE=site)
+    if not env.get('PKG') and os.path.exists('../nunext.zip'):                 # the last built package: update_check / libreq run too (0.8.679)
+        env['PKG'] = os.path.abspath('../nunext.zip')
     try:
         env['NODE_PATH'] = subprocess.run(['npm', 'root', '-g'], capture_output=True, text=True).stdout.strip()
     except OSError:

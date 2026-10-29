@@ -572,6 +572,8 @@ final class NuListView
 		$route = $L['route'];
 		$rp = (array)($L['route_params'] ?? []);
 		$filtered = false;
+		// a filter set in the address (a link from another page, 0.8.687) is shown even when the view does not show it
+		foreach (array_keys($L['filters']) as $k) if (array_key_exists($k, $_GET) && (string)$_GET[$k] !== '' && !in_array($k, $def['filters']['shown'], true)) $def['filters']['shown'][] = $k;
 		foreach ($def['filters']['shown'] as $k) {
 			$all = (string)($L['filters'][$k]['all'] ?? (in_array($L['filters'][$k]['type'], ['text', 'datefrom', 'dateto'], true) ? '' : '*'));
 			if (array_key_exists($k, $_GET) && (string)$_GET[$k] !== (string)($def['filters']['values'][$k] ?? $all)) $filtered = true;
@@ -607,7 +609,7 @@ final class NuListView
 		<div class="row g-2 align-items-end">
 			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null) ?></div>
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
-			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse<?= $filtered || $def['open'] ? ' show' : '' ?>" id="nuLvFilters"<?= !empty($L['open_min']) ? ' data-nu-open-min="' . (int)$L['open_min'] . '"' : '' ?>><div class="row g-2">
+			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse nuLvFlt-<?= h((string)$L['key']) ?><?= $filtered || $def['open'] ? ' show' : '' ?>" id="nuLvFilters"<?= !empty($L['open_min']) ? ' data-nu-open-min="' . (int)$L['open_min'] . '"' : '' ?>><div class="row g-2">
 				<?php foreach ($def['filters']['shown'] as $k): $f = $L['filters'][$k];
 					$input = in_array($f['type'], ['text', 'datefrom', 'dateto'], true);
 					$all = (string)($f['all'] ?? ($input ? '' : '*'));

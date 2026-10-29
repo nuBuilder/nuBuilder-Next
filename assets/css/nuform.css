@@ -441,3 +441,7 @@ input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-prima
 .nuDesignEdgeL { top: 0; bottom: 0; left: 0; width: 8px; }
 .nuDesignEdgeR { top: 0; bottom: 0; right: 0; width: 8px; }
 .nuDesigning .nuWrap_contentbox > .nuDesignHandle { pointer-events: auto; }
+
+/* access levels of a form (0.8.683, assets/js/nu/nuformaccess.js) */
+.nuFacTable select { min-width: 10.5rem; }
+.nuFacTable thead th { vertical-align: bottom; }

@@ -23,7 +23,21 @@ if ($id !== '' && !$isNew) {
 	$q = NuSqlSelect::load($id);
 	if (!$q) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
-$locked = !($q ? $rights['save'] : $rights['create']) || ($q && (string)$q['sse_system'] === '1' && !NuHash::devMode());
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy (tables, columns, clauses, SQL) that is saved only with Save
+$cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
+$src = null;
+if ($cloneId !== '') {
+	NuAcl::require(NuAcl::FORM_SELECT, 'clone');
+	$src = NuSqlSelect::load($cloneId);
+	if (!$src) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	$code = (string)$src['sse_code'];
+	$new = $code;
+	if ($code !== '') for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sse_code = ?", [$new]); $n++) $new = mb_substr($code, 0, 45) . '_' . $n;
+	$src['sse_code'] = $new;
+	$src['sse_description'] = mb_substr((string)$src['sse_description'] . ' (2)', 0, 300);
+	$src['sse_system'] = '';
+}
+$locked = !($q ? $rights['save'] : $rights[$src ? 'clone' : 'create']) || ($q && (string)$q['sse_system'] === '1' && !NuHash::devMode());
 $errors = [];
 
 // ------------------------------------------------------------------ preview (JSON)
@@ -50,32 +64,17 @@ if (nu_is_post() && nu_post('action') === 'preview') {
 if (nu_is_post()) {
 	$action = nu_post('action');
 	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_SELECT, $q ? 'save' : 'create');
+		NuAcl::require(NuAcl::FORM_SELECT, $q ? 'save' : ($src ? 'clone' : 'create'));
 		if ($locked) NuAcl::require('__globeadmin_only__');
 		$in = ['sse_code' => $_POST['sse_code'] ?? '', 'sse_description' => $_POST['sse_description'] ?? '', 'sse_json' => $_POST['sse_json'] ?? '',
 			'sse_sql' => $_POST['sse_sql'] ?? '', 'sse_edit' => nu_check('sse_edit'), 'clauses' => json_decode((string)($_POST['clauses'] ?? '[]'), true) ?: []];
 		[$newId, $errors] = NuSqlSelect::save($in, $q ? $id : '');
 		if (!$errors) {
-			NuLog::write($q ? 'sql_changed' : 'sql_created', $T, $newId, ['code' => (string)$in['sse_code'], 'description' => (string)$in['sse_description']]);
+			NuLog::write($q ? 'sql_changed' : 'sql_created', $T, $newId, ['code' => (string)$in['sse_code'], 'description' => (string)$in['sse_description']]
+				+ ($src ? ['clone_of' => (string)$db->value("SELECT sse_code FROM $T WHERE zzzzsys_select_id = ?", [$cloneId])] : []));
 			nu_flash('success', t('saved'));
 			nu_redirect(nu_url('sqlbuilder', ['id' => $newId]));
 		}
-	}
-	if ($action === 'clone' && $q) {
-		NuAcl::require(NuAcl::FORM_SELECT, 'clone');
-		$code = (string)$q['sse_code'];
-		$new = $code;
-		if ($code !== '') for ($n = 2; $db->value("SELECT COUNT(*) FROM $T WHERE sse_code = ?", [$new]); $n++) $new = mb_substr($code, 0, 45) . '_' . $n;
-		$in = $q + ['clauses' => NuSqlSelect::clauses($id)];
-		$in['sse_code'] = $new;
-		$in['sse_description'] = mb_substr((string)$q['sse_description'] . ' (2)', 0, 300);
-		[$newId, $e] = NuSqlSelect::save($in);
-		if (!$e) {
-			NuLog::write('sql_created', $T, $newId, ['code' => $new, 'clone_of' => (string)$q['sse_code']]);
-			nu_flash('success', t('sqb_cloned'));
-			nu_redirect(nu_url('sqlbuilder', ['id' => $newId]));
-		}
-		$errors = ['_' => implode(' ', $e)];
 	}
 	if ($action === 'delete' && $q) {
 		NuAcl::require(NuAcl::FORM_SELECT, 'delete');
@@ -91,26 +90,22 @@ if (nu_is_post()) {
 	}
 }
 
-// ------------------------------------------------------------------ list
+// ------------------------------------------------------------------ list: a system list (0.8.688, core/nulistdefs.php → sqlbuilder)
 if ($id === '') {
-	$search = trim((string)($_GET['q'] ?? ''));
-	$where = ["COALESCE(s.sse_system, '') = ''"];
-	$params = [];
-	if ($search !== '') {
-		$where[] = "(s.sse_code LIKE ? ESCAPE '!' OR s.sse_description LIKE ? ESCAPE '!' OR s.sse_sql LIKE ? ESCAPE '!')";
-		array_push($params, NuDB::like($search), NuDB::like($search), NuDB::like($search));
-	}
-	$rows = $db->all("SELECT s.zzzzsys_select_id, s.sse_code, s.sse_description, s.sse_edit, s.sse_json FROM $T s WHERE " . implode(' AND ', $where) . ' ORDER BY s.sse_code, s.sse_description', $params);
-	$uses = [];
-	if (NuReport::available()) foreach ($db->all("SELECT sre_zzzzsys_php_id AS p, COUNT(*) AS n FROM zzzzsys_report WHERE sre_zzzzsys_php_id LIKE 'SQL:%' GROUP BY sre_zzzzsys_php_id") as $u) $uses[substr((string)$u['p'], 4)] = (int)$u['n'];
+	NuListView::page('sqlbuilder', [
+		'before' => NuListView::crumbs(array_values(array_filter([[t('nav_forms'), nu_url('forms')], NuAcl::can(NuAcl::FORM_REPORT) ? [t('rpt_title_list'), nu_url('reports')] : null, [t('sqb_title')]]))),
+		'active' => 'forms', 'title_extra' => NuListView::infoTip(t('sqb_hint')),
+		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" href="' . h(nu_url('sqlbuilder', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+	]);
+	return;
 }
 
 $foot = '';
 if ($id !== '') {
-	$clauses = $q ? NuSqlSelect::clauses($id) : [];
+	$clauses = $q ? NuSqlSelect::clauses($id) : ($src ? NuSqlSelect::clauses($cloneId) : []);
 	if (nu_is_post() && nu_post('action') === 'save') $clauses = json_decode((string)($_POST['clauses'] ?? '[]'), true) ?: [];
 	$schema = NuSqlSelect::schema(true);
-	$data = ['schema' => $schema, 'clauses' => $clauses, 'readonly' => $locked, 'url' => nu_url('sqlbuilder', ['id' => $id ?: 'new']), 'csrf' => nu_csrf_token(),
+	$data = ['schema' => $schema, 'clauses' => $clauses, 'readonly' => $locked, 'url' => nu_url('sqlbuilder', ['id' => $id ?: 'new', 'clone' => $cloneId]), 'csrf' => nu_csrf_token(),
 		'msg' => array_combine(array_map(static fn($k) => $k, $keys = ['tables', 'search', 'system', 'alias', 'all', 'remove', 'join', 'left_join', 'join_toggle', 'join_delete',
 			'clauses', 'clause_add', 'type', 'field', 'clause', 'sort', 'order', 'sql', 'manual', 'manual_hint', 'preview', 'rows', 'more', 'no_rows', 'missing_table',
 			'drag_hint', 'empty', 'run_failed', 'columns', 'add_table']), array_map(static fn($k) => t('sqb_' . $k), $keys))];
@@ -133,40 +128,11 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 </nav>
 <?php if (isset($errors['_'])): ?><div class="alert alert-danger"><?= h($errors['_']) ?></div><?php endif; ?>
 
-<?php if ($id === ''): ?>
-	<div class="card shadow-sm nuListCard">
-		<div class="card-header nuListHead nuTitleBar">
-			<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('sqb_title')) ?>
-				<button type="button" class="btn btn-link btn-sm p-0 lh-1 text-body-secondary nuInfoBtn" data-bs-toggle="collapse" data-bs-target="#sqbHint" aria-expanded="false" aria-controls="sqbHint" title="<?= h(t('info')) ?>" aria-label="<?= h(t('info')) ?>"><i class="bi bi-info-circle"></i></button></h1>
-			<div class="collapse nuTitleSub text-body-secondary small" id="sqbHint"><?= h(t('sqb_hint')) ?></div>
-			<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?><?php if ($rights['add']): ?><a class="btn nuAddBtn" href="<?= h(nu_url('sqlbuilder', ['id' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a><?php endif; ?></div>
-		</div>
-		<form class="nuListFilter" method="get" action="index.php" role="search">
-			<input type="hidden" name="p" value="sqlbuilder">
-			<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($search, '', '', false, $search !== '' ? nu_url('sqlbuilder') : null) ?></div></div>
-		</form>
-		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 nu-table" id="sqbList">
-				<thead><tr><th><?= h(t('sqb_code')) ?></th><th><?= h(t('sqb_description')) ?></th><th><?= h(t('sqb_tables')) ?></th><th><?= h(t('sqb_mode')) ?></th><th class="text-end"><?= h(t('sqb_used')) ?></th></tr></thead>
-				<tbody>
-				<?php if (!$rows): ?><tr><td colspan="5" class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
-				<?php foreach ($rows as $r): $edit = nu_url('sqlbuilder', ['id' => (string)$r['zzzzsys_select_id']]); $j = json_decode((string)$r['sse_json'], true); ?>
-					<tr class="nu-row-link" data-href="<?= h($edit) ?>">
-						<td class="fw-semibold"><a class="text-decoration-none" href="<?= h($edit) ?>"><?= h((string)$r['sse_code'] !== '' ? $r['sse_code'] : '–') ?></a></td>
-						<td class="small text-break"><?= h($r['sse_description']) ?></td>
-						<td class="small"><?= h(implode(', ', array_map(static fn($t) => (string)($t['tablename'] ?? ''), (array)($j['tables'] ?? [])))) ?></td>
-						<td class="small"><?= h(t((string)$r['sse_edit'] === '1' ? 'sqb_mode_manual' : 'sqb_mode_builder')) ?></td>
-						<td class="text-end small"><?= (int)($uses[(string)$r['zzzzsys_select_id']] ?? 0) ?></td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
-	</div>
-<?php else: ?>
+
 	<?php
 	$posted = nu_is_post() && nu_post('action') === 'save';
-	$v = static fn(string $k) => $posted ? (string)($_POST[$k] ?? '') : (string)($q[$k] ?? '');
+	$rec = $q ?? $src;                                      // a clone shows the values of its source
+	$v = static fn(string $k) => $posted ? (string)($_POST[$k] ?? '') : (string)($rec[$k] ?? '');
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$used = $q ? NuSqlSelect::usage($id) : [];
 	?>
@@ -176,8 +142,7 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 		<a class="btn nuBtnAct" href="<?= h(nu_url('sqlbuilder')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="sqbSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if ($q && $rights['clone']): ?>
-			<form method="post" action="<?= h(nu_url('sqlbuilder', ['id' => $id])) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="clone">
-				<button class="btn nuBtnAct" type="submit" id="sqbClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button></form>
+			<a class="btn nuBtnAct" href="<?= h(nu_url('sqlbuilder', ['id' => 'new', 'clone' => $id])) ?>" id="sqbClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 		<?php endif; ?>
 		<?php if ($q && $rights['delete'] && !$locked): ?>
 			<form method="post" action="<?= h(nu_url('sqlbuilder', ['id' => $id])) ?>" data-confirm="<?= h(t('sqb_delete_confirm', (string)($q['sse_code'] ?: $q['sse_description']))) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
@@ -187,7 +152,7 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 		</div>
 	</div>
 	<?php if ($used): ?><div class="small text-body-secondary mb-2"><i class="bi bi-file-earmark-richtext me-1"></i><?= h(t('sqb_used_by', implode(', ', array_column($used, 'sre_code')))) ?></div><?php endif; ?>
-	<form method="post" action="<?= h(nu_url('sqlbuilder', ['id' => $id])) ?>" id="nuRecordForm" data-nu-guard novalidate>
+	<form method="post" action="<?= h(nu_url('sqlbuilder', ['id' => $id, 'clone' => $cloneId])) ?>" id="nuRecordForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> data-nu-guard novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 		<input type="hidden" name="sse_json" id="sse_json" value="<?= h($v('sse_json')) ?>">
 		<input type="hidden" name="clauses" id="sqbClauses" value="">
@@ -215,6 +180,6 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 		</fieldset>
 	</form>
 	<div id="sqbResult" class="sqbResult mt-3" aria-live="polite"></div>
-<?php endif; ?>
+
 <?php
 nu_layout_end($foot);

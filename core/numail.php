@@ -681,12 +681,16 @@ final class NuMail
 	}
 
 	/** @return string|null  null on success, otherwise an error message */
-	public static function send(string $to, string $subject, string $html, string $tag = 'nunext'): ?string
+	public static function send(string $to, string $subject, string $html, string $tag = 'nunext', array $cc = [], array $bcc = [], ?string $failBody = null): ?string
 	{
 		$args = ['to' => $to, 'subject' => $subject, 'body' => $html, 'html' => true];
-		$r = nuEmail([$to], '', '', $html, $subject, [], true);
+		if ($cc) $args['cc'] = $cc;
+		if ($bcc) $args['bcc'] = $bcc;
+		$r = nuEmail([$to], '', '', $html, $subject, [], true, $cc, $bcc);
 		$s = NuMailer::settings();
-		NuMailer::log(['from_email' => $s['from_address'], 'from_name' => $s['from_name'], 'body' => '[' . $tag . ']'] + $args, $r,
+		// the log keeps no body (codes, links) – except $failBody when sending failed (0.8.684: the edited welcome e-mail, link replaced)
+		$logBody = !$r[0] && $failBody !== null ? $failBody : '[' . $tag . ']';
+		NuMailer::log(['from_email' => $s['from_address'], 'from_name' => $s['from_name'], 'body' => $logBody] + $args, $r,
 			['tag' => $tag, 'user_id' => (NuAuth::currentRaw()['id'] ?? '') ?: null]);
 		if ($r[0]) return null;
 		error_log('nuBuilder Next mail: ' . $r[1] . ' ' . $r[2]);
@@ -730,25 +734,16 @@ final class NuWelcome
 		return max(1, min(720, (int)(nu_cfg('nuConfigWelcomeLinkHours') ?? 72) ?: 72));
 	}
 
+	/** Marker of the set-password link in a previewed welcome e-mail (0.8.684): replaced by the real link when it is sent. */
+	public const MARKER = '#SET_PASSWORD_URL#';
+
 	/** @return string|null  null when sent, otherwise the error */
 	public static function send(array $user, string $password = ''): ?string
 	{
-		$email = trim((string)($user['sus_email'] ?? ''));
-		if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) return t('welcome_err_email');
-		if (!NuMail::configured()) return t('welcome_err_mail');
+		if (($e = self::checkAddress($user)) !== null) return $e;
 		$uid = (string)$user['zzzzsys_user_id'];
-
-		$token = NuToken::create('pw_reset', $uid, self::hours() * 3600);
-		$base  = nu_base_url();
-		$hash  = [];
-		foreach ($user as $k => $v) if ($k !== 'sus_login_password' && (is_scalar($v) || $v === null)) $hash[$k] = (string)$v;
-		$hash += [
-			'RECORD_ID' => $uid, 'LOGIN_URL' => $base . '/index.php?p=login', 'NUNEXT_URL' => $base . '/',
-			'NUBUILDER_URL' => trim((string)nu_cfg('nuConfigNuBuilderURL')) ?: $base . '/',
-			'SET_PASSWORD_URL' => $base . '/index.php?' . http_build_query(['p' => 'reset', 'u' => $uid, 't' => $token]),
-			'SET_PASSWORD_HOURS' => (string)self::hours(), 'PASSWORD_MIN_LENGTH' => (string)max(1, (int)nu_cfg('nuConfigPasswordMinLength')),
-			'check_password' => $password,
-		];
+		$email = trim((string)$user['sus_email']);
+		$hash = self::hashFor($user, $password, self::linkFor($uid));
 
 		// 1. own procedure (nuBuilder: nuRunProcedure('nu_send_welcome_email'))
 		$db = nu_db();
@@ -762,22 +757,131 @@ final class NuWelcome
 		}
 
 		// 2. own e-mail template, 3. the read-only template, 4. built-in text – in the user's language
+		[$subject, $html, $source, $cc, $bcc] = self::inUserLang($user, static fn(string $lang) => self::content($user, $hash, $lang));
+		$err = NuMail::send($email, $subject, $html, 'nunext_welcome', $cc, $bcc);
+		self::log($uid, $email, $source, $err);
+		return $err;
+	}
+
+	// ------------------------------------------------------------------ preview and edited e-mail (0.8.684, user form "Preview the e-mail")
+
+	/** Does an own procedure send the welcome e-mail? Then there is nothing to preview. */
+	public static function hasProcedure(): bool
+	{
+		return self::ownProcedure();
+	}
+
+	/**
+	 * The e-mail send() would build for a user that is not saved yet ($user = the form's values), with MARKER instead of the set-password
+	 * link. $choice: 'auto' (send()'s order), 'builtin' or 'emt:<template id>' (choices()).
+	 * @return array{subject: string, html: string, to: string, cc: list<string>, bcc: list<string>, source: string, choice: string, link: bool}
+	 */
+	public static function preview(array $user, string $password, string $choice): array
+	{
+		$user += ['zzzzsys_user_id' => ''];
+		$hash = self::hashFor($user, $password, self::MARKER);
+		$forced = self::chosen($choice);
+		if ($forced === false) $choice = 'auto';
+		[$subject, $html, $source, $cc, $bcc] = self::inUserLang($user, static fn(string $lang) => self::content($user, $hash, $lang, $forced === false ? null : $forced));
+		return ['subject' => $subject, 'html' => $html, 'to' => trim((string)($user['sus_email'] ?? '')), 'cc' => $cc, 'bcc' => $bcc,
+			'source' => $source, 'choice' => $choice, 'link' => str_contains($html, self::MARKER)];
+	}
+
+	/** Sends the e-mail edited in the preview to the saved user: MARKER becomes the real set-password link. @return string|null error */
+	public static function sendEdited(array $user, string $subject, string $html, array $cc, array $bcc, string $source): ?string
+	{
+		if (($e = self::checkAddress($user)) !== null) return $e;
+		$uid = (string)$user['zzzzsys_user_id'];
+		$email = trim((string)$user['sus_email']);
+		$link = str_contains($html . $subject, self::MARKER) ? self::linkFor($uid) : '';
+		$out = $link !== '' ? str_replace(self::MARKER, h($link), $html) : $html;
+		$subj = $link !== '' ? str_replace(self::MARKER, $link, $subject) : $subject;
+		$err = NuMail::send($email, trim($subj) !== '' ? $subj : t('welcome_subject'), $out, 'nunext_welcome', $cc, $bcc, $html);   // log on failure: with MARKER
+		self::log($uid, $email, $source . '+edited', $err);
+		return $err;
+	}
+
+	/**
+	 * Templates the preview can switch to: Automatic, every nu_send_welcome_email (all languages), the read-only standard templates,
+	 * the other e-mail templates of the user form (emt_form_id nuuser) and the built-in text. @return list<array{0: string, 1: string}>
+	 */
+	public static function choices(): array
+	{
+		$out = [['auto', t('welcome_pv_auto')]];
+		$db = nu_db();
+		if ($db->tableExists(NuEmailTemplate::TABLE)) {
+			$rows = $db->all('SELECT zzzzsys_email_template_id, emt_code, emt_language, emt_description, emt_template, emt_group FROM ' . NuEmailTemplate::TABLE
+				. " WHERE emt_code IN (?, ?) OR emt_form_id = 'nuuser' ORDER BY emt_code, emt_language", [self::TEMPLATE, self::STD]);
+			$rank = static fn(array $r) => (string)$r['emt_code'] === self::TEMPLATE && (string)$r['emt_template'] !== '1' ? 0
+				: ((string)$r['emt_code'] === self::STD && (string)$r['emt_group'] === self::STD_GROUP ? 1 : 2);
+			usort($rows, static fn($a, $b) => [$rank($a), (string)$a['emt_code'], (string)$a['emt_language']] <=> [$rank($b), (string)$b['emt_code'], (string)$b['emt_language']]);
+			foreach ($rows as $r) {
+				if ((string)$r['emt_code'] === self::STD && (string)$r['emt_group'] !== self::STD_GROUP) continue;   // Forte's own row (a password in the mail)
+				$l = trim((string)$r['emt_language']);
+				$d = trim((string)$r['emt_description']);
+				$out[] = ['emt:' . $r['zzzzsys_email_template_id'], $r['emt_code'] . ($l !== '' ? ' (' . $l . ')' : '') . ($d !== '' ? ' – ' . $d : '')];
+			}
+		}
+		$out[] = ['builtin', t('welcome_src_builtin')];
+		return $out;
+	}
+
+	/** A choice → template row (array), 'builtin' → [] (built-in text), 'auto' / unknown → false (send()'s order). */
+	private static function chosen(string $choice): array|false
+	{
+		if ($choice === 'builtin') return [];
+		if (!str_starts_with($choice, 'emt:')) return false;
+		$keys = array_column(self::choices(), 0);
+		if (!in_array($choice, $keys, true)) return false;
+		return nu_db()->one('SELECT * FROM ' . NuEmailTemplate::TABLE . ' WHERE zzzzsys_email_template_id = ?', [substr($choice, 4)]) ?? false;
+	}
+
+	private static function checkAddress(array $user): ?string
+	{
+		$email = trim((string)($user['sus_email'] ?? ''));
+		if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) return t('welcome_err_email');
+		if (!NuMail::configured()) return t('welcome_err_mail');
+		return null;
+	}
+
+	/** A one-time set-password link of the user (reset page, valid hours()). */
+	private static function linkFor(string $uid): string
+	{
+		$token = NuToken::create('pw_reset', $uid, self::hours() * 3600);
+		return nu_base_url() . '/index.php?' . http_build_query(['p' => 'reset', 'u' => $uid, 't' => $token]);
+	}
+
+	/** Placeholders of the welcome e-mail. */
+	private static function hashFor(array $user, string $password, string $setUrl): array
+	{
+		$base = nu_base_url();
+		$hash = [];
+		foreach ($user as $k => $v) if ($k !== 'sus_login_password' && (is_scalar($v) || $v === null)) $hash[$k] = (string)$v;
+		return $hash + [
+			'RECORD_ID' => (string)($user['zzzzsys_user_id'] ?? ''), 'LOGIN_URL' => $base . '/index.php?p=login', 'NUNEXT_URL' => $base . '/',
+			'NUBUILDER_URL' => trim((string)nu_cfg('nuConfigNuBuilderURL')) ?: $base . '/',
+			'SET_PASSWORD_URL' => $setUrl,
+			'SET_PASSWORD_HOURS' => (string)self::hours(), 'PASSWORD_MIN_LENGTH' => (string)max(1, (int)nu_cfg('nuConfigPasswordMinLength')),
+			'check_password' => $password,
+		];
+	}
+
+	/** Runs $fn(language) with the user's language (and English variant) as the session language. */
+	private static function inUserLang(array $user, callable $fn): mixed
+	{
 		$lang = nu_lang_from_db((string)($user['sus_language'] ?? '')) ?? nu_lang();
 		$prev = $_SESSION['nu_lang'] ?? null;
 		$prevVar = $_SESSION['nu_lang_variant'] ?? null;
 		$_SESSION['nu_lang'] = $lang;
-		$uv = (string)NuUserJson::get((string)($user['zzzzsys_user_id'] ?? ''), 'NUNEXT_LANG_VARIANT');   // English UK / Australia / US
+		$uv = (string)($user['NUNEXT_LANG_VARIANT'] ?? NuUserJson::get((string)($user['zzzzsys_user_id'] ?? ''), 'NUNEXT_LANG_VARIANT'));   // English UK / Australia / US
 		$var = (NU_LANG_VARIANTS[$uv][0] ?? '') === $lang ? $uv : NuSetupWizard::defaultVariant($lang);
 		if ($var !== null) $_SESSION['nu_lang_variant'] = $var; else unset($_SESSION['nu_lang_variant']);
 		try {
-			[$subject, $html, $source] = self::content($user, $hash, $lang);
+			return $fn($lang);
 		} finally {
 			if ($prev === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev;
 			if ($prevVar === null) unset($_SESSION['nu_lang_variant']); else $_SESSION['nu_lang_variant'] = $prevVar;
 		}
-		$err = NuMail::send($email, $subject, $html, 'nunext_welcome');
-		self::log($uid, $email, $source, $err);
-		return $err;
 	}
 
 	/**
@@ -803,11 +907,20 @@ final class NuWelcome
 		return ['proc' => $proc, 'tpl' => (object)$tpl, 'std' => (object)$std, 'fallback' => nu_lang_to_db(nu_lang()), 'code' => self::TEMPLATE];
 	}
 
-	/** @return array{0: string, 1: string, 2: string} subject, HTML, source ('template' / 'standard' / 'builtin') */
-	private static function content(array $user, array $hash, string $lang): array
+	/**
+	 * @param array|null $forced a template row to use, [] = the built-in text, null = the order of send()
+	 * @return array{0: string, 1: string, 2: string, 3: list<string>, 4: list<string>} subject, HTML, source ('template' / 'standard' / 'builtin'), cc, bcc
+	 */
+	private static function content(array $user, array $hash, string $lang, ?array $forced = null): array
 	{
 		$db = nu_db();
-		if ($db->tableExists(NuEmailTemplate::TABLE)) {
+		$list = static fn(string $v) => array_values(array_filter(array_map('trim', preg_split('/[,;]/', NuHash::replace($v, $hash, NuHash::RAW)) ?: []),
+			static fn($a) => $a !== '' && filter_var($a, FILTER_VALIDATE_EMAIL)));
+		if ($forced) {
+			$tpl = $forced;
+			$src = (string)$tpl['emt_code'] === self::STD ? 'standard' : 'template';
+		}
+		if ($forced === null && $db->tableExists(NuEmailTemplate::TABLE)) {
 			$langs = array_values(array_unique([trim((string)($user['sus_language'] ?? '')), nu_lang_to_db($lang), '']));
 			$tpl = null;
 			foreach ($langs as $l) {
@@ -820,18 +933,18 @@ final class NuWelcome
 				}
 				$src = 'standard';
 			}
-			if ($tpl) {
-				$esc = []; foreach ($hash as $k => $v) $esc[$k] = h($v);              // values are text in an HTML mail
-				$body = NuHash::replace((string)$tpl['emt_body'], $esc, NuHash::RAW);
-				if ($body === strip_tags($body)) $body = nl2br($body);                // plain text template (like nuBuilder)
-				$subject = NuHash::replace((string)$tpl['emt_subject'], $hash, NuHash::RAW) ?: t('welcome_subject');
-				return [$subject, NuMail::layout($subject, $body), $src];
-			}
+		}
+		if (!empty($tpl)) {
+			$esc = []; foreach ($hash as $k => $v) $esc[$k] = h($v);              // values are text in an HTML mail
+			$body = NuHash::replace((string)$tpl['emt_body'], $esc, NuHash::RAW);
+			if ($body === strip_tags($body)) $body = nl2br($body);                // plain text template (like nuBuilder)
+			$subject = NuHash::replace((string)$tpl['emt_subject'], $hash, NuHash::RAW) ?: t('welcome_subject');
+			return [$subject, NuMail::layout($subject, $body), $src ?? 'template', $list((string)($tpl['emt_cc'] ?? '')), $list((string)($tpl['emt_bcc'] ?? ''))];
 		}
 		$name = trim((string)($user['sus_name'] ?? '')) ?: (string)$user['sus_login_name'];
 		$body = self::body(h($name), h((string)$user['sus_login_name']), h($hash['SET_PASSWORD_URL']), h($hash['LOGIN_URL']),
 			h(t('welcome_valid', self::hours(), $hash['PASSWORD_MIN_LENGTH'])));
-		return [t('welcome_subject'), NuMail::layout(t('welcome_title'), $body), 'builtin'];
+		return [t('welcome_subject'), NuMail::layout(t('welcome_title'), $body), 'builtin', [], []];
 	}
 
 	/** The welcome text in the current language – built-in mail and the read-only templates (0.8.658); every argument is HTML already. */

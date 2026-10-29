@@ -121,6 +121,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 												<th scope="col" class="small"><?= h(t('builder_pick_col')) ?></th>
 												<th scope="col" class="small"><?= h(t('builder_obj_label')) ?></th>
 												<th scope="col" class="small text-center text-nowrap"><input class="form-check-input me-1" type="checkbox" id="nbPickAllList" aria-label="<?= h(t('builder_pick_all_list')) ?>" title="<?= h(t('builder_pick_all_list')) ?>"><?= h(t('builder_pick_list')) ?></th>
+												<th scope="col" class="small text-center text-nowrap"><?= h(t('builder_col_filter')) ?></th>
 												<th scope="col"><span class="visually-hidden"><?= h(t('actions')) ?></span></th>
 											</tr></thead>
 											<tbody id="nbPickRows"></tbody>

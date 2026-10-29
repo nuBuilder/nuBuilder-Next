@@ -49,7 +49,7 @@ try {
 
 	$d = NuDashboard::byCode((string)($in['code'] ?? ''));
 	if (!$d) nu_dash_out(['ok' => false, 'error' => t('dash_err_missing', (string)($in['code'] ?? ''))], 404);
-	if (!NuDashboard::visible($d)) nu_dash_out(['ok' => false, 'error' => t('err_forbidden'), 'hide' => true], 403);
+	if (!NuDashboard::visible($d)) nu_dash_out(['ok' => false, 'error' => t('err_forbidden'), 'hide' => true]);   // hidden, not an error: no 403 in the browser console (0.8.679)
 
 	$meta = null;
 	$record = '';
@@ -57,11 +57,11 @@ try {
 	if ($formId !== '') {
 		$meta = NuFormMeta::load($formId);
 		if (!$meta || !NuAcl::can($meta->id)) nu_dash_out(['ok' => false, 'error' => t('err_forbidden')], 403);
-		if (!$ga && !NuDashboard::placed($meta, (string)$d['code'])) nu_dash_out(['ok' => false, 'error' => t('dash_err_not_placed'), 'hide' => true], 403);
+		if (!$ga && !NuDashboard::placed($meta, (string)$d['code'])) nu_dash_out(['ok' => false, 'error' => t('dash_err_not_placed'), 'hide' => true]);   // hidden, not an error: no 403 in the browser console (0.8.679)
 		$record = (string)($in['record_id'] ?? '');
 		if ($record !== '' && $record !== '-1' && !NuRecord::visible($meta, $record)) nu_dash_out(['ok' => false, 'error' => t('err_forbidden')], 403);
 	} elseif (!$ga && (string)$d['on_home'] !== '1') {
-		nu_dash_out(['ok' => false, 'error' => t('err_forbidden'), 'hide' => true], 403);
+		nu_dash_out(['ok' => false, 'error' => t('err_forbidden'), 'hide' => true]);   // hidden, not an error: no 403 in the browser console (0.8.679)
 	}
 	$widgets = NuDashboard::widgets((string)$d['zzzzsys_nunext_dashboard_id']);
 	$isNew = $meta !== null && $meta->table() !== '' && ($record === '-1' || $record === '');

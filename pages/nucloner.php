@@ -29,6 +29,10 @@ if ($id !== '' && $id !== 'new') {
 	$row = NuClonerConfig::get($id);
 	if (!$row) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
+// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy of saved settings that is saved only with Save
+$cloneId = $id === 'new' ? (string)($_GET['clone'] ?? '') : '';
+$src = $cloneId !== '' ? NuClonerConfig::get($cloneId) : null;
+if ($cloneId !== '' && !$src) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 $listMode = $id === '' && !isset($_GET['f']) && !nu_is_post();
 
 $def = ['source' => (string)($_GET['f'] ?? ''), 'dest_mode' => 'new', 'dest' => '', 'code' => '', 'description' => '', 'tabs' => [], 'objects' => true,
@@ -44,7 +48,7 @@ if (nu_is_post()) {
 		'notes' => (string)($_POST['notes'] ?? ''),
 	];
 } else {
-	$in = $row ? NuClonerConfig::toInput($row, $def) : $def;
+	$in = $row || $src ? NuClonerConfig::toInput($row ?? $src, $def) : $def;
 }
 $errors = [];
 $action = nu_is_post() ? nu_post('action') : '';
@@ -54,18 +58,10 @@ if ($action === 'save') {
 	[$newId, $errors] = NuClonerConfig::save($in, $row ? $id : '');
 	if (!$errors) {
 		NuLog::write($row ? 'cloner_changed' : 'cloner_created', $CT, (string)$newId, $row
-			? ['fields' => NuLog::diff($row, NuClonerConfig::get((string)$newId) ?? [])] : ['source' => $in['source']]);
+			? ['fields' => NuLog::diff($row, NuClonerConfig::get((string)$newId) ?? [])] : ['source' => $in['source']] + ($src ? ['clone_of' => $cloneId] : []));
 		nu_flash('success', t('saved'));
 		nu_redirect(nu_url('cloner', ['id' => $newId]));
 	}
-}
-if ($action === 'clone' && $row) {
-	$copy = $row;
-	$copy['zzzzsys_cloner_id'] = nu_id();
-	$db->insert($CT, $copy);
-	NuLog::write('cloner_created', $CT, $copy['zzzzsys_cloner_id'], ['clone_of' => $id]);
-	nu_flash('success', t('ac_cloned'));
-	nu_redirect(nu_url('cloner', ['id' => $copy['zzzzsys_cloner_id']]));
 }
 if ($action === 'delete' && $row) {
 	$db->delete($CT, 'zzzzsys_cloner_id', $id);
@@ -122,10 +118,12 @@ $heading = $row ? nu_form_label((string)$row['clo_form_source']) : t('cl_new_set
 		<h1 class="h4 mb-0"><i class="bi bi-files me-2"></i><?= h(t('cl_title')) ?><?= $tip(t('cl_configs_info')) ?></h1>
 		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
 	</div>
+	<?php if (count($rows) > 10 || $q !== ''): // the search only when there is something to search (0.8.690) ?>
 	<form class="card card-body shadow-sm mb-3 py-3" method="get" action="index.php" role="search">
 		<input type="hidden" name="p" value="cloner">
 		<div class="row g-2 align-items-end"><div class="col-md-6"><?= nu_list_search($q, '', '', false, $q !== '' ? nu_url('cloner') : null) ?></div></div>
 	</form>
+	<?php endif; ?>
 	<div class="card shadow-sm">
 		<div class="card-header nuTitleBar">
 			<span class="small text-body-secondary"><?= h(t('n_records', count($rows))) ?></span>
@@ -178,16 +176,16 @@ endif; ?>
 	</div>
 <?php endif; ?>
 
-<form method="post" action="<?= h(nu_url('cloner', $row ? ['id' => $id] : ['id' => 'new'])) ?>" id="clForm" data-nu-guard data-info-url="<?= h(nu_url('cloner', ['info' => '__ID__'])) ?>"
+<form method="post" action="<?= h(nu_url('cloner', $row ? ['id' => $id] : ['id' => 'new', 'clone' => $cloneId])) ?>" id="clForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> data-nu-guard data-info-url="<?= h(nu_url('cloner', ['info' => '__ID__'])) ?>"
 	  data-sel-tabs="<?= h(json_encode($in['tabs'])) ?>" data-sel-sub="<?= h(json_encode($in['subform_ids'])) ?>" data-sel-ifr="<?= h(json_encode($in['iframe_ids'])) ?>"
-	  data-posted="<?= nu_is_post() || $row ? '1' : '0' ?>" data-copy="<?= h(t('cl_copy')) ?>" data-objects="<?= h(t('cl_objects_n')) ?>" data-none="<?= h(t('cl_none')) ?>">
+	  data-posted="<?= nu_is_post() || $row || $src ? '1' : '0' ?>" data-copy="<?= h(t('cl_copy')) ?>" data-objects="<?= h(t('cl_objects_n')) ?>" data-none="<?= h(t('cl_none')) ?>">
 	<?= nu_csrf_field() ?>
 	<div class="nuTitleBar mb-3">
 		<h2 class="h5 mb-0"><?= h($heading) ?></h2>
 		<div class="d-flex flex-wrap gap-2">
 			<button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" name="action" value="save" formnovalidate><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 			<?php if ($row): ?>
-				<button class="btn nuBtnAct" type="submit" name="action" value="clone" formnovalidate><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
+				<a class="btn nuBtnAct" href="<?= h(nu_url('cloner', ['id' => 'new', 'clone' => $id])) ?>" id="clClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('ac_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
 		</div>

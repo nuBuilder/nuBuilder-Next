@@ -20,3 +20,11 @@
 		});
 	});
 })();
+
+/* #access opens the tab Access levels (link of the reports list, 0.8.688). */
+(function () {
+	'use strict';
+	if (location.hash !== '#access' || !window.nuBs || !nuBs.ready()) return;
+	var b = document.querySelector('#rptTabs [data-bs-target="#rptTabAccess"]');
+	if (b) nuBs.tab(b).show();
+})();

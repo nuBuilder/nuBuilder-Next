@@ -922,6 +922,8 @@
 		]);
 		var tools = [];
 		if (D.ai) tools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsAi', href: D.ai}, [icon('bi-stars me-1'), t('fai_button_change')]));
+		if (D.formaccess && typeof window.nuFormAccessOpen === 'function') tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsFormAccess',
+			onclick: function () { window.nuFormAccessOpen(N.form.id); }}, [icon('bi-people me-1'), t('ds_form_access')]));
 		if (D.dataaccess) tools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDataAccess', href: D.dataaccess}, [icon('bi-shield-lock me-1'), t('da_title')]));
 		if (D.can_delete_form && !DR) tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger', id: 'nuDsDeleteForm', onclick: deleteForm}, [icon('bi-trash me-1'), t('builder_delete_form')]));
 		if (tools.length) section('tools', t('ds_sec_tools'), [el('div', {'class': 'nuDsTools'}, tools)]);
@@ -1689,10 +1691,12 @@
 	// saved with browse.save (the whole list of columns, in the draft like every other change) and the list is drawn again.
 	function colById(id) { return id && S && S.browse ? S.browse.filter(function (c) { return c.zzzzsys_browse_id === id; })[0] : null; }
 	function colFilter(c) { try { return !!((JSON.parse(c.sbr_json || '{}').nunext || {}).filter); } catch (e) { return false; } }
+	// badge of a column (0.8.688): null = none, true = the default look, [rules] = rules of nuBrowseStyleBadge (sbr_json nunext.badge)
+	function colBadge(c) { try { var b = (JSON.parse(c.sbr_json || '{}').nunext || {}).badge; return b ? (Array.isArray(b) ? b : true) : null; } catch (e) { return null; } }
 	function colRows(edit) {
 		return (S.browse || []).map(function (c) {
 			var x = {id: c.zzzzsys_browse_id, title: c.sbr_title || '', display: c.sbr_display || '', align: c.sbr_align || 'l', format: c.sbr_format || '',
-				width: c.sbr_width === null || c.sbr_width === undefined || c.sbr_width === '' ? 100 : +c.sbr_width, filter: colFilter(c)};
+				width: c.sbr_width === null || c.sbr_width === undefined || c.sbr_width === '' ? 100 : +c.sbr_width, filter: colFilter(c), badge: colBadge(c)};
 			return edit && edit[x.id] ? Object.assign(x, edit[x.id]) : x;
 		});
 	}
@@ -1763,9 +1767,41 @@
 				field(t('builder_col_align'), 'select', c.sbr_align || 'l', function (v) { colSave(c, {align: v}); }, {key: 'sbr_align', options: [['l', t('ds_align_left')], ['c', t('ds_align_center')], ['r', t('ds_align_right')]]})])
 		]);
 		section('behaviour', t('ds_sec_behaviour'), [
-			field(t('builder_col_filter'), 'check', colFilter(c) ? '1' : '0', function (v) { colSave(c, {filter: v === '1'}); }, {key: 'filter'})
+			field(t('builder_col_filter'), 'check', colFilter(c) ? '1' : '0', function (v) { colSave(c, {filter: v === '1'}); }, {key: 'filter'}),
+			field(t('ds_col_badge'), 'check', colBadge(c) ? '1' : '0', function (v) { colSave(c, {badge: v === '1' ? (colBadge(c) || true) : null}); }, {key: 'badge', tip: t('ds_col_badge_tip')}),
+			colBadge(c) ? badgeRulesEditor(c) : null
 		]);
 		foot([el('p', {'class': 'nuDsHint', text: t('ds_hint_list')})]);
+	}
+	// rules of a badge column: "when the value [is | contains | starts with | is anything else] [text] → colour"; the first that matches wins
+	function badgeRulesEditor(c) {
+		var b = colBadge(c), rules = Array.isArray(b) ? b.map(function (r) { return Object.assign({}, r); }) : [];
+		var box = el('div', {'class': 'nuDsBadgeRules', id: 'nuDsBadgeRules'});
+		var kindOf = function (r) { return r.default ? 'default' : (r.contains !== undefined ? 'contains' : (r.startsWith !== undefined ? 'startsWith' : 'equals')); };
+		var save = function () { colSave(c, {badge: rules.length ? rules : true}); };
+		function draw() {
+			box.innerHTML = '';
+			rules.forEach(function (r, i) {
+				var k = kindOf(r), val = k === 'default' ? '' : String(r[k] === undefined ? '' : r[k]);
+				var sel = el('select', {'class': 'form-select form-select-sm nuDsBrKind', 'aria-label': t('ds_badge_when'), onchange: function () {
+					var v = val; ['equals', 'contains', 'startsWith', 'default'].forEach(function (x) { delete r[x]; });
+					if (sel.value === 'default') r.default = true; else r[sel.value] = v;
+					save();
+				}}, [['equals', t('ds_badge_is')], ['contains', t('ds_badge_contains')], ['startsWith', t('ds_badge_starts')], ['default', t('ds_badge_other')]].map(function (o) {
+					return el('option', {value: o[0], selected: o[0] === k}, [o[1]]);
+				}));
+				var txt = el('input', {type: 'text', 'class': 'form-control form-control-sm nuDsBrValue', value: val, 'aria-label': t('ds_badge_value'), disabled: k === 'default',
+					onchange: function () { r[kindOf(r)] = txt.value; save(); }});
+				var bg = el('input', {type: 'color', 'class': 'form-control form-control-sm form-control-color nuDsBrColor', value: /^#[0-9a-f]{6}$/i.test(r.bg || '') ? r.bg : '#6c757d',
+					'aria-label': t('ds_badge_colour'), title: t('ds_badge_colour'), onchange: function () { r.bg = bg.value; save(); }});
+				var del = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsBrDel', title: t('delete'), 'aria-label': t('delete'), onclick: function () { rules.splice(i, 1); save(); }}, [icon('bi-x-lg')]);
+				box.appendChild(el('div', {'class': 'nuDsBadgeRule'}, [sel, txt, bg, del]));
+			});
+			box.appendChild(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsBadgeAdd', onclick: function () { rules.push({equals: '', bg: '#0d6efd'}); save(); }},
+				[icon('bi-plus-lg me-1'), t('ds_badge_add')]));
+		}
+		draw();
+		return box;
 	}
 	// right-click on a column title (0.8.672, as nuBuilder Forte's menu of a browse title): Object, Properties, Rename…, Align, Width,
 	// Filter, Move left / right, Hide / Show, Delete – the same look and keys as the form's object menu (nuform.css .nuObjMenu)

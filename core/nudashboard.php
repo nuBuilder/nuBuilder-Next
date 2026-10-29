@@ -30,7 +30,9 @@ final class NuDashboard
 	public const TIMEOUT = 10;
 	public const OPT_DEFAULTS = ['width' => 0, 'height' => 280, 'chart' => 'bar', 'stacked' => false, 'format' => 'number', 'decimals' => 0,
 		'prefix' => '', 'suffix' => '', 'low' => '', 'high' => '', 'higher_better' => true, 'rows' => 10, 'link_type' => '', 'link' => '',
-		'cache' => 60, 'refresh' => 0];
+		'cache' => 60, 'refresh' => 0, 'new_tab' => false];
+	/** Table widgets linked to a form (0.8.682): a column with this name is hidden and opens its row's record. */
+	public const ROW_ID = 'nu_record_id';
 
 	/** Rows handed over by a procedure with nuDashboardData(). */
 	public static ?array $procRows = null;
@@ -464,8 +466,10 @@ final class NuDashboard
 				default => '',
 			};
 		}
+		// table rows → their record: the form's link with r=<value of the column nu_record_id> (0.8.682)
+		$rowLink = $w['type'] === 'table' && $o['link_type'] === 'form' && $o['link'] !== '' ? nu_url('form', ['f' => $o['link'], 'r' => '__NU_RID__']) : '';
 		return ['id' => (string)$w['zzzzsys_nunext_widget_id'], 'type' => (string)$w['type'], 'title' => (string)$w['title'], 'link' => $link,
-			'opt' => array_diff_key($o, array_flip(['link', 'link_type', 'cache']))];
+			'row_link' => $rowLink, 'opt' => array_diff_key($o, array_flip(['link', 'link_type', 'cache']))];
 	}
 
 	/**
@@ -493,7 +497,7 @@ final class NuDashboard
 	public static function messages(): array
 	{
 		$m = ['refresh' => t('dash_refresh'), 'no_data' => t('dash_no_data'), 'error' => t('dash_error'), 'after_save' => t('dash_after_save'),
-			'from' => t('dash_from'), 'to' => t('dash_to'), 'range' => t('dash_range'), 'more' => t('dash_more_rows'), 'previous' => t('dash_previous')];
+			'from' => t('dash_from'), 'to' => t('dash_to'), 'range' => t('dash_range'), 'more' => t('dash_more_rows'), 'previous' => t('dash_previous'), 'open_record' => t('dash_open_record')];
 		foreach (self::RANGES as $r) $m['r_' . $r] = t('dash_r_' . $r);
 		return $m;
 	}
