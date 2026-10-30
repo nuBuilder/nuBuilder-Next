@@ -257,6 +257,21 @@ check('browse: order by alias and position', str_contains($in, 't.name AS nu_o0'
 check('browse: sub-queries', $in2 === 'SELECT id AS nu_pk FROM (SELECT * FROM t) x WHERE y IN (SELECT 1 FROM z)', $in2);
 [$in3] = NuBrowse::build('SELECT a FROM t UNION SELECT a FROM u', 'id', [['index' => 0, 'expr' => 'a']]);
 check('browse: UNION wrapped as before', str_contains($in3, 'FROM (SELECT a FROM t UNION SELECT a FROM u) nuX'), $in3);
+// 0.8.731: a column naming an alias of the field list gets the alias's expression – unless it is a real column or a source is unknown
+$bCols = static fn(string $t): array => ['tcustomer' => ['customer_id', 'cus_code', 'cus_name', 'cid'], 'tcountry' => ['id', 'name']][$t] ?? [];
+$bSql = "SELECT c.*, CONCAT(c.cus_code, ' ', c.cus_name) AS full_name, t.name AS tname, c.cus_code AS name, COUNT(*) AS n FROM tcustomer c LEFT JOIN tcountry t ON t.id = c.cid GROUP BY c.customer_id ORDER BY full_name";
+[$in4, $ord4] = NuBrowse::build($bSql, 'customer_id', [['index' => 0, 'expr' => 'full_name'], ['index' => 1, 'expr' => '`tname`'], ['index' => 2, 'expr' => 'name'], ['index' => 3, 'expr' => 'n'], ['index' => 4, 'expr' => 'c.full_name'], ['index' => 5, 'expr' => 'UPPER(full_name)']], $bCols);
+check('browse: alias of the field list resolved', str_contains($in4, "CONCAT(c.cus_code, ' ', c.cus_name) AS nu_c0") && str_contains($in4, 't.name AS nu_c1') && str_contains($in4, 'COUNT(*) AS nu_c3'), $in4);
+check('browse: real column wins, qualified / other expressions unchanged', str_contains($in4, 'name AS nu_c2') && !str_contains($in4, 'c.cus_code AS nu_c2')
+	&& str_contains($in4, 'c.full_name AS nu_c4') && str_contains($in4, 'UPPER(full_name) AS nu_c5') && str_contains($in4, "CONCAT(c.cus_code, ' ', c.cus_name) AS nu_o0"), $in4);
+[$in5] = NuBrowse::build("SELECT x.a AS al FROM (SELECT a FROM t) x", 'id', [['index' => 0, 'expr' => 'al']], $bCols);
+[$in6] = NuBrowse::build("SELECT u.a AS al FROM tunknown u", 'id', [['index' => 0, 'expr' => 'al']], $bCols);
+check('browse: alias kept with a derived or unknown table', str_contains($in5, 'al AS nu_c0') && !str_contains($in5, 'x.a AS nu_c0') && str_contains($in6, 'al AS nu_c0') && !str_contains($in6, 'u.a AS nu_c0'), $in5 . ' | ' . $in6);
+[$in7] = NuBrowse::build('SELECT *, CONCAT(prefix, number, postfix) AS anumber FROM apartment', 'apartment_id', [['index' => 0, 'expr' => 'anumber']],
+	static fn(string $t): array => $t === 'apartment' ? ['apartment_id', 'prefix', 'number', 'postfix'] : []);
+check('browse: the tester\'s case (SELECT *, … AS anumber)', $in7 === 'SELECT apartment_id AS nu_pk, CONCAT(prefix, number, postfix) AS nu_c0 FROM apartment', $in7);
+check('browse: sources of FROM', NuBrowse::sourceColumns('FROM tcustomer c, tcountry t', $bCols) !== null && NuBrowse::sourceColumns('FROM db2.tcustomer c', $bCols) === null
+	&& NuBrowse::sourceColumns('FROM tcustomer c JOIN (SELECT 1) z ON 1 = 1', $bCols) === null);
 check('browse: nu_filter_match expanded', str_contains(NuBrowse::expandFilterMatch("SELECT * FROM t WHERE nu_filter_match('cus_type', 'abc')"), "FIND_IN_SET(cus_type, '#abc_filter#')"));
 
 // ---------------------------------------------------------------- installer: nubuilder4.sql of any 4.x version (0.8.384)
@@ -688,6 +703,60 @@ $snRows = [['cot_code' => 'b_php', 'cot_source_code' => 'x', 'cot_language' => '
 $snNames = static fn(int $sc, string $l) => array_column(NuSnippets::pick($snRows, $sc, $l), 0);
 check('NuSnippets::pick: scope wins, unscoped by language, sorted, no empty code', $snNames(2, 'SQL') === ['a_both', 'c_sql'] && $snNames(3, 'PHP') === ['b_php']
 	&& $snNames(0, 'JS') === ['a_both', 'd_js'] && $snNames(1, 'JS') === ['d_js'] && $snNames(1, 'CSS') === []);
+
+// 0.8.722: IP access rules
+[$ipOk, $ipBad] = NuIpAccess::parse("10.0.0.0/8, 203.0.113.7 # office\n2001:db8::/32;nope 10.0.0.0/33\n");
+check('NuIpAccess::parse: lists, comments, invalid entries', $ipOk === ['10.0.0.0/8', '203.0.113.7', '2001:db8::/32'] && $ipBad === ['nope', '10.0.0.0/33']);
+$ipS = NuIpAccess::clean(['on' => true, 'default' => ['10.0.0.0/8', 'bad'], 'levels' => ['lvA' => ['mode' => 'any'], 'lvR' => ['mode' => 'ranges', 'ranges' => ['192.168.1.0/24']], 'lvD' => ['mode' => 'default']], 'ga' => ['mode' => 'ranges', 'ranges' => ['127.0.0.1']]]);
+check('NuIpAccess::clean: invalid rules and default entries dropped', $ipS['default'] === ['10.0.0.0/8'] && array_keys($ipS['levels']) === ['lvA', 'lvR']);
+check('NuIpAccess: level rules (default list, any, own ranges)', NuIpAccess::levelAllows('lvX', '10.1.2.3', $ipS) && !NuIpAccess::levelAllows('lvX', '8.8.8.8', $ipS)
+	&& NuIpAccess::levelAllows('lvA', '8.8.8.8', $ipS) && NuIpAccess::levelAllows('lvR', '192.168.1.9', $ipS) && !NuIpAccess::levelAllows('lvR', '10.1.2.3', $ipS));
+check('NuIpAccess: any level allows; no level = default list', NuIpAccess::levelsAllow(['lvX', 'lvR'], '192.168.1.9', $ipS) && !NuIpAccess::levelsAllow(['lvX', 'lvR'], '8.8.8.8', $ipS)
+	&& NuIpAccess::levelsAllow([], '10.9.9.9', $ipS) && !NuIpAccess::levelsAllow([], '8.8.8.8', $ipS));
+check('NuIpAccess: globeadmin rule, IPv6, mapped IPv4', NuIpAccess::gaAllows('127.0.0.1', $ipS) && !NuIpAccess::gaAllows('10.1.1.1', $ipS)
+	&& NuIpAccess::gaAllows('10.1.1.1', ['ga' => ['mode' => 'default', 'ranges' => []]] + $ipS) && NuIpAccess::gaAllows('8.8.8.8', ['default' => []] + ['ga' => ['mode' => 'default', 'ranges' => []]] + $ipS)
+	&& NuIpAccess::matches(['2001:db8::/32'], '2001:db8:5::1') && !NuIpAccess::matches(['2001:db8::/32'], '10.0.0.1') && NuIpAccess::ip('::ffff:10.2.3.4') === '10.2.3.4');
+
+// 0.8.740: Bootstrap 6 readiness (NuBs6)
+$bs = NuBs6::scan('<div class="d-none d-md-block col-lg-6 btn-sm modal-lg form-control-sm navbar-expand-lg bi-list-md nuX-md-y offcanvas-end accordion-item">'
+	. '<script>window.bootstrap.Modal; bootstrap.Tooltip.getInstance(x); nuBs.modal(y)</script>');
+check('NuBs6::scan: responsive classes, not sizes / icons / own classes', ($bs['responsive'] ?? []) === ['d-md-block', 'col-lg-6', 'navbar-expand-lg']);
+check('NuBs6::scan: offcanvas, accordion, window.bootstrap', ($bs['offcanvas'] ?? []) === ['offcanvas-end'] && ($bs['accordion'] ?? []) === ['accordion-item']
+	&& ($bs['global'] ?? []) === ['window.bootstrap', 'bootstrap.Tooltip']);
+check('NuBs6::scan: plain Bootstrap 5 markup without breakpoints finds nothing', NuBs6::scan('<div class="d-none btn btn-sm modal-lg row g-2">') === []);
+$bsOwn = NuBs6::own();
+check('NuBs6::own: counts the own files, nubs.js may use bootstrap', $bsOwn['total']['responsive'] > 100 && !isset($bsOwn['files']['assets/js/nubs.js']));
+
+// 0.8.745: password policy (NuPwPolicy) – defaults without notices, invalid values, the online check through the test transport
+$pwD = NuPwPolicy::clean([]);
+check('NuPwPolicy::clean: defaults (no change, leak both, name rule on)', $pwD['expire'] === 0 && $pwD['ga_expire'] === 0 && $pwD['warn'] === 14 && $pwD['leak'] === 'both' && $pwD['not_name'] && !$pwD['digit']);
+check('NuPwPolicy::clean: invalid values dropped', NuPwPolicy::clean(['expire' => 45, 'warn' => 99, 'leak' => 'x', 'levels' => ['lvA' => 30, 'lvB' => '', 'bad id' => 30, 'lvC' => 7]])['levels'] === ['lvA' => 30]
+	&& NuPwPolicy::clean(['expire' => 45])['expire'] === 0);
+$pwSha = strtoupper(sha1('secret-e2e-pw'));
+$pwSent = [];
+NuPwPolicy::$transport = static function (string $prefix) use ($pwSha, &$pwSent) { $pwSent[] = $prefix; return "0000000000000000000000000000000000A:0\r\n" . substr($pwSha, 5) . ":17\r\n"; };
+check('NuPwPolicy::online: k-anonymity (5 characters sent), count of the suffix', NuPwPolicy::online('secret-e2e-pw') === 17 && $pwSent === [substr($pwSha, 0, 5)] && NuPwPolicy::online('other-e2e-pw') === 0);
+NuPwPolicy::$transport = static fn(string $prefix) => null;   // not reachable
+check('NuPwPolicy::leaked: offline list as fallback, online only finds nothing', NuPwPolicy::leaked('password', 'both') === -1 && NuPwPolicy::leaked('password', 'online') === 0
+	&& NuPwPolicy::leaked('Xq7!vLm2#pRt9zWk', 'offline') === 0);
+NuPwPolicy::$transport = null;
+
+// 0.8.744: phpMyAdmin only on MySQL / MariaDB – the installer's / update page's pack list leaves it out on SQL Server
+check('NuLibs::forDb: phpMyAdmin MySQL only, Adminer everywhere', NuLibs::forDb('phpmyadmin', 'mysql') && !NuLibs::forDb('phpmyadmin', 'sqlsrv') && NuLibs::forDb('adminer', 'sqlsrv'));
+try { $lpMs = NuLibs::overview(true, ['libs' => []], 'sqlsrv'); $lpMy = NuLibs::overview(true, ['libs' => []], 'mysql'); }
+catch (Throwable $e) { $lpMs = $lpMy = ['err' => $e->getMessage()]; }
+check('NuLibs::overview: no phpMyAdmin on SQL Server', !isset($lpMs['phpmyadmin']) && isset($lpMs['adminer']) && isset($lpMy['phpmyadmin']), json_encode(array_keys($lpMs)));
+
+// 0.8.741: jQuery 4 preparation (NuJquery)
+$jqF = NuJquery::scan("var a = \$.trim(x); if (jQuery.isArray(y)) z = \$.parseJSON(s); // \$.type(q)\n\$(el).toggleClass(); \$(b).toggleClass('on', true); \$(c).unbind('click'); f.bind(this); \$.fx.interval = 5;");
+check('NuJquery::scan: removed functions, toggleClass(), unbind, fx.interval – not comments, not Function.bind',
+	$jqF === ['$.trim()', '$.isArray()', '$.parseJSON()', '$.fx.interval', '.toggleClass() / .toggleClass(boolean)', '.unbind()'], implode(' | ', $jqF));
+check('NuJquery::scan: modern code finds nothing', NuJquery::scan("\$('#a').on('click', fn); s.trim(); Array.isArray(x); \$('#b').toggleClass('x', on);") === []);
+check('NuJquery::clean: unknown values fall back', NuJquery::clean(['jq' => 'b9', 'migrate' => 'loud', 'ga_jq' => 'c:../x.js', 'ga_warn' => 1])
+	=== ['jq' => 'b3', 'migrate' => 'off', 'ga_jq' => '', 'ga_warn' => true]
+	&& NuJquery::clean(['jq' => 'c:jquery-4.1.0.min.js', 'migrate' => 'restore'])['jq'] === 'c:jquery-4.1.0.min.js');
+check('NuJquery: bundled files exist', is_file(NU_ROOT . '/' . NU_JQUERY4 . '/jquery.min.js') && is_file(NU_ROOT . '/' . NU_JQMIGRATE3 . '/jquery-migrate.js')
+	&& is_file(NU_ROOT . '/' . NU_JQMIGRATE4 . '/jquery-migrate.min.js') && !str_contains((string)file_get_contents(NU_ROOT . '/' . NU_JQCONFIRM . '/jquery-confirm.min.js'), '$.trim('));
 
 // 0.8.622: UUID v7 keys for 36-character primary key columns
 $u1 = nu_uuid(); usleep(2000); $u2 = nu_uuid();

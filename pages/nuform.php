@@ -84,6 +84,7 @@ $breadcrumbs = [['title' => t('nav_home'), 'url' => nu_url('home')]];
 // ===================================================================== browse
 if ($mode === 'browse') {
 	$hash = NuHash::forForm($meta, '', [], $props);
+	$hash['ADV_SEARCH'] = NuAdvSearch::encode(NuAdvSearch::parse($_GET['adv'] ?? ''));   // advanced search (0.8.719) for Before Browse
 	NuPhp::reset();
 	// nuBuilder's global hook nu_before_save runs before every Before Browse too (0.8.462); an error stops the list's own hook
 	$okBB = NuProcedure::hook('nu_before_save', $hash) && NuPhp::run($meta->php('BB'), $hash, 'Before Browse');
@@ -99,7 +100,7 @@ if ($mode === 'browse') {
 	if (!$errors) {
 		try {
 			$data = NuBrowse::query($meta, $hash, ['search' => trim($state['rf'] . ' ' . $state['q']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $state['pg'], 'per' => $state['per'],
-				'filters' => $state['flt'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $printMode ? 5000 : 0]);
+				'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $printMode ? 5000 : 0]);
 			foreach ($data['columns'] as &$col) {
 				if ($col['filter'] && !$printMode) $col['values'] = NuBrowse::distinctValues($meta, $hash, $col);
 			}
@@ -163,7 +164,7 @@ function nu_form_php_props(array &$props, array &$locked): void
 /** Query parameters that keep the browse state (search, sort, filters, props …) in links. */
 $keep = $mode === 'browse' ? array_filter([
 	'f' => $meta->id, 'q' => $state['q'], 'sort' => $state['sort'], 'dir' => $state['sort'] !== null ? $state['dir'] : null,
-	'flt' => $state['flt'] ?: null, 'iframe' => $iframe ? '1' : null, 'lookup' => $lookupTo ?: null, 'lo' => $_GET['lo'] ?? null, 'ps' => $pageScope,
+	'flt' => $state['flt'] ?: null, 'adv' => NuAdvSearch::encode($state['adv']) ?: null, 'iframe' => $iframe ? '1' : null, 'lookup' => $lookupTo ?: null, 'lo' => $_GET['lo'] ?? null, 'ps' => $pageScope,
 	'rf' => $state['rf'], 'bt' => $trail !== null ? $btKey : null, 'per' => $state['per'] ?: null,
 	'nsc' => $state['nsc'] ? implode(',', $state['nsc']) : null, 'sc' => $state['sc'] ? implode(',', $state['sc']) : null,
 ], static fn($v) => $v !== null && $v !== '') : [];
@@ -216,6 +217,7 @@ $client = [
 	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'hl' => NuBrowse::terms($state['q'])['in'], 'nsc' => array_values((array)$state['nsc']), 'sc' => array_values((array)$state['sc']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1, 'total' => (int)($data['total'] ?? 0),
 		// badges set in design mode (0.8.688): column index => rules of nuBrowseStyleBadge ([] = the default look), applied before nuOnLoad
 		'badges' => (object)array_map(static fn($c) => $c['badge'], array_filter((array)($data['columns'] ?? []), static fn($c) => is_array($c) && ($c['badge'] ?? null) !== null))] : null,
+	'adv' => $mode === 'browse' && $data && empty($printMode) ? NuAdvSearch::client($meta, $data['columns'], $state['adv']) : null,   // advanced search (0.8.719)
 	// keyboard shortcuts / options menu (nuBuilder Ctrl+Shift+…): only what exists in nuBuilder Next and the user may use
 	'tools' => [
 		'design' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM),
@@ -375,7 +377,7 @@ $client['uppyBase'] = $uppyDir;                               // nuUppySetLangua
 if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
 
 $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>'
-	. '<script src="' . nu_asset(NU_JQUERY . '/jquery.min.js') . '"></script>'
+	. NuJquery::tags((string)$meta->form['zzzzsys_form_id'])                  // jQuery 3 / 4 / own file + Migrate (0.8.741)
 	. '<script src="' . nu_asset(NU_JQCONFIRM . '/jquery-confirm.min.js') . '"></script>'
 	. '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nuinfobar.js') . '"></script>'
@@ -386,6 +388,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nuruntime.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
+	. ($mode === 'browse' ? '<script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
 	. (NuAcl::can(NuAcl::FORM_ACCESS) ? '<script src="' . nu_asset('assets/js/nu/nuformaccess.js') . '"></script>' : '')
 	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects (0.8.387)
@@ -511,9 +514,12 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<div class="d-flex gap-2 nuListSearch"><div class="input-group nuSearchGroup">
 				<input type="search" class="form-control" id="nuSearchField" name="q" value="<?= h($state['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('search')) ?>" autocomplete="off"<?= $lookupTo !== '' ? ' autofocus' : '' ?>>
 				<button class="btn btn-outline-secondary nuSearchBtn" id="nuSearchButton" type="submit" title="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>"><i class="bi bi-search"></i></button>
+				<?php $advOn = NuAdvSearch::valid($data['columns'] ?? [], $state['adv']) !== []; // advanced search (0.8.719): ▾ opens the panel (assets/js/nu/nuadvsearch.js) ?>
+				<button class="btn btn-outline-secondary nuSearchBtn nuAdvBtn<?= $advOn ? ' active' : '' ?>" id="nuAdvButton" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="<?= h(t('as_title')) ?>" aria-label="<?= h(t('as_title')) ?>"><i class="bi bi-chevron-down"></i></button>
+				<div class="dropdown-menu dropdown-menu-end p-3 nuAdvMenu" id="nuAdvPanel" aria-labelledby="nuAdvButton"></div>
 			</div>
-			<?php if ($state['q'] !== '' || $state['flt']): // reset (0.8.428): search words and column filters go, sort / page size / filter of form code stay ?>
-				<a class="btn btn-outline-secondary nuSearchBtn nuListResetBtn" id="nuSearchReset" href="<?= h(nu_url('form', array_diff_key($keep, ['q' => 1, 'flt' => 1]))) ?>" title="<?= h(t('reset')) ?>" aria-label="<?= h(t('reset')) ?>"><i class="bi bi-x-lg"></i></a>
+			<?php if ($state['q'] !== '' || $state['flt'] || $advOn): // reset (0.8.428): search words, column filters and the advanced search go, sort / page size / filter of form code stay ?>
+				<a class="btn btn-outline-secondary nuSearchBtn nuListResetBtn" id="nuSearchReset" href="<?= h(nu_url('form', array_diff_key($keep, ['q' => 1, 'flt' => 1, 'adv' => 1]))) ?>" title="<?= h(t('reset')) ?>" aria-label="<?= h(t('reset')) ?>"><i class="bi bi-x-lg"></i></a>
 			<?php endif; ?>
 			<?php if ($fltCols): $fltOn = (bool)array_intersect($fltIdx, array_keys($state['flt'])); ?>
 				<button class="btn btn-outline-secondary nuSearchBtn nuFilterToggle<?= $fltOn ? ' active' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#nuBrowseFilters" aria-expanded="true" aria-controls="nuBrowseFilters" title="<?= h(t('filter')) ?>" aria-label="<?= h(t('filter')) ?>"><i class="bi bi-funnel<?= $fltOn ? '-fill' : '' ?>"></i></button>
@@ -533,6 +539,13 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			</div></div>
 			<?php endif; ?>
 			</div>
+			<?php if ($advOn): // the conditions as chips – ✕ removes one ?>
+				<div class="d-flex flex-wrap gap-1 mt-2 nuAdvChips" id="nuAdvChips">
+					<?php foreach (NuAdvSearch::chips($data['columns'], $state['adv']) as [$chip, $rest]): ?>
+						<a class="badge rounded-pill text-bg-light border text-decoration-none fw-normal nuAdvChip" href="<?= h(nu_url('form', array_diff_key($keep, ['adv' => 1]) + ['adv' => $rest ?: null])) ?>" title="<?= h(t('as_remove')) ?>"><?= h($chip) ?> <i class="bi bi-x" aria-hidden="true"></i></a>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
 		</form>
 		<?php endif; ?>
 		<div class="table-responsive">

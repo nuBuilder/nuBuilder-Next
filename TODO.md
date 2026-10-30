@@ -1,9 +1,6 @@
 # nuBuilder Next – to do
 
 ## Open questions for the owner
-- [ ] `nuHideHolders(0)`: hide only the form's button row (nuBuilder's meaning, current) or also nuBuilder Next's top bar (logo, search,
-      user menu)? The owner's note says "param 0: top navbar" – to decide (0.8.468).
-
 - [ ] dev / test / prod and git (forum question, 26 Oct 2026): proposals M1–M3 (moving forms / procedures between installations) and
       G1–G3 (git sync of the application's metadata) – the owner decides later.
 - [ ] Page forms: besides the draft (0.8.599) a "Test copy" (clone of the page form + its folder, publish back) was proposed (option A,
@@ -35,6 +32,17 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Browsers**: Safari (ApexCharts on the start page, CSP style-src-attr), phones with real touch (long tap menus, side bar, design mode on phones).
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
+
+## 0.8.722 IP access – please verify
+- On the live server behind its proxy: the address shown on Settings → Security → IP access is the client's ($nuConfigTrustProxy);
+  a user with an extra access level (Valid until) and IP rules; nuBuilder Forte's shared login from an address that is not allowed.
+
+## 0.8.721 New form on a view – please verify
+- SQL Server: "can the database save to it" is guessed from the view's text (sys.sql_modules) – not run on a real SQL Server.
+
+## 0.8.719 Advanced search – please verify
+- SQL Server: the conditions use TRY_CAST(… AS DECIMAL(38,10)) / TRY_CAST(… AS DATE) and CAST(… AS NVARCHAR(4000)) on the list's
+  columns – not run on a real SQL Server; a browse SQL with text dates (not DATE columns) on MySQL.
 
 ## 0.8.715 Webhooks – please verify
 - A real receiver (n8n, Teams workflow, Zapier) over https; the call is sent after the answer on PHP-FPM (fastcgi_finish_request –
@@ -113,6 +121,54 @@ What still needs a real environment – or a look by the owner – is collected 
   are sent after saving. Remove leaves nothing behind (rows, users, tables).
 - Designer review with proposals: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
 
+## Multi-tenancy (30 Oct 2026) – proposal waiting for the owner's decision
+Recommendation: **A1 · B1 · C1 · D2 · E1 · F1**. Pick the options, then it is built.
+
+**A – How the customers are kept apart (the main decision)**
+- A1 – One database per customer, one code installation (recommended): the code is installed once, each customer has a normal
+  nuBuilder Forte database of their own. No data can leak between customers, each database stays usable in Forte, one customer can be
+  backed up / restored / moved on their own, deleting a customer = dropping one database. To change: settings read once today become
+  per customer, as do some folders (uploads, backups, page forms) and the session cookies; updates and cron run once per customer.
+- A2 – One database with a customer column in the application tables: every list, lookup, report and procedure must filter by a new
+  hash variable (e.g. #TENANT_ID#); Forte knows nothing about customers, so in Forte everyone sees everything; one forgotten filter shows
+  one customer's data to another. Too risky for real separation.
+- A3 – "Lite": customers as a user attribute (custom user field + #USER_TENANT# in the SQL, setting "Records only through the form's
+  list", the compatibility check warns about lists of customer tables without the filter). Only for customers who trust each other
+  (departments).
+
+**B – How a request finds its customer (with A1)**
+- B1 – By host name: kunde1.example.com → database nu_kunde1; sessions are separate per host automatically (recommended).
+- B2 – By path: /nunext/t/kunde1/.
+- B3 – A "Customer" field on the sign-in page.
+
+**C – Where the customers are defined**
+- C1 – A new file next to nuconfig.php (e.g. nutenants.php, never served): host, database access, display name, on / off per customer (recommended).
+- C2 – A table of a main database: easier to manage from a page, but the database passwords would live in a database.
+
+**D – The application (forms, procedures, reports)**
+- D1 – Every customer has a completely separate application.
+- D2 – Shared application (recommended): a template database holds it; "Publish to customers" copies forms, procedures, reports,
+  formats … into every customer database (with a preview of the changes); users, access levels and data stay per customer. Builds on
+  the App cloner and form snapshots.
+- D3 – As D2, but a customer can keep chosen forms of their own that publishing does not overwrite.
+
+**E – Administration**
+- E1 – A super admin (the main installation's globeadmin) gets a "Customers" page: customers with their state (database version, last
+  sign-in, size); create (new database: install scripts, sample or template application, its own globeadmin), switch off / on, back up,
+  run updates. Each customer also has its own globeadmin who sees only their own installation (recommended; the same actions also as
+  commands for scripts).
+- E2 – No page, only commands: php cron.php tenants list | create | migrate | backup.
+
+**F – Updates and cron**
+- F1 – The update page installs the files once, then runs the database steps for every customer with a log per customer; a customer whose
+  database fails is switched off, the others carry on. cron.php runs housekeeping and webhooks for each customer (recommended).
+- F2 – Database steps run for a customer the next time someone opens it – simpler, but customers end up on different database versions.
+
+**Before deciding**
+- Shared by all customers: the library packs and the installed code. Per customer: _backup/, uploads, custom/pages/ data, temp folder.
+- A1 also works on SQL Server, but it cannot be tested here (as before).
+- Installations without the customers file keep working exactly as now.
+
 ## Code in files instead of in the form (suggestion from a user, 26 Oct 2026) – waiting for the owner's decision
 The user's points: nuBuilder 4.x runs form JavaScript with eval() (no top-level const / let, objects survive "refresh" – namespaces
 needed); he prefers JS / PHP in files on disk (overview, no duplicates, git, AI coding agents) with only links in the forms.
@@ -155,13 +211,27 @@ Global includes exist already ($nuConfigIncludeJS / CSS / PHP), page forms live 
 - [ ] Security assessment, not built: HSTS header over HTTPS, CSP without 'unsafe-inline' / 'unsafe-eval' on form pages, constant-time
       sign-in, SameSite=Strict for the admin area. Re-run the assessment's test kit against the live server (HTTPS, real access levels).
 
-## Bootstrap 6 (alpha in October 2026) – later
-- [ ] Stay on Bootstrap 5.3.8; look again at the beta. Since 0.8.244 all of nuBuilder Next's JavaScript uses Bootstrap only through
-      `assets/js/nubs.js` (`nuBs.*`) – a switch changes that file (Bootstrap 6 has no `window.bootstrap`: set it there for form code),
-      plus CSS / markup changes (variables, removed classes) to check page by page.
+## jQuery 4 (0.8.741)
+- [ ] Please verify: Settings → Code → jQuery – test as globeadmin with jQuery 4 + Migrate warnings on the live forms, look at the collected
+      messages and the Compatibility check point J4; then decide when to switch everyone. jquery-confirm is our build 3.3.4-nu1 ($.trim
+      replaced); its project is inactive – replace it with an own dialogue if more breaks. A future default of jQuery 4 for new installations
+      = change NuJquery::DEFAULTS['jq'].
+
+## Bootstrap 6 (alpha 8 October 2026) – switch after the stable release
+- [ ] Stay on Bootstrap 5.3.8 until 6.0 is stable; write the migration script when the beta is out (class names should not change after it).
+- What the alpha changes (blog.getbootstrap.com, 2026-10-08): browsers Chrome / Edge 130+, Firefox 132+, Safari 18+ (the owner: older
+  devices need not be considered); JavaScript as ES modules only – no `window.bootstrap`, no bundle with Popper; responsive and state
+  classes with a prefix (`d-md-none` → `md:d-none`, `col-lg-6` → `lg:col-6`, `hover:` …); offcanvas → drawer, the accordion on native
+  `<details>`, modals on `<dialog>`; CSS variables / tokens with a prefix set in the build (PostCSS) – our `var(--bs-…)` uses change.
+- Prepared (0.8.740): `php dev/bs6_scan.php [--files] [--rule=…]` counts our own uses (rules in core/nubs6.php `NuBs6`; 0.8.740: ~530
+  responsive classes in ~70 files, 1 offcanvas, 6 accordion, window.bootstrap only in apps/nufiles); the Compatibility check shows point
+  BS6 = the same in the application's code (form / object / event JS, HTML objects, form CSS, Setup, Global code) – developer mode only.
+- At the switch: `assets/js/nubs.js` imports the modules and sets `window.bootstrap` for nuBuilder Forte form code (it expects it);
+  the migration script rewrites the classes of NuBs6 rule `responsive` in pages / core / assets; the side bar (offcanvas) → drawer;
+  themes accordion → details; a check of every page (smoke, a11y). Form code of applications keeps Bootstrap 5 classes – decide then
+  whether a small compatibility CSS for the old responsive classes ships with nuBuilder Next.
 
 ## Not supported yet
-- [ ] phpMyAdmin / Tiny File Manager on MSSQL (nuBuilder doesn't support it either).
 - [ ] JavaScript functions that are only stubs (console warning): `nuPrintExcludeColumns`, `nuResizeBrowseColumns`, `nuSetBrowseColumnWidth`,
       `nuOpenWiki`, `nuSetSnippetFormFilter`, `nuSelect2`, `nuSetSelect2`, `nuEnableMultiSelect`, `nuShowFile`, `nuSetDateFormat`,
       `nuCreateDialog`, `nuSetFormValue`, `nuAccessFormSetButtonIcons`, `nuBrowseStyleStatusColumn`, `nuSetTabHelpButtons`, `nuDragElement`,
@@ -210,8 +280,8 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [ ] **7 · Excel (.xlsx) export and import** (S) – lists, subforms and reports to xlsx; CSV exists, but users expect Excel.
 - [ ] **7 · Scheduled procedures** (S–M) – run a procedure hourly / daily / monthly through cron.php, with log and e-mail on error
       (reminders, data cleanup, interfaces).
-- [ ] **7 · Password policy** (S) – besides the minimum length: check against known leaked passwords (k-anonymity, no password leaves
-      the server in full), optional complexity / expiry per access level.
+- [x] **7 · Password policy** – done in 0.8.745 (Settings → Sign-in & security → Password policy). Please verify: the online leak check
+      against the real api.pwnedpasswords.com (not reachable from the test container – tested with a fake), and the reminder texts.
 - [x] **7 · Webhooks** – done in 0.8.715 (Admin tools → Webhooks; form saves / deletes and CSV imports, signed, retries by cron.php).
 - [ ] **7 · Global search / command palette** (M) – Ctrl+K: find forms, records (chosen fields), settings and pages from anywhere.
 
@@ -237,7 +307,7 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [ ] **4 · "Who is editing" presence** – show that someone else has the record open (pairs with concurrent-edit protection).
 - [ ] **4 · AI help in the form builder** – create a form / table from a description (goes beyond the prompt generator).
 - [ ] **3 · File storage on S3 / WebDAV** instead of the server folder / database.
-- [ ] **3 · Multi-tenancy** – several customers separated in one installation.
+- [ ] **3 · Multi-tenancy** – several customers separated in one installation (proposal with options: section "Multi-tenancy" above).
 - [ ] **2 · GraphQL API** besides REST.
 - [ ] **2 · Plugin system** for third-party extensions.
 

@@ -881,7 +881,7 @@ final class NuWelcome
 			'RECORD_ID' => (string)($user['zzzzsys_user_id'] ?? ''), 'LOGIN_URL' => $base . '/index.php?p=login', 'NUNEXT_URL' => $base . '/',
 			'NUBUILDER_URL' => trim((string)nu_cfg('nuConfigNuBuilderURL')) ?: $base . '/',
 			'SET_PASSWORD_URL' => $setUrl,
-			'SET_PASSWORD_HOURS' => (string)self::hours(), 'PASSWORD_MIN_LENGTH' => (string)max(1, (int)nu_cfg('nuConfigPasswordMinLength')),
+			'SET_PASSWORD_HOURS' => (string)self::hours(), 'PASSWORD_MIN_LENGTH' => (string)NuPwPolicy::minLength(),
 			'check_password' => $password,
 		];
 	}

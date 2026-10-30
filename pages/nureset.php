@@ -18,7 +18,7 @@ if (!$row || !$user || nu_is_expired($user['sus_expires_on'])) {
 	exit;
 }
 
-$min    = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
+$min    = NuPwPolicy::minLength();
 $errors = [];
 
 if (nu_is_post()) {
@@ -52,7 +52,7 @@ nu_center_start(t('reset_title'), t('reset_subtitle', (string)$user['sus_login_n
 				<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#pw_<?= $f ?>" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
 				<?= nu_feedback($errors, $f) ?>
 			</div>
-			<?php if ($f === 'new'): ?><div class="form-text"><?= h(t('pw_min_hint', $min)) ?></div><?php endif; ?>
+			<?php if ($f === 'new'): ?><?= NuPwPolicy::rulesHtml('pw_new') ?><?php endif; ?>
 		</div>
 	<?php endforeach; ?>
 	<button class="btn btn-primary w-100 py-2" type="submit"><i class="bi bi-check-lg me-2"></i><?= h(t('reset_submit')) ?></button>

@@ -200,7 +200,6 @@ echo $crumbs([[$title]]); ?>
 		<details class="mt-1"><summary><?= h(t('wh_body')) ?></summary><pre class="mb-0 text-wrap"><?= h((string)$test['body']) ?></pre></details>
 	</div>
 <?php endif; ?>
-<?php if ($errors): ?><div class="alert alert-danger small py-2"><?= h(t('err_check_form')) ?></div><?php endif; ?>
 <form method="post" action="<?= h(nu_url('webhooks', ['id' => $hook ? $id : 'new'])) ?>" id="whForm" class="card shadow-sm" novalidate data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 	<div class="card-body"><div class="row g-3">

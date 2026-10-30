@@ -451,6 +451,8 @@ final class NuSecurity
 		if ($plain > 0) $add('totp_plain', 'warn', 'secchk_chk_totp_plain', t('secchk_chk_totp_plain_n', $plain), nu_url('apiclients'));
 		$add('adminpw', self::weakAdminPassword() ? 'bad' : 'ok', 'secchk_chk_adminpw', self::weakAdminPassword() ? t('secchk_chk_adminpw_weak') : '', nu_url('configfile'));
 		$add('admin2fa', nu_cfg('nuConfig2FAAdmin') ? 'ok' : 'warn', 'secchk_chk_admin2fa', nu_cfg('nuConfig2FAAdmin') ? '' : t('secchk_chk_admin2fa_off'), nu_url('configfile'));
+		$ipa = NuIpAccess::settings();   // IP access (0.8.722)
+		$add('ipaccess', $ipa['on'] ? 'ok' : 'info', 'secchk_chk_ipaccess', $ipa['on'] ? t('secchk_chk_ipaccess_on', count($ipa['levels'])) : t('secchk_chk_ipaccess_off'), nu_url('ipaccess'));
 		$add('debug', nu_cfg('nuConfigDebug') ? 'bad' : 'ok', 'secchk_chk_debug', nu_cfg('nuConfigDebug') ? t('secchk_chk_debug_on') : '');
 		// $nuConfigIncludeJS / CSS / PHP (0.8.443): files that are not found are left out – say which
 		if (NuIncludes::entries('js') || NuIncludes::entries('css') || NuIncludes::entries('php')) {

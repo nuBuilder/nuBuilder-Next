@@ -26,6 +26,9 @@ declare(strict_types=1);
  *     php cron.php update --finish=<job>     database steps of an installed job (started automatically in a new process)
  *   Exit code: 0 = done / checked, 1 = failed, 2 = wrong call.
  *
+ * IP access (0.8.722) – switched off when the rules lock everybody out (they stay stored):
+ *     php cron.php iprules off
+ *
  * Integrity check of the database (0.8.698) – what would make an update fail or leave data broken:
  *     php cron.php integrity [--json]      Exit code: 0 = no problems (warnings / notes allowed), 1 = problems found
  *
@@ -70,6 +73,11 @@ if (($args[0] ?? '') === 'reset') {
 	echo str_pad('dropped', 14) . $r['dropped'] . "\n" . str_pad('statements', 14) . $r['statements'] . "\n" . str_pad('steps', 14) . count($r['steps']) . "\n";
 	if ($r['sample'] !== '') echo str_pad('sample', 14) . ($r['sample'] === 'ok' ? 'installed (Admin tools → Sample data → New passwords)' : 'failed: ' . $r['sample']) . "\n";
 	echo "Done. Open index.php?p=setupwizard to set up the installation.\n";
+	exit(0);
+}
+if (($args[0] ?? '') === 'iprules') {
+	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php cron.php iprules off\n"); exit(2); }
+	echo NuIpAccess::switchOff('cli') ? "IP access switched off (the rules are kept: Settings → Security → IP access).\n" : "IP access was already off.\n";
 	exit(0);
 }
 if (($args[0] ?? '') === 'integrity') {

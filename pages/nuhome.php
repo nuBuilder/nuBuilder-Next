@@ -349,7 +349,21 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 <div class="nuHomeSearchRow" role="search">
 	<div class="input-group nuHomeSearchBox">
 		<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-		<input type="search" class="form-control" id="nuHomeSearch" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('home_search')) ?>" autocomplete="off" spellcheck="false">
+		<input type="search" class="form-control" id="nuHomeSearch" aria-controls="nuHomeSearchList" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('home_search')) ?>" autocomplete="off" spellcheck="false">
+		<?php // what the search includes (0.8.723): kinds ticked in the dropdown, kept per browser (assets/js/nuhome.js, nunext-home-search-kinds) ?>
+		<button type="button" class="btn btn-outline-secondary nuHomeSkBtn" id="nuHomeSearchKinds" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+			title="<?= h(t('home_sk_title')) ?>" aria-label="<?= h(t('home_sk_title')) ?>"><i class="bi bi-funnel" aria-hidden="true"></i></button>
+		<div class="dropdown-menu dropdown-menu-end p-2 nuHomeSkMenu" id="nuHomeSkMenu">
+			<div class="small fw-semibold text-body-secondary px-1 mb-1"><?= h(t('home_sk_title')) ?></div>
+			<?php foreach (['tiles' => 'bi-grid', 'pages' => 'bi-window', 'forms' => 'bi-ui-checks-grid', 'procs' => 'bi-filetype-php', 'reports' => 'bi-file-earmark-richtext'] as $sk => $skIcon): ?>
+			<div class="form-check px-1 py-1 m-0 d-flex align-items-center gap-2">
+				<input class="form-check-input m-0 nuHomeSkind" type="checkbox" id="nuHomeSk_<?= $sk ?>" value="<?= $sk ?>" checked>
+				<label class="form-check-label flex-grow-1" for="nuHomeSk_<?= $sk ?>"><i class="bi <?= $skIcon ?> me-2 text-body-secondary" aria-hidden="true"></i><?= h(t('home_sk_' . $sk)) ?></label>
+			</div>
+			<?php endforeach; ?>
+			<div class="dropdown-divider"></div>
+			<button type="button" class="btn btn-link btn-sm px-1 text-decoration-none" id="nuHomeSkAll"><?= h(t('home_sk_all')) ?></button>
+		</div>
 		<?php // favourites only (0.8.353): tiles marked ☆ in Customise; the choice is kept per login
 		$favTip = $favCount ? t('home_fav_only') : t('home_fav_none'); ?>
 		<button type="button" class="btn btn-outline-secondary nuHomeFavBtn<?= $favOn ? ' active' : '' ?>" id="nuHomeFavOnly" aria-pressed="<?= $favOn ? 'true' : 'false' ?>"<?= $favCount ? '' : ' disabled' ?>
@@ -370,7 +384,7 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 	</div>
 </div>
 <div class="small text-body-secondary mb-3" id="nuHomeSearchNone" hidden><?= h(t('home_search_none')) ?></div>
-<div class="mb-4" id="nuHomeSearchMore" hidden><h2 class="nuHomeGroupTitle"><?= h(t('home_search_more')) ?></h2><div class="list-group shadow-sm nuHomeList nuHomeSearchList"></div></div>
+<div class="mb-4" id="nuHomeSearchMore" hidden><div class="list-group shadow-sm nuHomeList nuHomeSearchList" id="nuHomeSearchList" role="listbox" aria-label="<?= h(t('home_search_results')) ?>"></div></div>
 <?php if ($userPage && !$editorPage): // personalise (0.8.425): the tiles the user hid, shown while he personalises ?>
 <section class="nuHomeMineHidden mb-3" id="nuHomeMineHidden" hidden aria-label="<?= h(t('home_u_mine_hidden')) ?>">
 	<h2 class="nuHomeGroupTitle"><i class="bi bi-eye-slash me-2" aria-hidden="true"></i><?= h(t('home_u_mine_hidden')) ?></h2>

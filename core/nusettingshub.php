@@ -49,10 +49,13 @@ final class NuSettingsHub
 			'look'       => [self::ga() || $can('homelayout') || $can('listviews') || $can('branding') ? ['look', t('sh_look'), $own('look'), 'settings', false] : null,
 				$can('branding') ? ['branding', t('brand_title'), nu_url('branding'), 'branding', true] : null,
 				$can('branding') ? ['themes', t('theme_title'), nu_url('themes'), 'themes', true] : null],
-			'security'   => [$can('securitycheck') ? ['securitycheck', t('secchk_title'), nu_url('securitycheck'), 'securitycheck', true] : null],
+			'security'   => [$can('securitycheck') ? ['securitycheck', t('secchk_title'), nu_url('securitycheck'), 'securitycheck', true] : null,
+				self::ga() ? ['ipaccess', t('ipa_title'), nu_url('ipaccess'), 'ipaccess', true] : null,
+				$can('securitycheck') ? ['pwpolicy', t('pwp_title'), nu_url('pwpolicy'), 'pwpolicy', true] : null],
 			'mail'       => [$can('email') ? ['email', t('nav_email'), nu_url('email', ['tab' => 'settings']), 'email', true] : null],
 			'data'       => [$can('audit') || $can('update') || $can('notifications') || self::ga() || $can('log') ? ['data', t('sh_data'), $own('data'), 'settings', false] : null],
-			'code'       => [$can('globalcode') ? ['globalcode', t('scode_title'), nu_url('globalcode'), 'globalcode', true] : null],
+			'code'       => [$can('globalcode') ? ['globalcode', t('scode_title'), nu_url('globalcode'), 'globalcode', true] : null,
+				$can('globalcode') ? ['jquery', t('jq_title'), nu_url('jquery'), 'globalcode', true] : null],
 			'updates'    => [$can('update') ? ['updates', t('sh_updates'), $own('updates'), 'settings', false] : null,
 				$can('update') ? ['update', t('upd_title'), nu_url('update'), 'update', false] : null],
 			'forte'      => [$can('settings') ? ['forte', t('sh_forte'), $own('forte'), 'settings', false] : null],
@@ -160,6 +163,8 @@ final class NuSettingsHub
 		}
 		if ($can('log') && $can('securitycheck')) $add('data', t('secchk_set_log_keep_days'), t('secchk_set_log_keep_days_tip'), nu_url('securitycheck') . '#sec_log_keep_days', 'log_keep_days log');
 		// security settings (Security check)
+		if ($can('securitycheck')) $add('security', t('pwp_title'), t('pwp_sub'), nu_url('pwpolicy'), 'password length leaked pwned expiry change complexity');
+		if (self::ga()) $add('security', t('ipa_on'), t('ipa_on_tip'), nu_url('ipaccess'), 'ip address network range cidr allow', t(NuIpAccess::on() ? 'sh_on' : 'sh_off'));
 		if ($can('securitycheck')) {
 			$set = NuSecurity::settings();
 			foreach (array_keys(NuSecurity::DEFAULTS) as $k) {
@@ -174,6 +179,7 @@ final class NuSettingsHub
 		}
 		if ($can('email')) $add('mail', t('nav_email'), t('sh_kw_mail'), nu_url('email', ['tab' => 'settings']), 'smtp oauth mail sender host port');
 		if ($can('globalcode')) $add('code', t('scode_title'), t('sh_kw_code'), nu_url('globalcode'), 'javascript css header include set_header set_style');
+		if ($can('globalcode')) $add('code', t('jq_title'), t('jq_sub'), nu_url('jquery'), 'jquery migrate 4.0 version');
 		// nuBuilder Forte's settings (zzzzsys_config)
 		if ($can('settings') && NuSettings::available()) {
 			foreach (NuSettings::rows() as $r) {

@@ -60,6 +60,17 @@ final class NuAdmin
 		'debug'         => ['logs', 'debug_title', false, 'vc', [NuAcl::FORM_DEBUG]],
 		'compat'        => ['logs', 'compat_title', false, 'vc', []],
 	];
+	/** The page of a right (0.8.739: the role form links it, new tab) – right => [route, params]; rights without a page of their own are missing. */
+	public const PAGES = [
+		'update' => ['update', []], 'configfile' => ['configfile', []], 'settings' => ['settings', []], 'globalcode' => ['globalcode', []],
+		'securitycheck' => ['securitycheck', []], 'setupwizard' => ['setupwizard', []], 'status' => ['vendor', []], 'filemanager' => ['filemanager', []],
+		'import' => ['import', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
+		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'users' => ['users', []], 'access' => ['access', []],
+		'userfields' => ['userfields', []], 'sessions' => ['sessions', []], 'adminroles' => ['adminroles', []], 'branding' => ['branding', []],
+		'homelayout' => ['home', ['customize' => '1']], 'email' => ['email', []], 'notifications' => ['notifications', ['tab' => 'manage']],
+		'apiclients' => ['apiclients', []], 'webhooks' => ['webhooks', []], 'log' => ['log', []], 'audit' => ['audit', []], 'debug' => ['debug', []],
+		'compat' => ['compat', []],
+	];
 	public const GROUPS = ['system' => 'home_group_system', 'data' => 'home_group_data', 'dev' => 'home_group_dev', 'users' => 'home_group_users',
 		'look' => 'home_group_look', 'comm' => 'home_group_comm', 'integration' => 'home_group_integration', 'logs' => 'adm_group_logs'];
 

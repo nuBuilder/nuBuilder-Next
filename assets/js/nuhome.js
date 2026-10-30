@@ -1155,12 +1155,61 @@
 		});
 	});
 
-	// ---------------------------------------------------------------- search (0.8.321): filters the tiles as you type, "More results"
-	// lists pages, actions, forms … that are no tile (same list as Ctrl+K – assets/js/nupalette.js); Enter opens the first hit, / focuses
+	// ---------------------------------------------------------------- search (0.8.321; one list since 0.8.723): while typing the tile page
+	// gives way to ONE result list – the matching tiles of the page first, then pages, forms, procedures, reports … that are no tile (same
+	// list as Ctrl+K – assets/js/nupalette.js); the filter button lists the kinds to include (localStorage nunext-home-search-kinds, a
+	// per-browser convenience). Enter opens the first result, / focuses the field
 	var searchRow = $('.nuHomeSearchRow'), search = $('#nuHomeSearch');
 	var moreBox = $('#nuHomeSearchMore'), moreList = $('.nuHomeSearchList'), noneBox = $('#nuHomeSearchNone');
-	var palItems = null, firstMore = null;
+	var palItems = null, firstRes = null, resSel = -1, resSeq = 0;
+	var KINDS = ['tiles', 'pages', 'forms', 'procs', 'reports'], KIND_OF = {t: 'pages', f: 'forms', p: 'procs', r: 'reports'};
+	var KEY_KINDS = 'nunext-home-search-kinds';
+	var off = {};
+	try { (JSON.parse(localStorage.getItem(KEY_KINDS) || '[]') || []).forEach(function (k) { if (KINDS.indexOf(k) >= 0) off[k] = true; }); } catch (e) { off = {}; }
+	function kindOn(k) { return !off[k]; }
+	function syncKindUi() {
+		$$('.nuHomeSkind').forEach(function (c) { c.checked = kindOn(c.value); });
+		var b = $('#nuHomeSearchKinds');
+		if (b) { var n = Object.keys(off).length; b.classList.toggle('nuHomeSkOn', n > 0); b.setAttribute('data-off', String(n)); }
+	}
+	$$('.nuHomeSkind').forEach(function (c) {
+		c.addEventListener('change', function () {
+			if (c.checked) delete off[c.value]; else off[c.value] = true;
+			try { localStorage.setItem(KEY_KINDS, JSON.stringify(Object.keys(off))); } catch (e) { /* kept for this page only */ }
+			syncKindUi();
+			if (search && search.value.trim()) filter();
+		});
+	});
+	var skAll = $('#nuHomeSkAll');
+	if (skAll) skAll.addEventListener('click', function () {
+		off = {};
+		try { localStorage.removeItem(KEY_KINDS); } catch (e) { /* ignore */ }
+		syncKindUi();
+		if (search && search.value.trim()) filter();
+	});
+	syncKindUi();
 	function clearSearch() { if (search && search.value) { search.value = ''; filter(); } }
+	function resItem(key, iconEl, label, sub, href, open) {
+		var a = el('a', {'class': 'list-group-item list-group-item-action d-flex align-items-center gap-3', href: href || '#', 'data-nu-res': key}, [
+			iconEl,
+			el('span', {'class': 'flex-grow-1 min-w-0'}, [el('span', {'class': 'd-block text-body', text: label}), sub ? el('span', {'class': 'd-block small text-body-secondary text-truncate', text: sub}) : null].filter(Boolean))]);
+		a.addEventListener('click', function (e) { e.preventDefault(); open(e); });
+		a.nuOpen = open;
+		a.id = 'nuHomeRes_' + (resSeq++);
+		a.setAttribute('role', 'option');
+		return a;
+	}
+	// ↓ / ↑ in the search field move the selection through the results, Enter opens the selected one (0.8.724)
+	function resItems() { return $$('[data-nu-res]', moreList); }
+	function selectRes(i) {
+		var items = resItems();
+		resSel = items.length ? Math.max(0, Math.min(i, items.length - 1)) : -1;
+		items.forEach(function (a, k) { a.classList.toggle('active', k === resSel); a.setAttribute('aria-selected', k === resSel ? 'true' : 'false'); });
+		if (resSel >= 0) {
+			search.setAttribute('aria-activedescendant', items[resSel].id);
+			if (items[resSel].scrollIntoView) items[resSel].scrollIntoView({block: 'nearest'});
+		} else search.removeAttribute('aria-activedescendant');
+	}
 	function filter() {
 		var q = search.value, P = window.nuPalette, words = (P ? P.norm(q) : q.toLowerCase()).split(/\s+/).filter(Boolean);
 		var byId = {};
@@ -1168,7 +1217,7 @@
 		var shown = 0, first = null, onPage = {}, shownEls = [];
 		var was = view.classList.contains('nuHomeSearching');
 		view.classList.toggle('nuHomeSearching', words.length > 0);
-		if (was !== words.length > 0) { hideTip(true); applyView(); }   // while searching: all groups in the layout's style, no tabs
+		if (was !== words.length > 0) { hideTip(true); applyView(); }
 		$$('[data-nu-tile]', view).forEach(function (a) {
 			var key = a.getAttribute('data-nu-tile'), it = byId['t:' + key];
 			onPage['t:' + key] = true;
@@ -1176,24 +1225,42 @@
 			var ok = words.every(function (w) { return hay.indexOf(w) >= 0; });
 			ok = ok && !a.hasAttribute('data-nu-js-hidden');                  // hidden by nuHome tile.hide() (0.8.379)
 			box(a).hidden = !ok;
-			if (ok) { shown++; if (!first) first = a; shownEls.push(a); }
+			if (ok) { shown++; shownEls.push(a); }
 		});
 		$$('.nuHomeGroup', view).forEach(function (g) { g.hidden = words.length > 0 && !$$('[data-nu-tile]', g).some(function (a) { return !box(a).hidden; }); });
-		// more results: what matches and is not a tile here
+		// one result list: the tiles of the page first (in the page's order, each tile once), then what is no tile here
 		moreList.textContent = '';
-		firstMore = null;
-		var more = words.length && P && palItems ? P.match(palItems, q).filter(function (it) { return !onPage[it.id]; }).slice(0, 8) : [];
-		more.forEach(function (it) {
-			var a = el('a', {'class': 'list-group-item list-group-item-action d-flex align-items-center gap-3', href: it.url || '#'}, [
-				el('span', {'class': 'nu-tile-icon'}, [icon(it.icon)]),
-				el('span', {'class': 'flex-grow-1 min-w-0'}, [el('span', {'class': 'd-block text-body', text: it.label}), el('span', {'class': 'd-block small text-body-secondary', text: it.group})])]);
-			a.addEventListener('click', function (e) { e.preventDefault(); P.go(it, e.ctrlKey || e.metaKey); });
-			moreList.appendChild(a);
-			if (!firstMore) firstMore = it;
+		firstRes = null;
+		var n = 0, seen = {};
+		if (words.length && kindOn('tiles')) shownEls.forEach(function (a) {
+			var key = a.getAttribute('data-nu-tile');
+			if (seen[key]) return;
+			seen[key] = true;
+			var ic = a.querySelector('.nuHomeIcon');
+			ic = ic ? ic.cloneNode(true) : el('span', {'class': 'nu-tile-icon'}, [icon('bi-app')]);
+			ic.classList.add('nu-tile-icon');
+			var sub = a.getAttribute('data-nu-desc') || '', grp = a.querySelector('.nuHomeGroupName');
+			if (!sub && grp) sub = grp.textContent;
+			var go = function () { a.click(); };
+			moreList.appendChild(resItem('t:' + key, ic, a.getAttribute('data-nu-label') || a.textContent.trim(), sub, a.tagName === 'A' ? a.getAttribute('href') : '#', go));
+			if (!first) first = go;
+			n++;
 		});
-		moreBox.hidden = !more.length;
-		noneBox.hidden = !words.length || shown > 0 || more.length > 0;
-		search.setAttribute('data-first', first ? first.getAttribute('data-nu-tile') : '');
+		var more = words.length && P && palItems ? P.match(palItems, q).filter(function (it) {
+			return !onPage[it.id] && kindOn(KIND_OF[it.id.charAt(0)] || 'pages');
+		}).slice(0, 12) : [];
+		more.forEach(function (it) {
+			var code = it.id.charAt(0) !== 't' ? (it.kw || '').split(' ')[0] : '';
+			var sub = it.group + (code && code !== it.label ? ' · ' + code : '');
+			var go = function (e) { P.go(it, e && (e.ctrlKey || e.metaKey)); };
+			moreList.appendChild(resItem(it.id, el('span', {'class': 'nu-tile-icon'}, [icon(it.icon)]), it.label, sub, it.url || '#', go));
+			if (!first) first = go;
+			n++;
+		});
+		firstRes = first;
+		selectRes(n ? 0 : -1);
+		moreBox.hidden = !words.length || !n;
+		noneBox.hidden = !words.length || n > 0;
 		if (!words.length) H.groups();
 		H.emit('search', q, shownEls.map(H.wrap));
 	}
@@ -1204,11 +1271,16 @@
 		});
 		search.addEventListener('keydown', function (e) {
 			if (e.key === 'Escape') { search.value = ''; filter(); return; }
+			if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !moreBox.hidden) {
+				e.preventDefault();
+				selectRes(resSel + (e.key === 'ArrowDown' ? 1 : -1));
+				return;
+			}
 			if (e.key !== 'Enter') return;
 			e.preventDefault();
-			var k = search.getAttribute('data-first'), a = k ? $('[data-nu-tile="' + k + '"]', view) : null;
-			if (a) a.click();
-			else if (firstMore) window.nuPalette.go(firstMore, e.ctrlKey || e.metaKey);
+			var cur = resItems()[resSel];
+			if (cur && cur.nuOpen) cur.nuOpen(e);
+			else if (firstRes) firstRes(e);
 		});
 		document.addEventListener('keydown', function (e) {
 			if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || !edit.hidden) return;

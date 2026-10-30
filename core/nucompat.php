@@ -329,7 +329,14 @@ final class NuCompat
 		// G9 (0.8.523): Global JS of Custom code defines nuBuilder hook functions (nuOnLoad …) – a form's own function replaces them
 		'G9' => null,
 		// G10 (0.8.585): users with additional access levels – nuBuilder 4.x gives them only the rights of the main level
-		'G10' => '0.8.585'];
+		'G10' => '0.8.585',
+		// BS6 (0.8.740, developer mode only): Bootstrap 5 markup that Bootstrap 6 changes (NuBs6) – nothing to do while nuBuilder Next stays on 5.3
+		'BS6' => null,
+		// J4 (0.8.741): jQuery functions jQuery 4 removed / Migrate warns about in the application's code (NuJquery::scan) – a preparation
+		'J4' => null];
+
+	/** Findings that are a preparation, not a missing feature (grey, not counted as open) – BS6. */
+	public const PREP = ['BS6', 'J4'];
 
 	/** nuBuilder's global hook procedures (by code) – G2. */
 	public const HOOKS = ['nu_before_save', 'nu_before_edit', 'nu_before_delete', 'nu_startup', 'nu_invalid_login', 'nu_check_password_policy',
@@ -459,6 +466,22 @@ final class NuCompat
 				. ' LEFT JOIN zzzzsys_access a ON ' . $db->sameText('a.zzzzsys_access_id', 'x.access_id') . ' ORDER BY u.sus_login_name') as $x) {
 				$hit('G10', 'User · ' . ($x['sus_login_name'] ?? $x['user_id']), '', (string)($x['sal_code'] ?? ''));
 			}
+		}
+		// J4: jQuery 4 – removed functions and Migrate warnings in the application's JavaScript (always shown, grey)
+		foreach (self::sources($withSystem) as $src) {
+			if ($src['lang'] !== 'js') continue;
+			$f = NuJquery::scan($src['code']);
+			if ($f) $hit('J4', $src['where'], $src['form'], implode(' · ', $f));
+		}
+		// BS6: Bootstrap 5 classes / window.bootstrap in the application's code – a preparation, shown only in developer mode
+		if (NuHash::devMode()) {
+			try {
+				foreach (NuBs6::application() as $b) {
+					$d = [];
+					foreach ($b['hits'] as $rule => $list) $d[] = $rule . ': ' . implode(' ', array_slice($list, 0, 8)) . (count($list) > 8 ? ' …' : '');
+					$hit('BS6', $b['where'], $b['form'], implode(' · ', $d));
+				}
+			} catch (Throwable) { /* tables missing */ }
 		}
 		// nuconfig.php: M6 own JavaScript / CSS files, M10 SSO
 		foreach (['nuConfigIncludeJS', 'nuConfigIncludeCSS'] as $v) if (!empty(nu_cfg($v))) $hit('M6', 'nuconfig.php · $' . $v, '', implode(', ', (array)nu_cfg($v)));

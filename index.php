@@ -36,6 +36,8 @@ $routes = [
 	'palette'     => ['json' => true],
 	'security'    => [],
 	'securitycheck' => [],
+	'ipaccess'    => [],   // IP access (0.8.722, pages/nuipaccess.php)
+	'pwpolicy'    => [],   // password policy (0.8.745, pages/nupwpolicy.php)
 	'reauth'      => [],
 	'log'         => [],
 	'notifications' => [],
@@ -57,6 +59,9 @@ $routes = [
 	'settings'    => [],
 	'configfile'  => [],
 	'globalcode'   => [],
+	'jquery'       => [],                    // jQuery version + Migrate (0.8.741, NuJquery)
+	'jqfile'       => ['json' => true],      // a jQuery file of custom/jquery/ (0.8.741)
+	'jqwarn'       => ['json' => true],      // jQuery Migrate messages of a form page (0.8.741, assets/js/nu/nujqmigrate.js)
 	'userfields'  => [],   // custom user fields (0.8.454)
 	'account'     => [],   // My account: the custom fields a user fills in himself (0.8.454)
 	'todo'        => [],
@@ -101,7 +106,8 @@ $routes = [
 	'translations' => [],
 	'formatapi'   => ['json' => true],
 	'fnlist'      => ['json' => true],
-	'snippetlist' => ['json' => true],   // code snippets of one code editor (0.8.714, pages/nusnippetlist.php)
+	'snippetlist' => ['json' => true],
+	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (0.8.719, pages/nuadvsearch.php)   // code snippets of one code editor (0.8.714, pages/nusnippetlist.php)
 	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (0.8.683, pages/nuformaccess.php)   // function list of the code editors (0.8.593, pages/nufnlist.php)
 	'builder'     => [],
 	'formai'      => [],                     // form with AI (0.8.403)

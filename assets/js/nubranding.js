@@ -51,12 +51,17 @@
 	}
 
 	// Show logo (0.8.630): the preview is the top bar – no logo there unless "everywhere"
-	function logoShow() { $('prevLogo').hidden = $('logo_show').value !== 'all'; }
+	function logoShow() {
+		$('prevLogo').hidden = $('logo_show').value !== 'all';
+		const l = $('show_title_lbl');                     // 0.8.736: "next to the logo" only while the logo is in the top bar
+		if (l) l.textContent = l.getAttribute($('logo_show').value === 'all' ? 'data-logo' : 'data-bar');
+	}
 	$('logo_show').addEventListener('change', logoShow);
 	logoShow();
 
 	function title() {
-		const t = $('prevTitle');
+		const t = $('prevTitle'), f = $('title');
+		if (f) t.textContent = f.value.trim() || f.getAttribute('data-cfg') || '';
 		t.hidden = !$('show_title').checked || t.textContent.trim() === '';
 	}
 
@@ -68,6 +73,7 @@
 	$('logo_light').addEventListener('change', logo);
 	if ($('remove_light')) $('remove_light').addEventListener('change', logo);
 	$('show_title').addEventListener('change', title);
+	if ($('title')) $('title').addEventListener('input', title);
 	$('prevLink').addEventListener('click', (e) => e.preventDefault());
 	accent(); env(); title();
 }());

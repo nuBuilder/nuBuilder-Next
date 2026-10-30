@@ -448,3 +448,12 @@ input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-prima
 /* access levels of a form (0.8.683, assets/js/nu/nuformaccess.js) */
 .nuFacTable select { min-width: 10.5rem; }
 .nuFacTable thead th { vertical-align: bottom; }
+
+/* advanced search of browse lists (0.8.719, assets/js/nu/nuadvsearch.js) */
+.nuAdvMenu { width: min(600px, calc(100vw - 24px)); max-height: 75vh; overflow-y: auto; }
+.nuAdvRow .nuAdvField { flex: 1 1 9rem; min-width: 8rem; max-width: 14rem; }
+.nuAdvRow .nuAdvOp { flex: 0 1 10rem; min-width: 8rem; }
+.nuAdvRow .nuAdvVals { flex: 1 1 8rem; min-width: 8rem; }
+.nuAdvRow .nuAdvVals .nuAdvVal { min-width: 0; }
+.nuAdvChip { font-size: .8rem; padding: .35em .7em; }
+.nuAdvChip:hover { background: var(--bs-secondary-bg) !important; }

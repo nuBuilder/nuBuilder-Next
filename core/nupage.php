@@ -1067,7 +1067,7 @@ class NuPageContext
 	}
 
 	/** Libraries of nuBuilder Next a page may load with vendor() (0.8.479). */
-	public const VENDOR_LIBS = ['bootstrap' => 'NU_BS', 'bootstrap-icons' => 'NU_BI', 'codemirror' => 'NU_CODEMIRROR', 'jquery' => 'NU_JQUERY',
+	public const VENDOR_LIBS = ['bootstrap' => 'NU_BS', 'bootstrap-icons' => 'NU_BI', 'codemirror' => 'NU_CODEMIRROR', 'jquery' => 'NU_JQUERY', 'jquery4' => 'NU_JQUERY4',
 		'tom-select' => 'NU_TOMSELECT', 'apexcharts' => 'NU_APEXCHARTS'];
 
 	/** URL of a file of a bundled library, with a version stamp (0.8.479): vendor('codemirror', 'codemirror-bundle.js'). */

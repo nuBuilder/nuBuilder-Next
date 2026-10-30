@@ -1860,6 +1860,204 @@ T.new_form_pick = async (s) => {                        // 0.8.675: New form on 
 	}
 };
 
+T.new_form_view = async (s) => {                        // 0.8.721: New form on a view – marked "(view)", key column suggested, read-only view → Browse
+	const p = s.ga, code = 'e2eView' + Date.now().toString(36);
+	let id = '';
+	const pickT = (t) => p.evaluate((v) => { const x = document.getElementById('nb_table'); if (x.tomselect) x.tomselect.setValue(v); else { x.value = v; x.dispatchEvent(new Event('change')); } }, t);
+	try {
+		sql('CREATE OR REPLACE VIEW e2e_vw_cust AS SELECT sample_customer_id, cus_code, cus_name FROM sample_customer');
+		sql('CREATE OR REPLACE VIEW e2e_vw_cnt AS SELECT cus_country, COUNT(*) AS n FROM sample_customer GROUP BY cus_country');
+		sql('CREATE OR REPLACE VIEW e2e_vw_dup AS SELECT ord_sample_customer_id, ord_total FROM sample_order');
+		await open(p, 'index.php?p=builder&new=1');
+		await p.fill('#nb_desc', 'E2E view'); await p.fill('#nb_code', code);
+		await p.click('#nbStepNext'); await p.waitForTimeout(200);
+		await p.waitForFunction(() => document.querySelector('#nb_table option[value="e2e_vw_cnt"]'));
+		const lbl = await p.$eval('#nb_table option[value="e2e_vw_cnt"]', (o) => o.textContent);
+		const tlbl = await p.$eval('#nb_table option[value="sample_customer"]', (o) => o.textContent);
+		expect(/\(view\)$/.test(lbl) && tlbl === 'sample_customer', 'labels: ' + lbl + ' / ' + tlbl);
+		await pickT('e2e_vw_cnt');
+		await p.waitForSelector('#nbViewInfo:not([hidden])');
+		expect(await p.$eval('#nb_type', (x) => x.value) === 'browse', 'type not set to Browse');
+		expect(await p.$eval('#nbViewInfo', (x) => x.classList.contains('alert-warning') && /cannot save/.test(x.textContent)), 'read-only notice: ' + await p.textContent('#nbViewInfo'));
+		expect(await p.$eval('#nb_pk', (x) => x.value) === 'cus_country', 'key of the GROUP BY view');
+		await p.evaluate(() => { const x = document.getElementById('nb_type'); x.value = 'browseedit'; x.dispatchEvent(new Event('change')); });   // step 1 is hidden now
+		await pickT('e2e_vw_dup');
+		await p.waitForFunction(() => /ord_sample_customer_id/.test(document.getElementById('nbViewInfo').textContent));
+		expect(await p.$eval('#nbViewInfo', (x) => /repeated or empty/.test(x.textContent) && x.classList.contains('alert-warning')), 'duplicate key warning: ' + await p.textContent('#nbViewInfo'));
+		expect(await p.$eval('#nb_type', (x) => x.value) === 'browseedit', 'type changed for an updatable view');
+		await pickT('e2e_vw_cust');
+		await p.waitForFunction(() => /sample_customer_id/.test(document.getElementById('nbViewInfo').textContent));
+		expect(await p.$eval('#nbViewInfo', (x) => x.classList.contains('alert-info') && /can save/.test(x.textContent)), 'updatable notice: ' + await p.textContent('#nbViewInfo'));
+		expect(await p.$eval('#nb_pk', (x) => x.value) === 'sample_customer_id', 'suggested key');
+		await pickT('sample_customer');
+		await p.waitForTimeout(600);
+		expect(await p.$eval('#nbViewInfo', (x) => x.hidden), 'notice stays for a table');
+		await pickT('e2e_vw_cust');
+		await p.waitForFunction(() => document.getElementById('nb_pk').value === 'sample_customer_id');
+		await p.click('#nbStepNext'); await p.waitForTimeout(200);
+		await Promise.all([p.waitForURL(/design=1/), p.click('#nbCreate')]);
+		id = sql(`SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = '${code}'`);
+		expect(sql(`SELECT CONCAT(sfo_table, '|', sfo_primary_key, '|', sfo_type) FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`) === 'e2e_vw_cust|sample_customer_id|browseedit', 'form row');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		if (!id) id = sql(`SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = '${code}'`);
+		if (id) {
+			sql(`DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${id}'`); sql(`DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${id}'`);
+			sql(`DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${id}'`); sql(`DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_form_id = '${id}'`);
+			sql(`DELETE FROM zzzzsys_php WHERE zzzzsys_php_id LIKE '${id}%'`); sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${id}'`); sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`);
+		}
+		sql('DROP VIEW IF EXISTS e2e_vw_cust, e2e_vw_cnt, e2e_vw_dup');
+	}
+};
+
+T.ip_access = async (s) => {                            // 0.8.722: IP access – default list, exception per level, globeadmin rule, lock-out guard, session check, test, cron off
+	const p = s.ga, anna = 'sample_anna';
+	const lvl = sql(`SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE sus_login_name = '${anna}'`);
+	const set = (j) => sql(`REPLACE INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('ip_access', '${JSON.stringify(j)}')`);
+	const tryLogin = async () => {
+		const ctx = await browser.newContext(); const q = await ctx.newPage();
+		await q.goto(BASE + 'index.php?p=login'); await q.fill('#username', anna); await q.fill('#password', UPW);
+		await Promise.all([q.waitForLoadState('networkidle'), q.click('form button[type=submit]:not([name=demo_user])')]);
+		return q;
+	};
+	try {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'ip_access'");
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event IN ('login_failed', 'ip_refused')");
+		await open(p, 'index.php?p=ipaccess');
+		expect(await p.textContent('#ipaMine') === '127.0.0.1', 'own address: ' + await p.textContent('#ipaMine'));
+		// lock-out guard: globeadmin "same as all access levels" with a list without 127.0.0.1
+		await p.check('#ipaOn'); await p.fill('#ipaDefault', '10.99.0.0/16  # office\n203.0.113.7');
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('button[data-nu-save]')]);
+		expect(await p.locator('#ipaSelfErr').count() === 1, 'lock-out not refused');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'ip_access'") === '0', 'saved although locked out');
+		// invalid entry
+		await p.fill('#ipaDefault', '10.99.0.0/16\nnot-an-ip');
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('button[data-nu-save]')]);
+		expect(await p.locator('#ipaDefault.is-invalid').count() === 1 && /not-an-ip/.test(await p.textContent('#ipaDefaultCard')), 'invalid rule not marked');
+		// own ranges field only for "Own ranges"; globeadmin any address → saved
+		expect(await p.locator('#ipaGaRangesWrap').isHidden(), 'ga ranges shown for default');
+		await p.selectOption('#ipaGaMode', 'ranges');
+		expect(await p.locator('#ipaGaRangesWrap').isVisible(), 'ga ranges not shown');
+		await p.selectOption('#ipaGaMode', 'any');
+		await p.fill('#ipaDefault', '10.99.0.0/16  # office\n203.0.113.7');
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('button[data-nu-save]')]);
+		const st = JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'ip_access'"));
+		expect(st.on === true && st.default.join(',') === '10.99.0.0/16,203.0.113.7' && st.ga.mode === 'any', 'stored: ' + JSON.stringify(st));
+		// a user of a level without an exception is refused at sign-in (and logged)
+		let q = await tryLogin();
+		expect(/p=login/.test(q.url()) && /not allowed from this network/.test(await q.textContent('body')), 'user not refused: ' + q.url());
+		await q.context().close();
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'ip_refused'") >= 1, 'no ip_refused log row');
+		// exception for the user's level: own ranges with 127.0.0.0/8 → signs in
+		await open(p, 'index.php?p=ipaccess');
+		const sel = p.locator(`tr[data-ipa-level="${lvl}"] select.ipaMode`);
+		await sel.selectOption('ranges');
+		await p.locator(`tr[data-ipa-level="${lvl}"] textarea`).fill('127.0.0.0/8');
+		expect(await p.textContent('#ipaExcCount') === '1', 'exception count');
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('button[data-nu-save]')]);
+		expect(JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'ip_access'")).levels[lvl].ranges[0] === '127.0.0.0/8', 'level exception not stored');
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event IN ('login_failed')");
+		q = await tryLogin();
+		expect(!/p=login/.test(q.url()), 'user with exception refused: ' + q.url());
+		// the running session ends when its address is no longer allowed
+		set({ on: true, default: ['10.99.0.0/16'], levels: {}, ga: { mode: 'any', ranges: [] } });
+		await open(q, 'index.php?p=home');
+		expect(/p=login/.test(q.url()) && /not allowed from this network/.test(await q.textContent('body')), 'session not ended: ' + q.url());
+		await q.context().close();
+		// test an address (saved rules)
+		await open(p, 'index.php?p=ipaccess&test=10.99.3.4');
+		expect(await p.getAttribute('#ipaTestGa', 'data-ok') === '1' && (await p.textContent('#ipaTestAllowed')).length > 0, 'test 10.99.3.4');
+		await open(p, 'index.php?p=ipaccess&test=8.8.8.8');
+		expect(await p.textContent('#ipaTestAllowed') === '' && /sample/.test(await p.textContent('#ipaTestRefused')), 'test 8.8.8.8');
+		// security check line and the shell switch
+		await open(p, 'index.php?p=securitycheck');
+		expect(/IP access/.test(await p.textContent('#secChecks')), 'security check line');
+		if (SITE) {
+			execSync('php cron.php iprules off', { cwd: SITE });
+			expect(JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'ip_access'")).on === false, 'cron off');
+		}
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'ip_access'");
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event IN ('login_failed', 'ip_refused', 'ip_access_off')");
+	}
+};
+
+T.home_search_list = async (s) => {                     // 0.8.723: start page search = one list (tiles first, then pages / forms / procedures …), kinds filter
+	const p = s.ga;
+	await open(p, 'index.php?p=home'); await p.evaluate(() => { try { localStorage.removeItem('nunext-home-search-kinds'); } catch (e) { /* */ } });
+	await open(p, 'index.php?p=home');
+	await p.fill('#nuHomeSearch', 'update'); await p.waitForTimeout(800);
+	const keys = await p.$$eval('#nuHomeSearchMore [data-nu-res]', (a) => a.map((x) => x.getAttribute('data-nu-res')));
+	expect(keys[0] === 't:update' && await p.locator('#nuHomeView').isHidden() && !(await p.locator('#nuHomeSearchMore h2').count()), 'tile not first / view shown: ' + keys.join(','));
+	// customers: the sample form (f:) comes after the tiles; without forms it is gone
+	await p.fill('#nuHomeSearch', 'customer'); await p.waitForTimeout(500);
+	let k2 = await p.$$eval('#nuHomeSearchMore [data-nu-res]', (a) => a.map((x) => x.getAttribute('data-nu-res')));
+	const lastTile = k2.map((k) => k.startsWith('t:')).lastIndexOf(true), firstForm = k2.findIndex((k) => k.startsWith('f:'));
+	expect(firstForm >= 0 && (lastTile < 0 || lastTile < firstForm || k2.slice(0, firstForm).every((k) => k.startsWith('t:'))), 'order: ' + k2.join(','));
+	await p.click('#nuHomeSearchKinds'); await p.waitForTimeout(200);
+	await p.uncheck('#nuHomeSk_forms'); await p.waitForTimeout(200);
+	k2 = await p.$$eval('#nuHomeSearchMore [data-nu-res]', (a) => a.map((x) => x.getAttribute('data-nu-res')));
+	expect(!k2.some((k) => k.startsWith('f:')) && await p.locator('#nuHomeSearchKinds.nuHomeSkOn').count() === 1, 'forms still listed: ' + k2.join(','));
+	await open(p, 'index.php?p=home');
+	expect(!(await p.isChecked('#nuHomeSk_forms')), 'kinds not kept');
+	await p.click('#nuHomeSearchKinds'); await p.click('#nuHomeSkAll'); await p.waitForTimeout(150);
+	expect(await p.isChecked('#nuHomeSk_forms') && await p.locator('#nuHomeSearchKinds.nuHomeSkOn').count() === 0, 'include everything');
+	await p.keyboard.press('Escape');
+	// ↓ / ↑ move the selection (first one selected), Enter opens the selected one (0.8.724)
+	await p.fill('#nuHomeSearch', 'update');  await p.waitForTimeout(400);
+	const sel = () => p.$eval('#nuHomeSearchMore [data-nu-res].active', (a) => a.getAttribute('data-nu-res'));
+	expect(await sel() === 't:update', 'first result not selected');
+	await p.press('#nuHomeSearch', 'ArrowDown'); const second = await sel();
+	await p.press('#nuHomeSearch', 'ArrowUp'); expect(await sel() === 't:update' && second !== 't:update', 'arrows: ' + second);
+	await p.press('#nuHomeSearch', 'ArrowUp'); expect(await sel() === 't:update', 'up past the first');
+	await Promise.all([p.waitForURL(/p=update/), p.press('#nuHomeSearch', 'Enter')]);
+	await open(p, 'index.php?p=home');
+	await p.fill('#nuHomeSearch', 'update');  await p.waitForTimeout(400);
+	await p.press('#nuHomeSearch', 'ArrowDown');
+	const target = await p.$eval('#nuHomeSearchMore [data-nu-res].active', (a) => a.getAttribute('href'));
+	await Promise.all([p.waitForURL((u) => u.href.includes(target.replace(/^.*\?/, ''))), p.press('#nuHomeSearch', 'Enter')]);
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.users_filter_width = async (s) => {                   // 0.8.729: users list filters on desktop – 250 px each, the same gap between them
+	const p = s.ga;
+	await p.setViewportSize({ width: 1400, height: 900 });
+	await open(p, 'index.php?p=users');
+	if (!(await p.isVisible('#nuLvFilters'))) { await p.click('[aria-controls="nuLvFilters"]'); await p.waitForTimeout(500); }
+	const box = await p.$$eval('#nuLvFilters .row > div', (d) => d.map((x) => { const r = x.getBoundingClientRect(); return [r.left, r.top, r.width]; }));
+	const row = box.filter((b) => Math.abs(b[1] - box[0][1]) < 2), gaps = row.slice(1).map((b, i) => Math.round(b[0] - row[i][0] - row[i][2]));
+	expect(box.length >= 4 && box.every((b) => Math.round(b[2]) === 250) && new Set(gaps).size === 1, 'widths / gaps: ' + JSON.stringify(box) + ' ' + gaps.join(','));
+	// 0.8.732: a chosen value keeps the searchable select one line high (the search input wrapped below it)
+	const lvl = sql("SELECT zzzzsys_access_id FROM zzzzsys_access ORDER BY sal_code LIMIT 1");
+	await open(p, 'index.php?p=users&access=' + encodeURIComponent(lvl));
+	const hs = await p.evaluate(() => [document.querySelector('#lvf_access + .ts-wrapper').getBoundingClientRect().height, document.getElementById('lvf_pos').getBoundingClientRect().height]);
+	expect(Math.abs(hs[0] - hs[1]) < 2, 'access level filter height with a value: ' + hs.join(' / '));
+	await p.click('#lvf_access + .ts-wrapper .ts-control'); await p.keyboard.type(lvl.slice(0, 4)); await p.waitForTimeout(300);
+	expect(await p.locator('#lvf_access + .ts-wrapper .ts-dropdown .option').count() > 0, 'typing in the searchable select');
+	await p.keyboard.press('Escape');
+	await p.setViewportSize({ width: 1300, height: 900 });
+};
+
+T.browse_alias = async (s) => {                         // 0.8.731: a list column naming an alias of the browse SQL's field list (tester's report)
+	const p = s.ga;
+	const oldSql = sql("SELECT sfo_browse_sql FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	const oldCol = sql("SELECT sbr_display FROM zzzzsys_browse WHERE zzzzsys_browse_id = 'sample_customer_b1'");
+	try {
+		sql("UPDATE zzzzsys_form SET sfo_browse_sql = 'SELECT sample_customer.*, CONCAT(cus_code, '' / '', cus_name) AS code_name FROM sample_customer ORDER BY code_name DESC' WHERE zzzzsys_form_id = 'samplecustomer'");
+		sql("UPDATE zzzzsys_browse SET sbr_display = 'code_name' WHERE zzzzsys_browse_id = 'sample_customer_b1'");
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		const cells = await p.$$eval('#nuBrowseTable td.nuCell[data-nu-column="0"]', (t) => t.map((x) => x.textContent.trim()));
+		const want = sql("SELECT CONCAT(cus_code, ' / ', cus_name) FROM sample_customer ORDER BY 1 DESC LIMIT 1");
+		expect(cells.length > 1 && cells[0] === want && !/error|fehler/i.test(await p.textContent('main')), 'alias column: ' + cells.slice(0, 2).join(' | ') + ' / ' + want);
+		await p.fill('#nuSearchField', ' / '); await p.press('#nuSearchField', 'Enter'); await p.waitForLoadState('networkidle');
+		expect(await p.locator('#nuBrowseTable td.nuCell[data-nu-column="0"]').count() === cells.length, 'search in the alias column');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, { input: `UPDATE zzzzsys_form SET sfo_browse_sql = ${JSON.stringify(oldSql)} WHERE zzzzsys_form_id = 'samplecustomer'; UPDATE zzzzsys_browse SET sbr_display = ${JSON.stringify(oldCol)} WHERE zzzzsys_browse_id = 'sample_customer_b1';` });
+	}
+};
+
 T.new_form_levels = async (s) => {                      // 0.8.674: New form → access levels: Select all (levels shown) + group filter (sal_group)
 	const p = s.ga, old = sql("SELECT sal_group FROM zzzzsys_access WHERE zzzzsys_access_id = 'sample_secure'");
 	try {
@@ -3943,9 +4141,25 @@ T.nav_compact = async (s) => {
 		const first = await p.evaluate(() => { const b = document.getElementById('nuHomeBtn'); return !!b && b === b.parentElement.firstElementChild; });
 		expect(first, 'Home button at the very left');
 		await Promise.all([p.waitForNavigation(), p.click('#nuHomeBtn')]);
+		await p.mouse.move(600, 600); await p.waitForTimeout(300);
+		const bg = (sel) => p.$eval(sel, (b) => getComputedStyle(b).backgroundColor);
+		expect(await bg('#nuHomeBtn') === await bg('#nuPaletteBtn'), 'Home button not like the other tool buttons on the start page');   // 0.8.728
 		expect(/p=home/.test(p.url()), 'Home: ' + p.url());
 		await p.setViewportSize({ width: 1200, height: 800 });
 		expect(await p.isVisible('.nuUserBtn .nu-user-name') && !(await p.isVisible('.nuUserBtn .nuUserHam')) && await p.isVisible('#nuHomeBtn'), 'desktop: name, no ☰, Home button');
+		// 0.8.730: desktop – the page's breadcrumb next to the Home button (start page step hidden), phones – back in the page
+		await p.goto(BASE + 'index.php?p=ipaccess'); await p.waitForTimeout(300);
+		const crumbs = () => p.evaluate(() => { const n = document.getElementById('nuNavCrumbs'); const m = document.querySelector('#main nav[aria-label="breadcrumb"]');
+			return { nav: !!n && !n.hidden && n.querySelectorAll('.breadcrumb-item').length, shown: n ? [...n.querySelectorAll('.breadcrumb-item')].filter((li) => li.offsetParent).map((li) => li.textContent.trim()) : [],
+				inPage: !!m && !m.hidden && !!m.querySelector('.breadcrumb') }; });
+		let cb = await crumbs();
+		expect(cb.nav >= 2 && !cb.inPage && cb.shown.length === cb.nav - 1 && /IP/.test(cb.shown[cb.shown.length - 1]), 'desktop breadcrumb in the bar: ' + JSON.stringify(cb));
+		const mid = (sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; });
+		expect(Math.abs(await mid('#nuNavCrumbs ol') - await mid('#nuHomeBtn')) < 2, 'breadcrumb not centred with the Home button');   // 0.8.737
+		await p.setViewportSize({ width: 390, height: 800 }); await p.waitForTimeout(200);
+		cb = await crumbs();
+		expect(!cb.nav && cb.inPage, 'phone: breadcrumb in the page: ' + JSON.stringify(cb));
+		await p.setViewportSize({ width: 1200, height: 800 });
 		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
 		await p.setViewportSize({ width: 390, height: 800 });
 		await p.goto(BASE + 'index.php?p=users');
@@ -3954,6 +4168,111 @@ T.nav_compact = async (s) => {
 		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
 		await ctx.close();
 	}
+};
+
+// 0.8.734: right-click on the logo (globeadmin) → confirmation → hidden in the top bar (Branding: only sign-in pages) + message
+T.logo_hide = async (s) => {
+	const had = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'") !== '0';
+	if (had) { s.skip = 'branding set'; return; }
+	const p = s.ga;
+	try {
+		await open(p, 'index.php?p=users');
+		expect(await p.locator('.navbar-brand[data-nu-logo-hide]').count() === 1, 'logo without the right-click action');
+		await p.click('.navbar-brand', { button: 'right' }); await p.waitForTimeout(500);
+		expect(await p.isVisible('#nuConfirm') && /sign-in|Anmelde/i.test(await p.textContent('#nuConfirm .js-confirm-text')), 'no confirmation');
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm .js-confirm-ok')]);
+		await p.waitForLoadState('networkidle');
+		expect(/p=users/.test(p.url()) && /Branding/.test(await p.textContent('body')), 'back on the page with the message: ' + p.url());
+		expect(JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'")).logo_show === 'login', 'logo_show not login');
+		expect(await p.locator('#nuHomeBtn').count() === 1 && await p.locator('.navbar-brand[data-nu-logo-hide]').count() === 0, 'top bar without logo');
+		const u = await login('sample_carla', UPW);
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
+		await open(u, 'index.php?p=home');
+		expect(await u.locator('[data-nu-logo-hide]').count() === 0 && await u.locator('#nuLogoHideForm').count() === 0, 'a user gets the right-click action');
+		await u.context().close();
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
+	}
+};
+
+// 0.8.736: Branding – own title field (wins over $nuConfigTitle), "Show the title" label follows Show logo
+T.branding_title = async (s) => {
+	const had = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'") !== '0';
+	if (had) { s.skip = 'branding set'; return; }
+	const p = s.ga;
+	try {
+		await open(p, 'index.php?p=branding');
+		const lbl = () => p.textContent('#show_title_lbl');
+		const withLogo = await lbl();
+		await p.selectOption('#logo_show', 'none');
+		const alone = await lbl();
+		expect(withLogo !== alone && /top bar|oberen Leiste/i.test(alone), 'label: ' + withLogo + ' / ' + alone);
+		await p.fill('#title', 'E2E Title App');
+		await p.check('#show_title');
+		expect((await p.textContent('#prevTitle')).trim() === 'E2E Title App' && await p.isVisible('#prevTitle'), 'preview title');
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		const st = JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'"));
+		expect(st.title === 'E2E Title App' && st.logo_show === 'none' && st.show_title === true, 'stored: ' + JSON.stringify(st));
+		await open(p, 'index.php?p=users');
+		expect(/E2E Title App/.test(await p.title()) && (await p.textContent('.nu-navbar .nu-brand-title')).trim() === 'E2E Title App', 'title in tab / top bar: ' + await p.title());
+		const ctx = await browser.newContext(); const q = await ctx.newPage();
+		await q.goto(BASE + 'index.php?p=login');
+		expect(/E2E Title App/.test(await q.textContent('body')), 'title on the sign-in page');
+		await ctx.close();
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
+	}
+};
+
+// 0.8.738: user form – the admin role has an "open in a new tab" button like the access level, following the chosen role
+T.user_role_open = async (s) => {
+	const p = s.ga;
+	const role = sql("SELECT zzzzsys_nunext_admin_role_id FROM zzzzsys_nunext_admin_role ORDER BY sort_order, name LIMIT 1");
+	if (!role) { s.skip = 'no admin role'; return; }
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	await open(p, 'index.php?p=user&id=' + encodeURIComponent(uid));
+	expect(await p.locator('#admRoleOpen').count() === 1, 'no open button for the admin role');
+	const cur = await p.inputValue('#admin_role');
+	if (cur === '') expect(await p.locator('#admRoleOpen.disabled').count() === 1, 'button enabled without a role');
+	await p.selectOption('#admin_role', role);
+	const href = await p.getAttribute('#admRoleOpen', 'href');
+	expect(href.includes('p=adminroles') && href.includes('id=' + encodeURIComponent(role)) && await p.getAttribute('#admRoleOpen', 'target') === '_blank'
+		&& await p.locator('#admRoleOpen.disabled').count() === 0, 'link: ' + href);
+	await p.selectOption('#admin_role', '');
+	expect(await p.locator('#admRoleOpen.disabled').count() === 1, 'not disabled again');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.739: admin role form – rights link to their page (new tab), the table sorts by name or level (flat), third click = groups again
+T.admin_role_table = async (s) => {
+	const p = s.ga;
+	const role = sql("SELECT zzzzsys_nunext_admin_role_id FROM zzzzsys_nunext_admin_role WHERE code = 'developer' LIMIT 1") || sql("SELECT zzzzsys_nunext_admin_role_id FROM zzzzsys_nunext_admin_role LIMIT 1");
+	if (!role) { s.skip = 'no admin role'; return; }
+	await open(p, 'index.php?p=adminroles&id=' + encodeURIComponent(role));
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-adm-rights-sort'); } catch (e) { /* */ } });
+	await open(p, 'index.php?p=adminroles&id=' + encodeURIComponent(role));
+	const links = await p.$$eval('#admRights a.admRightLink', (a) => a.map((x) => [x.getAttribute('href'), x.getAttribute('target')]));
+	expect(links.length >= 20 && links.every((l) => /index\.php\?p=/.test(l[0]) && l[1] === '_blank') && links.some((l) => /p=procedures/.test(l[0])), 'links: ' + links.length);
+	const names = () => p.$$eval('#admRights tr.nuAdmRight', (r) => r.map((x) => x.getAttribute('data-name')));
+	const grouped = await names();
+	await p.click('#admRights th[data-sort="name"] button');
+	const asc = await names();
+	expect(JSON.stringify(asc) === JSON.stringify([...asc].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))) && await p.isHidden('#admRights tr.nuAdmGroup >> nth=0')
+		&& await p.getAttribute('#admRights th[data-sort="name"]', 'aria-sort') === 'ascending', 'sorted by name, flat');
+	await p.click('#admRights th[data-sort="name"] button');
+	expect((await names())[0] === asc[asc.length - 1], 'descending');
+	await p.click('#admRights th[data-sort="name"] button');
+	expect(JSON.stringify(await names()) === JSON.stringify(grouped) && await p.isVisible('#admRights tr.nuAdmGroup >> nth=0'), 'back to the groups');
+	await p.click('#admRights th[data-sort="lvl:change"] button');
+	const lv = await p.$$eval('#admRights tr.nuAdmRight', (r) => r.map((x) => { const c = x.querySelector('input[type=radio]:checked'); return c ? c.value : ''; }));
+	const firstOther = lv.findIndex((v) => v !== 'change');
+	expect(firstOther > 0 && lv.slice(firstOther).every((v) => v !== 'change'), 'change first: ' + lv.join(','));
+	await open(p, 'index.php?p=adminroles&id=' + encodeURIComponent(role));
+	expect(await p.getAttribute('#admRights th[data-sort="lvl:change"]', 'aria-sort') === 'ascending', 'sort not kept');
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-adm-rights-sort'); } catch (e) { /* */ } });
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 T.nav_pin = async (s) => {
@@ -5294,7 +5613,7 @@ echo 'e2e output';`);
 		expect(st.dyn.join() === 'x_e2e_tile,x_e2e_url' && /E2E banner <script>/.test(st.banner || '') && st.scripts === 0 && st.data.e2eCount === 42, 'dynamic tiles / banner / data: ' + JSON.stringify(st));
 		expect(/e2e output/.test(sql("SELECT deb_message FROM zzzzsys_debug ORDER BY deb_added DESC LIMIT 1")), 'echo not in Debug results');
 		await p.fill('#nuHomeSearch', 'E2E dynamic'); await p.waitForTimeout(300);
-		expect(await p.locator('[data-nu-tile="x_e2e_tile"]').isVisible() && !(await p.locator('[data-nu-tile="users"]').isVisible()), 'search does not find the dynamic tile');
+		expect(await p.locator('#nuHomeSearchMore [data-nu-res="t:x_e2e_tile"]').isVisible() && !(await p.locator('#nuHomeSearchMore [data-nu-res="t:users"]').count()), 'search does not find the dynamic tile');
 		await p.fill('#nuHomeSearch', ''); await p.waitForTimeout(200);
 		if (await p.locator('#nuHomeCustomize').count()) {
 			await homeEdit(p); await p.waitForTimeout(500);
@@ -6242,6 +6561,38 @@ T.csv_import = async (s) => {
 	expect(sql("SELECT COUNT(*) FROM sample_customer WHERE cus_code IN ('E2E7','E2E8')") === '2', 'imported rows missing');
 };
 
+// 0.8.733: developer mode – "Check & install" next to Check package: a package that is not newer goes to the normal check with the reason,
+// a newer one is installed at once (no SQL in the backup, sample data refreshed)
+T.update_quick = async (s) => {
+	const pkg = process.env.PKG;
+	if (!pkg || !fs.existsSync(pkg)) { s.skip = 'PKG not set'; return; }
+	const p = s.ga;
+	const ver = (f) => execSync('python3 -', { input: "import zipfile, json\nz=zipfile.ZipFile(" + JSON.stringify(f) + ")\nn=[x for x in z.namelist() if x.endswith('nunext-manifest.json')][0]\nprint(json.loads(z.read(n))['version'])" }).toString().trim();
+	const pv = ver(pkg);
+	await open(p, 'index.php?p=update');
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update'); }
+	const installed = SITE ? (fs.readFileSync(path.join(SITE, 'core/nuapp.php'), 'utf8').match(/define\('NU_VERSION', '([^']+)'\)/) || ['', ''])[1] : '';
+	if (!installed) { s.skip = 'SITE not set'; return; }
+	if (!(await p.locator('#updOther').isVisible())) { await p.click('#updOtherBtn'); await p.waitForTimeout(500); }
+	expect(await p.locator('#updQuick').count() === 1 && await p.locator('#updQuick').isHidden(), 'Check & install hidden until a file is chosen');
+	await p.setInputFiles('#updPackage', pkg); await p.waitForTimeout(300);
+	expect(await p.locator('#updQuick').isVisible() && /backup|Sicherung/i.test(await p.getAttribute('#updQuick', 'data-bs-original-title') || await p.getAttribute('#updQuick', 'title') || ''), 'Check & install with its tooltip');
+	const newer = installed !== '' && pv.localeCompare(installed, undefined, { numeric: true }) > 0;
+	sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'nunext_update_quick'");
+	await Promise.all([p.waitForLoadState('networkidle'), p.click('#updQuick')]);
+	await p.waitForTimeout(800);
+	if (!newer) {
+		expect(/check=/.test(p.url()) && await p.locator('#updInstallForm').count() + await p.locator('.alert-danger').count() > 0 && /Not installed at once|Nicht sofort installiert/.test(await p.textContent('body')), 'not newer: normal check with the reason: ' + p.url());
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'nunext_update_quick'") === '0', 'installed although not newer');
+		if (await p.locator('#updCancel').count()) await Promise.all([p.waitForLoadState('networkidle'), p.click('#updCancel')]);
+	} else {
+		expect(/finish=1|p=update/.test(p.url()) && sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'nunext_update_quick'") === '1', 'quick install not logged: ' + p.url());
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event LIKE 'nunext_update%' AND details LIKE " + "'%" + pv + "%'") !== '0', 'installed version not logged');
+		if (SITE) expect(fs.readFileSync(path.join(SITE, 'core/nuapp.php'), 'utf8').includes("'" + pv + "'"), 'files of ' + pv + ' not installed');
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.update_check = async (s) => {
 	const pkg = process.env.PKG;
 	if (!pkg || !fs.existsSync(pkg)) { s.skip = 'PKG not set'; return; }
@@ -6940,6 +7291,257 @@ T.gap_compat = async (s) => {
 	}
 };
 
+// start page (0.8.746): on desktop the search row stays below the top bar while scrolling; phones scroll it away
+T.home_search_sticky = async (s) => {
+	const p = s.ga;
+	await p.setViewportSize({ width: 1300, height: 600 });
+	await open(p, 'index.php?p=home');
+	await p.mouse.wheel(0, 1500); await p.waitForTimeout(400);
+	const r = await p.evaluate(() => ({ y: scrollY, top: document.querySelector('.nuHomeSearchRow').getBoundingClientRect().top, nav: document.querySelector('.nu-navbar').getBoundingClientRect().bottom }));
+	expect(r.y > 200 && Math.abs(r.top - Math.round(r.nav)) <= 2, 'search row below the top bar: ' + JSON.stringify(r));
+	await p.setViewportSize({ width: 390, height: 700 });
+	await open(p, 'index.php?p=home');
+	await p.mouse.wheel(0, 1500); await p.waitForTimeout(400);
+	const m = await p.evaluate(() => document.querySelector('.nuHomeSearchRow').getBoundingClientRect().bottom);
+	expect(m < 0, 'phones: the row scrolls away (' + m + ')');
+	await p.setViewportSize({ width: 1300, height: 900 });
+};
+
+// password policy (0.8.745): settings page, rules on Change password (checklist + server message), Try a password, leak check online
+// (fake HIBP: only 5 hex characters arrive) and offline, forced change for an expired / leaked password at sign-in, globeadmin reminder
+T.pw_policy = async (s) => {
+	const p = s.ga;
+	const crypto = require('crypto');
+	// saved as hex: mysql -N escapes tabs / backslashes of JSON
+	const keep = sql("SELECT CONCAT(HEX(IFNULL(sus_login_password,'')), ',', IF(sus_json IS NULL, 'N', HEX(sus_json)), ',', HEX(IFNULL(sus_change_password,''))) FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	if (!keep) { s.skip = 'no sample_ben'; return; }
+	const [bHash, bJson, bChg] = keep.split(',');
+	const before = sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(HEX(zzzzsys_nunext_setting_id), ':', HEX(setting_value)) SEPARATOR ','), '') FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('pw_policy', 'pw_policy_ga')");
+	const port = 8790 + Math.floor(Math.random() * 100), log = path.join(os.tmpdir(), 'hibp-' + port + '.log');
+	const LEAK = 'Tr0ub4dor&3-e2e';
+	const srv = require('child_process').spawn('python3', ['-I', path.join(__dirname, 'fakehibp.py'), String(port), LEAK, '4242', log], { stdio: 'ignore' });
+	const esc = (x) => x.replace(/\\/g, '\\\\').replace(/'/g, "''");
+	let u = null, g = null;
+	try {
+		await new Promise(r => setTimeout(r, 600));
+		await open(p, 'index.php?p=pwpolicy');
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=pwpolicy'); }
+		expect(await p.locator('#pwpForm').count() === 1, 'policy page');
+		await p.fill('#pwp_min_len', '14');
+		await p.setChecked('#pwp_digit', true);
+		await p.setChecked('#pwp_not_name', true);
+		await p.selectOption('#pwp_leak', 'both');
+		await p.setChecked('#pwp_leak_login', true);
+		await p.selectOption('#pwp_expire', '30');
+		await Promise.all([p.waitForNavigation(), p.click('#pwpSave')]); await p.waitForLoadState('networkidle');
+		const pol = JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'pw_policy'"));
+		expect(pol.min_len === 14 && pol.digit === true && pol.expire === 30 && pol.leak === 'both', 'saved: ' + JSON.stringify(pol));
+		// online source = the fake (developer mode only)
+		pol.leak_url = 'http://127.0.0.1:' + port + '/range/';
+		sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + esc(JSON.stringify(pol)) + "' WHERE zzzzsys_nunext_setting_id = 'pw_policy'");
+		const tryPw = async (pw, login) => {
+			await open(p, 'index.php?p=pwpolicy');
+			await p.fill('#pwpTestPw', pw); await p.fill('#pwpTestLogin', login || '');
+			await p.click('#pwpTestBtn');
+			await p.waitForFunction(() => document.getElementById('pwpTestOut').hasAttribute('data-ok'));
+			return [await p.getAttribute('#pwpTestOut', 'data-ok'), await p.textContent('#pwpTestOut')];
+		};
+		let [ok, msg] = await tryPw('short1');
+		expect(ok === '0' && /14/.test(msg), 'too short: ' + msg);
+		[ok, msg] = await tryPw('longpasswordwithoutdigits');
+		expect(ok === '0' && /digit/i.test(msg), 'digit rule: ' + msg);
+		[ok, msg] = await tryPw('carla-sample_ben-2026', 'sample_ben');
+		expect(ok === '0' && /login|name/i.test(msg), 'name rule: ' + msg);
+		[ok, msg] = await tryPw(LEAK);
+		expect(ok === '0' && /4.?242/.test(msg), 'online leak (fake HIBP): ' + msg);
+		const sent = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
+		expect(sent.length > 0 && sent.every(l => /\/range\/[0-9A-F]{5}$/.test(l)), 'only 5 hex characters sent: ' + sent.join(' '));
+		[ok, msg] = await tryPw('Correct-Horse-Battery-77');
+		expect(ok === '1', 'good password: ' + msg);
+		// offline list (the fake does not know it): password1234567 is not in the online answer – switch to offline only
+		pol.leak = 'offline'; pol.min_len = 0;                    // the list holds short passwords: the minimum of nuconfig.php (8)
+		sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + esc(JSON.stringify(pol)) + "' WHERE zzzzsys_nunext_setting_id = 'pw_policy'");
+		[ok, msg] = await tryPw('1234567890');
+		expect(ok === '0' && /common/i.test(msg), 'offline list: ' + msg);
+		// expired password: last change 40 days ago → forced change with the reason, checklist on the page
+		sql("UPDATE zzzzsys_user SET sus_json = JSON_SET(IF(JSON_VALID(sus_json), sus_json, '{}'), '$.PASSWORD_CHANGED_TIME', UNIX_TIMESTAMP() - 40 * 86400), sus_change_password = '0' WHERE sus_login_name = 'sample_ben'");
+		u = await login('sample_ben', UPW);
+		await open(u, 'index.php?p=home');
+		expect(/p=password/.test(u.url()) || /p=password/.test(await u.evaluate(() => location.href)), 'forced to Change password: ' + u.url());
+		expect(await u.getAttribute('#pwForced', 'data-reason') === 'expired', 'reason expired');
+		await u.fill('#pw_new', 'abc');
+		expect(await u.locator('.nuPwRules li[data-rule="len"].nuPwBad').count() === 1, 'checklist: length not met');
+		await u.fill('#pw_new', 'Abcdefghijklmn1');
+		expect(await u.locator('.nuPwRules li[data-rule="len"].nuPwOk').count() === 1 && await u.locator('.nuPwRules li[data-rule="digit"].nuPwOk').count() === 1, 'checklist ticked');
+		await u.fill('#pw_current', UPW); await u.fill('#pw_new', '1234567890'); await u.fill('#pw_confirm', '1234567890');
+		await Promise.all([u.waitForNavigation(), u.click('button[data-nu-save]')]); await u.waitForLoadState('networkidle');
+		const fb = (await u.locator('.invalid-feedback').allTextContents()).join(' / ');
+		expect(/p=password/.test(u.url()) && /common|ufigsten/i.test(fb), 'server refuses the common password: ' + fb);
+		await u.fill('#pw_current', UPW); await u.fill('#pw_new', 'Correct-Horse-Battery-77'); await u.fill('#pw_confirm', 'Correct-Horse-Battery-77');
+		await Promise.all([u.waitForNavigation(), u.click('button[data-nu-save]')]); await u.waitForLoadState('networkidle');
+		expect(!/p=password/.test(u.url()) && sql("SELECT sus_change_password FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'") === '0', 'changed: ' + u.url());
+		await u.context().close(); u = null;
+		// leaked at sign-in: a common password set by hand → forced change, reason leaked
+		const common = 'qwertyuiop', hash = execSync('php -r ' + JSON.stringify('echo password_hash(' + JSON.stringify(common) + ', PASSWORD_BCRYPT);')).toString().trim();
+		sql("UPDATE zzzzsys_user SET sus_login_password = '" + hash + "', sus_change_password = '0' WHERE sus_login_name = 'sample_ben'");
+		u = await login('sample_ben', common);
+		await open(u, 'index.php?p=home');
+		expect(await u.getAttribute('#pwForced', 'data-reason') === 'leaked', 'reason leaked: ' + u.url());
+		await u.context().close(); u = null;
+		// globeadmin: reminder only (password age from pw_policy_ga.since)
+		pol.ga_expire = 30;
+		sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + esc(JSON.stringify(pol)) + "' WHERE zzzzsys_nunext_setting_id = 'pw_policy'");
+		const fp = crypto.createHash('sha256').update('ga|' + GA[1]).digest('hex').slice(0, 16);
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'pw_policy_ga'");
+		sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('pw_policy_ga', '" + JSON.stringify({ fp, since: 1, leak: { at: Math.floor(Date.now() / 1000), hit: false } }) + "')");
+		g = await login(GA[0], GA[1]);
+		expect(/nuconfig\.php/.test(await g.textContent('body')), 'globeadmin reminder after sign-in');
+		expect(!/p=password/.test(g.url()), 'globeadmin not forced');
+		expect(p.errors.length === 0, p.errors.join(' | '));
+	} finally {
+		try { srv.kill(); } catch (x) { /* gone */ }
+		if (u) await u.context().close();
+		if (g) await g.context().close();
+		sql("UPDATE zzzzsys_user SET sus_login_password = UNHEX('" + bHash + "'), sus_json = " + (bJson === 'N' ? 'NULL' : "UNHEX('" + bJson + "')") + ", sus_change_password = UNHEX('" + bChg + "') WHERE sus_login_name = 'sample_ben'");
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('pw_policy', 'pw_policy_ga')");
+		for (const pair of before.split(',').filter(Boolean)) {
+			const [k, v] = pair.split(':');
+			sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES (UNHEX('" + k + "'), UNHEX('" + v + "'))");
+		}
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'");
+	}
+};
+
+// nuHideHolders (0.8.743, the owner's decision): 0 = button row, 1 = top bar (hidden, never removed), 2 = tabs
+T.hide_holders = async (s) => {
+	const p = s.ga;
+	ttInstall();
+	try {
+		await open(p, 'index.php?p=form&f=ttcus&r=-1');
+		const vis = () => p.evaluate(() => ['#nuActionHolder', '.nu-navbar', '#nuTabHolder', '#nuBreadcrumbHolder'].map(q => { const e = document.querySelector(q); return !!e && e.offsetParent !== null; }));
+		expect((await vis()).slice(0, 3).every(Boolean), 'all shown first: ' + await vis());
+		await p.evaluate(() => nuHideHolders(0));
+		let v = await vis();
+		expect(!v[0] && v[1] && v[2], 'nuHideHolders(0) = button row only: ' + v);
+		await p.evaluate(() => nuHideHolders(1));
+		v = await vis();
+		expect(!v[1] && v[2] && await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--nu-nav-h').trim()) === '0px', 'nuHideHolders(1) = top bar: ' + v);
+		await p.evaluate(() => nuHideHolders(2));
+		v = await vis();
+		expect(!v[2], 'nuHideHolders(2) = tabs: ' + v);
+		await open(p, 'index.php?p=form&f=ttcus&r=-1');
+		await p.evaluate(() => nuRemoveHolders(1));
+		expect(await p.locator('.nu-navbar').count() === 1 && !(await vis())[1], 'nuRemoveHolders(1) hides the top bar, keeps it in the page');
+		expect(p.errors.length === 0, p.errors.join(' | '));
+	} finally { ttRemove(); }
+};
+
+// jQuery 4 preparation (0.8.741): Settings → Code → jQuery – versions, own file in custom/jquery/, Migrate warnings collected per form,
+// the globeadmin's test (users keep theirs), point J4 of the Compatibility check
+T.jquery_settings = async (s) => {
+	const p = s.ga;
+	const own = SITE ? SITE + '/custom/jquery/jquery-e2e-4.0.0.min.js' : '';
+	const before = sql("SELECT IFNULL((SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'jquery'), '')");
+	const goto = async () => {
+		await open(p, 'index.php?p=jquery');
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=jquery'); }
+	};
+	const save = async (o) => {
+		await goto();
+		for (const [k, v] of Object.entries(o)) { if (k === 'ga_warn') await p.setChecked('#jqGaWarn', v); else await p.selectOption(k, v); }
+		if (process.env.JQDBG) console.log(p.url(), await p.evaluate(() => document.getElementById('jqForm') && new URLSearchParams(new FormData(document.getElementById('jqForm'))).toString()));
+		await Promise.all([p.waitForNavigation(), p.click('#jqSave')]);
+		await p.waitForLoadState('networkidle');
+		if (process.env.JQDBG) console.log(p.url(), (await p.locator('.alert').allTextContents()).join('|'));
+	};
+	const jqOf = async (page, url) => { await open(page, url); return page.evaluate(() => ({ v: window.jQuery && jQuery.fn.jquery, mig: !!(window.jQuery && jQuery.migrateVersion), migV: window.jQuery && jQuery.migrateVersion, msgs: (window.jQuery && (jQuery.migrateMessages || jQuery.migrateWarnings) || []).length })); };
+	ttInstall();
+	sql("UPDATE zzzzsys_form SET sfo_javascript = CONCAT(IFNULL(sfo_javascript, ''), '\nvar nuE2eTrim = $.trim(\" a \");') WHERE zzzzsys_form_id = 'ttcus'");
+	sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'jquery_warnings'");
+	let u = null;
+	try {
+		if (own) { fs.mkdirSync(SITE + '/custom/jquery', { recursive: true }); fs.copyFileSync('vendor/bundled/jquery-4.0.0/jquery.min.js', own); }
+		await goto();
+		expect(await p.locator('#jqUse option[value="b3"]').count() === 1 && await p.locator('#jqUse option[value="b4"]').count() === 1, 'bundled versions offered');
+		if (own) {
+			expect(await p.locator('#jqUse option[value="c:jquery-e2e-4.0.0.min.js"]').count() === 1, 'own file offered');
+			expect(await p.locator('#jqFiles tr[data-file="jquery-e2e-4.0.0.min.js"]').textContent().then(t => /4\.0\.0/.test(t)), 'own file listed with its version');
+		}
+		// everyone 3.7.1 + Migrate warnings: Migrate 3 on jQuery 3 reports $.trim (deprecated, removed in 4)
+		await save({ '#jqUse': 'b3', '#jqMigrate': 'warn', '#jqGaUse': '', ga_warn: false });
+		let r = await jqOf(p, 'index.php?p=form&f=ttcus&r=-1');
+		expect(r.v === '3.7.1' && /^3\./.test(r.migV || ''), 'jQuery 3.7.1 + Migrate 3: ' + JSON.stringify(r));
+		expect(r.msgs > 0, 'Migrate 3 reports $.trim: ' + JSON.stringify(r));
+		await p.evaluate(() => window.nuNextJqMigrateFlush && window.nuNextJqMigrateFlush());
+		await p.waitForTimeout(700);
+		await goto();
+		const rows = await p.locator('#jqWarnings tr.jqWarnRow').allTextContents();
+		expect(rows.some(t => /ttcus/.test(t) && /trim/i.test(t)), 'message collected for ttcus: ' + rows.join(' | '));
+		// the globeadmin's test: own file (jQuery 4) + warnings for the globeadmin, users keep 3.7.1 without Migrate
+		await save({ '#jqUse': 'b3', '#jqMigrate': 'off', '#jqGaUse': own ? 'c:jquery-e2e-4.0.0.min.js' : 'b4', ga_warn: true });
+		expect(await p.locator('#jqTestBadge').count() === 1, 'test badge: ' + sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'jquery'") + ' ' + (await p.locator('.alert').allTextContents()).join(' / '));
+		r = await jqOf(p, 'index.php?p=form&f=ttcus&r=-1');
+		expect(r.v === '4.0.0' && /^4\./.test(r.migV || ''), 'globeadmin: jQuery 4 + Migrate 4: ' + JSON.stringify(r));
+		expect(p.errors.length === 0, 'no page errors on jQuery 4: ' + p.errors.join(' | '));
+		if (own) {
+			const src = await p.evaluate(() => [...document.scripts].map(x => x.src).find(x => /p=jqfile/.test(x)) || '');
+			expect(/f=jquery-e2e-4\.0\.0\.min\.js/.test(src), 'own file served through ?p=jqfile: ' + src);
+			const res = await p.request.get(src);
+			expect(res.status() === 200 && /javascript/.test(res.headers()['content-type'] || ''), 'jqfile answers JS: ' + res.status());
+			expect((await p.request.get(BASE + 'index.php?p=jqfile&f=..%2Fnuconfig.php')).status() === 404, 'jqfile refuses other names');
+		}
+		const ben = sql("SELECT a.slf_zzzzsys_form_id FROM zzzzsys_user us JOIN zzzzsys_access_form a ON a.slf_zzzzsys_access_id = us.sus_zzzzsys_access_id WHERE us.sus_login_name = 'sample_ben' AND a.slf_zzzzsys_form_id NOT LIKE 'nu%' LIMIT 1");
+		if (ben) {
+			u = await login('sample_ben', UPW);
+			const rb = await jqOf(u, 'index.php?p=form&f=' + ben);
+			expect(rb.v === '3.7.1' && !rb.mig, 'user keeps jQuery 3.7.1 without Migrate: ' + JSON.stringify(rb));
+			expect((await u.goto(BASE + 'index.php?p=jquery')).status() === 403 || !(await u.locator('#jqForm').count()), 'user cannot open the jQuery page');
+		}
+		// J4 in the Compatibility check (grey, preparation)
+		await open(p, 'index.php?p=compat');
+		const j4 = p.locator('#compat_findings tr[data-finding="J4"]');
+		expect(await j4.count() === 1 && await j4.evaluate(r => r.classList.contains('compat-prep')), 'J4 shown grey');
+		expect(/ttcus/.test(await j4.textContent()) && /\$\.trim\(\)/.test(await j4.textContent()), 'J4 lists $.trim of ttcus');
+		// clear the messages
+		await goto();
+		await p.click('#jqClear');
+		await Promise.all([p.waitForNavigation(), p.click('.modal.show .btn-danger')]);
+		await p.waitForLoadState('networkidle');
+		expect(await p.locator('#jqNoWarnings').count() === 1, 'messages cleared');
+	} finally {
+		if (u) await u.context().close();
+		sql(before === '' ? "DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'jquery'"
+			: "UPDATE zzzzsys_nunext_setting SET setting_value = '" + before.replace(/'/g, "''") + "' WHERE zzzzsys_nunext_setting_id = 'jquery'");
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'jquery_warnings'");
+		if (own) try { fs.unlinkSync(own); } catch (x) { /* gone */ }
+		ttRemove();
+	}
+};
+
+// Bootstrap 6 preparation (0.8.740): point BS6 of the Compatibility check (developer mode – the test site runs in it), grey, not open
+T.bs6_compat = async (s) => {
+	ttInstall();
+	try {
+		sql("INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_id, sob_all_type, sob_html_code) VALUES ('tto_e2e_bs6', 'ttcus', 'e2e_bs6', 'html', '<div class=\"d-none d-md-block col-lg-6 btn-sm\">x</div><script>window.bootstrap.Modal.getInstance(1)</script>')");
+		const before = await s.ga.evaluate(async (u) => (await (await fetch(u)).text()), BASE + 'index.php?p=compat');
+		await open(s.ga, 'index.php?p=compat');
+		const row = s.ga.locator('#compat_findings tr[data-finding="BS6"]');
+		expect(await row.count() === 1, 'BS6 row shown in developer mode');
+		expect(await row.evaluate(r => r.classList.contains('compat-prep') && !!r.querySelector('.badge.text-bg-secondary')), 'BS6 is grey (preparation)');
+		const txt = await row.locator('li').evaluateAll(lis => lis.map(l => l.textContent).join(' | '));
+		expect(/e2e_bs6 · HTML/.test(txt) && /d-md-block/.test(txt) && /col-lg-6/.test(txt) && !/btn-sm/.test(txt) && /window\.bootstrap/.test(txt), 'BS6 places: ' + txt);
+		expect((txt.match(/e2e_bs6/g) || []).length === 1, 'HTML object listed once: ' + txt);
+		// not counted as open: the open badge counts only red rows
+		const red = await s.ga.locator('#compat_findings tr.compat-missing').count();
+		const badge = await s.ga.locator('#compat_findings .badge.text-bg-danger, #compat_findings .badge.text-bg-success').first().textContent();
+		expect(new RegExp('\\b' + red + '\\b').test(badge) || red === 0, 'open count = red rows (' + red + '): ' + badge);
+		expect(before.length > 0, 'page loads');
+	} finally {
+		sql("DELETE FROM zzzzsys_object WHERE zzzzsys_object_id = 'tto_e2e_bs6'");
+		ttRemove();
+	}
+};
+
 // list cards on phones (0.8.466): a card that is a link holds no other link – the users count of access levels stayed outside the card
 T.list_cards = async (s) => {
 	const ctx = await browser.newContext({ locale: 'en-GB', viewport: { width: 390, height: 844 }, storageState: await s.ga.context().storageState() });
@@ -7374,6 +7976,91 @@ T.webhooks = async (s) => {
 		sql(`UPDATE sample_customer SET cus_name = ${keepName === '' ? 'NULL' : "'" + keepName.replace(/'/g, "''") + "'"} WHERE sample_customer_id = '${cust}'`);
 		clean();
 	}
+};
+
+// advanced search of browse lists (0.8.719): text / number / date operators on the list's columns, all / any, chips, Clear,
+// "My searches", nuNextAdvancedSearch(), the search kept in Export and paging; a masked or hidden column is never offered
+T.adv_search = async (s) => {
+	const p = s.ga;
+	const tot = async () => +((await p.textContent('.nuBrowseCard .card-footer')).match(/(\d+)/) || [0, -1])[1];
+	const ids = (where) => +sql('SELECT COUNT(*) FROM sample_customer WHERE ' + where);
+	const url = (adv) => 'index.php?p=form&f=samplecustomer&adv=' + encodeURIComponent(JSON.stringify(adv));
+	sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'advsearch:samplecustomer'");
+	try {
+		// the panel: one row, field / operator / value, Apply
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		const all = await tot();
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvRow');
+		await p.selectOption('#nuAdvPanel .nuAdvField', { label: 'Name' });
+		await p.selectOption('#nuAdvPanel .nuAdvOp', 'starts');
+		await p.fill('#nuAdvPanel .nuAdvVal', 'B');
+		await Promise.all([p.waitForNavigation(), p.click('#nuAdvPanel .nuAdvApply')]);
+		expect(await tot() === ids("cus_name LIKE 'B%'") && /adv=/.test(p.url()), 'starts with: ' + await tot());
+		expect(await p.locator('#nuAdvChips .nuAdvChip').count() === 1 && /Name/.test(await p.textContent('#nuAdvChips')), 'chip');
+		// server side, every type (straight through the URL)
+		const checks = [
+			[{ m: 'all', c: [[1, 'contains', 'a']] }, "cus_name LIKE '%a%'"],
+			[{ m: 'all', c: [[1, 'ncontains', 'a']] }, "COALESCE(cus_name, '') NOT LIKE '%a%'"],
+			[{ m: 'all', c: [[2, 'in', ['GB', 'DE']]] }, "cus_country IN ('GB', 'DE')"],
+			[{ m: 'all', c: [[2, 'nempty', '']] }, "COALESCE(cus_country, '') <> ''"],
+			[{ m: 'all', c: [[4, 'gt', "30'000"]] }, 'cus_credit > 30000'],
+			[{ m: 'all', c: [[4, 'between', '10000', '30000']] }, 'cus_credit BETWEEN 10000 AND 30000'],
+			[{ m: 'all', c: [[3, 'before', '2024-06-01']] }, "cus_since < '2024-06-01'"],
+			[{ m: 'any', c: [[2, 'eq', 'GB'], [4, 'ge', '50000']] }, "cus_country = 'GB' OR cus_credit >= 50000"],
+			[{ m: 'all', c: [[2, 'eq', 'GB'], [4, 'ge', '50000']] }, "cus_country = 'GB' AND cus_credit >= 50000"],
+			[{ m: 'all', c: [[1, 'contains', '100%_!']] }, "cus_name LIKE '%100!%!_!!%' ESCAPE '!'"],
+		];
+		for (const [adv, where] of checks) {
+			await open(p, url(adv));
+			expect(await tot() === ids(where), JSON.stringify(adv) + ': ' + await tot() + ' ≠ ' + ids(where));
+		}
+		// a bad column / operator / value is left out (all rows)
+		await open(p, url({ m: 'all', c: [[99, 'eq', 'x'], [1, 'gt', '5'], [4, 'gt', 'abc']] }));
+		expect(await tot() === all && await p.locator('#nuAdvChips').count() === 0, 'invalid conditions not ignored');
+		// chip ✕ removes one condition, Reset removes all
+		await open(p, url({ m: 'all', c: [[2, 'eq', 'GB'], [4, 'ge', '50000']] }));
+		await Promise.all([p.waitForNavigation(), p.locator('#nuAdvChips .nuAdvChip').nth(1).click()]);
+		expect(await tot() === ids("cus_country = 'GB'") && await p.locator('#nuAdvChips .nuAdvChip').count() === 1, 'chip ✕');
+		// the search goes along to Export (Excel link) and stays with the normal search
+		expect(/adv=/.test(decodeURIComponent(await p.getAttribute('#nuExportButton + .dropdown-menu .nuExpXlsx', 'href'))), 'export without the search');
+		// My searches: save, use, delete
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvSaveName');
+		await p.fill('#nuAdvPanel .nuAdvSaveName', 'e2e British');
+		await p.click('#nuAdvPanel .nuAdvSaveBtn'); await p.waitForSelector('#nuAdvPanel .nuAdvSavedUse');
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'advsearch:samplecustomer' AND name = 'e2e British'") === 1, 'not saved');
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvSavedUse');
+		await Promise.all([p.waitForNavigation(), p.click('#nuAdvPanel .nuAdvSavedUse')]);
+		expect(await tot() === ids("cus_country = 'GB'"), 'saved search not applied');
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvSavedDel');
+		await p.click('#nuAdvPanel .nuAdvSavedDel'); await p.waitForTimeout(500);
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'advsearch:samplecustomer'") === 0, 'not deleted');
+		// Clear
+		await Promise.all([p.waitForNavigation(), p.click('#nuAdvPanel .nuAdvClear')]);
+		expect(!/adv=/.test(p.url()) && await tot() === all, 'Clear');
+		// form code: nuNextAdvancedSearch()
+		await Promise.all([p.waitForNavigation(), p.evaluate(() => nuNextAdvancedSearch([{ column: 'Country', op: 'eq', value: 'DE' }]))]);
+		const got = await p.evaluate(() => nuNextAdvancedSearch());
+		expect(await tot() === ids("cus_country = 'DE'") && got.conditions.length === 1 && got.conditions[0].title === 'Country', 'nuNextAdvancedSearch: ' + JSON.stringify(got));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'advsearch:samplecustomer'");
+	}
+};
+
+// "Please check the highlighted fields" (0.8.718): a click lists the fields with their messages, a click on one puts the cursor there
+T.check_fields_list = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=webhooks&id=new');
+	await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+	const al = p.locator('.alert.nuCheckForm');
+	expect(await al.count() === 1 && await al.locator('.nuCheckList').isHidden(), 'message not folded');
+	await al.locator('.nuCheckToggle').click();
+	const items = await al.locator('.nuCheckItem').allTextContents();
+	expect(items.length >= 3 && items.some(t => /Name/.test(t)) && items.some(t => /URL/.test(t) && /https/.test(t)), 'list: ' + JSON.stringify(items));
+	await al.locator('.nuCheckItem', { hasText: 'URL' }).click(); await p.waitForTimeout(600);
+	expect(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'whUrl', 'cursor not in the field');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 // code snippets by nuBuilder Forte's scope "Selectable in" (0.8.714): 0 Forms / Custom Code, 1 Setup / Header, 2 SQL, 3 Procedures/PHP;
@@ -7969,9 +8656,17 @@ T.sample_ticket = async (s) => {
 	try {
 		if (was) php("NuSampleSet::remove('ticket');");
 		await open(p, 'index.php?p=sample');
+		// 0.8.742: list of samples left, one pane right – a click selects without a reload (?s= in the address)
+		expect(await p.locator('#smpList [data-smp]').count() >= 2 && await p.locator('#smpSet_ticket').isHidden(), 'sample list / panes');
+		await p.click('#smpList [data-smp="ticket"]');
+		expect(await p.locator('#smpSet_ticket').isVisible() && await p.locator('#smpSet_sales').isHidden() && /[?&]s=ticket/.test(p.url()), 'list click selects the ticket pane: ' + p.url());
 		expect(await p.locator('#smpSet_ticket .smpSetInstall').count() === 1, 'ticket sample card without Install');
 		await Promise.all([p.waitForNavigation(), p.click('#smpSet_ticket .smpSetInstall')]); await p.waitForLoadState('networkidle');
 		expect(await p.locator('#smpSet_ticket .smpSetInstalled').count() === 1, 'not installed');
+		// passwords: tab Logins open, masked until "Show passwords"
+		expect(await p.locator('#smp_ticket_logins').isVisible() && await p.locator('#smpSet_ticket .smpPwVal').first().isHidden(), 'passwords masked on the Logins tab');
+		await p.click('#smpSet_ticket .smpPwToggle');
+		expect(await p.locator('#smpSet_ticket .smpPwVal').first().isVisible(), 'Show passwords');
 		const pw = {};
 		for (const c of await p.locator('#smpSet_ticket [data-sample-pw]').all()) pw[await c.getAttribute('data-sample-pw')] = (await c.textContent()).trim();
 		expect(Object.keys(pw).length >= 5 && pw.tkt_clara, 'passwords: ' + Object.keys(pw).join(','));
@@ -8019,7 +8714,8 @@ T.sample_ticket = async (s) => {
 		expect(a.errors.length === 0, 'agent: ' + a.errors.slice(0, 2).join(' | '));
 		await a.context().close();
 		// remove on the page
-		await open(p, 'index.php?p=sample');
+		await open(p, 'index.php?p=sample&s=ticket');
+		await p.click('#smp_ticket_maint_tab'); await p.waitForTimeout(300);
 		await p.click('#smpSet_ticket .smpSetRemove'); await p.waitForTimeout(400);
 		await Promise.all([p.waitForLoadState('networkidle'), p.click('#nuConfirm.show .js-confirm-ok')]);
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'tkthome'") === '0' && sql("SHOW TABLES LIKE 'tkt_ticket'") === '', 'not removed');

@@ -23,8 +23,9 @@ final class NuBranding
 	public const MAX_BYTES = 524288;
 	public const TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
 	public const DEFAULTS = ['accent' => '', 'logo' => false, 'logo_dark' => false, 'show_title' => false, 'favicon' => false, 'logo_show' => 'all',
-		'env_label' => '', 'env_color' => '#dc3545', 'rev' => ''];
+		'env_label' => '', 'env_color' => '#dc3545', 'title' => '', 'rev' => ''];
 	public const ENV_LEN = 20;
+	public const TITLE_LEN = 100;   // own title of the application (0.8.736), '' = $nuConfigTitle
 	/** Where the logo shows (0.8.630): all = top bar and sign-in pages, login = sign-in pages only, none = nowhere. */
 	public const LOGO_SHOW = ['all', 'login', 'none'];
 
@@ -56,6 +57,7 @@ final class NuBranding
 		$out['accent'] = self::hex($out['accent']);
 		$out['env_color'] = self::hex($out['env_color']) ?: self::DEFAULTS['env_color'];
 		$out['env_label'] = mb_substr(trim($out['env_label']), 0, self::ENV_LEN);
+		$out['title'] = mb_substr(trim($out['title']), 0, self::TITLE_LEN);
 		if (!in_array($out['logo_show'], self::LOGO_SHOW, true)) $out['logo_show'] = 'all';
 		return self::$cache = $out;
 	}
@@ -250,6 +252,7 @@ final class NuBranding
 		$new['favicon'] = !empty($in['favicon']);
 		$new['logo_show'] = in_array((string)($in['logo_show'] ?? 'all'), self::LOGO_SHOW, true) ? (string)$in['logo_show'] : 'all';
 		if (!self::envFromConfig()) $new['env_label'] = $label;
+		if (array_key_exists('title', $in)) $new['title'] = mb_substr(trim((string)$in['title']), 0, self::TITLE_LEN);   // 0.8.736
 		$new['env_color'] = $envColor;
 		if ($accent !== '' && self::contrast($accent, '#ffffff') < 3) $warn[] = t('brand_warn_light');
 
@@ -270,6 +273,16 @@ final class NuBranding
 		self::$cache = null;
 		NuLog::write('branding_saved', 'zzzzsys_nunext_setting', self::SETTING, ['changed' => array_keys($changed)]);
 		return [[], $warn];
+	}
+
+	/** The logo no longer in the top bar (0.8.734, right-click on it): "everywhere" → "only on the sign-in pages". @return bool changed */
+	public static function hideTopLogo(): bool
+	{
+		$b = self::get();
+		if ($b['logo_show'] !== 'all') return false;
+		[$err] = self::save(['accent_on' => $b['accent'] !== '', 'accent' => $b['accent'], 'show_title' => $b['show_title'], 'favicon' => $b['favicon'],
+			'logo_show' => 'login', 'env_label' => $b['env_label'], 'env_color' => $b['env_color']], [], []);
+		return !$err;
 	}
 
 	/** Image type of an upload from its content ('' when it is not one of TYPES). An SVG must really be one. */

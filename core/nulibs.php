@@ -55,7 +55,7 @@ final class NuLibs
 		'tcpdf'           => ['title' => 'TCPDF', 'dir' => 'tcpdf', 'web' => false, 'entry' => ['tcpdf.php', 'vendor/tecnickcom/tcpdf/tcpdf.php'], 'rec' => true, 'use' => 'pdf'],
 		'phpmailer'       => ['title' => 'PHPMailer', 'dir' => 'phpmailer', 'web' => false, 'entry' => ['PHPMailer.php', 'src/PHPMailer.php'], 'rec' => true, 'use' => 'mail'],
 		'tinymce'         => ['title' => 'TinyMCE', 'dir' => 'tinymce', 'web' => true, 'entry' => ['tinymce.min.js'], 'rec' => true, 'use' => 'wysiwyg'],
-		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db'],
+		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db', 'db' => 'mysql'],   // 0.8.744: not offered on SQL Server (Adminer is)
 		'adminer'         => ['title' => 'Adminer', 'dir' => 'adminer', 'web' => false, 'entry' => ['adminer.php', 'adminer-*.php'], 'rec' => false, 'use' => 'db'],
 		// nuBuilder's Uppy (0.8.459): file objects with target "File System" upload with it (uppy.min.js / .css + locales/)
 		'uppy'            => ['title' => 'Uppy', 'dir' => 'uppy', 'web' => true, 'entry' => ['uppy.min.js'], 'rec' => false, 'use' => 'upload'],
@@ -669,8 +669,16 @@ final class NuLibs
 	 * One row per slot for the update page / installer: in use (version, where from), installed packs, roll back target, safe
 	 * version state, best candidate. @return array slot => array
 	 */
-	public static function overview(bool $installer = false, ?array $gh = null): array
+	/** Is the slot of use on this database type? phpMyAdmin is MySQL / MariaDB only (0.8.744). */
+	public static function forDb(string $slot, string $dbType): bool
 	{
+		$need = self::SLOTS[$slot]['db'] ?? '';
+		return $need === '' || $need === $dbType;
+	}
+
+	public static function overview(bool $installer = false, ?array $gh = null, ?string $dbType = null): array
+	{
+		if ($dbType === null && !$installer) { try { $dbType = nu_db()->type; } catch (Throwable) { $dbType = null; } }
 		$sec = [];
 		// the installer has no nuconfig.php yet (nu_cfg would stop): there only the packs count
 		if (!$installer) foreach (NuSecurity::libraries() as $l) if (isset(self::BY_NAME[$l['name']])) $sec[self::BY_NAME[$l['name']]] = $l;
@@ -680,6 +688,7 @@ final class NuLibs
 		$unmet = $installer ? [] : self::unmet($req, null, $avail);
 		$out = [];
 		foreach (self::SLOTS as $slot => $def) {
+			if ($dbType !== null && !self::forDb($slot, $dbType) && self::activeVersion($slot) === '') continue;   // phpMyAdmin on SQL Server: not offered
 			$l = $sec[$slot] ?? ['version' => '', 'path' => '', 'min' => '', 'status' => 'missing', 'note' => '', 'local' => ''];
 			$act = self::activeVersion($slot);
 			$nb = $installer ? '' : NuBuilderLib::path();

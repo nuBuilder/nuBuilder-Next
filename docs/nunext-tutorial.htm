@@ -65,7 +65,7 @@
 		<ul>
 			<li><strong>+</strong> on the right of a tile opens a new record straight away (e.g. a new user). <strong>▾</strong> opens a menu with the pages behind the tile (e.g. <em>Forms</em> → New form, Cloner, Formats, Translations …).</li>
 			<li><strong>Badges</strong> on tiles show information at a glance: an update of the <em>Sample data</em>, how many points of <em>System status</em> need a look.</li>
-			<li>The <strong>search field</strong> above the tiles filters them as you type (<kbd>/</kbd> jumps into it). Below, <em>More results</em> also lists forms, procedures, reports and the pages of the ▾ menus. English words always work, too.</li>
+			<li>The <strong>search field</strong> above the tiles shows one list of results as you type (<kbd>/</kbd> jumps into it): the matching tiles first, then forms, procedures, reports and the pages of the ▾ menus. The funnel button in the field chooses what is included. English words always work, too.</li>
 			<li><kbd>Ctrl</kbd>+<kbd>K</kbd> (or the magnifier in the top bar) opens the same search on <em>every</em> page.</li>
 			<li>The <strong>top bar</strong>: the logo always leads back to the start page; the theme button switches light / dark / automatic; the language menu changes the interface language; the <strong>user menu</strong> (top right) holds Help, this tutorial, the database tools and Sign out (System status and Security are start page tiles).</li>
 			<li><strong>Back</strong> (first button on every page) goes one level up – from a record to its list, from a list to the start page.</li>
@@ -111,6 +111,7 @@
 		<ul>
 			<li>Type into the search field and press <kbd>Enter</kbd> – several words must all match. Click a column title to sort; click again to reverse.</li>
 			<li>Filters sit behind the funnel button next to the search field; × resets search and filters.</li>
+			<li>The <i class="bi bi-chevron-down"></i> next to the search of a form's list opens the <strong>advanced search</strong>: conditions such as <em>Name starts with B</em> or <em>Total between 100 and 500</em>, all or any of them; save a search you need often under <em>My searches</em>.</li>
 			<li>Click a row to open the record; <em>Add</em> creates a new one. <em>Print</em> opens the list in a new tab – with <em>Copy</em> (for Excel) and <em>Export CSV</em>.</li>
 		</ul>
 		<h4>Edit forms</h4>
@@ -300,7 +301,7 @@
 		<h3>Creating a form</h3>
 		<p><a data-open="builder" data-args="new=1">New form</a> asks in three steps: the form (description, code, type), the table and its fields, then the layout and who may use it. For the table there are two ways:</p>
 		<ul>
-			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns; <em>Choose columns and order</em> picks only some of them, their labels and their order.</li>
+			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns; <em>Choose columns and order</em> picks only some of them, their labels and their order. Views are marked “(view)”: the key column is suggested, and a view the database cannot save to makes the form a <em>Browse</em> form.</li>
 			<li><strong>New table</strong>: enter the columns (name, label, type, length, required). The table gets a nuBuilder-Forte-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
 		</ul>
 		<p>Afterwards the form opens in <a data-lesson="design-mode">design mode</a>. Give your forms a meaningful <em>code</em> and a <em>group</em> – the forms list and the access level page filter by them.</p>
@@ -563,13 +564,15 @@
 		<p>The <a data-open="securitycheck">Security check</a> shows everything that matters for this installation as traffic lights – red: fix it soon, yellow: check it, blue: information – each with a link to where it is fixed: HTTPS, base URL, secret key, the globeadmin password and its two-factor login, debug output, files the web server must not hand out, library versions, users with old passwords, access levels with admin-equivalent rights.</p>
 		<ul>
 			<li><strong>Security settings</strong> on the same page: who grants admin rights, log retention, when to ask for the password again, old md5 passwords …</li>
-			<li><strong>Two-factor login</strong>: <code>$nuConfig2FAAdmin</code> for the globeadmin, <code>$nuConfig2FAUser</code> plus <em>Use two-factor authentication</em> on access levels for users. Each person sets up an authenticator app under <a data-open="security">Security</a> in the user menu, or gets codes by e-mail.</li>
+			<li><strong>Two-factor login</strong>: <code>$nuConfig2FAAdmin</code> for the globeadmin, <code>$nuConfig2FAUser</code> plus <em>Use two-factor authentication</em> on access levels for users. Each person sets up an authenticator app on the <a data-open="security">Security</a> page (users: <em>Security</em> in the user menu), or gets codes by e-mail.</li>
+			<li><strong>IP access</strong> (<a data-open="ipaccess">Settings → Security → IP access</a>): sign-in only from certain addresses or networks – one list for all access levels, exceptions per level and a rule of its own for the globeadmin. <em>Test an address</em> shows who could work from an address; saving never locks out the address you are using.</li>
+			<li><strong>Password policy</strong> (<a data-open="pwpolicy">Settings → Sign-in &amp; security → Password policy</a>): minimum length, a check against known leaked passwords (only 5 characters of the hash leave the server) – also at sign-in – and, only where a rule requires it, a regular change; <em>Try a password</em> shows what the rules say.</li>
 			<li>Built in: a login rate limit, signed update packages, strict security headers, masked secrets in the log.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Open the <a data-open="securitycheck">Security check</a> and go through every red and yellow point. Set up an authenticator app for your own login under <a data-open="security">Security</a>.</p>
 		</div>
-		<p><a data-help="security-check">Security</a> · <a data-help="security-checklist">Checklist for a live server</a></p>
+		<p><a data-help="security-check">Security</a> · <a data-help="ip-access">IP access</a> · <a data-help="password-policy">Password policy</a> · <a data-help="security-checklist">Checklist for a live server</a></p>
 	</section>
 
 	<section class="tut-lesson" id="logs" data-right="log">

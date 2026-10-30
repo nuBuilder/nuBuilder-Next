@@ -250,8 +250,12 @@
 		var existingTables = [];
 		api('tables', {}).then(function (r) {
 			existingTables = r.tables.map(function (x) { return x.toLowerCase(); });
-			var s = $('#nb_table');
-			r.tables.forEach(function (tb) { s.appendChild(h('option', {value: tb, text: tb})); });
+			var s = $('#nb_table'), views = (r.views || []).map(function (x) { return x.toLowerCase(); });
+			// views (0.8.721): marked "name (view)"
+			r.tables.forEach(function (tb) {
+				var isView = views.indexOf(tb.toLowerCase()) >= 0;
+				s.appendChild(h('option', {value: tb, text: tb + (isView ? ' (' + t('builder_view_tag') + ')' : ''), 'data-view': isView ? '1' : null}));
+			});
 			// searchable (Tom Select, like Select2): type to filter the tables; the select keeps its value and change event
 			if (window.TomSelect) new TomSelect(s, {create: false, maxOptions: null, allowEmptyOption: false, placeholder: t('please_select'),
 				searchField: ['text'], sortField: [{field: '$order'}], render: {no_results: function () { return '<div class="no-results">' + t('no_records') + '</div>'; }}});
@@ -261,6 +265,9 @@
 			pk.innerHTML = '';
 			pk.appendChild(h('option', {value: '', text: t('builder_pk_auto')}));
 			info.textContent = '';
+			var vi = $('#nbViewInfo');
+			vi.hidden = true;
+			vi.textContent = '';
 			pick.build([]);
 			if (!this.value) return;
 			api('columns', {table: this.value}).then(function (r) {
@@ -269,10 +276,31 @@
 				r.columns.forEach(function (c) { pk.appendChild(h('option', {value: c.name, text: c.name + (c.auto ? ' (auto)' : '')})); });
 				pk.options[0].textContent = t('builder_pk_auto') + (auto ? ': ' + auto.name : '');
 				info.textContent = t('builder_columns_found').replace('%d', r.columns.length);
+				if (r.view) viewInfo(r.view);
 			}).catch(function (e) { info.textContent = e.message; });
 		});
 
 		var pick = pickList();
+
+		// a view was picked (0.8.721): the suggested key column and whether the database can save to it; read only → form type Browse
+		function viewInfo(v) {
+			var vi = $('#nbViewInfo'), type = $('#nb_type'), lines = [], warn = false;
+			if (v.updatable === true) lines.push(t('builder_view_ok'));
+			else if (v.updatable === false) {
+				warn = true;
+				if (type.value === 'browseedit' || type.value === 'edit') { type.value = 'browse'; type.dispatchEvent(new Event('change')); lines.push(t('builder_view_ro')); }
+				else lines.push(t('builder_view_ro_kept'));
+			} else lines.push(t('builder_view_unknown'));
+			if (v.key) {
+				$('#nb_pk').value = v.key;
+				lines.push(t('builder_view_key').replace('%s', v.key));
+				if (v.unique === false) { warn = true; lines.push(t('builder_view_key_dup').replace('%s', v.key)); }
+			}
+			vi.innerHTML = '';
+			lines.forEach(function (l, i) { if (i) vi.appendChild(h('br', {})); vi.appendChild(document.createTextNode(l)); });
+			vi.className = 'alert py-2 px-3 mt-2 mb-0 small ' + (warn ? 'alert-warning' : 'alert-info');
+			vi.hidden = false;
+		}
 
 		// new table: column grid
 		function addCol(c) {

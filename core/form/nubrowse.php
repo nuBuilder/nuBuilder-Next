@@ -172,7 +172,7 @@ final class NuBrowse
 	 * The query of the list: [inner SQL with nu_pk, nu_c<i> (the columns) and nu_o<k> (the browse SQL's own ORDER BY), outer default
 	 * order on nuT ('' = none)]. $cols: list of ['index' => i, 'expr' => display expression].
 	 */
-	public static function build(string $sql, string $pk, array $cols): array
+	public static function build(string $sql, string $pk, array $cols, ?callable $columnsOf = null): array
 	{
 		$p = self::splitSelect($sql);
 		$pkIdent = NuDB::ident($pk ?: 'id');
@@ -192,7 +192,24 @@ final class NuBrowse
 		$items = self::splitList($p['fields']);
 		foreach ($items as $it) { [$e, $a] = self::stripAlias($it); if ($a !== null) $aliases[strtolower($a)] = $e; }
 		$f = ["$pkIdent AS nu_pk"];
-		foreach ($cols as $c) $f[] = self::stripAlias($c['expr'])[0] . ' AS nu_c' . $c['index'];
+		// a column that names an alias of the field list (SELECT CONCAT(a, b) AS full_name … with the column full_name, 0.8.731, reported
+		// by a tester): the field list is replaced, so the alias would not exist – its expression is used instead. Only for a bare name that
+		// is not a real column of the tables in FROM (a real column wins, as in nuBuilder Forte, which never resolves aliases); when a
+		// source cannot be checked (derived table, other database, unknown table) the name stays as it is.
+		$real = null;
+		$isAlias = function (string $e) use ($aliases, $p, $columnsOf, &$real): ?string {
+			$name = trim($e);
+			if (!preg_match('/^(?:`[^`]+`|"[^"]+"|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$]*)$/', $name)) return null;
+			$key = strtolower(trim($name, '`"[]'));
+			if (!isset($aliases[$key]) || strtolower(trim($aliases[$key], '`"[] ')) === $key) return null;
+			$real ??= self::sourceColumns($p['from'], $columnsOf) ?? false;
+			if ($real === false || isset($real[$key])) return null;
+			return $aliases[$key];
+		};
+		foreach ($cols as $c) {
+			$e = self::stripAlias($c['expr'])[0];
+			$f[] = ($isAlias($e) ?? $e) . ' AS nu_c' . $c['index'];
+		}
 		$outer = [];
 		foreach ($p['order'] !== '' ? self::splitList($p['order']) : [] as $k => $item) {
 			[$e, $dir] = self::orderItem($item);
@@ -207,6 +224,29 @@ final class NuBrowse
 		$inner = 'SELECT ' . implode(', ', $f) . ' ' . $p['from'] . ($p['where'] !== '' ? ' ' . $p['where'] : '') . ($p['group'] !== '' ? ' ' . $p['group'] : '')
 			. ($p['having'] !== '' ? ' ' . $p['having'] : '');
 		return [$inner, implode(', ', $outer)];
+	}
+
+	/**
+	 * Columns of the tables in a FROM clause (lower-case names as keys), or null when one source cannot be checked: a derived table
+	 * (FROM / JOIN followed by "("), a qualified name (other database / schema) or a table without columns (unknown). (0.8.731)
+	 */
+	public static function sourceColumns(string $from, ?callable $columnsOf = null): ?array
+	{
+		if (preg_match('/\b(?:FROM|JOIN)\s*\(/i', $from)) return null;
+		$id = '(?:`[^`]+`|"[^"]+"|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$]*)';
+		preg_match_all('/(?:\bFROM|\bJOIN|,)\s+(' . $id . '(?:\.' . $id . ')*)/i', $from, $m);
+		if (!$m[1]) return null;
+		$columnsOf ??= static function (string $t): array {
+			try { return array_keys(nu_db()->columns($t)); } catch (Throwable) { return []; }
+		};
+		$out = [];
+		foreach (array_unique($m[1]) as $t) {
+			if (str_contains($t, '.')) return null;
+			$cols = $columnsOf(trim($t, '`"[]'));
+			if (!$cols) return null;
+			foreach ($cols as $c) $out[strtolower((string)$c)] = true;
+		}
+		return $out;
 	}
 
 	/** "expr DESC" → [expr, ' DESC'] */
@@ -273,6 +313,10 @@ final class NuBrowse
 			if ($val === self::NULL_FILTER) { $where[] = '(' . $col($c) . ') IS NULL'; continue; }
 			$where[] = self::castText($col($c)) . ' = ?';
 			$params[] = $val;
+		}
+		if (!empty($opt['adv'])) {                                            // advanced search (0.8.719, NuAdvSearch)
+			[$aw, $ap] = NuAdvSearch::where($cols, $opt['adv'], $col);
+			if ($aw !== '') { $where[] = $aw; array_push($params, ...$ap); }
 		}
 		if (!empty($opt['filter'])) {
 			$where[] = '(' . $opt['filter'][0] . ')';
@@ -348,7 +392,7 @@ final class NuBrowse
 		return ['in' => array_values(array_unique($in)), 'out' => array_values(array_unique($out))];
 	}
 
-	private static function castText(string $expr): string
+	public static function castText(string $expr): string
 	{
 		return nu_db()->type === 'sqlsrv' ? "CAST(($expr) AS NVARCHAR(4000))" : "CAST(($expr) AS CHAR)";
 	}
@@ -401,6 +445,7 @@ function nu_browse_request(): array
 		'pg'   => max(1, (int)($_GET['pg'] ?? 1)),
 		'per'  => nu_per_param(true),   // the footer's page size menu (0.8.437; any size since 0.8.604 – nuBrowseRowsPerPageFilter); 0 = the form's rows per page
 		'flt'  => $flt,
+		'adv'  => NuAdvSearch::parse($_GET['adv'] ?? ''),   // advanced search (0.8.719)
 		// nuBuilder nuSetNoSearchColumns / nuSetSearchColumns: column indexes the search skips / is limited to ("1,3")
 		'nsc'  => nu_browse_index_list($_GET['nsc'] ?? ''),
 		'sc'   => nu_browse_index_list($_GET['sc'] ?? ''),

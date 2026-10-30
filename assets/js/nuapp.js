@@ -614,6 +614,61 @@
 		$$('[data-bs-target="#' + c.id + '"]').forEach(function (b) { b.setAttribute('aria-expanded', 'true'); b.classList.remove('collapsed'); });
 	});
 
+	// ---------------------------------------------------------------- "Please check the highlighted fields" (0.8.718)
+	// The message becomes a button: it lists the fields marked .is-invalid (label + message); a click on one shows its tab / folded
+	// section, scrolls to it and puts the cursor there.
+	$$('.alert.nuCheckForm').forEach(function (al) {
+		var seen = [], items = [];
+		$$('.is-invalid').forEach(function (f) {
+			if (seen.indexOf(f) >= 0 || f.closest('.nuCheckForm') || (f.type === 'hidden')) return;
+			seen.push(f);
+			var id = f.id, lbl = id ? document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]') : null;
+			var col = f.closest('.col, [class*="col-"], .mb-3, .form-group') || f.parentElement;
+			if (!lbl && col) lbl = col.querySelector('.form-label, label');
+			var name = (lbl ? lbl.textContent : '') || f.getAttribute('aria-label') || f.getAttribute('placeholder') || f.name || id || '';
+			var fb = col ? col.querySelector('.invalid-feedback') : null;
+			items.push({el: f, name: name.replace(/\*/g, '').replace(/\s+/g, ' ').trim(), msg: fb ? fb.textContent.replace(/\s+/g, ' ').trim() : ''});
+		});
+		if (!items.length) return;
+		var msg = al.querySelector('div:not(.nuCheckList)') || al;
+		var btn = document.createElement('button');
+		btn.type = 'button'; btn.className = 'btn btn-link p-0 text-reset text-start text-decoration-none nuCheckToggle';
+		btn.setAttribute('aria-expanded', 'false'); if (al.getAttribute('data-tip')) btn.title = al.getAttribute('data-tip');
+		var chev = document.createElement('i'); chev.className = 'bi bi-chevron-right me-1 nuCheckChev'; chev.setAttribute('aria-hidden', 'true');
+		btn.appendChild(chev); btn.appendChild(document.createTextNode(msg.textContent.trim() + ' (' + items.length + ')'));
+		var list = document.createElement('ul'); list.className = 'nuCheckList mb-0 mt-1 ps-3'; list.hidden = true;
+		items.forEach(function (it) {
+			var li = document.createElement('li'), a = document.createElement('a');
+			a.href = '#'; a.className = 'link-danger nuCheckItem';
+			var b = document.createElement('strong'); b.textContent = it.name || '?'; a.appendChild(b);
+			if (it.msg) a.appendChild(document.createTextNode(' – ' + it.msg));
+			a.addEventListener('click', function (e) { e.preventDefault(); reveal(it.el); });
+			li.appendChild(a); list.appendChild(li);
+		});
+		msg.textContent = ''; msg.appendChild(btn); msg.appendChild(list);
+		btn.addEventListener('click', function () {
+			list.hidden = !list.hidden;
+			btn.setAttribute('aria-expanded', list.hidden ? 'false' : 'true');
+			chev.className = 'bi bi-chevron-' + (list.hidden ? 'right' : 'down') + ' me-1 nuCheckChev';
+		});
+	});
+	/** Shows a field wherever it is (tab pane, folded section, Tom Select) and puts the cursor there. */
+	function reveal(f) {
+		var pane = f.closest('.tab-pane');
+		if (pane && !pane.classList.contains('active') && pane.id) {
+			var t = document.querySelector('[data-bs-target="#' + pane.id + '"], [href="#' + pane.id + '"]');
+			if (t) { if (window.nuBs && nuBs.ready()) nuBs.tab(t).show(); else t.click(); }
+		}
+		var c = f.closest('.collapse:not(.show)');
+		if (c && window.nuBs && nuBs.ready()) nuBs.collapse(c, {toggle: false}).show();
+		var d = f.closest('details:not([open])'); if (d) d.open = true;
+		setTimeout(function () {
+			var target = f.tomselect ? f.tomselect.wrapper : (f.offsetParent === null && f.nextElementSibling ? f.nextElementSibling : f);
+			(target || f).scrollIntoView({block: 'center', behavior: 'smooth'});
+			if (f.tomselect) f.tomselect.focus(); else if (f.offsetParent !== null) f.focus({preventScroll: true});
+		}, 250);
+	}
+
 	// ---------------------------------------------------------------- confirm dialogs (form[data-confirm])
 	var modalEl = $('#nuConfirm');
 	var pending = null;
@@ -1509,4 +1564,41 @@ window.nuColResize = function (table, opt) {
 		});
 	}
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+	// no logo in the top bar (0.8.730): on desktop the page's breadcrumb sits next to the Home button; on phones it stays in the page.
+	// The <ol> itself is moved (its id and links keep working – the form page's back button counts its items); the first item, when it
+	// is the start page, is hidden there (the Home button is that step)
+	function navCrumbs() {
+		var slot = document.getElementById('nuNavCrumbs');
+		if (!slot) return;
+		var src = document.querySelector('#main nav[aria-label="breadcrumb"]'), ol = src ? src.querySelector('ol.breadcrumb') : null;
+		if (!ol) return;
+		var home = document.getElementById('nuHomeBtn'), hh = home ? home.getAttribute('href') : '';
+		Array.prototype.forEach.call(ol.querySelectorAll('.breadcrumb-item'), function (li) {
+			var a = li.querySelector('a');
+			if (a && hh && a.getAttribute('href') === hh) li.classList.add('nuCrumbHome');
+		});
+		var mq = window.matchMedia('(min-width: 768px)');
+		function place() {
+			var up = mq.matches;
+			if (up && ol.parentNode !== slot) slot.appendChild(ol);
+			if (!up && ol.parentNode !== src) src.appendChild(ol);
+			slot.hidden = !up;
+			src.hidden = up;
+			document.body.classList.toggle('nuCrumbsInNav', up);
+		}
+		if (mq.addEventListener) mq.addEventListener('change', place); else if (mq.addListener) mq.addListener(place);
+		place();
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', navCrumbs); else navCrumbs();
+
+	// right-click on the logo in the top bar (0.8.734, the globeadmin): asks, then hides it there (Branding → Show logo: only sign-in pages)
+	document.addEventListener('contextmenu', function (e) {
+		var a = e.target.closest ? e.target.closest('[data-nu-logo-hide]') : null;
+		if (!a) return;
+		var f = document.getElementById(a.getAttribute('data-nu-logo-hide'));
+		if (!f) return;
+		e.preventDefault();
+		if (f.requestSubmit) f.requestSubmit(); else f.submit();
+	});
 })();

@@ -284,6 +284,16 @@
      "id": "security-check",
      "title": "Security check, server rules and housekeeping",
      "file": "07-07-security-check.htm"
+    },
+    {
+     "id": "ip-access",
+     "title": "IP access",
+     "file": "07-08-ip-access.htm"
+    },
+    {
+     "id": "password-policy",
+     "title": "Password policy",
+     "file": "07-09-password-policy.htm"
     }
    ]
   },
@@ -318,6 +328,11 @@
      "id": "globalcode",
      "title": "Global code",
      "file": "08-05-globalcode.htm"
+    },
+    {
+     "id": "jquery",
+     "title": "jQuery version and jQuery 4",
+     "file": "08-16-jquery.htm"
     },
     {
      "id": "home-page",

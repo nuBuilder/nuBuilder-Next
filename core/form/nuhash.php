@@ -63,7 +63,7 @@ final class NuHash
 		'user'    => ['USER_ID', 'LOGIN_NAME', 'USER_NAME', 'USER_EMAIL', 'USER_CODE', 'USER_FIRST_NAME', 'USER_LAST_NAME', 'USER_POSITION', 'USER_DEPARTMENT',
 			'USER_TEAM', 'USER_ADDITIONAL1', 'USER_ADDITIONAL2', 'USER_LANGUAGE', 'LANGUAGE', 'USER_PERMISSIONS', 'ACCESS_LEVEL_ID', 'USER_GROUP_ID', 'ACCESS_LEVEL_CODE',
 			'ACCESS_LEVEL_GROUP', 'GLOBAL_ACCESS', 'HOME_ID', 'DEV_MODE', 'SESSION_ID'],
-		'form'    => ['FORM_ID', 'FORM_CODE', 'FORM_GROUP', 'RECORD_ID', 'NEW_RECORD', 'PREVIOUS_RECORD_ID', 'TABLE_ID'],
+		'form'    => ['FORM_ID', 'FORM_CODE', 'FORM_GROUP', 'RECORD_ID', 'NEW_RECORD', 'PREVIOUS_RECORD_ID', 'TABLE_ID', 'ADV_SEARCH'],
 		'context' => ['ID', 'CODE', 'SUBFORM_ID', 'OBJECT_ID', 'ROW', 'PROCEDURE_CODE'],
 		'date'    => ['nu_date', 'nu_date_time', 'nu_time', 'nu_year', 'nu_month', 'nu_day', 'nu_hour', 'nu_minute'],
 	];

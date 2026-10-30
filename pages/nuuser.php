@@ -219,7 +219,7 @@ if ($ufAll) $ufVals = array_combine(array_keys($ufAll), array_values($ufVals));
 $ufErr = [];
 
 $errors = [];
-$min    = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
+$min    = NuPwPolicy::minLength();
 
 // ------------------------------------------------------------------ save
 if (nu_is_post() && nu_post('action') === 'save') {
@@ -302,7 +302,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 		if (mb_strlen($pw) < $min)  $errors['password'] = t('pw_err_min', $min);
 		elseif (strlen($pw) > 72)   $errors['password'] = t('err_too_long', 72);
 		elseif ($pw !== $confirm)   $errors['password_confirm'] = t('pw_err_confirm');
-		elseif (($policy = NuAuth::passwordPolicy($pw, $isNew ? '' : (string)$id)) !== null) $errors['password'] = $policy;   // nu_check_password_policy (0.8.462)
+		elseif (($policy = NuAuth::passwordPolicy($pw, $isNew ? '' : (string)$id, ['login' => (string)($v['sus_login_name'] ?? ''), 'name' => trim((string)($v['sus_first_name'] ?? '') . ' ' . (string)($v['sus_last_name'] ?? '') . ' ' . (string)($v['sus_name'] ?? '')), 'email' => (string)($v['sus_email'] ?? '')])) !== null) $errors['password'] = $policy;   // nu_check_password_policy (0.8.462)
 	}
 
 	// custom fields (0.8.454): only the ones this admin may change; a new user's unique check against all others
@@ -560,6 +560,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 							</div>
 							<?php // existing user (0.8.587): placeholder "(unchanged)" instead of the hint below; "Password last changed" is in the (i) panel ?>
 							<div class="form-text<?= $isNew ? '' : ' d-none' ?>" id="passwordHint"><?= h($isNew ? t('pw_min_hint', $min) : '') ?></div>
+							<?= NuPwPolicy::rulesHtml('password') ?>
 							<?php if (!$isNew && $me['globeadmin'] && empty($me['demo']) && nu_cfg('nuConfigAutoLogin') && (string)($existing['sus_login_password'] ?? '') !== ''): // never for demo visitors: it logs in as that user
 								$alLinks = [];
 								foreach ([7, 1, 30, 90, 0] as $d) $alLinks[$d] = NuAuth::autoLoginLink($existing, $d); ?>
@@ -672,10 +673,18 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<?php if ($admRoleMay || $admRoleCur !== ''): $admRoles = NuAdmin::roles(); ?>
 					<div class="mb-3" id="admRoleField">
 						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('adm_role_field_tip')) ?>" title="<?= h(t('adm_role_field_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						<?php $canOpenRole = NuAdmin::can('adminroles', 'view'); $roleUrl = nu_url('adminroles', ['id' => '__ID__']);   // open the role in a new tab (0.8.738) ?>
+						<div class="<?= $canOpenRole ? 'input-group' : '' ?>">
 						<select class="form-select" id="admin_role" name="admin_role"<?= $admRoleMay ? '' : ' disabled' ?>>
 							<option value=""><?= h(t('adm_role_none')) ?></option>
 							<?php foreach ($admRoles as $ar): ?><option value="<?= h($ar['id']) ?>"<?= $admRoleSel === $ar['id'] ? ' selected' : '' ?>><?= h($ar['name'] . (NuAdmin::hasFull($ar['rights']) ? ' ⚠' : '')) ?></option><?php endforeach; ?>
 						</select>
+						<?php if ($canOpenRole): ?>
+							<a class="btn btn-outline-secondary nuOpenBtn<?= $admRoleSel === '' ? ' disabled' : '' ?>" id="admRoleOpen" target="_blank" rel="noopener"
+							   data-url="<?= h($roleUrl) ?>" href="<?= h($admRoleSel === '' ? '#' : str_replace('__ID__', rawurlencode($admRoleSel), $roleUrl)) ?>"
+							   <?= $admRoleSel === '' ? 'aria-disabled="true" tabindex="-1"' : '' ?> title="<?= h(t('adm_role_open')) ?>" aria-label="<?= h(t('adm_role_open')) ?>"><i class="bi bi-box-arrow-up-right"></i></a>
+						<?php endif; ?>
+						</div>
 					</div>
 					<?php endif; ?>
 				</div>

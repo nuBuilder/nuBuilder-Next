@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.715');
+define('NU_VERSION', '0.8.747');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -15,6 +15,9 @@ define('NU_CODEMIRROR', NU_VENDOR . '/codemirror-5.65.21');
 define('NU_QRCODE', NU_VENDOR . '/qrcode-generator-2.0.4');
 define('NU_JQUERY', NU_VENDOR . '/jquery');
 define('NU_JQCONFIRM', NU_VENDOR . '/jquery-confirm');
+define('NU_JQUERY4', NU_VENDOR . '/jquery-4.0.0');               // 0.8.741: jQuery 4 + Migrate (NuJquery)
+define('NU_JQMIGRATE3', NU_VENDOR . '/jquery-migrate-3.6.0');
+define('NU_JQMIGRATE4', NU_VENDOR . '/jquery-migrate-4.0.2');
 define('NU_FORMATTER', NU_VENDOR . '/formatter');
 define('NU_FONTAWESOME', NU_VENDOR . '/fontawesome-7.0.0');   // fallback for nuBuilder's "fa fa-…" icons (nuBuilder's own copy first)
 define('NU_TINYMCE', 'assets/vendor/tinymce');      // OLD place only (a hand copy of earlier versions) – TinyMCE is a library pack
@@ -34,7 +37,7 @@ const NU_AUTOLOAD = [
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
-	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
+	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
 ];
 spl_autoload_register(static function (string $class): void {
 	if (isset(NU_AUTOLOAD[$class])) require_once NU_ROOT . '/' . NU_AUTOLOAD[$class];

@@ -1,17 +1,19 @@
-/* Access level: the "open in new tab" button follows the chosen level (disabled while none is chosen). */
+/* Access level and admin role (0.8.738): the "open in new tab" button follows the chosen value (disabled while none is chosen). */
 (function () {
 	'use strict';
-	var sel = document.getElementById('sus_zzzzsys_access_id'), link = document.getElementById('accessOpen');
-	if (!sel || !link) return;
-	function sync() {
-		var id = sel.value, off = id === '';
-		link.href = off ? '#' : link.getAttribute('data-url').replace('__ID__', encodeURIComponent(id));
-		link.classList.toggle('disabled', off);
-		if (off) { link.setAttribute('aria-disabled', 'true'); link.setAttribute('tabindex', '-1'); }
-		else { link.removeAttribute('aria-disabled'); link.removeAttribute('tabindex'); }
-	}
-	sel.addEventListener('change', sync);
-	sync();
+	[['sus_zzzzsys_access_id', 'accessOpen'], ['admin_role', 'admRoleOpen']].forEach(function (pair) {
+		var sel = document.getElementById(pair[0]), link = document.getElementById(pair[1]);
+		if (!sel || !link) return;
+		var sync = function () {
+			var id = sel.value, off = id === '';
+			link.href = off ? '#' : link.getAttribute('data-url').replace('__ID__', encodeURIComponent(id));
+			link.classList.toggle('disabled', off);
+			if (off) { link.setAttribute('aria-disabled', 'true'); link.setAttribute('tabindex', '-1'); }
+			else { link.removeAttribute('aria-disabled'); link.removeAttribute('tabindex'); }
+		};
+		sel.addEventListener('change', sync);
+		sync();
+	});
 })();
 
 /* User form tabs General / Permission items (0.8.438): the open tab goes into the address (?tab=perm) and into the form, so a

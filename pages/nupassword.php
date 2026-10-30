@@ -8,7 +8,7 @@ if ($u['globeadmin']) {
 	nu_redirect(nu_url('home'));
 }
 
-$min    = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
+$min    = NuPwPolicy::minLength();
 $errors = [];
 
 if (nu_is_post()) {
@@ -26,6 +26,7 @@ if (nu_is_post()) {
 		if ($err === 'pw_err_current') $errors['current'] = t($err);
 		elseif ($err)                  $errors['new']     = t($err);
 		else {
+			unset($_SESSION['nu_pw_reason']);
 			nu_flash('success', t('pw_changed'));
 			nu_redirect(nu_url('home'));
 		}
@@ -39,7 +40,8 @@ nu_layout_start(t('pw_title'));
 		<h1 class="h3 mb-3"><?= h(t('pw_title')) ?></h1>
 		<?php if (!$u['change_password']): ?><div class="mb-3"><?= nu_back_button() ?></div><?php endif; ?>
 		<?php if ($u['change_password']): ?>
-			<div class="alert alert-warning d-flex gap-2"><i class="bi bi-shield-exclamation mt-1"></i><div><?= h(t('pw_forced')) ?></div></div>
+			<?php $why = (string)($_SESSION['nu_pw_reason'] ?? ''); // password policy (0.8.745): expired / leaked ?>
+			<div class="alert alert-warning d-flex gap-2" id="pwForced"<?= $why !== '' ? ' data-reason="' . h($why) . '"' : '' ?>><i class="bi bi-shield-exclamation mt-1"></i><div><?= h(t($why === 'leaked' ? 'pw_forced_leaked' : ($why === 'expired' ? 'pw_forced_expired' : 'pw_forced'))) ?></div></div>
 		<?php endif; ?>
 		<div class="card shadow-sm">
 			<div class="card-body p-4">
@@ -54,7 +56,7 @@ nu_layout_start(t('pw_title'));
 								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#pw_<?= $f ?>" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
 								<?= nu_feedback($errors, $f) ?>
 							</div>
-							<?php if ($f === 'new'): ?><div class="form-text"><?= h(t('pw_min_hint', $min)) ?></div><?php endif; ?>
+							<?php if ($f === 'new'): ?><?= NuPwPolicy::rulesHtml('pw_new') ?><?php endif; ?>
 						</div>
 					<?php endforeach; ?>
 					<div class="d-flex gap-2 justify-content-end">

@@ -648,7 +648,7 @@ final class NuImport
 		$existing = [];
 		foreach ($db->all('SELECT sus_login_name FROM zzzzsys_user') as $u) $existing[mb_strtolower((string)$u['sus_login_name'])] = true;
 		$ga = mb_strtolower((string)nu_cfg('nuConfigDBGlobeadminUsername'));
-		$min = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
+		$min = NuPwPolicy::minLength();
 		$opt['empty'] = 'null';
 
 		$res = ['inserted' => 0, 'updated' => 0, 'unchanged' => 0, 'failed' => 0, 'rows' => 0, 'errors' => [], 'rolled_back' => false,

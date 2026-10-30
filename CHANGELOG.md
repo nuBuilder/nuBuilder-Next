@@ -3,6 +3,192 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.747 – Release gate
+- Release gate: the full test run (smoke, every end-to-end test, the cross-test against nuBuilder Forte 4.9) passed.
+- Help brought up to date since the last gate: password policy (sign-in methods, own password, tutorial security lesson), breadcrumb in
+  the top bar, start page search row, admin role links and sorting; README features: password policy, jQuery 4.
+
+## 0.8.746 – Start page search stays visible
+- Start page (desktop, from 768 px): the search row with its buttons stays below the top bar while scrolling; on phones it scrolls
+  away as before.
+
+## 0.8.745 – Password policy
+- Password policy: new page Settings → Sign-in & security → Password policy (admin right Security check, password again after 15 minutes).
+  - Rules for every new password (user form, Change password, reset and welcome links, REST API): minimum length (at least
+    $nuConfigPasswordMinLength), optional upper-case / lower-case / digit / special character (off by default, as NIST SP 800-63B and the
+    BSI recommend), not the login, the name or the e-mail name. A checklist below the password fields ticks the rules while typing; a
+    refused password names every broken rule. nuBuilder Forte's nu_check_password_policy still runs afterwards.
+  - Known leaked passwords: Have I Been Pwned with k-anonymity (only 5 characters of the SHA-1 hash leave the server) and/or an offline
+    list of the 10,000 most common passwords (fallback when the service is not reachable). Optionally also at sign-in: a leaked
+    password must be changed right away (result remembered 30 days per password).
+  - Regular change, off by default (best practice): users every 30–365 days, per access level another interval (the shortest of a user's
+    levels counts), reminder 7 / 14 / 30 days before; expired = forced change after signing in. The globeadmin (password in nuconfig.php)
+    only gets a reminder with a link to the nuconfig.php editor – never a lock-out.
+  - "Try a password" checks a typed password against the rules (nothing stored).
+- Help: new page Password policy (Users and rights).
+
+## 0.8.744 – SQL Server: Adminer only
+- SQL Server: phpMyAdmin is no longer offered – its library pack is not listed on Update → Libraries and in the installer's library
+  step (also refused there), the Database buttons open Adminer. The Admin tools page explains it as a note instead of a warning that
+  still named Tiny File Manager.
+- Help: Tiny File Manager removed from the install, library pack and shortcut texts; phpMyAdmin marked as MySQL / MariaDB only.
+  TODO.md: the outdated point "phpMyAdmin / Tiny File Manager on MSSQL" removed.
+
+## 0.8.743 – nuHideHolders: button row, top bar, tabs
+- nuHideHolders() / nuRemoveHolders() for form code: 0 = the row with Add, Back, Save …, 1 = nuBuilder Next's top bar (logo, search,
+  user menu – only hidden, also by nuRemoveHolders, because its menus are needed), 2 = the tabs. nuBuilder Forte's 1 (breadcrumbs) is
+  replaced by the top bar. Function reference updated; the open question is gone from TODO.md.
+
+## 0.8.742 – Sample data page as list and detail
+- Sample data page reorganised: the samples are listed on the left with their state at a glance (dot: installed / update available /
+  not installed, version), the selected one opens on the right – Install or Open sample start page / Refresh at the top, tabs Overview,
+  Contents, Logins and Maintenance (New passwords, Remove). New samples appear in the list automatically.
+- Logins: users, access levels and descriptions as a table; passwords created by Install / New passwords open on this tab, masked until
+  "Show passwords", each with a copy button. ?p=sample&s=<sample> opens a sample directly.
+- Fix: the editor of page forms printed "Undefined variable $canDeleteForm" (since the form builder was replaced); Delete form is
+  shown to the globeadmin again.
+
+## 0.8.741 – jQuery 4 preparation
+- jQuery 4 preparation: new page Settings → Code → jQuery (admin right Global code, password again after 15 minutes).
+  - jQuery of the form pages: the bundled 3.7.1 (default), the bundled 4.0.0, or an own file the admin copies into custom/jquery/ on the
+    server (never touched by updates; version read from the file; served through ?p=jqfile; falls back to 3.7.1 when the file is gone).
+  - jQuery Migrate bundled: 3.6.0 for jQuery 3 (reports what jQuery 4 removes while still on 3.7.1) and 4.0.2 for jQuery 4. Modes: Off,
+    Warnings (debug build; messages also collected per form and listed on the page, with count and Clear list) and Restore removed
+    functions (production build, no messages).
+  - Test as globeadmin: another jQuery and / or Migrate with warnings only for the globeadmin – all other users keep their settings.
+- Compatibility check: new point J4 lists removed jQuery functions ($.trim, $.isArray, $.parseJSON, $.type …) and code Migrate warns about
+  (.toggleClass() without a class, .unbind(), .delegate() …) in the application's JavaScript – grey, a preparation, not counted as open.
+- nuBuilder Next's form runtime checked for jQuery 4 (no removed functions) and the whole end-to-end suite run twice on jQuery 4 +
+  Migrate with warnings – all tests pass; the only messages came from jquery-confirm. jquery-confirm is now nuBuilder Next's build
+  3.3.4-nu1: $.trim (removed in jQuery 4) replaced, .unbind / .click(fn) / .focus() shorthands (Migrate warnings) replaced.
+- Page forms: vendor('jquery4', 'jquery.min.js').
+- Help: new page "jQuery version and jQuery 4" (Administration), Compatibility check and bundled libraries updated.
+
+## 0.8.740 – Bootstrap 6 preparation
+- Bootstrap 6 preparation (developer mode only). nuBuilder Next stays on Bootstrap 5.3 until Bootstrap 6 is stable; nothing changes
+  for users.
+- Compatibility check: new point BS6 lists Bootstrap 5 markup in the application's code that Bootstrap 6 changes – responsive classes
+  with the breakpoint inside the name (d-md-none → md:d-none, col-lg-6 → lg:col-6), offcanvas, accordion and window.bootstrap – in form
+  and object JavaScript, HTML objects, form CSS, Setup and Global code. Shown grey as a preparation and not counted as open.
+- Developer script dev/bs6_scan.php counts the same in nuBuilder Next's own files (totals, files with most hits, --files, --rule=).
+- TODO.md: the Bootstrap 6 alpha facts (newer browsers only, ES modules without window.bootstrap, prefixed classes, drawer, details,
+  dialog, token prefix) and the plan for the switch.
+
+## 0.8.739 – Admin role form: links and sorting
+- Admin role form: the rights link to their page (opens in a new tab), and the table sorts by right or by the chosen level (None /
+  View / Change) – a sorted table is one list with the group as a tag, a third click on the title shows the groups again; kept per browser.
+- German: the right for the log is called "Protokoll" (it had the same name as the audit trail).
+
+## 0.8.738 – Open the admin role from the user form
+- User form: next to the admin role a button opens the chosen role in a new tab (like the one of the access level); it follows the
+  selection and is shown to users who may view admin roles.
+
+## 0.8.737 – Breadcrumb in the top bar centred
+- Top bar without logo: the breadcrumb next to the Home button is centred vertically with the buttons and the title.
+
+## 0.8.736 – Title in Branding
+- Branding: a Title field – the name of the application in the browser tab, on the sign-in page and in the top bar, without editing
+  nuconfig.php (empty = nuBuilder Forte's $nuConfigTitle, shown as the placeholder). The switch reads "Show the title in the top bar" while
+  the logo is not shown there ("next to the logo" otherwise).
+- Setup wizard: saving the environment label no longer resets Branding → Show logo to "everywhere".
+
+## 0.8.735 – Test for the reported list query
+- Tests: the tester's list query (SELECT *, CONCAT(prefix, number, postfix) AS anumber FROM apartment with the column anumber) is
+  a unit test now; checked against the database as well.
+
+## 0.8.734 – Hide the logo by right-click
+- Top bar: the globeadmin can right-click the logo to hide it – after a confirmation the logo shows only on the sign-in pages
+  (as Branding → Show logo) and a message says where to show it again.
+
+## 0.8.733 – Check & install in developer mode
+- Update page in developer mode: "Check & install" next to Check package – checks the package and, when it is newer, installs it at
+  once (backup without database, safe database columns added, sample data refreshed); anything that needs a decision (not newer,
+  server requirement, missing library pack, integrity problems) opens the normal check with the reason. The tooltip says what it does.
+
+## 0.8.732 – Searchable selects stay one line high
+- Searchable selects (users list filters, other lists, design mode): a chosen value no longer makes the field two lines high – the search
+  input stays on the same line, a long value ends with …
+
+## 0.8.731 – List columns that name an alias
+- Form lists: a list column that names an alias of the browse SQL's field list (SELECT CONCAT(a, b) AS full_name … with the
+  column full_name) works – its expression is used, because the field list is replaced. A real column of that name in the FROM
+  tables still wins (as in nuBuilder Forte); with a sub-query in FROM or an unknown table the name stays as it is (reported by a tester).
+
+## 0.8.730 – Breadcrumb in the top bar without logo
+- Top bar without logo: on a computer screen (from 768 px) the page's breadcrumb stands in the bar next to the Home button
+  instead of above the page (the start page step is the Home button); on phones it stays in the page.
+
+## 0.8.729 – Users list filters
+- Users list: on desktop (from 992 px) every filter is 250 px wide with the same gap between all of them.
+
+## 0.8.728 – Home button like the other tool buttons
+- Top bar: the Home button keeps the look of the other tool buttons on the start page too (no grey fill).
+
+## 0.8.727 – Wider start page search
+- Start page: the search field is 180 px wider from 768 px on (phones unchanged).
+
+## 0.8.726 – Multi-tenancy proposal in the To do list
+- TODO.md: the multi-tenancy proposal (options A–F with a recommendation) recorded for the owner's decision.
+
+## 0.8.725 – Documentation
+- Documentation: IP access in the tutorial (Security lesson), in the sign-in rules and in the Security check page (its check line,
+  the checklist for a live server); views in the tutorial's New form lesson; README feature list (IP access, one search list);
+  TODO.md: points to verify for IP access and views on SQL Server.
+
+## 0.8.724 – Search results by keyboard
+- Start page search: ↓ / ↑ in the search field move the selection through the results (the first one is selected), Enter opens the
+  selected result.
+
+## 0.8.723 – Start page search as one list
+- Start page search: one result list instead of "More results" above the filtered tiles – the matching tiles of the start page first,
+  then pages and settings, own tiles, forms, procedures and reports that are no tile (forms, procedures and reports with their code);
+  Enter opens the first result.
+- Funnel button in the search field: choose what the search includes (tiles, pages and settings, forms, procedures, reports) – kept in
+  the browser, the button is marked while something is left out; "Include everything" resets it.
+- Search (also Ctrl+K): a form, procedure or report whose description has no letter or digit ("-", "....") is listed by its code.
+
+## 0.8.722 – IP access
+- IP access (Settings → Security → IP access, the globeadmin): allowed addresses / networks (203.0.113.7, 10.0.0.0/8, IPv6, # comments)
+  for all access levels, exceptions per access level (Default / Any address / Own ranges) and a rule for the globeadmin (Same as all
+  access levels / Any address / Own ranges). A user with several access levels (additional levels included) may work when any of them
+  allows the address. Checked when signing in (password, auto-login link, one-time login link – before the second factor) and on every
+  page (a session from an address that is not allowed ends); REST API clients keep their own "Allowed IPs", demo sessions are not
+  checked, a globeadmin acting as a user is checked by the globeadmin's rule. Refusals are logged (Refused because of the IP address).
+- Saving asks for the password again and is refused when the rules would block the globeadmin's current address; "Test an address"
+  shows who could work from an address; locked out: php cron.php iprules off (the rules stay stored). Security check line "IP access".
+
+## 0.8.721 – New form on a view
+- New form on a view: views are listed with “(view)” after their name. Picking one suggests the key column (<view>_id, else the
+  first column ending in _id, else id, else the first column), says whether the database can save changes to it (MySQL / MariaDB:
+  information_schema.VIEWS; SQL Server: the view's text) and points out a key column with repeated or empty values. A view the
+  database cannot save to switches the form type to Browse. Builder API: tables also returns views, columns returns view info.
+
+## 0.8.720 – Documentation updated
+- Documentation: the list of fields behind "Please check the highlighted fields" (Help → Working with forms), the advanced search
+  in the tutorial lesson "Working with forms and lists" and in the README feature list (the help page on lists already had it).
+
+## 0.8.719 – Advanced search for form lists
+- Advanced search for form lists: the ▾ next to the search opens a panel to build conditions – a column of the list, a condition
+  and a value, one row each, all / any. Text: contains, does not contain, equals, is not, starts / ends with, is one of / none of,
+  empty / not empty; numbers: =, ≠, <, ≤, >, ≥, between, empty; dates: on, before, after, between, today, last 7 / 30 days, this
+  month / year, empty. Works with any browse SQL (conditions on the list's own columns, values as parameters, MySQL and SQL Server);
+  hidden and masked columns are not offered.
+  - Active conditions as chips below the search (✕ removes one), Clear, the ✕ Back to all records; kept in the address (?adv=),
+    paging, sorting, Print and Export.
+  - My searches: save the search under a name per user and form, use it again, delete it.
+  - Form code: nuNextAdvancedSearch() reads / sets the search (function reference); #ADV_SEARCH# in Before Browse.
+
+## 0.8.718 – Check the highlighted fields: list of the fields
+- "Please check the highlighted fields" after saving (users, access levels, permission items, webhooks, API clients, admin roles,
+  custom user fields, notifications, My account …): the message can be clicked and then lists the fields with their messages
+  (e.g. "Login name – Required."); a click on one opens its tab or folded section, scrolls to it and puts the cursor there.
+
+## 0.8.717 – Smaller gap below the top bar on phones
+- Phones (below 576 px): the gap between the top bar and the page is 4 px instead of 24 px.
+
+## 0.8.716 – Notes
+- Notes only: v0.8.715 is published as a pre-release on GitHub (dev/release-notes.md, development notes).
+
 ## 0.8.715 – Webhooks, release gate
 - Webhooks (Admin tools → Webhooks, admin right "Webhooks"): after a record of the chosen forms is inserted, changed or deleted,
   nuBuilder Next calls a URL – n8n, Zapier, Teams, Slack or your own service. Also for CSV imports into a form's table.

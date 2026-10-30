@@ -151,6 +151,7 @@ final class NuAuth
 		if (nu_is_expired($row['sus_expires_on'])) return $fail('login_err_expired');
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
 		if ($accessId === '' || !nu_db()->one('SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId])) return $fail('login_err_no_access');
+		if (!NuIpAccess::allowsLogin(['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'login' => (string)$row['sus_login_name']], 'token')) return $fail('login_err_ip');   // before the token is used up (0.8.722)
 		if (!NuLoginToken::rotate($row)) return $fail('login_err_invalid');                                 // used by a second click at the same moment
 		self::applyLanguage((string)$row['sus_language'], (string)$row['zzzzsys_user_id'], true);
 		$auth = ['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'fp' => self::fingerprint((string)$row['sus_login_password']), 'login' => (string)$row['sus_login_name']];
@@ -248,6 +249,7 @@ final class NuAuth
 		if ($adminName !== '' && hash_equals($adminName, $login)) {
 			if ($byHash || !hash_equals($adminPass, $password)) return 'login_err_invalid';   // no auto login for the globeadmin
 			if (in_array($adminPass, ['nu', 'globeadmin', 'admin', 'password', '1234', '12345678'], true) || strlen($adminPass) < 8) $_SESSION['nu_weak_admin'] = 1;
+			NuPwPolicy::onGaLogin($adminPass);                  // password policy (0.8.745): reminders only – the password lives in nuconfig.php
 			// language: one picked on the sign-in page, else nuBuilder's default language (Setup → set_language, as nuBuilder does) – 0.8.312
 			self::applyLanguage(null, '', true);
 			return self::afterPassword(['id' => 'globeadmin', 'globeadmin' => true, 'fp' => self::adminFingerprint(), 'login' => $adminName],
@@ -280,6 +282,7 @@ final class NuAuth
 		if ($legacy && !NuSecurity::get('md5_login') && !self::md5Storage()) return 'login_err_md5';   // md5 storage: md5 is the format     // Admin tools → Security check: md5 refused
 
 		if (nu_is_expired($row['sus_expires_on'])) return 'login_err_expired';
+		if (!$byHash && !NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])) NuPwPolicy::onLogin((string)$row['zzzzsys_user_id'], $password, (string)$row['sus_login_password']);   // password policy (0.8.745): leaked / expired → forced change
 
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
 		$access   = $accessId !== '' ? $db->one('SELECT zzzzsys_access_id, sal_use_2fa FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId]) : null;
@@ -311,6 +314,7 @@ final class NuAuth
 	/** Password was correct: log in now, or ask for the second factor. */
 	private static function afterPassword(array $auth, bool $need2fa, string $email): ?string
 	{
+		if (!NuIpAccess::allowsLogin($auth, self::$byUrl ? 'url' : '')) return 'login_err_ip';   // IP access (0.8.722): before the second factor
 		if ($need2fa && !NuTwoFA::trustedDevice($auth['id'])) {
 			session_regenerate_id(true);
 			unset($_SESSION['nu_auth']);
@@ -574,6 +578,12 @@ final class NuAuth
 		}
 
 		$user['via'] = (string)($s['via'] ?? '');
+		if (!NuIpAccess::allowsRequest($user, $user['via'])) {   // IP access (0.8.722): a session from an address its levels do not allow ends
+			if (NuImpersonate::active()) NuLog::write('impersonate_end', 'zzzzsys_user', (string)$s['id'], ['reason' => 'ip']);
+			self::logout();
+			nu_flash('warning', t('login_err_ip'));
+			return null;
+		}
 		if (!NuSessions::touch($user)) {                 // ended by the globeadmin (Log → Sessions)
 			NuLog::write('session_ended', '', '', [], ['id' => $user['id'], 'login' => $user['login']]);
 			self::logout();
@@ -596,8 +606,15 @@ final class NuAuth
 	 * $newPasswordCheck, $will (all the new password), $userId and $check = true, as in nuBuilder's password procedures; it refuses
 	 * with $check = false (its nuDisplayError text is shown) or an error. @return string|null null = accepted, otherwise the message
 	 */
-	public static function passwordPolicy(string $new, string $userId): ?string
+	public static function passwordPolicy(string $new, string $userId, array $ctx = []): ?string
 	{
+		// nuBuilder Next's password policy first (0.8.745, NuPwPolicy – Settings → Sign-in & security → Password policy), then nuBuilder Forte's hook
+		if ($userId !== '' && !isset($ctx['login'])) {
+			try { $r = nu_db()->one('SELECT sus_login_name, sus_name, sus_first_name, sus_last_name, sus_email FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]); } catch (Throwable) { $r = null; }
+			if ($r) $ctx += ['login' => (string)$r['sus_login_name'], 'name' => trim((string)($r['sus_first_name'] ?? '') . ' ' . (string)($r['sus_last_name'] ?? '') . ' ' . (string)$r['sus_name']), 'email' => (string)$r['sus_email']];
+		}
+		$v = NuPwPolicy::violations($new, $ctx);
+		if ($v) return NuPwPolicy::message($v);
 		NuPhp::reset();
 		$hash = ['USER_ID' => $userId, 'RECORD_ID' => $userId, 'FORM_ID' => 'nuuser'];
 		$ok = NuProcedure::hook('nu_check_password_policy', $hash, ['newPassword' => $new, 'newPasswordCheck' => $new, 'will' => $new, 'userId' => $userId, 'check' => true]);

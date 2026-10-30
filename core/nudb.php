@@ -364,6 +364,12 @@ final class NuDB
 	/** LIKE pattern for "contains", to be used with  LIKE ? ESCAPE '!'  (works on all drivers). */
 	public static function like(string $s): string
 	{
-		return '%' . str_replace(['!', '%', '_', '['], ['!!', '!%', '!_', '!['], $s) . '%';
+		return '%' . self::likeRaw($s) . '%';
+	}
+
+	/** The text with LIKE's wildcards escaped (ESCAPE '!'), without the % around it (0.8.719: starts with / ends with). */
+	public static function likeRaw(string $s): string
+	{
+		return str_replace(['!', '%', '_', '['], ['!!', '!%', '!_', '!['], $s);
 	}
 }

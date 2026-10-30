@@ -16,6 +16,12 @@
 /* ------------------------------------------------------------------ search row: search, favourites only, View, Customise */
 .nuHomeSearchRow { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
 .nuHomeSearchRow .nuHomeSearchBox { flex: 1 1 auto; min-width: 0; max-width: 300px; }   /* 0.8.455: Customise right next to it */
+@media (min-width: 768px) { .nuHomeSearchRow .nuHomeSearchBox { max-width: 480px; } }   /* desktop: the field 180 px wider (0.8.727) */
+/* desktop (0.8.746): the search row stays below the top bar while scrolling – the results list (#nuHomeSearchMore) sits below it */
+@media (min-width: 768px) {
+	.nuHomeSearchRow { position: sticky; top: var(--nu-nav-h, 57px); z-index: 1005; background: var(--nu-page, var(--bs-body-bg)); padding-block: .5rem; margin-top: -.5rem; margin-bottom: .75rem; }
+	html.nuNoNavbar .nuHomeSearchRow { top: 0; }
+}
 .nuHomeTools { display: flex; gap: .5rem; flex: none; }
 .nuHomeTools .btn { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
 #nuHomeViewBtn .nuHomeBtnTx { display: none; }   /* icon only (0.8.455) – name in title / aria-label */
@@ -468,3 +474,10 @@
 .nuHomeCtxHead { padding: .25rem 1rem .35rem; white-space: normal; }
 /* User Home button (0.8.642): the house glyph sits a little higher in its box than the star next to it – nudge it down */
 .nuHomeUhBtn > .bi { position: relative; top: 1px; }
+
+/* search (0.8.723): one result list instead of the filtered tiles; the kinds filter in the search field */
+#nuHomeView.nuHomeSearching { display: none !important; }
+.nuHomeSearchList { max-width: 760px; }
+.nuHomeSkBtn.nuHomeSkOn { color: var(--bs-primary); border-color: var(--bs-primary); position: relative; }
+.nuHomeSkBtn.nuHomeSkOn::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--bs-primary); }
+.nuHomeSkMenu { min-width: 240px; }

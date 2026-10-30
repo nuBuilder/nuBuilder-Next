@@ -23,6 +23,7 @@ if (!$isNew) {
 
 // form type "page" (0.8.387): its own builder – form fields and the page settings, no objects (pages/nubuilder_page.php)
 if ($meta && $meta->isPage()) {
+	$canDeleteForm = !empty(NuAuth::user()['globeadmin']) && !$meta->isSystem();   // as design mode (NuDesign::client can_delete_form); lost in 0.8.670
 	require __DIR__ . '/nubuilder_page.php';
 	exit;
 }
@@ -109,6 +110,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 								<label class="form-check-label" for="nb_generate"><?= h(t('builder_generate')) ?></label>
 							</div>
 							<div class="form-text" id="nbColumnInfo"></div>
+							<div class="alert py-2 px-3 mt-2 mb-0 small" id="nbViewInfo" role="status" hidden></div>
 							<?php // chosen columns (0.8.675): which columns get an object / a list column, label, order – filled by nubuilder.js pickBuild() ?>
 							<div class="nbPickWrap mt-2" id="nbPickWrap" hidden>
 								<button class="btn btn-link px-0 text-decoration-none nuChevToggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#nbPick" aria-expanded="false" aria-controls="nbPick" id="nbPickBtn"><i class="bi bi-chevron-right me-1"></i><?= h(t('builder_pick_toggle')) ?> <span class="badge rounded-pill text-bg-secondary ms-1" id="nbPickCount"></span></button>

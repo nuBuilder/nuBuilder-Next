@@ -2807,9 +2807,16 @@
 	proto(Date, 'nuAddDays', function (n) { var d = new Date(this.valueOf()); d.setDate(d.getDate() + n); return d; });
 
 	// ---- layout
-	var HOLDERS = {0: '#nuActionHolder', 1: '#nuBreadcrumbHolder, .nuFormHeader > .nuBreadcrumb', 2: '#nuTabHolder'};
-	api('nuHideHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (HOLDERS[a]) $(HOLDERS[a]).addClass('nuHolderHidden'); }); });
-	api('nuRemoveHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (HOLDERS[a]) $(HOLDERS[a]).remove(); }); });
+	// 0.8.743 (the owner's decision): 0 = the row with Add / Back / Save …, 1 = nuBuilder Next's top bar (logo, search, user menu),
+	// 2 = the tabs of the form. The top bar is only hidden, never removed (menus and the bell live in it): html.nuNoNavbar, --nu-nav-h 0
+	var HOLDERS = {0: '#nuActionHolder', 2: '#nuTabHolder, #userTabs'};
+	function holderNav(remove) {
+		document.documentElement.classList.add('nuNoNavbar');
+		window.dispatchEvent(new Event('resize'));          // sticky rows measure again (nuapp.js)
+		return remove;
+	}
+	api('nuHideHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (+a === 1) holderNav(false); else if (HOLDERS[a]) $(HOLDERS[a]).addClass('nuHolderHidden'); }); });
+	api('nuRemoveHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (+a === 1) holderNav(true); else if (HOLDERS[a]) $(HOLDERS[a]).remove(); }); });
 	api('nuSetVerticalTabs', function () { $('#nuEditForm').addClass('nuVerticalTabs'); });
 	api('nuPrintEditForm', function (hideObjects, showObjects) {
 		hideObjects = arr(hideObjects); showObjects = arr(showObjects);
@@ -3032,6 +3039,8 @@
 		applyNoSearch(no);
 	});
 	api('nuSearchColumnsReset', function () { applyNoSearch([]); });
+	// advanced search (0.8.719): the panel lives in assets/js/nu/nuadvsearch.js (browse lists only)
+	api('nuNextAdvancedSearch', function (conditions, mode) { return typeof window.nuNextAdvSearch === 'function' ? window.nuNextAdvSearch(conditions, mode) : null; });
 	api('nuSearchAction', function (search, filter) {
 		var field = g('nuSearchField'), u = browseUrl();
 		if (arguments.length > 0 && field) field.value = search === undefined || search === null ? '' : search;

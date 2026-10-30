@@ -1,0 +1,31 @@
+<section id="ip-access" data-doc="admin">
+	<h2 id="ip-access-h">IP access</h2>
+	<p class="doc-lead">Allow signing in only from certain addresses or networks – for all access levels, with exceptions per level and a rule of its own for the globeadmin.</p>
+	<p class="doc-for" data-doc="admin">For: the globeadmin</p>
+	<p><em>Settings → Security → IP access</em> (<code>index.php?p=ipaccess</code>) is off until you switch on <em>Restrict sign-in by IP address</em>. The page shows the address you are using now.</p>
+<div class="doc-sub">
+<h3 id="ip-access-rules">The rules</h3>
+<ul>
+<li><strong>All access levels</strong>: the allowed addresses, one per line (or separated by spaces or commas) – a single address such as <code>203.0.113.7</code> or <code>2001:db8::1</code>, or a network with a prefix such as <code>10.0.0.0/8</code> or <code>192.168.1.0/24</code>. Text after <code>#</code> is a comment. An empty list allows every address.</li>
+<li><strong>Exceptions per access level</strong>: <em>Default</em> uses the list above, <em>Any address</em> lets the level sign in from everywhere, <em>Own ranges</em> replaces the list for that level. A user with several access levels (the main level and active <a href="#access-additional">additional levels</a>) may work when <em>any</em> of them allows the address.</li>
+<li><strong>Globeadmin</strong>: <em>Same as all access levels</em>, <em>Any address</em> or <em>Own ranges</em>. This rule also applies while the globeadmin <a href="#impersonate">acts as a user</a>.</li>
+</ul>
+</div>
+<div class="doc-sub">
+<h3 id="ip-access-when">When it is checked</h3>
+<ul>
+<li>When signing in – with the password, an auto-login link (<code>?u=…&amp;p=…</code>) or a <a href="#logintoken">one-time login link</a> – before the second factor is asked. The user sees “Signing in is not allowed from this network”; the log has an entry <em>Refused because of the IP address</em> with the address, and the attempt counts as a failed sign-in.</li>
+<li>On every page: a session that suddenly comes from an address that is not allowed ends (e.g. a stolen session cookie used elsewhere, or a laptop that left the office network).</li>
+<li>Not checked: clients of the <a href="#api">REST API</a> (they have their own <em>Allowed IPs</em>) and demo sessions. Sessions taken over from nuBuilder Forte are checked like any other.</li>
+</ul>
+<p>nuBuilder Next uses the address the web server sees. Behind a reverse proxy or a load balancer that is the proxy's address – set <code>$nuConfigTrustProxy = true</code> in nuconfig.php there (the page warns when a request came through a proxy while it is off).</p>
+</div>
+<div class="doc-sub">
+<h3 id="ip-access-safe">Testing and getting back in</h3>
+<ul>
+<li><em>Test an address</em> shows, for the saved rules, whether the globeadmin and which access levels could work from an address.</li>
+<li>Saving is refused when the new rules would block the address the globeadmin is using now; saving also asks for the password again.</li>
+<li>Locked out anyway (e.g. a new address at home)? On the server: <code>php cron.php iprules off</code> switches IP access off; the rules stay stored, so switching it on again brings them back.</li>
+</ul>
+</div>
+</section>

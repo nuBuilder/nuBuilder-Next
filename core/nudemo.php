@@ -27,6 +27,7 @@ final class NuDemo
 	/** Posts that only read (page => actions); every other post of a demo session is refused. */
 	private const READ_POSTS = [
 		'procedures'     => ['run'],
+		'pwpolicy'       => ['test'],               // password policy: check a typed password, nothing stored (0.8.745)
 		'user'           => ['effective', 'perm_of'],   // user form: effective rights of the levels entered (0.8.589), another user's permission items (0.8.649)
 		'notifications'  => ['state', 'readall', 'count'],   // own read / hidden state (the session only), number of recipients          // runs a procedure: only with "Demo access", and it cannot write (NuPhp::procedure, NuDB)
 		'prompts'        => ['build'],        // prompt generator: builds the text, saves nothing

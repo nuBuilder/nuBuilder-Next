@@ -264,10 +264,14 @@ final class NuSetupWizard
 				$res['errors'][] = t('wiz_lang') . ': ' . $e->getMessage();
 			}
 		}
-		if (!NuBranding::envFromConfig() && ($v['env_label'] !== $cur['env_label'] || $v['env_color'] !== $cur['env_color'])) {
+		// the environment label, and the title when Branding has one of its own (0.8.736 – it wins over $nuConfigTitle)
+		$bt = NuBranding::get()['title'];
+		$envChg = !NuBranding::envFromConfig() && ($v['env_label'] !== $cur['env_label'] || $v['env_color'] !== $cur['env_color']);
+		if ($envChg || ($bt !== '' && $v['title'] !== $cur['title'])) {
 			$b = NuBranding::get();
 			[$err] = NuBranding::save(['accent_on' => $b['accent'] !== '', 'accent' => $b['accent'], 'show_title' => $b['show_title'], 'favicon' => $b['favicon'],
-				'env_label' => $v['env_label'], 'env_color' => $v['env_color']], [], []);
+				'logo_show' => $b['logo_show'], 'env_label' => $envChg ? $v['env_label'] : $b['env_label'], 'env_color' => $envChg ? $v['env_color'] : $b['env_color']]
+				+ ($bt !== '' ? ['title' => $v['title']] : []), [], []);
 			if ($err) $res['errors'][] = t('brand_env') . ': ' . implode(' ', $err);
 		}
 		if ($v['dbtool'] !== '' && $v['dbtool'] !== $cur['dbtool']) {

@@ -545,7 +545,7 @@
 		if (!p) return false;
 		var sf = p.slice(0, -3), f = $a.attr('data-nu-field');
 		var next = $('#' + sf + nuPad3(Number(p.slice(-3)) + d) + f);
-		if (next.length === 1 && !next.prop('disabled')) next.focus();
+		if (next.length === 1 && !next.prop('disabled')) next.trigger('focus');
 		return true;
 	});
 	// sorts the rows by a column (index in nuSubformObject().fields); the blank new row stays last; a second call reverses

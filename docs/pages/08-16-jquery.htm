@@ -1,0 +1,31 @@
+<section id="jquery" data-doc="admin" data-level="advanced">
+	<h2 id="jquery-h">jQuery version and jQuery 4</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Which jQuery the form pages load, and how to prepare your application for jQuery 4 with jQuery Migrate.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin role right <em>Global code</em>)</p>
+	<p><em>Settings → Code → jQuery</em> sets the jQuery of the <strong>form pages</strong> – nuBuilder Forte (4.x) form code relies on it. nuBuilder Next's own pages do not use jQuery, and its form runtime works with jQuery 3 and jQuery 4. Changing the setting asks for the password again.</p>
+	<div class="doc-sub" id="jquery-version"><h3 id="jquery-version-h">Version</h3>
+<ul>
+<li><strong>3.7.1 (bundled)</strong> – the default, the jQuery of nuBuilder Forte 4.9.</li>
+<li><strong>4.0.0 (bundled)</strong> – ships with nuBuilder Next.</li>
+<li><strong>Own file</strong> – copy a <code>jquery.min.js</code> (for example a newer 4.x from jquery.com) into the folder <code>custom/jquery/</code> on the server, with FTP or the <a href="#file-manager">File Manager</a>. Updates of nuBuilder Next never touch that folder. The page lists the files with the version read from their first line; jQuery Migrate files are recognised and not offered. If the chosen file disappears, the form pages fall back to the bundled 3.7.1 and the page shows a warning.</li>
+</ul></div>
+	<div class="doc-sub" id="jquery-migrate"><h3 id="jquery-migrate-h">jQuery Migrate</h3>
+<p>nuBuilder Next bundles jQuery Migrate 3.6.0 (for jQuery 3) and 4.0.2 (for jQuery 4); the one that matches the chosen version is loaded right after jQuery.</p>
+<ul>
+<li><strong>Off</strong> – no Migrate.</li>
+<li><strong>Warnings</strong> – the debug build. On jQuery 3.7.1 it reports everything jQuery 4 removes, so you can prepare while still on the old version; on jQuery 4 it reports what changed. Messages appear in the browser console and are collected per form in <em>jQuery Migrate messages</em> on the same page (each message once per form, with how often it came; <em>Clear list</em> starts again).</li>
+<li><strong>Restore removed functions</strong> – the production build on jQuery 4: functions such as <code>$.trim</code> work again, without messages. A short-term help for old code, not a permanent setting.</li>
+</ul></div>
+	<div class="doc-sub" id="jquery-test"><h3 id="jquery-test-h">Test as globeadmin</h3>
+<p>Under <em>Test as globeadmin</em> pick another jQuery and / or switch on <em>jQuery Migrate with warnings for me</em>: only the globeadmin gets it, all other users keep the settings for everyone. That way jQuery 4 can be tried on the live forms first.</p></div>
+	<div class="doc-sub" id="jquery-upgrade"><h3 id="jquery-upgrade-h">Moving to jQuery 4</h3>
+<ol>
+<li>Open the <a href="#compat">Compatibility check</a>: point <strong>J4</strong> lists the places in your JavaScript that use functions jQuery 4 removed (<code>$.trim</code>, <code>$.isArray</code>, <code>$.parseJSON</code>, <code>$.type</code>, <code>$.isFunction</code>, <code>$.now</code> …) or that Migrate warns about (<code>.toggleClass()</code> without a class name, <code>.unbind()</code>, <code>.delegate()</code> …). Replace them: <code>s.trim()</code>, <code>Array.isArray(x)</code>, <code>JSON.parse(s)</code>, <code>typeof x</code>, <code>Date.now()</code>.</li>
+<li>Switch Migrate to <em>Warnings</em> (for yourself under <em>Test as globeadmin</em>, or for everyone) and work with the forms for a while; fix what the list shows.</li>
+<li>Choose jQuery 4.0.0 for yourself, still with warnings, and test again. Also check code that loads scripts with <code>$.ajax</code> / <code>$.getScript</code>: jQuery 4 runs fetched scripts only with <code>dataType: "script"</code>.</li>
+<li>Switch everyone to jQuery 4, then set Migrate to <em>Off</em>. Clear the list and keep an eye on it for a few days with warnings on.</li>
+</ol>
+<p>Upgrade guide of the jQuery team: <a href="https://jquery.com/upgrade-guide/4.0/" target="_blank" rel="noopener">jquery.com/upgrade-guide/4.0</a>.</p></div>
+	<p class="doc-see">See also: <a href="#globalcode">Global code</a> · <a href="#compat">Compatibility check</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nujquery.php</code></li><li><code>pages/nujquery.php</code></li><li><code>assets/js/nu/nujqmigrate.js</code></li></ul></details>
+</section>

@@ -137,7 +137,7 @@ nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings'
 		</div>
 	<?php endif; ?>
 	<?php if ($errors): ?>
-		<div class="alert alert-danger small rounded-0 border-start-0 border-end-0 mb-0"><?= h(t('err_check_form')) ?></div>
+		<div class="alert alert-danger small rounded-0 border-start-0 border-end-0 mb-0 nuCheckForm" data-tip="<?= h(t('err_check_list')) ?>"><div><?= h(t('err_check_form')) ?></div></div>
 	<?php endif; ?>
 	<div class="nuListFilter">
 		<div class="row g-2 align-items-end">

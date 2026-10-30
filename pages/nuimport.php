@@ -217,7 +217,7 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 						<?php $mailOk = NuMail::configured(); ?>
 						<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="impWelcome"<?= $mailOk ? ' checked' : ' disabled' ?>>
 							<label class="form-check-label" for="impWelcome"><?= h(t('imp_u_welcome')) ?></label>
-							<?php $tipText = ($mailOk ? '' : t('welcome_err_mail') . ' ') . t('imp_u_welcome_hint', max(1, (int)nu_cfg('nuConfigPasswordMinLength')), NuWelcome::hours()); ?>
+							<?php $tipText = ($mailOk ? '' : t('welcome_err_mail') . ' ') . t('imp_u_welcome_hint', NuPwPolicy::minLength(), NuWelcome::hours()); ?>
 							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($tipText) ?>" title="<?= h($tipText) ?>"><i class="bi bi-info-circle"></i></span></div>
 					</div>
 				</div>

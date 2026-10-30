@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.715 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.747 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -48,7 +48,7 @@ nuBuilder Next streamlines everyday database work:
 ### 👥 For Everyone
 
 - ✅ **Responsive** – works on phones, tablets and desktops; menus, lists and toolbars adapt to the screen.
-- ✅ **Fast Lists** – search, filter, sort and page through records; coloured badges for status values; Print, Copy (pastes as a table into Excel or Word), CSV and Excel export.
+- ✅ **Fast Lists** – search, filter, sort and page through records; an advanced search with conditions per column (contains, between, last 30 days …) and saved searches; coloured badges for status values; Print, Copy (pastes as a table into Excel or Word), CSV and Excel export.
 - ✅ **Comfortable Editing** – sub-forms, lookups and file uploads; required and unique fields are marked; unsaved changes are shown; Clone opens an unsaved copy, as in nuBuilder Forte.
 - ✅ **Dashboards on the Start Page** – KPI tiles, charts and tables for your access level.
 - ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
@@ -69,14 +69,15 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms written by an AI, checked before they are created.
 - ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
 - ✅ **Webhooks** – call n8n, Zapier, Teams or your own service after records are saved or deleted: signed, with retries and a log of every call.
+- ✅ **jQuery 4 Ready** – form pages run on jQuery 3.7 or 4.0 (or your own file), with jQuery Migrate to find upgrade issues while still on 3.7.
 - ✅ **Compatibility Check** – scans the code of your nuBuilder Forte application and shows which functions are supported.
 - ✅ **Sample Applications** – a sales sample (customers, orders, every object type, reports, dashboards, lists with badges and filters) and a ticket system for a support desk (customers, agents, specialists, team lead; SLA, conversation with internal notes, attachments, e-mail templates, notifications, field access, dashboards per role), both built to learn from.
 
 ### 🛡️ For Administrators
 
-- ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, search with Ctrl+K. Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
+- ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, one search list over tiles, pages, forms, procedures and reports (with a filter, also Ctrl+K). Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
 - ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; CSV user import with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; the access levels of a form in one dialogue; own and shared list views; filters and links between users, access levels, permission items and the log.
-- ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit and a built-in Security check.
+- ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit, a password policy (length, leaked-password check with k-anonymity, optional regular change), sign-in only from allowed IP addresses / networks (per access level, globeadmin separately) and a built-in Security check.
 - ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.
 - ✅ **Send Notifications** – to chosen users, departments or teams, with read receipts.

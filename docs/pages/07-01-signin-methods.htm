@@ -33,9 +33,10 @@
 		<li>Failed logins are rate-limited and written to the log; the procedure <code>nu_invalid_login</code> can replace the message, <code>nu_startup</code> runs after every login and can refuse it.</li>
 		<li>Sessions end after <code>$nuConfigSessionTimeout</code> / <code>$nuConfigSessionTimeoutGlobeadmin</code> minutes without activity, when the password is changed anywhere, or when the globeadmin ends them.</li>
 		<li>The globeadmin can reset a user's two-step login (lost phone) in the user form.</li>
+		<li>With <a href="#ip-access">IP access</a> switched on, every method – password, auto-login link, one-time login link – is refused from an address the user's access levels do not allow, and a running session ends when its address is no longer allowed.</li>
 	</ul>
 	<p>Internals: <a href="#sessions-arch">Sessions and sign-in flow</a>. Checks of all these settings: <a href="#security-check">Security check</a>.</p>
 </div>
-	<p class="doc-see">See also: <a href="#sessions-arch">Sessions and sign-in flow</a> · <a href="#security">Your password and two-step login</a></p>
+	<p class="doc-see">See also: <a href="#sessions-arch">Sessions and sign-in flow</a> · <a href="#security">Your password and two-step login</a> · <a href="#password-policy">Password policy</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuauth.php</code></li><li><code>core/nutwofa.php</code></li><li><code>core/nulogintoken.php</code></li><li><code>pages/nuautologin.php</code></li></ul></details>
 </section>

@@ -100,7 +100,7 @@ nu_layout_start(t('status_title'), 'home');
 </div>
 <?php if ($warnings === 0): ?><div class="alert alert-success" id="statusOk"><i class="bi bi-check-circle me-1"></i><?= h(t('status_all_ok')) ?></div><?php endif; ?>
 <div class="nuVendorFull">
-<?php if (!$mysql): ?><div class="alert alert-warning"><?= h(t('vendor_mysql_only')) ?></div><?php endif; ?>
+<?php if (!$mysql): ?><div class="alert alert-info" id="vendorMsInfo"><i class="bi bi-info-circle me-1"></i><?= h(t('vendor_mysql_only')) ?></div><?php endif; ?>
 <?php if (NuHomeHook::active()): // custom code on the start page (0.8.378) – information, not a warning ?>
 	<div class="alert alert-info d-flex flex-wrap align-items-center gap-2" id="statusHomeHook"><span class="flex-grow-1"><i class="bi bi-code-slash me-1"></i><?= h(t('secchk_chk_homehook_on')) ?></span>
 		<a class="btn btn-sm btn-outline-secondary text-nowrap" href="<?= h(nu_url('procedures', ['id' => (string)(NuHomeHook::procedure()['id'] ?? '')])) ?>"><?= h(t('hook_error_open')) ?></a></div>

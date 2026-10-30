@@ -170,7 +170,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 		<a class="btn nuBtnAct" href="<?= h(nu_url('apiclients')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<button class="btn nuBtnAct nuBtnSave" type="submit" form="apiForm" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 	</div>
-	<?php if ($errors): ?><div class="alert alert-danger small py-2"><?= h(t('err_check_form')) ?></div><?php endif; ?>
+	<?php if ($errors): ?><div class="alert alert-danger small py-2 nuCheckForm" data-tip="<?= h(t('err_check_list')) ?>"><div><?= h(t('err_check_form')) ?></div></div><?php endif; ?>
 	<div class="row g-4">
 		<div class="col-lg-7">
 			<form method="post" action="<?= h(nu_url('apiclients', ['id' => $client ? $id : 'new'])) ?>" id="apiForm" class="card shadow-sm" novalidate data-nu-guard data-nu-focus-first>

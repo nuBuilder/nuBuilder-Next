@@ -60,16 +60,23 @@ final class NuPalette
 		foreach (nu_forms() as $id => $f) {
 			if ($f['type'] === 'subform' || $f['system']) continue;    // nuBuilder's own forms: reached through the pages above
 			if (!$ga && !NuAcl::can((string)$id)) continue;
-			$add('f:' . $id, $f['description'] !== '' ? $f['description'] : $f['code'], t('pal_group_forms'), 'bi-ui-checks-grid', ['url' => nu_url('form', ['f' => (string)$id])], $f['code']);
+			$add('f:' . $id, self::name((string)$f['description'], (string)$f['code']), t('pal_group_forms'), 'bi-ui-checks-grid', ['url' => nu_url('form', ['f' => (string)$id])], $f['code']);
 		}
 		if (!$ga && !NuAcl::can(NuAcl::FORM_PROCEDURE)) return self::reports($out, $ga);
 		try {
 			foreach ($db->all('SELECT zzzzsys_php_id, sph_code, sph_description FROM zzzzsys_php WHERE ' . NuProcedure::listCondition() . ' ORDER BY sph_code') as $p) {
-				$add('p:' . $p['zzzzsys_php_id'], (string)($p['sph_description'] ?: $p['sph_code']), t('pal_group_procedures'), 'bi-filetype-php',
+				$add('p:' . $p['zzzzsys_php_id'], self::name((string)$p['sph_description'], (string)$p['sph_code']), t('pal_group_procedures'), 'bi-filetype-php',
 					['url' => nu_url('procedures', ['id' => (string)$p['zzzzsys_php_id']])], (string)$p['sph_code']);
 			}
 		} catch (Throwable) { /* no procedures table */ }
 		return self::reports($out, $ga);
+	}
+
+	/** A description that says nothing ("-", "....", empty – no letter or digit) gives way to the code (0.8.723). */
+	private static function name(string $desc, string $code): string
+	{
+		$desc = trim($desc);
+		return $desc !== '' && preg_match('/[\p{L}\p{N}]/u', $desc) ? $desc : ($code !== '' ? $code : $desc);
 	}
 
 	private static function entry(string $id, string $label, string $group, string $icon, array $target, string $kw = ''): array
@@ -84,7 +91,7 @@ final class NuPalette
 		try {
 			if ($db->tableExists(NuReport::TABLE)) {
 				foreach ($db->all('SELECT zzzzsys_report_id, sre_code, sre_description FROM zzzzsys_report ORDER BY sre_code') as $r) {
-					$out[] = self::entry('r:' . $r['zzzzsys_report_id'], (string)($r['sre_description'] ?: $r['sre_code']), t('pal_group_reports'), 'bi-file-earmark-richtext',
+					$out[] = self::entry('r:' . $r['zzzzsys_report_id'], self::name((string)$r['sre_description'], (string)$r['sre_code']), t('pal_group_reports'), 'bi-file-earmark-richtext',
 						['url' => nu_url('reports', ['id' => (string)$r['zzzzsys_report_id']])], (string)$r['sre_code']);
 				}
 			}

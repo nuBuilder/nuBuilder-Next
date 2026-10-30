@@ -22,6 +22,11 @@ $upload = static function (string $field, array &$errors): ?array {
 $b0 = NuBranding::get();
 if (nu_is_post()) {
 	$action = nu_post('action');
+	if ($action === 'hide_logo') {                          // right-click on the logo in the top bar (0.8.734): sign-in pages keep it
+		$changed = NuBranding::hideTopLogo();
+		nu_flash('success', $changed ? t('brand_hidden_msg', t('sh_title') . ' → ' . t('sh_look') . ' → ' . t('brand_title') . ' (' . t('brand_logo_show') . ')') : t('set_saved_none'));
+		nu_redirect(NuAuth::validNext(nu_post('back')) ?? nu_url('home'));
+	}
 	if ($action === 'reset') {
 		NuBranding::reset();
 		nu_flash('success', t('brand_reset_done'));
@@ -32,7 +37,7 @@ if (nu_is_post()) {
 		if (!$errors) {
 			[$errors, $warn] = NuBranding::save([
 				'accent_on' => $b0['accent'] !== '', 'accent' => $b0['accent'],   // the accent colour is part of the themes (0.8.632) – an older one is kept
-				 'show_title' => nu_check('show_title') === '1',
+				 'show_title' => nu_check('show_title') === '1', 'title' => nu_post('title'),
 				'favicon' => nu_check('favicon') === '1', 'logo_show' => nu_post('logo_show'), 'env_label' => nu_post('env_label'), 'env_color' => nu_post('env_color'),
 			], $files, ['light' => nu_check('remove_light') === '1', 'dark' => nu_check('remove_dark') === '1']);
 			if (!$errors) {
@@ -47,6 +52,7 @@ if (nu_is_post()) {
 $b = NuBranding::get();
 $envCfg = NuBranding::envFromConfig();
 $appTitle = nu_app_title(true);
+$cfgTitle = is_file(nu_config_path()) ? trim((string)(nu_cfg('nuConfigTitle') ?? '')) : '';   // nuBuilder Forte's title – used while Title is empty
 $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback">' . h($errors[$k]) . '</div>' : '';
@@ -93,9 +99,14 @@ nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page'
 							<?php foreach (NuBranding::LOGO_SHOW as $w): ?><option value="<?= $w ?>"<?= $b['logo_show'] === $w ? ' selected' : '' ?>><?= h(t('brand_logo_show_' . $w)) ?></option><?php endforeach; ?>
 						</select>
 					</div>
+					<div class="mb-2">
+						<label class="form-label fw-semibold" for="title"><?= h(t('brand_app_title')) ?></label><?= $tip(t('brand_app_title_tip', $cfgTitle !== '' ? $cfgTitle : t('brand_title_unset'))) ?>
+						<input class="form-control" type="text" id="title" name="title" maxlength="<?= NuBranding::TITLE_LEN ?>" value="<?= h($b['title']) ?>" placeholder="<?= h($cfgTitle !== '' ? $cfgTitle : 'nuBuilder Next') ?>" data-cfg="<?= h($cfgTitle) ?>">
+					</div>
 					<div class="form-check form-switch mb-2 d-flex align-items-center gap-1">
 						<input class="form-check-input me-1" type="checkbox" role="switch" id="show_title" name="show_title" value="1"<?= $b['show_title'] ? ' checked' : '' ?>>
-						<label class="form-check-label" for="show_title"><?= h(t('brand_show_title')) ?></label><?= $tip(t('brand_show_title_tip', $appTitle !== '' ? $appTitle : t('brand_title_unset'))) ?>
+						<?php // the label follows "Show logo" (0.8.736): next to the logo, or alone in the top bar ?>
+						<label class="form-check-label" for="show_title" id="show_title_lbl" data-logo="<?= h(t('brand_show_title')) ?>" data-bar="<?= h(t('brand_show_title_bar')) ?>"><?= h(t($b['logo_show'] === 'all' ? 'brand_show_title' : 'brand_show_title_bar')) ?></label><?= $tip(t('brand_show_title_tip2')) ?>
 					</div>
 					<div class="form-check form-switch mb-4 d-flex align-items-center gap-1">
 						<input class="form-check-input me-1" type="checkbox" role="switch" id="favicon" name="favicon" value="1"<?= $b['favicon'] ? ' checked' : '' ?>>

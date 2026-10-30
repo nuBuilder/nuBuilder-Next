@@ -13,7 +13,9 @@ function nu_app_title(bool $configuredOnly = false): string
 		if ($busy) return $configuredOnly ? '' : 'nuBuilder Next';
 		$busy = true;
 		try {
-			$v = is_file(nu_config_path()) ? trim((string)(nu_cfg('nuConfigTitle') ?? '')) : '';
+			// Branding → Title (0.8.736) first, then nuBuilder Forte's $nuConfigTitle (nuconfig.php / Settings)
+			$v = is_file(nu_config_path()) ? NuBranding::get()['title'] : '';
+			if ($v === '' && is_file(nu_config_path())) $v = trim((string)(nu_cfg('nuConfigTitle') ?? ''));
 		} catch (Throwable) {
 			$v = '';
 		}
@@ -136,15 +138,24 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	<?= NuImpersonate::banner() ?>
 	<div class="container-fluid nuNavInner"><?php // full width (0.8.483): the logo stays at the left edge on every page, the menus at the right ?>
 		<?php if ($compact): // no logo in the bar (0.8.707): a Home button at the very left ?>
-			<a class="btn btn-sm btn-outline-secondary me-2 nuHomeBtn<?= $active === 'home' ? ' active' : '' ?>" id="nuHomeBtn" href="<?= h(nu_url('home')) ?>" title="<?= h(t('nav_home')) ?>" aria-label="<?= h(t('nav_home')) ?>"<?= $active === 'home' ? ' aria-current="page"' : '' ?>><i class="bi bi-house"></i></a>
+			<a class="btn btn-sm btn-outline-secondary me-2 nuHomeBtn" id="nuHomeBtn" href="<?= h(nu_url('home')) ?>" title="<?= h(t('nav_home')) ?>" aria-label="<?= h(t('nav_home')) ?>"<?= $active === 'home' ? ' aria-current="page"' : '' ?>><i class="bi bi-house"></i></a>
 		<?php endif; ?>
 		<?php if ($sidebar): // side bar (0.8.460): a drawer opened here, left of the logo, on every screen width (0.8.513) ?>
 			<button type="button" class="btn btn-sm btn-outline-secondary me-2 nuSbOpenBtn" id="nuSbOpen" aria-controls="nuSidebar" aria-expanded="false" title="<?= h(t('sb_open')) ?>" aria-label="<?= h(t('sb_open')) ?>"><i class="bi bi-layout-sidebar"></i></button>
 		<?php endif; ?>
-		<a class="navbar-brand d-flex align-items-center gap-2" href="<?= h(nu_url('home')) ?>">
+		<?php $logoHide = !$compact && !empty($u['globeadmin']) && empty($u['demo']); // right-click on the logo: hide it (0.8.734, the globeadmin) ?>
+		<a class="navbar-brand d-flex align-items-center gap-2" href="<?= h(nu_url('home')) ?>"<?= $logoHide ? ' data-nu-logo-hide="nuLogoHideForm"' : '' ?>>
 			<?= nu_brand_logo() ?>
 		</a>
+		<?php if ($logoHide): ?>
+		<form method="post" action="<?= h(nu_url('branding')) ?>" id="nuLogoHideForm" hidden data-confirm="<?= h(t('brand_hide_confirm')) ?>" data-confirm-ok="<?= h(t('brand_hide_ok')) ?>" data-confirm-class="btn btn-primary">
+			<?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_logo"><input type="hidden" name="back" value="<?= h('index.php?' . (string)($_SERVER['QUERY_STRING'] ?? '')) ?>">
+		</form>
+		<?php endif; ?>
 		<?= NuBranding::envBadge('me-auto me-md-3') ?>
+		<?php if ($compact): // no logo (0.8.730): on desktop the page's breadcrumb moves here, next to the Home button (assets/js/nuapp.js) ?>
+			<nav class="nuNavCrumbs" id="nuNavCrumbs" aria-label="breadcrumb" hidden></nav>
+		<?php endif; ?>
 		<?php if (!$compact): ?>
 		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nuNav" aria-controls="nuNav" aria-expanded="false" aria-label="Menu">
 			<span class="navbar-toggler-icon"></span>
@@ -321,6 +332,7 @@ function nu_sidebar(): void
 function nu_render_flashes(): void
 {
 	$toasts = '';
+	if (isset($_SESSION['nu_pw_soon']) || isset($_SESSION['nu_pw_ga'])) NuPwPolicy::flashes();   // password policy reminders after the sign-in (0.8.745)
 	foreach (nu_flashes() as $f) {
 		[$type, $msg] = $f;
 		$icon = ['success' => 'bi-check-circle', 'danger' => 'bi-exclamation-octagon', 'warning' => 'bi-exclamation-triangle'][$type] ?? 'bi-info-circle';
@@ -331,8 +343,9 @@ function nu_render_flashes(): void
 				. ' me-2 m-auto" data-bs-dismiss="toast" aria-label="' . h(t('close')) . '"></button></div></div>';
 			continue;
 		}
-		echo '<div class="alert alert-' . h($type) . ' alert-dismissible fade show d-flex align-items-start gap-2" role="alert">'
-			. '<i class="bi ' . $icon . ' mt-1"></i><div>' . h($msg) . '</div>'
+		$check = $msg === t('err_check_form');                // "Please check the highlighted fields" (0.8.718): nuapp.js lists them on a click
+		echo '<div class="alert alert-' . h($type) . ' alert-dismissible fade show d-flex align-items-start gap-2' . ($check ? ' nuCheckForm" data-tip="' . h(t('err_check_list')) : '') . '" role="alert">'
+			. '<i class="bi ' . $icon . ' mt-1"></i><div>' . h($msg) . (isset($f[3][0], $f[3][1]) ? ' <a class="alert-link" href="' . h((string)$f[3][0]) . '">' . h((string)$f[3][1]) . '</a>' : '') . '</div>'
 			. '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="' . h(t('close')) . '"></button></div>';
 	}
 	if ($toasts !== '') echo '<div class="toast-container position-fixed end-0 p-3 nuFlashToasts">' . $toasts . '</div>';

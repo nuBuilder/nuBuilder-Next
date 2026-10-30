@@ -61,7 +61,33 @@ if (nu_is_post()) {
 			$id = bin2hex(random_bytes(8));
 			if (!move_uploaded_file($f['tmp_name'], $uploadPath($id))) throw new RuntimeException(t('upd_err_upload'));
 			@chmod($uploadPath($id), 0600);
-			nu_redirect(nu_url('update', ['check' => $id]));
+			// "Check & install" (0.8.733, developer mode): checked as on the check page and installed at once – no SQL in the backup,
+			// the safe database columns, sample data refreshed; anything that needs a decision goes to the normal check page instead
+			if (nu_post('quick') === '1' && NuHash::devMode()) {
+				$zip = $uploadPath($id);
+				$qi = NuUpdate::inspect($zip);
+				$why = '';
+				if (!$qi['ok']) $why = implode(' · ', $qi['errors']);
+				elseif (!version_compare($qi['version'], NU_VERSION, '>')) $why = t('upd_err_not_newer', $qi['version']);
+				elseif (in_array(false, array_column(NuUpdate::requirements(), 1), true)) $why = t('upd_quick_req');
+				elseif (array_filter(NuLibs::unmet(NuLibs::required((array)$qi['manifest']), null, NuLibs::available()), static fn($x) => $x['needed'] && $x['have'] === '')) $why = t('upd_quick_libs');
+				elseif (NuIntegrity::forPackage($zip, $qi['prefix'])['errors']) $why = t('upd_quick_integrity');
+				if ($why !== '') {
+					nu_flash('warning', t('upd_quick_stopped', $why));
+					nu_redirect(nu_url('update', ['check' => $id]));
+				}
+				$exp = NuSchemaCheck::fromZip($zip, $qi['prefix']);
+				$cmp = $exp ? NuSchemaCheck::compare($exp) : null;
+				$_POST['schema'] = $cmp ? array_values(array_map(static fn($c) => (string)$c['key'],
+					array_merge($cmp['missing'], array_values(array_filter($cmp['changed'], static fn($c) => $c['safe']))))) : [];
+				$_POST['id'] = $id;
+				$_POST['backup_db'] = 'none';
+				$_POST['sample_refresh'] = NuSample::status()['installed'] ? '1' : '0';
+				NuLog::write('nunext_update_quick', '', '', ['version' => $qi['version']]);
+				$action = 'install';
+			} else {
+				nu_redirect(nu_url('update', ['check' => $id]));
+			}
 		}
 		// a package of the folder _update/ (0.8.372): copied to the pending package and checked like an upload; only signed packages
 		// GitHub (0.8.374, core/nugithub.php): settings, look for a newer release, download it into _update/ and check it from there
@@ -722,6 +748,10 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="upload">
 				<input class="form-control w-auto" type="file" name="package" id="updPackage" accept=".zip,application/zip" required aria-label="<?= h(t('upd_package')) ?>">
 				<button class="btn btn-primary d-none" type="submit" id="updUpload" data-nu-needs-file="#updPackage" data-nu-busy="<?= h(t('upd_checking')) ?>"><i class="bi bi-search me-1"></i><?= h(t('upd_check')) ?></button>
+				<?php if (NuHash::devMode()): // developer mode (0.8.733): check and install in one go ?>
+				<button class="btn btn-outline-primary d-none" type="submit" name="quick" value="1" id="updQuick" data-nu-needs-file="#updPackage" data-nu-busy="<?= h(t('upd_quick_busy')) ?>"
+					data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('upd_quick_tip')) ?>"><i class="bi bi-lightning-charge me-1"></i><?= h(t('upd_quick')) ?></button>
+				<?php endif; ?>
 			</form>
 				</div>
 						<div class="mt-3 pt-3 border-top" id="updFolder">

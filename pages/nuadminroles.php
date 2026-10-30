@@ -104,7 +104,9 @@ nu_layout_start(t('adm_title'), 'home');
 		<?php if (isset($errors['rights'])): ?><div class="alert alert-danger m-3 mb-0"><?= h($errors['rights']) ?></div><?php endif; ?>
 		<div class="table-responsive">
 			<table class="table nu-table mb-0 align-middle" id="admRights">
-				<thead><tr><th><?= h(t('adm_right')) ?></th><th class="text-center"><?= h(t('adm_none')) ?></th><th class="text-center"><?= h(t('adm_view')) ?></th><th class="text-center"><?= h(t('adm_change')) ?></th></tr></thead>
+				<?php // sortable titles (0.8.739, assets/js/nuadminroles.js): a sorted list is flat (no group rows), a third click goes back to the groups ?>
+				<thead><tr><th class="admSort" data-sort="name"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="<?= h(t('adm_sort_tip')) ?>"><?= h(t('adm_right')) ?></button></th>
+					<?php foreach (['' => 'adm_none', 'view' => 'adm_view', 'change' => 'adm_change'] as $lv => $lk): ?><th class="text-center admSort" data-sort="lvl:<?= $lv ?>"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="<?= h(t('adm_sort_tip')) ?>"><?= h(t($lk)) ?></button></th><?php endforeach; ?></tr></thead>
 				<tbody>
 				<?php foreach (NuAdmin::GROUPS as $g => $gLabel): ?>
 					<tr class="nuAdmGroup"><th colspan="4" scope="rowgroup"><i class="bi <?= h(['system' => 'bi-gear', 'data' => 'bi-database', 'dev' => 'bi-code-slash', 'users' => 'bi-people', 'look' => 'bi-palette', 'comm' => 'bi-envelope', 'integration' => 'bi-plug', 'logs' => 'bi-journal-text'][$g] ?? 'bi-folder') ?> me-2" aria-hidden="true"></i><?= h(t($gLabel)) ?></th></tr>
@@ -112,8 +114,9 @@ nu_layout_start(t('adm_title'), 'home');
 						$cur = $role['rights'][$k] ?? '';
 						$may = $grant[$k] ?? '';                       // what the editing user may give
 						$dis = static fn(string $lvl) => $own || ($lvl !== '' && $may !== 'change' && !($may === 'view' && $lvl === 'view') && $cur !== $lvl) ? ' disabled' : ''; ?>
-						<tr class="nuAdmRight">
-							<td><?= h(t($label)) ?><?= $full ? $fullBadge : '' ?></td>
+						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-name="<?= h(t($label)) ?>">
+							<td><?php if (isset(NuAdmin::PAGES[$k])): [$pr, $pp] = NuAdmin::PAGES[$k]; ?><a href="<?= h(nu_url($pr, $pp)) ?>" target="_blank" rel="noopener" class="admRightLink" title="<?= h(t('adm_open_page')) ?>"><?= h(t($label)) ?><i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a><?php else: ?><?= h(t($label)) ?><?php endif; ?><?= $full ? $fullBadge : '' ?>
+								<span class="admGrpTag small text-body-secondary ms-1"><?= h(t($gLabel)) ?></span></td>
 							<td class="text-center"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="" aria-label="<?= h(t($label) . ': ' . t('adm_none')) ?>"<?= $cur === '' ? ' checked' : '' ?><?= $own ? ' disabled' : '' ?>></td>
 							<td class="text-center"><?php if ($levels === 'vc'): ?><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="view" aria-label="<?= h(t($label) . ': ' . t('adm_view')) ?>"<?= $cur === 'view' ? ' checked' : '' ?><?= $dis('view') ?>><?php endif; ?></td>
 							<td class="text-center"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="change" aria-label="<?= h(t($label) . ': ' . t('adm_change')) ?>"<?= $cur === 'change' ? ' checked' : '' ?><?= $dis('change') ?>></td>
@@ -138,4 +141,4 @@ nu_layout_start(t('adm_title'), 'home');
 </div>
 <?php endif; ?>
 <?php
-nu_layout_end();
+nu_layout_end('<script src="' . nu_asset('assets/js/nuadminroles.js') . '"></script>');

@@ -58,6 +58,56 @@ const NB_TYPES      = ['input', 'select', 'textarea', 'editor', 'display', 'calc
 const NB_HOOKS      = ['BB', 'BE', 'BS', 'AS', 'BD', 'AD'];
 
 /**
+ * A view picked in the New form wizard (0.8.721): null for a table, else {updatable: true | false | null (unknown), key: suggested
+ * key column, unique: true | false | null (not checked)}. Updatable: MySQL / MariaDB say so in information_schema.VIEWS.IS_UPDATABLE;
+ * SQL Server from the view's text (GROUP BY, DISTINCT, UNION, TOP, aggregates → not). Key: <view>_id, else the first column ending in
+ * _id, else id, else the first column; unique = no value twice (read only, errors → null).
+ */
+function nb_view_info(string $t, array $cols): ?array
+{
+	$db = nu_db();
+	if ($t === '' || !$cols || !preg_match('/^[A-Za-z_][A-Za-z0-9_$]*$/', $t)) return null;
+	try {
+		$type = match ($db->type) {
+			'mysql'  => $db->value('SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]),
+			'sqlsrv' => $db->value('SELECT TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?', [$t]),
+			default  => $db->value("SELECT CASE type WHEN 'table' THEN 'BASE TABLE' ELSE 'VIEW' END FROM sqlite_master WHERE name = ?", [$t]),
+		};
+	} catch (Throwable) { return null; }
+	if (strtoupper((string)$type) !== 'VIEW') return null;
+	$upd = null;
+	try {
+		if ($db->type === 'mysql') {
+			$v = $db->value('SELECT IS_UPDATABLE FROM information_schema.VIEWS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]);
+			if ($v !== null) $upd = strtoupper((string)$v) === 'YES';
+		} elseif ($db->type === 'sqlsrv') {
+			$def = (string)$db->value('SELECT m.definition FROM sys.sql_modules m WHERE m.object_id = OBJECT_ID(?)', [$t]);
+			if ($def !== '') $upd = nb_view_text_updatable($def);
+		} else {
+			$upd = false;                                                     // SQLite views are read only
+		}
+	} catch (Throwable) {}
+	$lc  = array_map('strtolower', $cols);
+	$key = null;
+	foreach ([strtolower($t) . '_id', 'id'] as $want) if (($i = array_search($want, $lc, true)) !== false) { $key = $cols[$i]; break; }
+	if ($key === null) foreach ($cols as $c) if (preg_match('/_id$/i', $c)) { $key = $c; break; }
+	$key ??= $cols[0];
+	$unique = null;
+	try {
+		$k = NuDB::ident($key);
+		$unique = (int)$db->readOnly(static fn(NuDB $d) => $d->value('SELECT COUNT(*) - COUNT(DISTINCT ' . $k . ') FROM ' . NuDB::ident($t))) === 0;   // COUNT(DISTINCT) skips NULLs too
+	} catch (Throwable) {}
+	return ['updatable' => $upd, 'key' => $key, 'unique' => $unique];
+}
+
+/** SQL Server view text → can it be written to? Not with GROUP BY, DISTINCT, UNION / EXCEPT / INTERSECT, TOP or aggregates. */
+function nb_view_text_updatable(string $def): bool
+{
+	$sql = (string)preg_replace(['/--[^\n]*/', '~/\*.*?\*/~s', "/'(?:[^']|'')*'/"], ' ', $def);
+	return !preg_match('/\b(GROUP\s+BY|DISTINCT|UNION|EXCEPT|INTERSECT|PIVOT)\b|\bTOP\s*[\d(]|\b(SUM|COUNT|AVG|MIN|MAX)\s*\(/i', $sql);
+}
+
+/**
  * The form's table as offered in "Delete form" (0.8.245; the globeadmin only, like deleting the form itself), only a real table
  * (no view, no zzzzsys table) that no other form uses. Deleting it also needs a recent password confirmation.
  */
@@ -477,7 +527,17 @@ try {
 				'sqlsrv' => $db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME NOT LIKE 'zzzzsys%' ORDER BY TABLE_NAME"),
 				default  => $db->all("SELECT name AS t FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'zzzzsys%' ORDER BY name"),
 			};
-			nb_out(['ok' => true, 'tables' => array_column($tables, 't')]);
+			// views (0.8.721): marked in the New form wizard; 'tables' stays a plain list of names (design mode uses it too)
+			$views = match ($db->type) {
+				'mysql'  => $db->all("SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'VIEW' AND TABLE_NAME NOT LIKE 'zzzzsys%'"),
+				'sqlsrv' => $db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'VIEW' AND TABLE_NAME NOT LIKE 'zzzzsys%'"),
+				default  => $db->all("SELECT name AS t FROM sqlite_master WHERE type = 'view' AND name NOT LIKE 'zzzzsys%'"),
+			};
+			if ($db->type !== 'mysql' && $db->type !== 'sqlsrv') {
+				$tables = array_merge($tables, $views);
+				usort($tables, static fn($a, $b) => strcasecmp((string)$a['t'], (string)$b['t']));
+			}
+			nb_out(['ok' => true, 'tables' => array_column($tables, 't'), 'views' => array_column($views, 't')]);
 
 		case 'files':
 			$files = $db->tableExists('zzzzsys_file') ? $db->all('SELECT zzzzsys_file_id, sfi_code, sfi_description FROM zzzzsys_file ORDER BY sfi_code') : [];
@@ -486,7 +546,9 @@ try {
 		case 'columns':
 			$cols = $db->columns(NuDB::ident((string)($in['table'] ?? '')));
 			$lbl  = NuBuilderGen::defaultLabels(array_map('strval', array_keys($cols)));     // placeholder labels of the wizard's column list (0.8.675)
-			nb_out(['ok' => true, 'columns' => array_map(static fn($n, $c) => ['name' => $n, 'label' => $lbl[(string)$n] ?? ''] + $c, array_keys($cols), $cols)]);
+			$table = (string)($in['table'] ?? '');
+			nb_out(['ok' => true, 'columns' => array_map(static fn($n, $c) => ['name' => $n, 'label' => $lbl[(string)$n] ?? ''] + $c, array_keys($cols), $cols),
+				'view' => nb_view_info($table, array_map('strval', array_keys($cols)))]);
 
 		// --------------------------------------------------------------- form
 		case 'form.create':

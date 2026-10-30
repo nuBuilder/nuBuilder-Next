@@ -192,7 +192,8 @@ if ($late) {
 		case 'libs':
 			if ($action === 'gh') { $S['libs_gh'] = NuLibs::ghCheck(NuGitHub::DEFAULT_REPO, false); break; }
 			if ($action === 'rescan') break;
-			$S['libs'] = array_values(array_intersect(array_map('strval', (array)($_POST['slots'] ?? [])), array_keys(NuLibs::SLOTS)));
+			$S['libs'] = array_values(array_filter(array_intersect(array_map('strval', (array)($_POST['slots'] ?? [])), array_keys(NuLibs::SLOTS)),
+				static fn($sl) => NuLibs::forDb($sl, (string)($S['db']['type'] ?? 'mysql'))));          // phpMyAdmin not on SQL Server (0.8.744)
 			$S['libs_set'] = true;
 			$go('summary');
 
@@ -301,7 +302,7 @@ function nu_install_libs(?array $S): array
 	$want = (array)($S['libs'] ?? []);
 	if ($want) {
 		try {
-			$ov = NuLibs::overview(true, $S['libs_gh'] ?? ['libs' => []]);
+			$ov = NuLibs::overview(true, $S['libs_gh'] ?? ['libs' => []], (string)($S['db']['type'] ?? 'mysql'));
 		} catch (Throwable $e) {
 			return [[t('upd_libs'), '', false, $e->getMessage()]];
 		}
@@ -547,7 +548,7 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 
 		<?php elseif ($step === 'libs'):
 			if (!isset($S['libs_gh'])) $S['libs_gh'] = NuLibs::ghCheck(NuGitHub::DEFAULT_REPO, false);       // once per installation; "Look again" below
-			$lv = NuLibs::overview(true, $S['libs_gh']); $lgh = $S['libs_gh']; ?>
+			$lv = NuLibs::overview(true, $S['libs_gh'], (string)($S['db']['type'] ?? 'mysql')); $lgh = $S['libs_gh']; ?>
 			<!-- ================================================================ libraries (0.8.405) -->
 			<h1 class="h4"><?= h(t('ins_step_libs')) ?></h1>
 			<p class="text-body-secondary small"><?= h(t('ins_libs_text')) ?></p>
