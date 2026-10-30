@@ -592,12 +592,12 @@ final class NuListView
 		<?= $opt['title_sub'] ?? '' ?>
 		<div class="d-flex flex-wrap gap-2 align-items-center"><?= ($opt['back'] ?? true) ? nu_back_button() : '' ?>
 			<?= $opt['buttons'] ?? '' ?>
-			<?= self::more($opt['more'] ?? [], $more ? NuListExport::printUrl($L['form'], $route, $rp + $keepSort) : '', $more && NuListExport::allowed($L['form']) ? nu_url($route, array_filter($rp + $keepSort, static fn($v) => $v !== null && $v !== '') + ['export' => 'xlsx']) : '') ?>
+			<?= self::more($opt['more'] ?? [], $more && $total > 0 ? NuListExport::printUrl($L['form'], $route, $rp + $keepSort) : '', $more && $total > 0 && NuListExport::allowed($L['form']) ? nu_url($route, array_filter($rp + $keepSort, static fn($v) => $v !== null && $v !== '') + ['export' => 'xlsx']) : '') ?>
 			<?php if (!$grid): // phones: cards ⇄ table, remembered on the device (0.8.471, assets/js/nulistview.js) ?>
 			<button type="button" class="btn nuBtnAct nuToolBtn d-md-none nuLvPhoneBtn" data-lv-phone-toggle aria-pressed="false" title="<?= h(t('lv_phone_toggle')) ?>" aria-label="<?= h(t('lv_phone_toggle')) ?>"><i class="bi bi-table nuLvPhoneToTable" aria-hidden="true"></i><i class="bi bi-card-list nuLvPhoneToCards" aria-hidden="true"></i></button>
 			<?php endif; ?>
 			<?= self::menu($L, $views, $view, $keepSort) ?>
-			<?= NuListExport::buttons($L['form'], $route, $rp + $keepSort, false, 'btn-outline-secondary nuToolBtn', $more ? 'd-none d-sm-inline-block' : '') ?>
+			<?= $total > 0 ? NuListExport::buttons($L['form'], $route, $rp + $keepSort, false, 'btn-outline-secondary nuToolBtn', $more ? 'd-none d-sm-inline-block' : '') : '' /* no records: nothing to export (0.8.710) */ ?>
 			<?= $opt['buttons_end'] ?? '' ?>
 		</div>
 	</div>

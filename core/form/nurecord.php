@@ -199,6 +199,9 @@ final class NuRecord
 			}
 
 			foreach ($posted as $sfId => $sf) self::saveSubform($meta, (string)$sfId, is_array($sf) ? $sf : [], $id, $audit);
+			// webhooks (0.8.715): queued in this transaction (gone again with a rollback), sent once the page has answered
+			$whEvent = $isNew ? 'insert' : 'update';
+			if (NuWebhook::of($meta->id, $whEvent)) NuWebhook::queue($meta->id, $meta->code(), $meta->table(), $whEvent, (string)$id, (array)$db->one("SELECT * FROM $table WHERE $pk = ?", [$id]), $isNew ? [] : (array)$oldRow);
 			return $id;
 		});
 		} catch (NuConflictFound $cf) {
@@ -349,6 +352,7 @@ final class NuRecord
 			}
 			$db->delete(NuDB::ident($meta->table()), NuDB::ident($meta->primaryKey()), $recordId);
 			NuAudit::record('delete', $meta->table(), $recordId, $row, [], $ctx);
+			NuWebhook::queue($meta->id, $meta->code(), $meta->table(), 'delete', $recordId, $row);   // webhooks (0.8.715)
 		});
 		} finally {
 			NuAudit::end();

@@ -16,6 +16,49 @@ if (!NuHash::devMode() || !empty($u['demo'])) {
 }
 
 $file = NU_ROOT . '/TODO.md';
+
+// upload (0.8.712): nunext-dev.zip (or TODO.md itself) – only TODO.md is taken out of the zip and written; the upload is deleted at
+// once; an existing TODO.md is replaced without asking
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && nu_post('action') === 'upload') {
+	$f = $_FILES['todo_file'] ?? null;
+	$tmp = is_array($f) && is_string($f['tmp_name'] ?? null) ? $f['tmp_name'] : '';
+	try {
+		$err = is_array($f) ? (int)($f['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+		if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) throw new RuntimeException(t('todo_up_big', NuUpdate::uploadLimitText()));
+		if ($err !== UPLOAD_ERR_OK || $tmp === '' || !is_uploaded_file($tmp)) throw new RuntimeException(t('todo_up_nofile'));
+		$name = strtolower((string)($f['name'] ?? ''));
+		$text = null;
+		if (str_ends_with($name, '.md')) {
+			if (filesize($tmp) > 4194304) throw new RuntimeException(t('todo_up_bad'));
+			$text = (string)file_get_contents($tmp);
+		} else {
+			if (!class_exists('ZipArchive')) throw new RuntimeException(t('todo_up_bad'));
+			$zip = new ZipArchive();
+			if ($zip->open($tmp) !== true) throw new RuntimeException(t('todo_up_bad'));
+			$best = null;   // TODO.md at the top or in the package folder (nunext/TODO.md) – the shortest path wins
+			for ($i = 0; $i < $zip->numFiles; $i++) {
+				$st = $zip->statIndex($i);
+				$n = is_array($st) ? (string)$st['name'] : '';
+				if (($n === 'TODO.md' || str_ends_with($n, '/TODO.md')) && substr_count($n, '/') <= 1 && ($best === null || strlen($n) < strlen($best[1]))) $best = [$i, $n, (int)$st['size']];
+			}
+			if ($best === null) { $zip->close(); throw new RuntimeException(t('todo_up_notfound')); }
+			if ($best[2] > 4194304) { $zip->close(); throw new RuntimeException(t('todo_up_bad')); }
+			$text = $zip->getFromIndex($best[0]);
+			$zip->close();
+			if (!is_string($text)) throw new RuntimeException(t('todo_up_bad'));
+		}
+		if ($text === '' || str_contains($text, "\0") || !mb_check_encoding($text, 'UTF-8')) throw new RuntimeException(t('todo_up_bad'));
+		$part = $file . '.part';
+		if (@file_put_contents($part, $text) !== strlen($text) || !@rename($part, $file)) { @unlink($part); throw new RuntimeException(t('todo_up_write')); }
+		NuLog::write('todo_uploaded', 'TODO.md', '', ['bytes' => strlen($text), 'from' => basename((string)($f['name'] ?? ''))]);
+		nu_flash('success', t('todo_uploaded'));
+	} catch (RuntimeException $e) {
+		nu_flash('danger', $e->getMessage());
+	} finally {
+		if ($tmp !== '' && is_file($tmp)) @unlink($tmp);   // the uploaded zip is never kept
+	}
+	nu_redirect(nu_url('todo'));
+}
 $md = is_file($file) ? (string)file_get_contents($file) : '';
 
 /** Inline Markdown on escaped text: `code`, **bold**, *italic*. */
@@ -106,11 +149,17 @@ nu_layout_start(t('todo_title'), 'home', ['container' => 'nuContainer']);
 	<h1 class="h3 mb-0"><i class="bi bi-list-check me-2"></i><?= h(t('todo_title')) ?></h1>
 	<?php if ($md !== ''): ?><div class="nuTitleSub text-body-secondary small"><?= h(t('todo_counts', $open, $done)) ?> · <code>TODO.md</code> · <?= h(date('d.m.Y H:i', (int)filemtime($file))) ?></div><?php endif; ?>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
+		<form method="post" action="<?= h(nu_url('todo')) ?>" enctype="multipart/form-data" id="nuTodoUpForm" data-max="<?= NuUpdate::uploadLimit() ?>" data-big="<?= h(t('todo_up_big', NuUpdate::uploadLimitText())) ?>">
+			<?= nu_csrf_field() ?><input type="hidden" name="action" value="upload">
+			<input type="file" name="todo_file" id="nuTodoFile" accept=".zip,.md" class="d-none">
+			<button type="button" class="btn nuBtnAct" id="nuTodoUpload" title="<?= h(t('todo_up_hint')) ?>"><i class="bi bi-upload me-1" aria-hidden="true"></i><?= h(t($md === '' ? 'todo_up_btn' : 'todo_up_replace')) ?></button>
+		</form>
 		<?php if ($secs > 1): ?><button type="button" class="btn nuBtnAct" id="nuTodoAll" data-collapse="<?= h(t('todo_collapse_all')) ?>" data-expand="<?= h(t('todo_expand_all')) ?>"><i class="bi bi-arrows-expand me-1" aria-hidden="true"></i><span><?= h(t('todo_expand_all')) ?></span></button><?php endif; ?>
 	</div>
 </div>
+<div class="alert alert-danger" id="nuTodoUpErr" role="alert" hidden></div>
 <?php if ($md === ''): ?>
-	<div class="alert alert-warning"><?= h(t('todo_missing')) ?></div>
+	<div class="alert alert-warning"><?= h(t('todo_missing')) ?> <?= h(t('todo_up_hint')) ?></div>
 <?php else: ?>
 	<div class="card shadow-sm"><div class="card-body nuTodo"><?= $html ?></div></div>
 <?php endif; ?>

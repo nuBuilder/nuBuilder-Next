@@ -918,6 +918,14 @@
 			sw('favStrip', t('home_v_fav_row'), v.favStrip, t('home_v_fav_row_hint'), function (x) { setOpt('favStrip', x); }),
 			sw('recentStrip', t('home_v_recent_row'), v.recentStrip, t('home_v_recent_row_hint'), function (x) { setOpt('recentStrip', x); })]));
 
+		// side bar (0.8.708, was in the user menu): only for me – POST ?p=sidebar action toggle, then the page again
+		if (D.sidebar) secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_sidebar_sec'),
+			sw('sidebar', t('home_v_sidebar'), D.sidebar.on, t('home_v_sidebar_hint'), function () {
+				var f = new FormData();
+				f.append('_csrf', D.csrf); f.append('action', 'toggle'); f.append('back', D.sidebar.back);
+				fetch(D.sidebar.url, {method: 'POST', body: f, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
+			})]));
+
 		// look (collapsed)
 		var look = [el('button', {type: 'button', 'class': 'nuHomeVpMore', 'data-f': 'look', 'aria-expanded': VP.more ? 'true' : 'false', onclick: function () { VP.more = !VP.more; drawPanel(); }},
 			[el('span', {'class': 'nuHomeVpLbl', text: t('home_v_look')}), icon('bi-chevron-' + (VP.more ? 'up' : 'down'))])];

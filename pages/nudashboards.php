@@ -30,7 +30,7 @@ if (nu_is_post()) {
 	if ($action === 'save') {
 		[$newId, $errors] = NuDashboard::save(['code' => nu_post('code'), 'title' => nu_post('title'), 'description' => nu_post('dash_description'),
 			'on_home' => nu_check('on_home') === '1', 'access' => (array)($_POST['access'] ?? []), 'date_range' => nu_post('date_range'), 'sort_order' => nu_post('sort_order')], $d ? $id : '');
-		if (!$errors) { nu_flash('success', t('dash_saved')); nu_redirect(nu_url('dashboards', ['id' => $newId])); }
+		if (!$errors) { nu_flash('success', t('dash_saved')); nu_redirect(nu_url('dashboards', ['id' => $newId, 'tab' => nu_post('tab') === 'access' ? 'access' : null])); }
 	} elseif ($action === 'copy' && $d) {
 		$new = NuDashboard::copy($id);
 		nu_flash('success', t('dash_copied'));
@@ -60,7 +60,7 @@ if (nu_is_post()) {
 // after the POST: arrow functions take $errors as it is when they are created
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback">' . h($errors[$k]) . '</div>' : '';
-$accessLevels = $db->tableExists('zzzzsys_access') ? $db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') : [];
+$accessLevels = $db->tableExists('zzzzsys_access') ? $db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_code') : [];
 $accName = [];
 foreach ($accessLevels as $a) $accName[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
 $foot = '';
@@ -277,6 +277,17 @@ nu_layout_start(t('dash_title'), 'home');
 	<div class="card-body">
 		<form method="post" action="<?= h(nu_url('dashboards', ['id' => $d ? $id : 'new'])) ?>" id="dashForm" novalidate data-nu-guard>
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
+			<?php // tabs General / Access levels (0.8.697)
+			$dTab = (string)($_GET['tab'] ?? nu_post('tab')) === 'access' ? 'access' : '';
+			$nAcc = count(array_intersect($acc, array_map(fn($a) => (string)$a['zzzzsys_access_id'], $accessLevels))); ?>
+			<input type="hidden" name="tab" id="dashTab" value="<?= h($dTab) ?>">
+			<ul class="nav nav-tabs mb-3" id="dashTabs" role="tablist" data-nu-tabfield="dashTab">
+				<li class="nav-item" role="presentation"><button class="nav-link<?= $dTab === '' ? ' active' : '' ?>" id="dashTabGeneralBtn" data-bs-toggle="tab" data-bs-target="#dashTabGeneral" data-nu-tab="" type="button" role="tab" aria-controls="dashTabGeneral" aria-selected="<?= $dTab === '' ? 'true' : 'false' ?>"><i class="bi bi-card-text me-1"></i><?= h(t('access_sec_general')) ?></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link<?= $dTab === 'access' ? ' active' : '' ?>" id="dashTabAccessBtn" data-bs-toggle="tab" data-bs-target="#dashTabAccess" data-nu-tab="access" type="button" role="tab" aria-controls="dashTabAccess" aria-selected="<?= $dTab === 'access' ? 'true' : 'false' ?>"><i class="bi bi-shield-lock me-1"></i><?= h(t('dash_access')) ?>
+					<span class="badge text-bg-secondary ms-1" id="dAccCount" data-total="<?= count($accessLevels) ?>" data-fmt="<?= h(t('dash_access_count')) ?>" title="<?= h(t('dash_access_count', $nAcc, count($accessLevels))) ?>"><?= $nAcc ?> / <?= count($accessLevels) ?></span></button></li>
+			</ul>
+			<div class="tab-content">
+			<div class="tab-pane fade<?= $dTab === '' ? ' show active' : '' ?>" id="dashTabGeneral" role="tabpanel" aria-labelledby="dashTabGeneralBtn" tabindex="0">
 			<div class="row g-3">
 				<div class="col-md-3">
 					<label class="form-label" for="dCode"><?= h(t('dash_code')) ?><?= nu_unique_mark() ?></label><?= $tip(t('dash_code_tip')) ?>
@@ -292,19 +303,11 @@ nu_layout_start(t('dash_title'), 'home');
 				</div>
 				<div class="col-12">
 					<label class="form-label" for="dDesc"><?= h(t('dash_description')) ?></label>
-					<input class="form-control" id="dDesc" name="description" maxlength="1000" value="<?= h($cur['description']) ?>">
+					<input class="form-control" id="dDesc" name="dash_description" maxlength="1000" value="<?= h($cur['description']) ?>">
 				</div>
 				<div class="col-md-6">
 					<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" id="dHome" name="on_home" value="1"<?= (string)$cur['on_home'] === '1' ? ' checked' : '' ?>>
 						<label class="form-check-label" for="dHome"><?= h(t('dash_on_home')) ?></label><?= $tip(t('dash_on_home_tip')) ?></div>
-					<span class="form-label d-block mb-1"><?= h(t('dash_access')) ?><?= $tip(t('dash_access_tip')) ?></span>
-					<div class="border rounded p-2 dashAccessList">
-						<?php if (!$accessLevels): ?><span class="small text-body-secondary"><?= h(t('no_records')) ?></span><?php endif; ?>
-						<?php foreach ($accessLevels as $a): $aid = (string)$a['zzzzsys_access_id']; ?>
-							<div class="form-check"><input class="form-check-input" type="checkbox" name="access[]" id="dAcc_<?= h($aid) ?>" value="<?= h($aid) ?>"<?= in_array($aid, $acc, true) ? ' checked' : '' ?>>
-								<label class="form-check-label" for="dAcc_<?= h($aid) ?>"><span class="fw-semibold"><?= h($a['sal_code']) ?></span> <span class="text-body-secondary small"><?= h($a['sal_description']) ?></span></label></div>
-						<?php endforeach; ?>
-					</div>
 				</div>
 				<div class="col-md-6">
 					<label class="form-label" for="dRange"><?= h(t('dash_default_range')) ?></label><?= $tip(t('dash_default_range_tip')) ?>
@@ -318,6 +321,26 @@ nu_layout_start(t('dash_title'), 'home');
 							<?= $usage ? h(implode(', ', array_map(static fn($x) => $x[0] . ' (' . $x[1] . ')', $usage))) : '<span class="text-body-secondary">–</span>' ?></div>
 					<?php endif; ?>
 				</div>
+			</div>
+			</div>
+			<div class="tab-pane fade<?= $dTab === 'access' ? ' show active' : '' ?>" id="dashTabAccess" role="tabpanel" aria-labelledby="dashTabAccessBtn" tabindex="0">
+				<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><span class="fw-semibold"><?= h(t('dash_access')) ?></span><?= $tip(t('dash_access_tip')) ?>
+					<?php $accGroups = array_values(array_unique(array_map(fn($a) => trim((string)($a['sal_group'] ?? '')), $accessLevels))); sort($accGroups, SORT_NATURAL | SORT_FLAG_CASE);
+					if (count($accGroups) > 1): // group filter (0.8.697): hides the other levels, their ticks stay and are saved ?>
+					<select class="form-select form-select-sm ms-auto dashAccGroup" id="dAccGroup" aria-label="<?= h(t('fac_group')) ?>">
+						<option value="*"><?= h(t('fac_groups')) ?></option>
+						<?php foreach ($accGroups as $g): ?><option value="<?= h($g) ?>"><?= h($g === '' ? t('fac_nogroup') : $g) ?></option><?php endforeach; ?>
+					</select>
+					<?php endif; ?>
+				</div>
+					<div class="border rounded p-2 dashAccessList">
+						<?php if (!$accessLevels): ?><span class="small text-body-secondary"><?= h(t('no_records')) ?></span><?php endif; ?>
+						<?php foreach ($accessLevels as $a): $aid = (string)$a['zzzzsys_access_id']; ?>
+							<div class="form-check" data-group="<?= h(trim((string)($a['sal_group'] ?? ''))) ?>"><input class="form-check-input" type="checkbox" name="access[]" id="dAcc_<?= h($aid) ?>" value="<?= h($aid) ?>"<?= in_array($aid, $acc, true) ? ' checked' : '' ?>>
+								<label class="form-check-label" for="dAcc_<?= h($aid) ?>"><span class="fw-semibold"><?= h($a['sal_code']) ?></span> <span class="text-body-secondary small"><?= h($a['sal_description']) ?></span></label></div>
+						<?php endforeach; ?>
+					</div>
+			</div>
 			</div>
 		</form>
 	</div>
@@ -362,5 +385,6 @@ nu_layout_start(t('dash_title'), 'home');
 	<div class="card-body"><div data-nu-dashboard="<?= h($d['code']) ?>"></div></div></div>
 <?php $foot = NuDashboard::scriptTag(); endif; ?>
 <?php endif; ?>
+<?php $foot .= '<script src="' . nu_asset('assets/js/nudashboards.js') . '"></script>'; ?>
 <?php
 nu_layout_end($foot);

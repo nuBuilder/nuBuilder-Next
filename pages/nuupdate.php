@@ -110,6 +110,10 @@ if (nu_is_post()) {
 			$info = NuUpdate::inspect($zip);
 			if (!$info['ok']) throw new RuntimeException(implode(' · ', $info['errors']));
 			if (version_compare($info['version'], NU_VERSION, '<=') && nu_check('reinstall') !== '1') throw new RuntimeException(t('upd_err_not_newer', $info['version']));
+			// integrity check (0.8.698): problems that make an update fail or damage data need the tick "go on anyway"
+			$ic = NuIntegrity::forPackage($zip, $info['prefix']);
+			if ($ic['errors'] && nu_check('integrity_ack') !== '1') throw new RuntimeException(t('ic_ack_needed'));
+			if ($ic['errors']) NuLog::write('integrity_ignored', '', '', ['version' => $info['version'], 'items' => array_column($ic['items'], 'id')]);
 			// database structure: the columns the globeadmin selected (missing / other type), before the files are replaced
 			$schemaDone = [];
 			$sel = array_values(array_filter(array_map('strval', is_array($_POST['schema'] ?? null) ? $_POST['schema'] : [])));
@@ -338,6 +342,7 @@ if (isset($_GET['check']) && ($zip = $uploadPath((string)$_GET['check'])) !== ''
 		$check['sample'] = $smp['installed'] ? ['from' => $smp['version'], 'to' => NuSample::versionInZip($zip, $check['prefix'])] : null;
 		$exp = NuSchemaCheck::fromZip($zip, $check['prefix']);
 		$check['schema'] = $exp ? NuSchemaCheck::compare($exp) : null;
+		$check['integrity'] = NuIntegrity::forPackage($zip, $check['prefix']);   // 0.8.698
 		// database changes of this update (0.8.346): pending steps, own tables, nuBuilder columns, sample data – with the SQL
 		$smpTo = $check['sample'] ? (int)$check['sample']['to'] : 0;
 		// page forms (0.8.388): which pages the new version's page API would break or warn about (manifest page_api)
@@ -612,6 +617,12 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<div class="alert alert-danger small py-2" id="updReqFailed"><?= h(t('upd_req_failed')) ?>
 						<ul class="mb-1 mt-1"><?php foreach ($req as [$label, $ok, $detail]): if ($ok) continue; ?><li><strong><?= h($label) ?></strong>: <?= h($detail) ?></li><?php endforeach; ?></ul>
 						<a class="alert-link" href="#system"><?= h(t('upd_req_see_card')) ?></a> · <?= h(t('upd_req_hint')) ?></div>
+				<?php endif; ?>
+				<?php if (isset($check['integrity'])): $icR = $check['integrity']; ?>
+				<div class="border rounded p-3 mb-3<?= $icR['errors'] ? ' border-danger' : '' ?>" id="updIntegrity">
+					<div class="fw-semibold small mb-2"><i class="bi bi-clipboard2-pulse me-1"></i><?= h(t('ic_title')) ?><?= NuListView::infoTip(t('ic_tip')) ?></div>
+					<?= NuIntegrity::html($icR, 'updInstallForm') ?>
+				</div>
 				<?php endif; ?>
 				<?php if (isset($check['dbc'])): ?>
 				<div class="border rounded p-3 mb-3" id="updDbChanges">
@@ -1078,6 +1089,20 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 		<?php endforeach; ?>
 	</ul>
 </div>
+<?php if (!$check): // integrity check of the database (0.8.698): on request – it also tries a scratch table ?>
+<div class="card shadow-sm mb-4" id="updIntegrityNow">
+	<div class="card-header fw-semibold d-flex flex-wrap align-items-center gap-2"><span><i class="bi bi-clipboard2-pulse me-2"></i><?= h(t('ic_title')) ?></span><?= NuListView::infoTip(t('ic_tip')) ?>
+		<a class="btn btn-sm nuBtnAct ms-auto" href="<?= h(nu_url('update', ['tab' => 'system', 'integrity' => 1])) ?>#updIntegrityNow" id="updIntegrityRun"><i class="bi bi-play-circle me-1"></i><?= h(t(isset($_GET['integrity']) ? 'ic_run_again' : 'ic_run')) ?></a></div>
+	<div class="card-body">
+		<?php if (isset($_GET['integrity'])): $icR = NuIntegrity::run(); ?>
+			<?= NuIntegrity::html($icR) ?>
+			<p class="small text-body-secondary mt-2 mb-0"><?= h(t('ic_done_in', (int)$icR['checks'], (int)$icR['ms'])) ?></p>
+		<?php else: ?>
+			<p class="small text-body-secondary mb-0"><?= h(t('ic_intro')) ?></p>
+		<?php endif; ?>
+	</div>
+</div>
+<?php endif; ?>
 <?php if (!$check): $cmpNow = ($e = NuSchemaCheck::installed()) ? NuSchemaCheck::compare($e) : null; ?>
 <div class="card shadow-sm" id="updSchema">
 	<div class="card-header fw-semibold"><i class="bi bi-database-gear me-2"></i><?= h(t('upd_schema_title')) ?></div>

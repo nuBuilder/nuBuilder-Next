@@ -62,15 +62,15 @@ final class NuCompat
 
 	/**
 	 * All code of the application.
-	 * @return array<int, array{lang: string, where: string, form: string, code: string}>
+	 * @return array<int, array{lang: string, where: string, form: string, code: string, proc?: string}>
 	 */
 	public static function sources(bool $withSystem): array
 	{
 		$db = nu_db();
 		$sys = static fn(string $id) => !$withSystem && str_starts_with($id, 'nu');
 		$out = [];
-		$add = static function (string $lang, string $where, string $form, ?string $code) use (&$out) {
-			if ($code !== null && trim($code) !== '') $out[] = ['lang' => $lang, 'where' => $where, 'form' => $form, 'code' => $code];
+		$add = static function (string $lang, string $where, string $form, ?string $code, string $proc = '') use (&$out) {
+			if ($code !== null && trim($code) !== '') $out[] = ['lang' => $lang, 'where' => $where, 'form' => $form, 'code' => $code] + ($proc !== '' ? ['proc' => $proc] : []);
 		};
 		$cols = static fn(string $t) => $db->tableExists($t) ? $db->columns($t) : [];
 
@@ -112,8 +112,10 @@ final class NuCompat
 			$pc = $cols('zzzzsys_php');
 			foreach ($db->all('SELECT * FROM zzzzsys_php') as $p) {
 				if ($sys((string)$p['zzzzsys_php_id'])) continue;
-				$add('php', 'Procedure · ' . $p['sph_code'], (string)($p['sph_zzzzsys_form_id'] ?? ''), $p['sph_php']);
-				if (isset($pc['sph_javascript'])) $add('js', 'Procedure JS · ' . $p['sph_code'], '', $p['sph_javascript']);
+				// a procedure (not a form's hook) can be opened from the report (0.8.693)
+				$pid = in_array(substr((string)$p['zzzzsys_php_id'], -3), NuProcedure::HOOKS, true) ? '' : (string)$p['zzzzsys_php_id'];
+				$add('php', 'Procedure · ' . $p['sph_code'], (string)($p['sph_zzzzsys_form_id'] ?? ''), $p['sph_php'], $pid);
+				if (isset($pc['sph_javascript'])) $add('js', 'Procedure JS · ' . $p['sph_code'], '', $p['sph_javascript'], $pid);
 			}
 		}
 		return $out;
@@ -251,9 +253,10 @@ final class NuCompat
 				if ($isMethod && $lang === 'js' && !isset($js[$name])) continue;   // someObject.nuSomething(): not ours
 				$status = isset($custom[$lang][$key]) ? 'custom'
 					: ($lang === 'js' ? ($js[$name] ?? 'missing') : ($php[$key] ?? 'missing'));
-				$r = $res[$lang][$name] ?? ['status' => $status, 'count' => 0, 'where' => [], 'forms' => []];
+				$r = $res[$lang][$name] ?? ['status' => $status, 'count' => 0, 'where' => [], 'forms' => [], 'procs' => []];
 				$r['count']++;
 				if (!in_array($s['where'], $r['where'], true)) $r['where'][] = $s['where'];
+				if (!empty($s['proc'])) $r['procs'][$s['where']] = $s['proc'];   // where → procedure id (link on the report, 0.8.693)
 				if ($s['form'] !== '' && !in_array($s['form'], $r['forms'], true)) $r['forms'][] = $s['form'];
 				$res[$lang][$name] = $r;
 			}

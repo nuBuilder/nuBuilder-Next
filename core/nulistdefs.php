@@ -24,7 +24,7 @@ final class NuListDefs
 {
 	/** @return array<string, array> */
 	/** Keys of all lists with views (0.8.329: users, access; 0.8.334: the other system lists). */
-	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards'];
+	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'webhooks', 'webhookcalls'];
 
 	public static function get(string $list): ?array
 	{
@@ -33,7 +33,7 @@ final class NuListDefs
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),
 			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(), 'userfields' => self::userFields(), 'apiclients' => self::apiClients(),
 			'adminroles' => self::adminRoles(), 'sqlbuilder' => self::sqlBuilder(), 'emailtemplates' => self::emailTemplates(),
-			'notifications' => self::notifications(), 'dashboards' => self::dashboards(),
+			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'webhookcalls' => self::webhookCalls(),
 			default => null,
 		};
 	}
@@ -1120,6 +1120,105 @@ final class NuListDefs
 			'builtin' => [
 				'default' => $base,
 				'compact' => ['columns' => ['name', 'status', 'scopes'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['scopes']]] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
+
+	/** Webhooks (0.8.715, core/nuwebhook.php): name, forms, events, target host, active, calls of the last 24 hours. */
+	private static function webhooks(): array
+	{
+		$W = NuWebhook::T; $C = NuWebhook::CALL;
+		$since = date('Y-m-d H:i:s', time() - 86400);
+		$nFail = "(SELECT COUNT(*) FROM $C x WHERE x.webhook_id = w.zzzzsys_nunext_webhook_id AND x.status = 'failed' AND x.created_at >= '$since')";
+		$nPend = "(SELECT COUNT(*) FROM $C x WHERE x.webhook_id = w.zzzzsys_nunext_webhook_id AND x.status = 'pending')";
+		$nSent = "(SELECT COUNT(*) FROM $C x WHERE x.webhook_id = w.zzzzsys_nunext_webhook_id AND x.status = 'sent' AND x.created_at >= '$since')";
+		$forms = nu_forms();
+		$formsOf = static function ($r) use ($forms): array { $j = json_decode((string)$r['wh_forms'], true); return array_map(static fn($f) => (string)($forms[$f]['code'] ?? $f), is_array($j) ? $j : []); };
+		$eventsOf = static function ($r): array { $j = json_decode((string)$r['wh_events'], true); return array_map(static fn($e) => t('wh_ev_' . $e), array_intersect(NuWebhook::EVENTS, is_array($j) ? $j : [])); };
+		$calls = static fn(string $st, array $p) => nu_url('webhooks', ['tab' => 'calls'] + $p + ['status' => $st]);
+		$cols = [
+			'name' => ['label' => t('wh_name'), 'main' => true, 'locked' => true, 'select' => ['wh_name' => 'w.name'], 'sort' => 'w.name',
+				'text' => static fn($r) => (string)$r['wh_name'], 'html' => static fn($r) => '<span class="fw-semibold">' . h((string)$r['wh_name']) . '</span>'],
+			'forms' => ['label' => t('wh_forms'), 'select' => ['wh_forms' => 'w.forms'], 'sort' => null, 'class' => 'small', 'text' => static fn($r) => implode(', ', $formsOf($r))],
+			'events' => ['label' => t('wh_events'), 'select' => ['wh_events' => 'w.events'], 'sort' => null, 'class' => 'small', 'text' => static fn($r) => implode(', ', $eventsOf($r))],
+			'target' => ['label' => t('wh_target'), 'select' => ['wh_url' => 'w.url'], 'sort' => 'w.url', 'class' => 'small text-break',
+				'text' => static fn($r) => NuWebhook::urlForLog((string)$r['wh_url'])],
+			'status' => ['label' => t('status'), 'select' => ['wh_active' => 'w.active'], 'sort' => 'w.active',
+				'text' => static fn($r) => t((string)$r['wh_active'] === '1' ? 'wh_on' : 'wh_off'),
+				'html' => static fn($r) => self::badge(t((string)$r['wh_active'] === '1' ? 'wh_on' : 'wh_off'), (string)$r['wh_active'] === '1' ? 'text-bg-success' : 'text-bg-secondary')],
+			'calls' => ['label' => t('wh_calls_24h'), 'select' => ['wh_nsent' => $nSent, 'wh_nfail' => $nFail, 'wh_npend' => $nPend], 'sort' => $nFail, 'class' => 'small text-nowrap',
+				'text' => static fn($r) => (int)$r['wh_nsent'] . ' / ' . (int)$r['wh_nfail'] . ' / ' . (int)$r['wh_npend'],
+				'html' => static fn($r) => '<a class="text-decoration-none me-2" href="' . h($calls('sent', ['wh' => $r['__id']])) . '" title="' . h(t('wh_st_sent')) . '"><i class="bi bi-check2 text-success" aria-hidden="true"></i> ' . (int)$r['wh_nsent'] . '</a>'
+					. '<a class="text-decoration-none me-2' . ((int)$r['wh_nfail'] ? ' text-danger fw-semibold' : '') . '" href="' . h($calls('failed', ['wh' => $r['__id']])) . '" title="' . h(t('wh_st_failed')) . '"><i class="bi bi-x-circle" aria-hidden="true"></i> ' . (int)$r['wh_nfail'] . '</a>'
+					. '<a class="text-decoration-none" href="' . h($calls('pending', ['wh' => $r['__id']])) . '" title="' . h(t('wh_st_pending')) . '"><i class="bi bi-hourglass-split" aria-hidden="true"></i> ' . (int)$r['wh_npend'] . '</a>'],
+			'updated' => ['label' => t('fi_changed'), 'select' => ['wh_upd' => 'w.updated_at'], 'sort' => 'w.updated_at', 'class' => 'small text-nowrap', 'text' => static fn($r) => self::date($r['wh_upd'] ?? null, true)],
+			'id' => self::idCol('w.zzzzsys_nunext_webhook_id'),
+		];
+		$filters = [
+			'status' => ['label' => t('status'), 'type' => 'select', 'options' => static fn() => ['on' => t('wh_on'), 'off' => t('wh_off')],
+				'where' => static fn(string $v) => $v === 'on' ? ["w.active = '1'", []] : ($v === 'off' ? ["COALESCE(w.active, '0') <> '1'", []] : null)],
+			'form' => ['label' => t('wh_form'), 'type' => 'select', 'tom' => true,
+				'options' => static function () use ($forms): array { $o = []; foreach (NuWebhook::all() as $d) foreach ($d['forms'] as $f) $o[$f] = (string)($forms[$f]['code'] ?? $f); asort($o); return $o; },
+				'where' => static fn(string $v) => $v !== '' ? ['w.forms LIKE ?', ['%"' . $v . '"%']] : null],
+		];
+		$base = ['columns' => ['name', 'forms', 'events', 'target', 'status', 'calls'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['forms', 'events', 'calls']],
+			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['status', 'form'], 'values' => []]];
+		return [
+			'key' => 'webhooks', 'title' => t('wh_title'), 'route' => 'webhooks', 'form' => NuAcl::FORM_WEBHOOK,
+			'from' => " FROM $W w", 'where' => [], 'params' => [], 'id' => 'w.zzzzsys_nunext_webhook_id',
+			'link' => static fn($r) => nu_url('webhooks', ['id' => $r['__id']]),
+			'search' => ['w.name', 'w.url', 'w.forms'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'compact' => ['columns' => ['name', 'status', 'calls']] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
+
+	/** Calls of the webhooks (0.8.715): time, webhook, event, form, record, status, attempts, last answer, next attempt. */
+	private static function webhookCalls(): array
+	{
+		$W = NuWebhook::T; $C = NuWebhook::CALL;
+		$forms = nu_forms();
+		$stCls = ['sent' => 'text-bg-success', 'failed' => 'text-bg-danger', 'pending' => 'text-bg-warning'];
+		$cols = [
+			'created' => ['label' => t('wh_time'), 'main' => true, 'select' => ['whc_at' => 'c.created_at'], 'sort' => 'c.created_at', 'class' => 'small text-nowrap',
+				'text' => static fn($r) => self::date($r['whc_at'] ?? null, true)],
+			'webhook' => self::col('whc_name', 'w.name', t('wh_name'), 'fw-semibold'),
+			'event' => ['label' => t('wh_event'), 'select' => ['whc_ev' => 'c.event'], 'sort' => 'c.event', 'class' => 'small', 'text' => static fn($r) => t('wh_ev_' . $r['whc_ev'])],
+			'form' => ['label' => t('wh_form'), 'select' => ['whc_form' => 'c.form_id'], 'sort' => 'c.form_id', 'class' => 'small', 'text' => static fn($r) => (string)($forms[$r['whc_form']]['code'] ?? $r['whc_form'])],
+			'record' => array_replace(self::col('whc_rec', 'c.record_id', t('wh_record'), 'small font-monospace text-break'), ['sort' => null]),
+			'status' => ['label' => t('status'), 'select' => ['whc_st' => 'c.status'], 'sort' => 'c.status',
+				'text' => static fn($r) => t('wh_st_' . $r['whc_st']), 'html' => static fn($r) => self::badge(t('wh_st_' . $r['whc_st']), $stCls[(string)$r['whc_st']] ?? 'text-bg-secondary')],
+			'attempts' => ['label' => t('wh_attempts'), 'select' => ['whc_n' => 'c.attempts'], 'sort' => 'c.attempts', 'align' => 'end', 'class' => 'small', 'text' => static fn($r) => (string)(int)$r['whc_n']],
+			'answer' => ['label' => t('wh_answer'), 'select' => ['whc_code' => 'c.last_code', 'whc_err' => 'c.last_error'], 'sort' => 'c.last_code', 'class' => 'small text-break',
+				'text' => static fn($r) => trim(((int)$r['whc_code'] ? (int)$r['whc_code'] . ' ' : '') . ((string)$r['whc_err'] !== 'HTTP ' . (int)$r['whc_code'] ? (string)$r['whc_err'] : ''))],
+			'next' => ['label' => t('wh_next'), 'select' => ['whc_next' => 'c.next_at'], 'sort' => 'c.next_at', 'class' => 'small text-nowrap',
+				'text' => static fn($r) => (string)$r['whc_st'] === 'pending' ? self::date($r['whc_next'] ?? null, true) : ''],
+			'source' => ['label' => t('wh_source'), 'select' => ['whc_src' => 'c.source'], 'sort' => 'c.source', 'class' => 'small', 'text' => static fn($r) => t('wh_src_' . ((string)$r['whc_src'] ?: 'form'))],
+			'user' => self::col('whc_by', 'c.created_by', t('user'), 'small'),
+			'id' => self::idCol('c.zzzzsys_nunext_webhook_call_id'),
+		];
+		$filters = [
+			'status' => ['label' => t('status'), 'type' => 'select', 'options' => static fn() => ['pending' => t('wh_st_pending'), 'sent' => t('wh_st_sent'), 'failed' => t('wh_st_failed')],
+				'where' => static fn(string $v) => in_array($v, ['pending', 'sent', 'failed'], true) ? ['c.status = ?', [$v]] : null],
+			'wh' => ['label' => t('wh_name'), 'type' => 'select', 'options' => static fn() => array_map(static fn($d) => $d['name'], NuWebhook::all()),
+				'where' => static fn(string $v) => $v !== '' ? ['c.webhook_id = ?', [$v]] : null],
+			'event' => ['label' => t('wh_event'), 'type' => 'select', 'options' => static fn() => array_combine(NuWebhook::EVENTS, array_map(static fn($e) => t('wh_ev_' . $e), NuWebhook::EVENTS)),
+				'where' => static fn(string $v) => in_array($v, NuWebhook::EVENTS, true) ? ['c.event = ?', [$v]] : null],
+			'created' => ['label' => t('wh_time'), 'type' => 'date', 'expr' => 'c.created_at', 'presets' => ['d7', 'd30']],
+		];
+		$base = ['columns' => ['created', 'webhook', 'event', 'form', 'record', 'status', 'attempts', 'answer', 'next'], 'card' => ['title' => 'webhook', 'badge' => 'status', 'lines' => ['created', 'event', 'record', 'answer']],
+			'sort' => ['created', 'desc'], 'per' => 50, 'filters' => ['shown' => ['status', 'wh', 'event', 'created'], 'values' => []]];
+		return [
+			'key' => 'webhookcalls', 'title' => t('wh_calls'), 'route' => 'webhooks', 'route_params' => ['tab' => 'calls'], 'form' => NuAcl::FORM_WEBHOOK,
+			'from' => " FROM $C c LEFT JOIN $W w ON w.zzzzsys_nunext_webhook_id = c.webhook_id", 'where' => [], 'params' => [], 'id' => 'c.zzzzsys_nunext_webhook_call_id',
+			'link' => static fn($r) => nu_url('webhooks', ['call' => $r['__id']]),
+			'search' => ['w.name', 'c.record_id', 'c.last_error', 'c.form_id'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
 				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
 			],
 		];

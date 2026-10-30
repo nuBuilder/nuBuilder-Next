@@ -65,6 +65,10 @@ return [
 	'brand_env_color' => 'Color of the label',
 	'brand_err_color' => 'Choose a color.',
 	'brand_warn_light' => 'The accent color is very light: buttons get black text, and lines in this color hardly show on white.',
+	'sh_sb_default_tip' => 'Users who have not chosen themselves (user menu → Side bar) see the side bar with favorites and recently used pages when this is on.',
+	'sh_home_layouts_d' => 'Shared layouts, appearance and favorites of the start page – start page → Customize.',
+	'sh_kw_branding' => 'Name, logo, accent color and favicon of the installation.',
+	'sh_kw_themes' => 'Colors for light and dark mode, the default theme, a theme per access level and whether users may choose.',
 	'om_center' => 'Center',
 	'ctpl_s_btn_round_d' => 'Input and run buttons of forms: rounded, in an accent color.',
 	'ctpl_s_btn_light_d' => 'Input and run buttons of forms: light surface, thin border and dark text instead of the solid accent color.',
@@ -88,6 +92,7 @@ return [
 	'home_c_tip' => 'Customize – content, appearance and layouts of the start page (V: appearance)',
 	'home_c_mine_hint' => 'Mark favorites and hide tiles you do not need – only for you.',
 	'home_v_fav_row' => 'Favorites',
+	'home_v_sidebar_hint' => 'Favorites and recently used pages on every page – only for you',
 	'home_v_group_colors' => 'Color per group',
 	'home_v_icon_mono' => 'Gray',
 ];

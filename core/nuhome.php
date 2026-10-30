@@ -33,7 +33,7 @@ final class NuHome
 	public const USER_PAGES = ['help', 'password', 'security', 'notifications'];
 	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
-	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'email', 'emailtemplates',
+	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'email', 'emailtemplates',
 		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
 		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
@@ -41,7 +41,7 @@ final class NuHome
 		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest', 'dbreset']],
 		'g_adm_look'   => ['home_group_look', ['branding', 'themes', 'dashboards']],
 		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'cloner', 'appcloner', 'sample']],
-		'g_adm_int'    => ['home_group_integration', ['apiclients', 'prompts', 'compat']],
+		'g_adm_int'    => ['home_group_integration', ['apiclients', 'webhooks', 'prompts', 'compat']],
 	];
 	/**
 	 * Start page profiles (0.8.385): ready-made layouts for Customise → "Start from" and Save as new layout → "Based on".
@@ -61,7 +61,7 @@ final class NuHome
 				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
 				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'cloner', 'appcloner', 'sample']],
 				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest', 'dbreset']],
-				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'compat', 's_mail_test']],
+				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'webhooks', 'compat', 's_mail_test']],
 			],
 			'fav' => ['forms', 'procedures', 's_debug', 'pma']],
 		'minimal'     => ['icon' => 'bi-dash-square', 'display' => 'groups', 'size' => 'list', 'view' => ['style' => 'list'],
@@ -82,7 +82,7 @@ final class NuHome
 				['g_dash', 'dash_title', '', ['dashboards', 's_dash_new']],
 				['g_rdata', 'home_group_data', '', ['pma', 'import']]]],
 		'integration' => ['icon' => 'bi-plug', 'display' => 'groups', 'size' => 'compact', 'view' => ['style' => 'compact'],
-			'groups' => [['g_api', 'home_pf_g_api', '', ['apiclients', 's_api_new', 's_api_playground', 'compat']],
+			'groups' => [['g_api', 'home_pf_g_api', '', ['apiclients', 's_api_new', 's_api_playground', 'webhooks', 's_wh_calls', 'compat']],
 				['g_mail', 'nav_email', '', ['email', 's_mail_settings', 's_mail_templates', 's_mail_test', 's_mail_log']],
 				['g_msg', 'home_pf_g_messages', '', ['notifications', 'prompts']]]],
 		'blank'       => ['icon' => 'bi-square', 'display' => 'groups', 'size' => 'large', 'groups' => [['g_own', 'home_pf_g_own', '', []]]],
@@ -136,6 +136,7 @@ final class NuHome
 			'reports'     => ['reports', 'bi-file-earmark-richtext', t('rpt_title_list'), t('home_reports_hint')],
 			'prompts'     => ['prompts', 'bi-stars', t('pg_title'), t('home_prompts_hint')],
 			'apiclients'  => ['apiclients', 'bi-plug', t('api_title'), t('home_api_hint')],
+			'webhooks'    => ['webhooks', 'bi-broadcast', t('wh_title'), t('home_wh_hint')],
 			'email'       => ['email', 'bi-envelope', t('nav_email'), t('home_email_hint')],
 			'notifications' => [['notifications', ['tab' => 'manage']], 'bi-bell', t('ntf_title'), t('home_ntf_hint')],
 		];
@@ -265,6 +266,8 @@ final class NuHome
 			's_translations'  => [nu_url('translations'), 'bi-translate', t('trl_title'), 'forms'],
 			's_api_new'       => [nu_url('apiclients', ['id' => 'new']), 'bi-plus-lg', t('api_new'), 'apiclients'],
 			's_api_playground' => [nu_url('apiplayground'), 'bi-terminal', t('apg_title'), 'apiclients'],
+			's_wh_new'        => [nu_url('webhooks', ['id' => 'new']), 'bi-plus-lg', t('wh_new'), 'webhooks'],
+			's_wh_calls'      => [nu_url('webhooks', ['tab' => 'calls']), 'bi-list-ul', t('wh_calls'), 'webhooks'],
 			's_mail_settings' => [nu_url('email', ['tab' => 'settings']), 'bi-gear', t('mail_tab_settings'), 'email'],
 			's_mail_test'     => [nu_url('email', ['tab' => 'test']), 'bi-send', t('mail_tab_test'), 'email'],
 			's_mail_templates' => [nu_url('emailtemplates'), 'bi-file-earmark-richtext', t('emt_title'), 'email'],
@@ -276,6 +279,8 @@ final class NuHome
 			'sessions'        => [nu_url('sessions'), 'bi-people', t('sess_title'), 'debug'],
 		];
 		if (isset($forms['nunotes'])) $s['s_note_new'] = [nu_url('form', ['f' => 'nunotes', 'r' => '-1']), 'bi-plus-lg', t('home_new_note'), 'notes'];
+		// settings centre (0.8.702): its sections behind the Settings tile (only those the user may open)
+		foreach (NuSettingsHub::pages() as $sec => $list) $s['s_set_' . $sec] = [$list[0][2], NuSettingsHub::SECTIONS[$sec][0], t(NuSettingsHub::SECTIONS[$sec][1]), 'settings'];
 		return $s;
 	}
 
@@ -304,10 +309,12 @@ final class NuHome
 				$item('s_report_new'), $item('s_sqlbuilder'), $item('s_sqlbuilder_new')]))],
 			'forms'       => $menu(t('nav_forms'), ['s_form_new', 's_form_clone', 'import', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']),
 			'apiclients'  => $menu(t('api_title'), ['s_api_new', 's_api_playground']),
+			'webhooks'    => $menu(t('wh_title'), ['s_wh_new', 's_wh_calls']),
 			'email'       => $menu(t('nav_email'), ['s_mail_settings', 's_mail_test', 's_mail_templates', 's_mail_template_new', 's_mail_log']),
 			'debug'       => $menu(t('nav_log'), ['s_debug', 's_log', 's_audit', 'sessions']),
 			'dashboards'  => $add('s_dash_new'),
 			'notes'       => $add('s_note_new'),
+			'settings'    => !NuSettingsHub::pages() ? null : $menu(t('set_title'), array_map(static fn($k) => 's_set_' . $k, array_keys(NuSettingsHub::SECTIONS))),
 		]);
 		return $a;
 	}
@@ -822,7 +829,7 @@ final class NuHome
 	private const TILE_RIGHTS = [
 		'users' => ['acl', NuAcl::FORM_USER], 'access' => ['acl', NuAcl::FORM_ACCESS], 'permissions' => ['acl', NuAcl::FORM_PERMISSION],
 		'sessions' => ['sessions', 'view'], 'forms' => ['acl', NuAcl::FORM_FORM], 'procedures' => ['acl', NuAcl::FORM_PROCEDURE],
-		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'],
+		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'], 'webhooks' => ['webhooks', 'view'],
 		'email' => ['email', 'view'], 'debug' => ['acl', NuAcl::FORM_DEBUG], 'update' => ['update', 'view'], 'settings' => ['settings', 'view'],
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
 		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'], 'themes' => ['branding', 'view'],
@@ -832,7 +839,7 @@ final class NuHome
 	];
 	/** Pages an own tile (kind page) may open => the tile whose right decides. */
 	private const PAGE_TILE = ['users' => 'users', 'access' => 'access', 'permissions' => 'permissions', 'sessions' => 'sessions', 'forms' => 'forms',
-		'procedures' => 'procedures', 'reports' => 'reports', 'sqlbuilder' => 'reports', 'prompts' => 'prompts', 'apiclients' => 'apiclients',
+		'procedures' => 'procedures', 'reports' => 'reports', 'sqlbuilder' => 'reports', 'prompts' => 'prompts', 'apiclients' => 'apiclients', 'webhooks' => 'webhooks',
 		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit', 'notifications' => 'notifications', 'update' => 'update',
 		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import',
 		'cloner' => 'cloner', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',

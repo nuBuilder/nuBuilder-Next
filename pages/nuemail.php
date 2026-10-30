@@ -202,7 +202,7 @@ if ($tab === 'log' && !$detail && $logExists) {
 	}
 }
 
-nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head()]);
+nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'settings' => 'mail']);
 ?>
 <div class="nuTitleBar mb-3">
 	<h1 class="h3 mb-0"><?= h(t('nav_email')) ?></h1>

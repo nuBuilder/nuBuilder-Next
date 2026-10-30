@@ -42,3 +42,55 @@
 	sw.addEventListener('change', sync);
 	sync();
 })();
+
+// the button next to Home form opens the chosen form in a new tab (0.8.693, as the access level button of the user form)
+(function () {
+	'use strict';
+	var sel = document.getElementById('sal_zzzzsys_form_id'), link = document.getElementById('homeFormOpen');
+	if (!sel || !link) return;
+	function sync() {
+		var id = sel.value, off = id === '';
+		link.href = off ? '#' : link.getAttribute('data-url').replace('__ID__', encodeURIComponent(id));
+		link.classList.toggle('disabled', off);
+		if (off) { link.setAttribute('aria-disabled', 'true'); link.setAttribute('tabindex', '-1'); }
+		else { link.removeAttribute('aria-disabled'); link.removeAttribute('tabindex'); }
+	}
+	sel.addEventListener('change', sync);
+	sync();
+})();
+
+// Form rights: sortable columns (0.8.693) – form name, each right (ticked first), data mode / form type; the order is kept per browser
+(function () {
+	'use strict';
+	var table = document.querySelector('table.nu-rights'), body = table && table.querySelector('.js-rights-body');
+	if (!table || !body) return;
+	var KEY = 'nunext-acc-rights-sort';
+	function keyOf(tr, col) {
+		if (col === 'form') { var l = tr.querySelector('.js-form-label'); return (l ? l.textContent : '').trim().toLowerCase(); }
+		if (col.indexOf('r:') === 0) { var c = tr.querySelector('input[data-col="' + col.slice(2) + '"]'); return c && c.checked ? '0' : '1'; }
+		var s = tr.querySelector('select.nuAccMode-' + col.slice(4));
+		return s ? (s.options[s.selectedIndex] || {text: ''}).text.toLowerCase() : '';
+	}
+	function sortBy(col, dir) {
+		var th = table.querySelector('th.accRightsSort[data-sort="' + col + '"]');
+		if (!th) return;
+		var empty = body.querySelector('.js-rights-empty');
+		var rows = Array.prototype.filter.call(body.children, function (tr) { return tr.tagName === 'TR' && tr !== empty; });
+		var cmp = function (a, b) { return a.localeCompare(b, undefined, {sensitivity: 'base', numeric: true}); };
+		rows.sort(function (a, b) { return cmp(keyOf(a, col), keyOf(b, col)) * (dir === 'desc' ? -1 : 1) || cmp(keyOf(a, 'form'), keyOf(b, 'form')); });
+		rows.forEach(function (tr) { body.insertBefore(tr, empty || null); });
+		table.querySelectorAll('th.accRightsSort').forEach(function (o) { o.removeAttribute('aria-sort'); });
+		th.setAttribute('aria-sort', dir === 'desc' ? 'descending' : 'ascending');
+	}
+	table.querySelectorAll('th.accRightsSort').forEach(function (th) {
+		th.querySelector('button').addEventListener('click', function () {
+			var col = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
+			sortBy(col, dir);
+			try { localStorage.setItem(KEY, col + '|' + dir); } catch (e) { /* no storage */ }
+		});
+	});
+	try {
+		var keep = (localStorage.getItem(KEY) || '').split('|');
+		if (keep[0]) sortBy(keep[0], keep[1] === 'desc' ? 'desc' : 'asc');
+	} catch (e) { /* no storage */ }
+})();

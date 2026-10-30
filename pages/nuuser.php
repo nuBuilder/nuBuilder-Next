@@ -413,6 +413,7 @@ foreach (['sus_position', 'sus_department', 'sus_team'] as $col) {
 }
 $langOptions = ['' => t('user_language_default')];
 foreach (NU_LANGS as $code => [$own, $dbName]) {
+	if (!NuLanguages::has($code)) continue;                   // installed languages only (0.8.701); the user's own value stays below
 	$langOptions[$dbName] = $own;
 	foreach (NU_LANG_VARIANTS as $vc => [$base, $vName]) if ($base === $code) $langOptions[$dbName . '|' . $vc] = $vName;
 }

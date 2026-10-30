@@ -221,14 +221,14 @@ $phpCount = $existing ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php
 $rptCount = $db->tableExists('zzzzsys_access_report') && ($existing || $cloneId !== '') ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_report WHERE sre_zzzzsys_access_id = ?', [$existing ? $id : $cloneId]) : 0;
 // Users card (0.8.583): up to 500 users with their state – archived = "Valid until" in the past (nu_is_expired, as the users list);
 // filter Active (default) · Archived · All in assets/js/nuaccesslevel.js
-$users = $existing ? $db->page('SELECT zzzzsys_user_id, sus_login_name, sus_first_name, sus_last_name, sus_expires_on FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id], 'sus_login_name', 500, 0) : [];
+$users = $existing ? $db->page('SELECT zzzzsys_user_id, sus_login_name, sus_name, sus_first_name, sus_last_name, sus_expires_on FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id], 'sus_login_name', 500, 0) : [];
 foreach ($users as &$us) { $us['archived'] = nu_is_expired($us['sus_expires_on'] ?? null); $us['extra'] = null; }
 unset($us);
 // additional level (0.8.585): listed with a badge; archived when the user or the assignment ("until") has expired
 if ($xaUsers) {
 	$xaBy = array_column($xaUsers, null, 'user_id');
 	$qm = implode(', ', array_fill(0, count($xaBy), '?'));
-	foreach ($db->all("SELECT zzzzsys_user_id, sus_login_name, sus_first_name, sus_last_name, sus_expires_on FROM zzzzsys_user WHERE zzzzsys_user_id IN ($qm)", array_keys($xaBy)) as $xu) {
+	foreach ($db->all("SELECT zzzzsys_user_id, sus_login_name, sus_name, sus_first_name, sus_last_name, sus_expires_on FROM zzzzsys_user WHERE zzzzsys_user_id IN ($qm)", array_keys($xaBy)) as $xu) {
 		$x = $xaBy[(string)$xu['zzzzsys_user_id']];
 		$users[] = $xu + ['archived' => nu_is_expired($xu['sus_expires_on'] ?? null) || !$x['active'], 'extra' => $x['valid_until']];
 	}
@@ -347,6 +347,8 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 					</div>
 					<div class="mb-3">
 						<label class="form-label" for="sal_zzzzsys_form_id"><?= h(t('home_form')) ?></label>
+						<?php $homeUrl = nu_url('form', ['f' => '__ID__']); $homeNone = $v['sal_zzzzsys_form_id'] === ''; ?>
+						<div class="input-group<?= isset($errors['sal_zzzzsys_form_id']) ? ' has-validation' : '' ?>">
 						<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'sal_zzzzsys_form_id') ?>" id="sal_zzzzsys_form_id" name="sal_zzzzsys_form_id">
 							<option value=""><?= h(t('please_select')) ?></option>
 							<?php if ($v['sal_zzzzsys_form_id'] !== '' && !isset($forms[$v['sal_zzzzsys_form_id']])): ?>
@@ -354,7 +356,12 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 							<?php endif; ?>
 							<?= $formOptions($v['sal_zzzzsys_form_id']) ?>
 						</select>
+						<?php // opens the chosen home form in a new tab (0.8.693, as the access level button of the user form – assets/js/nuaccesslevel.js keeps it in step) ?>
+						<a class="btn btn-outline-secondary nuOpenBtn<?= $homeNone ? ' disabled' : '' ?>" id="homeFormOpen" target="_blank" rel="noopener"
+						   data-url="<?= h($homeUrl) ?>" href="<?= h($homeNone ? '#' : str_replace('__ID__', rawurlencode($v['sal_zzzzsys_form_id']), $homeUrl)) ?>"
+						   <?= $homeNone ? 'aria-disabled="true" tabindex="-1"' : '' ?> title="<?= h(t('acc_home_open')) ?>" aria-label="<?= h(t('acc_home_open')) ?>"><i class="bi bi-box-arrow-up-right"></i></a>
 						<?= nu_feedback($errors, 'sal_zzzzsys_form_id') ?>
+						</div>
 						<div class="form-text"><?= h(t('home_form_hint')) ?></div>
 					</div>
 					<div class="form-check form-switch">
@@ -395,7 +402,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 						</div>
 					</div>
 					<ul class="list-group list-group-flush small nu-scroll" id="accUserList">
-						<?php foreach ($users as $us): $nm = trim($us['sus_first_name'] . ' ' . $us['sus_last_name']); ?>
+						<?php foreach ($users as $us): $nm = trim((string)($us['sus_name'] ?? '')) ?: trim($us['sus_first_name'] . ' ' . $us['sus_last_name']);   // the full name (sus_name), first + last only when it is empty (0.8.693) ?>
 							<li class="list-group-item d-flex justify-content-between gap-2" data-st="<?= $us['archived'] ? 'archived' : 'active' ?>"<?= $us['archived'] ? ' hidden' : '' ?>>
 								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?>
 									<a class="text-decoration-none<?= $us['archived'] ? ' text-body-secondary' : '' ?>" href="<?= h(nu_url('user', ['id' => $us['zzzzsys_user_id']])) ?>"><?= h($us['sus_login_name']) ?></a>
@@ -447,17 +454,18 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 					<table class="table table-sm table-hover align-middle mb-0 nu-rights">
 						<thead class="sticky-top">
 						<tr>
-							<th scope="col"><?= h(t('form')) ?></th>
+							<?php // sortable (0.8.693, assets/js/nuaccesslevel.js): the title is a button, the box below a right's title still ticks the column ?>
+							<th scope="col" class="accRightsSort" data-sort="form"><button type="button" class="btn btn-link p-0 userPermSortBtn"><?= h(t('form')) ?></button></th>
 							<?php foreach (array_keys(NuAcl::RIGHTS) as $r): ?>
-								<th scope="col" class="text-center">
-									<label class="d-flex flex-column align-items-center gap-1 m-0">
-										<span class="small"><?= h(t('right_' . $r)) ?></span>
+								<th scope="col" class="text-center accRightsSort" data-sort="r:<?= $r ?>">
+									<div class="d-flex flex-column align-items-center gap-1 m-0">
+										<button type="button" class="btn btn-link p-0 small userPermSortBtn" title="<?= h(t('acc_sort_by', t('right_' . $r))) ?>"><?= h(t('right_' . $r)) ?></button>
 										<input class="form-check-input js-col-toggle" type="checkbox" data-col="<?= $r ?>" aria-label="<?= h(t('toggle_all') . ': ' . t('right_' . $r)) ?>">
-									</label>
+									</div>
 								</th>
 							<?php endforeach; ?>
-							<?php if ($hasDm): ?><th scope="col" class="small"><?= h(t('access_col_dm')) ?></th><?php endif; ?>
-							<?php if ($hasFt): ?><th scope="col" class="small"><?= h(t('access_col_ft')) ?></th><?php endif; ?>
+							<?php if ($hasDm): ?><th scope="col" class="small accRightsSort" data-sort="sel:dm"><button type="button" class="btn btn-link p-0 userPermSortBtn"><?= h(t('access_col_dm')) ?></button></th><?php endif; ?>
+							<?php if ($hasFt): ?><th scope="col" class="small accRightsSort" data-sort="sel:ft"><button type="button" class="btn btn-link p-0 userPermSortBtn"><?= h(t('access_col_ft')) ?></button></th><?php endif; ?>
 							<th scope="col"><span class="visually-hidden"><?= h(t('actions')) ?></span></th>
 						</tr>
 						</thead>

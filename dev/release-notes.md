@@ -3,7 +3,7 @@
 Used when the owner publishes a nuBuilder Next version on GitHub after a gate ("tell me the tag and the release notes").
 Not part of nunext.zip (dev/). Neutral wording: no personal names, no company or tool names of uploaded material.
 
-**Last published GitHub release: v0.8.677** – update this line when the owner has published a new one; the next notes cover
+**Last published GitHub release: v0.8.692** – update this line when the owner has published a new one; the next notes cover
 everything after it (CHANGELOG.md sections between that version and the gated one).
 
 ## Release settings (tell the owner)

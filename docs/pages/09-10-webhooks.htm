@@ -1,0 +1,46 @@
+<section id="webhooks" data-doc="admin">
+	<h2 id="webhooks-h">Webhooks</h2>
+	<p class="doc-lead">Call another system – n8n, Zapier, Microsoft Teams, Slack, your own service – when a record of a chosen form is inserted, changed or deleted.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles with the right Webhooks)</p>
+	<p><em>Admin tools → Webhooks</em> (<code>index.php?p=webhooks</code>) lists the webhooks with their forms, events, target and the calls of the last 24 hours (sent / failed / waiting – each a link to the calls). The tab <em>Calls</em> lists every call with its status, attempts and the last answer of the receiver.</p>
+	<div class="doc-sub" id="webhooks-new"><h3 id="webhooks-new-h">Create a webhook</h3>
+	<ol>
+	<li><em>Add</em>: a <strong>name</strong>, the <strong>forms</strong> (one or several), the <strong>events</strong> (Inserted, Changed, Deleted) and the <strong>URL</strong> the receiver gives you.</li>
+	<li><em>Save</em>: a <strong>secret</strong> is made and shown <strong>once</strong> – copy it into the receiver. <em>New secret on saving</em> makes another one later.</li>
+	<li><em>Send test</em> saves and sends one call at once with the first record of the first form – the answer of the receiver is shown below the title.</li>
+	</ol>
+	<p>Optional: <strong>Fields</strong> – the columns sent in <code>data</code> (empty = all columns of the table; columns whose name looks like a password or token are always sent as <code>***</code>); <strong>Body template</strong> – your own JSON instead of the standard one (below).</p>
+	</div>
+	<div class="doc-sub" id="webhooks-call"><h3 id="webhooks-call-h">What is sent</h3>
+	<p>A <code>POST</code> with a JSON body and the headers <code>X-NuNext-Event</code> (insert / update / delete), <code>X-NuNext-Delivery</code> (the call's id), <code>X-NuNext-Timestamp</code> and <code>X-NuNext-Signature</code>. The standard body:</p>
+	<pre><code>{"event": "record.updated", "webhook": "Orders to n8n", "delivery": "…", "time": "2026-10-30T09:15:00+01:00", "source": "form",
+ "form": {"id": "…", "code": "sampleorder", "table": "sample_order"}, "record_id": "…",
+ "user": {"id": "…", "login": "anna"},
+ "data": {"ord_number": "1042", "ord_status": "paid", …},
+ "changed": {"ord_status": {"old": "open", "new": "paid"}}}</code></pre>
+	<p><code>data</code> is the record as stored after the save (before it, for a delete); <code>changed</code> (only for <em>Changed</em>) lists the columns whose value changed. Sub-form rows are not sent. <code>source</code> is <code>form</code>, <code>import</code> (CSV import into the form's table) or <code>test</code>.</p>
+	<p><strong>Body template</strong>, e.g. for a Teams or Slack channel: <code>{"text": "#FORM_CODE#: #ord_number# – #EVENT# by #USER#"}</code>. <code>#&lt;column&gt;#</code> and <code>#EVENT#</code>, <code>#FORM_ID#</code>, <code>#FORM_CODE#</code>, <code>#TABLE#</code>, <code>#RECORD_ID#</code>, <code>#USER#</code>, <code>#TIME#</code>, <code>#CHANGED#</code> (one line per changed column) are replaced – escaped for JSON, so they go inside quotes; <code>#PAYLOAD#</code> inserts the whole standard JSON. The template must give valid JSON, otherwise it is not saved.</p>
+	<p><strong>Checking the signature</strong> on the receiver: <code>X-NuNext-Signature</code> = <code>sha256=</code> + HMAC-SHA256 with the secret over <code>&lt;timestamp&gt;.&lt;body&gt;</code> (the raw body). Refuse calls with a wrong signature or an old timestamp.</p>
+	<pre><code>$expected = 'sha256=' . hash_hmac('sha256', $_SERVER['HTTP_X_NUNEXT_TIMESTAMP'] . '.' . file_get_contents('php://input'), $secret);
+if (!hash_equals($expected, $_SERVER['HTTP_X_NUNEXT_SIGNATURE'] ?? '') || abs(time() - (int)$_SERVER['HTTP_X_NUNEXT_TIMESTAMP']) &gt; 300) { http_response_code(401); exit; }</code></pre>
+	</div>
+	<div class="doc-sub" id="webhooks-delivery"><h3 id="webhooks-delivery-h">Delivery, retries and the calls</h3>
+	<ul>
+	<li>A call is stored together with the save (a save that fails leaves no call) and sent right after the page has answered, so the user does not wait for the receiver (on PHP-FPM; with other servers the page waits up to the 5 s timeout).</li>
+	<li>An answer 2xx counts as sent. On an error or timeout the call waits and is tried again after 1 min, 5 min, 30 min, 2 h and 12 h – 6 attempts, then it is <em>Failed</em>. A refusal (HTTP 4xx except 408 / 429) is not tried again.</li>
+	<li>Retries are made by the housekeeping: run <code>php cron.php</code> every few minutes (see <a href="#security-cron">Housekeeping by cron</a>); without cron the next saves and page views pick up waiting calls now and then.</li>
+	<li>Open a call for its body and every attempt (status, duration, start of the answer); <em>Send again</em> sends it once more. Calls are kept 30 days.</li>
+	<li>Saves made in nuBuilder Forte itself fire no webhook – nuBuilder Forte does not know them.</li>
+	</ul>
+	</div>
+	<div class="doc-sub" id="webhooks-security"><h3 id="webhooks-security-h">Security</h3>
+	<ul>
+	<li>Only <code>https</code> addresses on the internet are called; addresses in a private or local network (10.x, 192.168.x, localhost …) are refused, also when a host name points there. Redirects are not followed. <em>Settings → Allow http and addresses in your own network</em> (below the list) lifts this – needed for n8n on your own server, but a webhook can then reach internal services.</li>
+	<li>The record data leaves your server: the right <em>Webhooks</em> of an admin role is full access, and the page asks for your password again after a while.</li>
+	<li>The secrets are encrypted with <code>$nuConfigSecretKey</code> (without it they are stored as they are – the page warns). URLs are logged without their path, because services such as Teams or Zapier put a token there.</li>
+	<li>Demo visitors never fire webhooks.</li>
+	</ul>
+	</div>
+	<p class="doc-see">See also: <a href="#api">REST API</a> · <a href="#csv-import">CSV import</a> · <a href="#admin-roles">Admin roles</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuwebhook.php</code></li><li><code>pages/nuwebhooks.php</code></li><li><code>core/form/nurecord.php</code></li><li><code>core/nuimport.php</code></li></ul></details>
+</section>

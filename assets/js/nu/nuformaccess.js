@@ -56,15 +56,21 @@
 		// the table
 		var wrap = el('div', 'table-responsive'), t = el('table', 'table table-sm align-middle mb-0 nu-table nuFacTable'); t.id = 'nuFacTable';
 		var thead = el('thead'), htr = el('tr');
-		htr.appendChild(el('th', '', T.fac_level));
-		htr.appendChild(el('th', 'text-center', T.fac_open));
+		// sortable titles (0.8.696): a button per column – level code, Open / each right (ticked first), data mode, form type
+		var sortTh = function (cls, key, text) {
+			var th = el('th', (cls ? cls + ' ' : '') + 'nuFacSort'); th.setAttribute('data-sort', key);
+			var b = el('button', 'btn btn-link p-0 userPermSortBtn' + (key.indexOf('r:') === 0 ? ' small' : ''), text); b.type = 'button';
+			th.appendChild(b); return th;
+		};
+		htr.appendChild(sortTh('', 'level', T.fac_level));
+		htr.appendChild(sortTh('text-center', 'open', T.fac_open));
 		d.rights.forEach(function (r) {
-			var th = el('th', 'text-center'), lab = el('div', 'small', T['right_' + r]);
-			var cb = el('input', 'form-check-input nuFacCol'); cb.type = 'checkbox'; cb.setAttribute('data-col', r); cb.setAttribute('aria-label', T.toggle_all + ': ' + T['right_' + r]);
-			th.appendChild(lab); th.appendChild(cb); htr.appendChild(th);
+			var th = sortTh('text-center', 'r:' + r, T['right_' + r]);
+			var cb = el('input', 'form-check-input nuFacCol d-block mx-auto mt-1'); cb.type = 'checkbox'; cb.setAttribute('data-col', r); cb.setAttribute('aria-label', T.toggle_all + ': ' + T['right_' + r]);
+			th.appendChild(cb); htr.appendChild(th);
 		});
-		if (d.dm) htr.appendChild(el('th', '', T.access_col_dm));
-		if (d.ft) htr.appendChild(el('th', '', T.access_col_ft));
+		if (d.dm) htr.appendChild(sortTh('', 'dm', T.access_col_dm));
+		if (d.ft) htr.appendChild(sortTh('', 'ft', T.access_col_ft));
 		htr.appendChild(el('th', ''));
 		thead.appendChild(htr); t.appendChild(thead);
 		var tb = el('tbody');
@@ -141,6 +147,22 @@
 			rows.forEach(function (r) { r.tr.hidden = (s !== '' && r.tr.getAttribute('data-search').indexOf(s) < 0) || (g !== '*' && r.l.group !== g); });
 			sync();
 		}
+		// sort (0.8.696): by the clicked column, then by level code; a second click reverses
+		var cmp = function (a, b) { return a.localeCompare(b, undefined, {sensitivity: 'base', numeric: true}); };
+		var keyOf = function (r, k) {
+			if (k === 'level') return r.l.code;
+			if (k === 'open') return r.on.checked ? '0' : '1';
+			if (k.indexOf('r:') === 0) return r.on.checked && r.boxes[k.slice(2)].checked ? '0' : '1';
+			var s = r[k]; return s && r.on.checked ? s.options[s.selectedIndex].text : '\uffff';
+		};
+		t.querySelectorAll('th.nuFacSort').forEach(function (th) {
+			th.querySelector('button').addEventListener('click', function () {
+				var k = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
+				rows.slice().sort(function (a, b) { return cmp(keyOf(a, k), keyOf(b, k)) * dir || cmp(a.l.code, b.l.code); }).forEach(function (r) { tb.appendChild(r.tr); });
+				t.querySelectorAll('th.nuFacSort').forEach(function (o) { o.removeAttribute('aria-sort'); });
+				th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
+			});
+		});
 		q.addEventListener('input', filter);
 		if (gsel) gsel.addEventListener('change', filter);
 		all.addEventListener('change', function () {

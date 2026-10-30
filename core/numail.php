@@ -726,6 +726,26 @@ final class NuWelcome
 	public const STD       = 'nu_send_welcome_email_template';   // nuBuilder Next's read-only templates (0.8.658) …
 	public const STD_GROUP = 'nunext';                           // … in this group, one per language
 	public const STD_ID    = 'nx_welcome_';                      // + language code; not "nu…": a nuBuilder Forte update replaces only its own rows
+
+	/** Languages of the built-in welcome templates = the installed languages (NuLanguages, 0.8.701). */
+	public static function langs(): array
+	{
+		return NuLanguages::installed();
+	}
+
+	/** Stores the languages chosen in the installer (NuLanguages::set: welcome templates of the others removed, the chosen ones created). */
+	public static function setLangs(array $langs, bool $prune = false): void
+	{
+		NuLanguages::set($langs ?: array_keys(NU_LANGS), 'installer');
+	}
+
+	/** Removes the built-in (read-only) welcome templates of these languages. */
+	public static function pruneTemplates(array $codes): void
+	{
+		$db = nu_db();
+		if (!$codes || !$db->tableExists(NuEmailTemplate::TABLE)) return;
+		foreach ($codes as $x) $db->run('DELETE FROM ' . NuEmailTemplate::TABLE . ' WHERE zzzzsys_email_template_id = ?', [self::STD_ID . $x]);
+	}
 	/** Forte's shipped rows have ids "nu…" (replaced by every nuBuilder Forte update) – only the user's own procedure counts. */
 	private const NOT_FORTE = "zzzzsys_php_id NOT LIKE 'nu%'";
 
@@ -999,7 +1019,7 @@ final class NuWelcome
 		if (!$db->tableExists(NuEmailTemplate::TABLE)) return 0;
 		$cols = $db->columns(NuEmailTemplate::TABLE);
 		$n = 0;
-		foreach (array_keys(NU_LANGS) as $l) {
+		foreach (self::langs() as $l) {                         // only the languages chosen at installation (0.8.693)
 			$id = self::STD_ID . $l;
 			$row = self::inLang($l, static fn() => [
 				'zzzzsys_email_template_id' => $id, 'emt_code' => self::STD, 'emt_group' => self::STD_GROUP, 'emt_category' => 'Email', 'emt_template' => '1',
@@ -1196,7 +1216,7 @@ final class NuEmailTemplate
 	public static function languages(): array
 	{
 		$list = json_decode((string)(NuMailer::setupRow()['set_languages_included'] ?? ''), true);
-		$list = is_array($list) && $list ? array_map('strval', $list) : array_column(NU_LANGS, 1);
+		$list = is_array($list) && $list ? array_map('strval', $list) : array_values(array_map(static fn($c) => NU_LANGS[$c][1], NuLanguages::installed()));
 		try {
 			foreach (nu_db()->all("SELECT DISTINCT emt_language FROM " . self::TABLE . " WHERE emt_language IS NOT NULL AND emt_language <> ''") as $r) $list[] = (string)$r['emt_language'];
 		} catch (Throwable) {

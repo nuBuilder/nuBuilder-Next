@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 20;
+	public const VERSION = 21;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -134,6 +134,23 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_recent_id',
 			'cols' => [['user_id', 'text', '25'], ['item', 'text', '100'], ['used_at', 'datetime'], ['stamp', 'text', '20']],   // stamp: YmdHis + microseconds (order)
 			'index' => ['user_id'],
+		],
+		'zzzzsys_nunext_webhook' => [                             // webhooks (0.8.715, core/nuwebhook.php): definitions
+			'pk' => 'zzzzsys_nunext_webhook_id',
+			'cols' => [['name', 'text', '100'], ['active', 'text', '1'], ['forms', 'text', '4000'], ['events', 'text', '100'], ['url', 'text', '2000'],
+				['secret', 'text', '255'], ['fields', 'text', '2000'], ['template', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+		],
+		'zzzzsys_nunext_webhook_call' => [                        // the outbox: one row per call (pending / sent / failed)
+			'pk' => 'zzzzsys_nunext_webhook_call_id',
+			'cols' => [['webhook_id', 'text', '25'], ['event', 'text', '10'], ['form_id', 'text', '25'], ['record_id', 'text', '100'], ['body', 'longtext'],
+				['status', 'text', '10'], ['attempts', 'int'], ['next_at', 'datetime'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['source', 'text', '10'],
+				['sent_at', 'datetime'], ['last_code', 'int'], ['last_error', 'text', '255']],
+			'index' => ['webhook_id', 'status', 'created_at'],
+		],
+		'zzzzsys_nunext_webhook_try' => [                         // one row per attempt
+			'pk' => 'zzzzsys_nunext_webhook_try_id',
+			'cols' => [['call_id', 'text', '25'], ['tried_at', 'datetime'], ['attempt', 'int'], ['http_code', 'int'], ['ms', 'int'], ['error', 'text', '255'], ['response', 'text', '1000']],
+			'index' => ['call_id'],
 		],
 		'zzzzsys_nunext_theme' => [                               // themes (0.8.632, core/nutheme.php): own themes; the five built-in ones are in the code
 			'pk' => 'zzzzsys_nunext_theme_id',

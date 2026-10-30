@@ -29,10 +29,8 @@
 		cm.on('change', function () { cm.save(); ta.dispatchEvent(new Event('input', {bubbles: true})); });   // marks the form as changed (red Save)
 		editors[ta.id] = cm;
 		var tools = $('.procCodeTools[data-for="' + ta.id + '"]');
-		// code snippets (zzzzsys_code_snippet) = second tab of the toolbar's Insert menu, next to the help's functions (0.8.593)
-		var snLang = ta.id === 'sph_php' ? 'php' : 'javascript';
-		var snippets = (D.snippets || []).filter(function (x) { return String(x[3] || '').toLowerCase() === snLang; });
-		if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: ta.getAttribute('data-mode') === 'php' ? 'PHP' : 'JS', db: D.db, readOnly: ro, snippets: snippets});
+		// code snippets (zzzzsys_code_snippet) = second tab of the toolbar's Insert menu (0.8.593); by scope since 0.8.714: PHP → 3, JavaScript → 0
+		if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: ta.getAttribute('data-mode') === 'php' ? 'PHP' : 'JS', db: D.db, readOnly: ro});
 		if (tools && !ro && ta.id === 'sph_php' && window.NuHashVars && D.catalog) NuHashVars.attach(cm, tools, {catalog: D.catalog});
 	});
 	// editors in hidden tabs need a refresh when shown

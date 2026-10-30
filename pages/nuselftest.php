@@ -30,8 +30,7 @@ nu_layout_start(t('st_title'), 'selftest');
 ?>
 <div class="card shadow-sm nuListCard">
 	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('st_title')) ?><?= NuListView::infoTip(t('st_hint')) ?></h1>
-		<div class="nuTitleSub"><span class="badge text-bg-secondary">Dev</span></div>
+		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('st_title')) ?><?= NuListView::infoTip(t('st_hint')) ?><span class="badge text-bg-secondary ms-1 fw-normal" id="stDevBadge">Dev</span></h1>
 		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
 	</div>
 	<div class="card-body">
@@ -48,7 +47,9 @@ nu_layout_start(t('st_title'), 'selftest');
 			<p class="mb-2" id="stSummary"><?= h(t('st_last', date('d.m.Y H:i:s', (int)$last['at']))) ?>
 				<?php foreach (['ok', 'warn', 'fail', 'skip'] as $s): if (!empty($sum[$s])): ?> <?= $badge($s) ?> <?= (int)$sum[$s] ?><?php endif; endforeach; ?></p>
 			<div class="table-responsive"><table class="table table-sm align-middle nu-table mb-0" id="stResults">
-				<thead><tr><th><?= h(t('st_group')) ?></th><th><?= h(t('st_check')) ?></th><th><?= h(t('ntf_status')) ?></th><th><?= h(t('log_details')) ?></th><th class="text-end">ms</th></tr></thead>
+				<?php // sortable titles (0.8.704, assets/js/nuselftest.js): data-sort = column kind; a second click reverses
+				$sth = static fn(string $label, string $kind, string $cls = '') => '<th class="stSort' . ($cls !== '' ? ' ' . $cls : '') . '" data-sort="' . $kind . '"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="' . h(t('acc_sort_by', $label)) . '">' . h($label) . '</button></th>'; ?>
+				<thead><tr><?= $sth(t('st_group'), 'text') . $sth(t('st_check'), 'text') . $sth(t('ntf_status'), 'status') . $sth(t('log_details'), 'text') . $sth('ms', 'num', 'text-end') ?></tr></thead>
 				<tbody>
 				<?php foreach ($last['results'] as $r): ?>
 					<tr data-st="<?= h($r['id']) ?>" data-status="<?= h($r['status']) ?>"><td class="small text-body-secondary"><?= h(t('st_group_' . $r['group'])) ?></td><td><?= h($r['title']) ?></td><td><?= $badge($r['status']) ?></td>
@@ -61,4 +62,4 @@ nu_layout_start(t('st_title'), 'selftest');
 	</div>
 </div>
 <?php
-nu_layout_end();
+nu_layout_end('<script src="' . nu_asset('assets/js/nuselftest.js') . '"></script>');

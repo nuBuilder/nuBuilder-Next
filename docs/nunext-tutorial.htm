@@ -67,7 +67,7 @@
 			<li><strong>Badges</strong> on tiles show information at a glance: an update of the <em>Sample data</em>, how many points of <em>System status</em> need a look.</li>
 			<li>The <strong>search field</strong> above the tiles filters them as you type (<kbd>/</kbd> jumps into it). Below, <em>More results</em> also lists forms, procedures, reports and the pages of the ▾ menus. English words always work, too.</li>
 			<li><kbd>Ctrl</kbd>+<kbd>K</kbd> (or the magnifier in the top bar) opens the same search on <em>every</em> page.</li>
-			<li>The <strong>top bar</strong>: the logo always leads back to the start page; the theme button switches light / dark / automatic; the language menu changes the interface language; the <strong>user menu</strong> (top right) holds Help, this tutorial, System status, the database tools and Sign out.</li>
+			<li>The <strong>top bar</strong>: the logo always leads back to the start page; the theme button switches light / dark / automatic; the language menu changes the interface language; the <strong>user menu</strong> (top right) holds Help, this tutorial, the database tools and Sign out (System status and Security are start page tiles).</li>
 			<li><strong>Back</strong> (first button on every page) goes one level up – from a record to its list, from a list to the start page.</li>
 		</ul>
 		<div class="tut-task">
@@ -655,6 +655,17 @@
 			<li>The <a data-open="apiplayground">API playground</a> sends requests from the browser – ideal to learn the endpoints and copy a <code>curl</code> command.</li>
 		</ul>
 		<p><a data-help="api">REST API in the documentation</a></p>
+	</section>
+
+	<section class="tut-lesson" id="webhooks" data-right="webhooks">
+		<h3>Webhooks</h3>
+		<p>The other way round: nuBuilder Next tells another system (n8n, Zapier, a Teams channel) when a record changes.</p>
+		<ol>
+			<li>Open <a data-open="webhooks">Webhooks</a> → <em>Add</em>: choose the forms, the events (Inserted, Changed, Deleted) and the URL the receiver gave you; save and copy the secret shown once.</li>
+			<li><em>Send test</em> sends one call with a sample record – the receiver's answer appears at the top.</li>
+			<li>Change a record of the form: the tab <em>Calls</em> shows the call, its attempts and the answer. Failed calls are tried again by <code>cron.php</code>.</li>
+		</ol>
+		<p><a data-help="webhooks">Webhooks in the documentation</a></p>
 	</section>
 
 	<section class="tut-lesson" id="demo-mode" data-right="ga">

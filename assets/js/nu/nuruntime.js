@@ -2474,7 +2474,7 @@
 			// "#" menu: hash variables are replaced in SQL, PHP and HTML (not in JavaScript)
 			// full screen button in the toolbar: the modal becomes full screen
 			var fullscreen = function (on) { m.find('.modal-dialog').toggleClass('modal-fullscreen', on); size(); return on; };
-			if (window.NuCodeTools) NuCodeTools.attach(cm, m.find('.nuCodeToolsHost')[0], {lang: L, db: N.db_type, readOnly: ro, fullscreen: fullscreen});
+			if (window.NuCodeTools) NuCodeTools.attach(cm, m.find('.nuCodeToolsHost')[0], {lang: L, db: N.db_type, readOnly: ro, fullscreen: fullscreen, scope: /^set_(header|style)$/.test(el.id || '') ? 1 : undefined});
 			if (!ro && window.NuHashVars && N.hashCatalog && (L === 'SQL' || L === 'PHP' || L === 'HTML')) {
 				NuHashVars.attach(cm, hashHost, {catalog: N.hashCatalog, globals: N.globals, fields: function () { return hashFieldsFor(el); }});
 			}
@@ -2602,6 +2602,7 @@
 			height: edH, width: '100%',
 			skin: dark ? 'oxide-dark' : 'oxide', content_css: dark ? 'dark' : 'default', content_style: 'p { margin: 0; }',
 			autosave_ask_before_unload: false, readonly: ro, disabled: ro,
+			link_default_target: '_blank',                                    // new links open in a new tab (0.8.699; form code can override it with options)
 			setup: function (editor) {
 				editor.addShortcut('ctrl+shift+S', 'Save', function () { syncEditors(); nuSaveAction(); });
 				editor.on('init', function (e) {

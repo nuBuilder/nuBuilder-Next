@@ -61,3 +61,22 @@
 		}, (e) => { btn.disabled = false; err.textContent = e.message; err.hidden = false; });
 	});
 }());
+
+/* Dashboard form: Access levels list (0.8.697) – ticked count in the badge, group filter (hidden levels keep their ticks) */
+(function () {
+	'use strict';
+	const cnt = document.getElementById('dAccCount');
+	if (cnt) {
+		const boxes = document.querySelectorAll('.dashAccessList input[name="access[]"]');
+		const count = () => { const n = [...boxes].filter((b) => b.checked).length, all = cnt.getAttribute('data-total');
+			cnt.textContent = n + ' / ' + all; cnt.title = (cnt.getAttribute('data-fmt') || '').replace('%d', n).replace('%d', all); };
+		boxes.forEach((b) => b.addEventListener('change', count));
+	}
+	const sel = document.getElementById('dAccGroup');
+	if (!sel) return;
+	const apply = () => document.querySelectorAll('.dashAccessList [data-group]').forEach((e) => {
+		e.hidden = sel.value !== '*' && e.getAttribute('data-group') !== sel.value;
+	});
+	sel.addEventListener('change', apply);
+	apply();
+})();

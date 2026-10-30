@@ -86,7 +86,7 @@ $foot = '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"
 	. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'           // undo/redo, search, comment, invisibles, format, full screen – no hash variables
 	. '<script src="' . nu_asset('assets/js/nuconfigfile.js') . '"></script>';
-nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'head' => $head]);
+nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings' => 'configfile', 'head' => $head]);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>

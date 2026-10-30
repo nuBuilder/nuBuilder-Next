@@ -45,6 +45,7 @@
 	cm = CodeMirror.fromTextArea(ta, {mode: {name: 'php', startOpen: false}, lineNumbers: true, lineWrapping: true, matchBrackets: true,
 		autoCloseBrackets: true, indentUnit: 4, tabSize: 4, indentWithTabs: true, readOnly: ro ? 'nocursor' : false});
 	cm.getWrapperElement().classList.add('cfgCM');
+	window.nuConfigEditor = cm;                               // settings centre search: ?find=<variable> (assets/js/nusettingshub.js, 0.8.702)
 	cm.on('change', function () {
 		cm.save(); ta.dispatchEvent(new Event('input', {bubbles: true}));    // marks the form as changed
 		if (errLine !== null) { cm.removeLineClass(errLine, 'background', 'cfgErrLine'); errLine = null; }

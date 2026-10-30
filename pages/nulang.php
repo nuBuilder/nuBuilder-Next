@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-$lang = is_string($_GET['l'] ?? null) && (isset(NU_LANGS[$_GET['l']]) || isset(NU_LANG_VARIANTS[$_GET['l']])) ? $_GET['l'] : 'de';
+$lang = is_string($_GET['l'] ?? null) && (isset(NU_LANGS[$_GET['l']]) || isset(NU_LANG_VARIANTS[$_GET['l']])) ? $_GET['l'] : NuLanguages::fallback();   // nu_set_lang: installed languages only (0.8.701)
 nu_set_lang($lang);
 
 // remember per user in sus_language (nuBuilder reads the same column) – not while acting as another user, and only when the

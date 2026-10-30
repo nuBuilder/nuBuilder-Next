@@ -483,6 +483,7 @@ final class NuAuth
 	{
 		if (self::$loaded) return self::$user;
 		self::$loaded = true;
+		if (NuInstall::needed()) return self::$user = null;   // no nuconfig.php yet: the installer (its theme menu asked here and stopped the page, 0.8.693)
 
 		$s = $_SESSION['nu_auth'] ?? null;
 		if (!$s && nu_cfg('nuConfigSharedLogin') && !isset($_SESSION['nu_2fa'])) {

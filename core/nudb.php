@@ -44,6 +44,7 @@ final class NuDB
 		if ($this->type === 'mysql') $options += [PDO::ATTR_EMULATE_PREPARES => false];
 
 		$this->pdo = new PDO($dsn, $c['user'] ?? null, $c['password'] ?? null, $options);
+		self::$connected = true;                               // a connection exists (0.8.701: NuLanguages reads its setting only then)
 
 		if ($this->type === 'mysql' && !empty($c['charset'])) {
 			$set = 'SET NAMES ' . self::word($c['charset']);
@@ -145,6 +146,11 @@ final class NuDB
 	}
 
 	/** One of nuBuilder's tables (zzzzsys_…), not nuBuilder Next's own (zzzzsys_nunext_…). */
+	/** True once a database connection was made in this request (no connection attempt). */
+	public static bool $connected = false;
+	/** The connection nu_db() returns instead of the configured one – the installer's, before nuconfig.php exists (integrity check, 0.8.705). */
+	public static ?NuDB $override = null;
+
 	public static function nuBuilderTable(string $table): bool
 	{
 		$t = strtolower(trim($table, '`[]"'));

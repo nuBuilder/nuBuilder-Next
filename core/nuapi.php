@@ -211,7 +211,7 @@ final class NuApi
 	// ================================================================= system: unattended update (0.8.301, core/nuautoupdate.php)
 
 	/**
-	 * POST /v1/system/update {url | github: true, sha256?, backup?, schema?, sample?, reinstall?, dry_run?} – checks the package (dry_run: only that)
+	 * POST /v1/system/update {url | github: true, sha256?, backup?, schema?, sample?, reinstall?, dry_run?, ignore_integrity?} – checks the package (dry_run: only that)
 	 * or installs it: 202 with the job; its database steps run with the new code on the next request – GET /v1/system/update/{job}.
 	 */
 	private static function updateRun(): array

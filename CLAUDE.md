@@ -114,7 +114,8 @@ wiki-style cards with signature, parameters, returns, example, result / console.
 - **Existing nuBuilder databases are blocked for now** (0.8.380, `NuInstall::ORIGIN`): the installer refuses a database with nuBuilder's
   tables; an installation made by hand on one (setting `db_origin` = 'nubuilder', step 0014) shows only a notice; installations from
   before 0.8.380 ('legacy') keep working with a warning for the globeadmin. **`$nuConfigAllowExistingNuDB = true;`** in nuconfig.php
-  allows it – a hidden switch for the developer: never in README, nuconfig-sample.php or the help. The test site runs without it
+  allows it – a hidden switch for the developer: never in README, nuconfig-sample.php or the help. The installer (no nuconfig.php yet) accepts such a database
+  only with the empty marker file `_install/allow-existing-db` (0.8.705, same secrecy) and then writes the variable into nuconfig.php. The test site runs without it
   (its database is 'legacy' – the start page shows the warning); e2e test `existing_db`.
 - **nuBuilder compatibility first**: same tables, same JSON formats (reports, SQL builder, form layouts), same PHP/JS function names
   and results as nuBuilder 4.9 – a form or report must keep working in nuBuilder. `dev/tests/compat.js` checks it against nuBuilder
@@ -295,8 +296,8 @@ core/nucodetemplates.php NuCodeTemplates (0.8.524): built-in templates of the Gl
                      (look / page / form / fn), texts ctpl_<id> + ctpl_<id>_d; ▾ Templates per tab + preview dialogue #scodeTplDlg (nuglobalcode.js);
                      a new template = an entry + its two texts (run.php checks); e2e custom_code_templates
 assets/js/nu/nucodetools.js toolbar of every code editor (attach(cm, host, opt)); Insert menu + suggestions while typing (0.8.593): functions
-                     of docs/nunext-functions.json via the JSON route ?p=fnlist&lang=php|js (pages/nufnlist.php), opt.snippets = second tab
-                     (procedures), opt.noInsert (nuconfig.php editor); suggestions = CodeMirror show-hint (appended to codemirror-addons.js /
+                     of docs/nunext-functions.json via the JSON route ?p=fnlist&lang=php|js (pages/nufnlist.php), tab Snippets = opt.snippets + the
+                     scope's snippets (opt.scope, ?p=snippetlist, NuSnippets, 0.8.714), opt.noInsert (nuconfig.php editor); suggestions = CodeMirror show-hint (appended to codemirror-addons.js /
                      codemirror.css of the bundle); e2e code_insert
 core/nututorial.php  tutorial (0.8.328); two tracks (0.8.622): data-level="advanced" on a lesson / chapter = advanced only, part "advanced"
                      (In depth) + "end" (Next steps, no heading); progress {done, hidden, track}; track '' = choice screen (pages/nututorial.php,
@@ -312,6 +313,16 @@ core/form/nudesign.php NuDesign (0.8.662 / 0.8.663; replaces the form builder si
                      builder, self, exit, forms, procedures, reports, formats, texts}; pages/nuform.php loads nudesigner.js (runs on the page itself,
                      window.parent = window; message nuBuilderSelectNone) + assets/js/nu/nudesign.js (bar, icon bar + Structure / Add flyout, tabs,
                      panel) + nudesign.css; builderapi draft.start {preview}; new texts ds_* (JS texts only through client()['texts'])
+core/nuwebhook.php   NuWebhook (0.8.715): webhooks – definitions zzzzsys_nunext_webhook (forms / events JSON, url, secret sealed with
+                     $nuConfigSecretKey, fields, template), outbox zzzzsys_nunext_webhook_call (queue() inside the save transaction of NuRecord::save /
+                     delete and NuImport::run – webhooks of the forms on the imported table, source import), attempts zzzzsys_nunext_webhook_try;
+                     sent at shutdown after fastcgi_finish_request (attempt(): claim by conditional UPDATE), retries by NuHousekeeping step webhooks
+                     (BACKOFF 1 min … 12 h, MAX_TRIES 6, 4xx except 408 / 429 final), KEEP_DAYS 30; checkUrl(): https + public addresses only unless
+                     setting 'webhook' {allow_private}, resolved IP pinned (CURLOPT_RESOLVE), no redirects, 5 s; signature X-NuNext-Signature =
+                     sha256=HMAC(secret, "<ts>.<body>"); body() = standard JSON or template (#col#, VARS, #PAYLOAD#, JSON-escaped); $transport test hook;
+                     page ?p=webhooks (pages/nuwebhooks.php: lists NuListDefs webhooks / webhookcalls via NuAcl::FORM_WEBHOOK, edit, Send test, call
+                     page with Send again, settings card), admin right webhooks, tile + s_wh_new / s_wh_calls, step 0029; e2e webhooks (dev/tests/fakehook.py)
+core/nusettingshub.php NuSettingsHub (0.8.702): the settings centre – sections, side bar + search frame around settings pages (nu_layout_start option 'settings'), search index; see "Where things stand"
 core/nuhelplink.php  NuHelpLink (0.8.528): F1 help – MAP route → section id of docs/pages (home: admins home-page, else navigation-p);
                      <body data-nu-help> (NuCustomCode::bodyAttrs, app pages only), assets/js/nuapp.js opens it in a new tab; a new page = an
                      entry here (run.php checks route + id); e2e help_f1
@@ -576,10 +587,36 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (October 2026, 0.8.692)
-Last gate 0.8.692 (full test run, pushed: 0.8.678–0.8.691 in one push; docs, README, TODO, tutorial checked first). Nothing released since.
+## Where things stand (October 2026, 0.8.715)
+Last gate 0.8.715 (full test run, pushed: 0.8.693–0.8.715 in one push; docs, README, TODO, tutorial checked first).
 
-Up to the gate 0.8.692, newest first (details in CHANGELOG.md):
+Up to the gate 0.8.715, newest first (details in CHANGELOG.md):
+- 0.8.715 webhooks (NuWebhook, see Architecture) + release gate; e2e admin_role: the settings centre opens with a hub right (0.8.702), Forte's list / other sections stay closed
+- 0.8.714 snippets by scope: core/nusnippets.php NuSnippets (scopeOf / pick / allowed / forEditor), JSON route ?p=snippetlist&scope=0..3&lang= (pages/nusnippetlist.php); nucodetools.js opt.scope (default from lang: SQL 2, PHP 3, else 0; Global code 1, nuruntime set_header / set_style 1), snList() on first open, link .nuInsManage (text snip_manage); procedures page no longer embeds snippets; NuSample 20 (cot_scope); NuLanguages::installed() never connects in CLI; release.py checks run.php's last line; run.php NuSnippets tests; e2e snippet_scope
+- 0.8.713 TODO.md only (installer languages point)
+- 0.8.712 To do page upload: pages/nutodo.php POST action upload (file todo_file: .zip → shortest TODO.md path with ≤ 1 slash, or .md; UTF-8, ≤ 4 MB; .part + rename; tmp unlinked; log todo_uploaded), #nuTodoUpForm / #nuTodoUpload / #nuTodoFile (nutodo.js: picker → submit, data-max check → #nuTodoUpErr); e2e todo_upload
+- 0.8.711 NuListExport::menu button: text in span.d-none.d-sm-inline, title / aria-label exp_menu (phones icon only); e2e export_empty
+- 0.8.710 no Export button without records: pages/nuform.php (#nuExportButton / #nuPrintButton only when $data['total'] > 0), NuListView::card ($total > 0 for buttons() and the ⋮ menu's export entries); e2e export_empty
+- 0.8.709 Logged-in users: filters in collapse #sessFilters (data-nu-open-min 768, funnel via nu_list_search filterId, shown while filtered), Forte card folded (#sessForteBtn / #sessForte); e2e sessions_layout
+- 0.8.708 user menu without Security (only for users without NuAdmin::any()), System status and #nuSidebarToggle; personal side bar switch = start page Customise → Appearance #nuHomeVp_sidebar (pages/nuhome.php data sidebar {on, url, back} → POST ?p=sidebar action toggle, reload); texts home_v_sidebar*; e2e sidebar
+- 0.8.707 compact top bar: Home = #nuHomeBtn first in .nuNavInner (no #nuMenuHome, nav link 'home' skipped); text brand_logo_show_tip
+- 0.8.706 compact top bar: $compact = !NuBranding::logoShown('') in nu_layout_start – nav .nuNavCompact, no .navbar-toggler / #nuNavPin, icons .nuNavIcons outside #nuNav, user button .nuUserHam (bi-list, < 768 px), user menu #nuMenuHome + the bar's links (d-md-none); e2e nav_compact
+- 0.8.705 installer on an existing Forte database: marker file _install/allow-existing-db (NuInstall::EXISTING_MARKER / existingMarker()) → no refusal, content step #insIntegrity (nu_install_integrity: NuDB::$override = installer connection for nu_db(), ack integrity_ack checked again on install), buildConfig writes $nuConfigAllowExistingNuDB = true, origin nubuilder, no record_check / protect_fields defaults; install.js phase 2
+- 0.8.704 self-test page: #stDevBadge in the h1, sortable th.stSort[data-sort text|status|num] (assets/js/nuselftest.js), check mail → skip when not set up; e2e selftest_page
+- 0.8.703 installer fix: NuLanguages::installed() returns every language while NuInstall::needed() (the installer's own NuDB set NuDB::$connected → nu_db() → nu_config() fatal "nuconfig.php not found" on Test connection); install.js clicks #insTest
+- 0.8.702 settings centre: core/nusettingshub.php NuSettingsHub (SECTIONS, pages() by admin rights, nav() / frameStart / frameEnd – nu_layout_start option 'settings' => section [+ 'settings_page'], closed in nu_layout_end; index() = search entries {t, d, s, u, k, v}; a new setting = an entry there); pages/nusettings.php = overview + sections general / look / data / updates (POST langs, audit_set, ntf_set, bk_rule, gh_set; ?index=1 JSON), s=forte → pages/nusettings_forte.php (the old list); framed: branding, themes, email, securitycheck, globalcode, configfile; assets/js/nusettingshub.js (search, #anchor highlight, ?q= for the Forte list, ?find= → window.nuConfigEditor); user menu without #nuSidebarDefault (now Settings → Look); sub tiles s_set_<section>; wizard link #wizInSettings; e2e settings_hub
+- 0.8.701 installed languages: core/nulanguages.php NuLanguages (setting 'languages', fallback 'welcome_langs' of 0.8.693; installed() connects only when nuconfig.php exists and never while connecting fails – NuDB::$connected; has / fallback (de > en > first) / set (prunes + ensureTemplates) / userCounts); nu_lang / nu_lang_choices / nu_set_lang / nulang.php / user form / NuEmailTemplate::languages restricted; nu_lang_menu hidden with one choice; Settings card #setLangs (POST action langs, log languages_changed); NuWelcome::langs / setLangs delegate; e2e languages, install.js checks the setting
+- 0.8.700 TinyMCE full screen over the top bar: nuform.css html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto } (the canvas's isolate made the fixed editor's z-index 1200 local); e2e tinymce_link_target checks it
+- 0.8.699 TinyMCE of forms: link_default_target '_blank' in the cfg of nuruntime.js (options of nuInitTinyMCE override); e2e tinymce_link_target (needs the TinyMCE pack: php dev/libpack.php <out> ../nunext-signing.key tinymce=<nub>/third_party/tinymce, then NuLibs::install)
+- 0.8.698 integrity check (core/nuintegrity.php NuIntegrity::run(expected, steps) / forPackage / html / lines / summary / blocking; levels error / warn / info, items data-ic; nuBuilder Forte's own rows (ids nu%) → item forte_rows; scratch table zzzzsys_nunext_ichk for the structure rights): update page Check package #updIntegrity (tick #nuIcAck name integrity_ack form updInstallForm, server check on install, log integrity_ignored), tab System card #updIntegrityNow (?tab=system&integrity=1), cron.php integrity, ?p=dbsetup (partial / old; repair blocked except 'tables'), NuAutoUpdate ignore_integrity, NuMigrate::stepIds(); e2e integrity
+- 0.8.697 dashboard form tabs General / Access levels (#dashTabs, data-nu-tabfield dashTab, ?tab=access after Save), group filter #dAccGroup + count #dAccCount (assets/js/nudashboards.js now also on the dashboard form), description field dash_description; e2e dashboard_access_tab
+- 0.8.696 Access levels of one form: sortable titles (nuformaccess.js th.nuFacSort[data-sort] level | open | r:<right> | dm | ft, aria-sort; e2e form_access_dialog)
+- 0.8.695 themes "Per access level" collapsed (#thLevelsBtn / #thLevelsBox, badge n/total)
+- 0.8.694 unique theme names (NuTheme::nameTaken / uniqueName, import / duplicate get " (2)", #thName data-taken; e2e theme_names)
+- 0.8.693 users / admin roles filter widths (CSS .nuLvFlt-users / .nuLvFlt-adminroles), access level: #homeFormOpen (assets/js/nuaccesslevel.js), users card sus_name, sortable Form rights (th.accRightsSort data-sort form | r:<right> | sel:dm|ft, localStorage nunext-acc-rights-sort); permission item user links target _blank; Security check badges .secFlt[data-sec-filter] filter the list (nusecuritycheck.js); compatibility check: sources() 'proc' + result 'procs' (where → id) → a.nuCompatProc links; installer option langs → NuWelcome::setLangs(langs, prune) / langs() (setting welcome_langs, ensureTemplates uses it); NuAuth::user() returns null while NuInstall::needed() (installer page fixed); e2e owner_693, install.js checks the languages
+
+Last gate 0.8.692 (full test run, pushed: 0.8.678–0.8.691 in one push; published by the owner as v0.8.692 pre-release – dev/release-notes.md).
+Up to the gate 0.8.692, newest first:
 - 0.8.692 release gate (README: badges, filters, unsaved clone, welcome preview, access levels of a form)
 - 0.8.691 samples as a showcase: NuSample::VERSION 19 – browse entries take a 6th element = sbr_json nunext (filter / badge), browse_js of customers (credit test rule) and orders (customer link via nuBrowseLoop + nuForm, hidden column 5), home objects home_lookword / home_look; install/samples/ticket.json version 3 (sbr_json of tkt_br_003/004/006/008/012/015, tktticket browse JS overdue rule, object tkto048 home_look) – edited with a PHP script keeping capture's JSON format; e2e sample_showcase
 - 0.8.690 admin tool lists: NuListDefs notifications (route_params tab=manage, pseudo form NuAcl::FORM_NOTIFY – NuAcl::rights grants view / print when NuNotify::canManage(), rows of others hidden by where created_by_id unless canViewAll) and dashboards (FORM_DASHBOARD via admin right dashboards); log: filter object, NuListDefs::logObjectLabel / logRecordUrl (LOG_RECORDS table → route, existence + right checked), details in div.nuLvClamp (assets/js/nulistview.js folds to 3 lines, button .nuLvMore, texts lv_more / lv_less); audit login select; e-mail log tag (text mail_tag) shown + userOfMail → a.nuMailUser; cloner search only > 10 rows; NuGitHub::autoCheck(true) on the update page re-looks hourly while latest ≤ NU_VERSION; e2e admin_lists

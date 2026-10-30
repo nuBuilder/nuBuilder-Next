@@ -3,6 +3,159 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.715 – Webhooks, release gate
+- Webhooks (Admin tools → Webhooks, admin right "Webhooks"): after a record of the chosen forms is inserted, changed or deleted,
+  nuBuilder Next calls a URL – n8n, Zapier, Teams, Slack or your own service. Also for CSV imports into a form's table.
+  - The call is stored with the save (a failed save leaves none) and sent right after the page has answered; on an error it is
+    tried again by the housekeeping (cron.php) after 1 min, 5 min, 30 min, 2 h and 12 h – 6 attempts; a refusal (HTTP 4xx) is not
+    repeated. Tab Calls: every call with status, attempts and the receiver's answer; one call's page shows its body and attempts,
+    "Send again" sends it once more. Calls are kept 30 days.
+  - Signed: X-NuNext-Signature = sha256=HMAC-SHA256(secret, "<timestamp>.<body>"); the secret is shown once and stored encrypted
+    with $nuConfigSecretKey.
+  - Body: standard JSON (event, form, record_id, user, data, changed) or an own template with #column# and variables (Teams,
+    Slack); Fields limit the columns sent; columns that look like passwords or tokens are always masked.
+  - Only https addresses on the internet; private / local addresses refused (also via DNS, the address is pinned), no redirects,
+    5 s timeout – the setting "Allow http and addresses in your own network" lifts it (n8n on your own server).
+  - "Send test" sends one call with a sample record at once. Help page Webhooks, tutorial lesson, start page tile.
+- Release gate: full test run (smoke, all end-to-end tests, the cross-tests against nuBuilder Forte). The end-to-end test of admin
+  roles now expects the settings centre to open for a role with one of its settings pages (as since 0.8.702).
+
+## 0.8.714 – Code snippets by scope
+- Code snippets by scope: nuBuilder Forte's "Selectable in" (cot_scope) now decides where a snippet is offered – tab Snippets of the
+  Insert menu in every code editor: Forms / Custom Code = the form's JavaScript, CSS and HTML (design mode, double-click editors),
+  Setup / Header = Global code, SQL = SQL fields (they now get the Insert button with this tab), Procedures/PHP = procedures and PHP
+  events. Snippets without a scope appear in the editors of their language, as before. Loaded on first opening the menu
+  (?p=snippetlist, read only, for people who work in a code editor); "Manage snippets" opens Forte's snippets form for users with
+  the right on it.
+- Sample application 20: its three snippets get a scope (JavaScript → Forms / Custom Code, PHP → Procedures/PHP, SQL → SQL).
+- Fixed: the unit tests (dev/tests/run.php) stopped early since 0.8.701 without being noticed – the language list tried to connect
+  to the database from the command line. The language list no longer connects there, and release.py now needs the "all … tests
+  passed" line.
+
+## 0.8.713 – TODO.md updated
+- TODO.md: the installer languages point updated – the interface is limited to the installed languages since 0.8.701.
+
+## 0.8.712 – To do page: upload nunext-dev.zip
+- To do page (developer mode): "Upload nunext-dev.zip" when TODO.md is missing, "Upload new" when it is there. Only TODO.md is
+  taken out of the zip (top level or the nunext/ folder) and written; an existing TODO.md is replaced without asking; the uploaded
+  zip is deleted right away. TODO.md can also be uploaded on its own, e.g. when the zip is larger than PHP's upload limit
+  (checked in the browser first). A zip without TODO.md (e.g. nunext.zip) is refused. Logged as "TODO.md uploaded".
+
+## 0.8.711 – Export button icon only on phones
+- Export button of form browse lists (and system lists) on phones: the icon only, the word "Export" as tooltip and accessible name;
+  from 576 px on it shows icon and text as before.
+
+## 0.8.710 – No Export button without records
+- Form browse lists and system lists: the Export button (HTML page, CSV, Excel) is hidden while the list shows no records,
+  e.g. after a search without hits. On phones, the export entries of the ⋮ menu are hidden too.
+
+## 0.8.709 – Logged-in users: filters on phones, folded Forte card
+- Logged-in users on phones: the User and Status filters are hidden until the funnel button next to the search is clicked, as on
+  the users list. They open at once while a filter is set. From 768 px on they are shown next to the search as before.
+- Logged-in users: the nuBuilder Forte card is folded by default; its title (with the number of sessions) opens it.
+
+## 0.8.708 – User menu tidied, side bar switch in Customise
+- User menu: "Security", "System status" and "Side bar" removed. Administrators open Security and System status from their
+  start page tiles (or Ctrl+K); users without an admin role keep Security in the user menu, since their start page may not have that tile.
+- The personal side bar switch moved to the start page: Customise → Appearance → Side bar ("Show the side bar", only for you).
+  The default for everyone stays in Settings → Look.
+
+## 0.8.707 – Home button in the top bar without logo
+- Top bar without logo: a Home button sits at the very left of the bar (every screen width) instead of Home in the user menu;
+  the bar's own Home link is left out then. Branding hint updated.
+
+## 0.8.706 – Compact top bar on phones without logo
+- Phones: when the logo is not shown in the top bar (Branding → Show logo "only on the sign-in pages" or "nowhere"), the bar is
+  compact – search, bell, theme and language stay in the bar instead of behind ☰, the pin is gone, and the user menu's button
+  shows ☰ and opens the user (globeadmin) menu directly, with Home (and the bar's links for other users) at the top. Without a
+  logo the user menu offers Home on every screen width.
+
+## 0.8.705 – Installer: existing nuBuilder Forte database
+- Installer on an existing nuBuilder Forte database (for the developer, undocumented like the variable): with an empty file
+  _install/allow-existing-db the installer no longer refuses a database with nuBuilder Forte's tables – the content step shows
+  the integrity check (problems need the tick), the written nuconfig.php gets $nuConfigAllowExistingNuDB = true, the origin is
+  "nubuilder", and the safer defaults for new installations (record check, protected fields) are not set; the marker file is
+  removed with the installer's other files. Install test covers both cases.
+
+## 0.8.704 – Self-test page: sortable, Dev badge
+- Self-test page: the Dev badge sits in the title next to (i); the result table is sortable (group, check, status – failed
+  first –, details, ms; a second click reverses); "E-mail not set up" is shown as Skipped instead of a warning.
+
+## 0.8.703 – Installer: test connection
+- Installer: "Test connection" (step Database) stopped with "nuconfig.php not found – rename nuconfig-sample.php …" since
+  0.8.701 – the languages of the installation were read from the configuration file that the installer is about to write.
+  Before nuconfig.php exists every language is offered and nothing is read (NuLanguages); install test covers the button.
+
+## 0.8.702 – Settings centre
+- Settings centre: Admin tools → Settings is now one place for every setting – an overview, a side bar of sections
+  (General, Look, Sign-in & security, E-mail, Data & logs, Code & includes, Updates & libraries, nuBuilder Forte,
+  Configuration file) and a search over all settings (own settings, security settings, nuBuilder Forte's settings table and
+  the variables of nuconfig.php; key /) that opens the page at the setting and marks it.
+- Edited in place: languages, side bar for everyone, audit trail, how long notifications are kept, backups (SQL dumps kept,
+  clean-up rule), update from GitHub. The big editors (Branding, Themes, E-mail, Security check, Global code, nuconfig.php)
+  keep their pages, now inside the settings frame; nuBuilder Forte's settings list moved to the section nuBuilder Forte.
+- The side bar default for everyone left the user menu (Settings → Look); the Settings tile lists the sections under ▾; each
+  step of the setup wizard links to its section.
+
+## 0.8.701 – Only the installed languages in the interface
+- Languages of the installation: only the languages chosen in the installer ("Languages to include") are offered in the
+  interface – language menus, sign-in page, user form, setup wizard, e-mail template languages; a stored or linked language
+  that is not installed shows the default language. With one language (no variants) the language menu is hidden.
+- Admin tools → Settings: new card "Languages" to add or remove languages later (users per language shown; an added language
+  gets its welcome e-mail template at once, the built-in templates of removed ones are deleted; at least one stays; logged).
+  Installations from before keep all eleven languages.
+
+## 0.8.700 – TinyMCE full screen over the page
+- WYSIWYG editor (TinyMCE) in full screen: the top bar, breadcrumb and record buttons were drawn over the editor and hid its
+  menu and part of the toolbar – the absolute layout's own stacking layer (isolation, for content boxes behind objects) held
+  the editor; it is lifted while an editor is in full screen.
+
+## 0.8.699 – TinyMCE links open in a new tab
+- WYSIWYG editors (TinyMCE) of forms start with link_default_target '_blank': new links open in a new tab by default (the link
+  dialogue preselects it; form code can still pass other options to nuInitTinyMCE).
+
+## 0.8.698 – Integrity check of the database before an update
+- Integrity check of the database before an update: Check package now also looks at the existing tables for what would make
+  the update fail or leave data unusable – Problems (missing core tables, views in place of tables, damaged tables, duplicate
+  ids without a primary key, duplicate login names, missing setup row, database steps of a newer version, no right to change
+  the table structure), Warnings (primary keys, empty ids, missing / smaller columns, storage engines, character sets,
+  strict-mode traps, invalid JSON, references to deleted records, duplicate codes / object ids, a user with the globeadmin's
+  login name) and Notes (MyISAM / utf8mb3 and oddities in nuBuilder Forte's own rows). Problems need the tick "go on anyway"
+  (checked on the server, logged).
+- The same check on request (Update → System → Database integrity), with php cron.php integrity [--json], on the database
+  set-up page before "Create missing tables", and in the unattended update (problems stop it; option ignore_integrity).
+
+## 0.8.697 – Dashboard form: access levels tab with group filter
+- Dashboard form: the access levels are on their own tab "Access levels" (its title shows ticked / all), with a group filter
+  when the levels have several groups – hidden levels keep their ticks; Save stays on the tab.
+- Dashboard form: the description is saved again (its field name did not match what the save read).
+
+## 0.8.696 – Sortable columns in the access levels of a form
+- Access levels of one form (⋮ → Access levels…, design mode Tools): the column titles sort the list – level, Open and
+  every button (ticked first), data mode and form type; a second click reverses the order.
+
+## 0.8.695 – Themes: per access level folded
+- Themes: the list "Per access level" is folded by default – a click on its title opens it; a badge shows how many access levels have a
+  theme of their own.
+
+## 0.8.694 – Unique theme names
+- Themes: names are unique (also against the built-in themes, upper / lower case ignored). The name field in the editor says so while
+  typing and Save refuses a name in use (also on the server); Duplicate and Import give a taken name a number, e.g. "Ocean (2)".
+- Tests: e2e theme_names.
+
+## 0.8.693 – Lists, access levels, security check, installer languages
+- Users list: the filters Position, Department, Team and Status are at most 280 px wide; admin roles: "Has users" at most 200 px.
+- Access level: a button next to Home form opens the chosen form in a new tab; the Users card shows each user's full name; the Form
+  rights table sorts by a click on a column title (form, each right – ticked first –, data mode, form type), remembered per browser.
+- Permission item: the users in the list on the right and "Show in the users list" open in a new tab.
+- Security check: a click on the badge Problem, Check or OK shows only those checks; a second click shows all again.
+- Compatibility check: procedures named under "Used in" are links that open the procedure in a new tab.
+- Installer: new option "Languages to include" – the welcome e-mail templates are created only in the chosen languages (also by later
+  updates); the interface keeps every language.
+- Fixed: the installer page broke off after its first lines (since 0.8.632) – a fresh installation could not be started.
+- Notes: v0.8.692 published on GitHub.
+- Tests: e2e owner_693; dev/tests/install.js checks the language choice.
+
 ## 0.8.692 – Release gate (0.8.678–0.8.691)
 - Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte 4.9) for 0.8.678–0.8.691.
 - README: lists with filters and coloured badges, Clone as an unsaved copy, welcome e-mail preview, the access levels of a form in one

@@ -53,7 +53,7 @@ $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback
 $accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg';
 $accent = $b['accent'] !== '' ? $b['accent'] : '#2f6fd6';
 
-nu_layout_start(t('brand_title'), 'home');
+nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page' => 'branding']);
 ?>
 <form method="post" action="<?= h(nu_url('branding')) ?>" id="brandReset" data-confirm="<?= h(t('brand_reset_confirm')) ?>" data-confirm-ok="<?= h(t('brand_reset')) ?>" data-confirm-class="btn btn-danger">
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="reset">

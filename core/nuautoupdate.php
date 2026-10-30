@@ -32,6 +32,7 @@ final class NuAutoUpdate
 			'url' => trim((string)($in['url'] ?? '')), 'zip' => trim((string)($in['zip'] ?? '')), 'sha256' => strtolower(trim((string)($in['sha256'] ?? ''))),
 			'backup' => (string)($in['backup'] ?? 'auto'), 'schema' => (string)($in['schema'] ?? 'safe'), 'sample' => (string)($in['sample'] ?? 'auto'),
 			'reinstall' => self::bool($in['reinstall'] ?? false), 'dry_run' => self::bool($in['dry_run'] ?? false), 'github' => self::bool($in['github'] ?? false),
+			'ignore_integrity' => self::bool($in['ignore_integrity'] ?? false),
 		];
 		if ((int)($o['url'] !== '') + (int)($o['zip'] !== '') + (int)$o['github'] !== 1) $e['url'] = 'Give either url, zip or github.';
 		if ($o['zip'] !== '' && !$cli) $e['zip'] = 'zip (a file on the server) is for the command line only – use url.';
@@ -101,6 +102,14 @@ final class NuAutoUpdate
 				if (!$ok) $r['errors'][] = 'Requirement not met: ' . $label . ' (' . $detail . ')';
 			}
 			if (!$info['ok']) return $r;
+
+			// --------------------------------------------------- integrity of the database (0.8.698): problems stop the update
+			$ic = NuIntegrity::forPackage($zip, $info['prefix']);
+			$r['integrity'] = NuIntegrity::summary($ic);
+			if ($ic['errors'] && !$o['ignore_integrity']) {
+				foreach ($ic['items'] as $it) if ($it['level'] === 'error') $r['errors'][] = 'Integrity check: ' . NuIntegrity::title($it) . ' – ' . implode(' · ', array_slice($it['list'], 0, 5));
+				$r['errors'][] = 'Fix these first, or add ignore_integrity (--ignore-integrity) to install anyway.';
+			}
 
 			// --------------------------------------------------- what would change
 			$r['files'] = self::diff($info);

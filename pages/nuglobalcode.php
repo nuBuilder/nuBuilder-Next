@@ -97,7 +97,7 @@ $values += $gValues;
 $scope = NuCustomCode::get()['scope'];
 $tplData = NuCodeTemplates::forPage();
 
-nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'head' => '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">']);
+nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settings' => 'code', 'head' => '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">']);
 ?>
 <form method="post" action="<?= h(nu_url('globalcode')) ?>" id="scodeForm" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="tab" id="scodeTab" value="">

@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 19;             // 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 20;             // 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -985,9 +985,10 @@ ORDER BY
 
 	private static function snippets(): array
 	{
+		// cot_scope (0.8.714): nuBuilder Forte's "Selectable in" – JavaScript 0 Forms / Custom Code, PHP 3 Procedures/PHP, SQL 2
 		$s = static fn(string $id, string $code, string $lang, string $desc, string $src) => [
 			'zzzzsys_code_snippet_id' => $id, 'cot_code' => $code, 'cot_description' => $desc, 'cot_group' => 'sample', 'cot_url' => '',
-			'cot_source_code' => $src, 'cot_language' => $lang, 'cot_template' => '0', 'cot_updated_on' => date('Y-m-d H:i:s')];
+			'cot_source_code' => $src, 'cot_language' => $lang, 'cot_scope' => json_encode([['JavaScript' => '0', 'PHP' => '3', 'SQL' => '2'][$lang] ?? '0']), 'cot_template' => '0', 'cot_updated_on' => date('Y-m-d H:i:s')];
 		return [
 			$s('sample_snip_js', 'sample_js_new_record', 'JavaScript', 'Sample: default values on a new record', "if (nuIsNewRecord()) {\n\tnuSetValue('field_id', 'value');\n}"),
 			$s('sample_snip_php', 'sample_php_error', 'PHP', 'Sample: stop saving with a message (Before Save)', "if ('#field_id#' === '') {\n\tnuDisplayError('Please fill in field_id.');\n}"),

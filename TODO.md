@@ -36,6 +36,17 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
 
+## 0.8.715 Webhooks – please verify
+- A real receiver (n8n, Teams workflow, Zapier) over https; the call is sent after the answer on PHP-FPM (fastcgi_finish_request –
+  the test server is PHP's built-in one, where the page waits); retries with the real cron; SQL Server (tables, the outbox query).
+- CSV import into a form's table: one call per row (not covered by the e2e test).
+
+## 0.8.693 Owner's list (users / access levels / permissions / security / compatibility / installer) – please verify
+- Installer: *Languages to include* on Options (since 0.8.701 the installed languages: setting `languages`, fallback welcome_langs) – the
+  interface, the user form and the welcome templates offer only these; Settings → General → *Languages* adds / removes them later.
+- FIXED: the installer page stopped after its first lines since 0.8.632 (the theme menu asked NuAuth::user(), which read nuconfig.php) –
+  dev/tests/install.js caught it once nuBuilder Forte's nuconfig.php was out of the way; fresh installations from 0.8.632 to 0.8.692 failed.
+
 ## 0.8.691 Samples as a showcase – please verify
 - Sales sample (version 19, *Refresh* on the Sample data page): orders Status badges + filters Customer / Status, customer name → customer
   (browse JS, hidden column Customer id), products Active badge + filter Category, customers filter Country + credit > 30,000 red (JS test rule,
@@ -144,10 +155,6 @@ Global includes exist already ($nuConfigIncludeJS / CSS / PHP), page forms live 
 - [ ] Security assessment, not built: HSTS header over HTTPS, CSP without 'unsafe-inline' / 'unsafe-eval' on form pages, constant-time
       sign-in, SameSite=Strict for the admin area. Re-run the assessment's test kit against the live server (HTTPS, real access levels).
 
-## Code snippets
-- [ ] `cot_scope` ("Selectable in": Forms / Custom Code, Setup / Header, SQL, Procedures/PHP): store the scope and offer
-      snippets in the matching code editors of the builder (nuBuilder's "Insert-Snippet" lookups). The install SQL leaves the field out for now.
-
 ## Bootstrap 6 (alpha in October 2026) – later
 - [ ] Stay on Bootstrap 5.3.8; look again at the beta. Since 0.8.244 all of nuBuilder Next's JavaScript uses Bootstrap only through
       `assets/js/nubs.js` (`nuBs.*`) – a switch changes that file (Bootstrap 6 has no `window.bootstrap`: set it there for form code),
@@ -205,7 +212,7 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
       (reminders, data cleanup, interfaces).
 - [ ] **7 · Password policy** (S) – besides the minimum length: check against known leaked passwords (k-anonymity, no password leaves
       the server in full), optional complexity / expiry per access level.
-- [ ] **7 · Webhooks** (S–M) – call a URL after save / delete of chosen forms (n8n, Zapier, Teams, other systems), with retry and log.
+- [x] **7 · Webhooks** – done in 0.8.715 (Admin tools → Webhooks; form saves / deletes and CSV imports, signed, retries by cron.php).
 - [ ] **7 · Global search / command palette** (M) – Ctrl+K: find forms, records (chosen fields), settings and pages from anywhere.
 
 ### Useful (5–6)

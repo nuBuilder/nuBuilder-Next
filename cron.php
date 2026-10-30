@@ -20,10 +20,14 @@ declare(strict_types=1);
  *             --schema=none|missing|safe|all       database columns to add / widen first (safe = as the update page preselects)
  *             --sample=auto|yes|no      refresh the sample data (auto: when the package brings a newer sample version)
  *             --reinstall               install even when the package is not newer
+ *             --ignore-integrity        install although the integrity check of the database found problems (0.8.698)
  *             --json                    output as JSON
  *     php cron.php update --status [job]     the last jobs / one job
  *     php cron.php update --finish=<job>     database steps of an installed job (started automatically in a new process)
  *   Exit code: 0 = done / checked, 1 = failed, 2 = wrong call.
+ *
+ * Integrity check of the database (0.8.698) – what would make an update fail or leave data broken:
+ *     php cron.php integrity [--json]      Exit code: 0 = no problems (warnings / notes allowed), 1 = problems found
  *
  * Reset database (0.8.628, only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
  * Forte (4.x) SQL file (nubuilder4.sql or a complete dump, .sql / .sql.gz / .zip) and creates nuBuilder Next's tables:
@@ -67,6 +71,12 @@ if (($args[0] ?? '') === 'reset') {
 	if ($r['sample'] !== '') echo str_pad('sample', 14) . ($r['sample'] === 'ok' ? 'installed (Admin tools → Sample data → New passwords)' : 'failed: ' . $r['sample']) . "\n";
 	echo "Done. Open index.php?p=setupwizard to set up the installation.\n";
 	exit(0);
+}
+if (($args[0] ?? '') === 'integrity') {
+	$ic = NuIntegrity::run();
+	if (in_array('--json', $args, true)) echo json_encode(NuIntegrity::summary($ic), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+	else echo implode("\n", NuIntegrity::lines($ic)) . "\n";
+	exit($ic['errors'] ? 1 : 0);
 }
 if (($args[0] ?? '') !== 'update') {
 	$done = NuHousekeeping::run('cron');

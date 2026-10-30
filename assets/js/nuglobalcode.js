@@ -16,7 +16,7 @@
 			byTab[ta.id.replace(/^scode-/, '')] = cm;
 			// toolbar (0.8.554): undo / redo, search, replace, comment, invisibles, format, full screen
 			var tools = form.querySelector('.scodeTools[data-for="' + ta.id + '"]');
-			if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: {css: 'CSS', htmlmixed: 'HTML'}[ta.getAttribute('data-mode')] || 'JS', readOnly: ro});
+			if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: {css: 'CSS', htmlmixed: 'HTML'}[ta.getAttribute('data-mode')] || 'JS', readOnly: ro, scope: 1});   // snippets "Setup / Header" (0.8.714)
 		});
 	}
 	// height (0.8.554): the editor of the open tab reaches down to the bottom of the window (at least 360 px), also after resizing;

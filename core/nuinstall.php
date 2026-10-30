@@ -30,6 +30,19 @@ final class NuInstall
 	 */
 	public const ORIGIN = 'db_origin';
 
+	/**
+	 * Marker file for the installer (0.8.705): an empty file <nuBuilder Next>/_install/allow-existing-db lets the installer set up nuBuilder
+	 * Next on a database that already has nuBuilder Forte's tables (the installer runs before nuconfig.php exists, so the variable cannot
+	 * be read there). The written nuconfig.php then gets $nuConfigAllowExistingNuDB = true; the marker goes with the other files of
+	 * _install/ after the installation. Deliberately undocumented, like the variable.
+	 */
+	public const EXISTING_MARKER = '_install/allow-existing-db';
+
+	public static function existingMarker(): bool
+	{
+		return is_file(NU_ROOT . '/' . self::EXISTING_MARKER);
+	}
+
 	public static function existingAllowed(): bool
 	{
 		$v = nu_cfg('nuConfigAllowExistingNuDB');
@@ -679,6 +692,7 @@ final class NuInstall
 		$tpl = $set($tpl, 'nuConfigTimezone', $x((string)$o['timezone']));
 		$tpl = $set($tpl, 'nuConfigBaseURL', $x((string)$o['base_url']));
 		$tpl = $set($tpl, 'nuConfigSharedLogin', !empty($o['shared']) ? 'true' : 'false');
+		if (($s['detect']['kind'] ?? '') === 'nubuilder') $tpl = $set($tpl, 'nuConfigAllowExistingNuDB', 'true');   // set up on an existing database (marker file, 0.8.705)
 		if ((string)$o['nub_path'] !== '' && rtrim((string)$o['nub_path'], '/\\') !== dirname(NU_ROOT)) $tpl = $set($tpl, 'nuConfigNuBuilderPath', $x((string)$o['nub_path']));
 		$tpl = (string)preg_replace('/^\/\/ -> Rename nuconfig-sample\.php to nuconfig\.php\n/m', '// -> Written by the nuBuilder Next installer on ' . date('Y-m-d H:i') . ". Edit as needed.\n", $tpl, 1);
 		return $tpl;

@@ -114,8 +114,8 @@ final class NuSelfTest
 				$red = array_column(array_filter(NuSecurity::checks(), static fn($c) => $c['status'] === 'red'), 'title');
 				return $red ? $warn(implode(' · ', $red)) : $ok();
 			}],
-			['system', 'mail', static function () use ($ok, $warn) {
-				return NuMail::configured() ? $ok() : $warn(t('ntf_f_email_off'));
+			['system', 'mail', static function () use ($ok) {
+				return NuMail::configured() ? $ok() : ['skip', t('ntf_f_email_off')];   // not set up is no fault (0.8.704): nothing to check
 			}],
 			// ------------------------------------------------------------ data
 			['data', 'sample', static function () use ($ok, $fail) {

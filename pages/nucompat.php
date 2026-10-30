@@ -71,10 +71,18 @@ nu_layout_start(t('compat_title'), 'home');
 								$label = $forms[$fid]['code'] ?? $fid;
 								$links[] = isset($forms[$fid]) && !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($label) . '</a>' : h($label);
 							}
+							// procedures: open in a new tab (0.8.693)
+							$canProc = NuAcl::can(NuAcl::FORM_PROCEDURE);
+							$procUrl = static fn(string $pid) => nu_url('procedures', ['id' => $pid]);
+							foreach (array_slice(array_unique(array_values($r['procs'] ?? [])), 0, 6) as $pid) {
+								$w = (string)array_search($pid, $r['procs'], true);
+								$label = preg_replace('/^Procedure( JS)? · /', '', $w);
+								$links[] = $canProc ? '<a class="nuCompatProc" href="' . h($procUrl($pid)) . '" target="_blank" rel="noopener"><i class="bi bi-filetype-php me-1" aria-hidden="true"></i>' . h($label) . '</a>' : h($label);
+							}
 							echo implode(', ', $links);
 							?>
 							<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($r['where']) ?> <?= h(t('compat_places')) ?></summary>
-								<ul class="mb-0 ps-3"><?php foreach (array_slice($r['where'], 0, 40) as $w): ?><li><?= h($w) ?></li><?php endforeach; ?></ul></details>
+								<ul class="mb-0 ps-3"><?php foreach (array_slice($r['where'], 0, 40) as $w): $pid = $r['procs'][$w] ?? ''; ?><li><?php if ($pid !== '' && $canProc): ?><a href="<?= h($procUrl($pid)) ?>" target="_blank" rel="noopener"><?= h($w) ?></a><?php else: ?><?= h($w) ?><?php endif; ?></li><?php endforeach; ?></ul></details>
 						</td>
 					</tr>
 				<?php endforeach; ?>

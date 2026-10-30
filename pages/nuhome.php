@@ -514,6 +514,7 @@ if ($admin || $userPage) {
 	foreach ($mineHidden as $k => $it) if (!empty($it['fav'])) $myFav[] = (string)$k;
 	$data = [
 		'url' => $selfUrl, 'csrf' => nu_csrf_token(), 'layout' => $layout, 'mode' => $mode, 'usedUrl' => $editorPage ? '' : nu_url('sidebar'),
+		'sidebar' => $editorPage ? null : ['on' => NuSidebar::enabled(), 'url' => nu_url('sidebar'), 'back' => 'index.php?' . (string)($_SERVER['QUERY_STRING'] ?? '')],   // Customise → Appearance → Side bar (0.8.708)
 		'favUrl' => !$editorPage && NuSidebar::canFav() ? nu_url('sidebar') : '',   // right-click / long press → add to / remove from favourites (0.8.497)
 		// … and Hide (0.8.652): in the layout on admin start pages, for me on user start pages (same rights as the ☆)
 		'hideMode' => !$editorPage && NuSidebar::canFav() ? ($mode === 'user' ? 'me' : 'layout') : '',
@@ -545,7 +546,7 @@ if ($admin || $userPage) {
 			// one Customise panel (0.8.452): tabs Content · Appearance · Layouts
 			'home_layouts', 'home_c_tab_content', 'home_c_tab_appearance', 'home_c_edit', 'home_c_edit_hint', 'home_c_edit_btn', 'home_c_mine_hint'], array_map('t', $k))
 			// View panel (0.8.420)
-			+ array_combine($k = array_map(static fn($x) => 'home_v_' . $x, ['view', 'personal', 'fav_row', 'fav_row_hint', 'recent_row', 'recent_row_hint', 'sort_name', 'sort_group', 'sort_status', 'col_desc', 'hc_open',
+			+ array_combine($k = array_map(static fn($x) => 'home_v_' . $x, ['view', 'personal', 'fav_row', 'fav_row_hint', 'recent_row', 'recent_row_hint', 'sidebar', 'sidebar_hint', 'sidebar_sec', 'sort_name', 'sort_group', 'sort_status', 'col_desc', 'hc_open',
 			'saved_everyone', 'size_desktop', 'size_tablet', 'size_phone', 'style', 'list_cols', 'list_width', 'desc', 'lines', 'delay', 'nav', 'density',
 			'icons', 'group_colors', 'badges', 'badges_hint', 'actions', 'actions_hint', 'own_one', 'default', 'more', 'layout', 'store_personal',
 			'store_shared_user', 'undo_mine', 'store_shared_admin', 'applies_to', 'only_me', 'everyone', 'everyone_note', 'mine_count', 'mine_count_one', 'make_layout', 'make_layout_title', 'make_layout_text', 'make_layout_ok', 'undo_mine_title', 'undo_mine_text', 'undo_mine_ok',

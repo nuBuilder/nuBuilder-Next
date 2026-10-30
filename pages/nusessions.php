@@ -204,13 +204,16 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 		<input type="hidden" name="p" value="sessions">
 		<?php if (isset($_GET['sort'])): ?><input type="hidden" name="sort" value="<?= h($sort) ?>"><input type="hidden" name="dir" value="<?= h($dir) ?>"><?php endif; ?>
 		<div class="row g-2 align-items-end">
-			<div class="col-md-6"><?= nu_list_search($q, t('sess_search_hint'), '', false, $qp ? nu_url('sessions', isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) : null) ?></div>
-			<div class="col-sm-6 col-md-3"><label class="form-label small mb-1" for="sessFltUser"><?= h(t('user')) ?></label>
+			<?php $sessFiltered = $fUser !== '' || $fState !== ''; // phones (0.8.709): the filters behind the funnel next to the search, as on the users list ?>
+			<div class="col-md-6"><?= nu_list_search($q, t('sess_search_hint'), 'sessFilters', $sessFiltered, $qp ? nu_url('sessions', isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) : null) ?></div>
+			<div class="col-md-6 collapse<?= $sessFiltered ? ' show' : '' ?>" id="sessFilters" data-nu-open-min="768"><div class="row g-2">
+			<div class="col-sm-6"><label class="form-label small mb-1" for="sessFltUser"><?= h(t('user')) ?></label>
 				<select class="form-select js-autosubmit<?= count($userOpts) >= 15 ? ' nuListTomSelect' : '' ?>" id="sessFltUser" name="user"><option value=""><?= h(t('all')) ?></option>
 					<?php foreach ($userOpts as $lg => $lbl): ?><option value="<?= h($lg) ?>"<?= $fUser === (string)$lg ? ' selected' : '' ?>><?= h($lbl) ?></option><?php endforeach; ?></select></div>
-			<div class="col-sm-6 col-md-3"><label class="form-label small mb-1" for="sessFltState"><?= h(t('status')) ?></label>
+			<div class="col-sm-6"><label class="form-label small mb-1" for="sessFltState"><?= h(t('status')) ?></label>
 				<select class="form-select js-autosubmit" id="sessFltState" name="state"><option value=""><?= h(t('all')) ?></option>
 					<option value="active"<?= $fState === 'active' ? ' selected' : '' ?>><?= h(t('sess_active')) ?></option><option value="idle"<?= $fState === 'idle' ? ' selected' : '' ?>><?= h(t('sess_idle')) ?></option></select></div>
+			</div></div>
 		</div>
 	</form>
 	<div class="px-3 py-2 border-bottom fw-semibold small">nuBuilder Next <span class="badge text-bg-secondary ms-1"><?= count($rows) ?></span></div>
@@ -296,7 +299,10 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 
 <?php if ($db->tableExists('zzzzsys_session')): ?>
 	<div class="card shadow-sm">
-		<div class="card-header fw-semibold">nuBuilder Forte <span class="badge text-bg-secondary ms-1"><?= count($nb) ?></span></div>
+		<?php // folded by default (0.8.709) ?>
+		<div class="card-header"><button class="btn btn-link p-0 fw-semibold text-decoration-none text-body thLevelsToggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sessForte" aria-expanded="false" aria-controls="sessForte" id="sessForteBtn">
+			<i class="bi bi-chevron-right me-1 thChevron" aria-hidden="true"></i>nuBuilder Forte</button> <span class="badge text-bg-secondary ms-1"><?= count($nb) ?></span></div>
+		<div class="collapse" id="sessForte">
 		<div class="table-responsive">
 			<table class="table align-middle mb-0 nu-table">
 				<thead><tr><?= $th(t('user'), 'user') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th></th></tr></thead>
@@ -314,6 +320,7 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 			</table>
 		</div>
 		<div class="card-footer small text-body-secondary"><?= h(t('sess_nb_hint')) ?></div>
+		</div>
 	</div>
 <?php endif; ?>
 <?php

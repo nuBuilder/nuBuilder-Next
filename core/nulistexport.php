@@ -88,8 +88,8 @@ final class NuListExport
 	public static function menu(string $printUrl, string $xlsxUrl, string $csvDialog, string $id, string $btnId, bool $small, string $class, string $wrap = ''): string
 	{
 		return '<div class="dropdown d-inline-block nuExportMenu' . ($wrap !== '' ? ' ' . h($wrap) : '') . '" id="' . h($id) . '" data-print-url="' . h($printUrl) . '">'
-			. '<button class="btn' . ($small ? ' btn-sm' : '') . ' ' . h($class) . ' dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="' . h($btnId) . '">'
-			. '<i class="bi bi-box-arrow-up-right me-1"></i>' . h(t('exp_menu')) . '</button>'
+			. '<button class="btn' . ($small ? ' btn-sm' : '') . ' ' . h($class) . ' dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="' . h($btnId) . '" title="' . h(t('exp_menu')) . '" aria-label="' . h(t('exp_menu')) . '">'
+			. '<i class="bi bi-box-arrow-up-right me-sm-1" aria-hidden="true"></i><span class="d-none d-sm-inline">' . h(t('exp_menu')) . '</span></button>'   // phones: the icon only (0.8.711)
 			. '<ul class="dropdown-menu shadow-sm">' . self::menuItems($printUrl, $xlsxUrl) . '</ul></div>' . $csvDialog;
 	}
 

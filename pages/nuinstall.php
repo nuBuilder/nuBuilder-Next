@@ -53,6 +53,7 @@ if (!is_array($S)) {
 			'base_url' => ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir,
 			'timezone' => in_array(date_default_timezone_get(), ['UTC', ''], true) ? 'Europe/Zurich' : date_default_timezone_get(),
 			'timeout' => 120, 'nub_path' => (string)($nubPath ?? ''), 'shared' => false,
+			'langs' => array_values(array_unique([nu_lang(), 'en'])),     // languages to include (welcome e-mail templates, 0.8.693)
 		],
 		'detect' => null, 'pending_config' => null,
 	];
@@ -112,7 +113,7 @@ if ($late) {
 				}
 				$S['detect'] = NuInstall::detect($db);
 				// an existing nuBuilder database: not while nuBuilder Next is being tested (0.8.380) – a new, empty one
-				if ($S['detect']['kind'] === 'nubuilder') { $errors['_'] = t('ins_err_existing_db', $d['name']); break; }
+				if ($S['detect']['kind'] === 'nubuilder' && !NuInstall::existingMarker()) { $errors['_'] = t('ins_err_existing_db', $d['name']); break; }
 				if ($action === 'test') { $notice = trim($notice . ' ' . t('ins_db_ok')); break; }
 				$go('content');
 			} catch (Throwable $e) {
@@ -152,6 +153,11 @@ if ($late) {
 			if ($action === 'check') { if ($S['opt']['nub_path'] !== '' && is_file($S['opt']['nub_path'] . '/nubuilder4.sql')) $S['content']['choice'] = 'nubuilder'; break; }
 			if ($S['content']['choice'] === 'nubuilder' && !is_file($S['opt']['nub_path'] . '/nubuilder4.sql')) $S['content']['choice'] = 'nunext';
 			if (($S['detect']['kind'] ?? '') === 'other' && !$S['content']['confirm_other']) { $errors['confirm_other'] = t('ins_err_confirm_other'); break; }
+			// existing nuBuilder Forte database (marker file, 0.8.705): the integrity check's problems need the tick
+			if (($S['detect']['kind'] ?? '') === 'nubuilder') {
+				$S['content']['ic_ack'] = nu_check('integrity_ack') === '1';
+				if (nu_install_integrity($S)['errors'] && !$S['content']['ic_ack']) { $errors['_'] = t('ic_ack_needed'); break; }
+			}
 			$go('admin');
 
 		case 'admin':
@@ -169,7 +175,9 @@ if ($late) {
 
 		case 'options':
 			$o = ['base_url' => rtrim(trim(nu_post('base_url')), '/'), 'timezone' => nu_post('timezone'), 'timeout' => (int)nu_post('timeout'),
-				'nub_path' => trim(nu_post('nub_path')), 'shared' => nu_check('shared') === '1'];
+				'nub_path' => trim(nu_post('nub_path')), 'shared' => nu_check('shared') === '1',
+				'langs' => array_values(array_intersect(array_keys(NU_LANGS), array_map('strval', is_array($_POST['langs'] ?? null) ? $_POST['langs'] : [])))];
+			if (!$o['langs']) $errors['langs'] = t('ins_err_langs');
 			if ($o['base_url'] !== '' && !preg_match('#^https?://[^\s"\'<>]+$#', $o['base_url'])) $errors['base_url'] = t('ins_err_url');
 			if (!in_array($o['timezone'], timezone_identifiers_list(), true)) $errors['timezone'] = t('ins_err_timezone');
 			if ($o['timeout'] < 5 || $o['timeout'] > 1440) $errors['timeout'] = t('ins_err_timeout');
@@ -212,7 +220,9 @@ if ($late) {
 					$db = NuInstall::connect($d);
 				}
 				$det = NuInstall::detect($db);
-				if ($det['kind'] === 'nubuilder') throw new RuntimeException(t('ins_err_existing_db', $d['name']));   // 0.8.380
+				if ($det['kind'] === 'nubuilder' && !NuInstall::existingMarker()) throw new RuntimeException(t('ins_err_existing_db', $d['name']));   // 0.8.380
+				if ($det['kind'] === 'nubuilder' && nu_install_integrity($S)['errors'] && empty($S['content']['ic_ack'])) throw new RuntimeException(t('ic_ack_needed'));   // checked again (0.8.705)
+				$S['detect'] = $det;
 				$imported = 0;
 				if ($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other'])) {
 					if ($S['content']['choice'] === 'upload' && $db->type === 'mysql') {
@@ -242,6 +252,19 @@ if ($late) {
 	}
 }
 
+/** Integrity check of the database the installer connects to (existing nuBuilder Forte database, 0.8.705). */
+function nu_install_integrity(array $S): array
+{
+	try {
+		NuDB::$override = NuInstall::connect($S['db']);
+		return NuIntegrity::run();
+	} catch (Throwable $e) {
+		return ['items' => [['id' => 'failed', 'level' => 'info', 'list' => [$e->getMessage()], 'count' => 1]], 'errors' => 0, 'warnings' => 0, 'infos' => 1, 'checks' => 0, 'ms' => 0];
+	} finally {
+		NuDB::$override = null;
+	}
+}
+
 /** After nuconfig.php exists: nuBuilder Next's tables and database steps, token removed. Returns the done data. */
 function nu_install_finish(?array &$S): array
 {
@@ -249,10 +272,12 @@ function nu_install_finish(?array &$S): array
 	try {
 		NuSchema::allow();
 		NuSchema::create();
-		NuInstall::setOrigin('nunext');                     // set up on a new database (0.8.380) – step 0014 keeps it
+		$existing = ($S['detect']['kind'] ?? '') === 'nubuilder';      // on an existing nuBuilder Forte database (marker file, 0.8.705)
+		NuInstall::setOrigin($existing ? 'nubuilder' : 'nunext');   // set up on a new database (0.8.380) – step 0014 keeps it
 		// safer defaults for NEW installations (0.8.478, security assessment C2 / K1): records only through the form's list, read-only
 		// and hidden fields never saved from the browser – existing installations keep their settings (the Security check names them)
-		NuSecurity::save(['record_check' => true, 'protect_fields' => true]);
+		if (!$existing) NuSecurity::save(['record_check' => true, 'protect_fields' => true]);
+		NuWelcome::setLangs((array)($S['opt']['langs'] ?? []), true);   // the welcome e-mail templates only in the chosen languages (0.8.693)
 		$out['steps'] = NuMigrate::run();
 	} catch (Throwable $e) {
 		$out['error'] = $e->getMessage();
@@ -416,11 +441,15 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 		<?php elseif ($step === 'content'): $det = $S['detect'] ?? ['kind' => 'empty', 'tables' => 0, 'forms' => 0, 'users' => 0]; $nubSql = $S['opt']['nub_path'] !== '' && is_file($S['opt']['nub_path'] . '/nubuilder4.sql') && $S['db']['type'] === 'mysql'; ?>
 			<!-- ================================================================ content -->
 			<h1 class="h4"><?= h(t('ins_step_content')) ?></h1>
-			<form method="post" action="<?= h(nu_url('install', ['step' => 'content'])) ?>" enctype="multipart/form-data" novalidate>
+			<form method="post" action="<?= h(nu_url('install', ['step' => 'content'])) ?>" enctype="multipart/form-data" novalidate id="insContentForm">
 				<?= nu_csrf_field() ?>
-				<?php if ($det['kind'] === 'nubuilder'): ?>
+				<?php if ($det['kind'] === 'nubuilder'): $icR = nu_install_integrity($S); ?>
 					<div class="alert alert-success" id="insKind"><i class="bi bi-database-check me-1"></i><?= h(t('ins_content_nubuilder', $det['forms'], $det['users'])) ?></div>
 					<input type="hidden" name="choice" value="nunext">
+					<div class="border rounded p-3 mb-3<?= $icR['errors'] ? ' border-danger' : '' ?>" id="insIntegrity">
+						<div class="fw-semibold small mb-2"><i class="bi bi-clipboard2-pulse me-1"></i><?= h(t('ic_title')) ?><?= NuListView::infoTip(t('ic_tip')) ?></div>
+						<?= NuIntegrity::html($icR, 'insContentForm') ?>
+					</div>
 				<?php else: ?>
 					<div class="alert <?= $det['kind'] === 'other' ? 'alert-warning' : 'alert-info' ?>" id="insKind"><?= h(t('ins_content_' . $det['kind'], $det['tables'])) ?></div>
 					<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="choice_nub" value="nubuilder"<?= $S['content']['choice'] === 'nubuilder' && $nubSql ? ' checked' : '' ?><?= $nubSql ? '' : ' disabled' ?>>
@@ -504,6 +533,11 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 					<div class="col-12"><label class="form-label" for="nub_path"><?= h(t('ins_opt_nub')) ?></label><input class="form-control<?= $err('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($o['nub_path']) ?>" placeholder="<?= h(dirname(NU_ROOT)) ?>"><?= $fb('nub_path') ?>
 						<div class="form-text"><?= h(t('ins_opt_nub_hint')) ?></div></div>
 					<div class="col-12"><div class="form-check"><input class="form-check-input<?= $err('shared') ?>" type="checkbox" id="shared" name="shared" value="1"<?= $o['shared'] ? ' checked' : '' ?>><label class="form-check-label" for="shared"><?= h(t('ins_opt_shared')) ?></label><?= $fb('shared') ?></div></div>
+					<?php // languages to include (0.8.693): the welcome e-mail templates are created for these only ?>
+					<fieldset class="col-12" id="insLangs"><legend class="form-label fs-6 mb-1"><?= h(t('ins_opt_langs')) ?><?= $req ?><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('ins_opt_langs_tip')) ?>" title="<?= h(t('ins_opt_langs_tip')) ?>"><i class="bi bi-info-circle"></i></span></legend>
+						<div class="d-flex flex-wrap gap-3<?= $err('langs') ?>"><?php foreach (NU_LANGS as $lc => [$native]): $lsel = in_array($lc, (array)($o['langs'] ?? []), true); ?>
+							<div class="form-check"><input class="form-check-input" type="checkbox" id="lang_<?= h($lc) ?>" name="langs[]" value="<?= h($lc) ?>"<?= $lsel ? ' checked' : '' ?>><label class="form-check-label" for="lang_<?= h($lc) ?>"><?= h($native) ?></label></div>
+						<?php endforeach; ?></div><?= $fb('langs') ?></fieldset>
 				</div>
 				<div class="d-flex justify-content-between mt-4">
 					<button class="btn btn-outline-secondary" type="submit" name="action" value="back" formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button>

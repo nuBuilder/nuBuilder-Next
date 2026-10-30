@@ -57,6 +57,7 @@ final class NuHousekeeping
 		$step('log', static fn() => NuLog::purge());
 		$step('audit', static fn() => NuAudit::purge());
 		$step('notifications', static fn() => NuNotify::housekeeping());   // due e-mails of scheduled notifications, old ones deleted (0.8.357)               // audit trail beyond "Keep" (0.8.350)
+		$step('webhooks', static fn() => NuWebhook::housekeeping());       // due retries of webhook calls, old calls deleted (0.8.715)
 		$step('report_files', static fn() => NuReportApi::purge());       // PDFs of the REST API whose link expired or was used up (0.8.340)
 		$step('demo_reset', static fn() => NuDemoData::resetIfDue());
 		$step('field_access', static fn() => NuFieldAccess::purgeOrphans());   // rules of deleted objects (0.8.480)

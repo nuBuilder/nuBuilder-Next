@@ -77,3 +77,21 @@
 	});
 	frame.addEventListener('load', function () { if (frame.contentDocument) frame.contentDocument.documentElement.setAttribute('data-bs-theme', mode); send(); });
 })();
+
+// theme names are unique (0.8.694): the name field says so while typing; the browser then refuses to save
+(function () {
+	'use strict';
+	var f = document.getElementById('thName'), msg = document.getElementById('thNameMsg');
+	if (!f) return;
+	var taken = [];
+	try { taken = JSON.parse(f.getAttribute('data-taken') || '[]'); } catch (e) { taken = []; }
+	function check() {
+		var v = f.value.trim(), bad = v !== '' && taken.indexOf(v.toLowerCase()) >= 0;
+		var text = bad ? (f.getAttribute('data-taken-msg') || '').replace('%s', v) : '';
+		f.setCustomValidity(text);
+		f.classList.toggle('is-invalid', bad);
+		if (msg) msg.textContent = text;
+	}
+	f.addEventListener('input', check);
+	check();
+})();

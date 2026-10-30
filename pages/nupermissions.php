@@ -201,13 +201,13 @@ nu_layout_start($title, 'users', ['head' => $head]);
 					<ul class="list-group list-group-flush small nu-scroll" id="permUserList">
 						<?php foreach ($assigned as $u): $ar = $archived($u); ?>
 							<li class="list-group-item d-flex justify-content-between gap-2" data-st="<?= $ar ? 'archived' : 'active' ?>" data-q="<?= h(mb_strtolower($u['sus_login_name'] . ' ' . $uname($u) . ' ' . $u['sal_code'])) ?>"<?= $ar ? ' hidden' : '' ?>>
-								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><a class="text-decoration-none<?= $ar ? ' text-body-secondary' : '' ?>" href="<?= h(nu_url('user', ['id' => $u['zzzzsys_user_id']])) ?>"><?= h($u['sus_login_name']) ?></a><?php else: ?><span><?= h($u['sus_login_name']) ?></span><?php endif; ?>
+								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><a class="text-decoration-none<?= $ar ? ' text-body-secondary' : '' ?>" target="_blank" rel="noopener" href="<?= h(nu_url('user', ['id' => $u['zzzzsys_user_id']])) ?>"><?= h($u['sus_login_name']) ?></a><?php else: ?><span><?= h($u['sus_login_name']) ?></span><?php endif; ?>
 								<span class="text-body-secondary text-truncate"><?= h($uname($u)) ?><?= $u['sal_code'] ? ' · ' . h($u['sal_code']) : '' ?></span>
 							</li>
 						<?php endforeach; ?>
 						<li class="list-group-item text-body-secondary permUserNone"<?= count($assigned) - $nArch > 0 ? ' hidden' : '' ?>><?= h(t('no_records')) ?></li>
 					</ul>
-					<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><div class="card-footer small py-2"><a class="text-decoration-none" id="permUsersList" href="<?= h(nu_url('users', ['perm' => $id, 'state' => 'all'])) ?>"><i class="bi bi-list-ul me-1"></i><?= h(t('access_users_in_list')) ?></a></div><?php endif; ?>
+					<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><div class="card-footer small py-2"><a class="text-decoration-none" id="permUsersList" target="_blank" rel="noopener" href="<?= h(nu_url('users', ['perm' => $id, 'state' => 'all'])) ?>"><i class="bi bi-list-ul me-1"></i><?= h(t('access_users_in_list')) ?></a></div><?php endif; ?>
 					<?php endif; ?>
 				</div>
 				<?php if ($item): ?>

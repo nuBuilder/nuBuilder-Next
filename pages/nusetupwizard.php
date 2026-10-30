@@ -108,6 +108,10 @@ nu_layout_start(t('wiz_title'), 'home', ['head' => nu_ts_head()]);
 	<form method="post" action="<?= h(nu_url('setupwizard', ['step' => $step])) ?>" class="card-body" novalidate autocomplete="off" id="wizForm"<?= $step === 'summary' ? ' data-nu-once' : '' ?>>
 		<?= nu_csrf_field() ?>
 		<?php if ($i === 0): ?><p class="text-body-secondary small" id="wizIntro"><?= h(t('wiz_intro')) ?></p><?php endif; ?>
+		<?php // the same settings later in the settings centre (0.8.702)
+		$wizSec = ['basics' => 'general', 'look' => 'look', 'security' => 'security'][$step] ?? '';
+		$wizPages = $wizSec !== '' ? (NuSettingsHub::pages()[$wizSec] ?? null) : null;
+		if ($wizPages): ?><p class="small text-end mb-2"><a href="<?= h($wizPages[0][2]) ?>" id="wizInSettings"><i class="bi bi-sliders me-1"></i><?= h(t('sh_in_settings')) ?></a></p><?php endif; ?>
 		<?php if (!$writable): ?><div class="alert alert-warning small" id="wizNotWritable"><?= h(t('wiz_not_writable', NuConfigFile::path())) ?></div><?php endif; ?>
 
 		<?php if ($step === 'basics'): ?>

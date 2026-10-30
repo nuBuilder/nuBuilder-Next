@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.692",
+    "version": "0.8.715",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -366,6 +366,27 @@
                     "table": "zzzzsys_email_template",
                     "kind": "data",
                     "what": "read-only templates nu_send_welcome_email_template, group nunext, one per language (ids nx_welcome_…) added when missing – also checked with every later update"
+                }
+            ]
+        },
+        {
+            "id": "0029-webhooks",
+            "description": "Webhooks: definitions, outbox and attempts (zzzzsys_nunext_webhook, _webhook_call, _webhook_try)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_webhook",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_webhook_call",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_webhook_try",
+                    "kind": "table",
+                    "what": "created when missing"
                 }
             ]
         }
@@ -1343,6 +1364,172 @@
             ],
             "index": [
                 "user_id"
+            ]
+        },
+        "zzzzsys_nunext_webhook": {
+            "pk": "zzzzsys_nunext_webhook_id",
+            "cols": [
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "active",
+                    "text",
+                    "1"
+                ],
+                [
+                    "forms",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "events",
+                    "text",
+                    "100"
+                ],
+                [
+                    "url",
+                    "text",
+                    "2000"
+                ],
+                [
+                    "secret",
+                    "text",
+                    "255"
+                ],
+                [
+                    "fields",
+                    "text",
+                    "2000"
+                ],
+                [
+                    "template",
+                    "longtext"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ]
+        },
+        "zzzzsys_nunext_webhook_call": {
+            "pk": "zzzzsys_nunext_webhook_call_id",
+            "cols": [
+                [
+                    "webhook_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "event",
+                    "text",
+                    "10"
+                ],
+                [
+                    "form_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "record_id",
+                    "text",
+                    "100"
+                ],
+                [
+                    "body",
+                    "longtext"
+                ],
+                [
+                    "status",
+                    "text",
+                    "10"
+                ],
+                [
+                    "attempts",
+                    "int"
+                ],
+                [
+                    "next_at",
+                    "datetime"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "source",
+                    "text",
+                    "10"
+                ],
+                [
+                    "sent_at",
+                    "datetime"
+                ],
+                [
+                    "last_code",
+                    "int"
+                ],
+                [
+                    "last_error",
+                    "text",
+                    "255"
+                ]
+            ],
+            "index": [
+                "webhook_id",
+                "status",
+                "created_at"
+            ]
+        },
+        "zzzzsys_nunext_webhook_try": {
+            "pk": "zzzzsys_nunext_webhook_try_id",
+            "cols": [
+                [
+                    "call_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "tried_at",
+                    "datetime"
+                ],
+                [
+                    "attempt",
+                    "int"
+                ],
+                [
+                    "http_code",
+                    "int"
+                ],
+                [
+                    "ms",
+                    "int"
+                ],
+                [
+                    "error",
+                    "text",
+                    "255"
+                ],
+                [
+                    "response",
+                    "text",
+                    "1000"
+                ]
+            ],
+            "index": [
+                "call_id"
             ]
         },
         "zzzzsys_nunext_theme": {

@@ -62,6 +62,7 @@ function nu_return_query(): string
 
 function nu_lang_menu(string $btnClass = 'btn btn-sm btn-outline-secondary'): void
 {
+	if (count(nu_lang_choices()) < 2) return;                  // one installed language without variants: nothing to choose (0.8.701)
 	$r = nu_return_query();
 	?>
 	<div class="dropdown">
@@ -124,14 +125,19 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	// "Start" only next to other links – alone it repeats the logo, which also opens the start page
 	$nav = array_filter($nav, static fn($n) => (bool)$n[2]);
 	if (array_keys($nav) === ['home']) $nav = [];
+	// compact top bar (0.8.706): no logo in the bar (Branding → Show logo) – on phones the icons stay in the bar, ☰ opens the user menu
+	$compact = !NuBranding::logoShown('');
 	$sidebar = NuSidebar::enabled() && empty($opt['no_sidebar']);   // side bar (0.8.460, core/nusidebar.php)
 	if (empty($opt['bare'])) NuSidebar::record(NuSidebar::currentKey());   // recently used: side bar and start page (0.8.492)
 	?>
 <body class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?><?= NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) /* page hook (0.8.523) */ ?>>
 <a class="visually-hidden-focusable" href="#main"><?= h(t('skip_to_content')) ?></a>
-<nav class="navbar navbar-expand-md nu-navbar border-bottom sticky-top<?= NuImpersonate::active() ? ' flex-wrap' : '' ?>">
+<nav class="navbar navbar-expand-md nu-navbar border-bottom sticky-top<?= NuImpersonate::active() ? ' flex-wrap' : '' ?><?= $compact ? ' nuNavCompact' : '' ?>">
 	<?= NuImpersonate::banner() ?>
 	<div class="container-fluid nuNavInner"><?php // full width (0.8.483): the logo stays at the left edge on every page, the menus at the right ?>
+		<?php if ($compact): // no logo in the bar (0.8.707): a Home button at the very left ?>
+			<a class="btn btn-sm btn-outline-secondary me-2 nuHomeBtn<?= $active === 'home' ? ' active' : '' ?>" id="nuHomeBtn" href="<?= h(nu_url('home')) ?>" title="<?= h(t('nav_home')) ?>" aria-label="<?= h(t('nav_home')) ?>"<?= $active === 'home' ? ' aria-current="page"' : '' ?>><i class="bi bi-house"></i></a>
+		<?php endif; ?>
 		<?php if ($sidebar): // side bar (0.8.460): a drawer opened here, left of the logo, on every screen width (0.8.513) ?>
 			<button type="button" class="btn btn-sm btn-outline-secondary me-2 nuSbOpenBtn" id="nuSbOpen" aria-controls="nuSidebar" aria-expanded="false" title="<?= h(t('sb_open')) ?>" aria-label="<?= h(t('sb_open')) ?>"><i class="bi bi-layout-sidebar"></i></button>
 		<?php endif; ?>
@@ -139,12 +145,14 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 			<?= nu_brand_logo() ?>
 		</a>
 		<?= NuBranding::envBadge('me-auto me-md-3') ?>
+		<?php if (!$compact): ?>
 		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nuNav" aria-controls="nuNav" aria-expanded="false" aria-label="Menu">
 			<span class="navbar-toggler-icon"></span>
 		</button>
+		<?php endif; ?>
 		<div class="collapse navbar-collapse" id="nuNav">
 			<ul class="navbar-nav me-auto">
-				<?php foreach ($nav as $page => $n): [$icon, $label, $show] = $n; if (!$show) continue; ?>
+				<?php foreach ($nav as $page => $n): [$icon, $label, $show] = $n; if (!$show || ($compact && $page === 'home')) continue;   // compact: Home is the button at the left ?>
 					<li class="nav-item">
 						<a class="nav-link<?= $active === $page ? ' active' : '' ?>"<?= $active === $page ? ' aria-current="page"' : '' ?> href="<?= h($n[3] ?? nu_url($page)) ?>">
 							<i class="bi <?= $icon ?> me-1"></i><?= h($label) ?>
@@ -152,7 +160,8 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 					</li>
 				<?php endforeach; ?>
 			</ul>
-			<div class="d-flex align-items-center gap-2 py-2 py-md-0">
+		<?php if ($compact): ?></div><?php endif; // compact: the icons and the user menu outside the collapsed part ?>
+			<div class="d-flex align-items-center gap-2<?= $compact ? ' ms-auto flex-nowrap nuNavIcons' : ' py-2 py-md-0' ?>">
 				<?php if (!empty($u['demo'])): // demo mode (core/nudemo.php) ?>
 					<span class="badge nuDemoBadge" title="<?= h(t('demo_badge_hint')) ?>"><i class="bi bi-eye me-1"></i><?= h(t('demo_badge')) ?></span>
 				<?php endif; ?>
@@ -164,15 +173,20 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 				<?php nu_bell(); ?>
 				<?php nu_theme_menu(); ?>
 				<?php nu_lang_menu(); ?>
-				<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nuNavPin" aria-pressed="false" data-on="<?= h(t('nav_pin_on')) ?>" data-off="<?= h(t('nav_pin_off')) ?>"
-					title="<?= h(t('nav_pin_off')) ?>" aria-label="<?= h(t('nav_pin_off')) ?>"><i class="bi bi-pin-angle"></i></button><?php // phones / tablets (0.8.637): keep the ☰ menu open on every page (nuapp.js, localStorage nunext-nav-pin) ?>
+				<?php if (!$compact): ?><button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nuNavPin" aria-pressed="false" data-on="<?= h(t('nav_pin_on')) ?>" data-off="<?= h(t('nav_pin_off')) ?>"
+					title="<?= h(t('nav_pin_off')) ?>" aria-label="<?= h(t('nav_pin_off')) ?>"><i class="bi bi-pin-angle"></i></button><?php endif; // phones / tablets (0.8.637): keep the ☰ menu open on every page (nuapp.js, localStorage nunext-nav-pin) ?>
 				<div class="dropdown">
 					<button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2 nuUserBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h($u['display']) ?>" aria-label="<?= h($u['display']) ?>">
-						<i class="bi <?= $u['globeadmin'] ? 'bi-person-gear' : 'bi-person-circle' ?>"></i>
-						<span class="text-truncate nu-user-name d-none d-sm-inline"><?= h($u['display']) ?></span><?php // phones: the icon only (0.8.636), the name stays the tooltip ?>
+						<?php if ($compact): ?><i class="bi bi-list d-md-none nuUserHam" aria-hidden="true"></i><?php endif; ?>
+						<i class="bi <?= $u['globeadmin'] ? 'bi-person-gear' : 'bi-person-circle' ?><?= $compact ? ' d-none d-md-inline' : '' ?>"></i>
+						<span class="text-truncate nu-user-name d-none <?= $compact ? 'd-md-inline' : 'd-sm-inline' ?>"><?= h($u['display']) ?></span><?php // phones: the icon only (0.8.636), the name stays the tooltip ?>
 					</button>
 					<ul class="dropdown-menu dropdown-menu-end">
 						<li><h6 class="dropdown-header"><?= h($u['login']) ?></h6></li>
+						<?php if ($compact && array_diff(array_keys($nav), ['home'])): // compact top bar on phones (0.8.706): the bar's links ?>
+							<?php foreach ($nav as $page => $n): if ($page === 'home') continue; ?><li class="d-md-none"><a class="dropdown-item<?= $active === $page ? ' active' : '' ?>" href="<?= h($n[3] ?? nu_url($page)) ?>"><i class="bi <?= $n[0] ?> me-2"></i><?= h($n[1]) ?></a></li><?php endforeach; ?>
+							<li class="d-md-none"><hr class="dropdown-divider"></li>
+						<?php endif; ?>
 						<?php if (NuImpersonate::active()): ?>
 							<li>
 								<form method="post" action="<?= h(nu_url('impersonate')) ?>">
@@ -180,7 +194,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 									<button class="dropdown-item" type="submit"><i class="bi bi-arrow-return-left me-2"></i><?= h(t('imp_back')) ?></button>
 								</form>
 							</li>
-						<?php else: ?>
+						<?php elseif (!NuAdmin::any()): // admins reach Security through the start page tile (0.8.708) ?>
 						<li><a class="dropdown-item" href="<?= h(nu_url('security')) ?>"><i class="bi bi-shield-lock me-2"></i><?= h(t('sec_title')) ?></a></li>
 						<?php endif; ?>
 						<?php if (NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) ?>
@@ -189,13 +203,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php if ($u['globeadmin'] && NuHome::globeadminForm() !== null): // $nuConfigGlobeadminHome opens a form – the tile page stays reachable here ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('home', ['tiles' => '1'])) ?>"><i class="bi bi-grid me-2"></i><?= h(t('home_tiles_link')) ?></a></li>
 						<?php endif; ?>
-						<?php $sbBack = 'index.php?' . (string)($_SERVER['QUERY_STRING'] ?? ''); // side bar (0.8.460): mine on / off; the globeadmin also the default for everyone ?>
-						<li><form method="post" action="<?= h(nu_url('sidebar')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="toggle"><input type="hidden" name="back" value="<?= h($sbBack) ?>">
-							<button class="dropdown-item d-flex align-items-center" type="submit" id="nuSidebarToggle" role="menuitemcheckbox" aria-checked="<?= $sidebar ? 'true' : 'false' ?>"><i class="bi bi-layout-sidebar me-2"></i><?= h(t('sb_menu')) ?><i class="bi bi-check2 ms-auto ps-3<?= $sidebar ? '' : ' invisible' ?>" aria-hidden="true"></i></button></form></li>
-						<?php if ($u['globeadmin'] && empty($u['demo'])): $sbDef = NuSidebar::defaultOn(); ?>
-						<li><form method="post" action="<?= h(nu_url('sidebar')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="default"><input type="hidden" name="back" value="<?= h($sbBack) ?>">
-							<button class="dropdown-item d-flex align-items-center small text-body-secondary" type="submit" id="nuSidebarDefault" role="menuitemcheckbox" aria-checked="<?= $sbDef ? 'true' : 'false' ?>"><i class="bi bi-people me-2"></i><?= h(t('sb_menu_default')) ?><i class="bi bi-check2 ms-auto ps-3<?= $sbDef ? '' : ' invisible' ?>" aria-hidden="true"></i></button></form></li>
-						<?php endif; ?>
+						<?php // side bar on / off: start page → Customise → Appearance (0.8.708); "for everyone": Settings → Look ?>
 						<li><hr class="dropdown-divider"></li>
 						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
@@ -214,7 +222,6 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php endif; ?>
 						<?php if (NuAdmin::any() && (nu_db()->type === 'mysql' || NuVendor::available('ADM') || NuFileManager::visible())): // admin roles (0.8.323): only what the role allows ?>
 							<li><hr class="dropdown-divider"></li>
-							<?php if (NuAdmin::can('status')): ?><li><a class="dropdown-item" href="<?= h(nu_url('vendor')) ?>"><i class="bi bi-activity me-2"></i><?= h(t('status_title')) ?></a></li><?php endif; ?>
 							<?php // database tools (0.8.282): phpMyAdmin / Adminer, the primary one first ($nuConfigPrimaryDatabaseManagement); then File Manager
 							$vItems = [];
 							if (NuAdmin::can('dbtool', 'change')) {
@@ -254,13 +261,14 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 					</ul>
 				</div>
 			</div>
-		</div>
+		<?php if (!$compact): ?></div><?php endif; ?>
 	</div>
 </nav>
 <?= !empty($_SESSION['nu_form_preview']) ? NuFormDraft::banner(false) : '' /* form drafts (0.8.386): preview banner */ ?>
 <?php if ($sidebar) { echo '<div class="nuShell' . (NuSidebar::pinned() ? ' nuSbPinned' : '') . '">'; nu_sidebar(); NuSidebar::$drawn = true; }   // pinned: a column from 992 px (0.8.556) ?>
-<main id="main" class="<?= h($opt['container'] ?? 'nuContainer') ?> py-4<?= $sidebar ? ' nuShellMain' : '' ?>">
+<main id="main" class="<?= h($opt['container'] ?? 'nuContainer') ?> py-4<?= $sidebar ? ' nuShellMain' : '' ?><?= isset($opt['settings']) ? ' nuSetPage' : '' ?>">
 	<?php nu_render_flashes(); ?>
+<?php if (isset($opt['settings'])) NuSettingsHub::frameStart((string)$opt['settings'], (string)($opt['settings_page'] ?? ''));   // settings centre frame (0.8.702) ?>
 <?php
 }
 
@@ -332,6 +340,7 @@ function nu_render_flashes(): void
 
 function nu_layout_end(string $extraBody = '', bool $bare = false): void
 {
+	if (class_exists('NuSettingsHub', false)) NuSettingsHub::frameEnd();
 	?>
 </main>
 <?= NuSidebar::$drawn ? '</div>' : '' /* side bar wrapper .nuShell (0.8.460) */ ?>

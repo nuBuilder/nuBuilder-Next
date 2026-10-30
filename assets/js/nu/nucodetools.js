@@ -5,6 +5,8 @@
  *
  *   NuCodeTools.attach(cm, host, {lang: 'PHP'|'SQL'|'JS'|'HTML'|'CSS', db: 'mysql'|'sqlsrv', readOnly: bool, compact: bool,
  *                                 snippets: [[name, description, code], …]  (0.8.593: a second tab of the Insert menu), noInsert: true (no Insert menu),
+ *                                 scope: 0–3 | null  (0.8.714: nuBuilder Forte's snippet scope – 0 Forms / Custom Code, 1 Setup / Header, 2 SQL,
+ *                                 3 Procedures/PHP; default from lang: SQL 2, PHP 3, else 0; the snippets come from ?p=snippetlist on first use),
  *                                 fullscreen: function () → bool  (own full screen, e.g. a modal; default: toolbar + editor fill the window),
  *                                 noFull: true (no full-screen button – the editor fills the window already)})
  *   → the toolbar element; toolbar.nuDetach() removes it again (keys, listeners) – e.g. before attaching for another file
@@ -451,10 +453,23 @@
 		return box;
 	}
 
+	// code snippets of a scope (0.8.714, pages/nusnippetlist.php): loaded once per scope + language and page
+	var SN = {}, SCOPE_OF = {SQL: 2, PHP: 3, JS: 0, CSS: 0, HTML: 0};
+	function snList(scope, lang) {
+		var k = scope + '|' + lang;
+		if (!SN[k]) {
+			SN[k] = fetch(BASE + 'index.php?p=snippetlist&scope=' + scope + '&lang=' + encodeURIComponent(lang), {credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+				.then(function (r) { return r.ok ? r.json() : {items: []}; })
+				.catch(function () { delete SN[k]; return {items: []}; });
+		}
+		return SN[k];
+	}
+
 	function insertTools(cm, host, lang, opt) {
 		var fl = lang === 'PHP' ? 'php' : (lang === 'JS' || lang === 'HTML' ? 'js' : '');
-		var snippets = (opt.snippets || []).filter(function (x) { return x && x[2]; });
-		if (!fl && !snippets.length) return null;
+		var own = (opt.snippets || []).filter(function (x) { return x && x[2]; }), snippets = own.slice();
+		var scope = opt.scope !== undefined ? opt.scope : (SCOPE_OF[lang] !== undefined ? SCOPE_OF[lang] : null), snDone = scope === null, manage = null;
+		if (!fl && !snippets.length && scope === null) return null;
 		var btn = elt('button', 'btn btn-sm btn-outline-secondary nuCtInsert');
 		btn.type = 'button'; btn.title = T.ins; btn.setAttribute('aria-label', T.ins); btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
 		var ic = elt('i', 'bi bi-braces-asterisk'); ic.setAttribute('aria-hidden', 'true');
@@ -472,12 +487,23 @@
 		}
 		function open() {
 			if (menu) { close(); return; }
+			if (!snDone) {                                             // the scope's snippets first (one request per page)
+				btn.disabled = true;
+				snList(scope, lang).then(function (d) {
+					snDone = true; btn.disabled = false;
+					snippets = own.concat((d.items || []).filter(function (x) { return x && x[2]; }));
+					if (d.manage) manage = [d.manage, d.manage_label || ''];
+					if (!fl) tab = 'sn';
+					open();
+				});
+				return;
+			}
 			menu = elt('div', 'dropdown-menu show nuInsMenu p-2'); menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', T.ins);
 			var tabs = elt('div', 'nav nav-pills nav-fill nuInsTabs mb-2');
-			[['fn', T.insFns, !!fl], ['sn', T.insSnips, snippets.length > 0]].forEach(function (t) {
+			[['fn', T.insFns, !!fl], ['sn', T.insSnips, snippets.length > 0 || !!manage || !fl]].forEach(function (t) {
 				if (!t[2]) return;
 				var b = elt('button', 'nav-link py-1' + (tab === t[0] ? ' active' : ''), t[1]); b.type = 'button'; b.setAttribute('data-tab', t[0]);
-				b.addEventListener('click', function () { tab = t[0]; tabs.querySelectorAll('.nav-link').forEach(function (x) { x.classList.toggle('active', x === b); }); gsel.classList.toggle('d-none', tab !== 'fn'); active = 0; render(); search.focus(); });
+				b.addEventListener('click', function () { tab = t[0]; tabs.querySelectorAll('.nav-link').forEach(function (x) { x.classList.toggle('active', x === b); }); gsel.classList.toggle('d-none', tab !== 'fn'); if (mlink) mlink.classList.toggle('d-none', tab !== 'sn'); active = 0; render(); search.focus(); });
 				tabs.appendChild(b);
 			});
 			if (tabs.children.length > 1) menu.appendChild(tabs);
@@ -491,6 +517,14 @@
 			var body = elt('div', 'nuInsBody');                        // wide screens: list left, detail right (0.8.594, nuapp.css)
 			body.appendChild(list); body.appendChild(info); menu.appendChild(body);
 			menu.appendChild(elt('div', 'nuInsKeys small text-body-secondary mt-1', T.insKeys));
+			var mlink = null;                                          // "Manage snippets" → nuBuilder Forte's form nucodesnippet (with the right on it)
+			if (manage) {
+				mlink = elt('a', 'nuInsManage small d-block mt-1' + (tab !== 'sn' ? ' d-none' : ''));
+				mlink.href = manage[0]; mlink.target = '_blank'; mlink.rel = 'noopener';
+				var mi = elt('i', 'bi bi-box-arrow-up-right me-1'); mi.setAttribute('aria-hidden', 'true');
+				mlink.appendChild(mi); mlink.appendChild(document.createTextNode(manage[1]));
+				menu.appendChild(mlink);
+			}
 			document.body.appendChild(menu);
 			btn.setAttribute('aria-expanded', 'true');
 			document.addEventListener('pointerdown', outside, true);

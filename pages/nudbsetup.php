@@ -38,6 +38,8 @@ if (nu_is_post()) {
 		}
 	} elseif ($auth && in_array($action, ['setup', 'repair'], true) && !is_array($done)) {
 		try {
+			// an existing database (tables missing): the integrity check first (0.8.698) – problems need the tick "go on anyway"
+			if ($action === 'repair' && NuIntegrity::blocking(NuIntegrity::run(), ['tables']) && nu_check('integrity_ack') !== '1') throw new RuntimeException(t('ic_ack_needed'));
 			$choice = $action === 'setup' && nu_post('choice') === 'upload' ? 'upload' : 'nunext';
 			$file = null;
 			if ($choice === 'upload') {
@@ -69,6 +71,11 @@ if (nu_is_post()) {
 if (is_array($done) && !nu_is_post()) unset($_SESSION['nu_dbs_done']);   // shown once
 
 $dbName = (string)nu_cfg('nuConfigDBName');
+// integrity check of an existing database (0.8.698): tables missing (before "Create missing tables") or older than nuBuilder Forte 4.9
+$icR = !is_array($done) && $auth && in_array($st['state'], ['partial', 'old'], true) ? NuIntegrity::run() : null;
+$icHtml = static fn(?string $form): string => $icR === null ? '' : '<div class="border rounded p-2 mb-3' . ($icR['errors'] ? ' border-danger' : '') . '" id="dbsIntegrity">'
+	. '<div class="fw-semibold small mb-2"><i class="bi bi-clipboard2-pulse me-1"></i>' . h(t('ic_title')) . NuListView::infoTip(t('ic_tip')) . '</div>'
+	. NuIntegrity::html($icR, $form) . '</div>';
 $isMy = nu_db()->type === 'mysql';
 nu_center_start(t('dbs_title'), $dbName !== '' ? t('dbs_subtitle', $dbName) : '', 'bi-database-gear');
 ?>
@@ -86,6 +93,7 @@ nu_center_start(t('dbs_title'), $dbName !== '' ? t('dbs_subtitle', $dbName) : ''
 	<div class="alert alert-warning small" id="dbsOld"><?= h(t('dbs_old_text')) ?></div>
 	<p class="small mb-1"><?= h(t('dbs_old_missing', count($st['columns']))) ?></p>
 	<ul class="small text-body-secondary mb-3 dbsList"><?php foreach (array_slice($st['columns'], 0, 12) as $c): ?><li><code><?= h($c) ?></code></li><?php endforeach; ?><?php if (count($st['columns']) > 12): ?><li>…</li><?php endif; ?></ul>
+	<?= $icHtml(null) ?>
 	<p class="small mb-1 fw-semibold"><?= h(t('dbs_old_what')) ?></p>
 	<ol class="small mb-0">
 		<li><?= h(t('dbs_old_opt_new')) ?></li>
@@ -114,7 +122,8 @@ nu_center_start(t('dbs_title'), $dbName !== '' ? t('dbs_subtitle', $dbName) : ''
 	<p class="small"><?= h(t('dbs_partial_text')) ?></p>
 	<p class="small mb-1"><?= h(t('dbs_partial_missing', count($st['missing']))) ?></p>
 	<ul class="small text-body-secondary mb-3 dbsList" id="dbsMissing"><?php foreach ($st['missing'] as $m): ?><li><code><?= h($m) ?></code></li><?php endforeach; ?></ul>
-	<form method="post" action="<?= h(nu_url('dbsetup')) ?>" data-nu-once>
+	<?= $icHtml($icR && NuIntegrity::blocking($icR, ['tables']) ? 'dbsRepairForm' : null) ?>
+	<form method="post" action="<?= h(nu_url('dbsetup')) ?>" data-nu-once id="dbsRepairForm">
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="repair">
 		<button class="btn btn-primary w-100" type="submit" id="dbsRepair" data-nu-busy="<?= h(t('dbs_working')) ?>"><i class="bi bi-wrench-adjustable me-1"></i><?= h(t('dbs_repair')) ?></button>
 	</form>

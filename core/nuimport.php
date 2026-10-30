@@ -463,6 +463,15 @@ final class NuImport
 			NuAudit::record('insert', $table, (string)($row[$pkCol] ?? ($cols[$pkCol]['auto'] ? $db->lastInsertId() : '')), [], $row, $actx);
 		};
 		if ($auditOn) NuAudit::begin();
+		// webhooks (0.8.715): forms on this table with a webhook – one call per imported / changed row, queued with the row's savepoint
+		$whForms = !$dryRun ? NuWebhook::formsOfTable($table) : [];
+		$whKey = $pkCol ?? $opt['key'];
+		$webhook = static function (string $event, string $k, array $before = []) use ($whForms, $db, $table, $whKey): void {
+			if (!$whForms || $whKey === '' || $k === '') return;
+			$now = (array)$db->one('SELECT * FROM ' . NuDB::ident($table) . ' WHERE ' . NuDB::ident($whKey) . ' = ?', [$k]);
+			foreach ($whForms as $f) NuWebhook::queue($f['id'], $f['code'], $table, $event, $k, $now, $before, 'import');
+		};
+		$insKey = static fn(array $ins): string => $whKey !== '' ? (string)($ins[$whKey] ?? ($pkCol !== null && $cols[$pkCol]['auto'] ? $db->lastInsertId() : '')) : '';
 
 		$pdo = $db->pdo();
 		$pdo->beginTransaction();
@@ -495,7 +504,9 @@ final class NuImport
 					$pdo->exec($db->type === 'sqlsrv' ? 'SAVE TRANSACTION nu_row' : 'SAVEPOINT nu_row');   // one failed row does not spoil the others
 					if ($opt['mode'] === 'insert') {
 						$db->insert($table, $ins = $nulog($audit($row, true), null));
+						$insId = $insKey($ins);
 						$auditInsert($ins);
+						$webhook('insert', $insId);
 						$res['inserted']++;
 					} else {
 						$k = (string)$row[$opt['key']];
@@ -504,15 +515,18 @@ final class NuImport
 							$set = $row;
 							unset($set[$opt['key']]);
 							if ($nlCol !== null) unset($set[$nlCol]);
-							$before = $auditOn ? $db->one('SELECT * FROM ' . NuDB::ident($table) . ' WHERE ' . NuDB::ident($opt['key']) . ' = ?', [$k]) : null;
+							$before = $auditOn || $whForms ? $db->one('SELECT * FROM ' . NuDB::ident($table) . ' WHERE ' . NuDB::ident($opt['key']) . ' = ?', [$k]) : null;
 							$upd = $set ? $audit($set, false) : [];
 							$n = $upd ? $db->update($table, $upd, $opt['key'], $k) : 0;
-							if ($n && $before) NuAudit::record('update', $table, $pkCol !== null ? (string)$before[$pkCol] : $k, $before, $upd, $actx);
+							if ($n && $before && $auditOn) NuAudit::record('update', $table, $pkCol !== null ? (string)$before[$pkCol] : $k, $before, $upd, $actx);
+							if ($n && $before) $webhook('update', $pkCol !== null ? (string)$before[$pkCol] : $k, (array)$before);
 							if ($n && $nlCol !== null) $db->update($table, $nulog([], $k), $opt['key'], $k);     // nuBuilder's _nulog: only when something changed
 							$n ? $res['updated']++ : $res['unchanged']++;
 						} elseif ($opt['mode'] === 'upsert') {
 							$db->insert($table, $ins = $nulog($audit($row, true), null));
+							$insId = $insKey($ins);
 							$auditInsert($ins);
+							$webhook('insert', $insId);
 							$res['inserted']++;
 						} else {
 							$addError($line, $opt['key'], $k, t('imp_err_notfound'));

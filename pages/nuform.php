@@ -440,7 +440,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php if ($meta->id === 'nunotes' && $lookupTo === '' && empty($printMode) && isset(nu_forms()['nunotescategroy']) && NuAcl::can('nunotescategroy')): // notes: categories one click away ?>
 				<a class="btn btn-outline-secondary nuActionButton" id="nuNoteCategoriesButton" href="<?= h(nu_url('form', ['f' => 'nunotescategroy', 'bt' => $bt['child'] ?: null])) ?>"><i class="bi bi-tags me-1"></i><?= h(t('notes_categories')) ?></a>
 			<?php endif; ?>
-			<?php if ($rights['print'] && empty($printMode) && $lookupTo === ''): ?>
+			<?php if ($rights['print'] && empty($printMode) && $lookupTo === '' && (int)($data['total'] ?? 0) > 0): // nothing to export without records (0.8.710) ?>
 				<?php $expKeep = array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1]); // Export menu (0.8.398): HTML page, CSV …, Excel ?>
 				<?= NuListExport::menu(nu_url('form', ['print' => '1'] + array_diff_key($keep, ['iframe' => 1])), nu_url('formexport', ['fmt' => 'xlsx'] + $expKeep),
 					NuListExport::csvDialog(['p' => 'formexport'] + $expKeep, $meta->code() ?: 'export', false), 'nuPrintButton', 'nuExportButton', false, 'btn-outline-secondary nuActionButton') ?>

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.692 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.715 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -68,6 +68,7 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Form Cloner & App Cloner** – copy a single form (or just write its SQL) or the whole application.
 - ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms written by an AI, checked before they are created.
 - ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
+- ✅ **Webhooks** – call n8n, Zapier, Teams or your own service after records are saved or deleted: signed, with retries and a log of every call.
 - ✅ **Compatibility Check** – scans the code of your nuBuilder Forte application and shows which functions are supported.
 - ✅ **Sample Applications** – a sales sample (customers, orders, every object type, reports, dashboards, lists with badges and filters) and a ticket system for a support desk (customers, agents, specialists, team lead; SLA, conversation with internal notes, attachments, e-mail templates, notifications, field access, dashboards per role), both built to learn from.
 

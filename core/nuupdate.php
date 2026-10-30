@@ -859,6 +859,7 @@ final class NuMigrate
 			'0026-user-home' => ['nuBuilder Forte\'s User Home (launch form nuuserhome with the tabs Main and Fast Forms) when missing', static fn() => NuUserHome::ensure()],
 			'0027-themes' => ['Themes (zzzzsys_nunext_theme); an accent colour of Branding becomes the own theme "My theme", used by everyone', static fn() => NuTheme::migrateBranding()],
 			'0028-welcome-templates' => ['Read-only welcome e-mail templates nu_send_welcome_email_template (group nunext, one per language) when missing', static fn() => NuWelcome::ensureTemplates()],
+			'0029-webhooks' => ['Webhooks: definitions, outbox and attempts (zzzzsys_nunext_webhook, _webhook_call, _webhook_try)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -900,6 +901,7 @@ final class NuMigrate
 		'0025-user-access' => [['zzzzsys_nunext_user_access', 'table', 'created when missing']],
 		'0026-user-home' => [['zzzzsys_form', 'data', 'form nuuserhome (User Home) added when missing – also checked with every later update'], ['zzzzsys_tab', 'data', 'its tabs Main and Fast Forms']],
 		'0027-themes' => [['zzzzsys_nunext_theme', 'table', 'created when missing'], ['zzzzsys_nunext_setting', 'data', 'Branding\'s accent colour (if set) moved into the own theme "My theme" (row theme)']],
+		'0029-webhooks' => [['zzzzsys_nunext_webhook', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_call', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_try', 'table', 'created when missing']],
 		'0028-welcome-templates' => [['zzzzsys_email_template', 'data', 'read-only templates nu_send_welcome_email_template, group nunext, one per language (ids nx_welcome_…) added when missing – also checked with every later update']],
 	];
 
@@ -929,6 +931,12 @@ final class NuMigrate
 	}
 
 	/** Ids of the steps already applied in this database. @return string[] */
+	/** Ids of all database steps this version knows (integrity check: steps of a newer version in the database, 0.8.698). @return list<string> */
+	public static function stepIds(): array
+	{
+		return array_map('strval', array_keys(self::steps()));
+	}
+
 	public static function appliedIds(): array
 	{
 		self::ensureTable();

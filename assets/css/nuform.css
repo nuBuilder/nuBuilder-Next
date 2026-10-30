@@ -54,6 +54,9 @@
 
 /* ---------------------------------------------------------------- absolute layout (pixel positions like nuBuilder) */
 .nuAbsoluteCanvas { position: relative; isolation: isolate; }   /* own stacking layer (0.8.567): z-index:-1 (content boxes, elements in HTML objects) lies behind the other objects, in front of the form's background – as nuBuilder's #nuRECORD */
+/* TinyMCE full screen (0.8.700): the editor (position fixed, z-index 1200) must leave the canvas's stacking layer, else the top bar and the
+   sticky record bar (z-index 1020 / 1010) are drawn over it */
+html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 .nuAbs { position: absolute; }
 .nuAbs .form-control, .nuAbs .form-select { height: 26px; min-height: 0; padding: 0 .4rem; font-size: .85rem; border-radius: .3rem; }
 .nuAbs .form-select { padding-right: 1.6rem; background-position: right .3rem center; }

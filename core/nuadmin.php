@@ -54,6 +54,7 @@ final class NuAdmin
 		'email'         => ['comm', 'nav_email', false, 'vc', [NuAcl::FORM_SETUP, NuAcl::FORM_EMAILLOG, NuAcl::FORM_EMAILTEMPLATE]],
 		'notifications' => ['comm', 'ntf_title', false, 'vc', [NuAcl::FORM_NOTIFY]],   // notification centre (0.8.357): view = all + read receipts, change = send
 		'apiclients'    => ['integration', 'api_title', true, 'vc', [NuAcl::FORM_APICLIENT]],
+		'webhooks'      => ['integration', 'wh_title', true, 'vc', [NuAcl::FORM_WEBHOOK]],   // webhooks (0.8.715): calls other systems with record data – full access
 		'log'           => ['logs', 'adm_r_log', false, 'vc', [NuAcl::FORM_LOG]],
 		'audit'         => ['logs', 'aud_title', true, 'vc', [NuAcl::FORM_AUDIT]],   // audit trail (0.8.350): change = its settings
 		'debug'         => ['logs', 'debug_title', false, 'vc', [NuAcl::FORM_DEBUG]],
@@ -66,7 +67,7 @@ final class NuAdmin
 	public static function defaults(): array
 	{
 		$all = array_map(static fn() => 'change', self::RIGHTS);
-		$system = ['update', 'configfile', 'settings', 'globalcode', 'dbtool', 'filemanager', 'appcloner', 'apiclients', 'adminroles'];
+		$system = ['update', 'configfile', 'settings', 'globalcode', 'dbtool', 'filemanager', 'appcloner', 'apiclients', 'webhooks', 'adminroles'];
 		return [
 			'full_admin'      => $all,
 			'admin_no_system' => array_diff_key($all, array_flip($system)),

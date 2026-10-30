@@ -678,6 +678,17 @@ foreach (NuCodeTemplates::all() as $tab => $list) {
 }
 check('custom code templates: texts, tabs, categories, unique ids', $tplOk && count($tplIds) >= 20);
 
+// 0.8.714: code snippets by nuBuilder Forte's scope (cot_scope), without a scope by language
+check('NuSnippets::scopeOf: JSON, separator, empty', NuSnippets::scopeOf('["0","3"]') === [0, 3] && NuSnippets::scopeOf('2#nuSep#1') === [1, 2] && NuSnippets::scopeOf('[""]') === [] && NuSnippets::scopeOf(null) === []);
+$snRows = [['cot_code' => 'b_php', 'cot_source_code' => 'x', 'cot_language' => 'PHP', 'cot_scope' => '["3"]'],
+	['cot_code' => 'a_both', 'cot_source_code' => 'x', 'cot_language' => 'JavaScript', 'cot_scope' => '["0","2"]'],
+	['cot_code' => 'c_sql', 'cot_source_code' => 'x', 'cot_language' => 'SQL', 'cot_scope' => null],
+	['cot_code' => 'd_js', 'cot_source_code' => 'x', 'cot_language' => 'JavaScript', 'cot_scope' => '[""]'],
+	['cot_code' => 'e_empty', 'cot_source_code' => '', 'cot_language' => 'PHP', 'cot_scope' => '["3"]']];
+$snNames = static fn(int $sc, string $l) => array_column(NuSnippets::pick($snRows, $sc, $l), 0);
+check('NuSnippets::pick: scope wins, unscoped by language, sorted, no empty code', $snNames(2, 'SQL') === ['a_both', 'c_sql'] && $snNames(3, 'PHP') === ['b_php']
+	&& $snNames(0, 'JS') === ['a_both', 'd_js'] && $snNames(1, 'JS') === ['d_js'] && $snNames(1, 'CSS') === []);
+
 // 0.8.622: UUID v7 keys for 36-character primary key columns
 $u1 = nu_uuid(); usleep(2000); $u2 = nu_uuid();
 check('nu_uuid: format, version 7, variant', (bool)preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $u1) && $u1 !== $u2);

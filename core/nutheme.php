@@ -169,6 +169,28 @@ final class NuTheme
 		return [$ov, $od];
 	}
 
+	/** Is the name used by another theme – an own one (except $exceptId) or a built-in one? Case and spaces at the ends do not count (0.8.694). */
+	public static function nameTaken(string $name, string $exceptId = ''): bool
+	{
+		$n = mb_strtolower(trim($name));
+		if ($n === '') return false;
+		foreach (self::all() as $id => $t) if ($id !== $exceptId && mb_strtolower(trim((string)$t['name'])) === $n) return true;
+		return false;
+	}
+
+	/** The name itself when it is free, else "name (2)", "name (3)" … (imports and copies, 0.8.694). */
+	public static function uniqueName(string $name): string
+	{
+		$name = mb_substr(trim($name), 0, 100);
+		if (!self::nameTaken($name)) return $name;
+		for ($i = 2; $i < 1000; $i++) {
+			$suffix = ' (' . $i . ')';
+			$try = mb_substr($name, 0, 100 - mb_strlen($suffix)) . $suffix;
+			if (!self::nameTaken($try)) return $try;
+		}
+		return mb_substr($name, 0, 87) . ' ' . substr(nu_id(), -12);
+	}
+
 	/** Saves an own theme (new: $id ''). @return array{0: string, 1: array} id, errors */
 	public static function save(string $id, string $name, array $v, array $d, string $base = ''): array
 	{
@@ -176,6 +198,7 @@ final class NuTheme
 		$errors = [];
 		if ($name === '') $errors['name'] = t('err_required');
 		elseif (mb_strlen($name) > 100) $errors['name'] = t('err_too_long', 100);
+		elseif (self::nameTaken($name, $id)) $errors['name'] = t('theme_err_name_taken', $name);   // names are unique (0.8.694)
 		if ($id !== '' && (str_starts_with($id, 'b:') || !isset(self::own()[$id]))) $errors['_'] = t('err_not_found');
 		if ($errors) return ['', $errors];
 		[$v, $d] = self::clean($v, $d);
@@ -243,8 +266,8 @@ final class NuTheme
 	{
 		$j = json_decode(trim($json), true);
 		if (!is_array($j) || ($j['type'] ?? '') !== 'nunext-theme' || !is_array($j['values'] ?? null)) throw new RuntimeException(t('theme_err_import'));
-		$name = trim((string)($j['name'] ?? '')) ?: t('theme_imported');
-		[$id, $err] = self::save('', mb_substr($name, 0, 100), (array)$j['values'], (array)($j['dark'] ?? []), 'import');
+		$name = self::uniqueName(trim((string)($j['name'] ?? '')) ?: t('theme_imported'));   // a name in use gets " (2)" … (0.8.694)
+		[$id, $err] = self::save('', $name, (array)$j['values'], (array)($j['dark'] ?? []), 'import');
 		if ($err) throw new RuntimeException(implode(' ', $err));
 		return $id;
 	}

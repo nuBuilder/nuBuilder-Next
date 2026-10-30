@@ -35,7 +35,7 @@ $set = NuSecurity::settings();
 $icon = ['ok' => 'bi-check-circle-fill text-success', 'warn' => 'bi-exclamation-triangle-fill text-warning', 'bad' => 'bi-x-octagon-fill text-danger', 'info' => 'bi-info-circle-fill text-info'];
 $tip = static fn(string $text): string => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
 
-nu_layout_start(t('secchk_title'), 'home', ['container' => 'container']);
+nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'settings' => 'security']);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
@@ -51,9 +51,10 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'container']);
 <div class="card shadow-sm mb-4" id="secChecks">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><?= h(t('secchk_checks')) ?></span>
-		<span class="badge text-bg-danger"><?= $count('bad') ?> <?= h(t('secchk_bad')) ?></span>
-		<span class="badge text-bg-warning"><?= $count('warn') ?> <?= h(t('secchk_warn')) ?></span>
-		<span class="badge text-bg-success"><?= $count('ok') ?> <?= h(t('secchk_ok')) ?></span>
+		<?php // a click on a badge shows only the checks of that state, a second click all of them (0.8.693, assets/js/nusecuritycheck.js) ?>
+		<?php foreach (['bad' => 'text-bg-danger', 'warn' => 'text-bg-warning', 'ok' => 'text-bg-success'] as $st => $cls): ?>
+			<button type="button" class="badge <?= $cls ?> border-0 secFlt" data-sec-filter="<?= $st ?>" aria-pressed="false" title="<?= h(t('secchk_filter_tip')) ?>"><?= $count($st) ?> <?= h(t('secchk_' . $st)) ?></button>
+		<?php endforeach; ?>
 	</div>
 	<ul class="list-group list-group-flush">
 		<?php foreach ($checks as $c): ?>

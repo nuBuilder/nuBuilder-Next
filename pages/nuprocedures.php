@@ -102,11 +102,7 @@ $foot = '';
 if ($id !== '') {
 	// nuOnProcedureRun() of the JS tab is run with eval (as nuBuilder) – this page allows it
 	header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
-	$snippets = $db->tableExists('zzzzsys_code_snippet')
-		? array_map(static fn($s) => [(string)$s['cot_code'], (string)$s['cot_description'], (string)$s['cot_source_code'], (string)$s['cot_language']],
-			$db->all("SELECT cot_code, cot_description, cot_source_code, cot_language FROM zzzzsys_code_snippet WHERE LOWER(COALESCE(cot_language,'')) IN ('php', 'javascript') ORDER BY cot_code"))
-		: [];
-	$data = ['db' => $db->type, 'catalog' => NuHash::catalog(), 'snippets' => $snippets, 'id' => $proc ? $id : '', 'url' => nu_url('procedures', ['id' => $id]),
+	$data = ['db' => $db->type, 'catalog' => NuHash::catalog(), 'id' => $proc ? $id : '', 'url' => nu_url('procedures', ['id' => $id]),
 		'msg' => ['unsaved' => t('proc_run_unsaved'), 'running' => t('proc_running'), 'done' => t('proc_run_done'), 'failed' => t('proc_run_failed'),
 			'js' => t('proc_run_js'), 'output' => t('proc_run_output'), 'debug' => t('proc_run_debug'), 'cancelled' => t('proc_run_cancelled'),
 			'snippet' => t('proc_snippet'), 'search' => t('search'), 'none' => t('no_records')]];

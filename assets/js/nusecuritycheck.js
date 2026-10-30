@@ -58,3 +58,18 @@
 			.then(function () { done++; finish(); });
 	});
 })();
+
+// checks list: the badges Problem / Check / OK filter the list (0.8.693) – a second click on the same badge shows every check again
+(function () {
+	'use strict';
+	var box = document.getElementById('secChecks');
+	if (!box) return;
+	var btns = box.querySelectorAll('.secFlt'), cur = '';
+	function apply() {
+		box.querySelectorAll('.list-group > li').forEach(function (li) { li.hidden = cur !== '' && !li.classList.contains('sec-' + cur); });
+		btns.forEach(function (b) { var on = b.getAttribute('data-sec-filter') === cur; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('secFltOn', on); b.classList.toggle('secFltOff', cur !== '' && !on); });
+	}
+	btns.forEach(function (b) {
+		b.addEventListener('click', function () { var f = b.getAttribute('data-sec-filter'); cur = cur === f ? '' : f; apply(); });
+	});
+})();

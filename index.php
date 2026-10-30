@@ -52,6 +52,7 @@ $routes = [
 	'vendor'      => [],
 	'filemanager' => [],                      // File Manager = the page nuFiles (0.8.479, pages/nufilemanager.php)
 	'apiclients'  => [],
+	'webhooks'    => [],   // webhooks (0.8.715, pages/nuwebhooks.php)
 	'apiplayground' => [],
 	'settings'    => [],
 	'configfile'  => [],
@@ -100,6 +101,7 @@ $routes = [
 	'translations' => [],
 	'formatapi'   => ['json' => true],
 	'fnlist'      => ['json' => true],
+	'snippetlist' => ['json' => true],   // code snippets of one code editor (0.8.714, pages/nusnippetlist.php)
 	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (0.8.683, pages/nuformaccess.php)   // function list of the code editors (0.8.593, pages/nufnlist.php)
 	'builder'     => [],
 	'formai'      => [],                     // form with AI (0.8.403)

@@ -80,8 +80,9 @@ def checks(files):
             bad.append(out)
     if os.path.exists('dev/tests/run.php'):
         code, out = run(['php', 'dev/tests/run.php'])
-        print(out.splitlines()[-1] if out else 'tests: no output')
-        if code != 0:
+        last = out.splitlines()[-1] if out else 'tests: no output'
+        print(last)
+        if code != 0 or not re.match(r'all \d+ tests passed$', last.strip()):   # 0.8.714: a script that died early (exit 0, an error page) fails too
             bad.append(out)
     if not bad and GATE:
         bad += browser_tests()
