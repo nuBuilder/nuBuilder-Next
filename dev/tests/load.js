@@ -99,12 +99,12 @@ async function login(browser, user, pw) {
 /** Median server time of a GET (whole response, as the browser waits for it). */
 async function time(p, url, runs = RUNS) {
 	const ms = [];
-	let status = 0;
+	let status = 0, bytes = 0;
 	for (let i = 0; i < runs; i++) {
-		const t = Date.now(); const r = await p.request.get(BASE + url, { maxRedirects: 0 }); status = r.status(); await r.body(); ms.push(Date.now() - t);
+		const t = Date.now(); const r = await p.request.get(BASE + url, { maxRedirects: 0, timeout: 600000 }); status = r.status(); bytes = (await r.body()).length; ms.push(Date.now() - t);
 	}
 	ms.sort((a, b) => a - b);
-	return { ms: ms[Math.floor(ms.length / 2)], status };
+	return { ms: ms[Math.floor(ms.length / 2)], status, bytes };
 }
 
 (async () => {
@@ -151,10 +151,40 @@ async function time(p, url, runs = RUNS) {
 			[user, 'home (user)', 'index.php?p=home'],
 			[user, 'notifications (user)', 'index.php?p=notifications'],
 			[user, 'customers browse (user)', 'index.php?p=form&f=samplecustomer'],
+			// pages and exports of later versions (0.8.761)
+			[ga, 'users list, all columns', 'index.php?p=users&view=all'],
+			[ga, 'users sorted by created', 'index.php?p=users&view=all&sort=created&dir=desc'],
+			[ga, 'users sorted by last login', 'index.php?p=users&view=all&sort=last_login&dir=desc'],
+			[ga, 'users online filter', 'index.php?p=users&online=1'],
+			[ga, 'users list CSV (all)', 'index.php?p=users&export=csv'],
+			[ga, 'log CSV (50,000)', 'index.php?p=log&export=csv'],
+			[ga, 'log Excel (50,000)', 'index.php?p=log&export=xlsx'],
+			[ga, 'audit filter by table', 'index.php?p=audit&table=sample_customer'],
+			[ga, 'customers advanced search', 'index.php?p=form&f=samplecustomer&adv=' + encodeURIComponent(JSON.stringify({ m: 'all', c: [[1, 'contains', '424', '']] }))],
+			[ga, 'customers browse CSV', 'index.php?p=formexport&f=samplecustomer'],
+			[ga, 'customers browse Excel', 'index.php?p=formexport&f=samplecustomer&fmt=xlsx'],
+			[ga, 'orders browse sort total', 'index.php?p=form&f=sampleorder&sort=4&dir=desc'],
+			[ga, 'search list (Ctrl+K)', 'index.php?p=palette'],
+			[ga, 'data export list', 'index.php?p=dataexport'],
+			[ga, 'data export xlsx (100k + 100k)', 'index.php?p=dataexport&run=loadexp_xlsx', 1],
+			[ga, 'data export csv zip (100k + 100k)', 'index.php?p=dataexport&run=loadexp_csv', 1],
+			[ga, 'webhooks list', 'index.php?p=webhooks'],
+			[ga, 'translations', 'index.php?p=translations'],
+			[ga, 'settings centre', 'index.php?p=settings'],
+			[ga, 'compatibility check', 'index.php?p=compat', 1],
+			[ga, 'self-test page', 'index.php?p=selftest'],
 		];
-		for (const [p, name, url] of pages) {
-			const r = await time(p, url);
-			results.push([name, r.ms, r.status, r.ms <= LIMIT && r.status < 400 ? 'ok' : 'SLOW']);
+		// a data export over the two large tables (Excel: two sheets; CSV: a ZIP)
+		for (const f of ['xlsx', 'csv']) {
+			const ds = JSON.stringify([{ name: 'Customers', source: 'table', table: 'sample_customer', columns: [], where: { m: 'all', c: [] }, sort: [['cus_name', 'asc']], sql: '', select: '', reimport: false },
+				{ name: 'Orders', source: 'sql', table: '', columns: [], where: { m: 'all', c: [] }, sort: [], sql: 'SELECT ord_number, ord_date, ord_status, ord_total FROM sample_order ORDER BY ord_date', select: '', reimport: false }]);
+			sql('INSERT INTO zzzzsys_nunext_export (zzzzsys_nunext_export_id, code, name, format, options, datasets, created_by, created_at, runs) VALUES ('
+				+ q('loadexp_' + f) + ', ' + q('loadexp_' + f) + ", 'Load export', " + q(f) + ", '{}', " + q(ds) + ", 'load', NOW(), 0)");
+		}
+		for (const [p, name, url, runs] of pages) {
+			const r = await time(p, url, runs || RUNS);
+			const big = /CSV|Excel|export xlsx|export csv|compatibility/.test(name);          // downloads of the whole table: an own budget
+			results.push([name + (r.bytes > 200000 ? ' (' + Math.round(r.bytes / 1024) + ' KB)' : ''), r.ms, r.status, (big ? r.ms <= LIMIT * 20 : r.ms <= LIMIT) && r.status < 400 ? 'ok' : 'SLOW']);
 		}
 		// the bell: what every open tab does every minute
 		for (const [p, name] of [[ga, 'bell check (globeadmin)'], [user, 'bell check (user)']]) {

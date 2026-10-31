@@ -179,6 +179,18 @@ if (!function_exists('nuRunQuery')) {
 		return nu_uuid();
 	}
 
+	/** nuBuilder Next (0.8.755): can Excel / OpenDocument files be read (PhpSpreadsheet library pack, PHP 8.2, extensions)? */
+	function nuNextSpreadsheetAvailable(): bool
+	{
+		return NuSpreadsheet::available();
+	}
+
+	/** nuBuilder Next (0.8.755): the rows of one sheet (index or name) of an .xlsx / .xls / .ods file as texts – formulas give their saved result. */
+	function nuNextReadSpreadsheet(string $file, int|string $sheet = 0): array
+	{
+		return NuSpreadsheet::read($file, $sheet)['rows'];
+	}
+
 	function nuGlobalAccess(): bool
 	{
 		return (bool)NuAuth::user()['globeadmin'];

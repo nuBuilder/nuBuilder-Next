@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 20;             // 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 21;             // 21: Excel export – two procedures (built-in NuXlsx, PhpSpreadsheet with formulas and a chart) and their start tiles · 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -418,9 +418,12 @@ final class NuSample
 					['type' => 'html', 'id' => 'home_hash', 'label' => '', 'left' => 20, 'top' => 484, 'w' => 768, 'h' => 80,
 						'html' => '<div class="sampleNote">Global hash cookie <code>&#35;sample_visits&#35;</code> (counted in Before Edit PHP): this start page was opened <b>#sample_visits#</b> times since login.<br>'
 							. '<code>&#35;sample_colour&#35;</code> = <b>#sample_colour#</b> – set it with the button, then open <i>All objects</i> → Display.</div>'],
-					['type' => 'word', 'id' => 'home_reportword', 'label' => 'Reports (PDF)', 'left' => 20, 'top' => 656, 'w' => 760, 'style_type' => 'Class', 'style' => 'sampleSection'],
+					['type' => 'word', 'id' => 'home_reportword', 'label' => 'Reports (PDF) and Excel', 'left' => 20, 'top' => 656, 'w' => 760, 'style_type' => 'Class', 'style' => 'sampleSection'],
 					['type' => 'run', 'id' => 'home_rpt_customers', 'label' => 'Customer list', 'run' => 'sample_rpt_customers', 'run_type' => 'R', 'left' => 20, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
 					['type' => 'run', 'id' => 'home_rpt_orders', 'label' => 'Orders by customer', 'run' => 'sample_rpt_orders', 'run_type' => 'R', 'left' => 216, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
+					// Excel export (0.8.756): procedures that send a download – built-in writer and PhpSpreadsheet (library pack)
+					['type' => 'run', 'id' => 'home_xlsx', 'label' => 'Orders to Excel', 'run' => 'sample_proc_xlsx', 'run_type' => 'P', 'left' => 412, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
+					['type' => 'run', 'id' => 'home_xlsx_pss', 'label' => 'Excel with chart', 'run' => 'sample_proc_xlsx_pss', 'run_type' => 'P', 'left' => 608, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
 					['type' => 'word', 'id' => 'home_dashword', 'label' => 'Dashboard (nuBuilder Next)', 'left' => 20, 'top' => 828, 'w' => 760, 'style_type' => 'Class', 'style' => 'sampleSection'],
 					['type' => 'select', 'id' => 'home_country', 'label' => 'Country', 'left' => 120, 'top' => 860, 'w' => 200, 'options' => '|All countries|' . $countries,
 						'events' => ['onchange' => "// a launch form's field as criterion: the dashboard reads #home_country# again\nif (window.nuNextDashboardRefresh) nuNextDashboardRefresh('sample_country');"]],
@@ -909,6 +912,111 @@ $rows = [];
 foreach ($sum as $category => $revenue) $rows[] = ['Category' => $category, 'Revenue' => round($revenue, 2)];
 if (function_exists('nuDashboardData')) nuDashboardData($rows);
 PHP),
+			// Excel export (0.8.756): the built-in writer (no library needed) and PhpSpreadsheet (library pack) – both send a download
+			$p('sample_proc_xlsx', 'sample_xlsx', 'Sample: orders to Excel (built-in NuXlsx)', 'window', <<<'PHP'
+// Orders as an Excel file with nuBuilder Next's own writer NuXlsx – no library needed (Help → Function reference → Excel export).
+// Run it from a button or tile: the browser downloads the file.
+$x = NuXlsx::create('Sample orders');
+$s = $x->sheet('Orders');
+$s->header(['Number', 'Date', 'Customer', 'Country', 'Status', 'Total'], ['bold' => true, 'color' => '#ffffff', 'bg' => '#336699']);
+$t = nuRunQuery("SELECT o.ord_number, o.ord_date, c.cus_name, c.cus_country, o.ord_status, o.ord_total
+	FROM sample_order o LEFT JOIN sample_customer c ON c.sample_customer_id = o.ord_sample_customer_id ORDER BY o.ord_date, o.ord_number");
+while ($o = db_fetch_object($t)) {
+	// a date as DateTime becomes a real Excel date; numbers stay numbers, texts never turn into formulas
+	$s->row([$o->ord_number, $o->ord_date ? new DateTime($o->ord_date) : null, $o->cus_name, $o->cus_country, $o->ord_status, (float)$o->ord_total]);
+}
+$last = $s->lastRow();
+$s->row(['', '', '', '', 'Total', NuXlsx::formula("SUM(F2:F$last)")], ['bold' => true, 'border' => 'top']);
+$s->style("F2:F" . ($last + 1), ['format' => '#,##0.00']);
+$s->freeze('A2');
+$s->filter("A1:F$last");
+$s->autoWidth();
+$x->download('sample-orders-' . date('Y-m-d') . '.xlsx');
+PHP),
+			$p('sample_proc_xlsx_pss', 'sample_xlsx_pss', 'Sample: orders to Excel with formulas and a chart (PhpSpreadsheet)', 'window', <<<'PHP'
+// Orders as an Excel workbook with PhpSpreadsheet (library pack: Update → Libraries → PhpSpreadsheet):
+// styles, number formats, a SUM formula, conditional formatting, a second sheet with COUNTIF / SUMIF and a column chart.
+// The \PhpOffice\PhpSpreadsheet\… classes load by themselves once the pack is installed.
+if (!nuNextSpreadsheetAvailable()) {
+	echo '<h3>PhpSpreadsheet is not installed</h3><p>Install the library pack <b>PhpSpreadsheet</b> under <i>Update → Libraries</i> and run this again.'
+		. ' The built-in export (procedure sample_xlsx) works without it.</p>';
+	return;
+}
+$book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+$book->getProperties()->setTitle('Sample orders')->setCreator('nuBuilder Next');
+$ws = $book->getActiveSheet();
+$ws->setTitle('Orders');
+$ws->fromArray(['Number', 'Date', 'Customer', 'Country', 'Status', 'Total'], null, 'A1');
+$t = nuRunQuery("SELECT o.ord_number, o.ord_date, c.cus_name, c.cus_country, o.ord_status, o.ord_total
+	FROM sample_order o LEFT JOIN sample_customer c ON c.sample_customer_id = o.ord_sample_customer_id ORDER BY o.ord_date, o.ord_number");
+$r = 2;
+$countries = [];
+while ($o = db_fetch_object($t)) {
+	$ws->setCellValue("A$r", $o->ord_number);
+	if ($o->ord_date) $ws->setCellValue("B$r", \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(new DateTime($o->ord_date)));
+	$ws->setCellValue("C$r", $o->cus_name);
+	$ws->setCellValue("D$r", $o->cus_country);
+	$ws->setCellValue("E$r", $o->ord_status);
+	$ws->setCellValue("F$r", (float)$o->ord_total);
+	if ($o->cus_country) $countries[$o->cus_country] = true;
+	$r++;
+}
+$last = max(2, $r - 1);
+$ws->setCellValue("E$r", 'Total');
+$ws->setCellValue("F$r", "=SUM(F2:F$last)");                          // a formula – Excel calculates it
+// look: header, formats, total row, frozen header, filter, widths
+$ws->getStyle('A1:F1')->applyFromArray(['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+	'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '336699']]]);
+$ws->getStyle("B2:B$last")->getNumberFormat()->setFormatCode('dd.mm.yyyy');
+$ws->getStyle("F2:F$r")->getNumberFormat()->setFormatCode('#,##0.00');
+$ws->getStyle("E$r:F$r")->applyFromArray(['font' => ['bold' => true], 'borders' => ['top' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]]);
+$ws->freezePane('A2');
+$ws->setAutoFilter("A1:F$last");
+foreach (range('A', 'F') as $c) $ws->getColumnDimension($c)->setAutoSize(true);
+// conditional formatting: orders above 1,000 in green
+$cf = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+$cf->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS)
+	->setOperatorType(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHAN)->addCondition('1000');
+$cf->getStyle()->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getEndColor()->setRGB('C6EFCE');
+$ws->getStyle("F2:F$last")->setConditionalStyles([$cf]);
+// second sheet: orders and revenue per country with COUNTIF / SUMIF, and a column chart of the revenue
+$by = $book->createSheet();
+$by->setTitle('By country');
+$by->fromArray(['Country', 'Orders', 'Revenue'], null, 'A1');
+$by->getStyle('A1:C1')->getFont()->setBold(true);
+$n = 2;
+foreach (array_keys($countries) as $country) {
+	$by->setCellValue("A$n", $country);
+	$by->setCellValue("B$n", "=COUNTIF(Orders!D2:D$last,A$n)");
+	$by->setCellValue("C$n", "=SUMIF(Orders!D2:D$last,A$n,Orders!F2:F$last)");
+	$n++;
+}
+$lastC = max(2, $n - 1);
+$by->getStyle("C2:C$lastC")->getNumberFormat()->setFormatCode('#,##0.00');
+foreach (['A' => 22, 'B' => 10, 'C' => 14] as $c => $w) $by->getColumnDimension($c)->setWidth($w);
+$ds = \PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues::class;
+$series = new \PhpOffice\PhpSpreadsheet\Chart\DataSeries(
+	\PhpOffice\PhpSpreadsheet\Chart\DataSeries::TYPE_BARCHART, \PhpOffice\PhpSpreadsheet\Chart\DataSeries::GROUPING_CLUSTERED, [0],
+	[new $ds($ds::DATASERIES_TYPE_STRING, "'By country'!\$C\$1", null, 1)],
+	[new $ds($ds::DATASERIES_TYPE_STRING, "'By country'!\$A\$2:\$A\$$lastC", null, $lastC - 1)],
+	[new $ds($ds::DATASERIES_TYPE_NUMBER, "'By country'!\$C\$2:\$C\$$lastC", null, $lastC - 1)]);
+$series->setPlotDirection(\PhpOffice\PhpSpreadsheet\Chart\DataSeries::DIRECTION_COL);
+$chart = new \PhpOffice\PhpSpreadsheet\Chart\Chart('revenue', new \PhpOffice\PhpSpreadsheet\Chart\Title('Revenue by country'), null,
+	new \PhpOffice\PhpSpreadsheet\Chart\PlotArea(null, [$series]));
+$chart->setTopLeftPosition('E2');
+$chart->setBottomRightPosition('M20');
+$by->addChart($chart);
+$book->setActiveSheetIndex(0);
+// send it: nothing may have been printed before
+while (ob_get_level() > 0) ob_end_clean();
+header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+header('Content-Disposition: attachment; filename="sample-orders-' . date('Y-m-d') . '.xlsx"');
+header('Cache-Control: no-store');
+$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book);
+$writer->setIncludeCharts(true);
+$writer->save('php://output');
+exit;
+PHP),
 		];
 	}
 
@@ -1006,10 +1114,10 @@ ORDER BY
 		$full = [1, 1, 1, 1, 1, 1];
 		$levels = [
 			'sample_viewer'  => ['Sample: view only', array_fill_keys($forms, $view), [], '0'],
-			'sample_editor'  => ['Sample: add and change (no delete)', array_fill_keys($forms, $edit), ['sample_proc_hello'], '0'],
-			'sample_manager' => ['Sample: everything', array_fill_keys($forms, $full), ['sample_proc_hello', 'sample_proc_hidden'], '0'],
-			'sample_sales'   => ['Sample: orders only', ['sample_home' => $view, 'sample_customer' => $view, 'sample_product' => $view, 'sample_order' => $full, 'sample_order_item' => $full], ['sample_proc_hello'], '0'],
-			'sample_secure'  => ['Sample: everything, with two-factor login', array_fill_keys($forms, $full), ['sample_proc_hello', 'sample_proc_hidden'], '1'],
+			'sample_editor'  => ['Sample: add and change (no delete)', array_fill_keys($forms, $edit), ['sample_proc_hello', 'sample_proc_xlsx'], '0'],
+			'sample_manager' => ['Sample: everything', array_fill_keys($forms, $full), ['sample_proc_hello', 'sample_proc_hidden', 'sample_proc_xlsx', 'sample_proc_xlsx_pss'], '0'],
+			'sample_sales'   => ['Sample: orders only', ['sample_home' => $view, 'sample_customer' => $view, 'sample_product' => $view, 'sample_order' => $full, 'sample_order_item' => $full], ['sample_proc_hello', 'sample_proc_xlsx', 'sample_proc_xlsx_pss'], '0'],
+			'sample_secure'  => ['Sample: everything, with two-factor login', array_fill_keys($forms, $full), ['sample_proc_hello', 'sample_proc_hidden', 'sample_proc_xlsx', 'sample_proc_xlsx_pss'], '1'],
 		];
 		$rows = [];
 		$af = 0; $ap = 0;

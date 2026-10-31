@@ -1,0 +1,37 @@
+<section id="data-export" data-doc="admin" data-level="advanced">
+	<h2 id="data-export-h">Data export</h2>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Saved exports of tables, views and queries to Excel or CSV – and the same exports through the REST API.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles with <em>Data export</em>)</p>
+	<p><em>Admin tools → Data export</em> (also <em>Forms → Tools</em>; <code>index.php?p=dataexport</code>) keeps a list of exports that can be run again and again. The admin right <em>Data export</em> decides who may use it: <em>view</em> = run the saved exports, <em>change</em> = create and edit them. It is a full-access right, because any table of the database can leave the server this way. The counterpart for the other direction is the <a href="#csv-import">Data import</a>.</p>
+	<div class="doc-sub">
+	<h3 id="data-export-def">An export</h3>
+	<ul>
+		<li><strong>Name, code, description.</strong> The code (letters, digits, <code>_</code>) names the export in the REST API; it is made from the name when left empty.</li>
+		<li><strong>Format:</strong> Excel (<code>.xlsx</code>, one sheet per dataset) or CSV (one file; several datasets become a ZIP with one CSV each). CSV options: separator, line ends (CRLF for Excel / LF), UTF-8 BOM, header row, text for NULL, date and date-time formats, decimal separator, yes/no values and the protection against formulas (a text starting with <code>= + - @</code> gets a leading apostrophe – switch it off for files that go into another system).</li>
+		<li><strong>File name</strong> with the placeholders <code>{code}</code>, <code>{name}</code>, <code>{date}</code>, <code>{time}</code>, <code>{datetime}</code>; empty = <code>{code}_{date}</code>.</li>
+		<li><strong>Datasets</strong> – one or more; each becomes a sheet or a file and is one of:
+			<ul>
+				<li><em>Table or view</em>: tick the columns and put them in order (↑ ↓), give them a heading and a format, add conditions (type-aware operators – contains, between, one of, is empty, yes / no …; all or any of them) and sort columns. System tables (<code>zzzzsys_…</code>) are offered but marked; columns that look like a secret (password, token, key) are exported only when ticked. <em>For re-import</em> puts the key column first and uses the column names as headings, so the file can be edited in Excel and loaded with the Data import, which updates the rows by their key.</li>
+				<li><em>Query (SQL)</em>: one <code>SELECT</code> (or <code>WITH … SELECT</code>) in the code editor. <code>#name#</code> placeholders are asked for every time the export runs – quoted or not, the values go into the query as parameters; <code>#USER_ID#</code>, <code>#TODAY#</code> and the other system <a href="#hash-variables">hash variables</a> are filled in. <em>Check query</em> tells whether it is accepted and which parameters it has; after a <em>Preview</em> the result columns are listed for headings and formats.</li>
+				<li><em>SQL builder query</em>: a saved query of the <a href="#sql-builder">SQL builder</a>, used as it is.</li>
+			</ul>
+		</li>
+		<li><strong>Preview</strong> shows the first 20 rows as they will be exported; <strong>Count rows</strong> the number of rows.</li>
+	</ul>
+	</div>
+	<div class="doc-sub">
+	<h3 id="data-export-values">Values and formats</h3>
+	<p>Values are taken raw from the database and typed by the column: integers and decimals become numbers, <code>bit</code> / <code>tinyint(1)</code> yes/no, dates and date-times real Excel dates, everything else text – so a text column keeps its leading zeros. A number with more than 15 digits and a date before 1900 are written as text (Excel could not show them exactly). Excel formats per column: a choice by type (<code>#,##0.00</code>, <code>dd.mm.yyyy</code> …), <em>text</em> or any format code of your own; the default is by type. Formats never change the stored value. Text is never written as a formula.</p>
+	<p>Exports are streamed: rows are written to the file while they are read, so the size of a table does not matter. An Excel sheet that reaches Excel's row limit (1,048,576) continues on "<em>name</em> (2)". The query runs in a read-only transaction.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="data-export-run">Running, moving and the REST API</h3>
+	<ul>
+		<li><strong>Run</strong> in the list or on the export builds the file and downloads it; an export with parameters asks for them first. Every run is written to the Log (<em>Data export run</em>: code, format, rows per dataset, duration – never the data), and the export shows its run count and last run.</li>
+		<li><strong>Download definition (JSON)</strong> saves the export as a file; <strong>Upload definition</strong> in the list creates it on this or another installation (a taken code gets a suffix). <strong>Duplicate</strong> copies an export.</li>
+		<li><strong>REST API</strong> (scope <code>exports:run</code>; the client's service user needs the admin right <em>Data export</em>): <code>GET /v1/exports</code> lists the exports with their parameters, <code>POST /v1/exports/{code}/run</code> with <code>{"params": {"name": "value"}}</code> answers with the file itself (<code>Content-Disposition</code>, <code>X-Export-Rows</code>). See <a href="#api">REST API</a>.</li>
+	</ul>
+	</div>
+	<p class="doc-see">See also: <a href="#csv-import">Data import</a> · <a href="#sql-builder">SQL builder</a> · <a href="#admin-roles">Admin roles</a> · <a href="#api">REST API</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudataexport.php</code></li><li><code>pages/nudataexport.php</code></li><li><code>core/nuxlsxstream.php</code></li><li><code>core/nuxlsx.php</code></li><li><code>assets/js/nudataexport.js</code></li></ul></details>
+</section>

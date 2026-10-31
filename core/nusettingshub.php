@@ -16,14 +16,42 @@ final class NuSettingsHub
 	public const SECTIONS = [
 		'general'    => ['bi-sliders', 'sh_general', 'sh_general_d'],
 		'look'       => ['bi-palette', 'sh_look', 'sh_look_d'],
+		'users'      => ['bi-people', 'sh_users', 'sh_users_d'],           // review G1 (0.8.763): links to the user and access tools
 		'security'   => ['bi-shield-lock', 'sh_security', 'sh_security_d'],
 		'mail'       => ['bi-envelope', 'sh_mail', 'sh_mail_d'],
 		'data'       => ['bi-database', 'sh_data', 'sh_data_d'],
+		'logs'       => ['bi-journal-text', 'sh_logs', 'sh_logs_d'],       // review G1: logs and integrations
 		'code'       => ['bi-code-slash', 'sh_code', 'sh_code_d'],
 		'updates'    => ['bi-cloud-arrow-down', 'sh_updates', 'sh_updates_d'],
 		'forte'      => ['bi-gear-wide-connected', 'sh_forte', 'sh_forte_d'],
 		'configfile' => ['bi-file-earmark-code', 'sh_configfile', 'sh_configfile_d'],
 	];
+
+	/**
+	 * The tools of the sections users and logs (review G1): key => [icon, title, hint, url] – only what the user may open (the same
+	 * rights as the start page tiles, NuHome::visible()). They keep their own pages (lists), the section lists and searches them.
+	 */
+	public static function tools(string $section): array
+	{
+		$cat = NuHome::catalog();
+		$tile = static function (string $k) use ($cat): ?array {
+			if (!isset($cat[$k]) || !NuHome::visible($k, ['custom' => []])) return null;
+			[$route, $icon, $label, $hint] = $cat[$k];
+			$url = is_array($route) && isset($route[0]) && is_string($route[0]) ? nu_url($route[0], (array)($route[1] ?? [])) : (is_string($route) ? nu_url($route) : '');
+			return $url === '' ? null : [$icon, $label, $hint, $url];
+		};
+		$out = [];
+		if ($section === 'users') {
+			foreach (['users', 'access', 'adminroles', 'permissions', 'userfields', 'sessions'] as $k) if ($x = $tile($k)) $out[$k] = $x;
+		} elseif ($section === 'logs') {
+			if (NuAcl::can(NuAcl::FORM_LOG)) $out['log'] = ['bi-journal-text', t('nav_log'), t('sh_log_d'), nu_url('log')];
+			if (NuAdmin::can('audit', 'view')) $out['audit'] = ['bi-clock-history', t('aud_title'), t('sh_audit_d'), nu_url('audit')];
+			if (NuAcl::can(NuAcl::FORM_EMAILLOG)) $out['emaillog'] = ['bi-envelope-paper', t('mail_tab_log'), t('sh_emaillog_d'), nu_url('email', ['tab' => 'log'])];
+			if (NuAcl::can(NuAcl::FORM_DEBUG)) $out['debug'] = ['bi-bug', t('sh_debug'), t('sh_debug_d'), nu_url('debug')];
+			foreach (['apiclients', 'webhooks'] as $k) if ($x = $tile($k)) $out[$k] = $x;
+		}
+		return $out;
+	}
 
 	public static bool $open = false;
 	private static string $current = '';
@@ -49,11 +77,13 @@ final class NuSettingsHub
 			'look'       => [self::ga() || $can('homelayout') || $can('listviews') || $can('branding') ? ['look', t('sh_look'), $own('look'), 'settings', false] : null,
 				$can('branding') ? ['branding', t('brand_title'), nu_url('branding'), 'branding', true] : null,
 				$can('branding') ? ['themes', t('theme_title'), nu_url('themes'), 'themes', true] : null],
+			'users'      => self::toolPages('users'),
 			'security'   => [$can('securitycheck') ? ['securitycheck', t('secchk_title'), nu_url('securitycheck'), 'securitycheck', true] : null,
 				self::ga() ? ['ipaccess', t('ipa_title'), nu_url('ipaccess'), 'ipaccess', true] : null,
 				$can('securitycheck') ? ['pwpolicy', t('pwp_title'), nu_url('pwpolicy'), 'pwpolicy', true] : null],
 			'mail'       => [$can('email') ? ['email', t('nav_email'), nu_url('email', ['tab' => 'settings']), 'email', true] : null],
 			'data'       => [$can('audit') || $can('update') || $can('notifications') || self::ga() || $can('log') ? ['data', t('sh_data'), $own('data'), 'settings', false] : null],
+			'logs'       => self::toolPages('logs'),
 			'code'       => [$can('globalcode') ? ['globalcode', t('scode_title'), nu_url('globalcode'), 'globalcode', true] : null,
 				$can('globalcode') ? ['jquery', t('jq_title'), nu_url('jquery'), 'globalcode', true] : null],
 			'updates'    => [$can('update') ? ['updates', t('sh_updates'), $own('updates'), 'settings', false] : null,
@@ -67,6 +97,16 @@ final class NuSettingsHub
 			if ($list) $out[$s] = $list;
 		}
 		return $out;
+	}
+
+	/** The section page itself + its tools (opened on their own pages, not framed). */
+	private static function toolPages(string $section): array
+	{
+		$tools = self::tools($section);
+		if (!$tools) return [];
+		$p = [[$section, t(self::SECTIONS[$section][1]), nu_url('settings', ['s' => $section]), 'settings', false]];
+		foreach ($tools as $k => [, $label, , $url]) $p[] = ['t_' . $k, $label, $url, $k, false];
+		return $p;
 	}
 
 	/** May the user open the settings centre at all? */
@@ -114,6 +154,12 @@ final class NuSettingsHub
 		echo '<div class="nuSetFrame">' . self::nav($section, $key) . '<div class="nuSetMain">';
 	}
 
+	/** The section of the open frame ('' = overview or no frame) – for the breadcrumb of nu_page_header(). */
+	public static function current(): ?string
+	{
+		return self::$open ? self::$current : null;
+	}
+
 	public static function frameEnd(): void
 	{
 		if (!self::$open) return;
@@ -132,6 +178,12 @@ final class NuSettingsHub
 		$sec = static fn(string $s): string => t(self::SECTIONS[$s][1]);
 		$add = static function (string $s, string $title, string $desc, string $url, string $keys = '', string $value = '') use (&$out, $sec, $pages): void {
 			if (!isset($pages[$s])) return;
+			foreach ($out as &$o) {                                   // the same page twice (its entry + a detailed one, review D8): one entry, the details win
+				if ($o['u'] !== $url || $o['t'] !== $title) continue;
+				$o['d'] = $desc !== '' ? $desc : $o['d']; $o['k'] = trim($o['k'] . ' ' . $keys); $o['v'] = $value !== '' ? $value : $o['v'];
+				return;
+			}
+			unset($o);
 			$out[] = ['t' => $title, 'd' => $desc, 's' => $sec($s), 'u' => $url, 'k' => $keys, 'v' => $value];
 		};
 		$can = static fn(string $r): bool => NuAdmin::can($r, 'view');
@@ -172,6 +224,12 @@ final class NuSettingsHub
 				$add('security', t('secchk_set_' . $k), t('secchk_set_' . $k . '_tip'), nu_url('securitycheck') . '#sec_' . $k, $k, is_bool($v) ? t($v ? 'sh_on' : 'sh_off') : (string)$v);
 			}
 		}
+		// the user / access and log tools (review G1): found by their names and what they hold
+		$kw = ['users' => 'user users login password account', 'access' => 'access level rights roles forms', 'adminroles' => 'admin role rights administrator',
+			'permissions' => 'permission item permissions', 'userfields' => 'custom field user fields', 'sessions' => 'session sessions logged in online log out',
+			'log' => 'log events sign-in', 'audit' => 'audit history changes restore', 'emaillog' => 'mail e-mail sent log', 'debug' => 'debug results errors',
+			'apiclients' => 'api rest token client key', 'webhooks' => 'webhook hook http callback'];
+		foreach (['users', 'logs'] as $sx) foreach (self::tools($sx) as $k => [, $label, $hint, $url]) $add($sx, $label, $hint, $url, $k . ' ' . ($kw[$k] ?? ''));
 		// the editor pages: what they hold, for the search
 		if ($can('branding')) {
 			$add('look', t('brand_title'), t('sh_kw_branding'), nu_url('branding'), 'logo name colour color accent favicon');

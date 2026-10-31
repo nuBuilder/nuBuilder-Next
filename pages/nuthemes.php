@@ -154,19 +154,16 @@ $ro = NuAdmin::$viewOnly;
 // ------------------------------------------------------------------ editor
 if (isset($_GET['edit'])) {
 	$t = NuTheme::get((string)$_GET['edit']);
-	if (!$t || $t['builtin']) { nu_flash('warning', t('err_not_found')); nu_redirect($back); }
+	if ($t && $t['builtin']) { nu_flash('info', t('theme_builtin_dup', $t['name'])); nu_redirect($back); }   // review D3: built-in themes are copied, not edited
+	if (!$t) { nu_flash('warning', t('err_not_found')); nu_redirect($back); }
 	$_SESSION['nu_theme_draft'] = ['v' => $t['v'], 'd' => $t['d']];
 	nu_layout_start(t('theme_edit_title', $t['name']), 'home', ['settings' => 'look', 'settings_page' => 'themes']);
 	?>
 <form method="post" action="<?= h(nu_url('themes')) ?>" id="thForm" data-nu-guard data-draft-url="<?= h(nu_url('themes')) ?>" data-csrf="<?= h(nu_csrf_token()) ?>">
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?= h($t['id']) ?>"><input type="hidden" name="stay" value="0" id="thStay">
-<div class="card shadow-sm nuListCard">
-	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('theme_edit_title', $t['name'])) ?><?= NuListView::infoTip(t('theme_edit_hint')) ?></h1>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button(null, nu_url('themes')) ?>
-			<?php if (!$ro): ?><button class="btn nuBtnAct nuBtnSave" type="submit" id="thSave" data-nu-save><i class="bi bi-floppy"></i><?= h(t('save')) ?></button><?php endif; ?>
-		</div>
-	</div>
+<?= nu_page_header(t('theme_edit_title', $t['name']), ['icon' => 'bi-palette2', 'tip' => t('theme_edit_hint'), 'back' => nu_url('themes'), 'crumbs' => [[t('set_title'), nu_url('settings')], [t('theme_title'), nu_url('themes')]],
+	'buttons' => $ro ? '' : '<button class="btn nuBtnAct nuBtnSave" type="submit" id="thSave" data-nu-save><i class="bi bi-floppy"></i>' . h(t('save')) . '</button>']) ?>
+<div class="card shadow-sm">
 	<div class="card-body">
 		<div class="row g-4">
 			<div class="col-xl-6">
@@ -244,17 +241,11 @@ $swatch = static function (array $t): string {
 };
 nu_layout_start(t('theme_title'), 'home', ['settings' => 'look', 'settings_page' => 'themes']);
 ?>
-<div class="card shadow-sm nuListCard mb-3">
-	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('theme_title')) ?><?= NuListView::infoTip(t('theme_hint')) ?></h1>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
-			<?php if (!$ro): ?>
-			<form method="post" enctype="multipart/form-data" class="d-inline" id="thImportForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="import">
-				<label class="btn nuBtnAct mb-0" for="thImport"><i class="bi bi-upload"></i><?= h(t('theme_import')) ?></label>
-				<input type="file" class="d-none" id="thImport" name="file" accept=".json,application/json"></form>
-			<?php endif; ?>
-		</div>
-	</div>
+<?= nu_page_header(t('theme_title'), ['icon' => 'bi-palette2', 'tip' => t('theme_hint'),
+	'buttons' => $ro ? '' : '<form method="post" enctype="multipart/form-data" class="d-inline" id="thImportForm">' . nu_csrf_field() . '<input type="hidden" name="action" value="import">'
+		. '<label class="btn nuBtnAct mb-0" for="thImport"><i class="bi bi-upload"></i>' . h(t('theme_import')) . '</label>'
+		. '<input type="file" class="d-none" id="thImport" name="file" accept=".json,application/json"></form>']) ?>
+<div class="card shadow-sm mb-3">
 	<div class="card-body">
 		<div class="row g-3" id="thList">
 		<?php foreach ($all as $t): $u = NuTheme::usage($t['id']); ?>

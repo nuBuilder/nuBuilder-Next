@@ -222,6 +222,25 @@ final class NuSecurity
 	// ================================================================= secrets
 
 	/** Column / setting names that hold passwords, keys or tokens. */
+	/**
+	 * Web server rules for this installation (0.8.761, review D1): Apache AllowOverride + every nginx rule the .htaccess files stand for –
+	 * the same list as Help → Security check → Web server rules. Server-only library packs come from NuLibs::SLOTS ('web' => false).
+	 */
+	public static function serverRules(string $docRoot, string $base): string
+	{
+		$b = $base;
+		$packs = implode('|', array_values(array_unique(array_map(static fn($d) => (string)$d['dir'], array_filter(NuLibs::SLOTS, static fn($d) => empty($d['web']))))));
+		return "# Apache (virtual host or apache2.conf): let nuBuilder Next's .htaccess files work\n<Directory $docRoot>\n\tAllowOverride All\n</Directory>\n\n"
+			. "# nginx (server block)\n"
+			. "location ~ ^$b/(core|pages|lang|install|docs|dev|_backup|_install|_update|_libsrc|temp|custom|lib|apps)/ { deny all; }\n"
+			. "location ~ ^$b/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|cron\\.php)$ { deny all; }\n"
+			. "location ~ /NUNEXT-VERSION\\.txt$ { deny all; }\n"
+			. "location ^~ /nu_uploads/ { deny all; }\n"
+			. "location ~ ^$b/vendor/(nuconfig\\.php|packs/(nunext-libs\\.php|index\\.html|[^/]+/nunext-lib\\.json))$ { deny all; }\n"
+			. "location ~ ^$b/vendor/packs/($packs)(-[^/]*)?/ { deny all; }\n"
+			. "location ~ ^$b/third_party/(($packs)(-[^/]*)?/|[^/]+/nunext-lib\\.json$) { deny all; }";
+	}
+
 	public static function secretName(string $name): bool
 	{
 		return preg_match('/pass(word|wd)?\b|password|passwort|secret|token|api_?key|credential|_hash\b|totp/i', $name) === 1
@@ -362,6 +381,8 @@ final class NuSecurity
 		$out[] = ['Adminer', NuVendor::adminerVersion(), $adm !== '' ? dirname($adm) : '', '5.0.0', NuVendor::adminerConverted() ? 'secchk_lib_adminer_crlf' : ''];
 		$up = NuLibs::uppy();                                     // 0.8.459: file objects with target "File System" (library pack only)
 		$out[] = ['Uppy', $up !== '' ? (NuLibs::uppyVersion(NU_ROOT . '/' . $up . '/uppy.min.js') ?: '?') : '', $up !== '' ? NU_ROOT . '/' . $up : '', '', ''];
+		$ps = NuLibs::activeDir('phpspreadsheet');                // 0.8.755: Excel / OpenDocument files (library pack only)
+		$out[] = ['PhpSpreadsheet', $ps !== null ? (NuSpreadsheet::version() ?: '?') : '', $ps ?? '', '', ''];
 		foreach ($out as &$l) {
 			[$name, $ver, $path, $min, $note] = $l;
 			// own build / patched copy: NUNEXT-VERSION.txt gives the version (e.g. 2.6+git.4149143.nu1) and the state of known CVEs
@@ -453,7 +474,8 @@ final class NuSecurity
 		$add('admin2fa', nu_cfg('nuConfig2FAAdmin') ? 'ok' : 'warn', 'secchk_chk_admin2fa', nu_cfg('nuConfig2FAAdmin') ? '' : t('secchk_chk_admin2fa_off'), nu_url('configfile'));
 		$ipa = NuIpAccess::settings();   // IP access (0.8.722)
 		$add('ipaccess', $ipa['on'] ? 'ok' : 'info', 'secchk_chk_ipaccess', $ipa['on'] ? t('secchk_chk_ipaccess_on', count($ipa['levels'])) : t('secchk_chk_ipaccess_off'), nu_url('ipaccess'));
-		$add('debug', nu_cfg('nuConfigDebug') ? 'bad' : 'ok', 'secchk_chk_debug', nu_cfg('nuConfigDebug') ? t('secchk_chk_debug_on') : '');
+		$dbgOn = !empty(nu_config()['nuConfigDebug']) || !empty(nu_cfg('nuConfigDebug'));   // the file or Forte's table (0.8.766)
+		$add('debug', $dbgOn ? 'bad' : 'ok', 'secchk_chk_debug', $dbgOn ? t('secchk_chk_debug_on') : '');
 		// $nuConfigIncludeJS / CSS / PHP (0.8.443): files that are not found are left out – say which
 		if (NuIncludes::entries('js') || NuIncludes::entries('css') || NuIncludes::entries('php')) {
 			$miss = NuIncludes::missing();
@@ -529,7 +551,7 @@ final class NuSecurity
 		}
 		$hk = NuHousekeeping::last();
 		$cronOk = $hk && $hk['source'] === 'cron' && $hk['time'] > time() - 2 * 86400;
-		$add('cron', $cronOk ? 'ok' : 'info', 'secchk_chk_cron', $hk ? t('secchk_chk_cron_last', date('d.m.Y H:i', $hk['time']), $hk['source']) : t('secchk_chk_cron_never'));
+		$add('cron', $cronOk ? 'ok' : 'info', 'secchk_chk_cron', $hk ? t('secchk_chk_cron_last', date(nu_dfmt('d.m.Y H:i'), $hk['time']), $hk['source']) : t('secchk_chk_cron_never'));
 		$days = (int)self::get('log_keep_days');
 		$add('logkeep', $days > 0 ? 'ok' : 'info', 'secchk_chk_logkeep', $days > 0 ? t('secchk_chk_logkeep_days', $days) : t('secchk_chk_logkeep_forever'));
 		$bp = trim((string)nu_cfg('nuConfigBackupPath'));

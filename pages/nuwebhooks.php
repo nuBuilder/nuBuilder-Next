@@ -109,7 +109,7 @@ if ($call) {
 	$pretty = json_decode($body, true);
 	if (is_array($pretty)) $body = (string)json_encode($pretty, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	$stCls = ['sent' => 'text-bg-success', 'failed' => 'text-bg-danger', 'pending' => 'text-bg-warning'];
-	$dt = static fn($v) => $v ? date('d.m.Y H:i:s', (int)strtotime((string)$v)) : '';
+	$dt = static fn($v) => $v ? date(nu_dfmt('d.m.Y H:i:s'), (int)strtotime((string)$v)) : '';
 	nu_layout_start(t('wh_title'), 'home', ['container' => 'container']);
 	echo $crumbs([[t('wh_calls'), nu_url('webhooks', ['tab' => 'calls'])], [t('wh_call_title')]]); ?>
 	<div class="nuTitleBar mb-3">

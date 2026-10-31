@@ -87,7 +87,7 @@ $tabs = '<ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link' 
 	. ($canManage ? '<li class="nav-item"><a class="nav-link' . ($tab === 'manage' ? ' active" aria-current="page' : '') . '" href="' . h(nu_url('notifications', ['tab' => 'manage'])) . '"><i class="bi bi-gear me-1"></i>' . h(t('ntf_manage')) . '</a></li>' : '')
 	. '</ul>';
 $levelBadge = static fn(string $l) => '<i class="bi ' . (NuNotify::LEVELS[$l] ?? 'bi-info-circle') . ' nuBellIcon nuBellLv-' . h($l) . '" title="' . h(t('ntf_lv_' . $l)) . '"></i>';
-$dt = static fn(?string $v) => (string)$v !== '' ? date('d.m.Y H:i', (int)strtotime((string)$v)) : '';
+$dt = static fn(?string $v) => (string)$v !== '' ? date(nu_dfmt('d.m.Y H:i'), (int)strtotime((string)$v)) : '';
 $stateBadge = static function (string $s): string {
 	$cls = ['draft' => 'bg-secondary-subtle text-secondary-emphasis', 'scheduled' => 'bg-info-subtle text-info-emphasis', 'published' => 'bg-success-subtle text-success-emphasis',
 		'expired' => 'bg-light text-body-secondary border', 'withdrawn' => 'bg-warning-subtle text-warning-emphasis'][$s] ?? 'bg-secondary';

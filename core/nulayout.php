@@ -218,13 +218,6 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<li><hr class="dropdown-divider"></li>
 						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
-						<?php if (NuHash::devMode()): // TEMPORARY (0.8.634): header layouts of the mockup – assets/js/nuheadervariant.js ?>
-							<li><hr class="dropdown-divider"></li>
-							<li><h6 class="dropdown-header" data-nu-hv-labels data-more="<?= h(t('hlt_more')) ?>"><i class="bi bi-layout-text-window me-1"></i><?= h(t('hlt_title')) ?> <span class="badge text-bg-secondary">Dev</span></h6></li>
-							<?php foreach (['now', 'a', 'b', 'c', 'd', 'e'] as $hv): ?>
-								<li><button class="dropdown-item small" type="button" data-nu-hv="<?= $hv ?>"><?= h(t('hlt_' . $hv)) ?></button></li>
-							<?php endforeach; ?>
-						<?php endif; ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('password')) ?>"><i class="bi bi-key me-2"></i><?= h(t('nav_change_password')) ?></a></li>
 						<?php endif; ?>
@@ -397,7 +390,6 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
 <?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
-<?php if (NuHash::devMode()): // TEMPORARY (0.8.634): header layouts to try ?><script src="<?= nu_asset('assets/js/nuheadervariant.js') ?>"></script><?php endif; ?>
 <?= $extraBody ?>
 </body>
 </html>
@@ -619,6 +611,52 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
 	$route ??= (string)($_GET['p'] ?? '');
 	$url ??= nu_url($parent[$route] ?? 'home');
 	return '<a class="btn nuBtnAct nuBackBtn' . ($class !== '' ? ' ' . $class : '') . '" href="' . h($url) . '"><i class="bi bi-arrow-left me-1"></i>' . h(t('back')) . '</a>';
+}
+
+/**
+ * The header of an own page (review E1, 0.8.763) – one pattern for every page that is not a list card: breadcrumb · icon + h1
+ * (+ (i) tip) · subtitle · the buttons row (Back first). Options: icon (bi-…), sub (text), sub_html, tip (text of an (i) icon),
+ * buttons (HTML after Back), back (null = nu_back_button(), false = none, string = its URL), crumbs ([[label, url], …] between
+ * Home and the page – default: Settings / section inside the settings centre, else the Back target's title), id (of the bar),
+ * h1_id, class (more classes of the bar). List pages keep NuListView's card with the title bar inside.
+ */
+function nu_page_header(string $title, array $o = []): string
+{
+	static $label = ['forms' => 'nav_forms', 'users' => 'nav_users', 'reports' => 'rpt_title_list', 'apiclients' => 'api_title', 'dashboards' => 'dash_title',
+		'settings' => 'set_title', 'update' => 'upd_title', 'email' => 'nav_email', 'themes' => 'theme_title', 'webhooks' => 'wh_title', 'dataexport' => 'dxp_title'];
+	$crumbs = $o['crumbs'] ?? null;
+	if ($crumbs === null) {
+		$crumbs = [];
+		$sec = NuSettingsHub::current();
+		if ($sec !== null) {
+			$crumbs[] = [t('set_title'), nu_url('settings')];
+			if ($sec !== '' && isset(NuSettingsHub::SECTIONS[$sec])) {
+				$pages = NuSettingsHub::pages()[$sec] ?? [];
+				$first = $pages[0] ?? null;
+				$secTitle = t(NuSettingsHub::SECTIONS[$sec][1]);
+				if ($first && $first[1] !== $title && $secTitle !== $title) $crumbs[] = [$secTitle, (string)$first[2]];
+			}
+		} elseif (isset($o['parent'], $label[$o['parent']])) {
+			$crumbs[] = [t($label[$o['parent']]), nu_url($o['parent'])];
+		}
+	}
+	$bc = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li class="breadcrumb-item"><a href="' . h(nu_url('home')) . '">' . h(t('nav_home')) . '</a></li>';
+	foreach ($crumbs as [$l, $u]) $bc .= '<li class="breadcrumb-item"><a href="' . h((string)$u) . '">' . h((string)$l) . '</a></li>';
+	$bc .= '<li class="breadcrumb-item active" aria-current="page">' . h($title) . '</li></ol></nav>';
+	$back = array_key_exists('back', $o) ? $o['back'] : null;
+	if ($back === null && ($secB = NuSettingsHub::current()) !== null) {      // inside the settings centre: back to the section (or the overview)
+		$first = $secB !== '' ? ((NuSettingsHub::pages()[$secB] ?? [])[0] ?? null) : null;
+		$back = $first && (string)$first[1] !== $title && t(NuSettingsHub::SECTIONS[$secB][1]) !== $title ? (string)$first[2] : nu_url('settings');
+		if ($secB === '' && ($_GET['p'] ?? '') === 'settings' && ($_GET['s'] ?? '') === '') $back = null;
+	}
+	$btn = $back === false ? '' : (is_string($back) ? nu_back_button(null, $back) : nu_back_button());
+	$tip = isset($o['tip']) && $o['tip'] !== '' ? NuListView::infoTip((string)$o['tip']) : '';
+	$sub = isset($o['sub_html']) ? (string)$o['sub_html'] : (isset($o['sub']) && $o['sub'] !== '' ? h((string)$o['sub']) : '');
+	return $bc . '<div class="nuTitleBar nuPageHead mb-3' . (isset($o['class']) ? ' ' . h((string)$o['class']) : '') . '"' . (isset($o['id']) ? ' id="' . h((string)$o['id']) . '"' : '') . '>'
+		. '<h1 class="h4 mb-0 d-inline-flex align-items-center gap-1"' . (isset($o['h1_id']) ? ' id="' . h((string)$o['h1_id']) . '"' : '') . '>'
+		. (!empty($o['icon']) ? '<i class="bi ' . h((string)$o['icon']) . ' me-1" aria-hidden="true"></i>' : '') . h($title) . $tip . '</h1>'
+		. ($sub !== '' ? '<div class="nuTitleSub text-body-secondary small">' . $sub . '</div>' : '')
+		. '<div class="d-flex flex-wrap gap-2">' . $btn . (string)($o['buttons'] ?? '') . '</div></div>';
 }
 
 /** $attrs (0.8.651): more attributes of the th, already escaped (e.g. ' data-nu-col="name"' for the column widths of NuListView) */

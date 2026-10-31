@@ -6,7 +6,7 @@
 	<h3 id="routing-index">index.php and the route table</h3>
 	<p>Every page is <code>index.php?p=&lt;route&gt;</code>; without <code>p</code> it is the start page (<code>home</code>). <code>index.php</code> holds a table of all routes; each route has options:</p>
 	<ul>
-		<li><code>public</code> – no login needed (login, logout, two-step login, forgot / reset password, language, branding images, report files of the REST API).</li>
+		<li><code>public</code> – no login needed (login, logout, two-step login, forgot / reset password, language, branding images and theme styles (<code>brand</code>), the files of Global JS / CSS (<code>globalcodefile</code>), the database set-up page (<code>dbsetup</code>), report files of the REST API).</li>
 		<li><code>json</code> – a background endpoint (e.g. <code>formapi</code>, <code>builderapi</code>, <code>notifyapi</code>, <code>dashboardapi</code>): without a session it answers <code>401</code> with JSON instead of redirecting to the login page.</li>
 	</ul>
 	<p>An unknown route answers 404. After the checks below the file <code>pages/nu&lt;route&gt;.php</code> runs – e.g. <code>?p=form</code> → <code>pages/nuform.php</code>.</p>
@@ -18,10 +18,12 @@
 		<li><code>nu_boot()</code> – configuration, security headers, session (see <a href="#startup">Startup</a>).</li>
 		<li>nuBuilder Forte's auto-login link (<code>index.php?u=…</code>) is handed to <code>pages/nuautologin.php</code>.</li>
 		<li>Every POST must carry the page's CSRF token (form field <code>_csrf</code> or header <code>X-CSRF-Token</code>).</li>
-		<li>Routes that are not public need a signed-in user; otherwise the address is remembered and the login page opens (JSON routes: <code>401</code>).</li>
+		<li>Routes that are not public need a signed-in user; otherwise the address is remembered and the login page opens (JSON routes: <code>401</code>). Reading the session also checks <a href="#ip-access">IP access</a>: a session from an address its access levels do not allow is ended.</li>
 		<li>During an update only the globeadmin (and admin roles with the right <em>Update</em>) may work; everybody else gets <code>503</code>.</li>
-		<li>Demo users may look but not write; a globeadmin acting as a user in <em>view only</em> mode cannot post.</li>
-		<li>A user who must change his password is sent to <code>?p=password</code>; the globeadmin is sent to the setup wizard once while it is pending.</li>
+		<li>Demo users may look but not write.</li>
+		<li>Database not ready (empty, tables missing, nuBuilder Forte older than 4.9 – <code>NuDbState</code>): the globeadmin is sent to <code>?p=dbsetup</code>, everybody else gets <code>503</code>.</li>
+		<li>A globeadmin acting as a user in <em>view only</em> mode cannot post.</li>
+		<li>A user who must change their password – also because the <a href="#password-policy">password policy</a> found it expired or leaked at sign-in – is sent to <code>?p=password</code>; the globeadmin is sent to the setup wizard once while it is pending.</li>
 	</ol>
 	<p>Background requests that should not count as activity (the bell, the "also open" ping, a page's poll with <code>?passive=1</code>) are marked passive, so they do not keep an idle session alive.</p>
 </div>

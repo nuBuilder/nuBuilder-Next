@@ -14,9 +14,15 @@ if (!NuImport::canUsers()) NuAdmin::require('import', 'change');
 // template of the user import (0.8.330): the column titles as CSV – fill in with Excel, save as CSV, upload in step 1
 if (!nu_is_post() && ($_GET['action'] ?? '') === 'template' && ($_GET['target'] ?? '') === 'users') {
 	if (!NuImport::canUsers()) NuAcl::require(NuAcl::FORM_USER, 'add');
+	header('Cache-Control: no-store');
+	if (($zip = NuImport::userTemplateZip()) !== null) {            // 0.8.752: CSV + readme.txt
+		header('Content-Type: application/zip');
+		header('Content-Disposition: attachment; filename="users-import-template.zip"');
+		header('Content-Length: ' . strlen($zip));
+		exit($zip);
+	}
 	header('Content-Type: text/csv; charset=utf-8');
 	header('Content-Disposition: attachment; filename="users-import-template.csv"');
-	header('Cache-Control: no-store');
 	exit(NuImport::userTemplate());
 }
 if (NuImpersonate::active()) { nu_flash('warning', t('imp_err_route')); nu_redirect(nu_url('home')); }
@@ -34,7 +40,11 @@ if (nu_is_post()) {
 				$info = NuImport::upload($_FILES['file'] ?? []);
 				$read = NuImport::readOptions(['delimiter' => $info['delimiter'], 'header' => $_POST['header'] ?? '1', 'quote' => $_POST['quote'] ?? '"']);
 				$out(['ok' => true, 'file' => ['name' => $info['name'], 'size' => $info['size'], 'encoding' => $info['encoding']],
-					'delimiter' => $info['delimiter'] === "\t" ? 'tab' : $info['delimiter']] + NuImport::preview($read));
+					'delimiter' => $info['delimiter'] === "\t" ? 'tab' : $info['delimiter'], 'sheets' => $info['sheets'] ?? [], 'sheet' => $info['sheet'] ?? 0] + NuImport::preview($read));
+			case 'sheet':                                                 // another sheet of the uploaded spreadsheet (0.8.755)
+				$info = NuImport::chooseSheet((int)nu_post('sheet'));
+				$read = NuImport::readOptions(['delimiter' => ',', 'header' => $_POST['header'] ?? '1', 'quote' => '"']);
+				$out(['ok' => true, 'sheets' => $info['sheets'], 'sheet' => $info['sheet'], 'delimiter' => ','] + NuImport::preview($read));
 			case 'preview':
 				$out(['ok' => true] + NuImport::preview($read));
 			case 'columns':
@@ -65,7 +75,7 @@ if (nu_is_post()) {
 		$out(['ok' => false, 'error' => t('err_not_found')]);
 	} catch (Throwable $e) {
 		if (!$e instanceof RuntimeException) error_log('nuBuilder Next CSV import: ' . $e->getMessage());
-		$out(['ok' => false, 'error' => $e instanceof RuntimeException ? $e->getMessage() : t('imp_err_general') . (nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : '')]);
+		$out(['ok' => false, 'error' => $e instanceof RuntimeException ? $e->getMessage() : t('imp_err_general') . (nu_debug() ? ' ' . $e->getMessage() : '')]);
 	}
 }
 
@@ -93,7 +103,7 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 	 data-target="<?= h($target) ?>" data-max-mb="<?= NuImport::maxBytes() >> 20 ?>" data-lang="<?= h(nu_lang()) ?>">
 	<?= nu_csrf_field() ?>
 	<div class="nuTitleBar mb-3">
-		<h1 class="h4 mb-0"><i class="bi bi-filetype-csv me-2"></i><?= h(t('imp_title')) ?></h1>
+		<h1 class="h4 mb-0"><i class="bi bi-file-earmark-arrow-up me-2"></i><?= h(t('imp_title')) ?></h1>
 		<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<ol class="impSteps list-unstyled d-flex gap-2 mb-0 small ms-auto" aria-label="<?= h(t('imp_steps')) ?>">
 			<li data-step="1" class="active"><span>1</span><?= h(t('imp_step_file')) ?></li>
@@ -108,16 +118,21 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 		<div class="card shadow-sm mb-3"><div class="card-body">
 			<label class="impDrop" id="impDrop" for="impFile">
 				<i class="bi bi-cloud-arrow-up fs-2 d-block mb-1"></i>
-				<span class="fw-semibold"><?= h(t('imp_drop')) ?></span>
-				<span class="small text-body-secondary d-block"><?= h(t('imp_drop_hint', NuImport::maxBytes() >> 20)) ?></span>
-				<input type="file" id="impFile" accept=".csv,.txt,.tsv,.tab,text/csv,text/plain" class="visually-hidden">
+				<?php $pssOk = NuSpreadsheet::available(); ?>
+				<span class="fw-semibold"><?= h(t($pssOk ? 'imp_drop_xlsx' : 'imp_drop')) ?></span>
+				<span class="small text-body-secondary d-block"><?= h($pssOk ? t('imp_drop_hint_xlsx', NuImport::maxBytes() >> 20, min(NuImport::maxBytes() >> 20, NuSpreadsheet::MAX_MB)) : t('imp_drop_hint', NuImport::maxBytes() >> 20)) ?></span>
+				<input type="file" id="impFile" accept=".csv,.txt,.tsv,.tab,text/csv,text/plain<?= $pssOk ? ',.xlsx,.xls,.ods' : '' ?>" class="visually-hidden">
 			</label>
+			<?php if (!$pssOk): // Excel files need the PhpSpreadsheet library pack (0.8.755) ?>
+				<div class="small text-body-secondary mt-2" id="impXlsxHint"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i><?= h(NuSpreadsheet::problem() ?: t('pss_missing')) ?>
+					<?php if (NuAdmin::can('update')): ?> <a href="<?= h(nu_url('update', ['tab' => 'libraries'])) ?>#libraries"><?= h(t('pss_install_link')) ?></a><?php endif; ?></div>
+			<?php endif; ?>
 			<div class="d-flex flex-wrap gap-2 align-items-center mt-2">
 				<label class="btn btn-sm btn-outline-secondary mb-0" for="impConfigFile"><i class="bi bi-folder2-open me-1"></i><?= h(t('imp_config_load')) ?></label>
 				<input type="file" id="impConfigFile" accept=".json,application/json" class="visually-hidden">
 				<?php if ($target === NuImport::USERS): ?>
 					<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('import', ['target' => 'users', 'action' => 'template'])) ?>" download><i class="bi bi-file-earmark-arrow-down me-1"></i><?= h(t('imp_tpl_download')) ?></a>
-					<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('imp_tpl_tip')) ?>" title="<?= h(t('imp_tpl_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+					<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('imp_tpl_zip_tip')) ?>" title="<?= h(t('imp_tpl_zip_tip')) ?>"><i class="bi bi-info-circle"></i></span>
 				<?php endif; ?>
 				<span class="small text-body-secondary" id="impConfigInfo"><?= h(t('imp_config_hint')) ?></span>
 			</div>
@@ -129,7 +144,11 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 			</div>
 			<div class="card-body">
 				<div class="row g-2 mb-3">
-					<div class="col-sm-6 col-lg-3">
+					<div class="col-sm-6 col-lg-6 d-none" id="impSheetWrap"><!-- spreadsheets: the sheet instead of separator and quote (0.8.755) -->
+						<label class="form-label small mb-1" for="impSheet"><?= h(t('imp_sheet')) ?></label>
+						<select class="form-select" id="impSheet"></select>
+					</div>
+					<div class="col-sm-6 col-lg-3 impCsvOnly">
 						<label class="form-label small mb-1" for="impDelimiter"><?= h(t('imp_delimiter')) ?></label>
 						<div class="input-group">
 							<select class="form-select" id="impDelimiter">
@@ -140,7 +159,7 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 							<input type="text" class="form-control text-center impCustomDelim d-none" id="impDelimiterCustom" maxlength="1" aria-label="<?= h(t('imp_delim_custom')) ?>">
 						</div>
 					</div>
-					<div class="col-sm-6 col-lg-3">
+					<div class="col-sm-6 col-lg-3 impCsvOnly">
 						<label class="form-label small mb-1" for="impQuote"><?= h(t('imp_quote')) ?></label>
 						<select class="form-select" id="impQuote"><option value='"'>" (<?= h(t('imp_quote_double')) ?>)</option><option value="'">' (<?= h(t('imp_quote_single')) ?>)</option></select>
 					</div>

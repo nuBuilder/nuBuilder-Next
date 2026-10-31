@@ -147,7 +147,7 @@ nu_layout_start(t('todo_title'), 'home', ['container' => 'nuContainer']);
 </ol></nav>
 <div class="nuTitleBar mb-3">
 	<h1 class="h3 mb-0"><i class="bi bi-list-check me-2"></i><?= h(t('todo_title')) ?></h1>
-	<?php if ($md !== ''): ?><div class="nuTitleSub text-body-secondary small"><?= h(t('todo_counts', $open, $done)) ?> · <code>TODO.md</code> · <?= h(date('d.m.Y H:i', (int)filemtime($file))) ?></div><?php endif; ?>
+	<?php if ($md !== ''): ?><div class="nuTitleSub text-body-secondary small"><?= h(t('todo_counts', $open, $done)) ?> · <code>TODO.md</code> · <?= h(date(nu_dfmt('d.m.Y H:i'), (int)filemtime($file))) ?></div><?php endif; ?>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<form method="post" action="<?= h(nu_url('todo')) ?>" enctype="multipart/form-data" id="nuTodoUpForm" data-max="<?= NuUpdate::uploadLimit() ?>" data-big="<?= h(t('todo_up_big', NuUpdate::uploadLimitText())) ?>">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="upload">

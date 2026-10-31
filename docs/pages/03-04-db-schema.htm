@@ -44,7 +44,7 @@
 <div class="doc-sub">
 	<h3 id="db-schema-ids">Keys and conventions</h3>
 	<ul>
-		<li>Every system table has a text primary key <code>&lt;table&gt;_id</code> (e.g. <code>zzzzsys_form_id</code>); nuBuilder Forte's ids are 25-character strings, made with <code>nu_id()</code> in nuBuilder Next. Ids of nuBuilder Forte's own records start with <code>nu</code>.</li>
+		<li>Every system table has a text primary key <code>&lt;table&gt;_id</code> (e.g. <code>zzzzsys_form_id</code>); the key columns are <code>VARCHAR(25)</code> text (<code>nu_id()</code> makes nuBuilder Forte-style ids of 15 characters). Ids of nuBuilder Forte's own records start with <code>nu</code>.</li>
 		<li>Column names carry a short prefix of their table: <code>sfo_</code> form, <code>syt_</code> tab, <code>sob_</code> object, <code>sbr_</code> browse column, <code>sph_</code> PHP, <code>sev_</code> event, <code>sus_</code> user, <code>sal_</code> access level, <code>slf_</code> access form.</li>
 		<li>A form hook is a <code>zzzzsys_php</code> row whose id is <code>&lt;form id&gt;_&lt;hook&gt;</code>; that is why sample form ids contain no underscore.</li>
 		<li>nuBuilder Next stores its own options of a nuBuilder Forte row as JSON under the key <code>nunext</code> in nuBuilder Forte's JSON columns (e.g. a form's layout, an object's grid position or a format's options), so nuBuilder Forte ignores them.</li>
@@ -52,7 +52,7 @@
 </div>
 <div class="doc-sub">
 	<h3 id="db-schema-own">How nuBuilder Next's tables are created</h3>
-	<p>nuBuilder Next's tables are defined in code (<code>core/nuinfra.php</code>) and created on first use on MySQL / MariaDB and SQL Server; missing columns of existing own tables are added by updates. nuBuilder Forte never reads them, its update keeps them, and its app cloner and backups treat them as system tables. <em>Admin tools → Self-test</em> and the update page compare the actual structure with <code>install/schema_expected.json</code>.</p>
+	<p>nuBuilder Next's tables are defined in code (<code>core/nuinfra.php</code>) and created by the installer or the globeadmin's sign-in on MySQL / MariaDB and SQL Server; missing columns of existing own tables are added by updates. nuBuilder Forte never reads them, its update keeps them, and its app cloner and backups treat them as system tables. The <a href="#selftest">Self-test</a> (developer mode) and the update page compare the actual structure with <code>install/schema_expected.json</code>.</p>
 	<p>Every table with its purpose: <a href="#table-ref">Database table reference</a>.</p>
 </div>
 	<p class="doc-see">See also: <a href="#table-ref">Database table reference</a> · <a href="#databases">Databases: MySQL, MariaDB and SQL Server</a></p>

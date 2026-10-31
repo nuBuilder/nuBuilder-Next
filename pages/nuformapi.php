@@ -204,5 +204,5 @@ try {
 	nu_api_error('Unknown action');
 } catch (Throwable $e) {
 	error_log('nuBuilder Next api: ' . $e->getMessage());
-	nu_api_error(NuAuth::user()['globeadmin'] || nu_cfg('nuConfigDebug') ? $e->getMessage() : t('err_unexpected'), 500);
+	nu_api_error(NuAuth::user()['globeadmin'] || nu_debug() ? $e->getMessage() : t('err_unexpected'), 500);
 }

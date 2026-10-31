@@ -311,7 +311,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				<?php foreach ($history as $hst): $d = json_decode((string)$hst['details'], true) ?: []; ?>
 					<div class="border-bottom py-2">
 						<div class="d-flex flex-wrap gap-2 align-items-baseline">
-							<span class="small fw-semibold"><?= h(date('d.m.Y H:i:s', strtotime((string)$hst['log_time']))) ?></span>
+							<span class="small fw-semibold"><?= h(date(nu_dfmt('d.m.Y H:i:s'), strtotime((string)$hst['log_time']))) ?></span>
 							<span class="small"><?= h($hst['login']) ?></span>
 							<span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h(($l = t('ev_' . $hst['event'])) === 'ev_' . $hst['event'] ? $hst['event'] : $l) ?></span>
 							<?php if (isset($d['clone_of'])): ?><span class="small text-body-secondary"><?= h(t('proc_history_clone', $d['clone_of'])) ?></span><?php endif; ?>

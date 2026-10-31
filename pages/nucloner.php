@@ -82,7 +82,7 @@ if ($action === 'run') {
 		if (!$result['sql']) $in['code'] = '';   // the next clone gets a new suggestion
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next cloner: ' . $e->getMessage());
-		$error = $e instanceof RuntimeException ? $e->getMessage() : t('cl_err_failed') . (nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : '');
+		$error = $e instanceof RuntimeException ? $e->getMessage() : t('cl_err_failed') . (nu_debug() ? ' ' . $e->getMessage() : '');
 	}
 }
 
@@ -171,7 +171,7 @@ endif; ?>
 		<?php foreach ($result['warnings'] as $w): ?><div class="small text-warning-emphasis"><i class="bi bi-exclamation-triangle me-1"></i><?= h($w) ?></div><?php endforeach; ?>
 		<div class="d-flex flex-wrap gap-2 mt-2">
 			<a class="btn btn-sm btn-success" href="<?= h(nu_url('form', ['f' => $result['form_id']])) ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('cl_open')) ?></a>
-			<a class="btn btn-sm btn-outline-success" href="<?= h(nu_url('builder', ['f' => $result['form_id']])) ?>"><i class="bi bi-tools me-1"></i><?= h(t('builder_title')) ?></a>
+			<a class="btn btn-sm btn-outline-success" href="<?= h(nu_url('builder', ['f' => $result['form_id']])) ?>"><i class="bi bi-tools me-1"></i><?= h(t('ds_mode')) ?></a>
 		</div>
 	</div>
 <?php endif; ?>

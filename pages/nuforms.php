@@ -14,7 +14,8 @@ $buttons = $designer ? '<a class="btn nuAddBtn" title="' . h(t('builder_new_form
 $tools = array_filter([
 	[isset(nu_forms()['nucodesnippet']) && NuAcl::can('nucodesnippet'), nu_url('form', ['f' => 'nucodesnippet']), 'bi-file-earmark-code', t('nav_snippets')],
 	[$ga, nu_url('cloner'), 'bi-files', t('cl_title')],
-	[$ga, nu_url('import'), 'bi-filetype-csv', t('imp_title')],
+	[$ga, nu_url('import'), 'bi-file-earmark-arrow-up', t('imp_title')],
+	[NuDataExport::can(), nu_url('dataexport'), 'bi-file-earmark-arrow-down', t('dxp_title')],
 	[NuAcl::can(NuAcl::FORM_PROMPT), nu_url('prompts'), 'bi-stars', t('pg_title')],
 	[NuAcl::can(NuAcl::FORM_PROCEDURE), nu_url('procedures'), 'bi-filetype-php', t('proc_title')],
 	[NuAcl::can(NuAcl::FORM_REPORT), nu_url('reports'), 'bi-file-earmark-richtext', t('rpt_title_list')],

@@ -14,11 +14,11 @@
 	<div class="doc-sub" id="webhooks-call"><h3 id="webhooks-call-h">What is sent</h3>
 	<p>A <code>POST</code> with a JSON body and the headers <code>X-NuNext-Event</code> (insert / update / delete), <code>X-NuNext-Delivery</code> (the call's id), <code>X-NuNext-Timestamp</code> and <code>X-NuNext-Signature</code>. The standard body:</p>
 	<pre><code>{"event": "record.updated", "webhook": "Orders to n8n", "delivery": "…", "time": "2026-10-30T09:15:00+01:00", "source": "form",
- "form": {"id": "…", "code": "sampleorder", "table": "sample_order"}, "record_id": "…",
+ "form": {"id": "…", "code": "sample_order", "table": "sample_order"}, "record_id": "…",
  "user": {"id": "…", "login": "anna"},
  "data": {"ord_number": "1042", "ord_status": "paid", …},
  "changed": {"ord_status": {"old": "open", "new": "paid"}}}</code></pre>
-	<p><code>data</code> is the record as stored after the save (before it, for a delete); <code>changed</code> (only for <em>Changed</em>) lists the columns whose value changed. Sub-form rows are not sent. <code>source</code> is <code>form</code>, <code>import</code> (CSV import into the form's table) or <code>test</code>.</p>
+	<p><code>data</code> is the record as stored after the save (before it, for a delete); <code>changed</code> (only for <em>Changed</em>) lists the columns whose value changed. Sub-form rows are not sent. <code>source</code> is <code>form</code>, <code>import</code> (data import into the form's table) or <code>test</code>.</p>
 	<p><strong>Body template</strong>, e.g. for a Teams or Slack channel: <code>{"text": "#FORM_CODE#: #ord_number# – #EVENT# by #USER#"}</code>. <code>#&lt;column&gt;#</code> and <code>#EVENT#</code>, <code>#FORM_ID#</code>, <code>#FORM_CODE#</code>, <code>#TABLE#</code>, <code>#RECORD_ID#</code>, <code>#USER#</code>, <code>#TIME#</code>, <code>#CHANGED#</code> (one line per changed column) are replaced – escaped for JSON, so they go inside quotes; <code>#PAYLOAD#</code> inserts the whole standard JSON. The template must give valid JSON, otherwise it is not saved.</p>
 	<p><strong>Checking the signature</strong> on the receiver: <code>X-NuNext-Signature</code> = <code>sha256=</code> + HMAC-SHA256 with the secret over <code>&lt;timestamp&gt;.&lt;body&gt;</code> (the raw body). Refuse calls with a wrong signature or an old timestamp.</p>
 	<pre><code>$expected = 'sha256=' . hash_hmac('sha256', $_SERVER['HTTP_X_NUNEXT_TIMESTAMP'] . '.' . file_get_contents('php://input'), $secret);
@@ -41,6 +41,6 @@ if (!hash_equals($expected, $_SERVER['HTTP_X_NUNEXT_SIGNATURE'] ?? '') || abs(ti
 	<li>Demo visitors never fire webhooks.</li>
 	</ul>
 	</div>
-	<p class="doc-see">See also: <a href="#api">REST API</a> · <a href="#csv-import">CSV import</a> · <a href="#admin-roles">Admin roles</a></p>
+	<p class="doc-see">See also: <a href="#api">REST API</a> · <a href="#csv-import">Data import</a> · <a href="#admin-roles">Admin roles</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuwebhook.php</code></li><li><code>pages/nuwebhooks.php</code></li><li><code>core/form/nurecord.php</code></li><li><code>core/nuimport.php</code></li></ul></details>
 </section>

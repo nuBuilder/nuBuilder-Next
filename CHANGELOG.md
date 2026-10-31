@@ -3,6 +3,206 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.767 – Release gate
+- Release gate: smoke, every end-to-end test and the cross-test against nuBuilder Forte 4.9 passed; documentation, README, TODO.md and the
+  development notes checked first (review of 31 Oct 2026 done in 0.8.761–0.8.766: bugs, speed, accessibility, documentation, page headers
+  and Save, empty lists, delete dialogue, settings sections, phones, design mode, compression, self-test list).
+
+## 0.8.766 – Self-test list without temporary table, error details
+- Self-test page: "An unexpected error occurred" on some servers – the results list used a temporary table, which fails where the
+  database user may not create temporary tables (or the server refuses them, e.g. MySQL with GTID consistency / primary keys required).
+  The list now reads the session's results as a derived table (SELECT … UNION ALL with parameters, NuSelfTest::source()) – nothing is
+  created in the database; the empty list before the first run works with every view and filter.
+- Error details: $nuConfigDebug = true in nuconfig.php now shows them even when $nuConfigSettingsFromDB lets nuBuilder Forte's settings
+  table override the file (before, the table's false won and the page said "Set $nuConfigDebug = true"); the globeadmin in developer mode
+  sees them too (nu_debug(), used everywhere instead of nu_cfg('nuConfigDebug')). The hint names both places; the Security check counts
+  either as "debug on".
+- e2e selftest_page: every view before a run.
+
+## 0.8.765 – Design mode redo and messages, column picker, compression, review part 5
+- Speed (review B2 / B3): column filters of form lists with more than 15 values are searchable (Tom Select); when the list stops at 300
+  values it says so, and a chosen value beyond them stays selected. CSS / JavaScript / SVG / JSON go out gzip-compressed (mod_deflate
+  rules in assets/.htaccess and vendor/bundled/.htaccess, the nginx gzip line in the help) – the pages load about a fifth of the bytes;
+  form pages no longer load the code-editor toolbar (52 KB) up front – it comes with CodeMirror when a code editor opens (design mode
+  loads it as before).
+- Design mode (H1): messages of the form's own JavaScript (toasts, nuMessage) no longer cover the panel – the bar collects them behind a
+  button with their number (and explains Safe mode).
+- Design mode (H2): Redo (button next to Undo, Ctrl+Y / Ctrl+Shift+Z; the draft keeps a redo list – new column redo_list, NuSchema 24);
+  Code / History take the focus, so Esc closes them, and the focus returns to the button; a double-click on an object puts the cursor
+  into its label in the panel; the icons of the bar and the icon bar name themselves after 300 ms (tooltips instead of the slow title).
+- Design mode (H3): "+" of the list design first asks which column – the table's columns not shown yet, or an expression – nothing is
+  added (and no draft started) before a choice; the column menu shows the column's title (the id stays to copy); formats in the panel
+  read "Date / time: dd.mm.yyyy" instead of "D|dd.mm.yyyy", sorted by type.
+- Start page (I1): the warning about an existing nuBuilder Forte database can be hidden by the globeadmin – until the next update.
+- Removed (J): the temporary header layout switcher of developer mode (assets/js/nuheadervariant.js, its CSS, texts and test).
+- Docs: design mode, start page, web server rules; e2e review_765, design_list (column picker).
+
+## 0.8.764 – Phones: stacked forms, list cards, embedded lists, admin role rights
+- Phones (review F1): forms with fixed positions (nuBuilder Forte's pixel layout) no longer cut fields off below 576 px – every object
+  gets its label above it and the full width, in the order of the positions (top, then left); content boxes become section titles,
+  inputs, lookups and buttons get touch height (38 / 40 px). Form code keeps the fixed layout with nuNextPhoneLayout(false) in nuOnLoad.
+  Wider screens and design mode are unchanged.
+- Phones (F2): form browse lists show each row as a card (first column as title, the others as "Title: value"); dashboard table widgets
+  the same.
+- Embedded lists (F3): a form shown in a run object of another form gets a compact header, keeps its column filters folded behind the
+  funnel until one is set, and – on phones and in automatic / grid layouts – grows to its rows (before: only "Total: 8 records" showed).
+- Admin roles on phones (F4): each right is a row with its name and None · View · Change as buttons (before: the radios were off-screen).
+- Docs: Phones page, JavaScript reference nuNextPhoneLayout; e2e review_764.
+
+## 0.8.763 – Page headers, Save placement, empty lists, delete dialogue, settings sections
+- One page header (review E1): nu_page_header() draws breadcrumb, icon + title, subtitle and the buttons row (Back first) the same way on
+  every own page that is not a list – now used by the settings sections, Security check, IP access, password policy, jQuery, Global
+  code, Branding, Themes, nuBuilder Forte's settings, E-mail, System status, Sample data, Update and the dashboard / widget records.
+  Inside the settings centre the breadcrumb is Home / Settings / section and Back leads to the section.
+- Save in the title bar (E2): the password policy and jQuery pages save from the title bar instead of a button below the content; Data &
+  logs has one form with one Save for audit trail, notifications and backups (three Save buttons before); the Security check is split into
+  the tabs Checks and Security settings – the switches no longer sit far below the report, Save shows with the settings, links to a setting
+  open its tab.
+- Empty lists (E3): the system lists explain what they are for and offer the first record (custom user fields, data exports, webhooks, API
+  clients, dashboards, admin roles, notifications, prompts) or say what fills them (audit trail, e-mail log, webhook calls, self-test); the
+  search field is hidden while there is nothing to search. A search or filter that hides every row says so, with "Show all".
+- Delete dialogue (E4): deleting a record of a form asks in nuBuilder Next's own dialogue (not jquery-confirm) – it names the record and
+  the sub-form rows deleted with it ("Also deleted: 3 rows of Items"), says it cannot be undone, and Cancel has the focus (Enter does not
+  delete); the same for the delete buttons of browse rows and for every dangerous confirmation of the own pages (red OK button).
+  nuConfirmAsk(text, onOk, okLabel, okClass, extra) takes {title, details, note, cancelFirst}.
+- Settings centre (G1): new sections Users & access (users, access levels, admin roles, permission items, custom user fields, logged-in
+  users, password policy, IP access) and Logs & integration (log, audit trail, e-mail log, debug results, API clients, webhooks) – in the
+  side bar, the overview and the settings search.
+- Docs: settings centre, Security check tabs, list chips and empty states, the delete dialogue.
+
+## 0.8.762 – Documentation checked against the code
+- Documentation checked against the code (review A1), all chapters, README, tutorial and function reference:
+  - existing nuBuilder Forte databases: the help and tutorial no longer promise that nuBuilder Next runs on one today – the installer
+    refuses it for now; the migration page describes how to try an application on a copy (new installation + Reset database in
+    developer mode); a developer-only setting is no longer named in the help;
+  - corrected: nginx rules (README points to the help), the save rule for read-only / hidden fields (one statement in the Security
+    check page, linked from the others), backup options, Tiny File Manager leftovers, nuChart = Google Charts, rights of admin roles
+    instead of "globeadmin only", the user menu and Back targets, the ⋮ menu, phones with and without a logo, SQL Server not yet verified
+    on a real server, "Admin tools →" paths replaced by the real tiles and Settings sections;
+  - added: Data export in the output chapter, PhpSpreadsheet in the library lists and pack rules, users Created / Last changed,
+    installed languages, password policy and IP access in sign-in and architecture pages, Include custom pages, Excel export of lists,
+    every own list with views, the pseudo forms in the rights table, the missing nuconfig.php variables (configuration page grouped by
+    topic with an Origin column), cron.php commands, the REST API endpoints grouped by resource;
+  - restructured: Updating, Installing, Configuration, Start page and REST API in sub-sections; British spelling (Customisation,
+    colour, dialogue) and gender-neutral wording throughout.
+- Texts: the backup time-out hint names the option "nuBuilder tables" (the removed "nuBuilder Next tables" option); the self-test
+  view "Problems" shows its name (was the raw key).
+
+## 0.8.761 – Review fixes: bugs, speed, accessibility
+- Review fixes, bugs (D1–D9): the nginx rules of the Security check (and the help) now cover every protected folder – _update, _libsrc,
+  temp, custom, lib, apps, nu_uploads, the server-only library packs and third_party (one source: NuSecurity::serverRules, a unit test
+  compares it with the help); missing text of the API scope exports:run (unit test: every scope has a text); opening a built-in theme
+  says "copy it to change it" instead of "Page not found"; Data export: an empty condition row no longer filters out every row; dashboard
+  tables format numbers again (the hidden record-id column moved the "first column unformatted" rule); read-only users no longer see the
+  blank new row and delete boxes in sub-forms; system lists show the active filters as chips under the search (also the view's own
+  defaults such as "Status: Active", one click removes a filter); texts: no duplicate "Password policy" in the settings search, Debug
+  titles without raw <b>, side bar tooltip, singular "1 place", English reset text, "Page editor" / design mode instead of "Form builder",
+  "Logged-in users" everywhere, German "Zugriffsstufe" only; dates in the order of the language (en-GB 31/10/2026, en-US 10/31/2026,
+  de 31.10.2026 …, nu_dfmt()); Libraries tab says "Use pack" instead of "Update" when the installed version equals the pack's.
+- Speed (B1): the users list sorted by Last login took 39.5 s with 500 users and 200,000 log rows – now 54 ms; "All columns" 1.0 s → 26 ms.
+  New index zzzzsys_nunext_log (user_id, event, log_time) and NuDB::sameTextOn(): compares across collations without CAST … BINARY, so
+  the index of the own table is used. Also in this version (made earlier, unreleased): log indexes step 0031 (object / record), the
+  option lists of form browse filters cached for 2 minutes per form (cleared by the data import), streamed REST export answers, and
+  help / README / tutorial corrections.
+- Accessibility (C1–C3, axe-core WCAG 2.1 AA now clean on all pages): grey badges and pressed grey buttons back to #6c757d (white text
+  on the lighter grey had 3.1:1), outline buttons in blue / yellow and green status lines darker in light mode; CodeMirror's scroll box
+  reachable with the keyboard (focus moves on to the editor); scrolling help tables / diagrams focusable on phones; update page tabs
+  without controls inside the tab buttons (the ▾ of tabs with several cards is decorative now, Shift+F10 or right-click opens the list),
+  the hidden dot text no longer makes the update page wider than a phone.
+- Tests: e2e review_761, run.php nu_dfmt; load.js times more pages (all user columns, sorts, exports, advanced search, data export runs).
+
+## 0.8.760 – Self-test results as a list
+- Self-test: the results are shown as a list like the users list – sortable titles (status: failed, warning, OK, skipped),
+  filters Group and Status, search, the views Default / Problems / All columns, cards on phones, print and export. The run
+  controls and the summary of the last run sit above the list. Nothing is stored: the results stay in the session and feed the
+  list through a temporary table of the request.
+
+## 0.8.759 – User created / changed stamps
+- Users: when a user was created and last changed, and by whom. nuBuilder Forte's user table has no such columns, so nuBuilder
+  Next now stamps the user's sus_json (NUNEXT_CREATED / NUNEXT_CHANGED with time and login) on every create or change it makes –
+  user form, My account, Data import, REST API. The (i) panel of the user form shows both; the users list gets the columns
+  "Created" and "Last changed" (view "All columns" or any list view, sortable). Users from before get their created stamp from
+  the Log on their next change (while the log still has the entry); without a stamp the panel falls back to the audit trail and
+  the Log as before. A saved clone starts with its own stamps.
+
+## 0.8.758 – Data export
+- Data export (Admin tools → Data export, also Forms → Tools): saved exports of tables, views and queries to Excel (.xlsx) or CSV.
+  An export has one or more datasets – each a sheet of the workbook or a CSV file (several → ZIP): a table or view with ticked
+  columns in your order, headings, number / date formats per column, conditions (type-aware operators, all / any) and sorting;
+  a typed SELECT; or an SQL builder query. #placeholders# in a query are asked for when the export runs (system hash
+  variables are filled in). Values are typed from the database column (numbers, yes/no, real Excel dates; text keeps leading
+  zeros, numbers with more than 15 digits stay text); secret-looking columns are exported only when ticked; "For re-import"
+  puts the key column first with column names as headings for the Data import. CSV options: separator, line ends, BOM,
+  header, NULL text, date formats, decimal separator, yes/no values, formula protection. Exports are streamed (any size;
+  Excel's row limit continues on a second sheet) in a read-only transaction. Preview (20 rows), row count, Run (download),
+  Duplicate, definition as JSON (download / upload between installations), run count and last run, log event "Data export run".
+- Admin right "Data export" (full access: view = run, change = edit), start page tile, REST API: GET /v1/exports and
+  POST /v1/exports/{code}/run (scope exports:run; the service user needs the right) answer with the file.
+- Help: new page Data export (pages of chapter 8 after it renumbered), REST API table; README. e2e test data_export.
+
+## 0.8.757 – Data import
+- "CSV import" is now called "Data import" (tile, page title, start page search, audit / webhook source, log events, help, README,
+  tutorial) – in all languages, with a neutral upload icon. The tile and the users list's import button say "CSV or Excel file";
+  Excel and OpenDocument workbooks (a sheet to choose) are read when the PhpSpreadsheet library pack is installed. The address
+  (?p=import), saved configurations and help links stay the same.
+
+## 0.8.756 – Excel export in the sample
+- Sample application (version 21): Excel export. Start page tiles "Orders to Excel" (procedure sample_xlsx, built-in writer:
+  styled header, number and date formats, total with SUM, frozen header, filter) and "Excel with chart" (sample_xlsx_pss, library
+  pack PhpSpreadsheet: second sheet with COUNTIF / SUMIF per country, bar chart, conditional formatting; without the pack a hint).
+  Refresh the sales sample on Admin tools → Sample data to get them.
+- Procedures can send files: an answer with "Content-Disposition: attachment" is saved as a download by nuRunPHP (its window
+  closes), nuRunPHPHidden, start page procedure tiles and Run on the procedure page (line with the file name).
+- Docs: Procedures (sending a file), Sample data (Excel export). e2e test sample_excel.
+
+## 0.8.755 – PhpSpreadsheet library pack and Excel import
+- New optional library pack PhpSpreadsheet (5.10.0 with its libraries, about 1.4 MB, PHP 8.2+): Update → Libraries offers it from
+  the GitHub release "libraries"; on PHP 8.1 it is not offered, its self-test writes and reads an .xlsx file and names missing
+  PHP extensions.
+- CSV import reads Excel and OpenDocument files (.xlsx, .xls, .ods, up to 10 MB) with the pack: a Sheet select instead of
+  separator and quote, then mapping and check as for CSV – also for the user import. Formulas give their saved result (never
+  calculated), dates become YYYY-MM-DD, macros and external links are not used. Without the pack the page says how to get it.
+- Form code: nuNextSpreadsheetAvailable(), nuNextReadSpreadsheet($file, $sheet); the PhpOffice\PhpSpreadsheet classes load by
+  themselves in procedures and hooks; page forms: $nu->spreadsheet() and $nu->readSpreadsheet().
+
+## 0.8.754 – Translations per form and with AI
+- Translations → Missing: choose a form – its texts and those of its sub-forms in every language at once (installed languages,
+  languages with translations, users' languages), with the kind of each text and + to add a missing one. Also found now: the
+  texts of fixed select options and the fixed texts of nuTranslate('…') in the form's JavaScript, events, HTML objects and PHP hooks.
+- Translate with AI: pick languages, copy an English prompt with the texts as JSON into any AI chat, paste the answer back,
+  check it (new / changes / unchanged / skipped, warning when placeholders differ) and save the selected translations.
+- Design mode: form settings → Tools → Translations, with the number of missing texts.
+- Fixed select options are shown in the reader's language when a translation exists (the stored value stays; nuBuilder Forte
+  shows them as entered).
+
+## 0.8.753 – Database basics and first application in the help
+- Help: two new pages, based on what nuBuilder Forte's User Guide teaches and adapted to nuBuilder Next – Database basics
+  (tables, primary and foreign keys, one-to-many, naming conventions, a little SQL, planning a schema) and Your first application
+  (a contact manager step by step: list and record, forms, object IDs, object types, lookup, sub-form, a report with its bands,
+  an access level and how to test it, differences for nuBuilder Forte users).
+- Help: key concepts explain the list-and-record pattern, nine new glossary terms, access levels and reports point out the
+  criteria form and the lookup form a user also needs.
+
+## 0.8.752 – User import template with readme
+- CSV import of users: Download template now gives a ZIP with the template (CSV, header row only) and readme.txt in the user's
+  language – every column with required / optional, what to enter and the maximum length, the access level codes allowed, the
+  installed languages, the date format, the password rules (minimum length, hash, change at the first sign-in, empty = random
+  password or welcome e-mail) and the custom user fields with their type and choices.
+
+## 0.8.751 – Users list filters folded
+- Users list: the filter fields are folded by default also on wide screens – the filter button (funnel) opens them, and they stay
+  open while a filter is set.
+
+## 0.8.750 – Notes
+- Notes for development: v0.8.747 recorded as the last published GitHub release.
+
+## 0.8.749 – No Export without records on Debug results and Formats
+- Debug results and Formats: the Export button is hidden while the list shows no records, as on the other lists.
+
+## 0.8.748 – No list tools without records
+- System lists without records (e.g. Custom user fields with none yet): the view menu ("All columns") and, on phones, the
+  cards / table switch are hidden. The view menu stays when the chosen view's own filters hide every row, so it can be changed.
+
 ## 0.8.747 – Release gate
 - Release gate: the full test run (smoke, every end-to-end test, the cross-test against nuBuilder Forte 4.9) passed.
 - Help brought up to date since the last gate: password policy (sign-in methods, own password, tutorial security lesson), breadcrumb in

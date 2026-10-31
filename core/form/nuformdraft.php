@@ -73,6 +73,7 @@ final class NuFormDraft
 			'changes' => $live && $snap ? NuFormSnapshot::diff($live, $snap)['counts']['total'] : 0,
 			'conflict' => $live === null || ($base && NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash']),
 			'undo_count' => count($undo), 'undo_label' => (string)($undo[0]['label'] ?? ''),
+			'redo_count' => count(json_decode((string)($d['redo_list'] ?? '[]'), true) ?: []),
 			'mine' => (string)$d['created_by'] === self::login(),
 			'preview_url' => nu_url('form', ['f' => (string)$d['form_id'], 'draft' => (string)$d['zzzzsys_nunext_form_draft_id']])];
 	}
@@ -105,8 +106,9 @@ final class NuFormDraft
 			$undo = json_decode((string)$d['undo_list'], true) ?: [];
 			array_unshift($undo, ['at' => self::now(), 'login' => self::login(), 'label' => mb_substr($label, 0, 60), 'snapshot' => (string)$d['snapshot']]);
 			// conditional on rev: two requests with the same rev – only one of them changes the row
-			$n = $db->run('UPDATE ' . self::TABLE . ' SET snapshot = ?, undo_list = ?, rev = ?, updated_at = ?, updated_by = ? WHERE zzzzsys_nunext_form_draft_id = ? AND rev = ?',
-				[self::json($snap), self::json(array_slice($undo, 0, self::UNDO_MAX)), $rev + 1, self::now(), self::login(), $id, $rev])->rowCount();
+			// a new change ends what could be redone (review H2)
+			$n = $db->run('UPDATE ' . self::TABLE . ' SET snapshot = ?, undo_list = ?, redo_list = ?, rev = ?, updated_at = ?, updated_by = ? WHERE zzzzsys_nunext_form_draft_id = ? AND rev = ?',
+				[self::json($snap), self::json(array_slice($undo, 0, self::UNDO_MAX)), '[]', $rev + 1, self::now(), self::login(), $id, $rev])->rowCount();
 			if ($n !== 1) throw new NuDraftRevException(t('builder_draft_rev', (string)$d['updated_by']));
 			unset(self::$previewCache[(string)$d['form_id']]);
 			return $rev + 1;
@@ -123,8 +125,29 @@ final class NuFormDraft
 			$undo = json_decode((string)$d['undo_list'], true) ?: [];
 			$last = array_shift($undo);
 			if (!$last) throw new RuntimeException(t('builder_history_empty'));
-			$db->run('UPDATE ' . self::TABLE . ' SET snapshot = ?, undo_list = ?, rev = ?, updated_at = ?, updated_by = ? WHERE zzzzsys_nunext_form_draft_id = ? AND rev = ?',
-				[(string)$last['snapshot'], self::json($undo), $rev + 1, self::now(), self::login(), $id, $rev]);
+			$redo = json_decode((string)($d['redo_list'] ?? '[]'), true) ?: [];          // the state undone can be redone (review H2)
+			array_unshift($redo, ['at' => self::now(), 'login' => self::login(), 'label' => (string)($last['label'] ?? ''), 'snapshot' => (string)$d['snapshot']]);
+			$db->run('UPDATE ' . self::TABLE . ' SET snapshot = ?, undo_list = ?, redo_list = ?, rev = ?, updated_at = ?, updated_by = ? WHERE zzzzsys_nunext_form_draft_id = ? AND rev = ?',
+				[(string)$last['snapshot'], self::json($undo), self::json(array_slice($redo, 0, self::UNDO_MAX)), $rev + 1, self::now(), self::login(), $id, $rev]);
+			return $rev + 1;
+		});
+	}
+
+	/** Again the change that undo() took back (review H2, 0.8.765). */
+	public static function redo(string $id, int $rev): int
+	{
+		return nu_db()->transaction(static function (NuDB $db) use ($id, $rev): int {
+			$d = $db->one('SELECT * FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_form_draft_id = ?', [$id]);
+			if (!$d || $d['status'] !== self::OPEN) throw new RuntimeException(t('builder_draft_not_open'));
+			if ((int)$d['rev'] !== $rev) throw new NuDraftRevException(t('builder_draft_rev', (string)$d['updated_by']));
+			$redo = json_decode((string)($d['redo_list'] ?? '[]'), true) ?: [];
+			$next = array_shift($redo);
+			if (!$next) throw new RuntimeException(t('builder_history_empty'));
+			$undo = json_decode((string)$d['undo_list'], true) ?: [];
+			array_unshift($undo, ['at' => self::now(), 'login' => self::login(), 'label' => (string)($next['label'] ?? ''), 'snapshot' => (string)$d['snapshot']]);
+			$db->run('UPDATE ' . self::TABLE . ' SET snapshot = ?, undo_list = ?, redo_list = ?, rev = ?, updated_at = ?, updated_by = ? WHERE zzzzsys_nunext_form_draft_id = ? AND rev = ?',
+				[(string)$next['snapshot'], self::json(array_slice($undo, 0, self::UNDO_MAX)), self::json($redo), $rev + 1, self::now(), self::login(), $id, $rev]);
+			unset(self::$previewCache[(string)$d['form_id']]);
 			return $rev + 1;
 		});
 	}

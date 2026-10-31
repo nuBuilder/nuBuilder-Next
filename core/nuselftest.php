@@ -23,6 +23,29 @@ final class NuSelfTest
 		return NuHash::devMode();
 	}
 
+	/**
+	 * The results of the session as the FROM of the system list 'selftest' (NuListDefs): a derived table of SELECT … UNION ALL with
+	 * parameters – nothing is stored and nothing created in the database. 0.8.766: before, a TEMPORARY table – which failed where the
+	 * database user lacks CREATE TEMPORARY TABLES (or MySQL refuses temporary tables in a transaction under GTID consistency).
+	 * @var array{0: string, 1: list<mixed>}
+	 */
+	public static array $source = [' FROM (SELECT 0 AS pos, \'\' AS grp, \'\' AS id, \'\' AS title, \'\' AS status, \'\' AS detail, 0 AS ms WHERE 1 = 0) s', []];
+
+	public static function source(array $results): void
+	{
+		$db = nu_db();
+		$int = static fn(string $p): string => $db->type === 'mysql' ? "CAST($p AS SIGNED)" : "CAST($p AS INT)";
+		$txt = static fn(string $p): string => $db->type === 'sqlsrv' ? "CAST($p AS NVARCHAR(MAX))" : $p;
+		$sel = [];
+		$params = [];
+		foreach (array_values($results) as $i => $r) {
+			$sel[] = 'SELECT ' . $int('?') . ' AS pos, ' . $txt('?') . ' AS grp, ' . $txt('?') . ' AS id, ' . $txt('?') . ' AS title, ' . $txt('?') . ' AS status, ' . $txt('?') . ' AS detail, ' . $int('?') . ' AS ms';
+			array_push($params, $i + 1, mb_substr((string)($r['group'] ?? ''), 0, 40), mb_substr((string)($r['id'] ?? ''), 0, 80), (string)($r['title'] ?? ''), mb_substr((string)($r['status'] ?? ''), 0, 10), (string)($r['detail'] ?? ''), (int)($r['ms'] ?? 0));
+		}
+		if ($sel) self::$source = [' FROM (' . implode(' UNION ALL ', $sel) . ') s', $params];
+		else self::$source = [' FROM (SELECT 0 AS pos, \'\' AS grp, \'\' AS id, \'\' AS title, \'\' AS status, \'\' AS detail, 0 AS ms' . ($db->type === 'mysql' ? ' FROM DUAL' : '') . ' WHERE 1 = 0) s', []];   // no run yet: an empty list
+	}
+
 	/** @return list<array{group: string, id: string, title: string, status: string, detail: string, ms: int}> */
 	public static function run(array $groups = []): array
 	{
@@ -269,7 +292,7 @@ final class NuSelfTest
 				$h = NuHousekeeping::last();
 				if (!$h) return $warn(t('st_never'));
 				$age = time() - $h['time'];
-				return $age > 2 * 86400 ? $warn(t('st_hk_old', date('d.m.Y H:i', $h['time']), $h['source'])) : $ok(date('d.m.Y H:i', $h['time']) . ' · ' . $h['source']);
+				return $age > 2 * 86400 ? $warn(t('st_hk_old', date(nu_dfmt('d.m.Y H:i'), $h['time']), $h['source'])) : $ok(date(nu_dfmt('d.m.Y H:i'), $h['time']) . ' · ' . $h['source']);
 			}],
 		];
 	}

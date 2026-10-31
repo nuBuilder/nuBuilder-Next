@@ -604,8 +604,8 @@ final class NuRender
 
 		$cols = array_values(array_filter($sub->objects, static fn($so) => !in_array($so['sob_all_type'], ['contentbox', 'subform'], true) && !NuFieldAccess::withheld($so)));   // withheld: no column (0.8.480)
 		usort($cols, static fn($a, $b) => [(int)$a['sob_all_order'], (int)$a['sob_all_left']] <=> [(int)$b['sob_all_order'], (int)$b['sob_all_left']]);
-		$canAdd    = (string)$o['sob_subform_add'] !== '0';
-		$canDelete = (string)$o['sob_subform_delete'] !== '0';
+		$canAdd    = (string)$o['sob_subform_add'] !== '0' && $this->editable();     // a read-only record (no save right): no blank row, no delete boxes (review D6)
+		$canDelete = (string)$o['sob_subform_delete'] !== '0' && $this->editable();
 		$sfEvents  = $this->meta->events[$o['zzzzsys_object_id']] ?? [];
 
 		$head = '';
@@ -849,6 +849,8 @@ final class NuRender
 				for ($i = 0, $n = count($parts); $i + 1 < $n; $i += 2) $opts[] = [$parts[$i], $parts[$i + 1]];
 				if (count($parts) % 2 === 1) $opts[] = [end($parts), end($parts)];
 			}
+			// texts of a fixed list in the reader's language (zzzzsys_translate; 0.8.754 – nuBuilder Forte shows them as entered); the values stay
+			if (NuTranslate::active()) foreach ($opts as $i => $op) $opts[$i][1] = NuTranslate::text($op[1]);
 		}
 		return $this->selectCache[$key] = $opts;
 	}

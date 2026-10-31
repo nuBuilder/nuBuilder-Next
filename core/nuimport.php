@@ -31,7 +31,7 @@ final class NuImport
 	{
 		$dir = rtrim(sys_get_temp_dir(), '/\\') . '/nunext_import';
 		if (!is_dir($dir)) @mkdir($dir, 0700, true);
-		foreach (glob($dir . '/*.csv') ?: [] as $f) if (@filemtime($f) < time() - 86400) @unlink($f);   // leftovers older than a day
+		foreach (glob($dir . '/*') ?: [] as $f) if (is_file($f) && @filemtime($f) < time() - 86400) @unlink($f);   // leftovers older than a day (CSV and spreadsheets)
 		return $dir;
 	}
 
@@ -46,6 +46,7 @@ final class NuImport
 	{
 		$s = $_SESSION[self::SESSION] ?? null;
 		if (is_array($s) && is_file((string)($s['file'] ?? ''))) @unlink((string)$s['file']);
+		if (is_array($s) && is_file((string)($s['src'] ?? ''))) @unlink((string)$s['src']);       // the spreadsheet itself (0.8.755)
 		unset($_SESSION[self::SESSION]);
 	}
 
@@ -57,7 +58,8 @@ final class NuImport
 		}
 		if ((int)$f['size'] > self::maxBytes()) throw new RuntimeException(t('imp_err_size', self::maxBytes() >> 20));
 		$ext = strtolower(pathinfo((string)$f['name'], PATHINFO_EXTENSION));
-		if (!in_array($ext, ['csv', 'txt', 'tsv', 'tab'], true)) throw new RuntimeException(t('imp_err_type'));
+		if (in_array($ext, NuSpreadsheet::EXTS, true)) return self::uploadSheet($f, $ext);   // Excel / OpenDocument (0.8.755)
+		if (!in_array($ext, ['csv', 'txt', 'tsv', 'tab'], true)) throw new RuntimeException(t(NuSpreadsheet::available() ? 'imp_err_type_xlsx' : 'imp_err_type'));
 		$raw = (string)file_get_contents((string)$f['tmp_name']);
 		if (str_contains(substr($raw, 0, 4096), "\0") && !preg_match('/^(\xFF\xFE|\xFE\xFF)/', $raw)) throw new RuntimeException(t('imp_err_type'));
 
@@ -73,6 +75,46 @@ final class NuImport
 			'delimiter' => self::detectDelimiter($path)];
 		$_SESSION[self::SESSION] = $info;
 		return $info;
+	}
+
+	/** An Excel / OpenDocument file (0.8.755): kept as it is, its first sheet written as CSV – the rest of the import reads that CSV. */
+	private static function uploadSheet(array $f, string $ext): array
+	{
+		if (!NuSpreadsheet::available()) throw new RuntimeException(NuSpreadsheet::problem());
+		$max = min(self::maxBytes(), NuSpreadsheet::MAX_MB * 1048576);
+		if ((int)$f['size'] > $max) throw new RuntimeException(t('imp_err_size', $max >> 20));
+		self::discard();
+		$src = self::dir() . '/' . bin2hex(random_bytes(16)) . '.' . $ext;
+		if (!@move_uploaded_file((string)$f['tmp_name'], $src) && !@copy((string)$f['tmp_name'], $src)) throw new RuntimeException(t('imp_err_upload', 0));
+		@chmod($src, 0600);
+		$info = ['file' => '', 'src' => $src, 'ext' => $ext, 'name' => mb_substr(basename((string)$f['name']), 0, 200), 'size' => (int)$f['size'],
+			'encoding' => $ext === 'ods' ? 'OpenDocument' : 'Excel', 'delimiter' => ',', 'sheets' => [], 'sheet' => 0];
+		$_SESSION[self::SESSION] = $info;
+		try {
+			return self::chooseSheet(0);
+		} catch (Throwable $e) {
+			self::discard();
+			throw $e;
+		}
+	}
+
+	/** Writes sheet $i of the uploaded spreadsheet as the CSV the import reads. @return array session info */
+	public static function chooseSheet(int $i): array
+	{
+		$s = $_SESSION[self::SESSION] ?? null;
+		if (!is_array($s) || !is_file((string)($s['src'] ?? ''))) throw new RuntimeException(t('imp_err_nofile'));
+		$data = NuSpreadsheet::read((string)$s['src'], $i, (string)$s['ext'], self::MAX_ROWS);
+		if ($data['truncated']) throw new RuntimeException(t('imp_err_rows', self::MAX_ROWS));
+		if (!array_filter($data['rows'], static fn($r) => implode('', $r) !== '')) throw new RuntimeException(t('imp_err_empty_sheet', $data['sheets'][$data['sheet']] ?? ''));
+		$path = (string)($s['file'] ?? '') !== '' ? (string)$s['file'] : self::dir() . '/' . bin2hex(random_bytes(16)) . '.csv';
+		$h = fopen($path, 'w');
+		if ($h === false) throw new RuntimeException(t('imp_err_upload', 0));
+		foreach ($data['rows'] as $r) fputcsv($h, $r ?: [''], ',', '"', '');
+		fclose($h);
+		@chmod($path, 0600);
+		$s = ['file' => $path, 'sheets' => $data['sheets'], 'sheet' => $data['sheet'], 'delimiter' => ','] + $s;
+		$_SESSION[self::SESSION] = $s;
+		return $s;
 	}
 
 	/** @return array{0: string, 1: string} UTF-8 text without BOM, source encoding */
@@ -553,6 +595,7 @@ final class NuImport
 			throw $e;
 		} finally {
 			if ($auditOn) NuAudit::end();
+			NuBrowse::forgetValues();
 		}
 		return $res;
 	}
@@ -611,6 +654,80 @@ final class NuImport
 		if (!in_array($sep, [';', ',', "\t", '|'], true)) $sep = ';';
 		$q = static fn(string $v) => preg_match('/["\r\n' . preg_quote($sep, '/') . ']/', $v) ? '"' . str_replace('"', '""', $v) . '"' : $v;
 		return "\xEF\xBB\xBF" . implode($sep, array_map($q, array_values(self::userLabels()))) . "\r\n";
+	}
+
+	/** Text of readme.txt in the template ZIP of the user import (0.8.752): every column – required or not, what to enter – in the UI language. */
+	public static function userReadme(string $csvName): string
+	{
+		$sep = (string)(nu_cfg('nuConfigCSVSeparator') ?: ';');
+		if (!in_array($sep, [';', ',', "\t", '|'], true)) $sep = ';';
+		$cols = self::userColumns();
+		$labels = self::userLabels();
+		$wrap = static fn(string $t, string $ind = '') => $ind . str_replace("\n", "\n" . $ind, wordwrap($t, 100 - mb_strlen($ind), "\n", true));
+		$title = t('imp_rm_title');
+		$out = [$title, str_repeat('=', mb_strlen($title)), '', $wrap(t('imp_rm_intro', $csvName, nu_app_title())), '',
+			$wrap(t('imp_rm_format', $sep === "\t" ? 'Tab' : $sep)), '', t('imp_rm_columns'), str_repeat('-', mb_strlen(t('imp_rm_columns'))), ''];
+		$levels = array_keys(self::userLevels());
+		$langs = implode(', ', NuLanguages::installed());
+		$ufs = NuUserFields::editable('import');
+		foreach ($labels as $name => $label) {
+			if (!isset($cols[$name])) continue;
+			$c = $cols[$name];
+			$req = $c['required'] || $name === 'sus_name';                  // sus_name: or first / last name (explained in its text)
+			$txt = match ($name) {
+				'sus_login_name' => t('imp_rm_c_login'),
+				'sus_name'       => t('imp_rm_c_name'),
+				'sus_email'      => t('imp_rm_c_email'),
+				'sus_code'       => t('imp_rm_c_code'),
+				'access_level'   => t('imp_rm_c_access', $levels ? implode(', ', $levels) : '–'),
+				'sus_language'   => t('imp_rm_c_lang', $langs),
+				'sus_expires_on' => t('imp_rm_c_expires'),
+				'password'       => t('imp_rm_c_password', NuPwPolicy::minLength(), '"' . t('imp_u_welcome') . '"'),
+				default          => str_starts_with($name, 'uf_') ? '' : t('imp_rm_c_text'),
+			};
+			if (str_starts_with($name, 'uf_') && isset($ufs[substr($name, 3)])) {
+				$f = $ufs[substr($name, 3)];
+				$type = (string)$f['type'];
+				$txt = t('imp_rm_c_uf', t('uf_type_' . $type));
+				if ($type === 'date') $txt .= ' ' . t('imp_rm_date');
+				if ($type === 'select' && !NuUserFields::isSql((string)$f['options'])) {
+					try { $o = array_keys(NuUserFields::options($f)); } catch (Throwable) { $o = []; }
+					if ($o) $txt .= ' ' . t('imp_rm_choices', implode(', ', array_map('strval', $o)));
+				}
+				if ((string)$f['is_unique'] === '1') $txt .= ' ' . t('imp_rm_unique');
+				if (NuUserFields::hint($f) !== '') $txt .= ' ' . NuUserFields::hint($f);
+			}
+			if (!empty($c['len']) && !in_array($name, ['password'], true) && (!str_starts_with($name, 'uf_') || !in_array((string)($ufs[substr($name, 3)]['type'] ?? ''), ['date', 'yesno', 'select'], true)))
+				$txt .= ' ' . t('imp_rm_maxlen', (int)$c['len']);
+			$out[] = '* ' . $label . ' (' . t($req ? 'imp_rm_required' : 'imp_rm_optional') . ')';
+			$out[] = $wrap($txt, '  ');
+			$out[] = '';
+		}
+		$out[] = t('imp_rm_tips');
+		$out[] = str_repeat('-', mb_strlen(t('imp_rm_tips')));
+		$out[] = '';
+		$out[] = '* ' . ltrim($wrap(t('imp_rm_tip_check', '"' . t('imp_check') . '"', '"' . t('imp_import') . '"'), '  '));
+		$out[] = '* ' . ltrim($wrap(t('imp_rm_tip_delete'), '  '));
+		return "\xEF\xBB\xBF" . implode("\r\n", $out) . "\r\n";
+	}
+
+	/** The template download (0.8.752): a ZIP with the CSV and readme.txt; null without ZipArchive (then the CSV alone). */
+	public static function userTemplateZip(): ?string
+	{
+		if (!class_exists('ZipArchive')) return null;
+		$tmp = tempnam(sys_get_temp_dir(), 'nuimp');
+		if ($tmp === false) return null;
+		try {
+			$z = new ZipArchive();
+			if ($z->open($tmp, ZipArchive::OVERWRITE) !== true) return null;
+			$z->addFromString('users-import-template.csv', self::userTemplate());
+			$z->addFromString('readme.txt', self::userReadme('users-import-template.csv'));
+			$z->close();
+			$data = file_get_contents($tmp);
+			return $data === false ? null : $data;
+		} finally {
+			@unlink($tmp);
+		}
 	}
 
 	/** Language of a CSV value: [nuBuilder name, variant] – "de", "de-CH", "German", "Deutsch", "English (US)" …; null = unknown. */
@@ -776,6 +893,7 @@ final class NuImport
 			$ufv += array_filter(array_diff_key(NuUserFields::defaults(), $ufv), static fn($d) => $d !== '');   // defaults for the fields left out
 			[$ufOk] = NuUserFields::validate($ufv, $id, 'import');
 			$ufDiff = NuUserFields::save($id, $ufOk);
+			NuUserJson::stamp($id, true, 'import');
 			NuLog::write('user_created', 'zzzzsys_user', $id, ['source' => 'csv_import', 'fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + $ufDiff]);
 			if ($sendWelcome) {
 				$err = NuWelcome::send($row);

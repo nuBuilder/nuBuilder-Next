@@ -177,7 +177,8 @@
 	var bar = el('div', {'class': 'nuDsBar', id: 'nuDsBar', role: 'region', 'aria-label': t('ds_mode')});
 	var status = el('span', {'class': 'nuDsStatus', id: 'nuDsStatus'});
 	var msg = el('span', {'class': 'nuDsMsg', id: 'nuDsMsg', role: 'status', 'aria-live': 'polite'});
-	var bUndo = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsUndo', title: t('builder_draft_undo'), 'aria-label': t('builder_draft_undo'), onclick: undo}, [icon('bi-arrow-counterclockwise')]);
+	var bUndo = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsUndo', title: t('builder_draft_undo') + ' (Ctrl+Z)', 'aria-label': t('builder_draft_undo'), onclick: undo}, [icon('bi-arrow-counterclockwise')]);
+	var bRedo = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsRedo', title: t('ds_redo') + ' (Ctrl+Y)', 'aria-label': t('ds_redo'), onclick: redo}, [icon('bi-arrow-clockwise')]);   // review H2
 	var bDiscard = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsDiscard', text: t('builder_draft_discard'), onclick: discard});
 	var bChanges = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsChangesBtn', title: t('ds_changes'), 'aria-label': t('ds_changes'), onclick: function () { openWork('changes'); }}, [icon('bi-file-diff')]);
 	var bPublish = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsPublish', text: t('builder_draft_publish_btn'), onclick: publish});
@@ -187,6 +188,20 @@
 	if (D.safe) bar.appendChild(el('span', {'class': 'badge nuDsSafeBadge', id: 'nuDsSafeBadge', title: t('ds_safe_tip')}, [icon('bi-shield-check me-1'), t('ds_safe_on')]));
 	bar.appendChild(status);
 	bar.appendChild(msg);
+	// messages of the form's own code (review H1): collected by nuruntime.js (N.formMsgs) instead of covering the panel
+	var bMsgs = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuDsFormMsgs', id: 'nuDsFormMsgs', hidden: 'hidden', title: t('ds_form_msgs_tip'), 'aria-label': t('ds_form_msgs'),
+		onclick: function () {
+			var list = (N.formMsgs || []).map(function (m) { return (m.kind === 'toast' ? '• ' : '! ') + m.text; });
+			if (typeof window.nuConfirmAsk === 'function') window.nuConfirmAsk(t('ds_form_msgs_tip'), function () { N.formMsgs = []; syncMsgs(); }, t('ds_form_msgs_clear'), 'btn btn-outline-secondary', {title: t('ds_form_msgs'), details: list});
+		}}, [icon('bi-chat-left-text me-1'), el('span', {'class': 'nuDsFormMsgsN'})]);
+	function syncMsgs() {
+		var n = (N.formMsgs || []).length;
+		bMsgs.hidden = n === 0;
+		bMsgs.querySelector('.nuDsFormMsgsN').textContent = String(n);
+	}
+	document.addEventListener('nu:formmsg', syncMsgs);
+	bar.appendChild(bMsgs);
+	setTimeout(syncMsgs, 0);
 	bar.appendChild(el('span', {'class': 'nuDsSpacer'}));
 	// phones: Structure and Add sit in the bar (no icon bar there)
 	if (!BROWSE) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'structure', title: t('ds_structure'), 'aria-label': t('ds_structure'), onclick: function () { toggleFly('structure'); }}, [icon('bi-layers')]));
@@ -198,6 +213,7 @@
 	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'code', title: t('ds_code'), 'aria-label': t('ds_code'), onclick: function () { openWork('code'); }}, [icon('bi-code-square')]));
 	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'history', title: t('ds_history'), 'aria-label': t('ds_history'), onclick: function () { openWork('history'); }}, [icon('bi-clock-history')]));
 	bar.appendChild(bUndo);
+	bar.appendChild(bRedo);
 	bar.appendChild(bChanges);
 	bar.appendChild(bDiscard);
 	bar.appendChild(bPublish);
@@ -209,6 +225,8 @@
 		else status.textContent = t('ds_status_none');
 		status.title = status.textContent;                       // cut with … on narrow screens
 		bUndo.disabled = D.unpublished ? false : !(DR && DR.undo_count > 0);
+		bRedo.disabled = !(DR && DR.redo_count > 0);
+		bRedo.hidden = !DR;
 		bDiscard.hidden = !DR;
 		bChanges.hidden = !DR;
 		bPublish.hidden = !D.can_publish || (!D.unpublished && !DR);     // publishing needs the admin right formpublish
@@ -226,6 +244,14 @@
 	function undo() {
 		busy(true);
 		(DR ? api('draft.undo', {}) : api('history.undo', {}, true)).then(function (j) {
+			if (!j.ok) throw new Error(j.error || 'Error');
+			refreshKeep();
+		}).catch(function (e) { busy(false); say(e.message, true); });
+	}
+	function redo() {
+		if (!DR) return;
+		busy(true);
+		api('draft.redo', {}).then(function (j) {
 			if (!j.ok) throw new Error(j.error || 'Error');
 			refreshKeep();
 		}).catch(function (e) { busy(false); say(e.message, true); });
@@ -827,7 +853,11 @@
 	var FMT_TYPES = {D: 'Date', N: 'Number', T: 'Text'};
 	function formatOptions(letters, value) {
 		var list = (D.formats_all || []).filter(function (f) { return letters.indexOf(String(f.value).charAt(0)) >= 0; });
-		var out = [['', '—']].concat(list.map(function (f) { return [f.value, f.value + (f['default'] ? ' ★' : '') + (f.description ? ' – ' + f.description : '')]; }));
+		// readable names (review H3): "Date / time: dd.mm.yyyy" instead of the stored "D|dd.mm.yyyy", sorted by type
+		var kind = {D: 'fmt_type_date', N: 'fmt_type_number', T: 'fmt_type_text'};
+		var nice = function (v) { var k = kind[String(v).charAt(0)]; return k && String(v).charAt(1) === '|' ? t(k) + ': ' + String(v).substring(2) : String(v); };
+		list = list.slice().sort(function (a, b) { return String(a.value).charAt(0) === String(b.value).charAt(0) ? 0 : (String(a.value).charAt(0) < String(b.value).charAt(0) ? -1 : 1); });
+		var out = [['', '—']].concat(list.map(function (f) { return [f.value, nice(f.value) + (f['default'] ? ' ★' : '') + (f.description ? ' – ' + f.description : '')]; }));
 		if (value && !list.some(function (f) { return f.value === value; })) out.push([value, value]);
 		return out;
 	}
@@ -925,6 +955,12 @@
 		if (D.formaccess && typeof window.nuFormAccessOpen === 'function') tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsFormAccess',
 			onclick: function () { window.nuFormAccessOpen(N.form.id); }}, [icon('bi-people me-1'), t('ds_form_access')]));
 		if (D.dataaccess) tools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDataAccess', href: D.dataaccess}, [icon('bi-shield-lock me-1'), t('da_title')]));
+		if (D.translations) {                                    // missing translations of this form and its sub-forms (0.8.754)
+			var trm = D.translations.missing || {}, trk = Object.keys(trm);
+			tools.push(el('a', {'class': 'btn btn-sm ' + (trk.length ? 'btn-outline-warning' : 'btn-outline-secondary'), id: 'nuDsTranslations', href: D.translations.url, target: '_blank', rel: 'noopener',
+				title: trk.length ? trk.map(function (l) { return l + ': ' + trm[l]; }).join(', ') : t('ds_trl_done')},
+				[icon('bi-translate me-1'), t('ds_trl'), trk.length ? el('span', {'class': 'badge text-bg-warning ms-1', text: t('ds_trl_missing').replace('%s', trk.map(function (l) { return trm[l]; }).reduce(function (a, b) { return a + b; }, 0))}) : null]));
+		}
 		if (D.can_delete_form && !DR) tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger', id: 'nuDsDeleteForm', onclick: deleteForm}, [icon('bi-trash me-1'), t('builder_delete_form')]));
 		if (tools.length) section('tools', t('ds_sec_tools'), [el('div', {'class': 'nuDsTools'}, tools)]);
 		foot([el('p', {'class': 'nuDsHint', text: t(BROWSE ? 'ds_hint_list' : 'ds_hint')})]);
@@ -1443,9 +1479,12 @@
 		if (!S) return;
 		closeFly();
 		W.kind = kind;
+		W.opener = document.activeElement;
 		work.hidden = false;
 		document.documentElement.classList.add('nuDsWorkOpen');
 		renderWork();
+		// the focus goes into the workspace (aria-modal, review H2) – Esc closes it then; the code editor takes it itself
+		setTimeout(function () { if (!W.kind || work.contains(document.activeElement)) return; work.setAttribute('tabindex', '-1'); work.focus({preventScroll: true}); }, 80);
 	}
 	function closeWork(force) {
 		if (!force && codeDirty().length && !window.confirm(t('ds_code_unsaved'))) return;
@@ -1456,6 +1495,8 @@
 		work.innerHTML = '';
 		document.documentElement.classList.remove('nuDsWorkOpen');
 		renderRail();
+		if (W.opener && document.body.contains(W.opener)) { try { W.opener.focus({preventScroll: true}); } catch (x) { /* ignore */ } }
+		W.opener = null;
 		if (W.ranCode) { W.ranCode = false; reloadKeep(); }        // changed code runs only after a reload
 	}
 	function renderRail() {
@@ -1719,6 +1760,40 @@
 		selCol = '__last';
 		saveCols(rows);
 	}
+	// "+" of the list design (review H3): first choose the column – the table's columns not shown yet, or an expression – nothing is added
+	// (and no draft started) before a choice
+	var pickEl = null;
+	function closePick() { if (pickEl) { pickEl.remove(); pickEl = null; document.removeEventListener('mousedown', pickOutside, true); } }
+	function pickOutside(e) { if (pickEl && !pickEl.contains(e.target)) closePick(); }
+	function colPick(btn) {
+		closePick();
+		columnsList();
+		var shown = (S.browse || []).map(function (c) { return String(c.sbr_display || '').trim(); });
+		var q = el('input', {type: 'search', 'class': 'form-control form-control-sm mb-1', placeholder: t('search'), 'aria-label': t('search')});
+		var list = el('div', {'class': 'nuDsColPickList', role: 'menu'});
+		var fill = function () {
+			list.innerHTML = '';
+			var f = q.value.trim().toLowerCase(), cols = (listCols || []).filter(function (c) { return shown.indexOf(c.name) < 0 && (!f || c.name.toLowerCase().indexOf(f) >= 0); });
+			cols.forEach(function (c) {
+				list.appendChild(el('button', {type: 'button', 'class': 'dropdown-item d-flex gap-2 align-items-center', role: 'menuitem', 'data-col-name': c.name, onclick: function () { closePick(); colAdd(c.name); }},
+					[icon('bi-layout-three-columns'), el('span', {text: c.name}), c.type ? el('small', {'class': 'text-body-secondary ms-auto', text: c.type}) : null]));
+			});
+			if (!cols.length && listCols && listCols.length) list.appendChild(el('div', {'class': 'small text-body-secondary px-2 py-1', text: t('ds_col_pick_none')}));
+			list.appendChild(el('button', {type: 'button', 'class': 'dropdown-item d-flex gap-2 align-items-center border-top mt-1 pt-2', role: 'menuitem', id: 'nuDsColPickExpr', onclick: function () { closePick(); colAdd(''); }}, [icon('bi-braces'), el('span', {text: t('ds_col_pick_expr')})]));
+		};
+		q.addEventListener('input', fill);
+		q.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePick(); btn.focus(); } if (e.key === 'Enter') { var b = list.querySelector('[data-col-name]'); if (b) { e.preventDefault(); b.click(); } } });
+		pickEl = el('div', {'class': 'nuObjMenu nuDsColPick', id: 'nuDsColPick'}, [el('div', {'class': 'small fw-semibold px-1 mb-1', text: t('builder_add_column')}), q, list]);
+		document.body.appendChild(pickEl);
+		var r = btn.getBoundingClientRect();
+		pickEl.style.position = 'fixed';
+		pickEl.style.top = Math.min(r.bottom + 4, window.innerHeight - 320) + 'px';
+		pickEl.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 300)) + 'px';
+		fill();
+		if (listCols !== null && !listCols.length && S.form.sfo_table) setTimeout(fill, 600);   // the columns are still loading
+		q.focus();
+		setTimeout(function () { document.addEventListener('mousedown', pickOutside, true); }, 0);
+	}
 	function colDelete(c) {
 		confirmAsk(fmt(t('ds_col_delete_confirm'), plain(c.sbr_title) || c.sbr_display), function () {
 			saveCols(colRows().filter(function (x) { return x.id !== c.zzzzsys_browse_id; }), '');
@@ -1744,7 +1819,7 @@
 				el('span', {'class': 'nuDsTreeType', text: c.sbr_display})]);
 		});
 		section('columns', t('builder_sec_columns'), [el('div', {'class': 'nuDsTree', id: 'nuDsColTree'}, rows),
-			el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsColAdd', onclick: function () { colAdd(''); }}, [icon('bi-plus-lg me-1'), t('builder_add_column')])])]);
+			el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsColAdd', onclick: function () { colPick(this); }}, [icon('bi-plus-lg me-1'), t('builder_add_column')])])]);
 	}
 	function renderColumn(c) {
 		var btns = [
@@ -1844,7 +1919,7 @@
 			e.stopPropagation(); closeColMenu();
 			if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(oid).then(function () { say(fmt(t('om_copied'), oid)); }, function () { window.prompt(t('om_object'), oid); });
 			else window.prompt(t('om_object'), oid);
-		}}, [el('span', {'class': 'text-body-secondary', text: t('om_object') + ': '}), el('b', {text: oid})])]);
+		}}, [el('span', {'class': 'fw-semibold me-1', text: plain(c.sbr_title) || c.sbr_display}), el('small', {'class': 'text-body-secondary', text: oid})])]);   // the title first (review H3), the id to copy
 		colMenu = el('ul', {'class': 'dropdown-menu show nuObjMenu shadow', id: 'nuDsColMenu', role: 'menu'}, [
 			head, div(),
 			item('bi-sliders', t('om_properties'), function () { var f = panel.querySelector('[data-key="sbr_title"]'); if (f) f.focus(); }),
@@ -1940,7 +2015,7 @@
 		}, true);
 		var headRow = table.querySelector('thead tr');
 		if (headRow) headRow.appendChild(el('th', {scope: 'col', 'class': 'nuDsColAddTh'}, [el('button', {type: 'button', 'class': 'btn btn-sm nuDsTabAdd', id: 'nuDsColAddTh', title: t('builder_add_column'),
-			'aria-label': t('builder_add_column'), onclick: function (e) { e.stopPropagation(); colAdd(''); }}, [icon('bi-plus-lg')])]));
+			'aria-label': t('builder_add_column'), onclick: function (e) { e.stopPropagation(); colPick(this); }}, [icon('bi-plus-lg')])]));
 		if (selCol === '__last' && S.browse && S.browse.length) selCol = S.browse[S.browse.length - 1].zzzzsys_browse_id;
 		markCols();
 	}
@@ -2021,11 +2096,11 @@
 	function shortcutsDialog() {
 		if (document.getElementById('nuDsKeysDlg')) return;
 		var mac = /Mac|iPhone|iPad/.test(navigator.platform || ''), C = mac ? '⌘' : 'Ctrl';
-		var rows = BROWSE ? [['F2', 'ds_key_rename_col'], ['Esc', 'ds_key_esc'], [C + '+Z', 'ds_key_undo'], [C + '+S', 'ds_key_save'], ['?', 'ds_key_keys']] : [
+		var rows = BROWSE ? [['F2', 'ds_key_rename_col'], ['Esc', 'ds_key_esc'], [C + '+Z', 'ds_key_undo'], [C + '+Y', 'ds_key_redo'], [C + '+S', 'ds_key_save'], ['?', 'ds_key_keys']] : [
 			[t('ds_key_click'), 'ds_key_select'], [C + '+A', 'ds_key_all'], ['Esc', 'ds_key_esc'], ['Tab / Shift+Tab', 'ds_key_tab'],
 			['← ↑ → ↓', 'ds_key_move'], [C + '+← ↑ → ↓', 'ds_key_move_big'], ['Shift+← ↑ → ↓', 'ds_key_size'],
 			['F2', 'ds_key_rename'], [C + '+D', 'ds_key_dup'], [C + '+C / ' + C + '+X / ' + C + '+V', 'ds_key_copy'], [mac ? '⌫' : 'Del', 'ds_key_delete'],
-			[C + '+Z', 'ds_key_undo'], [C + '+S', 'ds_key_save'], [C + '+K', 'ds_key_structure'], ['?', 'ds_key_keys']];
+			[C + '+Z', 'ds_key_undo'], [C + '+Y', 'ds_key_redo'], [C + '+S', 'ds_key_save'], [C + '+K', 'ds_key_structure'], ['?', 'ds_key_keys']];
 		var root = modal('nuDsKeysDlg', t('ds_keys_title'), [el('table', {'class': 'table table-sm nuDsKeys mb-0'}, [el('tbody', {}, rows.map(function (r) {
 			return el('tr', {}, [el('th', {scope: 'row'}, r[0].split(' / ').map(function (k, i) { return el('span', {}, [i ? ' / ' : '', el('kbd', {text: k})]); })), el('td', {text: t(r[1])})]);
 		}))])], [], true);
@@ -2052,6 +2127,7 @@
 		if (e.key === 'F2' && !mod && !BROWSE && objs2.length) { e.preventDefault(); e.stopPropagation(); renameDialog(objs2[objs2.length - 1]); return; }
 		if (e.key === 'F2' && !mod && BROWSE && colById(selCol)) { e.preventDefault(); var ti = panel.querySelector('[data-key="sbr_title"]'); if (ti) { ti.focus(); ti.select(); } return; }
 		if (mod && !e.altKey && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.stopPropagation(); if (!bUndo.disabled) undo(); return; }
+		if (mod && !e.altKey && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) { e.preventDefault(); e.stopPropagation(); if (!bRedo.disabled && !bRedo.hidden) redo(); return; }
 		if (mod && !e.altKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.stopPropagation(); say(t('ds_autosaved')); return; }
 		if (mod && !e.altKey && !e.shiftKey && !BROWSE && (e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X') && objs2.length) {
 			if (window.getSelection && String(window.getSelection()).length) return;   // copying selected text of the page
@@ -2077,6 +2153,19 @@
 		else if (kind === 'delete') deleteObjs([obj]);
 		else if (kind === 'properties') post({nuBuilderSelect: obj.sob_all_id});
 	};
+	// double-click on an object (review H2): it is selected and its label field in the panel gets the focus (F2 = rename dialogue)
+	document.addEventListener('dblclick', function (e) {
+		var ov = e.target.closest && e.target.closest('#nuEditForm .nuDesignOverlay');
+		if (!ov) return;
+		var w = ov.closest('.nuWrap'), id = w ? w.id.replace(/^nuw_/, '') : '';
+		if (!id) return;
+		e.preventDefault();
+		if (selIds.indexOf(id) < 0) post({nuBuilderSelect: id});
+		setTimeout(function () {
+			var f = panel.querySelector('[data-key="sob_all_label"]');
+			if (f) { f.focus(); if (f.select) f.select(); } else { var o = objByFid(id); if (o) renameDialog(o); }
+		}, 120);
+	}, true);
 	document.addEventListener('contextmenu', function (e) {
 		var ov = e.target.closest && e.target.closest('#nuEditForm .nuDesignOverlay');
 		if (!ov || e.ctrlKey || typeof N.objMenuOpen !== 'function') return;
@@ -2113,6 +2202,14 @@
 		barH();
 		if (window.ResizeObserver) new window.ResizeObserver(barH).observe(bar);
 		if (phone.addEventListener) phone.addEventListener('change', function () { renderPanel(); });
+		// the icons of the bar and the rail name themselves after 300 ms (review H2) – Bootstrap tooltips instead of the slow native title
+		if (window.nuBs && nuBs.ready() && window.matchMedia && window.matchMedia('(hover: hover)').matches) {
+			[bar, rail].forEach(function (root) {
+				root.querySelectorAll('button[title], a[title]').forEach(function (b) {
+					try { nuBs.tooltip(b, {delay: {show: 300, hide: 0}, placement: root === rail ? 'right' : 'bottom', trigger: 'hover'}); } catch (x) { /* keep the title */ }
+				});
+			});
+		}
 	}
 	place();
 	renderBar();

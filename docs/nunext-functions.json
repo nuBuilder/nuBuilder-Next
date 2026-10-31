@@ -1288,7 +1288,7 @@
     "g": "user",
     "n": "nuNextUserField",
     "s": "nuNextUserField(string $code, ?string $userId = null): ?string",
-    "d": "Value of a custom user field (Users → Custom fields) of the signed-in user or of $userId; '' = empty, null = no such field. Yes / no fields: '1' / '0', dates YYYY-MM-DD. Same value as the hash variable #USER_<CODE>#.",
+    "d": "Value of a custom user field (Users → Custom user fields) of the signed-in user or of $userId; '' = empty, null = no such field. Yes / no fields: '1' / '0', dates YYYY-MM-DD. Same value as the hash variable #USER_<CODE>#.",
     "r": "?string",
     "e": "$loc = nuNextUserField('location');",
     "o": "next",
@@ -1768,6 +1768,36 @@
     "e": "$id = nuNextUUID();",
     "o": "next",
     "x": "'019a2b4c-7d1e-7f3a-9b2c-4d5e6f708192'"
+   },
+   {
+    "g": "misc",
+    "n": "nuNextSpreadsheetAvailable",
+    "s": "nuNextSpreadsheetAvailable(): bool",
+    "d": "Whether Excel and OpenDocument files can be read here: the PhpSpreadsheet library pack is installed (Update → Libraries), PHP is 8.2 or newer and the extensions it needs are there. While it is true, the classes \\PhpOffice\\PhpSpreadsheet\\… can be used directly in procedures and hooks.",
+    "r": "bool",
+    "e": "if (!nuNextSpreadsheetAvailable()) nuDisplayError('Please install the PhpSpreadsheet pack.');",
+    "o": "next",
+    "x": "true",
+    "a": [
+     "nuNextReadSpreadsheet"
+    ]
+   },
+   {
+    "g": "misc",
+    "n": "nuNextReadSpreadsheet",
+    "s": "nuNextReadSpreadsheet(string $file, int|string $sheet = 0): array",
+    "d": "The rows of one sheet of an .xlsx, .xls or .ods file as arrays of texts. Formulas are not calculated – their result as saved in the file is returned; dates come as Y-m-d (with H:i:s when they have a time). Empty rows at the end are left out; at most 200,000 rows and 500 columns. Needs the PhpSpreadsheet library pack (a RuntimeException otherwise).",
+    "r": "array",
+    "e": "$rows = nuNextReadSpreadsheet('/tmp/prices.xlsx', 'Prices');\nforeach (array_slice($rows, 1) as [$code, $price]) {\n    nuRunQuery('UPDATE article SET art_price = ? WHERE art_code = ?', [$price, $code]);\n}",
+    "p": {
+     "$file": "path of the file on the server (the extension decides the type)",
+     "$sheet": "sheet index (0 = first) or name"
+    },
+    "o": "next",
+    "x": "[['Code', 'Price'], ['A100', '12.5'], ['A200', '7']]",
+    "a": [
+     "nuNextSpreadsheetAvailable"
+    ]
    },
    {
     "g": "str",
@@ -3658,6 +3688,32 @@
     "p": {
      "$title": "document title"
     }
+   },
+   {
+    "g": "page",
+    "k": "method",
+    "n": "$nu->spreadsheet",
+    "s": "$nu->spreadsheet(): bool",
+    "d": "Loads PhpSpreadsheet (library pack): true when \\PhpOffice\\PhpSpreadsheet\\… can be used in the page.",
+    "r": "bool",
+    "o": "next",
+    "e": "if ($nu->spreadsheet()) {\n    $book = \\PhpOffice\\PhpSpreadsheet\\IOFactory::load($file);\n}",
+    "x": "true"
+   },
+   {
+    "g": "page",
+    "k": "method",
+    "n": "$nu->readSpreadsheet",
+    "s": "$nu->readSpreadsheet(string $file, int|string $sheet = 0): array",
+    "d": "The rows of one sheet of an .xlsx, .xls or .ods file as texts (as nuNextReadSpreadsheet()).",
+    "r": "array",
+    "o": "next",
+    "e": "$rows = $nu->readSpreadsheet($upload, 0);",
+    "p": {
+     "$file": "path of the file",
+     "$sheet": "sheet index or name"
+    },
+    "x": "[['Code', 'Price'], ['A100', '12.5']]"
    },
    {
     "g": "page",
@@ -6504,13 +6560,14 @@
     "g": "server",
     "n": "nuRunPHPHidden",
     "s": "nuRunPHPHidden(code)",
-    "d": "Runs a procedure in the background; its JavaScript (nuAddJavascript) runs afterwards.",
+    "d": "Runs a procedure in the background; its JavaScript (nuAddJavascript) runs afterwards. A procedure that sends a file (header Content-Disposition: attachment) makes the browser download it.",
     "r": "Promise",
     "e": "nuRunPHPHidden('update_totals');",
     "o": "nb",
     "p": {
      "code": "code of the procedure"
-    }
+    },
+    "h": "hooks"
    },
    {
     "g": "server",
@@ -6530,13 +6587,14 @@
     "g": "server",
     "n": "nuRunPHP",
     "s": "nuRunPHP(code)",
-    "d": "Runs a procedure and shows its output in a new tab.",
+    "d": "Runs a procedure and shows its output in a new tab. A procedure that sends a file (header Content-Disposition: attachment) makes the browser download it, and the new tab closes again.",
     "r": "Promise",
     "o": "nb",
     "e": "nuRunPHP('print_labels');",
     "p": {
      "code": "code of the procedure"
-    }
+    },
+    "h": "hooks"
    },
    {
     "g": "server",
@@ -6997,7 +7055,7 @@
     "g": "user",
     "n": "nuNextUserField",
     "s": "nuNextUserField(code)",
-    "d": "Value of a custom user field (Users → Custom fields) of the signed-in user; '' = empty, null = no such field (the globeadmin has no values).",
+    "d": "Value of a custom user field (Users → Custom user fields) of the signed-in user; '' = empty, null = no such field (the globeadmin has no values).",
     "r": "string|null",
     "e": "if (nuNextUserField('location') === 'ZH') nuHide('cus_credit');",
     "o": "next",
@@ -8407,6 +8465,19 @@
     "p": {
      "conditions": "list of {column: index or title of a list column, op: operator, value, value2 (between)}; leave out to read the search",
      "mode": "'all' (default) or 'any'"
+    }
+   },
+   {
+    "g": "form",
+    "n": "nuNextPhoneLayout",
+    "s": "nuNextPhoneLayout(on)",
+    "d": "Phones (below 576 px): forms with fixed positions show their objects below each other – label above, full width, in the order top, then left – and browse lists show their rows as cards. nuNextPhoneLayout(false) in nuOnLoad keeps the desktop layout for this form (it then scrolls sideways); true switches it on again.",
+    "r": "",
+    "o": "next",
+    "v": "0.8.764",
+    "e": "function nuOnLoad() {\n  nuNextPhoneLayout(false);   // this form keeps its fixed layout on phones\n}",
+    "p": {
+     "on": "false = keep the desktop layout, true = stack on phones (the default)"
     }
    }
   ]

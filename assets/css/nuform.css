@@ -457,3 +457,49 @@ input.nuButtonSpinning:is(.btn-light, .btn-outline-secondary, .btn-outline-prima
 .nuAdvRow .nuAdvVals .nuAdvVal { min-width: 0; }
 .nuAdvChip { font-size: .8rem; padding: .35em .7em; }
 .nuAdvChip:hover { background: var(--bs-secondary-bg) !important; }
+
+/* ---------------------------------------------------------------- phones: fixed-position forms stacked (review F1, 0.8.764) – class set by
+   nuruntime.js phoneStack() below 576 px (off: nuNextPhoneLayout(false)). Label above the field, full width, order from top / left. */
+@media (max-width: 575.98px) {
+	html.nuPhoneStack .nuLayout-absolute .nuAbsoluteCanvas { display: flex; flex-direction: column; gap: .75rem; height: auto !important; min-width: 0 !important; isolation: auto; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs { position: relative; top: auto !important; left: auto !important; width: 100% !important; max-width: 100%; z-index: auto !important; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs[style*="display:none"], html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs[style*="display: none"] { display: none !important; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs > :is(.nuLabelLeft, .nuLabelTop) { position: static; display: block; margin: 0 0 .2rem; text-align: start; white-space: normal; font-size: .875rem; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs:not(.nuWrap_textarea):not(.nuWrap_html):not(.nuWrap_editor):not(.nuWrap_subform):not(.nuWrap_run):not(.nuWrap_chart):not(.nuWrap_image):not(.nuWrap_contentbox) { height: auto !important; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .form-control:not(textarea), html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .form-select:not([multiple]) { height: 38px; font-size: 1rem; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .nuLookupGroup .btn { height: 38px; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .ts-wrapper .ts-control { min-height: 38px; font-size: 1rem; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .nuButton, html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .nuRunButton,
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_input > button.btn { min-height: 40px; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs.nuWrap_image { width: auto !important; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_run:has(> button) { height: auto !important; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_subform { height: auto !important; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_subform > .nuSubform { height: auto !important; max-height: 70vh; }
+	/* content boxes: their title becomes a section heading, the frame goes (the objects inside follow below it) */
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_contentbox { height: auto !important; pointer-events: auto; margin-top: .5rem; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_contentbox .nuContentBoxContainer { height: auto; border: 0; background: none; box-shadow: none; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_contentbox .nuContentBoxTitle { position: static; padding: 0 0 .25rem; background: none; font-weight: 600; border-bottom: 1px solid var(--bs-border-color); }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_subform .nuSubform { max-width: 100%; overflow-x: auto; }
+}
+/* forms embedded in a run object of another form (review F3, nuruntime.js html.nuEmbedded): compact chrome, so the rows get the room */
+html.nuEmbedded main#main { padding-top: .5rem !important; padding-bottom: .5rem !important; }
+html.nuEmbedded .nuFormHeader { margin-bottom: .5rem !important; row-gap: .35rem; }
+html.nuEmbedded .nuFormHeader > .nuBreadcrumb { font-size: .95rem; }
+html.nuEmbedded .nuFormHeader .btn:not(.dropdown-item) { --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .55rem; --bs-btn-font-size: .875rem; }
+html.nuEmbedded .nuListCard .nuListFilter, html.nuEmbedded .nuBrowseCard .nuListFilter { padding: .5rem .75rem .6rem; }
+@media (max-width: 575.98px) { html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_run:has(> iframe) { height: auto !important; } }
+/* phones: rows of form browse lists as cards (review F2, html.nuPhoneCards from nuruntime.js; off: nuNextPhoneLayout(false)) – the first
+   shown column as the title, the others as "Title: value" lines; the column widths of the desktop do not apply */
+@media (max-width: 575.98px) {
+	html.nuPhoneCards #nuBrowseTable { table-layout: auto !important; width: 100% !important; }
+	html.nuPhoneCards #nuBrowseTable > thead { display: none; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow { display: flex; flex-wrap: wrap; column-gap: .75rem; row-gap: .1rem; align-items: baseline; padding: .65rem .9rem; border-bottom: 1px solid var(--bs-border-color); }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td { display: block; border: 0; padding: 0; width: auto !important; max-width: 100%; white-space: normal; text-align: start !important; background: transparent; box-shadow: none; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell[style*="display:none"] { display: none !important; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) ~ td.nuCell { font-size: .875rem; color: var(--bs-secondary-color); }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) ~ td.nuCell::before { content: attr(data-nu-label) ": "; font-weight: 500; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) { flex: 1 0 100%; font-weight: 600; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) ~ td.nuCell { flex: 0 1 auto; font-weight: 400; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuRowDelCol { order: 99; margin-inline-start: auto; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell[data-nu-label=""]::before { content: none; }
+}

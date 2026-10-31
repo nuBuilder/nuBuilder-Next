@@ -19,7 +19,7 @@
 	var tx = function (k) { var a = Array.prototype.slice.call(arguments, 1), s = T[k] || k, i = 0; return s.replace(/%[sd]/g, function () { return a[i++]; }); };
 	var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
 
-	var S = {headers: [], rows: [], count: 0, dates: [], columns: [], mapping: {}, table: '', config: null, lastResult: null, step: 1};
+	var S = {headers: [], rows: [], count: 0, dates: [], columns: [], mapping: {}, table: '', config: null, lastResult: null, step: 1, sheet: null};
 
 	// ------------------------------------------------------------------ helpers
 	function msg(text, type) {
@@ -75,12 +75,27 @@
 		call('upload', {header: $('#impHeader').checked ? '1' : '0', quote: $('#impQuote').value}, file).then(function (j) {
 			$('#impDelimiter').value = j.delimiter;
 			$('#impDelimiterCustom').classList.add('d-none');
+			showSheets(j);
 			$('#impFileInfo').innerHTML = '<i class="bi bi-file-earmark-text me-1"></i>' + esc(j.file.name) + ' <span class="small text-body-secondary fw-normal">· ' + fmtBytes(j.file.size) + ' · ' + esc(j.file.encoding) + '</span>';
 			showPreview(j);
 			$('#impFileCard').classList.remove('d-none');
 			if (S.config) applyReadConfig();
 		}).catch(function (e) { msg(e.message, 'danger'); }).finally(function () { busy(false); $('#impFile').value = ''; });
 	}
+	// spreadsheets (0.8.755): the sheet select takes the place of separator and quote; another sheet is written as CSV on the server
+	function showSheets(j) {
+		var sheets = j.sheets || [], sel = $('#impSheet');
+		S.sheet = sheets.length ? j.sheet || 0 : null;
+		$('#impSheetWrap').classList.toggle('d-none', !sheets.length);
+		$$('.impCsvOnly', app).forEach(function (el) { el.classList.toggle('d-none', !!sheets.length); });
+		sel.innerHTML = sheets.map(function (n, i) { return '<option value="' + i + '"' + (i === S.sheet ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+		sel.disabled = sheets.length < 2;
+	}
+	$('#impSheet').addEventListener('change', function () {
+		busy(true);
+		call('sheet', {sheet: this.value, header: $('#impHeader').checked ? '1' : '0'}).then(function (j) { showSheets(j); showPreview(j); })
+			.catch(function (e) { msg(e.message, 'danger'); }).finally(function () { busy(false); });
+	});
 	var previewTimer = null;
 	function reloadPreview() {
 		clearTimeout(previewTimer);
@@ -291,13 +306,13 @@
 	}
 	function applyReadConfig() {
 		var r = S.config.read || {};
-		if (r.delimiter) {
+		if (r.delimiter && S.sheet === null) {               // a spreadsheet is always read as the CSV written on the server
 			var known = $('#impDelimiter option[value="' + CSS.escape(r.delimiter) + '"]');
 			$('#impDelimiter').value = known ? r.delimiter : 'custom';
 			$('#impDelimiterCustom').classList.toggle('d-none', !!known);
 			if (!known) $('#impDelimiterCustom').value = r.delimiter;
 		}
-		if (r.quote) $('#impQuote').value = r.quote;
+		if (r.quote && S.sheet === null) $('#impQuote').value = r.quote;
 		if (r.header !== undefined) $('#impHeader').checked = r.header !== '0';
 		reloadPreview();
 	}

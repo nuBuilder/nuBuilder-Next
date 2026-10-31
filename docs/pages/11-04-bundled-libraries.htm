@@ -15,11 +15,12 @@
 		<tr><td>Tom Select</td><td>Searchable selects (also in place of Select2)</td><td>Apache 2.0</td></tr>
 		<tr><td>CodeMirror</td><td>Code editor</td><td>MIT</td></tr>
 		<tr><td>js-beautify, sql-formatter, Prettier (+ PHP plugin)</td><td><em>Format</em> button of the code editor</td><td>MIT</td></tr>
-		<tr><td>ApexCharts</td><td>Charts of dashboards and <code>nuChart</code></td><td>MIT</td></tr>
+		<tr><td>ApexCharts</td><td>Charts of dashboards; in form code <code>new ApexCharts(…)</code> when <code>$nuConfigIncludeApexCharts = true</code></td><td>MIT</td></tr>
 		<tr><td>qrcode-generator</td><td>QR codes (authenticator setup)</td><td>MIT</td></tr>
 	</tbody>
 </table>
-<p>Your form code may use jQuery, Bootstrap, Tom Select and ApexCharts. Larger libraries (TCPDF, PHPMailer, TinyMCE, phpMyAdmin, Adminer, Uppy …) are not in the package – they come from nuBuilder Forte's folder or as <a href="#copy-files">library packs</a>.</p>
+<p>Your form code may use jQuery, Bootstrap, Tom Select and ApexCharts. <code>nuChart</code> and chart objects use <strong>Google Charts</strong>, as in nuBuilder Forte: it is not bundled but loaded from <code>www.gstatic.com</code> when a chart is drawn, so the browser must reach that address.</p>
+<p>Larger libraries are not in the package – they come from nuBuilder Forte's folder or as <a href="#copy-files">library packs</a> (<em>Update → Libraries</em>): TCPDF (PDF reports), PHPMailer (e-mail), TinyMCE (rich text editor), phpMyAdmin (MySQL / MariaDB only) and Adminer (database tools), Uppy (file uploads) and PhpSpreadsheet (reading and writing Excel / OpenDocument files – needs PHP 8.2 or newer; the pack is refused on older PHP).</p>
 	<p><strong>Source maps:</strong> the <code>.map</code> files of minified libraries are not shipped. So the browser's developer tools do not ask for them (and report a Content-Security-Policy error), the <code>sourceMappingURL</code> comment is removed from such files – in the package, during an update and when a library pack is installed. A comment whose <code>.map</code> file is delivered stays. Library packs installed earlier are cleaned when they are installed again.</p>
 	<p class="doc-see">See also: <a href="#copy-files">Libraries (library packs)</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>vendor/bundled/libraries.json</code></li><li><code>vendor/bundled/</code></li></ul></details>

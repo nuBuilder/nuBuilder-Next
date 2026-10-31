@@ -71,7 +71,7 @@ nu_layout_start(t('fmt_title'), 'forms');
 		<?php if ($designer['rights']['add']): ?>
 			<button type="button" class="btn nuAddBtn" title="<?= h(t('fmt_new')) ?>" id="fmtNew"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></button>
 		<?php endif; ?>
-		<?= NuListExport::buttons(NuAcl::FORM_FORMAT, 'formats', ['q' => $q, 'type' => $type]) ?>
+		<?= $rows ? NuListExport::buttons(NuAcl::FORM_FORMAT, 'formats', ['q' => $q, 'type' => $type]) : '' /* no records: nothing to export (0.8.749) */ ?>
 	</div>
 </div>
 

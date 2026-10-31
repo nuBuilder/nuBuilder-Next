@@ -69,12 +69,12 @@ class D:
 # ------------------------------------------------------------------ the diagrams
 def sessions():
     d = D('sessions', 680, 500, 'Sign-in and sessions',
-          'The login form goes to NuAuth, which checks the password and the account; a second factor is asked when needed. '
+          'The login form goes to NuAuth, which checks the password, the account and the IP access rules; a second factor is asked when needed. '
           'The PHP session nunext is noted in zzzzsys_nunext_session and the log. Every later request is checked by NuAuth::user(): '
-          'time-out, password changed elsewhere or session ended lead back to the sign-in page.')
+          'time-out, password changed elsewhere, session ended or an address that is not allowed lead back to the sign-in page.')
     d.head(115, 40, 'Browser', False).head(345, 40, 'Server', False).head(570, 40, 'Database', False)
     d.box(40, 66, 150, 56, 'Login form', '?p=login', 'n')
-    d.box(240, 66, 210, 56, 'NuAuth: sign in', 'password · active · not expired')
+    d.box(240, 66, 210, 56, 'NuAuth: sign in', 'password · account · IP access')
     d.box(500, 66, 140, 56, 'Second factor', 'app or e-mail code', 'a')
     d.arrow((190, 94), (238, 94)).arrow((450, 94), (498, 94)).label(474, 82, 'if needed')
     d.box(240, 160, 210, 56, 'Session “nunext”', 'user · level · password print')
@@ -84,7 +84,7 @@ def sessions():
     d.arrow((450, 188), (498, 188)).arrow((450, 205), (475, 205), (475, 268), (498, 268))
     d.sep(320)
     d.box(40, 346, 150, 56, 'Every request', 'cookie nunext', 'n')
-    d.box(240, 340, 210, 68, 'NuAuth::user()', 'time-out? password changed?\nsession ended?')
+    d.box(240, 340, 210, 68, 'NuAuth::user()', 'time-out? password changed?\nsession ended? IP allowed?')
     d.box(500, 346, 140, 56, 'Sign-in page', 'then back to the page', 'a')
     d.arrow((190, 374), (238, 374)).arrow((450, 374), (498, 374)).label(474, 362, 'if not')
     d.box(240, 430, 210, 50, 'The page or JSON answer', '', 'g')
@@ -174,7 +174,7 @@ def updating():
           'A package from an upload, the _update folder or GitHub is checked and previewed. Install changes the selected columns, '
           'makes a backup, switches maintenance mode on and copies the files; when copying fails the backup is put back. The next '
           'request runs the database steps and ends maintenance mode.')
-    for i, (t, s) in enumerate([('Upload', 'nunext.zip'), ('_update/ folder', 'copied by FTP'), ('GitHub', 'daily check')]):
+    for i, (t, s) in enumerate([('Upload', 'nunext.zip'), ('_update/ folder', 'copied by FTP'), ('GitHub', 'automatic check')]):
         y = 20 + i * 62
         d.box(20, y, 150, 50, t, s, 'n')
         d.arrow((170, y + 25), (205, y + 25), (205, 107), (238, 107))
@@ -234,20 +234,20 @@ def home_users():
 
 def drafts():
     d = D('drafts', 680, 330, 'Drafts and publishing',
-          'Start draft copies the live form. Save and Undo work in the draft only; Preview shows it to its author. Publish checks the '
+          'The first change in design mode starts a draft from the live form. Save and Undo work in the draft only; Preview shows it to its author. Publish checks the '
           'draft, keeps the live form in the history and replaces it in one transaction; Discard deletes the draft.')
     d.box(20, 60, 170, 64, 'Live form', 'what users work with', 'g')
     d.box(255, 60, 170, 64, 'Draft', 'Save · Undo (20 steps)', 'p')
     d.box(490, 20, 170, 56, 'Preview', 'only you, yellow banner', 'n')
     d.box(490, 110, 170, 56, 'Compare with live', 'line by line', 'n')
-    d.arrow((190, 80), (253, 80)).label(222, 68, 'Start draft')
+    d.arrow((190, 80), (253, 80)).label(222, 68, 'First change')
     d.arrow((425, 78), (488, 48)).arrow((425, 108), (488, 138))
     d.box(255, 200, 170, 56, 'Publish', 'checks · note', 'a')
     d.arrow((340, 124), (340, 198))
     d.arrow((255, 228), (105, 228), (105, 126)).label(180, 216, 'replaces live')
     d.box(20, 264, 170, 56, 'History', 'before publish · vN', 'g').arrow((105, 230), (105, 262))
     d.box(490, 200, 170, 56, 'Discard', 'live form untouched', 'a').arrow((425, 100), (455, 100), (455, 228), (488, 228))
-    return d, '04-04-form-drafts.htm', ('<li><strong>Start draft', 'before-list')
+    return d, '04-04-form-drafts.htm', ('<li><strong>A draft starts', 'before-list')
 
 
 def libraries():
@@ -255,7 +255,7 @@ def libraries():
           'Library packs come from the GitHub release “libraries”, the _update folder or an upload; Update → Libraries checks their '
           'signature and every file and installs each version into its own folder in vendor/packs. The bundled libraries come with '
           'nunext.zip into vendor/bundled and are replaced by every update.')
-    d.head(20, 20, 'Library packs (TCPDF, PHPMailer, TinyMCE, phpMyAdmin, Adminer, Uppy)')
+    d.head(20, 20, 'Library packs (TCPDF, PHPMailer, TinyMCE, phpMyAdmin, Adminer, Uppy, PhpSpreadsheet)')
     for i, (t, s) in enumerate([('GitHub release', 'tag “libraries”'), ('_update/ folder', 'zips copied by FTP'), ('Upload', 'Update → Libraries')]):
         y = 40 + i * 66
         d.box(20, y, 160, 52, t, s, 'n').arrow((180, y + 26), (215, y + 26), (215, 132), (238, 132))
@@ -269,7 +269,7 @@ def libraries():
     d.box(240, 314, 200, 52, 'Update', 'replaces, never deletes', 'p')
     d.box(480, 314, 180, 52, 'vendor/bundled/', 'libraries.json', 'g')
     d.arrow((180, 340), (238, 340)).arrow((440, 340), (478, 340))
-    return d, '01-05-copy-files.htm', ('<p>Six libraries', 'before')
+    return d, '01-05-copy-files.htm', ('<p>Seven libraries', 'before')
 
 
 def devflow():

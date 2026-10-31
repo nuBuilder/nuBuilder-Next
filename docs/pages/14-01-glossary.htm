@@ -4,35 +4,52 @@
 	<p class="doc-for" data-doc="admin">For: Everyone</p>
 	<dl class="doc-glossary">
 	<dt>Access level</dt><dd>The set of forms (with their buttons), procedures and reports a user may use. Every user except the globeadmin has one. <a href="#access">Access levels</a></dd>
+	<dt>Action buttons</dt><dd>The buttons of a record or list: <em>Save</em>, <em>Add</em>, <em>Clone</em>, <em>Delete</em>, <em>Print</em> – each one a right of the access level. <a href="#access">Access levels</a></dd>
 	<dt>Admin role</dt><dd>A part of the globeadmin's rights given to a user, per tool view or change. nuBuilder Next only. <a href="#admin-roles">Admin roles</a></dd>
 	<dt>App cloner</dt><dd>Copies the whole application into another database or an SQL file. <a href="#appcloner">App cloner</a></dd>
 	<dt>Audit trail</dt><dd>Every change of a record, one row per column, with history and restore. <a href="#audit-trail">Audit trail</a></dd>
-	<dt>Browse</dt><dd>The list of a form (nuBuilder Forte's name). Its rows come from the form's <em>browse SQL</em>, its columns are the <em>browse columns</em>.</dd>
 	<dt>Breadcrumbs</dt><dd>The path above a form (start page › list › record); <em>Back</em> goes one step up.</dd>
+	<dt>Browse</dt><dd>The list of a form (nuBuilder Forte's name). Its rows come from the form's <em>browse SQL</em>, its columns are the <em>browse columns</em>.</dd>
+	<dt>Column</dt><dd>One piece of information in a table (also <em>field</em>); an object of a form saves into the column with the same name as its ID. <a href="#db-tables">Database basics</a></dd>
+	<dt>Criteria form</dt><dd>The form a report opens first (its <em>launch form</em>): the user fills in the values the report uses, such as a date range. <a href="#first-app-report">A report step by step</a></dd>
 	<dt>Dashboard</dt><dd>A set of widgets (KPI tile, chart, table) built from SQL, shown on start pages or forms. <a href="#dashboards">Dashboards</a></dd>
+	<dt>Data export</dt><dd>A saved export of tables, views or queries to Excel or CSV, run from its page or the REST API. <a href="#data-export">Data export</a></dd>
+	<dt>Data import</dt><dd>Loads a CSV file (or, with the PhpSpreadsheet pack, an Excel / OpenDocument sheet) into a table: mapping, a trial run, then the import. <a href="#csv-import">Data import</a></dd>
 	<dt>Draft</dt><dd>A working copy of a form; users keep the live form until the draft is published. <a href="#form-drafts">Drafts and publishing</a></dd>
+	<dt>Edit screen</dt><dd>nuBuilder Forte's name for the record view of a form – the fields of one record with the action buttons.</dd>
 	<dt>Field data access</dt><dd>Server-side rules per field: shown, masked, read only or withheld for certain users. <a href="#data-access">Data access</a></dd>
-	<dt>Format</dt><dd>A date, number or text-mask format shared with nuBuilder Forte (<code>zzzzsys_format</code>). <a href="#formats">Formats</a></dd>
+	<dt>Foreign key</dt><dd>A column that holds the primary key of a row in another table (<code>con_organization_id</code>) and so links the two – the basis of lookups and sub-forms. <a href="#db-relations">Database basics</a></dd>
 	<dt>Form</dt><dd>A list and / or edit screen defined by rows in <code>zzzzsys_form</code> and related tables. Types: browse and edit, browse, edit, launch, subform, page.</dd>
+	<dt>Format</dt><dd>A date, number or text-mask format shared with nuBuilder Forte (<code>zzzzsys_format</code>). <a href="#formats">Formats</a></dd>
+	<dt>Global code</dt><dd>JavaScript and CSS of Settings → Code &amp; includes → Global code: nuBuilder Forte's Setup Header, Style and Include for form pages, and Global JS &amp; CSS for every page. <a href="#globalcode">Global code</a></dd>
 	<dt>Global hook</dt><dd>A procedure with a reserved code (<code>nu_before_save</code>, <code>nu_before_edit</code>, <code>nu_startup</code> …) that runs for every form or every login. <a href="#hooks">Hooks</a></dd>
 	<dt>Globeadmin</dt><dd>The administrator account defined in <code>nuconfig.php</code>; may do everything.</dd>
 	<dt>Hash variable</dt><dd><code>#NAME#</code> placeholder replaced by its value in SQL, PHP and HTML – the user, the record, fields, properties. Also "hash cookie". <a href="#hash-variables">Hash variables</a></dd>
 	<dt>Hook</dt><dd>PHP of a form that runs at a fixed moment: Before Browse, Before Edit, Before Save, After Save, Before Delete, After Delete; After Browse of a lookup. <a href="#form-lifecycle">Form lifecycle</a></dd>
+	<dt>IP access</dt><dd>Rules which addresses may sign in, per access level. <a href="#ip-access">IP access</a></dd>
 	<dt>Item</dt><dd>An entry of nuBuilder Forte's item lists (<code>zzzzsys_item</code>), e.g. for selects. <a href="#items">Items</a></dd>
 	<dt>Launch form</dt><dd>A form without a table – a menu or a page of buttons and HTML.</dd>
 	<dt>Library pack</dt><dd>A signed zip that installs a third-party library (TinyMCE, phpMyAdmin …) into <code>vendor/packs/</code>. <a href="#copy-files">Library packs</a></dd>
 	<dt>List view</dt><dd>The layout of one of nuBuilder Next's own lists: columns, sort, phone view. <a href="#list-views">List views</a></dd>
 	<dt>Lookup</dt><dd>An object that stores the primary key of a record of another form and shows its code and description. <a href="#object-types">Object types</a></dd>
+	<dt>Notification</dt><dd>A message to users shown by the bell in the top bar, optionally with a read receipt or an e-mail. <a href="#notifications">Notifications</a></dd>
 	<dt>Object</dt><dd>A field or element on a form (input, select, lookup, subform, calc, HTML, run …); its id is the column it saves to.</dd>
 	<dt>Page (form type)</dt><dd>A PHP app of your own in <code>custom/pages/</code> that runs inside nuBuilder Next. <a href="#pages">Pages</a></dd>
+	<dt>Parent and child record</dt><dd>In a one-to-many relationship the parent (an invoice) has many children (its items), linked by the foreign key in the child rows. <a href="#db-relations">Database basics</a></dd>
+	<dt>Password policy</dt><dd>Rules for new passwords (length, characters, leaked-password check) and how often they must be changed. <a href="#password-policy">Password policy</a></dd>
 	<dt>Permission item</dt><dd>A named switch that code checks with <code>nuUserHasPermission()</code>. <a href="#permissions">Permission items</a></dd>
+	<dt>Primary key</dt><dd>The column whose value is unique in every row of a table; filled by nuBuilder Next when a record is created, never shown to users. <a href="#db-keys">Database basics</a></dd>
 	<dt>Procedure</dt><dd>Named PHP in <code>zzzzsys_php</code>, started by buttons, run objects, <code>nuRunPHP()</code> or reports. <a href="#procedures">Procedures</a></dd>
 	<dt>Property</dt><dd>A value set with <code>nuSetProperty()</code> that is available as a hash variable to the form and the forms opened from it.</dd>
+	<dt>Record</dt><dd>One row of a table – one customer, one invoice.</dd>
 	<dt>Record ID</dt><dd>The primary key of the open record; <code>-1</code> for a new one (<code>#RECORD_ID#</code>).</dd>
 	<dt>Run object</dt><dd>A button object that opens a form, report or procedure. <a href="#run-objects">Run objects</a></dd>
-	<dt>Global code</dt><dd>(formerly <em>Custom code</em> – nuBuilder Forte uses that name for a form's own JavaScript) JavaScript and CSS of Admin tools → Global code: nuBuilder Forte's Setup Header, Style and Include for form pages, and Global JS &amp; CSS for every page. <a href="#globalcode">Global code</a></dd>
+	<dt>Search screen</dt><dd>nuBuilder Forte's name for a form's list (also <em>browse screen</em>). <a href="#lists">Lists</a></dd>
+	<dt>Settings centre</dt><dd>All settings of the installation in one place: sections in a side bar, a search over every setting. <a href="#settings">Settings</a></dd>
 	<dt>Subform</dt><dd>A form shown as rows inside another form, linked by a foreign key.</dd>
+	<dt>Theme</dt><dd>A set of colours (light and dark) for the whole interface, chosen per installation, access level or user. <a href="#themes">Themes</a></dd>
 	<dt>Tile</dt><dd>An entry of a start page: a form, report, procedure, page or link.</dd>
+	<dt>Webhook</dt><dd>An HTTPS call nuBuilder Next makes to another system when a record of a form is saved or deleted. <a href="#webhooks">Webhooks</a></dd>
 	<dt><code>zzzzsys_</code> tables</dt><dd>nuBuilder Forte's system tables; <code>zzzzsys_nunext_</code> are nuBuilder Next's own. <a href="#table-ref">Table reference</a></dd>
 </dl>
 	<p class="doc-see">See also: <a href="#key-concepts">Key concepts</a></p>

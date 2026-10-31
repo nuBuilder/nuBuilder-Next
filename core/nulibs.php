@@ -11,8 +11,8 @@ defined('NU_ROOT') || exit;
  *              nunext.zip, NuUpdate::SIGN_PUBLIC) over payload() = "nunext-lib|<slot>|<version>|sha256(sorted 'rel sha256 size' lines)".
  *   Folders    vendor/packs/<dir>-<version>/ (0.8.409; dir = SLOTS[..]['dir'], e.g. nudb-5.2.3) – versions side by side; the active
  *              one is in vendor/packs/nunext-libs.php ("<?php exit; ?>" + JSON: slot => {active, prev, source, at, by}). vendor/packs/
- *              itself is deny-all (.htaccess written on first use); the browser packs (TinyMCE, phpMyAdmin, Tiny File Manager) get an
- *              allow .htaccess, the others (TCPDF, PHPMailer, Adminer) a deny-all one. The active version plus KEEP older ones stay
+ *              itself is deny-all (.htaccess written on first use); the browser packs (TinyMCE, phpMyAdmin, Uppy) get an
+ *              allow .htaccess, the others (TCPDF, PHPMailer, Adminer, PhpSpreadsheet) a deny-all one. The active version plus KEEP older ones stay
  *              (roll back). An update of nuBuilder Next never touches vendor/packs/ (NuUpdate::isProtected).
  *              Packs of 0.8.405–0.8.408 stay where they are (third_party/<dir>-<version>/, third_party/nunext-libs.php) and are read
  *              as an old place for a slot that has no pack in vendor/packs/ yet – until the upgrade baseline moves.
@@ -59,9 +59,11 @@ final class NuLibs
 		'adminer'         => ['title' => 'Adminer', 'dir' => 'adminer', 'web' => false, 'entry' => ['adminer.php', 'adminer-*.php'], 'rec' => false, 'use' => 'db'],
 		// nuBuilder's Uppy (0.8.459): file objects with target "File System" upload with it (uppy.min.js / .css + locales/)
 		'uppy'            => ['title' => 'Uppy', 'dir' => 'uppy', 'web' => true, 'entry' => ['uppy.min.js'], 'rec' => false, 'use' => 'upload'],
+		// PhpSpreadsheet (0.8.755): reading Excel / OpenDocument files (CSV import, nuNextReadSpreadsheet) – built by dev/pss_assemble.py, PHP 8.2+
+		'phpspreadsheet'  => ['title' => 'PhpSpreadsheet', 'dir' => 'phpspreadsheet', 'web' => false, 'entry' => ['autoload.php'], 'rec' => false, 'use' => 'spreadsheet', 'php' => '8.2.0'],
 	];
 	/** NuSecurity::libraries() name => slot */
-	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Uppy' => 'uppy'];
+	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Uppy' => 'uppy', 'PhpSpreadsheet' => 'phpspreadsheet'];
 	/** Slots that were removed (slot => folder name): their packs are deleted by retire() – Tiny File Manager since 0.8.479 (nuFiles). */
 	public const RETIRED = ['tinyfilemanager' => 'tinyfilemanager'];
 
@@ -77,6 +79,13 @@ final class NuLibs
 	public static function slot(string $slot): ?array
 	{
 		return self::SLOTS[$slot] ?? null;
+	}
+
+	/** The PHP version a slot needs and this server lacks: the error text, '' = fine (0.8.755: PhpSpreadsheet 5 needs 8.2). */
+	public static function phpProblem(string $slot): string
+	{
+		$need = (string)(self::SLOTS[$slot]['php'] ?? '');
+		return $need !== '' && version_compare(PHP_VERSION, $need, '<') ? t('lp_err_php', self::SLOTS[$slot]['title'], $need, PHP_VERSION) : '';
 	}
 
 	public static function validVersion(string $v): bool
@@ -347,6 +356,7 @@ final class NuLibs
 	{
 		$i = self::inspect($zip, $key);
 		if (!$i['ok']) throw new RuntimeException(implode(' ', $i['errors']) ?: t('lp_err_manifest'));
+		if (($pp = self::phpProblem($i['name'])) !== '') throw new RuntimeException($pp);
 		nu_time_limit(0);
 		$slot = $i['name'];
 		$ver = $i['version'];
@@ -644,6 +654,12 @@ final class NuLibs
 			foreach ($out[$l['name']] as $x) if ($x['ok'] && $x['version'] === $l['version']) continue 2;     // already here
 			$out[$l['name']][] = ['version' => $l['version'], 'where' => 'github', 'entry' => $l, 'ok' => true, 'errors' => []];
 		}
+		foreach ($out as $slot => &$cands) {                          // a PHP the library does not run on: nothing to install (0.8.755)
+			if (($pp = self::phpProblem($slot)) === '') continue;
+			foreach ($cands as &$c) { $c['ok'] = false; $c['errors'] = [$pp]; }
+			unset($c);
+		}
+		unset($cands);
 		foreach ($out as &$list) usort($list, static fn($a, $b) => ($b['ok'] <=> $a['ok']) ?: (self::newer($b['version'], $a['version']) ? 1 : (self::newer($a['version'], $b['version']) ? -1 : 0)));
 		return $out;
 	}
@@ -824,6 +840,21 @@ final class NuLibs
 					$v = self::uppyVersion(NU_ROOT . '/' . $w . '/uppy.min.js');
 					if (!is_file(NU_ROOT . '/' . $w . '/uppy.min.css')) return ['fail', t('lp_test_tiny_part', 'uppy.min.css')];
 					return $v !== '' ? ['ok', t('lp_test_tiny', $v, $w . '/')] : ['warn', t('lp_test_tiny', '?', $w . '/')];
+				case 'phpspreadsheet':
+					if (($pp = self::phpProblem('phpspreadsheet')) !== '') return ['fail', $pp];
+					if ($miss = NuSpreadsheet::missingExtensions()) return ['fail', t('lp_test_ext', implode(', ', $miss))];
+					if (!NuSpreadsheet::load()) return ['fail', t('lp_test_missing')];
+					$tmp = tempnam(sys_get_temp_dir(), 'nupss') . '.xlsx';
+					try {
+						$ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+						$ss->getActiveSheet()->fromArray([['nuBuilder Next', 42]]);
+						(new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($tmp);
+						$rows = NuSpreadsheet::read($tmp)['rows'];
+						$ok = ($rows[0][0] ?? '') === 'nuBuilder Next' && ($rows[0][1] ?? '') === '42';
+					} finally {
+						@unlink($tmp);
+					}
+					return $ok ? ['ok', t('lp_test_pss', NuSpreadsheet::version())] : ['fail', t('lp_test_pss_fail')];
 				case 'adminer':
 					$f = NuVendor::adminerFile();
 					if ($f === '') return ['fail', t('lp_test_missing')];
@@ -869,6 +900,9 @@ final class NuLibs
 				break;
 			case 'uppy':
 				$v = self::uppyVersion("$dir/uppy.min.js");
+				break;
+			case 'phpspreadsheet':
+				if (is_file("$dir/VERSION")) $v = trim((string)file_get_contents("$dir/VERSION"));
 				break;
 		}
 		return self::validVersion($v) ? $v : '';

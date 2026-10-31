@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.747');
+define('NU_VERSION', '0.8.767');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -29,7 +29,7 @@ define('NU_FEATURE_ACCESSIBILITY', false);   // user form switch "Accessibility 
  */
 const NU_AUTOLOAD = [
 	'NuCompat' => 'core/nucompat.php', 'NuSchemaCheck' => 'core/nuschemacheck.php', 'NuIntegrity' => 'core/nuintegrity.php', 'NuLanguages' => 'core/nulanguages.php', 'NuSettingsHub' => 'core/nusettingshub.php', 'NuSettings' => 'core/nusettings.php', 'NuBranding' => 'core/nubranding.php', 'NuDashboard' => 'core/nudashboard.php', 'NuAutoUpdate' => 'core/nuautoupdate.php', 'NuGitHub' => 'core/nugithub.php', 'NuHomeHook' => 'core/nuhomehook.php',
-	'NuHome' => 'core/nuhome.php', 'NuApi' => 'core/nuapi.php', 'NuApiError' => 'core/nuapi.php', 'NuApiClient' => 'core/nuapiclient.php',
+	'NuHome' => 'core/nuhome.php', 'NuApi' => 'core/nuapi.php', 'NuApiError' => 'core/nuapi.php', 'NuApiFile' => 'core/nuapi.php', 'NuApiClient' => 'core/nuapiclient.php',
 	'NuApiPlayground' => 'core/nuapiplayground.php', 'NuInstall' => 'core/nuinstall.php', 'NuConfigFile' => 'core/nuconfigfile.php', 'NuSetupWizard' => 'core/nusetupwizard.php', 'NuPalette' => 'core/nupalette.php', 'NuAdmin' => 'core/nuadmin.php', 'NuTutorial' => 'core/nututorial.php', 'NuListView' => 'core/nulistview.php', 'NuListDefs' => 'core/nulistdefs.php', 'NuLoginToken' => 'core/nulogintoken.php', 'NuReportApi' => 'core/nureportapi.php', 'NuDemoData' => 'core/nudemodata.php', 'NuDbChanges' => 'core/nudbchanges.php', 'NuAudit' => 'core/nuaudit.php', 'NuIncludes' => 'core/nuincludes.php', 'NuMailOAuth' => 'core/numailoauth.php', 'NuUserFields' => 'core/nuuserfields.php', 'NuUserAccess' => 'core/nuuseraccess.php', 'NuUpload' => 'core/nuupload.php', 'NuCustomCode' => 'core/nucustomcode.php', 'NuCodeTemplates' => 'core/nucodetemplates.php', 'NuHelpLink' => 'core/nuhelplink.php', 'NuSidebar' => 'core/nusidebar.php', 'NuFormInfo' => 'core/form/nuforminfo.php', 'NuColumnChange' => 'core/form/nucolumnchange.php', 'NuDesign' => 'core/form/nudesign.php', 'NuDbReset' => 'core/nudbreset.php', 'NuDbState' => 'core/nudbstate.php', 'NuTheme' => 'core/nutheme.php', 'NuNotify' => 'core/nunotify.php', 'NuSelfTest' => 'core/nuselftest.php',
 	'NuSample' => 'core/nusample.php', 'NuSampleSet' => 'core/nusampleset.php', 'NuListExport' => 'core/nulistexport.php', 'NuProcedure' => 'core/nuprocedure.php',
 	'NuReport' => 'core/nureport.php', 'NuReportEngine' => 'core/nureportengine.php', 'NuReportSection' => 'core/nureportengine.php',
@@ -37,10 +37,14 @@ const NU_AUTOLOAD = [
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
-	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
+	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxStream' => 'core/nuxlsxstream.php', 'NuDataExport' => 'core/nudataexport.php', 'NuSpreadsheet' => 'core/nuspreadsheet.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
 ];
 spl_autoload_register(static function (string $class): void {
 	if (isset(NU_AUTOLOAD[$class])) require_once NU_ROOT . '/' . NU_AUTOLOAD[$class];
+});
+// PhpSpreadsheet (library pack, 0.8.755): its classes are there in procedures and hooks as soon as code uses one – the pack's own autoloader
+spl_autoload_register(static function (string $class): void {
+	if (str_starts_with($class, 'PhpOffice\\PhpSpreadsheet\\')) NuSpreadsheet::load();
 });
 
 require NU_ROOT . '/core/nudb.php';
@@ -163,6 +167,21 @@ function nu_cfg(string $key): mixed
 	return $c[$key] ?? null;
 }
 
+/**
+ * Error details on screen (0.8.766): $nuConfigDebug of nuconfig.php OR of nuBuilder Forte's settings table – with
+ * $nuConfigSettingsFromDB the table wins in nu_cfg(), so a true in the file alone showed no details. Developer mode of the
+ * globeadmin shows them as well.
+ */
+function nu_debug(): bool
+{
+	try {
+		if (!empty(nu_config()['nuConfigDebug']) || !empty(nu_cfg('nuConfigDebug'))) return true;
+		return class_exists('NuHash') && NuHash::devMode();
+	} catch (Throwable) {
+		return false;
+	}
+}
+
 function nu_db(): NuDB
 {
 	static $db = null;
@@ -261,7 +280,7 @@ function nu_boot(): void
 	set_exception_handler(static function (Throwable $e) {
 		if ($e instanceof NuDemoBlocked) nu_fatal(t('demo_not_available'), t('demo_blocked_hint'), true);   // demo mode: code that writes
 		error_log('nuBuilder Next: ' . $e);
-		nu_fatal(t('err_unexpected'), nu_cfg('nuConfigDebug') ? $e->getMessage() : t('err_unexpected_hint'));
+		nu_fatal(t('err_unexpected'), nu_debug() ? $e->getMessage() : t('err_unexpected_hint'));
 	});
 }
 
@@ -498,6 +517,26 @@ function nu_lang_variant(): string
 	$b = nu_lang_browser();
 	if (!isset($_SESSION['nu_lang']) && $b !== null && $b[0] === $lang) return nu_lang_variant_of($b[1]) ?? NU_LANG_VARIANT_DEFAULT[$lang];
 	return NU_LANG_VARIANT_DEFAULT[$lang];
+}
+
+/**
+ * A PHP date pattern with "d.m.Y" in the reader's form (review D8, 0.8.761): en-GB / en-AU / fr / it / es / pt / ar 31/10/2026, en-US 10/31/2026,
+ * nl 31-10-2026, zh 2026-10-31, de / pl / ru 31.10.2026. Only for display – inputs and files with their own format are not passed through it.
+ */
+function nu_dfmt(string $pattern): string
+{
+	static $map = null;
+	if ($map === null) {
+		try { $c = nu_lang_choice(); } catch (Throwable) { $c = 'de'; }
+		$map = match (true) {
+			$c === 'en-US' => 'm/d/Y',
+			str_starts_with($c, 'en'), in_array($c, ['fr', 'it', 'es', 'pt', 'ar'], true) => 'd/m/Y',
+			$c === 'nl' => 'd-m-Y',
+			$c === 'zh' => 'Y-m-d',
+			default => 'd.m.Y',
+		};
+	}
+	return str_replace('d.m.Y', $map, $pattern);
 }
 
 /** Language as chosen: the variant (en-US …) or the code (de …) – for menus, <html lang> and links. */

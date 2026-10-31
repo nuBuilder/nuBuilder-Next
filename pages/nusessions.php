@@ -249,8 +249,8 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 					</td>
 					<td class="small text-nowrap"><?= h(count($gIps) === 1 ? $gIps[0] : t('sess_group_ips', count($gIps))) ?></td>
 					<td class="small"></td>
-					<td class="small text-nowrap"><?= $gFirst !== PHP_INT_MAX ? h(date('d.m.Y H:i', $gFirst)) : '' ?></td>
-					<td class="small text-nowrap"><?= h(date('d.m.Y H:i:s', $gLast)) ?><div class="text-body-secondary"><?= h(nu_sess_ago($gLast)) ?></div></td>
+					<td class="small text-nowrap"><?= $gFirst !== PHP_INT_MAX ? h(date(nu_dfmt('d.m.Y H:i'), $gFirst)) : '' ?></td>
+					<td class="small text-nowrap"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $gLast)) ?><div class="text-body-secondary"><?= h(nu_sess_ago($gLast)) ?></div></td>
 					<td class="text-end">
 						<?php if (count($gRows) - ($gMine ? 1 : 0) > 0): ?>
 						<form method="post" class="d-inline" data-confirm="<?= h(t('sess_end_user_confirm', count($gRows) - ($gMine ? 1 : 0), $gLogin)) ?>" data-confirm-ok="<?= h(t('sess_end')) ?>" data-confirm-class="btn btn-danger">
@@ -276,8 +276,8 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 					</td>
 					<td class="small text-nowrap"><?= h(NuDemo::ip($r['ip'])) ?></td>
 					<td class="small" title="<?= h($r['user_agent']) ?>"><?= h(NuSessions::agent((string)$r['user_agent'])) ?></td>
-					<td class="small text-nowrap"><?= $r['login_at'] ? h(date('d.m.Y H:i', strtotime((string)$r['login_at']))) : '' ?></td>
-					<td class="small text-nowrap"><?= h(date('d.m.Y H:i:s', $last)) ?><div class="text-body-secondary"><?= h(nu_sess_ago($last)) ?></div></td>
+					<td class="small text-nowrap"><?= $r['login_at'] ? h(date(nu_dfmt('d.m.Y H:i'), strtotime((string)$r['login_at']))) : '' ?></td>
+					<td class="small text-nowrap"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $last)) ?><div class="text-body-secondary"><?= h(nu_sess_ago($last)) ?></div></td>
 					<td class="text-end">
 						<div class="d-inline-flex flex-wrap gap-1 justify-content-end">
 						<?php if (!$mine && (string)$r['via'] !== 'impersonated' && isset($users[(string)$r['user_id']])): ?><?= NuImpersonate::button((string)$r['user_id'], (string)$r['login'], nu_url('sessions'), true) ?><?php endif; ?>
@@ -311,8 +311,8 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 				<?php foreach ($nb as $r): ?>
 					<tr>
 						<td class="fw-semibold"><?= h($r['login']) ?></td>
-						<td class="small"><?= $r['login_at'] ? h(date('d.m.Y H:i', strtotime((string)$r['login_at']))) : '' ?></td>
-						<td class="small"><?= h(date('d.m.Y H:i:s', $r['last'])) ?> <span class="text-body-secondary">· <?= h(nu_sess_ago($r['last'])) ?></span></td>
+						<td class="small"><?= $r['login_at'] ? h(date(nu_dfmt('d.m.Y H:i'), strtotime((string)$r['login_at']))) : '' ?></td>
+						<td class="small"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $r['last'])) ?> <span class="text-body-secondary">· <?= h(nu_sess_ago($r['last'])) ?></span></td>
 						<td class="text-end"><?php if ($r['uid'] !== '' && isset($users[$r['uid']])): ?><div class="d-inline-flex"><?= NuImpersonate::button($r['uid'], $r['login'], nu_url('sessions'), true) ?></div><?php endif; ?></td>
 					</tr>
 				<?php endforeach; ?>

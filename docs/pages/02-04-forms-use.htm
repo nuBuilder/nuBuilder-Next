@@ -5,25 +5,24 @@
 	<div class="doc-sub">
 <h3 id="editing">Editing a record</h3>
 <ul>
-<li><strong>Save</strong>, <strong>Clone</strong> and <strong>Delete</strong> look the same (light buttons with icon and text, as in nuBuilder Forte (4.x)). As soon as you change something, <strong>Save</strong> turns <span class="doc-red">red</span> – red text on a light red background: there are unsaved changes. After saving it looks like the others again. On phones the three show only their icon.</li>
+<li><strong>Save</strong>, <strong>Clone</strong> and <strong>Delete</strong> look the same (light buttons with icon and text, as in nuBuilder Forte (4.x)). As soon as you change something, <strong>Save</strong> turns <span class="doc-red">red</span> – red text on a light red background: there are unsaved changes. After saving it looks like the others again (phones: see <a href="#phones">Phones and small screens</a>). Buttons placed on the form itself (input buttons, run buttons) have nuBuilder Forte's solid look in the accent colour of Branding; the former light look is the Global code template <em>Light form buttons</em>.</li>
 <li>The row with the breadcrumb and the buttons (<strong>Back</strong>, <strong>Save</strong>, <strong>Delete</strong> …) stays at the top of the screen while you scroll down – on form pages and on nuBuilder Next's own edit pages, on computers and phones.</li>
 <li>After saving, deleting or cloning, a short message appears at the bottom right.</li>
 <li><strong>Tabs</strong>: a record opened from the list (or a link) starts on its first tab. After saving or reloading the page, the tab you were on stays open.</li>
-<li>On phones, <strong>Save</strong>, <strong>Clone</strong> and <strong>Delete</strong> show only their icon (Save as a floppy disk); the text appears as tooltip.</li>
 <li>Required fields are marked with <span class="doc-red">*</span>, fields whose value must be unique with a key <i class="bi bi-key"></i> (see <em>Markers after labels</em> below). If something is missing or invalid, a message tells you which field, and the field is highlighted. On nuBuilder Next's own pages (users, access levels, webhooks …) the message <em>Please check the highlighted fields</em> can be clicked: it lists the fields with their messages, and a click on one opens its tab or folded section and puts the cursor there.</li>
 <li>Fields with a <strong>mask</strong> (e.g. IBAN, phone) only accept the expected characters; the separators are added for you.</li>
 <li>If you leave a record with unsaved changes, the browser asks first.</li>
 <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> (Mac ⌃⇧S) saves – in forms and on nuBuilder Next's own edit pages (user, access level, procedure, prompt, e-mail template …), also while you are typing in a field; the tooltip of the Save button shows it.</li>
 <li>Fields with a <strong>suggestion list</strong> (an arrow on the right, e.g. Position, Department, Team) offer values to choose: type to filter, or click the arrow to see all values – also when the field already has one (the old value comes back if you pick nothing).</li>
 <li><strong>Searchable selects</strong> open their list above everything else; in multiple selects the chosen values are shown as tags, the field grows when they need more lines.</li>
-<li>Some fields have a small <strong>help icon</strong> <span class="doc-badge">?</span> on their right: point at it (or tap it) to read a hint.</li>
+<li>On nuBuilder Next's own pages some fields have an <i class="bi bi-info-circle"></i> icon next to their label: point at it (or tap it) to read a hint.</li>
 </ul>
 </div>
 	<div class="doc-sub">
 <h3 id="clone-delete">Clone and delete</h3>
 <ul>
 <li><strong>Clone</strong> copies the record into a new, unsaved record. A yellow badge <span class="doc-badge">Clone – not saved yet</span> and a dashed yellow frame show that you are working on the copy. Nothing is stored until you click Save. The editors of nuBuilder Next itself (users, access levels, procedures, reports, SQL builder, permission items, e-mail templates, files, items, prompts, Form cloner and App cloner settings) work the same way: <em>Clone</em> opens the copy with a free code, its access levels and stored content (report layout, file, query), the badge and a red Save.</li>
-<li><strong>Delete</strong> asks for confirmation and then returns to the list.</li>
+<li><strong>Delete</strong> asks in a dialogue that names the record and the sub-form rows deleted with it; <em>Cancel</em> has the focus, so Enter does not delete by accident. After deleting it returns to the list.</li>
 </ul>
 </div>
 	<div class="doc-sub">
@@ -41,6 +40,7 @@
 <p>The <strong>⋮</strong> button at the end of the toolbar opens the options menu with the actions that have no button of their own, each with its keyboard shortcut. Save, Clone, Delete, Add, Print, Search, Arrange objects, Form info, Form properties, Object list and Log out are not in the menu – they have buttons on the page (Log out: the user menu at the top right) – but their shortcuts still work. All shortcuts are <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+key:</p>
 <ul>
 <li><kbd>S</kbd> save (in a list: search; also on nuBuilder Next's own edit pages), <kbd>C</kbd> clone, <kbd>Y</kbd> delete, <kbd>A</kbd> in a list: add a record, <kbd>P</kbd> print the list, <kbd>R</kbd> refresh, <kbd>?</kbd> help, <kbd>L</kbd> log out.</li>
+<li>In the ⋮ menu when you may use them: <kbd>D</kbd> nuDebug results, <kbd>E</kbd> the database tool, <kbd>J</kbd> logged-in users, <kbd>Q</kbd> change password; for the globeadmin also <kbd>M</kbd> form info, <kbd>V</kbd> version info, <kbd>X</kbd> hash variables. For form designers: <kbd>H</kbd> add an object, and – without a menu entry – <kbd>A</kbd> arrange objects (in a record), <kbd>F</kbd> form properties, <kbd>O</kbd> object list; they open design mode.</li>
 <li><kbd>←</kbd> <kbd>→</kbd> previous / next tab (in a list: page), <kbd>Home</kbd> / <kbd>End</kbd> first / last page, <kbd>1</kbd>–<kbd>9</kbd> in a list: switch a column in or out of the search.</li>
 <li>Only what you are allowed to do is offered – a shortcut for something you have no right for does nothing.</li>
 <li><strong>Mac:</strong> use <kbd>Control</kbd>+<kbd>Shift</kbd> (shown as ⌃⇧). <kbd>Cmd</kbd>+<kbd>Shift</kbd> also works, except for combinations macOS or the browser keeps for itself (⌘⇧Q logs you out of macOS!).</li>

@@ -207,7 +207,7 @@ final class NuListExport
 <main class="container-fluid py-3">
 	<div class="nuTitleBar mb-2">
 		<h1 class="h5 mb-0"><?= h($title) ?></h1>
-		<div class="nuTitleSub small text-body-secondary"><?= h(date('d.m.Y H:i')) ?> · <?= h(t('n_records', count($lines))) ?><?= $filter !== '' ? ' · ' . h($filter) : '' ?></div>
+		<div class="nuTitleSub small text-body-secondary"><?= h(date(nu_dfmt('d.m.Y H:i'))) ?> · <?= h(t('n_records', count($lines))) ?><?= $filter !== '' ? ' · ' . h($filter) : '' ?></div>
 		<?php if ($cut): ?><div class="nuTitleSub small text-warning-emphasis"><?= h(t('list_print_cut', count($lines))) ?></div><?php endif; ?>
 		<div class="d-flex flex-wrap gap-2 d-print-none">
 			<button class="btn btn-sm btn-primary" type="button" data-nu-copy-table=".nu-print-table" data-nu-copied="<?= h(t('copy_done')) ?>" data-nu-copy-failed="<?= h(t('copy_failed')) ?>"><i class="bi bi-clipboard me-1"></i><span><?= h(t('copy_table')) ?></span></button>

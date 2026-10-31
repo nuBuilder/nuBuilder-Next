@@ -34,6 +34,10 @@ if (!$admin) {
 }
 
 // ------------------------------------------------------------------ layout (Customize mode), View panel, user's own tiles
+if (nu_is_post() && nu_post('action') === 'hide_dbwarn' && !empty($u['globeadmin']) && empty($u['demo'])) {   // review I1: until the next update
+	NuInstall::hideExistingWarn();
+	nu_redirect(nu_url('home'));
+}
 if (nu_is_post()) {
 	// editor of a user start page: the access level's own page goes – it shows the default again (form post, 0.8.425)
 	if ($editorPage && nu_post('action') === 'layout_reset') {
@@ -184,8 +188,10 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 </div>
 <?php endif; ?>
 
-<?php if ($u['globeadmin'] && !$editorPage && NuInstall::existingWarn()): // an existing nuBuilder database (0.8.380, NuInstall) ?>
-<div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuExistingDbWarn"><i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i><div><?= h(t('existing_db_warn')) ?></div></div>
+<?php if ($u['globeadmin'] && !$editorPage && NuInstall::existingWarn() && !NuInstall::existingWarnHidden()): // an existing nuBuilder database (0.8.380, NuInstall); hidden until the next update (review I1) ?>
+<div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuExistingDbWarn"><i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i><div class="flex-grow-1"><?= h(t('existing_db_warn')) ?></div>
+	<?php if (empty($u['demo'])): ?><form method="post" action="<?= h(nu_url('home')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_dbwarn">
+		<button type="submit" class="btn-close" id="nuExistingDbHide" title="<?= h(t('existing_db_hide')) ?>" aria-label="<?= h(t('existing_db_hide')) ?>"></button></form><?php endif; ?></div>
 <?php endif; ?>
 <?php // tutorial (0.8.328): until hidden or finished; right after the setup wizard also when hidden
 $tutBanner = $editorPage ? null : NuTutorial::banner();

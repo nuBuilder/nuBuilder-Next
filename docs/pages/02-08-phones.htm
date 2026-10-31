@@ -6,17 +6,19 @@
 <table class="table table-sm">
 	<thead><tr><th>Where</th><th>On a phone</th></tr></thead>
 	<tbody>
-		<tr><td>Menu bar</td><td>Behind the ☰ button; the user button shows only its icon. The pin button next to it keeps the menu open on every page (until it is tapped again; kept per browser).</td></tr>
+		<tr><td>Menu bar</td><td>Without a logo (<a href="#branding">Branding</a>): the icons stay in the bar, the areas move into the user menu (☰). With a logo: the areas are behind the ☰ button, and the pin button next to it keeps the menu open on every page (until it is tapped again; kept per browser). The user button shows only its icon.</td></tr>
+		<tr><td>Record buttons</td><td>Save, Clone and Delete show only their icon (Save as a floppy disk); the text is the tooltip.</td></tr>
 		<tr><td>Tabs with several cards</td><td>Such a tab shows a small ▾. A tap on it – or a long tap on the tab (e.g. <em>General</em> of the user form) – lists its sections – Person, Login credentials, Access &amp; roles …; a tap jumps to that card. On a computer: right-click on the tab.</td></tr>
 		<tr><td>Start page</td><td>A layout without its own phone settings shows a one-column list, and tabs become the side bar. A layout can have separate settings for phone (narrower than 576 px), tablet (narrower than 992 px) and desktop – see <a href="#home-page">Start page of the globeadmin</a>.</td></tr>
 		<tr><td>Lists of nuBuilder Next</td><td>Below 768 px every row is a card (title, badge, up to four lines), or a compact table whose first column stays while the others scroll – set per list in its <a href="#list-views">list view</a>. A button next to the view menu switches between cards and table on your phone; the choice is kept on the device.</td></tr>
-		<tr><td>Form lists</td><td>No page-size choice (Back / Next stay).</td></tr>
-		<tr><td>Edit forms</td><td>Forms with automatic or grid layout put objects below each other; Save, Clone and Delete show only their icon (the text is the tooltip).</td></tr>
-		<tr><td>Dashboards</td><td>One widget per row (tablets: two).</td></tr>
+		<tr><td>Form lists</td><td>Below 576 px every row is a card: the first column as its title, the others as <em>Title: value</em> lines. No page-size choice (Back / Next stay). A list shown inside another form (a run object) gets a compact header, keeps its filters folded behind the funnel and grows to its rows.</td></tr>
+		<tr><td>Edit forms</td><td>Every form puts its objects below each other – also forms with fixed positions (nuBuilder Forte's pixel layout): below 576 px each field gets its label above it and the full width, in the order of their positions (top, then left); content boxes become section titles. Form code can keep the fixed layout with <code>nuNextPhoneLayout(false)</code> in <code>nuOnLoad</code>.</td></tr>
+		<tr><td>Dashboards</td><td>One widget per row (tablets: two); table widgets show each row as a block (first column as title).</td></tr>
+		<tr><td>Admin roles</td><td>Each right is a row with its name and the choices <em>None</em> · <em>View</em> · <em>Change</em> as buttons.</td></tr>
 		<tr><td>Help icons and tooltips</td><td>Tap instead of pointing.</td></tr>
 	</tbody>
 </table>
-<p>Forms built with absolute positions (nuBuilder Forte's pixel layout) keep their positions; the automatic and grid layouts turn the same objects into responsive rows (see <a href="#form-rendering">Form rendering pipeline</a>).</p>
+<p>On wider screens forms built with absolute positions keep their positions; the automatic and grid layouts turn the same objects into responsive rows (see <a href="#form-rendering">Form rendering pipeline</a>).</p>
 	<p class="doc-see">See also: <a href="#list-views">List views</a> · <a href="#home-page">Start page of the globeadmin</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>assets/css/nuapp.css</code></li><li><code>core/form/nulayout.php</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>assets/css/nuapp.css</code></li><li><code>core/form/nulayout.php</code></li><li><code>assets/css/nuform.css</code></li><li><code>assets/js/nu/nuruntime.js</code></li></ul></details>
 </section>

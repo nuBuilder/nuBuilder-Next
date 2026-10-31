@@ -78,17 +78,7 @@ $nExc = count(array_filter($levelIds, static fn($id) => $lvMode($id) !== 'defaul
 
 nu_layout_start(t('ipa_title'), 'home', ['container' => 'nuContainer', 'settings' => 'security', 'settings_page' => 'ipaccess']);
 ?>
-<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('settings')) ?>"><?= h(t('sh_title')) ?></a></li>
-	<li class="breadcrumb-item active" aria-current="page"><?= h(t('ipa_title')) ?></li>
-</ol></nav>
-<div class="nuTitleBar mb-3">
-	<h1 class="h3 mb-0"><i class="bi bi-router me-2"></i><?= h(t('ipa_title')) ?></h1>
-	<div class="nuTitleSub text-body-secondary small"><?= h(t('ipa_hint')) ?></div>
-	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
-		<button class="btn nuBtnAct nuBtnSave" type="submit" form="ipaForm" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div>
-</div>
+<?= nu_page_header(t('ipa_title'), ['icon' => 'bi-router', 'sub' => t('ipa_hint'), 'buttons' => '<button class="btn nuBtnAct nuBtnSave" type="submit" form="ipaForm" data-nu-save><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>']) ?>
 
 <?php if (isset($errors['_self'])): ?>
 	<div class="alert alert-danger d-flex gap-2" role="alert" id="ipaSelfErr"><i class="bi bi-shield-exclamation mt-1"></i><div><?= h($errors['_self']) ?></div></div>

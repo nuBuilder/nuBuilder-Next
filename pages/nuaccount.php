@@ -23,7 +23,7 @@ if (nu_is_post() && nu_post('action') === 'save' && !$readOnly) {
 	[$new, $errors] = NuUserFields::validate($post, $id, 'self');
 	if (!$errors) {
 		$diff = NuUserFields::save($id, $new);
-		if ($diff) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $diff, 'via' => 'account']);
+		if ($diff) { NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $diff, 'via' => 'account']); NuUserJson::stamp($id, false, 'account'); }
 		nu_flash('success', t('saved'));
 		nu_redirect(nu_url('account'));
 	}

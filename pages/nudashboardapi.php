@@ -30,7 +30,7 @@ $ga = (bool)$u['globeadmin'];
 $action = (string)($in['action'] ?? '');
 $range = (string)($in['range'] ?? '');
 $dates = NuDashboard::range(in_array($range, NuDashboard::RANGES, true) ? $range : '30d', (string)($in['from'] ?? ''), (string)($in['to'] ?? ''));
-$errMsg = static fn(Throwable $e) => $ga || nu_cfg('nuConfigDebug') ? $e->getMessage() : t('dash_error');
+$errMsg = static fn(Throwable $e) => $ga || nu_debug() ? $e->getMessage() : t('dash_error');
 
 try {
 	if ($action === 'test') {

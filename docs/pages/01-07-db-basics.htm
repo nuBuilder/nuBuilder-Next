@@ -1,0 +1,68 @@
+<section id="db-basics">
+	<h2 id="db-basics-h">Database basics</h2>
+	<p class="doc-lead">Tables, keys, relationships and a little SQL – what you need to know before you build your first form.</p>
+	<p class="doc-for" data-doc="admin">For: Everyone who builds forms and reports</p>
+	<p>An application in nuBuilder Next is a set of forms on top of database tables. If you know spreadsheets, you already know most of it: a table stores information in rows and columns, like a sheet, and the database is a container that holds many such sheets. This page explains the few ideas the rest of the documentation takes for granted. To start building right away, go to <a href="#first-app">Your first application</a>.</p>
+	<div class="doc-sub">
+	<h3 id="db-tables">Tables, rows and columns</h3>
+	<ul>
+		<li>A <strong>table</strong> holds one kind of thing – customers, contacts, invoices. Each <strong>row</strong> (a <strong>record</strong>) is one of them; each <strong>column</strong> (also called a <strong>field</strong>) is one piece of information about it: name, phone number, postcode.</li>
+		<li>A <strong>form</strong> shows one table: its list shows many rows, its edit screen one record. The <strong>objects</strong> on the form are, for the most part, the columns of that table. In short: forms deal with tables, objects deal with columns.</li>
+	</ul>
+	</div>
+	<div class="doc-sub">
+	<h3 id="db-keys">Primary keys</h3>
+	<p>Two customers can have the same name – two businesses called "Bob's Plumbing" are perfectly possible. To tell rows apart, every table gets a column whose value is different in every row: the <strong>primary key</strong>.</p>
+	<ul>
+		<li>Every table should have a primary key. Its values must be unique and never empty; the database uses it to find a row quickly.</li>
+		<li>nuBuilder Next fills it for you when a new record is saved. By default the keys look like nuBuilder Forte's – a text of letters and digits such as <code>14e49d3d0ef3a701</code> (stored in a <code>VARCHAR(25)</code> column); a new table can use <a href="#uuid-keys">UUIDs</a> instead. An auto-increment number works as well.</li>
+		<li>Keys are for the system and for your code, not for people: users never type or see them.</li>
+		<li>Do not use a business number (customer number, article number) as the primary key. Businesses change their numbering; a key must never change. Keep such numbers in a column of their own – an <em>nuAutoNumber</em> input can count them (see <a href="#first-app-autonumber">Automatic numbers</a>).</li>
+	</ul>
+	</div>
+	<div class="doc-sub">
+	<h3 id="db-relations">Foreign keys and one-to-many relationships</h3>
+	<p>A business has several contacts; an invoice has several items. This is a <strong>one-to-many relationship</strong>, and it is stored with a <strong>foreign key</strong>: a column in the second table that holds a copy of the first table's primary key.</p>
+	<ul>
+		<li>The table with the "one" is the <strong>parent</strong> (organisation, invoice), the table with the "many" the <strong>child</strong> (contact, invoice item). Each child row stores the parent's key in its foreign key column – for example <code>con_organization_id</code> in the contact table holds the <code>organization_id</code> of its organisation.</li>
+		<li>A foreign key value appears in many child rows, so unlike a primary key it is not unique in the child table.</li>
+		<li>Like primary keys, foreign keys are never shown to users. On a form you see the other side of them:
+			<ul>
+				<li>a <strong>lookup</strong> on the child's form lets the user pick the parent – it stores the key and shows the parent's code and description;</li>
+				<li>a <strong>sub-form</strong> on the parent's form lists its children as rows that can be edited, added and deleted.</li>
+			</ul>
+		</li>
+	</ul>
+	</div>
+	<div class="doc-sub">
+	<h3 id="db-naming">Naming tables and columns</h3>
+	<p>A naming convention keeps SQL readable and avoids clashes between tables. The one nuBuilder Forte's examples use, and that works well with nuBuilder Next:</p>
+	<ol>
+		<li>Lower case for all table and column names.</li>
+		<li>Table names in the singular: <code>customer</code>, <code>invoice_item</code>.</li>
+		<li>Words separated by <code>_</code>.</li>
+		<li>The primary key is the table name with <code>_id</code>: <code>customer_id</code>.</li>
+		<li>Every other column starts with a short prefix taken from the table name: <code>cus_name</code>, <code>cus_email</code>, and for a foreign key <code>con_customer_id</code>.</li>
+	</ol>
+	<p>Because object IDs are column names, the prefix also keeps the IDs of different forms apart (<code>#cus_name#</code> and <code>#con_name#</code> are different hash variables). Never create your own tables with the prefix <code>zzzzsys_</code> – those are the system tables of nuBuilder Forte and nuBuilder Next; leave them alone.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="db-sql">A little SQL</h3>
+	<p>SQL (Structured Query Language) is how programs talk to the database. The four things an application does with data – create, read, update, delete, "CRUD" – are the SQL commands <code>INSERT</code>, <code>SELECT</code>, <code>UPDATE</code> and <code>DELETE</code>. nuBuilder Next writes most of them for you (a save is an <code>INSERT</code> or <code>UPDATE</code>); what you write yourself is mostly <code>SELECT</code> – for a form's list, a select object's options, a display object or a report. Three words go a long way:</p>
+	<pre><code>SELECT org_code, org_name      -- the columns you want (* = all of them)
+FROM organization              -- the table(s) they come from
+WHERE org_state = 'SA'         -- only the rows that match</code></pre>
+	<ul>
+		<li>Without <code>WHERE</code> you get every row; <code>WHERE organization_id = '58a11df94545f2b'</code> gets exactly one, because primary keys are unique.</li>
+		<li>A value can come from the open form or the user as a <a href="#hash-variables">hash variable</a>: <code>WHERE org_state = '#org_state#'</code> uses what the user chose in the field <code>org_state</code>.</li>
+		<li>A query inside brackets can deliver one extra value per row. <code>(SELECT COUNT(*) FROM organization WHERE org_state = '#org_state#') AS total</code> adds a column <code>total</code> with the number of matching rows – handy for a report footer.</li>
+		<li>Try a query before you use it: in a database tool (user menu → <em>Database – Adminer</em> or <em>phpMyAdmin</em>, see <a href="#admin-tools">Admin tools and system status</a>) or with <em>Run</em> in the <a href="#sql-builder">SQL builder</a>, which also puts queries together for you by clicking tables and columns.</li>
+	</ul>
+	<p>Free introductions to SQL are on the web, for example <a href="https://www.w3schools.com/sql/" target="_blank" rel="noopener">w3schools.com/sql</a>.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="db-plan">Plan before you build</h3>
+	<p>Write down the things your application keeps (customers, contacts, orders …), give each a table, and draw lines for the one-to-many relationships – that drawing is the <strong>database schema</strong>. Once it is complete, every table becomes a form, every relationship a lookup on the child and, where useful, a sub-form on the parent. The tables themselves can be created in the <a href="#new-form">New form</a> wizard (<em>New table</em>) or in a database tool.</p>
+	</div>
+	<p class="doc-see">See also: <a href="#first-app">Your first application</a> · <a href="#key-concepts">Key concepts</a> · <a href="#glossary">Glossary</a></p>
+</section>

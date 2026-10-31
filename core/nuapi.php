@@ -24,6 +24,17 @@ final class NuApiError extends RuntimeException
 	}
 }
 
+/** A file on disk as an API answer (0.8.761): streamed with its length, deleted afterwards. */
+final class NuApiFile
+{
+	public function __construct(public readonly string $path) {}
+
+	public function send(): void
+	{
+		if (is_file($this->path)) { header('Content-Length: ' . filesize($this->path)); readfile($this->path); @unlink($this->path); }
+	}
+}
+
 final class NuApi
 {
 	private static array $ctx = [];
@@ -68,7 +79,8 @@ final class NuApi
 			$status = $code;
 			foreach ($headers as $k => $v) header("$k: $v");
 			http_response_code($code);
-			if (is_string($body)) { header('Content-Length: ' . strlen($body)); echo $body; }    // a file (headers set by the route, e.g. a report PDF)
+			if ($body instanceof NuApiFile) { $body->send(); }                                   // a file on disk, streamed and deleted (data export, 0.8.761)
+			elseif (is_string($body)) { header('Content-Length: ' . strlen($body)); echo $body; }    // a file (headers set by the route, e.g. a report PDF)
 			elseif ($code !== 204) echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 		} catch (NuApiError $e) {
 			$status = $e->status;
@@ -76,7 +88,7 @@ final class NuApi
 		} catch (Throwable $e) {
 			$status = 500;
 			error_log('nuBuilder Next API: ' . $e);
-			self::problem(500, nu_cfg('nuConfigDebug') ? $e->getMessage() : 'Internal error.');
+			self::problem(500, nu_debug() ? $e->getMessage() : 'Internal error.');
 		} finally {
 			if (self::$ctx && $path !== '/v1/token') {
 				$c = self::$ctx['client'];
@@ -189,6 +201,8 @@ final class NuApi
 			['POST',   '#^/v1/system/update$#',                  'updateRun',      'system:update'],
 			['GET',    '#^/v1/system/update$#',                  'updateList',     'system:update'],
 			['GET',    '#^/v1/system/update/([a-f0-9]{16})$#',   'updateGet',      'system:update'],
+			['GET',    '#^/v1/exports$#',                        'exportsList',    'exports:run'],
+			['POST',   '#^/v1/exports/([\w\-]+)/run$#',          'exportRun',      'exports:run'],
 			['GET',    '#^/v1/reports$#',                        'reportsList',    'reports:run'],
 			['GET',    '#^/v1/reports/jobs/([a-f0-9]{16})$#',    'reportJob',      'reports:run'],
 			['POST',   '#^/v1/reports/([\w\-]+)/run$#',          'reportRun',      'reports:run'],
@@ -456,6 +470,7 @@ final class NuApi
 		if ($pw !== '') NuUserJson::passwordChanged($id, 'admin');
 		$uf += array_filter(array_diff_key(NuUserFields::defaults(), $uf), static fn($d) => $d !== '');
 		NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + NuUserFields::save($id, $uf), 'via' => 'api']);
+		NuUserJson::stamp($id, true, 'api');
 		if (isset($in['permissions']) && is_array($in['permissions'])) self::setPerms($id, $in['permissions']);
 		[, $body, $h] = self::one(self::userOut(self::userRow($id)));
 		return [201, $body, $h + ['Location' => nu_base_url() . '/api.php/v1/users/' . $id]];
@@ -480,7 +495,7 @@ final class NuApi
 			if (isset($row['sus_login_password'])) NuUserJson::passwordChanged($id, 'admin');
 			$changes = NuLog::diff($old, array_diff_key($row, ['sus_login_password' => 1]));
 			if (isset($row['sus_login_password'])) $changes['sus_login_password'] = ['…', '(' . t('log_new_password') . ')'];
-			if ($changes) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $changes, 'via' => 'api']);
+			if ($changes) { NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $changes, 'via' => 'api']); NuUserJson::stamp($id, false, 'api'); }
 		}
 		if ($uf && ($ud = NuUserFields::save($id, $uf))) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $ud, 'via' => 'api']);
 		return self::one(self::userOut(self::userRow($id)));
@@ -509,6 +524,7 @@ final class NuApi
 		if (!nu_is_expired($old['sus_expires_on'])) {
 			$db->update('zzzzsys_user', ['sus_expires_on' => $db->datetime($until)], 'zzzzsys_user_id', $id);
 			NuLog::write('user_archived', 'zzzzsys_user', $id, ['login' => $old['sus_login_name'], 'expires_on' => $until, 'via' => 'api']);
+			NuUserJson::stamp($id, false, 'api');
 		}
 		return self::one(self::userOut(self::userRow($id)));
 	}
@@ -607,6 +623,53 @@ final class NuApi
 		return ['id' => (string)$n['zzzzsys_nunext_notification_id'], 'title' => (string)$n['title'], 'level' => (string)$n['level'], 'state' => NuNotify::state($n),
 			'mode' => (string)$n['mode'], 'audience' => $n['aud'], 'publish_at' => $n['publish_at'], 'expires_at' => $n['expires_at'], 'created_by' => (string)$n['created_by'],
 			'recipients' => $r['total'], 'read' => $r['read'], 'confirmed' => $r['confirmed']];
+	}
+
+	// ------------------------------------------------------------------ data exports (0.8.758)
+
+	/** The service user needs the admin right dataexport ("view" = run). */
+	private static function exportRight(): void
+	{
+		$u = self::$ctx['user'];
+		$role = NuAdmin::roleOfUser((string)$u['zzzzsys_user_id']);
+		$have = $role ? (string)($role['rights']['dataexport'] ?? '') : '';
+		if ((string)($u['sus_login_name'] ?? '') !== 'globeadmin' && !in_array($have, ['view', 'change'], true)) throw new NuApiError(403, "The service user's admin role lacks the right Data export.");
+	}
+
+	/** GET /v1/exports – the saved exports with their parameters. */
+	private static function exportsList(): array
+	{
+		self::exportRight();
+		$out = [];
+		foreach (NuDataExport::all() as $e) {
+			$out[] = ['id' => $e['id'], 'code' => $e['code'], 'name' => $e['name'], 'description' => $e['description'], 'format' => $e['format'],
+				'datasets' => array_map(static fn($d) => ['name' => $d['name'], 'source' => $d['source'], 'table' => $d['table']], $e['datasets']),
+				'params' => NuDataExport::params($e), 'last_run_at' => $e['last_run_at'], 'runs' => $e['runs']];
+		}
+		return [200, ['data' => $out], []];
+	}
+
+	/** POST /v1/exports/{id or code}/run {"params": {name: value}} → the file (xlsx / csv / zip). */
+	private static function exportRun(string $ref): array
+	{
+		self::exportRight();
+		$e = NuDataExport::get($ref);
+		if (!$e) throw new NuApiError(404, 'Export not found.');
+		$in = self::fields(self::body(), ['params']);
+		$values = [];
+		foreach (is_array($in['params'] ?? null) ? $in['params'] : [] as $k => $v) if (is_string($k) && is_scalar($v)) $values[$k] = (string)$v;
+		$missing = array_diff(NuDataExport::params($e), array_keys($values));
+		if ($missing) throw new NuApiError(422, 'Validation failed.', ['params' => 'missing: ' . implode(', ', $missing)]);
+		try {
+			$r = NuDataExport::run($e, $values, 'api:' . (string)self::$ctx['client']['name']);
+		} catch (NuApiError $x) {
+			throw $x;
+		} catch (Throwable $x) {
+			error_log('nuBuilder Next export ' . $e['code'] . ': ' . $x->getMessage());
+			throw new NuApiError(500, 'The export failed.' . ($x instanceof PDOException ? '' : ' ' . $x->getMessage()));   // SQL details stay in the server log
+		}
+		$ascii = (string)preg_replace('/[^A-Za-z0-9_. -]+/', '_', (string)iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $r['name']));
+		return [200, new NuApiFile($r['path']), ['Content-Type' => $r['mime'], 'Content-Disposition' => 'attachment; filename="' . $ascii . '"', 'X-Export-Rows' => (string)array_sum(array_column($r['datasets'], 'rows'))]];
 	}
 
 	private static function reportsList(): array

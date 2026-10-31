@@ -1,0 +1,120 @@
+<section id="first-app" data-acl="nuform">
+	<h2 id="first-app-h">Your first application</h2>
+	<p class="doc-lead">A small contact manager from start to finish: two tables, two forms, a lookup, a sub-form, a report and an access level.</p>
+	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
+	<p>This walkthrough builds an application that keeps <strong>organisations</strong> and the <strong>contacts</strong> who work for them. Each step names the tool and links to its reference page. If tables, primary keys and foreign keys are new to you, read <a href="#db-basics">Database basics</a> first. The interactive <a href="#tutorial-doc">tutorial</a> covers similar ground inside the application.</p>
+	<div class="doc-sub">
+	<h3 id="first-app-pattern">The pattern every form follows</h3>
+	<p>Almost everything a user does is one of two things: <strong>find</strong> something, or <strong>add or change</strong> something. A form therefore has two screens:</p>
+	<ol>
+		<li>the <strong>list</strong> (nuBuilder Forte calls it the <em>browse</em> or <em>search screen</em>): search, filter, sort, then click a row;</li>
+		<li>the <strong>record</strong> (the <em>edit screen</em>): the fields of one row, with the action buttons <em>Save</em>, <em>Clone</em> and <em>Delete</em>. <em>Add</em> in the list opens the same screen, just empty.</li>
+	</ol>
+	<p>A tile on the start page (or a button) opens the list, the list opens the record – for customers, invoices, bookings, whatever you build. A user who has learnt this once can use the whole application, and you do not have to design menus: you design a list of forms.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-tables">1. The tables</h3>
+	<p>Two tables, named as in <a href="#db-naming">Naming tables and columns</a>:</p>
+	<pre><code>organization:  organization_id (key), org_code, org_name, org_address1, org_suburb,
+               org_state, org_postcode, org_office_number, org_office_email, org_notes
+contact:       contact_id (key), con_organization_id (foreign key → organization),
+               con_firstname, con_lastname, con_email, con_mobile</code></pre>
+	<p>You can create them in the <em>New form</em> wizard (next step, <em>New table</em>) or beforehand in a database tool. Make the key columns text (<code>VARCHAR(25)</code>) – nuBuilder Next fills them on every new record.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-form">2. The organisation form</h3>
+	<ol>
+		<li><em>Forms → New form</em> (see <a href="#new-form">Creating a form</a>). Step <em>Form</em>: description <em>Organisations</em> (it is shown in the breadcrumbs and in lookups), a short unique code such as <code>org</code>, type <em>Browse and edit</em>.</li>
+		<li>Step <em>Table and fields</em>: choose <code>organization</code> and the key <code>organization_id</code> – or <em>New table</em> and enter the columns. Every column gets an object; <em>Choose columns and order</em> decides which ones, their labels, which go into the list (here code, name, phone and e-mail) and in what order.</li>
+		<li>Step <em>Layout and access</em>, then create. The form opens in <a href="#design-mode">design mode</a>, already working: its list shows the organisations, a click opens one.</li>
+	</ol>
+	<p>The list's columns come from the form's <strong>browse SQL</strong> (<code>SELECT * FROM organization</code>) – in design mode click a column title on the list to change its title, width, alignment or format, or to add a filter (see <a href="#design-list">The list</a>).</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-objects">3. Objects, IDs, tabs and placement</h3>
+	<ul>
+		<li><strong>The ID decides where a value is saved.</strong> An object stores its value in the column with the same name as its ID – <code>org_name</code> saves into <code>organization.org_name</code>. That holds for inputs, selects, text areas, lookups and editors. Buttons (run objects), sub-forms, HTML, words, display and calculation objects store nothing, so their ID only has to be unique on the form. An ID has letters, digits and <code>_</code> only; check that no space slipped in at the end of IDs, table names and keys.</li>
+		<li><strong>Tabs</strong> group the objects: double-click a tab to rename it (<em>Details</em>), <em>+</em> adds one (<em>Notes</em>), and an object's <em>Layout</em> section moves it to another tab.</li>
+		<li><strong>Placement</strong>: drag objects where you want them, or type <em>Top</em> and <em>Left</em> in pixels. Objects with the same <em>Left</em> form a column (for example 90 for the left column and 510 for the right one); the order inside a column follows <em>Top</em>. With several objects selected, <em>Arrange</em> lines them up and spaces them evenly (see <a href="#arrange-gap">Fixed gap</a>).</li>
+		<li><strong>Add</strong> (icon bar) lists the table's columns that are not on the form yet and every object type – click one to add it to the open tab.</li>
+	</ul>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-types">4. Choosing the right object type</h3>
+	<ul>
+		<li><strong>Input</strong> for short values. Its <em>input type</em> sets the kind: text, <em>nuNumber</em> (with a number format, right-aligned looks best), <em>nuDate</em>, e-mail, checkbox …</li>
+		<li><strong>Select</strong> for a fixed choice, for example the state. The <em>Options</em> are pairs of stored value and shown text separated by <code>|</code>: <code>NSW|New South Wales|VIC|Victoria|SA|South Australia</code> – or a <code>SELECT</code> whose first column is the value and the second the text, or a JSON list.</li>
+		<li><strong>Text area</strong> for longer text such as notes (give it room: width 500, height 300); an <strong>editor</strong> for formatted text.</li>
+		<li id="first-app-autonumber"><strong>Automatic numbers</strong>: an input of type <em>nuAutoNumber</em> counts on its own – each new record gets the next number when it is saved. Set <em>Last number</em> to the number given last (100099 → the next record gets 100100; a prefix such as <code>INV7</code> is kept: <code>INV8</code>), and make the object <em>read only</em> (access 1), as users should not type it.</li>
+	</ul>
+	<p>Every type with its settings: <a href="#object-types">Object types</a>.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-lookup">5. The contact form and its lookup</h3>
+	<p>Create the second form the same way, on the table <code>contact</code>, code <code>cont</code>, description <em>Contacts</em>. The foreign key <code>con_organization_id</code> becomes a <strong>lookup</strong>, so that users pick an organisation instead of typing its key. A lookup has three parts:</p>
+	<ol>
+		<li>its <strong>ID</strong> = the foreign key column of this table (<code>con_organization_id</code>) – the stored value, never shown;</li>
+		<li>the <strong>code column</strong> of the other form's table (<code>org_code</code>) – what the user types or sees in the small box;</li>
+		<li>the <strong>description column</strong> (<code>org_name</code>) – shown next to it (<em>Description width</em> sets its width).</li>
+	</ol>
+	<p>The <em>Lookup form</em> is the form whose list the user searches – here <code>org</code>; it must exist before the lookup. To copy more values when an organisation is picked, write PHP in <em>PHP after selection (AB)</em>: <code>nuLookupRecord()</code> returns the chosen row, <code>nuSetFormValue()</code> fills a field – for example <code>nuSetFormValue('con_phone', nuLookupRecord()-&gt;org_office_number);</code>. JavaScript after the selection goes into the lookup's JavaScript field.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-subform">6. The contacts as a sub-form of the organisation</h3>
+	<p>A <strong>sub-form</strong> shows the child rows on the parent's form – here the contacts of an organisation – and lets users add, change and delete them there.</p>
+	<ol>
+		<li>Create the form for the rows: <em>New form</em> with type <em>Subform</em> on the table <code>contact</code> (its objects are the columns of the grid; leave out <code>con_organization_id</code>, which is filled automatically).</li>
+		<li>On the organisation form, <em>Add</em> a <em>Sub-form</em> object (for example ID <code>contact_sf</code>, width 900, height 300). Set <em>Subform form</em> to the form of step 1 and <em>Foreign key</em> to <code>con_organization_id</code>; tick <em>Rows can be added</em> / <em>Rows can be deleted</em> as needed and choose the layout <em>Grid</em> (one row per line) or <em>Form</em>.</li>
+	</ol>
+	<p>When the organisation is saved, its new contact rows get its key in <code>con_organization_id</code>. More on using sub-forms: <a href="#subforms">Sub-forms, lookups, files</a>.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-home">7. Getting users to the form</h3>
+	<p>Users without an admin role see the forms and reports of their access level as tiles on their start page – automatically, until you arrange a layout for the level (<a href="#home-users">Start pages of users</a>). The wizard's <em>Access for access levels</em> step grants the new form right away. If you also use nuBuilder Forte's <em>User Home</em>, the wizard can put a button there; buttons of your own are <a href="#run-objects">run objects</a> with <em>Open form</em>. To change a form's name in the breadcrumbs, change its <em>description</em> (or the <em>breadcrumb title</em>) in the form settings.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-report">8. A report: organisations by state</h3>
+	<p>A report has three parts: a <strong>criteria form</strong> where the user chooses what to print, the <strong>data</strong> (an SQL query that uses the choice) and the <strong>layout</strong>.</p>
+	<ol>
+		<li><strong>Criteria form</strong>: a form of type <em>Launch</em> (no table needed – it saves nothing) with the objects the user fills in, for example the state select of the organisation form (copy it: select it, <kbd>Ctrl</kbd>+<kbd>C</kbd>, open the criteria form in design mode, <kbd>Ctrl</kbd>+<kbd>V</kbd>).</li>
+		<li><strong>Data</strong>: in the <a href="#sql-builder">SQL builder</a> (or a procedure) a query that reads the criteria as <a href="#hash-variables">hash variables</a>:
+<pre><code>SELECT org_code, org_name, org_office_email, org_state,
+       (SELECT COUNT(*) FROM organization WHERE org_state = '#org_state#') AS total
+FROM organization
+WHERE org_state = '#org_state#'</code></pre>
+		The bracketed query adds a column <code>total</code> with the number of matching organisations, for the report footer. Try the query with <em>Run</em> before you use it (with a real value instead of <code>#org_state#</code>).</li>
+		<li><strong>Report</strong>: <em>Reports → Add</em> – a unique code (<code>orgstate</code>), the description (printed with <code>#description#</code>), the query as data source and the criteria form as <em>launch form</em>.</li>
+		<li><strong>Layout</strong> in the <a href="#report-designer">report designer</a>. Put each object into the right <strong>band</strong>:
+			<ul>
+				<li><em>report header</em> – once, at the top of the first page: the title <code>#description#</code> and <code>State: #org_state#</code>;</li>
+				<li><em>page header</em> – at the top of every page: the column titles as text, with a line below them (the designer's line object);</li>
+				<li><em>detail</em> – once per row of the data: the fields <code>org_code</code>, <code>org_name</code>, <code>org_office_email</code>;</li>
+				<li><em>page footer</em> – at the bottom of every page: <code>Printed: #day#.#month#.20#year#</code> and <code>Page #page# of #pages#</code>;</li>
+				<li><em>report footer</em> – once, right after the last detail row (not at the bottom of the page): <code>Total:</code> and the field <code>total</code>.</li>
+			</ul>
+		Set each band's height in its properties, and save now and then; <em>Preview</em> prints the layout as it is.</li>
+	</ol>
+	<p>Users start the report from its tile, a run object (<em>Run report</em>) or <code>nuRunReport('orgstate')</code>: the criteria form opens, <em>Run report</em> makes the PDF.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-access">9. An access level for the users</h3>
+	<ol>
+		<li><em>Access levels → Add</em>: code <code>staff</code>, description <em>Staff</em>; optionally a start form.</li>
+		<li><em>Form rights</em>: add every form the users open – the organisation and contact forms with the buttons they may use, <strong>and the report's criteria form</strong>. A lookup only works when the user may also open its lookup form (here the organisation form, which is in the list anyway).</li>
+		<li><em>Reports</em>: tick the report. A report needs both: the report itself <em>and</em> its criteria form – without the form right the report runs straight away without asking for criteria.</li>
+		<li><em>Users → Add</em>: name, login, e-mail, the access level <em>Staff</em> and a password (or the welcome e-mail).</li>
+		<li><strong>Test it</strong>: open the user and choose <a href="#impersonate">Act as user</a> – you see exactly the start page, forms and buttons the user gets, without knowing the password. Or sign in with the new login in a private browser window.</li>
+	</ol>
+	<p>Details: <a href="#access">Access levels</a> · <a href="#users">Users</a>.</p>
+	</div>
+	<div class="doc-sub">
+	<h3 id="first-app-forte">If you know nuBuilder Forte</h3>
+	<ul>
+		<li><em>Objects → Add</em>, <em>Fast Form</em> and <em>Arrange Objects</em> are all part of <a href="#design-mode">design mode</a> here: the <em>New form</em> wizard replaces Fast Form, and objects are added, moved and changed on the form itself.</li>
+		<li>A sub-form object offers only forms of type <em>Subform</em>; a lookup offers forms of type <em>Browse</em> or <em>Browse and edit</em>.</li>
+		<li>A report's criteria form needs no table – a <em>Launch</em> form works; nuBuilder Forte's habit of using <code>zzzzsys_setup</code> as the table also works.</li>
+		<li>Users need no <code>nurunreport</code> form: their reports are on their start page. Everything stays compatible – the forms, objects and reports are stored in nuBuilder Forte's tables and open in nuBuilder Forte as well.</li>
+	</ul>
+	</div>
+	<p class="doc-see">See also: <a href="#db-basics">Database basics</a> · <a href="#new-form">Creating a form</a> · <a href="#builder-work">Designing a form</a> · <a href="#reports">Reports and the report designer</a></p>
+</section>

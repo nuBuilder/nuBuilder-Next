@@ -2,14 +2,14 @@
 	<h2 id="theming-h">Theming and CSS</h2>
 	<p class="doc-lead">Light and dark mode, CSS variables and where your own CSS goes.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>nuBuilder Next is built on <strong>Bootstrap 5</strong> with a thin layer of its own CSS. Light and dark mode use Bootstrap's colour modes: the theme (light, dark, automatic) is chosen in the menu bar and set as <code>data-bs-theme</code> on <code>&lt;html&gt;</code>. Style your own elements with Bootstrap's CSS variables (<code>var(--bs-body-color)</code>, <code>var(--bs-border-color)</code> …) and they follow the theme automatically.</p>
+	<p>nuBuilder Next is built on <strong>Bootstrap 5</strong> with a thin layer of its own CSS. Light and dark mode use Bootstrap's colour modes: the theme (light, dark, automatic) is chosen in the menu bar and set as <code>data-bs-theme</code> on <code>&lt;html&gt;</code>; the colours themselves (accent, backgrounds, buttons – light and dark) come from the chosen <a href="#themes">theme</a>, which sets the <code>--nu-…</code> variables. Style your own elements with Bootstrap's CSS variables (<code>var(--bs-body-color)</code>, <code>var(--bs-border-color)</code> …) and they follow the theme automatically.</p>
 <div class="doc-sub">
 	<h3 id="theming-vars">nuBuilder Next's CSS variables</h3>
 	<table class="table table-sm">
 		<thead><tr><th>Variable</th><th>Used for</th></tr></thead>
 		<tbody>
-			<tr><td><code>--nu-accent</code>, <code>--nu-accent-2</code></td><td>Accent colours (logo, highlights, form buttons) – set by <a href="#branding">Branding</a></td></tr>
-			<tr><td><code>--nu-on-accent</code></td><td>Text on the accent colour (white, black on a very light accent) – set by <a href="#branding">Branding</a></td></tr>
+			<tr><td><code>--nu-accent</code>, <code>--nu-accent-2</code></td><td>Accent colours (logo, highlights, form buttons) – set by the <a href="#themes">theme</a></td></tr>
+			<tr><td><code>--nu-on-accent</code></td><td>Text on the accent colour (white, black on a very light accent) – worked out from the <a href="#themes">theme</a>'s accent</td></tr>
 			<tr><td><code>--nu-page</code></td><td>Page background</td></tr>
 			<tr><td><code>--nu-surface</code></td><td>Background of cards, the menu bar and panels</td></tr>
 			<tr><td><code>--nu-highlight</code></td><td>Highlighted search words in lists</td></tr>
@@ -27,6 +27,6 @@
 	</ul>
 	<p>Do not edit the files in <code>assets/css/</code>: an update replaces them. The element ids of forms are nuBuilder Forte's (see <a href="#form-rendering">Form rendering pipeline</a>), so CSS written for nuBuilder Forte (4.x) mostly applies; forms with the automatic or grid layout use Bootstrap rows and columns instead of pixel positions.</p>
 </div>
-	<p class="doc-see">See also: <a href="#branding">Branding</a> · <a href="#globalcode">Global code</a></p>
+	<p class="doc-see">See also: <a href="#themes">Themes</a> · <a href="#branding">Branding</a> · <a href="#globalcode">Global code</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>assets/css/nuapp.css</code></li><li><code>assets/css/nuform.css</code></li><li><code>assets/js/nutheme.js</code></li><li><code>core/nubranding.php</code></li></ul></details>
 </section>

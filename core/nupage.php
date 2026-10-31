@@ -1142,6 +1142,12 @@ class NuPageContext
 	 */
 	public function excel(string $title = ''): NuXlsx { return NuXlsx::create($title !== '' ? $title : $this->meta->description()); }
 
+	/** PhpSpreadsheet (library pack, 0.8.755): loads its classes – true when \\PhpOffice\\PhpSpreadsheet\\… can be used. */
+	public function spreadsheet(): bool { return NuSpreadsheet::available() && NuSpreadsheet::load(); }
+
+	/** Rows of one sheet of an .xlsx / .xls / .ods file as texts (formulas: the saved result); RuntimeException without the pack. */
+	public function readSpreadsheet(string $file, int|string $sheet = 0): array { return NuSpreadsheet::read($file, $sheet)['rows']; }
+
 	/** Sends JSON and ends the page. */
 	public function json(mixed $data, int $status = 200): never
 	{

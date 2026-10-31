@@ -3,7 +3,7 @@
 	<p class="doc-lead">How nuBuilder Next signs users in and keeps its own sessions next to nuBuilder Forte&#x27;s.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p>nuBuilder Next has its own sessions and does not use nuBuilder Forte's <code>zzzzsys_session</code> table for its users (it only reads it for the shared login). The login is checked against <code>zzzzsys_user</code> (login name and password) and, for the globeadmin, against <code>nuconfig.php</code>.</p>
-<figure class="doc-figure" id="dg-sessions"><svg class="doc-flow" viewBox="0 0 680 500" role="img" aria-labelledby="dg-sessions-title dg-sessions-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-sessions-title">Sign-in and sessions</title><desc id="dg-sessions-desc">The login form goes to NuAuth, which checks the password and the account; a second factor is asked when needed. The PHP session nunext is noted in zzzzsys_nunext_session and the log. Every later request is checked by NuAuth::user(): time-out, password changed elsewhere or session ended lead back to the sign-in page.</desc>
+<figure class="doc-figure" id="dg-sessions"><svg class="doc-flow" viewBox="0 0 680 500" role="img" aria-labelledby="dg-sessions-title dg-sessions-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-sessions-title">Sign-in and sessions</title><desc id="dg-sessions-desc">The login form goes to NuAuth, which checks the password, the account and the IP access rules; a second factor is asked when needed. The PHP session nunext is noted in zzzzsys_nunext_session and the log. Every later request is checked by NuAuth::user(): time-out, password changed elsewhere, session ended or an address that is not allowed lead back to the sign-in page.</desc>
 <defs><marker id="dg-sessions-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
 <text x="115" y="40" dy=".35em" class="dg-t dg-n">Browser</text>
 <text x="345" y="40" dy=".35em" class="dg-t dg-n">Server</text>
@@ -13,7 +13,7 @@
 <text x="115" y="104" dy=".35em" class="dg-s dg-n">?p=login</text>
 <rect x="240" y="66" width="210" height="56" rx="8" class="dg-box dg-p"/>
 <text x="345" y="84" dy=".35em" class="dg-t dg-p">NuAuth: sign in</text>
-<text x="345" y="104" dy=".35em" class="dg-s dg-p">password · active · not expired</text>
+<text x="345" y="104" dy=".35em" class="dg-s dg-p">password · account · IP access</text>
 <rect x="500" y="66" width="140" height="56" rx="8" class="dg-box dg-a"/>
 <text x="570" y="84" dy=".35em" class="dg-t dg-a">Second factor</text>
 <text x="570" y="104" dy=".35em" class="dg-s dg-a">app or e-mail code</text>
@@ -40,7 +40,7 @@
 <rect x="240" y="340" width="210" height="68" rx="8" class="dg-box dg-p"/>
 <text x="345" y="356" dy=".35em" class="dg-t dg-p">NuAuth::user()</text>
 <text x="345" y="376" dy=".35em" class="dg-s dg-p">time-out? password changed?</text>
-<text x="345" y="392" dy=".35em" class="dg-s dg-p">session ended?</text>
+<text x="345" y="392" dy=".35em" class="dg-s dg-p">session ended? IP allowed?</text>
 <rect x="500" y="346" width="140" height="56" rx="8" class="dg-box dg-a"/>
 <text x="570" y="364" dy=".35em" class="dg-t dg-a">Sign-in page</text>
 <text x="570" y="384" dy=".35em" class="dg-s dg-a">then back to the page</text>
@@ -56,9 +56,11 @@
 	<li><strong>Password changed elsewhere</strong>: the session keeps a short fingerprint of the stored hash; when the password is changed (also in nuBuilder Forte), the session ends.</li>
 	<li><strong>Time-outs</strong>: <code>$nuConfigSessionTimeout</code> (users) and <code>$nuConfigSessionTimeoutGlobeadmin</code>. Passive background requests do not extend them.</li>
 	<li><strong>Logged-in users</strong>: one row per session in <code>zzzzsys_nunext_session</code>, updated at most every 30 seconds; the key is a hash of the PHP session id, the id itself is never stored. The globeadmin can end sessions (<a href="#sessions">Logged-in users</a>).</li>
-	<li><strong>Login hooks</strong>: nuBuilder Forte's procedures <code>nu_startup</code> and <code>nu_invalid_login</code> run as in nuBuilder Forte; <code>nu_check_password_policy</code> checks new passwords.</li>
+	<li><strong>IP access</strong>: after the password and before the second factor (<code>NuAuth::afterPassword</code>) the <a href="#ip-access">IP access</a> rules of the user's access levels are checked – for one-time login links too; every later request checks them again.</li>
+	<li><strong>Password policy at sign-in</strong>: <code>NuPwPolicy::onLogin</code> (in <code>NuAuth::attempt</code>) checks a leaked or expired password – then the user must change it right away (<code>sus_change_password</code>, the reason in the session); a password that expires soon shows a note. See <a href="#password-policy">Password policy</a>.</li>
+	<li><strong>Login hooks</strong>: nuBuilder Forte's procedures <code>nu_startup</code> and <code>nu_invalid_login</code> run as in nuBuilder Forte; <code>nu_check_password_policy</code> checks new passwords after the rules of the password policy.</li>
 </ul>
 <p>All ways to sign in (shared login, auto-login links, tokens) are on <a href="#signin-methods">Sign-in methods</a>.</p>
 	<p class="doc-see">See also: <a href="#signin-methods">Sign-in methods</a> · <a href="#sessions">Logged-in users</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuauth.php</code></li><li><code>core/nusessions.php</code></li><li><code>core/nutwofa.php</code></li><li><code>core/nulogintoken.php</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuauth.php</code></li><li><code>core/nusessions.php</code></li><li><code>core/nutwofa.php</code></li><li><code>core/nulogintoken.php</code></li><li><code>core/nuipaccess.php</code></li><li><code>core/nupwpolicy.php</code></li></ul></details>
 </section>

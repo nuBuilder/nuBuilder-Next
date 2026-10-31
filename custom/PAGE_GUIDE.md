@@ -165,6 +165,8 @@ Table and column names of insert / update / delete must match `^[A-Za-z0-9_]+$` 
 | `session(): array` | by reference: the page's own session store. Read-only after releaseSession(). |
 | `releaseSession(): void` | ends the session lock for slow work |
 | `excel(string $title = ''): NuXlsx` | a new Excel workbook (see "Excel export") |
+| `spreadsheet(): bool` | loads PhpSpreadsheet (library pack) – true when its classes can be used |
+| `readSpreadsheet(string $file, int\|string $sheet = 0): array` | the rows of a sheet of an .xlsx / .xls / .ods file as texts (needs the PhpSpreadsheet pack) |
 | `apiVersion(): int` | the API version of this nuBuilder Next (1) |
 | `api(int $version): void` | declares the version the page is written for (second line of index.php) |
 

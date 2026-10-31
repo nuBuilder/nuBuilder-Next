@@ -84,7 +84,7 @@ final class NuReportApi
 			$pdf = NuReport::pdf($r, $hash);
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next API report ' . $r['sre_code'] . ': ' . $e->getMessage() . ' ' . $e->getFile() . ':' . $e->getLine());
-			throw new RuntimeException(t('rpt_err_run', (string)$r['sre_code']) . (nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : ''));
+			throw new RuntimeException(t('rpt_err_run', (string)$r['sre_code']) . (nu_debug() ? ' ' . $e->getMessage() : ''));
 		}
 		NuLog::write('report_run', NuReport::TABLE, (string)$r['zzzzsys_report_id'], ['code' => (string)$r['sre_code'], 'bytes' => strlen($pdf), 'via' => 'api']);
 		return $pdf;

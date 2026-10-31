@@ -49,16 +49,7 @@ $cur = NuJquery::current();
 
 nu_layout_start(t('jq_title'), 'home', ['container' => 'nuContainer', 'settings' => 'code', 'settings_page' => 'jquery']);
 ?>
-<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('settings')) ?>"><?= h(t('set_title')) ?></a></li>
-	<li class="breadcrumb-item active" aria-current="page"><?= h(t('jq_title')) ?></li>
-</ol></nav>
-<div class="nuTitleBar mb-3">
-	<h1 class="h4 mb-0"><i class="bi bi-filetype-js me-2" aria-hidden="true"></i><?= h(t('jq_title')) ?></h1>
-	<div class="nuTitleSub text-body-secondary small"><?= h(t('jq_sub')) ?></div>
-	<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
-</div>
+<?= nu_page_header(t('jq_title'), ['icon' => 'bi-filetype-js', 'sub' => t('jq_sub'), 'buttons' => $canChange ? '<button class="btn nuBtnAct nuBtnSave" type="submit" form="jqForm" data-nu-save id="jqSave"><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
 
 <?php foreach (array_filter([$s['jq'], $s['ga_jq']], static fn($c) => NuJquery::missing($c)) as $c): ?>
 	<div class="alert alert-warning" id="jqMissing"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('jq_missing_alert', substr($c, 2))) ?></div>
@@ -94,7 +85,6 @@ nu_layout_start(t('jq_title'), 'home', ['container' => 'nuContainer', 'settings'
 			</div>
 		</div>
 	</div>
-	<?php if ($canChange): ?><div class="mb-4"><button class="btn btn-primary nuBtnSave" type="submit" data-nu-save id="jqSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div><?php endif; ?>
 </form>
 
 <div class="card shadow-sm mb-3" id="jqNow">

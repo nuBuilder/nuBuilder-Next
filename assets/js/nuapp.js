@@ -695,17 +695,37 @@
 				// optional own button text / style: data-confirm-ok="Refresh" data-confirm-class="btn btn-primary"
 				okBtn.textContent = f.getAttribute('data-confirm-ok') || okText;
 				okBtn.className = (f.getAttribute('data-confirm-class') || okClass.replace(/\bjs-confirm-ok\b/, '').trim()) + ' js-confirm-ok';
+				if (/\bbtn-danger\b/.test(okBtn.className)) modalEl.addEventListener('shown.bs.modal', function g() {   // dangerous: Cancel is the default (review E4)
+					modalEl.removeEventListener('shown.bs.modal', g);
+					var c = modalEl.querySelector('.modal-footer [data-bs-dismiss="modal"]'); if (c) c.focus();
+				});
 				modal.show();
 			});
 		});
 		/** The same dialog for a script: nuConfirmAsk(text, onOk[, okLabel, okClass]) – onOk runs after OK, nothing on Cancel. */
-		window.nuConfirmAsk = function (text, onOk, okLabel, cls) {
+		// extra (0.8.763, review E4): {title, details: [lines shown as a list below the text], note, cancelFirst: true = Cancel gets the focus}
+		var titleEl = $('#nuConfirmTitle', modalEl), titleText = titleEl ? titleEl.textContent : '';
+		window.nuConfirmAsk = function (text, onOk, okLabel, cls, extra) {
+			extra = extra || {};
 			pending = onOk;
-			$('.js-confirm-text', modalEl).textContent = text;
+			var box = $('.js-confirm-text', modalEl);
+			box.textContent = text;
+			if (extra.details && extra.details.length) {
+				var ul = document.createElement('ul'); ul.className = 'mb-0 mt-2 small nuConfirmDetails';
+				extra.details.forEach(function (d) { var li = document.createElement('li'); li.textContent = d; ul.appendChild(li); });
+				box.appendChild(ul);
+			}
+			if (extra.note) { var p = document.createElement('p'); p.className = 'mb-0 mt-2 small text-body-secondary'; p.textContent = extra.note; box.appendChild(p); }
+			if (titleEl) titleEl.textContent = extra.title || titleText;
 			okBtn.textContent = okLabel || okText;
 			okBtn.className = (cls || okClass.replace(/\bjs-confirm-ok\b/, '').trim()) + ' js-confirm-ok';
+			if (extra.cancelFirst) modalEl.addEventListener('shown.bs.modal', function f() {
+				modalEl.removeEventListener('shown.bs.modal', f);
+				var c = modalEl.querySelector('.modal-footer [data-bs-dismiss="modal"]'); if (c) c.focus();
+			});
 			modal.show();
 		};
+		modalEl.addEventListener('hidden.bs.modal', function () { if (titleEl) titleEl.textContent = titleText; });
 	}
 
 	/** Opens url in a new tab that comes to the front, also from a Ctrl+click (see below why setTimeout). */
@@ -1118,10 +1138,21 @@
 			if (n) el.setAttribute('aria-label', n);
 		});
 		// everything that scrolls (tables, code blocks, lists with a fixed height) can be reached with the keyboard
-		document.querySelectorAll('div, pre, ul, ol, section, article, details, td, code').forEach(function (t) {
+		document.querySelectorAll('div, pre, ul, ol, section, article, details, td, code, figure, table').forEach(function (t) {
 			if (t.hasAttribute('tabindex') || t.closest('.CodeMirror') || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
 			var cs = getComputedStyle(t), x = /(auto|scroll)/.test(cs.overflowX) && t.scrollWidth > t.clientWidth + 1, y = /(auto|scroll)/.test(cs.overflowY) && t.scrollHeight > t.clientHeight + 1;
 			if (x || y) t.setAttribute('tabindex', '0');
+		});
+		// CodeMirror's scroll box (0.8.761, axe scrollable-region-focusable): reachable with the keyboard; coming from outside the editor
+		// the focus goes on to the editor itself, from inside (Tab after the editor) it stays so the arrows scroll the code
+		document.querySelectorAll('.CodeMirror-scroll:not([data-nu-a11y])').forEach(function (t) {
+			var w = t.closest('.CodeMirror');
+			t.setAttribute('data-nu-a11y', '1'); t.setAttribute('tabindex', '0');
+			var ta = w && w.previousElementSibling;
+			t.setAttribute('aria-label', (ta && (labelFor(ta.id) || ta.getAttribute('aria-label'))) || 'Code');
+			t.addEventListener('focus', function (e) {
+				if (w && w.CodeMirror && !(e.relatedTarget && w.contains(e.relatedTarget))) w.CodeMirror.focus();
+			});
 		});
 	}
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(run, 0); }); else setTimeout(run, 0);
@@ -1392,8 +1423,9 @@
 		document.querySelectorAll('.nav-tabs [data-bs-toggle="tab"]').forEach(function (tab) {
 			if (tab.querySelector('.nuTabSecArrow') || sections(tab).length < 2) return;
 			var a = document.createElement('span');
-			a.className = 'nuTabSecArrow'; a.setAttribute('role', 'button'); a.tabIndex = -1;
-			if (label) { a.title = label; a.setAttribute('aria-label', label); }
+			// no role / tab stop inside the tab button (0.8.761, axe nested-interactive): the tab says it has a menu, Shift+F10 opens it
+			a.className = 'nuTabSecArrow'; a.setAttribute('aria-hidden', 'true');
+			if (label) { a.title = label; tab.setAttribute('aria-haspopup', 'menu'); tab.setAttribute('aria-description', label); }
 			a.innerHTML = '<i class="bi bi-chevron-down" aria-hidden="true"></i>';
 			a.addEventListener('click', function (e) {
 				e.preventDefault(); e.stopPropagation();

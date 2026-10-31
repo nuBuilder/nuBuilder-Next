@@ -13,7 +13,7 @@ $sec = is_string($_GET['s'] ?? null) ? (string)$_GET['s'] : '';
 if ($sec === 'forte') { require __DIR__ . '/nusettings_forte.php'; return; }
 if (!NuSettingsHub::allowed()) NuAdmin::require('settings');          // nothing to open: the usual "no right" page
 $pages = NuSettingsHub::pages();
-if (!in_array($sec, ['', 'general', 'look', 'data', 'updates'], true)) $sec = '';
+if (!in_array($sec, ['', 'general', 'look', 'users', 'data', 'logs', 'updates'], true)) $sec = '';
 if ($sec !== '' && !isset($pages[$sec])) NuAdmin::require('settings');
 
 if (isset($_GET['index'])) {                                             // search index (assets/js/nusettingshub.js)
@@ -42,6 +42,30 @@ if (nu_is_post()) {
 			if ($res['removed']) nu_flash('info', t('lng_removed', implode(', ', array_map($name, $res['removed'])), $affected, $name(NuLanguages::fallback())));
 		}
 		$back('general', 'setLangs');
+	}
+	if ($action === 'data_set') {                      // Data & logs (review E2): one form, one Save for audit trail, notifications and backups
+		$parts = array_map('strval', is_array($_POST['parts'] ?? null) ? $_POST['parts'] : []);
+		$msg = [];
+		if (in_array('audit', $parts, true) && NuAdmin::can('audit', 'change')) {
+			if (NuAudit::saveSettings(['on' => nu_check('aud_on') === '1', 'keep_days' => (int)nu_post('aud_keep_days'), 'exclude' => nu_post('aud_exclude')])) $msg[] = t('aud_set_saved');
+		}
+		if (in_array('notify', $parts, true) && (NuSettingsHub::ga() || NuAdmin::can('notifications', 'change'))) {
+			$was = NuNotify::settings()['keep_days'];
+			NuNotify::saveSettings((int)nu_post('ntf_keep_days'));
+			if ((int)$was !== (int)NuNotify::settings()['keep_days']) $msg[] = t('ntf_settings_saved');
+		}
+		if (in_array('backups', $parts, true) && NuAdmin::can('update', 'change')) {
+			$before = [NuUpdate::keepSql(), NuUpdate::cleanupRule()];
+			NuUpdate::setKeepSql((int)nu_post('keep'));
+			$mode = nu_post('mode') === 'age' ? 'age' : 'keep';
+			NuUpdate::setCleanupRule($mode, max(1, min(9999, (int)nu_post($mode === 'age' ? 'days' : 'keep_n'))), nu_check('auto') === '1');
+			if ($before !== [NuUpdate::keepSql(), NuUpdate::cleanupRule()]) {
+				NuLog::write('backup_rules', 'zzzzsys_nunext_setting', '', ['keep_sql' => NuUpdate::keepSql(), 'cleanup' => NuUpdate::cleanupRule()]);
+				$msg[] = t('saved');
+			}
+		}
+		nu_flash('success', $msg ? implode(' ', array_unique($msg)) : t('set_saved_none'));
+		nu_redirect(nu_url('settings', ['s' => 'data']));
 	}
 	if ($action === 'audit_set') {                     // audit trail (also on the audit page)
 		NuAdmin::require('audit');
@@ -93,16 +117,10 @@ $keepOpts = static function (int $cur, array $list): string {
 $title = $sec === '' ? t('set_title') : t(NuSettingsHub::SECTIONS[$sec][1]);
 nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $sec, 'settings_page' => $sec]);
 ?>
-<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
-	<?php if ($sec === ''): ?><li class="breadcrumb-item active" aria-current="page"><?= h(t('set_title')) ?></li>
-	<?php else: ?><li class="breadcrumb-item"><a href="<?= h(nu_url('settings')) ?>"><?= h(t('set_title')) ?></a></li><li class="breadcrumb-item active" aria-current="page"><?= h($title) ?></li><?php endif; ?>
-</ol></nav>
-<div class="nuTitleBar mb-3">
-	<h1 class="h4 mb-0"><?php if ($sec !== ''): ?><i class="bi <?= h(NuSettingsHub::SECTIONS[$sec][0]) ?> me-2" aria-hidden="true"></i><?php endif; ?><?= h($title) ?></h1>
-	<div class="nuTitleSub text-body-secondary small"><?= h($sec === '' ? t('sh_overview_hint') : t(NuSettingsHub::SECTIONS[$sec][2])) ?></div>
-	<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
-</div>
+<?php $dataSave = $sec === 'data' && (NuAdmin::can('audit', 'change') || NuSettingsHub::ga() || NuAdmin::can('notifications', 'change') || NuAdmin::can('update', 'change')); ?>
+<?= nu_page_header($title, ['icon' => $sec !== '' ? NuSettingsHub::SECTIONS[$sec][0] : 'bi-gear', 'sub' => $sec === '' ? t('sh_overview_hint') : t(NuSettingsHub::SECTIONS[$sec][2]),
+	'crumbs' => $sec === '' ? [] : [[t('set_title'), nu_url('settings')]],
+	'buttons' => $dataSave ? '<button class="btn nuBtnAct nuBtnSave" type="submit" form="shDataForm" id="shDataSave" data-nu-save><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
 
 <?php if ($sec === ''): // ------------------------------------------------------------------ overview ?>
 <div class="row g-3" id="shOverview">
@@ -156,31 +174,41 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 		<?php if (NuAdmin::can('access', 'view')) echo $linkCard('bi-people', t('home_u_title'), t('sh_user_home_d'), nu_url('home', ['for' => NuHome::ALL_LEVELS])); ?>
 	</div>
 
+<?php elseif ($sec === 'users' || $sec === 'logs'): // ------------------------------------- users & access / logs & integration (review G1) ?>
+	<div class="list-group shadow-sm mb-3" id="shTools_<?= h($sec) ?>">
+		<?php foreach (NuSettingsHub::tools($sec) as $k => [$icon, $label, $hint, $url]) echo $linkCard($icon, $label, $hint, $url, 'shTool_' . $k); ?>
+	</div>
+	<?php if ($sec === 'users' && NuAdmin::can('securitycheck', 'view')): ?>
+	<div class="list-group shadow-sm mb-3">
+		<?= $linkCard('bi-key', t('pwp_title'), t('pwp_sub'), nu_url('pwpolicy')) ?>
+		<?php if (NuSettingsHub::ga()) echo $linkCard('bi-router', t('ipa_title'), t('ipa_hint'), nu_url('ipaccess')); ?>
+	</div>
+	<?php endif; ?>
+
 <?php elseif ($sec === 'data'): // ---------------------------------------------------------- data, logs, backups ?>
+	<form method="post" action="<?= h(nu_url('settings', ['s' => 'data'])) ?>" id="shDataForm" data-nu-guard><?= nu_csrf_field() ?><input type="hidden" name="action" value="data_set">
 	<?php if (NuAdmin::can('audit', 'view')): $a = NuAudit::settings(); $canA = NuAdmin::can('audit', 'change'); ob_start(); ?>
-		<form method="post" action="<?= h(nu_url('settings', ['s' => 'data'])) ?>" class="row g-3 align-items-end"><?= nu_csrf_field() ?><input type="hidden" name="action" value="audit_set">
+		<div class="row g-3 align-items-end"><?php if ($canA): ?><input type="hidden" name="parts[]" value="audit"><?php endif; ?>
 			<fieldset class="contents"<?= $canA ? '' : ' disabled' ?>>
-			<div class="col-sm-4 d-flex align-items-center pb-1"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" name="on" value="1" id="shAudOn"<?= $a['on'] ? ' checked' : '' ?>>
+			<div class="col-sm-4 d-flex align-items-center pb-1"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" name="aud_on" value="1" id="shAudOn"<?= $a['on'] ? ' checked' : '' ?>>
 				<label class="form-check-label" for="shAudOn"><?= h(t('aud_set_on')) ?></label></div><?= $tip(t('aud_set_on_tip')) ?></div>
 			<div class="col-sm-4"><label class="form-label small mb-1" for="shAudKeep"><?= h(t('aud_set_keep')) ?></label><?= $tip(t('aud_set_keep_tip')) ?>
-				<select class="form-select form-select-sm" name="keep_days" id="shAudKeep"><?= $keepOpts((int)$a['keep_days'], [0, 30, 90, 180, 365, 730, 1825]) ?></select></div>
+				<select class="form-select form-select-sm" name="aud_keep_days" id="shAudKeep"><?= $keepOpts((int)$a['keep_days'], [0, 30, 90, 180, 365, 730, 1825]) ?></select></div>
 			<div class="col-12"><label class="form-label small mb-1" for="shAudExcl"><?= h(t('aud_set_exclude')) ?></label><?= $tip(t('aud_set_exclude_tip')) ?>
-				<input class="form-control form-control-sm" name="exclude" id="shAudExcl" maxlength="2000" value="<?= h($a['exclude']) ?>"></div>
-			<div class="col-12 text-end"><button class="btn btn-sm btn-primary" type="submit" id="shAudSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div>
+				<input class="form-control form-control-sm" name="aud_exclude" id="shAudExcl" maxlength="2000" value="<?= h($a['exclude']) ?>"></div>
 			</fieldset>
-		</form>
+		</div>
 		<?= $card('shAudit', 'bi-clock-history', t('aud_title'), (string)ob_get_clean()) ?>
 	<?php endif; ?>
 	<?php if (NuSettingsHub::ga() || NuAdmin::can('notifications', 'change')): $nk = NuNotify::settings()['keep_days']; ob_start(); ?>
-		<form method="post" action="<?= h(nu_url('settings', ['s' => 'data'])) ?>" class="d-flex flex-wrap align-items-end gap-3"><?= nu_csrf_field() ?><input type="hidden" name="action" value="ntf_set">
+		<div class="d-flex flex-wrap align-items-end gap-3"><input type="hidden" name="parts[]" value="notify">
 			<div><label class="form-label small mb-1" for="shNtfKeep"><?= h(t('ntf_keep')) ?></label><?= $tip(t('ntf_keep_tip')) ?>
-				<select class="form-select form-select-sm" name="keep_days" id="shNtfKeep"><?= $keepOpts((int)$nk, [0, 30, 90, 180, 365, 730]) ?></select></div>
-			<button class="btn btn-sm btn-primary ms-auto" type="submit" id="shNtfSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
-		</form>
+				<select class="form-select form-select-sm" name="ntf_keep_days" id="shNtfKeep"><?= $keepOpts((int)$nk, [0, 30, 90, 180, 365, 730]) ?></select></div>
+		</div>
 		<?= $card('shNotify', 'bi-bell', t('ntf_title'), (string)ob_get_clean()) ?>
 	<?php endif; ?>
 	<?php if (NuAdmin::can('update', 'view')): $rule = NuUpdate::cleanupRule(); ob_start(); ?>
-		<form method="post" action="<?= h(nu_url('settings', ['s' => 'data'])) ?>" class="row g-3 align-items-start"><?= nu_csrf_field() ?><input type="hidden" name="action" value="bk_rule">
+		<div class="row g-3 align-items-start"><?php if (NuAdmin::can('update', 'change')): ?><input type="hidden" name="parts[]" value="backups"><?php endif; ?>
 			<fieldset class="contents shBkFields"<?= NuAdmin::can('update', 'change') ? '' : ' disabled' ?>>
 			<div class="col-sm-6"><label class="form-label small mb-1" for="shBkKeep"><?= h(t('upd_keep_label')) ?></label><?= $tip(t('upd_keep_hint')) ?>
 				<div class="input-group input-group-sm shBkKeepGrp"><input type="number" class="form-control" id="shBkKeep" name="keep" min="0" max="999" value="<?= NuUpdate::keepSql() ?>"><span class="input-group-text"><?= h(t('upd_keep_suffix')) ?></span></div></div>
@@ -194,12 +222,12 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 					<input type="number" class="form-control form-control-sm shBkNum" name="days" min="1" max="9999" value="<?= $rule['mode'] === 'age' ? $rule['n'] : 90 ?>" aria-label="<?= h(t('upd_bk_clean_age')) ?>"><span><?= h(t('upd_bk_clean_age_suffix')) ?></span>
 				</div>
 				<div class="form-check form-switch mt-2 mb-0"><input class="form-check-input" type="checkbox" role="switch" name="auto" value="1" id="shBkAuto"<?= $rule['auto'] ? ' checked' : '' ?>><label class="form-check-label small" for="shBkAuto"><?= h(t('upd_bk_clean_auto')) ?></label></div></div>
-			<div class="col-12 d-flex flex-wrap gap-2 align-items-center"><a class="small me-auto" href="<?= h(nu_url('update', ['tab' => 'backups'])) ?>"><?= h(t('sh_backups_link')) ?></a>
-				<button class="btn btn-sm btn-primary" type="submit" id="shBkSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div>
+			<div class="col-12"><a class="small" href="<?= h(nu_url('update', ['tab' => 'backups'])) ?>"><?= h(t('sh_backups_link')) ?></a></div>
 			</fieldset>
-		</form>
+		</div>
 		<?= $card('shBackups', 'bi-archive', t('sh_backups'), (string)ob_get_clean()) ?>
 	<?php endif; ?>
+	</form>
 	<div class="list-group shadow-sm mb-3">
 		<?php if (NuAdmin::can('securitycheck', 'view')) echo $linkCard('bi-journal-text', t('secchk_set_log_keep_days'), t('secchk_set_log_keep_days_tip'), nu_url('securitycheck') . '#sec_log_keep_days', 'shLogKeep'); ?>
 		<?php if (NuDemo::configured() && NuAdmin::can('status', 'view')) echo $linkCard('bi-easel', t('demo_data_title'), t('demo_data_tip'), nu_url('vendor') . '#demo'); ?>

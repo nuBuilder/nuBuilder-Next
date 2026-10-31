@@ -81,7 +81,7 @@ final class NuRecord
 				if ($r) $name = trim((string)$r['sus_name']) !== '' ? $r['sus_name'] . ' (' . $r['sus_login_name'] . ')' : (string)$r['sus_login_name'];
 			}
 			$time = (int)($e['time'] ?? 0);
-			return ['user' => $user, 'name' => $name, 'time' => $time, 'when' => $time > 0 ? date('d.m.Y H:i', $time) : ''];
+			return ['user' => $user, 'name' => $name, 'time' => $time, 'when' => $time > 0 ? date(nu_dfmt('d.m.Y H:i'), $time) : ''];
 		};
 		return ['column' => $col, 'added' => $one($d['added'] ?? null), 'edited' => $one($d['edited'] ?? null)];
 	}
@@ -209,6 +209,7 @@ final class NuRecord
 		} finally {
 			NuAudit::end();
 		}
+		NuBrowse::forgetValues();                                   // list filter choices may have changed (0.8.761)
 
 		// --------------------------------------------------- after save
 		NuPhp::$js = $jsBefore;
@@ -357,6 +358,7 @@ final class NuRecord
 		} finally {
 			NuAudit::end();
 		}
+		NuBrowse::forgetValues();
 
 		if (nu_cfg('nuConfigLogRecordChanges') && !(NuAudit::on() && NuAudit::audited($meta->table()))) {
 			NuLog::write('record_deleted', $meta->code(), $recordId, ['table' => $meta->table(), 'fields' => NuLog::diff([], $row)]);

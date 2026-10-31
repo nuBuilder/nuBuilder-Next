@@ -361,6 +361,40 @@ final class NuDB
 		};
 	}
 
+	/** @var array<string, array{0: string, 1: string}|null> "table.column" => [character set, collation] (null = not found) */
+	private static array $collCache = [];
+
+	/**
+	 * Like sameText(), but an index on $a (a column of nuBuilder Next's own table $table) stays usable (0.8.761, review B1): only the other
+	 * side is converted to $a's character set and collation. sameText() casts both sides to BINARY, which no index can use – the users
+	 * list sorted by "Last login" took 39 s with 500 users and 200,000 log rows, 0.03 s this way. Unknown column: sameText().
+	 */
+	public function sameTextOn(string $a, string $b, string $table, string $column): string
+	{
+		$k = strtolower($table . '.' . $column);
+		if (!array_key_exists($k, self::$collCache)) {
+			self::$collCache[$k] = null;
+			try {
+				if ($this->type === 'mysql') {
+					$r = $this->one('SELECT CHARACTER_SET_NAME AS cs, COLLATION_NAME AS co FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $column]);
+					if ($r && preg_match('/^\w+$/', (string)$r['cs']) && preg_match('/^\w+$/', (string)$r['co'])) self::$collCache[$k] = [(string)$r['cs'], (string)$r['co']];
+				} elseif ($this->type === 'sqlsrv') {
+					$co = (string)$this->value('SELECT collation_name FROM sys.columns WHERE object_id = OBJECT_ID(?) AND name = ?', [$table, $column]);
+					if (preg_match('/^\w+$/', $co)) self::$collCache[$k] = ['', $co];
+				}
+			} catch (Throwable) {
+				self::$collCache[$k] = null;
+			}
+		}
+		$c = self::$collCache[$k];
+		if ($c === null) return $this->sameText($a, $b);
+		return match ($this->type) {
+			'mysql'  => "$a = CONVERT($b USING {$c[0]}) COLLATE {$c[1]}",
+			'sqlsrv' => "$a = $b COLLATE {$c[1]}",
+			default  => "$a = $b",
+		};
+	}
+
 	/** LIKE pattern for "contains", to be used with  LIKE ? ESCAPE '!'  (works on all drivers). */
 	public static function like(string $s): string
 	{

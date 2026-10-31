@@ -9,7 +9,9 @@
 		<li><strong>Form types</strong>: <em>browse and edit</em> (a list and a record), <em>browse</em> or <em>edit</em> only, <em>launch</em> (a form without a table, e.g. a menu), <em>subform</em> (shown inside another form) and <em>page</em> (your own PHP, see <a href="#pages">Pages</a>).</li>
 		<li><strong>Objects</strong> are the fields and elements on a form: input, select, lookup, subform, calc, display, HTML, image, run (button), word, contentbox, chart … – see <a href="#object-types">Object types</a>. An object's <em>ID</em> is the column it saves to.</li>
 		<li>The <strong>browse SQL</strong> of a form is the <code>SELECT</code> of its list; the <strong>browse columns</strong> say which of its columns are shown.</li>
+		<li><strong>List and record</strong>: a tile or button opens a form's list (nuBuilder Forte's <em>search</em> or <em>browse screen</em>), a row of the list opens the record (the <em>edit screen</em>); <em>Add</em> opens the same screen empty. The whole application follows this pattern – see <a href="#first-app-pattern">The pattern every form follows</a>.</li>
 	</ul>
+	<p>New to databases? <a href="#db-basics">Database basics</a> explains tables, keys and relationships; <a href="#first-app">Your first application</a> builds a small application step by step.</p>
 </div>
 <div class="doc-sub">
 	<h3 id="concept-code">Code: hooks, procedures and events</h3>
@@ -26,15 +28,15 @@
 </div>
 <div class="doc-sub">
 	<h3 id="concept-rights">Rights</h3>
-	<p>The <strong>globeadmin</strong> (login from <code>nuconfig.php</code>) may do everything. Every other user has one <strong>access level</strong> that lists the forms, procedures and reports he may use and, per form, the buttons (Save, Add, Delete, Clone, Print). <strong>Permission items</strong> are named switches your code checks; <strong>admin roles</strong> give a user a defined part of the globeadmin's tools; <strong>field data access</strong> decides per field who sees and changes it. See <a href="#rights">How rights work</a>.</p>
+	<p>The <strong>globeadmin</strong> (login from <code>nuconfig.php</code>) may do everything. Every other user has a main <strong>access level</strong> – and optionally additional ones with an end date (see <a href="#access-additional">Additional access levels</a>) – that lists the forms, procedures and reports they may use and, per form, the buttons (Save, Add, Delete, Clone, Print). <strong>Permission items</strong> are named switches your code checks; <strong>admin roles</strong> give a user a defined part of the globeadmin's tools; <strong>field data access</strong> decides per field who sees and changes it. See <a href="#rights">How rights work</a>.</p>
 </div>
 <div class="doc-sub">
 	<h3 id="concept-tables">nuBuilder Forte's tables and nuBuilder Next's tables</h3>
-	<p>All system tables start with <code>zzzzsys_</code>. nuBuilder Next reads and writes nuBuilder Forte's tables the way nuBuilder Forte does, and keeps everything only it needs in tables named <code>zzzzsys_nunext_*</code> – sessions, log, audit trail, form drafts and history, start page settings, dashboards, API clients … They are created on first use; nuBuilder Forte never reads them and its updates keep them. See <a href="#db-schema">Database schema</a> and <a href="#table-ref">Database table reference</a>.</p>
+	<p>All system tables start with <code>zzzzsys_</code>. nuBuilder Next reads and writes nuBuilder Forte's tables the way nuBuilder Forte does, and keeps everything only it needs in tables named <code>zzzzsys_nunext_*</code> – sessions, log, audit trail, form drafts and history, start page settings, dashboards, API clients … They are created by the installer (or when the globeadmin signs in); nuBuilder Forte never reads them and its updates keep them. See <a href="#db-schema">Database schema</a> and <a href="#table-ref">Database table reference</a>.</p>
 </div>
 <div class="doc-sub">
 	<h3 id="concept-config">Configuration in two places</h3>
-	<p><code>nuconfig.php</code> holds the database connection and settings in PHP variables – the same file and variable names as nuBuilder Forte, plus nuBuilder Next's own (<a href="#config">Configuration</a>). nuBuilder Forte's settings table <code>zzzzsys_config</code> holds the settings of Setup → Settings (<a href="#settings">Settings</a>). nuBuilder Next's own installation settings (security, start page layouts, branding …) are JSON rows in <code>zzzzsys_nunext_setting</code>.</p>
+	<p><code>nuconfig.php</code> holds the database connection and settings in PHP variables – the same file and variable names as nuBuilder Forte, plus nuBuilder Next's own (<a href="#config">Configuration</a>). nuBuilder Forte's settings table <code>zzzzsys_config</code> holds the settings of nuBuilder Forte's Setup → Settings – in nuBuilder Next <em>Settings → nuBuilder Forte</em> (<a href="#settings">Settings</a>). nuBuilder Next's own installation settings (security, start page layouts, branding …) are JSON rows in <code>zzzzsys_nunext_setting</code>.</p>
 </div>
 	<p class="doc-see">See also: <a href="#architecture">Architecture</a> · <a href="#form-lifecycle">Form lifecycle and event order</a> · <a href="#glossary">Glossary</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/numeta.php</code></li><li><code>core/form/nuhash.php</code></li><li><code>core/nuacl.php</code></li><li><code>core/nuinfra.php</code></li></ul></details>

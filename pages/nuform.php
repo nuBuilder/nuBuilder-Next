@@ -107,7 +107,7 @@ if ($mode === 'browse') {
 			unset($col);
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next browse ' . $meta->code() . ': ' . $e->getMessage());
-			$errors[] = ['message' => $u['globeadmin'] || nu_cfg('nuConfigDebug') ? t('form_err_browse_sql') . ' ' . $e->getMessage() : t('form_err_browse_sql'), 'field' => ''];
+			$errors[] = ['message' => $u['globeadmin'] || nu_debug() ? t('form_err_browse_sql') . ' ' . $e->getMessage() : t('form_err_browse_sql'), 'field' => ''];
 		}
 		NuBrowse::dropTempTable();
 	}
@@ -252,7 +252,7 @@ $client = [
 			'access_v' => array_map(static fn($i) => t('bf_access_' . $i), range(0, 4)), 'validate_v' => array_map(static fn($i) => t('bf_validate_' . $i), range(0, 3))],
 	] : null,
 	'messages' => [
-		'mask_incomplete' => t('fmt_err_incomplete'), 'saved' => t('saved'), 'deleted' => t('form_deleted'), 'cloned' => t('form_cloned'), 'clone_badge' => t('form_clone_badge'), 'unsaved' => t('form_unsaved'), 'report_running' => t('rpt_running'), 'report_emailed' => t('rpt_emailed'), 'delete_confirm' => t('form_delete_confirm'), 'error' => t('form_error'),
+		'mask_incomplete' => t('fmt_err_incomplete'), 'saved' => t('saved'), 'deleted' => t('form_deleted'), 'cloned' => t('form_cloned'), 'clone_badge' => t('form_clone_badge'), 'unsaved' => t('form_unsaved'), 'report_running' => t('rpt_running'), 'report_emailed' => t('rpt_emailed'), 'delete_confirm' => t('form_delete_confirm'), 'no_results' => t('eff_none'), 'delete_title' => t('form_delete_title'), 'delete_named' => t('form_delete_named'), 'delete_with' => t('form_delete_with'), 'delete_undo' => t('form_delete_undo'), 'error' => t('form_error'),
 		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'code_hint' => t('form_code_hint'), 'code_readonly' => t('form_code_readonly'), 'code_discard' => t('form_code_discard'), 'code_dblclick' => t('form_code_dblclick'), 'delete' => t('delete'), 'lookup' => t('form_lookup_title'), 'js_errors' => t('form_js_errors'),
 		'not_supported' => t('form_not_supported'), 'saving' => t('form_saving'), 'all' => t('all'), 'close' => t('close'), 'help' => t('sc_help'), 'chart_no_data' => t('chart_no_data'), 'chart_load_failed' => t('chart_load_failed'), 'chart_no_type' => t('chart_no_type'),
 		'hash_name' => t('hash_name'), 'hash_value' => t('hash_value'), 'hash_source' => t('hash_source'), 'hash_filter' => t('hash_filter'), 'hash_locked' => t('hash_locked'),
@@ -373,6 +373,7 @@ $uppyUse = $mode === 'edit' && (array_filter($meta->objects, static fn($o) => Nu
 $uppyDir = $uppyUse ? NuLibs::uppy() : '';
 $uppyNotice = $uppyUse && $uppyDir === '' && $u['globeadmin'] ? t('form_uppy_missing') . ' ' . t('lp_get_pack') : '';
 if ($uppyDir !== '') $head .= '<link rel="stylesheet" href="' . nu_asset($uppyDir . '/uppy.min.css') . '">';
+$client['codetools'] = nu_asset('assets/js/nu/nucodetools.js');      // loaded with CodeMirror when a code editor opens (review B3)
 $client['uppyBase'] = $uppyDir;                               // nuUppySetLanguage loads <uppyBase>/locales/<code>.min.js
 if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
 
@@ -385,7 +386,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. ($uppyDir !== '' ? '<script src="' . nu_asset($uppyDir . '/uppy.min.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nuformat.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
-	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
+	. ($design ? '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>' : '')   // design mode: its code windows; else loaded on first use (review B3)
 	. '<script src="' . nu_asset('assets/js/nu/nuruntime.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
 	. ($mode === 'browse' ? '<script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>' : '')
@@ -492,7 +493,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 <?php if ($mode === 'browse' && $data): ?>
 	<?php if (!empty($printMode)): ?>
 		<div class="nuPrintHead nuTitleBar mb-2"><h1 class="h5 mb-0"><?= h($meta->description()) ?></h1>
-			<div class="nuTitleSub small text-body-secondary"><?= h(date('d.m.Y H:i')) ?> · <?= h(t('n_records', $data['total'])) ?><?= $state['q'] !== '' ? ' · ' . h(t('search')) . ': ' . h($state['q']) : '' ?></div>
+			<div class="nuTitleSub small text-body-secondary"><?= h(date(nu_dfmt('d.m.Y H:i'))) ?> · <?= h(t('n_records', $data['total'])) ?><?= $state['q'] !== '' ? ' · ' . h(t('search')) . ': ' . h($state['q']) : '' ?></div>
 			<div class="d-flex flex-wrap gap-2 d-print-none">
 				<button class="btn btn-sm btn-primary" type="button" data-nu-copy-table="#nuBrowseTable" data-nu-copied="<?= h(t('copy_done')) ?>" data-nu-copy-failed="<?= h(t('copy_failed')) ?>"><i class="bi bi-clipboard me-1"></i><span><?= h(t('copy_table')) ?></span></button>
 				<?= NuListExport::csvDialog(['p' => 'formexport'] + array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1]), $meta->code() ?: 'export') ?>
@@ -522,17 +523,21 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				<a class="btn btn-outline-secondary nuSearchBtn nuListResetBtn" id="nuSearchReset" href="<?= h(nu_url('form', array_diff_key($keep, ['q' => 1, 'flt' => 1, 'adv' => 1]))) ?>" title="<?= h(t('reset')) ?>" aria-label="<?= h(t('reset')) ?>"><i class="bi bi-x-lg"></i></a>
 			<?php endif; ?>
 			<?php if ($fltCols): $fltOn = (bool)array_intersect($fltIdx, array_keys($state['flt'])); ?>
-				<button class="btn btn-outline-secondary nuSearchBtn nuFilterToggle<?= $fltOn ? ' active' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#nuBrowseFilters" aria-expanded="true" aria-controls="nuBrowseFilters" title="<?= h(t('filter')) ?>" aria-label="<?= h(t('filter')) ?>"><i class="bi bi-funnel<?= $fltOn ? '-fill' : '' ?>"></i></button>
+				<button class="btn btn-outline-secondary nuSearchBtn nuFilterToggle<?= $fltOn ? ' active' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#nuBrowseFilters" aria-expanded="<?= $iframe && !$fltOn ? 'false' : 'true' ?>" aria-controls="nuBrowseFilters" title="<?= h(t('filter')) ?>" aria-label="<?= h(t('filter')) ?>"><i class="bi bi-funnel<?= $fltOn ? '-fill' : '' ?>"></i></button>
 			<?php endif; ?>
 			</div></div>
 			<?php if ($fltCols): $n = count($fltCols); ?>
-			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse show" id="nuBrowseFilters"><div class="row g-2">
+			<?php // embedded in a form (run object, review F3): the filters stay folded behind the funnel until one is set ?>
+			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse<?= $iframe && !$fltOn ? '' : ' show' ?>" id="nuBrowseFilters"><div class="row g-2">
 				<?php foreach ($fltCols as $c): ?>
 					<div class="<?= $n > 3 ? 'col-sm-6 col-lg-3' : ($n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4')) ?>">
 						<label class="form-label small mb-1" for="nuFlt<?= (int)$c['index'] ?>"><?= h($c['title']) ?></label>
 						<select class="form-select nuColumnFilter<?= isset($state['flt'][$c['index']]) ? ' nuFilterActive' : '' ?>" id="nuFlt<?= (int)$c['index'] ?>" name="flt[<?= (int)$c['index'] ?>]">
 							<option value=""><?= h(t('all')) ?></option>
-							<?php foreach ($c['values'] as [$v, $l]): ?><option value="<?= h($v) ?>"<?= ($state['flt'][$c['index']] ?? null) === $v ? ' selected' : '' ?>><?= h($l) ?></option><?php endforeach; ?>
+							<?php $fltCur = $state['flt'][$c['index']] ?? null; $fltSeen = false;
+							foreach ($c['values'] as [$v, $l]): $fltSeen = $fltSeen || $fltCur === $v; ?><option value="<?= h($v) ?>"<?= $fltCur === $v ? ' selected' : '' ?>><?= h($l) ?></option><?php endforeach; ?>
+							<?php if ($fltCur !== null && !$fltSeen): // the chosen value is beyond the first values (review B2): keep it ?><option value="<?= h((string)$fltCur) ?>" selected><?= h((string)$fltCur) ?></option><?php endif; ?>
+							<?php if (count($c['values']) >= 300): ?><option value="" disabled><?= h(t('form_flt_more', 300)) ?></option><?php endif; ?>
 						</select>
 					</div>
 				<?php endforeach; ?>
@@ -576,7 +581,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 						<?php if ($rowDel): ?><td class="nuRowDelCol"><button type="button" class="btn btn-sm btn-outline-danger nuRowDel" data-nu-pk="<?= h($row['pk']) ?>" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php foreach ($data['columns'] as $ci => $c): ?>
 							<td id="nucell_<?= $ri ?>_<?= $c['index'] ?>" class="nuCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
-								data-nu-column="<?= $c['index'] ?>" data-nu-column-id="<?= h((string)($c['id'] ?? '')) ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?php if (!empty($row['classes'][$ci])): ?><span class="<?= h($row['classes'][$ci]) ?>"><?= h($row['cells'][$ci]) ?></span><?php else: ?><?= h($row['cells'][$ci]) ?><?php endif; ?></td>
+								data-nu-column="<?= $c['index'] ?>" data-nu-column-id="<?= h((string)($c['id'] ?? '')) ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-label="<?= h((string)$c['title']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?php if (!empty($row['classes'][$ci])): ?><span class="<?= h($row['classes'][$ci]) ?>"><?= h($row['cells'][$ci]) ?></span><?php else: ?><?= h($row['cells'][$ci]) ?><?php endif; ?></td>
 						<?php endforeach; ?>
 					</tr>
 				<?php endforeach; ?>

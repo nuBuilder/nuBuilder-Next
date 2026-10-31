@@ -66,8 +66,25 @@
 			fd.append('_csrf', D.csrf); fd.append('action', 'run'); fd.append('props', '{}');
 			b.disabled = true;
 			fetch(D.procUrl.replace('__ID__', encodeURIComponent(b.getAttribute('data-nu-proc'))), {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
-				.then(function (r) { return r.json(); })
+				.then(function (r) {
+					// a procedure that sends a file (0.8.756): save it, no window
+					var cd = r.headers.get('Content-Disposition') || '';
+					if (r.ok && /attachment/i.test(cd)) {
+						var m = /filename\*=UTF-8''([^;]+)/i.exec(cd), m2 = /filename="?([^";]+)"?/i.exec(cd);
+						var name = m ? decodeURIComponent(m[1]) : (m2 ? m2[1] : 'download');
+						return r.blob().then(function (bl) {
+							if (w) w.close();
+							var url = URL.createObjectURL(bl), a = document.createElement('a');
+							a.href = url; a.download = name; a.className = 'd-none';
+							document.body.appendChild(a); a.click(); a.remove();
+							setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+							return {ok: true, file: true};
+						});
+					}
+					return r.json();
+				})
 				.then(function (res) {
+					if (res.file) return;
 					var errs = (res.errors || []).map(function (e) { return e.message || String(e); });
 					if (w) {
 						w.document.open();

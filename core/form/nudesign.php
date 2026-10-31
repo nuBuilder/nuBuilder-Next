@@ -76,7 +76,7 @@ final class NuDesign
 		// the format designer and the attribute editor use them
 		$texts = [];
 		foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) {
-			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_button_|om_)/', $k)) $texts[$k] = t($k);
+			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_button_|om_|fmt_type_)/', $k)) $texts[$k] = t($k);
 		}
 		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search'] as $k) $texts[$k] = t($k);
 		$db = nu_db();
@@ -109,6 +109,8 @@ final class NuDesign
 			'formats_all' => NuFormat::choices(), 'format_designer' => nu_format_designer_data(),
 			'ai' => $meta->isSystem() ? '' : nu_url('formai', ['f' => $meta->id]),
 			'dataaccess' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
+			'translations' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_TRANSLATE) ? ['url' => nu_url('translations', ['view' => 'missing', 'f' => $meta->id]),
+				'missing' => NuTranslate::summary($meta->id)] : null,               // Tools → Translations with the missing ones per language (0.8.754)
 			'formaccess' => NuAcl::can(NuAcl::FORM_ACCESS),            // Tools → Access levels (0.8.683, the dialog of the ⋮ menu)
 			'can_delete_form' => !empty(NuAuth::user()['globeadmin']) && !$meta->isSystem(),
 			'live_url' => nu_url('form', ['f' => $meta->id, 'r' => $record]),

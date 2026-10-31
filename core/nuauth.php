@@ -785,12 +785,50 @@ final class NuUserJson
 		return true;
 	}
 
+	public const CREATED = 'NUNEXT_CREATED';
+	public const CHANGED = 'NUNEXT_CHANGED';
+
+	/**
+	 * Created / last changed stamp (0.8.759): sus_json NUNEXT_CREATED / NUNEXT_CHANGED = {t: 'Y-m-d H:i:s', by: login, via}. Called by every
+	 * write path of nuBuilder Next (user form, My account, import, REST API). A user from before (or made in nuBuilder Forte) gets the
+	 * created stamp from the log's user_created row on the next change, when the log still has it.
+	 */
+	public static function stamp(string $userId, bool $created, string $via = ''): void
+	{
+		if ($userId === '' || !self::available()) return;
+		try {
+			$u = NuAuth::user();
+			$by = class_exists('NuImpersonate', false) ? NuImpersonate::by() : '';   // the globeadmin acting as a user: the globeadmin
+			$now = ['t' => date('Y-m-d H:i:s'), 'by' => $by !== '' ? $by : (string)($u['login'] ?? ($u['display'] ?? '')), 'via' => $via];
+			if ($created) { self::setMany($userId, [self::CREATED => $now, self::CHANGED => $now]); return; }
+			$set = [self::CHANGED => $now];
+			if (!is_array(self::get($userId, self::CREATED))) {
+				[$lc] = NuFormInfo::loggedRaw('zzzzsys_user', $userId);
+				if ($lc) $set[self::CREATED] = ['t' => $lc['t'], 'by' => $lc['by'], 'via' => 'log'];
+			}
+			self::setMany($userId, $set);
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next user stamp: ' . $e->getMessage());
+		}
+	}
+
+	/** The stamps as text for a panel: [created, changed] – '' when unknown. */
+	public static function stamps(string $userId): array
+	{
+		$out = [];
+		foreach ([self::CREATED, self::CHANGED] as $k) {
+			$v = self::get($userId, $k);
+			$out[] = is_array($v) && !empty($v['t']) ? date(nu_dfmt('d.m.Y H:i:s'), (int)strtotime((string)$v['t'])) . ((string)($v['by'] ?? '') !== '' ? ' · ' . $v['by'] : '') : '';
+		}
+		return $out;
+	}
+
 	/** sus_json for a cloned user: the source's data without what belongs to that person (login token, 2FA, password, OTP). */
 	public static function forClone(?string $json): ?string
 	{
 		$j = json_decode((string)$json, true);
 		if (!is_array($j)) return $json;
-		$j = array_filter($j, static fn($k) => !preg_match('/^(LOGIN_TOKEN|2FA_|PASSWORD_|OTP_)/', (string)$k), ARRAY_FILTER_USE_KEY);
+		$j = array_filter($j, static fn($k) => !preg_match('/^(LOGIN_TOKEN|2FA_|PASSWORD_|OTP_|NUNEXT_CREATED|NUNEXT_CHANGED)/', (string)$k), ARRAY_FILTER_USE_KEY);
 		return $j ? json_encode($j, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null;
 	}
 

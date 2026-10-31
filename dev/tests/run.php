@@ -144,7 +144,7 @@ foreach (array_merge(glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*
 foreach (array_merge(glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*.php')) as $f) {
 	if (!preg_match_all('/^(?:final |abstract )?class (\w+)/m', (string)file_get_contents($f), $mm)) continue;
 	foreach ($mm[1] as $c) {
-		if ($c === 'NuTCPDF') continue;                                    // needs TCPDF first (NuReport::loadTcpdf)
+		if ($c === 'NuTCPDF' || $c === 'NuSpreadsheetFilter') continue;     // need TCPDF / the PhpSpreadsheet pack first (loaded by hand)
 		$where = substr($f, strlen(NU_ROOT) + 1);
 		$ok = class_exists($c, false) || (isset(NU_AUTOLOAD[$c]) && NU_AUTOLOAD[$c] === $where) || in_array($where, ['core/form/nuphp_compat.php', 'core/form/nuphp_api.php'], true);
 		check("class $c is loaded or in NU_AUTOLOAD", $ok, $where);
@@ -728,6 +728,12 @@ $bsOwn = NuBs6::own();
 check('NuBs6::own: counts the own files, nubs.js may use bootstrap', $bsOwn['total']['responsive'] > 100 && !isset($bsOwn['files']['assets/js/nubs.js']));
 
 // 0.8.745: password policy (NuPwPolicy) – defaults without notices, invalid values, the online check through the test transport
+// 0.8.754: texts for translations – nuTranslate('…') literals in code, texts of fixed select options
+check('NuTranslate::codeStrings: literals of nuTranslate, not template literals with values', NuTranslate::codeStrings("x = nuTranslate('Saved'); nuMessage(nuTranslate(\"It's done\")); nuTranslate(`Hi \${n}`); nuTranslate(v); nuTranslate('Row %s1', 3)")
+	=== ['Saved', "It's done", 'Row %s1']);
+check('NuTranslate::optionTexts: pairs, lines, JSON, odd end; SQL ignored', NuTranslate::optionTexts("a|Apple|b|Banana|") === ['Apple', 'Banana']
+	&& NuTranslate::optionTexts("1|One|\n2|Two|\n3") === ['One', 'Two', '3'] && NuTranslate::optionTexts('[["x","Ex"],"Why"]') === ['Ex', 'Why']
+	&& NuTranslate::optionTexts('SELECT a, b FROM t') === []);
 $pwD = NuPwPolicy::clean([]);
 check('NuPwPolicy::clean: defaults (no change, leak both, name rule on)', $pwD['expire'] === 0 && $pwD['ga_expire'] === 0 && $pwD['warn'] === 14 && $pwD['leak'] === 'both' && $pwD['not_name'] && !$pwD['digit']);
 check('NuPwPolicy::clean: invalid values dropped', NuPwPolicy::clean(['expire' => 45, 'warn' => 99, 'leak' => 'x', 'levels' => ['lvA' => 30, 'lvB' => '', 'bad id' => 30, 'lvC' => 7]])['levels'] === ['lvA' => 30]
@@ -740,6 +746,23 @@ NuPwPolicy::$transport = static fn(string $prefix) => null;   // not reachable
 check('NuPwPolicy::leaked: offline list as fallback, online only finds nothing', NuPwPolicy::leaked('password', 'both') === -1 && NuPwPolicy::leaked('password', 'online') === 0
 	&& NuPwPolicy::leaked('Xq7!vLm2#pRt9zWk', 'offline') === 0);
 NuPwPolicy::$transport = null;
+
+// 0.8.761 (review D1): the Security check's web server rules cover every protected folder; the help shows the same nginx rules
+$srv = NuSecurity::serverRules('/var/www/html', '/nunext');
+$helpSec = (string)file_get_contents(NU_ROOT . '/docs/pages/07-07-security-check.htm');
+$srvMiss = [];
+foreach (['_update', '_libsrc', 'custom', 'apps', 'nu_uploads', 'vendor/packs/', 'phpspreadsheet', 'third_party/'] as $w) if (!str_contains($srv, $w)) $srvMiss[] = $w;
+foreach (array_filter(explode("\n", $srv), static fn($l) => str_starts_with($l, 'location')) as $l) if (!str_contains($helpSec, h($l))) $srvMiss[] = 'help: ' . $l;
+check('NuSecurity::serverRules: complete and identical to the help', !$srvMiss, implode(' | ', $srvMiss));
+// 0.8.761 (review D2): every API scope has its description text
+$scMiss = [];
+$enT = require NU_ROOT . '/lang/en.php';
+foreach (array_keys(NuApiClient::SCOPES) as $sc) if (!isset($enT['api_scope_' . str_replace(':', '_', $sc)])) $scMiss[] = $sc;
+check('NuApiClient::SCOPES: a text api_scope_* for each', !$scMiss, implode(', ', $scMiss));
+
+// 0.8.761 (review D8): dates in the language's order – only the day part of the pattern changes
+$df = nu_dfmt('d.m.Y H:i');
+check('nu_dfmt: day pattern by language, time kept', in_array($df, ['d.m.Y H:i', 'd/m/Y H:i', 'm/d/Y H:i', 'd-m-Y H:i', 'Y-m-d H:i'], true) && nu_dfmt('H:i') === 'H:i', $df);
 
 // 0.8.744: phpMyAdmin only on MySQL / MariaDB – the installer's / update page's pack list leaves it out on SQL Server
 check('NuLibs::forDb: phpMyAdmin MySQL only, Adminer everywhere', NuLibs::forDb('phpmyadmin', 'mysql') && !NuLibs::forDb('phpmyadmin', 'sqlsrv') && NuLibs::forDb('adminer', 'sqlsrv'));

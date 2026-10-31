@@ -106,8 +106,24 @@
 		fd.append('action', 'run');
 		fd.append('props', JSON.stringify(props || {}));
 		return fetch(D.url, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
-			.then(function (r) { return r.json(); })
+			.then(function (r) {
+				// a procedure that sends a file (0.8.756): saved, its name shown as the result
+				var cd = r.headers.get('Content-Disposition') || '';
+				if (r.ok && /attachment/i.test(cd)) {
+					var m = /filename\*=UTF-8''([^;]+)/i.exec(cd), m2 = /filename="?([^";]+)"?/i.exec(cd);
+					var name = m ? decodeURIComponent(m[1]) : (m2 ? m2[1] : 'download');
+					return r.blob().then(function (bl) {
+						var url = URL.createObjectURL(bl), a = document.createElement('a');
+						a.href = url; a.download = name; a.className = 'd-none';
+						document.body.appendChild(a); a.click(); a.remove();
+						setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+						return {ok: true, file: name};
+					});
+				}
+				return r.json();
+			})
 			.then(function (res) {
+				if (res.file) { if (w) w.close(); result.innerHTML = ''; result.appendChild(el('div', {'class': 'alert alert-success py-2 small mb-0', id: 'procResultFile', text: '⬇ ' + res.file})); return; }
 				showResult(res, mode);
 				if (w) { w.document.open(); w.document.write(res.output || (res.errors || []).map(function (e) { return '<p>' + String(e.message).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }) + '</p>'; }).join('')); w.document.close(); }
 			})

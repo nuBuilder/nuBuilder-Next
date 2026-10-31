@@ -113,7 +113,7 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 	$objId = $v('itm_object_id');
 	if ($objId !== '') $obj = $db->one('SELECT o.zzzzsys_object_id, o.sob_all_id, o.sob_all_label, f.sfo_code FROM zzzzsys_object o LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id WHERE o.zzzzsys_object_id = ?', [$objId]);
 	$active = nu_is_post() ? nu_check('itm_active') === '1' : (($item ?? $src) ? (string)($item ?? $src)['itm_active'] !== '0' : true);
-	$dt = static fn($x) => $x ? date('d.m.Y H:i:s', strtotime((string)$x)) : '';
+	$dt = static fn($x) => $x ? date(nu_dfmt('d.m.Y H:i:s'), strtotime((string)$x)) : '';
 	$row = static function (string $k, string $label, string $control, bool $req = false) {
 		return '<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
 			. ($req ? ' <span class="text-danger">*</span>' : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';

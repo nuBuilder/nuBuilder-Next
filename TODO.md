@@ -6,12 +6,6 @@
 - [ ] Page forms: besides the draft (0.8.599) a "Test copy" (clone of the page form + its folder, publish back) was proposed (option A,
       not built); a page's draft shares _data, secrets.php and the database with the live version.
 
-## 0.8.634 Header layouts to try – TEMPORARY, remove when the owner has chosen
-- [ ] User menu → *Header layout (test)* (developer mode, globeadmin; choice in localStorage nunext-hv): variants A–E of the mockup
-      (`../mockups/layout-mockup.html`, outside the project) on record pages, form pages and lists. Once one is chosen: build it properly
-      and delete assets/js/nuheadervariant.js, the CSS block "header layouts (test)" at the end of nuapp.css, the menu entries / script
-      tag in core/nulayout.php, the texts hlt_*, the e2e test header_variants and the mockup folder.
-
 ## Form designer – open
 - Editing sub-form columns inside the sub-form; default values (nuBuilder Forte has no such field – would need sob_all_json).
 - New form, new table: no reordering of the column grid yet (the existing-table column list has it, 0.8.675).
@@ -32,6 +26,14 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Browsers**: Safari (ApexCharts on the start page, CSP style-src-attr), phones with real touch (long tap menus, side bar, design mode on phones).
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
+
+## 0.8.761–0.8.766 Review of 31 Oct 2026 – please verify
+- [ ] Live server: pages still load after the update with the mod_deflate rules in assets/.htaccess and vendor/bundled/.htaccess
+      (needs "AllowOverride FileInfo"); the response headers of a .js file show Content-Encoding: gzip.
+- [ ] Phones: your own fixed-position forms stacked (label above, order top / left) – nuNextPhoneLayout(false) for a form that must keep it;
+      form lists as cards, embedded lists (run objects) grow to their rows.
+- [ ] Design mode: Redo (Ctrl+Y), the "Messages of the form" button, "+" of the list design asks for the column.
+- [ ] Settings centre: sections Users & access / Logs & integration; Security check tabs; Data & logs one Save.
 
 ## 0.8.722 IP access – please verify
 - On the live server behind its proxy: the address shown on Settings → Security → IP access is the client's ($nuConfigTrustProxy);
@@ -264,10 +266,6 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [ ] **9 · Deploy changes from a test to the live system** (L) – export forms, procedures, reports, access levels, settings as one
       versioned package (JSON), show a diff on the target and apply selected parts. The App cloner copies everything, the form history
       works per form – neither covers "develop on test, publish to live".
-- [ ] **9 · Change history of data records** (M) – who changed which field from what to what, per record, viewable in the form
-      (⋮ menu). Audit columns only hold the last change; the log covers admin changes, not the application's data. Often a legal need.
-
-### Important (7–8)
 - [ ] **8 · Single sign-on with OpenID Connect** (M) – Microsoft Entra ID / Google / Keycloak login for companies; access level by group.
       (The "OAuth" in the code is the REST API's client credentials, not a user login.)
 - [ ] **8 · Passkeys (WebAuthn)** (M) – as a second factor besides the authenticator app, later passwordless.

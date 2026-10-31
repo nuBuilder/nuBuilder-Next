@@ -53,7 +53,7 @@ final class NuFormInfo
 		$one = static function (string $where, string $order) use ($db, $table, $recordId): string {
 			$r = $db->page('SELECT changed_at, login FROM ' . NuAudit::TABLE . ' WHERE table_name = ? AND record_id = ?' . $where, [$table, $recordId], 'changed_at ' . $order, 1, 0)[0] ?? null;
 			if (!$r) return '';
-			return date('d.m.Y H:i:s', (int)strtotime((string)$r['changed_at'])) . ((string)$r['login'] !== '' ? ' · ' . $r['login'] : '');
+			return date(nu_dfmt('d.m.Y H:i:s'), (int)strtotime((string)$r['changed_at'])) . ((string)$r['login'] !== '' ? ' · ' . $r['login'] : '');
 		};
 		return [$one(" AND action IN ('insert', 'clone')", 'ASC'), $one('', 'DESC')];
 	}
@@ -68,22 +68,30 @@ final class NuFormInfo
 	 */
 	public static function logged(string $table, string $recordId): array
 	{
+		[$c, $u] = self::loggedRaw($table, $recordId);
+		$f = static fn(?array $x): string => $x ? date(nu_dfmt('d.m.Y H:i:s'), (int)strtotime($x['t'])) . ($x['by'] !== '' ? ' · ' . $x['by'] : '') : '';
+		return [$f($c), $f($u)];
+	}
+
+	/** As logged(), as data: [created, changed] each ['t' => 'Y-m-d H:i:s', 'by' => login] or null (0.8.759). */
+	public static function loggedRaw(string $table, string $recordId): array
+	{
 		try {
 			$db = nu_db();
-			if ($recordId === '' || !$db->tableExists('zzzzsys_nunext_log')) return ['', ''];
+			if ($recordId === '' || !$db->tableExists('zzzzsys_nunext_log')) return [null, null];
 			$in = implode(', ', array_fill(0, count(self::NOT_CREATED), '?'));
-			$one = static function (string $where, array $args, string $order) use ($db, $table, $recordId): string {
+			$one = static function (string $where, array $args, string $order) use ($db, $table, $recordId): ?array {
 				$r = $db->page('SELECT log_time, login FROM zzzzsys_nunext_log WHERE object = ? AND record_id = ? AND (' . $where . ')',
 					array_merge([$table, $recordId], $args), 'log_time ' . $order, 1, 0)[0] ?? null;
-				if (!$r) return '';
-				return date('d.m.Y H:i:s', (int)strtotime((string)$r['log_time'])) . ((string)$r['login'] !== '' ? ' · ' . $r['login'] : '');
+				if (!$r) return null;
+				return ['t' => date('Y-m-d H:i:s', (int)strtotime((string)$r['log_time'])), 'by' => (string)$r['login']];
 			};
 			return [
 				$one("(event LIKE '%_created' OR event LIKE '%_added') AND event NOT IN ($in)", self::NOT_CREATED, 'ASC'),
 				$one("event LIKE '%_updated' OR event LIKE '%_changed' OR event = 'user_permissions'", [], 'DESC'),
 			];
 		} catch (Throwable) {
-			return ['', ''];
+			return [null, null];
 		}
 	}
 
@@ -108,7 +116,8 @@ final class NuFormInfo
 		$add('record_id', $id);
 		foreach ($extra as $k => $v) $add((string)$k, (string)$v);
 		$add('table', $table);
-		[$created, $changed] = self::audit($table, $id);              // only when the audit trail has the record (own pages are not audited)
+		[$created, $changed] = $table === 'zzzzsys_user' ? NuUserJson::stamps($id) : ['', ''];   // users: the stamps in sus_json (0.8.759)
+		if ($created === '' || $changed === '') { [$ac, $au] = self::audit($table, $id); $created = $created ?: $ac; $changed = $changed ?: $au; }   // audit trail
 		if ($created === '' || $changed === '') {                    // own record pages write the log instead (0.8.553)
 			[$lc, $lu] = self::logged($table, $id);
 			if ($created === '') $created = $lc;

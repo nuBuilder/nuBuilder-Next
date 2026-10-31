@@ -101,7 +101,7 @@ final class NuListView
 	public static function views(array $L): array
 	{
 		$list = $L['key'];
-		$names = ['default' => t('lv_builtin_default'), 'compact' => t('lv_builtin_compact'), 'all' => t('lv_builtin_all')];
+		$names = ['default' => t('lv_builtin_default'), 'compact' => t('lv_builtin_compact'), 'all' => t('lv_builtin_all'), 'problems' => t('lv_builtin_problems')];
 		$out = [];
 		foreach ($L['builtin'] as $id => $d) $out[$id] = ['id' => $id, 'name' => $names[$id] ?? $id, 'scope' => 'builtin', 'owner' => '', 'levels' => [],
 			'def' => self::normalize($d, $L), 'editable' => false, 'group' => 'builtin'];
@@ -565,6 +565,27 @@ final class NuListView
 		return (string)preg_replace(['~<a\b[^>]*>~i', '~</a\s*>~i'], ['<span>', '</span>'], $html);
 	}
 
+	/**
+	 * Empty state of a list (review E3, 0.8.763): with a search / filter set – "nothing matches" + Show all; without – the list's own
+	 * explanation (text lv_empty_<list key>, when it exists) and its first action (opt empty_add = [url, label], else the add link of
+	 * the list's new record when the form allows add), otherwise the plain "No records found."
+	 */
+	private static function emptyState(array $L, bool $hasQuery, array $resetParams, array $opt): string
+	{
+		if ($hasQuery) {
+			return '<div class="text-center text-body-secondary py-5 nuLvEmpty nuLvEmptyFiltered"><i class="bi bi-search fs-3 d-block mb-2" aria-hidden="true"></i>'
+				. '<p class="mb-3">' . h(t('lv_empty_filtered')) . '</p><a class="btn nuBtnAct" href="' . h(nu_url($L['route'], $resetParams)) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(t('lv_empty_reset')) . '</a></div>';
+		}
+		$key = 'lv_empty_' . $L['key'];
+		$text = t($key);
+		if ($text === $key) return '<div class="text-center text-body-secondary py-5 nuLvEmpty"><i class="bi bi-inbox fs-3 d-block mb-2" aria-hidden="true"></i>' . h(t('no_records')) . '</div>';
+		$add = $opt['empty_add'] ?? null;
+		if ($add === null && !empty($L['new_url']) && NuAcl::can($L['form'], 'add')) $add = [(string)$L['new_url'], t('lv_empty_first')];
+		return '<div class="text-center py-5 px-3 nuLvEmpty nuLvEmptyIntro"><i class="bi ' . h((string)($L['empty_icon'] ?? 'bi-stars')) . ' fs-2 d-block mb-2 text-body-secondary" aria-hidden="true"></i>'
+			. '<p class="mb-3 mx-auto nuLvEmptyText">' . h($text) . '</p>'
+			. ($add ? '<a class="btn btn-primary" href="' . h((string)$add[0]) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h((string)$add[1]) . '</a>' : '') . '</div>';
+	}
+
 	public static function card(array $st, array $opt = []): string
 	{
 		['L' => $L, 'views' => $views, 'view' => $view, 'def' => $def, 'cols' => $cols, 'sort' => $sort, 'dir' => $dir, 'per' => $per, 'pg' => $pg,
@@ -579,6 +600,11 @@ final class NuListView
 			if (array_key_exists($k, $_GET) && (string)$_GET[$k] !== (string)($def['filters']['values'][$k] ?? $all)) $filtered = true;
 		}
 		$hasQuery = $keep['q'] !== '' || $filtered;
+		$resetParams = $rp;
+		foreach ($def['filters']['shown'] as $k) $resetParams[$k] = (string)($L['filters'][$k]['all'] ?? (in_array($L['filters'][$k]['type'], ['text', 'datefrom', 'dateto'], true) ? '' : '*'));
+		$viewHides = false;                                       // the view's own filter values (Status: Active) hide rows – "nothing matches" too
+		foreach ((array)($def['filters']['values'] ?? []) as $k => $v) if (isset($resetParams[$k]) && (string)$v !== $resetParams[$k]) $viewHides = true;
+		$emptyHtml = $rows ? '' : self::emptyState($L, $hasQuery || $viewHides, $resetParams, $opt);
 		$wCls = ['narrow' => ' nuLvNarrow', 'wide' => ' nuLvWide', 'auto' => ''];
 		$aCls = static fn(string $a, array $c) => match ($a !== 'auto' ? $a : (string)($c['align'] ?? '')) { 'end' => ' text-end', 'center' => ' text-center', default => '' };
 		$title = array_key_exists('title', $opt) ? (string)$opt['title'] : $L['title'];
@@ -593,15 +619,15 @@ final class NuListView
 		<div class="d-flex flex-wrap gap-2 align-items-center"><?= ($opt['back'] ?? true) ? nu_back_button() : '' ?>
 			<?= $opt['buttons'] ?? '' ?>
 			<?= self::more($opt['more'] ?? [], $more && $total > 0 ? NuListExport::printUrl($L['form'], $route, $rp + $keepSort) : '', $more && $total > 0 && NuListExport::allowed($L['form']) ? nu_url($route, array_filter($rp + $keepSort, static fn($v) => $v !== null && $v !== '') + ['export' => 'xlsx']) : '') ?>
-			<?php if (!$grid): // phones: cards ⇄ table, remembered on the device (0.8.471, assets/js/nulistview.js) ?>
+			<?php if (!$grid && $total > 0): // phones: cards ⇄ table, remembered on the device (0.8.471, assets/js/nulistview.js); no records: nothing to switch (0.8.748) ?>
 			<button type="button" class="btn nuBtnAct nuToolBtn d-md-none nuLvPhoneBtn" data-lv-phone-toggle aria-pressed="false" title="<?= h(t('lv_phone_toggle')) ?>" aria-label="<?= h(t('lv_phone_toggle')) ?>"><i class="bi bi-table nuLvPhoneToTable" aria-hidden="true"></i><i class="bi bi-card-list nuLvPhoneToCards" aria-hidden="true"></i></button>
 			<?php endif; ?>
-			<?= self::menu($L, $views, $view, $keepSort) ?>
+			<?= $total > 0 || !empty($view['def']['filters']['values']) ? self::menu($L, $views, $view, $keepSort) : '' /* no records: no view menu – unless the view's own filters hide them (0.8.748) */ ?>
 			<?= $total > 0 ? NuListExport::buttons($L['form'], $route, $rp + $keepSort, false, 'btn-outline-secondary nuToolBtn', $more ? 'd-none d-sm-inline-block' : '') : '' /* no records: nothing to export (0.8.710) */ ?>
 			<?= $opt['buttons_end'] ?? '' ?>
 		</div>
 	</div>
-	<form class="nuListFilter" method="get" action="index.php" role="search">
+	<form class="nuListFilter" method="get" action="index.php" role="search"<?= !$rows && !$hasQuery && !$viewHides && str_contains($emptyHtml, 'nuLvEmptyIntro') ? ' hidden' : '' /* an empty list: nothing to search (review E3) */ ?>>
 		<input type="hidden" name="p" value="<?= h($route) ?>">
 		<?php foreach ($rp as $k => $v): ?><input type="hidden" name="<?= h((string)$k) ?>" value="<?= h((string)$v) ?>"><?php endforeach; ?>
 		<?php if ($keep[$vp] !== null): ?><input type="hidden" name="<?= h($vp) ?>" value="<?= h($view['id']) ?>"><?php endif; ?>
@@ -609,7 +635,9 @@ final class NuListView
 		<div class="row g-2 align-items-end">
 			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null) ?></div>
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
-			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse nuLvFlt-<?= h((string)$L['key']) ?><?= $filtered || $def['open'] ? ' show' : '' ?>" id="nuLvFilters"<?= !empty($L['open_min']) ? ' data-nu-open-min="' . (int)$L['open_min'] . '"' : '' ?>><div class="row g-2">
+			<?php // a view with open filters shows them from 768 px on (phones: folded, the funnel opens them – 0.8.761); a filter that is set keeps them open
+			$openMin = $def['open'] ? max(768, (int)($L['open_min'] ?? 768)) : (int)($L['open_min'] ?? 0); ?>
+			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse nuLvFlt-<?= h((string)$L['key']) ?><?= $filtered ? ' show' : '' ?>" id="nuLvFilters"<?= $openMin > 0 ? ' data-nu-open-min="' . $openMin . '"' : '' ?>><div class="row g-2">
 				<?php foreach ($def['filters']['shown'] as $k): $f = $L['filters'][$k];
 					$input = in_array($f['type'], ['text', 'datefrom', 'dateto'], true);
 					$all = (string)($f['all'] ?? ($input ? '' : '*'));
@@ -631,10 +659,26 @@ final class NuListView
 			</div></div>
 			<?php endif; ?>
 		</div>
+		<?php // active filters as chips (review D7): also the view's own defaults ("Status: Active") – visible while the filter panel is folded
+		$chips = '';
+		foreach ($def['filters']['shown'] as $k) {
+			$f = $L['filters'][$k];
+			$input = in_array($f['type'], ['text', 'datefrom', 'dateto'], true);
+			$all = (string)($f['all'] ?? ($input ? '' : '*'));
+			$cur = array_key_exists($k, $_GET) ? (string)$_GET[$k] : (string)($def['filters']['values'][$k] ?? $all);
+			if ($cur === $all || $cur === '') continue;
+			$lab = $cur;
+			if (!$input) { $o = self::filterOptions($L, $k); $lab = isset($o[$cur]) ? (string)$o[$cur][0] : $cur; }
+			$off = array_replace($rp + $keepSort, [$k => $all]);
+			unset($off['pg']);
+			$chips .= '<a class="badge rounded-pill text-bg-light border text-decoration-none fw-normal nuLvChip" data-flt="' . h($k) . '" href="' . h(nu_url($route, $off)) . '" title="' . h(t('lv_filter_remove')) . '">'
+				. h((string)$f['label']) . ': <strong>' . h($lab) . '</strong> <i class="bi bi-x" aria-hidden="true"></i><span class="visually-hidden"> ' . h(t('lv_filter_remove')) . '</span></a>';
+		}
+		if ($chips !== ''): ?><div class="d-flex flex-wrap gap-1 mt-2 nuLvChips" id="nuLvChips"><?= $chips ?></div><?php endif; ?>
 	</form>
 	<?= $opt['above_rows'] ?? '' ?>
 	<?php if ($grid): ?>
-		<div class="p-3"><?php if (!$rows): ?><div class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></div><?php else: ?>
+		<div class="p-3"><?php if (!$rows): ?><?= $emptyHtml ?><?php else: ?>
 			<div class="row g-3 nuLvGrid"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>><?php foreach ($rows as $r): ?><?= ($L['grid'])($r, ($L['link'])($r)) ?><?php endforeach; ?></div><?php endif; ?></div>
 	<?php else: ?>
 	<div class="table-responsive nuLvTableWrap">
@@ -651,7 +695,7 @@ final class NuListView
 			</tr></thead>
 			<tbody<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>>
 			<?php if (!$rows): ?>
-				<tr><td colspan="<?= count($def['columns']) ?>" class="text-center text-body-secondary py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i><?= h(t('no_records')) ?></td></tr>
+				<tr class="nuLvEmptyRow"><td colspan="<?= count($def['columns']) ?>" class="p-0"><?= $emptyHtml ?></td></tr>
 			<?php endif; ?>
 			<?php foreach ($rows as $r): $href = ($L['link'])($r); ?>
 				<tr<?= $href !== '' ? ' class="nu-row-link" data-href="' . h($href) . '"' : '' ?>>
@@ -664,7 +708,7 @@ final class NuListView
 		</table>
 	</div>
 	<div class="nuLvCards"<?= $keep['q'] !== '' ? ' data-nu-highlight="' . h($keep['q']) . '"' : '' ?>>
-		<?php if (!$rows): ?><div class="text-center text-body-secondary py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i><?= h(t('no_records')) ?></div><?php endif; ?>
+		<?php if (!$rows): ?><?= $emptyHtml ?><?php endif; ?>
 		<?php foreach ($rows as $r): $href = ($L['link'])($r); $card = $def['card']; $tag = $href !== '' ? 'a' : 'div';
 			// a card that is a link must not hold links: a nested <a> ends the card early and its value lands below it (0.8.466)
 			$cell = static fn(string $k) => $href !== '' ? self::unlink(self::cellHtml($cols[$k], $r)) : self::cellHtml($cols[$k], $r); ?>

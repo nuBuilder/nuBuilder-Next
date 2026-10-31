@@ -1,58 +1,121 @@
 <section id="config" data-doc="admin" data-level="advanced">
 	<h2 id="config-h">Configuration (nuconfig.php)</h2>
-	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Every setting of nuconfig.php that nuBuilder Next reads.</p>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> The settings of nuconfig.php that matter for nuBuilder Next.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>Same file and variable names as nuBuilder Forte (4.x). nuBuilder Next reads it on every request. The nuBuilder Next-only settings:</p>
+	<p>Same file and variable names as nuBuilder Forte (4.x). nuBuilder Next reads it on every request. The tables list the variables nuBuilder Next reads; <em>Origin</em> says whether a variable comes from nuBuilder Forte (the same meaning there, unless the text says otherwise) or is one nuBuilder Next adds – nuBuilder Forte ignores those. <em>Insert variable</em> in the <a href="#configfile">editor</a> lists them with their defaults.</p>
+<div class="doc-sub"><h3 id="config-db">Database and sign-in</h3>
 <table class="table table-sm">
-<thead><tr><th>Variable</th><th>Default</th><th>Meaning</th></tr></thead>
+<thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
-<tr><td><code>$nuConfigDBType</code></td><td>mysql</td><td><code>mysql</code> or <code>sqlsrv</code> (MSSQL)</td></tr>
-<tr><td><code>$nuConfigSessionTimeout</code></td><td>120</td><td>Minutes without activity before sign-out</td></tr>
-<tr><td><code>$nuConfigSessionTimeoutGlobeadmin</code></td><td>720</td><td>Minutes without activity before the globeadmin is signed out (12 hours)</td></tr>
-<tr><td><code>$nuConfigPasswordMinLength</code></td><td>8</td><td>Minimum length of new passwords</td></tr>
-<tr><td><code>$nuConfigPasswordUpgrade</code></td><td>true</td><td>Rehash md5 passwords to bcrypt at login (false if an old nuBuilder Forte must still read md5)</td></tr>
-<tr><td><code>$nuUseMd5PasswordHash</code></td><td>false</td><td>nuBuilder Forte's setting (also in Settings): <code>true</code> = new passwords are stored as md5 and never converted – as nuBuilder Forte does, which then accepts md5 only (a bcrypt hash would lock the user out of nuBuilder Forte). md5 logins work regardless of <em>Accept old md5 passwords</em>. Insecure: the Security check shows it in red – switch it off once no nuBuilder Forte needs it (4.5 and later read bcrypt); afterwards md5 passwords become bcrypt at the next login.</td></tr>
-<tr><td><code>$nuConfig2FAAdmin</code> / <code>$nuConfig2FAUser</code></td><td>false</td><td>Two-step login for globeadmin / for access levels with "Use two-factor authentication" (authenticator app or e-mail code). The access level form shows whether <code>$nuConfig2FAUser</code> is on; while it is off, the globeadmin can switch it on there (<em>Switch on</em>, or a link to Settings when <code>$nuConfigSettingsFromDB</code> is on).</td></tr>
-<tr><td><code>$nuConfig2FATrustDays</code></td><td>30</td><td>"Remember this device" days (0 = always ask)</td></tr>
-<tr><td><code>$nuConfig2FAIssuer</code></td><td>nuBuilder Next</td><td>Name in the authenticator app</td></tr>
-<tr><td><code>$nuConfigGlobeadminEmail</code></td><td></td><td>E-mail for globeadmin login codes</td></tr>
-<tr><td><code>$nuConfigSecretKey</code></td><td></td><td>Encrypts authenticator secrets in the database; key for the HMAC of API secrets and tokens and of auto-login hashes – set a long random value. While it is empty, <em>API clients</em> offers <em>Generate key</em>: a 64-character random key, saved to <code>nuconfig.php</code> (only while empty – a new key would make encrypted 2FA secrets unreadable).</td></tr>
-<tr><td><code>$nuConfigLogRecordChanges</code></td><td>true</td><td>Audit trail on (until it is switched in <em>Log → Audit trail → Settings</em>)</td></tr>
-<tr><td><code>$nuConfigBaseURL</code></td><td>(detected)</td><td>The address your users open nuBuilder Next with, e.g. <code>https://www.example.com/nunext</code> (no slash at the end). nuBuilder Next needs it wherever it writes a <em>complete</em> link that is opened somewhere else than the current browser tab: links in e-mails (<em>Forgot password</em>, welcome mail, e-mail templates), the auto-login links in the user form and the REST API addresses (API clients, playground).<br/>
-				Empty: the address is taken from the current page request. That is fine on a simple server, but behind a reverse proxy, in Docker or with several host names it can come out wrong (e.g. <code>http://localhost:8080/nunext</code>), and the link in the e-mail does not open. <em>Forgot password</em> never trusts the visitor's request (the host name could be faked to send a reset link to a foreign site): it uses this setting, otherwise the address the globeadmin last logged in with. Set it on a live server – Admin tools → Security check warns while it is empty.</td></tr>
-<tr><td><code>$nuConfigTrustProxy</code></td><td>false</td><td>Client IP from X-Forwarded-For (behind a reverse proxy)</td></tr>
-<tr><td><code>$nuConfigSharedLogin</code></td><td>false</td><td>Users signed in to nuBuilder Forte are signed in to nuBuilder Next</td></tr>
-<tr><td><code>$nuConfigNuBuilderURL</code></td><td></td><td>Adds a link back to nuBuilder Forte in the user menu</td></tr>
-<tr><td><code>$nuConfigNuBuilderPath</code></td><td>folder above nuBuilder Next</td><td>File system path of nuBuilder Forte (Font Awesome, PHPMailer)</td></tr>
-<tr><td><code>$nuConfigPHPMailerPath</code></td><td></td><td>Other PHPMailer folder</td></tr>
-<tr><td><code>$nuConfigFontAwesomePath</code></td><td></td><td>Other Font Awesome folder</td></tr>
-<tr><td><code>$nuConfigPMAURL</code></td><td>the pack folder (<code>vendor/packs/nudb-…/</code>)</td><td>Other URL of phpMyAdmin (e.g. the copy inside nuBuilder Forte). <code>$nuConfigTFMURL</code> and <code>$nuConfigFileMangerUsers</code> are ignored (Tiny File Manager removed).</td></tr>
-<tr><td><code>$nuConfigPrimaryDatabaseManagement</code></td><td>(not set)</td><td><code>"phpMyAdmin"</code> or <code>"Adminer"</code>: the tool the <em>Database</em> buttons open (▾ = the other one). Not set: phpMyAdmin when installed, else Adminer. Also in the Settings.</td></tr>
-<tr><td><code>$nuConfigIncludePHP</code></td><td>[]</td><td>PHP files with your own functions for hooks and procedures (a file name or a list). A relative path is looked for in the nuBuilder Next folder, then in nuBuilder Forte's folder – so the line of nuBuilder Forte's <code>nuconfig.php</code> works unchanged</td></tr>
-<tr><td><code>$nuConfigIncludeJS</code></td><td>''</td><td>As in nuBuilder Forte: own JavaScript file(s) for form pages, e.g. <code>'myjslib.js'</code> or <code>['a.js', 'b.js']</code> – loaded after nuBuilder Next's runtime, before Setup → Header and the form's code. <code>https://…</code> addresses as they are (allowed by the page's Content-Security-Policy); relative paths from the nuBuilder Next folder, then nuBuilder Forte's folder (as <code>../</code>, or through <code>$nuConfigNuBuilderURL</code>); the file's change time is added, so a changed file arrives at once</td></tr>
-<tr><td><code>$nuConfigIncludeCSS</code></td><td>''</td><td>As in nuBuilder Forte: own CSS file(s) for form pages, after nuBuilder Next's styles (so they can override them); paths as for <code>$nuConfigIncludeJS</code>. Files that are not found (JS, CSS, PHP) are left out and named on the Security check</td></tr>
-<tr><td><code>$nuConfigFileMaxKB</code></td><td>300</td><td>Maximum size of uploaded files</td></tr>
-<tr><td><code>$nuConfigCSVSeparator</code></td><td>;</td><td>Default delimiter in the Export CSV dialog (<code>;</code> <code>,</code> <code>|</code> or tab)</td></tr>
-<tr><td><code>$nuConfigImportMaxMB</code></td><td>20</td><td>CSV import: largest file in MB</td></tr>
-<tr><td><code>$nuConfigWelcomeLinkHours</code></td><td>72</td><td>Hours the link in the welcome e-mail stays valid</td></tr>
-<tr><td><code>$nuWelcomeBodyInnerHTML</code></td><td></td><td>Own login page (nuBuilder Forte's variable): its HTML replaces the login card – see below</td></tr>
-<tr><td><code>$nuConfigDemoUser</code></td><td></td><td>Demo mode: login name or user id of the demo user(s), several separated by commas – see <a href="#demo-mode">Demo mode</a></td></tr>
-<tr><td><code>$nuConfigDemoSavingAllowedIds</code></td><td></td><td>nuBuilder Forte's setting: ids or codes of the forms where demo users may still save (never delete), separated by commas</td></tr>
-<tr><td><code>$nuConfigAutoLogin</code></td><td><code>false</code></td><td><code>true</code>: nuBuilder Forte's auto login by link – see below</td></tr>
-<tr><td><code>$nuConfigGlobeadminHome</code></td><td><code>nuhome</code></td><td>nuBuilder Forte's setting: id or code of a launch form opened as the globeadmin's start page instead of the tile page (<a href="#home-page">Start page</a>)</td></tr>
-<tr><td><code>$nuConfigDevMode</code></td><td><code>false</code></td><td>nuBuilder Forte's developer mode for the globeadmin: <code>#DEV_MODE#</code> = 1, <code>nuDevMode()</code>, templates and system procedures can be changed, and <em>Admin tools</em> shows <em>To do</em> – the open points of <code>TODO.md</code> as a page; each section folds (all folded when the page opens), <em>Expand all</em> / <em>Collapse all</em> opens or folds all of them – the <a href="#selftest">Self-test</a> and <a href="#db-reset">Reset database</a> (delete all tables and import a nuBuilder Forte SQL file). The password confirmation of dangerous actions lasts longer (Security check → <em>Ask for the password again in developer mode</em>, 8 hours by default).</td></tr>
-<tr><td><code>$nuConfigTimezone</code></td><td></td><td>Time zone for all times nuBuilder Next writes and shows (log, audit columns, backups, codes), e.g. <code>Europe/London</code>. Not set: nuBuilder Forte's <em>Setup → Time zone</em>, otherwise the server's default – then Admin tools shows a warning.</td></tr>
-<tr><td><code>$nuConfigSettingsFromDB</code></td><td><code>false</code></td><td>nuBuilder Forte's setting: <code>true</code> = the values of the settings table (<a href="#settings">Settings</a>) replace those set in <code>nuconfig.php</code></td></tr>
-<tr><td><code>$nuConfigValidationMarkers</code></td><td><code>true</code></td><td>Red * (No blanks) and a key (No duplicates, with a tooltip) after labels in edit forms and sub-forms; <code>false</code> hides them (validation is not affected)</td></tr>
-<tr><td><code>$nuConfigApi</code></td><td><code>false</code></td><td><code>true</code>: REST API <code>api.php/v1/…</code> – see <a href="#api">REST API</a>. While it is off, <em>API clients</em> and the <em>API playground</em> show a button <em>Switch the API on</em> that sets it in <code>nuconfig.php</code>.</td></tr>
-<tr><td><code>$nuConfigApiTokenMinutes</code></td><td>15</td><td>Lifetime of API access tokens in minutes (1–1440)</td></tr>
-<tr><td><code>$nuConfigApiAllowHttp</code></td><td><code>false</code></td><td><code>true</code>: API also without HTTPS (tests only; localhost always works)</td></tr>
-<tr><td><code>$nuConfigDebug</code></td><td>false</td><td>Show database error details on screen</td></tr>
+<tr><td><code>$nuConfigDBHost</code>, <code>$nuConfigDBPort</code>, <code>$nuConfigDBName</code>, <code>$nuConfigDBUser</code>, <code>$nuConfigDBPassword</code></td><td>Forte</td><td></td><td>The database connection – written by the installer</td></tr>
+<tr><td><code>$nuConfigDBType</code></td><td>Next</td><td>mysql</td><td><code>mysql</code> or <code>sqlsrv</code> (MSSQL)</td></tr>
+<tr><td><code>$nuConfigDBCharacterSet</code> / <code>$nuConfigDBCollate</code></td><td>Forte</td><td>utf8mb4 / (server default)</td><td>Character set and collation of the connection (MySQL only)</td></tr>
+<tr><td><code>$nuConfigDBOptions</code></td><td>Forte</td><td>[]</td><td>PDO options, e.g. <code>[PDO::ATTR_PERSISTENT =&gt; true]</code></td></tr>
+<tr><td><code>$nuConfigDBTrustServerCertificate</code></td><td>Next</td><td>false</td><td>SQL Server: accept a self-signed certificate (ODBC Driver 18 and later encrypt by default)</td></tr>
+<tr><td><code>$nuConfigDBEngine</code></td><td>Forte</td><td>InnoDB</td><td>Keep <code>InnoDB</code>: nuBuilder Forte's update converts its tables to this engine; nuBuilder Next creates every table as InnoDB anyway (<a href="#innodb">InnoDB</a>)</td></tr>
+<tr><td><code>$nuConfigDBGlobeadminUsername</code> / <code>$nuConfigDBGlobeadminPassword</code></td><td>Forte</td><td>globeadmin / –</td><td>Login of the globeadmin</td></tr>
+<tr><td><code>$nuConfigSessionTimeout</code></td><td>Next</td><td>120</td><td>Minutes without activity before sign-out</td></tr>
+<tr><td><code>$nuConfigSessionTimeoutGlobeadmin</code></td><td>Next</td><td>720</td><td>Minutes without activity before the globeadmin is signed out (12 hours)</td></tr>
+<tr><td><code>$nuConfigSharedLogin</code></td><td>Next</td><td>false</td><td>Users signed in to nuBuilder Forte are signed in to nuBuilder Next</td></tr>
+<tr><td><code>$nuConfigAutoLogin</code></td><td>Forte</td><td><code>false</code></td><td><code>true</code>: nuBuilder Forte's auto login by link – see below</td></tr>
 </tbody>
 </table>
+</div>
+<div class="doc-sub"><h3 id="config-security">Security</h3>
+<table class="table table-sm">
+<thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>$nuConfigPasswordMinLength</code></td><td>Next</td><td>8</td><td>Minimum length of new passwords</td></tr>
+<tr><td><code>$nuConfigPasswordUpgrade</code></td><td>Next</td><td>true</td><td>Rehash md5 passwords to bcrypt at login (false if an old nuBuilder Forte must still read md5)</td></tr>
+<tr><td><code>$nuUseMd5PasswordHash</code></td><td>Forte</td><td>false</td><td>nuBuilder Forte's setting (also in Settings): <code>true</code> = new passwords are stored as md5 and never converted – as nuBuilder Forte does, which then accepts md5 only (a bcrypt hash would lock the user out of nuBuilder Forte). md5 logins work regardless of <em>Accept old md5 passwords</em>. Insecure: the Security check shows it in red – switch it off once no nuBuilder Forte needs it (4.5 and later read bcrypt); afterwards md5 passwords become bcrypt at the next login.</td></tr>
+<tr><td><code>$nuConfig2FAAdmin</code> / <code>$nuConfig2FAUser</code></td><td>Forte</td><td>false</td><td>Two-step login for globeadmin / for access levels with "Use two-factor authentication" (authenticator app or e-mail code). The access level form shows whether <code>$nuConfig2FAUser</code> is on; while it is off, the globeadmin can switch it on there (<em>Switch on</em>, or a link to Settings when <code>$nuConfigSettingsFromDB</code> is on).</td></tr>
+<tr><td><code>$nuConfig2FATrustDays</code></td><td>Next</td><td>30</td><td>"Remember this device" days (0 = always ask)</td></tr>
+<tr><td><code>$nuConfig2FAIssuer</code></td><td>Next</td><td>nuBuilder Next</td><td>Name in the authenticator app</td></tr>
+<tr><td><code>$nuConfigGlobeadminEmail</code></td><td>Next</td><td></td><td>E-mail for globeadmin login codes</td></tr>
+<tr><td><code>$nuConfigSecretKey</code></td><td>Next</td><td></td><td>Encrypts authenticator secrets in the database; key for the HMAC of API secrets and tokens and of auto-login hashes – set a long random value. While it is empty, <em>API clients</em> offers <em>Generate key</em>: a 64-character random key, saved to <code>nuconfig.php</code> (only while empty – a new key would make encrypted 2FA secrets unreadable).</td></tr>
+<tr><td><code>$nuConfigBaseURL</code></td><td>Next</td><td>(detected)</td><td>The address your users open nuBuilder Next with, e.g. <code>https://www.example.com/nunext</code> (no slash at the end). nuBuilder Next needs it wherever it writes a <em>complete</em> link that is opened somewhere else than the current browser tab: links in e-mails (<em>Forgot password</em>, welcome mail, e-mail templates), the auto-login links in the user form and the REST API addresses (API clients, playground).<br/>
+				Empty: the address is taken from the current page request. That is fine on a simple server, but behind a reverse proxy, in Docker or with several host names it can come out wrong (e.g. <code>http://localhost:8080/nunext</code>), and the link in the e-mail does not open. <em>Forgot password</em> never trusts the visitor's request (the host name could be faked to send a reset link to a foreign site): it uses this setting, otherwise the address the globeadmin last logged in with. Set it on a live server – the Security check warns while it is empty.</td></tr>
+<tr><td><code>$nuConfigTrustProxy</code></td><td>Next</td><td>false</td><td>Client IP from X-Forwarded-For (behind a reverse proxy)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="doc-sub"><h3 id="config-forte">nuBuilder Forte integration, includes and tools</h3>
+<table class="table table-sm">
+<thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>$nuConfigNuBuilderURL</code></td><td>Next</td><td></td><td>Adds a link back to nuBuilder Forte in the user menu</td></tr>
+<tr><td><code>$nuConfigNuBuilderPath</code></td><td>Next</td><td>folder above nuBuilder Next</td><td>File system path of nuBuilder Forte (Font Awesome, PHPMailer)</td></tr>
+<tr><td><code>$nuConfigPHPMailerPath</code></td><td>Next</td><td></td><td>Other PHPMailer folder</td></tr>
+<tr><td><code>$nuConfigFontAwesomePath</code></td><td>Next</td><td></td><td>Other Font Awesome folder</td></tr>
+<tr><td><code>$nuConfigTCPDFPath</code></td><td>Next</td><td></td><td>Folder of TCPDF (<code>tcpdf.php</code>) for reports – wins over the library pack and the search</td></tr>
+<tr><td><code>$nuConfigPMAURL</code></td><td>Forte</td><td>the pack folder (<code>vendor/packs/nudb-…/</code>)</td><td>Other URL of phpMyAdmin (e.g. the copy inside nuBuilder Forte). <code>$nuConfigTFMURL</code> and <code>$nuConfigFileMangerUsers</code> are ignored (Tiny File Manager removed).</td></tr>
+<tr><td><code>$nuConfigPrimaryDatabaseManagement</code></td><td>Forte</td><td>(not set)</td><td><code>"phpMyAdmin"</code> or <code>"Adminer"</code>: the tool the <em>Database</em> buttons open (▾ = the other one). Not set: phpMyAdmin when installed, else Adminer. Also in the Settings.</td></tr>
+<tr><td><code>$nuConfigIncludePHP</code></td><td>Forte</td><td>[]</td><td>PHP files with your own functions for hooks and procedures (a file name or a list). A relative path is looked for in the nuBuilder Next folder, then in nuBuilder Forte's folder – so the line of nuBuilder Forte's <code>nuconfig.php</code> works unchanged</td></tr>
+<tr><td><code>$nuConfigIncludeJS</code></td><td>Forte</td><td>''</td><td>As in nuBuilder Forte: own JavaScript file(s) for form pages, e.g. <code>'myjslib.js'</code> or <code>['a.js', 'b.js']</code> – loaded after nuBuilder Next's runtime, before Setup → Header and the form's code. <code>https://…</code> addresses as they are (allowed by the page's Content-Security-Policy); relative paths from the nuBuilder Next folder, then nuBuilder Forte's folder (as <code>../</code>, or through <code>$nuConfigNuBuilderURL</code>); the file's change time is added, so a changed file arrives at once</td></tr>
+<tr><td><code>$nuConfigIncludeCSS</code></td><td>Forte</td><td>''</td><td>As in nuBuilder Forte: own CSS file(s) for form pages, after nuBuilder Next's styles (so they can override them); paths as for <code>$nuConfigIncludeJS</code>. Files that are not found (JS, CSS, PHP) are left out and named on the Security check</td></tr>
+<tr><td><code>$nuConfigIncludeApexCharts</code></td><td>Forte</td><td>false</td><td><code>true</code>: ApexCharts is loaded on form pages (<code>new ApexCharts(element, options).render()</code> in form code)</td></tr>
+<tr><td><code>$nuConfigIntegerPKsAuto</code></td><td>Forte</td><td>false</td><td>Integer primary keys count as auto-increment even when the column does not say so</td></tr>
+<tr><td><code>$nuConfigSettingsFromDB</code></td><td>Forte</td><td><code>false</code></td><td>nuBuilder Forte's setting: <code>true</code> = the values of the settings table (<a href="#settings">Settings</a>) replace those set in <code>nuconfig.php</code></td></tr>
+<tr><td><code>$nuConfigGlobeadminHome</code></td><td>Forte</td><td><code>nuhome</code></td><td>nuBuilder Forte's setting: id or code of a launch form opened as the globeadmin's start page instead of the tile page (<a href="#home-page">Start page</a>)</td></tr>
+<tr><td><code>$nuWelcomeBodyInnerHTML</code></td><td>Forte</td><td></td><td>Own login page (nuBuilder Forte's variable): its HTML replaces the login card – see below</td></tr>
+<tr><td><code>$nuConfigTitle</code></td><td>Forte</td><td></td><td>Application title in the browser tab, on the sign-in page and in the top bar (empty: nuBuilder Next). A title set in <a href="#branding">Branding</a> wins over it</td></tr>
+<tr><td><code>$nuConfigEnableDatabaseUpdate</code></td><td>Forte</td><td>true</td><td><code>false</code>: <em>Update</em> refuses to install (<a href="#updating">Updating</a>)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="doc-sub"><h3 id="config-features">Features</h3>
+<table class="table table-sm">
+<thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>$nuConfigTimezone</code></td><td>Next</td><td></td><td>Time zone for all times nuBuilder Next writes and shows (log, audit columns, backups, codes), e.g. <code>Europe/London</code>. Not set: nuBuilder Forte's <em>Setup → Time zone</em>, otherwise the server's default – then a warning is shown to administrators.</td></tr>
+<tr><td><code>$nuConfigLogRecordChanges</code></td><td>Next</td><td>true</td><td>Audit trail on (until it is switched in <em>Log → Audit trail → Settings</em>)</td></tr>
+<tr><td><code>$nuConfigEditConflictCheck</code> / <code>$nuConfigEditPresence</code></td><td>Next</td><td>true</td><td><code>false</code> switches off the check for concurrent changes of a record / the note that somebody else has the record open (<a href="#concurrent-edits">Two people editing the same record</a>)</td></tr>
+<tr><td><code>$nuConfigValidationMarkers</code></td><td>Next</td><td><code>true</code></td><td>Red * (No blanks) and a key (No duplicates, with a tooltip) after labels in edit forms and sub-forms; <code>false</code> hides them (validation is not affected)</td></tr>
+<tr><td><code>$nuConfigFileMaxKB</code></td><td>Next</td><td>300</td><td>Maximum size of uploaded files</td></tr>
+<tr><td><code>$nuConfigCSVSeparator</code></td><td>Next</td><td>;</td><td>Default delimiter in the Export CSV dialog (<code>;</code> <code>,</code> <code>|</code> or tab)</td></tr>
+<tr><td><code>$nuConfigImportMaxMB</code></td><td>Next</td><td>20</td><td>Data import: largest file in MB</td></tr>
+<tr><td><code>$nuConfigWelcomeLinkHours</code></td><td>Next</td><td>72</td><td>Hours the link in the welcome e-mail stays valid</td></tr>
+<tr><td><code>$nuConfigMailLog</code></td><td>Next</td><td></td><td>Testing: a file name (relative to the nuBuilder Next folder) – every e-mail is written to this file as one JSON line instead of being sent, and e-mail counts as set up (<a href="#email">E-mail</a>)</td></tr>
+<tr><td><code>$nuConfigEnvironmentLabel</code> / <code>$nuConfigEnvironmentColor</code></td><td>Next</td><td></td><td>Environment label (e.g. <code>TEST</code>) and its colour; they win over the field in <a href="#branding">Branding</a></td></tr>
+<tr><td><code>$nuConfigBackupPath</code></td><td>Next</td><td><code>_backup/</code></td><td>Folder for backups and the maintenance flag – outside the web root if possible (<a href="#update-backups">Backups</a>)</td></tr>
+<tr><td><code>$nuConfigHomeHooks</code></td><td>Next</td><td>true</td><td><code>false</code>: the start page hooks <code>nu_home</code> / <code>nu_home_user</code> do not run (<a href="#home-hooks">Start page hooks</a>)</td></tr>
+<tr><td><code>$nuConfigCustomPagesDir</code></td><td>Next</td><td><code>custom/pages/</code></td><td>Absolute path of the folder with the page forms (<a href="#pages">Page forms</a>)</td></tr>
+<tr><td><code>$nuConfigApi</code></td><td>Next</td><td><code>false</code></td><td><code>true</code>: REST API <code>api.php/v1/…</code> – see <a href="#api">REST API</a>. While it is off, <em>API clients</em> and the <em>API playground</em> show a button <em>Switch the API on</em> that sets it in <code>nuconfig.php</code>.</td></tr>
+<tr><td><code>$nuConfigApiTokenMinutes</code></td><td>Next</td><td>15</td><td>Lifetime of API access tokens in minutes (1–1440)</td></tr>
+<tr><td><code>$nuConfigApiAllowHttp</code></td><td>Next</td><td><code>false</code></td><td><code>true</code>: API also without HTTPS (tests only; localhost always works)</td></tr>
+<tr><td><code>$nuConfigDemoUser</code></td><td>Next</td><td></td><td>Demo mode: login name or user id of the demo user(s), several separated by commas – see <a href="#demo-mode">Demo mode</a></td></tr>
+<tr><td><code>$nuConfigDemoSavingAllowedIds</code></td><td>Forte</td><td></td><td>nuBuilder Forte's setting: ids or codes of the forms where demo users may still save (never delete), separated by commas</td></tr>
+<tr><td><code>$nuConfigIsDemo</code>, <code>$nuConfigDemoDBGlobeadminUsername</code>, <code>$nuConfigDemoDBGlobeadminPassword</code></td><td>Forte</td><td>false</td><td>nuBuilder Forte's demo: <code>true</code> lets the demo globeadmin sign in read only (<a href="#demo-mode">Demo mode</a>)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="doc-sub"><h3 id="config-dev">Developer</h3>
+<table class="table table-sm">
+<thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>$nuConfigDevMode</code></td><td>Forte</td><td><code>false</code></td><td>nuBuilder Forte's developer mode for the globeadmin: <code>#DEV_MODE#</code> = 1, <code>nuDevMode()</code>, templates and system procedures can be changed, and <em>Admin tools</em> shows <em>To do</em> – the open points of <code>TODO.md</code> as a page; each section folds (all folded when the page opens), <em>Expand all</em> / <em>Collapse all</em> opens or folds all of them – the <a href="#selftest">Self-test</a> and <a href="#db-reset">Reset database</a> (delete all tables and import a nuBuilder Forte SQL file). The password confirmation of dangerous actions lasts longer (Security check → <em>Ask for the password again in developer mode</em>, 8 hours by default).</td></tr>
+<tr><td><code>$nuConfigDebug</code></td><td>Next</td><td>false</td><td>Show error details on screen (also unexpected errors of a page) – true in <code>nuconfig.php</code> or in nuBuilder Forte's settings table (with <code>$nuConfigSettingsFromDB</code>) is enough; the globeadmin in developer mode sees them as well</td></tr>
+</tbody>
+</table>
+</div>
+<div class="doc-sub"><h3 id="config-login">Auto login and own login page</h3>
 <p><strong>Auto login</strong> (nuBuilder Forte's links, wiki page <em>Login</em>): <code>index.php?u=&lt;login name&gt;&amp;p=&lt;hash&gt;</code> logs the user in and opens the start page; add <code>&amp;f=&lt;form id&gt;&amp;r=&lt;record id&gt;</code> to open a form (<code>r</code> empty = list, <code>-1</code> = new record) or <code>&amp;h=&lt;form id&gt;</code> for another start form. <code>p</code> is never the password: it is a hash shown in the user form (globeadmin, <em>Auto-login link</em>) – HMAC-SHA256 of the stored password hash with <code>$nuConfigSecretKey</code>, so the link stops working when the password changes. The user form offers links that expire (1, 7, 30, 90 days or never – <code>&amp;e=</code> is part of the signed hash) and <em>Revoke links</em>, which ends all links of the user without a password change. Needs <code>$nuConfigAutoLogin = true</code>; not possible for the globeadmin; two-step login, the user's expiry date and the login rate limit apply; the hash is removed from the address bar at once. A link opened while somebody else is logged in asks before it switches the login. Without <code>p</code> the login page opens with the name filled in, and after the login the form opens. Generally, a link opened while logged out leads back to that page after the login.</p>
 <p><strong>One-time login link</strong> (nuBuilder Forte's <em>Single-User Password Token</em>, needs no setting here): see <a href="#logintoken">Sign-in methods → One-time login link</a>.</p>
 <p><strong>Own login page</strong>: <code>$nuWelcomeBodyInnerHTML</code> works as in nuBuilder Forte – nuBuilder Forte's HTML can be used as it is (inputs <code>nuusername</code> / <code>nupassword</code>, the submit button). Inline <code>onclick</code> / <code>onsubmit</code> are not run (security policy); nuBuilder Next connects the form itself and adds the security token. <code>style="…"</code> works; image paths <code>core/graphics/…</code> point to nuBuilder Forte's folder. Error messages, "Forgot password?", the language and theme menus stay. <code>nuconfig-sample.php</code> has a commented example.</p>
+</div>
+<div class="doc-sub"><h3 id="config-cron">Command line (cron.php)</h3>
+<p><code>cron.php</code> runs only on the command line (the web server refuses it). Run it as the web server's user, so files it writes belong to that user.</p>
+<table class="table table-sm">
+<thead><tr><th>Command</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>php cron.php</code></td><td>Housekeeping, e.g. every 15 minutes from cron: removes expired tokens and sessions, old API counters, log rows beyond the retention and temporary files, retries webhook calls, finishes an unattended update whose database steps are pending. Without cron, page views do this now and then.</td></tr>
+<tr><td><code>php cron.php update …</code></td><td>Unattended update from a URL, a zip file or GitHub (<a href="#update-unattended">Unattended update</a>)</td></tr>
+<tr><td><code>php cron.php integrity [--json]</code></td><td>The <a href="#integrity">integrity check</a> of the database; exit code 1 when it finds problems</td></tr>
+<tr><td><code>php cron.php iprules off</code></td><td>Switches <a href="#ip-access">IP access</a> off when its rules lock everybody out (the rules stay stored)</td></tr>
+<tr><td><code>php cron.php reset --sql=&lt;file&gt; …</code></td><td>Developer mode only: <a href="#db-reset">Reset database</a></td></tr>
+</tbody>
+</table>
+</div>
 	<p class="doc-see">See also: <a href="#configfile">Editing nuconfig.php in the browser</a> · <a href="#settings">Settings</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>nuconfig-sample.php</code></li><li><code>core/nuapp.php</code></li></ul></details>
 </section>

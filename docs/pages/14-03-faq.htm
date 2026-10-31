@@ -4,7 +4,7 @@
 	<p class="doc-for" data-doc="admin">For: Everyone</p>
 	<dl class="doc-faq">
 	<dt>Can nuBuilder Forte (4.x) and nuBuilder Next run on the same database at the same time?</dt>
-	<dd>Yes. They share forms, users, rights and data; nuBuilder Next keeps its own extras in <code>zzzzsys_nunext_*</code> tables that nuBuilder Forte ignores. See <a href="#overview-same-db">nuBuilder Forte and nuBuilder Next</a>.</dd>
+	<dd>Yes – on a database that nuBuilder Next installed. Existing nuBuilder Forte databases are not supported yet: the installer refuses them, so try an existing application on a copy (see <a href="#migration">Migrating from nuBuilder Forte 4.9</a>). They share forms, users, rights and data; nuBuilder Next keeps its own extras in <code>zzzzsys_nunext_*</code> tables that nuBuilder Forte ignores. See <a href="#overview-same-db">nuBuilder Forte and nuBuilder Next</a>.</dd>
 	<dt>Does my nuBuilder Forte JavaScript and PHP still work?</dt>
 	<dd>Mostly – nuBuilder Forte's functions are implemented for form code, hooks and procedures. The <a href="#compat">Compatibility check</a> lists what your application uses, and <a href="#porting">Differences</a> what behaves differently.</dd>
 	<dt>Why can a user not see a form, a button or a field?</dt>

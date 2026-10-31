@@ -55,16 +55,7 @@ $sw = static function (string $name, bool $on, string $label, string $tipText = 
 
 nu_layout_start(t('pwp_title'), 'home', ['container' => 'nuContainer', 'settings' => 'security', 'settings_page' => 'pwpolicy']);
 ?>
-<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('settings')) ?>"><?= h(t('set_title')) ?></a></li>
-	<li class="breadcrumb-item active" aria-current="page"><?= h(t('pwp_title')) ?></li>
-</ol></nav>
-<div class="nuTitleBar mb-3">
-	<h1 class="h4 mb-0"><i class="bi bi-key me-2" aria-hidden="true"></i><?= h(t('pwp_title')) ?></h1>
-	<div class="nuTitleSub text-body-secondary small"><?= h(t('pwp_sub')) ?></div>
-	<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
-</div>
+<?= nu_page_header(t('pwp_title'), ['icon' => 'bi-key', 'sub' => t('pwp_sub'), 'buttons' => $canChange ? '<button class="btn nuBtnAct nuBtnSave" type="submit" form="pwpForm" data-nu-save id="pwpSave"><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
 
 <form method="post" action="<?= h(nu_url('pwpolicy')) ?>" id="pwpForm" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
@@ -110,7 +101,6 @@ nu_layout_start(t('pwp_title'), 'home', ['container' => 'nuContainer', 'settings
 			</details>
 		</div>
 	</div>
-	<?php if ($canChange): ?><div class="mb-4"><button class="btn btn-primary nuBtnSave" type="submit" data-nu-save id="pwpSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div><?php endif; ?>
 </form>
 
 <div class="card shadow-sm mb-3" id="pwpTest">

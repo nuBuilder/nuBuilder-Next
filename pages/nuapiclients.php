@@ -232,11 +232,11 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 				<div class="card shadow-sm mb-3">
 					<div class="card-body small">
 						<dl class="row mb-0">
-							<dt class="col-5"><?= h(t('api_created')) ?></dt><dd class="col-7"><?= h(date('d.m.Y H:i', strtotime((string)$client['created_at']))) ?> · <?= h((string)$client['created_by']) ?></dd>
-							<dt class="col-5"><?= h(t('api_last_used')) ?></dt><dd class="col-7"><?= $client['last_used_at'] ? h(date('d.m.Y H:i', strtotime((string)$client['last_used_at']))) : '–' ?></dd>
+							<dt class="col-5"><?= h(t('api_created')) ?></dt><dd class="col-7"><?= h(date(nu_dfmt('d.m.Y H:i'), strtotime((string)$client['created_at']))) ?> · <?= h((string)$client['created_by']) ?></dd>
+							<dt class="col-5"><?= h(t('api_last_used')) ?></dt><dd class="col-7"><?= $client['last_used_at'] ? h(date(nu_dfmt('d.m.Y H:i'), strtotime((string)$client['last_used_at']))) : '–' ?></dd>
 							<dt class="col-5"><?= h(t('api_tokens')) ?></dt><dd class="col-7"><?= (int)$db->value('SELECT COUNT(*) FROM ' . NuApiClient::TOKEN . ' WHERE client_ref = ? AND expires_at > ?', [$id, date('Y-m-d H:i:s')]) ?></dd>
 							<?php if ($client['secret_old_until'] && strtotime((string)$client['secret_old_until']) > time()): ?>
-								<dt class="col-5"><?= h(t('api_old_secret')) ?></dt><dd class="col-7"><?= h(t('api_old_until', date('d.m.Y H:i', strtotime((string)$client['secret_old_until'])))) ?></dd>
+								<dt class="col-5"><?= h(t('api_old_secret')) ?></dt><dd class="col-7"><?= h(t('api_old_until', date(nu_dfmt('d.m.Y H:i'), strtotime((string)$client['secret_old_until'])))) ?></dd>
 							<?php endif; ?>
 						</dl>
 					</div>

@@ -9,6 +9,7 @@ parameters:
 	phpVersion: 80100
 	excludePaths:
 		- ../core/nutcpdf.php
+		- ../core/nuspreadsheetfilter.php   # implements an interface of the PhpSpreadsheet library pack (0.8.755)
 	paths:
 		- ../index.php
 		- ../api.php
@@ -25,6 +26,8 @@ parameters:
 		- '#Access to undefined constant PDO::SQLSRV_\w+#'
 		# TCPDF and PHPMailer come from the nuBuilder installation
 		- '#(TCPDF|PHPMailer)#'
+		# PhpSpreadsheet comes from its library pack (0.8.755)
+		- '#PhpOffice\\PhpSpreadsheet|NuSpreadsheetFilter#'
 		# pages are included by index.php, which defines their variables ($user, $p …)
 		- message: '#Variable \$\w+ might not be defined#'
 		  path: ../pages/*

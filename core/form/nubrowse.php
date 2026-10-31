@@ -357,10 +357,19 @@ final class NuBrowse
 		return ['columns' => $cols, 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per' => $per];
 	}
 
-	/** Distinct values of a filterable column: [[raw, label], …] (at most $limit). */
+	/** The filter choices are kept in the session for this long (0.8.761): a DISTINCT over a large list costs a second per filter. */
+	public const VALUES_TTL = 120;
+
+	/**
+	 * Distinct values of a filterable column: [[raw, label], …] (at most $limit). Cached in the session per form, column and list SQL
+	 * for VALUES_TTL seconds; a save or delete through nuBuilder Next forgets the cache (forgetValues()).
+	 */
 	public static function distinctValues(NuFormMeta $meta, array $hash, array $col, int $limit = 300): array
 	{
 		[$inner] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), [$col]);
+		$key = $meta->id . '|' . $col['index'] . '|' . md5($inner . '|' . $limit . '|' . (string)$col['format']);
+		$c = $_SESSION['nu_dv'][$key] ?? null;
+		if (is_array($c) && ($c[0] ?? 0) > time() - self::VALUES_TTL) return $c[1];
 		$expr = self::castText('nuT.nu_c' . $col['index']);
 		$db   = nu_db();
 		$rows = $db->page("SELECT DISTINCT $expr AS v FROM ($inner) nuT", [], 'v', $limit, 0);
@@ -369,7 +378,17 @@ final class NuBrowse
 			$v = $r['v'];
 			$out[] = $v === null ? [self::NULL_FILTER, '∅'] : [(string)$v, NuFormat::format($v, $col['format'])];
 		}
+		if (isset($_SESSION)) {
+			if (count($_SESSION['nu_dv'] ?? []) > 40) $_SESSION['nu_dv'] = [];
+			$_SESSION['nu_dv'][$key] = [time(), $out];
+		}
 		return $out;
+	}
+
+	/** Forgets the cached filter choices (after a save / delete / import). */
+	public static function forgetValues(): void
+	{
+		unset($_SESSION['nu_dv']);
 	}
 
 	/**

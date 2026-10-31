@@ -64,15 +64,10 @@ nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page'
 <form method="post" action="<?= h(nu_url('branding')) ?>" id="brandReset" data-confirm="<?= h(t('brand_reset_confirm')) ?>" data-confirm-ok="<?= h(t('brand_reset')) ?>" data-confirm-class="btn btn-danger">
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="reset">
 </form>
-<div class="card shadow-sm nuListCard">
-	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold"><?= h(t('brand_title')) ?></h1>
-		<div class="nuTitleSub text-body-secondary small"><?= h(t('brand_hint')) ?></div>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
-			<button class="btn nuBtnAct nuBtnSave" type="submit" form="brandForm" id="brandSave" data-nu-save><i class="bi bi-floppy"></i><?= h(t('save')) ?></button>
-			<button class="btn nuBtnAct" type="submit" form="brandReset" id="brandResetBtn"><i class="bi bi-arrow-counterclockwise"></i><?= h(t('brand_reset')) ?></button>
-		</div>
-	</div>
+<?= nu_page_header(t('brand_title'), ['icon' => 'bi-brush', 'sub' => t('brand_hint'),
+	'buttons' => '<button class="btn nuBtnAct nuBtnSave" type="submit" form="brandForm" id="brandSave" data-nu-save><i class="bi bi-floppy"></i>' . h(t('save')) . '</button>'
+		. '<button class="btn nuBtnAct" type="submit" form="brandReset" id="brandResetBtn"><i class="bi bi-arrow-counterclockwise"></i>' . h(t('brand_reset')) . '</button>']) ?>
+<div class="card shadow-sm">
 	<div class="card-body">
 		<form method="post" action="<?= h(nu_url('branding')) ?>" id="brandForm" enctype="multipart/form-data" novalidate data-nu-guard>
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">

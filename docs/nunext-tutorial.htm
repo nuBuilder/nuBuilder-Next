@@ -112,7 +112,7 @@
 			<li>Type into the search field and press <kbd>Enter</kbd> – several words must all match. Click a column title to sort; click again to reverse.</li>
 			<li>Filters sit behind the funnel button next to the search field; × resets search and filters.</li>
 			<li>The <i class="bi bi-chevron-down"></i> next to the search of a form's list opens the <strong>advanced search</strong>: conditions such as <em>Name starts with B</em> or <em>Total between 100 and 500</em>, all or any of them; save a search you need often under <em>My searches</em>.</li>
-			<li>Click a row to open the record; <em>Add</em> creates a new one. <em>Print</em> opens the list in a new tab – with <em>Copy</em> (for Excel) and <em>Export CSV</em>.</li>
+			<li>Click a row to open the record; <em>Add</em> creates a new one. <em>Export</em> offers an HTML page (print, with <em>Copy</em>), CSV and Excel.</li>
 		</ul>
 		<h4>Edit forms</h4>
 		<ul>
@@ -137,7 +137,7 @@
 		<h3>Help, documentation and the log</h3>
 		<p>Three places answer most questions:</p>
 		<ul>
-			<li>The <a data-open="help">documentation</a> (user menu → Help): searchable, with an index. Every user sees only the chapters for his rights; the globeadmin sees everything, including the administration chapters. <em>View: As user</em> at the top of the help page shows what a user without special rights sees.</li>
+			<li>The <a data-open="help">documentation</a> (user menu → Help): searchable, with an index. Every user sees only the chapters for their rights; the globeadmin sees everything, including the administration chapters. <em>View: As user</em> at the top of the help page shows what a user without special rights sees.</li>
 			<li>The <strong>(i)</strong> icons next to labels explain a field when you point at them or tap them.</li>
 			<li>The <a data-open="log">Log</a> records logins, changes to users, access levels and forms, record changes with the changed fields, exports and much more – the first place to look when something happened and nobody knows who did it.</li>
 		</ul>
@@ -211,12 +211,12 @@
 		<h3>Creating and managing users</h3>
 		<p><a data-open="users">Users</a> lists everybody who may sign in (active users by default; the filter shows expired and archived ones).</p>
 		<ul>
-			<li><strong>New user</strong>: full name (it fills first and last name), e-mail, login name (unique), access level and a password – the magic wand creates a strong one. <em>Change password at next login</em> makes the user choose his own.</li>
+			<li><strong>New user</strong>: full name (it fills first and last name), e-mail, login name (unique), access level and a password – the magic wand creates a strong one. <em>Change password at next login</em> makes the user choose a new one.</li>
 			<li><strong>Welcome e-mail</strong> (when e-mail is set up): instead of telling the user a password, send a personal link to set one. The password field can then stay empty. With <em>Preview the e-mail before sending</em> you see the mail before the user is saved – recipient, subject and text with every placeholder filled in; you can change the text or choose another template, and the link to set the password stays in place.</li>
 			<li><strong>Valid until</strong>: the login works through that day. <strong>Archive</strong> sets it to yesterday – the user can no longer sign in, but all data stays. <strong>Delete</strong> removes the user for good.</li>
 			<li><strong>Language</strong>: the user's interface language (empty = browser). <strong>Position, department, team</strong> suggest values of the other users.</li>
 			<li><strong>Reset 2FA</strong> removes the user's authenticator app – e.g. after a lost phone.</li>
-			<li><strong>Import…</strong> in the users list creates many users at once from a CSV file, with the same checks as the user form; existing logins are skipped.</li>
+			<li><strong>Import…</strong> in the users list creates many users at once from a CSV or Excel file, with the same checks as the user form; existing logins are skipped.</li>
 			<li>The <i class="bi bi-layout-three-columns"></i> <strong>View</strong> button switches the list's layout: <em>Default</em>, <em>Compact</em>, <em>All columns</em> or your own views – columns, order, filters and the cards on a phone. Shared views can be limited to access levels.</li>
 		</ul>
 		<div class="tut-task">
@@ -242,7 +242,7 @@
 
 	<section class="tut-lesson" id="act-as-user" data-right="impersonate">
 		<h3>Seeing the application as a user</h3>
-		<p>To check what a user really sees – menu, forms, buttons, rights – you do not need his password: <strong>Act as user</strong> (the icon in front of the name in the user form, or a row of <a data-open="sessions">Logged-in users</a>).</p>
+		<p>To check what a user really sees – menu, forms, buttons, rights – you do not need their password: <strong>Act as user</strong> (the icon in front of the name in the user form, or a row of <a data-open="sessions">Logged-in users</a>).</p>
 		<ul>
 			<li><strong>View only</strong>: everything the user sees, but nothing can be changed. The bar on top is blue.</li>
 			<li><strong>Full access</strong>: work as the user (red bar). Records are saved as this user; the log notes that the globeadmin acted.</li>
@@ -258,7 +258,7 @@
 		<h3>Logged-in users</h3>
 		<p><a data-open="sessions">Logged-in users</a> shows every active session: user, address, browser, login time and last activity (green = active in the last five minutes).</p>
 		<ul>
-			<li><strong>End session</strong> signs one user out at his next click – e.g. after changing his rights.</li>
+			<li><strong>End session</strong> signs one user out at the next click – e.g. after changing that user's rights.</li>
 			<li><strong>Log out all others</strong> before maintenance work; <strong>Log out everyone</strong> includes you.</li>
 			<li>The (i) next to the title shows the session timeouts (<code>$nuConfigSessionTimeout</code>, default 120 minutes; the globeadmin 12 hours).</li>
 		</ul>
@@ -271,7 +271,7 @@
 		<ul>
 			<li>A role is a set of rights, one per tool, each <em>view</em> or <em>change</em>. A user gets at most one role (field <em>Admin role</em> in the user form).</li>
 			<li>Five default roles: <em>Full administrator</em>, <em>Administrator without system</em>, <em>Developer</em>, <em>User manager</em>, <em>Support (read only)</em> – editable and copyable.</li>
-			<li>A user with a role sees the tiles, menu entries, search results, help chapters and tutorial lessons of his rights. Pages he may only view show <em>View only</em>.</li>
+			<li>A user with a role sees the tiles, menu entries, search results, help chapters and tutorial lessons of their rights. Pages they may only view show <em>View only</em>.</li>
 			<li>Rights marked <strong>full access</strong> (red) – Update, nuconfig.php, Database, forms, procedures, acting as another user … – lead to full control in the end. Give them only to people you would trust with the globeadmin password.</li>
 		</ul>
 		<div class="tut-task">
@@ -407,12 +407,12 @@
 			<li><a data-open="items">Items</a> – nuBuilder Forte's value lists. <a data-open="files">Files</a> – images and documents in the database (logos for reports, image objects).</li>
 			<li><a data-open="translations">Translations</a> – your labels in other languages; the <em>Missing</em> tab lists what is not translated yet.</li>
 			<li><a data-open="cloner">Form cloner</a> – copies a form with its tabs, objects, code, subforms and rights, or creates the SQL to move it to another database.</li>
-			<li><a data-open="import">CSV import</a> – loads a CSV file into a table, with column mapping, date and number conversion and a trial run.</li>
+			<li><a data-open="import">Data import</a> – loads a CSV file (or an Excel workbook with the PhpSpreadsheet pack) into a table, with column mapping, date and number conversion and a trial run.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Clone <code>tutorial_task</code> with the <a data-open="cloner">Form cloner</a> as <code>tutorial_task_copy</code>, then delete the copy in design mode (form settings → <em>Tools</em> → <em>Delete form</em>, without the table).</p>
 		</div>
-		<p><a data-help="formats">Formats</a> · <a data-help="translations">Translations</a> · <a data-help="cloner">Form cloner</a> · <a data-help="csv-import">CSV import</a></p>
+		<p><a data-help="formats">Formats</a> · <a data-help="translations">Translations</a> · <a data-help="cloner">Form cloner</a> · <a data-help="csv-import">Data import</a></p>
 	</section>
 </article>
 
@@ -445,7 +445,7 @@
 			<li><strong>Access levels</strong> that may run it.</li>
 		</ul>
 		<p>The <strong>SQL builder</strong> creates queries graphically: add tables, tick columns, drag a column onto another to join, add conditions and sorting. <em>Run</em> shows the first rows.</p>
-		<div class="tut-note">The PDF needs TCPDF – taken from nuBuilder Forte when nuBuilder Next sits in nuBuilder Forte's folder. Without it the report pages say so.</div>
+		<div class="tut-note">The PDF needs the TCPDF library pack (Update → Libraries); nuBuilder Forte's copy is used as a fallback when nuBuilder Next sits in its folder. Without it the report pages say so.</div>
 		<div class="tut-task">
 			<p>Open the sample report <code>sample_customers</code> (customers by country) in the designer, look at its bands and run <em>Preview</em>. Then open the SQL builder query <code>sample_orders</code>.</p>
 		</div>
@@ -519,15 +519,17 @@
 	<section class="tut-lesson" id="import-export" data-right="import">
 		<h3>Importing and exporting data</h3>
 		<ul>
-			<li><strong>Export</strong>: every list with the Print right has <em>Print</em> – a table in a new tab with <em>Copy</em> (pastes into Excel) and <em>Export CSV</em>. Search, filters and sort apply.</li>
-			<li><strong>Import</strong>: <a data-open="import">CSV import</a> in three steps – file (encoding and separator are detected), mapping (columns matched by name, dates and numbers converted, fixed values, <code>nuID()</code> for nuBuilder Forte ids), check (a complete trial run that changes nothing) and import. Add new records, update existing ones or both.</li>
+			<li><strong>Export</strong>: every list with the Print right has the <em>Export</em> menu – an HTML page in a new tab (with <em>Copy</em>, which pastes into Excel), CSV and Excel. Search, filters and sort apply.</li>
+			<li><strong>Data export</strong>: <a data-open="dataexport">saved exports</a> of tables, views and queries to Excel or CSV – columns, conditions, sorting, parameters, several sheets per file; run from the page or the REST API (admin right <em>Data export</em>).</li>
+			<li><strong>Import</strong>: <a data-open="import">Data import</a> in three steps – file (encoding and separator are detected), mapping (columns matched by name, dates and numbers converted, fixed values, <code>nuID()</code> for nuBuilder Forte ids), check (a complete trial run that changes nothing) and import. Add new records, update existing ones or both.</li>
 			<li><em>Save configuration</em> keeps the mapping for the next file of the same kind.</li>
 			<li>Users have their own import: <em>Users → Import…</em>.</li>
 		</ul>
+		<div class="tut-note">This lesson is shown with the admin right <em>Data import</em>. <em>Data export</em> is a right of its own: someone who has only that right finds the saved exports on the start page tile <em>Data export</em> and in the <a data-help="data-export">documentation</a>.</div>
 		<div class="tut-task">
-			<p>Export the <a data-open="form" data-args="f=samplecustomer">customer list</a> as CSV (<em>Print</em> → <em>Export CSV</em>) and open the file. Then load it into the <a data-open="import">CSV import</a>, choose the table <code>sample_customer</code>, click <em>Map automatically</em> and run <em>Check</em> – the trial run changes nothing, so you can try every option.</p>
+			<p>Export the <a data-open="form" data-args="f=samplecustomer">customer list</a> as CSV (<em>Export</em> → <em>CSV</em>) and open the file. Then load it into the <a data-open="import">Data import</a>, choose the table <code>sample_customer</code>, click <em>Map automatically</em> and run <em>Check</em> – the trial run changes nothing, so you can try every option.</p>
 		</div>
-		<p><a data-help="csv-import">CSV import</a> · <a data-help="list-export">Print and CSV</a></p>
+		<p><a data-help="csv-import">Data import</a> · <a data-help="data-export">Data export</a> · <a data-help="list-export">Print and CSV</a></p>
 	</section>
 </article>
 
@@ -551,7 +553,7 @@
 
 	<section class="tut-lesson" id="settings" data-right="settings">
 		<h3>Settings (nuBuilder Forte's settings table)</h3>
-		<p>nuBuilder Forte can keep its settings in a table instead of <code>nuconfig.php</code>. <a data-open="settings">Settings</a> edits that table; it is only used with <code>$nuConfigSettingsFromDB = true</code> (the page offers to switch it on).</p>
+		<p>nuBuilder Forte can keep its settings in a table instead of <code>nuconfig.php</code>. <a data-open="settings" data-args="s=forte">Settings → nuBuilder Forte</a> edits that table; it is only used with <code>$nuConfigSettingsFromDB = true</code> (the page offers to switch it on).</p>
 		<ul>
 			<li>A tag after each setting tells what it means for nuBuilder Next: <em>Used</em>, <em>Not yet</em> (only nuBuilder Forte uses it for now) or <em>Not needed</em> (nuBuilder Next has its own solution).</li>
 			<li><em>Import</em> copies the values set in <code>nuconfig.php</code> into the table.</li>
@@ -565,7 +567,7 @@
 		<ul>
 			<li><strong>Security settings</strong> on the same page: who grants admin rights, log retention, when to ask for the password again, old md5 passwords …</li>
 			<li><strong>Two-factor login</strong>: <code>$nuConfig2FAAdmin</code> for the globeadmin, <code>$nuConfig2FAUser</code> plus <em>Use two-factor authentication</em> on access levels for users. Each person sets up an authenticator app on the <a data-open="security">Security</a> page (users: <em>Security</em> in the user menu), or gets codes by e-mail.</li>
-			<li><strong>IP access</strong> (<a data-open="ipaccess">Settings → Security → IP access</a>): sign-in only from certain addresses or networks – one list for all access levels, exceptions per level and a rule of its own for the globeadmin. <em>Test an address</em> shows who could work from an address; saving never locks out the address you are using.</li>
+			<li><strong>IP access</strong> (<a data-open="ipaccess">Settings → Sign-in &amp; security → IP access</a>, globeadmin only): sign-in only from certain addresses or networks – one list for all access levels, exceptions per level and a rule of its own for the globeadmin. <em>Test an address</em> shows who could work from an address; saving never locks out the address you are using.</li>
 			<li><strong>Password policy</strong> (<a data-open="pwpolicy">Settings → Sign-in &amp; security → Password policy</a>): minimum length, a check against known leaked passwords (only 5 characters of the hash leave the server) – also at sign-in – and, only where a rule requires it, a regular change; <em>Try a password</em> shows what the rules say.</li>
 			<li>Built in: a login rate limit, signed update packages, strict security headers, masked secrets in the log.</li>
 		</ul>
@@ -579,7 +581,7 @@
 		<h3>Log and debug results</h3>
 		<ul>
 			<li>The <a data-open="log">Log</a> records logins and failed logins, two-factor events, password changes, changes to users, access levels, forms and settings, exports, imports and updates. Filter by event, user, date or text.</li>
-			<li>The <a data-open="audit">Audit trail</a> records every change made in the forms – one row per column with old and new value, also sub-form rows, deletes, clones and CSV imports. In a record, ⋮ → <em>History of this record</em> shows its changes; ↺ puts an old value or a deleted row back.</li>
+			<li>The <a data-open="audit">Audit trail</a> records every change made in the forms – one row per column with old and new value, also sub-form rows, deletes, clones and data imports. In a record, ⋮ → <em>History of this record</em> shows its changes; ↺ puts an old value or a deleted row back.</li>
 			<li><a data-open="debug">Debug</a> collects what <code>nuDebug()</code> writes in PHP code – your main tool when a procedure or event does not do what it should.</li>
 			<li><em>Keep the log (days)</em> in the security settings deletes old entries automatically (0 = keep for ever).</li>
 		</ul>
@@ -685,7 +687,9 @@
 
 	<section class="tut-lesson" id="compat" data-right="compat">
 		<h3>Bringing a nuBuilder Forte application to nuBuilder Next</h3>
-		<p>An existing nuBuilder Forte application usually works at once – the database is the same. Before opening it to users:</p>
+		<p>The aim is that a nuBuilder Forte application works in nuBuilder Next without changes – both use the same tables and formats.</p>
+		<div class="tut-note">For now nuBuilder Next is installed on a <strong>new database</strong>: the installer refuses an existing nuBuilder Forte database. Try your application on a <strong>copy</strong> – in developer mode, <a data-help="db-reset">Reset database</a> imports an SQL dump of the nuBuilder Forte database into the nuBuilder Next database. Never point nuBuilder Next at the live nuBuilder Forte database.</div>
+		<p>On the copy, before opening it to users:</p>
 		<ol>
 			<li>Run the <a data-open="compat">Compatibility check</a>: it scans all JavaScript, events, procedures and SQL for nuBuilder Forte functions and shows whether each one is <em>supported</em>, a <em>stub</em> or <em>missing</em> in nuBuilder Next.</li>
 			<li>Fix the <strong>hash variables outside quotes</strong> it lists – <code>WHERE id = #field#</code> lets a user put SQL into a field; write <code>'#field#'</code>.</li>
@@ -903,7 +907,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Self-test of the installation</h3>
 		<p>With <code>$nuConfigDevMode = true</code>, the globeadmin gets <a data-open="selftest">Self-test</a>: it checks the system (PHP, folders, tables, database steps, languages, Security check), data (lists, a report), forms (save, validation, sub-form rows, hash variables, audit trail, delete) and rights – and cleans up after itself.</p>
 		<div class="tut-task">
-			<p>Run the <a data-open="selftest">Self-test</a> on a development installation and look at any warning.</p>
+			<p>Run the <a data-open="selftest">Self-test</a> on a development installation, then choose the view <em>Problems</em> to see only the checks that failed (the <em>Status</em> filter also shows warnings).</p>
 		</div>
 		<p><a data-help="selftest">Self-test</a></p>
 	</section>
@@ -919,7 +923,8 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 
 	<section class="tut-lesson" id="forte-welcome">
 		<h3>Same application, new front end</h3>
-		<p>nuBuilder Next opens the <strong>same database</strong> as nuBuilder Forte (4.x): the same forms, objects, users, access levels, procedures, reports and SQL builder queries – stored in the same <code>zzzzsys_</code> tables and formats. Both can run side by side on one database: what you build or change in one opens in the other.</p>
+		<p>nuBuilder Next uses the <strong>same tables</strong> as nuBuilder Forte (4.x): the same forms, objects, users, access levels, procedures, reports and SQL builder queries – stored in the same <code>zzzzsys_</code> tables and formats. On a database that nuBuilder Next set up, both can run side by side: what you build or change in one opens in the other.</p>
+		<div class="tut-note">Existing nuBuilder Forte databases are not supported yet – the installer refuses them. Install nuBuilder Next on a new database and try your application on a <strong>copy</strong>: in developer mode, <a data-help="db-reset">Reset database</a> imports an SQL dump of the nuBuilder Forte database (<a data-help="migration">Migrating from nuBuilder Forte 4.9</a>).</div>
 		<ul>
 			<li>Your forms keep their code: Before Browse, Before Edit, Before Save, After Save, Before Delete, the form's JavaScript, <code>nuOnLoad</code>, object events and procedures run as in nuBuilder Forte, with nuBuilder Forte's PHP and JavaScript function names.</li>
 			<li>nuBuilder Next only adds its own tables (<code>zzzzsys_nunext_…</code>) for what nuBuilder Forte does not have – log, sessions, settings, dashboards, audit trail …</li>
@@ -938,7 +943,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 			<li>Administrators see the admin tools as tiles (users, forms, procedures, reports, settings …); <em>Customise</em> arranges them, saves layouts and marks favourites.</li>
 			<li>Users get a start page per access level with tiles for their forms and reports – made automatically from their rights or arranged by you (<a data-help="home-users">user start pages</a>). A level's home form from nuBuilder Forte still works.</li>
 			<li>The <strong>top bar</strong> has a search (<kbd>Ctrl</kbd>+<kbd>K</kbd>: any page, form, procedure, report), notifications, light / dark mode, language and the user menu. An optional side bar shows favourites and recently used pages.</li>
-			<li>The <strong>breadcrumb</strong> above each page replaces nuBuilder Forte's breadcrumb and Back – the browser's Back button works too.</li>
+			<li>The <strong>breadcrumb</strong> (above the page, or in the top bar when no logo is shown) replaces nuBuilder Forte's breadcrumb and Back – the browser's Back button works too.</li>
 			<li>Everything works on phones: lists become cards, the menus fold.</li>
 		</ul>
 		<div class="tut-task"><p class="mb-0">Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, type the code of one of your forms and open it.</p></div>
@@ -1032,7 +1037,8 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 	<section class="tut-lesson" id="forte-new-data">
 		<h3>Working with data</h3>
 		<ul>
-			<li><a data-open="import">CSV import</a> into any table with a field mapping and a dry run; Excel export of every list.</li>
+			<li><a data-open="import">Data import</a> into any table with a field mapping and a dry run; Excel export of every list.</li>
+			<li><a data-open="dataexport">Data export</a>: saved exports of tables, views and queries to Excel or CSV, with parameters and several sheets per file – run from the page or through the REST API (<code>/v1/exports</code>) (<a data-help="data-export">data export</a>).</li>
 			<li><strong>List views</strong>: users save their own columns, filters and sort order of the system lists (<a data-help="list-views">list views</a>).</li>
 			<li><a data-open="dashboards">Dashboards</a> with numbers, tables and charts on the start page.</li>
 			<li>Forms with AI: describe a form, copy the prompt into any AI chat and paste the answer back – it becomes a draft (<a data-help="new-form-p">new form</a>).</li>
@@ -1043,7 +1049,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 	<section class="tut-lesson" id="forte-new-integration">
 		<h3>Integration</h3>
 		<ul>
-			<li>A <a data-help="api">REST API</a> with clients, scopes and tokens: records of forms, users, reports as PDF, notifications – and the <a data-open="apiplayground">API playground</a> to try it in the browser.</li>
+			<li>A <a data-help="api">REST API</a> with clients, scopes and tokens: users, access levels, permission items, reports as PDF, notifications, data exports and updates – and the <a data-open="apiplayground">API playground</a> to try it in the browser.</li>
 			<li><strong>Page forms</strong>: a form type for your own PHP pages inside nuBuilder Next, with drafts and versions (<a data-help="pages">pages</a>).</li>
 			<li>E-mail with OAuth 2 (Google, Microsoft 365) and e-mail templates.</li>
 		</ul>

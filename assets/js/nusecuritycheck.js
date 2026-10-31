@@ -73,3 +73,16 @@
 		b.addEventListener('click', function () { var f = b.getAttribute('data-sec-filter'); cur = cur === f ? '' : f; apply(); });
 	});
 })();
+
+/* Tabs Checks / Settings (review E2): Save in the title bar only while the settings are shown. */
+(function () {
+	'use strict';
+	var tabs = document.getElementById('secTabs'), save = document.getElementById('secSaveBtn');
+	if (!tabs || !save) return;
+	var sync = function () {
+		var on = document.getElementById('secPane-settings');
+		save.hidden = !(on && on.classList.contains('active'));
+	};
+	tabs.addEventListener('shown.bs.tab', sync);
+	setTimeout(sync, 0);
+})();

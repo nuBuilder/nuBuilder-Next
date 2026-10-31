@@ -291,7 +291,7 @@ final class NuNotify
 		if ($s < 3600) return t('ntf_ago_min', intdiv($s, 60));
 		if ($s < 86400) return t('ntf_ago_h', intdiv($s, 3600));
 		if ($s < 7 * 86400) return t('ntf_ago_d', intdiv($s, 86400));
-		return date('d.m.Y', (int)strtotime($at));
+		return date(nu_dfmt('d.m.Y'), (int)strtotime($at));
 	}
 
 	/** What the bell needs: unread count, the latest (not hidden) and the ones to confirm. */

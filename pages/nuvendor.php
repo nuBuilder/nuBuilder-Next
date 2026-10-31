@@ -61,7 +61,7 @@ if (nu_is_post() && isset(NuVendor::APPS[$app]) && NuVendor::available($app)) {
 		nu_redirect(NuVendor::launch($app, $table));
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next vendor login: ' . $e->getMessage());
-		nu_flash('danger', t('vendor_failed') . (nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : ''));
+		nu_flash('danger', t('vendor_failed') . (nu_debug() ? ' ' . $e->getMessage() : ''));
 	}
 }
 
@@ -94,10 +94,7 @@ $engines = $mysql ? $nonInnodb() : [];
 $warnings = NuHome::statusWarnings(true);            // badge of the System status tile, fresh after a visit here
 nu_layout_start(t('status_title'), 'home');
 ?>
-<div class="nuTitleBar mb-3">
-	<h1 class="h3 mb-0"><i class="bi bi-activity me-2"></i><?= h(t('status_title')) ?></h1>
-	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?></div>
-</div>
+<?= nu_page_header(t('status_title'), ['icon' => 'bi-activity', 'sub' => t('status_hint')]) ?>
 <?php if ($warnings === 0): ?><div class="alert alert-success" id="statusOk"><i class="bi bi-check-circle me-1"></i><?= h(t('status_all_ok')) ?></div><?php endif; ?>
 <div class="nuVendorFull">
 <?php if (!$mysql): ?><div class="alert alert-info" id="vendorMsInfo"><i class="bi bi-info-circle me-1"></i><?= h(t('vendor_mysql_only')) ?></div><?php endif; ?>
@@ -185,8 +182,8 @@ $demoForms = trim((string)(nu_cfg('nuConfigDemoSavingAllowedIds') ?? ''));
 				<h3 class="h6 mt-3" id="demodata"><?= h(t('demo_data_title')) ?>
 					<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('demo_data_tip')) ?>" title="<?= h(t('demo_data_tip')) ?>"><i class="bi bi-info-circle"></i></span></h3>
 				<div class="small text-body-secondary mb-1"><?= h($dTables ? t('demo_data_tables', implode(', ', $dTables)) : t('demo_snap_no_tables')) ?></div>
-				<div class="small mb-2" id="demoSnapState"><?php if ($dInfo): ?><i class="bi bi-camera me-1"></i><?= h(t('demo_snap_info', date('d.m.Y H:i', (int)$dInfo['created']), (string)$dInfo['by'], array_sum((array)$dInfo['tables']))) ?>
-					<?php if ((int)$dSet['last'] > 0): ?> · <?= h(t('demo_reset_last', date('d.m.Y H:i', (int)$dSet['last']))) ?><?php endif; ?>
+				<div class="small mb-2" id="demoSnapState"><?php if ($dInfo): ?><i class="bi bi-camera me-1"></i><?= h(t('demo_snap_info', date(nu_dfmt('d.m.Y H:i'), (int)$dInfo['created']), (string)$dInfo['by'], array_sum((array)$dInfo['tables']))) ?>
+					<?php if ((int)$dSet['last'] > 0): ?> · <?= h(t('demo_reset_last', date(nu_dfmt('d.m.Y H:i'), (int)$dSet['last']))) ?><?php endif; ?>
 					<?php else: ?><span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('demo_snap_none')) ?></span><?php endif; ?></div>
 				<?php if (empty(NuAuth::user()['demo'])): ?>
 				<div class="d-flex flex-wrap gap-2 align-items-center">

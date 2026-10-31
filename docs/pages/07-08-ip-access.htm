@@ -2,7 +2,7 @@
 	<h2 id="ip-access-h">IP access</h2>
 	<p class="doc-lead">Allow signing in only from certain addresses or networks – for all access levels, with exceptions per level and a rule of its own for the globeadmin.</p>
 	<p class="doc-for" data-doc="admin">For: the globeadmin</p>
-	<p><em>Settings → Security → IP access</em> (<code>index.php?p=ipaccess</code>) is off until you switch on <em>Restrict sign-in by IP address</em>. The page shows the address you are using now.</p>
+	<p><em>Settings → Sign-in &amp; security → IP access</em> (<code>index.php?p=ipaccess</code>) is off until you switch on <em>Restrict sign-in by IP address</em>. The page shows the address you are using now.</p>
 <div class="doc-sub">
 <h3 id="ip-access-rules">The rules</h3>
 <ul>
@@ -28,4 +28,6 @@
 <li>Locked out anyway (e.g. a new address at home)? On the server: <code>php cron.php iprules off</code> switches IP access off; the rules stay stored, so switching it on again brings them back.</li>
 </ul>
 </div>
+	<p class="doc-see">See also: <a href="#signin-methods">Sign-in methods</a> · <a href="#password-policy">Password policy</a> · <a href="#security-check">Security check</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuipaccess.php</code></li><li><code>pages/nuipaccess.php</code></li><li><code>assets/js/nuipaccess.js</code></li></ul></details>
 </section>

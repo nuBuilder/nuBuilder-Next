@@ -82,6 +82,7 @@ $routes = [
 	'sqlbuilder'  => [],
 	'prompts'     => [],
 	'import'      => [],
+	'dataexport'  => [],   // data export (0.8.758, pages/nudataexport.php)
 	'email'       => [],
 	'mailoauth'   => [],   // OAuth 2 for the SMTP login: to the provider and back (oauth.php, 0.8.445)
 	'emailtemplates' => [],

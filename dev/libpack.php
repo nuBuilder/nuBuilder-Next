@@ -6,7 +6,8 @@ declare(strict_types=1);
  * packs" in developer mode, core/nulibs.php):
  *
  *   php dev/libpack.php <out folder> <key file> <slot>[=<source folder>][@<version>] … [--all] [--keep=<old libraries.json>]
- *     slot: tcpdf | phpmailer | tinymce | phpmyadmin | adminer | uppy (0.8.459; tinyfilemanager removed in 0.8.479)
+ *     slot: tcpdf | phpmailer | tinymce | phpmyadmin | adminer | uppy (0.8.459; tinyfilemanager removed in 0.8.479) | phpspreadsheet (0.8.755,
+ *           source folder from python3 -I dev/pss_assemble.py <out>)
  *     source folder: default ../libsrc/<slot> next to the project (phpMyAdmin also ../libsrc/nudb, 0.8.410)
  *     --all: every library that has a folder in ../libsrc/
  *     version: read from the library (or its NUNEXT-VERSION.txt) when left out

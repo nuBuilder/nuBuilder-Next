@@ -9,7 +9,7 @@
 <li><strong>Claude with a workspace</strong>: a Claude session that can run commands and handle files (Claude Code – web, desktop or terminal – or claude.ai with the code / file tools). It needs internet access for the package registries (apt, npm, pip) and GitHub (cloning nuBuilder Forte for the test installation, and pushing).</li>
 <li><strong><code>nunext-dev.zip</code></strong> of the last release – the whole project including <code>CLAUDE.md</code>, <code>TODO.md</code>, <code>dev/</code> (release script, tests, tools) and <code>.github/</code>.</li>
 <li><strong>The signing key file</strong> <code>nunext-signing.key</code> (see below) – without it releases are unsigned and every installation warns.</li>
-<li><strong>For "gate"</strong>: write access to the repository <code>nuBuilder/nuBuilder-Next</code> in the session (GitHub connection with push rights).</li>
+<li><strong>For "gate"</strong>: write access to the repository <code>nuBuilder/nuBuilder-Next</code> in the session (GitHub connection with push rights). Without a GitHub connection the gate still runs the full test suite and releases locally – nothing is synced, committed or pushed.</li>
 </ul>
 <p>Nothing survives between sessions: the workspace, the test database and the test installation are rebuilt from the zip each time (<code>CLAUDE.md</code> → "Test environment": MariaDB, PHP's built-in server, a clone of nuBuilder Forte with nuBuilder Next inside it at <code>/nunext/</code>, Playwright with Chromium, PHPStan, ESLint, axe-core).</p>
 </div>
@@ -43,7 +43,7 @@
 </ul>
 </div>
 	<div class="doc-sub" data-doc="dev">
-<h3 id="devflow-gate">Fast release and gate</h3><figure class="doc-figure" id="dg-devflow"><svg class="doc-flow" viewBox="0 0 680 330" role="img" aria-labelledby="dg-devflow-title dg-devflow-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-devflow-title">Releases: fast and gated</title><desc id="dg-devflow-desc">A normal request ends with a fast release: the change, the tests of its area and two signed zips. When the owner says gate, the full test run (smoke, all end-to-end tests, the checks against nuBuilder Forte) makes a gated release that is pushed to GitHub; the owner publishes the GitHub release.</desc>
+<h3 id="devflow-gate">Fast release and gate</h3><figure class="doc-figure" id="dg-devflow"><svg class="doc-flow" viewBox="0 0 680 330" role="img" aria-labelledby="dg-devflow-title dg-devflow-desc" xmlns="http://www.w3.org/2000/svg"><title id="dg-devflow-title">Releases: fast and gated</title><desc id="dg-devflow-desc">A normal request ends with a fast release: the change, the tests of its area and two signed zips. When the owner says gate, the full test run (smoke, all end-to-end tests, the checks against nuBuilder) makes a gated release that is pushed to GitHub; the owner publishes the GitHub release.</desc>
 <defs><marker id="dg-devflow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" class="dg-head"/></marker></defs>
 <text x="20" y="20" dy=".35em" class="dg-t dg-n dg-start">A request</text>
 <rect x="20" y="40" width="150" height="56" rx="8" class="dg-box dg-n"/>
@@ -88,10 +88,10 @@
 <tr><td>Before</td><td>the help page of the change</td><td>Claude first brings the documentation up to date: the help pages of everything since the last gate, README, CLAUDE.md, TODO.md and the tutorial</td></tr>
 <tr><td>Checks</td><td><code>php -l</code> of every file, <code>dev/check_lang.php</code>, unit tests <code>dev/tests/run.php</code>, PHPStan, ESLint – plus by hand the e2e tests of the changed areas (<code>ONLY=…</code>) and screenshots</td><td>all of these plus the browser suites on the test installation: smoke test, all e2e tests, the cross-test against nuBuilder Forte 4.9 (<code>compat.js</code>); a failing test stops the release</td></tr>
 <tr><td>Manifest</td><td><code>"gated": false</code> – the update page shows <em>Not fully tested</em></td><td><code>"gated": true</code>, <code>"last_gate"</code></td></tr>
-<tr><td>GitHub</td><td>nothing pushed</td><td>the project is copied to the repository clone, committed and pushed to <code>main</code> – everything since the last gate in one commit</td></tr>
+<tr><td>GitHub</td><td>nothing pushed</td><td>the project is copied to the repository clone, committed and pushed to <code>main</code> – everything since the last gate in one commit; without a GitHub connection the gate runs and releases locally and nothing is pushed</td></tr>
 </tbody>
 </table>
-<p><code>release.py</code> prints the releases since the last gate; after five Claude reminds you to gate (also after changes to login, rights, the update or database steps). The gate needs the test installation's addresses in the environment: <code>NUNEXT_TEST_SITE</code> (folder), <code>NUNEXT_TEST_BASE</code> (its URL), <code>NUNEXT_TEST_NUB</code> (nuBuilder Forte on the same database, for <code>compat.js</code>); optional <code>NUNEXT_TEST_LOAD=1</code> (large data, ~3 min) and <code>NUNEXT_TEST_A11Y=1</code> (accessibility).</p>
+<p><code>release.py</code> prints the number of releases since the last gate; when to gate is your decision. The gate needs the test installation's addresses in the environment: <code>NUNEXT_TEST_SITE</code> (folder), <code>NUNEXT_TEST_BASE</code> (its URL), <code>NUNEXT_TEST_NUB</code> (nuBuilder Forte on the same database, for <code>compat.js</code>); optional <code>NUNEXT_TEST_LOAD=1</code> (large data, ~3 min) and <code>NUNEXT_TEST_A11Y=1</code> (accessibility).</p>
 <p>The push makes the code public on GitHub – it does <em>not</em> create a GitHub release. Servers updating from GitHub only see a version once its release exists (next chapter).</p>
 </div>
 	<div class="doc-sub" data-doc="dev">
@@ -112,7 +112,7 @@
 <li><strong><code>nunext-dev.zip</code></strong> – the whole project, to continue the development (send it to the next session). In developer mode, <em>To do</em> → <em>Upload nunext-dev.zip</em> / <em>Upload new</em> takes only <code>TODO.md</code> out of it (or a <code>TODO.md</code> uploaded on its own) and replaces the server's copy without asking; the zip is deleted at once.</li>
 <li><strong><code>nunext-manifest.json</code></strong> (in both): <code>version</code>, <code>built</code>, <code>files</code> (SHA-256 and size of every deployed file – the update checks each one and knows which old files to remove), <code>changes</code> (the change history shown on the update page), <code>libraries</code> (bundled libraries and versions), <code>requires_libs</code> (library versions this version needs), <code>page_api</code> (page form API versions – pages that would break are listed), <code>gated</code> / <code>last_gate</code>, and <code>signature</code> (Ed25519 over <code>nunext-release|&lt;version&gt;|sha256 of the file list</code>).</li>
 <li>Also inside: <code>install/db_changes.json</code> (the database steps and own tables – <em>Check package</em> previews the database changes), <code>install/schema_expected.json</code> (structure check), <code>install/libraries-required.json</code>.</li>
-<li>Folders: <code>vendor/bundled/</code> (bundled libraries, registry <code>libraries.json</code>), <code>vendor/nuconfig.php</code> (loader for the packed configs of phpMyAdmin / Tiny File Manager).</li>
+<li>Folders: <code>vendor/bundled/</code> (bundled libraries, registry <code>libraries.json</code>), <code>vendor/nuconfig.php</code> (loader for the packed configuration of phpMyAdmin).</li>
 <li>Never inside: <code>nuconfig.php</code>, <code>vendor/packs/</code>, <code>third_party/</code>, <code>_backup/</code>, <code>_update/</code>, the signing key (see <code>.gitignore</code>).</li>
 </ul>
 </div>
@@ -123,6 +123,7 @@
 <li><code>dev/tests/smoke.js</code> – opens every page; <code>dev/tests/e2e.js</code> – the end-to-end tests (forms, rights, update page, library packs …; <code>ONLY=name1,name2</code> runs single ones; it saves the database first and puts it back); <code>dev/tests/compat.js</code> – nuBuilder Forte 4.9 and nuBuilder Next on the same database, a save without a change must leave nuBuilder Forte's rows alone.</li>
 <li><code>dev/tests/install.js</code> – the installer with an uploaded <code>nubuilder4.sql</code> (and <code>LIBPACKS=&lt;folder&gt;</code> for the library step); <code>load.js</code> – large data and timings; <code>a11y.js</code> – accessibility (WCAG 2.1 AA) in light, dark and phone width.</li>
 <li><a href="#selftest">Self-test</a> (<code>?p=selftest</code>) – the same kind of checks inside a running installation.</li>
+<li data-level="advanced"><code>php dev/bs6_scan.php [--files] [--rule=responsive|offcanvas|accordion|global]</code> – Bootstrap 6 readiness of nuBuilder Next's own files: counts what Bootstrap 6 will change (the rules of <code>core/nubs6.php</code>), then the files with most hits (<code>--files</code>: all of them). It only reads. The same rules check application code in the <a href="#compat">Compatibility check</a> (point BS6, shown only in developer mode).</li>
 </ul>
 </div>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>CLAUDE.md (nunext-dev.zip)</code></li><li><code>dev/</code></li></ul></details>

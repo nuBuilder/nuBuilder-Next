@@ -159,8 +159,8 @@ final class NuAdvSearch
 		$out = [];
 		foreach ($adv['c'] ?? [] as $k => [$i, $op, $v, $v2]) {
 			$c = $cols[$i];
-			$val = is_array($v) ? implode(', ', $v) : (self::typeOf($c) === 'date' && $v !== '' ? date('d.m.Y', (int)strtotime($v)) : $v);
-			$val2 = self::typeOf($c) === 'date' && $v2 !== '' ? date('d.m.Y', (int)strtotime($v2)) : $v2;
+			$val = is_array($v) ? implode(', ', $v) : (self::typeOf($c) === 'date' && $v !== '' ? date(nu_dfmt('d.m.Y'), (int)strtotime($v)) : $v);
+			$val2 = self::typeOf($c) === 'date' && $v2 !== '' ? date(nu_dfmt('d.m.Y'), (int)strtotime($v2)) : $v2;
 			$text = trim(strip_tags((string)$c['title'])) . ' ' . t('as_op_' . $op) . ($val !== '' ? ' "' . $val . '"' : '') . ($val2 !== '' ? ' ' . t('as_and') . ' "' . $val2 . '"' : '');
 			$rest = $adv['c'];
 			unset($rest[$k]);

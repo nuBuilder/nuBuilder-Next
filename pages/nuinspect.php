@@ -32,7 +32,7 @@ else {
 		if (!$row) $error = t('insp_err_no_record', $recordId);
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next inspect: ' . $e->getMessage());
-		$error = t('insp_err_read') . (nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : '');
+		$error = t('insp_err_read') . (nu_debug() ? ' ' . $e->getMessage() : '');
 	}
 }
 

@@ -54,7 +54,7 @@ if (nu_is_post() && nu_post('action') === 'preview') {
 		// details (table and column names in SQL errors) only for the globeadmin or with $nuConfigDebug
 		$u = NuAuth::user();
 		$own = $e instanceof RuntimeException && !($e instanceof PDOException);
-		$msg = $own || ($u['globeadmin'] && empty($u['demo'])) || nu_cfg('nuConfigDebug') ? $e->getMessage() : t('sqb_err_failed_generic');
+		$msg = $own || ($u['globeadmin'] && empty($u['demo'])) || nu_debug() ? $e->getMessage() : t('sqb_err_failed_generic');
 		echo json_encode(['ok' => false, 'message' => $msg], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 	}
 	exit;

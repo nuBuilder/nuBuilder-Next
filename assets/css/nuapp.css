@@ -555,7 +555,7 @@ td.nuColEmail { min-width: 12rem; max-width: 20rem; }
 .nuImpBar .badge { font-weight: 600; }
 
 /* breadcrumbs: the current page is the heading right below – show only the way back */
-main > nav > .breadcrumb .breadcrumb-item.active { display: none; }
+main > nav > .breadcrumb .breadcrumb-item.active, .nuSetMain > nav > .breadcrumb .breadcrumb-item.active { display: none; }   /* also inside the settings centre (0.8.763) */
 main > nav:has(> .breadcrumb):not(:has(.breadcrumb-item:not(.active))) { display: none; }
 
 /* list footer: total · pager · rows per page – always shown, sticky at the bottom of the window */
@@ -676,6 +676,10 @@ button.nu-tile { font: inherit; color: inherit; background: var(--bs-card-bg); c
 	--bs-btn-disabled-color: #adb5bd; --bs-btn-disabled-border-color: #3a4652;
 }
 .nuListCard .nuListFilter { padding: 1rem 1.25rem 1.1rem; }
+.nuListFilter[hidden] { display: none !important; }
+/* empty lists (review E3): what the list is for and its first action */
+.nuLvEmptyText { max-width: 34rem; color: var(--bs-secondary-color); }
+.nuLvEmptyRow:hover > td { --bs-table-bg-state: transparent; }
 .nuListCard .nuListFilter .form-label { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--nu-th-color); }
 .nuListCard .nuListBody > .card-header { border-top: 1px solid var(--nu-th-line); }
 .nuListCard .table-responsive .table { border-radius: 0 !important; }
@@ -1486,7 +1490,7 @@ html.nuNoNavbar .nu-navbar { display: none !important; }
 .smpDotOut { background: var(--bs-warning); }
 .smpDotOff { border: 2px solid var(--bs-secondary-color); }
 #smpList .list-group-item .smpListSub { color: var(--bs-secondary-color); }
-#smpList .list-group-item.active .smpListSub { color: inherit; opacity: .9; }
+#smpList .list-group-item.active .smpListSub { color: inherit; }
 #smpList .list-group-item.active .smpDotOff { border-color: currentColor; }
 .smpPwMasked .smpPwVal { display: none; }
 .smpLogins:not(.smpPwMasked) .smpPwDots { display: none; }
@@ -1515,6 +1519,10 @@ html.nuNoNavbar .nu-navbar { display: none !important; }
 [data-bs-theme="dark"] .CodeMirror .CodeMirror-linenumber { color: #9aa5b1; }
 [data-bs-theme="dark"] .btn-outline-danger { --bs-btn-color: #ea868f; }
 [data-bs-theme="dark"] .text-success { color: #75b798 !important; }
+/* more contrast (0.8.761, a11y.js): outline buttons in primary / warning colour, green status lines */
+:root:not([data-bs-theme="dark"]) .btn-outline-primary { --bs-btn-color: #0a58ca; }
+:root:not([data-bs-theme="dark"]) .btn-outline-warning { --bs-btn-color: #8a6400; }
+:root:not([data-bs-theme="dark"]) .text-success { color: #146c43 !important; }
 /* CodeMirror in dark mode (0.8.368 – before, every editor kept CodeMirror's light colours on the dark page): one palette for the
    form runtime, procedures, builder, nuconfig.php; colours with at least 4.5:1 on the editor background */
 [data-bs-theme="dark"] .CodeMirror { background: #1c2027; color: #e9ecef; }
@@ -1572,7 +1580,7 @@ html.nuNoNavbar .nu-navbar { display: none !important; }
 
 /* update page tabs (0.8.392): one line, scrolls sideways on phones; dot = something to look at in "System" */
 .nuUpdTabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
-.nuUpdTabs .nav-link { white-space: nowrap; }
+.nuUpdTabs .nav-link { white-space: nowrap; position: relative; }   /* 0.8.761: keeps the visually-hidden dot text inside the scroll box */
 .nuTabDot { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; vertical-align: middle; }
 
 /* print view of lists (0.8.397): × after each column title hides the column */
@@ -1697,51 +1705,6 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 .thPreviewBody { min-height: 100vh; }
 .thLevels select { max-width: 20rem; }
 
-/* ---------------------------------------------------------------- header layouts (test) – TEMPORARY (0.8.634, developer mode,
-   assets/js/nuheadervariant.js; classes nuHv-a … nuHv-e on <html>). Remove together with the script. */
-.nuHvHidden { display: none !important; }
-.nuHv .nuHvBar { flex-wrap: wrap; align-items: center; row-gap: .4rem; margin-bottom: .6rem !important; }
-.nuHv .nuHvBar > div:last-child:not(:first-child):not(.nuTitleSub) { flex-basis: auto; margin-inline-start: auto; }
-.nuHv .nuHvBar > h1, .nuHv .nuHvBar > nav { margin-inline-end: .5rem; }
-.nuHv .nuHvBar h1 { font-size: 1.2rem; font-weight: 650; }
-.nuHv .nuHvBar .btn:not(.dropdown-item):not(.nuImpIconBtn) { --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem; --bs-btn-font-size: .875rem; }
-.nuHv nav[aria-label="breadcrumb"] .breadcrumb { margin-bottom: .25rem !important; }
-.nuHv .nuHvBar > nav .breadcrumb { margin-bottom: 0 !important; flex-wrap: nowrap; align-items: center; }
-.nuHv .nuHvBar > nav { min-width: 0; }
-.nuHv .nuHvBackIcon { border: 0; background: transparent; padding: .1rem .35rem !important; font-size: 0 !important; }
-.nuHv .nuHvBackIcon > .bi { font-size: 1.15rem; margin: 0 !important; }
-.nuHv .nuHvCrumbTitle { font-size: 1.2rem; font-weight: 650; color: var(--bs-emphasis-color) !important; display: inline-flex; align-items: center; gap: .35rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nuHv .nuHvCrumbTitle .nuBreadcrumb { font-weight: 650 !important; }
-.nuHv .nuHvCrumbTitle .nuImpIconBtn { font-size: 1.1rem; padding: 0 .2rem; }
-.nuHv .nuHvBar .breadcrumb-item a { text-decoration: none; }
-.nuHv .nuHvBar .breadcrumb-item + .breadcrumb-item.nuHvCrumbTitle::before { align-self: center; }
-.nuHv .nuHvPlain h1 { font-size: 1.15rem; }
-.nuHv .nuListHead.nuHvPlain { padding: .6rem 1rem; }
-.nuHv .nuHvGroupMoved:not(:has(> :not(.nuHvHidden))) { display: none !important; }
-.nuHvMoreBtn { padding-inline: .45rem !important; }
-.nuHv-c .nuFormHeader .btn-group:has(> .nuHvHidden), .nuHv-d .nuFormHeader .btn-group:has(> .nuHvHidden), .nuHv-e .nuFormHeader .btn-group:has(> .nuHvHidden) { display: none; }
-/* D: the header stays under the top bar while scrolling */
-.nuHv main.nuContainer { padding-top: .9rem !important; }
-.nuHv .nuHvSticky { position: sticky; top: var(--nu-nav-h, 56px); z-index: 1010; background: var(--nu-page); margin-inline: -1rem; padding: .45rem 1rem; border-bottom: 1px solid var(--bs-border-color); }
-/* phones (C, D, E): Save in a bar at the bottom of the screen */
-@media (max-width: 575.98px) {
-	.nuHv-c .nuHvSave, .nuHv-d .nuHvSave, .nuHv-e .nuHvSave { position: fixed; z-index: 1030; inset-inline: .75rem; bottom: .75rem; justify-content: center; padding: .55rem 1rem !important;
-		box-shadow: 0 4px 16px rgba(0, 0, 0, .18); background: var(--nu-surface); font-size: 1rem !important; }
-	.nuHv-c main, .nuHv-d main, .nuHv-e main { padding-bottom: 4.5rem; }
-	.nuHv .nuHvBar .btn:not(.nuHvSave):not(.dropdown-item) .bi { margin: 0 !important; }
-	.nuHv .nuHvSave .bi { margin-inline-end: .4rem !important; }
-}
-/* E: compact density */
-.nuHv-e .nu-navbar { --bs-navbar-padding-y: .25rem; min-height: 48px; }
-.nuHv-e main.nuContainer, .nuHv-e main.container-fluid { padding-top: .5rem !important; }
-.nuHv-e .card-header { padding: .45rem .8rem; }
-.nuHv-e .card-body { padding: .7rem .8rem; }
-.nuHv-e .row.g-3 { --bs-gutter-y: .55rem; --bs-gutter-x: .8rem; }
-.nuHv-e .form-control:not(.nuAbs .form-control), .nuHv-e .form-select:not(.nuAbs .form-select) { padding-top: .25rem; padding-bottom: .25rem; }
-.nuHv-e .form-label { margin-bottom: .2rem; }
-.nuHv-e .nav-tabs .nav-link { padding: .4rem .75rem; }
-.nuHv-e .mb-3 { margin-bottom: .6rem !important; }
-
 /* sections of a tab (0.8.638, nuapp.js): long tap / right-click on a tab; the card jumped to lights up briefly */
 .nuTabSections { min-width: 12rem; max-width: calc(100vw - 16px); }
 .card.nuSectionFlash { box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .35) !important; transition: box-shadow .3s; }
@@ -1750,12 +1713,13 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 .nuTabSecArrow:hover { opacity: 1; background: var(--bs-secondary-bg); }
 
 /* light mode (0.8.640): pressed / selected grey buttons (pin of the ☰ menu, Active · Archived · All, Basic · Advanced …) and grey badges
-   in a lighter grey than Bootstrap's #6c757d */
+   in a lighter grey than Bootstrap's #6c757d;
+   0.8.761: back to #6c757d – white text on #8a939b has only 3.1:1 (WCAG AA needs 4.5:1, dev/tests/a11y.js) */
 :root:not([data-bs-theme="dark"]) .btn.btn-outline-secondary:not(.nuSearchBtn),
 :root:not([data-bs-theme="dark"]) .btn.btn-outline-secondary.nuRowBtn,
-:root:not([data-bs-theme="dark"]) .btn.btn-outline-secondary.nuToolBtn { --bs-btn-active-bg: #8a939b; --bs-btn-active-border-color: #8a939b; --bs-btn-active-color: #fff; }
-:root:not([data-bs-theme="dark"]) .text-bg-secondary { background-color: #8a939b !important; color: #fff !important; }
-:root:not([data-bs-theme="dark"]) .btn-group > .btn-check:checked + .btn-outline-secondary { background-color: #8a939b; border-color: #8a939b; color: #fff; }
+:root:not([data-bs-theme="dark"]) .btn.btn-outline-secondary.nuToolBtn { --bs-btn-active-bg: #6c757d; --bs-btn-active-border-color: #6c757d; --bs-btn-active-color: #fff; }
+:root:not([data-bs-theme="dark"]) .text-bg-secondary { background-color: #6c757d !important; color: #fff !important; }
+:root:not([data-bs-theme="dark"]) .btn-group > .btn-check:checked + .btn-outline-secondary { background-color: #6c757d; border-color: #6c757d; color: #fff; }
 /* pin of the ☰ menu when pinned (0.8.641): grey pin on a light background instead of the filled grey button */
 .btn.btn-outline-secondary#nuNavPin.active { background-color: #e9ecef; border-color: #ced4da; color: #6c757d; }
 [data-bs-theme="dark"] .btn.btn-outline-secondary#nuNavPin.active { background-color: #2b3138; border-color: #4a535c; color: #adb5bd; }
@@ -1875,3 +1839,39 @@ fieldset.contents { display: contents; }
 #admRights .admGrpTag { display: none; }
 #admRights.admFlat .admGrpTag { display: inline; }
 #admRights.admFlat tr.nuAdmGroup { display: none; }
+
+/* Data export editor (0.8.758) */
+.dxpCols td { vertical-align: middle; }
+.dxpCols .form-select-sm, .dxpCols .form-control-sm { min-width: 110px; }
+.dxpColsWrap { max-height: 420px; overflow: auto; }
+.dxpCM { border: 1px solid var(--bs-border-color); border-radius: .375rem; height: auto; min-height: 160px; }
+.dxpCM .CodeMirror-scroll { min-height: 160px; max-height: 420px; }
+.dxpPreview th { white-space: nowrap; }
+.dxpPreview td { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#dxpDsTabs .nav-link { padding: .25rem .6rem; font-size: .9rem; }
+.dxpParam { max-width: 420px; }
+/* phones: dashboard tables as stacked rows (review F2): the first column as the title, the others as "Column: value" */
+@media (max-width: 575.98px) {
+	.nuDashTable { max-height: none; overflow: visible; }
+	.nuDashTable > table > thead { display: none; }
+	.nuDashTable > table > tbody > tr { display: flex; flex-wrap: wrap; column-gap: .75rem; padding: .5rem .25rem; border-bottom: 1px solid var(--bs-border-color); }
+	.nuDashTable > table > tbody > tr > td { display: block; border: 0; padding: 0; text-align: start !important; font-size: .875rem; color: var(--bs-secondary-color); }
+	.nuDashTable > table > tbody > tr > td:first-child { flex: 1 0 100%; font-size: 1rem; font-weight: 600; color: var(--bs-body-color); }
+	.nuDashTable > table > tbody > tr > td:not(:first-child)::before { content: attr(data-nu-label) ": "; font-weight: 500; }
+}
+/* admin role rights (review F4): on phones every right is one row – its name, then None · View · Change as a segmented control */
+.admLvl { display: inline-flex; align-items: center; gap: .35rem; margin: 0; cursor: pointer; }
+.admLvlTxt { display: none; }
+@media (max-width: 575.98px) {
+	#admRights > thead { display: none; }
+	#admRights > tbody > tr.nuAdmRight { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; padding: .55rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
+	#admRights > tbody > tr.nuAdmRight > td { display: block; border: 0; padding: 0; }
+	#admRights > tbody > tr.nuAdmRight > td:first-child { flex: 1 0 100%; white-space: normal; padding-inline-start: 0 !important; }
+	#admRights { min-width: 0 !important; }
+	#admRights > tbody > tr:not(.nuAdmRight) > td { white-space: normal; }
+	#admRights > tbody > tr.nuAdmRight > td.admLvlCell:empty { display: none; }
+	#admRights .admLvl { border: 1px solid var(--bs-border-color); border-radius: 2rem; padding: .35rem .8rem; min-height: 40px; }
+	#admRights .admLvl:has(:checked) { background: var(--bs-primary-bg-subtle); border-color: var(--bs-primary-border-subtle); font-weight: 600; }
+	#admRights .admLvl:has(:disabled) { opacity: .55; cursor: not-allowed; }
+	#admRights .admLvlTxt { display: inline; font-size: .875rem; }
+}

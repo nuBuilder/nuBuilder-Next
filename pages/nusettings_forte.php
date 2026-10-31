@@ -92,11 +92,9 @@ $control = static function (array $r, string $value, bool $invalid) use ($aceThe
 
 nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings' => 'forte']);
 ?>
-<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('settings')) ?>"><?= h(t('set_title')) ?></a></li>
-	<li class="breadcrumb-item active" aria-current="page"><?= h(t('sh_forte')) ?></li>
-</ol></nav>
+<?= nu_page_header(t('sh_forte'), ['icon' => 'bi-gear-wide-connected', 'sub' => t('set_hint'),
+	'buttons' => $available ? '<button class="btn nuBtnAct nuBtnSave" type="submit" form="setForm" id="setSave" data-nu-save><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>'
+		. '<button class="btn btn-outline-secondary" type="submit" form="setImport" id="setImportBtn" title="' . h(t('set_import_hint')) . '"><i class="bi bi-box-arrow-in-down me-1"></i>' . h(t('set_import')) . '</button>' : '']) ?>
 
 <?php if (!$available): ?>
 	<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('set_missing', NuSettings::database())) ?>
@@ -115,14 +113,6 @@ nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings'
 </form>
 
 <div class="card shadow-sm nuListCard">
-	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold"><?= h(t('sh_forte')) ?></h1>
-		<div class="nuTitleSub text-body-secondary small"><?= h(t('set_hint')) ?></div>
-		<div class="d-flex gap-2"><?= nu_back_button() ?>
-			<button class="btn nuBtnAct nuBtnSave" type="submit" form="setForm" id="setSave" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
-			<button class="btn btn-outline-secondary" type="submit" form="setImport" id="setImportBtn" title="<?= h(t('set_import_hint')) ?>"><i class="bi bi-box-arrow-in-down me-1"></i><?= h(t('set_import')) ?></button>
-		</div>
-	</div>
 	<?php if (!$fromDb): ?>
 		<div class="alert alert-warning small rounded-0 border-start-0 border-end-0 mb-0 d-flex flex-wrap align-items-center gap-2">
 			<span class="flex-grow-1"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('set_not_used')) ?></span>

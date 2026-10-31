@@ -58,7 +58,7 @@ if (nu_is_post()) {
 		}
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next user fields: ' . $e->getMessage());
-		nu_flash('danger', t('uf_err_save') . ' ' . (NuAuth::user()['globeadmin'] || nu_cfg('nuConfigDebug') ? $e->getMessage() : ''));
+		nu_flash('danger', t('uf_err_save') . ' ' . (NuAuth::user()['globeadmin'] || nu_debug() ? $e->getMessage() : ''));
 		if ($action !== 'save') nu_redirect(nu_url('userfields'));
 	}
 }

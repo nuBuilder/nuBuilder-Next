@@ -62,11 +62,14 @@ $canDelete = NuAcl::can(NuAcl::FORM_DEBUG, 'delete');
 /** Message as text: nuBuilder's "<br>" after the header line is dropped, " <html>" messages are shown as source. */
 function nu_debug_text(string $m): string
 {
-	return trim(preg_replace("/\n\n<br>\n/", "\n", $m, 1) ?? $m);
+	$m = preg_replace("/\n\n<br>\n/", "\n", $m, 1) ?? $m;
+	// nuBuilder Forte writes a little HTML (<b>nuRunQuery</b>, <br>) – shown as text it read as raw tags (review D8)
+	$m = preg_replace('~<br\s*/?>~i', "\n", $m) ?? $m;
+	return trim(preg_replace('~</?(b|i|strong|em|u|pre|code)>~i', '', $m) ?? $m);   // only these tags: SQL in the text may hold "<" 
 }
 
 NuListExport::handle(NuAcl::FORM_DEBUG, t('debug_title'), [
-	t('log_time')      => static fn($r) => $r['deb_added'] ? date('d.m.Y H:i:s', (int)$r['deb_added']) : '',
+	t('log_time')      => static fn($r) => $r['deb_added'] ? date(nu_dfmt('d.m.Y H:i:s'), (int)$r['deb_added']) : '',
 	t('debug_flag')    => static fn($r) => $hasFlag ? $r['deb_flag'] : '',
 	t('user')          => static fn($r) => $hasUser ? ((string)($r['sus_login_name'] ?? '') ?: (string)($r['deb_user_id'] ?? '')) : '',
 	t('log_details')   => static fn($r) => nu_debug_text((string)$r['deb_message']),
@@ -86,7 +89,7 @@ nu_layout_start(t('debug_title'), 'log');
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<?php // Back · Refresh · Print in one style (0.8.262); the auto refresh switch at the right end, on phones in its own row ?>
 		<a class="btn nuBtnAct" href="<?= h(nu_url('debug', $keep)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
-		<?= NuListExport::buttons(NuAcl::FORM_DEBUG, 'debug', $keep, false, 'nuBtnAct') ?>
+		<?= $total > 0 ? NuListExport::buttons(NuAcl::FORM_DEBUG, 'debug', $keep, false, 'nuBtnAct') : '' /* no records: nothing to export (0.8.749) */ ?>
 		<?php if ($canDelete && $total): ?>
 			<form method="post" class="d-inline" data-confirm="<?= h(t('debug_delete_all_confirm')) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete_all">
@@ -141,7 +144,7 @@ nu_layout_start(t('debug_title'), 'log');
 				<div class="list-group-item debugRow">
 					<div class="d-flex flex-wrap gap-2 align-items-center mb-1">
 						<?php if ($canDelete): ?><input class="form-check-input mt-0 debugSel" type="checkbox" name="ids[]" value="<?= h($r['zzzzsys_debug_id']) ?>" aria-label="<?= h(t('debug_select')) ?>"><?php endif; ?>
-						<span class="small fw-semibold text-nowrap"><?= $r['deb_added'] ? h(date('d.m.Y H:i:s', (int)$r['deb_added'])) : '' ?></span>
+						<span class="small fw-semibold text-nowrap"><?= $r['deb_added'] ? h(date(nu_dfmt('d.m.Y H:i:s'), (int)$r['deb_added'])) : '' ?></span>
 						<?php if ($who !== ''): ?><span class="small text-body-secondary"><i class="bi bi-person me-1"></i><?= h($who) ?></span><?php endif; ?>
 						<?php if ($hasFlag && (string)$r['deb_flag'] !== ''): ?><span class="badge bg-warning-subtle text-warning-emphasis"><?= h($r['deb_flag']) ?></span><?php endif; ?>
 						<span class="small text-body-secondary text-truncate debugFirst me-auto"><?= h(preg_replace('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - /', '', $first)) ?></span>

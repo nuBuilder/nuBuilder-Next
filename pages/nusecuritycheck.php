@@ -26,7 +26,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	$changed = NuSecurity::save($in);
 	if ($changed) NuLog::write('security_saved', 'zzzzsys_nunext_setting', NuSecurity::SETTING, ['fields' => array_map(static fn($c) => [json_encode($c[0]), json_encode($c[1])], $changed)]);
 	nu_flash('success', $changed ? t('secchk_saved') : t('set_saved_none'));
-	nu_redirect(nu_url('securitycheck'));
+	nu_redirect(nu_url('securitycheck', ['tab' => 'settings']) . '#settings');
 }
 
 $checks = NuSecurity::checks();
@@ -35,19 +35,18 @@ $set = NuSecurity::settings();
 $icon = ['ok' => 'bi-check-circle-fill text-success', 'warn' => 'bi-exclamation-triangle-fill text-warning', 'bad' => 'bi-x-octagon-fill text-danger', 'info' => 'bi-info-circle-fill text-info'];
 $tip = static fn(string $text): string => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
 
+$secTab = ($_GET['tab'] ?? '') === 'settings' ? 'settings' : 'checks';
 nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'settings' => 'security']);
 ?>
-<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
-	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
-	<li class="breadcrumb-item active" aria-current="page"><?= h(t('secchk_title')) ?></li>
-</ol></nav>
-<div class="nuTitleBar mb-3">
-	<h1 class="h3 mb-0"><i class="bi bi-shield-check me-2"></i><?= h(t('secchk_title')) ?></h1>
-	<div class="nuTitleSub text-body-secondary small"><?= h(t('secchk_hint')) ?></div>
-	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
-		<?php if (empty($u['demo'])): ?><button class="btn nuBtnAct nuBtnSave" type="submit" form="secSettings" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?></div>
-</div>
-
+<?= nu_page_header(t('secchk_title'), ['icon' => 'bi-shield-check', 'sub' => t('secchk_hint'),
+	'buttons' => empty($u['demo']) ? '<button class="btn nuBtnAct nuBtnSave" type="submit" form="secSettings" id="secSaveBtn" data-nu-save' . ($secTab === 'settings' ? '' : ' hidden') . '><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
+<?php // two tabs (review E2): the report (checks + file test) and the settings with their Save in the title bar – before, the switches sat far below ?>
+<ul class="nav nav-tabs mb-3" id="secTabs" role="tablist" data-nu-hash-tabs data-nu-tab-restore>
+	<li class="nav-item" role="presentation"><button class="nav-link<?= $secTab === 'checks' ? ' active' : '' ?>" id="secTabBtn-checks" data-bs-toggle="tab" data-bs-target="#secPane-checks" data-nu-tab="checks" type="button" role="tab" aria-controls="secPane-checks" aria-selected="<?= $secTab === 'checks' ? 'true' : 'false' ?>"><i class="bi bi-list-check me-1" aria-hidden="true"></i><?= h(t('secchk_checks')) ?></button></li>
+	<li class="nav-item" role="presentation"><button class="nav-link<?= $secTab === 'settings' ? ' active' : '' ?>" id="secTabBtn-settings" data-bs-toggle="tab" data-bs-target="#secPane-settings" data-nu-tab="settings" type="button" role="tab" aria-controls="secPane-settings" aria-selected="<?= $secTab === 'settings' ? 'true' : 'false' ?>"><i class="bi bi-toggles me-1" aria-hidden="true"></i><?= h(t('secchk_settings')) ?></button></li>
+</ul>
+<div class="tab-content">
+<div class="tab-pane fade<?= $secTab === 'checks' ? ' show active' : '' ?>" id="secPane-checks" role="tabpanel" aria-labelledby="secTabBtn-checks" tabindex="0">
 <div class="card shadow-sm mb-4" id="secChecks">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><?= h(t('secchk_checks')) ?></span>
@@ -85,10 +84,12 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'setti
 	<ul class="list-group list-group-flush js-probe-list"></ul>
 	<div class="card-body small text-body-secondary border-top js-probe-help" hidden>
 		<p class="mb-1"><?= h(t('secchk_probe_help')) ?></p>
-		<pre dir="ltr" class="mb-0 small bg-body-tertiary p-2 rounded"><code><?= h("# Apache (virtual host or apache2.conf): let nuBuilder Next's .htaccess files work\n<Directory " . dirname(NU_ROOT) . ">\n\tAllowOverride All\n</Directory>\n\n# nginx (server block)\nlocation ~ ^" . rtrim(NuSecurity::cookiePath(), '/') . "/(core|pages|lang|install|docs|dev|_backup|_install|temp)/ { deny all; }\nlocation ~ ^" . rtrim(NuSecurity::cookiePath(), '/') . "/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|cron\\.php)$ { deny all; }\nlocation ~ /NUNEXT-VERSION\\.txt$ { deny all; }") ?></code></pre>
+		<pre dir="ltr" class="mb-0 small bg-body-tertiary p-2 rounded"><code><?= h(NuSecurity::serverRules(dirname(NU_ROOT), rtrim(NuSecurity::cookiePath(), '/'))) ?></code></pre>
 	</div>
 </div>
 
+</div>
+<div class="tab-pane fade<?= $secTab === 'settings' ? ' show active' : '' ?>" id="secPane-settings" role="tabpanel" aria-labelledby="secTabBtn-settings" tabindex="0">
 <form method="post" action="<?= h(nu_url('securitycheck')) ?>" class="card shadow-sm mb-4" id="secSettings" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
@@ -116,5 +117,7 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'setti
 		</fieldset>
 	</div>
 </form>
+</div>
+</div>
 <?php
 nu_layout_end('<script src="' . nu_asset('assets/js/nusecuritycheck.js') . '"></script>');

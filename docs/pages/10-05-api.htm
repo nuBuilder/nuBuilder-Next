@@ -1,8 +1,8 @@
 <section id="api" data-doc="admin">
 	<h2 id="api-h">REST API</h2>
-	<p class="doc-lead">JSON API for users, access levels, permission items and reports.</p>
+	<p class="doc-lead">JSON API for users, access levels, permission items, reports (PDF), notifications, data exports and updates.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>JSON API for users, access levels with their form rights, permission items and reports (PDF): <code>api.php/v1/…</code> (no URL rewriting needed). Switch it on with <code>$nuConfigApi = true</code> in <code>nuconfig.php</code> and set a long random <code>$nuConfigSecretKey</code>. HTTPS only (localhost excepted; <code>$nuConfigApiAllowHttp = true</code> for tests). Access tokens live <code>$nuConfigApiTokenMinutes</code> minutes (default 15).</p>
+	<p>JSON API for users, access levels with their form rights, permission items, reports (PDF), notifications, saved data exports and updates: <code>api.php/v1/…</code> (no URL rewriting needed). Switch it on with <code>$nuConfigApi = true</code> in <code>nuconfig.php</code> and set a long random <code>$nuConfigSecretKey</code>. HTTPS only (localhost excepted; <code>$nuConfigApiAllowHttp = true</code> for tests). Access tokens live <code>$nuConfigApiTokenMinutes</code> minutes (default 15).</p>
 <h3 class="h6 mt-3" id="api-new-client">Create a client – step by step</h3>
 <ol>
 <li><strong>Switch the API on</strong>: <em>Admin tools → API clients</em> shows a notice while it is off – <em>Switch the API on</em> sets <code>$nuConfigApi = true</code> in <code>nuconfig.php</code>. A second notice asks for <code>$nuConfigSecretKey</code>: <em>Generate key</em> makes a long random key and writes it there (without it secrets and tokens are hashed without a key).</li>
@@ -13,13 +13,13 @@
 <li><strong>Save</strong> – the page shows the <code>client_id</code> and the <code>client_secret</code>. <strong>Copy the secret now</strong>: it is shown only this once (later it can only be replaced with <em>New secret</em>).</li>
 <li><strong>Test</strong> it in the <a href="#api-playground">API playground</a> (choose the client, <code>GET /v1/me</code>, <em>Send</em>), or fetch a token yourself with the <code>curl</code> request below and call <code>api.php/v1/…</code> with <code>Authorization: Bearer …</code>.</li>
 </ol>
-<h3 class="h6 mt-3">Clients – <em>Admin tools → API clients</em></h3>
+<h3 class="h6 mt-3" id="api-clients">Clients and scopes – <em>Admin tools → API clients</em></h3>
 <ul>
 <li>The list works like the other system lists: list views, search, filters by status (active, inactive, expired) and scope, print and export, cards on phones. The scopes of a client sit behind a small button with their number – a click shows the list.</li>
-<li>A client has a public <code>client_id</code> and a <code>client_secret</code> that is shown <strong>once</strong> (copy it right away). Only HMAC hashes of secrets and tokens are stored.</li>
-<li><strong>Service user</strong>: each client acts as its own user (<em>New service user</em> or <em>Existing user</em>). The rights of that user's access level apply exactly as in the browser (view / save / add / delete on <code>nuuser</code>, <code>nuaccess</code>, <code>nupermissionitem</code>). A service user can no longer log in, and neither it nor its access level can be changed through the API.</li>
-<li><strong>Scopes</strong>: what the client may do at all – <code>users:read</code>, <code>users:write</code>, <code>users:password</code>, <code>users:login_link</code>, <code>reports:run</code>, <code>notifications:write</code>, <code>access:read</code>, <code>access:write</code>, <code>permissions:read</code>, <code>permissions:write</code>. A request needs the scope <em>and</em> the right of the access level.</li>
-<li>Optional: allowed IP addresses / networks, requests per minute (default 120, then <code>429</code>), expiry date. <em>New secret</em> (the old one stays valid 24 h or ends at once), <em>Revoke all tokens</em>, <em>Delete</em>. Every token and request is logged (Log: <em>API token issued / refused</em>, <em>API read / change</em>).</li>
+<li><strong>Secrets</strong>: only HMAC hashes of secrets and tokens are stored. <em>New secret</em> (the old one stays valid 24 h or ends at once), <em>Revoke all tokens</em>, <em>Delete</em>.</li>
+<li><strong>Service user</strong>: the rights of its access level apply exactly as in the browser (view / save / add / delete on <code>nuuser</code>, <code>nuaccess</code>, <code>nupermissionitem</code>; report rights; admin rights for exports). A service user can no longer log in, and neither it nor its access level can be changed through the API.</li>
+<li><strong>Scopes</strong>: <code>users:read</code>, <code>users:write</code>, <code>users:password</code>, <code>users:login_link</code>, <code>access:read</code>, <code>access:write</code>, <code>permissions:read</code>, <code>permissions:write</code>, <code>reports:run</code>, <code>notifications:write</code>, <code>exports:run</code> (saved data exports), <code>system:update</code> (updates).</li>
+<li><strong>Limits</strong>: requests per minute (default 120, then <code>429</code>). Every token and request is logged (Log: <em>API token issued / refused</em>, <em>API read / change</em>).</li>
 </ul>
 <h3 class="h6 mt-3">Access token (OAuth 2.0 client credentials)</h3>
 <pre class="nuApiExample"><code>curl -u 'nk_…:ns_…' -d grant_type=client_credentials https://example.com/nunext/api.php/v1/token
@@ -31,25 +31,36 @@ curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/us
 <table class="table table-sm small">
 <thead><tr><th>Method and path</th><th>Scope</th><th>Notes</th></tr></thead>
 <tbody>
+<tr><th colspan="3">Client</th></tr>
 <tr><td><code>GET /v1/me</code></td><td>–</td><td>client, scopes, service user</td></tr>
+<tr><th colspan="3">Users</th></tr>
 <tr><td><code>GET /v1/users</code></td><td>users:read</td><td><code>q</code>, <code>state</code> (active / expired / all), <code>access_level_id</code>, <code>login</code>, <code>email</code>, <code>sort</code> (login / name / email), <code>limit</code> (max 200), <code>offset</code></td></tr>
-<tr><td><code>GET /v1/users/{id}</code></td><td>users:read</td><td>fields: login, name, first_name, last_name, code, email, position, department, team, additional1, additional2, language, access_level_id, expires_on, change_password (+ read only: access_level_code, expired, service_user, password_changed_at)</td></tr>
+<tr><td><code>GET /v1/users/{id}</code></td><td>users:read</td><td>fields: login, name, first_name, last_name, code, email, position, department, team, additional1, additional2, language, access_level_id, expires_on, change_password, fields (custom user fields as {code: value}; also accepted on POST / PATCH) (+ read only: access_level_code, expired, service_user, password_changed_at). The <em>Created</em> / <em>Last changed</em> stamps of the users list are not returned.</td></tr>
 <tr><td><code>POST /v1/users</code></td><td>users:write</td><td>login, name and access_level_id required; <code>password</code> needs users:password (without one the user must use a welcome link); <code>permissions</code>: list of item ids or idents</td></tr>
 <tr><td><code>PATCH /v1/users/{id}</code></td><td>users:write</td><td>only the fields sent</td></tr>
 <tr><td><code>DELETE /v1/users/{id}</code></td><td>users:write</td><td>archives (Valid until = yesterday, Save right); <code>?hard=1</code> deletes (Delete right)</td></tr>
 <tr><td><code>POST /v1/users/{id}/password</code></td><td>users:password</td><td><code>{"password": "…", "change_password": true}</code> or <code>{"welcome": true}</code> (welcome e-mail with a link)</td></tr>
 <tr><td><code>POST /v1/users/{id}/login-link</code></td><td>users:login_link</td><td><code>{"minutes": 1440, "form_id": "…", "record_id": "…", "email": false}</code> → 201 <code>{"url": "…", "expires_at": "…Z" | null, "emailed": false}</code> – one-time login link (minutes 0 = no expiry); <code>DELETE</code> removes the user's token. Needs the save right on the user form.</td></tr>
 <tr><td><code>GET / PUT /v1/users/{id}/permissions</code></td><td>permissions:read / write</td><td><code>{"items": ["sample_discount", …]}</code> – the complete list</td></tr>
+<tr><th colspan="3">Access levels</th></tr>
 <tr><td><code>GET, POST /v1/access-levels</code>, <code>GET, PATCH, DELETE /v1/access-levels/{id}</code></td><td>access:read / write</td><td>code, description, group, home_form_id, use_2fa; DELETE only without users (<code>409</code>)</td></tr>
 <tr><td><code>GET / PUT /v1/access-levels/{id}/forms</code></td><td>access:read / write</td><td><code>{"forms": [{"form_id": "nuuser", "add": true, "save": true, "delete": false, "clone": false, "new": true, "print": false}]}</code> – replaces the rights</td></tr>
+<tr><th colspan="3">Permission items</th></tr>
 <tr><td><code>GET, POST /v1/permission-items</code>, <code>GET, PATCH, DELETE /v1/permission-items/{id}</code></td><td>permissions:read / write</td><td>ident, group, description</td></tr>
-</tbody>
+<tr><th colspan="3">Reports</th></tr>
 <tr><td><code>GET /v1/reports</code></td><td>reports:run</td><td>Reports the service user's access level may run: id, code, description, data source and <code>params</code> – the hash variables (<code>#name#</code>) its data source and layout use</td></tr>
 <tr><td><code>POST /v1/reports/{id or code}/run</code></td><td>reports:run</td><td>Runs the report – see <a href="#api-reports">Reports and PDF links</a></td></tr>
+<tr><td><code>GET /v1/reports/jobs/{job}</code></td><td>reports:run</td><td>Status of a run with <code>"async": true</code>: <code>queued</code>, <code>running</code>, <code>done</code> (with <code>result</code>) or <code>failed</code> (with <code>error</code>)</td></tr>
+<tr><th colspan="3">Notifications</th></tr>
 <tr><td><code>POST /v1/notifications</code></td><td>notifications:write</td><td>Creates and publishes a notification (<code>"draft": true</code> = draft) – fields as in <a href="#notifications-send">Sending notifications</a>, recipients in <code>"audience": {"all", "users", "departments", "teams", "positions", "access_levels", "exclude"}</code> (<code>exclude</code>: users left out); answers 201 with the notification</td></tr>
 <tr><td><code>GET /v1/notifications/{id}</code></td><td>notifications:write</td><td>State (draft, scheduled, published, expired, withdrawn), recipients, read and confirmed counts</td></tr>
 <tr><td><code>DELETE /v1/notifications/{id}</code></td><td>notifications:write</td><td>Deletes the notification and its read receipts (204)</td></tr>
-<tr><td><code>GET /v1/reports/jobs/{job}</code></td><td>reports:run</td><td>Status of a run with <code>"async": true</code>: <code>queued</code>, <code>running</code>, <code>done</code> (with <code>result</code>) or <code>failed</code> (with <code>error</code>)</td></tr>
+<tr><th colspan="3">Data exports</th></tr>
+<tr><td><code>GET /v1/exports</code></td><td>exports:run</td><td>The saved <a href="#data-export">data exports</a> with their datasets and parameters (the service user needs the admin right <em>Data export</em>)</td></tr>
+<tr><td><code>POST /v1/exports/{id or code}/run</code></td><td>exports:run</td><td><code>{"params": {"name": "value"}}</code> for the query's <code>#placeholders#</code>; answers with the file itself (.xlsx, .csv or .zip – <code>Content-Disposition</code>, header <code>X-Export-Rows</code>)</td></tr>
+<tr><th colspan="3">System</th></tr>
+<tr><td><code>GET, POST /v1/system/update</code>, <code>GET /v1/system/update/{job}</code></td><td>system:update</td><td>Check for / install a signed package without the browser – see <a href="#updating-p">Updating</a></td></tr>
+</tbody>
 </table>
 <p><strong>Rules</strong>: requests and answers are JSON (<code>Content-Type: application/json</code>); unknown fields are an error. Every record has an <code>ETag</code>; <code>PATCH</code>, <code>PUT</code> and <code>DELETE</code> need it in <code>If-Match</code> (<code>428</code> without, <code>412</code> when the record changed meanwhile; <code>*</code> skips the check). Lists: <code>{"data": […], "meta": {"total", "limit", "offset"}}</code>. Errors (RFC 9457): <code>{"type", "title", "status", "errors": [{"field", "message"}]}</code> – <code>401</code> token, <code>403</code> scope or right, <code>404</code>, <code>405</code>, <code>415</code>, <code>422</code> validation, <code>429</code> rate limit. Cross-origin (browser) requests are not allowed.</p>
 <h3 class="h6 mt-3" id="api-reports">Reports and PDF links</h3>

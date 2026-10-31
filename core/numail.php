@@ -694,7 +694,7 @@ final class NuMail
 			['tag' => $tag, 'user_id' => (NuAuth::currentRaw()['id'] ?? '') ?: null]);
 		if ($r[0]) return null;
 		error_log('nuBuilder Next mail: ' . $r[1] . ' ' . $r[2]);
-		return t('mail_failed') . (nu_cfg('nuConfigDebug') ? ' ' . $r[2] : '');
+		return t('mail_failed') . (nu_debug() ? ' ' . $r[2] : '');
 	}
 
 	/** Simple branded HTML mail body. */

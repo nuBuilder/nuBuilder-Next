@@ -5,10 +5,24 @@
 	<p><em>Forms → Tools → Translations</em>: texts of your forms in other languages (nuBuilder Forte's table <code>zzzzsys_translate</code> – created by the installer, and on older installations by an update step). They work as in nuBuilder Forte (4.x):</p>
 <ul>
 <li>A text is translated when <em>English</em> matches it exactly – object labels, button texts, tab titles, list column titles, form titles, and <code>nuTranslate()</code> in PHP and JavaScript.</li>
-<li>The reader's language is the language of his user (the globeadmin: the language in nuBuilder Forte's setup). If it is empty, it is English, as in nuBuilder Forte. English means no translation.</li>
+<li>The reader's language is the language of that user (the globeadmin: the language in nuBuilder Forte's setup). If it is empty, it is English, as in nuBuilder Forte. English means no translation.</li>
 <li>A text starting with <code>|</code> is never translated (the <code>|</code> is not shown).</li>
 <li>nuBuilder Forte's own translations (<em>nuBuilder Forte</em> badge) cannot be changed – <em>Override</em> creates your own translation, which wins.</li>
-<li>The <em>Missing</em> tab lists the texts of your forms that have no translation in a language yet, with where they are used; <em>Translate</em> opens a pre-filled new translation.</li>
+<li>The texts of <strong>fixed select options</strong> (<code>a|Apple|b|Banana</code>, lines or a JSON list) are translated too – only the shown text, the stored value stays. nuBuilder Forte shows them as entered. Options from SQL are data and are not translated.</li>
+<li>The <em>Missing</em> tab lists the texts of your forms that have no translation in a language yet, with where they are used; <em>Translate</em> opens a pre-filled new translation. Besides labels, tab titles, list column titles and form titles it finds the texts of fixed select options and the fixed texts of <code>nuTranslate('…')</code> calls in the form's code – its JavaScript, object events, HTML objects and its PHP hooks (a call with a value, such as <code>nuTranslate(text)</code>, cannot be found).</li>
+</ul>
+<div class="doc-sub" id="translations-form">
+<h3 id="translations-form-h">One form in every language</h3>
+<p>Choose a <strong>form</strong> on the <em>Missing</em> tab (or in design mode: form settings → <em>Tools</em> → <em>Translations</em>, which also shows how many are missing). The table then lists every text of the form and its sub-forms with its kind (label, tab, list column, choice, code) and a column per language – the translation, or <i class="bi bi-plus-lg"></i> to add it. The languages are the installed interface languages, the languages that already have translations and the languages of your users.</p>
+<p><strong>Translate with AI</strong> – with any AI chat (Claude, ChatGPT …); nothing is sent from nuBuilder Next:</p>
+<ol>
+<li>Tick the languages (those with gaps are ticked) and whether only texts without a translation go in, then click <em>Copy prompt</em>. The prompt is in English: rules for the AI (keep placeholders such as <code>%s</code>, hash variables and HTML, use the English text unchanged as the key, answer with JSON only), the texts as JSON with their context and the translations there already are, so the wording stays consistent.</li>
+<li>Paste the prompt into the chat, then paste the AI's whole answer into <em>The AI's answer</em> – text around the JSON or <code>```</code> fences do not matter – and click <em>Check</em>.</li>
+<li>The preview shows each translation as <em>New</em>, <em>Changes</em> (an own translation exists and is different), <em>Unchanged</em> or <em>Skipped</em> (not a text of this form, not one of the languages, empty or too long); a warning marks a translation whose placeholders or hash variables differ from the English text. Untick what you do not want and click <em>Save selected</em>.</li>
+</ol>
+<p>Saving needs the add right (new translations) or the save right (changed ones) on the translations; nuBuilder Forte's own translations are never changed – a translation of yours overrides them. The answer format is <code>{"format": "nunext-translate-1", "translations": {"German": {"Customer": "Kunde"}}}</code>, so a translation can also be written or edited by hand and pasted.</p>
+</div>
+<ul>
 <li>The design mode always shows and saves the original (English) texts.</li>
 </ul>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nutranslate.php</code></li><li><code>lang/</code></li></ul></details>

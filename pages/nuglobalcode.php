@@ -101,14 +101,8 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settin
 ?>
 <form method="post" action="<?= h(nu_url('globalcode')) ?>" id="scodeForm" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="tab" id="scodeTab" value="">
-	<div class="nuTitleBar mb-3">
-		<h1 class="h4 mb-0"><i class="bi bi-code-square me-2"></i><?= h(t('scode_title')) ?></h1>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
-			<?php if ($canChange): ?>
-				<button class="btn nuBtnAct nuBtnSave" type="submit" data-nu-save id="scodeSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
-			<?php endif; ?>
-		</div>
-	</div>
+	<?= nu_page_header(t('scode_title'), ['icon' => 'bi-code-square',
+		'buttons' => $canChange ? '<button class="btn nuBtnAct nuBtnSave" type="submit" data-nu-save id="scodeSave"><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
 	<div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('scode_warning')) ?></div>
 	<?php if ($row === null): ?><div class="alert alert-secondary small py-2"><i class="bi bi-info-circle me-1"></i><?= h(t('scode_missing')) ?></div><?php endif; ?>
 	<?php // two groups (0.8.523): Form pages = nuBuilder's Setup fields, All pages = Global JS & CSS

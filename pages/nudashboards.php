@@ -90,16 +90,11 @@ if ($d && $wid !== '') {
 	$sel = static fn(bool $on) => $on ? ' selected' : '';
 	nu_layout_start(t('dash_w_title'), 'home', ['head' => nu_ts_head()]);
 	?>
-	<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li class="breadcrumb-item"><a href="<?= h(nu_url('dashboards')) ?>"><?= h(t('dash_title')) ?></a></li>
-		<li class="breadcrumb-item"><a href="<?= h(nu_url('dashboards', ['id' => $id])) ?>"><?= h($d['code']) ?></a></li><li class="breadcrumb-item active" aria-current="page"><?= h($w ? ($w['title'] ?: '–') : t('dash_w_new')) ?></li></ol></nav>
-	<div class="card shadow-sm nuListCard">
-		<div class="card-header nuListHead nuTitleBar">
-			<h1 class="h5 mb-0 fw-semibold"><?= h(t('dash_w_title')) ?></h1>
-			<div class="d-flex flex-wrap gap-2"><?= nu_back_button('dashboards', nu_url('dashboards', ['id' => $id])) ?>
-				<button class="btn nuBtnAct nuBtnSave" type="submit" form="dashWForm" data-nu-save id="dashWSave"><i class="bi bi-floppy"></i><?= h(t('save')) ?></button>
-				<button class="btn nuBtnAct" type="button" id="dashTest"><i class="bi bi-play-fill"></i><?= h(t('dash_test')) ?></button>
-			</div>
-		</div>
+	<?= nu_page_header($w ? ((string)$w['title'] ?: '–') : t('dash_w_new'), ['icon' => 'bi-bar-chart', 'sub' => t('dash_w_title'), 'back' => nu_url('dashboards', ['id' => $id]),
+		'crumbs' => [[t('dash_title'), nu_url('dashboards')], [(string)$d['code'], nu_url('dashboards', ['id' => $id])]],
+		'buttons' => '<button class="btn nuBtnAct nuBtnSave" type="submit" form="dashWForm" data-nu-save id="dashWSave"><i class="bi bi-floppy"></i>' . h(t('save')) . '</button>'
+			. '<button class="btn nuBtnAct" type="button" id="dashTest"><i class="bi bi-play-fill"></i>' . h(t('dash_test')) . '</button>']) ?>
+	<div class="card shadow-sm">
 		<div class="card-body">
 			<form method="post" action="<?= h(nu_url('dashboards', ['id' => $id, 'w' => $wid])) ?>" id="dashWForm" novalidate data-nu-guard>
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="wsave">
@@ -256,24 +251,16 @@ $widgets = $d ? NuDashboard::widgets($id) : [];
 $usage = $d ? NuDashboard::usage((string)$d['code']) : [];
 nu_layout_start(t('dash_title'), 'home');
 ?>
-<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li class="breadcrumb-item"><a href="<?= h(nu_url('dashboards')) ?>"><?= h(t('dash_title')) ?></a></li>
-	<li class="breadcrumb-item active" aria-current="page"><?= h($d ? $d['code'] : t('dash_new')) ?></li></ol></nav>
 <?php if ($d): ?>
 <form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" id="dashCopy"><?= nu_csrf_field() ?><input type="hidden" name="action" value="copy"></form>
 <form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" id="dashDelete" data-confirm="<?= h(t('dash_delete_confirm')) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete"></form>
 <?php endif; ?>
-<div class="card shadow-sm nuListCard">
-	<div class="card-header nuListHead nuTitleBar">
-		<h1 class="h5 mb-0 fw-semibold"><i class="bi bi-speedometer2 me-2"></i><?= h(t('dash_title_one')) ?></h1>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button('dashboards', nu_url('dashboards')) ?>
-			<button class="btn nuBtnAct nuBtnSave" type="submit" form="dashForm" data-nu-save id="dashSave"><i class="bi bi-floppy"></i><?= h(t('save')) ?></button>
-			<?php if ($d): ?>
-				<button class="btn nuBtnAct" type="submit" form="dashCopy"><i class="bi bi-copy"></i><?= h(t('clone')) ?></button>
-				<button class="btn nuBtnAct nuBtnDel" type="submit" form="dashDelete"><i class="bi bi-trash"></i><?= h(t('delete')) ?></button>
-				<?= NuFormInfo::record(NuDashboard::TD, (string)$id, ['code' => (string)($d['code'] ?? '')]) /* (i) record info (0.8.501) */ ?>
-			<?php endif; ?>
-		</div>
-	</div>
+<?= nu_page_header($d ? (string)$d['code'] : t('dash_new'), ['icon' => 'bi-speedometer2', 'sub' => t('dash_title_one'), 'back' => nu_url('dashboards'), 'crumbs' => [[t('dash_title'), nu_url('dashboards')]],
+	'buttons' => '<button class="btn nuBtnAct nuBtnSave" type="submit" form="dashForm" data-nu-save id="dashSave"><i class="bi bi-floppy"></i>' . h(t('save')) . '</button>'
+		. ($d ? '<button class="btn nuBtnAct" type="submit" form="dashCopy"><i class="bi bi-copy"></i>' . h(t('clone')) . '</button>'
+			. '<button class="btn nuBtnAct nuBtnDel" type="submit" form="dashDelete"><i class="bi bi-trash"></i>' . h(t('delete')) . '</button>'
+			. NuFormInfo::record(NuDashboard::TD, (string)$id, ['code' => (string)($d['code'] ?? '')]) : '')]) ?>
+<div class="card shadow-sm">
 	<div class="card-body">
 		<form method="post" action="<?= h(nu_url('dashboards', ['id' => $d ? $id : 'new'])) ?>" id="dashForm" novalidate data-nu-guard>
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">

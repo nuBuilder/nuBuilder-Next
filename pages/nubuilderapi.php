@@ -349,6 +349,10 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 			NuFormDraft::undo($store->draftId, $store->rev);
 			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));
 
+		case 'draft.redo':                                    // review H2 (0.8.765)
+			NuFormDraft::redo($store->draftId, $store->rev);
+			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));
+
 		case 'draft.settings':
 			NuFormDraft::setPreviewSaves($store->draftId, !empty($in['preview_saves']));
 			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));

@@ -30,7 +30,7 @@ if (nu_is_post() && nu_post('action') === 'preview') {
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next report preview ' . $report['sre_code'] . ': ' . $e->getMessage());
 		$u = NuAuth::user();                                 // details (SQL, file paths) only for the globeadmin or with $nuConfigDebug
-		NuReport::fail(t('rpt_err_run', (string)$report['sre_code']) . (($u['globeadmin'] && empty($u['demo'])) || nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : ''));
+		NuReport::fail(t('rpt_err_run', (string)$report['sre_code']) . (($u['globeadmin'] && empty($u['demo'])) || nu_debug() ? ' ' . $e->getMessage() : ''));
 	}
 	NuReport::send($pdf, (string)$report['sre_code']);
 }
@@ -57,7 +57,7 @@ if (nu_is_post() && in_array(nu_post('action'), ['save', 'fields'], true)) {
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next report designer ' . $report['sre_code'] . ': ' . $e->getMessage());
 		$u = NuAuth::user();
-		$out(['ok' => false, 'message' => ($u['globeadmin'] && empty($u['demo'])) || nu_cfg('nuConfigDebug') ? $e->getMessage() : t('err_unexpected')], 200);
+		$out(['ok' => false, 'message' => ($u['globeadmin'] && empty($u['demo'])) || nu_debug() ? $e->getMessage() : t('err_unexpected')], 200);
 	}
 }
 

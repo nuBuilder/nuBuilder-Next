@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.747",
+    "version": "0.8.767",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -389,6 +389,33 @@
                     "what": "created when missing"
                 }
             ]
+        },
+        {
+            "id": "0030-data-export",
+            "description": "Data export: saved exports (zzzzsys_nunext_export)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_export",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0031-log-indexes",
+            "description": "Indexes on the log (object + record, user + event + time, login, object) and the audit trail (login): record info, log filters, last login of the users list",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_log",
+                    "kind": "index",
+                    "what": "ix_zzzzsys_nunext_log_object_record (object, record_id), ix_zzzzsys_nunext_log_user_event (user_id, event, log_time), login, object when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_audit",
+                    "kind": "index",
+                    "what": "login when missing"
+                }
+            ]
         }
     ],
     "own_tables": {
@@ -436,7 +463,9 @@
             ],
             "index": [
                 "log_time",
-                "event"
+                "event",
+                "login",
+                "object"
             ]
         },
         "zzzzsys_nunext_form_history": {
@@ -508,6 +537,10 @@
                 ],
                 [
                     "undo_list",
+                    "longtext"
+                ],
+                [
+                    "redo_list",
                     "longtext"
                 ],
                 [
@@ -687,7 +720,8 @@
                 ]
             ],
             "index": [
-                "last_seen"
+                "last_seen",
+                "user_id"
             ]
         },
         "zzzzsys_nunext_token": {
@@ -1162,7 +1196,8 @@
                 "table_name",
                 "record_id",
                 "parent_id",
-                "user_id"
+                "user_id",
+                "login"
             ]
         },
         "zzzzsys_nunext_notification": {
@@ -1530,6 +1565,73 @@
             ],
             "index": [
                 "call_id"
+            ]
+        },
+        "zzzzsys_nunext_export": {
+            "pk": "zzzzsys_nunext_export_id",
+            "cols": [
+                [
+                    "code",
+                    "text",
+                    "50"
+                ],
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "description",
+                    "text",
+                    "1000"
+                ],
+                [
+                    "format",
+                    "text",
+                    "10"
+                ],
+                [
+                    "filename",
+                    "text",
+                    "100"
+                ],
+                [
+                    "options",
+                    "longtext"
+                ],
+                [
+                    "datasets",
+                    "longtext"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "last_run_at",
+                    "datetime"
+                ],
+                [
+                    "runs",
+                    "int"
+                ]
+            ],
+            "index": [
+                "code"
             ]
         },
         "zzzzsys_nunext_theme": {

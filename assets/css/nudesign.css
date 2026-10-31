@@ -215,3 +215,10 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsBadgeRule { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.2rem auto; gap: .3rem; align-items: center; }
 .nuDsBadgeRule .form-control-color { padding: .15rem; height: calc(1.5em + .5rem + 2px); }
 .nuDsBadgeRules #nuDsBadgeAdd { align-self: flex-start; }
+
+/* list design "+" (review H3): choose the column first */
+.nuDsColPick { z-index: 1030; width: 18rem; max-width: calc(100vw - 16px); padding: .5rem; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .5rem; box-shadow: var(--bs-box-shadow); }
+.nuDsColPickList { max-height: 16rem; overflow-y: auto; }
+.nuDsColPickList .dropdown-item { border-radius: .3rem; font-size: .875rem; }
+/* messages of the form's own code in design mode (review H1) */
+.nuDsFormMsgs .nuDsFormMsgsN { font-variant-numeric: tabular-nums; }

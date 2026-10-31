@@ -34,13 +34,13 @@ final class NuHome
 	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'email', 'emailtemplates',
-		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
+		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'dataexport', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
 		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
 	public const ADMIN_GROUPS = [
 		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest', 'dbreset']],
 		'g_adm_look'   => ['home_group_look', ['branding', 'themes', 'dashboards']],
-		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'cloner', 'appcloner', 'sample']],
+		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'dataexport', 'cloner', 'appcloner', 'sample']],
 		'g_adm_int'    => ['home_group_integration', ['apiclients', 'webhooks', 'prompts', 'compat']],
 	];
 	/**
@@ -59,7 +59,7 @@ final class NuHome
 				['g_code', 'home_pf_g_code', 't_build', ['procedures', 's_proc_new', 'reports', 's_report_new', 's_sqlbuilder', 'prompts']],
 				// the pages Debug and Log – not the tile "Log" (it opens Debug; next to the page Log there would be two tiles called "Log")
 				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
-				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'cloner', 'appcloner', 'sample']],
+				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'dataexport', 'cloner', 'appcloner', 'sample']],
 				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest', 'dbreset']],
 				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'webhooks', 'compat', 's_mail_test']],
 			],
@@ -166,7 +166,8 @@ final class NuHome
 			'branding'      => ['branding', 'bi-palette', t('brand_title'), t('brand_card_hint')],
 			'themes'        => ['themes', 'bi-brush', t('theme_title'), t('theme_card_hint')],
 			'dashboards'    => ['dashboards', 'bi-speedometer2', t('dash_title'), t('dash_card_hint')],
-			'import'        => ['import', 'bi-filetype-csv', t('imp_title'), t('imp_card_hint')],
+			'import'        => ['import', 'bi-file-earmark-arrow-up', t('imp_title'), t('imp_card_hint')],
+			'dataexport'    => ['dataexport', 'bi-file-earmark-arrow-down', t('dxp_title'), t('dxp_card_hint')],
 			'cloner'        => ['cloner', 'bi-files', t('cl_title'), t('cl_card_hint')],   // 0.8.633: a tile of its own (before: only Forms ▾ → Clone form)
 			'appcloner'     => ['appcloner', 'bi-copy', t('ac_title'), t('ac_card_hint')],
 			'sample'        => ['sample', 'bi-box-seam', t('smp_title'), t('smp_card_hint'), $b['sample'] ?? null],
@@ -256,7 +257,7 @@ final class NuHome
 			's_sqlbuilder_new' => [nu_url('sqlbuilder', ['id' => 'new']), 'bi-plus-lg', t('sqb_new'), 'reports'],
 			's_form_new'      => [nu_url('builder', ['new' => '1']), 'bi-plus-lg', t('builder_new_form'), 'forms'],
 			's_form_clone'    => [nu_url('cloner'), 'bi-files', t('home_clone_form'), 'forms'],
-			'import'          => [nu_url('import'), 'bi-filetype-csv', t('imp_title'), 'forms'],
+			'import'          => [nu_url('import'), 'bi-file-earmark-arrow-up', t('imp_title'), 'forms'],
 		];
 		if (isset($forms['nucodesnippet'])) $s['s_snippets'] = [nu_url('form', ['f' => 'nucodesnippet']), 'bi-file-earmark-code', t('nav_snippets'), 'forms'];
 		$s += [
@@ -471,7 +472,7 @@ final class NuHome
 		$l['hidden'] = array_values(array_filter($l['hidden'], static fn($k) => in_array($k, $knownAll, true)));
 		$missing = array_values(array_diff($known, $placed));
 		// tiles of a later version next to their neighbour when it is placed (reports after procedures, 0.8.183)
-		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'userfields' => 'permissions'] as $tile => $after) {
+		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'dataexport' => 'import', 'userfields' => 'permissions'] as $tile => $after) {
 			if (!in_array($tile, $missing, true)) continue;
 			foreach ($l['groups'] as &$g) {
 				$i = array_search($after, $g['tiles'], true);
@@ -833,7 +834,7 @@ final class NuHome
 		'email' => ['email', 'view'], 'debug' => ['acl', NuAcl::FORM_DEBUG], 'update' => ['update', 'view'], 'settings' => ['settings', 'view'],
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
 		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'], 'themes' => ['branding', 'view'],
-		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'appcloner' => ['appcloner', 'change'], 'cloner' => ['forms', 'change'], 'sample' => ['sample', 'view'],
+		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'dataexport' => ['dataexport', 'view'], 'appcloner' => ['appcloner', 'change'], 'cloner' => ['forms', 'change'], 'sample' => ['sample', 'view'],
 		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'],
 		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'], 's_user_home' => ['homelayout', 'change'],
 	];
@@ -841,7 +842,7 @@ final class NuHome
 	private const PAGE_TILE = ['users' => 'users', 'access' => 'access', 'permissions' => 'permissions', 'sessions' => 'sessions', 'forms' => 'forms',
 		'procedures' => 'procedures', 'reports' => 'reports', 'sqlbuilder' => 'reports', 'prompts' => 'prompts', 'apiclients' => 'apiclients', 'webhooks' => 'webhooks',
 		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit', 'notifications' => 'notifications', 'update' => 'update',
-		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import',
+		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import', 'dataexport' => 'dataexport',
 		'cloner' => 'cloner', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
 		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
 		'tutorial' => 'tutorial'];

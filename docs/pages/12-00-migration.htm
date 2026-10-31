@@ -1,17 +1,19 @@
 <section id="migration" data-doc="admin">
 	<h2 id="migration-h">Migrating from nuBuilder Forte 4.9</h2>
-	<p class="doc-lead">Running an existing nuBuilder Forte (4.x) application in nuBuilder Next.</p>
+	<p class="doc-lead">Trying an existing nuBuilder Forte (4.x) application in nuBuilder Next.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>nuBuilder Next works on the database of a nuBuilder Forte 4.9 application without converting it. Forms, rights, procedures and reports stay where they are, and nuBuilder Forte can keep running on the same database while you check the application in nuBuilder Next.</p>
+	<div class="alert alert-warning"><strong>Not supported yet:</strong> nuBuilder Next cannot run on an existing nuBuilder Forte database for now – the installer refuses a database that already has nuBuilder Forte's tables. Install nuBuilder Next on a new, empty database and try your application on a <strong>copy</strong>, never on the live nuBuilder Forte database.</div>
+	<p>The goal is that nuBuilder Next works on the database of a nuBuilder Forte 4.9 application without converting it: forms, rights, procedures and reports use nuBuilder Forte's own tables and formats, and nuBuilder Forte keeps working on a database that nuBuilder Next set up. Until existing databases are allowed, you can check an application this way:</p>
 <ol>
-	<li><strong>Back up</strong> the database.</li>
-	<li><strong>Install</strong> nuBuilder Next, ideally as a sub-folder of nuBuilder Forte (e.g. <code>/nubuilder4/nunext/</code>), so it finds nuBuilder Forte's <code>nuconfig.php</code> and libraries (<a href="#install">Installation</a>). An existing nuBuilder Forte database must be allowed with <code>$nuConfigAllowExistingNuDB</code>.</li>
+	<li><strong>Export</strong> the application's database as a complete SQL dump (phpMyAdmin, <code>mysqldump</code>). The live database stays as it is.</li>
+	<li><strong>Install</strong> nuBuilder Next on a new, empty database (<a href="#install">Installation</a>), ideally as a sub-folder of nuBuilder Forte (e.g. <code>/nubuilder4/nunext/</code>), so it finds nuBuilder Forte's libraries.</li>
+	<li><strong>Import the copy</strong>: in developer mode, <a href="#db-reset">Reset database</a> deletes the tables of this nuBuilder Next database and imports the dump (MySQL / MariaDB only). Afterwards the database counts as set up by nuBuilder Next.</li>
 	<li><strong>Run the <a href="#compat">Compatibility check</a></strong>: it scans all code of the application for nuBuilder Forte functions and shows whether each is supported.</li>
 	<li><strong>Read the <a href="#porting">differences</a></strong> for the functions your code uses.</li>
-	<li><strong>Test</strong> on a copy first – the <a href="#appcloner">App cloner</a> makes one.</li>
+	<li><strong>Test</strong> the forms, reports and procedures on the copy. nuBuilder Forte can be pointed at the same copy to compare.</li>
 	<li>Optional: switch forms to the automatic layout to make them work on phones.</li>
 </ol>
 <p>The tutorial has a lesson on this (<a href="#tutorial-h">Tutorial</a>).</p>
-	<p class="doc-see">See also: <a href="#compat">Compatibility check</a> · <a href="#porting">Differences and functions not ported</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nucompat.php</code></li><li><code>core/form/nuphp_compat.php</code></li><li><code>assets/js/nu/nucompat.js</code></li></ul></details>
+	<p class="doc-see">See also: <a href="#compat">Compatibility check</a> · <a href="#porting">Differences and functions not ported</a> · <a href="#db-reset">Reset database</a> · <a href="#appcloner">App cloner</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nucompat.php</code></li><li><code>core/form/nuphp_compat.php</code></li><li><code>assets/js/nu/nucompat.js</code></li><li><code>core/nudbreset.php</code></li></ul></details>
 </section>

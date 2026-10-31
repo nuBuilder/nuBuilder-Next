@@ -98,7 +98,7 @@ if (nu_is_post()) {
 				nu_redirect(nu_url('email', ['tab' => 'settings']));
 			} catch (Throwable $e) {
 				error_log('nuBuilder Next email settings: ' . $e->getMessage());
-				$errors['_'] = t('mail_err_save') . (nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : '');
+				$errors['_'] = t('mail_err_save') . (nu_debug() ? ' ' . $e->getMessage() : '');
 			}
 		}
 	}
@@ -118,7 +118,7 @@ if (nu_is_post()) {
 		if (!$errors) {
 			$level = max(0, min(4, (int)nu_post('debug', '2')));
 			$u = NuAuth::user();
-			$body = NuMail::layout(t('mail_test_subject'), '<p>' . h(t('mail_test_text', $u['login'], date('d.m.Y H:i:s'))) . '</p>');
+			$body = NuMail::layout(t('mail_test_subject'), '<p>' . h(t('mail_test_text', $u['login'], date(nu_dfmt('d.m.Y H:i:s')))) . '</p>');
 			NuMailer::$probe = true;                                         // read the server's AUTH methods (0.8.342)
 			$testResult = nuSendEmailEx(
 				['to' => $to, 'subject' => nu_post('subject') ?: t('mail_test_subject'), 'body' => $body, 'html' => true, 'debug' => $level],
@@ -177,7 +177,7 @@ function nu_mail_dt(mixed $v): string
 {
 	if ($v === null || $v === '') return '';
 	$ts = strtotime((string)$v);
-	return $ts ? date('d.m.Y H:i:s', $ts) : (string)$v;
+	return $ts ? date(nu_dfmt('d.m.Y H:i:s'), $ts) : (string)$v;
 }
 
 $encLabel = match ($s['secure']) { 'ssl' => 'SSL/TLS (SMTPS)', 'tls' => 'STARTTLS', 'none' => t('mail_enc_none'), default => t('mail_enc_auto') };
@@ -204,10 +204,7 @@ if ($tab === 'log' && !$detail && $logExists) {
 
 nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'settings' => 'mail']);
 ?>
-<div class="nuTitleBar mb-3">
-	<h1 class="h3 mb-0"><?= h(t('nav_email')) ?></h1>
-	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?></div>
-</div>
+<?= nu_page_header(t('nav_email'), ['icon' => 'bi-envelope']) ?>
 
 <ul class="nav nav-tabs mb-3">
 	<?php if ($canSetup): ?>

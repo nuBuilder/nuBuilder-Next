@@ -151,7 +151,7 @@ def libraries():
 
 
 REQUIRED_LIBS = 'install/libraries-required.json'
-LIB_SLOTS = ('tcpdf', 'phpmailer', 'tinymce', 'phpmyadmin', 'adminer', 'uppy')   # tinyfilemanager removed in 0.8.479 (nuFiles)
+LIB_SLOTS = ('tcpdf', 'phpmailer', 'tinymce', 'phpmyadmin', 'adminer', 'uppy', 'phpspreadsheet')   # tinyfilemanager removed in 0.8.479 (nuFiles)
 
 
 def required_libs():

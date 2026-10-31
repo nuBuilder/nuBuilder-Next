@@ -231,7 +231,14 @@
 			const tb = el('tbody');
 			rows.forEach((r) => {
 				const row = el('tr');
-				r.forEach((v, i) => { if (i !== rid) row.appendChild(el('td', typeof v === 'number' ? 'text-end' : '', typeof v === 'number' && i > 0 ? fmt(v, o) : (v === null ? '' : v))); });
+				// the first SHOWN column stays unformatted (an id or number like 1059 – review D5: the hidden record id column made it the second)
+				const first = rid === 0 ? 1 : 0;
+				r.forEach((v, i) => {
+					if (i === rid) return;
+					const td = el('td', typeof v === 'number' ? 'text-end' : '', typeof v === 'number' && i !== first ? fmt(v, o) : (v === null ? '' : v));
+					td.setAttribute('data-nu-label', String(cols[i]));          // the column title on phones (cards, review F2)
+					row.appendChild(td);
+				});
 				const id = rid >= 0 && r[rid] !== null ? String(r[rid]) : '';
 				if (id !== '' && w.row_link) {
 					row.className = 'nuDashRowLink'; row.tabIndex = 0;

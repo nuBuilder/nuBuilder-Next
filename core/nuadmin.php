@@ -34,6 +34,7 @@ final class NuAdmin
 		'dbtool'        => ['data', 'home_db', true, 'c', []],
 		'filemanager'   => ['data', 'vendor_tfm', true, 'c', []],
 		'import'        => ['data', 'imp_title', false, 'c', []],
+		'dataexport'    => ['data', 'dxp_title', true, 'vc', [NuAcl::FORM_EXPORT]],   // data export (0.8.758): any table / query leaves the server – full access; view = run, change = edit
 		'appcloner'     => ['data', 'ac_title', true, 'c', []],
 		'sample'        => ['data', 'smp_title', false, 'vc', []],
 		'forms'         => ['dev', 'adm_r_forms', true, 'vc', [NuAcl::FORM_FORM, NuAcl::FORM_ITEM, NuAcl::FORM_FILE, NuAcl::FORM_FORMAT, NuAcl::FORM_TRANSLATE, 'nucodesnippet']],
@@ -64,7 +65,7 @@ final class NuAdmin
 	public const PAGES = [
 		'update' => ['update', []], 'configfile' => ['configfile', []], 'settings' => ['settings', []], 'globalcode' => ['globalcode', []],
 		'securitycheck' => ['securitycheck', []], 'setupwizard' => ['setupwizard', []], 'status' => ['vendor', []], 'filemanager' => ['filemanager', []],
-		'import' => ['import', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
+		'import' => ['import', []], 'dataexport' => ['dataexport', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
 		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'users' => ['users', []], 'access' => ['access', []],
 		'userfields' => ['userfields', []], 'sessions' => ['sessions', []], 'adminroles' => ['adminroles', []], 'branding' => ['branding', []],
 		'homelayout' => ['home', ['customize' => '1']], 'email' => ['email', []], 'notifications' => ['notifications', ['tab' => 'manage']],

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.747 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.767 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -17,7 +17,7 @@
 - 📦 [Releases](https://github.com/nuBuilder/nuBuilder-Next/releases) – download `nunext.zip`
 - 📝 [Changelog](https://github.com/nuBuilder/nuBuilder-Next/blob/main/CHANGELOG.md)
 - 💬 [nuBuilder Forte Community Forum](https://forum.nubuilder.cloud/)
-- 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`, tabs Guide and Code reference); source: one file per page in `docs/pages/`, in reading order in `docs/toc.json`
+- 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`, tabs Guide and – for administrators – Code reference); source: one file per page in `docs/pages/`, in reading order in `docs/toc.json`
 
 ---
 
@@ -29,7 +29,7 @@ nuBuilder Forte's tables keep their structure: nuBuilder Next only adds its own 
 
 nuBuilder Next streamlines everyday database work:
 
-- **Search, Create, Read, Update, Delete** – plus Clone, Print, Copy to Excel, CSV export and an audit trail with restore.
+- **Search, Create, Read, Update, Delete** – plus Clone, export of every list as HTML page, CSV or Excel, and an audit trail with restore.
 
 ---
 
@@ -52,7 +52,7 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Comfortable Editing** – sub-forms, lookups and file uploads; required and unique fields are marked; unsaved changes are shown; Clone opens an unsaved copy, as in nuBuilder Forte.
 - ✅ **Dashboards on the Start Page** – KPI tiles, charts and tables for your access level.
 - ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
-- ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists them all.
+- ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists the actions without a button of their own, with their shortcuts.
 - ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code) and *Forgot password* with a one-time e-mail link.
 - ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left), light, dark or automatic mode, five built-in designs plus your own (colours, buttons, fields, tabs, fonts – per access level or chosen by the user); checked against WCAG 2.1 A/AA.
 
@@ -64,7 +64,8 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
 - ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with syntax colours, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
 - ✅ **E-mail & Templates** – SMTP settings with a test mail and a connection check that sends nothing, login with OAuth 2 (Google, Microsoft 365), e-mail templates with field placeholders and an e-mail log.
-- ✅ **CSV Import** – into any table, with automatic encoding / separator detection and column mapping.
+- ✅ **Data import** – CSV files (and Excel / OpenDocument workbooks with the PhpSpreadsheet pack) into any table, with automatic encoding / separator detection and column mapping.
+- ✅ **Data export** – saved exports of tables, views and queries to Excel or CSV: columns, conditions, sorting, parameters, several sheets per file, streamed for any size; also through the REST API.
 - ✅ **Form Cloner & App Cloner** – copy a single form (or just write its SQL) or the whole application.
 - ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms written by an AI, checked before they are created.
 - ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
@@ -76,7 +77,7 @@ nuBuilder Next streamlines everyday database work:
 ### 🛡️ For Administrators
 
 - ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, one search list over tiles, pages, forms, procedures and reports (with a filter, also Ctrl+K). Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
-- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; CSV user import with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; the access levels of a form in one dialogue; own and shared list views; filters and links between users, access levels, permission items and the log.
+- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; user import from CSV or Excel with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; the access levels of a form in one dialogue; own and shared list views; filters and links between users, access levels, permission items and the log.
 - ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit, a password policy (length, leaked-password check with k-anonymity, optional regular change), sign-in only from allowed IP addresses / networks (per access level, globeadmin separately) and a built-in Security check.
 - ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.
@@ -88,9 +89,9 @@ nuBuilder Next streamlines everyday database work:
 ---
 
 ## Requirements
-- PHP 8.1 or newer (8.2+ recommended) with `pdo_mysql` or `pdo_sqlsrv`
+- PHP 8.1 or newer (8.2+ recommended; the PhpSpreadsheet pack needs 8.2) with `pdo_mysql` or `pdo_sqlsrv`, `mbstring`, `openssl`, `zip` and `sodium` (signed updates)
 - MySQL / MariaDB or SQL Server with a new, empty database (not an existing nuBuilder Forte database for now)
-- Apache with `AllowOverride All` (for the `.htaccess` files) or nginx with the rules shown in Admin tools → *Security check*
+- Apache with `AllowOverride All` (for the `.htaccess` files) or nginx with the rules in the help (*Security check, server rules and housekeeping → Web server rules*)
 
 ## Install
 1. Download **`nunext.zip`** from the [releases](../../releases) (the install package – `nunext-dev.zip` is only for the
@@ -100,17 +101,17 @@ nuBuilder Next streamlines everyday database work:
    By hand instead: rename `nuconfig-sample.php` to `nuconfig.php` and enter your settings (an existing nuBuilder Forte `nuconfig.php`
    also works); on an empty database (or with tables missing) the globeadmin then gets the page *Set up the database* –
    or run `install/schema_mysql.sql` (+ `schema_mysql_forms.sql`, + `notes_snippets_mysql.sql`) or `install/schema_mssql.sql` yourself. The package ships only the sample, so a new version never overwrites your `nuconfig.php`.
-3. Sign in as globeadmin or with any nuBuilder Forte user.
-4. Open **Admin tools → Security check** and fix what is red: HTTPS, a long globeadmin password, `$nuConfigBaseURL`, "Files on
+3. Sign in as globeadmin.
+4. Open the start page tile **Security check** and fix what is red: HTTPS, a long globeadmin password, `$nuConfigBaseURL`, "Files on
    the web" (the web server must not hand out `core/`, `install/`, `README.md` …) and the PHP version.
 5. Optional: cron for the housekeeping – `*/15 * * * * php /var/www/html/nunext/cron.php` as the web server's user.
 6. Third-party code lives in `vendor/`: `vendor/bundled/` comes with the package, `vendor/packs/` holds the signed **library packs**
-   (TCPDF for reports, TinyMCE, phpMyAdmin, Adminer, Uppy – from the GitHub release `libraries`; PHPMailer is in the
+   (TCPDF for reports, TinyMCE, phpMyAdmin, Adminer, Uppy, PhpSpreadsheet for reading Excel / OpenDocument files (data import, form code; PHP 8.2+) – Excel export is built in – from the GitHub release `libraries`; PHPMailer is in the
    package). The installer offers them (step *Libraries*), later **Update → Libraries**. Without internet: copy the
    `nunext-lib-*.zip` files into `_install/` or `_update/` first.
 
 ## Updating
-**Admin tools → Update** (globeadmin): choose the new `nunext.zip` – or copy it by FTP into the folder `_update/` and pick it
+Start page tile **Update** (globeadmin, or an admin role with the right *Update*): choose the new `nunext.zip` – or copy it by FTP into the folder `_update/` and pick it
 there, or let the page download the newest release from GitHub – then *Check package* and *Install*. Packages are signed; the check shows "Signed by nuBuilder Next" and refuses a package
 that was changed. A backup is made first (with an SQL dump of nuBuilder's `zzzzsys_*` tables – all an update can change – or of the whole database) and can be rolled back; database steps run automatically.
 

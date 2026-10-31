@@ -9,14 +9,14 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 21;
+	public const VERSION = 24;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
 			'pk' => 'zzzzsys_nunext_log_id',
 			'cols' => [['log_time', 'datetime'], ['user_id', 'text', '25'], ['login', 'text', '50'], ['ip', 'text', '45'],
 				['event', 'text', '40'], ['object', 'text', '100'], ['record_id', 'text', '100'], ['details', 'longtext']],
-			'index' => ['log_time', 'event'],
+			'index' => ['log_time', 'event', 'login', 'object'],   // + composite (object, record_id): ensureIndexes() (0.8.761)
 		],
 		'zzzzsys_nunext_form_history' => [
 			'pk' => 'zzzzsys_nunext_form_history_id',
@@ -26,7 +26,7 @@ final class NuSchema
 		'zzzzsys_nunext_form_draft' => [                          // form drafts (0.8.386, core/form/nuformdraft.php)
 			'pk' => 'zzzzsys_nunext_form_draft_id',
 			'cols' => [['form_id', 'text', '25'], ['changeset_id', 'text', '25'], ['status', 'text', '12'], ['note', 'text', '1000'],
-				['base_hash', 'text', '64'], ['base_snapshot', 'longtext'], ['snapshot', 'longtext'], ['undo_list', 'longtext'], ['rev', 'int'],
+				['base_hash', 'text', '64'], ['base_snapshot', 'longtext'], ['snapshot', 'longtext'], ['undo_list', 'longtext'], ['redo_list', 'longtext'], ['rev', 'int'],
 				['preview_saves', 'int'], ['testers', 'text', '4000'], ['ddl', 'longtext'],
 				['created_at', 'datetime'], ['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50'],
 				['submitted_at', 'datetime'], ['submitted_by', 'text', '50'], ['review_note', 'text', '1000'],
@@ -48,7 +48,7 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_session_id',               // sha256 of the PHP session id
 			'cols' => [['user_id', 'text', '25'], ['login', 'text', '50'], ['display', 'text', '100'], ['via', 'text', '20'], ['ip', 'text', '45'],
 				['user_agent', 'text', '255'], ['login_at', 'datetime'], ['last_seen', 'datetime']],
-			'index' => ['last_seen'],
+			'index' => ['last_seen', 'user_id'],                 // user_id: "online" of the users list (review B1)
 		],
 		'zzzzsys_nunext_token' => [
 			'pk' => 'zzzzsys_nunext_token_id',                 // sha256 of the token
@@ -114,7 +114,7 @@ final class NuSchema
 				['action', 'text', '10'], ['source', 'text', '10'], ['table_name', 'text', '100'], ['record_id', 'text', '100'], ['form_id', 'text', '25'],
 				['form_code', 'text', '100'], ['parent_table', 'text', '100'], ['parent_id', 'text', '100'], ['column_name', 'text', '100'],
 				['old_value', 'text', '4000'], ['new_value', 'text', '4000']],
-			'index' => ['change_id', 'changed_at', 'table_name', 'record_id', 'parent_id', 'user_id'],
+			'index' => ['change_id', 'changed_at', 'table_name', 'record_id', 'parent_id', 'user_id', 'login'],
 		],
 		'zzzzsys_nunext_notification' => [                        // notification centre (0.8.357, core/nunotify.php)
 			'pk' => 'zzzzsys_nunext_notification_id',
@@ -151,6 +151,13 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_webhook_try_id',
 			'cols' => [['call_id', 'text', '25'], ['tried_at', 'datetime'], ['attempt', 'int'], ['http_code', 'int'], ['ms', 'int'], ['error', 'text', '255'], ['response', 'text', '1000']],
 			'index' => ['call_id'],
+		],
+		'zzzzsys_nunext_export' => [                              // data export (0.8.758, core/nudataexport.php): saved exports
+			'pk' => 'zzzzsys_nunext_export_id',
+			'cols' => [['code', 'text', '50'], ['name', 'text', '100'], ['description', 'text', '1000'], ['format', 'text', '10'], ['filename', 'text', '100'],
+				['options', 'longtext'], ['datasets', 'longtext'], ['created_by', 'text', '50'], ['created_at', 'datetime'], ['updated_by', 'text', '50'],
+				['updated_at', 'datetime'], ['last_run_at', 'datetime'], ['runs', 'int']],
+			'index' => ['code'],
 		],
 		'zzzzsys_nunext_theme' => [                               // themes (0.8.632, core/nutheme.php): own themes; the five built-in ones are in the code
 			'pk' => 'zzzzsys_nunext_theme_id',
@@ -251,6 +258,35 @@ final class NuSchema
 
 	private const HASH_PK = ['zzzzsys_nunext_token', 'zzzzsys_nunext_session', 'zzzzsys_nunext_api_token', 'zzzzsys_nunext_api_rate'];
 
+	/**
+	 * Indexes added after a table existed (0.8.761, step 0031 and every create()): single columns of TABLES 'index' that are missing, and the
+	 * composite (object, record_id) of the log – the record info (Created / Last changed) and the log's filters read it.
+	 */
+	public static function ensureIndexes(): void
+	{
+		$db = nu_db();
+		foreach (self::TABLES as $table => $def) {
+			if (!$db->tableExists($table)) continue;
+			foreach ((array)($def['index'] ?? []) as $col) { try { NuDDL::ensureIndex($table, (string)$col); } catch (Throwable $e) { error_log("nuBuilder Next: index $table.$col: " . $e->getMessage()); } }
+		}
+		// composite indexes: (object, record_id) – record info, log filters; (user_id, event, log_time) – "Last login" of the users list (review B1)
+		foreach (['ix_zzzzsys_nunext_log_object_record' => 'object, record_id', 'ix_zzzzsys_nunext_log_user_event' => 'user_id, event, log_time'] as $ix => $cols) {
+			try {
+				if ($db->tableExists('zzzzsys_nunext_log') && !self::hasIndex('zzzzsys_nunext_log', $ix)) $db->run("CREATE INDEX $ix ON zzzzsys_nunext_log ($cols)");
+			} catch (Throwable $e) {
+				error_log("nuBuilder Next: log index $ix: " . $e->getMessage());
+			}
+		}
+	}
+
+	private static function hasIndex(string $table, string $name): bool
+	{
+		$db = nu_db();
+		if ($db->type === 'sqlsrv') return (int)$db->value('SELECT COUNT(*) FROM sys.indexes WHERE object_id = OBJECT_ID(?) AND name = ?', [$table, $name]) > 0;
+		if ($db->type === 'mysql') return (int)$db->value('SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?', [$table, $name]) > 0;
+		return (int)$db->value("SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?", [$name]) > 0;
+	}
+
 	/** CREATE TABLE (+ CREATE INDEX) statements of an own table for the current database. @return string[] */
 	public static function createSql(string $table, array $def): array
 	{
@@ -299,6 +335,7 @@ final class NuSchema
 				if (!$db->tableExists($table)) throw $e;   // created concurrently by another request
 			}
 		}
+		self::ensureIndexes();                                     // indexes added later to existing tables (0.8.761)
 	}
 }
 

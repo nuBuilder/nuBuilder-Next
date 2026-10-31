@@ -213,7 +213,7 @@ final class NuConflict
 					array_push($params, ...$colsWanted);
 				}
 				$r = $db->page($sql, $params, 'changed_at DESC', 1, 0)[0] ?? null;
-				if ($r) return [(string)$r['login'], date('d.m.Y H:i', (int)strtotime((string)$r['changed_at']))];
+				if ($r) return [(string)$r['login'], date(nu_dfmt('d.m.Y H:i'), (int)strtotime((string)$r['changed_at']))];
 			}
 		} catch (Throwable) { /* no audit information */ }
 		if ($row) {
@@ -226,7 +226,7 @@ final class NuConflict
 				$name = $user;
 				if ($user !== '' && $user !== 'unknown' && $user !== 'globeadmin') $name = (string)($db->value('SELECT sus_login_name FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$user]) ?: $user);
 				$time = (int)($e['time'] ?? 0);
-				return [$name === 'unknown' ? '' : $name, $time > 0 ? date('d.m.Y H:i', $time) : ''];
+				return [$name === 'unknown' ? '' : $name, $time > 0 ? date(nu_dfmt('d.m.Y H:i'), $time) : ''];
 			}
 		}
 		return ['', ''];

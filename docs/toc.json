@@ -27,6 +27,11 @@
      "file": "01-01-key-concepts.htm"
     },
     {
+     "id": "db-basics",
+     "title": "Database basics",
+     "file": "01-07-db-basics.htm"
+    },
+    {
      "id": "install",
      "title": "Requirements and installation",
      "file": "01-02-install.htm"
@@ -143,6 +148,11 @@
    "tab": "guide",
    "file": "04-00-builder.htm",
    "pages": [
+    {
+     "id": "first-app",
+     "title": "Your first application",
+     "file": "04-09-first-app.htm"
+    },
     {
      "id": "form-lifecycle",
      "title": "Form lifecycle and event order",
@@ -332,7 +342,7 @@
     {
      "id": "jquery",
      "title": "jQuery version and jQuery 4",
-     "file": "08-16-jquery.htm"
+     "file": "08-17-jquery.htm"
     },
     {
      "id": "home-page",
@@ -351,38 +361,43 @@
     },
     {
      "id": "csv-import",
-     "title": "CSV import",
+     "title": "Data import",
      "file": "08-09-csv-import.htm"
+    },
+    {
+     "id": "data-export",
+     "title": "Data export",
+     "file": "08-10-data-export.htm"
     },
     {
      "id": "sample-data",
      "title": "Sample data",
-     "file": "08-10-sample-data.htm"
+     "file": "08-11-sample-data.htm"
     },
     {
      "id": "inspect",
      "title": "Inspect record",
-     "file": "08-11-inspect.htm"
+     "file": "08-12-inspect.htm"
     },
     {
      "id": "selftest",
      "title": "Self-test",
-     "file": "08-12-selftest.htm"
+     "file": "08-13-selftest.htm"
     },
     {
      "id": "innodb",
      "title": "Storage engine (InnoDB)",
-     "file": "08-13-innodb.htm"
+     "file": "08-14-innodb.htm"
     },
     {
      "id": "demo-mode",
      "title": "Demo mode",
-     "file": "08-14-demo-mode.htm"
+     "file": "08-15-demo-mode.htm"
     },
     {
      "id": "db-reset",
      "title": "Reset database",
-     "file": "08-15-db-reset.htm"
+     "file": "08-16-db-reset.htm"
     }
    ]
   },
@@ -492,7 +507,7 @@
   {
    "n": 11,
    "id": "customization",
-   "title": "Customization",
+   "title": "Customisation",
    "tab": "ref",
    "file": "11-00-customization.htm",
    "pages": [

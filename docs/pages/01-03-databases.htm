@@ -3,6 +3,7 @@
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Which databases nuBuilder Next runs on and what differs between them.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p>nuBuilder Next talks to the database through one thin PDO layer (<code>NuDB</code>) that hides the differences between the supported systems. The database type is set with <code>$nuConfigDBType</code> in <code>nuconfig.php</code>.</p>
+<p><strong>Note:</strong> SQL Server support has not been verified on a real SQL Server yet – its code was checked with simulated data only.</p>
 <table class="table table-sm">
 	<thead><tr><th>Database</th><th><code>$nuConfigDBType</code></th><th>PHP extension</th><th>Install scripts</th></tr></thead>
 	<tbody>
@@ -16,7 +17,8 @@
 		<li><strong>Your SQL</strong>: browse SQL, procedures and reports run as written, so they must be valid for the database in use. In PHP, <code>nuMSSQL()</code> tells which one it is.</li>
 		<li><strong>Update checks</strong>: before an update, column <em>types</em> are compared on MySQL / MariaDB only; on SQL Server only missing columns are found.</li>
 		<li><strong>App cloner and backups</strong>: source and target are always the same kind of database. On SQL Server the export uses collations instead of character sets, <code>INSERT</code> only, and batches separated by <code>GO</code> – run it with SQL Server Management Studio or <code>sqlcmd</code>; SQL Server Agent jobs are not copied (see <a href="#appcloner">App cloner</a>).</li>
-		<li><strong>Database tools</strong>: phpMyAdmin works with MySQL / MariaDB only; Adminer works with both (see <a href="#admin-tools">Admin tools</a>).</li>
+		<li><strong>Database tools</strong>: phpMyAdmin works with MySQL / MariaDB only (its pack is not offered on SQL Server); Adminer works with both (see <a href="#admin-tools">Admin tools and system status</a>).</li>
+		<li><strong>MySQL / MariaDB only</strong>: importing a nuBuilder Forte SQL dump (installer and <em>Set up the database</em>), <a href="#db-reset">Reset database</a> and phpMyAdmin.</li>
 		<li><strong>Design mode</strong>: new tables and columns are created with abstract types (text, long text, int, decimal, date …) that are mapped to each database (<code>core/form/nuddl.php</code>).</li>
 	</ul>
 </div>

@@ -3,7 +3,9 @@
 (function () {
 	'use strict';
 	if (!window.TomSelect) return;
-	document.querySelectorAll('select.nuListTomSelect').forEach(function (sel) {
+	/** Searchable selects inside root (default: the page) – also for selects added later (window.nuListSelects, 0.8.758). */
+	window.nuListSelects = function (root) { (root || document).querySelectorAll('select.nuListTomSelect').forEach(init); };
+	function init(sel) {
 		if (sel.tomselect) return;
 		new TomSelect(sel, {
 			maxOptions: null, allowEmptyOption: true, create: false, searchField: ['text', 'sub'],
@@ -13,5 +15,6 @@
 				item: function (d, esc) { return '<div title="' + esc(d.sub || '') + '">' + esc(d.text) + '</div>'; }
 			}
 		});
-	});
+	}
+	window.nuListSelects(document);
 })();

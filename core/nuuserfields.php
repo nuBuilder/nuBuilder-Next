@@ -246,7 +246,7 @@ final class NuUserFields
 		if ($v === '') return '';
 		return match ((string)$f['type']) {
 			'yesno' => $v === '1' ? t('yes') : t('no'),
-			'date' => nu_valid_date($v) ? date('d.m.Y', (int)strtotime($v)) : $v,
+			'date' => nu_valid_date($v) ? date(nu_dfmt('d.m.Y'), (int)strtotime($v)) : $v,
 			'select' => (string)(self::options($f)[$v] ?? $v),
 			default => $v,
 		};

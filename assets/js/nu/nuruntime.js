@@ -107,7 +107,17 @@
 	api('nuAccessLevelCode', function () { return N.user.access_level_code || ''; });
 	api('nuGlobalAccess', function () { return !!N.user.globeadmin; });
 	// Short notice at the bottom right (save / delete / clone). type: success | danger | warning | info
+	// design mode (review H1): messages of the form's own code do not cover the design panel – they are collected for the bar's
+	// "Messages of the form" button (assets/js/nu/nudesign.js, event nu:formmsg)
+	N.formMsgs = [];
+	function designQuiet(kind, text) {
+		if (!N.design) return false;
+		N.formMsgs.push({kind: kind, text: String(text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()});
+		try { document.dispatchEvent(new CustomEvent('nu:formmsg')); } catch (x) { /* old browser */ }
+		return true;
+	}
 	api('nuToast', function (msg, type, ms) {
+		if (designQuiet('toast', msg)) return;
 		var box = g('nuToasts');
 		if (!box) { box = document.createElement('div'); box.id = 'nuToasts'; box.className = 'toast-container position-fixed bottom-0 end-0 p-3'; document.body.appendChild(box); }
 		var t = document.createElement('div');
@@ -548,6 +558,7 @@
 		if (a.length === 1 && Array.isArray(a[0])) lines = a[0];
 		else if (a.length >= 2 && !Array.isArray(a[0])) { title = a[0]; lines = a.slice(1).reduce(function (x, y) { return x.concat(arr(y)); }, []); }
 		else lines = a.reduce(function (x, y) { return x.concat(arr(y)); }, []);
+		if (designQuiet('message', (title ? title + ': ' : '') + lines.join(' · '))) return $('<div></div>');
 		$('#nuMessageDiv').remove();
 		var box = $('<div id="nuMessageDiv" class="nuMessage shadow" role="alertdialog" aria-live="assertive"></div>');
 		var close = $('<button type="button" class="btn-close nuMessageClose" aria-label="Close"></button>').on('click', function () { box.remove(); });
@@ -638,7 +649,17 @@
 			method: 'POST', credentials: 'same-origin',
 			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
 			body: JSON.stringify(data)
-		}).then(function (r) { return r.json().catch(function () { return {ok: false, errors: [{message: 'HTTP ' + r.status}]}; }); })
+		}).then(function (r) {
+			// a procedure that sends a file (header('Content-Disposition: attachment …'), NuXlsx::download, PhpSpreadsheet …) – 0.8.756:
+			// nuBuilder Forte runs it in its own window, here the answer is the file itself, saved by nuRunPHP / nuRunPHPHidden
+			var cd = r.headers.get('Content-Disposition') || '';
+			if (r.ok && /attachment/i.test(cd)) {
+				var m = /filename\*=UTF-8''([^;]+)/i.exec(cd), m2 = /filename="?([^";]+)"?/i.exec(cd);
+				var name = m ? decodeURIComponent(m[1]) : (m2 ? m2[1] : 'download');
+				return r.blob().then(function (b) { return {ok: true, file: {blob: b, name: name}}; });
+			}
+			return r.json().catch(function () { return {ok: false, errors: [{message: 'HTTP ' + r.status}]}; });
+		})
 			.then(function (res) {
 				// draft preview (0.8.386): Save / Delete write live data – asked once per session, then sent again
 				if (res && res.code === 'preview_confirm' && !data.preview_confirm) {
@@ -666,8 +687,17 @@
 	}
 	N.applyResult = applyResult;
 
+	function saveFile(f) {
+		var url = URL.createObjectURL(f.blob), a = document.createElement('a');
+		a.href = url; a.download = f.name; a.className = 'd-none';
+		document.body.appendChild(a); a.click(); a.remove();
+		setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+	}
 	api('nuRunPHPHidden', function (code) {
-		return call('php', {code: code, values: N.mode === 'edit' ? mainValues() : {}}).then(function (res) { applyResult(res); return res; });
+		return call('php', {code: code, values: N.mode === 'edit' ? mainValues() : {}}).then(function (res) {
+			if (res && res.file) { saveFile(res.file); return res; }
+			applyResult(res); return res;
+		});
 	});
 	api('nuRunPHPHiddenWithParams', function (code, paramName, params) {
 		nuSetProperty(paramName, btoa(unescape(encodeURIComponent(JSON.stringify(params)))));
@@ -676,6 +706,7 @@
 	api('nuRunPHP', function (code) {
 		var w = window.open('', '_blank');
 		return call('php', {code: code, values: N.mode === 'edit' ? mainValues() : {}}).then(function (res) {
+			if (res && res.file) { if (w) w.close(); saveFile(res.file); return; }       // a download: no window needed
 			applyResult(res);
 			if (w) { w.document.open(); w.document.write(res.output || ''); w.document.close(); }
 		});
@@ -1245,9 +1276,23 @@
 	});
 
 	api('nuDeleteAction', function () {
-		$.confirm ? confirmDelete() : (window.confirm(M.delete_confirm) && doDelete());
+		$.confirm || typeof window.nuConfirmAsk === 'function' ? confirmDelete() : (window.confirm(M.delete_confirm) && doDelete());
 	});
 	function confirmDelete() {
+		// our own dialog (review E4): names the record and the sub-form rows deleted with it, Cancel has the focus
+		if (typeof window.nuConfirmAsk === 'function') {
+			var bc = N.breadcrumbs || [], name = bc.length ? String(bc[bc.length - 1].title || '').trim() : '';
+			var details = [];
+			Object.keys(N.subforms || {}).forEach(function (sf) {
+				var n = $('#' + sf + ' .nuSubformRow[data-nu-primary-key]').filter(function () { return this.getAttribute('data-nu-primary-key') !== ''; }).length;
+				if (!n) return;
+				var lbl = $('#label_' + sf).text().trim() || sf;
+				details.push(ccFmt(M.delete_with, String(n), lbl));
+			});
+			window.nuConfirmAsk(name && name !== (N.form && N.form.description) ? ccFmt(M.delete_named, name) : M.delete_confirm, doDelete, M.delete, 'btn btn-danger',
+				{title: M.delete_title, details: details, note: M.delete_undo, cancelFirst: true});
+			return;
+		}
 		$.confirm({
 			title: M.delete, content: M.delete_confirm, useBootstrap: false, boxWidth: '360px', type: 'red',
 			buttons: {confirm: {text: M.delete, btnClass: 'btn-red', action: doDelete}, cancel: {text: M.cancel}}
@@ -1587,7 +1632,9 @@
 				window.location.reload();
 			}, function () { btn.disabled = false; });
 		};
-		if ($.confirm) {
+		if (typeof window.nuConfirmAsk === 'function') {
+			window.nuConfirmAsk(M.delete_confirm, go, M.delete, 'btn btn-danger', {title: M.delete_title, note: M.delete_undo, cancelFirst: true});
+		} else if ($.confirm) {
 			$.confirm({title: M.delete, content: M.delete_confirm, useBootstrap: false, boxWidth: '360px', type: 'red',
 				buttons: {confirm: {text: M.delete, btnClass: 'btn-red', action: go}, cancel: {text: M.cancel}}});
 		} else if (window.confirm(M.delete_confirm)) go();
@@ -2162,6 +2209,56 @@
 		else if (t0) b.setAttribute('title', t0);
 		else b.removeAttribute('title');
 	}
+	// =================================================================== phones: fixed-position forms stacked (review F1, 0.8.764)
+	// Below 576 px the objects of an absolute layout keep no top / left: html.nuPhoneStack (nuform.css) puts them below each other,
+	// label above the field, full width; the order follows top, then left (style.order). Content boxes become a section title.
+	// Off for one form: nuNextPhoneLayout(false) in nuOnLoad (or Global JS); not while designing.
+	var phoneOff = false, phoneMq = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
+	api('nuNextPhoneLayout', function (on) { phoneOff = on === false; phoneStack(); });
+	function phoneStack() {
+		var html = document.documentElement;
+		var phone = !!(phoneMq && phoneMq.matches) && !phoneOff && !html.classList.contains('nuDesigning');
+		html.classList.toggle('nuPhoneCards', phone && !!document.getElementById('nuBrowseTable') && !document.body.classList.contains('nuPrintView'));   // browse rows as cards (F2)
+		var on = phone && !!document.querySelector('.nuLayout-absolute .nuAbsoluteCanvas');
+		html.classList.toggle('nuPhoneStack', on);
+		if (!on) return;
+		$('.nuLayout-absolute .nuAbsoluteCanvas').each(function () {
+			$(this).children('.nuAbs').each(function () {
+				var t = parseInt(this.style.top, 10) || 0, l = parseInt(this.style.left, 10) || 0;
+				this.style.order = String(t * 10 + Math.min(9, Math.floor(l / 100)));   // rows first, left to right within ~ a row
+			});
+		});
+	}
+	if (phoneMq) { try { phoneMq.addEventListener('change', function () { phoneStack(); growFrames(); }); } catch (x) { /* old Safari */ } }
+
+	// embedded lists (review F3): a form shown in a run object of another form gets html.nuEmbedded (compact chrome, nuform.css);
+	// the parent grows such iframes to their content while its objects flow (phones, auto / grid layouts) – absolute layouts keep their size
+	if (N.iframe) { try { if (window.frameElement && !window.frameElement.closest('.modal')) document.documentElement.classList.add('nuEmbedded'); } catch (x) { /* other origin */ } }
+	function growFrames() {
+		$('.nuWrap_run iframe.nuIframe').each(function () {
+			var f = this;
+			var fit = function () {
+				var flow = document.documentElement.classList.contains('nuPhoneStack') || !f.closest('.nuAbs');
+				if (!f.dataset.nuH0) f.dataset.nuH0 = f.style.height || '';
+				if (!flow) { f.style.height = f.dataset.nuH0; return; }
+				try {
+					var d = f.contentDocument;
+					if (!d || !d.body) return;
+					var main = d.getElementById('main') || d.body;
+					var h = Math.ceil(main.getBoundingClientRect().height + (main === d.body ? 0 : main.getBoundingClientRect().top + 8));
+					if (h > 40) { f.style.height = Math.min(h, 2400) + 'px'; f.parentElement.style.height = 'auto'; }
+				} catch (x) { /* other origin: keep the size */ }
+			};
+			if (f.__nuGrow) { fit(); return; }
+			f.__nuGrow = true;
+			f.addEventListener('load', function () {
+				fit();
+				try { if (window.ResizeObserver) new ResizeObserver(fit).observe(f.contentDocument.getElementById('main') || f.contentDocument.body); } catch (x) { /* ignore */ }
+			});
+			try { if (f.contentDocument && f.contentDocument.readyState === 'complete' && f.contentDocument.body && f.contentDocument.body.childElementCount) fit(); } catch (x) { /* ignore */ }
+		});
+	}
+
 	function fitButtons(root) {
 		$(root || document).find('.btn.nuFormBtn').each(function () {
 			if (this.closest('template') || /(^|\s)btn-/.test(this.className)) return;
@@ -2425,18 +2522,27 @@
 	});
 	var cmLoading = null;
 	function loadCodeMirror() {
-		if (window.CodeMirror) return Promise.resolve();
+		if (window.CodeMirror && (window.NuCodeTools || !N.codetools)) return Promise.resolve();
 		if (cmLoading) return cmLoading;
+		if (window.CodeMirror) {                                         // CodeMirror of the page itself: only the toolbar is missing
+			cmLoading = new Promise(function (ok) { var ct = document.createElement('script'); ct.src = N.codetools; ct.onload = ok; ct.onerror = ok; document.head.appendChild(ct); });
+			return cmLoading;
+		}
 		cmLoading = new Promise(function (ok, fail) {
 			var css = document.createElement('link');
 			css.rel = 'stylesheet'; css.href = 'vendor/bundled/codemirror-5.65.21/codemirror.css';
 			document.head.appendChild(css);
 			var js = document.createElement('script');
 			js.src = 'vendor/bundled/codemirror-5.65.21/codemirror-bundle.js';
-			js.onload = function () {                     // then the add-ons (search, comment …)
+			js.onload = function () {                     // then the add-ons (search, comment …) and the editor toolbar (nucodetools.js, review B3)
 				var ad = document.createElement('script');
 				ad.src = 'vendor/bundled/codemirror-5.65.21/codemirror-addons.js';
-				ad.onload = ok; ad.onerror = ok;
+				ad.onload = ad.onerror = function () {
+					if (window.NuCodeTools || !N.codetools) { ok(); return; }
+					var ct = document.createElement('script');
+					ct.src = N.codetools; ct.onload = ok; ct.onerror = ok;
+					document.head.appendChild(ct);
+				};
 				document.head.appendChild(ad);
 			};
 			js.onerror = fail;
@@ -3331,7 +3437,7 @@
 			['d', 'debug', 'bi-bug', 4, T.debug, function () { openTab(N.base + '?p=debug'); }],
 			['e', 'database', 'bi-database', 5, T.pma, function () { nuVendorLogin('DB', N.form.table || ''); }],   // the primary database tool (0.8.282)
 			['j', 'sessions', 'bi-key', 5, T.sessions, function () { openTab(N.base + '?p=sessions'); }],
-			['q', 'file_manager', 'bi-folder2-open', 5, T.tfm, function () { nuVendorLogin('TFM'); }],
+			['', 'file_manager', 'bi-folder2-open', 5, T.tfm, function () { nuVendorLogin('TFM'); }],   // no key: Ctrl+Shift+Q is Change password (nuBuilder Forte; review D8 – it meant both)
 			['q', 'password', 'bi-key', 5, edit && T.password, function () { openTab(N.base + '?p=password'); }],
 			['m', 'form_info', 'bi-info-circle', 0, ga, showFormInfo],
 			['v', 'version', 'bi-info-circle', 5, ga && T.version, function () { nuMessage(N.shortcuts.version || 'Version', [esc(T.version)]); }],
@@ -3552,12 +3658,20 @@
 		if (N.mode === 'edit') initCharts(document);
 		// form buttons: text colour on backgrounds of the form's CSS, tooltip for cut-off labels – after nuOnLoad, which may restyle them
 		if (N.mode === 'edit') fitButtons(document);
+		// phones (review F1, 0.8.764): fixed-position forms stack their objects – after nuOnLoad, which may switch it off
+		phoneStack();
+		if (N.mode === 'edit') growFrames();
 		// first field gets the focus (mouse / trackpad only, see nuFocusFirst in assets/js/nuapp.js) – after nuOnLoad, which may set its own
 		// (in a popup yes, in an iframe object embedded in another form no – it would take the focus away from that form)
 		var embedded = false;
 		if (N.iframe) { try { embedded = !window.frameElement || !window.frameElement.closest('.modal'); } catch (x) { embedded = true; } }
 		if (N.mode === 'edit' && !embedded && window.nuFocusFirst) setTimeout(function () { window.nuFocusFirst(g('nuEditForm')); }, 0);
 		$(document).on('change', '.nuColumnFilter', function () { this.form.submit(); });
+		// long filter lists (review B2): searchable (Tom Select) from 15 values on
+		if (window.TomSelect) $('select.nuColumnFilter').each(function () {
+			if (this.options.length < 16 || this.tomselect) return;
+			try { new window.TomSelect(this, {maxOptions: null, allowEmptyOption: true, controlInput: '<input>', render: {no_results: function () { return '<div class="no-results">' + esc(M.no_results || '–') + '</div>'; }}}); } catch (x) { /* keep the plain select */ }
+		});
 
 		// unsaved changes: links, Back, breadcrumbs and run buttons ask Save / Discard / Keep editing; the browser's back button,
 		// reload and closing the tab get the browser's own question (nuLeaveGuard, assets/js/nuapp.js)

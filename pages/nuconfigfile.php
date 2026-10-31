@@ -90,6 +90,7 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
+	<li class="breadcrumb-item"><a href="<?= h(nu_url('settings')) ?>"><?= h(t('set_title')) ?></a></li>
 	<li class="breadcrumb-item active" aria-current="page">nuconfig.php</li>
 </ol></nav>
 
@@ -126,7 +127,7 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 					<ul class="dropdown-menu shadow-sm">
 						<li><h6 class="dropdown-header"><?= h(t('cfg_backups_hint')) ?></h6></li>
 						<?php foreach ($backups as $name => $time): ?>
-							<li><a class="dropdown-item<?= $name === $loaded ? ' active' : '' ?>" href="<?= h(nu_url('configfile', ['backup' => $name])) ?>"><?= h(date('d.m.Y H:i:s', $time)) ?></a></li>
+							<li><a class="dropdown-item<?= $name === $loaded ? ' active' : '' ?>" href="<?= h(nu_url('configfile', ['backup' => $name])) ?>"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $time)) ?></a></li>
 						<?php endforeach; ?>
 					</ul>
 				</div>

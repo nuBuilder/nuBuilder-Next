@@ -76,9 +76,10 @@ if (nu_is_post() && nu_post('action') === 'archive' && $existing) {
 	}
 	$until = date('Y-m-d', strtotime('-1 day'));
 	$db->update('zzzzsys_user', ['sus_expires_on' => $db->datetime($until)], 'zzzzsys_user_id', $id);
+	NuUserJson::stamp($id, false, 'form');
 	NuLog::write('user_archived', 'zzzzsys_user', $id, ['login' => $existing['sus_login_name'], 'expires_on' => $until,
 		'previous' => nu_date_only($existing['sus_expires_on'])]);
-	nu_flash('success', t('user_archived', $existing['sus_login_name'], date('d.m.Y', strtotime($until))));
+	nu_flash('success', t('user_archived', $existing['sus_login_name'], date(nu_dfmt('d.m.Y'), strtotime($until))));
 	nu_redirect(nu_post('stay') === '1' ? nu_url('user', ['id' => $id]) : $backToList());
 }
 
@@ -356,6 +357,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			$ufDiff = NuUserFields::save($id, $ufNew);
 			foreach (NuUserAccess::save($id, $v['sus_zzzzsys_access_id'], $xaSel) as $xc => $xd) $ufDiff['access_extra:' . $xc] = $xd;   // 0.8.585
 			NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + $ufDiff]);
+			NuUserJson::stamp($id, true, 'form');
 			if ($permItems) NuPermission::setUser($id, $permSel);
 			$pa = array_values(array_intersect_key(array_column($permItems, 'pme_ident', 'zzzzsys_permission_item_id'), array_flip($permSel)));
 			if ($pa) NuLog::write('user_permissions', 'zzzzsys_user', $id, ['login' => $v['sus_login_name'], 'added' => $pa, 'removed' => []]);
@@ -372,10 +374,13 @@ if (nu_is_post() && nu_post('action') === 'save') {
 				foreach (NuUserAccess::save($id, $v['sus_zzzzsys_access_id'], $xaSel) as $xc => $xd) $changes['access_extra:' . $xc] = $xd;
 			}
 			if ($changes) NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $changes]);
+			$permChanged = false;
 			if ($permItems && isset($_POST['perm_sent'])) {
 				[$pa, $pr] = NuPermission::setUser($id, $permSel);
 				if ($pa || $pr) NuLog::write('user_permissions', 'zzzzsys_user', $id, ['login' => $v['sus_login_name'], 'added' => $pa, 'removed' => $pr]);
+				$permChanged = (bool)($pa || $pr);
 			}
+			if ($changes || $permChanged) NuUserJson::stamp($id, false, 'form');   // created / last changed stamps (0.8.759)
 			if ($newHash && $id === $me['id']) NuAuth::refreshFingerprint($newHash);
 			if ($admRoleMay && $admRoleSel !== $admRoleCur && ($ae = NuAdmin::assign($id, $admRoleSel)) !== '') nu_flash('warning', t('adm_role_field') . ': ' . $ae);
 			nu_flash('success', t('saved'));
@@ -479,7 +484,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<?php $pwInfo = '';                                  // password last changed (nuBuilder: sus_json PASSWORD_CHANGED_TIME / _SOURCE) – in the (i) panel (0.8.587)
 			if (($pwTime = (int)NuUserJson::get((string)$id, 'PASSWORD_CHANGED_TIME')) > 0) {
 				$pwSrc = (string)NuUserJson::get((string)$id, 'PASSWORD_CHANGED_SOURCE');
-				$pwInfo = date('d.m.Y H:i', $pwTime) . (in_array($pwSrc, ['user', 'admin', 'reset'], true) ? ' (' . t('user_pw_src_' . $pwSrc) . ')' : '');
+				$pwInfo = date(nu_dfmt('d.m.Y H:i'), $pwTime) . (in_array($pwSrc, ['user', 'admin', 'reset'], true) ? ' (' . t('user_pw_src_' . $pwSrc) . ')' : '');
 			} ?>
 			<?php // (i) links to the activity of this user (0.8.687): its log entries, the log about this record, its sessions
 			$riLinks = [];
@@ -582,7 +587,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 								unset($_SESSION['nu_ltok_link']); ?>
 								<details class="mt-2" id="loginTokenBox" data-nu-noguard<?= $ltNew !== '' ? ' open' : '' ?>><summary class="small"><i class="bi bi-key me-1"></i><?= h(t('ltok_title')) ?>
 									<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('ltok_tip')) ?>" title="<?= h(t('ltok_tip')) ?>"><i class="bi bi-info-circle"></i></span></summary>
-									<div class="small text-body-secondary mt-1" id="loginTokenState"><?= h($ltState === null ? t('ltok_state_none') : ($ltState === 0 ? t('ltok_state_open') : ($ltState < time() ? t('ltok_state_expired', date('d.m.Y H:i', $ltState)) : t('ltok_state_until', date('d.m.Y H:i', $ltState))))) ?></div>
+									<div class="small text-body-secondary mt-1" id="loginTokenState"><?= h($ltState === null ? t('ltok_state_none') : ($ltState === 0 ? t('ltok_state_open') : ($ltState < time() ? t('ltok_state_expired', date(nu_dfmt('d.m.Y H:i'), $ltState)) : t('ltok_state_until', date(nu_dfmt('d.m.Y H:i'), $ltState))))) ?></div>
 									<?php if ($ltNew !== ''): ?>
 										<div class="input-group input-group-sm mt-1">
 											<input class="form-control font-monospace" id="loginTokenUrl" readonly value="<?= h($ltNew) ?>" aria-label="<?= h(t('ltok_title')) ?>">

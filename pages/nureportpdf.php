@@ -42,7 +42,7 @@ try {
 } catch (Throwable $e) {
 	error_log('nuBuilder Next report ' . $report['sre_code'] . ': ' . $e->getMessage() . ' ' . $e->getFile() . ':' . $e->getLine());
 	$u = NuAuth::user();
-	$fail(t('rpt_err_run', (string)$report['sre_code']) . ($u['globeadmin'] || nu_cfg('nuConfigDebug') ? ' ' . $e->getMessage() : ''), 500);
+	$fail(t('rpt_err_run', (string)$report['sre_code']) . ($u['globeadmin'] || nu_debug() ? ' ' . $e->getMessage() : ''), 500);
 }
 NuLog::write('report_run', NuReport::TABLE, (string)$report['zzzzsys_report_id'], ['code' => (string)$report['sre_code'], 'bytes' => strlen($pdf)]);
 
@@ -54,7 +54,7 @@ if ($json) {
 			echo json_encode(NuReport::saveFile($pdf, (string)$report['sre_code'], nu_post('tag'), nu_post('file_name')) + ['ok' => true], JSON_UNESCAPED_UNICODE);
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next report save: ' . $e->getMessage());
-			$fail(NuAuth::user()['globeadmin'] || nu_cfg('nuConfigDebug') ? $e->getMessage() : t('err_unexpected'), 500);
+			$fail(NuAuth::user()['globeadmin'] || nu_debug() ? $e->getMessage() : t('err_unexpected'), 500);
 		}
 		exit;
 	}

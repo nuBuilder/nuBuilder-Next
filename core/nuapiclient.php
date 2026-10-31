@@ -16,6 +16,7 @@ final class NuApiClient
 		'users:password'    => 'Set passwords / send welcome e-mails',
 		'users:login_link'  => 'Create one-time login links (nuBuilder Forte\'s LOGIN_TOKEN)',
 		'reports:run'       => 'Run reports (PDF download links, PDF, e-mail)',
+		'exports:run'       => 'Run saved data exports (Excel / CSV files; the service user needs the admin right Data export)',
 		'notifications:write' => 'Send notifications to users (bell) and read their read receipts',
 		'access:read'       => 'Read access levels and their form rights',
 		'access:write'      => 'Create, change and delete access levels and their form rights',

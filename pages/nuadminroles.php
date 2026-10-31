@@ -117,9 +117,9 @@ nu_layout_start(t('adm_title'), 'home');
 						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-name="<?= h(t($label)) ?>">
 							<td><?php if (isset(NuAdmin::PAGES[$k])): [$pr, $pp] = NuAdmin::PAGES[$k]; ?><a href="<?= h(nu_url($pr, $pp)) ?>" target="_blank" rel="noopener" class="admRightLink" title="<?= h(t('adm_open_page')) ?>"><?= h(t($label)) ?><i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a><?php else: ?><?= h(t($label)) ?><?php endif; ?><?= $full ? $fullBadge : '' ?>
 								<span class="admGrpTag small text-body-secondary ms-1"><?= h(t($gLabel)) ?></span></td>
-							<td class="text-center"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="" aria-label="<?= h(t($label) . ': ' . t('adm_none')) ?>"<?= $cur === '' ? ' checked' : '' ?><?= $own ? ' disabled' : '' ?>></td>
-							<td class="text-center"><?php if ($levels === 'vc'): ?><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="view" aria-label="<?= h(t($label) . ': ' . t('adm_view')) ?>"<?= $cur === 'view' ? ' checked' : '' ?><?= $dis('view') ?>><?php endif; ?></td>
-							<td class="text-center"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="change" aria-label="<?= h(t($label) . ': ' . t('adm_change')) ?>"<?= $cur === 'change' ? ' checked' : '' ?><?= $dis('change') ?>></td>
+							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="" aria-label="<?= h(t($label) . ': ' . t('adm_none')) ?>"<?= $cur === '' ? ' checked' : '' ?><?= $own ? ' disabled' : '' ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_none')) ?></span></label></td>
+							<td class="text-center admLvlCell"><?php if ($levels === 'vc'): ?><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="view" aria-label="<?= h(t($label) . ': ' . t('adm_view')) ?>"<?= $cur === 'view' ? ' checked' : '' ?><?= $dis('view') ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_view')) ?></span></label><?php endif; ?></td>
+							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="change" aria-label="<?= h(t($label) . ': ' . t('adm_change')) ?>"<?= $cur === 'change' ? ' checked' : '' ?><?= $dis('change') ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_change')) ?></span></label></td>
 						</tr>
 					<?php endforeach; ?>
 				<?php endforeach; ?>

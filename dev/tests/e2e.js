@@ -39,7 +39,8 @@ async function login(user, pw, opt = {}) {
 async function open(p, url) { const r = await p.goto(BASE + url); await p.waitForLoadState('networkidle'); return r; }
 async function confirmDelete(p) {
 	await p.waitForTimeout(400);
-	if (await p.locator('.btn-red').count()) await p.click('.btn-red');
+	if (await p.locator('#nuConfirm.show .js-confirm-ok').count()) await p.click('#nuConfirm.show .js-confirm-ok');   // own dialog (0.8.763)
+	else if (await p.locator('.btn-red').count()) await p.click('.btn-red');
 	await p.waitForLoadState('networkidle'); await p.waitForTimeout(600);
 }
 async function setField(p, sel, v) { await p.fill(sel, v); await p.locator(sel).dispatchEvent('change'); }
@@ -338,6 +339,7 @@ T.log_filters = async (s) => {
 T.owner_693 = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=users&view=default');
+	if (!(await p.isVisible('#nuLvFilters'))) { await p.click('[aria-controls="nuLvFilters"]'); await p.waitForTimeout(500); }   // folded by default (0.8.751)
 	const w = await p.evaluate(() => ['pos', 'dept', 'team', 'state'].map(k => { const e = document.getElementById('lvf_' + k); if (!e) return 0; const x = e.nextElementSibling && e.nextElementSibling.classList.contains('ts-wrapper') ? e.nextElementSibling : e; return Math.round(x.getBoundingClientRect().width); }));
 	expect(w.every(x => x > 0 && x <= 280), 'users filter widths: ' + w.join(','));
 	await open(p, 'index.php?p=accesslevel&id=sample_editor');
@@ -554,6 +556,50 @@ T.design_list_badge = async (s) => {
 };
 
 // 0.8.687: users ↔ access levels ↔ permission items – filters and links; admin roles as a system list; logged-in users filters / groups
+// user stamps (0.8.759): sus_json NUNEXT_CREATED / NUNEXT_CHANGED {t, by} written by the user form (create / change), shown in the (i) panel and
+// in the users list columns Created / Last changed (view "all"); a user from before gets the created stamp from the log on the next change
+T.user_stamps = async (s) => {
+	const p = s.ga;
+	sql("DELETE FROM zzzzsys_user WHERE sus_login_name = 'e2e_stamp'");
+	try {
+		await open(p, 'index.php?p=user');
+		await p.fill('#sus_login_name', 'e2e_stamp'); await p.fill('#sus_name', 'E2E Stamp'); await p.fill('#sus_email', 'e2e_stamp@example.com');
+		await p.fill('#password', UPW); await p.fill('#password_confirm', UPW);
+		await p.selectOption('#sus_zzzzsys_access_id', { index: 1 });
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		const id = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'e2e_stamp'");
+		expect(id !== '', 'user created: ' + p.url());
+		const j1 = JSON.parse(sql("SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = '" + id + "'") || '{}');
+		expect(j1.NUNEXT_CREATED && j1.NUNEXT_CREATED.by === GA[0] && j1.NUNEXT_CREATED.via === 'form' && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(j1.NUNEXT_CREATED.t) && j1.NUNEXT_CHANGED && j1.NUNEXT_CHANGED.t === j1.NUNEXT_CREATED.t, 'created stamp: ' + JSON.stringify(j1));
+		// (i) panel: Created / Last changed from the stamps
+		await open(p, 'index.php?p=user&id=' + id);
+		const created = await p.textContent('#nuRecInfo .nuFormInfoRow[data-key=created] dd');
+		expect(created.includes(GA[0]) && /\d\d[./-]\d\d[./-]\d{4}/.test(created), '(i) created: ' + created);
+		// a change → changed stamp moves; a user from before (stamps removed) gets created from the log
+		sql("UPDATE zzzzsys_user SET sus_json = JSON_REMOVE(sus_json, '$.NUNEXT_CREATED', '$.NUNEXT_CHANGED') WHERE zzzzsys_user_id = '" + id + "'");
+		await open(p, 'index.php?p=user&id=' + id);
+		await p.fill('#sus_name', 'E2E Stamp 2');
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		const j2 = JSON.parse(sql("SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = '" + id + "'") || '{}');
+		expect(j2.NUNEXT_CHANGED && j2.NUNEXT_CHANGED.via === 'form' && j2.NUNEXT_CREATED && j2.NUNEXT_CREATED.via === 'log' && j2.NUNEXT_CREATED.t === j1.NUNEXT_CREATED.t, 'changed + created from the log: ' + JSON.stringify(j2));
+		// a save without a change leaves the stamps alone
+		await open(p, 'index.php?p=user&id=' + id);
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		expect(sql("SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = '" + id + "'") === JSON.stringify(j2) || JSON.parse(sql("SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = '" + id + "'")).NUNEXT_CHANGED.t === j2.NUNEXT_CHANGED.t, 'unchanged save keeps the stamp');
+		// list columns in the view "all"
+		await open(p, 'index.php?p=users&view=all&q=e2e_stamp');
+		const heads = await p.$$eval('table.nu-table thead th', th => th.map(x => x.textContent.trim()));
+		const row = await p.textContent('table.nu-table tbody tr');
+		expect(heads.some(h => /^Created|^Erstellt/.test(h)) && row.includes(GA[0]), 'list columns: ' + heads.join('|') + ' / ' + row.slice(0, 200));
+		await open(p, 'index.php?p=users&view=all&sort=created&dir=desc');
+		expect(/\/users\b|p=users/.test(p.url()) && await p.locator('table.nu-table tbody tr').count() > 0, 'sort by created');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_user WHERE sus_login_name = 'e2e_stamp'");
+		sql("DELETE FROM zzzzsys_nunext_log WHERE object = 'zzzzsys_user' AND details LIKE '%e2e_stamp%'");
+	}
+};
+
 T.users_access_links = async (s) => {
 	const p = s.ga;
 	const ben = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
@@ -1163,7 +1209,7 @@ T.form_info = async (s) => {
 		await open(p, 'index.php?p=form&f=samplecustomer&r=' + encodeURIComponent(id));
 		await p.click('#nuFormInfoBtn');
 		expect(await val('record_id') === id, 'record id: ' + await val('record_id'));
-		expect(/02\.01\.2026 03:04:05 · e2e_maker/.test(await val('created')) && /03\.02\.2099 04:05:06 · e2e_changer/.test(await val('changed')), 'created / changed: ' + await val('created') + ' | ' + await val('changed'));
+		expect(/02[./]01[./]2026 03:04:05 · e2e_maker/.test(await val('created')) && /03[./]02[./]2099 04:05:06 · e2e_changer/.test(await val('changed')), 'created / changed: ' + await val('created') + ' | ' + await val('changed'));
 		const copied = await p.evaluate(() => { const b = document.querySelector('#nuFormInfo [data-key="record_id"] [data-nu-copy-text]'); return b && b.getAttribute('data-nu-copy-text'); });
 		const all = await p.getAttribute('#nuFormInfoCopyAll', 'data-nu-copy-text');
 		expect(copied === id && all.includes('Table: sample_customer') && all.includes(id), 'copy texts: ' + all);
@@ -1247,7 +1293,7 @@ T.user_pw_info = async (s) => {
 		expect(/\S/.test(await p.getAttribute('#password', 'placeholder') || '') && !await p.isVisible('#passwordHint'), 'placeholder, no hint');
 		expect(await p.locator('label[for="sus_expires_on"] + .nuInfoTip').count() === 1, 'Valid until: hint on the (i)');
 		await p.click('#nuRecInfoBtn'); await p.waitForTimeout(300);
-		expect(/01\.01\.2026/.test(await p.textContent('#nuRecInfo [data-key="pw_changed"]')), '(i): password last changed');
+		expect(/01[./]01[./]2026/.test(await p.textContent('#nuRecInfo [data-key="pw_changed"]')), '(i): password last changed');
 		await open(p, 'index.php?p=user');
 		expect(!(await p.getAttribute('#password', 'placeholder')) && await p.isVisible('#passwordHint'), 'new user: hint, no placeholder');
 	} finally {
@@ -2024,6 +2070,12 @@ T.users_filter_width = async (s) => {                   // 0.8.729: users list f
 	const p = s.ga;
 	await p.setViewportSize({ width: 1400, height: 900 });
 	await open(p, 'index.php?p=users');
+	await p.waitForTimeout(400);
+	expect(!(await p.isVisible('#nuLvFilters')), 'users list: filters shown by default on desktop (0.8.751)');
+	await open(p, 'index.php?p=users&access=' + encodeURIComponent(sql("SELECT zzzzsys_access_id FROM zzzzsys_access LIMIT 1").trim()));
+	await p.waitForTimeout(400);
+	expect(await p.isVisible('#nuLvFilters'), 'users list: filters folded while one is set');
+	await open(p, 'index.php?p=users');
 	if (!(await p.isVisible('#nuLvFilters'))) { await p.click('[aria-controls="nuLvFilters"]'); await p.waitForTimeout(500); }
 	const box = await p.$$eval('#nuLvFilters .row > div', (d) => d.map((x) => { const r = x.getBoundingClientRect(); return [r.left, r.top, r.width]; }));
 	const row = box.filter((b) => Math.abs(b[1] - box[0][1]) < 2), gaps = row.slice(1).map((b, i) => Math.round(b[0] - row[i][0] - row[i][2]));
@@ -2037,6 +2089,157 @@ T.users_filter_width = async (s) => {                   // 0.8.729: users list f
 	expect(await p.locator('#lvf_access + .ts-wrapper .ts-dropdown .option').count() > 0, 'typing in the searchable select');
 	await p.keyboard.press('Escape');
 	await p.setViewportSize({ width: 1300, height: 900 });
+};
+
+T.review_765 = async (s) => {                          // 0.8.765: design mode (redo, form messages, column picker), existing-database warning, lazy code tools
+	const p = s.ga, F = 'samplecustomer';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-765.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_browse zzzzsys_form zzzzsys_object zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	const before = sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'db_origin'");
+	try {
+		// the form page loads the code tools only in design mode (they come with CodeMirror otherwise)
+		await open(p, 'index.php?p=form&f=' + F + '&r=sample_cus_01');
+		expect(await p.locator('script[src*="nucodetools.js"]').count() === 0, 'code tools loaded on a plain form page');
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		await open(p, 'index.php?p=form&f=' + F + '&r=sample_cus_01&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(800);
+		expect(await p.locator('script[src*="nucodetools.js"]').count() === 1, 'code tools missing in design mode');
+		// messages of the form's own code: collected in the bar, no toast over the panel
+		const n0 = await p.evaluate(() => (window.nuNext.formMsgs || []).length);
+		await p.evaluate(() => { window.nuToast('E2E form toast'); window.nuMessage(['E2E form message']); });
+		await p.waitForTimeout(300);
+		expect(await p.isVisible('#nuDsFormMsgs') && (await p.textContent('#nuDsFormMsgs')).trim() === String(n0 + 2) && await p.locator('#nuToasts .toast').count() === 0 && !(await p.locator('text=E2E form message').isVisible().catch(() => false)), 'form messages not collected: ' + n0 + ' / ' + (await p.textContent('#nuDsFormMsgs')) + ' / ' + await p.isVisible('#nuDsFormMsgs') + ' / ' + await p.locator('#nuToasts .toast').count() + ' / ' + await p.locator('#nuMessageDiv').count() + ' ' + (await p.locator('#nuMessageDiv').textContent().catch(() => '')));
+		// redo: change a label, undo, redo
+		const lbl = sql("SELECT sob_all_label FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_customer_o2'");
+		await p.click('#nuw_cus_name .nuDesignOverlay'); await p.waitForTimeout(500);
+		await p.fill('#nuDsPanel [data-key="sob_all_label"]', 'E2E redo'); await p.press('#nuDsPanel [data-key="sob_all_label"]', 'Enter'); await p.waitForTimeout(1500);
+		const snapLabel = () => sql(`SELECT jt.l FROM zzzzsys_nunext_form_draft d, JSON_TABLE(d.snapshot, '$.objects[*]' COLUMNS(id VARCHAR(60) PATH '$.zzzzsys_object_id', l VARCHAR(200) PATH '$.sob_all_label')) jt WHERE d.form_id = '${F}' AND d.status = 'open' AND jt.id = 'sample_customer_o2'`);
+		expect(snapLabel() === 'E2E redo', 'label not in the draft: ' + snapLabel());
+		await p.click('#nuDsUndo'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(1500);
+		expect(snapLabel() === lbl, 'undo: ' + snapLabel());
+		expect(await p.isEnabled('#nuDsRedo'), 'redo not offered after undo');
+		await p.keyboard.press('Control+y'); await p.waitForTimeout(1800);
+		expect(snapLabel() === 'E2E redo', 'redo (Ctrl+Y): ' + snapLabel());
+		// list design: "+" asks for the column first – no draft change before a choice
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		await open(p, 'index.php?p=form&f=' + F + '&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(800);
+		await p.click('#nuDsColAddTh'); await p.waitForSelector('#nuDsColPick'); await p.waitForTimeout(700);
+		expect(await p.locator('#nuDsColPick [data-col-name]').count() > 0 && sql(`SELECT COUNT(*) FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}' AND status = 'open'`) === '0', 'column picker');
+		await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+		expect(await p.locator('#nuDsColPick').count() === 0, 'Esc closes the picker');
+		// the existing-database warning: hidden until the next update
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('db_origin', 'existing_db_warn_hidden'); INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('db_origin', 'legacy')");
+		await open(p, 'index.php?p=home&tiles=1');
+		expect(await p.locator('#nuExistingDbWarn').count() === 1, 'warning missing');
+		await Promise.all([p.waitForNavigation(), p.click('#nuExistingDbHide')]);
+		expect(await p.locator('#nuExistingDbWarn').count() === 0 && sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'existing_db_warn_hidden'") !== '', 'warning not hidden');
+		sql("UPDATE zzzzsys_nunext_setting SET setting_value = '0.0.1' WHERE zzzzsys_nunext_setting_id = 'existing_db_warn_hidden'");
+		await open(p, 'index.php?p=home&tiles=1');
+		expect(await p.locator('#nuExistingDbWarn').count() === 1, 'warning not back after an update');
+		// compression rules for the static files
+		expect(['assets/.htaccess', 'vendor/bundled/.htaccess'].every((f) => /mod_deflate[\s\S]*DEFLATE text\/css application\/javascript/.test(fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8'))), 'compression rules missing');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('db_origin', 'existing_db_warn_hidden')" + (before !== '' ? "; INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('db_origin', '" + before + "')" : ''));
+	}
+};
+
+T.review_764 = async (s) => {                          // 0.8.764: phones – stacked fixed-position forms, browse cards, embedded lists, admin role rights
+	const ctx = await browser.newContext({ locale: 'en-GB', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+	try {
+		await p.goto(BASE + 'index.php?p=form&f=samplecustomer&r=sample_cus_01'); await p.waitForTimeout(800);
+		expect(await p.evaluate(() => document.documentElement.classList.contains('nuPhoneStack')), 'phone: absolute form not stacked');
+		const geo = await p.$$eval('#nuTabPane0 .nuAbsoluteCanvas > .nuAbs', (els) => els.filter((e) => e.offsetParent).map((e) => { const r = e.getBoundingClientRect(), l = e.querySelector('.nuLabelLeft'), f = e.querySelector('.form-control, .form-select'); return { right: r.right, lab: l && f ? l.getBoundingClientRect().bottom <= f.getBoundingClientRect().top + 1 : true }; }));
+		expect(geo.length > 3 && geo.every((g) => g.right <= 391 && g.lab), 'phone: fields cut off or label not above: ' + JSON.stringify(geo.slice(0, 3)));
+		await p.evaluate(() => window.nuNextPhoneLayout(false));
+		expect(!(await p.evaluate(() => document.documentElement.classList.contains('nuPhoneStack'))), 'nuNextPhoneLayout(false) did not switch it off');
+		await p.goto(BASE + 'index.php?p=form&f=samplecustomer'); await p.waitForTimeout(600);
+		expect(await p.evaluate(() => document.documentElement.classList.contains('nuPhoneCards') && getComputedStyle(document.querySelector('#nuBrowseTable thead')).display === 'none'
+			&& document.querySelector('#nuBrowseTable td.nuCell').getAttribute('data-nu-label') !== null), 'phone: browse rows not as cards');
+		// an embedded list (run object): compact, filters folded, grows to its rows on phones
+		await p.goto(BASE + 'index.php?p=form&f=sampleall&r=-1'); await p.waitForTimeout(800);
+		await p.click('#nuTab4'); await p.waitForTimeout(2500);
+		const fr = await p.evaluate(() => { const f = document.querySelector('.nuWrap_run iframe.nuIframe'); if (!f) return null; const d = f.contentDocument; return { h: f.getBoundingClientRect().height, emb: d.documentElement.classList.contains('nuEmbedded'), folded: !(d.getElementById('nuBrowseFilters') || { classList: { contains: () => false } }).classList.contains('show'), rows: d.querySelectorAll('#nuBrowseTable tr.nuBrowseRow').length }; });
+		expect(fr && fr.emb && fr.folded && fr.rows > 0 && fr.h > 300, 'embedded list: ' + JSON.stringify(fr));
+		// admin role rights: None / View / Change as labelled buttons on phones
+		await p.goto(BASE + 'index.php?p=adminroles&id=new'); await p.waitForTimeout(500);
+		const lbl = p.locator('#admRights tr.nuAdmRight').first().locator('label.admLvl', { hasText: /view|change/i }).first();
+		expect(await lbl.isVisible(), 'admin role: level labels not shown on phones');
+		await lbl.click();
+		expect(await p.locator('#admRights tr.nuAdmRight').first().locator('label.admLvl input:checked').count() === 1
+			&& await p.locator('#admRights tr.nuAdmRight').first().locator('label.admLvl:has(input:checked) .admLvlTxt').textContent() !== 'none', 'admin role: tap on a level does not choose it');
+		expect(errs.length === 0, errs.slice(0, 2).join(' | '));
+	} finally { await ctx.close(); }
+	// desktop: nothing of it
+	await open(s.ga, 'index.php?p=form&f=samplecustomer&r=sample_cus_01');
+	expect(!(await s.ga.evaluate(() => document.documentElement.classList.contains('nuPhoneStack'))), 'desktop stacked');
+};
+
+T.review_763 = async (s) => {                          // 0.8.763: page header, Save in the title bar, empty states, delete dialog, settings sections
+	const p = s.ga;
+	// security check: report and settings in two tabs, Save only with the settings; a link to a setting opens its tab
+	await open(p, 'index.php?p=securitycheck');
+	expect(await p.isVisible('#secTabBtn-checks') && !(await p.isVisible('#secSaveBtn')) && !(await p.isVisible('#secSettings')), 'security check: report first, no Save');
+	await p.click('#secTabBtn-settings'); await p.waitForTimeout(300);
+	expect(await p.isVisible('#secSaveBtn') && await p.isVisible('#secSettings'), 'security check: settings tab with Save');
+	await open(p, 'index.php?p=securitycheck#sec_protect_fields'); await p.waitForTimeout(500);
+	expect(await p.isVisible('#sec_protect_fields'), 'link to a setting opens the settings tab');
+	// one page header on settings pages: breadcrumb with Settings, h1 with icon, Back first
+	await open(p, 'index.php?p=themes');
+	expect(await p.locator('.nuPageHead h1 > .bi').count() === 1 && /settings/.test(await p.getAttribute('nav[aria-label=breadcrumb] li:nth-child(2) a', 'href') || ''), 'themes: page header');
+	// settings centre: sections Users & access and Logs & integration, found by the search
+	await open(p, 'index.php?p=settings&s=users');
+	expect(await p.locator('#shTools_users #shTool_users').count() === 1 && await p.locator('#shTools_users #shTool_sessions').count() === 1, 'section users & access');
+	await open(p, 'index.php?p=settings&s=logs');
+	expect(await p.locator('#shTools_logs #shTool_webhooks').count() === 1 && await p.locator('#shTools_logs #shTool_audit').count() === 1, 'section logs & integration');
+	const idx = await p.evaluate(async () => (await (await fetch('index.php?p=settings&index=1')).json()).map((x) => x.u));
+	expect(idx.some((u) => /p=webhooks/.test(u)) && idx.some((u) => /p=users/.test(u)), 'settings search knows users / webhooks');
+	// data & logs: one Save in the title bar, no Save buttons in the cards
+	await open(p, 'index.php?p=settings&s=data');
+	expect(await p.locator('#shDataSave').count() === 1 && await p.locator('#shDataForm button[type=submit]').count() === 0, 'one Save on Data & logs');
+	// empty states: explanation + first action; with a search: nothing matches + Show all
+	const nUf = sql("SELECT COUNT(*) FROM zzzzsys_nunext_user_field");
+	if (nUf === '0') {
+		await open(p, 'index.php?p=userfields');
+		expect(await p.locator('.nuLvEmptyIntro a.btn-primary[href*="id=new"]').count() > 0 && !(await p.isVisible('.nuListFilter')), 'empty custom user fields: intro + add, no search');
+	}
+	await open(p, 'index.php?p=users&q=zzqqxxnobody');
+	expect(await p.locator('.nuLvEmptyFiltered a').count() > 0 && await p.isVisible('.nuListFilter'), 'users: nothing matches + Show all');
+	// delete dialog of a record: own dialog, named, Cancel has the focus, Cancel deletes nothing
+	sql("INSERT INTO zzzzsys_note (zzzzsys_note_id, not_title, not_content) VALUES ('nxdel763', 'E2E delete 763', 'x')");
+	try {
+		await open(p, 'index.php?p=form&f=nunotes&r=nxdel763'); await p.waitForTimeout(500);
+		await p.evaluate(() => window.nuDeleteAction()); await p.waitForTimeout(600);
+		expect(await p.isVisible('#nuConfirm.show') && /E2E delete 763|Delete|Löschen/i.test(await p.textContent('#nuConfirm .js-confirm-text')), 'delete dialog: ' + await p.textContent('#nuConfirm .js-confirm-text').catch(() => ''));
+		expect(await p.evaluate(() => document.activeElement && document.activeElement.matches('#nuConfirm [data-bs-dismiss="modal"]')), 'delete dialog: Cancel has the focus');
+		await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_note WHERE zzzzsys_note_id = 'nxdel763'") === '1', 'Enter on Cancel deleted the record');
+	} finally { sql("DELETE FROM zzzzsys_note WHERE zzzzsys_note_id = 'nxdel763'"); }
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.review_761 = async (s) => {                          // 0.8.761: review fixes – filter chips, built-in theme edit, update tabs, CodeMirror scroll box
+	const p = s.ga;
+	const lvl = sql("SELECT zzzzsys_access_id FROM zzzzsys_access ORDER BY sal_code LIMIT 1");
+	await open(p, 'index.php?p=users&access=' + encodeURIComponent(lvl));
+	const chip = p.locator('#nuLvChips .nuLvChip[data-flt="access"]');
+	expect(await chip.count() === 1, 'users list: chip of the set filter');
+	await Promise.all([p.waitForNavigation(), chip.click()]);
+	expect(!/[?&]access=(?!%2A|\*)/.test(p.url()) && await p.locator('#nuLvChips .nuLvChip[data-flt="access"]').count() === 0, 'chip removes the filter: ' + p.url());
+	await open(p, 'index.php?p=themes&edit=b:forte');
+	expect(!/edit=/.test(p.url()) && await p.locator('.alert-info').count() > 0, 'built-in theme: not edited, info shown – ' + p.url());
+	await open(p, 'index.php?p=update');
+	const nested = await p.$$eval('#updTabs button [role], #updTabs button [tabindex]', (e) => e.length);
+	expect(nested === 0, 'update tabs: no roles / tab stops inside the tab buttons (' + nested + ')');
+	await open(p, 'index.php?p=configfile');
+	await p.waitForTimeout(600);
+	const sc = await p.$$eval('.CodeMirror-scroll', (e) => e.map((x) => x.getAttribute('tabindex') + '|' + (x.getAttribute('aria-label') || '')));
+	expect(sc.length > 0 && sc.every((x) => /^0\|./.test(x)), 'CodeMirror scroll box focusable and named: ' + sc.join(', '));
+	await open(p, 'index.php');
+	const bg = await p.$$eval('.text-bg-secondary', (e) => e.slice(0, 1).map((x) => getComputedStyle(x).backgroundColor));
+	expect(!bg.length || bg[0] === 'rgb(108, 117, 125)', 'grey badges with 4.5:1 contrast: ' + bg.join());
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 T.browse_alias = async (s) => {                         // 0.8.731: a list column naming an alias of the browse SQL's field list (tester's report)
@@ -2374,7 +2577,9 @@ T.design_list = async (s) => {
 		cols = snapCols();
 		const order = cols.slice().sort((a, b) => a.sbr_order - b.sbr_order).map(c => c.zzzzsys_browse_id);
 		expect(order.indexOf(id) === 2, 'moved right: ' + order.indexOf(id));
-		await p.click('#nuDsColAddTh'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(1200);
+		await p.click('#nuDsColAddTh'); await p.waitForSelector('#nuDsColPick'); await p.waitForTimeout(300);   // 0.8.765: choose first
+		expect(snapCols().length === +liveN, 'the "+" added a column before a choice');
+		await p.click('#nuDsColPickExpr'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(1200);
 		expect(snapCols().length === +liveN + 1, 'column added');
 		await p.click('#nuDsColDelete'); await p.waitForTimeout(300); await p.click('#nuConfirm.show .js-confirm-ok'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(1200);
 		expect(snapCols().length === +liveN, 'column removed');
@@ -3959,6 +4164,123 @@ T.userfields_list = async (s) => {
 	}
 };
 
+// data export (0.8.758): editor (table dataset with conditions / sort, SQL dataset with a #parameter#), preview + count, save, run → .xlsx
+// (two sheets, typed cells), CSV → ZIP with two files, re-import option, JSON download / upload, REST API, delete
+T.data_export = async (s) => {
+	const p = s.ga;
+	const X = 'zzzzsys_nunext_export';
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nudxp-'));
+	const go = async (q) => {
+		await open(p, 'index.php?p=dataexport' + (q || ''));
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=dataexport' + (q || '')); }
+	};
+	const download = async (click) => { const [d] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), click()]); const f = path.join(tmp, d.suggestedFilename()); await d.saveAs(f); return f; };
+	const py = (code) => execSync('python3 -I -', { input: code }).toString().trim();
+	sql("DELETE FROM " + X + " WHERE code LIKE 'e2e_dxp%'");
+	try {
+		await go('&id=new');
+		await p.waitForSelector('#dxpTable option[value=sample_order]', { state: 'attached' });
+		await p.fill('#dxpName', 'E2E dxp');
+		await p.fill('#dxpCode', 'e2e_dxp');
+		await p.fill('#dxpDsName', 'Orders');
+		await p.evaluate(() => { const t = document.querySelector('#dxpTable'); t.tomselect.setValue('sample_order'); });
+		await p.waitForSelector('.dxpCols tbody tr');
+		const nCols = await p.locator('.dxpCols tbody tr').count();
+		await p.locator('.dxpCols tbody tr[data-col=ord_note] .dxpColOn').uncheck();
+		await p.fill('.dxpCols tbody tr[data-col=ord_total] .dxpColHead', 'Total');
+		await p.selectOption('.dxpCols tbody tr[data-col=ord_total] .dxpColFmt', '#,##0.00');
+		await p.click('.dxpCols tbody tr[data-col=ord_number] .dxpColUp');      // ord_number before sample_order_id
+		await p.click('#dxpCondAdd'); await p.selectOption('.dxpCondCol', 'ord_total'); await p.selectOption('.dxpCondOp', 'gt'); await p.fill('.dxpCondV1', '100');
+		await p.click('#dxpSortAdd'); await p.selectOption('.dxpSortCol', 'ord_total'); await p.selectOption('.dxpSortDir', 'desc');
+		await p.click('#dxpCountBtn'); await p.waitForFunction(() => /\d/.test(document.querySelector('#dxpMsg').textContent));
+		const count = parseInt(await p.textContent('#dxpMsg'), 10);
+		const expected = parseInt(sql("SELECT COUNT(*) FROM sample_order WHERE ord_total > 100"), 10);
+		expect(count === expected && count > 0, 'count ' + count + ' <> ' + expected);
+		await p.click('#dxpPreviewBtn'); await p.waitForSelector('#dxpPreviewDlg.show');
+		const heads = await p.$$eval('.dxpPreview thead th', th => th.map(x => x.textContent));
+		expect(heads[0] === 'ord_number' && heads.indexOf('Total') > 0 && heads.indexOf('ord_note') < 0 && await p.locator('.dxpPreview tbody tr').count() === Math.min(20, count), 'preview columns / rows: ' + heads.join());
+		await p.click('#dxpPreviewDlg .btn-close'); await p.waitForSelector('#dxpPreviewDlg', { state: 'hidden' }); await p.waitForTimeout(300);
+		// second dataset: typed SQL with a parameter
+		await p.click('#dxpDsAdd'); await p.selectOption('#dxpDsSource', 'sql'); await p.waitForSelector('.dxpCM');
+		await p.evaluate(() => { document.querySelector('.dxpCM').CodeMirror.setValue("SELECT cus_name, cus_country, cus_credit, cus_since FROM sample_customer WHERE cus_country = '#country#' ORDER BY cus_name"); });
+		await p.fill('#dxpDsName', 'Customers');
+		await p.click('#dxpCheck'); await p.waitForFunction(() => /#country#/.test(document.querySelector('#dxpCheckMsg').textContent));
+		expect(await p.locator('#dxpDsTabs .nav-link').count() === 2, 'two dataset tabs');
+		await Promise.all([p.waitForNavigation(), p.click('#dxpSave')]);
+		const id = sql("SELECT " + X + "_id FROM " + X + " WHERE code = 'e2e_dxp'");
+		expect(id !== '' && p.url().includes('id=' + id) && await p.locator('#dxpParamsNote').count() === 1, 'saved, parameter note');
+		const stored = JSON.parse(sql("SELECT datasets FROM " + X + " WHERE code = 'e2e_dxp'"));
+		expect(stored.length === 2 && stored[0].columns.length === nCols - 1 && stored[0].columns[0].col === 'ord_number' && stored[0].where.c[0][1] === 'gt' && stored[0].sort[0][1] === 'desc' && stored[1].source === 'sql', 'stored model: ' + JSON.stringify(stored).slice(0, 200));
+		// run: asks for #country#, then the xlsx
+		await go('&run=' + id);
+		await p.fill('#prm_country', sql("SELECT cus_country FROM sample_customer ORDER BY cus_country LIMIT 1"));
+		let f = await download(() => p.click('#dxpRunGo'));
+		let x = JSON.parse(py("import openpyxl, json\nwb = openpyxl.load_workbook(" + JSON.stringify(f) + ")\nws = wb.worksheets[0]\nr2 = [c for c in ws[2]]\n"
+			+ "print(json.dumps({'sheets': wb.sheetnames, 'rows': [w.max_row for w in wb.worksheets], 'h': [c.value for c in ws[1]], 'freeze': str(ws.freeze_panes), 'filter': ws.auto_filter.ref,"
+			+ " 'date': type(ws['D2'].value).__name__ if ws['D2'].value is not None else '', 'types': [type(c.value).__name__ for c in r2], 'fmt': [c.number_format for c in r2]}))"));
+		expect(/\.xlsx$/.test(f) && JSON.stringify(x.sheets) === '["Orders","Customers"]' && x.rows[0] === count + 1 && x.h[0] === 'ord_number' && x.h.indexOf('Total') > 0 && x.freeze === 'A2' && x.filter.startsWith('A1:'), 'xlsx: ' + JSON.stringify(x));
+		const iTotal = x.h.indexOf('Total'), iDate = x.h.indexOf('ord_date');
+		expect(['int', 'float'].includes(x.types[iTotal]) && x.fmt[iTotal] === '#,##0.00' && x.types[iDate] === 'datetime' && x.fmt[iDate] === 'yyyy-mm-dd', 'typed cells: ' + JSON.stringify([x.types, x.fmt]));
+		// CSV → ZIP with two files; re-import option: key column first, names as headings
+		sql("UPDATE " + X + " SET format = 'csv', datasets = JSON_SET(datasets, '$[0].reimport', true) WHERE code = 'e2e_dxp'");
+		await go('&run=' + id);
+		await p.fill('#prm_country', 'XX');
+		f = await download(() => p.click('#dxpRunGo'));
+		const z = JSON.parse(py("import zipfile, json\nz = zipfile.ZipFile(" + JSON.stringify(f) + ")\nn = z.namelist()\nprint(json.dumps({'names': n, 'first': z.read('Orders.csv').decode('utf-8-sig').split('\\r\\n')[:2], 'cust': z.read('Customers.csv').decode('utf-8-sig').split('\\r\\n')[:2]}))"));
+		expect(/\.zip$/.test(f) && z.names.length === 2 && z.first[0].startsWith('sample_order_id;ord_number;') && !/Total/.test(z.first[0]) && z.cust[0] === 'cus_name;cus_country;cus_credit;cus_since' && z.cust[1] === '', 'zip: ' + JSON.stringify(z));
+		sql("UPDATE " + X + " SET format = 'xlsx' WHERE code = 'e2e_dxp'");
+		// JSON download + upload = a copy with a new code
+		await go('&id=' + id);
+		await p.click('#dxpMore');
+		f = await download(() => p.click('#dxpJson'));
+		const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+		expect(j.format === 'nunext-export-1' && j.export.code === 'e2e_dxp' && j.export.datasets.length === 2, 'json file');
+		await go('');
+		expect(await p.locator('.nuLv[data-lv-list="exports"]').count() === 1 && await p.locator('tr:has-text("E2E dxp") .dxRun').count() === 1, 'list with Run');
+		await Promise.all([p.waitForNavigation({ url: /p=dataexport&id=/ }), p.setInputFiles('#dxpImportFile', f)]);
+		await p.waitForLoadState('networkidle');
+		const copy = sql("SELECT code FROM " + X + " WHERE code = 'e2e_dxp_2'");
+		expect(copy === 'e2e_dxp_2' && p.url().includes('p=dataexport&id='), 'uploaded as e2e_dxp_2: ' + p.url());
+		// REST API: list + run (service user with the admin right through a role)
+		const anna = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+		sql("DELETE FROM zzzzsys_nunext_admin_user WHERE zzzzsys_nunext_admin_user_id = '" + anna + "'");
+		sql("INSERT INTO zzzzsys_nunext_admin_role (zzzzsys_nunext_admin_role_id, code, name, rights, sort_order) VALUES ('e2e_dxprole', 'e2edxp', 'E2E export role', '{\"dataexport\":\"view\"}', 99)");
+		sql("INSERT INTO zzzzsys_nunext_admin_user (zzzzsys_nunext_admin_user_id, role_id) VALUES ('" + anna + "', 'e2e_dxprole')");
+		sql("INSERT INTO zzzzsys_nunext_api_client (zzzzsys_nunext_api_client_id, name, client_id, scopes, user_id, active, rate_limit, created_at) VALUES ('e2edxpapi','E2E dxp','nk_e2edxp','[\"exports:run\"]','" + anna + "','1',120,NOW())");
+		await go('');
+		const tok = await p.evaluate(async (url) => {
+			const csrf = document.querySelector('[data-csrf]').getAttribute('data-csrf');
+			const r = await fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ action: 'token', client_ref: 'e2edxpapi', scope: 'exports:run' }) });
+			const j = await r.json();
+			return j.token || { access_token: '' };
+		}, BASE + 'index.php?p=apiplayground');
+		const api = BASE.replace(/index\.php$/, '') + 'api.php/v1/exports';
+		const list = await (await fetch(api, { headers: { Authorization: 'Bearer ' + tok.access_token } })).json();
+		if (list.status === 404 && /switched off/.test(list.title || '')) { console.log('      (REST part skipped: $nuConfigApi is off on the test site)'); } else {
+		const mine = (list.data || []).find(e => e.code === 'e2e_dxp');
+		expect(mine && JSON.stringify(mine.params) === '["country"]' && mine.datasets.length === 2, 'API list: ' + JSON.stringify(list).slice(0, 200));
+		const run = await fetch(api + '/e2e_dxp/run', { method: 'POST', headers: { Authorization: 'Bearer ' + tok.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ params: { country: 'XX' } }) });
+		const buf = Buffer.from(await run.arrayBuffer());
+		expect(run.status === 200 && /spreadsheetml/.test(run.headers.get('content-type')) && /e2e_dxp_.*\.xlsx/.test(run.headers.get('content-disposition')) && parseInt(run.headers.get('x-export-rows'), 10) === count && buf.length > 1000 && buf.slice(0, 2).toString() === 'PK', 'API run: ' + run.status + ' ' + run.headers.get('content-disposition'));
+		const miss = await fetch(api + '/e2e_dxp/run', { method: 'POST', headers: { Authorization: 'Bearer ' + tok.access_token, 'Content-Type': 'application/json' }, body: '{}' });
+		expect(miss.status === 422, 'missing parameter → 422, got ' + miss.status);
+		expect(parseInt(sql("SELECT runs FROM " + X + " WHERE code = 'e2e_dxp'"), 10) === 3 && parseInt(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'export_run' AND record_id = '" + id + "'"), 10) === 3, 'runs counted and logged');
+		}
+		// delete
+		await go('&id=' + id);
+		await p.click('#dxpMore'); await p.click('#dxpDel');
+		await p.waitForSelector('.modal.show .btn-danger'); await Promise.all([p.waitForNavigation(), p.click('.modal.show .btn-danger')]);
+		expect(sql("SELECT COUNT(*) FROM " + X + " WHERE code = 'e2e_dxp'") === '0', 'deleted');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM " + X + " WHERE code LIKE 'e2e_dxp%'");
+		sql("DELETE FROM zzzzsys_nunext_api_client WHERE zzzzsys_nunext_api_client_id = 'e2edxpapi'");
+		sql("DELETE FROM zzzzsys_nunext_admin_user WHERE role_id = 'e2e_dxprole'");
+		sql("DELETE FROM zzzzsys_nunext_admin_role WHERE zzzzsys_nunext_admin_role_id = 'e2e_dxprole'");
+		fs.rmSync(tmp, { recursive: true, force: true });
+	}
+};
+
 // 0.8.547: API clients as a system list – scopes behind a small button (menu with the list), filters status / scope, playground in ⋮ on phones
 T.apiclients_list = async (s) => {
 	const p = s.ga;
@@ -4078,7 +4400,9 @@ T.edit_conflict = async (s) => {                        // 0.8.401: concurrent e
 		const asked = [];
 		B.removeAllListeners('dialog'); B.on('dialog', d => { asked.push(d.message()); d.accept(); });
 		await B.evaluate(() => { window.jQuery.confirm = null; });                   // the plain browser question for "Delete?"
-		await B.evaluate(() => nuDeleteAction()); await B.waitForTimeout(1500);
+		await B.evaluate(() => nuDeleteAction()); await B.waitForTimeout(600);
+		if (await B.locator('#nuConfirm.show .js-confirm-ok').count()) await B.click('#nuConfirm.show .js-confirm-ok');   // own delete dialogue (0.8.763)
+		await B.waitForTimeout(1500);
 		expect(asked.some(m => /Delete it anyway/.test(m)), 'no question before deleting a changed record: ' + JSON.stringify(asked));
 		expect(sql("SELECT COUNT(*) FROM sample_customer WHERE sample_customer_id = 'sample_cus_07'") === '0', 'not deleted after "yes"');
 		// 6. switched off in Before Edit: no signatures, no hint
@@ -4093,32 +4417,6 @@ T.edit_conflict = async (s) => {                        // 0.8.401: concurrent e
 	} finally {
 		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'samplecustomer_BE'");
 		await B.context().close();
-	}
-};
-
-// 0.8.633: Form cloner – SQL only ticked by default, a tile on the start page; Form with AI – only the chosen tables in the prompt;
-// builder – Clone / Delete object in the ⋮ menu of the objects list; nuAttachSaveButtonTo – the tab grows with the attached Save
-// TEMPORARY (0.8.634): header layouts to try (developer mode, user menu) – variant C: Save stays, Clone goes into the ⋮ menu and still works
-T.header_variants = async (s) => {
-	const p = s.ga;
-	await open(p, 'index.php?p=home');
-	if (!await p.locator('[data-nu-hv="c"]').count()) { s.skip = 'developer mode off'; return; }
-	try {
-		await p.evaluate(() => localStorage.setItem('nunext-hv', 'c'));
-		await open(p, 'index.php?p=user&id=sample_ben');
-		expect(await p.evaluate(() => document.documentElement.classList.contains('nuHv-c')), 'variant class missing');
-		expect(await p.locator('.nuHvCrumbTitle').count() === 1 && await p.isVisible('.nuBtnSave'), 'title in the breadcrumb / Save visible');
-		await p.click('.nuHvMoreBtn');
-		await Promise.all([p.waitForNavigation(), p.locator('.nuHvMore .dropdown-item:has(.bi-copy)').click()]);
-		expect(/clone=/.test(p.url()), 'Clone from the menu: ' + p.url());
-		for (const v of ['a', 'b', 'd', 'e']) {
-			await p.evaluate((x) => localStorage.setItem('nunext-hv', x), v);
-			await open(p, 'index.php?p=form&f=samplecustomer&r=-1');
-			expect(await p.evaluate((x) => document.documentElement.classList.contains('nuHv-' + x), v) && await p.isVisible('#nuSaveButton'), 'variant ' + v + ' on a form page');
-		}
-		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
-	} finally {
-		await p.evaluate(() => localStorage.removeItem('nunext-hv'));
 	}
 };
 
@@ -4449,6 +4747,16 @@ T.export_empty = async (s) => {
 		await open(p, url + '&q=zzz-no-such-record-e2e');
 		expect(await p.locator(btn).count() === 0, url + ': Export shown without records');
 	}
+	// 0.8.749: Debug results and formats too
+	sql("INSERT INTO zzzzsys_debug (zzzzsys_debug_id, deb_message, deb_added) VALUES ('e2e_dbg_exp', 'e2e export empty', UNIX_TIMESTAMP())");
+	try {
+		for (const url of ['index.php?p=debug', 'index.php?p=formats']) {
+			await open(p, url);
+			expect(await p.locator('#nuListExportBtn').count() === 1, url + ': Export missing with records');
+			await open(p, url + '&q=zzz-no-such-record-e2e');
+			expect(await p.locator('#nuListExportBtn').count() === 0, url + ': Export shown without records');
+		}
+	} finally { sql("DELETE FROM zzzzsys_debug WHERE zzzzsys_debug_id = 'e2e_dbg_exp'"); }
 	// 0.8.711: phones – the icon only
 	const ph = await login(GA[0], GA[1], { viewport: { width: 390, height: 800 } });
 	await open(ph, 'index.php?p=form&f=samplecustomer');
@@ -4457,6 +4765,54 @@ T.export_empty = async (s) => {
 	await ph.click('#nuExportButton'); await ph.waitForTimeout(300);
 	expect(await ph.locator('#nuExportButton + .dropdown-menu .nuExpXlsx').isVisible(), 'phone: Export menu does not open');
 	await ph.context().close();
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.translations_form = async (s) => {                     // 0.8.754: missing translations of one form in every language, AI round trip, design mode, select options
+	const p = s.ga;
+	const clean = () => sql("DELETE FROM zzzzsys_translate WHERE trl_translation LIKE 'E2E %'; DELETE FROM zzzzsys_nunext_log WHERE event = 'translations_ai'");
+	clean();
+	try {
+		const U = 'index.php?p=translations&view=missing&f=samplecustomer';
+		await open(p, U);
+		const rows = await p.$$eval('#trlMatrix tbody tr', (r) => r.map((x) => [x.getAttribute('data-text'), x.innerText]));
+		const au = rows.find((r) => r[0] === 'Australia');
+		expect(au && await p.locator('#trlMatrix th[data-lang="German"]').count() === 1, 'matrix without the select option text / German: ' + JSON.stringify(rows.slice(0, 3)));
+		// the prompt (JSON route, nothing stored)
+		const pr = await p.evaluate(async () => {
+			const f = document.getElementById('trlAiPromptForm');
+			const fd = new FormData(f);
+			fd.delete('ai_lang[]'); fd.append('ai_lang[]', 'German');
+			return (await fetch(f.getAttribute('data-url'), {method: 'POST', body: fd, credentials: 'same-origin'})).json();
+		});
+		expect(pr.ok && /nunext-translate-1/.test(pr.prompt) && /"en": "Australia"/.test(pr.prompt) && /into German\./.test(pr.prompt), 'prompt: ' + JSON.stringify(pr).slice(0, 300));
+		// paste an answer: two good rows, one unknown text, one unknown language
+		const ans = 'Sure:\n```json\n' + JSON.stringify({format: 'nunext-translate-1', translations: {German: {Australia: 'E2E Australien', Customer: 'E2E Kunde', Nonsense: 'E2E x'}, Klingon: {Customer: 'E2E Q'}}}) + '\n```';
+		await p.fill('#trlAiAnswer', ans);
+		await Promise.all([p.waitForNavigation(), p.click('#trlAiCheck')]);
+		const st = await p.$$eval('#trlAiPreview tbody tr', (r) => r.map((x) => x.getAttribute('data-status')).join(','));
+		expect(st === 'new,new,skip,skip', 'preview statuses: ' + st);
+		expect(await p.locator('.trlAiLang:checked').count() > 0, 'languages not ticked after the check');
+		await Promise.all([p.waitForNavigation(), p.click('#trlAiSave')]);
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_translate WHERE trl_language = 'German' AND trl_translation IN ('E2E Australien', 'E2E Kunde')") === 2, 'translations not saved');
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'translations_ai'") === 1, 'not logged');
+		const cell = await p.locator('#trlMatrix tr[data-text="Australia"] td[data-lang="German"]').innerText();
+		expect(/E2E Australien/.test(cell), 'matrix cell after saving: ' + cell);
+		// a broken answer
+		await p.fill('#trlAiAnswer', 'no json here');
+		await Promise.all([p.waitForNavigation(), p.click('#trlAiCheck')]);
+		expect(await p.locator('#trlAiError').count() === 1, 'no error for an answer without JSON');
+		// design mode: Tools → Translations with the missing count
+		await open(p, 'index.php?p=form&f=samplecustomer&r=-1&design=1');
+		const dt = await p.evaluate(() => window.nuNext && window.nuNext.design && window.nuNext.design.translations);
+		expect(dt && /f=samplecustomer/.test(dt.url) && dt.missing && dt.missing.German > 0, 'design client translations: ' + JSON.stringify(dt));
+		// the reader's language: a fixed select option is translated, the value stays
+		const u = await login('sample_ben', UPW);
+		await open(u, 'index.php?p=form&f=samplecustomer&r=-1');
+		const opt = await u.evaluate(() => { const o = [...document.querySelectorAll('#cus_country option')].find((x) => /Austral/.test(x.textContent)); return o ? [o.value, o.textContent] : null; });
+		expect(opt && opt[1] === 'E2E Australien' && opt[0] !== 'E2E Australien', 'select option not translated: ' + JSON.stringify(opt));
+		await u.context().close();
+	} finally { clean(); }
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
@@ -4908,6 +5264,25 @@ T.login_link = async (s) => {                             // one-time login link
 		await q.goto(BASE + 'index.php?p=home'); const u = q.url(); await c.close(); return !/p=login/.test(u); };
 	expect(await use(), 'the link does not log in');
 	expect(!await use(), 'the link works a second time');
+};
+
+T.user_import_template = async (s) => {                  // 0.8.752: the template is a ZIP – the CSV header row + readme.txt explaining every column
+	const p = s.ga;
+	const r = await p.request.get(BASE + 'index.php?p=import&target=users&action=template');
+	expect(r.status() === 200 && /application\/zip/.test(r.headers()['content-type'] || '') && /users-import-template\.zip/.test(r.headers()['content-disposition'] || ''), 'template not a ZIP: ' + r.headers()['content-type']);
+	const f = path.join(require('os').tmpdir(), 'e2e-tpl-' + Date.now() + '.zip');
+	fs.writeFileSync(f, await r.body());
+	try {
+		const z = JSON.parse(execSync('python3 -I -', { input: "import zipfile, json\nz = zipfile.ZipFile(" + JSON.stringify(f) + ")\nprint(json.dumps({'names': sorted(z.namelist()), 'csv': z.read('users-import-template.csv').decode('utf-8-sig'), 'rm': z.read('readme.txt').decode('utf-8-sig')}))" }).toString());
+		expect(JSON.stringify(z.names) === '["readme.txt","users-import-template.csv"]', 'ZIP files: ' + z.names);
+		const heads = z.csv.trim().split(';');
+		expect(heads.length >= 10 && heads.every((h) => z.rm.includes('* ' + h + ' (')), 'readme does not describe every column: ' + heads.filter((h) => !z.rm.includes('* ' + h + ' (')).join(', '));
+		const lvl = sql("SELECT sal_code FROM zzzzsys_access WHERE sal_code <> '' ORDER BY sal_code LIMIT 1").trim();
+		expect(z.rm.includes('users-import-template.csv') && (!lvl || z.rm.includes(lvl)) && /\r\n/.test(z.rm), 'readme without file name / level codes / CRLF');
+	} finally { fs.rmSync(f, { force: true }); }
+	await open(p, 'index.php?p=import&target=users');
+	expect(/ZIP/.test(await p.getAttribute('a[href*="action=template"] + .nuInfoTip', 'aria-label') || ''), 'tooltip does not mention the ZIP');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 T.user_import = async (s) => {                           // CSV → users with access level and password; the new user logs in
@@ -6068,6 +6443,9 @@ T.record_info = async (s) => {
 	expect(await p.locator('#nuRecInfoBtn').count() === 0, 'new user has a record info');
 	// 0.8.553: own pages are not audited – Created / Changed come from the log (first …_created, last …_updated; a login link is no creation)
 	const logRow = (lid, t, login, ev) => "('" + lid + "', '" + t + "', '', '" + login + "', '127.0.0.1', '" + ev + "', 'zzzzsys_user', '" + uid + "', '{}')";
+	// stamps of earlier saves (0.8.759) win over the log: take them away for this check
+	const sjOld = sql("SELECT IFNULL(sus_json, '') FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'");
+	if (/NUNEXT_(CREATED|CHANGED)/.test(sjOld)) sql("UPDATE zzzzsys_user SET sus_json = JSON_REMOVE(sus_json, '$.NUNEXT_CREATED', '$.NUNEXT_CHANGED') WHERE zzzzsys_user_id = '" + uid + "' AND JSON_VALID(sus_json)");
 	sql('INSERT INTO zzzzsys_nunext_log (zzzzsys_nunext_log_id, log_time, user_id, login, ip, event, object, record_id, details) VALUES ' +
 		[logRow('e2elog1', '2000-01-02 03:04:05', 'e2e_maker', 'user_created'), logRow('e2elog2', '2099-02-03 04:05:06', 'e2e_editor', 'user_updated'),
 			logRow('e2elog3', '2099-03-04 05:06:07', 'e2e_other', 'login_token_created')].join(', '));
@@ -6075,8 +6453,8 @@ T.record_info = async (s) => {
 		await open(p, 'index.php?p=user&id=' + uid);
 		await p.click('#nuRecInfoBtn'); await p.waitForTimeout(200);
 		const cell = async (k) => (await p.locator('#nuRecInfo [data-key="' + k + '"] dd').textContent().catch(() => '')).trim();
-		expect(await cell('created') === '02.01.2000 03:04:05 · e2e_maker', 'Created from the log: ' + await cell('created'));
-		expect(await cell('changed') === '03.02.2099 04:05:06 · e2e_editor', 'Changed from the log: ' + await cell('changed'));
+		expect(/^02[./]01[./]2000 03:04:05 · e2e_maker$/.test(await cell('created')), 'Created from the log: ' + await cell('created'));
+		expect(/^03[./]02[./]2099 04:05:06 · e2e_editor$/.test(await cell('changed')), 'Changed from the log: ' + await cell('changed'));
 	} finally {
 		sql("DELETE FROM zzzzsys_nunext_log WHERE zzzzsys_nunext_log_id IN ('e2elog1', 'e2elog2', 'e2elog3')");
 	}
@@ -6625,6 +7003,147 @@ T.update_check = async (s) => {
 			fs.rmSync(dir, { recursive: true, force: true });
 		}
 	}
+};
+
+// PhpSpreadsheet pack for a test (0.8.756): built from ../libsrc/phpspreadsheet with the owner's key and uploaded on the update page;
+// returns a function that removes it again (packs of the slot that were there before come back). null = cannot be built here.
+async function pssPack(p) {
+	const key = process.env.NUNEXT_SIGNING_KEY && fs.existsSync(process.env.NUNEXT_SIGNING_KEY) ? process.env.NUNEXT_SIGNING_KEY : path.resolve(__dirname, '../../../nunext-signing.key');
+	const src = path.resolve(__dirname, '../../../libsrc/phpspreadsheet');
+	if (!SITE || !fs.existsSync(key) || !fs.existsSync(path.join(src, 'autoload.php'))) return null;
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nupssp-'));
+	const tp = path.join(SITE, 'vendor/packs');
+	const stateFile = path.join(tp, 'nunext-libs.php');
+	const stateBefore = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
+	const keep = path.join(tmp, 'keep');
+	fs.mkdirSync(keep);
+	for (const d of fs.existsSync(tp) ? fs.readdirSync(tp) : []) if (/^phpspreadsheet-/.test(d)) fs.renameSync(path.join(tp, d), path.join(keep, d));
+	const undo = () => {
+		for (const d of fs.existsSync(tp) ? fs.readdirSync(tp) : []) if (/^phpspreadsheet-/.test(d)) fs.rmSync(path.join(tp, d), { recursive: true, force: true });
+		for (const d of fs.readdirSync(keep)) fs.renameSync(path.join(keep, d), path.join(tp, d));
+		if (stateBefore) fs.writeFileSync(stateFile, stateBefore); else if (fs.existsSync(stateFile)) fs.unlinkSync(stateFile);
+		fs.rmSync(tmp, { recursive: true, force: true });
+	};
+	execSync(`php dev/libpack.php ${JSON.stringify(tmp)} ${JSON.stringify(key)} phpspreadsheet=${JSON.stringify(src)}`, { cwd: path.resolve(__dirname, '../..') });
+	const pack = fs.readdirSync(tmp).find((f) => /^nunext-lib-phpspreadsheet-.*\.zip$/.test(f));
+	await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries');
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
+	await p.setInputFiles('#lpUpload', path.join(tmp, pack));
+	await Promise.all([p.waitForNavigation(), p.click('#lpUploadBtn')]);
+	return undo;
+}
+
+// sample application (0.8.756): Excel export – the built-in writer and PhpSpreadsheet (formulas, conditional format, chart), started from
+// the start form's tiles (nuRunPHP: the answer is the file → saved, no window) and from the procedure page's test run
+T.sample_excel = async (s) => {
+	const p = s.ga;
+	if (!sql("SELECT zzzzsys_php_id FROM zzzzsys_php WHERE zzzzsys_php_id = 'sample_proc_xlsx'")) { s.skip = 'sample data without the Excel procedures'; return; }
+	const home = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'sample_home'");
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nuxl-'));
+	const look = (f) => JSON.parse(execSync('python3 -I -', { input: "import openpyxl, json, zipfile\nwb = openpyxl.load_workbook(" + JSON.stringify(f) + ")\nz = zipfile.ZipFile(" + JSON.stringify(f) + ")\n"
+		+ "print(json.dumps({'sheets': wb.sheetnames, 'a1': [c.value for c in wb.worksheets[0][1]], 'last': [str(c.value) for c in wb.worksheets[0][wb.worksheets[0].max_row]],"
+		+ " 'b2': str(wb.worksheets[1]['B2'].value) if len(wb.worksheets) > 1 else '', 'charts': len([n for n in z.namelist() if n.startswith('xl/charts/chart')])}))" }).toString());
+	const getFile = async (click) => {
+		const [d] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), click()]);
+		const f = path.join(tmp, d.suggestedFilename());
+		await d.saveAs(f);
+		return f;
+	};
+	let undo = null;
+	try {
+		await open(p, 'index.php?p=form&f=' + home + '&r=-1');
+		let f = await getFile(() => p.click('#home_xlsx'));
+		let x = look(f);
+		expect(/^sample-orders-\d{4}-\d\d-\d\d\.xlsx$/.test(path.basename(f)) && JSON.stringify(x.sheets) === '["Orders"]' && x.a1[0] === 'Number' && /^=SUM\(F2:F\d+\)$/.test(x.last[5]), 'built-in export: ' + JSON.stringify(x));
+		// PhpSpreadsheet missing: the procedure says so in its window
+		const [pop] = await Promise.all([p.waitForEvent('popup'), p.click('#home_xlsx_pss')]);
+		await pop.waitForFunction(() => /PhpSpreadsheet is not installed/.test(document.body ? document.body.innerText : ''), null, { timeout: 15000 });
+		await pop.close();
+		undo = await pssPack(p);
+		if (!undo) { s.skip = 'PhpSpreadsheet pack cannot be built here (key or ../libsrc/phpspreadsheet missing) – built-in export checked'; return; }
+		await open(p, 'index.php?p=form&f=' + home + '&r=-1');
+		const pages = p.context().pages().length;
+		f = await getFile(() => p.click('#home_xlsx_pss'));
+		x = look(f);
+		expect(JSON.stringify(x.sheets) === '["Orders","By country"]' && /^=SUM\(F2:F\d+\)$/.test(x.last[5]) && /^=COUNTIF\(/.test(x.b2) && x.charts === 1, 'PhpSpreadsheet export: ' + JSON.stringify(x));
+		await p.waitForTimeout(500);
+		expect(p.context().pages().length === pages, 'a window stayed open after the download');
+		// the procedure page's test run saves the file too
+		await open(p, 'index.php?p=procedures&id=sample_proc_xlsx');
+		f = await getFile(() => p.click('#procRunWindow'));
+		expect(fs.statSync(f).size > 1000 && await p.locator('#procResultFile').count() === 1, 'procedure page: no file / result line');
+	} finally {
+		if (undo) undo();
+		fs.rmSync(tmp, { recursive: true, force: true });
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// PhpSpreadsheet pack (0.8.755): without it the import says how to get it; built from ../libsrc/phpspreadsheet (dev/pss_assemble.py), uploaded,
+// self-tested; an .xlsx with two sheets (a date, a formula) is read by the CSV import – the sheet select switches the sheet. Needs SITE, the key, the source.
+T.spreadsheet_import = async (s) => {
+	const key = process.env.NUNEXT_SIGNING_KEY && fs.existsSync(process.env.NUNEXT_SIGNING_KEY) ? process.env.NUNEXT_SIGNING_KEY : path.resolve(__dirname, '../../../nunext-signing.key');
+	const src = path.resolve(__dirname, '../../../libsrc/phpspreadsheet');
+	if (!SITE || !fs.existsSync(key) || !fs.existsSync(path.join(src, 'autoload.php'))) { s.skip = 'SITE, signing key or ../libsrc/phpspreadsheet missing'; return; }
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nupss-'));
+	const tp = path.join(SITE, 'vendor/packs');
+	const stateFile = path.join(tp, 'nunext-libs.php');
+	const stateBefore = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
+	const had = fs.existsSync(tp) ? fs.readdirSync(tp).filter((d) => /^phpspreadsheet-/.test(d)) : [];
+	const keep = path.join(tmp, 'keep');
+	fs.mkdirSync(keep);
+	for (const d of had) fs.renameSync(path.join(tp, d), path.join(keep, d));
+	if (stateBefore) fs.writeFileSync(stateFile, stateBefore.toString().replace(/"phpspreadsheet"\s*:\s*\{[^}]*\},?/, '').replace(/,(\s*})\s*$/, '$1'));
+	const p = s.ga;
+	try {
+		await open(p, 'index.php?p=import');
+		expect(await p.locator('#impXlsxHint').count() === 1 && !/\.xlsx/.test(await p.getAttribute('#impFile', 'accept')), 'no hint without the pack');
+		execSync(`php dev/libpack.php ${JSON.stringify(tmp)} ${JSON.stringify(key)} phpspreadsheet=${JSON.stringify(src)}`, { cwd: path.resolve(__dirname, '../..') });
+		const pack = fs.readdirSync(tmp).find((f) => /^nunext-lib-phpspreadsheet-.*\.zip$/.test(f));
+		await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries');
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
+		await p.setInputFiles('#lpUpload', path.join(tmp, pack));
+		await Promise.all([p.waitForNavigation(), p.click('#lpUploadBtn')]);
+		expect(/5\.\d+\.\d+/.test(await p.locator('tr[data-slot=phpspreadsheet] .nuLpInUse').innerText()), 'pack not in use: ' + await p.locator('tr[data-slot=phpspreadsheet]').innerText());
+		expect(fs.existsSync(path.join(tp, fs.readdirSync(tp).find((d) => /^phpspreadsheet-/.test(d)) || 'x', '.htaccess')), 'server-only pack without deny-all');
+		await p.click('tr[data-slot=phpspreadsheet] [data-bs-toggle=dropdown]');
+		await Promise.all([p.waitForNavigation(), p.click('tr[data-slot=phpspreadsheet] button[form="lpF-lp_test-phpspreadsheet"]')]);
+		expect(await p.locator('tr[data-slot=phpspreadsheet] .nuLpTest-ok').count() === 1, 'self-test: ' + await p.locator('tr[data-slot=phpspreadsheet]').innerText());
+		// an .xlsx with two sheets, written with the pack's own classes
+		const x = path.join(tmp, 'e2e.xlsx');
+		execSync('php', { input: `<?php require ${JSON.stringify(src + '/autoload.php')};
+$s = new \\PhpOffice\\PhpSpreadsheet\\Spreadsheet(); $w = $s->getActiveSheet(); $w->setTitle('Customers');
+$w->fromArray([['Name', 'Since', 'Credit', 'Double'], ['Anna', null, 1200.5, '=C2*2'], ['Ben', null, 3, '=C3*2']]);
+$w->setCellValue('B2', \\PhpOffice\\PhpSpreadsheet\\Shared\\Date::PHPToExcel(new DateTime('2024-03-05'))); $w->getStyle('B2')->getNumberFormat()->setFormatCode('dd.mm.yyyy');
+$s->createSheet()->setTitle('Other')->fromArray([['Code'], ['X1'], ['X2'], ['X3']]);
+(new \\PhpOffice\\PhpSpreadsheet\\Writer\\Xlsx($s))->save(${JSON.stringify(x)});` });
+		await open(p, 'index.php?p=import');
+		expect(await p.locator('#impXlsxHint').count() === 0 && /\.xlsx/.test(await p.getAttribute('#impFile', 'accept')), 'Excel not offered with the pack');
+		await p.setInputFiles('#impFile', x);
+		await p.waitForSelector('#impFileCard:not(.d-none)', { timeout: 15000 });
+		const prev = async () => p.$$eval('#impPreview tr', (r) => r.map((x) => [...x.children].map((c) => c.textContent.trim()).slice(1)));
+		let t = await prev();
+		expect(JSON.stringify(t[0]) === '["Name","Since","Credit","Double"]' && JSON.stringify(t[1]) === '["Anna","2024-03-05","1200.5","2401"]', 'preview of sheet 1: ' + JSON.stringify(t.slice(0, 3)));
+		expect(await p.locator('#impSheet option').count() === 2 && await p.locator('#impSheetWrap:not(.d-none)').count() === 1 && await p.locator('.impCsvOnly.d-none').count() === 2, 'sheet select / CSV options');
+		await p.selectOption('#impSheet', '1');
+		await p.waitForFunction(() => /Code/.test(document.querySelector('#impPreview thead') ? document.querySelector('#impPreview thead').textContent : ''), null, { timeout: 10000 });
+		t = await prev();
+		expect(t.length === 4 && t[1][0] === 'X1', 'preview of sheet 2: ' + JSON.stringify(t));
+		expect(/3/.test(await p.locator('#impRowCount').innerText()), 'row count of sheet 2: ' + await p.locator('#impRowCount').innerText());
+		// a file that is not what its name says
+		fs.writeFileSync(path.join(tmp, 'fake.xlsx'), 'not a spreadsheet');
+		await p.click('[data-imp="restart"]').catch(() => {});
+		await open(p, 'index.php?p=import');
+		await p.setInputFiles('#impFile', path.join(tmp, 'fake.xlsx'));
+		await p.waitForSelector('#impMsg .alert-danger', { timeout: 10000 });
+	} finally {
+		for (const d of fs.existsSync(tp) ? fs.readdirSync(tp) : []) if (/^phpspreadsheet-/.test(d)) fs.rmSync(path.join(tp, d), { recursive: true, force: true });
+		for (const d of fs.readdirSync(keep)) fs.renameSync(path.join(keep, d), path.join(tp, d));
+		if (stateBefore) fs.writeFileSync(stateFile, stateBefore); else if (fs.existsSync(stateFile)) fs.unlinkSync(stateFile);
+		fs.rmSync(tmp, { recursive: true, force: true });
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event IN ('nunext_lib_install', 'nunext_lib_test') AND record_id = 'phpspreadsheet'");
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 // library packs (0.8.405): build two signed PHPMailer packs (dev/libpack.php, the owner's key), install from _update/, upload,
@@ -7291,6 +7810,23 @@ T.gap_compat = async (s) => {
 	}
 };
 
+// system lists without records (0.8.748): no view menu and no cards ⇄ table switch on phones; a list with records keeps both
+T.list_empty_tools = async (s) => {
+	const p = s.ga;
+	const was = sql("SELECT COUNT(*) FROM zzzzsys_nunext_user_field");
+	await p.setViewportSize({ width: 390, height: 800 });
+	try {
+		await open(p, 'index.php?p=userfields');
+		if (was === '0') {
+			expect(await p.locator('.nuLvMenuBtn').count() === 0 && await p.locator('[data-lv-phone-toggle]').count() === 0, 'empty list: no view menu / phone switch');
+		}
+		await open(p, 'index.php?p=users');
+		expect(await p.locator('.nuLvMenuBtn').count() === 1 && await p.locator('[data-lv-phone-toggle]').count() === 1, 'users list keeps both');
+		await open(p, 'index.php?p=users&q=zz-no-such-user-zz');
+		expect(await p.locator('[data-lv-phone-toggle]').count() === 0, 'no hits: no phone switch');
+	} finally { await p.setViewportSize({ width: 1300, height: 900 }); }
+};
+
 // start page (0.8.746): on desktop the search row stays below the top bar while scrolling; phones scroll it away
 T.home_search_sticky = async (s) => {
 	const p = s.ga;
@@ -7655,13 +8191,15 @@ T.notes_row_delete = async (s) => {
 		const btn = '#nuBrowseTable .nuRowDel[data-nu-pk="nxdel1"]';
 		expect(await p.locator(btn).count() === 1, 'no button for the test note (search?)');
 		await p.click(btn); await p.waitForTimeout(400);
-		await p.click('.jconfirm .btn-red'); await p.waitForLoadState('load'); await p.waitForTimeout(800);
+		await p.waitForFunction(() => document.activeElement && document.activeElement.matches('#nuConfirm [data-bs-dismiss="modal"]'), null, { timeout: 3000 }).catch(() => {});
+		expect(await p.evaluate(() => document.activeElement && document.activeElement.matches('#nuConfirm [data-bs-dismiss="modal"]')), 'Cancel is not the default button');
+		await p.click('#nuConfirm.show .js-confirm-ok'); await p.waitForLoadState('load'); await p.waitForTimeout(800);
 		expect(/f=nunotes/.test(p.url()) && !/r=/.test(p.url()), 'did not stay on the list: ' + p.url());
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_note WHERE zzzzsys_note_id IN ('nxdel1', 'nxdel2')") === '1' && sql("SELECT zzzzsys_note_id FROM zzzzsys_note WHERE zzzzsys_note_id LIKE 'nxdel%'") === 'nxdel2', 'wrong note deleted');
 		expect(await p.locator('#nuBrowseTable .nuRowDel[data-nu-pk="nxdel1"]').count() === 0, 'deleted note still listed');
 		// a cancelled question deletes nothing, a click on the row still opens the note
 		await p.click('#nuBrowseTable .nuRowDel[data-nu-pk="nxdel2"]'); await p.waitForTimeout(400);
-		await p.click('.jconfirm .btn-default, .jconfirm button:not(.btn-red)'); await p.waitForTimeout(400);
+		await p.click('#nuConfirm.show .modal-footer [data-bs-dismiss="modal"]'); await p.waitForTimeout(400);
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_note WHERE zzzzsys_note_id = 'nxdel2'") === '1', 'cancel deleted the note');
 		// user without the delete right (sample application, if it has a notes right): no buttons
 		const anna = await login('sample_anna', UPW);
@@ -7695,7 +8233,7 @@ T.confirm_dark = async (s) => {
 	const p = await ctx.newPage();
 	try {
 		await p.goto(BASE + 'index.php?p=form&f=nunotes');
-		await p.click('#nuBrowseTable .nuRowDel[data-nu-pk="nxdark1"]'); await p.waitForTimeout(600);
+		await p.evaluate(() => window.jQuery.confirm({ title: 'E2E', content: 'E2E dark dialog', useBootstrap: false, boxWidth: '360px', type: 'red', buttons: { ok: { text: 'OK' } } })); await p.waitForTimeout(600);
 		const c = await p.evaluate(() => {
 			const lum = rgb => { const m = rgb.match(/\d+(\.\d+)?/g).map(Number).slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]; };
 			const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
@@ -8367,27 +8905,48 @@ T.selftest = async (s) => {
 };
 
 // 0.8.704: self-test page – Dev badge in the title next to (i), sortable result table, e-mail not set up = skipped (no warning)
-T.selftest_page = async (s) => {
+T.selftest_page = async (s) => {                       // 0.8.760: the results as a system list (temp table) – sort, filters, search, phone cards
 	const p = s.ga;
 	const r = await open(p, 'index.php?p=selftest');
 	if (r.status() === 404) { s.skip = 'developer mode off'; return; }
-	expect(await p.locator('h1 #stDevBadge').count() === 1, 'Dev badge in the title');
+	// 0.8.766: no temporary table any more (a derived table of the session's results) – every view opens, also before a run
+	const ctx2 = await browser.newContext({ storageState: await p.context().storageState() }), q = await ctx2.newPage();
+	try {
+		await q.goto(BASE + 'index.php?p=selftest'); await q.evaluate(() => fetch('index.php?p=selftest', { method: 'HEAD' }));
+		for (const v of ['default', 'problems', 'all']) { const x = await q.goto(BASE + 'index.php?p=selftest&view=' + v + '&q=x&status=fail'); expect(x.status() === 200, 'view ' + v + ': ' + x.status()); }
+	} finally { await ctx2.close(); }
+	expect(!/run\("CREATE TEMPORARY TABLE/.test(fs.readFileSync(path.join(__dirname, '..', '..', 'core', 'nuselftest.php'), 'utf8')), 'temporary table still used');
+	expect(await p.locator('h1 #stDevBadge').count() === 1 && await p.locator('.nuLv[data-lv-list="selftest"]').count() === 1, 'Dev badge in the title, list view');
 	for (const g of ['data', 'forms', 'rights', 'features']) if (await p.locator('#st_g_' + g).count()) await p.uncheck('#st_g_' + g);
 	await p.check('#st_g_system');
 	await Promise.all([p.waitForNavigation(), p.click('#stRun')]);
-	const mail = await p.getAttribute('#stResults tr[data-st="mail"]', 'data-status');
-	expect(mail === 'ok' || mail === 'skip', 'e-mail check: ' + mail);
-	const col = (i) => p.$$eval('#stResults tbody tr', (rs, i) => rs.map(r => r.cells[i].textContent.trim()), i);
-	await p.click('#stResults th[data-sort="num"] button');
-	const ms = (await col(4)).map(Number);
-	expect(ms.join() === [...ms].sort((a, b) => a - b).join(), 'sorted by ms: ' + ms.join(','));
-	await p.click('#stResults th[data-sort="num"] button');
-	const msd = (await col(4)).map(Number);
+	expect(await p.locator('#stSummary .nuStBadge').count() >= 1, 'summary with counts');
+	const mailRow = p.locator('table.nu-table tbody tr:has([data-st="mail"])');
+	const mail = await mailRow.locator('.nuStBadge').textContent();
+	expect(/OK|skipped|übersprungen/i.test(mail), 'e-mail check: ' + mail);
+	const total = () => p.$$eval('table.nu-table tbody tr', rs => rs.length);
+	const n = await total();
+	// sort by ms (header link), both directions
+	await open(p, 'index.php?p=selftest&sort=ms&dir=asc');
+	const col = () => p.$$eval('table.nu-table tbody tr', rs => rs.map(r => Number(r.cells[r.cells.length - 1].textContent.trim())));
+	const ms = await col();
+	expect(ms.length === n && ms.join() === [...ms].sort((a, b) => a - b).join(), 'sorted by ms: ' + ms.join(','));
+	await open(p, 'index.php?p=selftest&sort=ms&dir=desc');
+	const msd = await col();
 	expect(msd.join() === [...msd].sort((a, b) => b - a).join(), 'reversed: ' + msd.join(','));
-	await p.click('#stResults th[data-sort="status"] button');
-	const rank = { fail: 0, warn: 1, ok: 2, skip: 3 };
-	const st = await p.$$eval('#stResults tbody tr', rs => rs.map(r => r.getAttribute('data-status')));
-	expect(st.map(x => rank[x]).every((v, i, a) => i === 0 || a[i - 1] <= v), 'sorted by status: ' + st.join(','));
+	// status filter, search, the built-in view "problems"
+	await open(p, 'index.php?p=selftest&status=ok');
+	const okRows = await total();
+	expect(okRows > 0 && okRows <= n && (await p.$$eval('table.nu-table tbody .nuStBadge', b => b.every(x => /OK/i.test(x.textContent)))), 'status filter: ' + okRows);
+	await open(p, 'index.php?p=selftest&q=mail');
+	expect(await p.locator('table.nu-table tbody tr:has([data-st="mail"])').count() === 1 && await total() < n, 'search');
+	await open(p, 'index.php?p=selftest&view=problems');
+	expect(await p.locator('#lvf_status').inputValue() === 'fail', 'view problems filters failed');
+	// phone: cards
+	await p.setViewportSize({ width: 390, height: 800 });
+	await open(p, 'index.php?p=selftest');
+	expect(await p.locator('.nuLvCards .nuLvCard').count() === n && await p.evaluate(() => document.documentElement.scrollWidth <= 390), 'phone cards');
+	await p.setViewportSize({ width: 1280, height: 900 });
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
@@ -8469,13 +9028,13 @@ T.settings_hub = async (s) => {
 		// in place: audit keep days, notifications, backups, GitHub
 		await open(p, 'index.php?p=settings&s=data');
 		await p.selectOption('#shAudKeep', '365');
-		await Promise.all([p.waitForNavigation(), p.click('#shAudSave')]);
+		await Promise.all([p.waitForNavigation(), p.click('#shDataSave')]);
 		expect(JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'audit'") || '{}').keep_days === 365, 'audit keep days');
 		await p.selectOption('#shNtfKeep', '30');
-		await Promise.all([p.waitForNavigation(), p.click('#shNtfSave')]);
+		await Promise.all([p.waitForNavigation(), p.click('#shDataSave')]);
 		expect(JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'notify'") || '{}').keep_days === 30, 'notification keep days');
 		await p.fill('#shBkKeep', '7'); await p.check('#shBkModeAge'); await p.fill('input[name=days]', '45');
-		await Promise.all([p.waitForNavigation(), p.click('#shBkSave')]);
+		await Promise.all([p.waitForNavigation(), p.click('#shDataSave')]);
 		expect(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'backup_keep_sql'") === '7'
 			&& JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'backup_cleanup'") || '{}').n === 45, 'backup rules');
 		await open(p, 'index.php?p=settings&s=updates');

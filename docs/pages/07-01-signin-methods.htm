@@ -5,7 +5,7 @@
 	<table class="table table-sm">
 	<thead><tr><th>Method</th><th>How it works</th><th>Switched on by</th></tr></thead>
 	<tbody>
-		<tr><td>Password</td><td>Login name and password of <code>zzzzsys_user</code>; the globeadmin's from <code>nuconfig.php</code>. Minimum length <code>$nuConfigPasswordMinLength</code>; the procedure <code>nu_check_password_policy</code> can add rules.</td><td>always</td></tr>
+		<tr><td>Password</td><td>Login name and password of <code>zzzzsys_user</code>; the globeadmin's from <code>nuconfig.php</code>. The rules of the <a href="#password-policy">password policy</a> apply – length (at least <code>$nuConfigPasswordMinLength</code>), character classes, leak check, optional change interval; the procedure <code>nu_check_password_policy</code> runs afterwards and can add rules.</td><td>always</td></tr>
 		<tr><td>Two-step login (2FA)</td><td>After the password: a code from an authenticator app, or a 6-digit code by e-mail when no app is set up. "Remember this device" skips it for <code>$nuConfig2FATrustDays</code> days.</td><td><code>$nuConfig2FAAdmin</code>, <code>$nuConfig2FAUser</code> + the access level's "Use two-factor authentication"</td></tr>
 		<tr><td>Forgot password</td><td>A link by e-mail, valid for 60 minutes and once.</td><td>always (needs working e-mail and <code>$nuConfigBaseURL</code>)</td></tr>
 		<tr><td>Shared login</td><td>A user already signed in to nuBuilder Forte on the same domain is signed in to nuBuilder Next.</td><td><code>$nuConfigSharedLogin = true</code></td></tr>
@@ -29,7 +29,7 @@
 <div class="doc-sub">
 	<h3 id="signin-rules">Rules for every method</h3>
 	<ul>
-		<li>Expired or locked accounts are refused; a user who must change his password is asked to right after signing in.</li>
+		<li>Expired or locked accounts are refused; a user who must change their password is asked to right after signing in.</li>
 		<li>Failed logins are rate-limited and written to the log; the procedure <code>nu_invalid_login</code> can replace the message, <code>nu_startup</code> runs after every login and can refuse it.</li>
 		<li>Sessions end after <code>$nuConfigSessionTimeout</code> / <code>$nuConfigSessionTimeoutGlobeadmin</code> minutes without activity, when the password is changed anywhere, or when the globeadmin ends them.</li>
 		<li>The globeadmin can reset a user's two-step login (lost phone) in the user form.</li>

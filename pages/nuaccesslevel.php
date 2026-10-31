@@ -407,7 +407,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?>
 									<a class="text-decoration-none<?= $us['archived'] ? ' text-body-secondary' : '' ?>" href="<?= h(nu_url('user', ['id' => $us['zzzzsys_user_id']])) ?>"><?= h($us['sus_login_name']) ?></a>
 								<?php else: ?><span><?= h($us['sus_login_name']) ?></span><?php endif; ?>
-								<span class="text-body-secondary text-truncate"><?= h($nm) ?><?php if ($us['extra'] !== null): ?> <span class="badge text-bg-info ms-1" title="<?= h(t('xa_badge_tip') . ($us['extra'] !== '' ? ' – ' . t('xa_until') . ' ' . date('d.m.Y', (int)strtotime($us['extra'])) : '')) ?>"><?= h(t('xa_badge')) ?></span><?php endif; ?><?php if ($us['archived']): ?> <span class="badge text-bg-secondary ms-1"><?= h(t('access_users_archived')) ?></span><?php endif; ?></span>
+								<span class="text-body-secondary text-truncate"><?= h($nm) ?><?php if ($us['extra'] !== null): ?> <span class="badge text-bg-info ms-1" title="<?= h(t('xa_badge_tip') . ($us['extra'] !== '' ? ' – ' . t('xa_until') . ' ' . date(nu_dfmt('d.m.Y'), (int)strtotime($us['extra'])) : '')) ?>"><?= h(t('xa_badge')) ?></span><?php endif; ?><?php if ($us['archived']): ?> <span class="badge text-bg-secondary ms-1"><?= h(t('access_users_archived')) ?></span><?php endif; ?></span>
 							</li>
 						<?php endforeach; ?>
 						<li class="list-group-item text-body-secondary accUserNone"<?= count($users) - $usArchived > 0 ? ' hidden' : '' ?>><?= h(t('no_records')) ?></li>

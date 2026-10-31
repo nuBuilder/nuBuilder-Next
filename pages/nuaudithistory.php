@@ -64,7 +64,7 @@ nu_layout_start(t('aud_history'), 'audit');
 ?>
 			<li class="mb-3 nuAudChange" data-change="<?= h($c['change_id']) ?>">
 				<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-					<span class="fw-semibold"><?= h(date('d.m.Y H:i:s', strtotime($c['at']))) ?></span>
+					<span class="fw-semibold"><?= h(date(nu_dfmt('d.m.Y H:i:s'), strtotime($c['at']))) ?></span>
 					<span class="text-body-secondary"><i class="bi bi-person me-1"></i><?= h($c['login'] !== '' ? $c['login'] : '–') ?></span>
 					<?php foreach ($acts as $a): ?><?= NuListDefs::auditBadge((string)$a) ?><?php endforeach; ?>
 					<?php $src = (string)$c['rows'][0]['source']; if ($src !== 'form' && $src !== 'subform'): ?><span class="small text-body-secondary"><?= h(($l = t('aud_src_' . $src)) === 'aud_src_' . $src ? $src : $l) ?></span><?php endif; ?>

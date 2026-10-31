@@ -13,7 +13,7 @@ final class NuHelpLink
 	public const MAP = [
 		'form' => 'forms-use', 'forms' => 'builder', 'builder' => 'builder-work-p', 'formai' => 'new-form-p', 'dataaccess' => 'data-access',
 		'formats' => 'formats', 'items' => 'items', 'page' => 'pages',
-		'users' => 'users', 'user' => 'users', 'userfields' => 'user-fields', 'import' => 'csv-import',
+		'users' => 'users', 'user' => 'users', 'userfields' => 'user-fields', 'import' => 'csv-import', 'dataexport' => 'data-export',
 		'access' => 'access', 'accesslevel' => 'access', 'permissions' => 'permissions', 'adminroles' => 'admin-roles',
 		'impersonate' => 'impersonate', 'sessions' => 'sessions', 'security' => 'security-check', 'securitycheck' => 'security-check', 'pwpolicy' => 'password-policy', 'ipaccess' => 'ip-access',
 		'log' => 'log', 'audit' => 'audit-trail', 'audithistory' => 'audit-trail', 'notifications' => 'notifications',

@@ -24,7 +24,7 @@ final class NuListDefs
 {
 	/** @return array<string, array> */
 	/** Keys of all lists with views (0.8.329: users, access; 0.8.334: the other system lists). */
-	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'webhooks', 'webhookcalls'];
+	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'webhooks', 'webhookcalls', 'exports', 'selftest'];
 
 	public static function get(string $list): ?array
 	{
@@ -33,7 +33,7 @@ final class NuListDefs
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),
 			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(), 'userfields' => self::userFields(), 'apiclients' => self::apiClients(),
 			'adminroles' => self::adminRoles(), 'sqlbuilder' => self::sqlBuilder(), 'emailtemplates' => self::emailTemplates(),
-			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'webhookcalls' => self::webhookCalls(),
+			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(),
 			default => null,
 		};
 	}
@@ -75,7 +75,7 @@ final class NuListDefs
 	{
 		$d = $time ? (string)$v : nu_date_only($v);
 		if ($d === '' || str_starts_with($d, '0000') || strtotime($d) === false || (int)substr($d, 0, 4) < 1901) return '';
-		return date($time ? 'd.m.Y H:i' : 'd.m.Y', strtotime($d));
+		return date(nu_dfmt($time ? 'd.m.Y H:i' : 'd.m.Y'), strtotime($d));
 	}
 
 	// ------------------------------------------------------------------ users
@@ -86,11 +86,18 @@ final class NuListDefs
 		$today = $db->datetime(date('Y-m-d'));
 		$zero = $db->datetime('1900-01-02');
 		$hasRoles = $db->tableExists('zzzzsys_nunext_admin_user');
-		$lastLogin = '(SELECT MAX(l.log_time) FROM zzzzsys_nunext_log l WHERE ' . $db->sameText('l.user_id', 'u.zzzzsys_user_id') . " AND l.event = 'login')";
-		$twofa = 'EXISTS (SELECT 1 FROM zzzzsys_nunext_user_2fa f WHERE ' . $db->sameText('f.zzzzsys_nunext_user_2fa_id', 'u.zzzzsys_user_id') . ')';
-		$session = 'EXISTS (SELECT 1 FROM zzzzsys_nunext_session s WHERE ' . $db->sameText('s.user_id', 'u.zzzzsys_user_id') . ' AND s.last_seen >= ?)';
+		// created / last changed by nuBuilder Next (0.8.759): sus_json NUNEXT_CREATED / NUNEXT_CHANGED {t, by} – only rows with valid JSON; no ", " inside (the sort splits on it)
+		$stamp = static fn(string $key, string $part): string => match ($db->type) {
+			'mysql' => "CASE WHEN u.sus_json IS NOT NULL AND u.sus_json <> '' AND JSON_VALID(u.sus_json) THEN JSON_UNQUOTE(JSON_EXTRACT(u.sus_json,'$.$key.$part')) END",
+			'sqlsrv' => "CASE WHEN ISJSON(u.sus_json) = 1 THEN JSON_VALUE(u.sus_json,'$.$key.$part') END",
+			default => "json_extract(u.sus_json,'$.$key.$part')",
+		};
+		$stampText = static fn(array $r, string $k): string => ($t = self::date($r[$k . '_t'] ?? null, true)) === '' ? '' : $t . ((string)($r[$k . '_by'] ?? '') !== '' ? ' · ' . $r[$k . '_by'] : '');
+		$lastLogin = '(SELECT MAX(l.log_time) FROM zzzzsys_nunext_log l WHERE ' . $db->sameTextOn('l.user_id', 'u.zzzzsys_user_id', 'zzzzsys_nunext_log', 'user_id') . " AND l.event = 'login')";   // index (user_id, event, log_time), review B1
+		$twofa = 'EXISTS (SELECT 1 FROM zzzzsys_nunext_user_2fa f WHERE ' . $db->sameTextOn('f.zzzzsys_nunext_user_2fa_id', 'u.zzzzsys_user_id', 'zzzzsys_nunext_user_2fa', 'zzzzsys_nunext_user_2fa_id') . ')';
+		$session = 'EXISTS (SELECT 1 FROM zzzzsys_nunext_session s WHERE ' . $db->sameTextOn('s.user_id', 'u.zzzzsys_user_id', 'zzzzsys_nunext_session', 'user_id') . ' AND s.last_seen >= ?)';
 		$sessionSince = $db->datetime(date('Y-m-d H:i:s', time() - 60 * max(1, (int)(nu_cfg('nuConfigSessionTimeout') ?? 120))));
-		$role = $hasRoles ? '(SELECT r.name FROM zzzzsys_nunext_admin_user au JOIN zzzzsys_nunext_admin_role r ON r.zzzzsys_nunext_admin_role_id = au.role_id WHERE ' . $db->sameText('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id') . ')' : 'NULL';
+		$role = $hasRoles ? '(SELECT r.name FROM zzzzsys_nunext_admin_user au JOIN zzzzsys_nunext_admin_role r ON r.zzzzsys_nunext_admin_role_id = au.role_id WHERE ' . $db->sameTextOn('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id', 'zzzzsys_nunext_admin_user', 'zzzzsys_nunext_admin_user_id') . ')' : 'NULL';
 		$expired = static fn(array $r): bool => ($d = nu_date_only($r['sus_expires_on'] ?? '')) !== '' && (int)substr($d, 0, 4) > 1900 && $d < date('Y-m-d');
 		$name = static fn(array $r): string => (trim(($r['sus_first_name'] ?? '') . ' ' . ($r['sus_last_name'] ?? '')) ?: (string)($r['sus_name'] ?? '')) ?: '—';
 		// first and last name shown as columns of their own (e.g. view "All columns"): the name column shows only the full name (0.8.512)
@@ -149,6 +156,10 @@ final class NuListDefs
 			'language' => ['label' => t('user_language'), 'select' => ['sus_language' => 'u.sus_language'], 'sort' => 'u.sus_language', 'text' => $langOf],
 			'additional1' => $plain('sus_additional1', t('user_additional1')),
 			'additional2' => $plain('sus_additional2', t('user_additional2')),
+			'created' => ['label' => t('fi_created'), 'select' => ['lv_created_t' => $stamp('NUNEXT_CREATED', 't'), 'lv_created_by' => $stamp('NUNEXT_CREATED', 'by')],
+				'sort' => $stamp('NUNEXT_CREATED', 't'), 'class' => 'small text-nowrap', 'text' => static fn($r) => $stampText($r, 'lv_created')],
+			'changed' => ['label' => t('fi_changed'), 'select' => ['lv_changed_t' => $stamp('NUNEXT_CHANGED', 't'), 'lv_changed_by' => $stamp('NUNEXT_CHANGED', 'by')],
+				'sort' => $stamp('NUNEXT_CHANGED', 't'), 'class' => 'small text-nowrap', 'text' => static fn($r) => $stampText($r, 'lv_changed')],
 			'last_login' => ['label' => t('lv_last_login'), 'select' => ['lv_last_login' => $lastLogin], 'sort' => $lastLogin,
 				'text' => static fn($r) => self::date($r['lv_last_login'] ?? null, true)],
 			'twofa' => ['label' => t('lv_2fa_app'), 'select' => ['lv_2fa' => "CASE WHEN $twofa THEN 1 ELSE 0 END"], 'sort' => null, 'align' => 'center',
@@ -163,7 +174,7 @@ final class NuListDefs
 			'pw_changed' => ['label' => t('lv_pw_changed'), 'select' => ['sus_json_pw' => 'u.sus_json'], 'sort' => null,
 				'text' => static function ($r): string {
 					$j = json_decode((string)($r['sus_json_pw'] ?? ''), true);
-					return is_array($j) && !empty($j['PASSWORD_CHANGED_TIME']) ? date('d.m.Y', (int)$j['PASSWORD_CHANGED_TIME']) : '';
+					return is_array($j) && !empty($j['PASSWORD_CHANGED_TIME']) ? date(nu_dfmt('d.m.Y'), (int)$j['PASSWORD_CHANGED_TIME']) : '';
 				}],
 			'id' => ['label' => 'ID', 'select' => ['zzzzsys_user_id' => 'u.zzzzsys_user_id'], 'sort' => 'u.zzzzsys_user_id', 'class' => 'small text-body-secondary',
 				'text' => static fn($r) => (string)$r['zzzzsys_user_id']],
@@ -185,7 +196,7 @@ final class NuListDefs
 					return $o;
 				},
 				'where' => static fn(string $v) => NuUserAccess::ready()
-					? ['(u.sus_zzzzsys_access_id = ? OR EXISTS (SELECT 1 FROM ' . NuUserAccess::TABLE . ' x WHERE ' . $db->sameText('x.user_id', 'u.zzzzsys_user_id')
+					? ['(u.sus_zzzzsys_access_id = ? OR EXISTS (SELECT 1 FROM ' . NuUserAccess::TABLE . ' x WHERE ' . $db->sameTextOn('x.user_id', 'u.zzzzsys_user_id', NuUserAccess::TABLE, 'user_id')
 						. ' AND x.access_id = ? AND (x.valid_until IS NULL OR x.valid_until = \'\' OR x.valid_until >= ?)))', [$v, $v, date('Y-m-d')]]
 					: ['u.sus_zzzzsys_access_id = ?', [$v]]],
 			// users with an active permission item (0.8.687)
@@ -219,8 +230,8 @@ final class NuListDefs
 			$filters['role'] = ['label' => t('adm_role_field'), 'type' => 'select', 'none' => t('lv_empty'),
 				'options' => static fn() => array_column($db->all('SELECT zzzzsys_nunext_admin_role_id AS id, name FROM zzzzsys_nunext_admin_role ORDER BY sort_order, name'), 'name', 'id'),
 				'where' => static fn(string $v) => $v === '-'
-					? ['NOT EXISTS (SELECT 1 FROM zzzzsys_nunext_admin_user au WHERE ' . $db->sameText('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id') . ')', []]
-					: ['EXISTS (SELECT 1 FROM zzzzsys_nunext_admin_user au WHERE ' . $db->sameText('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id') . ' AND au.role_id = ?)', [$v]]];
+					? ['NOT EXISTS (SELECT 1 FROM zzzzsys_nunext_admin_user au WHERE ' . $db->sameTextOn('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id', 'zzzzsys_nunext_admin_user', 'zzzzsys_nunext_admin_user_id') . ')', []]
+					: ['EXISTS (SELECT 1 FROM zzzzsys_nunext_admin_user au WHERE ' . $db->sameTextOn('au.zzzzsys_nunext_admin_user_id', 'u.zzzzsys_user_id', 'zzzzsys_nunext_admin_user', 'zzzzsys_nunext_admin_user_id') . ' AND au.role_id = ?)', [$v]]];
 		}
 
 		// custom user fields (0.8.454, core/nuuserfields.php): the ones marked "in the users list" as columns (hidden by default, chosen in a
@@ -228,7 +239,7 @@ final class NuListDefs
 		$from = ' FROM zzzzsys_user u LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id';
 		$search = ['u.sus_login_name', 'u.sus_name', 'u.sus_first_name', 'u.sus_last_name', 'u.sus_email', 'u.sus_code', 'u.sus_department', 'u.sus_team', 'u.sus_position'];
 		if (NuUserFields::ready()) {
-			$from .= ' LEFT JOIN ' . NuUserFields::EXT . ' ux ON ' . $db->sameText('ux.' . NuUserFields::KEY, 'u.zzzzsys_user_id');
+			$from .= ' LEFT JOIN ' . NuUserFields::EXT . ' ux ON ' . $db->sameTextOn('ux.' . NuUserFields::KEY, 'u.zzzzsys_user_id', NuUserFields::EXT, NuUserFields::KEY);
 			foreach (NuUserFields::all() as $code => $f) {
 				if ((string)$f['in_list'] !== '1') continue;
 				$expr = 'ux.' . NuDB::ident((string)$code);
@@ -256,7 +267,7 @@ final class NuListDefs
 			'where' => ["COALESCE(u.sus_login_name, '') <> ''"], 'params' => [],   // not nuBuilder's data row for the globeadmin (nuSetUserJSONData: only the id)
 			'id' => 'u.zzzzsys_user_id', 'link' => static fn($r) => nu_url('user', ['id' => $r['__id']]),
 			'search' => $search,
-			'search_ph' => t('user_search_ph'), 'open_min' => 800,
+			'search_ph' => t('user_search_ph'), 'open_min' => 0,   // filters folded by default, open while one is set (0.8.751)
 			'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
 				'default' => ['columns' => ['name', 'dept', 'position', 'access', 'login', 'code', 'email'], 'card' => ['title' => 'name', 'badge' => 'access', 'lines' => ['login', 'dept', 'email']],
@@ -362,7 +373,7 @@ final class NuListDefs
 		$dbTool = NuAdmin::can('dbtool', 'change') && NuVendor::primaryDb() !== '';
 		$cols = [
 			'actions' => ['label' => '', 'select' => ['lv_draft_id' => $dId], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'if' => static fn() => $designer, 'text' => static fn($r) => '', 'noexport' => true,
-				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('builder', ['f' => $r['__id'], 'draft' => ($r['lv_draft_id'] ?? null) ? '1' : null])) . '" title="' . h(t('builder_title')) . '" aria-label="' . h(t('builder_title')) . '"><i class="bi bi-tools"></i></a>'
+				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('builder', ['f' => $r['__id'], 'draft' => ($r['lv_draft_id'] ?? null) ? '1' : null])) . '" title="' . h(t('ds_mode')) . '" aria-label="' . h(t('ds_mode')) . '"><i class="bi bi-tools"></i></a>'
 					. (($r['lv_draft_id'] ?? null) ? ' <a class="btn btn-sm btn-outline-warning" href="' . h(nu_url('form', ['f' => $r['__id'], 'draft' => (string)$r['lv_draft_id']])) . '" target="_blank" rel="noopener" title="' . h(t('builder_draft_preview')) . '" aria-label="' . h(t('builder_draft_preview')) . '"><i class="bi bi-cone-striped"></i></a>' : '')
 					. ($ga ? ' <a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('cloner', ['f' => $r['__id']])) . '" title="' . h(t('cl_title')) . '" aria-label="' . h(t('cl_title')) . '"><i class="bi bi-files"></i></a>' : '')],
 			'description' => self::col('sfo_description', 'f.sfo_description', t('builder_description')) + ['main' => true, 'locked' => true],
@@ -614,7 +625,7 @@ final class NuListDefs
 	{
 		NuItem::ensureTable();
 		$denied = (string)(NuMailer::setupRow()['set_denied'] ?? '') === '1';
-		$upd = static fn($r) => ($u = $r['itm_updated_on'] ?: $r['itm_created_on']) ? date('d.m.Y H:i', strtotime((string)$u)) : '';
+		$upd = static fn($r) => ($u = $r['itm_updated_on'] ?: $r['itm_created_on']) ? date(nu_dfmt('d.m.Y H:i'), strtotime((string)$u)) : '';
 		$cols = [
 			'form' => array_replace(self::col('sfo_code', 'f.sfo_code', t('item_form_code'), 'small'), ['sort' => 'f.sfo_code, o.sob_all_id, i.itm_group, i.itm_sort_order, i.itm_value',
 				'select' => ['sfo_code' => 'f.sfo_code', 'lv_item_form' => 'f.zzzzsys_form_id'],   // the form opens (0.8.688)
@@ -750,7 +761,7 @@ final class NuListDefs
 			'id' => self::idCol('zzzzsys_prompt_generator_id'),
 		];
 		return [
-			'key' => 'prompts', 'title' => t('pg_title'), 'route' => 'prompts', 'form' => NuAcl::FORM_PROMPT, 'from' => ' FROM ' . NuPrompt::TABLE, 'where' => [], 'params' => [],
+			'key' => 'prompts', 'title' => t('pg_title'), 'route' => 'prompts', 'new_url' => nu_url('prompts', ['id' => 'new']), 'empty_icon' => 'bi-chat-square-text', 'form' => NuAcl::FORM_PROMPT, 'from' => ' FROM ' . NuPrompt::TABLE, 'where' => [], 'params' => [],
 			'id' => 'zzzzsys_prompt_generator_id', 'link' => static fn($r) => nu_url('prompts', ['id' => $r['__id']]),
 			'search' => ['pge_code', 'pge_description', 'pge_prompt', 'pge_table', 'pge_tag'], 'columns' => $cols,
 			'filters' => ['tpl' => ['label' => t('pg_template'), 'type' => 'select', 'options' => static fn() => ['1' => t('pg_tpl_only'), '0' => t('pg_tpl_none')],
@@ -811,7 +822,7 @@ final class NuListDefs
 		$plain = static fn(string $html) => trim(html_entity_decode(strip_tags(str_replace(['<br>', '</li>'], ' · ', $html)), ENT_QUOTES, 'UTF-8'), ' ·');
 		$cols = [
 			'time' => ['label' => t('log_time'), 'select' => ['log_time' => 'log_time'], 'sort' => 'log_time', 'class' => 'text-nowrap small', 'locked' => true,
-				'text' => static fn($r) => date('d.m.Y H:i:s', strtotime((string)$r['log_time']))],
+				'text' => static fn($r) => date(nu_dfmt('d.m.Y H:i:s'), strtotime((string)$r['log_time']))],
 			'user' => self::col('login', 'login', t('user'), 'small'),
 			'event' => ['label' => t('log_event'), 'select' => ['event' => 'event'], 'sort' => 'event', 'text' => static fn($r) => self::eventLabel((string)$r['event']),
 				'html' => static fn($r) => self::logBadge((string)$r['event'])],
@@ -923,7 +934,7 @@ final class NuListDefs
 		$T = NuAudit::TABLE;
 		$cols = [
 			'time' => ['label' => t('log_time'), 'select' => ['changed_at' => 'changed_at'], 'sort' => 'changed_at', 'class' => 'text-nowrap small', 'locked' => true,
-				'text' => static fn($r) => date('d.m.Y H:i:s', strtotime((string)$r['changed_at']))],
+				'text' => static fn($r) => date(nu_dfmt('d.m.Y H:i:s'), strtotime((string)$r['changed_at']))],
 			'user' => self::col('login', 'login', t('user'), 'small'),
 			'action' => ['label' => t('aud_action'), 'select' => ['action' => 'action'], 'sort' => 'action', 'text' => static fn($r) => self::auditAction((string)$r['action']),
 				'html' => static fn($r) => self::auditBadge((string)$r['action'])],
@@ -968,7 +979,7 @@ final class NuListDefs
 			'when' => ['label' => t('lv_period'), 'type' => 'date', 'expr' => 'changed_at', 'presets' => ['d7', 'd30', 'd90']],
 		];
 		return [
-			'key' => 'audit', 'title' => t('aud_title'), 'route' => 'audit', 'form' => NuAcl::FORM_AUDIT, 'from' => " FROM $T", 'where' => [], 'params' => [],
+			'key' => 'audit', 'title' => t('aud_title'), 'route' => 'audit', 'empty_icon' => 'bi-clock-history', 'form' => NuAcl::FORM_AUDIT, 'from' => " FROM $T", 'where' => [], 'params' => [],
 			'id' => 'zzzzsys_nunext_audit_id', 'always' => ['record'], 'table_class' => 'table-sm',
 			'link' => static fn($r) => (string)$r['form_id'] !== '' ? nu_url('audithistory', ['f' => $r['form_id'], 'r' => (string)$r['parent_id'] !== '' ? $r['parent_id'] : $r['record_id']]) : '',
 			'search' => ['table_name', 'record_id', 'parent_id', 'column_name', 'old_value', 'new_value', 'form_code'], 'search_ph' => t('aud_search_ph'),
@@ -997,7 +1008,7 @@ final class NuListDefs
 	{
 		if ($v === null || $v === '') return '';
 		$ts = strtotime((string)$v);
-		return $ts ? date('d.m.Y H:i:s', $ts) : (string)$v;
+		return $ts ? date(nu_dfmt('d.m.Y H:i:s'), $ts) : (string)$v;
 	}
 
 	// ------------------------------------------------------------------ custom user fields (0.8.546; before: a table of its own in pages/nuuserfields.php)
@@ -1034,7 +1045,7 @@ final class NuListDefs
 			'hint' => self::col('uf_hint', 'hint', t('uf_hint'), 'small text-break') + ['html' => static fn($r) => h(mb_strimwidth((string)$r['uf_hint'], 0, 90, '…'))],
 			'sort' => self::col('uf_sort2', 'sort', t('lv_sort_order'), 'small') + ['align' => 'end'],
 			'updated' => ['label' => t('fi_changed'), 'select' => ['uf_updated' => 'updated_at'], 'sort' => 'updated_at', 'class' => 'small text-nowrap',
-				'text' => static fn($r) => $r['uf_updated'] ? date('d.m.Y H:i', strtotime((string)$r['uf_updated'])) : ''],
+				'text' => static fn($r) => $r['uf_updated'] ? date(nu_dfmt('d.m.Y H:i'), strtotime((string)$r['uf_updated'])) : ''],
 			'id' => self::idCol('zzzzsys_nunext_user_field_id'),
 		];
 		$filters = [
@@ -1046,7 +1057,7 @@ final class NuListDefs
 		$base = ['columns' => ['order', 'label', 'code', 'type', 'edit_by', 'required', 'unique'], 'card' => ['title' => 'label', 'badge' => 'type', 'lines' => ['code', 'edit_by']],
 			'sort' => ['sort', 'asc'], 'per' => 50, 'filters' => ['shown' => ['type', 'edit_by'], 'values' => []]];
 		return [
-			'key' => 'userfields', 'title' => t('uf_title'), 'route' => 'userfields', 'form' => NuAcl::FORM_USERFIELD,
+			'key' => 'userfields', 'title' => t('uf_title'), 'route' => 'userfields', 'new_url' => nu_url('userfields', ['id' => 'new']), 'empty_icon' => 'bi-ui-checks', 'form' => NuAcl::FORM_USERFIELD,
 			'from' => " FROM $T", 'where' => [], 'params' => [], 'id' => 'zzzzsys_nunext_user_field_id',
 			'link' => static fn($r) => nu_url('userfields', ['id' => $r['__id']]),
 			'search' => ['code', 'label', 'hint'], 'columns' => $cols, 'filters' => $filters,
@@ -1068,7 +1079,7 @@ final class NuListDefs
 		$now = date('Y-m-d H:i:s');
 		$state = static fn($r) => (string)$r['api_active'] !== '1' ? 'off' : ($r['api_expires'] && nu_is_expired($r['api_expires']) ? 'expired' : 'on');
 		$scopes = static fn($r) => NuApiClient::scopesOf(['scopes' => $r['api_scopes']]);
-		$dt = static fn(string $a, string $fmt = 'd.m.Y H:i') => static fn($r) => $r[$a] ? date($fmt, strtotime((string)$r[$a])) : '';
+		$dt = static fn(string $a, string $fmt = 'd.m.Y H:i') => static fn($r) => $r[$a] ? date(nu_dfmt($fmt), strtotime((string)$r[$a])) : '';
 		$cols = [
 			'name' => ['label' => t('api_name'), 'main' => true, 'locked' => true, 'select' => ['api_name' => 'c.name'], 'sort' => 'c.name', 'text' => static fn($r) => (string)$r['api_name']],
 			'client_id' => self::col('api_client_id', 'c.client_id', 'client_id', 'small font-monospace text-break'),
@@ -1112,7 +1123,7 @@ final class NuListDefs
 		$base = ['columns' => ['name', 'user', 'scopes', 'status', 'last_used'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['user', 'scopes', 'last_used']],
 			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['status', 'scope'], 'values' => []]];
 		return [
-			'key' => 'apiclients', 'title' => t('api_title'), 'route' => 'apiclients', 'form' => NuAcl::FORM_APICLIENT,
+			'key' => 'apiclients', 'title' => t('api_title'), 'route' => 'apiclients', 'new_url' => nu_url('apiclients', ['id' => 'new']), 'empty_icon' => 'bi-plug', 'form' => NuAcl::FORM_APICLIENT,
 			'from' => " FROM $C c LEFT JOIN zzzzsys_user u ON " . $db->sameText('u.zzzzsys_user_id', 'c.user_id') . ' LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id',
 			'where' => [], 'params' => [], 'id' => 'c.zzzzsys_nunext_api_client_id',
 			'link' => static fn($r) => nu_url('apiclients', ['id' => $r['__id']]),
@@ -1165,7 +1176,7 @@ final class NuListDefs
 		$base = ['columns' => ['name', 'forms', 'events', 'target', 'status', 'calls'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['forms', 'events', 'calls']],
 			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['status', 'form'], 'values' => []]];
 		return [
-			'key' => 'webhooks', 'title' => t('wh_title'), 'route' => 'webhooks', 'form' => NuAcl::FORM_WEBHOOK,
+			'key' => 'webhooks', 'title' => t('wh_title'), 'route' => 'webhooks', 'new_url' => nu_url('webhooks', ['id' => 'new']), 'empty_icon' => 'bi-broadcast', 'form' => NuAcl::FORM_WEBHOOK,
 			'from' => " FROM $W w", 'where' => [], 'params' => [], 'id' => 'w.zzzzsys_nunext_webhook_id',
 			'link' => static fn($r) => nu_url('webhooks', ['id' => $r['__id']]),
 			'search' => ['w.name', 'w.url', 'w.forms'], 'columns' => $cols, 'filters' => $filters,
@@ -1213,12 +1224,96 @@ final class NuListDefs
 		$base = ['columns' => ['created', 'webhook', 'event', 'form', 'record', 'status', 'attempts', 'answer', 'next'], 'card' => ['title' => 'webhook', 'badge' => 'status', 'lines' => ['created', 'event', 'record', 'answer']],
 			'sort' => ['created', 'desc'], 'per' => 50, 'filters' => ['shown' => ['status', 'wh', 'event', 'created'], 'values' => []]];
 		return [
-			'key' => 'webhookcalls', 'title' => t('wh_calls'), 'route' => 'webhooks', 'route_params' => ['tab' => 'calls'], 'form' => NuAcl::FORM_WEBHOOK,
+			'key' => 'webhookcalls', 'title' => t('wh_calls'), 'route' => 'webhooks', 'route_params' => ['tab' => 'calls'], 'empty_icon' => 'bi-arrow-left-right', 'form' => NuAcl::FORM_WEBHOOK,
 			'from' => " FROM $C c LEFT JOIN $W w ON w.zzzzsys_nunext_webhook_id = c.webhook_id", 'where' => [], 'params' => [], 'id' => 'c.zzzzsys_nunext_webhook_call_id',
 			'link' => static fn($r) => nu_url('webhooks', ['call' => $r['__id']]),
 			'search' => ['w.name', 'c.record_id', 'c.last_error', 'c.form_id'], 'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
 				'default' => $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
+
+	/** Self-test results (0.8.760): a derived table of the session's results (NuSelfTest::source(), 0.8.766) – developer mode, the page gates it. */
+	private static function selftest(): array
+	{
+		[$from, $fromParams] = NuSelfTest::$source;
+		$cls = ['ok' => 'text-bg-success', 'warn' => 'text-bg-warning', 'fail' => 'text-bg-danger', 'skip' => 'text-bg-secondary'];
+		$rank = "CASE s.status WHEN 'fail' THEN 0 WHEN 'warn' THEN 1 WHEN 'ok' THEN 2 ELSE 3 END";
+		$cols = [
+			'group' => ['label' => t('st_group'), 'select' => ['st_grp' => 's.grp'], 'sort' => 's.grp, s.pos', 'class' => 'small text-body-secondary text-nowrap',
+				'text' => static fn($r) => in_array((string)$r['st_grp'], NuSelfTest::GROUPS, true) ? t('st_group_' . $r['st_grp']) : (string)$r['st_grp']],
+			'check' => ['label' => t('st_check'), 'main' => true, 'locked' => true, 'select' => ['st_title' => 's.title', 'st_id' => 's.id'], 'sort' => 's.title',
+				'text' => static fn($r) => (string)$r['st_title'], 'html' => static fn($r) => '<span class="fw-semibold" data-st="' . h((string)$r['st_id']) . '">' . h((string)$r['st_title']) . '</span>'],
+			'status' => ['label' => t('ntf_status'), 'select' => ['st_status' => 's.status'], 'sort' => $rank . ', s.pos',
+				'text' => static fn($r) => t('st_status_' . $r['st_status']),
+				'html' => static fn($r) => '<span class="badge ' . ($cls[(string)$r['st_status']] ?? 'text-bg-secondary') . ' nuStBadge">' . h(t('st_status_' . $r['st_status'])) . '</span>'],
+			'details' => ['label' => t('log_details'), 'select' => ['st_detail' => 's.detail'], 'sort' => null, 'class' => 'small text-break',
+				'text' => static fn($r) => (string)$r['st_detail'],
+				'html' => static fn($r) => '<div class="nuLvClamp" data-more="' . h(t('lv_more')) . '" data-less="' . h(t('lv_less')) . '">' . h((string)$r['st_detail']) . '</div>'],
+			'ms' => ['label' => 'ms', 'select' => ['st_ms' => 's.ms'], 'sort' => 's.ms', 'align' => 'end', 'class' => 'small text-body-secondary', 'text' => static fn($r) => (string)(int)$r['st_ms']],
+			'pos' => ['label' => '#', 'select' => ['st_pos' => 's.pos'], 'sort' => 's.pos', 'align' => 'end', 'class' => 'small text-body-secondary', 'text' => static fn($r) => (string)(int)$r['st_pos']],
+		];
+		$filters = [
+			'group' => ['label' => t('st_group'), 'type' => 'select', 'options' => static fn() => array_combine(NuSelfTest::GROUPS, array_map(static fn($g) => t('st_group_' . $g), NuSelfTest::GROUPS)),
+				'where' => static fn(string $v) => in_array($v, NuSelfTest::GROUPS, true) ? ['s.grp = ?', [$v]] : null],
+			'status' => ['label' => t('ntf_status'), 'type' => 'select', 'options' => static fn() => ['fail' => t('st_status_fail'), 'warn' => t('st_status_warn'), 'ok' => t('st_status_ok'), 'skip' => t('st_status_skip')],
+				'where' => static fn(string $v) => isset($cls[$v]) ? ['s.status = ?', [$v]] : null],
+		];
+		$base = ['columns' => ['group', 'check', 'status', 'details', 'ms'], 'card' => ['title' => 'check', 'badge' => 'status', 'lines' => ['group', 'details', 'ms']],
+			'sort' => ['pos', 'asc'], 'per' => 100, 'filters' => ['shown' => ['group', 'status'], 'values' => []]];
+		return [
+			'key' => 'selftest', 'title' => t('st_title'), 'route' => 'selftest', 'empty_icon' => 'bi-clipboard-check', 'form' => NuAcl::FORM_DEBUG,
+			'from' => $from, 'where' => [], 'params' => $fromParams, 'id' => 's.pos',
+			'link' => static fn($r) => '',
+			'search' => ['s.title', 's.detail', 's.id'], 'open_min' => 0, 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'problems' => ['filters' => ['shown' => ['group', 'status'], 'values' => ['status' => 'fail']]] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
+
+	/** Saved data exports (0.8.758, NuDataExport): name, code, format, datasets, runs, last run, changed. */
+	private static function exports(): array
+	{
+		$T = NuDataExport::T;
+		$dsOf = static function ($r): array {
+			$j = json_decode((string)$r['dx_ds'], true);
+			return array_map(static fn($d) => (string)(($d['name'] ?? '') !== '' ? $d['name'] : (($d['source'] ?? '') === 'table' ? ($d['table'] ?? '') : t('dxp_src_' . (string)($d['source'] ?? 'sql')))), is_array($j) ? $j : []);
+		};
+		$cols = [
+			'name' => ['label' => t('dxp_name'), 'main' => true, 'locked' => true, 'select' => ['dx_name' => 'x.name'], 'sort' => 'x.name',
+				'text' => static fn($r) => (string)$r['dx_name'], 'html' => static fn($r) => '<span class="fw-semibold">' . h((string)$r['dx_name']) . '</span>'],
+			'code' => self::col('dx_code', 'x.code', t('dxp_code'), 'small font-monospace'),
+			'format' => ['label' => t('dxp_format'), 'select' => ['dx_fmt' => 'x.format'], 'sort' => 'x.format', 'text' => static fn($r) => strtoupper((string)$r['dx_fmt']),
+				'html' => static fn($r) => self::badge(strtoupper((string)$r['dx_fmt']), (string)$r['dx_fmt'] === 'xlsx' ? 'text-bg-success' : 'text-bg-secondary')],
+			'datasets' => ['label' => t('dxp_datasets'), 'select' => ['dx_ds' => 'x.datasets'], 'sort' => null, 'class' => 'small', 'text' => static fn($r) => implode(', ', $dsOf($r))],
+			'description' => self::col('dx_desc', 'x.description', t('fi_description'), 'small text-body-secondary'),
+			'runs' => ['label' => t('dxp_runs'), 'select' => ['dx_runs' => 'x.runs'], 'sort' => 'x.runs', 'align' => 'end', 'class' => 'small', 'text' => static fn($r) => (string)(int)$r['dx_runs']],
+			'last_run' => ['label' => t('dxp_last_run'), 'select' => ['dx_last' => 'x.last_run_at'], 'sort' => 'x.last_run_at', 'class' => 'small text-nowrap', 'text' => static fn($r) => self::date($r['dx_last'] ?? null, true)],
+			'updated' => ['label' => t('fi_changed'), 'select' => ['dx_upd' => 'x.updated_at', 'dx_by' => 'x.updated_by'], 'sort' => 'x.updated_at', 'class' => 'small text-nowrap',
+				'text' => static fn($r) => trim(self::date($r['dx_upd'] ?? null, true) . ' ' . (string)$r['dx_by'])],
+			'run' => ['label' => '', 'select' => [], 'sort' => null, 'class' => 'text-end text-nowrap', 'text' => static fn($r) => '',
+				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary dxRun" href="' . h(nu_url('dataexport', ['run' => $r['__id']])) . '" title="' . h(t('dxp_run')) . '"><i class="bi bi-download" aria-hidden="true"></i><span class="d-none d-md-inline ms-1">' . h(t('dxp_run')) . '</span></a>'],
+			'id' => self::idCol('x.' . $T . '_id'),
+		];
+		$filters = [
+			'format' => ['label' => t('dxp_format'), 'type' => 'select', 'options' => static fn() => ['xlsx' => 'XLSX', 'csv' => 'CSV'],
+				'where' => static fn(string $v) => in_array($v, ['xlsx', 'csv'], true) ? ['x.format = ?', [$v]] : null],
+		];
+		$base = ['columns' => ['name', 'code', 'format', 'datasets', 'runs', 'last_run', 'run'], 'card' => ['title' => 'name', 'badge' => 'format', 'lines' => ['datasets', 'last_run']],
+			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['format'], 'values' => []]];
+		return [
+			'key' => 'exports', 'title' => t('dxp_title'), 'route' => 'dataexport', 'new_url' => nu_url('dataexport', ['id' => 'new']), 'empty_icon' => 'bi-box-arrow-up', 'form' => NuAcl::FORM_EXPORT,
+			'from' => " FROM $T x", 'where' => [], 'params' => [], 'id' => 'x.' . $T . '_id',
+			'link' => static fn($r) => nu_url('dataexport', ['id' => $r['__id']]),
+			'search' => ['x.name', 'x.code', 'x.description', 'x.datasets'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'compact' => ['columns' => ['name', 'format', 'run']] + $base,
 				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
 			],
 		];
@@ -1349,7 +1444,7 @@ final class NuListDefs
 		$base = ['columns' => ['name', 'code', 'rights', 'users'], 'card' => ['title' => 'name', 'badge' => '', 'lines' => ['code', 'rights', 'users']],
 			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['has_users'], 'values' => []]];
 		return [
-			'key' => 'adminroles', 'title' => t('adm_title'), 'route' => 'adminroles', 'form' => NuAcl::FORM_ADMINROLE,
+			'key' => 'adminroles', 'title' => t('adm_title'), 'route' => 'adminroles', 'new_url' => nu_url('adminroles', ['id' => 'new']), 'empty_icon' => 'bi-person-gear', 'form' => NuAcl::FORM_ADMINROLE,
 			'from' => " FROM $R r", 'where' => [], 'params' => [], 'id' => 'r.zzzzsys_nunext_admin_role_id',
 			'link' => static fn($r) => nu_url('adminroles', ['id' => $r['__id']]),
 			'search' => ['r.name', 'r.code', 'r.description'], 'columns' => $cols, 'filters' => $filters,
@@ -1416,7 +1511,7 @@ final class NuListDefs
 			'when' => ['label' => t('lv_period'), 'type' => 'date', 'expr' => 'eml_created_at', 'presets' => ['d7', 'd30', 'd90']],
 		];
 		return [
-			'key' => 'emaillog', 'title' => t('mail_tab_log'), 'route' => 'email', 'route_params' => ['tab' => 'log'], 'form' => NuAcl::FORM_EMAILLOG,
+			'key' => 'emaillog', 'title' => t('mail_tab_log'), 'route' => 'email', 'route_params' => ['tab' => 'log'], 'empty_icon' => 'bi-envelope-paper', 'form' => NuAcl::FORM_EMAILLOG,
 			'from' => ' FROM ' . NuMailer::LOG_TABLE, 'where' => [], 'params' => [], 'id' => 'zzzzsys_email_log_id', 'table_class' => 'table-sm',
 			'link' => static fn($r) => nu_url('email', ['tab' => 'log', 'id' => $r['__id']]),
 			'search' => ['eml_to', 'eml_cc', 'eml_subject', 'eml_tag', 'eml_from'], 'search_ph' => t('mail_search_ph'), 'columns' => $cols, 'filters' => $filters,
@@ -1445,7 +1540,7 @@ final class NuListDefs
 			$id = (string)$r['__id'];
 			return $recCache[$id] ??= NuNotify::receipts($row($r), false);
 		};
-		$dt = static fn(?string $v) => (string)$v !== '' ? date('d.m.Y H:i', (int)strtotime((string)$v)) : '';
+		$dt = static fn(?string $v) => (string)$v !== '' ? date(nu_dfmt('d.m.Y H:i'), (int)strtotime((string)$v)) : '';
 		$stCls = ['draft' => 'bg-secondary-subtle text-secondary-emphasis', 'scheduled' => 'bg-info-subtle text-info-emphasis', 'published' => 'bg-success-subtle text-success-emphasis',
 			'expired' => 'bg-light text-body-secondary border', 'withdrawn' => 'bg-warning-subtle text-warning-emphasis'];
 		$base = ['ntf_status' => 'n.status', 'ntf_mode' => 'n.mode', 'ntf_aud' => 'n.audience', 'ntf_pub' => 'n.publish_at', 'ntf_exp' => 'n.expires_at', 'ntf_by_id' => 'n.created_by_id'];
@@ -1504,7 +1599,7 @@ final class NuListDefs
 		$base2 = ['columns' => ['level', 'title', 'state', 'audience', 'read', 'created', 'actions'], 'card' => ['title' => 'title', 'badge' => 'state', 'lines' => ['audience', 'read', 'created']],
 			'sort' => ['created', 'desc'], 'per' => 50, 'filters' => ['shown' => ['state', 'confirm'], 'values' => []]];
 		return [
-			'key' => 'notifications', 'title' => t('ntf_manage'), 'route' => 'notifications', 'route_params' => ['tab' => 'manage'], 'form' => NuAcl::FORM_NOTIFY,
+			'key' => 'notifications', 'title' => t('ntf_manage'), 'route' => 'notifications', 'route_params' => ['tab' => 'manage'], 'new_url' => nu_url('notifications', ['id' => 'new']), 'empty_icon' => 'bi-bell', 'form' => NuAcl::FORM_NOTIFY,
 			'from' => " FROM $T n", 'where' => $own, 'params' => $own ? [(string)(NuAuth::user()['id'] ?? '')] : [], 'id' => 'n.zzzzsys_nunext_notification_id',
 			'link' => static fn($r) => NuNotify::canEdit($row($r)) ? nu_url('notifications', ['id' => $r['__id']]) : nu_url('notifications', ['id' => $r['__id'], 'receipts' => '1']),
 			'always' => ['title'], 'search' => ['n.title', 'n.body', 'n.created_by'], 'columns' => $cols, 'filters' => $filters,
@@ -1557,7 +1652,7 @@ final class NuListDefs
 		$base = ['columns' => ['code', 'title', 'where', 'widgets'], 'card' => ['title' => 'title', 'badge' => '', 'lines' => ['code', 'where', 'widgets']],
 			'sort' => ['code', 'asc'], 'per' => 50, 'filters' => ['shown' => ['home', 'acc'], 'values' => []]];
 		return [
-			'key' => 'dashboards', 'title' => t('dash_title'), 'route' => 'dashboards', 'form' => NuAcl::FORM_DASHBOARD,
+			'key' => 'dashboards', 'title' => t('dash_title'), 'route' => 'dashboards', 'new_url' => nu_url('dashboards', ['id' => 'new']), 'empty_icon' => 'bi-speedometer2', 'form' => NuAcl::FORM_DASHBOARD,
 			'from' => " FROM $D d", 'where' => [], 'params' => [], 'id' => 'd.zzzzsys_nunext_dashboard_id',
 			'link' => static fn($r) => nu_url('dashboards', ['id' => $r['__id']]),
 			'search' => ['d.code', 'd.title', 'd.description'], 'columns' => $cols, 'filters' => $filters,

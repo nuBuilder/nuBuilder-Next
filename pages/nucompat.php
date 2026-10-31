@@ -81,7 +81,7 @@ nu_layout_start(t('compat_title'), 'home');
 							}
 							echo implode(', ', $links);
 							?>
-							<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($r['where']) ?> <?= h(t('compat_places')) ?></summary>
+							<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($r['where']) ?> <?= h(t(count($r['where']) === 1 ? 'compat_place' : 'compat_places')) ?></summary>
 								<ul class="mb-0 ps-3"><?php foreach (array_slice($r['where'], 0, 40) as $w): $pid = $r['procs'][$w] ?? ''; ?><li><?php if ($pid !== '' && $canProc): ?><a href="<?= h($procUrl($pid)) ?>" target="_blank" rel="noopener"><?= h($w) ?></a><?php else: ?><?= h($w) ?><?php endif; ?></li><?php endforeach; ?></ul></details>
 						</td>
 					</tr>
@@ -113,7 +113,7 @@ nu_layout_start(t('compat_title'), 'home');
 						<?php $links = [];
 						foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
 						echo implode(', ', array_slice($links, 0, 6)); ?>
-						<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($places) ?> <?= h(t('compat_places')) ?></summary>
+						<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($places) ?> <?= h(t(count($places) === 1 ? 'compat_place' : 'compat_places')) ?></summary>
 							<ul class="mb-0 ps-3"><?php foreach (array_slice($places, 0, 60) as $pl): ?><li><?= h($pl['where']) ?><?php if ($pl['detail'] !== ''): ?> – <code class="text-break"><?= h($pl['detail']) ?></code><?php endif; ?></li><?php endforeach; ?></ul></details>
 					</td>
 				</tr>

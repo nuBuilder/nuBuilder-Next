@@ -101,6 +101,29 @@ final class NuInstall
 		return self::origin() === 'legacy' && !self::existingAllowed() && nu_db()->tableExists('zzzzsys_form');
 	}
 
+	/** The warning hidden by the globeadmin for this version (review I1) – it shows again after the next update. */
+	public const WARN_HIDDEN = 'existing_db_warn_hidden';
+
+	public static function existingWarnHidden(): bool
+	{
+		try {
+			NuSchema::ensure();
+			return (string)nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::WARN_HIDDEN]) === NU_VERSION;
+		} catch (Throwable) {
+			return false;
+		}
+	}
+
+	public static function hideExistingWarn(): void
+	{
+		NuSchema::ensure();
+		$db = nu_db();
+		$row = ['setting_value' => NU_VERSION, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
+		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::WARN_HIDDEN])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::WARN_HIDDEN);
+		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::WARN_HIDDEN] + $row);
+		NuLog::write('existing_db_warn_hidden', 'zzzzsys_nunext_setting', self::WARN_HIDDEN, ['version' => NU_VERSION]);
+	}
+
 	public static function configPath(): string
 	{
 		return getenv('NU_CONFIG') ?: NU_ROOT . '/nuconfig.php';

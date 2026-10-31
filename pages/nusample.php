@@ -84,10 +84,7 @@ $hidden = static fn(string $key): string => $key !== '' ? '<input type="hidden" 
 
 nu_layout_start(t('smp_title'), 'home');
 ?>
-<div class="nuTitleBar mb-3">
-	<h1 class="h4 mb-0"><i class="bi bi-box-seam me-2"></i><?= h(t('smp_title')) ?></h1>
-	<?= nu_back_button() ?>
-</div>
+<?= nu_page_header(t('smp_title'), ['icon' => 'bi-box-seam']) ?>
 <?php foreach ($errors as $e): ?><div class="alert alert-warning"><?= h($e) ?></div><?php endforeach; ?>
 
 <div class="row g-3 align-items-start" id="smpPage">
