@@ -35,6 +35,36 @@
 		var body = el('div', 'modal-body');
 		body.appendChild(el('p', 'small text-body-secondary mb-2', T.fac_intro));
 		if (d.admin_form) body.appendChild(el('div', 'alert alert-warning small py-2', T.fac_admin));
+		// Everyone (0.8.784): every level gets the form with the buttons below; "Also for new access levels" = levels created later too
+		var EV = d.everyone ? JSON.parse(JSON.stringify(d.everyone)) : null, evStart = JSON.stringify(EV);
+		var evBox = el('div', 'nuFacEv mb-3' + (d.everyone_ok ? '' : ' nuFacEvOff')); evBox.id = 'nuFacEvBox';
+		var evTop = el('div', 'd-flex flex-wrap align-items-center gap-2');
+		var evSw = el('div', 'form-check form-switch mb-0 flex-grow-1'), ev = el('input', 'form-check-input'); ev.type = 'checkbox'; ev.id = 'nuFacEv'; ev.setAttribute('role', 'switch');
+		ev.checked = !!EV; ev.disabled = !d.can_save || !d.everyone_ok;
+		var evL = el('label', 'form-check-label'); evL.htmlFor = 'nuFacEv';
+		evL.appendChild(el('span', 'fw-semibold', T.fac_ev)); evL.appendChild(el('span', 'text-body-secondary ms-2 small', T.fac_ev_hint));
+		evSw.appendChild(ev); evSw.appendChild(evL); evTop.appendChild(evSw);
+		var evCount = el('span', 'badge rounded-pill nuFacEvCount'); evCount.id = 'nuFacEvCount'; evTop.appendChild(evCount);
+		evBox.appendChild(evTop);
+		var evOpts = el('div', 'nuFacEvOpts'); evOpts.id = 'nuFacEvOpts';
+		var evRights = el('div', 'd-flex flex-wrap align-items-center gap-2 column-gap-3 small');
+		evRights.appendChild(el('span', 'fw-semibold text-body-secondary', T.fac_ev_buttons));
+		var evCb = {};
+		var evCheck = function (id, label, checked, disabled) {
+			var w = el('div', 'form-check form-check-inline mb-0 me-0'), c = el('input', 'form-check-input'); c.type = 'checkbox'; c.id = id; c.checked = checked; c.disabled = disabled;
+			var l = el('label', 'form-check-label', label); l.htmlFor = id; w.appendChild(c); w.appendChild(l); evRights.appendChild(w); return c;
+		};
+		evCheck('nuFacEvOpen', T.fac_open, true, true);
+		d.rights.forEach(function (r) { evCb[r] = evCheck('nuFacEvR_' + r, T['right_' + r], !!(EV && EV.rights[r]), !d.can_save); evCb[r].setAttribute('data-ev-right', r); });
+		evOpts.appendChild(evRights);
+		var evNewW = el('div', 'form-check mt-2 mb-0 small'), evNew = el('input', 'form-check-input'); evNew.type = 'checkbox'; evNew.id = 'nuFacEvNew'; evNew.checked = !EV || EV['new'] !== false; evNew.disabled = !d.can_save;
+		var evNewL = el('label', 'form-check-label'); evNewL.htmlFor = 'nuFacEvNew';
+		evNewL.appendChild(el('span', 'fw-semibold', T.fac_ev_new)); evNewL.appendChild(el('span', 'd-block text-body-secondary', T.fac_ev_new_hint));
+		evNewW.appendChild(evNew); evNewW.appendChild(evNewL); evOpts.appendChild(evNewW);
+		evBox.appendChild(evOpts);
+		if (!d.everyone_ok) evBox.appendChild(el('div', 'alert alert-warning small py-2 mb-0 mt-2', T.fac_ev_admin));
+		body.appendChild(evBox);
+		var evFollow = el('p', 'small text-body-secondary mb-2', T.fac_ev_follow); evFollow.id = 'nuFacEvFollow'; body.appendChild(evFollow);
 		// toolbar: search, group filter, Select all, count
 		var bar = el('div', 'd-flex flex-wrap align-items-center gap-2 mb-2 nuFacBar');
 		var q = el('input', 'form-control form-control-sm nuFacSearch'); q.type = 'search'; q.id = 'nuFacSearch'; q.placeholder = T.fac_search; q.setAttribute('aria-label', T.fac_search);
@@ -48,9 +78,6 @@
 			groups.sort().forEach(function (g) { gsel.appendChild(new Option(g === '' ? T.fac_nogroup : g, g)); });
 			bar.appendChild(gsel);
 		}
-		var allWrap = el('div', 'form-check mb-0 ms-1'), all = el('input', 'form-check-input'); all.type = 'checkbox'; all.id = 'nuFacAll';
-		var allL = el('label', 'form-check-label small', T.fac_all); allL.htmlFor = 'nuFacAll';
-		allWrap.appendChild(all); allWrap.appendChild(allL); bar.appendChild(allWrap);
 		var count = el('span', 'small text-body-secondary ms-auto'); count.id = 'nuFacCount'; bar.appendChild(count);
 		body.appendChild(bar);
 		// the table
@@ -63,7 +90,10 @@
 			th.appendChild(b); return th;
 		};
 		htr.appendChild(sortTh('', 'level', T.fac_level));
-		htr.appendChild(sortTh('text-center', 'open', T.fac_open));
+		// Open (0.8.785): its "select all" sits in the title like the buttons' – for the levels the search / group filter show
+		var thOpen = sortTh('text-center', 'open', T.fac_open);
+		var all = el('input', 'form-check-input nuFacColOpen d-block mx-auto mt-1'); all.type = 'checkbox'; all.id = 'nuFacAll'; all.setAttribute('aria-label', T.fac_all + ': ' + T.fac_open);
+		thOpen.appendChild(all); htr.appendChild(thOpen);
 		d.rights.forEach(function (r) {
 			var th = sortTh('text-center', 'r:' + r, T['right_' + r]);
 			var cb = el('input', 'form-check-input nuFacCol d-block mx-auto mt-1'); cb.type = 'checkbox'; cb.setAttribute('data-col', r); cb.setAttribute('aria-label', T.toggle_all + ': ' + T['right_' + r]);
@@ -128,10 +158,40 @@
 		mc.appendChild(head); mc.appendChild(body); mc.appendChild(foot); md.appendChild(mc); dlg.appendChild(md);
 		document.body.appendChild(dlg);
 
+		var evState = function () {
+			if (!ev.checked) return null;
+			var c = {rights: {}, dm: '', ft: '', 'new': evNew.checked};
+			d.rights.forEach(function (r) { c.rights[r] = evCb[r].checked; });
+			return c;
+		};
+		// while Everyone is on the table follows it (read-only); switched off, the rows keep what they show and can be changed one by one
+		function applyEv() {
+			var c = evState();
+			evOpts.hidden = !c; evFollow.hidden = !c; bar.classList.toggle('nuFacFollow', !!c);
+			evBox.classList.toggle('nuFacEvOn', !!c);                       // blue only while on (0.8.785)
+			rows.forEach(function (r) {
+				if (c) {
+					r.on.checked = true;
+					d.rights.forEach(function (k) { r.boxes[k].checked = !!c.rights[k]; r.boxes[k].disabled = true; });
+					if (r.dm) { r.dm.value = ''; r.dm.disabled = true; } if (r.ft) { r.ft.value = ''; r.ft.disabled = true; }
+					r.on.disabled = true;
+				} else {
+					r.on.disabled = r.lock;
+					d.rights.forEach(function (k) { r.boxes[k].disabled = r.lock || !r.on.checked; });
+					if (r.dm) r.dm.disabled = r.lock || !r.on.checked; if (r.ft) r.ft.disabled = r.lock || !r.on.checked;
+				}
+			});
+			all.disabled = !!c; t.querySelectorAll('.nuFacCol').forEach(function (x) { x.disabled = !!c || x.disabled; });
+			sync();
+		}
 		var visible = function () { return rows.filter(function (r) { return !r.tr.hidden; }); };
 		function sync() {
 			var n = rows.filter(function (r) { return r.on.checked; }).length;
 			count.textContent = T.fac_count.replace('%d', n).replace('%d', d.levels.length);
+			var had = rows.filter(function (r) { return !!r.l.row; }).length;          // levels that really have the form now (before Save)
+			evCount.textContent = T.fac_ev_count.replace('%d', ev.checked ? had : n).replace('%d', d.levels.length);
+			evCount.className = 'badge rounded-pill nuFacEvCount' + (ev.checked && had < d.levels.length ? ' nuFacEvGap' : '');
+			evCount.hidden = !ev.checked && !EV;
 			var vis = visible().filter(function (r) { return !r.lock; }), onN = vis.filter(function (r) { return r.on.checked; }).length;
 			all.checked = vis.length > 0 && onN === vis.length; all.indeterminate = onN > 0 && onN < vis.length; all.disabled = !vis.length;
 			d.rights.forEach(function (r) {
@@ -139,9 +199,11 @@
 				var c = act.filter(function (x) { return x.boxes[r].checked; }).length;
 				col.checked = act.length > 0 && c === act.length; col.indeterminate = c > 0 && c < act.length; col.disabled = !act.length;
 			});
-			save.disabled = !changes().length;
+			save.disabled = !changes().length && !evDirty() && !(ev.checked && had < d.levels.length);
+			if (ev.checked) { all.disabled = true; t.querySelectorAll('.nuFacCol').forEach(function (x) { x.disabled = true; }); }
 		}
-		function changes() { return rows.filter(function (r) { return JSON.stringify(r.state()) !== start[r.l.id]; }); }
+		function evDirty() { return JSON.stringify(evState()) !== evStart; }
+		function changes() { return ev.checked ? [] : rows.filter(function (r) { return JSON.stringify(r.state()) !== start[r.l.id]; }); }
 		function filter() {
 			var s = q.value.trim().toLowerCase(), g = gsel ? gsel.value : '*';
 			rows.forEach(function (r) { r.tr.hidden = (s !== '' && r.tr.getAttribute('data-search').indexOf(s) < 0) || (g !== '*' && r.l.group !== g); });
@@ -166,7 +228,8 @@
 		q.addEventListener('input', filter);
 		if (gsel) gsel.addEventListener('change', filter);
 		all.addEventListener('change', function () {
-			visible().forEach(function (r) { if (!r.lock && r.on.checked !== all.checked) { r.on.checked = all.checked; r.on.dispatchEvent(new Event('change')); } });
+			var want = all.checked;                                         // each row's change runs sync(), which resets the box – keep the wish
+			visible().forEach(function (r) { if (!r.lock && r.on.checked !== want) { r.on.checked = want; r.on.dispatchEvent(new Event('change')); } });
 			sync();
 		});
 		t.querySelectorAll('.nuFacCol').forEach(function (col) {
@@ -176,13 +239,18 @@
 				sync();
 			});
 		});
+		ev.addEventListener('change', applyEv);
+		evNew.addEventListener('change', sync);
+		Object.keys(evCb).forEach(function (r) { evCb[r].addEventListener('change', applyEv); });
 		save.addEventListener('click', function () {
-			var ch = changes(), levels = {};
-			if (!ch.length) return;
+			var ch = changes(), levels = {}, payload = {f: d.form.id};
 			ch.forEach(function (r) { levels[r.l.id] = r.state(); });
+			payload.levels = levels;
+			if (ev.checked || evDirty()) payload.everyone = evState();        // on: every level (also ones still missing it); off: the switch only
+			if (!ch.length && !('everyone' in payload)) return;
 			save.disabled = true;
 			fetch(url(), {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrf()},
-				body: JSON.stringify({f: d.form.id, levels: levels})})
+				body: JSON.stringify(payload)})
 				.then(function (r) { return r.json(); })
 				.then(function (res) {
 					if (!res || !res.ok) { toast((res && res.message) || 'Error', 'danger'); save.disabled = false; return; }
@@ -194,6 +262,7 @@
 		});
 		dlg.addEventListener('hidden.bs.modal', function () { dlg.remove(); });
 		filter();
+		applyEv();
 		window.nuBs.modal(dlg).show();
 		dlg.addEventListener('shown.bs.modal', function () { q.focus(); }, {once: true});
 	}

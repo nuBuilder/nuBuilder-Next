@@ -764,3 +764,49 @@
 	});
 	dlg.addEventListener('hidden.bs.modal', function () { if (!state.ok) frame.removeAttribute('src'); });
 })();
+
+// own titles of Code / Additional 1 / 2 (0.8.799): the pencil next to the label opens #userLblDlg; Save posts action=user_label and
+// changes the label in place (the form's own values stay untouched – nothing else is sent)
+(function () {
+	var dlg = document.getElementById('userLblDlg');
+	if (!dlg) return;
+	var val = document.getElementById('userLblVal'), err = document.getElementById('userLblErr'), save = document.getElementById('userLblSave'), cur = null;
+	var fill = function (s, a) { return String(s).replace('%s', a); };
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest ? e.target.closest('.nuUserLblEdit') : null;
+		if (!b) return;
+		cur = b;
+		var lbl = document.querySelector('label[for="' + b.getAttribute('data-for') + '"] .nuUserLblText');
+		document.getElementById('userLblDlgT').textContent = fill(dlg.getAttribute('data-title'), lbl ? lbl.textContent : '');
+		document.getElementById('userLblHint').textContent = fill(dlg.getAttribute('data-hint'), b.getAttribute('data-builtin') || '');
+		val.value = b.getAttribute('data-value') || '';
+		val.placeholder = b.getAttribute('data-builtin') || '';
+		err.hidden = true;
+		nuBs.modal(dlg).show();
+	});
+	dlg.addEventListener('shown.bs.modal', function () { val.focus(); val.select(); });
+	val.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); save.click(); } });
+	val.addEventListener('input', function (e) { e.stopPropagation(); });     // not an edit of the user (red Save, leave guard)
+	save.addEventListener('click', function () {
+		if (!cur) return;
+		var fd = new FormData();
+		fd.append('_csrf', dlg.getAttribute('data-csrf') || '');
+		fd.append('action', 'user_label');
+		fd.append('key', cur.getAttribute('data-key'));
+		fd.append('value', val.value);
+		fd.append('back', dlg.getAttribute('data-back') || '');
+		save.disabled = true;
+		fetch(window.location.pathname + window.location.search, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+			.then(function (r) { return r.json(); })
+			.then(function (j) {
+				save.disabled = false;
+				if (j && j.reauth) { window.location.href = j.reauth; return; }
+				if (!j || !j.ok) { err.textContent = (j && j.error) || 'Error'; err.hidden = false; return; }
+				var lbl = document.querySelector('label[for="' + cur.getAttribute('data-for') + '"] .nuUserLblText');
+				if (lbl) lbl.textContent = j.label;
+				cur.setAttribute('data-value', j.value);
+				nuBs.modal(dlg).hide();
+			})
+			.catch(function () { save.disabled = false; err.textContent = 'Error'; err.hidden = false; });
+	});
+})();

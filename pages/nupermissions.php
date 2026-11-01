@@ -41,8 +41,17 @@ if (nu_is_post()) {
 	if ($action === 'save') {
 		NuAcl::require(NuAcl::FORM_PERMISSION, $item ? 'save' : ($src ? 'clone' : 'create'));
 		$in = ['pme_ident' => nu_post('pme_ident'), 'pme_group' => nu_post('pme_group'), 'pme_description' => (string)($_POST['pme_description'] ?? '')];
-		[$newId, $errors] = NuPermission::save($in, $item ? $id : '');
+		// type of the item (0.8.773, own table – nuBuilder Forte's item stays a plain item)
+		$ptype = isset(NuPermType::TYPES[nu_post('ptype')]) ? nu_post('ptype') : 'plain';
+		$pset = NuPermType::clean($ptype, ['tables' => is_array($_POST['ptype_tables'] ?? null) ? $_POST['ptype_tables'] : [], 'add' => nu_check('ptype_add') === '1', 'update' => nu_check('ptype_update') === '1']);
+		$errors = NuPermType::errors($ptype, $pset);
+		if (!$errors) [$newId, $errors] = NuPermission::save($in, $item ? $id : '');
 		if (!$errors) {
+			$oldType = $item ? NuPermType::of($id) : ['type' => 'plain', 'settings' => []];
+			NuPermType::set((string)$newId, $ptype, $pset);
+			if ($oldType['type'] !== $ptype || $oldType['settings'] != NuPermType::clean($ptype, $pset)) {
+				NuLog::write('permission_type', $T, (string)$newId, ['type' => $ptype, 'before' => $oldType['type'], 'summary' => NuPermType::summary($ptype, NuPermType::clean($ptype, $pset))]);
+			}
 			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_permission_item_id = ?", [$newId]) ?? [];
 			NuLog::write($item ? 'permission_changed' : 'permission_created', $T, (string)$newId, $item ? ['fields' => NuLog::diff($item, $after)] : ['ident' => $after['pme_ident'] ?? ''] + ($src ? ['clone_of' => $cloneId] : []));
 			if ($userEdit && isset($_POST['users_sent'])) {
@@ -58,6 +67,7 @@ if (nu_is_post()) {
 	if ($action === 'delete' && $item) {
 		NuAcl::require(NuAcl::FORM_PERMISSION, 'delete');
 		NuPermission::delete($id);
+		NuPermType::delete($id);
 		NuLog::write('permission_deleted', $T, $id, ['ident' => (string)$item['pme_ident']]);
 		nu_flash('success', t('perm_deleted', (string)$item['pme_ident']));
 		nu_redirect(nu_url('permissions'));
@@ -104,8 +114,12 @@ nu_layout_start($title, 'users', ['head' => $head]);
 	$uname = static fn(array $u) => trim((string)($u['sus_name'] ?: trim($u['sus_first_name'] . ' ' . $u['sus_last_name'])));
 	$usage = $item ? NuPermission::usage((string)$item['pme_ident']) : [];
 	$groups = array_column($db->all("SELECT DISTINCT pme_group FROM $T WHERE pme_group IS NOT NULL AND pme_group <> '' ORDER BY pme_group"), 'pme_group');
+	// type (0.8.773): saved type, a clone's type, or the posted one
+	$pt = $posted ? ['type' => isset(NuPermType::TYPES[nu_post('ptype')]) ? nu_post('ptype') : 'plain', 'settings' => ['tables' => is_array($_POST['ptype_tables'] ?? null) ? array_map('strval', $_POST['ptype_tables']) : [],
+		'add' => nu_check('ptype_add') === '1', 'update' => nu_check('ptype_update') === '1']] : NuPermType::of($item ? $id : $cloneId);
+	if (!$item && !$src && !$posted) $pt['settings'] = ['tables' => [], 'add' => true, 'update' => false];
 	?>
-	<div class="nuTitleBar mb-3">
+	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h3 mb-0 d-flex align-items-center gap-2"><i class="bi bi-key"></i><span class="text-break"><?= h($title) ?></span></h1>
 		<div class="d-flex flex-wrap gap-2 align-items-center">
 			<a class="btn nuBtnAct" href="<?= h(nu_url('permissions')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
@@ -166,6 +180,36 @@ nu_layout_start($title, 'users', ['head' => $head]);
 								<a class="small d-inline-block mt-2" href="<?= h(nu_url('help')) ?>#permissions-sql" target="_blank" rel="noopener"><i class="bi bi-question-circle me-1"></i><?= h(t('perm_code_more')) ?></a>
 							</details>
 						<?php endif; ?>
+					</div>
+				</div>
+			</div>
+			<div class="col-12 order-lg-last">
+				<?php // type of the item (0.8.773, core/nupermtype.php): plain = a flag for code; Data import = tables the user may import into ?>
+				<div class="card shadow-sm" id="permTypeCard">
+					<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-diagram-3"></i><span><?= h(t('ptype_title')) ?></span>
+						<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('ptype_tip')) ?>" title="<?= h(t('ptype_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+					<div class="card-body">
+						<div class="d-flex flex-wrap gap-2 mb-2" role="radiogroup" aria-label="<?= h(t('ptype_title')) ?>" id="permTypeChoice">
+							<?php foreach (NuPermType::TYPES as $tk => [$tl, $ti]): ?>
+								<input type="radio" class="btn-check" name="ptype" id="ptype_<?= h($tk) ?>" value="<?= h($tk) ?>" autocomplete="off"<?= $pt['type'] === $tk ? ' checked' : '' ?>>
+								<label class="btn btn-outline-secondary" for="ptype_<?= h($tk) ?>"><i class="bi <?= h($ti) ?> me-1"></i><?= h(t($tl)) ?></label>
+							<?php endforeach; ?>
+						</div>
+						<div class="small text-body-secondary permTypeHint" data-ptype="plain"<?= $pt['type'] !== 'plain' ? ' hidden' : '' ?>><?= h(t('ptype_plain_hint')) ?></div>
+						<div class="permTypeBox" data-ptype="import"<?= $pt['type'] !== 'import' ? ' hidden' : '' ?>>
+							<p class="small text-body-secondary mb-2"><?= h(t('ptype_import_hint')) ?></p>
+							<label class="form-label" for="ptypeTables"><?= h(t('ptype_tables')) ?> <span class="text-danger">*</span></label>
+							<select id="ptypeTables" name="ptype_tables[]" multiple class="permTables<?= isset($errors['ptype_tables']) ? ' is-invalid' : '' ?>" placeholder="<?= h(t('ptype_tables_ph')) ?>">
+								<?php foreach (NuImport::tables() as $tb): ?><option value="<?= h($tb) ?>"<?= in_array($tb, $pt['settings']['tables'] ?? [], true) ? ' selected' : '' ?>><?= h($tb) ?></option><?php endforeach; ?>
+							</select>
+							<?= nu_feedback($errors, 'ptype_tables') ?>
+							<div class="mt-3"><span class="form-label d-block mb-1"><?= h(t('ptype_modes')) ?></span>
+								<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ptypeAdd" name="ptype_add" value="1"<?= !empty($pt['settings']['add']) ? ' checked' : '' ?>><label class="form-check-label" for="ptypeAdd"><?= h(t('ptype_add_long')) ?></label></div>
+								<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ptypeUpdate" name="ptype_update" value="1"<?= !empty($pt['settings']['update']) ? ' checked' : '' ?>><label class="form-check-label" for="ptypeUpdate"><?= h(t('ptype_update_long')) ?></label></div>
+								<?php if (isset($errors['ptype_modes'])): ?><div class="text-danger small mt-1" id="ptypeModesErr"><?= h($errors['ptype_modes']) ?></div><?php endif; ?>
+							</div>
+							<div class="alert alert-warning small mt-3 mb-0 d-flex gap-2"><i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i><div><?= h(t('ptype_import_warn')) ?></div></div>
+						</div>
 					</div>
 				</div>
 			</div>

@@ -10,6 +10,13 @@
 	var T = JSON.parse(app.getAttribute('data-texts') || '{}');
 	var FORMATS = JSON.parse(app.getAttribute('data-formats') || '{}');
 	var TABLES = JSON.parse(app.getAttribute('data-tables') || '[]');
+	var MODES = JSON.parse(app.getAttribute('data-modes') || '{}');   // permission items (0.8.773): table → allowed modes; empty = all
+	function limitModes(table) {
+		var allowed = MODES[table], sel = $('#impMode');
+		Array.prototype.forEach.call(sel.options, function (o) { o.hidden = o.disabled = !!(allowed && allowed.indexOf(o.value) < 0); });
+		if (allowed && allowed.indexOf(sel.value) < 0) sel.value = allowed[0];
+		$('#impKeyGroup').classList.toggle('d-none', sel.value === 'insert' || isUsers());
+	}
 	var USERS = 'zzzzsys_user', TARGET = app.getAttribute('data-target') || '';   // users (0.8.327): a target of its own, checked like the user form
 	if (app.getAttribute('data-users') === '1') TABLES.unshift(USERS);
 	var isUsers = function () { return S.table === USERS; };
@@ -132,6 +139,7 @@
 			$$('.impTableOnly', app).forEach(function (el) { el.classList.toggle('d-none', isUsers()); });
 			$$('.impUsersOnly', app).forEach(function (el) { el.classList.toggle('d-none', !isUsers()); });
 			if (isUsers()) { $('#impMode').value = 'insert'; $('#impKeyGroup').classList.add('d-none'); }   // users: new logins only
+			else limitModes(table);
 			buildMapping();
 			$('#impMapCard').classList.remove('d-none'); $('#impOptCard').classList.remove('d-none');
 			if (then) then(); else if (S.config && S.config.table === table) applyMapConfig(); else autoMap(true);
@@ -287,7 +295,7 @@
 	function autoMap(quiet) {
 		if (!S.columns.length) return;
 		var pre = prefix(S.columns), used = {}, pairs = [];
-		S.columns.forEach(function (c) { if (!c.auto) S.headers.forEach(function (h, i) { var s = score(c.name, pre, h, c.label); if (s >= 0.6) pairs.push([s, c, i]); }); });
+		S.columns.forEach(function (c) { if (!c.auto) S.headers.forEach(function (h, i) { var s = Math.max(score(c.name, pre, h, c.label), c.alias ? score(c.name, pre, h, c.alias) : 0); if (s >= 0.6) pairs.push([s, c, i]); }); });
 		pairs.sort(function (a, b) { return b[0] - a[0]; });                       // best pairs first, each CSV column once
 		var done = {}, n = 0;
 		pairs.forEach(function (p) {
@@ -332,7 +340,7 @@
 		if (o.on_error) $('#impOnError').value = o.on_error;
 		if (o.trim !== undefined) $('#impTrim').checked = o.trim !== '0';
 		if (o.audit !== undefined) $('#impAudit').checked = o.audit !== '0';
-		if (isUsers()) $('#impMode').value = 'insert';
+		if (isUsers()) $('#impMode').value = 'insert'; else limitModes(S.table);   // a loaded configuration cannot pick a mode the items forbid
 		$('#impKeyGroup').classList.toggle('d-none', $('#impMode').value === 'insert');
 		collect();
 		msg(tx('imp_config_applied', n), 'success');

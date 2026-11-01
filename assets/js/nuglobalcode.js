@@ -37,6 +37,7 @@
 	function current() { var a = tabs && tabs.querySelector('.nav-link.active'); return a ? a.getAttribute('data-nu-tab') || '' : ''; }
 	if (tabs) tabs.addEventListener('shown.bs.tab', function () { fit(); editors.forEach(function (cm) { cm.refresh(); }); field.value = current(); });   // hidden editors have no size
 	form.addEventListener('submit', function () { editors.forEach(function (cm) { cm.save(); }); field.value = current(); });
+	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(form);   // syntax errors: ask before saving (0.8.781)
 	field.value = current();
 	// Templates (0.8.524, core/nucodetemplates.php): ▾ Templates per tab – a click inserts at the cursor; "Preview…" opens a dialogue
 	// with all templates of the tab, description and code (Insert / Copy)

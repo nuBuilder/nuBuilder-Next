@@ -129,7 +129,7 @@ nu_layout_start(t('file_title'), 'forms');
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="MAX_FILE_SIZE" value="<?= NuFile::maxBytes() ?>">
 		<input type="hidden" name="action" value="save">
-		<div class="nuTitleBar mb-3">
+		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><?= h($file ? (string)$file['sfi_code'] : t('file_new')) ?>
 				<?php if ($file && $isSystem($file)): ?><span class="badge bg-info-subtle text-info-emphasis fs-6 align-middle"><?= h(t('file_system')) ?></span><?php endif; ?></h1>
 			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page -->

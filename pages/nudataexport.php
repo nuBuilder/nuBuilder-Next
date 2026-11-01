@@ -85,7 +85,7 @@ if ($runExport) {
 	nu_layout_start(t('dxp_title'), 'home');
 	echo NuListView::crumbs([[t('dxp_title'), nu_url('dataexport')], [$runExport['name']]]);
 	?>
-	<div class="nuTitleBar">
+	<div class="nuTitleBar nuRecHead">
 		<h1 class="h4 mb-0"><i class="bi bi-file-earmark-arrow-down me-2"></i><?= h($runExport['name']) ?></h1>
 		<div class="d-flex flex-wrap gap-2"><?= nu_back_button('dataexport') ?></div>
 	</div>
@@ -198,7 +198,7 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 ?>
 <form method="post" action="<?= h(nu_url('dataexport', ['id' => $id])) ?>" id="dxpForm" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="datasets" id="dxpDatasets" value="<?= h((string)json_encode($e['datasets'], JSON_UNESCAPED_UNICODE)) ?>">
-	<div class="nuTitleBar">
+	<div class="nuTitleBar nuRecHead">
 		<h1 class="h4 mb-0"><i class="bi bi-file-earmark-arrow-down me-2"></i><?= h($export ? $e['name'] : t('dxp_new')) ?></h1>
 		<?php if ($export): ?><div class="nuTitleSub small text-body-secondary"><code><?= h($e['code']) ?></code> · <?= h(t('dxp_runs')) ?>: <?= (int)$e['runs'] ?><?= $e['last_run_at'] !== '' ? ' · ' . h(t('dxp_last_run')) . ' ' . h(date(nu_dfmt('d.m.Y H:i'), (int)strtotime($e['last_run_at']))) : '' ?></div><?php endif; ?>
 		<div class="d-flex flex-wrap gap-2">

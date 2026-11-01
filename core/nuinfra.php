@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 24;
+	public const VERSION = 25;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -151,6 +151,10 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_webhook_try_id',
 			'cols' => [['call_id', 'text', '25'], ['tried_at', 'datetime'], ['attempt', 'int'], ['http_code', 'int'], ['ms', 'int'], ['error', 'text', '255'], ['response', 'text', '1000']],
 			'index' => ['call_id'],
+		],
+		'zzzzsys_nunext_permission_type' => [                     // types of permission items (0.8.773, core/nupermtype.php): pk = zzzzsys_permission_item_id
+			'pk' => 'zzzzsys_nunext_permission_type_id',
+			'cols' => [['type', 'text', '30'], ['settings', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 		],
 		'zzzzsys_nunext_export' => [                              // data export (0.8.758, core/nudataexport.php): saved exports
 			'pk' => 'zzzzsys_nunext_export_id',

@@ -211,7 +211,7 @@ if (isset($_GET['edit'])) {
 				<div class="thPreviewWrap">
 					<div class="d-flex align-items-center gap-2 mb-2">
 						<span class="fw-semibold me-auto"><?= h(t('brand_preview')) ?></span>
-						<div class="btn-group btn-group-sm" role="group" aria-label="<?= h(t('nav_theme')) ?>">
+						<div class="btn-group btn-group-sm nuSeg" role="group" aria-label="<?= h(t('nav_theme')) ?>">
 							<button type="button" class="btn btn-outline-secondary active" data-th-mode="light" aria-pressed="true"><i class="bi bi-sun me-1"></i><?= h(t('theme_light')) ?></button>
 							<button type="button" class="btn btn-outline-secondary" data-th-mode="dark" aria-pressed="false"><i class="bi bi-moon-stars me-1"></i><?= h(t('theme_dark')) ?></button>
 						</div>

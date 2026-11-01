@@ -998,7 +998,7 @@ final class NuWelcome
 		$_SESSION['nu_lang'] = $lang;
 		// the language's own default (en-GB, de-DE) – not NuSetupWizard::defaultVariant(): it reads the settings, which may start the
 		// database steps once more while one of them (ensureTemplates) is running
-		if (isset(NU_LANG_VARIANT_DEFAULT[$lang])) $_SESSION['nu_lang_variant'] = NU_LANG_VARIANT_DEFAULT[$lang]; else unset($_SESSION['nu_lang_variant']);
+		if (isset(NU_LANG_VARIANT_DEFAULT[$lang])) $_SESSION['nu_lang_variant'] = NuLanguages::defaultVariant($lang); else unset($_SESSION['nu_lang_variant']);
 		try {
 			return $fn();
 		} finally {

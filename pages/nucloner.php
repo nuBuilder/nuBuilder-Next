@@ -36,7 +36,7 @@ if ($cloneId !== '' && !$src) { http_response_code(404); nu_fatal(t('record_not_
 $listMode = $id === '' && !isset($_GET['f']) && !nu_is_post();
 
 $def = ['source' => (string)($_GET['f'] ?? ''), 'dest_mode' => 'new', 'dest' => '', 'code' => '', 'description' => '', 'tabs' => [], 'objects' => true,
-	'subforms' => false, 'subform_ids' => [], 'iframes' => false, 'iframe_ids' => [], 'access' => false, 'dump' => true, 'keep_pks' => false, 'replace' => false, 'notes' => ''];   // dump: ticked by default (0.8.633)
+	'subforms' => false, 'subform_ids' => [], 'iframes' => false, 'iframe_ids' => [], 'access' => false, 'dump' => true, 'keep_pks' => false, 'replace' => false, 'notes' => '', 'target' => $db->type === 'sqlsrv' ? 'sqlsrv' : 'mysql'];   // dump: ticked by default (0.8.633)
 if (nu_is_post()) {
 	$in = [
 		'source' => nu_post('source'),
@@ -45,7 +45,7 @@ if (nu_is_post()) {
 		'subforms' => !empty($_POST['subforms']), 'subform_ids' => array_map('strval', (array)($_POST['subform_ids'] ?? [])),
 		'iframes' => !empty($_POST['iframes']), 'iframe_ids' => array_map('strval', (array)($_POST['iframe_ids'] ?? [])),
 		'access' => !empty($_POST['access']), 'dump' => !empty($_POST['dump']), 'keep_pks' => !empty($_POST['keep_pks']), 'replace' => !empty($_POST['replace']),
-		'notes' => (string)($_POST['notes'] ?? ''),
+		'notes' => (string)($_POST['notes'] ?? ''), 'target' => nu_post('target') === 'sqlsrv' ? 'sqlsrv' : 'mysql',
 	];
 } else {
 	$in = $row || $src ? NuClonerConfig::toInput($row ?? $src, $def) : $def;
@@ -77,7 +77,7 @@ if ($action === 'run') {
 			'source' => $in['source'], 'dest' => $in['dest_mode'] === 'existing' ? $in['dest'] : '', 'code' => $in['code'], 'description' => $in['description'],
 			'tabs' => $in['tabs'], 'objects' => $in['objects'], 'subforms' => $in['subforms'], 'subform_ids' => $in['subform_ids'],
 			'iframes' => $in['iframes'], 'iframe_ids' => $in['iframe_ids'], 'access' => $in['access'],
-			'dump' => $in['dump'], 'new_pks' => !$in['keep_pks'], 'replace' => $in['replace'], 'notes' => $in['notes'],
+			'dump' => $in['dump'], 'new_pks' => !$in['keep_pks'], 'replace' => $in['replace'], 'notes' => $in['notes'], 'target' => $in['target'] ?? '',
 		]))->run();
 		if (!$result['sql']) $in['code'] = '';   // the next clone gets a new suggestion
 	} catch (Throwable $e) {
@@ -249,7 +249,13 @@ endif; ?>
 					<label class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="dump" value="1" id="clDump"<?= $in['dump'] ? ' checked' : '' ?>> <span class="form-check-label"><?= h(t('cl_dump')) ?></span></label>
 					<div class="ps-4" id="clDumpOpts">
 						<label class="form-check mb-1"><input class="form-check-input" type="checkbox" name="keep_pks" value="1"<?= $in['keep_pks'] ? ' checked' : '' ?>> <span class="form-check-label"><?= h(t('cl_keep_pks')) ?></span></label>
-						<?php if ($db->type !== 'sqlsrv'): ?><label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="replace" value="1"<?= $in['replace'] ? ' checked' : '' ?>> <span class="form-check-label">REPLACE INTO</span></label><?php endif; ?>
+						<?php $tgt = (string)($in['target'] ?? ($db->type === 'sqlsrv' ? 'sqlsrv' : 'mysql')); // SQL for MySQL or SQL Server (0.8.794) ?>
+						<div class="d-flex align-items-center gap-2 mb-2"><label class="form-label small mb-0 text-nowrap" for="clTarget"><?= h(t('cl_target')) ?></label>
+							<select class="form-select form-select-sm w-auto" id="clTarget" name="target">
+								<option value="mysql"<?= $tgt === 'mysql' ? ' selected' : '' ?>>MySQL / MariaDB</option>
+								<option value="sqlsrv"<?= $tgt === 'sqlsrv' ? ' selected' : '' ?>>Microsoft SQL Server</option>
+							</select></div>
+						<label class="form-check mb-2" id="clReplaceWrap"<?= $tgt === 'sqlsrv' ? ' hidden' : '' ?>><input class="form-check-input" type="checkbox" name="replace" value="1" id="clReplace"<?= $in['replace'] ? ' checked' : '' ?>> <span class="form-check-label">REPLACE INTO</span></label>
 						<label class="form-label small mb-1" for="clNotes"><?= h(t('cl_notes')) ?></label>
 						<textarea class="form-control form-control-sm" id="clNotes" name="notes" rows="2"><?= h($in['notes']) ?></textarea>
 					</div>

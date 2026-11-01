@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.767",
+    "version": "0.8.802",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -414,6 +414,17 @@
                     "table": "zzzzsys_nunext_audit",
                     "kind": "index",
                     "what": "login when missing"
+                }
+            ]
+        },
+        {
+            "id": "0032-permission-types",
+            "description": "Types of permission items (zzzzsys_nunext_permission_type): Data import into chosen tables",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_permission_type",
+                    "kind": "table",
+                    "what": "created when missing"
                 }
             ]
         }
@@ -1565,6 +1576,29 @@
             ],
             "index": [
                 "call_id"
+            ]
+        },
+        "zzzzsys_nunext_permission_type": {
+            "pk": "zzzzsys_nunext_permission_type_id",
+            "cols": [
+                [
+                    "type",
+                    "text",
+                    "30"
+                ],
+                [
+                    "settings",
+                    "longtext"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
             ]
         },
         "zzzzsys_nunext_export": {

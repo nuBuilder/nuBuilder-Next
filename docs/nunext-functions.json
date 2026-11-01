@@ -5955,6 +5955,15 @@
    },
    {
     "g": "browse",
+    "n": "nuNextSmoothBrowse",
+    "s": "nuNextSmoothBrowse(on)",
+    "d": "Search, filters, sort titles and pages of a browse list load only the list instead of the whole page (no flicker). Automatic for forms without code of their own; with code, call nuNextSmoothBrowse(true) to turn it on – nuLoadBrowseGlobal and nuOnLoad then run again after each refresh, so list code belongs there (code at the top level of the form's JavaScript runs only once). nuNextSmoothBrowse(false) always loads the page.",
+    "o": "next",
+    "e": "function nuOnLoad() {\n  nuNextSmoothBrowse(true);\n  nuBrowseLoop([2], function (td) { if (td.textContent === '0') td.classList.add('text-danger'); });\n}",
+    "p": {"on": "true = refresh in place (default), false = load the whole page"}
+   },
+   {
+    "g": "browse",
     "n": "nuDisableBrowseResize",
     "s": "nuDisableBrowseResize()",
     "d": "Switches off changing the column widths by dragging the column titles of the browse list (as nuBuilder Forte); call it in the form's JavaScript.",

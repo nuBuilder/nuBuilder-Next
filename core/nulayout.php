@@ -221,6 +221,9 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('password')) ?>"><i class="bi bi-key me-2"></i><?= h(t('nav_change_password')) ?></a></li>
 						<?php endif; ?>
+						<?php if (!$u['globeadmin'] && !NuAdmin::can('import', 'change') && !NuImpersonate::active() && NuImport::itemRules()): // permission items of type Data import (0.8.773) ?>
+							<li><a class="dropdown-item" href="<?= h(nu_url('import')) ?>" id="nuMenuImport"><i class="bi bi-file-earmark-arrow-up me-2"></i><?= h(t('imp_title')) ?></a></li>
+						<?php endif; ?>
 						<?php if (!$u['globeadmin'] && NuUserFields::editable('self')): // custom fields the user fills in himself (0.8.454) ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('account')) ?>" id="nuMyAccount"><i class="bi bi-person-lines-fill me-2"></i><?= h(t('acc_title')) ?></a></li>
 						<?php endif; ?>
@@ -551,12 +554,13 @@ function nu_pagination(int $total, int $page, int $per, string $route, array $pa
  * $filtered = a filter is set: the filters start open and the button is blue.
  * $resetUrl (0.8.395): a search or filter is set – the × (reset) button right of the funnel (or of the search field), same size.
  */
-function nu_list_search(string $value, string $hint = '', string $filterId = '', bool $filtered = false, ?string $resetUrl = null): string
+/** $inGroup: HTML after the search button inside the input group (the ▾ of the advanced search, 0.8.769). */
+function nu_list_search(string $value, string $hint = '', string $filterId = '', bool $filtered = false, ?string $resetUrl = null, string $inGroup = ''): string
 {
 	$out = '<div class="d-flex gap-2 nuListSearch"><div class="input-group">'
 		. '<input type="search" class="form-control" id="q" name="q" value="' . h($value) . '" placeholder="' . h(t('search_ph')) . '" aria-label="' . h(t('search')) . '" data-nu-autofocus'
 		. ($hint !== '' ? ' title="' . h($hint) . '"' : '') . '>'
-		. '<button class="btn btn-outline-secondary nuSearchBtn" type="submit" title="' . h(t('search')) . '" aria-label="' . h(t('search')) . '"><i class="bi bi-search"></i></button></div>';
+		. '<button class="btn btn-outline-secondary nuSearchBtn" type="submit" title="' . h(t('search')) . '" aria-label="' . h(t('search')) . '"><i class="bi bi-search"></i></button>' . $inGroup . '</div>';
 	if ($filterId !== '') {
 		$out .= '<button class="btn btn-outline-secondary nuSearchBtn nuFilterToggle' . ($filtered ? ' active' : '') . '" type="button" data-bs-toggle="collapse" data-bs-target="#' . h($filterId) . '"'
 			. ' aria-expanded="' . ($filtered ? 'true' : 'false') . '" aria-controls="' . h($filterId) . '" title="' . h(t('filter')) . '" aria-label="' . h(t('filter')) . '">'

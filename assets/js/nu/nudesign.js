@@ -181,8 +181,23 @@
 	var bRedo = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsRedo', title: t('ds_redo') + ' (Ctrl+Y)', 'aria-label': t('ds_redo'), onclick: redo}, [icon('bi-arrow-clockwise')]);   // review H2
 	var bDiscard = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsDiscard', text: t('builder_draft_discard'), onclick: discard});
 	var bChanges = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsChangesBtn', title: t('ds_changes'), 'aria-label': t('ds_changes'), onclick: function () { openWork('changes'); }}, [icon('bi-file-diff')]);
-	var bPublish = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsPublish', text: t('builder_draft_publish_btn'), onclick: publish});
-	var bDone = el('a', {'class': 'btn btn-outline-primary', id: 'nuDsDone', href: D.exit}, [icon('bi-check-lg me-1'), t('ds_done')]);
+	var bPublish = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsPublish', text: t('builder_draft_publish_btn'), title: t('ds_publish_tip'), onclick: function () { publish(); }});
+	// Publish options (0.8.797): ask for a note or publish with one click (per browser), "Publish with a note…" always asks
+	var PUB_ASK = 'nunext-design-pubask';
+	var pubAsk = function () { try { return localStorage.getItem(PUB_ASK) !== '0'; } catch (e) { return true; } };
+	var bPubAsk = el('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: 'nuDsPubAsk'});
+	bPubAsk.checked = pubAsk();
+	bPubAsk.addEventListener('change', function () { try { localStorage.setItem(PUB_ASK, bPubAsk.checked ? '1' : '0'); } catch (e) { /* private window */ } });
+	var bPubMenu = el('ul', {'class': 'dropdown-menu dropdown-menu-end nuDsPubMenu', id: 'nuDsPubMenu'}, [
+		el('li', {}, [el('div', {'class': 'dropdown-item-text'}, [el('div', {'class': 'form-check form-switch mb-0', title: t('ds_pub_ask_tip')}, [bPubAsk,
+			el('label', {'class': 'form-check-label', 'for': 'nuDsPubAsk', text: t('ds_pub_ask')})]),
+			el('div', {'class': 'small text-body-secondary mt-1', text: t('ds_pub_ask_tip')})])]),
+		el('li', {}, [el('hr', {'class': 'dropdown-divider'})]),
+		el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item', id: 'nuDsPubWithNote', onclick: function () { publish({ask: true}); }}, [icon('bi-chat-left-text me-2'), t('ds_pub_with_note')])])]);
+	var bPubMore = el('button', {type: 'button', 'class': 'btn btn-primary dropdown-toggle dropdown-toggle-split', id: 'nuDsPublishMore', 'data-bs-toggle': 'dropdown',
+		'data-bs-auto-close': 'outside', 'aria-expanded': 'false', 'aria-label': t('ds_pub_more')});   // no tooltip: it would cover the open menu
+	var bPubGrp = el('div', {'class': 'btn-group nuDsPubGrp', id: 'nuDsPublishGrp', role: 'group'}, [bPublish, bPubMore, bPubMenu]);
+	var bDone = el('a', {'class': 'btn btn-outline-primary', id: 'nuDsDone', href: D.exit, title: t('ds_done_tip'), onclick: done}, [icon('bi-check-lg me-1'), t('ds_done')]);
 	bar.appendChild(el('span', {'class': 'badge nuDsBadge'}, [icon('bi-pencil-square me-1'), t('ds_mode')]));
 	bar.appendChild(el('strong', {'class': 'nuDsTitle', text: N.form.description || N.form.code}));
 	if (D.safe) bar.appendChild(el('span', {'class': 'badge nuDsSafeBadge', id: 'nuDsSafeBadge', title: t('ds_safe_tip')}, [icon('bi-shield-check me-1'), t('ds_safe_on')]));
@@ -216,7 +231,7 @@
 	bar.appendChild(bRedo);
 	bar.appendChild(bChanges);
 	bar.appendChild(bDiscard);
-	bar.appendChild(bPublish);
+	bar.appendChild(bPubGrp);
 	bar.appendChild(bDone);
 
 	function renderBar() {
@@ -229,8 +244,10 @@
 		bRedo.hidden = !DR;
 		bDiscard.hidden = !DR;
 		bChanges.hidden = !DR;
-		bPublish.hidden = !D.can_publish || (!D.unpublished && !DR);     // publishing needs the admin right formpublish
+		bPubGrp.hidden = !D.can_publish || (!D.unpublished && !DR);      // publishing needs the admin right formpublish
 		bPublish.textContent = D.unpublished ? t('builder_draft_publish_new') : t('builder_draft_publish_btn');
+		bPublish.title = D.unpublished ? t('ds_publish_new_tip') : t('ds_publish_tip');
+		bPubMore.hidden = !!D.unpublished;                                // a new form has no draft and no note
 	}
 	var msgT = null;
 	function say(text, err) {
@@ -271,6 +288,29 @@
 		}, t('builder_draft_discard'), 'btn btn-danger');
 	}
 
+	// Done (0.8.797): with unpublished changes ask Publish now / Leave as draft / Cancel
+	var doneDlg = null;
+	function done(e) {
+		var pending = D.unpublished || (DR && +DR.changes > 0);
+		if (!pending || !(window.nuBs && window.nuBs.ready())) return;      // plain link
+		e.preventDefault();
+		if (!doneDlg) {
+			doneDlg = {text: el('p', {'class': 'mb-0', id: 'nuDsDoneText'}), nopub: el('p', {'class': 'small text-body-secondary mt-2 mb-0', id: 'nuDsDoneNoPub', text: t('ds_done_nopub')}),
+				keep: el('a', {'class': 'btn btn-outline-primary', id: 'nuDsDoneKeep', href: D.exit, text: t('ds_done_keep')}),
+				pub: el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsDonePublish', text: t('ds_done_publish')})};
+			doneDlg.pub.addEventListener('click', function () {
+				hide(doneDlg.root);
+				publish({then: function () { window.location.href = D.exit; }});
+			});
+			doneDlg.root = modal('nuDsDoneDlg', t('ds_done_title'), [doneDlg.text, doneDlg.nopub], [doneDlg.keep, doneDlg.pub], false);
+		}
+		doneDlg.text.textContent = D.unpublished ? t('ds_done_text_new') : fmt(t('ds_done_text'), DR.changes);
+		doneDlg.pub.hidden = !D.can_publish;
+		doneDlg.nopub.hidden = !!D.can_publish;
+		show(doneDlg.root);
+		setTimeout(function () { (D.can_publish ? doneDlg.pub : doneDlg.keep).focus(); }, 200);
+	}
+
 	// ------------------------------------------------------------------ dialogs (Publish, events)
 	function modal(id, title, body, buttons, wide) {
 		var root = el('div', {'class': 'modal fade', id: id, tabindex: '-1', 'aria-hidden': 'true', 'aria-labelledby': id + 'T'}, [
@@ -288,19 +328,21 @@
 	function hide(root) { if (window.nuBs && window.nuBs.ready()) window.nuBs.modal(root).hide(); }
 
 	// Publish: the change note; warnings → "Publish anyway", a conflict → the builder (it compares)
+	// opt.ask: always show the window (Publish with a note…); opt.then: after a successful publish (Done → Publish now)
 	var pubDlg = null;
-	function publish() {
+	function publish(opt) {
+		opt = opt || {};
 		if (D.unpublished) {
-			api('form.publishnew', {}, true).then(function (j) { if (!j.ok) throw new Error(j.error || 'Error'); D.unpublished = false; refreshKeep(); })
+			api('form.publishnew', {}, true).then(function (j) { if (!j.ok) throw new Error(j.error || 'Error'); D.unpublished = false; say(t('ds_published')); if (opt.then) opt.then(); else refreshKeep(); })
 				.catch(function (e) { say(e.message, true); });
 			return;
 		}
-		if (!DR) return;
+		if (!DR) { if (opt.then) opt.then(); return; }
 		if (!pubDlg) {
 			pubDlg = {note: el('textarea', {'class': 'form-control', id: 'nuDsPubNote', rows: '3'}), info: el('div', {'class': 'nuDsPubInfo small mt-2', id: 'nuDsPubInfo'}),
 				sum: el('div', {'class': 'nuDsPubSum', id: 'nuDsPubSum'})};
 			pubDlg.ok = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsPubOk', onclick: doPublish});
-			pubDlg.root = modal('nuDsPublishDlg', t('ds_publish_title'), [el('label', {'class': 'form-label', 'for': 'nuDsPubNote', text: t('ds_publish_note')}), pubDlg.note,
+			pubDlg.root = modal('nuDsPublishDlg', t('ds_publish_title'), [el('label', {'class': 'form-label', 'for': 'nuDsPubNote', text: t('ds_publish_note_opt')}), pubDlg.note,
 				el('h3', {'class': 'h6 mt-3', text: t('builder_draft_summary')}), pubDlg.sum, pubDlg.info], [pubDlg.ok], true);
 		}
 		pubDlg.note.value = DR.note || '';
@@ -310,9 +352,13 @@
 		pubDlg.warn = false;
 		pubDlg.force = false;
 		pubDlg.code = '';
+		pubDlg.then = opt.then || null;
+		pubDlg.shown = false;
+		if (!opt.ask && !pubAsk()) { doPublish(); return; }        // one click: the window only opens for warnings, errors or a conflict
 		pubDlg.sum.innerHTML = '';
 		pubDlg.sum.appendChild(el('div', {'class': 'text-body-secondary small', text: '…'}));
 		api('draft.diff', {}).then(function (r) { pubDlg.sum.innerHTML = ''; if (r.ok) pubDlg.sum.appendChild(diffView(r.diff)); }).catch(function () { pubDlg.sum.innerHTML = ''; });
+		pubDlg.shown = true;
 		if (window.nuBs && window.nuBs.ready()) show(pubDlg.root);
 		else { var n = window.prompt(t('ds_publish_note')); if (n !== null) { pubDlg.note.value = n; doPublish(); } }
 	}
@@ -322,7 +368,13 @@
 		api('draft.publish', {note: d.note.value, warnings_ok: d.warn, force: d.force, confirm_code: d.code}).then(function (j) {
 			d.ok.disabled = false;
 			d.info.textContent = '';
-			if (j.ok) { DR = null; hide(d.root); refreshKeep(); return; }
+			if (j.ok) { DR = null; if (d.shown) hide(d.root); say(t('ds_published')); if (d.then) d.then(); else refreshKeep(); return; }
+			if (!d.shown) {                                          // one-click publish that needs an answer: open the window now
+				d.shown = true;
+				d.sum.innerHTML = '';
+				api('draft.diff', {}).then(function (r) { d.sum.innerHTML = ''; if (r.ok) d.sum.appendChild(diffView(r.diff)); }).catch(function () { d.sum.innerHTML = ''; });
+				if (window.nuBs && window.nuBs.ready()) show(d.root);
+			}
 			var list = function (head, items) {
 				d.info.appendChild(el('div', {'class': 'fw-semibold', text: head}));
 				d.info.appendChild(el('ul', {'class': 'mb-0'}, (items || []).map(function (x) { return el('li', {text: String(x)}); })));
@@ -1568,9 +1620,23 @@
 			W.cm.refresh();
 			W.cm.focus();
 		}
-		function saveCode() {
+		function saveCode(force) {
 			var dirty = codeDirty();
 			if (!dirty.length) return;
+			// syntax check first (0.8.781, NuCodeTools): errors ask "Save anyway"; Cancel opens the first part with an error at its line
+			if (force !== true && window.NuCodeTools && window.NuCodeTools.check) {
+				Promise.all(dirty.map(function (k) {
+					var it = itemOf(k);
+					return window.NuCodeTools.check(W.docs[k].getValue(), it ? it[2] : '').then(function (p) { return {k: k, label: it ? t(it[1]) : k, problems: p || []}; }, function () { return {k: k, label: k, problems: []}; });
+				})).then(function (res) {
+					window.NuCodeTools.confirmProblems(res, function () { saveCode(true); }, function (first) {
+						pick(first.k);
+						var p = first.problems.filter(function (x) { return x.sev === 'error'; })[0];
+						if (p && W.cm) { W.cm.setCursor({line: p.line - 1, ch: p.col || 0}); W.cm.focus(); }
+					});
+				});
+				return;
+			}
 			var fields = {}, php = {};
 			dirty.forEach(function (k) { var v = W.docs[k].getValue(); if (k.indexOf('php:') === 0) php[k.substr(4)] = v; else fields[k] = v; });
 			save.disabled = true;

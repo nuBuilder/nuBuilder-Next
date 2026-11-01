@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.767');
+define('NU_VERSION', '0.8.802');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -13,6 +13,7 @@ define('NU_APEXCHARTS', NU_VENDOR . '/apexcharts-4.4.0');   // loaded on form pa
 define('NU_TOMSELECT', NU_VENDOR . '/tom-select-2.6.2');
 define('NU_CODEMIRROR', NU_VENDOR . '/codemirror-5.65.21');
 define('NU_QRCODE', NU_VENDOR . '/qrcode-generator-2.0.4');
+define('NU_ACORN', NU_VENDOR . '/acorn-8.15.0');        // JavaScript parser of the syntax check (0.8.781; loaded by assets/js/nu/nucodetools.js)
 define('NU_JQUERY', NU_VENDOR . '/jquery');
 define('NU_JQCONFIRM', NU_VENDOR . '/jquery-confirm');
 define('NU_JQUERY4', NU_VENDOR . '/jquery-4.0.0');               // 0.8.741: jQuery 4 + Migrate (NuJquery)
@@ -30,14 +31,14 @@ define('NU_FEATURE_ACCESSIBILITY', false);   // user form switch "Accessibility 
 const NU_AUTOLOAD = [
 	'NuCompat' => 'core/nucompat.php', 'NuSchemaCheck' => 'core/nuschemacheck.php', 'NuIntegrity' => 'core/nuintegrity.php', 'NuLanguages' => 'core/nulanguages.php', 'NuSettingsHub' => 'core/nusettingshub.php', 'NuSettings' => 'core/nusettings.php', 'NuBranding' => 'core/nubranding.php', 'NuDashboard' => 'core/nudashboard.php', 'NuAutoUpdate' => 'core/nuautoupdate.php', 'NuGitHub' => 'core/nugithub.php', 'NuHomeHook' => 'core/nuhomehook.php',
 	'NuHome' => 'core/nuhome.php', 'NuApi' => 'core/nuapi.php', 'NuApiError' => 'core/nuapi.php', 'NuApiFile' => 'core/nuapi.php', 'NuApiClient' => 'core/nuapiclient.php',
-	'NuApiPlayground' => 'core/nuapiplayground.php', 'NuInstall' => 'core/nuinstall.php', 'NuConfigFile' => 'core/nuconfigfile.php', 'NuSetupWizard' => 'core/nusetupwizard.php', 'NuPalette' => 'core/nupalette.php', 'NuAdmin' => 'core/nuadmin.php', 'NuTutorial' => 'core/nututorial.php', 'NuListView' => 'core/nulistview.php', 'NuListDefs' => 'core/nulistdefs.php', 'NuLoginToken' => 'core/nulogintoken.php', 'NuReportApi' => 'core/nureportapi.php', 'NuDemoData' => 'core/nudemodata.php', 'NuDbChanges' => 'core/nudbchanges.php', 'NuAudit' => 'core/nuaudit.php', 'NuIncludes' => 'core/nuincludes.php', 'NuMailOAuth' => 'core/numailoauth.php', 'NuUserFields' => 'core/nuuserfields.php', 'NuUserAccess' => 'core/nuuseraccess.php', 'NuUpload' => 'core/nuupload.php', 'NuCustomCode' => 'core/nucustomcode.php', 'NuCodeTemplates' => 'core/nucodetemplates.php', 'NuHelpLink' => 'core/nuhelplink.php', 'NuSidebar' => 'core/nusidebar.php', 'NuFormInfo' => 'core/form/nuforminfo.php', 'NuColumnChange' => 'core/form/nucolumnchange.php', 'NuDesign' => 'core/form/nudesign.php', 'NuDbReset' => 'core/nudbreset.php', 'NuDbState' => 'core/nudbstate.php', 'NuTheme' => 'core/nutheme.php', 'NuNotify' => 'core/nunotify.php', 'NuSelfTest' => 'core/nuselftest.php',
+	'NuApiPlayground' => 'core/nuapiplayground.php', 'NuInstall' => 'core/nuinstall.php', 'NuConfigFile' => 'core/nuconfigfile.php', 'NuSetupWizard' => 'core/nusetupwizard.php', 'NuPalette' => 'core/nupalette.php', 'NuAdmin' => 'core/nuadmin.php', 'NuTutorial' => 'core/nututorial.php', 'NuListView' => 'core/nulistview.php', 'NuListDefs' => 'core/nulistdefs.php', 'NuLoginToken' => 'core/nulogintoken.php', 'NuReportApi' => 'core/nureportapi.php', 'NuDemoData' => 'core/nudemodata.php', 'NuDbChanges' => 'core/nudbchanges.php', 'NuAudit' => 'core/nuaudit.php', 'NuIncludes' => 'core/nuincludes.php', 'NuMailOAuth' => 'core/numailoauth.php', 'NuUserFields' => 'core/nuuserfields.php', 'NuUserAccess' => 'core/nuuseraccess.php', 'NuUpload' => 'core/nuupload.php', 'NuCustomCode' => 'core/nucustomcode.php', 'NuCodeTemplates' => 'core/nucodetemplates.php', 'NuHelpLink' => 'core/nuhelplink.php', 'NuSidebar' => 'core/nusidebar.php', 'NuFormInfo' => 'core/form/nuforminfo.php', 'NuColumnChange' => 'core/form/nucolumnchange.php', 'NuDesign' => 'core/form/nudesign.php', 'NuDbReset' => 'core/nudbreset.php', 'NuDbState' => 'core/nudbstate.php', 'NuTheme' => 'core/nutheme.php', 'NuNotify' => 'core/nunotify.php', 'NuSelfTest' => 'core/nuselftest.php', 'NuUserLabel' => 'core/nuuserlabel.php',
 	'NuSample' => 'core/nusample.php', 'NuSampleSet' => 'core/nusampleset.php', 'NuListExport' => 'core/nulistexport.php', 'NuProcedure' => 'core/nuprocedure.php',
 	'NuReport' => 'core/nureport.php', 'NuReportEngine' => 'core/nureportengine.php', 'NuReportSection' => 'core/nureportengine.php',
 	'NuSqlSelect' => 'core/nusqlselect.php', 'NuPrompt' => 'core/nuprompt.php', 'NuImport' => 'core/nuimport.php',
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
-	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxStream' => 'core/nuxlsxstream.php', 'NuDataExport' => 'core/nudataexport.php', 'NuSpreadsheet' => 'core/nuspreadsheet.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
+	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxStream' => 'core/nuxlsxstream.php', 'NuDataExport' => 'core/nudataexport.php', 'NuPermType' => 'core/nupermtype.php', 'NuFormEveryone' => 'core/nuformeveryone.php', 'NuSpreadsheet' => 'core/nuspreadsheet.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
 ];
 spl_autoload_register(static function (string $class): void {
 	if (isset(NU_AUTOLOAD[$class])) require_once NU_ROOT . '/' . NU_AUTOLOAD[$class];
@@ -184,9 +185,10 @@ function nu_debug(): bool
 
 function nu_db(): NuDB
 {
-	static $db = null;
+	static $db = null, $failing = false;
 	if (NuDB::$override !== null) return NuDB::$override;
 	if ($db) return $db;
+	if ($failing) throw new RuntimeException('nuBuilder Next: no database connection');   // the error page itself asked again (0.8.789)
 
 	$c = nu_config();
 	try {
@@ -204,6 +206,7 @@ function nu_db(): NuDB
 		]);
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next DB connect: ' . $e->getMessage());
+		$failing = true;
 		nu_fatal(t('err_db_connect'), $c['nuConfigDebug'] ? $e->getMessage() : t('err_db_connect_hint'));
 	}
 }
@@ -512,11 +515,15 @@ function nu_lang_variant(): string
 {
 	$lang = nu_lang();
 	if (!isset(NU_LANG_VARIANT_DEFAULT[$lang])) return '';
+	// only the variants the installation offers (0.8.782, NuLanguages::variants – Settings → General → Languages)
 	$v = $_SESSION['nu_lang_variant'] ?? '';
-	if (is_string($v) && (NU_LANG_VARIANTS[$v][0] ?? '') === $lang) return $v;
+	if (is_string($v) && (NU_LANG_VARIANTS[$v][0] ?? '') === $lang && NuLanguages::hasVariant($v)) return $v;
 	$b = nu_lang_browser();
-	if (!isset($_SESSION['nu_lang']) && $b !== null && $b[0] === $lang) return nu_lang_variant_of($b[1]) ?? NU_LANG_VARIANT_DEFAULT[$lang];
-	return NU_LANG_VARIANT_DEFAULT[$lang];
+	if (!isset($_SESSION['nu_lang']) && $b !== null && $b[0] === $lang) {
+		$bv = nu_lang_variant_of($b[1]);
+		if ($bv !== null && NuLanguages::hasVariant($bv)) return $bv;
+	}
+	return NuLanguages::defaultVariant($lang);
 }
 
 /**
@@ -552,7 +559,7 @@ function nu_lang_choices(): array
 	foreach (NU_LANGS as $code => [$own]) {
 		if (!NuLanguages::has($code)) continue;              // installed languages only (0.8.701)
 		if (isset(NU_LANG_VARIANT_DEFAULT[$code])) {
-			foreach (NU_LANG_VARIANTS as $vc => [$base, $vName]) if ($base === $code) $out[$vc] = $vName;
+			foreach (NuLanguages::variants($code) as $vc) $out[$vc] = NU_LANG_VARIANTS[$vc][1];   // offered variants only (0.8.782)
 		} else {
 			$out[$code] = $own;
 		}
@@ -565,6 +572,7 @@ function nu_set_lang(string $lang): void
 {
 	$base = NU_LANG_VARIANTS[$lang][0] ?? $lang;
 	if (!NuLanguages::has($base)) $lang = NuLanguages::fallback();   // not installed (0.8.701)
+	if (isset(NU_LANG_VARIANTS[$lang]) && !NuLanguages::hasVariant($lang)) $lang = NuLanguages::defaultVariant(NU_LANG_VARIANTS[$lang][0]);   // not offered (0.8.782)
 	if (isset(NU_LANG_VARIANTS[$lang])) {
 		$_SESSION['nu_lang'] = NU_LANG_VARIANTS[$lang][0];
 		$_SESSION['nu_lang_variant'] = $lang;
@@ -601,6 +609,13 @@ function nu_locale(): string
 
 function t(string $key, mixed ...$args): string
 {
+	if (isset(NU_USER_LABELS[$key]) && ($own = nu_user_label($key)) !== '') return $own;   // nuBuilder Forte's own names for Code / Additional 1 / 2
+	return nu_text($key, $args);
+}
+
+/** The text of the language file itself – t() without the own names of NU_USER_LABELS (e.g. to match older import files). */
+function nu_text(string $key, array $args = []): string
+{
 	static $dict = [];
 	$lang = nu_lang();
 	$dict[$lang] ??= require NU_ROOT . "/lang/$lang.php";
@@ -612,6 +627,33 @@ function t(string $key, mixed ...$args): string
 	}
 	$s = $dict[$lang][$key] ?? $dict['en'][$key] ?? $key;
 	return $args ? vsprintf($s, $args) : $s;
+}
+
+/** Text keys of the user fields that nuBuilder Forte lets you rename (Setup → Settings, category Form) → the setting. */
+const NU_USER_LABELS = ['user_code' => 'nuConfigUserCodeLabel', 'user_additional1' => 'nuConfigUserAdditional1Label', 'user_additional2' => 'nuConfigUserAdditional2Label'];
+
+/**
+ * The own label of a user field (0.8.798, as nuBuilder Forte's nuuser_BE: nuSetLabelText(…, true)) – $nuConfigUserCodeLabel /
+ * $nuConfigUserAdditional1Label / $nuConfigUserAdditional2Label of nuconfig.php or (with $nuConfigSettingsFromDB) of the settings
+ * table, through the translations; '' = not set. Only the text changes – the columns sus_code / sus_additional1 / 2 stay.
+ * Never connects by itself (installer, command line, error pages keep the built-in texts) and never reenters (a failing read → t()).
+ */
+function nu_user_label(string $key): string
+{
+	static $cache = [], $busy = false;
+	if (array_key_exists($key, $cache)) return $cache[$key];
+	if ($busy || !isset(NU_USER_LABELS[$key]) || !NuDB::$connected || NuInstall::needed()) return '';
+	$busy = true;
+	$out = '';
+	try {
+		$v = nu_cfg(NU_USER_LABELS[$key]);
+		if (is_scalar($v) && trim((string)$v) !== '') $out = NuTranslate::format(trim((string)$v), []);
+	} catch (Throwable $e) {
+		$out = '';
+	} finally {
+		$busy = false;
+	}
+	return $cache[$key] = $out;
 }
 
 // ===================================================================== errors

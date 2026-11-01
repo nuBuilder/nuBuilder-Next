@@ -10,7 +10,7 @@ final class NufApi
 {
 	/** GET actions (a POST works too); the POST-only actions change something. */
 	private const GET = ['boot', 'list', 'search', 'info', 'read', 'versions', 'version', 'trash', 'download', 'raw', 'logview', 'reauth_done'];
-	private const POST = ['save', 'newfile', 'mkdir', 'rename', 'move', 'copy', 'delete', 'restore', 'purge', 'upload_init', 'upload_chunk', 'zip', 'unzip'];
+	private const POST = ['save', 'newfile', 'mkdir', 'rename', 'move', 'copy', 'delete', 'restore', 'purge', 'upload_init', 'upload_chunk', 'zip', 'unzip', 'chmod'];
 
 	public static function handle(NuPageContext $nu, array $S): never
 	{
@@ -40,6 +40,7 @@ final class NufApi
 				'upload_chunk' => self::uploadChunk($nu),
 				'zip' => self::zip($nu),
 				'unzip' => self::unzip($nu),
+				'chmod' => self::chmod($nu),
 				'download' => self::download($nu),
 				'raw' => self::raw($nu),
 				'logview' => self::logView($nu),
@@ -146,7 +147,7 @@ final class NufApi
 				'search_max' => NufConfig::$limits['search_max']],
 			'readonly' => $nu->readOnly(),
 			'problems' => $ga ? NufConfig::$problems : [],
-			'features' => ['zip' => class_exists('ZipArchive'), 'trash' => NufConfig::$dataDir !== '', 'log' => $ga],
+			'features' => ['zip' => class_exists('ZipArchive'), 'trash' => NufConfig::$dataDir !== '', 'log' => $ga, 'chmod' => $ga && NufFs::chmodAvailable()],
 			'base' => $nu->url(),
 			'home' => $nu->homeUrl(),
 			'lang' => $nu->lang(),
@@ -178,6 +179,7 @@ final class NufApi
 		$e['path'] = NufGuard::rel($share, $abs);
 		if ($e['type'] === 'dir') $e += NufFs::treeSize($abs, 20000); else $e['mime'] = NufFs::mime($abs);
 		if ($nu->isGlobeadmin()) $e['absolute'] = $abs;
+		if ($nu->isGlobeadmin()) $e += NufFs::owner($abs);
 		return ['info' => $e];
 	}
 
@@ -355,6 +357,23 @@ final class NufApi
 		$share = self::write($nu, self::p($nu, 'share'), 'zip');
 		$r = NufFs::unzip($share, self::p($nu, 'path'), NufConfig::$limits);
 		NufLog::write($nu, 'unzip', $share['id'], self::p($nu, 'path'), $r['folder'], null, true, $r['skipped'] ? count($r['skipped']) . ' skipped' : '');
+		return $r;
+	}
+
+	/**
+	 * Unix permissions of a file or folder (globeadmin only, always with password confirmation): mode = three octal digits; recursive (folders):
+	 * sub-folders get the mode, files the mode without "execute". Links are never changed (chmod would follow them).
+	 */
+	private static function chmod(NuPageContext $nu): array
+	{
+		if (!$nu->isGlobeadmin()) throw new NufError('err_admin', 403);
+		if (!NufFs::chmodAvailable()) throw new NufError('err_no_chmod', 501);
+		$share = self::write($nu, self::p($nu, 'share'), 'edit');
+		if (!self::recentAuth($nu)) throw new NufError('err_reauth', 403);
+		$mode = self::p($nu, 'mode');
+		$r = NufFs::chmod($share, self::p($nu, 'path'), $mode, self::p($nu, 'recursive') === '1', 20000);
+		NufLog::write($nu, 'chmod', $share['id'], self::p($nu, 'path'), $mode . (self::p($nu, 'recursive') === '1' ? ' recursive' : ''), null, $r['failed'] === 0,
+			$r['done'] . ' changed' . ($r['failed'] ? ', ' . $r['failed'] . ' failed' : '') . ($r['links'] ? ', ' . $r['links'] . ' links skipped' : ''));
 		return $r;
 	}
 

@@ -27,6 +27,7 @@ final class NuDemo
 	/** Posts that only read (page => actions); every other post of a demo session is refused. */
 	private const READ_POSTS = [
 		'procedures'     => ['run'],
+		'codecheck'      => ['check'],      // syntax check of the code editors: parses only (0.8.781)
 		'dataexport'     => ['tables', 'columns', 'preview', 'count', 'check'],   // data export: the editor's lookups, nothing stored (0.8.758)
 		'pwpolicy'       => ['test'],
 		'translations'   => ['ai_prompt', 'ai_check'],   // translations: the AI prompt and the preview of a pasted answer – nothing stored (0.8.754)               // password policy: check a typed password, nothing stored (0.8.745)

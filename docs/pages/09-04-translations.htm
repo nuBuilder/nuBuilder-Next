@@ -2,10 +2,10 @@
 	<h2 id="translations-h">Translations</h2>
 	<p class="doc-lead">Your forms&#x27; texts in other languages.</p>
 	<p class="doc-for" data-doc="admin">For: Users with rights on: nutranslate</p>
-	<p><em>Forms → Tools → Translations</em>: texts of your forms in other languages (nuBuilder Forte's table <code>zzzzsys_translate</code> – created by the installer, and on older installations by an update step). They work as in nuBuilder Forte (4.x):</p>
+	<p><em>Forms → Tools → Translations</em>: texts of your forms in other languages (table <code>zzzzsys_translate</code>, shared with nuBuilder Forte – created by the installer, and on older installations by an update step). They work as in nuBuilder Forte (4.x):</p>
 <ul>
 <li>A text is translated when <em>English</em> matches it exactly – object labels, button texts, tab titles, list column titles, form titles, and <code>nuTranslate()</code> in PHP and JavaScript.</li>
-<li>The reader's language is the language of that user (the globeadmin: the language in nuBuilder Forte's setup). If it is empty, it is English, as in nuBuilder Forte. English means no translation.</li>
+<li>The reader's language is the language of that user (the globeadmin: the default language of the installation). If it is empty, it is English, as in nuBuilder Forte. English means no translation.</li>
 <li>A text starting with <code>|</code> is never translated (the <code>|</code> is not shown).</li>
 <li>nuBuilder Forte's own translations (<em>nuBuilder Forte</em> badge) cannot be changed – <em>Override</em> creates your own translation, which wins.</li>
 <li>The texts of <strong>fixed select options</strong> (<code>a|Apple|b|Banana</code>, lines or a JSON list) are translated too – only the shown text, the stored value stays. nuBuilder Forte shows them as entered. Options from SQL are data and are not translated.</li>

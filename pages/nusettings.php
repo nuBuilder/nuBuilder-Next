@@ -34,8 +34,12 @@ if (nu_is_post()) {
 			nu_flash('danger', t('lng_err_none'));
 		} else {
 			$counts = NuLanguages::userCounts();
+			$varsBefore = array_map(static fn($b) => NuLanguages::variants($b), ['en' => 'en', 'de' => 'de']);
+			NuLanguages::setVariants(is_array($_POST['variants'] ?? null) ? $_POST['variants'] : [], (string)(NuAuth::user()['login'] ?? ''));   // variants (0.8.782)
+			$varsAfter = array_map(static fn($b) => NuLanguages::variants($b), ['en' => 'en', 'de' => 'de']);
 			$res = NuLanguages::set($want, (string)(NuAuth::user()['login'] ?? ''));
-			NuLog::write('languages_changed', 'zzzzsys_nunext_setting', NuLanguages::KEY, ['languages' => NuLanguages::installed(), 'added' => $res['added'], 'removed' => $res['removed']]);
+			NuLog::write('languages_changed', 'zzzzsys_nunext_setting', NuLanguages::KEY, ['languages' => NuLanguages::installed(), 'added' => $res['added'], 'removed' => $res['removed']]
+				+ ($varsBefore !== $varsAfter ? ['variants' => $varsAfter] : []));
 			$name = static fn(string $c): string => NU_LANGS[$c][0];
 			nu_flash('success', t('lng_saved') . ($res['added'] ? ' ' . t('lng_added', implode(', ', array_map($name, $res['added']))) : ''));
 			$affected = array_sum(array_map(static fn($c) => $counts[$c] ?? 0, $res['removed']));
@@ -144,13 +148,21 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 		<form method="post" action="<?= h(nu_url('settings', ['s' => 'general'])) ?>" id="setLangsForm" class="d-flex flex-wrap align-items-center gap-3">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="langs">
 			<?php foreach (NU_LANGS as $lc => [$native]): $lu = (int)($lngUsers[$lc] ?? 0); ?>
-				<div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="langs[]" value="<?= h($lc) ?>" id="setLang_<?= h($lc) ?>"<?= in_array($lc, $lngOn, true) ? ' checked' : '' ?>>
+				<?php $vars = array_keys(array_filter(NU_LANG_VARIANTS, static fn($x) => $x[0] === $lc)); $varOn = NuLanguages::variants($lc); ?>
+				<div class="form-check mb-0<?= $vars ? ' setLangHasVar' : '' ?>"><input class="form-check-input" type="checkbox" name="langs[]" value="<?= h($lc) ?>" id="setLang_<?= h($lc) ?>"<?= in_array($lc, $lngOn, true) ? ' checked' : '' ?><?= $vars ? ' data-set-lang-base' : '' ?>>
 					<label class="form-check-label" for="setLang_<?= h($lc) ?>" lang="<?= h($lc) ?>"><?= h($native) ?></label><?php if ($lu): ?>
-					<span class="badge rounded-pill text-bg-light border ms-1" title="<?= h(t('lng_users', $lu)) ?>"><?= $lu ?></span><?php endif; ?></div>
+					<span class="badge rounded-pill text-bg-light border ms-1" title="<?= h(t('lng_users', $lu)) ?>"><?= $lu ?></span><?php endif; ?>
+					<?php if ($vars): // variants (0.8.782): English UK / Australia / US, German DE / CH – at least one stays on ?>
+						<span class="setLangVars" role="group" aria-label="<?= h(t('lng_variants', $native)) ?>" data-for="setLang_<?= h($lc) ?>">
+						<?php foreach ($vars as $vc): $vid = 'setLangVar_' . str_replace('-', '_', $vc); $short = preg_match('/\(([^)]+)\)/', NU_LANG_VARIANTS[$vc][1], $mm) ? $mm[1] : $vc; ?>
+							<span class="form-check form-check-inline mb-0 me-0"><input class="form-check-input" type="checkbox" name="variants[<?= h($lc) ?>][]" value="<?= h($vc) ?>" id="<?= h($vid) ?>"<?= in_array($vc, $varOn, true) ? ' checked' : '' ?>>
+								<label class="form-check-label" for="<?= h($vid) ?>" lang="<?= h($vc) ?>" title="<?= h(NU_LANG_VARIANTS[$vc][1]) ?>"><?= h($short) ?></label></span>
+						<?php endforeach; ?></span>
+					<?php endif; ?></div>
 			<?php endforeach; ?>
 			<button class="btn btn-sm btn-primary ms-auto" type="submit" id="setLangsSave"><i class="bi bi-floppy me-1"></i><?= h(t('lng_save')) ?></button>
 		</form>
-		<?= $card('setLangs', 'bi-translate', t('lng_title'), (string)ob_get_clean(), t('lng_tip')) ?>
+		<?= $card('setLangs', 'bi-translate', t('lng_title'), (string)ob_get_clean(), t('lng_tip') . ' ' . t('lng_var_hint')) ?>
 	<?php endif; ?>
 	<div class="list-group shadow-sm mb-3">
 		<?php if (NuAdmin::can('setupwizard', 'change')) echo $linkCard('bi-magic', t('wiz_title'), t('sh_wizard_d'), nu_url('setupwizard'), 'shWizard'); ?>

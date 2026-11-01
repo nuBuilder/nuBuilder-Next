@@ -38,6 +38,82 @@ final class NuListDefs
 		};
 	}
 
+	/**
+	 * Advanced search of the system lists (0.8.769): per list, columns whose sort expression is not plain text – type ('date' | 'number' |
+	 * 'bool'), false (not searchable: the sort expression is a code / CASE the user does not see) or [type, expr] (another expression).
+	 * Every other column with a label and a sort expression is searchable as text (the first part of an "a, b" sort). Columns without a
+	 * sort expression (log details, audit values, secrets) are never searchable – a condition cannot probe what a list masks.
+	 * CONCAT_WS: MySQL / MariaDB and SQL Server 2017+.
+	 */
+	private const ADV = [
+		'users' => ['name' => ['text', "CONCAT_WS(' ', u.sus_first_name, u.sus_last_name, u.sus_name)"], 'dept' => ['text', "CONCAT_WS(' ', u.sus_department, u.sus_team)"],
+			'expires' => 'date', 'created' => 'date', 'changed' => 'date', 'last_login' => 'date'],
+		'access' => ['users' => 'number', 'forms' => 'number', 'procedures' => 'number', 'reports' => 'number', 'twofa' => 'bool'],
+		'forms' => ['access' => 'number', 'status' => false],
+		'procedures' => ['access' => 'number', 'status' => false, 'run' => false],
+		'reports' => ['access' => 'number', 'source' => false],
+		'files' => ['used' => 'number'],
+		'items' => ['form' => ['text', 'f.sfo_code'], 'sort_order' => 'number', 'active' => 'bool', 'updated' => 'date'],
+		'permissions' => ['users' => 'number', 'type' => false],
+		'prompts' => ['template' => false],
+		'log' => ['time' => 'date'],
+		'audit' => ['time' => 'date'],
+		'emaillog' => ['created' => 'date', 'state' => false],
+		'userfields' => ['type' => false, 'edit_by' => false, 'required' => 'bool', 'unique' => 'bool', 'in_list' => 'bool', 'sort' => 'number', 'updated' => 'date'],
+		'apiclients' => ['status' => 'bool', 'last_used' => 'date', 'expires' => 'date', 'rate' => 'number', 'created' => 'date'],
+		'adminroles' => ['name' => ['text', 'r.name'], 'users' => 'number', 'updated' => 'date'],
+		'sqlbuilder' => ['mode' => false, 'reports' => 'number'],
+		'notifications' => ['level' => false, 'state' => false, 'created' => 'date'],
+		'dashboards' => ['where' => false, 'widgets' => 'number', 'updated' => 'date'],
+		'webhooks' => ['status' => 'bool', 'calls' => 'number', 'updated' => 'date'],
+		'webhookcalls' => ['created' => 'date', 'status' => false, 'attempts' => 'number', 'answer' => 'number', 'next' => 'date', 'source' => false],
+		'exports' => ['format' => false, 'runs' => 'number', 'last_run' => 'date', 'updated' => 'date'],
+		'selftest' => ['status' => false, 'ms' => 'number', 'pos' => 'number'],
+	];
+
+	/** "a, f(b, c), d" → ['a', 'f(b, c)', 'd'] (commas outside brackets and quotes). */
+	public static function splitSort(string $sql): array
+	{
+		$out = [];
+		$depth = 0;
+		$q = '';
+		$cur = '';
+		for ($i = 0, $n = strlen($sql); $i < $n; $i++) {
+			$ch = $sql[$i];
+			if ($q !== '') { if ($ch === $q) $q = ''; }
+			elseif ($ch === "'" || $ch === '"') $q = $ch;
+			elseif ($ch === '(') $depth++;
+			elseif ($ch === ')') $depth--;
+			elseif ($ch === ',' && $depth === 0) { $out[] = trim($cur); $cur = ''; continue; }
+			$cur .= $ch;
+		}
+		if (trim($cur) !== '') $out[] = trim($cur);
+		return $out;
+	}
+
+	/**
+	 * The searchable columns of a list for NuAdvSearch (0.8.769): [key => ['index' => key, 'title', 'expr', 'type', 'width' => 1, 'mask' => null,
+	 * 'format' => '', 'values' => null]], in the list's order.
+	 */
+	public static function advColumns(array $L): array
+	{
+		$map = self::ADV[$L['key']] ?? [];
+		$out = [];
+		foreach ($L['columns'] as $k => $c) {
+			$k = (string)$k;
+			$rule = $map[$k] ?? 'text';
+			if ($rule === false || !empty($c['noadv']) || (string)($c['label'] ?? '') === '') continue;
+			[$type, $expr] = is_array($rule) ? $rule : [$rule, null];
+			if ($expr === null) {
+				if (empty($c['sort'])) continue;
+				$expr = self::splitSort((string)$c['sort'])[0] ?? '';
+			}
+			if ($expr === '') continue;
+			$out[$k] = ['index' => $k, 'title' => (string)$c['label'], 'expr' => $expr, 'type' => $type, 'width' => 1, 'mask' => null, 'format' => '', 'values' => null];
+		}
+		return $out;
+	}
+
 	/** A plain text column: [alias => SQL], sortable, escaped text. */
 	private static function col(string $alias, string $sql, string $label, string $class = '', bool $sort = true): array
 	{
@@ -370,6 +446,7 @@ final class NuListDefs
 		$dId = $drafts ? "(SELECT MAX(d.zzzzsys_nunext_form_draft_id) FROM zzzzsys_nunext_form_draft d WHERE $dWhere)" : 'NULL';
 		$nAcc = '(SELECT COUNT(DISTINCT af.slf_zzzzsys_access_id) FROM zzzzsys_access_form af WHERE af.slf_zzzzsys_form_id = f.zzzzsys_form_id)';
 		$facOk = NuAcl::can(NuAcl::FORM_ACCESS);
+		$everyone = NuFormEveryone::all();                                 // forms for everyone (0.8.784)
 		$dbTool = NuAdmin::can('dbtool', 'change') && NuVendor::primaryDb() !== '';
 		$cols = [
 			'actions' => ['label' => '', 'select' => ['lv_draft_id' => $dId], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'if' => static fn() => $designer, 'text' => static fn($r) => '', 'noexport' => true,
@@ -390,10 +467,15 @@ final class NuListDefs
 			'group' => array_replace(self::col('sfo_group', 'f.sfo_group', t('builder_group'), 'small'), ['sort' => 'f.sfo_group, f.sfo_description']),
 			// how many access levels may open the form; the number opens "Access levels of this form" (0.8.688, assets/js/nu/nuformaccess.js)
 			'access' => ['label' => t('forms_col_access'), 'select' => ['lv_nacc' => $nAcc], 'sort' => $nAcc, 'align' => 'end', 'class' => 'small',
-				'text' => static fn($r) => (string)(int)$r['lv_nacc'],
-				'html' => static fn($r) => $facOk && ($r['sfo_type'] ?? '') !== 'subform'
-					? '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-nu-fac="' . h((string)$r['__id']) . '" title="' . h(t('fac_title')) . '">' . (int)$r['lv_nacc'] . '</button>'
-					: (string)(int)$r['lv_nacc']],
+				// forms for everyone (0.8.784, NuFormEveryone): a badge instead of the number
+				'text' => static fn($r) => isset($everyone[(string)$r['__id']]) ? t('proc_everyone') : (string)(int)$r['lv_nacc'],
+				'html' => static function ($r) use ($facOk, $everyone): string {
+					$ev = isset($everyone[(string)$r['__id']]);
+					$label = $ev ? self::badge(t('proc_everyone'), 'bg-info-subtle text-info-emphasis nuFacEvBadge') : (string)(int)$r['lv_nacc'];
+					return $facOk && ($r['sfo_type'] ?? '') !== 'subform'
+						? '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-nu-fac="' . h((string)$r['__id']) . '" title="' . h(t('fac_title')) . '">' . $label . '</button>'
+						: $label;
+				}],
 			'layout' => ['label' => t('form_layout'), 'select' => ['sfo_json' => 'f.sfo_json'], 'sort' => null, 'class' => 'small',
 				'text' => static fn($r) => t('form_layout_' . (NuFormMeta::nunextJson($r['sfo_json'])['layout'] ?? 'absolute'))],
 			'status' => ['label' => t('builder_status'), 'select' => ['lv_status' => $st], 'sort' => $st,
@@ -415,6 +497,14 @@ final class NuListDefs
 				'options' => static fn() => ['na' => t('forms_status_not_archived')] + array_map('t', $status),
 				'where' => static fn(string $v) => $v === 'na' ? ["$st <> '3'", []] : (isset($status[$v]) ? ["$st = ?", [$v]] : null)],
 			'table' => ['label' => t('builder_table'), 'type' => 'distinct', 'expr' => 'f.sfo_table', 'none' => t('lv_empty')],
+			// access levels (0.8.784): forms for everyone / forms no level may open
+			'facc' => ['label' => t('forms_col_access'), 'type' => 'select', 'options' => static fn() => ['ev' => t('forms_flt_everyone'), 'none' => t('forms_flt_no_level')],
+				'where' => static function (string $v) use ($everyone, $nAcc): ?array {
+					if ($v === 'none') return ["$nAcc = 0", []];
+					if ($v !== 'ev') return null;
+					if (!$everyone) return ['1 = 0', []];
+					return ['f.zzzzsys_form_id IN (' . implode(', ', array_fill(0, count($everyone), '?')) . ')', array_keys($everyone)];
+				}],
 		];
 		if ($drafts) $filters['draft'] = ['label' => t('forms_col_draft'), 'type' => 'select', 'options' => static fn() => ['1' => t('forms_with_draft')],
 			'where' => static fn(string $v) => $v === '1' ? ["$dBy IS NOT NULL", []] : null];
@@ -722,19 +812,36 @@ final class NuListDefs
 					? '<a class="text-decoration-none" href="' . h(nu_url('users', ['perm' => $r['__id'], 'state' => 'all'])) . '">' . (int)$r['n_users'] . '</a>' : (string)(int)$r['n_users']],
 			'id' => self::idCol('i.zzzzsys_permission_item_id'),
 		];
+		// type of the item (0.8.773, own table zzzzsys_nunext_permission_type – plain when it has no row)
+		$filters = ['group' => ['label' => t('perm_group'), 'type' => 'distinct', 'expr' => 'i.pme_group', 'none' => t('lv_empty')],
+			'has_users' => ['label' => t('lv_has_users'), 'type' => 'bool', 'expr' => "EXISTS (SELECT 1 FROM $U p WHERE p.upe_ident = i.zzzzsys_permission_item_id AND p.upe_active = '1')"]];
+		{   // always offered (0.8.775): before the table exists every item is plain
+			$ty = nu_db()->tableExists(NuPermType::TABLE)
+				? "COALESCE((SELECT pt.type FROM " . NuPermType::TABLE . ' pt WHERE ' . nu_db()->sameText('pt.zzzzsys_nunext_permission_type_id', 'i.zzzzsys_permission_item_id') . "),'plain')"   // no ", ": NuListView splits a sort on it
+				: "'plain'";
+			$cols = array_slice($cols, 0, 2, true) + ['type' => ['label' => t('ptype_title'), 'select' => ['ptype' => $ty], 'sort' => $ty,
+				'text' => static fn($r) => t(NuPermType::TYPES[(string)$r['ptype']][0] ?? 'ptype_plain'),
+				'html' => static function ($r): string {
+					$x = NuPermType::of((string)$r['__id']);
+					[$lab, $ico] = NuPermType::TYPES[$x['type']] ?? NuPermType::TYPES['plain'];
+					$sum = NuPermType::summary($x['type'], $x['settings']);
+					return '<span class="badge ' . ($x['type'] === 'plain' ? 'text-bg-light border' : 'text-bg-primary') . ' fw-normal"' . ($sum !== '' ? ' title="' . h($sum) . '"' : '') . '><i class="bi ' . h($ico) . ' me-1" aria-hidden="true"></i>' . h(t($lab)) . '</span>';
+				}]] + array_slice($cols, 2, null, true);
+			$filters['ptype'] = ['label' => t('ptype_title'), 'type' => 'select', 'options' => static fn(): array => array_map(static fn($x) => t($x[0]), NuPermType::TYPES),
+				'where' => static fn(string $v) => isset(NuPermType::TYPES[$v]) ? ["$ty = ?", [$v]] : null];
+		}
 		return [
 			'key' => 'permissions', 'title' => t('perm_title'), 'route' => 'permissions', 'form' => NuAcl::FORM_PERMISSION,
 			'from' => ' FROM ' . NuPermission::ITEM . ' i', 'where' => [], 'params' => [], 'id' => 'i.zzzzsys_permission_item_id',
 			'link' => static fn($r) => nu_url('permissions', ['id' => $r['__id']]), 'search' => ['i.pme_ident', 'i.pme_group', 'i.pme_description'], 'columns' => $cols,
-			'filters' => ['group' => ['label' => t('perm_group'), 'type' => 'distinct', 'expr' => 'i.pme_group', 'none' => t('lv_empty')],
-				'has_users' => ['label' => t('lv_has_users'), 'type' => 'bool', 'expr' => "EXISTS (SELECT 1 FROM $U p WHERE p.upe_ident = i.zzzzsys_permission_item_id AND p.upe_active = '1')"]],
+			'filters' => $filters,
 			'builtin' => [
-				'default' => ['columns' => ['ident', 'group', 'description', 'users'], 'card' => ['title' => 'ident', 'badge' => 'group', 'lines' => ['description', 'users']],
-					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group'], 'values' => []]],
+				'default' => ['columns' => array_values(array_intersect(['ident', 'group', 'type', 'description', 'users'], array_keys($cols))), 'card' => ['title' => 'ident', 'badge' => 'group', 'lines' => ['description', 'users']],
+					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => array_values(array_intersect(['group', 'ptype'], array_keys($filters))), 'values' => []]],   // type filter (0.8.775)
 				'compact' => ['columns' => ['ident', 'users'], 'card' => ['title' => 'ident', 'badge' => 'group', 'lines' => ['users']],
-					'sort' => ['ident', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group'], 'values' => []]],
+					'sort' => ['ident', 'asc'], 'per' => 50, 'filters' => ['shown' => array_values(array_intersect(['group', 'ptype'], array_keys($filters))), 'values' => []]],
 				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'ident', 'badge' => 'group', 'lines' => ['description', 'users']],
-					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group', 'has_users'], 'values' => []]],
+					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => array_keys($filters), 'values' => []]],
 			],
 		];
 	}

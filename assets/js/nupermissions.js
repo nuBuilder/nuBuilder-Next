@@ -34,3 +34,21 @@
 	if (q) q.addEventListener('input', apply);
 	if (st) st.addEventListener('change', apply);
 })();
+
+/* Type of the item (0.8.773): plain or Data import – the settings box of the chosen type, tables as a searchable multi-select. */
+(function () {
+	'use strict';
+	var choice = document.getElementById('permTypeChoice');
+	if (!choice) return;
+	var tables = document.getElementById('ptypeTables');
+	if (tables && window.TomSelect) {
+		var ts = new TomSelect(tables, {plugins: ['remove_button', 'checkbox_options'], maxOptions: null, hidePlaceholder: true, closeAfterSelect: false});
+		ts.on('change', function () { if (tables.form) tables.form.dispatchEvent(new Event('input', {bubbles: true})); });
+	}
+	function show() {
+		var v = (choice.querySelector('input:checked') || {}).value || 'plain';
+		document.querySelectorAll('#permTypeCard [data-ptype]').forEach(function (b) { b.hidden = b.getAttribute('data-ptype') !== v; });
+	}
+	choice.addEventListener('change', show);
+	show();
+})();

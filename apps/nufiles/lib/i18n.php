@@ -56,6 +56,14 @@ final class NufI18n
 		'err_zip_open' => 'The archive cannot be opened.', 'err_zip_size' => 'Entry size does not match the archive.', 'err_lint' => 'Syntax error.',
 		'err_not_text' => 'This file cannot be edited as text.', 'err_readonly_mode' => 'Read only mode – changes are not possible.', 'err_reauth' => 'Please confirm your password.',
 		'err_admin' => 'Only the globeadmin may do this.', 'err_bad_request' => 'Invalid request.', 'err_server' => 'Server error.',
+		'chmod' => 'Permissions …', 'chmod_title' => 'Permissions of “%1”', 'chmod_owner' => 'Owner', 'chmod_group' => 'Group', 'chmod_others' => 'Others',
+		'chmod_read' => 'Read', 'chmod_write' => 'Write', 'chmod_exec' => 'Execute', 'chmod_exec_dir' => 'Open', 'chmod_octal' => 'As a number',
+		'chmod_recursive' => 'Also for everything inside (sub-folders the same, files without “execute”)', 'chmod_owned' => 'Owner: %1 · group: %2 · the web server runs as %3',
+		'chmod_owned_short' => 'Owner: %1 · group: %2', 'chmod_warn_world' => 'Others may write: every account on the server can change it.',
+		'chmod_warn_exec' => 'Execute on a file is rarely needed for web files.', 'chmod_apply' => 'Set permissions', 'chmod_done' => 'Permissions set (%1).',
+		'chmod_partly' => '%1 changed, %2 could not be changed (owned by another account?).', 'chmod_links' => '%1 link(s) skipped.',
+		'err_chmod_mode' => 'Three digits 0–7 – and the owner keeps “read” (folders also “open”).', 'err_chmod' => 'The permissions could not be changed – the web server must own the file.',
+		'err_chmod_link' => 'Links (symlinks) are not changed.', 'err_no_chmod' => 'Permissions cannot be changed on this server.',
 	];
 
 	private const DE = [
@@ -110,6 +118,14 @@ final class NufI18n
 		'err_zip_open' => 'Das Archiv kann nicht geöffnet werden.', 'err_zip_size' => 'Die Grösse eines Eintrags stimmt nicht mit dem Archiv überein.', 'err_lint' => 'Syntaxfehler.',
 		'err_not_text' => 'Diese Datei kann nicht als Text bearbeitet werden.', 'err_readonly_mode' => 'Nur-Lesen-Modus – keine Änderungen möglich.', 'err_reauth' => 'Bitte bestätige dein Passwort.',
 		'err_admin' => 'Nur der Globeadmin darf das.', 'err_bad_request' => 'Ungültige Anfrage.', 'err_server' => 'Serverfehler.',
+		'chmod' => 'Rechte …', 'chmod_title' => 'Rechte von «%1»', 'chmod_owner' => 'Besitzer', 'chmod_group' => 'Gruppe', 'chmod_others' => 'Andere',
+		'chmod_read' => 'Lesen', 'chmod_write' => 'Schreiben', 'chmod_exec' => 'Ausführen', 'chmod_exec_dir' => 'Öffnen', 'chmod_octal' => 'Als Zahl',
+		'chmod_recursive' => 'Auch für alles darin (Unterordner gleich, Dateien ohne «Ausführen»)', 'chmod_owned' => 'Besitzer: %1 · Gruppe: %2 · der Webserver läuft als %3',
+		'chmod_owned_short' => 'Besitzer: %1 · Gruppe: %2', 'chmod_warn_world' => 'Andere dürfen schreiben: jedes Konto auf dem Server kann es ändern.',
+		'chmod_warn_exec' => '«Ausführen» braucht eine Datei für das Web kaum je.', 'chmod_apply' => 'Rechte setzen', 'chmod_done' => 'Rechte gesetzt (%1).',
+		'chmod_partly' => '%1 geändert, %2 konnten nicht geändert werden (gehören einem anderen Konto?).', 'chmod_links' => '%1 Verknüpfung(en) übersprungen.',
+		'err_chmod_mode' => 'Drei Ziffern 0–7 – und der Besitzer behält «Lesen» (Ordner auch «Öffnen»).', 'err_chmod' => 'Die Rechte konnten nicht geändert werden – die Datei muss dem Webserver gehören.',
+		'err_chmod_link' => 'Verknüpfungen (Symlinks) werden nicht geändert.', 'err_no_chmod' => 'Rechte können auf diesem Server nicht geändert werden.',
 	];
 
 	/** @return array<string,string> */

@@ -14,7 +14,7 @@
 The "please verify" sections up to 0.8.677 (covered by the gates up to 0.8.677) are moved, unchanged, to `dev/TODO-archive.md`.
 What still needs a real environment – or a look by the owner – is collected here; newer releases follow below.
 - [ ] **SQL Server – nothing ran on a real one** (no image / pdo_sqlsrv here; code checked with simulated catalogues and sqlglot):
-      install scripts (`schema_mssql.sql` has no form tables), own tables and migration steps (0004, 0020, 0021 …, missing columns added
+      install scripts (`schema_mssql.sql` has the form tables since 0.8.789; installation, lists and Adminer with a fixed TCP port work on the owner's SQL Server Express – 0.8.793), own tables and migration steps (0004, 0020, 0021 …, missing columns added
       automatically), App cloner, backups with the whole database, list views' catalogue SQL, start page layouts, dashboards' read-only run
       (BEGIN TRAN … ROLLBACK), the access condition in the save transaction (SAVE TRANSACTION), concurrent edits (UPDLOCK, ROWLOCK), audit
       restore and demo data reset with IDENTITY keys (refused / not handled), login token compare and swap on NVARCHAR(MAX), Change column
@@ -26,6 +26,15 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Browsers**: Safari (ApexCharts on the start page, CSP style-src-attr), phones with real touch (long tap menus, side bar, design mode on phones).
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
+
+## 0.8.768–0.8.801 – please verify
+- [ ] SQL Server (owner's SQL Server Express): browse lists, sub-forms and data exports after the ORDER BY fix (0.8.792); the
+      Compatibility check card "SQL that SQL Server does not understand" on the owner's forms (0.8.791); a Form cloner dump for SQL
+      Server (N'…') run in SSMS (0.8.794); a fresh installation with the installer language choice (0.8.790).
+- [ ] Forms for everyone (0.8.784): a new / cloned access level gets the forms; the Compatibility check point FE on a database
+      edited with nuBuilder Forte afterwards.
+- [ ] Lists refreshed in place (0.8.776): forms with their own browse JavaScript still load normally; back / forward in the browser.
+- [ ] Renamed user field titles (0.8.798 / 0.8.799) also in nuBuilder Forte's user form on the same database.
 
 ## 0.8.761–0.8.766 Review of 31 Oct 2026 – please verify
 - [ ] Live server: pages still load after the update with the mod_deflate rules in assets/.htaccess and vendor/bundled/.htaccess

@@ -57,6 +57,22 @@ if (nu_is_post() && nu_post('action') === 'effective') {
 	exit((string)json_encode(['ok' => true] + NuUserAccess::effective(nu_post('sus_zzzzsys_access_id'), $rowsIn), JSON_UNESCAPED_UNICODE));
 }
 
+// ------------------------------------------------------------------ own titles of Code / Additional 1 / 2 (0.8.799, core/nuuserlabel.php): the
+// globeadmin renames them from the form (JSON for assets/js/nuuser.js) – written to nuBuilder Forte's settings table or nuconfig.php
+if (nu_is_post() && nu_post('action') === 'user_label') {
+	header('Content-Type: application/json; charset=utf-8');
+	$key = nu_post('key');
+	if (!NuUserLabel::canRename() || NuUserLabel::setting($key) === '') { http_response_code(403); exit((string)json_encode(['ok' => false, 'error' => t('err_forbidden')])); }
+	if (!NuSecurity::recentAuth()) {                               // writes nuconfig.php / settings: password again as on the editor
+		$_SESSION['nu_reauth_next'] = NuAuth::validNext(nu_post('back')) ?? nu_url('users');
+		exit((string)json_encode(['ok' => false, 'reauth' => nu_url('reauth')]));
+	}
+	$err = NuUserLabel::save($key, nu_post('value'));
+	if ($err !== '') exit((string)json_encode(['ok' => false, 'error' => $err], JSON_UNESCAPED_UNICODE));
+	$own = trim(nu_post('value'));
+	exit((string)json_encode(['ok' => true, 'label' => $own !== '' ? NuTranslate::format($own, []) : nu_text($key), 'value' => $own, 'message' => t('user_lbl_saved')], JSON_UNESCAPED_UNICODE));
+}
+
 // ------------------------------------------------------------------ permission items of another user (0.8.649): "Copy from user…" ticks them
 // in the form (Replace / Add, assets/js/nuuser.js) – nothing is saved here, the form's Save writes them as usual
 if (nu_is_post() && nu_post('action') === 'perm_of') {
@@ -420,9 +436,12 @@ $langOptions = ['' => t('user_language_default')];
 foreach (NU_LANGS as $code => [$own, $dbName]) {
 	if (!NuLanguages::has($code)) continue;                   // installed languages only (0.8.701); the user's own value stays below
 	$langOptions[$dbName] = $own;
-	foreach (NU_LANG_VARIANTS as $vc => [$base, $vName]) if ($base === $code) $langOptions[$dbName . '|' . $vc] = $vName;
+	foreach (NuLanguages::variants($code) as $vc) $langOptions[$dbName . '|' . $vc] = NU_LANG_VARIANTS[$vc][1];   // offered variants (0.8.782)
 }
 if ($v['sus_language'] !== '' && !isset($langOptions[$v['sus_language']])) $langOptions[$v['sus_language']] = $v['sus_language'];
+if ($langVariant !== '' && isset(NU_LANG_VARIANTS[$langVariant]) && isset($langOptions[$v['sus_language']]) && !isset($langOptions[$v['sus_language'] . '|' . $langVariant])) {
+	$langOptions[$v['sus_language'] . '|' . $langVariant] = NU_LANG_VARIANTS[$langVariant][1];   // the user's own variant stays, also when no longer offered
+}
 $langSelected = $v['sus_language'] . ($langVariant !== '' && isset($langOptions[$v['sus_language'] . '|' . $langVariant]) ? '|' . $langVariant : '');
 
 $title = $isNew ? ($cloneId !== '' ? t('user_clone') : t('user_new')) : ($existing['sus_login_name'] ?: t('user'));
@@ -432,7 +451,16 @@ $input = static function (string $col, string $type = 'text', array $attr = []) 
 	$max  = $text[$col][0] ?? null;
 	$uni = !empty($attr['unique']);                                   // key after the label: unique (0.8.627) – not an HTML attribute
 	unset($attr['unique']);
-	$html = '<label class="form-label" for="' . $col . '">' . h(t($text[$col][1])) . (!empty($attr['required']) ? ' <span class="text-danger">*</span>' : '') . ($uni ? nu_unique_mark(!empty($attr['required'])) : '') . '</label>'
+	$lk = $text[$col][1];
+	// renamable titles (0.8.799): (i) with the setting, a pencil for the globeadmin (dialog #userLblDlg, assets/js/nuuser.js)
+	$ren = '';
+	if (isset(NU_USER_LABELS[$lk])) {
+		$own = nu_user_label($lk) !== '';
+		$tipTxt = $own ? t('user_lbl_tip_own', nu_text($lk), '$' . NU_USER_LABELS[$lk]) : t('user_lbl_tip', '$' . NU_USER_LABELS[$lk]);
+		$ren = '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($tipTxt) . '" title="' . h($tipTxt) . '"><i class="bi bi-info-circle"></i></span>';
+		if (NuUserLabel::canRename()) $ren .= '<button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline nuUserLblEdit" data-key="' . h($lk) . '" data-for="' . h($col) . '" data-value="' . h(NuUserLabel::stored($lk)) . '" data-builtin="' . h(nu_text($lk)) . '" title="' . h(t('user_lbl_edit')) . '" aria-label="' . h(t('user_lbl_edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>';
+	}
+	$html = '<label class="form-label" for="' . $col . '"><span class="nuUserLblText">' . h(t($lk)) . '</span>' . (!empty($attr['required']) ? ' <span class="text-danger">*</span>' : '') . ($uni ? nu_unique_mark(!empty($attr['required'])) : '') . '</label>' . $ren
 		. '<input type="' . $type . '" class="form-control' . nu_invalid($errors, $col) . '" id="' . $col . '" name="' . $col . '" value="' . h($v[$col]) . '"'
 		. ($max ? ' maxlength="' . $max . '"' : '')
 		. (isset($suggest[$col]) ? ' list="dl_' . $col . '"' : '');
@@ -454,7 +482,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 		<li class="breadcrumb-item active" aria-current="page"><?= h($title) ?></li>
 	</ol>
 </nav>
-<div class="nuTitleBar mb-3">
+<div class="nuTitleBar nuRecHead mb-3">
 	<h1 class="h3 mb-0 d-flex align-items-center gap-2">
 		<?php $impIcon = $isNew ? '' : NuImpersonate::button($id, (string)$existing['sus_login_name'], nu_url('user', ['id' => $id]), false, true); // globeadmin: "Act as user" as the icon ?>
 		<?= $impIcon !== '' ? $impIcon : '<i class="bi ' . ($isNew ? 'bi-person-plus' : 'bi-person') . '"></i>' ?><?= h($title) ?>
@@ -565,7 +593,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 							</div>
 							<?php // existing user (0.8.587): placeholder "(unchanged)" instead of the hint below; "Password last changed" is in the (i) panel ?>
 							<div class="form-text<?= $isNew ? '' : ' d-none' ?>" id="passwordHint"><?= h($isNew ? t('pw_min_hint', $min) : '') ?></div>
-							<?= NuPwPolicy::rulesHtml('password') ?>
+							<?= NuPwPolicy::rulesHtml('password', true) ?>
 							<?php if (!$isNew && $me['globeadmin'] && empty($me['demo']) && nu_cfg('nuConfigAutoLogin') && (string)($existing['sus_login_password'] ?? '') !== ''): // never for demo visitors: it logs in as that user
 								$alLinks = [];
 								foreach ([7, 1, 30, 90, 0] as $d) $alLinks[$d] = NuAuth::autoLoginLink($existing, $d); ?>
@@ -809,6 +837,8 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 										<td class="userPermCheck"><input class="form-check-input" type="checkbox" name="perm[]" value="<?= h($pid) ?>" id="perm_<?= h($pid) ?>"<?= in_array($pid, $permSel, true) ? ' checked' : '' ?>></td>
 										<td class="userPermIdent"><label class="font-monospace" for="perm_<?= h($pid) ?>"><?= h($pi['pme_ident']) ?></label><?php if ($permOpen): ?>
 											<a class="userPermOpen ms-1" href="<?= h(nu_url('permissions', ['id' => $pid])) ?>" target="_blank" rel="noopener" title="<?= h(t('perm_open_item')) ?>" aria-label="<?= h(t('perm_open_item')) ?>"><i class="bi bi-box-arrow-up-right"></i></a><?php endif; ?>
+											<?php $ptx = NuPermType::of($pid); if ($ptx['type'] !== 'plain'): // typed item (0.8.773): what it allows, e.g. "Data import: orders · add + update" ?>
+												<div class="small text-primary-emphasis userPermType"><i class="bi <?= h(NuPermType::TYPES[$ptx['type']][1]) ?> me-1" aria-hidden="true"></i><?= h(NuPermType::summary($ptx['type'], $ptx['settings'])) ?></div><?php endif; ?>
 											<?php if ($pDesc !== ''): // phones: the description below the ident ?><div class="small text-body-secondary userPermDesc userPermDescLine d-sm-none"<?= $pTitle ?>><?= h($pDesc) ?></div><?php endif; ?></td>
 										<td class="text-body-secondary text-nowrap d-none d-md-table-cell"><?= h($g !== '' ? $g : t('no_group')) ?></td>
 										<td class="text-body-secondary userPermDesc userPermDescCell d-none d-sm-table-cell"><div class="userPermDescLine"<?= $pTitle ?>><?= h($pDesc) ?></div></td>
@@ -890,6 +920,24 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 <?php endif; ?>
 <?php
 if ($existing && $id !== $me['id']) echo nu_user_remove_modal($rights, ['stay' => '1']);
+// rename a field title (0.8.799) – assets/js/nuuser.js fills it from the pencil's data-* and posts action=user_label
+if (NuUserLabel::canRename()): $lblWhere = NuUserLabel::target('user_additional1') === 'db' ? t('user_lbl_where_db') : t('user_lbl_where_file'); ?>
+<div class="modal fade" id="userLblDlg" tabindex="-1" aria-labelledby="userLblDlgT" aria-hidden="true" data-title="<?= h(t('user_lbl_dlg')) ?>" data-hint="<?= h(t('user_lbl_hint')) ?>"
+	data-back="<?= h($_SERVER['REQUEST_URI'] ?? '') ?>" data-csrf="<?= h(nu_csrf_token()) ?>">
+	<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+		<div class="modal-header py-2"><h2 class="modal-title fs-6" id="userLblDlgT"></h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('cancel')) ?>"></button></div>
+		<div class="modal-body">
+			<label class="form-label" for="userLblVal"><?= h(t('user_lbl_new')) ?></label>
+			<input class="form-control" id="userLblVal" maxlength="<?= NuUserLabel::MAX ?>" autocomplete="off">
+			<div class="form-text" id="userLblHint"></div>
+			<div class="form-text"><?= h($lblWhere) ?></div>
+			<div class="alert alert-danger small mt-2 mb-0" id="userLblErr" hidden></div>
+		</div>
+		<div class="modal-footer py-2"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
+			<button type="button" class="btn btn-primary" id="userLblSave"><?= h(t('save')) ?></button></div>
+	</div></div>
+</div>
+<?php endif;
 // effective rights dialog (0.8.589): filled by assets/js/nuuser.js from the POST action "effective" (the levels as entered, not saved yet)
 $effT = ['view' => t('view'), 'add' => t('add'), 'save' => t('save'), 'delete' => t('delete'), 'clone' => t('clone'), 'print' => t('print'),
 	'main' => t('eff_main'), 'expired' => t('user_expired'), 'additional' => t('xa_badge'), 'browse_only' => t('eff_browse_only'), 'edit_only' => t('eff_edit_only'),

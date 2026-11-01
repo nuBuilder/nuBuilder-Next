@@ -127,3 +127,29 @@
 		}
 	});
 })();
+
+/* Settings → General → Languages (0.8.782): the variants of English / German follow their language (off = greyed out), and the last
+ * ticked variant of a language cannot be unticked (at least one stays offered). */
+(function () {
+	'use strict';
+	var form = document.getElementById('setLangsForm');
+	if (!form) return;
+	form.querySelectorAll('.setLangVars').forEach(function (grp) {
+		var base = document.getElementById(grp.getAttribute('data-for'));
+		var boxes = grp.querySelectorAll('input[type=checkbox]');
+		var sync = function () {
+			var on = base && base.checked;
+			grp.classList.toggle('setLangVarsOff', !on);
+			boxes.forEach(function (b) { b.disabled = !on; });
+		};
+		boxes.forEach(function (b) {
+			b.addEventListener('change', function () {
+				if (!b.checked && !Array.prototype.some.call(boxes, function (x) { return x.checked; })) b.checked = true;
+			});
+		});
+		if (base) base.addEventListener('change', sync);
+		sync();
+	});
+	// disabled boxes are not sent: the server keeps the stored variants of a language that is switched off
+	form.addEventListener('submit', function () { form.querySelectorAll('.setLangVars input:disabled').forEach(function (b) { b.disabled = false; }); });
+})();

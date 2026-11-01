@@ -1,6 +1,6 @@
 # nuBuilder Next – checks on every push (B4 of the 0.8.207 review). Needs the project in a GitHub repository.
-# lint: php -l, languages, unit tests, PHPStan, ESLint · mysql: nuBuilder database + browser smoke test · mssql: SQL Server install
-# script + smoke test (the SQL Server job was written without a SQL Server at hand – see TODO.md "SQL Server").
+# lint: php -l, languages, unit tests, PHPStan, ESLint · mysql: new installation from nubuilder4.sql + browser smoke test · mssql:
+# new installation from the SQL Server install scripts + smoke test (the SQL Server job was written without a SQL Server at hand – see TODO.md "SQL Server").
 name: ci
 on: [push, pull_request]
 
@@ -34,14 +34,18 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium' }
       - run: git clone --depth 1 https://github.com/nuBuilder/nuBuilder.git nub && mv nunext nub/nunext
-      - run: mysql -h 127.0.0.1 -unu -pnu nutest < nub/nubuilder4.sql
+      # a new installation as the installer makes it: empty database → nuBuilder Forte's nubuilder4.sql through the database set-up
+      # (NuDbState::setUp – brought to 4.9, own tables, origin 'nunext', database steps); importing the dump by hand would leave a database
+      # with nuBuilder Forte's tables that nuBuilder Next did not set up, and every page answers 503 (existing databases are blocked)
       - run: |
           cat > nub/nunext/nuconfig.php <<'PHP'
           <?php
           $nuConfigDBHost = "127.0.0.1"; $nuConfigDBName = "nutest"; $nuConfigDBUser = "nu"; $nuConfigDBPassword = "nu";
           $nuConfigDBGlobeadminUsername = "globeadmin"; $nuConfigDBGlobeadminPassword = "ci-globeadmin-pw";
           $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099/nunext";
+          $nuConfigShowInstaller = false;
           PHP
+          cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("upload", "../nubuilder4.sql"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
       - run: (cd nub && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
@@ -72,8 +76,9 @@ jobs:
           $nuConfigDBUser = "sa"; $nuConfigDBPassword = "Ci_Passw0rd!"; $nuConfigDBTrustServerCertificate = true;
           $nuConfigDBGlobeadminUsername = "globeadmin"; $nuConfigDBGlobeadminPassword = "ci-globeadmin-pw";
           $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099";
+          $nuConfigShowInstaller = false;
           PHP
-          cd nunext && php -r 'require "core/nuapp.php"; $db = nu_db(); echo NuInstall::importFile($db, "install/schema_mssql.sql"), " statements\n";'
+          cd nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("scripts"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
       - run: (cd nunext && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v4
         with: { node-version: '22' }

@@ -226,6 +226,7 @@ final class NuInstall
 			['mbstring', extension_loaded('mbstring'), extension_loaded('mbstring') ? 'ok' : t('ins_missing'), true],
 			['openssl', extension_loaded('openssl'), extension_loaded('openssl') ? 'ok' : t('ins_missing'), true],
 			['zip', class_exists('ZipArchive'), class_exists('ZipArchive') ? 'ok' : t('ins_zip_hint'), false],
+			['sodium', function_exists('sodium_crypto_sign_verify_detached'), function_exists('sodium_crypto_sign_verify_detached') ? 'ok' : t('ins_sodium_hint'), false],   // signatures of packs / updates (0.8.788)
 			[t('ins_writable'), is_writable($cfgDir), is_writable($cfgDir) ? 'ok' : t('ins_writable_hint'), false],
 			['HTTPS', $https, $https ? 'ok' : t('ins_https_hint'), false],
 		];
@@ -695,7 +696,8 @@ final class NuInstall
 			. '$nuConfigDBUser						= ' . $x((string)$db['user']) . ";\n"
 			. '$nuConfigDBPassword					= ' . $x((string)$db['password']) . ";\n"
 			. ($db['type'] === 'sqlsrv' ? '$nuConfigDBTrustServerCertificate	= ' . (!empty($db['trust']) ? 'true' : 'false') . ";\n" : '');
-		$start = strpos($tpl, '$nuConfigDBType');
+		// the line that sets it (0.8.789: not the mention in the header comment – that cut the comment and left the type in it)
+		$start = preg_match('/^\$nuConfigDBType\s*=/m', $tpl, $mm, PREG_OFFSET_CAPTURE) ? (int)$mm[0][1] : false;
 		$end = strpos($tpl, "}\n", (int)strpos($tpl, '} else {')) + 2;
 		if ($start === false || $end <= $start) throw new RuntimeException('nuconfig-sample.php: database block not found');
 		$tpl = substr($tpl, 0, $start) . $dbBlock . substr($tpl, $end);

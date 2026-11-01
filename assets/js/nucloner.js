@@ -58,6 +58,8 @@
 		$('#clIfr').classList.toggle('opacity-50', !objects || !$('#clIfrOn').checked);
 		var dump = $('#clDump').checked;
 		$('#clDumpOpts').hidden = !dump;
+		var tgt = $('#clTarget'), rep = $('#clReplaceWrap');                // REPLACE INTO only in MySQL (0.8.794)
+		if (tgt && rep) { rep.hidden = tgt.value === 'sqlsrv'; if (rep.hidden) $('#clReplace').checked = false; }
 		var run = $('#clRun');
 		run.querySelector('span').textContent = run.getAttribute(dump ? 'data-label-dump' : 'data-label-clone');
 		run.disabled = !src.value || (existing && !$('#clDest').value);

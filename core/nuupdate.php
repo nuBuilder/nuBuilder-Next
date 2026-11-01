@@ -862,6 +862,7 @@ final class NuMigrate
 			'0029-webhooks' => ['Webhooks: definitions, outbox and attempts (zzzzsys_nunext_webhook, _webhook_call, _webhook_try)', static fn() => NuSchema::create()],
 			'0030-data-export' => ['Data export: saved exports (zzzzsys_nunext_export)', static fn() => NuSchema::create()],
 			'0031-log-indexes' => ['Indexes on the log (object + record, user + event + time, login, object) and the audit trail (login): record info, log filters, last login of the users list', static fn() => NuSchema::ensureIndexes()],
+			'0032-permission-types' => ['Types of permission items (zzzzsys_nunext_permission_type): Data import into chosen tables', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -903,6 +904,7 @@ final class NuMigrate
 		'0025-user-access' => [['zzzzsys_nunext_user_access', 'table', 'created when missing']],
 		'0026-user-home' => [['zzzzsys_form', 'data', 'form nuuserhome (User Home) added when missing – also checked with every later update'], ['zzzzsys_tab', 'data', 'its tabs Main and Fast Forms']],
 		'0027-themes' => [['zzzzsys_nunext_theme', 'table', 'created when missing'], ['zzzzsys_nunext_setting', 'data', 'Branding\'s accent colour (if set) moved into the own theme "My theme" (row theme)']],
+		'0032-permission-types' => [['zzzzsys_nunext_permission_type', 'table', 'created when missing']],
 		'0031-log-indexes' => [['zzzzsys_nunext_log', 'index', 'ix_zzzzsys_nunext_log_object_record (object, record_id), ix_zzzzsys_nunext_log_user_event (user_id, event, log_time), login, object when missing'], ['zzzzsys_nunext_audit', 'index', 'login when missing']],
 		'0030-data-export' => [['zzzzsys_nunext_export', 'table', 'created when missing']],
 		'0029-webhooks' => [['zzzzsys_nunext_webhook', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_call', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_try', 'table', 'created when missing']],

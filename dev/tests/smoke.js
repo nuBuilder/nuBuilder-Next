@@ -42,8 +42,12 @@ async function login(ctx, user, pw) {
 	ok('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 	// list print (0.8.267): the Print button opens the print view, not the list again
-	await p.goto(BASE + 'index.php?p=users');
-	const printHref = await p.getAttribute('#nuListPrint', 'data-print-url');
+	// (lists without rows have no Export / Print – a new database has no users yet: the log has the sign-in above)
+	let printHref = null;
+	for (const route of ['users', 'log']) {
+		await p.goto(BASE + 'index.php?p=' + route);
+		if (await p.locator('#nuListPrint').count()) { printHref = await p.getAttribute('#nuListPrint', 'data-print-url'); break; }
+	}
 	ok('print link of lists', /export=print/.test(printHref || ''), String(printHref));
 	await p.goto(BASE + printHref);
 	ok('print view opens', await p.evaluate(() => document.body.classList.contains('nu-print-list')));

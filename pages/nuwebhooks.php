@@ -112,7 +112,7 @@ if ($call) {
 	$dt = static fn($v) => $v ? date(nu_dfmt('d.m.Y H:i:s'), (int)strtotime((string)$v)) : '';
 	nu_layout_start(t('wh_title'), 'home', ['container' => 'container']);
 	echo $crumbs([[t('wh_calls'), nu_url('webhooks', ['tab' => 'calls'])], [t('wh_call_title')]]); ?>
-	<div class="nuTitleBar mb-3">
+	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-send me-2"></i><?= h(($d['name'] ?? '?') . ' · ' . t('wh_ev_' . $call['event'])) ?> <span class="badge <?= $stCls[(string)$call['status']] ?? 'text-bg-secondary' ?> align-middle" id="whCallStatus"><?= h(t('wh_st_' . $call['status'])) ?></span></h1>
 		<div class="d-flex flex-wrap gap-2">
 			<a class="btn nuBtnAct" href="<?= h(nu_url('webhooks', ['tab' => 'calls'])) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
@@ -171,7 +171,7 @@ $formOpts = array_filter(nu_forms(), static fn($f, $fid) => !str_starts_with((st
 $title = $hook ? $hook['name'] : t('wh_new');
 nu_layout_start(t('wh_title'), 'home', ['container' => 'container', 'head' => nu_ts_head()]);
 echo $crumbs([[$title]]); ?>
-<div class="nuTitleBar mb-3">
+<div class="nuTitleBar nuRecHead mb-3">
 	<h1 class="h4 mb-0"><i class="bi bi-broadcast me-2"></i><?= h($title) ?></h1>
 	<div class="d-flex flex-wrap gap-2">
 		<a class="btn nuBtnAct" href="<?= h(nu_url('webhooks')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>

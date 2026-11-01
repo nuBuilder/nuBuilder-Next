@@ -110,8 +110,9 @@ final class NuPwPolicy
 
 	private static bool $jsDone = false;
 
-	/** The rules as a checklist below a password field; assets/js/nupwrules.js ticks them while typing (leak / name: on saving). */
-	public static function rulesHtml(string $forId): string
+	/** The rules as a checklist below a password field; assets/js/nupwrules.js ticks them while typing (leak / name: on saving).
+	 *  $onType: hidden until the field holds at least one character (user form, 0.8.768). */
+	public static function rulesHtml(string $forId, bool $onType = false): string
 	{
 		$r = self::clientRules();
 		$items = ['len' => t('pw_pol_len', $r['min'])];
@@ -120,7 +121,7 @@ final class NuPwPolicy
 		$server = [];
 		if ($s['not_name']) $server[] = t('pw_pol_name');
 		if ($s['leak'] !== 'off') $server[] = t('pw_rules_leak');
-		$html = '<div class="form-text nuPwRules" data-for="' . h($forId) . '" data-min="' . (int)$r['min'] . '"><span>' . h(t('pw_rules_title')) . '</span><ul class="list-unstyled mb-0 mt-1">';
+		$html = '<div class="form-text nuPwRules" data-for="' . h($forId) . '" data-min="' . (int)$r['min'] . '"' . ($onType ? ' data-on-type="1" hidden' : '') . '><span>' . h(t('pw_rules_title')) . '</span><ul class="list-unstyled mb-0 mt-1">';
 		foreach ($items as $k => $txt) $html .= '<li data-rule="' . h($k) . '"><i class="bi bi-dot" aria-hidden="true"></i> ' . h($txt) . '</li>';
 		foreach ($server as $txt) $html .= '<li class="nuPwRuleServer"><i class="bi bi-dot" aria-hidden="true"></i> ' . h($txt) . '</li>';
 		$html .= '</ul></div>';

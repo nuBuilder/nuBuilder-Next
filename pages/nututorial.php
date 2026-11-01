@@ -95,11 +95,11 @@ if ($cur !== '') {
 $parts = ['basics' => 'tut_part_basics', 'build' => 'tut_part_build', 'admin' => 'tut_part_admin', 'advanced' => 'tut_part_advanced',
 	'changes' => 'tut_part_changes', 'new' => 'tut_part_new'];   // nuBuilder Forte track (0.8.635)
 $trackSwitch = static function (string $l) use ($track): string {   // Basic | Advanced in the title bar
-	$o = '<form method="post" class="btn-group" role="group" aria-label="' . h(t('tut_track_label')) . '" id="tutTrack">' . nu_csrf_field()
+	$o = '<form method="post" class="btn-group nuSeg" role="group" aria-label="' . h(t('tut_track_label')) . '" id="tutTrack">' . nu_csrf_field()
 		. '<input type="hidden" name="action" value="track"><input type="hidden" name="l" value="' . h($l) . '">';
 	foreach (NuTutorial::TRACKS as $tr) {
 		$on = $tr === $track;
-		$o .= '<button class="btn ' . ($on ? 'btn-primary' : 'btn-outline-primary') . '" type="submit" name="track" value="' . $tr . '"' . ($on ? ' aria-pressed="true"' : ' aria-pressed="false"')
+		$o .= '<button class="btn btn-outline-secondary' . ($on ? ' active' : '') . '" type="submit" name="track" value="' . $tr . '"' . ($on ? ' aria-pressed="true"' : ' aria-pressed="false"')
 			. ' data-track="' . $tr . '"><i class="bi ' . ['basic' => 'bi-signpost-2', 'advanced' => 'bi-rocket-takeoff', 'forte' => 'bi-arrow-left-right'][$tr] . ' me-1"></i>' . h(t('tut_track_' . $tr)) . '</button>';
 	}
 	return $o . '</form>';

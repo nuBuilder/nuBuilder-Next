@@ -4,7 +4,7 @@
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p>Every function with parameters, return value and examples: <a href="#ref-js">JavaScript function reference</a>.</p>
 <p>About 100 nuBuilder Forte (4.x) functions work unchanged, among them <code>nuGetValue</code>/<code>nuSetValue</code>, <code>nuHide</code>/<code>nuShow</code>, <code>nuEnable</code>/<code>nuDisable</code>, <code>nuSetProperty</code>, <code>nuRunPHPHidden</code>, <code>nuForm</code>, <code>nuPopup</code>, <code>nuMessage</code>, <code>nuSaveAction</code>, <code>nuDeleteAction</code>, <code>nuCloneAction</code>, <code>nuSelectTab</code>, <code>nuAddActionButton</code>, <code>nuHasBeenEdited</code>, TinyMCE functions, <code>nuOpenAce</code>, <code>nuVendorLogin</code>, <code>nuTranslate</code>, <code>nuTranslateToEnglish</code>. New: <code>nuToast(message, type)</code> shows a notice at the bottom right (<code>success</code>, <code>danger</code>, <code>warning</code>, <code>info</code>).</p>
-<p><strong>Hooks</strong> – functions a form's custom code (or nuBuilder Forte's Setup → header, for the <em>…Global</em> ones) may define; nuBuilder Next calls them as nuBuilder Forte 4.9 does (a <em>…Global</em> hook runs before the form's own):</p>
+<p><strong>Hooks</strong> – functions a form's custom code (or the form pages' header in Global code, for the <em>…Global</em> ones) may define; nuBuilder Next calls them as nuBuilder Forte 4.9 does (a <em>…Global</em> hook runs before the form's own):</p>
 <table class="table table-sm small">
 <thead><tr><th>Hook</th><th>When</th><th>Arguments / return</th></tr></thead>
 <tbody>

@@ -27,7 +27,7 @@
 <tbody>
 <tr><td><code>$nuConfigPasswordMinLength</code></td><td>Next</td><td>8</td><td>Minimum length of new passwords</td></tr>
 <tr><td><code>$nuConfigPasswordUpgrade</code></td><td>Next</td><td>true</td><td>Rehash md5 passwords to bcrypt at login (false if an old nuBuilder Forte must still read md5)</td></tr>
-<tr><td><code>$nuUseMd5PasswordHash</code></td><td>Forte</td><td>false</td><td>nuBuilder Forte's setting (also in Settings): <code>true</code> = new passwords are stored as md5 and never converted – as nuBuilder Forte does, which then accepts md5 only (a bcrypt hash would lock the user out of nuBuilder Forte). md5 logins work regardless of <em>Accept old md5 passwords</em>. Insecure: the Security check shows it in red – switch it off once no nuBuilder Forte needs it (4.5 and later read bcrypt); afterwards md5 passwords become bcrypt at the next login.</td></tr>
+<tr><td><code>$nuUseMd5PasswordHash</code></td><td>Forte</td><td>false</td><td>Also in the shared settings: <code>true</code> = new passwords are stored as md5 and never converted – as nuBuilder Forte does, which then accepts md5 only (a bcrypt hash would lock the user out of nuBuilder Forte). md5 logins work regardless of <em>Accept old md5 passwords</em>. Insecure: the Security check shows it in red – switch it off once no nuBuilder Forte needs it (4.5 and later read bcrypt); afterwards md5 passwords become bcrypt at the next login.</td></tr>
 <tr><td><code>$nuConfig2FAAdmin</code> / <code>$nuConfig2FAUser</code></td><td>Forte</td><td>false</td><td>Two-step login for globeadmin / for access levels with "Use two-factor authentication" (authenticator app or e-mail code). The access level form shows whether <code>$nuConfig2FAUser</code> is on; while it is off, the globeadmin can switch it on there (<em>Switch on</em>, or a link to Settings when <code>$nuConfigSettingsFromDB</code> is on).</td></tr>
 <tr><td><code>$nuConfig2FATrustDays</code></td><td>Next</td><td>30</td><td>"Remember this device" days (0 = always ask)</td></tr>
 <tr><td><code>$nuConfig2FAIssuer</code></td><td>Next</td><td>nuBuilder Next</td><td>Name in the authenticator app</td></tr>
@@ -55,8 +55,8 @@
 <tr><td><code>$nuConfigIncludeCSS</code></td><td>Forte</td><td>''</td><td>As in nuBuilder Forte: own CSS file(s) for form pages, after nuBuilder Next's styles (so they can override them); paths as for <code>$nuConfigIncludeJS</code>. Files that are not found (JS, CSS, PHP) are left out and named on the Security check</td></tr>
 <tr><td><code>$nuConfigIncludeApexCharts</code></td><td>Forte</td><td>false</td><td><code>true</code>: ApexCharts is loaded on form pages (<code>new ApexCharts(element, options).render()</code> in form code)</td></tr>
 <tr><td><code>$nuConfigIntegerPKsAuto</code></td><td>Forte</td><td>false</td><td>Integer primary keys count as auto-increment even when the column does not say so</td></tr>
-<tr><td><code>$nuConfigSettingsFromDB</code></td><td>Forte</td><td><code>false</code></td><td>nuBuilder Forte's setting: <code>true</code> = the values of the settings table (<a href="#settings">Settings</a>) replace those set in <code>nuconfig.php</code></td></tr>
-<tr><td><code>$nuConfigGlobeadminHome</code></td><td>Forte</td><td><code>nuhome</code></td><td>nuBuilder Forte's setting: id or code of a launch form opened as the globeadmin's start page instead of the tile page (<a href="#home-page">Start page</a>)</td></tr>
+<tr><td><code>$nuConfigSettingsFromDB</code></td><td>Forte</td><td><code>false</code></td><td><code>true</code> = the values of the settings table (<a href="#settings">Settings</a>) replace those set in <code>nuconfig.php</code></td></tr>
+<tr><td><code>$nuConfigGlobeadminHome</code></td><td>Forte</td><td><code>nuhome</code></td><td>Id or code of a launch form opened as the globeadmin's start page instead of the tile page (<a href="#home-page">Start page</a>)</td></tr>
 <tr><td><code>$nuWelcomeBodyInnerHTML</code></td><td>Forte</td><td></td><td>Own login page (nuBuilder Forte's variable): its HTML replaces the login card – see below</td></tr>
 <tr><td><code>$nuConfigTitle</code></td><td>Forte</td><td></td><td>Application title in the browser tab, on the sign-in page and in the top bar (empty: nuBuilder Next). A title set in <a href="#branding">Branding</a> wins over it</td></tr>
 <tr><td><code>$nuConfigEnableDatabaseUpdate</code></td><td>Forte</td><td>true</td><td><code>false</code>: <em>Update</em> refuses to install (<a href="#updating">Updating</a>)</td></tr>
@@ -84,7 +84,7 @@
 <tr><td><code>$nuConfigApiTokenMinutes</code></td><td>Next</td><td>15</td><td>Lifetime of API access tokens in minutes (1–1440)</td></tr>
 <tr><td><code>$nuConfigApiAllowHttp</code></td><td>Next</td><td><code>false</code></td><td><code>true</code>: API also without HTTPS (tests only; localhost always works)</td></tr>
 <tr><td><code>$nuConfigDemoUser</code></td><td>Next</td><td></td><td>Demo mode: login name or user id of the demo user(s), several separated by commas – see <a href="#demo-mode">Demo mode</a></td></tr>
-<tr><td><code>$nuConfigDemoSavingAllowedIds</code></td><td>Forte</td><td></td><td>nuBuilder Forte's setting: ids or codes of the forms where demo users may still save (never delete), separated by commas</td></tr>
+<tr><td><code>$nuConfigDemoSavingAllowedIds</code></td><td>Forte</td><td></td><td>Ids or codes of the forms where demo users may still save (never delete), separated by commas</td></tr>
 <tr><td><code>$nuConfigIsDemo</code>, <code>$nuConfigDemoDBGlobeadminUsername</code>, <code>$nuConfigDemoDBGlobeadminPassword</code></td><td>Forte</td><td>false</td><td>nuBuilder Forte's demo: <code>true</code> lets the demo globeadmin sign in read only (<a href="#demo-mode">Demo mode</a>)</td></tr>
 </tbody>
 </table>
@@ -94,7 +94,7 @@
 <thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code>$nuConfigDevMode</code></td><td>Forte</td><td><code>false</code></td><td>nuBuilder Forte's developer mode for the globeadmin: <code>#DEV_MODE#</code> = 1, <code>nuDevMode()</code>, templates and system procedures can be changed, and <em>Admin tools</em> shows <em>To do</em> – the open points of <code>TODO.md</code> as a page; each section folds (all folded when the page opens), <em>Expand all</em> / <em>Collapse all</em> opens or folds all of them – the <a href="#selftest">Self-test</a> and <a href="#db-reset">Reset database</a> (delete all tables and import a nuBuilder Forte SQL file). The password confirmation of dangerous actions lasts longer (Security check → <em>Ask for the password again in developer mode</em>, 8 hours by default).</td></tr>
-<tr><td><code>$nuConfigDebug</code></td><td>Next</td><td>false</td><td>Show error details on screen (also unexpected errors of a page) – true in <code>nuconfig.php</code> or in nuBuilder Forte's settings table (with <code>$nuConfigSettingsFromDB</code>) is enough; the globeadmin in developer mode sees them as well</td></tr>
+<tr><td><code>$nuConfigDebug</code></td><td>Next</td><td>false</td><td>Show error details on screen (also unexpected errors of a page) – true in <code>nuconfig.php</code> or in the shared settings table (with <code>$nuConfigSettingsFromDB</code>) is enough; the globeadmin in developer mode sees them as well</td></tr>
 </tbody>
 </table>
 </div>

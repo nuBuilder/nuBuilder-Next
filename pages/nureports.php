@@ -139,7 +139,7 @@ $tcpdf = NuReport::tcpdfDir();
 	$fieldLabel = static fn(string $f) => ['sre_code' => t('rpt_code'), 'sre_description' => t('rpt_description'), 'sre_group' => t('rpt_group'),
 		'sre_zzzzsys_form_id' => t('rpt_launch'), 'sre_zzzzsys_php_id' => t('rpt_source'), 'sre_layout' => t('rpt_layout')][$f] ?? $f;
 	?>
-	<div class="nuTitleBar mb-3">
+	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-file-earmark-richtext me-2"></i><?= h($report ? (string)$report['sre_code'] : t('rpt_new')) ?></h1>
 		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page -->
 		<a class="btn nuBtnAct" href="<?= h(nu_url('reports')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>

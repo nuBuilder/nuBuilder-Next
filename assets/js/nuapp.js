@@ -302,8 +302,11 @@
 	});
 
 	// ---------------------------------------------------------------- filters submit on change
-	$$('.js-autosubmit').forEach(function (sel) {
-		sel.addEventListener('change', function () { if (sel.form) sel.form.submit(); });
+	// delegated (0.8.776: lists refreshed in place get new selects); requestSubmit fires "submit", so the list refresh can take it over
+	document.addEventListener('change', function (e) {
+		var sel = e.target;
+		if (!sel || !sel.classList || !sel.classList.contains('js-autosubmit') || !sel.form) return;
+		if (sel.form.requestSubmit) sel.form.requestSubmit(); else sel.form.submit();
 	});
 
 	// ---------------------------------------------------------------- buttons shown only once a file is chosen (Update page: Check package)
@@ -573,7 +576,11 @@
 	});
 
 	// ---------------------------------------------------------------- list footer: click on "Page x / y" → enter a page, Enter jumps there
-	$$('.nuPagerJump').forEach(function (btn) {
+	window.nuBindPagerJump = function (root) { $$('.nuPagerJump', root).forEach(bindJump); };   // also for lists refreshed in place (0.8.776)
+	window.nuBindPagerJump(document);
+	function bindJump(btn) {
+		if (btn.nuJump) return;
+		btn.nuJump = true;
 		btn.addEventListener('click', function () {
 			var pages = parseInt(btn.getAttribute('data-nu-pages'), 10) || 1, cur = parseInt(btn.getAttribute('data-nu-page'), 10) || 1;
 			var box = document.createElement('span'), inp = document.createElement('input'), of = document.createElement('span');
@@ -595,7 +602,9 @@
 				if (n === cur) { close(); btn.focus(); return; }
 				done = true;
 				inp.disabled = true;
-				window.location.href = btn.getAttribute('data-nu-url').replace('__PG__', String(n));
+				var to = btn.getAttribute('data-nu-url').replace('__PG__', String(n));
+				if (window.nuListGo && window.nuListGo(to)) return;   // list refreshed in place (assets/js/nulistsmooth.js)
+				window.location.href = to;
 			};
 			inp.addEventListener('keydown', function (e) {
 				if (e.key === 'Enter') { e.preventDefault(); go(); }
@@ -603,16 +612,19 @@
 			});
 			inp.addEventListener('blur', close);
 		});
-	});
+	}
 
 	// ---------------------------------------------------------------- list filters shown at once on wide screens
 	// <div class="collapse" data-nu-open-min="800">: open when the window is at least that wide (the filter button still hides them)
-	$$('.collapse[data-nu-open-min]').forEach(function (c) {
-		var min = parseInt(c.getAttribute('data-nu-open-min'), 10) || 0;
-		if (window.innerWidth < min || c.classList.contains('show')) return;
-		c.classList.add('show');
-		$$('[data-bs-target="#' + c.id + '"]').forEach(function (b) { b.setAttribute('aria-expanded', 'true'); b.classList.remove('collapsed'); });
-	});
+	window.nuOpenMin = function (root) {
+		$$('.collapse[data-nu-open-min]', root).forEach(function (c) {
+			var min = parseInt(c.getAttribute('data-nu-open-min'), 10) || 0;
+			if (window.innerWidth < min || c.classList.contains('show')) return;
+			c.classList.add('show');
+			$$('[data-bs-target="#' + c.id + '"]').forEach(function (b) { b.setAttribute('aria-expanded', 'true'); b.classList.remove('collapsed'); });
+		});
+	};
+	window.nuOpenMin(document);
 
 	// ---------------------------------------------------------------- "Please check the highlighted fields" (0.8.718)
 	// The message becomes a button: it lists the fields marked .is-invalid (label + message); a click on one shows its tab / folded
@@ -671,7 +683,7 @@
 
 	// ---------------------------------------------------------------- confirm dialogs (form[data-confirm])
 	var modalEl = $('#nuConfirm');
-	var pending = null;
+	var pending = null, askCancel = null;
 	if (modalEl && nuBs.ready()) {
 		var modal = nuBs.modal(modalEl);
 		var okBtn = $('.js-confirm-ok', modalEl), okText = okBtn.textContent, okClass = okBtn.className;
@@ -685,12 +697,17 @@
 			if (f.hasAttribute('data-nu-once') && f.requestSubmit) f.requestSubmit(f.querySelector('[type="submit"][data-nu-busy]') || undefined);
 			else f.submit();
 		});
-		$$('form[data-confirm]').forEach(function (f) {
+		window.nuBindConfirm = function (root) { $$('form[data-confirm]', root).forEach(bindConfirm); };   // lists refreshed in place (0.8.776)
+		window.nuBindConfirm(document);
+		function bindConfirm(f) {
+			if (f.nuConfirmBound) return;
+			f.nuConfirmBound = true;
 			f.addEventListener('submit', function (e) {
 				if (f.dataset.confirmed === '1') return;
 				if (e.submitter && e.submitter.hasAttribute('data-no-confirm')) return;   // e.g. "Save rule" next to "Delete now" (0.8.451)
 				e.preventDefault();
 				pending = f;
+				askCancel = null;
 				$('.js-confirm-text', modalEl).textContent = f.getAttribute('data-confirm');
 				// optional own button text / style: data-confirm-ok="Refresh" data-confirm-class="btn btn-primary"
 				okBtn.textContent = f.getAttribute('data-confirm-ok') || okText;
@@ -701,13 +718,14 @@
 				});
 				modal.show();
 			});
-		});
+		}
 		/** The same dialog for a script: nuConfirmAsk(text, onOk[, okLabel, okClass]) – onOk runs after OK, nothing on Cancel. */
 		// extra (0.8.763, review E4): {title, details: [lines shown as a list below the text], note, cancelFirst: true = Cancel gets the focus}
 		var titleEl = $('#nuConfirmTitle', modalEl), titleText = titleEl ? titleEl.textContent : '';
 		window.nuConfirmAsk = function (text, onOk, okLabel, cls, extra) {
 			extra = extra || {};
 			pending = onOk;
+			askCancel = typeof extra.onCancel === 'function' ? extra.onCancel : null;   // extra.onCancel (0.8.781): after Cancel / Esc / ×
 			var box = $('.js-confirm-text', modalEl);
 			box.textContent = text;
 			if (extra.details && extra.details.length) {
@@ -725,7 +743,11 @@
 			});
 			modal.show();
 		};
-		modalEl.addEventListener('hidden.bs.modal', function () { if (titleEl) titleEl.textContent = titleText; });
+		modalEl.addEventListener('hidden.bs.modal', function () {
+			if (titleEl) titleEl.textContent = titleText;
+			var c = askCancel; askCancel = null;
+			if (c && pending) { pending = null; c(); }                    // closed without OK (OK clears pending first)
+		});
 	}
 
 	/** Opens url in a new tab that comes to the front, also from a Ctrl+click (see below why setTimeout). */
@@ -1255,14 +1277,15 @@
 	window.nuHighlightText = highlight;
 	window.nuHighlightClear = clear;
 	// system lists: rows / cards carrying data-nu-highlight="<the search>" (words separated by spaces, as the lists search)
-	function lists() {
-		document.querySelectorAll('[data-nu-highlight]').forEach(function (box) {
+	function lists(root) {
+		(root && root.querySelectorAll ? root : document).querySelectorAll('[data-nu-highlight]').forEach(function (box) {
 			var q = box.getAttribute('data-nu-highlight') || '';
 			box.removeAttribute('data-nu-highlight');
 			highlight(box, q.split(/\s+/));
 		});
 	}
-	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lists); else lists();
+	window.nuHighlightLists = lists;                        // lists refreshed in place (0.8.776)
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { lists(); }); else lists();
 })();
 
 /*
@@ -1589,12 +1612,13 @@ window.nuColResize = function (table, opt) {
 	'use strict';
 	function init() {
 		document.querySelectorAll('table[data-nu-resize]').forEach(function (t) {
-			if (t.nuColResize) return;
+			if (t.nuColResize || !window.nuColResize) return;
 			t.nuColResize = window.nuColResize(t, {key: 'nunext-list-w:' + t.getAttribute('data-nu-resize'), titles: 'thead th[data-nu-col]',
 				id: function (th) { return th.getAttribute('data-nu-col'); }});
 			if (t.nuColResize) t.nuColResize.restore();
 		});
 	}
+	window.nuInitResize = init;                             // lists refreshed in place (0.8.776)
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
 	// no logo in the top bar (0.8.730): on desktop the page's breadcrumb sits next to the Home button; on phones it stays in the page.
@@ -1632,5 +1656,36 @@ window.nuColResize = function (table, opt) {
 		if (!f) return;
 		e.preventDefault();
 		if (f.requestSubmit) f.requestSubmit(); else f.submit();
+	});
+})();
+
+/* Home button / logo of the top bar (0.8.774): the start page puts the cursor into its search field (assets/js/nuhome.js reads the flag). */
+(function () {
+	'use strict';
+	// the Home button of the compact bar and the logo (both open the start page)
+	// a link to the page that is open already (0.8.787): the active tab / menu entry (class active or aria-current) of the same page – no
+	// reload, nothing would change (the e-mail page's tabs, the settings centre's side bar, view switches …). A link with parameters the
+	// address does not have counts as the same page when it is marked active (index.php?p=email = its tab Settings).
+	document.addEventListener('click', function (e) {
+		if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+		var a = e.target.closest && e.target.closest('a[href]');
+		if (!a || a.target || a.hasAttribute('download') || !(a.classList.contains('active') || a.getAttribute('aria-current') === 'page')) return;
+		if (a.closest('#nuHomeBtn, .navbar-brand, .dropdown-menu .dropdown-item[href*="per="]')) return;   // Home has its own reset (nuhome.js)
+		try {
+			var to = new URL(a.href, window.location.href), here = new URL(window.location.href);
+			if (to.origin !== here.origin || to.pathname !== here.pathname || (to.searchParams.get('p') || '') !== (here.searchParams.get('p') || '')) return;
+			var same = true;
+			here.searchParams.forEach(function (v, k) { if (to.searchParams.get(k) !== v) same = false; });
+			if (!same || (to.hash && to.hash !== here.hash)) return;
+		} catch (x) { return; }
+		e.preventDefault();
+	});
+	document.querySelectorAll('#nuHomeBtn, .nu-navbar .navbar-brand').forEach(function (b) {
+		b.addEventListener('click', function (e) {
+			if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;   // a new tab / window: no flag
+			// on the start page already (0.8.786): no reload – nuhome.js resets it in place
+			if (typeof window.nuHomeReset === 'function' && b.href && window.nuHomeReset(b.href)) { e.preventDefault(); return; }
+			try { sessionStorage.setItem('nunext-home-focus', '1'); } catch (x) { /* no storage */ }
+		});
 	});
 })();

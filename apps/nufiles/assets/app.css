@@ -128,3 +128,7 @@ body.nuf { margin: 0; background: var(--bs-body-bg); color: var(--bs-body-color)
 	.nuf-bar { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .nuf-side { transition: none; } }
+
+/* permissions dialog (globeadmin) */
+.nuf-chmod-grid { max-width: 22rem; }
+.nuf-chmod-num { width: 5rem; font-family: var(--bs-font-monospace); }

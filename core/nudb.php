@@ -108,11 +108,41 @@ final class NuDB
 	{
 		$limit  = max(1, $limit);
 		$offset = max(0, $offset);
-		$sql   .= " ORDER BY $orderBy";
+		$sql   .= ' ORDER BY ' . self::uniqueOrder($orderBy);
 		$sql   .= $this->type === 'sqlsrv'
 			? " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY"
 			: " LIMIT $limit OFFSET $offset";
 		return $this->all($sql, $params);
+	}
+
+	/**
+	 * An ORDER BY list without repeated items (0.8.792): SQL Server refuses "ORDER BY nu_pk, nu_pk" ("A column has been specified more
+	 * than once in the order by list"), MySQL ignores it. The first one of an expression counts (ASC / DESC do not make it another).
+	 */
+	public static function uniqueOrder(string $orderBy): string
+	{
+		$items = [];
+		$depth = 0; $buf = ''; $q = '';
+		for ($i = 0, $n = strlen($orderBy); $i < $n; $i++) {
+			$c = $orderBy[$i];
+			if ($q !== '') { $buf .= $c; if ($c === $q) $q = ''; continue; }
+			if ($c === "'" || $c === '"' || $c === '`' || $c === '[') { $q = $c === '[' ? ']' : $c; $buf .= $c; continue; }
+			if ($c === '(') $depth++; elseif ($c === ')') $depth--;
+			if ($c === ',' && $depth === 0) { $items[] = $buf; $buf = ''; continue; }
+			$buf .= $c;
+		}
+		$items[] = $buf;
+		$out = $seen = [];
+		foreach ($items as $it) {
+			$it = trim($it);
+			if ($it === '') continue;
+			$key = strtolower((string)preg_replace('/\s+(ASC|DESC)$/i', '', $it));
+			$key = (string)preg_replace('/\s+/', ' ', $key);
+			if (isset($seen[$key])) continue;
+			$seen[$key] = true;
+			$out[] = $it;
+		}
+		return implode(', ', $out);
 	}
 
 	public function insert(string $table, array $row): void

@@ -127,7 +127,7 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 		  data-copied="<?= h(t('pg_copied')) ?>" data-stats="<?= h(t('pg_stats')) ?>" data-suggest-none="<?= h(t('pg_suggest_none')) ?>" data-suggest-added="<?= h(t('pg_suggest_added')) ?>">
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="action" value="save">
-		<div class="nuTitleBar mb-3">
+		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><i class="bi bi-stars me-2"></i><?= h($rec ? (string)$rec['pge_code'] : t('pg_new')) ?></h1>
 			<a class="btn nuBtnAct" href="<?= h(nu_url('prompts')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" name="action" value="save" id="pgSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>

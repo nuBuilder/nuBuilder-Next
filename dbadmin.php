@@ -147,6 +147,22 @@ try {
 	$st = $nuPdo->prepare('SELECT sss_access, sss_time FROM zzzzsys_session WHERE zzzzsys_session_id = ?');
 	$st->execute([$nuSid]);
 	$nuRow = $st->fetch(PDO::FETCH_ASSOC);
+	// SQL Server named instance (host\INSTANCE, e.g. SQLEXPRESS – 0.8.790): Adminer 6 accepts only host[:port], so the instance's TCP port
+	// is looked up with the connection that works – the port of this connection, else the instance's TCP setting in the registry
+	$nuInstPort = '';
+	if ($nuIsMs && str_contains((string)$nuConfigDBHost, '\\') && $nuPort === '') {
+		try { $nuInstPort = (string)($nuPdo->query('SELECT local_tcp_port FROM sys.dm_exec_connections WHERE session_id = @@SPID')->fetchColumn() ?: ''); } catch (Throwable) {}
+		if ($nuInstPort === '') {
+			foreach (['TcpPort', 'TcpDynamicPorts'] as $nuVal) {
+				try {
+					$q = $nuPdo->query("SET NOCOUNT ON; DECLARE @v NVARCHAR(100); EXEC master.dbo.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'SOFTWARE\\Microsoft\\MSSQLServer\\MSSQLServer\\SuperSocketNetLib\\Tcp\\IPAll', N'$nuVal', @v OUTPUT; SELECT @v AS v");
+					$v = '';
+					if ($q) do { try { $r = $q->fetch(PDO::FETCH_ASSOC); if (is_array($r) && array_key_exists('v', $r)) { $v = trim((string)$r['v']); break; } } catch (Throwable) {} } while ($q->nextRowset());
+					if (preg_match('/^\d+$/', $v) && (int)$v > 0) { $nuInstPort = $v; break; }
+				} catch (Throwable) {}
+			}
+		}
+	}
 	$minutes = (int)($nuConfigSessionTimeoutGlobeadmin ?? 0);
 	if ($minutes <= 0 && !empty($nuConfigSettingsFromDB)) {
 		try { $minutes = (int)$nuPdo->query("SELECT cfg_value FROM zzzzsys_config WHERE cfg_setting = '\$nuConfigSessionTimeoutGlobeadmin'")->fetchColumn(); } catch (Throwable) {}
@@ -173,7 +189,15 @@ if (isset($_POST['logout'])) {
 }
 
 define('NU_ADM_DRIVER', $nuIsMs ? 'mssql' : 'server');
-define('NU_ADM_SERVER', (string)$nuConfigDBHost . ($nuPort !== '' && $nuPort !== $nuDefPort ? ($nuIsMs ? ',' : ':') . $nuPort : ''));
+// host[:port] – also for SQL Server (Adminer 4 turns ":" into "," itself, Adminer 6 refuses "," and "\\"); a named instance as its host and TCP port
+$nuAdmHost = (string)$nuConfigDBHost;
+if ($nuIsMs && str_contains($nuAdmHost, '\\')) {
+	if ($nuPort === '' && $nuInstPort === '') nu_adm_fail('adm_err_instance', 500);
+	$nuAdmHost = substr($nuAdmHost, 0, (int)strpos($nuAdmHost, '\\'));
+	if ($nuPort === '') $nuPort = $nuInstPort;
+	$nuDefPort = '';                                                     // always name the port: the instance is not the default one
+}
+define('NU_ADM_SERVER', $nuAdmHost . ($nuPort !== '' && $nuPort !== $nuDefPort ? ':' . $nuPort : ''));
 define('NU_ADM_USER', (string)$nuConfigDBUser);
 define('NU_ADM_DB', (string)$nuConfigDBName);
 $GLOBALS['nuAdmPassword'] = (string)$nuConfigDBPassword;

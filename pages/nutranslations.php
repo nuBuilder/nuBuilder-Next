@@ -261,7 +261,7 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 	<form method="post" data-nu-focus-first data-nu-guard id="trlForm" novalidate>
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="action" value="save"><input type="hidden" name="back" value="<?= h($back) ?>"><input type="hidden" name="back_f" value="<?= h($backF) ?>">
-		<div class="nuTitleBar mb-3">
+		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><?= h($row ? t('trl_edit') : t('trl_new')) ?>
 				<?php if ($isNu): ?><span class="badge bg-info-subtle text-info-emphasis fs-6 align-middle">nuBuilder Forte</span><?php endif; ?></h1>
 			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->

@@ -9,6 +9,8 @@ defined('NU_ROOT') || exit;
  *        null = the level loses the form (its row in zzzzsys_access_form is deleted), else the row is written (inserted when missing).
  * The same rows and rules as the access level page (pages/nuaccesslevel.php): view needs the access level form, changes its save right;
  * with "Only the globeadmin grants admin rights" (NuSecurity::restricted) nobody changes his own levels or grants new admin-equivalent rights.
+ * Everyone (0.8.784, NuFormEveryone): GET adds {everyone: null | {rights, dm, ft, new}, everyone_ok}; POST {everyone: {…}} gives every level
+ * the form with these buttons (the normal rows) and stores the switch, {everyone: null} switches it off (the rows stay).
  */
 $db = nu_db();
 $out = static function (array $d, int $code = 200): never {
@@ -44,6 +46,13 @@ if (nu_is_post()) {
 	$want = is_array($post['levels'] ?? null) ? $post['levels'] : [];
 	$levels = [];
 	foreach ($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $l) $levels[(string)$l['zzzzsys_access_id']] = (string)$l['sal_code'];
+	$evSent = array_key_exists('everyone', $post);
+	$ev = $evSent && is_array($post['everyone']) ? NuFormEveryone::clean($post['everyone']) : null;
+	if ($ev !== null) {                                              // Everyone (0.8.784): every level gets the form with these buttons
+		if (!NuFormEveryone::allowed($fid)) $out(['ok' => false, 'message' => t('fac_ev_admin')], 403);
+		$want = [];
+		foreach (array_keys($levels) as $aid) $want[$aid] = ['rights' => $ev['rights'], 'dm' => $ev['dm'], 'ft' => $ev['ft']];
+	}
 	$before = $rowsOf();
 	$plan = [];
 	foreach ($want as $aid => $w) {
@@ -76,12 +85,19 @@ if (nu_is_post()) {
 			else $db->insert('zzzzsys_access_form', ['zzzzsys_access_form_id' => nu_id(), 'slf_zzzzsys_access_id' => (string)$aid, 'slf_zzzzsys_form_id' => $fid] + $row);
 		}
 	});
+	$evWas = NuFormEveryone::of($fid);
+	$evChanged = $evSent && json_encode($evWas) !== json_encode($ev);
+	if ($evChanged) {
+		NuFormEveryone::set($fid, $ev, (string)(NuAuth::user()['login'] ?? ''));
+		NuLog::write('form_everyone', 'zzzzsys_form', $fid, ['form' => (string)$form['sfo_code'], 'on' => $ev !== null]
+			+ ($ev !== null ? ['rights' => implode(', ', array_keys(array_filter($ev['rights']))) ?: t('view'), 'new_levels' => $ev['new']] : []));
+	}
 	foreach ($plan as $aid => $row) {
 		$on = $row === null ? [] : array_keys(array_filter(NuAcl::RIGHTS, static fn($c) => ($row[$c] ?? '0') === '1'));
 		NuLog::write('access_form_rights', 'zzzzsys_access', (string)$aid, ['code' => $levels[$aid], 'form' => (string)$form['sfo_code']]
 			+ ($row === null ? ['removed' => true] : ['rights' => $on ? implode(', ', $on) : t('view')]));
 	}
-	$out(['ok' => true, 'changed' => count($plan), 'message' => $plan ? t('fac_saved', count($plan)) : t('fac_nothing')]);
+	$out(['ok' => true, 'changed' => count($plan) + ($evChanged ? 1 : 0), 'message' => $plan ? t('fac_saved', count($plan)) : ($evChanged ? t('saved') : t('fac_nothing'))]);
 }
 
 // ------------------------------------------------------------------ read
@@ -102,8 +118,9 @@ foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_grou
 $texts = [];
 foreach (['fac_title', 'fac_intro', 'fac_level', 'fac_open', 'fac_all', 'fac_group', 'fac_groups', 'fac_nogroup', 'fac_search', 'fac_count', 'fac_own',
 	'fac_admin', 'fac_page', 'fac_none', 'access_col_dm', 'access_col_ft', 'access_dm_normal', 'access_dm_noedit', 'access_ft_both', 'access_ft_browse',
-	'access_ft_edit', 'save', 'cancel', 'toggle_all'] as $k) $texts[$k] = t($k);
+	'access_ft_edit', 'save', 'cancel', 'toggle_all', 'fac_ev', 'fac_ev_hint', 'fac_ev_buttons', 'fac_ev_new', 'fac_ev_new_hint', 'fac_ev_follow', 'fac_ev_admin',
+	'fac_ev_count'] as $k) $texts[$k] = t($k);
 foreach (array_keys(NuAcl::RIGHTS) as $r) $texts['right_' . $r] = t('right_' . $r);
 $out(['ok' => true, 'form' => ['id' => $fid, 'code' => (string)$form['sfo_code'], 'label' => nu_form_label($fid)],
 	'rights' => array_keys(NuAcl::RIGHTS), 'dm' => $hasDm, 'ft' => $hasFt, 'can_save' => $canSave,
-	'admin_form' => $restricted && $adminForm, 'page' => nu_url('accesslevel', ['id' => '__ID__', 'tab' => 'rights']), 'levels' => $levels, 'texts' => $texts]);
+	'admin_form' => $restricted && $adminForm, 'everyone' => NuFormEveryone::of($fid), 'everyone_ok' => NuFormEveryone::allowed($fid), 'page' => nu_url('accesslevel', ['id' => '__ID__', 'tab' => 'rights']), 'levels' => $levels, 'texts' => $texts]);

@@ -3,7 +3,16 @@
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Which databases nuBuilder Next runs on and what differs between them.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p>nuBuilder Next talks to the database through one thin PDO layer (<code>NuDB</code>) that hides the differences between the supported systems. The database type is set with <code>$nuConfigDBType</code> in <code>nuconfig.php</code>.</p>
-<p><strong>Note:</strong> SQL Server support has not been verified on a real SQL Server yet – its code was checked with simulated data only.</p>
+<p><strong>Note:</strong> SQL Server support is young: the installation, the sample application and the lists were tried on a real SQL Server Express; much else was only checked with simulated data so far.</p>
+	<div class="doc-sub" id="db-sqlexpress"><h3 id="db-sqlexpress-h">SQL Server Express (named instance)</h3>
+	<p>SQL Server Express installs as a named instance (<code>PC\SQLEXPRESS</code>) without TCP/IP. nuBuilder Next itself connects with that name, but Adminer needs a host and a port. Give the instance a fixed port:</p>
+	<ol>
+		<li><em>SQL Server Configuration Manager → SQL Server Network Configuration → Protocols for SQLEXPRESS → TCP/IP</em>: <em>Enabled</em>.</li>
+		<li>Under <em>IP Addresses → IPAll</em> set <em>TCP Port</em> to e.g. <code>1433</code> and clear <em>TCP Dynamic Ports</em>.</li>
+		<li>Restart the SQL Server service.</li>
+		<li>In <code>nuconfig.php</code> set <code>$nuConfigDBPort = 1433;</code> (the host may stay <code>PC\SQLEXPRESS</code>, or just <code>PC</code>).</li>
+	</ol>
+	<p>The PHP extension <code>pdo_sqlsrv</code> and Microsoft's ODBC Driver 17 or 18 for SQL Server must be installed on the web server; the installer offers SQL Server only then.</p></div>
 <table class="table table-sm">
 	<thead><tr><th>Database</th><th><code>$nuConfigDBType</code></th><th>PHP extension</th><th>Install scripts</th></tr></thead>
 	<tbody>

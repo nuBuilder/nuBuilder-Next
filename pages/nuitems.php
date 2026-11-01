@@ -123,7 +123,7 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="action" value="save">
 		<input type="hidden" name="tab" id="itemTab" value="<?= h($tab) ?>">
-		<div class="nuTitleBar mb-3">
+		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><?= h($item ? (string)$item['itm_value'] : t('item_new')) ?></h1>
 			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
 			<a class="btn nuBtnAct" href="<?= h(nu_url('items')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>

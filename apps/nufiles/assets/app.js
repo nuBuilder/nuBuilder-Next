@@ -488,6 +488,18 @@
 			if (e.target.closest('input, button, a, .dropdown-menu')) return;
 			if (it.type === 'dir') go(state.share.id, p); else open(it, p);
 		});
+		// right-click (mouse / desktop): the row's ⋮ menu opens at the pointer; the row becomes the selection unless it is part of it
+		tr.addEventListener('contextmenu', function (e) {
+			if (e.target.closest('.dropdown-menu, input[type=text]') || !window.matchMedia('(any-pointer: fine)').matches) return;
+			e.preventDefault();
+			if (!state.sel.has(key)) {
+				state.sel.clear();
+				document.querySelectorAll('#nufRows tr.table-active').forEach(function (r) { r.classList.remove('table-active'); var c = r.querySelector('input'); if (c) c.checked = false; });
+				chk.checked = true; state.sel.add(key); tr.classList.add('table-active');
+				status(); toolbar();
+			}
+			openMenuAt(tr.querySelector('.nuf-more'), e.clientX, e.clientY);
+		});
 		tr.addEventListener('click', function (e) {
 			if (e.target.closest('input, button, a, .dropdown-menu')) return;
 			if (e.ctrlKey || e.metaKey) {
@@ -502,6 +514,22 @@
 			status(); toolbar();
 		});
 		return tr;
+	}
+
+	/** Opens the ⋮ dropdown of a row at the mouse (a Bootstrap dropdown with a virtual reference); afterwards the ⋮ button works as before. */
+	function openMenuAt(btn, x, y) {
+		if (!btn) return;
+		document.querySelectorAll('#nufRows .dropdown-menu.show').forEach(function (m) { var b = m.parentNode.querySelector('.nuf-more'); var d = b && bootstrap.Dropdown.getInstance(b); if (d) d.hide(); });
+		var old = bootstrap.Dropdown.getInstance(btn);
+		if (old) old.dispose();
+		var dd = new bootstrap.Dropdown(btn, {
+			reference: {getBoundingClientRect: function () { return new DOMRect(x, y, 0, 0); }},
+			popperConfig: function (cfg) { return Object.assign({}, cfg, {strategy: 'fixed', placement: 'bottom-start'}); }
+		});
+		btn.addEventListener('hidden.bs.dropdown', function done() { btn.removeEventListener('hidden.bs.dropdown', done); dd.dispose(); }, {once: true});
+		dd.show();
+		var first = btn.parentNode.querySelector('.dropdown-menu .dropdown-item');
+		if (first) first.focus();
 	}
 
 	function menu(it, p) {
@@ -521,6 +549,7 @@
 		add(t('copy'), 'copy', function () { transfer([p], true); });
 		if (can('rename') || can('delete')) add(t('move'), 'arrow-right-square', function () { transfer([p], false); });
 		add(t('info'), 'info-circle', function () { info(p); });
+		if (boot.features.chmod && !boot.readonly && !state.share.readonly) add(t('chmod'), 'shield-lock', function () { chmodDlg(it, p); });   // globeadmin
 		if (can('delete')) { items.push(el('li', {}, [el('hr', {'class': 'dropdown-divider'})])); add(t('delete'), 'trash3', function () { remove([p]); }, 'text-danger'); }
 		return el('div', {'class': 'dropdown'}, [
 			el('button', {type: 'button', 'class': 'btn btn-sm btn-link text-body nuf-more', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', 'aria-label': t('actions'), 'data-bs-popper-config': '{"strategy":"fixed"}'}, [icon('three-dots-vertical')]),
@@ -699,6 +728,56 @@
 				if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { toast(t('path_copied'), 'success'); }).catch(function () {});
 			}}, [icon('clipboard'), ' ' + t('copy_path')]);
 			dialog({title: t('info'), node: el('div', {}, [tbl, copyBtn])});
+		}).catch(fail);
+	}
+
+	/** Unix permissions (globeadmin): owner / group / others × read / write / execute, the number, "also inside" for folders. */
+	function chmodDlg(it, p) {
+		api('info', {share: state.share.id, path: p}).then(function (d) {
+			var i = d.info, dir = i.type === 'dir';
+			var mode = String(i.mode || (i.perms || '').slice(-3) || (dir ? '755' : '644'));
+			var who = [['owner', 6], ['group', 3], ['others', 0]], bits = [['read', 4], ['write', 2], ['exec', 1]];
+			var boxes = [];
+			var num = el('input', {type: 'text', 'class': 'form-control form-control-sm nuf-chmod-num', value: mode, maxlength: '3', inputmode: 'numeric', 'aria-label': t('chmod_octal'), pattern: '[0-7]{3}'});
+			var warn = el('div', {'class': 'small text-warning-emphasis mt-2 nuf-chmod-warn'});
+			var rec = dir ? el('input', {type: 'checkbox', 'class': 'form-check-input', id: 'nufChmodRec'}) : null;
+			function val() { return /^[0-7]{3}$/.test(num.value) ? parseInt(num.value, 8) : null; }
+			function fromBoxes() { var v = 0; boxes.forEach(function (b) { if (b.box.checked) v |= b.bit; }); num.value = ('00' + v.toString(8)).slice(-3); check(); }
+			function toBoxes() { var v = val(); if (v === null) { check(); return; } boxes.forEach(function (b) { b.box.checked = (v & b.bit) !== 0; }); check(); }
+			function check() {
+				var v = val(), w = [];
+				num.classList.toggle('is-invalid', v === null || (v & 256) === 0 || (dir && (v & 64) === 0));
+				if (v !== null && (v & 2)) w.push(t('chmod_warn_world'));
+				if (v !== null && !dir && (v & 73)) w.push(t('chmod_warn_exec'));
+				warn.textContent = w.join(' ');
+			}
+			var head = el('tr', {}, [el('th')].concat(bits.map(function (b) { return el('th', {'class': 'text-center fw-normal small', text: t(b[0] === 'exec' && dir ? 'chmod_exec_dir' : 'chmod_' + b[0])}); })));
+			var body = who.map(function (w) {
+				return el('tr', {}, [el('th', {'class': 'fw-normal small', text: t('chmod_' + w[0])})].concat(bits.map(function (b) {
+					var bit = b[1] << w[1];
+					var box = el('input', {type: 'checkbox', 'class': 'form-check-input', 'aria-label': t('chmod_' + w[0]) + ' – ' + t(b[0] === 'exec' && dir ? 'chmod_exec_dir' : 'chmod_' + b[0]), 'data-bit': String(bit)});
+					box.addEventListener('change', fromBoxes);
+					boxes.push({box: box, bit: bit});
+					return el('td', {'class': 'text-center'}, [box]);
+				})));
+			});
+			num.addEventListener('input', toBoxes);
+			var node = el('div', {'class': 'nuf-chmod'}, [
+				i.owner ? el('div', {'class': 'small text-body-secondary mb-2', text: i.server_user ? t('chmod_owned', i.owner, i.group, i.server_user) : t('chmod_owned_short', i.owner, i.group)}) : el('span'),
+				el('table', {'class': 'table table-sm align-middle mb-2 nuf-chmod-grid'}, [el('thead', {}, [head]), el('tbody', {}, body)]),
+				el('div', {'class': 'd-flex align-items-center gap-2'}, [el('label', {'class': 'small', text: t('chmod_octal')}), num]),
+				rec ? el('div', {'class': 'form-check mt-2'}, [rec, el('label', {'class': 'form-check-label small', 'for': 'nufChmodRec', text: t('chmod_recursive')})]) : el('span'),
+				warn
+			]);
+			toBoxes();
+			dialog({title: t('chmod_title', it.name), node: node, buttons: [{label: t('cancel'), value: false}, {label: t('chmod_apply'), value: true, cls: 'btn-primary'}]}).then(function (ok) {
+				if (ok !== true) return;
+				var v = val();
+				if (v === null || (v & 256) === 0 || (dir && (v & 64) === 0)) { toast(t('err_chmod_mode'), 'danger'); return; }
+				after(api('chmod', {share: state.share.id, path: p, mode: num.value, recursive: rec && rec.checked ? '1' : '0'}, true), function (r) {
+					return (r.failed ? t('chmod_partly', r.done, r.failed) : t('chmod_done', num.value)) + (r.links ? ' ' + t('chmod_links', r.links) : '');
+				});
+			});
 		}).catch(fail);
 	}
 

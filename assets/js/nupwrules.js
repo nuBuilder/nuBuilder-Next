@@ -17,6 +17,7 @@
 		function run() {
 			var v = field.value;
 			box.classList.toggle('nuPwTyping', v !== '');
+			if (box.hasAttribute('data-on-type')) box.hidden = v === '';     // user form: only once something is typed (0.8.768)
 			box.querySelectorAll('li[data-rule]').forEach(function (li) {
 				var ok = v !== '' && tests[li.getAttribute('data-rule')](v);
 				li.classList.toggle('nuPwOk', ok);

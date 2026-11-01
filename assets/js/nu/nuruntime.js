@@ -3158,13 +3158,139 @@
 		if (o.search) u.searchParams.set('q', o.search); else u.searchParams.delete('q');
 		if (o.filter) u.searchParams.set('rf', o.filter); else u.searchParams.delete('rf');
 		u.searchParams.delete('pg');
-		window.location.href = u.toString();
+		browseNav(u.toString());
 	});
 	$(document).on('submit', 'form.nuBrowseSearch', function (e) {   // the search field: nuOnSearchAction hooks may change or cancel it
-		if (typeof window.nuOnSearchActionGlobal !== 'function' && typeof window.nuOnSearchAction !== 'function') return;
+		if (typeof window.nuOnSearchActionGlobal !== 'function' && typeof window.nuOnSearchAction !== 'function') {
+			if (e.isDefaultPrevented() || !smoothOk()) return;                 // in place (0.8.776): the form's fields as a URL
+			var qs = new URLSearchParams();
+			new FormData(this).forEach(function (v, k) { if (typeof v === 'string') qs.append(k, v); });
+			var to = new URL(this.getAttribute('action') || 'index.php', window.location.href);
+			to.search = qs.toString();
+			if (browseGo(to.toString(), true)) e.preventDefault();
+			return;
+		}
 		e.preventDefault();
 		nuSearchAction(g('nuSearchField') ? g('nuSearchField').value : '');
 	});
+
+	// ---- browse lists refreshed in place (0.8.776): search, column filters, sort titles, pages and the page size fetch the list and swap
+	// only its card (no page reload, no flicker). Automatic for forms without code of their own (server flag N.browse.smooth: no form /
+	// browse JavaScript, no Setup → Header or includes) and without load / search / row hooks; nuNextSmoothBrowse(true) in form code turns
+	// it on anyway (the form's nuLoadBrowseGlobal / nuOnLoad then run again after each swap), nuNextSmoothBrowse(false) off. Anything
+	// unusual (another form, a record, an error, a changed toolbar) loads the page the normal way.
+	var SM = {on: null, ctrl: null};
+	api('nuNextSmoothBrowse', function (on) { SM.on = on === undefined ? true : !!on; });
+	function smoothOk() {
+		if (N.mode !== 'browse' || !N.browse || !window.fetch || !window.DOMParser || document.body.classList.contains('nuPrintView')) return false;
+		if (SM.on !== null) return SM.on;
+		if (!N.browse.smooth) return false;
+		return ['nuOnLoad', 'nuLoadBrowseGlobal', 'nuSelectBrowse', 'nuOnSearchAction', 'nuOnSearchActionGlobal', 'nuBrowseFunction'].every(function (h) {
+			if (typeof window[h] !== 'function') return true;
+			var src = '';
+			try { src = Function.prototype.toString.call(window[h]); } catch (e) { return false; }
+			src = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');   // an empty hook (nuBuilder Forte's default Setup → Header) does nothing
+			return /^\s*function\s*[\w$]*\s*\([^)]*\)\s*\{\s*\}\s*$/.test(src);
+		});
+	}
+	function browseKey(href) {
+		try {
+			var u = new URL(href, window.location.href), q = u.searchParams;
+			if (u.origin !== window.location.origin || q.get('p') !== 'form' || q.get('r') || q.get('print') || q.get('export') || q.get('fmt')) return '';
+			return u.pathname + '|' + q.get('f') + '|' + (q.get('lookup') || '') + '|' + (q.get('lo') || '') + '|' + (q.get('iframe') || '') + '|' + (q.get('design') || '');
+		} catch (e) { return ''; }
+	}
+	function sameBrowse(href) { var k = browseKey(href); return k !== '' && k === browseKey(window.location.href); }
+	function browseNav(url) { if (!browseGo(url, true)) window.location.href = url; }
+	function browseGo(url, push) {
+		if (!smoothOk() || !sameBrowse(url)) return false;
+		var old = document.querySelector('.nuBrowseCard');
+		if (!old) return false;
+		if (SM.ctrl) SM.ctrl.abort();
+		SM.ctrl = window.AbortController ? new AbortController() : null;
+		var act = document.activeElement, focusId = act && act.id && old.contains(act) ? act.id : '', caret = null;
+		try { if (act && typeof act.selectionStart === 'number') caret = act.selectionStart; } catch (e) { /* not a text field */ }
+		var slow = setTimeout(function () { old.classList.add('nuLvLoading'); old.setAttribute('aria-busy', 'true'); }, 150);
+		fetch(url, {credentials: 'same-origin', signal: SM.ctrl ? SM.ctrl.signal : undefined}).then(function (r) {
+			if (!r.ok || (r.redirected && !sameBrowse(r.url))) throw new Error('fallback');
+			return r.text().then(function (html) { return [html, r.url || url]; });
+		}).then(function (res) {
+			clearTimeout(slow);
+			var m = /window\.nuNext = (\{[\s\S]*?\});<\/script>/.exec(res[0]);
+			var doc = new DOMParser().parseFromString(res[0], 'text/html');
+			var fresh = doc.querySelector('.nuBrowseCard'), cur = document.querySelector('.nuBrowseCard');
+			if (!m || !fresh || !cur) throw new Error('fallback');
+			var data = JSON.parse(m[1]);
+			if (!data.form || data.form.id !== N.form.id || data.mode !== 'browse' || !data.browse) throw new Error('fallback');
+			// the toolbar (export / print only with records …): swapped as well, a different set of buttons = a normal load
+			var ids = ['nuExportButton', 'nuPrintButton'];
+			if (ids.some(function (id) { return !document.getElementById(id) !== !doc.getElementById(id); })) throw new Error('fallback');
+			ids.forEach(function (id) { var a = document.getElementById(id), b = doc.getElementById(id); if (a && b) a.replaceWith(document.importNode(b, true)); });
+			document.querySelectorAll('body > .tooltip').forEach(function (t) { t.remove(); });
+			var node = document.importNode(fresh, true);
+			cur.replaceWith(node);
+			N.browse = data.browse;
+			N.adv = data.adv;
+			if (data.ps) N.ps = data.ps;                           // the new page's scope of hash variables (nuSetProperty …)
+			if (data.globals) N.globals = data.globals;
+			if (data.props) N.props = data.props;
+			if (push !== false) history.pushState({nuBr: 1}, '', res[1]);
+			if (doc.title) document.title = doc.title;
+			browseAfterSwap(node);
+			if (focusId) {
+				var f = document.getElementById(focusId);
+				if (f) { f.focus({preventScroll: true}); try { if (caret !== null) f.setSelectionRange(caret, caret); } catch (e) { /* select */ } }
+			}
+			if (node.getBoundingClientRect().top < 0) node.scrollIntoView({block: 'start'});
+			document.documentElement.setAttribute('data-nu-lv-swaps', String((+document.documentElement.getAttribute('data-nu-lv-swaps') || 0) + 1));   // for the tests
+		}).catch(function (e) {
+			clearTimeout(slow);
+			if (e && e.name === 'AbortError') return;
+			window.location.href = url;
+		});
+		return true;
+	}
+	function browseAfterSwap(root) {
+		if (window.nuBs && window.nuBs.ready()) root.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) { window.nuBs.tooltip(el); });
+		[['nuOpenMin', root], ['nuBindConfirm', root], ['nuBindPagerJump', root], ['nuAdvSearchInit']].forEach(function (f) {
+			if (typeof window[f[0]] === 'function') { try { window[f[0]](f[1]); } catch (e) { /* one helper must not stop the others */ } }
+		});
+		applyNoSearchMarks(currentNoSearch());
+		initSelects(root);
+		colFilterSelects(root);
+		if (typeof window.nuHighlightSearch === 'function') { try { window.nuHighlightSearch(); } catch (x) { reportError(x.message, 'nuHighlightSearch'); } }
+		if (SM.on === true) callHook('nuLoadBrowseGlobal', N.form.id, N.form.code);
+		if (N.browse && N.browse.badges) Object.keys(N.browse.badges).forEach(function (i) {
+			try { window.nuBrowseStyleBadge(+i, N.browse.badges[i] && N.browse.badges[i].length ? N.browse.badges[i] : undefined); } catch (e) { /* see the load */ }
+		});
+		if (SM.on === true) callHook('nuOnLoad', N.form.id, N.form.code);
+		BR.ctl = null;
+		brRestore();
+		if (typeof window.nuAttachToolTip === 'function') { try { window.nuAttachToolTip(); } catch (x) { reportError(x.message, 'nuAttachToolTip'); } }
+		phoneStack();
+		document.dispatchEvent(new CustomEvent('nu:listrefresh', {detail: {card: root}}));
+	}
+	// long filter lists (review B2): searchable (Tom Select) from 15 values on
+	function colFilterSelects(root) {
+		if (window.TomSelect) $(root).find('select.nuColumnFilter').each(function () {
+			if (this.options.length < 16 || this.tomselect) return;
+			try { new window.TomSelect(this, {maxOptions: null, allowEmptyOption: true, controlInput: '<input>', render: {no_results: function () { return '<div class="no-results">' + esc(M.no_results || '–') + '</div>'; }}}); } catch (x) { /* keep the plain select */ }
+		});
+	}
+	if (N.mode === 'browse') {
+		window.nuListGo = function (url) { return browseGo(url, true); };   // the page jump of the footer (assets/js/nuapp.js)
+		try { history.replaceState(Object.assign({}, history.state || {}, {nuBr: 1}), ''); } catch (e) { /* ignore */ }
+		window.addEventListener('popstate', function (e) {
+			if (!e.state || !e.state.nuBr) return;
+			if (!browseGo(window.location.href, false)) window.location.reload();
+		});
+		document.addEventListener('click', function (e) {
+			if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+			var a = e.target.closest && e.target.closest('.nuBrowseCard a[href]');
+			if (!a || a.target || a.hasAttribute('download') || a.getAttribute('href').charAt(0) === '#') return;
+			if (browseGo(a.href, true)) e.preventDefault();
+		});
+	}
 
 	// ---- Run::iFrame objects (same origin: the embedded nuBuilder Next form is reachable directly)
 	function frameDoc(id) { var f = g(id); try { return f && f.contentWindow ? f.contentWindow.document : null; } catch (e) { return null; } }
@@ -3391,7 +3517,7 @@
 		p = Math.max(1, Math.min(b.pages || 1, p));
 		if (p === (b.page || 1)) return;
 		u.searchParams.set('pg', p);
-		window.location.href = u.toString();
+		browseNav(u.toString());
 	}
 	function nextTab(step) {
 		var tabs = $('.nuTab:visible').get(), cur = tabs.indexOf(selectedTab());
@@ -3666,12 +3792,8 @@
 		var embedded = false;
 		if (N.iframe) { try { embedded = !window.frameElement || !window.frameElement.closest('.modal'); } catch (x) { embedded = true; } }
 		if (N.mode === 'edit' && !embedded && window.nuFocusFirst) setTimeout(function () { window.nuFocusFirst(g('nuEditForm')); }, 0);
-		$(document).on('change', '.nuColumnFilter', function () { this.form.submit(); });
-		// long filter lists (review B2): searchable (Tom Select) from 15 values on
-		if (window.TomSelect) $('select.nuColumnFilter').each(function () {
-			if (this.options.length < 16 || this.tomselect) return;
-			try { new window.TomSelect(this, {maxOptions: null, allowEmptyOption: true, controlInput: '<input>', render: {no_results: function () { return '<div class="no-results">' + esc(M.no_results || '–') + '</div>'; }}}); } catch (x) { /* keep the plain select */ }
-		});
+		$(document).on('change', '.nuColumnFilter', function () { if (this.form.requestSubmit) this.form.requestSubmit(); else this.form.submit(); });
+		colFilterSelects(document);
 
 		// unsaved changes: links, Back, breadcrumbs and run buttons ask Save / Discard / Keep editing; the browser's back button,
 		// reload and closing the tab get the browser's own question (nuLeaveGuard, assets/js/nuapp.js)

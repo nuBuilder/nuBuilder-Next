@@ -26,7 +26,7 @@ final class NuRecord
 		if ($sql === '') $sql = 'SELECT * FROM ' . NuDB::ident($table);
 		[$inner, $order] = NuBrowse::splitOrder(NuHash::replace($sql, NuHash::forForm($sub, $parentId), NuHash::SQL));
 		$pk = NuDB::ident($sub->primaryKey());
-		return nu_db()->all("SELECT * FROM ($inner) nuT WHERE nuT.$fk = ? ORDER BY " . ($order !== '' ? $order . ', ' : '') . $pk, [$parentId]);
+		return nu_db()->all("SELECT * FROM ($inner) nuT WHERE nuT.$fk = ? ORDER BY " . NuDB::uniqueOrder(($order !== '' ? $order . ', ' : '') . $pk), [$parentId]);   // sub-form rows: no repeated item (SQL Server, 0.8.792)
 	}
 
 	// ================================================================= nuBuilder's <table>_nulog (0.8.349)

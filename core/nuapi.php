@@ -870,6 +870,7 @@ final class NuApi
 			if ($forms !== null) self::writeForms($id, $forms);
 		});
 		NuLog::write('access_created', 'zzzzsys_access', $id, ['code' => $row['sal_code'] ?? '', 'forms' => count($forms ?? []), 'via' => 'api']);
+		NuFormEveryone::addToLevel($id);                                  // forms for everyone (0.8.784)
 		[, $body, $h] = self::one(self::accessOut(self::accessRow($id)));
 		return [201, $body, $h + ['Location' => nu_base_url() . '/api.php/v1/access-levels/' . $id]];
 	}

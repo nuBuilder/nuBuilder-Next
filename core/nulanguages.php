@@ -32,6 +32,9 @@ final class NuLanguages
 			try { nu_db(); } finally { self::$connecting = false; }
 		}
 		$l = [];
+		// never again while reading (0.8.789): a connection that fails ends in nu_fatal() → t() → here again – endless, memory exhausted
+		if (self::$connecting) return $all;
+		self::$connecting = true;
 		try {
 			$db = nu_db();
 			foreach ([self::KEY, self::OLD_KEY] as $k) {
@@ -41,6 +44,8 @@ final class NuLanguages
 			}
 		} catch (Throwable) {
 			$l = [];                                             // no settings table yet: every language
+		} finally {
+			self::$connecting = false;
 		}
 		return self::$cache = ($l ?: $all);
 	}
@@ -79,6 +84,63 @@ final class NuLanguages
 		NuWelcome::pruneTemplates($removed);
 		try { NuWelcome::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next languages, welcome templates: ' . $e->getMessage()); }
 		return ['added' => array_values(array_diff($l, $before)), 'removed' => $removed];
+	}
+
+	// ---------------------------------------------------------------- variants (0.8.782): English UK / Australia / US, German DE / CH
+	// Setting row 'language_variants' {base: [variant codes]} – a base language without an entry (or no row) offers all its variants.
+	public const VAR_KEY = 'language_variants';
+	private static ?array $varCache = null;
+
+	/** Variant codes offered for a base language (in the order of NU_LANG_VARIANTS); [] = the language has no variants. */
+	public static function variants(string $base): array
+	{
+		$all = array_keys(array_filter(NU_LANG_VARIANTS, static fn($v) => $v[0] === $base));
+		if (!$all) return [];
+		if (self::$varCache === null) {
+			self::$varCache = [];
+			if (NuDB::$connected && !NuInstall::needed()) {
+				try {
+					$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::VAR_KEY]);
+					$d = is_string($v) ? json_decode($v, true) : null;
+					if (is_array($d)) self::$varCache = $d;
+				} catch (Throwable) {
+				}
+			}
+		}
+		$on = array_values(array_intersect($all, array_map('strval', (array)(self::$varCache[$base] ?? []))));
+		return $on ?: $all;
+	}
+
+	public static function hasVariant(string $variant): bool
+	{
+		$base = NU_LANG_VARIANTS[$variant][0] ?? '';
+		return $base !== '' && in_array($variant, self::variants($base), true);
+	}
+
+	/** Variant when nothing else decides: en-GB / de-DE when offered, else the first offered one. */
+	public static function defaultVariant(string $base): string
+	{
+		$l = self::variants($base);
+		if (!$l) return '';
+		$d = NU_LANG_VARIANT_DEFAULT[$base] ?? '';
+		return in_array($d, $l, true) ? $d : $l[0];
+	}
+
+	/** Stores the offered variants: [base => [variant codes]]; a base without a valid variant keeps its default one. */
+	public static function setVariants(array $byBase, string $by): void
+	{
+		$out = [];
+		foreach (array_unique(array_map(static fn($v) => $v[0], NU_LANG_VARIANTS)) as $base) {
+			$all = array_keys(array_filter(NU_LANG_VARIANTS, static fn($v) => $v[0] === $base));
+			$on = array_values(array_intersect($all, array_map('strval', (array)($byBase[$base] ?? []))));
+			$out[$base] = $on ?: [NU_LANG_VARIANT_DEFAULT[$base] ?? $all[0]];
+		}
+		NuSchema::ensure();
+		$db = nu_db();
+		$row = ['setting_value' => json_encode($out), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by];
+		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::VAR_KEY])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::VAR_KEY);
+		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::VAR_KEY] + $row);
+		self::$varCache = null;
 	}
 
 	/** Users per language: code => number of users whose sus_language is that language. */

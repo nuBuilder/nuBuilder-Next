@@ -789,6 +789,40 @@ check('nu_new_key: UUID for (n)(var)char(36) / uniqueidentifier, else nu_id', st
 	&& strlen(nu_new_key(['type' => 'nchar', 'length' => 36])) === 36 && strlen(nu_new_key(['type' => 'uniqueidentifier', 'length' => null])) === 36
 	&& strlen(nu_new_key(['type' => 'varchar', 'length' => 25])) < 36 && strlen(nu_new_key(['type' => 'varchar', 'length' => 40])) < 36 && strlen(nu_new_key(null)) < 36);
 
+// 0.8.789: the installer's nuconfig.php for SQL Server sets $nuConfigDBType (it ended inside the header comment) and the SQL Server
+// install script has every table of the MySQL ones (the form tables were missing)
+$bc = NuInstall::buildConfig(['db' => ['type' => 'sqlsrv', 'host' => 'pc\\SQLEXPRESS', 'port' => '', 'name' => 'nunext', 'user' => 'sa', 'password' => 'x', 'trust' => true],
+	'admin' => ['user' => 'globeadmin', 'password' => 'pw', 'email' => '', 'twofa' => false], 'opt' => ['timeout' => 120, 'timezone' => 'Europe/Zurich', 'base_url' => '', 'shared' => false, 'nub_path' => ''],
+	'detect' => []]);
+$bcFile = tempnam(sys_get_temp_dir(), 'nucfg');
+file_put_contents($bcFile, $bc);
+$bcVars = (static function (string $f): array { require $f; return get_defined_vars(); })($bcFile);
+@unlink($bcFile);
+check('installer config: SQL Server type and host set', ($bcVars['nuConfigDBType'] ?? '') === 'sqlsrv' && ($bcVars['nuConfigDBHost'] ?? '') === 'pc\\SQLEXPRESS'
+	&& ($bcVars['nuConfigDBTrustServerCertificate'] ?? null) === true && str_contains($bc, 'means "mysql")'), substr($bc, 0, 400));
+$myT = []; foreach (NuInstall::schemaFiles('nunext', 'mysql', null) as $f) { preg_match_all('/CREATE TABLE (?:IF NOT EXISTS )?`?(zzzzsys_\w+)/', (string)file_get_contents($f), $mm); $myT = array_merge($myT, $mm[1]); }
+preg_match_all("/OBJECT_ID\('(zzzzsys_\w+)'\) IS NULL CREATE TABLE/", (string)file_get_contents(NU_ROOT . '/install/schema_mssql.sql'), $mm);
+check('SQL Server install script: every table of the MySQL scripts', !array_diff(array_unique($myT), $mm[1]), implode(', ', array_diff(array_unique($myT), $mm[1])));
+
+// 0.8.791: MySQL-only SQL for the Compatibility check on SQL Server
+$ms = NuCompat::mssqlScan(false, [
+	['where' => 'A', 'form' => 'f1', 'code' => "SELECT `name`, IFNULL(x, 0), DATE_FORMAT(d, '%d.%m.%Y') FROM t WHERE note = 'LIMIT 5 IFNULL(' LIMIT 10"],
+	['where' => 'B', 'form' => 'f2', 'code' => "SELECT TOP (10) ISNULL(x, 0), DATEDIFF(day, a, b), IIF(a > 1, 1, 0) FROM t -- IFNULL( in a comment\nORDER BY a OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY"],
+	['where' => 'C', 'form' => '', 'code' => "SELECT DATEDIFF(NOW(), d), GROUP_CONCAT(a) FROM t WHERE a = \"x\" AND b <=> c AND flag = TRUE"],
+]);
+check('mssql scan: MySQL-only parts found', isset($ms['backtick'], $ms['ifnull'], $ms['datefmt'], $ms['limit'], $ms['datediff'], $ms['now'], $ms['gconcat'], $ms['dquote'], $ms['nullsafe'], $ms['boolean']), implode(',', array_keys($ms)));
+check('mssql scan: T-SQL, strings and comments are no hit', !array_filter($ms, static fn($l) => in_array('B', array_column($l, 'where'), true)) && count($ms['ifnull']) === 1 && count($ms['limit']) === 1);
+$phpSql = NuCompat::phpSqlStrings('$s = nuRunQuery("SELECT * FROM t WHERE id = \'$id\' LIMIT 1"); $t = \'just a text\'; nuRunQuery(\'UPDATE t SET a = NOW()\');');
+check('mssql scan: SQL strings of PHP code', count($phpSql) === 2 && str_contains($phpSql[0], 'LIMIT 1') && str_contains($phpSql[1], 'NOW()'), json_encode($phpSql));
+
+// 0.8.792: ORDER BY without repeated items (SQL Server refuses them)
+check('NuDB::uniqueOrder', NuDB::uniqueOrder('nu_pk, nu_pk') === 'nu_pk' && NuDB::uniqueOrder('nu_c1 DESC, nu_pk, NU_C1 asc') === 'nu_c1 DESC, nu_pk'
+	&& NuDB::uniqueOrder("COALESCE(a, b), CONCAT(a, ','), a") === "COALESCE(a, b), CONCAT(a, ','), a", NuDB::uniqueOrder('nu_c1 DESC, nu_pk, NU_C1 asc'));
+
+// 0.8.794: form cloner dump for MySQL or SQL Server
+check('cloner literal: MySQL', NuCloner::literal("it's a \\ path", 'mysql') === "'it''s a \\\\ path'", NuCloner::literal("it's a \\ path", 'mysql'));
+check('cloner literal: SQL Server', NuCloner::literal("it's ä \\ path", 'sqlsrv') === "N'it''s ä \\ path'");
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

@@ -100,6 +100,7 @@ final class NuClonerConfig
 		$x = is_array($x) && is_array($x['nunext'] ?? null) ? $x['nunext'] : [];
 		$in['access'] = !empty($x['access']);
 		$in['replace'] = !empty($x['replace']);
+		if (in_array($x['target'] ?? '', ['mysql', 'sqlsrv'], true)) $in['target'] = $x['target'];   // SQL of the dump (0.8.794)
 		return $in;
 	}
 
@@ -119,7 +120,7 @@ final class NuClonerConfig
 		$old = $id !== '' ? self::get($id) : null;
 		$json = json_decode((string)($old['clo_json'] ?? ''), true);
 		if (!is_array($json)) $json = [];
-		$json['nunext'] = ['access' => (bool)$in['access'], 'replace' => (bool)$in['replace']];
+		$json['nunext'] = ['access' => (bool)$in['access'], 'replace' => (bool)$in['replace'], 'target' => in_array($in['target'] ?? '', ['mysql', 'sqlsrv'], true) ? $in['target'] : nu_db()->type];
 		$row = [
 			'clo_form_source' => (string)$in['source'], 'clo_form_dest' => $in['dest_mode'] === 'existing' ? (string)$in['dest'] : '',
 			'clo_tabs' => $in['tabs'] ? json_encode(array_values($in['tabs']), JSON_UNESCAPED_UNICODE) : '',

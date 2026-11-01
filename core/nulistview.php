@@ -400,9 +400,19 @@ final class NuListView
 			$w = self::filterWhere($f, self::filterValue($L, $view, $k));
 			if ($w) { $where[] = $w[0]; array_push($params, ...$w[1]); }
 		}
+		// advanced search (0.8.769): ?adv= conditions on the list's columns, AND with the search and the filters
+		[$aw, $ap] = NuAdvSearch::where(NuListDefs::advColumns($L), self::adv($L), static fn(array $c) => (string)$c['expr']);
+		if ($aw !== '') { $where[] = $aw; array_push($params, ...$ap); }
 		[$sk, $dir] = $sortCol;
 		$order = implode(', ', array_map(static fn($c) => trim($c) . ' ' . $dir, explode(', ', (string)$L['columns'][$sk]['sort']))) . ', ' . $L['id'];
 		return [$L['from'] . ($where ? ' WHERE ' . implode(' AND ', $where) : ''), $params, $order];
+	}
+
+	/** The valid advanced search of the request (0.8.769): conditions always AND (no all / any switch on system lists). */
+	public static function adv(array $L): array
+	{
+		$adv = NuAdvSearch::valid(NuListDefs::advColumns($L), NuAdvSearch::parse($_GET['adv'] ?? ''));
+		return $adv ? ['m' => 'all', 'c' => $adv['c']] : [];
 	}
 
 	/**
@@ -491,7 +501,8 @@ final class NuListView
 	public static function foot(): string
 	{
 		return '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistview.js') . '"></script>'
-			. '<script src="' . nu_asset('assets/js/nulistselect.js') . '"></script>';
+			. '<script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>'
+			. '<script src="' . nu_asset('assets/js/nulistsmooth.js') . '"></script>';
 	}
 
 	/**
@@ -503,7 +514,9 @@ final class NuListView
 		$st = self::prepare($list);
 		nu_layout_start($st['L']['title'], $opt['active'] ?? $st['L']['route'], ['head' => self::head() . ($opt['head'] ?? '')]);
 		echo $opt['before'] ?? '';
-		echo self::card($st, $opt);
+		// refresh in place (0.8.776, assets/js/nulistsmooth.js): filters, search, sort, pages and chips swap the card instead of reloading the
+		// page – only for list pages without scripts of their own (a page's 'foot' script would not see the new card); 'smooth' => false turns it off
+		echo self::card($st, $opt + ['smooth' => empty($opt['foot'])]);
 		nu_layout_end(self::foot() . ($opt['foot'] ?? ''));
 	}
 
@@ -532,7 +545,8 @@ final class NuListView
 		[$selSql, $selParams] = self::select($L, $need);
 
 		// keep: what links (sort, pages, print, view menu) carry over
-		$keep = ['q' => trim((string)($_GET['q'] ?? '')), $vp => isset($_GET[$vp]) ? $view['id'] : null, 'per' => nu_per_param() ?: null];
+		$keep = ['q' => trim((string)($_GET['q'] ?? '')), $vp => isset($_GET[$vp]) ? $view['id'] : null, 'per' => nu_per_param() ?: null,
+			'adv' => NuAdvSearch::encode(self::adv($L)) ?: null];   // advanced search (0.8.769)
 		foreach (array_keys($L['filters']) as $k) if (array_key_exists($k, $_GET)) $keep[$k] = (string)$_GET[$k];
 		$keepSort = $keep + (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []);
 
@@ -544,6 +558,8 @@ final class NuListView
 			$v = self::filterValue($L, $view, $k);
 			if ($v !== '') $filterText[$f['label']] = self::filterOptions($L, $k)[$v][0] ?? $v;
 		}
+		$advChips = array_column(NuAdvSearch::chips(NuListDefs::advColumns($L), self::adv($L)), 0);
+		if ($advChips) $filterText[t('as_title')] = implode(' · ', $advChips);
 		$exportRoute = $_GET['p'] ?? $L['route'];
 		NuListExport::handle($L['form'], $L['title'], $exportCols,
 			static fn(int $limit) => $db->page($selSql . $from, array_merge($selParams, $params), $order, $limit, 0), NuListExport::filterText($filterText));
@@ -599,7 +615,9 @@ final class NuListView
 			$all = (string)($L['filters'][$k]['all'] ?? (in_array($L['filters'][$k]['type'], ['text', 'datefrom', 'dateto'], true) ? '' : '*'));
 			if (array_key_exists($k, $_GET) && (string)$_GET[$k] !== (string)($def['filters']['values'][$k] ?? $all)) $filtered = true;
 		}
-		$hasQuery = $keep['q'] !== '' || $filtered;
+		$advCols = NuListDefs::advColumns($L);
+		$adv = self::adv($L);
+		$hasQuery = $keep['q'] !== '' || $filtered || $adv !== [];
 		$resetParams = $rp;
 		foreach ($def['filters']['shown'] as $k) $resetParams[$k] = (string)($L['filters'][$k]['all'] ?? (in_array($L['filters'][$k]['type'], ['text', 'datefrom', 'dateto'], true) ? '' : '*'));
 		$viewHides = false;                                       // the view's own filter values (Status: Active) hide rows – "nothing matches" too
@@ -612,7 +630,7 @@ final class NuListView
 		$more = !empty($opt['more']);                             // ⋮ menu on phones (more()): Print moves into it
 		ob_start();
 		?>
-<div class="card shadow-sm nuListCard nuLv<?= ($def['phone'] ?? 'cards') === 'table' ? ' nuLvPhoneTable' : '' ?>" data-lv-list="<?= h($L['key']) ?>" data-lv-phone="<?= h($def['phone'] ?? 'cards') ?>">
+<div class="card shadow-sm nuListCard nuLv<?= ($def['phone'] ?? 'cards') === 'table' ? ' nuLvPhoneTable' : '' ?>" data-lv-list="<?= h($L['key']) ?>" data-lv-phone="<?= h($def['phone'] ?? 'cards') ?>"<?= !empty($opt['smooth']) ? ' data-lv-smooth="' . h($vp) . '"' : '' ?>>
 	<div class="card-header nuListHead nuTitleBar">
 		<?php if ($title !== ''): ?><h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h($title) ?><?= $opt['title_extra'] ?? '' ?></h1><?php endif; ?>
 		<?= $opt['title_sub'] ?? '' ?>
@@ -632,8 +650,12 @@ final class NuListView
 		<?php foreach ($rp as $k => $v): ?><input type="hidden" name="<?= h((string)$k) ?>" value="<?= h((string)$v) ?>"><?php endforeach; ?>
 		<?php if ($keep[$vp] !== null): ?><input type="hidden" name="<?= h($vp) ?>" value="<?= h($view['id']) ?>"><?php endif; ?>
 		<?php if ($keep['per'] !== null): ?><input type="hidden" name="per" value="<?= (int)$keep['per'] ?>"><?php endif; ?>
+		<?php if ($keep['adv'] !== null): ?><input type="hidden" name="adv" value="<?= h($keep['adv']) ?>"><?php endif; ?>
 		<div class="row g-2 align-items-end">
-			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null) ?></div>
+			<?php // advanced search (0.8.769): ▾ in the search field opens the same panel as on form lists (assets/js/nu/nuadvsearch.js)
+			$advBtn = $advCols ? '<button class="btn btn-outline-secondary nuSearchBtn nuAdvBtn' . ($adv ? ' active' : '') . '" id="nuAdvButton" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="'
+				. h(t('as_title')) . '" aria-label="' . h(t('as_title')) . '"><i class="bi bi-chevron-down"></i></button><div class="dropdown-menu dropdown-menu-end p-3 nuAdvMenu" id="nuAdvPanel" aria-labelledby="nuAdvButton"></div>' : ''; ?>
+			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null, $advBtn) ?></div>
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
 			<?php // a view with open filters shows them from 768 px on (phones: folded, the funnel opens them – 0.8.761); a filter that is set keeps them open
 			$openMin = $def['open'] ? max(768, (int)($L['open_min'] ?? 768)) : (int)($L['open_min'] ?? 0); ?>
@@ -674,8 +696,15 @@ final class NuListView
 			$chips .= '<a class="badge rounded-pill text-bg-light border text-decoration-none fw-normal nuLvChip" data-flt="' . h($k) . '" href="' . h(nu_url($route, $off)) . '" title="' . h(t('lv_filter_remove')) . '">'
 				. h((string)$f['label']) . ': <strong>' . h($lab) . '</strong> <i class="bi bi-x" aria-hidden="true"></i><span class="visually-hidden"> ' . h(t('lv_filter_remove')) . '</span></a>';
 		}
+		foreach (NuAdvSearch::chips($advCols, $adv) as [$chipText, $rest]) {   // advanced search conditions (0.8.769): ✕ removes one
+			$off = array_replace($rp + $keepSort, ['adv' => $rest !== '' ? $rest : null]);
+			unset($off['pg']);
+			$chips .= '<a class="badge rounded-pill text-bg-light border text-decoration-none fw-normal nuLvChip nuAdvChip" href="' . h(nu_url($route, $off)) . '" title="' . h(t('as_remove')) . '">'
+				. h($chipText) . ' <i class="bi bi-x" aria-hidden="true"></i><span class="visually-hidden"> ' . h(t('as_remove')) . '</span></a>';
+		}
 		if ($chips !== ''): ?><div class="d-flex flex-wrap gap-1 mt-2 nuLvChips" id="nuLvChips"><?= $chips ?></div><?php endif; ?>
 	</form>
+	<?php if ($advCols): ?><div id="nuAdvData" hidden data-adv="<?= h((string)json_encode(NuAdvSearch::clientFor('list:' . $L['key'], $advCols, $adv, ['noMatch' => true, 'search' => 'q', 'csrf' => nu_csrf_token()]), JSON_UNESCAPED_UNICODE)) ?>"></div><?php endif; ?>
 	<?= $opt['above_rows'] ?? '' ?>
 	<?php if ($grid): ?>
 		<div class="p-3"><?php if (!$rows): ?><?= $emptyHtml ?><?php else: ?>

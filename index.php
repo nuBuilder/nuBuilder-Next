@@ -107,6 +107,7 @@ $routes = [
 	'translations' => [],
 	'formatapi'   => ['json' => true],
 	'fnlist'      => ['json' => true],
+	'codecheck'   => ['json' => true],             // PHP syntax check of the code editors (0.8.781)
 	'snippetlist' => ['json' => true],
 	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (0.8.719, pages/nuadvsearch.php)   // code snippets of one code editor (0.8.714, pages/nusnippetlist.php)
 	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (0.8.683, pages/nuformaccess.php)   // function list of the code editors (0.8.593, pages/nufnlist.php)

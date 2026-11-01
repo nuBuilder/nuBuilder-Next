@@ -76,6 +76,8 @@ The log table `nufiles_log` is created on first use (MySQL/MariaDB and SQL Serve
 | `deny` | `[]` | Hidden and unreachable names/paths (`fnmatch`, e.g. `".git"`, `"nuconfig.php"`, `"private/*"`) |
 | `grants` | `[]` | `{permission: [items] | access: [access level codes], rights: [...]}`. A user gets the union of all grants that match |
 
+**Permissions (globeadmin):** the ⋮ menu (or a right-click) of a file or folder has *Permissions …* – owner / group / others × read / write / execute, or the three-digit number; for a folder optionally *also for everything inside* (sub-folders get the mode, files the mode without execute). Always with password confirmation; three digits only (no setuid / setgid / sticky), the owner keeps read (folders also execute), links are never changed, nuFiles' data folder is skipped; logged as `chmod`. Not offered on Windows, in read-only shares or read-only mode. The web server can only change files it owns.
+
 Rights are `view`, `upload`, `mkdir`, `edit` (editor, new file), `rename` (also move inside the share), `copy`, `delete` (also restore, replace on upload, move out of the share) and `zip` (zip, unzip). Every right includes `view`. A move into another share needs `delete` on the source and `upload` on the target. A copy into another share needs `upload` on the target. Purge and the log are for the globeadmin only. While the globeadmin views as another user, and in demo mode, everything is read-only.
 
 ## Security model

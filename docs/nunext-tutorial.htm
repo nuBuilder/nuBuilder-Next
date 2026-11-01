@@ -489,7 +489,7 @@
 
 	<section class="tut-lesson" id="email" data-right="email">
 		<h3>E-mail: settings, test mail and templates</h3>
-		<p>Password links, two-factor codes, welcome e-mails and your own mails need a mail server. <a data-open="email" data-args="tab=settings">E-mail → Settings</a> uses nuBuilder Forte's settings:</p>
+		<p>Password links, two-factor codes, welcome e-mails and your own mails need a mail server. <a data-open="email" data-args="tab=settings">E-mail → Settings</a> uses the shared settings:</p>
 		<ul>
 			<li>SMTP server, port (465 = SSL/TLS, 587 = STARTTLS), user, password and sender. The password is never shown again – leave the field empty to keep it.</li>
 			<li><a data-open="email" data-args="tab=test">Test mail</a> shows the whole conversation with the server – the fastest way to find a wrong setting.</li>
@@ -552,8 +552,8 @@
 	</section>
 
 	<section class="tut-lesson" id="settings" data-right="settings">
-		<h3>Settings (nuBuilder Forte's settings table)</h3>
-		<p>nuBuilder Forte can keep its settings in a table instead of <code>nuconfig.php</code>. <a data-open="settings" data-args="s=forte">Settings → nuBuilder Forte</a> edits that table; it is only used with <code>$nuConfigSettingsFromDB = true</code> (the page offers to switch it on).</p>
+		<h3>Shared settings</h3>
+		<p>Settings can be kept in a table instead of <code>nuconfig.php</code> – shared with nuBuilder Forte. <a data-open="settings" data-args="s=forte">Settings → Shared settings</a> edits that table; it is only used with <code>$nuConfigSettingsFromDB = true</code> (the page offers to switch it on).</p>
 		<ul>
 			<li>A tag after each setting tells what it means for nuBuilder Next: <em>Used</em>, <em>Not yet</em> (only nuBuilder Forte uses it for now) or <em>Not needed</em> (nuBuilder Next has its own solution).</li>
 			<li><em>Import</em> copies the values set in <code>nuconfig.php</code> into the table.</li>
@@ -746,7 +746,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Global code: JavaScript and CSS for many pages</h3>
 		<p><a data-open="globalcode">Global code</a> has two groups of tabs:</p>
 		<ul>
-			<li><strong>Form pages</strong> – nuBuilder Forte's Setup, shared with it: <em>Form JavaScript</em> (Header: your global functions, <code>nuLoadEditGlobal</code> …), <em>Form CSS</em> (Style) and <em>Form includes</em> (<code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> elements).</li>
+			<li><strong>Form pages</strong> – header, style and include, shared with nuBuilder Forte: <em>Form JavaScript</em> (Header: your global functions, <code>nuLoadEditGlobal</code> …), <em>Form CSS</em> (Style) and <em>Form includes</em> (<code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> elements).</li>
 			<li><strong>All pages</strong> – <em>Global JS</em> and <em>Global CSS</em> for nuBuilder Next's own pages (start page, lists, admin tools …), kept apart from nuBuilder Forte. Switches decide where they run. <code>nuOnPageLoad(page, info)</code> tells the code which page is open.</li>
 			<li>Each tab has <em>Templates</em> – ready-made code to insert. Never on the Global code page itself and the Update page, so a mistake can always be repaired; <code>?safe=1</code> opens any page without it.</li>
 		</ul>

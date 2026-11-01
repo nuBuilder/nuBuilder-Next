@@ -349,6 +349,12 @@ $head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_as
 $custom = $safe ? '' : nu_script((string)$meta->form['sfo_javascript'], 'sfo_javascript')
 	. nu_script((string)$meta->form[$mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript'], $mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript');
 
+// browse lists refreshed in place (0.8.776, nuruntime.js browseGo): only for forms without code of their own (form / browse JavaScript,
+// script includes – a stylesheet in Setup → Include is fine); hooks of Setup → Header are checked in the browser (empty ones, as in nuBuilder Forte's default header, do not count);
+// nuNextSmoothBrowse(true) in form code turns it on anyway
+if ($mode === 'browse' && is_array($client['browse'] ?? null)) {
+	$client['browse']['smooth'] = $custom === '' && empty($printMode) && !$design && NuIncludes::jsTags() === '' && stripos(NuIncludes::setupTags(), '<script') === false;
+}
 // WYSIWYG editor objects need TinyMCE (not bundled – a library pack, or the old hand copy in assets/vendor/tinymce)
 $hasEditor = $mode === 'edit' && array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'editor');
 $tinyDir   = $hasEditor ? NuLibs::tinymce() : '';            // library pack or assets/vendor/tinymce (0.8.405)
@@ -473,7 +479,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 		<?php endif; ?>
 		<?php if ($u['globeadmin'] && !$bare): ?>
 			<?= NuFormInfo::html($meta, $mode, $r) /* (i) form info for the globeadmin (0.8.435) */ ?>
-			<div class="btn-group" role="group" aria-label="<?= h(t('form_layout')) ?>">
+			<div class="btn-group nuSeg" role="group" aria-label="<?= h(t('form_layout')) ?>">
 				<?php if ($mode === 'edit'): foreach (['absolute', 'auto', 'grid'] as $l): ?>
 					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
 				<?php endforeach; endif; ?>

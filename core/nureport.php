@@ -517,6 +517,9 @@ final class NuReport
 		$fonts = $dir . '/fonts/';
 		if (is_dir(dirname($dir) . '/tc-lib-pdf-font/target/fonts')) $fonts = dirname($dir) . '/tc-lib-pdf-font/target/fonts/';    // TCPDF 7
 		if (!defined('K_TCPDF_THROW_EXCEPTION_ERROR')) define('K_TCPDF_THROW_EXCEPTION_ERROR', true);
+		// own cache folder (0.8.770): TCPDF deletes every image it used whose path starts with K_PATH_CACHE – with the default (the system's
+		// temp folder, e.g. /tmp/) that included a report's photos stored below it
+		if (!defined('K_PATH_CACHE')) define('K_PATH_CACHE', self::tcpdfCacheDir() . '/');
 		if (!defined('K_TCPDF_EXTERNAL_CONFIG')) {
 			define('K_TCPDF_EXTERNAL_CONFIG', true);
 			define('K_PATH_MAIN', $dir . '/');
@@ -594,6 +597,20 @@ final class NuReport
 		if (!is_array($run) || time() - (int)$run['time'] > 6 * 3600) return null;
 		$r = self::load((string)$run['id']);
 		return $r ? ['report' => $r, 'hash' => (array)$run['hash']] : null;
+	}
+
+	/**
+	 * TCPDF's cache folder (0.8.770): <nuBuilder Next>/temp/tcpdf (protected from the web), or – when that cannot be written – a folder of
+	 * its own below the system's temp folder. Never the temp folder itself: TCPDF deletes the images it used from below K_PATH_CACHE.
+	 */
+	public static function tcpdfCacheDir(): string
+	{
+		$own = self::tempDir() . '/tcpdf';
+		if (!is_dir($own)) @mkdir($own, 0775, true);
+		if (is_dir($own) && is_writable($own)) { NuSecurity::protectDir($own); return $own; }
+		$sys = rtrim(sys_get_temp_dir(), '/\\') . '/nunext-tcpdf-' . substr(hash('sha256', NU_ROOT), 0, 12);
+		if (!is_dir($sys)) @mkdir($sys, 0700, true);
+		return $sys;
 	}
 
 	/** Folder for nuRunReportSave (nuBuilder: <nuBuilder>/temp): <nuBuilder Next>/temp, protected from the web. */

@@ -165,7 +165,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 		};
 	};
 	?>
-	<div class="nuTitleBar mb-3">
+	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-filetype-php me-2"></i><?= h($proc ? (string)$proc['sph_code'] : t('proc_new')) ?>
 			<?php if ($proc && (string)$proc['sph_template'] === '1'): ?><span class="badge text-bg-light border fs-6 align-middle"><?= h(t('proc_template')) ?></span><?php endif; ?></h1>
 		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page (0.8.474) -->

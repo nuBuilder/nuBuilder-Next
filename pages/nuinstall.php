@@ -58,6 +58,8 @@ if (!is_array($S)) {
 		'detect' => null, 'pending_config' => null,
 	];
 }
+// languages to include follow the language chosen for the installation (0.8.790) until the Options step was saved
+if (empty($S['opt_langs_set'])) $S['opt']['langs'] = array_values(array_unique([nu_lang(), 'en']));
 $step = (string)($_GET['step'] ?? NU_INS_STEPS[min($S['reached'], count(NU_INS_STEPS) - 1)]);
 if (!in_array($step, NU_INS_STEPS, true)) $step = 'start';
 if (array_search($step, NU_INS_STEPS, true) > $S['reached'] || (!$S['auth'] && $step !== 'start')) $step = $S['auth'] ? NU_INS_STEPS[$S['reached']] : 'start';
@@ -184,6 +186,7 @@ if ($late) {
 			if ($o['nub_path'] !== '' && !NuInstall::nuBuilderPath($o['nub_path'])) $errors['nub_path'] = t('ins_err_nub_path');
 			if ($o['shared'] && $o['nub_path'] === '') $errors['shared'] = t('ins_err_shared');
 			$S['opt'] = $o;
+			$S['opt_langs_set'] = true;                               // chosen by the user: the language of the wizard no longer changes them
 			if (!$errors) $go('libs');
 			break;
 
@@ -339,6 +342,14 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 		<div class="d-flex align-items-center gap-2"><?= nu_brand_logo() ?><span class="small text-body-secondary"><?= h(NU_VERSION) ?></span></div>
 		<div class="d-flex gap-2"><?php nu_theme_menu(); ?><?php nu_lang_menu(); ?></div>
 	</div>
+	<?php if (!isset($done) && !function_exists('sodium_crypto_sign_verify_detached')):   // 0.8.788: library packs / updates cannot be checked
+		$iniFile = ($S && !empty($S['auth'])) ? (string)(php_ini_loaded_file() ?: 'php.ini') : 'php.ini'; ?>
+		<div class="alert alert-warning small mb-3" role="note" id="insSodium">
+			<div class="fw-semibold mb-1"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i><?= h(t('ins_sodium_title')) ?></div>
+			<p class="mb-2"><?= h(t('ins_sodium_text')) ?></p>
+			<ol class="mb-0 ps-3"><li><?= h(t('ins_sodium_s1', $iniFile)) ?></li><li><?= h(t('ins_sodium_s2')) ?></li><li><?= h(t('ins_sodium_s3')) ?></li></ol>
+		</div>
+	<?php endif; ?>
 	<?php if (!isset($done)): ?>
 		<ol class="nuInsSteps mb-3" aria-label="<?= h(t('ins_progress')) ?>">
 			<?php foreach (NU_INS_STEPS as $i => $s):
@@ -381,6 +392,15 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 			<!-- ================================================================ start -->
 			<h1 class="h4"><?= h(t('ins_welcome')) ?></h1>
 			<p class="text-body-secondary small"><?= h(t('ins_welcome_text')) ?></p>
+			<?php // language of the installation (0.8.790): the wizard's language, the first language to include and the default of the setup wizard ?>
+			<form method="get" action="index.php" class="row g-2 align-items-end mb-3" id="insLangForm">
+				<input type="hidden" name="p" value="lang"><input type="hidden" name="r" value="p=install&amp;step=start">
+				<div class="col-sm-7"><label class="form-label fw-semibold" for="insLang"><?= h(t('ins_lang')) ?></label>
+					<select class="form-select js-autosubmit" id="insLang" name="l">
+						<?php foreach (nu_lang_choices() as $code => $own): ?><option value="<?= h($code) ?>" lang="<?= h($code) ?>"<?= nu_lang_choice() === $code ? ' selected' : '' ?>><?= h($own) ?></option><?php endforeach; ?>
+					</select></div>
+				<noscript><div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><?= h(t('ok')) ?></button></div></noscript>
+			</form>
 			<h2 class="h6 mt-3"><?= h(t('ins_server')) ?></h2>
 			<ul class="list-group small mb-3" id="insReq">
 				<?php foreach ($reqs as [$label, $ok, $detail, $must]): ?>

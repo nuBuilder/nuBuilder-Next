@@ -143,3 +143,72 @@ IF OBJECT_ID('zzzzsys_select_clause') IS NULL CREATE TABLE zzzzsys_select_clause
   zzzzsys_select_clause_id NVARCHAR(25) NOT NULL PRIMARY KEY, ssc_zzzzsys_select_id NVARCHAR(25) NULL, ssc_type NVARCHAR(300) NULL, ssc_field NVARCHAR(500) NULL,
   ssc_clause NVARCHAR(500) NULL, ssc_sort NVARCHAR(10) NULL, ssc_order NVARCHAR(500) NULL, ssc_json NVARCHAR(MAX) NULL
 );
+
+-- nuBuilder Forte's form tables (0.8.789; converted from schema_mysql_forms.sql – forms, tabs, browse columns, events, procedures, objects)
+
+IF OBJECT_ID('zzzzsys_form') IS NULL CREATE TABLE zzzzsys_form (
+  zzzzsys_form_id NVARCHAR(25) NOT NULL PRIMARY KEY,
+  sfo_type NVARCHAR(300) NULL, sfo_code NVARCHAR(300) NULL, sfo_description NVARCHAR(300) NULL,
+  sfo_group NVARCHAR(100) NULL, sfo_status NVARCHAR(1) NULL, sfo_breadcrumb_title NVARCHAR(100) NULL,
+  sfo_table NVARCHAR(300) NULL, sfo_primary_key NVARCHAR(300) NULL, sfo_browse_redirect_form_id NVARCHAR(300) NULL,
+  sfo_browse_target NVARCHAR(1) NULL, sfo_browse_row_height INT NULL, sfo_browse_rows_per_page INT NULL,
+  sfo_browse_title_multiline NVARCHAR(1) NULL, sfo_browse_autoresize_columns NVARCHAR(1) NULL,
+  sfo_browse_sql NVARCHAR(MAX) NULL, sfo_javascript NVARCHAR(MAX) NULL, sfo_browse_javascript NVARCHAR(MAX) NULL, sfo_edit_javascript NVARCHAR(MAX) NULL,
+  sfo_style NVARCHAR(MAX) NULL, sfo_mobile_view NVARCHAR(1) NULL, sfo_json NVARCHAR(MAX) NULL
+);
+
+IF OBJECT_ID('zzzzsys_tab') IS NULL CREATE TABLE zzzzsys_tab (
+  zzzzsys_tab_id NVARCHAR(25) NOT NULL PRIMARY KEY, syt_zzzzsys_form_id NVARCHAR(25) NULL, syt_title NVARCHAR(250) NULL,
+  syt_order INT NULL, syt_help NVARCHAR(3000) NULL, syt_access NVARCHAR(1) NULL, syt_json NVARCHAR(MAX) NULL
+);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_zzzzsys_tab_syt_zzzzsys_form_id' AND object_id = OBJECT_ID('zzzzsys_tab')) CREATE INDEX ix_zzzzsys_tab_syt_zzzzsys_form_id ON zzzzsys_tab (syt_zzzzsys_form_id);
+
+IF OBJECT_ID('zzzzsys_browse') IS NULL CREATE TABLE zzzzsys_browse (
+  zzzzsys_browse_id NVARCHAR(25) NOT NULL PRIMARY KEY, sbr_zzzzsys_form_id NVARCHAR(25) NULL, sbr_title NVARCHAR(100) NULL,
+  sbr_display NVARCHAR(512) NULL, sbr_align NCHAR(1) NULL, sbr_format NVARCHAR(300) NULL,
+  sbr_order INT NULL, sbr_width INT NULL, sbr_json NVARCHAR(MAX) NULL
+);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_zzzzsys_browse_sbr_zzzzsys_form_id' AND object_id = OBJECT_ID('zzzzsys_browse')) CREATE INDEX ix_zzzzsys_browse_sbr_zzzzsys_form_id ON zzzzsys_browse (sbr_zzzzsys_form_id);
+
+IF OBJECT_ID('zzzzsys_event') IS NULL CREATE TABLE zzzzsys_event (
+  zzzzsys_event_id NVARCHAR(25) NOT NULL PRIMARY KEY, sev_zzzzsys_object_id NVARCHAR(25) NULL, sev_event NVARCHAR(100) NULL,
+  sev_javascript NVARCHAR(3000) NULL, sev_json NVARCHAR(MAX) NULL
+);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_zzzzsys_event_sev_zzzzsys_object_id' AND object_id = OBJECT_ID('zzzzsys_event')) CREATE INDEX ix_zzzzsys_event_sev_zzzzsys_object_id ON zzzzsys_event (sev_zzzzsys_object_id);
+
+IF OBJECT_ID('zzzzsys_php') IS NULL CREATE TABLE zzzzsys_php (
+  zzzzsys_php_id NVARCHAR(25) NOT NULL PRIMARY KEY, sph_code NVARCHAR(300) NULL, sph_description NVARCHAR(300) NULL,
+  sph_group NVARCHAR(100) NULL, sph_category NVARCHAR(100) NULL, sph_status NVARCHAR(1) NULL, sph_php NVARCHAR(MAX) NULL,
+  sph_javascript NVARCHAR(MAX) NULL, sph_javascript_active NVARCHAR(1) NULL, sph_run NVARCHAR(20) NULL,
+  sph_zzzzsys_form_id NVARCHAR(25) NULL, sph_system NVARCHAR(1) NULL, sph_global NVARCHAR(1) NULL,
+  sph_demo NVARCHAR(1) NULL, sph_template NVARCHAR(1) NULL, sph_hide NVARCHAR(1) NULL, sph_json NVARCHAR(MAX) NULL
+);
+
+IF OBJECT_ID('zzzzsys_object') IS NULL CREATE TABLE zzzzsys_object (
+  zzzzsys_object_id NVARCHAR(25) NOT NULL PRIMARY KEY,
+  sob_all_zzzzsys_form_id NVARCHAR(25) NULL, sob_all_table NVARCHAR(300) NULL, sob_all_type NVARCHAR(20) NULL,
+  sob_all_id NVARCHAR(300) NULL, sob_all_label NVARCHAR(1000) NULL, sob_all_zzzzsys_tab_id NVARCHAR(25) NULL,
+  sob_all_order INT NULL, sob_all_top INT NULL, sob_all_left INT NULL, sob_all_width INT NULL,
+  sob_all_height INT NULL, sob_all_cloneable NVARCHAR(1) NULL, sob_all_align NVARCHAR(10) NULL,
+  sob_all_validate NVARCHAR(1) NULL, sob_all_access NVARCHAR(1) NULL, sob_all_access_condition NVARCHAR(1000) NULL,
+  sob_all_event NVARCHAR(1) NULL, sob_all_style_type NVARCHAR(15) NULL, sob_all_style NVARCHAR(1000) NULL,
+  sob_calc_formula NVARCHAR(3000) NULL, sob_calc_format NVARCHAR(30) NULL, sob_run_zzzzsys_form_id NVARCHAR(50) NULL,
+  sob_run_filter NVARCHAR(300) NULL, sob_run_method NVARCHAR(1) NULL, sob_run_target NVARCHAR(1) NULL,
+  sob_run_type NVARCHAR(1) NULL, sob_run_id NVARCHAR(50) NULL, sob_display_sql NVARCHAR(MAX) NULL, sob_display_procedure NVARCHAR(25) NULL,
+  sob_select_multiple NVARCHAR(1) NULL, sob_select_2 NVARCHAR(1) NULL, sob_select_sql NVARCHAR(MAX) NULL, sob_select_procedure NVARCHAR(25) NULL,
+  sob_lookup_code NVARCHAR(50) NULL, sob_lookup_description NVARCHAR(300) NULL, sob_lookup_description_width NVARCHAR(4) NULL,
+  sob_lookup_autocomplete NVARCHAR(1) NULL, sob_lookup_zzzzsys_form_id NVARCHAR(50) NULL, sob_lookup_javascript NVARCHAR(MAX) NULL,
+  sob_lookup_php NVARCHAR(25) NULL, sob_lookup_table NVARCHAR(500) NULL, sob_subform_zzzzsys_form_id NVARCHAR(50) NULL,
+  sob_subform_foreign_key NVARCHAR(100) NULL, sob_subform_add NVARCHAR(1) NULL, sob_subform_delete NVARCHAR(1) NULL,
+  sob_subform_type NVARCHAR(10) NULL, sob_subform_table NVARCHAR(300) NULL, sob_input_count NVARCHAR(15) NULL,
+  sob_input_format NVARCHAR(30) NULL, sob_input_type NVARCHAR(30) NULL, sob_input_icon NVARCHAR(50) NULL,
+  sob_input_javascript NVARCHAR(MAX) NULL, sob_input_datalist NVARCHAR(MAX) NULL, sob_input_attribute NVARCHAR(1000) NULL,
+  sob_input_file_target NVARCHAR(1) NULL, sob_html_code NVARCHAR(MAX) NULL, sob_html_chart_type NVARCHAR(70) NULL,
+  sob_html_javascript NVARCHAR(1000) NULL, sob_html_title NVARCHAR(70) NULL, sob_html_vertical_label NVARCHAR(70) NULL,
+  sob_html_horizontal_label NVARCHAR(70) NULL, sob_image_zzzzsys_file_id NVARCHAR(25) NULL, sob_all_json NVARCHAR(MAX) NULL, sob_json NVARCHAR(MAX) NULL
+);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_zzzzsys_object_sob_all_zzzzsys_form_id' AND object_id = OBJECT_ID('zzzzsys_object')) CREATE INDEX ix_zzzzsys_object_sob_all_zzzzsys_form_id ON zzzzsys_object (sob_all_zzzzsys_form_id);

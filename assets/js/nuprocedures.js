@@ -33,6 +33,7 @@
 		if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: ta.getAttribute('data-mode') === 'php' ? 'PHP' : 'JS', db: D.db, readOnly: ro});
 		if (tools && !ro && ta.id === 'sph_php' && window.NuHashVars && D.catalog) NuHashVars.attach(cm, tools, {catalog: D.catalog});
 	});
+	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(document.getElementById('nuRecordForm'));   // syntax errors: ask before saving (0.8.781)
 	// editors in hidden tabs need a refresh when shown
 	$$('#procTabs [data-bs-toggle="tab"]').forEach(function (b) {
 		b.addEventListener('shown.bs.tab', function () { Object.keys(editors).forEach(function (k) { editors[k].refresh(); }); });

@@ -89,7 +89,7 @@ if ($id !== '') {
 	?>
 	<form method="post" action="<?= h(nu_url('userfields', ['id' => $id])) ?>" id="ufForm" data-nu-guard novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
-		<div class="nuTitleBar mb-3">
+		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><i class="bi bi-ui-checks me-2"></i><?= h($f ? NuUserFields::label($f) : t('uf_new')) ?></h1>
 			<div class="nuTitleSub text-body-secondary small"><?= h(t('uf_title')) ?></div>
 			<div class="d-flex flex-wrap gap-2"><?= nu_back_button(null, nu_url('userfields')) ?>

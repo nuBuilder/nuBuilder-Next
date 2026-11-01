@@ -45,9 +45,11 @@ final class NuCloner
 	{
 		$this->db = $db;
 		$this->o  = $options + ['dest' => '', 'code' => '', 'description' => '', 'tabs' => [], 'objects' => true, 'subforms' => false, 'subform_ids' => [],
-			'iframes' => false, 'iframe_ids' => [], 'access' => false, 'dump' => false, 'new_pks' => true, 'replace' => false, 'notes' => ''];
+			'iframes' => false, 'iframe_ids' => [], 'access' => false, 'dump' => false, 'new_pks' => true, 'replace' => false, 'notes' => '', 'target' => ''];
 		if (!$this->o['dump']) { $this->o['new_pks'] = true; $this->o['replace'] = false; }   // keeping keys would collide with the source
-		if ($db->type === 'sqlsrv') $this->o['replace'] = false;
+		// SQL of the dump (0.8.794): for MySQL / MariaDB or for SQL Server – default the database this runs on
+		$this->o['target'] = in_array($this->o['target'], ['mysql', 'sqlsrv'], true) ? $this->o['target'] : ($db->type === 'sqlsrv' ? 'sqlsrv' : 'mysql');
+		if ($this->o['target'] === 'sqlsrv') $this->o['replace'] = false;
 		$this->hasSelect = $db->tableExists('zzzzsys_select') && $db->tableExists('zzzzsys_select_clause');
 	}
 
@@ -152,15 +154,27 @@ final class NuCloner
 			$this->sql[] = "\n-- " . $table . ($label !== '' ? ': ' . $label : '');
 			$this->lastTable = $table . $label;
 		}
-		$vals = array_map(fn($v) => $v === null ? 'NULL' : (is_int($v) || is_float($v) ? (string)$v : $this->db->pdo()->quote((string)$v)), array_values($row));
+		$vals = array_map(fn($v) => $v === null ? 'NULL' : (is_int($v) || is_float($v) ? (string)$v : self::literal((string)$v, $this->o['target'])), array_values($row));
 		$this->sql[] = ($this->o['replace'] ? 'REPLACE INTO ' : 'INSERT INTO ') . $table . ' (' . implode(', ', array_keys($row)) . ') VALUES (' . implode(', ', $vals) . ');';
+	}
+
+	/**
+	 * A string literal of the dump's database (0.8.794) – not the connection's quote(), so a dump for the other kind is right too.
+	 * MySQL: backslash and quote escaped (also with NO_BACKSLASH_ESCAPES off, the default); SQL Server: N'…' (Unicode), '' for a quote.
+	 */
+	public static function literal(string $v, string $target): string
+	{
+		if ($target === 'sqlsrv') return "N'" . str_replace("'", "''", $v) . "'";
+		return "'" . str_replace(['\\', "\0", "'", "\x1a"], ['\\\\', '\\0', "''", '\\Z'], $v) . "'";
 	}
 
 	private function header(string $src): void
 	{
 		$f = $this->db->one('SELECT sfo_code, sfo_description, sfo_table, sfo_type FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$src]);
 		$this->sql[] = '-- nuBuilder Next cloner – SQL dump';
-		$this->sql[] = '-- Created: ' . date('Y-m-d H:i:s') . ' · nuBuilder Next ' . NU_VERSION . ' · database type ' . $this->db->type;
+		$tgt = $this->o['target'] === 'sqlsrv' ? 'Microsoft SQL Server (T-SQL)' : 'MySQL / MariaDB';
+		$this->sql[] = '-- For: ' . $tgt . ' – run it on a database of this kind';
+		$this->sql[] = '-- Created: ' . date('Y-m-d H:i:s') . ' · nuBuilder Next ' . NU_VERSION . ' · read from a ' . ($this->db->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB') . ' database';
 		$this->sql[] = '-- Form: ' . $f['sfo_code'] . ' – ' . $f['sfo_description'] . ' · table ' . $f['sfo_table'] . ' · type ' . $f['sfo_type'];
 		$this->sql[] = '-- New primary keys: ' . ($this->o['new_pks'] ? 'yes' : 'no (same ids as the source)');
 		if (trim((string)$this->o['notes']) !== '') foreach (preg_split('/\R/', trim((string)$this->o['notes'])) as $l) $this->sql[] = '-- Notes: ' . $l;

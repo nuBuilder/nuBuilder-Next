@@ -165,7 +165,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 	$suMode = nu_is_post() && in_array(nu_post('su_mode'), ['new', 'existing'], true) ? nu_post('su_mode') : ($uSel === '__new' ? 'new' : 'existing');
 	$active = nu_is_post() ? nu_check('active') === '1' : ($client ? (string)$client['active'] === '1' : true);
 	?>
-	<div class="nuTitleBar mb-3">
+	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-plug me-2"></i><?= h($client ? (string)$client['name'] : t('api_new')) ?></h1>
 		<a class="btn nuBtnAct" href="<?= h(nu_url('apiclients')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<button class="btn nuBtnAct nuBtnSave" type="submit" form="apiForm" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>

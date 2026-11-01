@@ -215,10 +215,57 @@ final class NuImport
 			static fn($t) => !str_starts_with(strtolower($t), 'zzzzsys_') && !str_starts_with($t, 'sqlite_') && preg_match('/^[A-Za-z0-9_]+$/', $t)));
 	}
 
-	/** May tables be imported into (Admin tools → CSV import)? */
+	/** May tables be imported into (Admin tools → Data import)? The admin right = every table; permission items of type "Data import" = their tables. */
 	public static function canTables(): bool
 	{
+		return NuAdmin::can('import', 'change') || self::itemRules() !== [];
+	}
+
+	/** Every table (admin right "Data import" = change)? */
+	public static function allTables(): bool
+	{
 		return NuAdmin::can('import', 'change');
+	}
+
+	/**
+	 * Tables of the user's active permission items of type "Data import" (0.8.773): table => ['add' => bool, 'update' => bool, 'items' => [idents]]
+	 * – the union of all items. Not while acting as another user (the import page is refused then anyway).
+	 */
+	public static function itemRules(): array
+	{
+		static $memo = null;
+		$u = NuAuth::user();
+		$key = (string)($u['id'] ?? '');
+		if ($memo !== null && $memo[0] === $key) return $memo[1];
+		$out = [];
+		if ($key !== '' && empty($u['globeadmin'])) {
+			foreach (NuPermType::forUser($key, 'import') as [, $ident, $set]) {
+				foreach ($set['tables'] as $t) {
+					$r = $out[$t] ?? ['add' => false, 'update' => false, 'items' => []];
+					$out[$t] = ['add' => $r['add'] || $set['add'], 'update' => $r['update'] || $set['update'], 'items' => array_values(array_unique([...$r['items'], $ident]))];
+				}
+			}
+			ksort($out);
+		}
+		$memo = [$key, $out];
+		return $out;
+	}
+
+	/** Tables this user may import into (all for the admin right, else those of the items that still exist). */
+	public static function allowedTables(): array
+	{
+		if (self::allTables()) return self::tables();
+		$rules = self::itemRules();
+		return $rules ? array_values(array_intersect(self::tables(), array_keys($rules))) : [];
+	}
+
+	/** Modes of a table: insert / update / upsert, as the admin right or the items allow. */
+	public static function modesFor(string $table): array
+	{
+		if (self::allTables()) return ['insert', 'update', 'upsert'];
+		$r = self::itemRules()[$table] ?? null;
+		if (!$r) return [];
+		return array_keys(array_filter(['insert' => $r['add'], 'update' => $r['update'], 'upsert' => $r['add'] && $r['update']]));
 	}
 
 	/** May users be imported (users browse list → Import…)? Whoever may add users: the globeadmin, the access level or an admin role. */
@@ -230,7 +277,7 @@ final class NuImport
 	/** Targets of this user: the users first, then the tables. */
 	public static function targets(): array
 	{
-		return array_merge(self::canUsers() ? [self::USERS] : [], self::canTables() ? self::tables() : []);
+		return array_merge(self::canUsers() ? [self::USERS] : [], self::allowedTables());
 	}
 
 	/**
@@ -243,7 +290,7 @@ final class NuImport
 			if (!self::canUsers()) throw new RuntimeException(t('imp_err_table'));
 			return self::userColumns();
 		}
-		if (!self::canTables() || !in_array($table, self::tables(), true)) throw new RuntimeException(t('imp_err_table'));
+		if (!in_array($table, self::allowedTables(), true)) throw new RuntimeException(t('imp_err_table'));
 		$db = nu_db();
 		if ($db->type === 'mysql') {
 			$rows = $db->all('SELECT COLUMN_NAME AS n, COLUMN_TYPE AS t, DATA_TYPE AS dt, IS_NULLABLE AS nul, COLUMN_DEFAULT AS d, COLUMN_KEY AS k, EXTRA AS x,
@@ -459,6 +506,7 @@ final class NuImport
 			return self::runUsers($read, $mapIn, $opt, $dryRun);
 		}
 		$cols = self::columns($table);
+		if (!in_array($opt['mode'], self::modesFor($table), true)) throw new RuntimeException(t('imp_err_mode'));   // permission items: add / update (0.8.773)
 		$prev = self::preview($read);
 		$map = self::mapping($mapIn, $cols, count($prev['headers']));
 		if (!$map) throw new RuntimeException(t('imp_err_nomap'));
@@ -625,7 +673,9 @@ final class NuImport
 		$out['sus_name']       = $col('sus_name', t('user_display_name') . ' · ' . t('imp_u_name_hint'), 50);
 		foreach (['sus_first_name' => [30, 'user_first_name'], 'sus_last_name' => [30, 'user_last_name'], 'sus_email' => [255, 'user_email'],
 			'sus_code' => [50, 'user_code'], 'sus_position' => [50, 'user_position'], 'sus_department' => [50, 'user_department'], 'sus_team' => [50, 'user_team'],
-			'sus_additional1' => [100, 'user_additional1'], 'sus_additional2' => [100, 'user_additional2']] as $n => [$len, $label]) $out[$n] = $col($n, t($label), $len);
+			'sus_additional1' => [100, 'user_additional1'], 'sus_additional2' => [100, 'user_additional2']] as $n => [$len, $label])
+			// a renamed field (0.8.798, nu_user_label) still maps files with the built-in title
+			$out[$n] = $col($n, t($label), $len, false, 'text', nu_user_label($label) !== '' ? ['alias' => nu_text($label)] : []);
 		$out['access_level']   = $col('access_level', t('imp_u_access'), 0, true, 'text', ['choices' => array_keys(self::userLevels())]);
 		$out['sus_language']   = $col('sus_language', t('user_language') . ' · ' . t('imp_u_lang_hint'), 0);
 		$out['sus_expires_on'] = $col('sus_expires_on', t('user_expires'), 0, false, 'date');

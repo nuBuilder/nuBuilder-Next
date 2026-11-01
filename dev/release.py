@@ -28,6 +28,8 @@ Then check the package on a test installation: NuUpdate::inspect('…/nunext.zip
 """
 import datetime, hashlib, json, os, re, shlex, subprocess, sys, zipfile
 
+sys.stdout.reconfigure(line_buffering=True)                    # 0.8.768: progress reaches a log file line by line
+
 # never deployed to a server (readable there, and not needed): development notes, open points, tools, CI
 DEV_ONLY = ('CLAUDE.md', 'TODO.md', '.gitignore')
 DEV_DIRS = ('dev/', '.github/')
@@ -121,9 +123,22 @@ def browser_tests():
     bad = []
     for name, f in suites:
         subprocess.run(['mysql', *shlex.split(db), '-e', "DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'"], capture_output=True)   # no shell (DeepSource BAN-B602)
-        p = subprocess.run(['node', f], capture_output=True, text=True, env=env)
-        out = (p.stdout + p.stderr).strip().splitlines()
-        print(name + ': ' + (out[-1] if out else 'no output'))
+        # 0.8.768: stream every test line as it happens ("e2e   12  ok   home_view  812 ms") – a long run shows progress, a crash is seen at once
+        import time
+        start = time.time()
+        print(f'{name}: started {time.strftime("%H:%M:%S")}', flush=True)
+        p = subprocess.Popen(['node', f], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, bufsize=1)
+        out, n = [], 0
+        for line in p.stdout:
+            line = line.rstrip('\n')
+            out.append(line)
+            if line[:5] in ('ok   ', 'skip ', 'FAIL '):
+                n += 1
+                print(f'  {name} {n:4d}  {line}', flush=True)
+        p.wait()
+        out = [l for l in out if l.strip()]
+        mins = int(time.time() - start) // 60
+        print(name + ': ' + (out[-1] if out else 'no output') + f'  ({mins} min)', flush=True)
         if p.returncode != 0:
             bad.append(name + ':\n' + '\n'.join(l for l in out if l.startswith('FAIL')))
     if not nub:

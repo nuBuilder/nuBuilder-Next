@@ -330,6 +330,8 @@ final class NuCompat
 		'G9' => null,
 		// G10 (0.8.585): users with additional access levels – nuBuilder 4.x gives them only the rights of the main level
 		'G10' => '0.8.585',
+		// FE (0.8.784): forms for everyone (NuFormEveryone) that access levels created in nuBuilder Forte do not have yet
+		'FE' => '0.8.784',
 		// BS6 (0.8.740, developer mode only): Bootstrap 5 markup that Bootstrap 6 changes (NuBs6) – nothing to do while nuBuilder Next stays on 5.3
 		'BS6' => null,
 		// J4 (0.8.741): jQuery functions jQuery 4 removed / Migrate warns about in the application's code (NuJquery::scan) – a preparation
@@ -467,6 +469,14 @@ final class NuCompat
 				$hit('G10', 'User · ' . ($x['sus_login_name'] ?? $x['user_id']), '', (string)($x['sal_code'] ?? ''));
 			}
 		}
+		// FE: forms for everyone that some access levels miss (created in nuBuilder Forte) – the form's Access levels dialog adds them on Save
+		try {
+			$miss = NuFormEveryone::missing();
+			if ($miss) {
+				$codes = array_column($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+				foreach ($miss as $fid => $lv) $hit('FE', 'Form · ' . ($forms[$fid]['sfo_code'] ?? $fid), $fid, implode(', ', array_map(static fn($a) => (string)($codes[$a] ?? $a), $lv)));
+			}
+		} catch (Throwable) { /* no settings table */ }
 		// J4: jQuery 4 – removed functions and Migrate warnings in the application's JavaScript (always shown, grey)
 		foreach (self::sources($withSystem) as $src) {
 			if ($src['lang'] !== 'js') continue;
@@ -495,6 +505,112 @@ final class NuCompat
 	}
 
 	/** Removes // and /* *\/ comments (roughly; strings containing // are rare in nu… calls). */
+	/**
+	 * MySQL-only SQL (0.8.791) – shown on the Compatibility check while nuBuilder Next runs on SQL Server: browse SQL, select / display
+	 * SQL of objects, the SQL builder and SQL in the strings of procedures and PHP events. id => [what MySQL wrote, regex, what T-SQL uses].
+	 * The regexes run on the SQL with its comments and string contents taken out (except the rules on quotes themselves).
+	 */
+	public const MSSQL_RULES = [
+		'backtick'   => ['`name`', '/`/', '[name] or a plain name'],
+		'dquote'     => ['"text" as a string', '/"[^"\n]*"/', '\'text\' – double quotes name columns in T-SQL'],
+		'bslash'     => ['\\\' inside a string', "/\\\\'/", "'' (two single quotes)"],
+		'limit'      => ['LIMIT n', '/\bLIMIT\s+(\d|#|:|\?|\$)/i', 'SELECT TOP (n) … / ORDER BY … OFFSET m ROWS FETCH NEXT n ROWS ONLY'],
+		'ifnull'     => ['IFNULL()', '/\bIFNULL\s*\(/i', 'ISNULL() / COALESCE()'],
+		'if'         => ['IF(cond, a, b)', '/(?<![\w.])IF\s*\(/i', 'IIF(cond, a, b) / CASE WHEN … THEN … ELSE … END'],
+		'gconcat'    => ['GROUP_CONCAT()', '/\bGROUP_CONCAT\s*\(/i', 'STRING_AGG(x, \',\') (SQL Server 2017+)'],
+		'now'        => ['NOW() / SYSDATE()', '/\b(NOW|SYSDATE)\s*\(/i', 'GETDATE() / SYSDATETIME()'],
+		'curdate'    => ['CURDATE() / CURRENT_DATE', '/\bCURDATE\s*\(|\bCURRENT_DATE\b(?!\s*\()/i', 'CAST(GETDATE() AS date)'],
+		'curtime'    => ['CURTIME()', '/\bCURTIME\s*\(/i', 'CAST(GETDATE() AS time)'],
+		'datefmt'    => ['DATE_FORMAT()', '/\bDATE_FORMAT\s*\(/i', 'FORMAT(d, \'dd.MM.yyyy\') / CONVERT(varchar, d, 104)'],
+		'strtodate'  => ['STR_TO_DATE()', '/\bSTR_TO_DATE\s*\(/i', 'CONVERT(date, s, 104) / TRY_CONVERT()'],
+		'dateadd'    => ['DATE_ADD() / DATE_SUB() / INTERVAL', '/\b(DATE_ADD|DATE_SUB|ADDDATE|SUBDATE)\s*\(|\bINTERVAL\s+[-\d#(]/i', 'DATEADD(day, n, d)'],
+		'datediff'   => ['DATEDIFF(a, b) – two arguments', '/\bDATEDIFF\s*\(\s*[^,()]+(\([^()]*\))?[^,()]*,\s*[^,()]+(\([^()]*\))?[^,()]*\)/i', 'DATEDIFF(day, b, a)'],
+		'tsdiff'     => ['TIMESTAMPDIFF()', '/\bTIMESTAMPDIFF\s*\(/i', 'DATEDIFF(unit, a, b)'],
+		'unixtime'   => ['UNIX_TIMESTAMP() / FROM_UNIXTIME()', '/\b(UNIX_TIMESTAMP|FROM_UNIXTIME)\s*\(/i', 'DATEDIFF_BIG(second, \'1970-01-01\', d) / DATEADD(second, n, \'1970-01-01\')'],
+		'dateparts'  => ['YEAR() … are fine; DAYOFWEEK() / WEEK() / LAST_DAY() …', '/\b(DAYOFWEEK|DAYOFMONTH|DAYOFYEAR|WEEKDAY|WEEK|WEEKOFYEAR|LAST_DAY|MONTHNAME|DAYNAME|YEARWEEK|QUARTER)\s*\(/i', 'DATEPART(weekday, d) / DATENAME() / EOMONTH()'],
+		'subindex'   => ['SUBSTRING_INDEX()', '/\bSUBSTRING_INDEX\s*\(/i', 'CHARINDEX() + LEFT() / SUBSTRING()'],
+		'locate'     => ['LOCATE() / INSTR() / POSITION()', '/\b(LOCATE|INSTR|POSITION)\s*\(/i', 'CHARINDEX(needle, text)'],
+		'lucase'     => ['LCASE() / UCASE()', '/\b(LCASE|UCASE)\s*\(/i', 'LOWER() / UPPER()'],
+		'length'     => ['LENGTH() / CHAR_LENGTH()', '/\b(LENGTH|CHAR_LENGTH|CHARACTER_LENGTH|OCTET_LENGTH)\s*\(/i', 'LEN() / DATALENGTH()'],
+		'mid'        => ['MID() / SUBSTR()', '/\b(MID|SUBSTR)\s*\(/i', 'SUBSTRING(text, start, length)'],
+		'lpad'       => ['LPAD() / RPAD()', '/\b(LPAD|RPAD)\s*\(/i', 'RIGHT(REPLICATE(\'0\', n) + x, n)'],
+		'regexp'     => ['REGEXP / RLIKE', '/\b(NOT\s+)?(REGEXP|RLIKE)\b/i', 'LIKE / PATINDEX() (SQL Server 2025: REGEXP_LIKE())'],
+		'nullsafe'   => ['<=>', '/<=>/', '(a = b OR (a IS NULL AND b IS NULL)) / IS NOT DISTINCT FROM (2022+)'],
+		'dupkey'     => ['ON DUPLICATE KEY UPDATE', '/\bON\s+DUPLICATE\s+KEY\s+UPDATE\b/i', 'MERGE … WHEN MATCHED THEN UPDATE … WHEN NOT MATCHED THEN INSERT'],
+		'insignore'  => ['INSERT IGNORE', '/\bINSERT\s+IGNORE\b/i', 'IF NOT EXISTS (SELECT …) INSERT … / MERGE'],
+		'replace'    => ['REPLACE INTO', '/\bREPLACE\s+INTO\b/i', 'MERGE / DELETE + INSERT'],
+		'lastid'     => ['LAST_INSERT_ID()', '/\bLAST_INSERT_ID\s*\(/i', 'SCOPE_IDENTITY() (nuBuilder\'s keys are text – rarely needed)'],
+		'foundrows'  => ['SQL_CALC_FOUND_ROWS / FOUND_ROWS()', '/\bSQL_CALC_FOUND_ROWS\b|\bFOUND_ROWS\s*\(/i', 'COUNT(*) OVER () / a second COUNT(*)'],
+		'castsigned' => ['CAST(x AS SIGNED / UNSIGNED / CHAR)', '/\bAS\s+(SIGNED|UNSIGNED)\b|\bAS\s+CHAR\s*\)/i', 'CAST(x AS INT / BIGINT / NVARCHAR(100))'],
+		'boolean'    => ['TRUE / FALSE', '/(?<![\w.\'])\b(TRUE|FALSE)\b(?![\w(])/i', '1 / 0'],
+		'dual'       => ['FROM DUAL', '/\bFROM\s+DUAL\b/i', 'leave FROM DUAL out'],
+		'using'      => ['JOIN … USING (col)', '/\bJOIN\b[^;]*?\bUSING\s*\(/i', 'JOIN … ON a.col = b.col'],
+		'ddl'        => ['ENGINE= / AUTO_INCREMENT / UNSIGNED', '/\bENGINE\s*=|\bAUTO_INCREMENT\b|\bINT(\(\d+\))?\s+UNSIGNED\b/i', 'IDENTITY(1,1), INT / BIGINT'],
+		'limitdel'   => ['UPDATE / DELETE … LIMIT', '/\b(UPDATE|DELETE)\b[^;]*\bLIMIT\b/i', 'UPDATE TOP (n) … / DELETE TOP (n) …'],
+		'ifexists'   => ['DROP / CREATE TABLE IF (NOT) EXISTS', '/\b(DROP|CREATE)\s+(TEMPORARY\s+)?TABLE\s+IF\s+(NOT\s+)?EXISTS\b/i', 'DROP TABLE IF EXISTS (2016+) / IF OBJECT_ID(\'t\') IS NULL CREATE TABLE …'],
+		'temptable'  => ['CREATE TEMPORARY TABLE', '/\bCREATE\s+TEMPORARY\s+TABLE\b/i', 'CREATE TABLE #name (…) – or nuBuilder\'s ___nu… tables'],
+	];
+
+	/** SQL of the application with MySQL-only parts: [rule id => [{where, form, proc, detail}]]. $sources only for tests. */
+	public static function mssqlScan(bool $withSystem = false, ?array $sources = null): array
+	{
+		if ($sources === null) {
+			$sources = self::sqlSources($withSystem);
+			foreach (self::sources($withSystem) as $src) {          // PHP: the strings that hold SQL (nuRunQuery("SELECT …"))
+				if ($src['lang'] !== 'php') continue;
+				foreach (self::phpSqlStrings((string)$src['code']) as $sql) $sources[] = ['lang' => 'sql', 'where' => $src['where'], 'form' => $src['form'], 'code' => $sql] + (isset($src['proc']) ? ['proc' => $src['proc']] : []);
+			}
+		}
+		$out = [];
+		foreach ($sources as $src) {
+			$raw = self::sqlNoComments((string)$src['code']);
+			$bare = self::sqlNoStrings($raw);
+			foreach (self::MSSQL_RULES as $id => [, $re]) {
+				$on = in_array($id, ['dquote', 'bslash'], true) ? $raw : $bare;
+				if (in_array($id, ['dquote'], true)) $on = (string)preg_replace("/'(?:[^'\\\\]|\\\\.|'')*'/s", "''", $raw);   // "…" outside single-quoted strings
+				if (!preg_match($re, $on, $m)) continue;
+				$key = $src['where'];
+				if (isset($out[$id][$key])) continue;                // once per place
+				$out[$id][$key] = ['where' => $src['where'], 'form' => (string)$src['form'], 'proc' => (string)($src['proc'] ?? ''), 'detail' => mb_substr(trim((string)preg_replace('/\s+/', ' ', $m[0])), 0, 80)];
+			}
+		}
+		return array_map('array_values', $out);
+	}
+
+	/** String literals of PHP code that look like SQL (a SELECT / INSERT / UPDATE / DELETE …). @return list<string> */
+	public static function phpSqlStrings(string $php): array
+	{
+		$out = [];
+		try { $toks = token_get_all('<?php ' . $php); } catch (Throwable) { return []; }
+		$cur = null;
+		foreach ($toks as $t) {
+			if (is_array($t) && $t[0] === T_CONSTANT_ENCAPSED_STRING) {
+				$q = $t[1][0];
+				$out[] = $q === "'" ? str_replace(["\\'", '\\\\'], ["'", '\\'], substr($t[1], 1, -1)) : stripcslashes(substr($t[1], 1, -1));
+			} elseif (is_array($t) && $t[0] === T_ENCAPSED_AND_WHITESPACE) {
+				$cur = ($cur ?? '') . $t[1];
+			} elseif (!is_array($t) && $t === '"' || (is_array($t) && in_array($t[0], [T_START_HEREDOC, T_END_HEREDOC], true))) {
+				if ($cur !== null) { $out[] = $cur; $cur = null; }
+			} elseif ($cur !== null && is_array($t) && in_array($t[0], [T_VARIABLE, T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true)) {
+				$cur .= ' :v ';                                     // a PHP variable inside the string – a value
+			}
+		}
+		if ($cur !== null) $out[] = $cur;
+		return array_values(array_filter($out, static fn($x) => strlen($x) > 10 && preg_match('/\b(SELECT|INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER)\b/i', $x)));
+	}
+
+	private static function sqlNoComments(string $sql): string
+	{
+		$sql = (string)preg_replace('#/\*.*?\*/#s', ' ', $sql);
+		return (string)preg_replace('/(--\s|#\s)[^\n]*/', ' ', $sql);
+	}
+
+	/** Contents of single-quoted strings removed ('' stays), so a word inside a text is no hit. */
+	private static function sqlNoStrings(string $sql): string
+	{
+		return (string)preg_replace("/'(?:[^'\\\\]|\\\\.|'')*'/s", "''", $sql);
+	}
+
 	private static function stripComments(string $code): string
 	{
 		$code = (string)preg_replace('#/\*.*?\*/#s', ' ', $code);

@@ -117,7 +117,7 @@ nu_layout_start(t('help_title'), '');
 	<div class="nuTitleSub text-body-secondary small"><?= h(t($admin ? 'help_for_admin' : 'help_for_user')) ?></div>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 	<?php if (NuAdmin::any()): ?>
-		<div class="btn-group" role="group" aria-label="<?= h(t('help_view')) ?>">
+		<div class="btn-group nuSeg" role="group" aria-label="<?= h(t('help_view')) ?>">
 			<a class="btn btn-outline-secondary<?= $admin ? ' active' : '' ?>" href="<?= h(nu_url('help')) ?>"><?= h(t('help_view_admin')) ?></a>
 			<a class="btn btn-outline-secondary<?= $preview ? ' active' : '' ?>" href="<?= h(nu_url('help', ['doc' => 'user'])) ?>"><?= h(t('help_view_user')) ?></a>
 		</div>

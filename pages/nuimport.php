@@ -9,7 +9,8 @@ defined('NU_ROOT') || exit;
 
 // admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php);
 // users (0.8.327): also whoever may add users – then only the target "Users" (NuImport::targets)
-if (!NuImport::canUsers()) NuAdmin::require('import', 'change');
+// permission items of type "Data import" (0.8.773): their tables only (NuImport::allowedTables / modesFor)
+if (!NuImport::canUsers() && !NuImport::itemRules()) NuAdmin::require('import', 'change');
 
 // template of the user import (0.8.330): the column titles as CSV – fill in with Excel, save as CSV, upload in step 1
 if (!nu_is_post() && ($_GET['action'] ?? '') === 'template' && ($_GET['target'] ?? '') === 'users') {
@@ -62,7 +63,8 @@ if (nu_is_post()) {
 				$res = NuImport::run($table, $read, json_decode((string)($_POST['mapping'] ?? '{}'), true) ?: [], $opt, $action === 'check');
 				if ($action === 'import') {
 					$file = NuImport::current();
-					NuLog::write($res['rolled_back'] ? 'csv_import_failed' : 'csv_imported', $table, '', [
+					$via = $table !== NuImport::USERS && !NuImport::allTables() ? (NuImport::itemRules()[$table]['items'] ?? []) : [];
+					NuLog::write($res['rolled_back'] ? 'csv_import_failed' : 'csv_imported', $table, '', ($via ? ['permission_items' => $via] : []) + [
 						'file' => $file['name'] ?? '', 'mode' => $opt['mode'], 'inserted' => $res['inserted'], 'updated' => $res['updated'],
 						'failed' => $res['failed'], 'rows' => $res['rows'], 'rolled_back' => $res['rolled_back']] + ($table === NuImport::USERS ? ['skipped' => $res['skipped'], 'welcome' => $res['welcome']] : []));
 					if (!$res['rolled_back']) NuImport::discard();       // done: the temp file is deleted
@@ -99,7 +101,8 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 	</ol>
 </nav>
 <div id="impApp" data-texts="<?= h(json_encode($texts, JSON_UNESCAPED_UNICODE)) ?>" data-formats="<?= h(json_encode($formats, JSON_UNESCAPED_UNICODE)) ?>"
-	 data-tables="<?= h(json_encode($canTables ? NuImport::tables() : [], JSON_UNESCAPED_UNICODE)) ?>" data-users="<?= NuImport::canUsers() ? '1' : '0' ?>"
+	 data-tables="<?= h(json_encode($canTables ? NuImport::allowedTables() : [], JSON_UNESCAPED_UNICODE)) ?>" data-users="<?= NuImport::canUsers() ? '1' : '0' ?>"
+	 data-modes="<?= h(json_encode(NuImport::allTables() ? (object)[] : array_map(static fn($r) => NuImport::modesFor($r), array_combine(array_keys(NuImport::itemRules()), array_keys(NuImport::itemRules())) ?: []), JSON_UNESCAPED_UNICODE)) ?>"
 	 data-target="<?= h($target) ?>" data-max-mb="<?= NuImport::maxBytes() >> 20 ?>" data-lang="<?= h(nu_lang()) ?>">
 	<?= nu_csrf_field() ?>
 	<div class="nuTitleBar mb-3">
@@ -112,6 +115,9 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 		</ol></div>
 	</div>
 	<div id="impMsg" aria-live="polite"></div>
+	<?php if (!NuImport::allTables() && ($rules = NuImport::itemRules())): // permission items of type Data import (0.8.773): where the right comes from ?>
+		<div class="alert alert-info small d-flex gap-2" id="impItemsNote"><i class="bi bi-key mt-1" aria-hidden="true"></i><div><?= h(t('imp_items_note', implode(', ', array_keys($rules)), implode(', ', array_unique(array_merge(...array_column($rules, 'items')))))) ?></div></div>
+	<?php endif; ?>
 
 	<!-- step 1: file -->
 	<section class="impStep" data-step="1">

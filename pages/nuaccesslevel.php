@@ -209,6 +209,10 @@ if (nu_is_post() && nu_post('action') === 'save') {
 
 		NuLog::write($isNew ? 'access_created' : 'access_updated', 'zzzzsys_access', $newId, ['code' => $v['sal_code'], 'forms' => count(array_filter($rows, static fn($r) => empty($r['remove'])))]);
 		nu_flash('success', $isNew ? t('access_created', $v['sal_code']) : t('saved'));
+		if ($isNew) {                                                     // forms for everyone (0.8.784): a new level gets them at once
+			$evAdded = NuFormEveryone::addToLevel((string)$newId);
+			if ($evAdded) nu_flash('info', t('fac_ev_added', count($evAdded), implode(', ', $evAdded)));
+		}
 		nu_redirect(nu_url('accesslevel', ['id' => $newId, 'tab' => nu_post('tab') === 'rights' ? 'rights' : null]));   // stays on the tab it was saved from
 	}
 	nu_flash('danger', t('err_check_form'));
@@ -277,7 +281,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 		<li class="breadcrumb-item active" aria-current="page"><?= h($title) ?></li>
 	</ol>
 </nav>
-<div class="nuTitleBar mb-3">
+<div class="nuTitleBar nuRecHead mb-3">
 	<h1 class="h3 mb-0 d-flex align-items-center gap-2"><i class="bi bi-shield-lock"></i><?= h($title) ?></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center">
 		<a class="btn nuBtnAct" href="<?= h(nu_url('access')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>

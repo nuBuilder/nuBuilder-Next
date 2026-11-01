@@ -398,7 +398,7 @@ final class NuDataExport
 			[$where, $params] = self::where($d['where'], $all);
 			$order = [];
 			foreach ($d['sort'] as [$col, $dir]) if (isset($all[$col])) $order[] = $db->ident($col) . ($dir === 'desc' ? ' DESC' : ' ASC');
-			$sql = 'SELECT ' . implode(', ', $select) . ' FROM ' . $db->ident($d['table']) . ($where !== '' ? ' WHERE ' . $where : '') . ($order ? ' ORDER BY ' . implode(', ', $order) : '');
+			$sql = 'SELECT ' . implode(', ', $select) . ' FROM ' . $db->ident($d['table']) . ($where !== '' ? ' WHERE ' . $where : '') . ($order ? ' ORDER BY ' . NuDB::uniqueOrder(implode(', ', $order)) : '');
 			return [$sql, $params, $cols];
 		}
 		$sql = rtrim(trim(self::sqlOf($d)), "; \n\r\t");

@@ -8,6 +8,7 @@
  {"name": "jquery-confirm", "version": "3.3.4-nu1", "dir": "jquery-confirm", "file": "jquery-confirm.min.js", "detect": "jquery-confirm v([0-9.]+-nu[0-9]+)", "license": "MIT", "use": "dialogs"},
  {"name": "Tom Select", "version": "2.6.2", "dir": "tom-select-2.6.2", "file": "tom-select.complete.min.js", "detect": "Tom Select v([0-9.]+)", "license": "Apache-2.0", "use": "selects"},
  {"name": "CodeMirror", "version": "5.65.21", "dir": "codemirror-5.65.21", "file": "codemirror-bundle.js", "detect": "CodeMirror ([0-9.]+) \\(MIT", "license": "MIT", "use": "editor"},
+ {"name": "Acorn", "version": "8.15.0", "dir": "acorn-8.15.0", "file": "acorn.min.js", "detect": "acorn v([0-9.]+)", "license": "MIT", "use": "syntax"},
  {"name": "js-beautify", "version": "1.15", "dir": "formatter", "file": "beautify.min.js", "detect": "", "license": "MIT", "use": "fmt_js"},
  {"name": "sql-formatter", "version": "15.6.4", "dir": "formatter", "file": "sql-formatter.min.js", "detect": "", "license": "MIT", "use": "fmt_sql"},
  {"name": "Prettier", "version": "3.3.3", "dir": "formatter", "file": "prettier-standalone.js", "detect": "\"(3\\.[0-9]+\\.[0-9]+)\"", "license": "MIT", "use": "fmt_php"},

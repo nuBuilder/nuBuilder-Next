@@ -228,8 +228,10 @@
    so the list follows its view again. */
 (function () {
 	'use strict';
+	function phone() {
 	var box = document.querySelector('.nuLv[data-lv-phone]'), btn = box && box.querySelector('[data-lv-phone-toggle]');
-	if (!btn) return;
+	if (!btn || btn.nuPhoneBound) return;
+	btn.nuPhoneBound = true;
 	var route = (window.location.search.match(/[?&]p=([\w-]+)/) || [])[1] || '', root = document.documentElement;
 	function current() { return root.getAttribute('data-lv-phone') || box.getAttribute('data-lv-phone') || 'cards'; }
 	function mark() { btn.setAttribute('aria-pressed', current() === 'table' ? 'true' : 'false'); }
@@ -243,13 +245,14 @@
 		mark();
 	});
 	mark();
+	}
+	phone();
+	(window.nuLvInits = window.nuLvInits || []).push(phone);   // run again after a list refresh in place (0.8.776, nulistsmooth.js)
 })();
 
 // long cells fold to three lines with "more" / "less" (0.8.690): <div class="nuLvClamp" data-more data-less> – the log's details
 (function () {
 	'use strict';
-	var boxes = document.querySelectorAll('.nuLvClamp');
-	if (!boxes.length) return;
 	function setup(box) {
 		if (box.getAttribute('data-clamp-done')) return;
 		box.classList.add('nuLvClamped');
@@ -268,5 +271,7 @@
 		});
 		box.insertAdjacentElement('afterend', b);
 	}
-	boxes.forEach(setup);
+	function all() { document.querySelectorAll('.nuLvClamp').forEach(setup); }
+	all();
+	(window.nuLvInits = window.nuLvInits || []).push(all);
 })();

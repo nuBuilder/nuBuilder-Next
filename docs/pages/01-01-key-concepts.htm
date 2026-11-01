@@ -36,7 +36,7 @@
 </div>
 <div class="doc-sub">
 	<h3 id="concept-config">Configuration in two places</h3>
-	<p><code>nuconfig.php</code> holds the database connection and settings in PHP variables – the same file and variable names as nuBuilder Forte, plus nuBuilder Next's own (<a href="#config">Configuration</a>). nuBuilder Forte's settings table <code>zzzzsys_config</code> holds the settings of nuBuilder Forte's Setup → Settings – in nuBuilder Next <em>Settings → nuBuilder Forte</em> (<a href="#settings">Settings</a>). nuBuilder Next's own installation settings (security, start page layouts, branding …) are JSON rows in <code>zzzzsys_nunext_setting</code>.</p>
+	<p><code>nuconfig.php</code> holds the database connection and settings in PHP variables – the same file and variable names as nuBuilder Forte, plus nuBuilder Next's own (<a href="#config">Configuration</a>). The shared settings table <code>zzzzsys_config</code> holds settings both products read (in nuBuilder Forte: Setup → Settings) – in nuBuilder Next <em>Settings → Shared settings</em> (<a href="#settings">Settings</a>). nuBuilder Next's own installation settings (security, start page layouts, branding …) are JSON rows in <code>zzzzsys_nunext_setting</code>.</p>
 </div>
 	<p class="doc-see">See also: <a href="#architecture">Architecture</a> · <a href="#form-lifecycle">Form lifecycle and event order</a> · <a href="#glossary">Glossary</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/numeta.php</code></li><li><code>core/form/nuhash.php</code></li><li><code>core/nuacl.php</code></li><li><code>core/nuinfra.php</code></li></ul></details>

@@ -74,7 +74,7 @@ nu_layout_start(t('adm_title'), 'home');
 </ol></nav>
 <form method="post" action="<?= h(nu_url('adminroles', ['id' => $isNew ? 'new' : $role['id']])) ?>" id="admForm" data-nu-guard novalidate>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
-	<div class="nuTitleBar mb-3">
+	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h3 mb-0 d-flex align-items-center gap-2"><i class="bi bi-person-badge"></i><?= h($title) ?></h1>
 		<div class="d-flex flex-wrap gap-2 align-items-center">
 			<a class="btn nuBtnAct" href="<?= h(nu_url('adminroles')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
@@ -102,7 +102,7 @@ nu_layout_start(t('adm_title'), 'home');
 	<div class="card shadow-sm mb-3">
 		<div class="card-header d-flex flex-wrap align-items-center gap-2"><span class="fw-semibold"><?= h(t('adm_rights')) ?></span><?= $tip(t('adm_rights_tip')) ?></div>
 		<?php if (isset($errors['rights'])): ?><div class="alert alert-danger m-3 mb-0"><?= h($errors['rights']) ?></div><?php endif; ?>
-		<div class="table-responsive">
+		<div id="admRightsWrap">
 			<table class="table nu-table mb-0 align-middle" id="admRights">
 				<?php // sortable titles (0.8.739, assets/js/nuadminroles.js): a sorted list is flat (no group rows), a third click goes back to the groups ?>
 				<thead><tr><th class="admSort" data-sort="name"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="<?= h(t('adm_sort_tip')) ?>"><?= h(t('adm_right')) ?></button></th>

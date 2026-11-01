@@ -136,7 +136,7 @@ nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$used = $q ? NuSqlSelect::usage($id) : [];
 	?>
-	<div class="nuTitleBar mb-3">
+	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-diagram-3 me-2"></i><?= h($q ? ((string)$q['sse_code'] ?: (string)$q['sse_description']) : t('sqb_new')) ?></h1>
 		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
 		<a class="btn nuBtnAct" href="<?= h(nu_url('sqlbuilder')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.767 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.802 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -6,7 +6,7 @@
 > **Alpha version – not ready for production.**
 > nuBuilder Next is still under heavy development. Functions, screens and its own database tables can change from one version to
 > the next. New versions may introduce breaking changes, and compatibility with previous versions or existing nuBuilder Forte
-> applications is not guaranteed. Some parts, such as SQL Server support, have not yet been verified.
+> applications is not guaranteed. Some parts are verified only partly – SQL Server, for example, has run on one installation so far.
 >
 > **For now, do not use it on an existing nuBuilder Forte (4.x) database. Install it on a new, empty database only.**
 
@@ -25,7 +25,7 @@
 
 **nuBuilder Next** is a modern front end for nuBuilder Forte 4. It runs on nuBuilder Forte's own tables (`zzzzsys_*`) on **MySQL / MariaDB** or **SQL Server** – side by side with a live nuBuilder Forte on the same database. Forms, reports, procedures, users and access levels made in nuBuilder Forte keep working in both.
 
-nuBuilder Forte's tables keep their structure: nuBuilder Next only adds its own tables (`zzzzsys_nunext_*`, created automatically), creates nuBuilder Forte's settings table `zzzzsys_config` only on request and changes columns only when you confirm it in the structure check of an update.
+nuBuilder Forte's tables keep their structure: nuBuilder Next only adds its own tables (`zzzzsys_nunext_*`, created automatically), creates the shared settings table `zzzzsys_config` only on request and changes columns only when you confirm it in the structure check of an update.
 
 nuBuilder Next streamlines everyday database work:
 
@@ -54,35 +54,35 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
 - ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists the actions without a button of their own, with their shortcuts.
 - ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code) and *Forgot password* with a one-time e-mail link.
-- ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left), light, dark or automatic mode, five built-in designs plus your own (colours, buttons, fields, tabs, fonts – per access level or chosen by the user); checked against WCAG 2.1 A/AA.
+- ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left; UK / US / Australian English, German / Swiss German), light, dark or automatic mode, five built-in designs plus your own (colours, buttons, fields, tabs, fonts – per access level or chosen by the user); checked against WCAG 2.1 A/AA.
 
 ### 🏗️ For Building Business Applications
 
-- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, drafts you publish when ready, keyboard shortcuts (rename, copy and paste objects – also between forms –, undo) and a safe mode for broken form code; a New form wizard that picks the table's columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
+- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, drafts you publish when ready (with a note or in one click), keyboard shortcuts (rename, copy and paste objects – also between forms –, undo) and a safe mode for broken form code; a New form wizard that picks the table's columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
 - ✅ **Page Forms** – your own PHP apps inside nuBuilder Next, with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
 - ✅ **Report Designer & SQL Builder** – design reports visually, build queries without writing SQL and run reports as PDF.
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
-- ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with syntax colours, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
+- ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with syntax colours and a syntax check (JavaScript, PHP, CSS, HTML) before saving, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
 - ✅ **E-mail & Templates** – SMTP settings with a test mail and a connection check that sends nothing, login with OAuth 2 (Google, Microsoft 365), e-mail templates with field placeholders and an e-mail log.
 - ✅ **Data import** – CSV files (and Excel / OpenDocument workbooks with the PhpSpreadsheet pack) into any table, with automatic encoding / separator detection and column mapping.
 - ✅ **Data export** – saved exports of tables, views and queries to Excel or CSV: columns, conditions, sorting, parameters, several sheets per file, streamed for any size; also through the REST API.
-- ✅ **Form Cloner & App Cloner** – copy a single form (or just write its SQL) or the whole application.
+- ✅ **Form Cloner & App Cloner** – copy a single form (or just write its SQL, for MySQL or SQL Server) or the whole application.
 - ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms written by an AI, checked before they are created.
 - ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
 - ✅ **Webhooks** – call n8n, Zapier, Teams or your own service after records are saved or deleted: signed, with retries and a log of every call.
 - ✅ **jQuery 4 Ready** – form pages run on jQuery 3.7 or 4.0 (or your own file), with jQuery Migrate to find upgrade issues while still on 3.7.
-- ✅ **Compatibility Check** – scans the code of your nuBuilder Forte application and shows which functions are supported.
+- ✅ **Compatibility Check** – scans the code of your nuBuilder Forte application and shows which functions are supported (on SQL Server also the SQL it does not understand).
 - ✅ **Sample Applications** – a sales sample (customers, orders, every object type, reports, dashboards, lists with badges and filters) and a ticket system for a support desk (customers, agents, specialists, team lead; SLA, conversation with internal notes, attachments, e-mail templates, notifications, field access, dashboards per role), both built to learn from.
 
 ### 🛡️ For Administrators
 
 - ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, one search list over tiles, pages, forms, procedures and reports (with a filter, also Ctrl+K). Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
-- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; user import from CSV or Excel with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; the access levels of a form in one dialogue; own and shared list views; filters and links between users, access levels, permission items and the log.
+- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; user import from CSV or Excel with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; the access levels of a form in one dialogue (or a form for everyone, also for new access levels); own titles for Code / Additional 1 / 2; own and shared list views; filters and links between users, access levels, permission items and the log.
 - ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit, a password policy (length, leaked-password check with k-anonymity, optional regular change), sign-in only from allowed IP addresses / networks (per access level, globeadmin separately) and a built-in Security check.
 - ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.
 - ✅ **Send Notifications** – to chosen users, departments or teams, with read receipts.
-- ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving and inserts missing variables; Global code – nuBuilder Forte's Setup code (Header, Style, Include) plus global JavaScript / CSS for every page, with ready-made templates; System status; logged-in users (log out idle ones); phpMyAdmin, Adminer and File Manager links; housekeeping cron.
+- ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving and inserts missing variables; Global code – the form pages' header, style and include (Setup in nuBuilder Forte) plus global JavaScript / CSS for every page, with ready-made templates; System status; logged-in users (log out idle ones); phpMyAdmin, Adminer and File Manager links; housekeeping cron.
 - ✅ **Easy Start** – installer (also a database set-up when `nuconfig.php` was written by hand), setup wizard, a tutorial in three versions (basic, in depth, coming from nuBuilder Forte) and built-in documentation (F1 opens the page for the screen you are on).
 - ✅ **Branding & Demo Mode** – logo (shown everywhere, only on the sign-in pages or nowhere) and environment label; read-only demo users.
 

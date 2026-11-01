@@ -34,6 +34,7 @@ return [
 	'home_u_mine_unfav' => 'No longer a favorite',
 	'home_u_all_mine_hidden' => 'You have hidden all tiles – Personalize shows them again.',
 	'home_u_empty_editor' => 'No tiles yet – click Customize and add tiles (Add tile).',
+	'user_lbl_tip' => 'This title can be renamed for the whole installation (setting %s) – for example “Cost center”. Only the title changes; the field stays the same.',
 	'ds_sec_behaviour' => 'Behavior',
 	'ds_col_badge_tip' => 'The values of the column are shown as colored badges (nuBrowseStyleBadge). Add rules to give values their own color; the first rule that matches wins.',
 	'ds_badge_colour' => 'Color',

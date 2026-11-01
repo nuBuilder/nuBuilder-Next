@@ -7,6 +7,8 @@ defined('NU_ROOT') || exit;
  * value, value 2], …]} – built in the ▾ panel next to the search (assets/js/nu/nuadvsearch.js). NuBrowse::query turns them into a WHERE
  * on the outer query (nuT.nu_c<i>), so they work with any browse SQL; values are parameters. Hidden / masked columns are not offered.
  * Named searches per user and form ("My searches") are rows of zzzzsys_nunext_list_view with list_key advsearch:<form id>.
+ * System lists (0.8.769): the same conditions on NuListDefs columns (keys instead of indexes, NuListDefs::advColumns(), NuListView::query),
+ * saved as advsearch:list:<list key>; columns there may carry 'type' (text / number / date / bool) and no all / any switch.
  */
 final class NuAdvSearch
 {
@@ -16,12 +18,14 @@ final class NuAdvSearch
 		'text' => ['contains' => 1, 'ncontains' => 1, 'eq' => 1, 'neq' => 1, 'starts' => 1, 'ends' => 1, 'in' => 'list', 'nin' => 'list', 'empty' => '', 'nempty' => ''],
 		'number' => ['eq' => 1, 'neq' => 1, 'lt' => 1, 'le' => 1, 'gt' => 1, 'ge' => 1, 'between' => '2', 'empty' => '', 'nempty' => ''],
 		'date' => ['on' => 1, 'before' => 1, 'after' => 1, 'between' => '2', 'today' => '', 'd7' => '', 'd30' => '', 'month' => '', 'year' => '', 'empty' => '', 'nempty' => ''],
+		'bool' => ['yes' => '', 'no' => ''],                      // system lists (0.8.769): '1' / 'true' / 'yes' = yes
 	];
 	public const KEY = 'advsearch:';
 
 	/** The column type from its browse format: D|… date, N|… number, else text. */
 	public static function typeOf(array $col): string
 	{
+		if (isset($col['type']) && isset(self::OPS[$col['type']])) return (string)$col['type'];   // system lists: declared type
 		$f = strtoupper((string)($col['format'] ?? ''));
 		return str_starts_with($f, 'D|') ? 'date' : (str_starts_with($f, 'N|') ? 'number' : 'text');
 	}
@@ -39,10 +43,13 @@ final class NuAdvSearch
 		if (!is_array($j)) return [];
 		$c = [];
 		foreach (array_slice(is_array($j['c'] ?? null) ? $j['c'] : [], 0, self::MAX) as $x) {
-			if (!is_array($x) || !isset($x[0], $x[1]) || !is_numeric($x[0]) || !is_string($x[1])) continue;
+			if (!is_array($x) || !isset($x[0], $x[1]) || !is_string($x[1])) continue;
+			// form lists: column index; system lists: column key (0.8.769)
+			$col = is_int($x[0]) || (is_string($x[0]) && ctype_digit($x[0])) ? (int)$x[0] : (is_string($x[0]) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $x[0]) ? $x[0] : null);
+			if ($col === null) continue;
 			$v = $x[2] ?? '';
 			$v = is_array($v) ? array_values(array_map('strval', array_filter($v, 'is_scalar'))) : (is_scalar($v) ? (string)$v : '');
-			$c[] = [(int)$x[0], $x[1], $v, is_scalar($x[3] ?? null) ? (string)$x[3] : ''];
+			$c[] = [$col, $x[1], $v, is_scalar($x[3] ?? null) ? (string)$x[3] : ''];
 		}
 		return $c ? ['m' => ($j['m'] ?? '') === 'any' ? 'any' : 'all', 'c' => $c] : [];
 	}
@@ -115,6 +122,7 @@ final class NuAdvSearch
 			$p = [];
 			if ($op === 'empty') $sql = $empty;
 			elseif ($op === 'nempty') $sql = "NOT $empty";
+			elseif ($type === 'bool') $sql = ($op === 'no' ? 'NOT ' : '') . "(LOWER(COALESCE($tx, '')) IN ('1', 'true', 'yes', 'y'))";
 			elseif ($type === 'text') {
 				$like = static fn(string $s) => NuDB::likeRaw($s);
 				[$sql, $p] = match ($op) {
@@ -149,7 +157,7 @@ final class NuAdvSearch
 			$parts[] = '(' . $sql . ')';
 			array_push($params, ...$p);
 		}
-		return ['(' . implode($adv['m'] === 'any' ? ' OR ' : ' AND ', $parts) . ')', $params];
+		return ['(' . implode(($adv['m'] ?? 'all') === 'any' ? ' OR ' : ' AND ', $parts) . ')', $params];
 	}
 
 	/** Chips: [[text, adv without this condition (encoded)], …] for the active conditions. */
@@ -172,6 +180,12 @@ final class NuAdvSearch
 	/** What the panel needs: columns, the current search, the user's saved searches, texts. */
 	public static function client(NuFormMeta $meta, array $cols, array $adv): array
 	{
+		return self::clientFor($meta->id, $cols, $adv);
+	}
+
+	/** The panel's data for a form ($id = form id) or a system list ($id = 'list:<key>', 0.8.769: no all / any, own search field). */
+	public static function clientFor(string $id, array $cols, array $adv, array $extra = []): array
+	{
 		$list = [];
 		foreach (self::searchable($cols) as $c) {
 			$list[] = ['i' => $c['index'], 't' => trim(strip_tags((string)$c['title'])) ?: '#' . $c['index'], 'y' => self::typeOf($c),
@@ -181,8 +195,8 @@ final class NuAdvSearch
 		foreach (['as_title', 'as_match', 'as_all', 'as_any', 'as_add', 'as_apply', 'as_clear', 'as_field', 'as_op', 'as_value', 'as_and', 'as_remove', 'as_saved',
 			'as_save', 'as_save_name', 'as_save_btn', 'as_none_saved', 'as_delete', 'as_list_hint', 'as_err_name'] as $k) $texts[$k] = t($k);
 		foreach (self::OPS as $ops) foreach (array_keys($ops) as $o) $texts['as_op_' . $o] = t('as_op_' . $o);
-		return ['cols' => $list, 'cur' => self::valid($cols, $adv) ?: (object)[], 'ops' => self::OPS, 'saved' => self::saved($meta->id),
-			'url' => nu_url('advsearch'), 'form' => $meta->id, 'canSave' => !NuDemo::active(), 'texts' => $texts];
+		return ['cols' => $list, 'cur' => self::valid($cols, $adv) ?: (object)[], 'ops' => self::OPS, 'saved' => self::saved($id),
+			'url' => nu_url('advsearch'), 'form' => $id, 'canSave' => !NuDemo::active(), 'texts' => $texts] + $extra;
 	}
 
 	// ================================================================= My searches

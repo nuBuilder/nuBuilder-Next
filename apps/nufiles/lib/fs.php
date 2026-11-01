@@ -195,6 +195,63 @@ final class NufFs
 		if (!@rmdir($path)) throw new NufError('err_write', 500);
 	}
 
+	// ============================================================ permissions (globeadmin)
+
+	/** chmod works here (not on Windows, not disabled by the host). */
+	public static function chmodAvailable(): bool
+	{
+		return PHP_OS_FAMILY !== 'Windows' && function_exists('chmod') && function_exists('fileperms');
+	}
+
+	/** Owner and group of a path (names when posix is there, else the numbers). */
+	public static function owner(string $abs): array
+	{
+		$uid = @fileowner($abs); $gid = @filegroup($abs);
+		if ($uid === false) return [];
+		$u = function_exists('posix_getpwuid') ? (posix_getpwuid($uid)['name'] ?? (string)$uid) : (string)$uid;
+		$g = function_exists('posix_getgrgid') ? (posix_getgrgid((int)$gid)['name'] ?? (string)$gid) : (string)$gid;
+		$me = function_exists('posix_geteuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? '') : '';
+		return ['owner' => $u, 'group' => $g, 'server_user' => $me, 'mode' => substr(sprintf('%o', (int)@fileperms($abs)), -3)];
+	}
+
+	/**
+	 * Sets the permissions. $mode: three octal digits (no setuid / setgid / sticky); the owner keeps read (folders also execute), so the web
+	 * server does not lock itself out. Recursive: folders get $mode, files $mode without execute bits; links are skipped, not followed.
+	 * @return array{done: int, failed: int, links: int}
+	 */
+	public static function chmod(array $share, string $rel, string $mode, bool $recursive, int $cap): array
+	{
+		if (!preg_match('/^[0-7]{3}$/', $mode)) throw new NufError('err_chmod_mode');
+		$m = octdec($mode);
+		if (($m & 0400) === 0) throw new NufError('err_chmod_mode');
+		$seg = NufGuard::segments($rel);
+		if (!$seg) throw new NufError('err_root');
+		if (is_link($share['root'] . '/' . NufGuard::join($seg))) throw new NufError('err_chmod_link');
+		$abs = NufGuard::existing($share, $rel, false);
+		$isDir = is_dir($abs);
+		if ($isDir && ($m & 0100) === 0) throw new NufError('err_chmod_mode');
+		$fileMode = $m & ~0111;
+		$out = ['done' => 0, 'failed' => 0, 'links' => 0];
+		$set = static function (string $p, int $md) use (&$out): void { clearstatcache(true, $p); if (@chmod($p, $md)) $out['done']++; else $out['failed']++; };
+		if ($recursive && $isDir) {
+			$n = 0;
+			$walk = static function (string $dir) use (&$walk, &$n, &$out, $set, $m, $fileMode, $cap): void {
+				foreach (scandir($dir) ?: [] as $name) {
+					if ($name === '.' || $name === '..') continue;
+					$p = $dir . '/' . $name;
+					if (NufConfig::$dataDir !== '' && NufGuard::inside(NufConfig::$dataDir, $p)) continue;   // nuFiles' own data folder: never
+					if (++$n > $cap) throw new NufError('err_too_many');
+					if (is_link($p)) { $out['links']++; continue; }
+					if (is_dir($p)) { $set($p, $m); $walk($p); } else $set($p, $fileMode);
+				}
+			};
+			$walk($abs);
+		}
+		$set($abs, $m);
+		if ($out['failed'] && $out['done'] === 0) throw new NufError('err_chmod', 500);
+		return $out;
+	}
+
 	public static function treeSize(string $path, int $cap = 100000): array
 	{
 		if (!is_dir($path) || is_link($path)) return ['files' => 1, 'bytes' => (int)@filesize($path)];

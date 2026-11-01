@@ -386,6 +386,40 @@ T.owner_693 = async (s) => {
 
 // 0.8.701: languages of the installation – Settings → Languages; only they are offered (language menu, user form, ?p=lang), an added
 // language gets its welcome template, a removed one loses it; at least one stays
+// variants of English / German (0.8.782): Settings → General → Languages offers UK / Australia / US and DE / CH; only the ticked
+// ones are in the language menu and the user form; a variant not offered falls back to the default (UK / DE)
+T.lang_variants = async (s) => {
+	const p = s.ga;
+	const before = sql("SELECT IFNULL(MAX(setting_value), '') FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'language_variants'");
+	const hadLangs = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'languages'") !== '0';   // Save also stores the languages
+	try {
+		await open(p, 'index.php?p=settings&s=general');
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=settings&s=general'); }
+		expect(await p.locator('#setLangVar_en_GB').count() === 1 && await p.locator('#setLangVar_de_CH').count() === 1, 'variant boxes shown');
+		await p.check('#setLangVar_en_GB'); await p.check('#setLangVar_en_US'); await p.uncheck('#setLangVar_en_AU');
+		await p.check('#setLangVar_de_DE'); await p.uncheck('#setLangVar_de_CH');
+		await p.click('#setLangVar_de_DE');                                        // the last one of a language stays
+		expect(await p.isChecked('#setLangVar_de_DE'), 'last variant cannot be unticked');
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('#setLangsSave')]);
+		const v = JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'language_variants'"));
+		expect(JSON.stringify(v.en) === '["en-GB","en-US"]' && JSON.stringify(v.de) === '["de-DE"]', 'stored: ' + JSON.stringify(v));
+		const menu = await p.$$eval('a[href*="p=lang&l="]', a => [...new Set(a.map(x => new URL(x.href).searchParams.get('l')))]);
+		expect(menu.includes('en-GB') && menu.includes('en-US') && !menu.includes('en-AU') && !menu.includes('de-CH') && (menu.includes('de-DE') || menu.includes('de')), 'language menu: ' + menu.join(','));
+		await open(p, 'index.php?p=user&id=' + sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'"));
+		const opts = await p.$$eval('#sus_language option', o => o.map(x => x.value));
+		expect(opts.includes('English|en-US') && !opts.includes('English|en-AU') && !opts.includes('German|de-CH'), 'user form: ' + opts.join(','));
+		await open(p, 'index.php?p=lang&l=de-CH&r=p%3Dhome');                       // not offered → German (DE)
+		expect(await p.evaluate(() => document.documentElement.lang) === 'de-DE', 'de-CH refused: ' + await p.evaluate(() => document.documentElement.lang));
+		await open(p, 'index.php?p=lang&l=en-US&r=p%3Dhome');
+		expect(await p.evaluate(() => document.documentElement.lang) === 'en-US', 'en-US chosen');
+	} finally {
+		if (before === '') sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'language_variants'");
+		else sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + before.replace(/'/g, "''") + "' WHERE zzzzsys_nunext_setting_id = 'language_variants'");
+		if (!hadLangs) sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'languages'");
+		await open(p, 'index.php?p=lang&l=en-GB&r=p%3Dhome');
+	}
+};
+
 T.languages = async (s) => {
 	const p = s.ga;
 	if (sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('welcome_langs', 'languages')") !== '0') { s.skip = 'languages already limited'; return; }
@@ -1735,6 +1769,72 @@ T.label_menu_rightclick = async (s) => {
 
 // 0.8.662: design mode on the form page (globeadmin): Design button → bar + properties panel; a change starts a draft (live unchanged),
 // Esc = form settings, Ctrl+click = selection panel, Delete asks, Discard drops the draft, Done leaves
+// 0.8.797: design mode – Done asks with unpublished changes (Publish now / Leave as draft / Cancel), tooltips on Publish / Done,
+// Publish options: "Ask for a note" off = one click, "Publish with a note…" always asks
+T.design_done_publish = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const rec = sql('SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1');
+	if (!rec || sql(`SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${F}' AND sob_all_id = 'cus_name'`) !== '1') { s.skip = 'no sample data'; return; }
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-design-done.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_object zzzzsys_event zzzzsys_tab zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	const label = () => sql(`SELECT sob_all_label FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${F}' AND sob_all_id = 'cus_name'`);
+	const openDraft = () => sql(`SELECT COUNT(*) FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}' AND status IN ('open', 'review')`);
+	const design = async () => { await open(p, 'index.php?p=form&f=' + F + '&r=' + rec + '&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(800); };
+	const change = async (v) => {
+		await p.click('#nuw_cus_name .nuDesignOverlay', { position: { x: 5, y: 5 } }); await p.waitForTimeout(400);
+		const inp = '#nuDsPanel input[data-key="sob_all_label"]';
+		await p.fill(inp, v); await p.press(inp, 'Enter'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(1500);
+	};
+	const before = label();
+	try {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		await p.evaluate(() => localStorage.removeItem('nunext-design-pubask'));
+		await design();
+		const tip = sel => p.evaluate(q => { const e = document.querySelector(q); return e ? (e.getAttribute('title') || e.getAttribute('data-bs-original-title') || '') : ''; }, sel);
+		expect(/users keep seeing/i.test(await tip('#nuDsDone')), 'Done tooltip: ' + await tip('#nuDsDone'));
+		// no changes: Done leaves at once
+		await p.click('#nuDsDone'); await p.waitForTimeout(900);
+		expect(await p.locator('#nuDsBar').count() === 0, 'Done without changes did not leave');
+		await design(); await change('E2E done 1');
+		expect(/every user/i.test(await tip('#nuDsPublish')), 'Publish tooltip: ' + await tip('#nuDsPublish'));
+		await p.click('#nuDsDone'); await p.waitForSelector('#nuDsDoneDlg.show');
+		expect(/not published \(1\)/.test(await p.textContent('#nuDsDoneText')), 'Done text: ' + await p.textContent('#nuDsDoneText'));
+		await p.click('#nuDsDoneDlg [data-bs-dismiss="modal"].btn'); await p.waitForTimeout(500);
+		expect(await p.locator('#nuDsBar').count() === 1, 'Cancel left design mode');
+		await p.click('#nuDsDone'); await p.waitForSelector('#nuDsDoneDlg.show');
+		await p.click('#nuDsDoneKeep'); await p.waitForTimeout(1200);
+		expect(await p.locator('#nuDsBar').count() === 0, 'Leave as draft did not leave');
+		expect(openDraft() === '1' && label() === before, 'Leave as draft changed the live form or dropped the draft');
+		// one click: switch the note off in the Publish menu
+		await design();
+		await p.click('#nuDsPublishMore'); await p.waitForTimeout(300);
+		await p.click('#nuDsPubAsk'); await p.waitForTimeout(200);
+		expect(await p.evaluate(() => localStorage.getItem('nunext-design-pubask')) === '0', 'pref not stored');
+		await p.keyboard.press('Escape');
+		await p.click('#nuDsPublish'); await p.waitForTimeout(2500);
+		expect(await p.locator('#nuDsPublishDlg.show').count() === 0, 'one-click publish showed the window: ' + await p.textContent('#nuDsPubInfo').catch(() => '?'));
+		expect(label() === 'E2E done 1' && openDraft() === '0', 'one-click publish did not publish: ' + label());
+		expect(sql(`SELECT note FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}' AND status = 'published' ORDER BY published_at DESC LIMIT 1`) === '1 change (published without a note)', 'automatic note missing');
+		// Done → Publish now (one click) → published and out of design mode
+		await change('E2E done 2');
+		await p.click('#nuDsDone'); await p.waitForSelector('#nuDsDoneDlg.show');
+		await p.click('#nuDsDonePublish'); await p.waitForTimeout(2500);
+		expect(label() === 'E2E done 2' && openDraft() === '0', 'Publish now did not publish: ' + label());
+		expect(await p.locator('#nuDsBar').count() === 0, 'Publish now did not leave design mode');
+		// "Publish with a note…" always asks
+		await design(); await change('E2E done 3');
+		await p.click('#nuDsPublishMore'); await p.waitForTimeout(300);
+		await p.click('#nuDsPubWithNote'); await p.waitForSelector('#nuDsPublishDlg.show');
+		await p.fill('#nuDsPubNote', 'E2E note'); await p.click('#nuDsPubOk'); await p.waitForTimeout(2500);
+		expect(label() === 'E2E done 3', 'publish with a note failed');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_form_draft WHERE form_id = 'samplecustomer' AND note = 'E2E note'") !== '0', 'note not stored');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		await p.evaluate(() => localStorage.removeItem('nunext-design-pubask')).catch(() => {});
+		execSync('mysql ' + DB + ' < ' + keep); fs.unlinkSync(keep);
+	}
+};
+
 T.design_mode = async (s) => {
 	const p = s.ga, F = 'samplecustomer';
 	const rec = sql('SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1');
@@ -2862,6 +2962,21 @@ T.user_perm_all = async (s) => {
 
 // nuconfig.php editor (0.8.442): Insert variable lists variables the text does not set, inserts at the cursor / the end, own variables;
 // nothing is saved (the file stays as it is)
+// nuconfig.php editor (0.8.780): fills the window below it, at any window height
+T.config_editor_fill = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=configfile');
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=configfile'); }
+	const m = () => p.evaluate(() => { const r = document.querySelector('.cfgCM').getBoundingClientRect(); return { bottom: r.bottom, h: innerHeight, page: document.documentElement.scrollHeight }; });
+	try {
+		for (const h of [800, 1100]) {
+			await p.setViewportSize({ width: 1300, height: h }); await p.waitForTimeout(500);
+			const r = await m();
+			expect(r.bottom > h - 60 && r.page <= h + 2, 'height ' + h + ': ' + JSON.stringify(r));
+		}
+	} finally { await p.setViewportSize({ width: 1300, height: 900 }); }
+};
+
 T.config_insert = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=configfile');
@@ -3012,8 +3127,7 @@ T.form_drafts = async (s) => {
 		await open(p, 'index.php?p=builder&f=' + F + '&draft=1');
 		r = await api({ action: 'draft.diff', draft_id: D.id });
 		expect(r.diff.counts.objects === 1 && r.diff.counts.php === 1 && r.diff.objects.changed[0].sob_all_id === 'cus_name', 'compare: ' + JSON.stringify(r.diff.counts));
-		r = await api({ action: 'draft.publish', draft_id: D.id, note: '' });
-		expect(!r.ok && r.errors, 'publish without a note');
+		// a note is optional since 0.8.797 (design_done_publish checks the automatic one)
 		r = await api({ action: 'draft.publish', draft_id: D.id, note: 'E2E publish' });
 		if (!r.ok && r.warnings) r = await api({ action: 'draft.publish', draft_id: D.id, note: 'E2E publish', warnings_ok: true });
 		expect(r.ok && r.version >= 1 && label() === 'E2E draft label', 'publish: ' + JSON.stringify(r).slice(0, 200));
@@ -4544,6 +4658,23 @@ T.user_role_open = async (s) => {
 };
 
 // 0.8.739: admin role form – rights link to their page (new tab), the table sorts by name or level (flat), third click = groups again
+// 0.8.796: admin role form – the table titles stay visible below the sticky button row while scrolling
+T.admin_role_sticky = async (s) => {
+	const p = s.ga;
+	const role = sql("SELECT zzzzsys_nunext_admin_role_id FROM zzzzsys_nunext_admin_role ORDER BY sort_order, name LIMIT 1");
+	if (!role) { s.skip = 'no admin role'; return; }
+	await p.setViewportSize({ width: 1300, height: 800 });
+	await open(p, 'index.php?p=adminroles&id=' + encodeURIComponent(role));
+	await p.mouse.wheel(0, 900); await p.waitForTimeout(700);
+	const r = await p.evaluate(() => {
+		const th = document.querySelector('#admRights thead th').getBoundingClientRect(), bar = document.querySelector('.nuStickyBar');
+		return { th: th.top, bar: bar ? bar.getBoundingClientRect().bottom : 0, y: window.scrollY, wrapped: !!document.querySelector('#admRights').closest('.table-responsive') };
+	});
+	expect(r.y > 300, 'the page did not scroll: ' + r.y);
+	expect(!r.wrapped, 'the rights table is inside an overflow box (sticky cannot work)');
+	expect(r.th >= r.bar && r.th < r.bar + 20, 'the titles are not right below the button row: ' + JSON.stringify(r));
+};
+
 T.admin_role_table = async (s) => {
 	const p = s.ga;
 	const role = sql("SELECT zzzzsys_nunext_admin_role_id FROM zzzzsys_nunext_admin_role WHERE code = 'developer' LIMIT 1") || sql("SELECT zzzzsys_nunext_admin_role_id FROM zzzzsys_nunext_admin_role LIMIT 1");
@@ -4650,6 +4781,19 @@ T.cloner_defaults = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=cloner&id=new');
 	expect(await p.isChecked('#clDump'), '"Only create SQL" not ticked by default');
+	// SQL for MySQL or SQL Server (0.8.794): the header names it, SQL Server gets N'…' literals and no REPLACE INTO
+	expect(await p.inputValue('#clTarget') === 'mysql' && await p.locator('#clReplaceWrap').isVisible(), 'target = this database (MySQL), REPLACE offered');
+	await p.selectOption('#clSource', 'samplecustomer').catch(async () => { await p.evaluate(() => { const x = document.getElementById('clSource'); x.value = 'samplecustomer'; x.dispatchEvent(new Event('change', { bubbles: true })); }); });
+	await p.waitForTimeout(800);
+	await p.selectOption('#clTarget', 'sqlsrv'); await p.waitForTimeout(200);
+	expect(await p.locator('#clReplaceWrap').isHidden(), 'SQL Server: no REPLACE INTO');
+	await Promise.all([p.waitForNavigation(), p.click('#clRun')]);
+	let dumpSql = await p.inputValue('#clSql');
+	expect(/-- For: Microsoft SQL Server/.test(dumpSql) && /VALUES \(N'/.test(dumpSql) && !/REPLACE INTO/.test(dumpSql), 'SQL Server dump: ' + dumpSql.slice(0, 300));
+	await p.selectOption('#clTarget', 'mysql');
+	await Promise.all([p.waitForNavigation(), p.click('#clRun')]);
+	dumpSql = await p.inputValue('#clSql');
+	expect(/-- For: MySQL \/ MariaDB/.test(dumpSql) && !/VALUES \(N'/.test(dumpSql), 'MySQL dump');
 	await open(p, 'index.php?p=home');
 	expect(await p.locator('.nuHomeTile[data-key="cloner"], [data-nu-tile="cloner"], a.nuTile[href$="p=cloner"]').count() > 0 || await p.locator('a[href$="p=cloner"]').count() > 0, 'no Form cloner on the start page');
 };
@@ -6637,6 +6781,82 @@ T.home_customise = async (s) => {
 
 // custom user fields (0.8.454): define fields (real columns in zzzzsys_nunext_user_ext), user form tab More with checks (choice, unique),
 // log, users list column + search, My account for "edited by the user", hash / JS value on a form page, CSV import, delete field
+// 0.8.798: nuBuilder Forte's own names for the user fields Code / Additional 1 / 2 ($nuConfigUserCodeLabel, $nuConfigUserAdditional1Label,
+// $nuConfigUserAdditional2Label) – user form, users list, Data import; from nuconfig.php or, with $nuConfigSettingsFromDB, the settings table
+T.user_field_labels = async (s) => {
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	const p = s.ga, cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8');
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	const keepCfg = sql("SELECT cfg_value FROM zzzzsys_config WHERE cfg_setting = '$nuConfigUserAdditional2Label'");
+	const lbl = id => p.evaluate(i => { const l = document.querySelector('label[for="' + i + '"]'); return l ? l.textContent.trim() : ''; }, id);
+	try {
+		fs.writeFileSync(cfg, orig.replace(/\?>\s*$/, '') + "\n$nuConfigUserAdditional1Label = 'Cost centre';\n$nuConfigUserCodeLabel = 'Staff no.';\n");
+		await new Promise(r => setTimeout(r, 3500));
+		await open(p, 'index.php?p=user&id=' + encodeURIComponent(uid));
+		expect(/^Cost centre/.test(await lbl('sus_additional1')), 'user form: Additional 1 not renamed: ' + await lbl('sus_additional1'));
+		expect(/^Staff no\./.test(await lbl('sus_code')), 'user form: Code not renamed: ' + await lbl('sus_code'));
+		expect(/^Additional 2/.test(await lbl('sus_additional2')), 'Additional 2 changed without a setting');
+		await open(p, 'index.php?p=users');
+		expect(/Staff no\./i.test(await p.locator('table.nu-table thead').textContent()), 'users list: Code column not renamed');
+		const zr = await p.request.get(BASE + 'index.php?p=import&target=users&action=template');
+		const zf = path.join(os.tmpdir(), 'nunext-e2e-ufl.zip'); fs.writeFileSync(zf, await zr.body());
+		const readme = execSync('unzip -p ' + JSON.stringify(zf) + ' readme.txt').toString(); fs.unlinkSync(zf);
+		expect(/Cost centre/.test(readme), 'Data import readme does not use the name');
+		// the settings table wins with $nuConfigSettingsFromDB (as in nuBuilder Forte – an empty row there means the built-in text)
+		fs.writeFileSync(cfg, orig.replace(/\?>\s*$/, '') + "\n$nuConfigUserAdditional1Label = 'Cost centre';\n$nuConfigSettingsFromDB = true;\n");
+		sql("UPDATE zzzzsys_config SET cfg_value = 'Region' WHERE cfg_setting = '$nuConfigUserAdditional2Label'");
+		await new Promise(r => setTimeout(r, 3500));
+		await open(p, 'index.php?p=user&id=' + encodeURIComponent(uid));
+		expect(/^Region/.test(await lbl('sus_additional2')), 'settings table: Additional 2 not renamed: ' + await lbl('sus_additional2'));
+		expect(/^Additional 1/.test(await lbl('sus_additional1')), 'settings table row (empty) should win over the file: ' + await lbl('sus_additional1'));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		fs.writeFileSync(cfg, orig);
+		sql("UPDATE zzzzsys_config SET cfg_value = '" + keepCfg.replace(/'/g, "''") + "' WHERE cfg_setting = '$nuConfigUserAdditional2Label'");
+		await new Promise(r => setTimeout(r, 3500));
+	}
+};
+
+// 0.8.799: the user form renames Code / Additional 1 / 2 in place – (i) for everyone, a pencil for the globeadmin; written to nuconfig.php
+// (or nuBuilder Forte's settings table with $nuConfigSettingsFromDB); empty = built-in title
+T.user_field_labels_rename = async (s) => {
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	const p = s.ga, cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8');
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	const lbl = id => p.evaluate(i => (document.querySelector('label[for="' + i + '"] .nuUserLblText') || {}).textContent || '', id);
+	try {
+		await open(p, 'index.php?p=user&id=' + encodeURIComponent(uid));
+		expect(await p.locator('label[for="sus_additional2"] + .nuInfoTip').count() === 1, 'no (i) next to Additional 2');
+		await p.click('.nuUserLblEdit[data-key="user_additional2"]'); await p.waitForSelector('#userLblDlg.show');
+		await p.fill('#userLblVal', 'Region'); await p.click('#userLblSave'); await p.waitForTimeout(1500);
+		expect(await lbl('sus_additional2') === 'Region', 'label not changed in place: ' + await lbl('sus_additional2'));
+		expect(/\$nuConfigUserAdditional2Label\s*=\s*'Region';/.test(fs.readFileSync(cfg, 'utf8')), 'not written to nuconfig.php');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'user_label_changed'") !== '0', 'not logged');
+		await new Promise(r => setTimeout(r, 3500));
+		await open(p, 'index.php?p=user&id=' + encodeURIComponent(uid));
+		expect(await lbl('sus_additional2') === 'Region', 'renamed title not kept: ' + await lbl('sus_additional2'));
+		// empty = the built-in title again
+		await p.click('.nuUserLblEdit[data-key="user_additional2"]'); await p.waitForSelector('#userLblDlg.show');
+		expect(await p.inputValue('#userLblVal') === 'Region', 'dialog does not show the stored title');
+		await p.fill('#userLblVal', ''); await p.click('#userLblSave'); await p.waitForTimeout(1500);
+		expect(await lbl('sus_additional2') === 'Additional 2', 'empty title did not bring back the built-in one');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+		// someone else may open the user form, but has no pencil and the action is refused
+		const u = await login('sample_carla', UPW);
+		await open(u, 'index.php?p=user&id=' + encodeURIComponent(uid));
+		if (await u.locator('#sus_additional1').count()) {
+			expect(await u.locator('.nuUserLblEdit').count() === 0, 'pencil shown to a non-globeadmin');
+			const st = await u.evaluate(async () => { const fd = new FormData(); fd.append('_csrf', (document.querySelector('input[name=_csrf]') || {}).value || ''); fd.append('action', 'user_label'); fd.append('key', 'user_additional1'); fd.append('value', 'X'); return (await fetch(location.href, { method: 'POST', body: fd })).status; });
+			expect(st === 403, 'non-globeadmin may rename: ' + st);
+		}
+		await u.context().close();
+	} finally {
+		fs.writeFileSync(cfg, orig);
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'user_label_changed'");
+		await new Promise(r => setTimeout(r, 3500));
+	}
+};
+
 T.user_fields = async (s) => {
 	const p = s.ga;
 	const anna = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'"), bob = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name <> 'sample_anna' AND sus_login_name LIKE 'sample_%' ORDER BY 1 LIMIT 1");
@@ -7845,6 +8065,20 @@ T.home_search_sticky = async (s) => {
 
 // password policy (0.8.745): settings page, rules on Change password (checklist + server message), Try a password, leak check online
 // (fake HIBP: only 5 hex characters arrive) and offline, forced change for an expired / leaked password at sign-in, globeadmin reminder
+// 0.8.768: user form – the password checklist appears only once the password field holds a character (own password page: always)
+T.pw_rules_on_type = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=user&id=' + sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'"));
+	const box = p.locator('.nuPwRules[data-for="password"]');
+	expect(await box.count() === 1, 'checklist on the user form');
+	expect(!(await box.isVisible()), 'hidden while the field is empty');
+	await p.fill('#password', 'a');
+	expect(await box.isVisible(), 'shown after one character');
+	expect(await box.locator('li[data-rule="len"].nuPwBad').count() === 1, 'length not met');
+	await p.fill('#password', '');
+	expect(!(await box.isVisible()), 'hidden again when emptied');
+};
+
 T.pw_policy = async (s) => {
 	const p = s.ga;
 	const crypto = require('crypto');
@@ -8518,6 +8752,214 @@ T.webhooks = async (s) => {
 
 // advanced search of browse lists (0.8.719): text / number / date operators on the list's columns, all / any, chips, Clear,
 // "My searches", nuNextAdvancedSearch(), the search kept in Export and paging; a masked or hidden column is never offered
+// 0.8.769: advanced search on the system lists – the same ▾ panel (column keys, AND only), chips, export, My searches, not-searchable columns
+T.list_adv_search = async (s) => {
+	const p = s.ga;
+	const url = (route, adv) => 'index.php?p=' + route + '&adv=' + encodeURIComponent(JSON.stringify(adv));
+	const total = async () => { const f = await p.locator('.nuListCard .card-footer').textContent().catch(() => ''); const m = (f || '').match(/(\d+)/); return m ? +m[1] : 0; };
+	const n = (w) => +sql('SELECT COUNT(*) FROM zzzzsys_user u WHERE ' + w);
+	sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key LIKE 'advsearch:list:%'");
+	try {
+		// the panel on the users list: field list without unsortable columns, no all / any switch, Apply → ?adv= + chip
+		await open(p, 'index.php?p=users&status=*');
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvRow');
+		const fields = await p.$$eval('#nuAdvPanel .nuAdvField option', o => o.map(x => x.value));
+		expect(fields.includes('login') && fields.includes('last_login') && !fields.includes('status') && !fields.includes('online'), 'fields: ' + fields.join(','));
+		expect(!(await p.locator('#nuAdvPanel .nuAdvMatch').isVisible()), 'no all / any switch on system lists');
+		await p.selectOption('#nuAdvPanel .nuAdvField', 'login');
+		await p.selectOption('#nuAdvPanel .nuAdvOp', 'starts');
+		await p.fill('#nuAdvPanel .nuAdvVal', 'sample_a');
+		await Promise.all([p.waitForNavigation(), p.click('#nuAdvPanel .nuAdvApply')]);
+		expect(/adv=/.test(p.url()) && await total() === n("u.sus_login_name LIKE 'sample_a%'"), 'starts with: ' + await total());
+		expect(await p.locator('#nuLvChips .nuAdvChip').count() === 1, 'chip');
+		// links keep it (sort), the search form keeps it, the chip removes it
+		expect((await p.locator('thead th a').first().getAttribute('href')).includes('adv='), 'sort link keeps the search');
+		expect(await p.locator('form.nuListFilter input[name="adv"]').count() === 1, 'search form keeps it');
+		await Promise.all([p.waitForNavigation(), p.click('#nuLvChips .nuAdvChip')]);
+		expect(!/adv=/.test(p.url()) && await p.locator('.nuAdvChip').count() === 0, 'chip removes the condition');
+		// AND with the quick search; types: number + bool (access levels), date (log), unknown / unsearchable keys ignored
+		await open(p, url('users', { c: [['login', 'starts', 'sample_'], ['email', 'contains', 'anna']] }) + '&status=*');
+		expect(await total() === n("u.sus_login_name LIKE 'sample_%' AND u.sus_email LIKE '%anna%'"), 'two conditions AND: ' + await total());
+		await open(p, url('access', { c: [['users', 'ge', '1'], ['twofa', 'no', '']] }));
+		const accN = +sql("SELECT COUNT(*) FROM zzzzsys_access a WHERE (SELECT COUNT(*) FROM zzzzsys_user u WHERE u.sus_zzzzsys_access_id = a.zzzzsys_access_id) >= 1 AND COALESCE(a.sal_use_2fa, '') NOT IN ('1')");
+		expect(await total() === accN && await p.locator('.nuAdvChip').count() === 2, 'number + bool: ' + await total() + ' / ' + accN);
+		await open(p, url('log', { c: [['time', 'today', '']] }));
+		const logN = +sql('SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE DATE(log_time) = CURDATE()');
+		expect(await total() === logN, 'date today: ' + await total() + ' / ' + logN);
+		await open(p, url('log', { c: [['details', 'contains', 'x'], ['nosuch', 'eq', '1']] }));
+		expect(await p.locator('.nuAdvChip').count() === 0, 'details / unknown keys are not searchable');
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvRow');
+		expect(!(await p.$$eval('#nuAdvPanel .nuAdvField option', o => o.map(x => x.value))).includes('details'), 'log details not offered');
+		// export honours the conditions
+		const csv = await (await p.request.get(BASE + url('users', { c: [['login', 'starts', 'sample_a']] }) + '&status=*&export=csv')).text();
+		expect(/sample_anna/.test(csv) && !/sample_ben/.test(csv), 'CSV export follows the search');
+		// My searches per list and user
+		await open(p, url('users', { c: [['login', 'starts', 'sample_']] }));
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvSaveName');
+		expect(await p.inputValue('#nuAdvPanel .nuAdvVal') === 'sample_', 'panel opens with the current condition');
+		await p.fill('#nuAdvPanel .nuAdvSaveName', 'E2E samples'); await p.click('#nuAdvPanel .nuAdvSaveBtn');
+		await p.waitForSelector('#nuAdvPanel .nuAdvSavedUse');
+		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'advsearch:list:users' AND name = 'E2E samples'") === 1, 'saved for the list');
+		await open(p, 'index.php?p=users');
+		await p.click('#nuAdvButton'); await p.waitForSelector('#nuAdvPanel .nuAdvSavedUse');
+		await Promise.all([p.waitForNavigation(), p.click('#nuAdvPanel .nuAdvSavedUse')]);
+		expect(/adv=/.test(p.url()) && await p.locator('.nuAdvChip').count() === 1, 'a saved search is applied');
+		// another list, or a list the user may not open, is refused
+		const bad = await p.evaluate(async () => (await fetch('index.php?p=advsearch', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': JSON.parse(document.getElementById('nuAdvData').dataset.adv).csrf },
+			body: JSON.stringify({ f: 'list:nosuch', action: 'save', name: 'x', adv: '{"c":[["login","eq","a"]]}' }) })).status);
+		expect(bad === 403, 'unknown list refused: ' + bad);
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key LIKE 'advsearch:list:%'");
+	}
+};
+
+// 0.8.770: TCPDF gets its own cache folder – a photo printed through <img src="/…"> (report "Fields contain HTML") is no longer deleted
+// when it lies below the system's temp folder (TCPDF removes every used image below K_PATH_CACHE); the photo is in the PDF
+T.report_photo_kept = async (s) => {
+	const p = s.ga;
+	if (!SITE) return 'skip';
+	const root = path.dirname(SITE);                        // the web server's document root on the test site (nuBuilder's folder)
+	const name = 'e2e_photo_' + Date.now() + '.jpg', file = path.join(root, name);
+	// a small JPEG (8×8, grey)
+	fs.writeFileSync(file, Buffer.from('/9j/4AAQSkZJRgABAQEAYABgAAD//gA+Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2ODApLCBkZWZhdWx0IHF1YWxpdHkK/9sAQwAIBgYHBgUIBwcHCQkICgwUDQwLCwwZEhMPFB0aHx4dGhwcICQuJyAiLCMcHCg3KSwwMTQ0NB8nOT04MjwuMzQy/9sAQwEJCQkMCwwYDQ0YMiEcITIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy/8AAEQgACAAIAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A5miiigD/2Q==', 'base64'));
+	const lay = JSON.parse(sql("SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = 'sample_rpt_customers'"));
+	const det = lay.groups[0].sections[0];
+	det.height = 60;
+	det.objects = [{ id: 'e2e_ph_f', name: 'e2e_ph_f', objectType: 'field', fieldName: 'photo_html', left: 0, top: 4, width: 400, height: 50, fontWeight: '', textAlign: 'left',
+		backgroundColor: '#FFFFFF', borderColor: '#000000', borderWidth: '0', fontColor: '#000000', fontFamily: 'Helvetica', fontSize: '8', format: '', minRows: 0, maxRows: 0, zIndex: 1 }];
+	lay.ishtml = 'Y';
+	const esc = v => v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	try {
+		sql(`INSERT INTO zzzzsys_select (zzzzsys_select_id, sse_code, sse_description, sse_json, sse_sql, sse_edit) VALUES ('e2e_ph_sql', 'e2e_ph', 'photo', '',
+			'SELECT cus_name, ''<img src="/${name}">'' AS photo_html FROM sample_customer', '1')`);
+		sql(`INSERT INTO zzzzsys_report (zzzzsys_report_id, sre_code, sre_description, sre_group, sre_layout, sre_zzzzsys_php_id, sre_zzzzsys_form_id)
+			SELECT 'e2e_ph_rpt', 'e2e_ph_rpt', 'photo', '', '${esc(JSON.stringify(lay))}', 'SQL:e2e_ph_sql', sre_zzzzsys_form_id FROM zzzzsys_report WHERE zzzzsys_report_id = 'sample_rpt_customers'`);
+		const r = await p.context().request.get(BASE + 'index.php?p=reportpdf&c=e2e_ph_rpt&dl=1');
+		const body = (await r.body()).toString('latin1');
+		if (process.env.E2E_KEEP) fs.writeFileSync(process.env.E2E_KEEP, await r.body());
+		expect(r.status() === 200 && body.startsWith('%PDF'), 'PDF: ' + r.status());
+		expect(/\/Subtype\s*\/Image/.test(body), 'the photo is in the PDF');
+		expect(fs.existsSync(file), 'the photo file is still there after the report');
+		expect(fs.existsSync(path.join(SITE, 'temp', 'tcpdf')), 'TCPDF cache = temp/tcpdf of nuBuilder Next');
+	} finally {
+		if (!process.env.E2E_KEEP) sql("DELETE FROM zzzzsys_report WHERE zzzzsys_report_id = 'e2e_ph_rpt'; DELETE FROM zzzzsys_select WHERE zzzzsys_select_id = 'e2e_ph_sql'");
+		try { fs.unlinkSync(file); } catch (e) { /* already gone */ }
+	}
+};
+
+// 0.8.773: permission items with a type – "Data import" into chosen tables (add / update), without the admin right; list column + filter,
+// user form summary, user menu, refusals (other table, forbidden mode), log names the item, the type row goes with the item
+T.perm_type_import = async (s) => {
+	const p = s.ga;
+	const ben = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	let u, itemId = '';
+	const clean = () => {
+		const id = sql("SELECT zzzzsys_permission_item_id FROM zzzzsys_permission_item WHERE pme_ident = 'E2E_IMP'");
+		if (id) sql(`DELETE FROM zzzzsys_user_permission WHERE upe_ident = '${id}'; DELETE FROM zzzzsys_permission_item WHERE zzzzsys_permission_item_id = '${id}'`);
+		if (sql("SHOW TABLES LIKE 'zzzzsys_nunext_permission_type'")) sql(`DELETE FROM zzzzsys_nunext_permission_type WHERE zzzzsys_nunext_permission_type_id = '${id || 'none'}'`);
+		sql("DELETE FROM sample_customer WHERE cus_code LIKE 'E2EIMP%'");
+	};
+	clean();
+	try {
+		// the item page: type Data import, one table, add only
+		await open(p, 'index.php?p=permissions&id=new');
+		await p.fill('#pme_ident', 'E2E_IMP');
+		await p.click('label[for="ptype_import"]');
+		expect(await p.locator('#permTypeCard [data-ptype="import"]').isVisible(), 'import settings shown');
+		await p.evaluate(() => document.getElementById('ptypeTables').tomselect.addItem('sample_customer'));
+		expect(await p.isChecked('#ptypeAdd') && !(await p.isChecked('#ptypeUpdate')), 'new item: add on, update off');
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		itemId = sql("SELECT zzzzsys_permission_item_id FROM zzzzsys_permission_item WHERE pme_ident = 'E2E_IMP'");
+		const row = JSON.parse(sql(`SELECT settings FROM zzzzsys_nunext_permission_type WHERE zzzzsys_nunext_permission_type_id = '${itemId}' AND type = 'import'`) || '{}');
+		expect(itemId && JSON.stringify(row.tables) === '["sample_customer"]' && row.add === true && row.update === false, 'type row: ' + JSON.stringify(row));
+		// a type without tables is refused
+		await p.locator('#permTypeCard .ts-wrapper .remove').first().click();
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		expect(await p.locator('#ptypeTables.is-invalid, .invalid-feedback').count() >= 1, 'no tables refused');
+		// list: type column + filter
+		await open(p, 'index.php?p=permissions&ptype=import');
+		expect(/E2E_IMP/.test(await p.textContent('.nuListCard')) && await p.locator('.nuListCard .badge.text-bg-primary').count() >= 1, 'list shows the type');
+		// 0.8.775: the type filter is part of the default view (a select next to the group filter); plain hides the item
+		await open(p, 'index.php?p=permissions');
+		expect(await p.locator('#lvf_ptype').count() === 1, 'type filter in the default view');
+		await open(p, 'index.php?p=permissions&ptype=plain');
+		expect(!/E2E_IMP/.test(await p.textContent('.nuListCard')), 'plain filter hides the import item');
+		// give it to ben
+		sql(`INSERT INTO zzzzsys_user_permission (zzzzsys_user_permission_id, upe_zzzzsys_user_id, upe_ident, upe_active) VALUES ('e2e_imp_up', '${ben}', '${itemId}', '1')`);
+		await open(p, 'index.php?p=user&id=' + ben);
+		expect(/sample_customer/.test(await p.locator('.userPermType').allTextContents().then(a => a.join(' '))), 'user form shows the summary');
+		u = await login('sample_ben', UPW);
+		await open(u, 'index.php?p=home');
+		expect(await u.locator('#nuMenuImport').count() === 1, 'user menu entry');
+		await open(u, 'index.php?p=import');
+		expect(await u.locator('#impItemsNote').count() === 1 && JSON.parse(await u.getAttribute('#impApp', 'data-tables')).join() === 'sample_customer', 'import page for ben: ' + await u.getAttribute('#impApp', 'data-tables'));
+		expect(JSON.stringify(JSON.parse(await u.getAttribute('#impApp', 'data-modes'))) === '{"sample_customer":["insert"]}', 'modes: ' + await u.getAttribute('#impApp', 'data-modes'));
+		const post = (body, file) => u.evaluate(async ([body, file]) => {
+			const fd = new FormData(); Object.keys(body).forEach(k => fd.append(k, body[k])); fd.append('_csrf', document.querySelector('#impApp input[name="_csrf"]').value);
+			if (file) fd.append('file', new Blob([file], { type: 'text/csv' }), 'x.csv');
+			return (await fetch('index.php?p=import', { method: 'POST', body: fd })).json();
+		}, [body, file]);
+		let j = await post({ action: 'columns', table: 'sample_order' });
+		expect(!j.ok, 'another table refused');
+		j = await post({ action: 'upload', header: '1' }, 'code,name\nE2EIMP1,Import One\nE2EIMP2,Import Two\n');
+		expect(j.ok, 'upload: ' + JSON.stringify(j).slice(0, 200));
+		const map = JSON.stringify({ sample_customer_id: { src: 'nuid' }, cus_code: { src: 'csv', idx: '0' }, cus_name: { src: 'csv', idx: '1' } });
+		j = await post({ action: 'check', table: 'sample_customer', mapping: map, mode: 'update', key: 'cus_code', delimiter: ',', header: '1' });
+		expect(!j.ok && /not allowed|nicht erlaubt/i.test(j.error || ''), 'update refused: ' + JSON.stringify(j).slice(0, 200));
+		j = await post({ action: 'import', table: 'sample_customer', mapping: map, mode: 'insert', delimiter: ',', header: '1' });
+		expect(j.ok && j.inserted === 2 && +sql("SELECT COUNT(*) FROM sample_customer WHERE cus_code LIKE 'E2EIMP%'") === 2, 'import as ben: ' + JSON.stringify(j).slice(0, 200));
+		expect(/E2E_IMP/.test(sql("SELECT details FROM zzzzsys_nunext_log WHERE event = 'csv_imported' ORDER BY log_time DESC LIMIT 1")), 'log names the item');
+		// item switched off: no access
+		sql("UPDATE zzzzsys_user_permission SET upe_active = '0' WHERE zzzzsys_user_permission_id = 'e2e_imp_up'");
+		const st = (await u.request.get(BASE + 'index.php?p=import', { maxRedirects: 0 })).status();
+		expect(st === 403, 'without the item: ' + st);
+		// deleting the item removes its type
+		await open(p, 'index.php?p=permissions&id=' + itemId);
+		const onDlg = d => d.accept().catch(() => {});
+		p.once('dialog', onDlg);
+		await p.locator('form[data-confirm] button.nuBtnDel').click();
+		await p.locator('.modal.show .btn-danger').click().catch(() => {});
+		p.off('dialog', onDlg);                                   // our own dialogue, not the browser's: the listener must not reach later tests
+		await p.waitForLoadState('networkidle');
+		expect(+sql(`SELECT COUNT(*) FROM zzzzsys_nunext_permission_type WHERE zzzzsys_nunext_permission_type_id = '${itemId}'`) === 0, 'type row removed with the item');
+	} finally {
+		if (u) await u.context().close();
+		clean();
+	}
+};
+
+// 0.8.774: the Home button of the top bar puts the cursor into the start page search (globeadmin and a user's tile page); a plain visit does not
+T.home_btn_focus = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=users');
+	await Promise.all([p.waitForNavigation(), p.click('.nu-navbar .navbar-brand')]);   // with a logo: the logo
+	await p.waitForTimeout(300);
+	expect(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'nuHomeSearch', 'logo: focus in the search');
+	const had = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'") !== '0';
+	if (had) return;                                         // compact bar only on a site without own branding
+	sql(`INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('branding', '{"logo_show":"login"}')`);
+	try { await home_btn_compact(s); } finally { sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'"); }
+};
+async function home_btn_compact(s) {
+	const p = s.ga;
+	await open(p, 'index.php?p=users');
+	await Promise.all([p.waitForNavigation(), p.click('#nuHomeBtn')]);
+	await p.waitForTimeout(300);
+	expect(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'nuHomeSearch', 'globeadmin: focus in the search');
+	await open(p, 'index.php?p=home');
+	await p.waitForTimeout(300);
+	expect(await p.evaluate(() => document.activeElement && document.activeElement.id) !== 'nuHomeSearch', 'a plain visit keeps the focus where it was');
+	const u = await login('sample_anna', UPW);
+	try {
+		await open(u, 'index.php?p=password');
+		if (await u.locator('#nuHomeBtn').count()) {
+			await Promise.all([u.waitForNavigation(), u.click('#nuHomeBtn')]);
+			await u.waitForTimeout(300);
+			if (await u.locator('#nuHomeSearch').count()) expect(await u.evaluate(() => document.activeElement && document.activeElement.id) === 'nuHomeSearch', 'user tile page: focus in the search');
+		}
+	} finally { await u.context().close(); }
+}
+
 T.adv_search = async (s) => {
 	const p = s.ga;
 	const tot = async () => +((await p.textContent('.nuBrowseCard .card-footer')).match(/(\d+)/) || [0, -1])[1];
@@ -8738,6 +9180,122 @@ T.sec_quick_wins = async (s) => {
 
 // File Manager = the page nuFiles (0.8.479, handover nuFiles C1–C5 / C9): Tiny File Manager removed by step 0023, ?p=filemanager sets up the
 // page form for the globeadmin, entries in the start page / ⋮ menu, page API vendor / recentAuth / reauthUrl / dataDir / dangerousName
+// 0.8.771: File Manager – a right-click on a file or folder opens its ⋮ menu at the pointer (desktop); the ⋮ button still works afterwards
+T.file_manager_ctx = async (s) => {
+	if (!SITE) return 'skip';
+	const ga = s.ga;
+	let made = false, dir = '', created = [];
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		dir = set.shares.find(x => x.id === 'uploads').path;
+		const f = path.join(dir, 'e2e_ctx.txt'), d = path.join(dir, 'e2e_ctx_dir');
+		if (!fs.existsSync(f)) { fs.writeFileSync(f, 'hello'); created.push(f); }
+		if (!fs.existsSync(d)) { fs.mkdirSync(d); created.push(d); }
+		await open(ga, 'index.php?p=filemanager');
+		await ga.waitForSelector('#nufRows tr[data-key="e2e_ctx.txt"]');
+		const row = ga.locator('#nufRows tr[data-key="e2e_ctx.txt"]');
+		const box = await row.locator('.nuf-c-name').boundingBox();
+		const x = box.x + 40, y = box.y + box.height / 2;
+		await ga.mouse.click(x, y, { button: 'right' });
+		const menu = row.locator('.dropdown-menu');
+		await menu.waitFor({ state: 'visible' });
+		const mb = await menu.boundingBox();
+		expect(Math.abs(mb.x - x) < 30 && mb.y >= y - 5 && mb.y < y + 40, 'menu at the pointer: ' + JSON.stringify(mb) + ' / ' + x + ',' + y);
+		expect(await row.evaluate(r => r.classList.contains('table-active')), 'the row is selected');
+		expect(await menu.locator('.dropdown-item').count() >= 3, 'menu entries');
+		await ga.keyboard.press('Escape');
+		await menu.waitFor({ state: 'hidden' });
+		// a folder too; then the ⋮ button opens the menu next to itself again
+		const drow = ga.locator('#nufRows tr[data-key="e2e_ctx_dir"]');
+		await drow.locator('.nuf-c-size').click({ button: 'right' });
+		await drow.locator('.dropdown-menu').waitFor({ state: 'visible' });
+		expect(await ga.locator('#nufRows tr.table-active').count() === 1, 'only the right-clicked row selected');
+		await ga.keyboard.press('Escape');
+		await row.locator('.nuf-more').click();
+		await menu.waitFor({ state: 'visible' });
+		const bb = await row.locator('.nuf-more').boundingBox(), mb2 = await menu.boundingBox();
+		expect(Math.abs((mb2.x + mb2.width) - (bb.x + bb.width)) < 30, 'the ⋮ menu sits at its button again: ' + JSON.stringify(mb2));
+	} finally {
+		created.reverse().forEach(x => fs.rmSync(x, { recursive: true, force: true }));
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
+// 0.8.772: File Manager – the globeadmin sets Unix permissions of a file / folder (grid ⇄ number, recursive: files without execute,
+// links refused, setuid / owner without read refused)
+T.file_manager_chmod = async (s) => {
+	if (!SITE || process.platform === 'win32') return 'skip';
+	const ga = s.ga;
+	let made = false, created = [];
+	const mode = f => (fs.statSync(f).mode & 0o777).toString(8);
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		const dir = set.shares.find(x => x.id === 'uploads').path;
+		const f = path.join(dir, 'e2e_chmod.txt'), d = path.join(dir, 'e2e_chmod_dir'), inner = path.join(d, 'inner.txt'), lnk = path.join(dir, 'e2e_chmod_link');
+		fs.writeFileSync(f, 'x'); fs.chmodSync(f, 0o644); created.push(f);
+		fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(inner, 'y'); fs.chmodSync(inner, 0o664); created.push(d);
+		try { fs.symlinkSync(f, lnk); created.push(lnk); } catch (e) { /* no symlinks here */ }
+		// a fresh password confirmation (the action always asks for it)
+		await open(ga, 'index.php?p=configfile');
+		if (/p=reauth/.test(ga.url())) { await ga.fill('#reauthPassword', GA[1]); await Promise.all([ga.waitForLoadState('networkidle'), ga.click('button[type=submit]')]); }
+		await open(ga, 'index.php?p=filemanager');
+		const row = ga.locator('#nufRows tr[data-key="e2e_chmod.txt"]');
+		await row.waitFor();
+		await row.locator('.nuf-more').click();
+		await row.locator('.dropdown-menu .dropdown-item', { hasText: /Permissions|Rechte/ }).click();
+		await ga.waitForSelector('#nufDlg .nuf-chmod-grid');
+		const checked = await ga.$$eval('#nufDlg .nuf-chmod-grid input[data-bit]', b => b.filter(x => x.checked).map(x => +x.dataset.bit).reduce((a, x) => a | x, 0));
+		expect(checked === 0o644 && await ga.inputValue('#nufDlg .nuf-chmod-num') === '644', 'grid shows 644: ' + checked.toString(8));
+		await ga.fill('#nufDlg .nuf-chmod-num', '600');
+		expect(!(await ga.locator(`#nufDlg input[data-bit="${0o004}"]`).isChecked()), 'number → grid');
+		await ga.locator(`#nufDlg input[data-bit="${0o002}"]`).check();
+		expect(await ga.inputValue('#nufDlg .nuf-chmod-num') === '602' && /Others|Andere/.test(await ga.textContent('#nufDlg .nuf-chmod-warn')), 'grid → number + warning for others write');
+		await ga.fill('#nufDlg .nuf-chmod-num', '640');
+		await ga.click('#nufDlgFoot .btn-primary');
+		await ga.waitForTimeout(800);
+		expect(mode(f) === '640', 'file mode after the dialog: ' + mode(f));
+		// API: recursive on a folder, refusals
+		const call = (params) => ga.evaluate(async (params) => {
+			const fd = new FormData(); Object.keys(params).forEach(k => fd.append(k, params[k]));
+			const r = await NuPage.fetch(location.href.replace(/#.*/, '') + '&action=chmod', { method: 'POST', body: fd }); return [r.status, await r.json()];
+		}, Object.assign({ share: 'uploads' }, params));
+		let [st, j] = await call({ path: 'e2e_chmod_dir', mode: '750', recursive: '1' });
+		expect(st === 200 && j.ok && mode(d) === '750' && mode(inner) === '640', 'recursive: ' + JSON.stringify(j) + ' ' + mode(d) + '/' + mode(inner));
+		[st, j] = await call({ path: 'e2e_chmod.txt', mode: '4755' });
+		expect(!j.ok && j.error === 'err_chmod_mode', 'setuid refused: ' + JSON.stringify(j));
+		[st, j] = await call({ path: 'e2e_chmod.txt', mode: '044' });
+		expect(!j.ok && j.error === 'err_chmod_mode', 'owner without read refused');
+		[st, j] = await call({ path: 'e2e_chmod_dir', mode: '644' });
+		expect(!j.ok && j.error === 'err_chmod_mode', 'folder without open refused');
+		if (created.includes(lnk)) { [st, j] = await call({ path: 'e2e_chmod_link', mode: '600' }); expect(!j.ok && j.error === 'err_chmod_link' && mode(f) === '640', 'link refused: ' + JSON.stringify(j)); }
+		const log = sql("SELECT COUNT(*) FROM nufiles_log WHERE action = 'chmod' AND path LIKE 'e2e_chmod%'");
+		expect(+log >= 2, 'logged: ' + log);
+	} finally {
+		created.reverse().forEach(x => { try { fs.rmSync(x, { recursive: true, force: true }); } catch (e) { /* gone */ } });
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
 T.file_manager = async (s) => {
 	if (!SITE) return 'skip';
 	const old = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
@@ -9284,6 +9842,263 @@ T.sample_ticket = async (s) => {
 		if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'tkthome'") === '1') php("NuSampleSet::remove('ticket');");
 		if (was) php("NuSampleSet::install('ticket');");
 	}
+};
+
+// lists refreshed in place (0.8.776): system lists and form browse lists swap their card – no page load, address and Back follow
+T.list_smooth = async (s) => {
+	const p = s.ga;
+	const swaps = () => p.evaluate(() => +document.documentElement.getAttribute('data-nu-lv-swaps') || 0);
+	const mark = () => p.evaluate(() => window.__nuMark === 1);
+	await open(p, 'index.php?p=users');
+	await p.evaluate(() => { window.__nuMark = 1; });
+	await p.fill('input[name=q]', 'sample'); await p.press('input[name=q]', 'Enter');
+	await p.waitForFunction(() => document.documentElement.getAttribute('data-nu-lv-swaps') === '1');
+	expect(await mark() && /q=sample/.test(p.url()), 'users: search in place, address follows');
+	expect(await p.evaluate(() => document.activeElement && document.activeElement.name === 'q'), 'search keeps the focus');
+	await p.locator('table.nu-table thead a').first().click();
+	await p.waitForFunction(() => document.documentElement.getAttribute('data-nu-lv-swaps') === '2');
+	expect(await mark() && /sort=/.test(p.url()), 'users: sort in place');
+	await p.locator('.nuListFilter select.js-autosubmit[name=access]').evaluate(el => { el.selectedIndex = 1; el.dispatchEvent(new Event('change', { bubbles: true })); });
+	await p.waitForFunction(() => document.documentElement.getAttribute('data-nu-lv-swaps') === '3');
+	expect(await mark() && /access=/.test(p.url()), 'users: filter in place');
+	await p.goBack(); await p.waitForFunction(() => document.documentElement.getAttribute('data-nu-lv-swaps') === '4');
+	expect(await mark() && /sort=/.test(p.url()), 'Back swaps again');
+	await p.locator('#nuAdvButton, .nuAdvBtn').first().click(); await p.waitForTimeout(300);
+	expect(await p.locator('#nuAdvPanel').isVisible(), 'advanced search panel works after a swap');
+	// form browse list: automatic for a form without code of its own (a script in Setup → Include switches it off)
+	const inc = sql("SELECT IFNULL(set_include, '') FROM zzzzsys_setup");
+	sql("UPDATE zzzzsys_setup SET set_include = ''");
+	try {
+		await open(p, 'index.php?p=form&f=sampleproduct');
+		expect(await p.evaluate(() => window.nuNext.browse.smooth === true), 'sampleproduct: smooth flag');
+		await p.evaluate(() => { window.__nuMark = 1; });
+		const ps0 = await p.evaluate(() => window.nuNext.ps);
+		await p.fill('#nuSearchField', 'a'); await p.press('#nuSearchField', 'Enter');
+		await p.waitForFunction(() => document.documentElement.getAttribute('data-nu-lv-swaps') === '1');
+		const ps = await p.evaluate(() => window.nuNext.ps);
+		expect(await mark() && /q=a/.test(p.url()) && ps && ps !== ps0, 'browse: search in place, the new page scope taken over');
+		await p.locator('#nuBrowseTable thead a.nu-sort').nth(1).click();
+		await p.waitForFunction(() => document.documentElement.getAttribute('data-nu-lv-swaps') === '2');
+		expect(await mark() && await p.evaluate(() => window.nuNext.browse.sort === 1), 'browse: sort in place, nuNext.browse updated');
+		await p.locator('select.nuColumnFilter').first().selectOption({ index: 1 });
+		await p.waitForFunction(() => document.documentElement.getAttribute('data-nu-lv-swaps') === '3');
+		expect(await mark(), 'browse: column filter in place');
+		await Promise.all([p.waitForNavigation(), p.locator('#nuBrowseTable tbody tr').first().click()]);
+		expect(/[?&]r=/.test(p.url()), 'a row still opens its record');
+		// a form with browse JavaScript: the normal page load
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		expect(await p.evaluate(() => window.nuNext.browse.smooth === false), 'samplecustomer (browse JS): no smooth flag');
+		await p.evaluate(() => { window.__nuMark = 1; });
+		await Promise.all([p.waitForNavigation(), p.press('#nuSearchField', 'Enter')]);
+		expect(!(await mark()), 'samplecustomer: reloads');
+	} finally { sql("UPDATE zzzzsys_setup SET set_include = '" + inc.replace(/\\/g, '\\\\').replace(/'/g, "''") + "'"); }
+};
+
+// record pages (0.8.778 / 0.8.779): the breadcrumb names the record – no visible heading (kept for screen readers), the buttons left;
+// a heading with a badge / control stays visible
+T.record_head = async (s) => {
+	const p = s.ga;
+	const role = sql("SELECT zzzzsys_nunext_admin_role_id FROM zzzzsys_nunext_admin_role LIMIT 1");
+	const acc = sql("SELECT zzzzsys_access_id FROM zzzzsys_access ORDER BY sal_code LIMIT 1");
+	const look = () => p.evaluate(() => {
+		const tb = document.querySelector('.nuTitleBar.nuRecHead'), h = tb && tb.querySelector(':scope > h1'), b = tb && tb.querySelector(':scope > div:last-child');
+		if (!tb || !h || !b) return null;
+		const crumb = document.querySelector('.breadcrumb-item.active');
+		const cr = crumb ? crumb.getBoundingClientRect() : null;
+		return { hidden: h.getBoundingClientRect().width <= 1, name: h.textContent.trim().length > 0, left: b.getBoundingClientRect().left - tb.getBoundingClientRect().left, crumb: cr && cr.width > 0 ? crumb.textContent.trim() : '' };
+	});
+	for (const u of ['index.php?p=adminroles&id=' + role, 'index.php?p=procedures&id=new', 'index.php?p=accesslevel&id=' + acc]) {
+		await open(p, u);
+		const r = await look();
+		expect(r && r.hidden && r.name && r.left < 5 && r.crumb !== '', u + ': ' + JSON.stringify(r));
+	}
+	await open(p, 'index.php?p=user&id=sample_anna');               // "Act as user" icon in the heading: shown
+	const u = await look();
+	expect(u && !u.hidden && u.left < 5, 'user: heading with its control stays: ' + JSON.stringify(u));
+	await p.setViewportSize({ width: 390, height: 800 });
+	try {
+		await open(p, 'index.php?p=adminroles&id=' + role);
+		const r = await look();
+		expect(r && r.hidden && r.crumb !== '', 'phone: the breadcrumb names the record: ' + JSON.stringify(r));
+	} finally { await p.setViewportSize({ width: 1300, height: 900 }); }
+	await open(p, 'index.php?p=users');
+	expect(await p.locator('.nuRecHead').count() === 0, 'lists keep their own title');
+};
+
+// syntax check of the code editors (0.8.781): gutter marks while typing (JS / CSS / HTML in the browser, PHP through ?p=codecheck),
+// the ✓ button's list, Save asks with errors (Cancel = back to the line); nothing is saved here
+T.code_check = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=globalcode#gjs');
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=globalcode#gjs'); }
+	const setCode = (id, v) => p.evaluate(([id, v]) => { document.getElementById(id).nextElementSibling.CodeMirror.setValue(v); }, [id, v]);
+	const marks = id => p.evaluate(id => Array.from(document.querySelectorAll('#' + id + ' + .CodeMirror .nuChkMark')).map(m => (m.classList.contains('nuChk-error') ? 'E:' : 'W:') + m.title), id);
+	const tab = async k => { await p.click('[data-nu-tab="' + k + '"]').catch(() => {}); await p.waitForTimeout(300); };
+	await tab('gjs');
+	await setCode('scode-gjs', "var a = '#RECORD_ID#';\nfunction x( {\n  return 2;\n}\n");
+	await p.waitForTimeout(1500);
+	let m = await marks('scode-gjs');
+	expect(m.length === 1 && m[0].startsWith('E:'), 'JS error marked: ' + m);
+	await p.click('#scodeSave'); await p.waitForTimeout(700);
+	expect(await p.locator('#nuConfirm').isVisible() && /3/.test(await p.locator('#nuConfirm .nuConfirmDetails').innerText()), 'Save asks with the error');
+	await p.locator('#nuConfirm .modal-footer [data-bs-dismiss="modal"]').click(); await p.waitForTimeout(500);
+	expect(/p=globalcode/.test(p.url()) && await p.evaluate(() => document.getElementById('scode-gjs').nextElementSibling.CodeMirror.getCursor().line) === 2, 'Cancel: back at the line, nothing saved');
+	await setCode('scode-gjs', "var a = '#RECORD_ID#';\nif (#X# > 1) a = 2;\n");
+	await p.waitForTimeout(1300);
+	expect((await marks('scode-gjs')).length === 0, 'valid JS with hash variables: no marks');
+	await tab('gcss');
+	await setCode('scode-gcss', '.a { color: red; }\n.c { color: red;\n');
+	await p.waitForTimeout(1300);
+	m = await marks('scode-gcss');
+	expect(m.length === 1 && m[0].startsWith('E:'), 'CSS unclosed {: ' + m);
+	await setCode('scode-gcss', '.a { color: red; }\nb:nosuchpseudo { color: blue }\n');
+	await p.waitForTimeout(1300);
+	m = await marks('scode-gcss');
+	expect(m.length === 1 && m[0].startsWith('W:') && /nosuchpseudo/.test(m[0]), 'CSS rule the browser drops = warning: ' + m);
+	await tab('include');
+	await setCode('scode-include', '<link rel="stylesheet" href="x.css">\n<script>\nvar q = ;\n</script>\n');
+	await p.waitForTimeout(1300);
+	m = await marks('scode-include');
+	expect(m.length === 1 && m[0].startsWith('E:'), 'script inside HTML: ' + m);
+	// PHP: the server parses (nothing runs)
+	await open(p, 'index.php?p=procedures&id=new');
+	await p.evaluate(() => document.getElementById('sph_php').nextElementSibling.CodeMirror.setValue("$a = '#RECORD_ID#';\n$b = ;\n"));
+	await p.waitForTimeout(2500);
+	m = await marks('sph_php');
+	expect(m.length === 1 && m[0].startsWith('E:'), 'PHP error marked: ' + m);
+	await p.locator('#sph_php ~ * .nuCtCheck, .procCodeTools[data-for="sph_php"] .nuCtCheck').first().click(); await p.waitForTimeout(900);
+	expect(/2/.test(await p.locator('.nuChkPop').innerText()), 'the ✓ button lists the problem with its line');
+	const r = await p.evaluate(async () => { const b = new URLSearchParams({ action: 'check', code: 'echo 1;', _csrf: document.querySelector('[data-csrf]').getAttribute('data-csrf') });
+		return (await fetch('index.php?p=codecheck', { method: 'POST', body: b })).json(); });
+	expect(r.ok && r.errors.length === 0, 'codecheck: valid PHP: ' + JSON.stringify(r));
+};
+
+// segmented controls (0.8.783): the chosen choice on a light background with a thin accent line – no filled grey button
+T.seg_control = async (s) => {
+	const p = s.ga;
+	const look = sel => p.evaluate(sel => {
+		const el = document.querySelector(sel); if (!el) return null;
+		const cs = getComputedStyle(el), m = cs.backgroundColor.match(/\d+(\.\d+)?/g).map(Number);
+		return { lum: (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255, line: /inset/.test(cs.boxShadow) && /-2px/.test(cs.boxShadow) };
+	}, sel);
+	await open(p, 'index.php?p=notifications&tab=manage&id=new');
+	let r = await look('.nuNtfLevels .btn-check:checked + .btn');
+	expect(r && r.lum > 0.9 && r.line, 'notification level: ' + JSON.stringify(r));
+	await open(p, 'index.php?p=help');
+	r = await look('.btn-group.nuSeg > .btn.active');
+	expect(r && r.lum > 0.9 && r.line, 'help view: ' + JSON.stringify(r));
+};
+
+// forms for everyone (0.8.784): switch "Everyone" in a form's Access levels dialog writes a row per level (as nuBuilder Forte reads them),
+// the forms list shows the badge and filter, a new access level gets the form, admin-equivalent forms refuse it, gaps show in the
+// Compatibility check (FE), switching off keeps the rows
+T.form_everyone = async (s) => {
+	const p = s.ga;
+	const dump = path.join(os.tmpdir(), 'nunext-e2e-everyone.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_access zzzzsys_access_form > ' + dump);
+	const levels = () => +sql('SELECT COUNT(*) FROM zzzzsys_access');
+	const rows = (f, extra) => +sql("SELECT COUNT(DISTINCT slf_zzzzsys_access_id) FROM zzzzsys_access_form WHERE slf_zzzzsys_form_id = '" + f + "'" + (extra || ''));
+	const dlg = async f => { await p.evaluate(f => window.nuFormAccessOpen(f), f); await p.waitForSelector('#nuFormAccessDlg.show'); await p.waitForTimeout(300); };
+	const saveDlg = async () => { await p.click('#nuFacSave'); await p.waitForFunction(() => !document.getElementById('nuFormAccessDlg')); await p.waitForTimeout(600); };
+	try {
+		await open(p, 'index.php?p=forms');
+		await dlg('sampleproduct');
+		expect(!(await p.isChecked('#nuFacEv')) && await p.locator('#nuFacEvOpts').isHidden(), 'off at first');
+		expect(await p.locator('th[data-sort="open"] #nuFacAll').count() === 1 && await p.locator('.nuFacBar #nuFacAll').count() === 0, 'select all of Open in its column title (0.8.785)');
+		expect(await p.locator('#nuFacEvBox.nuFacEvOn').count() === 0, 'off: the box is not blue');
+		await p.click('#nuFacAll');
+		expect(await p.locator('.nuFacOpen:not(:checked)').count() === 0, 'Open ticked for all levels shown');
+		await p.click('#nuFacAll');
+		expect(await p.locator('.nuFacOpen:checked:not(:disabled)').count() === 0, 'and unticked again');
+		await p.click('label[for="nuFacEv"]');
+		expect(await p.locator('#nuFacEvOpts').isVisible() && await p.locator('.nuFacOpen:not(:disabled)').count() === 0 && await p.locator('#nuFacEvBox.nuFacEvOn').count() === 1, 'on: options shown, table follows, box blue');
+		if (!(await p.isChecked('#nuFacEvR_save'))) await p.click('label[for="nuFacEvR_save"]');
+		expect(await p.isChecked('#nuFacEvNew'), 'new levels ticked by default');
+		await Promise.all([p.waitForNavigation(), saveDlg()]).catch(async () => { await p.waitForTimeout(800); });
+		expect(rows('sampleproduct') === levels() && rows('sampleproduct', " AND slf_save_button = '1'") === levels(), 'a row per level with Save: ' + rows('sampleproduct') + '/' + levels());
+		const cfg = JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'form_everyone'"));
+		expect(cfg.sampleproduct && cfg.sampleproduct.rights.save === true && cfg.sampleproduct.new === true, 'switch stored: ' + JSON.stringify(cfg));
+		await open(p, 'index.php?p=forms&facc=ev&status=all');
+		expect(await p.locator('.nuFacEvBadge').count() >= 1 && await p.locator('table.nu-table tbody tr').count() === await p.locator('.nuFacEvBadge').count(), 'filter "For everyone" + badge');
+		// a new access level gets the form
+		await open(p, 'index.php?p=accesslevel');
+		await p.fill('#sal_code', 'e2e_everyone'); await p.fill('#sal_description', 'E2E everyone').catch(() => {});
+		await Promise.all([p.waitForNavigation(), p.click('[data-nu-save]')]);
+		const nid = sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE sal_code = 'e2e_everyone'");
+		expect(nid !== '' && +sql("SELECT COUNT(*) FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = '" + nid + "' AND slf_zzzzsys_form_id = 'sampleproduct' AND slf_save_button = '1'") === 1, 'new level got the form');
+		expect(await p.locator('.alert-info', { hasText: /sample|Product|Produkt/i }).count() >= 1, 'message names the added form');
+		// a level that misses it (as one created in nuBuilder Forte): Compatibility check FE
+		sql("DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = '" + nid + "' AND slf_zzzzsys_form_id = 'sampleproduct'");
+		await open(p, 'index.php?p=compat');
+		expect(await p.locator('[data-finding="FE"]').count() === 1, 'compat FE lists the gap');
+		// admin-equivalent form: no "Everyone"
+		await open(p, 'index.php?p=forms');
+		await dlg('nuuser');
+		expect(await p.isDisabled('#nuFacEv'), 'nuuser: switch disabled');
+		await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+		// the dialog fills the gap on Save; switching off keeps the rows
+		await dlg('sampleproduct');
+		expect(await p.isChecked('#nuFacEv') && !(await p.isDisabled('#nuFacSave')), 'on, Save offered for the missing level');
+		await saveDlg();
+		expect(rows('sampleproduct') === levels(), 'gap filled');
+		await open(p, 'index.php?p=forms');
+		await dlg('sampleproduct');
+		await p.click('label[for="nuFacEv"]');
+		await saveDlg();
+		expect(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'form_everyone'").indexOf('sampleproduct') < 0 && rows('sampleproduct') === levels(), 'off: switch gone, rows kept');
+	} finally {
+		execSync('mysql ' + DB + ' < ' + dump);
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'form_everyone'");
+	}
+};
+
+// start page (0.8.786): Home / the title of the top bar on the start page itself resets it in place – no reload
+T.home_btn_inplace = async (s) => {
+	const p = s.ga;
+	const homeLink = async () => (await p.locator('#nuHomeBtn').count()) ? '#nuHomeBtn' : '.nu-navbar .navbar-brand';   // Home button (no logo) or the logo / title
+	await open(p, 'index.php?p=home');
+	await p.evaluate(() => { window.__nuMark = 1; });
+	await p.fill('#nuHomeSearch', 'user'); await p.waitForTimeout(300);
+	await p.mouse.wheel(0, 800); await p.waitForTimeout(300);
+	await p.click(await homeLink()); await p.waitForTimeout(700);
+	const r = await p.evaluate(() => ({ mark: window.__nuMark, q: document.getElementById('nuHomeSearch').value, focus: document.activeElement && document.activeElement.id, y: window.scrollY }));
+	expect(r.mark === 1 && r.q === '' && r.focus === 'nuHomeSearch' && r.y < 5, 'Home on the start page: ' + JSON.stringify(r));
+	await open(p, 'index.php?p=users');
+	await Promise.all([p.waitForNavigation(), p.click(await homeLink())]);
+	expect(/p=home/.test(p.url()), 'from another page: the start page loads');
+};
+
+// a link to the open page (0.8.787): the active tab / menu entry does not load the page again; other tabs still do
+T.active_link_noreload = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=email&tab=test');
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=email&tab=test'); }
+	await p.evaluate(() => { window.__nuMark = 1; });
+	await p.click('.nav-tabs a.nav-link.active'); await p.waitForTimeout(600);
+	expect(await p.evaluate(() => window.__nuMark) === 1, 'active tab: no reload');
+	await open(p, 'index.php?p=email');                                    // the side bar's E-mail entry points here
+	await p.evaluate(() => { window.__nuMark = 1; });
+	const side = p.locator('.nuSetNav a.nav-link.active').last();
+	if (await side.count()) { await side.click(); await p.waitForTimeout(600); expect(await p.evaluate(() => window.__nuMark) === 1, 'active entry of the settings side bar: no reload'); }
+	await p.click('.nav-tabs a.nav-link.active'); await p.waitForTimeout(600);
+	expect(await p.evaluate(() => window.__nuMark) === 1, 'tab Settings of index.php?p=email: no reload');
+	await Promise.all([p.waitForNavigation(), p.click('.nav-tabs a.nav-link[href*="tab=log"]')]);
+	expect(/tab=log/.test(p.url()), 'another tab still loads');
+};
+
+// Compatibility check (0.8.791): SQL that SQL Server does not understand – only on SQL Server (developer mode: ?mssql=1 on MySQL)
+T.compat_mssql = async (s) => {
+	const p = s.ga;
+	const F = 'e2e_mssql_form';
+	sql("INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_code, sfo_description, sfo_table, sfo_primary_key, sfo_type, sfo_browse_sql) VALUES ('" + F + "', 'e2e_mssql', 'E2E MSSQL', 'sample_customer', 'sample_customer_id', 'browse', 'SELECT * FROM sample_customer WHERE IFNULL(cus_name, '''') <> '''' LIMIT 50')");
+	try {
+		await open(p, 'index.php?p=compat');
+		expect(await p.locator('#compat_mssql').count() === 0, 'MySQL: no SQL Server section');
+		await open(p, 'index.php?p=compat&mssql=1');
+		expect(await p.locator('#compat_mssql').count() === 1, 'section with ?mssql=1 (developer mode)');
+		expect(await p.locator('#compat_mssql tr[data-ms-rule="limit"]', { hasText: 'e2e_mssql' }).count() === 1
+			&& await p.locator('#compat_mssql tr[data-ms-rule="ifnull"]', { hasText: 'e2e_mssql' }).count() === 1, 'LIMIT and IFNULL of the browse SQL listed with the form');
+	} finally { sql("DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'"); }
 };
 
 T.js_errors = async (s) => {

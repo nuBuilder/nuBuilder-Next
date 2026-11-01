@@ -1306,6 +1306,27 @@
 			e.preventDefault();
 			search.focus();
 		});
+		// the Home button of the top bar (0.8.774, nuapp.js sets the flag): the cursor goes into the search field
+		var fromHome = false;
+		try { fromHome = sessionStorage.getItem('nunext-home-focus') === '1'; sessionStorage.removeItem('nunext-home-focus'); } catch (x) { /* no storage */ }
+		if (fromHome && (!edit || edit.hidden) && search.offsetParent !== null) search.focus({preventScroll: true});
+		// already on this start page (0.8.786): Home / the title of the top bar does not load the page again (no flicker) – the page goes
+		// back to its first view: search emptied, top of the page, cursor in the search field (assets/js/nuapp.js asks window.nuHomeReset)
+		window.nuHomeReset = function (href) {
+			try {
+				var to = new URL(href, window.location.href), here = new URL(window.location.href);
+				if (to.origin !== here.origin || to.pathname !== here.pathname) return false;
+				var a = to.searchParams, b = here.searchParams;
+				if ((a.get('p') || 'home') !== 'home' || (b.get('p') || 'home') !== 'home') return false;
+				a.delete('p'); b.delete('p'); a.sort(); b.sort();                // index.php = index.php?p=home
+				if (a.toString() !== b.toString()) return false;
+			} catch (x) { return false; }
+			if (edit && !edit.hidden) return false;                    // customising: the normal way (leave guard, …)
+			if (search.value !== '') { search.value = ''; search.dispatchEvent(new Event('input', {bubbles: true})); }
+			window.scrollTo({top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+			if (search.offsetParent !== null) search.focus({preventScroll: true});
+			return true;
+		};
 	}
 
 	// saved layouts (0.8.333, in the View panel since 0.8.420): switch at once; Save as / name and visibility in a small dialog

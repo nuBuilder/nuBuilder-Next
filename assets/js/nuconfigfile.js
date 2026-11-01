@@ -53,6 +53,19 @@
 	var tools = document.querySelector('.cfgCodeTools');
 	if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: 'PHP', readOnly: ro, noInsert: true});   // nuconfig.php: no nuBuilder functions (0.8.593)
 	initInsert(cm);
+	// the editor fills the window below it (0.8.780): its height = window height − its top − what follows it on the page
+	var ed = cm.getWrapperElement();
+	function fit() {
+		if (ed.closest('.nuCodeFull')) return;                  // full screen of the code tools sizes it itself
+		cm.setSize(null, 'auto');
+		var r = ed.getBoundingClientRect(), after = document.documentElement.scrollHeight - (r.bottom + window.scrollY);
+		var h = Math.max(256, Math.floor(window.innerHeight - (r.top + window.scrollY) - Math.max(0, after) - 1));
+		cm.setSize(null, h);
+	}
+	var tm = null;
+	window.addEventListener('resize', function () { clearTimeout(tm); tm = setTimeout(fit, 80); });
+	fit();
+	setTimeout(fit, 300);                                         // after fonts / the alert above have their final height
 })();
 
 /* Insert variable (0.8.442): the dialog lists the variables nuBuilder Next reads (NuConfigFile::catalog) that the editor's text does not

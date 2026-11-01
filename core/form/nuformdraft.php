@@ -242,8 +242,7 @@ final class NuFormDraft
 		$d = self::get($id);
 		if (!$d || !in_array($d['status'], [self::OPEN, self::REVIEW], true)) throw new RuntimeException(t('builder_draft_not_open'));
 		if (!self::canPublish()) throw new RuntimeException(t('err_forbidden'));
-		$note = trim($note);
-		if ($note === '') return ['ok' => false, 'errors' => [t('builder_draft_note_required')]];
+		$note = trim($note);                                 // optional (0.8.797): empty = an automatic note with the number of changes, below
 		$formId = (string)$d['form_id'];
 		$live = NuFormSnapshot::capture($formId);
 		if ($live === null) return ['ok' => false, 'errors' => [t('builder_draft_form_gone')]];
@@ -251,6 +250,10 @@ final class NuFormDraft
 		$snap = self::snapshotOf($d);
 		$conflict = NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash'];
 		if ($conflict && !$force) return ['ok' => false, 'conflict' => true, 'changes' => NuFormSnapshot::diff($base, $live)];
+		if ($note === '') {
+			$n = (int)(NuFormSnapshot::diff($live, $snap)['counts']['total'] ?? 0);
+			$note = t($n === 1 ? 'builder_draft_note_auto_1' : 'builder_draft_note_auto', $n);
+		}
 		$v = self::validate($formId, $snap, $live);
 		if ($v['errors']) return ['ok' => false, 'errors' => $v['errors']];
 		if ($v['warnings'] && !$warningsOk) return ['ok' => false, 'warnings' => $v['warnings']];

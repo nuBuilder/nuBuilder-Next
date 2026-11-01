@@ -123,6 +123,43 @@ nu_layout_start(t('compat_title'), 'home');
 		</table>
 	</div>
 </div>
+<?php // MySQL-only SQL (0.8.791): only while nuBuilder Next runs on SQL Server (developer mode: ?mssql=1 shows it on MySQL too, for tests)
+if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
+	$ms = NuCompat::mssqlScan($withSystem); $msN = array_sum(array_map('count', $ms));
+	$canProc = NuAcl::can(NuAcl::FORM_PROCEDURE); ?>
+<div class="card shadow-sm mb-4" id="compat_mssql">
+	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
+		<span class="fw-semibold me-auto"><i class="bi bi-database-exclamation me-1"></i><?= h(t('compat_ms_title')) ?>
+			<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('compat_ms_tip')) ?>" title="<?= h(t('compat_ms_tip')) ?>"><i class="bi bi-info-circle"></i></span></span>
+		<span class="badge <?= $ms ? 'text-bg-warning' : 'text-bg-success' ?>" id="compatMsCount"><?= $msN ?></span>
+	</div>
+	<div class="table-responsive">
+		<table class="table table-sm align-middle mb-0 nu-table">
+			<thead><tr><th><?= h(t('compat_ms_mysql')) ?></th><th><?= h(t('compat_ms_tsql')) ?></th><th><?= h(t('compat_where')) ?></th></tr></thead>
+			<tbody>
+			<?php foreach (NuCompat::MSSQL_RULES as $id => [$what, , $tsql]): if (empty($ms[$id])) continue; $places = $ms[$id]; ?>
+				<tr data-ms-rule="<?= h($id) ?>">
+					<td><code><?= h($what) ?></code></td>
+					<td class="small"><code><?= h($tsql) ?></code></td>
+					<td class="small">
+						<?php $links = [];
+						foreach ($places as $pl) {
+							$fid = $pl['form'];
+							if ($pl['proc'] !== '' && $canProc) $links[$pl['where']] = '<a class="nuCompatProc" href="' . h(nu_url('procedures', ['id' => $pl['proc']])) . '" target="_blank" rel="noopener"><i class="bi bi-filetype-php me-1" aria-hidden="true"></i>' . h(preg_replace('/^Procedure( JS)? · /', '', $pl['where'])) . '</a>';
+							elseif ($fid !== '' && isset($forms[$fid]) && !str_starts_with($fid, 'nu')) $links[$fid] = '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>';
+						}
+						echo implode(', ', array_slice($links, 0, 6)); ?>
+						<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($places) ?> <?= h(t(count($places) === 1 ? 'compat_place' : 'compat_places')) ?></summary>
+							<ul class="mb-0 ps-3"><?php foreach (array_slice($places, 0, 60) as $pl): ?><li><?= h($pl['where']) ?> – <code class="text-break"><?= h($pl['detail']) ?></code></li><?php endforeach; ?></ul></details>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			<?php if (!$ms): ?><tr><td colspan="3" class="text-center text-success py-4"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_ms_none')) ?></td></tr><?php endif; ?>
+			</tbody>
+		</table>
+	</div>
+</div>
+<?php endif; ?>
 <?php $unq = NuCompat::unquotedHash($withSystem); // hash variables outside quotes (0.8.207) ?>
 <div class="card shadow-sm mb-4" id="compat_hash">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">

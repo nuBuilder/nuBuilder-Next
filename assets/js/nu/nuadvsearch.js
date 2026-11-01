@@ -1,22 +1,32 @@
 /* Advanced search of form browse lists (0.8.719, core/form/nuadvsearch.php): the ▾ next to the search opens #nuAdvPanel – conditions on the
    list's columns (field, operator, value), all / any, Apply (?adv=…), Clear, "My searches" (?p=advsearch). nuNextAdvancedSearch() reads or
-   sets the search from form code. Data: window.nuNext.adv {cols, cur, ops, saved, url, form, canSave, texts}. */
+   sets the search from form code. Data: window.nuNext.adv {cols, cur, ops, saved, url, form, canSave, texts}.
+   System lists (0.8.769, core/nulistview.php): the data comes from #nuAdvData[data-adv] (+ noMatch: no all / any, search: id of the search
+   field, csrf); columns are keys there instead of indexes. */
 (function () {
 	'use strict';
+	// system lists refreshed in place (0.8.776, assets/js/nulistsmooth.js) call it again for the new list card
+	window.nuAdvSearchInit = init;
+	init();
+	function init() {
 	var N = window.nuNext || {}, A = N.adv;
+	if (!A) {
+		var dataEl = document.getElementById('nuAdvData');
+		try { A = dataEl ? JSON.parse(dataEl.getAttribute('data-adv') || 'null') : null; } catch (e) { A = null; }
+	}
 	var panel = document.getElementById('nuAdvPanel');
 	if (!A) return;
 	var T = A.texts || {};
 	var cols = A.cols || [];
 	function t(k) { return T[k] || k; }
-	function col(i) { for (var k = 0; k < cols.length; k++) if (cols[k].i === +i) return cols[k]; return null; }
+	function col(i) { for (var k = 0; k < cols.length; k++) if (String(cols[k].i) === String(i)) return cols[k]; return null; }
 	function need(c, op) { return c && A.ops[c.y] ? A.ops[c.y][op] : undefined; }
 	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; }
 	function opt(sel, v, label, on) { var o = new Option(label, v); if (on) o.selected = true; sel.appendChild(o); return o; }
 
 	/** The URL with the given search (null = none), q = the search field, back to page 1. */
 	function go(adv) {
-		var u = new URL(window.location.href), f = document.getElementById('nuSearchField');
+		var u = new URL(window.location.href), f = document.getElementById(A.search || 'nuSearchField');
 		if (adv && adv.c && adv.c.length) u.searchParams.set('adv', JSON.stringify(adv)); else u.searchParams.delete('adv');
 		if (f) { if (f.value) u.searchParams.set('q', f.value); else u.searchParams.delete('q'); }
 		u.searchParams.delete('pg');
@@ -65,7 +75,7 @@
 			var row = el('div', 'd-flex flex-wrap gap-1 align-items-start mb-2 nuAdvRow');
 			var fs = el('select', 'form-select form-select-sm nuAdvField'); fs.setAttribute('aria-label', t('as_field'));
 			cols.forEach(function (x) { opt(fs, x.i, x.t, x.i === c.i); });
-			fs.addEventListener('change', function () { r.i = +fs.value; r.v = ''; r.v2 = ''; drawRows(); });
+			fs.addEventListener('change', function () { var x = col(fs.value); r.i = x ? x.i : fs.value; r.v = ''; r.v2 = ''; drawRows(); });
 			var os = el('select', 'form-select form-select-sm nuAdvOp'); os.setAttribute('aria-label', t('as_op'));
 			Object.keys(A.ops[c.y]).forEach(function (o) { opt(os, o, t('as_op_' + o), o === r.o); });
 			os.addEventListener('change', function () {
@@ -98,7 +108,7 @@
 	function apply() { go(collect()); }
 
 	function post(body) {
-		return fetch(A.url, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
+		return fetch(A.url, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': A.csrf || N.csrf, 'Accept': 'application/json'},
 			body: JSON.stringify(Object.assign({f: A.form}, body))}).then(function (r) { return r.json(); });
 	}
 	function drawSaved(box) {
@@ -147,7 +157,7 @@
 			var l = el('label', 'btn btn-outline-secondary', x[1]); l.htmlFor = id;
 			mg.appendChild(r); mg.appendChild(l);
 		});
-		head.appendChild(el('span', 'small text-body-secondary', t('as_match'))); head.appendChild(mg);
+		if (!A.noMatch) { head.appendChild(el('span', 'small text-body-secondary', t('as_match'))); head.appendChild(mg); }   // system lists: always all
 		panel.appendChild(head);
 		rowsBox = el('div', 'nuAdvRows'); panel.appendChild(rowsBox);
 		var add = el('button', 'btn btn-sm btn-link p-0 mb-2 nuAdvAdd'); add.type = 'button';
@@ -185,4 +195,5 @@
 		go({m: mode === 'any' ? 'any' : 'all', c: list});
 		return true;
 	};
+	}
 })();

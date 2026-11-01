@@ -490,7 +490,7 @@ body.nu-print-list { background: var(--bs-body-bg); font-size: .85rem; }
 .procCM .CodeMirror-scroll { min-height: 22rem; max-height: 70vh; }
 .procCM.is-invalid { border-color: var(--bs-danger); }
 .cfgCM { height: auto; font-size: .85rem; border-bottom-left-radius: var(--bs-card-inner-border-radius); border-bottom-right-radius: var(--bs-card-inner-border-radius); }
-.cfgCM .CodeMirror-scroll { min-height: 24rem; max-height: 72vh; }
+.cfgCM .CodeMirror-scroll { min-height: 16rem; }   /* height set by assets/js/nuconfigfile.js: the window below it (0.8.780) */
 .cfgEditor.nuCodeFull .cfgToolbar { border: 0 !important; padding: 0 0 .5rem !important; }
 [data-bs-theme="dark"] .cfgCM.CodeMirror { background: var(--bs-body-bg); color: var(--bs-body-color); }
 #procTabJs .procCM, #procTabJs .procCM .CodeMirror-scroll { min-height: 16rem; }
@@ -891,9 +891,9 @@ label > .nuMarkUnique, .form-label > .nuMarkUnique { margin-inline-start: .25em;
 .setSt-next { background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); border-color: var(--bs-success-border-subtle) !important; }
 .setSt-open { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle) !important; }
 .setSt-na { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); border-color: var(--bs-border-color) !important; }
-.btn-check:checked + .setStBtn-next { background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); border-color: var(--bs-success-border-subtle); }
-.btn-check:checked + .setStBtn-open { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle); }
-.btn-check:checked + .setStBtn-na { background: var(--bs-secondary-bg); color: var(--bs-emphasis-color); border-color: var(--bs-secondary-color); }
+.btn-group:has(> .btn-check) > .btn-check:checked + .btn.setStBtn-next { color: var(--bs-success-text-emphasis); }   /* segmented control (0.8.783): only the colour of the status */
+.btn-group:has(> .btn-check) > .btn-check:checked + .btn.setStBtn-open { color: var(--bs-warning-text-emphasis); }   /* segmented control (0.8.783): only the colour of the status */
+
 .setTable > thead th { position: sticky; top: 0; z-index: 1; }
 
 
@@ -1348,14 +1348,7 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuNtfItem.nuBellLv-danger { border-inline-start: 4px solid var(--bs-danger) !important; }
 .nuNtfItem.nuBellLv-warning { border-inline-start: 4px solid #d39e00 !important; }
 
-/* notification form (0.8.358): the chosen level light in its own colour instead of the dark grey of Bootstrap's checked button */
-.nuNtfLevels .btn { --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-border-color); color: var(--bs-body-color); }
-.nuNtfLevels .btn-check:checked + .btn { font-weight: 500; position: relative; z-index: 1; }
-.nuNtfLevels .btn-check:checked + .nuNtfLv-info { background: var(--bs-info-bg-subtle); border-color: var(--bs-info-border-subtle); color: var(--bs-info-text-emphasis); }
-.nuNtfLevels .btn-check:checked + .nuNtfLv-success { background: var(--bs-success-bg-subtle); border-color: var(--bs-success-border-subtle); color: var(--bs-success-text-emphasis); }
-.nuNtfLevels .btn-check:checked + .nuNtfLv-warning { background: var(--bs-warning-bg-subtle); border-color: var(--bs-warning-border-subtle); color: var(--bs-warning-text-emphasis); }
-.nuNtfLevels .btn-check:checked + .nuNtfLv-danger { background: var(--bs-danger-bg-subtle); border-color: var(--bs-danger-border-subtle); color: var(--bs-danger-text-emphasis); }
-.nuNtfLevels .btn-check:focus-visible + .btn { box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2); }
+/* notification form (0.8.358): the level choice – a segmented control since 0.8.783 (block "segmented controls" at the end) */
 
 /* side bar (0.8.460, nu_sidebar() in core/nulayout.php, assets/js/nusidebar.js): favourites and recently used on the left – a drawer
    (body.nuSbOpen) on every screen width since 0.8.513 */
@@ -1719,7 +1712,6 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 :root:not([data-bs-theme="dark"]) .btn.btn-outline-secondary.nuRowBtn,
 :root:not([data-bs-theme="dark"]) .btn.btn-outline-secondary.nuToolBtn { --bs-btn-active-bg: #6c757d; --bs-btn-active-border-color: #6c757d; --bs-btn-active-color: #fff; }
 :root:not([data-bs-theme="dark"]) .text-bg-secondary { background-color: #6c757d !important; color: #fff !important; }
-:root:not([data-bs-theme="dark"]) .btn-group > .btn-check:checked + .btn-outline-secondary { background-color: #6c757d; border-color: #6c757d; color: #fff; }
 /* pin of the ☰ menu when pinned (0.8.641): grey pin on a light background instead of the filled grey button */
 .btn.btn-outline-secondary#nuNavPin.active { background-color: #e9ecef; border-color: #ced4da; color: #6c757d; }
 [data-bs-theme="dark"] .btn.btn-outline-secondary#nuNavPin.active { background-color: #2b3138; border-color: #4a535c; color: #adb5bd; }
@@ -1836,6 +1828,10 @@ fieldset.contents { display: contents; }
 /* admin role form (0.8.739): links to the page of a right, flat (sorted) table without group rows */
 .admRightLink { color: inherit; text-decoration: none; }
 .admRightLink:hover { color: var(--bs-primary); text-decoration: underline; }
+/* admin role form: the titles stay on screen below the top bar and the sticky button row (0.8.796); no overflow box around the
+   table – overflow would make sticky work inside the box instead of the page; phones show the rows as cards without titles */
+#admRights > thead > tr > th { position: sticky; top: calc(var(--nu-sticky-top, var(--nu-nav-h, 57px)) + var(--nu-sticky-h, 0px) + .5rem); z-index: 3;
+	background: var(--bs-card-bg, var(--bs-body-bg)); box-shadow: inset 0 -1px 0 var(--bs-border-color); }
 #admRights .admGrpTag { display: none; }
 #admRights.admFlat .admGrpTag { display: inline; }
 #admRights.admFlat tr.nuAdmGroup { display: none; }
@@ -1875,3 +1871,75 @@ fieldset.contents { display: contents; }
 	#admRights .admLvl:has(:disabled) { opacity: .55; cursor: not-allowed; }
 	#admRights .admLvlTxt { display: inline; font-size: .875rem; }
 }
+
+/* advanced search panel (0.8.719 form lists, 0.8.769 also the system lists – assets/js/nu/nuadvsearch.js) */
+.nuAdvMenu { width: min(600px, calc(100vw - 24px)); max-height: 75vh; overflow-y: auto; }
+.nuAdvRow .nuAdvField { flex: 1 1 9rem; min-width: 8rem; max-width: 14rem; }
+.nuAdvRow .nuAdvOp { flex: 0 1 10rem; min-width: 8rem; }
+.nuAdvRow .nuAdvVals { flex: 1 1 8rem; min-width: 8rem; }
+.nuAdvRow .nuAdvVals .nuAdvVal { min-width: 0; }
+.nuAdvChip { font-size: .8rem; padding: .35em .7em; }
+.nuAdvChip:hover { background: var(--bs-secondary-bg) !important; }
+/* phone cards: a long badge in the card title wraps instead of widening the page (0.8.769, e.g. long log event names in German) */
+.nuLvCard .nuLvCardTitle .badge, .nuLvCard .nuLvCardBadge .badge { white-space: normal; text-align: start; max-width: 100%; }
+
+/* lists refreshed in place (assets/js/nulistsmooth.js): a slow answer dims the card a little */
+.nuListCard[data-lv-smooth] { transition: opacity .15s ease; }
+.nuListCard.nuLvLoading { opacity: .55; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .nuListCard[data-lv-smooth] { transition: none; } }
+
+/* record pages (0.8.778 / 0.8.779): the breadcrumb names the record, so the title bar shows only the buttons, left as on every page.
+   The heading stays for screen readers (visually hidden); it is shown – compact – only where it carries more than the name: a badge
+   (expired, template, status …) or a control (the user form's "Act as user" icon). Pages mark the bar class nuRecHead. */
+.nuTitleBar.nuRecHead > h1:not(:has(.badge, a, button)) { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important;
+	margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+.nuTitleBar.nuRecHead > h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.3; min-width: 0; }
+.nuTitleBar.nuRecHead > h1 .bi { font-size: 1.1em; }
+/* … and then the breadcrumb shows the record's name (the page's own breadcrumb leaves it out while a heading says it) */
+main:has(.nuTitleBar.nuRecHead):not(:has(.nuRecHead > h1 .badge, .nuRecHead > h1 a, .nuRecHead > h1 button)) > nav > .breadcrumb .breadcrumb-item.active { display: revert; }
+
+/* syntax check of the code editors (0.8.781, assets/js/nu/nucodetools.js): gutter marks, line background, ✓ button, result box */
+.CodeMirror .nuChkGutter { width: 1.1rem; }
+.nuChkMark { display: inline-block; width: 1rem; text-align: center; cursor: pointer; font-size: .8rem; line-height: inherit; }
+.nuChkMark.nuChk-error, .nuChkItem.nuChk-error .bi { color: var(--bs-danger-text-emphasis); }
+.nuChkMark.nuChk-warn, .nuChkItem.nuChk-warn .bi { color: var(--bs-warning-text-emphasis); }
+.CodeMirror .nuChkLine { background: rgba(var(--bs-danger-rgb), .10); }
+.nuCtCheck.nuChkBad { color: var(--bs-danger-text-emphasis); border-color: var(--bs-danger-border-subtle); background: var(--bs-danger-bg-subtle); }
+.nuCtCheck.nuChkWarn { color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle); }
+.nuChkPop { position: absolute; z-index: 1090; max-width: min(34rem, calc(100vw - 16px)); max-height: 50vh; overflow: auto; padding: .4rem;
+	background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); font-size: .875rem; }
+.nuChkItem { display: block; width: 100%; text-align: start; border: 0; background: none; color: inherit; padding: .3rem .45rem; border-radius: var(--bs-border-radius-sm); }
+.nuChkItem:hover, .nuChkItem:focus-visible { background: var(--bs-tertiary-bg); }
+.nuChkOk { color: var(--bs-success-text-emphasis); padding: .25rem .45rem; }
+
+/* Settings → General → Languages (0.8.782): variants next to English / German */
+.setLangVars { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .15rem .6rem; margin-inline-start: .5rem; padding: .05rem .5rem;
+	border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-pill); font-size: .875rem; }
+.setLangVars .form-check-input { margin-top: .2rem; }
+.setLangVarsOff { opacity: .55; }
+
+/* segmented controls (0.8.783): a choice of one in a button group – radio buttons (.btn-check) or links / buttons with .active in a
+   .nuSeg group (help view, form layout, theme preview, tutorial track). One frame with dividers, the chosen one on a light background
+   with a thin accent line below – instead of Bootstrap's filled grey / blue button. Icons keep their own colours. */
+.btn-group:has(> .btn-check), .btn-group.nuSeg { border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg); background: var(--bs-body-bg); }
+.btn-group:has(> .btn-check) > .btn, .btn-group.nuSeg > .btn {
+	border: 0; border-radius: 0; margin: 0; background: transparent; color: var(--bs-secondary-color); box-shadow: none;
+	--bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: transparent;
+	--bs-btn-active-bg: var(--bs-tertiary-bg); --bs-btn-active-color: var(--bs-emphasis-color); --bs-btn-active-border-color: transparent; }
+.btn-group:has(> .btn-check) > .btn + .btn-check + .btn, .btn-group.nuSeg > .btn + .btn, .btn-group.nuSeg > .btn + input + .btn { border-inline-start: 1px solid var(--bs-border-color); }
+.btn-group:has(> .btn-check) > .btn:first-of-type, .btn-group.nuSeg > .btn:first-of-type { border-start-start-radius: calc(var(--bs-border-radius-lg) - 1px); border-end-start-radius: calc(var(--bs-border-radius-lg) - 1px); }
+.btn-group:has(> .btn-check) > .btn:last-child, .btn-group.nuSeg > .btn:last-child { border-start-end-radius: calc(var(--bs-border-radius-lg) - 1px); border-end-end-radius: calc(var(--bs-border-radius-lg) - 1px); }
+.btn-group:has(> .btn-check) > .btn:hover, .btn-group.nuSeg > .btn:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+.btn-group:has(> .btn-check) > .btn-check:checked + .btn, .btn-group.nuSeg > .btn.active {
+	background: var(--bs-tertiary-bg); color: var(--bs-emphasis-color); box-shadow: inset 0 -2px 0 var(--bs-primary); }
+.btn-group:has(> .btn-check) > .btn-check:focus-visible + .btn, .btn-group.nuSeg > .btn:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; box-shadow: none; z-index: 2; }
+.btn-group:has(> .btn-check) > .btn-check:checked:focus-visible + .btn, .btn-group.nuSeg > .btn.active:focus-visible { box-shadow: inset 0 -2px 0 var(--bs-primary); }
+.btn-group:has(> .btn-check) > .btn-check:disabled + .btn { opacity: .55; }
+
+/* Access levels of one form: switch "Everyone" (0.8.784, assets/js/nu/nuformaccess.js) */
+.nuFacEv { border: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); border-radius: var(--bs-border-radius-lg); padding: .75rem 1rem; }
+.nuFacEv.nuFacEvOn { border-color: var(--bs-primary-border-subtle); background: var(--bs-primary-bg-subtle); }   /* blue only while on (0.8.785) */
+.nuFacEvOpts { margin-top: .6rem; padding-inline-start: 2.6rem; }
+.nuFacEvCount { background: var(--bs-body-bg); color: var(--bs-primary-text-emphasis); border: 1px solid var(--bs-primary-border-subtle); font-weight: 600; }
+.nuFacEvCount.nuFacEvGap { color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle); }
+.nuFacBar.nuFacFollow + .table-responsive .nuFacTable tbody { opacity: .75; }

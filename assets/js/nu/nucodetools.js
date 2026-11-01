@@ -301,6 +301,7 @@
 		host.appendChild(g);
 		clipMenu(cm, label || bClip, ro);
 		var ins = ro || opt.noInsert ? null : insertTools(cm, host, lang, opt);   // Insert menu + suggestions while typing (0.8.593)
+		var chk = CHECKS[lang] && !opt.noCheck ? checkTools(cm, g, lang, opt) : null;   // syntax check (0.8.781)
 
 		var hist = function () { var h = cm.historySize(); bUndo.disabled = !h.undo; bRedo.disabled = !h.redo; };
 		hist();
@@ -373,6 +374,7 @@
 			window.removeEventListener('resize', fit);
 			if (on) { cm.removeOverlay(INVIS); cm.getWrapperElement().classList.remove('nuShowInvisibles'); }
 			if (ins) ins.detach();
+			if (chk) chk.detach();
 			g.remove();
 		};
 		return g;
@@ -648,5 +650,301 @@
 		}};
 	}
 
-	window.NuCodeTools = {attach: attach, format: format};
+	// ================================================================ syntax check (0.8.781)
+	// JavaScript: Acorn (vendor/bundled/acorn-*, loaded on first use – the strict CSP rules out new Function()); CSS: braces, comments,
+	// strings + rules the browser drops; HTML: unclosed <script> / <style>, their contents as JavaScript / CSS; PHP: ?p=codecheck
+	// (token_get_all, nothing runs). Nothing is ever executed. Marks in the gutter while typing (after a pause), the ✓ button lists the
+	// problems; NuCodeTools.guardForm(form) / confirmProblems() ask before saving code with errors ("Save anyway").
+	var TEXTS_CHK = {
+		en: {chk: 'Check syntax (Shift+Alt+C)', chkOk: 'No syntax errors found.', chkN: '%d problem(s)', chkLine: 'Line %d', chkTitle: 'Syntax errors',
+			chkSave: 'The code has syntax errors. Save anyway?', chkSaveAnyway: 'Save anyway', chkPhpOff: 'The PHP check could not be reached.',
+			cssOpen: 'Unclosed {', cssClose: 'Unexpected }', cssComment: 'Unclosed comment', cssString: 'Unclosed string', cssDropped: 'The browser ignores this rule',
+			htmlScript: 'Unclosed <script>', htmlStyle: 'Unclosed <style>'},
+		de: {chk: 'Syntax prüfen (Umschalt+Alt+C)', chkOk: 'Keine Syntaxfehler gefunden.', chkN: '%d Problem(e)', chkLine: 'Zeile %d', chkTitle: 'Syntaxfehler',
+			chkSave: 'Der Code enthält Syntaxfehler. Trotzdem speichern?', chkSaveAnyway: 'Trotzdem speichern', chkPhpOff: 'Die PHP-Prüfung war nicht erreichbar.',
+			cssOpen: 'Nicht geschlossene {', cssClose: 'Unerwartete }', cssComment: 'Nicht geschlossener Kommentar', cssString: 'Nicht geschlossene Zeichenkette', cssDropped: 'Der Browser ignoriert diese Regel',
+			htmlScript: 'Nicht geschlossenes <script>', htmlStyle: 'Nicht geschlossenes <style>'},
+		fr: {chk: 'Vérifier la syntaxe (Maj+Alt+C)', chkOk: 'Aucune erreur de syntaxe.', chkN: '%d problème(s)', chkLine: 'Ligne %d', chkTitle: 'Erreurs de syntaxe',
+			chkSave: 'Le code contient des erreurs de syntaxe. Enregistrer quand même ?', chkSaveAnyway: 'Enregistrer quand même', chkPhpOff: 'La vérification PHP n\'a pas pu être jointe.',
+			cssOpen: '{ non fermée', cssClose: '} inattendue', cssComment: 'Commentaire non fermé', cssString: 'Chaîne non fermée', cssDropped: 'Le navigateur ignore cette règle',
+			htmlScript: '<script> non fermé', htmlStyle: '<style> non fermé'},
+		it: {chk: 'Controlla la sintassi (Maiusc+Alt+C)', chkOk: 'Nessun errore di sintassi.', chkN: '%d problema/i', chkLine: 'Riga %d', chkTitle: 'Errori di sintassi',
+			chkSave: 'Il codice contiene errori di sintassi. Salvare comunque?', chkSaveAnyway: 'Salva comunque', chkPhpOff: 'Il controllo PHP non è raggiungibile.',
+			cssOpen: '{ non chiusa', cssClose: '} inattesa', cssComment: 'Commento non chiuso', cssString: 'Stringa non chiusa', cssDropped: 'Il browser ignora questa regola',
+			htmlScript: '<script> non chiuso', htmlStyle: '<style> non chiuso'},
+		es: {chk: 'Comprobar la sintaxis (Mayús+Alt+C)', chkOk: 'No se encontraron errores de sintaxis.', chkN: '%d problema(s)', chkLine: 'Línea %d', chkTitle: 'Errores de sintaxis',
+			chkSave: 'El código tiene errores de sintaxis. ¿Guardar de todos modos?', chkSaveAnyway: 'Guardar de todos modos', chkPhpOff: 'No se pudo acceder a la comprobación de PHP.',
+			cssOpen: '{ sin cerrar', cssClose: '} inesperada', cssComment: 'Comentario sin cerrar', cssString: 'Cadena sin cerrar', cssDropped: 'El navegador ignora esta regla',
+			htmlScript: '<script> sin cerrar', htmlStyle: '<style> sin cerrar'},
+		pt: {chk: 'Verificar a sintaxe (Shift+Alt+C)', chkOk: 'Nenhum erro de sintaxe encontrado.', chkN: '%d problema(s)', chkLine: 'Linha %d', chkTitle: 'Erros de sintaxe',
+			chkSave: 'O código tem erros de sintaxe. Guardar mesmo assim?', chkSaveAnyway: 'Guardar mesmo assim', chkPhpOff: 'Não foi possível contactar a verificação de PHP.',
+			cssOpen: '{ não fechada', cssClose: '} inesperada', cssComment: 'Comentário não fechado', cssString: 'Texto não fechado', cssDropped: 'O navegador ignora esta regra',
+			htmlScript: '<script> não fechado', htmlStyle: '<style> não fechado'},
+		ru: {chk: 'Проверить синтаксис (Shift+Alt+C)', chkOk: 'Синтаксических ошибок нет.', chkN: 'Проблем: %d', chkLine: 'Строка %d', chkTitle: 'Синтаксические ошибки',
+			chkSave: 'В коде есть синтаксические ошибки. Всё равно сохранить?', chkSaveAnyway: 'Всё равно сохранить', chkPhpOff: 'Проверка PHP недоступна.',
+			cssOpen: 'Незакрытая {', cssClose: 'Лишняя }', cssComment: 'Незакрытый комментарий', cssString: 'Незакрытая строка', cssDropped: 'Браузер игнорирует это правило',
+			htmlScript: 'Незакрытый <script>', htmlStyle: 'Незакрытый <style>'},
+		zh: {chk: '检查语法（Shift+Alt+C）', chkOk: '未发现语法错误。', chkN: '%d 个问题', chkLine: '第 %d 行', chkTitle: '语法错误',
+			chkSave: '代码有语法错误。仍要保存吗？', chkSaveAnyway: '仍然保存', chkPhpOff: '无法连接 PHP 检查。',
+			cssOpen: '未闭合的 {', cssClose: '多余的 }', cssComment: '未闭合的注释', cssString: '未闭合的字符串', cssDropped: '浏览器会忽略此规则',
+			htmlScript: '未闭合的 <script>', htmlStyle: '未闭合的 <style>'},
+		nl: {chk: 'Syntaxis controleren (Shift+Alt+C)', chkOk: 'Geen syntaxisfouten gevonden.', chkN: '%d probleem/problemen', chkLine: 'Regel %d', chkTitle: 'Syntaxisfouten',
+			chkSave: 'De code bevat syntaxisfouten. Toch opslaan?', chkSaveAnyway: 'Toch opslaan', chkPhpOff: 'De PHP-controle was niet bereikbaar.',
+			cssOpen: 'Niet gesloten {', cssClose: 'Onverwachte }', cssComment: 'Niet gesloten commentaar', cssString: 'Niet gesloten tekenreeks', cssDropped: 'De browser negeert deze regel',
+			htmlScript: 'Niet gesloten <script>', htmlStyle: 'Niet gesloten <style>'},
+		pl: {chk: 'Sprawdź składnię (Shift+Alt+C)', chkOk: 'Nie znaleziono błędów składni.', chkN: 'Problemy: %d', chkLine: 'Wiersz %d', chkTitle: 'Błędy składni',
+			chkSave: 'Kod zawiera błędy składni. Zapisać mimo to?', chkSaveAnyway: 'Zapisz mimo to', chkPhpOff: 'Sprawdzanie PHP jest niedostępne.',
+			cssOpen: 'Niezamknięty {', cssClose: 'Nieoczekiwany }', cssComment: 'Niezamknięty komentarz', cssString: 'Niezamknięty ciąg znaków', cssDropped: 'Przeglądarka ignoruje tę regułę',
+			htmlScript: 'Niezamknięty <script>', htmlStyle: 'Niezamknięty <style>'},
+		ar: {chk: 'التحقق من الصياغة (Shift+Alt+C)', chkOk: 'لا توجد أخطاء صياغة.', chkN: 'المشكلات: %d', chkLine: 'السطر %d', chkTitle: 'أخطاء صياغة',
+			chkSave: 'في الكود أخطاء صياغة. هل تريد الحفظ على أي حال؟', chkSaveAnyway: 'احفظ على أي حال', chkPhpOff: 'تعذّر الوصول إلى فحص PHP.',
+			cssOpen: '{ غير مغلقة', cssClose: '} غير متوقعة', cssComment: 'تعليق غير مغلق', cssString: 'نص غير مغلق', cssDropped: 'يتجاهل المتصفح هذه القاعدة',
+			htmlScript: '<script> غير مغلق', htmlStyle: '<style> غير مغلق'}
+	};
+	var TC = TEXTS_CHK[LANG] || TEXTS_CHK.en;
+	var ACORN = BASE + 'vendor/bundled/acorn-8.15.0/acorn.min.js';
+	var CHECKS = {JS: 1, CSS: 1, HTML: 1, PHP: 1};
+
+	function loadAcorn() {
+		if (window.acorn) return Promise.resolve();
+		if (!loaded[ACORN]) {
+			loaded[ACORN] = new Promise(function (resolve, reject) {
+				var s = document.createElement('script');
+				s.src = ACORN;
+				s.onload = resolve;
+				s.onerror = function () { delete loaded[ACORN]; reject(new Error('acorn')); };
+				document.head.appendChild(s);
+			});
+		}
+		return loaded[ACORN];
+	}
+	/** #NAME# (nuBuilder's hash variables, replaced before the code runs) → an identifier of the same length, so lines / columns stay. */
+	function hashFree(code) { return code.replace(/#([A-Za-z_][A-Za-z0-9_]*)#/g, function (m, n) { return '_' + n + '_'; }); }
+	function lineAt(code, i) { var n = 1; for (var k = 0; k < i; k++) if (code.charCodeAt(k) === 10) n++; return n; }
+
+	function checkJs(code, line0, col0) {
+		return loadAcorn().then(function () {
+			try {
+				window.acorn.parse(hashFree(code), {ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true,
+					allowAwaitOutsideFunction: true, allowHashBang: true, locations: true});
+				return [];
+			} catch (e) {
+				var loc = e.loc || {line: 1, column: 0};
+				return [{line: loc.line + (line0 || 0), col: loc.line === 1 ? loc.column + (col0 || 0) : loc.column, sev: 'error',
+					msg: String(e.message || e).replace(/\s*\(\d+:\d+\)\s*$/, '')}];
+			}
+		});
+	}
+	function checkCss(code, line0) {
+		line0 = line0 || 0;
+		var out = [], stack = [], line = 1, i = 0, n = code.length, segStart = 0, depth = 0, segs = [];
+		while (i < n) {
+			var c = code[i];
+			if (c === '\n') { line++; i++; continue; }
+			if (c === '/' && code[i + 1] === '*') {
+				var end = code.indexOf('*/', i + 2);
+				if (end < 0) { out.push({line: line + line0, col: 0, sev: 'error', msg: TC.cssComment}); return out; }
+				line += code.slice(i, end).split('\n').length - 1; i = end + 2; continue;
+			}
+			if (c === '"' || c === "'") {
+				var j = i + 1, sl = line;
+				while (j < n && code[j] !== c && code[j] !== '\n') { if (code[j] === '\\') j++; j++; }
+				if (j >= n || code[j] === '\n') { out.push({line: sl + line0, col: 0, sev: 'error', msg: TC.cssString}); return out; }
+				i = j + 1; continue;
+			}
+			if (c === '{') { stack.push(line); depth++; }
+			else if (c === '}') {
+				if (!stack.length) { out.push({line: line + line0, col: 0, sev: 'error', msg: TC.cssClose}); return out; }
+				stack.pop(); depth--;
+				if (depth === 0) { segs.push([segStart, i + 1]); segStart = i + 1; }
+			} else if (c === ';' && depth === 0) segStart = i + 1;     // @import / @charset …
+			i++;
+		}
+		if (stack.length) { out.push({line: stack[stack.length - 1] + line0, col: 0, sev: 'error', msg: TC.cssOpen}); return out; }
+		// rules the browser throws away (wrong selector …): warnings – a newer browser may know them
+		if (window.CSSStyleSheet && 'replaceSync' in CSSStyleSheet.prototype) {
+			segs.forEach(function (s) {
+				var txt = hashFree(code.slice(s[0], s[1])), lead = txt.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+				if (lead === '' || lead.charAt(0) === '@') return;
+				try {
+					var sh = new CSSStyleSheet();
+					sh.replaceSync(txt);
+					if (sh.cssRules.length === 0) {
+						var at = s[0] + txt.search(/\S/);
+						out.push({line: lineAt(code, at) + line0, col: 0, sev: 'warn', msg: TC.cssDropped + ': ' + lead.split('{')[0].trim().slice(0, 60)});
+					}
+				} catch (e) { /* not checkable here */ }
+			});
+		}
+		return out;
+	}
+	function checkHtml(code) {
+		var jobs = [], out = [], re = /<(script|style)\b([^>]*)>/gi, m;
+		while ((m = re.exec(code)) !== null) {
+			var tag = m[1].toLowerCase(), attrs = m[2], from = m.index + m[0].length;
+			var close = code.slice(from).search(new RegExp('</' + tag + '\\s*>', 'i'));
+			var line = lineAt(code, m.index);
+			if (close < 0) { out.push({line: line, col: 0, sev: 'error', msg: tag === 'script' ? TC.htmlScript : TC.htmlStyle}); break; }
+			var body = code.slice(from, from + close), l0 = lineAt(code, from) - 1, c0 = from - code.lastIndexOf('\n', from - 1) - 1;
+			re.lastIndex = from + close;
+			if (tag === 'style') { jobs.push(Promise.resolve(checkCss(body, l0))); continue; }
+			var type = (/\btype\s*=\s*["']?([^"'\s>]+)/i.exec(attrs) || [])[1] || '';
+			if (/\bsrc\s*=/i.test(attrs) || (type !== '' && !/^(text\/javascript|application\/javascript|module)$/i.test(type))) continue;
+			jobs.push(checkJs(body, l0, c0));
+		}
+		return Promise.all(jobs).then(function (r) { r.forEach(function (x) { out = out.concat(x); }); return out; });
+	}
+	var phpBusy = null;
+	function checkPhp(code) {
+		var tok = (window.nuNext && window.nuNext.csrf) || '';
+		if (!tok) { var el = document.querySelector('[data-csrf]'), inp = document.querySelector('input[name="_csrf"]'); tok = el ? el.getAttribute('data-csrf') : (inp ? inp.value : ''); }
+		if (phpBusy) phpBusy.abort();
+		phpBusy = window.AbortController ? new AbortController() : null;
+		var body = new URLSearchParams({action: 'check', code: code, _csrf: tok});
+		return fetch(BASE + 'index.php?p=codecheck', {method: 'POST', credentials: 'same-origin', body: body, signal: phpBusy ? phpBusy.signal : undefined})
+			.then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+			.then(function (j) { return (j.errors || []).map(function (e) { return {line: e.line, col: e.col || 0, sev: 'error', msg: e.msg}; }); });
+	}
+	/** Problems of a piece of code: Promise of [{line, col, sev: error|warn, msg}] (lines from 1); null = no check for the language. */
+	function checkCode(code, lang) {
+		lang = String(lang || '').toUpperCase();
+		if (lang === 'JAVASCRIPT') lang = 'JS';
+		if (!CHECKS[lang] || String(code).trim() === '') return Promise.resolve(CHECKS[lang] ? [] : null);
+		if (lang === 'JS' && /^\s*<(script|link|style|meta|!--)/i.test(code)) lang = 'HTML';   // Setup → Header written as HTML (as nuBuilder Forte reads it)
+		if (lang === 'JS') return checkJs(code);
+		if (lang === 'CSS') return Promise.resolve(checkCss(code));
+		if (lang === 'HTML') return checkHtml(code);
+		return checkPhp(code);
+	}
+
+	function sevIcon(p) { return p.sev === 'error' ? 'bi-x-circle-fill' : 'bi-exclamation-triangle-fill'; }
+	/** The check of one editor: gutter marks, toolbar button, check while typing. One state per CodeMirror (design mode attaches again on every code item). */
+	function checkTools(cm, g, lang, opt) {
+		var st = cm.nuChk;
+		if (!st) {
+			st = cm.nuChk = {lang: lang, problems: [], marks: [], timer: null, seq: 0, btn: null, label: ''};
+			var gut = (cm.getOption('gutters') || []).slice();
+			if (gut.indexOf('nuChkGutter') < 0) { gut.push('nuChkGutter'); cm.setOption('gutters', gut); }
+			cm.on('change', function () { clearTimeout(st.timer); st.timer = setTimeout(function () { run(false); }, st.lang === 'PHP' ? 1500 : 800); });
+			cm.on('swapDoc', function () { st.marks = []; run(false); });
+			cm.addKeyMap({'Shift-Alt-C': function () { run(true); }});
+		}
+		st.lang = lang;
+		var ta = cm.getTextArea ? cm.getTextArea() : null;
+		st.label = opt.checkLabel || (ta && (ta.getAttribute('aria-label') || (ta.id && document.querySelector('label[for="' + ta.id + '"]') || {}).textContent)) || lang;
+		var b = button('bi-check2-circle', TC.chk, 'nuCtCheck');
+		st.btn = b;
+		var full = g.querySelector('.nuCtFull');
+		g.insertBefore(b, full || null);
+		b.addEventListener('click', function () { run(true); });
+		function clearMarks() {
+			st.marks.forEach(function (h) { cm.removeLineClass(h, 'background', 'nuChkLine'); });
+			st.marks = [];
+			cm.clearGutter('nuChkGutter');
+		}
+		function show(list) {
+			clearMarks();
+			list.forEach(function (p) {
+				var ln = Math.max(0, Math.min(cm.lineCount() - 1, p.line - 1));
+				var m = elt('span', 'nuChkMark nuChk-' + p.sev);
+				m.appendChild(elt('i', 'bi ' + sevIcon(p)));
+				m.title = p.msg;
+				m.addEventListener('click', function () { cm.setCursor({line: ln, ch: p.col || 0}); cm.focus(); });
+				cm.setGutterMarker(ln, 'nuChkGutter', m);
+				if (p.sev === 'error') st.marks.push(cm.addLineClass(ln, 'background', 'nuChkLine'));
+			});
+			var errs = list.filter(function (p) { return p.sev === 'error'; }).length;
+			b.classList.toggle('nuChkBad', errs > 0);
+			b.classList.toggle('nuChkWarn', !errs && list.length > 0);
+			b.title = list.length ? TC.chk + ' – ' + TC.chkN.replace('%d', list.length) : TC.chk;
+			b.setAttribute('aria-label', b.title);
+		}
+		function run(loud) {
+			var seq = ++st.seq;
+			return checkCode(cm.getValue(), st.lang).then(function (list) {
+				if (seq !== st.seq || list === null) return list;
+				st.problems = list;
+				show(list);
+				if (loud) pop(list);
+				return list;
+			}, function () { if (loud && st.lang === 'PHP') pop(null); return []; });
+		}
+		var popEl = null;
+		function popClose() { if (popEl) { popEl.remove(); popEl = null; document.removeEventListener('mousedown', outside, true); } }
+		function outside(e) { if (popEl && !popEl.contains(e.target) && e.target !== b && !b.contains(e.target)) popClose(); }
+		function pop(list) {
+			popClose();
+			popEl = elt('div', 'nuChkPop shadow-sm');
+			popEl.setAttribute('role', 'status');
+			if (list === null) popEl.appendChild(elt('div', 'text-body-secondary', TC.chkPhpOff));
+			else if (!list.length) { var ok = elt('div', 'nuChkOk'); ok.appendChild(elt('i', 'bi bi-check-circle-fill me-1')); ok.appendChild(document.createTextNode(TC.chkOk)); popEl.appendChild(ok); }
+			else list.forEach(function (p) {
+				var a = elt('button', 'nuChkItem nuChk-' + p.sev);
+				a.type = 'button';
+				a.appendChild(elt('i', 'bi ' + sevIcon(p) + ' me-1'));
+				a.appendChild(elt('strong', '', TC.chkLine.replace('%d', p.line)));
+				a.appendChild(document.createTextNode(' – ' + p.msg));
+				a.addEventListener('click', function () { popClose(); cm.setCursor({line: p.line - 1, ch: p.col || 0}); cm.scrollIntoView(null, 80); cm.focus(); });
+				popEl.appendChild(a);
+			});
+			document.body.appendChild(popEl);
+			var r = b.getBoundingClientRect();
+			popEl.style.top = (r.bottom + window.scrollY + 4) + 'px';
+			popEl.style.left = Math.max(4, Math.min(r.left + window.scrollX, window.scrollX + window.innerWidth - popEl.offsetWidth - 8)) + 'px';
+			setTimeout(function () { document.addEventListener('mousedown', outside, true); }, 0);
+			if (list && !list.length) setTimeout(popClose, 2500);
+		}
+		st.run = run;
+		setTimeout(function () { run(false); }, 300);
+		return {detach: function () { popClose(); b.remove(); }};
+	}
+
+	/** Every checked editor in root (or the page): Promise of [{cm, label, problems}] with the problems found now. */
+	function checkAll(root) {
+		var cms = Array.prototype.map.call((root || document).querySelectorAll('.CodeMirror'), function (w) { return w.CodeMirror; })
+			.filter(function (c) { return c && c.nuChk && c.nuChk.run; });
+		return Promise.all(cms.map(function (c) { return c.nuChk.run(false).then(function (p) { return {cm: c, label: c.nuChk.label, problems: p || []}; }); }));
+	}
+	/** Asks before saving code with errors: res = [{label, problems, cm?}]; proceed() on "Save anyway", back(first) on Cancel. */
+	function confirmProblems(res, proceed, back) {
+		var bad = res.filter(function (r) { return r.problems.some(function (p) { return p.sev === 'error'; }); });
+		if (!bad.length) { proceed(); return false; }
+		var details = [];
+		bad.forEach(function (r) { r.problems.forEach(function (p) { if (p.sev === 'error') details.push((r.label ? r.label + ' · ' : '') + TC.chkLine.replace('%d', p.line) + ' – ' + p.msg); }); });
+		var first = bad[0];
+		var goBack = function () {
+			if (back) { back(first); return; }
+			if (!first.cm) return;
+			var pane = first.cm.getWrapperElement().closest('.tab-pane');
+			if (pane && pane.id && window.nuBs) { var link = document.querySelector('[data-bs-target="#' + pane.id + '"], a[href="#' + pane.id + '"]'); if (link) window.nuBs.tab(link).show(); }
+			setTimeout(function () { var p = first.problems.filter(function (x) { return x.sev === 'error'; })[0]; first.cm.refresh(); first.cm.setCursor({line: p.line - 1, ch: p.col || 0}); first.cm.focus(); }, 150);
+		};
+		if (typeof window.nuConfirmAsk === 'function') {
+			window.nuConfirmAsk(TC.chkSave, proceed, TC.chkSaveAnyway, 'btn btn-warning', {title: TC.chkTitle, details: details.slice(0, 8), cancelFirst: true, onCancel: goBack});
+		} else if (window.confirm(TC.chkSave + '\n\n' + details.slice(0, 8).join('\n'))) proceed(); else goBack();
+		return true;
+	}
+	/** Save of a form with code editors: checked first; errors ask "Save anyway" (submit buttons with data-no-check are not checked). */
+	function guardForm(form) {
+		if (!form || form.nuChkGuard) return;
+		form.nuChkGuard = true;
+		form.addEventListener('submit', function (e) {
+			if (form.nuChkPass) { form.nuChkPass = false; return; }
+			var sub = e.submitter || null;
+			if (sub && sub.hasAttribute('data-no-check')) return;
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			checkAll(form.closest('main') || document).then(function (res) {
+				confirmProblems(res, function () {
+					// later, not in this microtask: it can still run inside the first submit event, where a second submit is ignored
+					setTimeout(function () {
+						form.nuChkPass = true;
+						if (form.requestSubmit) form.requestSubmit(sub && sub.form === form ? sub : undefined); else form.submit();
+					}, 0);
+				});
+			});
+		}, true);
+	}
+
+	window.NuCodeTools = {attach: attach, format: format, check: checkCode, checkAll: checkAll, confirmProblems: confirmProblems, guardForm: guardForm};
 })();

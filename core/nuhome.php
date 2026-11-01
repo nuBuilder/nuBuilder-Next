@@ -30,7 +30,7 @@ final class NuHome
 	/** User start pages (0.8.425): list key, default layout id in access_ids, pages a user tile may open, condition kinds. */
 	public const LIST_USER = 'home_user';
 	public const ALL_LEVELS = '*';
-	public const USER_PAGES = ['help', 'password', 'security', 'notifications'];
+	public const USER_PAGES = ['help', 'password', 'security', 'notifications', 'import'];   // import (0.8.773): users with permission items of type Data import
 	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'email', 'emailtemplates',
@@ -1318,7 +1318,8 @@ final class NuHome
 				[$in, $lv] = $preview ? ['slp_zzzzsys_access_id = ?', [$acc]] : NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // + additional levels (0.8.585)
 				return $db->tableExists('zzzzsys_access_php') && (bool)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, $target]);
 			case 'page':
-				return in_array($target, self::USER_PAGES, true) && !($target === 'security' && NuImpersonate::active());
+				return in_array($target, self::USER_PAGES, true) && !($target === 'security' && NuImpersonate::active())
+					&& ($target !== 'import' || $preview || NuImport::canTables() || NuImport::canUsers());
 			default:
 				return true;
 		}

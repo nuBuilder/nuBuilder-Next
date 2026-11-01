@@ -3,6 +3,250 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.802 – Release gate
+- Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte 4.9). Documentation checked first:
+  README (feature list, the SQL Server note), help pages, TODO.md (a "please verify" list for 0.8.768–0.8.801) and these notes.
+
+## 0.8.801 – Shared settings – wording
+- Wording: settings, tables and code that nuBuilder Next and nuBuilder Forte both use are no longer called "nuBuilder Forte's …".
+  The settings section of the table zzzzsys_config is now "Shared settings" (Settings → Shared settings; its address stays), the
+  form pages' code is "header, style and include of the form pages", the nuconfig.php editor and the help call these variables
+  simply settings, and tables like zzzzsys_file are "shared with nuBuilder Forte". nuBuilder Forte is named where it is about
+  compatibility, migration or what works differently. All languages, help pages, tutorial and README.
+
+## 0.8.800 – Wording of the user field titles
+- User form: the (i) of Code / Additional 1 / 2 and the rename dialog call $nuConfigUserCodeLabel … simply a setting (it is one of
+  nuBuilder Next as well) and name the place as in the app: Settings → nuBuilder Forte, category Form – shared with nuBuilder Forte.
+
+## 0.8.799 – Rename user field titles on the user form
+- User form: an (i) next to Code, Additional 1 and Additional 2 tells that these titles can be renamed (and, once renamed, the
+  built-in title). The globeadmin renames them right there with the pencil – no need to open nuconfig.php. The title is written
+  where nuBuilder Forte reads it too: its settings table while $nuConfigSettingsFromDB is on, otherwise nuconfig.php (with a
+  backup). An empty title brings back the built-in one; the change is logged and may ask for the password again.
+
+## 0.8.798 – Own titles for Code / Additional 1 / 2
+- Users: the titles Code, Additional 1 and Additional 2 can be renamed as in nuBuilder Forte – $nuConfigUserCodeLabel,
+  $nuConfigUserAdditional1Label and $nuConfigUserAdditional2Label in nuconfig.php or, with $nuConfigSettingsFromDB, in nuBuilder
+  Forte's settings (category Form). The name goes through the translations and is used on the user form, in the users list
+  (columns, filters, exports) and in the Data import (template and readme; a file with the old title is still mapped). Only the
+  title changes – the database columns stay the same.
+
+## 0.8.797 – Done asks, one-click publish
+- Design mode: Done asks when there are changes that are not published – Publish now, Leave as draft or Cancel (a new form that
+  was never published asks too; without the right to publish only Leave as draft is offered).
+- Design mode: Publish and Done explain on mouse over what they do.
+- Design mode: the ▾ next to Publish has "Ask for a note before publishing" (kept in this browser). Switched off, Publish works
+  with one click; the window still opens for warnings, errors or when someone else changed the published form. "Publish with
+  a note…" always asks.
+- Publishing a form draft no longer needs a note: without one, History records "3 changes (published without a note)".
+
+## 0.8.796 – Sticky titles on the admin role form
+- Admin roles: the titles of the rights table (Right · None · View · Change) stay visible below the button row while scrolling
+  down the list.
+
+## 0.8.795 – Screenshot tour
+- Screenshot tour for people who want to look before installing (dev package only, folder dev/tour/): 15 slides – installer,
+  start page, users with filters, user form, access levels of a form, form lists with advanced search, editing an order,
+  design mode, dashboard, notifications, audit trail, settings, security check, phone view and dark mode – with the version of
+  the screenshots and a note that the alpha is subject to change. Arrow keys, swipe, thumbnails; copy the folder to any PHP
+  server. dev/tour/capture.js takes the screenshots again from a test installation with the sample applications.
+- Notifications: a message from the day before shows "yesterday" instead of "1 days ago".
+
+## 0.8.794 – Form cloner: SQL for MySQL or SQL Server
+- Form cloner, "Only create SQL": new choice "SQL for" – MySQL / MariaDB or Microsoft SQL Server; it starts with the kind this
+  installation runs on. The SQL is written for the chosen one (SQL Server: N'…' texts with '' for a quote, no REPLACE INTO; MySQL:
+  backslashes escaped) – a dump made on SQL Server can be run on MySQL and the other way round. The first line of the dump says which
+  database it is for (and which one it was read from). Saved configurations keep the choice.
+
+## 0.8.793 – Help: SQL Server Express
+- Help → Databases: SQL Server Express (named instance) – how to give the instance a fixed TCP port for Adminer, and which PHP
+  extension / ODBC driver SQL Server needs.
+
+## 0.8.792 – SQL Server: no repeated ORDER BY items
+- SQL Server: form browse lists (customers, products …) failed with "A column has been specified more than once in the order by list"
+  – the list's default order named the primary key twice. Every paged list, sub-form rows and data exports now leave repeated items
+  out of ORDER BY (MySQL ignored them, SQL Server refuses them).
+
+## 0.8.791 – Compatibility check: MySQL-only SQL on SQL Server
+- Compatibility check on Microsoft SQL Server: a new section "SQL that SQL Server does not understand" (shown only while nuBuilder
+  Next runs on SQL Server) lists MySQL-only SQL in browse SQL, select / display SQL of objects, the SQL builder and the SQL strings of
+  procedures and PHP events – backticks, LIMIT, IFNULL(), IF(), GROUP_CONCAT(), NOW(), DATE_FORMAT(), DATE_ADD() / INTERVAL, two-
+  argument DATEDIFF(), ON DUPLICATE KEY UPDATE, INSERT IGNORE, double-quoted strings and more – with what T-SQL uses instead and the
+  places (forms and procedures open in a new tab). Text inside strings and comments does not count.
+
+## 0.8.790 – Installer language, Adminer on SQL Server
+- Installer: the first page asks for the language of the installation (the wizard switches to it at once, and it is ticked under
+  "Languages to include" until the Options step is saved).
+- Adminer on SQL Server: "Invalid server." – Adminer 6 accepts only host:port, so nuBuilder Next passes the port with ":" and, for a
+  named instance (e.g. PC\SQLEXPRESS), looks up the instance's TCP port and passes host:port. When no port can be found the page says
+  how to give the instance a fixed TCP port ($nuConfigDBPort).
+
+## 0.8.789 – SQL Server installation fixes
+- Installer on Microsoft SQL Server: nuconfig.php got its $nuConfigDBType line inside a comment, so nuBuilder Next tried MySQL after
+  the installation – the line is written as its own line again.
+- A database connection that fails no longer exhausts PHP's memory (the error page asked for the connection again, endlessly); it shows
+  "Database connection failed" at once.
+- The SQL Server install script also creates nuBuilder Forte's form tables (forms, tabs, browse columns, events, procedures, objects –
+  with their indexes); they were missing.
+
+## 0.8.788 – Installer: sodium and HTTPS hints
+- Installer without PHP's sodium extension: a box on top of every step says what it means (library packs and updates cannot be
+  checked, so they are not installed – the installation itself works) and what to do (php.ini: extension=sodium; Windows: the two
+  DLLs; restart the web server). The server check lists sodium as its own row.
+- Libraries step: the hint to copy packs into _install/ also names the case where PHP cannot reach GitHub over HTTPS (extensions
+  openssl / curl, CA certificates in php.ini).
+
+## 0.8.787 – No reload for the open tab
+- A click on the tab or menu entry of the page that is already open (e.g. Settings → E-mail → tab Test mail, the settings side bar's
+  current entry, the selected view of a switch) no longer loads the page again – nothing flickers. Other tabs and links load as before.
+
+## 0.8.786 – Home on the start page without reload
+- Start page: Home and the title / logo of the top bar no longer load the start page again while you are on it (no flicker) – the
+  page goes back to its first view in place: search emptied, back to the top, cursor in the search field. From any other page, and
+  while customising the start page, they load it as before.
+
+## 0.8.785 – Access levels dialog: select all in the Open column
+- Access levels of one form: the tick box that selects Open for all levels shown sits in the title of the Open column, like the ones of
+  the buttons (the "Select all" next to the group filter is gone); it now ticks every level shown – it stopped after the first one.
+- The "Everyone" box is grey while the switch is off and blue only while it is on.
+
+## 0.8.784 – Forms for everyone
+- Forms for everyone: a form's Access levels dialog (form ⋮ → Access levels, forms list, design mode) has a switch "Everyone" – every
+  access level gets the form with the buttons ticked under "Buttons for all" (Open always). It writes the normal form rights of each
+  level, so nuBuilder Forte opens the form for everyone too. While it is on the table of levels follows it; the badge counts the levels
+  that already have the form (orange when some miss it – Save adds them). Switching it off keeps the rows.
+- "Also for new access levels" (on by default): an access level created or cloned later in nuBuilder Next – also through the REST
+  API – gets these forms at once, with a message naming them. Levels created in nuBuilder Forte do not; the Compatibility check lists
+  such gaps (FE).
+- Forms list: the column Access levels shows "Everyone" for these forms; new filter Access levels (For everyone / Without access level).
+- Admin-equivalent forms (users, access levels, forms, procedures, SQL builder, setup) can never be given to everyone.
+
+## 0.8.783 – Segmented controls
+- Choices of one (notification level and the other button groups of radio choices – permission item type, user filters, Forte
+  settings status, API client user, new form table, welcome preview, advanced search match …, plus the help view, form layout, theme
+  preview and tutorial track): one segmented look – a light frame with dividers, the chosen one on a light background with a thin
+  accent line below instead of the dark grey filled button. Icons are unchanged.
+
+## 0.8.782 – Language variants on offer
+- Settings → General → Languages: English and German offer their variants – English UK / Australia / US, Deutsch DE / CH. Only the
+  ticked variants appear in the language menus, on the sign-in page and in the user form; a user, link or browser asking for another
+  one gets the default variant (UK / DE, or the first ticked one). At least one variant of each language stays ticked.
+
+## 0.8.781 – Syntax check in the code editors
+- Syntax check in every code editor (Global code, design mode, procedures, form code fields, formats, nuconfig.php …): a moment after
+  you stop typing a problem is marked next to its line number (red = error, yellow = warning; hover names it, a click goes there).
+  The new ✓ button of the toolbar (Shift+Alt+C) lists the problems or says none were found. Nothing is run: JavaScript is parsed in
+  the browser (Acorn 8.15.0, MIT, added to the package), PHP on the server with PHP's own parser, CSS is checked for unclosed { },
+  comments and strings plus rules the browser ignores (warnings), HTML for unclosed <script> / <style> and the code inside them.
+  Hash variables such as #RECORD_ID# count as names. SQL is not checked.
+- Save on the Global code page, in procedures and in design mode's code window checks first: with an error a dialogue lists the
+  problems – "Save anyway" saves, Cancel goes back to the first error.
+
+## 0.8.780 – nuconfig.php editor fills the window
+- nuconfig.php editor: the code editor fills the window below it (also after resizing the window); the warning above it is shorter.
+
+## 0.8.779 – Record pages without the big heading
+- Record pages without the big heading: the breadcrumb names the record ("Admin roles / Administrator without system"), so the heading
+  is no longer shown (it stays for screen readers) and the buttons are back on the left, right below the breadcrumb. A heading that
+  carries more than the name stays, compact: badges such as "Expired" or "Template", and the user form's "Act as user" icon.
+- The type label above the name (0.8.778) is gone again.
+
+## 0.8.778 – Compact title bar on record pages
+- Record pages have a compact title bar: the breadcrumb already names the record, so the heading is smaller – a small type label
+  (e.g. "Admin role") above the record's name, with Back / Save / Clone / Delete / (i) on the same row to the right (below 768 px in
+  their own row). Access levels, admin roles, API clients, data exports, files, items, permission items, procedures, prompts, reports,
+  SQL queries, translations, users, custom user fields, webhooks and webhook calls. Lists and overview pages keep their title.
+
+## 0.8.777 – CI: database set up as a new installation
+- GitHub checks (CI): the mysql and mssql jobs set up the database as a new installation does (nuBuilder Forte's nubuilder4.sql through
+  the database set-up, or the SQL Server install scripts) instead of importing the dump by hand – nuBuilder Next took that database for
+  an existing nuBuilder Forte database and answered every page with 503. The set-up wizard is switched off for the test run.
+- Smoke test: the print check of lists also works on a new database without users (it uses the log then).
+
+## 0.8.776 – Lists refreshed in place
+- Lists no longer flicker: a search, a filter, a sort title, another page or page size of a system list (users, log, audit trail …)
+  loads only the list and swaps it in place – the page stays; the address follows, Back / Forward go through the earlier searches,
+  a slow answer dims the list a little, anything unusual loads the page as before.
+- Form browse lists do the same for forms without code of their own (no form / browse JavaScript, no script in Setup → Include, no
+  non-empty load or search hook in Setup → Header – the empty hooks of nuBuilder Forte's default header do not count). Forms with
+  code load the page as before; nuNextSmoothBrowse(true) in nuOnLoad turns it on for them (nuLoadBrowseGlobal / nuOnLoad then run
+  again after each refresh), nuNextSmoothBrowse(false) off.
+
+## 0.8.775 – Permission items: type filter
+- Permission items list: the filter "Type" (Plain / Data import) sits next to "Group" in the default and compact views (before: only in
+  "All columns"); column and filter are there also before the update step has created the type table (every item is plain then).
+  An own saved list view keeps its own filters – add "Type" there in the view editor.
+- e2e perm_type_import checks the filter.
+
+## 0.8.774 – Home button focuses the start page search
+- Start page: after a click on the Home button of the top bar (or on the logo) the cursor is in the search field, so typing filters the
+  tiles at once. A plain visit of the start page (address, Back, a link) keeps the focus as before; Ctrl / middle click into a new tab
+  too. Not while Customise is open.
+- Docs: Navigation → Your start page; e2e home_btn_focus.
+
+## 0.8.773 – Permission item types: Data import per table
+- Permission items have a type: "Plain" (the switch for your own code, as before and as in nuBuilder Forte) or "Data import". A Data
+  import item lists tables and what is allowed – add new rows, update existing rows by a key column, or both. Users with the item can
+  use Data import for those tables only, without the admin right "Data import" (which still allows every table); several items add up.
+  They reach it from the user menu (or a start page tile of the page Data import), the wizard offers only their tables and only the
+  allowed kinds of import, and a note names the item. The server checks table and kind on every step; the log of each import names
+  the item that allowed it. The import writes straight into the table (no Before Save code of forms), as before – the item page says so.
+- The type is stored in a table of nuBuilder Next (zzzzsys_nunext_permission_type, keyed by the item's id; update step 0032):
+  nuBuilder Forte's permission items stay unchanged, Forte sees a typed item as a plain one, and nuUserHasPermission() /
+  #USER_PERMISSIONS# work as before. Deleting an item removes its type; types of items deleted in nuBuilder Forte are removed by the
+  housekeeping. A clone keeps the type.
+- Permission items list: column and filter "Type" (badge, the settings as tooltip). User form: a typed item shows what it allows below
+  its ident ("Data import: orders, order_items · add + update").
+- Docs: Permission items, Data import; e2e perm_type_import.
+
+## 0.8.772 – File Manager: permissions
+- File Manager: the globeadmin can change the permissions of a file or folder – "Permissions …" in its ⋮ menu (or the right-click menu)
+  shows owner, group and the account the web server runs as, and the rights as a grid (owner / group / others × read / write / execute)
+  and as a number (644, 755 …), both kept in step; warnings when others may write or a file gets "execute". For a folder optionally
+  "also for everything inside": sub-folders get the same rights, files the same without "execute".
+- Safety: always with password confirmation; only three digits (no setuid / setgid / sticky bits), the owner keeps "read" (folders
+  also "open"), links are never changed (chmod would follow them), nuFiles' data folder is skipped, at most 20,000 entries; logged in
+  the File Manager's log ("chmod" with the mode and how many changed / failed). Not offered on Windows servers, in read-only shares or
+  while viewing as another user; the web server can only change files that belong to its own account – the dialogue names the owner.
+- Docs: Admin tools → File Manager, apps/nufiles/README.md; e2e file_manager_chmod.
+
+## 0.8.771 – File Manager: right-click menu
+- File Manager: on a computer a right-click on a file or folder opens its ⋮ menu at the mouse pointer (open, preview / edit, download,
+  rename, copy, move, info, delete …). The row becomes the selection unless it is already part of it; Esc closes the menu. The ⋮ button
+  works as before; on phones and tablets nothing changes.
+- Docs: Admin tools → File Manager; e2e file_manager_ctx.
+
+## 0.8.770 – Own cache folder for the PDF library
+- Reports: the PDF library (TCPDF) now uses a cache folder of its own – temp/tcpdf of nuBuilder Next (protected from the web), or a
+  folder of its own below the system's temp folder when that cannot be written. Before, it used the system's temp folder (e.g. /tmp/)
+  and, after a report, deleted every picture it had printed from below that folder – a photo shown with <img src="…"> in a report
+  could disappear from the server when it was stored there. TCPDF's leftovers there are removed by the housekeeping after a day.
+- Help: Reports → "Pictures per row" – a photo per row with an image object and a column holding the picture's full address (or a data
+  URL / a file of Files), or a field with <img src="…"> and "Fields contain HTML"; what does not work (an <img> tag in an image object,
+  short paths) and why a cut tag shows nothing.
+- e2e report_photo_kept.
+
+## 0.8.769 – Advanced search on the system lists
+- Advanced search on the system lists: the ▾ next to the search of nuBuilder Next's own lists (users, access levels, forms, procedures,
+  reports, files, log, audit trail, e-mail log, API clients, webhooks and their calls, data exports, notifications, dashboards, self-test …)
+  opens the same panel as on form lists – conditions per column with operators by type: text, numbers (e.g. Users ≥ 1 on the access
+  levels), dates (on / before / after / between, today, last 7 / 30 days, this month / year, empty – e.g. Last login, Created, Valid until)
+  and yes / no (2FA, Active, Required …). Every column with a value of its own can be searched, also those of the "All columns" view.
+  All conditions must match, together with the search field and the filters; they show as chips next to the filter chips (✕ removes one),
+  stay with paging, sorting and list views, and CSV / Excel / print follow them. "My searches" are kept per list and user.
+- Columns that only show a code or a summary (status badges, the log's Details, old / new values of the audit trail, secrets) are not
+  searchable, so a search cannot probe what a list masks; conditions are always parameters on the list's own column expressions.
+- Phones: long badges in list cards (e.g. German log event names) wrap instead of making the page wider than the screen.
+- Docs: Lists → Advanced search; e2e list_adv_search.
+
+## 0.8.768 – Password checklist on typing, test progress
+- User form: the password checklist ("The new password needs: …") appears only once something is typed into the password field –
+  while the password stays unchanged it no longer fills the form. Change password, reset and welcome links show it as before.
+- Development: dev/release.py prints every test result of the browser suites as it happens (with a running number, the start time
+  and the minutes per suite), so a long gate shows its progress and a stopped run is noticed at once. Notes: v0.8.767 recorded as
+  the last published GitHub release.
+- Docs: Password policy; e2e pw_rules_on_type.
+
 ## 0.8.767 – Release gate
 - Release gate: smoke, every end-to-end test and the cross-test against nuBuilder Forte 4.9 passed; documentation, README, TODO.md and the
   development notes checked first (review of 31 Oct 2026 done in 0.8.761–0.8.766: bugs, speed, accessibility, documentation, page headers

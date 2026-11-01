@@ -61,11 +61,13 @@ final class NuHousekeeping
 		$step('report_files', static fn() => NuReportApi::purge());       // PDFs of the REST API whose link expired or was used up (0.8.340)
 		$step('demo_reset', static fn() => NuDemoData::resetIfDue());
 		$step('field_access', static fn() => NuFieldAccess::purgeOrphans());   // rules of deleted objects (0.8.480)
+		$step('permission_types', static fn() => NuPermType::purgeOrphans());
+		$step('form_everyone', static fn() => NuFormEveryone::purgeOrphans());   // "Everyone" switches of deleted forms (0.8.784)   // types of deleted permission items, also deleted in nuBuilder Forte (0.8.773)
 		if ($source === 'cron') $step('github', static fn() => NuGitHub::autoCheck());   // a newer release on GitHub? once a day (0.8.374) – page views: see NuHome::badges()     // demo mode: tables of the allowed forms back to the snapshot (0.8.341)
 		$step('files', static function (): int {
 			$n = 0;
 			$old = time() - 86400;
-			$globs = [NU_ROOT . '/temp/*', NuUpdate::backupDir() . '/upload-*.zip', NuUpdate::backupDir() . '/nuconfig-check-*.php'];
+			$globs = [NU_ROOT . '/temp/*', NU_ROOT . '/temp/tcpdf/__tcpdf_*', NuUpdate::backupDir() . '/upload-*.zip', NuUpdate::backupDir() . '/nuconfig-check-*.php'];   // TCPDF's leftovers (0.8.770)
 			foreach ($globs as $g) {
 				foreach (glob($g) ?: [] as $f) {
 					if (!is_file($f) || in_array(basename($f), ['.htaccess', 'index.html'], true)) continue;
