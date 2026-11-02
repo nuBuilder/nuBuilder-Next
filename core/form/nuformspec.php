@@ -20,6 +20,12 @@ defined('NU_ROOT') || exit;
  * does not describe (calc, run, image, chart …) come as {"id", "type", "keep": true} and stay as they are.
  * Missing columns of the form's table are created for the draft (additive, nullable – NuDDL::typeForObject), a missing table as a
  * new table – both only when the user ticks it.
+ * Code (0.8.810): "code": {javascript, browse_javascript, edit_javascript, style, php: {BB, BE, BS, AS, BD, AD}} and per object
+ * "events": [{event, js}] – a key that is there replaces, a missing key keeps what the form has; PHP is checked with token_get_all.
+ * "form.columns": [{name, type, length?}] = columns to create without an object (a sub-form's foreign key, …).
+ * Small apps (0.8.810, format "nunext-app-1"): {"format", "name", "forms": [form spec …]} – forms refer to each other by code before
+ * they exist (self::$pending); checkApp() / createApp() create every table and form (status Draft) in one go.
+ * Open drafts (0.8.810): check() / create() take the draft – the change is written into it (design mode → Ask AI, step by step).
  */
 final class NuFormSpec
 {
@@ -30,6 +36,14 @@ final class NuFormSpec
 	public const INPUTS = ['text', 'nuDate', 'nuNumber', 'number', 'checkbox', 'button', 'date', 'datetime-local', 'time', 'email', 'tel', 'url', 'password', 'month', 'week',
 		'color', 'range', 'file', 'nuAutoNumber', 'nuScroll', 'search'];
 	public const MAX_OBJECTS = 300;
+	public const APP_FORMAT = 'nunext-app-1';
+	public const MAX_APP_FORMS = 15;
+	/** spec key => zzzzsys_form column (0.8.810) */
+	public const CODE_COLS = ['javascript' => 'sfo_javascript', 'browse_javascript' => 'sfo_browse_javascript', 'edit_javascript' => 'sfo_edit_javascript', 'style' => 'sfo_style'];
+	public const HOOKS = ['BB', 'BE', 'BS', 'AS', 'BD', 'AD'];
+	/** Forms of an app being checked / created: lower code => [id, row (sfo_code, sfo_table, sfo_type, sfo_primary_key)] and planned columns per table. */
+	private static array $pending = [];
+	private static array $pendingCols = [];
 
 	// ================================================================= form → spec
 
@@ -59,11 +73,26 @@ final class NuFormSpec
 			'width' => (int)$b['sbr_width'] ?: null, 'align' => ['l' => 'left', 'c' => 'center', 'r' => 'right'][(string)$b['sbr_align']] ?? null,
 			'format' => (string)($b['sbr_format'] ?? '') ?: null], static fn($v) => $v !== null), $browse);
 		$out['tabs'] = [];
+		$evBy = [];
+		foreach ($snap['events'] ?? [] as $ev) $evBy[(string)$ev['sev_zzzzsys_object_id']][] = ['event' => (string)$ev['sev_event'], 'js' => (string)$ev['sev_javascript']];
 		foreach ($tabs as $t) {
 			$list = $byTab[(string)$t['zzzzsys_tab_id']] ?? [];
 			usort($list, static fn($a, $b) => [(int)$a['sob_all_top'], (int)$a['sob_all_left'], (int)$a['sob_all_order']] <=> [(int)$b['sob_all_top'], (int)$b['sob_all_left'], (int)$b['sob_all_order']]);
-			$out['tabs'][] = ['title' => trim(strip_tags((string)$t['syt_title'])), 'objects' => array_map(static fn($o) => self::objectSpec($o, $forms), $list)];
+			$out['tabs'][] = ['title' => trim(strip_tags((string)$t['syt_title'])), 'objects' => array_map(static function ($o) use ($forms, $evBy) {
+				$s = self::objectSpec($o, $forms);
+				if (empty($s['keep']) && !empty($evBy[(string)$o['zzzzsys_object_id']])) $s['events'] = $evBy[(string)$o['zzzzsys_object_id']];
+				return $s;
+			}, $list)];
 		}
+		// the form's code (0.8.810)
+		$code = [];
+		foreach (self::CODE_COLS as $k => $c) if (trim((string)($f[$c] ?? '')) !== '') $code[$k] = (string)$f[$c];
+		$fid = (string)$f['zzzzsys_form_id'];
+		foreach ($snap['php'] ?? [] as $ph) {
+			$hook = substr((string)$ph['zzzzsys_php_id'], strlen($fid) + 1);
+			if (str_starts_with((string)$ph['zzzzsys_php_id'], $fid . '_') && in_array($hook, self::HOOKS, true) && trim((string)$ph['sph_php']) !== '') $code['php'][$hook] = (string)$ph['sph_php'];
+		}
+		if ($code) $out['code'] = $code;
 		return $out;
 	}
 
@@ -114,6 +143,7 @@ final class NuFormSpec
 	{
 		$ref = trim($ref);
 		if ($ref === '') return null;
+		if (isset(self::$pending[strtolower($ref)])) return self::$pending[strtolower($ref)];   // a form of the app being created (0.8.810)
 		$r = nu_db()->one('SELECT * FROM zzzzsys_form WHERE sfo_code = ?', [$ref]) ?? nu_db()->one('SELECT * FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$ref]);
 		return $r ? [(string)$r['zzzzsys_form_id'], $r] : null;
 	}
@@ -161,9 +191,9 @@ final class NuFormSpec
 	}
 
 	/** The text for the AI chat. $formId: change an existing form; '' = new form. */
-	public static function prompt(string $request, string $formId = '', array $tables = []): string
+	public static function prompt(string $request, string $formId = '', array $tables = [], ?array $snap = null): string
 	{
-		$spec = $formId !== '' ? self::fromForm($formId) : null;
+		$spec = $snap ? self::fromSnapshot($snap) : ($formId !== '' ? self::fromForm($formId) : null);   // $snap: an open draft (0.8.810)
 		$db = nu_db()->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
 		$p = "You design a data-entry form for nuBuilder Next (a front end for nuBuilder Forte 4.x, database: $db).\n"
 			. ($spec ? "Change the existing form below as requested. Return the COMPLETE form in the same format (not only the changes).\n"
@@ -189,14 +219,21 @@ final class NuFormSpec
     "table": "customer",                 // database table; a table that does not exist yet is created from the objects
     "primary_key": "customer_id",        // its primary key column (text ids are created by nuBuilder)
     "rows_per_page": 20,
-    "browse": [ {"title": "Name", "field": "cus_name", "width": 200, "align": "left", "format": ""} ]   // list columns
+    "browse": [ {"title": "Name", "field": "cus_name", "width": 200, "align": "left", "format": ""} ],   // list columns
+    "columns": [ {"name": "cus_parent_id", "type": "id"} ]   // optional: columns to create that no object shows
+  },
+  "code": {                              // optional: the form's code – a key that is there replaces the form's, a missing key keeps it
+    "javascript": "function nuOnLoad() { … }",          // runs in list and record (nuBuilder Forte's JavaScript functions)
+    "browse_javascript": "", "edit_javascript": "", "style": ".cus_name { font-weight: bold; }",
+    "php": {"BS": "if ('#cus_name#' == '') nuDisplayError('Name is needed');"}   // PHP hooks: BB, BE, BS, AS, BD, AD (without <?php)
   },
   "tabs": [
     {"title": "Main", "objects": [
       {"id": "cus_name", "type": "input", "input": "text", "label": "Name", "width": 250, "required": true},
       {"id": "cus_since", "type": "input", "input": "nuDate", "format": "D|dd.mm.yyyy", "label": "Customer since", "width": 110},
       {"id": "cus_credit", "type": "input", "input": "nuNumber", "format": "N|1,000.00", "label": "Credit", "width": 120, "same_row": true},
-      {"id": "cus_active", "type": "input", "input": "checkbox", "label": "Active"},
+      {"id": "cus_active", "type": "input", "input": "checkbox", "label": "Active",
+       "events": [{"event": "onchange", "js": "if (nuGetValue('cus_active')) nuShow('cus_since'); else nuHide('cus_since');"}]},
       {"id": "cus_country", "type": "select", "label": "Country", "options": [["US", "United States"], ["GB", "United Kingdom"]]},
       {"id": "cus_notes", "type": "textarea", "label": "Notes", "width": 400, "height": 80},
       {"id": "cus_rep_id", "type": "lookup", "label": "Sales rep", "lookup": {"form": "employees", "code": "emp_code", "description": "emp_name"}},
@@ -218,7 +255,9 @@ Rules:
   format for nuDate ("D|dd.mm.yyyy", "D|yyyy-mm-dd hh:nn") and nuNumber ("N|1,000.00", "N|€ 1,000.00").
 - Layout: objects are placed in the given order, one per row; existing objects keep "top" / "left" – leave them unless asked to move.
 - Objects with "keep": true are of types this format does not describe (calc, run, chart …): keep them as they are (they may move to another tab).
-- Hash variables like #RECORD_ID# and #USER_ID# may be used in SQL. No comments in the JSON you return.
+- Hash variables like #RECORD_ID# and #USER_ID# may be used in SQL and PHP. No comments in the JSON you return.
+- Code: JavaScript and PHP as in nuBuilder Forte 4.9 (nuGetValue / nuSetValue / nuHide / nuMessage, nuRunQuery / nuDisplayError …).
+  "events" of an object (onchange, onclick, onblur, onfocus, oninput, onkeydown …) replace its events; leave "code" / "events" out to keep them.
 TXT;
 	}
 
@@ -247,7 +286,7 @@ TXT;
 	 * @return array{errors: list<string>, warnings: list<string>, plan: array} plan: new_table, columns (to add), objects added / changed /
 	 *         removed / kept, tabs, snapshot (rows for the draft)
 	 */
-	public static function check(array $spec, string $formId = ''): array
+	public static function check(array $spec, string $formId = '', ?array $base = null): array
 	{
 		$e = $w = [];
 		$db = nu_db();
@@ -268,7 +307,10 @@ TXT;
 		if ($type !== 'launch') {
 			if (!NuDDL::validName($table)) $e[] = t('builder_err_table_name');
 			elseif (str_starts_with(strtolower($table), 'zzzzsys')) $e[] = t('builder_err_table_reserved');
-			elseif ($db->tableExists($table)) {
+			elseif (!$db->tableExists($table) && isset(self::$pendingCols[strtolower($table)])) {   // created by a form of the app before this one
+				$cols = self::$pendingCols[strtolower($table)];
+				if ($pk === '' || NuRecord::column($cols, $pk) === null) $e[] = t('fai_err_pk', $pk, $table);
+			} elseif ($db->tableExists($table)) {
 				$cols = $db->columns($table);
 				if ($pk === '' || NuRecord::column($cols, $pk) === null) $e[] = t('fai_err_pk', $pk, $table);
 			} else {
@@ -278,7 +320,7 @@ TXT;
 			}
 		}
 
-		$base = $formId !== '' ? NuFormSnapshot::capture($formId) : null;
+		$base ??= $formId !== '' ? NuFormSnapshot::capture($formId) : null;   // an open draft: its snapshot (0.8.810)
 		if ($formId !== '' && !$base) $e[] = t('form_err_not_found');
 		$baseObj = [];
 		foreach ($base['objects'] ?? [] as $o) $baseObj[strtolower((string)$o['sob_all_id'])] = $o;
@@ -287,6 +329,7 @@ TXT;
 		if (!$tabs) $e[] = t('builder_err_one_tab');
 		$seen = [];
 		$addCols = [];
+		$codeParts = [];
 		$count = 0;
 		$tabTitles = [];
 		foreach ($tabs as $ti => $t) {
@@ -308,6 +351,13 @@ TXT;
 				}
 				if (!in_array($ot, self::TYPES, true)) { $e[] = t('fai_err_type', $id, $ot); continue; }
 				if ($ot === 'input' && isset($o['input']) && !in_array((string)$o['input'], self::INPUTS, true)) $e[] = t('fai_err_input', $id, (string)$o['input']);
+				if (isset($o['events'])) {                       // object events (0.8.810): [{event: "onchange", js: "…"}]
+					if (!is_array($o['events'])) $e[] = t('fai_err_events', $id);
+					else foreach ($o['events'] as $ev) {
+						if (!is_array($ev) || !preg_match('/^on[a-z]{3,20}$/', (string)($ev['event'] ?? '')) || !is_string($ev['js'] ?? null)) { $e[] = t('fai_err_events', $id); break; }
+						$codeParts[] = t('fai_code_event', $id, (string)$ev['event']);
+					}
+				}
 				if ($ot === 'select' && !isset($o['options']) && !isset($o['sql']) && !isset($baseObj[strtolower($id)])) $e[] = t('fai_err_select', $id);
 				if (in_array($ot, ['select', 'display'], true) && isset($o['sql']) && !preg_match('/^\s*(select|with)\b/i', (string)$o['sql'])) $e[] = t('fai_err_sql', $id);
 				if ($ot === 'lookup') {
@@ -315,7 +365,7 @@ TXT;
 					$ref = self::formRef((string)($l['form'] ?? ''));
 					if (!$ref && !isset($baseObj[strtolower($id)])) $e[] = t('fai_err_ref', $id, (string)($l['form'] ?? ''));
 					elseif ($ref) {
-						$lc = trim((string)($ref[1]['sfo_table'] ?? '')) !== '' ? $db->columns((string)$ref[1]['sfo_table']) : [];
+						$lc = self::colsOf((string)($ref[1]['sfo_table'] ?? ''));
 						foreach (['code', 'description'] as $k) if (!empty($l[$k]) && $lc && NuRecord::column($lc, (string)$l[$k]) === null) $w[] = t('fai_warn_lookup_col', $id, (string)$l[$k], (string)$ref[1]['sfo_table']);
 					}
 				}
@@ -324,7 +374,7 @@ TXT;
 					$ref = self::formRef((string)($sfs['form'] ?? ''));
 					if (!$ref && !isset($baseObj[strtolower($id)])) $e[] = t('fai_err_ref', $id, (string)($sfs['form'] ?? ''));
 					elseif ($ref) {
-						$sc = trim((string)($ref[1]['sfo_table'] ?? '')) !== '' ? $db->columns((string)$ref[1]['sfo_table']) : [];
+						$sc = self::colsOf((string)($ref[1]['sfo_table'] ?? ''));
 						$fk = trim((string)($sfs['foreign_key'] ?? ''));
 						if ($fk === '' || ($sc && NuRecord::column($sc, $fk) === null)) $e[] = t('fai_err_fk', $id, $fk, (string)$ref[1]['sfo_table']);
 					}
@@ -343,13 +393,40 @@ TXT;
 			}
 		}
 		if ($count > self::MAX_OBJECTS) $e[] = t('fai_err_many', self::MAX_OBJECTS);
+		// columns without an object (0.8.810): a sub-form's foreign key …
+		foreach (is_array($f['columns'] ?? null) ? $f['columns'] : [] as $c) {
+			$cn = trim((string)(is_array($c) ? ($c['name'] ?? '') : $c));
+			$ct = is_array($c) ? (string)($c['type'] ?? 'text') : 'text';
+			if (!NuDDL::validName($cn) || !in_array($ct, NuDDL::TYPES, true)) { $e[] = t('fai_err_column', $cn, $ct); continue; }
+			if ($table === '' || strcasecmp($cn, $pk) === 0 || isset($seen[strtolower($cn)])) continue;
+			if ($newTable || NuRecord::column($cols, $cn) === null) {
+				$seen[strtolower($cn)] = true;
+				$addCols[] = ['name' => $cn, 'type' => $ct, 'length' => (string)(is_array($c) ? ($c['length'] ?? '') : '')];
+			}
+		}
+		// the form's code (0.8.810): PHP must parse; every part is listed in the plan
+		$code = $spec['code'] ?? null;
+		if ($code !== null && !is_array($code)) $e[] = t('fai_err_code_block');
+		elseif (is_array($code)) {
+			foreach (self::CODE_COLS as $k => $c) if (isset($code[$k])) {
+				if (!is_string($code[$k])) $e[] = t('fai_err_code_block');
+				elseif (trim($code[$k]) !== '') $codeParts[] = t('fai_code_' . $k, substr_count(rtrim($code[$k]), "\n") + 1);
+			}
+			foreach (is_array($code['php'] ?? null) ? $code['php'] : [] as $hook => $php) {
+				if (!in_array((string)$hook, self::HOOKS, true) || !is_string($php)) { $e[] = t('fai_err_hook', (string)$hook); continue; }
+				if (trim($php) === '') continue;
+				$codeParts[] = t('fai_code_php', (string)$hook, substr_count(rtrim($php), "\n") + 1);
+				if (($pe = self::phpError($php)) !== null) $e[] = t('fai_err_php', (string)$hook, $pe);
+			}
+			if (!empty($code['php'])) $w[] = t('fai_warn_php');
+		}
 		$removed = array_values(array_diff(array_map(static fn($o) => (string)$o['sob_all_id'], $base['objects'] ?? []),
 			array_filter(array_map(static fn($o) => (string)$o['sob_all_id'], $base['objects'] ?? []), static fn($id) => isset($seen[strtolower($id)]))));
 		foreach (is_array($f['browse'] ?? null) ? $f['browse'] : [] as $b) {
 			if (!is_array($b) || trim((string)($b['field'] ?? '')) === '') $e[] = t('fai_err_browse');
 		}
 
-		$plan = ['new_table' => $newTable ? ['table' => $table, 'pk' => $pk] : null, 'columns' => $addCols, 'removed' => $removed,
+		$plan = ['new_table' => $newTable ? ['table' => $table, 'pk' => $pk] : null, 'columns' => $addCols, 'removed' => $removed, 'code' => $codeParts,
 			'added' => [], 'changed' => [], 'moved' => 0, 'form' => [], 'browse' => 0, 'tabs' => 0, 'snapshot' => null];
 		if (!$e) {
 			try {
@@ -374,6 +451,27 @@ TXT;
 			}
 		}
 		return ['errors' => array_values(array_unique($e)), 'warnings' => array_values(array_unique($w)), 'plan' => $plan];
+	}
+
+	/** Columns of a table – or the planned ones of a table an app creates (0.8.810). */
+	private static function colsOf(string $table): array
+	{
+		$table = trim($table);
+		if ($table === '') return [];
+		if (nu_db()->tableExists($table)) return nu_db()->columns($table);
+		return self::$pendingCols[strtolower($table)] ?? [];
+	}
+
+	/** PHP code of a hook: null = it parses, else "line n: message" (nothing runs – token_get_all with TOKEN_PARSE). */
+	public static function phpError(string $php): ?string
+	{
+		$open = preg_match('/^\s*<\?php/i', $php) === 1;
+		try {
+			token_get_all($open ? $php : "<?php\n" . $php, TOKEN_PARSE);
+			return null;
+		} catch (ParseError $x) {
+			return t('fai_line', max(1, $x->getLine() - ($open ? 0 : 1))) . ': ' . $x->getMessage();
+		}
 	}
 
 	// ================================================================= spec → rows
@@ -467,7 +565,7 @@ TXT;
 		foreach ($base['tabs'] ?? [] as $t) $baseTabs[mb_strtolower(trim(strip_tags((string)$t['syt_title'])))] = $t;
 		$baseObj = [];
 		foreach ($base['objects'] ?? [] as $o) $baseObj[strtolower((string)$o['sob_all_id'])] = $o;
-		$tabs = $objects = [];
+		$tabs = $objects = $specEvents = [];
 		foreach ($spec['tabs'] as $ti => $t) {
 			$key = mb_strtolower(trim((string)$t['title']));
 			$tab = $baseTabs[$key] ?? ['zzzzsys_tab_id' => nu_id(), 'syt_zzzzsys_form_id' => $formId, 'syt_title' => trim((string)$t['title']), 'syt_access' => '0'];
@@ -512,6 +610,7 @@ TXT;
 					}
 				}
 				$row['sob_all_left'] ??= 170;
+				if (empty($o['keep']) && is_array($o['events'] ?? null)) $specEvents[(string)$row['zzzzsys_object_id']] = $o['events'];   // 0.8.810
 				$objects[] = $row;
 				$prev = $row;
 			}
@@ -520,6 +619,21 @@ TXT;
 		$ids = array_flip(array_map(static fn($o) => (string)$o['zzzzsys_object_id'], $objects));
 		$events = array_values(array_filter($base['events'] ?? [], static fn($ev) => isset($ids[(string)$ev['sev_zzzzsys_object_id']])));
 		$php = array_values(array_filter($base['php'] ?? [], static fn($p) => !str_ends_with((string)$p['zzzzsys_php_id'], '_AB') || isset($ids[substr((string)$p['zzzzsys_php_id'], 0, -3)])));
+		// code of the spec (0.8.810): object events replace the object's, form JavaScript / CSS and PHP hooks the form's
+		foreach ($specEvents as $oid => $list) {
+			$events = array_values(array_filter($events, static fn($ev) => (string)$ev['sev_zzzzsys_object_id'] !== (string)$oid));
+			foreach ($list as $ev) if (is_array($ev) && trim((string)($ev['js'] ?? '')) !== '')
+				$events[] = ['zzzzsys_event_id' => nu_id(), 'sev_zzzzsys_object_id' => (string)$oid, 'sev_event' => (string)$ev['event'], 'sev_javascript' => (string)$ev['js']];
+		}
+		$code = is_array($spec['code'] ?? null) ? $spec['code'] : [];
+		foreach (self::CODE_COLS as $k => $c) if (isset($code[$k]) && is_string($code[$k])) $form[$c] = trim($code[$k]) !== '' ? $code[$k] : null;
+		foreach (is_array($code['php'] ?? null) ? $code['php'] : [] as $hook => $src) {
+			if (!in_array((string)$hook, self::HOOKS, true) || !is_string($src)) continue;
+			$pid = $formId . '_' . $hook;
+			$php = array_values(array_filter($php, static fn($p) => (string)$p['zzzzsys_php_id'] !== $pid));
+			if (trim($src) !== '') $php[] = ['zzzzsys_php_id' => $pid, 'sph_code' => $pid, 'sph_description' => 'System PHP', 'sph_group' => 'nubuilder',
+				'sph_php' => $src, 'sph_system' => '1', 'sph_global' => '0', 'sph_hide' => '1'];
+		}
 
 		// list columns: from the spec, else as before, else the first data objects
 		$browse = $base['browse'] ?? [];
@@ -550,15 +664,178 @@ TXT;
 			'php' => $php, 'selects' => $base['selects'] ?? [], 'clauses' => $base['clauses'] ?? []];
 	}
 
+	// ================================================================= small apps (0.8.810)
+
+	/** The text for the AI chat: several forms at once. */
+	public static function promptApp(string $request, array $tables = []): string
+	{
+		$db = nu_db()->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
+		return "You design a small application for nuBuilder Next (a front end for nuBuilder Forte 4.x, database: $db): its tables and data-entry forms.\n"
+			. "Answer with ONE JSON object in a ```json code block and nothing else.\n\n"
+			. "## The request\n" . trim($request) . "\n\n"
+			. "## Format \"" . self::APP_FORMAT . "\"\n" . self::appFormatHelp() . "\n\n"
+			. "## Format of each form (\"" . self::FORMAT . "\", without the \"format\" key)\n" . self::formatHelp() . "\n\n"
+			. "## Database tables (name: columns)\n" . self::schemaText('', 80, $tables) . "\n\n"
+			. "## Existing forms (for lookup and sub-form references, by code)\n" . self::formsText() . "\n";
+	}
+
+	public static function appFormatHelp(): string
+	{
+		return <<<'TXT'
+{
+  "format": "nunext-app-1",
+  "name": "Projects",                    // what the application is about (one line)
+  "forms": [ {form spec}, {form spec} ]  // 1 to 15 forms, each as described below
+}
+Rules for apps:
+- Every table gets one main form (type browseedit). A detail table shown inside another form gets a form of type "subform";
+  the main form then has a "subform" object that points to it by code, with "foreign_key" = the detail table's column that holds
+  the main record's primary key – list that column in the detail form's "form": {"columns": [{"name": "…", "type": "id"}]}.
+- "lookup" objects may point to forms of this app (by code) or to existing forms.
+- New tables are created from the forms; give every table its own primary key "<table>_id". Codes and tables in lower case with _.
+- Code is allowed: "code" of a form and "events" of objects (see the form format). Keep it short and only where the request needs it.
+TXT;
+	}
+
+	/** Planned columns of a form spec's table: primary key, data objects, form.columns (name => [type]). */
+	private static function plannedCols(array $spec): array
+	{
+		$f = is_array($spec['form'] ?? null) ? $spec['form'] : [];
+		$out = [];
+		$pk = trim((string)($f['primary_key'] ?? ''));
+		if ($pk === '' && trim((string)($f['table'] ?? '')) !== '') $pk = trim((string)$f['table']) . '_id';
+		if ($pk !== '') $out[$pk] = ['type' => 'id'];
+		foreach (is_array($spec['tabs'] ?? null) ? $spec['tabs'] : [] as $t) foreach (is_array($t['objects'] ?? null) ? $t['objects'] : [] as $o) {
+			if (!is_array($o) || !in_array((string)($o['type'] ?? ''), ['input', 'textarea', 'select', 'lookup'], true) || (($o['input'] ?? '') === 'button')) continue;
+			$id = trim((string)($o['id'] ?? ''));
+			if ($id === '') continue;
+			$ct = is_array($o['column'] ?? null) && in_array((string)($o['column']['type'] ?? ''), NuDDL::TYPES, true)
+				? [(string)$o['column']['type'], (string)($o['column']['length'] ?? '')] : (NuDDL::typeForObject(self::rowFor($o, [])) ?? ['text', '255']);
+			$out[$id] = ['type' => $ct[0], 'length' => $ct[1]];
+		}
+		foreach (is_array($f['columns'] ?? null) ? $f['columns'] : [] as $c) {
+			$n = trim((string)(is_array($c) ? ($c['name'] ?? '') : $c));
+			if ($n !== '') $out[$n] = ['type' => is_array($c) ? (string)($c['type'] ?? 'text') : 'text', 'length' => is_array($c) ? (string)($c['length'] ?? '') : ''];
+		}
+		return $out;
+	}
+
+	/**
+	 * Checks an app: every form as check() does, the forms may refer to each other by code before they exist.
+	 * @return array{errors: list<string>, warnings: list<string>, plan: array{name: string, forms: list<array>}}
+	 */
+	public static function checkApp(array $app): array
+	{
+		self::$pending = self::$pendingCols = [];
+		$e = $w = [];
+		$db = nu_db();
+		$forms = array_values(array_filter(is_array($app['forms'] ?? null) ? $app['forms'] : [], 'is_array'));
+		if (!$forms) $e[] = t('fai_err_app_forms');
+		if (count($forms) > self::MAX_APP_FORMS) $e[] = t('fai_err_app_many', self::MAX_APP_FORMS);
+		$codes = [];
+		foreach ($forms as $i => $fs) {
+			$code = trim((string)($fs['form']['code'] ?? ''));
+			if ($code === '') continue;
+			if (isset($codes[strtolower($code)])) { $e[] = t('fai_err_app_dup', $code); continue; }
+			$codes[strtolower($code)] = true;
+			$table = trim((string)($fs['form']['table'] ?? ''));
+			$pk = trim((string)($fs['form']['primary_key'] ?? '')) ?: ($table !== '' ? $table . '_id' : '');
+			self::$pending[strtolower($code)] = [nu_id(), ['sfo_code' => $code, 'sfo_table' => $table, 'sfo_type' => (string)($fs['form']['type'] ?? 'browseedit'), 'sfo_primary_key' => $pk]];
+			if ($table !== '') {
+				$have = self::$pendingCols[strtolower($table)] ?? ($db->tableExists($table) ? $db->columns($table) : []);
+				self::$pendingCols[strtolower($table)] = $have + self::plannedCols($fs);
+			}
+		}
+		$plans = [];
+		$creates = [];                                       // new tables: the first form on it creates it with every planned column
+		foreach ($forms as $i => $fs) {
+			$label = trim((string)($fs['form']['code'] ?? '')) ?: '#' . ($i + 1);
+			$fs['format'] = self::FORMAT;
+			$table = trim((string)($fs['form']['table'] ?? ''));
+			$saved = self::$pendingCols;
+			if ($table !== '' && !$db->tableExists($table) && !isset($creates[strtolower($table)])) unset(self::$pendingCols[strtolower($table)]);   // this form creates it
+			$r = self::check($fs, '');
+			self::$pendingCols = $saved;
+			foreach ($r['errors'] as $x) $e[] = $label . ': ' . $x;
+			foreach ($r['warnings'] as $x) $w[] = $label . ': ' . $x;
+			$plan = $r['plan'];
+			unset($plan['snapshot']);
+			if ($plan['new_table']) {
+				$creates[strtolower($table)] = true;
+				$have = array_change_key_case(array_flip(array_column($plan['columns'], 'name')));
+				foreach (self::plannedCols(['form' => $fs['form'], 'tabs' => []]) + self::$pendingCols[strtolower($table)] as $n => $c) {   // columns of the other forms on this table
+					if (strcasecmp((string)$n, (string)$plan['new_table']['pk']) === 0 || isset($have[strtolower((string)$n)])) continue;
+					$ok = in_array($c['type'] ?? '', NuDDL::TYPES, true);
+					$plan['columns'][] = ['name' => (string)$n, 'type' => $ok ? (string)$c['type'] : 'text', 'length' => $ok ? (string)($c['length'] ?? '') : '255'];
+					$have[strtolower((string)$n)] = true;
+				}
+			}
+			$plans[] = ['form_code' => $label, 'description' => trim((string)($fs['form']['description'] ?? '')), 'type' => (string)($fs['form']['type'] ?? 'browseedit'),
+				'table' => $table, 'id' => self::$pending[strtolower($label)][0] ?? ''] + $plan;
+		}
+		return ['errors' => array_values(array_unique($e)), 'warnings' => array_values(array_unique($w)),
+			'plan' => ['name' => trim((string)($app['name'] ?? '')), 'forms' => $plans]];
+	}
+
+	/**
+	 * Creates every table and form of a checked app (forms with status Draft). @return list<array{id: string, code: string, description: string}>
+	 */
+	public static function createApp(array $app, bool $ddlOk, string $note): array
+	{
+		if (!NuFormDraft::canEdit()) throw new RuntimeException(t('err_forbidden'));
+		$r = self::checkApp($app);
+		if ($r['errors']) { self::$pending = self::$pendingCols = []; throw new RuntimeException(implode("\n", $r['errors'])); }
+		$ddl = false;
+		foreach ($r['plan']['forms'] as $p) if ($p['new_table'] || $p['columns']) $ddl = true;
+		if ($ddl && !$ddlOk) { self::$pending = self::$pendingCols = []; throw new RuntimeException(t('fai_err_ddl_ok')); }
+		$db = nu_db();
+		$forms = array_values(array_filter($app['forms'], 'is_array'));
+		$out = [];
+		try {
+			foreach ($r['plan']['forms'] as $i => $p) {
+				$fs = $forms[$i] + ['format' => self::FORMAT];
+				$table = $p['new_table']['table'] ?? ($p['type'] === 'launch' ? '' : $p['table']);
+				$pk = $p['new_table']['pk'] ?? ($p['type'] === 'launch' ? '' : trim((string)($fs['form']['primary_key'] ?? '')));
+				if ($p['new_table']) NuDDL::createTable($table, $pk, $p['columns'], false);
+				elseif ($table !== '') {
+					$have = $db->columns($table);
+					foreach ($p['columns'] as $c) if (NuRecord::column($have, $c['name']) === null) NuDDL::addColumn($table, $c['name'], $c['type'], $c['length']);
+				}
+				$id = (string)$p['id'];
+				$snap = self::toSnapshot($fs, null, $id, $table, $pk);
+				$snap['form']['zzzzsys_form_id'] = $id;
+				$snap['form']['sfo_status'] = '0';
+				$db->transaction(static function (NuDB $db) use ($id, $snap) {
+					$db->insert('zzzzsys_form', ['zzzzsys_form_id' => $id, 'sfo_code' => $snap['form']['sfo_code'], 'sfo_type' => $snap['form']['sfo_type'], 'sfo_status' => '0']);
+					NuFormSnapshot::apply($db, $id, $snap);
+				});
+				NuFormMeta::forget($id);
+				NuFormHistory::snapshot($id, 'created with AI');
+				$out[] = ['id' => $id, 'code' => (string)$snap['form']['sfo_code'], 'description' => (string)$snap['form']['sfo_description'], 'type' => (string)$snap['form']['sfo_type']];
+			}
+			foreach ($forms as $fs) self::linkIndexes($fs);
+		} finally {
+			self::$pending = self::$pendingCols = [];
+		}
+		NuLog::write('form_ai_app', mb_substr($r['plan']['name'] ?: 'app', 0, 100), $out[0]['id'] ?? '', ['forms' => array_column($out, 'code'), 'note' => mb_substr($note, 0, 200)]);
+		return $out;
+	}
+
+	/** Is this JSON an app (several forms) rather than one form? */
+	public static function isApp(array $spec): bool
+	{
+		return ($spec['format'] ?? '') === self::APP_FORMAT || (isset($spec['forms']) && !isset($spec['form']));
+	}
+
 	// ================================================================= create the draft
 
 	/**
 	 * A checked spec becomes a draft. New form: tables / columns, then the form rows with status Draft. Existing form: a form draft
 	 * (NuFormDraft::start + save) and the missing columns. @return array{form_id: string, draft_id: string}
 	 */
-	public static function create(array $spec, string $formId, bool $ddlOk, string $note): array
+	public static function create(array $spec, string $formId, bool $ddlOk, string $note, ?array $draft = null): array
 	{
-		$r = self::check($spec, $formId);
+		$r = self::check($spec, $formId, $draft ? NuFormDraft::snapshotOf($draft) : null);
 		if ($r['errors']) throw new RuntimeException(implode("\n", $r['errors']));
 		$plan = $r['plan'];
 		if (($plan['new_table'] || $plan['columns']) && !$ddlOk) throw new RuntimeException(t('fai_err_ddl_ok'));
@@ -580,12 +857,38 @@ TXT;
 				NuFormSnapshot::apply($db, $newId, $snap);
 			});
 			NuFormMeta::forget($newId);
+			self::linkIndexes($spec);
 			NuFormHistory::snapshot($newId, 'created with AI');
 			NuLog::write('form_ai_created', (string)$snap['form']['sfo_code'], $newId, array_filter(['table' => $plan['new_table'] ? $table : null,
 				'columns' => array_column($plan['columns'], 'name') ?: null, 'note' => mb_substr($note, 0, 200)]));
 			return ['form_id' => $newId, 'draft_id' => ''];
 		}
 
+		// the open draft (0.8.810, design mode → Ask AI): the change goes into it, one step on its undo list
+		if ($draft) {
+			$draftId = (string)$draft['zzzzsys_nunext_form_draft_id'];
+			foreach ($plan['columns'] as $c) {
+				NuDDL::addColumn($table, $c['name'], $c['type'], $c['length']);
+				NuFormDraft::addDdl($draftId, $table, $c['name'], $c['type'], $c['length']);
+			}
+			NuFormDraft::save($draftId, (int)$draft['rev'], self::toSnapshot($spec, NuFormDraft::snapshotOf($draft), $formId, $table, $pk), 'AI');
+			self::linkIndexes($spec);
+			NuLog::write('form_ai_draft', (string)$spec['form']['code'], $formId, array_filter(['draft' => $draftId, 'columns' => array_column($plan['columns'], 'name') ?: null,
+				'note' => mb_substr($note, 0, 200), 'step' => true]));
+			return ['form_id' => $formId, 'draft_id' => $draftId];
+		}
+		// a form never published (status Draft, 0.8.810) is changed directly – as design mode does
+		if ((string)$db->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]) === '0') {
+			foreach ($plan['columns'] as $c) NuDDL::addColumn($table, $c['name'], $c['type'], $c['length']);
+			$snap = self::toSnapshot($spec, NuFormSnapshot::capture($formId), $formId, $table, $pk);
+			$snap['form']['sfo_status'] = '0';
+			NuFormHistory::snapshot($formId, 'before AI');
+			$db->transaction(static fn(NuDB $db) => NuFormSnapshot::apply($db, $formId, $snap));
+			NuFormMeta::forget($formId);
+			self::linkIndexes($spec);
+			NuLog::write('form_ai_draft', (string)$spec['form']['code'], $formId, array_filter(['columns' => array_column($plan['columns'], 'name') ?: null, 'note' => mb_substr($note, 0, 200), 'unpublished' => true]));
+			return ['form_id' => $formId, 'draft_id' => ''];
+		}
 		$d = NuFormDraft::start($formId, mb_substr('AI: ' . $note, 0, 1000));
 		$draftId = (string)$d['zzzzsys_nunext_form_draft_id'];
 		try {
@@ -599,8 +902,21 @@ TXT;
 			try { NuFormDraft::discard($draftId); } catch (Throwable) { /* keep the first error */ }
 			throw $x;
 		}
+		self::linkIndexes($spec);
 		NuLog::write('form_ai_draft', (string)$spec['form']['code'], $formId, array_filter(['draft' => $draftId, 'columns' => array_column($plan['columns'], 'name') ?: null,
 			'note' => mb_substr($note, 0, 200)]));
 		return ['form_id' => $formId, 'draft_id' => $draftId];
+	}
+
+	/** An index on the foreign key of every sub-form of the spec (sub-form rows are read by it – CLAUDE.md "Large data"). */
+	private static function linkIndexes(array $spec): void
+	{
+		foreach (is_array($spec['tabs'] ?? null) ? $spec['tabs'] : [] as $t) foreach (is_array($t['objects'] ?? null) ? $t['objects'] : [] as $o) {
+			if (!is_array($o) || ($o['type'] ?? '') !== 'subform' || !is_array($o['subform'] ?? null)) continue;
+			$ref = self::formRef((string)($o['subform']['form'] ?? ''));
+			$tb = (string)($ref[1]['sfo_table'] ?? '');
+			$fk = trim((string)($o['subform']['foreign_key'] ?? ''));
+			if ($tb !== '' && $fk !== '') { try { NuDDL::ensureIndex($tb, $fk); } catch (Throwable) { /* an index is a help, not a must */ } }
+		}
 	}
 }

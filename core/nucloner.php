@@ -56,6 +56,24 @@ final class NuCloner
 	// ================================================================== information for the page
 
 	/** Tabs (with object count), subform and iframe objects of a form. */
+	/**
+	 * Can this form be copied? null = yes, else the reason (0.8.811): it must be a row of zzzzsys_form (nu_forms() also lists the rights of
+	 * nuBuilder Next's own pages), and a built-in page form (File Manager, NuPage::BUILTIN) has its code inside nuBuilder Next – a copy
+	 * would point to a folder that does not exist.
+	 */
+	public static function cloneable(NuDB $db, string $formId): ?string
+	{
+		static $rows = null;
+		if ($rows === null) {
+			$rows = [];
+			foreach ($db->all('SELECT zzzzsys_form_id, sfo_code, sfo_type FROM zzzzsys_form') as $r) $rows[(string)$r['zzzzsys_form_id']] = $r;
+		}
+		$r = $rows[$formId] ?? null;
+		if (!$r) return t('cl_err_source');
+		if ((string)$r['sfo_type'] === 'page' && in_array((string)$r['sfo_code'], NuPage::BUILTIN, true)) return t('cl_err_builtin');
+		return null;
+	}
+
 	public static function info(NuDB $db, string $formId): ?array
 	{
 		$f = $db->one('SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type, sfo_table FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
@@ -102,6 +120,7 @@ final class NuCloner
 		$src = (string)$this->o['source'];
 		$f1  = $this->db->one('SELECT * FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$src]);
 		if (!$f1) throw new RuntimeException(t('cl_err_source'));
+		if (($why = self::cloneable($this->db, $src)) !== null) throw new RuntimeException($why);
 		$dest = (string)$this->o['dest'];
 		if ($dest !== '' && !$this->db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$dest])) throw new RuntimeException(t('cl_err_dest'));
 		if ($dest === $src) throw new RuntimeException(t('cl_err_same'));

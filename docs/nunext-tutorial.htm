@@ -388,8 +388,9 @@
     nuDisplayError('The due date is in the past.');
 }</code></pre>
 		</div>
+		<div class="tut-tip">The same check without code: in design mode, <em>Validation rules</em> in the icon bar → <em>Add rule</em> – the expression <code>tsk_due IS EMPTY OR tsk_due &gt;= TODAY</code>, the message <em>The due date is in the past.</em> and the field <code>tsk_due</code> to mark. A rule runs on the server before Before Save and already while typing.</div>
 		<div class="tut-task">
-			<p>Show <code>tsk_done</code> as a coloured badge in the list of <code>tutorial_task</code>: add it as a list column if it is not one, then put this into the list's JavaScript (<em>Code</em> in design mode) – the number is the column's position, counted from 0:</p>
+			<p>Show <code>tsk_done</code> as a coloured badge in the list of <code>tutorial_task</code>: add it as a list column if it is not one, then put this into the list's JavaScript (<em>Code</em> in design mode; <em>Browse list</em> in the icon bar has every list setting and column) – the number is the column's position, counted from 0:</p>
 			<pre class="small mb-0"><code>nuBrowseStyleBadge(2, [
     {equals: '1', label: 'Done', bg: '#d1e7dd', icon: 'check'},
     {default: true, label: 'Open', bg: '#cfe2ff'}
@@ -775,7 +776,8 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<p>A form can be created or changed with any AI chat (Claude, ChatGPT …) – no API key, nothing is sent from nuBuilder Next:</p>
 		<ul>
 			<li><a data-open="formai">Forms → With AI</a>: describe the form, copy the prompt into the AI, paste its answer, <em>Check</em> – the plan lists tables, columns and objects – then create it as a draft.</li>
-			<li>In design mode, <em>Change with AI</em> (form settings → <em>Tools</em>) sends the current form along; the plan shows only what changes, and the result is a draft you preview before publishing.</li>
+			<li>In design mode, <em>Ask AI</em> (form settings → <em>Tools</em>) sends the current form – or its open draft – along; the plan shows only what changes, and <em>Apply to the draft</em> adds it as one step: ask again for the next change.</li>
+			<li><em>Small app</em> (or <em>Describe it</em> on the new-form page) creates several forms with their tables at once – a main form with a sub-form, lookups between them – all as drafts, then <em>Publish all</em>. The AI may write JavaScript, CSS and PHP hooks too; read the code in the draft before publishing.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Ask an AI for a form <em>tutorial_contact</em> (name, e-mail, phone, a select for the type) with <a data-open="formai">With AI</a>, check the answer and create the draft.</p>

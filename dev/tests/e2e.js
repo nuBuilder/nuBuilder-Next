@@ -2129,6 +2129,29 @@ T.ip_access = async (s) => {                            // 0.8.722: IP access �
 	}
 };
 
+// 0.8.804: page numbers – "P100" + Enter in the start page search and in Ctrl+K opens the page; a tab suffix; an unknown number comes back
+T.page_numbers = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	await p.fill('#nuHomeSearch', 'P110');
+	await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.press('#nuHomeSearch', 'Enter')]);
+	expect(/p=access\b/.test(p.url()), 'start page search: P110 did not open the access levels: ' + p.url());
+	await open(p, 'index.php?p=users');
+	await p.keyboard.press('Control+k'); await p.waitForSelector('#nuPaletteInput', { state: 'visible' });
+	await p.fill('#nuPaletteInput', 'p 700.2');
+	await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.press('#nuPaletteInput', 'Enter')]);
+	expect(/p=update/.test(p.url()) && /tab=backups/.test(p.url()), 'Ctrl+K: P700.2 did not open Update → Backups: ' + p.url());
+	await open(p, 'index.php?p=users');
+	await p.keyboard.press('Control+k'); await p.waitForSelector('#nuPaletteInput', { state: 'visible' });
+	await p.fill('#nuPaletteInput', 'P999');
+	await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.press('#nuPaletteInput', 'Enter')]);
+	expect(/p=users/.test(p.url()) && /P999/.test(await p.textContent('body')), 'unknown number: not back with a message: ' + p.url());
+	await open(p, 'index.php?p=home');
+	await p.fill('#nuHomeSearch', 'P001'); await p.press('#nuHomeSearch', 'Enter'); await p.waitForLoadState('load');
+	expect(/p=home/.test(p.url()), 'P001: ' + p.url());
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.home_search_list = async (s) => {                     // 0.8.723: start page search = one list (tiles first, then pages / forms / procedures …), kinds filter
 	const p = s.ga;
 	await open(p, 'index.php?p=home'); await p.evaluate(() => { try { localStorage.removeItem('nunext-home-search-kinds'); } catch (e) { /* */ } });
@@ -2592,9 +2615,13 @@ T.design_props_tools = async (s) => {
 		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
 		await open(p, 'index.php?p=form&f=' + F + '&r=' + rec + '&design=1'); await p.waitForSelector('#nuDsPanel .nuDsKicker'); await p.waitForTimeout(700);
 		// form settings: group, type / status lists, data and list sections, tools
-		for (const k of ['sfo_group', 'sfo_type', 'sfo_status', 'sfo_table', 'sfo_primary_key', 'sfo_browse_rows_per_page', 'sfo_browse_redirect_form_id']) {
+		for (const k of ['sfo_group', 'sfo_type', 'sfo_status', 'sfo_table', 'sfo_primary_key']) {
 			expect(await p.locator(`#nuDsPanel [data-key="${k}"]`).count() === 1, 'form field ' + k);
 		}
+		// 0.8.820: the list's settings are in the List flyout
+		await p.click('#nuDsRailList'); await p.waitForSelector('#nuDsWork:not([hidden]) #nuDsListFly');
+		for (const k of ['sfo_browse_rows_per_page', 'sfo_browse_redirect_form_id']) expect(await p.locator(`#nuDsListFly [data-key="${k}"]`).count() === 1, 'list field ' + k);
+		await p.click('#nuDsWorkClose'); await p.waitForTimeout(200);
 		expect(await p.locator('#nuDsAi').count() === 1 && await p.locator('#nuDsDataAccess').count() === 1 && await p.locator('#nuDsDeleteForm').count() === 1, 'tools');
 		await p.fill('#nuDsPanel [data-key="sfo_group"]', 'e2egroup'); await p.press('#nuDsPanel [data-key="sfo_group"]', 'Tab'); await p.waitForTimeout(1500);
 		expect(/"sfo_group":"e2egroup"/.test(snap()), 'group in the draft');
@@ -3058,7 +3085,10 @@ T.options_menu = async (s) => {
 	await open(p, 'index.php?p=form&f=samplecustomer');
 	await p.click('#nuOptions'); await p.waitForTimeout(200);
 	let k = await keys();
-	expect(!k.includes('a') && !k.includes('p') && !k.includes('s') && !k.includes('f') && !k.includes('o') && !k.includes('m') && k.includes('r'), 'browse menu: ' + await items());
+	expect(!k.includes('a') && !k.includes('p') && !k.includes('s') && !k.includes('f') && !k.includes('o') && !k.includes('m') && !k.includes('r') && !k.includes('e') && !k.includes('j'), 'browse menu: ' + await items());
+	// 0.8.818: Browse SQL (lists only) → design mode, Code, the browse SQL; no Refresh / Database / Logged-in users / File Manager
+	const its = await items();
+	expect(its.includes('Browse SQL') && its.includes('PHP Before Browse') && !its.includes('File Manager') && !its.includes('Refresh'), 'browse menu items: ' + its);
 	await p.keyboard.press('Escape');
 	await Promise.all([p.waitForNavigation(), p.keyboard.press('Control+Shift+A')]);
 	expect(/[?&]r=-1\b/.test(p.url()), 'Ctrl+Shift+A still adds: ' + p.url());
@@ -3066,13 +3096,25 @@ T.options_menu = async (s) => {
 	await open(p, 'index.php?p=form&f=samplecustomer&r=' + encodeURIComponent(id));
 	await p.click('#nuOptions'); await p.waitForTimeout(200);
 	k = await keys();
-	expect(!k.includes('m') && !k.includes('f') && !k.includes('o') && !k.includes('a') && !k.includes('s') && !k.includes('y') && !k.includes('c') && !k.includes('l') && k.includes('r'), 'edit menu: ' + await items());
+	expect(!k.includes('m') && !k.includes('f') && !k.includes('o') && !k.includes('a') && !k.includes('s') && !k.includes('y') && !k.includes('c') && !k.includes('l') && !k.includes('r'), 'edit menu: ' + await items());
+	expect(!(await items()).includes('Browse SQL'), 'Browse SQL in the edit menu');
 	// 0.8.517: no "Arrange objects", Save, Delete, Clone in the menu (buttons on the page do the same; the shortcuts stay) – the form
 	// builder button opens a new tab
 	if (await p.locator('#nuFormBuilderBtn').count()) expect(await p.getAttribute('#nuFormBuilderBtn', 'target') === '_blank', 'form builder button not in a new tab');
 	await p.keyboard.press('Escape'); await p.waitForTimeout(200);
 	await p.keyboard.press('Control+Shift+M'); await p.waitForTimeout(300);
 	expect(await p.isVisible('#nuFormInfo'), 'Ctrl+Shift+M opens the form info panel');
+	await open(p, 'index.php?p=form&f=samplecustomer');
+	await p.click('#nuOptions'); await p.waitForTimeout(200);
+	await Promise.all([p.waitForNavigation(), p.click('.nuOptionsList .dropdown-item:has(.bi-filetype-sql)')]);
+	await p.waitForSelector('#nuDsWork:not([hidden])'); await p.waitForTimeout(500);
+	expect(/dswork=code/.test(p.url()) && /SELECT/i.test(await p.locator('#nuDsWork .CodeMirror').first().textContent()), 'Browse SQL did not open the code: ' + p.url());
+	// 0.8.819: PHP Before Browse
+	await open(p, 'index.php?p=form&f=samplecustomer');
+	await p.click('#nuOptions'); await p.waitForTimeout(200);
+	await Promise.all([p.waitForNavigation(), p.click('.nuOptionsList .dropdown-item:has(.bi-filetype-php)')]);
+	await p.waitForSelector('#nuDsWork:not([hidden])'); await p.waitForTimeout(500);
+	expect(/dsitem=php%3ABB/.test(p.url()) && await p.locator('#nuDsWork [aria-current="true"], #nuDsWork .active').filter({hasText: 'Before Browse'}).count() > 0, 'PHP Before Browse not opened: ' + p.url());
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
@@ -4861,8 +4903,7 @@ T.form_ai = async (s) => {                              // 0.8.403: form with AI
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_object o JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id WHERE f.sfo_code = 'e2e_ai_project'") === '4', 'objects missing');
 		expect(/prj_customer_id/.test(sql("SHOW COLUMNS FROM e2e_ai_project")), 'table not created');
 		// change a form: a form draft, the live form stays
-		await open(p, 'index.php?p=form&f=samplecustomer&r=-1&design=1'); await p.waitForSelector('#nuDsAi'); await p.waitForTimeout(500);
-		await p.click('#nuDsAi'); await p.waitForLoadState('networkidle');
+		await open(p, 'index.php?p=formai&f=samplecustomer');   // 0.8.810: design mode's #nuDsAi opens the Ask AI dialog (test form_ai_design)
 		await p.fill('#faRequest', 'Add Mobile after Phone'); await p.click('#faCopy'); await p.waitForTimeout(800);
 		const cur = JSON.parse((await p.inputValue('#faPrompt')).match(/## The current form\n```json\n([\s\S]*?)\n```/)[1]);
 		const main = cur.tabs[0];
@@ -4879,6 +4920,353 @@ T.form_ai = async (s) => {                              // 0.8.403: form with AI
 		if (fid) sql("DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '" + fid + "'; DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '" + fid + "'; DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '" + fid + "'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '" + fid + "'");
 		sql("DROP TABLE IF EXISTS e2e_ai_project");
 		try { sql("ALTER TABLE sample_customer DROP COLUMN e2e_mobile"); } catch (e) { /* not added */ }
+	}
+};
+
+// 0.8.810: Form with AI – code in the spec, a small app, Ask AI in design mode, "Describe it" of the New form wizard
+const aiMeta = ['zzzzsys_form', 'zzzzsys_object', 'zzzzsys_tab', 'zzzzsys_event', 'zzzzsys_browse', 'zzzzsys_php', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft'];
+async function aiKeep(fn, tables) {
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-ai.sql');
+	execSync('mysqldump ' + DB + ' ' + aiMeta.join(' ') + ' > ' + keep);
+	try { await fn(); } finally {
+		execSync('mysql ' + DB, { input: fs.readFileSync(keep) }); fs.unlinkSync(keep);
+		for (const tb of tables) sql('DROP TABLE IF EXISTS ' + tb);
+	}
+}
+async function faCheck(p, answer) {
+	await p.fill('#faAnswer', typeof answer === 'string' ? answer : JSON.stringify(answer));
+	await p.click('#faCheck'); await p.waitForTimeout(800);
+	return { ok: await p.locator('#faOk').count() === 1, msg: await p.textContent('#faMessages'), plan: await p.textContent('#faPlan') };
+}
+
+T.form_ai_code = async (s) => {
+	const p = s.ga;
+	const spec = {format: 'nunext-form-1', form: {code: 'e2e_ai_code', description: 'E2E AI code', type: 'browseedit', table: 'e2e_ai_code', primary_key: 'e2e_ai_code_id'},
+		tabs: [{title: 'Main', objects: [
+			{id: 'aic_name', type: 'input', input: 'text', label: 'Name', events: [{event: 'onchange', js: "nuSetValue('aic_note', 'x');"}]},
+			{id: 'aic_note', type: 'textarea', label: 'Note'}]}],
+		code: {javascript: "function nuOnLoad() {\n  console.log('e2e');\n}", style: '.aic_name { color: red; }', php: {BS: "if ('#aic_name#' == '') nuDisplayError('Name');"}}};
+	await aiKeep(async () => {
+		await open(p, 'index.php?p=formai');
+		let r = await faCheck(p, Object.assign({}, spec, {code: {php: {BS: 'if ( { nope'}}}));
+		expect(!r.ok && /PHP BS/.test(r.msg), 'PHP syntax error not reported: ' + r.msg);
+		r = await faCheck(p, spec);
+		expect(r.ok && /JavaScript/.test(r.plan) && /PHP BS/.test(r.plan) && /onchange/.test(r.plan), 'code not in the plan: ' + r.plan);
+		expect(/PHP code/.test(r.msg), 'no PHP warning: ' + r.msg);
+		await p.check('#faDdl'); await p.click('#faCreate'); await p.waitForURL(/design=1/); await p.waitForLoadState('networkidle');
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'e2e_ai_code'");
+		expect(/console\.log/.test(sql("SELECT sfo_javascript FROM zzzzsys_form WHERE zzzzsys_form_id = '" + fid + "'")), 'form JavaScript not saved');
+		expect(/nuDisplayError/.test(sql("SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = '" + fid + "_BS'")), 'Before Save not saved');
+		expect(sql("SELECT sev_event FROM zzzzsys_event e JOIN zzzzsys_object o ON o.zzzzsys_object_id = e.sev_zzzzsys_object_id WHERE o.sob_all_zzzzsys_form_id = '" + fid + "'") === 'onchange', 'event not saved');
+		// the prompt of a change shows the code back to the AI
+		await open(p, 'index.php?p=formai&f=' + fid);
+		await p.fill('#faRequest', 'x'); await p.click('#faCopy'); await p.waitForTimeout(800);
+		const pr = await p.inputValue('#faPrompt');
+		expect(/"BS"/.test(pr) && /"onchange"/.test(pr), 'code missing in the prompt of the change');
+	}, ['e2e_ai_code']);
+};
+
+T.form_ai_app = async (s) => {
+	const p = s.ga;
+	const app = {format: 'nunext-app-1', name: 'E2E projects', forms: [
+		{form: {code: 'e2e_app_prj', description: 'E2E app projects', type: 'browseedit', table: 'e2e_app_prj', primary_key: 'e2e_app_prj_id'},
+			tabs: [{title: 'Main', objects: [
+				{id: 'ap_name', type: 'input', input: 'text', label: 'Name', required: true},
+				{id: 'ap_customer_id', type: 'lookup', label: 'Customer', lookup: {form: 'sample_customer', code: 'cus_code', description: 'cus_name'}},
+				{id: 'ap_tasks', type: 'subform', label: 'Tasks', subform: {form: 'e2e_app_task', foreign_key: 'at_project_id', type: 'grid'}}]}]},
+		{form: {code: 'e2e_app_task', description: 'E2E app tasks', type: 'subform', table: 'e2e_app_task', primary_key: 'e2e_app_task_id', columns: [{name: 'at_project_id', type: 'id'}]},
+			tabs: [{title: 'Main', objects: [
+				{id: 'at_title', type: 'input', input: 'text', label: 'Title'},
+				{id: 'at_due', type: 'input', input: 'nuDate', label: 'Due', same_row: true}]}]}]};
+	await aiKeep(async () => {
+		await open(p, 'index.php?p=formai&kind=app');
+		expect(await p.locator('#faKindApp').isChecked(), 'kind=app not chosen');
+		await p.fill('#faRequest', 'Projects with tasks'); await p.click('#faCopy'); await p.waitForTimeout(800);
+		expect(/nunext-app-1/.test(await p.inputValue('#faPrompt')), 'app prompt without the app format');
+		const r = await faCheck(p, app);
+		expect(r.ok && await p.locator('.faAppForm').count() === 2, 'app plan: ' + r.msg + ' ' + r.plan);
+		expect(/at_project_id/.test(r.plan), 'foreign key column not planned');
+		await p.click('#faCreate'); await p.waitForTimeout(300);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code LIKE 'e2e_app_%'") === '0', 'created without ticking the table box');
+		await p.check('#faDdl'); await p.click('#faCreate'); await p.waitForSelector('#faMadeList');
+		expect(await p.locator('#faMadeList li').count() === 2, 'created forms not listed');
+		const prj = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'e2e_app_prj'"), task = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'e2e_app_task'");
+		expect(sql("SELECT sob_subform_zzzzsys_form_id FROM zzzzsys_object WHERE sob_all_id = 'ap_tasks'") === task, 'sub-form not linked to the new form');
+		expect(sql("SELECT sob_lookup_zzzzsys_form_id FROM zzzzsys_object WHERE sob_all_id = 'ap_customer_id'") === 'samplecustomer', 'lookup not linked');
+		expect(/at_project_id/.test(sql('SHOW COLUMNS FROM e2e_app_task')) && /ap_customer_id/.test(sql('SHOW COLUMNS FROM e2e_app_prj')), 'tables / columns missing');
+		expect(sql("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_app_task' AND COLUMN_NAME = 'at_project_id'") !== '0', 'no index on the foreign key');
+		expect(sql("SELECT GROUP_CONCAT(sfo_status) FROM zzzzsys_form WHERE zzzzsys_form_id IN ('" + prj + "', '" + task + "')") === '0,0', 'not created as Draft');
+		await p.click('#faPublishAll'); await p.waitForSelector('#faPublished');
+		expect(sql("SELECT GROUP_CONCAT(sfo_status) FROM zzzzsys_form WHERE zzzzsys_form_id IN ('" + prj + "', '" + task + "')") === '1,1', 'Publish all');
+		const r2 = await p.goto(BASE + 'index.php?p=form&f=' + prj + '&r=-1');
+		expect(r2.status() === 200 && await p.locator('#nuEditForm').count() === 1, 'the new form does not open');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	}, ['e2e_app_prj', 'e2e_app_task']);
+};
+
+T.form_ai_design = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	await aiKeep(async () => {
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = '" + F + "' AND status = 'open'");
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsAi'); await p.waitForTimeout(400);
+		const step = async (newId, label) => {
+			await p.click('#nuDsAi'); await p.waitForSelector('#nuDsAiDlg.show');
+			await p.fill('#nuDsAiReq', 'Add ' + label);
+			const pr = await p.evaluate(async () => {
+				const b = new URLSearchParams({_csrf: window.nuNext.csrf, action: 'prompt', request: 'x'});
+				return (await (await fetch('index.php?p=formai&f=samplecustomer', {method: 'POST', body: b})).json()).text;
+			});
+			const cur = JSON.parse(pr.match(/## The current form\n```json\n([\s\S]*?)\n```/)[1]);
+			cur.tabs[0].objects.push({id: newId, type: 'input', input: 'text', label: label});
+			await p.fill('#nuDsAiAns', JSON.stringify(cur)); await p.click('#nuDsAiCheck'); await p.waitForTimeout(800);
+			expect(new RegExp(newId).test(await p.textContent('#nuDsAiPlan')), 'plan without ' + newId + ': ' + await p.textContent('#nuDsAiPlan'));
+			if (await p.locator('#nuDsAiDdlBox').isVisible()) await p.check('#nuDsAiDdl');
+			await Promise.all([p.waitForNavigation(), p.click('#nuDsAiApply')]); await p.waitForLoadState('networkidle'); await p.waitForTimeout(500);
+		};
+		await step('e2e_ai_one', 'One');
+		await step('e2e_ai_two', 'Two');
+		const snap = sql("SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = '" + F + "' AND status = 'open'");
+		expect(/e2e_ai_one/.test(snap) && /e2e_ai_two/.test(snap), 'both steps not in one draft');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_form_draft WHERE form_id = '" + F + "' AND status = 'open'") === '1', 'more than one draft');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_id IN ('e2e_ai_one', 'e2e_ai_two')") === '0', 'the live form was changed');
+		expect(await p.locator('#label_e2e_ai_two, [data-nu-field="e2e_ai_two"], #e2e_ai_two').count() > 0, 'design mode does not show the draft');
+	}, []);
+	for (const c of ['e2e_ai_one', 'e2e_ai_two']) { try { sql('ALTER TABLE sample_customer DROP COLUMN ' + c); } catch (e) { /* not added */ } }
+};
+
+T.form_ai_describe = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=builder&new=1');
+	await p.fill('#nbDescribeText', 'A small CRM with contacts and notes');
+	await p.click('label[for=nbDescKindApp]');
+	await Promise.all([p.waitForNavigation(), p.click('#nbDescribeGo')]);
+	expect(/p=formai/.test(p.url()) && await p.inputValue('#faRequest') === 'A small CRM with contacts and notes' && await p.locator('#faKindApp').isChecked(), 'Describe it did not carry over: ' + p.url());
+};
+
+// 0.8.812: validation rules (core/form/nurules.php, assets/js/nu/nurules.js, design mode → Validation rules)
+function vrSet(form, rules) {
+	const j = JSON.stringify({nunext: {rules: rules}}).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	sql("UPDATE zzzzsys_form SET sfo_json = " + (rules ? "'" + j + "'" : 'NULL') + " WHERE zzzzsys_form_id = '" + form + "'");
+}
+const vrType = (p, id, v) => p.evaluate(([i, x]) => { const e = document.getElementById(i); e.value = x; e.classList.add('nuEdited'); e.dispatchEvent(new Event('input', {bubbles: true})); e.dispatchEvent(new Event('change', {bubbles: true})); }, [id, v]);
+T.validation_rules = async (s) => {
+	const p = s.ga, C = 'sample_cus_02';
+	const keep = sql("SELECT CONCAT_WS('|', cus_credit, cus_name, IFNULL(cus_phone, '')) FROM sample_customer WHERE sample_customer_id = '" + C + "'");
+	const oldJson = sql("SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	vrSet('samplecustomer', [
+		{id: 'r1', on: true, name: 'Credit', kind: 'error', scope: '', msg: 'Credit too high: #cus_credit#', field: 'cus_credit', levels: [], perm: '',
+			check: {op: 'and', items: [{f: 'cus_credit', o: 'le', v: '30000'}]}},
+		{id: 'r2', on: true, name: 'Phone', kind: 'warn', scope: '', msg: 'No phone number', field: 'cus_phone', levels: [], perm: '',
+			when: {op: 'and', items: [{f: 'cus_name', o: 'contains', v: 'e2ewarn'}]}, check: {op: 'and', items: [{f: 'cus_phone', o: 'nempty'}]}},
+		{id: 'r3', on: true, name: 'Other level', kind: 'error', scope: '', msg: 'never for the globeadmin', field: '', levels: ['zz_no_level'], perm: '',
+			check: {op: 'and', items: [{f: 'cus_name', o: 'eq', v: 'never'}]}},
+		{id: 'r4', on: false, name: 'Off', kind: 'error', scope: '', msg: 'switched off', field: '', levels: [], perm: '', check: {op: 'and', items: [{f: 'cus_name', o: 'eq', v: 'never'}]}}]);
+	try {
+		// error: the browser stops at once, the field is marked live
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + C);
+		expect(await p.evaluate(() => !!window.nuNextRules && window.nuNext.rules.rules.length === 2), 'rules of the user not on the page (off / other level must be left out)');
+		await vrType(p, 'cus_credit', '40000'); await p.waitForTimeout(500);
+		expect(await p.locator('#cus_credit.is-invalid').count() === 1, 'field not marked while typing');
+		await p.click('#nuSaveButton'); await p.waitForTimeout(600);
+		expect(/Credit too high: 40000/.test(await p.textContent('#nuMessageDiv')), 'no message before saving');
+		// the server checks too (browser check switched off)
+		await p.evaluate(() => { window.nuNextRules = null; });
+		await p.click('#nuSaveButton'); await p.waitForTimeout(1200);
+		expect(/Credit too high: 40000/.test(await p.textContent('#nuMessageDiv')), 'server did not refuse');
+		expect(sql("SELECT cus_credit FROM sample_customer WHERE sample_customer_id = '" + C + "'") === keep.split('|')[0], 'saved despite the error rule');
+		// warning: Save anyway?
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + C);
+		await vrType(p, 'cus_credit', '20000'); await setField(p, '#cus_name', 'Maple e2ewarn'); await setField(p, '#cus_phone', '');
+		await p.click('#nuSaveButton'); await p.waitForSelector('#nuConfirm.show');
+		expect(/No phone number/.test(await p.textContent('#nuConfirm.show')), 'warning text missing');
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm.show .js-confirm-ok')]); await p.waitForLoadState('networkidle');
+		expect(sql("SELECT cus_name FROM sample_customer WHERE sample_customer_id = '" + C + "'") === 'Maple e2ewarn', 'not saved after Save anyway');
+		// sub-forms: every row + count of rows (sampleorder)
+		const oJson = sql("SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'");
+		const base = JSON.parse(oJson || '{}').nunext || {};
+		const oset = (rules) => sql("UPDATE zzzzsys_form SET sfo_json = '" + JSON.stringify({nunext: Object.assign({}, base, {rules: rules})}) + "' WHERE zzzzsys_form_id = 'sampleorder'");
+		try {
+			oset([{id: 'q1', on: true, name: 'Qty', kind: 'error', scope: 'sample_items', msg: 'Quantity must be 1 to 50', field: '', levels: [], perm: '',
+				check: {op: 'and', items: [{f: 'ori_qty', o: 'between', v: ['1', '50']}]}},
+			{id: 'q2', on: true, name: 'Rows', kind: 'error', scope: '', msg: 'At most 2 items', field: '', levels: [], perm: '', check: {op: 'and', items: [{f: 'count:sample_items', o: 'le', v: '2'}]}}]);
+			const n = sql("SELECT COUNT(*) FROM sample_order_item WHERE ori_sample_order_id = 'sample_ord_1'");
+			const ordCust = sql("SELECT ord_sample_customer_id FROM sample_order WHERE sample_order_id = 'sample_ord_1'");
+			const res = await p.evaluate(async (oc) => {
+				const b = {action: 'save', form_id: 'sampleorder', record_id: 'sample_ord_1', values: {ord_sample_customer_id: oc}, edited: [], subforms: {sample_items: {rows: [{pk: 'x1', values: {ori_qty: '0'}, edited: []}, {pk: 'x2', values: {ori_qty: '3'}, edited: []}, {pk: 'x3', values: {ori_qty: '3'}, edited: []}]}}};
+				const r = await fetch('index.php?p=formapi', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': (window.nuNext || {}).csrf || ''}, body: JSON.stringify(b)});
+				return r.json();
+			}, ordCust);
+			const msgs = (res.errors || []).map(e => e.message).join(' | ');
+			expect(!res.ok && /Row 1: Quantity must be 1 to 50/.test(msgs) && /At most 2 items/.test(msgs) && !/Row 2/.test(msgs), 'sub-form rules: ' + JSON.stringify(res));
+			expect(sql("SELECT COUNT(*) FROM sample_order_item WHERE ori_sample_order_id = 'sample_ord_1'") === n, 'rows changed');
+		} finally { sql("UPDATE zzzzsys_form SET sfo_json = " + (oJson ? "'" + oJson.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" : 'NULL') + " WHERE zzzzsys_form_id = 'sampleorder'"); }
+	} finally {
+		const [cr, nm, ph] = keep.split('|');
+		sql("UPDATE sample_customer SET cus_credit = '" + cr + "', cus_name = '" + nm.replace(/'/g, "''") + "', cus_phone = " + (ph ? "'" + ph + "'" : 'NULL') + " WHERE sample_customer_id = '" + C + "'");
+		sql("UPDATE zzzzsys_form SET sfo_json = " + (oldJson ? "'" + oldJson.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" : 'NULL') + " WHERE zzzzsys_form_id = 'samplecustomer'");
+	}
+};
+
+// 0.8.812: the rules editor of design mode – expression → builder, Test rule, saved into the draft
+T.validation_rules_design = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = '" + F + "' AND status = 'open'");
+	const oldJson = sql("SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'");
+	try {
+		await open(p, 'index.php?p=form&f=' + F + '&r=sample_cus_01&design=1'); await p.waitForSelector('#nuDsRailRules'); await p.waitForTimeout(400);
+		await p.click('#nuDsRailRules'); await p.waitForSelector('#nuDsRuleAdd'); await p.click('#nuDsRuleAdd'); await p.waitForSelector('#nuDsRuleDlg.show');
+		// 0.8.816: a gap is shown on top of the dialogue, in sight, with the field marked
+		await p.fill('#nuDsRuleName', 'Credit limit');
+		await p.click('#nuDsRuleSave'); await p.waitForTimeout(300);
+		const errBox = await p.evaluate(() => { const e = document.getElementById('nuDsRuleErr'), b = e.closest('.modal-body').getBoundingClientRect(), r = e.getBoundingClientRect();
+			return {shown: !e.hidden, inView: r.top >= b.top - 20 && r.bottom <= b.bottom, text: e.textContent, marked: document.getElementById('nuDsRuleMsg').classList.contains('is-invalid')}; });
+		expect(errBox.shown && errBox.inView && errBox.marked && /Credit limit/.test(errBox.text), 'missing message: ' + JSON.stringify(errBox));
+		await p.fill('#nuDsRuleMsg', 'Too much: #cus_credit#');
+		await p.click('label[for=nuDsRuleCheckMexpr]');
+		await p.fill('#nuDsRuleCheckExpr', 'cus_credit <= 30000 AND cus_email CONTAINS \'@\'');
+		await p.click('label[for=nuDsRuleCheckMbuilder]'); await p.waitForTimeout(800);
+		expect(await p.locator('#nuDsRuleCheckRows .nuDsCondRow').count() === 2, 'expression not turned into two builder rows');
+		await p.click('#nuDsRuleTest'); await p.waitForSelector('#nuDsRuleTestRes [data-vr-res]');
+		expect(/Too much: 50000/.test(await p.textContent('#nuDsRuleTestRes')), 'Test rule: ' + await p.textContent('#nuDsRuleTestRes'));
+		// a broken expression is refused with the reason
+		await p.click('label[for=nuDsRuleCheckMexpr]'); await p.fill('#nuDsRuleCheckExpr', "cus_credit <= 'x");
+		await p.click('#nuDsRuleSave'); await p.waitForTimeout(800);
+		expect(/quote/i.test(await p.textContent('#nuDsRuleErr')), 'broken expression not refused: ' + await p.textContent('#nuDsRuleErr'));
+		await p.fill('#nuDsRuleCheckExpr', 'cus_credit <= 30000');
+		await p.click('#nuDsRuleSave'); await p.waitForSelector('#nuDsRules [data-vr]');
+		const snap = sql("SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = '" + F + "' AND status = 'open'");
+		expect(/Credit limit/.test(snap) && /cus_credit <= 30000/.test(snap), 'rule not in the draft');
+		expect(sql("SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'") === oldJson, 'the live form was changed');
+		await p.click('#nuDsRuleTestAll'); await p.waitForSelector('#nuDsRuleTestOut [data-vr-res="fail"]');
+	} finally {
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = '" + F + "' AND status = 'open'");
+	}
+};
+
+// 0.8.814: hash variables in rules – a form property set in the browser (nuSetProperty) is checked on the server and live; builder value with #NAME#
+T.validation_rules_hash = async (s) => {
+	const p = s.ga, C = 'sample_cus_02';
+	const oldJson = sql("SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	const keep = sql("SELECT cus_credit FROM sample_customer WHERE sample_customer_id = '" + C + "'");
+	vrSet('samplecustomer', [{id: 'h1', on: true, name: 'Max', kind: 'error', scope: '', msg: 'Above #E2E_MAX# for #USER_ID#', field: 'cus_credit', levels: [], perm: '',
+		check: {op: 'and', items: [{f: 'cus_credit', o: 'le', v: {h: 'E2E_MAX'}}]}}]);
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + C);
+		await p.evaluate(() => nuSetProperty('E2E_MAX', '30000'));
+		await vrType(p, 'cus_credit', '40000'); await p.waitForTimeout(500);
+		expect(await p.locator('#cus_credit.is-invalid').count() === 1, 'live check does not use the hash cookie');
+		await p.evaluate(() => { window.nuNextRules = null; });
+		await p.click('#nuSaveButton'); await p.waitForTimeout(1200);
+		expect(/Above 30000 for globeadmin/.test(await p.textContent('#nuMessageDiv')), 'server: ' + await p.textContent('#nuMessageDiv'));
+		expect(sql("SELECT cus_credit FROM sample_customer WHERE sample_customer_id = '" + C + "'") === keep, 'saved despite the rule');
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + C);
+		await p.evaluate(() => nuSetProperty('E2E_MAX', '50000'));
+		await vrType(p, 'cus_credit', '40000');
+		await Promise.all([p.waitForNavigation(), p.click('#nuSaveButton')]); await p.waitForLoadState('networkidle');
+		expect(sql("SELECT cus_credit FROM sample_customer WHERE sample_customer_id = '" + C + "'") === '40000.00', 'not saved below the hash value');
+		// the builder: a hash variable typed into the value field (Tom Select, free text)
+		vrSet('samplecustomer', null);
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = 'samplecustomer' AND status = 'open'");
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + C + '&design=1'); await p.waitForSelector('#nuDsRailRules'); await p.waitForTimeout(300);
+		await p.click('#nuDsRailRules'); await p.waitForSelector('#nuDsRuleAdd'); await p.click('#nuDsRuleAdd'); await p.waitForSelector('#nuDsRuleDlg.show');
+		await p.fill('#nuDsRuleMsg', 'x');
+		await p.click('#nuDsRuleCheckAddRow');
+		await p.selectOption('#nuDsRuleCheckRows [data-vr="f"]', 'cus_credit'); await p.selectOption('#nuDsRuleCheckRows [data-vr="o"]', 'le');
+		await p.locator('#nuDsRuleCheckRows .nuDsCondRow').first().locator('.ts-wrapper').nth(1).click(); await p.keyboard.type('#USER_'); await p.waitForTimeout(300);
+		expect(await p.locator('.ts-dropdown .option', {hasText: '#USER_ID#'}).count() > 0, 'hash variables not offered');
+		await p.keyboard.type('MAXCR#'); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+		await p.click('label[for=nuDsRuleCheckMexpr]'); await p.waitForTimeout(200);
+		expect(await p.inputValue('#nuDsRuleCheckExpr') === 'cus_credit <= #USER_MAXCR#', 'expression: ' + await p.inputValue('#nuDsRuleCheckExpr'));
+		await p.click('label[for=nuDsRuleCheckMbuilder]'); await p.waitForTimeout(800);
+		expect(/#USER_MAXCR#/.test(await p.textContent('#nuDsRuleCheckRows')), 'expression → builder lost the hash variable');
+		// 0.8.815: a hash variable on the left – #E2E_C# = 123
+		await p.click('#nuDsRuleCheckAddRow');
+		const row2 = p.locator('#nuDsRuleCheckRows .nuDsCondRow').nth(1);
+		await row2.locator('.ts-wrapper').first().click(); await p.waitForTimeout(300); await p.keyboard.type('#E2E_C#', {delay: 30}); await p.waitForTimeout(200); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+		await row2.locator('[data-vr="o"]').selectOption('eq');
+		await row2.locator('.ts-wrapper').nth(1).click(); await p.waitForTimeout(300); await p.keyboard.type('123', {delay: 30}); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+		await p.click('label[for=nuDsRuleCheckMexpr]'); await p.waitForTimeout(200);
+		expect(/#E2E_C# = 123/.test(await p.inputValue('#nuDsRuleCheckExpr')), 'left hash: ' + await p.inputValue('#nuDsRuleCheckExpr'));
+		await p.click('#nuDsRuleSave'); await p.waitForSelector('#nuDsFly [data-vr]');
+		expect(await p.textContent('#nuDsRailRulesN') === '1', 'rail count');
+		// server + browser: #E2E_C# on the left
+		vrSet('samplecustomer', [{id: 'h2', on: true, name: 'Cookie', kind: 'error', scope: '', msg: 'Cookie is #E2E_C#', field: '', levels: [], perm: '',
+			check: {op: 'and', items: [{f: '#E2E_C#', o: 'ne', v: '1'}]}}]);
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = 'samplecustomer' AND status = 'open'");
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + C);
+		await p.evaluate(() => { nuSetProperty('E2E_C', '1'); window.nuNextRules = null; });
+		await vrType(p, 'cus_credit', '41000');
+		await p.click('#nuSaveButton'); await p.waitForTimeout(1200);
+		expect(/Cookie is 1/.test(await p.textContent('#nuMessageDiv')), 'left hash on the server: ' + await p.textContent('#nuMessageDiv'));
+	} finally {
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = 'samplecustomer' AND status = 'open'");
+		sql("UPDATE sample_customer SET cus_credit = '" + keep + "' WHERE sample_customer_id = '" + C + "'");
+		sql("UPDATE zzzzsys_form SET sfo_json = " + (oldJson ? "'" + oldJson.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" : 'NULL') + " WHERE zzzzsys_form_id = 'samplecustomer'");
+	}
+};
+
+// 0.8.817: from the workspace (Code) straight to a flyout of the icon bar – the workspace closes
+T.design_work_to_fly = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	await open(p, 'index.php?p=form&f=' + F + '&r=sample_cus_01&design=1'); await p.waitForSelector('#nuDsRailCode');
+	await p.click('#nuDsRailCode'); await p.waitForSelector('#nuDsWork:not([hidden])');
+	await p.click('#nuDsRailRules'); await p.waitForTimeout(400);
+	expect(await p.locator('#nuDsWork').isHidden() && await p.locator('#nuDsFly #nuDsRuleAdd').isVisible(), 'rules flyout not reachable from Code');
+	await p.click('#nuDsRailHistory'); await p.waitForSelector('#nuDsWork:not([hidden])');
+	await p.click('#nuDsRailStructure'); await p.waitForTimeout(400);
+	expect(await p.locator('#nuDsWork').isHidden() && await p.locator('#nuDsFly').isVisible(), 'structure not reachable from History');
+	await p.click('#nuDsRailCode'); await p.waitForSelector('#nuDsWork:not([hidden])');
+	await p.click('#nuDsRailForm'); await p.waitForTimeout(300);
+	expect(await p.locator('#nuDsWork').isHidden(), 'form settings button does not close the workspace');
+};
+
+// 0.8.820: design mode – icon bar order, the List flyout (settings, code, columns) and nuBuilder Forte's list settings on the list
+T.design_list_fly = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const old = sql("SELECT CONCAT_WS('|', IFNULL(sfo_browse_row_height, ''), IFNULL(sfo_browse_title_multiline, ''), IFNULL(sfo_browse_autoresize_columns, ''), IFNULL(sfo_browse_target, '')) FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'");
+	sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = '" + F + "' AND status = 'open'");
+	try {
+		await open(p, 'index.php?p=form&f=' + F + '&r=sample_cus_01&design=1'); await p.waitForSelector('#nuDsRailList');
+		const order = await p.$$eval('#nuDsRail .nuDsRailBtn', b => b.map(x => x.id).join(','));
+		expect(order === 'nuDsRailForm,nuDsRailStructure,nuDsRailAdd,nuDsRailCode,nuDsRailRules,nuDsRailHistory,nuDsRailList,nuDsRailKeys', 'rail order: ' + order);
+		expect(await p.locator('#nuDsBrowseSql').count() === 0, 'list settings still in the form panel');
+		await p.click('#nuDsRailList'); await p.waitForSelector('#nuDsWork:not([hidden]) #nuDsListFly'); await p.mouse.move(700, 600); await p.waitForTimeout(300);
+		expect(await p.locator('#nuDsWorkTab_list.active').count() === 1, 'Browse list not a workspace tab');
+		await p.fill('#nuDsListFly [data-key="sfo_browse_row_height"]', '30'); await p.press('#nuDsListFly [data-key="sfo_browse_row_height"]', 'Tab'); await p.waitForTimeout(900);
+		await p.selectOption('#nuDsListFly [data-key="sfo_browse_target"]', '2'); await p.waitForTimeout(900);
+		await p.click('#nuDsListFly [data-key="sfo_browse_title_multiline"]'); await p.waitForTimeout(900);
+		const t0 = p.locator('#nuDsListCols [data-lc="title"]').first();
+		await t0.fill('E2E list title'); await t0.press('Tab'); await p.waitForTimeout(1200);
+		const snap = sql("SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = '" + F + "' AND status = 'open'");
+		expect(/"sfo_browse_row_height":"?30/.test(snap) && /"sfo_browse_target":"2"/.test(snap) && /"sfo_browse_title_multiline":"1"/.test(snap) && /E2E list title/.test(snap), 'not in the draft');
+		expect(await p.locator('#nuDsWork #nuDsListFly').isVisible() && await p.inputValue('#nuDsListCols [data-lc="title"] >> nth=0') === 'E2E list title', 'workspace not kept / redrawn after a change');
+		// 0.8.823: drag the first column (by its number) below the third
+		const titles = () => p.$$eval('#nuDsListCols [data-lc="title"]', x => x.map(i => i.value));
+		const before = await titles();
+		const third = p.locator('#nuDsListCols tr[data-col] >> nth=2');
+		const bb = await third.boundingBox();
+		await p.locator('#nuDsListCols [data-grip] >> nth=0').dragTo(third, {targetPosition: {x: 30, y: bb.height - 4}}); await p.waitForTimeout(1500);
+		const after = await titles();
+		expect(after[2] === before[0] && after[0] === before[1] && after[1] === before[2], 'drag and drop: ' + before.slice(0, 3) + ' → ' + after.slice(0, 3));
+		await p.click('#nuDsListSql'); await p.waitForSelector('#nuDsWork:not([hidden])');
+		expect(/SELECT/i.test(await p.locator('#nuDsWork .CodeMirror').first().textContent()), 'Browse SQL button');
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = '" + F + "' AND status = 'open'");
+		// the list itself: row height, multi-line titles, fill the width, open in a new tab
+		sql("UPDATE zzzzsys_form SET sfo_browse_row_height = 44, sfo_browse_title_multiline = '1', sfo_browse_autoresize_columns = '1', sfo_browse_target = '2' WHERE zzzzsys_form_id = '" + F + "'");
+		await open(p, 'index.php?p=form&f=' + F);
+		const look = await p.evaluate(() => { const tb = document.getElementById('nuBrowseTable'), tr = tb.querySelector('tr.nuBrowseRow');
+			return {cls: tb.className, h: Math.round(tr.getBoundingClientRect().height), w: Math.round(tb.getBoundingClientRect().width), pw: Math.round(tb.parentElement.getBoundingClientRect().width)}; });
+		expect(/nuBrowseMultiline/.test(look.cls) && /nuBrowseAutoFit/.test(look.cls) && look.h >= 43 && look.w >= look.pw - 2, 'list look: ' + JSON.stringify(look));
+		const [tab] = await Promise.all([p.context().waitForEvent('page'), p.click('tr.nuBrowseRow >> nth=0')]);
+		await tab.waitForURL(/[?&]r=/, {timeout: 10000}).catch(() => {}); expect(/[?&]r=/.test(tab.url()), 'new tab: ' + tab.url()); await tab.close();
+		sql("UPDATE zzzzsys_form SET sfo_browse_target = '3' WHERE zzzzsys_form_id = '" + F + "'");
+		await open(p, 'index.php?p=form&f=' + F);
+		await p.click('tr.nuBrowseRow >> nth=0'); await p.waitForSelector('#nuPopupModal.show');
+	} finally {
+		const [h, m, a, tg] = old.split('|');
+		const v = (x) => x === '' ? 'NULL' : "'" + x + "'";
+		sql("UPDATE zzzzsys_form SET sfo_browse_row_height = " + v(h) + ", sfo_browse_title_multiline = " + v(m) + ", sfo_browse_autoresize_columns = " + v(a) + ", sfo_browse_target = " + v(tg) + " WHERE zzzzsys_form_id = '" + F + "'");
+		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = '" + F + "' AND status = 'open'");
 	}
 };
 
@@ -5054,10 +5442,55 @@ T.home_favourites = async (s) => {
 	await homeEdit(p); await p.waitForTimeout(400);
 	await p.locator('.nuHeItem[data-key="users"] .nuHeTools button').filter({ has: p.locator('.bi-star') }).first().click();
 	await p.click('#nuHomeSave'); await p.waitForLoadState('networkidle'); await p.waitForTimeout(600);
-	await p.click('#nuHomeFavOnly'); await p.waitForTimeout(400);
-	const shown = await p.locator('[data-nu-tile]').evaluateAll(a => a.filter(x => x.offsetParent !== null).map(x => x.getAttribute('data-nu-tile')));
-	expect(shown.length === 1 && shown[0] === 'users', 'favourites only shows ' + shown.join(','));
-	await p.click('#nuHomeFavOnly');
+	// 0.8.806: no ☆ filter button any more – the row Favourites shows the starred tiles
+	expect(await p.locator('#nuHomeFavOnly').count() === 0, 'favourites-only button still there');
+	const st = '[data-nu-strip="fav"]', rs = '[data-nu-strip="recent"]';
+	expect(await p.locator(st).isVisible(), 'row Favourites not shown');
+	expect(await p.locator(st + ' .nuHomeChip').count() === 1, 'row Favourites: chips');
+	expect(await p.locator('#nuHomeFavEdit').count() === 0, 'Edit link still there');
+	// 0.8.807: right-click on the row → Edit favourites / Hide this row
+	const head = p.locator(st + ' .nuHomeStripToggle');
+	await head.click({button: 'right'}); await p.waitForTimeout(300);
+	const menu = p.locator('.nuHomeCtx');
+	const items = await menu.locator('.dropdown-item').allTextContents();
+	expect(items.length === 2, 'row menu: ' + items.join(' | '));
+	await menu.locator('.dropdown-item').first().click(); await p.waitForTimeout(500);
+	expect(await p.locator('#nuHomeEditFav').getAttribute('aria-pressed') === 'true', 'edit mode not filtered to favourites');
+	await p.click('#nuHomeCancel'); await p.waitForTimeout(400);
+	// a chip's menu carries the row's entries below its own
+	await p.locator(st + ' .nuHomeChip').first().click({button: 'right'}); await p.waitForTimeout(300);
+	expect(await p.locator('.nuHomeCtx .dropdown-item').count() >= 3, 'chip menu without row entries');
+	await p.keyboard.press('Escape');
+	// Hide this row → hidden, message names the way back, stays hidden after a reload; Appearance switch shows it again
+	await head.click({button: 'right'}); await p.waitForTimeout(300);
+	await p.locator('.nuHomeCtx .dropdown-item').last().click(); await p.waitForTimeout(800);
+	expect(await p.locator(st).isHidden(), 'row not hidden');
+	const msg = await p.locator('#nuHomeToast').textContent();
+	expect(/→/.test(msg), 'no hint how to show it again: ' + msg);
+	await p.reload(); await p.waitForTimeout(600);
+	expect(await p.locator(st).isHidden(), 'row back after reload');
+	await homeTab(p, 'appearance');
+	await p.locator('label[for="nuHomeVp_favRow"]').click(); await p.waitForTimeout(800);
+	expect(await p.locator(st).isVisible(), 'switch does not show the row again');
+	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300);
+	// Recently used: Clear / Hide this row in its menu
+	await open(p, 'index.php?p=users'); await open(p, 'index.php?p=home&tiles=1');
+	if (await p.locator(rs).isHidden()) { await homeTab(p, 'appearance'); await p.locator('label[for="nuHomeVp_recentStrip"]').click(); await p.waitForTimeout(800); await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300); }
+	expect(await p.locator(rs).isVisible(), 'row Recently used not shown');
+	{
+		await p.locator(rs + ' .nuHomeStripToggle').click({button: 'right'}); await p.waitForTimeout(300);
+		const r = await p.locator('.nuHomeCtx .dropdown-item').allTextContents();
+		expect(r.length === 2, 'recent row menu: ' + r.join(' | '));
+		await p.locator('.nuHomeCtx .dropdown-item').last().click(); await p.waitForTimeout(800);
+		expect(await p.locator(rs).isHidden(), 'recent row not hidden');
+		await p.locator('#nuHomeToast button').last().click(); await p.waitForTimeout(800);   // Undo
+		expect(await p.locator(rs).isVisible(), 'Undo did not show the row');
+	}
+	// unstar again → no row
+	await homeEdit(p); await p.waitForTimeout(400);
+	await p.locator('.nuHeItem[data-key="users"] .nuHeTools button').filter({ has: p.locator('.bi-star-fill') }).first().click();
+	await p.click('#nuHomeSave'); await p.waitForLoadState('networkidle'); await p.waitForTimeout(600);
+	expect(await p.locator(st).isHidden(), 'row Favourites shown without favourites');
 };
 
 T.home_list2 = async (s) => {                      // 0.8.363: tiles as a list in two columns (0.8.420: View panel → List, 2 columns)
@@ -6552,7 +6985,8 @@ T.recent_forget = async (s) => {
 		await open(p, 'index.php?p=home');
 		const chip = '[data-nu-strip="recent"] [data-nu-recent="access"]';
 		await p.locator(chip).click({ button: 'right' }); await p.waitForTimeout(200);
-		expect(await p.locator('.nuHomeCtx .dropdown-item').count() === 2, 'start page: menu without remove / clear');
+		// the chip's own entries (remove, clear) + the row's below a divider (0.8.807: Hide this row)
+		expect(await p.locator('.nuHomeCtx .dropdown-item').count() === 3 && /bi-eye-slash/.test(await p.locator('.nuHomeCtx .dropdown-item').last().innerHTML()), 'start page: menu without remove / clear / hide row');
 		await Promise.all([p.waitForNavigation(), p.locator('.nuHomeCtx .dropdown-item').first().click()]);
 		expect(keys() === 'users,permissions', 'start page: not removed: ' + keys());
 		expect(await p.locator(chip).count() === 0, 'start page: chip still shown');
@@ -9633,9 +10067,9 @@ T.forms_status_menu = async (s) => {
 		expect(await badge.count() === 1, 'status with menu for ' + id);
 		await badge.click({ button: 'right' });
 		await p.waitForSelector('.nuSbMenu .dropdown-item');
-		expect(await p.locator('.nuSbMenu .dropdown-item').count() === 3, 'three statuses');
+		expect(await p.locator('.nuSbMenu .dropdown-item').count() === 4, 'four statuses (0.8.808: Maintenance)');
 		expect(await p.locator('.nuSbMenu .dropdown-item.active').count() === 1, 'current one marked');
-		await p.locator('.nuSbMenu .dropdown-item').nth(2).click();       // Archived
+		await p.locator('.nuSbMenu .dropdown-item').nth(3).click();       // Archived
 		await p.waitForSelector('#nuFormStatusToast .alert-success');
 		expect(sql(`SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`) === '3', 'saved as archived');
 		expect(await badge.getAttribute('data-nu-st') === '3', 'badge updated');
@@ -9992,6 +10426,115 @@ T.seg_control = async (s) => {
 // forms for everyone (0.8.784): switch "Everyone" in a form's Access levels dialog writes a row per level (as nuBuilder Forte reads them),
 // the forms list shows the badge and filter, a new access level gets the form, admin-equivalent forms refuse it, gaps show in the
 // Compatibility check (FE), switching off keeps the rows
+T.cloner_sources = async (s) => {             // 0.8.811: only forms that can be cloned; nuBuilder Forte's own forms on request
+	const p = s.ga;
+	const opts = () => p.locator('#clSource option').evaluateAll(a => a.map(o => o.value).filter(Boolean));
+	const fake = 'e2eclbuiltin';
+	sql("INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_code, sfo_type, sfo_description) VALUES ('" + fake + "', 'nufiles', 'page', 'E2E built-in page')");
+	try {
+		await open(p, 'index.php?p=cloner&id=new');
+		let o = await opts();
+		expect(o.includes('samplecustomer'), 'application form missing');
+		expect(!o.some(x => x.startsWith('nu')), 'nuBuilder Forte forms listed by default: ' + o.filter(x => x.startsWith('nu')).slice(0, 3).join(','));
+		expect(!o.includes(fake), 'built-in page form listed');
+		await Promise.all([p.waitForNavigation(), p.click('#clSystemToggle')]);
+		o = await opts();
+		expect(o.includes('nuform') && !o.includes('nunextlog') && !o.includes('nunextadminrole'), 'with ?system=1: ' + o.filter(x => x.startsWith('nu')).length);
+		const info = await p.evaluate(async (id) => (await (await fetch('index.php?p=cloner&info=' + id)).json()), fake);
+		expect(info.error && /built into/.test(info.error), 'info of the built-in page: ' + JSON.stringify(info));
+	} finally { sql("DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '" + fake + "'"); }
+};
+
+T.forms_row_actions = async (s) => {          // 0.8.809: no Form cloner button in the rows of the forms list (Forms → Tools keeps it)
+	const p = s.ga;
+	await open(p, 'index.php?p=forms');
+	expect(await p.locator('.nuRowActions a[href*="p=builder"]').count() > 0, 'design mode button missing');
+	expect(await p.locator('td a[href*="p=cloner"]').count() === 0, 'cloner button still in the rows');
+	expect(await p.locator('.dropdown-menu a[href*="p=cloner"]').count() === 1, 'Tools → Form cloner missing');
+};
+
+T.form_maintenance = async (s) => {            // 0.8.808: status 2 = Maintenance (core/nuformstatus.php), Archived closed for users too
+	const p = s.ga, F = 'samplecustomer';
+	const st = () => sql("SELECT COALESCE(sfo_status, '') FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'");
+	const before = st();
+	const keepSet = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'form_maintenance'");
+	let u = null;
+	try {
+		// forms list: "Maintenance…" with several forms, message and until
+		await open(p, 'index.php?p=forms');
+		await p.click('#nuFmsListBtn'); await p.waitForSelector('#nuFmsList .nuFmsRow');
+		const code = sql("SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'");
+		await p.fill('#nuFmsFilter', code);
+		expect(await p.locator('#nuFmsList .nuFmsRow:visible').count() >= 1, 'filter');
+		await p.locator('#nuFmsList input[value="' + F + '"]').check();
+		await p.fill('#nuFmsText', 'Back after the import');
+		await p.fill('#nuFmsUntil', '2099-01-01T14:00');
+		await p.click('#nuFmsOn'); await p.waitForSelector('#nuFmsDlg', { state: 'detached' });
+		expect(st() === '2', 'status after Start: ' + st());
+		expect(/import/.test(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'form_maintenance'")), 'message not stored');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'form_maintenance_on' AND record_id = '" + F + "'") !== '0', 'log');
+		// a user: message page (503) with the text and the time; saving a record that was open before is refused
+		u = await login('sample_ben', UPW);
+		const r = await u.goto(BASE + 'index.php?p=form&f=' + F);
+		expect(r.status() === 503, 'user status ' + r.status());
+		const body = await u.locator('body').textContent();
+		expect(/Back after the import/.test(body) && /14:00/.test(body), 'message page: ' + body.slice(0, 200));
+		await open(u, 'index.php?p=home');
+		const api = await u.evaluate(async (f) => {
+			const tok = (document.querySelector('input[name=_csrf]') || {}).value || '';
+			const x = await fetch('index.php?p=formapi', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': tok}, body: JSON.stringify({form_id: f, action: 'save', record_id: '-1', data: {}})});
+			return [x.status, await x.text()];
+		}, F);
+		expect(api[0] === 503 && /form_maintenance/.test(api[1]), 'form API for the user: ' + api[0] + ' ' + api[1].slice(0, 120));
+		// the globeadmin: the form opens with the notice; End maintenance
+		await open(p, 'index.php?p=form&f=' + F);
+		expect(await p.locator('#nuFormMaint').isVisible(), 'notice missing for the globeadmin');
+		await Promise.all([p.waitForNavigation(), p.click('#nuFormMaint .nuFormMaintEnd')]);
+		expect(st() === '1' && await p.locator('#nuFormMaint').count() === 0, 'End maintenance: ' + st());
+		const r2 = await u.goto(BASE + 'index.php?p=form&f=' + F);
+		expect(r2.status() === 200, 'user after the end: ' + r2.status());
+		// status menu of the list offers Maintenance
+		await open(p, 'index.php?p=forms&status=all&q=' + encodeURIComponent(code));
+		const cell = p.locator('.nuFormStatus[data-nu-form="' + F + '"]').first();
+		await cell.click({button: 'right'}); await p.waitForTimeout(300);
+		expect(await p.locator('.nuSbMenu .dropdown-item:has(.bi-cone-striped)').count() === 1, 'menu without Maintenance');
+		await p.keyboard.press('Escape');
+		// Archived: closed for users as in nuBuilder Forte
+		sql("UPDATE zzzzsys_form SET sfo_status = '3' WHERE zzzzsys_form_id = '" + F + "'");
+		const r3 = await u.goto(BASE + 'index.php?p=form&f=' + F);
+		expect(r3.status() === 403, 'archived for the user: ' + r3.status());
+		// a draft started before maintenance and published during it keeps the maintenance (and is no conflict)
+		sql("UPDATE zzzzsys_form SET sfo_status = '1' WHERE zzzzsys_form_id = '" + F + "'");
+		const meta = ['zzzzsys_form', 'zzzzsys_object', 'zzzzsys_tab', 'zzzzsys_event', 'zzzzsys_browse', 'zzzzsys_php', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft'];
+		const keep = path.join(require('os').tmpdir(), 'nunext-e2e-maint.sql');
+		execSync('mysqldump ' + DB + ' ' + meta.join(' ') + ' > ' + keep);
+		try {
+			await open(p, 'index.php?p=form&f=' + F + '&r=-1');
+			const api = (url, body) => p.evaluate(async ([u2, bd]) => {
+				const csrf = (window.nuNext && window.nuNext.csrf) || document.querySelector('input[name=_csrf]').value;
+				const r = await fetch(u2, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(bd) });
+				return Object.assign({ status: r.status }, await r.json());
+			}, [url, body]);
+			let r = await api('index.php?p=builderapi', { form_id: F, action: 'draft.start', note: 'e2e' });
+			const obj = r.objects.find(o => o.sob_all_id === 'cus_name');
+			r = await api('index.php?p=builderapi', { form_id: F, action: 'object.save', draft_id: r.draft.id, rev: 0, object_id: obj.zzzzsys_object_id, fields: { sob_all_label: 'E2E maint label' } });
+			const did = r.draft.id;
+			r = await api('index.php?p=formstatus', { forms: [F], on: true, text: 'x' });
+			expect(r.ok && st() === '2', 'maintenance with an open draft: ' + JSON.stringify(r));
+			r = await api('index.php?p=builderapi', { form_id: F, action: 'draft.publish', draft_id: did, warnings_ok: true });
+			expect(r.ok && !r.conflict, 'publish during maintenance: ' + JSON.stringify(r).slice(0, 200));
+			expect(st() === '2', 'publish ended the maintenance: ' + st());
+		} finally {
+			execSync('mysql ' + DB, { input: fs.readFileSync(keep) }); fs.unlinkSync(keep);
+		}
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		if (u) await u.context().close();
+		sql("UPDATE zzzzsys_form SET sfo_status = " + (before === '' ? 'NULL' : "'" + before + "'") + " WHERE zzzzsys_form_id = '" + F + "'");
+		if (keepSet === '0') sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'form_maintenance'");
+	}
+};
+
 T.form_everyone = async (s) => {
 	const p = s.ga;
 	const dump = path.join(os.tmpdir(), 'nunext-e2e-everyone.sql');

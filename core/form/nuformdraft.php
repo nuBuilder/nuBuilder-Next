@@ -248,7 +248,13 @@ final class NuFormDraft
 		if ($live === null) return ['ok' => false, 'errors' => [t('builder_draft_form_gone')]];
 		$base = self::snapshotOf($d, 'base_snapshot');
 		$snap = self::snapshotOf($d);
-		$conflict = NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash'];
+		// status (0.8.808): Maintenance is switched on the live form at once – a draft that did not change the status keeps the live one,
+		// and a status changed only on the live form is no conflict
+		$bs = $base['form']['sfo_status'] ?? null;
+		if (isset($snap['form']) && ($snap['form']['sfo_status'] ?? null) === $bs) $snap['form']['sfo_status'] = $live['form']['sfo_status'] ?? null;
+		$liveCmp = $live;
+		if (isset($liveCmp['form']) && array_key_exists('sfo_status', $base['form'] ?? [])) $liveCmp['form']['sfo_status'] = $bs;
+		$conflict = NuFormSnapshot::hash($liveCmp, $base) !== (string)$d['base_hash'];
 		if ($conflict && !$force) return ['ok' => false, 'conflict' => true, 'changes' => NuFormSnapshot::diff($base, $live)];
 		if ($note === '') {
 			$n = (int)(NuFormSnapshot::diff($live, $snap)['counts']['total'] ?? 0);

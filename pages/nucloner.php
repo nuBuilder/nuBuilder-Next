@@ -17,7 +17,8 @@ $db = nu_db();
 
 if (isset($_GET['info'])) {
 	header('Content-Type: application/json');
-	$info = NuCloner::info($db, (string)$_GET['info']);
+	$why = NuCloner::cloneable($db, (string)$_GET['info']);
+	$info = $why === null ? NuCloner::info($db, (string)$_GET['info']) : ['error' => $why];
 	exit(json_encode($info ?? ['error' => t('cl_err_source')], JSON_UNESCAPED_UNICODE));
 }
 
@@ -86,8 +87,12 @@ if ($action === 'run') {
 	}
 }
 
-$forms = nu_forms();
-$options = static function (string $selected, bool $withSystem = true) use ($forms): string {
+// sources (0.8.811): only forms that exist in zzzzsys_form and can be copied – no pseudo entries of nu_forms() (rights of nuBuilder Next's
+// own pages), no built-in page forms (NuCloner::cloneable); nuBuilder Forte's own forms (nu…) only on request (?system=1) or when chosen
+$forms = array_filter(nu_forms(), static fn($f, $id) => NuCloner::cloneable(nu_db(), (string)$id) === null, ARRAY_FILTER_USE_BOTH);
+$showSystem = ($_GET['system'] ?? '') === '1' || str_starts_with((string)$in['source'], 'nu');
+$options = static function (string $selected, bool $withSystem = true) use ($forms, $showSystem): string {
+	$withSystem = $withSystem && $showSystem;
 	$out = '';
 	foreach ([false, true] as $system) {
 		if ($system && !$withSystem) continue;
@@ -200,6 +205,7 @@ endif; ?>
 						<option value=""><?= h(t('please_select')) ?></option><?= $options($in['source']) ?>
 					</select>
 					<div class="form-text" id="clSourceInfo" aria-live="polite"></div>
+					<div class="small mt-1"><a id="clSystemToggle" href="<?= h(nu_url('cloner', array_filter(['id' => $id !== '' ? $id : null, 'f' => $in['source'] !== '' && !str_starts_with((string)$in['source'], 'nu') ? $in['source'] : null, 'system' => $showSystem ? null : '1']))) ?>"><?= h(t($showSystem ? 'cl_hide_system' : 'cl_show_system')) ?></a><?= $tip(t('cl_system_tip')) ?></div>
 
 					<div class="row g-3 mt-1">
 						<div class="col-md-4">

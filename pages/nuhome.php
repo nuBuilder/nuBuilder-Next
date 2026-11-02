@@ -61,7 +61,7 @@ if (nu_is_post()) {
 		$in = is_array($in) ? $in : [];
 		// saved layouts (0.8.333): switch, save as, name / visibility, delete, default for everyone – admin tile page only
 		$act = (string)($in['action'] ?? '');
-		if (!$admin && !in_array($act, ['fav_only', 'view_me', 'view_me_clear', 'mine', 'mine_clear'], true)) { http_response_code(403); exit(json_encode(['ok' => false, 'message' => t('err_forbidden')])); }
+		if (!$admin && !in_array($act, ['view_me', 'view_me_clear', 'mine', 'mine_clear'], true)) { http_response_code(403); exit(json_encode(['ok' => false, 'message' => t('err_forbidden')])); }
 		if (str_starts_with($act, 'layout_') && $userPage) { http_response_code(400); exit(json_encode(['ok' => false, 'message' => t('err_forbidden')])); }
 		if (str_starts_with($act, 'layout_')) {
 			$roles = is_array($in['roles'] ?? null) ? $in['roles'] : [];
@@ -74,10 +74,6 @@ if (nu_is_post()) {
 				default => t('err_not_found'),
 			};
 			exit(json_encode($err === '' ? ['ok' => true] : ['ok' => false, 'message' => $err], JSON_UNESCAPED_UNICODE));
-		}
-		if ($act === 'fav_only') {                             // "Favourites only" (0.8.353): a setting of the login, not of the layout
-			NuDemo::permitted(static fn() => NuHome::setFavOnly(!empty($in['on'])));
-			exit(json_encode(['ok' => true]));
 		}
 		// View panel (0.8.420): the personal view of the current layout – everyone who sees this page (shared layouts stay as they are)
 		if ($act === 'view_me' || $act === 'view_me_clear') {
@@ -277,7 +273,7 @@ if ($tutBanner): ?>
 			. ($kind !== '' && !$act ? '<i class="bi ' . $kind . ' nuHomeKind" aria-hidden="true"></i>' : '');
 		$attrs = ' data-nu-tile="' . h($key) . '" data-nu-hint="' . h($t['label'] . ($t['hint'] !== '' ? ' – ' . $t['hint'] : '')) . '"' . (!empty($t['fav']) ? ' data-nu-fav="1"' : '')
 			. ' data-nu-source="' . h((string)($t['source'] ?? 'builtin')) . '" data-nu-kind="' . h((string)($t['kind'] ?? 'page')) . '" data-nu-group="' . h((string)($t['group'] ?? ''))
-			. '" data-nu-tab="' . h((string)($t['tab'] ?? '')) . '" data-nu-label="' . h($t['label']) . '" data-nu-desc="' . h($t['hint']) . '"';
+			. '" data-nu-tab="' . h((string)($t['tab'] ?? '')) . '" data-nu-label="' . h($t['label']) . '" data-nu-desc="' . h($t['hint']) . '"' . (!empty($t['maint']) ? ' data-nu-maint="1"' : '');
 		if ($t['post']) {
 			$el = '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="nuHomeTileForm">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h($t['post']) . '">'
 				. '<button type="submit" class="nuHomeTile"' . $attrs . '>' . $body . '</button></form>';
@@ -334,9 +330,8 @@ if ($tutBanner): ?>
 	$favCount = 0; foreach ($groups as $g) foreach ($g['items'] as $it) if (!empty($it['fav'])) $favCount++;
 	// row "Recently used" (0.8.492): the same list as the side bar (NuSidebar, per user in the database) – not in the layout editor
 	$recentItems = $editorPage ? [] : NuSidebar::data(8)['recent'];
-	$favOn = $favCount > 0 && NuHome::favOnly();
 	$viewCls = 'nuHomeNav-' . $view['nav'] . ' nuHomeDesc-' . $view['desc'] . ' nuHomeDens-' . $view['density'] . ' nuHomeIcn-' . $view['icon']
-		. ($view['groupColors'] ? ' nuHomeGcol' : '') . (!$view['badges'] ? ' nuHomeNoBadges' : '') . (!$view['actions'] ? ' nuHomeNoActions' : '') . ($favOn ? ' nuHomeFavOnly' : '')
+		. ($view['groupColors'] ? ' nuHomeGcol' : '') . (!$view['badges'] ? ' nuHomeNoBadges' : '') . (!$view['actions'] ? ' nuHomeNoActions' : '')
 		. ($view['style'] === 'list' ? ' nuHomeListCols-' . $view['listCols'] . ($view['listWidth'] === 'full' ? ' nuHomeListFull' : '') : '');
 	?>
 <?php // start page hook (0.8.378): safe mode note, the error for the globeadmin, the hook's banners
@@ -370,10 +365,6 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 			<div class="dropdown-divider"></div>
 			<button type="button" class="btn btn-link btn-sm px-1 text-decoration-none" id="nuHomeSkAll"><?= h(t('home_sk_all')) ?></button>
 		</div>
-		<?php // favourites only (0.8.353): tiles marked ☆ in Customise; the choice is kept per login
-		$favTip = $favCount ? t('home_fav_only') : t('home_fav_none'); ?>
-		<button type="button" class="btn btn-outline-secondary nuHomeFavBtn<?= $favOn ? ' active' : '' ?>" id="nuHomeFavOnly" aria-pressed="<?= $favOn ? 'true' : 'false' ?>"<?= $favCount ? '' : ' disabled' ?>
-			title="<?= h($favTip) ?>" aria-label="<?= h($favTip) ?>"><i class="bi <?= $favOn ? 'bi-star-fill' : 'bi-star' ?>"></i></button>
 		<?php if (!$editorPage && NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) ?>
 		<a class="btn btn-outline-secondary nuHomeUhBtn" id="nuHomeUserHome" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" title="<?= h(t('home_userhome')) ?>" aria-label="<?= h(t('home_userhome')) ?>"><i class="bi bi-house-door" aria-hidden="true"></i></a>
 		<?php endif; ?>
@@ -404,7 +395,9 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 	<?php if (!$groups): ?>
 		<div class="alert alert-info"><?= h(t($userPage ? ($editorPage ? 'home_u_empty_editor' : ($mineHidden ? 'home_u_all_mine_hidden' : 'home_u_empty')) : 'home_all_hidden')) ?></div>
 	<?php else: ?>
-	<section class="nuHomeStrip" data-nu-strip="fav"<?= $view['favStrip'] && $favCount ? '' : ' hidden' ?> aria-label="<?= h(t('home_v_fav_row')) ?>">
+	<?php // row Favourites (0.8.806, replaces the ☆ "favourites only" button): shown while tiles are starred unless the view's favRow is off;
+	// right-click / long press on the row (0.8.807, assets/js/nuhome.js openRowCtx): Edit favourites, Hide this row ?>
+	<section class="nuHomeStrip" data-nu-strip="fav"<?= $favCount && $view['favRow'] ? '' : ' hidden' ?> aria-label="<?= h(t('home_v_fav_row')) ?>">
 		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true" aria-controls="nuHomeStripFav"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-star-fill nuHomeStripStar" aria-hidden="true"></i><?= h(t('home_v_fav_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button></h2>
 		<div class="nuHomeChips" id="nuHomeStripFav"><?php foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) echo $chip((string)$k, $it); ?></div>
 	</section>
@@ -550,7 +543,7 @@ if ($admin || $userPage) {
 			'roles' => $hlManage && !$userPage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'presets' => $userPage ? (object)[] : NuHome::presets(), 'catalog' => (object)$cat,
 		'forms' => $formList, 'pages' => $userPage ? NuHome::USER_PAGES : NuHome::PAGES, 'procedures' => $procs, 'reports' => $reportList, 'cond' => $condOpts, 'icons' => NuHome::ICONS,
 		'procUrl' => $userPage ? nu_url('home', ['for' => $for, 'run' => '__ID__']) : nu_url('procedures', ['id' => '__ID__']),
-		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_size_list', 'home_size_listwide', 'home_size_list2',
+		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_fav_edit', 'home_row_hide', 'home_row_hidden', 'home_v_fav_row', 'home_v_fav_row_hint', 'home_c_tab_appearance', 'home_size_list', 'home_size_listwide', 'home_size_list2',
 			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned', 'home_unpinned', 'home_hidden', 'home_hidden_hint', 'home_group_title', 'home_group_new', 'home_group_untitled',
 			'home_group_delete', 'home_move_up', 'home_move_down', 'home_move_left', 'home_move_right', 'home_hide', 'home_show', 'home_edit_tile', 'home_delete_tile',
 			'home_tile_new', 'home_tile_label', 'home_tile_hint', 'home_tile_icon', 'home_tile_color', 'home_tile_no_color', 'home_tile_kind', 'home_kind_form', 'home_kind_page',

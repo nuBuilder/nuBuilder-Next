@@ -124,7 +124,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 					<div class="col-md-6">
 						<label class="form-label" for="pg_status"><?= h(t('builder_status')) ?></label>
 						<select class="form-select" id="pg_status" name="status"<?= $ro ? ' disabled' : '' ?>>
-							<?php $st = $v('status', (string)($meta->form['sfo_status'] ?? '') ?: '1'); foreach (['1', '0', '3'] as $o): ?>
+							<?php $st = $v('status', (string)($meta->form['sfo_status'] ?? '') ?: '1'); foreach (['1', '0', '2', '3'] as $o): ?>
 								<option value="<?= $o ?>"<?= $st === $o ? ' selected' : '' ?>><?= h(t('builder_status_' . $o)) ?></option>
 							<?php endforeach; ?>
 						</select>

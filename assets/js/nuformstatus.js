@@ -6,8 +6,8 @@
 	if (!D) return;
 	var T = {};
 	try { T = JSON.parse(D.getAttribute('data-t') || '{}'); } catch (e) { T = {}; }
-	var CLS = {'1': 'bg-success-subtle text-success-emphasis', '0': 'bg-warning-subtle text-warning-emphasis', '3': 'bg-secondary-subtle text-secondary-emphasis'};
-	var ICON = {'1': 'bi-check-circle', '0': 'bi-pencil', '3': 'bi-archive'};
+	var CLS = {'1': 'bg-success-subtle text-success-emphasis', '0': 'bg-warning-subtle text-warning-emphasis', '2': 'bg-danger-subtle text-danger-emphasis', '3': 'bg-secondary-subtle text-secondary-emphasis'};
+	var ICON = {'1': 'bi-check-circle', '0': 'bi-pencil', '2': 'bi-cone-striped', '3': 'bi-archive'};
 	var menu = null, pressT = null, pressed = false;
 
 	function closeMenu() { if (menu) { menu.remove(); menu = null; } }
@@ -50,6 +50,24 @@
 			}, function () { el.classList.remove('nuFormStatusBusy'); toast(T.err || '', false); });
 	}
 
+	// Maintenance (0.8.808): on = the dialog of assets/js/nu/nuformmaint.js (message, until); leaving it = maintenance off first, then the new status
+	function maint(el, st, cur) {
+		var id = el.getAttribute('data-nu-form');
+		if (st === '2') {
+			if (window.nuFormMaintOpen) window.nuFormMaintOpen({forms: [{id: id, label: el.getAttribute('data-nu-label') || id}], onDone: function (ch) { if (ch.length) show(el, '2'); }});
+			return;
+		}
+		var fd = document.getElementById('nuFmsData');
+		fetch(fd.getAttribute('data-url'), {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': fd.getAttribute('data-csrf')},
+			body: JSON.stringify({forms: [id], on: false})})
+			.then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+			.then(function (j) {
+				if (!j.ok) { toast(j.error || j.message || T.err || '', false); return; }
+				show(el, '1');
+				if (st !== '1') save(el, st, false); else toast((T.done || '%s').replace('%s', T['1'] || '1'), true);
+			}, function () { toast(T.err || '', false); });
+	}
+
 	function openMenu(el, x, y) {
 		closeMenu();
 		var cur = el.getAttribute('data-nu-st');
@@ -60,7 +78,8 @@
 		head.innerHTML = '<h6 class="dropdown-header"></h6>';
 		head.firstChild.textContent = T.head || '';
 		menu.appendChild(head);
-		['1', '0', '3'].forEach(function (st) {
+		['1', '0', '2', '3'].forEach(function (st) {
+			if (st === '2' && (!window.nuFormMaintOpen || cur === '0' || cur === '3')) return;   // Draft / Archived: nobody but designers opens them anyway
 			var li = document.createElement('li'), btn = document.createElement('button'), ic = document.createElement('i');
 			btn.type = 'button';
 			btn.className = 'dropdown-item' + (st === cur ? ' active' : '');
@@ -70,7 +89,7 @@
 			ic.setAttribute('aria-hidden', 'true');
 			btn.appendChild(ic);
 			btn.appendChild(document.createTextNode(T[st] || st));
-			btn.addEventListener('click', function () { closeMenu(); if (st !== cur) save(el, st, false); });
+			btn.addEventListener('click', function () { closeMenu(); if (st === cur) return; if (st === '2' || cur === '2') maint(el, st, cur); else save(el, st, false); });
 			li.appendChild(btn);
 			menu.appendChild(li);
 		});

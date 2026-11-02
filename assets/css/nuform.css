@@ -497,3 +497,10 @@ html.nuEmbedded .nuListCard .nuListFilter, html.nuEmbedded .nuBrowseCard .nuList
 	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuRowDelCol { order: 99; margin-inline-start: auto; }
 	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell[data-nu-label=""]::before { content: none; }
 }
+
+/* validation rules (0.8.812, assets/js/nu/nurules.js): a field of a failed warning rule */
+.nuRuleBad:not(.is-invalid) { border-color: var(--bs-warning) !important; }
+
+/* nuBuilder Forte's list settings (0.8.820): multi-line titles, columns fitted to the width (row height: style on the rows) */
+.nuBrowseTable.nuBrowseMultiline > thead > tr > th { white-space: normal; vertical-align: bottom; }
+.nuBrowseTable.nuBrowseAutoFit { width: 100%; }

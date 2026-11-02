@@ -272,13 +272,13 @@ final class NuSidebar
 				$fd = nu_forms()[$f];                              // the form's description, as in its breadcrumbs (the code when it has none)
 				$label = trim((string)$fd['description']) !== '' ? NuTranslate::text((string)$fd['description']) : (string)$fd['code'];
 				return ['key' => $key, 'label' => $label, 'icon' => 'bi-window', 'href' => nu_url('form', ['f' => $f]), 'post' => null, 'color' => '',
-					'newtab' => false, 'fav' => false, 'current' => $key === $cur, 'canFav' => false];
+					'newtab' => false, 'fav' => false, 'current' => $key === $cur, 'canFav' => false, 'badge' => NuFormStatus::badge($f)];
 			}
 			if (!NuHome::visible($key, $layout) || ($r = NuHome::resolve($key, $layout)) === null || $r['proc'] !== null) return null;
 			if (!NuHome::condOk((array)($r['cond'] ?? []))) return null;
 			return ['key' => $key, 'label' => (string)$r['label'], 'icon' => (string)$r['icon'], 'href' => $r['href'], 'post' => $r['post'],
 				'color' => (string)$r['color'] !== '' ? (string)$r['color'] : ($placed[$key] ?? ''), 'newtab' => (bool)$r['newtab'],
-				'fav' => in_array($key, $favList, true), 'current' => $key === $cur, 'canFav' => $canFav && isset($placed[$key])];
+				'fav' => in_array($key, $favList, true), 'current' => $key === $cur, 'canFav' => $canFav && isset($placed[$key]), 'badge' => $r['badge'] ?? null];
 		};
 		$fav = [];
 		foreach (array_keys($placed) as $k) if (in_array($k, $favList, true) && ($it = $item($k)) !== null) $fav[] = $it;

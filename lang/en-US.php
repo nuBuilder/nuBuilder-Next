@@ -19,7 +19,7 @@ return [
 	'home_unfav' => 'Remove from favorites',
 	'home_ctx_hidden_me' => '“%s” is hidden for you – Personalize shows it again.',
 	'home_fav_only' => 'Show favorites only',
-	'home_fav_none' => 'No favorites yet – mark tiles with ☆ in Customize.',
+	'home_fav_edit' => 'Edit favorites',
 	'home_fav_none_edit' => 'No favorites yet – point at a tile and click ☆.',
 	'home_tile_color' => 'Color',
 	'home_all_hidden' => 'All tiles are hidden – click Customize to show them again.',

@@ -98,8 +98,9 @@ final class NuHome
 	public const VIEW_LINES = [0, 1, 2, 3];
 	public const VIEW_DELAYS = [0, 300, 800];
 	public const VIEW_SIZES = ['tablet', 'phone'];
+	// favStrip: unused since 0.8.806 (kept so stored views stay valid); favRow (0.8.807) = row Favourites shown while tiles are starred
 	public const VIEW_DEFAULTS = ['style' => 'large', 'listCols' => '1', 'listWidth' => 'readable', 'desc' => 'auto', 'lines' => 2, 'delay' => 300, 'nav' => 'groups',
-		'density' => 'comfortable', 'icon' => 'soft', 'groupColors' => false, 'favStrip' => false, 'recentStrip' => false, 'badges' => true, 'actions' => true];
+		'density' => 'comfortable', 'icon' => 'soft', 'groupColors' => false, 'favStrip' => false, 'favRow' => true, 'recentStrip' => false, 'badges' => true, 'actions' => true];
 	/** Colours of groups without an own colour (by position) when "Colour per group" is on. */
 	public const GROUP_COLORS = ['#5b5bd6', '#2f6fd6', '#0f8f86', '#5f6b7a', '#c2417a', '#c27803', '#7a4fd0'];
 	/** Personal view per layout: users in sus_json, the globeadmin in a setting row, demo visitors in the session. */
@@ -426,37 +427,6 @@ final class NuHome
 	 * The layout to show: stored (cleaned) or default; tiles of the catalog that are in no group and not hidden – e.g. new in
 	 * a later version – are added to the last group, keys that no longer exist are left out.
 	 */
-	/** "Favourites only" on the start page (0.8.353): per login – globeadmin in a setting row, users in sus_json, demo visitors in the session. */
-	private const FAV_JSON = 'NUNEXT_HOME_FAV_ONLY';
-	private const FAV_GA = 'home_fav_only_ga';
-
-	public static function favOnly(): bool
-	{
-		$u = NuAuth::user();
-		if (!$u) return false;
-		if (!empty($u['demo'])) return !empty($_SESSION['nu_home_fav_only']);
-		if (!empty($u['globeadmin'])) {
-			try { return nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::FAV_GA]) === '1'; } catch (Throwable) { return false; }
-		}
-		return !empty(NuUserJson::get((string)$u['id'], self::FAV_JSON));
-	}
-
-	public static function setFavOnly(bool $on): void
-	{
-		$u = NuAuth::user();
-		if (!$u) return;
-		if (!empty($u['demo'])) { $_SESSION['nu_home_fav_only'] = $on; return; }
-		if (!empty($u['globeadmin'])) {
-			NuSchema::ensure();
-			$db = nu_db();
-			$row = ['setting_value' => $on ? '1' : '0', 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)$u['login'], 0, 50)];
-			if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::FAV_GA])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::FAV_GA);
-			else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::FAV_GA] + $row);
-			return;
-		}
-		NuUserJson::set((string)$u['id'], self::FAV_JSON, $on);
-	}
-
 	public static function layout(): array
 	{
 		if (self::$for !== null) return self::userOnly(self::clean(self::stored() ?? self::autoLayout(), false)[0]);
@@ -1123,7 +1093,9 @@ final class NuHome
 		};
 		if ($href === null && $c['kind'] !== 'procedure') return null;
 		return ['href' => $href, 'post' => null, 'icon' => $c['icon'], 'label' => $c['label'], 'hint' => $c['hint'], 'color' => $c['color'],
-			'newtab' => (bool)$c['newtab'] || ($c['kind'] === 'form' && NuPage::opensInTab((string)$c['target'])), 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null, 'badge' => null, 'kind' => (string)$c['kind'],
+			'newtab' => (bool)$c['newtab'] || ($c['kind'] === 'form' && NuPage::opensInTab((string)$c['target'])), 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null,
+			// a form in maintenance (0.8.808): badge, greyed for those who cannot open it
+			'badge' => $c['kind'] === 'form' ? NuFormStatus::badge((string)$c['target']) : null, 'maint' => $c['kind'] === 'form' && NuFormStatus::blocked(NuFormStatus::of((string)$c['target'])), 'kind' => (string)$c['kind'],
 			'cond' => (array)($c['cond'] ?? [])];
 	}
 

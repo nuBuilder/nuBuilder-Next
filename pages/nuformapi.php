@@ -39,6 +39,8 @@ if (!$meta) nu_api_error(t('form_err_not_found'), 404);
 if (!NuAcl::can($meta->id)) nu_api_error(t('err_forbidden'), 403);
 // form drafts (0.8.386): a form never published (status Draft) is for designers only
 if ((string)($meta->form['sfo_status'] ?? '') === '0' && !$meta->isDraft() && !NuAcl::can(NuAcl::FORM_FORM, 'view')) nu_api_error(t('draft_not_published'), 403);
+// Maintenance / Archived (0.8.808): also a record that was open before is not saved – the answer says why
+if (!$meta->isDraft()) NuFormStatus::gate($meta->id, NuFormStatus::norm($meta->form['sfo_status'] ?? ''), true);
 
 /**
  * Save / Delete in a draft preview (0.8.386): refused unless the draft allows it; then the user confirms once per session

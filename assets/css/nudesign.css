@@ -226,3 +226,64 @@ html.nuDsWorkOpen body { overflow: hidden; }
 /* Publish options menu (0.8.797) */
 .nuDsPubMenu { min-width: 20rem; max-width: min(24rem, 92vw); }
 .nuDsPubMenu .dropdown-item-text { white-space: normal; }
+
+/* validation rules (0.8.812): list in the panel, condition rows in the editor */
+.nuDsRuleList { display: flex; flex-direction: column; gap: .25rem; margin-bottom: .5rem; }
+.nuDsRule { display: flex; align-items: flex-start; gap: .4rem; padding: .3rem .4rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; }
+.nuDsRule.nuDsRuleOff { opacity: .6; }
+.nuDsRuleMain { flex: 1 1 auto; min-width: 0; text-align: start; background: none; border: 0; padding: 0; color: inherit; font-size: .85rem; }
+.nuDsRuleName { font-weight: 600; }
+.nuDsRuleCond { display: block; font-size: .75rem; white-space: normal; overflow-wrap: anywhere; color: var(--bs-secondary-color); }
+.nuDsCond { border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .5rem; }
+.nuDsCondRow { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-bottom: .35rem; }
+.nuDsCondRow > select, .nuDsCondRow > input { flex: 1 1 8rem; width: auto; min-width: 0; }
+.nuDsCondRow > [data-vr="vk"] { flex: 0 1 7rem; }
+.nuDsCondRow > [hidden] { display: none !important; }
+.nuDsRuleLevels { max-height: 9rem; overflow: auto; }
+.nuDsCondRow > .ts-wrapper { flex: 1 1 10rem; min-width: 0; }
+.nuDsRailBtn { position: relative; }
+.nuDsRailCount { position: absolute; top: .15rem; right: .1rem; min-width: 1rem; padding: 0 .25rem; border-radius: 1rem; font-size: .6rem; line-height: 1rem;
+	background: var(--bs-primary); color: #fff; text-align: center; }
+.nuDsRailCount[hidden] { display: none; }
+.nuDsFlyRules { padding: .5rem .75rem; overflow: auto; }
+/* rule editor errors (0.8.816): on top of the dialogue, sticky while it scrolls */
+.nuDsRuleErr { position: sticky; top: -1rem; z-index: 3; margin: -.25rem 0 .75rem; box-shadow: 0 .25rem .5rem rgba(0, 0, 0, .08); }
+.nuDsRuleErr[hidden] { display: none; }
+.nuDsCond.nuDsCondBad { border-color: var(--bs-danger); box-shadow: 0 0 0 .2rem rgba(var(--bs-danger-rgb), .2); }
+
+/* List flyout (0.8.820) */
+.nuDsFlyList { padding: .5rem .75rem 1rem; overflow: auto; }
+.nuDsFlySub { font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); margin: .9rem 0 .4rem; }
+.nuDsFlySub:first-child { margin-top: .25rem; }
+.nuDsListCols { display: flex; flex-direction: column; gap: .35rem; }
+.nuDsListCol { border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .35rem .4rem; }
+.nuDsListColOff { opacity: .6; }
+.nuDsListColHead, .nuDsListColBody { display: flex; gap: .3rem; align-items: center; }
+.nuDsListColBody { margin-top: .3rem; }
+.nuDsListColHead > input { flex: 1 1 auto; min-width: 0; }
+.nuDsListColBody > input[data-lc="display"] { flex: 1 1 auto; min-width: 0; }
+.nuDsListColBody > input[data-lc="width"] { flex: 0 0 4.5rem; }
+.nuDsListColBody > select { flex: 0 0 6.5rem; width: auto; }
+.nuDsListColNo { font-size: .7rem; color: var(--bs-secondary-color); min-width: 1rem; text-align: end; }
+.nuDsListColBody { flex-wrap: wrap; }
+.nuDsListColBody > input[data-lc="display"] { flex: 1 1 100%; }
+.nuDsListColBody > select { flex: 1 1 auto; }
+
+/* Browse list in the workspace (0.8.822): settings and code on the left, the columns as a table on the right */
+.nuDsWorkList { display: grid; grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr); gap: 1.5rem; padding: 1rem 1.25rem; align-items: start; overflow: auto; }
+@media (max-width: 991.98px) { .nuDsWorkList { grid-template-columns: minmax(0, 1fr); } }
+.nuDsListColTable { margin-bottom: .5rem; }
+.nuDsListColTable th { font-size: .75rem; text-transform: uppercase; color: var(--bs-secondary-color); font-weight: 600; white-space: nowrap; }
+.nuDsListColTable td.nuDsLcTitle { min-width: 10rem; }
+.nuDsListColTable td.nuDsLcDisp { min-width: 12rem; width: 40%; }
+.nuDsListColTable td.nuDsLcWidth { width: 6rem; }
+.nuDsListColTable td.nuDsLcAlign { width: 8rem; }
+.nuDsListColTable td.nuDsLcBtns { white-space: nowrap; width: 1%; }
+.nuDsListColTable td.nuDsLcBtns .btn { margin-inline: .15rem; }
+.nuDsListColTable tr.nuDsListColOff td { opacity: .6; }
+/* drag and drop of the columns (0.8.823) */
+.nuDsListGrip { display: inline-flex; align-items: center; gap: .1rem; cursor: grab; color: var(--bs-secondary-color); user-select: none; }
+.nuDsListGrip:active { cursor: grabbing; }
+.nuDsListColTable tr.nuDsListDragging td { opacity: .4; }
+.nuDsListColTable tr.nuDsDropBefore td { box-shadow: inset 0 2px 0 var(--bs-primary); }
+.nuDsListColTable tr.nuDsDropAfter td { box-shadow: inset 0 -2px 0 var(--bs-primary); }

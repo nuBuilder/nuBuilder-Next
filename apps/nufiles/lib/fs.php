@@ -208,9 +208,11 @@ final class NufFs
 	{
 		$uid = @fileowner($abs); $gid = @filegroup($abs);
 		if ($uid === false) return [];
-		$u = function_exists('posix_getpwuid') ? (posix_getpwuid($uid)['name'] ?? (string)$uid) : (string)$uid;
-		$g = function_exists('posix_getgrgid') ? (posix_getgrgid((int)$gid)['name'] ?? (string)$gid) : (string)$gid;
-		$me = function_exists('posix_geteuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? '') : '';
+		// every posix_* function on its own: hosts disable single ones (disable_functions) – e.g. posix_geteuid there, posix_getpwuid not (0.8.813)
+		$user = static fn(int $id): string => function_exists('posix_getpwuid') && is_array($r = @posix_getpwuid($id)) && !empty($r['name']) ? (string)$r['name'] : (string)$id;
+		$u = $user((int)$uid);
+		$g = function_exists('posix_getgrgid') && is_array($r = @posix_getgrgid((int)$gid)) && !empty($r['name']) ? (string)$r['name'] : (string)$gid;
+		$me = function_exists('posix_geteuid') ? $user((int)posix_geteuid()) : '';
 		return ['owner' => $u, 'group' => $g, 'server_user' => $me, 'mode' => substr(sprintf('%o', (int)@fileperms($abs)), -3)];
 	}
 

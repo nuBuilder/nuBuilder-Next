@@ -76,7 +76,7 @@ final class NuDesign
 		// the format designer and the attribute editor use them
 		$texts = [];
 		foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) {
-			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_button_|om_|fmt_type_)/', $k)) $texts[$k] = t($k);
+			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_|om_|fmt_type_|fms_|vr_)/', $k)) $texts[$k] = t($k);
 		}
 		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search'] as $k) $texts[$k] = t($k);
 		$db = nu_db();
@@ -112,7 +112,11 @@ final class NuDesign
 			'translations' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_TRANSLATE) ? ['url' => nu_url('translations', ['view' => 'missing', 'f' => $meta->id]),
 				'missing' => NuTranslate::summary($meta->id)] : null,               // Tools → Translations with the missing ones per language (0.8.754)
 			'formaccess' => NuAcl::can(NuAcl::FORM_ACCESS),            // Tools → Access levels (0.8.683, the dialog of the ⋮ menu)
+			// maintenance (0.8.808, core/nuformstatus.php): the bar's switch – the dialog of assets/js/nu/nuformmaint.js (loaded by pages/nuform.php)
+			'form_id' => $meta->id, 'form_label' => $meta->description() !== '' ? $meta->description() : (string)($meta->form['sfo_code'] ?? ''),
+			'maint' => NuFormStatus::notice($meta->id), 'maint_ok' => NuFormStatus::canChange() && !$meta->isSystem() && in_array(NuFormStatus::of($meta->id), [NuFormStatus::ACTIVE, NuFormStatus::MAINT], true),
 			'can_delete_form' => !empty(NuAuth::user()['globeadmin']) && !$meta->isSystem(),
+			'rules' => $meta->isSystem() || $meta->table() === '' ? null : NuFormRules::designData($meta),   // validation rules (0.8.812)
 			'live_url' => nu_url('form', ['f' => $meta->id, 'r' => $record]),
 			'list_url' => $meta->hasBrowse() ? nu_url('form', ['f' => $meta->id, 'design' => '1']) : '',          // the list's columns (0.8.669)
 			'edit_url' => $meta->hasEdit() ? nu_url('form', ['f' => $meta->id, 'r' => '-1', 'design' => '1']) : '',

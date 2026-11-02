@@ -35,9 +35,12 @@ if ($tools) {
 // status menu of the list (0.8.575): texts and the builder API for assets/js/nuformstatus.js – only for those who may change forms
 $stFoot = NuFormDraft::canEdit() && !NuImpersonate::readOnly()
 	? '<div id="nuFormStatusData" hidden data-csrf="' . h(nu_csrf_token()) . '" data-url="' . h(nu_url('builderapi')) . '" data-t="' . h((string)json_encode([
-		'1' => t('builder_status_1'), '0' => t('builder_status_0'), '3' => t('builder_status_3'), 'head' => t('forms_status_change'),
-		'done' => t('forms_status_changed'), 'err' => t('forms_status_failed')], JSON_UNESCAPED_UNICODE)) . '"></div><script src="' . h(nu_asset('assets/js/nuformstatus.js')) . '"></script>'
+		'1' => t('builder_status_1'), '0' => t('builder_status_0'), '2' => t('builder_status_2'), '3' => t('builder_status_3'), 'head' => t('forms_status_change'),
+		'done' => t('forms_status_changed'), 'err' => t('forms_status_failed')], JSON_UNESCAPED_UNICODE)) . '"></div>'
+		. NuFormStatus::clientHtml() . '<script src="' . h(nu_asset('assets/js/nuformstatus.js')) . '"></script>'   // maintenance (0.8.808): the dialog before the menu
 	: '';
+// "Maintenance…" (0.8.808): several forms at once
+if (NuFormStatus::canChange()) $buttons .= '<button type="button" class="btn btn-outline-secondary" id="nuFmsListBtn" title="' . h(t('fms_list_tip')) . '"><i class="bi bi-cone-striped me-1" aria-hidden="true"></i>' . h(t('fms_title')) . '</button>';
 // "Access levels of this form" from the column Access levels (0.8.688)
 if (NuAcl::can(NuAcl::FORM_ACCESS)) $stFoot .= '<div id="nuFacData" hidden data-csrf="' . h(nu_csrf_token()) . '"></div><script src="' . h(nu_asset('assets/js/nu/nuformaccess.js')) . '"></script>';
 NuListView::page('forms', ['buttons' => $buttons, 'buttons_end' => $toolMenu, 'foot' => $stFoot]);

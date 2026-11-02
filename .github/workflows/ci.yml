@@ -57,7 +57,7 @@ jobs:
   mssql:
     runs-on: ubuntu-latest
     needs: lint
-    continue-on-error: true          # not verified yet: schema_mssql.sql has no form tables (see TODO.md "Install scripts")
+    continue-on-error: true          # not verified on a real SQL Server in CI yet (see TODO.md "SQL Server")
     services:
       mssql:
         image: mcr.microsoft.com/mssql/server:2022-latest
@@ -66,10 +66,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { path: nunext }
+      # pdo_sqlsrv talks to SQL Server only through Microsoft's ODBC driver – the runner image does not have it
+      - name: Microsoft ODBC Driver 18 for SQL Server
+        run: |
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.3', extensions: 'pdo_sqlsrv, sqlsrv, mbstring, zip, sodium' }
+      # the service container has no health check: wait until SQL Server accepts the login (up to 2 minutes), then create the database
       - run: |
-          php -r '$pdo = new PDO("sqlsrv:Server=127.0.0.1,1433;TrustServerCertificate=1", "sa", "Ci_Passw0rd!"); $pdo->exec("CREATE DATABASE nutest");'
+          php -r 'for ($i = 0; $i < 60; $i++) { try { $pdo = new PDO("sqlsrv:Server=127.0.0.1,1433;TrustServerCertificate=1", "sa", "Ci_Passw0rd!"); break; } catch (PDOException $e) { if ($i === 59 || str_contains($e->getMessage(), "IMSSP")) { fwrite(STDERR, $e->getMessage() . "\n"); exit(1); } sleep(2); } } $pdo->exec("CREATE DATABASE nutest"); echo "SQL Server ready\n";'
           cat > nunext/nuconfig.php <<'PHP'
           <?php
           $nuConfigDBType = "sqlsrv"; $nuConfigDBHost = "127.0.0.1"; $nuConfigDBPort = 1433; $nuConfigDBName = "nutest";

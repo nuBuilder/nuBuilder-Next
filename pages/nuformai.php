@@ -20,6 +20,9 @@ if ($formId !== '') {
 }
 $canCreate = NuFormDraft::canEdit();
 $openDraft = $meta ? NuFormDraft::openFor($formId) : null;
+// an open draft (0.8.810): the change goes into it – design mode's Ask AI works step by step; the prompt describes the draft
+$draftSnap = $openDraft ? NuFormDraft::snapshotOf($openDraft) : null;
+$appMode = !$meta;                                                 // a new form: one form or a small app (several forms)
 
 if (nu_is_post()) {
 	header('Content-Type: application/json; charset=utf-8');
@@ -30,19 +33,41 @@ if (nu_is_post()) {
 			$req = trim(nu_post('request'));
 			if ($req === '') $out(['ok' => false, 'error' => t('fai_err_request')]);
 			$tables = array_values(array_filter(array_map('strval', (array)($_POST['tables'] ?? [])), static fn($t) => $t !== ''));
-			$out(['ok' => true, 'text' => NuFormSpec::prompt($req, $formId, $tables)]);
+			$text = $appMode && nu_post('kind') === 'app' ? NuFormSpec::promptApp($req, $tables) : NuFormSpec::prompt($req, $formId, $tables, $draftSnap);
+			$out(['ok' => true, 'text' => $text]);
+		}
+		if ($action === 'publish_all') {                    // forms of an app just created (status Draft) → Active
+			if (!NuFormDraft::canPublish()) $out(['ok' => false, 'errors' => [t('err_forbidden')]]);
+			$n = 0;
+			foreach (array_slice(array_map('strval', (array)($_POST['forms'] ?? [])), 0, NuFormSpec::MAX_APP_FORMS) as $fid) {
+				if ((string)nu_db()->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid]) !== '0') continue;
+				NuFormDraft::publishNewForm($fid);
+				$n++;
+			}
+			$out(['ok' => true, 'published' => $n]);
 		}
 		if ($action === 'check' || $action === 'create') {
 			$spec = NuFormSpec::parse(nu_post('answer'));
 			if (is_string($spec)) $out(['ok' => false, 'errors' => [$spec], 'warnings' => []]);
+			$isApp = NuFormSpec::isApp($spec);
+			if ($isApp && !$appMode) $out(['ok' => false, 'errors' => [t('fai_err_app_change')], 'warnings' => []]);
 			if ($action === 'check') {
-				$r = NuFormSpec::check($spec, $formId);
+				if ($isApp) {
+					$r = NuFormSpec::checkApp($spec);
+					$out(['ok' => !$r['errors'], 'app' => true, 'errors' => $r['errors'], 'warnings' => $r['warnings'], 'plan' => $r['plan']]);
+				}
+				$r = NuFormSpec::check($spec, $formId, $draftSnap);
 				unset($r['plan']['snapshot']);
-				$out(['ok' => !$r['errors'], 'errors' => $r['errors'], 'warnings' => $r['warnings'], 'plan' => $r['plan']]);
+				$out(['ok' => !$r['errors'], 'errors' => $r['errors'], 'warnings' => $r['warnings'], 'plan' => $r['plan'], 'into_draft' => (bool)$openDraft]);
 			}
 			if (!$canCreate) $out(['ok' => false, 'errors' => [t('err_forbidden')]]);
-			if ($openDraft) $out(['ok' => false, 'errors' => [t('builder_draft_exists', (string)$openDraft['created_by'])]]);
-			$res = NuFormSpec::create($spec, $formId, nu_post('ddl_ok') === '1', nu_post('note'));
+			if ($isApp) {
+				$made = NuFormSpec::createApp($spec, nu_post('ddl_ok') === '1', nu_post('note'));
+				foreach ($made as &$m) { $mm = NuFormMeta::load($m['id'], true); $m['url'] = $mm ? NuDesign::fromBuilder($mm, []) : nu_url('forms'); }
+				unset($m);
+				$out(['ok' => true, 'app' => true, 'forms' => $made, 'can_publish' => NuFormDraft::canPublish()]);
+			}
+			$res = NuFormSpec::create($spec, $formId, nu_post('ddl_ok') === '1', nu_post('note'), $openDraft);
 			$newMeta = NuFormMeta::load((string)$res['form_id'], true);            // design mode (0.8.670): the new form or the draft of the change
 			$out(['ok' => true, 'url' => $newMeta ? NuDesign::fromBuilder($newMeta, []) : nu_url('forms')]);
 		}
@@ -54,7 +79,11 @@ if (nu_is_post()) {
 
 $labels = [];
 foreach (['fai_copied', 'fai_copy_failed', 'fai_ok', 'fai_errors', 'fai_warnings', 'fai_plan', 'fai_plan_new_table', 'fai_plan_columns', 'fai_plan_added', 'fai_plan_changed',
-	'fai_plan_removed', 'fai_plan_moved', 'fai_plan_form', 'fai_plan_browse', 'fai_plan_tabs', 'fai_plan_none', 'fai_ddl_ok', 'fai_create', 'fai_creating', 'fai_note'] as $k) $labels[$k] = t($k);
+	'fai_plan_removed', 'fai_plan_moved', 'fai_plan_form', 'fai_plan_browse', 'fai_plan_tabs', 'fai_plan_none', 'fai_ddl_ok', 'fai_create', 'fai_creating', 'fai_note',
+	'fai_plan_code', 'fai_plan_app', 'fai_plan_objects', 'fai_create_app', 'fai_made', 'fai_made_open', 'fai_publish_all', 'fai_published', 'fai_paste_failed', 'fai_into_draft',
+	'builder_status_0', 'form_type_browseedit', 'form_type_browse', 'form_type_edit', 'form_type_launch', 'form_type_subform'] as $k) $labels[$k] = t($k);
+$reqIn = mb_substr(trim((string)($_GET['req'] ?? '')), 0, 4000);   // "Describe it" of the New form wizard (0.8.810)
+$kindIn = ($_GET['kind'] ?? '') === 'app' ? 'app' : 'form';
 
 nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms', ['head' => nu_ts_head()]);
 ?>
@@ -64,7 +93,7 @@ nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms', ['head
 	<div class="d-flex flex-wrap gap-2"><?= nu_back_button(null, $meta ? nu_url('builder', ['f' => $formId]) : nu_url('forms')) ?></div>
 </div>
 <?php if ($openDraft): ?>
-	<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('builder_draft_exists', (string)$openDraft['created_by'])) ?>
+	<div class="alert alert-info" id="faDraftNote"><i class="bi bi-info-circle me-1"></i><?= h(t('fai_draft_continue', (string)$openDraft['created_by'])) ?>
 		<a class="alert-link ms-1" href="<?= h(nu_url('builder', ['f' => $formId, 'draft' => '1'])) ?>"><?= h(t('fai_open_draft')) ?></a></div>
 <?php endif; ?>
 <form id="faForm" class="row g-3" autocomplete="off" data-labels="<?= h(json_encode($labels, JSON_UNESCAPED_UNICODE)) ?>">
@@ -73,8 +102,16 @@ nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms', ['head
 		<div class="card shadow-sm h-100"><div class="card-body">
 			<h2 class="h5"><span class="badge rounded-pill text-bg-primary me-2">1</span><?= h(t('fai_step1')) ?></h2>
 			<p class="small text-body-secondary"><?= h(t($meta ? 'fai_step1_help_change' : 'fai_step1_help_new')) ?></p>
+			<?php if ($appMode): // one form or a small app (0.8.810) ?>
+			<div class="btn-group mb-2" role="radiogroup" aria-label="<?= h(t('fai_kind')) ?>" id="faKind">
+				<input type="radio" class="btn-check" name="faKind" id="faKindForm" value="form" autocomplete="off"<?= $kindIn === 'form' ? ' checked' : '' ?>>
+				<label class="btn btn-outline-secondary" for="faKindForm"><i class="bi bi-ui-checks me-1" aria-hidden="true"></i><?= h(t('fai_kind_form')) ?></label>
+				<input type="radio" class="btn-check" name="faKind" id="faKindApp" value="app" autocomplete="off"<?= $kindIn === 'app' ? ' checked' : '' ?>>
+				<label class="btn btn-outline-secondary" for="faKindApp"><i class="bi bi-grid-3x2-gap me-1" aria-hidden="true"></i><?= h(t('fai_kind_app')) ?></label>
+			</div>
+			<?php endif; ?>
 			<label class="form-label visually-hidden" for="faRequest"><?= h(t('fai_step1')) ?></label>
-			<textarea class="form-control mb-2" id="faRequest" rows="7" placeholder="<?= h(t($meta ? 'fai_request_ph_change' : 'fai_request_ph_new')) ?>"></textarea>
+			<textarea class="form-control mb-2" id="faRequest" rows="7" placeholder="<?= h(t($meta ? 'fai_request_ph_change' : 'fai_request_ph_new')) ?>" data-ph-app="<?= h(t('fai_request_ph_app')) ?>"><?= h($reqIn) ?></textarea>
 			<?php $appTables = []; try { $appTables = NuFormSpec::appTables(); } catch (Throwable) {} $formTable = $meta ? (string)$meta->table() : ''; // tables in the prompt (0.8.633) ?>
 			<div class="mb-3">
 				<label class="form-label small fw-semibold mb-1" for="faTables"><?= h(t('fai_tables')) ?></label><?= NuListView::infoTip(t('fai_tables_tip')) ?>
@@ -96,7 +133,10 @@ nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms', ['head
 			<p class="small text-body-secondary"><?= h(t('fai_step2_help')) ?></p>
 			<label class="form-label visually-hidden" for="faAnswer"><?= h(t('fai_step2')) ?></label>
 			<textarea class="form-control font-monospace small mb-2" id="faAnswer" rows="10" placeholder="```json …```"></textarea>
-			<button type="button" class="btn btn-outline-primary" id="faCheck"><i class="bi bi-check2-circle me-1"></i><?= h(t('fai_check')) ?></button>
+			<div class="d-flex flex-wrap gap-2">
+				<button type="button" class="btn btn-outline-secondary" id="faPaste" title="<?= h(t('fai_paste_tip')) ?>"><i class="bi bi-clipboard-check me-1"></i><?= h(t('fai_paste')) ?></button>
+				<button type="button" class="btn btn-outline-primary" id="faCheck"><i class="bi bi-check2-circle me-1"></i><?= h(t('fai_check')) ?></button>
+			</div>
 		</div></div>
 	</div>
 	<div class="col-12" id="faResult" hidden>
@@ -107,11 +147,12 @@ nu_layout_start(t($meta ? 'fai_title_change' : 'fai_title_new'), 'forms', ['head
 			<div id="faCreateBox" hidden>
 				<div class="form-check mb-2" id="faDdlBox" hidden><input class="form-check-input" type="checkbox" id="faDdl"><label class="form-check-label" for="faDdl"><?= h(t('fai_ddl_ok')) ?></label></div>
 				<div class="mb-2"><label class="form-label small" for="faNote"><?= h(t('fai_note')) ?></label><input type="text" class="form-control" id="faNote" maxlength="200"></div>
-				<?php if ($canCreate && !$openDraft): ?>
-					<button type="button" class="btn nuBtnAct nuBtnSave" id="faCreate"><i class="bi bi-file-earmark-plus me-1"></i><?= h(t('fai_create')) ?></button>
-					<div class="form-text"><?= h(t($meta ? 'fai_create_help_change' : 'fai_create_help_new')) ?></div>
+				<?php if ($canCreate): ?>
+					<button type="button" class="btn nuBtnAct nuBtnSave" id="faCreate"><i class="bi bi-file-earmark-plus me-1"></i><?= h(t($openDraft ? 'fai_apply' : 'fai_create')) ?></button>
+					<div class="form-text" id="faCreateHelp" data-app="<?= h(t('fai_create_help_app')) ?>"><?= h(t($meta ? ($openDraft ? 'fai_create_help_draft' : 'fai_create_help_change') : 'fai_create_help_new')) ?></div>
 				<?php endif; ?>
 			</div>
+			<div id="faMade" hidden></div>
 		</div></div>
 	</div>
 </form>

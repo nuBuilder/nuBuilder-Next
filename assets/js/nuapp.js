@@ -1689,3 +1689,13 @@ window.nuColResize = function (table, opt) {
 		});
 	});
 })();
+
+// Page numbers (0.8.804, core/nupageno.php): "P100" (also "p 100", "P100.2" = a tab) typed into a search field + Enter → ?p=pageno, which
+// opens the page – or comes back here with a message when there is no such number. Used by the start page search and the Ctrl+K search.
+window.nuPageNoGo = function (value) {
+	if (!/^\s*p\s*\d{1,3}(\.\d)?\s*$/i.test(String(value || ''))) return false;
+	var here = 'index.php' + window.location.search;
+	window.location.href = 'index.php?p=pageno&n=' + encodeURIComponent(String(value).replace(/\s+/g, '')) + '&back=' + encodeURIComponent(here);
+	return true;
+};
+

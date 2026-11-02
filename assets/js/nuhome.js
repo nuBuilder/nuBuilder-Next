@@ -101,7 +101,7 @@
 
 	// ================================================================ nuHome – JavaScript API of the start page (0.8.379)
 	// For the JavaScript of the procedure nu_home (served as ?p=homejs, loaded after this file): nuHome.on('tile' | 'ready' |
-	// 'search' | 'tab' | 'favourites' | 'customize' | 'view', fn), off, tiles(filter), tile(key), data (nuHomeSetData() of the PHP hook),
+	// 'search' | 'tab' | 'customize' | 'view', fn), off, tiles(filter), tile(key), data (nuHomeSetData() of the PHP hook),
 	// view (0.8.420: the view in effect, a copy). 'tile' and 'ready' are replayed for callbacks added later; every callback runs in
 	// try/catch (console + toast for the globeadmin).
 	var H = (function () {
@@ -260,7 +260,7 @@
 	var tabBtns = viewEl ? $$('[data-nu-tabbtn]', viewEl) : [], panes = viewEl ? $$('.nuHomePane', viewEl) : [];
 	var sideItems = viewEl ? $$('[data-nu-side]', viewEl) : [], sideSel = viewEl ? $('.nuHomeSideSelect', viewEl) : null;
 	var curUnit = (store('nunext.homeTab') || '').replace(/^nuHomeTab_/, ''), curGroup = sstore('nunext.homeSide') || '';
-	function unitShown(p) { return !p.hidden && !(viewEl.classList.contains('nuHomeFavOnly') && !viewEl.classList.contains('nuHomeSearching') && !p.querySelector('[data-nu-fav]')); }
+	function unitShown(p) { return !p.hidden; }
 	function showUnit(id) {
 		var p = panes.filter(function (x) { return x.getAttribute('data-nu-tab') === id && unitShown(x); })[0] || panes.filter(unitShown)[0] || panes[0];
 		if (!p) return;
@@ -273,7 +273,7 @@
 			b.tabIndex = on ? 0 : -1;
 		});
 	}
-	function groupShown(g) { return !g.hidden && !(viewEl.classList.contains('nuHomeFavOnly') && !viewEl.classList.contains('nuHomeSearching') && !g.querySelector('[data-nu-fav]')); }
+	function groupShown(g) { return !g.hidden; }
 	function showSide(id) {
 		var all = $$('.nuHomeGroup', viewEl);
 		var g = all.filter(function (x) { return x.getAttribute('data-nu-group') === id && groupShown(x); })[0] || all.filter(groupShown)[0] || all[0];
@@ -445,7 +445,7 @@
 		setSt(main, tabbed ? null : styleFor('', size, {nav: 'groups'}));
 		panes.forEach(function (p) { setSt(p, tabbed ? styleFor(p.getAttribute('data-nu-tab'), size, v) : null); });
 		var fs = $('[data-nu-strip="fav"]', viewEl);
-		if (fs) fs.hidden = !v.favStrip || !$('.nuHomeChip', fs);
+		if (fs) fs.hidden = !v.favRow || !$('.nuHomeChip', fs);
 		var rs = $('[data-nu-strip="recent"]', viewEl);
 		if (rs) { rs.hidden = !v.recentStrip || !$('.nuHomeChip', rs); }
 		[fs, rs].forEach(function (st) { if (st) stripFold(st); });
@@ -574,8 +574,9 @@
 		// touch: a long press shows the description (hover card in that mode) and does not open the tile or the browser's link menu
 		viewEl.addEventListener('pointerdown', function (e) {
 			if (e.pointerType !== 'touch') return;
-			var a = tileOf(e.target) || (e.target.closest && e.target.closest('[data-nu-recent]'));
-			if (!a || (e.target.closest && e.target.closest('.nuHomeAction, [data-nu-descinfo]')) || (eff(size).desc === 'off' && !ctxOk(a))) return;
+			var a = tileOf(e.target) || (e.target.closest && e.target.closest('[data-nu-recent], .nuHomeStrip'));
+			if (a && a.classList.contains('nuHomeStrip') && !ctxOk(a)) return;
+			if (!a || (e.target.closest && e.target.closest('.nuHomeAction, [data-nu-descinfo], .nuHomeStripClear')) || (eff(size).desc === 'off' && !ctxOk(a))) return;
 			var px = e.clientX, py = e.clientY;
 			pressT = setTimeout(function () {
 				suppress = true;
@@ -587,7 +588,7 @@
 		viewEl.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch' && Math.abs(e.movementX) + Math.abs(e.movementY) > 4) clearTimeout(pressT); });
 		viewEl.addEventListener('contextmenu', function (e) {
 			if (ctxMenu) { e.preventDefault(); return; }                    // the long press opened it already
-			var c = e.target.closest && e.target.closest('[data-nu-tile], [data-nu-chip], [data-nu-recent]');
+			var c = e.target.closest && (e.target.closest('[data-nu-tile], [data-nu-chip], [data-nu-recent]') || e.target.closest('.nuHomeStrip'));
 			if (c && ctxOk(c)) { e.preventDefault(); hideTip(true); openCtx(c, e.clientX, e.clientY); return; }
 			if (suppress || tipFor) e.preventDefault();
 		});
@@ -600,6 +601,7 @@
 	var ctxMenu = null;
 	function ctxKey(node) { return node.getAttribute('data-nu-tile') || node.getAttribute('data-nu-chip') || node.getAttribute('data-nu-recent') || ''; }
 	function ctxOk(node) {
+		if (node && node.classList && node.classList.contains('nuHomeStrip')) return !document.body.classList.contains('nuHomeEditing') && !document.body.classList.contains('nuHomeMineOn');
 		return !!(node && ctxKey(node) && (node.hasAttribute('data-nu-recent') ? D.usedUrl : D.favUrl) && !document.body.classList.contains('nuHomeEditing') && !document.body.classList.contains('nuHomeMineOn'));
 	}
 	function closeCtx() { if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; } }
@@ -618,7 +620,11 @@
 	function openCtx(src, x, y) {
 		closeCtx();
 		var key = ctxKey(src), items = [], label, desc = '';
-		if (src.hasAttribute('data-nu-recent')) {           // a chip of the row "Recently used" (the side bar's list)
+		var row = src.closest ? src.closest('.nuHomeStrip') : null;
+		if (src === row) {                                   // the row itself (heading, gaps between the chips)
+			label = t(row.getAttribute('data-nu-strip') === 'fav' ? 'home_v_fav_row' : 'home_v_recent_row');
+			items = rowItems(row, false);
+		} else if (src.hasAttribute('data-nu-recent')) {           // a chip of the row "Recently used" (the side bar's list)
 			label = (src.querySelector('.nuHomeChipLabel') || src).textContent;
 			items.push(ctxItem('bi-dash-circle', t('sb_recent_remove'), function () { ctxPost(D.usedUrl, {action: 'forget', key: key}); }));
 			items.push(ctxItem('bi-x-circle', t('sb_recent_clear_menu'), function () { ctxPost(D.usedUrl, {action: 'clear'}); }));
@@ -631,9 +637,10 @@
 			// after the reload a message with Undo (pages/nuhome.php, NuSidebar::hideTile)
 			if (D.hideMode) items.push(ctxItem('bi-eye-slash', t(D.hideMode === 'me' ? 'home_u_mine_hide' : 'home_ctx_hide'), function () { ctxPost(D.favUrl, {action: 'hide', key: key, label: label}); }));
 		}
+		var rowExtra = row && src !== row ? rowItems(row, true) : [];   // a chip of a row: the row's entries too, below a divider
 		ctxMenu = el('div', {'class': 'dropdown-menu show nuHomeCtx', role: 'menu', 'aria-label': label},
 			[el('div', {'class': 'nuHomeCtxHead'}, [el('div', {'class': 'fw-semibold', text: label})].concat(desc ? [el('div', {'class': 'small text-body-secondary', text: desc})] : [])),
-				el('div', {'class': 'dropdown-divider'})].concat(items));
+				el('div', {'class': 'dropdown-divider'})].concat(items, rowExtra.length ? [el('div', {'class': 'dropdown-divider'})] : [], rowExtra));
 		document.body.appendChild(ctxMenu);
 		if (!x && !y) { var r = src.getBoundingClientRect(); x = r.left + 12; y = r.bottom - 4; }   // context-menu key
 		ctxMenu.style.left = Math.max(4, Math.min(x, window.innerWidth - ctxMenu.offsetWidth - 4)) + 'px';
@@ -650,18 +657,28 @@
 	window.addEventListener('scroll', function (e) { if (tipFor && !(e.target && e.target.nodeType === 1 && tip.contains(e.target))) hideTip(true); }, true);
 	window.addEventListener('resize', function () { if (tipFor) hideTip(true); });
 
-	// ---------------------------------------------------------------- "Favourites only" (0.8.353): saved per login
-	var favBtn = document.getElementById('nuHomeFavOnly');
-	if (favBtn && viewEl) {
-		favBtn.addEventListener('click', function () {
-			var on = !viewEl.classList.contains('nuHomeFavOnly');
-			viewEl.classList.toggle('nuHomeFavOnly', on);
-			favBtn.classList.toggle('active', on);
-			favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-			favBtn.querySelector('i').className = 'bi ' + (on ? 'bi-star-fill' : 'bi-star');
-			applyView();
-			post({action: 'fav_only', on: on}).catch(function () { /* the view changed anyway; kept for this page only */ });
-			H.emit('favourites', on);
+	// ---------------------------------------------------------------- rows Favourites / Recently used (0.8.807): right-click / long press
+	// on a row → Edit favourites (edit mode / Personalise with the editor's favourites filter on) or Clear, and Hide this row = the
+	// view key favRow / recentStrip off (as the switches of Appearance → On top of the page); a message says how to show it again.
+	var favEditTo = document.getElementById('nuHomeMine') || document.getElementById('nuHomeCustomize');
+	function rowItems(st, dup) {
+		var kind = st.getAttribute('data-nu-strip'), items = [];
+		if (kind === 'fav' && favEditTo) items.push(ctxItem('bi-pencil', t('home_fav_edit'), function () { editFavNext = true; favEditTo.click(); }));
+		if (kind === 'recent' && D.usedUrl && !dup) items.push(ctxItem('bi-x-circle', t('sb_recent_clear_menu'), function () { ctxPost(D.usedUrl, {action: 'clear'}); }));
+		items.push(ctxItem('bi-eye-slash', t('home_row_hide'), function () { hideRow(kind); }));
+		return items;
+	}
+	function hideRow(kind) {
+		var k = kind === 'fav' ? 'favRow' : 'recentStrip', name = t(kind === 'fav' ? 'home_v_fav_row' : 'home_v_recent_row');
+		var tg = target(), b = bag(null), had = Object.prototype.hasOwnProperty.call(b, k), old = b[k];
+		b[k] = false;
+		applyView(); if (VP.open) drawPanel();
+		saveView(tg);
+		toast(tf('home_row_hidden', name, [t('home_customize'), t('home_c_tab_appearance'), name].join(' → ')), true, function () {
+			var bb = bag(null);
+			if (had) bb[k] = old; else delete bb[k];
+			applyView(); if (VP.open) drawPanel();
+			saveView(tg);
 		});
 	}
 
@@ -674,7 +691,7 @@
 	var DESCS = [['auto', 'bi-magic'], ['inline', 'bi-text-paragraph'], ['tooltip', 'bi-chat-square-text'], ['hovercard', 'bi-window'], ['info', 'bi-info-circle'], ['off', 'bi-eye-slash']];
 	var NAVS = ['groups', 'tabs', 'sidebar', 'none'];
 	var KEYNAME = {style: 'home_v_style', listCols: 'home_v_list_cols', listWidth: 'home_v_list_width', desc: 'home_v_desc', lines: 'home_v_lines', delay: 'home_v_delay',
-		nav: 'home_v_nav', density: 'home_v_density', icon: 'home_v_icons', groupColors: 'home_v_group_colors', favStrip: 'home_v_fav_row', recentStrip: 'home_v_recent_row',
+		nav: 'home_v_nav', density: 'home_v_density', icon: 'home_v_icons', groupColors: 'home_v_group_colors', favRow: 'home_v_fav_row', recentStrip: 'home_v_recent_row',
 		badges: 'home_v_badges', actions: 'home_v_actions'};
 	function sizeName(z) { return t('home_v_size_' + z); }
 	// user start pages (0.8.425): the editor of an access level's page (scope level) changes that page; users keep their own view
@@ -932,7 +949,7 @@
 
 		// on top of the page
 		secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_on_top'),
-			sw('favStrip', t('home_v_fav_row'), v.favStrip, t('home_v_fav_row_hint'), function (x) { setOpt('favStrip', x); }),
+			sw('favRow', t('home_v_fav_row'), v.favRow, t('home_v_fav_row_hint'), function (x) { setOpt('favRow', x); }),
 			sw('recentStrip', t('home_v_recent_row'), v.recentStrip, t('home_v_recent_row_hint'), function (x) { setOpt('recentStrip', x); })]));
 
 		// side bar (0.8.708, was in the user menu): only for me – POST ?p=sidebar action toggle, then the page again
@@ -1095,6 +1112,7 @@
 	var dirty = false;
 	var activeTab = '';                  // tab shown while editing (display tabs)
 	var editFav = false;                 // Customise: show only the favourite tiles (0.8.354) – a view filter, not saved
+	var editFavNext = false;             // set by Edit of the row Favourites (0.8.806)
 	var baseL = null;                    // the saved layout when Customise opened (own tiles for "Start from", 0.8.385)
 	var prevEdit = null;                 // before the last profile was loaded: {L, dirty, activeTab} – Undo
 	var pfNote = null;                   // strip under the bar after loading a profile: {icon, text}
@@ -1131,7 +1149,8 @@
 		var shown = $('.nuHomeTabs .nav-link.active');          // keep the tab that was open in the view
 		var id = shown ? shown.id.replace('nuHomeTab_', '') : '';
 		activeTab = L.tabs.some(function (tb) { return tb.id === id; }) ? id : (L.tabs[0] ? L.tabs[0].id : '');
-		editFav = !!(viewEl && viewEl.classList.contains('nuHomeFavOnly')) && L.fav.length > 0;   // as on the start page
+		editFav = editFavNext && L.fav.length > 0;   // opened by Edit of the row Favourites
+		editFavNext = false;
 		clearSearch();
 		closePanel();
 		hideTip(true);
@@ -1295,6 +1314,7 @@
 			}
 			if (e.key !== 'Enter') return;
 			e.preventDefault();
+			if (window.nuPageNoGo && window.nuPageNoGo(search.value)) return;     // P100 … – page numbers (0.8.804)
 			var cur = resItems()[resSel];
 			if (cur && cur.nuOpen) cur.nuOpen(e);
 			else if (firstRes) firstRes(e);

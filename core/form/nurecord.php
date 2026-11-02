@@ -125,6 +125,19 @@ final class NuRecord
 		$errors = self::validate($meta, $values, $posted, $isNew ? null : $recordId);
 		if ($errors) return ['ok' => false, 'errors' => $errors];
 
+		// --------------------------------------------------- validation rules of the form (0.8.812, NuFormRules) – before Before Save
+		if (NuFormRules::of($meta)) {
+			$rv = [];
+			foreach (array_keys(NuFormRules::fieldsOf($meta)) as $f) {
+				if (array_key_exists($f, $values)) { $rv[$f] = $values[$f]; continue; }
+				$c = self::column($oldRow, $f);
+				$rv[$f] = $c !== null ? $oldRow[$c] : '';
+			}
+			$rr = NuFormRules::run($meta, $rv, $posted, is_array($p['rules_ok'] ?? null) ? $p['rules_ok'] : [], $hash);   // hash variables as in Before Save (0.8.814)
+			if ($rr['errors']) return ['ok' => false, 'errors' => $rr['errors']] + ($rr['warnings'] ? ['rules_warn' => $rr['warnings']] : []);
+			if ($rr['warnings']) return ['ok' => false, 'rules_warn' => $rr['warnings']];
+		}
+
 		// --------------------------------------------------- before save
 		// global hook nu_before_save, then the form's Before Save (0.8.462, as nuBuilder 4.9)
 		if (!NuProcedure::hook('nu_before_save', $hash)) return ['ok' => false] + self::hookResult();

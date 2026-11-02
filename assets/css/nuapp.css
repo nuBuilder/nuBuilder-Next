@@ -1943,3 +1943,8 @@ main:has(.nuTitleBar.nuRecHead):not(:has(.nuRecHead > h1 .badge, .nuRecHead > h1
 .nuFacEvCount { background: var(--bs-body-bg); color: var(--bs-primary-text-emphasis); border: 1px solid var(--bs-primary-border-subtle); font-weight: 600; }
 .nuFacEvCount.nuFacEvGap { color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle); }
 .nuFacBar.nuFacFollow + .table-responsive .nuFacTable tbody { opacity: .75; }
+
+/* maintenance of forms (0.8.808): dialog list, side bar badge */
+.nuFmsList { max-height: 18rem; overflow: auto; padding: .35rem .6rem; }
+.nuFmsRow { margin: .15rem 0; }
+.nuSbBadge { margin-left: auto; font-size: .65rem; font-weight: 500; }

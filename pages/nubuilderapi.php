@@ -42,7 +42,7 @@ $action = (string)($in['action'] ?? '');
 $formId = (string)($in['form_id'] ?? '');
 
 const NB_FORM_FIELDS = ['sfo_type', 'sfo_code', 'sfo_description', 'sfo_group', 'sfo_status', 'sfo_breadcrumb_title', 'sfo_table', 'sfo_primary_key',
-	'sfo_browse_redirect_form_id', 'sfo_browse_rows_per_page', 'sfo_browse_sql', 'sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_style'];
+	'sfo_browse_redirect_form_id', 'sfo_browse_rows_per_page', 'sfo_browse_row_height', 'sfo_browse_title_multiline', 'sfo_browse_autoresize_columns', 'sfo_browse_target', 'sfo_browse_sql', 'sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_style'];
 
 const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_all_zzzzsys_tab_id', 'sob_all_order', 'sob_all_top', 'sob_all_left',
 	'sob_all_width', 'sob_all_height', 'sob_all_cloneable', 'sob_all_align', 'sob_all_validate', 'sob_all_access', 'sob_all_access_condition', 'sob_all_style_type', 'sob_all_style',
@@ -162,6 +162,24 @@ function nb_back(array $in): ?string
 }
 
 /** The form being edited – must exist and not be a nuBuilder system form. */
+/** Validation rules (0.8.812): parse an expression / test rules against a saved record – read only, the same on live forms and drafts. */
+function nb_rules(NuFormMeta $meta, string $action, array $in): never
+{
+	if ($action === 'rules.parse') {
+		$p = NuFormRules::parse((string)($in['expr'] ?? ''));
+		nb_out(is_string($p) ? ['ok' => false, 'error' => $p] : ['ok' => true, 'tree' => $p, 'text' => NuFormRules::text($p)]);
+	}
+	$cl = NuFormRules::clean(is_array($in['rules'] ?? null) ? $in['rules'] : [], $meta);
+	if ($cl['errors']) nb_out(['ok' => false, 'error' => implode("\n", $cl['errors']), 'errors' => $cl['errors']]);
+	$rid = trim((string)($in['record_id'] ?? ''));
+	if ($rid === '') {
+		$pk = $meta->primaryKey();
+		$rid = $meta->table() !== '' && $pk !== '' ? (string)(nu_db()->page('SELECT ' . NuDB::ident($pk) . ' AS k FROM ' . NuDB::ident($meta->table()), [], NuDB::ident($pk) . ' DESC', 1, 0)[0]['k'] ?? '') : '';
+	}
+	if ($rid === '') nb_err(t('vr_test_none'));
+	nb_out(['record_id' => $rid] + NuFormRules::test($meta, $cl['rules'], $rid));
+}
+
 function nb_form(string $id): NuFormMeta
 {
 	$meta = NuFormMeta::load($id, true);                 // the builder edits the live form (drafts: NuDraftStore)
@@ -269,6 +287,17 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS);
 			$store->commit('form.save');
 			$out();
+
+		case 'rules.save':             // validation rules (0.8.812)
+			$cl = NuFormRules::clean(is_array($in['rules'] ?? null) ? $in['rules'] : [], $store->meta());
+			if ($cl['errors']) nb_out(['ok' => false, 'error' => implode("\n", $cl['errors']), 'errors' => $cl['errors']], 400);
+			$store->rulesSave($cl['rules']);
+			$store->commit('rules.save');
+			$out(['rules' => $cl['rules']]);
+
+		case 'rules.parse':
+		case 'rules.test':
+			nb_rules($store->meta(), $action, $in);
 
 		case 'object.save':
 			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_OBJECT_FIELDS);
@@ -418,9 +447,9 @@ function nb_live_draft(string $formId): ?array
 }
 
 
-const NB_SNAPSHOT_ACTIONS = ['form.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
+const NB_SNAPSHOT_ACTIONS = ['form.save', 'rules.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
 /** Live changes – refused or confirmed while a draft is open (form drafts, 0.8.386). */
-const NB_WRITE_ACTIONS = ['form.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
+const NB_WRITE_ACTIONS = ['form.save', 'rules.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
 
 try {
 	// form drafts (0.8.386): with draft_id the action works on the draft; without it on the live form – refused or confirmed while
@@ -575,6 +604,18 @@ try {
 				foreach (NB_HOOKS as $h) if (array_key_exists($h, $in['php'])) nb_upsert_php($formId . '_' . $h, $in['php'][$h] === null ? null : (string)$in['php'][$h]);
 			}
 			nb_out(['ok' => true] + nb_state($formId));
+
+		case 'rules.save':             // validation rules (0.8.812): sfo_json nunext.rules
+			$meta = nb_form($formId);
+			$cl = NuFormRules::clean(is_array($in['rules'] ?? null) ? $in['rules'] : [], $meta);
+			if ($cl['errors']) nb_out(['ok' => false, 'error' => implode("\n", $cl['errors']), 'errors' => $cl['errors']], 400);
+			$db->update('zzzzsys_form', ['sfo_json' => NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['rules' => $cl['rules'] ?: null])], 'zzzzsys_form_id', $formId);
+			NuFormMeta::forget($formId);
+			nb_out(['ok' => true, 'rules' => $cl['rules']] + nb_state($formId));
+
+		case 'rules.parse':
+		case 'rules.test':
+			nb_rules(nb_form($formId), $action, $in);
 
 		case 'form.deleteinfo':
 			if (empty(NuAuth::user()['globeadmin'])) nb_err(t('builder_delete_globeadmin'), 403);

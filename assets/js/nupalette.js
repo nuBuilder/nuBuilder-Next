@@ -105,6 +105,7 @@
 				mark();
 			} else if (e.key === 'Enter') {
 				e.preventDefault();
+				if (window.nuPageNoGo && window.nuPageNoGo(input.value)) return;     // P100 … – page numbers (0.8.804)
 				if (current[active]) { var nt = e.ctrlKey || e.metaKey; if (!nt) modal.hide(); go(current[active], nt); }
 			}
 		});

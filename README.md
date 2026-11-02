@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.802 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.824 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -58,7 +58,7 @@ nuBuilder Next streamlines everyday database work:
 
 ### 🏗️ For Building Business Applications
 
-- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, drafts you publish when ready (with a note or in one click), keyboard shortcuts (rename, copy and paste objects – also between forms –, undo) and a safe mode for broken form code; a New form wizard that picks the table's columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
+- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, every list setting and column in one Browse list window (drag to reorder), validation rules without code (builder or expression, errors or warnings, sub-form rows, hash variables, per access level), drafts you publish when ready (with a note or in one click), keyboard shortcuts (rename, copy and paste objects – also between forms –, undo) and a safe mode for broken form code; a New form wizard that picks the table's columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; a Maintenance status that closes a form for users with a message; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
 - ✅ **Page Forms** – your own PHP apps inside nuBuilder Next, with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
 - ✅ **Report Designer & SQL Builder** – design reports visually, build queries without writing SQL and run reports as PDF.
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
@@ -67,7 +67,7 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Data import** – CSV files (and Excel / OpenDocument workbooks with the PhpSpreadsheet pack) into any table, with automatic encoding / separator detection and column mapping.
 - ✅ **Data export** – saved exports of tables, views and queries to Excel or CSV: columns, conditions, sorting, parameters, several sheets per file, streamed for any size; also through the REST API.
 - ✅ **Form Cloner & App Cloner** – copy a single form (or just write its SQL, for MySQL or SQL Server) or the whole application.
-- ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms written by an AI, checked before they are created.
+- ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms – with their code and events, also a small app of several forms – written by an AI, checked before they are created, also from design mode into a draft.
 - ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
 - ✅ **Webhooks** – call n8n, Zapier, Teams or your own service after records are saved or deleted: signed, with retries and a log of every call.
 - ✅ **jQuery 4 Ready** – form pages run on jQuery 3.7 or 4.0 (or your own file), with jQuery Migrate to find upgrade issues while still on 3.7.

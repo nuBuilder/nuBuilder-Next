@@ -56,6 +56,23 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 			<?= $crumb   // inside the centred column, so it lines up with the card (0.8.249) ?>
 			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1>
 				<a class="btn btn-outline-secondary" id="nbAiNew" href="<?= h(nu_url('formai')) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_new')) ?></a></div>
+			<?php // "Describe it" (0.8.810): a description → Form with AI (?p=formai&req=…&kind=form|app) – the prompt, the answer, the draft ?>
+			<form class="card shadow-sm mb-3 nbDescribe" id="nbDescribe" method="get" action="index.php">
+				<input type="hidden" name="p" value="formai">
+				<div class="card-body">
+					<h2 class="h6 mb-1"><i class="bi bi-stars me-1" aria-hidden="true"></i><?= h(t('nf_describe')) ?></h2>
+					<p class="small text-body-secondary mb-2"><?= h(t('nf_describe_hint')) ?></p>
+					<label class="visually-hidden" for="nbDescribeText"><?= h(t('nf_describe')) ?></label>
+					<textarea class="form-control mb-2" id="nbDescribeText" name="req" rows="3" maxlength="4000" required placeholder="<?= h(t('fai_request_ph_new')) ?>"></textarea>
+					<div class="d-flex flex-wrap align-items-center gap-2">
+						<div class="btn-group" role="radiogroup" aria-label="<?= h(t('fai_kind')) ?>">
+							<input type="radio" class="btn-check" name="kind" id="nbDescKindForm" value="form" checked autocomplete="off"><label class="btn btn-sm btn-outline-secondary" for="nbDescKindForm"><?= h(t('fai_kind_form')) ?></label>
+							<input type="radio" class="btn-check" name="kind" id="nbDescKindApp" value="app" autocomplete="off"><label class="btn btn-sm btn-outline-secondary" for="nbDescKindApp"><?= h(t('fai_kind_app')) ?></label>
+						</div>
+						<button type="submit" class="btn btn-sm btn-primary ms-auto" id="nbDescribeGo"><?= h(t('nf_describe_go')) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+					</div>
+				</div>
+			</form>
 			<form class="card shadow-sm" id="nbNewForm" novalidate>
 				<div class="card-body p-4">
 					<div class="alert alert-warning nbStale" id="nbStale" role="alert"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('builder_stale_assets')) ?></div>

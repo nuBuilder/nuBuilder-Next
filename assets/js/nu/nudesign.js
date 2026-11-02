@@ -18,7 +18,8 @@
 	var N = window.nuNext;
 	if (!N || !N.design || (N.mode !== 'edit' && N.mode !== 'browse')) return;
 	var D = N.design, L = D.texts || {}, origin = window.location.origin;
-	var BROWSE = N.mode === 'browse';  // the list (0.8.669): its columns are designed on the list page itself
+	var BROWSE = N.mode === 'browse';
+	var HASLIST = ['browse', 'browseedit'].indexOf(N.form.type) >= 0 && !(N.design && N.design.userhome);   // List flyout (0.8.820)  // the list (0.8.669): its columns are designed on the list page itself
 	var selCol = '';                  // list: the selected column (zzzzsys_browse_id)
 	if (window.NuFormatDesigner && D.format_designer) window.NuFormatDesigner.init(D.format_designer);
 	var DR = D.draft;                 // open draft (NuFormDraft::info) or null
@@ -94,6 +95,7 @@
 			if (reload) { refreshKeep(); return j; }
 			busy(false); say(t('ds_saved'));
 			renderBar(); renderPanel(); renderFly();
+			if (W.kind === 'list') renderWork();
 			return j;
 		}).catch(function (e) { busy(false); if (e.message) say(e.message, true); renderBar(); throw e; });
 	}
@@ -151,6 +153,7 @@
 			busy(false);
 			say(t('ds_saved'));
 			renderBar(); renderPanel(); renderFly();
+			if (W.kind === 'list') renderWork();
 		}).catch(function () { reloadKeep(); });
 	}
 	function selectTabById(id) {
@@ -221,9 +224,18 @@
 	// phones: Structure and Add sit in the bar (no icon bar there)
 	if (!BROWSE) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'structure', title: t('ds_structure'), 'aria-label': t('ds_structure'), onclick: function () { toggleFly('structure'); }}, [icon('bi-layers')]));
 	if (!BROWSE) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'add', title: t('ds_add'), 'aria-label': t('ds_add'), onclick: function () { toggleFly('add'); }}, [icon('bi-plus-circle')]));
+	if (!BROWSE && D.rules && !D.userhome) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'rules', title: t('vr_title'), 'aria-label': t('vr_title'), onclick: function () { toggleFly('rules'); }}, [icon('bi-check2-square')]));
+	if (HASLIST) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'list', title: t('ds_list_title'), 'aria-label': t('ds_list_title'), onclick: function () { openWork('list'); }}, [icon('bi-table')]));
 	// safe mode (0.8.667): the form without its own code – to fix a form whose JavaScript or Before Edit PHP breaks it
 	bar.appendChild(el('a', {'class': 'btn btn-outline-secondary' + (D.safe ? ' active' : ''), id: 'nuDsSafe', href: D.safe_url, role: 'button', 'aria-pressed': D.safe ? 'true' : 'false',
 		title: D.safe ? t('ds_safe_off') : t('ds_safe') + ' – ' + t('ds_safe_tip'), 'aria-label': D.safe ? t('ds_safe_off') : t('ds_safe')}, [icon('bi-shield-check')]));
+	// maintenance (0.8.808): users cannot open the form while it is on – the dialog of nuformmaint.js
+	if (D.maint_ok && window.nuFormMaintOpen) bar.appendChild(el('button', {type: 'button', 'class': 'btn ' + (D.maint ? 'btn-danger active' : 'btn-outline-secondary'), id: 'nuDsMaint',
+		'aria-pressed': D.maint ? 'true' : 'false', title: t(D.maint ? 'fms_ds_on' : 'fms_ds_tip'), 'aria-label': t('fms_title'),
+		onclick: function () {
+			window.nuFormMaintOpen({forms: [{id: D.form_id, label: D.form_label}], on: !!D.maint, text: D.maint ? D.maint.text : '', until: D.maint ? D.maint.until : '',
+				onDone: function () { location.reload(); }});
+		}}, [icon('bi-cone-striped')]));
 	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsReload', title: t('ds_reload'), 'aria-label': t('ds_reload'), onclick: function () { reloadKeep(); }}, [icon('bi-arrow-repeat')]));
 	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'code', title: t('ds_code'), 'aria-label': t('ds_code'), onclick: function () { openWork('code'); }}, [icon('bi-code-square')]));
 	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'history', title: t('ds_history'), 'aria-label': t('ds_history'), onclick: function () { openWork('history'); }}, [icon('bi-clock-history')]));
@@ -326,6 +338,106 @@
 	}
 	function show(root) { if (window.nuBs && window.nuBs.ready()) window.nuBs.modal(root).show(); }
 	function hide(root) { if (window.nuBs && window.nuBs.ready()) window.nuBs.modal(root).hide(); }
+
+	// Ask AI (0.8.810): copy a prompt with the current form (the open draft), paste the AI's answer, check it, apply it to the draft –
+	// step by step; the requests go to Form with AI (pages/nuformai.php, D.ai), which writes into the open draft
+	var aiDlg = null;
+	function aiPost(data) {
+		var b = new URLSearchParams();
+		b.set('_csrf', N.csrf);
+		Object.keys(data).forEach(function (k) { b.set(k, data[k]); });
+		return fetch(D.ai, {method: 'POST', body: b, credentials: 'same-origin', headers: {Accept: 'application/json'}}).then(function (r) { return r.json(); });
+	}
+	function aiCopy(text) {
+		if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+		return new Promise(function (ok, fail) {
+			var ta = el('textarea', {readonly: 'readonly', 'class': 'position-fixed top-0 start-0 opacity-0'});
+			ta.value = text; document.body.appendChild(ta); ta.select();
+			var done = false;
+			try { done = document.execCommand('copy'); } catch (e) { done = false; }
+			ta.remove();
+			if (done) ok(); else fail(new Error('copy'));
+		});
+	}
+	function askAi() {
+		if (aiDlg) { show(aiDlg.root); return; }
+		var req = el('textarea', {'class': 'form-control', id: 'nuDsAiReq', rows: '3', placeholder: t('fai_request_ph_change')});
+		var msg = el('div', {'class': 'small mt-1', id: 'nuDsAiMsg', 'aria-live': 'polite'});
+		var ans = el('textarea', {'class': 'form-control font-monospace small', id: 'nuDsAiAns', rows: '6', placeholder: '```json …```'});
+		var plan = el('div', {'class': 'small mt-2', id: 'nuDsAiPlan'});
+		var ddl = el('input', {type: 'checkbox', 'class': 'form-check-input', id: 'nuDsAiDdl'});
+		var ddlBox = el('div', {'class': 'form-check mt-2', id: 'nuDsAiDdlBox', hidden: 'hidden'}, [ddl, el('label', {'class': 'form-check-label', 'for': 'nuDsAiDdl', text: t('fai_ddl_ok')})]);
+		var apply = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsAiApply', disabled: 'disabled'}, [icon('bi-magic me-1'), t('fai_apply')]);
+		function li(items, cls) { return el('ul', {'class': 'mb-1 ps-3 ' + (cls || '')}, items.map(function (x) { return el('li', {text: x}); })); }
+		function check() {
+			if (ans.value.trim() === '') return;
+			apply.disabled = true; plan.textContent = '';
+			aiPost({action: 'check', answer: ans.value}).then(function (d) {
+				plan.textContent = '';
+				if (d.errors && d.errors.length) plan.appendChild(el('div', {'class': 'alert alert-danger py-2 mb-2'}, [el('div', {'class': 'fw-semibold', text: t('fai_errors')}), li(d.errors)]));
+				if (d.warnings && d.warnings.length) plan.appendChild(el('div', {'class': 'alert alert-warning py-2 mb-2'}, [el('div', {'class': 'fw-semibold', text: t('fai_warnings')}), li(d.warnings)]));
+				if (d.ok && d.plan) {
+					var p = d.plan, rows = [];
+					var f = function (k) { var a = Array.prototype.slice.call(arguments, 1), i = 0; return t(k).replace(/%[sd]/g, function () { return a[i++]; }); };
+					if (p.columns && p.columns.length) rows.push(f('fai_plan_columns', p.columns.map(function (c) { return c.name; }).join(', ')));
+					if (p.added && p.added.length) rows.push(f('fai_plan_added', p.added.join(', ')));
+					if (p.changed && p.changed.length) rows.push(f('fai_plan_changed', p.changed.map(function (c) { return c.id; }).join(', ')));
+					if (p.removed && p.removed.length) rows.push(f('fai_plan_removed', p.removed.join(', ')));
+					if (p.moved) rows.push(t('fai_plan_moved'));
+					if (p.tabs) rows.push(f('fai_plan_tabs', p.tabs));
+					if (p.browse) rows.push(f('fai_plan_browse', p.browse));
+					if (p.form && p.form.length) rows.push(f('fai_plan_form', p.form.join(', ')));
+					if (p.code && p.code.length) rows.push(f('fai_plan_code', p.code.join(', ')));
+					if (!rows.length) rows.push(t('fai_plan_none'));
+					plan.appendChild(el('div', {'class': 'fw-semibold', text: t('fai_plan')}));
+					plan.appendChild(li(rows, 'nuDsAiRows'));
+					ddlBox.hidden = !(p.columns && p.columns.length) && !p.new_table;
+					ddl.checked = false;
+					apply.disabled = false;
+				}
+			}, function (e) { plan.textContent = e.message; });
+		}
+		ans.addEventListener('paste', function () { setTimeout(check, 0); });
+		ans.addEventListener('input', function () { apply.disabled = true; });
+		var copyB = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsAiCopy'}, [icon('bi-clipboard me-1'), t('fai_copy')]);
+		copyB.addEventListener('click', function () {
+			msg.textContent = ''; msg.className = 'small mt-1';
+			aiPost({action: 'prompt', request: req.value}).then(function (d) {
+				if (!d.ok) { msg.textContent = d.error || ''; msg.className = 'small mt-1 text-danger'; return; }
+				aiDlg.prompt = d.text;
+				return aiCopy(d.text).then(function () { msg.textContent = t('fai_copied'); msg.className = 'small mt-1 text-success'; },
+					function () { msg.textContent = t('fai_copy_failed'); msg.className = 'small mt-1 text-warning'; });
+			});
+		});
+		var pasteB = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsAiPaste'}, [icon('bi-clipboard-check me-1'), t('fai_paste')]);
+		pasteB.addEventListener('click', function () {
+			if (!navigator.clipboard || !navigator.clipboard.readText) { ans.focus(); return; }
+			navigator.clipboard.readText().then(function (x) { ans.value = x; check(); }, function () { ans.focus(); });
+		});
+		var checkB = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsAiCheck'}, [icon('bi-check2-circle me-1'), t('fai_check')]);
+		checkB.addEventListener('click', check);
+		apply.addEventListener('click', function () {
+			if (!ddlBox.hidden && !ddl.checked) { ddl.focus(); ddlBox.classList.add('text-danger'); return; }
+			apply.disabled = true;
+			aiPost({action: 'create', answer: ans.value, ddl_ok: ddl.checked ? '1' : '0', note: req.value.split('\n')[0].slice(0, 200)}).then(function (d) {
+				if (d.ok) { reloadKeep(); return; }
+				apply.disabled = false;
+				plan.textContent = '';
+				plan.appendChild(el('div', {'class': 'alert alert-danger py-2'}, [li(d.errors || ['?'])]));
+			}, function (e) { apply.disabled = false; plan.textContent = e.message; });
+		});
+		var body = [
+			el('p', {'class': 'small text-body-secondary', text: t('fai_ask_help')}),
+			el('label', {'class': 'form-label small fw-semibold', 'for': 'nuDsAiReq'}, [el('span', {'class': 'badge rounded-pill text-bg-primary me-1', text: '1'}), t('fai_ask_req')]), req,
+			el('div', {'class': 'd-flex flex-wrap gap-2 align-items-center mt-2'}, [copyB, el('a', {'class': 'small ms-auto', href: D.ai, id: 'nuDsAiFull', text: t('fai_ask_full')})]), msg,
+			el('label', {'class': 'form-label small fw-semibold mt-3', 'for': 'nuDsAiAns'}, [el('span', {'class': 'badge rounded-pill text-bg-primary me-1', text: '2'}), t('fai_step2')]), ans,
+			el('div', {'class': 'd-flex flex-wrap gap-2 mt-2'}, [pasteB, checkB]),
+			plan, ddlBox
+		];
+		aiDlg = {root: modal('nuDsAiDlg', t('fai_ask'), body, [apply], true)};
+		show(aiDlg.root);
+		setTimeout(function () { req.focus(); }, 300);
+	}
 
 	// Publish: the change note; warnings → "Publish anyway", a conflict → the builder (it compares)
 	// opt.ask: always show the window (Publish with a note…); opt.then: after a successful publish (Done → Publish now)
@@ -474,11 +586,14 @@
 
 	// ------------------------------------------------------------------ icon bar + Structure / Add (stage 2)
 	var rail = el('nav', {'class': 'nuDsRail', id: 'nuDsRail', 'aria-label': t('ds_tools')}, [
+		el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailForm', title: t('ds_form'), 'aria-label': t('ds_form'), onclick: function () { if (!work.hidden) { closeWork(); if (!work.hidden) return; } closeFly(); post({nuBuilderSelectNone: true}); selIds = []; selCol = ''; markCols(); renderPanel(); }}, [icon('bi-window')]),
 		BROWSE ? null : el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailStructure', 'data-fly': 'structure', title: t('ds_structure') + ' (Ctrl+K)', 'aria-label': t('ds_structure'), onclick: function () { toggleFly('structure'); }}, [icon('bi-layers')]),
 		BROWSE ? null : el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailAdd', 'data-fly': 'add', title: t('ds_add'), 'aria-label': t('ds_add'), onclick: function () { toggleFly('add'); }}, [icon('bi-plus-circle')]),
 		el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailCode', 'data-work': 'code', title: t('ds_code'), 'aria-label': t('ds_code'), onclick: function () { openWork('code'); }}, [icon('bi-code-square')]),
+		!BROWSE && D.rules && !D.userhome ? el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailRules', 'data-fly': 'rules', title: t('vr_title'), 'aria-label': t('vr_title'), onclick: function () { toggleFly('rules'); }},
+			[icon('bi-check2-square'), el('span', {'class': 'nuDsRailCount', id: 'nuDsRailRulesN', hidden: (D.rules.list || []).length ? null : true, text: String((D.rules.list || []).length)})]) : null,
 		el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailHistory', 'data-work': 'history', title: t('ds_history'), 'aria-label': t('ds_history'), onclick: function () { openWork('history'); }}, [icon('bi-clock-history')]),
-		el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailForm', title: t('ds_form'), 'aria-label': t('ds_form'), onclick: function () { closeFly(); post({nuBuilderSelectNone: true}); selIds = []; selCol = ''; markCols(); renderPanel(); }}, [icon('bi-window')]),
+		HASLIST ? el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailList', 'data-work': 'list', title: t('ds_list_title'), 'aria-label': t('ds_list_title'), onclick: function () { openWork('list'); }}, [icon('bi-table')]) : null,
 		el('button', {type: 'button', 'class': 'nuDsRailBtn nuDsRailKeys', id: 'nuDsRailKeys', title: t('ds_keys_title') + ' (?)', 'aria-label': t('ds_keys_title'), onclick: function () { shortcutsDialog(); }}, [icon('bi-keyboard')])
 	]);
 	var fly = el('div', {'class': 'nuDsFly', id: 'nuDsFly', role: 'dialog', 'aria-modal': 'false', hidden: true});
@@ -486,6 +601,7 @@
 	var flyTab = '', flyType = '', collapsedTabs = {};   // Structure (0.8.671): filters by tab and object type, folded tab sections
 	function toggleFly(kind) { if (flyKind === kind) closeFly(); else openFly(kind); }
 	function openFly(kind) {
+		if (!work.hidden) { closeWork(); if (!work.hidden) return; }      // the workspace (Code / History) covers the flyout: close it first (0.8.817)
 		flyKind = kind;
 		fly.hidden = false;
 		document.documentElement.classList.add('nuDsFlyOpen');
@@ -507,11 +623,121 @@
 		document.querySelectorAll('[data-fly]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fly') === flyKind ? 'true' : 'false'); });
 		if (!flyKind || !S) return;
 		fly.textContent = '';
-		fly.setAttribute('aria-label', t(flyKind === 'add' ? 'ds_add' : 'ds_structure'));
-		fly.appendChild(el('div', {'class': 'nuDsFlyHead'}, [el('strong', {text: flyKind === 'add' ? fmt(t('ds_add_to'), tabTitle(activeTabId())) : t('ds_structure')}),
+		var flyTitle = flyKind === 'rules' ? t('vr_title') : (flyKind === 'add' ? fmt(t('ds_add_to'), tabTitle(activeTabId())) : t('ds_structure'));
+		fly.setAttribute('aria-label', flyKind === 'rules' ? t('vr_title') : t(flyKind === 'add' ? 'ds_add' : 'ds_structure'));
+		fly.appendChild(el('div', {'class': 'nuDsFlyHead'}, [el('strong', {text: flyTitle}),
 			el('button', {type: 'button', 'class': 'btn-close', 'aria-label': t('cancel'), onclick: closeFly})]));
-		if (flyKind === 'structure') renderStructure(); else renderAdd();
+		if (flyKind === 'structure') renderStructure(); else if (flyKind === 'rules') fly.appendChild(el('div', {'class': 'nuDsFlyRules'}, [rulesBox()])); else renderAdd();
 	}
+	// ------------------------------------------------------------------ List flyout (0.8.820): every setting of the form's list in one place
+	function listFormSave(key, reload) {
+		return function (v) { var x = {}; x[key] = v; change('form.save', {fields: x}, !!reload).catch(function () { /* said */ }); };
+	}
+	function listCodeBtn(id, item, label, ic) {
+		return el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: id, onclick: function () { W.item = item; openWork('code'); }}, [icon(ic + ' me-1'), label]);
+	}
+	function renderListFly(container) {
+		var f = S.form, outer = el('div', {'class': 'nuDsWorkList', id: 'nuDsListFly'});
+		container.appendChild(outer);
+		if (['browse', 'browseedit'].indexOf(f.sfo_type) < 0) { outer.appendChild(el('p', {'class': 'nuDsHint', text: t('ds_list_none')})); return; }
+		var side = el('div', {'class': 'nuDsWorkListSide'}), main = el('div', {'class': 'nuDsWorkListMain'});
+		outer.appendChild(side); outer.appendChild(main);
+		var box = side;
+		var h = function (txt) { return el('h3', {'class': 'nuDsFlySub', text: txt}); };
+		// settings
+		box.appendChild(h(t('ds_list_settings')));
+		box.appendChild(el('div', {'class': 'nuDsGrid2'}, [
+			field(t('builder_rows_per_page'), 'number', f.sfo_browse_rows_per_page, listFormSave('sfo_browse_rows_per_page', BROWSE), {key: 'sfo_browse_rows_per_page'}),
+			field(t('ds_list_rowh'), 'number', f.sfo_browse_row_height, listFormSave('sfo_browse_row_height', BROWSE), {key: 'sfo_browse_row_height', tip: t('ds_list_rowh_tip'), ph: '0'})]));
+		box.appendChild(field(t('ds_list_target'), 'select', String(f.sfo_browse_target === null || f.sfo_browse_target === undefined || f.sfo_browse_target === '' ? '0' : f.sfo_browse_target),
+			listFormSave('sfo_browse_target', BROWSE), {key: 'sfo_browse_target', options: ['0', '1', '2', '3'].map(function (x) { return [x, t('ds_list_target_' + x)]; })}));
+		box.appendChild(field(t('builder_redirect'), 'select', f.sfo_browse_redirect_form_id || '', listFormSave('sfo_browse_redirect_form_id'),
+			{key: 'sfo_browse_redirect_form_id', search: true, options: options(D.forms, ['edit', 'browseedit'])}));
+		box.appendChild(field(t('ds_list_multi'), 'check', String(f.sfo_browse_title_multiline || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_title_multiline', BROWSE), {key: 'sfo_browse_title_multiline'}));
+		box.appendChild(field(t('ds_list_autofit'), 'check', String(f.sfo_browse_autoresize_columns || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_autoresize_columns', BROWSE), {key: 'sfo_browse_autoresize_columns'}));
+		// code of the list
+		box.appendChild(h(t('ds_list_code')));
+		box.appendChild(el('div', {'class': 'nuDsTools'}, [
+			listCodeBtn('nuDsListSql', 'sfo_browse_sql', t('builder_browse_sql'), 'bi-filetype-sql'),
+			listCodeBtn('nuDsListBB', 'php:BB', t('builder_php_BB'), 'bi-filetype-php'),
+			listCodeBtn('nuDsListJs', 'sfo_browse_javascript', t('builder_js_browse'), 'bi-filetype-js')]));
+		// columns: order, title, column / expression, width, alignment, hide
+		box = main;
+		box.appendChild(h(t('builder_sec_columns')));
+		var cols = S.browse || [];
+		var thr = el('tr', {}, ['', t('builder_col_title'), t('builder_col_display'), t('builder_col_width'), t('builder_col_align'), ''].map(function (x) { return el('th', {scope: 'col', text: x}); }));
+		var tbody = el('tbody');
+		var list = el('div', {'class': 'table-responsive'}, [el('table', {'class': 'table table-sm align-middle nuDsListColTable', id: 'nuDsListCols'}, [el('thead', {}, [thr]), tbody])]);
+		cols.forEach(function (c, i) {
+			var id = c.zzzzsys_browse_id, hidden = +c.sbr_width === 0;
+			var part = function (p) { var e = {}; e[id] = p; saveCols(colRows(e), id); };
+			var title = el('input', {type: 'text', 'class': 'form-control form-control-sm', value: plain(c.sbr_title), 'aria-label': t('builder_col_title'), 'data-lc': 'title'});
+			var disp = el('input', {type: 'text', 'class': 'form-control form-control-sm nuDsMono', value: c.sbr_display || '', list: 'nuDsColNames', 'aria-label': t('builder_col_display'), 'data-lc': 'display'});
+			var width = el('input', {type: 'number', min: '0', 'class': 'form-control form-control-sm', value: hidden ? '' : String(c.sbr_width === null || c.sbr_width === '' ? 100 : c.sbr_width), 'aria-label': t('builder_col_width'), 'data-lc': 'width', disabled: hidden ? true : null});
+			var align = el('select', {'class': 'form-select form-select-sm', 'aria-label': t('builder_col_align'), 'data-lc': 'align'},
+				['l', 'c', 'r'].map(function (a) { return el('option', {value: a, text: t({l: 'om_left', c: 'om_center', r: 'om_right'}[a]), selected: (c.sbr_align || 'l') === a ? true : null}); }));
+			title.addEventListener('change', function () { part({title: title.value}); });
+			disp.addEventListener('change', function () { if (disp.value.trim() !== '') part({display: disp.value.trim()}); });
+			width.addEventListener('change', function () { var w = Math.max(1, parseInt(width.value, 10) || 100); part({width: w}); });
+			align.addEventListener('change', function () { part({align: align.value}); });
+			var btn = function (ic, tip, dc, fn, dis) { return el('button', {type: 'button', 'class': 'btn btn-sm btn-link p-0 ' + (dc || 'text-body-secondary'), title: tip, 'aria-label': tip, disabled: dis ? true : null, onclick: fn}, [icon(ic)]); };
+			tbody.appendChild(el('tr', {'class': 'nuDsListCol' + (hidden ? ' nuDsListColOff' : ''), 'data-col': id}, [
+				el('td', {'class': 'nuDsListColNo'}, [el('span', {'class': 'nuDsListGrip', draggable: 'true', 'data-grip': id, title: t('ds_col_drag'), 'aria-hidden': 'true'},
+					[icon('bi-grip-vertical'), el('span', {text: String(i + 1)})])]),
+				el('td', {'class': 'nuDsLcTitle'}, [title]), el('td', {'class': 'nuDsLcDisp'}, [disp]), el('td', {'class': 'nuDsLcWidth'}, [width]), el('td', {'class': 'nuDsLcAlign'}, [align]),
+				el('td', {'class': 'nuDsLcBtns'}, [
+					btn(hidden ? 'bi-eye-slash' : 'bi-eye', hidden ? t('ds_col_show') : t('ds_col_hidden'), '', function () { part({width: hidden ? 100 : 0}); }),
+					btn('bi-arrow-up', t('ds_col_left'), '', function () { colMove(c, -1); }, i === 0),
+					btn('bi-arrow-down', t('ds_col_right'), '', function () { colMove(c, 1); }, i === cols.length - 1),
+					btn('bi-trash', t('delete'), 'text-danger', function () { colDelete(c); })])]));
+		});
+		if (!cols.length) tbody.appendChild(el('tr', {}, [el('td', {colspan: '6', 'class': 'nuDsHint', text: t('ds_list_nocols')})]));
+		// drag and drop of the rows by their number (0.8.823): drop above / below the row under the pointer, then one browse.save
+		var dragId = '';
+		tbody.addEventListener('dragstart', function (e) {
+			var g = e.target.closest && e.target.closest('[data-grip]');
+			if (!g) { e.preventDefault(); return; }
+			dragId = g.getAttribute('data-grip');
+			e.dataTransfer.effectAllowed = 'move';
+			try { e.dataTransfer.setData('text/plain', dragId); } catch (x) { /* ignore */ }
+			var tr = g.closest('tr'); if (tr) { tr.classList.add('nuDsListDragging'); try { e.dataTransfer.setDragImage(tr, 20, 15); } catch (x) { /* ignore */ } }
+		});
+		var mark = function (tr, after) {
+			tbody.querySelectorAll('.nuDsDropBefore, .nuDsDropAfter').forEach(function (x) { x.classList.remove('nuDsDropBefore', 'nuDsDropAfter'); });
+			if (tr) tr.classList.add(after ? 'nuDsDropAfter' : 'nuDsDropBefore');
+		};
+		tbody.addEventListener('dragover', function (e) {
+			if (!dragId) return;
+			var tr = e.target.closest && e.target.closest('tr[data-col]');
+			if (!tr) return;
+			e.preventDefault();
+			var r = tr.getBoundingClientRect();
+			mark(tr, e.clientY > r.top + r.height / 2);
+		});
+		tbody.addEventListener('dragleave', function (e) { if (!tbody.contains(e.relatedTarget)) mark(null); });
+		tbody.addEventListener('dragend', function () { dragId = ''; mark(null); tbody.querySelectorAll('.nuDsListDragging').forEach(function (x) { x.classList.remove('nuDsListDragging'); }); });
+		tbody.addEventListener('drop', function (e) {
+			var tr = e.target.closest && e.target.closest('tr[data-col]');
+			if (!dragId || !tr) return;
+			e.preventDefault();
+			var r = tr.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2, target = tr.getAttribute('data-col'), from = dragId;
+			dragId = ''; mark(null);
+			if (target === from) return;
+			var rows = colRows(), ids = rows.map(function (x) { return x.id; });
+			var moving = rows.splice(ids.indexOf(from), 1)[0];
+			var at = rows.map(function (x) { return x.id; }).indexOf(target) + (after ? 1 : 0);
+			rows.splice(at, 0, moving);
+			if (rows.map(function (x) { return x.id; }).join() === ids.join()) return;
+			saveCols(rows, from);
+		});
+		box.appendChild(list);
+		box.appendChild(columnsList());
+		box.appendChild(el('div', {'class': 'd-flex flex-wrap gap-2 mt-2'}, [
+			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsListAddCol', onclick: function () { colPick(this); }}, [icon('bi-plus-lg me-1'), t('builder_add_column')]),
+			!BROWSE && D.list_url ? el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsListOpen', href: D.list_url}, [icon('bi-table me-1'), t('ds_design_list')]) : null,
+			BROWSE && D.edit_url ? el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsListEditLink', href: D.edit_url}, [icon('bi-window me-1'), t('ds_design_edit')]) : null]));
+	}
+
 	function tabTitle(id) { var tb = (S.tabs || []).filter(function (x) { return x.zzzzsys_tab_id === id; })[0]; return tb ? plain(tb.syt_title) : ''; }
 	function tabIndex(id) { var b = document.querySelector('#nuTabHolder .nuTab[data-nu-tab-id="' + id + '"]'); return b ? +b.getAttribute('data-nu-tab') : -1; }
 	function sorted(tabId) {
@@ -974,7 +1200,7 @@
 				el('div', {'class': 'nuDsGrid2'}, [
 					field(t('builder_type'), 'select', f.sfo_type, fsave('sfo_type', true), {key: 'sfo_type', options: ['browseedit', 'browse', 'edit', 'launch', 'subform'].map(function (x) { return [x, t('form_type_' + x)]; })}),
 					field(t('builder_status'), 'select', String(f.sfo_status === null || f.sfo_status === undefined || f.sfo_status === '' ? '1' : f.sfo_status), fsave('sfo_status', true),
-						{key: 'sfo_status', options: [['1', t('builder_status_1')], ['0', t('builder_status_0')], ['3', t('builder_status_3')]]})])
+						{key: 'sfo_status', options: [['1', t('builder_status_1')], ['0', t('builder_status_0')], ['2', t('builder_status_2')], ['3', t('builder_status_3')]]})])
 			], [
 				field(t('builder_breadcrumb'), 'text', f.sfo_breadcrumb_title, fsave('sfo_breadcrumb_title', true), {key: 'sfo_breadcrumb_title', mono: true, tip: t('builder_breadcrumb_help')})
 			]);
@@ -984,16 +1210,10 @@
 					field(t('builder_primary_key'), 'text', f.sfo_primary_key, fsave('sfo_primary_key', true), {key: 'sfo_primary_key', mono: true})]),
 				tablesList()
 			]);
-			if (['browse', 'browseedit'].indexOf(f.sfo_type) >= 0) section('list', t('ds_sec_list'), [
-				el('div', {'class': 'nuDsGrid2'}, [
-					field(t('builder_rows_per_page'), 'number', f.sfo_browse_rows_per_page, fsave('sfo_browse_rows_per_page', BROWSE), {key: 'sfo_browse_rows_per_page'}),
-					field(t('builder_redirect'), 'select', f.sfo_browse_redirect_form_id || '', fsave('sfo_browse_redirect_form_id'), {key: 'sfo_browse_redirect_form_id', search: true, options: options(D.forms, ['edit', 'browseedit'])})]),
-				el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsBrowseSql', onclick: function () { W.item = 'sfo_browse_sql'; openWork('code'); }},
-					[icon('bi-filetype-sql me-1'), t('builder_browse_sql')])]),
-				!BROWSE && D.list_url ? el('div', {'class': 'nuDsField'}, [el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDesignList', href: D.list_url}, [icon('bi-table me-1'), t('ds_design_list')])]) : null,
-				BROWSE && D.edit_url ? el('div', {'class': 'nuDsField'}, [el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDesignEdit', href: D.edit_url}, [icon('bi-window me-1'), t('ds_design_edit')])]) : null
-			]);
 		}
+		if (HASLIST && !D.userhome) section('list', t('ds_sec_list'), [el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsOpenListFly',
+			onclick: function () { openWork('list'); }}, [icon('bi-table me-1'), t('ds_list_open')])]),
+			BROWSE && D.edit_url ? el('div', {'class': 'nuDsField'}, [el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDesignEdit', href: D.edit_url}, [icon('bi-window me-1'), t('ds_design_edit')])]) : null]);
 		if (!BROWSE) section('layout', t('ds_sec_layout'), [
 			D.userhome ? null : field(t('form_layout'), 'select', layout(), function (v) {
 				if (v === 'grid') confirmAsk(t('builder_designer_convert'), function () { change('layout.convert', {}, true).catch(function () { /* said */ }); }, t('form_layout_grid'), 'btn btn-primary');
@@ -1003,7 +1223,7 @@
 				onchange: function (e) { tabOrderOn = e.target.checked; post({nuBuilderTabOrder: tabOrderOn}); }}), el('label', {'class': 'form-check-label', 'for': 'nuDsTabOrder', text: t('builder_taborder')})])
 		]);
 		var tools = [];
-		if (D.ai) tools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsAi', href: D.ai}, [icon('bi-stars me-1'), t('fai_button_change')]));
+		if (D.ai) tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsAi', onclick: function () { askAi(); }}, [icon('bi-stars me-1'), t('fai_ask')]));
 		if (D.formaccess && typeof window.nuFormAccessOpen === 'function') tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsFormAccess',
 			onclick: function () { window.nuFormAccessOpen(N.form.id); }}, [icon('bi-people me-1'), t('ds_form_access')]));
 		if (D.dataaccess) tools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDataAccess', href: D.dataaccess}, [icon('bi-shield-lock me-1'), t('da_title')]));
@@ -1017,6 +1237,335 @@
 		if (tools.length) section('tools', t('ds_sec_tools'), [el('div', {'class': 'nuDsTools'}, tools)]);
 		foot([el('p', {'class': 'nuDsHint', text: t(BROWSE ? 'ds_hint_list' : 'ds_hint')})]);
 	}
+	// ------------------------------------------------------------------ validation rules (0.8.812, core/form/nurules.php): list + editor
+	var VR_NOVAL = ['empty', 'nempty'];
+	function vrFields(scope) {
+		var R = D.rules, out;
+		if (scope) out = ((R.subs[scope] || {}).fields || []).slice();
+		else {
+			out = R.fields.slice();
+			Object.keys(R.subs || {}).forEach(function (sf) { out.push(['count:' + sf, 'COUNT(' + (R.subs[sf].label || sf) + ')', 'number']); });
+		}
+		return out;
+	}
+	function vrQuote(v) {
+		if (v && typeof v === 'object' && !Array.isArray(v) && v.f !== undefined) return String(v.f);
+		if (v && typeof v === 'object' && !Array.isArray(v) && v.h !== undefined) return '#' + v.h + '#';
+		if (v === 'today') return 'TODAY';
+		v = String(v == null ? '' : v);
+		return /^-?\d+(\.\d+)?$/.test(v) ? v : "'" + v.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+	}
+	var VR_SYM = {eq: '=', ne: '!=', lt: '<', gt: '>', le: '<=', ge: '>=', contains: 'CONTAINS', ncontains: 'NOT CONTAINS', starts: 'STARTS WITH', ends: 'ENDS WITH', regex: 'MATCHES', before: 'BEFORE', after: 'AFTER'};
+	/** A cond tree as text – as NuFormRules::text(). */
+	function vrText(c) {
+		if (!c) return '';
+		if (c.expr) return String(c.expr);
+		return (c.items || []).map(function (it) {
+			if (it.items) return '(' + vrText(it) + ')';
+			var f = String(it.f).indexOf('count:') === 0 ? 'COUNT(' + String(it.f).slice(6) + ')' : String(it.f), o = it.o, v = it.v;
+			if (o === 'empty') return f + ' IS EMPTY';
+			if (o === 'nempty') return f + ' IS NOT EMPTY';
+			if (o === 'between') return f + ' BETWEEN ' + vrQuote((v || [])[0]) + ' AND ' + vrQuote((v || [])[1]);
+			if (o === 'in' || o === 'nin') return f + (o === 'nin' ? ' NOT IN (' : ' IN (') + (Array.isArray(v) ? v : [v]).map(vrQuote).join(', ') + ')';
+			return f + ' ' + (VR_SYM[o] || o) + ' ' + vrQuote(v);
+		}).join(c.op === 'or' ? ' OR ' : ' AND ');
+	}
+	var VR_HASH = /^#([A-Za-z_][A-Za-z0-9_]{0,80})#$/;
+	/** A typed value: "#NAME#" = hash variable {h}, else the text. */
+	function vrParse(x) { x = String(x == null ? '' : x).trim(); var m = VR_HASH.exec(x); return m ? {h: m[1]} : x; }
+	function vrRaw(v) { return v && typeof v === 'object' && v.h !== undefined ? '#' + v.h + '#' : String(v == null ? '' : v); }
+	/** Tom Select search of the rule fields: plain "contains" (its fuzzy search offered #ID# for #E2E_C#). */
+	function vrScore(search) {
+		var q = String(search || '').trim().toLowerCase();
+		return function (item) { return !q || (String(item.value) + ' ' + String(item.text || '')).toLowerCase().indexOf(q) >= 0 ? 1 : 0; };
+	}
+	/** Hash variables to choose from: hash cookies of the page (nuSetProperty / globals) and the system variables (N.hashCatalog). */
+	function vrHashOptions() {
+		var out = [], seen = {};
+		function add(n, d) { var v = '#' + n + '#'; if (seen[v]) return; seen[v] = true; out.push({value: v, text: d || v}); }
+		Object.keys(N.globals || {}).concat(Object.keys(N.props || {})).forEach(function (n) { if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(n)) add(n, t('vr_hash_cookie')); });
+		((N.hashCatalog || {}).groups || []).forEach(function (g) { (g.items || []).forEach(function (it) { add(it[0], it[1]); }); });
+		return out;
+	}
+	function vrSimple(c) { return !c || (!c.expr && (c.items || []).every(function (it) { return !it.items; })); }
+
+	function rulesBox() {
+		var R = D.rules, list = R.list || [];
+		var rows = list.map(function (r, i) {
+			var sw = el('input', {type: 'checkbox', 'class': 'form-check-input', role: 'switch', checked: r.on ? true : null, 'aria-label': t('vr_on'), 'data-vr-on': r.id,
+				onchange: function (e) { var all = list.map(function (x) { return Object.assign({}, x); }); all[i].on = e.target.checked; vrSave(all); }});
+			return el('div', {'class': 'nuDsRule' + (r.on ? '' : ' nuDsRuleOff'), 'data-vr': r.id}, [
+				el('div', {'class': 'form-check form-switch m-0'}, [sw]),
+				el('button', {type: 'button', 'class': 'nuDsRuleMain', 'data-vr-edit': r.id, onclick: function () { ruleDialog(i); }}, [
+					el('span', {'class': 'badge me-1 ' + (r.kind === 'warn' ? 'text-bg-warning' : 'text-bg-danger'), text: t(r.kind === 'warn' ? 'vr_kind_warn' : 'vr_kind_error')}),
+					el('span', {'class': 'nuDsRuleName', text: r.name || r.msg}),
+					el('code', {'class': 'nuDsRuleCond', text: (r.when ? t('vr_when_short') + ' ' + vrText(r.when) + ' → ' : '') + vrText(r.check)})]),
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-link text-danger p-0', 'data-vr-del': r.id, title: t('delete'), 'aria-label': t('delete'),
+					onclick: function () { confirmAsk(fmt(t('vr_del_confirm'), r.name || r.msg), function () { vrSave(list.filter(function (x, j) { return j !== i; })); }, t('delete'), 'btn btn-danger'); }}, [icon('bi-trash')])]);
+		});
+		return el('div', {id: 'nuDsRules'}, [
+			rows.length ? el('div', {'class': 'nuDsRuleList'}, rows) : el('p', {'class': 'nuDsHint mb-2', text: t('vr_none')}),
+			el('div', {'class': 'd-flex flex-wrap gap-2'}, [
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsRuleAdd', onclick: function () { ruleDialog(-1); }}, [icon('bi-plus-lg me-1'), t('vr_add')]),
+				list.length ? el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsRuleTestAll', onclick: function () { vrTestAll(); }}, [icon('bi-check2-circle me-1'), t('vr_test_all')]) : null]),
+			el('div', {'class': 'small mt-2', id: 'nuDsRuleTestOut', 'aria-live': 'polite'})]);
+	}
+	function vrRefresh() {
+		var n = (D.rules.list || []).length, b = document.getElementById('nuDsRailRulesN');
+		if (b) { b.textContent = String(n); b.hidden = !n; }
+		renderFly();
+	}
+	function vrSave(all) {
+		return change('rules.save', {rules: all}, false).then(function (j) { D.rules.list = j.rules || []; vrRefresh(); return j; }).catch(function () { vrRefresh(); });
+	}
+	function vrTestRid() { return N.record_id && N.record_id !== '-1' ? String(N.record_id) : ''; }
+	function vrResults(box, j) {
+		box.textContent = '';
+		if (!j.ok) { box.appendChild(el('div', {'class': 'text-danger', text: j.error || 'Error'})); return; }
+		box.appendChild(el('div', {'class': 'text-body-secondary mb-1', text: fmt(t('vr_test_on'), j.record_id)}));
+		(j.results || []).forEach(function (x) {
+			box.appendChild(el('div', {'class': x.ok ? 'text-success' : 'text-danger', 'data-vr-res': x.ok ? 'ok' : 'fail'}, [icon(x.ok ? 'bi-check-circle me-1' : 'bi-x-circle me-1'),
+				(x.name ? x.name + ': ' : '') + (x.ok ? t('vr_test_ok') : x.message)]));
+		});
+	}
+	function vrTestAll() {
+		var box = document.getElementById('nuDsRuleTestOut');
+		api('rules.test', {rules: D.rules.list, record_id: vrTestRid()}).then(function (j) { vrResults(box, j); }).catch(function (e) { say(e.message, true); });
+	}
+
+	/** One condition editor: builder (all / any + rows) or expression. Returns {root, get(): cond | null | false (error), setScope(scope)}. */
+	function condEditor(idp, cond, scope, optional) {
+		var mode = vrSimple(cond) ? 'builder' : 'expr', rows = [];
+		var root = el('div', {'class': 'nuDsCond', id: idp});
+		var seg = el('div', {'class': 'btn-group btn-group-sm mb-2', role: 'group'});
+		['builder', 'expr'].forEach(function (m) {
+			var rid = idp + 'M' + m;
+			seg.appendChild(el('input', {type: 'radio', 'class': 'btn-check', name: idp + 'Mode', id: rid, value: m, checked: m === mode ? true : null,
+				onchange: function () { switchMode(m); }}));
+			seg.appendChild(el('label', {'class': 'btn btn-outline-secondary', 'for': rid, text: t(m === 'builder' ? 'vr_mode_builder' : 'vr_mode_expr')}));
+		});
+		var join = el('select', {'class': 'form-select form-select-sm w-auto', id: idp + 'Join', 'aria-label': t('vr_join')}, [
+			el('option', {value: 'and', text: t('vr_join_all')}), el('option', {value: 'or', text: t('vr_join_any')})]);
+		join.value = cond && cond.op === 'or' ? 'or' : 'and';
+		var rowBox = el('div', {'class': 'nuDsCondRows', id: idp + 'Rows'});
+		var addRow = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: idp + 'AddRow', onclick: function () { rows.push(row(null)); draw(); }}, [icon('bi-plus me-1'), t('vr_add_cond')]);
+		var builder = el('div', {'class': 'nuDsCondBuilder'}, [el('div', {'class': 'mb-2'}, [join]), rowBox, addRow]);
+		var expr = el('textarea', {'class': 'form-control form-control-sm font-monospace', rows: '3', id: idp + 'Expr', spellcheck: 'false', 'aria-label': t('vr_mode_expr'), placeholder: "status = 'shipped' AND ship_date IS NOT EMPTY"});
+		var exprHelp = el('div', {'class': 'form-text', text: t('vr_expr_help') + ' ' + t('vr_hash_help')});
+		var exprBox = el('div', {'class': 'nuDsCondExpr'}, [expr, exprHelp]);
+		var err = el('div', {'class': 'small text-danger mt-1', id: idp + 'Err'});
+		root.appendChild(seg); root.appendChild(builder); root.appendChild(exprBox); root.appendChild(err);
+
+		function opSel(v) {
+			var s = el('select', {'class': 'form-select form-select-sm', 'data-vr': 'o', 'aria-label': t('vr_operator')});
+			D.rules.ops.forEach(function (o) { s.appendChild(el('option', {value: o, text: t('vr_op_' + o)})); });
+			s.value = v || 'eq';
+			return s;
+		}
+		function fieldSel(v, extra) {
+			var s = el('select', {'class': 'form-select form-select-sm', 'data-vr': extra || 'f', 'aria-label': t('vr_field')});
+			vrFields(scope).forEach(function (f) { s.appendChild(el('option', {value: f[0], text: f[0] + (f[1] && f[1] !== f[0] ? ' – ' + f[1] : '')})); });
+			if (v) { if (!Array.prototype.some.call(s.options, function (o) { return o.value === v; })) s.appendChild(el('option', {value: v, text: v})); s.value = v; }
+			return s;
+		}
+		function row(leaf) {
+			leaf = leaf || {};
+			var v = leaf.v, kind = v && typeof v === 'object' && !Array.isArray(v) && v.f !== undefined ? 'field' : (v === 'today' ? 'today' : 'value');
+			var r = el('div', {'class': 'nuDsCondRow'});
+			var f = fieldSel(leaf.f), o = opSel(leaf.o);
+			var vk = el('select', {'class': 'form-select form-select-sm', 'data-vr': 'vk', 'aria-label': t('vr_value_kind')}, [
+				el('option', {value: 'value', text: t('vr_vk_value')}), el('option', {value: 'field', text: t('vr_vk_field')}), el('option', {value: 'today', text: t('vr_vk_today')})]);
+			vk.value = kind;
+			// one value (0.8.814): free text or a hash variable #NAME# – a searchable field that takes any text (Tom Select, create)
+			var one = el('input', {type: 'text', 'class': 'form-control form-control-sm', 'data-vr': 'one', 'aria-label': t('vr_value'), placeholder: t('vr_value_ph')});
+			var a = el('input', {type: 'text', 'class': 'form-control form-control-sm', 'data-vr': 'a', 'aria-label': t('vr_value')});
+			var b = el('input', {type: 'text', 'class': 'form-control form-control-sm', 'data-vr': 'b', 'aria-label': t('vr_value')});
+			var vf = fieldSel(kind === 'field' ? v.f : '', 'vf');
+			if (leaf.o === 'between' && Array.isArray(v)) { a.value = vrRaw(v[0]); b.value = vrRaw(v[1]); }
+			else if ((leaf.o === 'in' || leaf.o === 'nin') && Array.isArray(v)) a.value = v.map(vrRaw).join(', ');
+			else if (kind === 'value' && v !== undefined && v !== null) one.value = vrRaw(v);
+			var del = el('button', {type: 'button', 'class': 'btn btn-sm btn-link text-danger p-0', title: t('remove'), 'aria-label': t('remove'), onclick: function () { api2.destroy(); rows = rows.filter(function (x) { return x !== api2; }); draw(); }}, [icon('bi-x-lg')]);
+			[f, o, vk, vf, one, a, b, del].forEach(function (x) { r.appendChild(x); });
+			if (window.TomSelect) {             // the left side (0.8.815): a field or a hash variable #NAME# (hash cookies, #USER_ID# …)
+				var lcur = f.value, lopts = Array.prototype.map.call(f.options, function (op) { return {value: op.value, text: op.textContent}; }).concat(vrHashOptions());
+				new window.TomSelect(f, {items: lcur ? [lcur] : [], create: function (input) { input = input.trim(); return VR_HASH.test(input) ? {value: input, text: input} : false; },
+					createFilter: function (input) { return VR_HASH.test(String(input).trim()); }, addPrecedence: true, persist: false, maxItems: 1, options: lopts, valueField: 'value', labelField: 'text',
+					searchField: ['value', 'text'], score: vrScore, refreshThrottle: 0, dropdownParent: 'body', dropdownClass: 'ts-dropdown nuTsDropdown nuTsSmall', maxOptions: 400,
+					render: {option_create: function (d, e) { return '<div class="create">' + e(t('vr_value_use')).replace('%s', '<strong>' + e(d.input) + '</strong>') + '</div>'; }}});
+			}
+			if (window.TomSelect) {
+				var opts = vrHashOptions(), cur = one.value;
+				if (cur !== '' && !opts.some(function (x) { return x.value === cur; })) opts.unshift({value: cur, text: cur});
+				new window.TomSelect(one, {create: true, createOnBlur: true, addPrecedence: true, persist: false, maxItems: 1, options: opts, items: cur !== '' ? [cur] : [], valueField: 'value',
+					labelField: 'text', searchField: ['value', 'text'], score: vrScore, refreshThrottle: 0, dropdownParent: 'body', dropdownClass: 'ts-dropdown nuTsDropdown nuTsSmall', maxOptions: 300,
+					render: {option: function (d, e) { return '<div><code>' + e(d.value) + '</code>' + (d.text && d.text !== d.value ? ' <span class="small text-body-secondary">' + e(d.text) + '</span>' : '') + '</div>'; },
+						item: function (d, e) { return '<div>' + e(d.value) + '</div>'; },
+						option_create: function (d, e) { return '<div class="create">' + e(t('vr_value_use')).replace('%s', '<strong>' + e(d.input) + '</strong>') + '</div>'; }}});
+			}
+			function oneBox() { return one.tomselect ? one.tomselect.wrapper : one; }
+			function vis() {
+				var op = o.value, noVal = VR_NOVAL.indexOf(op) >= 0, multi = op === 'between' || op === 'in' || op === 'nin';
+				vk.hidden = noVal || multi;
+				if (multi && vk.value !== 'value') vk.value = 'value';
+				vf.hidden = noVal || multi || vk.value !== 'field';
+				oneBox().hidden = noVal || multi || vk.value !== 'value';
+				a.hidden = noVal || !multi;
+				b.hidden = op !== 'between';
+				a.placeholder = op === 'in' || op === 'nin' ? t('vr_in_ph') : '';
+				if (one.tomselect) one.tomselect.settings.placeholder = op === 'regex' ? '^[A-Z]{2}\\d+$' : t('vr_value_ph');
+			}
+			[o, vk].forEach(function (x) { x.addEventListener('change', vis); });
+			vis();
+			var api2 = {root: r, destroy: function () { [f, one].forEach(function (x) { if (x.tomselect) x.tomselect.destroy(); }); }, get: function () {
+				var op = o.value, out = {f: f.value, o: op};
+				if (VR_NOVAL.indexOf(op) >= 0) return out;
+				if (op === 'between') out.v = [vrParse(a.value), vrParse(b.value)];
+				else if (op === 'in' || op === 'nin') out.v = a.value.split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x !== ''; }).map(vrParse);
+				else out.v = vk.value === 'field' ? {f: vf.value} : (vk.value === 'today' ? 'today' : (op === 'regex' ? one.value.trim() : vrParse(one.value)));
+				return out;
+			}};
+			return api2;
+		}
+		function draw() {
+			rowBox.textContent = '';
+			if (!rows.length) rowBox.appendChild(el('p', {'class': 'nuDsHint mb-2', text: t(optional ? 'vr_when_none' : 'vr_cond_none')}));
+			rows.forEach(function (r) { rowBox.appendChild(r.root); });
+		}
+		function fromCond(c) { rows.forEach(function (x) { x.destroy(); }); rows = (c && c.items || []).map(function (it) { return row(it); }); join.value = c && c.op === 'or' ? 'or' : 'and'; draw(); }
+		function builderCond() { return {op: join.value, items: rows.map(function (r) { return r.get(); })}; }
+		function switchMode(m) {
+			err.textContent = '';
+			if (m === 'expr') { expr.value = rows.length ? vrText(builderCond()) : ''; mode = m; vis2(); return; }
+			if (expr.value.trim() === '') { fromCond(null); mode = m; vis2(); return; }
+			api('rules.parse', {expr: expr.value}).then(function (j) {
+				if (!j.ok) { err.textContent = j.error || ''; back('expr'); return; }
+				if (!vrSimple(j.tree)) { err.textContent = t('vr_nested'); back('expr'); return; }
+				fromCond(j.tree); mode = m; vis2();
+			});
+		}
+		function back(m) { var r = document.getElementById(idp + 'M' + m); if (r) r.checked = true; mode = m; vis2(); }
+		function vis2() { builder.hidden = mode !== 'builder'; exprBox.hidden = mode !== 'expr'; }
+		if (mode === 'builder') fromCond(cond); else expr.value = vrText(cond);
+		draw(); vis2();
+		return {root: root,
+			get: function () {
+				if (mode === 'expr') return expr.value.trim() === '' ? null : {expr: expr.value.trim()};
+				return rows.length ? builderCond() : null;
+			},
+			error: function (m) { err.textContent = m || ''; },
+			setScope: function (s) { var cur = this.get(); scope = s; if (mode === 'builder') fromCond(cur && !cur.expr ? {op: cur.op, items: cur.items.filter(function (it) { return String(it.f).charAt(0) === '#' || vrFields(s).some(function (f) { return f[0] === it.f; }); })} : null); }};
+	}
+
+	var vrDlg = null;
+	function ruleDialog(index) {
+		if (vrDlg) { vrDlg.root.querySelectorAll('select, input').forEach(function (x) { if (x.tomselect) x.tomselect.destroy(); }); vrDlg.root.remove(); vrDlg = null; }
+		var R = D.rules, r = index >= 0 ? JSON.parse(JSON.stringify(R.list[index])) : {id: '', on: true, kind: 'error', scope: '', msg: '', name: '', field: '', levels: [], perm: '', check: null, when: null};
+		var name = el('input', {type: 'text', 'class': 'form-control form-control-sm', id: 'nuDsRuleName', maxlength: '100', value: r.name || ''});
+		var msgF = el('textarea', {'class': 'form-control form-control-sm', id: 'nuDsRuleMsg', rows: '2', maxlength: '500', placeholder: t('vr_msg_ph')});
+		msgF.value = r.msg || '';
+		var kind = el('select', {'class': 'form-select form-select-sm', id: 'nuDsRuleKind'}, [el('option', {value: 'error', text: t('vr_kind_error_long')}), el('option', {value: 'warn', text: t('vr_kind_warn_long')})]);
+		kind.value = r.kind === 'warn' ? 'warn' : 'error';
+		var scope = el('select', {'class': 'form-select form-select-sm', id: 'nuDsRuleScope'}, [el('option', {value: '', text: t('vr_scope_record')})]);
+		Object.keys(R.subs || {}).forEach(function (sf) { scope.appendChild(el('option', {value: sf, text: fmt(t('vr_scope_rows'), R.subs[sf].label || sf)})); });
+		scope.value = r.scope || '';
+		var mark = el('select', {'class': 'form-select form-select-sm', id: 'nuDsRuleField'});
+		function fillMark() {
+			mark.textContent = '';
+			mark.appendChild(el('option', {value: '', text: t('vr_field_none')}));
+			if (scope.value === '') R.fields.forEach(function (f) { mark.appendChild(el('option', {value: f[0], text: f[0] + (f[1] ? ' – ' + f[1] : '')})); });
+			mark.value = scope.value === '' ? r.field || '' : '';
+			mark.disabled = scope.value !== '';
+		}
+		fillMark();
+		var check = condEditor('nuDsRuleCheck', r.check, r.scope || '', false);
+		var whenOn = el('input', {type: 'checkbox', 'class': 'form-check-input', id: 'nuDsRuleWhenOn', checked: r.when ? true : null});
+		var when = condEditor('nuDsRuleWhen', r.when, r.scope || '', true);
+		when.root.hidden = !r.when;
+		whenOn.addEventListener('change', function () { when.root.hidden = !whenOn.checked; });
+		scope.addEventListener('change', function () { fillMark(); check.setScope(scope.value); when.setScope(scope.value); });
+		var lvBox = el('div', {'class': 'nuDsRuleLevels border rounded p-2', id: 'nuDsRuleLevels'});
+		R.levels.forEach(function (l) {
+			var id = 'nuDsRuleLv_' + l[0].replace(/[^\w-]/g, '_');
+			lvBox.appendChild(el('div', {'class': 'form-check'}, [el('input', {type: 'checkbox', 'class': 'form-check-input', id: id, value: l[0], checked: (r.levels || []).indexOf(l[0]) >= 0 ? true : null}),
+				el('label', {'class': 'form-check-label', 'for': id, text: l[1]})]));
+		});
+		var perm = el('select', {'class': 'form-select form-select-sm', id: 'nuDsRulePerm'}, [el('option', {value: '', text: t('vr_perm_any')})]);
+		R.perms.forEach(function (p) { perm.appendChild(el('option', {value: p[0], text: p[1]})); });
+		if (r.perm && !R.perms.some(function (p) { return p[0] === r.perm; })) perm.appendChild(el('option', {value: r.perm, text: r.perm}));
+		perm.value = r.perm || '';
+		var on = el('input', {type: 'checkbox', 'class': 'form-check-input', role: 'switch', id: 'nuDsRuleOn', checked: r.on ? true : null});
+		var testRid = el('input', {type: 'text', 'class': 'form-control form-control-sm', id: 'nuDsRuleTestId', placeholder: t('vr_test_id_ph'), value: vrTestRid(), 'aria-label': t('vr_test_id')});
+		var testOut = el('div', {'class': 'small mt-2', id: 'nuDsRuleTestRes', 'aria-live': 'polite'});
+		// errors on top of the dialogue, always in sight (0.8.816): sticky, the dialogue scrolls up, the field gets the focus
+		var errAll = el('div', {'class': 'alert alert-danger py-2 px-3 small nuDsRuleErr', id: 'nuDsRuleErr', role: 'alert', hidden: true});
+		function showErr(text, target) {
+			errAll.textContent = '';
+			errAll.appendChild(icon('bi-exclamation-triangle-fill me-2'));
+			String(text || '').split('\n').forEach(function (line, i) { if (i) errAll.appendChild(el('br')); errAll.appendChild(document.createTextNode(line)); });
+			errAll.hidden = false;
+			var mb = vrDlg && vrDlg.root.querySelector('.modal-body');
+			if (mb) mb.scrollTop = 0;
+			if (target) {
+				target.classList.add(target.matches('input, textarea, select') ? 'is-invalid' : 'nuDsCondBad');
+				var f = target.matches('input, textarea, select') ? target : target.querySelector('input, textarea, select, button');
+				if (f) setTimeout(function () { try { f.focus({preventScroll: true}); } catch (e) { /* ignore */ } }, 50);
+			}
+		}
+		function clearErr() {
+			errAll.hidden = true; errAll.textContent = '';
+			[msgF, check.root].forEach(function (x) { x.classList.remove('is-invalid', 'nuDsCondBad'); });
+		}
+		msgF.addEventListener('input', function () { msgF.classList.remove('is-invalid'); });
+		['input', 'change'].forEach(function (ev) { check.root.addEventListener(ev, function () { check.root.classList.remove('nuDsCondBad'); }); });
+		function lbl(forId, text, tip) {
+			return el('label', {'class': 'form-label small mb-1', 'for': forId}, [text, tip ? el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'aria-label': tip, title: tip}, [icon('bi-info-circle')]) : null]);
+		}
+		function collect() {
+			var c = check.get(), w = whenOn.checked ? when.get() : null;
+			return {id: r.id, on: on.checked, name: name.value.trim(), msg: msgF.value.trim(), kind: kind.value, scope: scope.value, field: mark.value, check: c, when: w,
+				levels: Array.prototype.filter.call(lvBox.querySelectorAll('input:checked'), function () { return true; }).map(function (x) { return x.value; }), perm: perm.value};
+		}
+		var bTest = el('button', {type: 'button', 'class': 'btn btn-outline-secondary me-auto', id: 'nuDsRuleTest'}, [icon('bi-check2-circle me-1'), t('vr_test')]);
+		var bSave = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsRuleSave', text: t('save')});
+		bTest.addEventListener('click', function () {
+			var x = collect();
+			if (!x.id) x.id = 'test';
+			api('rules.test', {rules: [x], record_id: testRid.value.trim()}).then(function (j) { vrResults(testOut, j); }).catch(function (e) { testOut.textContent = e.message; });
+		});
+		bSave.addEventListener('click', function () {
+			var x = collect(), all = R.list.map(function (y) { return Object.assign({}, y); });
+			if (index >= 0) all[index] = x; else all.push(x);
+			clearErr();
+			if (!x.msg) { showErr(fmt(t('vr_err_msg'), x.name || t('vr_rule')), msgF); return; }     // the usual gaps at once, without the server
+			if (!x.check) { showErr(fmt(t('vr_err_check'), x.name || t('vr_rule')), check.root); return; }
+			bSave.disabled = true;
+			change('rules.save', {rules: all}, false).then(function (j) {
+				bSave.disabled = false;
+				D.rules.list = j.rules || [];
+				hide(vrDlg.root);
+				vrRefresh();
+			}).catch(function (e) { bSave.disabled = false; showErr(e.message, null); });
+		});
+		var body = [errAll,
+			el('div', {'class': 'nuDsGrid2'}, [el('div', {}, [lbl('nuDsRuleName', t('vr_name')), name]), el('div', {}, [lbl('nuDsRuleKind', t('vr_kind')), kind])]),
+			el('div', {'class': 'mt-2'}, [lbl('nuDsRuleMsg', t('vr_msg'), t('vr_msg_tip') + ' ' + t('vr_hash_help')), msgF]),
+			el('div', {'class': 'nuDsGrid2 mt-2'}, [el('div', {}, [lbl('nuDsRuleScope', t('vr_scope'), t('vr_scope_tip')), scope]), el('div', {}, [lbl('nuDsRuleField', t('vr_mark'), t('vr_mark_tip')), mark])]),
+			el('h3', {'class': 'fs-6 mt-3 mb-1', text: t('vr_check')}), el('div', {'class': 'form-text mt-0 mb-2', text: t('vr_check_hint')}), check.root,
+			el('div', {'class': 'form-check mt-3'}, [whenOn, el('label', {'class': 'form-check-label', 'for': 'nuDsRuleWhenOn', text: t('vr_when')})]), when.root,
+			el('details', {'class': 'mt-3', id: 'nuDsRuleWho', open: (r.levels || []).length || r.perm ? true : null}, [el('summary', {'class': 'small', text: t('vr_who')}),
+				el('div', {'class': 'form-text mb-1', text: t('vr_who_hint')}), lbl('nuDsRuleLevels', t('vr_levels')), lvBox, el('div', {'class': 'mt-2'}, [lbl('nuDsRulePerm', t('vr_perm')), perm])]),
+			el('div', {'class': 'form-check form-switch mt-3'}, [on, el('label', {'class': 'form-check-label', 'for': 'nuDsRuleOn', text: t('vr_on')})]),
+			el('div', {'class': 'd-flex gap-2 align-items-center mt-3'}, [el('span', {'class': 'small text-nowrap', text: t('vr_test_id')}), testRid]), testOut];
+		vrDlg = {root: modal('nuDsRuleDlg', t(index >= 0 ? 'vr_edit' : 'vr_add'), body, [bTest, bSave], true)};
+		vrDlg.root.addEventListener('hidden.bs.modal', function () {
+			if (!vrDlg) return;
+			vrDlg.root.querySelectorAll('select, input').forEach(function (x) { if (x.tomselect) x.tomselect.destroy(); });   // their dropdowns live in <body>
+			vrDlg.root.remove(); vrDlg = null;
+		});
+		show(vrDlg.root);
+		try { vrDlg.root.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (x) { window.nuBs.tooltip(x); }); } catch (e) { /* ignore */ }
+	}
+
 	// "Change column…" (as the builder, NuColumnChange): the column's type and length, the data checks, then ALTER TABLE
 	function openColumnChange(column) {
 		if (!(window.nuBs && window.nuBs.ready())) return;
@@ -1559,8 +2108,9 @@
 		if (W.kind !== 'code') { W.docs = {}; W.cm = null; }
 		work.innerHTML = '';
 		var tabs = el('div', {'class': 'nav nav-tabs nuDsWorkTabs', role: 'tablist'});
-		[['code', 'bi-code-square', 'ds_code'], ['history', 'bi-clock-history', 'ds_history'], ['changes', 'bi-file-diff', 'ds_changes']].forEach(function (x) {
+		[['code', 'bi-code-square', 'ds_code'], ['list', 'bi-table', 'ds_list_title'], ['history', 'bi-clock-history', 'ds_history'], ['changes', 'bi-file-diff', 'ds_changes']].forEach(function (x) {
 			if (x[0] === 'changes' && !DR) return;
+			if (x[0] === 'list' && !HASLIST) return;
 			tabs.appendChild(el('button', {type: 'button', role: 'tab', 'class': 'nav-link' + (W.kind === x[0] ? ' active' : ''), id: 'nuDsWorkTab_' + x[0], 'aria-selected': W.kind === x[0] ? 'true' : 'false',
 				onclick: function () { if (W.kind === x[0]) return; if (W.kind === 'code' && codeDirty().length && !window.confirm(t('ds_code_unsaved'))) return; W.kind = x[0]; renderWork(); }}, [icon(x[1] + ' me-1'), t(x[2])]));
 		});
@@ -1572,6 +2122,7 @@
 		renderRail();
 		if (W.kind === 'code') workCode(body, tools);
 		else if (W.kind === 'history') workHistory(body);
+		else if (W.kind === 'list') renderListFly(body);
 		else workChanges(body, tools);
 	}
 	function workCode(body, tools) {
@@ -2290,7 +2841,7 @@
 			renderPanel();
 			if (v0.get('dsdelete') === '1') deleteForm();
 			if (v0.get('dsitem')) W.item = v0.get('dsitem');      // a code part to open first (0.8.676: form info → Edit the SQL)
-			if (['code', 'history'].indexOf(v0.get('dswork')) >= 0) openWork(v0.get('dswork'));
+			if (['code', 'history'].indexOf(v0.get('dswork')) >= 0 || (v0.get('dswork') === 'list' && HASLIST)) openWork(v0.get('dswork'));
 			return;
 		}
 		renderPanel();
@@ -2301,9 +2852,9 @@
 		// old builder links (0.8.670, NuDesign::fromBuilder): an object, Code / History / Changes, Structure / Add
 		var o0 = v0.get('dsobj') ? objById(v0.get('dsobj')) : null;
 		if (o0) setTimeout(function () { var tb = o0.sob_all_zzzzsys_tab_id; if (tb) selectTabById(tb); post({nuBuilderSelect: o0.sob_all_id}); }, 400);
-		if (v0.get('dsfly')) openFly(v0.get('dsfly') === 'add' ? 'add' : 'structure');
+		if (v0.get('dsfly') === 'list' && HASLIST) openWork('list'); else if (v0.get('dsfly')) openFly(['add', 'rules'].indexOf(v0.get('dsfly')) >= 0 ? v0.get('dsfly') : 'structure');
 		if (v0.get('dsitem')) W.item = v0.get('dsitem');
-		if (['code', 'history'].indexOf(v0.get('dswork')) >= 0 || (v0.get('dswork') === 'changes' && DR)) openWork(v0.get('dswork'));
+		if (['code', 'history'].indexOf(v0.get('dswork')) >= 0 || (v0.get('dswork') === 'changes' && DR) || (v0.get('dswork') === 'list' && HASLIST)) openWork(v0.get('dswork'));
 		setTimeout(function () {
 			showHidden();
 			var v = null;

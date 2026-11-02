@@ -59,7 +59,7 @@
 .nuHomeChip:hover, .nuHomeChip:focus-visible { color: var(--bs-body-color); border-color: color-mix(in srgb, var(--nu-gc, var(--bs-primary)) 50%, transparent); }
 #nuHomeView .nuHomeChip .nuHomeIcon { width: 1.7rem; height: 1.7rem; font-size: .85rem; border-radius: 50%; }
 .nuHomeChipLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#nuHomeView.nuHomeSearching .nuHomeStrip, #nuHomeView.nuHomeFavOnly .nuHomeStrip[data-nu-strip="fav"] { display: none !important; }
+#nuHomeView.nuHomeSearching .nuHomeStrip { display: none !important; }
 
 /* ------------------------------------------------------------------ groups, tabs, sidebar */
 .nuHomeGroup { margin-bottom: var(--nu-sec); }
@@ -320,10 +320,6 @@
 	.nuHomeTHead .nuHomeThHint { display: none; }
 }
 
-/* favourites only: other tiles and groups / tabs without favourites are hidden (not while searching) */
-#nuHomeView.nuHomeFavOnly:not(.nuHomeSearching) .nuHomeTileWrap:not(:has([data-nu-fav])),
-#nuHomeView.nuHomeFavOnly:not(.nuHomeSearching) .nuHomeGroup:not(:has([data-nu-fav])) { display: none !important; }
-
 @media (prefers-reduced-motion: reduce) {
 	#nuHomeView .nuHomeTileWrap, #nuHomeView .nuHomeIcon, .nuHomeVp, .nuHomeTip { transition: none !important; }
 	#nuHomeView .nuHomeTileWrap:hover, #nuHomeView .nuHomeTile:hover .nuHomeIcon { transform: none !important; }
@@ -481,3 +477,6 @@
 .nuHomeSkBtn.nuHomeSkOn { color: var(--bs-primary); border-color: var(--bs-primary); position: relative; }
 .nuHomeSkBtn.nuHomeSkOn::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--bs-primary); }
 .nuHomeSkMenu { min-width: 240px; }
+
+/* a form tile in maintenance (0.8.808) for someone who cannot open it: greyed, the badge says why */
+[data-nu-maint="1"] .nuHomeIcon, [data-nu-maint="1"] .nuHomeLabel, [data-nu-maint="1"] .nuHomeHint { opacity: .55; filter: grayscale(1); }

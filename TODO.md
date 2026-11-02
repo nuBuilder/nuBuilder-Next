@@ -27,6 +27,17 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
 
+## 0.8.803–0.8.823 – please verify
+- [ ] Validation rules (0.8.812–0.8.816): on a real form a rule in design mode (builder and expression), Publish, then save as a user –
+      error stops, warning asks "Save anyway?", the marked field turns red / yellow while typing; sub-form rows and COUNT(sub-form) with
+      rows added / deleted before saving; formatted numbers and dates (raw values compared); rules per access level / permission item;
+      translated messages with #field#; hash cookies set by the form's own JavaScript (nuSetProperty) on the left and right side.
+- [ ] Form status Maintenance (0.8.808) with nuBuilder Forte on the same database (Forte shows it as "Disabled").
+- [ ] Form with AI (0.8.810): a small app with a real AI tool (format nunext-app-1), changes from design mode into the open draft.
+- [ ] Browse list (0.8.820–0.8.823): nuBuilder Forte's list settings on forms made in Forte – row height, multi-line titles, columns that
+      fill the width (now on for the sample forms), row click target (new tab / popup / current breadcrumb).
+- [ ] CI (0.8.821): the SQL Server job with Microsoft's ODBC driver on GitHub Actions.
+
 ## 0.8.768–0.8.801 – please verify
 - [ ] SQL Server (owner's SQL Server Express): browse lists, sub-forms and data exports after the ORDER BY fix (0.8.792); the
       Compatibility check card "SQL that SQL Server does not understand" on the owner's forms (0.8.791); a Form cloner dump for SQL
@@ -312,7 +323,6 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 ### Nice to have (1–4)
 - [ ] **4 · Installable app (PWA)** – icon on the phone, faster start; offline only for reading.
 - [ ] **4 · "Who is editing" presence** – show that someone else has the record open (pairs with concurrent-edit protection).
-- [ ] **4 · AI help in the form builder** – create a form / table from a description (goes beyond the prompt generator).
 - [ ] **3 · File storage on S3 / WebDAV** instead of the server folder / database.
 - [ ] **3 · Multi-tenancy** – several customers separated in one installation (proposal with options: section "Multi-tenancy" above).
 - [ ] **2 · GraphQL API** besides REST.

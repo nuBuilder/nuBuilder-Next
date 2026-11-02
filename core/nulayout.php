@@ -290,7 +290,8 @@ function nu_sidebar(): void
 		. implode('', array_map(static fn($k, $v) => '<input type="hidden" name="' . h($k) . '" value="' . h($v) . '">', array_keys($extra), $extra)) . $inner . '</form>';
 	$item = static function (array $it) use ($post): string {
 		$body = '<span class="nuSbIcon"' . ($it['color'] !== '' ? ' data-nu-color="' . h($it['color']) . '"' : '') . '><i class="bi ' . h($it['icon']) . '" aria-hidden="true"></i></span>'
-			. '<span class="nuSbLabel">' . h($it['label']) . '</span>';
+			. '<span class="nuSbLabel">' . h($it['label']) . '</span>'
+			. (!empty($it['badge']) ? '<span class="badge text-bg-' . h((string)$it['badge'][1]) . ' nuSbBadge">' . h((string)$it['badge'][0]) . '</span>' : '');   // a form in maintenance (0.8.808)
 		$cur = $it['current'] ? ' aria-current="page"' : '';
 		$link = $it['post'] !== null
 			? '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="nuSbForm nuSbGrow">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h((string)$it['post']) . '">'

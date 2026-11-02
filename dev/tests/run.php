@@ -559,6 +559,10 @@ foreach (NuHelpLink::MAP + ['home' => 'home-page', 'home ' => 'navigation-p'] as
 	if (!isset($helpIds[$id]) || (trim($route) !== 'home' && !in_array($route, $m[1], true))) $f1Bad[] = $route . ' → ' . $id;
 }
 check('help: F1 links of the pages (NuHelpLink)', !$f1Bad && count(NuHelpLink::MAP) > 40, implode(', ', $f1Bad));
+// page numbers (0.8.804): every route of NuPageNo::MAP exists, numbers are P<nnn>[.<n>], parse() reads the typed forms
+$pnoBad = array_keys(array_filter(NuPageNo::MAP, static fn($e, $n) => !in_array($e[0], $m[1], true) || !preg_match('/^\d{3}(\.\d)?$/', (string)$n), ARRAY_FILTER_USE_BOTH));
+check('page numbers: every route exists (NuPageNo)', !$pnoBad && count(NuPageNo::MAP) > 60, implode(', ', $pnoBad));
+check('page numbers: parse', NuPageNo::parse('P100') === '100' && NuPageNo::parse(' p 1 ') === '001' && NuPageNo::parse('P700.2') === '700.2' && NuPageNo::parse('100') === null && NuPageNo::parse('P1000') === null);
 
 // function reference of the Help page (0.8.399): every function of the code is documented, and nothing that is gone
 $ref = NuFnRef::load();
@@ -822,6 +826,36 @@ check('NuDB::uniqueOrder', NuDB::uniqueOrder('nu_pk, nu_pk') === 'nu_pk' && NuDB
 // 0.8.794: form cloner dump for MySQL or SQL Server
 check('cloner literal: MySQL', NuCloner::literal("it's a \\ path", 'mysql') === "'it''s a \\\\ path'", NuCloner::literal("it's a \\ path", 'mysql'));
 check('cloner literal: SQL Server', NuCloner::literal("it's ä \\ path", 'sqlsrv') === "N'it''s ä \\ path'");
+
+// 0.8.812: validation rules – expressions and evaluation (NuFormRules)
+$vp = NuFormRules::parse("status = 'shipped' AND (ship_date IS EMPTY OR qty <= 0) AND code IN ('a', 'b') AND COUNT(items) >= 1 AND d BEFORE TODAY AND n BETWEEN 1 AND 9 AND x MATCHES '^\\d+$' AND a != b");
+check('rules parse', is_array($vp) && $vp['op'] === 'and' && count($vp['items']) === 8 && $vp['items'][1]['op'] === 'or' && $vp['items'][3]['f'] === 'count:items'
+	&& $vp['items'][2]['v'] === ['a', 'b'] && $vp['items'][4]['v'] === 'today' && $vp['items'][5]['v'] === ['1', '9'] && $vp['items'][7]['v'] === ['f' => 'b'], json_encode($vp));
+check('rules parse errors', is_string(NuFormRules::parse("a = 'x")) && is_string(NuFormRules::parse('a = 1 AND')) && is_string(NuFormRules::parse('(a = 1')) && is_string(NuFormRules::parse('a BETWEEN 1')));
+check('rules text round trip', NuFormRules::parse(NuFormRules::text(['op' => 'and', 'items' => $vp['items']])) == ['op' => 'and', 'items' => $vp['items']], NuFormRules::text(['op' => 'and', 'items' => $vp['items']]));
+$vk = ['status' => 'text', 'qty' => 'number', 'd' => 'date', 'ok' => 'checkbox'];
+$vh = static fn(string $e, array $v, array $c = []) => NuFormRules::holds(NuFormRules::parse($e), $v, $vk, $c);
+check('rules evaluate', $vh("status = 'Shipped'", ['status' => 'shipped ']) && !$vh('qty > 10', ['qty' => '9.5']) && $vh('qty > 10', ['qty' => '10.5']) && $vh('qty < 100', ['qty' => '20'])
+	&& $vh('ok IS EMPTY', ['ok' => '0']) && $vh("d AFTER '2020-01-01'", ['d' => '2020-02-01']) && !$vh('d BEFORE TODAY', ['d' => '']) && $vh('COUNT(items) >= 2', [], ['items' => 2])
+	&& $vh("status NOT IN ('x', 'y')", ['status' => 'z']) && $vh("status MATCHES '^[A-Z]{2}\\d+$'", ['status' => 'ab12']) && $vh('qty = status', ['qty' => '3', 'status' => '3.0'])
+	&& $vh("status CONTAINS 'IPP'", ['status' => 'shipped']) && $vh("status ENDS WITH 'PED'", ['status' => 'shipped']) && !$vh("status STARTS WITH 'x'", ['status' => 'shipped']));
+
+// 0.8.814: hash variables in rules
+$hp = NuFormRules::parse("qty <= #MAX_QTY# AND status IN ('a', #ST#)");
+check('rules parse hash', is_array($hp) && $hp['items'][0]['v'] === ['h' => 'MAX_QTY'] && $hp['items'][1]['v'][1] === ['h' => 'ST'] && NuFormRules::text($hp) === "qty <= #MAX_QTY# AND status IN ('a', #ST#)", json_encode($hp));
+NuFormRules::$hash = ['MAX_QTY' => '10', 'st' => 'b'];
+check('rules hash values', NuFormRules::holds($hp, ['qty' => '9', 'status' => 'b'], ['qty' => 'number']) && !NuFormRules::holds($hp, ['qty' => '11', 'status' => 'b'], ['qty' => 'number'])
+	&& NuFormRules::hashValue('max_qty') === '10' && NuFormRules::hashValue('NOPE') === null && NuFormRules::hashNames([['check' => $hp, 'msg' => 'over #MAX_QTY# (#qty#)']]) === ['MAX_QTY', 'ST', 'qty']);
+NuFormRules::$hash = [];
+
+// 0.8.815: hash variable on the left side
+$hl = NuFormRules::parse("#MY_COOKIE# = 123 AND #ACCESS_LEVEL_CODE# IN ('sales', 'boss')");
+NuFormRules::$hash = ['MY_COOKIE' => '123', 'ACCESS_LEVEL_CODE' => 'boss'];
+check('rules hash on the left', is_array($hl) && $hl['items'][0]['f'] === '#MY_COOKIE#' && NuFormRules::holds($hl, [], [])
+	&& NuFormRules::text($hl) === "#MY_COOKIE# = 123 AND #ACCESS_LEVEL_CODE# IN ('sales', 'boss')" && in_array('MY_COOKIE', NuFormRules::hashNames([['check' => $hl, 'msg' => '']]), true), json_encode($hl));
+NuFormRules::$hash = ['MY_COOKIE' => '124'];
+check('rules hash on the left fails', !NuFormRules::holds($hl, [], []));
+NuFormRules::$hash = [];
 
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";

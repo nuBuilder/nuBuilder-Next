@@ -105,6 +105,12 @@ final class NuDraftStore
 		if ($php !== null) foreach ($hooks as $h) if (array_key_exists($h, $php)) $this->upsertPhp($this->formId . '_' . $h, $php[$h] === null ? null : (string)$php[$h]);
 	}
 
+	/** Validation rules (0.8.812): sfo_json nunext.rules of the draft (already cleaned by NuFormRules::clean). */
+	public function rulesSave(array $rules): void
+	{
+		$this->snap['form'] = self::set($this->snap['form'], ['sfo_json' => NuFormMeta::mergeNunextJson($this->snap['form']['sfo_json'] ?? null, ['rules' => $rules ?: null])]);
+	}
+
 	/** @return string the object id (new: nu_id()) */
 	public function objectSave(string $objectId, array $fields, ?array $grid, ?array $events, bool $hasLookupPhp, ?string $lookupPhp): string
 	{

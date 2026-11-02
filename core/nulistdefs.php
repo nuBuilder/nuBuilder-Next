@@ -429,7 +429,7 @@ final class NuListDefs
 		$designer = NuAcl::can(NuAcl::FORM_FORM);
 		$ga = !empty($u['globeadmin']);
 		$canStatus = NuFormDraft::canEdit() && !NuImpersonate::readOnly();
-		$status = ['1' => 'builder_status_1', '0' => 'builder_status_0', '3' => 'builder_status_3'];
+		$status = ['1' => 'builder_status_1', '0' => 'builder_status_0', '2' => 'builder_status_2', '3' => 'builder_status_3'];
 		$st = "COALESCE(NULLIF(f.sfo_status, ''), '1')";
 		$where = ["f.zzzzsys_form_id NOT LIKE 'nu%'"];
 		$params = [];
@@ -452,7 +452,7 @@ final class NuListDefs
 			'actions' => ['label' => '', 'select' => ['lv_draft_id' => $dId], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'if' => static fn() => $designer, 'text' => static fn($r) => '', 'noexport' => true,
 				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('builder', ['f' => $r['__id'], 'draft' => ($r['lv_draft_id'] ?? null) ? '1' : null])) . '" title="' . h(t('ds_mode')) . '" aria-label="' . h(t('ds_mode')) . '"><i class="bi bi-tools"></i></a>'
 					. (($r['lv_draft_id'] ?? null) ? ' <a class="btn btn-sm btn-outline-warning" href="' . h(nu_url('form', ['f' => $r['__id'], 'draft' => (string)$r['lv_draft_id']])) . '" target="_blank" rel="noopener" title="' . h(t('builder_draft_preview')) . '" aria-label="' . h(t('builder_draft_preview')) . '"><i class="bi bi-cone-striped"></i></a>' : '')
-					. ($ga ? ' <a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('cloner', ['f' => $r['__id']])) . '" title="' . h(t('cl_title')) . '" aria-label="' . h(t('cl_title')) . '"><i class="bi bi-files"></i></a>' : '')],
+],   // the copy button of each row went in 0.8.809 – Form cloner: Forms → Tools
 			'description' => self::col('sfo_description', 'f.sfo_description', t('builder_description')) + ['main' => true, 'locked' => true],
 			'code' => self::col('sfo_code', 'f.sfo_code', t('builder_code'), 'small text-body-secondary'),
 			'type' => ['label' => t('builder_type'), 'select' => ['sfo_type' => 'f.sfo_type', 'lv_page_code' => 'f.sfo_code'], 'sort' => 'f.sfo_type',
@@ -478,12 +478,12 @@ final class NuListDefs
 				}],
 			'layout' => ['label' => t('form_layout'), 'select' => ['sfo_json' => 'f.sfo_json'], 'sort' => null, 'class' => 'small',
 				'text' => static fn($r) => t('form_layout_' . (NuFormMeta::nunextJson($r['sfo_json'])['layout'] ?? 'absolute'))],
-			'status' => ['label' => t('builder_status'), 'select' => ['lv_status' => $st], 'sort' => $st,
+			'status' => ['label' => t('builder_status'), 'select' => ['lv_status' => $st, 'lv_st_code' => 'f.sfo_code'], 'sort' => $st,
 				'text' => static fn($r) => t($status[(string)$r['lv_status']] ?? 'builder_status_1'),
 				// form designers: right-click / long press = menu to change the status (0.8.575, assets/js/nuformstatus.js → builderapi form.save)
-				'html' => static fn($r) => ($canStatus ? '<span class="nuFormStatus" tabindex="0" data-nu-form="' . h((string)$r['__id']) . '" data-nu-st="' . h((string)$r['lv_status']) . '" title="' . h(t('forms_status_change_tip')) . '">' : '')
+				'html' => static fn($r) => ($canStatus ? '<span class="nuFormStatus" tabindex="0" data-nu-form="' . h((string)$r['__id']) . '" data-nu-label="' . h((string)$r['lv_st_code']) . '" data-nu-st="' . h((string)$r['lv_status']) . '" title="' . h(t('forms_status_change_tip')) . '">' : '')
 					. self::badge(t($status[(string)$r['lv_status']] ?? 'builder_status_1'), match ((string)$r['lv_status']) {
-					'0' => 'bg-warning-subtle text-warning-emphasis', '3' => 'bg-secondary-subtle text-secondary-emphasis', default => 'bg-success-subtle text-success-emphasis' }) . ($canStatus ? '</span>' : '')],
+					'0' => 'bg-warning-subtle text-warning-emphasis', '2' => 'bg-danger-subtle text-danger-emphasis', '3' => 'bg-secondary-subtle text-secondary-emphasis', default => 'bg-success-subtle text-success-emphasis' }) . ($canStatus ? '</span>' : '')],
 			'draft' => ['label' => t('forms_col_draft'), 'select' => ['lv_draft_by' => $dBy], 'sort' => $drafts ? $dBy : null, 'class' => 'small', 'if' => static fn() => $drafts,
 				'text' => static fn($r) => $r['lv_draft_by'] !== null ? t('forms_draft_by', (string)$r['lv_draft_by']) : '',
 				'html' => static fn($r) => $r['lv_draft_by'] !== null ? self::badge(t('forms_draft_by', (string)$r['lv_draft_by']), 'bg-warning-subtle text-warning-emphasis') : ''],

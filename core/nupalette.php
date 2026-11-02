@@ -60,7 +60,9 @@ final class NuPalette
 		foreach (nu_forms() as $id => $f) {
 			if ($f['type'] === 'subform' || $f['system']) continue;    // nuBuilder's own forms: reached through the pages above
 			if (!$ga && !NuAcl::can((string)$id)) continue;
-			$add('f:' . $id, self::name((string)$f['description'], (string)$f['code']), t('pal_group_forms'), 'bi-ui-checks-grid', ['url' => nu_url('form', ['f' => (string)$id])], $f['code']);
+			$st = NuFormStatus::of((string)$id);                          // 0.8.808: archived forms only for those who may open them, maintenance named
+			if ($st === NuFormStatus::ARCHIVED && NuFormStatus::blocked($st)) continue;
+			$add('f:' . $id, self::name((string)$f['description'], (string)$f['code']), t('pal_group_forms'), 'bi-ui-checks-grid', ['url' => nu_url('form', ['f' => (string)$id])], $f['code'] . ($st === NuFormStatus::MAINT ? ' · ' . t('builder_status_2') : ''));
 		}
 		if (!$ga && !NuAcl::can(NuAcl::FORM_PROCEDURE)) return self::reports($out, $ga);
 		try {

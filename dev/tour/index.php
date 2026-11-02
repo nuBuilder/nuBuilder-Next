@@ -56,8 +56,27 @@ header('Content-Type: text/html; charset=utf-8');
 	header h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
 	.ver { font-size: 14px; color: var(--muted); }
 	.ver b { color: var(--ink); font-weight: 600; }
-	.alpha { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 16px; }
-	.alpha strong { white-space: nowrap; }
+	/* intro (shown once when the page opens) and the enlarged picture – native <dialog> */
+	dialog { border: 0; padding: 0; color: var(--ink); background: transparent; }
+	dialog::backdrop { background: rgba(10, 12, 16, .72); }
+	.intro { width: min(560px, calc(100vw - 32px)); background: var(--card); border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+	.intro .in { padding: 24px 24px 20px; }
+	.intro h2 { margin: 0 0 4px; font-size: 20px; font-weight: 650; }
+	.intro .ver { display: block; margin-bottom: 14px; }
+	.intro .alpha { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); border-radius: 10px; padding: 12px 14px; font-size: 15px; }
+	.intro .alpha strong { display: block; margin-bottom: 4px; }
+	.intro .go { display: flex; justify-content: flex-end; margin-top: 18px; }
+	.btn { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 9px 18px; background: var(--accent); color: #fff; cursor: pointer; }
+	.btn:focus-visible, .zoom:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+	.shot img { cursor: zoom-in; }
+	.lightbox { max-width: 100vw; max-height: 100vh; width: 100vw; height: 100vh; margin: 0; }
+	.lightbox[open] { display: flex; align-items: center; justify-content: center; }
+	.lightbox img { max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); width: auto; height: auto; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.5); cursor: zoom-out; }
+	@media (max-width: 640px) {   /* phones: a landscape screenshot at twice the screen width, scrolled sideways */
+		.lightbox[open].wide { display: block; overflow: auto; }
+		.lightbox.wide img { max-width: none; max-height: none; width: 200vw; margin: 16px; border-radius: 6px; }
+	}
+	.lightbox .x { position: fixed; top: 12px; right: 12px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); color: #111; font-size: 22px; line-height: 1; cursor: pointer; }
 	.stage { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 	.shot { position: relative; background: var(--shot); display: flex; justify-content: center; align-items: center; gap: 24px; padding: 18px; min-height: 240px; }
 	.shot img { display: block; max-width: 100%; max-height: max(320px, calc(100vh - 300px)); width: auto; height: auto; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.14); border: 1px solid var(--line); }
@@ -88,7 +107,6 @@ header('Content-Type: text/html; charset=utf-8');
 		.nav.prev { left: 4px; } .nav.next { right: 4px; }
 		.text { padding: 12px 14px 14px; }
 		.text h2 { font-size: 18px; }
-		.alpha { flex-direction: column; gap: 2px; }
 	}
 	@media (prefers-reduced-motion: no-preference) { .slide.on .shot img { animation: in .25s ease-out; } @keyframes in { from { opacity: .4; } to { opacity: 1; } } }
 </style>
@@ -99,10 +117,6 @@ header('Content-Type: text/html; charset=utf-8');
 		<h1>nuBuilder Next – a short tour</h1>
 		<span class="ver"><?= $version !== '' ? 'Screenshots of version <b>' . $h($version) . '</b>' : '' ?><?= $date !== '' ? ' · taken ' . $h($date) : '' ?></span>
 	</header>
-	<div class="alpha" role="note">
-		<strong>Alpha version</strong>
-		<span>nuBuilder Next is still in development. Everything shown here is subject to change – pages, names and features may look different or work differently in the next version, and some may be removed. Do not use it for important data yet without backups.</span>
-	</div>
 
 	<main class="stage" aria-roledescription="carousel" aria-label="Screenshots of nuBuilder Next">
 		<?php foreach ($slides as $i => [$imgs, $title, $text, $kind]): ?>
@@ -134,8 +148,33 @@ header('Content-Type: text/html; charset=utf-8');
 		<span>Screenshots from a test installation with the sample applications.</span>
 	</footer>
 </div>
+<dialog class="intro" id="intro" aria-labelledby="introT">
+	<div class="in">
+		<h2 id="introT">nuBuilder Next – a short tour</h2>
+		<span class="ver"><?= $version !== '' ? 'Screenshots of version <b>' . $h($version) . '</b>' : '' ?><?= $date !== '' ? ' · taken ' . $h($date) : '' ?></span>
+		<div class="alpha" role="note">
+			<strong>Alpha version</strong>
+			nuBuilder Next is still in development. Everything shown here is subject to change – pages, names and features may look different or work differently in the next version, and some may be removed. Do not use it for important data yet without backups.
+		</div>
+		<form method="dialog" class="go"><button class="btn" id="introGo" autofocus>Start the tour</button></form>
+	</div>
+</dialog>
+<dialog class="lightbox" id="zoom" aria-label="Enlarged screenshot"><img id="zoomImg" alt=""><button type="button" class="x" id="zoomX" aria-label="Close">×</button></dialog>
 <script>
 (function () {
+	// intro: once each time the page is opened (not remembered); the slides start after it is closed
+	var intro = document.getElementById('intro');
+	if (intro && intro.showModal) intro.showModal();
+	// enlarged picture: click / tap a screenshot; click, Esc or × closes it
+	var zoom = document.getElementById('zoom'), zImg = document.getElementById('zoomImg');
+	document.querySelectorAll('.shot img').forEach(function (im) {
+		im.tabIndex = 0; im.setAttribute('role', 'button'); im.setAttribute('aria-label', 'Enlarge: ' + im.alt);
+		var open = function () { if (!zoom.showModal) return; zImg.src = im.currentSrc || im.src; zImg.alt = im.alt; zoom.classList.toggle('wide', im.naturalWidth > im.naturalHeight); zoom.showModal(); zoom.scrollTo(0, 0); };
+		im.addEventListener('click', open);
+		im.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+	});
+	zoom.addEventListener('click', function () { zoom.close(); });
+	var modalOpen = function () { return (intro && intro.open) || zoom.open; };
 	var slides = document.querySelectorAll('.slide'), thumbs = document.querySelectorAll('.thumbs button'), n = slides.length, cur = 0;
 	slides.forEach(function (s, i) {
 		var shot = s.querySelector('.shot');
@@ -159,7 +198,7 @@ header('Content-Type: text/html; charset=utf-8');
 	}
 	thumbs.forEach(function (b) { b.addEventListener('click', function () { go(+b.getAttribute('data-go')); }); });
 	document.addEventListener('keydown', function (e) {
-		if (e.altKey || e.ctrlKey || e.metaKey) return;
+		if (e.altKey || e.ctrlKey || e.metaKey || modalOpen()) return;
 		if (e.key === 'ArrowRight' || e.key === 'PageDown') { go(cur + 1); e.preventDefault(); }
 		else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { go(cur - 1); e.preventDefault(); }
 		else if (e.key === 'Home') { go(0); e.preventDefault(); }
@@ -168,7 +207,7 @@ header('Content-Type: text/html; charset=utf-8');
 	var sx = null, sy = 0, stage = document.querySelector('.stage');
 	stage.addEventListener('touchstart', function (e) { if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, { passive: true });
 	stage.addEventListener('touchend', function (e) {
-		if (sx === null) return;
+		if (sx === null || modalOpen()) return;
 		var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
 		if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(cur + (dx < 0 ? 1 : -1));
 	});

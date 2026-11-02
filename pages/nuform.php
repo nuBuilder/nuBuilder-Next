@@ -33,6 +33,9 @@ if ((string)($meta->form['sfo_status'] ?? '') === '0' && !$meta->isDraft() && !N
 	http_response_code(403);
 	nu_fatal(t('draft_not_published'), $meta->description(), true);
 }
+// Maintenance / Archived (0.8.808, core/nuformstatus.php): users get a message page; the globeadmin and form designers open the form
+$formStatus = NuFormStatus::norm($meta->form['sfo_status'] ?? '');
+if (!$meta->isDraft()) NuFormStatus::gate($meta->id, $formStatus);
 // form type "page" (0.8.387): an iframe inside nuBuilder Next or a redirect to the page's own output (core/nupage.php)
 if ($meta->type() === 'page') NuPage::wrapper($meta);
 
@@ -186,6 +189,8 @@ $client = [
 		'id' => $meta->id, 'code' => $meta->code(), 'description' => $meta->description(), 'type' => $meta->type(),
 		'table' => $meta->table(), 'primary_key' => $meta->primaryKey(), 'layout' => $layout,
 		'redirect' => trim((string)$meta->form['sfo_browse_redirect_form_id']),
+		// nuBuilder Forte's list settings (0.8.820): 0 new breadcrumb, 1 current breadcrumb, 2 new tab, 3 popup
+		'target' => in_array((string)($meta->form['sfo_browse_target'] ?? ''), ['1', '2', '3'], true) ? (string)$meta->form['sfo_browse_target'] : '0',
 	],
 	'builder' => (($_GET['builder'] ?? '') === '1' && NuAcl::can(NuAcl::FORM_FORM)) || ($design && $mode === 'edit'),
 	'design' => $design ? NuDesign::client($meta, (string)$r) : null,          // design mode (0.8.662): assets/js/nu/nudesign.js
@@ -218,6 +223,7 @@ $client = [
 		// badges set in design mode (0.8.688): column index => rules of nuBrowseStyleBadge ([] = the default look), applied before nuOnLoad
 		'badges' => (object)array_map(static fn($c) => $c['badge'], array_filter((array)($data['columns'] ?? []), static fn($c) => is_array($c) && ($c['badge'] ?? null) !== null))] : null,
 	'adv' => $mode === 'browse' && $data && empty($printMode) ? NuAdvSearch::client($meta, $data['columns'], $state['adv']) : null,   // advanced search (0.8.719)
+	'rules' => $mode === 'edit' ? NuFormRules::client($meta, $hash) : null,   // validation rules (0.8.812, assets/js/nu/nurules.js)
 	// keyboard shortcuts / options menu (nuBuilder Ctrl+Shift+…): only what exists in nuBuilder Next and the user may use
 	'tools' => [
 		'design' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_FORM),
@@ -226,6 +232,7 @@ $client = [
 		'pma' => NuAdmin::can('dbtool', 'change') && NuVendor::primaryDb() !== '',     // ⋮ → Database: phpMyAdmin or Adminer (0.8.282)
 		'tfm' => NuFileManager::visible(),                                      // File Manager = the page nuFiles (0.8.479)
 		'sessions' => NuAdmin::can('sessions'),
+		'browsesql' => $mode === 'browse' && NuDesign::allowed($meta) ? nu_url('form', ['f' => $meta->id, 'design' => '1', 'dswork' => 'code', 'dsitem' => 'sfo_browse_sql']) : '',   // ⋮ → Browse SQL (0.8.818)
 		'formaccess' => !$meta->isPage() && NuAcl::can(NuAcl::FORM_ACCESS) && empty($u['demo']),   // ⋮ → Access levels… (0.8.683, assets/js/nu/nuformaccess.js)
 		'version' => $u['globeadmin'] ? 'nuBuilder Next ' . NU_VERSION . ' · PHP ' . PHP_VERSION . ' · ' . nu_db()->type : '',
 	],
@@ -396,6 +403,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset('assets/js/nu/nuruntime.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
 	. ($mode === 'browse' ? '<script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>' : '')
+	. ($mode === 'edit' && NuFormRules::of($meta) ? '<script src="' . nu_asset('assets/js/nu/nurules.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
 	. (NuAcl::can(NuAcl::FORM_ACCESS) ? '<script src="' . nu_asset('assets/js/nu/nuformaccess.js') . '"></script>' : '')
 	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects (0.8.387)
@@ -490,6 +498,22 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 </div>
 
 <?php if ($notice !== ''): ?><div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h($notice) ?></div><?php endif; ?>
+<?php // Maintenance / Archived (0.8.808): who may still open the form sees why users cannot – with Change… / End maintenance
+if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED], true)):
+	$fmsInfo = NuFormStatus::notice($meta->id); $fmsCan = NuFormStatus::canChange() && !$meta->isSystem(); ?>
+<div class="alert alert-<?= $formStatus === NuFormStatus::MAINT ? 'danger' : 'secondary' ?> small py-2 d-flex flex-wrap align-items-center gap-2" id="nuFormMaint" role="status"
+	data-form="<?= h($meta->id) ?>" data-label="<?= h($meta->description()) ?>" data-text="<?= h((string)($fmsInfo['text'] ?? '')) ?>" data-until="<?= h((string)($fmsInfo['until'] ?? '')) ?>">
+	<i class="bi <?= $formStatus === NuFormStatus::MAINT ? 'bi-cone-striped' : 'bi-archive' ?>" aria-hidden="true"></i>
+	<span class="flex-grow-1"><strong><?= h(t($formStatus === NuFormStatus::MAINT ? 'fms_notice' : 'fms_notice_archived')) ?></strong>
+		<?php if ($fmsInfo && $fmsInfo['text'] !== ''): ?> – <?= h($fmsInfo['text']) ?><?php endif; ?>
+		<?php if ($fmsInfo && $fmsInfo['until_text'] !== ''): ?> · <?= h(t('form_st_maint_until', $fmsInfo['until_text'])) ?><?php endif; ?></span>
+	<?php if ($fmsCan && $formStatus === NuFormStatus::MAINT): ?>
+		<button type="button" class="btn btn-sm btn-outline-secondary nuFormMaintEdit"><?= h(t('fms_change')) ?></button>
+		<button type="button" class="btn btn-sm btn-outline-danger nuFormMaintEnd"><?= h(t('fms_end')) ?></button>
+	<?php endif; ?>
+</div>
+<?php endif; ?>
+<?php if (!$bare && NuFormStatus::canChange() && !$meta->isSystem() && ($design || $formStatus === NuFormStatus::MAINT)) echo NuFormStatus::clientHtml(); ?>
 <?php if ($uppyNotice !== ''): ?><div class="alert alert-warning small py-2" id="nuUppyMissing"><i class="bi bi-exclamation-triangle me-1"></i><?= h($uppyNotice) ?></div><?php endif; ?>
 <?php if ($apexNotice !== ''): ?><div class="alert alert-warning small py-2 d-flex flex-wrap align-items-center gap-2"><span class="flex-grow-1"><i class="bi bi-exclamation-triangle me-1"></i><?= h($apexNotice) ?></span><?= NuSettings::fromDb() ? '<a href="' . h(nu_url('settings')) . '">' . h(t('access_2fa_cfg_settings')) . '</a>' : NuConfigFile::enableButton('nuConfigIncludeApexCharts', t('apex_on'), t('apex_on_confirm'), 'form', ['f' => $meta->id, 'r' => (string)($r ?? '')]) ?></div><?php endif; ?>
 <?php foreach ($errors as $e): ?>
@@ -562,7 +586,10 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 		<div class="table-responsive">
 			<?php // Notes (0.8.469): a delete button at the very left of each row – with the delete right, not in lookups, print or demo mode
 			$rowDel = $meta->id === 'nunotes' && !empty($rights['delete']) && $lookupTo === '' && empty($printMode) && !NuDemo::active(); ?>
-			<table class="table table-hover align-middle mb-0 nu-table nuBrowseTable<?= $rowDel ? ' nuBrowseRowDel' : '' ?>" id="nuBrowseTable">
+			<?php // nuBuilder Forte's list settings (0.8.820): multi-line titles, columns fitted to the width, row height
+			$rowH = (int)($meta->form['sfo_browse_row_height'] ?? 0);
+			$browseCls = ((string)($meta->form['sfo_browse_title_multiline'] ?? '') === '1' ? ' nuBrowseMultiline' : '') . ((string)($meta->form['sfo_browse_autoresize_columns'] ?? '') === '1' ? ' nuBrowseAutoFit' : ''); ?>
+			<table class="table table-hover align-middle mb-0 nu-table nuBrowseTable<?= $rowDel ? ' nuBrowseRowDel' : '' ?><?= $browseCls ?>" id="nuBrowseTable"<?= $rowH > 0 ? ' data-nu-row-height="' . min(400, $rowH) . '"' : '' ?>>
 				<thead><tr>
 					<?php if ($rowDel): ?><th scope="col" class="nuRowDelCol"><span class="visually-hidden"><?= h(t('delete')) ?></span></th><?php endif; ?>
 					<?php foreach ($data['columns'] as $c):
@@ -583,7 +610,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 					<tr><td colspan="<?= max(1, count($data['columns'])) + ($rowDel ? 1 : 0) ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ($data['rows'] as $ri => $row): ?>
-					<tr class="nuBrowseRow" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-row="<?= $ri ?>" tabindex="0">
+					<tr class="nuBrowseRow" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-row="<?= $ri ?>" tabindex="0"<?= $rowH > 0 ? ' style="height:' . min(400, $rowH) . 'px"' : '' ?>>
 						<?php if ($rowDel): ?><td class="nuRowDelCol"><button type="button" class="btn btn-sm btn-outline-danger nuRowDel" data-nu-pk="<?= h($row['pk']) ?>" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php foreach ($data['columns'] as $ci => $c): ?>
 							<td id="nucell_<?= $ri ?>_<?= $c['index'] ?>" class="nuCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"

@@ -1242,9 +1242,21 @@
 		var subs = subformPayload();
 		var payload = {values: values, edited: edited, subforms: subs, clone: !!N.cloning, clone_from: N.cloning ? (N.cloneFrom || '') : ''};
 		if (N.cc && !N.cloning && N.record_id !== '-1') payload.cc = ccPayload(edited, subs);        // concurrent edits (0.8.401)
-		call('save', payload).then(function (res) {
+		if (window.nuNextRules) {                                           // validation rules (0.8.812): errors at once, the server checks again
+			var pre = window.nuNextRules.check(values, subs);
+			if (pre.errors.length) { btn.prop('disabled', false); nuDisplayError({errors: pre.errors}); return; }
+		}
+		var send = function () { call('save', payload).then(function (res) {
 			btn.prop('disabled', false);
 			if (!res.ok && res.conflict) { N.afterSave = then; showConflict(res.conflict, close); return; }
+			if (!res.ok && res.rules_warn && res.rules_warn.length && !(res.errors || []).length && window.nuNextRules) {   // warnings: save anyway?
+				window.nuNextRules.askWarnings(res.rules_warn, function () {
+					payload.rules_ok = (payload.rules_ok || []).concat(res.rules_warn.map(function (w) { return w.id; }));
+					btn.prop('disabled', true);
+					send();
+				});
+				return;
+			}
 			if (!res.ok) { applyResult(res); return; }
 			try { if (res.js && res.js.length) sessionStorage.setItem('nuNextPendingJs', JSON.stringify(res.js)); } catch (x) { /* ignore */ }
 			N.edited = false;
@@ -1272,7 +1284,8 @@
 			u.searchParams.set('r', openId);
 			u.searchParams.set('saved', '1');
 			window.location.replace(u.toString());
-		}, function (err) { btn.prop('disabled', false); nuMessage([esc(err.message)]); });
+		}, function (err) { btn.prop('disabled', false); nuMessage([esc(err.message)]); }); };
+		send();
 	});
 
 	api('nuDeleteAction', function () {
@@ -1609,7 +1622,12 @@
 		}
 		if (N.form.type === 'browse' && !N.form.redirect) return;
 		if (N.rights && N.rights.edit === false && !N.form.redirect) return;   // access level "browse only" (0.8.461): rows open nothing
-		go(function () { return formUrl(N.form.id, pk, N.iframe ? {iframe: '1'} : (!newTab && N.bt && N.bt.child ? {bt: N.bt.child} : {})); }, newTab ? 'blank' : null);
+		// nuBuilder Forte's "Target" of the list (0.8.820): 1 current breadcrumb (replaces the list), 2 new tab, 3 popup; 0 = as before
+		var tg = N.iframe || newTab ? '0' : String(N.form.target || '0');
+		if (tg === '3' && g('nuPopupModal')) { nuPopup(N.form.id, pk); return; }
+		if (tg === '2') newTab = true;
+		go(function () { return formUrl(N.form.id, pk, N.iframe ? {iframe: '1'} : (!newTab && tg !== '1' && N.bt && N.bt.child ? {bt: N.bt.child} : {})); },
+			newTab ? 'blank' : (tg === '1' ? function (url) { window.location.replace(url); } : null));
 	}
 
 	$(document).on('click', 'tr.nuBrowseRow', function (e) {
@@ -3545,10 +3563,13 @@
 		var has = function (id) { return !!g(id); };
 		// [key, label key, icon, group, available, action] – group 0: a keyboard shortcut only, not in the options menu (0.8.446: add, print,
 		// search, form info, form properties and object list have buttons of their own on the page; 0.8.517: arrange objects = the form
-		// builder button; save / delete / clone = the record buttons; log out = the user menu)
+		// builder button; save / delete / clone = the record buttons; log out = the user menu; 0.8.818: refresh, database, logged-in users,
+		// File Manager – their keys stay)
 		return [
 			['a', 'arrange', 'bi-arrows-move', 0, edit && T.design, function () { openTab(builderUrl('arrange')); }],
 			['h', 'add_object', 'bi-plus-lg', 1, edit && T.design, function () { openTab(builderUrl('add')); }],
+			['', 'browse_sql', 'bi-filetype-sql', 1, browse && !!T.browsesql, function () { window.location.href = T.browsesql; }],   // 0.8.818: design mode → Code → Browse SQL
+			['', 'php_bb', 'bi-filetype-php', 1, browse && !!T.browsesql, function () { window.location.href = T.browsesql.replace('sfo_browse_sql', 'php%3ABB'); }],   // 0.8.819: … → PHP Before Browse
 			['', 'form_access', 'bi-people', 1, !!T.formaccess && typeof window.nuFormAccessOpen === 'function', function () { window.nuFormAccessOpen(N.form.id); }],   // 0.8.683
 			['f', 'form_properties', 'bi-gear', 0, T.design, function () { openTab(builderUrl('form')); }],
 			['o', 'object_list', 'bi-list-ul', 0, T.design, function () { openTab(builderUrl('objects')); }],
@@ -3559,11 +3580,11 @@
 			['a', 'add', 'bi-plus-lg', 0, browse && has('nuAddButton'), function () { $('#nuAddButton').trigger('click'); }],
 			['p', 'print', 'bi-printer', 0, browse && has('nuPrintButton'), function () { openTab($('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href')); }],
 			['?', 'help', 'bi-question-circle', 3, true, function () { openTab(N.base + '?p=help#forms-use'); }],
-			['r', 'refresh', 'bi-arrow-repeat', 3, true, function () { window.location.reload(); }],
+			['r', 'refresh', 'bi-arrow-repeat', 0, true, function () { window.location.reload(); }],
 			['d', 'debug', 'bi-bug', 4, T.debug, function () { openTab(N.base + '?p=debug'); }],
-			['e', 'database', 'bi-database', 5, T.pma, function () { nuVendorLogin('DB', N.form.table || ''); }],   // the primary database tool (0.8.282)
-			['j', 'sessions', 'bi-key', 5, T.sessions, function () { openTab(N.base + '?p=sessions'); }],
-			['', 'file_manager', 'bi-folder2-open', 5, T.tfm, function () { nuVendorLogin('TFM'); }],   // no key: Ctrl+Shift+Q is Change password (nuBuilder Forte; review D8 – it meant both)
+			['e', 'database', 'bi-database', 0, T.pma, function () { nuVendorLogin('DB', N.form.table || ''); }],   // the primary database tool (0.8.282)
+			['j', 'sessions', 'bi-key', 0, T.sessions, function () { openTab(N.base + '?p=sessions'); }],
+			['', 'file_manager', 'bi-folder2-open', 0, T.tfm, function () { nuVendorLogin('TFM'); }],   // no key: Ctrl+Shift+Q is Change password (nuBuilder Forte; review D8 – it meant both)
 			['q', 'password', 'bi-key', 5, edit && T.password, function () { openTab(N.base + '?p=password'); }],
 			['m', 'form_info', 'bi-info-circle', 0, ga, showFormInfo],
 			['v', 'version', 'bi-info-circle', 5, ga && T.version, function () { nuMessage(N.shortcuts.version || 'Version', [esc(T.version)]); }],

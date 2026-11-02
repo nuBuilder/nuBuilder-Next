@@ -3,6 +3,155 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.824 – Release gate (0.8.803–0.8.824)
+- Release gate (full test run: smoke, all end-to-end tests, compatibility with nuBuilder Forte).
+- Documentation brought up to date for 0.8.803–0.8.823: README (validation rules, Browse list, Maintenance status, Form with AI
+  apps), tutorial (validation rules as an alternative to Before Save code), TODO (points to verify).
+
+## 0.8.823 – Browse list: drag and drop of columns
+- Design mode → Browse list: columns can be dragged by their number to a new place (a line shows where they land); the
+  arrows stay.
+
+## 0.8.822 – Design mode: Browse list in the large window
+- Design mode: the icon List is now "Browse list" and opens in the large window, as a tab next to Code and History –
+  settings and code of the list on the left, the columns as a table on the right.
+
+## 0.8.821 – CI: ODBC driver for SQL Server
+- CI (GitHub Actions, SQL Server job): installs Microsoft's ODBC Driver 18 for SQL Server, which pdo_sqlsrv needs, and waits
+  until SQL Server accepts the login before creating the test database.
+
+## 0.8.820 – Design mode: List panel, Forte's list settings
+- Design mode: the icon bar in a new order – Form settings, Structure, Add, Code, Validation rules, History, List.
+- New icon List (forms with a list): one panel next to the form with every list setting – rows per page, row height,
+  what a click on a row does (new breadcrumb, in place of the list, new tab, popup), the form that opens the records,
+  column titles on several lines, columns that fill the width; buttons for Browse SQL, PHP Before Browse and the list's
+  JavaScript; and all columns (title, column / expression, width, alignment, show / hide, order, delete, add) – also from
+  the edit form. The form settings no longer hold the list settings (a button opens the List panel).
+- nuBuilder Forte's list settings now work on the list: row height, multi-line titles, auto-resize columns (columns fill the
+  width) and the target of a row click (current breadcrumb, new tab, popup).
+
+## 0.8.819 – Form options menu: PHP Before Browse
+- Form options menu ⋮ in lists: new entry PHP Before Browse next to Browse SQL – opens design mode with the list's Before
+  Browse PHP in the code editor.
+
+## 0.8.818 – Form options menu: Browse SQL
+- Form options menu ⋮: Refresh, Database, Logged-in users and File Manager removed (their keyboard shortcuts stay).
+- New entry Browse SQL in lists (for users who may design the form): opens design mode with the list's SQL in the code editor.
+
+## 0.8.817 – Design mode: icon bar from Code / History
+- Design mode: from Code or History, the icon bar's Structure, Add, Validation rules and Form settings open at once – the
+  workspace closes first (unsaved code still asks); before, the flyout opened hidden behind the workspace.
+
+## 0.8.816 – Rule editor: errors in sight
+- Rule editor: a missing message or condition – and every error of the check – is shown on top of the dialogue in a red
+  box that stays in sight while scrolling; the dialogue scrolls up and the field concerned is marked and focused.
+- The searchable boxes of the rule editor: Enter right after typing takes what was typed (before it could take the old first
+  entry), and their lists are removed with their rows.
+
+## 0.8.815 – Validation rules: hash variables on the left, icon bar
+- Validation rules: a hash variable can be the thing that is checked – #MY_COOKIE# = 123, or under "Only when …"
+  #ACCESS_LEVEL_CODE# = 'sales'; in the builder the field box takes #NAME# as well (hash cookies, #USER_ID# …).
+- Design mode: Validation rules moved from the form settings panel to the icon bar on the left (with the number of rules;
+  on phones in the bar on top) – the list with Add rule and Test all opens next to the form.
+- The searchable boxes of the rule editor search plainly (no fuzzy matches).
+
+## 0.8.814 – Validation rules: hash variables
+- Validation rules: hash variables as values – #NAME# in an expression or in the builder: hash cookies and form properties
+  (nuSetProperty), #USER_ID#, #ACCESS_LEVEL_CODE# and the other user / record variables, with the values of Before Save; also
+  in IN (…) and BETWEEN, and filled into messages.
+- Builder: the value field is a searchable box that takes any text and offers the hash variables (system variables and the
+  page's hash cookies) while typing.
+- In the browser a property set by the page's JavaScript is used first, so the live check matches the save; Test rule uses
+  the hash of the tested record.
+
+## 0.8.813 – File Manager permissions fix
+- File Manager → Permissions …: the dialog no longer ends in "Call to undefined function posix_getpwuid()" on servers that
+  switch off single posix functions – owner and group are shown as numbers there.
+
+## 0.8.812 – Validation rules
+- Validation rules without code: design mode → form settings → Validation rules. A rule says what must be true before
+  the record is saved – built row by row (field, operator, value / other field / today; all or any) or typed as an
+  expression (= != < > <= >=, CONTAINS, STARTS WITH, ENDS WITH, IS EMPTY, IN, BETWEEN, MATCHES, BEFORE / AFTER TODAY,
+  COUNT(sub-form), AND / OR, brackets), with an optional "Only when …" condition.
+- Error (the save is refused) or warning ("Save anyway?"); a message with #field# values, translated like other texts of the
+  form; a field to mark (red / yellow while typing).
+- Checked on the server for every save – after the built-in checks, before Before Save PHP – and the same rules in the browser
+  while typing and before the save.
+- Sub-forms: a rule for every row (the message names the row) and COUNT(sub-form) for the number of rows.
+- Only for some access levels and / or a permission item; switch a rule off without deleting it.
+- Test rule / Test all: the rules against a saved record before saving them.
+- Stored with the form (sfo_json), so rules go through drafts, the form history and the Form cloner.
+
+## 0.8.811 – Form cloner sources
+- Form cloner: the source list offered entries that cannot be cloned – the rights entries of nuBuilder Next's own pages
+  (not real forms) and the built-in File Manager page form. They are gone (and refused if sent anyway). nuBuilder Forte's own
+  forms (ids nu…) are hidden by default; "Also show nuBuilder Forte's own forms" lists them (a copy keeps their code, which
+  often works only inside nuBuilder Forte).
+
+## 0.8.810 – Form with AI: small apps, code, Ask AI
+- Form with AI goes further (still copy and paste with any AI chat – no API key, nothing is sent from nuBuilder Next):
+  - Small app: one description creates several forms with their tables at once (e.g. projects with their tasks) – the
+    forms may refer to each other (sub-form, lookup) before they exist; tables, columns and an index on each sub-form's
+    foreign key are created in one go, every form gets status Draft; afterwards the forms are listed with Design links and
+    Publish all. New format "nunext-app-1" in the prompt.
+  - Code: the AI may also write the form's JavaScript (list / record / both), CSS, PHP hooks (BB, BE, BS, AS, BD, AD) and
+    object events (onchange, onclick …). PHP is checked for syntax errors before anything is created; an answer with PHP is
+    flagged (read it in the draft before publishing); code left out stays as it is. Prompts of a change show the form's code.
+  - Columns no object shows (a sub-form's foreign key) can be listed in the form's "columns".
+- Design mode: Ask AI (panel → Tools) is now a dialog – describe the change, copy the prompt, paste the answer, Check, Apply
+  to the draft; the page reloads with the change and you can ask again. Each step goes into the open draft as one undo step
+  (before: a second change was refused while a draft was open). A form that was never published is changed directly.
+- New form page: box "Describe it – AI creates it" (one form or a small app) leads to Form with AI with the text filled in.
+- Form with AI page: Paste button (reads the clipboard), pasting into the answer field checks it at once; "One form" /
+  "Small app" switch.
+
+## 0.8.809 – Forms list without the cloner button
+- Forms list: the Form cloner button (copy icon) in each row is gone; the Form cloner stays in Forms → Tools and on the
+  start page.
+
+## 0.8.808 – Form maintenance
+- New form status Maintenance (value 2 – nuBuilder Forte shows it as "Disabled" and refuses it to users as well). While a
+  form is in maintenance users can neither open nor save it: they get a message page with an optional text and expected
+  time; a record that was open before is not saved (the answer says why). The globeadmin and form designers (save right on
+  the forms form) still open it and see a red notice with Change… and End maintenance.
+- Switching: forms list – right-click on the status, or the new toolbar button Maintenance for several forms at once (search,
+  message, expected time); the bar of design mode (cone icon); the form's status select (design mode, page forms). Works on
+  the published form at once, also while a draft is open – publishing that draft keeps the maintenance and is no conflict.
+  Logged (form_maintenance_on / _off); the message is kept in the setting row form_maintenance, cleaned up by housekeeping.
+- Start page tiles and the side bar show the badge Maintenance (tiles greyed for those who cannot open the form), Ctrl+K
+  names it. A form used as a sub-form inside another form keeps working there.
+- Archived forms are now closed for users too, as in nuBuilder Forte (the globeadmin and form designers still open them) and
+  no longer offered to them in Ctrl+K.
+
+## 0.8.807 – Row menus on the start page
+- Start page rows Favourites and Recently used: the Edit link next to Favourites is gone. A right-click on a row (a long
+  press on a phone) opens a menu instead – Favourites: Edit favourites (Customise with only the favourites shown) and Hide
+  this row; Recently used: Clear recently used and Hide this row. On a chip of a row these entries come below the chip's
+  own ones.
+- A hidden row comes back with Customise → Appearance → Favourites / Recently used; the message after hiding names that
+  way and has Undo. The Appearance switch Favourites is back (view key favRow, on by default; personal like the other
+  switches).
+
+## 0.8.806 – Favourites row on the start page
+- Start page: the ☆ button "Show favourites only" next to the search is gone. Starred tiles now always appear in the row
+  Favourites above the groups (above Recently used; hidden while no tile is starred) – foldable as before, with the number
+  of entries when folded and an Edit link next to its heading that opens Customise (edit mode, or Personalise for users)
+  with only the favourites shown. The Appearance switch "Favourites" is no longer needed and removed.
+- Removed with it: the per-login setting "favourites only" (POST action fav_only, setting home_fav_only_ga) and the start
+  page hook event favourites of nuHome.on().
+
+## 0.8.805 – Tour: intro window and enlarged screenshots
+- Screenshot tour (dev package): the alpha note opens once in a window when the page is opened ("Start the tour") and no longer
+  sits above the slides; a click or tap on a screenshot shows it enlarged (phones: twice the screen width, scroll sideways).
+
+## 0.8.804 – Page numbers
+- Page numbers: every page has a number (P001 start page, P100 users, P110 access levels … P700 update – blocks of 100 by
+  area). Typed into the start page search or Ctrl+K, Enter opens the page; a suffix opens a tab or section (P700.2 = Update →
+  Backups). An unknown number comes back with a message. The full list is in the help (Navigation → Page numbers).
+
+## 0.8.803 – Notes
+- Notes: v0.8.802 is published on GitHub (dev/release-notes.md, CLAUDE.md).
+
 ## 0.8.802 – Release gate
 - Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte 4.9). Documentation checked first:
   README (feature list, the SQL Server note), help pages, TODO.md (a "please verify" list for 0.8.768–0.8.801) and these notes.

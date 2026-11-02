@@ -1,6 +1,6 @@
 <section id="validation" data-acl="nuform" data-level="advanced">
 	<h2 id="validation-h">Validation and business rules</h2>
-	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Required and unique fields, masks, and rules written in Before Save.</p>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Required and unique fields, masks, validation rules set in design mode, and rules written in Before Save.</p>
 	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
 	<div class="doc-sub">
 	<h3 id="validation-builtin">Built-in checks</h3>
@@ -14,6 +14,21 @@
 		</tbody>
 	</table>
 	<p>Fields whose posted value is not saved (field data access; read only and hidden while the Security setting is on – see <a href="#security-protect-fields">the rule</a>) are not checked from the post. The markers can be switched off with <code>$nuConfigValidationMarkers</code>.</p>
+</div>
+<div class="doc-sub">
+	<h3 id="validation-rules">Validation rules without code</h3>
+	<p>In design mode, the icon bar on the left has <strong>Validation rules</strong> <i class="bi bi-check2-square"></i> (with the number of rules; on phones in the bar on top): the list of the form's rules with <em>Add rule</em> and <em>Test all</em>. A rule says what must be true for the record to be saved, for example <code>cus_credit &lt;= 30000</code>. The rules are checked on the server for every save, after the built-in checks and before <strong>Before Save</strong>, so existing PHP keeps working. The same rules also run in the browser: a field you choose to mark turns red (error) or yellow (warning) while you type, and an error stops the save at once.</p>
+	<ul>
+		<li><strong>Builder or expression</strong>: build the conditions row by row (field, operator, value / other field / today; all or any), or type an expression – <code>status = 'shipped' AND (ship_date IS NOT EMPTY OR qty &lt;= 0)</code>. Operators: <code>= != &lt; &gt; &lt;= &gt;=</code>, <code>CONTAINS</code>, <code>NOT CONTAINS</code>, <code>STARTS WITH</code>, <code>ENDS WITH</code>, <code>IS EMPTY</code>, <code>IS NOT EMPTY</code>, <code>IN (…)</code>, <code>NOT IN (…)</code>, <code>BETWEEN a AND b</code>, <code>MATCHES '<em>pattern</em>'</code>, <code>BEFORE</code> / <code>AFTER</code> (dates, also <code>TODAY</code>). Text goes in quotes; a name without quotes is another field. Text is compared without regard to case; numbers as numbers.</li>
+		<li><strong>Hash variables</strong>: <code>#NAME#</code> as a value – hash cookies and form properties (<code>nuSetProperty()</code>), the user and access level variables (<code>#USER_ID#</code>, <code>#ACCESS_LEVEL_CODE#</code> …) and the record's, with the same values as in Before Save. In the builder the value field takes any text and offers the hash variables while you type (<code>#</code> …); the messages fill them in too. A hash variable can also stand on the left, as the thing that is checked: <code>#MY_COOKIE# = 123</code>, or under <em>Only when …</em> <code>#ACCESS_LEVEL_CODE# = 'sales'</code> – in the builder type <code>#NAME#</code> into the field box. In the browser a property set by the page's JavaScript wins, so the live check matches the save. <em>Test rule</em> uses the hash of the tested record.</li>
+		<li><strong>Only when …</strong>: a second condition – the rule applies only while it holds (e.g. only when the status is "shipped").</li>
+		<li><strong>Error or warning</strong>: an error refuses the save; a warning asks "Save anyway?" and saves after OK.</li>
+		<li><strong>Sub-forms</strong>: a rule can check every row of a sub-form (the message names the row), and <code>COUNT(<em>sub-form</em>)</code> counts the rows of the record, e.g. <code>COUNT(sample_items) &gt;= 1</code>.</li>
+		<li><strong>Only for</strong>: access levels and / or a permission item – the rule then applies only to users who have one of the levels and the item. The globeadmin has no access level: rules limited to levels do not apply to him.</li>
+		<li><strong>Message</strong>: <code>#field#</code> inserts a field's value; the text is translated through the translations of the application like other texts of the form.</li>
+		<li><strong>Test rule</strong> checks a rule against a saved record (the open one, or the newest) before you save it; <strong>Test all</strong> checks every rule.</li>
+	</ul>
+	<p>The rules are stored with the form (<code>sfo_json</code> of the table zzzzsys_form, shared with nuBuilder Forte, which ignores them) – they go through drafts, the form history and the Form cloner with the form. nuBuilder Forte does not check them: a form opened there saves without these rules.</p>
 </div>
 <div class="doc-sub">
 	<h3 id="validation-own">Your own rules</h3>
@@ -53,5 +68,5 @@
 	<p>Forms of your application follow the <em>Validation</em> setting of each object (table above).</p>
 	</div>
 	<p class="doc-see">See also: <a href="#save-flow">How a save works</a> · <a href="#hooks">PHP hooks and procedures</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nurecord.php</code></li><li><code>core/form/nuformat.php</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nurecord.php</code></li><li><code>core/form/nuformat.php</code></li><li><code>core/form/nurules.php</code></li><li><code>assets/js/nu/nurules.js</code></li></ul></details>
 </section>
