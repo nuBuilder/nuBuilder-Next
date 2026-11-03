@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.824 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.869 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -53,13 +53,13 @@ nuBuilder Next streamlines everyday database work:
 - ✅ **Dashboards on the Start Page** – KPI tiles, charts and tables for your access level.
 - ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
 - ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists the actions without a button of their own, with their shortcuts.
-- ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code) and *Forgot password* with a one-time e-mail link.
+- ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code), *Forgot password* with a one-time e-mail link and single sign-on with OpenID Connect (Microsoft Entra ID, Google Workspace, Keycloak …; access levels from the provider's groups, "SSO only" per access level).
 - ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left; UK / US / Australian English, German / Swiss German), light, dark or automatic mode, five built-in designs plus your own (colours, buttons, fields, tabs, fonts – per access level or chosen by the user); checked against WCAG 2.1 A/AA.
 
 ### 🏗️ For Building Business Applications
 
-- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, every list setting and column in one Browse list window (drag to reorder), validation rules without code (builder or expression, errors or warnings, sub-form rows, hash variables, per access level), drafts you publish when ready (with a note or in one click), keyboard shortcuts (rename, copy and paste objects – also between forms –, undo) and a safe mode for broken form code; a New form wizard that picks the table's columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons; change a column's type with a data check first; a Maintenance status that closes a form for users with a message; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
-- ✅ **Page Forms** – your own PHP apps inside nuBuilder Next, with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
+- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, every list setting and column in one Browse list window (drag to reorder), validation rules without code (builder or expression, errors or warnings, sub-form rows, hash variables, per access level), drafts you publish when ready (with a note or in one click), keyboard shortcuts (rename, copy and paste objects – also between forms –, undo), a phone layout with a bottom sheet, and a safe mode for broken form code; a New form wizard that picks the table's (or view's) columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons (forms, reports, procedures or a URL; a button to a form, report or procedure shows only for users who may open it); change a column's type with a data check first; a Maintenance status that closes a form for users with a message; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
+- ✅ **Custom Pages** – your own PHP apps inside nuBuilder Next (created from Forms → Add, listed under Forms → Tools), with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
 - ✅ **Report Designer & SQL Builder** – design reports visually, build queries without writing SQL and run reports as PDF.
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
 - ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with syntax colours and a syntax check (JavaScript, PHP, CSS, HTML) before saving, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
@@ -104,7 +104,7 @@ nuBuilder Next streamlines everyday database work:
 3. Sign in as globeadmin.
 4. Open the start page tile **Security check** and fix what is red: HTTPS, a long globeadmin password, `$nuConfigBaseURL`, "Files on
    the web" (the web server must not hand out `core/`, `install/`, `README.md` …) and the PHP version.
-5. Optional: cron for the housekeeping – `*/15 * * * * php /var/www/html/nunext/cron.php` as the web server's user.
+5. Optional: cron for the housekeeping – `*/15 * * * * php /var/www/html/nunext/nucron.php` as the web server's user.
 6. Third-party code lives in `vendor/`: `vendor/bundled/` comes with the package, `vendor/packs/` holds the signed **library packs**
    (TCPDF for reports, TinyMCE, phpMyAdmin, Adminer, Uppy, PhpSpreadsheet for reading Excel / OpenDocument files (data import, form code; PHP 8.2+) – Excel export is built in – from the GitHub release `libraries`; PHPMailer is in the
    package). The installer offers them (step *Libraries*), later **Update → Libraries**. Without internet: copy the

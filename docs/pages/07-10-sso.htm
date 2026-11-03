@@ -1,0 +1,45 @@
+<section id="sso" data-doc="admin">
+	<h2 id="sso-h">Single sign-on</h2>
+	<p class="doc-lead">Users sign in with their company account – Microsoft Entra ID, Google Workspace, Keycloak, Okta, Authentik or any other OpenID Connect provider. The provider checks the password and the second factor; nuBuilder Next still decides what the user may do.</p>
+	<p class="doc-for" data-doc="admin">For: the globeadmin</p>
+	<p><em>Settings → Sign-in &amp; security → Single sign-on</em> (<code>index.php?p=sso</code>). While it is switched on and complete, the sign-in page shows a button such as <em>Sign in with Microsoft</em> above the password form. The globeadmin always signs in with the password of <code>nuconfig.php</code> – a provider that is down never locks you out.</p>
+<div class="doc-sub">
+<h3 id="sso-setup">Setting it up</h3>
+<ol>
+<li>At the provider, register a web application. Enter the <strong>redirect URI</strong> the page shows (<code>https://&lt;your server&gt;/&lt;folder&gt;/oauth.php</code> – the same address as the OAuth sign-in of the <a href="#email">e-mail settings</a>). Note the client ID and create a client secret.</li>
+<li>On the page: pick the kind of provider, enter the <strong>issuer</strong>, the client ID and the secret, and save.
+	<ul>
+	<li>Microsoft Entra ID: <code>https://login.microsoftonline.com/&lt;tenant id&gt;/v2.0</code> – the tenant ID, not <code>common</code>.</li>
+	<li>Google: <code>https://accounts.google.com</code>; with one allowed domain the sign-in page of Google offers only accounts of that domain.</li>
+	<li>Keycloak: <code>https://&lt;host&gt;/realms/&lt;realm&gt;</code>. Others: the address in front of <code>/.well-known/openid-configuration</code>.</li>
+	</ul></li>
+<li><strong>Test sign-in</strong> signs in at the provider and shows what a sign-in with that account would do – which user it finds or would create, the access level and the claims the provider sent. Nothing changes, and it also works while single sign-on is still switched off.</li>
+<li>Switch on <em>Offer single sign-on on the sign-in page</em>.</li>
+</ol>
+<p>The secret is stored sealed with <code>$nuConfigSecretKey</code> (the page warns when that is not set). Leave the field empty to keep the stored secret.</p>
+</div>
+<div class="doc-sub">
+<h3 id="sso-accounts">Which user signs in</h3>
+<ul>
+<li>The provider's <strong>verified</strong> e-mail address (claim <code>email</code>, for Entra ID also <code>preferred_username</code> / <code>upn</code>) is compared, ignoring case, with the e-mail and the login name of the users. Exactly one user must match; an e-mail the provider marks as not verified is refused.</li>
+<li><em>Allowed e-mail domains</em> limits the accounts (empty = every account the provider vouches for).</li>
+<li><em>Create users who sign in for the first time</em> (off by default): a new user gets the access level of the group map, else the <em>default access level</em>; without either the sign-in is refused. The new user's login name is the e-mail address, the password a long random one nobody knows; the log shows <em>User created by single sign-on</em>.</li>
+<li><strong>Group map</strong>: the claim named in <em>Group claim</em> (default <code>groups</code>) lists the groups or roles of the account; the first row whose group matches gives the access level. With <em>Keep the access level in step</em> an existing user's main access level follows the map at every sign-in (no match leaves it as it is; <a href="#access-additional">additional access levels</a> are not touched). Entra ID sends the groups as object IDs – enter those, or use app roles with the claim <code>roles</code>. Keycloak needs a mapper that adds the groups to the ID token.</li>
+</ul>
+</div>
+<div class="doc-sub">
+<h3 id="sso-rules">Rules of a single sign-on</h3>
+<ul>
+<li>No second factor of nuBuilder Next and no <a href="#password-policy">password policy</a> – the provider owns the password and its multi-factor rules. A user signed in this way is not asked to change the password.</li>
+<li>Expiry date, access level, the login rate limit, <a href="#ip-access">IP access</a> and the procedure <code>nu_startup</code> apply as for every sign-in. The log shows <em>Login</em> with <code>via: sso</code>; refusals are logged as <em>Single sign-on refused</em> with the reason.</li>
+<li><strong>Single sign-on only</strong>: users of the ticked access levels (main level or an active additional level) can no longer sign in with a password, an auto-login link or a one-time login link – they see “Please sign in with single sign-on”. It applies only while single sign-on is on and complete.</li>
+<li>nuBuilder Forte's settings keep working: with <code>$nuConfigLogonMode = 'sso'</code> every user except those named in <code>$nuConfigSsoOnlyExcept</code> signs in with single sign-on only, and the sign-in page folds the password form behind <em>Sign in with a password</em>. nuBuilder Forte's separate SSO service (<code>zzzzsys_sso_login</code>) is not used – set up the provider here.</li>
+</ul>
+</div>
+<div class="doc-sub" data-level="advanced">
+<h3 id="sso-checks">What is checked</h3>
+<p>The authorization code flow with PKCE (S256), a random <code>state</code> (once, 10 minutes, bound to the browser session) and a <code>nonce</code>. The ID token is checked here and not only trusted because it came from the token endpoint: the signature (RS256 / RS384 / RS512 with the provider's published keys, fetched again once when a key is unknown), the issuer of the discovery document, the audience (the client ID; <code>azp</code> with several audiences), the times <code>exp</code> / <code>nbf</code> / <code>iat</code> and the nonce. Only <code>https</code> addresses are accepted for the provider (<code>http</code> only for this computer, for tests). The discovery document and the keys are cached for a day.</p>
+</div>
+	<p class="doc-see">See also: <a href="#signin-methods">Sign-in methods</a> · <a href="#ip-access">IP access</a> · <a href="#access">Access levels</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nusso.php</code></li><li><code>pages/nusso.php</code></li><li><code>oauth.php</code></li><li><code>assets/js/nusso.js</code></li></ul></details>
+</section>

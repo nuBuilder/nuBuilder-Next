@@ -163,10 +163,20 @@ final class NuFormSpec
 		return array_values(array_filter(array_map('strval', $tables), static fn($t) => stripos($t, 'zzzzsys_') !== 0));
 	}
 
-	/** $only (0.8.633, "Tables in the prompt"): just these tables; [] = all (up to $max). */
+	/** "None – new tables only" in the table choice (0.8.842): no existing table is described (the form's own table still is). */
+	public const NO_TABLES = '__none__';
+
+	/** $only (0.8.633, "Tables in the prompt"): just these tables; [] = all (up to $max); [NO_TABLES] = none. */
 	public static function schemaText(string $first = '', int $max = 80, array $only = []): string
 	{
 		$db = nu_db();
+		if (in_array(self::NO_TABLES, $only, true)) {
+			$only = array_values(array_diff($only, [self::NO_TABLES]));
+			if (!$only) {
+				if ($first === '' || !$db->tableExists($first)) return '(none listed – create the new tables the request needs)';
+				$only = [$first];
+			}
+		}
 		$tables = self::appTables();
 		if ($only) { $want = array_flip(array_map('strtolower', $only)); $tables = array_values(array_filter($tables, static fn($t) => isset($want[strtolower($t)]))); }
 		if ($first !== '' && ($i = array_search($first, $tables, true)) !== false) { unset($tables[$i]); array_unshift($tables, $first); }
@@ -278,6 +288,30 @@ TXT;
 		$a = (string)preg_replace('~(?<=[,\[\]{}"0-9el])[ \t]+//[^\n]*~', '', $a);   // … also after a value ("https://" has no space before //)
 		$j = json_decode($a, true);
 		if (!is_array($j)) return t('fai_err_json', json_last_error_msg());
+		return self::repair($j);
+	}
+
+	/** Object types the AI writes as an input type ("type": "input", "input": "textarea") – taken as the object type, check() warns (0.8.841). */
+	public const INPUT_AS_TYPE = ['textarea', 'select', 'html', 'display', 'lookup', 'word'];
+
+	/** Repairs common slips of an AI answer in place (a form spec or an app); marks the object with _fixed for the warning. */
+	public static function repair(array $j): array
+	{
+		$fix = static function (array $spec): array {
+			foreach ((array)($spec['tabs'] ?? []) as $ti => $t) {
+				if (!is_array($t)) continue;
+				foreach ((array)($t['objects'] ?? []) as $oi => $o) {
+					if (!is_array($o) || ($o['type'] ?? '') !== 'input' || !in_array((string)($o['input'] ?? ''), self::INPUT_AS_TYPE, true)) continue;
+					$o['type'] = (string)$o['input'];
+					unset($o['input']);
+					$o['_fixed'] = 'input / ' . $o['type'];
+					$spec['tabs'][$ti]['objects'][$oi] = $o;
+				}
+			}
+			return $spec;
+		};
+		if (is_array($j['forms'] ?? null)) { foreach ($j['forms'] as $k => $f) if (is_array($f)) $j['forms'][$k] = $fix($f); }
+		else $j = $fix($j);
 		return $j;
 	}
 
@@ -351,6 +385,7 @@ TXT;
 				}
 				if (!in_array($ot, self::TYPES, true)) { $e[] = t('fai_err_type', $id, $ot); continue; }
 				if ($ot === 'input' && isset($o['input']) && !in_array((string)$o['input'], self::INPUTS, true)) $e[] = t('fai_err_input', $id, (string)$o['input']);
+				if (isset($o['_fixed'])) $w[] = t('fai_warn_fixed_type', $id, (string)$o['_fixed'], $ot);
 				if (isset($o['events'])) {                       // object events (0.8.810): [{event: "onchange", js: "…"}]
 					if (!is_array($o['events'])) $e[] = t('fai_err_events', $id);
 					else foreach ($o['events'] as $ev) {

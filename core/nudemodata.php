@@ -6,7 +6,7 @@ defined('NU_ROOT') || exit;
  * Demo data reset (0.8.341): visitors of a public demo may save in the forms of $nuConfigDemoSavingAllowedIds – this puts the tables of
  * those forms (and of their sub-forms) back to a snapshot the globeadmin took (System status → Demo mode).
  *   Snapshot: <backup folder>/demo-snapshot.json (protected folder) – rows per table; binary values as {"b64": …}.
- *   Reset:    every N hours by the housekeeping (cron.php or now and then a page view; setting 'demo_reset' {hours, last}), or "Reset now".
+ *   Reset:    every N hours by the housekeeping (nucron.php or now and then a page view; setting 'demo_reset' {hours, last}), or "Reset now".
  *             Each table is emptied and filled again; nothing happens without a snapshot.
  */
 final class NuDemoData
@@ -119,7 +119,7 @@ final class NuDemoData
 	public static function setting(): array
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$d = is_string($v) ? json_decode($v, true) : null;
 		} catch (Throwable) {
 			$d = null;
@@ -133,8 +133,7 @@ final class NuDemoData
 		NuSchema::ensure();
 		$row = ['setting_value' => json_encode(['hours' => (int)$s['hours'], 'last' => (int)$s['last']]), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => (string)(NuAuth::user()['login'] ?? 'housekeeping')];
 		NuDemo::permitted(static function () use ($db, $row): void {
-			if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-			else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
+			nu_setting_save(self::SETTING, $row, $db);
 		});
 	}
 

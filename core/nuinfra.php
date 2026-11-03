@@ -221,7 +221,7 @@ final class NuSchema
 
 	/**
 	 * May this request change the database structure? (0.8.462, B2) Copying nuBuilder Next next to a live nuBuilder must not change
-	 * its database: the own tables are created by the installer, cron.php or the globeadmin's first sign-in – never by an anonymous
+	 * its database: the own tables are created by the installer, nucron.php or the globeadmin's first sign-in – never by an anonymous
 	 * request (login page, failed login, public links) and never while the database is blocked (NuInstall::existingBlocked). Once
 	 * they exist, signed-in requests apply the database steps of an update, as before.
 	 */
@@ -466,13 +466,6 @@ final class NuToken
 			[$kind, $userId, date('Y-m-d H:i:s', time() - $seconds)]);
 	}
 
-	public static function purgeExpired(): void
-	{
-		try {
-			nu_db()->run('DELETE FROM zzzzsys_nunext_token WHERE expires_at < ?', [date('Y-m-d H:i:s')]);
-		} catch (Throwable) {
-		}
-	}
 }
 
 /** Files that nuBuilder Next takes from the nuBuilder installation (PHPMailer, Font Awesome). */

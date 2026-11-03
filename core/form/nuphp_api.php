@@ -340,6 +340,15 @@ if (!function_exists('nuRunQuery')) {
 		return NuHash::permissions($userId === null ? (string)(NuAuth::user()['id'] ?? '') : (string)$userId);
 	}
 
+	/**
+	 * Access levels of the signed-in user or of $userId (0.8.867): the main level first, then the active additional levels – each
+	 * {id, code, description, group, main, valid_until}. The globeadmin (signed in, no user record) has none: [].
+	 */
+	function nuNextAccessLevels(?string $userId = null): array
+	{
+		return NuUserAccess::listOf($userId);
+	}
+
 	/** Custom user field (0.8.454): the value of $code for the signed-in user or $userId; null when there is no such field. */
 	function nuNextUserField(string $code, ?string $userId = null): ?string
 	{

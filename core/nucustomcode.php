@@ -78,8 +78,7 @@ final class NuCustomCode
 		$who = mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50);
 		$put = static function (string $id, string $value) use ($db, $who): void {
 			$row = ['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $who];
-			if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
-			else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
+			nu_setting_save($id, $row, $db);
 		};
 		$changed = [];
 		if ($js !== null && $js !== $cur['js']) { $put(self::KEYS['js'], $js); $changed[] = 'js'; }

@@ -27,12 +27,46 @@
 .nuDsPanel { position: fixed; z-index: 1014; top: var(--nu-sticky-top, 57px); right: 0; bottom: 0; width: var(--nu-ds-panel); overflow-y: auto;
 	background: var(--bs-body-bg); border-left: 1px solid var(--bs-border-color); font-size: .875rem; }
 @media (max-width: 767.98px) {
-	.nuDesignMode .nuFormContainer { padding-bottom: 48vh; }
-	.nuDsBar { left: 0; max-width: 100vw; box-sizing: border-box; }
-	.nuDsTitle { display: none; }
-	.nuDsStatus { flex-basis: 100%; order: 9; }
+	/* phones (0.8.831): a one-line bar (the rest in the ⋯ menu) that slides away while scrolling down, a bottom sheet
+	   with three heights (peek / half / full) and quick actions above the selected object */
+	.nuDesignMode .nuFormContainer { padding-bottom: calc(var(--nu-ds-sheet-h, 5rem) + 1rem) !important; }
+	.nuDsBar { left: 0; max-width: 100vw; box-sizing: border-box; flex-wrap: nowrap; gap: .4rem; padding-top: .3rem; padding-bottom: .3rem;
+		transition: transform .2s ease; }
+	html.nuDsBarAway .nuDsBar { transform: translateY(calc(-100% - var(--nu-sticky-top, 57px))); }
+	.nuDsBar > .btn, .nuDsBar > .btn-group, .nuDsBar > .badge { flex: 0 0 auto; }
+	.nuDsBar .btn { padding: .3rem .55rem; }
+	.nuDsTitle, .nuDsStatus, .nuDsMsg:empty, #nuDsSafe, #nuDsMaint, #nuDsReload, #nuDsUndo, #nuDsRedo, #nuDsChangesBtn, #nuDsDiscard, #nuDsPublishGrp,
+	.nuDsBar .nuDsBarTool[data-work], .nuDsBar .nuDsBarTool[data-fly="rules"], .nuDsBar .nuDsFormMsgs, .nuDsBadge .bi + * { display: none !important; }
+	.nuDsBadge { font-size: 0; padding: .45em .5em; }
+	.nuDsBadge .bi { font-size: .9rem; margin: 0 !important; }
+	.nuDsMsg { position: absolute; left: .75rem; right: .75rem; top: 100%; padding: .25rem .5rem; background: var(--bs-body-bg); border-bottom: 1px solid var(--bs-border-color); }
+	#nuDsDone { margin-left: 0; }
 	.nuDsPanel { top: auto; left: 0; width: auto; height: 45vh; border-left: 0; border-top: 1px solid var(--bs-border-color);
-		border-radius: 1rem 1rem 0 0; box-shadow: 0 -.5rem 1.5rem rgba(0, 0, 0, .15); }
+		border-radius: 1rem 1rem 0 0; box-shadow: 0 -.5rem 1.5rem rgba(0, 0, 0, .15); transition: height .22s ease; overscroll-behavior: contain; }
+	.nuDsPanel.nuDsSheet-peek { height: 5.25rem; overflow: hidden; }
+	.nuDsPanel.nuDsSheet-half { height: 50vh; }
+	.nuDsPanel.nuDsSheet-full { height: calc(100vh - var(--nu-sticky-top, 57px) - var(--nu-ds-bar-h, 46px)); height: calc(100dvh - var(--nu-sticky-top, 57px) - var(--nu-ds-bar-h, 46px)); }
+	html.nuDsBarAway .nuDsPanel.nuDsSheet-full { height: calc(100dvh - var(--nu-sticky-top, 57px)); }
+	.nuDsPanel.nuDsSheet-peek .nuDsHead { padding-top: .2rem; }
+	.nuDsSheetHandle { display: flex; justify-content: center; align-items: center; width: 100%; height: 1.4rem; border: 0; background: none; padding: 0;
+		position: sticky; top: 0; z-index: 2; background: var(--bs-body-bg); touch-action: none; }
+	.nuDsSheetGrip { width: 2.75rem; height: .3rem; border-radius: .2rem; background: var(--bs-secondary-color); opacity: .55; }
+	.nuDsQuick { position: fixed; z-index: 1013; display: flex; gap: .1rem; padding: .2rem; border-radius: .6rem; background: var(--bs-body-bg);
+		border: 1px solid var(--bs-border-color); box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .18); }
+	.nuDsQuick[hidden], html.nuDsFlyOpen .nuDsQuick, html.nuDsWorkOpen .nuDsQuick { display: none; }
+	.nuDsQuick .btn { width: 2.5rem; height: 2.25rem; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--bs-body-color); }
+	.nuDsQuick .btn:active { background: var(--bs-tertiary-bg); }
+	.nuDsQuick .btn.text-danger { color: var(--bs-danger-text-emphasis) !important; }
+}
+.nuDsPhOnly, .nuDsDot { display: none; }
+.nuDsQuick { display: none; }
+@media (max-width: 767.98px) {
+	.nuDsPhOnly { display: inline-flex; }
+	.nuDsQuick:not([hidden]) { display: flex; }
+	.nuDsDot { display: inline-block; flex: 0 0 auto; width: .7rem; height: .7rem; border-radius: 50%; background: var(--bs-secondary-color); }
+	.nuDsDot.nuDsDotDraft { background: var(--bs-warning); }
+	.nuDsDot.nuDsDotNew { background: var(--bs-primary); }
+	.nuDsPhMenu { max-height: 70vh; overflow-y: auto; }
 }
 .nuDsHead { display: flex; align-items: center; gap: .7rem; padding: 1rem 1rem .75rem; }
 .nuDsIcon { flex: 0 0 2.25rem; height: 2.25rem; border-radius: .5rem; display: flex; align-items: center; justify-content: center;
@@ -287,3 +321,20 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsListColTable tr.nuDsListDragging td { opacity: .4; }
 .nuDsListColTable tr.nuDsDropBefore td { box-shadow: inset 0 2px 0 var(--bs-primary); }
 .nuDsListColTable tr.nuDsDropAfter td { box-shadow: inset 0 -2px 0 var(--bs-primary); }
+@media (max-width: 767.98px) { .nuDsPanel .nuDsSecTabs { top: 1.4rem; } }
+
+/* Add → Input: the kind of input (0.8.846) */
+.nuDsElMore { position: relative; }
+.nuDsElSub { font-size: .65rem; color: var(--bs-secondary-color); }
+.nuDsFlyHeadSub { align-items: center; gap: .5rem; }
+.nuDsFlyHeadText { flex: 1 1 auto; min-width: 0; }
+.nuDsFlyCrumb { font-size: .72rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuDsFlyBack { flex: 0 0 auto; padding: .15rem .45rem; }
+.nuDsKindMore { display: flex; justify-content: space-between; align-items: center; width: calc(100% - 2rem); margin: .35rem 1rem .4rem; padding: .4rem .6rem;
+	border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); color: var(--bs-body-color); font-size: .8rem; }
+.nuDsKindMore:hover { border-color: var(--bs-primary); }
+.nuDsKindChips { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0 1rem .5rem; }
+.nuDsKindChip { padding: .2rem .55rem; border: 1px solid var(--bs-border-color); border-radius: 999px; background: var(--bs-body-bg); color: var(--bs-body-color); font-size: .76rem; cursor: grab; }
+.nuDsKindChip:hover { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
+.nuDsKindDone { margin: .2rem 1rem .6rem; padding: .35rem .6rem; border-radius: .4rem; background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); font-size: .78rem; }
+.nuDsKind span { overflow-wrap: anywhere; hyphens: auto; }

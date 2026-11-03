@@ -2,7 +2,7 @@
 	<h2 id="startup-h">Startup and configuration</h2>
 	<p class="doc-lead">What happens before a page runs: nuconfig.php, security headers, the session and housekeeping.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p><code>core/nuapp.php</code> is loaded first by <code>index.php</code>, <code>api.php</code> and <code>cron.php</code> (<code>dbadmin.php</code> deliberately not – Adminer's functions would clash). It defines the helpers and loads most classes only when they are first used. <code>nu_boot()</code> then prepares the request:</p>
+	<p><code>core/nuapp.php</code> is loaded first by <code>index.php</code>, <code>api.php</code> and <code>nucron.php</code> (<code>nudbadmin.php</code> deliberately not – Adminer's functions would clash). It defines the helpers and loads most classes only when they are first used. <code>nu_boot()</code> then prepares the request:</p>
 <ol>
 	<li><strong>Configuration</strong> – <code>nuconfig.php</code> is read on every request (<code>nu_config()</code>, values through <code>nu_cfg('…')</code>). Without it, a setup hint is shown.</li>
 	<li><strong>Security headers</strong> – a strict Content-Security-Policy (only own scripts, styles and fonts). Pages that run form code allow inline scripts, because forms contain admin-written JavaScript; chart forms also allow Google's chart host, and <code>$nuConfigIncludeJS</code> / <code>$nuConfigIncludeCSS</code> from other hosts are added.</li>

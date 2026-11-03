@@ -13,7 +13,7 @@ parameters:
 	paths:
 		- ../index.php
 		- ../api.php
-		- ../cron.php
+		- ../nucron.php
 		- ../core
 		- ../pages
 	bootstrapFiles:

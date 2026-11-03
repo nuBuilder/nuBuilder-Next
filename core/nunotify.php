@@ -535,7 +535,7 @@ final class NuNotify
 	public static function settings(): array
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$d = is_string($v) ? json_decode($v, true) : null;
 		} catch (Throwable) {
 			$d = null;
@@ -548,8 +548,7 @@ final class NuNotify
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => json_encode(['keep_days' => max(0, min(3650, $keepDays))]), 'updated_at' => self::now(), 'updated_by' => (string)(NuAuth::user()['login'] ?? '')];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
+		nu_setting_save(self::SETTING, $row, $db);
 	}
 
 	/** Housekeeping: e-mails of scheduled notifications that are due; notifications older than "keep" (by expiry or publishing). */

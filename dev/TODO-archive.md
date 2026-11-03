@@ -219,7 +219,7 @@ need a real environment are collected in TODO.md → "Please verify – short li
 
 ## 0.8.430 PHP 8.1: GitHub download – please verify
 - [ ] On the PHP 8.1 server: installer step *Libraries* and Update → *Look on GitHub* reach GitHub again (before: "Undefined constant
-      CURLOPT_XFERINFOFUNCTION"); the unattended update (`php cron.php update --github`) downloads. Tested here only with PHP 8.3, where the
+      CURLOPT_XFERINFOFUNCTION"); the unattended update (`php nucron.php update --github`) downloads. Tested here only with PHP 8.3, where the
       PHP 8.1 option (CURLOPT_PROGRESSFUNCTION) downloads and stops at the size limit as before.
 
 ## 0.8.428 Back to all records – please verify
@@ -498,7 +498,7 @@ need a real environment are collected in TODO.md → "Please verify – short li
 - Tabs in the underline look (0.8.312): check nuBuilder form tabs, vertical tabs and dark mode on a real application.
 
 ## 0.8.301 Unattended update (command line / API) – please verify
-- On a real server: php cron.php update as the web server's user (file owner), with --url over https and a proxy; disabled
+- On a real server: php nucron.php update as the web server's user (file owner), with --url over https and a proxy; disabled
   proc_open (second phase then on the next cron run / update page); the API through a TLS proxy; OPcache with validate_timestamps=0.
 - Idea for later: update feed (a URL with the newest version; cron checks, e-mails or installs within a time window).
 
@@ -530,7 +530,7 @@ need a real environment are collected in TODO.md → "Please verify – short li
 ## 0.8.282 Adminer – please verify
 - Apache: third_party/adminer/ gets a deny-all .htaccess – check that adminer.php is not served directly (Security check probes it);
   nginx: block it by hand.
-- SQL Server: Adminer through dbadmin.php (driver mssql, pdo_sqlsrv / sqlsrv extension) and zzzzsys_session created by NuVendor on
+- SQL Server: Adminer through nudbadmin.php (driver mssql, pdo_sqlsrv / sqlsrv extension) and zzzzsys_session created by NuVendor on
   SQL Server – not tested on a real SQL Server.
 
 ## 0.8.276 saved Cloner / App cloner settings – please verify
@@ -550,14 +550,14 @@ All points S1–S26 and B1–B10 of the review (0.8.206) are built; details in C
 - [ ] "Forgot password" without `$nuConfigBaseURL`: uses the address the globeadmin last used; set `$nuConfigBaseURL` to be sure.
 - [ ] Before switching on "Do not save read-only and hidden fields" / "Records only through the form's list": try your forms as a user
       (JavaScript that fills hidden fields; browse SQL that needs Before Browse code is not checked).
-- [ ] Cron: `*/15 * * * * sudo -u www-data php /var/www/html/nunext/cron.php` – run as the web server's user (files it creates must stay
+- [ ] Cron: `*/15 * * * * sudo -u www-data php /var/www/html/nunext/nucron.php` – run as the web server's user (files it creates must stay
       writable for PHP).
 - [ ] **Signing key**: `nunext-signing.key` (Ed25519, delivered separately with 0.8.207) signs the packages; keep it private and outside the
       project. A new development session needs it next to the project folder (`../nunext-signing.key`) – without it `dev/release.py`
       builds unsigned packages (warning on the update page). Losing it means: new key pair + `NuUpdate::SIGN_PUBLIC` in a release.
 - [ ] Continue development from **`nunext-dev.zip`** (with CLAUDE.md, TODO.md, dev/, .github/); `nunext.zip` is only for installing.
 - [ ] Update from GitHub (0.8.374): on the live servers check that the host allows outgoing HTTPS to github.com (InfinityFree may not) –
-      the section shows the error otherwise; a cron with `php cron.php update --github` updates unattended.
+      the section shows the error otherwise; a cron with `php nucron.php update --github` updates unattended.
 - [ ] B1/B4: the project is on GitHub now (nuBuilder/nuBuilder-Next, public) – `.github/workflows/ci.yml` runs lint, PHPStan,
       ESLint, unit tests and the browser smoke test on MariaDB; the SQL Server job is written but not verified (no form tables in
       `schema_mssql.sql`, see "Install scripts").

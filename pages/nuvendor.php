@@ -15,8 +15,52 @@ if (nu_is_post()) {
 	if (nu_post('action') === 'db_primary' || in_array($reqApp, ['PMA', 'ADM', 'DB'], true)) NuAdmin::require('dbtool', 'change');
 	elseif ($reqApp === 'TFM') { NuAdmin::require('filemanager', 'change'); nu_redirect(NuFileManager::url()); }
 	else NuAdmin::require('status', 'change');
-} else {
+} elseif ((string)($_GET['open'] ?? '') === '') {           // ?open=<token>: the database tool's own right, checked below (0.8.852)
 	NuAdmin::require('status', 'view');
+}
+// 0.8.852: opening a database tool in a new window by a one-time GET link. A POST with target=_blank loses its body in a window of
+// an installed app (Chrome "Install" / home screen) – the new window showed System status instead of the tool. nuapp.js sends the
+// POST with fetch (open=link) and gets {url} = ?p=vendor&open=<token>; the token lives in this session for two minutes.
+$appReq = strtoupper((string)($_POST['app'] ?? ''));
+if (nu_is_post() && nu_post('open') === 'link' && in_array($appReq, ['PMA', 'ADM', 'DB'], true)) {
+	header('Content-Type: application/json; charset=utf-8');
+	$tok = bin2hex(random_bytes(16));
+	$_SESSION['nu_vendor_open'] = array_filter((array)($_SESSION['nu_vendor_open'] ?? []), static fn($x) => (int)($x['exp'] ?? 0) > time());
+	$_SESSION['nu_vendor_open'][$tok] = ['app' => $appReq, 'table' => (string)($_POST['table'] ?? ''), 'exp' => time() + 120];
+	$go = nu_url('vendor', ['open' => $tok]);
+	if (!NuSecurity::recentAuth() && empty(NuAuth::user()['demo'])) { $_SESSION['nu_reauth_next'] = NuAuth::validNext($go) ?? nu_url('home'); $go = nu_url('reauth'); }
+	exit(json_encode(['url' => $go]));
+}
+if (!nu_is_post() && ($tok = (string)($_GET['open'] ?? '')) !== '') {
+	$o = $_SESSION['nu_vendor_open'][$tok] ?? null;
+	if (!is_array($o) || (int)$o['exp'] < time() || !NuAdmin::can('dbtool', 'change')) {
+		unset($_SESSION['nu_vendor_open'][$tok]);
+		nu_flash('danger', t('vendor_failed'));
+		nu_redirect(nu_url('vendor'));
+	}
+	NuSecurity::requireRecentAuth(nu_url('vendor', ['open' => $tok]));
+	// 0.8.853: not used up on the first call – an installed app's window may load the link twice (Chrome opens it again in an app
+	// window); it stays bound to this session and ends after its two minutes
+	$oa = $o['app'] === 'DB' ? NuVendor::primaryDb() : (string)$o['app'];
+	if (isset(NuVendor::APPS[$oa]) && NuVendor::available($oa)) {
+		try {
+			// 0.8.854: not a redirect but a page that moves on by itself – a navigation the app window started counts as coming from
+			// outside, and the browser then holds back the tool's SameSite=Strict cookie through a redirect ("Invalid session");
+			// a step started by our own page sends it
+			$to = NuVendor::launch($oa, (string)$o['table']);
+			header('Content-Type: text/html; charset=utf-8');
+			header('Cache-Control: no-store');
+			$name = NuVendor::DB_TOOLS[$oa] ?? $oa;
+			echo '<!doctype html><html lang="' . h(nu_lang()) . '"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' . h($to) . '">'
+				. '<meta name="viewport" content="width=device-width, initial-scale=1"><title>' . h($name) . '</title></head><body><p id="nuVendorGo">'
+				. h(t('vendor_opening', $name)) . ' <a href="' . h($to) . '">' . h($name) . '</a></p></body></html>';
+			exit;
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next vendor login: ' . $e->getMessage());
+			nu_flash('danger', t('vendor_failed') . (nu_debug() ? ' ' . $e->getMessage() : ''));
+		}
+	}
+	nu_redirect(nu_url('vendor'));
 }
 if (nu_is_post()) NuSecurity::requireRecentAuth(nu_url('vendor'));   // phpMyAdmin / File Manager / InnoDB: password confirmed recently (0.8.207)
 

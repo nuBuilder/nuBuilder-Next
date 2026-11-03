@@ -32,7 +32,7 @@ final class NuAudit
 		if (self::$settings !== null) return self::$settings;
 		$d = null;
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$d = is_string($v) ? json_decode($v, true) : null;
 		} catch (Throwable) {
 		}
@@ -52,8 +52,7 @@ final class NuAudit
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($new), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => (string)(NuAuth::user()['login'] ?? '')];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
+		nu_setting_save(self::SETTING, $row, $db);
 		self::$settings = null;
 		NuLog::write('audit_settings', self::TABLE, '', ['fields' => $changed]);
 		return $changed;

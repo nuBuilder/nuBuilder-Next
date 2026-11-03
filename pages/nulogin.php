@@ -50,6 +50,21 @@ function nu_login_custom_html(): ?string
 }
 $login = is_string($_GET['user'] ?? null) ? mb_substr(trim($_GET['user']), 0, 50) : '';   // auto login link without password: name filled in
 
+/** Single sign-on button (0.8.863, core/nusso.php): above the password form, empty while SSO is not ready. */
+function nu_login_sso_block(?string $next): string
+{
+	if (!NuSso::ready()) return '';
+	$url = nu_url('sso', ['go' => '1', 'next' => $next]);
+	return '<div class="nuLoginSso"><a class="btn btn-outline-primary w-100 py-2" id="nuSsoBtn" href="' . h($url) . '"><i class="bi bi-person-badge me-2" aria-hidden="true"></i>'
+		. h(NuSso::buttonLabel()) . '</a><div class="nuLoginOr"><span>' . h(t('login_or')) . '</span></div></div>';
+}
+
+/** nuBuilder Forte's $nuConfigLogonMode = 'sso': the password form is folded behind a link (only while SSO is ready). */
+function nu_login_sso_first(): bool
+{
+	return NuSso::ready() && strtolower((string)nu_cfg('nuConfigLogonMode')) === 'sso';
+}
+
 /** "Try the demo" (core/nudemo.php): one button per demo user that can log in; empty without $nuConfigDemoUser. */
 function nu_login_demo_block(string $action, ?string $next): string
 {
@@ -100,6 +115,7 @@ if ($custom !== null) {
 </div>
 <?php endif; ?>
 <?= $custom ?>
+<?php if (($sso = nu_login_sso_block($next)) !== ''): ?><div class="nuLoginSsoCustom"><?= $sso ?></div><?php endif; ?>
 <?php if (($demo = nu_login_demo_block($loginAction, $next)) !== ''): ?><div class="nuLoginDemoCustom"><?= $demo ?></div><?php endif; ?>
 <?php if (NuMail::configured()): ?>
 	<div class="text-center mt-3"><a class="small text-decoration-none" href="<?= h(nu_url('forgot')) ?>"><?= h(t('forgot_link')) ?></a></div>
@@ -148,6 +164,9 @@ nu_head(t('login_title'));
 					<a href="<?= h(nu_url('dbsetup')) ?>" class="alert-link"><?= h(t('dbs_login_link')) ?></a></div></div>
 			<?php endif; ?>
 
+			<?= nu_login_sso_block($next) ?>
+			<?php $ssoFirst = nu_login_sso_first() && $error === null && $login === ''; ?>
+			<?php if ($ssoFirst): ?><details class="nuLoginPwFold" id="nuLoginPwFold"><summary class="small text-center"><?= h(t('sso_password_link')) ?></summary><div class="pt-3"><?php endif; ?>
 			<form method="post" action="<?= h($loginAction) ?>" novalidate>
 				<?= nu_csrf_field() ?>
 				<?php if ($next !== null): ?><input type="hidden" name="next" value="<?= h($next) ?>"><?php endif; ?>
@@ -164,6 +183,7 @@ nu_head(t('login_title'));
 				</div>
 				<button class="btn btn-primary w-100 py-2" type="submit"><i class="bi bi-box-arrow-in-right me-2"></i><?= h(t('login_submit')) ?></button>
 			</form>
+			<?php if ($ssoFirst): ?></div></details><?php endif; ?>
 			<?= nu_login_demo_block($loginAction, $next) ?>
 			<?php if (NuMail::configured()): ?>
 				<div class="text-center mt-3"><a class="small text-decoration-none" href="<?= h(nu_url('forgot')) ?>"><?= h(t('forgot_link')) ?></a></div>

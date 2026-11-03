@@ -64,9 +64,23 @@ final class NuDB
 	public function run(string $sql, array $params = []): PDOStatement
 	{
 		NuDemo::check($sql);                                    // demo mode: read only (core/nudemo.php)
+		$this->noteWrite($sql);
 		$st = $this->pdo->prepare($sql);
 		$st->execute(self::bind($sql, $params));
 		return $st;
+	}
+
+	/**
+	 * Per-request caches that a statement may invalidate (0.8.827): DDL → the table-exists cache of this connection, a write to
+	 * zzzzsys_nunext_setting → nu_setting_value()'s cache. Looks only at the first word, so a SELECT costs one preg_match.
+	 */
+	private function noteWrite(string $sql): void
+	{
+		if (preg_match('/^\s*(?:\/\*.*?\*\/\s*)?([A-Za-z]+)/s', $sql, $m) !== 1) return;
+		$verb = strtoupper($m[1]);
+		if ($verb === 'SELECT' || $verb === 'SHOW' || $verb === 'SET' || $verb === 'EXPLAIN') return;
+		if ($verb === 'CREATE' || $verb === 'DROP' || $verb === 'RENAME' || $verb === 'ALTER') $this->tableCache = [];
+		if (stripos($sql, 'zzzzsys_nunext_setting') !== false && function_exists('nu_setting_forget')) nu_setting_forget();
 	}
 
 	/**
@@ -240,6 +254,7 @@ final class NuDB
 	public function exec(string $sql): int
 	{
 		NuDemo::check($sql);
+		$this->noteWrite($sql);
 		return (int)$this->pdo->exec($sql);
 	}
 
@@ -303,7 +318,37 @@ final class NuDB
 		}
 	}
 
+	/** @var array<string, bool> table-exists answers of this connection (0.8.827: a page asked the catalogue 12–30 times) */
+	private array $tableCache = [];
+
+	public function forgetTables(): void { $this->tableCache = []; }
+
 	public function tableExists(string $table): bool
+	{
+		$key = strtolower($table);
+		if ($this->tableCache === []) {                          // the first question loads the whole list – one query instead of ~20
+			$this->tableCache = ['' => true];
+			try {
+				foreach ($this->tableNames() as $t) $this->tableCache[strtolower($t)] = true;
+			} catch (Throwable) {
+				return $this->tableCache[$key] = $this->tableExistsNow($table);
+			}
+		}
+		return $this->tableCache[$key] ??= $this->tableExistsNow($table);
+	}
+
+	/** @return list<string> every table (and view) of the connected database */
+	public function tableNames(): array
+	{
+		$rows = match ($this->type) {
+			'mysql'  => $this->all('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()'),
+			'sqlsrv' => $this->all('SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES'),
+			default  => $this->all("SELECT name AS t FROM sqlite_master WHERE type = 'table'"),
+		};
+		return array_map(static fn($r) => (string)($r['t'] ?? $r['T'] ?? reset($r)), $rows);
+	}
+
+	private function tableExistsNow(string $table): bool
 	{
 		return (bool)match ($this->type) {
 			'mysql'  => $this->value('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?', [$table]),

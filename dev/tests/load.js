@@ -192,8 +192,8 @@ async function time(p, url, runs = RUNS) {
 			results.push([name, r.ms, r.status, r.ms <= POLL && r.status < 400 ? 'ok' : 'SLOW']);
 		}
 		if (process.env.SITE) {                                         // housekeeping of the test installation (its nuconfig.php)
-			const t = Date.now(); execSync('php ' + JSON.stringify(path.join(process.env.SITE, 'cron.php')) + ' 2>&1 || true');
-			results.push(['housekeeping (cron.php)', Date.now() - t, 0, 'info']);
+			const t = Date.now(); execSync('php ' + JSON.stringify(path.join(process.env.SITE, 'nucron.php')) + ' 2>&1 || true');
+			results.push(['housekeeping (nucron.php)', Date.now() - t, 0, 'info']);
 		}
 	} finally {
 		if (browser) await browser.close();

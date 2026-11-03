@@ -304,6 +304,11 @@
      "id": "password-policy",
      "title": "Password policy",
      "file": "07-09-password-policy.htm"
+    },
+    {
+     "id": "sso",
+     "title": "Single sign-on",
+     "file": "07-10-sso.htm"
     }
    ]
   },
@@ -513,7 +518,7 @@
    "pages": [
     {
      "id": "pages",
-     "title": "Pages (custom PHP)",
+     "title": "Custom pages",
      "file": "11-01-pages.htm"
     },
     {

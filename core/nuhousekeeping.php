@@ -6,7 +6,7 @@ defined('NU_ROOT') || exit;
  * Housekeeping (0.8.207): expired tokens and API tokens, ended sessions and tool logins, old API rate counters, the log beyond
  * "Keep the log", temporary files (saved reports, update uploads, nuconfig.php checks, CSV imports).
  *
- * Run it by cron:   php <nuBuilder Next>/cron.php      (e.g. every 15 minutes – see Help → Security)
+ * Run it by cron:   php <nuBuilder Next>/nucron.php      (e.g. every 15 minutes – see Help → Security)
  * Without cron a page view now and then does the quick part (as before 0.8.207); once cron has run in the last 25 hours,
  * page views leave it to cron. The last run is stored in zzzzsys_nunext_setting 'housekeeping'.
  */
@@ -18,7 +18,7 @@ final class NuHousekeeping
 	public static function last(): ?array
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$j = is_string($v) ? json_decode($v, true) : null;
 			return is_array($j) && isset($j['time']) ? ['time' => (int)$j['time'], 'source' => (string)($j['source'] ?? 'web')] : null;
 		} catch (Throwable) {
@@ -58,7 +58,8 @@ final class NuHousekeeping
 		$step('audit', static fn() => NuAudit::purge());
 		$step('notifications', static fn() => NuNotify::housekeeping());   // due e-mails of scheduled notifications, old ones deleted (0.8.357)               // audit trail beyond "Keep" (0.8.350)
 		$step('webhooks', static fn() => NuWebhook::housekeeping());       // due retries of webhook calls, old calls deleted (0.8.715)
-		$step('report_files', static fn() => NuReportApi::purge());       // PDFs of the REST API whose link expired or was used up (0.8.340)
+		$step('report_files', static fn() => NuReportApi::purge());
+		$step('dbreset_files', static fn() => NuDbReset::purgeUploads());   // uploads of Reset database left behind (0.8.847)       // PDFs of the REST API whose link expired or was used up (0.8.340)
 		$step('demo_reset', static fn() => NuDemoData::resetIfDue());
 		$step('field_access', static fn() => NuFieldAccess::purgeOrphans());   // rules of deleted objects (0.8.480)
 		$step('permission_types', static fn() => NuPermType::purgeOrphans());
@@ -79,11 +80,7 @@ final class NuHousekeeping
 		});
 		try {
 			$row = ['setting_value' => json_encode(['time' => time(), 'source' => $source, 'done' => $done]), 'updated_at' => $now, 'updated_by' => $source];
-			if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) {
-				$db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-			} else {
-				$db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
-			}
+			nu_setting_save(self::SETTING, $row, $db);
 		} catch (Throwable) {
 		}
 		return $done;

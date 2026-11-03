@@ -525,29 +525,6 @@ function nu_list_footer(int $total, int $page, int $per, string $route, array $p
 	<?php
 }
 
-function nu_pagination(int $total, int $page, int $per, string $route, array $params): void
-{
-	$pages = (int)max(1, ceil($total / $per));
-	if ($pages <= 1) return;
-	$link = static fn(int $p) => h(nu_url($route, ['pg' => $p] + $params));
-	$from = max(1, $page - 2);
-	$to   = min($pages, $page + 2);
-	?>
-	<nav aria-label="<?= h(t('pagination')) ?>">
-		<ul class="pagination pagination-sm mb-0">
-			<li class="page-item<?= $page <= 1 ? ' disabled' : '' ?>"><a class="page-link" href="<?= $link($page - 1) ?>" aria-label="<?= h(t('prev')) ?>">&lsaquo;</a></li>
-			<?php if ($from > 1): ?><li class="page-item"><a class="page-link" href="<?= $link(1) ?>">1</a></li><?php if ($from > 2): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; endif; ?>
-			<?php for ($i = $from; $i <= $to; $i++): ?>
-				<li class="page-item<?= $i === $page ? ' active' : '' ?>"><a class="page-link" href="<?= $link($i) ?>"<?= $i === $page ? ' aria-current="page"' : '' ?>><?= $i ?></a></li>
-			<?php endfor; ?>
-			<?php if ($to < $pages): if ($to < $pages - 1): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; ?><li class="page-item"><a class="page-link" href="<?= $link($pages) ?>"><?= $pages ?></a></li><?php endif; ?>
-			<li class="page-item<?= $page >= $pages ? ' disabled' : '' ?>"><a class="page-link" href="<?= $link($page + 1) ?>" aria-label="<?= h(t('next')) ?>">&rsaquo;</a></li>
-		</ul>
-	</nav>
-	<?php
-}
-
-/** Sortable column header link. */
 /**
  * Search field of a list page (no label, placeholder "Search…"; $hint – what is searched – as tooltip):
  * search button at the right end of the field and, when $filterId is given, the filter
@@ -659,12 +636,13 @@ function nu_page_header(string $title, array $o = []): string
 	$sub = isset($o['sub_html']) ? (string)$o['sub_html'] : (isset($o['sub']) && $o['sub'] !== '' ? h((string)$o['sub']) : '');
 	return $bc . '<div class="nuTitleBar nuPageHead mb-3' . (isset($o['class']) ? ' ' . h((string)$o['class']) : '') . '"' . (isset($o['id']) ? ' id="' . h((string)$o['id']) . '"' : '') . '>'
 		. '<h1 class="h4 mb-0 d-inline-flex align-items-center gap-1"' . (isset($o['h1_id']) ? ' id="' . h((string)$o['h1_id']) . '"' : '') . '>'
-		. (!empty($o['icon']) ? '<i class="bi ' . h((string)$o['icon']) . ' me-1" aria-hidden="true"></i>' : '') . h($title) . $tip . '</h1>'
+		. (!empty($o['icon']) ? '<i class="bi ' . h((string)$o['icon']) . ' me-1" aria-hidden="true"></i>' : '') . h($title) . $tip . (string)($o['title_html'] ?? '') . '</h1>'
 		. ($sub !== '' ? '<div class="nuTitleSub text-body-secondary small">' . $sub . '</div>' : '')
 		. '<div class="d-flex flex-wrap gap-2">' . $btn . (string)($o['buttons'] ?? '') . '</div></div>';
 }
 
 /** $attrs (0.8.651): more attributes of the th, already escaped (e.g. ' data-nu-col="name"' for the column widths of NuListView) */
+/** Sortable column header link. */
 function nu_sort_th(string $label, string $col, string $sort, string $dir, string $route, array $params, string $class = '', string $attrs = ''): string
 {
 	$isCur = $sort === $col;

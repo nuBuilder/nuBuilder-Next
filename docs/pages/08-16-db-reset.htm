@@ -10,9 +10,21 @@
 <li>Type the <strong>database name</strong> to confirm and <em>Delete all tables and import</em> (the password must have been confirmed recently).</li>
 </ol>
 <p>Afterwards the database counts as <strong>set up by nuBuilder Next</strong> (not as an existing nuBuilder database, so nothing is blocked), with the security defaults of a new installation (records only through the form's list, read-only and hidden fields never saved from the browser). You stay signed in; <em>Open the setup wizard</em> sets up the rest (<a href="#install">Installation</a>). <code>nuconfig.php</code> – the connection and the globeadmin – files, library packs, custom pages and backups are not touched. The reset is written to the log (<code>database_reset</code>).</p>
+<div class="doc-sub">
+<h3 id="db-reset-fresh">Fresh installation from a package</h3>
+<p>Choose or upload a <strong>nunext.zip</strong> instead of an SQL file to install that version afresh – any version, also an older one or the one installed. It must be signed with nuBuilder Next's key. <em>Check file</em> shows the version (installed → package), the library packs that are removed and the ones the package brings, and every table that would be deleted. <em>Delete everything and install fresh</em> then:</p>
+<ol>
+<li>installs the package's files, as an update does (a backup of the files first, with the option ticked also of the whole database; maintenance mode while it runs),</li>
+<li>removes every installed library pack and installs the package's own (<code>_install/</code>),</li>
+<li>deletes all tables and views and builds a new, empty database from the package's install scripts, then nuBuilder Next's tables,</li>
+<li>runs the database steps and – if ticked – the sample application on the next page, already with the new version's code, and ends maintenance mode.</li>
+</ol>
+<p><code>nuconfig.php</code> (connection, globeadmin), <code>custom/</code> (custom pages and their data) and the backups stay. The installation is written to the log (<code>database_fresh</code>).</p>
+</div>
 <p>On the command line (also only with <code>$nuConfigDevMode = true</code>):</p>
-<pre><code>php cron.php reset --sql=/path/nubuilder4.sql --check          # check only, list what would be deleted
-php cron.php reset --sql=/path/dump.sql.gz --backup --sample --yes</code></pre>
+<pre><code>php nucron.php reset --sql=/path/nubuilder4.sql --check          # check only, list what would be deleted
+php nucron.php reset --sql=/path/dump.sql.gz --backup --sample --yes</code></pre>
+<p>An uploaded file is kept in <code>_update/</code> as <code>dbreset-….zip</code> / <code>.sql</code> only between <em>Check</em> and <em>Reset</em>: it is deleted after the reset, on <em>Cancel</em>, when the check fails or another file is checked – and by the housekeeping after a day. The Update page does not list these files.</p>
 <p>Without <code>--yes</code> nothing is deleted. Exit code: 0 = done / checked, 1 = failed, 2 = wrong call or developer mode off.</p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudbreset.php</code></li><li><code>pages/nudbreset.php</code></li><li><code>cron.php</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudbreset.php</code></li><li><code>pages/nudbreset.php</code></li><li><code>nucron.php</code></li></ul></details>
 </section>

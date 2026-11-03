@@ -164,7 +164,7 @@ final class NuTutorial
 		try {
 			if (!empty($u['demo'])) $p = $_SESSION[self::SESSION] ?? [];
 			elseif (!empty($u['globeadmin'])) {
-				$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+				$v = nu_setting_value(self::SETTING);
 				$p = is_string($v) ? (json_decode($v, true) ?: []) : [];
 			} else {
 				$p = NuUserJson::get((string)$u['id'], self::JSON_KEY);
@@ -185,8 +185,7 @@ final class NuTutorial
 			$db = nu_db();
 			NuSchema::ensure();
 			$row = ['setting_value' => json_encode($p), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'globeadmin'];
-			if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-			else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
+			nu_setting_save(self::SETTING, $row, $db);
 			return;
 		}
 		NuUserJson::set((string)$u['id'], self::JSON_KEY, $p);

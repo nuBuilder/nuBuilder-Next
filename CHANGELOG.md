@@ -3,6 +3,269 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.869 – Release gate (0.8.825–0.8.869)
+- Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte). Help and tutorial: single sign-on in
+  the security lesson, status texts of the library packs; TODO.md: points to verify for 0.8.862–0.8.868.
+- Fix: nuHideHolders(1) / nuRemoveHolders(1) set the top bar's height variable to 0 at once again (sticky rows of the form moved
+  up only after the next resize).
+- Tests: Global code check switches to "Form pages" before the Includes tab; waits for slow saves and embedded lists under load.
+
+## 0.8.868 – Help: access levels in your code
+- Help: new section "Access levels in your code" (Access levels) – which functions and hash variables return the main level and
+  which return all levels, examples in JavaScript, PHP and SQL (browse SQL, access condition), and the SQL for other users without
+  the helpers (with the collation note for MySQL and SQL Server). Links from the user form help, the access condition of objects
+  and the function reference.
+
+## 0.8.867 – All access levels in form code
+- All access levels of a user in form code: PHP nuNextAccessLevels($userId = null) and JavaScript nuNextAccessLevels() return
+  the main level first, then the active additional levels (id, code, description, group, main, valid_until); empty for the
+  globeadmin. nuAccessLevelId() / nuAccessLevelCode() stay the main level, as in nuBuilder Forte.
+- Hash variable #ACCESS_LEVEL_IDS#: the same ids quoted and comma separated, for SQL without quotes around it –
+  WHERE x IN (#ACCESS_LEVEL_IDS#); '' (matches nothing) for the globeadmin. In the "#" menu of the code editors.
+- Help (Access levels → Additional access levels, hash variables) and function reference updated; e2e test access_levels_js.
+
+## 0.8.866 – New form: narrower description and code fields
+- New form → step by step, step 1: the Description field is at most 500 px wide, the Code field at most 380 px.
+
+## 0.8.865 – Library packs: status names the source
+- Update → Libraries, table "Library packs": the status says where a working library comes from – "Installed (pack)",
+  "Installed (nuBuilder Forte's copy)" or "Installed (copied by hand)" instead of a plain "OK".
+
+## 0.8.864 – Search results: readable selected row
+- Start page search: the selected result (↓ / ↑, Enter) is a darker solid blue with a white, bold title, a near-white description and
+  the icon on a white square – the dark text on the bright blue was hard to read (choice C of the mockup; light and dark mode).
+
+## 0.8.863 – Single sign-on with OpenID Connect
+- Single sign-on with OpenID Connect: Settings → Sign-in & security → Single sign-on (globeadmin). Microsoft Entra ID, Google
+  Workspace, Keycloak or any other OpenID Connect provider (discovery document); client secret sealed with $nuConfigSecretKey; the
+  redirect URI is the existing oauth.php.
+- The sign-in page shows a button such as "Sign in with Microsoft" above the password form. The user is found by the provider's
+  verified e-mail (e-mail or login name, exactly one match); allowed e-mail domains; optional creation of new users (off by default)
+  with the access level of a group map (claim "groups" or another) or a default level; optionally the main access level follows the
+  map at every sign-in.
+- Checked here: authorization code with PKCE, state and nonce, signature of the ID token with the provider's keys (RS256/384/512),
+  issuer, audience, times. No own second factor and no password policy for these sign-ins; expiry, access level, rate limit, IP access
+  and nu_startup apply. Everything is logged (Login via sso, Single sign-on refused with the reason, user created, access level changed).
+- "Single sign-on only" per access level refuses the password, auto-login and one-time login links for those users; nuBuilder Forte's
+  $nuConfigLogonMode = 'sso' with $nuConfigSsoOnlyExcept works the same way and folds the password form. The globeadmin always signs in
+  with the password of nuconfig.php.
+- Test sign-in shows which user a provider account would sign in as (or would be created), the access level and the claims – nothing is
+  changed, also while single sign-on is still off.
+- Help page "Single sign-on", page number P636, compatibility check point M10 supported; e2e test sso_login with a fake provider
+  (dev/tests/fakeoidc.py), unit tests of the token checks.
+
+## 0.8.862 – Documentation update
+- Documentation brought up to date for 0.8.825–0.8.861: tutorial (Global code with the Form pages | All
+  pages switch, creating a custom page from Forms → Add), help (database tools in an installed app, what
+  happens to files uploaded for Reset database, custom pages are stored like forms), README (form designer on
+  phones and on views, run buttons with a URL and by rights, where custom pages are created and listed),
+  TODO.md (please-verify list for 0.8.832–0.8.861).
+
+## 0.8.861 – Custom pages apart from forms
+- Custom pages apart from forms: Forms → Add now asks "New form or page" with a fourth card Custom page. A
+  short dialogue asks for the description, the code (proposed from the description – it is the folder
+  custom/pages/<code>/) and how the page opens, then the page editor opens. The step-by-step wizard no
+  longer offers Custom page as a form type.
+- The list Custom pages: Forms → Tools → Custom pages (also in the ▾ of the start page tile Forms) shows
+  the forms list with only custom pages; its Add opens the dialogue. Custom pages stay in the forms list
+  with their badge, and access levels grant rights on them as before.
+
+## 0.8.860 – Custom page tooltip corrected
+- The (i) of the type Custom page no longer says the page gets nuBuilder Next's menu: nuBuilder Next checks
+  the sign-in and the rights before the page runs, and the page's look is entirely its own.
+
+## 0.8.859 – Custom pages
+- The form type "Page (custom PHP)" is now called "Custom page" – in every text of the 11 languages, the help,
+  the tutorial, the README and custom/PAGE_GUIDE.md ("page form" → "custom page", "Pages (custom PHP)" →
+  "Custom pages"). An (i) next to the type in the page editor (and the tooltip of the option in the new form
+  wizard) explains it: your own PHP app in custom/pages/<code>/, shown inside nuBuilder Next with its
+  sign-in, rights and menu. Code names, addresses and the folder custom/pages/ stay as they were.
+
+## 0.8.858 – Sample data: Remove in the title row
+- Sample data: Remove sits in the title row of each sample, next to Open and Refresh (also when only
+  leftovers of a sample are there) – before it was hidden on the tab Maintenance. A note above the tabs
+  says why it is greyed out when other users still have a sample access level.
+
+## 0.8.857 – Global code tabs: switch and short names
+- Global code: a switch Form pages | All pages, then only that group's tabs with short names – JavaScript,
+  CSS, Includes – instead of five tabs that repeated "Form" and "Global". The full name stays as the tab's
+  tooltip; each group reopens the tab last used there, and a link to a tab (#gjs) moves the switch along.
+  On phones the switch takes the full width and the tabs fit one line.
+
+## 0.8.856 – Global code warning can be hidden
+- Global code: the warning on top of the page (code runs for every user, ?safe=1) can be closed with ×.
+  The browser remembers the choice; an (i) next to the page title shows the warning again.
+
+## 0.8.855 – Tile menu in the start page search
+- Start page search: a right-click (a long press on a phone) on a tile in the search results opens the
+  tile's menu – Add to / Remove from favourites, Hide tile / Hide for me. Pages, forms, procedures and
+  reports that are no tile keep the browser's own menu. After the change the page reloads with the
+  search still in the field.
+
+## 0.8.854 – Database tools: session cookie in app windows
+- phpMyAdmin / Adminer in an installed app: "Invalid session" – the browser held back the tool's SameSite=Strict cookie on a
+  redirect that the app window had started. The link now answers with a short "Opening …" page that moves on by itself, so the
+  step to the tool comes from our own page and the cookie is sent (the cookie stays Strict).
+
+## 0.8.853 – Database tools: link stays valid
+- phpMyAdmin / Adminer in an installed app: the one-time link of 0.8.852 was used up when the app window loaded it a second
+  time ("The tool could not be opened"). The link now stays valid for its two minutes in the same session.
+
+## 0.8.852 – Database tools open in installed apps
+- phpMyAdmin / Adminer open in an installed app (Chrome "Install" / home screen icon): the new window got the form's POST
+  without its data and showed System status. The tools now open through a one-time link (valid two minutes, used once) that
+  the page fetches first; without JavaScript the form posts as before.
+
+## 0.8.851 – New form: tables and views grouped
+- New form wizard, existing table: the searchable list shows views under their own heading "Views" below "Tables" (only when
+  the database has views) instead of a "(view)" suffix after each name; labels unchanged. Help updated.
+
+## 0.8.850 – Record log option wording
+- New form wizard: the option reads "Add record log (_nulog, JSON)" with a shorter (i) text (what the column holds, where it
+  shows) in all languages; help page wording to match.
+
+## 0.8.849 – Notes
+- TODO.md only: open question "Audit columns switch" (visible / switchable automatic created / updated stamps in design mode).
+
+## 0.8.848 – New form: one Add, then the choice
+- New form: Forms → Add first asks how to start (the owner picked mockup A) – Step by step (the wizard), Describe it – AI
+  creates it (Form with AI) or, for the globeadmin, Copy an existing form (Form cloner); the last choice is marked. The
+  forms list has no separate "With AI" button and the wizard no AI box any more. Help and tutorial updated.
+
+## 0.8.847 – Reset database: uploads cleaned up
+- Reset database: the uploaded file (_update/dbreset-….zip / .sql) is deleted after the reset, after Cancel, after a failed
+  check and when another file is checked; such uploads are no longer listed on the update page or as a reset source, and
+  housekeeping deletes any older than a day (also the ones left by 0.8.844–0.8.846).
+
+## 0.8.846 – Design mode: kind of input when adding
+- Design mode → Add → Input opens a second page "What kind of input?": the frequent kinds as tiles (text, number, date,
+  checkbox, e-mail, phone, button, file, time), the other eleven under "All input types"; click adds (label = the kind),
+  drag places it, the page stays open for the next one, the arrow goes back. Help: Designing a form → Add.
+
+## 0.8.845 – Notices wrap long paths on phones
+- Notices on phones: long paths and code (e.g. the crontab line of the renamed-files notice on the start page) wrap
+  instead of making the page wider than the screen (nuapp.css: code in .alert, flex text column min-width 0).
+
+## 0.8.844 – Reset database: fresh installation from a package
+- Reset database (developer mode): a signed nunext.zip can be chosen or uploaded instead of an SQL file – a fresh installation
+  of that version (any version, also older or the same): its files installed as an update does (backup first), every installed
+  library pack replaced by the package's own, all tables deleted and a new, empty database built from the package's install
+  scripts; the database steps and the optional sample data run on the next page with the new code, then maintenance mode ends.
+  nuconfig.php, custom/ and the backups stay. Logged as database_fresh.
+- Help: Reset database → Fresh installation from a package.
+
+## 0.8.843 – Form with AI as a wizard
+- Form with AI is a wizard in three steps: 1 What to create (one form or a small app, description), 2 Existing tables
+  (None – new tables only / All tables / Choose tables in a searchable list), 3 Answer and check (paste, check, create).
+  A finished step opens again by clicking its title; Next on step 1 needs a description, a copied prompt leads to step 3.
+  Something new starts with None, a change of a form with Choose tables and the form's own table.
+- Help: Forms with AI describes the steps.
+
+## 0.8.842 – Form with AI: optional tables
+- Form with AI: the table field is called "Existing tables to describe (optional)", and its (i) explains that a new
+  table needs nothing there. New choice "None – new tables only" sends no existing table, for the shortest prompt.
+
+## 0.8.841 – Form with AI: textarea as input type
+- Form with AI: an object written as "type": "input" with "input": "textarea" (or select, html, display, lookup, word)
+  is taken as that object type, with a warning instead of an error – AIs often write a textarea that way.
+
+## 0.8.840 – To-do: function example test
+- To-do list: proposal for a test that runs every example of the function reference (waiting for the owner).
+
+## 0.8.839 – Sample code formatted
+- Sample data: the PHP code of the sample procedures and form hooks (sales sample and ticket system) is formatted as
+  "Format code" formats it – one statement per line, blocks in braces. Sample data version 22, ticket system version 5:
+  Admin tools → Sample data offers the refresh.
+
+## 0.8.838 – Procedure run setting explained
+- Procedure form: the Run setting is called "Run from a button" and explains in an (i) what Hidden and New tab do;
+  the test buttons are set apart as "Test now" with their own (i).
+
+## 0.8.837 – Procedure form layout
+- Procedure form: the details are two rows of fields sized to their content – Code, Description (up to 560 px) and
+  Status, then Group, Category and Start from; the hint of Start from is an (i). On phones every field takes the full
+  width.
+
+## 0.8.836 – No breadcrumb flash
+- Top bar without logo: the page's breadcrumb no longer flashes below the bar for a moment on every page load (for
+  example when a list is sorted) – from 768 px it is hidden by the style sheet right away, before the script moves it
+  into the bar.
+
+## 0.8.835 – Compact record pages
+- Record pages more compact (user, access level, admin role, procedure, API client, webhook and the other pages of one
+  record): less card padding, less space between fields, smaller labels and fields. On phones the fields keep 16 px
+  text, so iOS does not zoom in when a field is tapped. Forms built in nuBuilder are not changed.
+
+## 0.8.834 – Access levels list without clone button
+- Access levels list: the clone button of each row is gone (cloning an access level is rare); Clone stays on the
+  access level form.
+
+## 0.8.833 – Compact tables
+- Lists and form browse lists more compact: rows .3rem / .75rem padding (was .5rem / 1rem), text .875rem with line
+  height 1.4, title row .5rem, smaller badges; list header .375rem and filter row .625rem above and below.
+
+## 0.8.832 – Compact list header
+- Lists: compact header (padding .5rem .75rem instead of 1rem 1.25rem); the filter row keeps the same left and right
+  edge (.75rem), also on phones.
+
+## 0.8.831 – Design mode on phones
+- Design mode on phones: the bar is one line (Done, a status dot, Structure, Add and a ⋯ menu with the other
+  actions) and slides away while scrolling down. The properties panel is a bottom sheet with three heights –
+  peek, half and full – switched with its handle (tap or swipe); typing in a field opens it half way, and the
+  form keeps the selected object visible above it.
+- Phones: a small toolbar above the selected object – Label and ID, Move up, Move down, Duplicate, Delete,
+  All settings.
+- Fix: the space below the form in design mode on phones now follows the panel's height.
+
+## 0.8.830 – Run objects can open a URL
+- Run objects can open a URL: run type "Open URL" in design mode, with an https:// / http:// address or a path of this site
+  (e.g. custom/report.php). Hash variables such as #RECORD_ID# or #field# are filled in and URL-encoded. As a button it opens in a new
+  tab (default), a popup window or this tab (unsaved changes ask first); as an iframe it shows the page inside the form, and the form
+  page allows that host in its Content Security Policy. javascript:, data: and other schemes are refused.
+- The URL is kept in nuBuilder Next's own part of the object (sob_all_json); nuBuilder Forte's columns stay as they are, so Forte shows
+  such a button without a target.
+
+## 0.8.829 – Run buttons only for users who may open their target
+- Forms: a run button (or run iframe) to a form, report or procedure is only shown to users who may open it – the view right on the
+  form, the report's access levels, the procedure's access levels or "Global". Others no longer see a button that would only answer
+  "no access"; an empty hidden element keeps the button's ID, so form JavaScript that shows / hides it still works. The globeadmin and
+  users who design forms see every button. Input objects of type button are not checked – their target is in their own JavaScript.
+
+## 0.8.828 – Auto collapse for the start page rows
+- Start page: the right-click / long-press menu of the rows Favourites and Recently used has a new switch "Auto collapse". When it is
+  on, the row is folded every time the page opens and folds again after you pick one of its entries; a click on the heading still opens
+  it. Remembered per row and per device.
+
+## 0.8.827 – Core review: fewer queries, a password policy fix, dead code removed
+- Core review (code quality, performance, security – no change of behaviour intended, except the fix below).
+- Fix: a password change interval set per access level (Security → Password policy, "Regular change" per level) never applied –
+  the per-level look-up failed silently and only the global interval counted. The browser test checks it now.
+- Fewer database queries on every page: settings rows are read once per request (`nu_setting_value()`; a write clears the cache),
+  "does this table exist" is answered from one listing of the database's tables instead of one catalogue query per table, and
+  design mode loads the events, PHP hooks and lookup code of a form with three queries instead of one per object. The start page
+  went from 78 to about 50 queries, the users list from 62 to about 40 (measured with MariaDB's general log).
+- One helper writes a settings row (`nu_setting_save()`) – the same update-or-insert code was written out 26 times.
+- The installed manifest is decoded once per request on the update page; demo mode masks settings by the same rule as the Security
+  check (`NuSecurity::secretName`, which also covers passwd / passwort / TOTP / _hash).
+- Removed unused code: `nu_pagination()`, `NuToken::purgeExpired()`, `NuPermission::copyUser()`, `NuSpreadsheet::isSpreadsheet()`,
+  `NuWebhook::secretOf()`, `NuXlsxStream::sheetNames()`, three unused constants and three unused JavaScript variables.
+- Checked and found in order: no SQL built from user input without parameters, every redirect target validated, no `eval` outside the
+  procedure runner, every POST behind the CSRF check, PHPStan level 5 shows no real finding besides the fix above.
+
+## 0.8.826 – api.php and oauth.php keep their names
+- api.php and oauth.php keep their old names again: other systems call them (REST clients such as n8n, Zapier or scripts; the
+  OAuth 2 redirect URI registered at Google or Microsoft 365), so a new name would break them. Only cron.php → nucron.php and
+  dbadmin.php → nudbadmin.php stay renamed. The notice on the start page after an update lists only these two.
+- Updating from 0.8.825: nuapi.php and nuoauth.php are removed and api.php / oauth.php come back – a REST client or OAuth redirect
+  URI already changed to the new names must be changed back.
+
+## 0.8.825 – Entry files with the nu prefix
+- The entry files in the root folder got the nu prefix (no old names kept): api.php → nuapi.php, cron.php → nucron.php,
+  oauth.php → nuoauth.php, dbadmin.php → nudbadmin.php. The update deletes the old files.
+- After updating: change the crontab line to nucron.php, the address of REST clients to …/nuapi.php/v1/…, the redirect URI
+  of the SMTP login with OAuth 2 (Google Cloud console / Azure) to …/nuoauth.php; Adminer bookmarks to nudbadmin.php. The
+  start page shows the globeadmin this list until it is hidden.
+
 ## 0.8.824 – Release gate (0.8.803–0.8.824)
 - Release gate (full test run: smoke, all end-to-end tests, compatibility with nuBuilder Forte).
 - Documentation brought up to date for 0.8.803–0.8.823: README (validation rules, Browse list, Maintenance status, Form with AI

@@ -11,6 +11,7 @@
 		<tr><td>Shared login</td><td>A user already signed in to nuBuilder Forte on the same domain is signed in to nuBuilder Next.</td><td><code>$nuConfigSharedLogin = true</code></td></tr>
 		<tr><td>Auto-login link</td><td>nuBuilder Forte's link <code>index.php?u=&lt;login&gt;&amp;p=&lt;hash&gt;</code>, optionally opening a form and record. Links that expire can be made in the user form.</td><td><code>$nuConfigAutoLogin = true</code> (see <a href="#config">Configuration</a>)</td></tr>
 		<tr><td>One-time login link</td><td>nuBuilder Forte's token link <code>index.php?u=&lt;user&gt;&amp;p=&lt;token&gt;</code> – works once, then the token is replaced. See <a href="#logintoken">below</a>.</td><td>Security check: <em>Accept nuBuilder Forte's one-time login tokens</em> (on by default)</td></tr>
+		<tr><td>Single sign-on</td><td>OpenID Connect: the button on the sign-in page sends the user to the company's provider (Microsoft Entra ID, Google, Keycloak …). Access levels can follow the provider's groups; access levels can be set to single sign-on only. See <a href="#sso">Single sign-on</a>.</td><td>Settings → Sign-in &amp; security → Single sign-on</td></tr>
 		<tr><td>Demo users</td><td>Sign in read-only.</td><td><code>$nuConfigDemoUser</code> (see <a href="#demo-mode">Demo mode</a>)</td></tr>
 		<tr><td>REST API</td><td>Clients get short-lived access tokens (OAuth 2.0 client credentials); no interactive login.</td><td><code>$nuConfigApi = true</code> (see <a href="#api">REST API</a>)</td></tr>
 	</tbody>
@@ -33,7 +34,7 @@
 		<li>Failed logins are rate-limited and written to the log; the procedure <code>nu_invalid_login</code> can replace the message, <code>nu_startup</code> runs after every login and can refuse it.</li>
 		<li>Sessions end after <code>$nuConfigSessionTimeout</code> / <code>$nuConfigSessionTimeoutGlobeadmin</code> minutes without activity, when the password is changed anywhere, or when the globeadmin ends them.</li>
 		<li>The globeadmin can reset a user's two-step login (lost phone) in the user form.</li>
-		<li>With <a href="#ip-access">IP access</a> switched on, every method – password, auto-login link, one-time login link – is refused from an address the user's access levels do not allow, and a running session ends when its address is no longer allowed.</li>
+		<li>With <a href="#ip-access">IP access</a> switched on, every method – password, auto-login link, one-time login link, single sign-on – is refused from an address the user's access levels do not allow, and a running session ends when its address is no longer allowed.</li>
 	</ul>
 	<p>Internals: <a href="#sessions-arch">Sessions and sign-in flow</a>. Checks of all these settings: <a href="#security-check">Security check</a>.</p>
 </div>

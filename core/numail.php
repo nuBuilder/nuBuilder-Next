@@ -153,7 +153,7 @@ final class NuMailer
 	public static function authType(): string
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::AUTH_SETTING]);
+			$v = nu_setting_value(self::AUTH_SETTING);
 		} catch (Throwable) {
 			return '';
 		}
@@ -170,8 +170,7 @@ final class NuMailer
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => $type, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => (string)(NuAuth::user()['login'] ?? '')];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::AUTH_SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::AUTH_SETTING);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::AUTH_SETTING] + $row);
+		nu_setting_save(self::AUTH_SETTING, $row, $db);
 		return true;
 	}
 

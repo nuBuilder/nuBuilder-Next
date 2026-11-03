@@ -19,7 +19,6 @@ defined('NU_ROOT') || exit;
 final class NuFormRules
 {
 	public const OPS = ['eq', 'ne', 'contains', 'ncontains', 'starts', 'ends', 'empty', 'nempty', 'lt', 'gt', 'le', 'ge', 'between', 'in', 'nin', 'regex', 'before', 'after'];
-	public const NO_VALUE = ['empty', 'nempty'];
 	public const MAX_RULES = 100;
 	private const MAX_DEPTH = 6;
 	public const HASH_NAME = '/^[A-Za-z_][A-Za-z0-9_]{0,80}$/';

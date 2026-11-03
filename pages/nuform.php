@@ -74,7 +74,8 @@ $usesCharts = (bool)array_filter($meta->objects, static fn($o) => $o['sob_all_ty
 	|| preg_match('/nuChart|google\.(charts|visualization)/', $meta->form['sfo_javascript'] . $meta->form['sfo_browse_javascript'] . $meta->form['sfo_edit_javascript'] . ($meta->php('BE') ?? ''));
 $gs = $usesCharts ? ' https://www.gstatic.com' : '';
 $inc = NuIncludes::cspSources();   // $nuConfigIncludeJS / CSS from other hosts (0.8.443)
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'$gs{$inc['style']}; script-src 'self' 'unsafe-inline' 'unsafe-eval'$gs{$inc['script']}; font-src 'self' data:; connect-src 'self'$gs; frame-src 'self'; object-src 'self' data: blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'none'");
+$fr = NuRender::urlFrameSources($meta->objects);   // run objects of type URL shown as iframe (0.8.830): their hosts
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'$gs{$inc['style']}; script-src 'self' 'unsafe-inline' 'unsafe-eval'$gs{$inc['script']}; font-src 'self' data:; connect-src 'self'$gs; frame-src 'self'$fr; object-src 'self' data: blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'none'");
 header('X-Frame-Options: SAMEORIGIN');
 
 $layout = $meta->layout();
@@ -210,6 +211,7 @@ $client = [
 		'globeadmin' => $u['globeadmin'], 'access_level_id' => $u['access_id'], 'access_level_code' => NuHash::base()['ACCESS_LEVEL_CODE'],
 		'language' => NuTranslate::language(), 'permissions' => NuHash::permissions((string)$u['id']),
 		'fields' => (object)NuUserFields::mine(),                 // custom user fields (0.8.454): nuNextUserField(code)
+		'access_levels' => NuUserAccess::listOf(),                // main + active additional levels (0.8.867): nuNextAccessLevels()
 	] + nu_form_user_details($u),
 	'translations' => (object)NuTranslate::dictionary(),
 	'props' => (object)$props,

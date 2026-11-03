@@ -107,7 +107,7 @@ final class NuSidebar
 	private static function setting(string $id): ?string
 	{
 		NuSchema::ensure();
-		$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id]);
+		$v = nu_setting_value($id);
 		return $v === null ? null : (string)$v;
 	}
 
@@ -116,8 +116,7 @@ final class NuSidebar
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
+		nu_setting_save($id, $row, $db);
 	}
 
 	// ------------------------------------------------------------------ recently used

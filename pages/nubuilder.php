@@ -32,6 +32,55 @@ if ($meta && $meta->isPage()) {
 // bookmarks (?obj=, ?open=, ?colchg=, ?delete=1) lead to the matching place in design mode
 if ($meta) nu_redirect(NuDesign::fromBuilder($meta, $_GET));
 
+// 0.8.848: ?new=1 first asks how to start (the owner picked mockup A) – step by step (&start=wizard), described for an AI (Form with AI),
+// or a copy of an existing form (Form cloner); the last choice is marked (assets/js/nunewform.js, localStorage nunext-newform-last)
+// 0.8.861: a fourth card "Custom page" – a short dialogue (code = folder, description, open mode) instead of the wizard's form type; the
+// heading says "New form or page". ?start=page opens the dialogue at once (Add of the list Custom pages: forms list with type=page)
+if ($isNew && ($_GET['start'] ?? '') !== 'wizard') {
+	$ga = !empty(NuAuth::user()['globeadmin']);
+	$card = static function (string $key, string $url, string $icon, string $title, string $desc, string $foot): string {
+		return '<div class="col-sm-6 col-xl-3"><a class="card h-100 nuNfChoice" id="nuNfC_' . $key . '" data-nf="' . $key . '" href="' . h($url) . '"><div class="card-body d-flex flex-column gap-2">'
+			. '<span class="nuNfIcon" aria-hidden="true"><i class="bi ' . $icon . '"></i></span><span class="nuNfTitle">' . h($title)
+			. ' <span class="badge text-bg-secondary nuNfLastBadge" hidden>' . h(t('nfc_last')) . '</span></span>'
+			. '<span class="nuNfDesc">' . h($desc) . '</span><span class="nuNfFoot mt-auto">' . $foot . '</span></div></a></div>';
+	};
+	$openPage = $canSave && ($_GET['start'] ?? '') === 'page';
+	nu_layout_start(t('nfc_title'), 'forms', ['container' => 'container-fluid nuBuilderContainer']);
+	?>
+	<div class="row justify-content-center"><div class="col-xl-11 col-xxl-10" id="nuNfStart" data-csrf="<?= h(nu_csrf_token()) ?>" data-api="<?= h(nu_url('builderapi')) ?>"<?= $openPage ? ' data-open="page"' : '' ?>>
+		<?= nu_page_header(t('nfc_title'), ['icon' => 'bi-magic', 'sub' => t('nfc_ask'), 'back' => nu_url('forms'), 'crumbs' => [[t('nav_forms'), nu_url('forms')]]]) ?>
+		<div class="row g-3">
+			<?= $card('wizard', nu_url('builder', ['new' => '1', 'start' => 'wizard']), 'bi-list-check', t('nfc_wizard'), t('nfc_wizard_d'), h(t('nfc_wizard_k'))) ?>
+			<?= $card('ai', nu_url('formai'), 'bi-stars', t('nf_describe'), t('nfc_ai_d'),
+				'<span class="nuNfPill">' . h(t('fai_kind_form')) . '</span> <span class="nuNfPill">' . h(t('fai_kind_app')) . '</span>') ?>
+			<?php if ($ga): ?><?= $card('copy', nu_url('cloner'), 'bi-files', t('nfc_copy'), t('nfc_copy_d'), h(t('nfc_copy_k'))) ?><?php endif; ?>
+			<?php if ($canSave): ?><?= $card('page', nu_url('builder', ['new' => '1', 'start' => 'page']), 'bi-filetype-php', t('form_type_page'), t('nfc_page_d'), h(t('nfc_page_k'))) ?><?php endif; ?>
+		</div>
+	</div></div>
+	<?php if ($canSave): ?>
+	<div class="modal fade" id="nuNfPageDlg" tabindex="-1" aria-labelledby="nuNfPageDlgTitle" aria-hidden="true"><div class="modal-dialog"><form class="modal-content" id="nuNfPageForm" novalidate>
+		<div class="modal-header"><h2 class="modal-title fs-5" id="nuNfPageDlgTitle"><i class="bi bi-filetype-php me-2" aria-hidden="true"></i><?= h(t('nfc_page_new')) ?></h2>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('cancel')) ?>"></button></div>
+		<div class="modal-body">
+			<p class="small text-body-secondary"><?= h(t('form_type_page_tip')) ?></p>
+			<div class="mb-3"><label class="form-label" for="nuNfPageDesc"><?= h(t('builder_description')) ?></label>
+				<input class="form-control" id="nuNfPageDesc" maxlength="300" required></div>
+			<div class="mb-3"><label class="form-label" for="nuNfPageCode"><?= h(t('builder_code')) ?></label>
+				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('page_code_tip')) ?>" title="<?= h(t('page_code_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<div class="input-group"><span class="input-group-text small">custom/pages/</span><input class="form-control font-monospace" id="nuNfPageCode" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" required autocomplete="off" spellcheck="false"></div></div>
+			<div class="mb-1"><label class="form-label" for="nuNfPageMode"><?= h(t('page_open_mode')) ?></label>
+				<select class="form-select" id="nuNfPageMode"><?php foreach (NuPage::MODES as $m): ?><option value="<?= $m ?>"><?= h(t('page_mode_' . $m)) ?></option><?php endforeach; ?></select></div>
+			<div class="alert alert-danger small mt-3 mb-0 d-none" id="nuNfPageErr" role="alert"></div>
+		</div>
+		<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
+			<button type="submit" class="btn btn-primary" id="nuNfPageCreate"><i class="bi bi-check-lg me-1"></i><?= h(t('nfc_page_create')) ?></button></div>
+	</form></div></div>
+	<?php endif; ?>
+	<?php
+	nu_layout_end('<script src="' . nu_asset('assets/js/nunewform.js') . '"></script>');
+	exit;
+}
+
 // labels for builder.js
 $keys = ['save', 'delete', 'cancel', 'add', 'remove', 'remove_undo', 'remove_pending', 'saved', 'clone', 'back', 'please_select', 'search', 'yes', 'no', 'no_records'];
 foreach ([__DIR__ . '/../lang/en.php'] as $f) foreach (array_keys(require $f) as $k) if (str_starts_with($k, 'builder_') || str_starts_with($k, 'bf_') || str_starts_with($k, 'form_type_') || str_starts_with($k, 'form_layout')) $keys[] = $k;
@@ -54,25 +103,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 	<div class="row justify-content-center">
 		<div class="col-lg-10 col-xl-8">
 			<?= $crumb   // inside the centred column, so it lines up with the card (0.8.249) ?>
-			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1>
-				<a class="btn btn-outline-secondary" id="nbAiNew" href="<?= h(nu_url('formai')) ?>"><i class="bi bi-stars me-1"></i><?= h(t('fai_button_new')) ?></a></div>
-			<?php // "Describe it" (0.8.810): a description → Form with AI (?p=formai&req=…&kind=form|app) – the prompt, the answer, the draft ?>
-			<form class="card shadow-sm mb-3 nbDescribe" id="nbDescribe" method="get" action="index.php">
-				<input type="hidden" name="p" value="formai">
-				<div class="card-body">
-					<h2 class="h6 mb-1"><i class="bi bi-stars me-1" aria-hidden="true"></i><?= h(t('nf_describe')) ?></h2>
-					<p class="small text-body-secondary mb-2"><?= h(t('nf_describe_hint')) ?></p>
-					<label class="visually-hidden" for="nbDescribeText"><?= h(t('nf_describe')) ?></label>
-					<textarea class="form-control mb-2" id="nbDescribeText" name="req" rows="3" maxlength="4000" required placeholder="<?= h(t('fai_request_ph_new')) ?>"></textarea>
-					<div class="d-flex flex-wrap align-items-center gap-2">
-						<div class="btn-group" role="radiogroup" aria-label="<?= h(t('fai_kind')) ?>">
-							<input type="radio" class="btn-check" name="kind" id="nbDescKindForm" value="form" checked autocomplete="off"><label class="btn btn-sm btn-outline-secondary" for="nbDescKindForm"><?= h(t('fai_kind_form')) ?></label>
-							<input type="radio" class="btn-check" name="kind" id="nbDescKindApp" value="app" autocomplete="off"><label class="btn btn-sm btn-outline-secondary" for="nbDescKindApp"><?= h(t('fai_kind_app')) ?></label>
-						</div>
-						<button type="submit" class="btn btn-sm btn-primary ms-auto" id="nbDescribeGo"><?= h(t('nf_describe_go')) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
-					</div>
-				</div>
-			</form>
+			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1></div>
 			<form class="card shadow-sm" id="nbNewForm" novalidate>
 				<div class="card-body p-4">
 					<div class="alert alert-warning nbStale" id="nbStale" role="alert"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('builder_stale_assets')) ?></div>
@@ -85,16 +116,16 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 					<div class="row g-3 nbStep" data-step="1">
 						<div class="col-sm-7">
 							<label class="form-label" for="nb_desc"><?= h(t('builder_description')) ?> <span class="text-danger">*</span></label>
-							<input class="form-control" id="nb_desc" name="description" required maxlength="300">
+							<input class="form-control nbColDesc" id="nb_desc" name="description" required maxlength="300">
 						</div>
 						<div class="col-sm-5">
 							<label class="form-label" for="nb_code"><?= h(t('builder_code')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label>
-							<input class="form-control" id="nb_code" name="code" required maxlength="300" pattern="[A-Za-z0-9_]+" autocomplete="off" spellcheck="false">
+							<input class="form-control nbColCode" id="nb_code" name="code" required maxlength="300" pattern="[A-Za-z0-9_]+" autocomplete="off" spellcheck="false">
 						</div>
 						<div class="col-sm-6 col-lg-4">
 							<label class="form-label" for="nb_type"><?= h(t('builder_type')) ?></label>
 							<select class="form-select" id="nb_type" name="type">
-								<?php foreach (['browseedit', 'edit', 'browse', 'subform', 'launch', 'page'] as $tp): ?><option value="<?= $tp ?>"><?= h(t('form_type_' . $tp)) ?></option><?php endforeach; ?>
+								<?php foreach (['browseedit', 'edit', 'browse', 'subform', 'launch'] as $tp): // custom pages: their own card on the start page (0.8.861) ?><option value="<?= $tp ?>"><?= h(t('form_type_' . $tp)) ?></option><?php endforeach; ?>
 							</select>
 						</div>
 					</div>

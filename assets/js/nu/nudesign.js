@@ -245,12 +245,57 @@
 	bar.appendChild(bDiscard);
 	bar.appendChild(bPubGrp);
 	bar.appendChild(bDone);
+	// phones (0.8.831): one line – the bar's other buttons sit in a ⋯ menu (built when it opens, from the buttons that are shown),
+	// the status is a dot, and the bar slides away while scrolling down
+	var dot = el('span', {'class': 'nuDsDot', id: 'nuDsDot', role: 'img'});
+	bar.insertBefore(dot, status);
+	var phMenu = el('ul', {'class': 'dropdown-menu dropdown-menu-end nuDsPhMenu', id: 'nuDsPhMenu'});
+	var phMore = el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsPhOnly', id: 'nuDsPhMore', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false',
+		title: t('ds_ph_menu'), 'aria-label': t('ds_ph_menu')}, [icon('bi-three-dots')]);
+	var phGrp = el('div', {'class': 'btn-group nuDsPhOnly', id: 'nuDsPhGrp'}, [phMore, phMenu]);
+	bar.insertBefore(phGrp, bDone);
+	function phItems() {
+		var list = [];
+		var push = function (b, label, ic) {
+			if (!b || b.hidden || b.disabled || !b.isConnected) return;
+			list.push(el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item', 'data-ph-for': b.id || b.getAttribute('data-fly') || b.getAttribute('data-work') || '',
+				onclick: function () { b.click(); }}, [icon((ic || 'bi-dot') + ' me-2'), label])]));
+		};
+		if (!bPubGrp.hidden) push(bPublish, bPublish.textContent, 'bi-cloud-upload');
+		if (!bPubGrp.hidden && !bPubMore.hidden) push(document.getElementById('nuDsPubWithNote') || bPublish, t('ds_pub_with_note'), 'bi-chat-left-text');
+		push(bUndo, t('builder_draft_undo'), 'bi-arrow-counterclockwise');
+		push(bRedo, t('ds_redo'), 'bi-arrow-clockwise');
+		push(bChanges, t('ds_changes'), 'bi-file-diff');
+		bar.querySelectorAll('.nuDsBarTool[data-fly="rules"], .nuDsBarTool[data-work]').forEach(function (b) { push(b, b.getAttribute('aria-label'), b.querySelector('i') ? b.querySelector('i').className.replace(/\s*me-\d/, '') : ''); });
+		push(document.getElementById('nuDsReload'), t('ds_reload'), 'bi-arrow-repeat');
+		push(document.getElementById('nuDsSafe'), D.safe ? t('ds_safe_off') : t('ds_safe'), 'bi-shield-check');
+		push(document.getElementById('nuDsMaint'), t('fms_title'), 'bi-cone-striped');
+		push(bMsgs, t('ds_form_msgs'), 'bi-chat-left-text');
+		if (!bDiscard.hidden) { list.push(el('li', {}, [el('hr', {'class': 'dropdown-divider'})])); push(bDiscard, t('builder_draft_discard'), 'bi-trash'); }
+		var last = list[list.length - 1];
+		if (last && last.querySelector('button[data-ph-for="nuDsDiscard"]')) last.querySelector('button').classList.add('text-danger');
+		return list;
+	}
+	phMore.addEventListener('show.bs.dropdown', function () { phMenu.textContent = ''; phItems().forEach(function (li) { phMenu.appendChild(li); }); });
+	phMore.addEventListener('click', function () { if (!(window.nuBs && nuBs.ready())) { phMenu.textContent = ''; phItems().forEach(function (li) { phMenu.appendChild(li); }); phMenu.classList.toggle('show'); } });
+	var lastY = window.scrollY, barAway = false;
+	window.addEventListener('scroll', function () {
+		var y = window.scrollY;
+		if (!phone.matches || phMenu.classList.contains('show')) { lastY = y; if (barAway) { barAway = false; document.documentElement.classList.remove('nuDsBarAway'); } return; }
+		if (y > lastY + 8 && y > 80) barAway = true;
+		else if (y < lastY - 8 || y < 40) barAway = false;
+		if (Math.abs(y - lastY) > 8 || y < 40) lastY = y;
+		document.documentElement.classList.toggle('nuDsBarAway', barAway);
+		placeQuick();
+	}, {passive: true});
 
 	function renderBar() {
 		if (D.unpublished) status.textContent = t('ds_status_unpublished');
 		else if (DR) status.textContent = DR.mine === false ? fmt(t('ds_status_draft_by'), DR.created_by, DR.changes) : fmt(t(+DR.changes === 1 ? 'ds_status_draft_1' : 'ds_status_draft'), DR.changes);
 		else status.textContent = t('ds_status_none');
 		status.title = status.textContent;                       // cut with … on narrow screens
+		dot.className = 'nuDsDot ' + (D.unpublished ? 'nuDsDotNew' : DR ? 'nuDsDotDraft' : 'nuDsDotNone');
+		dot.title = status.textContent; dot.setAttribute('aria-label', status.textContent);
 		bUndo.disabled = D.unpublished ? false : !(DR && DR.undo_count > 0);
 		bRedo.disabled = !(DR && DR.redo_count > 0);
 		bRedo.hidden = !DR;
@@ -615,6 +660,7 @@
 	}
 	function closeFly() {
 		flyKind = '';
+		addPage = '';
 		fly.hidden = true;
 		document.documentElement.classList.remove('nuDsFlyOpen');
 		renderFly();
@@ -625,6 +671,15 @@
 		fly.textContent = '';
 		var flyTitle = flyKind === 'rules' ? t('vr_title') : (flyKind === 'add' ? fmt(t('ds_add_to'), tabTitle(activeTabId())) : t('ds_structure'));
 		fly.setAttribute('aria-label', flyKind === 'rules' ? t('vr_title') : t(flyKind === 'add' ? 'ds_add' : 'ds_structure'));
+		if (flyKind === 'add' && addPage === 'input') {   // 0.8.846: second page – the kind of input
+			fly.appendChild(el('div', {'class': 'nuDsFlyHead nuDsFlyHeadSub'}, [
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuDsFlyBack', id: 'nuDsAddBack', title: t('ds_add_input_back'), 'aria-label': t('ds_add_input_back'),
+					onclick: function () { addPage = ''; renderFly(); var b = document.querySelector('#nuDsElGrid [data-type="input"]'); if (b) b.focus(); }}, [icon('bi-arrow-left')]),
+				el('div', {'class': 'nuDsFlyHeadText'}, [el('div', {'class': 'nuDsFlyCrumb', text: flyTitle + ' › ' + t('bf_type_input')}), el('strong', {text: t('ds_add_input_title')})]),
+				el('button', {type: 'button', 'class': 'btn-close', 'aria-label': t('cancel'), onclick: closeFly})]));
+			renderAddInput();
+			return;
+		}
 		fly.appendChild(el('div', {'class': 'nuDsFlyHead'}, [el('strong', {text: flyTitle}),
 			el('button', {type: 'button', 'class': 'btn-close', 'aria-label': t('cancel'), onclick: closeFly})]));
 		if (flyKind === 'structure') renderStructure(); else if (flyKind === 'rules') fly.appendChild(el('div', {'class': 'nuDsFlyRules'}, [rulesBox()])); else renderAdd();
@@ -852,12 +907,51 @@
 		fly.appendChild(el('div', {'class': 'nuDsFlySub', text: t('ds_add_elements')}));
 		var grid = el('div', {'class': 'nuDsElGrid', id: 'nuDsElGrid'});
 		TYPES.forEach(function (ty) {
-			var b = el('button', {type: 'button', 'class': 'nuDsEl', draggable: 'true', 'data-type': ty, onclick: function () { addObject(ty, {}); }}, [icon(ICONS[ty] || 'bi-square'), el('span', {text: t('bf_type_' + ty)})]);
+			var b = el('button', {type: 'button', 'class': 'nuDsEl' + (ty === 'input' ? ' nuDsElMore' : ''), draggable: 'true', 'data-type': ty,
+				onclick: function () { if (ty === 'input') { addPage = 'input'; addDone = ''; renderFly(); var f1 = fly.querySelector('.nuDsKind'); if (f1) f1.focus(); return; } addObject(ty, {}); }},
+				[icon(ICONS[ty] || 'bi-square'), el('span', {text: t('bf_type_' + ty)})].concat(ty === 'input' ? [el('small', {'class': 'nuDsElSub', text: t('ds_add_input_pick')})] : []));
 			dragSource(b, {type: ty});
 			grid.appendChild(b);
 		});
 		fly.appendChild(grid);
 		fly.appendChild(el('p', {'class': 'nuDsFlyFoot', text: t('ds_add_hint')}));
+	}
+	// 0.8.846: Add → Input = a second page with the frequent kinds as tiles and the others below "All input types"
+	var addPage = '', addMore = false, addDone = '';
+	var INPUT_FREQUENT = [['text', 'bi-fonts'], ['nuNumber', 'bi-123'], ['nuDate', 'bi-calendar3'], ['checkbox', 'bi-check2-square'], ['email', 'bi-envelope'],
+		['tel', 'bi-telephone'], ['button', 'bi-hand-index'], ['file', 'bi-file-earmark-arrow-up'], ['time', 'bi-clock']];
+	function inputLabel(it) { var k = 'ds_it_' + it.replace(/[^A-Za-z0-9]/g, '_'); var x = t(k); return x === k ? it : x; }
+	function addInput(it) {
+		addDone = inputLabel(it);
+		addObject('input', {input: it, label: inputLabel(it)});
+	}
+	function renderAddInput() {
+		var body = el('div', {'class': 'nuDsAddInput', id: 'nuDsAddInput'});
+		body.appendChild(el('div', {'class': 'nuDsFlySub', text: t('ds_add_input_frequent')}));
+		var grid = el('div', {'class': 'nuDsElGrid', id: 'nuDsKindGrid'});
+		INPUT_FREQUENT.forEach(function (k) {
+			var b = el('button', {type: 'button', 'class': 'nuDsEl nuDsKind', draggable: 'true', 'data-input': k[0], onclick: function () { addInput(k[0]); }}, [icon(k[1]), el('span', {text: inputLabel(k[0])})]);
+			dragSource(b, {type: 'input', input: k[0], label: inputLabel(k[0])});
+			grid.appendChild(b);
+		});
+		body.appendChild(grid);
+		var others = INPUT_TYPES.filter(function (x) { return !INPUT_FREQUENT.some(function (k) { return k[0] === x; }); });
+		var moreBtn = el('button', {type: 'button', 'class': 'nuDsKindMore', id: 'nuDsKindMore', 'aria-expanded': addMore ? 'true' : 'false',
+			onclick: function () { addMore = !addMore; renderFly(); var m = document.getElementById('nuDsKindMore'); if (m) m.focus(); }},
+			[el('span', {text: fmt(t('ds_add_input_all'), INPUT_TYPES.length)}), icon(addMore ? 'bi-chevron-up' : 'bi-chevron-down')]);
+		body.appendChild(moreBtn);
+		if (addMore) {
+			var chips = el('div', {'class': 'nuDsKindChips', id: 'nuDsKindChips'});
+			others.sort(function (a, b) { return inputLabel(a).localeCompare(inputLabel(b)); }).forEach(function (it) {
+				var c = el('button', {type: 'button', 'class': 'nuDsKindChip', draggable: 'true', 'data-input': it, onclick: function () { addInput(it); }}, [inputLabel(it)]);
+				dragSource(c, {type: 'input', input: it, label: inputLabel(it)});
+				chips.appendChild(c);
+			});
+			body.appendChild(chips);
+		}
+		body.appendChild(el('p', {'class': 'nuDsFlyFoot', text: t('ds_add_input_hint')}));
+		if (addDone) body.appendChild(el('div', {'class': 'nuDsKindDone', id: 'nuDsKindDone', role: 'status', text: fmt(t('ds_add_input_done'), addDone)}));
+		fly.appendChild(body);
 	}
 	var dragNew = null;
 	function dragSource(b, spec) {
@@ -879,11 +973,11 @@
 		var tab = activeTabId() || ((S.tabs || [])[0] || {}).zzzzsys_tab_id || '';
 		var size = SIZES[type] || [250, 22];
 		var maxOrder = sorted(tab).reduce(function (m, x) { return Math.max(m, +x.sob_all_order || 0); }, 0);
-		var fid = spec.id ? uniqueId(spec.id) : uniqueId(type === 'contentbox' ? 'box' : 'new_' + type);
+		var fid = spec.id ? uniqueId(spec.id) : uniqueId(type === 'contentbox' ? 'box' : 'new_' + (type === 'input' && spec.input ? spec.input.toLowerCase().replace(/[^a-z0-9]/g, '') : type));
 		var input = spec.input || (type === 'input' ? 'text' : '');
-		var fields = {sob_all_type: type, sob_all_id: fid, sob_all_label: spec.id ? labelOf(spec.id) : t('bf_type_' + type),
+		var fields = {sob_all_type: type, sob_all_id: fid, sob_all_label: spec.id ? labelOf(spec.id) : (spec.label || t('bf_type_' + type)),
 			sob_all_zzzzsys_tab_id: tab, sob_all_order: maxOrder + 10, sob_all_top: pos ? pos.top : bottomOf(tab) + 12, sob_all_left: pos ? pos.left : 170,
-			sob_all_width: input === 'checkbox' ? 30 : (input === 'nuDate' ? 120 : size[0]), sob_all_height: size[1], sob_all_align: 'left', sob_input_type: input,
+			sob_all_width: input === 'checkbox' || input === 'color' ? 30 : (['nuDate', 'date', 'time', 'button', 'nuNumber', 'number', 'month', 'week', 'nuAutoNumber'].indexOf(input) >= 0 ? 120 : size[0]), sob_all_height: input === 'button' ? 30 : size[1], sob_all_align: 'left', sob_input_type: input,
 			sob_subform_add: type === 'subform' ? '1' : '', sob_subform_delete: type === 'subform' ? '1' : '', sob_subform_type: type === 'subform' ? 'g' : '',
 			sob_run_method: type === 'run' ? 'b' : '', sob_run_type: type === 'run' ? 'F' : '', sob_run_target: type === 'run' ? '0' : '', sob_lookup_description_width: type === 'lookup' ? '200' : ''};
 		selIds = [fid];
@@ -1176,7 +1270,70 @@
 			sections.filter(function (s) { return s.key === phoneSec; }).forEach(function (s) { panel.appendChild(drawSection(s, true)); });
 		} else sections.forEach(function (s) { panel.appendChild(drawSection(s, false)); });
 		if (footEl) panel.appendChild(footEl);
+		if (phone.matches) panel.insertBefore(sheetHandle, panel.firstChild);
+		setSheet(sheet);
+		placeQuick();
 	}
+
+	// phones (0.8.831): the panel is a bottom sheet with three heights – peek (name of the selection), half, full
+	var sheet = 'peek', SHEETS = ['peek', 'half', 'full'];
+	var sheetHandle = el('button', {type: 'button', 'class': 'nuDsSheetHandle', id: 'nuDsSheetHandle', title: t('ds_ph_sheet'), 'aria-label': t('ds_ph_sheet')}, [el('span', {'class': 'nuDsSheetGrip'})]);
+	function setSheet(st) {
+		sheet = SHEETS.indexOf(st) >= 0 ? st : 'peek';
+		SHEETS.forEach(function (x) { panel.classList.toggle('nuDsSheet-' + x, phone.matches && x === sheet); });
+		sheetHandle.setAttribute('aria-expanded', sheet === 'peek' ? 'false' : 'true');
+		panel.setAttribute('data-sheet', phone.matches ? sheet : '');
+		if (phone.matches && sheet === 'peek') panel.scrollTop = 0;
+	}
+	function stepSheet(d) { setSheet(SHEETS[Math.max(0, Math.min(2, SHEETS.indexOf(sheet) + d))]); setTimeout(keepVisible, 260); }
+	sheetHandle.addEventListener('click', function () { if (sheetHandle.nuSwiped) { sheetHandle.nuSwiped = false; return; } setSheet(sheet === 'full' ? 'peek' : SHEETS[SHEETS.indexOf(sheet) + 1]); setTimeout(keepVisible, 260); });
+	var swY = null;
+	panel.addEventListener('touchstart', function (e) { swY = (e.target.closest && e.target.closest('.nuDsSheetHandle, .nuDsHead')) && e.touches[0] ? e.touches[0].clientY : null; }, {passive: true});
+	panel.addEventListener('touchend', function (e) {
+		if (swY === null || !e.changedTouches[0]) return;
+		var dy = e.changedTouches[0].clientY - swY; swY = null;
+		if (Math.abs(dy) < 30) return;
+		sheetHandle.nuSwiped = e.target.closest && !!e.target.closest('.nuDsSheetHandle');
+		stepSheet(dy < 0 ? 1 : -1);
+	}, {passive: true});
+	panel.addEventListener('focusin', function (e) {      // typing needs room: a field of the peeking sheet opens it half way
+		if (phone.matches && sheet === 'peek' && e.target.matches && e.target.matches('input, select, textarea')) stepSheet(1);
+	});
+	// the selected object stays visible between the bar and the sheet
+	function keepVisible() {
+		if (!phone.matches || selIds.length !== 1) return;
+		var w = document.getElementById('nuw_' + selIds[0]);
+		if (!w) return;
+		var r = w.getBoundingClientRect(), bottom = window.innerHeight - panel.offsetHeight - 12, top = bar.getBoundingClientRect().bottom + 52;
+		if (r.bottom > bottom) window.scrollBy(0, Math.min(r.bottom - bottom, r.top - top));
+		else if (r.top < top) window.scrollBy(0, r.top - top);
+		placeQuick();
+	}
+	// quick actions above the selected object (phones): label, up, down, duplicate, delete, all settings
+	var quick = el('div', {'class': 'nuDsQuick', id: 'nuDsQuick', role: 'toolbar', 'aria-label': t('ds_ph_quick'), hidden: 'hidden'});
+	function qBtn(id, ic, label, fn) { return el('button', {type: 'button', 'class': 'btn btn-sm', id: id, title: label, 'aria-label': label, onclick: function () { var o = objByFid(selIds[0]); if (o) fn(o); }}, [icon(ic)]); }
+	[qBtn('nuDsQLabel', 'bi-input-cursor-text', t('ds_ph_label'), function (o) { renameDialog(o); }),
+		qBtn('nuDsQUp', 'bi-arrow-up', t('ds_ph_up'), function (o) { order({ids: [o.sob_all_id], dir: -1}); }),
+		qBtn('nuDsQDown', 'bi-arrow-down', t('ds_ph_down'), function (o) { order({ids: [o.sob_all_id], dir: 1}); }),
+		qBtn('nuDsQDup', 'bi-copy', t('ds_ph_dup'), function (o) { duplicate([o]); }),
+		qBtn('nuDsQDel', 'bi-trash', t('ds_ph_del'), function (o) { deleteObjs([o]); }),
+		qBtn('nuDsQMore', 'bi-sliders', t('ds_ph_props'), function () { setSheet('half'); setTimeout(keepVisible, 260); })
+	].forEach(function (b) { quick.appendChild(b); });
+	quick.lastChild.classList.add('nuDsQMore');
+	quick.querySelector('#nuDsQDel').classList.add('text-danger');
+	function placeQuick() {
+		var w = phone.matches && !BROWSE && selIds.length === 1 ? document.getElementById('nuw_' + selIds[0]) : null;
+		var r = w ? w.getBoundingClientRect() : null;
+		var barB = barAway ? 0 : bar.getBoundingClientRect().bottom, sheetT = window.innerHeight - (panel.offsetHeight || 0);
+		if (!r || r.bottom < barB || r.top > sheetT || sheet === 'full') { quick.hidden = true; return; }
+		quick.hidden = false;
+		var h = quick.offsetHeight || 40, qw = quick.offsetWidth || 240;
+		var top = r.top - h - 6;
+		if (top < barB + 4) top = Math.min(r.bottom + 6, sheetT - h - 4);
+		quick.style.top = Math.round(top) + 'px';
+		quick.style.left = Math.round(Math.max(8, Math.min(window.innerWidth - qw - 8, r.left))) + 'px';
+	}
+	window.addEventListener('resize', placeQuick);
 
 	function head(kicker, title, iconCls, sub, buttons) {
 		return el('div', {'class': 'nuDsHead'}, [
@@ -1754,7 +1911,7 @@
 		var mb = missingBox(o);
 		if (mb) panel.appendChild(mb);
 		var save = function (key, reload) { return function (v) { var f = {}; f[key] = v; saveObj(o, f, reload); }; };
-		var runType = String(o.sob_run_type || '').toUpperCase() || ((D.procedures || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'P' : ((D.reports || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'R' : 'F'));
+		var runType = nunext(o).url ? 'U' : String(o.sob_run_type || '').toUpperCase() || ((D.procedures || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'P' : ((D.reports || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'R' : 'F'));
 		var fmtField = function (key, letters) {
 			return field(t('builder_input_format'), 'format', o[key] || '', save(key), {key: key, letters: letters, empty: '—',
 				tip: letters === 'T' ? t('builder_input_mask_help') : null});
@@ -1804,7 +1961,11 @@
 				field(t('builder_chart_hlabel'), 'text', o.sob_html_horizontal_label, save('sob_html_horizontal_label'), {key: 'sob_html_horizontal_label'})]) : null,
 			type === 'image' ? field(t('builder_image_file'), 'select', o.sob_image_zzzzsys_file_id || '', save('sob_image_zzzzsys_file_id'), {key: 'sob_image_zzzzsys_file_id', search: true, tip: t('builder_image_help'),
 				options: [['', t('please_select')]].concat(D.files || [])}) : null,
-			type === 'run' ? field(t('builder_run_type'), 'select', runType, save('sob_run_type'), {key: 'sob_run_type', options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')]]}) : null,
+			type === 'run' ? field(t('builder_run_type'), 'select', runType, function (v) {   // URL (0.8.830): kept in sob_all_json nunext.url
+				if (v === 'U') saveObj(o, {nunext_run_url: 'https://', sob_run_type: null, sob_run_target: '2'});
+				else saveObj(o, {sob_run_type: v, nunext_run_url: runType === 'U' ? null : undefined});
+			}, {key: 'sob_run_type', options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')], ['U', t('builder_run_type_U')]]}) : null,
+			type === 'run' && runType === 'U' ? field(t('builder_run_url'), 'text', nunext(o).url || '', save('nunext_run_url'), {key: 'nunext_run_url', mono: true, ph: 'https://example.com/item?id=#RECORD_ID#', tip: t('builder_run_url_help')}) : null,
 			type === 'run' && runType === 'F' ? field(t('builder_run_form'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.forms)}) : null,
 			type === 'run' && runType === 'P' ? field(t('builder_run_procedure'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.procedures)}) : null,
 			type === 'run' && runType === 'R' ? field(t('builder_run_report'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.reports)}) : null,
@@ -1829,6 +1990,8 @@
 			type === 'run' ? field(t('builder_run_method'), 'select', o.sob_run_method === 'i' ? 'i' : 'b', save('sob_run_method'), {key: 'sob_run_method', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]]}) : null,
 			type === 'run' && runType === 'F' && o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select', String(o.sob_run_target || '0'), save('sob_run_target'), {key: 'sob_run_target',
 				options: [0, 1, 2, 3].map(function (i) { return [String(i), t('builder_run_target_' + i)]; })}) : null,
+			type === 'run' && runType === 'U' && o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select', ['0', '1'].indexOf(String(o.sob_run_target)) >= 0 ? '0' : (String(o.sob_run_target) === '3' ? '3' : '2'), save('sob_run_target'), {key: 'sob_run_target',
+				options: [['2', t('builder_run_target_2')], ['3', t('builder_run_url_popup')], ['0', t('builder_run_url_same')]]}) : null,
 			VALUE_TYPES.indexOf(type) >= 0 ? field(t('builder_obj_cloneable'), 'check', String(o.sob_all_cloneable) === '0' ? '0' : '1', save('sob_all_cloneable', false), {key: 'sob_all_cloneable'}) : null
 		]);
 
@@ -1988,6 +2151,7 @@
 			if (a && panel.contains(a) && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && a.type !== 'checkbox'))) a.dispatchEvent(new Event('change'));
 			selIds = d.nuDesignerSel.slice();
 			renderPanel();
+			if (phone.matches) setTimeout(keepVisible, 60);
 			if (flyKind === 'structure') renderFly();
 			return;
 		}
@@ -2814,6 +2978,10 @@
 		document.body.appendChild(fly);
 		document.body.appendChild(panel);
 		document.body.appendChild(work);
+		document.body.appendChild(quick);
+		var sheetH = function () { document.documentElement.style.setProperty('--nu-ds-sheet-h', (phone.matches ? panel.offsetHeight : 0) + 'px'); placeQuick(); };
+		sheetH();
+		if (window.ResizeObserver) new window.ResizeObserver(sheetH).observe(panel);
 		// the Arrange panel of nudesigner.js sits below the bar (its height changes when it wraps)
 		var barH = function () { document.documentElement.style.setProperty('--nu-ds-bar-h', bar.offsetHeight + 'px'); };
 		barH();

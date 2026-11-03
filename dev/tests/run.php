@@ -388,7 +388,7 @@ $newer = '/(?<![\'"\w$>:])(json_validate|mb_str_pad|mb_trim|mb_ltrim|mb_rtrim|mb
 	. '|CURLOPT_SERVER_RESPONSE_TIMEOUT|CURLINFO_CAINFO|CURLINFO_CAPATH|CURLINFO_CONN_ID|CURLINFO_QUEUE_TIME_T|CURLINFO_USED_PROXY|CURLINFO_HTTPAUTH_USED|CURLINFO_POSTTRANSFER_TIME_T)\b'
 	. '|\breadonly\s+class\b|#\[\\?Override\]/';
 $hits = [];
-$files = array_merge(glob(NU_ROOT . '/{core,core/form,pages,install}/*.php', GLOB_BRACE) ?: [], array_map(static fn($f) => NU_ROOT . '/' . $f, ['index.php', 'api.php', 'cron.php', 'dbadmin.php']));
+$files = array_merge(glob(NU_ROOT . '/{core,core/form,pages,install}/*.php', GLOB_BRACE) ?: [], array_map(static fn($f) => NU_ROOT . '/' . $f, ['index.php', 'api.php', 'nucron.php', 'nudbadmin.php']));
 foreach ($files as $f) {
 	foreach (file($f) ?: [] as $no => $line) {
 		if (preg_match('~^\s*(\*|/\*|//)~', $line)) continue;                 // comment lines
@@ -856,6 +856,35 @@ check('rules hash on the left', is_array($hl) && $hl['items'][0]['f'] === '#MY_C
 NuFormRules::$hash = ['MY_COOKIE' => '124'];
 check('rules hash on the left fails', !NuFormRules::holds($hl, [], []));
 NuFormRules::$hash = [];
+
+// 0.8.863: single sign-on – JWK → PEM and the id_token checks
+$sk = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+$sd = openssl_pkey_get_details($sk);
+$jwk = ['kty' => 'RSA', 'kid' => 'k1', 'use' => 'sig', 'n' => NuSso::b64url($sd['rsa']['n']), 'e' => NuSso::b64url($sd['rsa']['e'])];
+check('sso jwkToPem = the key', trim(NuSso::jwkToPem($jwk)) === trim($sd['key']));
+$mk = static function (array $c, $key = null, string $alg = 'RS256') use ($sk): string {
+	$h = NuSso::b64url((string)json_encode(['alg' => $alg, 'kid' => 'k1'])) . '.' . NuSso::b64url((string)json_encode($c));
+	openssl_sign($h, $sig, $key ?? $sk, OPENSSL_ALGO_SHA256);
+	return $h . '.' . NuSso::b64url($sig);
+};
+$cl = ['iss' => 'https://idp.example', 'aud' => 'cid', 'exp' => 2000, 'iat' => 1000, 'nonce' => 'n1', 'email' => 'A@Example.com'];
+$ssoErr = static function (callable $f): string { try { $f(); return 'ok'; } catch (RuntimeException $e) { return $e->getMessage(); } };
+check('sso verify ok', $ssoErr(fn() => NuSso::verify($mk($cl), 'https://idp.example', 'cid', 'n1', [$jwk], 1500)) === 'ok');
+$other = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+$bad = ['signature' => $mk($cl, $other), 'issuer' => $mk(['iss' => 'https://evil'] + $cl), 'audience' => $mk(['aud' => ['x', 'y']] + $cl),
+	'expired' => $mk(['exp' => 1000] + $cl), 'nonce' => $mk(['nonce' => 'n2'] + $cl), 'alg none' => $mk($cl, null, 'none')];
+foreach ($bad as $why => $tok) check('sso verify refuses: ' . $why, str_contains($ssoErr(fn() => NuSso::verify($tok, 'https://idp.example', 'cid', 'n1', [$jwk], 1500)), explode(' ', $why)[0]) || $why === 'alg none' && $ssoErr(fn() => NuSso::verify($tok, 'https://idp.example', 'cid', 'n1', [$jwk], 1500)) !== 'ok');
+check('sso email', NuSso::email($cl) === 'a@example.com' && NuSso::email(['email_verified' => false] + $cl) === '' && NuSso::email(['preferred_username' => 'u@x.org']) === 'u@x.org' && NuSso::email(['preferred_username' => 'nomail']) === '');
+check('sso issuer rule', NuSso::validIssuer('https://login.microsoftonline.com/t/v2.0') && NuSso::validIssuer('http://127.0.0.1:9000') && !NuSso::validIssuer('http://idp.example') && !NuSso::validIssuer('https://a?b=1'));
+check('sso group map: first match, any case', NuSso::mappedAccess(['Staff', 'admins'], ['group_map' => [['group' => 'ADMINS', 'access' => 'lvA'], ['group' => 'staff', 'access' => 'lvS']]]) === 'lvA'
+	&& NuSso::mappedAccess(['x'], ['group_map' => [['group' => 'y', 'access' => 'lvY']]]) === '');
+$ssc = NuSso::clean(['scopes' => 'email  profile', 'domains' => 'Example.com, @b.org, bad', 'group_claim' => 'roles']);
+check('sso clean', $ssc['scopes'] === 'openid email profile' && $ssc['domains'] === ['example.com', 'b.org'] && $ssc['group_claim'] === 'roles' && $ssc['create'] === false && $ssc['sync'] === true, json_encode($ssc));
+
+// 0.8.867: #ACCESS_LEVEL_IDS# – quoted id list, inserted unescaped into SQL only while it has that form
+check('hash idList', NuHash::idList(['a1', 'b_2', "x'y", '']) === "'a1','b_2'" && NuHash::idList([]) === "''");
+check('hash ACCESS_LEVEL_IDS in SQL', NuHash::replace('IN (#ACCESS_LEVEL_IDS#)', ['ACCESS_LEVEL_IDS' => "'a1','b2'"], NuHash::SQL) === "IN ('a1','b2')"
+	&& str_contains(NuHash::replace('x = #FOO#', ['FOO' => "'a1','b2'"], NuHash::HTML), '&#039;'));
 
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";

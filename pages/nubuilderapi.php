@@ -51,7 +51,7 @@ const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_al
 	'sob_subform_zzzzsys_form_id', 'sob_subform_foreign_key', 'sob_subform_add', 'sob_subform_delete', 'sob_subform_type', 'sob_subform_table',
 	'sob_input_format', 'sob_input_type', 'sob_input_icon', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_input_file_target', 'sob_html_code',
 	'sob_html_chart_type', 'sob_html_javascript', 'sob_html_title', 'sob_html_vertical_label', 'sob_html_horizontal_label',
-	'sob_select_2', 'sob_image_zzzzsys_file_id'];
+	'sob_select_2', 'sob_image_zzzzsys_file_id', 'nunext_run_url'];
 
 const NB_INT_FIELDS = ['sob_all_order', 'sob_all_top', 'sob_all_left', 'sob_all_width', 'sob_all_height', 'sfo_browse_rows_per_page'];
 const NB_TYPES      = ['input', 'select', 'textarea', 'editor', 'display', 'calc', 'lookup', 'subform', 'html', 'chart', 'word', 'contentbox', 'run', 'image'];
@@ -240,15 +240,24 @@ function nb_state(string $formId): array
 	NuFormMeta::forget($formId);
 	$meta = NuFormMeta::load($formId, true);
 	$db   = nu_db();
-	$php  = [];
-	foreach (NB_HOOKS as $h) $php[$h] = (string)$db->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$formId . '_' . $h]);
-	$events = [];
-	foreach ($meta->objects as $o) {
-		$events[$o['zzzzsys_object_id']] = $db->all('SELECT sev_event AS event, sev_javascript AS js FROM zzzzsys_event WHERE sev_zzzzsys_object_id = ? ORDER BY sev_event', [$o['zzzzsys_object_id']]);
+	// 0.8.827: three queries instead of one per hook / object / lookup (the state is fetched after every change in design mode)
+	$php  = array_fill_keys(NB_HOOKS, '');
+	$ab   = [];
+	$objIds = array_map(static fn($o) => (string)$o['zzzzsys_object_id'], $meta->objects);
+	foreach ($meta->objects as $o) if ($o['sob_all_type'] === 'lookup') $ab[$o['zzzzsys_object_id']] = '';
+	$phpIds = array_merge(array_map(static fn($h) => $formId . '_' . $h, NB_HOOKS), array_map(static fn($id) => $id . '_AB', array_keys($ab)));
+	foreach (array_chunk($phpIds, 200) as $chunk) {
+		foreach ($db->all('SELECT zzzzsys_php_id AS id, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id IN (' . implode(',', array_fill(0, count($chunk), '?')) . ')', $chunk) as $r) {
+			$pid = (string)$r['id'];
+			if (str_ends_with($pid, '_AB') && isset($ab[substr($pid, 0, -3)])) $ab[substr($pid, 0, -3)] = (string)$r['sph_php'];
+			elseif (str_starts_with($pid, $formId . '_')) $php[substr($pid, strlen($formId) + 1)] = (string)$r['sph_php'];
+		}
 	}
-	$ab = [];
-	foreach ($meta->objects as $o) {
-		if ($o['sob_all_type'] === 'lookup') $ab[$o['zzzzsys_object_id']] = (string)$db->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$o['zzzzsys_object_id'] . '_AB']);
+	$events = array_fill_keys($objIds, []);
+	foreach (array_chunk($objIds, 200) as $chunk) {
+		foreach ($db->all('SELECT sev_zzzzsys_object_id AS oid, sev_event AS event, sev_javascript AS js FROM zzzzsys_event WHERE sev_zzzzsys_object_id IN (' . implode(',', array_fill(0, count($chunk), '?')) . ') ORDER BY sev_event', $chunk) as $r) {
+			$events[(string)$r['oid']][] = ['event' => $r['event'], 'js' => $r['js']];
+		}
 	}
 	$objects = array_map(static function ($o) { unset($o['tab_index']); return $o; }, $meta->objects);
 	return [
@@ -699,6 +708,13 @@ try {
 				]);
 			}
 
+			if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
+				$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
+				if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) nb_err(t('builder_err_run_url'));
+				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['url' => $ru === '' ? null : $ru]);
+				if ($ru !== null && $ru !== '') { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
+				unset($fields['nunext_run_url']);
+			}
 			$fields = array_intersect_key($fields, $db->columns('zzzzsys_object') ?: $fields);   // older nuBuilder versions lack sob_run_target / sob_run_type
 			$db->transaction(static function (NuDB $db) use (&$objectId, $existing, $fields, $formId, $meta, $in) {
 				if ($existing) {

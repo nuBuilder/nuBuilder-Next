@@ -10,7 +10,6 @@
 	var $ = function (id) { return document.getElementById(id); };
 	var csrf = form.querySelector('input[name=_csrf]');
 	var reqEl = $('faRequest'), ansEl = $('faAnswer');
-	var lastApp = false;
 	form.addEventListener('submit', function (e) { e.preventDefault(); });
 
 	function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -50,17 +49,55 @@
 	Array.prototype.forEach.call(document.querySelectorAll('input[name=faKind]'), function (r) { r.addEventListener('change', syncKind); });
 	syncKind();
 
+	// ---- wizard (0.8.843): 1 what · 2 existing tables + copy · 3 answer + check
+	function go(n, needReq) {
+		if (needReq && !reqEl.value.trim()) { n = 1; reqEl.classList.add('is-invalid'); reqEl.focus(); }
+		[1, 2, 3].forEach(function (k) {
+			var pane = $('faStep' + k), nav = $('faStepNav' + k);
+			if (pane) pane.hidden = k !== n;
+			if (nav) { nav.classList.toggle('active', k === n); nav.setAttribute('aria-selected', k === n ? 'true' : 'false'); nav.classList.toggle('nuFaDone', k < n); }
+		});
+		form.setAttribute('data-step', String(n));
+		var f = n === 1 ? reqEl : (n === 3 ? ansEl : null);
+		if (f && document.activeElement !== f) { try { f.focus({preventScroll: true}); } catch (e) { /* ignore */ } }
+		return n;
+	}
+	window.nuFormAiStep = go;
+	reqEl.addEventListener('input', function () { reqEl.classList.remove('is-invalid'); });
+	form.addEventListener('click', function (e) {
+		var b = e.target.closest('[data-go], #faSteps [data-step]');
+		if (!b || !form.contains(b)) return;
+		go(+(b.getAttribute('data-go') || b.getAttribute('data-step')), b.id === 'faNext1');
+	});
+	function tableMode() { var r = document.querySelector('input[name=faTablesMode]:checked'); return r ? r.value : 'none'; }
+	Array.prototype.forEach.call(document.querySelectorAll('input[name=faTablesMode]'), function (r) {
+		r.addEventListener('change', function () {
+			$('faPickBox').hidden = tableMode() !== 'pick';
+			var ts = $('faTables') && $('faTables').tomselect;
+			if (tableMode() === 'pick' && ts) setTimeout(function () { ts.focus(); }, 50);
+		});
+	});
+	function chosenTables() {
+		var m = tableMode();
+		if (m === 'all') return [];
+		if (m === 'pick') {
+			var tsel = $('faTables'), picked = tsel ? Array.prototype.filter.call(tsel.options, function (o) { return o.selected; }).map(function (o) { return o.value; }) : [];
+			if (picked.length) return picked;
+		}
+		return ['__none__'];
+	}
+
 	// ---- 1. prompt
 	$('faCopy').addEventListener('click', function () {
 		var b = this, msg = $('faCopyMsg');
 		b.disabled = true; msg.textContent = '';
-		var tsel = $('faTables'), tables = tsel ? Array.prototype.filter.call(tsel.options, function (o) { return o.selected; }).map(function (o) { return o.value; }) : [];
+		var tables = chosenTables();
 		post({action: 'prompt', request: reqEl.value, tables: tables, kind: kind()}).then(function (d) {
 			if (!d.ok) { msg.textContent = d.error || ''; msg.className = 'small text-danger'; return; }
 			$('faPrompt').value = d.text;
 			$('faPromptBox').hidden = false;
 			if (!$('faNote').value) $('faNote').value = reqEl.value.split('\n')[0].slice(0, 200);
-			return copy(d.text).then(function () { msg.textContent = L.fai_copied; msg.className = 'small text-success'; },
+			return copy(d.text).then(function () { msg.textContent = L.fai_copied; msg.className = 'small text-success'; setTimeout(function () { go(3); }, 900); },
 				function () { msg.textContent = L.fai_copy_failed; msg.className = 'small text-warning'; $('faPromptBox').open = true; });
 		}).catch(function (e) { msg.textContent = e.message; msg.className = 'small text-danger'; })
 			.then(function () { b.disabled = false; });
@@ -112,7 +149,6 @@
 		b.disabled = true;
 		$('faMade').hidden = true;
 		return post({action: 'check', answer: ansEl.value}).then(function (d) {
-			lastApp = !!d.app;
 			$('faResult').hidden = false;
 			$('faMessages').innerHTML = (d.ok ? '<div class="alert alert-success py-2" id="faOk"><i class="bi bi-check-circle me-1"></i>' + esc(L.fai_ok)
 				+ (d.into_draft ? ' ' + esc(L.fai_into_draft) : '') + '</div>' : '')

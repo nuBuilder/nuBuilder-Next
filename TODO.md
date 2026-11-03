@@ -3,8 +3,18 @@
 ## Open questions for the owner
 - [ ] dev / test / prod and git (forum question, 26 Oct 2026): proposals M1–M3 (moving forms / procedures between installations) and
       G1–G3 (git sync of the application's metadata) – the owner decides later.
-- [ ] Page forms: besides the draft (0.8.599) a "Test copy" (clone of the page form + its folder, publish back) was proposed (option A,
+- [ ] Custom pages: besides the draft (0.8.599) a "Test copy" (clone of the custom page + its folder, publish back) was proposed (option A,
       not built); a page's draft shares _data, secrets.php and the database with the live version.
+- [ ] Test of the function reference examples (proposed 2 Nov 2026, the owner decides later): today run.php only checks that every
+      PHP / JS function has a complete entry in docs/nunext-functions.json, and many functions run in e2e (nub49_app / nub49_js, gap_*,
+      feature tests) – but not all ~450, and the examples `e` / sample results `x` are never executed. Proposal: an e2e test that runs
+      every example – PHP against the test database, JavaScript on a test form – and compares with `x`; functions with side effects
+      (mail, windows, downloads) marked "not runnable" in the entry instead of run.
+
+- [ ] Audit columns switch (proposed 3 Nov 2026, the owner decides later): created_at / created_by / updated_at / updated_by are
+      stamped only for forms with sfo_json nunext.audit = true (set by the New form wizard for a new table; forms from nuBuilder Forte
+      never have it, their own JS / PHP keeps filling the columns). The mark is invisible – proposal: a switch in design mode → Form
+      settings with an (i) tip, so it can be seen and turned off (and on for an existing table that has the four columns).
 
 ## Form designer – open
 - Editing sub-form columns inside the sub-form; default values (nuBuilder Forte has no such field – would need sob_all_json).
@@ -19,13 +29,57 @@ What still needs a real environment – or a look by the owner – is collected 
       (BEGIN TRAN … ROLLBACK), the access condition in the save transaction (SAVE TRANSACTION), concurrent edits (UPDLOCK, ROWLOCK), audit
       restore and demo data reset with IDENTITY keys (refused / not handled), login token compare and swap on NVARCHAR(MAX), Change column
       (ALTER COLUMN, defaults as constraints), UUID keys (uniqueidentifier), custom user fields (ALTER TABLE), user import, Adminer through
-      dbadmin.php, the SQL builder list ('SQL:' + id).
-- [ ] **On the live server**: e-mail → Test → *Check connection* with the real SMTP server (also OAuth 2), `php cron.php update` as the web
+      nudbadmin.php, the SQL builder list ('SQL:' + id).
+- [ ] **On the live server**: e-mail → Test → *Check connection* with the real SMTP server (also OAuth 2), `php nucron.php update` as the web
       server's user (--url over https, proxy), unattended update from GitHub, nginx rules from Help → Security, a re-run of the security
       assessment's test kit (HTTPS, real access levels), uploads with Uppy into the real upload folder.
 - [ ] **Browsers**: Safari (ApexCharts on the start page, CSP style-src-attr), phones with real touch (long tap menus, side bar, design mode on phones).
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
+
+## 0.8.864–0.8.868 – please verify
+- Start page search: selected result in dark blue with white text – readable in light and dark mode, also with an own theme (accent colour).
+- Update → Libraries: status "Installed (pack / nuBuilder Forte's copy / copied by hand)" on a live server.
+- nuNextAccessLevels() (PHP / JavaScript) and #ACCESS_LEVEL_IDS# in a browse SQL and an access condition with a user who has an additional level; SQL Server.
+
+## 0.8.863 Single sign-on – please verify
+- With a real provider (tested only with dev/tests/fakeoidc.py): Microsoft Entra ID (tenant issuer, groups as object IDs / app roles), Google Workspace (hd), Keycloak (groups mapper).
+- Behind a reverse proxy: the redirect URI shown on the page must match the address the provider calls ($nuConfigBaseURL).
+- A real nuBuilder Forte installation with $nuConfigLogonMode = 'sso' and $nuConfigSsoOnlyExcept: password form folded, exceptions sign in with the password.
+
+## 0.8.832–0.8.861 – please verify
+- [ ] Custom pages (0.8.859–0.8.861): Forms → Add → *Custom page* (dialogue: description, suggested code, open mode) creates the page and
+      opens its editor; Forms → Tools → *Custom pages* (also the ▾ of the Forms tile) lists only them, its Add opens the dialogue; the
+      wizard no longer offers the type; the new name in your language.
+- [ ] Sample data (0.8.858): *Remove* in the title row of a sample; greyed out while another user has a sample access level.
+- [ ] Global code (0.8.856 / 0.8.857): the switch *Form pages | All pages* with the short tabs on a phone; × hides the warning, the (i)
+      next to the title shows it again.
+- [ ] Start page search (0.8.855): right-click / long press on a tile result → favourite / hide, the search stays after the reload.
+- [ ] Database tools in an installed app (0.8.852–0.8.854): phpMyAdmin and Adminer open from the app window (Chrome / Edge "Install").
+- [ ] New form (0.8.848–0.8.851): the start page with its four cards, tables and views as two groups in the table list.
+- [ ] Reset database from a package (0.8.844 / 0.8.847, developer mode): a nunext.zip → fresh installation; the uploaded file is gone
+      from _update/ afterwards.
+- [ ] Form with AI (0.8.841–0.8.843): the three-step wizard, *None – new tables only*, an answer with "type": "input" + "input": "textarea".
+- [ ] Design mode Add → Input (0.8.846): the second page with the frequent kinds.
+- [ ] Procedures (0.8.837 / 0.8.838): the two field rows and the (i) texts; compact lists and record pages (0.8.832–0.8.835) with real data.
+
+## 0.8.828–0.8.831 – please verify
+- 0.8.831 design mode on a phone: one-line bar + ⋯ menu, bar hides on scroll down, sheet peek / half / full (handle tap, swipe), quick toolbar above the selected object (Up / Down / Duplicate / Delete on a real phone)
+- 0.8.830 run button type URL (new tab / this tab / popup / embedded)
+- 0.8.829 run buttons hidden without the right on their target
+- 0.8.828 start page rows: Auto collapse
+
+## 0.8.825–0.8.827 – please verify
+- [ ] Entry files (0.8.825 / 0.8.826): after the update the crontab line (`nucron.php`), Adminer bookmarks; `api.php` and `oauth.php`
+      unchanged – a REST client and the OAuth 2 mail login still work.
+- [ ] Run type Open URL (0.8.830): in design mode choose it, enter a URL with #RECORD_ID#, try new tab / popup / this tab and the
+      iframe method with a site that allows framing.
+- [ ] Run buttons by rights (0.8.829): a user without the right to a run object's form / report / procedure does not see the button
+      (also User Home's Fast Form buttons); form code that shows / hides such a button by its ID still works.
+- [ ] Core review (0.8.827): password policy with an interval per access level (Security → Password policy, "Regular change" per level)
+      now really forces the change – it never did before; a page right after a setting was saved shows the new value (the per-request
+      settings cache is cleared on every write); design mode state (events, PHP hooks, lookup After Browse code) complete on a form with
+      many objects; the update page's Check package / history still show the installed version.
 
 ## 0.8.803–0.8.823 – please verify
 - [ ] Validation rules (0.8.812–0.8.816): on a real form a rule in design mode (builder and expression), Publish, then save as a user –
@@ -179,11 +233,11 @@ Recommendation: **A1 · B1 · C1 · D2 · E1 · F1**. Pick the options, then it 
   sign-in, size); create (new database: install scripts, sample or template application, its own globeadmin), switch off / on, back up,
   run updates. Each customer also has its own globeadmin who sees only their own installation (recommended; the same actions also as
   commands for scripts).
-- E2 – No page, only commands: php cron.php tenants list | create | migrate | backup.
+- E2 – No page, only commands: php nucron.php tenants list | create | migrate | backup.
 
 **F – Updates and cron**
 - F1 – The update page installs the files once, then runs the database steps for every customer with a log per customer; a customer whose
-  database fails is switched off, the others carry on. cron.php runs housekeeping and webhooks for each customer (recommended).
+  database fails is switched off, the others carry on. nucron.php runs housekeeping and webhooks for each customer (recommended).
 - F2 – Database steps run for a customer the next time someone opens it – simpler, but customers end up on different database versions.
 
 **Before deciding**
@@ -280,13 +334,13 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 ### Must have (9–10)
 - [ ] **10 · Test on a real SQL Server** (L) – App cloner, backups, installer and forms on MSSQL were written without one (see 0.8.198).
       A feature that is claimed but never ran is a risk; a Docker SQL Server in CI would settle it (see Docker below).
-- [ ] **9 · Scheduled automatic backups** (S–M) – today only "Back up now" and the backup before an update. Daily / weekly by cron.php
+- [ ] **9 · Scheduled automatic backups** (S–M) – today only "Back up now" and the backup before an update. Daily / weekly by nucron.php
       with the database, a keep rule, optional copy to another folder / server (SFTP, S3) and a warning on the start page when the last
       backup is too old.
 - [ ] **9 · Deploy changes from a test to the live system** (L) – export forms, procedures, reports, access levels, settings as one
       versioned package (JSON), show a diff on the target and apply selected parts. The App cloner copies everything, the form history
       works per form – neither covers "develop on test, publish to live".
-- [ ] **8 · Single sign-on with OpenID Connect** (M) – Microsoft Entra ID / Google / Keycloak login for companies; access level by group.
+- [x] **8 · Single sign-on with OpenID Connect** – built in 0.8.863 (Settings → Sign-in & security → Single sign-on).
       (The "OAuth" in the code is the REST API's client credentials, not a user login.)
 - [ ] **8 · Passkeys (WebAuthn)** (M) – as a second factor besides the authenticator app, later passwordless.
 - [ ] **8 · OpenAPI description of the REST API** (S–M) – generated from forms and rights, Swagger-style view in the API playground;
@@ -296,11 +350,11 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [ ] **7 · Record-level rights** (M) – rules per access level like "only own department" without writing them into every browse SQL
       (today: hash variables in each form's SQL).
 - [ ] **7 · Excel (.xlsx) export and import** (S) – lists, subforms and reports to xlsx; CSV exists, but users expect Excel.
-- [ ] **7 · Scheduled procedures** (S–M) – run a procedure hourly / daily / monthly through cron.php, with log and e-mail on error
+- [ ] **7 · Scheduled procedures** (S–M) – run a procedure hourly / daily / monthly through nucron.php, with log and e-mail on error
       (reminders, data cleanup, interfaces).
 - [x] **7 · Password policy** – done in 0.8.745 (Settings → Sign-in & security → Password policy). Please verify: the online leak check
       against the real api.pwnedpasswords.com (not reachable from the test container – tested with a fake), and the reminder texts.
-- [x] **7 · Webhooks** – done in 0.8.715 (Admin tools → Webhooks; form saves / deletes and CSV imports, signed, retries by cron.php).
+- [x] **7 · Webhooks** – done in 0.8.715 (Admin tools → Webhooks; form saves / deletes and CSV imports, signed, retries by nucron.php).
 - [ ] **7 · Global search / command palette** (M) – Ctrl+K: find forms, records (chosen fields), settings and pages from anywhere.
 
 ### Useful (5–6)

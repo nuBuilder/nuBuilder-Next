@@ -487,10 +487,78 @@ final class NuRender
 		return ' aria-label="' . h($name) . '" title="' . h($name) . '"';
 	}
 
+	/**
+	 * May the current user open the target of a run object (0.8.829)? The globeadmin and users who design forms always (they must see
+	 * what they lay out); a form: the view right of its access levels (NuAcl), a report: NuReport::canRun, a procedure: global, the
+	 * admin role "Procedures: change" or zzzzsys_access_php – the same rules as running it. An unknown target stays visible (its
+	 * own error tells what is wrong).
+	 */
+	public static function runAllowed(array $run): bool
+	{
+		static $cache = [];
+		$u = NuAuth::user();
+		if (!$u) return false;
+		if (!empty($u['globeadmin'])) return true;
+		$key = $run['type'] . ':' . ($run['type'] === 'F' ? $run['form'] : $run['code']);
+		if (isset($cache[$key])) return $cache[$key];
+		try {
+			if (NuAcl::can(NuAcl::FORM_FORM, 'save')) return $cache[$key] = true;
+			if ($run['type'] === 'F') return $cache[$key] = $run['form'] === '' || !NuFormMeta::load($run['form']) || NuAcl::can($run['form'], 'view');
+			if ($run['type'] === 'R') { $r = NuReport::load($run['code']); return $cache[$key] = !$r || NuReport::canRun($r); }
+			if ($run['type'] === 'P') {
+				$db = nu_db();
+				$php = $db->one('SELECT zzzzsys_php_id, sph_global FROM zzzzsys_php WHERE sph_code = ? OR zzzzsys_php_id = ?', [$run['code'], $run['code']]);
+				if (!$php || (string)$php['sph_global'] === '1' || NuAdmin::can('procedures', 'change')) return $cache[$key] = true;
+				[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);
+				return $cache[$key] = (bool)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, (string)$php['zzzzsys_php_id']]);
+			}
+		} catch (Throwable) {
+			return $cache[$key] = true;
+		}
+		return $cache[$key] = true;
+	}
+
+	/** A run object's URL as stored (0.8.830): https:// / http:// or a path of this site; null = not a URL (other schemes, too long). */
+	public static function cleanRunUrl(string $u): ?string
+	{
+		$u = trim($u);
+		if ($u === '' || strlen($u) > 2000 || preg_match('/[\x00-\x1f\\\\]/', $u)) return null;
+		if (preg_match('~^([a-z][a-z0-9+.\-]*):~i', $u, $m)) return in_array(strtolower($m[1]), ['http', 'https'], true) ? $u : null;
+		return str_starts_with($u, '//') ? null : $u;                // a relative path of this site (no protocol-relative hosts)
+	}
+
+	/** Hash variables in the URL, each value URL-encoded; a result that is no longer a safe URL gives '' (the button does nothing). */
+	public static function fillRunUrl(string $u, array $hash): string
+	{
+		$filled = NuHash::replace($u, array_map(static fn($v) => is_scalar($v) || $v === null ? rawurlencode((string)$v) : $v, $hash), NuHash::RAW);
+		return self::cleanRunUrl($filled) ?? '';
+	}
+
+	/** frame-src additions for run objects of type URL shown as an iframe: their scheme + host (hosts with a hash variable are left out). */
+	public static function urlFrameSources(array $objects): string
+	{
+		$out = [];
+		foreach ($objects as $o) {
+			if (($o['sob_all_type'] ?? '') !== 'run' || (string)($o['sob_run_method'] ?? '') !== 'i') continue;
+			$u = self::cleanRunUrl((string)(($o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null))['url'] ?? ''));
+			if ($u === null || !preg_match('~^(https?)://([A-Za-z0-9.\-]+(?::\d+)?)(/|$|\?|#)~i', $u, $m)) continue;
+			$out[strtolower($m[1] . '://' . $m[2])] = true;
+		}
+		return $out ? ' ' . implode(' ', array_keys($out)) : '';
+	}
+
 	public static function runInfo(array $o, array $hash): array
 	{
 		$target = trim((string)$o['sob_run_zzzzsys_form_id']);
 		$type   = strtoupper(trim((string)($o['sob_run_type'] ?? '')));
+		$url    = self::cleanRunUrl((string)(($o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null))['url'] ?? ''));
+		if ($url !== null) {                                       // 0.8.830: a URL (nuBuilder Next only, kept in sob_all_json nunext.url)
+			$method = (string)$o['sob_run_method'] === 'i' ? 'i' : 'b';
+			$runTarget = (string)($o['sob_run_target'] ?? '');
+			return ['type' => 'U', 'form' => '', 'code' => '', 'hidden' => false, 'record' => '', 'filter' => '', 'method' => $method,
+				'target' => in_array($runTarget, ['0', '1', '2', '3'], true) ? $runTarget : '2',
+				'url' => self::fillRunUrl($url, $hash)];
+		}
 		$db     = nu_db();
 		$php    = $target !== '' && $type !== 'F' && $type !== 'R' ? $db->one('SELECT zzzzsys_php_id, sph_code, sph_run FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$target]) : null;
 		if ($type === '' || $type === 'P') $type = $php ? 'P' : ($type === 'P' ? 'P' : '');
@@ -542,6 +610,20 @@ final class NuRender
 	{
 		$label = strip_tags((string)$o['sob_all_label']);
 		$run   = self::runInfo($o, $this->hash);
+		// 0.8.829: a button (or embedded frame) to a form, report or procedure the user may not open is not shown – an empty, hidden
+		// placeholder keeps the id for the form's JavaScript (nuHide / nuShow …); the run itself is refused on the server as before
+		if ($run['type'] === 'U') {
+			if ($run['method'] === 'i') return '<iframe class="nuIframe nuIframeUrl ' . h($cls) . '"' . $common . ($run['url'] !== '' ? ' src="' . h($run['url']) . '"' : '')
+				. ' title="' . h($label ?: $run['url']) . '" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+			$hint = ['2' => t('run_hint_tab'), '3' => t('run_hint_popup')][$run['target']] ?? '';
+			$raw = (string)$o['sob_all_label'];
+			$name = self::nameIfIconOnly($raw, $run['url']);
+			if ($hint !== '' && !str_contains($common, ' title="')) $name = $name !== '' ? ' aria-label="' . h($run['url']) . '" title="' . h($hint) . '"' : ' title="' . h($hint) . '"';
+			return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . ' data-nu-run-type="U" data-nu-run-url="' . h($run['url']) . '"'
+				. ' data-nu-run-target="' . h($run['target']) . '"' . self::iconAttr($o) . $name . ($hint !== '' ? ' data-nu-run-hint="' . h($hint) . '"' : '') . '>'
+				. self::withIcon('<span class="nuButtonLabel">' . $raw . '</span>', $o, $raw) . '</button>';
+		}
+		if (!self::runAllowed($run)) return '<span class="nuRunDenied d-none"' . $common . ' hidden aria-hidden="true" data-nu-run-denied="1"></span>';
 		// a page form (0.8.387) in an iframe: its own output directly, with the opening form and record (pf / pr)
 		if ($run['method'] === 'i' && $run['type'] === 'F' && $run['form'] !== '' && ($pm = NuFormMeta::load($run['form'])) && $pm->isPage()) {
 			$src = NuPage::rawUrl($pm, ['r' => $run['record'], 'ps' => self::$scope ?: null, 'pf' => $this->meta->id, 'pr' => $this->recordId !== '' && $this->recordId !== '-1' ? $this->recordId : null]);

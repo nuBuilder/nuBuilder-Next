@@ -43,7 +43,7 @@ final class NuBranding
 		self::$busy = true;
 		try {
 			if (is_file(nu_config_path())) {
-				$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+				$v = nu_setting_value(self::SETTING);
 				$stored = is_string($v) ? (json_decode($v, true) ?: []) : [];
 				foreach (self::DEFAULTS as $k => $d) if (array_key_exists($k, $stored)) $out[$k] = is_bool($d) ? (bool)$stored[$k] : (string)$stored[$k];
 				$cfg = nu_config();
@@ -258,7 +258,7 @@ final class NuBranding
 
 		$store = array_intersect_key($new, self::DEFAULTS);
 		if (self::envFromConfig()) {                                       // keep what was stored; the label of nuconfig.php is not saved
-			$v = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$store['env_label'] = (string)((is_string($v) ? (json_decode($v, true) ?: []) : [])['env_label'] ?? '');
 		}
 		$changed = [];
@@ -268,8 +268,7 @@ final class NuBranding
 		$store['rev'] = substr(md5(uniqid('', true)), 0, 8);
 		NuSchema::ensure();
 		$row = ['setting_value' => json_encode($store), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
+		nu_setting_save(self::SETTING, $row, $db);
 		self::$cache = null;
 		NuLog::write('branding_saved', 'zzzzsys_nunext_setting', self::SETTING, ['changed' => array_keys($changed)]);
 		return [[], $warn];

@@ -361,7 +361,6 @@ final class NuListDefs
 	private static function access(): array
 	{
 		$db = nu_db();
-		$rights = NuAcl::rights(NuAcl::FORM_ACCESS);
 		$nUsers = '(SELECT COUNT(*) FROM zzzzsys_user u WHERE u.sus_zzzzsys_access_id = a.zzzzsys_access_id)';
 		$nForms = '(SELECT COUNT(*) FROM zzzzsys_access_form f WHERE f.slf_zzzzsys_access_id = a.zzzzsys_access_id)';
 		$nProc = $db->tableExists('zzzzsys_access_php') ? '(SELECT COUNT(*) FROM zzzzsys_access_php p WHERE p.slp_zzzzsys_access_id = a.zzzzsys_access_id)' : '0';
@@ -369,9 +368,7 @@ final class NuListDefs
 		$num = static fn(string $alias, string $label, string $sql) => ['label' => $label, 'select' => [$alias => $sql], 'sort' => $sql, 'align' => 'end',
 			'text' => static fn($r) => (string)(int)$r[$alias]];
 		$cols = [
-			'clone' => ['label' => '', 'select' => [], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'if' => static fn() => $rights['clone'],
-				'text' => static fn($r) => '',
-				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('accesslevel', ['clone' => $r['__id']])) . '" title="' . h(t('clone')) . '" aria-label="' . h(t('clone')) . '"><i class="bi bi-copy"></i></a>'],
+			// no clone button per row (0.8.834, the owner: rarely needed – Clone stays on the access level form)
 			'code' => ['label' => t('access_code'), 'main' => true, 'locked' => true, 'select' => ['sal_code' => 'a.sal_code', 'sal_use_2fa' => 'a.sal_use_2fa'], 'sort' => 'a.sal_code',
 				'text' => static fn($r) => (string)$r['sal_code'],
 				'html' => static fn($r) => h($r['sal_code'] !== '' ? $r['sal_code'] : '—') . ((string)$r['sal_use_2fa'] === '1' ? ' <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1 fw-normal">2FA</span>' : '')],
@@ -411,7 +408,7 @@ final class NuListDefs
 			'search' => ['a.sal_code', 'a.sal_description', 'a.sal_group'], 'search_ph' => t('access_search_ph'), 'open_min' => 0,
 			'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
-				'default' => ['columns' => ['clone', 'code', 'group', 'description', 'home_form', 'users', 'forms'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'users']],
+				'default' => ['columns' => ['code', 'group', 'description', 'home_form', 'users', 'forms'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'users']],
 					'sort' => ['code', 'asc'], 'filters' => ['shown' => ['group', 'form'], 'values' => []]],
 				'compact' => ['columns' => ['code', 'description', 'users'], 'card' => ['title' => 'code', 'badge' => '', 'lines' => ['description']],
 					'sort' => ['code', 'asc'], 'filters' => ['shown' => ['group'], 'values' => []]],
@@ -508,8 +505,9 @@ final class NuListDefs
 		];
 		if ($drafts) $filters['draft'] = ['label' => t('forms_col_draft'), 'type' => 'select', 'options' => static fn() => ['1' => t('forms_with_draft')],
 			'where' => static fn(string $v) => $v === '1' ? ["$dBy IS NOT NULL", []] : null];
+		// ?type=page = the list Custom pages (0.8.861)
 		return [
-			'key' => 'forms', 'title' => t('nav_forms'), 'route' => 'forms', 'form' => NuAcl::FORM_FORM, 'public' => true, 'from' => ' FROM zzzzsys_form f', 'where' => $where, 'params' => $params,
+			'key' => 'forms', 'title' => t(($_GET['type'] ?? '') === 'page' ? 'upd_pages_title' : 'nav_forms'), 'route' => 'forms', 'form' => NuAcl::FORM_FORM, 'public' => true, 'from' => ' FROM zzzzsys_form f', 'where' => $where, 'params' => $params,
 			'id' => 'f.zzzzsys_form_id', 'always' => ['type'],
 			'rows' => static function (array $rows) use (&$trail): array {   // breadcrumb + Back of the opened form lead here (0.8.255)
 				$trail = $rows ? NuTrail::store([['title' => t('nav_forms'), 'url' => NuTrail::currentUrl()]]) : '';

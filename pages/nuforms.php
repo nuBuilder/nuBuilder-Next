@@ -8,10 +8,12 @@ defined('NU_ROOT') || exit;
  */
 $designer = NuAcl::can(NuAcl::FORM_FORM);
 $ga = (bool)NuAuth::user()['globeadmin'];
-$buttons = $designer ? '<a class="btn nuAddBtn" title="' . h(t('builder_new_form')) . '" href="' . h(nu_url('builder', ['new' => '1'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>'
-	. '<a class="btn btn-outline-secondary" id="nuFormAiNew" title="' . h(t('fai_title_new')) . '" href="' . h(nu_url('formai')) . '"><i class="bi bi-stars me-1"></i>' . h(t('fai_button_new')) . '</a>' : '';   // form with AI (0.8.403)
+$pagesList = ($_GET['type'] ?? '') === 'page';                        // the list Custom pages (0.8.861): Add opens the custom page dialogue
+$buttons = $designer ? '<a class="btn nuAddBtn" id="nuFormsAdd" title="' . h(t($pagesList ? 'nfc_page_new' : 'builder_new_form')) . '" href="' . h(nu_url('builder', $pagesList ? ['new' => '1', 'start' => 'page'] : ['new' => '1'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>'
+	: '';   // 0.8.848: Add asks how to start (step by step, with AI, copy) – no separate "With AI" button
 // tools of the forms area in one menu (only what the user may open)
 $tools = array_filter([
+	[$designer && !$pagesList, nu_url('forms', ['type' => 'page']), 'bi-filetype-php', t('upd_pages_title')],   // the list Custom pages (0.8.861)
 	[isset(nu_forms()['nucodesnippet']) && NuAcl::can('nucodesnippet'), nu_url('form', ['f' => 'nucodesnippet']), 'bi-file-earmark-code', t('nav_snippets')],
 	[$ga, nu_url('cloner'), 'bi-files', t('cl_title')],
 	[$ga, nu_url('import'), 'bi-file-earmark-arrow-up', t('imp_title')],

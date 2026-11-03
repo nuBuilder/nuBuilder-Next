@@ -80,6 +80,7 @@ final class NuSettingsHub
 			'users'      => self::toolPages('users'),
 			'security'   => [$can('securitycheck') ? ['securitycheck', t('secchk_title'), nu_url('securitycheck'), 'securitycheck', true] : null,
 				self::ga() ? ['ipaccess', t('ipa_title'), nu_url('ipaccess'), 'ipaccess', true] : null,
+				self::ga() ? ['sso', t('sso_title'), nu_url('sso'), 'sso', true] : null,
 				$can('securitycheck') ? ['pwpolicy', t('pwp_title'), nu_url('pwpolicy'), 'pwpolicy', true] : null],
 			'mail'       => [$can('email') ? ['email', t('nav_email'), nu_url('email', ['tab' => 'settings']), 'email', true] : null],
 			'data'       => [$can('audit') || $can('update') || $can('notifications') || self::ga() || $can('log') ? ['data', t('sh_data'), $own('data'), 'settings', false] : null],
@@ -216,6 +217,7 @@ final class NuSettingsHub
 		if ($can('log') && $can('securitycheck')) $add('data', t('secchk_set_log_keep_days'), t('secchk_set_log_keep_days_tip'), nu_url('securitycheck') . '#sec_log_keep_days', 'log_keep_days log');
 		// security settings (Security check)
 		if ($can('securitycheck')) $add('security', t('pwp_title'), t('pwp_sub'), nu_url('pwpolicy'), 'password length leaked pwned expiry change complexity');
+		if (self::ga()) $add('security', t('sso_title'), t('sso_sub'), nu_url('sso'), 'sso single sign-on openid oidc entra azure google keycloak okta microsoft', t(NuSso::on() ? 'sh_on' : 'sh_off'));
 		if (self::ga()) $add('security', t('ipa_on'), t('ipa_on_tip'), nu_url('ipaccess'), 'ip address network range cidr allow', t(NuIpAccess::on() ? 'sh_on' : 'sh_off'));
 		if ($can('securitycheck')) {
 			$set = NuSecurity::settings();

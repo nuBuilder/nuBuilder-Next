@@ -8,9 +8,9 @@ defined('NU_ROOT') || exit;
  * there like any other package (update page → "Update from the folder"). The download is only kept when its signature is valid –
  * the Ed25519 signature, not GitHub, is what makes a package trusted.
  *   setting 'github_update' (JSON): repo, pre (pre-releases count, default on – nuBuilder Next is alpha), every (automatic check: never / day / week / month, default day; auto = every ≠ never, older rows only had auto –
- *   cron.php, or the start page / update page of a user with the update right; never in the page view of anybody else; default on), checked_at, latest {version, tag, name, url, size, published, page, pre} | null, error
+ *   nucron.php, or the start page / update page of a user with the update right; never in the page view of anybody else; default on), checked_at, latest {version, tag, name, url, size, published, page, pre} | null, error
  * Downloads only from https://github.com and GitHub's download hosts (HOSTS), 64 MB at most. Used by the update page, the start
- * page badge, cron.php update --github and POST api.php/v1/system/update {"github": true}.
+ * page badge, nucron.php update --github and POST api.php/v1/system/update {"github": true}.
  */
 final class NuGitHub
 {
@@ -29,7 +29,7 @@ final class NuGitHub
 		$s = ['repo' => self::DEFAULT_REPO, 'pre' => true, 'auto' => true, 'every' => 'day', 'checked_at' => 0, 'latest' => null, 'error' => ''];
 		try {
 			NuSchema::ensure();
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$j = is_string($v) ? json_decode($v, true) : null;
 			if (is_array($j)) {
 				if (self::validRepo((string)($j['repo'] ?? ''))) $s['repo'] = (string)$j['repo'];
@@ -51,11 +51,7 @@ final class NuGitHub
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'),
 			'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? (PHP_SAPI === 'cli' ? 'cli' : '')), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) {
-			$db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		} else {
-			$db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
-		}
+		nu_setting_save(self::SETTING, $row, $db);
 	}
 
 	public static function validRepo(string $repo): bool

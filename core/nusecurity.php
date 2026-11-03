@@ -51,7 +51,7 @@ final class NuSecurity
 		$stored = [];
 		try {
 			NuSchema::ensure();
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$stored = is_string($v) ? (json_decode($v, true) ?: []) : [];
 		} catch (Throwable) {
 		}
@@ -83,11 +83,7 @@ final class NuSecurity
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($new), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) {
-			$db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		} else {
-			$db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
-		}
+		nu_setting_save(self::SETTING, $row, $db);
 		self::$settings = $new;
 		return $changed;
 	}
@@ -233,7 +229,7 @@ final class NuSecurity
 		return "# Apache (virtual host or apache2.conf): let nuBuilder Next's .htaccess files work\n<Directory $docRoot>\n\tAllowOverride All\n</Directory>\n\n"
 			. "# nginx (server block)\n"
 			. "location ~ ^$b/(core|pages|lang|install|docs|dev|_backup|_install|_update|_libsrc|temp|custom|lib|apps)/ { deny all; }\n"
-			. "location ~ ^$b/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|cron\\.php)$ { deny all; }\n"
+			. "location ~ ^$b/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|nucron\\.php)$ { deny all; }\n"
 			. "location ~ /NUNEXT-VERSION\\.txt$ { deny all; }\n"
 			. "location ^~ /nu_uploads/ { deny all; }\n"
 			. "location ~ ^$b/vendor/(nuconfig\\.php|packs/(nunext-libs\\.php|index\\.html|[^/]+/nunext-lib\\.json))$ { deny all; }\n"
@@ -302,7 +298,7 @@ final class NuSecurity
 			$f = NuVendor::dir($a) . '/' . self::LOCAL_VERSION;
 			if (is_file($f) && str_starts_with(str_replace('\\', '/', $f), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($f, strlen(NU_ROOT) + 1);
 		}
-		// Adminer (0.8.282) must only open through dbadmin.php – served directly it would offer its own login form
+		// Adminer (0.8.282) must only open through nudbadmin.php – served directly it would offer its own login form
 		$adm = NuVendor::adminerFile();
 		if ($adm !== '' && str_starts_with(str_replace('\\', '/', $adm), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr(str_replace('\\', '/', $adm), strlen(NU_ROOT) + 1);
 		return $urls;
@@ -596,7 +592,7 @@ final class NuSecurity
 		$cfg = trim((string)nu_cfg('nuConfigBaseURL'));
 		if ($cfg !== '') return rtrim($cfg, '/');
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', ['base_url_seen']);
+			$v = nu_setting_value('base_url_seen');
 			return is_string($v) && preg_match('~^https?://[^\s/]+(/[^\s]*)?$~', $v) ? rtrim($v, '/') : '';
 		} catch (Throwable) {
 			return '';
@@ -614,7 +610,7 @@ final class NuSecurity
 		try {
 			NuSchema::ensure();
 			$db = nu_db();
-			$cur = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', ['base_url_seen']);
+			$cur = nu_setting_value('base_url_seen');
 			$row = ['setting_value' => $url, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'globeadmin'];
 			if ($cur === null) $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => 'base_url_seen'] + $row);
 			elseif ($cur !== $url) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', 'base_url_seen');

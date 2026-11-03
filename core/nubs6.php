@@ -71,7 +71,7 @@ final class NuBs6
 		}
 		try {
 			foreach (['custom_js' => 'Global JS', 'custom_css' => 'Global CSS'] as $k => $l) {
-				$v = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$k]);
+				$v = nu_setting_value($k);
 				if (is_string($v)) $parts[] = ['Global code · ' . $l, '', $v];
 			}
 		} catch (Throwable) { /* no settings table */ }

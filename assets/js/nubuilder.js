@@ -160,8 +160,6 @@
 	}
 	function $(s, r) { return (r || document).querySelector(s); }
 	function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
-	var uid = 0;
-	function nextId(p) { uid++; return 'nb_' + (p || 'f') + uid; }
 
 	// remove button of a list row (0.8.139): the row is crossed out and the same button brings it back; crossed-out rows are
 	// left out when the panel (or the new form) is saved – window.nuToggleRemoved in nuapp.js
@@ -251,14 +249,19 @@
 		api('tables', {}).then(function (r) {
 			existingTables = r.tables.map(function (x) { return x.toLowerCase(); });
 			var s = $('#nb_table'), views = (r.views || []).map(function (x) { return x.toLowerCase(); });
-			// views (0.8.721): marked "name (view)"
-			r.tables.forEach(function (tb) {
-				var isView = views.indexOf(tb.toLowerCase()) >= 0;
-				s.appendChild(h('option', {value: tb, text: tb + (isView ? ' (' + t('builder_view_tag') + ')' : ''), 'data-view': isView ? '1' : null}));
-			});
+			// views (0.8.721; 0.8.851: under their own heading – Tables / Views – instead of a "(view)" suffix; no headings without views)
+			var vs = r.tables.filter(function (tb) { return views.indexOf(tb.toLowerCase()) >= 0; }), ts = r.tables.filter(function (tb) { return vs.indexOf(tb) < 0; });
+			var opt = function (tb, isView) { return h('option', {value: tb, text: tb, 'data-view': isView ? '1' : null}); };
+			if (vs.length) {
+				var gt = h('optgroup', {label: t('builder_group_tables')}), gv = h('optgroup', {label: t('builder_group_views')});
+				ts.forEach(function (tb) { gt.appendChild(opt(tb, false)); });
+				vs.forEach(function (tb) { gv.appendChild(opt(tb, true)); });
+				if (ts.length) s.appendChild(gt);
+				s.appendChild(gv);
+			} else ts.forEach(function (tb) { s.appendChild(opt(tb, false)); });
 			// searchable (Tom Select, like Select2): type to filter the tables; the select keeps its value and change event
 			if (window.TomSelect) new TomSelect(s, {create: false, maxOptions: null, allowEmptyOption: false, placeholder: t('please_select'),
-				searchField: ['text'], sortField: [{field: '$order'}], render: {no_results: function () { return '<div class="no-results">' + t('no_records') + '</div>'; }}});
+				searchField: ['text'], sortField: [{field: '$order'}], lockOptgroupOrder: true, render: {no_results: function () { return '<div class="no-results">' + t('no_records') + '</div>'; }}});
 		}).catch(function () {});
 		$('#nb_table').addEventListener('change', function () {
 			var info = $('#nbColumnInfo'), pk = $('#nb_pk');

@@ -34,6 +34,8 @@ final class NuHash
 			// nuBuilder: home form, language as stored (German, English …), developer mode (globeadmin + $nuConfigDevMode), permission items
 			'HOME_ID' => $u['globeadmin'] ? 'nuhome' : '', 'LANGUAGE' => nu_lang_to_db(nu_lang()),
 			'DEV_MODE' => self::devMode() ? '1' : '0', 'USER_PERMISSIONS' => '',
+			// main + active additional access levels, quoted for IN (…) (0.8.867); '' (matches nothing) for the globeadmin
+			'ACCESS_LEVEL_IDS' => self::idList($u['globeadmin'] ? [] : NuUserAccess::levels($u)),
 		];
 		$db = nu_db();
 		if (!$u['globeadmin']) {
@@ -61,7 +63,7 @@ final class NuHash
 	/** Variables offered by the code editor's "#" menu, grouped and described in the reader's language. */
 	public const CATALOG = [
 		'user'    => ['USER_ID', 'LOGIN_NAME', 'USER_NAME', 'USER_EMAIL', 'USER_CODE', 'USER_FIRST_NAME', 'USER_LAST_NAME', 'USER_POSITION', 'USER_DEPARTMENT',
-			'USER_TEAM', 'USER_ADDITIONAL1', 'USER_ADDITIONAL2', 'USER_LANGUAGE', 'LANGUAGE', 'USER_PERMISSIONS', 'ACCESS_LEVEL_ID', 'USER_GROUP_ID', 'ACCESS_LEVEL_CODE',
+			'USER_TEAM', 'USER_ADDITIONAL1', 'USER_ADDITIONAL2', 'USER_LANGUAGE', 'LANGUAGE', 'USER_PERMISSIONS', 'ACCESS_LEVEL_ID', 'ACCESS_LEVEL_IDS', 'USER_GROUP_ID', 'ACCESS_LEVEL_CODE',
 			'ACCESS_LEVEL_GROUP', 'GLOBAL_ACCESS', 'HOME_ID', 'DEV_MODE', 'SESSION_ID'],
 		'form'    => ['FORM_ID', 'FORM_CODE', 'FORM_GROUP', 'RECORD_ID', 'NEW_RECORD', 'PREVIOUS_RECORD_ID', 'TABLE_ID', 'ADV_SEARCH'],
 		'context' => ['ID', 'CODE', 'SUBFORM_ID', 'OBJECT_ID', 'ROW', 'PROCEDURE_CODE'],
@@ -110,6 +112,17 @@ final class NuHash
 			'nu_year' => $d->format('Y'), 'nu_month' => $d->format('m'), 'nu_day' => $d->format('d'), 'nu_hour' => $d->format('H'), 'nu_minute' => $d->format('i')];
 	}
 
+	/** Hash variables that hold a ready list of quoted ids for SQL "IN (…)" – inserted as they are into SQL while they have that form (0.8.867). */
+	public const SQL_LISTS = ['ACCESS_LEVEL_IDS'];
+	private const ID_LIST = "/^'[A-Za-z0-9_.-]*'(,'[A-Za-z0-9_.-]+')*$/";
+
+	/** 'id1','id2' – ids with other characters are left out; no id = '' (IN ('') matches nothing). */
+	public static function idList(array $ids): string
+	{
+		$ids = array_values(array_filter(array_map('strval', $ids), static fn($x) => $x !== '' && preg_match('/^[A-Za-z0-9_.-]+$/', $x)));
+		return $ids ? "'" . implode("','", $ids) . "'" : "''";
+	}
+
 	/** Replaces #key# for every key in $hash. */
 	public static function replace(?string $s, array $hash, string $context = self::RAW): string
 	{
@@ -120,7 +133,8 @@ final class NuHash
 		foreach ($hash as $k => $v) {
 			if (!is_string($k) || $k === '') continue;
 			if (is_array($v) || is_object($v)) $v = json_encode($v, JSON_UNESCAPED_UNICODE);
-			$map['#' . $k . '#'] = self::escape((string)$v, $context);
+			$v = (string)$v;
+			$map['#' . $k . '#'] = $context === self::SQL && in_array($k, self::SQL_LISTS, true) && preg_match(self::ID_LIST, $v) ? $v : self::escape($v, $context);
 		}
 		return strtr($s, $map);
 	}
@@ -166,7 +180,7 @@ final class NuHash
 	{
 		$src = [];
 		$h = [];
-		foreach (self::base() as $k => $v) { $h[$k] = $v; $src[$k] = str_starts_with($k, 'USER_') || in_array($k, ['LOGIN_NAME', 'ACCESS_LEVEL_ID', 'ACCESS_LEVEL_CODE', 'ACCESS_LEVEL_GROUP', 'GLOBAL_ACCESS', 'HOME_ID', 'LANGUAGE'], true) ? 'user' : 'system'; }
+		foreach (self::base() as $k => $v) { $h[$k] = $v; $src[$k] = str_starts_with($k, 'USER_') || in_array($k, ['LOGIN_NAME', 'ACCESS_LEVEL_ID', 'ACCESS_LEVEL_IDS', 'ACCESS_LEVEL_CODE', 'ACCESS_LEVEL_GROUP', 'GLOBAL_ACCESS', 'HOME_ID', 'LANGUAGE'], true) ? 'user' : 'system'; }
 		$sys = [
 			'FORM_ID' => $meta->id, 'FORM_CODE' => (string)$meta->form['sfo_code'], 'FORM_GROUP' => (string)($meta->form['sfo_group'] ?? ''),
 			'RECORD_ID' => $recordId, 'NEW_RECORD' => $recordId === '-1' ? '1' : '0',

@@ -998,8 +998,9 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 			<tbody>
 			<?php foreach ($lpView as $sl => $x):
 				$best = $x['best'];
+				$okText = t(match ($x['from']) { 'pack' => 'lp_ok_pack', 'nubuilder' => 'lp_ok_nubuilder', 'manual' => 'lp_ok_manual', default => 'upd_libs_ok' });   // where it comes from (0.8.865)
 				[$icon, $text] = $x['unmet'] ? ['bi-exclamation-triangle text-warning', t('lp_req_needs', (string)$x['req']['min'])] : match ($x['status']) {
-					'ok' => ['bi-check-circle text-success', t('upd_libs_ok') . ($x['note'] !== '' ? ' – ' . t($x['note']) : '')],
+					'ok' => ['bi-check-circle text-success', $okText . ($x['note'] !== '' ? ' – ' . t($x['note']) : '')],
 					'missing' => ['bi-dash-circle text-body-secondary', t('lp_missing')],
 					'old' => ['bi-exclamation-triangle text-warning', t('lp_below_safe', $x['min'])],
 					default => ['bi-exclamation-triangle text-warning', $x['note'] !== '' ? t($x['note']) : t('upd_libs_ok')],

@@ -59,12 +59,6 @@ final class NuSpreadsheet
 		return $dir !== null && is_file($dir . '/VERSION') ? trim((string)file_get_contents($dir . '/VERSION')) : '';
 	}
 
-	/** Is this file name a spreadsheet the library can read here? */
-	public static function isSpreadsheet(string $name): bool
-	{
-		return in_array(strtolower(pathinfo($name, PATHINFO_EXTENSION)), self::EXTS, true);
-	}
-
 	/** @return \PhpOffice\PhpSpreadsheet\Reader\IReader */
 	private static function reader(string $file, string $ext): object
 	{

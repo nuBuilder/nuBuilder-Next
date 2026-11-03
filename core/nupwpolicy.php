@@ -34,7 +34,7 @@ final class NuPwPolicy
 		if (self::$cache !== null) return self::$cache;
 		$s = [];
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEY]);
+			$v = nu_setting_value(self::KEY);
 			$s = is_string($v) ? (json_decode($v, true) ?: []) : [];
 		} catch (Throwable) { /* no settings table yet */ }
 		return self::$cache = self::clean($s);
@@ -87,7 +87,7 @@ final class NuPwPolicy
 	private static function readJson(string $key): array
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$key]);
+			$v = nu_setting_value($key);
 			$a = is_string($v) ? json_decode($v, true) : [];
 			return is_array($a) ? $a : [];
 		} catch (Throwable) { return []; }
@@ -233,7 +233,10 @@ final class NuPwPolicy
 	{
 		$s = self::settings();
 		$over = [];
-		try { $levels = NuUserAccess::levels($userId); } catch (Throwable) { $levels = []; }
+		try {   // 0.8.827: levels() takes the user row (a string threw a TypeError here, so the overrides never applied)
+			$u = nu_db()->one('SELECT zzzzsys_user_id AS id, sus_zzzzsys_access_id AS access_id FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+			$levels = $u ? NuUserAccess::levels($u) : [];
+		} catch (Throwable) { $levels = []; }
 		foreach ($levels as $l) if (isset($s['levels'][$l])) $over[] = (int)$s['levels'][$l];
 		if (!$over) return (int)$s['expire'];
 		$pos = array_filter($over, static fn($d) => $d > 0);

@@ -1,7 +1,7 @@
 # Writing a nuBuilder Next page (form type "page")
 
 A page is a PHP app in `custom/pages/<form code>/` that nuBuilder Next runs after it has checked the login
-and the user's access to the page form. You never write login code. The folder name is exactly the form
+and the user's access to the custom page. You never write login code. The folder name is exactly the form
 code (letters, digits, `_` and `-`; case matters on Linux).
 
 API version: 1 (`$nu->apiVersion()`, `NuPage.version`). Declare it in every page: `$nu->api(1);` (see "API versions").
@@ -98,14 +98,14 @@ The current directory is the page folder while the page runs.
 | `inDepartment(string ...$deps): bool` | department |
 | `hasPosition(string ...$pos): bool` | position |
 | `can(string $form, string $right = 'view'): bool` | a right on any form (id or code): view, add, save, delete, clone, new, print, create |
-| `rights(): array` | rights on THIS page form – use the access level as the app's roles (e.g. save = may edit) |
+| `rights(): array` | rights on THIS custom page – use the access level as the app's roles (e.g. save = may edit) |
 | `require(bool $ok, string $message = ''): void` | 403 (HTML or JSON) when false |
 | `users(array $filter = []): array` | other users: id, login, name, first_name, last_name, display, email, team, department, position. Filter keys: team, department, position (a value or a list), permission (ident), active (true = not expired). Never passwords. |
 
 ### Context
 | Method | Result |
 | --- | --- |
-| `form(): array` | id, code, description of the page form |
+| `form(): array` | id, code, description of the custom page |
 | `slug(): string` | folder name (= form code) |
 | `dir(): string` | absolute folder path |
 | `recordId(): ?string` | `r` of the URL, null when absent, '-1' = new. Not an access check. |
@@ -228,5 +228,5 @@ valign, wrap, border; one cell: NuXlsx::cell($value, ['bold' => true, 'bg' => '#
     the system tables yourself.
 
 ## Testing
-    Open the page form in nuBuilder Next. Errors show details (message, file, line) to the globeadmin only.
+    Open the custom page in nuBuilder Next. Errors show details (message, file, line) to the globeadmin only.
     Direct URLs to custom/... must NOT work - if they do, tell the administrator.

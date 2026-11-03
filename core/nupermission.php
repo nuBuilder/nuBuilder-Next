@@ -90,16 +90,6 @@ final class NuPermission
 		return [$added, $removed];
 	}
 
-	/** Copies the rows of a user (clone) – as nuBuilder copies the subform rows. */
-	public static function copyUser(string $fromId, string $toId): void
-	{
-		if (!self::exists()) return;
-		$db = nu_db();
-		foreach ($db->all('SELECT upe_ident, upe_active FROM ' . self::USER . ' WHERE upe_zzzzsys_user_id = ?', [$fromId]) as $r) {
-			$db->insert(self::USER, ['zzzzsys_user_permission_id' => nu_id(), 'upe_zzzzsys_user_id' => $toId, 'upe_ident' => $r['upe_ident'], 'upe_active' => $r['upe_active']]);
-		}
-	}
-
 	public static function deleteUser(string $userId): void
 	{
 		if (self::exists()) nu_db()->run('DELETE FROM ' . self::USER . ' WHERE upe_zzzzsys_user_id = ?', [$userId]);

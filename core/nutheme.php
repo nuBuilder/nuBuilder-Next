@@ -277,7 +277,7 @@ final class NuTheme
 	{
 		NuSchema::create();
 		$db = nu_db();
-		$v = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [NuBranding::SETTING]);
+		$v = nu_setting_value(NuBranding::SETTING);
 		$b = is_string($v) ? (json_decode($v, true) ?: []) : [];
 		$accent = NuBranding::hex((string)($b['accent'] ?? ''));
 		if ($accent === '') return;
@@ -298,7 +298,7 @@ final class NuTheme
 		if (self::$settings !== null) return self::$settings;
 		$s = ['default' => 'b:next', 'levels' => [], 'user_choice' => false, 'allowed' => [], 'rev' => ''];
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$j = is_string($v) ? (json_decode($v, true) ?: []) : [];
 			if (is_string($j['default'] ?? null)) $s['default'] = $j['default'];
 			if (is_array($j['levels'] ?? null)) foreach ($j['levels'] as $a => $t) if (is_string($t) && $t !== '') $s['levels'][(string)$a] = $t;
@@ -331,8 +331,7 @@ final class NuTheme
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
+		nu_setting_save($id, $row, $db);
 	}
 
 	/** Themes a user may pick (user_choice on): the allowed ones; none ticked = all. Globeadmin: always all. */
@@ -354,7 +353,7 @@ final class NuTheme
 		if (!$u) return '';
 		try {
 			if (!empty($u['demo'])) return (string)($_SESSION['nu_theme'] ?? '');
-			if ($u['globeadmin']) return (string)(nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING_GA]) ?? '');
+			if ($u['globeadmin']) return (string)(nu_setting_value(self::SETTING_GA) ?? '');
 			return (string)NuUserJson::get((string)$u['id'], self::JSON);
 		} catch (Throwable) {
 			return '';

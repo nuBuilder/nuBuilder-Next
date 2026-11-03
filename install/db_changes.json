@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.824",
+    "version": "0.8.869",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -425,6 +425,17 @@
                     "table": "zzzzsys_nunext_permission_type",
                     "kind": "table",
                     "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0033-entry-files",
+            "description": "Entry files renamed (cron.php → nucron.php, dbadmin.php → nudbadmin.php): a notice for the globeadmin on the start page after an update",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_setting",
+                    "kind": "data",
+                    "what": "row entry_files_notice added after an update (notice: entry files renamed)"
                 }
             ]
         }

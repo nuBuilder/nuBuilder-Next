@@ -569,13 +569,14 @@
 			<li><strong>Security settings</strong> on the same page: who grants admin rights, log retention, when to ask for the password again, old md5 passwords …</li>
 			<li><strong>Two-factor login</strong>: <code>$nuConfig2FAAdmin</code> for the globeadmin, <code>$nuConfig2FAUser</code> plus <em>Use two-factor authentication</em> on access levels for users. Each person sets up an authenticator app on the <a data-open="security">Security</a> page (users: <em>Security</em> in the user menu), or gets codes by e-mail.</li>
 			<li><strong>IP access</strong> (<a data-open="ipaccess">Settings → Sign-in &amp; security → IP access</a>, globeadmin only): sign-in only from certain addresses or networks – one list for all access levels, exceptions per level and a rule of its own for the globeadmin. <em>Test an address</em> shows who could work from an address; saving never locks out the address you are using.</li>
+			<li><strong>Single sign-on</strong> (<a data-open="sso">Settings → Sign-in &amp; security → Single sign-on</a>, globeadmin only): users sign in with their company account (Microsoft Entra ID, Google Workspace, Keycloak or another OpenID Connect provider). Access levels can follow the provider's groups, and an access level can be set to single sign-on only. <em>Test sign-in</em> shows what an account would do before you switch it on; you yourself always keep the password of nuconfig.php.</li>
 			<li><strong>Password policy</strong> (<a data-open="pwpolicy">Settings → Sign-in &amp; security → Password policy</a>): minimum length, a check against known leaked passwords (only 5 characters of the hash leave the server) – also at sign-in – and, only where a rule requires it, a regular change; <em>Try a password</em> shows what the rules say.</li>
 			<li>Built in: a login rate limit, signed update packages, strict security headers, masked secrets in the log.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Open the <a data-open="securitycheck">Security check</a> and go through every red and yellow point. Set up an authenticator app for your own login under <a data-open="security">Security</a>.</p>
 		</div>
-		<p><a data-help="security-check">Security</a> · <a data-help="ip-access">IP access</a> · <a data-help="password-policy">Password policy</a> · <a data-help="security-checklist">Checklist for a live server</a></p>
+		<p><a data-help="security-check">Security</a> · <a data-help="ip-access">IP access</a> · <a data-help="sso">Single sign-on</a> · <a data-help="password-policy">Password policy</a> · <a data-help="security-checklist">Checklist for a live server</a></p>
 	</section>
 
 	<section class="tut-lesson" id="logs" data-right="log">
@@ -621,8 +622,8 @@
 
 	<section class="tut-lesson" id="housekeeping" data-right="ga" data-level="advanced">
 		<h3>Housekeeping and the live-server checklist</h3>
-		<p><code>cron.php</code> removes expired tokens and sessions, old log entries and temporary files. Run it every 15 minutes as the web server's user:</p>
-		<pre class="small"><code>*/15 * * * * sudo -u www-data php /var/www/html/nunext/cron.php &gt; /dev/null</code></pre>
+		<p><code>nucron.php</code> removes expired tokens and sessions, old log entries and temporary files. Run it every 15 minutes as the web server's user:</p>
+		<pre class="small"><code>*/15 * * * * sudo -u www-data php /var/www/html/nunext/nucron.php &gt; /dev/null</code></pre>
 		<p>Before users start working on a live server:</p>
 		<ul>
 			<li>HTTPS only; <code>$nuConfigBaseURL</code> and <code>$nuConfigSecretKey</code> set.</li>
@@ -669,7 +670,7 @@
 		<ol>
 			<li>Open <a data-open="webhooks">Webhooks</a> → <em>Add</em>: choose the forms, the events (Inserted, Changed, Deleted) and the URL the receiver gave you; save and copy the secret shown once.</li>
 			<li><em>Send test</em> sends one call with a sample record – the receiver's answer appears at the top.</li>
-			<li>Change a record of the form: the tab <em>Calls</em> shows the call, its attempts and the answer. Failed calls are tried again by <code>cron.php</code>.</li>
+			<li>Change a record of the form: the tab <em>Calls</em> shows the call, its attempts and the answer. Failed calls are tried again by <code>nucron.php</code>.</li>
 		</ol>
 		<p><a data-help="webhooks">Webhooks in the documentation</a></p>
 	</section>
@@ -707,7 +708,7 @@
 
 <article class="tut-chapter" id="ch-dev" data-part="advanced" data-level="advanced" data-right="acl:nuform">
 	<h2>Developing in depth</h2>
-	<p class="tut-intro">Which code runs when, the function references, global code, page forms and forms written with an AI.</p>
+	<p class="tut-intro">Which code runs when, the function references, global code, custom pages and forms written with an AI.</p>
 
 	<section class="tut-lesson" id="adv-lifecycle">
 		<h3>Event order: what runs when</h3>
@@ -745,42 +746,42 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 
 	<section class="tut-lesson" id="adv-global-code" data-right="globalcode">
 		<h3>Global code: JavaScript and CSS for many pages</h3>
-		<p><a data-open="globalcode">Global code</a> has two groups of tabs:</p>
+		<p><a data-open="globalcode">Global code</a> has a switch <em>Form pages</em> | <em>All pages</em>; the tabs next to it show that group's code:</p>
 		<ul>
-			<li><strong>Form pages</strong> – header, style and include, shared with nuBuilder Forte: <em>Form JavaScript</em> (Header: your global functions, <code>nuLoadEditGlobal</code> …), <em>Form CSS</em> (Style) and <em>Form includes</em> (<code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> elements).</li>
-			<li><strong>All pages</strong> – <em>Global JS</em> and <em>Global CSS</em> for nuBuilder Next's own pages (start page, lists, admin tools …), kept apart from nuBuilder Forte. Switches decide where they run. <code>nuOnPageLoad(page, info)</code> tells the code which page is open.</li>
+			<li><strong>Form pages</strong> – header, style and include, shared with nuBuilder Forte: <em>JavaScript</em> (Header: your global functions, <code>nuLoadEditGlobal</code> …), <em>CSS</em> (Style) and <em>Includes</em> (<code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> elements).</li>
+			<li><strong>All pages</strong> – <em>JavaScript</em> and <em>CSS</em> for nuBuilder Next's own pages (start page, lists, admin tools …), kept apart from nuBuilder Forte. Switches decide where they run. <code>nuOnPageLoad(page, info)</code> tells the code which page is open.</li>
 			<li>Each tab has <em>Templates</em> – ready-made code to insert. Never on the Global code page itself and the Update page, so a mistake can always be repaired; <code>?safe=1</code> opens any page without it.</li>
 		</ul>
 		<div class="tut-task">
-			<p>On <em>Form CSS</em>, insert the template <em>Light form buttons</em> and save. Open <code>tutorial_task</code> – its buttons are light now. Remove the code again.</p>
+			<p>On <em>Form pages</em> → <em>CSS</em>, insert the template <em>Light form buttons</em> and save. Open <code>tutorial_task</code> – its buttons are light now. Remove the code again.</p>
 		</div>
 		<p><a data-help="globalcode">Global code</a> · <a data-help="page-hook">Page hook</a></p>
 	</section>
 
 	<section class="tut-lesson" id="adv-page-forms">
-		<h3>Page forms: your own PHP apps</h3>
-		<p>A form of the type <strong>Page (custom PHP)</strong> is a PHP app of your own (or written by an AI) in <code>custom/pages/&lt;code&gt;/</code>. nuBuilder Next checks the login and the access level's right on the form before any of its code runs, and hands the page one object, <code>$nu</code>: the user, the context, the database, settings and secrets.</p>
+		<h3>Custom pages: your own PHP apps</h3>
+		<p>A <strong>custom page</strong> is a PHP app of your own (or written by an AI) in <code>custom/pages/&lt;code&gt;/</code>. nuBuilder Next checks the login and the access level's right on the form before any of its code runs, and hands the page one object, <code>$nu</code>: the user, the context, the database, settings and secrets.</p>
 		<ul>
 			<li><em>Create from template</em> copies a working example; <em>Copy AI prompt</em> puts the guide and your tables into the clipboard for an AI.</li>
 			<li>It opens like any form – menu, tile, run button, iframe object – in a new tab, inside nuBuilder Next or in the whole window.</li>
 			<li><em>Settings (JSON)</em> configure the app, <code>secrets.php</code> holds API keys. A <em>draft</em> of the page's files can be tested before it is published.</li>
 		</ul>
 		<div class="tut-task">
-			<p>In <a data-open="forms">Forms</a> → <em>Add</em>, create a form of the type <em>Page (custom PHP)</em> with the code <code>tutorial_page</code>, click <em>Create from template</em> and open it.</p>
+			<p>In <a data-open="forms">Forms</a> → <em>Add</em>, choose <em>Custom page</em> and create one with the code <code>tutorial_page</code>; in its editor click <em>Create from template</em> and open it. <em>Forms → Tools → Custom pages</em> lists all of them.</p>
 		</div>
-		<p><a data-help="pages">Pages (custom PHP)</a></p>
+		<p><a data-help="pages">Custom pages</a></p>
 	</section>
 
 	<section class="tut-lesson" id="adv-form-ai">
 		<h3>Forms with AI</h3>
 		<p>A form can be created or changed with any AI chat (Claude, ChatGPT …) – no API key, nothing is sent from nuBuilder Next:</p>
 		<ul>
-			<li><a data-open="formai">Forms → With AI</a>: describe the form, copy the prompt into the AI, paste its answer, <em>Check</em> – the plan lists tables, columns and objects – then create it as a draft.</li>
+			<li><a data-open="formai">Forms → Add → Describe it – AI creates it</a>: describe the form, copy the prompt into the AI, paste its answer, <em>Check</em> – the plan lists tables, columns and objects – then create it as a draft.</li>
 			<li>In design mode, <em>Ask AI</em> (form settings → <em>Tools</em>) sends the current form – or its open draft – along; the plan shows only what changes, and <em>Apply to the draft</em> adds it as one step: ask again for the next change.</li>
 			<li><em>Small app</em> (or <em>Describe it</em> on the new-form page) creates several forms with their tables at once – a main form with a sub-form, lookups between them – all as drafts, then <em>Publish all</em>. The AI may write JavaScript, CSS and PHP hooks too; read the code in the draft before publishing.</li>
 		</ul>
 		<div class="tut-task">
-			<p>Ask an AI for a form <em>tutorial_contact</em> (name, e-mail, phone, a select for the type) with <a data-open="formai">With AI</a>, check the answer and create the draft.</p>
+			<p>Ask an AI for a form <em>tutorial_contact</em> (name, e-mail, phone, a select for the type) with <a data-open="formai">Describe it – AI creates it</a>, check the answer and create the draft.</p>
 		</div>
 		<p><a data-help="form-ai">Forms with AI</a></p>
 	</section>
@@ -883,7 +884,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Library packs and the File Manager</h3>
 		<ul>
 			<li>Six libraries are not in the package but come as signed <strong>library packs</strong>: TCPDF (reports), PHPMailer (e-mail), TinyMCE (editor fields), and optionally phpMyAdmin, Adminer and Uppy (uploads). <a data-open="update" data-args="tab=libraries">Update → Libraries</a> installs them from GitHub or as an uploaded zip, tests and rolls them back.</li>
-			<li>The <strong>File Manager</strong> (nuFiles) is a page form that comes with nuBuilder Next: it runs on the nuBuilder Next login, shows <em>shares</em> (folders) per permission item or access level, and has a recycle bin and older versions. The globeadmin sets it up with one click.</li>
+			<li>The <strong>File Manager</strong> (nuFiles) is a custom page that comes with nuBuilder Next: it runs on the nuBuilder Next login, shows <em>shares</em> (folders) per permission item or access level, and has a recycle bin and older versions. The globeadmin sets it up with one click.</li>
 		</ul>
 		<div class="tut-task">
 			<p>Open <a data-open="update" data-args="tab=libraries">Update → Libraries</a> and check which packs are installed; then open the <a data-open="filemanager">File Manager</a> (set it up if asked).</p>
@@ -896,11 +897,11 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<ul>
 			<li><em>Update from GitHub</em> finds the newest release and checks once a day; a new version shows a badge on the Update tile. Only signed packages can be installed.</li>
 			<li>A package can also be copied by FTP into the folder <code>_update</code> – useful for a small upload limit.</li>
-			<li>Unattended: <code>php cron.php update --github</code> (or <code>--zip=…</code>, <code>--dry-run</code>, <code>--backup=…</code>) – run it as the web server's user. The same is possible through the REST API.</li>
+			<li>Unattended: <code>php nucron.php update --github</code> (or <code>--zip=…</code>, <code>--dry-run</code>, <code>--backup=…</code>) – run it as the web server's user. The same is possible through the REST API.</li>
 			<li>Every update makes a backup first (default: all <code>zzzzsys_*</code> tables); <em>Rollback</em> brings back the program files.</li>
 		</ul>
 		<div class="tut-task">
-			<p>On the <a data-open="update">Update</a> page, look at <em>Update from GitHub</em> and the <em>Backups</em> tab. If you have shell access, run <code>php cron.php update --github --dry-run</code>.</p>
+			<p>On the <a data-open="update">Update</a> page, look at <em>Update from GitHub</em> and the <em>Backups</em> tab. If you have shell access, run <code>php nucron.php update --github --dry-run</code>.</p>
 		</div>
 		<p><a data-help="updating-p">Updating nuBuilder Next</a></p>
 	</section>
@@ -1052,7 +1053,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Integration</h3>
 		<ul>
 			<li>A <a data-help="api">REST API</a> with clients, scopes and tokens: users, access levels, permission items, reports as PDF, notifications, data exports and updates – and the <a data-open="apiplayground">API playground</a> to try it in the browser.</li>
-			<li><strong>Page forms</strong>: a form type for your own PHP pages inside nuBuilder Next, with drafts and versions (<a data-help="pages">pages</a>).</li>
+			<li><strong>Custom pages</strong>: your own PHP pages inside nuBuilder Next, with drafts and versions (<a data-help="pages">pages</a>).</li>
 			<li>E-mail with OAuth 2 (Google, Microsoft 365) and e-mail templates.</li>
 		</ul>
 	</section>

@@ -1,14 +1,14 @@
 <section id="pages" data-acl="nuform">
-	<h2 id="pages-h">Pages (custom PHP)</h2>
+	<h2 id="pages-h">Custom pages</h2>
 	<p class="doc-lead">PHP apps of your own that run inside nuBuilder Next.</p>
 	<p class="doc-for" data-doc="admin">For: Users with rights on: nuform</p>
-	<p>A form can be of the type <strong>Page (custom PHP)</strong>: a PHP app of your own (or written by an AI) that runs inside nuBuilder Next. nuBuilder Next checks the login and the access level's right on the page form <em>before</em> any code of the page runs, and hands the page one object, <code>$nu</code>, with the user, the context and the database. The page writes no login code and has a completely free look – nuBuilder Next adds no header, menu or CSS to it.</p>
+	<p>A <strong>custom page</strong> is a PHP app of your own (or written by an AI) that runs inside nuBuilder Next. It is stored like a form (a row of <code>zzzzsys_form</code> with the type <code>page</code>), so access levels, start page tiles, the side bar, run buttons and the cloners treat it as one. nuBuilder Next checks the login and the access level's right on the custom page <em>before</em> any code of the page runs, and hands the page one object, <code>$nu</code>, with the user, the context and the database. The page writes no login code and has a completely free look – nuBuilder Next adds no header, menu or CSS to it.</p>
 	<div class="doc-sub" data-acl="nuform">
 <h3 id="pages-create">Creating a page</h3>
 <ol>
-<li><em>Forms → Add</em>, type <em>Page (custom PHP)</em>. The <strong>code is the folder name</strong>: letters, digits, <code>_</code> and <code>-</code>, starting with a letter or digit, at most 64 characters (names starting with <code>_</code> are reserved).</li>
-<li>The editor of a page form shows the folder <code>custom/pages/&lt;code&gt;/</code> and whether <code>index.php</code> is there. <strong>Create from template</strong> copies <code>custom/pages/_template/</code> there (when the folder is writable; otherwise copy it by FTP).</li>
-<li>Give access levels the right on the page form, as for any form (<em>view</em> = may open it; the other rights can be read by the page with <code>$nu-&gt;rights()</code> and used as the app's roles).</li>
+<li><em>Forms → Add</em> → <em>Custom page</em>, or <em>Add</em> in the list <em>Custom pages</em> (Forms → Tools → Custom pages, the ▾ of the start page tile Forms; it is the forms list showing only custom pages). A short dialogue asks for the description, the code and how the page opens. The <strong>code is the folder name</strong>: letters, digits, <code>_</code> and <code>-</code>, starting with a letter or digit, at most 64 characters (names starting with <code>_</code> are reserved).</li>
+<li>The editor of a custom page shows the folder <code>custom/pages/&lt;code&gt;/</code> and whether <code>index.php</code> is there. <strong>Create from template</strong> copies <code>custom/pages/_template/</code> there (when the folder is writable; otherwise copy it by FTP).</li>
+<li>Give access levels the right on the custom page, as for any form (<em>view</em> = may open it; the other rights can be read by the page with <code>$nu-&gt;rights()</code> and used as the app's roles).</li>
 <li>Write the app in <code>index.php</code> (more files, <code>assets/</code> for css / js / images). <strong>Copy AI prompt</strong> puts the guide, this page and the list of your tables into the clipboard – paste it into any AI together with a description of the app.</li>
 </ol>
 </div>
@@ -41,7 +41,7 @@
 <li><strong>Unsupported version</strong>: the page does not run; the globeadmin sees which version it needs and what this nuBuilder Next supports, other users a short error.</li>
 <li><strong>Deprecated methods</strong> keep working; each call writes a notice to <em>Debug results</em> (once a day per page and method), deprecated <code>NuPage</code> names a warning in the browser console.</li>
 <li><strong>Before an update</strong>: <em>Check package</em> on the update page lists every page the new version would break (unsupported version, unknown or removed <code>$nu-&gt;…</code> / <code>NuPage.…</code> calls) or that uses deprecated ones. The update can still be installed.</li>
-<li><strong>Page editor</strong> of a page form: the declared version and the problems with this version; the forms list shows a warning next to the type of such pages.</li>
+<li><strong>Page editor</strong> of a custom page: the declared version and the problems with this version; the forms list shows a warning next to the type of such pages.</li>
 <li>Only calls written as <code>$nu-&gt;name(</code> and <code>NuPage.name</code> are found – keep the variable name <code>$nu</code>.</li>
 </ul>
 </div>
@@ -51,8 +51,8 @@
 <li>Pages live in <code>custom/pages/&lt;code&gt;/</code>, uploaded by FTP. <code>$nuConfigCustomPagesDir</code> in <code>nuconfig.php</code> (an absolute path) moves the pages folder, e.g. outside the web root – the safest setup.</li>
 <li><strong>Updates never touch</strong> <code>custom/pages/</code> and <code>custom/lib/</code> – only <code>custom/.htaccess</code>, <code>custom/PAGE_GUIDE.md</code> and <code>custom/pages/_template/</code> come with nuBuilder Next. A rollback does not change them either. <em>Include custom pages</em> (update page, backups) puts a copy of the folders into a backup.</li>
 <li>Direct requests of files in <code>custom/</code> are blocked three ways: the guard line <code>defined('NU_PAGE') || exit;</code> at the top of every PHP file (the page editor warns when <code>index.php</code> lacks it), <code>custom/.htaccess</code> (Apache) and the nginx rule in <a href="#security-nginx">Web server rules</a>. <em>Security check</em> tests that the folder cannot be reached.</li>
-<li>Renaming the code of a page form: rename its folder by FTP too (the page editor says so). Deleting a page form keeps its files.</li>
-<li>The cloner copies a page form with its settings, not its files (it shows the folders to copy). The App cloner copies the folders with the files of the installation, but never <code>secrets.php</code>.</li>
+<li>Renaming the code of a custom page: rename its folder by FTP too (the page editor says so). Deleting a custom page keeps its files.</li>
+<li>The cloner copies a custom page with its settings, not its files (it shows the folders to copy). The App cloner copies the folders with the files of the installation, but never <code>secrets.php</code>.</li>
 </ul>
 </div>
 	<div class="doc-sub" data-acl="nuform">

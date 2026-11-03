@@ -8,7 +8,7 @@ defined('NU_ROOT') || exit;
  *   zzzzsys_nunext_webhook       the definitions: name, forms (JSON list of form ids), events (JSON: insert / update / delete), url,
  *                                secret (sealed with $nuConfigSecretKey), fields (empty = all), template (empty = the standard JSON)
  *   zzzzsys_nunext_webhook_call  the outbox: one row per call – written in the save's transaction (rolled back with it), sent right after
- *                                the page has answered (shutdown, after fastcgi_finish_request), retried by the housekeeping (cron.php)
+ *                                the page has answered (shutdown, after fastcgi_finish_request), retried by the housekeeping (nucron.php)
  *                                after 1 min, 5 min, 30 min, 2 h, 12 h (6 attempts, then failed)
  *   zzzzsys_nunext_webhook_try   one row per attempt: HTTP status, duration, the start of the answer or the error
  * Sources: form saves / deletes (NuRecord) and CSV imports (NuImport – webhooks of forms on the imported table). nuBuilder Forte's own
@@ -133,7 +133,7 @@ final class NuWebhook
 	public static function settings(): array
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$j = is_string($v) ? json_decode($v, true) : null;
 		} catch (Throwable) { $j = null; }
 		return ['allow_private' => is_array($j) && !empty($j['allow_private'])];
@@ -144,8 +144,7 @@ final class NuWebhook
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => json_encode(['allow_private' => $allowPrivate]), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => self::who()];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
+		nu_setting_save(self::SETTING, $row, $db);
 		NuLog::write('webhook_settings', 'zzzzsys_nunext_setting', self::SETTING, ['allow_private' => $allowPrivate]);
 	}
 
@@ -278,7 +277,7 @@ final class NuWebhook
 		});
 	}
 
-	/** Housekeeping (cron.php / page views): calls whose next attempt is due; old calls deleted. @return int calls tried */
+	/** Housekeeping (nucron.php / page views): calls whose next attempt is due; old calls deleted. @return int calls tried */
 	public static function retryDue(int $max = 50): int
 	{
 		if (!self::available()) return 0;
@@ -449,12 +448,6 @@ final class NuWebhook
 	{
 		$u = NuAuth::user();
 		return $u ? (!empty($u['globeadmin']) ? 'globeadmin' : (string)($u['login'] ?? '')) : 'cron';
-	}
-
-	/** The secret in plain text (shown once after it was made). */
-	public static function secretOf(array $d): string
-	{
-		return self::open($d['secret']);
 	}
 
 	private static function seal(string $s): string

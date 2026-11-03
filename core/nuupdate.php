@@ -136,9 +136,13 @@ final class NuUpdate
 	/** The manifest of the installed version, or null (versions before 0.8.0 have none). */
 	public static function installedManifest(): ?array
 	{
+		static $cache = null, $mtime = null;                     // 0.8.827: the update page decoded the ~600-entry file 2–3 times per request
 		$f = NU_ROOT . '/' . self::MANIFEST;
-		$m = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
-		return is_array($m) && isset($m['files']) ? $m : null;
+		$t = is_file($f) ? (int)filemtime($f) : 0;
+		if ($mtime === $t && $t > 0) return $cache;
+		$m = $t > 0 ? json_decode((string)file_get_contents($f), true) : null;
+		$mtime = $t;
+		return $cache = is_array($m) && isset($m['files']) ? $m : null;
 	}
 
 	// ------------------------------------------------------------------ maintenance mode
@@ -294,7 +298,7 @@ final class NuUpdate
 		$out = [];
 		foreach (glob($dir . '/*.zip') ?: [] as $f) {
 			$name = basename($f);
-			if (!self::folderName($name) || !is_file($f) || str_starts_with($name, 'nunext-lib-')) continue;     // library packs: NuLibs (0.8.405)
+			if (!self::folderName($name) || !is_file($f) || str_starts_with($name, 'nunext-lib-') || str_starts_with($name, 'dbreset-')) continue;   // dbreset-*: uploads of Reset database (0.8.847)     // library packs: NuLibs (0.8.405)
 			$p = ['name' => $name, 'size' => (int)@filesize($f), 'time' => (int)@filemtime($f), 'version' => '', 'signature' => '', 'ok' => false];
 			if (class_exists('ZipArchive')) {
 				$z = new ZipArchive();
@@ -463,7 +467,7 @@ final class NuUpdate
 				if ($f->isFile() && !self::isProtected($rel) && !self::isLibrary($rel)) $files[] = $rel;
 			}
 		}
-		foreach (['index.php', 'api.php', 'cron.php', '.htaccess', 'nuconfig-sample.php', 'README.md', 'CHANGELOG.md', 'LICENSE', 'TODO.md', self::MANIFEST, 'docs/.htaccess'] as $f) if (is_file(NU_ROOT . '/' . $f)) $files[] = $f;
+		foreach (['index.php', 'api.php', 'nucron.php', '.htaccess', 'nuconfig-sample.php', 'README.md', 'CHANGELOG.md', 'LICENSE', 'TODO.md', self::MANIFEST, 'docs/.htaccess'] as $f) if (is_file(NU_ROOT . '/' . $f)) $files[] = $f;
 		$files = array_values(array_unique($files));
 		sort($files);
 		return $files;
@@ -573,7 +577,7 @@ final class NuUpdate
 	{
 		try {
 			NuSchema::ensure();
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEEP_SQL_SETTING]);
+			$v = nu_setting_value(self::KEEP_SQL_SETTING);
 			return $v === null ? self::KEEP_SQL_DEFAULT : max(0, (int)$v);
 		} catch (Throwable) {
 			return self::KEEP_SQL_DEFAULT;
@@ -585,11 +589,7 @@ final class NuUpdate
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => (string)max(0, min(999, $n)), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEEP_SQL_SETTING])) {
-			$db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::KEEP_SQL_SETTING);
-		} else {
-			$db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::KEEP_SQL_SETTING] + $row);
-		}
+		nu_setting_save(self::KEEP_SQL_SETTING, $row, $db);
 		self::pruneSql();
 	}
 
@@ -696,7 +696,7 @@ final class NuUpdate
 	{
 		$v = [];
 		try {
-			$raw = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::CLEANUP_SETTING]);
+			$raw = nu_setting_value(self::CLEANUP_SETTING);
 			$v = is_string($raw) ? (array)(json_decode($raw, true) ?: []) : [];
 		} catch (Throwable) {
 		}
@@ -710,8 +710,7 @@ final class NuUpdate
 			'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => (string)(NuAuth::user()['login'] ?? '')];
 		NuSchema::ensure();
 		$db = nu_db();
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::CLEANUP_SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::CLEANUP_SETTING);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::CLEANUP_SETTING] + $row);
+		nu_setting_save(self::CLEANUP_SETTING, $row, $db);
 	}
 
 	/**
@@ -824,6 +823,23 @@ final class NuMigrate
 	public const TABLE = 'zzzzsys_nunext_migration';
 	/** Were steps applied before this run (an existing installation)? Set by run(). */
 	public static bool $earlier = false;
+	public const ENTRY_NOTICE = 'entry_files_notice';
+
+	/** 0.8.825: api.php, cron.php, oauth.php and dbadmin.php got the nu prefix – the globeadmin sees a notice until hidden ($on false = hide). */
+	public static function entryNotice(?bool $on = null): bool
+	{
+		try {
+			NuSchema::ensure();
+			$db = nu_db();
+			$has = (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::ENTRY_NOTICE]);
+			if ($on === null) return $has;
+			if ($on && !$has) $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::ENTRY_NOTICE, 'setting_value' => NU_VERSION, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'update']);
+			if (!$on && $has) $db->delete('zzzzsys_nunext_setting', 'zzzzsys_nunext_setting_id', self::ENTRY_NOTICE);
+			return $on;
+		} catch (Throwable) {
+			return false;
+		}
+	}
 
 	/** id => [description, function] – append new steps at the end, never change or reorder existing ones. */
 	private static function steps(): array
@@ -863,6 +879,7 @@ final class NuMigrate
 			'0030-data-export' => ['Data export: saved exports (zzzzsys_nunext_export)', static fn() => NuSchema::create()],
 			'0031-log-indexes' => ['Indexes on the log (object + record, user + event + time, login, object) and the audit trail (login): record info, log filters, last login of the users list', static fn() => NuSchema::ensureIndexes()],
 			'0032-permission-types' => ['Types of permission items (zzzzsys_nunext_permission_type): Data import into chosen tables', static fn() => NuSchema::create()],
+			'0033-entry-files' => ['Entry files renamed (cron.php → nucron.php, dbadmin.php → nudbadmin.php): a notice for the globeadmin on the start page after an update', static fn() => self::$earlier ? NuMigrate::entryNotice(true) : null],
 		];
 	}
 
@@ -905,6 +922,7 @@ final class NuMigrate
 		'0026-user-home' => [['zzzzsys_form', 'data', 'form nuuserhome (User Home) added when missing – also checked with every later update'], ['zzzzsys_tab', 'data', 'its tabs Main and Fast Forms']],
 		'0027-themes' => [['zzzzsys_nunext_theme', 'table', 'created when missing'], ['zzzzsys_nunext_setting', 'data', 'Branding\'s accent colour (if set) moved into the own theme "My theme" (row theme)']],
 		'0032-permission-types' => [['zzzzsys_nunext_permission_type', 'table', 'created when missing']],
+		'0033-entry-files' => [['zzzzsys_nunext_setting', 'data', 'row entry_files_notice added after an update (notice: entry files renamed)']],
 		'0031-log-indexes' => [['zzzzsys_nunext_log', 'index', 'ix_zzzzsys_nunext_log_object_record (object, record_id), ix_zzzzsys_nunext_log_user_event (user_id, event, log_time), login, object when missing'], ['zzzzsys_nunext_audit', 'index', 'login when missing']],
 		'0030-data-export' => [['zzzzsys_nunext_export', 'table', 'created when missing']],
 		'0029-webhooks' => [['zzzzsys_nunext_webhook', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_call', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_try', 'table', 'created when missing']],

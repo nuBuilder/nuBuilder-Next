@@ -1,6 +1,6 @@
 <section id="routing" data-doc="admin">
 	<h2 id="routing-h">Request routing</h2>
-	<p class="doc-lead">index.php, the route table, api.php, cron.php and the other entry points.</p>
+	<p class="doc-lead">index.php, the route table, api.php, nucron.php and the other entry points.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<div class="doc-sub">
 	<h3 id="routing-index">index.php and the route table</h3>
@@ -33,9 +33,9 @@
 		<thead><tr><th>File</th><th>Purpose</th></tr></thead>
 		<tbody>
 			<tr><td><code>api.php/v1/…</code></td><td>REST API, handled by <code>core/nuapi.php</code>; off unless <code>$nuConfigApi = true</code> (see <a href="#api">REST API</a>).</td></tr>
-			<tr><td><code>cron.php</code></td><td>Command line only: housekeeping and unattended updates (see <a href="#security-cron">Housekeeping</a>).</td></tr>
+			<tr><td><code>nucron.php</code></td><td>Command line only: housekeeping and unattended updates (see <a href="#security-cron">Housekeeping</a>).</td></tr>
 			<tr><td><code>oauth.php</code></td><td>Return address of the OAuth 2 consent page for the SMTP login.</td></tr>
-			<tr><td><code>dbadmin.php</code></td><td>Runs Adminer for a globeadmin who opened it from nuBuilder Next.</td></tr>
+			<tr><td><code>nudbadmin.php</code></td><td>Runs Adminer for a globeadmin who opened it from nuBuilder Next.</td></tr>
 			<tr><td><code>index.php?p=page&amp;…</code></td><td>Your own pages (form type <em>page</em>); their fetch requests get JSON errors.</td></tr>
 		</tbody>
 	</table>
@@ -45,5 +45,5 @@
 	<p>Edit forms and lists talk to <code>index.php?p=formapi</code> (POST, CSRF header). Actions: <code>save</code>, <code>delete</code>, <code>lookupid</code>, <code>lookupcode</code>, <code>php</code> (<code>nuRunPHPHidden</code>), <code>refresh</code>, <code>props</code>, <code>global</code>, <code>hash</code> / <code>hashfields</code> (hash viewer, globeadmin), <code>presence</code> and <code>report</code>. Every answer is JSON with <code>ok</code> and, on failure, <code>errors</code> (message and field).</p>
 </div>
 	<p class="doc-see">See also: <a href="#startup">Startup and configuration</a> · <a href="#api">REST API</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>index.php</code></li><li><code>api.php</code></li><li><code>cron.php</code></li><li><code>oauth.php</code></li><li><code>dbadmin.php</code></li><li><code>pages/</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>index.php</code></li><li><code>api.php</code></li><li><code>nucron.php</code></li><li><code>oauth.php</code></li><li><code>nudbadmin.php</code></li><li><code>pages/</code></li></ul></details>
 </section>

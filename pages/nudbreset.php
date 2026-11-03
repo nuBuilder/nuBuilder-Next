@@ -15,10 +15,15 @@ if (!NuHash::devMode() || !NuDbReset::available()) {
 
 $S = &$_SESSION['nu_dbreset'];
 if (!is_array($S)) $S = [];
+if (($_GET['fresh'] ?? '') === '1' && ($fr = NuDbReset::finishFresh()) !== null) {   // second half of a fresh installation (new code)
+	$S = ['fresh' => $fr];
+	nu_redirect(nu_url('dbreset'));
+}
 if (nu_is_post()) {
 	$action = nu_post('action');
 	if ($action === 'check') {
 		try {
+			if (!empty($S['path'])) NuDbReset::forgetUpload((string)$S['path']);   // an earlier check's upload
 			if (!empty($_FILES['upload']['name'])) $path = NuDbReset::storeUpload($_FILES['upload']);
 			else {
 				$src = NuDbReset::sources();
@@ -27,6 +32,7 @@ if (nu_is_post()) {
 			}
 			$S = ['path' => $path, 'check' => NuDbReset::check($path), 'backup' => nu_post('backup') === '1', 'sample' => nu_post('sample') === '1'];
 		} catch (Throwable $e) {
+			if (isset($path) && is_string($path)) NuDbReset::forgetUpload($path);
 			$S = [];
 			nu_flash('danger', $e->getMessage());
 		}
@@ -36,7 +42,14 @@ if (nu_is_post()) {
 			nu_flash('danger', t('dbr_err_confirm'));
 		} else {
 			try {
+				if (($S['check']['kind'] ?? '') === 'package') {
+					NuDbReset::runPackage((string)$S['path'], nu_post('backup') === '1', nu_post('sample') === '1');
+					NuDbReset::forgetUpload((string)$S['path']);
+					$S = [];
+					nu_redirect(nu_url('dbreset', ['fresh' => '1']));   // the next request runs the new code
+				}
 				$r = NuDbReset::run((string)$S['path'], nu_post('backup') === '1', nu_post('sample') === '1');
+				NuDbReset::forgetUpload((string)$S['path']);
 				$S = ['done' => $r];
 			} catch (Throwable $e) {
 				error_log('nuBuilder Next reset database: ' . $e->getMessage());
@@ -44,6 +57,7 @@ if (nu_is_post()) {
 			}
 		}
 	} elseif ($action === 'cancel') {
+		if (!empty($S['path'])) NuDbReset::forgetUpload((string)$S['path']);
 		$S = [];
 	}
 	nu_redirect(nu_url('dbreset'));
@@ -51,7 +65,8 @@ if (nu_is_post()) {
 
 $chk = $S['check'] ?? null;
 $done = $S['done'] ?? null;
-if ($done) $S = [];                                       // the result is shown once
+$fresh = $S['fresh'] ?? null;
+if ($done || $fresh) $S = [];                                       // the result is shown once
 $dbName = (string)nu_db()->value('SELECT DATABASE()');
 nu_layout_start(t('dbr_title'), 'dbreset');
 ?>
@@ -62,7 +77,24 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
 	</div>
 	<div class="card-body">
-	<?php if ($done): ?>
+	<?php if ($fresh): ?>
+		<div class="alert <?= empty($fresh['error']) ? 'alert-success' : 'alert-warning' ?>" id="dbrFreshDone">
+			<p class="fw-semibold mb-1"><?= h(t('dbr_fresh_done', $fresh['version'])) ?></p>
+			<ul class="mb-0 small">
+				<li><?= h(t('dbr_fresh_from', $fresh['from'], $fresh['version'])) ?></li>
+				<li><?= h(t('dbr_done_counts', $fresh['dropped'], $fresh['statements'], count($fresh['steps']))) ?></li>
+				<?php foreach ($fresh['packs'] as [$lib, $ok, $err]): ?><li class="<?= $ok ? '' : 'text-danger' ?>"><?= h($ok ? t('dbr_fresh_pack', $lib) : t('dbr_fresh_pack_err', $lib, $err)) ?></li><?php endforeach; ?>
+				<?php if ($fresh['backup'] !== ''): ?><li><?= h(t('dbr_done_backup', $fresh['backup'])) ?></li><?php endif; ?>
+				<?php if ($fresh['sample'] === 'ok'): ?><li><?= h(t('dbr_done_sample')) ?></li>
+				<?php elseif ($fresh['sample'] !== ''): ?><li class="text-danger"><?= h(t('dbr_done_sample_err', $fresh['sample'])) ?></li><?php endif; ?>
+				<?php if (!empty($fresh['error'])): ?><li class="text-danger"><?= h($fresh['error']) ?></li><?php endif; ?>
+			</ul>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<a class="btn btn-primary" id="dbrWizard" href="<?= h(nu_url('setupwizard')) ?>"><i class="bi bi-magic me-1"></i><?= h(t('dbr_open_wizard')) ?></a>
+			<a class="btn btn-outline-secondary" href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a>
+		</div>
+	<?php elseif ($done): ?>
 		<div class="alert alert-success" id="dbrDone">
 			<p class="fw-semibold mb-1"><?= h(t('dbr_done')) ?></p>
 			<ul class="mb-0 small">
@@ -77,14 +109,22 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 			<a class="btn btn-outline-secondary" href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a>
 		</div>
 	<?php elseif ($chk && $chk['ok']):
-		$cur = $chk['current']; ?>
+		$cur = $chk['current'];
+		$pkg = ($chk['kind'] ?? '') === 'package'; ?>
 		<div class="alert alert-danger" id="dbrWarn">
 			<p class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i><?= h(t('dbr_warn_title', $chk['database'])) ?></p>
-			<p class="mb-0 small"><?= h(t('dbr_warn', count($cur))) ?></p>
+			<p class="mb-0 small"><?= h(t('dbr_warn', count($cur))) ?><?= $pkg ? ' ' . h(t('dbr_fresh_warn', $chk['version'])) : '' ?></p>
 		</div>
-		<dl class="row small mb-3" id="dbrCheck">
+		<dl class="row small mb-3" id="dbrCheck"<?= $pkg ? ' data-kind="package"' : '' ?>>
 			<dt class="col-sm-3"><?= h(t('dbr_file')) ?></dt><dd class="col-sm-9 text-break"><?= h($chk['file']) ?> (<?= h(number_format($chk['bytes'] / 1048576, 1) . ' MB') ?>)</dd>
+			<?php if ($pkg): ?>
+			<dt class="col-sm-3"><?= h(t('dbr_fresh_version')) ?></dt><dd class="col-sm-9" id="dbrPkgVersion"><?= h(t('dbr_fresh_from', NU_VERSION, $chk['version'])) ?> <span class="badge text-bg-success"><?= h(t('dbr_fresh_signed')) ?></span></dd>
+			<dt class="col-sm-3"><?= h(t('dbr_creates')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_fresh_creates')) ?></dd>
+			<dt class="col-sm-3"><?= h(t('dbr_fresh_packs')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_fresh_packs_val', $chk['installed_packs'] ? implode(', ', $chk['installed_packs']) : '–', $chk['packs'] ? implode(', ', $chk['packs']) : '–')) ?></dd>
+			<dt class="col-sm-3"><?= h(t('dbr_fresh_keeps')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_fresh_keeps_val')) ?></dd>
+			<?php else: ?>
 			<dt class="col-sm-3"><?= h(t('dbr_creates')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_creates_val', $chk['tables'], $chk['app'], $chk['forms'], $chk['users'])) ?></dd>
+			<?php endif; ?>
 			<dt class="col-sm-3"><?= h(t('dbr_deletes')) ?></dt><dd class="col-sm-9">
 				<details><summary><?= h(t('dbr_deletes_val', count($cur))) ?></summary>
 					<div class="table-responsive mt-2 dbrTables"><table class="table table-sm nu-table mb-0" id="dbrTables">
@@ -102,7 +142,7 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 			<label class="form-label" for="dbrConfirm"><?= h(t('dbr_confirm', $chk['database'])) ?></label>
 			<input class="form-control mb-3 dbrNarrow" name="confirm" id="dbrConfirm" autocomplete="off" spellcheck="false" required>
 			<div class="d-flex flex-wrap gap-2">
-				<button type="submit" class="btn btn-danger" id="dbrRun" data-nu-busy="<?= h(t('dbr_running')) ?>"><i class="bi bi-trash3 me-1"></i><?= h(t('dbr_run')) ?></button>
+				<button type="submit" class="btn btn-danger" id="dbrRun" data-nu-busy="<?= h(t('dbr_running')) ?>"><i class="bi bi-trash3 me-1"></i><?= h(t($pkg ? 'dbr_fresh_run' : 'dbr_run')) ?></button>
 				<button type="submit" class="btn btn-outline-secondary" form="dbrCancel"><?= h(t('cancel')) ?></button>
 			</div>
 		</form>
@@ -119,14 +159,15 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 				<?php foreach ($src as $label => $p): ?><option value="<?= h($label) ?>"><?= h($label) ?></option><?php endforeach; ?>
 			</select>
 			<label class="form-label" for="dbrUpload"><?= h(t('dbr_upload', NuUpdate::uploadLimitText())) ?></label>
-			<input class="form-control mb-3 dbrWide" type="file" name="upload" id="dbrUpload" accept=".sql,.gz,.zip">
+			<input class="form-control mb-1 dbrWide" type="file" name="upload" id="dbrUpload" accept=".sql,.gz,.zip">
+			<div class="form-text mb-3" id="dbrFreshHint"><?= h(t('dbr_fresh_hint')) ?></div>
 			<div class="form-check mb-1"><input class="form-check-input" type="checkbox" name="backup" value="1" id="dbrBackup0" checked>
 				<label class="form-check-label" for="dbrBackup0"><?= h(t('dbr_opt_backup')) ?></label></div>
 			<div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="sample" value="1" id="dbrSample0">
 				<label class="form-check-label" for="dbrSample0"><?= h(t('dbr_opt_sample')) ?></label></div>
 			<button type="submit" class="btn btn-primary" id="dbrCheckBtn" data-nu-busy="<?= h(t('dbr_checking')) ?>"><i class="bi bi-search me-1"></i><?= h(t('dbr_check')) ?></button>
 		</form>
-		<p class="small text-body-secondary mt-3 mb-0"><?= h(t('dbr_cli')) ?> <code>php cron.php reset --sql=&lt;file&gt; [--backup] [--sample] --yes</code></p>
+		<p class="small text-body-secondary mt-3 mb-0"><?= h(t('dbr_cli')) ?> <code>php nucron.php reset --sql=&lt;file&gt; [--backup] [--sample] --yes</code></p>
 	<?php endif; ?>
 	</div>
 </div>

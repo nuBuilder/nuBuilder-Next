@@ -180,7 +180,7 @@ if ((int)$nuRow['sss_time'] < time() - $minutes * 60) nu_adm_fail('adm_err_open'
 unset($nuPdo, $st, $nuRow, $nuAcc, $nuSess);
 
 $nuHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
-$nuPath = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? '/dbadmin.php'), PHP_URL_PATH);
+$nuPath = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? '/nudbadmin.php'), PHP_URL_PATH);
 
 // Adminer's Logout: ends the access (it would log in again by itself) – the cookie goes, the nuBuilder Next session stays
 if (isset($_POST['logout'])) {
@@ -220,7 +220,7 @@ $nuLoggedIn = isset($_SESSION['pwds'][NU_ADM_DRIVER][NU_ADM_SERVER][NU_ADM_USER]
 $nuBase = basename(__FILE__) . '?' . (NU_ADM_DRIVER === 'server' ? 'server' : 'mssql') . '=' . rawurlencode(NU_ADM_SERVER)
 	. '&username=' . rawurlencode(NU_ADM_USER) . '&db=' . rawurlencode(NU_ADM_DB);
 if (isset($_GET['nu_table']) && is_string($_GET['nu_table']) && preg_match('/^[A-Za-z0-9_$]+$/', $_GET['nu_table'])) $_SESSION['nu_goto'] = $_GET['nu_table'];
-// automatic login / jump only for the plain start (dbadmin.php or ?nu_table=…); every other request – Adminer's files (?file=),
+// automatic login / jump only for the plain start (nudbadmin.php or ?nu_table=…); every other request – Adminer's files (?file=),
 // its manifest (?manifest=, Adminer 6) and whatever later versions add – goes to Adminer unchanged
 $nuStart = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && array_diff(array_keys($_GET), ['nu_table']) === [];
 if ($nuStart) {
@@ -240,7 +240,7 @@ if ($nuStart) {
 }
 unset($nuConfigDBPassword);
 
-/** Adminer's css() run in third_party/adminer/ and its links pointed to dbadmin.php?nu_css=… (4.x: list of URLs, 5.x / 6.x: URL => mode). */
+/** Adminer's css() run in third_party/adminer/ and its links pointed to nudbadmin.php?nu_css=… (4.x: list of URLs, 5.x / 6.x: URL => mode). */
 function nu_adm_css(callable $parent): array
 {
 	$cwd = getcwd();

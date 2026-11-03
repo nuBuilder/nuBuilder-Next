@@ -13,6 +13,8 @@
 </ul>
 	</div>
 
+	<p>A switch above the editor chooses <em>Form pages</em> or <em>All pages</em>; the tabs next to it then show that group's code: <em>JavaScript</em>, <em>CSS</em> and – for form pages – <em>Includes</em>. Below, the tabs are called by their full names (Form JavaScript, Global CSS …), as their tooltips do.</p>
+
 	<div class="doc-sub" id="globalcode-forms"><h3 id="globalcode-forms-h">Form pages – header, style and include</h3>
 <p>The three code fields of the setup table <code>zzzzsys_setup</code> (in nuBuilder Forte: Setup), so nuBuilder Forte (4.x) and nuBuilder Next stay in step. They run on form pages only (browse and edit), as in nuBuilder Forte. The (i) next to each tab's hint names the field in nuBuilder Forte.</p>
 <ul>
@@ -28,6 +30,7 @@
 <li><strong>Runs on</strong>: three switches, the same on both tabs – <em>Form pages</em>, <em>Other app pages</em> (on by default) and <em>Sign-in pages</em> (off by default: they are public, so anyone could read the code there – never put secrets into it).</li>
 <li><strong>Never</strong> on the Global code page itself and on the Update page, so a mistake can always be repaired or a release rolled back.</li>
 <li><strong>Safe mode</strong>: add <code>?safe=1</code> (or <code>&amp;safe=1</code>) to the address – the page opens without Global JS &amp; CSS. It works for the globeadmin and for admins with the right <em>Global code</em>; everybody else always gets the code.</li>
+<li><strong>The warning on top</strong> of the page (code runs for every user, <code>?safe=1</code>) can be closed with ×; this browser remembers it, and the <i class="bi bi-info-circle"></i> next to the page title shows it again.</li>
 <li>The code is delivered as files of this server, so the strict Content-Security-Policy of nuBuilder Next's pages stays on. That is also why there is no Include tab here: code from other servers is not allowed on these pages.</li>
 <li><strong>Global CSS</strong> comes before each page's own styles – on form pages before Form CSS and the form's style, so these win. It is loaded as a CSS file, so it takes plain CSS only: a surrounding <code>&lt;style&gt;…&lt;/style&gt;</code> (e.g. pasted from Form CSS, where either form works) is removed on <em>Save</em>, with a note.</li>
 <li><strong>Global JavaScript</strong> comes at the end of the page – on form pages before Form JavaScript and the form's code, so a form's <code>nuOnLoad</code> or <code>nuLoadBrowseGlobal</code> always wins. Do not define nuBuilder Forte's hook names (<code>nuOnLoad</code>, <code>nuLoadBrowseGlobal</code>, <code>nuLoadEditGlobal</code>, <code>nuBeforeSave</code> …) here; the page and the <a href="#compat">Compatibility check</a> warn when you do. Use the <a href="#page-hook">page hook</a> instead.</li>
@@ -63,7 +66,7 @@ body[data-nu-form="customer"][data-nu-mode="browse"] #nuBrowseTable { font-size:
 document.addEventListener('nu:pageload', function (e) {
     if (e.detail.page === 'reports') { /* … */ }
 });</code></pre>
-<p>Pages that build their own page (error pages, print views of lists, e-mails, page forms) do not get Global JS &amp; CSS.</p>
+<p>Pages that build their own page (error pages, print views of lists, e-mails, custom pages) do not get Global JS &amp; CSS.</p>
 	</div>
 
 <ul>

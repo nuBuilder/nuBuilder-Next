@@ -121,8 +121,13 @@ nu_layout_start(t('smp_title'), 'home');
 						<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_refresh_confirm')) ?>" data-confirm-ok="<?= h(t('smp_refresh')) ?>" data-confirm-class="btn btn-primary"><?= nu_csrf_field() ?><input type="hidden" name="action" value="refresh"><?= $hidden($set) ?>
 							<button class="btn <?= $out ? 'btn-warning' : 'btn-outline-primary' ?><?= $set !== '' ? ' smpSetRefresh' : '' ?>" type="submit"<?= $set === '' ? ' id="smpRefresh"' : '' ?>><i class="bi bi-arrow-repeat me-1"></i><?= h(t('smp_refresh')) ?></button></form>
 					<?php endif; ?>
+					<?php if ($s['installed'] || $s['leftovers']): // Remove right in the title row (0.8.858; was on the tab Maintenance) ?>
+						<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_remove_confirm')) ?>" data-confirm-ok="<?= h(t('smp_remove')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="remove"><?= $hidden($set) ?>
+							<button class="btn btn-outline-danger<?= $set !== '' ? ' smpSetRemove' : '' ?>" type="submit"<?= $set === '' ? ' id="smpRemove"' : '' ?><?= $s['blocking'] ? ' disabled' : '' ?> title="<?= h(t('smp_maint_remove')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('smp_remove')) ?></button></form>
+					<?php endif; ?>
 					</div>
 				</div>
+				<?php if ($s['blocking']): ?><div class="alert alert-warning small"<?= $set === '' ? ' id="smpBlocking"' : '' ?>><?= h(t('smp_err_blocking', implode(', ', $s['blocking']))) ?></div><?php endif; ?>
 				<?php if ($s['leftovers'] && !$s['installed']): ?><div class="alert alert-warning small"><?= h(t('smp_leftovers')) ?></div><?php endif; ?>
 				<ul class="nav nav-tabs mb-3" role="tablist">
 				<?php foreach (['overview', 'contents', 'logins', 'maint'] as $tb): ?>
@@ -167,7 +172,6 @@ nu_layout_start(t('smp_title'), 'home');
 							</tr><?php endforeach; ?></tbody></table></div>
 					</div>
 					<div class="tab-pane fade" id="<?= $tid ?>maint" role="tabpanel" aria-labelledby="<?= $tid ?>maint_tab" tabindex="0">
-						<?php if ($s['blocking']): ?><div class="alert alert-warning small"<?= $set === '' ? ' id="smpBlocking"' : '' ?>><?= h(t('smp_err_blocking', implode(', ', $s['blocking']))) ?></div><?php endif; ?>
 						<?php if ($s['installed']): ?>
 						<div class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
 							<span class="small flex-grow-1"><?= h(t('smp_maint_pw')) ?></span>
@@ -175,13 +179,7 @@ nu_layout_start(t('smp_title'), 'home');
 								<button class="btn btn-outline-secondary<?= $set !== '' ? ' smpSetPw' : '' ?>" type="submit"<?= $set === '' ? ' id="smpPasswordsBtn"' : '' ?>><i class="bi bi-key me-1"></i><?= h(t('smp_passwords')) ?></button></form>
 						</div>
 						<?php endif; ?>
-						<?php if ($s['installed'] || $s['leftovers']): ?>
-						<div class="d-flex flex-wrap align-items-center gap-3 py-2">
-							<span class="small flex-grow-1"><?= h(t('smp_maint_remove')) ?></span>
-							<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_remove_confirm')) ?>" data-confirm-ok="<?= h(t('smp_remove')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="remove"><?= $hidden($set) ?>
-								<button class="btn btn-outline-danger<?= $set !== '' ? ' smpSetRemove' : '' ?>" type="submit"<?= $set === '' ? ' id="smpRemove"' : '' ?><?= $s['blocking'] ? ' disabled' : '' ?>><i class="bi bi-trash me-1"></i><?= h(t('smp_remove')) ?></button></form>
-						</div>
-						<?php else: ?><p class="small text-body-secondary mb-0"><?= h(t('smp_not_installed')) ?></p><?php endif; ?>
+						<?php if (!$s['installed']): ?><p class="small text-body-secondary mb-0"><?= h(t('smp_not_installed')) ?></p><?php endif; ?>
 					</div>
 				</div>
 			</div>

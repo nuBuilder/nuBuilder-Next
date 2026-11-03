@@ -57,7 +57,7 @@ final class NuInstall
 		if (self::$origin !== null) return self::$origin;
 		try {
 			$db = nu_db();
-			return self::$origin = $db->tableExists('zzzzsys_nunext_setting') ? (string)($db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::ORIGIN]) ?? '') : '';
+			return self::$origin = $db->tableExists('zzzzsys_nunext_setting') ? (string)(nu_setting_value(self::ORIGIN) ?? '') : '';
 		} catch (Throwable) {
 			return '';
 		}
@@ -108,7 +108,7 @@ final class NuInstall
 	{
 		try {
 			NuSchema::ensure();
-			return (string)nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::WARN_HIDDEN]) === NU_VERSION;
+			return (string)nu_setting_value(self::WARN_HIDDEN) === NU_VERSION;
 		} catch (Throwable) {
 			return false;
 		}
@@ -119,8 +119,7 @@ final class NuInstall
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => NU_VERSION, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::WARN_HIDDEN])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::WARN_HIDDEN);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::WARN_HIDDEN] + $row);
+		nu_setting_save(self::WARN_HIDDEN, $row, $db);
 		NuLog::write('existing_db_warn_hidden', 'zzzzsys_nunext_setting', self::WARN_HIDDEN, ['version' => NU_VERSION]);
 	}
 

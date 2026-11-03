@@ -118,7 +118,10 @@ final class NuBuilderGen
 			}
 			throw $e;
 		}
-		if ($type === 'page') NuPage::save($formId, NuPage::defaults());    // settings row of a page form (0.8.387)
+		if ($type === 'page') {                                             // settings row of a custom page (0.8.387); open mode from the dialogue (0.8.861)
+			$pm = (string)($in['page_open_mode'] ?? 'tab');
+			NuPage::save($formId, ['open_mode' => in_array($pm, NuPage::MODES, true) ? $pm : 'tab'] + NuPage::defaults());
+		}
 		// after creating (0.8.602): a run button on nuBuilder Forte's User Home, access + start page tile for chosen access levels
 		if ($type !== 'subform') {
 			if (!empty($in['user_home']) && NuUserHome::addButton($formId, $desc, $type)) nu_flash('success', t('builder_userhome_done', $desc), true);   // 0.8.603

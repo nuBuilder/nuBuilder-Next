@@ -34,6 +34,10 @@ if (!$admin) {
 }
 
 // ------------------------------------------------------------------ layout (Customize mode), View panel, user's own tiles
+if (nu_is_post() && nu_post('action') === 'hide_entry_notice' && !empty($u['globeadmin']) && empty($u['demo'])) {   // 0.8.825: renamed entry files
+	NuMigrate::entryNotice(false);
+	nu_redirect(nu_url('home'));
+}
 if (nu_is_post() && nu_post('action') === 'hide_dbwarn' && !empty($u['globeadmin']) && empty($u['demo'])) {   // review I1: until the next update
 	NuInstall::hideExistingWarn();
 	nu_redirect(nu_url('home'));
@@ -184,6 +188,16 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 </div>
 <?php endif; ?>
 
+<?php if ($u['globeadmin'] && !$editorPage && NuMigrate::entryNotice()): // 0.8.825 / 0.8.826: cron.php, dbadmin.php → nu… (NuMigrate step 0033) ?>
+<div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuEntryNotice"><i class="bi bi-signpost-split mt-1" aria-hidden="true"></i>
+	<div class="flex-grow-1"><strong><?= h(t('entry_ren_title')) ?></strong>
+		<ul class="mb-0 mt-1 small">
+			<li><?= h(t('entry_ren_cron')) ?> <code>php <?= h(NU_ROOT) ?>/nucron.php</code></li>
+			<li><?= h(t('entry_ren_db')) ?></li>
+		</ul></div>
+	<?php if (empty($u['demo'])): ?><form method="post" action="<?= h(nu_url('home')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_entry_notice">
+		<button type="submit" class="btn-close" id="nuEntryNoticeHide" title="<?= h(t('entry_ren_hide')) ?>" aria-label="<?= h(t('entry_ren_hide')) ?>"></button></form><?php endif; ?></div>
+<?php endif; ?>
 <?php if ($u['globeadmin'] && !$editorPage && NuInstall::existingWarn() && !NuInstall::existingWarnHidden()): // an existing nuBuilder database (0.8.380, NuInstall); hidden until the next update (review I1) ?>
 <div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuExistingDbWarn"><i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i><div class="flex-grow-1"><?= h(t('existing_db_warn')) ?></div>
 	<?php if (empty($u['demo'])): ?><form method="post" action="<?= h(nu_url('home')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_dbwarn">
@@ -543,7 +557,7 @@ if ($admin || $userPage) {
 			'roles' => $hlManage && !$userPage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'presets' => $userPage ? (object)[] : NuHome::presets(), 'catalog' => (object)$cat,
 		'forms' => $formList, 'pages' => $userPage ? NuHome::USER_PAGES : NuHome::PAGES, 'procedures' => $procs, 'reports' => $reportList, 'cond' => $condOpts, 'icons' => NuHome::ICONS,
 		'procUrl' => $userPage ? nu_url('home', ['for' => $for, 'run' => '__ID__']) : nu_url('procedures', ['id' => '__ID__']),
-		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_fav_edit', 'home_row_hide', 'home_row_hidden', 'home_v_fav_row', 'home_v_fav_row_hint', 'home_c_tab_appearance', 'home_size_list', 'home_size_listwide', 'home_size_list2',
+		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_fav_edit', 'home_row_hide', 'home_row_autofold', 'home_row_autofold_tip', 'home_row_hidden', 'home_v_fav_row', 'home_v_fav_row_hint', 'home_c_tab_appearance', 'home_size_list', 'home_size_listwide', 'home_size_list2',
 			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned', 'home_unpinned', 'home_hidden', 'home_hidden_hint', 'home_group_title', 'home_group_new', 'home_group_untitled',
 			'home_group_delete', 'home_move_up', 'home_move_down', 'home_move_left', 'home_move_right', 'home_hide', 'home_show', 'home_edit_tile', 'home_delete_tile',
 			'home_tile_new', 'home_tile_label', 'home_tile_hint', 'home_tile_icon', 'home_tile_color', 'home_tile_no_color', 'home_tile_kind', 'home_kind_form', 'home_kind_page',

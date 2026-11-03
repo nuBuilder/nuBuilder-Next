@@ -397,6 +397,7 @@
 		var saved = null;
 		try { saved = localStorage.getItem(stripKey(st)); } catch (e) { /* storage blocked */ }
 		var folded = saved ? saved === 'folded' : (st.getAttribute('data-nu-strip') === 'recent' && window.matchMedia && window.matchMedia('(max-width: 575.98px)').matches);
+		if (!toggle && stripAuto(st)) folded = true;              // Auto collapse (0.8.828): folded whenever the page opens
 		if (toggle) {
 			folded = !st.classList.contains('nuHomeStripFolded');
 			try { localStorage.setItem(stripKey(st), folded ? 'folded' : 'open'); } catch (e) { /* storage blocked */ }
@@ -408,7 +409,20 @@
 		if (!btn.nuFoldBound) {
 			btn.nuFoldBound = true;
 			btn.addEventListener('click', function () { stripFold(st, true); });
+			// Auto collapse: picking an entry of the row folds it again (a click that opens a new tab leaves the page open)
+			st.addEventListener('click', function (e) {
+				if (!stripAuto(st) || !e.target.closest || !e.target.closest('.nuHomeChip') || st.classList.contains('nuHomeStripFolded')) return;
+				setTimeout(function () { stripFold(st, true); }, 0);
+			});
 		}
+	}
+	// Auto collapse per row and device (0.8.828): localStorage nunext-home-strip-auto-<fav|recent> = '1'
+	function stripAutoKey(st) { return 'nunext-home-strip-auto-' + st.getAttribute('data-nu-strip'); }
+	function stripAuto(st, set) {
+		try {
+			if (set !== undefined) { if (set) localStorage.setItem(stripAutoKey(st), '1'); else localStorage.removeItem(stripAutoKey(st)); }
+			return localStorage.getItem(stripAutoKey(st)) === '1';
+		} catch (e) { return false; }
 	}
 
 	// opening a tile counts as "used" (the search box's list of last opened entries)
@@ -609,6 +623,8 @@
 		var fd = new FormData();
 		fd.append('_csrf', D.csrf); fd.append('back', location.pathname + location.search);
 		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+		var sq = document.getElementById('nuHomeSearch');
+		if (sq && sq.value.trim()) { try { sessionStorage.setItem('nunext-home-q', sq.value); } catch (x) { /* no storage */ } }
 		// redirect manual (0.8.652): following it would load the start page once in the background – and use up a one-time message (Undo of Hide)
 		fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
 	}
@@ -665,6 +681,18 @@
 		var kind = st.getAttribute('data-nu-strip'), items = [];
 		if (kind === 'fav' && favEditTo) items.push(ctxItem('bi-pencil', t('home_fav_edit'), function () { editFavNext = true; favEditTo.click(); }));
 		if (kind === 'recent' && D.usedUrl && !dup) items.push(ctxItem('bi-x-circle', t('sb_recent_clear_menu'), function () { ctxPost(D.usedUrl, {action: 'clear'}); }));
+		if (!dup) {
+			var on = stripAuto(st);
+			var ab = ctxItem(on ? 'bi-check-square' : 'bi-square', t('home_row_autofold'), function () {
+				var now = stripAuto(st, !on);
+				if (now && !st.classList.contains('nuHomeStripFolded')) stripFold(st, true);
+			});
+			ab.setAttribute('role', 'menuitemcheckbox');
+			ab.setAttribute('aria-checked', on ? 'true' : 'false');
+			ab.title = t('home_row_autofold_tip');
+			ab.classList.add('nuHomeAutoFold');
+			items.push(ab);
+		}
 		items.push(ctxItem('bi-eye-slash', t('home_row_hide'), function () { hideRow(kind); }));
 		return items;
 	}
@@ -1250,7 +1278,7 @@
 		var q = search.value, P = window.nuPalette, words = (P ? P.norm(q) : q.toLowerCase()).split(/\s+/).filter(Boolean);
 		var byId = {};
 		(palItems || []).forEach(function (it) { byId[it.id] = it; });
-		var shown = 0, first = null, onPage = {}, shownEls = [];
+		var first = null, onPage = {}, shownEls = [];
 		var was = view.classList.contains('nuHomeSearching');
 		view.classList.toggle('nuHomeSearching', words.length > 0);
 		if (was !== words.length > 0) { hideTip(true); applyView(); }
@@ -1261,7 +1289,7 @@
 			var ok = words.every(function (w) { return hay.indexOf(w) >= 0; });
 			ok = ok && !a.hasAttribute('data-nu-js-hidden');                  // hidden by nuHome tile.hide() (0.8.379)
 			box(a).hidden = !ok;
-			if (ok) { shown++; shownEls.push(a); }
+			if (ok) shownEls.push(a);
 		});
 		$$('.nuHomeGroup', view).forEach(function (g) { g.hidden = words.length > 0 && !$$('[data-nu-tile]', g).some(function (a) { return !box(a).hidden; }); });
 		// one result list: the tiles of the page first (in the page's order, each tile once), then what is no tile here
@@ -1300,7 +1328,49 @@
 		if (!words.length) H.groups();
 		H.emit('search', q, shownEls.map(H.wrap));
 	}
+	// right-click / long press on a result that is a tile of the page (t:<tile>): the tile's menu – favourites, Hide (0.8.855);
+	// pages, forms … that are no tile here keep the browser's menu (open in a new tab)
+	function resTile(node) {
+		var a = node && node.closest ? node.closest('[data-nu-res^="t:"]') : null;
+		if (!a || !viewEl) return null;
+		var key = a.getAttribute('data-nu-res').slice(2).replace(/["\\]/g, '');
+		var tile = viewEl.querySelector('[data-nu-tile="' + key + '"]');
+		return tile && ctxOk(tile) ? {res: a, tile: tile} : null;
+	}
+	if (moreList) {
+		var resPressT = 0, resSuppress = false;
+		moreList.addEventListener('contextmenu', function (e) {
+			if (ctxMenu) { e.preventDefault(); return; }
+			var r = resTile(e.target);
+			if (!r) return;
+			e.preventDefault(); hideTip(true);
+			openCtx(r.tile, e.clientX, e.clientY);
+		});
+		moreList.addEventListener('pointerdown', function (e) {
+			if (e.pointerType !== 'touch') return;
+			var r = resTile(e.target);
+			if (!r) return;
+			var px = e.clientX, py = e.clientY;
+			resPressT = setTimeout(function () {
+				resSuppress = true;
+				openCtx(r.tile, px, py);
+				if (navigator.vibrate) navigator.vibrate(10);
+			}, 500);
+		});
+		['pointerup', 'pointercancel'].forEach(function (ev) { moreList.addEventListener(ev, function () { clearTimeout(resPressT); }); });
+		moreList.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch' && Math.abs(e.movementX) + Math.abs(e.movementY) > 4) clearTimeout(resPressT); });
+		moreList.addEventListener('click', function (e) {
+			if (resSuppress) { resSuppress = false; e.preventDefault(); e.stopImmediatePropagation(); }
+		}, true);
+	}
 	if (search) {
+		// the menu's actions reload the page (ctxPost): the search typed before comes back (sessionStorage nunext-home-q)
+		var keptQ = null;
+		try { keptQ = sessionStorage.getItem('nunext-home-q'); sessionStorage.removeItem('nunext-home-q'); } catch (x) { /* no storage */ }
+		if (keptQ) setTimeout(function () {
+			search.value = keptQ;
+			search.dispatchEvent(new Event('input'));
+		}, 0);
 		search.addEventListener('input', function () {
 			filter();
 			if (!palItems && window.nuPalette && search.value.trim()) window.nuPalette.load().then(function (list) { palItems = list; filter(); }).catch(function () { /* tiles only */ });

@@ -24,11 +24,52 @@
 <li><strong>They only add</strong>: on a form a right counts when any level grants it (Save, Add, Delete, Clone, Print); browse and edit screen when any level allows them; <em>No changes to existing records</em> only when every level with the form says so. Procedures, reports and dashboards of every level are open to the user, and the forms list and the automatic start page show them.</li>
 <li><strong>From the main level only</strong>: the start page layout, list views, field data access rules by access level and the hash variables <code>#ACCESS_LEVEL_ID#</code> / <code>#USER_GROUP_ID#</code>.</li>
 <li><strong>Two-factor login</strong> is required when any active level asks for it.</li>
+<li><strong>In your own code</strong>: see <a href="#access-levels-code">Access levels in your code</a> below.</li>
 <li><strong>Effective rights</strong> (button next to <em>Add</em> in the user form, shown once there is an additional level): a dialogue with the combined rights as entered in the form – also before saving. Forms with View, Add, Save, Delete, Clone and Print (a form only an additional level grants is marked <em>Additional</em>, a tick only an additional level grants names it), procedures and reports with their levels; search, <em>Only from additional levels</em>, and <em>Copy</em> (tab-separated, e.g. into a spreadsheet). Expired levels are shown crossed out and not counted.</li>
 <li><strong>Admin rights</strong>: with <em>Only the globeadmin grants admin rights</em> (Security check) a level with rights on admin forms can only be added by the globeadmin, nobody changes the additional levels of their own account or the rights of a level they hold, and users with such a level can only be changed by the globeadmin.</li>
 <li>The <em>Users</em> card of the level lists these users with the badge <em>Additional</em> (an expired one under <em>Archived</em>); a level that is still in use as an additional level cannot be deleted. Changes are written to the log (<em>User changed</em>, field <code>access_extra:&lt;code&gt;</code>).</li>
 <li><strong>nuBuilder Forte 4.x</strong> does not know the table: there the user has only the rights of the main level. The Compatibility check lists these users (G10).</li>
 </ul>
+</div>
+<div class="doc-sub">
+	<h3 id="access-levels-code">Access levels in your code</h3>
+	<p>nuBuilder Forte's functions and hash variables know only one access level per user – in nuBuilder Next they keep returning the <strong>main</strong> level. For all levels (main + active additional ones) there are their own:</p>
+	<table class="table table-sm">
+	<thead><tr><th>Where</th><th>Main level only</th><th>All levels</th></tr></thead>
+	<tbody>
+		<tr><td>PHP (procedures, Before Save …)</td><td><code>nuAccessLevelCode()</code>, <code>nuGetUserAccess()['USER_GROUP_ID']</code></td><td><code>nuNextAccessLevels()</code>, <code>nuNextAccessLevels($userId)</code></td></tr>
+		<tr><td>JavaScript (form pages)</td><td><code>nuAccessLevelId()</code>, <code>nuAccessLevelCode()</code></td><td><code>nuNextAccessLevels()</code></td></tr>
+		<tr><td>SQL with hash variables</td><td><code>#ACCESS_LEVEL_ID#</code>, <code>#USER_GROUP_ID#</code>, <code>#ACCESS_LEVEL_CODE#</code></td><td><code>#ACCESS_LEVEL_IDS#</code></td></tr>
+	</tbody>
+	</table>
+	<p><code>nuNextAccessLevels()</code> returns a list, the main level first, then the additional levels whose <em>until</em> date has not passed. Each entry has <code>id</code>, <code>code</code>, <code>description</code>, <code>group</code>, <code>main</code> (true for the main level) and <code>valid_until</code> (<code>YYYY-MM-DD</code> or null). For the globeadmin the list is empty – check <code>nuGlobalAccess()</code>. In JavaScript the list is the one of the moment the page was loaded; decide on the server too (Before Save), a browser check alone can be bypassed.</p>
+<pre><code>// JavaScript: show a field for everyone with the level "sales" (main or additional)
+if (nuNextAccessLevels().some(l =&gt; l.code === 'sales')) nuShow('cus_discount');
+
+// PHP: refuse a save without the level "approver"
+if (!in_array('approver', array_column(nuNextAccessLevels(), 'code'), true)) {
+    nuDisplayError('Only approvers may change this.');
+}</code></pre>
+	<p><code>#ACCESS_LEVEL_IDS#</code> holds the ids of the same levels, each in single quotes and separated by commas (<code>'5f2a…','6c1b…'</code>), so write it <em>without</em> quotes of your own, inside <code>IN (…)</code>. It works in every SQL that hash variables reach: browse SQL, lookups, select options, report and SQL builder queries, access conditions of objects. For the globeadmin it is <code>''</code>, which matches nothing.</p>
+<pre><code>-- browse SQL: only the documents released for one of the user's levels
+SELECT * FROM document
+WHERE doc_access_id IN (#ACCESS_LEVEL_IDS#) OR '#GLOBAL_ACCESS#' = '1'
+
+-- access condition of an object: editable for the level "hr", else read only
+SELECT IF(COUNT(*) &gt; 0, 0, 1) FROM zzzzsys_access
+WHERE zzzzsys_access_id IN (#ACCESS_LEVEL_IDS#) AND sal_code = 'hr'</code></pre>
+	<p>In PHP code use <code>nuNextAccessLevels()</code> rather than the hash variable – inside a PHP string the quotes of the list are escaped.</p>
+	<p><strong>Other users, or without the helpers</strong> (e.g. a report over all users): the main level is <code>sus_zzzzsys_access_id</code> of <code>zzzzsys_user</code>, the additional levels are the rows of <code>zzzzsys_nunext_user_access</code> (<code>user_id</code>, <code>access_id</code>, <code>valid_until</code>) whose <code>valid_until</code> is empty or today or later:</p>
+<pre><code>SELECT u.sus_login_name, a.sal_code, 'main' AS kind, NULL AS valid_until
+FROM zzzzsys_user u JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id
+UNION ALL
+SELECT u.sus_login_name, a.sal_code, 'additional', x.valid_until
+FROM zzzzsys_nunext_user_access x
+JOIN zzzzsys_user u   ON u.zzzzsys_user_id   = x.user_id
+JOIN zzzzsys_access a ON a.zzzzsys_access_id = x.access_id
+WHERE x.valid_until IS NULL OR x.valid_until = '' OR x.valid_until &gt;= CURDATE()
+ORDER BY 1, 3 DESC</code></pre>
+	<p>On MySQL the own tables can have another collation than nuBuilder Forte's tables; a join then ends with error 1267 – add <code>COLLATE</code> with the collation of <code>zzzzsys_user</code> to the compared columns (<code>x.user_id COLLATE utf8mb4_general_ci</code>). On SQL Server use <code>CAST(GETDATE() AS date)</code> instead of <code>CURDATE()</code>.</p>
 </div>
 	<p class="doc-see">See also: <a href="#rights">Authentication and security</a> · <a href="#data-access">Data access: fields and list columns per user</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuacl.php</code></li><li><code>pages/nuaccesslevel.php</code></li></ul></details>

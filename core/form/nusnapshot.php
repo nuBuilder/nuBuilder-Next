@@ -17,9 +17,6 @@ final class NuFormSnapshot
 		'php' => 'zzzzsys_php_id', 'selects' => 'zzzzsys_select_id', 'clauses' => 'zzzzsys_select_clause_id'];
 	public const TABLES = ['tabs' => 'zzzzsys_tab', 'objects' => 'zzzzsys_object', 'events' => 'zzzzsys_event', 'browse' => 'zzzzsys_browse',
 		'php' => 'zzzzsys_php', 'selects' => 'zzzzsys_select', 'clauses' => 'zzzzsys_select_clause'];
-	/** Columns with code – the compare view shows them as a line diff. */
-	public const CODE_COLUMNS = ['sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_browse_sql', 'sfo_style', 'sob_select_sql', 'sob_display_sql',
-		'sob_html_code', 'sob_input_javascript', 'sob_lookup_javascript', 'sob_html_javascript', 'sob_all_access_condition', 'sob_calc_formula', 'sph_php', 'sev_javascript'];
 	/** Placement only – a changed object with nothing else changed counts as "moved". */
 	private const PLACEMENT = ['sob_all_top', 'sob_all_left', 'sob_all_width', 'sob_all_height', 'sob_all_order', 'sob_all_json'];
 	private const LEGACY_HOOKS = ['BB', 'BE', 'BS', 'AS', 'BD', 'AD'];

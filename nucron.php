@@ -4,16 +4,16 @@ declare(strict_types=1);
 /*
  * nuBuilder Next on the command line (the web server never runs this file: .htaccess, PHP_SAPI).
  *
- * Housekeeping (0.8.207), e.g. every 15 minutes:  *\/15 * * * *  php /var/www/html/nunext/cron.php > /dev/null
- *     php cron.php
+ * Housekeeping (0.8.207), e.g. every 15 minutes:  *\/15 * * * *  php /var/www/html/nunext/nucron.php > /dev/null
+ *     php nucron.php
  *   Removes expired tokens and sessions, old API counters, log rows beyond "Keep the log" (Admin tools → Security check) and temporary
  *   files; finishes an unattended update whose database steps are still pending. Without cron, page views do this now and then.
  *
- * Unattended update (0.8.301) – run it as the web server's user (e.g. sudo -u www-data php cron.php update …), so the new files
+ * Unattended update (0.8.301) – run it as the web server's user (e.g. sudo -u www-data php nucron.php update …), so the new files
  * belong to it:
- *     php cron.php update --url=https://example.com/nunext.zip [options]
- *     php cron.php update --zip=/path/nunext.zip [options]
- *     php cron.php update --github [options]   the newest release of the repository set on the update page (0.8.374, NuGitHub)
+ *     php nucron.php update --url=https://example.com/nunext.zip [options]
+ *     php nucron.php update --zip=/path/nunext.zip [options]
+ *     php nucron.php update --github [options]   the newest release of the repository set on the update page (0.8.374, NuGitHub)
  *   options:  --dry-run                 check only (signature, requirements, files, database structure, sample data) – nothing changes
  *             --sha256=<hex>            expected checksum of the package
  *             --backup=auto|files|nubuilder|sql|sql_nologs   (auto = nubuilder: the zzzzsys_* tables without logs; sql = whole database)
@@ -22,19 +22,19 @@ declare(strict_types=1);
  *             --reinstall               install even when the package is not newer
  *             --ignore-integrity        install although the integrity check of the database found problems (0.8.698)
  *             --json                    output as JSON
- *     php cron.php update --status [job]     the last jobs / one job
- *     php cron.php update --finish=<job>     database steps of an installed job (started automatically in a new process)
+ *     php nucron.php update --status [job]     the last jobs / one job
+ *     php nucron.php update --finish=<job>     database steps of an installed job (started automatically in a new process)
  *   Exit code: 0 = done / checked, 1 = failed, 2 = wrong call.
  *
  * IP access (0.8.722) – switched off when the rules lock everybody out (they stay stored):
- *     php cron.php iprules off
+ *     php nucron.php iprules off
  *
  * Integrity check of the database (0.8.698) – what would make an update fail or leave data broken:
- *     php cron.php integrity [--json]      Exit code: 0 = no problems (warnings / notes allowed), 1 = problems found
+ *     php nucron.php integrity [--json]      Exit code: 0 = no problems (warnings / notes allowed), 1 = problems found
  *
  * Reset database (0.8.628, only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
  * Forte (4.x) SQL file (nubuilder4.sql or a complete dump, .sql / .sql.gz / .zip) and creates nuBuilder Next's tables:
- *     php cron.php reset --sql=<file> [--check] [--backup] [--sample] --yes
+ *     php nucron.php reset --sql=<file> [--check] [--backup] [--sample] --yes
  *   --check  read and check the file only, list the tables that would be deleted – nothing changes (no --yes needed)
  *   --backup a backup with the whole database first (Update → Backups)      --sample  install the sample application afterwards
  */
@@ -52,7 +52,7 @@ $args = array_slice($argv, 1);
 if (($args[0] ?? '') === 'reset') {
 	$ro = [];
 	foreach (array_slice($args, 1) as $a) if (preg_match('/^--([a-z]+)(?:=(.*))?$/s', $a, $m)) $ro[$m[1]] = $m[2] ?? true;
-	$usage = "Usage: php cron.php reset --sql=<file> [--check] [--backup] [--sample] --yes\n";
+	$usage = "Usage: php nucron.php reset --sql=<file> [--check] [--backup] [--sample] --yes\n";
 	if (!NuDbReset::available()) { fwrite(STDERR, "Reset database needs \$nuConfigDevMode = true in nuconfig.php and a MySQL / MariaDB database.\n"); exit(2); }
 	$file = is_string($ro['sql'] ?? null) ? (string)$ro['sql'] : '';
 	if ($file === '' || !is_file($file)) { fwrite(STDERR, ($file === '' ? 'No --sql=<file>.' : 'File not found: ' . $file) . "\n" . $usage); exit(2); }
@@ -76,7 +76,7 @@ if (($args[0] ?? '') === 'reset') {
 	exit(0);
 }
 if (($args[0] ?? '') === 'iprules') {
-	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php cron.php iprules off\n"); exit(2); }
+	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php nucron.php iprules off\n"); exit(2); }
 	echo NuIpAccess::switchOff('cli') ? "IP access switched off (the rules are kept: Settings → Security → IP access).\n" : "IP access was already off.\n";
 	exit(0);
 }
@@ -139,13 +139,13 @@ if (isset($opt['finish'])) {
 
 [$o, $errors] = NuAutoUpdate::options($opt + ['dry_run' => !empty($flags['dry_run']), 'reinstall' => !empty($flags['reinstall']), 'github' => !empty($flags['github'])], true);
 if ($errors) {
-	fwrite(STDERR, implode("\n", $errors) . "\nUsage: php cron.php update --url=https://…/nunext.zip | --zip=/path/nunext.zip [--dry-run] [--sha256=…] [--backup=…] [--schema=…] [--sample=…] [--reinstall] [--json]\n");
+	fwrite(STDERR, implode("\n", $errors) . "\nUsage: php nucron.php update --url=https://…/nunext.zip | --zip=/path/nunext.zip [--dry-run] [--sha256=…] [--backup=…] [--schema=…] [--sample=…] [--reinstall] [--json]\n");
 	exit(2);
 }
 $r = NuAutoUpdate::run($o, 'cli');
 if ($r['ok'] && ($r['status'] ?? '') === 'installed') {
 	// the database steps with the NEW code: a new PHP process (the classes of this one are the old ones)
-	$cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/cron.php') . ' update --finish=' . escapeshellarg((string)$r['job']) . ' --json';
+	$cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/nucron.php') . ' update --finish=' . escapeshellarg((string)$r['job']) . ' --json';
 	$res = null;
 	if (function_exists('proc_open')) {
 		$p = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -161,7 +161,7 @@ if ($r['ok'] && ($r['status'] ?? '') === 'installed') {
 		foreach (['steps', 'sample_error', 'errors', 'finished'] as $k) if (isset($res[$k])) $r[$k] = $res[$k];
 		if (isset($res['sample'])) $r['sample_refreshed'] = $res['sample'];
 	} else {
-		$r['pending'] = 'Database steps not run yet: php cron.php update --finish=' . $r['job'] . ' (or the next run of cron.php, or the update page).';
+		$r['pending'] = 'Database steps not run yet: php nucron.php update --finish=' . $r['job'] . ' (or the next run of nucron.php, or the update page).';
 	}
 	if (!empty($r['sample_refreshed'])) $r['sample_passwords'] = 'The sample users have new passwords: Admin tools → Sample data → New passwords.';
 }

@@ -24,7 +24,6 @@ final class NuListView
 	public const PER = [10, 25, 48, 50, 100, 250, 500];
 	public const WIDTHS = ['auto', 'narrow', 'wide'];
 	public const ALIGNS = ['auto', 'start', 'center', 'end'];
-	public const DATE_PRESETS = ['d7', 'd30', 'd90', 'older90', 'never', 'past', 'next30', 'future', 'empty'];
 	private const DEFAULTS = 'listview_defaults';
 	private const GA_DEFAULTS = 'listview_ga';
 	private const JSON_KEY = 'NUNEXT_LIST_VIEWS';
@@ -136,7 +135,7 @@ final class NuListView
 	private static function settingGet(string $id): array
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id]);
+			$v = nu_setting_value($id);
 			$j = is_string($v) ? json_decode($v, true) : null;
 			return is_array($j) ? $j : [];
 		} catch (Throwable) {
@@ -149,8 +148,7 @@ final class NuListView
 		$db = nu_db();
 		NuSchema::ensure();
 		$row = ['setting_value' => json_encode($value, JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
+		nu_setting_save($id, $row, $db);
 	}
 
 	/** Default view of the list for everyone ('default' = the built-in layout). */

@@ -133,6 +133,13 @@ final class NuDraftStore
 				'box' => isset($grid['box']) && preg_match('/^\w+$/', (string)$grid['box']) ? (string)$grid['box'] : null,
 			]);
 		}
+		if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
+			$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
+			if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) throw new RuntimeException(t('builder_err_run_url'));
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['url' => $ru === '' ? null : $ru]);
+			if ($ru !== null && $ru !== '') { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
+			unset($fields['nunext_run_url']);
+		}
 		$fields = array_intersect_key($fields, nu_db()->columns('zzzzsys_object') ?: $fields);
 		if ($existing) {
 			$i = (int)$this->find('objects', 'zzzzsys_object_id', $objectId);

@@ -532,7 +532,7 @@ final class NuLibs
 		$s = ['repo' => '', 'checked_at' => 0, 'built' => '', 'libs' => [], 'error' => ''];
 		try {
 			NuSchema::ensure();
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$j = is_string($v) ? json_decode($v, true) : null;
 			if (is_array($j)) $s = array_merge($s, array_intersect_key($j, $s));
 		} catch (Throwable) { /* none */ }
@@ -546,11 +546,7 @@ final class NuLibs
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'),
 			'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? (PHP_SAPI === 'cli' ? 'cli' : '')), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) {
-			$db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		} else {
-			$db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
-		}
+		nu_setting_save(self::SETTING, $row, $db);
 	}
 
 	/** Text the index signature covers. */

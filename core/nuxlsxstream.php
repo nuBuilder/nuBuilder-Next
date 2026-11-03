@@ -91,7 +91,6 @@ final class NuXlsxStream
 		return max(0, $n);
 	}
 
-	public function sheetNames(): array { return array_column($this->sheets, 'name'); }
 
 	public function save(string $file): void
 	{

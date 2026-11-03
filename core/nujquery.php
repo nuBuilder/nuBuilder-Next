@@ -38,7 +38,7 @@ final class NuJquery
 		if (self::$cache !== null) return self::$cache;
 		$s = [];
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEY]);
+			$v = nu_setting_value(self::KEY);
 			$s = is_string($v) ? (json_decode($v, true) ?: []) : [];
 		} catch (Throwable) { /* no settings table yet */ }
 		return self::$cache = self::clean($s);
@@ -152,7 +152,7 @@ final class NuJquery
 	public static function warnings(): array
 	{
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::WARN_KEY]);
+			$v = nu_setting_value(self::WARN_KEY);
 			$w = is_string($v) ? json_decode($v, true) : [];
 			return is_array($w) ? $w : [];
 		} catch (Throwable) { return []; }

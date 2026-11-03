@@ -102,22 +102,34 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settin
 <form method="post" action="<?= h(nu_url('globalcode')) ?>" id="scodeForm" data-nu-guard>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="tab" id="scodeTab" value="">
 	<?= nu_page_header(t('scode_title'), ['icon' => 'bi-code-square',
+		// the warning can be hidden (localStorage nunext-scode-warn-hidden, nuglobalcode.js) – then this (i) shows it again (0.8.856)
+		'title_html' => '<button type="button" class="btn btn-link p-0 ms-1 nuInfoTip scodeWarnShow" id="scodeWarnShow" hidden aria-controls="scodeWarn" aria-expanded="false" title="' . h(t('scode_warn_show')) . '" aria-label="' . h(t('scode_warn_show')) . '"><i class="bi bi-info-circle" aria-hidden="true"></i></button>',
 		'buttons' => $canChange ? '<button class="btn nuBtnAct nuBtnSave" type="submit" data-nu-save id="scodeSave"><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
-	<div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('scode_warning')) ?></div>
+	<div class="alert alert-warning alert-dismissible small py-2 scodeWarn" id="scodeWarn"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('scode_warning')) ?><button type="button" class="btn-close" id="scodeWarnHide" title="<?= h(t('scode_warn_hide')) ?>" aria-label="<?= h(t('scode_warn_hide')) ?>"></button></div>
 	<?php if ($row === null): ?><div class="alert alert-secondary small py-2"><i class="bi bi-info-circle me-1"></i><?= h(t('scode_missing')) ?></div><?php endif; ?>
 	<?php // two groups (0.8.523): Form pages = nuBuilder's Setup fields, All pages = Global JS & CSS
 	$scTab = (string)($_GET['tab'] ?? '');                      // the tab the server opens (0.8.451): ?tab=, else the first one
 	if (!isset($cols[$scTab], $tabs[$scTab])) $scTab = (string)(array_values(array_filter(array_keys($tabs), static fn($k) => isset($cols[$k])))[0] ?? '');
-	$groups = ['scode_group_forms' => ['header', 'style', 'include'], 'scode_group_all' => ['gjs', 'gcss']]; ?>
-	<ul class="nav nav-tabs mb-3 scodeTabs" id="scodeTabs" role="tablist" data-nu-hash-tabs data-nu-tab-restore>
-		<?php foreach ($groups as $gl => $keys): if (!array_filter($keys, static fn($k) => isset($cols[$k]))) continue; ?>
-			<li class="nav-item scodeGroup" role="presentation"><span class="scodeGroupLabel"><?= h(t($gl)) ?></span></li>
-			<?php foreach ($keys as $k): if (!isset($cols[$k])) continue; [$icon] = $tabs[$k]; ?>
-				<li class="nav-item" role="presentation"><button class="nav-link<?= $k === $scTab ? ' active' : '' ?>" type="button" data-bs-toggle="tab" data-bs-target="#scodePane-<?= $k ?>"
-					data-nu-tab="<?= $k ?>" role="tab" id="scodeTabBtn-<?= $k ?>" aria-controls="scodePane-<?= $k ?>" aria-selected="<?= $k === $scTab ? 'true' : 'false' ?>"><i class="bi <?= $icon ?> me-1"></i><?= h(t('scode_tab_' . $k)) ?></button></li>
+	// a switch Form pages | All pages, then the tabs of that group only (0.8.857: short tab names, nothing repeated); nuglobalcode.js switches
+	$groups = ['forms' => ['header', 'style', 'include'], 'all' => ['gjs', 'gcss']];
+	$short = ['header' => 'scode_short_js', 'style' => 'scode_short_css', 'include' => 'scode_short_inc', 'gjs' => 'scode_short_js', 'gcss' => 'scode_short_css'];
+	$groups = array_filter(array_map(static fn($keys) => array_values(array_filter($keys, static fn($k) => isset($cols[$k]))), $groups));
+	$scGroup = in_array($scTab, $groups['all'] ?? [], true) ? 'all' : (isset($groups['forms']) ? 'forms' : 'all'); ?>
+	<div class="scodeNav d-flex flex-wrap align-items-center column-gap-3 row-gap-2 mb-3" data-nu-tab-restore>
+		<?php if (count($groups) > 1): ?>
+		<div class="btn-group nuSeg scodeSeg" role="group" id="scodeSeg" aria-label="<?= h(t('scode_group_pick')) ?>">
+			<?php foreach ($groups as $g => $_): ?>
+				<button type="button" class="btn btn-outline-secondary<?= $g === $scGroup ? ' active' : '' ?>" data-scode-group="<?= $g ?>" aria-pressed="<?= $g === $scGroup ? 'true' : 'false' ?>"><?= h(t('scode_group_' . $g)) ?></button>
 			<?php endforeach; ?>
-		<?php endforeach; ?>
-	</ul>
+		</div>
+		<?php endif; ?>
+		<ul class="nav nav-tabs scodeTabs flex-grow-1" id="scodeTabs" role="tablist" data-nu-hash-tabs>
+			<?php foreach ($groups as $g => $keys): foreach ($keys as $k): [$icon] = $tabs[$k]; ?>
+				<li class="nav-item" role="presentation" data-scode-group="<?= $g ?>"<?= $g === $scGroup ? '' : ' hidden' ?>><button class="nav-link<?= $k === $scTab ? ' active' : '' ?>" type="button" data-bs-toggle="tab" data-bs-target="#scodePane-<?= $k ?>"
+					data-nu-tab="<?= $k ?>" role="tab" id="scodeTabBtn-<?= $k ?>" aria-controls="scodePane-<?= $k ?>" aria-selected="<?= $k === $scTab ? 'true' : 'false' ?>" title="<?= h(t('scode_tab_' . $k)) ?>"><i class="bi <?= $icon ?> me-1" aria-hidden="true"></i><?= h(t($short[$k])) ?></button></li>
+			<?php endforeach; endforeach; ?>
+		</ul>
+	</div>
 	<div class="tab-content" data-nu-tab-restore>
 		<?php foreach ($tabs as $k => [, $mode]): if (!isset($cols[$k])) continue; $global = $k === 'gjs' || $k === 'gcss'; ?>
 			<div class="tab-pane fade<?= $k === $scTab ? ' show active' : '' ?>" id="scodePane-<?= $k ?>" role="tabpanel" aria-labelledby="scodeTabBtn-<?= $k ?>" tabindex="0">

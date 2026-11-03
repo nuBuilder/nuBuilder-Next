@@ -19,7 +19,7 @@ defined('NU_ROOT') || exit;
  *
  * Adminer (0.8.282, app 'ADM', NOT shipped): copy adminer.php (or adminer-<version>.php, 4.8.1 or newer) to
  * <nuBuilder Next>/third_party/adminer/. It is never opened directly (that folder gets a deny-all .htaccess) but through
- * nuBuilder Next's dbadmin.php, which checks the globeadmin session and logs Adminer in with the database account of
+ * nuBuilder Next's nudbadmin.php, which checks the globeadmin session and logs Adminer in with the database account of
  * nuconfig.php (MySQL / MariaDB and SQL Server). $nuConfigPrimaryDatabaseManagement = 'phpMyAdmin' | 'Adminer' chooses the tool
  * the database buttons open (app 'DB'); not set = phpMyAdmin when it is there, else Adminer. With both, ▾ offers the other one.
  */
@@ -83,7 +83,7 @@ final class NuVendor
 		return $f = $best;
 	}
 
-	/** Adminer's file has Windows line endings (copied in text mode) – dbadmin.php then uses a repaired copy (0.8.287). */
+	/** Adminer's file has Windows line endings (copied in text mode) – nudbadmin.php then uses a repaired copy (0.8.287). */
 	public static function adminerConverted(): bool
 	{
 		$f = self::adminerFile();
@@ -190,12 +190,12 @@ final class NuVendor
 	{
 		if ($app === 'DB') $app = self::primaryDb();
 		if ($app === 'ADM') {
-			// Adminer: through dbadmin.php (checks the row + cookie like nuBuilder's configs of phpMyAdmin / TFM)
+			// Adminer: through nudbadmin.php (checks the row + cookie like nuBuilder's configs of phpMyAdmin / TFM)
 			NuSecurity::protectDir(self::dir('ADM'));                  // the copied adminer.php is never opened directly
 			$sid = self::ensureRow();
-			setcookie('nu_ADM', $sid, ['path' => NuSecurity::cookiePath() . 'dbadmin.php', 'httponly' => true, 'samesite' => 'Strict'] + (nu_https() ? ['secure' => true] : []));
+			setcookie('nu_ADM', $sid, ['path' => NuSecurity::cookiePath() . 'nudbadmin.php', 'httponly' => true, 'samesite' => 'Strict'] + (nu_https() ? ['secure' => true] : []));
 			NuLog::write('vendor_open', 'zzzzsys_session', '', ['app' => 'ADM']);
-			return 'dbadmin.php' . ($table !== '' && preg_match('/^[A-Za-z0-9_$]+$/', $table) ? '?nu_table=' . rawurlencode($table) : '');
+			return 'nudbadmin.php' . ($table !== '' && preg_match('/^[A-Za-z0-9_$]+$/', $table) ? '?nu_table=' . rawurlencode($table) : '');
 		}
 		$sid = self::ensureRow();
 		$https = nu_https() ? ['secure' => true] : [];

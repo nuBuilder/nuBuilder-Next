@@ -4,6 +4,22 @@
 	'use strict';
 	var form = document.getElementById('scodeForm');
 	if (!form) return;
+	// the warning on top (0.8.856): × hides it – kept in this browser (localStorage nunext-scode-warn-hidden) –, the (i) next to the title shows it again
+	(function () {
+		var warn = document.getElementById('scodeWarn'), hideB = document.getElementById('scodeWarnHide'), showB = document.getElementById('scodeWarnShow');
+		if (!warn || !hideB || !showB) return;
+		var KEY = 'nunext-scode-warn-hidden';
+		function set(hidden, store) {
+			warn.hidden = hidden; showB.hidden = !hidden;
+			showB.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+			if (store) { try { if (hidden) localStorage.setItem(KEY, '1'); else localStorage.removeItem(KEY); } catch (e) { /* this page only */ } }
+		}
+		var was = false;
+		try { was = localStorage.getItem(KEY) === '1'; } catch (e) { was = false; }
+		set(was, false);
+		hideB.addEventListener('click', function () { set(true, true); showB.focus(); });
+		showB.addEventListener('click', function () { set(false, true); hideB.focus(); });
+	})();
 	var editors = [], byTab = {};
 	if (window.CodeMirror) {
 		Array.prototype.forEach.call(form.querySelectorAll('textarea.scodeCode'), function (ta) {
@@ -35,7 +51,29 @@
 	fit();
 	var tabs = document.getElementById('scodeTabs'), field = document.getElementById('scodeTab');
 	function current() { var a = tabs && tabs.querySelector('.nav-link.active'); return a ? a.getAttribute('data-nu-tab') || '' : ''; }
-	if (tabs) tabs.addEventListener('shown.bs.tab', function () { fit(); editors.forEach(function (cm) { cm.refresh(); }); field.value = current(); });   // hidden editors have no size
+	// Form pages | All pages (0.8.857): only the tabs of the chosen group are shown; a switch opens the tab last used there (else its first);
+	// a tab opened otherwise (#gjs in the address, ?tab=) moves the switch along
+	var seg = document.getElementById('scodeSeg'), lastOf = {};
+	function groupOf(btn) { var li = btn && btn.closest('[data-scode-group]'); return li ? li.getAttribute('data-scode-group') : ''; }
+	function showGroup(g) {
+		if (!tabs) return;
+		Array.prototype.forEach.call(tabs.querySelectorAll('li[data-scode-group]'), function (li) { li.hidden = li.getAttribute('data-scode-group') !== g; });
+		if (seg) Array.prototype.forEach.call(seg.querySelectorAll('[data-scode-group]'), function (b) {
+			var on = b.getAttribute('data-scode-group') === g;
+			b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+		});
+	}
+	if (seg) seg.addEventListener('click', function (e) {
+		var b = e.target.closest('[data-scode-group]');
+		if (!b) return;
+		var g = b.getAttribute('data-scode-group');
+		showGroup(g);
+		var to = (lastOf[g] && document.getElementById('scodeTabBtn-' + lastOf[g])) || tabs.querySelector('li[data-scode-group="' + g + '"] .nav-link');
+		if (to && !to.classList.contains('active')) nuBs.tab(to).show();
+	});
+	function syncGroup() { var a = tabs && tabs.querySelector('.nav-link.active'); if (a) { lastOf[groupOf(a)] = a.getAttribute('data-nu-tab'); showGroup(groupOf(a)); } }
+	syncGroup();
+	if (tabs) tabs.addEventListener('shown.bs.tab', function () { syncGroup(); fit(); editors.forEach(function (cm) { cm.refresh(); }); field.value = current(); });   // hidden editors have no size
 	form.addEventListener('submit', function () { editors.forEach(function (cm) { cm.save(); }); field.value = current(); });
 	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(form);   // syntax errors: ask before saving (0.8.781)
 	field.value = current();

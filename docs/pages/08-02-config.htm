@@ -79,7 +79,7 @@
 <tr><td><code>$nuConfigEnvironmentLabel</code> / <code>$nuConfigEnvironmentColor</code></td><td>Next</td><td></td><td>Environment label (e.g. <code>TEST</code>) and its colour; they win over the field in <a href="#branding">Branding</a></td></tr>
 <tr><td><code>$nuConfigBackupPath</code></td><td>Next</td><td><code>_backup/</code></td><td>Folder for backups and the maintenance flag – outside the web root if possible (<a href="#update-backups">Backups</a>)</td></tr>
 <tr><td><code>$nuConfigHomeHooks</code></td><td>Next</td><td>true</td><td><code>false</code>: the start page hooks <code>nu_home</code> / <code>nu_home_user</code> do not run (<a href="#home-hooks">Start page hooks</a>)</td></tr>
-<tr><td><code>$nuConfigCustomPagesDir</code></td><td>Next</td><td><code>custom/pages/</code></td><td>Absolute path of the folder with the page forms (<a href="#pages">Page forms</a>)</td></tr>
+<tr><td><code>$nuConfigCustomPagesDir</code></td><td>Next</td><td><code>custom/pages/</code></td><td>Absolute path of the folder with the custom pages (<a href="#pages">Custom pages</a>)</td></tr>
 <tr><td><code>$nuConfigApi</code></td><td>Next</td><td><code>false</code></td><td><code>true</code>: REST API <code>api.php/v1/…</code> – see <a href="#api">REST API</a>. While it is off, <em>API clients</em> and the <em>API playground</em> show a button <em>Switch the API on</em> that sets it in <code>nuconfig.php</code>.</td></tr>
 <tr><td><code>$nuConfigApiTokenMinutes</code></td><td>Next</td><td>15</td><td>Lifetime of API access tokens in minutes (1–1440)</td></tr>
 <tr><td><code>$nuConfigApiAllowHttp</code></td><td>Next</td><td><code>false</code></td><td><code>true</code>: API also without HTTPS (tests only; localhost always works)</td></tr>
@@ -103,16 +103,16 @@
 <p><strong>One-time login link</strong> (nuBuilder Forte's <em>Single-User Password Token</em>, needs no setting here): see <a href="#logintoken">Sign-in methods → One-time login link</a>.</p>
 <p><strong>Own login page</strong>: <code>$nuWelcomeBodyInnerHTML</code> works as in nuBuilder Forte – nuBuilder Forte's HTML can be used as it is (inputs <code>nuusername</code> / <code>nupassword</code>, the submit button). Inline <code>onclick</code> / <code>onsubmit</code> are not run (security policy); nuBuilder Next connects the form itself and adds the security token. <code>style="…"</code> works; image paths <code>core/graphics/…</code> point to nuBuilder Forte's folder. Error messages, "Forgot password?", the language and theme menus stay. <code>nuconfig-sample.php</code> has a commented example.</p>
 </div>
-<div class="doc-sub"><h3 id="config-cron">Command line (cron.php)</h3>
-<p><code>cron.php</code> runs only on the command line (the web server refuses it). Run it as the web server's user, so files it writes belong to that user.</p>
+<div class="doc-sub"><h3 id="config-cron">Command line (nucron.php)</h3>
+<p><code>nucron.php</code> runs only on the command line (the web server refuses it). Run it as the web server's user, so files it writes belong to that user.</p>
 <table class="table table-sm">
 <thead><tr><th>Command</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td><code>php cron.php</code></td><td>Housekeeping, e.g. every 15 minutes from cron: removes expired tokens and sessions, old API counters, log rows beyond the retention and temporary files, retries webhook calls, finishes an unattended update whose database steps are pending. Without cron, page views do this now and then.</td></tr>
-<tr><td><code>php cron.php update …</code></td><td>Unattended update from a URL, a zip file or GitHub (<a href="#update-unattended">Unattended update</a>)</td></tr>
-<tr><td><code>php cron.php integrity [--json]</code></td><td>The <a href="#integrity">integrity check</a> of the database; exit code 1 when it finds problems</td></tr>
-<tr><td><code>php cron.php iprules off</code></td><td>Switches <a href="#ip-access">IP access</a> off when its rules lock everybody out (the rules stay stored)</td></tr>
-<tr><td><code>php cron.php reset --sql=&lt;file&gt; …</code></td><td>Developer mode only: <a href="#db-reset">Reset database</a></td></tr>
+<tr><td><code>php nucron.php</code></td><td>Housekeeping, e.g. every 15 minutes from cron: removes expired tokens and sessions, old API counters, log rows beyond the retention and temporary files, retries webhook calls, finishes an unattended update whose database steps are pending. Without cron, page views do this now and then.</td></tr>
+<tr><td><code>php nucron.php update …</code></td><td>Unattended update from a URL, a zip file or GitHub (<a href="#update-unattended">Unattended update</a>)</td></tr>
+<tr><td><code>php nucron.php integrity [--json]</code></td><td>The <a href="#integrity">integrity check</a> of the database; exit code 1 when it finds problems</td></tr>
+<tr><td><code>php nucron.php iprules off</code></td><td>Switches <a href="#ip-access">IP access</a> off when its rules lock everybody out (the rules stay stored)</td></tr>
+<tr><td><code>php nucron.php reset --sql=&lt;file&gt; …</code></td><td>Developer mode only: <a href="#db-reset">Reset database</a></td></tr>
 </tbody>
 </table>
 </div>

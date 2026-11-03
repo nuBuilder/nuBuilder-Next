@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 21;             // 21: Excel export – two procedures (built-in NuXlsx, PhpSpreadsheet with formulas and a chart) and their start tiles · 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 22;             // 22: the PHP code of the procedures and form hooks formatted (as Format code does) · 21: Excel export – two procedures (built-in NuXlsx, PhpSpreadsheet with formulas and a chart) and their start tiles · 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -442,7 +442,10 @@ final class NuSample
 					['type' => 'input', 'input' => 'button', 'id' => 'home_colour', 'label' => 'Set hash cookie sample_colour', 'left' => 20, 'top' => 604, 'w' => 260, 'style_type' => 'Class', 'style' => 'sampleButton',
 						'events' => ['onclick' => "var c = ['red', 'green', 'blue'][Math.floor(Math.random() * 3)];\nnuSetProperty('sample_colour', c, true).then(function () {\n\tnuMessage(['Global hash cookie sample_colour = ' + nuGetProperty('sample_colour'), 'It is now replaced in every form until you log out.']);\n});"]],
 				],
-				'php' => ['BE' => "// Global hash cookie: lives until logout, available as #sample_visits# in every form\nnuSetProperty('sample_visits', (int)nuGetProperty('sample_visits') + 1, true);"],
+				'php' => ['BE' => <<<'PHP'
+// Global hash cookie: lives until logout, available as #sample_visits# in every form
+nuSetProperty('sample_visits', (int) nuGetProperty('sample_visits') + 1, true);
+PHP],
 				'style' => self::homeCss(),
 			],
 			// ---------------------------------------------------- 2. customers: nuBuilder positions, two tabs, validation, BD hook
@@ -470,7 +473,15 @@ final class NuSample
 						'html' => '<div data-nu-dashboard="sample_customer"></div>'],
 				],
 				'edit_js' => "if (nuIsNewRecord()) { nuSetValue('cus_active', true); nuSetValue('cus_country', 'US'); }",
-				'php' => ['BD' => "\$n = db_fetch_row(nuRunQuery(\"SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = ?\", ['#RECORD_ID#']))[0] ?? 0;\nif (\$n > 0) nuDisplayError(\"This customer has \$n orders and cannot be deleted.\");"],
+				'php' => ['BD' => <<<'PHP'
+$n =
+    db_fetch_row(
+        nuRunQuery('SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = ?', ['#RECORD_ID#'])
+    )[0] ?? 0;
+if ($n > 0) {
+    nuDisplayError("This customer has $n orders and cannot be deleted.");
+}
+PHP],
 			],
 			// ---------------------------------------------------- 3. products: grid layout, browse formats, select2
 			[
@@ -516,9 +527,41 @@ final class NuSample
 					['type' => 'textarea', 'id' => 'ord_note', 'label' => 'Note', 'w' => 440, 'h' => 60, 'top' => 384],
 				],
 				'php' => [
-					'BE' => "// Before Edit: shows a message on new records\nif ('#RECORD_ID#' === '-1') nuAddJavascript(\"nuMessage(['New order: the number is suggested, the date is today.']);\");",
-					'BS' => "// Before Save: the status needs the permission item sample_order_status (checked in the browser as well)\nif (!nuUserHasPermission('sample_order_status') && '#RECORD_ID#' !== '-1') {\n\t\$old = db_fetch_row(nuRunQuery('SELECT ord_status FROM sample_order WHERE sample_order_id = ?', ['#RECORD_ID#']))[0] ?? '';\n\tif (\$old !== '#ord_status#') nuDisplayError('You may not change the status (permission item sample_order_status).');\n}\n// Before Save: at least one item\n\$sf = nuSubformObject('sample_items');\n\$n = 0;\nforeach (\$sf->rows as \$i => \$r) if (empty(\$sf->deleted[\$i])) \$n++;\nif (\$n === 0) nuDisplayError('Please add at least one item.');",
-					'AS' => "// After Save: stores the order total\nnuRunQuery(\"UPDATE sample_order SET ord_total = (SELECT COALESCE(SUM(ori_qty * ori_price), 0) FROM sample_order_item WHERE ori_sample_order_id = ?) WHERE sample_order_id = ?\", ['#RECORD_ID#', '#RECORD_ID#']);",
+					'BE' => <<<'PHP'
+// Before Edit: shows a message on new records
+if ('#RECORD_ID#' === '-1') {
+    nuAddJavascript("nuMessage(['New order: the number is suggested, the date is today.']);");
+}
+PHP,
+					'BS' => <<<'PHP'
+// Before Save: the status needs the permission item sample_order_status (checked in the browser as well)
+if (!nuUserHasPermission('sample_order_status') && '#RECORD_ID#' !== '-1') {
+    $old =
+        db_fetch_row(nuRunQuery('SELECT ord_status FROM sample_order WHERE sample_order_id = ?', ['#RECORD_ID#']))[0] ??
+        '';
+    if ($old !== '#ord_status#') {
+        nuDisplayError('You may not change the status (permission item sample_order_status).');
+    }
+}
+// Before Save: at least one item
+$sf = nuSubformObject('sample_items');
+$n = 0;
+foreach ($sf->rows as $i => $r) {
+    if (empty($sf->deleted[$i])) {
+        $n++;
+    }
+}
+if ($n === 0) {
+    nuDisplayError('Please add at least one item.');
+}
+PHP,
+					'AS' => <<<'PHP'
+// After Save: stores the order total
+nuRunQuery(
+    'UPDATE sample_order SET ord_total = (SELECT COALESCE(SUM(ori_qty * ori_price), 0) FROM sample_order_item WHERE ori_sample_order_id = ?) WHERE sample_order_id = ?',
+    ['#RECORD_ID#', '#RECORD_ID#']
+);
+PHP,
 				],
 				'edit_js' => "if (nuIsNewRecord()) {\n\tif (nuGetValue('ord_number') === '') nuSetValue('ord_number', 'S-' + String(Date.now()).slice(-6));\n\tif (nuGetValue('ord_date') === '') nuSetDateValue('ord_date');\n\tnuSetValue('ord_status', 'new');\n}\n// permission item: only users with sample_order_status may change the status\nif (!nuIsNewRecord() && !nuUserHasPermission('sample_order_status')) nuDisable('ord_status');",
 			],
@@ -660,11 +703,21 @@ final class NuSample
 				. "\t\tsettings.theme = 'red';\n\t\tsettings.iconSize = 20;\n\t\tsettings.iconClasses = 'bi bi-exclamation-triangle-fill';\n"
 				. "\t\tsettings.onClick = function (el, text) { nuMessage(['Tooltip text', text]); };\n\t}\n};\n\n"
 				. "// data of the chart all_chart_bars (first row = column titles)\nwindow.sampleMonths = [['Month', 'Sales', 'Costs'], ['Jan', 120, 80], ['Feb', 140, 95], ['Mar', 110, 70], ['Apr', 165, 100], ['May', 150, 90]];",
-			'php' => ['BS' => "// Before Save\nif (strlen('#all_text#') > 100) nuDisplayError('Text: at most 100 characters.');",
-				'BE' => "// Before Edit: data of the chart all_chart_pie from the database\n\$rows = [['Status', 'Orders']];\n"
-					. "\$s = nuRunQuery('SELECT ord_status, COUNT(*) FROM sample_order GROUP BY ord_status ORDER BY ord_status');\n"
-					. "while (\$r = db_fetch_row(\$s)) \$rows[] = [(string)(\$r[0] ?: '–'), (int)\$r[1]];\n"
-					. "nuAddJavascript('window.sampleOrderStatus = ' . json_encode(\$rows) . ';');"],
+			'php' => ['BS' => <<<'PHP'
+// Before Save
+if (strlen('#all_text#') > 100) {
+    nuDisplayError('Text: at most 100 characters.');
+}
+PHP,
+				'BE' => <<<'PHP'
+// Before Edit: data of the chart all_chart_pie from the database
+$rows = [['Status', 'Orders']];
+$s = nuRunQuery('SELECT ord_status, COUNT(*) FROM sample_order GROUP BY ord_status ORDER BY ord_status');
+while ($r = db_fetch_row($s)) {
+    $rows[] = [(string) ($r[0] ?: '–'), (int) $r[1]];
+}
+nuAddJavascript('window.sampleOrderStatus = ' . json_encode($rows) . ';');
+PHP],
 		];
 	}
 
@@ -898,19 +951,41 @@ final class NuSample
 			'sph_system' => '0', 'sph_global' => '0', 'sph_demo' => '0', 'sph_template' => '0', 'sph_hide' => '0'];
 		return [
 			$p('sample_proc_hello', 'sample_hello', 'Sample: procedure with output (window)', 'window',
-				"// Procedure that prints HTML (run object \"Procedure (window)\")\n\$n = db_fetch_row(nuRunQuery('SELECT COUNT(*) FROM sample_customer'))[0] ?? 0;\necho '<h3>Hello #USER_FIRST_NAME#</h3>';\necho '<p>There are ' . (int)\$n . ' sample customers. Record: #RECORD_ID#</p>';\n// permission items of the user (Users → Permission items)\necho '<p>Your permission items: ' . htmlspecialchars('#USER_PERMISSIONS#' ?: '–') . '</p>';\nif (nuUserHasPermission('sample_export')) echo '<p>You may export sample data (sample_export).</p>';"),
+				<<<'PHP'
+// Procedure that prints HTML (run object "Procedure (window)")
+$n = db_fetch_row(nuRunQuery('SELECT COUNT(*) FROM sample_customer'))[0] ?? 0;
+echo '<h3>Hello #USER_FIRST_NAME#</h3>';
+echo '<p>There are ' . (int) $n . ' sample customers. Record: #RECORD_ID#</p>';
+// permission items of the user (Users → Permission items)
+echo '<p>Your permission items: ' . htmlspecialchars('#USER_PERMISSIONS#' ?: '–') . '</p>';
+if (nuUserHasPermission('sample_export')) {
+    echo '<p>You may export sample data (sample_export).</p>';
+}
+PHP),
 			$p('sample_proc_hidden', 'sample_hidden', 'Sample: hidden procedure (JavaScript back)', 'hide',
-				"// Hidden procedure: no window, sends JavaScript back to the form\n\$n = db_fetch_row(nuRunQuery('SELECT COUNT(*) FROM sample_order'))[0] ?? 0;\nnuAddJavascript(\"nuMessage(['Hidden procedure finished', 'Sample orders: \" . (int)\$n . \"']);\");"),
+				<<<'PHP'
+// Hidden procedure: no window, sends JavaScript back to the form
+$n = db_fetch_row(nuRunQuery('SELECT COUNT(*) FROM sample_order'))[0] ?? 0;
+nuAddJavascript("nuMessage(['Hidden procedure finished', 'Sample orders: " . (int) $n . "']);");
+PHP),
 			$p('sample_proc_dash', 'sample_dashboard_data', 'Sample: data of a dashboard widget (nuDashboardData)', 'hide', <<<'PHP'
 // Source of the widget "Revenue by category" of dashboard sample_products (nuBuilder Next, Admin tools → Dashboards):
 // the rows are computed in PHP and handed over with nuDashboardData() – first column = categories, the others = series
-$t = nuRunQuery('SELECT p.pro_category, i.ori_qty, i.ori_price FROM sample_order_item i JOIN sample_product p ON p.sample_product_id = i.ori_sample_product_id');
+$t = nuRunQuery(
+    'SELECT p.pro_category, i.ori_qty, i.ori_price FROM sample_order_item i JOIN sample_product p ON p.sample_product_id = i.ori_sample_product_id'
+);
 $sum = [];
-while ($r = db_fetch_object($t)) $sum[$r->pro_category] = ($sum[$r->pro_category] ?? 0) + $r->ori_qty * $r->ori_price;
+while ($r = db_fetch_object($t)) {
+    $sum[$r->pro_category] = ($sum[$r->pro_category] ?? 0) + $r->ori_qty * $r->ori_price;
+}
 arsort($sum);
 $rows = [];
-foreach ($sum as $category => $revenue) $rows[] = ['Category' => $category, 'Revenue' => round($revenue, 2)];
-if (function_exists('nuDashboardData')) nuDashboardData($rows);
+foreach ($sum as $category => $revenue) {
+    $rows[] = ['Category' => $category, 'Revenue' => round($revenue, 2)];
+}
+if (function_exists('nuDashboardData')) {
+    nuDashboardData($rows);
+}
 PHP),
 			// Excel export (0.8.756): the built-in writer (no library needed) and PhpSpreadsheet (library pack) – both send a download
 			$p('sample_proc_xlsx', 'sample_xlsx', 'Sample: orders to Excel (built-in NuXlsx)', 'window', <<<'PHP'
@@ -918,16 +993,26 @@ PHP),
 // Run it from a button or tile: the browser downloads the file.
 $x = NuXlsx::create('Sample orders');
 $s = $x->sheet('Orders');
-$s->header(['Number', 'Date', 'Customer', 'Country', 'Status', 'Total'], ['bold' => true, 'color' => '#ffffff', 'bg' => '#336699']);
+$s->header(
+    ['Number', 'Date', 'Customer', 'Country', 'Status', 'Total'],
+    ['bold' => true, 'color' => '#ffffff', 'bg' => '#336699']
+);
 $t = nuRunQuery("SELECT o.ord_number, o.ord_date, c.cus_name, c.cus_country, o.ord_status, o.ord_total
 	FROM sample_order o LEFT JOIN sample_customer c ON c.sample_customer_id = o.ord_sample_customer_id ORDER BY o.ord_date, o.ord_number");
 while ($o = db_fetch_object($t)) {
-	// a date as DateTime becomes a real Excel date; numbers stay numbers, texts never turn into formulas
-	$s->row([$o->ord_number, $o->ord_date ? new DateTime($o->ord_date) : null, $o->cus_name, $o->cus_country, $o->ord_status, (float)$o->ord_total]);
+    // a date as DateTime becomes a real Excel date; numbers stay numbers, texts never turn into formulas
+    $s->row([
+        $o->ord_number,
+        $o->ord_date ? new DateTime($o->ord_date) : null,
+        $o->cus_name,
+        $o->cus_country,
+        $o->ord_status,
+        (float) $o->ord_total
+    ]);
 }
 $last = $s->lastRow();
 $s->row(['', '', '', '', 'Total', NuXlsx::formula("SUM(F2:F$last)")], ['bold' => true, 'border' => 'top']);
-$s->style("F2:F" . ($last + 1), ['format' => '#,##0.00']);
+$s->style('F2:F' . ($last + 1), ['format' => '#,##0.00']);
 $s->freeze('A2');
 $s->filter("A1:F$last");
 $s->autoWidth();
@@ -938,9 +1023,9 @@ PHP),
 // styles, number formats, a SUM formula, conditional formatting, a second sheet with COUNTIF / SUMIF and a column chart.
 // The \PhpOffice\PhpSpreadsheet\… classes load by themselves once the pack is installed.
 if (!nuNextSpreadsheetAvailable()) {
-	echo '<h3>PhpSpreadsheet is not installed</h3><p>Install the library pack <b>PhpSpreadsheet</b> under <i>Update → Libraries</i> and run this again.'
-		. ' The built-in export (procedure sample_xlsx) works without it.</p>';
-	return;
+    echo '<h3>PhpSpreadsheet is not installed</h3><p>Install the library pack <b>PhpSpreadsheet</b> under <i>Update → Libraries</i> and run this again.' .
+        ' The built-in export (procedure sample_xlsx) works without it.</p>';
+    return;
 }
 $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 $book->getProperties()->setTitle('Sample orders')->setCreator('nuBuilder Next');
@@ -952,32 +1037,52 @@ $t = nuRunQuery("SELECT o.ord_number, o.ord_date, c.cus_name, c.cus_country, o.o
 $r = 2;
 $countries = [];
 while ($o = db_fetch_object($t)) {
-	$ws->setCellValue("A$r", $o->ord_number);
-	if ($o->ord_date) $ws->setCellValue("B$r", \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(new DateTime($o->ord_date)));
-	$ws->setCellValue("C$r", $o->cus_name);
-	$ws->setCellValue("D$r", $o->cus_country);
-	$ws->setCellValue("E$r", $o->ord_status);
-	$ws->setCellValue("F$r", (float)$o->ord_total);
-	if ($o->cus_country) $countries[$o->cus_country] = true;
-	$r++;
+    $ws->setCellValue("A$r", $o->ord_number);
+    if ($o->ord_date) {
+        $ws->setCellValue("B$r", \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(new DateTime($o->ord_date)));
+    }
+    $ws->setCellValue("C$r", $o->cus_name);
+    $ws->setCellValue("D$r", $o->cus_country);
+    $ws->setCellValue("E$r", $o->ord_status);
+    $ws->setCellValue("F$r", (float) $o->ord_total);
+    if ($o->cus_country) {
+        $countries[$o->cus_country] = true;
+    }
+    $r++;
 }
 $last = max(2, $r - 1);
 $ws->setCellValue("E$r", 'Total');
-$ws->setCellValue("F$r", "=SUM(F2:F$last)");                          // a formula – Excel calculates it
+$ws->setCellValue("F$r", "=SUM(F2:F$last)"); // a formula – Excel calculates it
 // look: header, formats, total row, frozen header, filter, widths
-$ws->getStyle('A1:F1')->applyFromArray(['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-	'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '336699']]]);
-$ws->getStyle("B2:B$last")->getNumberFormat()->setFormatCode('dd.mm.yyyy');
-$ws->getStyle("F2:F$r")->getNumberFormat()->setFormatCode('#,##0.00');
-$ws->getStyle("E$r:F$r")->applyFromArray(['font' => ['bold' => true], 'borders' => ['top' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]]);
+$ws->getStyle('A1:F1')->applyFromArray([
+    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '336699']]
+]);
+$ws->getStyle("B2:B$last")
+    ->getNumberFormat()
+    ->setFormatCode('dd.mm.yyyy');
+$ws->getStyle("F2:F$r")
+    ->getNumberFormat()
+    ->setFormatCode('#,##0.00');
+$ws->getStyle("E$r:F$r")->applyFromArray([
+    'font' => ['bold' => true],
+    'borders' => ['top' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+]);
 $ws->freezePane('A2');
 $ws->setAutoFilter("A1:F$last");
-foreach (range('A', 'F') as $c) $ws->getColumnDimension($c)->setAutoSize(true);
+foreach (range('A', 'F') as $c) {
+    $ws->getColumnDimension($c)->setAutoSize(true);
+}
 // conditional formatting: orders above 1,000 in green
 $cf = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
 $cf->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS)
-	->setOperatorType(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHAN)->addCondition('1000');
-$cf->getStyle()->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getEndColor()->setRGB('C6EFCE');
+    ->setOperatorType(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHAN)
+    ->addCondition('1000');
+$cf->getStyle()
+    ->getFill()
+    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+    ->getEndColor()
+    ->setRGB('C6EFCE');
 $ws->getStyle("F2:F$last")->setConditionalStyles([$cf]);
 // second sheet: orders and revenue per country with COUNTIF / SUMIF, and a column chart of the revenue
 $by = $book->createSheet();
@@ -986,36 +1091,49 @@ $by->fromArray(['Country', 'Orders', 'Revenue'], null, 'A1');
 $by->getStyle('A1:C1')->getFont()->setBold(true);
 $n = 2;
 foreach (array_keys($countries) as $country) {
-	$by->setCellValue("A$n", $country);
-	$by->setCellValue("B$n", "=COUNTIF(Orders!D2:D$last,A$n)");
-	$by->setCellValue("C$n", "=SUMIF(Orders!D2:D$last,A$n,Orders!F2:F$last)");
-	$n++;
+    $by->setCellValue("A$n", $country);
+    $by->setCellValue("B$n", "=COUNTIF(Orders!D2:D$last,A$n)");
+    $by->setCellValue("C$n", "=SUMIF(Orders!D2:D$last,A$n,Orders!F2:F$last)");
+    $n++;
 }
 $lastC = max(2, $n - 1);
-$by->getStyle("C2:C$lastC")->getNumberFormat()->setFormatCode('#,##0.00');
-foreach (['A' => 22, 'B' => 10, 'C' => 14] as $c => $w) $by->getColumnDimension($c)->setWidth($w);
+$by->getStyle("C2:C$lastC")
+    ->getNumberFormat()
+    ->setFormatCode('#,##0.00');
+foreach (['A' => 22, 'B' => 10, 'C' => 14] as $c => $w) {
+    $by->getColumnDimension($c)->setWidth($w);
+}
 $ds = \PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues::class;
 $series = new \PhpOffice\PhpSpreadsheet\Chart\DataSeries(
-	\PhpOffice\PhpSpreadsheet\Chart\DataSeries::TYPE_BARCHART, \PhpOffice\PhpSpreadsheet\Chart\DataSeries::GROUPING_CLUSTERED, [0],
-	[new $ds($ds::DATASERIES_TYPE_STRING, "'By country'!\$C\$1", null, 1)],
-	[new $ds($ds::DATASERIES_TYPE_STRING, "'By country'!\$A\$2:\$A\$$lastC", null, $lastC - 1)],
-	[new $ds($ds::DATASERIES_TYPE_NUMBER, "'By country'!\$C\$2:\$C\$$lastC", null, $lastC - 1)]);
+    \PhpOffice\PhpSpreadsheet\Chart\DataSeries::TYPE_BARCHART,
+    \PhpOffice\PhpSpreadsheet\Chart\DataSeries::GROUPING_CLUSTERED,
+    [0],
+    [new $ds($ds::DATASERIES_TYPE_STRING, "'By country'!\$C\$1", null, 1)],
+    [new $ds($ds::DATASERIES_TYPE_STRING, "'By country'!\$A\$2:\$A\$$lastC", null, $lastC - 1)],
+    [new $ds($ds::DATASERIES_TYPE_NUMBER, "'By country'!\$C\$2:\$C\$$lastC", null, $lastC - 1)]
+);
 $series->setPlotDirection(\PhpOffice\PhpSpreadsheet\Chart\DataSeries::DIRECTION_COL);
-$chart = new \PhpOffice\PhpSpreadsheet\Chart\Chart('revenue', new \PhpOffice\PhpSpreadsheet\Chart\Title('Revenue by country'), null,
-	new \PhpOffice\PhpSpreadsheet\Chart\PlotArea(null, [$series]));
+$chart = new \PhpOffice\PhpSpreadsheet\Chart\Chart(
+    'revenue',
+    new \PhpOffice\PhpSpreadsheet\Chart\Title('Revenue by country'),
+    null,
+    new \PhpOffice\PhpSpreadsheet\Chart\PlotArea(null, [$series])
+);
 $chart->setTopLeftPosition('E2');
 $chart->setBottomRightPosition('M20');
 $by->addChart($chart);
 $book->setActiveSheetIndex(0);
 // send it: nothing may have been printed before
-while (ob_get_level() > 0) ob_end_clean();
+while (ob_get_level() > 0) {
+    ob_end_clean();
+}
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="sample-orders-' . date('Y-m-d') . '.xlsx"');
 header('Cache-Control: no-store');
 $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book);
 $writer->setIncludeCharts(true);
 $writer->save('php://output');
-exit;
+exit();
 PHP),
 		];
 	}

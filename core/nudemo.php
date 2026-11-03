@@ -422,7 +422,7 @@ final class NuDemo
 	/** Settings whose value is a password or key. */
 	public static function secretSetting(string $name): bool
 	{
-		return preg_match('/pass(word)?|secret|apikey|api_key|token|credential/i', $name) === 1 && !preg_match('/TokenValidity|UseMd5PasswordHash|PasswordMinLength|PasswordUpgrade/i', $name);
+		return NuSecurity::secretName($name);   // 0.8.827: one rule (this one missed passwd / passwort / totp / _hash)
 	}
 }
 

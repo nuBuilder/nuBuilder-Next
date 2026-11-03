@@ -105,6 +105,8 @@
 	api('nuHasBeenEdited', function () { return !!N.edited; });
 	api('nuIsSaved', function () { return !N.edited; });
 	api('nuAccessLevelCode', function () { return N.user.access_level_code || ''; });
+	// main + active additional access levels (0.8.867): [{id, code, description, group, main, valid_until}], [] for the globeadmin – a copy
+	api('nuNextAccessLevels', function () { return (N.user.access_levels || []).map(function (l) { return Object.assign({}, l); }); });
 	api('nuGlobalAccess', function () { return !!N.user.globeadmin; });
 	// Short notice at the bottom right (save / delete / clone). type: success | danger | warning | info
 	// design mode (review H1): messages of the form's own code do not cover the design panel – they are collected for the bar's
@@ -767,6 +769,19 @@
 			return;
 		}
 		if (d.nuRunType === 'R') { if (d.nuRunCode) nuRunReport(d.nuRunCode); return; }
+		if (d.nuRunType === 'U') {                                // a URL (0.8.830): 2 new tab (default), 3 popup window, 0 / 1 this tab
+			var url = d.nuRunUrl;
+			if (!url) return;
+			if (d.nuRunTarget === '3') { window.open(url, '_blank', 'popup,width=1000,height=700,noopener'); return; }
+			if (d.nuRunTarget !== '0' && d.nuRunTarget !== '1') { window.open(url, '_blank', 'noopener'); return; }
+			var go = function () { window.location.href = url; };
+			if (N.mode === 'edit' && N.edited) {
+				if (window.nuLeaveGuard) { window.nuLeaveGuard.ask(go); return; }
+				if (!window.confirm(M.unsaved || 'Leave without saving?')) return;
+			}
+			go();
+			return;
+		}
 		if (!d.nuRunForm) return;
 		var open = function () {
 			if (d.nuRunTarget === '3') nuPopup(d.nuRunForm, d.nuRunRecord, d.nuRunFilter);
@@ -2936,6 +2951,7 @@
 	var HOLDERS = {0: '#nuActionHolder', 2: '#nuTabHolder, #userTabs'};
 	function holderNav(remove) {
 		document.documentElement.classList.add('nuNoNavbar');
+		document.documentElement.style.setProperty('--nu-nav-h', '0px');   // the bar's measured height is set inline (nuapp.js) and beats the class rule
 		window.dispatchEvent(new Event('resize'));          // sticky rows measure again (nuapp.js)
 		return remove;
 	}

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Unattended updates (0.8.301): the update page's steps without a browser – for the command line (php cron.php update …) and the
+ * Unattended updates (0.8.301): the update page's steps without a browser – for the command line (php nucron.php update …) and the
  * REST API (POST api.php/v1/system/update, scope system:update). Uses NuUpdate (checks, signature, backup, maintenance, install,
  * restore when copying fails) and the same options as the page.
  *
@@ -13,7 +13,7 @@ defined('NU_ROOT') || exit;
  *
  * Two phases, like the page: run() checks and installs; finish() runs the database steps and the sample refresh with the NEW code,
  * so it must run in a new PHP process – the command line starts one itself, the API's status request (GET …/update/{job}) does it,
- * and cron.php (housekeeping) and the update page finish a job that is still pending. Jobs are JSON files in the backup folder.
+ * and nucron.php (housekeeping) and the update page finish a job that is still pending. Jobs are JSON files in the backup folder.
  * Only packages with a valid signature are installed; $nuConfigEnableDatabaseUpdate = false blocks everything; one update at a time.
  */
 final class NuAutoUpdate
@@ -283,7 +283,7 @@ final class NuAutoUpdate
 		}
 	}
 
-	/** Finishes every job that is installed but not finished (cron.php, the update page, the API). @return list of job ids finished */
+	/** Finishes every job that is installed but not finished (nucron.php, the update page, the API). @return list of job ids finished */
 	public static function finishPending(): array
 	{
 		$done = [];

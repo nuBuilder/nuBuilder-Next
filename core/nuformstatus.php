@@ -64,7 +64,7 @@ final class NuFormStatus
 		if (self::$info !== null) return self::$info;
 		$out = [];
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEY]);
+			$v = nu_setting_value(self::KEY);
 			$d = is_string($v) ? json_decode($v, true) : null;
 			if (is_array($d)) foreach ($d as $fid => $c) if (is_array($c)) $out[(string)$fid] = self::cleanInfo($c);
 		} catch (Throwable) {
@@ -187,8 +187,7 @@ final class NuFormStatus
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => (string)json_encode((object)$infos, JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($by, 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEY])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::KEY);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::KEY] + $row);
+		nu_setting_save(self::KEY, $row, $db);
 		self::$info = null;
 	}
 

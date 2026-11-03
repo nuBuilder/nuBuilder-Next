@@ -62,6 +62,36 @@ final class NuUserAccess
 		return [$col . ' IN (' . implode(', ', array_fill(0, count($l), '?')) . ')', $l];
 	}
 
+	/**
+	 * Main level + active additional levels of a user with code, description and group (0.8.867, nuNextAccessLevels()):
+	 * list of {id, code, description, group, main, valid_until}; the main level first. $userId null = the signed-in user (globeadmin: none).
+	 */
+	public static function listOf(?string $userId = null): array
+	{
+		if ($userId === null) {
+			$u = NuAuth::user();
+			if (!$u || !empty($u['globeadmin'])) return [];
+			$userId = (string)$u['id'];
+		}
+		$db = nu_db();
+		$main = (string)$db->value('SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+		$until = [];
+		if (self::ready()) foreach ($db->all('SELECT access_id, valid_until FROM ' . self::TABLE . ' WHERE user_id = ?', [$userId]) as $r) {
+			if (self::active($r['valid_until'] ?? null) && (string)$r['access_id'] !== '') $until[(string)$r['access_id']] = trim((string)($r['valid_until'] ?? '')) ?: null;
+		}
+		$ids = array_values(array_unique(array_filter(array_merge([$main], array_keys($until)), static fn($x) => $x !== '')));
+		if (!$ids) return [];
+		$rows = [];
+		foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access WHERE zzzzsys_access_id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ')', $ids) as $r) $rows[(string)$r['zzzzsys_access_id']] = $r;
+		$out = [];
+		foreach ($ids as $id) {
+			if (!isset($rows[$id])) continue;                // a level that was deleted
+			$out[] = ['id' => $id, 'code' => (string)$rows[$id]['sal_code'], 'description' => (string)$rows[$id]['sal_description'], 'group' => (string)($rows[$id]['sal_group'] ?? ''),
+				'main' => $id === $main, 'valid_until' => $id === $main ? null : ($until[$id] ?? null)];
+		}
+		return $out;
+	}
+
 	/** All extra rows of a user, with the level's code: list of {access_id, valid_until, code, description, active}. */
 	public static function rowsOf(string $userId): array
 	{

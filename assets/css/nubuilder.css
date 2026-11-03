@@ -33,3 +33,6 @@
 .nbPickGrip { cursor: grab; color: var(--bs-secondary-color); }
 .nbPickDragging { opacity: .5; }
 .nbPickOff .nbPickName { color: var(--bs-secondary-color); text-decoration: line-through; }
+/* New form, step 1 (0.8.866): description at most 500 px, code at most 380 px wide */
+.nbColDesc { max-width: 500px; }
+.nbColCode { max-width: 380px; }

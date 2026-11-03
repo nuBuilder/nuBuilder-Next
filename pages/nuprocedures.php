@@ -140,9 +140,12 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	// label above the field (full width on phones, two columns from md)
-	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
-		'<div class="procField"><label class="form-label procLabel" for="' . $k . '">' . h($label)
-		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sph_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique (0.8.627)
+	// 0.8.837 (the owner's layout B): two rows of fields sized to their content – class pf_<name> sets the width (nuapp.css)
+	$row = static fn(string $k, string $label, string $control, bool $req = false, string $tip = '') =>
+		'<div class="procField pf_' . substr($k, 4) . '"><label class="form-label procLabel" for="' . $k . '">' . h($label)
+		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sph_code' ? nu_unique_mark($req) : '') . '</label>'
+		. ($tip !== '' ? '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-info-circle"></i></span>' : '')
+		. $control . '</div>';   // key: unique (0.8.627)
 	$distinct = static fn(string $c) => array_column($db->all("SELECT DISTINCT $c AS v FROM $T WHERE $c IS NOT NULL AND $c <> '' AND " . NuProcedure::listCondition() . " ORDER BY $c"), 'v');
 	$forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE COALESCE(sfo_type,'') <> 'subform' ORDER BY sfo_code");
 	$access = NuProcedure::access($proc ? $id : $cloneId);
@@ -206,34 +209,33 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				<summary class="procFieldsSum"><span class="fw-semibold"><?= h(t('proc_fields')) ?></span><?php if (!$isNew): ?>
 					<span class="text-body-secondary ms-2 procFieldsSumText"><?= h($v('sph_code')) ?><?= $sumDesc !== '' ? ' – ' . h($sumDesc) : '' ?><?= $v('sph_group') !== '' ? ' · ' . h($v('sph_group')) : '' ?></span><?php endif; ?></summary>
 				<div class="procFieldsBody">
+				<div class="procFieldRow">
 				<?= $row('sph_code', t('proc_code'), '<input class="form-control' . $err('sph_code') . '" id="sph_code" name="sph_code" maxlength="300" required value="' . h($v('sph_code')) . '"' . ($isNew ? ' autofocus' : '') . ' spellcheck="false" autocomplete="off" list="sphCodeList">' . $fb('sph_code')
 					. '<datalist id="sphCodeList">' . implode('', array_map(static fn($c) => '<option value="' . h($c) . '">', NuProcedure::HOOK_CODES)) . '</datalist>', true) ?>
 				<?= $row('sph_description', t('proc_description'), '<input class="form-control' . $err('sph_description') . '" id="sph_description" name="sph_description" maxlength="300" required value="' . h($v('sph_description')) . '">' . $fb('sph_description'), true) ?>
-				<div class="row g-3 procFieldRow">
-					<div class="col-md-6"><?= $row('sph_group', t('proc_group'), '<input class="form-control" id="sph_group" name="sph_group" maxlength="300" list="procGroups" value="' . h($v('sph_group')) . '">'
-						. '<datalist id="procGroups">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', $distinct('sph_group'))) . '</datalist>') ?></div>
-					<div class="col-md-6"><?= $row('sph_category', t('proc_category'), '<input class="form-control" id="sph_category" name="sph_category" maxlength="300" list="procCats" value="' . h($v('sph_category')) . '">'
-						. '<datalist id="procCats">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', $distinct('sph_category'))) . '</datalist>') ?></div>
+				<?= $row('sph_status', t('proc_status'), '<select class="form-select" id="sph_status" name="sph_status">'
+						. implode('', array_map(static fn($k, $l) => '<option value="' . h((string)$k) . '"' . ((string)$k === $v('sph_status') ? ' selected' : '') . '>' . h(t($l)) . '</option>', array_keys(NuProcedure::STATUS), NuProcedure::STATUS)) . '</select>', true) ?>
 				</div>
-				<div class="row g-3 procFieldRow">
-					<div class="col-md-6"><?= $row('sph_status', t('proc_status'), '<select class="form-select" id="sph_status" name="sph_status">'
-						. implode('', array_map(static fn($k, $l) => '<option value="' . h((string)$k) . '"' . ((string)$k === $v('sph_status') ? ' selected' : '') . '>' . h(t($l)) . '</option>', array_keys(NuProcedure::STATUS), NuProcedure::STATUS)) . '</select>', true) ?></div>
-					<div class="col-md-6"><?= $row('sph_zzzzsys_form_id', t('proc_launch'), '<select class="form-select nuListTomSelect' . $err('sph_zzzzsys_form_id') . '" id="sph_zzzzsys_form_id" name="sph_zzzzsys_form_id"><option value=""></option>'
+				<div class="procFieldRow">
+				<?= $row('sph_group', t('proc_group'), '<input class="form-control" id="sph_group" name="sph_group" maxlength="300" list="procGroups" value="' . h($v('sph_group')) . '">'
+						. '<datalist id="procGroups">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', $distinct('sph_group'))) . '</datalist>') ?>
+				<?= $row('sph_category', t('proc_category'), '<input class="form-control" id="sph_category" name="sph_category" maxlength="300" list="procCats" value="' . h($v('sph_category')) . '">'
+						. '<datalist id="procCats">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', $distinct('sph_category'))) . '</datalist>') ?>
+				<?= $row('sph_zzzzsys_form_id', t('proc_launch'), '<select class="form-select nuListTomSelect' . $err('sph_zzzzsys_form_id') . '" id="sph_zzzzsys_form_id" name="sph_zzzzsys_form_id"><option value=""></option>'
 						. implode('', array_map(static fn($f) => '<option value="' . h($f['zzzzsys_form_id']) . '"' . ($f['zzzzsys_form_id'] === $v('sph_zzzzsys_form_id') ? ' selected' : '') . '>' . h($f['sfo_code'] . ($f['sfo_description'] ? ' – ' . $f['sfo_description'] : '')) . '</option>', $forms))
-						. '</select>' . $fb('sph_zzzzsys_form_id')) ?></div>
+						. '</select>' . $fb('sph_zzzzsys_form_id'), false, t('proc_launch_hint')) ?>
 				</div>
-				<div class="form-text procHint"><?= h(t('proc_launch_hint')) ?></div>
 				</div>
 				</details>
 				<div class="procRunRow d-flex flex-wrap gap-2 align-items-center">
-					<label class="form-label procLabel mb-0 me-2" for="sph_run"><?= h(t('proc_run')) ?></label>
+					<label class="form-label procLabel mb-0" for="sph_run"><?= h(t('proc_run_mode')) ?></label><span class="nuInfoTip me-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('proc_run_mode_tip')) ?>" title="<?= h(t('proc_run_mode_tip')) ?>"><i class="bi bi-info-circle"></i></span>
 						<select class="form-select w-auto" id="sph_run" name="sph_run">
 							<?php foreach (NuProcedure::RUN as $k => $l): ?><option value="<?= h($k) ?>"<?= $k === $v('sph_run') ? ' selected' : '' ?>><?= h(t($l)) ?></option><?php endforeach; ?>
 						</select>
 						<?php if ($proc): ?>
-							<span class="small text-body-secondary ms-2"><?= h(t('proc_run_hint')) ?></span>
+							<span class="procTestRun d-inline-flex flex-wrap align-items-center gap-2"><span class="small text-body-secondary"><?= h(t('proc_test_run')) ?></span><span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('proc_test_run_tip')) ?>" title="<?= h(t('proc_test_run_tip')) ?>"><i class="bi bi-info-circle"></i></span>
 							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="hide" id="procRunHidden"><i class="bi bi-eye-slash me-1"></i><?= h(t('proc_run_hidden')) ?></button>
-							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="window" id="procRunWindow"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('proc_run_window')) ?></button>
+							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="window" id="procRunWindow"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('proc_run_window')) ?></button></span>
 						<?php else: ?><span class="small text-body-secondary"><?= h(t('proc_run_after_save')) ?></span><?php endif; ?>
 				</div>
 				<div class="procResult mb-2" id="procResult" aria-live="polite" hidden></div>

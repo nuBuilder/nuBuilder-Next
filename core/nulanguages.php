@@ -26,7 +26,7 @@ final class NuLanguages
 		if (!NuDB::$connected) {
 			// connect now – but never while connecting fails (the error page asks for texts again) and never before nuconfig.php exists
 			if (self::$connecting) return $all;
-			// command line (cron.php, dev/tests/run.php): no connection of its own – a failing one ends the script (0.8.714)
+			// command line (nucron.php, dev/tests/run.php): no connection of its own – a failing one ends the script (0.8.714)
 			if (PHP_SAPI === 'cli') return $all;
 			self::$connecting = true;
 			try { nu_db(); } finally { self::$connecting = false; }
@@ -38,7 +38,7 @@ final class NuLanguages
 		try {
 			$db = nu_db();
 			foreach ([self::KEY, self::OLD_KEY] as $k) {
-				$v = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$k]);
+				$v = nu_setting_value($k);
 				$d = is_string($v) ? json_decode($v, true) : null;
 				if (is_array($d)) { $l = array_values(array_intersect($all, array_map('strval', $d))); break; }
 			}
@@ -76,8 +76,7 @@ final class NuLanguages
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($l), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEY])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::KEY);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::KEY] + $row);
+		nu_setting_save(self::KEY, $row, $db);
 		$db->run('DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::OLD_KEY]);
 		self::$cache = null;
 		$removed = array_values(array_diff($before, $l));
@@ -100,7 +99,7 @@ final class NuLanguages
 			self::$varCache = [];
 			if (NuDB::$connected && !NuInstall::needed()) {
 				try {
-					$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::VAR_KEY]);
+					$v = nu_setting_value(self::VAR_KEY);
 					$d = is_string($v) ? json_decode($v, true) : null;
 					if (is_array($d)) self::$varCache = $d;
 				} catch (Throwable) {
@@ -138,8 +137,7 @@ final class NuLanguages
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($out), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::VAR_KEY])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::VAR_KEY);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::VAR_KEY] + $row);
+		nu_setting_save(self::VAR_KEY, $row, $db);
 		self::$varCache = null;
 	}
 

@@ -258,6 +258,7 @@ final class NuHome
 			's_sqlbuilder_new' => [nu_url('sqlbuilder', ['id' => 'new']), 'bi-plus-lg', t('sqb_new'), 'reports'],
 			's_form_new'      => [nu_url('builder', ['new' => '1']), 'bi-plus-lg', t('builder_new_form'), 'forms'],
 			's_form_clone'    => [nu_url('cloner'), 'bi-files', t('home_clone_form'), 'forms'],
+			's_pages'         => [nu_url('forms', ['type' => 'page']), 'bi-filetype-php', t('upd_pages_title'), 'forms'],   // the list Custom pages (0.8.861)
 			'import'          => [nu_url('import'), 'bi-file-earmark-arrow-up', t('imp_title'), 'forms'],
 		];
 		if (isset($forms['nucodesnippet'])) $s['s_snippets'] = [nu_url('form', ['f' => 'nucodesnippet']), 'bi-file-earmark-code', t('nav_snippets'), 'forms'];
@@ -309,7 +310,7 @@ final class NuHome
 			'prompts'     => $add('s_prompt_new'),
 			'reports'     => ['menu', t('rpt_title_list'), array_values(array_filter([['bi-file-earmark-richtext', t('rpt_title_list'), nu_url('reports'), null],
 				$item('s_report_new'), $item('s_sqlbuilder'), $item('s_sqlbuilder_new')]))],
-			'forms'       => $menu(t('nav_forms'), ['s_form_new', 's_form_clone', 'import', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']),
+			'forms'       => $menu(t('nav_forms'), ['s_form_new', 's_pages', 's_form_clone', 'import', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']),
 			'apiclients'  => $menu(t('api_title'), ['s_api_new', 's_api_playground']),
 			'webhooks'    => $menu(t('wh_title'), ['s_wh_new', 's_wh_calls']),
 			'email'       => $menu(t('nav_email'), ['s_mail_settings', 's_mail_test', 's_mail_templates', 's_mail_template_new', 's_mail_log']),
@@ -605,7 +606,7 @@ final class NuHome
 		if (!$u) return [];
 		try {
 			if (!empty($u['demo'])) $all = $_SESSION['nu_home_view'] ?? [];
-			elseif (!empty($u['globeadmin'])) $all = json_decode((string)nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::VIEW_GA]), true);
+			elseif (!empty($u['globeadmin'])) $all = json_decode((string)nu_setting_value(self::VIEW_GA), true);
 			else $all = NuUserJson::get((string)$u['id'], self::VIEW_JSON);
 		} catch (Throwable) {
 			return [];
@@ -708,8 +709,7 @@ final class NuHome
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
+		nu_setting_save($id, $row, $db);
 	}
 
 	/** @return array{0: array, 1: string} [own tile, error text] */
@@ -1034,7 +1034,7 @@ final class NuHome
 		$db = nu_db();
 		NuSchema::create();
 		if (!$db->tableExists('zzzzsys_nunext_setting')) return;
-		$json = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+		$json = nu_setting_value(self::SETTING);
 		$d = is_string($json) ? json_decode($json, true) : null;
 		if (is_array($d) && !(int)$db->value('SELECT COUNT(*) FROM ' . NuListView::TABLE . ' WHERE list_key = ?', [self::LIST])) {
 			$id = nu_id();

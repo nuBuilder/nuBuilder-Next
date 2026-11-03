@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.824');
+define('NU_VERSION', '0.8.869');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -38,7 +38,7 @@ const NU_AUTOLOAD = [
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
-	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuFormRules' => 'core/form/nurules.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxStream' => 'core/nuxlsxstream.php', 'NuDataExport' => 'core/nudataexport.php', 'NuPermType' => 'core/nupermtype.php', 'NuFormEveryone' => 'core/nuformeveryone.php', 'NuFormStatus' => 'core/nuformstatus.php', 'NuSpreadsheet' => 'core/nuspreadsheet.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
+	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuSso' => 'core/nusso.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuFormRules' => 'core/form/nurules.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxStream' => 'core/nuxlsxstream.php', 'NuDataExport' => 'core/nudataexport.php', 'NuPermType' => 'core/nupermtype.php', 'NuFormEveryone' => 'core/nuformeveryone.php', 'NuFormStatus' => 'core/nuformstatus.php', 'NuSpreadsheet' => 'core/nuspreadsheet.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
 ];
 spl_autoload_register(static function (string $class): void {
 	if (isset(NU_AUTOLOAD[$class])) require_once NU_ROOT . '/' . NU_AUTOLOAD[$class];
@@ -326,6 +326,45 @@ function nu_redirect(string $url): never
 }
 
 /** nuBuilder-style primary key: uniqid() + 2-digit counter (15 chars, fits varchar(25)). */
+/**
+ * One row of nuBuilder Next's settings table (0.8.827): the value of zzzzsys_nunext_setting <id>, null when there is none. Cached per
+ * request and connection – a page used to read the same rows 15–20 times; every write to the table through NuDB clears the cache
+ * (NuDB::noteWrite), as does nu_setting_forget(). Callers keep their own JSON decoding and defaults.
+ */
+function nu_setting_value(string $id): ?string
+{
+	$db = nu_db();
+	$key = spl_object_id($db);
+	$cache = &nu_setting_cache();
+	if (!array_key_exists($key, $cache) || !array_key_exists($id, $cache[$key])) {
+		$v = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id]);
+		$cache[$key][$id] = $v === null || $v === false ? null : (string)$v;
+	}
+	return $cache[$key][$id];
+}
+
+/** Writes one settings row (update or insert): the pattern of NuHome::save() / NuUpdate::setKeepSql(), once (0.8.827). */
+function nu_setting_save(string $id, array $row, ?NuDB $db = null): void
+{
+	$db ??= nu_db();
+	if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
+	else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
+	nu_setting_forget();
+}
+
+function nu_setting_forget(): void
+{
+	$cache = &nu_setting_cache();
+	$cache = [];
+}
+
+/** @return array<int, array<string, ?string>> */
+function &nu_setting_cache(): array
+{
+	static $cache = [];
+	return $cache;
+}
+
 function nu_id(): string
 {
 	static $n = 0;

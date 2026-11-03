@@ -185,6 +185,6 @@ nu_layout_start(t('ipa_title'), 'home', ['container' => 'nuContainer', 'settings
 	</div>
 </div>
 
-<div class="small text-body-secondary mb-4" id="ipaCli"><i class="bi bi-terminal me-1" aria-hidden="true"></i><?= h(t('ipa_cli')) ?> <code>php cron.php iprules off</code></div>
+<div class="small text-body-secondary mb-4" id="ipaCli"><i class="bi bi-terminal me-1" aria-hidden="true"></i><?= h(t('ipa_cli')) ?> <code>php nucron.php iprules off</code></div>
 <?php
 nu_layout_end('<script src="' . nu_asset('assets/js/nuipaccess.js') . '"></script>');

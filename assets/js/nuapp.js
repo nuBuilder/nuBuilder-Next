@@ -1699,3 +1699,26 @@ window.nuPageNoGo = function (value) {
 	return true;
 };
 
+
+// 0.8.852: database tools (phpMyAdmin / Adminer) open in a new window by a one-time GET link – a POST with target=_blank loses its
+// body in the window of an installed app (Chrome "Install" / home screen) and showed System status. The window opens at once
+// (popup blockers), then gets the link; without fetch the form posts as before.
+(function () {
+	document.addEventListener('submit', function (e) {
+		var f = e.target;
+		if (!(f instanceof HTMLFormElement) || f.getAttribute('target') !== '_blank' || !/[?&]p=vendor(&|$)/.test(f.getAttribute('action') || '')) return;
+		var app = f.querySelector('input[name=app]');
+		if (!app || !/^(PMA|ADM|DB)$/i.test(app.value) || !window.fetch) return;
+		e.preventDefault();
+		var w = window.open('', '_blank');
+		var fd = new FormData(f);
+		fd.set('open', 'link');
+		fetch(f.getAttribute('action'), {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+			.then(function (r) { return r.json(); })
+			.then(function (j) {
+				if (!j || !j.url) throw new Error('no url');
+				if (w && !w.closed) w.location.href = j.url; else window.location.href = j.url;
+			})
+			.catch(function () { if (w && !w.closed) w.close(); f.removeAttribute('target'); HTMLFormElement.prototype.submit.call(f); });
+	}, true);
+})();

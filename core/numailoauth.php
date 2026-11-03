@@ -35,7 +35,7 @@ final class NuMailOAuth
 		if (self::$cache !== null) return self::$cache;
 		$v = [];
 		try {
-			$raw = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$raw = nu_setting_value(self::SETTING);
 			$v = is_string($raw) ? (array)(json_decode($raw, true) ?: []) : [];
 		} catch (Throwable) {
 		}
@@ -55,8 +55,7 @@ final class NuMailOAuth
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'),
 			'updated_by' => (string)(NuAuth::user()['login'] ?? '')];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::SETTING);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::SETTING] + $row);
+		nu_setting_save(self::SETTING, $row, $db);
 		self::$cache = null;
 	}
 
@@ -238,7 +237,7 @@ final class NuMailOAuth
 	public static function plainStored(): bool
 	{
 		try {
-			$raw = (string)nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$raw = (string)nu_setting_value(self::SETTING);
 		} catch (Throwable) {
 			return false;
 		}

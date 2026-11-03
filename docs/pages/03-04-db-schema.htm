@@ -54,6 +54,7 @@
 	<h3 id="db-schema-own">How nuBuilder Next's tables are created</h3>
 	<p>nuBuilder Next's tables are defined in code (<code>core/nuinfra.php</code>) and created by the installer or the globeadmin's sign-in on MySQL / MariaDB and SQL Server; missing columns of existing own tables are added by updates. nuBuilder Forte never reads them, its update keeps them, and its app cloner and backups treat them as system tables. The <a href="#selftest">Self-test</a> (developer mode) and the update page compare the actual structure with <code>install/schema_expected.json</code>.</p>
 	<p>Every table with its purpose: <a href="#table-ref">Database table reference</a>.</p>
+	<p data-doc="dev">Settings of nuBuilder Next itself are rows of <code>zzzzsys_nunext_setting</code>, read with <code>nu_setting_value($id)</code> (cached for the request; every write to the table through <code>NuDB</code> clears the cache) and written with <code>nu_setting_save($id, $row)</code>. <code>NuDB::tableExists()</code> answers from one listing of the database's tables per request; a CREATE / DROP / ALTER / RENAME through <code>NuDB</code> refreshes it.</p>
 </div>
 	<p class="doc-see">See also: <a href="#table-ref">Database table reference</a> · <a href="#databases">Databases: MySQL, MariaDB and SQL Server</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuinfra.php</code></li><li><code>core/nuschemacheck.php</code></li><li><code>install/schema_expected.json</code></li></ul></details>

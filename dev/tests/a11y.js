@@ -13,7 +13,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8099/nunext/';
 const AXE = process.env.AXE || path.join(__dirname, '..', '..', '..', 'node_modules', 'axe-core', 'axe.min.js');
 const GA = [process.env.ADMIN_USER || 'globeadmin', process.env.ADMIN_PW || 'nu'];
 const FAIL = (process.env.LEVEL || 'critical,serious').split(',');
-const ROUTES = ['login', 'home', 'users', 'user&id=new', 'access', 'accesslevel', 'permissions', 'forms', 'builder&new=1', 'items', 'files', 'formats',
+const ROUTES = ['login', 'home', 'users', 'user&id=new', 'access', 'accesslevel', 'permissions', 'forms', 'builder&new=1', 'builder&new=1&start=wizard', 'items', 'files', 'formats',
 	'translations', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'import', 'email', 'emailtemplates', 'log', 'sessions', 'vendor', 'settings',
 	'branding', 'dashboards', 'configfile', 'help', 'tutorial', 'compat', 'update', 'sample', 'securitycheck', 'audit', 'notifications',
 	'notifications&tab=manage', 'apiclients', 'adminroles', 'form&f=samplecustomer', 'form&f=samplecustomer&r=-1', 'form&f=sampleorder&r=-1', 'form&f=sampleall&r=-1', 'form&f=samplecustomer&r=-1&design=1'];

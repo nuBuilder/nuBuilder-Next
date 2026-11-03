@@ -10,7 +10,7 @@ defined('NU_ROOT') || exit;
  * address – a level without an entry uses the default. Checked when signing in (password, auto-login link, one-time login link –
  * before the second factor) and on every request (NuAuth::user: a session from another address ends). Not checked: REST API clients
  * (their own "Allowed IPs"), demo sessions; a globeadmin acting as a user is checked by the globeadmin's rule. The address is
- * nu_client_ip() – behind a proxy $nuConfigTrustProxy. Off from the shell: php cron.php iprules off.
+ * nu_client_ip() – behind a proxy $nuConfigTrustProxy. Off from the shell: php nucron.php iprules off.
  */
 final class NuIpAccess
 {
@@ -25,7 +25,7 @@ final class NuIpAccess
 		if (self::$cache !== null) return self::$cache;
 		$s = null;
 		try {
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEY]);
+			$v = nu_setting_value(self::KEY);
 			$s = is_string($v) ? json_decode($v, true) : null;
 		} catch (Throwable) {
 		}
@@ -59,8 +59,7 @@ final class NuIpAccess
 		NuSchema::ensure();
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($s, JSON_UNESCAPED_SLASHES), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::KEY])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', self::KEY);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::KEY] + $row);
+		nu_setting_save(self::KEY, $row, $db);
 		self::$cache = null;
 		return $s;
 	}
@@ -195,7 +194,7 @@ final class NuIpAccess
 		}
 	}
 
-	/** Switched off (cron.php iprules off): the rules stay stored. @return bool was on */
+	/** Switched off (nucron.php iprules off): the rules stay stored. @return bool was on */
 	public static function switchOff(string $by): bool
 	{
 		$s = self::settings();

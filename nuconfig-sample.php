@@ -112,7 +112,7 @@ $nuConfigFileMaxKB						= 300;						//-- Maximum size of files uploaded into for
 // MySQL / MariaDB only. The File Manager is the page nuFiles of nuBuilder Next (0.8.479; $nuConfigTFMURL is no longer used).
 //$nuConfigPMAURL						= "";						//-- Other URL of phpMyAdmin, e.g. "/nubuilder4/third_party/nudb/"
 // Adminer (optional, NOT part of the package): a library pack (Update → Libraries) or adminer.php in third_party/adminer/ –
-// it opens through dbadmin.php, logged in with the account above (also SQL Server).
+// it opens through nudbadmin.php, logged in with the account above (also SQL Server).
 //$nuConfigPrimaryDatabaseManagement	= "phpMyAdmin";				//-- Database buttons open "phpMyAdmin" or "Adminer" (▾ = the other one). Not set: phpMyAdmin when installed, else Adminer.
 
 // Updates (Admin tools → Update): backups of the program files and nuBuilder Next's tables, and the maintenance flag.

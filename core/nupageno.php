@@ -29,7 +29,7 @@ final class NuPageNo
 		'600.4' => ['settings', ['s' => 'security']], '600.5' => ['settings', ['s' => 'mail']], '600.6' => ['settings', ['s' => 'data']],
 		'600.7' => ['settings', ['s' => 'logs']], '600.8' => ['settings', ['s' => 'code']], '600.9' => ['settings', ['s' => 'updates']],
 		'610' => ['branding', []], '620' => ['themes', []], '630' => ['securitycheck', []], '630.1' => ['securitycheck', []], '630.2' => ['securitycheck', ['tab' => 'settings']],
-		'635' => ['ipaccess', []], '638' => ['pwpolicy', []], '640' => ['globalcode', []], '645' => ['jquery', []], '650' => ['configfile', []],
+		'635' => ['ipaccess', []], '636' => ['sso', []], '638' => ['pwpolicy', []], '640' => ['globalcode', []], '645' => ['jquery', []], '650' => ['configfile', []],
 		'660' => ['settings', ['s' => 'forte']],
 		'700' => ['update', []], '700.1' => ['update', []], '700.2' => ['update', ['tab' => 'backups']], '700.3' => ['update', ['tab' => 'history']],
 		'700.4' => ['update', ['tab' => 'libraries']], '700.5' => ['update', ['tab' => 'system']],

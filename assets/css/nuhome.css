@@ -480,3 +480,10 @@
 
 /* a form tile in maintenance (0.8.808) for someone who cannot open it: greyed, the badge says why */
 [data-nu-maint="1"] .nuHomeIcon, [data-nu-maint="1"] .nuHomeLabel, [data-nu-maint="1"] .nuHomeHint { opacity: .55; filter: grayscale(1); }
+/* selected search result (0.8.864, the owner's choice C of the mockup): darker solid blue, white bold title, near-white description,
+   icon on a white square – the default blue with dark Bootstrap text classes had too little contrast */
+.nuHomeSearchList > .list-group-item.active { background: #0a58ca; border-color: #0a58ca; color: #fff; }
+.nuHomeSearchList > .list-group-item.active .text-body { color: #fff !important; font-weight: 600; }
+.nuHomeSearchList > .list-group-item.active .text-body-secondary { color: #e7f1ff !important; }
+.nuHomeSearchList > .list-group-item.active .nu-tile-icon { background: #fff !important; color: #0a58ca !important; }
+.nuHomeSearchList > .list-group-item.active .nu-tile-icon .bi { color: inherit !important; }

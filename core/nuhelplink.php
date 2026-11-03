@@ -15,7 +15,7 @@ final class NuHelpLink
 		'formats' => 'formats', 'items' => 'items', 'page' => 'pages',
 		'users' => 'users', 'user' => 'users', 'userfields' => 'user-fields', 'import' => 'csv-import', 'dataexport' => 'data-export',
 		'access' => 'access', 'accesslevel' => 'access', 'permissions' => 'permissions', 'adminroles' => 'admin-roles',
-		'impersonate' => 'impersonate', 'sessions' => 'sessions', 'security' => 'security-check', 'securitycheck' => 'security-check', 'pwpolicy' => 'password-policy', 'ipaccess' => 'ip-access',
+		'impersonate' => 'impersonate', 'sessions' => 'sessions', 'security' => 'security-check', 'securitycheck' => 'security-check', 'pwpolicy' => 'password-policy', 'ipaccess' => 'ip-access', 'sso' => 'sso',
 		'log' => 'log', 'audit' => 'audit-trail', 'audithistory' => 'audit-trail', 'notifications' => 'notifications',
 		'dashboards' => 'dashboards', 'reports' => 'reports', 'report' => 'reports', 'reportdesigner' => 'reports', 'sqlbuilder' => 'sql-builder',
 		'procedures' => 'procedures', 'prompts' => 'prompts', 'email' => 'email', 'mailoauth' => 'email', 'emailtemplates' => 'email-templates',

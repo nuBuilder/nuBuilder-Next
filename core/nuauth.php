@@ -161,6 +161,48 @@ final class NuAuth
 	}
 
 	/**
+	 * Password not accepted for this user (0.8.863): an access level in the SSO setting "SSO only", or nuBuilder Forte's
+	 * $nuConfigLogonMode = 'sso' with the login name not in $nuConfigSsoOnlyExcept. Only while single sign-on is ready – a broken set-up
+	 * never locks everyone out.
+	 */
+	public static function ssoOnly(string $userId, string $accessId, string $login): bool
+	{
+		if (!NuSso::ready()) return false;
+		if (NuSso::requiredFor($userId, $accessId)) return true;
+		if (strtolower((string)nu_cfg('nuConfigLogonMode')) !== 'sso') return false;
+		$except = nu_cfg('nuConfigSsoOnlyExcept');
+		$except = is_array($except) ? $except : preg_split('/\s*,\s*/', (string)$except);
+		return !in_array(strtolower($login), array_map(static fn($x) => strtolower(trim((string)$x)), (array)$except), true);
+	}
+
+	/**
+	 * Sign-in through single sign-on (0.8.863, core/nusso.php): the provider has checked the person – no own second factor and no password
+	 * policy; expiry, access level and IP access as for every sign-in. Never the globeadmin. @return string|null null = signed in, else a text key
+	 */
+	public static function loginSso(array $row): ?string
+	{
+		$id = (string)$row['zzzzsys_user_id'];
+		$login = (string)$row['sus_login_name'];
+		$fail = static function (string $reason) use ($id, $login): string {
+			NuLog::write('login_failed', '', '', ['reason' => $reason, 'via' => 'sso'], ['id' => $id, 'login' => $login]);
+			return $reason;
+		};
+		if (NuSecurity::loginBlocked($login)) return 'login_err_locked';
+		$adminName = (string)nu_cfg('nuConfigDBGlobeadminUsername');
+		if ($adminName !== '' && hash_equals($adminName, $login)) return $fail('login_err_invalid');
+		if (class_exists('NuApiClient') && NuApiClient::isServiceUser($id)) return $fail('login_err_invalid');
+		if (nu_is_expired($row['sus_expires_on'])) return $fail('login_err_expired');
+		$accessId = (string)$row['sus_zzzzsys_access_id'];
+		if ($accessId === '' || !nu_db()->one('SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId])) return $fail('login_err_no_access');
+		$auth = ['id' => $id, 'globeadmin' => false, 'fp' => self::fingerprint((string)$row['sus_login_password']), 'login' => $login];
+		if (!NuIpAccess::allowsLogin($auth, 'sso')) return $fail('login_err_ip');
+		self::applyLanguage((string)$row['sus_language'], $id, true);
+		self::start($auth + ['via' => 'sso']);
+		NuLog::write('login', '', '', ['via' => 'sso'], $auth);
+		return self::startupHook();
+	}
+
+	/**
 	 * Password hash for nuBuilder's auto login (index.php?u=<login>&p=<hash>[&e=<expiry>]): HMAC-SHA256 of the stored password hash
 	 * with $nuConfigSecretKey – the stored hash itself never leaves the server, and the link stops working when the password changes.
 	 * Since 0.8.207 a link can expire (e = Unix time, signed) and all links of a user can be revoked (epoch in sus_json
@@ -287,6 +329,9 @@ final class NuAuth
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
 		$access   = $accessId !== '' ? $db->one('SELECT zzzzsys_access_id, sal_use_2fa FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId]) : null;
 		if (!$access) return 'login_err_no_access';
+		if (!NuDemo::isDemoUser((string)$row['zzzzsys_user_id']) && self::ssoOnly((string)$row['zzzzsys_user_id'], $accessId, (string)$row['sus_login_name'])) {
+			return 'login_err_sso_only';                    // single sign-on only (0.8.863): the password is refused, the globeadmin is never asked
+		}
 
 		$hash = (string)$row['sus_login_password'];
 		if (!$byHash && !self::md5Storage() && nu_cfg('nuConfigPasswordUpgrade') && ($legacy || password_needs_rehash($hash, PASSWORD_DEFAULT))) {
@@ -566,7 +611,7 @@ final class NuAuth
 				'display'         => $full !== '' ? $full : ((string)$row['sus_name'] !== '' ? (string)$row['sus_name'] : (string)$row['sus_login_name']),
 				'access_id'       => (string)$row['sus_zzzzsys_access_id'],
 				'email'           => (string)$row['sus_email'],
-				'change_password' => (string)$row['sus_change_password'] === '1' && !in_array($s['via'] ?? '', ['nubuilder', 'impersonated'], true),
+				'change_password' => (string)$row['sus_change_password'] === '1' && !in_array($s['via'] ?? '', ['nubuilder', 'impersonated', 'sso'], true),   // single sign-on: the provider owns the password (0.8.863)
 			];
 			// demo mode (core/nudemo.php): a demo user sees everything the globeadmin sees – read only from here on
 			if (NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])) {

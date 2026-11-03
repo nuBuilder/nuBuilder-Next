@@ -41,7 +41,7 @@ final class NuSetupWizard
 	{
 		try {
 			NuSchema::ensure();
-			$v = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::SETTING]);
+			$v = nu_setting_value(self::SETTING);
 			$d = is_string($v) ? json_decode($v, true) : null;
 			return is_array($d) ? $d : null;
 		} catch (Throwable) {
@@ -68,8 +68,7 @@ final class NuSetupWizard
 		$db = nu_db();
 		NuSchema::ensure();
 		$row = ['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id])) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', $id);
-		else $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $id] + $row);
+		nu_setting_save($id, $row, $db);
 	}
 
 	// ------------------------------------------------------------------ default language (nuBuilder's Setup → Language)
@@ -95,7 +94,7 @@ final class NuSetupWizard
 		if ($v === false) {
 			try {
 				NuSchema::ensure();
-				$x = nu_db()->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', ['lang_variant']);
+				$x = nu_setting_value('lang_variant');
 				$v = is_string($x) && isset(NU_LANG_VARIANTS[$x]) ? $x : null;
 			} catch (Throwable) {
 				$v = null;
@@ -321,6 +320,6 @@ final class NuSetupWizard
 	/** Cron line for the housekeeping (and pending unattended updates). */
 	public static function cronLine(): string
 	{
-		return '*/15 * * * * php ' . NU_ROOT . '/cron.php > /dev/null';
+		return '*/15 * * * * php ' . NU_ROOT . '/nucron.php > /dev/null';
 	}
 }
