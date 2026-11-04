@@ -95,6 +95,7 @@
 <tbody>
 <tr><td><code>$nuConfigDevMode</code></td><td>Forte</td><td><code>false</code></td><td>nuBuilder Forte's developer mode for the globeadmin: <code>#DEV_MODE#</code> = 1, <code>nuDevMode()</code>, templates and system procedures can be changed, and <em>Admin tools</em> shows <em>To do</em> – the open points of <code>TODO.md</code> as a page; each section folds (all folded when the page opens), <em>Expand all</em> / <em>Collapse all</em> opens or folds all of them – the <a href="#selftest">Self-test</a> and <a href="#db-reset">Reset database</a> (delete all tables and import a nuBuilder Forte SQL file). The password confirmation of dangerous actions lasts longer (Security check → <em>Ask for the password again in developer mode</em>, 8 hours by default).</td></tr>
 <tr><td><code>$nuConfigDebug</code></td><td>Next</td><td>false</td><td>Show error details on screen (also unexpected errors of a page) – true in <code>nuconfig.php</code> or in the shared settings table (with <code>$nuConfigSettingsFromDB</code>) is enough; the globeadmin in developer mode sees them as well</td></tr>
+<tr><td><code>$nuDevSelectQueryRunParameterised</code></td><td>Forte</td><td><code>false</code></td><td><code>true</code>: hash variables in the browse SQL and its columns, in select objects and in access conditions go to the database as bound parameters instead of text – nuBuilder Forte does it for select objects (<a href="#hash-bound">Bound parameters</a>)</td></tr>
 </tbody>
 </table>
 </div>
@@ -112,6 +113,7 @@
 <tr><td><code>php nucron.php update …</code></td><td>Unattended update from a URL, a zip file or GitHub (<a href="#update-unattended">Unattended update</a>)</td></tr>
 <tr><td><code>php nucron.php integrity [--json]</code></td><td>The <a href="#integrity">integrity check</a> of the database; exit code 1 when it finds problems</td></tr>
 <tr><td><code>php nucron.php iprules off</code></td><td>Switches <a href="#ip-access">IP access</a> off when its rules lock everybody out (the rules stay stored)</td></tr>
+<tr><td><code>php nucron.php passkeys off &lt;login name&gt;</code></td><td>Removes every <a href="#passkeys-admin">passkey</a> of a user – lost device; the globeadmin: his login name or <code>globeadmin</code></td></tr>
 <tr><td><code>php nucron.php reset --sql=&lt;file&gt; …</code></td><td>Developer mode only: <a href="#db-reset">Reset database</a></td></tr>
 </tbody>
 </table>

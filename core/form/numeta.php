@@ -174,6 +174,42 @@ final class NuFormMeta
 		}
 		return $out ?: true;
 	}
+	/**
+	 * Click action of a list column (0.8.872, sbr_json nunext.action – design mode → column → On click): a click on the cell opens another
+	 * form (record of the row, a column value or a new one), another list in the context of the row, runs a procedure / report or calls
+	 * a JavaScript function – instead of opening the row's edit form. {t, id, rec, open, pass, look, icon, label}; null = none.
+	 * nuBuilder Forte ignores it (the row opens its edit form there).
+	 */
+	public const ACTION_TYPES = ['form', 'list', 'proc', 'report', 'js'];
+	public static function cleanAction(mixed $a, bool $needTarget = false): ?array
+	{
+		if (!is_array($a)) return null;
+		$t = (string)($a['t'] ?? '');
+		$id = trim((string)($a['id'] ?? ''));
+		if (!in_array($t, self::ACTION_TYPES, true) || strlen($id) > 100) return null;
+		if ($id !== '' && ($t === 'js' ? !preg_match('/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/', $id) : !preg_match('/^[A-Za-z0-9_.\-]+$/', $id))) $id = '';
+		if ($id === '' && $needTarget) return null;          // stored while the target is still being chosen; inactive until then
+		$out = ['t' => $t, 'id' => $id];
+		if ($t === 'form') $out['rec'] = in_array($a['rec'] ?? '', ['row', 'value', 'new'], true) ? (string)$a['rec'] : 'row';
+		if ($t === 'form' || $t === 'list') $out['open'] = in_array((string)($a['open'] ?? ''), ['0', '2', '3'], true) ? (string)$a['open'] : '0';
+		if ($t !== 'js') {
+			$p = trim((string)($a['pass'] ?? ''));
+			$out['pass'] = preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,59}$/', $p) && !NuHash::isSystem($p) ? $p : 'PARENT_ID';
+		}
+		$out['look'] = in_array($a['look'] ?? '', ['link', 'button', 'icon'], true) ? (string)$a['look'] : 'link';
+		$icon = trim((string)($a['icon'] ?? ''));
+		if ($out['look'] !== 'link') $out['icon'] = preg_match('/^(bi-)?[a-z0-9-]{1,60}$/', $icon) ? (str_starts_with($icon, 'bi-') ? $icon : 'bi-' . $icon) : ($out['look'] === 'icon' ? 'bi-box-arrow-up-right' : '');
+		$label = trim((string)($a['label'] ?? ''));
+		if ($out['look'] !== 'link' && $label !== '') $out['label'] = mb_substr($label, 0, 60);
+		return $out;
+	}
+
+	/** The click action of a browse row's sbr_json, or null. */
+	public static function actionOf(?string $json): ?array
+	{
+		return self::cleanAction(self::nunextJson($json)['action'] ?? null, true);
+	}
+
 	/** The badge of a browse row's sbr_json: null, [] (default look) or the rules. */
 	public static function badgeOf(?string $json): ?array
 	{

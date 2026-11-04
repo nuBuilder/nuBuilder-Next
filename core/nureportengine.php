@@ -190,6 +190,7 @@ final class NuReportEngine
 	{
 		foreach ($this->out as $s) foreach ($s->objects as $o) {
 			if ($this->prop($o->id)?->objectType !== 'label') continue;
+			if (isset($o->html)) { $o->html = NuHash::replace($o->html, $this->hash, NuHash::HTML); continue; }   // values as text in HTML
 			foreach ($o->lines as $i => $l) $o->lines[$i] = NuHash::replace((string)$l, $this->hash, NuHash::RAW);
 		}
 	}
@@ -213,14 +214,19 @@ final class NuReportEngine
 			if ($last > $s->sectionTop) $page++;
 			$last = $s->sectionTop;
 			foreach ($s->objects as $o) {
-				if ($this->prop($o->id)?->objectType === 'label' && isset($o->lines[0])) $o->lines[0] = str_replace('#page#', (string)$page, (string)$o->lines[0]);
+				if ($this->prop($o->id)?->objectType !== 'label') continue;
+				if (isset($o->html)) $o->html = str_replace('#page#', (string)$page, $o->html);
+				elseif (isset($o->lines[0])) $o->lines[0] = str_replace('#page#', (string)$page, (string)$o->lines[0]);
 			}
 		}
 		$now = time();
 		$repl = ['#pages#' => (string)$page, '#description#' => $this->description, '#code#' => $this->code, '#year#' => date('y', $now), '#month#' => date('m', $now),
 			'#day#' => date('d', $now), '#hour#' => date('h', $now), '#hour24#' => date('H', $now), '#minute#' => date('i', $now), '#second#' => date('s', $now)];
+		$replHtml = array_map(static fn($v) => htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), $repl);
 		foreach ($this->out as $s) foreach ($s->objects as $o) {
-			if ($this->prop($o->id)?->objectType === 'label' && isset($o->lines[0])) $o->lines[0] = strtr((string)$o->lines[0], $repl);
+			if ($this->prop($o->id)?->objectType !== 'label') continue;
+			if (isset($o->html)) $o->html = strtr($o->html, $replHtml);
+			elseif (isset($o->lines[0])) $o->lines[0] = strtr((string)$o->lines[0], $repl);
 		}
 
 		$last = 10000;
@@ -234,6 +240,76 @@ final class NuReportEngine
 				if ($O->objectType === 'image') $this->printImage($s, $c, $O);
 			}
 		}
+	}
+
+	/** The content type of a field or label (0.8.874): its own contentType, else the report's "Fields contain HTML" switch. */
+	public function contentKind(object $O): string
+	{
+		$ct = (string)($O->contentType ?? '');
+		if (in_array($ct, ['text', 'html', 'md'], true)) return $ct;
+		return ($this->lay->ishtml ?? '') === 'Y' ? 'html' : 'text';
+	}
+
+	/** Text of a field or label → the HTML to print (Markdown converted), made safe. */
+	public static function contentHtml(string $text, string $kind): string
+	{
+		return self::safeHtml($kind === 'md' ? NuMarkdown::toHtml($text) : $text);
+	}
+
+	/**
+	 * HTML that TCPDF may print without reaching other places (0.8.874): <link> (TCPDF reads its style sheet), <script> and the like go;
+	 * <img> keeps data: URLs, http(s) addresses and paths of the web server's folder (as in nuBuilder Forte: photos per row), but no
+	 * other scheme (phar:, file: …) and no "..", one src only; links only http(s), mailto, #.
+	 */
+	public static function safeHtml(string $html): string
+	{
+		$attr = static function (string $tag, string $name): ?string {
+			if (preg_match_all('~(?<![\w-])' . $name . '\s*=~i', $tag) !== 1) return null;
+			if (!preg_match('~(?<![\w-])' . $name . '\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))~i', $tag, $m)) return null;
+			return trim(html_entity_decode(($m[1] ?? '') . ($m[2] ?? '') . ($m[3] ?? ''), ENT_QUOTES | ENT_HTML5));
+		};
+		$html = (string)preg_replace(['~<(script|iframe|object|embed)\b.*?</\1\s*>~is', '~<(link|meta|base|script|iframe|object|embed|tcpdf)\b[^>]*>~i'], '', $html);
+		$html = (string)preg_replace_callback('~<img\b[^>]*>~i', static function ($m) use ($attr) {
+			$src = $attr($m[0], 'src');
+			if ($src === null || $src === '' || preg_match('~[\x00-\x1f\\\\]~', $src)) return '';
+			if (preg_match('~^data:image/(png|jpe?g|gif|webp|svg\+xml);base64,~i', $src) || preg_match('~^https?://~i', $src)) return $m[0];
+			if (preg_match('~^[a-z][a-z0-9+.-]*:~i', $src) || preg_match('~(^|/)\.\.(/|$)~', $src) || str_starts_with($src, '@')) return '';
+			return $m[0];
+		}, $html);
+		return (string)preg_replace_callback('~<a\b[^>]*>~i', static function ($m) use ($attr) {
+			if (!preg_match('~(?<![\w-])href\s*=~i', $m[0])) return $m[0];
+			$href = $attr($m[0], 'href');
+			return $href !== null && preg_match('~^(https?://|mailto:|#)~i', $href) ? $m[0] : '<a>';
+		}, $html);
+	}
+
+	private ?TCPDF $measure = null;
+	/** @var array<string, float> */
+	private array $measured = [];
+
+	/** Height in mm of the HTML in a cell of the object's width and font – printed the same way on a scratch page. */
+	public function htmlHeight(object $O, string $html): float
+	{
+		[$family, $weight, $size] = $this->font($O);
+		$align = strtoupper(substr((string)$O->textAlign, 0, 1)) ?: 'L';
+		$key = md5($family . '|' . $weight . '|' . $size . '|' . $O->width . '|' . $align . '|' . $html);
+		if (isset($this->measured[$key])) return $this->measured[$key];
+		if (!$this->measure) {
+			$m = new NuTCPDF('P', 'mm', [1000, 10000], true, 'UTF-8', false);
+			$m->setPrintHeader(false);
+			$m->setPrintFooter(false);
+			$m->setMargins(0, 0, 0);
+			$m->setAutoPageBreak(false);
+			$this->measure = $m;
+		}
+		$m = $this->measure;
+		$m->AddPage();
+		$m->SetFont($family, $weight, $size, '', false);
+		$m->writeHTMLCell((float)$O->width, 0, 0, 0, $html, 0, 1, false, true, $align, true);
+		$h = (float)$m->GetY();
+		$m->deletePage($m->getPage());
+		if (count($this->measured) > 2000) $this->measured = [];
+		return $this->measured[$key] = $h;
 	}
 
 	public function font(object $O): array
@@ -262,13 +338,37 @@ final class NuReportEngine
 		$this->pdf->SetLineWidth($border / 5);
 		$top = $S->sectionTop + $c->top;
 		$this->pdf->SetXY((float)$O->left, $top);
+		if (isset($c->html)) { $this->printHtml($c, $O, $top, $border); return; }
 		$text = implode("\n", array_map('strval', $c->lines));
 		if (str_replace(["\r\n", "\r", "\n", "\t"], ' ', $text) === 'KEEP EXACT HEIGHT') {
 			$this->pdf->Rect((float)$O->left, $top, (float)$O->width, (float)$O->height, 'DF');
 		} else {
 			$align = strtoupper(substr((string)$O->textAlign, 0, 1)) ?: 'L';
-			$this->pdf->MultiCell((float)$O->width, (float)$O->height, $text, $border == 0 ? 0 : 1, $align, true, 0, '', '', true, 0, $this->lay->ishtml === 'Y', false);
+			$this->pdf->MultiCell((float)$O->width, (float)$O->height, $text, $border == 0 ? 0 : 1, $align, true, 0, '', '', true, 0, false, false);
 		}
+	}
+
+	/**
+	 * An HTML field or label (0.8.874): the part of the rendered HTML that belongs to this page – its lines are row numbers of the
+	 * object (row height = the object's height); the HTML is moved up by the rows printed before and clipped to the rows of this part.
+	 */
+	private function printHtml(object $c, object $O, float $top, float $border): void
+	{
+		$rowH = max(.25, (float)$O->height);
+		$first = (int)($c->lines[0] ?? 0);
+		$w = (float)$O->width;
+		$h = max(1, count($c->lines)) * $rowH;
+		$x = (float)$O->left;
+		$align = strtoupper(substr((string)$O->textAlign, 0, 1)) ?: 'L';
+		$this->pdf->Rect($x, $top, $w, $h, 'F');
+		$this->pdf->setAutoPageBreak(false);
+		$this->pdf->StartTransform();
+		$this->pdf->Rect($x, $top, $w, $h, 'CNZ');
+		if ($first > 0) $this->pdf->Translate(0, -$first * $rowH);
+		$this->pdf->writeHTMLCell($w, 0, $x, $top, (string)$c->html, 0, 0, false, true, $align, true);
+		$this->pdf->StopTransform();
+		$this->pdf->setAutoPageBreak(true);
+		if ($border != 0) $this->pdf->Rect($x, $top, $w, $h, 'D');
 	}
 
 	private function printImage(object $S, object $c, object $O): void
@@ -377,11 +477,25 @@ final class NuReportSection
 	private function rows(object $O, bool $stopGrow): array
 	{
 		$rows = [];
+		unset($O->html);
+		$text = $O->objectType === 'field' ? $this->engine->fieldValue($O, $this->row, $this->group) : (string)$O->fieldName;
+		$kind = $this->engine->contentKind($O);
+		if ($kind !== 'text' && trim($text) !== '' && str_replace(["\r\n", "\r", "\n", "\t"], ' ', $text) !== 'KEEP EXACT HEIGHT') {
+			// HTML / Markdown (0.8.874): as many rows as the rendered HTML is high; the rows are numbers, the HTML travels in ->html
+			$html = NuReportEngine::contentHtml($text, $kind);
+			$rowH = (float)$O->height;
+			$n = $stopGrow || $rowH <= 0 ? 1 : max(1, (int)ceil($this->engine->htmlHeight($O, $html) / $rowH - 1e-6));
+			if (!$stopGrow) {
+				if ($O->minRows > 0) $n = max($n, (int)$O->minRows);
+				if ($O->maxRows > 0) $n = min($n, (int)$O->maxRows);
+			}
+			$O->html = $html;
+			return array_map('strval', range(0, $n - 1));
+		}
 		if ($O->objectType === 'field') {
-			$text = $this->engine->fieldValue($O, $this->row, $this->group);
 			$lines = explode("\r", str_replace(["\n\r", "\r\n", "\n"], "\r", $text));
 		} else {
-			$lines = [(string)$O->fieldName];
+			$lines = [$text];
 		}
 		[$family, $weight, $size] = $this->engine->font($O);
 		$this->pdf->SetFont($family, $weight, $size);
@@ -454,6 +568,7 @@ final class NuReportSection
 				$p->image = $o->image ?? '';
 				if (isset($o->B)) { $p->B = $o->B; unset($o->B); }
 				if (isset($o->F)) { $p->F = $o->F; unset($o->F); }
+				if (isset($o->html)) $p->html = $o->html;
 				$p->lines = array_splice($o->LINES, 0, max(0, $fit));
 				if ($fit > 0) $parts[$oid][] = $p;
 				else $top = $this->paperTop();
@@ -499,6 +614,7 @@ final class NuReportSection
 			$p->top = $o->top;
 			$p->lines = $o->LINES;
 			$p->image = $o->image ?? '';
+			if (isset($o->html)) $p->html = $o->html;
 			$s->objects[] = $p;
 		}
 		$this->sections[] = $s;

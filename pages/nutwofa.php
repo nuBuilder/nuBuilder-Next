@@ -14,12 +14,13 @@ if (!$p) {
 
 $userId  = (string)$p['auth']['id'];
 $hasTotp = NuTwoFA::hasTotp($userId);
+$hasPk   = NuPasskey::has($userId);                        // passkeys (0.8.877): offered first when the user has one
 $canMail = trim((string)$p['email']) !== '' && NuMail::configured();
 $error   = null;
 
 // choose the method once: authenticator if set up, else e-mail code, else set up an authenticator now
 if (empty($p['method'])) {
-	$p['method'] = $hasTotp ? 'totp' : ($canMail ? 'mail' : 'enroll');
+	$p['method'] = $hasPk ? 'passkey' : ($hasTotp ? 'totp' : ($canMail ? 'mail' : 'enroll'));
 	if ($p['method'] === 'mail') {
 		$err = NuTwoFA::sendMailCode($p);
 		if ($err !== null) { $p['method'] = 'enroll'; nu_flash('warning', t($err)); }
@@ -45,6 +46,12 @@ if (nu_is_post()) {
 		NuAuth::updatePending($p);
 		if ($err !== null && $err !== 'twofa_err_wait') nu_flash('danger', t($err));
 		elseif ($err === null) nu_flash('success', t('twofa_mail_sent', NuTwoFA::maskEmail((string)$p['email'])));
+		nu_redirect(nu_url('twofa'));
+	}
+
+	if ($action === 'use_passkey' && $hasPk) {
+		$p['method'] = 'passkey';
+		NuAuth::updatePending($p);
 		nu_redirect(nu_url('twofa'));
 	}
 
@@ -97,9 +104,10 @@ if (nu_is_post()) {
 }
 
 $method = $p['method'];
+if ($method === 'passkey' && !$hasPk) $method = $hasTotp ? 'totp' : ($canMail ? 'mail' : 'enroll');   // passkeys switched off meanwhile
 $foot   = $method === 'enroll'
 	? '<script src="' . nu_asset(NU_QRCODE . '/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>'
-	: '';
+	: ($method === 'passkey' ? NuPasskey::script() : '');
 
 nu_center_start(t('twofa_title'), t('twofa_subtitle_' . $method), 'bi-shield-lock');
 ?>
@@ -119,6 +127,16 @@ nu_center_start(t('twofa_title'), t('twofa_subtitle_' . $method), 'bi-shield-loc
 	<p class="text-center"><code class="nuSecret user-select-all"><?= h(trim(chunk_split((string)$p['secret'], 4, ' '))) ?></code></p>
 <?php endif; ?>
 
+<?php if ($method === 'passkey'): ?>
+	<?= nu_csrf_field() ?>
+	<div class="mb-3"><?= NuPasskey::button('2fa', t('pk_use'), 'btn btn-primary w-100 py-2', 'nuPk2fa') ?></div>
+	<?php if (NuTwoFA::trustDays() > 0): ?>
+		<div class="form-check mb-3">
+			<input class="form-check-input" type="checkbox" id="trust" name="trust" value="1">
+			<label class="form-check-label small" for="trust"><?= h(t('twofa_trust', NuTwoFA::trustDays())) ?></label>
+		</div>
+	<?php endif; ?>
+<?php else: ?>
 <form method="post" action="<?= h(nu_url('twofa')) ?>" novalidate>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="verify">
 	<div class="form-floating mb-3">
@@ -134,22 +152,21 @@ nu_center_start(t('twofa_title'), t('twofa_subtitle_' . $method), 'bi-shield-loc
 	<?php endif; ?>
 	<button class="btn btn-primary w-100 py-2" type="submit"><i class="bi bi-check-lg me-2"></i><?= h(t('twofa_verify')) ?></button>
 </form>
+<?php endif; ?>
 
+<?php
+// links below the form, one separator between each (0.8.877: built as a list)
+$link = static fn(string $action, string $label, string $extra = '', string $cls = 'btn btn-link btn-sm p-0'): string => '<form method="post" action="' . h(nu_url('twofa')) . '">' . nu_csrf_field()
+	. '<input type="hidden" name="action" value="' . $action . '"><button class="' . $cls . '" type="submit"' . $extra . '>' . $label . '</button></form>';
+$links = [];
+if ($hasPk && $method !== 'passkey') $links[] = $link('use_passkey', '<i class="bi bi-fingerprint me-1" aria-hidden="true"></i>' . h(t('pk_use')), ' id="nuPkUse2fa"');
+if ($method === 'mail') $links[] = $link('resend', h(t('twofa_resend')));
+if ($hasTotp && $method !== 'totp') $links[] = $link('use_totp', h(t('twofa_use_app')));
+if ($canMail && $method !== 'mail') $links[] = $link('use_mail', h(t('twofa_use_mail')));
+$links[] = $link('cancel', h(t('cancel')), '', 'btn btn-link btn-sm p-0 text-body-secondary');
+?>
 <div class="d-flex flex-wrap justify-content-center gap-2 mt-3 small">
-	<?php if ($method === 'mail'): ?>
-		<form method="post" action="<?= h(nu_url('twofa')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="resend">
-			<button class="btn btn-link btn-sm p-0" type="submit"><?= h(t('twofa_resend')) ?></button></form>
-		<?php if ($hasTotp): ?><span class="text-body-tertiary">·</span>
-		<form method="post" action="<?= h(nu_url('twofa')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="use_totp">
-			<button class="btn btn-link btn-sm p-0" type="submit"><?= h(t('twofa_use_app')) ?></button></form>
-		<?php endif; ?>
-	<?php elseif ($canMail): ?>
-		<form method="post" action="<?= h(nu_url('twofa')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="use_mail">
-			<button class="btn btn-link btn-sm p-0" type="submit"><?= h(t('twofa_use_mail')) ?></button></form>
-	<?php endif; ?>
-	<span class="text-body-tertiary">·</span>
-	<form method="post" action="<?= h(nu_url('twofa')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="cancel">
-		<button class="btn btn-link btn-sm p-0 text-body-secondary" type="submit"><?= h(t('cancel')) ?></button></form>
+	<?= implode('<span class="text-body-tertiary">·</span>', $links) ?>
 </div>
 <?php
 nu_center_end($foot);

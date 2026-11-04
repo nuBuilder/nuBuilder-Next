@@ -602,21 +602,14 @@ if (!function_exists('db_fetch_value')) {
 	{
 		$sql = (string)$sql;
 		if ((string)$id !== '') $sql = str_replace('#OBJECT_ID#', (string)$id, $sql);
-		$s = trim(nuReplaceHashVariables($sql));
-		if (preg_match('/^\s*(SELECT|WITH|SHOW)\b/i', $s)) {
+		// the formats of the select object (NuSelectSource, 0.8.879), with nuBuilder Forte's own result; SQL through nuRunQuery
+		$run = static function (string $q): array {
 			$out = [];
-			$r = nuRunQuery($s);
+			$r = nuRunQuery($q);
 			while (($row = db_fetch_row($r)) !== false) $out[] = $row;
 			return $out;
-		}
-		if (str_starts_with($s, '[')) {
-			$a = json_decode($s, true);
-			return is_array($a) ? array_map(static fn($x) => [$x, $x], $a) : [];
-		}
-		$parts = explode('|', nuRemoveNonCharacters($s));
-		$out = [];
-		for ($i = 0, $n = count($parts); $i < $n; $i += 2) $out[] = [$parts[$i], $parts[$i + 1] ?? 'Undefined'];
-		return $out;
+		};
+		return NuSelectSource::options(trim(nuReplaceHashVariables($sql)), [], true, $run);
 	}
 
 	/** Options of a datalist: SELECT (first column), JSON array or comma separated list. */

@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 25;
+	public const VERSION = 26;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -152,6 +152,13 @@ final class NuSchema
 			'cols' => [['call_id', 'text', '25'], ['tried_at', 'datetime'], ['attempt', 'int'], ['http_code', 'int'], ['ms', 'int'], ['error', 'text', '255'], ['response', 'text', '1000']],
 			'index' => ['call_id'],
 		],
+		'zzzzsys_nunext_passkey' => [                             // passkeys (0.8.877, core/nupasskey.php): pk = sha256 of the raw credential id
+			'pk' => 'zzzzsys_nunext_passkey_id',
+			'cols' => [['user_id', 'text', '25'], ['cred_id', 'text', '1400'], ['public_key', 'longtext'], ['alg', 'int'], ['sign_count', 'bigint'],
+				['user_handle', 'text', '100'], ['name', 'text', '100'], ['aaguid', 'text', '36'], ['transports', 'text', '100'], ['backup', 'text', '1'],
+				['created_at', 'datetime'], ['last_used_at', 'datetime']],
+			'index' => ['user_id'],
+		],
 		'zzzzsys_nunext_permission_type' => [                     // types of permission items (0.8.773, core/nupermtype.php): pk = zzzzsys_permission_item_id
 			'pk' => 'zzzzsys_nunext_permission_type_id',
 			'cols' => [['type', 'text', '30'], ['settings', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
@@ -260,7 +267,7 @@ final class NuSchema
 		return self::TABLES;
 	}
 
-	private const HASH_PK = ['zzzzsys_nunext_token', 'zzzzsys_nunext_session', 'zzzzsys_nunext_api_token', 'zzzzsys_nunext_api_rate'];
+	private const HASH_PK = ['zzzzsys_nunext_token', 'zzzzsys_nunext_session', 'zzzzsys_nunext_api_token', 'zzzzsys_nunext_api_rate', 'zzzzsys_nunext_passkey'];
 
 	/**
 	 * Indexes added after a table existed (0.8.761, step 0031 and every create()): single columns of TABLES 'index' that are missing, and the

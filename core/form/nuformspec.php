@@ -112,11 +112,9 @@ final class NuFormSpec
 		if ($a === '1') $s['readonly'] = true; elseif ($a === '2') $s['hidden'] = true; elseif ($a !== '' && $a !== '0') $s['access'] = (int)$a;
 		if ($type === 'select') {
 			$sql = trim((string)($o['sob_select_sql'] ?? ''));
-			if ($sql !== '' && !preg_match('/^\s*(select|with)\b/i', $sql)) {
-				$p = explode('|', $sql);
-				$s['options'] = [];
-				for ($i = 0, $n = count($p); $i + 1 < $n; $i += 2) $s['options'][] = [$p[$i], $p[$i + 1]];
-			} elseif ($sql !== '') $s['sql'] = $sql;
+			// a list written into the object (pipe list or JSON) → options; SQL, SHOW TABLES, %LANGUAGES% → sql as written (NuSelectSource)
+			if (NuSelectSource::isFixed($sql)) $s['options'] = NuSelectSource::options($sql);
+			elseif ($sql !== '') $s['sql'] = $sql;
 			if ((string)($o['sob_select_multiple'] ?? '') === '1') $s['multiple'] = true;
 		}
 		if ($type === 'display' && trim((string)($o['sob_display_sql'] ?? '')) !== '') $s['sql'] = (string)$o['sob_display_sql'];
@@ -543,13 +541,15 @@ TXT;
 		$row['sob_all_align'] ??= $type === 'input' && in_array($row['sob_input_type'], ['number', 'nuNumber'], true) ? 'right' : 'left';
 		if ($type === 'select') {
 			if (isset($o['options']) && is_array($o['options'])) {
-				$parts = [];
+				$parts = $pairs = [];
 				foreach ($o['options'] as $op) {
-					[$v, $tx] = is_array($op) ? [(string)($op[0] ?? ''), (string)($op[1] ?? $op[0] ?? '')] : [(string)$op, (string)$op];
+					[$v, $tx] = $pairs[] = is_array($op) ? [(string)($op[0] ?? ''), (string)($op[1] ?? $op[0] ?? '')] : [(string)$op, (string)$op];
 					$parts[] = str_replace('|', '/', $v);
 					$parts[] = str_replace('|', '/', $tx);
 				}
-				$row['sob_select_sql'] = implode('|', $parts);
+				// unchanged options keep the source as written (a JSON list stays JSON, hash variables stay; 0.8.879)
+				$old = (string)($row['sob_select_sql'] ?? '');
+				if (!NuSelectSource::isFixed($old) || NuSelectSource::options($old) !== $pairs) $row['sob_select_sql'] = implode('|', $parts);
 			} elseif (isset($o['sql'])) $row['sob_select_sql'] = (string)$o['sql'];
 			if (array_key_exists('multiple', $o)) $row['sob_select_multiple'] = !empty($o['multiple']) ? '1' : '0';
 		}

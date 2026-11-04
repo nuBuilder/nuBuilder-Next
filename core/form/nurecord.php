@@ -511,7 +511,7 @@ final class NuRecord
 		$key = (string)($o['zzzzsys_object_id'] ?? '') . "\x1f" . (string)($hash['RECORD_ID'] ?? '') . "\x1f" . md5($cond);
 		if (isset(self::$accessCache[$key])) return self::$accessCache[$key];
 		try {
-			$sql = NuHash::replace($cond, $hash, NuHash::SQL);
+			$sql = NuHash::sql($cond, $hash);                  // bound with $nuDevSelectQueryRunParameterised (0.8.873)
 			$rows = nu_db()->readOnly(static fn() => nu_db()->all($sql));
 			$v = count($rows) === 1 ? (string)(array_values($rows[0])[0] ?? '0') : '0';
 			$v = in_array($v, ['0', '1', '2', '3', '4'], true) ? $v : '0';

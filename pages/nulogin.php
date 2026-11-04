@@ -59,6 +59,14 @@ function nu_login_sso_block(?string $next): string
 		. h(NuSso::buttonLabel()) . '</a><div class="nuLoginOr"><span>' . h(t('login_or')) . '</span></div></div>';
 }
 
+/** "Sign in with a passkey" (0.8.877, Security setting passkey_login): below the password form; '' while passkeys cannot sign in here. */
+function nu_login_passkey_block(): string
+{
+	if (!NuPasskey::loginReady()) return '';
+	return '<div class="nuLoginPasskey">' . nu_csrf_field() . '<div class="nuLoginOr"><span>' . h(t('login_or')) . '</span></div>'
+		. NuPasskey::button('login', t('pk_login_btn'), 'btn btn-outline-primary w-100 py-2', 'nuPkLogin') . '</div>';
+}
+
 /** nuBuilder Forte's $nuConfigLogonMode = 'sso': the password form is folded behind a link (only while SSO is ready). */
 function nu_login_sso_first(): bool
 {
@@ -116,6 +124,7 @@ if ($custom !== null) {
 <?php endif; ?>
 <?= $custom ?>
 <?php if (($sso = nu_login_sso_block($next)) !== ''): ?><div class="nuLoginSsoCustom"><?= $sso ?></div><?php endif; ?>
+<?php if (($pk = nu_login_passkey_block()) !== ''): ?><div class="nuLoginPasskeyCustom"><?= $pk ?></div><?php endif; ?>
 <?php if (($demo = nu_login_demo_block($loginAction, $next)) !== ''): ?><div class="nuLoginDemoCustom"><?= $demo ?></div><?php endif; ?>
 <?php if (NuMail::configured()): ?>
 	<div class="text-center mt-3"><a class="small text-decoration-none" href="<?= h(nu_url('forgot')) ?>"><?= h(t('forgot_link')) ?></a></div>
@@ -125,6 +134,7 @@ if ($custom !== null) {
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nulogincustom.js') ?>"></script>
+<?= NuPasskey::loginReady() ? NuPasskey::script() : '' ?>
 <?= NuCustomCode::jsTag() ?>
 </body>
 </html>
@@ -172,7 +182,7 @@ nu_head(t('login_title'));
 				<?php if ($next !== null): ?><input type="hidden" name="next" value="<?= h($next) ?>"><?php endif; ?>
 				<div class="form-floating mb-3">
 					<input type="text" class="form-control" id="username" name="username" value="<?= h($login) ?>"
-						   placeholder="<?= h(t('login_username')) ?>" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="50" required autofocus>
+						   placeholder="<?= h(t('login_username')) ?>" autocomplete="username<?= NuPasskey::loginReady() ? ' webauthn' : '' ?>" autocapitalize="off" spellcheck="false" maxlength="50" required autofocus>
 					<label for="username"><?= h(t('login_username')) ?></label>
 				</div>
 				<div class="form-floating mb-4 nu-pw">
@@ -184,6 +194,7 @@ nu_head(t('login_title'));
 				<button class="btn btn-primary w-100 py-2" type="submit"><i class="bi bi-box-arrow-in-right me-2"></i><?= h(t('login_submit')) ?></button>
 			</form>
 			<?php if ($ssoFirst): ?></div></details><?php endif; ?>
+			<?= nu_login_passkey_block() ?>
 			<?= nu_login_demo_block($loginAction, $next) ?>
 			<?php if (NuMail::configured()): ?>
 				<div class="text-center mt-3"><a class="small text-decoration-none" href="<?= h(nu_url('forgot')) ?>"><?= h(t('forgot_link')) ?></a></div>
@@ -195,6 +206,7 @@ nu_head(t('login_title'));
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
+<?= NuPasskey::loginReady() ? NuPasskey::script() : '' ?>
 <?= NuCustomCode::jsTag() ?>
 </body>
 </html>

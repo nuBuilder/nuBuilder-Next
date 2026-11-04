@@ -977,14 +977,15 @@
     "g": "form",
     "n": "nuSelectOptions",
     "s": "nuSelectOptions($sql, $id = ''): array",
-    "d": "Options of a select object's SQL – a SELECT, a JSON array or \"v1|t1|v2|t2\".",
+    "d": "Options of a select object's source, read as the select object reads it: a SELECT (also after \"-- \" comment lines), a JSON array, \"v1|t1|v2|t2\", SHOW TABLES or %LANGUAGES%. Hash variables are filled in first; the result is nuBuilder Forte's (an odd last value gets the text 'Undefined').",
+    "h": "select-options",
     "r": "array of [value, text]",
     "o": "nb",
     "e": "$opt = nuSelectOptions('open|Open|paid|Paid');",
     "x": "[['open', 'Open'], ['paid', 'Paid']]",
     "p": {
-     "$sql": "SELECT, JSON array or \"v1|t1|v2|t2\"",
-     "$id": "object id (for its hash)"
+     "$sql": "SELECT, JSON array, \"v1|t1|v2|t2\", SHOW TABLES or %LANGUAGES%",
+     "$id": "object id – fills in #OBJECT_ID#"
     }
    },
    {
@@ -5832,12 +5833,12 @@
     "g": "sub",
     "n": "nuSubformAddFilter",
     "s": "nuSubformAddFilter(filter)",
-    "d": "Filter fields above subform columns.",
+    "d": "Filter fields above subform columns: a select with the values found in the column, or a search box. Lookup columns are filtered by their code, selects by the option text – as in nuBuilder Forte.",
     "r": "",
     "o": "nb",
     "e": "nuSubformAddFilter({items_sf: ['ite_product']});",
     "p": {
-     "filter": "{subform id: [columns]}"
+     "filter": "{subform id: [columns]} or {subform id: {column: {type: 'select' | 'search', all, blank, placeholder, width}}}"
     }
    },
    {

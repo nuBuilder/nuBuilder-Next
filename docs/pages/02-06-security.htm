@@ -1,6 +1,6 @@
 <section id="security">
 	<h2 id="security-h">Your password and two-step login</h2>
-	<p class="doc-lead">Changing your password and setting up a second factor.</p>
+	<p class="doc-lead">Changing your password, setting up a second factor and signing in with a passkey.</p>
 	<p class="doc-for" data-doc="admin">For: Everyone</p>
 	<p>Open the <em>Security</em> tile of the start page (users without an admin role: the user menu).</p>
 	<div class="doc-sub">
@@ -11,11 +11,24 @@
 <h3 id="twofa">Two-step login (2FA)</h3>
 <ul>
 <li><strong>Authenticator app</strong> (Microsoft / Google Authenticator, …): scan the QR code and confirm with a code. From then on you enter the 6-digit code of the app after your password.</li>
+<li><strong>Passkey</strong>: after your password, <em>Use a passkey</em> – your device asks for its fingerprint, face or PIN instead of a code (see <a href="#passkeys">below</a>).</li>
 <li><strong>Code by e-mail</strong>: if no app is set up, a 6-digit code is sent to your e-mail address.</li>
 <li><strong>Remember this device</strong>: no code is asked on this browser for a number of days.</li>
 <li>Lost your phone? Ask your administrator to reset your two-step login.</li>
 </ul>
 </div>
-	<p class="doc-see">See also: <a href="#signin-methods">Sign-in methods</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nusecurity.php</code></li><li><code>core/nutwofa.php</code></li></ul></details>
+	<div class="doc-sub">
+<h3 id="passkeys">Passkeys</h3>
+<p>A passkey signs you in with your device's fingerprint, face or PIN instead of a code. It is kept on this computer, your phone, a security key or in a password manager (then it is <em>synced</em> to your other devices), and it only works for the address of this site – a fake site cannot use it.</p>
+<ul>
+<li><strong>Add one</strong>: <em>Security</em> → <em>Passkeys</em> → a name (e.g. <em>Laptop</em>) → <em>Add a passkey</em>, then confirm on your device. You may have to confirm your password first. Add one per device you use.</li>
+<li><strong>Second step after the password</strong>: when your account needs two-step login, the second step asks for your passkey first; <em>Use authenticator app</em> and <em>Send a code by e-mail instead</em> stay available below it.</li>
+<li><strong>Without a password</strong> (when your administrator switched it on): <em>Sign in with a passkey</em> on the sign-in page, or pick the passkey in the list the user name field shows.</li>
+<li><strong>Confirming dangerous actions</strong>: where the password is asked again, <em>Confirm with a passkey</em> works too.</li>
+<li><strong>Remove one</strong> with its bin button. Lost a device? Remove its passkey from another device, or ask your administrator.</li>
+<li>Passkeys need an <code>https</code> address; elsewhere the card says so.</li>
+</ul>
+</div>
+	<p class="doc-see">See also: <a href="#signin-methods">Sign-in methods</a> · <a href="#passkeys-admin">Passkeys for administrators</a></p>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>pages/nusecurity.php</code></li><li><code>core/nutwofa.php</code></li><li><code>core/nupasskey.php</code></li></ul></details>
 </section>

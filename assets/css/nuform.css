@@ -504,3 +504,6 @@ html.nuEmbedded .nuListCard .nuListFilter, html.nuEmbedded .nuBrowseCard .nuList
 /* nuBuilder Forte's list settings (0.8.820): multi-line titles, columns fitted to the width (row height: style on the rows) */
 .nuBrowseTable.nuBrowseMultiline > thead > tr > th { white-space: normal; vertical-align: bottom; }
 .nuBrowseTable.nuBrowseAutoFit { width: 100%; }
+/* click actions of list cells (0.8.872): link look keeps the cell's text size, buttons stay small */
+#nuBrowseTable .nuCellActLink { font-size: inherit; text-align: inherit; vertical-align: baseline; }
+#nuBrowseTable .nuCellActBtn, #nuBrowseTable .nuCellActIcon { padding: .1rem .45rem; line-height: 1.3; }

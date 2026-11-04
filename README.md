@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.869 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.881 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -48,21 +48,21 @@ nuBuilder Next streamlines everyday database work:
 ### 👥 For Everyone
 
 - ✅ **Responsive** – works on phones, tablets and desktops; menus, lists and toolbars adapt to the screen.
-- ✅ **Fast Lists** – search, filter, sort and page through records; an advanced search with conditions per column (contains, between, last 30 days …) and saved searches; coloured badges for status values; Print, Copy (pastes as a table into Excel or Word), CSV and Excel export.
+- ✅ **Fast Lists** – search, filter, sort and page through records; an advanced search with conditions per column (contains, between, last 30 days …) and saved searches; coloured badges for status values; values that open a related form, a list filtered by the row, a procedure or a report on click (as a link, button or icon); Print, Copy (pastes as a table into Excel or Word), CSV and Excel export.
 - ✅ **Comfortable Editing** – sub-forms, lookups and file uploads; required and unique fields are marked; unsaved changes are shown; Clone opens an unsaved copy, as in nuBuilder Forte.
 - ✅ **Dashboards on the Start Page** – KPI tiles, charts and tables for your access level.
 - ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
 - ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists the actions without a button of their own, with their shortcuts.
-- ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code), *Forgot password* with a one-time e-mail link and single sign-on with OpenID Connect (Microsoft Entra ID, Google Workspace, Keycloak …; access levels from the provider's groups, "SSO only" per access level).
+- ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code), *Forgot password* with a one-time e-mail link and single sign-on with OpenID Connect (Microsoft Entra ID, Google Workspace, Keycloak …; access levels from the provider's groups, "SSO only" per access level) and passkeys (fingerprint, face or PIN – as the second step or without a password).
 - ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left; UK / US / Australian English, German / Swiss German), light, dark or automatic mode, five built-in designs plus your own (colours, buttons, fields, tabs, fonts – per access level or chosen by the user); checked against WCAG 2.1 A/AA.
 
 ### 🏗️ For Building Business Applications
 
 - ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, every list setting and column in one Browse list window (drag to reorder), validation rules without code (builder or expression, errors or warnings, sub-form rows, hash variables, per access level), drafts you publish when ready (with a note or in one click), keyboard shortcuts (rename, copy and paste objects – also between forms –, undo), a phone layout with a bottom sheet, and a safe mode for broken form code; a New form wizard that picks the table's (or view's) columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons (forms, reports, procedures or a URL; a button to a form, report or procedure shows only for users who may open it); change a column's type with a data check first; a Maintenance status that closes a form for users with a message; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
 - ✅ **Custom Pages** – your own PHP apps inside nuBuilder Next (created from Forms → Add, listed under Forms → Tools), with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
-- ✅ **Report Designer & SQL Builder** – design reports visually, build queries without writing SQL and run reports as PDF.
+- ✅ **Report Designer & SQL Builder** – design reports visually (fields and labels as text, HTML or Markdown, growing to the height they print), build queries without writing SQL and run reports as PDF.
 - ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
-- ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with syntax colours and a syntax check (JavaScript, PHP, CSS, HTML) before saving, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
+- ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte (optionally passed to the database as bound parameters); a code editor with syntax colours and a syntax check (JavaScript, PHP, CSS, HTML) before saving, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
 - ✅ **E-mail & Templates** – SMTP settings with a test mail and a connection check that sends nothing, login with OAuth 2 (Google, Microsoft 365), e-mail templates with field placeholders and an e-mail log.
 - ✅ **Data import** – CSV files (and Excel / OpenDocument workbooks with the PhpSpreadsheet pack) into any table, with automatic encoding / separator detection and column mapping.
 - ✅ **Data export** – saved exports of tables, views and queries to Excel or CSV: columns, conditions, sorting, parameters, several sheets per file, streamed for any size; also through the REST API.

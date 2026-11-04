@@ -37,6 +37,31 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
 
+## 0.8.876–0.8.879 – please verify
+- Sub-form filters (`nuSubformAddFilter`) on your own forms with a lookup column: the select lists the codes, a typed search matches the
+  code – form code that compared the description in `nuSubformOnFilterRows` (`data.val`) gets the code now, as in nuBuilder Forte.
+- Select options of your own forms: SQL that starts with `-- ` comment lines, hash variables in `value|text` and JSON lists,
+  `SHOW TABLES` / `%LANGUAGES%` (the language names come from nuBuilder Forte's `core/languages/` – without nuBuilder Forte next to
+  nuBuilder Next: the installed languages), the same form opened in nuBuilder Forte; `nuSelectOptions()` in a procedure; SQL Server:
+  `SHOW TABLES` from the catalogue.
+
+## 0.8.877 Passkeys – please verify
+- On the live server (https, the real domain): add a passkey with Windows Hello, Touch ID / Face ID, an Android phone and a security key;
+  a synced passkey (iCloud Keychain / Google Password Manager) on a second device; the second factor and – with the switch on – the sign-in
+  without a password, also from the user name field; *Confirm with a passkey* before a dangerous action.
+- Behind the reverse proxy: `$nuConfigBaseURL` set – the origin check uses its host; a wrong one shows "could not be checked" (the log says why).
+- Lost device: remove a user's passkey on the user form; `php nucron.php passkeys off <login>` for the globeadmin.
+- SQL Server: the table zzzzsys_nunext_passkey (cred_id 1400 characters, bigint counter) is created by the update.
+
+## 0.8.870–0.8.874 – please verify
+- Data import: the *Templates* menu in step 1 (users template ZIP) for a user with only the user import right.
+- Column click actions on a real list: open a form / a filtered list (`'#PARENT_ID#'` in the target's browse SQL), a procedure and a report;
+  Ctrl + click, phones (the cell button inside the card view), a user without the right on the target (plain value).
+- `$nuDevSelectQueryRunParameterised = true` with your own browse SQL, selects and access conditions – especially hash variables inside
+  longer strings (`LIKE '%#X#%'`) and on SQL Server.
+- Reports: an existing report with "Fields contain HTML" on real data (page breaks follow the printed height now); an HTML / Markdown field
+  that runs over a page break; the same report opened and saved in nuBuilder Forte's designer (is `contentType` kept?).
+
 ## 0.8.864–0.8.868 – please verify
 - Start page search: selected result in dark blue with white text – readable in light and dark mode, also with an own theme (accent colour).
 - Update → Libraries: status "Installed (pack / nuBuilder Forte's copy / copied by hand)" on a live server.
@@ -308,10 +333,12 @@ Global includes exist already ($nuConfigIncludeJS / CSS / PHP), page forms live 
   whether a small compatibility CSS for the old responsive classes ships with nuBuilder Next.
 
 ## Not supported yet
-- [ ] JavaScript functions that are only stubs (console warning): `nuPrintExcludeColumns`, `nuResizeBrowseColumns`, `nuSetBrowseColumnWidth`,
-      `nuOpenWiki`, `nuSetSnippetFormFilter`, `nuSelect2`, `nuSetSelect2`, `nuEnableMultiSelect`, `nuShowFile`, `nuSetDateFormat`,
-      `nuCreateDialog`, `nuSetFormValue`, `nuAccessFormSetButtonIcons`, `nuBrowseStyleStatusColumn`, `nuSetTabHelpButtons`, `nuDragElement`,
-      `nuSetSideBarStyle`, `nuShowVersionInfo`, `nuHasHiddenModalDragDialog`. Use Admin tools → Compatibility check to see which ones your forms call.
+- [ ] JavaScript functions that are only placeholders (console warning; the list in assets/js/nu/nuruntime.js): `nuPrintExcludeColumns`,
+      `nuResizeBrowseColumns`, `nuSetBrowseColumnWidth`, `nuOpenWiki`, `nuSetSnippetFormFilter`, `nuCreateDialog`, `nuAccessFormSetButtonIcons`,
+      `nuBrowseStyleStatusColumn`, `nuDragElement`, `nuShowVersionInfo`, `nuHasHiddenModalDragDialog`; also `nuEnableMultiSelect`, `nuShowFile`,
+      `nuSetDateFormat`, `nuSetTabHelpButtons`, `nuSetSideBarStyle`, which nuBuilder Forte 4.9's JavaScript does not have (kept so old code
+      does not fail). Use Admin tools → Compatibility check to see which ones your forms call. (`nuSetFormValue` is a PHP function in
+      nuBuilder Forte and supported; `nuSetSelect2` works.)
 - [ ] `nuSetValidationErrorTitle()` does nothing.
 - [ ] Shared login only nuBuilder → nuBuilder Next; nuBuilder Next → nuBuilder would need a change in nuBuilder.
 
@@ -342,7 +369,7 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
       works per form – neither covers "develop on test, publish to live".
 - [x] **8 · Single sign-on with OpenID Connect** – built in 0.8.863 (Settings → Sign-in & security → Single sign-on).
       (The "OAuth" in the code is the REST API's client credentials, not a user login.)
-- [ ] **8 · Passkeys (WebAuthn)** (M) – as a second factor besides the authenticator app, later passwordless.
+- [x] **8 · Passkeys (WebAuthn)** – built in 0.8.877 (Security → Passkeys; second factor, sign-in without a password, password confirmation).
 - [ ] **8 · OpenAPI description of the REST API** (S–M) – generated from forms and rights, Swagger-style view in the API playground;
       lets other systems generate clients.
 - [ ] **8 · Accessibility audit (WCAG 2.2 AA)** (M) – keyboard use of forms and lists, screen reader labels, contrast in both themes;

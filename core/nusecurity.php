@@ -26,6 +26,8 @@ final class NuSecurity
 		'log_keep_days'          => 0,      // 0 = keep the log for ever
 		'reauth_minutes'         => 15,     // password again for dangerous actions when the last confirmation is older (0 = never ask)
 		'reauth_minutes_dev'     => 480,    // the same for the globeadmin while $nuConfigDevMode is on (0.8.338: development without live data)
+		'passkeys'               => true,   // users may add passkeys and use them as a second factor (0.8.877, core/nupasskey.php)
+		'passkey_login'          => false,  // signing in with a passkey alone, without the password
 	];
 
 	/**
@@ -470,6 +472,9 @@ final class NuSecurity
 		$add('admin2fa', nu_cfg('nuConfig2FAAdmin') ? 'ok' : 'warn', 'secchk_chk_admin2fa', nu_cfg('nuConfig2FAAdmin') ? '' : t('secchk_chk_admin2fa_off'), nu_url('configfile'));
 		$ipa = NuIpAccess::settings();   // IP access (0.8.722)
 		$add('ipaccess', $ipa['on'] ? 'ok' : 'info', 'secchk_chk_ipaccess', $ipa['on'] ? t('secchk_chk_ipaccess_on', count($ipa['levels'])) : t('secchk_chk_ipaccess_off'), nu_url('ipaccess'));
+		$pkProblem = NuPasskey::problem();   // passkeys (0.8.877)
+		$pkUsers = $pkProblem === '' && nu_db()->tableExists(NuPasskey::TABLE) ? (int)nu_db()->value('SELECT COUNT(DISTINCT user_id) FROM ' . NuPasskey::TABLE) : 0;
+		$add('passkeys', $pkProblem === '' ? 'ok' : 'info', 'secchk_chk_passkeys', $pkProblem === '' ? t('secchk_chk_passkeys_on', $pkUsers) . (NuPasskey::loginOn() ? ' ' . t('secchk_chk_passkeys_login') : '') : t($pkProblem), nu_url('securitycheck', ['tab' => 'settings']) . '#sec_passkeys');
 		$dbgOn = !empty(nu_config()['nuConfigDebug']) || !empty(nu_cfg('nuConfigDebug'));   // the file or Forte's table (0.8.766)
 		$add('debug', $dbgOn ? 'bad' : 'ok', 'secchk_chk_debug', $dbgOn ? t('secchk_chk_debug_on') : '');
 		// $nuConfigIncludeJS / CSS / PHP (0.8.443): files that are not found are left out – say which

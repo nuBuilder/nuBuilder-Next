@@ -203,6 +203,46 @@ final class NuAuth
 	}
 
 	/**
+	 * Sign-in with a passkey alone (0.8.877, Security setting passkey_login): NuPasskey::verify() checked the passkey with user
+	 * verification (PIN, fingerprint …), so it counts as both factors – no second factor, no password policy, no forced password
+	 * change; the same refusals as a password sign-in (locked, expired, API service user, no access level, SSO only, IP access).
+	 * The session counts as confirmed (password confirmation for dangerous actions starts now). @return string|null null = signed in
+	 */
+	public static function loginPasskey(string $userId): ?string
+	{
+		$fail = static function (string $reason, string $id, string $login): string {
+			NuLog::write('login_failed', '', '', ['reason' => $reason, 'via' => 'passkey'], ['id' => $id, 'login' => $login]);
+			return $reason;
+		};
+		$adminName = (string)nu_cfg('nuConfigDBGlobeadminUsername');
+		if ($userId === 'globeadmin') {
+			if ($adminName === '') return $fail('login_err_invalid', 'globeadmin', '');
+			if (NuSecurity::loginBlocked($adminName)) return 'login_err_locked';
+			$auth = ['id' => 'globeadmin', 'globeadmin' => true, 'fp' => self::adminFingerprint(), 'login' => $adminName];
+			if (!NuIpAccess::allowsLogin($auth, 'passkey')) return $fail('login_err_ip', 'globeadmin', $adminName);
+			self::applyLanguage(null, '', true);
+		} else {
+			if (!NuDbState::ready()) return 'login_not_ready';
+			$row = nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+			if (!$row) return $fail('login_err_invalid', $userId, '');
+			$login = (string)$row['sus_login_name'];
+			if (NuSecurity::loginBlocked($login)) return 'login_err_locked';
+			if ($adminName !== '' && hash_equals($adminName, $login)) return $fail('login_err_invalid', $userId, $login);
+			if (class_exists('NuApiClient') && NuApiClient::isServiceUser($userId)) return $fail('login_err_invalid', $userId, $login);
+			if (nu_is_expired($row['sus_expires_on'])) return $fail('login_err_expired', $userId, $login);
+			$accessId = (string)$row['sus_zzzzsys_access_id'];
+			if ($accessId === '' || !nu_db()->one('SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId])) return $fail('login_err_no_access', $userId, $login);
+			if (!NuDemo::isDemoUser($userId) && self::ssoOnly($userId, $accessId, $login)) return $fail('login_err_sso_only', $userId, $login);
+			$auth = ['id' => $userId, 'globeadmin' => false, 'fp' => self::fingerprint((string)$row['sus_login_password']), 'login' => $login];
+			if (!NuIpAccess::allowsLogin($auth, 'passkey')) return $fail('login_err_ip', $userId, $login);
+			self::applyLanguage((string)$row['sus_language'], $userId, true);
+		}
+		self::start($auth + ['via' => 'passkey', 'confirmed' => time()]);
+		NuLog::write('login', '', '', ['via' => 'passkey'], $auth);
+		return self::startupHook();
+	}
+
+	/**
 	 * Password hash for nuBuilder's auto login (index.php?u=<login>&p=<hash>[&e=<expiry>]): HMAC-SHA256 of the stored password hash
 	 * with $nuConfigSecretKey – the stored hash itself never leaves the server, and the link stops working when the password changes.
 	 * Since 0.8.207 a link can expire (e = Unix time, signed) and all links of a user can be revoked (epoch in sus_json
@@ -611,7 +651,7 @@ final class NuAuth
 				'display'         => $full !== '' ? $full : ((string)$row['sus_name'] !== '' ? (string)$row['sus_name'] : (string)$row['sus_login_name']),
 				'access_id'       => (string)$row['sus_zzzzsys_access_id'],
 				'email'           => (string)$row['sus_email'],
-				'change_password' => (string)$row['sus_change_password'] === '1' && !in_array($s['via'] ?? '', ['nubuilder', 'impersonated', 'sso'], true),   // single sign-on: the provider owns the password (0.8.863)
+				'change_password' => (string)$row['sus_change_password'] === '1' && !in_array($s['via'] ?? '', ['nubuilder', 'impersonated', 'sso', 'passkey'], true),   // single sign-on: the provider owns the password (0.8.863); passkey: no password used (0.8.877)
 			];
 			// demo mode (core/nudemo.php): a demo user sees everything the globeadmin sees – read only from here on
 			if (NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])) {

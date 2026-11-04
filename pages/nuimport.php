@@ -136,9 +136,16 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 			<div class="d-flex flex-wrap gap-2 align-items-center mt-2">
 				<label class="btn btn-sm btn-outline-secondary mb-0" for="impConfigFile"><i class="bi bi-folder2-open me-1"></i><?= h(t('imp_config_load')) ?></label>
 				<input type="file" id="impConfigFile" accept=".json,application/json" class="visually-hidden">
-				<?php if ($target === NuImport::USERS): ?>
-					<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('import', ['target' => 'users', 'action' => 'template'])) ?>" download><i class="bi bi-file-earmark-arrow-down me-1"></i><?= h(t('imp_tpl_download')) ?></a>
-					<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('imp_tpl_zip_tip')) ?>" title="<?= h(t('imp_tpl_zip_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?php $tpls = NuImport::canUsers() ? [['users', t('imp_tpl_users'), t('imp_tpl_zip_tip')]] : [];   // templates (0.8.870): always offered; a new one = an entry here + its action=template branch above ?>
+				<?php if ($tpls): ?>
+					<div class="dropdown" id="impTplMenu">
+						<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="impTplBtn" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-file-earmark-arrow-down me-1"></i><?= h(t('imp_tpl_menu')) ?></button>
+						<ul class="dropdown-menu impTplList" aria-labelledby="impTplBtn">
+							<?php foreach ($tpls as [$key, $label, $tip]): ?>
+								<li><a class="dropdown-item" href="<?= h(nu_url('import', ['target' => $key, 'action' => 'template'])) ?>" download data-tpl="<?= h($key) ?>"><span class="d-block"><?= h($label) ?></span><span class="d-block small text-body-secondary text-wrap"><?= h($tip) ?></span></a></li>
+							<?php endforeach; ?>
+						</ul>
+					</div>
 				<?php endif; ?>
 				<span class="small text-body-secondary" id="impConfigInfo"><?= h(t('imp_config_hint')) ?></span>
 			</div>

@@ -243,6 +243,8 @@ final class NuReport
 		foreach (['id', 'objectType', 'fieldName', 'fontFamily', 'fontWeight', 'format', 'textAlign', 'backgroundColor', 'borderColor', 'fontColor'] as $k) $o->$k = (string)$o->$k;
 		if (!in_array($o->objectType, ['field', 'label', 'image'], true)) $o->objectType = 'field';
 		if ($o->textAlign === '') $o->textAlign = 'left';
+		// content type of nuBuilder Next (0.8.874): only set when chosen – nuBuilder Forte ignores the key
+		if (isset($o->contentType) && !in_array($o->contentType, ['text', 'html', 'md'], true)) unset($o->contentType);
 	}
 
 	/** Layout sent by the designer → JSON to store (validated object, nothing else). */

@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.869",
+    "version": "0.8.881",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -436,6 +436,17 @@
                     "table": "zzzzsys_nunext_setting",
                     "kind": "data",
                     "what": "row entry_files_notice added after an update (notice: entry files renamed)"
+                }
+            ]
+        },
+        {
+            "id": "0034-passkeys",
+            "description": "Passkeys (zzzzsys_nunext_passkey): a second factor besides the authenticator app, signing in without a password",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_passkey",
+                    "kind": "table",
+                    "what": "created when missing"
                 }
             ]
         }
@@ -1587,6 +1598,69 @@
             ],
             "index": [
                 "call_id"
+            ]
+        },
+        "zzzzsys_nunext_passkey": {
+            "pk": "zzzzsys_nunext_passkey_id",
+            "cols": [
+                [
+                    "user_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "cred_id",
+                    "text",
+                    "1400"
+                ],
+                [
+                    "public_key",
+                    "longtext"
+                ],
+                [
+                    "alg",
+                    "int"
+                ],
+                [
+                    "sign_count",
+                    "bigint"
+                ],
+                [
+                    "user_handle",
+                    "text",
+                    "100"
+                ],
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "aaguid",
+                    "text",
+                    "36"
+                ],
+                [
+                    "transports",
+                    "text",
+                    "100"
+                ],
+                [
+                    "backup",
+                    "text",
+                    "1"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "last_used_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "user_id"
             ]
         },
         "zzzzsys_nunext_permission_type": {

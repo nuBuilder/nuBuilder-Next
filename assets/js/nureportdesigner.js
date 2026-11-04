@@ -326,6 +326,8 @@
 			if (w.indexOf('i') >= 0) t.style.fontStyle = 'italic';
 			t.textContent = o.objectType === 'field' ? '[' + (o.fieldName || '?') + ']' + (o.format ? ' ⟨' + String(o.format).slice(2) + '⟩' : '') : String(o.fieldName || '');
 			e.appendChild(t);
+			var ct = contentOf(o);
+			if (ct !== 'text') e.appendChild(el('span', {'class': 'rdCt', 'aria-hidden': 'true', text: ct === 'md' ? 'MD' : 'HTML'}));
 		}
 		if (S.sel.length === 1 && S.sel[0] === o.id && !ro) {
 			['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'].forEach(function (h) {
@@ -663,6 +665,16 @@
 		var i = el('input', Object.assign({type: type, 'class': type === 'color' ? 'form-control form-control-sm form-control-color' : 'form-control form-control-sm', value: value === undefined || value === null ? '' : value}, attrs || {}));
 		return i;
 	}
+	// content type of a field / label (0.8.874): its own contentType, else the report's "Fields contain HTML"
+	function contentOf(o) {
+		var c = String(o.contentType || '');
+		return c === 'text' || c === 'html' || c === 'md' ? c : (L.ishtml === 'Y' ? 'html' : 'text');
+	}
+	function infoTip(text) {
+		var s = el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'aria-label': text, title: text, 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide'}, [el('i', {'class': 'bi bi-info-circle'})]);
+		if (window.nuBs) nuBs.tooltip(s);
+		return s;
+	}
 	function common(objs, k) {
 		var v = objs.length ? String(objs[0][k] === undefined ? '' : objs[0][k]) : '';
 		return objs.every(function (o) { return String(o[k] === undefined ? '' : o[k]) === v; }) ? v : '';
@@ -724,6 +736,12 @@
 		}
 		if (kind !== 'image' && kind !== 'box') {
 			wrap.appendChild(propInput(M.format, 'format', sel(D.formats.map(function (f) { return [f[0], f[1] || '—']; }), common(objs, 'format'))));
+			if (objs.every(function (o) { return !isBox(o) && (o.objectType === 'field' || o.objectType === 'label'); })) {
+				var ctSel = sel([['', M.content_auto.replace('%s', L.ishtml === 'Y' ? M.content_html : M.content_text)], ['text', M.content_text], ['html', M.content_html], ['md', M.content_md]], common(objs, 'contentType'));
+				var ctProp = propInput(M.content_type, 'contentType', ctSel);
+				ctProp.insertBefore(infoTip(M.content_hint), ctSel);
+				wrap.appendChild(ctProp);
+			}
 			var fontRow = el('div', {'class': 'rdPropRow'}, [
 				propInput(M.font, 'fontFamily', sel(D.fonts.map(function (f) { return [f, f]; }), common(objs, 'fontFamily'))),
 				propInput(M.size + ' (' + M.pt + ')', 'fontSize', inp('number', common(objs, 'fontSize'), {min: '4', max: '96', step: '0.5'}))
@@ -780,6 +798,9 @@
 						break;
 					case 'minRows': case 'maxRows': case 'zIndex':
 						o[prop] = Math.round(num(v));
+						break;
+					case 'contentType':
+						if (v === '') delete o.contentType; else o.contentType = v;
 						break;
 					default:
 						o[prop] = v;

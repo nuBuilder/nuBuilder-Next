@@ -74,3 +74,5 @@
 [data-bs-theme="dark"] .rdBandHead { background: #2c3443; color: #dde; border-color: #3c4658; }
 [data-bs-theme="dark"] .rdBandActive { background: #23406e; }
 [data-bs-theme="dark"] .rdBandInfo { color: #aab; }
+/* content type tag of an HTML / Markdown field or label (0.8.874) */
+.rdCt { position: absolute; top: 0; right: 0; font: 600 9px/1 system-ui, sans-serif; letter-spacing: .02em; padding: 2px 3px; border-radius: 0 0 0 3px; background: rgba(13, 110, 253, .85); color: #fff; pointer-events: none; }

@@ -737,7 +737,38 @@ check('NuTranslate::codeStrings: literals of nuTranslate, not template literals 
 	=== ['Saved', "It's done", 'Row %s1']);
 check('NuTranslate::optionTexts: pairs, lines, JSON, odd end; SQL ignored', NuTranslate::optionTexts("a|Apple|b|Banana|") === ['Apple', 'Banana']
 	&& NuTranslate::optionTexts("1|One|\n2|Two|\n3") === ['One', 'Two', '3'] && NuTranslate::optionTexts('[["x","Ex"],"Why"]') === ['Ex', 'Why']
-	&& NuTranslate::optionTexts('SELECT a, b FROM t') === []);
+	&& NuTranslate::optionTexts('SELECT a, b FROM t') === [] && NuTranslate::optionTexts("-- the countries\nSELECT a FROM t") === [] && NuTranslate::optionTexts('%LANGUAGES%') === []);
+
+// 0.8.879: select options as nuBuilder Forte reads them (NuSelectSource)
+$sk = static fn(string $s) => NuSelectSource::kind($s);
+check('select source: kinds', $sk('') === '' && $sk('SELECT a FROM t') === 'query' && $sk("-- note\n  select a from t") === 'query' && $sk("/* x */ WITH c AS (SELECT 1) SELECT * FROM c") === 'query'
+	&& $sk('(SELECT a FROM t) UNION (SELECT b FROM u)') === 'query' && $sk('SHOW TABLES') === 'tables' && $sk('show full tables where Table_type = "BASE TABLE"') === 'tables'
+	&& $sk('%LANGUAGES%') === 'languages' && $sk('["a","b"]') === 'array' && $sk('[a, b') === 'list' && $sk('a|A|b|B') === 'list'
+	&& $sk('WITH|With|WITHOUT|Without') === 'list' && $sk('SELECTED|Chosen') === 'list' && $sk('#USER_ID#|Me|x|Other') === 'list');
+$so = static fn(string $s, array $h = [], bool $x = false) => NuSelectSource::options($s, $h, $x);
+check('select source: pipe list – line ends, tabs, closing |, odd end, hash variables as text', $so("a|Apple|\n\tb|Banana|") === [['a', 'Apple'], ['b', 'Banana']]
+	&& $so('1|One|2') === [['1', 'One'], ['2', '2']] && $so('#USER_ID#|Me|x|Other', ['USER_ID' => "u'1"]) === [["u'1", 'Me'], ['x', 'Other']]);
+check('select source: nuBuilder Forte\'s own result (exact)', $so('1|One|2', [], true) === [['1', 'One'], ['2', 'Undefined']] && $so('a|A|', [], true) === [['a', 'A'], ['', 'Undefined']]
+	&& $so('[1, "b"]', [], true) === [[1, 1], ['b', 'b']]);
+check('select source: JSON list, pairs, hash variables, invalid JSON = pipe list', $so('["first", "second"]') === [['first', 'first'], ['second', 'second']]
+	&& $so('[["1","One"],"Two"]') === [['1', 'One'], ['Two', 'Two']] && $so('["#CODE#"]', ['CODE' => 'X7']) === [['X7', 'X7']]
+	&& $so('[#LIST#]', ['LIST' => '"p","q"']) === [['p', 'p'], ['q', 'q']] && $so('[a|A') === [['[a', 'A']]);
+$slC = NuDB::$connected;                                      // a test connection must not count as the real one (NuLanguages)
+NuDB::$override = new NuDB(['type' => 'sqlite', 'name' => ':memory:', 'host' => '', 'user' => '', 'pass' => '']);
+NuDB::$override->exec("CREATE TABLE sel_t (v TEXT, t TEXT)"); NuDB::$override->exec("INSERT INTO sel_t VALUES ('a', 'Apple'), ('b', 'Banana')");
+NuDB::$override->exec("CREATE TABLE __sel_hidden (x TEXT)"); NuDB::$override->exec("CREATE VIEW sel_v AS SELECT v FROM sel_t");
+check('select source: SQL after a comment line, hash variable bound', $so("-- fruit\nSELECT v, t FROM sel_t WHERE v <> '#NOT#' ORDER BY v", ['NOT' => 'b']) === [['a', 'Apple']]
+	&& $so("SELECT v FROM sel_t ORDER BY v") === [['a', 'a'], ['b', 'b']]);
+check('select source: SHOW TABLES without "__" tables, BASE TABLE = tables only', $so('SHOW TABLES') === [['sel_t', 'sel_t'], ['sel_v', 'sel_v']]
+	&& $so('SHOW FULL TABLES WHERE Table_type = "BASE TABLE"') === [['sel_t', 'sel_t']]);
+NuDB::$override = null; NuDB::$connected = $slC;
+$slDir = sys_get_temp_dir() . '/nunext-sel-' . getmypid();
+@mkdir($slDir . '/core/languages', 0777, true);
+foreach (['Slovak', 'Afrikaans', 'Portuguese (Brazil)'] as $f) file_put_contents($slDir . '/core/languages/' . $f . '.sql', '');
+check('select source: %LANGUAGES% = nuBuilder Forte\'s language files', NuSelectSource::languages($slDir) === ['Afrikaans', 'Portuguese (Brazil)', 'Slovak']);
+array_map('unlink', glob($slDir . '/core/languages/*.sql')); @rmdir($slDir . '/core/languages'); @rmdir($slDir . '/core'); @rmdir($slDir);
+$sl = NuSelectSource::languages($slDir);                       // NuLanguages::installed(): every language on the command line
+check('select source: %LANGUAGES% without nuBuilder Forte = installed languages by English name, no English', in_array('German', $sl, true) && in_array('French', $sl, true) && !in_array('English', $sl, true), implode(',', $sl));
 $pwD = NuPwPolicy::clean([]);
 check('NuPwPolicy::clean: defaults (no change, leak both, name rule on)', $pwD['expire'] === 0 && $pwD['ga_expire'] === 0 && $pwD['warn'] === 14 && $pwD['leak'] === 'both' && $pwD['not_name'] && !$pwD['digit']);
 check('NuPwPolicy::clean: invalid values dropped', NuPwPolicy::clean(['expire' => 45, 'warn' => 99, 'leak' => 'x', 'levels' => ['lvA' => 30, 'lvB' => '', 'bad id' => 30, 'lvC' => 7]])['levels'] === ['lvA' => 30]
@@ -885,6 +916,102 @@ check('sso clean', $ssc['scopes'] === 'openid email profile' && $ssc['domains'] 
 check('hash idList', NuHash::idList(['a1', 'b_2', "x'y", '']) === "'a1','b_2'" && NuHash::idList([]) === "''");
 check('hash ACCESS_LEVEL_IDS in SQL', NuHash::replace('IN (#ACCESS_LEVEL_IDS#)', ['ACCESS_LEVEL_IDS' => "'a1','b2'"], NuHash::SQL) === "IN ('a1','b2')"
 	&& str_contains(NuHash::replace('x = #FOO#', ['FOO' => "'a1','b2'"], NuHash::HTML), '&#039;'));
+
+// 0.8.873: bound hash variables ($nuDevSelectQueryRunParameterised)
+NuHash::$bindTest = true; NuHash::$bound = [];
+NuDB::$override = new NuDB(['type' => 'sqlite', 'name' => ':memory:', 'host' => '', 'user' => '', 'pass' => '']);
+$bh = ['PARENT_ID' => "o'1", 'USER_ID' => 'u7', 'TABLE_ID' => 'nut1', 'ACCESS_LEVEL_IDS' => "'a','b'"];
+$bs = NuHash::sql("SELECT * FROM #TABLE_ID# t WHERE t.p = '#PARENT_ID#' AND u = #USER_ID# AND a IN (#ACCESS_LEVEL_IDS#) AND x = '#NOPE#' -- #USER_ID#\n AND y = ?", $bh);
+check('bound sql: markers, table / list as text, unknown kept, comment untouched', $bs === "SELECT * FROM nut1 t WHERE t.p = __nuhp_0__ AND u = __nuhp_1__ AND a IN ('a','b') AND x = '#NOPE#' -- #USER_ID#\n AND y = ?" && NuHash::$bound === ["o'1", 'u7'], $bs);
+[$rs, $rp] = NuHash::resolveMarks("SELECT COUNT(*) FROM ($bs) nuT WHERE nuT.c LIKE ? AND z = '?'", ['first', 'second']);
+check('bound sql: markers and ? in order', $rp === ["o'1", 'u7', 'first', 'second'] && substr_count($rs, '?') === 5 && !str_contains($rs, '__nuhp'), json_encode($rp));
+[$rs2, $rp2] = NuHash::resolveMarks('SELECT __nuhp_1__ AS a WHERE b = :b', ['b' => 2]);
+check('bound sql: named parameters', $rs2 === 'SELECT :nuhp1 AS a WHERE b = :b' && $rp2 === ['b' => 2, 'nuhp1' => 'u7']);
+check('bound sql: cache key follows the values', NuHash::boundKey($bs) !== '' && NuHash::boundKey('SELECT 1') === '');
+$bdb = NuDB::$override;
+$bdb->exec("CREATE TABLE tb (id TEXT, p TEXT)"); $bdb->exec("INSERT INTO tb VALUES ('1', 'o''1'), ('2', 'x'), ('3', 'o''1')");
+$bq = NuHash::sql("SELECT id FROM tb WHERE p = '#PARENT_ID#' AND '#PARENT_ID#' LIKE 'o%'", $bh);
+check('bound sql: runs with the value as a parameter', array_column($bdb->all($bq . ' ORDER BY id'), 'id') === ['1', '3'] && str_contains($bq, '__nuhp_'), $bq);
+NuDB::$override = null;
+NuHash::$bindTest = null; NuHash::$bound = [];
+
+// 0.8.874: Markdown in report fields, HTML made safe for TCPDF
+$mdh = NuMarkdown::toHtml("# Title\nA **b** *i* `c` ~~d~~ [l](https://x.org) [j](javascript:x) <b>x</b>\nnext\n\n- one\n- two\n  - deep\n1. first\n\n| a | b |\n|---|--:|\n| 1 | 2 |\n\n> q\n\n---");
+check('markdown: blocks and inline', str_contains($mdh, '<h1>Title</h1>') && str_contains($mdh, '<b>b</b>') && str_contains($mdh, '<i>i</i>') && str_contains($mdh, '<font face="courier">c</font>')
+	&& str_contains($mdh, '<del>d</del>') && str_contains($mdh, '<a href="https://x.org">l</a>') && !str_contains($mdh, 'javascript') && str_contains($mdh, '&lt;b&gt;x&lt;/b&gt;')
+	&& str_contains($mdh, '<br>next') && str_contains($mdh, '<ul><li>one</li><li>two<ul><li>deep</li></ul></li></ul>') && str_contains($mdh, '<ol><li>first</li></ol>')
+	&& str_contains($mdh, '<td align="right">2</td>') && str_contains($mdh, '<blockquote><p>q</p></blockquote>') && str_contains($mdh, '<hr>'), $mdh);
+check('markdown: hash names keep their underscores', NuMarkdown::toHtml('#USER_NAME# and #nu_pages#') === '<p>#USER_NAME# and #nu_pages#</p>');
+$sh = NuReportEngine::safeHtml('<link rel="stylesheet" href="http://x/a.css"><img src="/p.jpg"><img src="phar://a.jpg"><img src="../x.png"><img src="data:image/png;base64,AA"><img src=\'/a.png\' src="file:///b"><a href="javascript:x">j</a><script>s()</script><style>b{color:red}</style>');
+check('report html: unsafe parts removed', $sh === '<img src="/p.jpg"><img src="data:image/png;base64,AA"><a>j</a><style>b{color:red}</style>', $sh);
+
+// 0.8.877: passkeys – a software authenticator signs registration and sign-in like a browser would (ES256, Ed25519, RS256)
+$cbor = static function (mixed $v) use (&$cbor): string {
+	$head = static function (int $major, int $len): string {
+		if ($len < 24) return chr(($major << 5) | $len);
+		if ($len < 256) return chr(($major << 5) | 24) . chr($len);
+		if ($len < 65536) return chr(($major << 5) | 25) . pack('n', $len);
+		return chr(($major << 5) | 26) . pack('N', $len);
+	};
+	if (is_array($v) && array_key_exists('__b', $v)) return $head(2, strlen($v['__b'])) . $v['__b'];
+	if (is_int($v)) return $v >= 0 ? $head(0, $v) : $head(1, -1 - $v);
+	if (is_string($v)) return $head(3, strlen($v)) . $v;
+	if (is_array($v)) { $o = $head(5, count($v)); foreach ($v as $k => $x) $o .= $cbor($k) . $cbor($x); return $o; }
+	throw new RuntimeException('cbor');
+};
+check('cbor decode', NuCbor::decode($cbor([1 => 2, 3 => -7, -1 => 1, -2 => ['__b' => "\x01\x02"], 'fmt' => 'none'])) === [1 => 2, 3 => -7, -1 => 1, -2 => "\x01\x02", 'fmt' => 'none']);
+check('cbor refuses trailing bytes', (static function () { try { NuCbor::decode("\x01\x02"); return false; } catch (RuntimeException) { return true; } })());
+NuPasskey::$testOrigin = 'http://localhost:8099';
+$_SESSION['nu_schema'] = NuSchema::VERSION . '/' . NU_VERSION;   // no table creation on the test's SQLite database (NuLog::write)
+NuDB::$override = new NuDB(['type' => 'sqlite', 'name' => ':memory:', 'host' => '', 'user' => '', 'pass' => '']);
+NuDB::$override->exec('CREATE TABLE zzzzsys_nunext_passkey (zzzzsys_nunext_passkey_id TEXT PRIMARY KEY, user_id TEXT, cred_id TEXT, public_key TEXT, alg INTEGER, '
+	. 'sign_count INTEGER, user_handle TEXT, name TEXT, aaguid TEXT, transports TEXT, backup TEXT, created_at TEXT, last_used_at TEXT)');
+NuDB::$override->exec('CREATE TABLE zzzzsys_nunext_log (zzzzsys_nunext_log_id TEXT, log_time TEXT, user_id TEXT, login TEXT, ip TEXT, event TEXT, object TEXT, record_id TEXT, details TEXT)');
+$pkB = static fn(string $b): string => NuPasskey::b64($b);
+$pkAuth = static function (string $flags, int $count, string $att = '') { return hash('sha256', 'localhost', true) . $flags . pack('N', $count) . $att; };
+$pkClient = static fn(string $type, string $c, string $origin = 'http://localhost:8099') => json_encode(['type' => $type, 'challenge' => $c, 'origin' => $origin]);
+$pkKeys = [];
+$ec = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
+if ($ec) { $d = openssl_pkey_get_details($ec)['ec']; $pkKeys['ES256'] = [[1 => 2, 3 => -7, -1 => 1, -2 => ['__b' => $d['x']], -3 => ['__b' => $d['y']]], static fn($m) => openssl_sign($m, $sg, $ec, OPENSSL_ALGO_SHA256) ? $sg : '']; }
+$rsa = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
+if ($rsa) { $d = openssl_pkey_get_details($rsa)['rsa']; $pkKeys['RS256'] = [[1 => 3, 3 => -257, -1 => ['__b' => $d['n']], -2 => ['__b' => $d['e']]], static fn($m) => openssl_sign($m, $sg, $rsa, OPENSSL_ALGO_SHA256) ? $sg : '']; }
+if (function_exists('sodium_crypto_sign_keypair')) { $kp = sodium_crypto_sign_keypair(); $pkKeys['EdDSA'] = [[1 => 1, 3 => -8, -1 => 6, -2 => ['__b' => sodium_crypto_sign_publickey($kp)]], static fn($m) => sodium_crypto_sign_detached($m, sodium_crypto_sign_secretkey($kp))]; }
+check('passkey test keys', count($pkKeys) === 3, implode(',', array_keys($pkKeys)));
+$pkUser = ['id' => 'u_pk', 'login' => 'pkuser', 'display' => 'PK User'];
+foreach ($pkKeys as $alg => [$cose, $sign]) {
+	$credId = random_bytes(16);
+	$reg = NuPasskey::registrationOptions($pkUser);
+	$attObj = $cbor(['fmt' => 'none', 'attStmt' => [], 'authData' => ['__b' => $pkAuth("\x45", 0, str_repeat("\0", 16) . pack('n', strlen($credId)) . $credId . $cbor($cose))]]);
+	$r = NuPasskey::register($pkUser, ['id' => $pkB($credId), 'rawId' => $pkB($credId), 'type' => 'public-key',
+		'response' => ['clientDataJSON' => $pkB($pkClient('webauthn.create', $reg['challenge'])), 'attestationObject' => $pkB($attObj), 'transports' => ['internal', 'bad value!']]], "Key $alg");
+	check("passkey $alg registered", $r['ok'] === true, json_encode($r));
+	$row = NuDB::$override->one('SELECT * FROM zzzzsys_nunext_passkey WHERE zzzzsys_nunext_passkey_id = ?', [hash('sha256', $credId)]);
+	check("passkey $alg stored", $row && $row['user_id'] === 'u_pk' && $row['transports'] === 'internal' && $row['name'] === "Key $alg" && $row['user_handle'] === $reg['user']['id']);
+	$get = static function (string $kind, int $count, string $flags = "\x05", ?string $user = 'u_pk', string $origin = 'http://localhost:8099') use ($credId, $sign, $pkAuth, $pkClient, $pkB, $reg) {
+		$o = NuPasskey::assertionOptions($kind, $user);
+		$ad = $pkAuth($flags, $count);
+		$cd = $pkClient('webauthn.get', $o['challenge'], $origin);
+		return NuPasskey::verify($kind, ['id' => $pkB($credId), 'rawId' => $pkB($credId), 'type' => 'public-key',
+			'response' => ['clientDataJSON' => $pkB($cd), 'authenticatorData' => $pkB($ad), 'signature' => $pkB($sign($ad . hash('sha256', $cd, true))), 'userHandle' => $reg['user']['id']]], $err) ? 'ok' : $err;
+	};
+	check("passkey $alg sign-in", $get('login', 5, "\x05", null) === 'ok');
+	check("passkey $alg counter must grow", $get('login', 5, "\x05", null) === 'pk_err_clone');
+	check("passkey $alg without user verification: second factor yes, sign-in no", $get('2fa', 6, "\x01") === 'ok' && $get('login', 7, "\x01", null) === 'pk_err_uv');
+	check("passkey $alg other origin refused", $get('login', 8, "\x05", null, 'https://evil.example') === 'pk_err_check');
+	check("passkey $alg of another user refused", $get('2fa', 9, "\x05", 'u_other') === 'pk_err_unknown');
+	check("passkey $alg ceremony used up", NuPasskey::verify('login', ['rawId' => $pkB($credId), 'response' => []], $e2) === null && $e2 === 'pk_err_expired');
+}
+$reg = NuPasskey::registrationOptions($pkUser);
+check('passkey: second passkey keeps the user handle, excludes the first ones', count($reg['excludeCredentials']) === count($pkKeys)
+	&& $reg['user']['id'] === (string)NuDB::$override->value("SELECT user_handle FROM zzzzsys_nunext_passkey WHERE user_id = 'u_pk' LIMIT 1"));
+NuPasskey::testCeremony('reg', NuPasskey::b64(random_bytes(32)), 'u_pk');
+check('passkey: registration with a wrong challenge refused', NuPasskey::register($pkUser, ['rawId' => 'AAAA', 'response' => ['clientDataJSON' => $pkB($pkClient('webauthn.create', 'xyz'))]], 'x')['ok'] === false);
+check('passkey log: added, failures with a reason', (int)NuDB::$override->value("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'passkey_added'") === count($pkKeys)
+	&& (string)NuDB::$override->value("SELECT details FROM zzzzsys_nunext_log WHERE event = 'passkey_failed' AND details LIKE '%origin%' LIMIT 1") !== '');
+check('passkey remove', NuPasskey::removeAll('u_pk') === count($pkKeys) && NuPasskey::count('u_pk') === 0);
+NuDB::$override = null;
+NuPasskey::$testOrigin = null;
+unset($_SESSION['nu_schema']);
 
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";

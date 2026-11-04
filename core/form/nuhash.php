@@ -123,6 +123,123 @@ final class NuHash
 		return $ids ? "'" . implode("','", $ids) . "'" : "''";
 	}
 
+	// ----------------------------------------------------------------- bound hash variables (0.8.873)
+	/**
+	 * nuBuilder Forte's $nuDevSelectQueryRunParameterised (core/nudatabase.php nuRunQueryString): hash variables become bound parameters
+	 * instead of text. Forte does it for the SQL of select objects and access conditions; nuBuilder Next also for the browse SQL and its
+	 * columns. Stricter than Forte: only names of the hash (#NAME# of \w characters), only outside string literals (inside one – '%#X#%' –
+	 * the value is put in as text, escaped), a literal that is exactly '#NAME#' becomes the parameter itself, and a name that stands
+	 * where SQL needs a table (after FROM / JOIN / INTO / UPDATE / TABLE, before or after a ".", #TABLE_ID#) or a list (SQL_LISTS) is
+	 * put in as text. Unknown names stay as they are.
+	 */
+	public static ?bool $bindTest = null;                   // dev/tests/run.php
+	public static function bindOn(): bool
+	{
+		return self::$bindTest ?? !empty(nu_cfg('nuDevSelectQueryRunParameterised'));
+	}
+
+	/** @var list<string> values of the markers __nuhp_<n>__ of this request (NuDB::run binds them) */
+	public static array $bound = [];
+	public const MARK = '__nuhp_';
+
+	/** SQL with the hash variables: bound parameters (markers) while bindOn(), else text as replace(…, SQL). */
+	public static function sql(?string $s, array $hash): string
+	{
+		$s = (string)$s;
+		if (!self::bindOn() || !str_contains($s, '#')) return self::replace($s, $hash, self::SQL);
+		$val = static function (string $k) use ($hash): ?string {
+			if (!array_key_exists($k, $hash) || !is_string($k)) return null;
+			$v = $hash[$k];
+			return is_array($v) || is_object($v) ? (string)json_encode($v, JSON_UNESCAPED_UNICODE) : (string)$v;
+		};
+		$mark = static function (string $v): string { self::$bound[] = $v; return self::MARK . (count(self::$bound) - 1) . '__'; };
+		$out = '';
+		$n = strlen($s);
+		for ($i = 0; $i < $n; ) {
+			$c = $s[$i];
+			if ($c === "'" || $c === '"') {                     // a string literal
+				$j = $i + 1;
+				while ($j < $n) { if ($s[$j] === '\\') { $j += 2; continue; } if ($s[$j] === $c) { if ($j + 1 < $n && $s[$j + 1] === $c) { $j += 2; continue; } break; } $j++; }
+				$lit = substr($s, $i, $j - $i + 1);
+				if (preg_match('/^' . preg_quote($c, '/') . '#(\w+)#' . preg_quote($c, '/') . '$/', $lit, $m) && ($v = $val($m[1])) !== null && !in_array($m[1], self::SQL_LISTS, true)) $out .= $mark($v);
+				else $out .= self::replace($lit, $hash, self::SQL);
+				$i = $j + 1;
+				continue;
+			}
+			if ($c === '`' || $c === '[') {                     // an identifier: as text
+				$end = $c === '`' ? '`' : ']';
+				$j = strpos($s, $end, $i + 1);
+				$j = $j === false ? $n - 1 : $j;
+				$out .= self::replace(substr($s, $i, $j - $i + 1), $hash, self::SQL);
+				$i = $j + 1;
+				continue;
+			}
+			if ($c === '-' && ($s[$i + 1] ?? '') === '-') { $j = strpos($s, "\n", $i); $j = $j === false ? $n : $j; $out .= substr($s, $i, $j - $i); $i = $j; continue; }
+			if ($c === '/' && ($s[$i + 1] ?? '') === '*') { $j = strpos($s, '*/', $i + 2); $j = $j === false ? $n : $j + 2; $out .= substr($s, $i, $j - $i); $i = $j; continue; }
+			if ($c === '#' && preg_match('/\G#(\w+)#/', $s, $m, 0, $i) && ($v = $val($m[1])) !== null) {
+				$len = strlen($m[0]);
+				$before = rtrim(substr($out, -40));
+				$after = $s[$i + $len] ?? '';
+				$asText = $m[1] === 'TABLE_ID' || in_array($m[1], self::SQL_LISTS, true) || $after === '.' || str_ends_with($before, '.')
+					|| preg_match('/\b(FROM|JOIN|INTO|UPDATE|TABLE)$/i', $before);
+				$out .= $asText ? self::replace($m[0], $hash, self::SQL) : $mark($v);
+				$i += $len;
+				continue;
+			}
+			$out .= $c;
+			$i++;
+		}
+		return $out;
+	}
+
+	/** Values of the markers in $sql, for cache keys (the same SQL with other bound values is another query). */
+	public static function boundKey(string $sql): string
+	{
+		if (!str_contains($sql, self::MARK)) return '';
+		preg_match_all('/' . self::MARK . '(\d+)__/', $sql, $m);
+		return md5(json_encode(array_map(static fn($k) => self::$bound[(int)$k] ?? null, $m[1])));
+	}
+
+	/**
+	 * The markers of $sql as parameters (NuDB::run): positional – each "?" outside literals and comments takes the next of $params, each
+	 * marker its value; named ($params with keys) – markers become :nuhp<n>. @return array{0: string, 1: array}
+	 */
+	public static function resolveMarks(string $sql, array $params): array
+	{
+		if (!str_contains($sql, self::MARK)) return [$sql, $params];
+		if ($params && !array_is_list($params)) {
+			$sql = (string)preg_replace_callback('/' . self::MARK . '(\d+)__/', static function ($m) use (&$params) { $params['nuhp' . $m[1]] = self::$bound[(int)$m[1]] ?? ''; return ':nuhp' . $m[1]; }, $sql);
+			return [$sql, $params];
+		}
+		$out = '';
+		$new = [];
+		$k = 0;
+		$n = strlen($sql);
+		$ml = strlen(self::MARK);
+		for ($i = 0; $i < $n; ) {
+			$c = $sql[$i];
+			if ($c === "'" || $c === '"' || $c === '`') {
+				$j = $i + 1;
+				while ($j < $n) { if ($sql[$j] === '\\' && $c !== '`') { $j += 2; continue; } if ($sql[$j] === $c) { if ($j + 1 < $n && $sql[$j + 1] === $c) { $j += 2; continue; } break; } $j++; }
+				$out .= substr($sql, $i, $j - $i + 1);
+				$i = $j + 1;
+				continue;
+			}
+			if ($c === '-' && ($sql[$i + 1] ?? '') === '-') { $j = strpos($sql, "\n", $i); $j = $j === false ? $n : $j; $out .= substr($sql, $i, $j - $i); $i = $j; continue; }
+			if ($c === '/' && ($sql[$i + 1] ?? '') === '*') { $j = strpos($sql, '*/', $i + 2); $j = $j === false ? $n : $j + 2; $out .= substr($sql, $i, $j - $i); $i = $j; continue; }
+			if ($c === '?') { $new[] = $params[$k++] ?? null; $out .= '?'; $i++; continue; }
+			if ($c === '_' && substr($sql, $i, $ml) === self::MARK && preg_match('/\G' . self::MARK . '(\d+)__/', $sql, $m, 0, $i)) {
+				$new[] = self::$bound[(int)$m[1]] ?? '';
+				$out .= '?';
+				$i += strlen($m[0]);
+				continue;
+			}
+			$out .= $c;
+			$i++;
+		}
+		return [$out, $new];
+	}
+
 	/** Replaces #key# for every key in $hash. */
 	public static function replace(?string $s, array $hash, string $context = self::RAW): string
 	{

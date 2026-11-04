@@ -518,6 +518,39 @@ final class NuRender
 		return $cache[$key] = true;
 	}
 
+	/**
+	 * Click action of a list column for the browser (0.8.872, NuFormMeta::cleanAction): null when its target does not exist or the user may
+	 * not open it (as run objects, runAllowed) – the cell then shows its plain value. {t, form | code | fn, hidden, rec, open, pass}.
+	 */
+	public static function cellAction(array $a): ?array
+	{
+		static $cache = [];
+		$key = json_encode($a);
+		if (array_key_exists($key, $cache)) return $cache[$key];
+		$out = ['t' => $a['t'], 'pass' => $a['pass'] ?? ''];
+		try {
+			$db = nu_db();
+			if ($a['t'] === 'js') return $cache[$key] = $out + ['fn' => $a['id']];
+			if ($a['t'] === 'form' || $a['t'] === 'list') {
+				if (!$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$a['id']]) || !self::runAllowed(['type' => 'F', 'form' => $a['id']])) return $cache[$key] = null;
+				return $cache[$key] = $out + ['form' => $a['id'], 'rec' => $a['rec'] ?? 'row', 'open' => $a['open'] ?? '0'];
+			}
+			if ($a['t'] === 'proc') {
+				$php = $db->one('SELECT sph_code, sph_run FROM zzzzsys_php WHERE zzzzsys_php_id = ? OR sph_code = ?', [$a['id'], $a['id']]);
+				if (!$php || !self::runAllowed(['type' => 'P', 'code' => (string)$php['sph_code']])) return $cache[$key] = null;
+				return $cache[$key] = $out + ['code' => (string)$php['sph_code'], 'hidden' => strtolower((string)$php['sph_run']) === 'hide'];
+			}
+			if ($a['t'] === 'report') {
+				if (!$db->tableExists('zzzzsys_report') || !$db->value('SELECT COUNT(*) FROM zzzzsys_report WHERE zzzzsys_report_id = ?', [$a['id']])
+					|| !self::runAllowed(['type' => 'R', 'code' => $a['id']])) return $cache[$key] = null;
+				return $cache[$key] = $out + ['code' => $a['id']];
+			}
+		} catch (Throwable) {
+			return $cache[$key] = null;
+		}
+		return $cache[$key] = null;
+	}
+
 	/** A run object's URL as stored (0.8.830): https:// / http:// or a path of this site; null = not a URL (other schemes, too long). */
 	public static function cleanRunUrl(string $u): ?string
 	{
@@ -906,34 +939,23 @@ final class NuRender
 		return $out;
 	}
 
-	/** Options of a select: "SELECT …" (hash-replaced) or static "v|t|v|t" / "v|t|\nv|t|". */
+	/**
+	 * Options of a select – the formats of nuBuilder Forte (SQL, SHOW TABLES, %LANGUAGES%, JSON list, value|text list; NuSelectSource,
+	 * 0.8.879). Hash variables: bound in SQL (0.8.873), filled in as text in lists (as nuBuilder Forte).
+	 */
 	public function options(array $o): array
 	{
 		$key = $o['zzzzsys_object_id'];
 		if (isset($this->selectCache[$key])) return $this->selectCache[$key];
 		$src = trim((string)$o['sob_select_sql']);
-		$opts = [];
-		if (preg_match('/^\s*(SELECT|WITH|\(|EXEC)\b/i', $src)) {
-			try {
-				foreach (nu_db()->run(NuHash::replace($src, ['OBJECT_ID' => (string)$o['zzzzsys_object_id']] + $this->hash, NuHash::SQL))->fetchAll(PDO::FETCH_NUM) as $r) {
-					$opts[] = [(string)$r[0], (string)($r[1] ?? $r[0])];
-				}
-			} catch (Throwable $e) {
-				error_log('nuBuilder Next select ' . $o['sob_all_id'] . ': ' . $e->getMessage());
-				$opts[] = ['', '⚠ ' . (NuAuth::user()['globeadmin'] ? $e->getMessage() : t('form_err_options'))];
-			}
-		} elseif ($src !== '') {
-			if (str_starts_with($src, '[')) {                              // JSON list
-				foreach (json_decode($src, true) ?: [] as $v) $opts[] = is_array($v) ? [(string)$v[0], (string)($v[1] ?? $v[0])] : [(string)$v, (string)$v];
-			} else {
-				$parts = explode('|', str_replace(["\r\n", "\r", "\n"], '', $src));
-				if (end($parts) === '') array_pop($parts);
-				for ($i = 0, $n = count($parts); $i + 1 < $n; $i += 2) $opts[] = [$parts[$i], $parts[$i + 1]];
-				if (count($parts) % 2 === 1) $opts[] = [end($parts), end($parts)];
-			}
-			// texts of a fixed list in the reader's language (zzzzsys_translate; 0.8.754 – nuBuilder Forte shows them as entered); the values stay
-			if (NuTranslate::active()) foreach ($opts as $i => $op) $opts[$i][1] = NuTranslate::text($op[1]);
+		try {
+			$opts = NuSelectSource::options($src, ['OBJECT_ID' => (string)$o['zzzzsys_object_id']] + $this->hash);
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next select ' . $o['sob_all_id'] . ': ' . $e->getMessage());
+			$opts = [['', '⚠ ' . (NuAuth::user()['globeadmin'] ? $e->getMessage() : t('form_err_options'))]];
 		}
+		// texts of a fixed list in the reader's language (zzzzsys_translate; 0.8.754 – nuBuilder Forte shows them as entered); the values stay
+		if (NuTranslate::active() && NuSelectSource::isFixed($src)) foreach ($opts as $i => $op) $opts[$i][1] = NuTranslate::text($op[1]);
 		return $this->selectCache[$key] = $opts;
 	}
 

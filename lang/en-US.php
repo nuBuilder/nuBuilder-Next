@@ -43,6 +43,7 @@ return [
 	'ds_align_center' => 'Center',
 	'page_settings_tip' => 'Configuration of the app (lists, colors, limits), read with $nu->setting(\'key\'). No secrets here – they go into secrets.php in the page folder.',
 	'page_sample_lists' => 'Lists and colors',
+	'pk_js_cancel' => 'Canceled or timed out – nothing was changed.',
 	'ntf_f_format_tip' => 'On: an editor for bold, italic, lists and links. Other HTML is removed when saving (no colors, fonts, images or scripts). Off: plain text.',
 	'ntf_f_must_confirm_tip' => 'Shown as a dialog on the next page the recipient opens, until "Got it" is clicked; the time is recorded. Always uses the fixed list.',
 	'mail_oauth_auth_url' => 'Authorization address',

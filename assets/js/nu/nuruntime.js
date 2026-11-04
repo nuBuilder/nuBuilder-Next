@@ -1651,7 +1651,35 @@
 		if (window.getSelection && String(window.getSelection()).length) return;
 		openRow(this, e.ctrlKey || e.metaKey);
 	});
-	$(document).on('keydown', 'tr.nuBrowseRow', function (e) { if (e.key === 'Enter' && !e.target.closest('.nuRowDel')) openRow(this, e.ctrlKey || e.metaKey); });
+	$(document).on('keydown', 'tr.nuBrowseRow', function (e) { if (e.key === 'Enter' && !e.target.closest('.nuRowDel, .nuCellAct')) openRow(this, e.ctrlKey || e.metaKey); });
+	// click action of a cell (0.8.872, design mode → column → On click): instead of the row's edit form – another form, a list in the
+	// context of the row, a procedure, a report or a JavaScript function. The row's id goes along as a property (#PARENT_ID# by default)
+	$(document).on('click', '#nuBrowseTable .nuCellAct', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		var a = ((N.browse || {}).actions || {})[this.getAttribute('data-nu-act')];
+		if (!a) return;
+		var info = nuBrowseRow(this), pk = info.pk, val = this.getAttribute('data-nu-v');
+		info.value = val;
+		var ctx = function () {
+			if (a.pass) nuSetProperty(a.pass, pk);
+			nuSetProperty('PARENT_FORM_ID', N.form.id);
+		};
+		try {
+			if (a.t === 'js') {
+				var fn = String(a.fn || '').split('.').reduce(function (o, k) { return o && o[k]; }, window);
+				if (typeof fn !== 'function') { reportError('On click: ' + a.fn + ' is not a function', 'browse'); return; }
+				fn(Object.assign({}, info, {formId: N.form.id}), e);
+				return;
+			}
+			ctx();
+			if (a.t === 'proc') { if (a.hidden) nuRunPHPHidden(a.code); else nuRunPHP(a.code); return; }
+			if (a.t === 'report') { nuRunReport(a.code); return; }
+			var open = e.ctrlKey || e.metaKey ? '2' : String(a.open || '0');
+			var rec = a.t === 'list' ? '' : (a.rec === 'new' ? '-1' : (a.rec === 'value' ? String(val) : pk));
+			if (open === '3') nuPopup(a.form, rec); else nuForm(a.form, rec, '', '', open);
+		} catch (x) { reportError(x.message, 'browse'); }
+	});
 	// delete button at the left of a browse row (Notes, 0.8.469): asks, deletes through the form API (rights, Before Delete, audit), reloads
 	$(document).on('click', '#nuBrowseTable .nuRowDel', function (e) {
 		e.preventDefault();
@@ -2006,11 +2034,13 @@
 	api('nuRunReportAction', function (code) { return nuRunReport(code); });
 
 	// =================================================================== features nuBuilder Next does not implement (yet)
+	// (nuEnableMultiSelect, nuShowFile, nuSetDateFormat, nuSetTabHelpButtons, nuSetSideBarStyle are not in nuBuilder Forte 4.9's JavaScript –
+	// kept so old code does not fail; nuSetFormValue is PHP only in nuBuilder Forte and supported there, 0.8.876)
 	var warned = {};
 	['nuPrintExcludeColumns',
 		'nuResizeBrowseColumns', 'nuSetBrowseColumnWidth', 'nuOpenWiki',
 		'nuSetSnippetFormFilter', 'nuEnableMultiSelect', 'nuShowFile',
-		'nuSetDateFormat', 'nuCreateDialog', 'nuSetFormValue', 'nuAccessFormSetButtonIcons', 'nuBrowseStyleStatusColumn',
+		'nuSetDateFormat', 'nuCreateDialog', 'nuAccessFormSetButtonIcons', 'nuBrowseStyleStatusColumn',
 		'nuSetTabHelpButtons', 'nuDragElement', 'nuSetSideBarStyle', 'nuShowVersionInfo', 'nuHasHiddenModalDragDialog'
 	].forEach(function (name) {
 		if (window[name]) return;
@@ -3373,10 +3403,8 @@
 		if (!el) return '';
 		if (el.type === 'checkbox') return el.checked ? '1' : '0';
 		if (el.tagName === 'SELECT') return $(el).find('option:selected').map(function () { return this.text; }).get().join(', ');
-		var d = g(el.id + 'description');            // lookups: the description (or code) the user sees
-		if (d && d.value) return d.value;
-		var c = g(el.id + 'code');
-		if (c && c.value) return c.value;
+		var c = g(el.id + 'code');                   // lookups: the code, as nuBuilder Forte filters (nuSubformFilterCellValue)
+		if (c) return String(c.value || '');
 		return 'value' in el ? String(el.value) : $(el).text();
 	}
 	function sfRows(sf) { return $('#' + sf + ' .nuSubformRow').filter(function () { return !this.closest('template'); }); }

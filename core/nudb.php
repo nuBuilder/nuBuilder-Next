@@ -64,6 +64,7 @@ final class NuDB
 	public function run(string $sql, array $params = []): PDOStatement
 	{
 		NuDemo::check($sql);                                    // demo mode: read only (core/nudemo.php)
+		if (NuHash::$bound && str_contains($sql, NuHash::MARK)) [$sql, $params] = NuHash::resolveMarks($sql, $params);   // bound hash variables (0.8.873)
 		$this->noteWrite($sql);
 		$st = $this->pdo->prepare($sql);
 		$st->execute(self::bind($sql, $params));

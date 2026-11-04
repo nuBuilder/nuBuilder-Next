@@ -3,6 +3,116 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.881 – Release gate (0.8.870–0.8.881)
+- Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte) for 0.8.870–0.8.880 – passkeys,
+  report rich text (HTML / Markdown), sub-form filters by lookup code, select options as in nuBuilder Forte, documentation.
+
+## 0.8.880 – Documentation for 0.8.876–0.8.879
+- Documentation for 0.8.876–0.8.879: the tutorial shows the select formats in "Object types" (with a link to "Options of a
+  select") and, in the track "Coming from nuBuilder Forte", that select options and sub-form filters are read as there;
+  Translations names the option sources that are not translated; Form with AI keeps a select's list as written; the
+  JavaScript reference and "Differences to nuBuilder Forte" say that a sub-form filter compares a lookup by its code.
+- To do: points to verify for 0.8.876–0.8.879.
+
+## 0.8.879 – Select options as in nuBuilder Forte
+- Select objects read their Options as nuBuilder Forte does: an SQL that starts with "-- " comment lines is run as SQL (it
+  became a pipe list before), hash variables work in value|text lists and JSON lists too (#USER_ID#|Me|0|Everyone),
+  SHOW TABLES / SHOW FULL TABLES list the tables (without those starting with "__"; on SQL Server from its catalog) and
+  %LANGUAGES% lists nuBuilder Forte's language names. A text that starts with "[" but is no valid JSON is read as a pipe list.
+  A list such as "WITH|With|WITHOUT|Without" stays a list.
+- One routine for the select object, nuRefreshSelectObject, the PHP function nuSelectOptions() (which keeps nuBuilder Forte's
+  own result), translations of option texts and Form with AI – a JSON list is no longer turned into a pipe list when a form
+  spec leaves the options unchanged.
+- Design mode: the (i) next to Options lists the formats. Help: "Options of a select" on the Object types page.
+
+## 0.8.878 – Sub-form filter: lookups by their code
+- Sub-form filters (nuSubformAddFilter): a lookup column is now listed and filtered by its code, as in nuBuilder Forte
+  (before: by the description shown next to it). Select columns still use the option text.
+- Help: the function reference and "Object types" say which value a filter compares.
+
+## 0.8.877 – Passkeys
+- Passkeys (WebAuthn): *Security* → *Passkeys* lists a user's passkeys (name, added, last used, synced) and adds one with the device's
+  fingerprint, face or PIN (password confirmation first); a bin button removes it. Our own checker – no library: ES256, RS256 and
+  Ed25519 signatures (openssl / sodium), the site address and a one-time challenge, the counter (a copied passkey is refused);
+  attestation "none". New table zzzzsys_nunext_passkey (database step 0034-passkeys).
+- Second factor: users with a passkey get it first on the two-step page (*Use a passkey*, "Remember this device" as before); the
+  authenticator app and the e-mail code stay available below it, and the other methods offer *Use a passkey*.
+- Sign in without a password (Security settings → *Sign in with a passkey (no password)*, off by default): a button on the sign-in page
+  and the passkeys offered in the user name field. The passkey checks the user (PIN, fingerprint, face), so it counts as both factors;
+  the same refusals as a password sign-in (expired, API service user, no access level, IP access, access levels that allow only single
+  sign-on); no forced password change; the session counts as confirmed.
+- Password confirmation before dangerous actions: *Confirm with a passkey* (not while acting as a user).
+- Admins: the user form lists a user's passkeys (Login credentials → Passkeys) and removes them; deleting a user removes them; the
+  housekeeping removes those of users deleted in nuBuilder Forte. `php nucron.php passkeys off <login name>` removes all of a user's
+  passkeys (also the globeadmin's).
+- Security settings: *Passkeys as a second factor* (on) and *Sign in with a passkey (no password)* (off); Security check point
+  *Passkeys* (how many users have one, or why they cannot be used – https and a domain name are needed).
+- Log events: Passkey added / removed / refused (with the reason), the login with via passkey or 2fa passkey.
+- Help: Security → Passkeys, Sign-in methods → Passkeys, security settings, cron commands, table reference; tutorial; README.
+
+## 0.8.876 – nuSetFormValue is PHP only
+- Form JavaScript: `nuSetFormValue` is no longer one of the placeholder functions – nuBuilder Forte has it only in PHP (a lookup's
+  After Browse; supported, also in Before Edit and after other server calls). A JavaScript call is now reported by the Compatibility
+  check as a function that does not exist instead of a placeholder.
+- Help → Differences and functions not ported: placeholders 16 (were 17); `nuEnableMultiSelect`, `nuShowFile`, `nuSetDateFormat`,
+  `nuSetTabHelpButtons` and `nuSetSideBarStyle` are marked as not in nuBuilder Forte 4.9's JavaScript (kept for older code);
+  `nuSetFormValue` points to the PHP functions. TODO.md "Not supported yet" follows the real list (`nuSetSelect2` works).
+
+## 0.8.875 – Docs for the latest features
+- Docs brought up to date for 0.8.870–0.8.874: README (list values that open a form, a filtered list, a procedure or a report;
+  report fields as text, HTML or Markdown; hash variables as bound parameters), Help → nuconfig.php settings
+  (`$nuDevSelectQueryRunParameterised`), tutorial (tips on column click actions and rich text in reports; nuBuilder Forte track:
+  bound parameters, click actions, the Content property of reports), TODO.md "please verify" for 0.8.870–0.8.874.
+- nuconfig.php editor: *Insert variable* offers `$nuDevSelectQueryRunParameterised` (group Login and security); the settings
+  search finds it.
+
+## 0.8.874 – Rich text in reports: HTML and Markdown per field
+- Reports: each field and label has a **Content** property – Automatic (the report's "Fields contain HTML"), Text, HTML or
+  Markdown – in the designer's properties with an (i) explanation; HTML / Markdown objects carry a small tag on the canvas.
+  The property is stored only when chosen (`contentType` in the layout); nuBuilder Forte ignores it and prints by its switch.
+- Reports: HTML fields and labels grow to the height of the printed HTML (measured with TCPDF) instead of the length of the raw
+  text – also with the report-wide switch. A long one continues on the next page.
+- Reports: Markdown without a library (core/numarkdown.php) – headings, bold, italic, struck, code, lists (one level of nesting),
+  quotes, rules, tables with alignment, links (http, https, mailto) and fenced code; HTML in Markdown is printed as text.
+- Reports, security: HTML is cleaned before TCPDF prints it – `<link>` (TCPDF would read its style sheet), `<script>`, `<iframe>`
+  … removed, pictures only as data URL, http(s) address or path of the web server's folder (no `phar:` / `file:`, no `..`),
+  links only http(s), mailto and #; hash variables in HTML / Markdown labels are inserted as text.
+- Help: Reports → "Rich text: HTML and Markdown".
+
+## 0.8.873 – Bound hash variables
+- Bound hash variables: with nuBuilder Forte's $nuDevSelectQueryRunParameterised = true in nuconfig.php, the hash variables of the
+  browse SQL and its columns, of select objects and of access conditions go to the database as bound parameters (?) instead of
+  text. nuBuilder Forte does this for select objects and access conditions; nuBuilder Next also for browse lists.
+- '#X#' and #X# both become the parameter. Stricter than nuBuilder Forte, so existing SQL keeps working: only real hash variable
+  names, nothing inside longer strings (LIKE '%#X#%' stays text, escaped) or comments, table names as text (#TABLE_ID#, after FROM /
+  JOIN / INTO / UPDATE / TABLE, next to a "."), #ACCESS_LEVEL_IDS# stays a list, hash variables without a value stay as they are.
+- Help: Hash variables → Bound parameters; nuRunQueryString removed from the list of functions not ported; unit tests (also against
+  SQLite) and e2e test hash_bound.
+
+## 0.8.872 – Lists: click actions per column
+- Lists: a click action per column (design mode → list → column → Behaviour → On click). A click on a value of the column then
+  opens another form (the row's record, the id in that column or a new record), opens another list in the context of the row,
+  runs a procedure or a report, or calls a JavaScript function – instead of opening the row's edit form; the rest of the row still
+  opens it. Example: apartments → the people living in the clicked apartment → one resident; or a button "Meter readings".
+- The row's id goes along as a hash variable (default #PARENT_ID#, name adjustable; #PARENT_FORM_ID# = the form of the click), so the
+  target's browse SQL filters with it. A JavaScript function gets {pk, value, row, column, formId, $cell}.
+- Look: link, button (icon and text) or icon button – real buttons, usable with the keyboard; Ctrl+click opens forms in a new tab.
+  Users who may not open the target see the plain value (same check as run buttons); no actions in lookups and the print view.
+- Stored in the column's sbr_json (nunext.action); nuBuilder Forte ignores it – there the row opens its edit form as before.
+  Help: Designing a form → On click of a column; e2e test browse_cell_action.
+
+## 0.8.871 – CI: SQL Server job fixed
+- CI (GitHub Actions), job mssql: Microsoft's ODBC driver is only installed when the runner does not have it, and Microsoft's package
+  source is only added when none is configured – gpg stopped on the key file the runner image already has ("cannot open /dev/tty").
+  gpg runs with --batch --yes.
+- CI: "cat srv.log" after a failure no longer fails itself when the job stopped before the web server was started.
+- CI: actions/checkout and actions/setup-node v5 (GitHub's notice that Node.js 20 actions are deprecated).
+
+## 0.8.870 – Data import: templates always shown
+- Data import: a Templates menu in step 1 is always shown to users who may import users – also when the page was opened for a
+  table, not only from the users list. For now it holds the users template (ZIP with the CSV and a readme); further templates go
+  into the same menu.
+
 ## 0.8.869 – Release gate (0.8.825–0.8.869)
 - Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte). Help and tutorial: single sign-on in
   the security lesson, status texts of the library packs; TODO.md: points to verify for 0.8.862–0.8.868.

@@ -22,6 +22,14 @@
 <ul>
 <li><b>Order</b>: system and user variables win, then record fields, then properties, then hash cookies – a field called <code>USER_ID</code> or a property can never replace <code>#USER_ID#</code>.</li>
 <li><b>Escaping</b> (difference to nuBuilder Forte): values are escaped for where they go – quotes in SQL, quotes and <code>$</code> in PHP strings, HTML entities in HTML. A value can't break out of <code>'#field#'</code>. Write hashes inside quotes in SQL and PHP.</li>
+<li id="hash-bound"><b>Bound parameters</b> (<code>$nuDevSelectQueryRunParameterised = true;</code> in <code>nuconfig.php</code>, a setting of nuBuilder Forte): the hash variables of the <b>browse SQL</b> and its columns, of <b>select objects</b> and of <b>access conditions</b> are passed to the database as bound parameters (<code>?</code>) instead of text. nuBuilder Forte does it for select objects and access conditions; nuBuilder Next also for browse lists. Rules:
+	<ul>
+	<li><code>'#PARENT_ID#'</code> and <code>#PARENT_ID#</code> both become the parameter – write them as you like; the value can never become SQL.</li>
+	<li>Inside a longer string the value is put in as text (escaped) – <code>LIKE '%#X#%'</code> keeps working (it breaks in nuBuilder Forte); use <code>LIKE CONCAT('%', #X#, '%')</code> for a real parameter.</li>
+	<li>Where SQL needs a name the value is put in as text: <code>#TABLE_ID#</code>, after <code>FROM</code> / <code>JOIN</code> / <code>INTO</code> / <code>UPDATE</code> / <code>TABLE</code>, next to a <code>.</code>. Lists stay lists: <code>IN (#ACCESS_LEVEL_IDS#)</code>. A list of your own in one hash variable (<code>IN (#ids#)</code> with <code>1,2,3</code>) is one value when bound – use <code>FIND_IN_SET</code> or a sub-query.</li>
+	<li>A hash variable that has no value stays as it is (<code>'#X#'</code> is then the text <code>#X#</code>). Comments (<code>--</code>, <code>/* */</code>) are not touched.</li>
+	<li>Not affected: display SQL, lookups, reports, procedures (they use <code>nuRunQuery($sql, [$params])</code> themselves), HTML and JavaScript.</li>
+	</ul></li>
 <li><code>#DEV_MODE#</code> is 1 for the globeadmin when <code>$nuConfigDevMode = true</code> is set (also <code>nuDevMode()</code> in JavaScript).</li>
 <li><code>#USER_PERMISSIONS#</code> lists the active permission items of the user (nuBuilder Forte's <code>zzzzsys_user_permission</code>), separated by <code>", "</code> – how to check one in SQL: <a href="#permissions-sql">Permission items in SQL</a>.</li>
 <li><b>Code editor</b>: the <code>#</code> button in SQL, PHP and HTML editors (design mode and double-click editor) lists every variable with a description, the fields of the form and your hash cookies – click or Enter inserts it at the cursor.</li>

@@ -184,6 +184,30 @@ $bt = $bare ? ['child' => '', 'same' => ''] : ['child' => NuTrail::store($selfTr
 if ($bare) $breadcrumbs = array_values(array_slice($breadcrumbs, 1));
 
 // ===================================================================== client data
+/** Content of a list cell: the value (with its class), or – with a click action (0.8.872) – a real button: link look, button or icon. */
+if (!function_exists('nu_browse_cell')) {
+function nu_browse_cell(string $v, string $cls, array $c, bool $act): string
+{
+	$inner = $cls !== '' ? '<span class="' . h($cls) . '">' . h($v) . '</span>' : h($v);
+	if (!$act) return $inner;
+	$a = $c['action'];
+	$lbl = (string)($a['label'] ?? '');
+	$ic = !empty($a['icon']) ? '<i class="bi ' . h($a['icon']) . '" aria-hidden="true"></i>' : '';
+	$d = ' data-nu-act="' . (int)$c['index'] . '" data-nu-v="' . h($v) . '"';
+	return match ($a['look']) {
+		'icon' => '<button type="button" class="btn btn-sm btn-outline-primary nuCellAct nuCellActIcon"' . $d . ' title="' . h($lbl !== '' ? $lbl : $v) . '" aria-label="'
+			. h($lbl !== '' ? $lbl : ($v !== '' ? $v : (string)$c['title'])) . '">' . ($ic ?: '<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>') . '</button>',
+		'button' => '<button type="button" class="btn btn-sm btn-outline-primary nuCellAct nuCellActBtn"' . $d . '>' . $ic . ($ic && ($lbl !== '' || $v !== '') ? ' ' : '') . ($lbl !== '' ? h($lbl) : $inner) . '</button>',
+		default => $v === '' ? '' : '<button type="button" class="btn btn-link p-0 nuCellAct nuCellActLink"' . $d . '>' . $inner . '</button>',
+	};
+}
+}
+
+// click actions of list cells (0.8.872): not in lookups (a click chooses the row there), not in print view
+$cellActs = [];
+if ($mode === 'browse' && $lookupTo === '' && empty($printMode)) foreach ((array)($data['columns'] ?? []) as $c) {
+	if (is_array($c) && !empty($c['action']) && ($ca = NuRender::cellAction($c['action'])) !== null) $cellActs[$c['index']] = $ca;
+}
 $client = [
 	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'lookup' => $lookupTo,
 	'form' => [
@@ -223,7 +247,9 @@ $client = [
 	// hl: the words / phrases of the search to highlight (NuBrowse::terms, 0.8.427), nsc / sc: columns left out of / limited to by the search
 	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'hl' => NuBrowse::terms($state['q'])['in'], 'nsc' => array_values((array)$state['nsc']), 'sc' => array_values((array)$state['sc']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1, 'total' => (int)($data['total'] ?? 0),
 		// badges set in design mode (0.8.688): column index => rules of nuBrowseStyleBadge ([] = the default look), applied before nuOnLoad
-		'badges' => (object)array_map(static fn($c) => $c['badge'], array_filter((array)($data['columns'] ?? []), static fn($c) => is_array($c) && ($c['badge'] ?? null) !== null))] : null,
+		'badges' => (object)array_map(static fn($c) => $c['badge'], array_filter((array)($data['columns'] ?? []), static fn($c) => is_array($c) && ($c['badge'] ?? null) !== null && !isset($cellActs[$c['index']]))),
+		// click actions of cells (0.8.872): column index => NuRender::cellAction (only those the user may open; none in lookups)
+		'actions' => (object)$cellActs] : null,
 	'adv' => $mode === 'browse' && $data && empty($printMode) ? NuAdvSearch::client($meta, $data['columns'], $state['adv']) : null,   // advanced search (0.8.719)
 	'rules' => $mode === 'edit' ? NuFormRules::client($meta, $hash) : null,   // validation rules (0.8.812, assets/js/nu/nurules.js)
 	// keyboard shortcuts / options menu (nuBuilder Ctrl+Shift+…): only what exists in nuBuilder Next and the user may use
@@ -616,7 +642,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 						<?php if ($rowDel): ?><td class="nuRowDelCol"><button type="button" class="btn btn-sm btn-outline-danger nuRowDel" data-nu-pk="<?= h($row['pk']) ?>" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php foreach ($data['columns'] as $ci => $c): ?>
 							<td id="nucell_<?= $ri ?>_<?= $c['index'] ?>" class="nuCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
-								data-nu-column="<?= $c['index'] ?>" data-nu-column-id="<?= h((string)($c['id'] ?? '')) ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-label="<?= h((string)$c['title']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?php if (!empty($row['classes'][$ci])): ?><span class="<?= h($row['classes'][$ci]) ?>"><?= h($row['cells'][$ci]) ?></span><?php else: ?><?= h($row['cells'][$ci]) ?><?php endif; ?></td>
+								data-nu-column="<?= $c['index'] ?>" data-nu-column-id="<?= h((string)($c['id'] ?? '')) ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-label="<?= h((string)$c['title']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?= nu_browse_cell((string)$row['cells'][$ci], (string)($row['classes'][$ci] ?? ''), $c, isset($cellActs[$c['index']])) ?></td>
 						<?php endforeach; ?>
 					</tr>
 				<?php endforeach; ?>

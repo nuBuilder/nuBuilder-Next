@@ -111,11 +111,25 @@ if (nu_is_post() && nu_post('action') === 'delete') {
 	NuPermission::deleteUser($id);                               // nuBuilder deletes the subform rows (sf_permission) as well
 	NuTwoFA::removeTotp($id);
 	NuTwoFA::forgetDevices($id);
+	NuPasskey::removeAll($id);                                  // passkeys (0.8.877)
 	NuLog::write('user_deleted', 'zzzzsys_user', $id, ['login' => $existing['sus_login_name']]);
 	NuUserFields::forget($id);                                  // custom field values (0.8.454)
 	NuUserAccess::forgetUser($id);                              // additional access levels (0.8.585)
 	nu_flash('success', t('user_deleted', $existing['sus_login_name']));
 	nu_redirect($backToList());
+}
+
+// ------------------------------------------------------------------ remove a passkey of the user (0.8.877)
+if (nu_is_post() && nu_post('action') === 'passkey_remove' && $existing) {
+	NuAcl::require(NuAcl::FORM_USER, 'save');
+	$guardAdminUser();
+	$pkId = nu_post('pk');
+	$pkName = (string)(array_column(NuPasskey::list($id), 'name', 'zzzzsys_nunext_passkey_id')[$pkId] ?? '');
+	if (NuPasskey::remove($id, $pkId)) {
+		NuLog::write('passkey_removed', NuPasskey::TABLE, $pkId, ['name' => $pkName, 'user' => $existing['sus_login_name'], 'by' => 'admin']);
+		nu_flash('success', t('pk_removed', $pkName));
+	}
+	nu_redirect(nu_url('user', ['id' => $id]));
 }
 
 // ------------------------------------------------------------------ reset second factor of the user
@@ -647,6 +661,18 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 							</div>
 						</div>
 					</div>
+					<?php if (!$isNew && $rights['save'] && ($userPks = NuPasskey::list($id))):   // passkeys of the user (0.8.877): seen and removed here, added only by the user ?>
+						<details class="mb-3" id="userPasskeys" data-nu-noguard><summary class="small"><i class="bi bi-fingerprint me-1"></i><?= h(t('pk_title')) ?> <span class="badge rounded-pill text-bg-secondary"><?= count($userPks) ?></span></summary>
+							<ul class="list-group list-group-flush small mt-1">
+								<?php foreach ($userPks as $pk): ?>
+									<li class="list-group-item d-flex align-items-center gap-2 px-0">
+										<span class="me-auto"><?= h((string)$pk['name']) ?> <span class="text-body-secondary">· <?= h((string)($pk['last_used_at'] ?? '') !== '' ? t('pk_last_used', date(nu_dfmt('d.m.Y'), strtotime((string)$pk['last_used_at']) ?: time())) : t('pk_never_used')) ?></span></span>
+										<?php if (empty($me['demo'])): ?><button class="btn btn-outline-danger btn-sm" type="submit" form="userPkForm" name="pk" value="<?= h((string)$pk['zzzzsys_nunext_passkey_id']) ?>" title="<?= h(t('pk_remove')) ?>" aria-label="<?= h(t('pk_remove') . ': ' . (string)$pk['name']) ?>"><i class="bi bi-trash"></i></button><?php endif; ?>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+						</details>
+					<?php endif; ?>
 
 					<div class="form-check form-switch">
 						<input class="form-check-input" type="checkbox" role="switch" id="sus_change_password" name="sus_change_password" value="1"<?= $v['sus_change_password'] === '1' ? ' checked' : '' ?>>
@@ -862,6 +888,10 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 <form method="post" id="loginTokenForm" action="<?= h(nu_url('user', ['id' => $id])) ?>"><?= nu_csrf_field() ?></form>
 <form method="post" id="loginTokenClearForm" action="<?= h(nu_url('user', ['id' => $id])) ?>" data-confirm="<?= h(t('ltok_clear_confirm')) ?>"
 	  data-confirm-ok="<?= h(t('ltok_clear')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="logintoken_clear"></form>
+<?php endif; ?>
+<?php if (!$isNew && $rights['save'] && empty($me['demo']) && !empty($userPks)): ?>
+<form method="post" id="userPkForm" action="<?= h(nu_url('user', ['id' => $id])) ?>" data-confirm="<?= h(t('pk_remove_confirm_admin')) ?>"
+	  data-confirm-ok="<?= h(t('pk_remove')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="passkey_remove"></form>
 <?php endif; ?>
 <?php if (!$isNew && $me['globeadmin'] && empty($me['demo']) && nu_cfg('nuConfigAutoLogin')): ?>
 <form method="post" id="autoLoginRevokeForm" action="<?= h(nu_url('user', ['id' => $id])) ?>" data-confirm="<?= h(t('user_autologin_revoke_confirm')) ?>"

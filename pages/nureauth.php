@@ -45,6 +45,9 @@ nu_center_start(t('reauth_title'), t('reauth_subtitle', NuSecurity::reauthMinute
 	</div>
 	<button class="btn btn-primary w-100 py-2" type="submit"><i class="bi bi-check-lg me-2"></i><?= h(t('reauth_submit')) ?></button>
 </form>
+<?php if ($pkOk = (NuPasskey::has((string)$u['id']) && !NuImpersonate::active())):   // passkeys (0.8.877): confirm with one instead of the password – never while acting as a user ?>
+	<div class="nuLoginPasskey"><div class="nuLoginOr"><span><?= h(t('login_or')) ?></span></div><?= NuPasskey::button('reauth', t('pk_confirm'), 'btn btn-outline-primary w-100 py-2', 'nuPkReauth') ?></div>
+<?php endif; ?>
 <div class="text-center mt-3"><a class="small text-decoration-none" href="<?= h(nu_url('home')) ?>"><?= h(t('cancel')) ?></a></div>
 <?php
-nu_center_end();
+nu_center_end($pkOk ? NuPasskey::script() : '');

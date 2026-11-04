@@ -29,6 +29,9 @@ declare(strict_types=1);
  * IP access (0.8.722) – switched off when the rules lock everybody out (they stay stored):
  *     php nucron.php iprules off
  *
+ * Passkeys (0.8.877) – removes every passkey of a user (lost device; the globeadmin: his login name or "globeadmin"):
+ *     php nucron.php passkeys off <login name>
+ *
  * Integrity check of the database (0.8.698) – what would make an update fail or leave data broken:
  *     php nucron.php integrity [--json]      Exit code: 0 = no problems (warnings / notes allowed), 1 = problems found
  *
@@ -78,6 +81,17 @@ if (($args[0] ?? '') === 'reset') {
 if (($args[0] ?? '') === 'iprules') {
 	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php nucron.php iprules off\n"); exit(2); }
 	echo NuIpAccess::switchOff('cli') ? "IP access switched off (the rules are kept: Settings → Security → IP access).\n" : "IP access was already off.\n";
+	exit(0);
+}
+if (($args[0] ?? '') === 'passkeys') {
+	$who = (string)($args[2] ?? '');
+	if (($args[1] ?? '') !== 'off' || $who === '') { fwrite(STDERR, "Usage: php nucron.php passkeys off <login name>\n"); exit(2); }
+	$id = $who === 'globeadmin' || hash_equals((string)nu_cfg('nuConfigDBGlobeadminUsername'), $who) ? 'globeadmin'
+		: (string)nu_db()->value('SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = ?', [$who]);
+	if ($id === '') { fwrite(STDERR, "No user with the login name $who.\n"); exit(1); }
+	$n = NuPasskey::removeAll($id);
+	if ($n > 0) NuLog::write('passkeys_removed', NuPasskey::TABLE, '', ['user' => $who, 'count' => $n, 'by' => 'cli'], ['id' => 'cli', 'login' => 'cli']);
+	echo $n . " passkey(s) of $who removed.\n";
 	exit(0);
 }
 if (($args[0] ?? '') === 'integrity') {

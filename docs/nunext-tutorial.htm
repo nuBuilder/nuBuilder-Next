@@ -357,7 +357,7 @@
 		<p>Objects are the fields and elements of a form. The most important ones:</p>
 		<ul>
 			<li><strong>Input</strong> – text, number, date, checkbox, file, button, masks (IBAN, phone). <strong>Text area</strong> and <strong>WYSIWYG editor</strong> for longer texts.</li>
-			<li><strong>Select</strong> – a list of values or SQL; searchable, also with multiple values.</li>
+			<li><strong>Select</strong> – a list of values (<code>1|Open|2|Closed</code> or <code>["Open", "Closed"]</code>) or SQL; searchable, also with multiple values.</li>
 			<li><strong>Lookup</strong> – picks a record of another form (e.g. the customer of an order): type a code or search in a list.</li>
 			<li><strong>Display</strong> and <strong>calculation</strong> – show a value from SQL or calculate from other fields (e.g. the order total).</li>
 			<li><strong>Sub-form</strong> – rows of another table inside the record (order lines).</li>
@@ -368,7 +368,7 @@
 		<div class="tut-task">
 			<p>Open the sample form <a data-open="form" data-args="f=sampleall">All objects</a> and click through its tabs – every object type is there. Then open it in design mode to see how each is set up.</p>
 		</div>
-		<p><a data-help="object-types">Object types</a> · <a data-help="run-objects">Run objects</a></p>
+		<p><a data-help="object-types">Object types</a> · <a data-help="select-options">Options of a select</a> · <a data-help="run-objects">Run objects</a></p>
 	</section>
 
 	<section class="tut-lesson" id="form-code">
@@ -397,6 +397,7 @@
 ]);</code></pre>
 			<p class="mb-0">The first rule that matches wins. Without code, design mode does the same: select the column title → <em>Show as badge</em> → <em>Colour rule</em>.</p>
 		</div>
+		<div class="tut-tip">A value in a list can open something else than the row: select the column title in design mode → <em>Behaviour</em> → <em>On click of a column</em> – a related form, a list filtered by the row (from customers to their orders: the target's browse SQL uses <code>'#PARENT_ID#'</code>), a procedure or a report, shown as a link, a button or an icon (<a data-help="design-list-click">column click actions</a>).</div>
 		<p><a data-help="hooks">PHP hooks and procedures</a> · <a data-help="hash-variables">Hash variables</a> · <a data-help="js-api">JavaScript functions</a> · <a data-help="js-browse-badge">Badges in a list</a></p>
 	</section>
 
@@ -446,6 +447,7 @@
 			<li><strong>Access levels</strong> that may run it.</li>
 		</ul>
 		<p>The <strong>SQL builder</strong> creates queries graphically: add tables, tick columns, drag a column onto another to join, add conditions and sorting. <em>Run</em> shows the first rows.</p>
+		<div class="tut-tip">A field or text can print <strong>HTML</strong> or <strong>Markdown</strong> (<code>**bold**</code>, lists, tables): <em>Content</em> in its properties. It grows to the height it prints (<a data-help="report-rich-text">rich text in reports</a>).</div>
 		<div class="tut-note">The PDF needs the TCPDF library pack (Update → Libraries); nuBuilder Forte's copy is used as a fallback when nuBuilder Next sits in its folder. Without it the report pages say so.</div>
 		<div class="tut-task">
 			<p>Open the sample report <code>sample_customers</code> (customers by country) in the designer, look at its bands and run <em>Preview</em>. Then open the SQL builder query <code>sample_orders</code>.</p>
@@ -568,6 +570,7 @@
 		<ul>
 			<li><strong>Security settings</strong> on the same page: who grants admin rights, log retention, when to ask for the password again, old md5 passwords …</li>
 			<li><strong>Two-factor login</strong>: <code>$nuConfig2FAAdmin</code> for the globeadmin, <code>$nuConfig2FAUser</code> plus <em>Use two-factor authentication</em> on access levels for users. Each person sets up an authenticator app on the <a data-open="security">Security</a> page (users: <em>Security</em> in the user menu), or gets codes by e-mail.</li>
+			<li><strong>Passkeys</strong>: on the same <a data-open="security">Security</a> page everyone can add a passkey (fingerprint, face or PIN of the device) – it replaces the code of the second step and the password confirmation. With <em>Sign in with a passkey (no password)</em> in the security settings, users sign in with the passkey alone. Passkeys need https and a domain name.</li>
 			<li><strong>IP access</strong> (<a data-open="ipaccess">Settings → Sign-in &amp; security → IP access</a>, globeadmin only): sign-in only from certain addresses or networks – one list for all access levels, exceptions per level and a rule of its own for the globeadmin. <em>Test an address</em> shows who could work from an address; saving never locks out the address you are using.</li>
 			<li><strong>Single sign-on</strong> (<a data-open="sso">Settings → Sign-in &amp; security → Single sign-on</a>, globeadmin only): users sign in with their company account (Microsoft Entra ID, Google Workspace, Keycloak or another OpenID Connect provider). Access levels can follow the provider's groups, and an access level can be set to single sign-on only. <em>Test sign-in</em> shows what an account would do before you switch it on; you yourself always keep the password of nuconfig.php.</li>
 			<li><strong>Password policy</strong> (<a data-open="pwpolicy">Settings → Sign-in &amp; security → Password policy</a>): minimum length, a check against known leaked passwords (only 5 characters of the hash leave the server) – also at sign-in – and, only where a rule requires it, a regular change; <em>Try a password</em> shows what the rules say.</li>
@@ -576,7 +579,7 @@
 		<div class="tut-task">
 			<p>Open the <a data-open="securitycheck">Security check</a> and go through every red and yellow point. Set up an authenticator app for your own login under <a data-open="security">Security</a>.</p>
 		</div>
-		<p><a data-help="security-check">Security</a> · <a data-help="ip-access">IP access</a> · <a data-help="sso">Single sign-on</a> · <a data-help="password-policy">Password policy</a> · <a data-help="security-checklist">Checklist for a live server</a></p>
+		<p><a data-help="security-check">Security</a> · <a data-help="passkeys-admin">Passkeys</a> · <a data-help="ip-access">IP access</a> · <a data-help="sso">Single sign-on</a> · <a data-help="password-policy">Password policy</a> · <a data-help="security-checklist">Checklist for a live server</a></p>
 	</section>
 
 	<section class="tut-lesson" id="logs" data-right="log">
@@ -971,6 +974,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<ul>
 			<li><strong>Design mode</strong> (the globeadmin and users with the save right on forms): <em>Design</em> on a record changes the form where it runs – select, move, a properties panel, tabs, new objects from the table's columns – like nuBuilder Forte's arrange mode and object properties in one (<a data-help="design-mode">design mode</a>).</li>
 			<li><strong>Everything in one place</strong>: form settings, the list's columns (<em>Design</em> on the list, right-click a title for its menu), objects, tabs, code and history – all in design mode; <em>Structure</em> in the icon bar lists every object per tab, <kbd>?</kbd> shows the keyboard shortcuts.</li>
+			<li><strong>List values that open something</strong>: a column can open a related form, a list filtered by the row, a procedure or a report on click – no JavaScript in the browse code needed (<a data-help="design-list-click">column click actions</a>).</li>
 			<li>An object's ⋮ menu (or a right-click on it) clones it, changes its database column or deletes it; several objects move together with <kbd>Ctrl</kbd> + click and the arrow keys.</li>
 			<li><strong>Drafts</strong>: changes can be made in a draft, previewed and compared, and published when they are ready – the live form stays as it is meanwhile (<a data-help="form-drafts">form drafts</a>). Every published change is kept in the history and can be restored.</li>
 			<li><strong>New form</strong> replaces Fast Form: table (new or existing), fields, list columns and the place on the User Home in one wizard. The <em>Form cloner</em> copies forms as nuBuilder Forte's Cloner does.</li>
@@ -982,8 +986,9 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 	<section class="tut-lesson" id="forte-code" data-right="acl:nuform">
 		<h3>Code: what stays, what changed</h3>
 		<ul>
-			<li><strong>Same events and functions</strong>: PHP hooks and procedures use nuBuilder Forte's functions (<code>nuRunQuery</code>, <code>nuSetProperty</code>, <code>nuGetProperty</code>, <code>nuDisplayError</code> …), form JavaScript nuBuilder Forte's (<code>nuGetValue</code>, <code>nuSetValue</code>, <code>nuHide</code>, <code>nuMessage</code> …). Hash variables (<code>#RECORD_ID#</code>, <code>#USER_ID#</code> …) work as before.</li>
+			<li><strong>Same events and functions</strong>: PHP hooks and procedures use nuBuilder Forte's functions (<code>nuRunQuery</code>, <code>nuSetProperty</code>, <code>nuGetProperty</code>, <code>nuDisplayError</code> …), form JavaScript nuBuilder Forte's (<code>nuGetValue</code>, <code>nuSetValue</code>, <code>nuHide</code>, <code>nuMessage</code> …). Hash variables (<code>#RECORD_ID#</code>, <code>#USER_ID#</code> …) work as before; with <code>$nuDevSelectQueryRunParameterised = true</code> in <code>nuconfig.php</code> they go to the database as bound parameters – in browse SQL and access conditions too, not only in select objects (<a data-help="hash-bound">bound parameters</a>).</li>
 			<li><strong>Code editors</strong> with syntax colours, an <em>Insert</em> menu of all documented functions and suggestions while typing; the documentation has a function reference with examples (<a data-help="ref">Code reference</a>).</li>
+			<li><strong>Object settings read the same way</strong>: a select's options in every format of nuBuilder Forte – SQL, <code>value|text</code>, a JSON list, <code>SHOW TABLES</code>, <code>%LANGUAGES%</code>, with hash variables in each (<a data-help="select-options">options of a select</a>); sub-form filters compare a lookup by its code.</li>
 			<li><strong>Security</strong>: nuBuilder Next's own pages allow no inline scripts or styles (Content Security Policy). Form pages still run your form code as nuBuilder Forte does.</li>
 			<li><strong>Setup → Header / Style / Include</strong> still apply to forms; code for <em>all</em> pages (also the start page and the admin pages) goes into <a data-open="globalcode">Global code</a>.</li>
 			<li>A few nuBuilder Forte functions behave differently or were left out on purpose – each with its reason: <a data-help="porting">Differences and functions not ported</a>.</li>
@@ -1006,6 +1011,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Reports and the SQL builder</h3>
 		<ul>
 			<li>Reports use nuBuilder Forte's layout format: the <a data-open="reports">report designer</a> was rebuilt, but a report saved in either product prints the same in both (PDF with TCPDF).</li>
+			<li>New per field and label: <em>Content</em> = text, HTML or Markdown, growing to the printed height (<a data-help="report-rich-text">rich text</a>). nuBuilder Forte ignores it and prints by its <em>Use HTML</em> switch.</li>
 			<li>The <a data-open="sqlbuilder">SQL builder</a> stores its queries in nuBuilder Forte's format – tables, joins, clauses – with a preview of the result.</li>
 			<li>New: reports can be run through the REST API and sent as e-mail; dashboards show numbers and charts from SQL, SQL builder queries or procedures.</li>
 		</ul>
@@ -1021,7 +1027,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Security and sign-in</h3>
 		<ul>
 			<li>The <a data-open="securitycheck">Security check</a> lists weak points of the installation with a fix for each (passwords, file rights, settings, libraries).</li>
-			<li>Two-factor sign-in per access level, a limit for wrong passwords, one-time login links and password reset by e-mail (<a data-help="signin-methods">sign-in methods</a>).</li>
+			<li>Two-factor sign-in per access level, passkeys (also without a password), a limit for wrong passwords, one-time login links and password reset by e-mail (<a data-help="signin-methods">sign-in methods</a>).</li>
 			<li>Dangerous actions ask for the password again; <a data-open="sessions">Logged-in users</a> shows who is signed in and can sign them out.</li>
 			<li><strong>Work as a user</strong> (<a data-help="impersonate">impersonate</a>): see what a user sees – read only or with full access – without knowing the password.</li>
 			<li>Field data access: per field and access level – edit, read only, hidden or masked (<a data-help="data-access">data access</a>).</li>

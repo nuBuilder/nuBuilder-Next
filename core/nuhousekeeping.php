@@ -63,6 +63,7 @@ final class NuHousekeeping
 		$step('demo_reset', static fn() => NuDemoData::resetIfDue());
 		$step('field_access', static fn() => NuFieldAccess::purgeOrphans());   // rules of deleted objects (0.8.480)
 		$step('permission_types', static fn() => NuPermType::purgeOrphans());
+		$step('passkeys', static fn() => NuPasskey::purgeOrphans());                     // passkeys of deleted users (0.8.877)
 		$step('form_maintenance', static fn() => NuFormStatus::purge());   // messages of forms no longer in maintenance (0.8.808)
 		$step('form_everyone', static fn() => NuFormEveryone::purgeOrphans());   // "Everyone" switches of deleted forms (0.8.784)   // types of deleted permission items, also deleted in nuBuilder Forte (0.8.773)
 		if ($source === 'cron') $step('github', static fn() => NuGitHub::autoCheck());   // a newer release on GitHub? once a day (0.8.374) – page views: see NuHome::badges()     // demo mode: tables of the allowed forms back to the snapshot (0.8.341)

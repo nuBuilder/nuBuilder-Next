@@ -211,18 +211,8 @@ final class NuTranslate
 	/** Texts of a static select (nuBuilder's "v|t|v|t", lines, or a JSON list); [] for SQL options. */
 	public static function optionTexts(string $src): array
 	{
-		$src = trim($src);
-		if ($src === '' || preg_match('/^\s*(SELECT|WITH|\(|EXEC)\b/i', $src)) return [];
-		$out = [];
-		if (str_starts_with($src, '[')) {
-			foreach (json_decode($src, true) ?: [] as $v) $out[] = is_array($v) ? (string)($v[1] ?? $v[0] ?? '') : (string)$v;
-		} else {
-			$parts = explode('|', str_replace(["\r\n", "\r", "\n"], '', $src));
-			if (end($parts) === '') array_pop($parts);
-			for ($i = 1, $n = count($parts); $i < $n; $i += 2) $out[] = $parts[$i];
-			if (count($parts) % 2 === 1) $out[] = (string)end($parts);
-		}
-		return $out;
+		// only a list written into the object (pipe list or JSON – NuSelectSource, 0.8.879); SQL, SHOW TABLES and %LANGUAGES% are not
+		return NuSelectSource::isFixed($src) ? array_map(static fn($o) => (string)$o[1], NuSelectSource::options($src)) : [];
 	}
 
 	/** First arguments of nuTranslate('…') calls written as plain string literals (JavaScript and PHP). */

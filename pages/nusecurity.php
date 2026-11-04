@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-/* Own account security: authenticator app (set up / remove), trusted devices, password. */
+/* Own account security: authenticator app (set up / remove), passkeys (0.8.877: list, add through assets/js/nupasskey.js, remove), trusted devices, password. */
 
 $u      = NuAuth::user();
 $uid    = (string)$u['id'];
@@ -41,6 +41,16 @@ if (nu_is_post()) {
 			nu_redirect(nu_url('security'));
 		}
 	}
+	if ($action === 'pk_remove') {
+		NuSecurity::requireRecentAuth(nu_url('security'));
+		$pkId = nu_post('pk');
+		$pkName = (string)(array_column(NuPasskey::list($uid), 'name', 'zzzzsys_nunext_passkey_id')[$pkId] ?? '');
+		if (NuPasskey::remove($uid, $pkId)) {
+			NuLog::write('passkey_removed', NuPasskey::TABLE, $pkId, ['name' => $pkName]);
+			nu_flash('success', t('pk_removed', $pkName));
+		}
+		nu_redirect(nu_url('security') . '#secPasskeys');
+	}
 	if ($action === 'devices_forget') {
 		NuTwoFA::forgetDevices($uid);
 		NuLog::write('2fa_devices_forgotten');
@@ -57,6 +67,9 @@ $required = $u['globeadmin'] ? (bool)nu_cfg('nuConfig2FAAdmin')
 $email    = $u['globeadmin'] ? (string)(nu_cfg('nuConfigGlobeadminEmail') ?: NuMail::settings()['from']) : $u['email'];
 
 $foot = $setup ? '<script src="' . nu_asset(NU_QRCODE . '/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>' : '';
+$pkOn  = NuPasskey::on();
+$pks   = $pkOn ? NuPasskey::list($uid) : [];
+if ($pkOn && NuPasskey::usable()) $foot .= NuPasskey::script();
 
 nu_layout_start(t('sec_title'));
 ?>
@@ -110,6 +123,46 @@ nu_layout_start(t('sec_title'));
 				<?php endif; ?>
 			</div>
 		</div>
+
+		<?php if ($pkOn): $pkProblem = NuPasskey::problem(); $pkTip = t('pk_tip'); ?>
+		<div class="card shadow-sm mb-3" id="secPasskeys">
+			<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-fingerprint"></i><?= h(t('pk_title')) ?>
+				<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($pkTip) ?>" title="<?= h($pkTip) ?>"><i class="bi bi-info-circle"></i></span>
+				<span class="badge ms-auto <?= $pks ? 'text-bg-success' : 'text-bg-secondary' ?>" id="secPkCount"><?= h($pks ? t('pk_count', count($pks)) : t('sec_inactive')) ?></span></div>
+			<div class="card-body">
+				<?php if ($pkProblem !== ''): ?>
+					<p class="mb-0 text-body-secondary" id="secPkProblem"><?= h(t($pkProblem)) ?></p>
+				<?php else: ?>
+					<?php if ($pks): ?>
+						<ul class="list-group mb-3" id="secPkList">
+							<?php foreach ($pks as $pk): $pkUsed = (string)($pk['last_used_at'] ?? ''); ?>
+								<li class="list-group-item d-flex flex-wrap align-items-center gap-2" data-pk-id="<?= h((string)$pk['zzzzsys_nunext_passkey_id']) ?>">
+									<i class="bi bi-key text-body-secondary" aria-hidden="true"></i>
+									<div class="me-auto">
+										<div class="fw-semibold"><?= h((string)$pk['name']) ?><?php if ((string)$pk['backup'] === '1'): ?> <span class="badge text-bg-light border fw-normal" title="<?= h(t('pk_synced_tip')) ?>"><?= h(t('pk_synced')) ?></span><?php endif; ?></div>
+										<div class="small text-body-secondary"><?= h(t('pk_created', date(nu_dfmt('d.m.Y'), strtotime((string)$pk['created_at']) ?: time()))) ?> · <?= h($pkUsed !== '' ? t('pk_last_used', date(nu_dfmt('d.m.Y H:i'), strtotime($pkUsed) ?: time())) : t('pk_never_used')) ?></div>
+									</div>
+									<form method="post" action="<?= h(nu_url('security')) ?>" data-confirm="<?= h(t('pk_remove_confirm', (string)$pk['name'])) ?>" data-confirm-ok="<?= h(t('pk_remove')) ?>" data-confirm-class="btn btn-danger">
+										<?= nu_csrf_field() ?><input type="hidden" name="action" value="pk_remove"><input type="hidden" name="pk" value="<?= h((string)$pk['zzzzsys_nunext_passkey_id']) ?>">
+										<button class="btn btn-outline-danger btn-sm" type="submit" title="<?= h(t('pk_remove')) ?>" aria-label="<?= h(t('pk_remove') . ': ' . (string)$pk['name']) ?>"><i class="bi bi-trash"></i></button>
+									</form>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					<?php else: ?>
+						<p class="mb-3"><?= h(t('pk_none')) ?></p>
+					<?php endif; ?>
+					<?php if (empty($u['demo']) && !NuImpersonate::active() && count($pks) < NuPasskey::MAX_PER_USER): ?>
+						<div class="d-flex flex-wrap gap-2 align-items-start">
+							<input type="text" class="form-control w-auto flex-grow-1" id="pkName" maxlength="100" placeholder="<?= h(t('pk_name_ph')) ?>" aria-label="<?= h(t('pk_name')) ?>">
+							<div><?= NuPasskey::button('add', t('pk_add'), 'btn btn-primary', 'nuPkAdd') ?></div>
+						</div>
+						<div class="alert alert-warning small mt-2 mb-0" id="nuPkUnsupported" hidden><?= h(t('pk_js_unsupported')) ?></div>
+					<?php endif; ?>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php endif; ?>
 
 		<div class="card shadow-sm mb-3">
 			<div class="card-header fw-semibold"><i class="bi bi-envelope me-2"></i><?= h(t('sec_mail')) ?></div>

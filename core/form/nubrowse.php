@@ -50,7 +50,7 @@ final class NuBrowse
 	{
 		$sql = trim((string)$meta->form['sfo_browse_sql']);
 		if ($sql === '') $sql = 'SELECT * FROM ' . NuDB::ident($meta->table());
-		return NuHash::replace(self::expandFilterMatch($sql), $hash, NuHash::SQL);
+		return NuHash::sql(self::expandFilterMatch($sql), $hash);   // text, or bound parameters with $nuDevSelectQueryRunParameterised (0.8.873)
 	}
 
 	/**
@@ -269,7 +269,7 @@ final class NuBrowse
 			// sorted; a masked one is shown masked and is not searched, filtered or sorted. Columns keep their index (nu_c<index>).
 			$state = NuBrowseAccess::state($meta, $b);
 			if ($state === 'hide') continue;
-			$expr = trim(NuHash::replace((string)$b['sbr_display'], $hash, NuHash::SQL));   // nuBuilder replaces hash variables in the columns too
+			$expr = trim(NuHash::sql((string)$b['sbr_display'], $hash));   // nuBuilder replaces hash variables in the columns too (bound: 0.8.873)
 			if ($expr === '' || strtolower($expr) === 'null') $expr = 'NULL';
 			$cols[$i] = [
 				'mask' => str_starts_with($state, 'mask:') ? substr($state, 5) : null,
@@ -277,6 +277,7 @@ final class NuBrowse
 				'format' => (string)$b['sbr_format'], 'width' => (int)$b['sbr_width'], 'id' => (string)$b['zzzzsys_browse_id'],
 				'filter' => !empty(NuFormMeta::nunextJson($b['sbr_json'] ?? null)['filter']) && $expr !== 'NULL' && !str_starts_with($state, 'mask:'),
 				'badge' => str_starts_with($state, 'mask:') ? null : NuFormMeta::badgeOf($b['sbr_json'] ?? null),   // design mode's Badge (0.8.688)
+				'action' => str_starts_with($state, 'mask:') ? null : NuFormMeta::actionOf($b['sbr_json'] ?? null),   // On click (0.8.872)
 			];
 		}
 
@@ -367,7 +368,7 @@ final class NuBrowse
 	public static function distinctValues(NuFormMeta $meta, array $hash, array $col, int $limit = 300): array
 	{
 		[$inner] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), [$col]);
-		$key = $meta->id . '|' . $col['index'] . '|' . md5($inner . '|' . $limit . '|' . (string)$col['format']);
+		$key = $meta->id . '|' . $col['index'] . '|' . md5($inner . '|' . $limit . '|' . (string)$col['format'] . '|' . NuHash::boundKey($inner));
 		$c = $_SESSION['nu_dv'][$key] ?? null;
 		if (is_array($c) && ($c[0] ?? 0) > time() - self::VALUES_TTL) return $c[1];
 		$expr = self::castText('nuT.nu_c' . $col['index']);

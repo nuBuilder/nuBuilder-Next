@@ -589,6 +589,103 @@ T.design_list_badge = async (s) => {
 	} finally { execSync('mysql ' + DB, { input: fs.readFileSync(keep) }); fs.unlinkSync(keep); }
 };
 
+// click action of a list cell (0.8.872): a list in the context of the row (#PARENT_ID#), a form for a new record (icon button), a JavaScript
+// function with the row; the rest of the row still opens the row; design mode panel "On click" writes sbr_json nunext.action into the draft
+T.browse_cell_action = async (s) => {
+	const p = s.ga, F = 'samplecustomer', keep = path.join(os.tmpdir(), 'nunext-e2e-cellact.sql');
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id IN ('samplecustomer', 'sampleorder')").startsWith('2')) { s.skip = 'no sample application'; return; }
+	execSync('mysqldump ' + DB + ' zzzzsys_browse zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	const col = sql(`SELECT zzzzsys_browse_id FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${F}' ORDER BY sbr_order LIMIT 1`);
+	const setAct = (a) => sql(`UPDATE zzzzsys_browse SET sbr_json = '${JSON.stringify({ nunext: { action: a } })}' WHERE zzzzsys_browse_id = '${col}'`);
+	try {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id IN ('${F}', 'sampleorder')`);
+		sql("UPDATE zzzzsys_form SET sfo_browse_sql = CONCAT(sfo_browse_sql, \" WHERE ('#PARENT_ID#' LIKE '#%' OR ord_sample_customer_id = '#PARENT_ID#')\") WHERE zzzzsys_form_id = 'sampleorder'");
+		// 1 a list for this row: the orders of the clicked customer
+		setAct({ t: 'list', id: 'sampleorder', open: '0', pass: 'PARENT_ID', look: 'link' });
+		await open(p, 'index.php?p=form&f=' + F);
+		const btn = p.locator('#nuBrowseTable tr.nuBrowseRow >> nth=0').locator('.nuCellAct.nuCellActLink');
+		expect(await btn.count() === 1, 'no link in the first cell');
+		const pk = await p.getAttribute('#nuBrowseTable tr.nuBrowseRow >> nth=0', 'data-nu-primary-key');
+		await Promise.all([p.waitForURL(/f=sampleorder/, { timeout: 10000 }), btn.click()]);
+		await p.waitForLoadState('networkidle');
+		const want = +sql(`SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = '${pk}'`);
+		const total = await p.evaluate(() => (window.nuNext && nuNext.browse) ? nuNext.browse.total : -1);
+		expect(total === want && want < +sql('SELECT COUNT(*) FROM sample_order'), 'orders of the customer: ' + total + ' of ' + want);
+		// 2 the rest of the row opens the row as before
+		await open(p, 'index.php?p=form&f=' + F);
+		await Promise.all([p.waitForURL(/f=samplecustomer.*r=|r=.*f=samplecustomer/, { timeout: 10000 }), p.click('#nuBrowseTable tr.nuBrowseRow >> nth=0 >> td.nuCell[data-nu-column="1"]')]);
+		// 3 a new record of another form, as an icon button
+		setAct({ t: 'form', id: 'sampleorder', rec: 'new', open: '0', look: 'icon', icon: 'bi-cart-plus', label: 'New order' });
+		await open(p, 'index.php?p=form&f=' + F);
+		const ib = p.locator('#nuBrowseTable tr.nuBrowseRow >> nth=0').locator('.nuCellActIcon');
+		expect(await ib.count() === 1 && await ib.getAttribute('aria-label') === 'New order' && await ib.locator('.bi-cart-plus').count() === 1, 'icon button');
+		await Promise.all([p.waitForURL(/f=sampleorder.*r=-1|r=-1.*f=sampleorder/, { timeout: 10000 }), ib.click()]);
+		// 4 a JavaScript function gets the row
+		setAct({ t: 'js', id: 'e2eCellAct', look: 'button', label: 'Go' });
+		await open(p, 'index.php?p=form&f=' + F);
+		await p.evaluate(() => { window.e2eCellAct = (i) => { window.__e2eAct = { pk: i.pk, value: i.value, formId: i.formId }; }; });
+		await p.click('#nuBrowseTable tr.nuBrowseRow >> nth=0 >> .nuCellActBtn');
+		const got = await p.evaluate(() => window.__e2eAct || null);
+		expect(got && got.pk === pk && got.formId === F && /samplecustomer/.test(p.url()), 'JS function: ' + JSON.stringify(got));
+		// 5 a target that does not exist: plain value
+		setAct({ t: 'form', id: 'no_such_form', look: 'link' });
+		await open(p, 'index.php?p=form&f=' + F);
+		expect(await p.locator('#nuBrowseTable .nuCellAct').count() === 0, 'link to a missing form');
+		// 6 design mode: On click → Open a list → target select → stored in the draft
+		setAct(null);
+		sql(`UPDATE zzzzsys_browse SET sbr_json = NULL WHERE zzzzsys_browse_id = '${col}'`);
+		await open(p, 'index.php?p=form&f=' + F + '&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(800);
+		await p.click('#nuBrowseTable th.nuBrowseTitle >> nth=0'); await p.waitForTimeout(400);
+		await p.selectOption('#nuDsPanel select[data-key="action_t"]', 'list'); await p.waitForTimeout(1500);
+		expect(await p.locator('#nuDsActNoTarget').count() === 1, 'hint without a target');
+		await p.selectOption('#nuDsPanel select[data-key="action_id"]', 'sampleorder'); await p.waitForTimeout(1500);
+		const js = sql(`SELECT jt.j FROM zzzzsys_nunext_form_draft d, JSON_TABLE(d.snapshot, '$.browse[*]' COLUMNS(i VARCHAR(30) PATH '$.zzzzsys_browse_id', j TEXT PATH '$.sbr_json')) jt WHERE d.form_id = '${F}' AND d.status = 'open' AND jt.i = '${col}'`);
+		expect(/"action":\{"t":"list","id":"sampleorder"/.test(js), 'action in the draft: ' + js);
+		expect(await p.locator('#nuBrowseTable tr.nuBrowseRow >> nth=0').locator('.nuCellAct').count() === 1, 'design preview shows the link');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally { execSync('mysql ' + DB, { input: fs.readFileSync(keep) }); fs.unlinkSync(keep); }
+};
+
+// bound hash variables (0.8.873, nuBuilder Forte's $nuDevSelectQueryRunParameterised): an UNQUOTED #PARENT_ID# in a browse SQL, a select
+// object's SQL and an access condition only works when the value is a bound parameter (as text it would be a bare word); a value with a
+// quote cannot break out; without the switch the same SQL fails – the list shows its error
+T.hash_bound = async (s) => {
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id IN ('samplecustomer', 'sampleorder', 'sampleall')").startsWith('3')) { s.skip = 'no sample application'; return; }
+	const p = s.ga, cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8'), keep = path.join(os.tmpdir(), 'nunext-e2e-hashbound.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_object zzzzsys_nunext_form_draft > ' + keep);
+	const cust = sql("SELECT ord_sample_customer_id FROM sample_order GROUP BY ord_sample_customer_id ORDER BY COUNT(*) DESC LIMIT 1");
+	const want = +sql(`SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = '${cust}'`);
+	const listWith = async (v) => {
+		await open(p, 'index.php?p=form&f=sampleorder');
+		await p.evaluate((v) => { nuSetProperty('PARENT_ID', v); nuForm('sampleorder', '', '', '', '0'); }, v);
+		await p.waitForLoadState('networkidle'); await p.waitForTimeout(300);
+		return p.evaluate(() => ({ total: (window.nuNext && nuNext.browse) ? nuNext.browse.total : -1, err: !!document.querySelector('.alert-danger, #nuErrors .alert') }));
+	};
+	try {
+		sql("UPDATE zzzzsys_form SET sfo_browse_sql = CONCAT(sfo_browse_sql, ' WHERE ord_sample_customer_id = #PARENT_ID#') WHERE zzzzsys_form_id = 'sampleorder'");
+		sql("UPDATE zzzzsys_object SET sob_select_sql = 'SELECT sample_customer_id, cus_name FROM sample_customer WHERE sample_customer_id <> #USER_ID# ORDER BY cus_name' WHERE zzzzsys_object_id = 'sample_all_o31'");
+		// without the switch: text – the bare word is an error
+		let r = await listWith(cust);
+		expect(r.total <= 0 && r.err, 'without the switch the unquoted hash should fail: ' + JSON.stringify(r));
+		fs.writeFileSync(cfg, orig.replace(/\?>\s*$/, '') + '\n$nuDevSelectQueryRunParameterised = true;\n');
+		await new Promise(r => setTimeout(r, 3500));                // OPcache checks the file every 2 s
+		r = await listWith(cust);
+		expect(r.total === want && !r.err, 'bound: orders of the customer ' + JSON.stringify(r) + ' want ' + want);
+		r = await listWith("x' OR '1'='1");
+		expect(r.total === 0 && !r.err, 'bound: a quote stays in the value ' + JSON.stringify(r));
+		// select object: options with the bound #USER_ID#
+		await open(p, 'index.php?p=form&f=sampleall&r=-1');
+		const n = await p.evaluate(() => { const sel = document.querySelector('[data-nu-field="all_select_sql"], #all_select_sql'); return sel ? sel.querySelectorAll('option').length : -1; });
+		expect(n >= +sql('SELECT COUNT(*) FROM sample_customer'), 'select options with a bound hash: ' + n);
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		fs.writeFileSync(cfg, orig);
+		execSync('mysql ' + DB, { input: fs.readFileSync(keep) }); fs.unlinkSync(keep);
+		await new Promise(r => setTimeout(r, 2500));
+	}
+};
+
 // 0.8.687: users ↔ access levels ↔ permission items – filters and links; admin roles as a system list; logged-in users filters / groups
 // user stamps (0.8.759): sus_json NUNEXT_CREATED / NUNEXT_CHANGED {t, by} written by the user form (create / change), shown in the (i) panel and
 // in the users list columns Created / Last changed (view "all"); a user from before gets the created stamp from the log on the next change
@@ -2155,6 +2252,98 @@ T.new_form_view = async (s) => {                        // 0.8.721: New form on 
 			sql(`DELETE FROM zzzzsys_php WHERE zzzzsys_php_id LIKE '${id}%'`); sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${id}'`); sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`);
 		}
 		sql('DROP VIEW IF EXISTS e2e_vw_cust, e2e_vw_cnt, e2e_vw_dup');
+	}
+};
+
+// 0.8.877: passkeys with Chrome's virtual authenticator (the site as localhost – browsers refuse passkeys for IP addresses): add one
+// under Security, use it as the second factor, sign in without a password (button; the user name field offers it too), the admin's
+// view on the user form, remove it; on 127.0.0.1 the card explains why passkeys cannot be used
+T.passkeys = async (s) => {
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	if (!/127\.0\.0\.1|localhost/.test(BASE)) { s.skip = 'BASE is not local'; return; }
+	const LB = BASE.replace('127.0.0.1', 'localhost');
+	const anna = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	if (!anna) { s.skip = 'no sample users'; return; }
+	const acc = sql(`SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = '${anna}'`);
+	const use2fa = sql(`SELECT IFNULL(sal_use_2fa, '') FROM zzzzsys_access WHERE zzzzsys_access_id = '${acc}'`);
+	const cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8');
+	const secRow = sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'security'");
+	const setSec = (o) => { const v = Object.assign(JSON.parse(secRow || '{}'), o); sql(`REPLACE INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('security', '${JSON.stringify(v)}')`); };
+	const ctx = await browser.newContext({ locale: 'en-GB', viewport: { width: 1200, height: 900 } });
+	const p = await ctx.newPage();
+	p.errors = [];
+	p.on('pageerror', e => p.errors.push(e.message));
+	p.on('dialog', d => d.accept());
+	const cdp = await ctx.newCDPSession(p);
+	await cdp.send('WebAuthn.enable');
+	const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal',
+		hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+	const pwLogin = async () => {
+		await p.goto(LB + 'index.php?p=login'); await p.waitForLoadState('networkidle');
+		await p.fill('#username', 'sample_anna'); await p.fill('#password', UPW);
+		await Promise.all([p.waitForNavigation(), p.click('form button[type=submit]:not([name=demo_user])')]);
+	};
+	sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'");
+	try {
+		sql(`DELETE FROM zzzzsys_nunext_passkey WHERE user_id = '${anna}'`);
+		// add a passkey under Security
+		await pwLogin();
+		expect(/p=home/.test(p.url()), 'password sign-in: ' + p.url());
+		await p.goto(LB + 'index.php?p=security'); await p.waitForLoadState('networkidle');
+		expect(await p.locator('#secPasskeys #nuPkAdd').count() === 1, 'Add a passkey on the security page');
+		await p.fill('#pkName', 'E2E key');
+		await Promise.all([p.waitForNavigation(), p.click('#nuPkAdd')]);
+		await p.waitForLoadState('networkidle');
+		expect(await p.locator('#secPkList li').count() === 1 && /E2E key/.test(await p.textContent('#secPkList')), 'passkey listed');
+		const row = sql(`SELECT CONCAT(name, '|', alg, '|', sign_count) FROM zzzzsys_nunext_passkey WHERE user_id = '${anna}'`);
+		expect(/^E2E key\|-7\|\d+$/.test(row), 'stored: ' + row);
+		// second factor: the access level asks for 2FA → the passkey is offered first
+		sql(`UPDATE zzzzsys_access SET sal_use_2fa = '1' WHERE zzzzsys_access_id = '${acc}'`);
+		fs.writeFileSync(cfg, orig.replace(/\?>\s*$/, '') + '\n$nuConfig2FAUser = true;\n');
+		await new Promise(r => setTimeout(r, 3500));                // OPcache checks the file every 2 s
+		await ctx.clearCookies();
+		await pwLogin();
+		expect(/p=twofa/.test(p.url()) && await p.locator('#nuPk2fa').count() === 1, 'second factor page with the passkey: ' + p.url());
+		await Promise.all([p.waitForNavigation(), p.click('#nuPk2fa')]);
+		expect(/p=home/.test(p.url()), 'signed in with the passkey as second factor: ' + p.url());
+		expect(/"2fa":"passkey"/.test(sql(`SELECT details FROM zzzzsys_nunext_log WHERE event = 'login' AND user_id = '${anna}' ORDER BY log_time DESC LIMIT 1`)), 'log: 2fa passkey');
+		fs.writeFileSync(cfg, orig);
+		sql(`UPDATE zzzzsys_access SET sal_use_2fa = '${use2fa}' WHERE zzzzsys_access_id = '${acc}'`);
+		await new Promise(r => setTimeout(r, 3500));
+		// without a password: the button (the offer in the user name field waits while the authenticator needs a touch)
+		setSec({ passkey_login: true });
+		await ctx.clearCookies();
+		await cdp.send('WebAuthn.setAutomaticPresenceSimulation', { authenticatorId, enabled: false });
+		await p.goto(LB + 'index.php?p=login'); await p.waitForLoadState('networkidle');
+		expect(await p.locator('#nuPkLogin').count() === 1 && /webauthn/.test(await p.getAttribute('#username', 'autocomplete')), 'passkey sign-in offered');
+		const before = +sql(`SELECT sign_count FROM zzzzsys_nunext_passkey WHERE user_id = '${anna}'`);
+		await cdp.send('WebAuthn.setAutomaticPresenceSimulation', { authenticatorId, enabled: true });
+		await Promise.all([p.waitForNavigation({ timeout: 15000 }), p.click('#nuPkLogin')]);
+		expect(/p=home/.test(p.url()), 'signed in without a password: ' + p.url());
+		expect(/"via":"passkey"/.test(sql(`SELECT details FROM zzzzsys_nunext_log WHERE event = 'login' AND user_id = '${anna}' ORDER BY log_time DESC LIMIT 1`)), 'log: via passkey');
+		expect(+sql(`SELECT sign_count FROM zzzzsys_nunext_passkey WHERE user_id = '${anna}'`) > before, 'counter went up');
+		// the admin sees it on the user form
+		await open(s.ga, 'index.php?p=user&id=' + anna);
+		expect(await s.ga.locator('#userPasskeys li').count() === 1, 'user form lists the passkey');
+		// 127.0.0.1: no passkeys (browsers refuse IP addresses) – the card says why
+		await open(s.ga, 'index.php?p=security');
+		expect(await s.ga.locator('#secPkProblem').count() === 1 && await s.ga.locator('#nuPkAdd').count() === 0, 'IP address: passkeys explained, no Add');
+		// remove it
+		await p.goto(LB + 'index.php?p=security'); await p.waitForLoadState('networkidle');
+		await p.click('#secPkList form button[type=submit]');
+		await p.waitForTimeout(400);
+		if (await p.locator('#nuConfirm.show .js-confirm-ok').count()) await Promise.all([p.waitForNavigation(), p.click('#nuConfirm.show .js-confirm-ok')]);
+		await p.waitForLoadState('networkidle');
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_passkey WHERE user_id = '${anna}'`) === '0', 'passkey removed');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		fs.writeFileSync(cfg, orig);
+		sql(`UPDATE zzzzsys_access SET sal_use_2fa = '${use2fa}' WHERE zzzzsys_access_id = '${acc}'`);
+		if (secRow) sql(`REPLACE INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('security', '${secRow.replace(/'/g, "''")}')`);
+		else sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'security'");
+		sql(`DELETE FROM zzzzsys_nunext_passkey WHERE user_id = '${anna}'`);
+		await ctx.close();
+		await new Promise(r => setTimeout(r, 2500));
 	}
 };
 
@@ -6359,6 +6548,10 @@ T.login_link = async (s) => {                             // one-time login link
 
 T.user_import_template = async (s) => {                  // 0.8.752: the template is a ZIP – the CSV header row + readme.txt explaining every column
 	const p = s.ga;
+	await open(p, 'index.php?p=import');                     // 0.8.870: the Templates menu also without target=users
+	await p.click('#impTplBtn'); await p.waitForTimeout(300);
+	const tpl = await p.evaluate(() => { const a = document.querySelector('#impTplMenu a[data-tpl="users"]'); return a ? [a.offsetParent !== null, a.getAttribute('href')] : [false, document.getElementById('impTplMenu') ? 'menu, no item' : location.href]; });
+	expect(tpl[0] && /target=users/.test(tpl[1]), 'Templates menu without the users template: ' + tpl);
 	const r = await p.request.get(BASE + 'index.php?p=import&target=users&action=template');
 	expect(r.status() === 200 && /application\/zip/.test(r.headers()['content-type'] || '') && /users-import-template\.zip/.test(r.headers()['content-disposition'] || ''), 'template not a ZIP: ' + r.headers()['content-type']);
 	const f = path.join(require('os').tmpdir(), 'e2e-tpl-' + Date.now() + '.zip');
@@ -6372,7 +6565,7 @@ T.user_import_template = async (s) => {                  // 0.8.752: the templat
 		expect(z.rm.includes('users-import-template.csv') && (!lvl || z.rm.includes(lvl)) && /\r\n/.test(z.rm), 'readme without file name / level codes / CRLF');
 	} finally { fs.rmSync(f, { force: true }); }
 	await open(p, 'index.php?p=import&target=users');
-	expect(/ZIP/.test(await p.getAttribute('a[href*="action=template"] + .nuInfoTip', 'aria-label') || ''), 'tooltip does not mention the ZIP');
+	expect(/ZIP/.test(await p.textContent('#impTplMenu a[data-tpl="users"]') || ''), 'template entry does not mention the ZIP');
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
@@ -8092,6 +8285,58 @@ T.nub49_js = async (s) => {
 	}
 };
 
+/** nuSubformAddFilter on a lookup column: options and matching use the lookup's code, as nuBuilder Forte does (0.8.878). */
+T.subform_filter_lookup = async (s) => {
+	const p = s.ga;
+	const errs = []; const onErr = (e) => errs.push(e.message); p.on('pageerror', onErr);
+	await open(p, 'index.php?p=form&f=sampleorder&r=sample_ord_1'); await p.waitForTimeout(300);
+	const want = sql("SELECT GROUP_CONCAT(DISTINCT p.pro_code ORDER BY p.pro_code) FROM sample_order_item i JOIN sample_product p ON p.sample_product_id = i.ori_sample_product_id WHERE i.ori_sample_order_id = 'sample_ord_1'");
+	const r = await p.evaluate(() => {
+		nuSubformAddFilter({ sample_items: ['ori_sample_product_id'] });
+		const sel = document.getElementById('sample_itemsori_sample_product_id_filter');
+		sel.dispatchEvent(new Event('focus'));
+		const opts = Array.from(sel.options).filter(o => !o.hasAttribute('data-nu-persistent')).map(o => o.text);
+		const rows = Array.from(document.querySelectorAll('#sample_items .nuSubformRow:not(.nuNewRow)')).filter(x => !x.closest('template'));
+		const code = document.getElementById(rows[0].id + 'ori_sample_product_idcode').value;
+		sel.value = code; sel.dispatchEvent(new Event('change'));
+		const shown = rows.filter(x => !x.classList.contains('nuFilteredOut')).map(x => document.getElementById(x.id + 'ori_sample_product_idcode').value);
+		return { opts: opts.join(), code, shown: shown.join(), n: rows.length };
+	});
+	p.off('pageerror', onErr);
+	expect(r.opts === want, 'options must be the lookup codes: ' + JSON.stringify(r) + ' want ' + want);
+	expect(r.n > 1 && r.shown.split(',').every(c => c === r.code) && r.shown !== '', 'rows filtered by the code: ' + JSON.stringify(r));
+	expect(errs.length === 0, 'JavaScript errors: ' + errs.join(' · '));
+};
+
+/** Select options in nuBuilder Forte's formats (NuSelectSource, 0.8.879): SQL after a comment line, JSON list, hash variables in a list,
+ *  SHOW TABLES, %LANGUAGES% (nuBuilder Forte's language files – the test site sits inside nuBuilder Forte), a list starting with WITH. */
+T.select_sources = async (s) => {
+	const p = s.ga;
+	const orig = sql("SELECT sob_select_sql FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_all_o30'");
+	const set = (v) => execSync(`mysql ${DB}`, { input: "UPDATE zzzzsys_object SET sob_select_sql = '" + v.replace(/\\/g, '\\\\').replace(/'/g, "''") + "' WHERE zzzzsys_object_id = 'sample_all_o30'" });
+	const opts = async (src) => {
+		set(src);
+		await open(p, 'index.php?p=form&f=sampleall&r=-1');
+		return p.evaluate(() => Array.from(document.querySelectorAll('#all_select option')).filter(o => o.value !== '' || o.text !== '').map(o => [o.value, o.text]));
+	};
+	try {
+		const a = await opts("-- the laptop only\nSELECT pro_code, pro_name FROM sample_product WHERE pro_code = 'P100'");
+		expect(a.length === 1 && a[0][0] === 'P100', 'SQL after a comment line: ' + JSON.stringify(a));
+		const b = await opts('["first", "second"]');
+		expect(JSON.stringify(b) === '[["first","first"],["second","second"]]', 'JSON list: ' + JSON.stringify(b));
+		const c = await opts('#USER_ID#|Me|0|Everyone');
+		expect(c.length === 2 && c[0][0] !== '' && c[0][0] !== '#USER_ID#' && c[0][1] === 'Me', 'hash variable in a list: ' + JSON.stringify(c));
+		const d = await opts('SHOW TABLES');
+		expect(d.some(x => x[0] === 'sample_product') && !d.some(x => x[0].startsWith('__')), 'SHOW TABLES: ' + d.length);
+		const e = await opts('%LANGUAGES%');
+		expect(e.some(x => x[0] === 'Afrikaans') && e.some(x => x[0] === 'German'), '%LANGUAGES%: ' + JSON.stringify(e).slice(0, 200));
+		const f = await opts('WITH|With|WITHOUT|Without');
+		expect(JSON.stringify(f) === '[["WITH","With"],["WITHOUT","Without"]]', 'list starting with WITH: ' + JSON.stringify(f));
+	} finally {
+		set(orig);
+	}
+};
+
 T.csv_import = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=import');
@@ -9803,6 +10048,89 @@ T.report_photo_kept = async (s) => {
 	} finally {
 		if (!process.env.E2E_KEEP) sql("DELETE FROM zzzzsys_report WHERE zzzzsys_report_id = 'e2e_ph_rpt'; DELETE FROM zzzzsys_select WHERE zzzzsys_select_id = 'e2e_ph_sql'");
 		try { fs.unlinkSync(file); } catch (e) { /* already gone */ }
+	}
+};
+
+// 0.8.874: content type of report fields / labels – Markdown and HTML per object, heights of the printed HTML, unsafe HTML removed,
+// hash values in HTML labels as text; designer: Content select (Automatic removes the key), MD / HTML tag on the canvas
+T.report_rich_text = async (s) => {
+	const p = s.ga;
+	const lay = JSON.parse(sql("SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = 'sample_rpt_customers'"));
+	const base = { fontWeight: '', textAlign: 'left', backgroundColor: '#FFFFFF', borderColor: '#000000', borderWidth: '0', fontColor: '#000000', fontFamily: 'Helvetica',
+		fontSize: '10', format: '', minRows: 0, maxRows: 0, zIndex: 1 };
+	const det = lay.groups[0].sections[0];
+	det.height = 24;
+	det.objects = [Object.assign({}, base, { id: 'e2e_rt_md', name: 'e2e_rt_md', objectType: 'field', fieldName: 'md', left: 0, top: 2, width: 600, height: 20, contentType: 'md' })];
+	const ph = lay.groups[2].sections[0];
+	ph.height = Math.max(40, +ph.height || 0);
+	ph.objects = [Object.assign({}, base, { id: 'e2e_rt_lbl', name: 'e2e_rt_lbl', objectType: 'label', fieldName: '<b>E2EHEAD</b> #page# <i>#description#</i>', left: 0, top: 4, width: 600, height: 20, contentType: 'html' })];
+	lay.ishtml = 'N';
+	const esc = v => v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	const put = l => sql(`UPDATE zzzzsys_report SET sre_layout = '${esc(JSON.stringify(l))}' WHERE zzzzsys_report_id = 'e2e_rt_rpt'`);
+	const pdf = async (q) => {
+		const r = await p.context().request.get(BASE + 'index.php?p=reportpdf&c=e2e_rt_rpt&dl=1' + (q || ''));
+		const b = await r.body();
+		expect(r.status() === 200 && b.toString('latin1').startsWith('%PDF'), 'PDF: ' + r.status());
+		return b;
+	};
+	const pages = b => (b.toString('latin1').match(/\/Type\s*\/Page\b(?!s)/g) || []).length;
+	const text = b => {
+		try {
+			const f = path.join(os.tmpdir(), 'e2e_rt_' + Date.now() + '.pdf');
+			fs.writeFileSync(f, b);
+			const t = execSync(`pdftotext "${f}" -`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+			fs.unlinkSync(f);
+			return t;
+		} catch (e) { return null; }                          // no pdftotext on this computer
+	};
+	try {
+		sql(`INSERT INTO zzzzsys_select (zzzzsys_select_id, sse_code, sse_description, sse_json, sse_sql, sse_edit) VALUES ('e2e_rt_sql', 'e2e_rt', 'rich text', '',
+			'SELECT cus_name, CONCAT(''## Heading '', cus_name, ''\n\n- one **bold**\n- two\n- three\n\nEnd <img src="phar://x.jpg"> <b>tag</b>'') AS md FROM sample_customer', '1')`);
+		sql(`INSERT INTO zzzzsys_report (zzzzsys_report_id, sre_code, sre_description, sre_group, sre_layout, sre_zzzzsys_php_id, sre_zzzzsys_form_id)
+			SELECT 'e2e_rt_rpt', 'e2e_rt_rpt', 'rich <u>text</u>', '', '${esc(JSON.stringify(lay))}', 'SQL:e2e_rt_sql', sre_zzzzsys_form_id FROM zzzzsys_report WHERE zzzzsys_report_id = 'sample_rpt_customers'`);
+		const full = await pdf();
+		const t = text(full);
+		if (t !== null) {
+			expect(/Heading/.test(t) && /bold/.test(t) && !/\*\*|##/.test(t), 'Markdown printed as formatted text: ' + t.slice(0, 200));
+			expect(/<b>tag<\/b>/.test(t), 'HTML inside Markdown is text');
+			expect(/E2EHEAD 1/.test(t) && !/<b>E2EHEAD/.test(t), 'HTML label printed as HTML with #page#');
+			expect(/rich <u>text<\/u>/.test(t), 'values in an HTML label are text');
+		}
+		// heights: the Markdown field grows to its printed height – one row per field needs fewer pages
+		lay.groups[0].sections[0].objects[0].maxRows = 1;
+		put(lay);
+		const one = await pdf();
+		expect(pages(full) > pages(one), 'grown fields need more pages: ' + pages(full) + ' / ' + pages(one));
+		// the same layout as plain text: the raw Markdown is printed
+		lay.groups[0].sections[0].objects[0].maxRows = 0;
+		lay.groups[0].sections[0].objects[0].contentType = 'text';
+		put(lay);
+		const raw = text(await pdf());
+		if (raw !== null) expect(/\*\*bold\*\*/.test(raw), 'Text prints the raw Markdown');
+		// designer: Content select, tag on the canvas, Automatic removes the key
+		lay.groups[0].sections[0].objects[0].contentType = 'md';
+		put(lay);
+		await open(p, 'index.php?p=reportdesigner&id=e2e_rt_rpt');
+		await p.waitForSelector('.rdObj[data-id="e2e_rt_md"]');
+		expect((await p.textContent('.rdObj[data-id="e2e_rt_md"] .rdCt')) === 'MD', 'MD tag on the canvas');
+		await p.click('.rdObj[data-id="e2e_rt_md"]');
+		const ct = p.locator('select[data-prop="contentType"]');
+		expect(await ct.inputValue() === 'md', 'Content select shows Markdown');
+		expect(await p.locator('.rdProp:has(select[data-prop="contentType"]) .nuInfoTip').count() === 1, '(i) next to Content');
+		await ct.selectOption('');
+		expect(await p.locator('.rdObj[data-id="e2e_rt_md"] .rdCt').count() === 0, 'no tag while Automatic (report without HTML)');
+		await p.click('.nuBtnSave');
+		await p.waitForFunction(() => !document.querySelector('.nuBtnSave.nuSaveEdited, .nuBtnSave:disabled'), null, { timeout: 5000 }).catch(() => {});
+		await p.waitForTimeout(500);
+		let o = JSON.parse(sql("SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = 'e2e_rt_rpt'")).groups[0].sections[0].objects[0];
+		expect(!('contentType' in o), 'Automatic: no contentType stored – ' + JSON.stringify(o).slice(0, 120));
+		await ct.selectOption('html');
+		await p.click('.nuBtnSave');
+		await p.waitForTimeout(800);
+		o = JSON.parse(sql("SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = 'e2e_rt_rpt'")).groups[0].sections[0].objects[0];
+		expect(o.contentType === 'html', 'HTML stored');
+	} finally {
+		sql("DELETE FROM zzzzsys_report WHERE zzzzsys_report_id = 'e2e_rt_rpt'; DELETE FROM zzzzsys_select WHERE zzzzsys_select_id = 'e2e_rt_sql'");
 	}
 };
 

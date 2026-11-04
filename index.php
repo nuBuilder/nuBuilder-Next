@@ -38,6 +38,7 @@ $routes = [
 	'securitycheck' => [],
 	'ipaccess'    => [],   // IP access (0.8.722, pages/nuipaccess.php)
 	'sso'         => ['public' => true],   // single sign-on (0.8.863, pages/nusso.php: settings, start, return from the provider)
+	'passkey'     => ['public' => true, 'json' => true],   // passkeys (0.8.877, pages/nupasskey.php): add, second factor, sign-in, confirmation
 	'pwpolicy'    => [],   // password policy (0.8.745, pages/nupwpolicy.php)
 	'reauth'      => [],
 	'log'         => [],

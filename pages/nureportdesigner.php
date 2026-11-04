@@ -72,7 +72,8 @@ $keys = ['save', 'saved', 'unsaved', 'undo', 'redo', 'zoom', 'grid', 'snap', 'pr
 	'html', 'html_hint', 'groups', 'groups_hint', 'group_field', 'group_dir', 'asc', 'desc', 'group_add', 'group_remove', 'up', 'down', 'header', 'footer',
 	'b_report_header', 'b_report_footer', 'b_page_header', 'b_page_footer', 'b_detail', 'b_group_header', 'b_group_footer', 'criteria', 'system', 'sys_page',
 	'sys_pages', 'sys_page_of', 'sys_code', 'sys_description', 'sys_date', 'sys_datetime', 'sys_user', 'box_hint', 'image_none', 'images', 'leave',
-	'preview_title', 'open_tab', 'help', 'help_text', 'saving', 'save_failed', 'readonly', 'mm', 'pt', 'drop_hint', 'copy', 'paste', 'select_all', 'id', 'summary_hint'];
+	'preview_title', 'open_tab', 'help', 'help_text', 'saving', 'save_failed', 'readonly', 'mm', 'pt', 'drop_hint', 'copy', 'paste', 'select_all', 'id', 'summary_hint',
+	'content_type', 'content_auto', 'content_text', 'content_html', 'content_md', 'content_hint'];
 $msg = [];
 foreach ($keys as $k) $msg[$k] = t('rd_' . $k);
 $data = [

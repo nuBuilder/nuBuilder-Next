@@ -1,12 +1,14 @@
 <section id="signin-methods" data-doc="admin" data-level="advanced">
 	<h2 id="signin-methods-h">Sign-in methods</h2>
-	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Password, two-step login, shared login with nuBuilder Forte (4.x), links and tokens – all ways into nuBuilder Next in one place.</p>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Password, two-step login, passkeys, shared login with nuBuilder Forte (4.x), links and tokens – all ways into nuBuilder Next in one place.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<table class="table table-sm">
 	<thead><tr><th>Method</th><th>How it works</th><th>Switched on by</th></tr></thead>
 	<tbody>
 		<tr><td>Password</td><td>Login name and password of <code>zzzzsys_user</code>; the globeadmin's from <code>nuconfig.php</code>. The rules of the <a href="#password-policy">password policy</a> apply – length (at least <code>$nuConfigPasswordMinLength</code>), character classes, leak check, optional change interval; the procedure <code>nu_check_password_policy</code> runs afterwards and can add rules.</td><td>always</td></tr>
 		<tr><td>Two-step login (2FA)</td><td>After the password: a code from an authenticator app, or a 6-digit code by e-mail when no app is set up. "Remember this device" skips it for <code>$nuConfig2FATrustDays</code> days.</td><td><code>$nuConfig2FAAdmin</code>, <code>$nuConfig2FAUser</code> + the access level's "Use two-factor authentication"</td></tr>
+		<tr><td>Passkey (second factor)</td><td>Instead of the code: the device's fingerprint, face or PIN (WebAuthn). Offered first to users who have added a passkey. See <a href="#passkeys-admin">below</a>.</td><td>Security check → Settings: <em>Passkeys as a second factor</em> (on by default); needs https</td></tr>
+		<tr><td>Passkey sign-in</td><td>Without a password: <em>Sign in with a passkey</em> on the sign-in page or the passkey offered in the user name field. The passkey checks the user (PIN, fingerprint, face), so it counts as both factors.</td><td>Security check → Settings: <em>Sign in with a passkey (no password)</em> (off by default)</td></tr>
 		<tr><td>Forgot password</td><td>A link by e-mail, valid for 60 minutes and once.</td><td>always (needs working e-mail and <code>$nuConfigBaseURL</code>)</td></tr>
 		<tr><td>Shared login</td><td>A user already signed in to nuBuilder Forte on the same domain is signed in to nuBuilder Next.</td><td><code>$nuConfigSharedLogin = true</code></td></tr>
 		<tr><td>Auto-login link</td><td>nuBuilder Forte's link <code>index.php?u=&lt;login&gt;&amp;p=&lt;hash&gt;</code>, optionally opening a form and record. Links that expire can be made in the user form.</td><td><code>$nuConfigAutoLogin = true</code> (see <a href="#config">Configuration</a>)</td></tr>
@@ -28,16 +30,28 @@
 	<p>Differences to nuBuilder Forte (all safer, the links stay compatible): exact comparison in constant time, never the globeadmin or an API service user, the user's expiry date and access level apply, wrong tokens count for the login rate limit, every use is logged (<em>Login</em> with <code>via: token</code>), creating, mailing and removing are logged too. Dangerous actions still ask for the password (the session counts as not confirmed). <code>p</code> with 64 hex characters is nuBuilder Next's signed auto-login hash while <code>$nuConfigAutoLogin</code> is on; anything else of 20 characters or more is treated as a token. Switch it off in the Security check (<em>Accept nuBuilder Forte's one-time login tokens</em>); the Security check also shows how many users have a token (stored in plain text, as in nuBuilder Forte) and removes all of them.</p>
 </div>
 <div class="doc-sub">
+	<h3 id="passkeys-admin">Passkeys</h3>
+	<p>Users add passkeys themselves (<a href="#passkeys">Security → Passkeys</a>) – only the user's own device can create one. A passkey can then replace the authenticator code or the e-mail code, confirm dangerous actions instead of the password and, with the second switch on, sign in without a password.</p>
+	<ul>
+	<li><strong>Address</strong>: browsers offer passkeys only on <code>https</code> (or <code>localhost</code>) and for a domain name, never an IP address. A passkey belongs to the host of the installation's address – set <code>$nuConfigBaseURL</code> (also behind a proxy). Changing the domain makes all saved passkeys useless; users then add new ones.</li>
+	<li><strong>What is checked</strong>: the signature with the public key saved when the passkey was added (ES256, RS256 or Ed25519), the site address and the one-time challenge of this sign-in, the user-verification flag (sign-in without a password and confirmations) and the passkey's counter – a counter that does not go up points to a copied passkey and is refused. The maker's certificate is not checked (attestation "none"), as usual for company applications.</li>
+	<li><strong>Admins</strong> with the save right on users see a user's passkeys on the user form (<em>Login credentials</em> → <em>Passkeys</em>) and can remove them; deleting a user removes them too. The globeadmin's passkeys and a locked-out user: <code>php nucron.php passkeys off &lt;login name&gt;</code> on the server.</li>
+	<li><strong>Rules</strong>: a passkey sign-in is refused like a password sign-in for expired users, API service users and users without an access level; <a href="#ip-access">IP access</a> applies; access levels that allow only <a href="#sso">single sign-on</a> refuse it. Passkey sign-ins skip the password policy and a forced password change, and they count as a fresh password confirmation.</li>
+	<li><strong>Log</strong>: <em>Passkey added</em>, <em>Passkey removed</em>, <em>Passkey refused</em> (with the reason), and the login with <code>via: passkey</code> or <code>2fa: passkey</code>. The Security check shows how many users have one.</li>
+	<li><strong>nuBuilder Forte</strong> has no passkeys: the same users sign in there with their password and its two-step login. The passkeys are kept in nuBuilder Next's own table <code>zzzzsys_nunext_passkey</code>.</li>
+	</ul>
+</div>
+<div class="doc-sub">
 	<h3 id="signin-rules">Rules for every method</h3>
 	<ul>
 		<li>Expired or locked accounts are refused; a user who must change their password is asked to right after signing in.</li>
 		<li>Failed logins are rate-limited and written to the log; the procedure <code>nu_invalid_login</code> can replace the message, <code>nu_startup</code> runs after every login and can refuse it.</li>
 		<li>Sessions end after <code>$nuConfigSessionTimeout</code> / <code>$nuConfigSessionTimeoutGlobeadmin</code> minutes without activity, when the password is changed anywhere, or when the globeadmin ends them.</li>
 		<li>The globeadmin can reset a user's two-step login (lost phone) in the user form.</li>
-		<li>With <a href="#ip-access">IP access</a> switched on, every method – password, auto-login link, one-time login link, single sign-on – is refused from an address the user's access levels do not allow, and a running session ends when its address is no longer allowed.</li>
+		<li>With <a href="#ip-access">IP access</a> switched on, every method – password, passkey, auto-login link, one-time login link, single sign-on – is refused from an address the user's access levels do not allow, and a running session ends when its address is no longer allowed.</li>
 	</ul>
 	<p>Internals: <a href="#sessions-arch">Sessions and sign-in flow</a>. Checks of all these settings: <a href="#security-check">Security check</a>.</p>
 </div>
 	<p class="doc-see">See also: <a href="#sessions-arch">Sessions and sign-in flow</a> · <a href="#security">Your password and two-step login</a> · <a href="#password-policy">Password policy</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuauth.php</code></li><li><code>core/nutwofa.php</code></li><li><code>core/nulogintoken.php</code></li><li><code>pages/nuautologin.php</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuauth.php</code></li><li><code>core/nutwofa.php</code></li><li><code>core/nulogintoken.php</code></li><li><code>core/nupasskey.php</code></li><li><code>pages/nuautologin.php</code></li></ul></details>
 </section>

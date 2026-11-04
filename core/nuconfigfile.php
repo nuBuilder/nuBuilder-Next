@@ -161,7 +161,7 @@ final class NuConfigFile
 	/** Groups of Insert variable: first matching pattern of the name (without $nuConfig) wins; the rest is "General". */
 	public const GROUPS = [
 		'Database'           => '/^DB(?!Globeadmin)/',
-		'Login and security' => '/^(2FA|DBGlobeadmin|Globeadmin(Email)?$|Password|Session|SecretKey|AutoLogin|TrustProxy)/',
+		'Login and security' => '/^(2FA|DBGlobeadmin|Globeadmin(Email)?$|Password|Session|SecretKey|AutoLogin|TrustProxy|nuDevSelectQueryRunParameterised$)/',
 		'E-mail'             => '/^(SMTP|MailLog|PHPMailer)/',
 		'REST API'           => '/^Api/',
 		'Demo mode'          => '/^(Demo|IsDemo)/',
@@ -186,6 +186,7 @@ final class NuConfigFile
 		'nuConfigIsDemo'                   => ['false', 'Demo mode as in nuBuilder Forte: true lets the demo globeadmin below sign in read only.'],
 		'nuConfigDemoDBGlobeadminUsername' => ['""', 'Demo mode as in nuBuilder Forte: login name of the demo globeadmin (with $nuConfigIsDemo = true).'],
 		'nuConfigDemoDBGlobeadminPassword' => ['""', 'Demo mode as in nuBuilder Forte: password of the demo globeadmin.'],
+		'nuDevSelectQueryRunParameterised' => ['false', 'True: hash variables of browse SQL, select objects and access conditions go to the database as bound parameters (not as text). nuBuilder Forte reads it too (select objects).'],
 	];
 
 	/**

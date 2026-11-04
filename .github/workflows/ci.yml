@@ -8,14 +8,14 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium' }
       - run: for f in $(git ls-files '*.php'); do php -l "$f" > /dev/null || exit 1; done
       - run: php dev/check_lang.php
       - run: php dev/tests/run.php
       - run: curl -sSL -o ../phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.1.17/phpstan.phar && php ../phpstan.phar analyse -c dev/phpstan.neon --no-progress --memory-limit=1G
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - run: npm install --no-save --prefix .. eslint@9.17.0 globals@15.14.0 && npx --prefix .. eslint -c dev/eslint.config.mjs assets/js
 
@@ -29,7 +29,7 @@ jobs:
         ports: ['3306:3306']
         options: --health-cmd="healthcheck.sh --connect" --health-interval=5s --health-retries=20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { path: nunext }
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium' }
@@ -47,12 +47,12 @@ jobs:
           PHP
           cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("upload", "../nubuilder4.sql"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
       - run: (cd nub && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
       - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/nunext/ ADMIN_PW=ci-globeadmin-pw node nub/nunext/dev/tests/smoke.js
       - if: failure()
-        run: cat srv.log
+        run: cat srv.log 2>/dev/null || echo "no server log – the job stopped before the web server was started"
 
   mssql:
     runs-on: ubuntu-latest
@@ -64,13 +64,18 @@ jobs:
         env: { ACCEPT_EULA: 'Y', MSSQL_SA_PASSWORD: 'Ci_Passw0rd!' }
         ports: ['1433:1433']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { path: nunext }
       # pdo_sqlsrv talks to SQL Server only through Microsoft's ODBC driver – the runner image does not have it
+      # (0.8.871) runner images often ship it, or at least Microsoft's package source with its key: then nothing is added – a second source
+      # with another Signed-By stops apt, and gpg without --batch asks on the existing key file ("cannot open /dev/tty")
       - name: Microsoft ODBC Driver 18 for SQL Server
         run: |
-          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-          curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          if dpkg -s msodbcsql18 > /dev/null 2>&1; then echo "msodbcsql18 already installed"; exit 0; fi
+          if ! grep -rqs packages.microsoft.com /etc/apt/sources.list /etc/apt/sources.list.d/; then
+            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+            curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          fi
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
       - uses: shivammathur/setup-php@v2
@@ -88,9 +93,9 @@ jobs:
           PHP
           cd nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("scripts"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
       - run: (cd nunext && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
       - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/ ADMIN_PW=ci-globeadmin-pw node nunext/dev/tests/smoke.js
       - if: failure()
-        run: cat srv.log
+        run: cat srv.log 2>/dev/null || echo "no server log – the job stopped before the web server was started"

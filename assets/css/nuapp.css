@@ -1001,6 +1001,10 @@ label > .nuMarkUnique, .form-label > .nuMarkUnique { margin-inline-start: .25em;
 .nuDemoBadge { background: #fff4e5; color: #8a4b00; border: 1px solid #f5c98b; font-weight: 600; padding: .45em .7em; white-space: nowrap; }
 [data-bs-theme="dark"] .nuDemoBadge { background: rgba(245, 159, 0, .14); color: #ffc46b; border-color: rgba(245, 159, 0, .4); }
 .nuLoginDemo { margin-top: 1.25rem; }
+.nuLoginPasskey { margin-top: 1.25rem; }
+.nuLoginPasskey .nuLoginOr { margin-bottom: .75rem; }
+.nuLoginPasskeyCustom { max-width: 22rem; margin: 1rem auto 0; }
+.nuPkBusy { cursor: progress; }
 .nuLoginOr { display: flex; align-items: center; gap: .75rem; color: var(--bs-secondary-color); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
 .nuLoginOr::before, .nuLoginOr::after { content: ''; flex: 1; border-top: 1px solid var(--bs-border-color); }
 .nuLoginSso { margin-bottom: 1.25rem; }
@@ -2023,3 +2027,4 @@ body:has(.nuRecHead) main .nuRecHead.mb-3 { margin-bottom: .625rem !important; }
   .scodeNav .scodeTabs { flex-wrap: nowrap; overflow-x: auto; }
   .scodeNav .scodeTabs .nav-link { white-space: nowrap; }
 }
+.impTplList { width: min(380px, 90vw); }   /* Data import → Templates (0.8.870) */

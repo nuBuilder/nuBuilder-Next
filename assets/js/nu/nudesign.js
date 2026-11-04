@@ -1941,7 +1941,7 @@
 				options: [['', t('builder_display_proc_none')]].concat(D.procedures || [])}) : null,
 			type === 'calc' ? fmtField('sob_calc_format', 'N') : null,
 			type === 'calc' ? field(t('builder_calc_formula'), 'textarea', o.sob_calc_formula, save('sob_calc_formula'), {key: 'sob_calc_formula', code: 'JS', mono: true, rows: '2'}) : null,
-			type === 'select' ? field(t('builder_select_sql'), 'textarea', o.sob_select_sql, save('sob_select_sql'), {key: 'sob_select_sql', code: 'SQL', mono: true, rows: '4'}) : null,
+			type === 'select' ? field(t('builder_select_sql'), 'textarea', o.sob_select_sql, save('sob_select_sql'), {key: 'sob_select_sql', code: 'SQL', mono: true, rows: '4', tip: t('builder_select_sql_help')}) : null,
 			type === 'display' ? field(t('builder_display_sql'), 'textarea', o.sob_display_sql, save('sob_display_sql'), {key: 'sob_display_sql', code: 'SQL', mono: true, rows: '3'}) : null,
 			type === 'html' ? field(t('builder_html'), 'textarea', o.sob_html_code, save('sob_html_code'), {key: 'sob_html_code', code: 'HTML', mono: true, rows: '6'}) : null,
 			type === 'lookup' ? field(t('builder_lookup_form'), 'select', o.sob_lookup_zzzzsys_form_id, save('sob_lookup_zzzzsys_form_id'), {key: 'sob_lookup_zzzzsys_form_id', search: true, options: options(D.forms, ['browse', 'browseedit'])}) : null,
@@ -2515,6 +2515,8 @@
 	function colFilter(c) { try { return !!((JSON.parse(c.sbr_json || '{}').nunext || {}).filter); } catch (e) { return false; } }
 	// badge of a column (0.8.688): null = none, true = the default look, [rules] = rules of nuBrowseStyleBadge (sbr_json nunext.badge)
 	function colBadge(c) { try { var b = (JSON.parse(c.sbr_json || '{}').nunext || {}).badge; return b ? (Array.isArray(b) ? b : true) : null; } catch (e) { return null; } }
+	// click action of a column (0.8.872): sbr_json nunext.action {t form|list|proc|report|js, id, rec, open, pass, look, icon, label}
+	function colAction(c) { try { var a = (JSON.parse(c.sbr_json || '{}').nunext || {}).action; return a && a.t ? a : null; } catch (e) { return null; } }
 	function colRows(edit) {
 		return (S.browse || []).map(function (c) {
 			var x = {id: c.zzzzsys_browse_id, title: c.sbr_title || '', display: c.sbr_display || '', align: c.sbr_align || 'l', format: c.sbr_format || '',
@@ -2625,9 +2627,40 @@
 		section('behaviour', t('ds_sec_behaviour'), [
 			field(t('builder_col_filter'), 'check', colFilter(c) ? '1' : '0', function (v) { colSave(c, {filter: v === '1'}); }, {key: 'filter'}),
 			field(t('ds_col_badge'), 'check', colBadge(c) ? '1' : '0', function (v) { colSave(c, {badge: v === '1' ? (colBadge(c) || true) : null}); }, {key: 'badge', tip: t('ds_col_badge_tip')}),
-			colBadge(c) ? badgeRulesEditor(c) : null
-		]);
+			colBadge(c) && !colAction(c) ? badgeRulesEditor(c) : null
+		].concat(actionEditor(c)));
 		foot([el('p', {'class': 'nuDsHint', text: t('ds_hint_list')})]);
+	}
+	// On click of a column (0.8.872): what a click on the cell does instead of opening the row's edit form
+	function actionEditor(c) {
+		var a = colAction(c) || {t: ''};
+		var put = function (part) {
+			var n = Object.assign({}, a, part);
+			if (part.t !== undefined && part.t !== a.t) n = {t: part.t, look: a.look || 'link'};     // another kind: its own target
+			colSave(c, {action: n.t ? n : null});
+		};
+		var out = [field(t('ds_col_action'), 'select', a.t || '', function (v) { put({t: v}); }, {key: 'action_t', tip: t('ds_col_action_tip'),
+			options: [['', t('ds_act_none')], ['form', t('ds_act_form')], ['list', t('ds_act_list')], ['proc', t('ds_act_proc')], ['report', t('ds_act_report')], ['js', t('ds_act_js')]]})];
+		if (!a.t) return out;
+		if (a.t === 'form') out.push(field(t('ds_act_target_form'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.forms, ['edit', 'browseedit'])}));
+		if (a.t === 'list') out.push(field(t('ds_act_target_list'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.forms, ['browse', 'browseedit'])}));
+		if (a.t === 'proc') out.push(field(t('builder_run_procedure'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.procedures)}));
+		if (a.t === 'report') out.push(field(t('builder_run_report'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.reports)}));
+		if (a.t === 'js') out.push(field(t('ds_act_fn'), 'text', a.id || '', function (v) { put({id: v.trim()}); }, {key: 'action_id', mono: true, ph: 'openReadings', tip: t('ds_act_fn_tip')}));
+		if (a.t === 'form') out.push(field(t('ds_act_rec'), 'select', a.rec || 'row', function (v) { put({rec: v}); }, {key: 'action_rec',
+			options: [['row', t('ds_act_rec_row')], ['value', t('ds_act_rec_value')], ['new', t('ds_act_rec_new')]]}));
+		if (a.t === 'form' || a.t === 'list') out.push(field(t('ds_act_open'), 'select', a.open || '0', function (v) { put({open: v}); }, {key: 'action_open',
+			options: [['0', t('ds_act_open_same')], ['2', t('ds_act_open_tab')], ['3', t('ds_act_open_popup')]]}));
+		if (a.t !== 'js') out.push(field(t('ds_act_pass'), 'text', a.pass || 'PARENT_ID', function (v) { put({pass: v.trim()}); }, {key: 'action_pass', mono: true, tip: t('ds_act_pass_tip')}));
+		out.push(field(t('ds_act_look'), 'select', a.look || 'link', function (v) { put({look: v}); }, {key: 'action_look',
+			options: [['link', t('ds_act_look_link')], ['button', t('ds_act_look_button')], ['icon', t('ds_act_look_icon')]]}));
+		if (a.look === 'button' || a.look === 'icon') {
+			out.push(el('div', {'class': 'nuDsGrid2'}, [
+				field(t('ds_act_icon'), 'text', a.icon || '', function (v) { put({icon: v.trim()}); }, {key: 'action_icon', mono: true, ph: 'bi-speedometer2', tip: t('ds_act_icon_tip')}),
+				field(t('ds_act_label'), 'text', a.label || '', function (v) { put({label: v}); }, {key: 'action_label', tip: t('ds_act_label_tip')})]));
+		}
+		if (!a.id) out.push(el('p', {'class': 'nuDsHint text-warning-emphasis', id: 'nuDsActNoTarget', text: t('ds_act_need_target')}));
+		return out;
 	}
 	// rules of a badge column: "when the value [is | contains | starts with | is anything else] [text] → colour"; the first that matches wins
 	function badgeRulesEditor(c) {
