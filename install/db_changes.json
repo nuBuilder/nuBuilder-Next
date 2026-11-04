@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.881",
+    "version": "0.8.886",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -447,6 +447,17 @@
                     "table": "zzzzsys_nunext_passkey",
                     "kind": "table",
                     "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0035-passkey-backed-up",
+            "description": "Passkeys: the column backup becomes backed_up (BACKUP is a reserved word of SQL Server)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_passkey",
+                    "kind": "column",
+                    "what": "backed_up added; the values of backup copied, then backup dropped (installations of 0.8.877–0.8.884 on MySQL)"
                 }
             ]
         }
@@ -1646,7 +1657,7 @@
                     "100"
                 ],
                 [
-                    "backup",
+                    "backed_up",
                     "text",
                     "1"
                 ],

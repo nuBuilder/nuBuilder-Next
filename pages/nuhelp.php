@@ -141,8 +141,16 @@ nu_layout_start(t('help_title'), '');
 			<?php if ($hasRef): ?>
 			<div class="form-check form-switch small mb-2"><input class="form-check-input" type="checkbox" role="switch" id="helpAll"<?= ($_GET['all'] ?? '') === '1' ? ' checked' : '' ?>><label class="form-check-label" for="helpAll"><?= h(t('help_search_all')) ?></label></div>
 			<?php endif; ?>
-			<?php if ($hasRef || str_contains($html, 'data-level="advanced"')): ?>
-			<div class="form-check form-switch small mb-2"><input class="form-check-input" type="checkbox" role="switch" id="helpAdvanced"><label class="form-check-label" for="helpAdvanced"><?= h(t('help_show_advanced')) ?></label></div>
+			<?php if ($hasRef || str_contains($html, 'data-level="advanced"') || str_contains($html, 'data-level="detail"')): ?>
+			<div class="mb-2" id="helpLevelBox">
+				<div class="small text-body-secondary mb-1"><?= h(t('help_level')) ?><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('help_level_tip')) ?>" title="<?= h(t('help_level_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+				<div class="btn-group btn-group-sm w-100" role="group" id="helpLevel" aria-label="<?= h(t('help_level')) ?>">
+					<?php foreach (['essentials', 'standard', 'everything'] as $lv): ?>
+					<input type="radio" class="btn-check" name="helpLevel" id="helpLvl_<?= $lv ?>" value="<?= $lv ?>" autocomplete="off"<?= $lv === 'standard' ? ' checked' : '' ?>>
+					<label class="btn btn-outline-secondary" for="helpLvl_<?= $lv ?>"><?= h(t('help_lvl_' . $lv)) ?></label>
+					<?php endforeach; ?>
+				</div>
+			</div>
 			<?php endif; ?>
 			<div class="small text-body-secondary mb-2" id="helpCount" aria-live="polite"></div>
 			<nav id="helpToc" class="nuHelpToc" aria-label="<?= h(t('help_index')) ?>"<?= $tab === 'ref' ? ' hidden' : '' ?>></nav>
@@ -160,7 +168,7 @@ nu_layout_start(t('help_title'), '');
 		<?php endif; ?>
 	</div>
 </div>
-<script type="application/json" id="helpData"><?= json_encode(['found' => t('help_found'), 'index' => t('help_index'), 'failed' => t('help_ref_failed'), 'advanced' => t('help_advanced')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
+<script type="application/json" id="helpData"><?= json_encode(['found' => t('help_found'), 'index' => t('help_index'), 'failed' => t('help_ref_failed'), 'advanced' => t('help_advanced'), 'more' => t('help_detail_more')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endif; ?>
 <?php
 nu_layout_end('<script src="' . nu_asset('assets/js/nuhelp.js') . '"></script>');

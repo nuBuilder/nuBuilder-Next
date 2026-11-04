@@ -26,6 +26,7 @@ if ($file === false || !str_starts_with($file, realpath($dir) . DIRECTORY_SEPARA
 $mtime = (int)filemtime($file);
 $etag  = '"' . dechex($mtime) . '-' . dechex((int)filesize($file)) . '"';
 header('Content-Type: ' . $types[$m[2]]);
+header_remove('X-Powered-By');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: public, max-age=' . (isset($_GET['v']) ? 31536000 : 86400));
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $mtime) . ' GMT');

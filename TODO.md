@@ -37,6 +37,11 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
 
+## 0.8.884 Help reading level – please verify
+- Help → *Essentials*: read a few chapters you know (Object types, Users, Install) – is anything hidden that a reader needs, or is a page
+  still too heavy? Remove `data-level="detail"` from a passage to show it again, or add it to more; `python3 -I dev/doc_details.py --list`
+  lists the remaining candidates of the first pass.
+
 ## 0.8.876–0.8.879 – please verify
 - Sub-form filters (`nuSubformAddFilter`) on your own forms with a lookup column: the select lists the codes, a typed search matches the
   code – form code that compared the description in `nuSubformOnFilterRows` (`data.val`) gets the code now, as in nuBuilder Forte.

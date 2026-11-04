@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.881 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.886 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 

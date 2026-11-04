@@ -22,7 +22,7 @@
 	<p>A user has one main access level (nuBuilder Forte's <code>sus_zzzzsys_access_id</code>) and can get more in the user form (<a href="#users">Users</a> → <em>Additional access levels</em>), optionally until a date. nuBuilder Next stores them in its own table <code>zzzzsys_nunext_user_access</code>.</p>
 <ul>
 <li><strong>They only add</strong>: on a form a right counts when any level grants it (Save, Add, Delete, Clone, Print); browse and edit screen when any level allows them; <em>No changes to existing records</em> only when every level with the form says so. Procedures, reports and dashboards of every level are open to the user, and the forms list and the automatic start page show them.</li>
-<li><strong>From the main level only</strong>: the start page layout, list views, field data access rules by access level and the hash variables <code>#ACCESS_LEVEL_ID#</code> / <code>#USER_GROUP_ID#</code>.</li>
+<li data-level="detail"><strong>From the main level only</strong>: the start page layout, list views, field data access rules by access level and the hash variables <code>#ACCESS_LEVEL_ID#</code> / <code>#USER_GROUP_ID#</code>.</li>
 <li><strong>Two-factor login</strong> is required when any active level asks for it.</li>
 <li><strong>In your own code</strong>: see <a href="#access-levels-code">Access levels in your code</a> below.</li>
 <li><strong>Effective rights</strong> (button next to <em>Add</em> in the user form, shown once there is an additional level): a dialogue with the combined rights as entered in the form – also before saving. Forms with View, Add, Save, Delete, Clone and Print (a form only an additional level grants is marked <em>Additional</em>, a tick only an additional level grants names it), procedures and reports with their levels; search, <em>Only from additional levels</em>, and <em>Copy</em> (tab-separated, e.g. into a spreadsheet). Expired levels are shown crossed out and not counted.</li>
@@ -59,7 +59,7 @@ WHERE doc_access_id IN (#ACCESS_LEVEL_IDS#) OR '#GLOBAL_ACCESS#' = '1'
 SELECT IF(COUNT(*) &gt; 0, 0, 1) FROM zzzzsys_access
 WHERE zzzzsys_access_id IN (#ACCESS_LEVEL_IDS#) AND sal_code = 'hr'</code></pre>
 	<p>In PHP code use <code>nuNextAccessLevels()</code> rather than the hash variable – inside a PHP string the quotes of the list are escaped.</p>
-	<p><strong>Other users, or without the helpers</strong> (e.g. a report over all users): the main level is <code>sus_zzzzsys_access_id</code> of <code>zzzzsys_user</code>, the additional levels are the rows of <code>zzzzsys_nunext_user_access</code> (<code>user_id</code>, <code>access_id</code>, <code>valid_until</code>) whose <code>valid_until</code> is empty or today or later:</p>
+	<p data-level="detail"><strong>Other users, or without the helpers</strong> (e.g. a report over all users): the main level is <code>sus_zzzzsys_access_id</code> of <code>zzzzsys_user</code>, the additional levels are the rows of <code>zzzzsys_nunext_user_access</code> (<code>user_id</code>, <code>access_id</code>, <code>valid_until</code>) whose <code>valid_until</code> is empty or today or later:</p>
 <pre><code>SELECT u.sus_login_name, a.sal_code, 'main' AS kind, NULL AS valid_until
 FROM zzzzsys_user u JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id
 UNION ALL

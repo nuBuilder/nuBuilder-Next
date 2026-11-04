@@ -9,7 +9,8 @@
   "data-acl=\"nuuser,…\" users with the view right on one of these forms; no attribute = everybody. Works on any element.",
   "A chapter's section must not be more restrictive than its pages (a reader would see pages without their chapter).",
   "Page template: h2, p.doc-lead (purpose and scope), p.doc-for (audience, admin only), content, p.doc-see, details.doc-src (admin only).",
-  "data-level=\"advanced\" on a section (or doc-sub) marks an advanced topic: hidden while the reader has \"Show advanced topics\" off (nuhelp.js).",
+  "data-level=\"advanced\" on a section (or doc-sub) marks an advanced topic: shown only at the reading level Everything (nuhelp.js).",
+  "data-level=\"detail\" on a <p> / <li> (Guide pages) marks a passage only for readers who want everything: a column name, an internal, an exception or a difference to nuBuilder Forte. Hidden at the level Essentials (… opens it). Never on the lead, the first paragraph after a heading or the only content of a topic (dev/tests/run.php checks it); dev/doc_details.py lists candidates.",
   "No version numbers in the text – the change history is CHANGELOG.md.",
   "Function references: <div data-nu-fnref=\"tabs\"></div> is replaced with docs/nunext-functions.json (core/nufnref.php)."
  ],

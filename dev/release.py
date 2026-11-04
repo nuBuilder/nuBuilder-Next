@@ -119,7 +119,8 @@ def browser_tests():
         pass
     suites = [('smoke', 'dev/tests/smoke.js'), ('e2e', 'dev/tests/e2e.js')] + ([('compat', 'dev/tests/compat.js')] if nub else []) \
         + ([('load', 'dev/tests/load.js')] if os.environ.get('NUNEXT_TEST_LOAD') == '1' else []) \
-        + ([('a11y', 'dev/tests/a11y.js')] if os.environ.get('NUNEXT_TEST_A11Y') == '1' else [])   # large data / accessibility: ~4 minutes each, on request
+        + ([('a11y', 'dev/tests/a11y.js')] if os.environ.get('NUNEXT_TEST_A11Y') == '1' else []) \
+        + ([('zap', 'dev/tests/zap.js')] if os.environ.get('NUNEXT_TEST_ZAP', '1') != '0' else [])   # large data / accessibility: ~4 minutes each, on request; ZAP (0.8.883): skipped by itself without ../zap
     bad = []
     for name, f in suites:
         subprocess.run(['mysql', *shlex.split(db), '-e', "DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'"], capture_output=True)   # no shell (DeepSource BAN-B602)

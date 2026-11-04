@@ -881,6 +881,16 @@ final class NuMigrate
 			'0032-permission-types' => ['Types of permission items (zzzzsys_nunext_permission_type): Data import into chosen tables', static fn() => NuSchema::create()],
 			'0033-entry-files' => ['Entry files renamed (cron.php → nucron.php, dbadmin.php → nudbadmin.php): a notice for the globeadmin on the start page after an update', static fn() => self::$earlier ? NuMigrate::entryNotice(true) : null],
 			'0034-passkeys' => ['Passkeys (zzzzsys_nunext_passkey): a second factor besides the authenticator app, signing in without a password', static fn() => NuSchema::create()],
+			'0035-passkey-backed-up' => ['Passkeys: the column backup becomes backed_up (BACKUP is a reserved word of SQL Server)', static function (): void {
+				NuSchema::create();                                // adds backed_up
+				$db = nu_db();
+				$t = 'zzzzsys_nunext_passkey';
+				if (!$db->tableExists($t) || !isset(array_change_key_case($db->columns($t))['backup'])) return;
+				$q = $db->type === 'sqlsrv' ? '[backup]' : '`backup`';
+				$db->run("UPDATE $t SET backed_up = $q WHERE backed_up IS NULL");
+				$db->run("ALTER TABLE $t DROP COLUMN $q");
+				NuDB::forgetColumns($t);
+			}],
 		];
 	}
 
@@ -924,6 +934,7 @@ final class NuMigrate
 		'0027-themes' => [['zzzzsys_nunext_theme', 'table', 'created when missing'], ['zzzzsys_nunext_setting', 'data', 'Branding\'s accent colour (if set) moved into the own theme "My theme" (row theme)']],
 		'0032-permission-types' => [['zzzzsys_nunext_permission_type', 'table', 'created when missing']],
 		'0033-entry-files' => [['zzzzsys_nunext_setting', 'data', 'row entry_files_notice added after an update (notice: entry files renamed)']],
+		'0035-passkey-backed-up' => [['zzzzsys_nunext_passkey', 'column', 'backed_up added; the values of backup copied, then backup dropped (installations of 0.8.877–0.8.884 on MySQL)']],
 		'0034-passkeys' => [['zzzzsys_nunext_passkey', 'table', 'created when missing']],
 		'0031-log-indexes' => [['zzzzsys_nunext_log', 'index', 'ix_zzzzsys_nunext_log_object_record (object, record_id), ix_zzzzsys_nunext_log_user_event (user_id, event, log_time), login, object when missing'], ['zzzzsys_nunext_audit', 'index', 'login when missing']],
 		'0030-data-export' => [['zzzzsys_nunext_export', 'table', 'created when missing']],

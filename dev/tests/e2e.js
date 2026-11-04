@@ -2814,7 +2814,7 @@ T.review_764 = async (s) => {                          // 0.8.764: phones – st
 		// an embedded list (run object): compact, filters folded, grows to its rows on phones
 		await p.goto(BASE + 'index.php?p=form&f=sampleall&r=-1'); await p.waitForTimeout(800);
 		await p.click('#nuTab4'); await p.waitForTimeout(1500);
-		await p.waitForFunction(() => { const f = document.querySelector('.nuWrap_run iframe.nuIframe'); return f && f.getBoundingClientRect().height > 300; }, null, { timeout: 8000 }).catch(() => {});   // under load the frame grows later
+		await p.waitForFunction(() => { const f = document.querySelector('.nuWrap_run iframe.nuIframe'); return f && f.getBoundingClientRect().height > 300; }, null, { timeout: 15000 }).catch(() => {});   // under load the frame grows later
 		const fr = await p.evaluate(() => { const f = document.querySelector('.nuWrap_run iframe.nuIframe'); if (!f) return null; const d = f.contentDocument; return { h: f.getBoundingClientRect().height, emb: d.documentElement.classList.contains('nuEmbedded'), folded: !(d.getElementById('nuBrowseFilters') || { classList: { contains: () => false } }).classList.contains('show'), rows: d.querySelectorAll('#nuBrowseTable tr.nuBrowseRow').length }; });
 		expect(fr && fr.emb && fr.folded && fr.rows > 0 && fr.h > 300, 'embedded list: ' + JSON.stringify(fr));
 		// admin role rights: None / View / Change as labelled buttons on phones
@@ -7179,24 +7179,65 @@ T.help_tabs = async (s) => {                              // 0.8.464: guide and 
 	}
 };
 
-// help as one file per page with toc.json (0.8.493): chapter → page index, numbering, "Show advanced topics" switch (remembered),
-// a link into an advanced page turns it on, old ids keep working
+// help as one file per page with toc.json (0.8.493): chapter → page index, numbering, reading level (0.8.884: Essentials / Standard /
+// Everything instead of the switch "Show advanced topics"; the old switch's "on" is taken over), a link into an advanced page shows it, old ids work
 T.help_pages = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=help');
-	await p.evaluate(() => { try { localStorage.setItem('nunext-help-advanced', '0'); } catch (e) { /* */ } });
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-help-level'); localStorage.setItem('nunext-help-advanced', '0'); } catch (e) { /* */ } });
 	await open(p, 'index.php?p=help'); await p.waitForTimeout(300);
-	expect(await p.locator('#helpAdvanced').count() === 1 && !(await p.locator('#helpAdvanced').isChecked()), 'no advanced switch / not off');
-	expect(await p.evaluate(() => document.documentElement.classList.contains('nuHelpBasic')) && await p.locator('#save-flow').isHidden(), 'advanced page shown in basic mode');
+	expect(await p.locator('#helpLevel').count() === 1 && await p.locator('#helpLvl_standard').isChecked(), 'no reading level / not Standard');
+	expect(await p.evaluate(() => document.documentElement.classList.contains('nuHelpBasic')) && await p.locator('#save-flow').isHidden(), 'advanced page shown at Standard');
 	expect(await p.locator('#forms-use').count() === 1 && await p.locator('#lists').count() === 1, 'old ids gone');
-	await p.click('label[for="helpAdvanced"]'); await p.waitForTimeout(300);
-	expect(await p.locator('#save-flow').isVisible(), 'advanced page hidden with the switch on');
+	await p.click('label[for="helpLvl_everything"]'); await p.waitForTimeout(300);
+	expect(await p.locator('#save-flow').isVisible(), 'advanced page hidden at Everything');
 	await open(p, 'index.php?p=help'); await p.waitForTimeout(300);
-	expect(await p.locator('#helpAdvanced').isChecked(), 'switch not remembered');
-	await p.click('label[for="helpAdvanced"]'); await p.waitForTimeout(200);
+	expect(await p.locator('#helpLvl_everything').isChecked(), 'level not remembered');
+	await p.click('label[for="helpLvl_standard"]'); await p.waitForTimeout(200);
 	await open(p, 'index.php?p=help#save-flow'); await p.waitForTimeout(800);
 	expect(await p.locator('#save-flow').isVisible(), 'link into an advanced page did not show it');
-	await p.evaluate(() => { try { localStorage.removeItem('nunext-help-advanced'); } catch (e) { /* */ } });
+	// the old switch: "on" becomes Everything
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-help-level'); localStorage.setItem('nunext-help-advanced', '1'); } catch (e) { /* */ } });
+	await open(p, 'index.php?p=help'); await p.waitForTimeout(300);
+	expect(await p.locator('#helpLvl_everything').isChecked(), 'old advanced switch not taken over');
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-help-level'); localStorage.removeItem('nunext-help-advanced'); } catch (e) { /* */ } });
+};
+
+// reading level Essentials (0.8.884): detail passages hidden with a "…" button that opens them in place, source boxes hidden,
+// a search finds hidden passages, Standard shows them again
+T.help_level = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=help');
+	await p.evaluate(() => { try { localStorage.setItem('nunext-help-level', 'essentials'); } catch (e) { /* */ } });
+	try {
+		await open(p, 'index.php?p=home');
+		await open(p, 'index.php?p=help#object-types'); await p.waitForTimeout(600);
+		const st = await p.evaluate(() => {
+			const det = Array.from(document.querySelectorAll('#helpBody [data-level="detail"]'));
+			const src = document.querySelector('#helpBody details.doc-src:not(.doc-keep)');
+			return { lite: document.documentElement.classList.contains('nuHelpLite'), n: det.length, shown: det.filter(e => e.offsetParent !== null).length,
+				btns: document.querySelectorAll('#helpBody .nuDetailMore:not([hidden]) .nuDetailBtn').length, src: src ? src.offsetParent !== null : null };
+		});
+		expect(st.lite && st.n > 20 && st.shown === 0 && st.btns > 0 && st.src === false, 'Essentials: ' + JSON.stringify(st));
+		// the first … of the object types page opens its group in place
+		const sec = p.locator('#object-types-p');
+		const btn = sec.locator('.nuDetailMore .nuDetailBtn').first();
+		await btn.scrollIntoViewIfNeeded(); await btn.click(); await p.waitForTimeout(200);
+		const opened = await p.evaluate(() => { const b = document.querySelector('#object-types-p .nuDetailMore'); let e = b.previousElementSibling;
+			return { hidden: b.hidden, vis: e && e.getAttribute('data-level') === 'detail' && e.offsetParent !== null }; });
+		expect(opened.hidden && opened.vis, 'the … did not open the passage: ' + JSON.stringify(opened));
+		// a search finds a hidden passage (text only in a detail of the upload section)
+		await p.fill('#helpSearch', 'x.php.pdf'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+		const hit = await p.evaluate(() => { const m = Array.from(document.querySelectorAll('#helpBody mark')).find(x => /x\.php\.pdf/i.test(x.closest('[data-level="detail"]') ? x.closest('[data-level="detail"]').textContent : ''));
+			return m ? m.offsetParent !== null : false; });
+		expect(hit, 'search did not show the hidden passage');
+		await p.fill('#helpSearch', ''); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+		await p.click('label[for="helpLvl_standard"]'); await p.waitForTimeout(300);
+		expect(await p.evaluate(() => !document.documentElement.classList.contains('nuHelpLite')
+			&& Array.from(document.querySelectorAll('#helpBody [data-level="detail"]')).every(e => e.offsetParent !== null || e.closest('[hidden]'))), 'Standard hides details');
+	} finally {
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-help-level'); } catch (e) { /* */ } });
+	}
 };
 
 T.help_dev = async (s) => {                               // 0.8.408: chapter "Development with Claude" only in developer mode

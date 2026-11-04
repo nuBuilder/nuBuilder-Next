@@ -3,6 +3,38 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.886 – Release gate (0.8.882–0.8.886)
+- Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte, the OWASP ZAP security scan for the
+  first time) for 0.8.882–0.8.886 – ZAP in the gate, the help's reading level, the SQL Server fix of the passkey table.
+- Tutorial: the lesson on help and documentation names the reading level.
+- Forms: a list shown in a run object (iframe) that had already loaded when the form set it up kept its first height on phones and in
+  the flowing layouts – it now grows with its rows in every case (found by the gate under load).
+
+## 0.8.885 – SQL Server: passkey table
+- SQL Server: setting up nuBuilder Next stopped while creating its own tables – the passkey table had a column named backup, a
+  reserved word of SQL Server. The column is now backed_up; an update moves the values of installations on MySQL (0.8.877 and later)
+  and drops the old column. Found by the SQL Server job of the GitHub CI, which reached this point for the first time.
+- Unit tests: no column of nuBuilder Next's own tables may be a reserved word of SQL Server or MySQL.
+
+## 0.8.884 – Help: reading level
+- Help: a reading level in the side bar replaces the switch "Show advanced topics" – Essentials, Standard, Everything. Essentials
+  shows every topic with its main points and leaves out details and internals (column names, exceptions, differences to nuBuilder
+  Forte, source file boxes); a small … after a paragraph opens what was left out, in place. Standard is the previous default,
+  Everything adds the advanced topics (the old switch's "on" is taken over). A search or a link always finds a hidden passage.
+- 44 passages of the guide are marked as details; a unit test makes sure no topic loses its lead, its first paragraph or all of its
+  content in Essentials. Help → Navigation describes the reading level.
+
+## 0.8.883 – OWASP ZAP scan in the release gate
+- Release gate: OWASP ZAP scans the test installation (dev/tests/zap.js) – the public pages without a session, then signed in as the
+  globeadmin a spider, the passive rules and a time-capped active scan of the admin pages and forms. Known alerts and accepted
+  findings are listed with a reason in dev/tests/zap-known.json; an unlisted alert of risk Medium or High stops the release.
+  Pages that change files or the installation, run code by design, send mail or requests, or end the session stay out of its scope.
+- Hardening the first scan found: the X-Powered-By header (PHP's version) is removed from every answer; X-Content-Type-Options:
+  nosniff now covers the static files too (Apache: the root .htaccess; nginx: a rule in the Security check and the help).
+
+## 0.8.882 – Notes
+- Notes: v0.8.881 published on GitHub; release notes template points to it.
+
 ## 0.8.881 – Release gate (0.8.870–0.8.881)
 - Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte) for 0.8.870–0.8.880 – passkeys,
   report rich text (HTML / Markdown), sub-form filters by lookup code, select options as in nuBuilder Forte, documentation.

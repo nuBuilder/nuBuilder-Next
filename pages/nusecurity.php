@@ -139,7 +139,7 @@ nu_layout_start(t('sec_title'));
 								<li class="list-group-item d-flex flex-wrap align-items-center gap-2" data-pk-id="<?= h((string)$pk['zzzzsys_nunext_passkey_id']) ?>">
 									<i class="bi bi-key text-body-secondary" aria-hidden="true"></i>
 									<div class="me-auto">
-										<div class="fw-semibold"><?= h((string)$pk['name']) ?><?php if ((string)$pk['backup'] === '1'): ?> <span class="badge text-bg-light border fw-normal" title="<?= h(t('pk_synced_tip')) ?>"><?= h(t('pk_synced')) ?></span><?php endif; ?></div>
+										<div class="fw-semibold"><?= h((string)$pk['name']) ?><?php if ((string)$pk['backed_up'] === '1'): ?> <span class="badge text-bg-light border fw-normal" title="<?= h(t('pk_synced_tip')) ?>"><?= h(t('pk_synced')) ?></span><?php endif; ?></div>
 										<div class="small text-body-secondary"><?= h(t('pk_created', date(nu_dfmt('d.m.Y'), strtotime((string)$pk['created_at']) ?: time()))) ?> · <?= h($pkUsed !== '' ? t('pk_last_used', date(nu_dfmt('d.m.Y H:i'), strtotime($pkUsed) ?: time())) : t('pk_never_used')) ?></div>
 									</div>
 									<form method="post" action="<?= h(nu_url('security')) ?>" data-confirm="<?= h(t('pk_remove_confirm', (string)$pk['name'])) ?>" data-confirm-ok="<?= h(t('pk_remove')) ?>" data-confirm-class="btn btn-danger">

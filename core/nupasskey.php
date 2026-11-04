@@ -203,7 +203,7 @@ final class NuPasskey
 		$db->insert(self::TABLE, [
 			self::TABLE . '_id' => $id, 'user_id' => (string)$u['id'], 'cred_id' => self::b64($raw), 'public_key' => $key, 'alg' => $alg,
 			'sign_count' => $ad['count'], 'user_handle' => (string)$cer['h'], 'name' => $name !== '' ? $name : self::defaultName(),
-			'aaguid' => self::uuid($ad['aaguid']), 'transports' => implode(',', array_slice($transports, 0, 6)), 'backup' => $ad['be'] ? '1' : '0',
+			'aaguid' => self::uuid($ad['aaguid']), 'transports' => implode(',', array_slice($transports, 0, 6)), 'backed_up' => $ad['be'] ? '1' : '0',
 			'created_at' => date('Y-m-d H:i:s'), 'last_used_at' => null,
 		]);
 		NuLog::write('passkey_added', self::TABLE, $id, ['name' => $name, 'alg' => self::ALGS[$alg] ?? (string)$alg, 'synced' => $ad['be']]);
@@ -274,7 +274,7 @@ final class NuPasskey
 				$row ? ['id' => (string)$row['user_id'], 'login' => ''] : null);
 			return null;
 		}
-		$db->run('UPDATE ' . self::TABLE . ' SET sign_count = ?, last_used_at = ?, backup = ? WHERE ' . self::TABLE . '_id = ?',
+		$db->run('UPDATE ' . self::TABLE . ' SET sign_count = ?, last_used_at = ?, backed_up = ? WHERE ' . self::TABLE . '_id = ?',
 			[$ad['count'], date('Y-m-d H:i:s'), $ad['be'] ? '1' : '0', $row[self::TABLE . '_id']]);
 		$error = null;
 		return $row;

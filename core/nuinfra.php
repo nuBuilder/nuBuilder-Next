@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 26;
+	public const VERSION = 27;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -155,7 +155,7 @@ final class NuSchema
 		'zzzzsys_nunext_passkey' => [                             // passkeys (0.8.877, core/nupasskey.php): pk = sha256 of the raw credential id
 			'pk' => 'zzzzsys_nunext_passkey_id',
 			'cols' => [['user_id', 'text', '25'], ['cred_id', 'text', '1400'], ['public_key', 'longtext'], ['alg', 'int'], ['sign_count', 'bigint'],
-				['user_handle', 'text', '100'], ['name', 'text', '100'], ['aaguid', 'text', '36'], ['transports', 'text', '100'], ['backup', 'text', '1'],
+				['user_handle', 'text', '100'], ['name', 'text', '100'], ['aaguid', 'text', '36'], ['transports', 'text', '100'], ['backed_up', 'text', '1'],
 				['created_at', 'datetime'], ['last_used_at', 'datetime']],
 			'index' => ['user_id'],
 		],

@@ -30,7 +30,7 @@ if (!hash_equals($expected, $_SERVER['HTTP_X_NUNEXT_SIGNATURE'] ?? '') || abs(ti
 	<li>An answer 2xx counts as sent. On an error or timeout the call waits and is tried again after 1 min, 5 min, 30 min, 2 h and 12 h – 6 attempts, then it is <em>Failed</em>. A refusal (HTTP 4xx except 408 / 429) is not tried again.</li>
 	<li>Retries are made by the housekeeping: run <code>php nucron.php</code> every few minutes (see <a href="#security-cron">Housekeeping by cron</a>); without cron the next saves and page views pick up waiting calls now and then.</li>
 	<li>Open a call for its body and every attempt (status, duration, start of the answer); <em>Send again</em> sends it once more. Calls are kept 30 days.</li>
-	<li>Saves made in nuBuilder Forte itself fire no webhook – nuBuilder Forte does not know them.</li>
+	<li data-level="detail">Saves made in nuBuilder Forte itself fire no webhook – nuBuilder Forte does not know them.</li>
 	</ul>
 	</div>
 	<div class="doc-sub" id="webhooks-security"><h3 id="webhooks-security-h">Security</h3>

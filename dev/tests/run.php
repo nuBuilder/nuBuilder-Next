@@ -540,6 +540,62 @@ foreach ((array)($toc['chapters'] ?? []) as $ch) {
 		foreach ($m[1] as $l) $helpLinks[$l] = $f;
 	}
 }
+// 0.8.884: reading level Essentials – data-level="detail" only on passages (p / li / tr / pre / div without heading), never on the lead /
+// audience / see-also lines, the first paragraph after a heading, or the only content of a topic: every page and sub-section stays readable
+$detBad = [];
+foreach (glob(NU_ROOT . '/docs/pages/*.htm') ?: [] as $f) {
+	$src = (string)file_get_contents($f);
+	if (!str_contains($src, 'data-level="detail"')) continue;
+	$d = new DOMDocument();
+	@$d->loadHTML('<?xml encoding="utf-8"?><div id="nuRoot">' . $src . '</div>', LIBXML_NOERROR | LIBXML_NOWARNING);
+	$xp = new DOMXPath($d);
+	$b = basename($f);
+	foreach ($xp->query('//*[@data-level="detail"]') ?: [] as $el) {
+		/** @var DOMElement $el */
+		$cls = ' ' . $el->getAttribute('class') . ' ';
+		if (!in_array($el->nodeName, ['p', 'li', 'tr', 'pre', 'div', 'ul', 'ol', 'table'], true) || $xp->query('.//h2 | .//h3', $el)->length
+			|| preg_match('/ doc-(lead|for|see|sub) /', $cls)) { $detBad[] = "$b: <{$el->nodeName}>"; continue; }
+		$prev = $el->previousSibling;
+		while ($prev && !($prev instanceof DOMElement)) $prev = $prev->previousSibling;
+		if ($prev && in_array($prev->nodeName, ['h2', 'h3'], true)) $detBad[] = "$b: first paragraph after " . trim($prev->textContent);
+	}
+	foreach ($xp->query('//section | //div[contains(concat(" ", @class, " "), " doc-sub ")]') ?: [] as $box) {
+		/** @var DOMElement $box */
+		if ($box->getAttribute('data-level') === 'advanced') continue;
+		$kept = 0;
+		foreach ($box->childNodes as $c) {
+			if ($c instanceof DOMElement && in_array($c->nodeName, ['p', 'ul', 'ol', 'table', 'pre', 'figure', 'dl', 'div'], true)
+				&& $c->getAttribute('data-level') !== 'detail' && !preg_match('/\bdoc-(for|see|sub)\b/', $c->getAttribute('class'))) $kept++;
+		}
+		if ($kept === 0) $detBad[] = "$b: #" . $box->getAttribute('id') . ' empty in Essentials';
+	}
+}
+check('help: detail passages keep every topic readable in Essentials', !$detBad, implode(' | ', array_slice($detBad, 0, 6)));
+
+// 0.8.885: no column of an own table is a reserved word of SQL Server or MySQL (CREATE TABLE writes the names unquoted – "backup"
+// broke the installation on SQL Server)
+$reserved = array_flip(explode(' ', 'ADD ALL ALTER AND ANY AS ASC AUTHORIZATION BACKUP BEGIN BETWEEN BREAK BROWSE BULK BY CASCADE CASE CHECK '
+	. 'CHECKPOINT CLOSE CLUSTERED COALESCE COLLATE COLUMN COMMIT COMPUTE CONSTRAINT CONTAINS CONTAINSTABLE CONTINUE CONVERT CREATE CROSS CURRENT '
+	. 'CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR DATABASE DBCC DEALLOCATE DECLARE DEFAULT DELETE DENY DESC DISK DISTINCT '
+	. 'DISTRIBUTED DOUBLE DROP DUMP ELSE END ERRLVL ESCAPE EXCEPT EXEC EXECUTE EXISTS EXIT EXTERNAL FETCH FILE FILLFACTOR FOR FOREIGN FREETEXT '
+	. 'FREETEXTTABLE FROM FULL FUNCTION GOTO GRANT GROUP HAVING HOLDLOCK IDENTITY IDENTITY_INSERT IDENTITYCOL IF IN INDEX INNER INSERT INTERSECT '
+	. 'INTO IS JOIN KEY KILL LEFT LIKE LINENO LOAD MERGE NATIONAL NOCHECK NONCLUSTERED NOT NULL NULLIF OF OFF OFFSETS ON OPEN OPENDATASOURCE '
+	. 'OPENQUERY OPENROWSET OPENXML OPTION OR ORDER OUTER OVER PERCENT PIVOT PLAN PRECISION PRIMARY PRINT PROC PROCEDURE PUBLIC RAISERROR READ '
+	. 'READTEXT RECONFIGURE REFERENCES REPLICATION RESTORE RESTRICT RETURN REVERT REVOKE RIGHT ROLLBACK ROWCOUNT ROWGUIDCOL RULE SAVE SCHEMA '
+	. 'SECURITYAUDIT SELECT SESSION_USER SET SETUSER SHUTDOWN SOME STATISTICS SYSTEM_USER TABLE TABLESAMPLE TEXTSIZE THEN TO TOP TRAN TRANSACTION '
+	. 'TRIGGER TRUNCATE TSEQUAL UNION UNIQUE UNPIVOT UPDATE UPDATETEXT USE USER VALUES VARYING VIEW WAITFOR WHEN WHERE WHILE WITH WITHIN WRITETEXT '
+	. 'ACCESSIBLE ANALYZE BEFORE BIGINT BINARY BLOB BOTH CALL CHANGE CHAR CHARACTER CONDITION DATABASES DEC DECIMAL DELAYED DESCRIBE DIV DUAL '
+	. 'EACH ELSEIF ENCLOSED ESCAPED EXPLAIN FALSE FLOAT FORCE FULLTEXT GENERATED GET GROUPS IGNORE INFILE INOUT INT INTEGER INTERVAL ITERATE KEYS '
+	. 'LEADING LEAVE LIMIT LINES LOCK LONG LOOP MATCH MOD MODIFIES NATURAL NUMERIC OUT PARTITION PURGE RANGE RANK READS REAL REGEXP RELEASE RENAME '
+	. 'REPEAT REPLACE REQUIRE RLIKE ROW ROWS SIGNAL SMALLINT SPATIAL SQL TRAILING TRUE UNDO UNLOCK UNSIGNED USAGE USING VARCHAR WINDOW WRITE XOR'));
+$resBad = [];
+foreach ((new ReflectionClassConstant('NuSchema', 'TABLES'))->getValue() as $tbl => $def) {
+	foreach (array_merge([(string)$def['pk']], array_map(static fn($c) => (string)$c[0], (array)$def['cols'])) as $col) {
+		if (isset($reserved[strtoupper($col)])) $resBad[] = "$tbl.$col";
+	}
+}
+check('own tables: no column is a reserved word of SQL Server / MySQL', !$resBad, implode(', ', $resBad));
+
 $onDisk = array_map('basename', glob(NU_ROOT . '/docs/pages/*.htm') ?: []);
 check('help: every page file is in toc.json and the other way round', !array_diff($onDisk, $tocFiles) && !array_diff($tocFiles, $onDisk) && count($tocFiles) === count(array_unique($tocFiles)),
 	implode(', ', array_merge(array_diff($onDisk, $tocFiles), array_diff($tocFiles, $onDisk))));
@@ -965,7 +1021,7 @@ NuPasskey::$testOrigin = 'http://localhost:8099';
 $_SESSION['nu_schema'] = NuSchema::VERSION . '/' . NU_VERSION;   // no table creation on the test's SQLite database (NuLog::write)
 NuDB::$override = new NuDB(['type' => 'sqlite', 'name' => ':memory:', 'host' => '', 'user' => '', 'pass' => '']);
 NuDB::$override->exec('CREATE TABLE zzzzsys_nunext_passkey (zzzzsys_nunext_passkey_id TEXT PRIMARY KEY, user_id TEXT, cred_id TEXT, public_key TEXT, alg INTEGER, '
-	. 'sign_count INTEGER, user_handle TEXT, name TEXT, aaguid TEXT, transports TEXT, backup TEXT, created_at TEXT, last_used_at TEXT)');
+	. 'sign_count INTEGER, user_handle TEXT, name TEXT, aaguid TEXT, transports TEXT, backed_up TEXT, created_at TEXT, last_used_at TEXT)');
 NuDB::$override->exec('CREATE TABLE zzzzsys_nunext_log (zzzzsys_nunext_log_id TEXT, log_time TEXT, user_id TEXT, login TEXT, ip TEXT, event TEXT, object TEXT, record_id TEXT, details TEXT)');
 $pkB = static fn(string $b): string => NuPasskey::b64($b);
 $pkAuth = static function (string $flags, int $count, string $att = '') { return hash('sha256', 'localhost', true) . $flags . pack('N', $count) . $att; };

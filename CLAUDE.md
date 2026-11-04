@@ -29,7 +29,7 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
   since the last gate (`docs/pages/`), README.md (feature list, requirements, install), this file ("Where things stand", architecture,
   conventions), TODO.md (remove what is done) and the tutorial where it is affected – then run the gate, so the push carries current docs.
   Only when the owner says **"gate"**: a new version with `python3 dev/release.py <version> "<title>" <file> --gate` (full gate: smoke,
-  all e2e, compat; manifest `"gated": true`, `last_gate`), then sync to the git mirror, commit and `git push origin main` (everything since
+  all e2e, compat, ZAP when ../zap exists; manifest `"gated": true`, `last_gate`), then sync to the git mirror, commit and `git push origin main` (everything since
   the last gate in one push). **Account without a GitHub connection (since 0.8.451, the owner's rule):** a gate runs the full test
   suite locally and releases with `--gate`, but nothing is synced, committed or pushed; do **not** remind the owner about gates
   (release.py only prints the count).
@@ -102,7 +102,7 @@ wiki-style cards with signature, parameters, returns, example, result / console.
   de-DE / de-CH (0.8.314 / 0.8.315).
 - **Product names:** nuBuilder 4.x is "nuBuilder Forte" in all texts (docs: "nuBuilder Forte (4.x)" at the first mention of a page, "nuBuilder Forte 4.9" for a version); plain "nuBuilder" only where both products are meant. Code identifiers, paths and field names stay unchanged. Settings, tables and code areas both products use are nuBuilder Next's too: call them "setting $nuConfig…", "Shared settings" (the section of zzzzsys_config, route ?s=forte), "the table zzzzsys_… (shared with nuBuilder Forte)", "header, style and include of the form pages" – not "nuBuilder Forte's setting / Setup" (0.8.801); name Forte only for compatibility, migration or what really differs.
 - **Update the docs** (English only; the matching page in `docs/pages/` – a new page = a new file + an entry in `docs/toc.json`; mark advanced topics
-  with `data-level="advanced"`; **no version numbers in the text** – history is CHANGELOG.md; page template and rules in the comment of toc.json), the **tutorial** (`docs/nunext-tutorial.htm`, 0.8.328 – lessons for the
+  with `data-level="advanced"` and passages that only add a column name, an internal, an exception or a difference to Forte with `data-level="detail"` (0.8.884); **no version numbers in the text** – history is CHANGELOG.md; page template and rules in the comment of toc.json), the **tutorial** (`docs/nunext-tutorial.htm`, 0.8.328 – lessons for the
   globeadmin, structure in its header comment; lesson ids are progress keys, never rename them) and **`TODO.md`** when relevant; remove TODO points that are done or
   outdated. The README stays short (what it is, requirements, install, updating, compatibility,
   licence) – new features are described in the CHANGELOG.md section of their version and in the docs.
@@ -430,8 +430,9 @@ lang/*.php           return [key => text]; t('key', ...$args) uses sprintf (%s, 
 docs/toc.json        help (0.8.493, DeepWiki-like): chapters → pages, one file per page in docs/pages/NN-MM-name.htm (one <section id>, one h2,
                      sub-sections div.doc-sub > h3; p.doc-lead / doc-for / doc-see, details.doc-src); tab guide / ref per chapter; pages/nuhelp.php
                      joins and filters them per reader (data-doc="admin" / "dev", data-acl="<form ids>", also on any element) and numbers them;
-                     assets/js/nuhelp.js: index chapter → page → h3, search, "Show advanced topics" (data-level="advanced", localStorage
-                     nunext-help-advanced, a link into an advanced topic turns it on), Code reference loaded on demand (?p=help&part=ref, ?tab=ref);
+                     assets/js/nuhelp.js: index chapter → page → h3, search, reading level Essentials / Standard / Everything (0.8.884, radios helpLevel,
+                     localStorage nunext-help-level; data-level="detail" on p / li hidden at Essentials with a … button, data-level="advanced" only at
+                     Everything; a link / search hit into hidden content shows it; candidates: python3 -I dev/doc_details.py --list), Code reference loaded on demand (?p=help&part=ref, ?tab=ref);
                      ids unique over all files and every #link checked by run.php (also: every page in toc.json, no 0.8.x in the text, chapter not
                      more restrictive than its pages); e2e help_tabs / help_pages / help_dev. #devflow (chapter 13, data-doc="dev") = "Development
                      with Claude": keep it in step with this file. Diagrams: inline SVG with classes (strict CSP) – convert a drawn SVG with
@@ -572,6 +573,14 @@ Nothing of the earlier test setup survives; this is how it was done (Linux conta
    `playwright install`). Log in at `index.php?p=login` with globeadmin / nu. `dev/tests/smoke.js` (BASE=…/nunext/) opens every page.
    Login rate limit: failed logins stay in `zzzzsys_nunext_log` for 15 minutes – delete `login_failed` rows between test runs.
    The installer asks for the token unless PHP's built-in server is used from the same computer.
+9. **OWASP ZAP** (0.8.883, part of every gate when present): `curl -sL -o zap.tgz https://github.com/zaproxy/zaproxy/releases/download/v2.17.0/ZAP_2.17.0_Linux.tar.gz`
+   (GitHub release downloads work here; ~240 MB), unpack to `../zap/` (so that `../zap/zap.sh` exists; Java 21 is installed). Run alone:
+   `BASE=… DB=… ZAP_MINS=15 node dev/tests/zap.js` – public pages without a session, then the globeadmin's pages (spider with
+   `handleParameters: ignore_value` → ~150 URLs, passive rules, active scan capped by ZAP_MINS; ~12 min). Known alerts with reasons:
+   `dev/tests/zap-known.json` (id + url / param regex); unknown Medium / High fail. The scan's scope leaves out the routes of `EXCLUDE`
+   in zap.js (config / update / reset / cloners / file manager / custom pages / procedures / Global code / mail / webhooks / session
+   pages) – they change files, run code by design or end the session. The database is dumped and restored (like e2e). Reports in
+   `<tmp>/nunext-zap/report/zap.html`, ZAP's own log in `<tmp>/nunext-zap/zap.log` (`ZAP_OUT`). `NUNEXT_TEST_ZAP=0` skips it in release.py.
 8. Library pack Uppy for the e2e test `uppy_upload` (skipped without it, 0.8.459): copy nuBuilder's `third_party/uppy/` to `../libsrc/uppy/`,
    `php dev/libpack.php ../libpacks ../nunext-signing.key uppy`, then Update → Libraries → *Upload a pack* on the test site.
 7. Static analysis: PHPStan **2.1.17** (the version `.github/workflows/ci.yml` pins – newer ones report false alarms, e.g. 2.3.1
@@ -613,10 +622,21 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (November 2026, 0.8.880)
-Last gate 0.8.869 (full test run, pushed: 0.8.825–0.8.869 in one push; docs, README, TODO, tutorial checked first). Gate tip: dev/tests/e2e.js gap_schema starts its own server on port 8097 – run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors).
+## Where things stand (November 2026, 0.8.886)
+Last gate 0.8.886 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.882–0.8.886 in one push; docs, README, TODO, tutorial checked first). Gate tip: run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors); ZAP runs after compat (~11 min).
 
 Since the gate, newest first:
+(none yet)
+
+Up to the gate 0.8.886, newest first:
+- 0.8.886 release gate (tutorial: reading level of the documentation; fix found by it: nuruntime.js growFrames() watch() – the ResizeObserver also for a run iframe already loaded when growFrames ran, so it grows with its rows; e2e review_764 waits 15 s)
+- 0.8.885 SQL Server: zzzzsys_nunext_passkey column backup → backed_up (BACKUP is reserved in T-SQL – CI's mssql job stopped at NuSchema::create, the first time the job got that far); step 0035-passkey-backed-up copies + drops the old column (MySQL installs 0.8.877–0.8.884), NuSchema 27; run.php check: no own-table column is a reserved word of SQL Server / MySQL (NuDB::ident only checks names, CREATE TABLE writes them unquoted)
+- 0.8.884 help reading level (the owner: A2 · B2 · C2 · D3 · E2 · F1): pages/nuhelp.php #helpLevel radios helpLevel (essentials | standard | everything, texts help_level / help_lvl_* / help_level_tip / help_detail_more) instead of #helpAdvanced; nuhelp.js setLevel() → html.nuHelpBasic (not everything) / html.nuHelpLite (essentials), storage nunext-help-level (old nunext-help-advanced 1 → everything), markDetails() = one p/li.nuDetailMore … button per group of data-level="detail" siblings (openDetail → .nuDetailOpen), hiddenByLevel() / revealAdvanced() open details for links and hashes, searching shows them (CSS .nuHelpSearching); details.doc-src hidden at Essentials (doc-keep = the page numbers table); 44 passages marked by hand from the 108 candidates of dev/doc_details.py (--list / --apply); run.php guard (never lead / first paragraph after a heading / only content of a topic); toc.json rule; docs 02-02 Reading level; e2e help_pages (reworked) + help_level
+- 0.8.883 OWASP ZAP in the gate: dev/tests/zap.js (automation plan: contexts public / nunext with form auth + _csrf, spider ignore_value, passive, active scan ZAP_MINS, reports json + html; known list dev/tests/zap-known.json, FAIL = unknown Medium / High; DB dump / restore) + release.py suite zap (NUNEXT_TEST_ZAP=0 skips; skipped by itself without ../zap); hardening found by it: header_remove(X-Powered-By) in nu_security_headers + pages/nufa.php, X-Content-Type-Options for static files (root .htaccess mod_headers + nginx add_header in NuSecurity::serverRules and docs 07-07); docs 13-00 #devflow-tests
+- 0.8.882 notes (v0.8.881 published)
+
+Up to the gate 0.8.881, newest first:
+- 0.8.881 release gate
 - 0.8.880 docs for 0.8.876–0.8.879 (tutorial: select formats in Object types + Forte track "Code"; 09-04 / 04-02 / 10-02 / 12-02; TODO please-verify 0.8.876–0.8.879)
 - 0.8.879 select options as nuBuilder Forte reads them: core/form/nuselectsource.php NuSelectSource (kind() query | tables | languages | array | list – "-- " comment lines and /* */ before the SQL do not count, key word + space / ( / *, so "WITH|With" stays a list; options(src, hash, exact, run): SQL bound by NuHash::sql, lists / JSON with hash variables as text, invalid JSON = pipe list, SHOW [FULL] TABLES without __ (SQL Server / SQLite: catalog, BASE TABLE / VIEW), %LANGUAGES% = core/languages/*.sql of NuBuilderLib::path() else NU_LANGS names without English, exact = Forte's result ('Undefined', rows as fetched); isFixed()) – used by NuRender::options (also nuRefreshSelectObject), nuSelectOptions() (nuRunQuery as runner), NuTranslate::optionTexts, NuFormSpec (fromSnapshot; toSnapshot keeps the source while the options are unchanged); design mode (i) builder_select_sql_help on Options; docs 04-05 #select-options, 12-02, function reference; run.php + e2e select_sources
 - 0.8.878 sub-form filters (nuSubformAddFilter): a lookup column is listed and matched by its code, as Forte's nuSubformFilterCellValue (nuruntime.js cellText; was the description); docs 04-05 + function reference; e2e subform_filter_lookup (sample order sample_ord_1)

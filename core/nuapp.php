@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.881');
+define('NU_VERSION', '0.8.886');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -255,6 +255,7 @@ function nu_session_timeout(bool $globeadmin = false): int
 /** Security headers of every page (nu_boot; the installer and the API send their own). */
 function nu_security_headers(): void
 {
+	header_remove('X-Powered-By');                            // PHP's version header (expose_php) – nothing a visitor needs (0.8.883)
 	header('X-Frame-Options: DENY');
 	header('X-Content-Type-Options: nosniff');
 	header('Referrer-Policy: same-origin');

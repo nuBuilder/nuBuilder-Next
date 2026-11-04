@@ -51,6 +51,7 @@
 &lt;/Directory&gt;
 
 # nginx: server block
+add_header X-Content-Type-Options nosniff always;   # static files too (Apache: the root .htaccess does it)
 location ~ ^/nunext/(core|pages|lang|install|docs|dev|_backup|_install|_update|_libsrc|temp|custom|lib|apps)/ { deny all; }   # apps/: built-in pages   # custom/: custom pages
 location ~ ^/nunext/(README\.md|CHANGELOG\.md|LICENSE|TODO\.md|CLAUDE\.md|nunext-manifest\.json|nuconfig.*\.php|nucron\.php)$ { deny all; }
 location ~ /NUNEXT-VERSION\.txt$ { deny all; }

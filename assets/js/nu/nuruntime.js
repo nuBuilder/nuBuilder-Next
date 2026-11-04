@@ -2312,13 +2312,21 @@
 					if (h > 40) { f.style.height = Math.min(h, 2400) + 'px'; f.parentElement.style.height = 'auto'; }
 				} catch (x) { /* other origin: keep the size */ }
 			};
-			if (f.__nuGrow) { fit(); return; }
-			f.__nuGrow = true;
-			f.addEventListener('load', function () {
+			// fit now and whenever the framed page changes size – also when it had loaded before this ran (0.8.886: the observer was
+			// only attached on a later load event, so a frame that was already loaded kept its first, too small height)
+			var watch = function () {
 				fit();
-				try { if (window.ResizeObserver) new ResizeObserver(fit).observe(f.contentDocument.getElementById('main') || f.contentDocument.body); } catch (x) { /* ignore */ }
-			});
-			try { if (f.contentDocument && f.contentDocument.readyState === 'complete' && f.contentDocument.body && f.contentDocument.body.childElementCount) fit(); } catch (x) { /* ignore */ }
+				try {
+					var d = f.contentDocument, el = d && (d.getElementById('main') || d.body);
+					if (!el || !window.ResizeObserver || f.__nuObserved === el) return;
+					if (f.__nuObs) f.__nuObs.disconnect();
+					f.__nuObs = new ResizeObserver(fit); f.__nuObs.observe(el); f.__nuObserved = el;
+				} catch (x) { /* other origin */ }
+			};
+			if (f.__nuGrow) { watch(); return; }
+			f.__nuGrow = true;
+			f.addEventListener('load', watch);
+			try { if (f.contentDocument && f.contentDocument.readyState === 'complete' && f.contentDocument.body && f.contentDocument.body.childElementCount) watch(); } catch (x) { /* ignore */ }
 		});
 	}
 

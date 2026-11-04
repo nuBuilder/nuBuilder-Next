@@ -3,8 +3,10 @@
  * needed), both assembled by pages/nuhelp.php from docs/toc.json. Each tab has its own index: chapters (sections with
  * data-nu-level="1"), their pages (data-nu-level="2") and the h3 of a page, folded until the page is opened or searched.
  * The search runs in the open tab, or in both with "Search both tabs". A link or #hash to an id of the other tab opens that tab.
- * "Show advanced topics" (#helpAdvanced, remembered in this browser) hides sections with data-level="advanced"; a link or search
- * into such a section still reaches it (the switch is turned on). ?tab=ref is kept in the address.
+ * Reading level (0.8.884; radios name="helpLevel", remembered in this browser as nunext-help-level): Essentials hides passages with
+ * data-level="detail" (each group gets a small "…" button that opens it in place) and details.doc-src, Standard shows them, and only
+ * Everything shows topics with data-level="advanced". A link, #hash or search hit inside hidden content still reaches it (Essentials:
+ * the passage opens; advanced: the level becomes Everything). ?tab=ref is kept in the address.
  */
 (function () {
 	'use strict';
@@ -288,25 +290,70 @@
 		try { localStorage.setItem('nunext-help-fntab', paneId); } catch (e) { /* storage blocked */ }
 	}
 
-	// ================================================================== basic / advanced
-	var advBox = document.getElementById('helpAdvanced');
+	// ================================================================== reading level: essentials / standard / everything
+	var LEVELS = ['essentials', 'standard', 'everything'];
+	var levelRadios = Array.prototype.slice.call(document.querySelectorAll('input[name="helpLevel"]'));
+	/** Advanced topics hidden (Essentials and Standard). */
 	function basic() { return document.documentElement.classList.contains('nuHelpBasic'); }
-	function setAdvanced(on, keep) {
-		document.documentElement.classList.toggle('nuHelpBasic', !on);
-		if (advBox) advBox.checked = on;
+	/** Detail passages hidden (Essentials). */
+	function lite() { return document.documentElement.classList.contains('nuHelpLite'); }
+	function setLevel(lv, keep) {
+		if (LEVELS.indexOf(lv) < 0) lv = 'standard';
+		document.documentElement.classList.toggle('nuHelpBasic', lv !== 'everything');
+		document.documentElement.classList.toggle('nuHelpLite', lv === 'essentials');
+		levelRadios.forEach(function (r) { r.checked = r.value === lv; });
 		if (typeof guide !== 'undefined' && guide) guide.renumber();
 		if (typeof ref !== 'undefined' && ref) ref.renumber();
-		if (!keep) { try { localStorage.setItem('nunext-help-advanced', on ? '1' : '0'); } catch (e) { /* storage blocked */ } }
+		if (!keep) { try { localStorage.setItem('nunext-help-level', lv); } catch (e) { /* storage blocked */ } }
 	}
 	(function () {
-		var on = false;
-		try { on = localStorage.getItem('nunext-help-advanced') === '1'; } catch (e) { /* storage blocked */ }
-		setAdvanced(on, true);
+		var lv = 'standard';
+		try {
+			lv = localStorage.getItem('nunext-help-level')
+				|| (localStorage.getItem('nunext-help-advanced') === '1' ? 'everything' : 'standard');   // the switch before 0.8.884
+		} catch (e) { /* storage blocked */ }
+		setLevel(lv, true);
 	})();
-	if (advBox) advBox.addEventListener('change', function () { setAdvanced(advBox.checked); run(); });
-	/** A link, #hash or search hit inside an advanced topic turns the switch on, so the target can be shown. */
+	levelRadios.forEach(function (r) { r.addEventListener('change', function () { if (r.checked) { setLevel(r.value); run(); } }); });
+
+	/** Groups of detail passages that follow each other get one "…" button after the last; it opens the group in place. */
+	function markDetails(root) {
+		var seen = [];
+		Array.prototype.forEach.call(root.querySelectorAll('[data-level="detail"]'), function (el) {
+			if (seen.indexOf(el) >= 0) return;
+			var group = [el], n = el.nextElementSibling;
+			while (n && n.getAttribute('data-level') === 'detail') { group.push(n); n = n.nextElementSibling; }
+			seen = seen.concat(group);
+			var last = group[group.length - 1], li = last.tagName === 'LI';
+			var wrap = document.createElement(li ? 'li' : 'p');
+			wrap.className = 'nuDetailMore';
+			var b = document.createElement('button');
+			b.type = 'button'; b.className = 'btn btn-link btn-sm p-0 nuDetailBtn';
+			b.textContent = '…'; b.title = M.more || ''; b.setAttribute('aria-label', M.more || '');
+			b.addEventListener('click', function () { openDetail(group, wrap); });
+			wrap.appendChild(b);
+			last.parentNode.insertBefore(wrap, last.nextSibling);
+			group.forEach(function (g) { g.nuDetailGroup = group; g.nuDetailMore = wrap; });
+		});
+	}
+	function openDetail(group, wrap) {
+		group.forEach(function (g) { g.classList.add('nuDetailOpen'); });
+		if (wrap) wrap.hidden = true;
+	}
+	markDetails(guideBody);
+	/** True when the level hides el (advanced topic or closed detail passage). */
+	function hiddenByLevel(el) {
+		if (!el || !el.closest) return false;
+		if (basic() && el.closest('[data-level="advanced"]')) return true;
+		var d = el.closest('[data-level="detail"]');
+		return !!(lite() && d && !d.classList.contains('nuDetailOpen'));
+	}
+	/** A link, #hash or search hit inside hidden content shows it: an advanced topic switches to Everything, a detail opens in place. */
 	function revealAdvanced(el) {
-		if (basic() && el && el.closest && el.closest('[data-level="advanced"]')) { setAdvanced(true); run(); }
+		if (!el || !el.closest) return;
+		if (basic() && el.closest('[data-level="advanced"]')) { setLevel('everything'); run(); }
+		var d = el.closest('[data-level="detail"]');
+		if (lite() && d && d.nuDetailGroup) openDetail(d.nuDetailGroup, d.nuDetailMore);
 	}
 
 	// ================================================================== the two tabs
@@ -324,6 +371,7 @@
 			.then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
 			.then(function (html) {
 				refBody.innerHTML = html;
+				markDetails(refBody);
 				if (wait) wait.remove();
 				ref = new Pane('ref', refBody, document.getElementById('helpTocRef'), document.getElementById('helpPaneRef'));
 				var words = currentWords();
@@ -446,7 +494,7 @@
 		var a = e.target.closest && e.target.closest('a[href^="#"]');
 		if (!a || a.closest('#helpTabs')) return;
 		var id = a.getAttribute('href').slice(1), t = document.getElementById(id);
-		if (t && t.closest('[role="tabpanel"]') && !t.closest('[role="tabpanel"]').hidden && !(basic() && t.closest('[data-level="advanced"]'))) {
+		if (t && t.closest('[role="tabpanel"]') && !t.closest('[role="tabpanel"]').hidden && !hiddenByLevel(t)) {
 			reveal(t);   // same tab: the browser scrolls
 			(refBody && refBody.contains(t) ? ref : guide).openTocFor(t);
 			return;

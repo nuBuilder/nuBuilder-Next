@@ -16,3 +16,8 @@
 <IfModule mod_autoindex.c>
 	IndexIgnore *
 </IfModule>
+
+# Browsers must not guess the type of a file (0.8.883): PHP pages send the header themselves, this covers the static files too.
+<IfModule mod_headers.c>
+	Header always set X-Content-Type-Options "nosniff"
+</IfModule>

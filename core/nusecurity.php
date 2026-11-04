@@ -230,6 +230,7 @@ final class NuSecurity
 		$packs = implode('|', array_values(array_unique(array_map(static fn($d) => (string)$d['dir'], array_filter(NuLibs::SLOTS, static fn($d) => empty($d['web']))))));
 		return "# Apache (virtual host or apache2.conf): let nuBuilder Next's .htaccess files work\n<Directory $docRoot>\n\tAllowOverride All\n</Directory>\n\n"
 			. "# nginx (server block)\n"
+			. "add_header X-Content-Type-Options nosniff always;\n"
 			. "location ~ ^$b/(core|pages|lang|install|docs|dev|_backup|_install|_update|_libsrc|temp|custom|lib|apps)/ { deny all; }\n"
 			. "location ~ ^$b/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|nucron\\.php)$ { deny all; }\n"
 			. "location ~ /NUNEXT-VERSION\\.txt$ { deny all; }\n"

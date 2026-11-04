@@ -33,7 +33,7 @@
 <li>No second factor of nuBuilder Next and no <a href="#password-policy">password policy</a> – the provider owns the password and its multi-factor rules. A user signed in this way is not asked to change the password.</li>
 <li>Expiry date, access level, the login rate limit, <a href="#ip-access">IP access</a> and the procedure <code>nu_startup</code> apply as for every sign-in. The log shows <em>Login</em> with <code>via: sso</code>; refusals are logged as <em>Single sign-on refused</em> with the reason.</li>
 <li><strong>Single sign-on only</strong>: users of the ticked access levels (main level or an active additional level) can no longer sign in with a password, an auto-login link or a one-time login link – they see “Please sign in with single sign-on”. It applies only while single sign-on is on and complete.</li>
-<li>nuBuilder Forte's settings keep working: with <code>$nuConfigLogonMode = 'sso'</code> every user except those named in <code>$nuConfigSsoOnlyExcept</code> signs in with single sign-on only, and the sign-in page folds the password form behind <em>Sign in with a password</em>. nuBuilder Forte's separate SSO service (<code>zzzzsys_sso_login</code>) is not used – set up the provider here.</li>
+<li data-level="detail">nuBuilder Forte's settings keep working: with <code>$nuConfigLogonMode = 'sso'</code> every user except those named in <code>$nuConfigSsoOnlyExcept</code> signs in with single sign-on only, and the sign-in page folds the password form behind <em>Sign in with a password</em>. nuBuilder Forte's separate SSO service (<code>zzzzsys_sso_login</code>) is not used – set up the provider here.</li>
 </ul>
 </div>
 <div class="doc-sub" data-level="advanced">

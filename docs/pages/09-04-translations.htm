@@ -7,7 +7,7 @@
 <li>A text is translated when <em>English</em> matches it exactly – object labels, button texts, tab titles, list column titles, form titles, and <code>nuTranslate()</code> in PHP and JavaScript.</li>
 <li>The reader's language is the language of that user (the globeadmin: the default language of the installation). If it is empty, it is English, as in nuBuilder Forte. English means no translation.</li>
 <li>A text starting with <code>|</code> is never translated (the <code>|</code> is not shown).</li>
-<li>nuBuilder Forte's own translations (<em>nuBuilder Forte</em> badge) cannot be changed – <em>Override</em> creates your own translation, which wins.</li>
+<li data-level="detail">nuBuilder Forte's own translations (<em>nuBuilder Forte</em> badge) cannot be changed – <em>Override</em> creates your own translation, which wins.</li>
 <li>The texts of <strong>fixed select options</strong> (<code>a|Apple|b|Banana</code>, lines or a JSON list) are translated too – only the shown text, the stored value stays. nuBuilder Forte shows them as entered. Options from SQL are data and are not translated, nor are <code>SHOW TABLES</code> and <code>%LANGUAGES%</code> (<a href="#select-options">options of a select</a>).</li>
 <li>The <em>Missing</em> tab lists the texts of your forms that have no translation in a language yet, with where they are used; <em>Translate</em> opens a pre-filled new translation. Besides labels, tab titles, list column titles and form titles it finds the texts of fixed select options and the fixed texts of <code>nuTranslate('…')</code> calls in the form's code – its JavaScript, object events, HTML objects and its PHP hooks (a call with a value, such as <code>nuTranslate(text)</code>, cannot be found).</li>
 </ul>
@@ -20,7 +20,7 @@
 <li>Paste the prompt into the chat, then paste the AI's whole answer into <em>The AI's answer</em> – text around the JSON or <code>```</code> fences do not matter – and click <em>Check</em>.</li>
 <li>The preview shows each translation as <em>New</em>, <em>Changes</em> (an own translation exists and is different), <em>Unchanged</em> or <em>Skipped</em> (not a text of this form, not one of the languages, empty or too long); a warning marks a translation whose placeholders or hash variables differ from the English text. Untick what you do not want and click <em>Save selected</em>.</li>
 </ol>
-<p>Saving needs the add right (new translations) or the save right (changed ones) on the translations; nuBuilder Forte's own translations are never changed – a translation of yours overrides them. The answer format is <code>{"format": "nunext-translate-1", "translations": {"German": {"Customer": "Kunde"}}}</code>, so a translation can also be written or edited by hand and pasted.</p>
+<p data-level="detail">Saving needs the add right (new translations) or the save right (changed ones) on the translations; nuBuilder Forte's own translations are never changed – a translation of yours overrides them. The answer format is <code>{"format": "nunext-translate-1", "translations": {"German": {"Customer": "Kunde"}}}</code>, so a translation can also be written or edited by hand and pasted.</p>
 </div>
 <ul>
 <li>The design mode always shows and saves the original (English) texts.</li>
