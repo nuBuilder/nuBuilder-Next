@@ -3,6 +3,12 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.903 – CI: PHP start-up warning
+- GitHub Actions (MySQL and SQL Server jobs): the check for PHP messages in the server log failed on PHP's own
+  start-up warning "JIT is incompatible with third party extensions … JIT disabled. in Unknown on line 0" of the
+  runner. PHP now starts without code coverage extensions and with JIT off, and start-up lines that do not come from
+  nuBuilder Next's code ("in Unknown on line 0") are shown as a notice instead of failing the job.
+
 ## 0.8.902 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, OWASP ZAP) before the push.
 - README: Reset password by the administrator; help: Sign-in methods lists the administrator's reset; to-do list: what to verify

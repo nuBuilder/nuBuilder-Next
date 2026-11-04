@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium' }
+        with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium', coverage: none }
       - run: for f in $(git ls-files '*.php'); do php -l "$f" > /dev/null || exit 1; done
       - run: php dev/check_lang.php
       - run: php dev/tests/run.php
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v5
         with: { path: nunext }
       - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium' }
+        with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium', coverage: none }
       - run: git clone --depth 1 https://github.com/nuBuilder/nuBuilder.git nub && mv nunext nub/nunext
       # a new installation as the installer makes it: empty database → nuBuilder Forte's nubuilder4.sql through the database set-up
       # (NuDbState::setUp – brought to 4.9, own tables, origin 'nunext', database steps); importing the dump by hand would leave a database
@@ -48,7 +48,7 @@ jobs:
           $nuConfigShowInstaller = false; $nuConfigDevMode = true;
           PHP
           cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("upload", "../nubuilder4.sql"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
-      - run: (cd nub && php -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
+      - run: (cd nub && php -d opcache.jit=disable -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
@@ -56,13 +56,14 @@ jobs:
       # integration checks from inside the application (developer mode, sample application installed first); its PHP messages go into
       # srv.log, which the next step reads
       - name: Self-test
-        run: cd nub/nunext && php -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
+        run: cd nub/nunext && php -d opcache.jit=disable -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
       # (0.8.888) warnings, notices and deprecations of every request – also JSON calls the smoke test does not look into – fail the job
       - name: PHP messages in the server log
         if: always()
         run: |
           [ -f srv.log ] || { echo "no server log – the job stopped before the web server was started"; exit 0; }
-          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
+          grep -E "PHP (Warning|Notice|Deprecated): .* in Unknown on line 0" srv.log | sed "s/^/::notice::PHP start-up (not our code): /" || true
+          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
           echo "no PHP messages in the server log"
       - if: failure()
         run: cat srv.log 2>/dev/null || true
@@ -91,7 +92,7 @@ jobs:
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
       - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.3', extensions: 'pdo_sqlsrv, sqlsrv, mbstring, zip, sodium' }
+        with: { php-version: '8.3', extensions: 'pdo_sqlsrv, sqlsrv, mbstring, zip, sodium', coverage: none }
       # the service container has no health check: wait until SQL Server accepts the login (up to 2 minutes), then create the database
       - run: |
           php -r 'for ($i = 0; $i < 60; $i++) { try { $pdo = new PDO("sqlsrv:Server=127.0.0.1,1433;TrustServerCertificate=1", "sa", "Ci_Passw0rd!"); break; } catch (PDOException $e) { if ($i === 59 || str_contains($e->getMessage(), "IMSSP")) { fwrite(STDERR, $e->getMessage() . "\n"); exit(1); } sleep(2); } } $pdo->exec("CREATE DATABASE nutest"); echo "SQL Server ready\n";'
@@ -104,7 +105,7 @@ jobs:
           $nuConfigShowInstaller = false; $nuConfigDevMode = true;
           PHP
           cd nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("scripts"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
-      - run: (cd nunext && php -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
+      - run: (cd nunext && php -d opcache.jit=disable -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
@@ -112,13 +113,14 @@ jobs:
       # integration checks from inside the application (developer mode, sample application installed first); its PHP messages go into
       # srv.log, which the next step reads
       - name: Self-test
-        run: cd nunext && php -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
+        run: cd nunext && php -d opcache.jit=disable -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
       # (0.8.888) warnings, notices and deprecations of every request – also JSON calls the smoke test does not look into – fail the job
       - name: PHP messages in the server log
         if: always()
         run: |
           [ -f srv.log ] || { echo "no server log – the job stopped before the web server was started"; exit 0; }
-          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
+          grep -E "PHP (Warning|Notice|Deprecated): .* in Unknown on line 0" srv.log | sed "s/^/::notice::PHP start-up (not our code): /" || true
+          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
           echo "no PHP messages in the server log"
       - if: failure()
         run: cat srv.log 2>/dev/null || true

@@ -622,11 +622,11 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (November 2026, 0.8.902)
+## Where things stand (November 2026, 0.8.903)
 Last gate 0.8.902 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.887–0.8.902 in one push; docs, README, TODO, tutorial checked first). Gate tip: run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors); ZAP runs after compat (~11 min).
 
 Since the gate, newest first:
-(none yet)
+- 0.8.903 CI (mysql + mssql): setup-php coverage: none, php -d opcache.jit=disable for the server and the self-test; the log step ignores PHP start-up lines "… in Unknown on line 0" (shown as ::notice::, not our code) – the runner's JIT warning failed both jobs
 
 Up to the gate 0.8.902, newest first:
 - 0.8.902 release gate (README: Reset password; docs 07-01 sign-in methods row; TODO please-verify 0.8.887–0.8.901); TinyMCE 8.10.1 pack + signed libraries.json uploaded by the owner to the GitHub release libraries (source ../libsrc/tinymce from npm tinymce@8.10.1: *.min.js, skins *.min.css + *.js, license.md, notices.txt, langs/README.md)
