@@ -81,7 +81,9 @@ final class NuLanguages
 		self::$cache = null;
 		$removed = array_values(array_diff($before, $l));
 		NuWelcome::pruneTemplates($removed);
+		NuPwReset::pruneTemplates($removed);
 		try { NuWelcome::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next languages, welcome templates: ' . $e->getMessage()); }
+		try { NuPwReset::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next languages, password reset templates: ' . $e->getMessage()); }
 		return ['added' => array_values(array_diff($l, $before)), 'removed' => $removed];
 	}
 

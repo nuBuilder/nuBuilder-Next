@@ -445,6 +445,7 @@
 		var picker = g(el.id + '_file');                          // file object: hidden picker + remove button
 		if (picker) { picker.disabled = disabled || readonly; $(picker).closest('.nuFileField').find('.nuFileRemove').prop('disabled', disabled || readonly); }
 		if (el.classList.contains('nuDate')) el.onclick = disabled || readonly ? null : function () { nuPopupCalendar(this); };
+		if (el.nuInlineCM) el.nuInlineCM.setOption('readOnly', disabled || readonly);          // inline code editor (code snippets)
 	}
 	/** Kinds of fields that have no readonly state: they are disabled instead (the value is still saved – nuBuilder Next reads it itself). */
 	function noReadonly(el) {
@@ -2339,6 +2340,30 @@
 		});
 	}
 	N.fitButtons = fitButtons;
+
+	// read-only text fields of the fixed layout (Forte's widths): nuBuilder Next's font is a little wider, so a value like
+	// "2026-11-02 18:11:05" may be cut. The field grows to the right while nothing stands there (other objects of the same height
+	// band, the content box around it, the canvas), at most by the missing width; what is still cut shows as tooltip.
+	function fitReadonly(root) {
+		$(root || document).find('.nuAbsoluteCanvas > .nuAbs input.form-control').each(function () {
+			var el = this, wrap = el.closest('.nuAbs');
+			if (!(el.readOnly || el.disabled) || el.type === 'hidden' || el.closest('template') || !el.offsetWidth) return;
+			var need = el.scrollWidth - el.clientWidth;
+			if (need <= 0) return;
+			var canvas = wrap.parentNode, r = wrap.getBoundingClientRect(), limit = canvas.getBoundingClientRect().right - 4;
+			Array.prototype.forEach.call(canvas.children, function (o) {
+				if (o === wrap || !o.offsetWidth || o.tagName === 'TEMPLATE') return;
+				var q = o.getBoundingClientRect();
+				if (q.bottom <= r.top || q.top >= r.bottom) return;                              // another height band
+				if (q.left <= r.left && q.right >= r.right) { limit = Math.min(limit, q.right - 10); return; }   // a box around it
+				if (q.left >= r.right - 1) limit = Math.min(limit, q.left - 8);                 // something to the right
+			});
+			var grow = Math.max(0, Math.min(need + 2, Math.floor(limit - r.right)));
+			if (grow > 0) wrap.style.width = (wrap.offsetWidth + grow) + 'px';
+			if (el.scrollWidth > el.clientWidth && !el.title) el.title = el.value;
+		});
+	}
+	N.fitReadonly = fitReadonly;
 	new MutationObserver(function () { if (N.mode === 'edit') fitButtons(document); })
 		.observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
 
@@ -2601,20 +2626,15 @@
 		}
 		cmLoading = new Promise(function (ok, fail) {
 			var css = document.createElement('link');
-			css.rel = 'stylesheet'; css.href = 'vendor/bundled/codemirror-5.65.21/codemirror.css';
+			css.rel = 'stylesheet'; css.href = 'vendor/bundled/codemirror-6.43.15/codemirror.css';
 			document.head.appendChild(css);
 			var js = document.createElement('script');
-			js.src = 'vendor/bundled/codemirror-5.65.21/codemirror-bundle.js';
-			js.onload = function () {                     // then the add-ons (search, comment …) and the editor toolbar (nucodetools.js, review B3)
-				var ad = document.createElement('script');
-				ad.src = 'vendor/bundled/codemirror-5.65.21/codemirror-addons.js';
-				ad.onload = ad.onerror = function () {
-					if (window.NuCodeTools || !N.codetools) { ok(); return; }
-					var ct = document.createElement('script');
-					ct.src = N.codetools; ct.onload = ok; ct.onerror = ok;
-					document.head.appendChild(ct);
-				};
-				document.head.appendChild(ad);
+			js.src = 'vendor/bundled/codemirror-6.43.15/codemirror-bundle.js';
+			js.onload = function () {                     // then the editor toolbar (nucodetools.js, review B3)
+				if (window.NuCodeTools || !N.codetools) { ok(); return; }
+				var ct = document.createElement('script');
+				ct.src = N.codetools; ct.onload = ok; ct.onerror = ok;
+				document.head.appendChild(ct);
 			};
 			js.onerror = fail;
 			document.head.appendChild(js);
@@ -2698,13 +2718,13 @@
 	var SNIPPET_LANG = {javascript: 'JS', php: 'PHP', sql: 'SQL', css: 'CSS', html: 'HTML'};
 	function codeLanguage(el) {
 		if (!el || el.tagName !== 'TEXTAREA' || el.classList.contains('nuEditor')) return null;
-		var cls = ['js', 'sql', 'php', 'html', 'css'].filter(function (c) { return el.classList.contains(c); })[0];
-		if (cls) return cls.toUpperCase();
 		var f = el.getAttribute('data-nu-field') || el.id;
-		if (f === 'cot_source_code') {                // code snippets: the language field decides
+		if (f === 'cot_source_code') {                // code snippets: the language field decides (Forte's form code adds class js to it)
 			var l = g((el.getAttribute('data-nu-prefix') || '') + 'cot_language');
 			return SNIPPET_LANG[String(l ? l.value : '').toLowerCase()] || 'Text';
 		}
+		var cls = ['js', 'sql', 'php', 'html', 'css'].filter(function (c) { return el.classList.contains(c); })[0];
+		if (cls) return cls.toUpperCase();
 		for (var k in CODE_FIELDS) if (CODE_FIELDS[k].indexOf(f) >= 0) return k;
 		return null;
 	}
@@ -2720,6 +2740,46 @@
 		if (lang) nuOpenAce(lang, this.id);
 	});
 	api('nuACEInitDblClickHandlers', function () { markCodeFields(document); });
+
+	// inline code editor (the owner's wish, 0.8.899): code snippets' Source code is edited in place with CodeMirror and its toolbar
+	// (undo, search, comment, format, full screen …) instead of a plain textarea; the language field switches the highlighting.
+	// The textarea stays (hidden) and gets every change, so saving, the leave guard and nuBuilder Forte's code work as before.
+	var INLINE_CODE = ['cot_source_code'];
+	var CM_MODE = {JS: 'javascript', PHP: {name: 'php', startOpen: true}, SQL: 'text/x-sql', CSS: 'css', HTML: 'htmlmixed'};
+	function inlineCodeFields() {
+		var tas = INLINE_CODE.map(g).filter(function (t) { return t && t.tagName === 'TEXTAREA' && !t.nuInlineCM && !t.closest('template'); });
+		if (!tas.length) return;
+		loadCodeMirror().then(function () { tas.forEach(inlineCode); }, function () { /* the textarea stays */ });
+	}
+	function inlineCode(ta) {
+		if (ta.nuInlineCM || !window.CodeMirror) return;
+		var lang = codeLanguage(ta) || 'JS', w = ta.offsetWidth, h = ta.offsetHeight;
+		var bar = document.createElement('div');
+		bar.className = 'nuInlineCodeBar';
+		ta.parentNode.insertBefore(bar, ta);
+		var cm = CodeMirror.fromTextArea(ta, {mode: CM_MODE[lang] || null, lineNumbers: true, lineWrapping: true, matchBrackets: true, autoCloseBrackets: true,
+			indentWithTabs: true, tabSize: 4, indentUnit: 4, readOnly: ta.readOnly || ta.disabled});
+		ta.nuInlineCM = cm;
+		var wrap = cm.getWrapperElement();
+		wrap.classList.add('nuInlineCode');
+		bar.style.width = w + 'px';
+		cm.setSize(w, Math.max(80, h - 34));
+		cm.on('change', function () { cm.save(); if (!ta.readOnly && !ta.disabled) { markEdited(ta); $(ta).trigger('input'); } });
+		var tools = null;
+		var attach = function () {
+			if (tools && tools.nuDetach) tools.nuDetach();
+			bar.textContent = '';
+			lang = codeLanguage(ta) || 'JS';
+			cm.setOption('mode', CM_MODE[lang] || null);
+			if (window.NuCodeTools) tools = NuCodeTools.attach(cm, bar, {lang: lang, db: N.db_type, readOnly: ta.readOnly || ta.disabled});
+		};
+		attach();
+		var langEl = g((ta.getAttribute('data-nu-prefix') || '') + 'cot_language');
+		if (langEl) $(langEl).on('change', attach);
+		// a value set by code (nuSetValue, jQuery .val() + change) reaches the editor
+		$(ta).on('change.nuInline', function () { if (cm.getValue() !== ta.value) { cm.setValue(ta.value); cm.clearHistory(); } });
+	}
+	N.inlineCode = inlineCode;
 	N.markCodeFields = markCodeFields;
 
 	// =================================================================== WYSIWYG editor (nuBuilder "editor" objects, TinyMCE)
@@ -3857,6 +3917,10 @@
 		if (N.mode === 'edit') initCharts(document);
 		// form buttons: text colour on backgrounds of the form's CSS, tooltip for cut-off labels – after nuOnLoad, which may restyle them
 		if (N.mode === 'edit') fitButtons(document);
+		// read-only text fields cut their value: wider where the layout has room, else the value as tooltip – after nuOnLoad
+		if (N.mode === 'edit') fitReadonly(document);
+		// code snippets: Source code as an inline code editor – after nuOnLoad, which may disable the fields
+		if (N.mode === 'edit') inlineCodeFields();
 		// phones (review F1, 0.8.764): fixed-position forms stack their objects – after nuOnLoad, which may switch it off
 		phoneStack();
 		if (N.mode === 'edit') growFrames();

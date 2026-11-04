@@ -1,0 +1,72 @@
+/* nuBuilder Next – CodeMirror 6 in the frame and colours of CodeMirror 5 (class names .CodeMirror, .CodeMirror-scroll, cm-keyword …,
+   so the rules of nuapp.css / nuform.css / nudesign.css and the File Manager keep working). CodeMirror 6 itself puts its base styles
+   into the page with a constructed style sheet (no <style> element – fine with the strict CSP). */
+.CodeMirror { position: relative; height: 300px; overflow: hidden; background: #fff; color: #000; direction: ltr; font-family: var(--bs-font-monospace, monospace); }
+.CodeMirror > .cm-editor { height: 100%; }
+/* the base theme of CodeMirror 6 comes as a constructed style sheet after the page's ones: these rules carry one class more */
+.CodeMirror .cm-editor.cm-focused { outline: none; }
+.CodeMirror .cm-editor .cm-scroller { font-family: inherit; line-height: 1.4; overflow: auto; }
+.CodeMirror .cm-editor .cm-content { padding: 4px 0; caret-color: currentColor; }
+.CodeMirror .cm-editor .cm-line { padding: 0 4px; }
+.CodeMirror .cm-editor .cm-gutters { background: #f7f7f7; border-right: 1px solid #ddd; color: #666; }
+.CodeMirror .cm-editor .cm-lineNumbers .cm-gutterElement { padding: 0 3px 0 5px; min-width: 20px; text-align: right; color: #666; }
+.CodeMirror .cm-editor .cm-cursor { border-left: 1px solid #000; }
+.CodeMirror .cm-editor .cm-selectionBackground { background: #d9d9d9 !important; }
+.CodeMirror .cm-editor.cm-focused .cm-selectionBackground { background: #d7d4f0 !important; }
+.CodeMirror .cm-editor .cm-content ::selection { background: transparent; }
+.CodeMirror .cm-editor .cm-matchingBracket { color: #0b0 !important; background: transparent !important; outline: 1px solid rgba(0, 0, 0, .25); }
+.CodeMirror .cm-editor .cm-nonmatchingBracket { color: #a22 !important; background: transparent !important; }
+.CodeMirror .cm-editor .cm-activeLine { background: rgba(0, 0, 0, .04); }
+.CodeMirror .cm-editor .cm-activeLineGutter { background: rgba(0, 0, 0, .06); }
+.CodeMirror .cm-editor .cm-searchMatch { background: rgba(255, 193, 7, .35); outline: 0; }
+.CodeMirror .cm-editor .cm-searchMatch-selected { background: rgba(255, 152, 0, .55); }
+.CodeMirror .cm-editor .cm-selectionMatch { background: rgba(0, 120, 215, .12); }
+
+/* CodeMirror 5's default colours (two classes: the dark palette of nuapp.css, [data-bs-theme] + two classes, wins) */
+.CodeMirror .cm-keyword { color: #708; }
+.CodeMirror .cm-atom { color: #219; }
+.CodeMirror .cm-number { color: #164; }
+.CodeMirror .cm-def { color: #00f; }
+.CodeMirror .cm-variable-2 { color: #05a; }
+.CodeMirror .cm-variable-3, .CodeMirror .cm-type { color: #085; }
+.CodeMirror .cm-comment { color: #a50; }
+.CodeMirror .cm-string { color: #a11; }
+.CodeMirror .cm-string-2 { color: #f50; }
+.CodeMirror .cm-meta, .CodeMirror .cm-qualifier { color: #555; }
+.CodeMirror .cm-builtin { color: #30a; }
+.CodeMirror .cm-bracket { color: #997; }
+.CodeMirror .cm-tag { color: #170; }
+.CodeMirror .cm-attribute { color: #00c; }
+.CodeMirror .cm-header { color: blue; font-weight: bold; }
+.CodeMirror .cm-link { text-decoration: underline; }
+.CodeMirror .cm-error { color: #f00; }
+
+/* search panel (Ctrl+F) in the page's look */
+.CodeMirror .cm-editor .cm-panels { background: var(--bs-tertiary-bg, #f5f5f5); color: var(--bs-body-color, #212529); font-family: var(--bs-body-font-family, sans-serif); font-size: .85rem; }
+.CodeMirror .cm-editor .cm-panels-top { border-bottom: 1px solid var(--bs-border-color, #ddd); }
+.CodeMirror .cm-editor .cm-panels-bottom { border-top: 1px solid var(--bs-border-color, #ddd); }
+.CodeMirror .cm-editor .cm-panel.cm-search { padding: .3rem 2rem .3rem .6rem; }
+.CodeMirror .cm-editor .cm-panel.cm-search input, .CodeMirror .cm-editor .cm-panel.cm-search button, .CodeMirror .cm-editor .cm-panel.cm-search label { font-size: .8rem; }
+.CodeMirror .cm-editor .cm-textfield { border: 1px solid var(--bs-border-color, #ccc); border-radius: .25rem; background: var(--bs-body-bg, #fff); color: inherit; padding: .1rem .35rem; }
+.CodeMirror .cm-editor .cm-button { border: 1px solid var(--bs-border-color, #ccc); border-radius: .25rem; background: var(--bs-body-bg, #fff); background-image: none; color: inherit; padding: .1rem .5rem; }
+.CodeMirror .cm-editor .cm-button:hover { background: var(--bs-secondary-bg, #e9ecef); }
+.CodeMirror .cm-editor .cm-panel.cm-search [name=close] { color: inherit; font-size: 1.1rem; }
+
+/* suggestions while typing (show-hint) */
+.CodeMirror-hints { position: fixed; z-index: 2000; overflow: hidden auto; list-style: none; margin: 0; padding: 2px; box-shadow: 2px 3px 5px rgba(0, 0, 0, .2); border-radius: 3px;
+	border: 1px solid silver; background: #fff; font-family: var(--bs-font-monospace, monospace); font-size: 90%; max-height: 20em; }
+.CodeMirror-hint { margin: 0; padding: 0 4px; border-radius: 2px; white-space: pre; color: #000; cursor: pointer; }
+li.CodeMirror-hint-active { background: #08f; color: #fff; }
+
+/* dark mode – the palette of nuapp.css */
+[data-bs-theme="dark"] .CodeMirror { background: #1c2027; color: #e9ecef; }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-gutters { background: #1c2027; border-right-color: #343a40; color: #9aa5b1; }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-lineNumbers .cm-gutterElement { color: #9aa5b1; }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-cursor { border-left-color: #e9ecef; }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-selectionBackground, [data-bs-theme="dark"] .CodeMirror .cm-editor.cm-focused .cm-selectionBackground { background: #2f3b4a !important; }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-matchingBracket { color: #c3e88d !important; outline: 1px solid #4f5c6a; }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-activeLine { background: rgba(255, 255, 255, .04); }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-activeLineGutter { background: rgba(255, 255, 255, .06); }
+[data-bs-theme="dark"] .CodeMirror .cm-editor .cm-selectionMatch { background: rgba(130, 170, 255, .15); }
+[data-bs-theme="dark"] .CodeMirror-hints { background: #1c2027; border-color: #343a40; }
+[data-bs-theme="dark"] .CodeMirror-hint { color: #e9ecef; }

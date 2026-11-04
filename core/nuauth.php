@@ -471,6 +471,19 @@ final class NuAuth
 	}
 
 	/** Session of another login without password (globeadmin acting as a user, and back) – NuImpersonate only. */
+	/**
+	 * Command line only (0.8.889, php nucron.php selftest): the run acts as the globeadmin of nuconfig.php – no PHP session, no cookie,
+	 * nothing logged as a sign-in. Refused outside the CLI.
+	 */
+	public static function cliGlobeadmin(): void
+	{
+		if (PHP_SAPI !== 'cli') throw new LogicException('cliGlobeadmin is for the command line only');
+		$_SESSION['nu_auth'] = ['id' => 'globeadmin', 'globeadmin' => true, 'fp' => self::adminFingerprint(), 'login' => (string)nu_cfg('nuConfigDBGlobeadminUsername'),
+			'via' => 'cli', 'since' => time(), 'last' => time(), 'inst' => NuSecurity::installId()];
+		self::$loaded = false;
+		self::$user = null;
+	}
+
 	public static function startAs(array $data): void
 	{
 		unset($data['since'], $data['last']);

@@ -869,6 +869,12 @@ check('NuJquery::scan: modern code finds nothing', NuJquery::scan("\$('#a').on('
 check('NuJquery::clean: unknown values fall back', NuJquery::clean(['jq' => 'b9', 'migrate' => 'loud', 'ga_jq' => 'c:../x.js', 'ga_warn' => 1])
 	=== ['jq' => 'b3', 'migrate' => 'off', 'ga_jq' => '', 'ga_warn' => true]
 	&& NuJquery::clean(['jq' => 'c:jquery-4.1.0.min.js', 'migrate' => 'restore'])['jq'] === 'c:jquery-4.1.0.min.js');
+// 0.8.891: every library in the package names its project on GitHub (Update → Libraries, the name opens it)
+$noUrl = array_values(array_map(static fn($l) => (string)$l['name'], array_filter(json_decode((string)file_get_contents(NU_ROOT . '/vendor/bundled/libraries.json'), true), static fn($l) => NuLibraries::projectUrl($l) === '')));
+check('libraries.json: every library has a GitHub project url', $noUrl === [], implode(', ', $noUrl));
+check('NuLibraries::projectUrl refuses other hosts', NuLibraries::projectUrl(['url' => 'https://evil.example/x/y']) === '' && NuLibraries::projectUrl(['url' => 'javascript:alert(1)']) === '');
+check('NuLibs::projectUrl: every pack slot names its repository', array_keys(array_filter(NuLibs::SLOTS, static fn($v, $k) => NuLibs::projectUrl($k) === '', ARRAY_FILTER_USE_BOTH)) === []);
+check('NuLibs::ghReleaseUrl', NuLibs::ghReleaseUrl('nuBuilder/nuBuilder-Next') === 'https://github.com/nuBuilder/nuBuilder-Next/releases/tag/libraries' && NuLibs::ghReleaseUrl('x"/><script>') === '');
 check('NuJquery: bundled files exist', is_file(NU_ROOT . '/' . NU_JQUERY4 . '/jquery.min.js') && is_file(NU_ROOT . '/' . NU_JQMIGRATE3 . '/jquery-migrate.js')
 	&& is_file(NU_ROOT . '/' . NU_JQMIGRATE4 . '/jquery-migrate.min.js') && !str_contains((string)file_get_contents(NU_ROOT . '/' . NU_JQCONFIRM . '/jquery-confirm.min.js'), '$.trim('));
 

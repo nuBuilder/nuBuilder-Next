@@ -32,7 +32,7 @@ if (nu_is_post()) {
 			if (NuDemo::isDemoUser($uid)) continue;                    // demo users: the globeadmin sets the password, visitors cannot
 			if (NuToken::countSince('pw_reset', $uid, 3600) >= 3) continue;
 
-			$token = NuToken::create('pw_reset', $uid, 3600);
+			$token = NuToken::create('pw_reset', $uid, 3600, '', 'forgot');   // 'forgot': the reset page confirms by e-mail (0.8.901)
 			$link  = $base . '/index.php?' . http_build_query(['p' => 'reset', 'u' => $uid, 't' => $token]);
 			$name  = trim((string)$u['sus_first_name']) !== '' ? (string)$u['sus_first_name'] : (string)$u['sus_login_name'];
 			NuMail::send((string)$u['sus_email'], t('reset_mail_subject'), NuMail::layout(t('reset_mail_subject'),

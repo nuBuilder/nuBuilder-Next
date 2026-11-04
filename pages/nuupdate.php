@@ -1008,7 +1008,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 				$test = $lpTests[$sl] ?? null; ?>
 				<tr data-slot="<?= h($sl) ?>" class="nuLpRow">
 					<td class="nuLpCheck"><input class="form-check-input" type="checkbox" form="lpForm" name="slots[]" value="<?= h($sl) ?>" id="lpSel-<?= h($sl) ?>" aria-label="<?= h($x['title']) ?>"></td>
-					<td><label class="fw-semibold" for="lpSel-<?= h($sl) ?>"><?= h($x['title']) ?></label><div class="text-body-secondary"><?= h(t('upd_libuse_' . $x['use'])) ?></div>
+					<td><label class="fw-semibold" for="lpSel-<?= h($sl) ?>"><?= h($x['title']) ?></label><?php if (($lpPrj = NuLibs::projectUrl($sl)) !== ''): ?><a class="ms-1 small text-body-secondary nuLpProject" href="<?= h($lpPrj) ?>" target="_blank" rel="noopener noreferrer" title="<?= h(t('upd_libs_project', $x['title'])) ?>" aria-label="<?= h(t('upd_libs_project', $x['title'])) ?>"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a><?php endif; ?><div class="text-body-secondary"><?= h(t('upd_libuse_' . $x['use'])) ?></div>
 						<div class="d-md-none nuLpCompact"><i class="bi <?= $icon ?> me-1"></i><?= h(($x['pack'] !== '' ? $x['pack'] : ($x['version'] !== '' ? $x['version'] : $text)) . ($best && $x['update'] ? ' → ' . $best['version'] : '')) ?></div>
 						<?php if ($test): ?><div class="d-md-none small"><?= h($test[1]) ?></div><?php endif; ?></td>
 					<td class="nuLpInUse d-none d-md-table-cell"><?php if ($x['version'] !== '' || $x['pack'] !== ''): ?>
@@ -1018,7 +1018,11 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 					<?php else: ?><span class="text-body-secondary">–</span><?php endif; ?></td>
 					<td class="nuLpAvail d-none d-md-table-cell"><?php if ($best): ?>
 						<span class="<?= $x['update'] ? 'fw-semibold text-primary-emphasis' : '' ?>"><?= h($best['version']) ?></span>
+						<?php if ($best['where'] === 'github' && ($ghUrl = NuLibs::ghReleaseUrl((string)$lpGh['repo'])) !== ''): ?>
+						<a class="text-body-secondary ms-1 text-nowrap nuLpGhLink" href="<?= h($ghUrl) ?>" target="_blank" rel="noopener noreferrer" title="<?= h(t('lp_gh_open')) ?>"><i class="bi bi-github me-1"></i>GitHub<i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a>
+						<?php else: ?>
 						<span class="text-body-secondary ms-1"><i class="bi <?= $best['where'] === 'github' ? 'bi-github' : 'bi-folder2' ?> me-1"></i><?= h($best['where'] === 'github' ? 'GitHub' : $best['folder'] . '/') ?></span>
+						<?php endif; ?>
 					<?php else: ?><span class="text-body-secondary">–</span><?php endif; ?>
 					<?php if ($x['rejected']): $rt = implode("\n", array_map(static fn($c) => basename((string)($c['file'] ?? '')) . ': ' . implode(' ', $c['errors']), $x['rejected'])); ?>
 						<div class="text-danger nuLpRejected"><i class="bi bi-shield-x me-1"></i><?= h(t('lp_rejected', count($x['rejected']))) ?><?= $lpTip($rt) ?></div><?php endif; ?></td>
@@ -1082,7 +1086,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 					'differs' => ['bi-exclamation-triangle text-warning', t('upd_libs_differs')],
 					default => ['bi-exclamation-triangle text-warning', $l['note'] !== '' ? t($l['note']) : t('upd_libs_ok')],
 				}; ?>
-				<tr><td class="fw-semibold"><?= h($l['name']) ?></td><td><?= h($l['version'] !== '' ? $l['version'] : '–') ?><?php if ($l['local'] !== ''): $lt = t('upd_libs_local') . "\n\n" . $l['local']; ?>
+				<tr><td class="fw-semibold"><?php if (($l['url'] ?? '') !== ''): ?><a class="nuLibProject" href="<?= h($l['url']) ?>" target="_blank" rel="noopener noreferrer" title="<?= h(t('upd_libs_project', $l['name'])) ?>"><?= h($l['name']) ?><i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a><?php else: ?><?= h($l['name']) ?><?php endif; ?></td><td><?= h($l['version'] !== '' ? $l['version'] : '–') ?><?php if ($l['local'] !== ''): $lt = t('upd_libs_local') . "\n\n" . $l['local']; ?>
 					<span class="nuInfoTip ms-1" tabindex="0" role="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus click" data-bs-custom-class="nuTipWide nuTipPre" aria-label="<?= h($lt) ?>" title="<?= h($lt) ?>"><i class="bi bi-wrench-adjustable"></i></span><?php endif; ?></td>
 					<td><code class="small text-break"><?= h($l['path'] !== '' ? $l['path'] : '–') ?></code></td><td class="d-none d-md-table-cell"><?= h($l['use']) ?></td>
 					<td class="d-none d-lg-table-cell"><?= h($l['license']) ?></td><td class="nuLibState"><i class="bi <?= $icon ?> me-1"></i><?= h($text) ?></td></tr>

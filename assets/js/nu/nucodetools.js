@@ -83,6 +83,21 @@
 	var PHRASE_KEYS = ['Search:', 'Replace:', 'With:', 'Replace?', 'Yes', 'No', 'All', 'Stop', 'Replace all:', 'Jump to line:', '(Use /re/ syntax for regexp search)', '(Use line:column or scroll% syntax)'];
 	var PHRASES = null;
 	if (PHRASE_SETS[LANG]) { PHRASES = {}; PHRASE_KEYS.forEach(function (k, i) { PHRASES[k] = PHRASE_SETS[LANG][i]; }); }
+	// CodeMirror 6's search panel: its own keys (the adapter maps Search: / Replace: / All / Jump to line: itself)
+	var PHRASE_KEYS6 = ['next', 'previous', 'match case', 'regexp', 'by word', 'replace', 'replace all', 'close'];
+	var PHRASE_SETS6 = {
+		de: ['weiter', 'zurück', 'Groß-/Kleinschreibung', 'regulärer Ausdruck', 'ganzes Wort', 'ersetzen', 'alle ersetzen', 'schließen'],
+		fr: ['suivant', 'précédent', 'respecter la casse', 'expression régulière', 'mot entier', 'remplacer', 'tout remplacer', 'fermer'],
+		it: ['successivo', 'precedente', 'maiuscole/minuscole', 'espressione regolare', 'parola intera', 'sostituisci', 'sostituisci tutto', 'chiudi'],
+		es: ['siguiente', 'anterior', 'mayúsculas/minúsculas', 'expresión regular', 'palabra completa', 'reemplazar', 'reemplazar todo', 'cerrar'],
+		pt: ['seguinte', 'anterior', 'maiúsculas/minúsculas', 'expressão regular', 'palavra inteira', 'substituir', 'substituir tudo', 'fechar'],
+		ru: ['далее', 'назад', 'с учётом регистра', 'регулярное выражение', 'слово целиком', 'заменить', 'заменить все', 'закрыть'],
+		zh: ['下一个', '上一个', '区分大小写', '正则表达式', '全字匹配', '替换', '全部替换', '关闭'],
+		nl: ['volgende', 'vorige', 'hoofdlettergevoelig', 'reguliere expressie', 'heel woord', 'vervangen', 'alles vervangen', 'sluiten'],
+		pl: ['następny', 'poprzedni', 'wielkość liter', 'wyrażenie regularne', 'całe słowo', 'zamień', 'zamień wszystko', 'zamknij'],
+		ar: ['التالي', 'السابق', 'مطابقة حالة الأحرف', 'تعبير نمطي', 'كلمة كاملة', 'استبدال', 'استبدال الكل', 'إغلاق']
+	};
+	if (PHRASES && PHRASE_SETS6[LANG]) PHRASE_KEYS6.forEach(function (k, i) { PHRASES[k] = PHRASE_SETS6[LANG][i]; });
 
 	var loaded = {};
 	function load(file) {
@@ -702,7 +717,7 @@
 			htmlScript: '<script> غير مغلق', htmlStyle: '<style> غير مغلق'}
 	};
 	var TC = TEXTS_CHK[LANG] || TEXTS_CHK.en;
-	var ACORN = BASE + 'vendor/bundled/acorn-8.15.0/acorn.min.js';
+	var ACORN = BASE + 'vendor/bundled/acorn-8.19.0/acorn.min.js';
 	var CHECKS = {JS: 1, CSS: 1, HTML: 1, PHP: 1};
 
 	function loadAcorn() {

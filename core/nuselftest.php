@@ -164,6 +164,7 @@ final class NuSelfTest
 			['data', 'report', static function () use ($ok, $warn, $fail) {
 				$r = NuReport::available() ? NuReport::load('sample_customers') : null;
 				if (!$r) return $warn(t('st_missing', 'sample_customers'));
+				if (NuReport::tcpdfDir() === null) return ['skip', t('rpt_err_tcpdf')];   // no PDF library on this installation (0.8.889: CI's SQL Server job)
 				$pdf = NuReport::pdf($r, []);
 				return str_starts_with($pdf, '%PDF') ? $ok(t('st_bytes', strlen($pdf))) : $fail(substr($pdf, 0, 80));
 			}],

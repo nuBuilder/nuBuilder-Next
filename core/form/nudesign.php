@@ -92,7 +92,7 @@ final class NuDesign
 		return [
 			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'formats' => ['D' => $formats('D'), 'N' => $formats('N')],
 			// the code window of the panel (0.8.665): CodeMirror is loaded on first use
-			'cm' => [nu_asset(NU_CODEMIRROR . '/codemirror.css'), nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js'), nu_asset(NU_CODEMIRROR . '/codemirror-addons.js')],
+			'cm' => [nu_asset(NU_CODEMIRROR . '/codemirror.css'), nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js')],
 			'draft' => NuFormDraft::info($open),
 			'unpublished' => (string)($meta->form['sfo_status'] ?? '') === '0',
 			'can_publish' => NuFormDraft::canPublish(),

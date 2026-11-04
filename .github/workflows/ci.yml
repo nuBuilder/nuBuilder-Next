@@ -1,6 +1,7 @@
 # nuBuilder Next – checks on every push (B4 of the 0.8.207 review). Needs the project in a GitHub repository.
 # lint: php -l, languages, unit tests, PHPStan, ESLint · mysql: new installation from nubuilder4.sql + browser smoke test · mssql:
-# new installation from the SQL Server install scripts + smoke test (the SQL Server job was written without a SQL Server at hand – see TODO.md "SQL Server").
+# new installation from the SQL Server install scripts + smoke test; both jobs then run the in-app self-test with the sample application
+# (php nucron.php selftest --sample --lang=en: saves, sub-form rows, deletes, audit, rights, notifications on the real database – 0.8.889).
 name: ci
 on: [push, pull_request]
 
@@ -17,7 +18,8 @@ jobs:
       - run: curl -sSL -o ../phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.1.17/phpstan.phar && php ../phpstan.phar analyse -c dev/phpstan.neon --no-progress --memory-limit=1G
       - uses: actions/setup-node@v5
         with: { node-version: '22' }
-      - run: npm install --no-save --prefix .. eslint@9.17.0 globals@15.14.0 && npx --prefix .. eslint -c dev/eslint.config.mjs assets/js
+      # ESLint 9 = the maintenance line (9.17.0 was marked unsupported on npm, 0.8.890); 10 changes the config defaults – not yet
+      - run: npm install --no-save --prefix .. eslint@9.39.5 globals@15.14.0 && npx --prefix .. eslint -c dev/eslint.config.mjs assets/js
 
   mysql:
     runs-on: ubuntu-latest
@@ -43,21 +45,31 @@ jobs:
           $nuConfigDBHost = "127.0.0.1"; $nuConfigDBName = "nutest"; $nuConfigDBUser = "nu"; $nuConfigDBPassword = "nu";
           $nuConfigDBGlobeadminUsername = "globeadmin"; $nuConfigDBGlobeadminPassword = "ci-globeadmin-pw";
           $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099/nunext";
-          $nuConfigShowInstaller = false;
+          $nuConfigShowInstaller = false; $nuConfigDevMode = true;
           PHP
           cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("upload", "../nubuilder4.sql"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
-      - run: (cd nub && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
+      - run: (cd nub && php -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
       - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/nunext/ ADMIN_PW=ci-globeadmin-pw node nub/nunext/dev/tests/smoke.js
+      # integration checks from inside the application (developer mode, sample application installed first); its PHP messages go into
+      # srv.log, which the next step reads
+      - name: Self-test
+        run: cd nub/nunext && php -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
+      # (0.8.888) warnings, notices and deprecations of every request – also JSON calls the smoke test does not look into – fail the job
+      - name: PHP messages in the server log
+        if: always()
+        run: |
+          [ -f srv.log ] || { echo "no server log – the job stopped before the web server was started"; exit 0; }
+          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
+          echo "no PHP messages in the server log"
       - if: failure()
-        run: cat srv.log 2>/dev/null || echo "no server log – the job stopped before the web server was started"
+        run: cat srv.log 2>/dev/null || true
 
   mssql:
     runs-on: ubuntu-latest
     needs: lint
-    continue-on-error: true          # not verified on a real SQL Server in CI yet (see TODO.md "SQL Server")
     services:
       mssql:
         image: mcr.microsoft.com/mssql/server:2022-latest
@@ -89,13 +101,24 @@ jobs:
           $nuConfigDBUser = "sa"; $nuConfigDBPassword = "Ci_Passw0rd!"; $nuConfigDBTrustServerCertificate = true;
           $nuConfigDBGlobeadminUsername = "globeadmin"; $nuConfigDBGlobeadminPassword = "ci-globeadmin-pw";
           $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099";
-          $nuConfigShowInstaller = false;
+          $nuConfigShowInstaller = false; $nuConfigDevMode = true;
           PHP
           cd nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("scripts"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
-      - run: (cd nunext && php -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
+      - run: (cd nunext && php -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
       - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/ ADMIN_PW=ci-globeadmin-pw node nunext/dev/tests/smoke.js
+      # integration checks from inside the application (developer mode, sample application installed first); its PHP messages go into
+      # srv.log, which the next step reads
+      - name: Self-test
+        run: cd nunext && php -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
+      # (0.8.888) warnings, notices and deprecations of every request – also JSON calls the smoke test does not look into – fail the job
+      - name: PHP messages in the server log
+        if: always()
+        run: |
+          [ -f srv.log ] || { echo "no server log – the job stopped before the web server was started"; exit 0; }
+          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
+          echo "no PHP messages in the server log"
       - if: failure()
-        run: cat srv.log 2>/dev/null || echo "no server log – the job stopped before the web server was started"
+        run: cat srv.log 2>/dev/null || true

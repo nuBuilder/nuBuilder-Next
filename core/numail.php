@@ -886,7 +886,7 @@ final class NuWelcome
 	}
 
 	/** Runs $fn(language) with the user's language (and English variant) as the session language. */
-	private static function inUserLang(array $user, callable $fn): mixed
+	public static function inUserLang(array $user, callable $fn): mixed
 	{
 		$lang = nu_lang_from_db((string)($user['sus_language'] ?? '')) ?? nu_lang();
 		$prev = $_SESSION['nu_lang'] ?? null;
@@ -990,7 +990,7 @@ final class NuWelcome
 	}
 
 	/** Runs $fn with $lang (and its default variant) as the session language – as send() does for the user's language. */
-	private static function inLang(string $lang, callable $fn): mixed
+	public static function inLang(string $lang, callable $fn): mixed
 	{
 		$prev = $_SESSION['nu_lang'] ?? null;
 		$prevVar = $_SESSION['nu_lang_variant'] ?? null;

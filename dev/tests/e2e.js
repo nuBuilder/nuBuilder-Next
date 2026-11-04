@@ -529,6 +529,27 @@ T.admin_lists = async (s) => {
 
 // 0.8.688: forms / code lists – access count → dialog, procedures Run filter, reports source filters + links, SQL builder and
 // e-mail templates as system lists, files type filter, items form link, formats "used" menu
+// 0.8.899: code snippets – Source code as inline code editor (toolbar, language switch, saved), read-only "Updated on" not cut, first field focused
+T.code_snippet_inline = async (s) => {
+	const p = s.ga, id = 'e2e_cs_inline';
+	sql(`DELETE FROM zzzzsys_code_snippet WHERE zzzzsys_code_snippet_id = '${id}'`);
+	sql(`INSERT INTO zzzzsys_code_snippet (zzzzsys_code_snippet_id, cot_code, cot_description, cot_group, cot_source_code, cot_language, cot_updated_on) VALUES ('${id}', 'e2e_cs_inline', 'e2e', 'e2e', 'SELECT 1', 'SQL', '2026-11-02 18:11:05')`);
+	try {
+		await open(p, 'index.php?p=form&f=nucodesnippet&r=' + id);
+		await p.waitForSelector('.CodeMirror.nuInlineCode', { timeout: 10000 });
+		expect(await p.locator('.nuInlineCodeBar .nuCodeTools button').count() > 3, 'toolbar of the inline editor');
+		expect(await p.evaluate(() => JSON.stringify(document.getElementById('cot_source_code').nuInlineCM.getOption('mode'))) === '"text/x-sql"', 'SQL highlighting from the language field');
+		const cut = await p.$eval('#cot_updated_on', e => e.scrollWidth - e.clientWidth);
+		expect(cut <= 0, 'Updated on not cut: ' + cut);
+		expect(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'cot_code' && !(await p.locator('.ts-dropdown:visible').count()), 'first field focused, no list opened');
+		await p.click('.CodeMirror.nuInlineCode .cm-content'); await p.keyboard.press('Control+End'); await p.keyboard.type(' -- inline');
+		expect(await p.locator('#nuSaveButton.nuSaveEdited').count() === 1, 'Save red after typing');
+		await p.selectOption('#cot_language', 'PHP'); await p.waitForTimeout(300);
+		expect(await p.evaluate(() => document.getElementById('cot_source_code').nuInlineCM.getOption('mode').name) === 'php', 'language switch → PHP');
+		await p.click('#nuSaveButton'); await p.waitForTimeout(2000);
+		expect(sql(`SELECT cot_source_code FROM zzzzsys_code_snippet WHERE zzzzsys_code_snippet_id = '${id}'`) === 'SELECT 1 -- inline', 'saved');
+	} finally { sql(`DELETE FROM zzzzsys_code_snippet WHERE zzzzsys_code_snippet_id = '${id}'`); }
+};
 T.code_lists = async (s) => {
 	const p = s.ga;
 	const total = async () => +(((await p.textContent('body')).match(/Total:\s*(\d+)/) || [])[1] || -1);
@@ -1600,6 +1621,84 @@ T.welcome_templates = async (s) => {
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		srv.kill();
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
+// 0.8.901: password reset by an administrator – link by e-mail (old password still works), link shown once + old password blocked
+// (sessions end, older link replaced), the user sets the password with the link, confirmation e-mail, rate limit
+T.pw_reset_admin = async (s) => {
+	const p = s.ga, port = 2600 + Math.floor(Math.random() * 300), slog = path.join(os.tmpdir(), 'e2e-pwr-' + Date.now() + '.log'), sdata = slog + '.eml';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-pwr.sql');
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_eva'");
+	if (!uid) { s.skip = 'no sample user'; return; }
+	execSync('mysqldump ' + DB + ' zzzzsys_setup zzzzsys_email_log zzzzsys_nunext_token zzzzsys_user zzzzsys_nunext_session > ' + keep);
+	const srv = require('child_process').spawn('python3', [path.join(__dirname, 'fakesmtp.py'), slog, String(port), sdata], { stdio: 'ignore' });
+	const last = () => {
+		const msgs = fs.existsSync(sdata) ? fs.readFileSync(sdata, 'utf8').split('=====END=====').filter(x => x.trim()) : [];
+		if (!msgs.length) return { subject: '', body: '' };
+		return JSON.parse(execSync('python3 -I -c "import sys,email,email.policy,json;m=email.message_from_string(sys.stdin.read(),policy=email.policy.default);b=m.get_body((\'html\',\'plain\'));print(json.dumps({\'subject\':str(m[\'subject\']),\'body\':b.get_content() if b else \'\'}))"', { input: msgs[msgs.length - 1].replace(/^\s+/, '') }).toString());
+	};
+	const hash = () => sql(`SELECT sus_login_password FROM zzzzsys_user WHERE zzzzsys_user_id = '${uid}'`);
+	const reauth = async (url) => { if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, url); return true; } return false; };
+	const send = async (how, block) => {
+		const url = 'index.php?p=user&id=' + uid;
+		for (let i = 0; i < 2; i++) {
+			await open(p, url);
+			await p.click('#pwrOpen'); await p.waitForSelector('#pwrDlg.show');
+			await p.check(how === 'mail' ? '#pwrHowMail' : '#pwrHowLink');
+			if (block) await p.check('#pwrBlock');
+			await Promise.all([p.waitForNavigation(), p.click('#pwrSend')]); await p.waitForLoadState('networkidle');
+			if (!(await reauth(url))) return;
+		}
+	};
+	let ev = null, anon = null;
+	try {
+		await new Promise(r => setTimeout(r, 600));
+		sql("UPDATE zzzzsys_setup SET set_smtp_host = '127.0.0.1', set_smtp_port = " + port + ", set_smtp_use_ssl = '0', set_smtp_use_authentication = '0', set_smtp_from_address = 'noreply@example.com'");
+		const pwHash = execSync(`php -r 'echo password_hash("Test1234!", PASSWORD_BCRYPT);'`).toString();
+		sql(`UPDATE zzzzsys_user SET sus_login_password = '${pwHash}', sus_email = 'eva@example.com', sus_language = '', sus_expires_on = NULL, sus_change_password = '0' WHERE zzzzsys_user_id = '${uid}'`);
+		sql(`DELETE FROM zzzzsys_nunext_log WHERE event = 'password_reset_link' AND record_id = '${uid}'`);
+		ev = await login('sample_eva', 'Test1234!');
+		expect(!/p=login/.test(ev.url()), 'Eva signed in');
+		// preview of the e-mail (placeholder instead of the link)
+		const pv = await p.evaluate(async (u) => (await fetch(u)).text(), BASE + 'index.php?p=user&id=' + uid + '&pwreset_frame=1');
+		expect(/Set new password/.test(pv) && /#SET_PASSWORD_URL#/.test(pv), 'preview: ' + pv.slice(0, 120));
+		// 1. by e-mail: the old password keeps working
+		const h0 = hash();
+		await send('mail', false);
+		let m = last();
+		expect(/eva@example\.com/.test(await p.textContent('body')) && m.subject === 'Set a new password' && /p=reset/.test(m.body), 'mail sent: ' + JSON.stringify(m).slice(0, 200));
+		const link1 = (m.body.match(/href="([^"]*p=reset[^"]*)"/) || [])[1].replace(/&amp;/g, '&');
+		expect(hash() === h0, 'password unchanged after the mail');
+		// 2. link shown once + block: hash changed, Eva signed out, the first link replaced
+		await send('link', true);
+		const link2 = await p.inputValue('#pwrLinkUrl');
+		expect(/p=reset/.test(link2) && hash() !== h0, 'link shown, password blocked');
+		await ev.goto(BASE + 'index.php?p=home'); await ev.waitForLoadState('networkidle');
+		expect(/p=login/.test(ev.url()) || await ev.locator('#username').count() === 1, 'Eva signed out: ' + ev.url());
+		anon = await (await browser.newContext({ locale: 'en-GB' })).newPage();
+		await anon.goto(link1); await anon.waitForLoadState('networkidle');
+		expect(await anon.locator('#pw_new').count() === 0, 'first link no longer valid');
+		// 3. Eva sets the password with the shown link → confirmation e-mail, sign-in works
+		await anon.goto(link2); await anon.waitForLoadState('networkidle');
+		await anon.fill('#pw_new', 'NewPass-4711x'); await anon.fill('#pw_confirm', 'NewPass-4711x');
+		await Promise.all([anon.waitForNavigation(), anon.click('form button[type=submit]')]);
+		m = last();
+		expect(m.subject === 'Your password was changed' && /sample_eva/.test(m.body), 'confirmation: ' + JSON.stringify(m).slice(0, 200));
+		const ev2 = await login('sample_eva', 'NewPass-4711x');
+		expect(!/p=login/.test(ev2.url()), 'sign-in with the new password');
+		await ev2.context().close();
+		// 4. rate limit
+		for (let i = 0; i < 5; i++) sql(`INSERT INTO zzzzsys_nunext_log (zzzzsys_nunext_log_id, log_time, user_id, login, ip, event, object, record_id, details) VALUES ('e2epwr${i}', NOW(), 'globeadmin', 'globeadmin', '127.0.0.1', 'password_reset_link', 'zzzzsys_user', '${uid}', '{}')`);
+		await send('link', false);
+		expect(/Too many reset links/.test(await p.textContent('body')), 'rate limit');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		srv.kill();
+		if (ev) await ev.context().close().catch(() => {});
+		if (anon) await anon.context().close().catch(() => {});
+		sql("DELETE FROM zzzzsys_nunext_log WHERE zzzzsys_nunext_log_id LIKE 'e2epwr%'");
 		execSync('mysql ' + DB + ' < ' + keep);
 	}
 };
@@ -5984,6 +6083,30 @@ T.export_empty = async (s) => {
 	await ph.click('#nuExportButton'); await ph.waitForTimeout(300);
 	expect(await ph.locator('#nuExportButton + .dropdown-menu .nuExpXlsx').isVisible(), 'phone: Export menu does not open');
 	await ph.context().close();
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.libs_github_links = async (s) => {                     // 0.8.891: Update → Libraries – "GitHub" in Available opens the packs release, names in the package their project
+	const p = s.ga;
+	sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'github_libs_e2e'; UPDATE zzzzsys_nunext_setting SET zzzzsys_nunext_setting_id = 'github_libs_e2e' WHERE zzzzsys_nunext_setting_id = 'github_libs'");   // kept aside, put back below
+	const st = { repo: 'nuBuilder/nuBuilder-Next', checked_at: Math.floor(Date.now() / 1000), built: '', error: '',
+		libs: [{ name: 'adminer', version: '99.9.9', title: 'Adminer', file: 'nunext-lib-adminer-99.9.9.zip', size: 1, sha256: '0'.repeat(64), url: 'https://github.com/nuBuilder/nuBuilder-Next/releases/download/libraries/nunext-lib-adminer-99.9.9.zip' }] };
+	sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('github_libs', '" + JSON.stringify(st).replace(/'/g, "''") + "')");
+	try {
+		await open(p, 'index.php?p=update&tab=libraries');
+		const gh = await p.evaluate(() => { const a = document.querySelector('#lpTable tr[data-slot="adminer"] a.nuLpGhLink'); return a ? [a.getAttribute('href'), a.target, a.rel] : null; });
+		expect(gh && gh[0] === 'https://github.com/nuBuilder/nuBuilder-Next/releases/tag/libraries' && gh[1] === '_blank' && /noopener/.test(gh[2]), 'GitHub link in Available: ' + JSON.stringify(gh));
+		const prj = await p.evaluate(() => [...document.querySelectorAll('#lpTable tr[data-slot] a.nuLpProject')].map(a => [a.closest('tr').dataset.slot, a.getAttribute('href'), a.target]));   // 0.8.892
+		const pm = prj.find(x => x[0] === 'phpmailer');
+		expect(prj.length === await p.locator('#lpTable tr[data-slot]').count() && pm && pm[1] === 'https://github.com/PHPMailer/PHPMailer' && pm[2] === '_blank', 'pack project links: ' + JSON.stringify(prj));
+		await p.locator('#lpTable tr[data-slot="phpmailer"] label').click();
+		expect(await p.locator('#lpSel-phpmailer').isChecked(), 'the name still ticks the row');
+		const proj = await p.evaluate(() => [...document.querySelectorAll('#updLibraries a.nuLibProject')].map(a => [a.textContent.trim(), a.getAttribute('href'), a.target]));
+		const bs = proj.find(x => x[0] === 'Bootstrap');
+		expect(proj.length >= 15 && bs && bs[1] === 'https://github.com/twbs/bootstrap' && bs[2] === '_blank', 'project links in the package: ' + JSON.stringify(proj.slice(0, 3)) + ' (' + proj.length + ')');
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'github_libs'; UPDATE zzzzsys_nunext_setting SET zzzzsys_nunext_setting_id = 'github_libs' WHERE zzzzsys_nunext_setting_id = 'github_libs_e2e'");
+	}
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
@@ -10657,7 +10780,7 @@ T.file_manager = async (s) => {
 		expect(/p=page/.test(ga.url()) && await ga.locator('#nufApp').count() === 1, 'File Manager page not opened: ' + ga.url());
 		const html = await ga.content();
 		expect(/assets\/js\/nu\/nucodetools\.js/.test(html) && html.includes('id="nufCodeTools"'), 'editor without the code tool buttons (0.8.482)');
-		expect(/codemirror-5\.65\.21\/codemirror-bundle\.js\?v=/.test(html) && !/\?v=0\.8\./.test(html.match(/codemirror-bundle\.js\?v=[^"]*/)[0]), 'vendor() not used for the libraries');
+		expect(/codemirror-6\.43\.15\/codemirror-bundle\.js\?v=/.test(html) && !/\?v=0\.8\./.test(html.match(/codemirror-bundle\.js\?v=[^"]*/)[0]), 'vendor() not used for the libraries');
 		const r = await ga.evaluate(async () => { const x = await fetch(location.href.replace(/#.*/, '') + '&action=list&share=uploads&path=', { headers: { Accept: 'application/json' } }); return x.status + ' ' + (await x.text()).slice(0, 120); });
 		expect(/^200 \{"ok":true/.test(r), 'list of the uploads share: ' + r);
 		expect(!(await ga.locator('.nuf-problems, .alert-warning').filter({ hasText: 'data folder' }).count()), 'data folder problem');
@@ -11366,6 +11489,37 @@ T.record_head = async (s) => {
 
 // syntax check of the code editors (0.8.781): gutter marks while typing (JS / CSS / HTML in the browser, PHP through ?p=codecheck),
 // the ✓ button's list, Save asks with errors (Cancel = back to the line); nothing is saved here
+T.code_format = async (s) => {                           // 0.8.896: the formatters of the code editors (js-beautify 2, Prettier 3.9 + plugin-php 0.26, sql-formatter)
+	const p = s.ga;
+	await open(p, 'index.php?p=globalcode#gjs');
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=globalcode#gjs'); }
+	const r = await p.evaluate(async () => {
+		const f = (c, l) => Promise.resolve(window.NuCodeTools.format(c, l, 'mysql')).then(x => x, e => 'ERR ' + (e && e.message || e));
+		return {
+			js: await f("function f(a,b){\nif(a){\nreturn '#RECORD_ID#'\n}\n}", 'JS'),
+			html: await f('<div><p>Hi</p><script type="importmap">{"imports":{"a":"b"}}</script></div>', 'HTML'),
+			css: await f('.a{color:red;margin:0}', 'CSS'),
+			php: await f("$s = \"SELECT 1\";if($a){nuDisplayError('x');}\n$f = fn($x) => $x?->y;", 'PHP'),
+			sql: await f('select a,b from t where id=#RECORD_ID#', 'SQL')
+		};
+	});
+	expect(/function f\(a, b\) \{\n\s+if \(a\) \{/.test(r.js) && r.js.includes("'#RECORD_ID#'"), 'JS: ' + r.js);
+	expect(/"imports": \{/.test(r.html), 'HTML (importmap as JSON): ' + r.html);
+	expect(/\.a \{\n\s+color: red;/.test(r.css), 'CSS: ' + r.css);
+	expect(/if \(\$a\) \{\n\s+nuDisplayError\('x'\);\n\}/.test(r.php) && r.php.includes('fn($x) => $x?->y') && !/<\?php/.test(r.php), 'PHP: ' + r.php);
+	expect(/SELECT\s+a,\s+b\s+FROM\s+t/.test(r.sql) && r.sql.includes('#RECORD_ID#'), 'SQL: ' + r.sql);
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.dashboard_chart = async (s) => {                       // 0.8.896: a chart of the sample dashboard draws with the bundled ApexCharts (no script errors)
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=samplehome&r=-1');
+	await p.locator('[data-nu-dashboard] .apexcharts-svg').first().waitFor({ timeout: 10000 }).catch(() => {});
+	const n = await p.evaluate(() => document.querySelectorAll('[data-nu-dashboard] .apexcharts-svg').length);
+	expect(n >= 1, 'no chart drawn: ' + n);
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.code_check = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=globalcode#gjs');

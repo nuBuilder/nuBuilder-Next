@@ -181,6 +181,34 @@ if (nu_is_post() && in_array(nu_post('action'), ['logintoken_create', 'logintoke
 	nu_redirect(nu_url('user', ['id' => $id]) . '#loginTokenBox');
 }
 
+// ------------------------------------------------------------------ password reset by an administrator (0.8.901, core/nupwreset.php)
+// a link for the user (e-mail or shown once), optionally the old password blocked at once; never a password the administrator sees
+if ($existing && isset($_GET['pwreset_frame'])) {                  // the e-mail as it would be sent (link = placeholder), own CSP as welcome_frame
+	if (!$rights['save'] || NuPwReset::refusal($existing, $me) !== null) { http_response_code(403); exit; }
+	header('X-Frame-Options: SAMEORIGIN', true);
+	header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data: https: http:; font-src data: https:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'", true);
+	header('Content-Type: text/html; charset=utf-8');
+	exit(NuPwReset::preview($existing)['html']);
+}
+if (nu_is_post() && nu_post('action') === 'pwreset' && $existing) {
+	if (!$rights['save']) NuAcl::require(NuAcl::FORM_USER, 'save');
+	$guardAdminUser();
+	$back = nu_url('user', ['id' => $id]);
+	if (($why = NuPwReset::refusal($existing, $me)) !== null) { nu_flash('danger', $why); nu_redirect($back); }
+	NuSecurity::requireRecentAuth($back);
+	if (NuPwReset::recent($id) >= NuPwReset::PER_HOUR) { nu_flash('danger', t('pwr_err_rate')); nu_redirect($back); }
+	$how = nu_post('how') === 'mail' ? 'mail' : 'link';
+	$block = nu_check('pwr_block') === '1';
+	$r = NuPwReset::start($existing, $how, $block, $block && nu_check('pwr_passkeys') === '1');
+	if ($r['error'] !== null) nu_flash('danger', $r['error']);
+	else {
+		if ($how === 'mail') nu_flash('success', t('pwr_sent', trim((string)$existing['sus_email'])));
+		else { $_SESSION['nu_pwr_link'] = ['id' => $id, 'link' => $r['link']]; nu_flash('success', t('pwr_created')); }
+		if ($r['blocked']) nu_flash('warning', t('pwr_blocked_msg'));
+	}
+	nu_redirect($back . '#pwrBox');
+}
+
 // ------------------------------------------------------------------ field definitions (column => [max length, label key])
 $text = [
 	'sus_login_name'  => [50, 'user_login_name'],
@@ -674,6 +702,22 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						</details>
 					<?php endif; ?>
 
+					<?php $pwrShow = !$isNew && $rights['save'] && NuPwReset::refusal($existing, $me) === null;
+					$pwrLink = ($_SESSION['nu_pwr_link']['id'] ?? '') === $id ? (string)$_SESSION['nu_pwr_link']['link'] : '';
+					unset($_SESSION['nu_pwr_link']);
+					if ($pwrShow): ?>
+						<div class="mb-3" id="pwrBox">
+							<button class="btn btn-outline-secondary btn-sm" type="button" id="pwrOpen" data-bs-toggle="modal" data-bs-target="#pwrDlg"><i class="bi bi-key me-1"></i><?= h(t('pwr_button')) ?></button>
+							<?php if ($pwrLink !== ''): ?>
+								<div class="input-group input-group-sm mt-2">
+									<span class="input-group-text"><?= h(t('pwr_link_title')) ?></span>
+									<input class="form-control font-monospace" id="pwrLinkUrl" readonly value="<?= h($pwrLink) ?>" aria-label="<?= h(t('pwr_link_title')) ?>">
+									<button class="btn btn-outline-secondary" type="button" id="pwrLinkCopy" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
+								</div>
+								<div class="form-text"><?= h(t('pwr_shown_once', NuPwReset::HOURS)) ?></div>
+							<?php endif; ?>
+						</div>
+					<?php endif; ?>
 					<div class="form-check form-switch">
 						<input class="form-check-input" type="checkbox" role="switch" id="sus_change_password" name="sus_change_password" value="1"<?= $v['sus_change_password'] === '1' ? ' checked' : '' ?>>
 						<label class="form-check-label" for="sus_change_password"><?= h(t('user_change_pw')) ?></label>
@@ -883,6 +927,49 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 	</fieldset>
 
 </form>
+<?php if (!empty($pwrShow)):
+	$pwrMailWhy = NuPwReset::mailProblem($existing);
+	$pwrPk = NuPasskey::count($id); ?>
+<div class="modal fade" id="pwrDlg" tabindex="-1" aria-labelledby="pwrDlgTitle" aria-hidden="true">
+	<div class="modal-dialog"><form class="modal-content" method="post" id="pwrForm" action="<?= h(nu_url('user', ['id' => $id])) ?>" data-nu-once>
+		<?= nu_csrf_field() ?><input type="hidden" name="action" value="pwreset">
+		<div class="modal-header"><h2 class="modal-title fs-5" id="pwrDlgTitle"><i class="bi bi-key me-2"></i><?= h(t('pwr_title')) ?></h2>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('cancel')) ?>"></button></div>
+		<div class="modal-body">
+			<p class="small"><?= h(t('pwr_dlg_intro', (string)$existing['sus_login_name'], NuPwReset::HOURS)) ?></p>
+			<div class="form-check mb-1">
+				<input class="form-check-input" type="radio" name="how" id="pwrHowMail" value="mail"<?= $pwrMailWhy === null ? ' checked' : ' disabled' ?>>
+				<label class="form-check-label" for="pwrHowMail"><?= h(t('pwr_how_mail', trim((string)$existing['sus_email']) ?: '–')) ?></label>
+				<?php if ($pwrMailWhy === null): ?>
+					<a class="small ms-1" id="pwrPreview" href="<?= h(nu_url('user', ['id' => $id, 'pwreset_frame' => 1])) ?>" target="_blank" rel="noopener"><?= h(t('pwr_preview')) ?></a>
+				<?php else: ?>
+					<div class="form-text text-body-secondary" id="pwrMailWhy"><?= h($pwrMailWhy) ?></div>
+				<?php endif; ?>
+			</div>
+			<div class="form-check mb-3">
+				<input class="form-check-input" type="radio" name="how" id="pwrHowLink" value="link"<?= $pwrMailWhy === null ? '' : ' checked' ?>>
+				<label class="form-check-label" for="pwrHowLink"><?= h(t('pwr_how_link')) ?></label>
+			</div>
+			<div class="form-check form-switch">
+				<input class="form-check-input" type="checkbox" role="switch" id="pwrBlock" name="pwr_block" value="1">
+				<label class="form-check-label" for="pwrBlock"><?= h(t('pwr_block')) ?></label>
+				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('pwr_block_tip')) ?>" title="<?= h(t('pwr_block_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+			</div>
+			<?php if ($pwrPk > 0): ?>
+				<div class="form-check ms-4">
+					<input class="form-check-input" type="checkbox" id="pwrPasskeys" name="pwr_passkeys" value="1" disabled>
+					<label class="form-check-label" for="pwrPasskeys"><?= h(t('pwr_passkeys', $pwrPk)) ?></label>
+				</div>
+			<?php endif; ?>
+			<p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-shield-check me-1"></i><?= h(t('pwr_2fa')) ?></p>
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
+			<button type="submit" class="btn btn-primary" id="pwrSend" data-nu-busy="<?= h(t('pwr_send')) ?>"><i class="bi bi-send me-1"></i><?= h(t('pwr_send')) ?></button>
+		</div>
+	</form></div>
+</div>
+<?php endif; ?>
 <?php if (!$isNew && $me['globeadmin'] && empty($me['demo'])): ?>
 <?php // one-time login links (0.8.339) – their own forms, not tied to $nuConfigAutoLogin (0.8.365: the buttons did nothing without it) ?>
 <form method="post" id="loginTokenForm" action="<?= h(nu_url('user', ['id' => $id])) ?>"><?= nu_csrf_field() ?></form>

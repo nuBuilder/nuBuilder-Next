@@ -1,6 +1,14 @@
 # nuBuilder Next – to do
 
 ## Open questions for the owner
+- [ ] **ApexCharts licence** (0.8.896): 4.7.0 is the last MIT release. From 5.0 the LICENSE file is a dual licence (Community: free only below
+      2 M USD revenue / budget; embedding in a platform used by others – a low-code builder like nuBuilder Next – needs the paid OEM licence).
+      Stays on 4.7.0 until the owner decides (alternatives: Chart.js / ECharts, MIT / Apache-2.0).
+- [ ] **CodeMirror 6** (0.8.898, trial): every editor runs on CodeMirror 6 through an adapter with the CodeMirror 5 calls we use
+      (dev/cm6/adapter.js, built by dev/cm6/build.sh into vendor/bundled/codemirror-6.43.15/). Updated servers keep the CodeMirror 5 folder (updates
+      never delete library folders); the package no longer has it – going back = a release with codemirror-5.65.21/ (git history) +
+      NU_CODEMIRROR, the paths in nuruntime.js / apps/nufiles/index.php, the registry and the add-on loads. Keep or go back – the owner decides after trying it. Not done yet: the adapter has no CodeMirror 5 modes / defineMode
+      (custom pages that load vendor('codemirror') and call more of the CodeMirror 5 API than nuBuilder Next does would break).
 - [ ] dev / test / prod and git (forum question, 26 Oct 2026): proposals M1–M3 (moving forms / procedures between installations) and
       G1–G3 (git sync of the application's metadata) – the owner decides later.
 - [ ] Custom pages: besides the draft (0.8.599) a "Test copy" (clone of the custom page + its folder, publish back) was proposed (option A,
@@ -36,6 +44,19 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] **Browsers**: Safari (ApexCharts on the start page, CSP style-src-attr), phones with real touch (long tap menus, side bar, design mode on phones).
 - [ ] **Real data**: list views of every system list with real data (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real
       permission items, sub-form link columns without an index on forms made before 0.8.366, the compatibility check on the owner's forms.
+
+## 0.8.887–0.8.901 – please verify
+- **CodeMirror 6** (trial, see the open question above): every editor on your server – procedures, Global code, nuconfig.php, data
+  export SQL, design mode code window / workspace, form page code window (double-click), code snippets, File Manager editor. Typing,
+  Ctrl+F (search panel), Ctrl+/, Tab, suggestions (nu…), Format, syntax check marks, dark mode, phones; custom pages that load
+  `vendor('codemirror', …)` and call more of the CodeMirror 5 API than the adapter offers.
+- **Code snippets**: Source code edited in place; language switch; templates (`nu…` rows) read only outside developer mode.
+- **First field focus** on record pages of forms with a searchable select first (no list opens any more).
+- **Reset password…** (user form): a link by e-mail on the real mail server (template text, user's language), *Show the link*, *Block
+  the current password now* with the user signed in elsewhere (also in nuBuilder Forte with shared login), the confirmation e-mail.
+- **Libraries**: TinyMCE 8.10.1 pack (editor objects, notifications), PHPMailer 7.1.1 with your mail server, Font Awesome 7.3.1
+  fallback, js-beautify 2 / Prettier 3.9 formatting of your own code, ApexCharts 4.7 dashboards.
+- **CI** on GitHub after the push: mysql + mssql jobs with the self-test step (`nucron.php selftest`) and the PHP message check.
 
 ## 0.8.884 Help reading level – please verify
 - Help → *Essentials*: read a few chapters you know (Object types, Users, Install) – is anything hidden that a reader needs, or is a page
@@ -120,7 +141,8 @@ What still needs a real environment – or a look by the owner – is collected 
 - [ ] Form with AI (0.8.810): a small app with a real AI tool (format nunext-app-1), changes from design mode into the open draft.
 - [ ] Browse list (0.8.820–0.8.823): nuBuilder Forte's list settings on forms made in Forte – row height, multi-line titles, columns that
       fill the width (now on for the sample forms), row click target (new tab / popup / current breadcrumb).
-- [ ] CI (0.8.821): the SQL Server job with Microsoft's ODBC driver on GitHub Actions.
+- [ ] CI (0.8.889): the SQL Server job counts now (no longer allowed to fail) and runs `nucron.php selftest --sample --lang=en` – check the
+      next Actions run: sample application installed on SQL Server, every self-test check ok (report skipped: no TCPDF there), no PHP messages.
 
 ## 0.8.768–0.8.801 – please verify
 - [ ] SQL Server (owner's SQL Server Express): browse lists, sub-forms and data exports after the ORDER BY fix (0.8.792); the

@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.886 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.902 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -77,7 +77,7 @@ nuBuilder Next streamlines everyday database work:
 ### 🛡️ For Administrators
 
 - ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, one search list over tiles, pages, forms, procedures and reports (with a filter, also Ctrl+K). Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
-- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; user import from CSV or Excel with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; the access levels of a form in one dialogue (or a form for everyone, also for new access levels); own titles for Code / Additional 1 / 2; own and shared list views; filters and links between users, access levels, permission items and the log.
+- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; user import from CSV or Excel with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; *Reset password* by the administrator (a personal link by e-mail or to pass on, optionally blocking the old password at once – the administrator never sees a password); the access levels of a form in one dialogue (or a form for everyone, also for new access levels); own titles for Code / Additional 1 / 2; own and shared list views; filters and links between users, access levels, permission items and the log.
 - ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit, a password policy (length, leaked-password check with k-anonymity, optional regular change), sign-in only from allowed IP addresses / networks (per access level, globeadmin separately) and a built-in Security check.
 - ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
 - ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.

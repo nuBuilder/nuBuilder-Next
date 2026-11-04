@@ -3,6 +3,112 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.902 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, OWASP ZAP) before the push.
+- README: Reset password by the administrator; help: Sign-in methods lists the administrator's reset; to-do list: what to verify
+  for 0.8.887–0.8.901.
+- Library pack TinyMCE 8.10.1 in the GitHub release "libraries" (Settings → Updates & libraries → Libraries).
+
+## 0.8.901 – Reset password by the administrator
+- User form → Login credentials: Reset password… The user gets a personal link to set a new password – valid 24 hours, usable
+  once; a new link replaces older ones. The administrator never sees or chooses the password (best practice of NIST SP 800-63B /
+  OWASP). In the dialogue:
+  - Send the link by e-mail (with a preview of the e-mail) or show the link once in the form to pass it on yourself.
+  - Block the current password now (for an account that may be compromised): the old password stops working at once, the user is
+    signed out everywhere, an open one-time login link is removed and, if chosen, the passkeys too.
+  - Two-factor authentication stays as it is.
+- After a password reset (from the administrator's link or from "Forgot password?") every other session of the user ends and the
+  user gets an e-mail "Your password was changed".
+- Safeguards: save right on users; not for the own record, demo users, API service users or expired accounts; users with
+  admin-equivalent rights only by the globeadmin; the administrator confirms the own password when the last confirmation is too old;
+  at most five links per user and hour; everything logged (Password reset link, Password blocked, Password reset).
+- E-mail text: own template nu_password_reset (user's language first), else the new read-only templates nu_password_reset_template
+  (group nunext, one per language, database step 0036), else the built-in text; placeholders as for the welcome e-mail.
+
+## 0.8.900 – Breadcrumb closer to the top bar
+- Less space above the breadcrumb on laptops and tablets (from 576 px wide: 10 px instead of 24 px between the top bar and the page),
+  so more of the page fits on smaller screens; phones keep their 4 px.
+
+## 0.8.899 – Code snippets: inline code editor, read-only fields, first field focus
+- Code snippets: Source code is edited in place with the code editor (line numbers, highlighting, toolbar with undo / redo, search,
+  replace, comment, format, full screen, syntax check, Insert menu) instead of a plain text box. The Language field switches the
+  highlighting at once; the Language decides also when the form's own code marks the field as JavaScript.
+- Forms with a fixed layout: a read-only field whose value is cut (e.g. "Updated on" of code snippets) grows to the right as far as the
+  layout has room; a value that is still cut shows in full as tooltip.
+- Forms: the first field gets the focus again when a record opens – before, the first searchable select got it and opened its list
+  (code snippets: "Selectable in").
+- The PHP code window of form pages has PHP highlighting again with CodeMirror 6.
+
+## 0.8.898 – Code editors on CodeMirror 6 (trial)
+- Code editors on CodeMirror 6 (trial): every code editor (procedures, Global code, nuconfig.php, data export SQL, design mode code
+  window and workspace, the code dialog of form pages, File Manager) now runs on CodeMirror 6.43.15 instead of CodeMirror 5.65.21.
+  A small adapter keeps the CodeMirror 5 calls nuBuilder Next uses, so the toolbar (undo / redo, search, replace, comment, invisibles,
+  format, full screen, syntax check), the Insert menu, suggestions while typing and the # menu work as before. Search (Ctrl+F) is
+  CodeMirror 6's search panel (next / previous / all, match case, regexp, whole word, replace), with texts in the user's language.
+- Library folder vendor/bundled/codemirror-6.43.15 (one script file; codemirror-addons.js stays as an empty file for custom pages that
+  load it). CodeMirror 5 is no longer in the package; updated servers keep its folder.
+- Strict Content Security Policy: CodeMirror 6's own styles come as a constructed style sheet (no <style> element), so the editors
+  keep their layout on pages without 'unsafe-inline'.
+
+## 0.8.897 – Notes
+- Notes only: the open question about CodeMirror 6 corrected – nuBuilder Forte uses the Ace editor, not CodeMirror, so a later move
+  to CodeMirror 6 would only touch nuBuilder Next's own code editors.
+
+## 0.8.896 – Formatters and ApexCharts 4.7.0
+- Code formatters of the editors updated: js-beautify 1.15.4 → 2.0.3 (JavaScript, HTML, CSS – `<script type="importmap">` is now
+  formatted as JSON), Prettier 3.3.3 → 3.9.10 with @prettier/plugin-php 0.25.0 → 0.26.0 (PHP) and sql-formatter 15.6.4 → 15.9.0 (SQL).
+  The same code comes out formatted as before.
+- ApexCharts 4.4.0 → 4.7.0 (charts of dashboards and of form code with $nuConfigIncludeApexCharts). 4.7.0 is the last version under the MIT
+  licence: from 5.0 ApexCharts is dual-licensed – free only for organisations below 2 million USD revenue, and a platform that others
+  build on needs a paid OEM licence – so nuBuilder Next stays on 4.x for now. The old folder vendor/bundled/apexcharts-4.4.0/ is no
+  longer used after the update.
+
+## 0.8.895 – Acorn 8.19.0
+- Acorn 8.15.0 → 8.19.0 – the JavaScript parser of the syntax check in every code editor. The newer versions know Unicode 18 and
+  reject a few more kinds of invalid code (e.g. `new super()`, a bare arrow function as the condition of `? :`, `**` after an arrow
+  function); valid code is checked as before. The old folder vendor/bundled/acorn-8.15.0/ is no longer used after the update.
+
+## 0.8.894 – PHPMailer 7.1.1
+- PHPMailer 6.10.0 → 7.1.1 (library pack). 7.1 makes several PHPMailer settings harmless that were not sanitised before (security fix)
+  and checks the Encoding value strictly; 7.0 changed only code that extends PHPMailer's classes – nuBuilder Next does not. New
+  installations get 7.1.1 from nunext.zip; existing ones see it under Update → Libraries once the pack is in the GitHub release
+  "libraries" (pack and new index given to the owner to upload there).
+
+## 0.8.893 – Font Awesome 7.3.1
+- Font Awesome 7.0.0 → 7.3.1 (the newest release, from the project's GitHub release). nuBuilder Next uses it for the "fa fa-…" icons of
+  forms only when nuBuilder Forte's own copy is not found; 7.3.1 keeps every icon name of 7.0 and adds new ones. After the update the
+  old folder vendor/bundled/fontawesome-7.0.0/ is no longer used and can be deleted by hand.
+
+## 0.8.892 – Pack repositories
+- Update → Libraries, library packs: an icon after each name opens the library's own repository on GitHub in a new tab (TCPDF,
+  PHPMailer, TinyMCE, phpMyAdmin, Adminer, Uppy, PhpSpreadsheet); a click on the name still ticks the row.
+
+## 0.8.891 – Library links to GitHub
+- Update → Libraries: "GitHub" in the column Available is a link – it opens the GitHub release with the library packs in a new tab.
+- Update → Libraries → card "Libraries · In the package": the name of each library opens its project page on GitHub in a new tab
+  (Bootstrap, jQuery, Tom Select, CodeMirror, Font Awesome …).
+
+## 0.8.890 – ESLint update
+- Automatic checks on GitHub: ESLint (the JavaScript check) moved from 9.17.0, which npm marks as no longer supported, to 9.39.5 – the
+  maintained release of version 9. No new findings.
+
+## 0.8.889 – Self-test on the command line and in CI
+- Self-test on the command line: `php nucron.php selftest [--sample] [--groups=…] [--lang=en] [--json]` runs the checks of Admin tools
+  → Self-test as the globeadmin (developer mode only, as on the page); `--sample` installs the sample application first when it is
+  missing. Exit code 1 when a check failed. Without the PDF library (TCPDF) the report check is now skipped instead of failed.
+- Automatic checks on GitHub: both the MySQL and the SQL Server job run the self-test on their new installation (saves, sub-form rows,
+  deletes, audit trail, rights and notifications on the real database), and the SQL Server job now counts – a failure there turns the
+  run red.
+
+## 0.8.888 – PHP messages fail the GitHub checks
+- Automatic checks on GitHub (MySQL and SQL Server): the test web server now runs with PHP warnings switched on, and a new step reads
+  its log after the smoke test – a PHP warning, notice or deprecation of any request (also of background JSON calls) fails the job.
+  Before, such messages went unseen while the pages still answered 200.
+
+## 0.8.887 – Duplicate language key
+- Language files: the key file_download was written twice in the English and German files (same text, so nothing changed on screen);
+  the second copy is removed, and dev/check_lang.php now reports any key that appears twice in one language file.
+
 ## 0.8.886 – Release gate (0.8.882–0.8.886)
 - Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte, the OWASP ZAP security scan for the
   first time) for 0.8.882–0.8.886 – ZAP in the gate, the help's reading level, the SQL Server fix of the passkey table.

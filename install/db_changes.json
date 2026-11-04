@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.886",
+    "version": "0.8.902",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -458,6 +458,17 @@
                     "table": "zzzzsys_nunext_passkey",
                     "kind": "column",
                     "what": "backed_up added; the values of backup copied, then backup dropped (installations of 0.8.877–0.8.884 on MySQL)"
+                }
+            ]
+        },
+        {
+            "id": "0036-pwreset-templates",
+            "description": "Read-only e-mail templates nu_password_reset_template (group nunext, one per language) for the password reset of the user form",
+            "changes": [
+                {
+                    "table": "zzzzsys_email_template",
+                    "kind": "data",
+                    "what": "read-only templates nu_password_reset_template, group nunext, one per language (ids nx_pwreset_…) added when missing – also checked with every later update"
                 }
             ]
         }

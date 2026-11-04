@@ -1834,6 +1834,10 @@ fieldset.contents { display: contents; }
 @media (max-width: 575.98px) {
 	main#main.py-4 { padding-top: 4px !important; }
 }
+/* laptops / tablets (0.8.900): less room above the breadcrumb (was py-4 = 24 px) */
+@media (min-width: 576px) {
+	main#main.py-4 { padding-top: .625rem !important; }
+}
 
 /* IP access (0.8.722, pages/nuipaccess.php) */
 .nuIpaFilter { max-width: 260px; }

@@ -2,25 +2,25 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.886');
+define('NU_VERSION', '0.8.902');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
 define('NU_PACKS', 'vendor/packs');
 define('NU_BS', NU_VENDOR . '/bootstrap-5.3.8');
 define('NU_BI', NU_VENDOR . '/bootstrap-icons-1.13.2');
-define('NU_APEXCHARTS', NU_VENDOR . '/apexcharts-4.4.0');   // loaded on form pages when $nuConfigIncludeApexCharts is on (as nuBuilder)
+define('NU_APEXCHARTS', NU_VENDOR . '/apexcharts-4.7.0');   // loaded on form pages when $nuConfigIncludeApexCharts is on (as nuBuilder)
 define('NU_TOMSELECT', NU_VENDOR . '/tom-select-2.6.2');
-define('NU_CODEMIRROR', NU_VENDOR . '/codemirror-5.65.21');
+define('NU_CODEMIRROR', NU_VENDOR . '/codemirror-6.43.15');
 define('NU_QRCODE', NU_VENDOR . '/qrcode-generator-2.0.4');
-define('NU_ACORN', NU_VENDOR . '/acorn-8.15.0');        // JavaScript parser of the syntax check (0.8.781; loaded by assets/js/nu/nucodetools.js)
+define('NU_ACORN', NU_VENDOR . '/acorn-8.19.0');        // JavaScript parser of the syntax check (0.8.781; loaded by assets/js/nu/nucodetools.js)
 define('NU_JQUERY', NU_VENDOR . '/jquery');
 define('NU_JQCONFIRM', NU_VENDOR . '/jquery-confirm');
 define('NU_JQUERY4', NU_VENDOR . '/jquery-4.0.0');               // 0.8.741: jQuery 4 + Migrate (NuJquery)
 define('NU_JQMIGRATE3', NU_VENDOR . '/jquery-migrate-3.6.0');
 define('NU_JQMIGRATE4', NU_VENDOR . '/jquery-migrate-4.0.2');
 define('NU_FORMATTER', NU_VENDOR . '/formatter');
-define('NU_FONTAWESOME', NU_VENDOR . '/fontawesome-7.0.0');   // fallback for nuBuilder's "fa fa-…" icons (nuBuilder's own copy first)
+define('NU_FONTAWESOME', NU_VENDOR . '/fontawesome-7.3.1');   // fallback for nuBuilder's "fa fa-…" icons (nuBuilder's own copy first)
 define('NU_TINYMCE', 'assets/vendor/tinymce');      // OLD place only (a hand copy of earlier versions) – TinyMCE is a library pack
 define('NU_FEATURE_ACCESSIBILITY', false);   // user form switch "Accessibility features" hidden until accessibility is defined (TODO.md)
 
@@ -34,7 +34,7 @@ const NU_AUTOLOAD = [
 	'NuApiPlayground' => 'core/nuapiplayground.php', 'NuInstall' => 'core/nuinstall.php', 'NuConfigFile' => 'core/nuconfigfile.php', 'NuSetupWizard' => 'core/nusetupwizard.php', 'NuPalette' => 'core/nupalette.php', 'NuAdmin' => 'core/nuadmin.php', 'NuTutorial' => 'core/nututorial.php', 'NuListView' => 'core/nulistview.php', 'NuListDefs' => 'core/nulistdefs.php', 'NuLoginToken' => 'core/nulogintoken.php', 'NuReportApi' => 'core/nureportapi.php', 'NuDemoData' => 'core/nudemodata.php', 'NuDbChanges' => 'core/nudbchanges.php', 'NuAudit' => 'core/nuaudit.php', 'NuIncludes' => 'core/nuincludes.php', 'NuMailOAuth' => 'core/numailoauth.php', 'NuUserFields' => 'core/nuuserfields.php', 'NuUserAccess' => 'core/nuuseraccess.php', 'NuUpload' => 'core/nuupload.php', 'NuCustomCode' => 'core/nucustomcode.php', 'NuCodeTemplates' => 'core/nucodetemplates.php', 'NuHelpLink' => 'core/nuhelplink.php', 'NuSidebar' => 'core/nusidebar.php', 'NuFormInfo' => 'core/form/nuforminfo.php', 'NuColumnChange' => 'core/form/nucolumnchange.php', 'NuDesign' => 'core/form/nudesign.php', 'NuDbReset' => 'core/nudbreset.php', 'NuDbState' => 'core/nudbstate.php', 'NuTheme' => 'core/nutheme.php', 'NuNotify' => 'core/nunotify.php', 'NuSelfTest' => 'core/nuselftest.php', 'NuUserLabel' => 'core/nuuserlabel.php', 'NuPageNo' => 'core/nupageno.php',
 	'NuSample' => 'core/nusample.php', 'NuSampleSet' => 'core/nusampleset.php', 'NuListExport' => 'core/nulistexport.php', 'NuProcedure' => 'core/nuprocedure.php',
 	'NuReport' => 'core/nureport.php', 'NuReportEngine' => 'core/nureportengine.php', 'NuReportSection' => 'core/nureportengine.php', 'NuMarkdown' => 'core/numarkdown.php', 'NuPasskey' => 'core/nupasskey.php', 'NuCbor' => 'core/nupasskey.php',
-	'NuSqlSelect' => 'core/nusqlselect.php', 'NuPrompt' => 'core/nuprompt.php', 'NuImport' => 'core/nuimport.php',
+	'NuPwReset' => 'core/nupwreset.php', 'NuSqlSelect' => 'core/nusqlselect.php', 'NuPrompt' => 'core/nuprompt.php', 'NuImport' => 'core/nuimport.php',
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',

@@ -2,7 +2,8 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-/* Sets a new password from an e-mailed reset link (valid 60 minutes, single use). */
+/* Sets a new password from a reset link (Forgot password: 1 hour; administrator's reset: NuPwReset::HOURS; welcome e-mail: $nuConfigWelcomeLinkHours),
+   single use. After a reset (not after the welcome link) the user gets a confirmation e-mail and every other session ends (0.8.901). */
 
 $uid   = (string)($_GET['u'] ?? '');
 $token = (string)($_GET['t'] ?? '');
@@ -33,7 +34,12 @@ if (nu_is_post()) {
 		nu_db()->update('zzzzsys_user', ['sus_login_password' => NuAuth::hash($new), 'sus_change_password' => '0'], 'zzzzsys_user_id', $uid);
 		NuToken::deleteFor('pw_reset', $uid);
 		NuUserJson::passwordChanged($uid, 'reset');
-		NuLog::write('password_reset', 'zzzzsys_user', $uid, [], ['id' => $uid, 'login' => (string)$user['sus_login_name']]);
+		NuLog::write('password_reset', 'zzzzsys_user', $uid, ['via' => (string)($row['data'] ?? '') ?: 'welcome'], ['id' => $uid, 'login' => (string)$user['sus_login_name']]);
+		NuPwReset::endSessions($uid);                       // the new hash ends them anyway – their rows go too
+		if (in_array((string)($row['data'] ?? ''), ['forgot', NuPwReset::DATA], true)) {
+			$full = nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$uid]);
+			if ($full) NuPwReset::confirm($full);
+		}
 		nu_flash('success', t('reset_done'));
 		nu_redirect(nu_url('login'));
 	}

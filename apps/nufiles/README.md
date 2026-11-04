@@ -1,6 +1,6 @@
 # nuFiles – file manager page for nuBuilder Next
 
-Replaces Tiny File Manager (TFM). A nuBuilder Next **page form** (`nufiles`, built in since 0.8.479: `apps/nufiles/`) that uses only what nuBuilder Next already ships: Bootstrap 5.3.8, Bootstrap Icons 1.13.2, CodeMirror 5.65.21 and `nupage.js`. It has no login of its own and no third-party code. It runs on nuBuilder Next's session, access levels, permission items, CSRF protection and password confirmation.
+Replaces Tiny File Manager (TFM). A nuBuilder Next **page form** (`nufiles`, built in since 0.8.479: `apps/nufiles/`) that uses only what nuBuilder Next already ships: Bootstrap 5.3.8, Bootstrap Icons 1.13.2, CodeMirror 6 (with the CodeMirror 5 compatible adapter of vendor/bundled/codemirror-6.*) and `nupage.js`. It has no login of its own and no third-party code. It runs on nuBuilder Next's session, access levels, permission items, CSRF protection and password confirmation.
 
 Version 1.0.0 · page API 1 · part of nuBuilder Next since 0.8.479 (tested with 0.8.460 and 0.8.479; PHP 8.2/8.3, MariaDB, Chromium)
 

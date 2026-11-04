@@ -28,9 +28,16 @@ final class NuLibraries
 		return preg_match('/' . str_replace('/', '\/', (string)$lib['detect']) . '/', $src, $m) ? $m[1] : '';
 	}
 
+	/** The project page of a library in the package (registry key "url", 0.8.891) – only an https address on github.com, else ''. */
+	public static function projectUrl(array $l): string
+	{
+		$u = (string)($l['url'] ?? '');
+		return preg_match('~^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$~', $u) ? $u : '';
+	}
+
 	/**
 	 * All libraries for the card: bundled ones (status ok / missing / differs) and the external ones (ok / missing / old / warn).
-	 * @return list<array{name: string, version: string, path: string, license: string, use: string, kind: string, status: string, note: string, local: string}>
+	 * @return list<array{name: string, version: string, path: string, license: string, use: string, kind: string, status: string, note: string, local: string, url?: string}>
 	 */
 	public static function all(): array
 	{
@@ -39,7 +46,7 @@ final class NuLibraries
 			$found = self::detect($l);
 			$ver = $found === null ? '' : ($found !== '' ? $found : (string)$l['version']);
 			$out[] = ['name' => (string)$l['name'], 'version' => $ver, 'path' => NU_VENDOR . '/' . $l['dir'] . '/', 'license' => (string)$l['license'],
-				'use' => t('upd_libuse_' . $l['use']), 'kind' => 'bundled', 'note' => '', 'local' => '',
+				'use' => t('upd_libuse_' . $l['use']), 'kind' => 'bundled', 'note' => '', 'local' => '', 'url' => self::projectUrl($l),
 				'status' => $found === null ? 'missing' : ($found !== '' && $found !== (string)$l['version'] ? 'differs' : 'ok')];
 		}
 		foreach (NuSecurity::libraries() as $l) {

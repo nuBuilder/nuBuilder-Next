@@ -891,6 +891,7 @@ final class NuMigrate
 				$db->run("ALTER TABLE $t DROP COLUMN $q");
 				NuDB::forgetColumns($t);
 			}],
+			'0036-pwreset-templates' => ['Read-only e-mail templates nu_password_reset_template (group nunext, one per language) for the password reset of the user form', static fn() => NuPwReset::ensureTemplates()],
 		];
 	}
 
@@ -940,6 +941,7 @@ final class NuMigrate
 		'0030-data-export' => [['zzzzsys_nunext_export', 'table', 'created when missing']],
 		'0029-webhooks' => [['zzzzsys_nunext_webhook', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_call', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_try', 'table', 'created when missing']],
 		'0028-welcome-templates' => [['zzzzsys_email_template', 'data', 'read-only templates nu_send_welcome_email_template, group nunext, one per language (ids nx_welcome_…) added when missing – also checked with every later update']],
+		'0036-pwreset-templates' => [['zzzzsys_email_template', 'data', 'read-only templates nu_password_reset_template, group nunext, one per language (ids nx_pwreset_…) added when missing – also checked with every later update']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */
@@ -1023,6 +1025,9 @@ final class NuMigrate
 		}
 		if (!in_array('0028-welcome-templates', $applied, true)) {   // the read-only welcome templates (0.8.658), also every run
 			try { NuWelcome::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next welcome templates: ' . $e->getMessage()); }
+		}
+		if (!in_array('0036-pwreset-templates', $applied, true)) {   // the read-only password reset templates (0.8.901), also every run
+			try { NuPwReset::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next password reset templates: ' . $e->getMessage()); }
 		}
 		if ($applied) NuLog::write('nunext_migration', self::TABLE, '', ['steps' => $applied]);
 		return $applied;

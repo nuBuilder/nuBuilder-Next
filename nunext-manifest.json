@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.886",
- "built": "2026-11-04 10:55",
+ "version": "0.8.902",
+ "built": "2026-11-04 17:56",
  "requires": {
   "php": "8.1"
  },
@@ -11,16 +11,16 @@
    "size": 1263
   },
   "CHANGELOG.md": {
-   "sha256": "b7d2a4f5367b71ccbce21f6bde15f3e298ddf27f3f7a0cde69c27be9e30be260",
-   "size": 600581
+   "sha256": "d2b72e7b07e23ae1b4937af669e05627d2ec05b080be3891668bcea097d6c70f",
+   "size": 609447
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "0bd4cb2bf5781200e66d03bbba6ceb06cc7d46dd2bbdf8fbc4c087bff673e0e1",
-   "size": 16062
+   "sha256": "857eb2ff325477e401f562129b8066da0719766e668c17a16038444790bac802",
+   "size": 16233
   },
   "api.php": {
    "sha256": "7b21c37e26bd799f78e988fd62f0e277cfd52690d87ff3bfd715f967ba83627d",
@@ -31,8 +31,8 @@
    "size": 177
   },
   "apps/nufiles/README.md": {
-   "sha256": "00ecf3b024869262d56c0187bb66c4357f33cdbe4a624936f5b96e9a06ffbbb5",
-   "size": 10923
+   "sha256": "64c0a2d68a58574bdf7c740d2e14ad3615aad7992686fb9cf773ae3797f02163",
+   "size": 10993
   },
   "apps/nufiles/assets/app.css": {
    "sha256": "f274593e4517d7fd77ba9a97fe05af947ffef35f2446216ae8a0a672d31a84b1",
@@ -47,8 +47,8 @@
    "size": 453
   },
   "apps/nufiles/index.php": {
-   "sha256": "c14e37737311bce2e53797bfc1fa9ecc8b0528d0c7866cf55b558a3bf689c199",
-   "size": 14321
+   "sha256": "20b3eabf8c251d214a5e5f4230b9e36a05ee0a2bdf123ac459db08c81134e62c",
+   "size": 14209
   },
   "apps/nufiles/lib/api.php": {
    "sha256": "267d574c3edcb26225b267083f75db8191f424a041d991b02f0b950b5ae70b51",
@@ -83,8 +83,8 @@
    "size": 1371
   },
   "assets/css/nuapp.css": {
-   "sha256": "35858476b332ce64cd3ead453e9734c44a247cab2e721562634efe4db772d4f2",
-   "size": 166358
+   "sha256": "d8a20636cf24bf2a6f582cfebe0c743f05d5e92c11ed8b02a2811efcb0f5dd2a",
+   "size": 166526
   },
   "assets/css/nubuilder.css": {
    "sha256": "bfe266d05ec6ebb7f2e9219cb80d0fbf4059517a510a486619f4a01b07e98c79",
@@ -95,8 +95,8 @@
    "size": 28028
   },
   "assets/css/nuform.css": {
-   "sha256": "e279b593976885b47472bc987ec4c5166164d1a27bad896d175b611621e13053",
-   "size": 44020
+   "sha256": "cefc7e83a23ef553ced396f889a77b6ef63e1a13472dc5cd5875e935209c5980",
+   "size": 44420
   },
   "assets/css/nuhome.css": {
    "sha256": "808cf6c5d64a4d975711c0aaac509c9060c2db14b531a5bc2a2785190d3cd7f7",
@@ -127,16 +127,16 @@
    "size": 11831
   },
   "assets/js/nu/nucodetools.js": {
-   "sha256": "24194a5ca5276182ce8c8df51129b8fe4c100afff19919410bb0fdc47dad7bef",
-   "size": 73605
+   "sha256": "3f4718f58b2a6bb4a2aba2f62528a7debc11e358d6cd9b852e6a8a5529a7059a",
+   "size": 75462
   },
   "assets/js/nu/nucompat.js": {
    "sha256": "7c50a795e7c9d546f140a678eb88b5144cacd2e7363e4d32fbfa6595a8f0d43d",
    "size": 49058
   },
   "assets/js/nu/nudesign.js": {
-   "sha256": "e356ecc6c54aad8f2e0e0a8aa5457652f3412e47acda76d3b890f3b3809f4259",
-   "size": 233546
+   "sha256": "8b632d056e7db961f4219035a094e21b354366de2e3cd75e3b0e81abb91c8529",
+   "size": 233432
   },
   "assets/js/nu/nudesigner.js": {
    "sha256": "fc287d859ea205dde8caa04e595404c9add9b6defe28fe6ec1305c70a2783b54",
@@ -171,8 +171,8 @@
    "size": 8455
   },
   "assets/js/nu/nuruntime.js": {
-   "sha256": "54287167b25434b7bea30de9c3ddd65032e120383fb056ed9a42020ef4d0251b",
-   "size": 225418
+   "sha256": "ab1bc5f4088491e1c1fa624ba92d69ddfc22d7d30cb81c7a0863c625da523185",
+   "size": 229671
   },
   "assets/js/nu/nutooltip.js": {
    "sha256": "ef077398d0cf9bb0b8fe52255f7523d773db46c7f4e010c9cda36240471422c5",
@@ -195,8 +195,8 @@
    "size": 22029
   },
   "assets/js/nuapp.js": {
-   "sha256": "7153420b491709d7d57869c1db9361013840ab1eb087f982dfbe48d2f0ea5225",
-   "size": 98520
+   "sha256": "943dae2d6c29b9dc0de10adff23d044a4d2e5427f7837507af42efd41626e820",
+   "size": 98777
   },
   "assets/js/nuappcloner.js": {
    "sha256": "c7521387073a2cddfbdbb6bb7b108d33588e1cfffb2fc9407ea77ed5bab0fb6c",
@@ -459,8 +459,8 @@
    "size": 565
   },
   "assets/js/nuuser.js": {
-   "sha256": "8793b1c7ed50ccc63a5db6a5cfadb2463ef67f896957a760732b2d458dacd454",
-   "size": 42831
+   "sha256": "70458bb29c58cbf9a48aa82ffa82f9252ed1479aa923135864ad0f733327adbe",
+   "size": 43844
   },
   "assets/js/nuuserfields.js": {
    "sha256": "b8f81f6f52c7aa737ae47e7e5be70cf07dcd284b1d0edde2d648881a77523f38",
@@ -499,8 +499,8 @@
    "size": 8077
   },
   "core/form/nudesign.php": {
-   "sha256": "fb420ffe41661852f033ef99d271196d80765d964c7e07ec497237bb2417d30f",
-   "size": 9136
+   "sha256": "c8b55800c29e2f2318bed92cb617907afa6dffb1531f7e5d9d03b6cc2b5b8079",
+   "size": 9085
   },
   "core/form/nuformat.php": {
    "sha256": "dface8fac2be300375b395715518ac3b44319d703fa601918affac8851184213",
@@ -603,8 +603,8 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "54065774f02778502638d38deaa8de168886b0b597797e5751762f26a153d566",
-   "size": 39642
+   "sha256": "16e587b7d210c983e2db6e99598d7f1da9be8a2e2b5eb6d01fb18cb6ead6d920",
+   "size": 39679
   },
   "core/nuappcloner.php": {
    "sha256": "10f4a206f8d93858086416315c46dd72a349d21a91da8f0a72dcf86e5c1d1222",
@@ -619,8 +619,8 @@
    "size": 24831
   },
   "core/nuauth.php": {
-   "sha256": "54b1d5beff7d51f9fcd68293ba6ce6561b69ff0c659974a382727429bef3232e",
-   "size": 47150
+   "sha256": "073c6508ca4b184c85967cc22dab2967745d987c8bc6c7e9a8f4463facc469f5",
+   "size": 47807
   },
   "core/nuautoupdate.php": {
    "sha256": "86154e9df9cc8179f37a087e92c34fd04c2c85ac377d98115a3f5e9b29b4020a",
@@ -787,20 +787,20 @@
    "size": 9463
   },
   "core/nulanguages.php": {
-   "sha256": "fe75fdd839b40ad450c811e317c8573373b615714f3cb3b427c4a7f38793aea2",
-   "size": 6761
+   "sha256": "bc783a3f22854a2f2c9ccfdc7bc9a0c4d96125695a5c0a1531f9cc129bdb180a",
+   "size": 6951
   },
   "core/nulayout.php": {
    "sha256": "3c2f9fc4677864b6af80623349bda9f55f629f54dc027fc2398c2d7633fdb1da",
    "size": 50897
   },
   "core/nulibraries.php": {
-   "sha256": "3baac9c6c57f9cadebb2b2c9d36e777b98b415c101e733a3341e474f79550a9c",
-   "size": 4013
+   "sha256": "5832bf16e80441cd5f9236615445ce40ed37ac6f0af1518f60a94039d0f5c541",
+   "size": 4381
   },
   "core/nulibs.php": {
-   "sha256": "5341d699fb8a21a152dbd850209998ae5e226d9ec540b4e9ea8f4711827bbcec",
-   "size": 60019
+   "sha256": "a927ccc946d8a0cdf3f1a47c499f1503aee42f55475ecbe2c75c0b6340fbf0cd",
+   "size": 60933
   },
   "core/nulistdefs.php": {
    "sha256": "302961f715c8fc0dbf87e42bf60c634b6bb61ee3da6dfb3a00103f74eab9cd6c",
@@ -819,8 +819,8 @@
    "size": 9578
   },
   "core/numail.php": {
-   "sha256": "522147c254c96e2db7964a2db3fca6d03c13970496a0a0304cfed55b921a0a14",
-   "size": 66841
+   "sha256": "472000fb70caa8b7acc9949294c58398df407c7216060f274e495cac642dc057",
+   "size": 66839
   },
   "core/numailoauth.php": {
    "sha256": "0ae57bc362507cb81515883cd9423233a7e159b95629145ee6b78efacb7c219b",
@@ -878,6 +878,10 @@
    "sha256": "79133493f15df9fb6d9263f65a7a1a12d2c95b1ccab12cb1416537dea601f54d",
    "size": 16256
   },
+  "core/nupwreset.php": {
+   "sha256": "0fb07ee614f52698d5153ace5bb4752bc3d97a6ec5d5b0c6a899fa8d18e801f0",
+   "size": 12624
+  },
   "core/nureport.php": {
    "sha256": "4bf3927c880cbe43955e97c243af5bcc8a7db0e5d55b76a8d7155c997f540ad5",
    "size": 36509
@@ -907,8 +911,8 @@
    "size": 37219
   },
   "core/nuselftest.php": {
-   "sha256": "32e22c7feeaa3a1a1640f6eeaae328a451df8b6917263c14a9dff3dad9f15b8d",
-   "size": 20248
+   "sha256": "d4822cec4d85af5f56666138a929ca20706929713f909b89a3c115903c68dadf",
+   "size": 20396
   },
   "core/nusessions.php": {
    "sha256": "e64542ade95595f1a8f2b07f349dad483f8e139e977418bba9d3e7450885d536",
@@ -979,8 +983,8 @@
    "size": 9816
   },
   "core/nuupdate.php": {
-   "sha256": "710029fe88b3b6a62060c5e7d228e7b5d1c80ca65cbb296358cf08e7ce7e33b6",
-   "size": 57876
+   "sha256": "1f7efc3d6bcd28eccab5b1f0af38e1b9a427e1b1fb0c1e482a631589ba753b49",
+   "size": 58591
   },
   "core/nuupload.php": {
    "sha256": "3967f979c1834e952da755897413035b2c9a6050956bf669a97b4bcf948eba58",
@@ -1051,8 +1055,8 @@
    "size": 239537
   },
   "docs/nunext-tutorial.htm": {
-   "sha256": "9cefc4a60e2c625292158dd34c4da727b24c04ac8d9cf2bf312b55cdcf0d287d",
-   "size": 106009
+   "sha256": "1dd1a44bf907dc397efdaf8d26c3db497f550dbc0948899836e6dc69a7793c3e",
+   "size": 106403
   },
   "docs/pages/01-00-overview.htm": {
    "sha256": "076a27ad6554df31895a14b2309933a79d1c4de3b3513e536c3c961617e14ee8",
@@ -1075,8 +1079,8 @@
    "size": 29229
   },
   "docs/pages/01-05-copy-files.htm": {
-   "sha256": "6a51a9087eecbcc0c61ad71714ac4455d07ca77a4247766ad41f425da1c465df",
-   "size": 22201
+   "sha256": "88f9820a3347644de16c1d16718f9897f768ddc16499c79e81e68a2c79b2dba4",
+   "size": 22476
   },
   "docs/pages/01-06-tutorial-doc.htm": {
    "sha256": "50d1851d3b6e0ee74a24361bd1f663054993531c196682da464323f468eef3e5",
@@ -1159,8 +1163,8 @@
    "size": 10340
   },
   "docs/pages/04-03-builder-work.htm": {
-   "sha256": "56fb89f233395a583ff5c182ee55704c1af55d56f296aee6cbfede0bfaf8227c",
-   "size": 25216
+   "sha256": "364ff82f7c57ce8a71ddfc371da90b1a96c25b9d2a9be6f1a4529dafb7d9b2f2",
+   "size": 25462
   },
   "docs/pages/04-04-form-drafts.htm": {
    "sha256": "724025e47d69b08acbc69f87c5b9217d28777e1128a978855f21c89bb726d97f",
@@ -1231,8 +1235,8 @@
    "size": 4418
   },
   "docs/pages/07-01-signin-methods.htm": {
-   "sha256": "7bc8b395deff78123831bfa6949848ab78510008eadd7082850e1410bc6835a4",
-   "size": 10177
+   "sha256": "6b4494532d22aeea3ee8a207544f8a9b739695f7236dacaec87468bb5a299571",
+   "size": 10603
   },
   "docs/pages/07-02-access.htm": {
    "sha256": "acd92a922fbcbadf067b2b4619c7eecc135ed8e1ee2c08a36d62df58aecfe438",
@@ -1275,12 +1279,12 @@
    "size": 2264
   },
   "docs/pages/08-01-users.htm": {
-   "sha256": "158e5b90f0c23af40e76acb37f00a5939016636e1c355856aeb694d1c287ff26",
-   "size": 18625
+   "sha256": "0e2505b95551e2bae117ecb463e297399f1b07211405d946814e3b6ef2742541",
+   "size": 20682
   },
   "docs/pages/08-02-config.htm": {
-   "sha256": "2e4c941b109257ee541d93cd0a5fb01ed8a17d12d51ac09d600e70c2305ef6f8",
-   "size": 21039
+   "sha256": "b7ffacf9338be1c9c490e76bf88468dcae9d781318a3791b9232c94cec626193",
+   "size": 21229
   },
   "docs/pages/08-03-configfile.htm": {
    "sha256": "1b3db96d73b8e3d0669373c28184b9d67e67827eb2864779f3a10b4c6596247a",
@@ -1323,8 +1327,8 @@
    "size": 1437
   },
   "docs/pages/08-13-selftest.htm": {
-   "sha256": "4ac73edd1eb235cef883ecac6b16c180649b6597fdd0c7a9e7e24467ba0fd975",
-   "size": 3902
+   "sha256": "d99f4d67ecc1a988f12aa770d221c9103ea33cea9f0839a07ccdcf773234d491",
+   "size": 4387
   },
   "docs/pages/08-14-innodb.htm": {
    "sha256": "443f1e295935ae6b1b36045b0ec772d4beb1d4341b713dd593bced15ba1ca016",
@@ -1435,8 +1439,8 @@
    "size": 3343
   },
   "docs/pages/11-04-bundled-libraries.htm": {
-   "sha256": "9848e5072e4ef8e7e9760b7c02c0a4caf174d32f6687a37b36964549e2bcf574",
-   "size": 3523
+   "sha256": "da3637e2a882b7a0f8f6a1ddc3f007b4f9e9d572c01ea98639ecace1d9881698",
+   "size": 3787
   },
   "docs/pages/12-00-migration.htm": {
    "sha256": "8123b4a056b7ca28c8d8f0379d0af8200bdf250ae6681bdbd05bc81b11ab4405",
@@ -1491,8 +1495,8 @@
    "size": 73026
   },
   "install/db_changes.json": {
-   "sha256": "6d6811833b44045222839cb701d60f3f5cfe2838f633f03813c85d398883e631",
-   "size": 56968
+   "sha256": "e0cade4cf1cb69fd8db091acfe598a43024709dcaaeb4610b9f2568b86035d21",
+   "size": 57546
   },
   "install/libraries-required.json": {
    "sha256": "a75a08b03ebd23c360d482682cfeb0fa23b1ba2fe66bedc4a77b5e127dd88bf7",
@@ -1539,16 +1543,16 @@
    "size": 177
   },
   "lang/ar.php": {
-   "sha256": "52256eba4ab3bd3053f8e35b3ac8af286e4696c7c1827e47d1a0d68bdd6a9a87",
-   "size": 559903
+   "sha256": "5b7885c3c935bafe74a7b7064cc0ea812d3ab936450752272dea237659083ca6",
+   "size": 563657
   },
   "lang/de-CH.php": {
-   "sha256": "bd6cb5b4e270b1357298dc74c0743da3e212e9be78d314346071aa25bde6bd0e",
-   "size": 44546
+   "sha256": "2f43baee6845c8bf0beb84e096f966277e4e794c0c57c7b1b5dd7fd845b8d925",
+   "size": 44797
   },
   "lang/de.php": {
-   "sha256": "61e909236d65fe5ddf6d17889b85cd3454952d96bb060e6acd2e3cb11f3a4492",
-   "size": 460694
+   "sha256": "48af64efd023bd08b33725046862d1f836e5091a5c1279dc09168156a021981d",
+   "size": 463624
   },
   "lang/en-AU.php": {
    "sha256": "ada75936000a02c38cf523214ed6484c63de2b097d58d52c7306e0c4c1dc66b5",
@@ -1559,48 +1563,48 @@
    "size": 9755
   },
   "lang/en.php": {
-   "sha256": "eff36220deefee49f4e4bd5eadcdafda61dbb07bf663f5ef5503b644389b136a",
-   "size": 416664
+   "sha256": "3ef26dc7f5e72ae218527b53fcfd593a09d62eef6836a3191a9328a7631f6429",
+   "size": 419212
   },
   "lang/es.php": {
-   "sha256": "7811598a6c6701c3d6c7826d747db47db95ffd08b5d55ab1b0e7c908c190ef1e",
-   "size": 463377
+   "sha256": "842ed78ff61ee5f800c6b3265cebde6bd28e61b376eeb7c5ff6ba9a8c8a61ff0",
+   "size": 466323
   },
   "lang/fr.php": {
-   "sha256": "f7664b809921a59aeef1d207ad19a36de30b3e08bf6605f8eea3a6976d7e2870",
-   "size": 484924
+   "sha256": "43b0d928d5aa6b8327e23e233e798a2dea51dcd3372bf46bc185de6880b7f7eb",
+   "size": 488108
   },
   "lang/it.php": {
-   "sha256": "2c9e7bea8f5da7eeebcdc1b078604133d406ab0b866c6cb3d5685164a39a0f3b",
-   "size": 453418
+   "sha256": "e41241cb4ee8a1f639a8a89dde5f8794ab9a10c175a1219e8b68ca28be47638a",
+   "size": 456260
   },
   "lang/nl.php": {
-   "sha256": "626ea991090aa265fce76a5c3785321c50f50efe5a762b5966f9f2bd8a074f12",
-   "size": 452314
+   "sha256": "7def6585a5193521e9ec671f6c8c80d8b48e5911774dfd8eafecad14bd6cca4a",
+   "size": 455099
   },
   "lang/pl.php": {
-   "sha256": "9fd26b8cdb197460ee0a6232b733f9605f5f952e9a0fad5562523be3d001845a",
-   "size": 450816
+   "sha256": "55d10b8eb389177dbf776684b7cd39ac763f97f4e2e9ea2dd2a79347f60978ea",
+   "size": 453506
   },
   "lang/pt.php": {
-   "sha256": "0a3dec079d507dbc338b10a42ff568f81bcddef661c7a372418ba28999d4ccb6",
-   "size": 466532
+   "sha256": "aa2d4331449b17dc6d5b73b681cf7823622566b403b6c81c7f24b14f8c08bce4",
+   "size": 469497
   },
   "lang/ru.php": {
-   "sha256": "9c35cab8f4f3c0b5a049f74036353a725f83ce3037a65bb4c6bce3b912b350e6",
-   "size": 631552
+   "sha256": "e524a959ec10ac921e9537c1af3462b41025ec69c51d361985c3ba220565b76d",
+   "size": 635733
   },
   "lang/zh.php": {
-   "sha256": "19b1405b1dccb55e39904d0dd895109f275c81130fb6514aa15c5fcfdd698df3",
-   "size": 415970
+   "sha256": "5ba80f96d706daf1a0e34433f83730e0c2ae8f8304a7251cbcddb688db581cbc",
+   "size": 418459
   },
   "nuconfig-sample.php": {
    "sha256": "644517ef2af7f6ff6884fb544c25e2fa490c0fab90de55c7aabf96ed4d2c079c",
    "size": 11293
   },
   "nucron.php": {
-   "sha256": "b83769a888d325fdd9e0ec2eb93a890800950dc2fd8212edbc82784372e1952c",
-   "size": 11425
+   "sha256": "f65c13189c5feaeaaddb6b46d002bcc3794fc60cf570e1a8d9c57c6ed38aea88",
+   "size": 13734
   },
   "nudbadmin.php": {
    "sha256": "0a94d60cda48481c19b8b1d1edc601feee748b1d3fa1879c1f5d3c2e5d9b6ca6",
@@ -1691,8 +1695,8 @@
    "size": 13360
   },
   "pages/nuconfigfile.php": {
-   "sha256": "58aaba0209a383746b106f4042aba58ac6d2a16f889ab7f0becd71fee8857ed0",
-   "size": 12124
+   "sha256": "06826797e6e15e2a15bf9b85ec2326b224bfd2f18681a93f95fefdcc750e5383",
+   "size": 12037
   },
   "pages/nudashboardapi.php": {
    "sha256": "024c2b5fdd140900c20d12cbafaf0f694271278e97dad84dde62890306dfed44",
@@ -1707,8 +1711,8 @@
    "size": 23156
   },
   "pages/nudataexport.php": {
-   "sha256": "685d95fe936ff02ff5947273adb29a6e5a2f81fa0b2177b823593c11d67e9ee3",
-   "size": 23592
+   "sha256": "05b081f45a3f8b8b04367f39d89cd9161f2b2c66bf1a7cac380486299b368c1e",
+   "size": 23505
   },
   "pages/nudbreset.php": {
    "sha256": "89fcde8f26d145c7ffbeab11dde6338292b3303096cef36b732463ac5d2fb1db",
@@ -1751,8 +1755,8 @@
    "size": 1634
   },
   "pages/nuforgot.php": {
-   "sha256": "da02a0b38af01cacff6707fb9e5b4e865dc4161599eefbadec9685c8eafe2c25",
-   "size": 3925
+   "sha256": "6b44703f9e14f1e08347c3518aaf25b3a70019f78b2e60af66b6b43215ee47d9",
+   "size": 3998
   },
   "pages/nuform.php": {
    "sha256": "3b000da267150d67b230c4d66cb688331c819f218c5ab2fe9dc0191e81e85c92",
@@ -1791,8 +1795,8 @@
    "size": 2962
   },
   "pages/nuglobalcode.php": {
-   "sha256": "a537a642b4a29d52e40409b4036a2f26a483824836c2e0c52fee67b310603f71",
-   "size": 15976
+   "sha256": "8795505e1625b6d7e3a7a511173694d3c84da1541daeb99fa7f7337cc79a1d1d",
+   "size": 15895
   },
   "pages/nuglobalcodefile.php": {
    "sha256": "1fd04281eee46fc535ac9a62000e1cf037734d27612fc026fc63a3ac2fc93daa",
@@ -1911,8 +1915,8 @@
    "size": 20844
   },
   "pages/nuprocedures.php": {
-   "sha256": "e1c46a1aa6c62d801342411e5ef2f187fd008acd9ef03a5ca49f6593ada9d495",
-   "size": 28389
+   "sha256": "024e86a9f05e51e311d0dee7119d167afa650ae9134240b155b8a221fd950ed4",
+   "size": 28301
   },
   "pages/nuprompts.php": {
    "sha256": "4c0112412f8de89e026f5b1ebc0a43f79a0f3ac15aa6a90ff62bcd78299e118d",
@@ -1947,8 +1951,8 @@
    "size": 21154
   },
   "pages/nureset.php": {
-   "sha256": "39c559fa39cd1c50badb218994506e6df6e4b4d3937d600a3c57099888e47d85",
-   "size": 3307
+   "sha256": "a656591730f8b36a82b9580c51e0ec2eff2a8a63b3be36f9d9c57361b71ec455",
+   "size": 3886
   },
   "pages/nusample.php": {
    "sha256": "5251703b83d202ed3bff22db08d2978cee48391a3a1c60260c89a61415dc946d",
@@ -2019,16 +2023,16 @@
    "size": 7288
   },
   "pages/nuupdate.php": {
-   "sha256": "d3cf19ef666cf592007e2d5c0c2f1c717b1e89d85d56af7c9e768f63bc01b856",
-   "size": 97636
+   "sha256": "b226f6ff5968a5773be9b81034a2dddd41084d8b4e78b90f2c40d0978ee3ff34",
+   "size": 98744
   },
   "pages/nuupload.php": {
    "sha256": "012a7216e75ea91106e80483e006bb8a270a27755d57922833838089e3359cab",
    "size": 4206
   },
   "pages/nuuser.php": {
-   "sha256": "060dd28e69001247b9c987aeef384986356f95683dcc749f934de1d9c3207ac4",
-   "size": 85205
+   "sha256": "0cdfaf666178f10a9767588e44ed116eae72bb7cc2fd27a49c80cc4e403a5e68",
+   "size": 91274
   },
   "pages/nuuserfields.php": {
    "sha256": "f6afc0afd016fc9be89e11c4f21168870ba94ba0180f2faa496ad1038cf6edcc",
@@ -2050,199 +2054,199 @@
    "sha256": "300716adfb08556a5711a4ac3b5f7ee155be2cf8a4d19bbdf5a9e8deb2c1c762",
    "size": 1388
   },
-  "vendor/bundled/acorn-8.15.0/LICENSE": {
+  "vendor/bundled/acorn-8.19.0/LICENSE": {
    "sha256": "76a876cf886ff9be2a8b5e2e86514fed06223c8c9f0c1e9ee9606e93841e00b7",
    "size": 1099
   },
-  "vendor/bundled/acorn-8.15.0/acorn.min.js": {
-   "sha256": "1d4f8eb71658fb69e96151c2cd0bf775426f103975fc7fa63514f18007774960",
-   "size": 116141
+  "vendor/bundled/acorn-8.19.0/acorn.min.js": {
+   "sha256": "81e10e7df6cc6649b3067ffba45f914e7b0d2694308af6988f54f5f268b779a4",
+   "size": 118485
   },
-  "vendor/bundled/apexcharts-4.4.0/LICENSE": {
+  "vendor/bundled/apexcharts-4.7.0/LICENSE": {
    "sha256": "4db98d106f5a157d60b24d49a4852156542ef58e08f1034e8a3b6d63e53e2241",
    "size": 1076
   },
-  "vendor/bundled/apexcharts-4.4.0/apexcharts.css": {
-   "sha256": "252e37722a7ea9e8937724fb0137ffcc08cd1df596b668857d5530f2951b889e",
-   "size": 14574
+  "vendor/bundled/apexcharts-4.7.0/apexcharts.css": {
+   "sha256": "4c1ca6a895d0bd72b17becfedf275460112b964145bb5d7473916389507ca7e3",
+   "size": 14573
   },
-  "vendor/bundled/apexcharts-4.4.0/apexcharts.min.js": {
-   "sha256": "f4f5a1cfe4f5a5f9092968b011eb26d775f69289285ec2a8d9003be067780990",
-   "size": 574008
+  "vendor/bundled/apexcharts-4.7.0/apexcharts.min.js": {
+   "sha256": "c46de876c375aab3fbc23d82418f7d77251403335808983d2b832d4a38481948",
+   "size": 576420
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ar.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ar.json": {
    "sha256": "735011f4ffca4af74834d69c8dda67f78bc275b70fbf3b479fcf79c7bb63a5cc",
    "size": 1004
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/be-cyrl.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/be-cyrl.json": {
    "sha256": "6483c32613ce09c0fd140299e6e740458a771c51a94ea8a630ff8c6bde0200d3",
    "size": 1335
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/be-latn.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/be-latn.json": {
    "sha256": "42d75f59d00d4b82c9f61fb1c579d2387fcd5aed60a8222235559ef046d2868f",
    "size": 1072
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ca.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ca.json": {
    "sha256": "b1bd1533dcacfea9c007f71307e03516c0adad5388355766b365e6883bb5dc29",
    "size": 1013
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/cs.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/cs.json": {
    "sha256": "3ff7ca1bf37184b57cf0d1c5463e0140a644fce69e238832d1a878765ecc4e88",
    "size": 1011
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/da.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/da.json": {
    "sha256": "e8498ada60846d37aa0ae3f2154369e79ebc414c4a39b54f0dd260e166653acd",
    "size": 976
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/de.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/de.json": {
    "sha256": "be8a4371536508a99621299308ab1aee0e1fe52a80d186981b800180586e11a6",
    "size": 1006
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/el.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/el.json": {
    "sha256": "6ae9d5cc76f60278a9e657249b68dc09caeb315557e6eb332231dd27db4f4ba5",
    "size": 1324
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/en.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/en.json": {
    "sha256": "2ca9488956d9b3385319b76a71ad97ab5e192d099de24c438b5f9928818c32fb",
    "size": 983
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/es.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/es.json": {
    "sha256": "7430ea1f6b0ee12e67f04a175f1ebdc0f9608e15e4872cbe4ca814f625ce5c6b",
    "size": 1001
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/et.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/et.json": {
    "sha256": "744392592739ad383d8b5f5a6aedbaf2f595318596a1df54219b6c905a17fe83",
    "size": 1055
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/fa.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/fa.json": {
    "sha256": "de4beca5ea8e80de98b600e02fc58467781e86b5c67d39c4a9d2f9489ee91509",
    "size": 1170
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/fi.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/fi.json": {
    "sha256": "6eeb7b7b2113c68b35d3194de204df7a91db35d816c5fe695c8e1b2e34fbddba",
    "size": 1030
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/fr.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/fr.json": {
    "sha256": "cd0ee90773c5ab6c23fd203947e470bf29abb8ce61638d81d2303507f37e4512",
    "size": 1071
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/he.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/he.json": {
    "sha256": "64c140043d657a1f986c437dde75de6d65c73951e230d41776501c57d5bdb53e",
    "size": 1129
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/hi.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/hi.json": {
    "sha256": "712ead7f912099639275c00c3be92ba1087ec6400b5f65d0363c71b50ac6e0d8",
    "size": 1508
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/hr.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/hr.json": {
    "sha256": "51cfc6741d84e43e5581209de317a19a19c4cde8d531f0acc18742fb7b379686",
    "size": 1035
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/hu.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/hu.json": {
    "sha256": "fee6205761d78ab0a6cc40fe39511d1260001678c3951e80b1f40c27b19410ec",
    "size": 1164
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/hy.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/hy.json": {
    "sha256": "d631851794e9e69765b54d819a7fde46c85d50c0dfd34debb3582d920a725b54",
    "size": 1323
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/id.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/id.json": {
    "sha256": "1c91913a787aa10e9f094f17108f7d66720fb8db8e0cf0215ccb2249fd5693dc",
    "size": 917
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/it.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/it.json": {
    "sha256": "27b98864a9432bfc6630ee0da41eee1cf2a39088767f421f2d283bac3051f996",
    "size": 996
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ja.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ja.json": {
    "sha256": "0c345fdb6a622c584f924b27c9dd57de6661b819d6e68730f85d1bc0b0898e78",
    "size": 1028
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ka.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ka.json": {
    "sha256": "a540650ffe3b5310d019cd12ae204854899687b532218e42c21c24988be10d13",
    "size": 1618
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ko.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ko.json": {
    "sha256": "5e9e04cb5e5107222ca0e2637024723bbbeb14412fe20db6bb36cd72995b69c0",
    "size": 1002
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/lt.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/lt.json": {
    "sha256": "e07a22955bcba2c89a1be347467e4bbd9a749df012a3f922e52ca91c6987ab1d",
    "size": 1064
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/lv.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/lv.json": {
    "sha256": "62f712d13b6d528855370065cfd65cb4db9fbf86ff45ce5ec8d8572bdae61601",
    "size": 1122
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ms.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ms.json": {
    "sha256": "ac591ea0137c334c9ba6c8a0a410dd63787b929b416125700626d28ccd7cefcf",
    "size": 1366
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/nb.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/nb.json": {
    "sha256": "183c54adef45d3768aa6cf59475e1c8c8370b67a767c164390d32962bb9aa700",
    "size": 968
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/nl.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/nl.json": {
    "sha256": "0920a6304869b36cfd884fdf9439fbeb44a0975aa9e3fdbbf8d2b1e82aaf4b8e",
    "size": 1054
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/pl.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/pl.json": {
    "sha256": "94c39ecc597677b5bc936b3967d17539f665cfe90e7b1f37ebc49dc9266da375",
    "size": 1012
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/pt-br.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/pt-br.json": {
    "sha256": "a814fccc03612664704e41b7dec9ed01a8ecbbc121e11379a111077a013ccc1a",
    "size": 989
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/pt.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/pt.json": {
    "sha256": "ef9150e19ba1916b4bf28dc0e93ca9a05f18b09b3b008b21041fb5fc3e075ae0",
    "size": 1029
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/rs.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/rs.json": {
    "sha256": "b28a385d7a0ef0f58a892b44c97818aa1c17280e8b34538a41756058f7001ec1",
    "size": 998
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ru.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ru.json": {
    "sha256": "29419f9cb18657e2cbd3e912bd2b75ce88c737967ba38142aad46ac8392cec33",
    "size": 1268
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/se.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/se.json": {
    "sha256": "74671ca064712ca88a90e4db8a6859fb9e196ec83c650f5dee22ae09c9cd0876",
    "size": 986
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/sk.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/sk.json": {
    "sha256": "23caef5fa2e45a86ff30400a82ab9d0a5c0232642c3c7ca09f22867848cf7934",
    "size": 1006
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/sl.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/sl.json": {
    "sha256": "ac8521ed1d8989dca217477e5cfbdfac07e290a1dbae17037c8d2629d4f63a24",
    "size": 982
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/sq.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/sq.json": {
    "sha256": "3e73909d8f0d4d56618d3b28492b26628b89d2321106cfa64b67cab385eeef3c",
    "size": 999
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/th.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/th.json": {
    "sha256": "ab9f4af6223baa884bb9d16678fff13b37233ee98cbb0bb6292dbc5f71a325d8",
    "size": 1484
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/tr.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/tr.json": {
    "sha256": "22450559be105671b676063b3804463aca53d6a1452cb40502276465f8177a86",
    "size": 1011
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/ua.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/ua.json": {
    "sha256": "0c473728f8b11013443e9c3e0cb1413eeccb94e013cf8274eadba424d2b4e097",
    "size": 1277
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/vi.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/vi.json": {
    "sha256": "428af0564439a7322f6622f8ed5fba149be001c06bfe6ca8dbea1decf56a0787",
    "size": 1142
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/zh-cn.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/zh-cn.json": {
    "sha256": "de063e3fae0184747fec365801204257126b20ef23f20a2e9b743e3d0d38eb04",
    "size": 1055
   },
-  "vendor/bundled/apexcharts-4.4.0/locales/zh-tw.json": {
+  "vendor/bundled/apexcharts-4.7.0/locales/zh-tw.json": {
    "sha256": "bed728f2e86b36230cfe1e9ea7f3dcea5cbbca6b68558f4286e36d0cb459a062",
    "size": 1055
   },
@@ -2274,49 +2278,49 @@
    "sha256": "2b7689746f87e0beeae25338bc021dd2515c2f6f003f3d3d064d878d380b2150",
    "size": 134012
   },
-  "vendor/bundled/codemirror-5.65.21/LICENSE": {
-   "sha256": "168a4becc968f5001e2ee2e0291b6e4daabafc1894a11ade1e11d56e96096e07",
-   "size": 1113
+  "vendor/bundled/codemirror-6.43.15/LICENSE": {
+   "sha256": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07",
+   "size": 1118
   },
-  "vendor/bundled/codemirror-5.65.21/codemirror-addons.js": {
-   "sha256": "e746e452676565b0ae4355bc52c81245d8e084e8c477ca8959900c21863e8074",
-   "size": 60715
+  "vendor/bundled/codemirror-6.43.15/codemirror-addons.js": {
+   "sha256": "12842c0771000da76d0b0b32d29077714c1f2b0b358d1208ca09605f2509d52a",
+   "size": 150
   },
-  "vendor/bundled/codemirror-5.65.21/codemirror-bundle.js": {
-   "sha256": "753646cb5afca2e874c80a5ab9d200c3e6aa19270348876b22ebddd45799ae0c",
-   "size": 629760
+  "vendor/bundled/codemirror-6.43.15/codemirror-bundle.js": {
+   "sha256": "447162c76c9f122c1a033a83b11d2f6829c9793a51724645bbd22572d9e9e79d",
+   "size": 693203
   },
-  "vendor/bundled/codemirror-5.65.21/codemirror.css": {
-   "sha256": "ad3be64be77d95cbe9e2741aa9886b16f6dd38ceda41a3f7581a6ab231d6bf12",
-   "size": 9411
+  "vendor/bundled/codemirror-6.43.15/codemirror.css": {
+   "sha256": "7e3bd1716ef7117d279de9918d28151c8439c6becde67614edb3e71d259fef0b",
+   "size": 6126
   },
-  "vendor/bundled/fontawesome-7.0.0/LICENSE.txt": {
-   "sha256": "9a306fac2e741079be4379566e87cd7cc184d0b66ce69481be1265338c8006cc",
-   "size": 903
+  "vendor/bundled/fontawesome-7.3.1/LICENSE.txt": {
+   "sha256": "20c6f40715a567c97b80f6944beb8bb325835cab47ea7dcab89ee3b8e077eced",
+   "size": 7427
   },
-  "vendor/bundled/fontawesome-7.0.0/css/all.min.css": {
-   "sha256": "547a97285861331729b9b61ff718967428a88c46d8f4d7b14388e1f00c5bbdc3",
-   "size": 74185
+  "vendor/bundled/fontawesome-7.3.1/css/all.min.css": {
+   "sha256": "e0b69df26e19596d4b81bf7eb0c54b6047e7221ec18d5d4d40c11eefd3ef8a4b",
+   "size": 90336
   },
-  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-brands-400.woff2": {
-   "sha256": "a288b58f2364e3b318277c20f4aa96889b875bf2595776ba3a0c1adc800c2d3c",
-   "size": 101088
+  "vendor/bundled/fontawesome-7.3.1/webfonts/fa-brands-400.woff2": {
+   "sha256": "ff66d1cfb67dbe3da432bbe36572cabfa4eef0e591303c2cba111474ba1d15bc",
+   "size": 115420
   },
-  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-regular-400.woff2": {
-   "sha256": "3454c1d0ec7b4d90b45b3379ce229c49442041bc23c40644e4c0360ec043284c",
-   "size": 18892
+  "vendor/bundled/fontawesome-7.3.1/webfonts/fa-regular-400.woff2": {
+   "sha256": "f4722d10b9e1b41eefe3b51a026312ee1970edb7782f94b0080d3d475945734c",
+   "size": 19512
   },
-  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-solid-900.woff2": {
-   "sha256": "2a84ae47aa8183257edf08360986803a809a2ea0c34c3c7229562c62c15c9ff2",
-   "size": 113108
+  "vendor/bundled/fontawesome-7.3.1/webfonts/fa-solid-900.woff2": {
+   "sha256": "24e5fae26b41c08b2df81c91669f5aaae71d81a84a4713fc56b5c621b78dd456",
+   "size": 119488
   },
-  "vendor/bundled/fontawesome-7.0.0/webfonts/fa-v4compatibility.woff2": {
-   "sha256": "1e397e3f5af8f20cf20b2f7b31a13814c22a61595e47dbabec188e03b988ed58",
-   "size": 4132
+  "vendor/bundled/fontawesome-7.3.1/webfonts/fa-v4compatibility.woff2": {
+   "sha256": "c776ee1f1fe21cd72195e91de7afd5c9dbd007e9d06016254d65fbcc091398ca",
+   "size": 4168
   },
   "vendor/bundled/formatter/LICENSE-prettier": {
-   "sha256": "ac068b6510d1c9fea513b09bd6d7cee5c38dc21b2dc9ab11f6247d499f6008c9",
-   "size": 205606
+   "sha256": "b0f2417199889f1c0d28ec4e0244eacf1a15de5819d61f641dd7d8f45153ac9c",
+   "size": 1065
   },
   "vendor/bundled/formatter/LICENSE-prettier-plugin-php": {
    "sha256": "1415f351c7f685327813b6ba4614a94080ca355476effc1f12a2da485949f9c9",
@@ -2327,24 +2331,24 @@
    "size": 54387
   },
   "vendor/bundled/formatter/beautify-html.min.js": {
-   "sha256": "6a055eceb56038f8c68d469bb9c8cbba13b32d8b067424508d7c91d31e0df242",
-   "size": 45573
+   "sha256": "5a37f06b807ca4c4a4766ceb3be2f135d1126322f274e72bded0f26ee6d16887",
+   "size": 45986
   },
   "vendor/bundled/formatter/beautify.min.js": {
-   "sha256": "40789fde39e23977976d6e5ca7f6d9ec294bbb0462f5e6563e64001b76b802eb",
-   "size": 74968
+   "sha256": "54b80cfbe739da9aaf7f26e12d929e5ff80f02604eefb9ebc5f7c085861c1be5",
+   "size": 68073
   },
   "vendor/bundled/formatter/prettier-plugin-php.js": {
-   "sha256": "9c9fd544c256b339cedf0fb6db7d079496a7de3158a094ebd7e620b017217afd",
-   "size": 169832
+   "sha256": "7e1f93d34c972292fd182ef68f5dfbcbf93bf6fdd502b57fe10caff91834ddb2",
+   "size": 182726
   },
   "vendor/bundled/formatter/prettier-standalone.js": {
-   "sha256": "0127d72f138eec832f4068ab60f4531d24d3060b0ece9739cc36b91b1c1d7dd4",
-   "size": 79270
+   "sha256": "dce9a9923a5957a8f9a9cdc8902167cd3061431790edcb2bccef55626500002b",
+   "size": 82491
   },
   "vendor/bundled/formatter/sql-formatter.min.js": {
-   "sha256": "08e9c41edd55ef1c98e6f460ec8087d4329208c7116712f840ac688dae435c5c",
-   "size": 274620
+   "sha256": "f8aa4c9e197ff4ea4596e2f1105ac83248004d3dcb28a26491c8ad626de03aec",
+   "size": 319587
   },
   "vendor/bundled/jquery-4.0.0/LICENSE.txt": {
    "sha256": "d4db9ebe6f29f5168eac45ad713f055623ac5d0dcd5ba92da23d650ae012020d",
@@ -2399,8 +2403,8 @@
    "size": 87533
   },
   "vendor/bundled/libraries.json": {
-   "sha256": "c2e3b8ce630f02a0572ea762bcc26018ba4971a7c8df0c87bfd65a81a7094d95",
-   "size": 2930
+   "sha256": "cf3eed354707cfd9cd6593290ad94faa4fc144f798b41a76a4a34ba3e4e3b4b9",
+   "size": 3770
   },
   "vendor/bundled/qrcode-generator-2.0.4/qrcode.js": {
    "sha256": "79ec86f82856005b1c887905cfccfcfbec3821ca61c7fd5a952faa5f778f791c",
@@ -2449,6 +2453,86 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.902",
+   "title": "Release gate",
+   "text": "- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, OWASP ZAP) before the push.\n- README: Reset password by the administrator; help: Sign-in methods lists the administrator's reset; to-do list: what to verify\n  for 0.8.887–0.8.901.\n- Library pack TinyMCE 8.10.1 in the GitHub release \"libraries\" (Settings → Updates & libraries → Libraries)."
+  },
+  {
+   "version": "0.8.901",
+   "title": "Reset password by the administrator",
+   "text": "- User form → Login credentials: Reset password… The user gets a personal link to set a new password – valid 24 hours, usable\n  once; a new link replaces older ones. The administrator never sees or chooses the password (best practice of NIST SP 800-63B /\n  OWASP). In the dialogue:\n  - Send the link by e-mail (with a preview of the e-mail) or show the link once in the form to pass it on yourself.\n  - Block the current password now (for an account that may be compromised): the old password stops working at once, the user is\n    signed out everywhere, an open one-time login link is removed and, if chosen, the passkeys too.\n  - Two-factor authentication stays as it is.\n- After a password reset (from the administrator's link or from \"Forgot password?\") every other session of the user ends and the\n  user gets an e-mail \"Your password was changed\".\n- Safeguards: save right on users; not for the own record, demo users, API service users or expired accounts; users with\n  admin-equivalent rights only by the globeadmin; the administrator confirms the own password when the last confirmation is too old;\n  at most five links per user and hour; everything logged (Password reset link, Password blocked, Password reset).\n- E-mail text: own template nu_password_reset (user's language first), else the new read-only templates nu_password_reset_template\n  (group nunext, one per language, database step 0036), else the built-in text; placeholders as for the welcome e-mail."
+  },
+  {
+   "version": "0.8.900",
+   "title": "Breadcrumb closer to the top bar",
+   "text": "- Less space above the breadcrumb on laptops and tablets (from 576 px wide: 10 px instead of 24 px between the top bar and the page),\n  so more of the page fits on smaller screens; phones keep their 4 px."
+  },
+  {
+   "version": "0.8.899",
+   "title": "Code snippets: inline code editor, read-only fields, first field focus",
+   "text": "- Code snippets: Source code is edited in place with the code editor (line numbers, highlighting, toolbar with undo / redo, search,\n  replace, comment, format, full screen, syntax check, Insert menu) instead of a plain text box. The Language field switches the\n  highlighting at once; the Language decides also when the form's own code marks the field as JavaScript.\n- Forms with a fixed layout: a read-only field whose value is cut (e.g. \"Updated on\" of code snippets) grows to the right as far as the\n  layout has room; a value that is still cut shows in full as tooltip.\n- Forms: the first field gets the focus again when a record opens – before, the first searchable select got it and opened its list\n  (code snippets: \"Selectable in\").\n- The PHP code window of form pages has PHP highlighting again with CodeMirror 6."
+  },
+  {
+   "version": "0.8.898",
+   "title": "Code editors on CodeMirror 6 (trial)",
+   "text": "- Code editors on CodeMirror 6 (trial): every code editor (procedures, Global code, nuconfig.php, data export SQL, design mode code\n  window and workspace, the code dialog of form pages, File Manager) now runs on CodeMirror 6.43.15 instead of CodeMirror 5.65.21.\n  A small adapter keeps the CodeMirror 5 calls nuBuilder Next uses, so the toolbar (undo / redo, search, replace, comment, invisibles,\n  format, full screen, syntax check), the Insert menu, suggestions while typing and the # menu work as before. Search (Ctrl+F) is\n  CodeMirror 6's search panel (next / previous / all, match case, regexp, whole word, replace), with texts in the user's language.\n- Library folder vendor/bundled/codemirror-6.43.15 (one script file; codemirror-addons.js stays as an empty file for custom pages that\n  load it). CodeMirror 5 is no longer in the package; updated servers keep its folder.\n- Strict Content Security Policy: CodeMirror 6's own styles come as a constructed style sheet (no <style> element), so the editors\n  keep their layout on pages without 'unsafe-inline'."
+  },
+  {
+   "version": "0.8.897",
+   "title": "Notes",
+   "text": "- Notes only: the open question about CodeMirror 6 corrected – nuBuilder Forte uses the Ace editor, not CodeMirror, so a later move\n  to CodeMirror 6 would only touch nuBuilder Next's own code editors."
+  },
+  {
+   "version": "0.8.896",
+   "title": "Formatters and ApexCharts 4.7.0",
+   "text": "- Code formatters of the editors updated: js-beautify 1.15.4 → 2.0.3 (JavaScript, HTML, CSS – `<script type=\"importmap\">` is now\n  formatted as JSON), Prettier 3.3.3 → 3.9.10 with @prettier/plugin-php 0.25.0 → 0.26.0 (PHP) and sql-formatter 15.6.4 → 15.9.0 (SQL).\n  The same code comes out formatted as before.\n- ApexCharts 4.4.0 → 4.7.0 (charts of dashboards and of form code with $nuConfigIncludeApexCharts). 4.7.0 is the last version under the MIT\n  licence: from 5.0 ApexCharts is dual-licensed – free only for organisations below 2 million USD revenue, and a platform that others\n  build on needs a paid OEM licence – so nuBuilder Next stays on 4.x for now. The old folder vendor/bundled/apexcharts-4.4.0/ is no\n  longer used after the update."
+  },
+  {
+   "version": "0.8.895",
+   "title": "Acorn 8.19.0",
+   "text": "- Acorn 8.15.0 → 8.19.0 – the JavaScript parser of the syntax check in every code editor. The newer versions know Unicode 18 and\n  reject a few more kinds of invalid code (e.g. `new super()`, a bare arrow function as the condition of `? :`, `**` after an arrow\n  function); valid code is checked as before. The old folder vendor/bundled/acorn-8.15.0/ is no longer used after the update."
+  },
+  {
+   "version": "0.8.894",
+   "title": "PHPMailer 7.1.1",
+   "text": "- PHPMailer 6.10.0 → 7.1.1 (library pack). 7.1 makes several PHPMailer settings harmless that were not sanitised before (security fix)\n  and checks the Encoding value strictly; 7.0 changed only code that extends PHPMailer's classes – nuBuilder Next does not. New\n  installations get 7.1.1 from nunext.zip; existing ones see it under Update → Libraries once the pack is in the GitHub release\n  \"libraries\" (pack and new index given to the owner to upload there)."
+  },
+  {
+   "version": "0.8.893",
+   "title": "Font Awesome 7.3.1",
+   "text": "- Font Awesome 7.0.0 → 7.3.1 (the newest release, from the project's GitHub release). nuBuilder Next uses it for the \"fa fa-…\" icons of\n  forms only when nuBuilder Forte's own copy is not found; 7.3.1 keeps every icon name of 7.0 and adds new ones. After the update the\n  old folder vendor/bundled/fontawesome-7.0.0/ is no longer used and can be deleted by hand."
+  },
+  {
+   "version": "0.8.892",
+   "title": "Pack repositories",
+   "text": "- Update → Libraries, library packs: an icon after each name opens the library's own repository on GitHub in a new tab (TCPDF,\n  PHPMailer, TinyMCE, phpMyAdmin, Adminer, Uppy, PhpSpreadsheet); a click on the name still ticks the row."
+  },
+  {
+   "version": "0.8.891",
+   "title": "Library links to GitHub",
+   "text": "- Update → Libraries: \"GitHub\" in the column Available is a link – it opens the GitHub release with the library packs in a new tab.\n- Update → Libraries → card \"Libraries · In the package\": the name of each library opens its project page on GitHub in a new tab\n  (Bootstrap, jQuery, Tom Select, CodeMirror, Font Awesome …)."
+  },
+  {
+   "version": "0.8.890",
+   "title": "ESLint update",
+   "text": "- Automatic checks on GitHub: ESLint (the JavaScript check) moved from 9.17.0, which npm marks as no longer supported, to 9.39.5 – the\n  maintained release of version 9. No new findings."
+  },
+  {
+   "version": "0.8.889",
+   "title": "Self-test on the command line and in CI",
+   "text": "- Self-test on the command line: `php nucron.php selftest [--sample] [--groups=…] [--lang=en] [--json]` runs the checks of Admin tools\n  → Self-test as the globeadmin (developer mode only, as on the page); `--sample` installs the sample application first when it is\n  missing. Exit code 1 when a check failed. Without the PDF library (TCPDF) the report check is now skipped instead of failed.\n- Automatic checks on GitHub: both the MySQL and the SQL Server job run the self-test on their new installation (saves, sub-form rows,\n  deletes, audit trail, rights and notifications on the real database), and the SQL Server job now counts – a failure there turns the\n  run red."
+  },
+  {
+   "version": "0.8.888",
+   "title": "PHP messages fail the GitHub checks",
+   "text": "- Automatic checks on GitHub (MySQL and SQL Server): the test web server now runs with PHP warnings switched on, and a new step reads\n  its log after the smoke test – a PHP warning, notice or deprecation of any request (also of background JSON calls) fails the job.\n  Before, such messages went unseen while the pages still answered 200."
+  },
+  {
+   "version": "0.8.887",
+   "title": "Duplicate language key",
+   "text": "- Language files: the key file_download was written twice in the English and German files (same text, so nothing changed on screen);\n  the second copy is removed, and dev/check_lang.php now reports any key that appears twice in one language file."
   },
   {
    "version": "0.8.886",
@@ -6952,37 +7036,37 @@
   },
   {
    "name": "CodeMirror",
-   "version": "5.65.21",
-   "dir": "codemirror-5.65.21",
+   "version": "6.43.15",
+   "dir": "codemirror-6.43.15",
    "license": "MIT"
   },
   {
    "name": "Acorn",
-   "version": "8.15.0",
-   "dir": "acorn-8.15.0",
+   "version": "8.19.0",
+   "dir": "acorn-8.19.0",
    "license": "MIT"
   },
   {
    "name": "js-beautify",
-   "version": "1.15",
+   "version": "2.0.3",
    "dir": "formatter",
    "license": "MIT"
   },
   {
    "name": "sql-formatter",
-   "version": "15.6.4",
+   "version": "15.9.0",
    "dir": "formatter",
    "license": "MIT"
   },
   {
    "name": "Prettier",
-   "version": "3.3.3",
+   "version": "3.9.10",
    "dir": "formatter",
    "license": "MIT"
   },
   {
    "name": "@prettier/plugin-php",
-   "version": "0.25.0",
+   "version": "0.26.0",
    "dir": "formatter",
    "license": "MIT"
   },
@@ -6994,14 +7078,14 @@
   },
   {
    "name": "ApexCharts",
-   "version": "4.4.0",
-   "dir": "apexcharts-4.4.0",
+   "version": "4.7.0",
+   "dir": "apexcharts-4.7.0",
    "license": "MIT"
   },
   {
    "name": "Font Awesome",
-   "version": "7.0.0",
-   "dir": "fontawesome-7.0.0",
+   "version": "7.3.1",
+   "dir": "fontawesome-7.3.1",
    "license": "CC-BY-4.0 / OFL-1.1 / MIT"
   }
  ],
@@ -7096,7 +7180,7 @@
   ],
   "js_deprecated": []
  },
- "last_gate": "0.8.886",
+ "last_gate": "0.8.902",
  "gated": true,
  "requires_libs": {
   "tcpdf": {
@@ -7120,5 +7204,5 @@
    "needed": false
   }
  },
- "signature": "7dQeS7vLpINPvz86jPkXV1odTxYOHjF3luprrKWWisIAtD50pgXVFD0GQmspCxAFXWjOdTYe1vG9KQpdmrcNCA=="
+ "signature": "O19jcA/0ekwFVPHk6uw8S5metoXWKvAX7olxYpJ0voYV33u1SAXYgCrZYlWA8mL6Zr1SjSi2p/106Ns1us9SDQ=="
 }

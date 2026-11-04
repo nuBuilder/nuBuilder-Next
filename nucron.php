@@ -35,6 +35,12 @@ declare(strict_types=1);
  * Integrity check of the database (0.8.698) – what would make an update fail or leave data broken:
  *     php nucron.php integrity [--json]      Exit code: 0 = no problems (warnings / notes allowed), 1 = problems found
  *
+ * Self-test (0.8.889, only with $nuConfigDevMode = true – test installations; the form checks write into the sample application and clean up):
+ *     php nucron.php selftest [--sample] [--groups=system,data,forms,rights,features] [--lang=en] [--json]
+ *   --sample  install the sample application first when it is missing (the form / rights checks are skipped without it)
+ *   --lang    language of the titles (an installed one; default: the installation's fallback)
+ *   Exit code: 0 = no failed check (warnings / skipped allowed), 1 = a check failed, 2 = wrong call.
+ *
  * Reset database (0.8.628, only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
  * Forte (4.x) SQL file (nubuilder4.sql or a complete dump, .sql / .sql.gz / .zip) and creates nuBuilder Next's tables:
  *     php nucron.php reset --sql=<file> [--check] [--backup] [--sample] --yes
@@ -93,6 +99,26 @@ if (($args[0] ?? '') === 'passkeys') {
 	if ($n > 0) NuLog::write('passkeys_removed', NuPasskey::TABLE, '', ['user' => $who, 'count' => $n, 'by' => 'cli'], ['id' => 'cli', 'login' => 'cli']);
 	echo $n . " passkey(s) of $who removed.\n";
 	exit(0);
+}
+if (($args[0] ?? '') === 'selftest') {
+	$so = [];
+	foreach (array_slice($args, 1) as $a) if (preg_match('/^--([a-z]+)(?:=(.*))?$/s', $a, $m)) $so[$m[1]] = $m[2] ?? true; else { fwrite(STDERR, "Unknown argument: $a\n"); exit(2); }
+	if (empty(nu_cfg('nuConfigDevMode'))) { fwrite(STDERR, "The self-test needs \$nuConfigDevMode = true in nuconfig.php (test installations only).\n"); exit(2); }
+	$groups = is_string($so['groups'] ?? null) ? array_values(array_filter(explode(',', (string)$so['groups']))) : [];
+	if ($bad = array_diff($groups, NuSelfTest::GROUPS)) { fwrite(STDERR, 'Unknown group(s): ' . implode(', ', $bad) . ' – ' . implode(', ', NuSelfTest::GROUPS) . "\n"); exit(2); }
+	NuAuth::cliGlobeadmin();
+	if (is_string($so['lang'] ?? null) && NuLanguages::has((string)$so['lang'])) $_SESSION['nu_lang'] = (string)$so['lang'];
+	if (!empty($so['sample']) && !NuSample::status()['installed']) {
+		try { NuSample::install(); echo str_pad('sample', 10) . "installed\n"; } catch (Throwable $e) { fwrite(STDERR, 'Sample application: ' . $e->getMessage() . "\n"); exit(1); }
+	}
+	$res = NuSelfTest::run($groups);
+	$sum = array_count_values(array_column($res, 'status'));
+	if (!empty($so['json'])) echo json_encode(['summary' => $sum, 'results' => $res], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+	else {
+		foreach ($res as $r) echo str_pad($r['status'], 6) . str_pad($r['group'], 10) . str_pad($r['id'], 18) . str_pad($r['ms'] . ' ms', 9) . $r['title'] . ($r['detail'] !== '' ? ' – ' . $r['detail'] : '') . "\n";
+		echo 'ok ' . ($sum['ok'] ?? 0) . ', warn ' . ($sum['warn'] ?? 0) . ', fail ' . ($sum['fail'] ?? 0) . ', skip ' . ($sum['skip'] ?? 0) . "\n";
+	}
+	exit(!empty($sum['fail']) ? 1 : 0);
 }
 if (($args[0] ?? '') === 'integrity') {
 	$ic = NuIntegrity::run();

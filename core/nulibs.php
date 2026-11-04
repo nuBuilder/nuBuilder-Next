@@ -52,15 +52,15 @@ final class NuLibs
 	 * rec (ticked in the installer), use (upd_libuse_* key), min (lowest safe version, '' = none).
 	 */
 	public const SLOTS = [
-		'tcpdf'           => ['title' => 'TCPDF', 'dir' => 'tcpdf', 'web' => false, 'entry' => ['tcpdf.php', 'vendor/tecnickcom/tcpdf/tcpdf.php'], 'rec' => true, 'use' => 'pdf'],
-		'phpmailer'       => ['title' => 'PHPMailer', 'dir' => 'phpmailer', 'web' => false, 'entry' => ['PHPMailer.php', 'src/PHPMailer.php'], 'rec' => true, 'use' => 'mail'],
-		'tinymce'         => ['title' => 'TinyMCE', 'dir' => 'tinymce', 'web' => true, 'entry' => ['tinymce.min.js'], 'rec' => true, 'use' => 'wysiwyg'],
-		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db', 'db' => 'mysql'],   // 0.8.744: not offered on SQL Server (Adminer is)
-		'adminer'         => ['title' => 'Adminer', 'dir' => 'adminer', 'web' => false, 'entry' => ['adminer.php', 'adminer-*.php'], 'rec' => false, 'use' => 'db'],
+		'tcpdf'           => ['title' => 'TCPDF', 'url' => 'https://github.com/tecnickcom/TCPDF', 'dir' => 'tcpdf', 'web' => false, 'entry' => ['tcpdf.php', 'vendor/tecnickcom/tcpdf/tcpdf.php'], 'rec' => true, 'use' => 'pdf'],
+		'phpmailer'       => ['title' => 'PHPMailer', 'url' => 'https://github.com/PHPMailer/PHPMailer', 'dir' => 'phpmailer', 'web' => false, 'entry' => ['PHPMailer.php', 'src/PHPMailer.php'], 'rec' => true, 'use' => 'mail'],
+		'tinymce'         => ['title' => 'TinyMCE', 'url' => 'https://github.com/tinymce/tinymce', 'dir' => 'tinymce', 'web' => true, 'entry' => ['tinymce.min.js'], 'rec' => true, 'use' => 'wysiwyg'],
+		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'url' => 'https://github.com/phpmyadmin/phpmyadmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db', 'db' => 'mysql'],   // 0.8.744: not offered on SQL Server (Adminer is)
+		'adminer'         => ['title' => 'Adminer', 'url' => 'https://github.com/vrana/adminer', 'dir' => 'adminer', 'web' => false, 'entry' => ['adminer.php', 'adminer-*.php'], 'rec' => false, 'use' => 'db'],
 		// nuBuilder's Uppy (0.8.459): file objects with target "File System" upload with it (uppy.min.js / .css + locales/)
-		'uppy'            => ['title' => 'Uppy', 'dir' => 'uppy', 'web' => true, 'entry' => ['uppy.min.js'], 'rec' => false, 'use' => 'upload'],
+		'uppy'            => ['title' => 'Uppy', 'url' => 'https://github.com/transloadit/uppy', 'dir' => 'uppy', 'web' => true, 'entry' => ['uppy.min.js'], 'rec' => false, 'use' => 'upload'],
 		// PhpSpreadsheet (0.8.755): reading Excel / OpenDocument files (CSV import, nuNextReadSpreadsheet) – built by dev/pss_assemble.py, PHP 8.2+
-		'phpspreadsheet'  => ['title' => 'PhpSpreadsheet', 'dir' => 'phpspreadsheet', 'web' => false, 'entry' => ['autoload.php'], 'rec' => false, 'use' => 'spreadsheet', 'php' => '8.2.0'],
+		'phpspreadsheet'  => ['title' => 'PhpSpreadsheet', 'url' => 'https://github.com/PHPOffice/PhpSpreadsheet', 'dir' => 'phpspreadsheet', 'web' => false, 'entry' => ['autoload.php'], 'rec' => false, 'use' => 'spreadsheet', 'php' => '8.2.0'],
 	];
 	/** NuSecurity::libraries() name => slot */
 	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Uppy' => 'uppy', 'PhpSpreadsheet' => 'phpspreadsheet'];
@@ -572,6 +572,18 @@ final class NuLibs
 				'file' => (string)$l['file'], 'size' => (int)($l['size'] ?? 0), 'sha256' => (string)$l['sha256']];
 		}
 		return $out;
+	}
+
+	/** The project (source repository) of a pack's library on GitHub ('' when unknown, 0.8.892) – Update → Libraries, icon after the name. */
+	public static function projectUrl(string $slot): string
+	{
+		return NuLibraries::projectUrl(self::SLOTS[$slot] ?? []);
+	}
+
+	/** The GitHub page of the packs: the release with the tag "libraries" of the repository ('' for an invalid one, 0.8.891). */
+	public static function ghReleaseUrl(string $repo): string
+	{
+		return NuGitHub::validRepo($repo) ? 'https://github.com/' . $repo . '/releases/tag/' . self::TAG : '';
 	}
 
 	/**

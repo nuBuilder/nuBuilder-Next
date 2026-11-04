@@ -810,3 +810,18 @@
 			.catch(function () { save.disabled = false; err.textContent = 'Error'; err.hidden = false; });
 	});
 })();
+
+/* Password reset by an administrator (0.8.901): passkeys only together with blocking; copy button of the link shown once. */
+(function () {
+	'use strict';
+	var block = document.getElementById('pwrBlock'), pk = document.getElementById('pwrPasskeys');
+	if (block && pk) block.addEventListener('change', function () { pk.disabled = !block.checked; if (!block.checked) pk.checked = false; });
+	var b = document.getElementById('pwrLinkCopy'), f = document.getElementById('pwrLinkUrl');
+	if (!b || !f) return;
+	f.addEventListener('focus', function () { f.select(); });
+	b.addEventListener('click', function () {
+		var done = function () { var i = b.querySelector('i'); i.className = 'bi bi-check2'; setTimeout(function () { i.className = 'bi bi-clipboard'; }, 1500); };
+		if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(f.value).then(done, function () { f.select(); });
+		else { f.select(); try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ } }
+	});
+})();

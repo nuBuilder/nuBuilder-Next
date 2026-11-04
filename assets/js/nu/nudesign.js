@@ -562,7 +562,7 @@
 		cmLoad = new Promise(function (ok, fail) {
 			document.head.appendChild(el('link', {rel: 'stylesheet', href: cm[0]}));
 			var js = el('script', {src: cm[1]});
-			js.onload = function () { var ad = el('script', {src: cm[2]}); ad.onload = ok; ad.onerror = ok; document.head.appendChild(ad); };
+			js.onload = ok;
 			js.onerror = fail;
 			document.head.appendChild(js);
 		});

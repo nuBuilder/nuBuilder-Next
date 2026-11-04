@@ -32,6 +32,8 @@ return [
 	'user_lbl_tip_own' => 'Umbenannt – der eingebaute Titel ist «%s» (Einstellung %s). Nur der Titel ändert sich, das Feld bleibt dasselbe.',
 	'user_lbl_dlg' => '«%s» umbenennen',
 	'user_lbl_hint' => 'Leer = der eingebaute Titel «%s». Gilt für alle Benutzer im Benutzerformular, in der Benutzerliste und im Datenimport; nuBuilder Forte zeigt ihn ebenfalls.',
+	'pwr_intro' => 'Für das Konto «%s» wurde von der Administration das Zurücksetzen des Passworts gestartet. Mit dem Button unten lässt sich ein neues Passwort wählen.',
+	'pwr_done_text' => 'Das Passwort des Kontos «%s» wurde am %s geändert.',
 	'user_created' => 'Benutzer «%s» wurde erstellt.',
 	'user_deleted' => 'Benutzer «%s» wurde gelöscht.',
 	'user_archive_hint' => '«Gültig bis» wird auf gestern gesetzt, der Benutzer kann sich nicht mehr anmelden. Alle Daten bleiben erhalten; zum Reaktivieren «Gültig bis» ändern oder leeren.',

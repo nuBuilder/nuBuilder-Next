@@ -187,7 +187,6 @@ $data = ['export' => ['id' => $e['id'], 'format' => $e['format'], 'datasets' => 
 $head = '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">' . nu_ts_head();
 $foot = '<script type="application/json" id="dxpData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
 	. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
-	. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
 	. nu_ts_foot()
 	. '<script src="' . nu_asset('assets/js/nudataexport.js') . '"></script>';

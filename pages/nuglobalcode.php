@@ -189,6 +189,6 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settin
 </div>
 <?php endif; ?>
 <?php
-nu_layout_end('<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script><script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-addons.js') . '"></script>'
+nu_layout_end('<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nuglobalcode.js') . '"></script>');
