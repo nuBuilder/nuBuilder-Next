@@ -1399,7 +1399,7 @@
 		// the Home button of the top bar (0.8.774, nuapp.js sets the flag): the cursor goes into the search field
 		var fromHome = false;
 		try { fromHome = sessionStorage.getItem('nunext-home-focus') === '1'; sessionStorage.removeItem('nunext-home-focus'); } catch (x) { /* no storage */ }
-		if (fromHome && (!edit || edit.hidden) && search.offsetParent !== null) search.focus({preventScroll: true});
+		if (fromHome && edit.hidden && search.offsetParent !== null) search.focus({preventScroll: true});
 		// already on this start page (0.8.786): Home / the title of the top bar does not load the page again (no flicker) – the page goes
 		// back to its first view: search emptied, top of the page, cursor in the search field (assets/js/nuapp.js asks window.nuHomeReset)
 		window.nuHomeReset = function (href) {

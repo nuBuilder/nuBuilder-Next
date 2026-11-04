@@ -51,7 +51,7 @@
 	}
 
 	// Maintenance (0.8.808): on = the dialog of assets/js/nu/nuformmaint.js (message, until); leaving it = maintenance off first, then the new status
-	function maint(el, st, cur) {
+	function maint(el, st) {
 		var id = el.getAttribute('data-nu-form');
 		if (st === '2') {
 			if (window.nuFormMaintOpen) window.nuFormMaintOpen({forms: [{id: id, label: el.getAttribute('data-nu-label') || id}], onDone: function (ch) { if (ch.length) show(el, '2'); }});
@@ -89,7 +89,7 @@
 			ic.setAttribute('aria-hidden', 'true');
 			btn.appendChild(ic);
 			btn.appendChild(document.createTextNode(T[st] || st));
-			btn.addEventListener('click', function () { closeMenu(); if (st === cur) return; if (st === '2' || cur === '2') maint(el, st, cur); else save(el, st, false); });
+			btn.addEventListener('click', function () { closeMenu(); if (st === cur) return; if (st === '2' || cur === '2') maint(el, st); else save(el, st, false); });
 			li.appendChild(btn);
 			menu.appendChild(li);
 		});

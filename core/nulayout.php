@@ -364,8 +364,8 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 			</div>
 			<div class="modal-body js-leave-text"></div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary me-auto" data-bs-dismiss="modal" data-nu-leave="stay"><?= h(t('leave_stay')) ?></button>
-				<button type="button" class="btn btn-outline-danger" data-nu-leave="discard"><i class="bi bi-x-lg me-1"></i><?= h(t('leave_discard')) ?></button>
+				<button type="button" class="btn btn-outline-danger nuLeaveDiscard" data-nu-leave="discard"><i class="bi bi-x-lg me-1"></i><?= h(t('leave_discard')) ?></button>
+				<button type="button" class="btn btn-outline-secondary ms-auto" data-bs-dismiss="modal" data-nu-leave="stay"><?= h(t('leave_stay')) ?></button>
 				<button type="button" class="btn btn-primary" data-nu-leave="save"><i class="bi bi-check-lg me-1"></i><?= h(t('leave_save')) ?></button>
 			</div>
 		</div>

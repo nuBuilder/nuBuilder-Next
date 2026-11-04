@@ -8,7 +8,7 @@ import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLin
 import {defaultKeymap, history, historyKeymap, undo, redo, undoDepth, redoDepth, indentWithTab, toggleComment, selectAll,
 	indentMore, indentLess} from '@codemirror/commands';
 import {indentUnit, bracketMatching, syntaxHighlighting, HighlightStyle, syntaxTree, indentOnInput, foldGutter} from '@codemirror/language';
-import {searchKeymap, openSearchPanel, closeSearchPanel, searchPanelOpen, findNext, findPrevious, gotoLine, highlightSelectionMatches} from '@codemirror/search';
+import {searchKeymap, openSearchPanel, searchPanelOpen, findNext, findPrevious, gotoLine, highlightSelectionMatches} from '@codemirror/search';
 import {closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
 import {tags as t} from '@lezer/highlight';
 import {javascript} from '@codemirror/lang-javascript';
@@ -214,7 +214,7 @@ function overlayPlugin(mode) {
 
 // ---------------------------------------------------------------- key names CodeMirror 5 → 6
 function keyName(k) {
-	var parts = String(k).split('-'), key = parts.pop() || '-';
+	var parts = String(k).split('-'), key = parts.pop();   // "Ctrl--" → ['Ctrl', '', ''] = Ctrl + minus
 	if (key === '' && parts.length) { parts.pop(); key = '-'; }
 	key = {Esc: 'Escape', Space: 'Space', Del: 'Delete', Ins: 'Insert', Up: 'ArrowUp', Down: 'ArrowDown', Left: 'ArrowLeft', Right: 'ArrowRight', PageUp: 'PageUp', PageDown: 'PageDown'}[key] || key;
 	if (key.length === 1) key = key.toLowerCase();

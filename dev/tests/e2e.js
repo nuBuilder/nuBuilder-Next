@@ -5006,7 +5006,6 @@ T.wizard_lang = async (s) => {
 T.userfields_list = async (s) => {
 	const p = s.ga;
 	const T = 'zzzzsys_nunext_user_field';
-	const had = sql("SELECT COUNT(*) FROM " + T) || '0';
 	sql("INSERT INTO " + T + " (zzzzsys_nunext_user_field_id, code, label, type, edit_by, required, is_unique, in_list, sort) VALUES ('e2euf1','e2e_a','E2E Alpha','text','admin','1','0','0',10),('e2euf2','e2e_b','E2E Beta','date','user','0','0','0',20)");
 	try {
 		await open(p, 'index.php?p=userfields');
@@ -8532,7 +8531,7 @@ T.update_quick = async (s) => {
 	expect(await p.locator('#updQuick').count() === 1 && await p.locator('#updQuick').isHidden(), 'Check & install hidden until a file is chosen');
 	await p.setInputFiles('#updPackage', pkg); await p.waitForTimeout(300);
 	expect(await p.locator('#updQuick').isVisible() && /backup|Sicherung/i.test(await p.getAttribute('#updQuick', 'data-bs-original-title') || await p.getAttribute('#updQuick', 'title') || ''), 'Check & install with its tooltip');
-	const newer = installed !== '' && pv.localeCompare(installed, undefined, { numeric: true }) > 0;
+	const newer = pv.localeCompare(installed, undefined, { numeric: true }) > 0;
 	sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'nunext_update_quick'");
 	await Promise.all([p.waitForLoadState('networkidle'), p.click('#updQuick')]);
 	await p.waitForTimeout(800);
@@ -9021,7 +9020,6 @@ T.uppy_upload = async (s) => {
 		.replace("$(document).ready(function () {", "window.e2eUppy = [];\nwindow.nuOnFileUploadComplete = function (t, id, r, m) { window.e2eUppy.push(t + '|' + id + '|' + m); };\n$(document).ready(function () {");
 	expect(proc.includes(dir) && html.includes("'e2e_upload'"), 'template text not as expected');
 	const tab = sql("SELECT zzzzsys_tab_id FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = 'samplecustomer' ORDER BY syt_order LIMIT 1");
-	const files = { png: path.join(dir, 'src-pic.png'), php: path.join(dir, 'src-evil.php'), html: path.join(dir, 'src-page.html') };
 	const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 	const src = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-uppysrc-'));
 	const p = s.ga;
@@ -9314,9 +9312,9 @@ T.gap_schema = async (s) => {
 	};
 	try {
 		fresh(); config(true); await serve();
-		let r = await signIn('nobody', 'wrong');
+		await signIn('nobody', 'wrong');
 		expect(own() === 0, 'anonymous requests created ' + own() + ' own tables');
-		r = await signIn('b2user', TT_PW);
+		let r = await signIn('b2user', TT_PW);
 		expect(/p=login/.test(r.url) && /globeadmin/i.test(r.text) && own() === 0, 'a user signed in before the globeadmin: ' + r.url + ' ' + own());
 		r = await signIn(GA[0], GA[1]);
 		expect(/p=home/.test(r.url) && own() > 10, 'the globeadmin\'s first sign-in did not set up the tables: ' + own());
@@ -11409,7 +11407,6 @@ T.sample_ticket = async (s) => {
 // lists refreshed in place (0.8.776): system lists and form browse lists swap their card – no page load, address and Back follow
 T.list_smooth = async (s) => {
 	const p = s.ga;
-	const swaps = () => p.evaluate(() => +document.documentElement.getAttribute('data-nu-lv-swaps') || 0);
 	const mark = () => p.evaluate(() => window.__nuMark === 1);
 	await open(p, 'index.php?p=users');
 	await p.evaluate(() => { window.__nuMark = 1; });
@@ -11802,6 +11799,23 @@ T.compat_mssql = async (s) => {
 		expect(await p.locator('#compat_mssql tr[data-ms-rule="limit"]', { hasText: 'e2e_mssql' }).count() === 1
 			&& await p.locator('#compat_mssql tr[data-ms-rule="ifnull"]', { hasText: 'e2e_mssql' }).count() === 1, 'LIMIT and IFNULL of the browse SQL listed with the form');
 	} finally { sql("DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'"); }
+};
+
+T.leave_dialog_order = async () => {
+	// 0.8.904: Discard changes away from Save – left on wide screens, alone in a row below Keep editing / Save on phones
+	for (const w of [1300, 390]) {
+		const p = await login(GA[0], GA[1], { viewport: { width: w, height: 800 } });
+		try {
+			await open(p, 'index.php?p=user');
+			await p.fill('#nuRecordForm input[name=sus_name]', 'e2e leave');
+			await p.locator('a.nuBtnAct:has(.bi-arrow-left)').first().click({ noWaitAfter: true });
+			await p.waitForSelector('#nuLeave.show'); await p.waitForTimeout(400);
+			const r = await p.evaluate(() => Object.fromEntries(['discard', 'stay', 'save'].map(k => [k, document.querySelector('#nuLeave [data-nu-leave="' + k + '"]').getBoundingClientRect()])));
+			expect(r.discard.left < r.stay.left && r.discard.left < r.save.left, w + ' px: Discard is the left-most button');
+			if (w < 576) expect(r.discard.top > r.save.bottom - 1 && Math.abs(r.stay.top - r.save.top) < 2, 'phone: Discard alone below Keep editing / Save');
+			else expect(Math.abs(r.discard.top - r.save.top) < 2, 'wide: one row');
+		} finally { await p.evaluate(() => { if (window.nuLeaveGuard) window.nuLeaveGuard.isDirty = () => false; }); await p.context().close(); }
+	}
 };
 
 T.js_errors = async (s) => {

@@ -3,6 +3,21 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.906 – DeepSource configuration
+- Repository: a .deepsource.toml tells DeepSource to skip third-party code (vendor/bundled/, dev/libsrc/ with PHPMailer's
+  sources), treat dev/tests/ as tests and run the PHP, JavaScript, Python and secrets analysers. The file is not part of
+  the install package.
+
+## 0.8.905 – Code editors: keys with minus
+- Code editors: key bindings with the minus key (for example Ctrl+-) were not recognised by the CodeMirror 6 adapter –
+  "Ctrl--" was turned into a wrong key name. Fixed (found by a DeepScan report; the other points of the report were
+  dead code, which is removed, or false alarms).
+
+## 0.8.904 – Unsaved changes dialog: Discard away from Save
+- Unsaved changes dialog: "Discard changes" is no longer next to "Save". On wide screens it sits on the left, with
+  "Keep editing" and "Save" on the right; on phones "Keep editing" and "Save" share the first row and "Discard changes"
+  stands alone in a row below, on the left.
+
 ## 0.8.903 – CI: PHP start-up warning
 - GitHub Actions (MySQL and SQL Server jobs): the check for PHP messages in the server log failed on PHP's own
   start-up warning "JIT is incompatible with third party extensions … JIT disabled. in Unknown on line 0" of the

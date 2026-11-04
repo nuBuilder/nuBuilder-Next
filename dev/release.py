@@ -31,7 +31,7 @@ import datetime, hashlib, json, os, re, shlex, subprocess, sys, zipfile
 sys.stdout.reconfigure(line_buffering=True)                    # 0.8.768: progress reaches a log file line by line
 
 # never deployed to a server (readable there, and not needed): development notes, open points, tools, CI
-DEV_ONLY = ('CLAUDE.md', 'TODO.md', '.gitignore')
+DEV_ONLY = ('CLAUDE.md', 'TODO.md', '.gitignore', '.deepsource.toml')
 DEV_DIRS = ('dev/', '.github/')
 
 
@@ -105,7 +105,7 @@ def browser_tests():
     site = os.environ.get('NUNEXT_TEST_SITE', '')
     if site:
         run(['rsync', '-a', '--exclude', '/nuconfig.php', '--exclude', '/vendor/packs', '--exclude', '/_libsrc', '--exclude', '_backup', '--exclude', 'temp', '--exclude', 'third_party',
-             '--exclude', 'dev', '--exclude', '.github', '--exclude', 'CLAUDE.md', '--exclude', 'TODO.md', './', site.rstrip('/') + '/'])
+             '--exclude', 'dev', '--exclude', '.github', '--exclude', 'CLAUDE.md', '--exclude', 'TODO.md', '--exclude', '.deepsource.toml', './', site.rstrip('/') + '/'])
         import time
         time.sleep(3)                                                   # OPcache
     db = os.environ.get('NUNEXT_TEST_DB', '-unu -pnu nutest')

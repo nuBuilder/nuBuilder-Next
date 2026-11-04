@@ -12,7 +12,7 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
 - Use **`python3 dev/release.py <version> "<title>" <changes.txt>`** – checks (php -l of all files, check_lang, `dev/tests/run.php`,
   PHPStan level 2 if `../phpstan.phar` exists, ESLint if `../node_modules/eslint` exists – see "Test environment"), README title, CHANGELOG.md
   section, `NU_VERSION`, the manifest (hashes of every **deployed** file + the `changes` entry), the Ed25519 signature and
-  two zips: **`../nunext.zip`** (install package: without CLAUDE.md, TODO.md, .gitignore, dev/, .github/ – these are readable on a web
+  two zips: **`../nunext.zip`** (install package: without CLAUDE.md, TODO.md, .gitignore, .deepsource.toml, dev/, .github/ – these are readable on a web
   server) and **`../nunext-dev.zip`** (everything). Send both; the owner sends `nunext-dev.zip` to the next session.
 - **Signing key**: `../nunext-signing.key` (outside the project, never in a zip; also `$NUNEXT_SIGNING_KEY` or `~/.nunext-signing.key`).
   The owner keeps it and uploads it with the dev zip – put it next to the project folder. Without it the release is unsigned (the
@@ -622,10 +622,13 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (November 2026, 0.8.903)
+## Where things stand (November 2026, 0.8.906)
 Last gate 0.8.902 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.887–0.8.902 in one push; docs, README, TODO, tutorial checked first). Gate tip: run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors); ZAP runs after compat (~11 min).
 
 Since the gate, newest first:
+- 0.8.906 .deepsource.toml (repository only – DEV_ONLY in dev/release.py, not in nunext.zip): exclude_patterns vendor/bundled/**, vendor/packs/**, dev/libsrc/** (third-party code – SCT-1000 false alarms in PHPMailer's get_oauth_token.php / README badge, jquery-migrate findings), test_patterns dev/tests/**, analyzers php / javascript (browser, nodejs, jquery) / python / secrets – a toml OVERRIDES the analyzers chosen in DeepSource's web settings
+- 0.8.905 DeepScan report assessed: real = dev/cm6/adapter.js keyName ("Ctrl--" became "Ctrl---" – minus keys never matched; bundle rebuilt with sh dev/cm6/build.sh); dead code removed (unused import closeSearchPanel, nuhome.js !edit, nuhelp.js typeof guide, nuformstatus.js maint() parameter cur, e2e unused had / swaps / files / first r / installed !== ''); left: jquery-migrate (third party), nuruntime.js cssRgb (style.color stays empty for an invalid colour – the analyser does not know the CSSOM), zap.js run check (harmless)
+- 0.8.904 leave dialog #nuLeave (core/nulayout.php): Discard changes (.nuLeaveDiscard) first + margin-right auto = left, Keep editing + Save right; below 576 px footer ::after line break (order 2) → Discard alone in a row below (order 3); e2e leave_dialog_order
 - 0.8.903 CI (mysql + mssql): setup-php coverage: none, php -d opcache.jit=disable for the server and the self-test; the log step ignores PHP start-up lines "… in Unknown on line 0" (shown as ::notice::, not our code) – the runner's JIT warning failed both jobs
 
 Up to the gate 0.8.902, newest first:

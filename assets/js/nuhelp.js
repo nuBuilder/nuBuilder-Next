@@ -302,7 +302,7 @@
 		document.documentElement.classList.toggle('nuHelpBasic', lv !== 'everything');
 		document.documentElement.classList.toggle('nuHelpLite', lv === 'essentials');
 		levelRadios.forEach(function (r) { r.checked = r.value === lv; });
-		if (typeof guide !== 'undefined' && guide) guide.renumber();
+		if (guide) guide.renumber();   // undefined while the level is restored at start (declared further down)
 		if (typeof ref !== 'undefined' && ref) ref.renumber();
 		if (!keep) { try { localStorage.setItem('nunext-help-level', lv); } catch (e) { /* storage blocked */ } }
 	}

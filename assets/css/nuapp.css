@@ -2042,3 +2042,10 @@ body:has(.nuRecHead) main .nuRecHead.mb-3 { margin-bottom: .625rem !important; }
   .scodeNav .scodeTabs .nav-link { white-space: nowrap; }
 }
 .impTplList { width: min(380px, 90vw); }   /* Data import → Templates (0.8.870) */
+
+/* leave dialog (0.8.904): Discard changes away from Save – left on wide screens, alone in its own row below on phones */
+#nuLeave .modal-footer .nuLeaveDiscard { margin-right: auto; }
+@media (max-width: 575.98px) {
+	#nuLeave .modal-footer::after { content: ""; order: 2; flex-basis: 100%; }
+	#nuLeave .modal-footer .nuLeaveDiscard { order: 3; margin-top: .75rem; }
+}

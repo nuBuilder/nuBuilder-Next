@@ -1,0 +1,28 @@
+# DeepSource – static analysis of the GitHub repository (not part of the install package).
+# Third-party code is not analysed: it is copied unchanged and updated as a whole, never patched here.
+version = 1
+
+exclude_patterns = [
+  "vendor/bundled/**",   # libraries of the package (Bootstrap, jQuery, jQuery Migrate, CodeMirror bundle, …)
+  "vendor/packs/**",     # library packs installed on a server (never in the repository, listed for safety)
+  "dev/libsrc/**"        # unchanged sources of the library packs (PHPMailer)
+]
+
+test_patterns = [
+  "dev/tests/**"
+]
+
+[[analyzers]]
+name = "php"
+
+[[analyzers]]
+name = "javascript"
+
+  [analyzers.meta]
+  environment = ["browser", "nodejs", "jquery"]
+
+[[analyzers]]
+name = "python"
+
+[[analyzers]]
+name = "secrets"
