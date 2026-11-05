@@ -16,7 +16,7 @@ window.T = window.T || {};
 T.htmlFn = typeof tHtmlFn === 'function' ? tHtmlFn() : 'missing';
 function nuOnLoad() {
 	nuSetValue('cus_city', 'Loaded');
-	T.editedInLoad = nuHasBeenEdited();
+	T.editedInLoad = !nuIsSaved();
 	T.prop = nuFORM.getProperty('form_id');
 	T.sr = nuSERVERRESPONSE.form_id;
 	T.main = nuFORM.subform('').fields.indexOf('cus_name') > 0;

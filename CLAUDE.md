@@ -624,11 +624,17 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (November 2026, 0.8.948)
-Last gate 0.8.948 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.936–0.8.948 in one push; docs, README, TODO, tutorial checked first). Gate tip: run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors); ZAP runs after compat (~11 min).
+## Where things stand (November 2026, 0.8.952)
+Last gate 0.8.952 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.949–0.8.952 in one push; docs, README, TODO, tutorial checked first). Gate tip: run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors); ZAP runs after compat (~11 min).
 
 Since the gate, newest first:
 (none yet)
+
+Up to the gate 0.8.952, newest first:
+- 0.8.952 release gate (TODO please-verify functions aligned with Forte; tutorial Forte track links the remaining differences)
+- 0.8.951 Forte review (the owner: recommendations D1 A · D2 A · D3 A · D4 · D5): nuruntime.js nuSetValue / nuGetValue (lookup → nuGetLookupId, TinyMCE, buttons isBtn / btnLabel, labels; change false = no nuEdited), nuMessage (timeout / callback / <h1–5> title), nuSubformEnable(…, enable) + sfToggle, nuShowTabById(id, visible), nuDisable/EnableAllObjects → nuEnableDisableAllObjects(types, ids), nuRunPHP(code, iFrame, runBeforeSave), nuAddActionButton ACTION_DEFAULTS + icon / insertAfterElement, nuSelectRemoveEmpty() = all selects, nuHasBeenSaved count (sessionStorage nunext-saved:<form>), nuSelectedTabNumber as text (nucompat nuSelectNextTab converts), nuSetToolTip hover / labelHover / options, nuSetLabelText takes a label id, nuPad2–4 / nuAttachFontAwesome / nuMainForm / nuSubformHideColumns arguments; PHP nuCreateTableFromSelect (no drop, $temporary), nuHasProperty returns the value, nuEncodeQueryRowResults lists, nuRunQuery '#' commands (nu_query_commands), nuProcedure by id, nuGetProperty($name, $array); docs 12-02 rows for what stays; e2e forte_align
+- 0.8.950 tester's report (old forms with their own TinyMCE set-up): JS nuTinyMCEOnChangeHandler(editor) (editor id <field>_container → field value + markEdited, else nuHasBeenEdited); nuHasBeenEdited() now marks the record as edited as in Forte (was a read-only check – tests read the state with !nuIsSaved()); docs 12-02 JavaScript 466 / rendering 190, function reference; e2e forte_edited_tinymce
+- 0.8.949 notes (v0.8.948 published)
 
 Up to the gate 0.8.948, newest first:
 - 0.8.948 release gate (README: browse SQL pane with columns, resizable; tutorial: pane Columns tab / width, HTML in lists for Forte users; TODO please-verify 0.8.942–0.8.947)

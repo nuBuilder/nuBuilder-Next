@@ -8412,7 +8412,7 @@ T.nub49_js = async (s) => {
 		const errs = []; const onErr = (e) => errs.push(e.message); p.on('pageerror', onErr);
 		await open(p, 'index.php?p=form&f=tjs&r=tu1'); await p.waitForTimeout(500);
 		const st = await p.evaluate(() => ({ T: window.T, box: document.getElementById('tHtmlBox').textContent, tpl: document.getElementById('tTpl').type,
-			edited: nuHasBeenEdited(), red: document.getElementById('nuSaveButton').classList.contains('nuSaveEdited') }));
+			edited: !nuIsSaved(), red: document.getElementById('nuSaveButton').classList.contains('nuSaveEdited') }));
 		expect(st.T.htmlJq === 'function' && st.box === 'set by script' && st.T.htmlFn === 'html ok', 'M1: script of an HTML object ' + JSON.stringify(st));
 		expect(st.tpl === 'text/x-template', 'M1: other script types must stay');
 		expect(st.T.prop === 'tjs' && st.T.sr === 'tjs' && st.T.main === true, 'M8 / N1: nuFORM / nuSERVERRESPONSE ' + JSON.stringify(st.T));
@@ -12408,6 +12408,111 @@ T.bsq_resize = async (s) => {
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		await p.evaluate(() => { localStorage.removeItem('nunext-bsq-w'); localStorage.removeItem('nunext-bsq-pin'); localStorage.removeItem('nunext-bsq-tab'); }).catch(() => {});
+	}
+};
+
+T.forte_edited_tinymce = async (s) => {
+	// 0.8.950: nuHasBeenEdited() marks the record as edited (nuBuilder Forte; it was a read-only check), nuTinyMCEOnChangeHandler(editor)
+	// copies a self-made TinyMCE editor's HTML into its field (form code copied from Forte's nuInitTinyMCE)
+	const p = s.ga;
+	const id = sql("SELECT sample_customer_id FROM sample_customer ORDER BY cus_code LIMIT 1");
+	await open(p, 'index.php?p=form&f=samplecustomer&r=' + id); await p.waitForSelector('#nuSaveButton');
+	const r = await p.evaluate(() => {
+		const before = nuIsSaved() && !document.getElementById('nuSaveButton').classList.contains('nuSaveEdited');
+		nuHasBeenEdited();
+		const after = !nuIsSaved() && document.getElementById('nuSaveButton').classList.contains('nuSaveEdited');
+		nuHasNotBeenEdited();
+		const ta = document.createElement('textarea'); ta.id = 'e2eWys'; document.getElementById('nuEditForm').appendChild(ta);
+		nuTinyMCEOnChangeHandler({id: 'e2eWys_container', getContent: () => '<p>e2e</p>'});
+		const synced = ta.value === '<p>e2e</p>' && !nuIsSaved();
+		nuHasNotBeenEdited(); ta.remove();
+		nuTinyMCEOnChangeHandler({id: 'other'});
+		const plain = !nuIsSaved();
+		nuHasNotBeenEdited();
+		return {before, after, synced, plain};
+	});
+	expect(r.before && r.after, 'nuHasBeenEdited marks the record: ' + JSON.stringify(r));
+	expect(r.synced && r.plain, 'nuTinyMCEOnChangeHandler: ' + JSON.stringify(r));
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.forte_align = async (s) => {
+	// 0.8.951: functions that behaved differently from nuBuilder Forte 4.9 (review list J1–J18, P1–P7)
+	const p = s.ga;
+	const ord = sql("SELECT sample_order_id FROM sample_order ORDER BY ord_number LIMIT 1");
+	const cus = sql("SELECT CONCAT(sample_customer_id, '|', cus_code) FROM sample_customer WHERE sample_customer_id <> (SELECT ord_sample_customer_id FROM sample_order WHERE sample_order_id = '" + ord + "') ORDER BY cus_code LIMIT 1");
+	if (!ord || !cus) { s.skip = 'no sample data'; return; }
+	const [cusId, cusCode] = cus.split('|');
+	const php = `nuRunQuery('DROP TABLE IF EXISTS e2e_align_t');
+nuCreateTableFromSelect('e2e_align_t', 'SELECT 1 AS a');
+$again = 'no error';
+try { nuCreateTableFromSelect('e2e_align_t', 'SELECT 2 AS a'); } catch (Throwable $e) { $again = 'refused'; }
+$kept = db_fetch_row(nuRunQuery('SELECT a FROM e2e_align_t'))[0];
+nuRunQuery('DROP TABLE e2e_align_t');
+nuSetProperty('E2E_P', 'north'); nuSetProperty('E2E_Z', '0');
+$rows = json_decode(base64_decode(nuEncodeQueryRowResults('SELECT 7 UNION SELECT 8', [], ['x'])));
+$set = db_fetch_row(nuRunQuery("#SET @e2e_n := 41\\nSELECT @e2e_n + 1"))[0];
+$proc = nuProcedure('e2e_align_inc') !== '';
+nuAddJavascript('window.e2eAlign = ' . json_encode(['again' => $again, 'kept' => $kept, 'has' => nuHasProperty('E2E_P'), 'zero' => nuHasProperty('E2E_Z'), 'rows' => $rows, 'set' => $set, 'proc' => $proc, 'arr' => nuGetProperty('k', ['k' => 'v'])]) . ';');`;
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id IN ('e2e_align', 'e2e_align_inc')");
+	execSync('mysql ' + DB, {input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_run, sph_global, sph_system, sph_php) VALUES ('e2e_align', 'e2e_align', 'e2e', 'hide', '1', '0', " + JSON.stringify(php) + "), ('e2e_align_inc', 'e2e_align_inc_code', 'e2e', 'hide', '1', '0', '$x = 1;')"});
+	try {
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + ord); await p.waitForSelector('#nuSaveButton');
+		const r = await p.evaluate(async (cusId) => {
+			const o = {};
+			o.saved0 = nuHasBeenSaved();
+			o.tab = typeof nuSelectedTabNumber();
+			nuSetValue('ord_note', 'quiet', undefined, false);
+			o.quiet = nuIsSaved() && !document.getElementById('ord_note').classList.contains('nuEdited');
+			o.label0 = nuGetValue('label_ord_note');
+			nuSetValue('label_ord_note', 'Note X');
+			o.label = nuGetValue('label_ord_note');
+			nuSetValue('ord_sample_customer_id', cusId);
+			await new Promise(res => setTimeout(res, 1200));
+			o.code = document.getElementById('ord_sample_customer_idcode').value;
+			nuSelectRemoveEmpty();
+			o.empty = document.querySelectorAll('#ord_status option[value=""]').length;
+			nuSubformEnable('sample_items', '', false);
+			o.sfOff = $('#sample_items [data-nu-field]').filter(function () { return !this.disabled && !this.readOnly; }).length;
+			nuSubformEnable('sample_items');
+			nuDisableAllObjects([], ['ord_note']);
+			o.disAll = document.getElementById('ord_number').disabled || document.getElementById('ord_number').readOnly;
+			o.noteOn = !(document.getElementById('ord_note').disabled || document.getElementById('ord_note').readOnly);
+			nuEnableAllObjects();
+			nuMessage('<h2>Head</h2>Body');
+			o.msgTitle = $('#nuMessageDiv .nuMessageTitle').text();
+			let cb = 0;
+			nuMessage('Gone', 300, () => { cb++; });
+			await new Promise(res => setTimeout(res, 1500));
+			o.msgGone = !document.getElementById('nuMessageDiv') && cb === 1;
+			nuAddActionButton('SaveClose');
+			o.btn = nuGetValue('nuSaveCloseButton');
+			nuSetValue('nuSaveCloseButton', 'Close it');
+			o.btn2 = $('#nuSaveCloseButton .nuButtonLabel').text();
+			nuSetToolTip('ord_note', 'Tip', true);
+			$('#label_ord_note').trigger('mouseenter');
+			o.tip = document.getElementById('label_ord_note').getAttribute('title');
+			o.pad = nuPad2(5, 'x');
+			window.e2eAlign = null; nuRunPHPHidden('e2e_align');
+			return o;
+		}, cusId);
+		await p.waitForFunction(() => window.e2eAlign !== null, null, {timeout: 8000});
+		const ph = await p.evaluate(() => window.e2eAlign);
+		expect(r.saved0 === 0 && r.tab === 'string', 'nuHasBeenSaved / nuSelectedTabNumber: ' + JSON.stringify(r));
+		expect(r.quiet, 'nuSetValue(…, false) does not mark edited');
+		expect(r.label === 'Note X' && r.label0 !== '', 'label get / set: ' + r.label0 + ' / ' + r.label);
+		expect(r.code === cusCode, 'nuSetValue on a lookup fills its code: ' + r.code + ' / ' + cusCode);
+		expect(r.empty === 0 && r.sfOff === 0 && r.disAll && r.noteOn, 'remove empty / sub-form enable false / disable all: ' + JSON.stringify(r));
+		expect(r.msgTitle === 'Head' && r.msgGone, 'nuMessage heading and timeout: ' + JSON.stringify(r));
+		expect(r.btn === 'Save & Close' && r.btn2 === 'Close it', 'nuAddActionButton defaults / button value: ' + JSON.stringify(r));
+		expect(r.tip === 'Tip' && r.pad === 'x5', 'tooltip on the label / nuPad2: ' + JSON.stringify(r));
+		expect(ph.again === 'refused' && String(ph.kept) === '1', 'nuCreateTableFromSelect keeps an existing table: ' + JSON.stringify(ph));
+		expect(ph.has === 'north' && ph.zero === false && ph.arr === 'v', 'nuHasProperty / nuGetProperty: ' + JSON.stringify(ph));
+		expect(JSON.stringify(ph.rows) === '[["x"],[7],[8]]' || JSON.stringify(ph.rows) === '[["x"],["7"],["8"]]', 'nuEncodeQueryRowResults: ' + JSON.stringify(ph.rows));
+		expect(String(ph.set) === '42' && ph.proc === true, '# commands / nuProcedure by id: ' + JSON.stringify(ph));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id IN ('e2e_align', 'e2e_align_inc'); DROP TABLE IF EXISTS e2e_align_t");
 	}
 };
 

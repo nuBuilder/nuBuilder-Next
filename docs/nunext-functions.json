@@ -64,7 +64,7 @@
     "g": "db",
     "n": "nuRunQuery",
     "s": "nuRunQuery(string $sql, array $params = [], bool $isInsert = false): NuResult|string",
-    "d": "Runs an SQL statement. Parameters as ? placeholders or :names (array keys). Database errors stop the code with a message. Without SQL it returns [host, database, user, ''] – as nuBuilder Forte, but without the password.",
+    "d": "Runs an SQL statement. Parameters as ? placeholders or :names (array keys). When the first line starts with #, every # line is run first as a command (as nuBuilder Forte, e.g. #SET @n := 0). Database errors stop the code with a message. Without SQL it returns [host, database, user, ''] – as nuBuilder Forte, but without the password.",
     "r": "NuResult (for db_fetch_…), or the new id when $isInsert is true",
     "e": "$t = nuRunQuery('SELECT cus_name FROM customer WHERE customer_id = ?', ['#RECORD_ID#']);\n$r = db_fetch_object($t);",
     "o": "nb",
@@ -364,15 +364,16 @@
    {
     "g": "db",
     "n": "nuCreateTableFromSelect",
-    "s": "nuCreateTableFromSelect(string $table, string $sql, array $params = []): void",
-    "d": "Creates (or replaces) a table from a SELECT – MySQL and SQL Server.",
-    "r": "",
+    "s": "nuCreateTableFromSelect(string $table, string $sql, array $params = [], bool $temporary = false): mixed",
+    "d": "Creates a table from a SELECT – MySQL and SQL Server. As nuBuilder Forte, an existing table of that name is not replaced: the database refuses it (drop it first when that is wanted).",
+    "r": "the result of the statement",
     "o": "nb",
-    "e": "nuCreateTableFromSelect('#TABLE_ID#', 'SELECT * FROM invoice WHERE inv_total > ?', [100]);",
+    "e": "nuRunQuery('DROP TABLE IF EXISTS #TABLE_ID#');\nnuCreateTableFromSelect('#TABLE_ID#', 'SELECT * FROM invoice WHERE inv_total > ?', [100]);",
     "p": {
      "$table": "name of the new table (usually #TABLE_ID#)",
      "$sql": "the SELECT",
-     "$params": "values for ? / :name placeholders of the SELECT"
+     "$params": "values of its placeholders",
+     "$temporary": "true = a temporary table (MySQL; SQL Server: #name)"
     }
    },
    {
@@ -404,7 +405,7 @@
     "g": "db",
     "n": "nuEncodeQueryRowResults",
     "s": "nuEncodeQueryRowResults(string $sql, array $params = [], array $prepend = []): string",
-    "d": "Rows of a query as base64(JSON) – e.g. for a JavaScript array; $prepend rows come first.",
+    "d": "Rows of a query as base64(JSON) – every row a list (also with one column), e.g. for a JavaScript array; $prepend = one row put first.",
     "r": "string",
     "o": "nb",
     "e": "$data = nuEncodeQueryRowResults('SELECT cus_code, cus_name FROM customer LIMIT 2');\nnuAddJavascript(\"var customers = nuDecode('$data');\");",
@@ -1158,25 +1159,26 @@
    {
     "g": "props",
     "n": "nuGetProperty",
-    "s": "nuGetProperty(string $name): mixed",
+    "s": "nuGetProperty(string $name, ?array $properties = null): mixed",
     "d": "Value of a property or hash cookie.",
     "r": "the value, null when missing",
     "o": "nb",
     "e": "$status = nuGetProperty('ORDER_STATUS');",
     "x": "'open'",
     "p": {
-     "$name": "property name"
+     "$name": "property name",
+     "$properties": "array to read from instead of the properties (optional)"
     }
    },
    {
     "g": "props",
     "n": "nuHasProperty",
-    "s": "nuHasProperty(string $name, mixed &$value = null, bool $allowEmpty = true): bool",
-    "d": "True (and the value in $value) when the property exists – with $allowEmpty = false only when it is not empty.",
-    "r": "bool",
+    "s": "nuHasProperty(string $name, mixed &$value = null, bool $allowEmpty = true): mixed",
+    "d": "The value of the property when it is set, else false – as nuBuilder Forte, empty and falsy values ('', '0') count as not set; $value gets the value too.",
+    "r": "the value, or false",
     "o": "nb",
     "e": "if (nuHasProperty('REGION', $region, false)) nuDebug($region);",
-    "x": "north",
+    "x": "'north'",
     "p": {
      "$name": "property name",
      "$value": "receives the value",
@@ -1584,12 +1586,12 @@
     "g": "proc",
     "n": "nuProcedure",
     "s": "nuProcedure(string $code): string",
-    "d": "PHP code of another procedure, for eval(nuProcedure('code')).",
+    "d": "PHP code of another procedure (by code or id), for eval(nuProcedure('code')).",
     "r": "string",
     "o": "nb",
     "e": "eval(nuProcedure('shared_functions'));",
     "p": {
-     "$code": "code of the procedure"
+     "$code": "code or id of the procedure"
     },
     "x": "'function invoiceTotal($id) { … }'"
    },
@@ -3980,21 +3982,21 @@
     "g": "values",
     "n": "nuGetValue",
     "s": "nuGetValue(id, method)",
-    "d": "Value of a field (method 'text' = the shown text of a select or lookup, 'html' = inner HTML).",
+    "d": "Value of a field (method 'text' = the shown text of a select, 'code' / 'description' of a lookup, 'html' = inner HTML). A button gives its label, a label its text, a WYSIWYG field the editor's content, a select without a choice ''.",
     "r": "the value, null when the object is missing",
     "e": "var status = nuGetValue('inv_status');",
     "o": "nb",
     "x": "'open'",
     "p": {
      "id": "object id",
-     "method": "'text' = shown text, 'html' = inner HTML (optional)"
+     "method": "'text', 'code', 'description', 'html', on a label 'for' (optional)"
     }
    },
    {
     "g": "values",
     "n": "nuSetValue",
     "s": "nuSetValue(id, value, method, change)",
-    "d": "Sets a field and marks it as edited (change false = no change event).",
+    "d": "Sets a field as nuBuilder Forte does: a lookup gets the record of the id (code and description follow), a WYSIWYG field the editor's content, a button or label its text (a label keeps its markers, as nuSetLabelText). change false = no change event and the field is not marked as edited.",
     "r": "true, false when the object is missing",
     "e": "nuSetValue('inv_total', 125.5);",
     "o": "nb",
@@ -4002,8 +4004,8 @@
     "p": {
      "id": "object id",
      "$value": "new value",
-     "method": "'text' or 'html' (optional)",
-     "change": "false = no change event"
+     "method": "'text' or 'html'; on a label also 'for' (optional)",
+     "change": "false = no change event, not marked as edited"
     }
    },
    {
@@ -4086,13 +4088,14 @@
    {
     "g": "values",
     "n": "nuSetToolTip",
-    "s": "nuSetToolTip(id, t)",
-    "d": "Tooltip (title) of an object.",
+    "s": "nuSetToolTip(id, text, labelHover)",
+    "d": "Tooltip of an object, translated and shown while the mouse is over it (labelHover true: also over its label); an options object instead of the text = nuSetAdvancedToolTip.",
     "o": "nb",
-    "e": "nuSetToolTip('inv_due', 'Payable within 30 days');",
+    "e": "nuSetToolTip('inv_due', 'Payable within 30 days', true);",
     "p": {
      "id": "object id",
-     "t": "tooltip text"
+     "text": "tooltip text, or an options object",
+     "labelHover": "true = also on the label (optional)"
     }
    },
    {
@@ -4401,23 +4404,25 @@
    {
     "g": "objects",
     "n": "nuDisableAllObjects",
-    "s": "nuDisableAllObjects(except)",
-    "d": "Disables every field, except the given ids.",
+    "s": "nuDisableAllObjects(excludeTypes, excludeIds)",
+    "d": "Disables every object of the form except the given types and ids (content boxes and HTML objects are left alone).",
     "o": "nb",
-    "e": "if (nuGetValue('inv_status') === 'paid') nuDisableAllObjects(['inv_notes']);",
+    "e": "if (nuGetValue('inv_status') === 'paid') nuDisableAllObjects(['subform'], ['inv_notes']);",
     "p": {
-     "except": "ids that stay enabled"
+     "excludeTypes": "object types to skip, e.g. ['subform']",
+     "excludeIds": "ids to skip"
     }
    },
    {
     "g": "objects",
     "n": "nuEnableAllObjects",
-    "s": "nuEnableAllObjects(except)",
-    "d": "Enables every field, except the given ids.",
+    "s": "nuEnableAllObjects(excludeTypes, excludeIds)",
+    "d": "Enables every object of the form except the given types and ids.",
     "o": "nb",
-    "e": "nuEnableAllObjects();",
+    "e": "nuEnableAllObjects([], ['inv_number']);",
     "p": {
-     "except": "ids that stay as they are"
+     "excludeTypes": "object types to skip",
+     "excludeIds": "ids to skip"
     }
    },
    {
@@ -4521,13 +4526,15 @@
    {
     "g": "objects",
     "n": "nuAttachFontAwesome",
-    "s": "nuAttachFontAwesome(id, cls)",
-    "d": "An icon (class) in front of a button text.",
+    "s": "nuAttachFontAwesome(id, cls, size, appendToEnd)",
+    "d": "An icon (class) in front of a button text – or after it with appendToEnd.",
     "o": "nb",
-    "e": "nuAttachFontAwesome('btn_print', 'bi bi-printer');",
+    "e": "nuAttachFontAwesome('btn_print', 'bi bi-printer', 'large');",
     "p": {
-     "id": "button id",
-     "cls": "icon class, e.g. 'fa fa-print' or 'bi bi-printer'"
+     "id": "button id (or the element)",
+     "cls": "icon class, e.g. 'fa fa-print' or 'bi bi-printer'",
+     "size": "small, medium, large or a CSS size (optional)",
+     "appendToEnd": "true = after the text (optional)"
     }
    },
    {
@@ -4614,12 +4621,15 @@
    {
     "g": "form",
     "n": "nuMainForm",
-    "s": "nuMainForm()",
-    "d": "True for the main form (not in an iframe or lookup).",
+    "s": "nuMainForm(ignoreOpener)",
+    "d": "True for the main form – not in an iframe or lookup and, unless ignoreOpener is true, not in a window another form window opened.",
     "r": "bool",
     "o": "nb",
     "e": "console.log(nuMainForm());",
-    "x": "true"
+    "x": "true",
+    "p": {
+     "ignoreOpener": "true = a window opened by another one counts as main form (optional)"
+    }
    },
    {
     "g": "form",
@@ -4665,11 +4675,20 @@
     "g": "form",
     "n": "nuHasBeenEdited",
     "s": "nuHasBeenEdited()",
-    "d": "True when the record was changed and not saved.",
-    "r": "bool",
+    "d": "Marks the record as edited, as in nuBuilder Forte: Save turns red and leaving the page asks first. To read the state use nuIsSaved().",
     "o": "nb",
-    "e": "console.log(nuHasBeenEdited());",
-    "x": "false"
+    "e": "nuHasBeenEdited();"
+   },
+   {
+    "g": "form",
+    "n": "nuTinyMCEOnChangeHandler",
+    "s": "nuTinyMCEOnChangeHandler(editor)",
+    "d": "nuBuilder Forte's change handler of a TinyMCE editor: copies the editor's HTML into its field and marks the record as edited. For form code that sets up TinyMCE itself (editor.on('change', …)).",
+    "o": "nb",
+    "e": "editor.on('change', function () { nuTinyMCEOnChangeHandler(editor); });",
+    "p": {
+     "editor": "the TinyMCE editor (its id is the field id + \"_container\")"
+    }
    },
    {
     "g": "form",
@@ -4685,11 +4704,11 @@
     "g": "form",
     "n": "nuHasBeenSaved",
     "s": "nuHasBeenSaved()",
-    "d": "1 after the record was saved in this form, else 0.",
+    "d": "How often the record was saved since it was opened: -1 = not an edit form, 0 = not saved yet, 1, 2 … – as nuBuilder Forte.",
     "r": "number",
     "o": "nb",
     "e": "console.log(nuHasBeenSaved());",
-    "x": "1"
+    "x": "2"
    },
    {
     "g": "form",
@@ -4772,17 +4791,31 @@
    {
     "g": "form",
     "n": "nuAddActionButton",
-    "s": "nuAddActionButton(id, value, func, title)",
-    "d": "A button in the action bar.",
+    "s": "nuAddActionButton(id, value, func, title, icon, insertAfterElement)",
+    "d": "A button in the action bar. Built-in ids (Save, SaveClose, Delete, Clone, Add, Print, Back, Run, RunHidden, BuildFastForm, BuildFastReport) get their label, action and icon by themselves; value and title are translated.",
     "r": "",
     "o": "nb",
-    "e": "nuAddActionButton('sendMail', 'Send', 'sendInvoice()');",
+    "e": "nuAddActionButton('sendMail', 'Send', 'sendInvoice()', 'Send by e-mail', 'fa-solid fa-envelope');\nnuAddActionButton('SaveClose');",
     "p": {
-     "id": "button id",
+     "id": "button id (the button gets the id nu<id>Button)",
      "$value": "caption",
      "func": "JavaScript to run (text or function)",
-     "title": "tooltip"
+     "title": "tooltip",
+     "icon": "icon classes (optional)",
+     "insertAfterElement": "id of the element to put the button after (optional)"
     }
+   },
+   {
+    "g": "form",
+    "n": "nuBackAction",
+    "s": "nuBackAction()",
+    "d": "Goes back to the previous breadcrumb – the action of the built-in Back button (nuAddActionButton('Back')).",
+    "o": "nb",
+    "e": "nuAddActionButton('Back');",
+    "a": [
+     "nuAddActionButton",
+     "nuOpenPreviousBreadcrumb"
+    ]
    },
    {
     "g": "form",
@@ -5233,11 +5266,11 @@
     "g": "tabs",
     "n": "nuSelectedTabNumber",
     "s": "nuSelectedTabNumber()",
-    "d": "Number of the selected tab.",
-    "r": "number, null",
+    "d": "Number of the selected tab – as text, as nuBuilder Forte.",
+    "r": "string, null",
     "o": "nb",
     "e": "console.log(nuSelectedTabNumber());",
-    "x": "1"
+    "x": "'1'"
    },
    {
     "g": "tabs",
@@ -5318,12 +5351,13 @@
    {
     "g": "tabs",
     "n": "nuShowTabById",
-    "s": "nuShowTabById(id)",
-    "d": "Shows a tab by id.",
+    "s": "nuShowTabById(id, visible)",
+    "d": "Shows a tab by id (visible false hides it); a single visible tab then follows nuSetHideTabIfOnlyOne.",
     "o": "nb",
     "e": "nuShowTabById('nu5f1a2b3c4d5e6');",
     "p": {
-     "id": "tab id"
+     "id": "tab id",
+     "visible": "false = hide (optional)"
     }
    },
    {
@@ -5636,13 +5670,14 @@
    {
     "g": "sub",
     "n": "nuSubformEnable",
-    "s": "nuSubformEnable(sf, field)",
-    "d": "Enables a column (or the whole subform).",
+    "s": "nuSubformEnable(sf, field, enable)",
+    "d": "Enables a column (or the whole subform, also its delete boxes); enable false disables.",
     "o": "nb",
     "e": "nuSubformEnable('items_sf');",
     "p": {
      "sf": "subform id",
-     "$field": "column (none = the whole subform)"
+     "$field": "column (none = the whole subform)",
+     "enable": "false = disable (optional)"
     }
    },
    {
@@ -5697,13 +5732,14 @@
    {
     "g": "sub",
     "n": "nuSubformHideColumns",
-    "s": "nuSubformHideColumns(sf, columns)",
+    "s": "nuSubformHideColumns(sf, columns, maintainWidth)",
     "d": "Hides several columns.",
     "o": "nb",
     "e": "nuSubformHideColumns('items_sf', ['ite_cost', 'ite_margin']);",
     "p": {
      "sf": "subform id",
-     "columns": "columns"
+     "columns": "columns",
+     "maintainWidth": "true = the subform keeps its width (optional)"
     }
    },
    {
@@ -6399,11 +6435,11 @@
     "g": "lookup",
     "n": "nuSelectRemoveEmpty",
     "s": "nuSelectRemoveEmpty(ids, setIndex)",
-    "d": "Removes the empty option; setIndex selects an option afterwards.",
+    "d": "Removes the empty option – without an id from every select of the page; setIndex selects that index afterwards (no change event).",
     "o": "nb",
     "e": "nuSelectRemoveEmpty('inv_status', 0);",
     "p": {
-     "ids": "select id or ids",
+     "ids": "select id or ids (none = all selects)",
      "setIndex": "index to select afterwards"
     }
    },
@@ -6679,13 +6715,15 @@
    {
     "g": "server",
     "n": "nuRunPHP",
-    "s": "nuRunPHP(code)",
-    "d": "Runs a procedure and shows its output in a new tab. A procedure that sends a file (header Content-Disposition: attachment) makes the browser download it, and the new tab closes again.",
+    "s": "nuRunPHP(code, iFrame, runBeforeSave)",
+    "d": "Runs a procedure and shows its output in a new tab, or in the iframe with the id iFrame. runBeforeSave true runs nuBeforeSave() first – false from it stops. A procedure that sends a file (header Content-Disposition: attachment) makes the browser download it, and the new tab closes again.",
     "r": "Promise",
     "o": "nb",
     "e": "nuRunPHP('print_labels');",
     "p": {
-     "code": "code of the procedure"
+     "code": "code of the procedure",
+     "iFrame": "id of an iframe for the output (optional)",
+     "runBeforeSave": "true = nuBeforeSave() first (optional)"
     },
     "h": "hooks"
    },
@@ -6836,13 +6874,16 @@
    {
     "g": "msg",
     "n": "nuMessage",
-    "s": "nuMessage()",
-    "d": "A message box (lines as arguments or an array; optional title first). HTML is kept, script (on… attributes, <script>, javascript: links) is removed – nuNextSafeHtml(false) allows it again on this page.",
+    "s": "nuMessage(lines) · nuMessage(lines, timeout, callback) · nuMessage(title, lines, timeout, callback)",
+    "d": "A message box. A first line in <h1>…<h5> becomes the title; with a timeout (milliseconds) the message closes by itself and callback runs. HTML is kept, script (on… attributes, <script>, javascript: links) is removed – nuNextSafeHtml(false) allows it again on this page.",
     "r": "",
     "o": "nb",
-    "e": "nuMessage('Saved', 'The invoice was sent.');",
+    "e": "nuMessage('Saved', 'The invoice was sent.', 3000, function () { nuForm('invoices', ''); });",
     "p": {
-     "...": "title (optional) and lines, or an array"
+     "title": "title (optional)",
+     "lines": "text or an array of lines",
+     "timeout": "milliseconds until it closes (optional)",
+     "callback": "function run after the timeout (optional)"
     }
    },
    {
@@ -7502,40 +7543,43 @@
    {
     "g": "util",
     "n": "nuPad2",
-    "s": "nuPad2(n)",
+    "s": "nuPad2(n, padChar)",
     "d": "Two digits (7 → 07).",
     "r": "string",
     "o": "nb",
     "e": "console.log(nuPad2(7));",
     "x": "'07'",
     "p": {
-     "n": "number"
+     "n": "number",
+     "padChar": "fill character (default 0)"
     }
    },
    {
     "g": "util",
     "n": "nuPad3",
-    "s": "nuPad3(n)",
+    "s": "nuPad3(n, padChar)",
     "d": "Three digits.",
     "r": "string",
     "o": "nb",
     "e": "console.log(nuPad3(7));",
     "x": "'007'",
     "p": {
-     "n": "number"
+     "n": "number",
+     "padChar": "fill character (default 0)"
     }
    },
    {
     "g": "util",
     "n": "nuPad4",
-    "s": "nuPad4(n)",
+    "s": "nuPad4(n, padChar)",
     "d": "Four digits.",
     "r": "string",
     "o": "nb",
     "e": "console.log(nuPad4(7));",
     "x": "'0007'",
     "p": {
-     "n": "number"
+     "n": "number",
+     "padChar": "fill character (default 0)"
     }
    },
    {

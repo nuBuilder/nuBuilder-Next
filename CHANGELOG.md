@@ -3,6 +3,41 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.952 – Release gate
+- Release gate (TODO: please verify the functions aligned with Forte; tutorial: link to the remaining differences)
+
+## 0.8.951 – Form code as in nuBuilder Forte (review)
+- Form code now behaves as in nuBuilder Forte 4.9 in 20 more places (review of every function both products share):
+  - nuSetValue on a lookup looks up the record (code and description follow), on a WYSIWYG field it fills the
+    editor, on a button or label it changes the text (a label keeps its markers); nuSetValue(…, false) no longer
+    marks the field as edited; nuGetValue reads buttons, labels and editors the same way.
+  - nuMessage closes by itself after a timeout (nuMessage(text, 3000) or nuMessage(title, lines, 3000, callback))
+    and takes a first <h1>…<h5> line as its title.
+  - nuSubformEnable(sf, field, false) disables; without a field nuSubformDisable / Enable also lock the delete boxes.
+  - nuShowTabById(id, false) hides the tab; nuDisableAllObjects / nuEnableAllObjects take (excludeTypes, excludeIds).
+  - nuRunPHP(code, iFrame, runBeforeSave): output into an iframe, nuBeforeSave() first.
+  - nuAddActionButton: built-in ids (Save, SaveClose, Delete, Clone, Add, Print, Back, Run …) get label, action and
+    icon by themselves; new arguments icon and insertAfterElement.
+  - nuSelectRemoveEmpty() without an id works on every select (no change event); nuHasBeenSaved() counts the saves
+    (-1 / 0 / 1 / 2 …); nuSelectedTabNumber() returns text; nuSetToolTip translates, shows on hover and takes
+    labelHover or an options object; optional arguments of nuPad2/3/4, nuAttachFontAwesome, nuMainForm,
+    nuSubformHideColumns.
+  - PHP: nuCreateTableFromSelect no longer drops an existing table and takes $temporary; nuHasProperty returns the
+    value; nuEncodeQueryRowResults always returns rows as lists; nuRunQuery runs leading # lines as commands;
+    nuProcedure finds a procedure by code or id; nuGetProperty takes an array to read from.
+- Help → Differences to nuBuilder Forte lists the differences that stay (nuSetTitle on lists, nuDisplayError's
+  return value, system variables in nuSetProperty, nuUserLanguage for the globeadmin, hash cookies, nuForm's SQL
+  argument); function reference updated.
+
+## 0.8.950 – nuTinyMCEOnChangeHandler, nuHasBeenEdited as in Forte
+- Forms with their own TinyMCE set-up copied from nuBuilder Forte: `nuTinyMCEOnChangeHandler(editor)` now exists – it copies the
+  editor's text into its field and marks the record as edited, so the editor (and its toolbar) starts and changes are saved.
+- `nuHasBeenEdited()` now does what it does in nuBuilder Forte: it marks the record as edited (Save turns red, leaving asks first).
+  Before, it only told whether the record had been changed – use `nuIsSaved()` for that.
+
+## 0.8.949 – Notes
+- Notes only: v0.8.948 published on GitHub (release notes template updated).
+
 ## 0.8.948 – Release gate
 - Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte, OWASP ZAP); README, tutorial and
   TODO brought up to date for 0.8.936–0.8.947.

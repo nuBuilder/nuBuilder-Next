@@ -245,6 +245,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       `nuBrowseStyleStatusColumn`, `nuDragElement`, `nuShowVersionInfo`, `nuHasHiddenModalDragDialog`; also `nuEnableMultiSelect`,
       `nuShowFile`, `nuSetDateFormat`, `nuSetTabHelpButtons`, `nuSetSideBarStyle`, which Forte 4.9's JavaScript does not have (kept so old
       code does not fail). Admin tools → Compatibility check shows which ones your forms call.
+- [ ] **Please verify: functions aligned with Forte** (0.8.951) – on your own forms: `nuSetValue(…, false)` no longer marks the field as
+      edited (saved only when something else is edited); `nuSelectedTabNumber()` returns text; `nuCreateTableFromSelect` no longer drops an
+      existing table (add a DROP first where that was relied on); `nuHasProperty` returns the value; `nuMessage(…, ms)` closes by itself;
+      `nuAddActionButton('Save')` and the other built-in ids; `nuHasBeenEdited()` / `nuTinyMCEOnChangeHandler()` with your own TinyMCE set-up (0.8.950).
 - [ ] **`nuSetValidationErrorTitle()`** does nothing.
 - [ ] **Forte-style list filter buttons** (0.8.912–0.8.917): `nuSetProperty` + `nuSearchAction()` from buttons / selects of the browse
       JavaScript, `nuBrowseLoop()`, a permalink `?f=&r=&h=` written by form code, `<input type=button>` labels; the (i) panel shows the

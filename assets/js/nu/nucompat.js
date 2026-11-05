@@ -30,7 +30,7 @@
 	});
 	api('nuAddSlashes', function (s) { return String(s).replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0'); });
 	api('nuAddThousandSpaces', function (s, d) { return String(s).replace(/\B(?=(\d{3})+(?!\d))/g, d); });
-	api('nuPad', function (id, length, pad) { return String(id).padStart(length, pad === undefined ? '0' : pad); });
+	api('nuPad', function (id, length, pad) { return String(id).padStart(length, pad === undefined || pad === null ? '0' : String(pad)); });
 	api('nuSpaces', function (n) { return '&nbsp;'.repeat(n); });
 	api('nuRemovePX', function (s) { return Number(String(s).split('px')[0]); });
 	api('nuArrayColumn', function (a, n) { return a.map(function (x) { return x[n]; }); });
@@ -448,6 +448,7 @@
 	api('nuSelectNextTab', function (step, includeInvisible) {
 		var cur = nuSelectedTabNumber();
 		if (cur === null) return;
+		cur = Number(cur); step = Number(step) || 1;
 		for (var n = cur + step, t; (t = g('nuTab' + n)); n += step) {
 			if (includeInvisible || $(t).closest('li').is(':visible')) { nuSelectTab(n); return; }
 		}
@@ -503,7 +504,12 @@
 		sfRows(sf).each(function () { nuShow(this.getAttribute('data-nu-prefix') + field, show, false); });
 	});
 	function isGrid(sf) { return $('#' + sf + ' .nuSubformTable').length > 0; }        // grid (table) or form layout (one card per row)
-	api('nuSubformHideColumns', function (sf, columns) { (columns || []).forEach(function (c) { if (isGrid(sf)) nuSubformHideColumn(sf, c); else nuSubformHide(sf, c); }); });
+	// maintainWidth (nuBuilder Forte): the sub-form keeps its width – the hidden columns' room is not given back
+	api('nuSubformHideColumns', function (sf, columns, maintainWidth) {
+		var box = g(sf), w = box ? box.style.width : '';
+		(columns || []).forEach(function (c) { if (isGrid(sf)) nuSubformHideColumn(sf, c); else nuSubformHide(sf, c); });
+		if (box && maintainWidth) box.style.width = w || (box.offsetWidth + 'px');
+	});
 	api('nuSubformShowColumn', function (sf, field) {
 		if (!isGrid(sf)) { nuSubformShow(sf, field); return; }
 		var i = $('#title_' + sf + field).index();

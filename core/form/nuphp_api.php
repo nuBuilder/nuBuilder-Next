@@ -16,9 +16,25 @@ if (!function_exists('nuRunQuery')) {
 		$db = nu_db();
 		// no SQL: nuBuilder Forte returns [host, database, user, password] – here without the password (0.8.926)
 		if ($sql === null || trim($sql) === '') return [(string)nu_cfg('nuConfigDBHost'), (string)nu_cfg('nuConfigDBName'), (string)nu_cfg('nuConfigDBUser'), ''];
+		// nuBuilder Forte: when the first line starts with '#', every '#' line is a command run first (e.g. "#SET SESSION …")
+		[$commands, $sql] = nu_query_commands($sql);
+		foreach ($commands as $c) if ($c !== '') $db->run($c);
 		$st = $db->run($sql, $params);
 		if ($isInsert) return (string)$db->lastInsertId();
 		return new NuResult($st);
+	}
+
+	/** nuBuilder Forte's nuQueryExtractQueryComponents: [commands of the '#' lines, the rest] – only when the first line starts with '#'. */
+	function nu_query_commands(string $sql): array
+	{
+		$lines = explode("\n", $sql);
+		if (!str_starts_with(ltrim($lines[0]), '#')) return [[], $sql];
+		$cmd = $rest = [];
+		foreach ($lines as $l) {
+			$t = ltrim($l);
+			if (str_starts_with($t, '#')) $cmd[] = trim(substr($t, 1)); else $rest[] = trim($l);
+		}
+		return [$cmd, implode("\n", $rest)];
 	}
 
 	function db_fetch_row($r): array|false
@@ -86,6 +102,7 @@ if (!function_exists('nuRunQuery')) {
 
 	function nuSetFormValue(string $field, mixed $value): void
 	{
+		// '#ROW#' = the row prefix of the sub-form row the lookup / call came from (replaced in the browser, nuruntime.js applyResult)
 		NuPhp::$formValues[$field] = $value;
 	}
 
@@ -180,17 +197,20 @@ if (!function_exists('nuRunQuery')) {
 		NuPhp::$hash[$name] = $value;
 	}
 
-	function nuGetProperty(string $name): mixed
+	/** $properties (nuBuilder Forte): look the name up in this array instead of the hash variables. */
+	function nuGetProperty(string $name, ?array $properties = null): mixed
 	{
+		if ($properties !== null) return array_key_exists($name, $properties) ? $properties[$name] : null;
 		return NuPhp::$hash[$name] ?? NuHashCookies::get($name);
 	}
 
-	/** nuBuilder: true (and $value) when the property exists (and is not empty with $allowEmpty = false). */
-	function nuHasProperty(string $name, mixed &$value = null, bool $allowEmpty = true): bool
+	/** nuBuilder Forte: the property's value when it is set and not empty (false otherwise; '0' counts as not set, as in Forte). */
+	function nuHasProperty(string $name, mixed &$value = null, bool $allowEmpty = true): mixed
 	{
 		$value = nuGetProperty($name);
-		if ($value === null || $value === false) return false;
-		return $allowEmpty || trim((string)$value) !== '';
+		if (!$value) return false;
+		if (!$allowEmpty && trim((string)$value) === '') return false;
+		return $value;
 	}
 
 	/** All global hash cookies (nuSetProperty(…, true)). */
@@ -313,7 +333,7 @@ if (!function_exists('nuRunQuery')) {
 	/** PHP code of another procedure, to be used as eval(nuProcedure('code')). */
 	function nuProcedure(string $code): string
 	{
-		$php = nu_db()->value('SELECT sph_php FROM zzzzsys_php WHERE sph_code = ?', [$code]);
+		$php = nu_db()->value('SELECT sph_php FROM zzzzsys_php WHERE sph_code = ? OR zzzzsys_php_id = ?', [$code, $code]);   // code or id, as Forte
 		return NuHash::replace((string)$php, NuPhp::$hash, NuHash::PHP);
 	}
 
@@ -336,23 +356,20 @@ if (!function_exists('nuRunQuery')) {
 		return (object)(NuPhp::$subforms[$id] ?? ['id' => $id, 'fields' => [], 'rows' => [], 'deleted' => [], 'edited' => []]);
 	}
 
-	function nuCreateTableFromSelect(string $table, string $sql, array $params = []): void
+	/** nuBuilder Forte: creates a table from a SELECT – an existing table is NOT dropped (the database refuses the name); $temporary = TEMPORARY table (MySQL). */
+	function nuCreateTableFromSelect(string $table, string $sql, array $params = [], bool $temporary = false): mixed
 	{
 		$db = nu_db();
 		if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) throw new RuntimeException("Invalid table name $table");
-		if ($db->type === 'sqlsrv') {
-			$db->run("IF OBJECT_ID('$table') IS NOT NULL DROP TABLE $table");
-			$db->run("SELECT * INTO $table FROM ($sql) nuSrc", $params);
-		} else {
-			$db->run("DROP TABLE IF EXISTS $table");
-			$db->run("CREATE TABLE $table" . ($db->type === 'mysql' ? ' ENGINE=InnoDB' : '') . " AS $sql", $params);
-		}
+		if ($db->type === 'sqlsrv') return new NuResult($db->run('SELECT * INTO ' . ($temporary ? '#' : '') . "[$table] FROM ($sql) nuSrc", $params));
+		if ($db->type === 'mysql') return new NuResult($db->run('CREATE' . ($temporary ? ' TEMPORARY' : '') . " TABLE `$table` AS ($sql)", $params));
+		return new NuResult($db->run('CREATE' . ($temporary ? ' TEMP' : '') . " TABLE $table AS $sql", $params));
 	}
 
 	function nuEncodeQueryRowResults(string $sql, array $params = [], array $prepend = []): string
 	{
 		$r = nu_db()->all($sql, $params);
-		$rows = array_merge($prepend, array_map(static fn($row) => count($row) === 1 ? array_values($row)[0] : array_values($row), $r));
+		$rows = array_merge($prepend ? [$prepend] : [], array_map(static fn($row) => array_values($row), $r));   // Forte: rows always as lists, $prefixedData one first row
 		return base64_encode(json_encode($rows, JSON_UNESCAPED_UNICODE));
 	}
 

@@ -73,9 +73,9 @@
 	window.addEventListener('unhandledrejection', function (e) { reportError(String(e.reason && e.reason.message || e.reason), 'promise'); });
 
 	// =================================================================== small helpers nuBuilder code uses
-	api('nuPad2', function (n) { return String(n).padStart(2, '0'); });
-	api('nuPad3', function (n) { return String(n).padStart(3, '0'); });
-	api('nuPad4', function (n) { return String(n).padStart(4, '0'); });
+	api('nuPad2', function (n, c) { return String(n).padStart(2, c === undefined || c === null ? '0' : String(c)); });
+	api('nuPad3', function (n, c) { return String(n).padStart(3, c === undefined || c === null ? '0' : String(c)); });
+	api('nuPad4', function (n, c) { return String(n).padStart(4, c === undefined || c === null ? '0' : String(c)); });
 	// nuBuilder: texts in the user's language (zzzzsys_translate, sent with the page); "|text" is never translated
 	function trOne(s) {
 		if (s === null || s === undefined) return '';
@@ -98,12 +98,32 @@
 		e = e || String(N.record_id || '').slice(-2);
 		return {BB: 'Before Browse', BE: 'Before Edit', BS: 'Before Save', AS: 'After Save', BD: 'Before Delete', AD: 'After Delete', AB: 'After Browse'}[e];
 	});
-	api('nuMainForm', function () { return !N.iframe && !N.lookup; });
+	// nuBuilder Forte: false inside an iframe / popup and – unless ignoreOpener – in a window opened by another form window
+	api('nuMainForm', function (ignoreOpener) {
+		if (N.iframe || N.lookup) return false;
+		if (!ignoreOpener && window.opener) { try { if (window.opener.nuNext && window.opener !== window) return false; } catch (x) { /* other origin */ } }
+		return true;
+	});
 	api('nuFormType', function () { return N.mode === 'browse' ? 'browse' : 'edit'; });
 	api('nuRecordId', function () { return N.record_id; });
 	api('nuFormId', function () { return N.form.id; });
-	api('nuHasBeenSaved', function () { return N.saved ? 1 : 0; });
-	api('nuHasBeenEdited', function () { return !!N.edited; });
+	// nuBuilder Forte: -1 = not an edit form, 0 = opened (not saved yet), n = saved n times since it was opened
+	var timesSaved = (function () {
+		if (N.mode !== 'edit' || !N.form || N.form.type === 'launch') return -1;
+		var k = 'nunext-saved:' + N.form.id, v = null, rec = String(N.record_id || '');
+		try { v = JSON.parse(sessionStorage.getItem(k) || 'null'); } catch (x) { v = null; }
+		var n = N.saved && v && (v.r === rec || v.r === '-1') ? v.n + 1 : (N.saved ? 1 : 0);
+		try { sessionStorage.setItem(k, JSON.stringify({r: rec, n: n})); } catch (x) { /* private mode */ }
+		return n;
+	})();
+	api('nuHasBeenSaved', function () { return timesSaved; });
+	// as nuBuilder Forte 4.9 (0.8.950): marks the record as edited (red Save, leave guard) – it was a read-only check here; nuIsSaved() reads the state
+	api('nuHasBeenEdited', function () {
+		if (!N.edited) callHook('nuOnSetSaved', false);
+		N.edited = true;
+		$('#nuSaveButton').addClass('nuSaveEdited').prop('disabled', false);
+		return true;
+	});
 	api('nuIsSaved', function () { return !N.edited; });
 	api('nuAccessLevelCode', function () { return N.user.access_level_code || ''; });
 	// main + active additional access levels (0.8.867): [{id, code, description, group, main, valid_until}], [] for the globeadmin – a copy
@@ -306,10 +326,17 @@
 		return r;
 	}
 
+	function isBtn(el) { return el.tagName === 'BUTTON' || (el.tagName === 'INPUT' && el.type === 'button'); }
+	function btnLabel(el) { return el.querySelector ? el.querySelector('.nuButtonLabel') : null; }
 	api('nuGetValue', function (id, method) {
 		var el = g(id);
 		if (!el) return null;
-		if (el.type === 'checkbox') return el.checked;
+		if (el.type === 'checkbox' || el.type === 'radio') return el.checked;
+		// nuBuilder Forte: a button gives its label, a label its text (method for / html), a WYSIWYG field the editor's content
+		if (!method && isBtn(el)) return el.tagName === 'INPUT' ? el.value : (btnLabel(el) || el).textContent;
+		if (el.tagName === 'LABEL') return method === 'for' ? (el.getAttribute('for') || null) : (method === 'html' ? el.innerHTML : el.textContent);
+		if (!method && window.nuGetTinyMCEEditor && nuGetTinyMCEEditor(id)) return nuTinyMCEGetContent(id);
+		if (el.tagName === 'SELECT' && !el.multiple && (method === undefined || method === 'val')) return el.value === undefined || el.selectedIndex < 0 ? '' : el.value;
 		if (method === 'text' && el.tagName === 'SELECT') return $(el).find('option:selected').text();
 		if (method === 'code') return (g(id + 'code') || {}).value;
 		if (method === 'description') return (g(id + 'description') || {}).value;
@@ -319,16 +346,33 @@
 		return el.textContent;
 	});
 
-	// change: false = no change event (nuBuilder); the field is still marked as edited
+	// change: false = no change event and, as in nuBuilder Forte, the field is not marked as edited (0.8.951)
 	api('nuSetValue', function (id, value, method, change) {
 		var el = g(id);
 		if (!el) return false;
-		if (method === 'html' || (!('value' in el) || el.tagName === 'DIV')) { el.innerHTML = value; return true; }
-		if (el.type === 'checkbox') el.checked = value === true || value === 1 || value === '1' || value === 'true';
-		else if (method === 'text' && el.tagName === 'SELECT') $(el).find('option').filter(function () { return $(this).text() === value; }).prop('selected', true);
+		change = change !== false;
+		// a lookup: the id is looked up and code / description follow (nuBuilder Forte: nuGetLookupId)
+		if (el.getAttribute('data-nu-type') === 'lookup' && g(id + 'code')) { nuGetLookupId(value, id); return true; }
+		if (method === undefined && isBtn(el)) {
+			if (el.tagName === 'INPUT') el.value = value; else { var lb = btnLabel(el); (lb || el).textContent = value; if (!lb && el.classList.contains('nuActionButton')) el.value = value; }
+			return true;
+		}
+		if (el.tagName === 'LABEL') {
+			if (method === 'for') el.setAttribute('for', value); else if (method === 'text') el.textContent = value; else nuSetLabelText(id, value, change);
+			return true;
+		}
+		if (method !== 'html' && method !== 'text' && window.nuGetTinyMCEEditor && nuGetTinyMCEEditor(id)) {
+			nuTinyMCESetContent(id, value); el.value = value;
+			if (change) markEdited(el);
+			return true;
+		}
+		if (method === 'html' || (!('value' in el) || el.tagName === 'DIV')) { if (method === 'text') el.textContent = value; else el.innerHTML = value; return true; }
+		if (el.type === 'checkbox' || el.type === 'radio') el.checked = value === true || value === 1 || value === '1' || value === 'true';
+		else if (el.tagName === 'SELECT' && (value === null || value === undefined || (value === '' && !$(el).find('option[value=""]').length))) el.selectedIndex = -1;
+		else if (method === 'text' && el.tagName === 'SELECT') $(el).find('option').filter(function () { return $(this).text().replace(/\u00a0/g, ' ') === value; }).first().prop('selected', true);
 		else $(el).val(value);
-		$(el).addClass('nuEdited');
-		if (change !== false) $(el).trigger('change'); else N.edited = true;
+		if (el.tomselect) el.tomselect.sync();
+		if (change) { $(el).addClass('nuEdited'); $(el).trigger('change'); }
 		return true;
 	});
 
@@ -341,10 +385,18 @@
 	});
 	// keeps the validation markers (* / key) after the new text
 	api('nuSetLabelText', function (id, t, translate) {
+		if (/^label_/.test(id) && g(id) && g(id).tagName === 'LABEL') id = id.slice(6);   // the label's own id, as nuBuilder Forte
 		var l = $('#label_' + id), marks = l.children('.nuMarks').detach();
 		l.empty().append(safeFrag(translate ? nuTranslate(t) : t)).append(marks);
 	});
-	api('nuSetToolTip', function (id, t) { $('#' + id).attr('title', t); });
+	// nuBuilder Forte: the title shows while the mouse is over the field (translated); labelHover = also over its label;
+	// an options object = nuSetAdvancedToolTip
+	api('nuSetToolTip', function (id, t, labelHover) {
+		if (t && typeof t === 'object') { nuSetAdvancedToolTip(id, t); return; }
+		var sel = '#' + id + (labelHover ? ', #label_' + id : '');
+		$(sel).off('.nuTip').on('mouseenter.nuTip', function () { this.setAttribute('title', nuTranslate(t)); })
+			.on('mouseleave.nuTip', function () { this.removeAttribute('title'); });
+	});
 
 	/** Values of the main form (unformatted), for save and server calls. */
 	function mainValues() {
@@ -543,25 +595,35 @@
 	});
 
 	/** Removes the empty option of a select; setIndex: index to select afterwards (number), or keep the selection. */
+	// nuBuilder Forte: no id = every select of the page; setIndex sets the selected index without a change event
 	api('nuSelectRemoveEmpty', function (ids, setIndex) {
-		arr(ids).forEach(function (id) {
-			var el = g(id);
+		var els = ids === undefined || ids === null ? Array.prototype.slice.call(document.querySelectorAll('select')) : arr(ids).map(g);
+		els.forEach(function (el) {
 			if (!el || el.tagName !== 'SELECT') return;
-			$(el).find('option').filter(function () { return this.value === '' && $(this).text().trim() === ''; }).remove();
-			if (setIndex !== undefined && setIndex !== null && setIndex !== false && el.options.length) {
-				el.selectedIndex = Math.max(0, Math.min(el.options.length - 1, Number(setIndex) || 0));
-				$(el).trigger('change');
-			}
+			$(el).find('option').filter(function () { return String(this.value).trim() === '' && $(this).text().trim() === ''; }).remove();
+			if (setIndex !== undefined && setIndex !== null && setIndex !== false) el.selectedIndex = Number(setIndex);
 			if (el.tomselect) { el.tomselect.clearOptions(); el.tomselect.sync(); }
 		});
 	});
 
 	// =================================================================== messages
+	// nuBuilder Forte: nuMessage(lines) · (lines, timeout[, callback]) · (title, lines[, timeout[, callback]]);
+	// a first line <h1>…<h5> becomes the title; after timeout ms the message goes and callback runs (0.8.951)
+	var HEAD = /<h[1-5]>(.*?)<\/h[1-5]>/i;
 	api('nuMessage', function () {
-		var a = Array.prototype.slice.call(arguments), title = '', lines;
-		if (a.length === 1 && Array.isArray(a[0])) lines = a[0];
-		else if (a.length >= 2 && !Array.isArray(a[0])) { title = a[0]; lines = a.slice(1).reduce(function (x, y) { return x.concat(arr(y)); }, []); }
+		var a = Array.prototype.slice.call(arguments).filter(function (x) { return x !== undefined; }), title = '', lines, timeout = null, callback = null;
+		if (a.length === 1 && typeof a[0] === 'string' && HEAD.test(a[0])) { var mh = a[0].match(HEAD); a = [mh[1], a[0].replace(HEAD, '')]; }
+		if (a.length >= 2 && Number.isInteger(a[1])) { lines = arr(a[0]); timeout = a[1]; callback = typeof a[2] === 'function' ? a[2] : null; }
+		else if (a.length === 1 && Array.isArray(a[0])) lines = a[0];
+		else if (a.length >= 2 && !Array.isArray(a[0])) {
+			title = a[0];
+			var rest = a.slice(1);
+			if (rest.length && typeof rest[rest.length - 1] === 'function') callback = rest.pop();
+			if (rest.length > 1 && Number.isInteger(rest[rest.length - 1])) timeout = rest.pop();
+			lines = rest.reduce(function (x, y) { return x.concat(arr(y)); }, []);
+		}
 		else lines = a.reduce(function (x, y) { return x.concat(arr(y)); }, []);
+		if (!title && lines.length && HEAD.test(String(lines[0]))) { var m0 = String(lines[0]).match(HEAD); title = m0[1]; lines = lines.slice(1); if (String(lines[0] || '').trim() === '' && lines.length) lines = lines.slice(1); }
 		if (designQuiet('message', (title ? title + ': ' : '') + lines.join(' · '))) return $('<div></div>');
 		$('#nuMessageDiv').remove();
 		var box = $('<div id="nuMessageDiv" class="nuMessage shadow" role="alertdialog" aria-live="assertive"></div>');
@@ -572,6 +634,7 @@
 		lines.forEach(function (l) { box.append(put($('<div class="nuMessageLine"></div>'), String(l))); });
 		$('body').append(box);
 		close.trigger('focus');
+		if (timeout) setTimeout(function () { box.fadeOut('slow', function () { box.remove(); }); if (callback) callback(); }, timeout);
 		return box;
 	});
 	api('nuMessageRemove', function () { $('#nuMessageDiv').remove(); });
@@ -714,12 +777,16 @@
 		nuSetProperty(paramName, btoa(unescape(encodeURIComponent(JSON.stringify(params)))));
 		return nuRunPHPHidden(code);
 	});
-	api('nuRunPHP', function (code) {
-		var w = window.open('', '_blank');
+	// nuBuilder Forte: iFrame = id of an iframe that shows the output instead of a new window; runBeforeSave = nuBeforeSave() first
+	api('nuRunPHP', function (code, iFrame, runBeforeSave) {
+		if (!beforeSaveOk(runBeforeSave)) return Promise.resolve(null);
+		var fr = iFrame ? (parent.document.getElementById(iFrame) || g(iFrame)) : null;
+		var w = fr ? null : window.open('', '_blank');
 		return call('php', {code: code, values: N.mode === 'edit' ? mainValues() : {}}).then(function (res) {
 			if (res && res.file) { if (w) w.close(); saveFile(res.file); return; }       // a download: no window needed
 			applyResult(res);
-			if (w) { w.document.open(); w.document.write(res.output || ''); w.document.close(); }
+			if (fr) fr.srcdoc = res.output || '';
+			else if (w) { w.document.open(); w.document.write(res.output || ''); w.document.close(); }
 		});
 	});
 
@@ -837,7 +904,12 @@
 	api('nuHideTab', function (i) { $('#nuTab' + i).parent().hide(); });
 	api('nuShowTab', function (i) { $('#nuTab' + i).parent().show(); });
 	api('nuHideTabById', function (id) { $('.nuTab[data-nu-tab-id="' + id + '"]').parent().hide(); });
-	api('nuShowTabById', function (id) { $('.nuTab[data-nu-tab-id="' + id + '"]').parent().show(); });
+	// nuBuilder Forte: visible === false hides the tab; then the tab bar follows nuSetHideTabIfOnlyOne
+	api('nuShowTabById', function (id, visible) {
+		var t = $('.nuTab[data-nu-tab-id="' + id + '"]').parent();
+		if (visible === false) t.hide(); else t.show();
+		if (window.nuSetHideTabIfOnlyOne) nuSetHideTabIfOnlyOne();
+	});
 
 	// =================================================================== edited state
 	function markEdited(el) {
@@ -1015,8 +1087,13 @@
 		var a = nuSubformColumnArray(sf, field).filter(function (v) { return v !== ''; });
 		return a.length === new Set(a).size ? true : (nuTranslate('Duplicate values in') + ' ' + (label || field));
 	});
-	api('nuSubformDisable', function (sf, field) { $('#' + sf + ' [data-nu-field' + (field ? '="' + field + '"' : '') + ']').each(function () { nuDisable(this.id); }); });
-	api('nuSubformEnable', function (sf, field) { $('#' + sf + ' [data-nu-field' + (field ? '="' + field + '"' : '') + ']').each(function () { nuEnable(this.id); }); });
+	// nuBuilder Forte: without a field the whole sub-form (also its add / delete controls); enable === false disables
+	function sfToggle(sf, field, on) {
+		$('#' + sf + ' [data-nu-field' + (field ? '="' + field + '"' : '') + ']').each(function () { nuEnable(this.id, on); });
+		if (!field) $('#' + sf).toggleClass('nuSubformDisabled', !on).find('input.nuSubformDelete').prop('disabled', !on);
+	}
+	api('nuSubformDisable', function (sf, field) { sfToggle(sf, field, false); });
+	api('nuSubformEnable', function (sf, field, enable) { sfToggle(sf, field, enable !== false); });
 	api('nuSubformHideColumn', function (sf, field) { var i = $('#title_' + sf + field).index(); $('#' + sf + ' tr').each(function () { $(this).children().eq(i).hide(); }); });
 
 	// =================================================================== calendar (native date picker)
@@ -1601,18 +1678,42 @@
 				return prevHook && prevHook.get ? prevHook.get(el, 'value') : undefined;
 			},
 			set: function (el, v) {
-				if (el.tagName === 'BUTTON' && el.classList.contains('nuActionButton')) { el.textContent = v; el.value = v; return true; }
+				if (el.tagName === 'BUTTON' && el.classList.contains('nuActionButton')) { var lb = el.querySelector('.nuButtonLabel'); (lb || el).textContent = v; el.value = v; return true; }
 				return prevHook && prevHook.set ? prevHook.set(el, v, 'value') : undefined;
 			}
 		};
 	}
-	api('nuAddActionButton', function (id, value, func, title) {
-		var b = $('<button type="button" class="btn btn-outline-secondary nuActionButton"></button>').attr('id', 'nu' + id + 'Button').attr('title', title || '').html(value);
+	// nuBuilder Forte 4.9: built-in buttons by id (Save, SaveClose, Delete, Clone, Add, Print, Back, Run, RunHidden,
+	// BuildFastForm, BuildFastReport) get their label, action and icon when those are left out; icon = icon classes,
+	// insertAfterElement = id of the element to put the button after (else the action bar); value / title translated
+	var ACTION_DEFAULTS = {
+		Save: ['Save', 'nuSaveAction()', 'fa-regular fa-floppy-disk'], SaveClose: ['Save & Close', 'nuSaveAction(true)', 'fa-regular fa-floppy-disk'],
+		Delete: ['Delete', 'nuDeleteAction()', 'fa-regular fa-square-minus'], Add: ['', 'nuAddAction()', 'fa-solid fa-plus'],
+		Print: ['', 'nuPrintAction()', 'fa-solid fa-list-ul'], Back: ['Back', 'nuBackAction(this)', 'fa-solid fa-chevron-left'],
+		Clone: ['Clone', 'nuCloneAction()', 'fa-regular fa-clone'], BuildFastForm: ['Build Fast Form', 'nuRunPHPHidden("nu_run_fast_form", true)', 'fa-solid fa-bolt'],
+		BuildFastReport: ['Build Fast Report', 'nuRunPHPHidden("nu_run_fast_report", true)', 'fa-solid fa-bolt'],
+		RunHidden: ['Run', 'nuRunHiddenAction()', 'fa-regular fa-circle-play'], Run: ['Run', 'nuRunAction()', 'fa-regular fa-circle-play']
+	};
+	api('nuAddActionButton', function (id, value, func, title, icon, insertAfterElement) {
+		var d = ACTION_DEFAULTS[id];
+		if (d) {
+			if (value === undefined || value === null) value = d[0];
+			if (func === undefined || func === null) func = d[1];
+			if (icon === undefined || icon === null) icon = d[2] + ' fa-width-auto fa-lg';
+		}
+		if (value && typeof value === 'object') value = nuIsMobile() && value.valueMobile !== undefined ? value.valueMobile : (value.value || '');
+		value = value === undefined || value === null ? '' : nuTranslate(String(value));
+		var cls = 'btn btn-outline-secondary nuActionButton' + (['Save', 'Add', 'Clone', 'Delete'].indexOf(id) >= 0 ? ' nu' + id + 'Button' : '');
+		$('#nu' + id + 'Button.nuActionButton').remove();
+		var b = $('<button type="button"></button>').addClass(cls).attr('id', 'nu' + id + 'Button').attr('title', title ? nuTranslate(String(title)) : '');
+		if (value !== '') b.append($('<span class="nuButtonLabel"></span>').html(value));
 		b.attr('value', b.text().trim());
-		b.on('click', function (e) { if (typeof func === 'function') func(e); else runSnippet(func, e, this); });
-		$('#nuActionHolder').append(b);
+		if (func) b.on('click', function (e) { if (typeof func === 'function') func(e); else runSnippet(func, e, this); });
+		if (insertAfterElement && g(insertAfterElement)) b.insertAfter('#' + insertAfterElement); else $('#nuActionHolder').append(b);
+		if (icon) nuAddInputIcon(b.attr('id'), icon);
 		return b;
 	});
+	if (!window.nuBackAction) api('nuBackAction', function () { nuOpenPreviousBreadcrumb(); });
 	api('nuRemoveActionButton', function (id) { $('#nu' + id + 'Button').remove(); });
 
 	api('nuAddDatalist', function (id, data) {
@@ -2846,14 +2947,9 @@
 	});
 
 	// =================================================================== code editor (nuBuilder nuOpenAce → CodeMirror dialog)
-	api('nuDisableAllObjects', function (except) {
-		var ex = arr(except);
-		$('#nuEditForm [data-nu-field]').each(function () { if (ex.indexOf(this.id) < 0) nuDisable(this.id); });
-	});
-	api('nuEnableAllObjects', function (except) {
-		var ex = arr(except);
-		$('#nuEditForm [data-nu-field]').each(function () { if (ex.indexOf(this.id) < 0) nuEnable(this.id); });
-	});
+	// nuBuilder Forte: (excludeTypes, excludeIds) – object types first, then ids; content boxes / HTML never
+	api('nuDisableAllObjects', function (excludeTypes, excludeIds) { nuEnableDisableAllObjects(false, arr(excludeTypes), arr(excludeIds)); });
+	api('nuEnableAllObjects', function (excludeTypes, excludeIds) { nuEnableDisableAllObjects(true, arr(excludeTypes), arr(excludeIds)); });
 	api('nuInsertTextAtCaret', function (id, text) {
 		var el = g(id);
 		if (!el) return;
@@ -3417,6 +3513,13 @@
 		});
 	}
 	api('nuSaveEditor', syncEditors);
+	// nuBuilder Forte's change handler of its TinyMCE set-up (0.8.950) – form code with a copied nuInitTinyMCE calls it on every change:
+	// copies the editor's HTML into its field (editor id = field id + "_container") and marks the record as edited
+	api('nuTinyMCEOnChangeHandler', function (editor) {
+		var id = editor && editor.id ? String(editor.id) : '', ta = /_container$/.test(id) ? g(id.slice(0, -10)) : null;
+		if (ta && typeof editor.getContent === 'function') { var html = editor.getContent(); if (html !== ta.value) { ta.value = html; markEdited(ta); return; } }
+		nuHasBeenEdited();
+	});
 	api('nuGetTinyMCEEditor', function (id) { return tiny() ? tiny().get(id + '_container') : null; });
 	api('nuTinyMCESetContent', function (id, html) { var e = nuGetTinyMCEEditor(id); if (e) e.setContent(html); else if (g(id)) g(id).value = html; });
 	api('nuTinyMCEGetContent', function (id) { var e = nuGetTinyMCEEditor(id); return e ? e.getContent() : (g(id) ? g(id).value : ''); });
@@ -3433,7 +3536,16 @@
 	api('nuUseMobileView', function () { return false; });
 	if (!$.fn.nuOnEnterKey) $.fn.nuOnEnterKey = function (fn) { return this.on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); fn.call(this, e); } }); };
 	if (!String.prototype.nuJustNumbers) String.prototype.nuJustNumbers = function () { return this.replace(/[^0-9]/g, ''); };
-	api('nuAttachFontAwesome', function (id, cls) { $('#' + id).prepend($('<i>').addClass(cls).css('margin-right', '4px')); });
+	// nuBuilder Forte: size small | medium | large | a CSS size; appendToEnd puts the icon after the text
+	api('nuAttachFontAwesome', function (id, cls, size, appendToEnd) {
+		var t = $(typeof id === 'string' ? '#' + id : id);
+		if (!t.length) return;
+		var text = t.text().trim(), i = $('<i>').addClass(cls);
+		var fs = size === 'small' ? 'small' : size === 'large' ? 'x-large' : (!size || size === 'medium' ? '' : size);
+		if (fs) i.css('font-size', fs);
+		if (text) i.css(appendToEnd ? 'margin-left' : 'margin-right', '3px'); else t.css('padding', '0 9px');
+		if (appendToEnd) t.append(i); else t.prepend(i);
+	});
 
 
 	// =================================================================== nuBuilder API, part 2 (0.7.2)
@@ -3467,7 +3579,8 @@
 	}
 	function selectedTab() { return $('.nuTab.active')[0] || null; }
 	api('nuOpenTab', function (i) { nuSelectTab(+i); });
-	api('nuSelectedTabNumber', function () { var t = selectedTab(); return t ? +t.getAttribute('data-nu-tab') : null; });
+	// nuBuilder Forte returns the number as text ("0", "1" …)
+	api('nuSelectedTabNumber', function () { var t = selectedTab(); return t ? String(t.getAttribute('data-nu-tab')) : null; });
 	api('nuSelectedTabId', function () { var t = selectedTab(); return t ? t.getAttribute('data-nu-tab-id') : null; });
 	api('nuSelectedTabTitle', function () { var t = selectedTab(); return t ? t.innerHTML : null; });
 	api('nuShowTabByTitle', function (title, visible) {
