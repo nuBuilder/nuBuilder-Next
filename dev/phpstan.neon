@@ -29,11 +29,11 @@ parameters:
 		# PhpSpreadsheet comes from its library pack (0.8.755)
 		- '#PhpOffice\\PhpSpreadsheet|NuSpreadsheetFilter#'
 		# pages are included by index.php, which defines their variables ($user, $p …)
-		- message: '#Variable \$\w+ might not be defined#'
-		  path: ../pages/*
 		# the API router calls its handlers with the matched URL parts (self::$fn(...$parts))
 		- message: '#invoked with 0 parameters#'
 		  path: ../core/nuapi.php
+		# pages: "might not be defined" is reported again (0.8.937, DeepSource PHP-W1066) – variables a page gets from index.php or the
+		# including page are named again with ??= / a cast at the top of the block
 		# nuRunProcedure: the eval'd procedure sets $error
 		- message: '#unused use \$error#'
 		  path: ../core/form/nuphp_compat.php

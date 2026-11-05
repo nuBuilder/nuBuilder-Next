@@ -1,3 +1,4 @@
+/* global nuBs */
 /*
  * Format designer (modal): create and edit formats in zzzzsys_format – date/time, number/currency, text mask.
  * Used by the formats page and the form builder.

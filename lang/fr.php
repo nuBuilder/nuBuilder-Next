@@ -1004,6 +1004,8 @@ return [
 	'builder_browse_sql' => 'SQL de liste',
 	'bsq_more' => 'Autres options de conception',
 	'bsq_edit' => 'Modifier le SQL de la liste…',
+	'bsq_edit_cols' => 'Modifier les colonnes…',
+	'bsq_resize' => 'Faire glisser pour changer la largeur (double-clic : largeur par défaut)',
 	'bsq_hint' => 'Enregistré aussitôt dans le formulaire ; la liste se recharge. Ctrl+S = enregistrer · Échap = fermer',
 	'bsq_unsaved' => 'Abandonner les modifications du SQL de la liste ?',
 	'bsq_pin' => 'Garder ouvert – aussi après l\'enregistrement et dans d\'autres listes',

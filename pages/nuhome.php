@@ -512,6 +512,9 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 <?php
 $foot = $homeDash ? NuDashboard::scriptTag() : '';
 if ($admin || $userPage) {
+	// set by the tile page above (same condition) – named again for the analysers
+	$hlCur ??= NuHome::current(); $hlAll ??= NuHome::layouts(); $hlDef ??= NuListView::listDefault(NuHome::LIST); $hlManage ??= NuHome::canManage();
+	$groups ??= []; $units ??= []; $mine ??= []; $hideList ??= []; $mineHidden ??= []; $myView ??= null;
 	$cat = [];
 	if (!$userPage) {                                       // built-in tiles: the admin tile page only
 		foreach (NuHome::catalog() as $k => [$route, $icon, $label, $hint]) $cat[$k] = ['icon' => $icon, 'label' => $label, 'hint' => $hint];

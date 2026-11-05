@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – toolbar of the code editors (CodeMirror 5): undo / redo, search, replace, toggle comment, show invisibles, format.
  * Used by the form runtime (double-click editor), the form builder and the procedure page. No inline scripts (CSP).
  * 0.8.476: a click on the editor's label (label[for=<textarea id>], or opt.label; without one: a clipboard button in the toolbar) opens

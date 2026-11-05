@@ -28,10 +28,10 @@ $cols  = array_values(array_filter($data['columns'], static fn($c) => $c['width'
 $lines = [];
 foreach ($data['rows'] as $r) {
 	$line = [];
-	foreach ($cols as $c) $line[] = (string)$r['cells'][$c['index']];
+	foreach ($cols as $c) $line[] = NuHtmlClean::cellText((string)$r['cells'][$c['index']]);   // text of HTML cells (0.8.945)
 	$lines[] = $line;
 }
-$head = array_map(static fn($c) => $c['title'], $cols);
+$head = array_map(static fn($c) => NuHtmlClean::cellText((string)$c['title']), $cols);
 // Excel (0.8.398): ?fmt=xlsx from the print view's "Export Excel"
 if (($_GET['fmt'] ?? '') === 'xlsx') NuListExport::writeXlsx($meta->code() ?: 'export', $meta->description() ?: $meta->code(), $head, $lines, $state['q'] !== '' ? t('search') . ': ' . $state['q'] : '');
 // options from the CSV dialog of the print view (sep, head, bom, name) – see core/nulistexport.php

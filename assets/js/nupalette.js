@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – search (0.8.321), globeadmin only: Ctrl+K (or the magnifier in the top bar) opens a box that finds pages, actions,
    own tiles, forms, procedures and reports (list from ?p=palette, core/nupalette.php). ↑ ↓ choose, Enter opens, Ctrl+Enter in a new tab,
    Esc closes. The last opened entries come first (kept in this browser). window.nuPalette.load() / .match() are used by the start page

@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – procedure editor (pages/nuprocedures.php): code editors, snippets, test run with nuOnProcedureRun(), tabs */
 (function () {
 	'use strict';

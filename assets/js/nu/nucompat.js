@@ -1,3 +1,4 @@
+/* global nuBs */
 /*
  * More nuBuilder 4.9 JavaScript functions (nucommon.js, nuform.js, nuajax.js) for existing form code.
  * Loaded after nuruntime.js; works on nuBuilder Next's markup (subform rows .nuSubformRow with data-nu-prefix,

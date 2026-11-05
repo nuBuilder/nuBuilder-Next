@@ -1,3 +1,4 @@
+/* global nuBs */
 /*
  * nuBuilder Next form runtime + nuBuilder JavaScript API compatibility layer.
  *
@@ -696,13 +697,20 @@
 		document.body.appendChild(a); a.click(); a.remove();
 		setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
 	}
-	api('nuRunPHPHidden', function (code) {
+	// options === true: nuBeforeSave() first, false stops it (nuBuilder Forte 4.9, 0.8.945)
+	function beforeSaveOk(run) {
+		if (run !== true || typeof window.nuBeforeSave !== 'function') return true;
+		try { return window.nuBeforeSave() !== false; } catch (x) { reportError(x.message, 'nuBeforeSave'); return false; }
+	}
+	api('nuRunPHPHidden', function (code, options) {
+		if (!beforeSaveOk(options)) return Promise.resolve(null);
 		return call('php', {code: code, values: N.mode === 'edit' ? mainValues() : {}}).then(function (res) {
 			if (res && res.file) { saveFile(res.file); return res; }
 			applyResult(res); return res;
 		});
 	});
-	api('nuRunPHPHiddenWithParams', function (code, paramName, params) {
+	api('nuRunPHPHiddenWithParams', function (code, paramName, params, runBeforeSave) {
+		if (!beforeSaveOk(runBeforeSave)) return Promise.resolve(null);
 		nuSetProperty(paramName, btoa(unescape(encodeURIComponent(JSON.stringify(params)))));
 		return nuRunPHPHidden(code);
 	});
@@ -2885,10 +2893,19 @@
 	(function () {
 		var B = N.browse_sql, btn = document.getElementById('nuBrowseSqlEdit');
 		if (!B || !btn) return;
-		var T = B.m, pane = null, cm = null, PIN = 'nunext-bsq-pin';
+		var T = B.m, pane = null, cm = null, PIN = 'nunext-bsq-pin', TAB = 'nunext-bsq-tab', L = B.list || {}, ST = null, COLS = null, names = null;
+		// tab Columns (0.8.942): the list's settings and columns as design mode's Browse list, edited here and saved with the pane's Save
+		function stInit() {
+			ST = {rows: L.rows || '', rowh: L.rowh || '', target: L.target || '0', redirect: L.redirect || '', multi: !!L.multi, autofit: !!L.autofit};
+			COLS = (L.cols || []).map(function (c) { return {id: c[0], title: c[1], display: c[2], align: c[3] || 'l', format: c[4], width: c[5], filter: !!c[6]}; });
+		}
+		var ST0 = '', COLS0 = '';
+		function stDirty() { return !!ST && JSON.stringify(ST) !== ST0; }
+		function colsDirty() { return !!COLS && JSON.stringify(COLS) !== COLS0; }
 		// kept open (0.8.931): a pinned pane opens again after the reload of a save, on the next page and on other lists
 		function pinned() { try { return localStorage.getItem(PIN) === '1'; } catch (e) { return false; } }
 		function setPin(on) { try { if (on) localStorage.setItem(PIN, '1'); else localStorage.removeItem(PIN); } catch (e) { /* no storage */ } }
+		function lastTab() { try { return localStorage.getItem(TAB) === 'cols' ? 'cols' : 'sql'; } catch (e) { return 'sql'; } }
 		function drawPin() {
 			var b = pane && pane.querySelector('.nuBsqPin');
 			if (!b) return;
@@ -2897,43 +2914,236 @@
 			b.setAttribute('aria-pressed', on ? 'true' : 'false');
 			b.innerHTML = '<i class="bi ' + (on ? 'bi-pin-angle-fill' : 'bi-pin-angle') + '" aria-hidden="true"></i>';
 		}
-		function post(data) {
+		function post(data, action) {
 			return fetch(N.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
 				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
-				body: JSON.stringify($.extend({action: 'form.save', form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
+				body: JSON.stringify($.extend({action: action || 'form.save', form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
 			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); }).then(function (j) {
-				if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok && window.confirm(j.error)) return post($.extend({}, data, {live_ok: true}));
+				if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok && window.confirm(j.error)) return post($.extend({}, data, {live_ok: true}), action);
 				if (!j.ok) throw new Error(j.error || T.error);
+				if (j.draft && N.draft) N.draft = j.draft;                      // the next call of the same save needs the new rev
 				return j;
 			});
 		}
-		function dirty() { return cm && cm.getValue() !== B.sql; }
+		function dirty() { return (cm && cm.getValue() !== B.sql) || stDirty() || colsDirty(); }
 		function close(force) {
 			if (!pane) return;
 			if (!force && dirty() && !window.confirm(T.unsaved)) return;
 			if (!force) setPin(false);                                       // closing it ends "keep open"
-			pane.remove(); pane = null; cm = null;
+			pane.remove(); pane = null; cm = null; ST = null; COLS = null;
 			document.documentElement.classList.remove('nuBsqOpen');
 			btn.focus();
 		}
 		function save() {
-			if (!cm) return;
-			var v = cm.getValue(), sb = pane.querySelector('.nuBsqSave'), err = pane.querySelector('.nuBsqErr');
+			if (!pane) return;
+			var v = cm ? cm.getValue() : B.sql, sb = pane.querySelector('.nuBsqSave'), err = pane.querySelector('.nuBsqErr');
+			var fields = {};
+			if (v !== B.sql) fields.sfo_browse_sql = v;
+			if (stDirty()) {
+				var o = JSON.parse(ST0);
+				if (ST.rows !== o.rows) fields.sfo_browse_rows_per_page = ST.rows;
+				if (ST.rowh !== o.rowh) fields.sfo_browse_row_height = ST.rowh;
+				if (ST.target !== o.target) fields.sfo_browse_target = ST.target;
+				if (ST.redirect !== o.redirect) fields.sfo_browse_redirect_form_id = ST.redirect;
+				if (ST.multi !== o.multi) fields.sfo_browse_title_multiline = ST.multi ? '1' : '0';
+				if (ST.autofit !== o.autofit) fields.sfo_browse_autoresize_columns = ST.autofit ? '1' : '0';
+			}
+			var steps = [];
+			if (colsDirty()) steps.push(function () { return post({columns: COLS}, 'browse.save'); });
+			if (Object.keys(fields).length) steps.push(function () { return post({fields: fields}); });
+			if (!steps.length) { close(true); return; }
 			sb.disabled = true; err.hidden = true;
-			post({fields: {sfo_browse_sql: v}}).then(function () { B.sql = v; close(true); window.location.reload(); })
+			steps.reduce(function (p, f) { return p.then(f); }, Promise.resolve()).then(function () { B.sql = v; ST0 = JSON.stringify(ST); COLS0 = JSON.stringify(COLS); close(true); window.location.reload(); })
 				.catch(function (e) { sb.disabled = false; err.textContent = e.message; err.hidden = false; });
 		}
-		function size() { if (cm && pane) { var b = pane.querySelector('.nuBsqBody'); cm.setSize('100%', Math.max(120, b.clientHeight) + 'px'); } }
-		function open(auto) {
-			if (pane) { if (cm) cm.focus(); return; }
+		function size() { if (cm && pane) { var b = pane.querySelector('.nuBsqBody'); if (b.offsetParent) cm.setSize('100%', Math.max(120, b.clientHeight) + 'px'); } }
+		function mk(tag, attrs, kids) {
+			var e = document.createElement(tag);
+			Object.keys(attrs || {}).forEach(function (k) { if (attrs[k] === null || attrs[k] === undefined || attrs[k] === false) return; if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k] === true ? '' : attrs[k]); });
+			(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+			return e;
+		}
+		function ico(c) { return mk('i', {'class': 'bi ' + c, 'aria-hidden': 'true'}); }
+		function namesList() {
+			var dl = mk('datalist', {id: 'nuBsqColNames'});
+			var fill = function () { dl.innerHTML = ''; (names || []).forEach(function (n) { dl.appendChild(mk('option', {value: n})); }); };
+			if (names === null && L.table) {
+				names = [];
+				post({table: L.table}, 'columns').then(function (j) { names = (j.columns || []).map(function (c) { return c.name; }); fill(); }).catch(function () { /* list without suggestions */ });
+			}
+			fill();
+			return dl;
+		}
+		function drawCols() {
+			var box = pane && pane.querySelector('.nuBsqCols');
+			if (!box) return;
+			box.innerHTML = '';
+			var lab = function (txt, input, tip) {
+				var id = 'nuBsq_' + input.getAttribute('data-bsq');
+				input.id = id;
+				return mk('div', {'class': 'nuBsqField'}, [mk('label', {'class': 'form-label small mb-1', 'for': id, text: txt}), tip ? mk('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', title: tip, 'aria-label': tip}, [ico('bi-info-circle')]) : null, input]);
+			};
+			var num = function (k) { var i = mk('input', {type: 'number', min: '0', 'class': 'form-control form-control-sm', 'data-bsq': k, value: ST[k]}); i.addEventListener('input', function () { ST[k] = i.value.trim(); }); return i; };
+			var sel = function (k, opts) {
+				var s = mk('select', {'class': 'form-select form-select-sm', 'data-bsq': k}, opts.map(function (o) { return mk('option', {value: o[0], text: o[1], selected: String(ST[k]) === String(o[0])}); }));
+				s.addEventListener('change', function () { ST[k] = s.value; });
+				return s;
+			};
+			var chk = function (k, txt) {
+				var i = mk('input', {type: 'checkbox', 'class': 'form-check-input', id: 'nuBsq_' + k, 'data-bsq': k, checked: ST[k]});
+				i.addEventListener('change', function () { ST[k] = i.checked; });
+				return mk('div', {'class': 'form-check form-switch'}, [i, mk('label', {'class': 'form-check-label small', 'for': 'nuBsq_' + k, text: txt})]);
+			};
+			box.appendChild(mk('h3', {'class': 'nuBsqSub', text: T.ds_list_settings}));
+			box.appendChild(mk('div', {'class': 'nuBsqGrid'}, [lab(T.builder_rows_per_page, num('rows')), lab(T.ds_list_rowh, num('rowh'), T.ds_list_rowh_tip),
+				lab(T.ds_list_target, sel('target', ['0', '1', '2', '3'].map(function (x) { return [x, T['ds_list_target_' + x]]; }))),
+				lab(T.builder_redirect, sel('redirect', [['', T.please_select]].concat(L.forms || [])))]));
+			box.appendChild(mk('div', {'class': 'nuBsqChecks'}, [chk('multi', T.ds_list_multi), chk('autofit', T.ds_list_autofit)]));
+			box.appendChild(mk('h3', {'class': 'nuBsqSub', text: T.builder_sec_columns}));
+			var tbody = mk('tbody');
+			var head = mk('tr', {}, ['#', T.builder_col_title, T.builder_col_display, T.builder_col_width, T.builder_col_align, ''].map(function (x) { return mk('th', {scope: 'col', text: x}); }));
+			box.appendChild(mk('table', {'class': 'table table-sm align-middle nuBsqColTable', id: 'nuBsqColTable'}, [mk('thead', {}, [head]), tbody]));
+			COLS.forEach(function (c, i) {
+				var off = +c.width === 0;
+				var title = mk('input', {type: 'text', 'class': 'form-control form-control-sm', value: c.title, 'aria-label': T.builder_col_title, 'data-lc': 'title'});
+				var disp = mk('input', {type: 'text', 'class': 'form-control form-control-sm nuBsqMono', value: c.display, list: 'nuBsqColNames', 'aria-label': T.builder_col_display, 'data-lc': 'display'});
+				var width = mk('input', {type: 'number', min: '1', 'class': 'form-control form-control-sm', value: off ? '' : String(c.width), disabled: off, 'aria-label': T.builder_col_width, 'data-lc': 'width'});
+				var align = mk('select', {'class': 'form-select form-select-sm', 'aria-label': T.builder_col_align, 'data-lc': 'align'},
+					['l', 'c', 'r'].map(function (a) { return mk('option', {value: a, text: T[{l: 'om_left', c: 'om_center', r: 'om_right'}[a]], selected: c.align === a}); }));
+				title.addEventListener('input', function () { c.title = title.value; });
+				disp.addEventListener('input', function () { c.display = disp.value.trim(); });
+				width.addEventListener('input', function () { c.width = Math.max(1, parseInt(width.value, 10) || 100); });
+				align.addEventListener('change', function () { c.align = align.value; });
+				var b = function (ic, tip, cls, fn, dis) { var x = mk('button', {type: 'button', 'class': 'btn btn-sm btn-link p-0 ' + (cls || 'text-body-secondary'), title: tip, 'aria-label': tip, disabled: dis, 'data-act': ic}, [ico(ic)]); x.addEventListener('click', fn); return x; };
+				var move = function (d) { var x = COLS.splice(i, 1)[0]; COLS.splice(i + d, 0, x); drawCols(); };
+				tbody.appendChild(mk('tr', {'class': 'nuBsqCol' + (off ? ' nuBsqColOff' : ''), 'data-col': c.id || ('new' + i)}, [
+					mk('td', {'class': 'nuBsqColNo'}, [mk('span', {'class': 'nuBsqGrip', draggable: 'true', 'data-grip': String(i), title: T.ds_col_drag}, [ico('bi-grip-vertical'), String(i + 1)])]), mk('td', {}, [title]), mk('td', {}, [disp]), mk('td', {'class': 'nuBsqColW'}, [width]), mk('td', {'class': 'nuBsqColA'}, [align]),
+					mk('td', {'class': 'nuBsqColBtns'}, [
+						b(off ? 'bi-eye-slash' : 'bi-eye', off ? T.ds_col_show : T.ds_col_hidden, '', function () { c.width = off ? 100 : 0; drawCols(); }),
+						b('bi-arrow-up', T.ds_col_left, '', function () { move(-1); }, i === 0),
+						b('bi-arrow-down', T.ds_col_right, '', function () { move(1); }, i === COLS.length - 1),
+						b('bi-trash', T.delete, 'text-danger', function () { COLS.splice(i, 1); drawCols(); })])]));
+			});
+			if (!COLS.length) tbody.appendChild(mk('tr', {}, [mk('td', {colspan: '6', 'class': 'small text-body-secondary', text: T.ds_list_nocols})]));
+			// drag by the number (0.8.946): drop above / below the row under the pointer
+			var from = -1, mark = function (tr, after) {
+				tbody.querySelectorAll('.nuBsqDropBefore, .nuBsqDropAfter').forEach(function (x) { x.classList.remove('nuBsqDropBefore', 'nuBsqDropAfter'); });
+				if (tr) tr.classList.add(after ? 'nuBsqDropAfter' : 'nuBsqDropBefore');
+			};
+			tbody.addEventListener('dragstart', function (e) {
+				var g = e.target.closest && e.target.closest('[data-grip]');
+				if (!g) { e.preventDefault(); return; }
+				from = +g.getAttribute('data-grip');
+				e.dataTransfer.effectAllowed = 'move';
+				try { e.dataTransfer.setData('text/plain', String(from)); } catch (x) { /* ignore */ }
+				var tr = g.closest('tr'); if (tr) { tr.classList.add('nuBsqDragging'); try { e.dataTransfer.setDragImage(tr, 20, 15); } catch (x) { /* ignore */ } }
+			});
+			tbody.addEventListener('dragover', function (e) {
+				if (from < 0) return;
+				var tr = e.target.closest && e.target.closest('tr.nuBsqCol');
+				if (!tr) return;
+				e.preventDefault();
+				var r = tr.getBoundingClientRect();
+				mark(tr, e.clientY > r.top + r.height / 2);
+			});
+			tbody.addEventListener('dragleave', function (e) { if (!tbody.contains(e.relatedTarget)) mark(null); });
+			tbody.addEventListener('dragend', function () { from = -1; mark(null); tbody.querySelectorAll('.nuBsqDragging').forEach(function (x) { x.classList.remove('nuBsqDragging'); }); });
+			tbody.addEventListener('drop', function (e) {
+				var tr = e.target.closest && e.target.closest('tr.nuBsqCol');
+				if (from < 0 || !tr) return;
+				e.preventDefault();
+				var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr.nuBsqCol')), to = rows.indexOf(tr), r = tr.getBoundingClientRect();
+				if (e.clientY > r.top + r.height / 2) to++;
+				var f = from; from = -1; mark(null);
+				if (to > f) to--;
+				if (to === f || to < 0) { drawCols(); return; }
+				var x = COLS.splice(f, 1)[0]; COLS.splice(to, 0, x); drawCols();
+			});
+			box.appendChild(namesList());
+			var add = mk('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuBsqAddCol'}, [ico('bi-plus-lg me-1'), T.builder_add_column]);
+			add.addEventListener('click', function () {
+				COLS.push({id: '', title: T.ds_col_new, display: '', align: 'l', format: '', width: 120, filter: false});
+				drawCols();
+				var inp = box.querySelectorAll('input[data-lc="display"]');
+				if (inp.length) inp[inp.length - 1].focus();
+			});
+			box.appendChild(add);
+		}
+		function showTab(k) {
+			if (!pane) return;
+			pane.querySelectorAll('.nuBsqTab').forEach(function (b) { var on = b.getAttribute('data-tab') === k; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
+			pane.querySelector('.nuBsqBody').hidden = k !== 'sql';
+			pane.querySelector('.nuBsqCols').hidden = k !== 'cols';
+			pane.querySelector('.nuBsqTools').hidden = k !== 'sql';
+			pane.querySelector('.nuBsqHint').hidden = k !== 'sql';
+			try { localStorage.setItem(TAB, k); } catch (e) { /* no storage */ }
+			if (k === 'sql') { size(); if (cm) cm.refresh(); }
+		}
+		// width by the splitter on the left edge (0.8.947): stored per browser, 360 px … 90 % of the window, double-click = default
+		var WKEY = 'nunext-bsq-w', WDEF = 560;
+		function clampW(w) { return Math.round(Math.max(360, Math.min(w, Math.max(360, window.innerWidth * 0.9)))); }
+		function setW(w, save) {
+			w = clampW(w);
+			document.documentElement.style.setProperty('--nu-bsq-w', w + 'px');
+			var sp = pane && pane.querySelector('.nuBsqSplit'); if (sp) sp.setAttribute('aria-valuenow', String(w));
+			if (save) { try { if (w === WDEF) localStorage.removeItem(WKEY); else localStorage.setItem(WKEY, String(w)); } catch (e) { /* no storage */ } }
+			size();
+		}
+		function splitter() {
+			var saved = 0;
+			try { saved = parseInt(localStorage.getItem(WKEY) || '0', 10) || 0; } catch (e) { /* no storage */ }
+			var sp = document.createElement('div');
+			sp.className = 'nuBsqSplit';
+			sp.setAttribute('role', 'separator'); sp.setAttribute('aria-orientation', 'vertical'); sp.tabIndex = 0;
+			sp.setAttribute('aria-valuemin', '360'); sp.setAttribute('aria-label', T.resize || '');
+			if (T.resize) sp.title = T.resize;
+			pane.appendChild(sp);
+			setW(saved || WDEF, false);
+			sp.addEventListener('pointerdown', function (e) {
+				if (e.button !== 0) return;
+				e.preventDefault();
+				try { sp.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+				document.documentElement.classList.add('nuBsqResizing');
+				var vw = function () { return document.documentElement.clientWidth; };   // without the scroll bar, as the fixed pane
+				var off = vw() - e.clientX - pane.getBoundingClientRect().width;   // where on the splitter it was grabbed
+				var move = function (ev) { setW(vw() - ev.clientX - off, false); };
+				var up = function (ev) {
+					sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); sp.removeEventListener('pointercancel', up);
+					document.documentElement.classList.remove('nuBsqResizing');
+					setW(vw() - ev.clientX - off, true);
+				};
+				sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up); sp.addEventListener('pointercancel', up);
+			});
+			sp.addEventListener('dblclick', function () { setW(WDEF, true); });
+			sp.addEventListener('keydown', function (e) {
+				var w = pane.getBoundingClientRect().width;
+				if (e.key === 'ArrowLeft') { e.preventDefault(); setW(w + 20, true); }
+				else if (e.key === 'ArrowRight') { e.preventDefault(); setW(w - 20, true); }
+				else if (e.key === 'Home') { e.preventDefault(); setW(WDEF, true); }
+			});
+		}
+		function open(auto, tab) {
+			if (tab) { try { localStorage.setItem(TAB, tab); } catch (e) { /* no storage */ } }
+			if (pane) { if (tab) { showTab(tab); pane.querySelector('.nuBsqTab.active').focus(); } else if (cm && lastTab() === 'sql') cm.focus(); return; }
+			stInit(); ST0 = JSON.stringify(ST); COLS0 = JSON.stringify(COLS);
 			pane = document.createElement('aside');
 			pane.className = 'nuBsqPane';
 			pane.id = 'nuBsqPane';
-			pane.setAttribute('aria-labelledby', 'nuBsqTitle');
-			pane.innerHTML = '<div class="nuBsqHead"><h2 class="h6 mb-0 me-auto" id="nuBsqTitle"></h2><span class="nuBsqTools"></span><button type="button" class="btn btn-sm btn-outline-secondary nuBsqPin" id="nuBsqPin"></button><button type="button" class="btn-close nuBsqClose"></button></div>'
-				+ '<div class="alert alert-danger py-1 px-2 m-2 mb-0 small nuBsqErr" role="alert" hidden></div><div class="nuBsqBody"><textarea></textarea></div>'
+			pane.setAttribute('aria-label', T.title);
+			pane.innerHTML = '<div class="nuBsqHead"><ul class="nav nav-tabs nuBsqTabs me-auto" role="tablist"><li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="sql" id="nuBsqTabSql"></button></li>'
+				+ '<li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="cols" id="nuBsqTabCols"></button></li></ul>'
+				+ '<button type="button" class="btn btn-sm btn-outline-secondary nuBsqPin" id="nuBsqPin"></button><button type="button" class="btn-close nuBsqClose"></button></div>'
+				+ '<div class="alert alert-danger py-1 px-2 m-2 mb-0 small nuBsqErr" role="alert" hidden></div><div class="nuBsqTools"></div><div class="nuBsqBody" role="tabpanel" aria-labelledby="nuBsqTabSql"><textarea></textarea></div>'
+				+ '<div class="nuBsqCols" role="tabpanel" aria-labelledby="nuBsqTabCols" hidden></div>'
 				+ '<div class="nuBsqFoot"><span class="small text-body-secondary nuBsqHint"></span><button type="button" class="btn btn-outline-secondary btn-sm nuBsqCancel"></button><button type="button" class="btn btn-primary btn-sm nuBsqSave"></button></div>';
-			pane.querySelector('#nuBsqTitle').textContent = T.title;
+			pane.querySelector('#nuBsqTabSql').textContent = T.title;
+			pane.querySelector('#nuBsqTabCols').textContent = T.builder_sec_columns;
+			pane.querySelectorAll('.nuBsqTab').forEach(function (b) { b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); }); });
+			pane.querySelector('.nuBsqTabs').addEventListener('keydown', function (e) {
+				if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+				var k = pane.querySelector('.nuBsqTab.active').getAttribute('data-tab') === 'sql' ? 'cols' : 'sql';
+				showTab(k); pane.querySelector('.nuBsqTab[data-tab="' + k + '"]').focus(); e.preventDefault();
+			});
 			pane.querySelector('.nuBsqHint').textContent = T.hint;
 			pane.querySelector('.nuBsqCancel').textContent = T.close;
 			pane.querySelector('.nuBsqClose').setAttribute('aria-label', T.close);
@@ -2945,6 +3155,10 @@
 			pane.querySelector('.nuBsqSave').appendChild(document.createTextNode(T.save));
 			document.body.appendChild(pane);
 			document.documentElement.classList.add('nuBsqOpen');
+			splitter();
+			drawCols();
+			var first = lastTab();
+			showTab(first);
 			pane.querySelector('.nuBsqClose').addEventListener('click', function () { close(); });
 			pane.querySelector('.nuBsqCancel').addEventListener('click', function () { close(); });
 			pane.querySelector('.nuBsqSave').addEventListener('click', save);
@@ -2960,10 +3174,13 @@
 					theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'default nuCmDark' : 'default'});
 				if (window.NuCodeTools) NuCodeTools.attach(cm, pane.querySelector('.nuBsqTools'), {lang: 'SQL', db: N.db_type});
 				size();
-				if (auto !== true) cm.focus();                               // a pane opened by itself leaves the focus on the list
+				if (auto !== true && first === 'sql') cm.focus();            // a pane opened by itself leaves the focus on the list
 			});
+			if (auto !== true && first === 'cols') { var f = pane.querySelector('.nuBsqTab.active'); if (f) f.focus(); }
 		}
-		btn.addEventListener('click', function () { open(); });
+		btn.addEventListener('click', function () { open(false, 'sql'); });
+		var colsBtn = document.getElementById('nuBrowseColsEdit');                  // 0.8.943: Edit columns… = the pane on its Columns tab
+		if (colsBtn) colsBtn.addEventListener('click', function () { open(false, 'cols'); });
 		N.browseSqlOpen = function () { open(); };                         // Ctrl+Shift+B and the ⋮ entry Browse SQL (0.8.932)
 		$('<span class="ms-auto ps-3 small text-body-secondary nuBsqKey"></span>').text(/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌃⇧B' : 'Ctrl+Shift+B').appendTo(btn);
 		if (pinned()) open(true);

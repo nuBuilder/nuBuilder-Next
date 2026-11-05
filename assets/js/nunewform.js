@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next: New form – how to start (0.8.848, pages/nubuilder.php ?new=1 without start=wizard). The last choice is marked
    (localStorage nunext-newform-last) and gets the focus. */
 (function () {

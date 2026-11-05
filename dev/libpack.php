@@ -28,7 +28,7 @@ $GLOBALS['nuLibpackEn'] = require NU_ROOT . '/lang/en.php';
 function t(string $key, mixed ...$args): string { $s = (string)($GLOBALS['nuLibpackEn'][$key] ?? $key); return $args ? vsprintf($s, $args) : $s; }
 function nu_time_limit(int $s): void { @set_time_limit($s); }
 function nu_cfg(string $k): mixed { return null; }
-final class NuSecurity
+final class NuLibpackSecurity       // stands in for core/nusecurity.php (alias below – one class name for the analysers)
 {
 	public const DENY = '';
 	public static function localVersion(string $dir): ?array
@@ -39,6 +39,7 @@ final class NuSecurity
 		return ['version' => $v, 'cves' => [], 'text' => ''];
 	}
 }
+class_alias('NuLibpackSecurity', 'NuSecurity');
 require NU_ROOT . '/core/nuupdate.php';
 require NU_ROOT . '/core/nulibs.php';
 

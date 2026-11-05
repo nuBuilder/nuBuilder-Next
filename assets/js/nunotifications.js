@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Notification centre – the edit form (0.8.357, pages/nunotifications.php): Tom Select for the recipient fields, "Everybody" locks
    them, "Must confirm" forces the fixed list, and the live number of recipients (action count). */
 (function () {

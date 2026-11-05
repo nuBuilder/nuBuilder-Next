@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – report designer (pages/nureportdesigner.php)
  * Edits nuBuilder's report layout (zzzzsys_report.sre_layout) – the same JSON nuBuilder's designer writes:
  *   groups[0] detail · [1] report header / footer · [2] page header / footer · [3–7] sort groups (header / footer)

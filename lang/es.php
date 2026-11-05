@@ -1004,6 +1004,8 @@ return [
 	'builder_browse_sql' => 'SQL de lista',
 	'bsq_more' => 'Más opciones de diseño',
 	'bsq_edit' => 'Editar SQL de la lista…',
+	'bsq_edit_cols' => 'Editar columnas…',
+	'bsq_resize' => 'Arrastra para cambiar el ancho (doble clic: ancho predeterminado)',
 	'bsq_hint' => 'Se guarda en el formulario al instante; la lista se recarga. Ctrl+S = guardar · Esc = cerrar',
 	'bsq_unsaved' => '¿Descartar los cambios en el SQL de la lista?',
 	'bsq_pin' => 'Mantener abierto – también después de guardar y en otras listas',

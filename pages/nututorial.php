@@ -78,7 +78,7 @@ $next = NuTutorial::nextOpen($prog);
 $isDone = static fn(string $id): bool => in_array($id, $prog['done'], true);
 
 $title = t('tut_title');
-$lesson = null; $chapter = null; $prevId = ''; $nextId = ''; $outside = false;
+$lesson = null; $chapter = null; $prevId = ''; $nextId = ''; $outside = false; $outTrack = '';
 if ($cur !== '') {
 	$outside = !isset($order[$cur]);                   // a lesson of another track (link from a lesson): advanced or nuBuilder Forte
 	$outTrack = $outside ? $all[$cur] : '';

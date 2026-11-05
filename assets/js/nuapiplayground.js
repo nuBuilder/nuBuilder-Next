@@ -1,3 +1,4 @@
+/* global nuBs */
 /* REST API playground (pages/nuapiplayground.php): token, request editor, response, saved requests, settings per login. */
 (function () {
 	'use strict';

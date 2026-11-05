@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Notification centre – the bell in the top bar (0.8.357; core/nulayout.php nu_bell(), pages/nunotifyapi.php, core/nunotify.php).
    Checks every data-poll seconds (not while the tab is in the background; at once when it comes back), red badge = unread,
    the panel lists the latest notifications (mark read / unread, hide, open the link), a toast for new ones, and a dialog for

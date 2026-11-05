@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – "#" menu of the code editors: inserts #HASH_VARIABLES# at the cursor of a CodeMirror editor.
  * Used by the form runtime (double-click code editor) and the form builder.
  *

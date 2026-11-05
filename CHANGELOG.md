@@ -3,6 +3,68 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.948 – Release gate
+- Release gate: full test run (smoke, all end-to-end tests, cross-tests against nuBuilder Forte, OWASP ZAP); README, tutorial and
+  TODO brought up to date for 0.8.936–0.8.947.
+
+## 0.8.947 – Resizable browse SQL pane
+- Browse SQL pane: its left edge is a splitter – drag it to make the pane wider or narrower (arrow keys too, double-click = default
+  width); the list makes room and the browser remembers the width.
+
+## 0.8.946 – Drag list columns
+- Columns of a list can be dragged to another place: by their number in the Columns tab of the browse SQL pane, and by their row
+  in the column list of the design panel (besides the up / down and left / right buttons).
+
+## 0.8.945 – Testers' reports: lists in design mode, HTML in lists
+- Design mode: searchable lists of the panel (the form, procedure or report of a run button, the target of a list column's click
+  action, the form of a lookup, *Open records in form* …) opened behind the design panel and looked empty – they now open above it
+  (testers' reports).
+- Lists: column titles and cell values may hold HTML again, as in nuBuilder Forte – Font Awesome / Bootstrap icons, bold, spans with
+  classes or styles, links and images built in the browse SQL are drawn instead of shown as text. The HTML is cleaned first (scripts,
+  `on…` attributes, unsafe links and styles removed); exports, filter labels and the phone labels show the text.
+- `nuRunPHPHidden(code, true)` and `nuRunPHPHiddenWithParams(code, name, params, true)` run `nuBeforeSave()` first and stop when it
+  returns false, as in nuBuilder Forte.
+
+## 0.8.944 – One password eye in Edge
+- Microsoft Edge: its own password reveal button is hidden on the password fields that have nuBuilder Next's eye button (sign-in,
+  confirm password, reset password, change password, user form) – no second eye; other password fields keep Edge's.
+
+## 0.8.943 – Edit columns in the Design menu
+- Lists: the ▾ of the Design button also offers *Edit columns…* – it opens the browse SQL pane on its Columns tab (or
+  switches an open pane to it); *Edit browse SQL…* always opens the SQL tab.
+
+## 0.8.942 – Browse SQL pane: Columns tab
+- Browse SQL pane: two tabs at the top – *Browse SQL* (the editor as before, its toolbar now in a row of its own below the tabs) and
+  *Columns*: the list's settings (rows per page, row height, where a click on a row opens the record, the form records open in,
+  column titles on several lines, columns fill the width) and its columns (title, display with the table's column names as
+  suggestions, width, alignment, hide / show, move up / down, delete, Add column), as design mode's Browse list. Changes are kept
+  in the pane and stored with its Save (Ctrl+S) – in the open draft while its preview is shown – then the list reloads; closing
+  with unsaved changes asks first. The pane opens on the tab used last.
+
+## 0.8.941 – Top bar menus above the browse SQL pane
+- Lists: the menus of the top bar (user menu, theme, language, notifications) open above the browse SQL pane
+  instead of behind it.
+
+## 0.8.940 – Recently used: start page tiles
+- Start page: opening a tile while the built-in start page layout is used failed on the server ("Cannot use object of
+  type stdClass as array" in the log) and the tile was not added to Recently used.
+
+## 0.8.939 – Code analysis: JavaScript findings checked
+- Code quality (static analysis report, JavaScript): the scripts name the shared Bootstrap helper as a known global;
+  an empty error handler got a comment. No change in behaviour.
+
+## 0.8.938 – Code analysis: findings checked
+- Code quality (static analysis report): the release tool's stand-in for the security class no longer hides the real one
+  from the analysers; cache keys use SHA-256 instead of MD5; numbers written into the list's HTML are cast to integers.
+  No change in behaviour.
+
+## 0.8.937 – Code analysis: variables set before use
+- Code quality: variables that a static analysis reported as "might not be defined" are now set before use (start page,
+  files, permission items, tutorial, form page, custom page editor); PHPStan checks this on every release. No change in behaviour.
+
+## 0.8.936 – Notes
+- Notes: the GitHub release v0.8.935 is published.
+
 ## 0.8.935 – Release gate (0.8.907–0.8.934)
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan).
 - Documentation, README, tutorial and to-do list brought up to date for 0.8.907–0.8.934.

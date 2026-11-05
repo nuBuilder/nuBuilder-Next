@@ -45,6 +45,7 @@ if (nu_is_post()) {
 		$ptype = isset(NuPermType::TYPES[nu_post('ptype')]) ? nu_post('ptype') : 'plain';
 		$pset = NuPermType::clean($ptype, ['tables' => is_array($_POST['ptype_tables'] ?? null) ? $_POST['ptype_tables'] : [], 'add' => nu_check('ptype_add') === '1', 'update' => nu_check('ptype_update') === '1']);
 		$errors = NuPermType::errors($ptype, $pset);
+		$newId = '';
 		if (!$errors) [$newId, $errors] = NuPermission::save($in, $item ? $id : '');
 		if (!$errors) {
 			$oldType = $item ? NuPermType::of($id) : ['type' => 'plain', 'settings' => []];

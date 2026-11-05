@@ -1005,6 +1005,8 @@ return [
 	'builder_browse_sql' => 'SQL przeglądania',
 	'bsq_more' => 'Więcej opcji projektu',
 	'bsq_edit' => 'Edytuj SQL listy…',
+	'bsq_edit_cols' => 'Edytuj kolumny…',
+	'bsq_resize' => 'Przeciągnij, aby zmienić szerokość (dwukrotne kliknięcie: szerokość domyślna)',
 	'bsq_hint' => 'Zapisywane od razu w formularzu; lista się przeładuje. Ctrl+S = zapisz · Esc = zamknij',
 	'bsq_unsaved' => 'Odrzucić zmiany w SQL listy?',
 	'bsq_pin' => 'Pozostaw otwarte – także po zapisaniu i na innych listach',

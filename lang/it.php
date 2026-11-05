@@ -1004,6 +1004,8 @@ return [
 	'builder_browse_sql' => 'SQL dell\'elenco',
 	'bsq_more' => 'Altre opzioni di progettazione',
 	'bsq_edit' => 'Modifica SQL dell\'elenco…',
+	'bsq_edit_cols' => 'Modifica colonne…',
+	'bsq_resize' => 'Trascina per cambiare la larghezza (doppio clic: larghezza predefinita)',
 	'bsq_hint' => 'Salvato subito nel modulo; l\'elenco si ricarica. Ctrl+S = salva · Esc = chiudi',
 	'bsq_unsaved' => 'Scartare le modifiche all\'SQL dell\'elenco?',
 	'bsq_pin' => 'Tieni aperto – anche dopo il salvataggio e in altri elenchi',

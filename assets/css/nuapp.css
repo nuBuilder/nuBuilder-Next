@@ -2053,3 +2053,11 @@ body:has(.nuRecHead) main .nuRecHead.mb-3 { margin-bottom: .625rem !important; }
 /* sticky list titles (0.8.910, nuapp.js): the moved title cells cover the rows below them */
 table.nuHeadFloat > thead > tr > th, table.nuHeadFloat > thead > tr > td { position: relative; z-index: 4; background-color: var(--bs-body-bg); box-shadow: inset 0 -1px 0 var(--bs-border-color), 0 2px 4px -2px rgba(0, 0, 0, .18); }
 .card table.nuHeadFloat > thead > tr > th, .card table.nuHeadFloat > thead > tr > td { background-color: var(--bs-card-bg, var(--bs-body-bg)); }
+
+/* Edge's own password reveal button (0.8.944): hidden only on fields that have our eye button (data-pw-toggle) – other password fields keep it */
+input.nuOwnPwToggle::-ms-reveal { display: none; }
+
+/* searchable lists opened in <body> (Tom Select dropdownParent 'body', 0.8.945): above the design panel (1014), flyouts / workspace
+   (1016 / 1017), the side panes (1019), the top bar (1020) and modals (1055) – below tooltips (1080); before, z-index 1000 put the list
+   of forms / procedures of the design panel behind the panel, so it looked empty */
+body > .ts-dropdown { z-index: 1065; }

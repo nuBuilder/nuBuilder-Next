@@ -1,4 +1,5 @@
 /* nuBuilder Next UI behaviour – no inline scripts (CSP: script-src 'self') */
+/* global nuBs */
 (function () {
 	'use strict';
 
@@ -267,7 +268,7 @@
 	$$('[data-theme-set]').forEach(function (btn) {
 		btn.addEventListener('click', function () {
 			var mode = btn.getAttribute('data-theme-set');
-			try { localStorage.setItem('nunext-theme', mode); } catch (e) {}
+			try { localStorage.setItem('nunext-theme', mode); } catch (e) { /* storage blocked */ }
 			applyTheme(mode);
 		});
 	});
@@ -280,6 +281,8 @@
 
 	// ---------------------------------------------------------------- show / hide password
 	$$('[data-pw-toggle]').forEach(function (btn) {
+		var own = $(btn.getAttribute('data-pw-toggle'));
+		if (own) own.classList.add('nuOwnPwToggle');                         // 0.8.944: no second eye of Edge next to ours (nuapp.css ::-ms-reveal)
 		btn.addEventListener('click', function () {
 			var input = $(btn.getAttribute('data-pw-toggle'));
 			if (!input) return;

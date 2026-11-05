@@ -625,6 +625,8 @@ return [
 	'builder_browse_sql' => 'Browse SQL',
 	'bsq_more' => 'More design options',
 	'bsq_edit' => 'Edit browse SQL…',
+	'bsq_edit_cols' => 'Edit columns…',
+	'bsq_resize' => 'Drag to change the width (double-click: default width)',
 	'bsq_hint' => 'Saved to the form at once; the list reloads. Ctrl+S = save · Esc = close',
 	'bsq_unsaved' => 'Discard the changes to the browse SQL?',
 	'bsq_pin' => 'Keep open – also after saving and on other lists',

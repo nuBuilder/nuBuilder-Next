@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – report record page (pages/nureports.php): access level list (search, all / none, count) */
 (function () {
 	'use strict';

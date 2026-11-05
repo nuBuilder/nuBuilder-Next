@@ -531,11 +531,44 @@ body:not(.nuPrintView) #nuBrowseTable { table-layout: fixed; }
 .nuObjMenu .nuOmGeoInput { width: 5.5rem; text-align: right; height: 28px; min-height: 0; padding-top: 0; padding-bottom: 0; font-size: inherit; }
 
 /* browse SQL pane of a list (0.8.930): on the right below the top bar; from 992 px the list makes room for it */
-.nuBsqPane { position: fixed; top: var(--nu-nav-h, 56px); right: 0; bottom: 0; width: min(560px, 100vw); z-index: 1035; display: flex; flex-direction: column;
+.nuBsqPane { position: fixed; top: var(--nu-nav-h, 56px); right: 0; bottom: 0; width: min(var(--nu-bsq-w, 560px), 100vw); z-index: 1019;   /* below the top bar (1020) and its menus */ display: flex; flex-direction: column;
 	background: var(--bs-body-bg); border-left: 1px solid var(--bs-border-color); box-shadow: -.25rem 0 1rem rgba(0, 0, 0, .12); }
 .nuBsqHead { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; border-bottom: 1px solid var(--bs-border-color); flex-wrap: wrap; }
 .nuBsqBody { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .nuBsqBody .CodeMirror { height: 100%; }
 .nuBsqFoot { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; border-top: 1px solid var(--bs-border-color); flex-wrap: wrap; justify-content: flex-end; }
 .nuBsqFoot .nuBsqHint { flex: 1 1 100%; }
-@media (min-width: 992px) { html.nuBsqOpen main#main { margin-right: min(560px, 100vw); } }
+@media (min-width: 992px) { html.nuBsqOpen main#main { margin-right: min(var(--nu-bsq-w, 560px), 100vw); } }
+/* browse SQL pane tabs (0.8.942): Browse SQL | Columns (settings + columns of the list) */
+.nuBsqHead .nuBsqTabs { border-bottom: 0; margin-bottom: -.5rem; align-self: flex-end; flex-wrap: nowrap; }
+.nuBsqHead .nuBsqTabs .nav-link { padding: .35rem .75rem; }
+.nuBsqTools { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; padding: .35rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
+.nuBsqTools:empty, .nuBsqTools[hidden] { display: none; }
+.nuBsqCols { flex: 1 1 auto; min-height: 0; overflow: auto; padding: .5rem .75rem 1rem; }
+.nuBsqSub { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); margin: .75rem 0 .4rem; font-weight: 600; }
+.nuBsqSub:first-child { margin-top: .25rem; }
+.nuBsqGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .75rem; }
+.nuBsqChecks { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin-top: .5rem; }
+.nuBsqColTable { font-size: .8125rem; margin-bottom: .5rem; }
+.nuBsqColTable th { font-weight: 600; font-size: .72rem; color: var(--bs-secondary-color); white-space: nowrap; }
+.nuBsqColTable td { padding: .2rem .25rem; }
+.nuBsqColNo { width: 1.75rem; color: var(--bs-secondary-color); text-align: right; }
+.nuBsqColW { width: 4.5rem; }
+.nuBsqColA { width: 5.5rem; }
+.nuBsqColBtns { width: 5.25rem; white-space: nowrap; }
+.nuBsqColBtns .btn { margin: 0 .15rem; }
+.nuBsqColOff input[data-lc], .nuBsqColOff select { opacity: .55; }
+.nuBsqMono { font-family: var(--bs-font-monospace); font-size: .78rem; }
+@media (max-width: 480px) { .nuBsqGrid { grid-template-columns: 1fr; } }
+.nuBsqGrip { display: inline-flex; align-items: center; gap: .1rem; cursor: grab; user-select: none; }
+.nuBsqGrip:active { cursor: grabbing; }
+.nuBsqColTable tr.nuBsqDragging td { opacity: .4; }
+.nuBsqColTable tr.nuBsqDropBefore td { box-shadow: inset 0 2px 0 var(--bs-primary); }
+.nuBsqColTable tr.nuBsqDropAfter td { box-shadow: inset 0 -2px 0 var(--bs-primary); }
+/* splitter on the left edge of the pane (0.8.947): drag, arrow keys, double-click = default width */
+.nuBsqSplit { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
+.nuBsqSplit::after { content: ''; position: absolute; left: 3px; top: 0; bottom: 0; width: 2px; background: transparent; transition: background .15s; }
+.nuBsqSplit:hover::after, .nuBsqSplit:focus-visible::after, html.nuBsqResizing .nuBsqSplit::after { background: var(--bs-primary); }
+.nuBsqSplit:focus-visible { outline: none; }
+html.nuBsqResizing, html.nuBsqResizing * { cursor: col-resize !important; user-select: none !important; }
+html.nuBsqResizing iframe { pointer-events: none; }

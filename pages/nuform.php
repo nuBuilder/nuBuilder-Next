@@ -188,7 +188,9 @@ if ($bare) $breadcrumbs = array_values(array_slice($breadcrumbs, 1));
 if (!function_exists('nu_browse_cell')) {
 function nu_browse_cell(string $v, string $cls, array $c, bool $act): string
 {
-	$inner = $cls !== '' ? '<span class="' . h($cls) . '">' . h($v) . '</span>' : h($v);
+	$html = NuHtmlClean::cell($v);                                       // HTML as nuBuilder Forte, cleaned (0.8.945)
+	$inner = $cls !== '' ? '<span class="' . h($cls) . '">' . $html . '</span>' : $html;
+	$v = NuHtmlClean::cellText($v);
 	if (!$act) return $inner;
 	$a = $c['action'];
 	$lbl = (string)($a['label'] ?? '');
@@ -210,9 +212,29 @@ if ($mode === 'browse' && $lookupTo === '' && empty($printMode)) foreach ((array
 }
 // "Edit browse SQL" next to the Design button of a list (0.8.930): the SQL in a side pane, saved with builderapi form.save
 $browseSqlEdit = $mode === 'browse' && $lookupTo === '' && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta);
+const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh', 'ds_list_rowh_tip', 'ds_list_target', 'ds_list_target_0',
+	'ds_list_target_1', 'ds_list_target_2', 'ds_list_target_3', 'builder_redirect', 'ds_list_multi', 'ds_list_autofit', 'builder_sec_columns', 'builder_col_title',
+	'builder_col_display', 'builder_col_width', 'builder_col_align', 'ds_col_hidden', 'ds_col_show', 'ds_col_left', 'ds_col_right', 'delete', 'ds_list_nocols',
+	'builder_add_column', 'ds_col_new', 'om_left', 'om_center', 'om_right', 'please_select', 'ds_col_drag'];
+$bsqList = static function () use ($meta, $browseSqlEdit): array {
+	if (!$browseSqlEdit) return [];
+	$f = $meta->form;
+	$forms = array_map(static fn($x) => [(string)$x['zzzzsys_form_id'], $x['sfo_code'] . ' – ' . $x['sfo_description']],
+		nu_db()->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' AND sfo_type IN ('edit', 'browseedit') ORDER BY sfo_code"));
+	$cols = array_map(static function ($b) {
+		$j = json_decode((string)($b['sbr_json'] ?? ''), true);
+		return [(string)$b['zzzzsys_browse_id'], (string)($b['sbr_title'] ?? ''), (string)($b['sbr_display'] ?? ''), (string)($b['sbr_align'] ?? '') ?: 'l', (string)($b['sbr_format'] ?? ''),
+			($b['sbr_width'] ?? '') === '' || $b['sbr_width'] === null ? 100 : (int)$b['sbr_width'], !empty($j['nunext']['filter'])];
+	}, $meta->browse);
+	return ['rows' => (string)($f['sfo_browse_rows_per_page'] ?? ''), 'rowh' => (string)($f['sfo_browse_row_height'] ?? ''), 'target' => (string)($f['sfo_browse_target'] ?? '') ?: '0',
+		'redirect' => (string)($f['sfo_browse_redirect_form_id'] ?? ''), 'multi' => (string)($f['sfo_browse_title_multiline'] ?? '') === '1',
+		'autofit' => (string)($f['sfo_browse_autoresize_columns'] ?? '') === '1', 'table' => (string)($f['sfo_table'] ?? ''), 'forms' => $forms, 'cols' => $cols];
+};
 $client = [
-	'browse_sql' => $browseSqlEdit ? ['sql' => (string)($meta->form['sfo_browse_sql'] ?? ''), 'm' => ['title' => t('builder_browse_sql'), 'hint' => t('bsq_hint'),
-		'save' => t('save'), 'close' => t('close'), 'unsaved' => t('bsq_unsaved'), 'pin' => t('bsq_pin'), 'error' => t('form_error')]] : null,
+	// 0.8.942: tab Columns – settings of the list ($bsqList) and its columns [id, title, display, align, format, width, filter]
+	'browse_sql' => $browseSqlEdit ? ['sql' => (string)($meta->form['sfo_browse_sql'] ?? ''), 'list' => $bsqList(), 'm' => ['title' => t('builder_browse_sql'), 'hint' => t('bsq_hint'),
+		'save' => t('save'), 'close' => t('close'), 'unsaved' => t('bsq_unsaved'), 'pin' => t('bsq_pin'), 'error' => t('form_error'), 'resize' => t('bsq_resize')]
+		+ array_combine(NU_BSQ_TEXTS, array_map('t', NU_BSQ_TEXTS))] : null,
 	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'lookup' => $lookupTo,
 	'form' => [
 		'id' => $meta->id, 'code' => $meta->code(), 'description' => $meta->description(), 'type' => $meta->type(),
@@ -479,8 +501,8 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 		<ol class="breadcrumb mb-0 nuBreadcrumbHolder" id="nuBreadcrumbHolder">
 			<?php foreach ($breadcrumbs as $i => $b): ?>
 				<li class="breadcrumb-item<?= $b['url'] === '' ? ' active' : '' ?>">
-					<?php if ($b['url'] !== ''): ?><a class="nuBreadcrumb" id="nuBreadcrumb<?= $i ?>" href="<?= h($b['url']) ?>"><?= h($b['title']) ?></a>
-					<?php else: ?><span class="nuBreadcrumb fw-semibold" id="nuBreadcrumb<?= $i ?>"><?= h($b['title']) ?></span><?php endif; ?>
+					<?php if ($b['url'] !== ''): ?><a class="nuBreadcrumb" id="nuBreadcrumb<?= (int)$i ?>" href="<?= h($b['url']) ?>"><?= h($b['title']) ?></a>
+					<?php else: ?><span class="nuBreadcrumb fw-semibold" id="nuBreadcrumb<?= (int)$i ?>"><?= h($b['title']) ?></span><?php endif; ?>
 				</li>
 			<?php endforeach; ?>
 		</ol>
@@ -533,7 +555,8 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php $dsBtn = '<a class="btn btn-outline-primary nuActionButton" id="nuDesignButton" href="' . h(nu_url('form', ['f' => $meta->id, 'r' => $mode === 'edit' ? $r : null, 'design' => '1'])) . '" title="' . h(t('ds_design_tip')) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(t('ds_design')) . '</a>'; ?>
 			<?php if ($browseSqlEdit): ?>
 				<div class="btn-group" id="nuDesignGroup"><?= $dsBtn ?><button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" id="nuDesignMore" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h(t('bsq_more')) ?>"><span class="visually-hidden"><?= h(t('bsq_more')) ?></span></button>
-					<ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseSqlEdit"><i class="bi bi-filetype-sql" aria-hidden="true"></i><?= h(t('bsq_edit')) ?></button></li></ul></div>
+					<ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseSqlEdit"><i class="bi bi-filetype-sql" aria-hidden="true"></i><?= h(t('bsq_edit')) ?></button></li>
+						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseColsEdit"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><?= h(t('bsq_edit_cols')) ?></button></li></ul></div>
 			<?php else: ?><?= $dsBtn ?><?php endif; ?>
 		<?php endif; ?>
 		<?php if ($u['globeadmin'] && !$bare): ?>
@@ -612,7 +635,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse<?= $iframe && !$fltOn ? '' : ' show' ?>" id="nuBrowseFilters"><div class="row g-2">
 				<?php foreach ($fltCols as $c): ?>
 					<div class="<?= $n > 3 ? 'col-sm-6 col-lg-3' : ($n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4')) ?>">
-						<label class="form-label small mb-1" for="nuFlt<?= (int)$c['index'] ?>"><?= h($c['title']) ?></label>
+						<label class="form-label small mb-1" for="nuFlt<?= (int)$c['index'] ?>"><?= h(NuHtmlClean::cellText((string)$c['title'])) ?></label>
 						<select class="form-select nuColumnFilter<?= isset($state['flt'][$c['index']]) ? ' nuFilterActive' : '' ?>" id="nuFlt<?= (int)$c['index'] ?>" name="flt[<?= (int)$c['index'] ?>]">
 							<option value=""><?= h(t('all')) ?></option>
 							<?php $fltCur = $state['flt'][$c['index']] ?? null; $fltSeen = false;
@@ -665,9 +688,9 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 						$nextDir = $isSort && $state['dir'] === 'asc' ? 'desc' : 'asc';
 						$link = nu_url('form', ['sort' => $c['index'], 'dir' => $nextDir] + $keep);
 					?>
-						<th scope="col" id="nuBrowseTitle<?= $c['index'] ?>" class="nuBrowseTitle text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
-							data-nu-column="<?= $c['index'] ?>" data-nu-browse-id="<?= h($c['id']) ?>" style="<?= $hidden ? 'display:none;' : 'width:' . ($bw[$c['index']] ?? $c['width']) . 'px;' ?>"<?= $isSort ? ' aria-sort="' . ($state['dir'] === 'asc' ? 'ascending' : 'descending') . '"' : '' ?>>
-							<a class="nu-sort" href="<?= h($link) ?>"><?= h($c['title']) ?><?= $isSort ? ' <i class="bi bi-caret-' . ($state['dir'] === 'asc' ? 'up' : 'down') . '-fill"></i>' : '' ?></a>
+						<th scope="col" id="nuBrowseTitle<?= (int)$c['index'] ?>" class="nuBrowseTitle text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
+							data-nu-column="<?= (int)$c['index'] ?>" data-nu-browse-id="<?= h($c['id']) ?>" style="<?= $hidden ? 'display:none;' : 'width:' . (int)($bw[$c['index']] ?? $c['width']) . 'px;' ?>"<?= $isSort ? ' aria-sort="' . ($state['dir'] === 'asc' ? 'ascending' : 'descending') . '"' : '' ?>>
+							<a class="nu-sort" href="<?= h($link) ?>"><?= NuHtmlClean::cell((string)$c['title']) ?><?= $isSort ? ' <i class="bi bi-caret-' . ($state['dir'] === 'asc' ? 'up' : 'down') . '-fill"></i>' : '' ?></a>
 						</th>
 					<?php endforeach; ?>
 				</tr>
@@ -680,8 +703,8 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 					<tr class="nuBrowseRow" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-row="<?= $ri ?>" tabindex="0"<?= $rowH > 0 ? ' style="height:' . min(400, $rowH) . 'px"' : '' ?>>
 						<?php if ($rowDel): ?><td class="nuRowDelCol"><button type="button" class="btn btn-sm btn-outline-danger nuRowDel" data-nu-pk="<?= h($row['pk']) ?>" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php foreach ($data['columns'] as $ci => $c): ?>
-							<td id="nucell_<?= $ri ?>_<?= $c['index'] ?>" class="nuCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
-								data-nu-column="<?= $c['index'] ?>" data-nu-column-id="<?= h((string)($c['id'] ?? '')) ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-label="<?= h((string)$c['title']) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?= nu_browse_cell((string)$row['cells'][$ci], (string)($row['classes'][$ci] ?? ''), $c, isset($cellActs[$c['index']])) ?></td>
+							<td id="nucell_<?= $ri ?>_<?= (int)$c['index'] ?>" class="nuCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
+								data-nu-column="<?= (int)$c['index'] ?>" data-nu-column-id="<?= h((string)($c['id'] ?? '')) ?>" data-nu-row="<?= $ri ?>" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-label="<?= h(NuHtmlClean::cellText((string)$c['title'])) ?>"<?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?= nu_browse_cell((string)$row['cells'][$ci], (string)($row['classes'][$ci] ?? ''), $c, isset($cellActs[$c['index']])) ?></td>
 						<?php endforeach; ?>
 					</tr>
 				<?php endforeach; ?>

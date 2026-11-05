@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Lists refreshed in place (0.8.776, core/nulistview.php data-lv-smooth): a filter, the search, a sort title, a page, the page size or a
    chip of a system list fetches the list page and swaps only its card – no page reload, so nothing flickers. The address follows
    (history.pushState), Back / Forward swap again. Anything unusual (another page, a view change, an error, a redirect elsewhere, a

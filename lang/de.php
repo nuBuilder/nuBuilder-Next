@@ -629,6 +629,8 @@ return [
 	'builder_browse_sql' => 'Browse-SQL',
 	'bsq_more' => 'Weitere Design-Optionen',
 	'bsq_edit' => 'Browse-SQL bearbeiten…',
+	'bsq_edit_cols' => 'Spalten bearbeiten…',
+	'bsq_resize' => 'Ziehen, um die Breite zu ändern (Doppelklick: Standardbreite)',
 	'bsq_hint' => 'Wird sofort im Formular gespeichert; die Liste lädt neu. Strg+S = speichern · Esc = schließen',
 	'bsq_unsaved' => 'Änderungen am Browse-SQL verwerfen?',
 	'bsq_pin' => 'Offen lassen – auch nach dem Speichern und in anderen Listen',

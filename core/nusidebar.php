@@ -183,7 +183,7 @@ final class NuSidebar
 		if ($key === '' || strlen($key) > 100) return;
 		[$layout] = self::startPage();
 		if (!NuHome::visible($key, $layout) || ($r = NuHome::resolve($key, $layout)) === null || $r['proc'] !== null) return;
-		$c = (array)($layout['custom'][$key] ?? []);
+		$c = (array)(((array)($layout['custom'] ?? []))[$key] ?? []);   // custom tiles are an object in the default / a saved layout (0.8.940)
 		if (($r['kind'] ?? '') === 'form' && ($c['target'] ?? '') !== '') {
 			$f = (string)$c['target'];
 			self::record($f === 'nunotes' ? 'notes' : 'form:' . $f);

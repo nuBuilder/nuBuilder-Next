@@ -1,3 +1,4 @@
+/* global nuBs */
 /*
  * List views (0.8.329, core/nulistview.php): the editor of a view (columns, phone card, filters, general) and the import dialog.
  * Data from <div id="nuLvData" data-lv="…">; saves with POST index.php?p=listview (action save / delete / import, JSON answer).

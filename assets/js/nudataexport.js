@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Data export (0.8.758): the list's JSON upload button and the editor of an export's datasets (tables with columns / conditions / sort,
    typed SQL, SQL builder queries; preview and count through POST JSON actions of pages/nudataexport.php). The model is kept in the hidden
    input #dxpDatasets (JSON) and sent with the form. */

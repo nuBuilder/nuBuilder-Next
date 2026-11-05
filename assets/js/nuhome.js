@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Globeadmin start page (pages/nuhome.php, core/nuhome.php): the view (tile styles, descriptions, navigation – View panel, 0.8.420),
    tile colours, procedure tiles, the nuHome API, search, edit mode (Customise). */
 (function () {

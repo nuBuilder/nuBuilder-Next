@@ -1,3 +1,4 @@
+/* global nuBs */
 /*
  * Data access of a form (0.8.480, pages/nudataaccess.php): "Add rule" clones the row template of a field / column, the subject field
  * follows the rule type (its list of access levels, users, permission items, teams or departments; none for "Everyone"), selects with

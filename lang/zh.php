@@ -1004,6 +1004,8 @@ return [
 	'builder_browse_sql' => '列表 SQL',
 	'bsq_more' => '更多设计选项',
 	'bsq_edit' => '编辑列表 SQL…',
+	'bsq_edit_cols' => '编辑列…',
+	'bsq_resize' => '拖动以更改宽度（双击：默认宽度）',
 	'bsq_hint' => '立即保存到表单；列表重新加载。Ctrl+S = 保存 · Esc = 关闭',
 	'bsq_unsaved' => '放弃对列表 SQL 的更改？',
 	'bsq_pin' => '保持打开 – 保存后和在其他列表中也是',

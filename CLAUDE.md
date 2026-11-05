@@ -544,7 +544,7 @@ write the SELECT / COUNT + update / insert by hand again. `NuDB::tableExists()` 
 - Unsaved-changes guard: `<form data-nu-guard>`. Send-once forms: `<form data-nu-once>` + `data-nu-busy="…"` on the button
   (and check on the server, e.g. one-time token – see "Back up now" in `pages/nuupdate.php`).
 - **Bootstrap JavaScript only through `nuBs`** (`assets/js/nubs.js`, 0.8.244): `nuBs.modal(el[, opts])`, `.tooltip`, `.tooltipOf`,
-  `.dropdown`, `.tab`, `.toast`, `.collapse`, `.ready()` – never `bootstrap.X…` in our JS (ESLint global `nuBs`). Pages that load
+  `.dropdown`, `.tab`, `.toast`, `.collapse`, `.ready()` – never `bootstrap.X…` in our JS (ESLint global `nuBs`; a new JS file that uses it starts with `/* global nuBs */`, for DeepSource, 0.8.939). Pages that load
   `bootstrap.bundle.min.js` load `nubs.js` right after it. `window.bootstrap` stays for nuBuilder form code.
 - Dark mode: `data-bs-theme` on `<html>`; use Bootstrap variables (`var(--bs-…)`) or own tokens with a `[data-bs-theme="dark"]` variant.
 - Icons: Bootstrap Icons only (nuBuilder forms may still use Font Awesome).
@@ -624,11 +624,26 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (November 2026, 0.8.935)
-Last gate 0.8.935 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.907–0.8.935 in one push; docs, README, TODO, tutorial checked first). Gate tip: run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors); ZAP runs after compat (~11 min).
+## Where things stand (November 2026, 0.8.948)
+Last gate 0.8.948 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.936–0.8.948 in one push; docs, README, TODO, tutorial checked first). Gate tip: run nuBuilder Forte for compat on another port (e.g. NUNEXT_TEST_NUB=http://127.0.0.1:8096/, a second PHP server without display_errors); ZAP runs after compat (~11 min).
 
 Since the gate, newest first:
 (none yet)
+
+Up to the gate 0.8.948, newest first:
+- 0.8.948 release gate (README: browse SQL pane with columns, resizable; tutorial: pane Columns tab / width, HTML in lists for Forte users; TODO please-verify 0.8.942–0.8.947)
+- 0.8.947 browse SQL pane width: splitter .nuBsqSplit (role separator; pointer drag with grab offset, ←/→ ±20 px, Home / double-click = 560) → CSS variable --nu-bsq-w on <html> (pane width + main margin), localStorage nunext-bsq-w, 360 px … 90 % of the window, html.nuBsqResizing while dragging; text bsq_resize; e2e bsq_resize
+- 0.8.946 columns by drag and drop: browse SQL pane number cell span.nuBsqGrip[draggable][data-grip] (tbody dragstart / dragover / drop, marks .nuBsqDropBefore / After, COLS reordered locally, text ds_col_drag in NU_BSQ_TEXTS); design panel #nuDsColTree rows are div[role=button][draggable] (Chrome starts no drag on a <button>) → saveCols(list) without selecting; e2e list_cols_drag
+- 0.8.945 testers' reports: (1) body > .ts-dropdown z-index 1065 (nuapp.css) – Tom Select lists with dropdownParent body opened at 1000 behind the design panel (1014) → Form / Procedure of run buttons and list click actions looked empty; (2) list titles + cells as HTML like Forte, cleaned: NuHtmlClean::cell / cellText / looksHtml (CELL_TAGS, class / title / checked style, a href safeHref or relative, img src http(s) / data:image / relative) in pages/nuform.php (nu_browse_cell, th, filter labels and data-nu-label as text) and pages/nuformexport.php (text); (3) nuRunPHPHidden(code, true) / nuRunPHPHiddenWithParams(…, runBeforeSave) run nuBeforeSave() first, false stops (beforeSaveOk); run.php + e2e forte_list_html
+- 0.8.944 Edge's own password reveal button hidden only where we have ours: nuapp.js marks the target of [data-pw-toggle] with .nuOwnPwToggle, nuapp.css input.nuOwnPwToggle::-ms-reveal { display: none } (other password fields keep Edge's eye); TODO Decisions: DeepSource choice; e2e pw_edge_reveal
+- 0.8.943 Design ▾ of lists: second entry #nuBrowseColsEdit (text bsq_edit_cols) → pane on the Columns tab (open(auto, tab); also switches an open pane); e2e browse_sql_cols
+- 0.8.942 browse SQL pane tabs: .nuBsqTabs (#nuBsqTabSql / #nuBsqTabCols, localStorage nunext-bsq-tab), toolbar row .nuBsqTools below them, panel .nuBsqCols = settings (#nuBsq_rows / _rowh / _target / _redirect / _multi / _autofit) + #nuBsqColTable (tr.nuBsqCol, inputs data-lc, buttons data-act, #nuBsqAddCol, datalist via builderapi columns) – edited locally (ST / COLS vs ST0 / COLS0), Save = browse.save then form.save (N.draft rev taken from each answer); data client browse_sql.list ($bsqList in pages/nuform.php, texts NU_BSQ_TEXTS); e2e browse_sql_cols
+- 0.8.941 browse SQL pane #nuBsqPane z-index 1019 (was 1035) – below the sticky top bar (1020), whose menus (user menu, theme, language, bell) covered by the pane before; above the page's sticky bar (1010); e2e browse_sql_edit checks the user menu over the pane
+- 0.8.940 bug report: NuSidebar::recordTile read $layout['custom'][$key] – custom is an object in NuHome's default layout ((object)[]) and in cleaned layouts → Error "Cannot use object of type stdClass as array" (POST ?p=sidebar action used = 500, tiles never recorded as recently used); now ((array)$layout['custom'])[$key]; e2e recent_tile_default_layout
+- 0.8.939 DeepSource JavaScript report (492 findings, all in assets/js/nuapp.js as pasted): JS-0125 'nuBs' is not defined → /* global nuBs */ at the top of every JS file that uses it (DeepSource does not read dev/eslint.config.mjs; nubs.js defines it); JS-0009 empty catch → comment; the rest is style of our ES5 code by design (var / function expressions / string concatenation / short names / complexity / unused catch parameters / !! / strict mode per IIFE / window.confirm fallback) – to be switched off in DeepSource's settings, not changed
+- 0.8.938 DeepSource PHP report of the 0.8.935 push assessed: E1003 "undefined static method NuSecurity::…" (16) came from the stand-in class NuSecurity in dev/libpack.php – now NuLibpackSecurity + class_alias (one NuSecurity class for analysers); A1004 md5 cache keys → hash('sha256') (NuBrowse distinct values, NuRecord access cache); A1011 pages/nuform.php ids / widths output with (int); left as false positives: R1006 complexity (parsers), W1038 NU_ROOT in dev/tests/run.php (define() at run time), W1078 @ on functions hosts disable (convention), A1001 include of fixed paths, A1002 index.php (id checked by preg_match), A1011 error_log of exception messages, W1087 casts on mixed, W1080 nuSetValidationErrorTitle() empty on purpose (Forte API, does nothing)
+- 0.8.937 DeepSource PHP-W1066 ("might not be defined", report of the 0.8.935 push): dev/phpstan.neon no longer ignores "might not be defined" in pages/* (it hid 48 such places) – fixed with initialisations: nuhome.php second block names $hlCur / $hlAll / $hlDef / $hlManage / $groups … again with ??=, nufiles / nupermissions $newId = '', nututorial $outTrack, nuform $body ?? '', nubuilder_page.php $canSave / $canDeleteForm cast; no behaviour change
+- 0.8.936 notes (v0.8.935 published)
 
 Up to the gate 0.8.935, newest first:
 - 0.8.935 release gate (README: right-click menus outside design mode, browse SQL pane; docs: sticky list titles, users list access badge in a new tab; tutorial: debugging tip; TODO please-verify 0.8.907–0.8.934)

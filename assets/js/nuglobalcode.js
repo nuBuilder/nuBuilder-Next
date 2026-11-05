@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Admin tools → Custom code (pages/nuglobalcode.php, 0.8.444; Global JS & CSS 0.8.523): a CodeMirror editor per tab (JavaScript, CSS, HTML); the open tab is sent with
  * Save, so the page comes back to it. Tabs in the address: nuapp.js (data-nu-hash-tabs). */
 (function () {

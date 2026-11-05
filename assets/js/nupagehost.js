@@ -1,3 +1,4 @@
+/* global nuBs */
 // Host side of page forms (form type "page", 0.8.387): listens to the messages of page iframes (class nuPageFrame) – sent by
 // assets/js/nupage.js. Only messages of the same origin from one of this window's page iframes count; nothing from a message is run.
 (function () {

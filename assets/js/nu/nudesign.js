@@ -1,3 +1,4 @@
+/* global nuBs */
 /*
  * Design mode on the form page (0.8.662, index.php?p=form&f=…&r=…&design=1 – core/form/nudesign.php); since 0.8.670 the only way to
  * change a form (the former form builder's links lead here); on the list page (no r) it designs the list's columns.
@@ -2596,12 +2597,52 @@
 	function columnsSection() {
 		var rows = (S.browse || []).map(function (c) {
 			var hidden = +c.sbr_width === 0;
-			return el('button', {type: 'button', 'class': 'nuDsTreeRow', 'data-col': c.zzzzsys_browse_id, onclick: function () { selCol = c.zzzzsys_browse_id; markCols(); renderPanel(); }}, [
+			// a div with the role of a button (0.8.946): Chrome starts no drag on a <button>
+			var pick = function () { selCol = c.zzzzsys_browse_id; markCols(); renderPanel(); };
+			return el('div', {role: 'button', tabindex: '0', 'class': 'nuDsTreeRow', 'data-col': c.zzzzsys_browse_id, draggable: 'true', title: t('ds_col_drag'), onclick: pick,
+				onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } }}, [
 				icon('bi-layout-three-columns nuDsTreeIcon'), el('span', {'class': 'nuDsTreeId', text: plain(c.sbr_title) || '–'}),
 				hidden ? el('span', {title: t('ds_col_hidden')}, [icon('bi-eye-slash')]) : null,
 				el('span', {'class': 'nuDsTreeType', text: c.sbr_display})]);
 		});
-		section('columns', t('builder_sec_columns'), [el('div', {'class': 'nuDsTree', id: 'nuDsColTree'}, rows),
+		var tree = el('div', {'class': 'nuDsTree', id: 'nuDsColTree'}, rows);
+		// drag a row to another place (0.8.946), as the number cells of the Browse list tab
+		var dragId = '', mark = function (row, after) {
+			tree.querySelectorAll('.nuDsDropBefore, .nuDsDropAfter').forEach(function (x) { x.classList.remove('nuDsDropBefore', 'nuDsDropAfter'); });
+			if (row) row.classList.add(after ? 'nuDsDropAfter' : 'nuDsDropBefore');
+		};
+		tree.addEventListener('dragstart', function (e) {
+			var r = e.target.closest && e.target.closest('[data-col]');
+			if (!r) return;
+			dragId = r.getAttribute('data-col');
+			e.dataTransfer.effectAllowed = 'move';
+			try { e.dataTransfer.setData('text/plain', dragId); } catch (x) { /* ignore */ }
+			r.classList.add('nuDsListDragging');
+		});
+		tree.addEventListener('dragover', function (e) {
+			if (!dragId) return;
+			var r = e.target.closest && e.target.closest('[data-col]');
+			if (!r) return;
+			e.preventDefault();
+			var b = r.getBoundingClientRect();
+			mark(r, e.clientY > b.top + b.height / 2);
+		});
+		tree.addEventListener('dragleave', function (e) { if (!tree.contains(e.relatedTarget)) mark(null); });
+		tree.addEventListener('dragend', function () { dragId = ''; mark(null); tree.querySelectorAll('.nuDsListDragging').forEach(function (x) { x.classList.remove('nuDsListDragging'); }); });
+		tree.addEventListener('drop', function (e) {
+			var r = e.target.closest && e.target.closest('[data-col]');
+			if (!dragId || !r) return;
+			e.preventDefault();
+			var b = r.getBoundingClientRect(), after = e.clientY > b.top + b.height / 2, target = r.getAttribute('data-col'), from = dragId;
+			dragId = ''; mark(null);
+			if (target === from) return;
+			var list = colRows(), ids = list.map(function (x) { return x.id; });
+			var moving = list.splice(ids.indexOf(from), 1)[0];
+			list.splice(list.map(function (x) { return x.id; }).indexOf(target) + (after ? 1 : 0), 0, moving);
+			if (list.map(function (x) { return x.id; }).join() === ids.join()) return;
+			saveCols(list);                                                    // the panel keeps showing this list
+		});
+		section('columns', t('builder_sec_columns'), [tree,
 			el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsColAdd', onclick: function () { colPick(this); }}, [icon('bi-plus-lg me-1'), t('builder_add_column')])])]);
 	}
 	function renderColumn(c) {

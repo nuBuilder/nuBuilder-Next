@@ -338,3 +338,7 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsKindChip:hover { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
 .nuDsKindDone { margin: .2rem 1rem .6rem; padding: .35rem .6rem; border-radius: .4rem; background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); font-size: .78rem; }
 .nuDsKind span { overflow-wrap: anywhere; hyphens: auto; }
+/* columns tree of the list (0.8.946): rows can be dragged */
+#nuDsColTree .nuDsTreeRow { cursor: grab; }
+#nuDsColTree .nuDsTreeRow.nuDsListDragging { opacity: .4; }
+#nuDsColTree .nuDsTreeRow.nuDsDropAfter { box-shadow: inset 0 -2px 0 var(--bs-primary); }

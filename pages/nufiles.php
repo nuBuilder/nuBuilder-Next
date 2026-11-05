@@ -62,6 +62,7 @@ if (nu_is_post()) {
 		NuAcl::require(NuAcl::FORM_FILE, $file ? 'save' : ($src ? 'clone' : 'create'));
 		$in = ['sfi_code' => nu_post('sfi_code'), 'sfi_description' => nu_post('sfi_description'), 'sfi_group' => nu_post('sfi_group')];
 		$up = $upload($errors);
+		$newId = '';
 		if (!$errors) [$newId, $errors] = NuFile::save($in, $up, $file ? $id : '', ($file ?? $src)['sfi_json'] ?? null);   // a clone keeps the file of its source
 		if (!$errors) {
 			NuLog::write($file ? 'file_changed' : 'file_created', $T, (string)$newId, ['code' => $in['sfi_code']] + ($src ? ['clone_of' => $cloneId] : []) + ($up ? ['name' => NuFile::cleanName($up['name']), 'size' => strlen($up['content'])] : []));

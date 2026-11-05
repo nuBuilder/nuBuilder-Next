@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – E-mail settings (pages/nuemail.php): copy the SMTP settings as JSON to the clipboard and paste them back –
  * e.g. from another installation. The password is never copied and never taken over. Without the clipboard API (http without TLS,
  * permission refused) copy falls back to a selection and paste to a dialog with a text field. */

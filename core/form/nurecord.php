@@ -509,7 +509,7 @@ final class NuRecord
 		$cond = trim((string)($o['sob_all_access_condition'] ?? ''));
 		if ($cond === '') return '0';
 		$hash = self::$accessHash ?: NuHash::plain();
-		$key = (string)($o['zzzzsys_object_id'] ?? '') . "\x1f" . (string)($hash['RECORD_ID'] ?? '') . "\x1f" . md5($cond);
+		$key = (string)($o['zzzzsys_object_id'] ?? '') . "\x1f" . (string)($hash['RECORD_ID'] ?? '') . "\x1f" . hash('sha256', $cond);
 		if (isset(self::$accessCache[$key])) return self::$accessCache[$key];
 		try {
 			$sql = NuHash::sql($cond, $hash);                  // bound with $nuDevSelectQueryRunParameterised (0.8.873)

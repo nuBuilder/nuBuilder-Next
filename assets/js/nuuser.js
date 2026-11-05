@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Access level and admin role (0.8.738): the "open in new tab" button follows the chosen value (disabled while none is chosen). */
 (function () {
 	'use strict';

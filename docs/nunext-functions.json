@@ -6650,28 +6650,30 @@
    {
     "g": "server",
     "n": "nuRunPHPHidden",
-    "s": "nuRunPHPHidden(code)",
-    "d": "Runs a procedure in the background; its JavaScript (nuAddJavascript) runs afterwards. A procedure that sends a file (header Content-Disposition: attachment) makes the browser download it.",
+    "s": "nuRunPHPHidden(code, options)",
+    "d": "Runs a procedure in the background; its JavaScript (nuAddJavascript) runs afterwards. A procedure that sends a file (header Content-Disposition: attachment) makes the browser download it. With options = true, nuBeforeSave() runs first and returning false stops the call (as nuBuilder Forte).",
     "r": "Promise",
     "e": "nuRunPHPHidden('update_totals');",
     "o": "nb",
     "p": {
-     "code": "code of the procedure"
+     "code": "code of the procedure",
+     "options": "optional: true = run nuBeforeSave() first (false from it stops the call)"
     },
     "h": "hooks"
    },
    {
     "g": "server",
     "n": "nuRunPHPHiddenWithParams",
-    "s": "nuRunPHPHiddenWithParams(code, paramName, params)",
-    "d": "Like nuRunPHPHidden with parameters (PHP: nuDecode('#name#')).",
+    "s": "nuRunPHPHiddenWithParams(code, paramName, params, runBeforeSave)",
+    "d": "Like nuRunPHPHidden with parameters (PHP: nuDecode('#name#')); runBeforeSave = true runs nuBeforeSave() first.",
     "r": "Promise",
     "e": "nuRunPHPHiddenWithParams('send_reminder', 'params', {id: nuRecordId()});",
     "o": "nb",
     "p": {
      "code": "code of the procedure",
      "paramName": "name of the hash variable",
-     "params": "value or object"
+     "params": "value or object",
+     "runBeforeSave": "optional: true = run nuBeforeSave() first"
     }
    },
    {

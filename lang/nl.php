@@ -1005,6 +1005,8 @@ return [
 	'builder_browse_sql' => 'Browse-SQL',
 	'bsq_more' => 'Meer ontwerpopties',
 	'bsq_edit' => 'Lijst-SQL bewerken…',
+	'bsq_edit_cols' => 'Kolommen bewerken…',
+	'bsq_resize' => 'Sleep om de breedte te wijzigen (dubbelklik: standaardbreedte)',
 	'bsq_hint' => 'Direct in het formulier opgeslagen; de lijst laadt opnieuw. Ctrl+S = opslaan · Esc = sluiten',
 	'bsq_unsaved' => 'Wijzigingen aan de lijst-SQL verwerpen?',
 	'bsq_pin' => 'Open houden – ook na opslaan en in andere lijsten',

@@ -9,6 +9,8 @@ defined('NU_ROOT') || exit;
  */
 
 /** @var NuFormMeta $meta */
+$canSave = (bool)($canSave ?? false);                // set by pages/nubuilder.php
+$canDeleteForm = (bool)($canDeleteForm ?? false);
 $formId = $meta->id;
 $errors = [];
 

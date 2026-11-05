@@ -1,3 +1,4 @@
+/* global nuBs */
 /*
  * Access levels of one form (0.8.683): window.nuFormAccessOpen([formId]) – a dialog listing every access level with Open (the level may use
  * the form) and its buttons (Add, Save, Delete, Clone, New, Print), data mode and form type. Opened from the form's ⋮ menu

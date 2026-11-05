@@ -1,3 +1,4 @@
+/* global nuBs */
 /* Maintenance of forms (0.8.808) – one dialog for the forms list (status menu, "Maintenance…" button), the form page's notice and design mode.
    Data: #nuFmsData[data-url, data-csrf, data-t (texts JSON)]. API: window.nuFormMaintOpen({forms: [{id, label}], pick: true|false, on, text, until, onDone(changed, on)}).
    pick = the forms can be chosen in the dialog (GET ?p=formstatus&all=1). Saves through POST ?p=formstatus (pages/nuformstatus.php). */

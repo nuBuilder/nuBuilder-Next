@@ -394,7 +394,7 @@ final class NuBrowse
 	public static function distinctValues(NuFormMeta $meta, array $hash, array $col, int $limit = 300): array
 	{
 		[$inner] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), [$col]);
-		$key = $meta->id . '|' . $col['index'] . '|' . md5($inner . '|' . $limit . '|' . (string)$col['format'] . '|' . NuHash::boundKey($inner));
+		$key = $meta->id . '|' . $col['index'] . '|' . hash('sha256', $inner . '|' . $limit . '|' . (string)$col['format'] . '|' . NuHash::boundKey($inner));
 		$c = $_SESSION['nu_dv'][$key] ?? null;
 		if (is_array($c) && ($c[0] ?? 0) > time() - self::VALUES_TTL) return $c[1];
 		$expr = self::castText('nuT.nu_c' . $col['index']);

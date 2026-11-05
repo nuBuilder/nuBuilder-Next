@@ -1,3 +1,4 @@
+/* global nuBs */
 /* nuBuilder Next – editor for an object's HTML attributes (form builder, field "HTML attributes" = sob_input_attribute).
  *
  * Adapted from nuBuilder's attribute editor (nuObjectEditAttributes / openAttributeEditor). Differences:

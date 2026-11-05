@@ -498,6 +498,13 @@ check('htmlclean: allowed tags and safe links stay', str_contains($c, '<p>Hi <b>
 	&& str_contains($c, 'href="mailto:a@b.c"') && str_contains($c, 'bad') && !str_contains($c, 'href="javascript'), $c);
 check('htmlclean: text, umlauts, empty', NuHtmlClean::clean('Grüße & <i>mehr</i>') === 'Grüße &amp; <i>mehr</i>' && NuHtmlClean::clean('  ') === ''
 	&& NuHtmlClean::toText('<p>a<br>b</p><ul><li>c</li></ul>') === "a\nb\n• c", NuHtmlClean::clean('Grüße & <i>mehr</i>'));
+// list cells / titles as HTML (0.8.945)
+$c = NuHtmlClean::cell('<i class="fas fa-times" onclick="x()"></i> <b style="color:red">Ok</b><script>alert(1)</script><img src=x onerror=alert(1)><a href="javascript:alert(1)">j</a><a href="index.php?p=x" target="_blank">l</a><span style="background:url(x)">s</span>');
+check('htmlclean cell: icons and formatting kept, scripts / events / bad links removed', str_contains($c, '<i class="fas fa-times"></i>') && str_contains($c, '<b style="color:red">Ok</b>')
+	&& !str_contains($c, 'script') && !str_contains($c, 'onerror') && !str_contains($c, 'onclick') && !str_contains($c, 'javascript') && str_contains($c, '<img src="x">')
+	&& str_contains($c, 'rel="noopener noreferrer"') && str_contains($c, '<span>s</span>'), $c);
+check('htmlclean cell: plain text stays text', NuHtmlClean::cell('a < b & c') === 'a &lt; b &amp; c' && NuHtmlClean::cell('AT&T') === 'AT&amp;T'
+	&& NuHtmlClean::cellText('<i class="x"></i> Name &amp; more') === 'Name & more' && NuHtmlClean::cellText('a < b') === 'a < b', NuHtmlClean::cell('a < b & c'));
 check('notify: bodyHtml by format', NuNotify::bodyHtml('<b>x</b>') === '&lt;b&gt;x&lt;/b&gt;' && NuNotify::bodyHtml('<b>x</b><script>1</script>', 'html') === '<b>x</b>'
 	&& NuNotify::bodyText('<p>a</p><p>b</p>', 'html') === "a\nb");
 

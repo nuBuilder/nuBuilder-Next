@@ -3,6 +3,7 @@ Grouped by topic (0.8.909, the owner): every point starts with a short **title**
 Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archive.md`.
 
 ## Decisions for the owner
+- [ ] **DeepSource** (0.8.944) – the owner looks into it later: turn it off (1), keep only the Secrets analyzer (2, recommended – change `.deepsource.toml`, goes up with the next gate push), or keep it and ignore the style rules (3). Findings so far assessed in 0.8.887 / 0.8.937–0.8.939.
 - [ ] **ApexCharts licence** (0.8.896): 4.7.0 is the last MIT release. From 5.0 the LICENSE file is a dual licence (Community: free only
       below 2 M USD revenue / budget; embedding in a platform used by others – a low-code builder like nuBuilder Next – needs the paid OEM
       licence). Stays on 4.7.0 until the owner decides (alternatives: Chart.js / ECharts, MIT / Apache-2.0).
@@ -70,6 +71,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Database tools in an installed app** (0.8.852–0.8.854): phpMyAdmin and Adminer open from the app window (Chrome / Edge "Install").
 
 ## Sign-in and security
+- [ ] **One password eye in Edge** (0.8.944): sign-in / user form show only nuBuilder Next's eye in Microsoft Edge; other password fields keep Edge's.
 - [ ] **Passkeys on the live server** (0.8.877, https, the real domain): add one with Windows Hello, Touch ID / Face ID, an Android phone and
       a security key; a synced passkey (iCloud Keychain / Google Password Manager) on a second device; second factor and – with the switch
       on – sign-in without a password, also from the user name field; *Confirm with a passkey* before a dangerous action.
@@ -132,7 +134,12 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       spacing; on a list the column title menu (rename, align, width, filter, move, hide, delete, Properties → design mode) – also with an
       open draft.
 - [ ] **Browse SQL pane** (0.8.930–0.8.932): ▾ of *Design* on a list → *Edit browse SQL…* and Ctrl+Shift+B; Save / Ctrl+S, the pin keeps it
-      open on the next page and on other lists; a browse SQL that ends in a comment line.
+      open on the next page and on other lists; a browse SQL that ends in a comment line. Tab *Columns* (0.8.942 / 0.8.943 / 0.8.946 /
+      0.8.947): *Edit columns…* opens it; settings + columns edited and saved together (also with an open draft), drag a column by its
+      number, drag the pane's left edge (width kept, double-click = default); design panel's column list rows can be dragged too.
+- [ ] **Testers' reports** (0.8.945): the Form / Procedure lists of run buttons and list click actions open above the design panel;
+      icons (Font Awesome / Bootstrap) and simple HTML in list titles and cells of an imported Forte application; `nuRunPHPHidden(code, true)`
+      with a `nuBeforeSave()` that returns false. Open: TinyMCE toolbar missing in some old forms (details asked from the tester).
 - [ ] **Badge rules** (0.8.681 / 0.8.688): `nuBrowseStyleBadge(column, rules, options)` and design mode "Show as badge" + colour rules on a
       real form, also in dark mode (own bg colours do not change with the theme – classes like text-bg-* do).
 - [ ] **Access levels of a form** (0.8.683, ⋮ menu / design mode Tools): check with a non-globeadmin admin (own levels locked, no new admin
