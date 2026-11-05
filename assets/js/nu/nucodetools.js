@@ -317,6 +317,7 @@
 		clipMenu(cm, label || bClip, ro);
 		var ins = ro || opt.noInsert ? null : insertTools(cm, host, lang, opt);   // Insert menu + suggestions while typing (0.8.593)
 		var chk = CHECKS[lang] && !opt.noCheck ? checkTools(cm, g, lang, opt) : null;   // syntax check (0.8.781)
+		if (!chk && cm.nuChk) cm.nuChk.off(lang);   // one CodeMirror, another language without a check (design mode: Browse SQL after JS)
 
 		var hist = function () { var h = cm.historySize(); bUndo.disabled = !h.undo; bRedo.disabled = !h.redo; };
 		hist();
@@ -876,6 +877,7 @@
 		}
 		function run(loud) {
 			var seq = ++st.seq;
+			if (!CHECKS[st.lang]) { st.problems = []; clearMarks(); return Promise.resolve([]); }
 			return checkCode(cm.getValue(), st.lang).then(function (list) {
 				if (seq !== st.seq || list === null) return list;
 				st.problems = list;
@@ -910,6 +912,7 @@
 			if (list && !list.length) setTimeout(popClose, 2500);
 		}
 		st.run = run;
+		st.off = function (l) { st.lang = l; st.seq++; clearTimeout(st.timer); st.problems = []; clearMarks(); popClose(); };
 		setTimeout(function () { run(false); }, 300);
 		return {detach: function () { popClose(); b.remove(); }};
 	}

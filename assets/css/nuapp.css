@@ -2049,3 +2049,7 @@ body:has(.nuRecHead) main .nuRecHead.mb-3 { margin-bottom: .625rem !important; }
 	#nuLeave .modal-footer::after { content: ""; order: 2; flex-basis: 100%; }
 	#nuLeave .modal-footer .nuLeaveDiscard { order: 3; margin-top: .75rem; }
 }
+
+/* sticky list titles (0.8.910, nuapp.js): the moved title cells cover the rows below them */
+table.nuHeadFloat > thead > tr > th, table.nuHeadFloat > thead > tr > td { position: relative; z-index: 4; background-color: var(--bs-body-bg); box-shadow: inset 0 -1px 0 var(--bs-border-color), 0 2px 4px -2px rgba(0, 0, 0, .18); }
+.card table.nuHeadFloat > thead > tr > th, .card table.nuHeadFloat > thead > tr > td { background-color: var(--bs-card-bg, var(--bs-body-bg)); }

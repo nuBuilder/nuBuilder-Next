@@ -257,6 +257,10 @@ check('browse: order by alias and position', str_contains($in, 't.name AS nu_o0'
 check('browse: sub-queries', $in2 === 'SELECT id AS nu_pk FROM (SELECT * FROM t) x WHERE y IN (SELECT 1 FROM z)', $in2);
 [$in3] = NuBrowse::build('SELECT a FROM t UNION SELECT a FROM u', 'id', [['index' => 0, 'expr' => 'a']]);
 check('browse: UNION wrapped as before', str_contains($in3, 'FROM (SELECT a FROM t UNION SELECT a FROM u) nuX'), $in3);
+// 0.8.930: comments at the end of the browse SQL are taken off (the wrapped SQL would be commented out)
+[$in4] = NuBrowse::build("SELECT a FROM t\n-- note\n/* x */", 'id', [['index' => 0, 'expr' => 'a']]);
+check('browse: trailing comments', $in4 === 'SELECT id AS nu_pk, a AS nu_c0 FROM t', $in4);
+check('browse: comment marks inside a string kept', NuBrowse::trimTrailingComments("SELECT 'a -- b'") === "SELECT 'a -- b'");
 // 0.8.731: a column naming an alias of the field list gets the alias's expression – unless it is a real column or a source is unknown
 $bCols = static fn(string $t): array => ['tcustomer' => ['customer_id', 'cus_code', 'cus_name', 'cid'], 'tcountry' => ['id', 'name']][$t] ?? [];
 $bSql = "SELECT c.*, CONCAT(c.cus_code, ' ', c.cus_name) AS full_name, t.name AS tname, c.cus_code AS name, COUNT(*) AS n FROM tcustomer c LEFT JOIN tcountry t ON t.id = c.cid GROUP BY c.customer_id ORDER BY full_name";

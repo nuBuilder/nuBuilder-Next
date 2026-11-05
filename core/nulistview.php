@@ -710,7 +710,7 @@ final class NuListView
 	<?php else: ?>
 	<div class="table-responsive nuLvTableWrap">
 		<?php // column widths by dragging a title (0.8.651, window.nuColResize in nuapp.js): kept for this browser tab per list and view ?>
-		<table class="table table-hover align-middle mb-0 nu-table<?= !empty($L['table_class']) ? ' ' . h($L['table_class']) : '' ?>" data-nu-resize="<?= h($route . ':' . (string)$view['id']) ?>">
+		<table class="table table-hover align-middle mb-0 nu-table<?= !empty($L['table_class']) ? ' ' . h($L['table_class']) : '' ?>" data-nu-sticky-head data-nu-resize="<?= h($route . ':' . (string)$view['id']) ?>">
 			<thead><tr>
 				<?php foreach ($def['columns'] as $c): $cd = $cols[$c['key']]; $cls = trim($wCls[$c['width']] . $aCls($c['align'], $cd));
 					$rz = $cd['label'] !== '' ? ' data-nu-col="' . h((string)$c['key']) . '"' : '';   // titleless columns (buttons) keep their width

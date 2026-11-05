@@ -320,6 +320,7 @@ if ($tutBanner): ?>
 		$items = [];
 		foreach ($g['tiles'] as $k) {
 			if (!NuHome::visible($k, $layout) || ($r = NuHome::resolve($k, $layout)) === null) continue;
+			if (!$editorPage && NuHome::twinShown($k, $layout, $hideList)) continue;     // "Clone form" next to the tile Form cloner (0.8.934)
 			$r += ['fav' => in_array($k, $favList, true), 'source' => NuHome::source($k)];
 			if (in_array($k, $hideList, true)) { $mineHidden[$k] = $r; continue; }
 			$items[$k] = $r;

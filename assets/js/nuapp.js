@@ -1553,6 +1553,7 @@ window.nuColResize = function (table, opt) {
 		var o = {};
 		titles().forEach(function (th) { if (shown(th)) o[idOf(th)] = Math.round(th.getBoundingClientRect().width); });
 		try { sessionStorage.setItem(opt.key, JSON.stringify(o)); } catch (x) { /* no storage */ }
+		if (opt.saved) opt.saved(o);                                       // e.g. a cookie, so the server draws the widths (0.8.933)
 	}
 	function restore() {
 		var o = null;
@@ -1710,6 +1711,13 @@ window.nuPageNoGo = function (value) {
 		var f = e.target;
 		if (!(f instanceof HTMLFormElement) || f.getAttribute('target') !== '_blank' || !/[?&]p=vendor(&|$)/.test(f.getAttribute('action') || '')) return;
 		var app = f.querySelector('input[name=app]');
+		// 0.8.925: opened on a form page with a table (user menu, side bar) → the tool opens that table
+		var nx = window.nuNext, tbl = nx && nx.form && typeof nx.form.table === 'string' ? nx.form.table : '';
+		if (app && /^(PMA|ADM|DB)$/i.test(app.value) && tbl && !f.querySelector('input[name=table]')) {
+			var ti = document.createElement('input'); ti.type = 'hidden'; ti.name = 'table'; ti.value = tbl; ti.setAttribute('data-nu-auto', '1');
+			f.appendChild(ti);
+			setTimeout(function () { ti.remove(); }, 0);                   // the next use on another page decides again
+		}
 		if (!app || !/^(PMA|ADM|DB)$/i.test(app.value) || !window.fetch) return;
 		e.preventDefault();
 		var w = window.open('', '_blank');
@@ -1723,4 +1731,47 @@ window.nuPageNoGo = function (value) {
 			})
 			.catch(function () { if (w && !w.closed) w.close(); f.removeAttribute('target'); HTMLFormElement.prototype.submit.call(f); });
 	}, true);
+})();
+
+// ---------------------------------------------------------------- sticky list titles (0.8.910): the title row of long lists (form browse lists,
+// system lists) stays below the top bar / the sticky button row while the page scrolls. The tables sit in .table-responsive (horizontal
+// scrolling), which stops position: sticky – so the cells of the <thead> are moved down with a transform instead: they keep their width,
+// scroll sideways with the table, sorting / column resizing keep working. Tables swapped by a list refresh are found again on every check.
+(function () {
+	'use strict';
+	var queued = false;
+	function line() {                                  // the lowest edge of what is stuck at the top of the window
+		var root = getComputedStyle(document.documentElement);
+		var top = (parseFloat(root.getPropertyValue('--nu-sticky-top')) || parseFloat(root.getPropertyValue('--nu-nav-h')) || 0);
+		document.querySelectorAll('.nuStickyBar').forEach(function (b) {
+			var r = b.getBoundingClientRect();
+			if (r.height && r.top <= top + 12 && r.bottom > top) top = r.bottom;
+		});
+		return top;
+	}
+	function check() {
+		queued = false;
+		var tables = document.querySelectorAll('table[data-nu-sticky-head]');
+		if (!tables.length) return;
+		var cards = document.documentElement.classList.contains('nuPhoneCards'), top = null;
+		tables.forEach(function (t) {
+			var head = t.tHead, cells = head ? head.querySelectorAll('th, td') : [];
+			if (!head || !cells.length) return;
+			var shift = 0;
+			if (!cards && head.offsetParent !== null && t.tBodies.length && t.tBodies[0].rows.length > 3) {
+				if (top === null) top = line();
+				var r = t.getBoundingClientRect(), hh = head.getBoundingClientRect().height;
+				shift = Math.max(0, Math.min(top - r.top, r.height - hh * 2));
+			}
+			var on = shift > 0.5;
+			t.classList.toggle('nuHeadFloat', on);
+			cells.forEach(function (c) { c.style.transform = on ? 'translateY(' + Math.round(shift) + 'px)' : ''; });
+		});
+	}
+	function queue() { if (!queued) { queued = true; requestAnimationFrame(check); } }
+	window.addEventListener('scroll', queue, {passive: true});
+	window.addEventListener('resize', queue);
+	document.addEventListener('nu:listrefresh', queue);
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', queue); else queue();
+	window.nuStickyHeadCheck = queue;
 })();

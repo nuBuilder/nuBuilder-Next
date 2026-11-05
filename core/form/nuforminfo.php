@@ -32,6 +32,15 @@ final class NuFormInfo
 			// larger view + "Edit the SQL" in design mode, new tab (0.8.676): the list designer opens Code on the browse SQL
 			if (NuDesign::allowed($meta)) $rows[count($rows) - 1]['edit'] = nu_url('form', ['f' => $meta->id, 'design' => '1', 'dswork' => 'code', 'dsitem' => 'sfo_browse_sql']);
 		}
+		// the browse SQL of this page with its hash variables filled in (nuSetProperty, hash cookies, #USER_ID# …) and which were set
+		if ($mode === 'browse' && NuBrowse::$shown !== null) {
+			$add('browse_sql_run', NuBrowse::$shown['sql'], true, true);
+			if (NuBrowse::$shown['vars']) {
+				$lines = [];
+				foreach (NuBrowse::$shown['vars'] as $n => $v) $lines[] = '#' . $n . '# = ' . ($v === null ? '(' . t('fi_hash_unset') . ')' : "'" . $v . "'");
+				$add('browse_hash', implode("\n", $lines), true, true);
+			}
+		}
 
 		if ($mode === 'edit' && $meta->type() !== 'launch') {
 			$new = $recordId === null || $recordId === '' || $recordId === '-1';

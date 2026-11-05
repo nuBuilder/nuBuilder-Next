@@ -64,7 +64,7 @@
     "g": "db",
     "n": "nuRunQuery",
     "s": "nuRunQuery(string $sql, array $params = [], bool $isInsert = false): NuResult|string",
-    "d": "Runs an SQL statement. Parameters as ? placeholders or :names (array keys). Database errors stop the code with a message.",
+    "d": "Runs an SQL statement. Parameters as ? placeholders or :names (array keys). Database errors stop the code with a message. Without SQL it returns [host, database, user, ''] – as nuBuilder Forte, but without the password.",
     "r": "NuResult (for db_fetch_…), or the new id when $isInsert is true",
     "e": "$t = nuRunQuery('SELECT cus_name FROM customer WHERE customer_id = ?', ['#RECORD_ID#']);\n$r = db_fetch_object($t);",
     "o": "nb",
@@ -364,14 +364,15 @@
    {
     "g": "db",
     "n": "nuCreateTableFromSelect",
-    "s": "nuCreateTableFromSelect(string $table, string $sql): void",
+    "s": "nuCreateTableFromSelect(string $table, string $sql, array $params = []): void",
     "d": "Creates (or replaces) a table from a SELECT – MySQL and SQL Server.",
     "r": "",
     "o": "nb",
-    "e": "nuCreateTableFromSelect('#TABLE_ID#', 'SELECT * FROM invoice WHERE inv_total > 100');",
+    "e": "nuCreateTableFromSelect('#TABLE_ID#', 'SELECT * FROM invoice WHERE inv_total > ?', [100]);",
     "p": {
      "$table": "name of the new table (usually #TABLE_ID#)",
-     "$sql": "the SELECT"
+     "$sql": "the SELECT",
+     "$params": "values for ? / :name placeholders of the SELECT"
     }
    },
    {
@@ -802,14 +803,14 @@
     "g": "form",
     "n": "nuGetNuDataValue",
     "s": "nuGetNuDataValue(array $nudata, string $formId, string $field): mixed",
-    "d": "A value of nuFORMdata – the posted edit form and its sub-forms in Before Save and After Save (nuHash()['nuFORMdata']). $formId '' is the edit form, otherwise the sub-form object id (first row).",
+    "d": "A value of nuFORMdata – the posted edit form and its sub-forms in Before Save and After Save. The variable $nudata is ready in these hooks (also nu_before_save), as in nuBuilder Forte; nuHash()['nuFORMdata'] holds the same. $formId is nuHash()['nuFORMdata'][0]->id or '' for the edit form, otherwise the sub-form object id (first row).",
     "p": {
-     "$nudata": "nuHash()['nuFORMdata']",
-     "$formId": "'' for the edit form or the id of a sub-form object",
+     "$nudata": "the hook's $nudata (or nuHash()['nuFORMdata'])",
+     "$formId": "nuHash()['nuFORMdata'][0]->id or '' for the edit form, or the id of a sub-form object",
      "$field": "field id"
     },
     "r": "mixed",
-    "e": "$nudata = nuHash()['nuFORMdata'];\n$name = nuGetNuDataValue($nudata, '', 'cus_name');",
+    "e": "$nuMainForm = nuHash()['nuFORMdata'][0]->id;\n$name = nuGetNuDataValue($nudata, $nuMainForm, 'cus_name');",
     "o": "nb",
     "x": "'Bluepeak Systems'"
    },
@@ -819,15 +820,71 @@
     "s": "nuSetNuDataValue(array &$nudata, string $formId, string $field, mixed $value): bool",
     "d": "Changes a value of nuFORMdata and marks it as edited. In Before Save the new value is what gets saved (edit form, or the first row of a sub-form).",
     "p": {
-     "$nudata": "nuHash()['nuFORMdata'] (by reference)",
+     "$nudata": "the hook's $nudata (or nuHash()['nuFORMdata']) – the save reads the change from it",
      "$formId": "'' for the edit form or the id of a sub-form object",
      "$field": "field id",
      "$value": "new value"
     },
     "r": "bool",
-    "e": "$nudata = nuHash()['nuFORMdata'];\nnuSetNuDataValue($nudata, '', 'cus_name', strtoupper('#cus_name#'));",
+    "e": "$nuMainForm = nuHash()['nuFORMdata'][0]->id;\n$name = nuGetNuDataValue($nudata, $nuMainForm, 'cus_name');\nnuSetNuDataValue($nudata, $nuMainForm, 'cus_name', strtoupper($name));",
     "o": "nb",
     "x": "true"
+   },
+   {
+    "g": "form",
+    "n": "nuNextSaveValue",
+    "s": "nuNextSaveValue(string $field, string $subform = '', int $row = 0): mixed",
+    "d": "nuBuilder Next: a value of the record being saved, in Before Save and After Save – without $nudata or a form id. Without $subform the edit form; with a sub-form object id the value of its row $row (0 = the first). null when the field or row does not exist.",
+    "p": {
+     "$field": "field id",
+     "$subform": "'' for the edit form, or the id of a sub-form object",
+     "$row": "row of the sub-form, 0 = the first"
+    },
+    "r": "mixed",
+    "e": "$name = nuNextSaveValue('cus_name');\n$qty  = nuNextSaveValue('ite_qty', 'items', 2);   // third row of the sub-form items",
+    "o": "next",
+    "x": "'Bluepeak Systems'",
+    "a": ["nuNextSetSaveValue", "nuGetNuDataValue"]
+   },
+   {
+    "g": "form",
+    "n": "nuNextSetSaveValue",
+    "s": "nuNextSetSaveValue(string $field, mixed $value, string $subform = '', int $row = 0): bool",
+    "d": "nuBuilder Next: changes a value of the record being saved – in Before Save the new value is what gets saved (edit form or a sub-form row). The simple form of nuSetNuDataValue(): no $nudata, no form id. false when the field or row does not exist.",
+    "p": {
+     "$field": "field id",
+     "$value": "new value",
+     "$subform": "'' for the edit form, or the id of a sub-form object",
+     "$row": "row of the sub-form, 0 = the first"
+    },
+    "r": "bool",
+    "e": "nuNextSetSaveValue('cus_name', trim(nuNextSaveValue('cus_name')));\nnuNextSetSaveValue('ite_note', 'checked', 'items', 0);",
+    "o": "next",
+    "x": "true",
+    "a": ["nuNextSaveValue", "nuSetNuDataValue"]
+   },
+   {
+    "g": "form",
+    "n": "nuGetFormProperties",
+    "s": "nuGetFormProperties(string $formId): object|false",
+    "d": "The form's row of zzzzsys_form as an object (sfo_code, sfo_table, sfo_browse_sql …); false when there is no such form.",
+    "p": {
+     "$formId": "form id (zzzzsys_form_id)"
+    },
+    "r": "object|false",
+    "e": "$f = nuGetFormProperties('#FORM_ID#');\nnuDebug($f->sfo_table);",
+    "o": "nb",
+    "x": "stdClass { zzzzsys_form_id: 'samplecustomer', sfo_type: 'browseedit', sfo_table: 'sample_customer', … }"
+   },
+   {
+    "g": "form",
+    "n": "nuGetURLParams",
+    "s": "nuGetURLParams(): array",
+    "d": "The parameters of the address the session was opened with (index.php?country=CA&project=187, the automatic login, a permalink) – newer values replace older ones; p (the password of the automatic login) is never included.",
+    "r": "array",
+    "e": "$params = nuGetURLParams();\n$country = $params['country'] ?? 'not specified';",
+    "o": "nb",
+    "x": "['country' => 'CA', 'language' => 'EN', 'project' => '187']"
    },
    {
     "g": "form",
@@ -1501,13 +1558,15 @@
    {
     "g": "proc",
     "n": "nuAddJavascript",
-    "s": "nuAddJavascript(string $js): void",
-    "d": "JavaScript that runs in the browser after the request.",
+    "s": "nuAddJavascript(string $js, bool $beforeCreated = false, bool $first = false): void",
+    "d": "JavaScript that runs in the browser after the request. $first = true puts it before the code added so far; $beforeCreated is accepted for nuBuilder Forte code (the objects of a nuBuilder Next page already exist when any code runs).",
     "r": "",
     "o": "nb",
     "e": "nuAddJavascript(\"nuMessage('Done');\");",
     "p": {
-     "$js": "JavaScript code"
+     "$js": "JavaScript code",
+     "$beforeCreated": "accepted, no effect",
+     "$first": "true: before the JavaScript added so far"
     }
    },
    {
@@ -6138,14 +6197,15 @@
     "g": "browse",
     "n": "nuBrowseLoop",
     "s": "nuBrowseLoop(cols, fn)",
-    "d": "Calls a function for every cell of columns.",
-    "r": "",
+    "d": "Calls a function for every cell of the given browse columns (all columns when none are given); the values the function returns come back as an array.",
+    "r": "array",
     "o": "nb",
     "e": "nuBrowseLoop([2], function (cell) { if (cell.textContent === 'late') cell.style.color = 'red'; });",
     "p": {
-     "cols": "column numbers",
-     "fn": "function(cell, row, column)"
-    }
+     "cols": "column numbers and / or column ids; empty = every column",
+     "fn": "function(cell) – cell.row, cell.column, cell.columnId, cell.text, cell.html"
+    },
+    "x": "[\"Bluepeak Systems\", \"Maple Ridge Supply\"]  // nuBrowseLoop([1], c => c.text)"
    },
    {
     "g": "browse",

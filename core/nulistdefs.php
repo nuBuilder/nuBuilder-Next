@@ -206,11 +206,11 @@ final class NuListDefs
 			'position' => $plain('sus_position', t('user_position')),
 			'access' => ['label' => t('access_level'), 'select' => ['sal_code' => 'a.sal_code', 'sal_description' => 'a.sal_description', 'lv_acc_id' => 'a.zzzzsys_access_id'], 'sort' => 'a.sal_code',
 				'text' => static fn($r) => (string)($r['sal_code'] ?? t('none_assigned')),
-				// the badge opens the access level (0.8.687; the row still opens the user)
+				// the badge opens the access level (0.8.687; the row still opens the user) – in a new tab (0.8.908)
 				'html' => static fn($r) => $r['sal_code'] !== null
-					? (NuAcl::can(NuAcl::FORM_ACCESS) ? '<a class="text-decoration-none nuAccessLink" href="' . h(nu_url('accesslevel', ['id' => (string)$r['lv_acc_id']])) . '">' : '')
+					? (NuAcl::can(NuAcl::FORM_ACCESS) ? '<a class="text-decoration-none nuAccessLink" href="' . h(nu_url('accesslevel', ['id' => (string)$r['lv_acc_id']])) . '" target="_blank" rel="noopener" title="' . h(t('user_access_open')) . '">' : '')
 						. self::badge((string)$r['sal_code'], 'bg-secondary-subtle text-secondary-emphasis border nuAccessBadge', (string)$r['sal_description'])
-						. (NuAcl::can(NuAcl::FORM_ACCESS) ? '</a>' : '')
+						. (NuAcl::can(NuAcl::FORM_ACCESS) ? ' <i class="bi bi-box-arrow-up-right small text-secondary" aria-hidden="true"></i></a>' : '')
 					: self::badge(t('none_assigned'), 'bg-danger-subtle text-danger-emphasis')],
 			'login' => ['label' => t('user_login_name'), 'select' => ['sus_login_name' => 'u.sus_login_name', 'sus_change_password' => 'u.sus_change_password'], 'sort' => 'u.sus_login_name',
 				'text' => static fn($r) => (string)$r['sus_login_name'],
@@ -375,7 +375,11 @@ final class NuListDefs
 			'group' => ['label' => t('access_group'), 'select' => ['sal_group' => 'a.sal_group'], 'sort' => 'a.sal_group', 'text' => static fn($r) => (string)$r['sal_group']],
 			'description' => ['label' => t('access_description'), 'select' => ['sal_description' => 'a.sal_description'], 'sort' => 'a.sal_description', 'text' => static fn($r) => (string)$r['sal_description']],
 			'home_form' => ['label' => t('home_form'), 'select' => ['sal_zzzzsys_form_id' => 'a.sal_zzzzsys_form_id'], 'sort' => null, 'class' => 'small',
-				'text' => static fn($r) => $r['sal_zzzzsys_form_id'] ? nu_form_label((string)$r['sal_zzzzsys_form_id']) : ''],
+				'text' => static fn($r) => $r['sal_zzzzsys_form_id'] ? nu_form_label((string)$r['sal_zzzzsys_form_id']) : '',
+				// 0.8.907: the home form opens in a new tab (as the access level form's ↗ button)
+				'html' => static fn($r) => (string)$r['sal_zzzzsys_form_id'] === '' ? ''
+					: '<a class="nuAccHomeLink" href="' . h(nu_url('form', ['f' => (string)$r['sal_zzzzsys_form_id']])) . '" target="_blank" rel="noopener" title="' . h(t('acc_home_open')) . '">'
+						. h(nu_form_label((string)$r['sal_zzzzsys_form_id'])) . ' <i class="bi bi-box-arrow-up-right small" aria-hidden="true"></i></a>'],
 			'users' => $num('n_users', t('nav_users'), $nUsers) + ['html' => static fn($r) => (int)$r['n_users'] > 0 && NuAcl::can(NuAcl::FORM_USER)
 				? '<a class="text-decoration-none" href="' . h(nu_url('users', ['access' => $r['__id'], 'state' => 'all'])) . '">' . (int)$r['n_users'] . '</a>' : (string)(int)$r['n_users']],
 			// the counts open the access level on the matching tab (0.8.687)

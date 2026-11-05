@@ -2966,6 +2966,7 @@
 		if (kind === 'save') { if (fields.sob_all_zzzzsys_tab_id) keepTab = fields.sob_all_zzzzsys_tab_id; selIds = [obj.sob_all_id]; saveObj(obj, fields, true); }
 		else if (kind === 'delete') deleteObjs([obj]);
 		else if (kind === 'properties') post({nuBuilderSelect: obj.sob_all_id});
+		else if (kind === 'clone') duplicate([obj]);                   // object menu → Actions → Clone (0.8.927)
 	};
 	// double-click on an object (review H2): it is selected and its label field in the panel gets the focus (F2 = rename dialogue)
 	document.addEventListener('dblclick', function (e) {

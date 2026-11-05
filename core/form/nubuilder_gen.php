@@ -229,7 +229,7 @@ final class NuBuilderGen
 		return $out;
 	}
 
-	/** "tpemp_" when most columns start with it. */
+	/** "cus_" when most columns start with it. */
 	private static function commonPrefix(array $names): string
 	{
 		$count = [];

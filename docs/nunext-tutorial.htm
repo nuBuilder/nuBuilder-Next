@@ -741,7 +741,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 			<li>The <a data-open="help" data-args="tab=ref">Code reference</a> (tab of the help) lists every PHP and JavaScript function with parameters, return value, an example and a sample result.</li>
 			<li>In every code editor, <em>Insert</em> in the toolbar offers these functions, and suggestions appear while you type.</li>
 			<li><strong>Hash variables</strong> (<code>#RECORD_ID#</code>, <code>#USER_ID#</code>, <code>#ACCESS_LEVEL_CODE#</code>, fields of the record, values set with <code>nuSetProperty()</code>) are replaced in SQL, PHP and HTML – not in JavaScript, where <code>nuGetProperty('name')</code> reads them.</li>
-			<li><strong>Debugging</strong>: <code>nuDebug($a, $b)</code> writes to <a data-open="debug">Debug results</a>; the globeadmin's right-click on a label opens the object menu (properties, rename, access, validation).</li>
+			<li><strong>Debugging</strong>: <code>nuDebug($a, $b)</code> writes to <a data-open="debug">Debug results</a>; the globeadmin's right-click on a label opens the object menu (properties, rename, clone, access, validation, top / left / width / height), on a tab the tab menu and on a column title of a list the column menu – also outside design mode. On a list, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> opens the browse SQL in a pane on the right (the pin keeps it open).</li>
 		</ul>
 		<div class="tut-task">
 			<p>Add <code>nuDebug('#tsk_title#', '#USER_ID#');</code> to the <em>Before Save</em> of <code>tutorial_task</code>, save a record and look at <a data-open="debug">Debug results</a>. Remove the line afterwards.</p>

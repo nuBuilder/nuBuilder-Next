@@ -75,7 +75,7 @@
 <div class="doc-sub">
 	<h3 id="save-flow-hooks">What hooks can do during a save</h3>
 	<ul>
-		<li>Before Save: stop with <code>nuDisplayError()</code>; read the posted values from <code>#nuFORMdata#</code> / <code>nuGetNuDataValue()</code> and change what is saved with <code>nuSetNuDataValue()</code>; add JavaScript with <code>nuAddJavascript()</code>.</li>
+		<li>Before Save: stop with <code>nuDisplayError()</code>; read the posted values from <code>#nuFORMdata#</code> / <code>nuGetNuDataValue()</code> and change what is saved with <code>nuSetNuDataValue()</code> – or, simpler, <code>nuNextSaveValue('field')</code> / <code>nuNextSetSaveValue('field', $value)</code> (sub-form row: <code>nuNextSetSaveValue('field', $value, 'subform_id', $row)</code>); add JavaScript with <code>nuAddJavascript()</code>.</li>
 		<li>After Save: the record is written; <code>#RECORD_ID#</code> is its id; <code>nuReturnNewRecord()</code> makes the form open another record.</li>
 	</ul>
 </div>

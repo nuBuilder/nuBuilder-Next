@@ -124,6 +124,14 @@ $routes = [
 	'pageasset'   => [],                 // css / js / images of a page folder
 ];
 
+// nuBuilder Forte's nuGetURLParams() (0.8.926): parameters of an entry address (no route – index.php?country=CA, the auto login ?u=…,
+// a permalink) are kept for the session, newer values replace older ones; p (the password hash of the auto login) never
+if (!nu_is_post() && $_GET && !isset($routes[(string)($_GET['p'] ?? '')])) {
+	$keep = (array)($_SESSION['nu_url_params'] ?? []);
+	foreach ($_GET as $k => $v) if (is_string($k) && $k !== 'p' && is_string($v) && strlen($k) <= 64 && strlen($v) <= 2000 && count($keep) < 50) $keep[$k] = $v;
+	$_SESSION['nu_url_params'] = $keep;
+}
+
 // nuBuilder's auto login: index.php?u=<login>[&p=<password hash>][&f=<form>&r=<record>][&h=<home>] – here p is the hash, not a page
 if (is_string($_GET['u'] ?? null) && !isset($routes[(string)($_GET['p'] ?? '')]) && !nu_is_post()) {
 	require __DIR__ . '/pages/nuautologin.php';
@@ -136,7 +144,11 @@ if (!isset($_GET['p']) && is_string($_GET['f'] ?? null) && $_GET['f'] !== '' && 
 	$clean = static fn($v) => is_string($v) && !in_array(strtolower(trim($v)), ['', 'undefined', 'null'], true) ? trim($v) : null;
 	if (($pf = $clean($_GET['f'])) !== null && preg_match('/^[A-Za-z0-9_\-]{1,50}$/', $pf)) {
 		$pr = $clean($_GET['r'] ?? null);
-		nu_redirect(nu_url('form', ['f' => $pf, 'r' => $pr !== null && preg_match('/^[A-Za-z0-9_\-.]{1,100}$/', $pr) ? $pr : null]));
+		// the other parameters stay (0.8.916): a list reloaded from such an address (code that rewrites the address bar the way nuBuilder
+		// Forte does, then nuSearchAction) keeps its scope of properties (ps), search, page and sort
+		$keep = [];
+		foreach ($_GET as $k => $v) if (is_string($k) && is_string($v) && !in_array($k, ['f', 'r', 'h', 'p', 'u'], true)) $keep[$k] = $v;
+		nu_redirect(nu_url('form', ['f' => $pf, 'r' => $pr !== null && preg_match('/^[A-Za-z0-9_\-.]{1,100}$/', $pr) ? $pr : null] + $keep));
 	}
 }
 

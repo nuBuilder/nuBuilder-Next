@@ -57,6 +57,7 @@ return [
 	'form_delete_with' => 'Ebenfalls gelöscht: %s Zeilen von «%s»',
 	'fi_sql_view' => 'Grösser anzeigen',
 	'builder_attr_result' => 'Ergebnis (Feld «HTML-Attribute»)',
+	'bsq_hint' => 'Wird sofort im Formular gespeichert; die Liste lädt neu. Strg+S = speichern · Esc = schliessen',
 	'builder_view_ro' => 'Das ist eine Ansicht (View), in der die Datenbank nicht speichern kann (z. B. mit GROUP BY, DISTINCT oder UNION). Der Formulartyp wurde auf «Browse» gesetzt.',
 	'builder_delete_object_confirm' => 'Objekt «%s» und seine Ereignisse löschen?',
 	'ds_key_esc' => 'Nichts auswählen (Formulareinstellungen) oder ein Panel schliessen',

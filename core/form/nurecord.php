@@ -140,8 +140,9 @@ final class NuRecord
 
 		// --------------------------------------------------- before save
 		// global hook nu_before_save, then the form's Before Save (0.8.462, as nuBuilder 4.9)
-		if (!NuProcedure::hook('nu_before_save', $hash)) return ['ok' => false] + self::hookResult();
-		if (!NuPhp::run($meta->php('BS'), $hash, 'Before Save')) return ['ok' => false] + NuPhp::result();
+		// $nudata = nuBuilder Forte's variable of these hooks (nuEvalSafe($code, $nudata)) – the same objects as #nuFORMdata# (0.8.922)
+		if (!NuProcedure::hook('nu_before_save', $hash, ['nudata' => $formData])) return ['ok' => false] + self::hookResult();
+		if (!NuPhp::run($meta->php('BS'), $hash, 'Before Save', ['nudata' => $formData])) return ['ok' => false] + NuPhp::result();
 		$jsBefore = NuPhp::$js;
 		self::applyFormData($formData, $values, $edited, $posted);   // nuSetNuDataValue() in Before Save changes what is saved
 
@@ -238,7 +239,7 @@ final class NuRecord
 		}
 		$hash[$meta->primaryKey()] = $newId;
 		NuPhp::$openRecord = null;
-		NuPhp::run($meta->php('AS'), $hash, 'After Save');
+		NuPhp::run($meta->php('AS'), $hash, 'After Save', ['nudata' => $formData]);
 		$open = NuPhp::$openRecord !== null && NuPhp::$openRecord !== (string)$newId ? ['open_id' => NuPhp::$openRecord] : [];   // nuReturnNewRecord()
 
 		return ['ok' => true, 'record_id' => $newId] + $open + NuPhp::result();

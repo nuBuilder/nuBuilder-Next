@@ -36,6 +36,8 @@ final class NuHome
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'email', 'emailtemplates',
 		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'dataexport', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
 		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
+	/** Pinned pages of a tile's menu that open the same page as a tile of their own (0.8.934): shown only while that tile is not on the page. */
+	public const SAME_PAGE = ['s_form_clone' => 'cloner'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
 	public const ADMIN_GROUPS = [
 		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest', 'dbreset']],
@@ -55,11 +57,11 @@ final class NuHome
 		'developer'   => ['icon' => 'bi-code-slash', 'display' => 'tabs', 'size' => 'compact', 'view' => ['style' => 'compact', 'nav' => 'tabs', 'desc' => 'hovercard'],
 			'tabs' => [['t_build', 'home_pf_t_build'], ['t_debug', 'home_pf_t_debug'], ['t_int', 'home_group_integration']],
 			'groups' => [
-				['g_forms', 'nav_forms', 't_build', ['forms', 's_form_new', 's_form_clone', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']],
+				['g_forms', 'nav_forms', 't_build', ['forms', 's_form_new', 'cloner', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']],
 				['g_code', 'home_pf_g_code', 't_build', ['procedures', 's_proc_new', 'reports', 's_report_new', 's_sqlbuilder', 'prompts']],
 				// the pages Debug and Log – not the tile "Log" (it opens Debug; next to the page Log there would be two tiles called "Log")
 				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
-				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'dataexport', 'cloner', 'appcloner', 'sample']],
+				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'dataexport', 'appcloner', 'sample']],
 				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest', 'dbreset']],
 				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'webhooks', 'compat', 's_mail_test']],
 			],
@@ -359,7 +361,7 @@ final class NuHome
 					if ($k === 'email') $tiles[] = 'notifications';
 					if ($id !== 'all') continue;
 					// every page of the tile's ▾ / + – not import / sessions (tiles of their own) and not s_debug (the tile itself opens Debug)
-					foreach ($sub as $sk => $s) if ($s[3] === $k && !isset($cat[$sk]) && $sk !== 's_debug') $tiles[] = $sk;
+					foreach ($sub as $sk => $s) if ($s[3] === $k && !isset($cat[$sk]) && $sk !== 's_debug' && !isset(self::SAME_PAGE[$sk])) $tiles[] = $sk;
 				}
 				$g['tiles'] = $tiles;
 			}
@@ -841,6 +843,14 @@ final class NuHome
 	}
 
 	/** Keys placed in a group (not hidden). */
+	/** A pinned menu page whose page has a tile of its own on this page (SAME_PAGE) – drawn once (0.8.934). */
+	public static function twinShown(string $key, array $layout, array $hide = []): bool
+	{
+		$twin = self::SAME_PAGE[$key] ?? null;
+		if ($twin === null || in_array($twin, $hide, true) || in_array($twin, (array)($layout['hidden'] ?? []), true)) return false;
+		return in_array($twin, self::placed($layout), true) && self::visible($twin, $layout);
+	}
+
 	public static function placed(array $layout): array
 	{
 		return array_merge([], ...array_map(static fn($g) => (array)$g['tiles'], (array)$layout['groups']));

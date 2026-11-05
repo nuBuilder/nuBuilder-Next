@@ -46,11 +46,24 @@ final class NuBrowse
 		return [rtrim(substr($sql, 0, $orderAt)), $order];
 	}
 
+	/** The browse SQL of the last list built in this request with its hash variables filled in, and which of them were set –
+	 *  for the globeadmin's form info (i). @var array{sql: string, vars: array<string, ?string>}|null */
+	public static ?array $shown = null;
+
 	public static function innerSql(NuFormMeta $meta, array $hash): string
 	{
 		$sql = trim((string)$meta->form['sfo_browse_sql']);
 		if ($sql === '') $sql = 'SELECT * FROM ' . NuDB::ident($meta->table());
-		return NuHash::sql(self::expandFilterMatch($sql), $hash);   // text, or bound parameters with $nuDevSelectQueryRunParameterised (0.8.873)
+		$sql = self::expandFilterMatch($sql);
+		$vars = [];
+		if (preg_match_all('/#([A-Za-z_][A-Za-z0-9_]*)#/', $sql, $m)) {
+			foreach (array_unique($m[1]) as $n) {
+				$v = $hash[$n] ?? null;
+				$vars[$n] = $v === null ? null : (is_scalar($v) ? (string)$v : (string)json_encode($v, JSON_UNESCAPED_UNICODE));
+			}
+		}
+		self::$shown = ['sql' => NuHash::replace($sql, $hash, NuHash::SQL), 'vars' => $vars];
+		return NuHash::sql($sql, $hash);   // text, or bound parameters with $nuDevSelectQueryRunParameterised (0.8.873)
 	}
 
 	/**
@@ -172,8 +185,21 @@ final class NuBrowse
 	 * The query of the list: [inner SQL with nu_pk, nu_c<i> (the columns) and nu_o<k> (the browse SQL's own ORDER BY), outer default
 	 * order on nuT ('' = none)]. $cols: list of ['index' => i, 'expr' => display expression].
 	 */
+	/** Comment lines ("-- …", "/* … *\/") at the end of the SQL taken off – the SQL is wrapped and continued, a line comment would swallow the rest. */
+	public static function trimTrailingComments(string $sql): string
+	{
+		do {
+			$before = $sql;
+			$sql = rtrim($sql);
+			$sql = (string)preg_replace('~(?:^|\s)--(?:\s[^\n\'"`]*)?$~', '', $sql);   // MySQL: "-- " with a space; no quote after it (not inside a string)
+			$sql = (string)preg_replace('~/\*(?:(?!\*/).)*\*/$~s', '', $sql);
+		} while ($sql !== $before);
+		return $sql;
+	}
+
 	public static function build(string $sql, string $pk, array $cols, ?callable $columnsOf = null): array
 	{
+		$sql = self::trimTrailingComments($sql);              // "… -- note" at the end would comment out what is added after it (0.8.930)
 		$p = self::splitSelect($sql);
 		$pkIdent = NuDB::ident($pk ?: 'id');
 		if ($p === null) {                                      // UNION / WITH …: the whole SQL as a derived table, as before 0.8.382

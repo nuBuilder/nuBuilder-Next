@@ -308,6 +308,14 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 		case 'rules.test':
 			nb_rules($store->meta(), $action, $in);
 
+		case 'object.clone':                                   // object menu → Actions → Clone (0.8.927), then as object.save
+			if ($action === 'object.clone') {
+				$cid = (string)($in['object_id'] ?? '');
+				$snap = $store->snapshot();
+				nb_clone_prep($in, $store->object($cid), array_map(static fn($o) => (string)$o['sob_all_id'], $snap['objects'] ?? []),
+					array_values(array_filter($snap['events'] ?? [], static fn($e) => (string)$e['sev_zzzzsys_object_id'] === $cid)), $store->php($cid . '_AB'));
+			}
+			// no break: the copy is saved as a new object
 		case 'object.save':
 			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_OBJECT_FIELDS);
 			foreach (['sob_input_format', 'sob_calc_format'] as $fk) {
@@ -319,6 +327,10 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 			if (isset($fields['sob_input_icon']) && mb_strlen((string)$fields['sob_input_icon']) > 50) nb_err(t('builder_obj_icon') . ': ' . t('err_too_long', 50));
 			$oid = $store->objectSave((string)($in['object_id'] ?? ''), $fields, is_array($in['grid'] ?? null) ? $in['grid'] : null,
 				is_array($in['events'] ?? null) ? $in['events'] : null, array_key_exists('lookup_php', $in), ($in['lookup_php'] ?? null) === null ? null : (string)$in['lookup_php']);
+			if (!empty($in['clone_extra'])) {                     // object.clone: the columns object.save does not take
+				$x = $in['clone_extra'];
+				$store->objectSave($oid, $x + ['sob_all_type' => (string)($store->object($oid)['sob_all_type'] ?? '')], null, null, false, null);
+			}
 			$store->commit('object.save ' . (string)($store->object($oid)['sob_all_id'] ?? ''));
 			$store->subformIndex($oid);
 			$out(['object_id' => $oid, 'missing_column' => $store->missingColumn($oid)]);
@@ -456,9 +468,35 @@ function nb_live_draft(string $formId): ?array
 }
 
 
-const NB_SNAPSHOT_ACTIONS = ['form.save', 'rules.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
+/**
+ * Object menu → Actions → Clone (0.8.927): the request of object.save for a copy of $src – every sob_ column, a free field id
+ * (<id>_2, _3 …), placed below the original, the same events and lookup PHP. $in is changed in place.
+ */
+function nb_clone_prep(array &$in, ?array $src, array $takenIds, array $events, ?string $lookupPhp): void
+{
+	if (!$src) nb_err(t('record_not_found'), 404);
+	$fields = [];
+	foreach ($src as $k => $v) if (str_starts_with((string)$k, 'sob_') && !in_array($k, ['sob_all_zzzzsys_form_id', 'sob_all_json', 'sob_json'], true)) $fields[$k] = $v;
+	$base = (string)$src['sob_all_id'];
+	$n = 1; $id = $base . '_' . (++$n);
+	while (in_array($id, $takenIds, true)) $id = $base . '_' . (++$n);
+	$fields['sob_all_id'] = $id;
+	$fields['sob_all_top'] = (string)((int)($src['sob_all_top'] ?? 0) + max(20, (int)($src['sob_all_height'] ?? 0)) + 8);
+	$fields['sob_all_order'] = (string)((int)($src['sob_all_order'] ?? 0) + 1);
+	$in['object_id'] = '';
+	$in['fields'] = array_intersect_key($fields, array_flip(NB_OBJECT_FIELDS));
+	// what object.save does not take (other sob_ columns, nuBuilder Next's settings in sob_all_json) – written after the save
+	$extra = array_diff_key($fields, array_flip(NB_OBJECT_FIELDS));
+	foreach (['sob_all_json', 'sob_json'] as $j) if (array_key_exists($j, $src)) $extra[$j] = $src[$j];
+	$in['clone_extra'] = $extra;
+	$in['events'] = array_map(static fn($e) => ['event' => (string)$e['sev_event'], 'js' => (string)$e['sev_javascript']], $events);
+	if ($lookupPhp !== null && trim($lookupPhp) !== '') $in['lookup_php'] = $lookupPhp;
+	$in['clone_of'] = (string)$src['zzzzsys_object_id'];
+}
+
+const NB_SNAPSHOT_ACTIONS = ['form.save', 'rules.save', 'object.save', 'object.clone', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
 /** Live changes – refused or confirmed while a draft is open (form drafts, 0.8.386). */
-const NB_WRITE_ACTIONS = ['form.save', 'rules.save', 'object.save', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
+const NB_WRITE_ACTIONS = ['form.save', 'rules.save', 'object.save', 'object.clone', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
 
 try {
 	// form drafts (0.8.386): with draft_id the action works on the draft; without it on the live form – refused or confirmed while
@@ -673,6 +711,15 @@ try {
 			nb_out(['ok' => true, 'dropped' => $drop]);
 
 		// --------------------------------------------------------------- objects
+		case 'object.clone':                                   // object menu → Actions → Clone (0.8.927), then as object.save
+			if ($action === 'object.clone') {
+				$cid = (string)($in['object_id'] ?? '');
+				nb_clone_prep($in, $db->one('SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$cid, $formId]) ?: null,
+					array_map('strval', array_column($db->all('SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$formId]), 'sob_all_id')),
+					$db->all('SELECT sev_event, sev_javascript FROM zzzzsys_event WHERE sev_zzzzsys_object_id = ? ORDER BY zzzzsys_event_id', [$cid]),
+					$db->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$cid . '_AB']));
+			}
+			// no break: the copy is saved as a new object
 		case 'object.save':
 			$meta     = nb_form($formId);
 			$objectId = (string)($in['object_id'] ?? '');
@@ -743,6 +790,10 @@ try {
 					}
 				}
 				if (array_key_exists('lookup_php', $in)) nb_upsert_php($objectId . '_AB', $in['lookup_php'] === null ? null : (string)$in['lookup_php']);
+				if (!empty($in['clone_extra'])) {                     // object.clone: the columns object.save does not take
+					$x = array_intersect_key($in['clone_extra'], $db->columns('zzzzsys_object') ?: $in['clone_extra']);
+					if ($x) $db->update('zzzzsys_object', $x, 'zzzzsys_object_id', $objectId);
+				}
 			});
 			if ($type === 'subform') {                                // the sub-form's link column gets an index (0.8.366)
 				$so = $db->one('SELECT o.sob_subform_foreign_key, f.sfo_table FROM zzzzsys_object o JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_subform_zzzzsys_form_id WHERE o.zzzzsys_object_id = ?', [$objectId]);

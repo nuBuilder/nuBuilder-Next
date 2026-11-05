@@ -65,7 +65,7 @@ final class NuRender
 			$left = (int)$o['sob_all_left'];
 			$w    = LayoutSize::width($o);
 			$h    = (int)$o['sob_all_height'];
-			$height = max($height, $top + $h + ($o['sob_all_type'] === 'subform' ? 40 : 20));
+			$height = max($height, $top + $h + ($o['sob_all_type'] === 'subform' ? 40 : ($o['sob_all_type'] === 'contentbox' ? 22 + 12 : 20)));   // content box: Forte's 22 px title bar
 			$width  = max($width, $left + $w + 20);
 			// stacking as in nuBuilder (0.8.567): objects get no z-index (they stack in drawing order, and a z-index:-1 inside an HTML object
 			// sends that element behind the others – before, z-index:1 on every wrapper trapped it), content boxes -1; the canvas is isolated
@@ -127,7 +127,9 @@ final class NuRender
 		// globeadmin: what the label menu (quick changes of the object) shows as current values
 		if (!empty(NuAuth::user()['globeadmin'])) {
 			$this->clientObjects[$id] += ['access' => (string)$o['sob_all_access'], 'align' => (string)$o['sob_all_align'], 'validate' => (string)$o['sob_all_validate'],
-				'tab' => (string)$o['sob_all_zzzzsys_tab_id']];
+				'tab' => (string)$o['sob_all_zzzzsys_tab_id'],
+				// position and size for the menu's number fields (0.8.921, as nuBuilder Forte's object menu)
+				'top' => (int)$o['sob_all_top'], 'left' => (int)$o['sob_all_left'], 'width' => (int)$o['sob_all_width'], 'height' => (int)$o['sob_all_height']];
 		}
 
 		if ($type === 'contentbox') return $this->contentbox($o, '');

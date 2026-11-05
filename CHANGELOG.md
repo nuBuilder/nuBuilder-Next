@@ -3,6 +3,148 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.935 – Release gate (0.8.907–0.8.934)
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan).
+- Documentation, README, tutorial and to-do list brought up to date for 0.8.907–0.8.934.
+
+## 0.8.934 – One tile for the Form cloner
+- Start page: "Clone form" and "Form cloner" open the same page – the tile shows only once (the Forms ▾ menu
+  keeps its entry; the Developer profile has the Form cloner in the Forms group).
+
+## 0.8.933 – Dragged column widths without a jump
+- Lists: column widths dragged in a list are drawn by the server on the next page – paging no longer shows
+  the stored widths for a moment and then jumps to the dragged ones. They last until the browser is closed.
+
+## 0.8.932 – Ctrl+Shift+B for the browse SQL pane
+- Lists: Ctrl+Shift+B opens the browse SQL pane; the ⋮ entry Browse SQL opens it too.
+
+## 0.8.931 – Pin for the browse SQL pane, steady column widths
+- Lists: the browse SQL pane can be kept open (pin) – it opens again after saving, on the next page
+  and on other lists until it is closed.
+- Lists: the columns keep their stored widths (spread over the list's width, as nuBuilder Forte); they no
+  longer change size with the content of each page, so paging does not make them jump. Longer values end in …
+
+## 0.8.930 – Edit browse SQL from the list
+- Lists: the Design button has a ▾ menu with "Edit browse SQL…" – the browse SQL in a pane on the right,
+  saved to the form (or the open draft) with Save / Ctrl+S, then the list reloads.
+- Lists: comments at the end of the browse SQL no longer break the list.
+
+## 0.8.929 – Column menu on list titles
+- Lists: a right-click on a column title opens the column menu also outside design mode (for the
+  globeadmin) – rename, align, width, filter, move, hide, delete, or open the column in design mode.
+
+## 0.8.928 – Compact object menu
+- Object menu: compact spacing – less padding of the menu, its entries, the section lines and the
+  Top / Left / Width / Height block.
+
+## 0.8.927 – Clone in the object menu
+- Object menu: Actions → Clone (first entry) copies the object – a new id (<id>_2, _3 …), every
+  property, its events and code, placed below the original; also in an open draft and in design mode.
+
+## 0.8.926 – Missing nuBuilder Forte PHP functions
+- PHP functions of nuBuilder Forte that were missing or incomplete: nuGetFormProperties($formId) and nuGetURLParams() (the
+  parameters of the address the session was opened with, without the password); nuCreateTableFromSelect() takes the parameters
+  of its SELECT; nuAddJavascript() takes $beforeCreated and $first (code first); nuRunQuery() without SQL returns host, database
+  and user (the password stays empty). Function reference and the porting page updated.
+
+## 0.8.925 – Database tool opens the form's table
+- Database tool from the user menu or the side bar: opened while a form with a table is on the screen (list or record),
+  phpMyAdmin / Adminer opens that table instead of the database overview.
+
+## 0.8.924 – Simple save values in PHP
+- PHP: nuNextSaveValue('field'[, 'subform_id', $row]) and nuNextSetSaveValue('field', $value[, 'subform_id', $row]) read and
+  change the record being saved in Before Save / After Save – without $nudata or a form id, also any row of a sub-form.
+  nuGetNuDataValue / nuSetNuDataValue stay as in nuBuilder Forte. Function reference and help (save flow, procedures).
+
+## 0.8.923 – Database tool with the form's table
+- Object menu: Top / Left / Width / Height save without a message, and several clicks on a spin arrow in a row are saved once,
+  shortly after the last click.
+- Form ⋮ menu: "Table in the database tool" on forms with a table – phpMyAdmin opens the table's rows, Adminer the table (as
+  Ctrl+Shift+E, which had no menu entry). Shown to users with the database tool right when phpMyAdmin or Adminer is installed.
+
+## 0.8.922 – $nudata in Before Save
+- PHP hooks Before Save, After Save and nu_before_save: the variable $nudata is ready, as in nuBuilder Forte – code written as
+  in Forte's documentation (nuGetNuDataValue($nudata, …) / nuSetNuDataValue($nudata, …)) works unchanged. Before, $nudata did not
+  exist there and only nuHash()['nuFORMdata'] worked. Both functions also fall back to the form data of the save when they are given
+  no data. Function reference updated.
+
+## 0.8.921 – Position and size in the object menu
+- Object menu (right-click on a label or button, globeadmin): Top, Left, Width and Height fields as in nuBuilder Forte, for the
+  absolute layout. The object moves / resizes at once; the values are saved without a reload on Enter, when the field is left or
+  the menu closes, and for the spin arrows only once the mouse button is released (one save, not one per step).
+
+## 0.8.920 – Content box height as in nuBuilder Forte
+- Absolute layout: content boxes have nuBuilder Forte's height – Forte draws a title bar at the object's top and the frame of
+  the object's full height below it, so the box reaches below top + height; nuBuilder Next's frame ended at top + height. The
+  frame now covers the same area (title on its top line), and the form area grows with it.
+
+## 0.8.919 – Tab menu on a right-click
+- Edit forms: a right-click on a tab opens a tab menu for the globeadmin also outside design mode (as the label menu of the
+  objects): copy the tab id, rename, visibility (visible / hidden / hidden for users), move left / right, delete (objects move
+  to the first remaining tab) and Edit in design mode. Ctrl + right-click keeps the browser's menu. Help: Hash variables and the
+  label menu.
+
+## 0.8.918 – Neutral names in tests and notes
+- Test data and examples use neutral names only (no customer or project names): a test fixture's form and table, two test
+  values and a code comment renamed; changelog text of 0.8.917 reworded.
+
+## 0.8.917 – Labels of input buttons
+- Own <input type="button"> buttons with the class nuActionButton keep their label with .val() again: the label hook of
+  0.8.915 is only for nuBuilder Next's own <button> action buttons (a filter button showed only "✓" instead of "✓" and its name).
+
+## 0.8.916 – Filters after a Forte-style address
+- Browse lists: filters set by code work when the address bar was rewritten the way nuBuilder Forte does (index.php?f=…&r=…&h=…,
+  e.g. by Forte code in the header of the form pages). nuSearchAction() and the other list reloads now build nuBuilder Next's
+  own address, and the redirect of such an address keeps its other parameters (property scope, search, page, sort) – before,
+  the filter value was lost on the way and the list came back unfiltered.
+
+## 0.8.915 – Action buttons with a value as in nuBuilder Forte
+- Action buttons (nuAddActionButton) behave like nuBuilder Forte's for code that reads or changes their label: the button's
+  value is its label, and jQuery's .val() gets and sets the label (Forte's buttons are <input type="button">). Filter buttons
+  that mark the chosen button with "✓ " or read the filter from the button's value work again.
+
+## 0.8.914 – Browse SQL as run in the form info
+- Form info (i) of a list (globeadmin): new rows "Browse SQL as run" – the browse SQL of the page with its hash variables
+  filled in – and "Hash variables" – every #name# the browse SQL uses with its value, or "not set – stays as text". Shows at
+  once why a filter of a list does not work.
+
+## 0.8.913 – nuBrowseLoop as in nuBuilder Forte
+- nuBrowseLoop() works as in nuBuilder Forte: columns can be given by number or by column id, an empty list means every
+  column, each cell gets row, column, columnId and the properties text / html, and the values the callback returns are
+  collected and returned. Before, only column numbers worked and the cell had none of these properties.
+
+## 0.8.912 – Filters set by form code on browse lists
+- Browse lists: filters made by form code work again – a button or select in the toolbar that sets a property
+  (nuSetProperty) and then calls nuSearchAction() reloaded the list with the properties of the page as it was loaded, so
+  the hash variable in the browse SQL never changed. nuSearchAction() now stores the changed properties first.
+- Browse lists: the rows sit in an element with the id nuRECORD, as in nuBuilder Forte, so code that loops over
+  '#nuRECORD .nuCell' finds the cells.
+
+## 0.8.911 – No JavaScript check on the browse SQL
+- Design mode → Code: the browse SQL no longer shows a false "Unexpected token". The workspace uses one editor for every
+  code part, and after a JavaScript part the JavaScript syntax check kept running on the SQL. Parts without a check (SQL)
+  now clear the marks and are not checked; JavaScript, CSS and PHP parts are checked as before. Saving SQL no longer asks
+  about these false errors either.
+
+## 0.8.910 – Sticky list titles
+- Long lists: the column titles stay visible below the top bar and the button row while scrolling – form browse lists and
+  the system lists (users, log, procedures …). The titles keep sorting, column resizing and horizontal scrolling; on phones
+  with the card view nothing changes.
+
+## 0.8.909 – To do grouped by topic
+- TODO.md (Admin tools → To do, developer mode) is grouped by topic instead of by release: Decisions for the owner, SQL Server,
+  Live server, Sign-in and security, Forms and design mode, Lists, Users, Reports, Code editors and libraries, Update page,
+  Samples, nuBuilder Forte compatibility, Documentation, the two proposals and the ideas. Every point starts with a short
+  bold title and its version, so a folded topic shows what is behind it at a glance.
+
+## 0.8.908 – Users list: access level in a new tab
+- Users list: the access level badge opens the access level in a new tab (with the ↗ icon, as the home form in the access
+  levels list).
+
+## 0.8.907 – Access levels list: home form link
+- Access levels list: the home form is a link that opens the form in a new tab (the row itself still opens the access
+  level).
+
 ## 0.8.906 – DeepSource configuration
 - Repository: a .deepsource.toml tells DeepSource to skip third-party code (vendor/bundled/, dev/libsrc/ with PHPMailer's
   sources), treat dev/tests/ as tests and run the PHP, JavaScript, Python and secrets analysers. The file is not part of

@@ -11,9 +11,11 @@ defined('NU_ROOT') || exit;
 if (!function_exists('nuRunQuery')) {
 
 	/** @return NuResult|string  result, or the insert id when $isInsert is true */
-	function nuRunQuery(string $sql, array $params = [], bool $isInsert = false): NuResult|string
+	function nuRunQuery(?string $sql = null, array $params = [], bool $isInsert = false): NuResult|string|array
 	{
 		$db = nu_db();
+		// no SQL: nuBuilder Forte returns [host, database, user, password] – here without the password (0.8.926)
+		if ($sql === null || trim($sql) === '') return [(string)nu_cfg('nuConfigDBHost'), (string)nu_cfg('nuConfigDBName'), (string)nu_cfg('nuConfigDBUser'), ''];
 		$st = $db->run($sql, $params);
 		if ($isInsert) return (string)$db->lastInsertId();
 		return new NuResult($st);
@@ -76,9 +78,10 @@ if (!function_exists('nuRunQuery')) {
 		NuPhp::$hash['RECORD_ID'] = (string)$i;
 	}
 
-	function nuAddJavascript(string $js): void
+	/** nuBuilder Forte 4.9: $beforeCreated / $first – the objects of nuBuilder Next's pages exist before any code runs; $first puts the code first. */
+	function nuAddJavascript(string $js, bool $beforeCreated = false, bool $first = false): void
 	{
-		NuPhp::$js[] = $js;
+		if ($first) array_unshift(NuPhp::$js, $js); else NuPhp::$js[] = $js;
 	}
 
 	function nuSetFormValue(string $field, mixed $value): void
@@ -90,6 +93,7 @@ if (!function_exists('nuRunQuery')) {
 	function nuGetNuDataValue(mixed $nudata, string $formId, string $field): mixed
 	{
 		if ($formId === '') $formId = 'nuBuilder4EditForm';
+		if (!is_array($nudata) || !$nudata) $nudata = NuPhp::$hash['nuFORMdata'] ?? [];   // no $nudata at hand: the form data of this save (0.8.922)
 		foreach ((array)$nudata as $sf) {
 			if (!is_object($sf) || ($sf->id ?? null) !== $formId) continue;
 			$key = array_search($field, (array)($sf->fields ?? []), true);
@@ -102,7 +106,8 @@ if (!function_exists('nuRunQuery')) {
 	function nuSetNuDataValue(mixed &$nudata, string $formId, string $field, mixed $value): bool
 	{
 		if ($formId === '') $formId = 'nuBuilder4EditForm';
-		foreach ((array)$nudata as $i => $sf) {
+		$data = is_array($nudata) && $nudata ? $nudata : (NuPhp::$hash['nuFORMdata'] ?? []);   // the objects are shared: a change reaches the save
+		foreach ((array)$data as $i => $sf) {
 			if (!is_object($sf) || ($sf->id ?? null) !== $formId) continue;
 			$key = array_search($field, (array)($sf->fields ?? []), true);
 			if ($key === false) continue;
@@ -111,6 +116,41 @@ if (!function_exists('nuRunQuery')) {
 			$sf->rows = $rows;
 			$ed = (array)($sf->edited ?? []);
 			$ed[0][$key] = 1;
+			$sf->edited = $ed;
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * nuBuilder Next (0.8.924): a value of the record being saved – Before Save / After Save, no $nudata or form id needed.
+	 * $subform '' = the edit form, else a sub-form object id and $row its row (0 = the first).
+	 */
+	function nuNextSaveValue(string $field, string $subform = '', int $row = 0): mixed
+	{
+		foreach ((array)(NuPhp::$hash['nuFORMdata'] ?? []) as $sf) {
+			if (!is_object($sf) || ($sf->id ?? null) !== ($subform === '' ? 'nuBuilder4EditForm' : $subform)) continue;
+			$key = array_search($field, (array)($sf->fields ?? []), true);
+			return $key === false ? null : (((array)($sf->rows ?? []))[$row][$key] ?? null);
+		}
+		return null;
+	}
+
+	/**
+	 * nuBuilder Next (0.8.924): changes a value of the record being saved – in Before Save the new value is what gets saved.
+	 * $subform '' = the edit form, else a sub-form object id and $row its row (0 = the first). false = no such field / row.
+	 */
+	function nuNextSetSaveValue(string $field, mixed $value, string $subform = '', int $row = 0): bool
+	{
+		foreach ((array)(NuPhp::$hash['nuFORMdata'] ?? []) as $sf) {
+			if (!is_object($sf) || ($sf->id ?? null) !== ($subform === '' ? 'nuBuilder4EditForm' : $subform)) continue;
+			$key = array_search($field, (array)($sf->fields ?? []), true);
+			$rows = (array)($sf->rows ?? []);
+			if ($key === false || $key === 0 || !isset($rows[$row])) return false;   // the ID column is not changed this way
+			$rows[$row][$key] = is_scalar($value) || $value === null ? $value : json_encode($value, JSON_UNESCAPED_UNICODE);
+			$sf->rows = $rows;
+			$ed = (array)($sf->edited ?? []);
+			$ed[$row][$key] = 1;
 			$sf->edited = $ed;
 			return true;
 		}
@@ -277,22 +317,35 @@ if (!function_exists('nuRunQuery')) {
 		return NuHash::replace((string)$php, NuPhp::$hash, NuHash::PHP);
 	}
 
+	/** nuBuilder Forte: the form's row of zzzzsys_form as an object (false when there is none). */
+	function nuGetFormProperties(string $formId): object|false
+	{
+		$row = nu_db()->one('SELECT * FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
+		return $row ? (object)$row : false;
+	}
+
+	/** nuBuilder Forte: the parameters of the address index.php was opened with in this session (without p = password), latest values. */
+	function nuGetURLParams(): array
+	{
+		return (array)($_SESSION['nu_url_params'] ?? []);
+	}
+
 	/** Posted subform, shaped like nuBuilder's object: rows, fields, deleted, edited. */
 	function nuSubformObject(string $id): object
 	{
 		return (object)(NuPhp::$subforms[$id] ?? ['id' => $id, 'fields' => [], 'rows' => [], 'deleted' => [], 'edited' => []]);
 	}
 
-	function nuCreateTableFromSelect(string $table, string $sql): void
+	function nuCreateTableFromSelect(string $table, string $sql, array $params = []): void
 	{
 		$db = nu_db();
 		if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) throw new RuntimeException("Invalid table name $table");
 		if ($db->type === 'sqlsrv') {
 			$db->run("IF OBJECT_ID('$table') IS NOT NULL DROP TABLE $table");
-			$db->run("SELECT * INTO $table FROM ($sql) nuSrc");
+			$db->run("SELECT * INTO $table FROM ($sql) nuSrc", $params);
 		} else {
 			$db->run("DROP TABLE IF EXISTS $table");
-			$db->run("CREATE TABLE $table" . ($db->type === 'mysql' ? ' ENGINE=InnoDB' : '') . " AS $sql");
+			$db->run("CREATE TABLE $table" . ($db->type === 'mysql' ? ' ENGINE=InnoDB' : '') . " AS $sql", $params);
 		}
 	}
 
