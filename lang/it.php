@@ -4240,6 +4240,7 @@ return [
 	'hash_src_record' => 'campo',
 	'hash_src_property' => 'proprietà del modulo',
 	'hash_src_global' => 'hash cookie',
+	'hash_src_caller' => 'modulo chiamante',
 	'form_err_property_name' => '«%s» non può essere usato come nome di proprietà (lettere, cifre, _; non una variabile di sistema).',
 	'hv_title' => 'Inserisci variabile hash',
 	'hv_search' => 'Cerca …',

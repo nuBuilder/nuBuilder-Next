@@ -3506,6 +3506,7 @@ return [
 	'hash_src_record' => 'Feld',
 	'hash_src_property' => 'Formular-Eigenschaft',
 	'hash_src_global' => 'Hash-Cookie',
+	'hash_src_caller' => 'aufrufendes Formular',
 	'form_err_property_name' => '„%s“ kann nicht als Eigenschaftsname verwendet werden (Buchstaben, Ziffern, _; keine Systemvariable).',
 	// hash variables (code editor)
 	'hv_title' => 'Hash-Variable einfügen',

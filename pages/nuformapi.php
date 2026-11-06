@@ -58,6 +58,7 @@ function nu_api_preview_guard(NuFormMeta $meta, array $in): void
 $rights = NuAcl::rights($meta->id);
 $ps     = is_string($in['ps'] ?? null) ? $in['ps'] : '';
 $props  = NuProps::merge($ps, $in['props'] ?? []);      // browser values; names set in PHP keep the server's value
+NuHash::$caller = NuProps::caller($ps);                 // fields of the edit form this page was opened from (0.8.976)
 $in['props'] = $props;
 $values = is_array($in['values'] ?? null) ? $in['values'] : [];
 $record = (string)($in['record_id'] ?? '');
@@ -162,7 +163,7 @@ try {
 			nu_api_out(['ok' => true, 'found' => false]);
 
 		case 'props':
-			nu_api_out(['ok' => true, 'ps' => NuProps::fork($ps, $in['props'] ?? [])]);
+			nu_api_out(['ok' => true, 'ps' => NuProps::fork($ps, $in['props'] ?? [], $in['caller'] ?? null)]);
 
 		case 'global':
 			$name = (string)($in['name'] ?? '');

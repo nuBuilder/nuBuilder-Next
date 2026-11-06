@@ -995,6 +995,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 			<li><strong>Object settings read the same way</strong>: a select's options in every format of nuBuilder Forte – SQL, <code>value|text</code>, a JSON list, <code>SHOW TABLES</code>, <code>%LANGUAGES%</code>, with hash variables in each (<a data-help="select-options">options of a select</a>); sub-form filters compare a lookup by its code.</li>
 			<li><strong>Security</strong>: nuBuilder Next's own pages allow no inline scripts or styles (Content Security Policy). Form pages still run your form code as nuBuilder Forte does.</li>
 			<li><strong>Setup → Header / Style / Include</strong> still apply to forms; code for <em>all</em> pages (also the start page and the admin pages) goes into <a data-open="globalcode">Global code</a>.</li>
+			<li><strong>One page per form</strong>: nuBuilder Forte keeps one page for the whole session, nuBuilder Next loads a new page for every form, record and Save. A JavaScript variable your code set on one form (<code>window.x</code>) is empty on the next one – keep such values with <code>nuSetProperty</code>. Hash variables of the record a form was opened from are passed on as in nuBuilder Forte.</li>
 			<li>A few nuBuilder Forte functions behave differently or were left out on purpose – each with its reason: <a data-help="porting">Differences and functions not ported</a>.</li>
 		</ul>
 		<div class="tut-task"><p class="mb-0">Open a procedure, place the cursor in the PHP code and pick a function from the <em>Insert</em> menu.</p></div>

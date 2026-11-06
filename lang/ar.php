@@ -4241,6 +4241,7 @@ return [
 	'hash_src_record' => 'حقل',
 	'hash_src_property' => 'خاصية النموذج',
 	'hash_src_global' => 'ملف تعريف hash',
+	'hash_src_caller' => 'النموذج المستدعي',
 	'form_err_property_name' => 'لا يمكن استخدام "%s" كاسم خاصية (أحرف، أرقام، _؛ وليس متغير نظام).',
 	'hv_title' => 'إدراج متغير hash',
 	'hv_search' => 'بحث …',

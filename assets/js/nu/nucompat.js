@@ -2,7 +2,7 @@
 /*
  * More nuBuilder 4.9 JavaScript functions (nucommon.js, nuform.js, nuajax.js) for existing form code.
  * Loaded after nuruntime.js; works on nuBuilder Next's markup (subform rows .nuSubformRow with data-nu-prefix,
- * tabs .nuTab[data-nu-tab][data-nu-tab-id], browse cells td.nuCell[data-nu-column]).
+ * tabs .nuTab[data-nu-tab][data-nu-tab-id], browse cells div.nuCell[data-nu-column] inside the table cells).
  * Differences and functions that are not ported: help, Code reference → Differences and functions not ported (docs/pages/12-02-porting.htm).
  */
 (function () {
@@ -28,6 +28,64 @@
 		var re = new RegExp('[' + Object.keys(r).map(function (c) { return '\\' + c; }).join('') + ']', 'g');
 		return string.replace(re, function (c) { return r[c]; });
 	});
+	// small layout helpers of nuBuilder Forte's nuform.js that form code calls (0.8.975): text width, element with id, absolute bounds
+	api('nuGetWordWidth', function (text, refElem) {
+		var $t = $('<div>', {text: text, css: {position: 'absolute', visibility: 'hidden', whiteSpace: 'nowrap', width: 'auto'}}).appendTo('body');
+		// no reference: the font of the form's labels – Forte measures in its body font, which is the labels' font there (Next's body is larger)
+		var ref = refElem && refElem.length && refElem[0] instanceof Element ? refElem[0] : document.querySelector('label.nuLabel');
+		if (ref) {
+			var c = window.getComputedStyle(ref);
+			$t.css({fontSize: c.fontSize, fontFamily: c.fontFamily, fontWeight: c.fontWeight, fontStyle: c.fontStyle, letterSpacing: c.letterSpacing, textTransform: c.textTransform});
+		}
+		var w = $t.outerWidth();
+		$t.remove();
+		return w + 5;
+	});
+	api('nuCreateElementWithId', function (tagName, id, parentElement) {
+		var e = document.createElement(tagName);
+		e.setAttribute('id', id);
+		if (parentElement !== undefined && document.getElementById(parentElement)) document.getElementById(parentElement).appendChild(e);
+		return e;
+	});
+	api('nuSetObjectBounds', function (obj, top, left, width, height, absolute) {
+		obj = obj && obj.jquery ? obj[0] : obj;
+		if (!obj) return $();
+		if (top !== null && top !== undefined) obj.style.top = top + 'px';
+		if (left !== null && left !== undefined) obj.style.left = left + 'px';
+		if (height !== null && height !== undefined) obj.style.height = height + 'px';
+		if (width !== null && width !== undefined) obj.style.width = width + 'px';
+		if (absolute || absolute === null || absolute === undefined) obj.style.position = 'absolute';
+		return $(obj);
+	});
+	api('nuTotalWidth', function (id) {
+		var e = document.getElementById(id); if (!e) return 0;
+		var s = getComputedStyle(e); return e.getBoundingClientRect().width + parseFloat(s.marginLeft) + parseFloat(s.marginRight);
+	});
+	api('nuTotalHeight', function (id) {
+		var e = document.getElementById(id); if (!e) return 0;
+		var s = getComputedStyle(e); return e.getBoundingClientRect().height + parseFloat(s.marginTop) + parseFloat(s.marginBottom);
+	});
+	api('nuRoundNearest', function (n, v) { return Math.round(n / v) * v; });
+	// $(…).clone() of a field of the fixed layout (0.8.975): in Forte a field carries its own size; here its wrapper does (the field is
+	// width: 100 %). A clone placed elsewhere by form code (template fields cloned next to #nuRECORD) keeps the size it had – px – and
+	// the look of the fixed layout (class nuAbsClone, nuform.css)
+	if ($.fn.clone && !$.fn.clone.nuNext) {
+		var origClone = $.fn.clone;
+		$.fn.clone = function () {
+			var src = this, out = origClone.apply(this, arguments);
+			out.each(function (i) {
+				var o = src[i];
+				var wrap = o && o.nodeType === 1 && o.closest ? o.closest('.nuAbs') : null;
+				if (!wrap) return;
+				// the size it shows, or – on a hidden tab – its wrapper's
+				if (/%$/.test(o.style.width)) { var w = o.offsetWidth || parseFloat(wrap.style.width); if (w) this.style.width = w + 'px'; }
+				if (/%$/.test(o.style.height)) { var h = o.offsetHeight || parseFloat(wrap.style.height); if (h) this.style.height = h + 'px'; }
+				this.classList.add('nuAbsClone');
+			});
+			return out;
+		};
+		$.fn.clone.nuNext = true;
+	}
 	api('nuAddSlashes', function (s) { return String(s).replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0'); });
 	api('nuAddThousandSpaces', function (s, d) { return String(s).replace(/\B(?=(\d{3})+(?!\d))/g, d); });
 	api('nuPad', function (id, length, pad) { return String(id).padStart(length, pad === undefined || pad === null ? '0' : String(pad)); });
@@ -235,7 +293,13 @@
 	api('nuAddEventListenerOnce', function (target, type, fn, options, cls) {
 		if (!target.classList.contains(cls)) { target.addEventListener(type, fn, options); target.classList.add(cls); }
 	});
+	// nuBuilder Forte: a column's align code (l / r / c) as CSS text-align (0.8.965)
+	api('nuAlign', function (a) { return ({l: 'left', r: 'right', c: 'center'})[a] || ''; });
+	api('nuAlignmentStyle', function (a) { return ({l: 'left', c: 'center', r: 'right'})[a]; });
 	api('nuCopyToClipboard', function (s) {
+		// as nuBuilder Forte: a field (jQuery object or element) gives its value; a string is the text itself (0.8.965)
+		if (s && typeof s === 'object') s = s.jquery ? s.val() : ('value' in s ? s.value : s.textContent);
+		if (s === undefined || s === null) s = '';
 		if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(String(s)).then(function () { return true; }, function () { return false; });
 		var t = document.createElement('textarea'); t.value = String(s); document.body.appendChild(t); t.select();
 		var ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
@@ -543,9 +607,8 @@
 	api('nuSubformHeaderToSeparatedString', function (fields, d, includeId) { return fields.slice(includeId ? 0 : 1).join(d) + '\n'; });
 	api('nuSubformToClipboard', function (sf, delimiter, includeHeader, includeId) {
 		var o = nuSubformObject(sf), d = delimiter || '\t';
-		var rows = o.rows.map(function (r) { return r.slice(0, -1); });               // without the nuDelete column
-		var fields = o.fields.slice(0, -1);
-		return nuCopyToClipboard((includeHeader ? nuSubformHeaderToSeparatedString(fields, d, !!includeId) : '') + nuSubformRowToSeparatedString(rows, d, !!includeId));
+		// with the nuDelete column (title and 0 / 1), as nuBuilder Forte (0.8.965)
+		return nuCopyToClipboard((includeHeader ? nuSubformHeaderToSeparatedString(o.fields, d, !!includeId) : '') + nuSubformRowToSeparatedString(o.rows, d, !!includeId));
 	});
 	api('nuSubformMoveFocus', function (active, d) {
 		var $a = $(active), p = $a.attr('data-nu-prefix');
@@ -594,7 +657,7 @@
 		var sf = p.slice(0, -3), r0 = Number(p.slice(-3)), o = nuSubformObject(sf), c0 = o.fields.indexOf($t.attr('data-nu-field'));
 		var cols = Object.keys(json[0]).length, changed = [];
 		for (var r = 0; r < json.length; r++) {
-			while (!g(sf + nuPad3(r0 + r) + o.fields[c0]) && nuAddRow(sf)) { /* add rows as needed */ }
+			while (!g(sf + nuPad3(r0 + r) + o.fields[c0]) && nuAddRow(sf, false)) { /* add rows as needed */ }
 			for (var c = 0; c < cols; c++) {
 				var dest = $('#' + sf + nuPad3(r0 + r) + o.fields[c0 + c]);
 				if (!dest.length || dest.prop('readonly') || dest.prop('disabled')) continue;
@@ -663,7 +726,7 @@
 	api('nuHighlightSearch', function () {
 		var b = N.browse || {}, terms = b.hl || [], no = (b.nsc || []).map(Number), only = (b.sc || []).map(Number);
 		if (!terms.length || !window.nuHighlightText) return;
-		$('td.nuCell').each(function () {
+		$('#nuBrowseTable div.nuCell').each(function () {
 			var c = +this.getAttribute('data-nu-column');
 			if (no.indexOf(c) >= 0 || (only.length && only.indexOf(c) < 0)) return;
 			window.nuHighlightText(this, terms);
@@ -753,32 +816,45 @@
 })();
 
 /* Absolute layout (0.8.443): nuBuilder positions every field and every label on its own; nuBuilder Next puts label + field into one
- * positioned wrapper #nuw_<id>. Form code that reads or sets top / left with jQuery on a field – or top on its label – works on the
- * wrapper, so both move together as in nuBuilder ($('#x').css('top', …), .css({top: …}), $('#x').nuCSSNumber('top')). */
+ * positioned wrapper #nuw_<id>. Form code that reads or sets top / left with jQuery on a field works on the wrapper, so label and field
+ * move together as in nuBuilder ($('#x').css('top', …), .css({top: …}), $('#x').nuCSSNumber('top')). A label's top / left (0.8.965) are
+ * form coordinates as in nuBuilder Forte: the label is placed there inside its wrapper (e.g. above the field) and stays there when the
+ * field moves later; reading them gives the label's form position. */
 (function () {
 	'use strict';
 	var jq = window.jQuery;
 	if (!jq || !jq.cssHooks) return;
-	function wrapperOf(el, prop) {
+	function wrapOf(el) {
 		if (!el || el.nodeType !== 1 || !el.id) return null;
 		var w = el.parentElement;
 		if (!w || !w.id || w.id.indexOf('nuw_') !== 0 || !w.classList.contains('nuAbs')) return null;
 		var id = w.id.slice(4);
-		if (el.id === id) return w;
-		if (el.id === 'label_' + id && prop === 'top') return w;   // a label's left stays its own (it sits left of the field)
+		if (el.id === id) return {w: w, label: false};
+		if (el.id === 'label_' + id) return {w: w, label: true};
 		return null;
+	}
+	function px(v) { var n = parseFloat(v); return isNaN(n) ? null : n; }
+	function wpos(w, prop) { var n = px(w.style[prop] || window.getComputedStyle(w)[prop]); return n === null ? 0 : n; }
+	// a label with a form position of its own: its offset inside the wrapper follows the wrapper
+	function placeLabel(w) {
+		var l = document.getElementById('label_' + w.id.slice(4));
+		if (!l || !l.hasAttribute('data-nu-abs-top') && !l.hasAttribute('data-nu-abs-left')) return;
+		if (l.hasAttribute('data-nu-abs-top')) l.style.top = (+l.getAttribute('data-nu-abs-top') - wpos(w, 'top')) + 'px';
+		if (l.hasAttribute('data-nu-abs-left')) { l.style.left = (+l.getAttribute('data-nu-abs-left') - wpos(w, 'left')) + 'px'; l.style.right = 'auto'; }
 	}
 	['top', 'left'].forEach(function (prop) {
 		var prev = jq.cssHooks[prop] || {};
 		jq.cssHooks[prop] = {
 			get: function (el, computed, extra) {
-				var w = wrapperOf(el, prop);
-				if (w) return w.style[prop] || window.getComputedStyle(w)[prop];
+				var x = wrapOf(el);
+				if (x && !x.label) return x.w.style[prop] || window.getComputedStyle(x.w)[prop];
+				if (x) return (wpos(x.w, prop) + (prop === 'top' ? el.offsetTop : el.offsetLeft)) + 'px';
 				return prev.get ? prev.get(el, computed, extra) : undefined;
 			},
 			set: function (el, value, extra) {
-				var w = wrapperOf(el, prop);
-				if (w) { w.style[prop] = value; return undefined; }      // undefined: jQuery does not set the element itself
+				var x = wrapOf(el);
+				if (x && !x.label) { x.w.style[prop] = value; placeLabel(x.w); return undefined; }   // undefined: jQuery does not set the element itself
+				if (x && px(value) !== null) { el.setAttribute('data-nu-abs-' + prop, String(px(value))); placeLabel(x.w); return undefined; }
 				return prev.set ? prev.set(el, value, extra) : value;
 			}
 		};

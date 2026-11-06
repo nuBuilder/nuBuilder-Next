@@ -30,6 +30,11 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Drawing order of objects** (absolute layout): nuBuilder Forte sorts content boxes first, then sob_all_order, then the tab order,
       run objects last at the same order; nuBuilder Next sorts tab, sob_all_order, top, left. Matters only for objects with the same order
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
+- [ ] **`nuRunQuery` errors like Forte?** (0.8.971, comparing a second Forte database): Forte writes a failing query to the Debug results
+      and goes on (the query returns -1, an e-mail after a failed insert is still sent); nuBuilder Next stops the procedure / hook and
+      shows the error. Options: keep (recommended for data safety) or do as Forte.
+- [ ] **`DOMContentLoaded` handlers of form code** (0.8.974): in Forte they never run (form code runs after the page has loaded), in
+      nuBuilder Next they run. Recommendation: leave it (documented in 12-02); the alternative is to swallow such handlers.
 - [ ] **Object menu on more objects**: nuBuilder Forte also offers the right-click menu on words, images, tabs and sub-form titles.
 
 ## SQL Server
@@ -243,6 +248,12 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
 
 ## nuBuilder Forte compatibility
+- [ ] **List cells as div inside the td, sub-form cell ids, nuAddRow, label positions, canvas growth** (0.8.965) – please verify on a real application: row colouring by `div[id^='nucell_…']`, lists in phone view, column widths by dragging, design mode of lists; code that selects sub-form cells by id; Add row buttons; forms whose code moves labels.
+- [ ] **Second Forte database compared form by form** (0.8.965–0.8.978) – please verify on the live application: framed lists with
+      properties of the opening form and run filters on hidden columns, hash variables of the opening edit form, lookups whose id is not
+      in their list shown empty, multiple selects as list boxes (Select2 off), selects with a value that is not an option shown empty,
+      checkbox `val()` = "on", `data-nu-form` on fields, unclosed `<s>` in labels, launch forms left without asking, layout helpers
+      (`nuGetWordWidth` …) and `$(…).clone()` of fixed-layout fields, `_nulog` "edited" only for main-record changes.
 - [ ] **Forum announcements 1–7** (0.8.958) – please verify on a real Forte database: attribute `value=` only on new records, selects with a Select procedure, no blank item with validation No Blanks / No Duplicates (Forte 4.9.2 git; 4.9.1 still shows it), display objects with several columns (text area), `nuOnProcessObjects()` / `nuOnProcessBrowseRows()`, print view settings `nuPrint…()`. Not built yet (rows 8–13 of the review): settings marked "open", datalist value / label pairs, JS helpers (`nuSelectInParent…`, `nuBrowseCells`), debug auto refresh, `onSubformTitleClick`, mobile attributes, `nuapi.php` progress
 - [ ] **Forte system forms as forms** (0.8.960) – the compat suite opens every Forte system form (nuuser, nuform, nuobject …) in nuBuilder Next (`sysform:<form>`): list, record, save without a change, then Forte opens the record. Fixes it found: input buttons never validated, `nuBeforeSave()` without a return value saves (only `false` stops), `containsAny` / `nuImages` / `nuSearchableMultiPopup` / `browse_*` properties, a sub-form's label left of it, narrow buttons keep their label (`nuBtnTight`), tab panes carry `data-nu-pane-tab` (the Procedures form writes into `div[data-nu-tab-id]`). Please verify on a real database: forms with 50–60 px wide buttons, sub-form labels in the absolute layout. Not changed: Forte's own CSS classes (`.nuQuickButton`, `.nuRelatedTab`) are not styled
 - [ ] **JavaScript placeholders** (console warning; the list in assets/js/nu/nuruntime.js): `nuPrintExcludeColumns`, `nuResizeBrowseColumns`,

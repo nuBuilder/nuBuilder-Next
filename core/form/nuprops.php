@@ -26,10 +26,11 @@ final class NuProps
 	}
 
 	/** Stores a scope and returns its key. */
-	public static function create(array $props, array $locked = []): string
+	public static function create(array $props, array $locked = [], array $caller = []): string
 	{
 		$key = bin2hex(random_bytes(8));
 		$_SESSION['nu_ps'][$key] = ['p' => self::clean($props), 'l' => array_intersect_key($locked, $props), 't' => time()];
+		if ($caller !== []) $_SESSION['nu_ps'][$key]['c'] = self::clean($caller);
 		if (count($_SESSION['nu_ps']) > self::MAX) {
 			uasort($_SESSION['nu_ps'], static fn($a, $b) => $a['t'] <=> $b['t']);
 			$_SESSION['nu_ps'] = array_slice($_SESSION['nu_ps'], -self::MAX, null, true);
@@ -65,12 +66,21 @@ final class NuProps
 		foreach ($names as $n) unset($_SESSION['nu_ps'][$key]['p'][$n], $_SESSION['nu_ps'][$key]['l'][$n]);
 	}
 
-	/** A copy of a scope with the browser's current values (navigation to another form). */
-	public static function fork(?string $key, mixed $client): string
+	/** A copy of a scope with the browser's current values (navigation to another form); $caller = the fields of the edit form it
+	 *  is opened from (nuBuilder Forte's nuHashFromEditForm: hash variables of the opened form, below its own values – 0.8.976). */
+	public static function fork(?string $key, mixed $client, mixed $caller = null): string
 	{
 		[, $l] = self::load($key);
 		$p = self::merge($key, $client);
-		return self::create($p, array_intersect_key($l, $p));
+		return self::create($p, array_intersect_key($l, $p), is_array($caller) ? $caller : []);
+	}
+
+	/** The opening edit form's fields of a scope (see fork). */
+	public static function caller(?string $key): array
+	{
+		$key = (string)$key;
+		$s = preg_match('/^[a-f0-9]{16}$/', $key) ? ($_SESSION['nu_ps'][$key] ?? null) : null;
+		return is_array($s) && is_array($s['c'] ?? null) ? $s['c'] : [];
 	}
 
 	public static function locked(?string $key): array

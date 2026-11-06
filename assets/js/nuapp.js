@@ -64,7 +64,8 @@
 			if (!ts && el.tabIndex < 0) continue;
 			// sub-form rows carry a prefix; fields of the form itself have data-nu-prefix="" (the selector skipped them all before 0.8.899,
 			// so the search box of the first Tom Select got the focus – and opened its list)
-			if (el.closest('.CodeMirror, .nuSubform, .nuSubformTable, .nuRowRemoved, .modal, .dropdown-menu, [data-nu-prefix]:not([data-nu-prefix=""]), .ts-wrapper')) continue;
+			// controls of form code inside an HTML object are not fields of the form (nuBuilder Forte focuses only its own objects)
+			if (el.closest('.CodeMirror, .nuHtml, .nuSubform, .nuSubformTable, .nuRowRemoved, .modal, .dropdown-menu, [data-nu-prefix]:not([data-nu-prefix=""]), .ts-wrapper')) continue;
 			if (!(box.offsetWidth || box.offsetHeight || box.getClientRects().length)) continue;               // hidden (other tab, d-none, …)
 			if (ts) {                                   // searchable select: focus without opening its list
 				var open = ts.settings.openOnFocus;

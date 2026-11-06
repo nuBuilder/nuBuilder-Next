@@ -177,7 +177,8 @@ check('dash value long number stays text', NuDashboard::value('12345678901234567
 check('dash uses dates', NuDashboard::usesDates([['source' => 'sql', 'query' => "SELECT 1 WHERE d >= '#DATE_FROM#'"]]) && !NuDashboard::usesDates([['source' => 'sql', 'query' => 'SELECT 1']]));
 
 // ---------------------------------------------------------------- negative numbers as nuBuilder: minus after the prefix (0.8.364)
-foreach (['N|€ 1.000,00' => ['-99.95', '€ -99,95'], 'N|USD 1,000.00' => ['-1234.5', 'USD -1,234.50'], 'N|1000.00' => ['-5', '-5.00'], 'N|1000.0 %' => ['-7.25', '-7.3 %']] as $f => [$v, $want]) {
+foreach (['N|€ 1.000,00' => ['-99.95', '€ -99,95'], 'N|USD 1,000.00' => ['-1234.5', 'USD -1,234.50'], 'N|1000.00' => ['-5', '-5.00'], 'N|1000.0 %' => ['-7.25', '-7.3 %'],
+	'N|1000.0' => ['-0.04', '-0.0']] as $f => [$v, $want]) {   // a negative value that rounds to 0 keeps its minus, as nuBuilder Forte (0.8.965)
 	$num = (new ReflectionMethod('NuFormat', 'number'))->invoke(null, $v, substr($f, 2), 'minus');      // without the format registry (no database)
 	check("number $f $v", $num === $want, $num);
 }
@@ -296,10 +297,18 @@ $fc = NuAiContext::functions('js', false); $ff = NuAiContext::functions('js', tr
 check('ai context: compact reference smaller, no custom pages', strlen($fc) < strlen($ff) && str_contains($fc, '`nuGetValue(') && !str_contains($fc, 'NuPage.fetch') && str_contains($ff, 'NuPage.fetch'));
 check('ai context: file name', NuAiContext::fileName('form-x', 'md') === 'nunext-context-form-x-' . NU_VERSION . '.md');
 // HTML objects: an unclosed element must not swallow the following objects (0.8.957)
+$cf = NuRender::closeFragment('<big>&#9878; Balances<big>');
+check('label fragment: unclosed big closed inside the label', $cf === '<big>&#9878; Balances<big></big></big>', $cf);
+check('flow layout: tiny HTML object = code holder', NuRender::isCodeHolder(['sob_all_type' => 'html', 'sob_all_width' => 20, 'sob_all_height' => 20])
+	&& !NuRender::isCodeHolder(['sob_all_type' => 'html', 'sob_all_width' => 300, 'sob_all_height' => 20]) && !NuRender::isCodeHolder(['sob_all_type' => 'word', 'sob_all_width' => 20, 'sob_all_height' => 20]));
+check('flow layout: run button keeps its height', LayoutSize::flowStyle(['sob_all_type' => 'run', 'sob_all_height' => 30, 'sob_run_method' => 'b']) === 'height:30px;'
+	&& LayoutSize::flowStyle(['sob_all_type' => 'run', 'sob_all_height' => 30, 'sob_run_method' => 'i']) === 'height:60px;');
 $cf = NuRender::closeFragment('<iframe src="x">');
 check('html fragment: unclosed iframe closed', $cf === '<iframe src="x"></iframe>', $cf);
 $cf = NuRender::closeFragment('<div><b>a</div></span>');
 check('html fragment: containers balanced, stray end tag dropped', $cf === '<div><b>a</b></div>', $cf);
+$cf = NuRender::closeFragment('<n><small>Note<s/mall></n></small>');
+check('html fragment: "<s/mall>" (an s tag) is closed – no strike-through after the object (0.8.978)', str_contains($cf, '</s>') && substr_count($cf, '<s') === substr_count($cf, '</s>') + 1, $cf);
 $cf = NuRender::closeFragment('<p>x<br><img src="a.png"/></p><!-- open');
 check('html fragment: void tags kept, comment closed', $cf === '<p>x<br><img src="a.png"/></p><!-- open-->', $cf);
 $cf = NuRender::closeFragment('<script>if (a < b) "</div>";</script><div>ok</div>');

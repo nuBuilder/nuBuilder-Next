@@ -38,7 +38,7 @@
 		if (isNaN(n) || !/^\s*-?[\d.,]+\s*$/.test(String(v))) return String(v);
 		var s = numberSpec(p), fixed = Math.abs(n).toFixed(s.places).split('.');
 		var body = s.prefix + fixed[0].replace(/\B(?=(\d{3})+(?!\d))/g, s.sep) + (s.places ? s.dec + fixed[1] : '') + s.suffix;
-		if (n >= 0 || +Math.abs(n).toFixed(s.places) === 0) return body;
+		if (n >= 0 || (/brackets$/.test(negative || '') && +Math.abs(n).toFixed(s.places) === 0)) return body;   // "-0.0" as nuBuilder Forte (0.8.965)
 		// minus after the prefix, as nuBuilder's addFormatting (€ -99,95 – 0.8.364); brackets around the whole value
 		return /brackets$/.test(negative || '') ? '(' + body + ')' : s.prefix + '-' + body.slice(s.prefix.length);
 	}

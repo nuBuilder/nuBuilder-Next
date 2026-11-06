@@ -2847,7 +2847,7 @@
 		var c = colById(th.getAttribute('data-nu-browse-id'));
 		if (!c) return;
 		selCol = c.zzzzsys_browse_id; markCols(); renderPanel();
-		var oid = th.id || ('nuBrowseTitle' + th.getAttribute('data-nu-column'));
+		var oid = th.id || ('nuBrowseTitle' + th.getAttribute('data-nu-col'));
 		var item = function (ic, text, fn, opt) {
 			opt = opt || {};
 			var b = el('button', {type: 'button', 'class': 'dropdown-item d-flex align-items-center gap-2' + (opt.current ? ' fw-bold' : '') + (opt.danger ? ' text-danger' : ''),

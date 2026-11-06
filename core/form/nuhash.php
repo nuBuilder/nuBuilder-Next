@@ -11,6 +11,9 @@ defined('NU_ROOT') || exit;
  */
 final class NuHash
 {
+	/** Fields of the edit form this page was opened from (NuProps::caller) – the lowest source of a form's hash, as nuBuilder Forte. */
+	public static array $caller = [];
+
 	public const SQL  = 'sql';
 	public const PHP  = 'php';
 	public const HTML = 'html';
@@ -281,7 +284,7 @@ final class NuHash
 	{
 		$h = self::base() + self::now() + $extra + ['FORM_ID' => '', 'FORM_CODE' => '', 'RECORD_ID' => '', 'NEW_RECORD' => '0', 'TABLE_ID' => self::tableId()];
 		foreach ($props + NuHashCookies::all() as $k => $v) if (is_string($k) && $k !== '' && !array_key_exists($k, $h)) $h[$k] = $v;
-		return $h + self::lowerAliases($h['FORM_ID'], $h['RECORD_ID']);
+		return $h + self::lowerAliases($h['FORM_ID'], $h['RECORD_ID'], $h);
 	}
 
 	/** Every hash variable with its source (system, user, record, property, global) – for the hash viewer. */
@@ -304,7 +307,7 @@ final class NuHash
 			'TABLE_ID' => self::tableId(), 'PREVIOUS_RECORD_ID' => $recordId,
 		] + self::now() + $extra;
 		foreach ($sys as $k => $v) { $h[$k] = $v; $src[$k] = 'system'; }
-		foreach (['record' => $values, 'property' => $props, 'global' => NuHashCookies::all()] as $from => $list) {
+		foreach (['record' => $values, 'property' => $props, 'global' => NuHashCookies::all(), 'caller' => self::$caller] as $from => $list) {
 			foreach ($list as $k => $v) {
 				if (!is_string($k) || $k === '' || array_key_exists($k, $h)) continue;
 				$h[$k] = $v;
@@ -314,14 +317,19 @@ final class NuHash
 		// nuBuilder's lower-case names (0.8.576): nuBuilder copies the request fields form_id / record_id (and, in hidden procedures,
 		// hash_record_id) into the hash – here the same values as #FORM_ID# / #RECORD_ID#. A field, property or hash cookie of that
 		// name comes first, as in nuBuilder (the edit form's values overwrite them there).
-		foreach (self::lowerAliases($h['FORM_ID'], $h['RECORD_ID']) as $k => $v) if (!array_key_exists($k, $h)) { $h[$k] = $v; $src[$k] = 'system'; }
+		foreach (self::lowerAliases($h['FORM_ID'], $h['RECORD_ID'], $h) as $k => $v) if (!array_key_exists($k, $h)) { $h[$k] = $v; $src[$k] = 'system'; }
 		return [$h, $src];
 	}
 
-	/** @return array<string, string> #form_id#, #record_id#, #hash_record_id# */
-	private static function lowerAliases(mixed $formId, mixed $recordId): array
+	/**
+	 * @param array<string, mixed> $h
+	 * @return array<string, string> #form_id#, #record_id#, #hash_record_id# and – as the form properties nuBuilder Forte's browser sends
+	 *   with every request (0.8.965) – #user_id#, #session_id#, #redirect_form_id#
+	 */
+	private static function lowerAliases(mixed $formId, mixed $recordId, array $h = []): array
 	{
-		return ['form_id' => (string)$formId, 'record_id' => (string)$recordId, 'hash_record_id' => (string)$recordId];
+		return ['form_id' => (string)$formId, 'record_id' => (string)$recordId, 'hash_record_id' => (string)$recordId,
+			'user_id' => (string)($h['USER_ID'] ?? ''), 'session_id' => (string)($h['SESSION_ID'] ?? ''), 'redirect_form_id' => (string)$formId];
 	}
 
 	/** Names a property may not take (system and user variables). */

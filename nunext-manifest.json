@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.963",
- "built": "2026-11-06 04:40",
+ "version": "0.8.979",
+ "built": "2026-11-06 16:48",
  "requires": {
   "php": "8.1"
  },
@@ -11,15 +11,15 @@
    "size": 1263
   },
   "CHANGELOG.md": {
-   "sha256": "a19039374885650b973556c6548a3944498c4e0bd43ee479659cd70a0c526113",
-   "size": 636713
+   "sha256": "ffa746946bbaee326048106540631a4142a89b007407dfe02a26337708e5a02c",
+   "size": 653721
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "993f7d5a38657a85a67bf0a0e3e73bdb94f97e414b698aeba824fa70ad9a7910",
+   "sha256": "d18004ef5f7adc430e22cbb3cb23747eb95f080c083e7e9ac787a8c2f46a5f6e",
    "size": 16720
   },
   "api.php": {
@@ -95,8 +95,8 @@
    "size": 28625
   },
   "assets/css/nuform.css": {
-   "sha256": "6eb11d118dcba6e229a713971db6edc2305563d0a889d74702c1e72c3e6b1722",
-   "size": 52486
+   "sha256": "11f5b9d7bcfe1e2388d7e04bf2b4d58ac7045b672a3158de43f34eb2c67b91fe",
+   "size": 56829
   },
   "assets/css/nuhome.css": {
    "sha256": "808cf6c5d64a4d975711c0aaac509c9060c2db14b531a5bc2a2785190d3cd7f7",
@@ -131,12 +131,12 @@
    "size": 75822
   },
   "assets/js/nu/nucompat.js": {
-   "sha256": "abbc0ce8e5bd0f49719a8bb092acb5b85582abf8413aa8fe42fdeeb97c479146",
-   "size": 49406
+   "sha256": "1b6bb8e2c629b573eed7c7ddb5d8d4c22f0255f595ae96cfdf5a2050b67b5083",
+   "size": 54412
   },
   "assets/js/nu/nudesign.js": {
-   "sha256": "7b3a7529ed4f1446c703e9836b4a3c7ed96e4b7beb2a65d95ed113f274152bf1",
-   "size": 244975
+   "sha256": "464417d54efa46f1284cdd8cf172b3ad6db3777fdaac4a87be8147c1e97c8534",
+   "size": 244972
   },
   "assets/js/nu/nudesigner.js": {
    "sha256": "9f8d0247572f56752780eb359cf2b7d2918474b815d26b660c1530ff3beea056",
@@ -147,8 +147,8 @@
    "size": 18949
   },
   "assets/js/nu/nuformat.js": {
-   "sha256": "e12bc9c07b5ad9d442b5abd6406ae1630749d84510a551cfb96ccf502f241341",
-   "size": 9913
+   "sha256": "44c94a3d4f03414efa09b4a85049cbd822c67c4dde0f5f5b1273e8ea65f50b01",
+   "size": 9992
   },
   "assets/js/nu/nuformmaint.js": {
    "sha256": "832c90b0b7479f4e93efbbbec885ca493ff30b0990e3b19cab3d8ea338dcd6de",
@@ -171,8 +171,8 @@
    "size": 8455
   },
   "assets/js/nu/nuruntime.js": {
-   "sha256": "9d95486619b30b41d9c81204b4272e0c7680752f377fa933415c6f67a5b59b47",
-   "size": 287133
+   "sha256": "c19b24510026682516ee3aae9bfbf5ab5834accbaf611409f90d568e7ab410f2",
+   "size": 300863
   },
   "assets/js/nu/nutooltip.js": {
    "sha256": "ef077398d0cf9bb0b8fe52255f7523d773db46c7f4e010c9cda36240471422c5",
@@ -195,8 +195,8 @@
    "size": 22047
   },
   "assets/js/nuapp.js": {
-   "sha256": "26ee459f644f2db7ecf57a51f1e347c6848c59cb5624cbfa92afa5fac7f210fe",
-   "size": 102083
+   "sha256": "53f68e0f153b396551553f3b067ae2e26518277fb3a4903701018d70fa2e899b",
+   "size": 102216
   },
   "assets/js/nuappcloner.js": {
    "sha256": "c7521387073a2cddfbdbb6bb7b108d33588e1cfffb2fc9407ea77ed5bab0fb6c",
@@ -483,8 +483,8 @@
    "size": 14589
   },
   "core/form/nubrowse.php": {
-   "sha256": "db237d88f95559f333290cc770e39ce277fd11809baae3e9b54a351aa2e2c44b",
-   "size": 25960
+   "sha256": "6717a6c8ef915eafba2e755f8c72adaf47c8930d6100621454e947ba4f953dd2",
+   "size": 27241
   },
   "core/form/nubuilder_gen.php": {
    "sha256": "49b3cad12bb1880f0941a93b4ba5008a0cfaedbb9e4eb5bf69470ca8ac5abdeb",
@@ -507,8 +507,8 @@
    "size": 9085
   },
   "core/form/nuformat.php": {
-   "sha256": "dface8fac2be300375b395715518ac3b44319d703fa601918affac8851184213",
-   "size": 18700
+   "sha256": "10fd94ed43e2c5a2cbc14dafa3294c5498807be555a9f01a5c2ac1f576d278c5",
+   "size": 18961
   },
   "core/form/nuformdraft.php": {
    "sha256": "a8c407079a32c96e56ac35ab2d5c35edda24e49fefacbd6857e858fc24b4f22c",
@@ -527,8 +527,8 @@
    "size": 16844
   },
   "core/form/nuhash.php": {
-   "sha256": "7afa53f255d1e92ca0e7538669d072f741ebac16935f29c94502e11aea93d5f3",
-   "size": 18346
+   "sha256": "c42cc305178aacc31a006b01cf6f921c3fb7d2f7e4dc239547fe226a64cf946e",
+   "size": 18891
   },
   "core/form/nuhistory.php": {
    "sha256": "009b56d46abf7f318e874deaecd7a687aafffe26a332fa3cccf3f5401edc6257",
@@ -555,8 +555,8 @@
    "size": 10113
   },
   "core/form/nuphp_api.php": {
-   "sha256": "4c471303a2f898fb502f4deac514208e16e369d5b393933dae49d3d9aab2d562",
-   "size": 22126
+   "sha256": "056de9e21774e2065163eb639f119b684b7d1df1e17b01bb1ea6bfd4f9fe3b99",
+   "size": 22197
   },
   "core/form/nuphp_compat.php": {
    "sha256": "7cb2a411c6238732c3238a7d456528f8be2233231455637b91613c4a658e0c1a",
@@ -567,16 +567,16 @@
    "size": 3209
   },
   "core/form/nuprops.php": {
-   "sha256": "8843fa01fe1cefdf5e28495d919d8b691d547ca4a13299baad647f06d9cfa513",
-   "size": 6946
+   "sha256": "a0c432f4585bd73482ab61bc51ace0f072fecb3d555aaa9d263ae86b633d4c5f",
+   "size": 7568
   },
   "core/form/nurecord.php": {
-   "sha256": "80c54f4f563c25291a0ec596c463a09860e7535b317a63a565b2b09775ad9a5b",
-   "size": 38888
+   "sha256": "4d7dd1fca17fcd6e69f3f3b4237f4971571ce06fb8ce9ba73f6dcd9b1c41ac2d",
+   "size": 40786
   },
   "core/form/nurender.php": {
-   "sha256": "d496a94f336c214a6119dd57268bb3cd76eab2eb7182529e372a9f3ec641e831",
-   "size": 72752
+   "sha256": "9b7883a54d2f3192a8c10087f8cb33529ef03fc38f607eedb34d969da9862211",
+   "size": 79780
   },
   "core/form/nuresponsive.php": {
    "sha256": "da99edd3fbd1f241296bf74c1cf2ca001687f0dd86e7cd0bfb28542f03145202",
@@ -619,7 +619,7 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "2a2a4196ab567307ac60e3c7060595435c4856f977f1eb025294590e1420db5e",
+   "sha256": "81c73f931e6453ab6325262c8d7a168cb46ab0bcf70a0727908baa6a47c70272",
    "size": 40514
   },
   "core/nuappcloner.php": {
@@ -807,8 +807,8 @@
    "size": 6951
   },
   "core/nulayout.php": {
-   "sha256": "3d01ba0451c26b3d127f22d4290b75d0b0c6dc331844e3c72e8849c26ca9353f",
-   "size": 52721
+   "sha256": "c13e0994a4a42cc9ceaced975808d064ca757057df345a2eead23f4a0ef8dd5c",
+   "size": 52977
   },
   "core/nulibraries.php": {
    "sha256": "5832bf16e80441cd5f9236615445ce40ed37ac6f0af1518f60a94039d0f5c541",
@@ -935,8 +935,8 @@
    "size": 4875
   },
   "core/nusettings.php": {
-   "sha256": "b2cfc2e958042ac3a65ca02b9b0eba7294c2ef2dbae6c2a34edcc77bd016f7cc",
-   "size": 17647
+   "sha256": "1fc24159d03dc891b32c3aa91c82ccac2062ce5c8d0c1bc1d7d9484ee3a35eb7",
+   "size": 17734
   },
   "core/nusettingshub.php": {
    "sha256": "c8c50b4310d60952586ee15f06059e7f2371ba0877bbd38d9200004461209c97",
@@ -1067,12 +1067,12 @@
    "size": 177
   },
   "docs/nunext-functions.json": {
-   "sha256": "0a23df6826b0675326dd6a483bbcacfc121710492cb6c1c87f983ed08f5772c3",
-   "size": 250188
+   "sha256": "be8b32ebbc4155189e9caeb6d1df657277503b63c9e3b1bf79f3467ea7db64a0",
+   "size": 254697
   },
   "docs/nunext-tutorial.htm": {
-   "sha256": "083407a2737276b04d58d10c51812f6b3db3d7b38fb8eb2bf57a7ea5c34efcf9",
-   "size": 107832
+   "sha256": "b9d46504fa5dfa4cfa481210881274d13663f00fa58f1a0c33c5ddb22d74d809",
+   "size": 108239
   },
   "docs/pages/01-00-overview.htm": {
    "sha256": "076a27ad6554df31895a14b2309933a79d1c4de3b3513e536c3c961617e14ee8",
@@ -1171,8 +1171,8 @@
    "size": 969
   },
   "docs/pages/04-01-form-lifecycle.htm": {
-   "sha256": "a42e56688c4ab7e8b00144b32617f65ca3f253a2c7fd25a759c1e4db8b488370",
-   "size": 11838
+   "sha256": "e02ee3f5f616024a7ebd658acec5db26c4d2ccf606e1b50fb2c4ff222730538c",
+   "size": 12012
   },
   "docs/pages/04-02-new-form.htm": {
    "sha256": "ed3f733b1d0a16e2790d6a8389feaa4da65049ba10cc6867fde8ffc136dedea0",
@@ -1187,8 +1187,8 @@
    "size": 8510
   },
   "docs/pages/04-05-object-types.htm": {
-   "sha256": "d898b163563b9a5d5d88f0e55e0681177b4e0f546f7ce5760d5db7ca05f917c1",
-   "size": 20577
+   "sha256": "e8f713a23c073f27c6d5ebf014ae33f09630160ca3763c3f80bce4329762fcea",
+   "size": 20717
   },
   "docs/pages/04-06-data-access.htm": {
    "sha256": "f1496d2c241fc39e6c6eee042203d9b10ba39b95ab360f599a4e7ecce2a8199f",
@@ -1211,8 +1211,8 @@
    "size": 1457
   },
   "docs/pages/05-01-save-flow.htm": {
-   "sha256": "409c6a75c4190c3a6c57ea15c78f508635744e216dc448c0a3269ea95e848fed",
-   "size": 8900
+   "sha256": "dfbfd65297f765e454107ee6acdeae02c79bb7f05c9cac3fa75c97172f89e8ae",
+   "size": 8913
   },
   "docs/pages/05-02-validation.htm": {
    "sha256": "c88047d242932ca1bad39d8c7c4d5fc71dedd27bc6c3a95c96c37daa320e1227",
@@ -1223,8 +1223,8 @@
    "size": 7744
   },
   "docs/pages/05-04-log.htm": {
-   "sha256": "8fd71baab295cc279f52bad7c69e2bfa133293b05408ddd9005f7efcc56fc8bd",
-   "size": 8408
+   "sha256": "da06787222df70cd027a5c5a8568696286c26af998389f4d341c9ec87e413d13",
+   "size": 8499
   },
   "docs/pages/06-00-output.htm": {
    "sha256": "7338af5ff29e5460429ed59ae6a74452e5d25e20981634d715fe6323e593f121",
@@ -1419,8 +1419,8 @@
    "size": 16704
   },
   "docs/pages/10-03-label-menu.htm": {
-   "sha256": "ae1cdfb38f405aec39e5a9b6c4dfb4494f4080d87c717c73b771ace22cd629ce",
-   "size": 8857
+   "sha256": "d45f25a6a950a58f04f4b1ec749e59fdd7acfaee66e20c59b6b17bfc41577a6f",
+   "size": 9300
   },
   "docs/pages/10-04-ref.htm": {
    "sha256": "c841e7639a6596548cb4446fdc2a2b3aa749312af66a52e9b51a16c4a18c91a6",
@@ -1467,8 +1467,8 @@
    "size": 7101
   },
   "docs/pages/12-02-porting.htm": {
-   "sha256": "9ffc81e0ba13ea99b1148526806aebd1060ab1048fb158ed42c458a821c1d913",
-   "size": 45193
+   "sha256": "b111dffe08abac41dade5ed4cfdef2945c480fa795739e19c2899577a83c6592",
+   "size": 49389
   },
   "docs/pages/13-00-devflow.htm": {
    "sha256": "8c5e876df12e357856b5775fe4356ff6387add8c63267d127fa54d813e8c41a4",
@@ -1515,7 +1515,7 @@
    "size": 73026
   },
   "install/db_changes.json": {
-   "sha256": "0ee89a7f1243ca1ccd13184247b7656a6bd8f62c76020375113d45f539c87fbf",
+   "sha256": "e5027abfbc7d557a2dbe2085825d22e88b5d93d2c82a4a75a4a4046abe709f22",
    "size": 57546
   },
   "install/libraries-required.json": {
@@ -1563,16 +1563,16 @@
    "size": 177
   },
   "lang/ar.php": {
-   "sha256": "17d147c884b5105a6cf7fc94b5d4dac492c71f48d13f372bb81be02edb743708",
-   "size": 568043
+   "sha256": "e22e5b902662774349de3f5d9a84374aaa2e3aa0c9c92a6eccd3631d2c479df4",
+   "size": 568100
   },
   "lang/de-CH.php": {
    "sha256": "5707fc9c9e9d2e06dc7d1a27f1760a02c2a38a0e0bcb576fedda6250d44e50ce",
    "size": 45223
   },
   "lang/de.php": {
-   "sha256": "fd7e4451fa1f6c4a4cc9ed93ff2614f904a9dfe72b8d9c2115db5e6ae816b444",
-   "size": 467046
+   "sha256": "44690d9d3ab0f014b62e10c6bab8247f8db1975d421153e13861d50e16be9b55",
+   "size": 467092
   },
   "lang/en-AU.php": {
    "sha256": "ada75936000a02c38cf523214ed6484c63de2b097d58d52c7306e0c4c1dc66b5",
@@ -1583,40 +1583,40 @@
    "size": 9784
   },
   "lang/en.php": {
-   "sha256": "42ee2a65c936436700d8fb10fc832081431a3e5efd04999ec2efe992c715d5d3",
-   "size": 422419
+   "sha256": "984f7a1a810dceb75ccaabc9bc784a0ae44a7e2cef41c924d0ac96a35d9d0727",
+   "size": 422457
   },
   "lang/es.php": {
-   "sha256": "088f93d501bc0690d50a55841f70dd44495e81ee9fff6655cfa6898a86e975a1",
-   "size": 469868
+   "sha256": "fdf01426036765e81f43cf9c681dd48dcb234948c8e4b9ff7815b10436b55f48",
+   "size": 469914
   },
   "lang/fr.php": {
-   "sha256": "a6e19d8041ffa2ce4b323229a64e8c5dc356899043149203ace778c0ca03c627",
-   "size": 491728
+   "sha256": "f8bd329b3f4b33a19857a0202287b60c5f3552f3caf762b039071603b03b871b",
+   "size": 491773
   },
   "lang/it.php": {
-   "sha256": "34e4c3e7670191f034c1f87b5f2a13dabe263ccea1f0c57d8c87ea012012b645",
-   "size": 459703
+   "sha256": "44e3dca90564a4ca277cafc0ab9f5262fe5b9b2d08cac6df32c8f2704a5e832c",
+   "size": 459745
   },
   "lang/nl.php": {
-   "sha256": "fdfe0465ab0d09be8ac08ea0497c5a2cf7f8edcb90fa88d09bfaad0dd700d08f",
-   "size": 458503
+   "sha256": "4108c029da152fcfdd4e6bf98400eb081c2e2ca7e5b64873d4fc95af84675399",
+   "size": 458549
   },
   "lang/pl.php": {
-   "sha256": "95e23bc86de0f985cf7535be1afdabe54010f886bc8daff6fa9b79d13f7cbc39",
-   "size": 456868
+   "sha256": "77556a6ea4bc5251e8dd5c28c8ef966ccc5e0a3ec58cf8ffb1e10098d264be53",
+   "size": 456916
   },
   "lang/pt.php": {
-   "sha256": "d3481c47dcdcf1911db2d354f7c98a808ac1c9d2fd2e7e58773681778d34f541",
-   "size": 473007
+   "sha256": "ae7293e863740b9cc85e5743ae03d710edc629dacd63af65785d8b70d859be2a",
+   "size": 473054
   },
   "lang/ru.php": {
-   "sha256": "2696c7ab2d82f47f0e40e3f045587e0769a74bdffb65e2be4187a332ff7a3f00",
-   "size": 640508
+   "sha256": "66a4757b1b68b8694fd678e014c8ef9889c4d83d748c408eb85193878409bfa7",
+   "size": 640565
   },
   "lang/zh.php": {
-   "sha256": "d9708d0d563e6c44a87974d216b3a3fc1b1ed107302298730c650c8c3a69e2fb",
-   "size": 421552
+   "sha256": "2a5172094dd9ea99bc16b72be14cc97fcf8d69fe851f1ed6c24440ce99287282",
+   "size": 421590
   },
   "nuconfig-sample.php": {
    "sha256": "644517ef2af7f6ff6884fb544c25e2fa490c0fab90de55c7aabf96ed4d2c079c",
@@ -1779,8 +1779,8 @@
    "size": 3998
   },
   "pages/nuform.php": {
-   "sha256": "68c4c50412a58e757950557f1072e921934248f68b3cf90577c8fd203f08082f",
-   "size": 64603
+   "sha256": "e35d05f63972b212bd1baa258e233aa96ff143a6533e5af453a21fa58bc9f459",
+   "size": 71339
   },
   "pages/nuformaccess.php": {
    "sha256": "21fc7ade43d6354c6cf07c94814e7ae3cd7f1eee61edb319d74d14a6fbe174d1",
@@ -1791,8 +1791,8 @@
    "size": 14593
   },
   "pages/nuformapi.php": {
-   "sha256": "b1fe3f4dcfc86a31b82c03495115961b878ed0daaf2bb3bc98453ef9f48bd5c5",
-   "size": 11817
+   "sha256": "c834793d33003407db9871725a009f75d65c15b2022ed0ffe6b69c70890d118d",
+   "size": 11959
   },
   "pages/nuformatapi.php": {
    "sha256": "64a7c8a919d30c61f7f2dd1dc387d60aa41be0adb125c6b8a51a841e0abcce9c",
@@ -1803,8 +1803,8 @@
    "size": 7301
   },
   "pages/nuformexport.php": {
-   "sha256": "6ee53d409e7bac721d3b96e17723e24c1e5199bcb5a230615ad061ac2d590b78",
-   "size": 2442
+   "sha256": "a28d3a9544b5cb3c97f4c2a3d709139d0b0ddc76cd0dd480b4fb176046c6d47b",
+   "size": 2444
   },
   "pages/nuforms.php": {
    "sha256": "d6cdcf8c1ade2f5472e6e3679af8d8728ebb56592c7de8ad725f0b2db0ddb78e",
@@ -2051,8 +2051,8 @@
    "size": 4206
   },
   "pages/nuuser.php": {
-   "sha256": "0cdfaf666178f10a9767588e44ed116eae72bb7cc2fd27a49c80cc4e403a5e68",
-   "size": 91274
+   "sha256": "dc4887e1a275b3c46e21258f8373887c31b10ba4a1f2873b2ab9cc38e967f091",
+   "size": 91439
   },
   "pages/nuuserfields.php": {
    "sha256": "f6afc0afd016fc9be89e11c4f21168870ba94ba0180f2faa496ad1038cf6edcc",
@@ -2473,6 +2473,86 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.979",
+   "title": "Release gate",
+   "text": "- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, OWASP ZAP).\n- Documentation brought up to date for 0.8.964–0.8.978 (the comparison of another nuBuilder Forte database with nuBuilder Next):\n  differences table (JavaScript variables of form code, `DOMContentLoaded` handlers, SQL errors in `nuRunQuery`), hash variables of\n  the opening form, multiple selects, the list of ported functions, the tutorial's nuBuilder Forte track, TODO."
+  },
+  {
+   "version": "0.8.978",
+   "title": "Formatting tags, select values and data-nu-form as in Forte",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (a feedback form and a number management form with a\n  history sub-form):\n- Labels of objects close every unclosed formatting tag inside the object (`<s>`, `<strike>`, `<code>`, `<tt>`, `<nobr>`, `<mark>`,\n  `<del>`, `<ins>` besides the ones already handled) – a word object's label with a typo like `<s/mall>` opened a strike-through\n  that the browser carried on over every field after it.\n- A select whose stored value is not one of its options shows nothing chosen, as in Forte (before: an extra option with the raw\n  value). The value stays in the database unless the field is edited.\n- Fields carry Forte's `data-nu-form` attribute: '' on the main form, the sub-form's id in its rows (also rows added later) – form\n  code that builds a row prefix from it (`el.attr('data-nu-form') + row number`) read \"undefined\"."
+  },
+  {
+   "version": "0.8.977",
+   "title": "List boxes and the hash of empty fields as in Forte",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (a request form that shows its fields by the chosen\n  request and sends an e-mail After Save):\n- A multiple select is the browser's list box unless \"Select2\" is on, as in Forte (before: every multiple select was a searchable\n  Tom Select dropdown). Form code that changes it like a native select (`removeAttr('multiple')`, `size`) works again – the list\n  was 1 px wide.\n- Fields of a new record left empty are hash variables with an empty value in Before / After Save, as in Forte – they are still\n  not written. An e-mail subject built with `nuReplaceHashVariables('… #field#')` kept the `#field#` text.\n- `nuReplaceHashVariables()` trims the text, as Forte's."
+  },
+  {
+   "version": "0.8.976",
+   "title": "Hash of the opening form, lookups and nulog as in Forte",
+   "text": "- User form: a new user (no id yet) showed the PHP warnings \"Undefined array key nu_pwr_link\" / \"Trying to access array offset on\n  null\" in the password reset box – the empty id matched the missing one-time link.\n- Found by comparing another nuBuilder Forte database with nuBuilder Next (a yearly balance form with a sub-form and Next /\n  Previous buttons):\n- A form opened from an edit form (`nuForm`, run buttons, framed run objects) gets that record's fields as hash variables, below its\n  own values – nuBuilder Forte's `nuHashFromEditForm`. Display SQL of a new record such as `… WHERE year = #year# + 1` now finds the\n  same row as in Forte. Opened from a list nothing is passed on. Source \"opening form\" in the hash viewer.\n- A lookup whose stored id is not in the lookup's list (its Before Browse leaves it out) is empty, the id too, as in Forte – form code\n  that reads the id (`nuSubformObject`) got a value Forte never shows. Nothing is saved unless the field is edited.\n- `<table>_nulog`: \"edited\" is written only when a field of the record itself is saved – a save that only changed sub-form rows\n  leaves the main record's log as it was, as in Forte."
+  },
+  {
+   "version": "0.8.975",
+   "title": "Form code helpers and launch forms as in Forte",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (a launch form that builds input fields from a text\n  template):\n- Layout helpers of Forte's form code: `nuGetWordWidth`, `nuCreateElementWithId`, `nuSetObjectBounds`, `nuTotalWidth`,\n  `nuTotalHeight`, `nuRoundNearest` (before: \"not defined\" – the form's code stopped half way and the fields were never built).\n  `nuGetWordWidth` measures in the font of the form's labels.\n- `$(…).clone()` of a field of the fixed layout keeps the size the field shows (px instead of the wrapper's 100 %) and the look of\n  the fixed layout (class `nuAbsClone`) – fields cloned by form code next to `#nuRECORD` were page-wide and tall.\n- `nuSetPlaceholder(id)` without a text uses the field's format (dd.mm.yyyy, 1000.00), as Forte; a field without a format still\n  gets its label.\n- `$(…).val()` of a checkbox field is \"on\", as in Forte (the field has no value attribute any more; the saved value still comes from\n  the tick).\n- Leaving a launch form after an edit (`nuGetBreadcrumb()`, links, reload) does not ask any more – a launch form is never saved, as\n  in Forte."
+  },
+  {
+   "version": "0.8.974",
+   "title": "Framed forms and list details as in Forte",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (a form with an embedded list as preview):\n- Framed forms (run objects shown as iframe) get the properties the form's code set while loading (`nuSetProperty` before the frame\n  loads), as in Forte – a preview list whose SQL needs such a property showed no rows.\n- The run filter of a run object / `nuForm(…, filter)` is found in the primary key and in hidden columns (width 0), as Forte's\n  search over all columns; the user's own search still skips hidden columns.\n- List column titles no longer carry `data-nu-column` (only the cells do, as in Forte) – form code that rewrites every\n  `[data-nu-column=0]` element turned the title into broken markup.\n- Form pages have Forte's body id `#nubody`; the list footer has Forte's id `#nuBrowseFooter`; `nuFORM.getCurrent()` carries\n  `pages` and `page_number`.\n- Form code that hides `#nuActionHolder` (or `#nuSearchField`) at load hides the list's search row too, as in Forte where the search\n  sits in the action holder; the action holder can be hidden with `$(…).hide()` (no `d-flex !important` any more). In framed forms the\n  title is `#nuBreadcrumbHolder`, so hiding it works there too.\n- The row height of a list (`sfo_browse_row_height`) cuts longer cell content, as in Forte (before, rows grew; not in the phone cards).\n- Methods the form's code adds to built-in prototypes (`Date.prototype.x = function …`) further down are defined before the code\n  above them calls them – in Forte the page keeps them from the list, here each record is a new page.\n- Fixed layout as in Forte: HTML objects and framed run objects show their label, an editor (TinyMCE) does not; text fields\n  narrower than 80 px use Forte's narrow side padding (a time \"05:00\" in 47 px was cut); a button label cut by less than a pixel\n  now takes the tighter padding.\n- TinyMCE of forms shows the File menu by default, as in Forte."
+  },
+  {
+   "version": "0.8.973",
+   "title": "Run buttons with their own onclick",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (a button on User Home):\n- A run button with an onclick event of its own runs both, as nuBuilder Forte: first the run (open the form, report or procedure),\n  then the event. Before, the event replaced the run – a button whose event shows a loading spinner (`nuButtonLoading`) only spun\n  and never opened its form.\n- `nuFORM.getCurrent()` carries the list properties (`browse_columns`, `browse_rows` …), as Forte's breadcrumb – form code that looks\n  up column numbers by title failed.\n- `nuFORM.getCurrent().browse_sql` lists the hash variables of the list's SQL that had no value (Forte sends the SQL with the values\n  filled in; nuBuilder Next does not send the SQL itself) – form code that reloads the list while a property is still missing works."
+  },
+  {
+   "version": "0.8.972",
+   "title": "Auto layout of fixed-layout forms",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (the portal form in the Auto layout):\n- Auto and Grid layouts: a tiny HTML object (at most 30 × 30 px – it holds styles or code, or a decoration drawn for the fixed\n  layout, such as a background grid behind the buttons) takes no room any more. Its content had pushed every button below it far\n  down the page; its styles and scripts still apply.\n- Run buttons keep their own height in these layouts (they were at least 60 px high), and a row without field labels leaves no\n  space for one above its buttons."
+  },
+  {
+   "version": "0.8.971",
+   "title": "Portal forms as in Forte",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (a portal form and the forms its buttons open):\n- The header style of the form pages comes before the form, as in nuBuilder Forte – a `<style>` element of an HTML object now wins\n  over it (a grid of boxes had the column layout of the shared style instead of its own).\n- An unclosed tag in a label (`<big>` without its end tag) stays inside that label – it enlarged every later title of the form.\n  Applies to words, buttons, field labels and sub-form column titles.\n- Word objects are bold and 13 px in the fixed layout, as in Forte.\n- A form button tall enough for two lines wraps its label instead of cutting it with ….\n- `nuCurrentProperties().filter` (and `nuFORM.getCurrent().filter`) returns the run filter the form was opened with – form code\n  that names the list after it showed the wrong title.\n- The selected tab carries the class `nuTabSelected`, as in Forte – form code that reads `$('.nuTabSelected')[0].id` (a vertical\n  tab menu) failed.\n- The blank row of a sub-form has its delete box ticked until the row is edited, as in Forte.\n- A Display object whose SQL or procedure fails stays empty, as in Forte; the error goes to the Debug results (the error text in the\n  value made form code enable buttons that check for a value).\n- A lookup whose record is not found shows an empty code (it showed the stored id)."
+  },
+  {
+   "version": "0.8.970",
+   "title": "HTML object controls as in Forte",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):\n- Controls that form code puts into an HTML object (filter selects, a date field) no longer mark the record as edited – a filter\n  that reloads the form asked about unsaved changes and stopped, as nuBuilder Forte never does; they also no longer get the first\n  focus when the form opens.\n- An element with the class `row` inside an HTML object that holds no Bootstrap columns is no Bootstrap grid any more – nuBuilder\n  Forte loads no Bootstrap on form pages, so buttons in such a \"row\" stood one below the other at full width. Rows with `col…`\n  children keep the grid."
+  },
+  {
+   "version": "0.8.969",
+   "title": "Sixth form of the second Forte database",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):\n- Browser tab title as nuBuilder Forte when the shared settings nuShowBrowserTabTitle / nuBrowserTabTitlePrefix are set (read with\n  `$nuConfigSettingsFromDB = true`, as Forte): \"<prefix> - <form or record title>\", also after `nuSetTitle()`; prefix only when the title\n  is switched off. Without those settings the title stays as before."
+  },
+  {
+   "version": "0.8.968",
+   "title": "Fifth form of the second Forte database",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):\n- Run buttons carry nuBuilder Forte's onclick (`nuForm(…)`, `nuPopup(…)`, `nuRunReport(…)`, `nuRunPHP(…)`) – form code that reads or\n  rewrites it works, e.g. replaces a `#name#` in the record id with a value it found (a button to the matching record did nothing:\n  \"Cannot read properties of null\"). The leave question for unsaved changes stays (`nuRunButton()`); a run object with an onclick\n  event of its own keeps it as before.\n- Selects that form code adds to the action bar without a class get the size and border of the bar's controls (Forte styles every\n  select)."
+  },
+  {
+   "version": "0.8.967",
+   "title": "Fourth form of the second Forte database",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form and the form its button opens):\n- Controls carry nuBuilder Forte's classes: `input_<input type>` (e.g. `input_nuNumber`, `input_text`, `input_checkbox`), Calc\n  `input_text`, Display `input_`, and `nuReadonly` on read-only fields – form code that selects `$('.input_nuNumber')` works (a\n  switch between hours and days did nothing before).\n- An object's alignment applies where nuBuilder Forte applies it (inputs, Display, Calc, Word, Run) – an HTML object with \"center\" kept\n  its text left in Forte but was centred.\n- List titles: the title text has Forte's id `nusort_<column>` (code that styles a title, e.g. bold).\n- A negative number that rounds to zero keeps its minus (\"-0.0\"), as nuBuilder Forte shows it; brackets (saved formats) still drop it.\n- `nuAlign()` / `nuAlignmentStyle()` (l / r / c → CSS) as in Forte.\n- Run button \"Popup\": the dialog shows the opened form's title, and a list is as wide as its columns (at most the window), as in Forte;\n  a form in a dialog of a wide window keeps the desktop layout (a narrow dialog showed the list as phone cards).\n- `nuCurrentProperties().browse_rows[i][0]` keeps the primary key's type (a number stays a number)."
+  },
+  {
+   "version": "0.8.966",
+   "title": "Another form of the second Forte database",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):\n- Lists keep the stored column widths unless the columns are to be fitted, as in nuBuilder Forte: the form's \"Fit columns\" = 1, or\n  empty and the shared setting nuAutosizeBrowseColumns on (its default). Otherwise the list is as wide as its columns and scrolls\n  sideways (before, the columns were always squeezed into the window and values were cut). A stored width is the content's width –\n  the cell padding comes on top, as in Forte.\n- HTML objects: sizes as in the browser (`box-sizing: content-box`, nuBuilder Forte loads no global border-box) – a box with height and\n  padding written for Forte is as tall as there (its fields no longer stand out below the frame).\n- Images of form code with a path relative to nuBuilder Forte's folder (e.g. `custom/graphics/x.png` in list cells) load from Forte's\n  folder when nuBuilder Next's folder does not have them.\n- `nuCopyToClipboard()` with a field (jQuery object or element) copies its value, as in Forte (copied \"[object Object]\" before).\n- `nuSERVERRESPONSE.home_id` (code that writes the address with `&h=` – it said \"undefined\").\n- Buttons of the fixed layout use the tighter side padding when their label does not fit (a \"Copy\" button in 50 px showed \"Co…\")."
+  },
+  {
+   "version": "0.8.965",
+   "title": "Second Forte database compared",
+   "text": "- Found by comparing another nuBuilder Forte database with nuBuilder Next, form by form:\n- `nuHasNotBeenEdited()` / `nuSetSaved()` only reset the record's edited state (Save button, leave question), as in nuBuilder Forte –\n  the fields keep their edit marks. Values a form's code set while loading (e.g. the first row of a new record's sub-form, then\n  `nuHasNotBeenEdited()`) were not saved before.\n- nuBuilder Forte's record log `<table>_nulog` gets \"viewed\" (user, time) each time a record is opened.\n- PHP hash of form events: `#user_id#`, `#session_id#` and `#redirect_form_id#` (lower case) as nuBuilder Forte sends them with every\n  request (e.g. `nuHash()['user_id']` in After Save code).\n- List cells are drawn as in nuBuilder Forte: `div#nucell_<row>_<column>.nuCell` (with data-nu-row / -column / -primary-key) inside the\n  table cell – form code that selects `div[id^='nucell_…']` (e.g. colouring rows) works.\n- `nuCurrentProperties().browse_rows` holds the values as the browse SQL returned them, not the formatted text of the cells.\n- `nuAddJavascript()` of Before Edit / Before Browse and the form's JavaScript run in one script, as in nuBuilder Forte – the added code\n  may call a function the form's JavaScript declares (it ran first and alone before: \"… is not defined\").\n- Relative `src` / `href` of `<script>` / `<link>` tags in the Setup header (e.g. `libs/x.js`) that only exist in nuBuilder Forte's\n  folder are linked there (they gave 404 in nuBuilder Next's subfolder).\n- Grid sub-forms: a cell's id is nuBuilder Forte's row holder `<prefix>nuRECORD` (was `<prefix><field>_nucell` – selectors like\n  `[id^=\"<sub-form>\"][id*=\"<field>\"]` also caught the cell); `nuAddRow()` works as in nuBuilder Forte (the blank row becomes a row, a new\n  blank row follows, the focus goes there – before, a second blank row was added); `nuSubformToClipboard()` includes the nuDelete column.\n- Fixed layout: a label's top / left set by form code are form coordinates as in nuBuilder Forte (e.g. a label moved above its field);\n  before, setting a label's top moved the field too. The canvas grows with HTML objects whose content the code fills later (it was cut\n  at the stored height); a table caption in an HTML object stays above its table.\n- Look in nuBuilder Forte's sizes: list cells and titles with less side padding (fewer values cut with …, titles break between words\n  only), grid sub-form controls keep their object's width (cell padding added to the column) with smaller side padding, narrow number\n  fields show their value."
+  },
+  {
+   "version": "0.8.964",
+   "title": "Notes",
+   "text": "- Development notes: v0.8.963 is published on GitHub."
   },
   {
    "version": "0.8.963",
@@ -7505,7 +7585,7 @@
   ],
   "js_deprecated": []
  },
- "last_gate": "0.8.963",
+ "last_gate": "0.8.979",
  "gated": true,
  "requires_libs": {
   "tcpdf": {
@@ -7529,5 +7609,5 @@
    "needed": false
   }
  },
- "signature": "zlu7uyIzLu5O4KY+EwaEehOqN6pxxZlf90a9srX8HLaNAHDPWJrjH5D+y1P1R08Se/33X5a1MIL7AVp+ZpRiBQ=="
+ "signature": "tB0Bg0VfVLEqYmCiLTNlmZY1zUlwKIF6+An/g/h4W4gBZtwlxHoRXgsFhBuRlEZqoGln0uDUCupx8jLUSbhCBw=="
 }

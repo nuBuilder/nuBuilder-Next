@@ -3498,6 +3498,7 @@ return [
 	'hash_src_record' => 'field',
 	'hash_src_property' => 'form property',
 	'hash_src_global' => 'hash cookie',
+	'hash_src_caller' => 'opening form',
 	'form_err_property_name' => '"%s" cannot be used as property name (letters, digits, _; not a system variable).',
 	// hash variables (code editor)
 	'hv_title' => 'Insert hash variable',

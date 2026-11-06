@@ -703,7 +703,8 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<?php endif; ?>
 
 					<?php $pwrShow = !$isNew && $rights['save'] && NuPwReset::refusal($existing, $me) === null;
-					$pwrLink = ($_SESSION['nu_pwr_link']['id'] ?? '') === $id ? (string)$_SESSION['nu_pwr_link']['link'] : '';
+					$pwrRow = is_array($_SESSION['nu_pwr_link'] ?? null) ? $_SESSION['nu_pwr_link'] : [];   // only after "create link" (0.8.976: a new user's '' id matched the missing row)
+					$pwrLink = $id !== '' && ($pwrRow['id'] ?? null) === $id ? (string)($pwrRow['link'] ?? '') : '';
 					unset($_SESSION['nu_pwr_link']);
 					if ($pwrShow): ?>
 						<div class="mb-3" id="pwrBox">

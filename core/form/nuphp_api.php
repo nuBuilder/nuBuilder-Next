@@ -476,7 +476,7 @@ if (!function_exists('nuRunQuery')) {
 
 	function nuReplaceHashVariables($s): string
 	{
-		return NuHash::replace((string)$s, NuPhp::$hash, NuHash::RAW);
+		return NuHash::replace(trim((string)$s), NuPhp::$hash, NuHash::RAW);   // trimmed as Forte's nuReplaceHashVariables (nuTrim, 0.8.977)
 	}
 
 	function nuSendEmailFromTemplate($template): array

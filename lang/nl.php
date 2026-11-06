@@ -4241,6 +4241,7 @@ return [
 	'hash_src_record' => 'veld',
 	'hash_src_property' => 'formuliereigenschap',
 	'hash_src_global' => 'hash-cookie',
+	'hash_src_caller' => 'aanroepend formulier',
 	'form_err_property_name' => '"%s" kan niet als eigenschapsnaam worden gebruikt (letters, cijfers, _; geen systeemvariabele).',
 	'hv_title' => 'Hash-variabele invoegen',
 	'hv_search' => 'Zoeken …',

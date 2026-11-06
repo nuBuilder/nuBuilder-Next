@@ -42,7 +42,7 @@ final class NuRender
 			$access = (string)$t['syt_access'];
 			$hidden = $access === '2' || ($access === '3' && !$isAdmin);
 			$nav .= '<li class="nav-item" role="presentation"' . ($hidden ? ' style="display:none"' : '') . '>'
-				. '<button type="button" class="nav-link nuTab' . ($i === 0 ? ' active' : '') . '" id="nuTab' . $i . '" data-nu-tab="' . $i . '"'
+				. '<button type="button" class="nav-link nuTab' . ($i === 0 ? ' active nuTabSelected' : '') . '" id="nuTab' . $i . '" data-nu-tab="' . $i . '"'
 				. ' data-nu-tab-id="' . h($t['zzzzsys_tab_id']) . '" data-bs-toggle="tab" data-bs-target="#nuTabPane' . $i . '" role="tab"'
 				. ' aria-controls="nuTabPane' . $i . '" aria-selected="' . ($i === 0 ? 'true' : 'false') . '">' . h($t['syt_title']) . '</button></li>';
 			$objects = $this->meta->objectsOfTab((string)$t['zzzzsys_tab_id']);
@@ -75,14 +75,31 @@ final class NuRender
 			// input buttons keep their height like run buttons (as in nuBuilder, 0.8.518) – other inputs size themselves
 			$isBtn = $o['sob_all_type'] === 'input' && (string)($o['sob_input_type'] ?? '') === 'button';
 			$style = "top:{$top}px;left:{$left}px;width:{$w}px;" . ($h > 0 && ($isBtn || !in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'lookup', 'word'], true)) ? "height:{$h}px;" : '') . $z;
-			$html .= $this->wrapper($o, 'nuAbs', $style, $this->object($o, 'absolute'));
+			// narrow text fields (a time "05:00" in 47 px): Forte's 2 px side padding instead of .4rem, the value stays readable (0.8.974)
+			$narrow = in_array($o['sob_all_type'], ['input', 'calc', 'display'], true) && !in_array((string)($o['sob_input_type'] ?? ''), ['button', 'checkbox'], true) && (int)$o['sob_all_width'] < 80;
+			$html .= $this->wrapper($o, $narrow ? 'nuAbs nuAbsNarrow' : 'nuAbs', $style, $this->object($o, 'absolute'));
 		}
 		return '<div class="nuAbsoluteCanvas" style="height:' . $height . 'px;min-width:' . $width . 'px">' . $html . '</div>';
 	}
 
 	private function flow(array $objects): string
 	{
-		return $this->rows(NuLayout::build($objects, $this->layout));
+		// tiny HTML objects (both sides ≤ 30 px) hold code or a decoration drawn for the fixed layout (a background grid behind
+		// the buttons): in rows they took a column and their content pushed everything below it – here they keep their <style> /
+		// <script> but take no room
+		$holders = '';
+		$rest = [];
+		foreach ($objects as $o) {
+			if (self::isCodeHolder($o)) $holders .= $this->wrapper($o, 'nuFlowHolder', '', $this->object($o, 'flow'));
+			else $rest[] = $o;
+		}
+		return ($holders !== '' ? '<div class="nuFlowHolders" aria-hidden="true">' . $holders . '</div>' : '') . $this->rows(NuLayout::build($rest, $this->layout));
+	}
+
+	/** An HTML object of at most 30 × 30 px – a holder of code / styles, not content (auto and grid layouts). */
+	public static function isCodeHolder(array $o): bool
+	{
+		return ($o['sob_all_type'] ?? '') === 'html' && (int)($o['sob_all_width'] ?? 0) <= 30 && (int)($o['sob_all_height'] ?? 0) <= 30;
 	}
 
 	private function rows(array $tree): string
@@ -161,6 +178,12 @@ final class NuRender
 
 		$control = $this->control($o, '', $value, $mode === 'absolute' ? LayoutSize::controlStyle($o) : LayoutSize::flowStyle($o));
 		$noLabel = in_array($type, ['word', 'html', 'run'], true) || ($type === 'input' && in_array($o['sob_input_type'], ['button'], true));
+		// absolute layout = nuBuilder Forte's (nuLabel calls of nuform.js, 0.8.974): HTML objects and framed run objects show their label,
+		// an editor does not (its label stays the field name of the form)
+		if ($mode === 'absolute') {
+			if ($type === 'html' || ($type === 'run' && (string)$o['sob_run_method'] !== 'b')) $noLabel = false;
+			if ($type === 'editor') $noLabel = true;
+		}
 		if ($type === 'input' && $o['sob_input_type'] === 'checkbox' && $mode !== 'absolute') {
 			return '<div class="form-check nuCheckWrap">' . $control . $this->label($o, 'check') . '</div>';
 		}
@@ -172,7 +195,7 @@ final class NuRender
 
 	private function label(array $o, string $mode, bool $isTitle = false): string
 	{
-		$text = (string)$o['sob_all_label'];
+		$text = self::closeFragment((string)$o['sob_all_label']);   // nuBuilder Forte sets labels as innerHTML: an unclosed <big> stays inside
 		if (trim($text) === '') return '';
 		if (in_array((string)$o['sob_all_id'], self::HIDDEN_LABELS[$this->meta->id] ?? [], true)) return '';   // e.g. "Content" above the note editor
 		$id  = (string)$o['sob_all_id'];
@@ -242,10 +265,19 @@ final class NuRender
 		$id    = $prefix . $field;
 		$acc   = $this->access($o);
 		$events ??= $this->eventsOf($o, $prefix !== '' ? 'sub' : 'main');
-		$align = in_array($o['sob_all_align'], ['right', 'center'], true) ? 'text-align:' . $o['sob_all_align'] . ';' : '';
+		// the object's alignment as nuBuilder Forte applies it: inputs, Display, Calc, Word and Run objects – not HTML objects, selects … (0.8.965)
+		$align = in_array($o['sob_all_align'], ['right', 'center'], true) && in_array($type, ['input', 'display', 'calc', 'word', 'run', 'lookup'], true)
+			? 'text-align:' . $o['sob_all_align'] . ';' : '';
 		$style = $sizeStyle . $align . (($o['sob_all_style_type'] ?? '') === 'CSS' ? (string)($o['sob_all_style'] ?? '') : '');
 		$cls   = 'nuObject nu_' . $type . (($o['sob_all_style_type'] ?? '') === 'Class' && $type !== 'contentbox' ? ' ' . ($o['sob_all_style'] ?? '') : '');
-		$common = ' id="' . h($id) . '" data-nu-field="' . h($field) . '" data-nu-prefix="' . h($prefix) . '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '"'
+		// nuBuilder Forte's class of the control (nuINPUTInput: input_<input type>; Calc input_text; Display input_) – form code and CSS
+		// select fields by it, e.g. $('.input_nuNumber') (0.8.965)
+		$forteCls = match ($type) { 'input' => 'input_' . (string)($o['sob_input_type'] ?? ''), 'calc' => 'input_text', 'display' => 'input_', default => '' };
+		if ($forteCls !== '' && preg_match('/^input_\w*$/', $forteCls)) $cls .= ' ' . $forteCls;
+		// data-nu-form as nuBuilder Forte: '' on the main form, the sub-form's id in its rows (prefix = id + 3-digit row) – form code builds
+		// row prefixes from it (el.attr('data-nu-form') + row number, 0.8.978)
+		$nuForm = $prefix === '' ? '' : (string)preg_replace('/(\d{3}|__ROW__)$/', '', $prefix);
+		$common = ' id="' . h($id) . '" data-nu-field="' . h($field) . '" data-nu-prefix="' . h($prefix) . '" data-nu-form="' . h($nuForm) . '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '"'
 			. ' data-nu-type="' . h($type) . '"' . ($o['sob_all_validate'] ? ' data-nu-validate="' . h($o['sob_all_validate']) . '"' : '')
 			. $this->attributes($o) . ($type === 'lookup' ? '' : $events) . ($style !== '' && $type !== 'lookup' ? ' style="' . h($style) . '"' : '');
 		$ro = $acc['readonly'];
@@ -276,14 +308,15 @@ final class NuRender
 				// nuBuilder Forte 4.9.2: no blank item when the validation allows no blanks (1 No Blanks, 2 No Duplicates, 3 both) (0.8.958)
 				$noBlank = !$multi && in_array((string)$o['sob_all_validate'], ['1', '2', '3'], true);
 				$opts  = $multi || $noBlank ? '' : '<option value=""></option>';
-				$found = false;
 				foreach ($this->options($o) as [$v, $t]) {
 					$is = in_array((string)$v, array_map('strval', (array)$sel), true);
-					$found = $found || $is;
 					$opts .= '<option value="' . h($v) . '"' . ($is ? ' selected' : '') . '>' . h($t) . '</option>';
 				}
-				if (!$multi && !$found && (string)$value !== '') $opts .= '<option value="' . h($value) . '" selected>' . h($value) . '</option>';
-				$ts = $multi || (string)$o['sob_select_2'] === '1' ? ' nuSelect2' : '';
+				// a stored value that is not one of the options: nothing is chosen, as nuBuilder Forte ($(…).val(value) finds no option) –
+				// the value stays in the database unless the field is edited (0.8.978; was: an extra option with the raw value)
+				// searchable (Tom Select) only with "Select2" on, as nuBuilder Forte – a multiple select without it is the browser's list box,
+				// which form code can change like Forte's (removeAttr('multiple'), size …) (0.8.977; was: every multiple select)
+				$ts = (string)$o['sob_select_2'] === '1' ? ' nuSelect2' : '';
 				return '<select class="form-select ' . h($cls) . $ts . '"' . $common . ($multi ? ' multiple' : '') . ($noBlank ? ' data-nu-noblank="1"' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>' . $opts . '</select>';
 
 			case 'display':
@@ -304,7 +337,7 @@ final class NuRender
 				return $this->lookup($o, $prefix, $value, $common, $cls, $ro, $sizeStyle, $events);
 
 			case 'word':
-				return '<div class="nuWord ' . h($cls) . '"' . $common . self::iconAttr($o) . '>' . self::withIcon((string)$o['sob_all_label'], $o) . '</div>';
+				return '<div class="nuWord ' . h($cls) . '"' . $common . self::iconAttr($o) . '>' . self::withIcon(self::closeFragment((string)$o['sob_all_label']), $o) . '</div>';
 
 			case 'html':
 				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(self::closeFragment(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML))) . '</div>';
@@ -326,15 +359,17 @@ final class NuRender
 	{
 		$it  = (string)($o['sob_input_type'] ?: 'text');
 		$fmt = $this->formatOf($o);
+		if ($ro && !in_array($it, ['checkbox', 'button'], true)) $cls .= ' nuReadonly';   // as nuBuilder Forte's nuSetAccess (0.8.965)
 		switch ($it) {
 			case 'button':
 				// a <button> with the label as HTML in .nuButtonLabel and the object's icon inside, as nuBuilder 4.9 (nuINPUT, 0.8.559 –
 				// before: <input type="button"> with the label as plain text, no icon)
 				return '<button type="button" class="btn nuFormBtn nuButton ' . h($cls) . '"' . $common . self::iconAttr($o) . ' data-nu-org-label="' . h((string)$o['sob_all_label']) . '"'
 					. self::nameIfIconOnly((string)$o['sob_all_label'], '') . ($ro ? ' disabled' : '') . '>'
-					. self::withIcon('<span class="nuButtonLabel">' . (string)$o['sob_all_label'] . '</span>', $o, (string)$o['sob_all_label']) . '</button>';
+					. self::withIcon('<span class="nuButtonLabel">' . self::closeFragment((string)$o['sob_all_label']) . '</span>', $o, (string)$o['sob_all_label']) . '</button>';
 			case 'checkbox':
-				return '<input type="checkbox" class="form-check-input ' . h($cls) . '"' . $common . ' value="1"' . ((string)$value === '1' ? ' checked' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>';
+				// no value attribute (0.8.975): $(…).val() of a checkbox is "on", as in nuBuilder Forte – the saved value comes from .checked
+				return '<input type="checkbox" class="form-check-input ' . h($cls) . '"' . $common . ((string)$value === '1' ? ' checked' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>';
 			case 'nuDate':
 				return '<input type="text" class="form-control nuDate ' . h($cls) . '"' . $common . ' autocomplete="off" data-nu-format="' . h($fmt) . '"'
 					. ($ro ? ' readonly' : ' onclick="nuPopupCalendar(this);"') . ' value="' . h(NuFormat::format($value, $fmt)) . '">';
@@ -428,7 +463,10 @@ final class NuRender
 
 	private const RAW_TEXT = ['script', 'style', 'iframe', 'textarea', 'title', 'xmp', 'noembed', 'noframes', 'noscript'];
 	private const CONTAINERS = ['div', 'span', 'table', 'ul', 'ol', 'a', 'b', 'i', 'u', 'strong', 'em', 'section', 'article', 'header', 'footer',
-		'nav', 'label', 'select', 'button', 'fieldset', 'center', 'font', 'small', 'big', 'sup', 'sub', 'blockquote', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+		'nav', 'label', 'select', 'button', 'fieldset', 'center', 'font', 'small', 'big', 'sup', 'sub', 'blockquote', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+		// the rest of HTML's formatting elements (0.8.978): an unclosed one is re-opened by the browser after the object ends – "<s/mall>"
+		// in a word object's label struck through every field after it
+		's', 'strike', 'code', 'tt', 'nobr', 'mark', 'del', 'ins'];
 
 	/**
 	 * The HTML of one object as a closed fragment (0.8.957): nuBuilder Forte puts each HTML object into the page with innerHTML, so an
@@ -498,9 +536,12 @@ final class NuRender
 	{
 		$id    = $prefix . $o['sob_all_id'];
 		[$code, $desc] = $this->lookupDisplay($o, (string)$value);
+		// a stored id the lookup's list does not contain (e.g. a user its Before Browse leaves out): the field is empty, as nuBuilder Forte
+		// (nuGetLookupValues: the id of the lookup row, '' when none) – nothing is saved unless the field is edited (0.8.976)
+		if ($this->lookupMissing) $value = '';
 		$descW = self::lookupDescWidth($o);
 		$codeW = (int)$o['sob_all_width'];
-		$attrs = ' data-nu-prefix="' . h($prefix) . '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '" data-nu-target="' . h($id) . '"'
+		$attrs = ' data-nu-prefix="' . h($prefix) . '" data-nu-form="' . h($prefix === '' ? '' : (string)preg_replace('/(\d{3}|__ROW__)$/', '', $prefix)) . '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '" data-nu-target="' . h($id) . '"'
 			. ' data-nu-lookup-form="' . h($o['sob_lookup_zzzzsys_form_id']) . '"';
 		$hidden = '<input type="hidden" class="nuLookupId"' . $common . ' value="' . h($value) . '">';
 		$flow  = $sizeStyle === '' || str_contains($sizeStyle, '100%');
@@ -730,7 +771,7 @@ final class NuRender
 			if ($run['method'] === 'i') return '<iframe class="nuIframe nuIframeUrl ' . h($cls) . '"' . $common . ($run['url'] !== '' ? ' src="' . h($run['url']) . '"' : '')
 				. ' title="' . h($label ?: $run['url']) . '" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
 			$hint = ['2' => t('run_hint_tab'), '3' => t('run_hint_popup')][$run['target']] ?? '';
-			$raw = (string)$o['sob_all_label'];
+			$raw = self::closeFragment((string)$o['sob_all_label']);
 			$name = self::nameIfIconOnly($raw, $run['url']);
 			if ($hint !== '' && !str_contains($common, ' title="')) $name = $name !== '' ? ' aria-label="' . h($run['url']) . '" title="' . h($hint) . '"' : ' title="' . h($hint) . '"';
 			return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . ' data-nu-run-type="U" data-nu-run-url="' . h($run['url']) . '"'
@@ -767,13 +808,34 @@ final class NuRender
 		// (sob_input_icon) goes inside. Without visible text the target's description is the name for screen readers and the tooltip.
 		// No icon of our own any more (0.8.621, as nuBuilder Forte: the ▶ / page / ⧉ icons took room, labels wrapped); a new tab or a
 		// popup is said in the tooltip instead (data-nu-run-hint – nuruntime.js adds the label when it is cut off).
-		$raw = (string)$o['sob_all_label'];
+		$raw = self::closeFragment((string)$o['sob_all_label']);
 		$fallback = $run['type'] === 'F' && $run['form'] !== '' && ($fm = NuFormMeta::load($run['form'])) ? $fm->description() : ($run['form'] ?: $run['code']);
 		$hint = ['2' => t('run_hint_tab'), '3' => t('run_hint_popup')][$run['target']] ?? '';
 		$name = self::nameIfIconOnly($raw, $fallback);
 		if ($hint !== '' && !str_contains($common, ' title="'))                 // an own title (object attributes) stays
 			$name = $name !== '' ? ' aria-label="' . h($fallback) . '" title="' . h($fallback . ' – ' . $hint) . '"' : ' title="' . h($hint) . '"';
-		return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . $data . self::iconAttr($o) . $name
+		// nuBuilder Forte's onclick of the run button (nuRUNGetOnClickEvent: nuForm(…) / nuPopup(…) / nuRunReport(…) / nuRunPHP(…)) – form
+		// code reads or rewrites it, e.g. replaces a #name# of the record id with a value it found (0.8.965); nuRunButton() keeps the
+		// leave question of nuBuilder Next. An onclick event of the object follows it in the same attribute, as in Forte
+		// (nuAddJSObjectEvents: run code + ';' + event) – before, the event replaced the run code and a button whose event
+		// disables it (nuButtonLoading) only spun and never opened its form (0.8.973)
+		$onclick = '';
+		$own = (string)($this->meta->events[$o['zzzzsys_object_id']]['onclick'] ?? '');
+		if ($own !== '') $common = (string)preg_replace('/\sonclick="[^"]*"/i', '', $common, 1);
+		if (!preg_match('/\sonclick=/i', $common)) {
+			$q = static fn(string $v): string => "'" . str_replace(['\\', "'", "\n", "\r"], ['\\\\', "\\'", ' ', ' '], $v) . "'";
+			$call = match ($run['type']) {
+				'F' => $run['form'] === '' ? '' : ($run['target'] === '3'
+					? 'nuPopup(' . $q($run['form']) . ',' . $q($run['record']) . ',' . $q($run['filter']) . ')'
+					: 'nuForm(' . $q($run['form']) . ',' . $q($run['record']) . ',' . $q($run['filter']) . ', \'\',' . $q($run['target']) . ')'),
+				'R' => $run['code'] === '' ? '' : 'nuRunReport(' . $q($run['code']) . ')',
+				'P' => $run['code'] === '' ? '' : ($run['hidden'] ? 'nuRunPHPHidden(' : 'nuRunPHP(') . $q($run['code']) . ')',
+				default => '',
+			};
+			if ($call !== '') $onclick = ' data-nu-run-onclick="1" onclick="' . h('nuRunButton(this, event, function () { ' . $call . '; })' . ($own !== '' ? ';' . $own : '')) . '"';
+			elseif ($own !== '') $onclick = ' onclick="' . h($own) . '"';
+		}
+		return '<button type="button" class="btn nuFormBtn nuRunButton ' . h($cls) . '"' . $common . $data . $onclick . self::iconAttr($o) . $name
 			. ($hint !== '' ? ' data-nu-run-hint="' . h($hint) . '"' : '') . '>'
 			. self::withIcon('<span class="nuButtonLabel">' . $raw . '</span>', $o, $raw) . '</button>';
 	}
@@ -809,9 +871,10 @@ final class NuRender
 		$head = '';
 		foreach ($cols as $c) {
 			$hidden = NuRecord::hiddenFor($c);
-			$w = max(30, (int)$c['sob_all_width'] + ($c['sob_all_type'] === 'lookup' ? self::lookupDescWidth($c) + 40 : 0));
+			// + 4 px = the cell's side padding (2 px each, nuform.css): the control gets the object's width as in nuBuilder Forte (0.8.965)
+			$w = max(30, (int)$c['sob_all_width'] + ($c['sob_all_type'] === 'lookup' ? self::lookupDescWidth($c) + 40 : 0)) + 4;
 			$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" style="min-width:' . $w . 'px;width:' . $w . 'px' . ($hidden ? ';display:none' : '') . '">'
-				. (string)$c['sob_all_label'] . $this->marks($c) . '</th>';
+				. self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</th>';
 		}
 		if ($canDelete) $head .= '<th class="nuSubformDeleteTitle" title="' . h(t('delete')) . '"><i class="bi bi-trash"></i></th>';
 
@@ -862,14 +925,17 @@ final class NuRender
 			$hidden = NuRecord::hiddenFor($c);
 			$events = $this->eventsOfMeta($sub, $c);
 			// nuBuilder Forte puts a row's objects straight into the row (<prefix>nuRECORD with data-nu-primary-key): form code that reads
-			// event.target.parentNode's id and then its data-nu-primary-key finds both on the cell (0.8.957)
-			$html  .= '<td class="nuSubformCell" id="' . h($prefix . $c['sob_all_id']) . '_nucell" data-nu-primary-key="' . h($pk) . '"' . ($hidden ? ' style="display:none"' : '') . '>'
+			// event.target.parentNode's id and then its data-nu-primary-key finds both on the cell (0.8.957). The id is Forte's row holder
+			// <prefix>nuRECORD on every cell of the row (Forte code cuts the sub-form id and row number from it) and holds no field name, so
+			// selectors such as [id^="<sub-form>"][id*="<field>"] find only the field itself (0.8.965; was <prefix><field>_nucell)
+			$html  .= '<td class="nuSubformCell" id="' . h($prefix) . 'nuRECORD" data-nu-primary-key="' . h($pk) . '"' . ($hidden ? ' style="display:none"' : '') . '>'
 				. $this->control($c, $prefix, $value, $c['sob_all_type'] === 'textarea' ? 'height:' . max(30, (int)$c['sob_all_height']) . 'px;' : '', $events) . '</td>';
 		}
 		if ($canDelete) {
 			$click = isset($sfEvents['clickdelete']) ? ' onclick="' . h($sfEvents['clickdelete']) . '"' : '';
 			$html .= '<td class="nuSubformDeleteCell"><input type="checkbox" class="form-check-input nuSubformDelete" id="' . h($prefix) . 'nuDelete"'
-				. ' data-nu-checkbox="' . h($sf) . '" data-nu-prefix="' . h($prefix) . '"' . $click . ' aria-label="' . h(t('delete')) . '"></td>';
+				. ' data-nu-checkbox="' . h($sf) . '" data-nu-prefix="' . h($prefix) . '"' . $click . ' aria-label="' . h(t('delete')) . '"'
+				. ($data === null ? ' checked' : '') . '></td>';   // the blank new row: ticked as in nuBuilder Forte, cleared once it is edited
 		}
 		return $html . '</tr>';
 	}
@@ -889,7 +955,7 @@ final class NuRender
 				$value  = $data !== null ? $this->columnValue($data, $field) : '';
 				$hidden = NuRecord::hiddenFor($c);
 				$label  = trim((string)$c['sob_all_label']) !== '' && !in_array($c['sob_all_type'], ['word', 'html'], true) && $c['sob_input_type'] !== 'button'
-					? '<label class="form-label nuLabel" id="label_' . h($prefix . $field) . '" for="' . h($prefix . $field . ($c['sob_all_type'] === 'lookup' ? 'code' : '')) . '">' . (string)$c['sob_all_label'] . $this->marks($c) . '</label>'
+					? '<label class="form-label nuLabel" id="label_' . h($prefix . $field) . '" for="' . h($prefix . $field . ($c['sob_all_type'] === 'lookup' ? 'code' : '')) . '">' . self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</label>'
 					: '';
 				$control = $this->control($c, $prefix, $value, LayoutSize::flowStyle($c), $this->eventsOfMeta($sub, $c));
 				if ($c['sob_all_type'] === 'input' && $c['sob_input_type'] === 'checkbox') {
@@ -1083,9 +1149,19 @@ final class NuRender
 			$r = nu_db()->run(NuHash::replace($sql, $hash, NuHash::SQL))->fetch(PDO::FETCH_NUM);
 			return $r === false ? '' : rtrim(implode("\n", array_map(static fn($v) => (string)$v, $r)), "\n");
 		} catch (Throwable $e) {
-			error_log('nuBuilder Next display ' . $o['sob_all_id'] . ': ' . $e->getMessage());
-			return NuAuth::user()['globeadmin'] ? '⚠ ' . $e->getMessage() : '';
+			return self::displayError($o, $e->getMessage() . "\n\n" . $sql);
 		}
+	}
+
+	/**
+	 * A Display object whose SQL / procedure fails stays empty, as in nuBuilder Forte – form code tests its value (`x.value != ''`), so a
+	 * message in the value enabled buttons it should not; the error goes to the Debug results (Forte: nuRunQuery's debug entry).
+	 */
+	private static function displayError(array $o, string $message): string
+	{
+		error_log('nuBuilder Next display ' . $o['sob_all_id'] . ': ' . $message);
+		if (class_exists('NuDebugLog')) NuDebugLog::write('Display ' . $o['sob_all_id'] . ":\n" . $message);
+		return '';
 	}
 
 	/**
@@ -1139,22 +1215,19 @@ final class NuRender
 	 */
 	private function displayProcedure(array $o, string $proc, array $hash): string
 	{
-		$admin = (bool)(NuAuth::user()['globeadmin'] ?? false);
 		try {
 			$php = nu_db()->one('SELECT sph_code, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ? OR sph_code = ?', [$proc, $proc]);
 		} catch (Throwable $e) {
 			$php = null;
 		}
 		if (!$php) {
-			error_log('nuBuilder Next display ' . $o['sob_all_id'] . ': procedure not found: ' . $proc);
-			return $admin ? '⚠ ' . t('form_err_proc_missing', $proc) : '';
+			return self::displayError($o, t('form_err_proc_missing', $proc));
 		}
 		$r = NuPhp::isolated(static fn() => NuPhp::run((string)$php['sph_php'], $hash + ['PROCEDURE_CODE' => (string)$php['sph_code']], (string)$php['sph_code']));
 		$out = $r['output'];
 		$err = $r['errors'][0]['message'] ?? null;
 		if ($err !== null) {
-			error_log('nuBuilder Next display ' . $o['sob_all_id'] . ': ' . $err);
-			return $admin ? '⚠ ' . $err : '';
+			return self::displayError($o, $err);
 		}
 		return $out;
 	}
@@ -1176,11 +1249,16 @@ final class NuRender
 	}
 
 	/** Code + description of the record a lookup points to. */
+	/** The last lookupDisplay() found no row for its id. */
+	private bool $lookupMissing = false;
+
 	private function lookupDisplay(array $o, string $pk): array
 	{
+		$this->lookupMissing = false;
 		if ($pk === '') return ['', ''];
 		$r = NuLookup::byId($o, $pk, $this->hash);
-		return $r ? [$r['code'], $r['description']] : [$pk, ''];
+		$this->lookupMissing = !$r;
+		return $r ? [$r['code'], $r['description']] : ['', ''];   // record not found: empty, as nuBuilder Forte
 	}
 
 	/** Property scope of the page being rendered (iframes inherit it), see NuProps. */
@@ -1220,6 +1298,8 @@ final class LayoutSize
 		$type = $o['sob_all_type'];
 		$h    = (int)$o['sob_all_height'];
 		if ($type === 'editor') return 'height:' . max(200, $h) . 'px;';
+		// a run BUTTON keeps its own height (it was at least 60 px – the size meant for a run iframe)
+		if ($type === 'run' && (string)($o['sob_run_method'] ?? '') !== 'i') return $h > 0 ? 'height:' . max(26, $h) . 'px;' : '';
 		if ($type === 'textarea' || $type === 'run' || ($type === 'select' && $h > 40)) return 'height:' . max(60, $h) . 'px;';
 		if (($type === 'html' || NuRender::isUppy($o)) && $h > 0) return 'min-height:' . $h . 'px;';
 		return '';

@@ -108,7 +108,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	$u = NuAuth::user();
 	nu_head($title, $opt['head'] ?? '');
 	if (!empty($opt['bare'])) {
-		echo '<body class="nu-app nu-bare' . h(' ' . ($opt['body_class'] ?? '')) . '"' . NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) . '><main id="main" class="' . h($opt['container'] ?? 'container-fluid') . ' py-2">';
+		echo '<body' . (isset($opt['nu_form']) ? ' id="nubody"' : '') . ' class="nu-app nu-bare' . h(' ' . ($opt['body_class'] ?? '')) . '"' . NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) . '><main id="main" class="' . h($opt['container'] ?? 'container-fluid') . ' py-2">';
 		if (!empty($_SESSION['nu_form_preview'])) echo NuFormDraft::banner(true);       // form drafts (0.8.386): "DRAFT" badge in iframes
 		nu_render_flashes();
 		return;
@@ -132,7 +132,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	$sidebar = NuSidebar::enabled() && empty($opt['no_sidebar']);   // side bar (0.8.460, core/nusidebar.php)
 	if (empty($opt['bare'])) NuSidebar::record(NuSidebar::currentKey());   // recently used: side bar and start page (0.8.492)
 	?>
-<body class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?><?= NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) /* page hook (0.8.523) */ ?>>
+<body<?= isset($opt['nu_form']) ? ' id="nubody"' : '' /* form pages: nuBuilder Forte's body id – form code reads $('#nubody') (0.8.974) */ ?> class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?><?= NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) /* page hook (0.8.523) */ ?>>
 <a class="visually-hidden-focusable" href="#main"><?= h(t('skip_to_content')) ?></a>
 <nav class="navbar navbar-expand-md nu-navbar border-bottom sticky-top<?= NuImpersonate::active() ? ' flex-wrap' : '' ?><?= $compact ? ' nuNavCompact' : '' ?>">
 	<?= NuImpersonate::banner() ?>
@@ -481,7 +481,7 @@ function nu_per_param(bool $any = false): int
 }
 
 /** $perMenu: the page size is a menu (the list reads ?per= through nu_per_param() and keeps it in $params). */
-function nu_list_footer(int $total, int $page, int $per, string $route, array $params, string $class = 'card-footer', string $param = 'pg', string $anchor = '', bool $perMenu = false): void
+function nu_list_footer(int $total, int $page, int $per, string $route, array $params, string $class = 'card-footer', string $param = 'pg', string $anchor = '', bool $perMenu = false, string $id = ''): void
 {
 	// $param: name of the page parameter (two lists on one page); $anchor: '#id' the links jump to
 	$pages = (int)max(1, ceil($total / max(1, $per)));
@@ -492,7 +492,7 @@ function nu_list_footer(int $total, int $page, int $per, string $route, array $p
 			: '<span class="nuPagerBtn ' . $cls . ' disabled" role="link" aria-disabled="true" aria-label="' . h($label) . '">' . $html . '</span>';   // aria-label needs a role (0.8.368)
 	};
 	?>
-	<div class="nuListFooter <?= h($class) ?><?= $pages <= 1 ? ' nuListFooterOne' : '' ?>">
+	<div class="nuListFooter <?= h($class) ?><?= $pages <= 1 ? ' nuListFooterOne' : '' ?>"<?= $id !== '' ? ' id="' . h($id) . '"' : '' ?>>
 		<div class="nuLfTotal"><?= h(t('lf_total')) ?> <b><?= number_format($total, 0, '.', "'") ?></b> <span class="nuLfUnit"><?= h(t($total === 1 ? 'lf_record' : 'lf_records')) ?></span></div>
 		<?php if ($pages > 1): // everything on one page: only the total – no disabled pager, no page size (0.8.436) ?>
 		<nav class="nuPager"" aria-label="<?= h(t('pagination')) ?>">

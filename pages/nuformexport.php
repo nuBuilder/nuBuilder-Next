@@ -20,7 +20,7 @@ if (!NuProcedure::hook('nu_before_save', $hash) || !NuPhp::run($meta->php('BB'),
 $hash = NuPhp::$hash + $hash;
 
 $max  = 50000;
-$data = NuBrowse::query($meta, $hash, ['search' => trim($state['rf'] . ' ' . $state['q']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => 1, 'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $max,
+$data = NuBrowse::query($meta, $hash, ['search' => $state['q'], 'runfilter' => $state['rf'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => 1, 'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $max,
 	'process' => NuOnProcess::rowsHook($meta->php('BB'), $hash), 'raw' => NuPrintView::raw($hash)]);   // as the print view (0.8.958)
 NuBrowse::dropTempTable();
 NuLog::write('browse_exported', $meta->code(), '', ['rows' => count($data['rows'])]);

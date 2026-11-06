@@ -5,6 +5,8 @@
 .nuFormHeader .breadcrumb { font-size: .95rem; }
 /* breadcrumbs hidden by nuHideHolders(1): no empty space before the buttons */
 .nuFormHeader > nav:has(> .nuHolderHidden) { display: none; }
+/* no d-flex (display … !important): form code hides the holder with $(…).hide() as in Forte (0.8.974) */
+.nuActionHolder { display: flex; flex-wrap: wrap; gap: .5rem; }
 .nuActionHolder .btn { white-space: nowrap; }
 /* unsaved changes: Save turns red – .nuBtnSave.nuSaveEdited in assets/css/nuapp.css */
 
@@ -46,6 +48,7 @@
 /* narrow buttons whose label does not fit (nuruntime.js fitButtonPad): less side padding before the … */
 .btn.nuFormBtn.nuBtnTight { --bs-btn-padding-x: .375rem; }
 .btn.nuFormBtn.nuBtnTighter { --bs-btn-padding-x: .125rem; }
+.btn.nuFormBtn.nuBtnWrap { white-space: normal; line-height: 1.2; --bs-btn-padding-y: 0; --bs-btn-padding-x: .375rem; }
 /* a little more room between the object's icon and the label than nuBuilder's &nbsp; alone */
 .btn.nuFormBtn .nuObjIcon:first-child:not(:last-child) { margin-inline-end: .2rem; }
 .btn.nuFormBtn .nuButtonLabel ~ .nuObjIcon { margin-inline-start: .2rem; }
@@ -61,11 +64,15 @@
    sticky record bar (z-index 1020 / 1010) are drawn over it */
 html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 .nuAbs { position: absolute; }
-.nuAbs .form-control, .nuAbs .form-select { height: 26px; min-height: 0; padding: 0 .4rem; font-size: .85rem; border-radius: .3rem; }
-.nuAbs .form-select { padding-right: 1.6rem; background-position: right .3rem center; }
+.nuAbs .form-control, .nuAbs .form-select, .nuAbsClone.form-control, .nuAbsClone.form-select { height: 26px; min-height: 0; padding: 0 .4rem; font-size: .85rem; border-radius: .3rem; }
+.nuAbs input[type=number].form-control { padding: 0 3px; }   /* narrow number fields (a count …) show their value as in nuBuilder Forte (0.8.965) */
+.nuAbsNarrow .form-control { padding: 0 3px; }   /* text fields narrower than 80 px (0.8.974): "05:00" in a 47 px field as in Forte */
+.nuAbs .form-select, .nuAbsClone.form-select { padding-right: 1.6rem; background-position: right .3rem center; }
 .nuAbs textarea.form-control, .nuAbs select[multiple].form-select, .nuAbs select.form-select[style*="height"] { padding: .2rem .4rem; }
 .nuAbs .form-check-input { margin-top: 5px; }
 .nuAbs .nuButton, .nuAbs .nuRunButton { height: 100%; min-height: 24px; padding: 0 .5rem; font-size: .875rem; }
+.nuAbs .nuButton.nuBtnTight, .nuAbs .nuRunButton.nuBtnTight { padding: 0 .375rem; }   /* the tight steps of fitButtonPad() also for the fixed layout (0.8.965) */
+.nuAbs .nuButton.nuBtnTighter, .nuAbs .nuRunButton.nuBtnTighter { padding: 0 .125rem; }
 /* HTML objects as in nuBuilder Forte, which loads no Bootstrap (0.8.621): in the pixel layout its 13 px text and normal line height,
    so the content fits the object's size; headings bold in the browser's sizes and margins (not Bootstrap's large, thin ones) and
    paragraphs with the browser's margins. Specificity of a plain h3 / p: wins over Bootstrap (loaded before), the form's own CSS
@@ -73,6 +80,12 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 .nuAbs.nuWrap_html:not(:has([data-nu-dashboard])) { font-size: 13px; line-height: normal; }
 :where(.nuHtml:not(:has([data-nu-dashboard]))) :is(h1, h2, h3, h4, h5, h6) { font-size: revert; font-weight: bold; line-height: normal; margin: revert; }
 :where(.nuHtml:not(:has([data-nu-dashboard]))) p { margin: revert; }
+/* a table caption above the table as in the browser (Bootstrap's reboot puts it below, 0.8.965) */
+:where(.nuHtml:not(:has([data-nu-dashboard]))) :is(table, caption) { caption-side: top; }
+:where(.nuHtml:not(:has([data-nu-dashboard]))) caption { padding: revert; color: revert; text-align: revert; }
+/* sizes as in the browser (nuBuilder Forte loads no global border-box): a box of an HTML object with height + padding gets its padding on
+   top of the height, as the object's code expects (0.8.965) */
+:where(.nuHtml:not(:has([data-nu-dashboard]))) :where(*, *::before, *::after) { box-sizing: content-box; }
 .nuLabelLeft { position: absolute; right: calc(100% + 6px); top: 4px; margin: 0; white-space: nowrap; font-size: .85rem; color: var(--bs-secondary-color); text-align: right; }
 .nuLabelTop { position: absolute; bottom: calc(100% + 2px); left: 0; margin: 0; font-size: .85rem; color: var(--bs-secondary-color); }
 .nuAbs.nuWrap_contentbox { pointer-events: none; }
@@ -82,7 +95,8 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 .nuAbs.nuWrap_contentbox .nuContentBoxTitle { pointer-events: auto; }
 .nuAbs .nuLookupGroup { flex-wrap: nowrap; }
 .nuAbs .nuLookupGroup .btn { height: 26px; padding: 0 .45rem; font-size: .8rem; }
-.nuAbs .nuWord { font-size: .9rem; padding-top: 3px; }
+.nuWord { font-weight: 700; }                               /* as nuBuilder Forte (nubuilder4.css) */
+.nuAbs .nuWord { font-size: 13px; padding-top: 3px; }
 .nuAttachedSave { margin-top: .75rem; }
 .nuAttachedSave.nuAbs { margin: 0; }
 
@@ -98,6 +112,7 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 .nuGridRow:has(> .nuWrap_subform, > .nuWrap_run .nuIframe) + .nuGridRow { margin-top: 1rem; }
 .nuCell .form-label, .nuCell .nuLabel { font-size: .85rem; margin-bottom: .2rem; color: var(--bs-secondary-color); }
 .nuLabelSpacer { height: 1.55rem; }
+.nuGridRow:not(:has(> .nuWrap .nuLabel)) > .nuWrap > .nuLabelSpacer { display: none; }   /* a row without labels: no space for one */
 .nuCheckWrap { padding-top: 1.85rem; }
 .nuLayout-auto .nuWrap_contentbox > .nuContentBoxContainer, .nuLayout-grid .nuWrap_contentbox > .nuContentBoxContainer { height: 100%; }
 .nuLayout-auto .nuContentBoxTitle, .nuLayout-grid .nuContentBoxTitle { border-bottom: 1px solid var(--bs-border-color-translucent); }
@@ -110,8 +125,9 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 .nuSubformScroll { overflow: auto; flex: 1 1 auto; }
 .nuSubformTable { width: max-content; min-width: 100%; }
 .nuSubformTable thead th { position: sticky; top: 0; z-index: 2; background: var(--bs-tertiary-bg); font-size: .8rem; font-weight: 600; white-space: nowrap; }
-.nuSubformTable td { padding: .15rem .25rem; }
-.nuSubformTable .form-control, .nuSubformTable .form-select { height: 28px; min-height: 0; padding: 0 .4rem; font-size: .85rem; }
+.nuSubformTable td { padding: .15rem 2px; }   /* 2 px sides: the control keeps the object's width (th = width + 4, 0.8.965) */
+.nuSubformTable .form-control, .nuSubformTable .form-select { height: 28px; min-height: 0; padding: 0 3px; font-size: .8125rem; }   /* 13 px and 3 px sides: a value fits the width of its object as in nuBuilder Forte (0.8.965) */
+.nuSubformTable .form-select { padding-right: 1.1rem; background-position: right 2px center; background-size: 12px 10px; }
 .nuSubformTable textarea.form-control { height: auto; }
 .nuSubformTable .nuLookupGroup .btn { height: 28px; padding: 0 .4rem; }
 .nuSubformDeleteTitle, .nuSubformDeleteCell { width: 2.25rem; text-align: center; }
@@ -137,6 +153,11 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 .nuBrowseRow { cursor: pointer; }
 .nuBrowseRow:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
 .nuBrowseTable td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 32rem; }
+/* the cell's content: a div as in nuBuilder Forte (div#nucell_<row>_<column>.nuCell inside the td, 0.8.965) – it cuts with … itself */
+.nuBrowseTable td.nuCellTd > div.nuCell { overflow: hidden; text-overflow: ellipsis; }
+/* Forte-sized columns: less side padding than Bootstrap's .5rem, titles break between words only (0.8.965) */
+#nuBrowseTable > tbody > tr > td.nuCellTd, #nuBrowseTable > thead > tr > th.nuBrowseTitle { padding-left: .3rem; padding-right: .3rem; }
+.nuBrowseTable.nuBrowseMultiline > thead > tr > th { overflow-wrap: normal; word-break: normal; }
 /* delete button at the left of each row (Notes, 0.8.469) */
 .nuBrowseTable .nuRowDelCol { width: 1%; padding-inline-end: .25rem; white-space: nowrap; }
 .nuBrowseTable .nuRowDel { padding: .1rem .4rem; line-height: 1.2; }
@@ -494,13 +515,14 @@ html.nuEmbedded .nuListCard .nuListFilter, html.nuEmbedded .nuBrowseCard .nuList
 	html.nuPhoneCards #nuBrowseTable > thead { display: none; }
 	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow { display: flex; flex-wrap: wrap; column-gap: .75rem; row-gap: .1rem; align-items: baseline; padding: .65rem .9rem; border-bottom: 1px solid var(--bs-border-color); }
 	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td { display: block; border: 0; padding: 0; width: auto !important; max-width: 100%; white-space: normal; text-align: start !important; background: transparent; box-shadow: none; }
-	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell[style*="display:none"] { display: none !important; }
-	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) ~ td.nuCell { font-size: .875rem; color: var(--bs-secondary-color); }
-	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) ~ td.nuCell::before { content: attr(data-nu-label) ": "; font-weight: 500; }
-	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) { flex: 1 0 100%; font-weight: 600; }
-	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell:not([style*="display:none"]) ~ td.nuCell { flex: 0 1 auto; font-weight: 400; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd[style*="display:none"] { display: none !important; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:not([style*="display:none"]) ~ td.nuCellTd { font-size: .875rem; color: var(--bs-secondary-color); }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:not([style*="display:none"]) ~ td.nuCellTd::before { content: attr(data-nu-label) ": "; font-weight: 500; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:not([style*="display:none"]) { flex: 1 0 100%; font-weight: 600; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:not([style*="display:none"]) ~ td.nuCellTd { flex: 0 1 auto; font-weight: 400; }
 	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuRowDelCol { order: 99; margin-inline-start: auto; }
-	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCell[data-nu-label=""]::before { content: none; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd[data-nu-label=""]::before { content: none; }
+	html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd > div.nuCell { display: inline; }
 }
 
 /* validation rules (0.8.812, assets/js/nu/nurules.js): a field of a failed warning rule */
@@ -610,3 +632,23 @@ html.nuBsqResizing iframe { pointer-events: none; }
 @media (min-width: 576px) and (max-width: 991.98px) { .nuHideMd { display: none !important; } }
 @media (min-width: 992px) { .nuHideLg { display: none !important; } }
 .nuContentBoxBody > .nuStack { padding: .25rem 0; }
+
+/* selects that form code adds to the action bar without a class of their own (nuBuilder Forte styles every select, 0.8.965):
+   the size and border of the bar's other controls */
+#nuActionHolder select:not([class]), #nuActionHolder select.nuActionSelect {
+	height: 31px; padding: 0 1.75rem 0 .5rem; font-size: .875rem; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-sm);
+	background-color: var(--bs-body-bg); color: var(--bs-body-color); align-self: center;
+}
+
+/* nuBuilder Forte loads no Bootstrap on form pages: a .row of an HTML object that holds no Bootstrap columns (col…) is a plain
+   class name of the form's code – no grid gutters and no full-width children (buttons in a ".row" stood one below the other).
+   Specificity of Bootstrap's own rules (0,1,0) and later, so the form's CSS still wins. */
+:where(.nuHtml) .row:where(:not(:has(> [class*="col"]))) { display: block; --bs-gutter-x: 0; --bs-gutter-y: 0; margin: 0; }
+:where(.nuHtml) .row:where(:not(:has(> [class*="col"]))) > * { flex-shrink: 1; width: auto; max-width: none; margin-top: 0; padding-left: 0; padding-right: 0; }
+
+/* auto / grid layouts: tiny HTML objects (code holders, decorations of the fixed layout) take no room (NuRender::flow) */
+.nuFlowHolders { height: 0; overflow: hidden; }
+
+/* list row height of the form (sfo_browse_row_height, 0.8.974): the cell is cut at it, as in nuBuilder Forte – not in the phone cards */
+#nuBrowseTable div.nuCell[style*="max-height"] { overflow: hidden; }
+html.nuPhoneCards #nuBrowseTable div.nuCell { max-height: none !important; }

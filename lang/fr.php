@@ -4240,6 +4240,7 @@ return [
 	'hash_src_record' => 'champ',
 	'hash_src_property' => 'propriété du formulaire',
 	'hash_src_global' => 'cookie de hachage',
+	'hash_src_caller' => 'formulaire appelant',
 	'form_err_property_name' => '« %s » ne peut pas servir de nom de propriété (lettres, chiffres, _ ; pas de variable système).',
 	'hv_title' => 'Insérer une variable de hachage',
 	'hv_search' => 'Rechercher …',

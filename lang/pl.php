@@ -4241,6 +4241,7 @@ return [
 	'hash_src_record' => 'pole',
 	'hash_src_property' => 'właściwość formularza',
 	'hash_src_global' => 'ciasteczko hash',
+	'hash_src_caller' => 'formularz wywołujący',
 	'form_err_property_name' => '„%s” nie może być nazwą właściwości (litery, cyfry, _; nie zmienna systemowa).',
 	'hv_title' => 'Wstaw zmienną hash',
 	'hv_search' => 'Szukaj …',

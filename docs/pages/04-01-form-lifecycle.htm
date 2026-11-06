@@ -99,7 +99,7 @@
 	<h3 id="lifecycle-edit">Opening a record</h3>
 	<ol>
 		<li>Server: the record is loaded (a new record has the id <code>-1</code>).</li>
-		<li>PHP: global hook <code>nu_before_edit</code>, then the form's <strong>Before Edit</strong>. <code>nuSetFormValue()</code> here changes what is shown; <code>nuAddJavascript()</code> adds code for the browser.</li>
+		<li>PHP: global hook <code>nu_before_edit</code>, then the form's <strong>Before Edit</strong>. <code>nuSetFormValue()</code> here changes what is shown; <code>nuAddJavascript()</code> adds code for the browser – as in nuBuilder Forte, it runs in one script with the form's JavaScript (first the added code, then the form's), so it may call a function the form's JavaScript declares.</li>
 		<li>Server: objects are drawn; field data access is applied.</li>
 		<li>JavaScript: scripts inside HTML objects, then <code>nuLoadEditGlobal()</code>, then <code>nuOnLoad(formId, formCode)</code>. Values set while loading do not mark the form as changed.</li>
 		<li>JavaScript: after a save that reloaded the form, <code>nuAfterSave()</code> / <code>nuAfterSaveGlobal()</code>.</li>

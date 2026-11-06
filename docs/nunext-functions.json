@@ -4063,12 +4063,12 @@
     "g": "values",
     "n": "nuSetPlaceholder",
     "s": "nuSetPlaceholder(id, t, translate)",
-    "d": "Placeholder of a field (without text: the label).",
+    "d": "Placeholder of a field (without text: its format such as dd.mm.yyyy or 1000.00, as nuBuilder Forte; a field without a format: its label).",
     "o": "nb",
     "e": "nuSetPlaceholder('cus_email', 'name@example.com');",
     "p": {
      "id": "object id",
-     "t": "placeholder (default: the label)",
+     "t": "placeholder (default: the format, else the label)",
      "translate": "true: translate the text"
     }
    },
@@ -4123,7 +4123,7 @@
     "g": "values",
     "n": "nuCurrentProperties",
     "s": "nuCurrentProperties()",
-    "d": "Properties, hash cookies and form details (form_id, form_code, record_id …) as one object; on a list also browse_columns, browse_rows (the page's rows, [0] = the primary key) and browse_filtered_rows (records found), as in nuBuilder Forte.",
+    "d": "Properties, hash cookies and form details (form_id, form_code, record_id …) as one object; on a list also browse_columns, browse_rows (the page's rows as the browse SQL returned them, unformatted; [0] = the primary key) and browse_filtered_rows (records found), as in nuBuilder Forte.",
     "r": "object",
     "o": "nb",
     "e": "console.log(nuCurrentProperties().form_code);",
@@ -4714,7 +4714,7 @@
     "g": "form",
     "n": "nuHasNotBeenEdited",
     "s": "nuHasNotBeenEdited()",
-    "d": "The record counts as saved again (Save button normal, no question when leaving).",
+    "d": "The record counts as saved again (Save button normal, no question when leaving). As in nuBuilder Forte, the fields keep their edit marks: values the form's code set before (e.g. defaults of a new record) are still saved.",
     "o": "nb",
     "e": "nuSetValue('inv_viewed', '1');\nnuHasNotBeenEdited();"
    },
@@ -5484,13 +5484,14 @@
    {
     "g": "sub",
     "n": "nuAddRow",
-    "s": "nuAddRow(sf)",
-    "d": "Adds an empty row.",
-    "r": "the new row",
+    "s": "nuAddRow(sf, setFocus)",
+    "d": "As in nuBuilder Forte: the blank last row becomes a row of the sub-form (it counts as edited, so it is saved) and a new blank row follows; setFocus (default true) puts the cursor into the first field of that new row. Without a blank row, a row is appended.",
+    "r": "the row that was added",
     "o": "nb",
     "e": "var row = nuAddRow('items_sf');",
     "p": {
-     "sf": "subform id"
+     "sf": "subform id",
+     "setFocus": "false = the focus stays where it is"
     }
    },
    {
@@ -7027,11 +7028,52 @@
     "g": "msg",
     "n": "nuCopyToClipboard",
     "s": "nuCopyToClipboard(s)",
-    "d": "Copies a text to the clipboard.",
+    "d": "Copies a text to the clipboard; a field (jQuery object or element) copies its value, as in nuBuilder Forte.",
     "o": "nb",
-    "e": "nuCopyToClipboard(nuGetValue('cus_iban'));",
+    "e": "nuCopyToClipboard(nuGetValue('cus_iban'));\nnuCopyToClipboard($('#cus_iban'));",
     "p": {
-     "s": "text"
+     "s": "text, or a field"
+    }
+   },
+   {
+    "g": "form",
+    "n": "nuRunButton",
+    "s": "nuRunButton(button, event, fn)",
+    "d": "The onclick of a run button (nuBuilder Next writes nuBuilder Forte's call into it): runs fn, asking first when the form is left with unsaved changes. Form code may read or rewrite the onclick as in Forte.",
+    "r": "false",
+    "x": "false",
+    "o": "next",
+    "e": "// onclick=\"nuRunButton(this, event, function () { nuForm('customers', '#cus_id#', '', '', '0'); })\"",
+    "p": {
+     "button": "the run button",
+     "event": "the click",
+     "fn": "what the button runs"
+    }
+   },
+   {
+    "g": "msg",
+    "n": "nuAlign",
+    "s": "nuAlign(a)",
+    "d": "A column's align code (l, r, c) as CSS text-align (left, right, center), as in nuBuilder Forte; '' for anything else.",
+    "r": "text",
+    "x": "right",
+    "o": "nb",
+    "e": "$('#myCell').css('text-align', nuAlign('r'));",
+    "p": {
+     "a": "l, r or c"
+    }
+   },
+   {
+    "g": "msg",
+    "n": "nuAlignmentStyle",
+    "s": "nuAlignmentStyle(a)",
+    "d": "Same as nuAlign, but undefined for an unknown code (nuBuilder Forte).",
+    "r": "text",
+    "x": "center",
+    "o": "nb",
+    "e": "nuAlignmentStyle('c');",
+    "p": {
+     "a": "l, r or c"
     }
    },
    {
@@ -7593,6 +7635,92 @@
      "id": "value",
      "length": "length",
      "pad": "padding character"
+    }
+   },
+   {
+    "g": "util",
+    "n": "nuGetWordWidth",
+    "s": "nuGetWordWidth(text, refElem)",
+    "d": "Width in pixels of a text on one line, plus 5 – used to size labels. With refElem (a jQuery element) the text is measured in that element's font.",
+    "r": "number",
+    "o": "nb",
+    "e": "console.log(nuGetWordWidth('Customer'));",
+    "x": "62",
+    "p": {
+     "text": "the text",
+     "refElem": "optional jQuery element whose font is used"
+    }
+   },
+   {
+    "g": "util",
+    "n": "nuCreateElementWithId",
+    "s": "nuCreateElementWithId(tagName, id, parentElement)",
+    "d": "Creates an element with an id and appends it to the element with the id parentElement (when given).",
+    "r": "HTMLElement",
+    "o": "nb",
+    "e": "var d = nuCreateElementWithId('div', 'myBox', 'nuRECORD');\nconsole.log(d.id);",
+    "x": "'myBox'",
+    "p": {
+     "tagName": "tag of the new element",
+     "id": "its id",
+     "parentElement": "optional id of the parent element"
+    }
+   },
+   {
+    "g": "util",
+    "n": "nuSetObjectBounds",
+    "s": "nuSetObjectBounds(obj, top, left, width, height, absolute)",
+    "d": "Sets top, left, width and height (pixels; null = unchanged) and – unless absolute is false – position absolute. Returns the element as jQuery object.",
+    "r": "jQuery",
+    "o": "nb",
+    "e": "nuSetObjectBounds($('#myBox'), 20, 300, 200, 40);",
+    "p": {
+     "obj": "element or jQuery object",
+     "top": "pixels or null",
+     "left": "pixels or null",
+     "width": "pixels or null",
+     "height": "pixels or null",
+     "absolute": "false = keep the position"
+    }
+   },
+   {
+    "g": "util",
+    "n": "nuTotalWidth",
+    "s": "nuTotalWidth(id)",
+    "d": "Width of an element including its left and right margin (0 when the id does not exist).",
+    "r": "number",
+    "o": "nb",
+    "e": "console.log(nuTotalWidth('cus_name'));",
+    "x": "250",
+    "p": {
+     "id": "element id"
+    }
+   },
+   {
+    "g": "util",
+    "n": "nuTotalHeight",
+    "s": "nuTotalHeight(id)",
+    "d": "Height of an element including its top and bottom margin (0 when the id does not exist).",
+    "r": "number",
+    "o": "nb",
+    "e": "console.log(nuTotalHeight('cus_name'));",
+    "x": "26",
+    "p": {
+     "id": "element id"
+    }
+   },
+   {
+    "g": "util",
+    "n": "nuRoundNearest",
+    "s": "nuRoundNearest(n, v)",
+    "d": "Rounds n to the nearest multiple of v.",
+    "r": "number",
+    "o": "nb",
+    "e": "console.log(nuRoundNearest(47, 10));",
+    "x": "50",
+    "p": {
+     "n": "number",
+     "v": "step"
     }
    },
    {

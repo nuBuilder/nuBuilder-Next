@@ -283,7 +283,7 @@ final class NuBrowse
 	}
 
 	/**
-	 * @param array $opt search, sort (column index), dir, page, per, filter => [sql on nuT, params]
+	 * @param array $opt search, runfilter, sort (column index), dir, page, per, filter => [sql on nuT, params]
 	 */
 	public static function query(NuFormMeta $meta, array $hash, array $opt = []): array
 	{
@@ -331,6 +331,25 @@ final class NuBrowse
 						}
 					}
 					if ($part) $where[] = '(' . implode($glue, $part) . ')';
+				}
+			}
+		}
+		$runFilter = trim((string)($opt['runfilter'] ?? ''));
+		if ($runFilter !== '') {
+			// run filter (sob_run_filter / nuForm filter, 0.8.974): as nuBuilder Forte's nuBrowseWhereClause("$filter $search") – each word
+			// must be found in the primary key or in any column, hidden ones (width 0) included; nosearch / searchonly do not apply
+			$terms = self::terms($runFilter);
+			$fields = ['nuT.nu_pk'];
+			foreach ($cols as $c) if ($c['expr'] !== 'NULL' && $c['mask'] === null) $fields[] = $col($c);
+			foreach (['in' => ' OR ', 'out' => ' AND '] as $kind => $glue) {
+				foreach ($terms[$kind] as $term) {
+					$part = [];
+					foreach ($fields as $f) {
+						$tx = self::castText($f);
+						$part[] = $kind === 'in' ? "$tx LIKE ? ESCAPE '!'" : "COALESCE($tx, '') NOT LIKE ? ESCAPE '!'";
+						$params[] = NuDB::like($term);
+					}
+					$where[] = '(' . implode($glue, $part) . ')';
 				}
 			}
 		}
@@ -395,12 +414,17 @@ final class NuBrowse
 		}
 		foreach ($fetched as $r) {
 			$cells = $classes = [];
+			$rawRow = [$r['nu_pk']];                                 // nuBuilder Forte's browse_rows: [pk, value of column 0 …] unformatted (0.8.965)
+			foreach ($cols as $c) {
+				$v = $r['nu_c' . $c['index']];
+				$rawRow[(int)$c['index'] + 1] = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : NuSecurity::demoMask($c['expr'], $v);
+			}
 			foreach ($cols as $k => $c) {
 				$v = $r['nu_c' . $c['index']];
 				$cells[$k]   = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : (!empty($opt['raw']) ? (string)(NuSecurity::demoMask($c['expr'], $v) ?? '') : NuFormat::format(NuSecurity::demoMask($c['expr'], $v), $c['format']));   // raw: print view of nuPrintUseBrowseFormats(false) (0.8.958)   // demo: no hashes / secrets
 				$classes[$k] = $c['mask'] !== null ? '' : NuFormat::cssClass($v, $c['format']);
 			}
-			$rows[] = ['pk' => (string)$r['nu_pk'], 'cells' => $cells, 'classes' => $classes];
+			$rows[] = ['pk' => (string)$r['nu_pk'], 'cells' => $cells, 'classes' => $classes, 'raw' => $rawRow];
 		}
 
 		return ['columns' => $cols, 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per' => $per];

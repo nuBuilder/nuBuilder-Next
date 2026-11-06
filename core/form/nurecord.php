@@ -61,6 +61,34 @@ final class NuRecord
 		return (string)json_encode($d);
 	}
 
+	/**
+	 * nuBuilder Forte writes "viewed" {user, time} into <table>_nulog each time a record is opened (core/nuform.php, getform) – the
+	 * same here before the record is read (0.8.965); a column that is empty or no JSON object gets Forte's "added" {unknown, 0}.
+	 * Not in demo mode; never stops the page.
+	 */
+	public static function nulogViewed(NuFormMeta $meta, string $recordId): void
+	{
+		if ($meta->table() === '' || $meta->primaryKey() === '' || $recordId === '' || $recordId === '-1' || NuDemo::active()) return;
+		try {
+			$db = nu_db();
+			$columns = $db->columns($meta->table());
+			$col = $columns ? self::nulogColumn($columns, $meta->table()) : null;
+			$pk  = $columns ? self::column($columns, $meta->primaryKey()) : null;
+			if ($col === null || $pk === null) return;
+			$t = NuDB::ident($meta->table());
+			$c = NuDB::ident($col);
+			$k = NuDB::ident($pk);
+			$row = $db->one("SELECT $c AS nl FROM $t WHERE $k = ?", [$recordId]);
+			if ($row === null) return;
+			$d = json_decode((string)($row['nl'] ?? ''), true);
+			if (!is_array($d) || array_is_list($d)) $d = ['added' => ['user' => 'unknown', 'time' => 0]];
+			$d['viewed'] = ['user' => self::nulogUser(), 'time' => time()];
+			$db->run("UPDATE $t SET $c = ? WHERE $k = ?", [(string)json_encode($d), $recordId]);
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next nulog viewed ' . $meta->code() . ': ' . $e->getMessage());
+		}
+	}
+
 	/** "Added …" / "Edited …" of a record for the ⋮ menu (null: the table has no _nulog column or it is empty). */
 	public static function nulogInfo(NuFormMeta $meta, string $recordId): ?array
 	{
@@ -116,7 +144,9 @@ final class NuRecord
 
 		NuPhp::reset();
 		NuPhp::$subforms = self::nuSubformObjects($meta, $posted);
-		$hash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, $values, $props);
+		// fields of a new record left empty are not written, but they are hash variables ('') as in nuBuilder Forte (0.8.977)
+		$blank = $isNew && is_array($p['untouched'] ?? null) ? array_fill_keys(array_filter(array_map('strval', $p['untouched']), static fn($f) => preg_match('/^\w{1,100}$/', $f) === 1), '') : [];
+		$hash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, $values + $blank, $props);
 		$formData = self::nuFormData($meta, $isNew ? '-1' : $recordId, $values, $edited);   // nuBuilder's #nuFORMdata# (0.8.462)
 		$hash['nuFORMdata'] = $formData;
 		self::$accessHash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, [], $props);   // access conditions (0.8.382): as when the form was drawn
@@ -194,11 +224,12 @@ final class NuRecord
 				foreach ($set as $a => $v) if (($c = self::column($columns, $a)) !== null) $row[$c] = self::dbValue($v, $columns[$c]);
 			}
 
-			// nuBuilder's <table>_nulog: added on insert, edited on every save of an existing record (as nuBuilder)
+			// nuBuilder's <table>_nulog: added on insert, edited when a field of the record itself is written – a save that only changed
+			// sub-form rows leaves the main record's log as it was, as nuBuilder Forte (no UPDATE of an unedited row, 0.8.976)
 			$nl = self::nulogColumn($columns, $meta->table());
 			if ($nl !== null) unset($row[$nl]);
 			$written = $row;
-			if ($nl !== null) $row[$nl] = $isNew ? self::nulogAdded() : self::nulogEdited($db->value("SELECT $nl FROM $table WHERE $pk = ?", [$recordId]));
+			if ($nl !== null && ($isNew || $row !== [])) $row[$nl] = $isNew ? self::nulogAdded() : self::nulogEdited($db->value("SELECT $nl FROM $table WHERE $pk = ?", [$recordId]));
 
 			if ($isNew) {
 				$pkCol = self::column($columns, $meta->primaryKey());

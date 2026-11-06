@@ -3,6 +3,197 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.979 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, OWASP ZAP).
+- Documentation brought up to date for 0.8.964–0.8.978 (the comparison of another nuBuilder Forte database with nuBuilder Next):
+  differences table (JavaScript variables of form code, `DOMContentLoaded` handlers, SQL errors in `nuRunQuery`), hash variables of
+  the opening form, multiple selects, the list of ported functions, the tutorial's nuBuilder Forte track, TODO.
+
+## 0.8.978 – Formatting tags, select values and data-nu-form as in Forte
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (a feedback form and a number management form with a
+  history sub-form):
+- Labels of objects close every unclosed formatting tag inside the object (`<s>`, `<strike>`, `<code>`, `<tt>`, `<nobr>`, `<mark>`,
+  `<del>`, `<ins>` besides the ones already handled) – a word object's label with a typo like `<s/mall>` opened a strike-through
+  that the browser carried on over every field after it.
+- A select whose stored value is not one of its options shows nothing chosen, as in Forte (before: an extra option with the raw
+  value). The value stays in the database unless the field is edited.
+- Fields carry Forte's `data-nu-form` attribute: '' on the main form, the sub-form's id in its rows (also rows added later) – form
+  code that builds a row prefix from it (`el.attr('data-nu-form') + row number`) read "undefined".
+
+## 0.8.977 – List boxes and the hash of empty fields as in Forte
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (a request form that shows its fields by the chosen
+  request and sends an e-mail After Save):
+- A multiple select is the browser's list box unless "Select2" is on, as in Forte (before: every multiple select was a searchable
+  Tom Select dropdown). Form code that changes it like a native select (`removeAttr('multiple')`, `size`) works again – the list
+  was 1 px wide.
+- Fields of a new record left empty are hash variables with an empty value in Before / After Save, as in Forte – they are still
+  not written. An e-mail subject built with `nuReplaceHashVariables('… #field#')` kept the `#field#` text.
+- `nuReplaceHashVariables()` trims the text, as Forte's.
+
+## 0.8.976 – Hash of the opening form, lookups and nulog as in Forte
+- User form: a new user (no id yet) showed the PHP warnings "Undefined array key nu_pwr_link" / "Trying to access array offset on
+  null" in the password reset box – the empty id matched the missing one-time link.
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (a yearly balance form with a sub-form and Next /
+  Previous buttons):
+- A form opened from an edit form (`nuForm`, run buttons, framed run objects) gets that record's fields as hash variables, below its
+  own values – nuBuilder Forte's `nuHashFromEditForm`. Display SQL of a new record such as `… WHERE year = #year# + 1` now finds the
+  same row as in Forte. Opened from a list nothing is passed on. Source "opening form" in the hash viewer.
+- A lookup whose stored id is not in the lookup's list (its Before Browse leaves it out) is empty, the id too, as in Forte – form code
+  that reads the id (`nuSubformObject`) got a value Forte never shows. Nothing is saved unless the field is edited.
+- `<table>_nulog`: "edited" is written only when a field of the record itself is saved – a save that only changed sub-form rows
+  leaves the main record's log as it was, as in Forte.
+
+## 0.8.975 – Form code helpers and launch forms as in Forte
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (a launch form that builds input fields from a text
+  template):
+- Layout helpers of Forte's form code: `nuGetWordWidth`, `nuCreateElementWithId`, `nuSetObjectBounds`, `nuTotalWidth`,
+  `nuTotalHeight`, `nuRoundNearest` (before: "not defined" – the form's code stopped half way and the fields were never built).
+  `nuGetWordWidth` measures in the font of the form's labels.
+- `$(…).clone()` of a field of the fixed layout keeps the size the field shows (px instead of the wrapper's 100 %) and the look of
+  the fixed layout (class `nuAbsClone`) – fields cloned by form code next to `#nuRECORD` were page-wide and tall.
+- `nuSetPlaceholder(id)` without a text uses the field's format (dd.mm.yyyy, 1000.00), as Forte; a field without a format still
+  gets its label.
+- `$(…).val()` of a checkbox field is "on", as in Forte (the field has no value attribute any more; the saved value still comes from
+  the tick).
+- Leaving a launch form after an edit (`nuGetBreadcrumb()`, links, reload) does not ask any more – a launch form is never saved, as
+  in Forte.
+
+## 0.8.974 – Framed forms and list details as in Forte
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (a form with an embedded list as preview):
+- Framed forms (run objects shown as iframe) get the properties the form's code set while loading (`nuSetProperty` before the frame
+  loads), as in Forte – a preview list whose SQL needs such a property showed no rows.
+- The run filter of a run object / `nuForm(…, filter)` is found in the primary key and in hidden columns (width 0), as Forte's
+  search over all columns; the user's own search still skips hidden columns.
+- List column titles no longer carry `data-nu-column` (only the cells do, as in Forte) – form code that rewrites every
+  `[data-nu-column=0]` element turned the title into broken markup.
+- Form pages have Forte's body id `#nubody`; the list footer has Forte's id `#nuBrowseFooter`; `nuFORM.getCurrent()` carries
+  `pages` and `page_number`.
+- Form code that hides `#nuActionHolder` (or `#nuSearchField`) at load hides the list's search row too, as in Forte where the search
+  sits in the action holder; the action holder can be hidden with `$(…).hide()` (no `d-flex !important` any more). In framed forms the
+  title is `#nuBreadcrumbHolder`, so hiding it works there too.
+- The row height of a list (`sfo_browse_row_height`) cuts longer cell content, as in Forte (before, rows grew; not in the phone cards).
+- Methods the form's code adds to built-in prototypes (`Date.prototype.x = function …`) further down are defined before the code
+  above them calls them – in Forte the page keeps them from the list, here each record is a new page.
+- Fixed layout as in Forte: HTML objects and framed run objects show their label, an editor (TinyMCE) does not; text fields
+  narrower than 80 px use Forte's narrow side padding (a time "05:00" in 47 px was cut); a button label cut by less than a pixel
+  now takes the tighter padding.
+- TinyMCE of forms shows the File menu by default, as in Forte.
+
+## 0.8.973 – Run buttons with their own onclick
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (a button on User Home):
+- A run button with an onclick event of its own runs both, as nuBuilder Forte: first the run (open the form, report or procedure),
+  then the event. Before, the event replaced the run – a button whose event shows a loading spinner (`nuButtonLoading`) only spun
+  and never opened its form.
+- `nuFORM.getCurrent()` carries the list properties (`browse_columns`, `browse_rows` …), as Forte's breadcrumb – form code that looks
+  up column numbers by title failed.
+- `nuFORM.getCurrent().browse_sql` lists the hash variables of the list's SQL that had no value (Forte sends the SQL with the values
+  filled in; nuBuilder Next does not send the SQL itself) – form code that reloads the list while a property is still missing works.
+
+## 0.8.972 – Auto layout of fixed-layout forms
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (the portal form in the Auto layout):
+- Auto and Grid layouts: a tiny HTML object (at most 30 × 30 px – it holds styles or code, or a decoration drawn for the fixed
+  layout, such as a background grid behind the buttons) takes no room any more. Its content had pushed every button below it far
+  down the page; its styles and scripts still apply.
+- Run buttons keep their own height in these layouts (they were at least 60 px high), and a row without field labels leaves no
+  space for one above its buttons.
+
+## 0.8.971 – Portal forms as in Forte
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (a portal form and the forms its buttons open):
+- The header style of the form pages comes before the form, as in nuBuilder Forte – a `<style>` element of an HTML object now wins
+  over it (a grid of boxes had the column layout of the shared style instead of its own).
+- An unclosed tag in a label (`<big>` without its end tag) stays inside that label – it enlarged every later title of the form.
+  Applies to words, buttons, field labels and sub-form column titles.
+- Word objects are bold and 13 px in the fixed layout, as in Forte.
+- A form button tall enough for two lines wraps its label instead of cutting it with ….
+- `nuCurrentProperties().filter` (and `nuFORM.getCurrent().filter`) returns the run filter the form was opened with – form code
+  that names the list after it showed the wrong title.
+- The selected tab carries the class `nuTabSelected`, as in Forte – form code that reads `$('.nuTabSelected')[0].id` (a vertical
+  tab menu) failed.
+- The blank row of a sub-form has its delete box ticked until the row is edited, as in Forte.
+- A Display object whose SQL or procedure fails stays empty, as in Forte; the error goes to the Debug results (the error text in the
+  value made form code enable buttons that check for a value).
+- A lookup whose record is not found shows an empty code (it showed the stored id).
+
+## 0.8.970 – HTML object controls as in Forte
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):
+- Controls that form code puts into an HTML object (filter selects, a date field) no longer mark the record as edited – a filter
+  that reloads the form asked about unsaved changes and stopped, as nuBuilder Forte never does; they also no longer get the first
+  focus when the form opens.
+- An element with the class `row` inside an HTML object that holds no Bootstrap columns is no Bootstrap grid any more – nuBuilder
+  Forte loads no Bootstrap on form pages, so buttons in such a "row" stood one below the other at full width. Rows with `col…`
+  children keep the grid.
+
+## 0.8.969 – Sixth form of the second Forte database
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):
+- Browser tab title as nuBuilder Forte when the shared settings nuShowBrowserTabTitle / nuBrowserTabTitlePrefix are set (read with
+  `$nuConfigSettingsFromDB = true`, as Forte): "<prefix> - <form or record title>", also after `nuSetTitle()`; prefix only when the title
+  is switched off. Without those settings the title stays as before.
+
+## 0.8.968 – Fifth form of the second Forte database
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):
+- Run buttons carry nuBuilder Forte's onclick (`nuForm(…)`, `nuPopup(…)`, `nuRunReport(…)`, `nuRunPHP(…)`) – form code that reads or
+  rewrites it works, e.g. replaces a `#name#` in the record id with a value it found (a button to the matching record did nothing:
+  "Cannot read properties of null"). The leave question for unsaved changes stays (`nuRunButton()`); a run object with an onclick
+  event of its own keeps it as before.
+- Selects that form code adds to the action bar without a class get the size and border of the bar's controls (Forte styles every
+  select).
+
+## 0.8.967 – Fourth form of the second Forte database
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form and the form its button opens):
+- Controls carry nuBuilder Forte's classes: `input_<input type>` (e.g. `input_nuNumber`, `input_text`, `input_checkbox`), Calc
+  `input_text`, Display `input_`, and `nuReadonly` on read-only fields – form code that selects `$('.input_nuNumber')` works (a
+  switch between hours and days did nothing before).
+- An object's alignment applies where nuBuilder Forte applies it (inputs, Display, Calc, Word, Run) – an HTML object with "center" kept
+  its text left in Forte but was centred.
+- List titles: the title text has Forte's id `nusort_<column>` (code that styles a title, e.g. bold).
+- A negative number that rounds to zero keeps its minus ("-0.0"), as nuBuilder Forte shows it; brackets (saved formats) still drop it.
+- `nuAlign()` / `nuAlignmentStyle()` (l / r / c → CSS) as in Forte.
+- Run button "Popup": the dialog shows the opened form's title, and a list is as wide as its columns (at most the window), as in Forte;
+  a form in a dialog of a wide window keeps the desktop layout (a narrow dialog showed the list as phone cards).
+- `nuCurrentProperties().browse_rows[i][0]` keeps the primary key's type (a number stays a number).
+
+## 0.8.966 – Another form of the second Forte database
+- Found by comparing another nuBuilder Forte database with nuBuilder Next (next form):
+- Lists keep the stored column widths unless the columns are to be fitted, as in nuBuilder Forte: the form's "Fit columns" = 1, or
+  empty and the shared setting nuAutosizeBrowseColumns on (its default). Otherwise the list is as wide as its columns and scrolls
+  sideways (before, the columns were always squeezed into the window and values were cut). A stored width is the content's width –
+  the cell padding comes on top, as in Forte.
+- HTML objects: sizes as in the browser (`box-sizing: content-box`, nuBuilder Forte loads no global border-box) – a box with height and
+  padding written for Forte is as tall as there (its fields no longer stand out below the frame).
+- Images of form code with a path relative to nuBuilder Forte's folder (e.g. `custom/graphics/x.png` in list cells) load from Forte's
+  folder when nuBuilder Next's folder does not have them.
+- `nuCopyToClipboard()` with a field (jQuery object or element) copies its value, as in Forte (copied "[object Object]" before).
+- `nuSERVERRESPONSE.home_id` (code that writes the address with `&h=` – it said "undefined").
+- Buttons of the fixed layout use the tighter side padding when their label does not fit (a "Copy" button in 50 px showed "Co…").
+
+## 0.8.965 – Second Forte database compared
+- Found by comparing another nuBuilder Forte database with nuBuilder Next, form by form:
+- `nuHasNotBeenEdited()` / `nuSetSaved()` only reset the record's edited state (Save button, leave question), as in nuBuilder Forte –
+  the fields keep their edit marks. Values a form's code set while loading (e.g. the first row of a new record's sub-form, then
+  `nuHasNotBeenEdited()`) were not saved before.
+- nuBuilder Forte's record log `<table>_nulog` gets "viewed" (user, time) each time a record is opened.
+- PHP hash of form events: `#user_id#`, `#session_id#` and `#redirect_form_id#` (lower case) as nuBuilder Forte sends them with every
+  request (e.g. `nuHash()['user_id']` in After Save code).
+- List cells are drawn as in nuBuilder Forte: `div#nucell_<row>_<column>.nuCell` (with data-nu-row / -column / -primary-key) inside the
+  table cell – form code that selects `div[id^='nucell_…']` (e.g. colouring rows) works.
+- `nuCurrentProperties().browse_rows` holds the values as the browse SQL returned them, not the formatted text of the cells.
+- `nuAddJavascript()` of Before Edit / Before Browse and the form's JavaScript run in one script, as in nuBuilder Forte – the added code
+  may call a function the form's JavaScript declares (it ran first and alone before: "… is not defined").
+- Relative `src` / `href` of `<script>` / `<link>` tags in the Setup header (e.g. `libs/x.js`) that only exist in nuBuilder Forte's
+  folder are linked there (they gave 404 in nuBuilder Next's subfolder).
+- Grid sub-forms: a cell's id is nuBuilder Forte's row holder `<prefix>nuRECORD` (was `<prefix><field>_nucell` – selectors like
+  `[id^="<sub-form>"][id*="<field>"]` also caught the cell); `nuAddRow()` works as in nuBuilder Forte (the blank row becomes a row, a new
+  blank row follows, the focus goes there – before, a second blank row was added); `nuSubformToClipboard()` includes the nuDelete column.
+- Fixed layout: a label's top / left set by form code are form coordinates as in nuBuilder Forte (e.g. a label moved above its field);
+  before, setting a label's top moved the field too. The canvas grows with HTML objects whose content the code fills later (it was cut
+  at the stored height); a table caption in an HTML object stays above its table.
+- Look in nuBuilder Forte's sizes: list cells and titles with less side padding (fewer values cut with …, titles break between words
+  only), grid sub-form controls keep their object's width (cell padding added to the column) with smaller side padding, narrow number
+  fields show their value.
+
+## 0.8.964 – Notes
+- Development notes: v0.8.963 is published on GitHub.
+
 ## 0.8.963 – Release gate
 - Release gate (full test run: smoke, all end-to-end tests, the compatibility suite with nuBuilder Forte – now including every
   Forte system form opened as a form – and the OWASP ZAP scan).

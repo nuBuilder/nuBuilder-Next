@@ -112,7 +112,9 @@ final class NuFormat
 		$s = self::numberSpec($pattern);
 		$n = (float)$value;
 		$body = $s['prefix'] . number_format(abs($n), $s['places'], $s['dec'], $s['sep']) . $s['suffix'];
-		if ($n >= 0 || round(abs($n), $s['places']) == 0) return $body;
+		// a negative value that rounds to 0 keeps its minus ("-0.0") as nuBuilder Forte's formatting (toFixed) shows it (0.8.965);
+		// brackets (nuBuilder Next's saved formats) only for values that are not 0 after rounding
+		if ($n >= 0 || (str_ends_with($negative, 'brackets') && round(abs($n), $s['places']) == 0)) return $body;
 		// minus after the prefix, as nuBuilder's addFormatting (€ -99,95 – 0.8.364); brackets around the whole value
 		return str_ends_with($negative, 'brackets') ? "($body)" : $s['prefix'] . '-' . substr($body, strlen($s['prefix']));
 	}

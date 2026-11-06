@@ -30,12 +30,13 @@ final class NuSettings
 		'$nuConfigTitle' => ['next', 'next'], '$nuConfigIncludeApexCharts' => ['next', 'next'], '$nuConfig2FAAdmin' => ['next', 'next'],
 		'$nuConfig2FAUser' => ['next', 'next'], '$nuConfigDemoSavingAllowedIds' => ['next', 'next'], '$nuConfigEnableDatabaseUpdate' => ['next', 'next'], '$nuConfigPrimaryDatabaseManagement' => ['next', 'next'],
 		'$nuUseMd5PasswordHash' => ['next', 'next'], '$nuConfig2FASafeIPAddresses' => ['next', 'next'], '$nuConfigHomeHooks' => ['next', 'next'],
+		'nuAutosizeBrowseColumns' => ['next', 'next'], 'nuBrowserTabTitlePrefix' => ['next', 'next'], 'nuShowBrowserTabTitle' => ['next', 'next'],   // 0.8.965                // 0.8.965: lists keep the stored column widths when off
 		'$nuConfigUserAdditional1Label' => ['next', 'next'], '$nuConfigUserAdditional2Label' => ['next', 'next'], '$nuConfigUserCodeLabel' => ['next', 'next'],   // 0.8.798: t() / nu_user_label()
 		// not built yet
 		'$nuConfigDBGlobeadminUsers' => ['open', 'open'],
-		'nuStickyHeaders' => ['open', 'open'], 'nuAutosizeBrowseColumns' => ['open', 'open'],
+		'nuStickyHeaders' => ['open', 'open'],
 		'nuBrowsePaginationInfo' => ['open', 'open'], 'nuPrintButton' => ['open', 'open'], 'nuEditCloseAfterSave' => ['open', 'open'],
-		'nuBrowserTabTitlePrefix' => ['open', 'open'], 'nuShowBrowserTabTitle' => ['open', 'open'], 'nuPreventButtonDblClick' => ['open', 'open'], 'nuShowJSErrors' => ['open', 'open'],
+		'nuPreventButtonDblClick' => ['open', 'open'], 'nuShowJSErrors' => ['open', 'open'],
 		'nuCalendarStartOfWeek' => ['open', 'open'], 'nuCalendarWeekNumbers' => ['open', 'open'], '$nuConfig2FAShowRememberMe' => ['open', 'open'],
 		// not needed in nuBuilder Next
 		'nuDebugIcon' => ['na', 'menu'], 'nuDatabaseIcon' => ['na', 'menu'], 'nuToolsIcon' => ['na', 'menu'], 'nuObjectsIcon' => ['na', 'menu'],

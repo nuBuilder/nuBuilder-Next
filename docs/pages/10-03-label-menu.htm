@@ -22,6 +22,7 @@
 </table></div>
 <ul>
 <li><b>Order</b>: system and user variables win, then record fields, then properties, then hash cookies – a field called <code>USER_ID</code> or a property can never replace <code>#USER_ID#</code>.</li>
+<li><b>Opening form</b>: a form opened from an edit form (<code>nuForm</code>, a run button, a framed run object) also gets that record's fields as hash variables, after all the others – as nuBuilder Forte. A display of a new record can so use <code>#year#</code> of the record it was opened from. Opened from a list, nothing is passed on. In Before / After Save the empty fields of a new record are hash variables with an empty value.</li>
 <li><b>Escaping</b> (difference to nuBuilder Forte): values are escaped for where they go – quotes in SQL, quotes and <code>$</code> in PHP strings, HTML entities in HTML. A value can't break out of <code>'#field#'</code>. Write hashes inside quotes in SQL and PHP.</li>
 <li id="hash-bound"><b>Bound parameters</b> (<code>$nuDevSelectQueryRunParameterised = true;</code> in <code>nuconfig.php</code>, a setting of nuBuilder Forte): the hash variables of the <b>browse SQL</b> and its columns, of <b>select objects</b> and of <b>access conditions</b> are passed to the database as bound parameters (<code>?</code>) instead of text. nuBuilder Forte does it for select objects and access conditions; nuBuilder Next also for browse lists. Rules:
 	<ul>

@@ -4240,6 +4240,7 @@ return [
 	'hash_src_record' => '字段',
 	'hash_src_property' => '表单属性',
 	'hash_src_global' => '哈希 Cookie',
+	'hash_src_caller' => '调用表单',
 	'form_err_property_name' => '“%s”不能用作属性名称（字母、数字、_；不能是系统变量）。',
 	'hv_title' => '插入哈希变量',
 	'hv_search' => '搜索 …',
