@@ -747,12 +747,7 @@ try {
 
 			if (is_array($in['grid'] ?? null)) {
 				$g = $in['grid'];
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, [
-					'row' => isset($g['row']) && $g['row'] !== '' ? max(1, (int)$g['row']) : null,
-					'col' => isset($g['col']) && $g['col'] !== '' ? (int)$g['col'] : null,
-					'span' => isset($g['span']) && $g['span'] !== '' ? max(1, min(12, (int)$g['span'])) : null,
-					'box' => isset($g['box']) && preg_match('/^\w+$/', (string)$g['box']) ? (string)$g['box'] : null,
-				]);
+				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, NuResponsive::gridKeys($g, (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '')));
 			}
 
 			if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url

@@ -43,6 +43,26 @@ final class NuSqlSelect
 	 * Saves the query and replaces its clauses. $in: sse_code, sse_description, sse_json, sse_sql, sse_edit, clauses (list of
 	 * [ssc_type, ssc_field, ssc_clause, ssc_sort, ssc_order]). @return array{0: string, 1: array} [id, errors]
 	 */
+	/**
+	 * Same graphic although the builder writes it out fully (0.8.957): nuBuilder Forte leaves a table's checkbox list short when the last
+	 * columns are not ticked – a missing entry is false.
+	 */
+	private static function sameGraphic(string $old, string $new): bool
+	{
+		$a = json_decode($old, true); $b = json_decode($new, true);
+		if (!is_array($a) || !is_array($b)) return false;
+		$norm = static function (array $j): array {
+			foreach ((array)($j['tables'] ?? []) as $i => $t) {
+				if (!is_array($t) || !isset($t['checkboxes']) || !is_array($t['checkboxes'])) continue;
+				$c = array_values($t['checkboxes']);
+				while ($c && end($c) === false) array_pop($c);
+				$j['tables'][$i]['checkboxes'] = $c;
+			}
+			return $j;
+		};
+		return json_encode($norm($a)) === json_encode($norm($b));
+	}
+
 	public static function save(array $in, string $id = ''): array
 	{
 		$db = nu_db();
@@ -75,6 +95,11 @@ final class NuSqlSelect
 				$id = nu_id();
 				$db->insert(self::TABLE, ['zzzzsys_select_id' => $id] + $row);
 			} else {
+				// an empty graphic the builder writes for nuBuilder Forte's NULL is no change (0.8.956)
+				$old = $db->one('SELECT * FROM ' . self::TABLE . ' WHERE zzzzsys_select_id = ?', [$id]);
+				if ($old && $old['sse_json'] === null && is_array($j = json_decode($row['sse_json'], true)) && empty($j['tables']) && empty($j['joins'])) unset($row['sse_json']);
+				elseif ($old && self::sameGraphic((string)$old['sse_json'], $row['sse_json'])) unset($row['sse_json']);
+				$row = NuDB::keepNull($old, $row, ['sse_edit' => '0']);
 				$db->update(self::TABLE, $row, 'zzzzsys_select_id', $id);
 			}
 			// keep the clause rows (and their ids) that did not change, reuse the others – as nuBuilder's sub-form, which only

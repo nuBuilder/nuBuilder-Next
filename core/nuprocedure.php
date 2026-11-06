@@ -106,6 +106,9 @@ final class NuProcedure
 		$cols = $db->columns('zzzzsys_php');
 		$row = array_intersect_key($row, $cols);
 		if ($id !== '') {
+			// NULL columns of nuBuilder Forte's row stay NULL while the form shows their default (0.8.956)
+			$row = NuDB::keepNull($db->one('SELECT * FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$id]), $row,
+				['sph_status' => '1', 'sph_javascript_active' => '0', 'sph_global' => '0', 'sph_demo' => '0', 'sph_run' => '']);
 			$db->update('zzzzsys_php', $row, 'zzzzsys_php_id', $id);
 			return [$id, []];
 		}

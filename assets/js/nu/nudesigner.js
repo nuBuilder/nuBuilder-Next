@@ -177,7 +177,7 @@
 		if (e.button !== 0) return;
 		e.preventDefault();
 		window.focus();                                               // preventDefault keeps the focus outside: arrow keys need it here
-		if (absolute && mod(e)) { toggle(w); return; }                // Ctrl / ⌘ + click: add / remove (0.8.606)
+		if (mod(e)) { toggle(w); return; }                            // Ctrl / ⌘ + click: add / remove (0.8.606; auto / grid layouts too, 0.8.959)
 		if (!absolute || sel.indexOf(w) < 0) select(w, true);
 		else { selected = w; paint(); send({nuBuilderPick: idOf(w)}); }
 		var sx = e.clientX, sy = e.clientY, moved = false;

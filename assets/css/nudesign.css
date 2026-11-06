@@ -342,3 +342,7 @@ html.nuDsWorkOpen body { overflow: hidden; }
 #nuDsColTree .nuDsTreeRow { cursor: grab; }
 #nuDsColTree .nuDsTreeRow.nuDsListDragging { opacity: .4; }
 #nuDsColTree .nuDsTreeRow.nuDsDropAfter { box-shadow: inset 0 -2px 0 var(--bs-primary); }
+/* responsive containers (0.8.959) */
+.nuDsGrid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.nuDesignMode .nuHideSm, .nuDesignMode .nuHideMd, .nuDesignMode .nuHideLg { display: block !important; opacity: .45; }
+.nuDesignMode .nuStack { outline: 1px dashed var(--bs-border-color); outline-offset: 2px; }

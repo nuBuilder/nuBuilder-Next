@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.952');
+define('NU_VERSION', '0.8.963');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -38,7 +38,7 @@ const NU_AUTOLOAD = [
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php', 'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php', 'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',
-	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuSso' => 'core/nusso.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuFormRules' => 'core/form/nurules.php', 'NuSelectSource' => 'core/form/nuselectsource.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxStream' => 'core/nuxlsxstream.php', 'NuDataExport' => 'core/nudataexport.php', 'NuPermType' => 'core/nupermtype.php', 'NuFormEveryone' => 'core/nuformeveryone.php', 'NuFormStatus' => 'core/nuformstatus.php', 'NuSpreadsheet' => 'core/nuspreadsheet.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
+	'NuBuilderGen' => 'core/form/nubuilder_gen.php', 'NuFnRef' => 'core/nufnref.php', 'NuSnippets' => 'core/nusnippets.php', 'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuWebhook' => 'core/nuwebhook.php', 'NuIpAccess' => 'core/nuipaccess.php', 'NuSso' => 'core/nusso.php', 'NuBs6' => 'core/nubs6.php', 'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php', 'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuAiContext' => 'core/form/nuaicontext.php', 'NuFormRules' => 'core/form/nurules.php', 'NuSelectSource' => 'core/form/nuselectsource.php', 'NuOnProcess' => 'core/form/nuonprocess.php', 'NuPrintView' => 'core/form/nuprintview.php', 'NuResponsive' => 'core/form/nuresponsive.php', 'NuXlsx' => 'core/nuxlsx.php', 'NuXlsxStream' => 'core/nuxlsxstream.php', 'NuDataExport' => 'core/nudataexport.php', 'NuPermType' => 'core/nupermtype.php', 'NuFormEveryone' => 'core/nuformeveryone.php', 'NuFormStatus' => 'core/nuformstatus.php', 'NuSpreadsheet' => 'core/nuspreadsheet.php', 'NuXlsxSheet' => 'core/nuxlsx.php', 'NuXlsxCell' => 'core/nuxlsx.php', 'NuXlsxStrings' => 'core/nuxlsx.php', 'NuPage' => 'core/nupage.php', 'NuPageContext' => 'core/nupage.php', 'NuPageVersion' => 'core/nupageversion.php', 'NuUserHome' => 'core/nuuserhome.php', 'NuLibraries' => 'core/nulibraries.php', 'NuLibs' => 'core/nulibs.php', 'NuFileManager' => 'core/nufilemanager.php', 'NuSubject' => 'core/nusubject.php', 'NuFieldAccess' => 'core/nufieldaccess.php', 'NuBrowseAccess' => 'core/nubrowseaccess.php',
 ];
 spl_autoload_register(static function (string $class): void {
 	if (isset(NU_AUTOLOAD[$class])) require_once NU_ROOT . '/' . NU_AUTOLOAD[$class];
@@ -155,6 +155,18 @@ function nu_timezone(): array
 function nu_apply_timezone(): void
 {
 	date_default_timezone_set(nu_timezone()[0]);
+	$GLOBALS['nu_tz_applied'] = true;
+	if (NuDB::$connected) nu_db_timezone(nu_db());
+}
+
+/**
+ * The database session's time zone = the offset of the application's time zone now – as nuBuilder Forte's nuClientTimeZone()
+ * ("SET time_zone = '+1:00'", MySQL only), so NOW(), FROM_UNIXTIME() … in SQL give the same times in both products (0.8.956).
+ */
+function nu_db_timezone(NuDB $db): void
+{
+	if ($db->type !== 'mysql') return;
+	try { $db->pdo()->exec("SET time_zone = '" . date('P') . "'"); } catch (Throwable $e) { error_log('nuBuilder Next time zone: ' . $e->getMessage()); }
 }
 
 /** A setting: with $nuConfigSettingsFromDB = true the value of nuBuilder's settings table (zzzzsys_config) wins, as in nuBuilder. */
@@ -192,7 +204,7 @@ function nu_db(): NuDB
 
 	$c = nu_config();
 	try {
-		return $db = new NuDB([
+		$db = new NuDB([
 			'type'       => $c['nuConfigDBType'],
 			'host'       => $c['nuConfigDBHost'] ?? '127.0.0.1',
 			'port'       => $c['nuConfigDBPort'],
@@ -204,6 +216,8 @@ function nu_db(): NuDB
 			'options'    => (array)$c['nuConfigDBOptions'],
 			'trust_cert' => $c['nuConfigDBTrustServerCertificate'],
 		]);
+		if (!empty($GLOBALS['nu_tz_applied'])) nu_db_timezone($db);
+		return $db;
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next DB connect: ' . $e->getMessage());
 		$failing = true;

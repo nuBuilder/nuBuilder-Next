@@ -335,7 +335,7 @@ final class NuAuth
 			// language: one picked on the sign-in page, else nuBuilder's default language (Setup → set_language, as nuBuilder does) – 0.8.312
 			self::applyLanguage(null, '', true);
 			return self::afterPassword(['id' => 'globeadmin', 'globeadmin' => true, 'fp' => self::adminFingerprint(), 'login' => $adminName],
-				(bool)nu_cfg('nuConfig2FAAdmin'), (string)(nu_cfg('nuConfigGlobeadminEmail') ?: NuMail::settings()['from']));
+				(bool)nu_cfg('nuConfig2FAAdmin') && !self::safe2faIp('globeadmin'), (string)(nu_cfg('nuConfigGlobeadminEmail') ?: NuMail::settings()['from']));
 		}
 
 		$db  = nu_db();
@@ -382,9 +382,64 @@ final class NuAuth
 		self::applyLanguage((string)$row['sus_language'], (string)$row['zzzzsys_user_id'], true);
 
 		$need2fa = (bool)nu_cfg('nuConfig2FAUser') && self::levels2fa((string)$access['sal_use_2fa'] === '1', (string)$row['zzzzsys_user_id'])
-			&& !NuDemo::isDemoUser((string)$row['zzzzsys_user_id']);   // demo users: no second factor
+			&& !NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])     // demo users: no second factor
+			&& !self::safe2faIp('user', (string)$row['sus_login_name']);  // $nuConfig2FASafeIPAddresses (0.8.958)
 		return self::afterPassword(['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'fp' => self::fingerprint($hash), 'login' => (string)$row['sus_login_name']],
 			$need2fa, (string)$row['sus_email']);
+	}
+
+	/**
+	 * nuBuilder Forte 4.9.1: $nuConfig2FASafeIPAddresses = ['globeadmin' => [addresses], 'user' => ['*' => [addresses], '<login>' => […]]] –
+	 * from such an address the second factor is skipped. Entries: an address, a network with a prefix (10.0.0.0/8, 2001:db8::/32) or
+	 * a pattern with * for whole parts (192.168.*.*). A list may also be one text separated by ";" (as Forte accepts).
+	 */
+	public static function safe2faIp(string $kind, string $login = '', ?string $ip = null): bool
+	{
+		$cfg = nu_cfg('nuConfig2FASafeIPAddresses');
+		if (!is_array($cfg) || !isset($cfg[$kind])) return false;
+		$lists = $kind === 'globeadmin' ? [$cfg[$kind]] : array_values(array_intersect_key((array)$cfg[$kind], array_flip(array_filter(['*', $login], 'strlen'))));
+		$ip = NuIpAccess::ip($ip);
+		if (!filter_var($ip, FILTER_VALIDATE_IP)) return false;
+		foreach ($lists as $list) {
+			$items = is_array($list) ? $list : explode(';', (string)$list);
+			foreach ($items as $pattern) if (self::ipPatternMatches(trim((string)$pattern), $ip)) return true;
+		}
+		return false;
+	}
+
+	public static function ipPatternMatches(string $pattern, string $ip): bool
+	{
+		if ($pattern === '') return false;
+		if (str_contains($pattern, '/')) return NuIpAccess::validRule($pattern) && NuIpAccess::matches([$pattern], $ip);
+		if (!str_contains($pattern, '*')) return @inet_pton($pattern) !== false && @inet_pton($pattern) === @inet_pton($ip);
+		$v6 = str_contains($pattern, ':');
+		if ($v6 !== str_contains($ip, ':')) return false;
+		if (!$v6) {
+			$p = explode('.', $pattern);
+			$a = explode('.', $ip);
+			if (count($p) !== 4) return false;
+			foreach ($p as $i => $part) if ($part !== '*' && (string)(int)$part !== $a[$i]) return false;
+			return true;
+		}
+		$full = static function (string $x): ?array {
+			if (str_contains($x, '::')) {
+				[$l, $r] = explode('::', $x, 2);
+				$lp = $l === '' ? [] : explode(':', $l);
+				$rp = $r === '' ? [] : explode(':', $r);
+				$miss = 8 - count($lp) - count($rp);
+				if ($miss < 0) return null;
+				$g = array_merge($lp, array_fill(0, $miss, '0'), $rp);
+			} else {
+				$g = explode(':', $x);
+			}
+			return count($g) === 8 ? $g : null;
+		};
+		$pg = $full(strtolower($pattern));
+		$bin = @inet_pton($ip);
+		if ($pg === null || $bin === false) return false;
+		$ig = array_map(static fn($h) => ltrim($h, '0') ?: '0', str_split(bin2hex($bin), 4));
+		foreach ($pg as $i => $part) if ($part !== '*' && (ltrim($part, '0') ?: '0') !== $ig[$i]) return false;
+		return true;
 	}
 
 	/** Two-factor login required: by the main access level or by any active additional level (0.8.585, NuUserAccess). */

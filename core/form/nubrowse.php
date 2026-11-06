@@ -366,16 +366,38 @@ final class NuBrowse
 		if ($sort !== null && $sort !== '' && isset($cols[(int)$sort]) && $cols[(int)$sort]['mask'] === null) {
 			$order = 'nu_c' . (int)$sort . " $dir";
 		} else {
-			$order = $defaultOrder !== '' ? $defaultOrder : "nu_pk";
+			$order = $defaultOrder;
 		}
-		$order .= ', nu_pk';
+		// no ORDER BY in the browse SQL and no column sorted: MySQL keeps the table's own order, as nuBuilder Forte (LIMIT without
+		// ORDER BY) – e.g. a Before Browse table made with CREATE TABLE … SELECT … ORDER BY (0.8.956); SQL Server needs one for OFFSET
+		if ($order !== '') $order .= ', nu_pk';
+		elseif ($db->type !== 'mysql') $order = 'nu_pk';
 
 		$rows = [];
-		foreach ($db->page($select . $from, $params, $order, $per, ($page - 1) * $per) as $r) {
+		$fetched = $db->page($select . $from, $params, $order, $per, ($page - 1) * $per);
+		// nuBuilder Forte's nuOnProcessBrowseRows() in Before Browse (0.8.958): the page's rows as [pk, column 0, column 1 …] before formatting
+		if (isset($opt['process']) && is_callable($opt['process']) && $fetched) {
+			$width = $cols ? max(array_map(static fn($c) => (int)$c['index'], $cols)) + 1 : 0;
+			$raw = [];
+			foreach ($fetched as $r) {
+				$x = array_fill(0, $width + 1, null);
+				$x[0] = $r['nu_pk'];
+				foreach ($cols as $c) $x[(int)$c['index'] + 1] = $r['nu_c' . $c['index']];
+				$raw[] = $x;
+			}
+			$fetched = [];
+			foreach ((array)($opt['process'])($raw) as $x) {
+				$x = array_values((array)$x);
+				$r = ['nu_pk' => $x[0] ?? ''];
+				foreach ($cols as $c) $r['nu_c' . $c['index']] = $x[(int)$c['index'] + 1] ?? null;
+				$fetched[] = $r;
+			}
+		}
+		foreach ($fetched as $r) {
 			$cells = $classes = [];
 			foreach ($cols as $k => $c) {
 				$v = $r['nu_c' . $c['index']];
-				$cells[$k]   = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : NuFormat::format(NuSecurity::demoMask($c['expr'], $v), $c['format']);   // demo: no hashes / secrets
+				$cells[$k]   = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : (!empty($opt['raw']) ? (string)(NuSecurity::demoMask($c['expr'], $v) ?? '') : NuFormat::format(NuSecurity::demoMask($c['expr'], $v), $c['format']));   // raw: print view of nuPrintUseBrowseFormats(false) (0.8.958)   // demo: no hashes / secrets
 				$classes[$k] = $c['mask'] !== null ? '' : NuFormat::cssClass($v, $c['format']);
 			}
 			$rows[] = ['pk' => (string)$r['nu_pk'], 'cells' => $cells, 'classes' => $classes];

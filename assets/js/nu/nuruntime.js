@@ -174,13 +174,33 @@
 		var s = d.getFullYear() + '-' + nuPad2(d.getMonth() + 1) + '-' + nuPad2(d.getDate()) + ' ' + nuPad2(d.getHours()) + ':' + nuPad2(d.getMinutes()) + ':' + nuPad2(d.getSeconds());
 		return fmt ? nuFORM.addFormatting(s, fmt) : s;
 	});
+	/** nuBuilder Forte's breadcrumb list properties (0.8.960): browse_rows = the page's rows as [pk, cell 0, cell 1 …] (text), browse_columns
+	 *  = {title, display, align, width} per column, browse_filtered_rows = the number of records of the list. Read from the drawn table. */
+	function browseProps() {
+		if (!N.browse) return {};
+		var cols = [], rows = [];
+		$('#nuBrowseTable thead th[data-nu-column]').each(function () {
+			cols[Number(this.getAttribute('data-nu-column'))] = {title: this.textContent.trim(), display: '', align: (this.className.match(/text-(start|center|end)/) || ['', 'start'])[1].replace('start', 'left').replace('end', 'right'),
+				width: this.style.display === 'none' ? 0 : parseInt(this.style.width, 10) || 0, id: this.getAttribute('data-nu-browse-id') || ''};
+		});
+		$('#nuRECORD tr.nuBrowseRow').each(function () {
+			var r = [this.getAttribute('data-nu-primary-key') || ''];
+			$(this).find('td.nuCell').each(function () { r[Number(this.getAttribute('data-nu-column')) + 1] = this.textContent.trim(); });
+			rows.push(r);
+		});
+		return {browse_columns: cols, browse_rows: rows, browse_filtered_rows: Number(N.browse.total || 0), browse_table_id: ''};
+	}
 	api('nuCurrentProperties', function () {
 		return $.extend({}, N.globals, N.props, {
 			form_id: N.form.id, form_code: N.form.code, form_description: N.form.description, form_type: N.form.type,
 			record_id: N.record_id, user_id: N.user.id, user_name: N.user.name, login_name: N.user.login,
 			access_level_id: N.user.access_level_id, access_level_code: N.user.access_level_code, global_access: N.user.globeadmin ? '1' : '0'
-		});
+		}, browseProps());
 	});
+	// nuBuilder Forte globals / helpers form code relies on (0.8.960): window.nuImages (the Files form fills it per row),
+	// String.prototype.containsAny(array) (the Objects form's nuBeforeSave)
+	if (!window.nuImages) window.nuImages = [];
+	if (!String.prototype.containsAny) String.prototype.containsAny = function (arr) { for (var i = 0; i < (arr || []).length; i++) if (this.indexOf(arr[i]) > -1) return true; return false; };
 	if (!String.prototype.nuCapitalise) String.prototype.nuCapitalise = function () { return this.charAt(0).toUpperCase() + this.slice(1); };
 	if (!String.prototype.nuToTitleCase) String.prototype.nuToTitleCase = function () { return this.replace(/\w\S*/g, function (t) { return t.charAt(0).toUpperCase() + t.substr(1); }); };
 	window.nuSESSION = window.nuSESSION || '';
@@ -249,8 +269,25 @@
 
 	// nuBuilder's nuFORM (nuFormObject) – thin wrappers onto nuBuilder Next's functions (0.8.383). The table / form schema is not
 	// sent to the browser: tableSchema / formSchema stay empty, getTables() and the field lists return [].
-	nuFORM.getProperty = function (f) { return nuGetProperty(f); };
-	nuFORM.setProperty = function (f, v) { return nuSetProperty(f, v); };
+	// nuBuilder Forte keeps the breadcrumb's state in nuFORM (nuformclass.js addBreadcrumb) – form code reads e.g.
+	// nuFORM.getProperty('tab_start')[0].tabNumber; those keys come from the page (0.8.957), the rest are properties
+	var CRUMB = {
+		form_id: function () { return N.form ? N.form.id : ''; }, record_id: function () { return N.record_id; },
+		title: function () { return document.title; }, call_type: function () { return ''; }, filter: function () { return ''; },
+		search: function () { return N.browse ? N.browse.q || '' : ''; }, page_number: function () { return N.browse ? (N.browse.page || 1) - 1 : 0; },
+		rows: function () { return -1; }, sort: function () { return N.browse && N.browse.sort !== null && N.browse.sort !== '' && N.browse.sort !== undefined ? String(N.browse.sort) : '-1'; },
+		sort_direction: function () { return N.browse ? N.browse.dir || 'desc' : 'desc'; },
+		nosearch_columns: function () { return N.browse ? (N.browse.nsc || []).map(Number) : []; },
+		iframe: function () { return N.iframe ? 1 : 0; }, lookup_id: function () { return ''; }, redirect_form_id: function () { return ''; },
+		tab_start: function () { var n = nuSelectedTabNumber(); return [{prefix: '', tabNumber: n === null ? 0 : Number(n)}]; }
+	};
+	var crumbSet = {};
+	nuFORM.getProperty = function (f) {
+		if (Object.prototype.hasOwnProperty.call(crumbSet, f)) return crumbSet[f];
+		if (Object.prototype.hasOwnProperty.call(CRUMB, f)) return CRUMB[f]();
+		return nuGetProperty(f);
+	};
+	nuFORM.setProperty = function (f, v) { if (Object.prototype.hasOwnProperty.call(CRUMB, f)) { crumbSet[f] = v; return; } return nuSetProperty(f, v); };
 	nuFORM.subforms = function () { return [''].concat($('#nuEditForm .nuSubform[id]').map(function () { return this.id; }).get().filter(function (id) { return (N.subforms || {})[id]; })); };
 	nuFORM.subform = function (id) {
 		if (id) return nuSubformObject(id);
@@ -1045,10 +1082,11 @@
 			fields: ['ID'].concat(info.fields).concat(['nuDelete']), rows: [], deleted: [], edited: [], columns: []};
 		$('#' + sf + ' .nuSubformRow').each(function () {
 			var p = this.getAttribute('data-nu-prefix');
-			var row = [this.getAttribute('data-nu-primary-key') || ''], ed = [0];
+			var pk = this.getAttribute('data-nu-primary-key') || '';
+			var row = [pk || '-1'], ed = [0];                                         // a new row's ID is -1, as nuBuilder Forte (0.8.956)
 			info.fields.forEach(function (f) { var el = g(p + f); row.push(rawValue(el)); ed.push(el && el.classList.contains('nuEdited') ? 1 : 0); });
 			var del = g(p + 'nuDelete');
-			var isBlankNew = row[0] === '' && !this.classList.contains('nuRowEdited');
+			var isBlankNew = pk === '' && !this.classList.contains('nuRowEdited');
 			var d = (del && del.checked) || isBlankNew ? 1 : 0;
 			row.push(d);
 			o.rows.push(row); o.deleted.push(d); o.edited.push(ed);
@@ -1328,7 +1366,7 @@
 		if (window.nuBeforeSave) {
 			var ok;
 			try { ok = window.nuBeforeSave(); } catch (x) { reportError(x.message, 'nuBeforeSave'); return; }
-			if (!ok) return;
+			if (ok === false) return;                                       // only false stops the save – a nuBeforeSave without return saves (Forte, 0.8.960)
 		}
 		var btn = $('#nuSaveButton').prop('disabled', true);
 		var edited = $('#nuEditForm .nuEdited').map(function () { return this.getAttribute('data-nu-prefix') ? null : this.getAttribute('data-nu-field'); }).get();
@@ -2382,12 +2420,58 @@
 	$(document).on('click', '#nuRunReportButton', function () { nuRunReport(this.getAttribute('data-nu-report')); });
 	api('nuRunReportAction', function (code) { return nuRunReport(code); });
 
+	// =================================================================== print view settings (nuBuilder Forte's nuform.js, 0.8.958)
+	// The same properties as Forte – read by the server for the print view and its CSV / Excel export (core/form/nuprintview.php).
+	api('nuPrintIncludeColumns', function (arr) { nuSetProperty('nuPrintIncludedColumns', nuEncode(arr)); });
+	api('nuPrintExcludeColumns', function (arr) { nuSetProperty('nuPrintExcludedColumns', nuEncode(arr)); });
+	api('nuPrintIncludeHiddenColumns', function (include) { nuSetProperty('nuPrintIncludeHiddenColumns', include ? '1' : '0'); });
+	api('nuPrintUseBrowseFormats', function (value) { nuSetProperty('nuPrintUseBrowseFormats', value ? '1' : '0'); });
+	api('nuPrintCSVExportOptions', function (options) { nuSetProperty('nuPrintCSVExportOptions', nuEncode(JSON.stringify(options || {}))); });
+	/** The print view's address with the properties form code set just before (nuPrintIncludeColumns() in nuOnLoad …). */
+	function printUrl(href) {
+		var u = new URL(href, window.location.href);
+		u.searchParams.set('ps', N.ps || '');
+		return u.toString();
+	}
+	$(document).on('click', 'a.nuExpHtml', function (e) {
+		if (N.mode !== 'browse' || !N.form) return;
+		e.preventDefault();
+		var href = this.getAttribute('href');
+		go(function () { return printUrl(href); }, 'blank');
+	});
+	// in the print view: Ctrl+Shift+C copy, Ctrl+Shift+D download CSV, Ctrl+Shift+O the CSV options – as Forte's nurunhtml.php
+	$(function () {
+		if (!document.body.classList.contains('nuPrintView')) return;
+		var box = document.getElementById('nuPrintOpts'), opts = {};
+		try { opts = JSON.parse(box ? box.getAttribute('data-opts') || '{}' : '{}') || {}; } catch (x) { opts = {}; }
+		var form = document.querySelector('#nuCsvDialog .js-csv-form');
+		if (form) {
+			var SEP = {';': 'semicolon', ',': 'comma', '\t': 'tab', '\\t': 'tab', '|': 'pipe'};
+			var sep = form.querySelector('[name=sep]'), name = form.querySelector('#nuCsvName');
+			if (opts.delimiter !== undefined && SEP[opts.delimiter] && sep) sep.value = SEP[opts.delimiter];
+			if (opts.fileName && name) name.value = String(opts.fileName).replace(/\.csv$/i, '');
+			if (opts.includeHeaders !== undefined) { var hd = form.querySelector('#nuCsvHead'); if (hd) hd.checked = !!opts.includeHeaders; }
+			if (opts.bom !== undefined) { var bm = form.querySelector('#nuCsvBom'); if (bm) bm.checked = !!opts.bom; }
+		}
+		var download = function () { if (!form) return; if (form.requestSubmit) form.requestSubmit(); else form.submit(); };
+		document.addEventListener('keydown', function (e) {
+			if (!(e.ctrlKey || e.metaKey) || !e.shiftKey) return;
+			var k = (e.key || '').toLowerCase();
+			if (k === 'd') { e.preventDefault(); download(); }
+			else if (k === 'o') { e.preventDefault(); var b = document.getElementById('nuCsvButton'); if (b) b.click(); }
+			else if (k === 'c') { var c = document.querySelector('[data-nu-copy-table]'); if (c) { e.preventDefault(); c.click(); } }
+		});
+		if (opts.autoDownload) {
+			download();
+			if (opts.autoClose) setTimeout(function () { window.close(); }, 1500);
+		}
+	});
+
 	// =================================================================== features nuBuilder Next does not implement (yet)
 	// (nuEnableMultiSelect, nuShowFile, nuSetDateFormat, nuSetTabHelpButtons, nuSetSideBarStyle are not in nuBuilder Forte 4.9's JavaScript –
 	// kept so old code does not fail; nuSetFormValue is PHP only in nuBuilder Forte and supported there, 0.8.876)
 	var warned = {};
-	['nuPrintExcludeColumns',
-		'nuResizeBrowseColumns', 'nuSetBrowseColumnWidth', 'nuOpenWiki',
+	['nuResizeBrowseColumns', 'nuSetBrowseColumnWidth', 'nuOpenWiki',
 		'nuSetSnippetFormFilter', 'nuEnableMultiSelect', 'nuShowFile',
 		'nuSetDateFormat', 'nuCreateDialog', 'nuAccessFormSetButtonIcons', 'nuBrowseStyleStatusColumn',
 		'nuSetTabHelpButtons', 'nuDragElement', 'nuSetSideBarStyle', 'nuShowVersionInfo', 'nuHasHiddenModalDragDialog'
@@ -2399,6 +2483,7 @@
 		};
 	});
 	if (!$.fn.nuSearchablePopup) $.fn.nuSearchablePopup = function () { return this; };
+	if (!$.fn.nuSearchableMultiPopup) $.fn.nuSearchableMultiPopup = function () { return this; };
 	if (!$.fn.nuCSSNumber) $.fn.nuCSSNumber = function (p) { return parseInt(this.css(p), 10) || 0; };
 
 	// =================================================================== files in fields (nuBuilder format)
@@ -2612,9 +2697,18 @@
 		if (!sameRgb(cssRgb(c.color), cssRgb(c.getPropertyValue('--nu-btn-ink')))) return;           // text colour set by the form's CSS
 		b.classList.add(1.05 / (luminance(bg) + 0.05) >= 2.4 ? 'nuBtnInkLight' : 'nuBtnInkDark');
 	}
+	// narrow buttons (nuBuilder Forte's quick buttons of 50–60 px: "+27", "100"): the solid look's side padding would cut the
+	// label – less padding first (nuBtnTight 6 px, nuBtnTighter 2 px), the tooltip only when the label still does not fit (0.8.960)
+	function fitButtonPad(b) {
+		b.classList.remove('nuBtnTight', 'nuBtnTighter');
+		if (b.scrollWidth <= b.clientWidth + 1) return;
+		b.classList.add('nuBtnTight');
+		if (b.scrollWidth > b.clientWidth + 1) b.classList.add('nuBtnTighter');
+	}
 	function fitButtonTitle(b) {
 		if (!b.hasAttribute('data-nu-title0')) b.setAttribute('data-nu-title0', b.getAttribute('title') || '');
 		if (!b.clientWidth) return;
+		fitButtonPad(b);
 		var t0 = b.getAttribute('data-nu-title0'), hint = b.getAttribute('data-nu-run-hint') || '';
 		var lab = b.querySelector('.nuButtonLabel'), text = (lab ? lab.textContent : b.textContent).replace(/\s+/g, ' ').trim();
 		if (b.scrollWidth > b.clientWidth + 1 && text) b.setAttribute('title', text + (hint ? ' – ' + hint : ''));
@@ -2646,6 +2740,8 @@
 	// embedded lists (review F3): a form shown in a run object of another form gets html.nuEmbedded (compact chrome, nuform.css);
 	// the parent grows such iframes to their content while its objects flow (phones, auto / grid layouts) – absolute layouts keep their size
 	if (N.iframe) { try { if (window.frameElement && !window.frameElement.closest('.modal')) document.documentElement.classList.add('nuEmbedded'); } catch (x) { /* other origin */ } }
+	// framed forms of run objects (0.8.962): src only now – the parent's functions (nuSetValue …) exist before the frame's code runs
+	$(function () { $('iframe.nuIframe[data-nu-src]').each(function () { if (!this.getAttribute('src')) this.setAttribute('src', this.getAttribute('data-nu-src')); }); });
 	function growFrames() {
 		$('.nuWrap_run iframe.nuIframe').each(function () {
 			var f = this;
@@ -2716,7 +2812,17 @@
 		.observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
 
 	// =================================================================== searchable / multiple selects (Tom Select)
+	/** nuBuilder Forte 4.9.2: a select whose validation allows no blank has no empty item – with nothing chosen no option is
+	 *  selected (selectedIndex -1, $(el).val() = null, nuGetValue() = ''), not the first one the browser would pick (0.8.958). */
+	function noBlank(root) {
+		$(root || document).find('select[data-nu-noblank]').each(function () {
+			if (this.closest('template')) return;
+			for (var i = 0; i < this.options.length; i++) if (this.options[i].defaultSelected) return;
+			this.selectedIndex = -1;
+		});
+	}
 	function initSelects(root) {
+		noBlank(root);
 		if (!window.TomSelect) return;
 		$(root || document).find('select.nuSelect2').each(function () { initSelect(this); });
 	}
@@ -2875,6 +2981,8 @@
 			$(th).append(sel);
 			return obj;
 		};
+		// nuBuilder Forte 4.9.2: the same with several values, no multiSelect option needed (0.8.960)
+		obj.nuSearchableMultiPopup = function (settings) { return obj.nuSearchablePopup($.extend({}, settings || {}, {multiSelect: true})); };
 		return obj;
 	});
 
@@ -3868,14 +3976,16 @@
 					var wasSaved = !N.edited, cur = $(el).val();
 					var keep = Array.isArray(cur) ? cur.map(String) : [String(cur === null ? '' : cur)];
 					var frag = document.createDocumentFragment();
-					if (removeBlank !== true && !el.multiple) frag.appendChild(new Option('', ''));
+					var nb = el.hasAttribute('data-nu-noblank'), any = false;   // no blank item: validation No Blanks / No Duplicates (0.8.958)
+					if (removeBlank !== true && !el.multiple && !nb) frag.appendChild(new Option('', ''));
 					(res.options || []).forEach(function (o) {
 						var opt = new Option(o[1], o[0]);
-						if (keep.indexOf(String(o[0])) >= 0) opt.selected = true;
+						if (keep.indexOf(String(o[0])) >= 0) { opt.selected = true; any = true; }
 						frag.appendChild(opt);
 					});
 					el.innerHTML = '';
 					el.appendChild(frag);
+					if (nb && !any) el.selectedIndex = -1;
 					count = (res.options || []).length;
 					if (wasSaved) nuHasNotBeenEdited();
 				}
@@ -4366,7 +4476,7 @@
 			['c', 'clone', 'bi-copy', 0, edit && has('nuCloneButton'), function () { nuCloneAction(); }],
 			['s', 'search', 'bi-search', 0, browse && has('nuSearchField'), function () { nuSearchAction(); }],
 			['a', 'add', 'bi-plus-lg', 0, browse && has('nuAddButton'), function () { $('#nuAddButton').trigger('click'); }],
-			['p', 'print', 'bi-printer', 0, browse && has('nuPrintButton'), function () { openTab($('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href')); }],
+			['p', 'print', 'bi-printer', 0, browse && has('nuPrintButton'), function () { var h = $('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href'); go(function () { return printUrl(h); }, 'blank'); }],
 			['?', 'help', 'bi-question-circle', 3, true, function () { openTab(N.base + '?p=help#forms-use'); }],
 			['r', 'refresh', 'bi-arrow-repeat', 0, true, function () { window.location.reload(); }],
 			['d', 'debug', 'bi-bug', 4, T.debug, function () { openTab(N.base + '?p=debug'); }],

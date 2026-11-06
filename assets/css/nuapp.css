@@ -2061,3 +2061,6 @@ input.nuOwnPwToggle::-ms-reveal { display: none; }
    (1016 / 1017), the side panes (1019), the top bar (1020) and modals (1055) – below tooltips (1080); before, z-index 1000 put the list
    of forms / procedures of the design panel behind the panel, so it looked empty */
 body > .ts-dropdown { z-index: 1065; }
+
+/* Settings → Data & logs: audit trail Keep select (0.8.953) */
+#shAudKeep { max-width: 170px; }

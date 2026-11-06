@@ -388,7 +388,7 @@ final class NuRecord
 	{
 		if ($field === '') return null;
 		if (isset($columns[$field])) return $field;
-		foreach (array_keys($columns) as $c) if (strcasecmp($c, $field) === 0) return $c;
+		foreach (array_keys($columns) as $c) if (strcasecmp((string)$c, $field) === 0) return (string)$c;   // a column named "1" is an int key (0.8.957)
 		return null;
 	}
 
@@ -415,6 +415,7 @@ final class NuRecord
 		foreach ($meta->objects as $o) {
 			$v = (string)$o['sob_all_validate'];
 			if (!in_array($v, ['1', '2', '3'], true) || !in_array($o['sob_all_type'], self::SAVED_TYPES, true) || NuRender::isUppy($o)) continue;
+			if (($o['sob_input_type'] ?? '') === 'button') continue;   // a button holds no value – nuBuilder Forte never validates it (0.8.960)
 			if (self::hiddenFor($o) || !NuFieldAccess::writable($o, $recordId === null)) continue;   // what the user cannot write is not checked from the post (0.8.480)
 			$f = (string)$o['sob_all_id'];
 			$label = self::label($o);
@@ -645,7 +646,7 @@ final class NuRecord
 			$fields[] = 'nuDelete';
 			$rows = $deleted = $editedRows = [];
 			foreach ($sf['rows'] ?? [] as $r) {
-				$row = [(string)($r['pk'] ?? '')];
+				$row = [(string)($r['pk'] ?? '') !== '' ? (string)$r['pk'] : '-1'];   // a new row's ID is -1, as nuBuilder Forte (0.8.956)
 				$ed  = [0];
 				$edited = array_flip((array)($r['edited'] ?? []));
 				foreach (array_slice($fields, 1, -1) as $f) { $row[] = $r['values'][$f] ?? ''; $ed[] = isset($edited[$f]) ? 1 : 0; }
@@ -653,6 +654,20 @@ final class NuRecord
 				$rows[] = $row;
 				$deleted[] = !empty($r['deleted']) ? 1 : 0;
 				$editedRows[] = $ed;
+			}
+			// nuBuilder Forte always sends the blank add row last (ID -1, deleted) when rows can be added – code such as
+			// "for ($i = 0; $i < count($rows) - 1; $i++)" counts on it (0.8.956); the browser does not post an untouched blank row
+			if ((string)($o['sob_subform_add'] ?? '') === '1') {
+				$blank = ['-1'];
+				foreach (array_slice($fields, 1, -1) as $f) {
+					$so = null;
+					foreach ($sub->objects as $x) if ((string)$x['sob_all_id'] === $f) { $so = $x; break; }
+					$blank[] = $so && $so['sob_all_type'] === 'input' && (string)($so['sob_input_type'] ?? '') === 'checkbox' ? 0 : '';
+				}
+				$blank[] = 1;
+				$rows[] = $blank;
+				$deleted[] = 1;
+				$editedRows[] = array_fill(0, count($fields) - 1, 0);
 			}
 			$out[(string)$sfId] = [
 				'id' => (string)$sfId, 'foreign_key' => (string)$o['sob_subform_foreign_key'], 'primary_key' => $sub->primaryKey(),

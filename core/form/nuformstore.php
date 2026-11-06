@@ -126,12 +126,7 @@ final class NuDraftStore
 			throw new RuntimeException(t('builder_err_tab'));
 		}
 		if ($grid !== null) {
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, [
-				'row' => isset($grid['row']) && $grid['row'] !== '' ? max(1, (int)$grid['row']) : null,
-				'col' => isset($grid['col']) && $grid['col'] !== '' ? (int)$grid['col'] : null,
-				'span' => isset($grid['span']) && $grid['span'] !== '' ? max(1, min(12, (int)$grid['span'])) : null,
-				'box' => isset($grid['box']) && preg_match('/^\w+$/', (string)$grid['box']) ? (string)$grid['box'] : null,
-			]);
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, NuResponsive::gridKeys($grid, $type));
 		}
 		if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
 			$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);

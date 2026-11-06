@@ -71,6 +71,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Database tools in an installed app** (0.8.852–0.8.854): phpMyAdmin and Adminer open from the app window (Chrome / Edge "Install").
 
 ## Sign-in and security
+- [ ] **2FA safe addresses** (0.8.958) – `$nuConfig2FASafeIPAddresses` (globeadmin list, users `*` or a login name; addresses, prefixes, `*` parts) skips the second factor – please verify behind the live proxy (the address is `nu_client_ip()`)
 - [ ] **One password eye in Edge** (0.8.944): sign-in / user form show only nuBuilder Next's eye in Microsoft Edge; other password fields keep Edge's.
 - [ ] **Passkeys on the live server** (0.8.877, https, the real domain): add one with Windows Hello, Touch ID / Face ID, an Android phone and
       a security key; a synced passkey (iCloud Keychain / Google Password Manager) on a second device; second factor and – with the switch
@@ -95,6 +96,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Responsive boxes** (0.8.959) – please verify on real forms: a box with a direction inside the auto / grid layout (side by side wrapping, grid 3 · 2 · 1, fixed / fit / fill widths, Hide on phone), nested boxes, "Put in a new box". Not built: moving an object into / out of a box by drag in design mode (use the Box field of the Layout section), a preview switch for phone / tablet width in design mode
 - [ ] **Validation rules** (0.8.812–0.8.816): on a real form a rule in design mode (builder and expression), Publish, then save as a user –
       error stops, warning asks "Save anyway?", the field turns red / yellow while typing; sub-form rows and COUNT(sub-form) with rows added /
       deleted before saving; formatted numbers and dates (raw values compared); rules per access level / permission item; translated
@@ -122,6 +124,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **New form start page** (0.8.848–0.8.851): the four cards, tables and views as two groups in the table list.
 - [ ] **Form with AI** (0.8.810, 0.8.841–0.8.843): a small app with a real AI tool (nunext-app-1), changes from design mode into the open
       draft, the three-step wizard, *None – new tables only*, an answer with "type": "input" + "input": "textarea".
+- [ ] **AI context file** (0.8.961) – *Download context* in Form with AI (step 2) and design mode's Ask AI: please verify with a real AI chat (Claude, ChatGPT) that the compact .md (~110 KB) is accepted and that answers with it use the documented functions; the full file (~300 KB, zip ~90 KB) may be too big for some chats. Example forms = install/ai-examples.json (sample application) – regenerate when the form format changes
 - [ ] **Custom pages** (0.8.859–0.8.861): Forms → Add → *Custom page* (description, suggested code, open mode) creates the page and opens
       its editor; Forms → Tools → *Custom pages* (also the ▾ of the Forms tile) lists only them; the wizard no longer offers the type.
 - [ ] **Code snippets** (0.8.899): source code edited in place; language switch; templates (`nu…` rows) read only outside developer mode.
@@ -240,11 +243,20 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
 
 ## nuBuilder Forte compatibility
+- [ ] **Forum announcements 1–7** (0.8.958) – please verify on a real Forte database: attribute `value=` only on new records, selects with a Select procedure, no blank item with validation No Blanks / No Duplicates (Forte 4.9.2 git; 4.9.1 still shows it), display objects with several columns (text area), `nuOnProcessObjects()` / `nuOnProcessBrowseRows()`, print view settings `nuPrint…()`. Not built yet (rows 8–13 of the review): settings marked "open", datalist value / label pairs, JS helpers (`nuSelectInParent…`, `nuBrowseCells`), debug auto refresh, `onSubformTitleClick`, mobile attributes, `nuapi.php` progress
+- [ ] **Forte system forms as forms** (0.8.960) – the compat suite opens every Forte system form (nuuser, nuform, nuobject …) in nuBuilder Next (`sysform:<form>`): list, record, save without a change, then Forte opens the record. Fixes it found: input buttons never validated, `nuBeforeSave()` without a return value saves (only `false` stops), `containsAny` / `nuImages` / `nuSearchableMultiPopup` / `browse_*` properties, a sub-form's label left of it, narrow buttons keep their label (`nuBtnTight`), tab panes carry `data-nu-pane-tab` (the Procedures form writes into `div[data-nu-tab-id]`). Please verify on a real database: forms with 50–60 px wide buttons, sub-form labels in the absolute layout. Not changed: Forte's own CSS classes (`.nuQuickButton`, `.nuRelatedTab`) are not styled
 - [ ] **JavaScript placeholders** (console warning; the list in assets/js/nu/nuruntime.js): `nuPrintExcludeColumns`, `nuResizeBrowseColumns`,
       `nuSetBrowseColumnWidth`, `nuOpenWiki`, `nuSetSnippetFormFilter`, `nuCreateDialog`, `nuAccessFormSetButtonIcons`,
       `nuBrowseStyleStatusColumn`, `nuDragElement`, `nuShowVersionInfo`, `nuHasHiddenModalDragDialog`; also `nuEnableMultiSelect`,
       `nuShowFile`, `nuSetDateFormat`, `nuSetTabHelpButtons`, `nuSetSideBarStyle`, which Forte 4.9's JavaScript does not have (kept so old
       code does not fail). Admin tools → Compatibility check shows which ones your forms call.
+- [ ] **Forte git HEAD drops the ORDER BY of complex browse SQL** (0.8.956) – nuBuilder Forte's commit 23559e7 ("Support complex SQL queries in
+      Browse Forms", 2026-10-25) wraps a browse SQL with a sub-query / alias as `SELECT * FROM (…) AS wrapped` and empties its ORDER BY, so such
+      lists come unsorted; 4.9.1 and nuBuilder Next keep the order. dev/tests/compat.js against Forte HEAD reports it as "records differ" – worth
+      telling the Forte developer; until then compare with a Forte before that commit.
+- [ ] **Please verify on a Forte database** (0.8.956) – a lookup into a form whose list is built by its Before Browse (#TABLE_ID#), the
+      database session time zone (NOW() / FROM_UNIXTIME() as in Forte), lists without ORDER BY in the table's own order, save without a
+      change on access levels / procedures / SQL builder keeping NULL columns and spaces around codes.
 - [ ] **Please verify: functions aligned with Forte** (0.8.951) – on your own forms: `nuSetValue(…, false)` no longer marks the field as
       edited (saved only when something else is edited); `nuSelectedTabNumber()` returns text; `nuCreateTableFromSelect` no longer drops an
       existing table (add a DROP first where that was relied on); `nuHasProperty` returns the value; `nuMessage(…, ms)` closes by itself;

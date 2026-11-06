@@ -582,6 +582,26 @@ function nu_unique_mark(bool $required = false): string
 	return '<span class="nuMark nuMarkUnique" tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-key" aria-hidden="true"></i></span>';
 }
 
+/**
+ * "Download context ▾" of Form with AI (0.8.961, NuAiContext): main button = one Markdown file, menu = .md / zip + switch "Full function
+ * reference". Buttons carry data-nu-ctx="md|zip", the switch data-nu-ctx-full; assets/js/nuformai.js posts action=context.
+ */
+function nu_ai_context_menu(string $id): string
+{
+	$tip = t('fai_ctx_tip');
+	return '<div class="btn-group" id="' . h($id) . '">'
+		. '<button type="button" class="btn btn-outline-primary" data-nu-ctx="md" id="' . h($id) . 'Md"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . h(t('fai_ctx')) . '</button>'
+		. '<button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" id="' . h($id) . 'More" aria-label="' . h(t('fai_ctx_more')) . '"></button>'
+		. '<ul class="dropdown-menu" aria-labelledby="' . h($id) . 'More">'
+		. '<li><button type="button" class="dropdown-item" data-nu-ctx="md"><i class="bi bi-filetype-md me-2" aria-hidden="true"></i>' . h(t('fai_ctx_md')) . '</button></li>'
+		. '<li><button type="button" class="dropdown-item" data-nu-ctx="zip"><i class="bi bi-file-zip me-2" aria-hidden="true"></i>' . h(t('fai_ctx_zip')) . '</button></li>'
+		. '<li><hr class="dropdown-divider"></li>'
+		. '<li><div class="dropdown-item-text"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="' . h($id) . 'Full" data-nu-ctx-full>'
+		. '<label class="form-check-label" for="' . h($id) . 'Full">' . h(t('fai_ctx_full')) . '</label></div></div></li>'
+		. '</ul></div>'
+		. '<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-info-circle"></i></span>';
+}
+
 function nu_back_button(?string $route = null, ?string $url = null, string $class = ''): string
 {
 	static $parent = [

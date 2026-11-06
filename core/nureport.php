@@ -228,7 +228,7 @@ final class NuReport
 		if (!isset($l->height) || (float)$l->height <= 0) { $l->height = $l->orientation === 'L' ? $w : $h; $l->width = $l->orientation === 'L' ? $h : $w; }
 		$l->height = (float)$l->height;
 		$l->width = (float)($l->width ?? $w);
-		$l->ishtml = ($l->ishtml ?? 'N') === 'Y' ? 'Y' : 'N';
+		if (isset($l->ishtml)) $l->ishtml = $l->ishtml === 'Y' ? 'Y' : 'N';   // nuBuilder Forte's older layouts have no ishtml – it stays absent (0.8.957)
 		return $l;
 	}
 
@@ -268,6 +268,8 @@ final class NuReport
 		$old = json_decode($oldJson);
 		$new = json_decode($newJson);
 		if (!is_object($old) || !is_object($new)) return $newJson;
+		// the designer state nuBuilder Forte stores (setFocus = the property that had the focus) stays as it was (0.8.957)
+		if (property_exists($old, 'setFocus') && !property_exists($new, 'setFocus')) $new->setFocus = $old->setFocus;
 		$walk = static function (mixed $n, mixed $o) use (&$walk): mixed {
 			if (is_object($n) && is_object($o)) { foreach (get_object_vars($n) as $k => $v) if (property_exists($o, $k)) $n->$k = $walk($v, $o->$k); return $n; }
 			if (is_array($n) && is_array($o)) { foreach ($n as $i => $v) if (array_key_exists($i, $o)) $n[$i] = $walk($v, $o[$i]); return $n; }

@@ -15,6 +15,9 @@
  *   entry_parity    the same typed input (numbers in two formats, dates, checkbox, select, text) as a new record in both: same row
  *   subform_cross   a sub-form row added in nuBuilder Next shows in nuBuilder; a row deleted in nuBuilder is gone in nuBuilder Next
  *   report_cross    a report runs as PDF in both
+ * sysform:<form>   nuBuilder Forte's own system forms (nuuser, nuform, nuobject …) opened as forms in nuBuilder Next: list and record
+ *                  without a JavaScript error, every object drawn, a save without a change leaves the row as it was (or changes it as
+ *                  nuBuilder Forte's own save of the same record does – form code may adjust values on save); Forte opens it too
  * Accepted differences (nuBuilder Next on purpose shows more than nuBuilder) are listed in dev/tests/compat-known.json with the reason.
  * The suite saves the whole database first and puts it back at the end. Never run it against a database with real data – use a copy.
  */
@@ -99,6 +102,8 @@ function grabFields(ids) {
 	const o = {};
 	document.querySelectorAll('input[id], select[id], textarea[id]').forEach(e => {
 		if (!re.test(e.id) || /^title_/.test(e.id) || ['button', 'submit', 'file'].includes(e.type)) return;
+		const rec = e.closest('[id$="nuRECORD"]');                      // nuBuilder Forte: the blank row of a sub-form without Add is
+		if (rec && rec.style.display === 'none') return;                  // rendered and hidden – no row of the record (0.8.956)
 		o[e.id] = e.type === 'checkbox' ? (e.checked ? '1' : '0') : e.tagName === 'SELECT' && e.multiple ? [...e.selectedOptions].map(x => x.value).join(',') : e.value;
 	});
 	return o;
@@ -408,6 +413,68 @@ T.push(['meta:design', async (s) => {
 	await nubOpen('nuform', id);
 	expect(nub.errors.length === n0, 'nuBuilder: ' + nub.errors.slice(n0).join(' | '));
 }]);
+
+// ------------------------------------------------------------------ nuBuilder Forte's system forms opened AS FORMS in nuBuilder Next (0.8.960)
+// Forte's own forms (nuuser, nuform, nuobject …) are ordinary forms with a lot of JavaScript and objects – an ideal regression test of the
+// form runtime: the list and a record open without a JavaScript error, every object of the record is drawn, and a save without a change
+// leaves the row as it was (columns that change on every save left out, as in metaRows). Forte then opens the record in its own client.
+const SYSFORM_NOSAVE = ['nusession', 'nudebug', 'nuemaillog', 'nusetup',      // sessions / logs / the set-up row: opened only
+	'nuobjectgrid'];                                                             // Forte opens it in a popup of the Objects form (parent.refreshIframeEvents)
+for (const form of sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id LIKE 'nu%' AND sfo_type IN ('browse','browseedit','edit')"
+	+ " AND sfo_table IS NOT NULL AND sfo_table <> '' ORDER BY zzzzsys_form_id").split('\n').filter(Boolean)) {
+	T.push(['sysform:' + form, async (s) => {
+		const info = formInfo(form);
+		if (!tableExists(info.table)) { s.skip = 'no table'; return; }
+		const n0 = nx.errors.length;
+		if (info.type !== 'edit') {
+			await nxOpen(form, '');
+			expect(await nx.locator('#nuBrowseTable').count() === 1, 'no list');
+			expect(await nx.evaluate(() => typeof nuCurrentProperties().browse_filtered_rows === 'number'), 'browse_filtered_rows missing');
+		}
+		const r = info.type === 'browse' ? '' : sql('SELECT `' + info.pk + '` FROM `' + info.table + '` ORDER BY 1 LIMIT 1');
+		if (!r) { expect(nx.errors.length === n0, 'list: ' + nx.errors.slice(n0).join(' | ')); s.skip = info.type === 'browse' ? 'list only' : 'list ok, no record'; return; }
+		// a form another form uses as a sub-form (nuaccessforms …) is not saved on its own: "no duplicates" then looks at the whole table
+		// instead of the parent's rows – nuBuilder Forte refuses such a save the same way
+		const isSub = sql("SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_type = 'subform' AND sob_subform_zzzzsys_form_id = " + q(form)) !== '0';
+		await nxOpen(form, r); await nx.waitForTimeout(700);
+		const missing = await nx.evaluate(() => Object.keys(nuNext.objects || {}).filter(id => !document.getElementById(id) && !document.getElementById('nuw_' + id)));
+		expect(!missing.length, 'objects not drawn: ' + missing.slice(0, 5).join(', '));
+		expect(nx.errors.length === n0, 'JavaScript: ' + nx.errors.slice(n0).join(' | '));
+		if (WRITE && !isSub && !SYSFORM_NOSAVE.includes(form)) {
+			const tables = [info.table, ...info.subs.map(x => x[2]).filter(tableExists)];
+			const file = path.join(os.tmpdir(), 'nunext-compat-sysform-' + process.pid + '.sql');
+			dumpTables(tables, file);
+			try {
+				const snap = () => { const o = { [info.table]: metaRows(info.table, '`' + info.pk + '` = ' + q(r)) }; for (const [, fk, t] of info.subs) if (tableExists(t)) o[t] = metaRows(t, '`' + fk + '` = ' + q(r)); return o; };
+				const before = snap();
+				// nuBuilder Forte saves the same record first: what its own form code changes on a save (the Objects form clears the input
+				// format of a non-input object) nuBuilder Next may change the same way – anything else must stay as it was
+				let forte = null;
+				try { await nubOpen(form, r); await nubSave(); forte = snap(); } catch (e) { forte = null; }
+				restore(file);
+				await nxOpen(form, r); await nx.waitForTimeout(700);
+				await nxSave();
+				expect(nx.errors.length === n0, 'save: ' + nx.errors.slice(n0).join(' | '));
+				expect(!await nx.locator('.alert-danger, .is-invalid').count(), 'save refused: ' + (await nx.locator('.alert-danger, .invalid-feedback').allInnerTexts()).join(' | ').slice(0, 200));
+				const after = snap(), d = [];
+				for (const t of Object.keys(before)) {
+					for (const id of new Set([...Object.keys(before[t]), ...Object.keys(after[t])])) {
+						if (!before[t][id] || !after[t][id]) { if (!forte || !forte[t] || !!forte[t][id] !== !!after[t][id]) d.push(t + ' ' + id + (after[t][id] ? ' added' : ' removed')); continue; }
+						for (const c of Object.keys(before[t][id])) {
+							if (same(before[t][id][c], after[t][id][c]) || known('column', form, c, '', '')) continue;
+							if (forte && forte[t] && forte[t][id] && same(forte[t][id][c], after[t][id][c])) continue;      // nuBuilder Forte changes it the same way
+							d.push(t + '.' + c + ' (' + id + '): ' + deepDiff(before[t][id][c], after[t][id][c]));
+						}
+					}
+				}
+				expect(!d.length, d.length + ' change(s): ' + d.slice(0, 4).join(' · '));
+			} finally { restore(file); fs.unlinkSync(file); }
+		}
+		const e0 = nub.errors.length;
+		await nubOpen(form, r);
+		expect(nub.errors.length === e0, 'nuBuilder: ' + nub.errors.slice(e0).join(' | '));
+	}]);
+}
 
 // ------------------------------------------------------------------ logins across both (0.8.365)
 T.push(['login_cross', async (s) => {

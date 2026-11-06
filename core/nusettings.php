@@ -29,7 +29,7 @@ final class NuSettings
 		'nuDebugMode' => ['next', 'next'], '$nuConfigGlobeadminHome' => ['next', 'next'], 'nuHideTabTitleIfOnlyOne' => ['next', 'next'],
 		'$nuConfigTitle' => ['next', 'next'], '$nuConfigIncludeApexCharts' => ['next', 'next'], '$nuConfig2FAAdmin' => ['next', 'next'],
 		'$nuConfig2FAUser' => ['next', 'next'], '$nuConfigDemoSavingAllowedIds' => ['next', 'next'], '$nuConfigEnableDatabaseUpdate' => ['next', 'next'], '$nuConfigPrimaryDatabaseManagement' => ['next', 'next'],
-		'$nuUseMd5PasswordHash' => ['next', 'next'], '$nuConfigHomeHooks' => ['next', 'next'],
+		'$nuUseMd5PasswordHash' => ['next', 'next'], '$nuConfig2FASafeIPAddresses' => ['next', 'next'], '$nuConfigHomeHooks' => ['next', 'next'],
 		'$nuConfigUserAdditional1Label' => ['next', 'next'], '$nuConfigUserAdditional2Label' => ['next', 'next'], '$nuConfigUserCodeLabel' => ['next', 'next'],   // 0.8.798: t() / nu_user_label()
 		// not built yet
 		'$nuConfigDBGlobeadminUsers' => ['open', 'open'],

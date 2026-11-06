@@ -37,6 +37,19 @@
 <li><strong>Phones</strong>: the bar is one line – Done, a dot for the state (grey: no changes, orange: a draft, blue: a new form), Structure, Add and a <em>⋯</em> menu with the rest (Publish, Undo, Redo, Changes, Code, History, Validation rules, Reload, Safe mode, Maintenance, Discard); it slides away while you scroll down and comes back when you scroll up. The panel is a sheet at the bottom with three heights: it peeks with the name of the selection, a tap on its handle (or a swipe up / down) makes it half or full height, and typing in a field opens it half way. The sections are tabs. Above the selected object a small toolbar offers Label and ID, Move up, Move down, Duplicate, Delete and All settings; the form scrolls so the selected object stays visible above the sheet.</li>
 </ul>
 </div>
+	<div class="doc-sub">
+<h3 id="design-responsive">Responsive forms: boxes with a direction</h3>
+<p>Forms in the <em>Auto</em> or <em>Grid</em> layout (design mode → <em>Form</em> → <em>Layout</em>) fit every screen; content boxes decide how their objects line up. Select a content box and choose its <em>Arrangement</em> in <em>Layout</em>:</p>
+<ul>
+<li><strong>One under the other</strong> – a column.</li>
+<li><strong>Side by side</strong> – a row; <em>Wrap onto the next line</em> moves objects down when there is no room, <em>One under the other on phones</em> (on by default) turns the row into a column below 576 px.</li>
+<li><strong>Grid</strong> – a number of columns for desktop, tablet and phone (e.g. 3 · 2 · 1): labels and fields line up across rows.</li>
+<li><strong>Rows (from the positions)</strong> – as before, rows taken from the objects' positions.</li>
+</ul>
+<p>Gap, alignment and spread (start, centre, end, space between) are set on the box. Each object in such a box has a <em>Width in the box</em>: <em>Automatic</em>, <em>Fixed</em> (px), <em>Fit content</em> or <em>Fill the rest</em> (several fill objects share the room by their <em>Share</em>), each with an optional minimum and maximum; in a grid box <em>Grid columns</em> lets an object span several columns. Boxes can be nested – a grid box inside a column, a row of buttons inside a grid. <em>Hide on</em> (any layout) hides an object on phones (below 576 px), tablets (to 991 px) or desktops; in design mode such objects stay visible, pale.</p>
+<p>To start, select several objects (<kbd>Ctrl</kbd>+click) and choose <i class="bi bi-bounding-box"></i> <em>Put in a new box</em>: they move into a new box with the arrangement <em>One under the other</em>.</p>
+<p data-level="detail">The settings are stored in the objects' <code>sob_all_json</code> (key <code>nunext</code>: <code>stack</code>, <code>size</code>, <code>hide</code>); nuBuilder Forte ignores them and keeps showing the form with the objects' positions.</p>
+</div>
 	<div class="doc-sub" data-acl="nuform,nucodesnippet">
 <h3 id="code-editor">Editing code</h3>
 <p>Fields that hold code – PHP, SQL, JavaScript, HTML or CSS – are shown in a typewriter font. <strong>Double-click</strong> such a field to open the code editor: syntax colours, line numbers and a full-screen button. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (or <kbd>Ctrl</kbd>+<kbd>S</kbd>, or OK) takes the code over into the field; <kbd>Esc</kbd> or Cancel closes the editor and asks first if you changed something. Save the record afterwards as usual.</p>

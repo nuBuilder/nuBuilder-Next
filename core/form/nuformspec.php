@@ -198,6 +198,9 @@ final class NuFormSpec
 		return $lines ? implode("\n", array_slice($lines, 0, 200)) : '(none)';
 	}
 
+	/** The prompt's pointer to the AI context pack (0.8.961, NuAiContext). */
+	public const CONTEXT_HINT = "If a file named nunext-context-… (.md or .zip) is attached, read it first: it lists the functions, hash variables, conventions and example forms of this installation – use only what it describes.\n";
+
 	/** The text for the AI chat. $formId: change an existing form; '' = new form. */
 	public static function prompt(string $request, string $formId = '', array $tables = [], ?array $snap = null): string
 	{
@@ -206,7 +209,7 @@ final class NuFormSpec
 		$p = "You design a data-entry form for nuBuilder Next (a front end for nuBuilder Forte 4.x, database: $db).\n"
 			. ($spec ? "Change the existing form below as requested. Return the COMPLETE form in the same format (not only the changes).\n"
 				: "Create a new form as requested.\n")
-			. "Answer with ONE JSON object in a ```json code block and nothing else.\n\n"
+			. "Answer with ONE JSON object in a ```json code block and nothing else.\n" . self::CONTEXT_HINT . "\n"
 			. "## The request\n" . trim($request) . "\n\n"
 			. "## Format \"" . self::FORMAT . "\"\n" . self::formatHelp() . "\n\n"
 			. "## Database tables (name: columns)\n" . self::schemaText($spec['form']['table'] ?? '', 80, $tables) . "\n\n"
@@ -706,7 +709,7 @@ TXT;
 	{
 		$db = nu_db()->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
 		return "You design a small application for nuBuilder Next (a front end for nuBuilder Forte 4.x, database: $db): its tables and data-entry forms.\n"
-			. "Answer with ONE JSON object in a ```json code block and nothing else.\n\n"
+			. "Answer with ONE JSON object in a ```json code block and nothing else.\n" . self::CONTEXT_HINT . "\n"
 			. "## The request\n" . trim($request) . "\n\n"
 			. "## Format \"" . self::APP_FORMAT . "\"\n" . self::appFormatHelp() . "\n\n"
 			. "## Format of each form (\"" . self::FORMAT . "\", without the \"format\" key)\n" . self::formatHelp() . "\n\n"

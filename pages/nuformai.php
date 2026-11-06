@@ -5,6 +5,7 @@ defined('NU_ROOT') || exit;
 /*
  * Form with AI (0.8.403, core/form/nuformspec.php): ?p=formai = new form, ?p=formai&f=<form id> = change a form.
  * 1. describe it → "Copy prompt" (format, tables, forms, the current form) → paste into any AI chat;
+ *    "Download context" (0.8.961, NuAiContext): a file with functions, hash variables, guide and example forms to attach to the chat;
  * 2. paste the answer → "Check" (errors, warnings, what happens) → "Create draft": a new form with status Draft or a form draft –
  *    the user previews it and publishes it in the builder. POST actions answer JSON: prompt, check (read only), create.
  */
@@ -28,6 +29,22 @@ if (nu_is_post()) {
 	header('Content-Type: application/json; charset=utf-8');
 	$out = static function (array $d): never { echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; };
 	$action = nu_post('action');
+	if ($action === 'context') {                         // AI context pack (0.8.961): a file to attach to the chat together with the prompt
+		$tables = array_values(array_filter(array_map('strval', (array)($_POST['tables'] ?? [])), static fn($t) => $t !== ''));
+		$app = $appMode && nu_post('kind') === 'app';
+		$kind = NuAiContext::kind($app, $meta);
+		$secs = NuAiContext::sections($app, $meta, $tables, $draftSnap, nu_post('full') === '1');
+		$zip = nu_post('fmt') === 'zip' ? NuAiContext::zip($secs, $kind) : null;
+		header_remove('Content-Type');
+		if ($zip !== null) { header('Content-Type: application/zip'); $name = NuAiContext::fileName($kind, 'zip'); $body = $zip; }
+		else { header('Content-Type: text/markdown; charset=utf-8'); $name = NuAiContext::fileName($kind, 'md'); $body = NuAiContext::markdown($secs, $kind); }
+		header('Content-Disposition: attachment; filename="' . $name . '"');
+		header('X-Nu-File-Name: ' . $name);
+		header('Cache-Control: no-store');
+		NuLog::write('form_ai_context', 'zzzzsys_form', $formId, ['kind' => $kind, 'fmt' => $zip !== null ? 'zip' : 'md', 'full' => nu_post('full') === '1']);
+		echo $body;
+		exit;
+	}
 	try {
 		if ($action === 'prompt') {
 			$req = trim(nu_post('request'));
@@ -143,6 +160,7 @@ $startStep = 1; ?>
 		<div class="d-flex flex-wrap gap-2 align-items-center">
 			<button type="button" class="btn btn-outline-secondary" data-go="1"><i class="bi bi-arrow-left me-1"></i><?= h(t('fai_wz_back')) ?></button>
 			<button type="button" class="btn btn-primary" id="faCopy"><i class="bi bi-clipboard me-1"></i><?= h(t('fai_copy')) ?></button>
+			<?= nu_ai_context_menu('faCtx') ?>
 			<button type="button" class="btn btn-outline-primary" data-go="3" id="faNext2"><?= h(t('fai_wz_next')) ?><i class="bi bi-arrow-right ms-1"></i></button>
 			<span class="small text-body-secondary" id="faCopyMsg" aria-live="polite"></span>
 		</div>

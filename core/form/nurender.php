@@ -46,7 +46,9 @@ final class NuRender
 				. ' data-nu-tab-id="' . h($t['zzzzsys_tab_id']) . '" data-bs-toggle="tab" data-bs-target="#nuTabPane' . $i . '" role="tab"'
 				. ' aria-controls="nuTabPane' . $i . '" aria-selected="' . ($i === 0 ? 'true' : 'false') . '">' . h($t['syt_title']) . '</button></li>';
 			$objects = $this->meta->objectsOfTab((string)$t['zzzzsys_tab_id']);
-			$panes .= '<div class="tab-pane nuTabPane' . ($i === 0 ? ' show active' : '') . '" id="nuTabPane' . $i . '" role="tabpanel" aria-labelledby="nuTab' . $i . '" data-nu-tab-id="' . h($t['zzzzsys_tab_id']) . '">'
+			// the pane carries data-nu-pane-tab, not data-nu-tab-id: in nuBuilder Forte only the tab has that attribute, and form code
+			// such as $('div[data-nu-tab-id=…]').html(title) (Forte's Procedures form) would otherwise empty the pane (0.8.960)
+			$panes .= '<div class="tab-pane nuTabPane' . ($i === 0 ? ' show active' : '') . '" id="nuTabPane' . $i . '" role="tabpanel" aria-labelledby="nuTab' . $i . '" data-nu-pane-tab="' . h($t['zzzzsys_tab_id']) . '">'
 				. ($this->layout === 'absolute' ? $this->absolute($objects) : $this->flow($objects)) . '</div>';
 		}
 		$navHtml = count($tabs) > 1 || $this->meta->tabs === [] ? '<ul class="nav nav-tabs nuTabHolder" id="nuTabHolder" role="tablist">' . $nav . '</ul>' : '<ul class="nav nav-tabs nuTabHolder d-none" id="nuTabHolder" role="tablist">' . $nav . '</ul>';
@@ -92,7 +94,7 @@ final class NuRender
 				$o   = $it['obj'];
 				$col = 'col-12 col-md-' . $it['span'];
 				if ($o['sob_all_type'] === 'contentbox') {
-					$html .= $this->wrapper($o, $col, '', $this->contentbox($o, $this->rows($it['children'] ?? ['rows' => []])));
+					$html .= $this->wrapper($o, $col, '', $this->contentbox($o, $this->boxInner($o, $it['children'] ?? ['rows' => []])));
 				} else {
 					$html .= $this->wrapper($o, $col . ' nuCell', '', $this->object($o, 'flow'));
 				}
@@ -102,8 +104,28 @@ final class NuRender
 		return $html;
 	}
 
+	/** The inside of a content box: rows as before, or – with a direction (nunext.stack, 0.8.959) – a stack / grid of its objects. */
+	private function boxInner(array $box, array $tree): string
+	{
+		$stack = NuResponsive::cleanStack($box['nunext']['stack'] ?? null);
+		if ($stack === null) return $this->rows($tree);
+		[$cls, $style] = NuResponsive::box($stack);
+		$html = '';
+		foreach ($tree['rows'] as $items) {                  // rows top to bottom, left to right = the order in the box
+			foreach ($items as $it) {
+				$o = $it['obj'];
+				[$icls, $istyle] = NuResponsive::item($o, $stack);
+				$html .= $o['sob_all_type'] === 'contentbox'
+					? $this->wrapper($o, $icls, $istyle, $this->contentbox($o, $this->boxInner($o, $it['children'] ?? ['rows' => []])))
+					: $this->wrapper($o, $icls . ' nuCell', $istyle, $this->object($o, 'flow'));
+			}
+		}
+		return '<div class="' . h($cls) . '" data-nu-stack="' . h($stack['dir']) . '"' . ($style !== '' ? ' style="' . h($style) . '"' : '') . '>' . $html . '</div>';
+	}
+
 	private function wrapper(array $o, string $class, string $style, string $inner): string
 	{
+		$class .= NuResponsive::hideClass($o);               // hidden on phones / tablets / desktops (0.8.959)
 		$hidden = NuRecord::hiddenFor($o);
 		if ($hidden) $style .= ($style !== '' ? ';' : '') . 'display:none';
 		return '<div id="nuw_' . h($o['sob_all_id']) . '" class="nuWrap nuWrap_' . h($o['sob_all_type']) . ' ' . $class . '"'
@@ -123,6 +145,8 @@ final class NuRender
 		$this->clientObjects[$id] = [
 			'type' => $type, 'object_id' => $o['zzzzsys_object_id'], 'input' => (string)$o['sob_input_type'],
 			'format' => $this->formatOf($o), 'cloneable' => (string)$o['sob_all_cloneable'] !== '0', 'label' => trim(strip_tags((string)$o['sob_all_label'])),
+			// nuSERVERRESPONSE.objects[i].js as nuBuilder Forte: the object's events [{event, js}] (already in the page as handlers, 0.8.957)
+			'js' => array_map(static fn($ev, $js) => ['event' => (string)$ev, 'js' => (string)$js], array_keys($this->meta->events[$o['zzzzsys_object_id']] ?? []), array_values($this->meta->events[$o['zzzzsys_object_id']] ?? [])),
 		];
 		// globeadmin: what the label menu (quick changes of the object) shows as current values
 		if (!empty(NuAuth::user()['globeadmin'])) {
@@ -154,7 +178,7 @@ final class NuRender
 		$id  = (string)$o['sob_all_id'];
 		$for = $o['sob_all_type'] === 'lookup' ? $id . 'code' : $id;
 		$cls = match ($mode) {
-			'absolute' => $isTitle ? 'nuLabel nuLabelTop' : 'nuLabel nuLabelLeft',
+			'absolute' => 'nuLabel nuLabelLeft' . ($isTitle ? ' nuLabelSf' : ''),   // a sub-form's label left of it at its top, as nuBuilder Forte (0.8.960; was a title above)
 			'check'    => 'form-check-label nuLabel',
 			default    => 'form-label nuLabel',
 		};
@@ -249,7 +273,9 @@ final class NuRender
 			case 'select':
 				$multi = (string)$o['sob_select_multiple'] === '1';
 				$sel   = $multi ? (json_decode((string)$value, true) ?: array_filter(explode(',', (string)$value), static fn($s) => (string)$s !== '')) : [(string)$value];
-				$opts  = $multi ? '' : '<option value=""></option>';
+				// nuBuilder Forte 4.9.2: no blank item when the validation allows no blanks (1 No Blanks, 2 No Duplicates, 3 both) (0.8.958)
+				$noBlank = !$multi && in_array((string)$o['sob_all_validate'], ['1', '2', '3'], true);
+				$opts  = $multi || $noBlank ? '' : '<option value=""></option>';
 				$found = false;
 				foreach ($this->options($o) as [$v, $t]) {
 					$is = in_array((string)$v, array_map('strval', (array)$sel), true);
@@ -258,10 +284,13 @@ final class NuRender
 				}
 				if (!$multi && !$found && (string)$value !== '') $opts .= '<option value="' . h($value) . '" selected>' . h($value) . '</option>';
 				$ts = $multi || (string)$o['sob_select_2'] === '1' ? ' nuSelect2' : '';
-				return '<select class="form-select ' . h($cls) . $ts . '"' . $common . ($multi ? ' multiple' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>' . $opts . '</select>';
+				return '<select class="form-select ' . h($cls) . $ts . '"' . $common . ($multi ? ' multiple' : '') . ($noBlank ? ' data-nu-noblank="1"' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>' . $opts . '</select>';
 
 			case 'display':
-				return '<input type="text" class="form-control nuReadonly ' . h($cls) . '"' . $common . ' readonly tabindex="-1" value="' . h($this->display($o)) . '">';
+				$dv = $this->display($o);
+				// nuBuilder Forte: a value with line breaks (several columns of the first row, a procedure's lines) is shown in a textarea (0.8.958)
+				if (str_contains($dv, "\n")) return '<textarea class="form-control nuReadonly ' . h($cls) . '"' . $common . ' readonly tabindex="-1">' . h($dv) . '</textarea>';
+				return '<input type="text" class="form-control nuReadonly ' . h($cls) . '"' . $common . ' readonly tabindex="-1" value="' . h($dv) . '">';
 
 			case 'calc':
 				$fmt = (string)$o['sob_calc_format'];
@@ -278,7 +307,7 @@ final class NuRender
 				return '<div class="nuWord ' . h($cls) . '"' . $common . self::iconAttr($o) . '>' . self::withIcon((string)$o['sob_all_label'], $o) . '</div>';
 
 			case 'html':
-				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML)) . '</div>';
+				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(self::closeFragment(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML))) . '</div>';
 
 			case 'run':
 				return $this->run($o, $common, $cls);
@@ -395,6 +424,50 @@ final class NuRender
 			}
 			return '<script type="text/nu-deferred"' . $attrs . '>';
 		}, $html);
+	}
+
+	private const RAW_TEXT = ['script', 'style', 'iframe', 'textarea', 'title', 'xmp', 'noembed', 'noframes', 'noscript'];
+	private const CONTAINERS = ['div', 'span', 'table', 'ul', 'ol', 'a', 'b', 'i', 'u', 'strong', 'em', 'section', 'article', 'header', 'footer',
+		'nav', 'label', 'select', 'button', 'fieldset', 'center', 'font', 'small', 'big', 'sup', 'sub', 'blockquote', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+	/**
+	 * The HTML of one object as a closed fragment (0.8.957): nuBuilder Forte puts each HTML object into the page with innerHTML, so an
+	 * unclosed <iframe>, <div> … ends with its object. Here the HTML is part of one page – an unclosed <iframe> would swallow every
+	 * object after it, an unclosed <div> would hold them. Missing end tags are added at the end, stray ones (no start tag) dropped.
+	 */
+	public static function closeFragment(string $html): string
+	{
+		if (!str_contains($html, '<')) return $html;
+		$out = ''; $stack = []; $pos = 0; $n = strlen($html);
+		while ($pos < $n) {
+			$lt = strpos($html, '<', $pos);
+			if ($lt === false) { $out .= substr($html, $pos); break; }
+			$out .= substr($html, $pos, $lt - $pos);
+			if (substr($html, $lt, 4) === '<!--') {
+				$end = strpos($html, '-->', $lt + 4);
+				if ($end === false) { $out .= substr($html, $lt) . '-->'; $pos = $n; break; }
+				$out .= substr($html, $lt, $end + 3 - $lt); $pos = $end + 3; continue;
+			}
+			if (!preg_match('~\G<(/?)([A-Za-z][A-Za-z0-9-]*)\b[^>]*>~A', $html, $m, 0, $lt)) { $out .= '<'; $pos = $lt + 1; continue; }
+			$tag = strtolower($m[2]); $close = $m[1] === '/'; $pos = $lt + strlen($m[0]);
+			if (!$close && in_array($tag, self::RAW_TEXT, true)) {
+				$out .= $m[0];
+				if (preg_match('~</' . $tag . '\b[^>]*>~i', $html, $e, PREG_OFFSET_CAPTURE, $pos)) {
+					$out .= substr($html, $pos, $e[0][1] + strlen($e[0][0]) - $pos); $pos = $e[0][1] + strlen($e[0][0]);
+				} else {
+					$out .= substr($html, $pos) . '</' . $tag . '>'; $pos = $n;
+				}
+				continue;
+			}
+			if (!in_array($tag, self::CONTAINERS, true) || (!$close && str_ends_with(rtrim($m[0], '> '), '/'))) { $out .= $m[0]; continue; }
+			if (!$close) { $stack[] = $tag; $out .= $m[0]; continue; }
+			$at = array_search($tag, array_reverse($stack, true), true);
+			if ($at === false) continue;                                   // stray end tag: the browser ignores it in innerHTML
+			while (count($stack) > $at) { $t = array_pop($stack); if ($t !== $tag) $out .= '</' . $t . '>'; }
+			$out .= $m[0];
+		}
+		while ($stack) $out .= '</' . array_pop($stack) . '>';
+		return $out;
 	}
 
 	/** data: URL from a nuBuilder file JSON (its "file" is base64 of the data URL). */
@@ -579,6 +652,12 @@ final class NuRender
 			if ($u === null || !preg_match('~^(https?)://([A-Za-z0-9.\-]+(?::\d+)?)(/|$|\?|#)~i', $u, $m)) continue;
 			$out[strtolower($m[1] . '://' . $m[2])] = true;
 		}
+		// <iframe src="https://…"> in HTML objects (e.g. an embedded spreadsheet) – nuBuilder Forte sends no CSP, so they show there (0.8.957)
+		foreach ($objects as $o) {
+			if (($o['sob_all_type'] ?? '') !== 'html') continue;
+			if (!preg_match_all('~<iframe\b[^>]*\bsrc\s*=\s*["\']?(https?)://([A-Za-z0-9.\-]+(?::\d+)?)~i', (string)($o['sob_html_code'] ?? ''), $mm, PREG_SET_ORDER)) continue;
+			foreach ($mm as $m) $out[strtolower($m[1] . '://' . $m[2])] = true;
+		}
 		return $out ? ' ' . implode(' ', array_keys($out)) : '';
 	}
 
@@ -666,7 +745,9 @@ final class NuRender
 		}
 		if ($run['method'] === 'i' && $run['type'] === 'F' && $run['form'] !== '' && NuFormMeta::load($run['form'])) {
 			$src = nu_url('form', ['f' => $run['form'], 'r' => $run['record'], 'rf' => $run['filter'], 'iframe' => '1', 'ps' => self::$scope ?: null]);
-			return '<iframe class="nuIframe ' . h($cls) . '"' . $common . ' src="' . h($src) . '" title="' . h($label ?: 'iframe') . '"></iframe>';
+			// data-nu-src (0.8.962): the runtime sets src once its functions exist – a framed form's code that calls parent.nuSetValue()
+			// at load (Forte's Files form) ran before the parent page's scripts when the frame loaded first
+			return '<iframe class="nuIframe ' . h($cls) . '"' . $common . ' data-nu-src="' . h($src) . '" title="' . h($label ?: 'iframe') . '"></iframe>';
 		}
 		if ($run['method'] === 'i' && $run['type'] === 'R' && $run['code'] !== '') {    // nuBuilder: the report's launch form, else the PDF
 			$src = nu_url('report', ['c' => $run['code'], 'iframe' => '1']);
@@ -780,7 +861,9 @@ final class NuRender
 			$value  = $data !== null ? $this->columnValue($data, (string)$c['sob_all_id']) : '';
 			$hidden = NuRecord::hiddenFor($c);
 			$events = $this->eventsOfMeta($sub, $c);
-			$html  .= '<td class="nuSubformCell"' . ($hidden ? ' style="display:none"' : '') . '>'
+			// nuBuilder Forte puts a row's objects straight into the row (<prefix>nuRECORD with data-nu-primary-key): form code that reads
+			// event.target.parentNode's id and then its data-nu-primary-key finds both on the cell (0.8.957)
+			$html  .= '<td class="nuSubformCell" id="' . h($prefix . $c['sob_all_id']) . '_nucell" data-nu-primary-key="' . h($pk) . '"' . ($hidden ? ' style="display:none"' : '') . '>'
 				. $this->control($c, $prefix, $value, $c['sob_all_type'] === 'textarea' ? 'height:' . max(30, (int)$c['sob_all_height']) . 'px;' : '', $events) . '</td>';
 		}
 		if ($canDelete) {
@@ -838,7 +921,11 @@ final class NuRender
 	{
 		$f = (string)$o['sob_all_id'];
 		if ($o['sob_all_type'] === 'display') return $this->display($o);
-		return $this->columnValue($this->row, $f);
+		$v = $this->columnValue($this->row, $f);
+		// nuBuilder Forte (4.7, nuApplyAttributes): an attribute value=… is the default of a NEW record only (0.8.958)
+		if ($v === '' && $this->recordId === '-1' && in_array($o['sob_all_type'], ['input', 'textarea', 'select', 'lookup'], true)
+			&& ($d = self::attribute($o, 'value')) !== null) return $d;
+		return $v;
 	}
 
 	private function columnValue(array $row, string $field): string
@@ -915,10 +1002,27 @@ final class NuRender
 			[$k, $v] = array_pad(explode('=', $part, 2), 2, null);
 			$k = trim($k);
 			if (!preg_match('/^[A-Za-z_:][-A-Za-z0-9_:.]*$/', $k) || preg_match('/^on/i', $k)) continue;
+			// value = the default of a new record (nuBuilder Forte's nuApplyAttributes, valueOf()) – never an HTML attribute that would come
+			// before the field's own value and win over the stored one (0.8.958); id / type are the object's own
+			if (in_array(strtolower($k), ['value', 'id', 'type'], true)) continue;
 			if ($v !== null) { $v = trim($v); if (preg_match('/^(["\'])(.*)\1$/s', $v, $q)) $v = $q[2]; }   // one pair of quotes, not every quote at the ends
 			$out .= ' ' . $k . ($v !== null ? '="' . h($v) . '"' : '');
 		}
 		return $out;
+	}
+
+	/** The value of one attribute of the object's Attributes (sob_input_attribute), or null. */
+	public static function attribute(array $o, string $name): ?string
+	{
+		$raw = trim((string)($o['sob_input_attribute'] ?? ''));
+		if ($raw === '') return null;
+		foreach (preg_split('/,(?=\s*[A-Za-z_:][-A-Za-z0-9_:.]*\s*(=|,|$))/', $raw) as $part) {
+			[$k, $v] = array_pad(explode('=', trim($part), 2), 2, null);
+			if (strcasecmp(trim((string)$k), $name) !== 0 || $v === null) continue;
+			$v = trim($v);
+			return preg_match('/^(["\'])(.*)\1$/s', $v, $q) ? $q[2] : $v;
+		}
+		return null;
 	}
 
 	private function styleAttr(array $o): string
@@ -950,6 +1054,8 @@ final class NuRender
 		$key = $o['zzzzsys_object_id'];
 		if (isset($this->selectCache[$key])) return $this->selectCache[$key];
 		$src = trim((string)$o['sob_select_sql']);
+		$proc = trim((string)($o['sob_select_procedure'] ?? ''));
+		if ($proc !== '') return $this->selectCache[$key] = $this->selectProcedure($o, $proc);   // nuBuilder Forte 4.9 (0.8.958)
 		try {
 			$opts = NuSelectSource::options($src, ['OBJECT_ID' => (string)$o['zzzzsys_object_id']] + $this->hash);
 		} catch (Throwable $e) {
@@ -963,7 +1069,7 @@ final class NuRender
 
 	/**
 	 * Value of a display object: its procedure (sob_display_procedure, like nuBuilder: what the PHP code echoes) or else the
-	 * first column of the first row of sob_display_sql. Used on load and by nuRefreshDisplayObject.
+	 * columns of the first row of sob_display_sql, one per line. Used on load and by nuRefreshDisplayObject.
 	 */
 	public function display(array $o): string
 	{
@@ -973,12 +1079,57 @@ final class NuRender
 		$sql = trim((string)$o['sob_display_sql']);
 		if ($sql === '') return '';
 		try {
-			$v = nu_db()->run(NuHash::replace($sql, $hash, NuHash::SQL))->fetchColumn();
-			return $v === false || $v === null ? '' : (string)$v;
+			// nuBuilder Forte: every column of the first row, one per line (rtrim(implode("\n", row)), 0.8.958)
+			$r = nu_db()->run(NuHash::replace($sql, $hash, NuHash::SQL))->fetch(PDO::FETCH_NUM);
+			return $r === false ? '' : rtrim(implode("\n", array_map(static fn($v) => (string)$v, $r)), "\n");
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next display ' . $o['sob_all_id'] . ': ' . $e->getMessage());
 			return NuAuth::user()['globeadmin'] ? '⚠ ' . $e->getMessage() : '';
 		}
+	}
+
+	/**
+	 * Options of a select from its procedure (sob_select_procedure, nuBuilder Forte 4.9): what the procedure leaves in $result –
+	 * rows [value, text] (a row with one value is both), plain values, or a text in one of the formats of sob_select_sql.
+	 * @return list<array{0: string, 1: string}>
+	 */
+	private function selectProcedure(array $o, string $proc): array
+	{
+		$admin = (bool)(NuAuth::user()['globeadmin'] ?? false);
+		try {
+			$php = nu_db()->one('SELECT sph_code, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ? OR sph_code = ?', [$proc, $proc]);
+		} catch (Throwable) {
+			$php = null;
+		}
+		if (!$php) {
+			error_log('nuBuilder Next select ' . $o['sob_all_id'] . ': procedure not found: ' . $proc);
+			return [['', $admin ? '⚠ ' . t('form_err_proc_missing', $proc) : '']];
+		}
+		$hash = ['OBJECT_ID' => (string)$o['zzzzsys_object_id'], 'PROCEDURE_CODE' => (string)$php['sph_code']] + $this->hash;
+		$r = NuPhp::isolated(static function () use ($php, $hash) {
+			NuPhp::run((string)$php['sph_php'], $hash, (string)$php['sph_code']);
+			return NuPhp::$result;
+		});
+		if (($err = $r['errors'][0]['message'] ?? null) !== null) {
+			error_log('nuBuilder Next select ' . $o['sob_all_id'] . ': ' . $err);
+			return [['', $admin ? '⚠ ' . $err : t('form_err_options')]];
+		}
+		$res = $r['result'];
+		if (is_string($res)) {
+			try { return NuSelectSource::options($res, $hash); } catch (Throwable) { return []; }
+		}
+		$out = [];
+		foreach (is_iterable($res) ? $res : [] as $row) {
+			if (is_object($row)) $row = (array)$row;
+			if (is_array($row)) {
+				$row = array_values($row);
+				if (!$row) continue;
+				$out[] = [(string)$row[0], (string)($row[1] ?? $row[0])];
+			} elseif (is_scalar($row)) {
+				$out[] = [(string)$row, (string)$row];
+			}
+		}
+		return $out;
 	}
 
 	/**

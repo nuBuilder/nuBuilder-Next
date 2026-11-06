@@ -4123,7 +4123,7 @@
     "g": "values",
     "n": "nuCurrentProperties",
     "s": "nuCurrentProperties()",
-    "d": "Properties, hash cookies and form details (form_id, form_code, record_id …) as one object.",
+    "d": "Properties, hash cookies and form details (form_id, form_code, record_id …) as one object; on a list also browse_columns, browse_rows (the page's rows, [0] = the primary key) and browse_filtered_rows (records found), as in nuBuilder Forte.",
     "r": "object",
     "o": "nb",
     "e": "console.log(nuCurrentProperties().form_code);",
@@ -6242,6 +6242,61 @@
      "fn": "function(cell) – cell.row, cell.column, cell.columnId, cell.text, cell.html"
     },
     "x": "[\"Bluepeak Systems\", \"Maple Ridge Supply\"]  // nuBrowseLoop([1], c => c.text)"
+   },
+   {
+    "g": "browse",
+    "n": "nuPrintIncludeColumns",
+    "s": "nuPrintIncludeColumns(columns)",
+    "d": "Prints only these browse columns (numbers from 0, hidden ones too) in the print view and its CSV / Excel export.",
+    "o": "nb",
+    "e": "nuPrintIncludeColumns([0, 2]);",
+    "p": {
+     "columns": "array of column numbers"
+    }
+   },
+   {
+    "g": "browse",
+    "n": "nuPrintExcludeColumns",
+    "s": "nuPrintExcludeColumns(columns)",
+    "d": "Leaves these browse columns (numbers from 0) out of the print view and its CSV / Excel export.",
+    "o": "nb",
+    "e": "nuPrintExcludeColumns([3]);",
+    "p": {
+     "columns": "array of column numbers"
+    }
+   },
+   {
+    "g": "browse",
+    "n": "nuPrintIncludeHiddenColumns",
+    "s": "nuPrintIncludeHiddenColumns(include)",
+    "d": "Also prints the hidden columns (width 0) of the list.",
+    "o": "nb",
+    "e": "nuPrintIncludeHiddenColumns(true);",
+    "p": {
+     "include": "true or false"
+    }
+   },
+   {
+    "g": "browse",
+    "n": "nuPrintUseBrowseFormats",
+    "s": "nuPrintUseBrowseFormats(value)",
+    "d": "false prints the values as stored, without the columns' formats (formatted is the default in nuBuilder Next).",
+    "o": "nb",
+    "e": "nuPrintUseBrowseFormats(false);",
+    "p": {
+     "value": "true or false"
+    }
+   },
+   {
+    "g": "browse",
+    "n": "nuPrintCSVExportOptions",
+    "s": "nuPrintCSVExportOptions(options)",
+    "d": "Options of the print view's CSV download: delimiter, includeHeaders, bom, fileName, autoDownload, autoClose.",
+    "o": "nb",
+    "e": "nuPrintCSVExportOptions({delimiter: ';', fileName: 'customers.csv', autoDownload: true});",
+    "p": {
+     "options": "object"
+    }
    },
    {
     "g": "browse",

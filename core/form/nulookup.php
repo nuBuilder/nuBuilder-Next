@@ -13,8 +13,12 @@ final class NuLookup
 		return NuFormMeta::load((string)$o['sob_lookup_zzzzsys_form_id']);
 	}
 
-	/** [inner sql, pk column] */
-	private static function source(array $o, array $hash): ?array
+	/**
+	 * [inner sql, pk column]. $byId (0.8.957): nuBuilder Forte reads the chosen record's code and description from the FROM part of the
+	 * browse SQL only (nuGetLookupValues: "SELECT pk, code, description <from> WHERE pk = ?") – a WHERE that filters the list (e.g. with
+	 * hash variables of a search field) must not hide the stored record.
+	 */
+	private static function source(array $o, array $hash, bool $byId = false): ?array
 	{
 		$lf = self::form($o);
 		if (!$lf) return null;
@@ -24,8 +28,35 @@ final class NuLookup
 			if ($t === '') return null;
 			$sql = 'SELECT * FROM ' . NuDB::ident($t);
 		}
-		[$inner] = NuBrowse::splitOrder(NuHash::replace($sql, NuHash::forForm($lf, '', [], $hash) + $hash, NuHash::SQL));
+		$h = NuHash::forForm($lf, '', [], $hash) + $hash;
+		$h['TABLE_ID'] = self::beforeBrowse($lf, $h);
+		[$inner] = NuBrowse::splitOrder(NuHash::replace($sql, $h, NuHash::SQL));
+		if ($byId && ($p = NuBrowse::splitSelect($inner)) && $p['where'] !== '' && $p['group'] === '' && $p['having'] === '') $inner = 'SELECT ' . $p['fields'] . ' ' . $p['from'];
 		return [$inner, NuDB::ident($lf->primaryKey())];
+	}
+
+	/** @var array<string, string> lookup form id → its #TABLE_ID# of this request */
+	private static array $bb = [];
+
+	/**
+	 * nuBuilder Forte runs the lookup form's Before Browse before it reads code and description (nuGetLookupValues → nuBeforeBrowse) –
+	 * forms whose browse SQL reads a table the BB code builds (#TABLE_ID#, e.g. Forte's own File form) need it (0.8.956). Here: once per
+	 * lookup form and request, with a #TABLE_ID# of its own, in its own NuPhp state; the table is dropped at the end of the request.
+	 */
+	private static function beforeBrowse(NuFormMeta $lf, array $h): string
+	{
+		if (isset(self::$bb[$lf->id])) return self::$bb[$lf->id];
+		$tid = '___nu1' . substr(hash('sha256', NuHash::tableId() . '|' . $lf->id), 0, 15);
+		self::$bb[$lf->id] = $tid;
+		$code = (string)$lf->php('BB');
+		if (trim($code) === '') return $tid;
+		$h['TABLE_ID'] = $tid;
+		$r = NuPhp::isolated(static fn() => NuPhp::run($code, $h, 'Before Browse (lookup)'));
+		if (!$r['result']) error_log('nuBuilder Next lookup Before Browse ' . $lf->id . ': ' . json_encode($r['errors']));
+		register_shutdown_function(static function () use ($tid): void {
+			try { nu_db()->run('DROP TABLE IF EXISTS ' . $tid); } catch (Throwable) { /* gone already */ }
+		});
+		return $tid;
 	}
 
 	private static function expr(string $col): string
@@ -38,7 +69,7 @@ final class NuLookup
 	/** @return array{pk:string,code:string,description:string,row:array}|null */
 	public static function byId(array $o, string $pk, array $hash): ?array
 	{
-		$src = self::source($o, $hash);
+		$src = self::source($o, $hash, true);
 		if (!$src || $pk === '') return null;
 		[$inner, $pkCol] = $src;
 		try {
@@ -61,7 +92,9 @@ final class NuLookup
 		$sel = "SELECT nuT.*, $codeExpr AS nu_code, " . self::expr((string)$o['sob_lookup_description']) . " AS nu_description FROM ($inner) nuT";
 		$db  = nu_db();
 		$rows = $db->page("$sel WHERE $codeExpr = ?", [$code], "nuT.$pkCol", 2, 0);
-		if (!$rows) $rows = $db->page("$sel WHERE $codeExpr LIKE ? ESCAPE '!'", [substr(NuDB::like($code), 1)], "nuT.$pkCol", 2, 0);
+		// nuBuilder Forte: no exact code → code OR description contains the text (nuGetAllLookupList)
+		$descExpr = self::expr((string)$o['sob_lookup_description']);
+		if (!$rows) $rows = $db->page("$sel WHERE $codeExpr LIKE ? ESCAPE '!'" . ($descExpr !== "''" ? " OR $descExpr LIKE ? ESCAPE '!'" : ''), $descExpr !== "''" ? [NuDB::like($code), NuDB::like($code)] : [NuDB::like($code)], "nuT.$pkCol", 2, 0);
 		return array_map(static fn($r) => self::shape($r, $pkCol), $rows);
 	}
 

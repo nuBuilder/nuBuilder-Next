@@ -3,6 +3,86 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.963 – Release gate
+- Release gate (full test run: smoke, all end-to-end tests, the compatibility suite with nuBuilder Forte – now including every
+  Forte system form opened as a form – and the OWASP ZAP scan).
+- Documentation, README, tutorial and TODO brought up to date for 0.8.953–0.8.962.
+
+## 0.8.962 – Framed forms load after the page
+- Run objects that show a form in a frame: the frame loads once the page's own functions are ready – a framed form whose code
+  calls parent.nuSetValue() while loading (nuBuilder Forte's Files form sets its tab title this way) could run before them.
+- Compatibility suite: the system-forms pass saves each record in nuBuilder Forte first and accepts what Forte's own form code
+  changes on a save the same way (Forte's Objects form clears the input format of an object that is not an input).
+
+## 0.8.961 – AI context file
+- Form with AI and design mode's Ask AI: *Download context* next to *Copy prompt* gives a file to attach to the AI chat together
+  with the prompt, so the AI knows this installation instead of guessing: the request format, the chosen tables (structure only),
+  the forms, three complete example forms (the sample application's customers and orders forms), the hash variables, the guide
+  pages on form events, object types and validation, and the PHP and JavaScript functions nuBuilder Next has.
+- One Markdown file (nunext-context-form-<version>.md, …-form-<form code>-… when changing a form, …-app-… for a small app) that
+  every AI chat reads; the ▾ menu also offers a zip with one file per section and a switch for the full function reference
+  (parameters, results and examples of every function, more guide pages). The prompt asks the AI to read the file first.
+- The file holds no data of your tables, no settings and no passwords; downloads are logged.
+
+## 0.8.960 – Forte system forms as forms
+- nuBuilder Forte's own system forms (Users, Forms, Objects, Files, Procedures …) opened as forms in nuBuilder Next – a test pass of the
+  compatibility suite now does this for every one of them (list, record, save without a change, Forte opens the record afterwards),
+  so regressions of the form runtime are caught on every gate. Fixes it found:
+- A save was refused when a form had input buttons with a validation ("… must not be empty"): buttons hold no value and are never
+  validated, as in nuBuilder Forte (Forte's Forms form).
+- nuBeforeSave() without a return value stopped the save; only a returned false stops it now, as in nuBuilder Forte (Forte's Objects form).
+- JavaScript helpers of nuBuilder Forte's nucommon.js: String.prototype.containsAny(array), window.nuImages, and nuSearchableMultiPopup()
+  on a filter object of nuAddBrowseFilter; nuCurrentProperties() of a list carries browse_columns, browse_rows and browse_filtered_rows.
+- The label of a sub-form stands left of it (at its top), as in nuBuilder Forte – it was drawn above the sub-form.
+- Narrow buttons (50–60 px, "+27", "100") keep their label: less side padding before the label is cut.
+- Form code that writes into div[data-nu-tab-id=…] (the tab in nuBuilder Forte) emptied the tab's pane – the pane now carries
+  data-nu-pane-tab (Forte's Procedures form lost its Access Levels tab content).
+
+## 0.8.959 – Responsive containers
+- Responsive forms with containers (design mode, auto and grid layouts): a content box gets an Arrangement – one under the other, side by side (wrapping onto the next line, a column on phones) or a grid with a number of columns per screen size (desktop, tablet, phone) – plus gap, alignment and spread. Every object in such a box has a Width in the box: automatic, fixed (px), fit content or fill the rest (shared by a share number, between a minimum and a maximum), and in a grid box a column span. Boxes can be nested. Hide on phone / tablet / desktop for any object. Several selected objects (Ctrl+click, now in every layout) → "Put in a new box". The settings live in the objects' JSON; nuBuilder Forte ignores them and keeps the positions.
+
+## 0.8.958 – Forte announcements: points 1-7
+- nuBuilder Forte's forum announcements checked against nuBuilder Next; points 1–7 of the review built:
+  - An attribute value=… in an object's Attributes is the default of a new record only (as nuBuilder Forte); a stored record now always shows its own value.
+  - Selects with a Select procedure get their options from the procedure's $result (rows [value, text], plain values or a list text); nuRefreshSelectObject runs it again.
+  - nuOnProcessObjects() in Before Edit and nuOnProcessBrowseRows() in Before Browse work as in nuBuilder Forte: the function's body changes the objects ($f->objects – label, value, position, access …) or the rows of the list page ($f->browse_rows) before they are drawn.
+  - Selects with the validation No Blanks, No Duplicates or both have no empty item; with nothing chosen no option is selected (as nuBuilder Forte 4.9.2).
+  - Two-step login: $nuConfig2FASafeIPAddresses skips the second factor from safe addresses (addresses, networks, * for whole parts) for the globeadmin and for users.
+  - Print view of a form's list: Ctrl+Shift+C copies, Ctrl+Shift+D downloads the CSV, Ctrl+Shift+O opens the CSV options; form code chooses the columns and options with nuPrintIncludeColumns(), nuPrintExcludeColumns(), nuPrintIncludeHiddenColumns(), nuPrintUseBrowseFormats() and nuPrintCSVExportOptions() (autoDownload, autoClose) – the CSV and Excel export follow.
+  - Display objects show every column of the first row of their SQL, one per line (a text area when there are several lines).
+
+## 0.8.957 – Forte demo database tested side by side
+- A second nuBuilder Forte database (the demo application) tested side by side with nuBuilder Forte – browse, edit, save without change of every form, the metadata editors and every button of the object demo form. Fixed in nuBuilder Next:
+  - Forms with a column named only by digits (for example "1") no longer end in an error.
+  - HTML objects: elements an object leaves open (an iframe without its end tag, an open div or comment) are closed at the end of the object, so they no longer swallow the objects after it.
+  - Form code that reads nuSERVERRESPONSE.objects[i].js (an object's events), nuFORM.getProperty('tab_start') and the other breadcrumb keys, or the id / primary key of a grid sub-form cell (event.target.parentNode) works as in nuBuilder Forte.
+  - The Google Charts loader is added to form pages when $nuConfigIncludeGoogleCharts is on or the form's code uses google.charts; iframes of HTML objects are allowed by the page's security policy.
+  - Lookups read the description of a stored value with the FROM part of the lookup form's SQL only, and a typed code without an exact match finds codes or descriptions that contain it – as nuBuilder Forte.
+  - Saving an access level, an SQL builder query or a report without a change leaves nuBuilder Forte's stored values as they were (2FA switch, query graphic, report focus / HTML flag).
+
+## 0.8.956 – Forte database side by side
+- Tested on a nuBuilder Forte 4.9.1 database side by side with nuBuilder Forte (dev/tests/compat.js); fixed what differed:
+  - Lookups: the lookup form's Before Browse runs before code and description are read (as Forte's nuGetLookupValues) –
+    lookups into lists built with #TABLE_ID# (e.g. Forte's own File form) showed the record id.
+  - The database session gets the application time zone's offset (MySQL / MariaDB, as Forte's nuClientTimeZone), so NOW()
+    and FROM_UNIXTIME() in SQL give the same times.
+  - Lists whose browse SQL has no ORDER BY keep the table's own order on MySQL (as Forte; SQL Server still sorts by the key).
+  - Save without a change on access levels, procedures and SQL queries keeps nuBuilder Forte's NULL columns and spaces
+    around codes.
+  - nuSubformObject(): new rows have the ID -1 and sub-forms that allow adding send the blank row last (PHP and JavaScript),
+    as Forte.
+- dev/tests/compat.js ignores Forte's hidden blank row of sub-forms without Add.
+
+## 0.8.955 – Recently used: add to favourites
+- Start page: the right-click / long-press menu of a chip in Recently used offers Add to favourites (or Remove from
+  favourites) when the entry is a tile of the start page.
+
+## 0.8.954 – Notes
+- Notes: v0.8.952 published on GitHub.
+
+## 0.8.953 – Data & logs: narrower Keep field
+- Settings → Data & logs: the audit trail's Keep select is at most 170 px wide.
+
 ## 0.8.952 – Release gate
 - Release gate (TODO: please verify the functions aligned with Forte; tutorial: link to the remaining differences)
 

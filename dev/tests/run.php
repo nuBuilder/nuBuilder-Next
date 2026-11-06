@@ -261,6 +261,49 @@ check('browse: UNION wrapped as before', str_contains($in3, 'FROM (SELECT a FROM
 [$in4] = NuBrowse::build("SELECT a FROM t\n-- note\n/* x */", 'id', [['index' => 0, 'expr' => 'a']]);
 check('browse: trailing comments', $in4 === 'SELECT id AS nu_pk, a AS nu_c0 FROM t', $in4);
 check('browse: comment marks inside a string kept', NuBrowse::trimTrailingComments("SELECT 'a -- b'") === "SELECT 'a -- b'");
+// nuBuilder Forte 4.x announcements (0.8.958): 2FA safe addresses, nuOnProcess…() bodies, print settings
+check('2fa safe ip: exact', NuAuth::ipPatternMatches('192.168.1.10', '192.168.1.10') && !NuAuth::ipPatternMatches('192.168.1.10', '192.168.1.11'));
+check('2fa safe ip: wildcard', NuAuth::ipPatternMatches('192.168.*.*', '192.168.7.3') && !NuAuth::ipPatternMatches('192.168.*.*', '10.0.0.1'));
+check('2fa safe ip: cidr v4 / v6', NuAuth::ipPatternMatches('10.0.0.0/8', '10.20.30.40') && NuAuth::ipPatternMatches('2001:db8::/32', '2001:db8:1::5') && !NuAuth::ipPatternMatches('2001:db8::/32', '2001:dead::1'));
+check('2fa safe ip: v6 exact + wildcard', NuAuth::ipPatternMatches('::1', '::1') && NuAuth::ipPatternMatches('2001:db8::*', '2001:db8::abcd') && !NuAuth::ipPatternMatches('2001:db8::*', '192.168.0.1'));
+check('onprocess: body found', NuOnProcess::body("x();\nfunction nuOnProcessObjects() {\n if (1) { \$a = 1; }\n}\n", 'nuOnProcessObjects') === "{\n if (1) { \$a = 1; }\n}");
+check('onprocess: none', NuOnProcess::body('function other() {}', 'nuOnProcessObjects') === null);
+check('print: numbers', NuPrintView::numbers(base64_encode('0,2')) === [0, 2] && NuPrintView::numbers('1,3') === [1, 3] && NuPrintView::numbers('[4]') === [4]);
+$pc = [0 => ['index' => 0, 'width' => 90], 1 => ['index' => 1, 'width' => 0], 2 => ['index' => 2, 'width' => 50]];
+check('print: default = shown columns', array_keys(NuPrintView::columns($pc, [])) === [0, 2]);
+check('print: include hidden', array_keys(NuPrintView::columns($pc, ['nuPrintIncludeHiddenColumns' => '1'])) === [0, 1, 2]);
+check('print: included only', array_keys(NuPrintView::columns($pc, ['nuPrintIncludedColumns' => base64_encode('1')])) === [1]);
+check('print: excluded', array_keys(NuPrintView::columns($pc, ['nuPrintExcludedColumns' => base64_encode('2')])) === [0]);
+check('print: csv options', NuPrintView::csvOptions(['nuPrintCSVExportOptions' => base64_encode('{"delimiter":";","autoDownload":1,"x":2}')]) === ['delimiter' => ';', 'autoDownload' => true]);
+// responsive containers (0.8.959)
+check('responsive: stack cleaned', NuResponsive::cleanStack(['dir' => 'h', 'gap' => '99', 'align' => 'x', 'wrap' => '1']) === ['dir' => 'h', 'gap' => 64, 'wrap' => true, 'phone_v' => true]);
+check('responsive: grid columns', NuResponsive::cleanStack(['dir' => 'g', 'cols' => ['lg' => 3]]) === ['dir' => 'g', 'cols' => ['lg' => 3, 'md' => 3, 'sm' => 1]]);
+check('responsive: no direction = none', NuResponsive::cleanStack(['dir' => '']) === null && NuResponsive::cleanStack(null) === null);
+check('responsive: size', NuResponsive::cleanSize(['w' => 'fixed', 'px' => '5', 'grow' => 3]) === ['w' => 'fixed', 'px' => 10] && NuResponsive::cleanSize(['w' => 'fill', 'px' => 100, 'grow' => 2]) === ['w' => 'fill', 'grow' => 2]);
+check('responsive: hide', NuResponsive::cleanHide(['sm', 'x']) === ['sm'] && NuResponsive::cleanHide(['sm', 'md', 'lg']) === null);
+check('responsive: hide class', NuResponsive::hideClass(['nunext' => ['hide' => ['sm', 'lg']]]) === ' nuHideSm nuHideLg');
+[$rc, $rs] = NuResponsive::box(['dir' => 'g', 'gap' => 8, 'cols' => ['lg' => 3, 'md' => 2, 'sm' => 1]]);
+check('responsive: box', $rc === 'nuStack nuStack-g' && $rs === '--nu-stack-gap:8px;--nu-stack-cols-lg:3;--nu-stack-cols-md:2;--nu-stack-cols-sm:1;', $rc . ' ' . $rs);
+[$ic, $is] = NuResponsive::item(['nunext' => []], ['dir' => 'h']);
+check('responsive: item default in a row = fill', $ic === 'nuStackItem nuStackW-fill' && $is === '--nu-stack-grow:1;');
+check('responsive: grid keys only sent ones', NuResponsive::gridKeys(['box' => 'b1', 'stack' => ['dir' => 'v']], 'contentbox') === ['box' => 'b1', 'stack' => ['dir' => 'v']]
+	&& NuResponsive::gridKeys(['stack' => ['dir' => 'v']], 'input') === ['stack' => null]);
+// AI context pack (0.8.961): help page → Markdown, function reference compact / full
+$md = NuAiContext::htmlToMd('<section><h2>Title</h2><p class="doc-lead"><span class="badge doc-adv">Advanced</span> Lead <code>nuX()</code>.</p><p class="doc-for">For: x</p>'
+	. '<ul><li>one</li><li><strong>two</strong></li></ul><figure><svg></svg></figure><table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2|3</td></tr></table></section>');
+check('ai context: help page as Markdown', $md === "### Title\n\nLead `nuX()`.\n\n- one\n- **two**\n\n| A | B |\n| --- | --- |\n| 1 | 2\\|3 |", $md);
+$fc = NuAiContext::functions('js', false); $ff = NuAiContext::functions('js', true);
+check('ai context: compact reference smaller, no custom pages', strlen($fc) < strlen($ff) && str_contains($fc, '`nuGetValue(') && !str_contains($fc, 'NuPage.fetch') && str_contains($ff, 'NuPage.fetch'));
+check('ai context: file name', NuAiContext::fileName('form-x', 'md') === 'nunext-context-form-x-' . NU_VERSION . '.md');
+// HTML objects: an unclosed element must not swallow the following objects (0.8.957)
+$cf = NuRender::closeFragment('<iframe src="x">');
+check('html fragment: unclosed iframe closed', $cf === '<iframe src="x"></iframe>', $cf);
+$cf = NuRender::closeFragment('<div><b>a</div></span>');
+check('html fragment: containers balanced, stray end tag dropped', $cf === '<div><b>a</b></div>', $cf);
+$cf = NuRender::closeFragment('<p>x<br><img src="a.png"/></p><!-- open');
+check('html fragment: void tags kept, comment closed', $cf === '<p>x<br><img src="a.png"/></p><!-- open-->', $cf);
+$cf = NuRender::closeFragment('<script>if (a < b) "</div>";</script><div>ok</div>');
+check('html fragment: script content untouched', $cf === '<script>if (a < b) "</div>";</script><div>ok</div>', $cf);
 // 0.8.731: a column naming an alias of the field list gets the alias's expression – unless it is a real column or a source is unknown
 $bCols = static fn(string $t): array => ['tcustomer' => ['customer_id', 'cus_code', 'cus_name', 'cid'], 'tcountry' => ['id', 'name']][$t] ?? [];
 $bSql = "SELECT c.*, CONCAT(c.cus_code, ' ', c.cus_name) AS full_name, t.name AS tname, c.cus_code AS name, COUNT(*) AS n FROM tcustomer c LEFT JOIN tcountry t ON t.id = c.cid GROUP BY c.customer_id ORDER BY full_name";

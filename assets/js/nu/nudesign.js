@@ -110,7 +110,7 @@
 
 	// ------------------------------------------------------------------ reload with the same selection, tab and scroll position
 	function activePane() { return document.querySelector('#nuEditForm .tab-pane.active'); }
-	function activeTabId() { var p = activePane(); return p ? p.getAttribute('data-nu-tab-id') || '' : ''; }
+	function activeTabId() { var p = activePane(); return p ? p.getAttribute('data-nu-pane-tab') || '' : ''; }
 	var keepTab = null;
 	function reloadKeep() {
 		try {
@@ -455,6 +455,32 @@
 					function () { msg.textContent = t('fai_copy_failed'); msg.className = 'small mt-1 text-warning'; });
 			});
 		});
+		// context file (0.8.961, NuAiContext): main button = one .md file, menu = .md / zip + full function reference
+		var ctxFull = el('input', {type: 'checkbox', 'class': 'form-check-input', role: 'switch', id: 'nuDsAiCtxFull'});
+		var ctxItem = function (fmt, ic, label) { return el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item', 'data-nu-ctx': fmt}, [icon(ic + ' me-2'), label])]); };
+		var ctxBox = el('div', {'class': 'btn-group btn-group-sm', id: 'nuDsAiCtx'}, [
+			el('button', {type: 'button', 'class': 'btn btn-outline-primary', 'data-nu-ctx': 'md', id: 'nuDsAiCtxMd', title: t('fai_ctx_tip')}, [icon('bi-file-earmark-arrow-down me-1'), t('fai_ctx')]),
+			el('button', {type: 'button', 'class': 'btn btn-outline-primary dropdown-toggle dropdown-toggle-split', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', 'aria-label': t('fai_ctx_more')}),
+			el('ul', {'class': 'dropdown-menu'}, [ctxItem('md', 'bi-filetype-md', t('fai_ctx_md')), ctxItem('zip', 'bi-file-zip', t('fai_ctx_zip')), el('li', {}, [el('hr', {'class': 'dropdown-divider'})]),
+				el('li', {}, [el('div', {'class': 'dropdown-item-text'}, [el('div', {'class': 'form-check form-switch mb-0'}, [ctxFull, el('label', {'class': 'form-check-label', 'for': 'nuDsAiCtxFull', text: t('fai_ctx_full')})])])])])
+		]);
+		ctxBox.addEventListener('click', function (e) {
+			var b = e.target.closest('[data-nu-ctx]');
+			if (!b) return;
+			var body = new URLSearchParams();
+			body.set('_csrf', N.csrf); body.set('action', 'context'); body.set('fmt', b.getAttribute('data-nu-ctx')); body.set('full', ctxFull.checked ? '1' : '0');
+			msg.textContent = ''; msg.className = 'small mt-1';
+			fetch(D.ai, {method: 'POST', body: body, credentials: 'same-origin'}).then(function (r) {
+				if (!r.ok) throw new Error('HTTP ' + r.status);
+				var name = r.headers.get('X-Nu-File-Name') || 'nunext-context.md';
+				return r.blob().then(function (bl) {
+					var url = URL.createObjectURL(bl), a = el('a', {href: url, download: name, 'class': 'd-none'});
+					document.body.appendChild(a); a.click(); a.remove();
+					setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+					msg.textContent = t('fai_ctx_done'); msg.className = 'small mt-1 text-success';
+				});
+			}).catch(function (x) { msg.textContent = t('fai_ctx_failed').replace('%s', x.message); msg.className = 'small mt-1 text-danger'; });
+		});
 		var pasteB = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsAiPaste'}, [icon('bi-clipboard-check me-1'), t('fai_paste')]);
 		pasteB.addEventListener('click', function () {
 			if (!navigator.clipboard || !navigator.clipboard.readText) { ans.focus(); return; }
@@ -475,7 +501,7 @@
 		var body = [
 			el('p', {'class': 'small text-body-secondary', text: t('fai_ask_help')}),
 			el('label', {'class': 'form-label small fw-semibold', 'for': 'nuDsAiReq'}, [el('span', {'class': 'badge rounded-pill text-bg-primary me-1', text: '1'}), t('fai_ask_req')]), req,
-			el('div', {'class': 'd-flex flex-wrap gap-2 align-items-center mt-2'}, [copyB, el('a', {'class': 'small ms-auto', href: D.ai, id: 'nuDsAiFull', text: t('fai_ask_full')})]), msg,
+			el('div', {'class': 'd-flex flex-wrap gap-2 align-items-center mt-2'}, [copyB, ctxBox, el('a', {'class': 'small ms-auto', href: D.ai, id: 'nuDsAiFull', text: t('fai_ask_full')})]), msg,
 			el('label', {'class': 'form-label small fw-semibold mt-3', 'for': 'nuDsAiAns'}, [el('span', {'class': 'badge rounded-pill text-bg-primary me-1', text: '2'}), t('fai_step2')]), ans,
 			el('div', {'class': 'd-flex flex-wrap gap-2 mt-2'}, [pasteB, checkB]),
 			plan, ddlBox
@@ -2034,7 +2060,9 @@
 					field(t('builder_grid_col'), 'number', g.col, function (v) { gridSave(o, {col: v}); }, {key: 'grid_col'})]));
 				layRows.push(field(t('builder_grid_box'), 'select', g.box || '', function (v) { gridSave(o, {box: v}); }, {key: 'grid_box', options: boxes}));
 			}
+			respFields(o, g).forEach(function (x) { if (x) layRows.push(x); });
 		}
+		layRows.push(hideField(o));
 		if (tabs.length > 1) layRows.push(field(t('builder_obj_tab'), 'select', o.sob_all_zzzzsys_tab_id, function (v) { keepTab = v; save('sob_all_zzzzsys_tab_id')(v); }, {key: 'sob_all_zzzzsys_tab_id', options: tabs}));
 		section('layout', t('ds_sec_layout'), layRows);
 
@@ -2083,6 +2111,81 @@
 		if (w && f.sob_all_left !== undefined) w.style.left = Math.max(0, parseInt(f.sob_all_left, 10) || 0) + 'px';
 		saveObj(o, f, false);
 	}
+	// responsive containers (0.8.959, core/form/nuresponsive.php): a content box's direction, an object's width in a box, hide per screen
+	function respSave(o, part) {
+		var cur = objByFid(o.sob_all_id) || o;
+		return change('object.save', {object_id: cur.zzzzsys_object_id, grid: part, fields: {}}, true).catch(function () { /* said */ });
+	}
+	function respFields(o, g) {
+		var out = [], st = g.stack || null, sz = g.size || {};
+		if (o.sob_all_type === 'contentbox') {
+			var dirSave = function (v) { respSave(o, {stack: v === '' ? null : Object.assign({}, st || {}, {dir: v})}); };
+			out.push(field(t('ds_stack_dir'), 'select', st ? st.dir : '', dirSave, {key: 'stack_dir', tip: t('ds_stack_dir_tip'),
+				options: [['', t('ds_stack_none')], ['v', t('ds_stack_v')], ['h', t('ds_stack_h')], ['g', t('ds_stack_g')]]}));
+			if (st) {
+				var stSave = function (k) { return function (v) { var n = Object.assign({}, st); n[k] = v === '' ? null : v; if (k === 'wrap' || k === 'phone_v') n[k] = v === '1'; respSave(o, {stack: n}); }; };
+				var row1 = [field(t('ds_stack_gap'), 'number', st.gap === undefined ? '' : st.gap, stSave('gap'), {key: 'stack_gap', ph: '12'}),
+					field(t('ds_stack_align'), 'select', st.align || '', stSave('align'), {key: 'stack_align', options: [['', '—'], ['start', t('ds_al_start')], ['center', t('ds_al_center')], ['end', t('ds_al_end')], ['stretch', t('ds_al_stretch')]]})];
+				out.push(el('div', {'class': 'nuDsGrid2'}, row1));
+				if (st.dir !== 'g') out.push(field(t('ds_stack_justify'), 'select', st.justify || '', stSave('justify'), {key: 'stack_justify',
+					options: [['', '—'], ['start', t('ds_al_start')], ['center', t('ds_al_center')], ['end', t('ds_al_end')], ['between', t('ds_al_between')]]}));
+				if (st.dir === 'h') {
+					out.push(field(t('ds_stack_wrap'), 'check', st.wrap ? '1' : '0', stSave('wrap'), {key: 'stack_wrap'}));
+					out.push(field(t('ds_stack_phone_v'), 'check', st.phone_v === false ? '0' : '1', stSave('phone_v'), {key: 'stack_phone_v'}));
+				}
+				if (st.dir === 'g') {
+					var cols = st.cols || {lg: 2, md: 2, sm: 1};
+					var colSave = function (k) { return function (v) { var c = Object.assign({}, cols); c[k] = v; respSave(o, {stack: Object.assign({}, st, {cols: c})}); }; };
+					out.push(el('div', {'class': 'nuDsGrid3'}, ['lg', 'md', 'sm'].map(function (k) {
+						return field(t('ds_cols_' + k), 'number', cols[k], colSave(k), {key: 'stack_cols_' + k});
+					})));
+				}
+			}
+		}
+		// the object's width inside a box with a direction
+		var szSave = function (k) { return function (v) { var n = Object.assign({}, sz); n[k] = v === '' ? null : v; respSave(o, {size: n}); }; };
+		out.push(field(t('ds_size_w'), 'select', sz.w || '', szSave('w'), {key: 'size_w', tip: t('ds_size_tip'),
+			options: [['', t('ds_size_auto')], ['fixed', t('ds_size_fixed')], ['fit', t('ds_size_fit')], ['fill', t('ds_size_fill')]]}));
+		var more = [];
+		if (sz.w === 'fixed') more.push(field(t('ds_size_px'), 'number', sz.px, szSave('px'), {key: 'size_px'}));
+		if (sz.w === 'fill') more.push(field(t('ds_size_grow'), 'number', sz.grow || 1, szSave('grow'), {key: 'size_grow'}));
+		more.push(field(t('ds_size_min'), 'number', sz.min, szSave('min'), {key: 'size_min'}));
+		more.push(field(t('ds_size_max'), 'number', sz.max, szSave('max'), {key: 'size_max'}));
+		more.push(field(t('ds_size_span'), 'number', sz.span, szSave('span'), {key: 'size_span'}));
+		out.push(el('div', {'class': 'nuDsGrid2'}, more));
+		return out;
+	}
+	/** "Put in a new box" (0.8.959): a content box with a vertical direction around the selected objects, at the place of the first one. */
+	function wrapInBox(objs) {
+		ensureGrid().then(function () {
+			var list = objs.map(function (o) { return objByFid(o.sob_all_id) || o; });
+			var first = list.slice().sort(function (a, b) { var x = nunext(a), y = nunext(b); return ((+x.row || 0) - (+y.row || 0)) || ((+x.col || 0) - (+y.col || 0)); })[0];
+			var g0 = nunext(first), fid = uniqueId('box');
+			var top = Math.min.apply(null, list.map(function (o) { return +o.sob_all_top || 0; })), left = Math.min.apply(null, list.map(function (o) { return +o.sob_all_left || 0; }));
+			var right = Math.max.apply(null, list.map(function (o) { return (+o.sob_all_left || 0) + (+o.sob_all_width || 0); })), bottom = Math.max.apply(null, list.map(function (o) { return (+o.sob_all_top || 0) + (+o.sob_all_height || 0); }));
+			var fields = {sob_all_type: 'contentbox', sob_all_id: fid, sob_all_label: '', sob_all_zzzzsys_tab_id: first.sob_all_zzzzsys_tab_id, sob_all_order: +first.sob_all_order || 0,
+				sob_all_top: Math.max(0, top - 30), sob_all_left: Math.max(0, left - 10), sob_all_width: right - left + 20, sob_all_height: bottom - top + 40, sob_all_align: 'left'};
+			var steps = [['object.save', {object_id: '', fields: fields, grid: {row: g0.row || '', col: g0.col || '', span: '12', box: g0.box || '', stack: {dir: 'v'}}}]];
+			list.forEach(function (o, i) { steps.push(['object.save', {object_id: o.zzzzsys_object_id, fields: {}, grid: {box: fid, row: (i + 1) * 10, col: 10}}]); });
+			selIds = [fid];
+			chain(steps);
+		}).catch(function () { /* said */ });
+	}
+	function hideField(o) {
+		var hd = nunext(o).hide || [];
+		var boxes = ['sm', 'md', 'lg'].map(function (k) {
+			var id = 'nuDsHide_' + k;
+			var inp = el('input', {type: 'checkbox', 'class': 'form-check-input', id: id, 'data-key': 'hide_' + k, checked: hd.indexOf(k) >= 0 ? true : null});
+			inp.addEventListener('change', function () {
+				var now = ['sm', 'md', 'lg'].filter(function (x) { var c = document.getElementById('nuDsHide_' + x); return c && c.checked; });
+				respSave(o, {hide: now.length ? now : null});
+			});
+			return el('div', {'class': 'form-check form-check-inline'}, [inp, el('label', {'class': 'form-check-label', 'for': id, text: t('ds_hide_' + k)})]);
+		});
+		return el('div', {'class': 'nuDsField', id: 'nuDsHideOn'}, [el('div', {'class': 'nuDsLabelRow'}, [el('span', {'class': 'form-label nuDsLabel', text: t('ds_hide_on')}),
+			el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': t('ds_hide_tip'), title: t('ds_hide_tip')}, [icon('bi-info-circle')])]),
+			el('div', {}, boxes)]);
+	}
 	function ensureGrid() {
 		if (layout() === 'grid') return Promise.resolve();
 		return new Promise(function (resolve, reject) {
@@ -2102,6 +2205,8 @@
 			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDuplicate', title: t('ds_duplicate') + ' (Ctrl+D)', 'aria-label': t('ds_duplicate'), onclick: function () { duplicate(objs); }}, [icon('bi-copy')]),
 			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsDel', id: 'nuDsDelete', title: t('builder_delete_objects'), 'aria-label': t('builder_delete_objects'), onclick: function () { deleteObjs(objs); }}, [icon('bi-trash')])
 		];
+		if (layout() !== 'absolute' && objs.every(function (o) { return o.sob_all_type !== 'contentbox'; })) btns.unshift(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsWrapBox',
+			title: t('ds_wrap_box'), 'aria-label': t('ds_wrap_box'), onclick: function () { wrapInBox(objs); }}, [icon('bi-bounding-box')]));
 		panel.appendChild(head(t('ds_selection'), fmt(t('ds_n_objects'), objs.length), 'bi-collection', objs.map(function (o) { return o.sob_all_id; }).join(', '), btns));
 		var same = function (k, def) { var v = objs.map(function (o) { var x = o[k]; return x === null || x === undefined || x === '' ? def : String(x); }); return v.every(function (x) { return x === v[0]; }) ? v[0] : ''; };
 		var all = function (key) {

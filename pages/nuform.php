@@ -70,8 +70,10 @@ if ($meta->type() !== 'launch' && !$rights[$mode]) {
 
 // forms run admin-authored JavaScript (like nuBuilder): this page needs inline scripts and eval.
 // Charts (chart objects or nuChart() in the form's code) use Google Charts: www.gstatic.com is allowed only on those forms.
-$usesCharts = (bool)array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'chart' || stripos((string)($o['sob_html_code'] ?? ''), 'nuChart') !== false)
+$usesCharts = (bool)array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'chart' || preg_match('/nuChart|google\.(charts|visualization)/', (string)($o['sob_html_code'] ?? '')))
 	|| preg_match('/nuChart|google\.(charts|visualization)/', $meta->form['sfo_javascript'] . $meta->form['sfo_browse_javascript'] . $meta->form['sfo_edit_javascript'] . ($meta->php('BE') ?? ''));
+// form code that calls google.charts itself needs Google's loader on the page – nuBuilder Forte loads it with $nuConfigIncludeGoogleCharts (0.8.957)
+$googleLoader = $usesCharts && (nu_cfg('nuConfigIncludeGoogleCharts') || preg_match('/google\.(charts|visualization)/', $meta->form['sfo_javascript'] . $meta->form['sfo_browse_javascript'] . $meta->form['sfo_edit_javascript'] . ($meta->php('BE') ?? '') . implode('', array_map(static fn($o) => (string)($o['sob_html_code'] ?? ''), $meta->objects))));
 $gs = $usesCharts ? ' https://www.gstatic.com' : '';
 $inc = NuIncludes::cspSources();   // $nuConfigIncludeJS / CSS from other hosts (0.8.443)
 $fr = NuRender::urlFrameSources($meta->objects);   // run objects of type URL shown as iframe (0.8.830): their hosts
@@ -104,7 +106,9 @@ if ($mode === 'browse') {
 	if (!$errors) {
 		try {
 			$data = NuBrowse::query($meta, $hash, ['search' => trim($state['rf'] . ' ' . $state['q']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $state['pg'], 'per' => $state['per'],
-				'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $printMode ? 5000 : 0]);
+				'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $printMode ? 5000 : 0,
+				'process' => NuOnProcess::rowsHook($meta->php('BB'), $hash), 'raw' => $printMode && NuPrintView::raw($hash)]);   // nuOnProcessBrowseRows(), print settings (0.8.958)
+			if ($printMode) $data['columns'] = NuPrintView::columns($data['columns'], $hash);   // nuPrintIncludeColumns() …
 			foreach ($data['columns'] as &$col) {
 				if ($col['filter'] && !$printMode) $col['values'] = NuBrowse::distinctValues($meta, $hash, $col);
 			}
@@ -147,6 +151,8 @@ if ($mode === 'edit') {
 	$js   = NuPhp::$js;
 	$hash = NuPhp::$hash + $hash;
 	foreach (NuPhp::$formValues as $k => $v) $row[$k] = $v;          // nuSetFormValue in BE
+	// nuBuilder Forte's nuOnProcessObjects() in Before Edit (0.8.958): its body runs with $f->objects, the changes are taken back
+	if (!$errors && !$safe && !NuOnProcess::objects($meta, $meta->php('BE'), $row, $hash)) $errors = NuPhp::$errors ?: [['message' => NuPhp::$error, 'field' => '']];
 	nu_form_php_props($props, $locked);
 	$pageScope = NuRender::$scope = NuProps::create($props, $locked);
 
@@ -457,6 +463,7 @@ $uppyNotice = $uppyUse && $uppyDir === '' && $u['globeadmin'] ? t('form_uppy_mis
 if ($uppyDir !== '') $head .= '<link rel="stylesheet" href="' . nu_asset($uppyDir . '/uppy.min.css') . '">';
 $client['codetools'] = nu_asset('assets/js/nu/nucodetools.js');      // loaded with CodeMirror when a code editor opens (review B3)
 $client['uppyBase'] = $uppyDir;                               // nuUppySetLanguage loads <uppyBase>/locales/<code>.min.js
+if ($googleLoader) $head .= '<script src="https://www.gstatic.com/charts/loader.js"></script>';   // as nuBuilder Forte (0.8.957)
 if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
 
 $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>'
@@ -596,6 +603,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 
 <?php if ($mode === 'browse' && $data): ?>
 	<?php if (!empty($printMode)): ?>
+		<div id="nuPrintOpts" hidden data-opts="<?= h((string)json_encode((object)NuPrintView::csvOptions($hash))) ?>"></div><?php // nuPrintCSVExportOptions() (0.8.958) ?>
 		<div class="nuPrintHead nuTitleBar mb-2"><h1 class="h5 mb-0"><?= h($meta->description()) ?></h1>
 			<div class="nuTitleSub small text-body-secondary"><?= h(date(nu_dfmt('d.m.Y H:i'))) ?> · <?= h(t('n_records', $data['total'])) ?><?= $state['q'] !== '' ? ' · ' . h(t('search')) . ': ' . h($state['q']) : '' ?></div>
 			<div class="d-flex flex-wrap gap-2 d-print-none">

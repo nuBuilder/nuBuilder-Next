@@ -108,7 +108,7 @@
 <div class="doc-sub">
 	<h3 id="lifecycle-save">Saving</h3>
 	<ol>
-		<li>JavaScript: <code>nuBeforeSaveGlobal()</code>, then the form's <code>nuBeforeSave()</code> – <code>false</code> cancels.</li>
+		<li>JavaScript: <code>nuBeforeSaveGlobal()</code>, then the form's <code>nuBeforeSave()</code> – only <code>false</code> cancels (no return value saves). Input buttons are never validated.</li>
 		<li>Server: concurrent-edit check, validation of required / unique fields and masks.</li>
 		<li>PHP: global hook <code>nu_before_save</code>, then <strong>Before Save</strong> – <code>nuDisplayError()</code> stops the save; <code>#nuFORMdata#</code> holds the posted values.</li>
 		<li>Server: one transaction writes the record and its sub-form rows and records the audit trail.</li>

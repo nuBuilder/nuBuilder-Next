@@ -123,7 +123,7 @@ final class NuDB
 	{
 		$limit  = max(1, $limit);
 		$offset = max(0, $offset);
-		$sql   .= ' ORDER BY ' . self::uniqueOrder($orderBy);
+		if (trim($orderBy) !== '') $sql .= ' ORDER BY ' . self::uniqueOrder($orderBy);   // '' = no order (MySQL only – NuBrowse, 0.8.956)
 		$sql   .= $this->type === 'sqlsrv'
 			? " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY"
 			: " LIMIT $limit OFFSET $offset";
@@ -181,6 +181,8 @@ final class NuDB
 				$o = $oldCi[$k];
 				if (!is_scalar($v) && $v !== null) continue;
 				if ((string)($o ?? '') === (string)($v ?? '')) unset($row[$col]);
+				// a value stored with spaces around it comes back trimmed from the form (nu_post trims) – not a change (0.8.956)
+				elseif (is_string($o) && is_string($v) && $v !== '' && trim($o) === $v) unset($row[$col]);
 			}
 			if (!$row) return 0;
 		}
@@ -188,6 +190,21 @@ final class NuDB
 		foreach (array_keys($row) as $col) $set[] = self::word($col) . ' = ?';
 		$sql = 'UPDATE ' . self::word($table) . ' SET ' . implode(', ', $set) . ' WHERE ' . self::word($pk) . ' = ?';
 		return $this->run($sql, [...array_values($row), $id])->rowCount();
+	}
+
+	/**
+	 * Columns an editor fills with its own default where nuBuilder Forte left NULL (a switch shown off → '0', a status shown as
+	 * Active → '1', an empty graphic → its JSON): while the stored value is NULL and the posted one is that default, the column is
+	 * left out, so a save without a change keeps nuBuilder Forte's row as it was (0.8.956, dev/tests/compat.js meta:*).
+	 * @param array<string, string> $defaults column => the value the editor shows for NULL
+	 */
+	public static function keepNull(?array $old, array $row, array $defaults): array
+	{
+		if (!$old) return $row;
+		foreach ($defaults as $col => $def) {
+			if (array_key_exists($col, $row) && array_key_exists($col, $old) && $old[$col] === null && (string)($row[$col] ?? '') === (string)$def) unset($row[$col]);
+		}
+		return $row;
 	}
 
 	/** One of nuBuilder's tables (zzzzsys_…), not nuBuilder Next's own (zzzzsys_nunext_…). */

@@ -160,7 +160,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	}
 
 	if (!$errors) {
-		$newId = $db->transaction(static function (NuDB $db) use ($isNew, $id, $v, $rows, $existingById, $cloneId, $source, $hasDm, $hasFt) {
+		$newId = $db->transaction(static function (NuDB $db) use ($isNew, $id, $v, $rows, $existingById, $existing, $cloneId, $source, $hasDm, $hasFt) {
 			$head = [
 				'sal_code'            => $v['sal_code'],
 				'sal_description'     => $v['sal_description'] === '' ? null : $v['sal_description'],
@@ -172,7 +172,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 				$id = nu_id();
 				$db->insert('zzzzsys_access', ['zzzzsys_access_id' => $id] + $head + ['sal_json' => $source['sal_json'] ?? null]);
 			} else {
-				$db->update('zzzzsys_access', $head, 'zzzzsys_access_id', $id);   // sal_json untouched
+				$db->update('zzzzsys_access', NuDB::keepNull($existing, $head, ['sal_use_2fa' => '0']), 'zzzzsys_access_id', $id);   // sal_json untouched
 			}
 
 			$keep = [];
@@ -183,6 +183,8 @@ if (nu_is_post() && nu_post('action') === 'save') {
 				if ($hasDm) $data['slf_data_mode'] = $row['dm'] === '' ? null : $row['dm'];       // 0.8.461: NULL = no limit (as nuBuilder)
 				if ($hasFt) $data['slf_form_type'] = $row['ft'] === '' ? null : $row['ft'];
 				if ($row['id'] !== '') {
+					// a right column nuBuilder Forte left NULL stays NULL while it is still off (0.8.956)
+					$data = NuDB::keepNull($existingById[$row['id']] ?? null, $data, array_fill_keys(array_values(NuAcl::RIGHTS), '0'));
 					$db->update('zzzzsys_access_form', $data, 'zzzzsys_access_form_id', $row['id']);   // json untouched; unchanged columns are not written
 					$keep[$row['id']] = true;
 				} else {

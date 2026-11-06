@@ -67,7 +67,7 @@
 <table class="table table-sm">
 <thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
-<tr><td><code>$nuConfigTimezone</code></td><td>Next</td><td></td><td>Time zone for all times nuBuilder Next writes and shows (log, audit columns, backups, codes), e.g. <code>Europe/London</code>. Not set: nuBuilder Forte's <em>Setup → Time zone</em>, otherwise the server's default – then a warning is shown to administrators.</td></tr>
+<tr><td><code>$nuConfigTimezone</code></td><td>Next</td><td></td><td>Time zone for all times nuBuilder Next writes and shows (log, audit columns, backups, codes), e.g. <code>Europe/London</code>. Not set: nuBuilder Forte's <em>Setup → Time zone</em>, otherwise the server's default – then a warning is shown to administrators. On MySQL / MariaDB the database session gets this time zone's current offset too (as nuBuilder Forte), so <code>NOW()</code> and <code>FROM_UNIXTIME()</code> in SQL give the same times in both products.</td></tr>
 <tr><td><code>$nuConfigLogRecordChanges</code></td><td>Next</td><td>true</td><td>Audit trail on (until it is switched in <em>Log → Audit trail → Settings</em>)</td></tr>
 <tr><td><code>$nuConfigEditConflictCheck</code> / <code>$nuConfigEditPresence</code></td><td>Next</td><td>true</td><td><code>false</code> switches off the check for concurrent changes of a record / the note that somebody else has the record open (<a href="#concurrent-edits">Two people editing the same record</a>)</td></tr>
 <tr><td><code>$nuConfigValidationMarkers</code></td><td>Next</td><td><code>true</code></td><td>Red * (No blanks) and a key (No duplicates, with a tooltip) after labels in edit forms and sub-forms; <code>false</code> hides them (validation is not affected)</td></tr>

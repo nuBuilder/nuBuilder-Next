@@ -103,6 +103,30 @@
 			.then(function () { b.disabled = false; });
 	});
 
+	// ---- 1b. context file (0.8.961): functions, hash variables, guide, example forms – attached to the chat with the prompt
+	function download(blob, name) {
+		var url = URL.createObjectURL(blob), a = document.createElement('a');
+		a.href = url; a.download = name; a.className = 'd-none';
+		document.body.appendChild(a); a.click(); a.remove();
+		setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+	}
+	var ctxBox = $('faCtx');
+	if (ctxBox) ctxBox.addEventListener('click', function (e) {
+		var b = e.target.closest('[data-nu-ctx]');
+		if (!b) return;
+		var msg = $('faCopyMsg'), full = $('faCtxFull');
+		var body = new URLSearchParams();
+		body.set('_csrf', csrf ? csrf.value : ''); body.set('action', 'context'); body.set('kind', kind());
+		body.set('fmt', b.getAttribute('data-nu-ctx')); body.set('full', full && full.checked ? '1' : '0');
+		chosenTables().forEach(function (t) { body.append('tables[]', t); });
+		msg.textContent = '';
+		fetch(window.location.href, {method: 'POST', body: body, credentials: 'same-origin'}).then(function (r) {
+			if (!r.ok) throw new Error('HTTP ' + r.status);
+			var name = r.headers.get('X-Nu-File-Name') || 'nunext-context.md';
+			return r.blob().then(function (bl) { download(bl, name); msg.textContent = L.fai_ctx_done; msg.className = 'small text-success'; });
+		}).catch(function (x) { msg.textContent = fmt(L.fai_ctx_failed, x.message); msg.className = 'small text-danger'; });
+	});
+
 	// ---- 2. check
 	function list(title, cls, items) {
 		if (!items || !items.length) return '';

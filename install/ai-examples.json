@@ -1,0 +1,446 @@
+{
+	"comment": "Example forms of the AI context pack (core/nuaicontext.php) – the sample application's customers form and orders form with its sub-form, exported with NuFormSpec::fromForm. Regenerate when the format changes.",
+	"forms": [
+		{
+			"format": "nunext-form-1",
+			"form": {
+				"code": "sample_customer",
+				"description": "Sample: customers",
+				"type": "browseedit",
+				"table": "sample_customer",
+				"primary_key": "sample_customer_id",
+				"browse_sql": "SELECT * FROM sample_customer",
+				"rows_per_page": 10,
+				"browse": [
+					{
+						"title": "Code",
+						"field": "cus_code",
+						"width": 90,
+						"align": "left"
+					},
+					{
+						"title": "Name",
+						"field": "cus_name",
+						"width": 220,
+						"align": "left"
+					},
+					{
+						"title": "Country",
+						"field": "cus_country",
+						"width": 80,
+						"align": "center"
+					},
+					{
+						"title": "Since",
+						"field": "cus_since",
+						"width": 110,
+						"align": "left",
+						"format": "D|dd.mm.yyyy"
+					},
+					{
+						"title": "Credit",
+						"field": "cus_credit",
+						"width": 130,
+						"align": "right",
+						"format": "N|USD 1,000.00"
+					}
+				]
+			},
+			"tabs": [
+				{
+					"title": "Customer",
+					"objects": [
+						{
+							"id": "cus_code",
+							"type": "input",
+							"label": "Code",
+							"input": "text",
+							"top": 20,
+							"left": 170,
+							"width": 100,
+							"height": 22,
+							"required": true,
+							"unique": true
+						},
+						{
+							"id": "cus_name",
+							"type": "input",
+							"label": "Name",
+							"input": "text",
+							"top": 56,
+							"left": 170,
+							"width": 300,
+							"height": 22,
+							"required": true
+						},
+						{
+							"id": "cus_email",
+							"type": "input",
+							"label": "E-mail",
+							"input": "email",
+							"top": 92,
+							"left": 170,
+							"width": 300,
+							"height": 22
+						},
+						{
+							"id": "cus_phone",
+							"type": "input",
+							"label": "Phone",
+							"input": "text",
+							"format": "T|+99 99 999 99 99",
+							"top": 128,
+							"left": 170,
+							"width": 180,
+							"height": 22
+						},
+						{
+							"id": "cus_country",
+							"type": "select",
+							"label": "Country",
+							"top": 164,
+							"left": 170,
+							"width": 180,
+							"height": 22,
+							"options": [
+								[
+									"US",
+									"United States"
+								],
+								[
+									"GB",
+									"United Kingdom"
+								],
+								[
+									"CA",
+									"Canada"
+								],
+								[
+									"AU",
+									"Australia"
+								],
+								[
+									"DE",
+									"Germany"
+								]
+							],
+							"events": [
+								{
+									"event": "onchange",
+									"js": "nuToast('Country: ' + nuGetText('cus_country'));"
+								}
+							]
+						},
+						{
+							"id": "cus_active",
+							"type": "input",
+							"label": "Active",
+							"input": "checkbox",
+							"top": 200,
+							"left": 170,
+							"width": 20,
+							"height": 20
+						}
+					]
+				},
+				{
+					"title": "Details",
+					"objects": [
+						{
+							"id": "cus_since",
+							"type": "input",
+							"label": "Customer since",
+							"input": "nuDate",
+							"format": "D|dd.mm.yyyy",
+							"top": 20,
+							"left": 170,
+							"width": 110,
+							"height": 22
+						},
+						{
+							"id": "cus_credit",
+							"type": "input",
+							"label": "Credit limit",
+							"input": "nuNumber",
+							"format": "N|USD 1,000.00",
+							"top": 56,
+							"left": 170,
+							"width": 140,
+							"height": 22
+						},
+						{
+							"id": "cus_notes",
+							"type": "textarea",
+							"label": "Notes",
+							"top": 92,
+							"left": 170,
+							"width": 400,
+							"height": 80
+						},
+						{
+							"id": "cus_orders",
+							"type": "display",
+							"label": "Orders",
+							"top": 186,
+							"left": 170,
+							"width": 80,
+							"height": 22,
+							"sql": "SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = '#RECORD_ID#'"
+						}
+					]
+				},
+				{
+					"title": "Statistics",
+					"objects": [
+						{
+							"id": "cus_dashboard",
+							"type": "html",
+							"label": "",
+							"top": 20,
+							"left": 20,
+							"width": 900,
+							"height": 520,
+							"html": "<div data-nu-dashboard=\"sample_customer\"></div>"
+						}
+					]
+				}
+			],
+			"code": {
+				"browse_javascript": "// credit limits above 30,000 in red, negative ones in grey (column 4 = Credit)\nif (window.nuNext) nuBrowseStyleBadge(4, [\n  {test: function (v) { return parseFloat(v.replace(/[^0-9.-]/g, '')) > 30000; }, bg: '#f8d7da', color: '#842029', title: 'above 30,000'},\n  {test: function (v) { return parseFloat(v.replace(/[^0-9.-]/g, '')) < 0; }, bg: '#e2e3e5', color: '#41464b', title: 'negative'},\n  {default: true, badge: false}\n]);",
+				"edit_javascript": "if (nuIsNewRecord()) { nuSetValue('cus_active', true); nuSetValue('cus_country', 'US'); }",
+				"php": {
+					"BD": "$n =\n    db_fetch_row(\n        nuRunQuery('SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = ?', ['#RECORD_ID#'])\n    )[0] ?? 0;\nif ($n > 0) {\n    nuDisplayError(\"This customer has $n orders and cannot be deleted.\");\n}"
+				}
+			}
+		},
+		{
+			"format": "nunext-form-1",
+			"form": {
+				"code": "sample_order",
+				"description": "Sample: orders",
+				"type": "browseedit",
+				"table": "sample_order",
+				"primary_key": "sample_order_id",
+				"browse_sql": "SELECT sample_order.*, sample_customer.cus_name FROM sample_order LEFT JOIN sample_customer ON sample_customer_id = ord_sample_customer_id",
+				"rows_per_page": 20,
+				"browse": [
+					{
+						"title": "Number",
+						"field": "ord_number",
+						"width": 100,
+						"align": "left"
+					},
+					{
+						"title": "Date",
+						"field": "ord_date",
+						"width": 110,
+						"align": "left",
+						"format": "D|dd.mm.yyyy"
+					},
+					{
+						"title": "Customer",
+						"field": "cus_name",
+						"width": 220,
+						"align": "left"
+					},
+					{
+						"title": "Status",
+						"field": "ord_status",
+						"width": 110,
+						"align": "left"
+					},
+					{
+						"title": "Total",
+						"field": "ord_total",
+						"width": 130,
+						"align": "right",
+						"format": "N|USD 1,000.00"
+					},
+					{
+						"title": "Customer id",
+						"field": "ord_sample_customer_id",
+						"align": "left"
+					}
+				]
+			},
+			"tabs": [
+				{
+					"title": "Main",
+					"objects": [
+						{
+							"id": "ord_number",
+							"type": "input",
+							"label": "Number",
+							"input": "text",
+							"top": 20,
+							"left": 170,
+							"width": 120,
+							"height": 22,
+							"unique": true
+						},
+						{
+							"id": "ord_date",
+							"type": "input",
+							"label": "Date",
+							"input": "nuDate",
+							"format": "D|dd.mm.yyyy",
+							"top": 20,
+							"left": 470,
+							"width": 110,
+							"height": 22
+						},
+						{
+							"id": "ord_sample_customer_id",
+							"type": "lookup",
+							"label": "Customer",
+							"top": 56,
+							"left": 170,
+							"width": 100,
+							"height": 22,
+							"required": true,
+							"lookup": {
+								"form": "sample_customer",
+								"code": "cus_code",
+								"description": "cus_name",
+								"description_width": 200
+							}
+						},
+						{
+							"id": "ord_status",
+							"type": "select",
+							"label": "Status",
+							"top": 56,
+							"left": 470,
+							"width": 140,
+							"height": 22,
+							"options": [
+								[
+									"new",
+									"New"
+								],
+								[
+									"confirmed",
+									"Confirmed"
+								],
+								[
+									"shipped",
+									"Shipped"
+								],
+								[
+									"paid",
+									"Paid"
+								]
+							]
+						},
+						{
+							"id": "sample_items",
+							"type": "subform",
+							"label": "Items",
+							"top": 92,
+							"left": 170,
+							"width": 640,
+							"height": 220,
+							"subform": {
+								"form": "sample_order_item",
+								"foreign_key": "ori_sample_order_id",
+								"type": "grid",
+								"add": true,
+								"delete": true
+							}
+						},
+						{
+							"id": "ord_qty_total",
+							"type": "calc",
+							"label": "Quantity",
+							"keep": true
+						},
+						{
+							"id": "ord_total_display",
+							"type": "display",
+							"label": "Total (after save)",
+							"top": 340,
+							"left": 470,
+							"width": 140,
+							"height": 22,
+							"sql": "SELECT CAST(COALESCE(SUM(ori_qty * ori_price), 0) AS DECIMAL(15,2)) FROM sample_order_item WHERE ori_sample_order_id = '#RECORD_ID#'"
+						},
+						{
+							"id": "ord_note",
+							"type": "textarea",
+							"label": "Note",
+							"top": 384,
+							"left": 170,
+							"width": 440,
+							"height": 60
+						}
+					]
+				}
+			],
+			"code": {
+				"browse_javascript": "// the customer name opens the customer (column 2; its id is in the hidden column 5) – nuForm works in nuBuilder Forte too\nnuBrowseLoop([2], function (cell) {\n  var row = cell.id.split('_')[1], id = $('#nucell_' + row + '_5').text().trim(), name = $(cell).text().trim();\n  if (!id || !name) return;\n  var a = $('<a href=\"#\" class=\"sampleCustomerLink\"></a>').text(name).attr('title', 'Open the customer');\n  a.on('click', function (e) { e.preventDefault(); e.stopPropagation(); nuForm('samplecustomer', id); });\n  $(cell).empty().append(a);\n});",
+				"edit_javascript": "if (nuIsNewRecord()) {\n\tif (nuGetValue('ord_number') === '') nuSetValue('ord_number', 'S-' + String(Date.now()).slice(-6));\n\tif (nuGetValue('ord_date') === '') nuSetDateValue('ord_date');\n\tnuSetValue('ord_status', 'new');\n}\n// permission item: only users with sample_order_status may change the status\nif (!nuIsNewRecord() && !nuUserHasPermission('sample_order_status')) nuDisable('ord_status');",
+				"php": {
+					"AS": "// After Save: stores the order total\nnuRunQuery(\n    'UPDATE sample_order SET ord_total = (SELECT COALESCE(SUM(ori_qty * ori_price), 0) FROM sample_order_item WHERE ori_sample_order_id = ?) WHERE sample_order_id = ?',\n    ['#RECORD_ID#', '#RECORD_ID#']\n);",
+					"BE": "// Before Edit: shows a message on new records\nif ('#RECORD_ID#' === '-1') {\n    nuAddJavascript(\"nuMessage(['New order: the number is suggested, the date is today.']);\");\n}",
+					"BS": "// Before Save: the status needs the permission item sample_order_status (checked in the browser as well)\nif (!nuUserHasPermission('sample_order_status') && '#RECORD_ID#' !== '-1') {\n    $old =\n        db_fetch_row(nuRunQuery('SELECT ord_status FROM sample_order WHERE sample_order_id = ?', ['#RECORD_ID#']))[0] ??\n        '';\n    if ($old !== '#ord_status#') {\n        nuDisplayError('You may not change the status (permission item sample_order_status).');\n    }\n}\n// Before Save: at least one item\n$sf = nuSubformObject('sample_items');\n$n = 0;\nforeach ($sf->rows as $i => $r) {\n    if (empty($sf->deleted[$i])) {\n        $n++;\n    }\n}\nif ($n === 0) {\n    nuDisplayError('Please add at least one item.');\n}"
+				}
+			}
+		},
+		{
+			"format": "nunext-form-1",
+			"form": {
+				"code": "sample_order_item",
+				"description": "Sample: order items",
+				"type": "subform",
+				"table": "sample_order_item",
+				"primary_key": "sample_order_item_id",
+				"browse_sql": "SELECT * FROM sample_order_item",
+				"rows_per_page": 20
+			},
+			"tabs": [
+				{
+					"title": "Main",
+					"objects": [
+						{
+							"id": "ori_sample_product_id",
+							"type": "lookup",
+							"label": "Product",
+							"top": 10,
+							"left": 10,
+							"width": 90,
+							"height": 22,
+							"lookup": {
+								"form": "sample_product",
+								"code": "pro_code",
+								"description": "pro_name",
+								"description_width": 180
+							}
+						},
+						{
+							"id": "ori_qty",
+							"type": "input",
+							"label": "Qty",
+							"input": "nuNumber",
+							"format": "N|1,000",
+							"top": 10,
+							"left": 300,
+							"width": 70,
+							"height": 22
+						},
+						{
+							"id": "ori_price",
+							"type": "input",
+							"label": "Price",
+							"input": "nuNumber",
+							"format": "N|1,000.00",
+							"top": 10,
+							"left": 380,
+							"width": 110,
+							"height": 22
+						}
+					]
+				}
+			]
+		}
+	]
+}

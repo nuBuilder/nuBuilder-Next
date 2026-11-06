@@ -643,6 +643,11 @@
 			items = rowItems(row, false);
 		} else if (src.hasAttribute('data-nu-recent')) {           // a chip of the row "Recently used" (the side bar's list)
 			label = (src.querySelector('.nuHomeChipLabel') || src).textContent;
+			// 0.8.955: a recently used tile that sits on the start page can be added to / removed from the favourites here too
+			if (D.favUrl && src.getAttribute('data-nu-canfav') === '1') {
+				var rf = src.getAttribute('data-nu-fav') === '1';
+				items.push(ctxItem(rf ? 'bi-star' : 'bi-star-fill text-warning', t(rf ? 'home_unfav' : 'home_fav_add'), function () { ctxPost(D.favUrl, {action: 'fav', key: key}); }));
+			}
 			items.push(ctxItem('bi-dash-circle', t('sb_recent_remove'), function () { ctxPost(D.usedUrl, {action: 'forget', key: key}); }));
 			items.push(ctxItem('bi-x-circle', t('sb_recent_clear_menu'), function () { ctxPost(D.usedUrl, {action: 'clear'}); }));
 		} else {
