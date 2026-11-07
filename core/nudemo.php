@@ -33,9 +33,9 @@ final class NuDemo
 		'translations'   => ['ai_prompt', 'ai_check'],   // translations: the AI prompt and the preview of a pasted answer – nothing stored (0.8.754)               // password policy: check a typed password, nothing stored (0.8.745)
 		'user'           => ['effective', 'perm_of'],   // user form: effective rights of the levels entered (0.8.589), another user's permission items (0.8.649)
 		'notifications'  => ['state', 'readall', 'count'],   // own read / hidden state (the session only), number of recipients          // runs a procedure: only with "Demo access", and it cannot write (NuPhp::procedure, NuDB)
-		'prompts'        => ['build'],        // prompt generator: builds the text, saves nothing
+		'prompts'        => ['build', 'context'],   // prompt generator: builds the text, the AI context file (0.8.991), saves nothing
 		'builder'        => ['prompt'],
-		'formai'         => ['prompt', 'check'],   // form with AI (0.8.403): copy the prompt, check an answer       // page forms (0.8.387): "Copy AI prompt" only reads
+		'formai'         => ['prompt', 'check', 'context'],   // form with AI (0.8.403): copy the prompt, check an answer       // page forms (0.8.387): "Copy AI prompt" only reads
 		'emailtemplates' => ['preview'],      // renders a template with a record
 		'reportdesigner' => ['preview', 'fields'],   // report designer: PDF preview of the layout, field list of the data source
 		'sqlbuilder'     => ['preview'],      // SQL builder: runs the SELECT (NuDB lets only reading statements through)

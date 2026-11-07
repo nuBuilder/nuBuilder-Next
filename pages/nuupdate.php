@@ -1013,7 +1013,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 						<?php if ($test): ?><div class="d-md-none small"><?= h($test[1]) ?></div><?php endif; ?></td>
 					<td class="nuLpInUse d-none d-md-table-cell"><?php if ($x['version'] !== '' || $x['pack'] !== ''): ?>
 						<span class="fw-semibold"><?= h($x['pack'] !== '' ? $x['pack'] : $x['version']) ?></span>
-						<span class="badge text-bg-light border ms-1 nuLpFrom"><?= h($lpFrom($x)) ?></span><?= $x['path'] !== '' ? $lpTip(str_replace(NU_ROOT . '/', '', $x['path']), 'bi-folder2') : '' ?>
+						<span class="badge text-bg-light border ms-1 nuLpFrom"><?= h($lpFrom($x)) ?></span><?= $x['path'] !== '' ? $lpTip(nu_short_path($x['path']), 'bi-folder2') : '' ?>
 						<?php if ($x['prev'] !== ''): ?><div class="text-body-secondary"><?= h(t('lp_prev', $x['prev'])) ?></div><?php endif; ?>
 					<?php else: ?><span class="text-body-secondary">–</span><?php endif; ?></td>
 					<td class="nuLpAvail d-none d-md-table-cell"><?php if ($best): ?>

@@ -113,9 +113,8 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		expect(!/p=login/.test(p.url()), 'login failed after the install');
 		expect(errs.length === 0, 'JavaScript errors: ' + errs.join(' · '));
 		console.log('install: ok (' + path.basename(DUMP) + ') – ' + ((await p.locator('body').count()) ? 'signed in' : ''));
-		// 0.8.705: the same database again, now an existing nuBuilder Forte database (nuBuilder Next's own tables dropped, no nuconfig.php):
-		// refused without the marker file _install/allow-existing-db; with it the content step shows the integrity check and the written
-		// nuconfig.php allows the existing database ($nuConfigAllowExistingNuDB = true)
+		// 0.8.705 / 0.8.1008: the same database again, now an existing nuBuilder Forte database (nuBuilder Next's own tables dropped, no
+		// nuconfig.php): accepted; the content step asks for a backup (tick required) and shows the integrity check
 		const own = sql("SELECT GROUP_CONCAT(table_name) FROM information_schema.tables WHERE table_schema = '" + NAME + "' AND table_name LIKE 'zzzzsys!_nunext!_%' ESCAPE '!'");
 		if (own && own !== 'NULL') sql('DROP TABLE ' + own.split(',').map((t) => NAME + '.' + t).join(', ') + ';');
 		fs.unlinkSync(path.join(SITE, 'nuconfig.php'));
@@ -129,11 +128,11 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 			await next2();
 		};
 		await dbStep();
-		expect(await q.locator('#insDbForm').count() === 1 && /nuBuilder Forte/.test(await q.locator('main').textContent()), 'existing database not refused without the marker');
-		fs.mkdirSync(path.join(SITE, '_install'), { recursive: true });
-		fs.writeFileSync(path.join(SITE, '_install', 'allow-existing-db'), '');
-		await dbStep();
-		expect(await q.locator('#insIntegrity').count() === 1, 'no integrity check on the content step: ' + (await q.locator('main').textContent()).slice(0, 200));
+		expect(await q.locator('#insIntegrity').count() === 1 && await q.locator('#insBackup').count() === 1, 'no backup note / integrity check on the content step: ' + (await q.locator('main').textContent()).slice(0, 200));
+		if (await q.locator('#nuIcAck').count()) await q.check('#nuIcAck');
+		await next2();
+		expect(await q.locator('#insBackupAck.is-invalid').count() === 1, 'went on without the backup tick');
+		await q.check('#insBackupAck');
 		if (await q.locator('#nuIcAck').count()) await q.check('#nuIcAck');
 		await next2();
 		await q.fill('#user', 'globeadmin'); await q.fill('#password', 'Install-Test-2'); await q.fill('#password2', 'Install-Test-2');
@@ -142,8 +141,7 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		await next2();                                                                                         // libraries
 		await Promise.all([q.waitForNavigation({ timeout: 300000 }), q.click('#insInstall')]);
 		const cfg = fs.readFileSync(path.join(SITE, 'nuconfig.php'), 'utf8');
-		expect(/\$nuConfigAllowExistingNuDB\s*=\s*true;/.test(cfg), 'nuconfig.php without $nuConfigAllowExistingNuDB = true');
-		expect(!fs.existsSync(path.join(SITE, '_install', 'allow-existing-db')), 'marker file left');
+		expect(!/nuConfigAllowExistingNuDB/.test(cfg), 'nuconfig.php still gets $nuConfigAllowExistingNuDB');
 		expect(sql("SELECT setting_value FROM " + NAME + ".zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'db_origin'") === 'nubuilder', 'origin');
 		await q.goto(BASE + 'index.php?p=login');
 		await q.fill('input[name=username]', 'globeadmin'); await q.fill('input[name=password]', 'Install-Test-2');

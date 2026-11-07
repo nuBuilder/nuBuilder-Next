@@ -156,7 +156,7 @@ final class NuConfigFile
 	// ================================================================= Insert variable (0.8.442)
 
 	/** Never offered by Insert variable: developer switches and nuBuilder settings nuBuilder Next does not support. */
-	public const HIDDEN = ['nuConfigAllowExistingNuDB', 'nuConfigLogonMode'];
+	public const HIDDEN = ['nuConfigAllowExistingNuDB', 'nuConfigLogonMode'];   // nuConfigAllowExistingNuDB: no longer read (0.8.1008)
 
 	/** Groups of Insert variable: first matching pattern of the name (without $nuConfig) wins; the rest is "General". */
 	public const GROUPS = [

@@ -487,3 +487,11 @@
 .nuHomeSearchList > .list-group-item.active .text-body-secondary { color: #e7f1ff !important; }
 .nuHomeSearchList > .list-group-item.active .nu-tile-icon { background: #fff !important; color: #0a58ca !important; }
 .nuHomeSearchList > .list-group-item.active .nu-tile-icon .bi { color: inherit !important; }
+
+/* rows folded from the first paint (0.8.995, html.nuHomeFold-<fav|recent> from nutheme.js until nuhome.js applies the fold) */
+html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeChips,
+html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeChips,
+html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeStripClearForm,
+html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripClearForm { display: none; }
+html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeStripChev,
+html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripChev { transform: rotate(-90deg); }

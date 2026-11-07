@@ -674,53 +674,53 @@
 	// problems; NuCodeTools.guardForm(form) / confirmProblems() ask before saving code with errors ("Save anyway").
 	var TEXTS_CHK = {
 		en: {chk: 'Check syntax (Shift+Alt+C)', chkOk: 'No syntax errors found.', chkN: '%d problem(s)', chkLine: 'Line %d', chkTitle: 'Syntax errors',
-			chkSave: 'The code has syntax errors. Save anyway?', chkSaveAnyway: 'Save anyway', chkPhpOff: 'The PHP check could not be reached.',
+			chkSave: 'The code has syntax errors. Save anyway?', chkSaveAnyway: 'Save anyway', chkPhpOff: 'The check on the server (PHP / SQL) could not be reached.',
 			cssOpen: 'Unclosed {', cssClose: 'Unexpected }', cssComment: 'Unclosed comment', cssString: 'Unclosed string', cssDropped: 'The browser ignores this rule',
 			htmlScript: 'Unclosed <script>', htmlStyle: 'Unclosed <style>'},
 		de: {chk: 'Syntax prüfen (Umschalt+Alt+C)', chkOk: 'Keine Syntaxfehler gefunden.', chkN: '%d Problem(e)', chkLine: 'Zeile %d', chkTitle: 'Syntaxfehler',
-			chkSave: 'Der Code enthält Syntaxfehler. Trotzdem speichern?', chkSaveAnyway: 'Trotzdem speichern', chkPhpOff: 'Die PHP-Prüfung war nicht erreichbar.',
+			chkSave: 'Der Code enthält Syntaxfehler. Trotzdem speichern?', chkSaveAnyway: 'Trotzdem speichern', chkPhpOff: 'Die Prüfung auf dem Server (PHP / SQL) war nicht erreichbar.',
 			cssOpen: 'Nicht geschlossene {', cssClose: 'Unerwartete }', cssComment: 'Nicht geschlossener Kommentar', cssString: 'Nicht geschlossene Zeichenkette', cssDropped: 'Der Browser ignoriert diese Regel',
 			htmlScript: 'Nicht geschlossenes <script>', htmlStyle: 'Nicht geschlossenes <style>'},
 		fr: {chk: 'Vérifier la syntaxe (Maj+Alt+C)', chkOk: 'Aucune erreur de syntaxe.', chkN: '%d problème(s)', chkLine: 'Ligne %d', chkTitle: 'Erreurs de syntaxe',
-			chkSave: 'Le code contient des erreurs de syntaxe. Enregistrer quand même ?', chkSaveAnyway: 'Enregistrer quand même', chkPhpOff: 'La vérification PHP n\'a pas pu être jointe.',
+			chkSave: 'Le code contient des erreurs de syntaxe. Enregistrer quand même ?', chkSaveAnyway: 'Enregistrer quand même', chkPhpOff: 'La vérification sur le serveur (PHP / SQL) n\'a pas pu être jointe.',
 			cssOpen: '{ non fermée', cssClose: '} inattendue', cssComment: 'Commentaire non fermé', cssString: 'Chaîne non fermée', cssDropped: 'Le navigateur ignore cette règle',
 			htmlScript: '<script> non fermé', htmlStyle: '<style> non fermé'},
 		it: {chk: 'Controlla la sintassi (Maiusc+Alt+C)', chkOk: 'Nessun errore di sintassi.', chkN: '%d problema/i', chkLine: 'Riga %d', chkTitle: 'Errori di sintassi',
-			chkSave: 'Il codice contiene errori di sintassi. Salvare comunque?', chkSaveAnyway: 'Salva comunque', chkPhpOff: 'Il controllo PHP non è raggiungibile.',
+			chkSave: 'Il codice contiene errori di sintassi. Salvare comunque?', chkSaveAnyway: 'Salva comunque', chkPhpOff: 'Il controllo sul server (PHP / SQL) non è raggiungibile.',
 			cssOpen: '{ non chiusa', cssClose: '} inattesa', cssComment: 'Commento non chiuso', cssString: 'Stringa non chiusa', cssDropped: 'Il browser ignora questa regola',
 			htmlScript: '<script> non chiuso', htmlStyle: '<style> non chiuso'},
 		es: {chk: 'Comprobar la sintaxis (Mayús+Alt+C)', chkOk: 'No se encontraron errores de sintaxis.', chkN: '%d problema(s)', chkLine: 'Línea %d', chkTitle: 'Errores de sintaxis',
-			chkSave: 'El código tiene errores de sintaxis. ¿Guardar de todos modos?', chkSaveAnyway: 'Guardar de todos modos', chkPhpOff: 'No se pudo acceder a la comprobación de PHP.',
+			chkSave: 'El código tiene errores de sintaxis. ¿Guardar de todos modos?', chkSaveAnyway: 'Guardar de todos modos', chkPhpOff: 'No se pudo acceder a la comprobación en el servidor (PHP / SQL).',
 			cssOpen: '{ sin cerrar', cssClose: '} inesperada', cssComment: 'Comentario sin cerrar', cssString: 'Cadena sin cerrar', cssDropped: 'El navegador ignora esta regla',
 			htmlScript: '<script> sin cerrar', htmlStyle: '<style> sin cerrar'},
 		pt: {chk: 'Verificar a sintaxe (Shift+Alt+C)', chkOk: 'Nenhum erro de sintaxe encontrado.', chkN: '%d problema(s)', chkLine: 'Linha %d', chkTitle: 'Erros de sintaxe',
-			chkSave: 'O código tem erros de sintaxe. Guardar mesmo assim?', chkSaveAnyway: 'Guardar mesmo assim', chkPhpOff: 'Não foi possível contactar a verificação de PHP.',
+			chkSave: 'O código tem erros de sintaxe. Guardar mesmo assim?', chkSaveAnyway: 'Guardar mesmo assim', chkPhpOff: 'Não foi possível contactar a verificação no servidor (PHP / SQL).',
 			cssOpen: '{ não fechada', cssClose: '} inesperada', cssComment: 'Comentário não fechado', cssString: 'Texto não fechado', cssDropped: 'O navegador ignora esta regra',
 			htmlScript: '<script> não fechado', htmlStyle: '<style> não fechado'},
 		ru: {chk: 'Проверить синтаксис (Shift+Alt+C)', chkOk: 'Синтаксических ошибок нет.', chkN: 'Проблем: %d', chkLine: 'Строка %d', chkTitle: 'Синтаксические ошибки',
-			chkSave: 'В коде есть синтаксические ошибки. Всё равно сохранить?', chkSaveAnyway: 'Всё равно сохранить', chkPhpOff: 'Проверка PHP недоступна.',
+			chkSave: 'В коде есть синтаксические ошибки. Всё равно сохранить?', chkSaveAnyway: 'Всё равно сохранить', chkPhpOff: 'Проверка на сервере (PHP / SQL) недоступна.',
 			cssOpen: 'Незакрытая {', cssClose: 'Лишняя }', cssComment: 'Незакрытый комментарий', cssString: 'Незакрытая строка', cssDropped: 'Браузер игнорирует это правило',
 			htmlScript: 'Незакрытый <script>', htmlStyle: 'Незакрытый <style>'},
 		zh: {chk: '检查语法（Shift+Alt+C）', chkOk: '未发现语法错误。', chkN: '%d 个问题', chkLine: '第 %d 行', chkTitle: '语法错误',
-			chkSave: '代码有语法错误。仍要保存吗？', chkSaveAnyway: '仍然保存', chkPhpOff: '无法连接 PHP 检查。',
+			chkSave: '代码有语法错误。仍要保存吗？', chkSaveAnyway: '仍然保存', chkPhpOff: '无法连接服务器上的检查（PHP / SQL）。',
 			cssOpen: '未闭合的 {', cssClose: '多余的 }', cssComment: '未闭合的注释', cssString: '未闭合的字符串', cssDropped: '浏览器会忽略此规则',
 			htmlScript: '未闭合的 <script>', htmlStyle: '未闭合的 <style>'},
 		nl: {chk: 'Syntaxis controleren (Shift+Alt+C)', chkOk: 'Geen syntaxisfouten gevonden.', chkN: '%d probleem/problemen', chkLine: 'Regel %d', chkTitle: 'Syntaxisfouten',
-			chkSave: 'De code bevat syntaxisfouten. Toch opslaan?', chkSaveAnyway: 'Toch opslaan', chkPhpOff: 'De PHP-controle was niet bereikbaar.',
+			chkSave: 'De code bevat syntaxisfouten. Toch opslaan?', chkSaveAnyway: 'Toch opslaan', chkPhpOff: 'De controle op de server (PHP / SQL) was niet bereikbaar.',
 			cssOpen: 'Niet gesloten {', cssClose: 'Onverwachte }', cssComment: 'Niet gesloten commentaar', cssString: 'Niet gesloten tekenreeks', cssDropped: 'De browser negeert deze regel',
 			htmlScript: 'Niet gesloten <script>', htmlStyle: 'Niet gesloten <style>'},
 		pl: {chk: 'Sprawdź składnię (Shift+Alt+C)', chkOk: 'Nie znaleziono błędów składni.', chkN: 'Problemy: %d', chkLine: 'Wiersz %d', chkTitle: 'Błędy składni',
-			chkSave: 'Kod zawiera błędy składni. Zapisać mimo to?', chkSaveAnyway: 'Zapisz mimo to', chkPhpOff: 'Sprawdzanie PHP jest niedostępne.',
+			chkSave: 'Kod zawiera błędy składni. Zapisać mimo to?', chkSaveAnyway: 'Zapisz mimo to', chkPhpOff: 'Sprawdzanie na serwerze (PHP / SQL) jest niedostępne.',
 			cssOpen: 'Niezamknięty {', cssClose: 'Nieoczekiwany }', cssComment: 'Niezamknięty komentarz', cssString: 'Niezamknięty ciąg znaków', cssDropped: 'Przeglądarka ignoruje tę regułę',
 			htmlScript: 'Niezamknięty <script>', htmlStyle: 'Niezamknięty <style>'},
 		ar: {chk: 'التحقق من الصياغة (Shift+Alt+C)', chkOk: 'لا توجد أخطاء صياغة.', chkN: 'المشكلات: %d', chkLine: 'السطر %d', chkTitle: 'أخطاء صياغة',
-			chkSave: 'في الكود أخطاء صياغة. هل تريد الحفظ على أي حال؟', chkSaveAnyway: 'احفظ على أي حال', chkPhpOff: 'تعذّر الوصول إلى فحص PHP.',
+			chkSave: 'في الكود أخطاء صياغة. هل تريد الحفظ على أي حال؟', chkSaveAnyway: 'احفظ على أي حال', chkPhpOff: 'تعذّر الوصول إلى الفحص على الخادم (PHP / SQL).',
 			cssOpen: '{ غير مغلقة', cssClose: '} غير متوقعة', cssComment: 'تعليق غير مغلق', cssString: 'نص غير مغلق', cssDropped: 'يتجاهل المتصفح هذه القاعدة',
 			htmlScript: '<script> غير مغلق', htmlStyle: '<style> غير مغلق'}
 	};
 	var TC = TEXTS_CHK[LANG] || TEXTS_CHK.en;
 	var ACORN = BASE + 'vendor/bundled/acorn-8.19.0/acorn.min.js';
-	var CHECKS = {JS: 1, CSS: 1, HTML: 1, PHP: 1};
+	var CHECKS = {JS: 1, CSS: 1, HTML: 1, PHP: 1, SQL: 1};   // SQL: parsed by the database (0.8.999, pages/nucodecheck.php lang=sql)
 
 	function loadAcorn() {
 		if (window.acorn) return Promise.resolve();
@@ -811,7 +811,18 @@
 		}
 		return Promise.all(jobs).then(function (r) { r.forEach(function (x) { out = out.concat(x); }); return out; });
 	}
-	var phpBusy = null;
+	var phpBusy = null, sqlBusy = null;
+	/** SQL (0.8.999): the database parses it without running it; null = no check for this user / database (no marks, no message). */
+	function checkSql(code) {
+		var tok = (window.nuNext && window.nuNext.csrf) || '';
+		if (!tok) { var el = document.querySelector('[data-csrf]'), inp = document.querySelector('input[name="_csrf"]'); tok = el ? el.getAttribute('data-csrf') : (inp ? inp.value : ''); }
+		if (sqlBusy) sqlBusy.abort();
+		sqlBusy = window.AbortController ? new AbortController() : null;
+		var body = new URLSearchParams({action: 'check', lang: 'sql', code: code, _csrf: tok});
+		return fetch(BASE + 'index.php?p=codecheck', {method: 'POST', credentials: 'same-origin', body: body, signal: sqlBusy ? sqlBusy.signal : undefined})
+			.then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+			.then(function (j) { return j.skip ? null : (j.errors || []).map(function (e) { return {line: e.line, col: e.col || 0, sev: 'error', msg: e.msg}; }); });
+	}
 	function checkPhp(code) {
 		var tok = (window.nuNext && window.nuNext.csrf) || '';
 		if (!tok) { var el = document.querySelector('[data-csrf]'), inp = document.querySelector('input[name="_csrf"]'); tok = el ? el.getAttribute('data-csrf') : (inp ? inp.value : ''); }
@@ -831,6 +842,7 @@
 		if (lang === 'JS') return checkJs(code);
 		if (lang === 'CSS') return Promise.resolve(checkCss(code));
 		if (lang === 'HTML') return checkHtml(code);
+		if (lang === 'SQL') return checkSql(code);
 		return checkPhp(code);
 	}
 
@@ -842,7 +854,7 @@
 			st = cm.nuChk = {lang: lang, problems: [], marks: [], timer: null, seq: 0, btn: null, label: ''};
 			var gut = (cm.getOption('gutters') || []).slice();
 			if (gut.indexOf('nuChkGutter') < 0) { gut.push('nuChkGutter'); cm.setOption('gutters', gut); }
-			cm.on('change', function () { clearTimeout(st.timer); st.timer = setTimeout(function () { run(false); }, st.lang === 'PHP' ? 1500 : 800); });
+			cm.on('change', function () { clearTimeout(st.timer); st.timer = setTimeout(function () { run(false); }, st.lang === 'PHP' || st.lang === 'SQL' ? 1500 : 800); });
 			cm.on('swapDoc', function () { st.marks = []; run(false); });
 			cm.addKeyMap({'Shift-Alt-C': function () { run(true); }});
 		}
@@ -885,7 +897,7 @@
 				show(list);
 				if (loud) pop(list);
 				return list;
-			}, function () { if (loud && st.lang === 'PHP') pop(null); return []; });
+			}, function () { if (loud && (st.lang === 'PHP' || st.lang === 'SQL')) pop(null); return []; });
 		}
 		var popEl = null;
 		function popClose() { if (popEl) { popEl.remove(); popEl = null; document.removeEventListener('mousedown', outside, true); } }

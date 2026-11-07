@@ -696,7 +696,7 @@
 	<section class="tut-lesson" id="compat" data-right="compat">
 		<h3>Bringing a nuBuilder Forte application to nuBuilder Next</h3>
 		<p>The aim is that a nuBuilder Forte application works in nuBuilder Next without changes – both use the same tables and formats.</p>
-		<div class="tut-note">For now nuBuilder Next is installed on a <strong>new database</strong>: the installer refuses an existing nuBuilder Forte database. Try your application on a <strong>copy</strong> – in developer mode, <a data-help="db-reset">Reset database</a> imports an SQL dump of the nuBuilder Forte database into the nuBuilder Next database. Never point nuBuilder Next at the live nuBuilder Forte database.</div>
+		<div class="tut-note">nuBuilder Next can be installed on an existing nuBuilder Forte database – <strong>back up the database and the files first</strong> (the installer asks for it). Better still, try your application on a <strong>copy</strong> first – in developer mode, <a data-help="db-reset">Reset database</a> imports an SQL dump of the nuBuilder Forte database into the nuBuilder Next database.</div>
 		<p>On the copy, before opening it to users:</p>
 		<ol>
 			<li>Run the <a data-open="compat">Compatibility check</a>: it scans all JavaScript, events, procedures and SQL for nuBuilder Forte functions and shows whether each one is <em>supported</em>, a <em>stub</em> or <em>missing</em> in nuBuilder Next.</li>

@@ -11,8 +11,7 @@ defined('NU_ROOT') || exit;
  *   partial – some of the tables are missing: "Create missing tables" (the install scripts only add what is missing)
  *   old     – a nuBuilder Forte database older than 4.9 (e.g. zzzzsys_form.sfo_status missing): explained, nothing is changed
  * index.php sends the globeadmin to ?p=dbsetup and shows everybody else a notice; the globeadmin's sign-in creates the own tables only
- * when the database is ready (NuAuth::start). An existing nuBuilder database without $nuConfigAllowExistingNuDB is still blocked first
- * (NuInstall::existingBlocked).
+ * when the database is ready (NuAuth::start).
  */
 final class NuDbState
 {

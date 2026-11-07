@@ -43,6 +43,7 @@ $u        = NuAuth::user();
 $rights   = NuAcl::rights($meta->id);
 $iframe   = ($_GET['iframe'] ?? '') === '1';
 $lookupTo = preg_replace('/[^\w]/', '', (string)($_GET['lookup'] ?? ''));
+NuHash::$state = ['iframe' => $iframe ? '1' : '0', 'lookup_id' => $lookupTo];   // nuBuilder Forte's breadcrumb keys in nuHash() (0.8.984)
 $psIn    = is_string($_GET['ps'] ?? null) ? $_GET['ps'] : '';
 [$props, $locked] = NuProps::load($psIn);     // properties of the opening form; names set in PHP are locked
 $caller = NuHash::$caller = NuProps::caller($psIn);   // fields of the edit form it was opened from (0.8.976)
@@ -90,6 +91,8 @@ $breadcrumbs = [['title' => t('nav_home'), 'url' => nu_url('home')]];
 
 // ===================================================================== browse
 if ($mode === 'browse') {
+	// nuBuilder Forte's breadcrumb keys in nuHash() of Before Browse: the list's search, page and sort (0.8.984)
+	NuHash::$state += nu_browse_hash_state();
 	$hash = NuHash::forForm($meta, '', [], $props);
 	$hash['ADV_SEARCH'] = NuAdvSearch::encode(NuAdvSearch::parse($_GET['adv'] ?? ''));   // advanced search (0.8.719) for Before Browse
 	NuPhp::reset();
@@ -104,6 +107,7 @@ if ($mode === 'browse') {
 	$state = nu_browse_request();
 	$printMode = ($_GET['print'] ?? '') === '1' && $rights['print'];
 	$data = null;
+	$browseErr = '';                                         // browse SQL failed: shown to the globeadmin above the empty list
 	if (!$errors) {
 		try {
 			$data = NuBrowse::query($meta, $hash, ['search' => $state['q'], 'runfilter' => $state['rf'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $state['pg'], 'per' => $state['per'],
@@ -116,7 +120,10 @@ if ($mode === 'browse') {
 			unset($col);
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next browse ' . $meta->code() . ': ' . $e->getMessage());
-			$errors[] = ['message' => $u['globeadmin'] || nu_debug() ? t('form_err_browse_sql') . ' ' . $e->getMessage() : t('form_err_browse_sql'), 'field' => ''];
+			// as nuBuilder Forte: the titles with no rows, the error in Debug results – the message only for the globeadmin / debug mode
+			if (class_exists('NuDebugLog')) NuDebugLog::write('Browse SQL of ' . $meta->code() . ":\n" . $e->getMessage());
+			$data = NuBrowse::emptyResult($meta, $hash, (int)$state['per'] ?: ((int)$meta->form['sfo_browse_rows_per_page'] ?: 20));
+			if ($u['globeadmin'] || nu_debug()) $browseErr = t('form_err_browse_sql') . ' ' . $e->getMessage();
 		}
 		NuBrowse::dropTempTable();
 	}
@@ -265,13 +272,13 @@ $client = [
 	'fileMaxKB' => max(1, (int)(nu_cfg('nuConfigFileMaxKB') ?: 300)),
 	'ux' => (object)NuSettings::uxOptions(),     // nuBuilder's nuUXOptions (settings table or nuconfig.php)
 	'user' => [
-		'id' => $u['id'], 'login' => $u['login'], 'name' => $u['globeadmin'] ? 'globeadmin' : $u['login'], 'display' => $u['display'],
+		'id' => $u['id'], 'login' => $u['login'], 'display' => $u['display'],
 		'globeadmin' => $u['globeadmin'], 'access_level_id' => $u['access_id'], 'access_level_code' => NuHash::base()['ACCESS_LEVEL_CODE'],
 		'language' => NuTranslate::language(), 'permissions' => NuHash::permissions((string)$u['id']),
 		'fields' => (object)NuUserFields::mine(),                 // custom user fields (0.8.454): nuNextUserField(code)
 		'access_levels' => NuUserAccess::listOf(),                // main + active additional levels (0.8.867): nuNextAccessLevels()
 		'home_id' => (string)(NuHash::base()['HOME_ID'] ?? ''),     // nuSERVERRESPONSE.home_id as nuBuilder Forte (0.8.965)
-	] + nu_form_user_details($u),
+	] + nu_form_user_details($u),   // 'name' = the user's name (sus_name) – '' for the globeadmin, as nuBuilder Forte's nuUserName()
 	// nuBuilder Forte's folder for relative images of form code (img src="custom/…" written for Forte, 0.8.965): '' = none
 	'forte_base' => nu_forte_base(),
 	// nuBuilder Forte's browser tab title (shared settings nuShowBrowserTabTitle / nuBrowserTabTitlePrefix, 0.8.965) – only when one is set
@@ -378,7 +385,7 @@ function nu_forte_base(): string
 
 function nu_form_user_details(array $u): array
 {
-	$map = ['code' => 'sus_code', 'position' => 'sus_position', 'department' => 'sus_department', 'team' => 'sus_team', 'first_name' => 'sus_first_name',
+	$map = ['name' => 'sus_name', 'code' => 'sus_code', 'position' => 'sus_position', 'department' => 'sus_department', 'team' => 'sus_team', 'first_name' => 'sus_first_name',
 		'last_name' => 'sus_last_name', 'additional1' => 'sus_additional1', 'additional2' => 'sus_additional2', 'email' => 'sus_email',
 		'accessibility' => 'sus_accessibility_features'];
 	$out = array_fill_keys(array_keys($map), '');
@@ -495,8 +502,45 @@ if ($mode === 'browse' && is_array($client['browse'] ?? null)) {
 	$client['browse']['unset'] = array_values(array_map(static fn($n) => '#' . $n . '#', array_keys(array_filter(NuBrowse::$shown['vars'] ?? [], static fn($v) => $v === null))));
 	$client['browse']['smooth'] = $custom === '' && empty($printMode) && !$design && NuIncludes::jsTags() === '' && stripos(NuIncludes::setupTags(), '<script') === false;
 }
+// nuCurrentProperties() / nuFORM.getCurrent() as nuBuilder Forte's breadcrumb (0.8.981, nuform.php nuGetFormObject + nuformclass.js
+// addBreadcrumb): the form's list settings as Forte sends them (rows 20 / row height 18 when 0, the raw columns), the list's columns
+// as stored (display = the column expression; '' for a column hidden or masked by field data access) – read by nuruntime.js crumbProps()
+$crumbShown = $mode === 'browse' ? (array)($data['columns'] ?? []) : [];   // $data exists only for lists
+$client['crumb'] = (static function () use ($meta, $mode, $crumbShown, $hash, $lookupTo, $u, $rights, $client): array {
+	$f = $meta->form;
+	$redirect = trim((string)($f['sfo_browse_redirect_form_id'] ?? ''));
+	$c = [
+		'form_group' => (string)($f['sfo_group'] ?? ''),
+		'browse_title_multiline' => $f['sfo_browse_title_multiline'] ?? false,
+		'browse_autoresize_columns' => $f['sfo_browse_autoresize_columns'] ?? null,
+		'mobile_view' => $f['sfo_mobile_view'] ?? null,
+		'redirect_form_id' => $redirect === '' ? $meta->id : $redirect, 'redirect_other_form_id' => $redirect,
+		'browse_target' => (string)($f['sfo_browse_target'] ?? ''),
+		'row_height' => (int)($f['sfo_browse_row_height'] ?? 0) ?: 18,
+		'rows' => (int)($f['sfo_browse_rows_per_page'] ?? 0) ?: 20,
+		'data_mode' => $u['globeadmin'] ? null : (!empty($rights['no_edits']) ? '0' : '1'),
+		'browse_table_id' => (string)($hash['TABLE_ID'] ?? NuHash::tableId()),
+		'session_id' => (string)($hash['SESSION_ID'] ?? ''),
+		'lookup_id' => $lookupTo,
+		'run_code' => (string)($client['report']['code'] ?? ''), 'run_description' => (string)($client['report']['description'] ?? ''),
+		'columns' => [], 'pad' => defined('NU_BROWSE_CELL_PAD') ? NU_BROWSE_CELL_PAD : 10,
+	];
+	if ($mode === 'browse') {
+		$shown = $crumbShown;
+		foreach ($meta->browse as $i => $b) {
+			$s = $shown[$i] ?? null;
+			$c['columns'][] = ['title' => (string)$b['sbr_title'], 'display' => $s && $s['mask'] === null ? (string)$b['sbr_display'] : '',
+				'align' => (string)($b['sbr_align'] ?? ''), 'width' => $s ? (int)$b['sbr_width'] : 0, 'order' => (int)($b['sbr_order'] ?? 0),
+				'format' => (string)($b['sbr_format'] ?? ''), 'id' => (string)$b['zzzzsys_browse_id']];
+		}
+	}
+	return $c;
+})();
 // WYSIWYG editor objects need TinyMCE (not bundled – a library pack, or the old hand copy in assets/vendor/tinymce)
-$hasEditor = $mode === 'edit' && array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'editor');
+// – and form code that starts TinyMCE itself (tinymce.init on a textarea): nuBuilder Forte loads it on every form page
+$hasEditor = $mode === 'edit' && (array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'editor')
+	|| preg_match('/\btinymce\s*\.\s*(init|get|remove|activeEditor|EditorManager)\b/i', $meta->form['sfo_javascript'] . $meta->form['sfo_edit_javascript'] . ($meta->php('BE') ?? '')
+		. implode('', array_map(static fn($o) => (string)($o['sob_html_code'] ?? ''), $meta->objects))));
 $tinyDir   = $hasEditor ? NuLibs::tinymce() : '';            // library pack or assets/vendor/tinymce (0.8.405)
 $tinymce   = $tinyDir !== '';
 $notice    = $hasEditor && !$tinymce && $u['globeadmin'] ? t('form_tinymce_missing') . ' ' . t('lp_get_pack') : '';
@@ -546,12 +590,14 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. NuCustomCode::jsTag()                                      // Global JS (0.8.523): before Setup → Header and the form's code – a form's nuOnLoad wins
 	. ($safe ? '' : NuIncludes::setupTags())                     // Setup → Include (0.8.444): its <link> / <script> / <style> elements
 	. ($safe ? '' : $setupHeader) . "\n"
+	. ($safe ? '' : '<script>nuNextLoadGuard(true);</script>')   // handlers of form code waiting for the page are dropped as in Forte (0.8.983)
 	. ($mode === 'edit' && !$safe ? '<script>nuNextRunDeferred(document);</script>' : '')   // scripts of HTML objects (0.8.383, NuRender::deferScripts)
 	// as nuBuilder Forte (EXTRAJS): nuAddJavascript of the PHP events and the form's JavaScript in ONE script – function declarations of the
 	// form's code are hoisted, so code added in Before Edit / Before Browse may call them (0.8.965); after an error only the PHP part
 	. $hoistJs
 	. ($errors || $safe ? nu_script(implode("\n", $js), 'php: nuAddJavascript')
 		: nu_script(implode("\n\n", array_filter([implode("\n", $js), (string)$meta->form['sfo_javascript'], (string)$meta->form[$mode === 'browse' ? 'sfo_browse_javascript' : 'sfo_edit_javascript']], static fn($x) => trim($x) !== '')), 'php: nuAddJavascript + form JavaScript'))
+	. ($safe ? '' : '<script>nuNextLoadGuard(false);</script>')
 	. '<script>nuNextStart();</script>'
 	. (!empty($client['builder']) ? '<script src="' . nu_asset('assets/js/nu/nudesigner.js') . '" data-labels="' . h((string)json_encode(array_combine(   // Arrange panel (0.8.606)
 		['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag', 'hgap', 'vgap', 'apply', 'gap_tip'],
@@ -564,6 +610,12 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '') . ($design ? ' nuDesignMode' : '')]);
 ?>
 <div class="nuFormHeader nuTitleBar mb-3">
+	<?php if (!$bare): // phones (0.8.1003, the owner picked mockup B): "‹ <parent>" + the title instead of the breadcrumb and Back; the buttons sit right of the title
+		$phCur = (string)(end($breadcrumbs)['title'] ?? $title); $phBack = null;
+		for ($bi = count($breadcrumbs) - 2; $bi >= 0; $bi--) if (($breadcrumbs[$bi]['url'] ?? '') !== '') { $phBack = $breadcrumbs[$bi]; break; } ?>
+	<?php if ($phBack && empty($printMode)): ?><a class="nuPhBack" href="<?= h($phBack['url']) ?>"><i class="bi bi-chevron-left" aria-hidden="true"></i><span><?= h($phBack['title']) ?></span></a><?php endif; ?>
+	<h1 class="nuPhTitle"><?= h($phCur) ?></h1>
+	<?php endif; ?>
 	<?php if (!$bare): ?>
 	<nav aria-label="breadcrumb">
 		<ol class="breadcrumb mb-0 nuBreadcrumbHolder" id="nuBreadcrumbHolder">
@@ -592,6 +644,9 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php if ($rights['add'] && $rights['edit'] && $meta->hasEdit()): // "Add" right only (0.8.461: not on a "browse only" form) (as nuBuilder; "New" is the button on the edit screen) – also in a lookup window: the new record is chosen right after saving ?>
 				<button type="button" class="btn nuAddBtn nuActionButton" id="nuAddButton"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></button>
 			<?php endif; ?>
+			<?php if (empty($printMode) && (int)($data['total'] ?? 0) > 0): // phones (0.8.992): rows as cards or as a table – as on the system lists (nuruntime.js phoneStack) ?>
+				<button type="button" class="btn nuBtnAct nuToolBtn d-sm-none nuLvPhoneBtn" id="nuPhoneCardsBtn" aria-pressed="false" title="<?= h(t('lv_phone_toggle')) ?>" aria-label="<?= h(t('lv_phone_toggle')) ?>"><i class="bi bi-table nuLvPhoneToTable" aria-hidden="true"></i><i class="bi bi-card-list nuLvPhoneToCards" aria-hidden="true"></i></button>
+			<?php endif; ?>
 			<?php if ($meta->id === 'nunotes' && $lookupTo === '' && empty($printMode) && isset(nu_forms()['nunotescategroy']) && NuAcl::can('nunotescategroy')): // notes: categories one click away ?>
 				<a class="btn btn-outline-secondary nuActionButton" id="nuNoteCategoriesButton" href="<?= h(nu_url('form', ['f' => 'nunotescategroy', 'bt' => $bt['child'] ?: null])) ?>"><i class="bi bi-tags me-1"></i><?= h(t('notes_categories')) ?></a>
 			<?php endif; ?>
@@ -613,7 +668,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 				<button type="button" class="btn nuBtnAct nuActionButton" id="nuCloneButton"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>
 			<?php endif; ?>
 			<?php if (!$client['is_new'] && $rights['new'] && $meta->type() !== 'launch'): ?>
-				<button type="button" class="btn btn-outline-secondary nuActionButton" id="nuNewButton"><i class="bi bi-plus-lg me-1"></i><?= h(t('form_new')) ?></button>
+				<button type="button" class="btn btn-outline-secondary nuActionButton nuIconPhone" id="nuNewButton"><i class="bi bi-plus-lg me-1"></i><?= h(t('form_new')) ?></button>
 			<?php endif; ?>
 			<?php if (!$client['is_new'] && $rights['delete'] && $meta->type() !== 'launch'): ?>
 				<button type="button" class="btn nuBtnAct nuBtnDel nuActionButton" id="nuDeleteButton"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
@@ -628,8 +683,8 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php else: ?><?= $dsBtn ?><?php endif; ?>
 		<?php endif; ?>
 		<?php if ($u['globeadmin'] && !$bare): ?>
-			<?= NuFormInfo::html($meta, $mode, $r) /* (i) form info for the globeadmin (0.8.435) */ ?>
-			<div class="btn-group nuSeg" role="group" aria-label="<?= h(t('form_layout')) ?>">
+			<?= str_replace('<div class="dropdown">', '<div class="dropdown nuFormInfoWrap">', NuFormInfo::html($meta, $mode, $r)) /* (i) form info for the globeadmin (0.8.435) */ ?>
+			<div class="btn-group nuSeg" id="nuLayoutSeg" role="group" aria-label="<?= h(t('form_layout')) ?>">
 				<?php if ($mode === 'edit'): foreach (['absolute', 'auto', 'grid'] as $l): ?>
 					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
 				<?php endforeach; endif; ?>
@@ -661,6 +716,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 <?php foreach ($errors as $e): ?>
 	<div class="alert alert-danger d-flex gap-2"><i class="bi bi-exclamation-octagon mt-1"></i><div><?= nl2br(h($e['message'])) ?></div></div>
 <?php endforeach; ?>
+<?php if (($browseErr ?? '') !== ''): ?><div class="alert alert-danger d-flex gap-2" id="nuBrowseSqlErr"><i class="bi bi-exclamation-octagon mt-1"></i><div><?= nl2br(h($browseErr)) ?></div></div><?php endif; ?>
 
 <?php if ($mode === 'browse' && $data): ?>
 	<?php if (!empty($printMode)): ?>
@@ -685,7 +741,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 			$fltIdx = array_column($fltCols, 'index');
 			foreach ($state['flt'] as $fi => $fv): if (!in_array($fi, $fltIdx, true)): ?><input type="hidden" name="flt[<?= (int)$fi ?>]" value="<?= h($fv) ?>"><?php endif; endforeach; ?>
 			<div class="row g-2 align-items-end"><div class="col-md-6">
-			<div class="d-flex gap-2 nuListSearch"><div class="input-group nuSearchGroup">
+			<div class="d-flex gap-2 nuListSearch"><?php if ($rights['add'] && $rights['edit'] && $meta->hasEdit()): // phones (0.8.1003): Add next to the search, as the mockup B – clicks #nuAddButton ?><button type="button" class="btn btn-primary nuPhAdd order-last" title="<?= h(t('add')) ?>" aria-label="<?= h(t('add')) ?>"><i class="bi bi-plus-lg" aria-hidden="true"></i></button><?php endif; ?><div class="input-group nuSearchGroup">
 				<input type="search" class="form-control" id="nuSearchField" name="q" value="<?= h($state['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('search')) ?>" autocomplete="off"<?= $lookupTo !== '' ? ' autofocus' : '' ?>>
 				<button class="btn btn-outline-secondary nuSearchBtn" id="nuSearchButton" type="submit" title="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>"><i class="bi bi-search"></i></button>
 				<?php $advOn = NuAdvSearch::valid($data['columns'] ?? [], $state['adv']) !== []; // advanced search (0.8.719): ▾ opens the panel (assets/js/nu/nuadvsearch.js) ?>

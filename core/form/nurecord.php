@@ -188,7 +188,10 @@ final class NuRecord
 			$row = [];
 			foreach ($meta->objects as $o) {
 				$f = (string)$o['sob_all_id'];
-				if (!in_array($o['sob_all_type'], self::SAVED_TYPES, true) || ($o['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($o)) continue;   // Uppy: files go to the server folder (0.8.459)
+				// display objects: written only when edited (nuRefreshDisplayObject / nuSetValue) and their column exists – as nuBuilder Forte (0.8.989)
+				$display = $o['sob_all_type'] === 'display';
+				if ($display && !isset($edited[$f])) continue;
+				if (!$display && !in_array($o['sob_all_type'], self::SAVED_TYPES, true) || ($o['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($o)) continue;   // Uppy: files go to the server folder (0.8.459)
 				if ($isNew && ($o['sob_input_type'] ?? '') === 'nuAutoNumber' && $o['sob_all_type'] === 'input'
 					&& ($col = self::column($columns, $f)) !== null && ($n = NuAutoNumber::next((string)$o['zzzzsys_object_id'])) !== null) {
 					$row[$col] = $n;                                   // nuBuilder: new records get the next number (nuAutoNumber / nuUpdateCounter)
@@ -325,8 +328,10 @@ final class NuRecord
 			$data = [];
 			foreach ($sub->objects as $so) {
 				$f = (string)$so['sob_all_id'];
-				if (!in_array($so['sob_all_type'], self::SAVED_TYPES, true) || ($so['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($so)) continue;   // Uppy: files go to the server folder (0.8.459)
+				$display = $so['sob_all_type'] === 'display';   // display objects only when edited (0.8.989)
+				if (!$display && !in_array($so['sob_all_type'], self::SAVED_TYPES, true) || ($so['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($so)) continue;   // Uppy: files go to the server folder (0.8.459)
 				if (!array_key_exists($f, $vals)) continue;
+				if ($display && !isset($ed[$f])) continue;
 				if (!NuFieldAccess::writable($so, $rowPk === '')) { self::dropped($sub, $f); continue; }   // field data access per row (0.8.480)
 				$col = self::column($columns, $f);
 				if ($col === null || $col === $pkCol || $col === $fkCol || $col === $nl) continue;
@@ -606,16 +611,14 @@ final class NuRecord
 	 */
 	private static function nuFormData(NuFormMeta $meta, string $recordId, array $values, array $edited): array
 	{
-		$fields = ['ID'];
+		// as nuBuilder Forte's nuFORM.data(): ID, nuDelete, then the fields (0.8.984 – nuDelete was last)
+		$fields = ['ID', 'nuDelete'];
 		foreach ($meta->objects as $o) {
 			if (in_array($o['sob_all_type'], self::SAVED_TYPES, true) && !NuRender::isUppy($o) && $o['sob_all_type'] !== 'subform') $fields[] = (string)$o['sob_all_id'];
 		}
-		$fields[] = 'nuDelete';
-		$row = [$recordId];
-		$ed  = [0];
-		foreach (array_slice($fields, 1, -1) as $f) { $row[] = isset($values[$f]) && is_scalar($values[$f]) ? (string)$values[$f] : ''; $ed[] = isset($edited[$f]) ? 1 : 0; }
-		$row[] = 0;
-		$ed[]  = 0;
+		$row = [$recordId, 0];
+		$ed  = [0, 0];
+		foreach (array_slice($fields, 2) as $f) { $row[] = isset($values[$f]) && is_scalar($values[$f]) ? (string)$values[$f] : ''; $ed[] = isset($edited[$f]) ? 1 : 0; }
 		$out = [(object)['id' => 'nuBuilder4EditForm', 'foreign_key' => '', 'foreign_key_name' => '', 'primary_key' => $meta->primaryKey(),
 			'object_id' => $meta->id, 'table' => $meta->table(), 'action' => 'save', 'fields' => $fields, 'rows' => [$row], 'edited' => [$ed], 'deleted' => [0]]];
 		foreach (NuPhp::$subforms as $sf) {

@@ -548,7 +548,7 @@ final class NuAuth
 
 	private static function start(array $data): void
 	{
-		if (!empty($data['globeadmin']) && !NuInstall::existingBlocked() && NuDbState::ready()) {   // the globeadmin's first sign-in sets up the own tables (0.8.462, B2) – not before the database is set up (0.8.645)
+		if (!empty($data['globeadmin']) && NuDbState::ready()) {   // the globeadmin's first sign-in sets up the own tables (0.8.462, B2) – not before the database is set up (0.8.645)
 			NuSchema::allow();
 			NuSchema::ensure();
 		}

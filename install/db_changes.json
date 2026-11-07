@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.979",
+    "version": "0.8.1010",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -469,6 +469,17 @@
                     "table": "zzzzsys_email_template",
                     "kind": "data",
                     "what": "read-only templates nu_password_reset_template, group nunext, one per language (ids nx_pwreset_…) added when missing – also checked with every later update"
+                }
+            ]
+        },
+        {
+            "id": "0037-setting-phone-back",
+            "description": "Settings table: row nuPhoneBackButton (Back button on phones: text, icon or hidden) when missing",
+            "changes": [
+                {
+                    "table": "zzzzsys_config",
+                    "kind": "data",
+                    "what": "row nuPhoneBackButton added when missing"
                 }
             ]
         }

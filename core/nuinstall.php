@@ -12,7 +12,7 @@ defined('NU_ROOT') || exit;
  * The token file is readable for every account on the server (0644): PHP writes it as the web server's user (e.g. www-data), and
  * the FTP / SFTP user must be able to download it. The web is kept out by _install/.htaccess (Apache) as before.
  *
- * Steps: language + server check → database (test, optionally create; an existing nuBuilder database is refused since 0.8.380 –
+ * Steps: language + server check → database (test, optionally create; an existing nuBuilder Forte database needs a ticked backup –
  * see ORIGIN below) → content (empty: nuBuilder's complete system from <nuBuilder>/nubuilder4.sql, or nuBuilder Next's own install scripts) → administrator
  * (plain-text password in nuconfig.php, like nuBuilder) → options → summary → install (writes nuconfig.php, runs the database
  * steps, removes the token). Every step can be repeated; an interrupted install can simply be started again.
@@ -22,32 +22,11 @@ final class NuInstall
 	public const MAX_TOKEN_ATTEMPTS = 10;
 
 	/*
-	 * Existing nuBuilder databases (0.8.380): while nuBuilder Next is being tested it is installed only on a new, empty database.
-	 * $nuConfigAllowExistingNuDB = true (nuconfig.php, written by hand – deliberately not in nuconfig-sample.php / README) allows an
-	 * existing one. Setting 'db_origin' (zzzzsys_nunext_setting, step 0014): 'nunext' = set up by the installer on an empty database,
-	 * 'legacy' = nuBuilder Next was already installed before 0.8.380 (keeps working, the globeadmin gets a warning), 'nubuilder' =
-	 * installed by hand on an existing nuBuilder database since 0.8.380 (blocked without the variable).
+	 * Setting 'db_origin' (zzzzsys_nunext_setting, step 0014): 'nunext' = set up by the installer on an empty database, 'legacy' =
+	 * nuBuilder Next was installed before 0.8.380, 'nubuilder' = set up on an existing nuBuilder Forte database. Existing nuBuilder
+	 * Forte databases are allowed (0.8.1008): the installer and the sign-in page ask for a backup first (backupNeeded()).
 	 */
 	public const ORIGIN = 'db_origin';
-
-	/**
-	 * Marker file for the installer (0.8.705): an empty file <nuBuilder Next>/_install/allow-existing-db lets the installer set up nuBuilder
-	 * Next on a database that already has nuBuilder Forte's tables (the installer runs before nuconfig.php exists, so the variable cannot
-	 * be read there). The written nuconfig.php then gets $nuConfigAllowExistingNuDB = true; the marker goes with the other files of
-	 * _install/ after the installation. Deliberately undocumented, like the variable.
-	 */
-	public const EXISTING_MARKER = '_install/allow-existing-db';
-
-	public static function existingMarker(): bool
-	{
-		return is_file(NU_ROOT . '/' . self::EXISTING_MARKER);
-	}
-
-	public static function existingAllowed(): bool
-	{
-		$v = nu_cfg('nuConfigAllowExistingNuDB');
-		return $v === true || (is_string($v) && in_array(strtolower(trim($v)), ['1', 'true', 'yes', 'on'], true)) || $v === 1;
-	}
 
 	/** 'nunext' | 'legacy' | 'nubuilder' | '' (not known yet). */
 	private static ?string $origin = null;
@@ -80,47 +59,18 @@ final class NuInstall
 		self::setOrigin($earlier ? 'legacy' : ($nub ? 'nubuilder' : 'nunext'), $db);
 	}
 
-	/** Installed by hand on an existing nuBuilder database without $nuConfigAllowExistingNuDB: nobody may use it (index.php). */
-	public static function existingBlocked(): bool
+	/**
+	 * A nuBuilder Forte database that nuBuilder Next has not set up yet (nuconfig.php written by hand): the sign-in page asks for a
+	 * backup before the globeadmin's first sign-in adds the own tables (0.8.1008).
+	 */
+	public static function backupNeeded(): bool
 	{
-		if (self::existingAllowed()) return false;
-		if (self::origin() === 'nubuilder') return true;
-		// not set up yet on a database with nuBuilder's tables: step 0014 would mark it 'nubuilder' – blocked before anything is
-		// written, so the globeadmin's sign-in does not create the own tables first (0.8.462, gap analysis B2)
-		if (self::origin() !== '' || NuSchema::present()) return false;
 		try {
+			if (self::origin() !== '' || NuSchema::present()) return false;
 			return nu_db()->tableExists('zzzzsys_form') && nu_db()->tableExists('zzzzsys_user');
 		} catch (Throwable) {
 			return false;
 		}
-	}
-
-	/** Older installation on an existing nuBuilder database: works, the globeadmin sees a warning (start page, Security check). */
-	public static function existingWarn(): bool
-	{
-		return self::origin() === 'legacy' && !self::existingAllowed() && nu_db()->tableExists('zzzzsys_form');
-	}
-
-	/** The warning hidden by the globeadmin for this version (review I1) – it shows again after the next update. */
-	public const WARN_HIDDEN = 'existing_db_warn_hidden';
-
-	public static function existingWarnHidden(): bool
-	{
-		try {
-			NuSchema::ensure();
-			return (string)nu_setting_value(self::WARN_HIDDEN) === NU_VERSION;
-		} catch (Throwable) {
-			return false;
-		}
-	}
-
-	public static function hideExistingWarn(): void
-	{
-		NuSchema::ensure();
-		$db = nu_db();
-		$row = ['setting_value' => NU_VERSION, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr((string)(NuAuth::user()['login'] ?? ''), 0, 50)];
-		nu_setting_save(self::WARN_HIDDEN, $row, $db);
-		NuLog::write('existing_db_warn_hidden', 'zzzzsys_nunext_setting', self::WARN_HIDDEN, ['version' => NU_VERSION]);
 	}
 
 	public static function configPath(): string
@@ -716,7 +666,6 @@ final class NuInstall
 		$tpl = $set($tpl, 'nuConfigTimezone', $x((string)$o['timezone']));
 		$tpl = $set($tpl, 'nuConfigBaseURL', $x((string)$o['base_url']));
 		$tpl = $set($tpl, 'nuConfigSharedLogin', !empty($o['shared']) ? 'true' : 'false');
-		if (($s['detect']['kind'] ?? '') === 'nubuilder') $tpl = $set($tpl, 'nuConfigAllowExistingNuDB', 'true');   // set up on an existing database (marker file, 0.8.705)
 		if ((string)$o['nub_path'] !== '' && rtrim((string)$o['nub_path'], '/\\') !== dirname(NU_ROOT)) $tpl = $set($tpl, 'nuConfigNuBuilderPath', $x((string)$o['nub_path']));
 		$tpl = (string)preg_replace('/^\/\/ -> Rename nuconfig-sample\.php to nuconfig\.php\n/m', '// -> Written by the nuBuilder Next installer on ' . date('Y-m-d H:i') . ". Edit as needed.\n", $tpl, 1);
 		return $tpl;

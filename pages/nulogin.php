@@ -169,7 +169,10 @@ nu_head(t('login_title'));
 			<?php if ($error): ?>
 				<div class="alert alert-danger d-flex gap-2 py-2" role="alert"><i class="bi bi-exclamation-octagon mt-1"></i><div><?= h(t($error)) ?></div></div>
 			<?php endif; ?>
-			<?php if (!NuInstall::existingBlocked() && !NuDbState::ready() && NuDbState::check()['error'] === ''):   // database not set up (0.8.645) ?>
+			<?php if (NuInstall::backupNeeded()):   // a nuBuilder Forte database not set up by nuBuilder Next yet (0.8.1008) ?>
+				<div class="alert alert-warning d-flex gap-2 py-2 small" role="note" id="nuLoginBackup"><i class="bi bi-shield-exclamation mt-1"></i><div><b><?= h(t('ins_backup_title')) ?></b><br><?= h(t('ins_backup_login')) ?></div></div>
+			<?php endif; ?>
+			<?php if (!NuDbState::ready() && NuDbState::check()['error'] === ''):   // database not set up (0.8.645) ?>
 				<div class="alert alert-info d-flex gap-2 py-2 small" role="status" id="nuLoginDbSetup"><i class="bi bi-database-gear mt-1"></i><div><?= h(t('dbs_login_hint')) ?>
 					<a href="<?= h(nu_url('dbsetup')) ?>" class="alert-link"><?= h(t('dbs_login_link')) ?></a></div></div>
 			<?php endif; ?>

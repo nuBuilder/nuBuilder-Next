@@ -27,8 +27,10 @@ function nu_app_title(bool $configuredOnly = false): string
 function nu_head(string $title, string $extraHead = ''): void
 {
 	$env = NuBranding::get()['env_label'];             // branding (0.8.297): environment label in the tab title and as a coloured line
+	$pb = NuDB::$connected ? NuSettings::phoneBack() : '';   // shared setting nuPhoneBackButton (0.8.1002): Back on phones as icon / hidden
+	$hc = trim(($env !== '' ? 'nu-env' : '') . ($pb !== '' ? ' nuBack-' . $pb : ''));
 	?><!doctype html>
-<html lang="<?= h(nu_lang_choice()) ?>"<?= nu_lang_rtl() ? ' dir="rtl"' : '' ?> data-bs-theme="light"<?= $env !== '' ? ' class="nu-env"' : '' ?>>
+<html lang="<?= h(nu_lang_choice()) ?>"<?= nu_lang_rtl() ? ' dir="rtl"' : '' ?> data-bs-theme="light"<?= $hc !== '' ? ' class="' . h($hc) . '"' : '' ?>>
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -62,12 +64,12 @@ function nu_return_query(): string
 	return (string)($_SERVER['QUERY_STRING'] ?? '');
 }
 
-function nu_lang_menu(string $btnClass = 'btn btn-sm btn-outline-secondary'): void
+function nu_lang_menu(string $btnClass = 'btn btn-sm btn-outline-secondary', string $wrapClass = ''): void
 {
 	if (count(nu_lang_choices()) < 2) return;                  // one installed language without variants: nothing to choose (0.8.701)
 	$r = nu_return_query();
 	?>
-	<div class="dropdown">
+	<div class="dropdown<?= $wrapClass !== '' ? ' ' . h($wrapClass) : '' ?>">
 		<button class="<?= $btnClass ?> dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= h(t('nav_language')) ?>">
 			<i class="bi bi-translate"></i> <?= h(strtoupper(nu_lang()) . (nu_lang_variant() !== '' ? '-' . substr(nu_lang_variant(), 3) : '')) ?>
 		</button>
@@ -80,10 +82,10 @@ function nu_lang_menu(string $btnClass = 'btn btn-sm btn-outline-secondary'): vo
 	<?php
 }
 
-function nu_theme_menu(string $btnClass = 'btn btn-sm btn-outline-secondary'): void
+function nu_theme_menu(string $btnClass = 'btn btn-sm btn-outline-secondary', string $wrapClass = ''): void
 {
 	?>
-	<div class="dropdown">
+	<div class="dropdown<?= $wrapClass !== '' ? ' ' . h($wrapClass) : '' ?>">
 		<button class="<?= $btnClass ?> dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= h(t('nav_theme')) ?>">
 			<i class="bi bi-circle-half js-theme-icon"></i>
 		</button>
@@ -100,6 +102,43 @@ function nu_theme_menu(string $btnClass = 'btn btn-sm btn-outline-secondary'): v
 			<?php endforeach; endif; ?>
 		</ul>
 	</div>
+	<?php
+}
+
+/**
+ * Theme and language at the top of the user menu – compact top bar on phones (0.8.990): the bar's own theme / language buttons are hidden
+ * below 768 px so the bar fits (an environment label took the room)
+ */
+function nu_menu_prefs(): void
+{
+	$r = nu_return_query();
+	?>
+	<li class="d-md-none nuMenuPrefs px-3 pb-2" id="nuMenuPrefs">
+		<div class="btn-group w-100 nuSeg" role="group" aria-label="<?= h(t('nav_theme')) ?>">
+			<button type="button" class="btn btn-sm btn-outline-secondary" data-theme-set="light" title="<?= h(t('theme_light')) ?>" aria-label="<?= h(t('theme_light')) ?>"><i class="bi bi-sun"></i></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" data-theme-set="dark" title="<?= h(t('theme_dark')) ?>" aria-label="<?= h(t('theme_dark')) ?>"><i class="bi bi-moon-stars"></i></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" data-theme-set="auto" title="<?= h(t('theme_auto')) ?>" aria-label="<?= h(t('theme_auto')) ?>"><i class="bi bi-circle-half"></i></button>
+		</div>
+		<?php if (count(nu_lang_choices()) > 1): ?>
+		<form method="get" action="index.php" class="mt-2 d-flex align-items-center gap-2" id="nuMenuLangForm">
+			<input type="hidden" name="p" value="lang"><input type="hidden" name="r" value="<?= h($r) ?>">
+			<label class="small text-body-secondary text-nowrap" for="nuMenuLang"><i class="bi bi-translate me-1"></i><?= h(t('nav_language')) ?></label>
+			<select class="form-select form-select-sm js-autosubmit" name="l" id="nuMenuLang">
+				<?php foreach (nu_lang_choices() as $code => $own): ?><option value="<?= h($code) ?>" lang="<?= h($code) ?>"<?= nu_lang_choice() === $code ? ' selected' : '' ?>><?= h($own) ?></option><?php endforeach; ?>
+			</select>
+		</form>
+		<?php endif; ?>
+		<?php $themes = NuAuth::user() ? NuTheme::choices() : []; if ($themes): $pick = NuTheme::userPick(); if (!isset($themes[$pick])) $pick = ''; ?>
+		<form method="post" action="<?= h(nu_url('themes')) ?>" class="mt-2 d-flex align-items-center gap-2" id="nuMenuThemeForm">
+			<?= nu_csrf_field() ?><input type="hidden" name="action" value="pick"><input type="hidden" name="back" value="<?= h('index.php?' . $r) ?>">
+			<label class="small text-body-secondary text-nowrap" for="nuMenuTheme"><i class="bi bi-brush me-1"></i><?= h(t('theme_title')) ?></label>
+			<select class="form-select form-select-sm js-autosubmit" name="theme" id="nuMenuTheme">
+				<?php foreach (['' => t('theme_pick_default')] + array_map(static fn($x) => $x['name'], $themes) as $tid => $tname): ?><option value="<?= h((string)$tid) ?>"<?= $pick === (string)$tid ? ' selected' : '' ?>><?= h($tname) ?></option><?php endforeach; ?>
+			</select>
+		</form>
+		<?php endif; ?>
+	</li>
+	<li class="d-md-none"><hr class="dropdown-divider"></li>
 	<?php
 }
 
@@ -182,8 +221,9 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						data-url="<?= h(nu_url('palette')) ?>" data-vendor="<?= h(nu_url('vendor')) ?>" data-csrf="<?= h(nu_csrf_token()) ?>" data-t="<?= h(json_encode($palT, JSON_UNESCAPED_UNICODE)) ?>"><i class="bi bi-search"></i></button>
 				<?php endif; ?>
 				<?php nu_bell(); ?>
-				<?php nu_theme_menu(); ?>
-				<?php nu_lang_menu(); ?>
+				<?php // compact bar on phones (0.8.990): theme and language move into the user menu (nu_menu_prefs) – the bar fits also with an environment label ?>
+				<?php nu_theme_menu('btn btn-sm btn-outline-secondary', $compact ? 'd-none d-md-block' : ''); ?>
+				<?php nu_lang_menu('btn btn-sm btn-outline-secondary', $compact ? 'd-none d-md-block' : ''); ?>
 				<?php if (!$compact): ?><button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nuNavPin" aria-pressed="false" data-on="<?= h(t('nav_pin_on')) ?>" data-off="<?= h(t('nav_pin_off')) ?>"
 					title="<?= h(t('nav_pin_off')) ?>" aria-label="<?= h(t('nav_pin_off')) ?>"><i class="bi bi-pin-angle"></i></button><?php endif; // phones / tablets (0.8.637): keep the ☰ menu open on every page (nuapp.js, localStorage nunext-nav-pin) ?>
 				<div class="dropdown">
@@ -194,6 +234,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 					</button>
 					<ul class="dropdown-menu dropdown-menu-end">
 						<li><h6 class="dropdown-header"><?= h($u['login']) ?></h6></li>
+						<?php if ($compact) nu_menu_prefs(); ?>
 						<?php if ($compact && array_diff(array_keys($nav), ['home'])): // compact top bar on phones (0.8.706): the bar's links ?>
 							<?php foreach ($nav as $page => $n): if ($page === 'home') continue; ?><li class="d-md-none"><a class="dropdown-item<?= $active === $page ? ' active' : '' ?>" href="<?= h($n[3] ?? nu_url($page)) ?>"><i class="bi <?= $n[0] ?> me-2"></i><?= h($n[1]) ?></a></li><?php endforeach; ?>
 							<li class="d-md-none"><hr class="dropdown-divider"></li>
@@ -586,9 +627,9 @@ function nu_unique_mark(bool $required = false): string
  * "Download context ▾" of Form with AI (0.8.961, NuAiContext): main button = one Markdown file, menu = .md / zip + switch "Full function
  * reference". Buttons carry data-nu-ctx="md|zip", the switch data-nu-ctx-full; assets/js/nuformai.js posts action=context.
  */
-function nu_ai_context_menu(string $id): string
+function nu_ai_context_menu(string $id, string $tipKey = 'fai_ctx_tip'): string
 {
-	$tip = t('fai_ctx_tip');
+	$tip = t($tipKey);
 	return '<div class="btn-group" id="' . h($id) . '">'
 		. '<button type="button" class="btn btn-outline-primary" data-nu-ctx="md" id="' . h($id) . 'Md"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . h(t('fai_ctx')) . '</button>'
 		. '<button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" id="' . h($id) . 'More" aria-label="' . h(t('fai_ctx_more')) . '"></button>'

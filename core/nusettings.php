@@ -59,6 +59,20 @@ final class NuSettings
 	 * nuBuilder Next's own rows in the settings table (0.8.282) – added when missing (update step 0005, "Create" on the page);
 	 * nuBuilder shows them in its Settings too and ignores them.
 	 */
+	/**
+	 * Title of a shared setting in the user's language: the text cfgt_<setting> while the stored title is still the
+	 * default one (a title changed in nuBuilder Forte stays as it is).
+	 */
+	public static function title(array $r): string
+	{
+		static $en = null;
+		$title = (string)($r['cfg_title'] ?? '');
+		$k = 'cfgt_' . preg_replace('/[^a-z0-9]/', '', strtolower((string)($r['cfg_setting'] ?? '')));
+		$en ??= require NU_ROOT . '/lang/en.php';
+		if (!isset($en[$k]) || strcasecmp(trim($en[$k]), trim($title)) !== 0) return $title;
+		return t($k);
+	}
+
 	public const OWN = [
 		['zzzzsys_config_id' => 'nunextprimarydbm', 'zzzzsys_setup_id' => '1', 'cfg_order' => 115, 'cfg_category' => 'Admin', 'cfg_title' => 'Primary Database Tool',
 			'cfg_setting' => '$nuConfigPrimaryDatabaseManagement', 'cfg_value' => '',
@@ -68,6 +82,10 @@ final class NuSettings
 			'cfg_setting' => '$nuConfigHomeHooks', 'cfg_value' => 'true',
 			'cfg_description' => 'nuBuilder Next: false = the procedure nu_home (PHP and JavaScript) does not run on the tile start page.',
 			'cfg_type' => 2, 'cfg_effective' => '1'],
+		['zzzzsys_config_id' => 'nunextphoneback', 'zzzzsys_setup_id' => '1', 'cfg_order' => 211, 'cfg_category' => 'Form', 'cfg_title' => 'Back Button on Phones',
+			'cfg_setting' => 'nuPhoneBackButton', 'cfg_value' => 'text',
+			'cfg_description' => 'nuBuilder Next: the Back button on screens below 576 px – text (icon and text), icon (icon only) or hidden. Wider screens are not changed.',
+			'cfg_type' => 1, 'cfg_effective' => '1'],
 	];
 
 	/** Adds the rows of OWN that are missing (by setting name). @return int rows added */
@@ -90,6 +108,7 @@ final class NuSettings
 		'$nuConfigGlobeadminHome' => ['nuhome'],
 		'$nuConfigPrimaryDatabaseManagement' => ['phpMyAdmin', 'Adminer'],
 		'nuShowJSErrors'          => ['none', 'globeadmin', 'everyone'],
+		'nuPhoneBackButton'       => ['text', 'icon', 'hidden'],
 		'nuHideTabTitleIfOnlyOne' => ['none', 'globeadmin', 'user', 'everyone'],
 		'nuEditCloseAfterSave'    => ['None', 'AllForms', 'UserForms', 'SystemForms'],
 		'nuCalendarWeekNumbers'   => ['None', 'ISO 8601', 'Western traditional', 'Middle Eastern'],
@@ -227,6 +246,16 @@ final class NuSettings
 		}
 		self::$loading = false;
 		return self::$cache = $out;
+	}
+
+	/** Back button on phones (0.8.1002, own row nuPhoneBackButton): 'icon', 'hidden' or '' (icon and text). */
+	public static function phoneBack(): string
+	{
+		static $busy = false;                                   // no nuconfig.php yet (installer) or an error page while reading it: default
+		if ($busy || !is_file(nu_config_path())) return '';
+		$busy = true;
+		try { $v = strtolower(trim((string)(self::uxOptions()['nuPhoneBackButton'] ?? ''))); } catch (Throwable) { $v = ''; } finally { $busy = false; }
+		return in_array($v, ['icon', 'hidden'], true) ? $v : '';
 	}
 
 	/** nuUXOptions for the form runtime: nuconfig.php ($nuJSOptions / nuUXOptions lines), replaced by the table when it is used. */

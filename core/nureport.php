@@ -674,8 +674,12 @@ final class NuReport
 		header('X-Frame-Options: SAMEORIGIN');
 		header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'self'");
 		header('Content-Type: text/html; charset=utf-8');
-		echo '<!doctype html><meta charset="utf-8"><title>' . h(t('rpt_title')) . '</title><body style="font:14px system-ui,sans-serif;margin:0;padding:1rem;color:#842029;background:#f8d7da">'
-			. h($message) . '</body>';
+		// light / dark as the browser (the page has no theme script – the strict CSP allows inline styles only); Home in the window (UI review 0.8.1007)
+		echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' . h(t('rpt_title')) . '</title>'
+			. '<style>:root{color-scheme:light dark}body{font:15px system-ui,sans-serif;margin:0;padding:1.25rem;color:#842029;background:#f8d7da}'
+			. 'a{display:inline-block;margin-top:1rem;color:inherit;font-weight:600}'
+			. '@media (prefers-color-scheme:dark){body{color:#ea868f;background:#2c0b0e}}</style>'
+			. '<body><div>' . h($message) . '</div><a href="' . h(nu_url('home')) . '" target="_top">' . h(t('back_home')) . '</a></body>';
 		exit;
 	}
 }

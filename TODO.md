@@ -3,6 +3,12 @@ Grouped by topic (0.8.909, the owner): every point starts with a short **title**
 Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archive.md`.
 
 ## Decisions for the owner
+- [ ] **Fewer places for settings** (0.8.1002) – the owner wants to rethink where settings live (Shared settings, nuBuilder Next's own settings
+      table, Branding, Settings → Look / General, Security settings, nuconfig.php …): too many places. Back Button on Phones went into the
+      Shared settings for now (own row nuPhoneBackButton) – move it once the new structure is decided.
+- [ ] **`browse_sql` in nuCurrentProperties() / nuHash()** (0.8.981) – nuBuilder Forte gives the list's full SQL; nuBuilder Next only the
+      names of the unset hash variables (the SQL is not sent to the browser). Send the real SQL (forms that reuse it, e.g. to export the
+      list in a procedure) or keep it as is. The owner decides later.
 - [ ] **DeepSource** (0.8.944) – the owner looks into it later: turn it off (1), keep only the Secrets analyzer (2, recommended – change `.deepsource.toml`, goes up with the next gate push), or keep it and ignore the style rules (3). Findings so far assessed in 0.8.887 / 0.8.937–0.8.939.
 - [ ] **ApexCharts licence** (0.8.896): 4.7.0 is the last MIT release. From 5.0 the LICENSE file is a dual licence (Community: free only
       below 2 M USD revenue / budget; embedding in a platform used by others – a low-code builder like nuBuilder Next – needs the paid OEM
@@ -30,14 +36,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Drawing order of objects** (absolute layout): nuBuilder Forte sorts content boxes first, then sob_all_order, then the tab order,
       run objects last at the same order; nuBuilder Next sorts tab, sob_all_order, top, left. Matters only for objects with the same order
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
-- [ ] **`nuRunQuery` errors like Forte?** (0.8.971, comparing a second Forte database): Forte writes a failing query to the Debug results
-      and goes on (the query returns -1, an e-mail after a failed insert is still sent); nuBuilder Next stops the procedure / hook and
-      shows the error. Options: keep (recommended for data safety) or do as Forte.
-- [ ] **`DOMContentLoaded` handlers of form code** (0.8.974): in Forte they never run (form code runs after the page has loaded), in
-      nuBuilder Next they run. Recommendation: leave it (documented in 12-02); the alternative is to swallow such handlers.
 - [ ] **Object menu on more objects**: nuBuilder Forte also offers the right-click menu on words, images, tabs and sub-form titles.
 
 ## SQL Server
+- [ ] **SQL check on SQL Server** (0.8.999) – the code editors' SQL check uses SET NOEXEC ON there (compiled, not run); untested here: check that a wrong column / table is marked with the right line and that NOEXEC is switched off again.
 - [ ] **Nothing ran on a real SQL Server yet** (no image / pdo_sqlsrv here; code checked with simulated catalogues and sqlglot; installation,
       lists and Adminer with a fixed TCP port work on the owner's SQL Server Express – 0.8.793): own tables and migration steps (0004,
       0020, 0021 …, missing columns added automatically), App cloner, backups with the whole database, list views' catalogue SQL, start
@@ -61,6 +63,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **SQL builder list** (0.8.688): concatenates 'SQL:' + id with +.
 
 ## Live server, e-mail and deployment
+- [ ] **Existing nuBuilder Forte database** (0.8.1008, no longer blocked): installer on a copy of the live Forte database – backup
+      tick, integrity check, nuBuilder Forte keeps working afterwards; a hand-written nuconfig.php shows the backup note on the sign-in page.
 - [ ] **E-mail → Test → Check connection** with the real SMTP server (also OAuth 2); PHPMailer 7.1.1 (0.8.894) with that server.
 - [ ] **Cron and unattended updates**: `php nucron.php update` as the web server's user (--url over https, proxy), unattended update from
       GitHub; after the entry file rename (0.8.825 / 0.8.826) the crontab line (`nucron.php`) and Adminer bookmarks – `api.php` and
@@ -159,6 +163,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **New table column grid**: no reordering yet (the existing-table column list has it, 0.8.675).
 
 ## Lists, start page and look
+- [ ] **UI review suggestions** (0.8.1007): phone header of the system lists (← Back above, icons right of the title), menus near the
+      bottom open upwards, report error page in dark mode with Home, shared setting titles in the user's language, server paths in
+      tooltips relative to the installation.
 - [ ] **Start page search** (0.8.855 / 0.8.864): right-click / long press on a tile result → favourite / hide, the search stays after the
       reload; the selected result in dark blue with white text – readable in light and dark mode, also with an own theme.
 - [ ] **Start page rows: Auto collapse** (0.8.828).
@@ -283,6 +290,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Compatibility check on the owner's forms** (real data).
 
 ## Documentation
+- [ ] **"Where is it now?" page for Forte users** (0.8.985, proposal C of the older user guide, optional) – every button of Forte's Setup / Builders tabs and Options menu with its place in nuBuilder Next.
 - [ ] **Help reading level** (0.8.884): Help → *Essentials* – read a few chapters you know (Object types, Users, Install): is anything
       hidden that a reader needs, or is a page still too heavy? `python3 -I dev/doc_details.py --list` lists the remaining candidates.
 - [ ] **Help restructure** (0.8.493) – the pages written new from the code: 01-00 overview, 01-01 key-concepts, 01-03 databases, 02-00,

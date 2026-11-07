@@ -11,7 +11,7 @@ defined('NU_ROOT') || exit;
 if (!function_exists('nuRunQuery')) {
 
 	/** @return NuResult|string  result, or the insert id when $isInsert is true */
-	function nuRunQuery(?string $sql = null, array $params = [], bool $isInsert = false): NuResult|string|array
+	function nuRunQuery(?string $sql = null, array $params = [], bool $isInsert = false): NuResult|string|array|int
 	{
 		$db = nu_db();
 		// no SQL: nuBuilder Forte returns [host, database, user, password] – here without the password (0.8.926)
@@ -19,9 +19,34 @@ if (!function_exists('nuRunQuery')) {
 		// nuBuilder Forte: when the first line starts with '#', every '#' line is a command run first (e.g. "#SET SESSION …")
 		[$commands, $sql] = nu_query_commands($sql);
 		foreach ($commands as $c) if ($c !== '') $db->run($c);
-		$st = $db->run($sql, $params);
+		// a database error as nuBuilder Forte (0.8.982, the owner's decision): written to the Debug results, nuGetLastError() describes
+		// it, the query returns -1 and the code goes on. Not database errors (demo mode's refusal, …) still stop the code.
+		try {
+			$st = $db->run($sql, $params);
+		} catch (PDOException $e) {
+			return nu_run_query_failed($e, $sql);
+		}
 		if ($isInsert) return (string)$db->lastInsertId();
 		return new NuResult($st);
+	}
+
+	/** nuRunQuery's error (Forte's catch in nuRunQuery): Debug result "===PDO MESSAGE=== … ===SQL=== … ===BACK TRACE===", LAST_ERROR, -1. */
+	function nu_run_query_failed(PDOException $e, string $sql): int
+	{
+		$u = class_exists('NuAuth') ? NuAuth::currentRaw() : null;
+		$user = (string)($u['id'] ?? '');
+		$trace = class_exists('NuDebugLog') && NuDebugLog::$context !== '' ? NuDebugLog::$context . "\n\n" : '';
+		foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $f) {
+			$trace .= ($f['file'] ?? '') . ' - line ' . ($f['line'] ?? '') . ' (' . ($f['function'] ?? '') . ")\n\n";
+		}
+		$message = $e->getMessage();
+		$GLOBALS['LAST_ERROR'] = (object)['user' => $user, 'message' => $message, 'sql' => $sql, 'trace' => $trace];
+		if (empty($GLOBALS['nu_run_query_quiet'])) {
+			$debug = "===PDO MESSAGE===\n\n" . $message . "\n\n===SQL===========\n\n" . $sql . "\n\n===BACK TRACE====\n\n" . $trace;
+			$GLOBALS['ERRORS'][] = trim($debug);
+			if (class_exists('NuDebugLog')) NuDebugLog::write(trim($debug)); else error_log('nuRunQuery: ' . $message);
+		}
+		return -1;
 	}
 
 	/** nuBuilder Forte's nuQueryExtractQueryComponents: [commands of the '#' lines, the rest] – only when the first line starts with '#'. */

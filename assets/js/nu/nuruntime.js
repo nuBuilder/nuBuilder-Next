@@ -165,7 +165,7 @@
 		});
 		document.body.appendChild(f); f.submit(); f.remove();
 	});
-	api('nuUserName', function () { return N.user.name; });
+	api('nuUserName', function () { return N.user.name || ''; });   // sus_name; '' for the globeadmin, as nuBuilder Forte
 	api('nuUserLanguage', function () { return N.user.language; });
 	// custom user field of the signed-in user (0.8.454); null when there is no such field
 	api('nuNextUserField', function (code) { var f = N.user.fields || {}; var k = String(code || '').toLowerCase(); return Object.prototype.hasOwnProperty.call(f, k) ? f[k] : null; });
@@ -214,12 +214,46 @@
 			try { (0, eval)(code.slice(st.start, st.end)); } catch (x) { /* the form's own run reports it */ }   // eslint-disable-line no-eval
 		});
 	};
+	/** nuBuilder Forte's breadcrumb of the page (nuformclass.js addBreadcrumb + nuform.js nuSetFormProperties, 0.8.981): the same keys
+	 *  and value types as Forte – in an edit form the list keys are 0 / [] as there, tab_start the selected tab as text. N.crumb comes from
+	 *  pages/nuform.php (list settings, raw columns). Properties set with nuSetProperty / nuFORM.setProperty win, the form / record ids not. */
+	function crumbBase() {
+		var C = N.crumb || {}, br = !!N.browse, bp = br ? browseProps() : {}, cols = br ? (C.columns || []) : [];
+		var widths = cols.map(function (c, i) {
+			var th = document.querySelector('#nuBrowseTable thead th[data-nu-col="' + i + '"]');
+			if (!th || !c.width) return 0;
+			if (th.style.display === 'none') return 0;
+			var w = parseInt(th.style.width, 10);
+			return isNaN(w) ? c.width : Math.max(0, w - (C.pad || 0));
+		});
+		var tab = br ? null : nuSelectedTabNumber();
+		return {
+			form_id: N.form.id, redirect_form_id: C.redirect_form_id || N.form.id, record_id: N.record_id, title: N.title || N.form.description,
+			call_type: '', column_widths: br ? widths : 0, filter: runFilter(), forms: [], iframe: N.iframe ? 1 : 0, lookup_id: C.lookup_id || '',
+			object_id: '1', page_number: br ? bp.page_number : 0, password: '', rows: C.rows || 20, row_height: C.row_height || 18,
+			search: br ? N.browse.q || '' : '', session_id: C.session_id || '', nosearch_columns: br ? (N.browse.nsc || []).map(Number) : [],
+			sort: br && N.browse.sort !== null && N.browse.sort !== '' && N.browse.sort !== undefined ? String(N.browse.sort) : '-1',
+			// Forte: 'desc' while the list is not sorted by a column
+			sort_direction: br && N.browse.sort !== null && N.browse.sort !== '' && N.browse.sort !== undefined ? N.browse.dir || 'desc' : 'desc', subforms: 0,
+			tab_start: br ? [] : [{prefix: '', tabNumber: tab === null || tab === undefined ? '0' : String(tab)}],
+			username: '', user_id: N.user.id, refreshed: 0,
+			browse_target: C.browse_target || '', redirect_other_form_id: C.redirect_other_form_id || '',
+			browse_columns: br ? cols.map(function (c) { return $.extend({}, c); }) : [], browse_sql: br ? browseSqlLeft() : 0,
+			browse_rows: br ? bp.browse_rows : 0, browse_table_id: C.browse_table_id || '', browse_filtered_rows: br ? bp.browse_filtered_rows : 0,
+			browse_title_multiline: C.browse_title_multiline === undefined ? false : C.browse_title_multiline,
+			browse_autoresize_columns: C.browse_autoresize_columns === undefined ? null : C.browse_autoresize_columns,
+			mobile_view: C.mobile_view === undefined ? null : C.mobile_view, pages: br ? bp.pages : 0,
+			form_code: N.form.code, form_description: N.form.description, form_group: C.form_group || '', form_type: N.form.type,
+			run_code: C.run_code || '', run_description: C.run_description || '', data_mode: C.data_mode === undefined ? null : C.data_mode
+		};
+	}
 	api('nuCurrentProperties', function () {
-		return $.extend({}, N.globals, {filter: runFilter()}, N.props, {
-			form_id: N.form.id, form_code: N.form.code, form_description: N.form.description, form_type: N.form.type,
-			record_id: N.record_id, user_id: N.user.id, user_name: N.user.name, login_name: N.user.login,
+		var b = crumbBase();
+		return $.extend({}, N.globals, b, N.props, crumbSet, {
+			form_id: b.form_id, form_code: b.form_code, form_description: b.form_description, form_type: b.form_type, record_id: b.record_id,
+			user_id: N.user.id, user_name: N.user.name, login_name: N.user.login,      // nuBuilder Next's own additions
 			access_level_id: N.user.access_level_id, access_level_code: N.user.access_level_code, global_access: N.user.globeadmin ? '1' : '0'
-		}, browseProps());
+		});
 	});
 	// nuBuilder Forte globals / helpers form code relies on (0.8.960): window.nuImages (the Files form fills it per row),
 	// String.prototype.containsAny(array) (the Objects form's nuBeforeSave)
@@ -284,7 +318,7 @@
 	nuFORM.removeFormatting = function (v, f, id) { return rawFormatted(v, f, id); };
 	nuFORM.getCurrent = function () {
 		// + browse_columns / browse_rows / … of a list, as Forte's breadcrumb (form code: nuFORM.getCurrent().browse_columns)
-		return $.extend({form_id: N.form.id, record_id: N.record_id, session_id: '', call_type: '', filter: runFilter(), browse_sql: browseSqlLeft(), search: N.browse ? N.browse.q : '', hash: nuHashFromEditForm()}, browseProps());
+		return $.extend(nuCurrentProperties(), {hash: nuHashFromEditForm()});
 	};
 	nuFORM.SQLFields = function (sql) {
 		var m = /select\s+([\s\S]*?)\s+from\s/i.exec(String(sql || ''));
@@ -296,32 +330,32 @@
 	// sent to the browser: tableSchema / formSchema stay empty, getTables() and the field lists return [].
 	// nuBuilder Forte keeps the breadcrumb's state in nuFORM (nuformclass.js addBreadcrumb) – form code reads e.g.
 	// nuFORM.getProperty('tab_start')[0].tabNumber; those keys come from the page (0.8.957), the rest are properties
-	var CRUMB = {
-		form_id: function () { return N.form ? N.form.id : ''; }, record_id: function () { return N.record_id; },
-		title: function () { return document.title; }, call_type: function () { return ''; }, filter: runFilter, browse_sql: browseSqlLeft,
-		search: function () { return N.browse ? N.browse.q || '' : ''; }, page_number: function () { return N.browse ? (N.browse.page || 1) - 1 : 0; },
-		rows: function () { return -1; }, sort: function () { return N.browse && N.browse.sort !== null && N.browse.sort !== '' && N.browse.sort !== undefined ? String(N.browse.sort) : '-1'; },
-		sort_direction: function () { return N.browse ? N.browse.dir || 'desc' : 'desc'; },
-		nosearch_columns: function () { return N.browse ? (N.browse.nsc || []).map(Number) : []; },
-		iframe: function () { return N.iframe ? 1 : 0; }, lookup_id: function () { return ''; }, redirect_form_id: function () { return ''; },
-		tab_start: function () { var n = nuSelectedTabNumber(); return [{prefix: '', tabNumber: n === null ? 0 : Number(n)}]; }
-	};
 	var crumbSet = {};
 	nuFORM.getProperty = function (f) {
 		if (Object.prototype.hasOwnProperty.call(crumbSet, f)) return crumbSet[f];
-		if (Object.prototype.hasOwnProperty.call(CRUMB, f)) return CRUMB[f]();
+		var b = crumbBase();
+		if (Object.prototype.hasOwnProperty.call(b, f)) return b[f];
 		return nuGetProperty(f);
 	};
-	nuFORM.setProperty = function (f, v) { if (Object.prototype.hasOwnProperty.call(CRUMB, f)) { crumbSet[f] = v; return; } return nuSetProperty(f, v); };
+	nuFORM.setProperty = function (f, v) { if (Object.prototype.hasOwnProperty.call(crumbBase(), f)) { crumbSet[f] = v; return; } return nuSetProperty(f, v); };
 	nuFORM.subforms = function () { return [''].concat($('#nuEditForm .nuSubform[id]').map(function () { return this.id; }).get().filter(function (id) { return (N.subforms || {})[id]; })); };
 	nuFORM.subform = function (id) {
 		if (id) return nuSubformObject(id);
-		var v = mainValues(), keys = Object.keys(v);                    // '' = the main form as a one-row sub-form object (as nuBuilder)
+		// '' = the main form as a one-row sub-form object, as nuBuilder Forte: ID, nuDelete, then the fields; checkboxes as 0 / 1 (0.8.984)
+		var v = mainValues(), keys = Object.keys(v);
 		return {id: '', foreign_key: '', primary_key: N.form.primary_key || '', object_id: '', table: N.form.table || '',
-			fields: ['ID'].concat(keys).concat(['nuDelete']), rows: [[N.record_id].concat(keys.map(function (k) { return v[k]; })).concat([0])],
-			deleted: [0], edited: [[0].concat(keys.map(function (k) { var el = g(k); return el && el.classList.contains('nuEdited') ? 1 : 0; }))], columns: []};
+			fields: ['ID', 'nuDelete'].concat(keys), rows: [[N.record_id, 0].concat(keys.map(function (k) { var el = g(k); return el && el.type === 'checkbox' ? (el.checked ? 1 : 0) : v[k]; }))],
+			deleted: [0], edited: [[0, 0].concat(keys.map(function (k) { var el = g(k); return el && el.classList.contains('nuEdited') ? 1 : 0; }))], columns: [],
+			chartData: null, chartDataPivot: null};
 	};
-	nuFORM.data = function () { return nuFORM.subforms().map(function (id) { var o = nuFORM.subform(id); o.columns = null; return o; }); };
+	// nuBuilder Forte's nuFORM.data(): the main form as id 'nuBuilder4EditForm' (object_id = the form, action 'save'), then its sub-forms
+	nuFORM.data = function () {
+		return nuFORM.subforms().map(function (id) {
+			var o = nuFORM.subform(id); o.columns = null; o.action = 'save';
+			if (id === '') { o.id = 'nuBuilder4EditForm'; o.object_id = N.form.id; }
+			return o;
+		});
+	};
 	nuFORM.calc = function (field) {
 		var p = String(field).split('.');
 		if (p.length !== 2) { var el = g(field); return el ? nuFORM.removeFormatting(el.value, el.getAttribute('data-nu-format') || '') : 0; }
@@ -385,6 +419,10 @@
 		if (!el) return '';
 		if (el.type === 'checkbox') return el.checked ? '1' : '0';
 		if (el.tagName === 'SELECT' && el.multiple) return $(el).val() || [];
+		// a chosen option that is disabled has no value (jQuery's val(), so nuBuilder Forte's): nuSelectAddEnglishOption adds such a
+		// placeholder (value 1) to an empty language select – it was saved as the language (0.8.984)
+		// (only the option or its <optgroup> – a disabled select (nuDisable) keeps its value, 0.8.989)
+		if (el.tagName === 'SELECT') { var so = el.options[el.selectedIndex]; return !so || so.disabled || (so.parentNode && so.parentNode.tagName === 'OPTGROUP' && so.parentNode.disabled) ? '' : so.value; }
 		var f = el.getAttribute('data-nu-format');
 		return f ? rawFormatted(el.value, f, el.id) : el.value;
 	}
@@ -481,7 +519,8 @@
 		var v = {};
 		$('#nuEditForm [data-nu-field]').each(function () {
 			if (this.getAttribute('data-nu-prefix') || this.classList.contains('nuLookupCode') || this.classList.contains('nuLookupDescription')) return;
-			if (this.type === 'button' || this.tagName === 'DIV' || this.tagName === 'IFRAME' || this.tagName === 'BUTTON') return;
+			// form controls only – sub-form column titles (th) carry data-nu-field too (0.8.984: they came as null fields)
+			if (this.type === 'button' || ['INPUT', 'SELECT', 'TEXTAREA'].indexOf(this.tagName) < 0) return;
 			v[this.getAttribute('data-nu-field')] = rawValue(this);
 		});
 		return v;
@@ -854,9 +893,19 @@
 		if (run !== true || typeof window.nuBeforeSave !== 'function') return true;
 		try { return window.nuBeforeSave() !== false; } catch (x) { reportError(x.message, 'nuBeforeSave'); return false; }
 	}
+	/** What nuBuilder Forte posts with a procedure (0.8.984): the breadcrumb's plain values (nuHash()['title'], ['rows'] …) and, from an
+	 *  edit form, nuFORM.data() (nuHash()['nuFORMdata']). */
+	function procData(code) {
+		var b = crumbBase(), crumb = {};
+		Object.keys(b).forEach(function (k) { var v = b[k]; crumb[k] = (typeof v === 'string' || typeof v === 'number') ? v : ''; });
+		crumb.params = '';
+		var d = {code: code, values: N.mode === 'edit' ? mainValues() : {}, crumb: crumb};
+		if (N.mode === 'edit') { try { d.formdata = nuFORM.data(); } catch (x) { /* a sub-form without data */ } }
+		return d;
+	}
 	api('nuRunPHPHidden', function (code, options) {
 		if (!beforeSaveOk(options)) return Promise.resolve(null);
-		return call('php', {code: code, values: N.mode === 'edit' ? mainValues() : {}}).then(function (res) {
+		return call('php', procData(code)).then(function (res) {
 			if (res && res.file) { saveFile(res.file); return res; }
 			applyResult(res); return res;
 		});
@@ -871,7 +920,7 @@
 		if (!beforeSaveOk(runBeforeSave)) return Promise.resolve(null);
 		var fr = iFrame ? (parent.document.getElementById(iFrame) || g(iFrame)) : null;
 		var w = fr ? null : window.open('', '_blank');
-		return call('php', {code: code, values: N.mode === 'edit' ? mainValues() : {}}).then(function (res) {
+		return call('php', procData(code)).then(function (res) {
 			if (res && res.file) { if (w) w.close(); saveFile(res.file); return; }       // a download: no window needed
 			applyResult(res);
 			if (fr) fr.srcdoc = res.output || '';
@@ -1155,6 +1204,35 @@
 	// The server gives them type="text/nu-deferred" (NuRender::deferScripts): they run here, in page order, once jQuery and the
 	// runtime exist – as in nuBuilder, which inserts HTML objects after loading its libraries. A script with src is loaded first;
 	// the scripts after it wait for it.
+	/** nuBuilder Forte runs form code after the page has loaded, so a handler that waits for the page (DOMContentLoaded, readystatechange,
+	 *  window load, window.onload =) never runs there. Here form code runs while the page loads: between nuNextLoadGuard(true) and (false)
+	 *  (pages/nuform.php: around the scripts of HTML objects and the form's JavaScript) such handlers are dropped as in Forte, with a
+	 *  console note (0.8.983, the owner's decision; Compatibility check G11). Setup → Header is not guarded – it is Forte's page code. */
+	var LG = {on: false, dropped: 0, onload: null, onrs: null};
+	function lgNote(what) {
+		LG.dropped++;
+		try { console.info('nuBuilder Next: the form\'s code waits for "' + what + '" – as in nuBuilder Forte the page has already loaded, so the handler does not run. Put the code into nuOnLoad().'); } catch (x) { /* no console */ }
+	}
+	function lgAdd(target, original) {
+		return function (type, fn, opt) {
+			var t = String(type);
+			if (LG.on && (t === 'DOMContentLoaded' || t === 'readystatechange' || (t === 'load' && target === window))) { lgNote(t); return undefined; }
+			return original.call(this, type, fn, opt);
+		};
+	}
+	api('nuNextLoadGuard', function (on) {
+		if (on && !LG.on) {
+			LG.on = true; LG.onload = window.onload; LG.onrs = document.onreadystatechange;
+			window.addEventListener = lgAdd(window, EventTarget.prototype.addEventListener);
+			document.addEventListener = lgAdd(document, EventTarget.prototype.addEventListener);
+		} else if (!on && LG.on) {
+			LG.on = false;
+			delete window.addEventListener; delete document.addEventListener;
+			if (window.onload !== LG.onload) { lgNote('window.onload'); window.onload = LG.onload; }
+			if (document.onreadystatechange !== LG.onrs) { lgNote('document.onreadystatechange'); document.onreadystatechange = LG.onrs; }
+		}
+		return LG.dropped;
+	});
 	api('nuNextRunDeferred', function (root) {
 		var list = Array.prototype.slice.call((root || document).querySelectorAll('script[type="text/nu-deferred"]:not([data-nu-ran])'));
 		(function next() {
@@ -1182,16 +1260,17 @@
 	api('nuSubformObject', function (sf) {
 		var info = (N.subforms || {})[sf] || {fields: []};
 		var o = {id: sf, foreign_key: info.foreign_key, primary_key: info.primary_key, object_id: info.object_id, table: info.table,
-			fields: ['ID'].concat(info.fields).concat(['nuDelete']), rows: [], deleted: [], edited: [], columns: []};
+			fields: ['ID'].concat(info.fields).concat(['nuDelete']), rows: [], deleted: [], edited: [], columns: [], chartData: null, chartDataPivot: null};
 		$('#' + sf + ' .nuSubformRow').each(function () {
 			var p = this.getAttribute('data-nu-prefix');
 			var pk = this.getAttribute('data-nu-primary-key') || '';
 			var row = [pk || '-1'], ed = [0];                                         // a new row's ID is -1, as nuBuilder Forte (0.8.956)
-			info.fields.forEach(function (f) { var el = g(p + f); row.push(rawValue(el)); ed.push(el && el.classList.contains('nuEdited') ? 1 : 0); });
+			// checkboxes as 0 / 1 and an edited mark for nuDelete too, as nuBuilder Forte (0.8.984)
+			info.fields.forEach(function (f) { var el = g(p + f); row.push(el && el.type === 'checkbox' ? (el.checked ? 1 : 0) : rawValue(el)); ed.push(el && el.classList.contains('nuEdited') ? 1 : 0); });
 			var del = g(p + 'nuDelete');
 			var isBlankNew = pk === '' && !this.classList.contains('nuRowEdited');
 			var d = (del && del.checked) || isBlankNew ? 1 : 0;
-			row.push(d);
+			row.push(d); ed.push(0);
 			o.rows.push(row); o.deleted.push(d); o.edited.push(ed);
 		});
 		return o;
@@ -1540,6 +1619,7 @@
 			// nuBuilder runs nuAfterSaveGlobal / nuAfterSave on the rebuilt form: the reloaded page calls them after nuOnLoad (0.8.383)
 			var openId = res.open_id !== undefined && res.open_id !== null ? String(res.open_id) : res.record_id;   // nuReturnNewRecord() in After Save (0.8.443)
 			try { sessionStorage.setItem('nuNextAfterSave', N.form.id + '|' + openId); } catch (x) { afterSaveNow(); }
+			winCarrySave(openId);
 			var u = new URL(window.location.href);
 			u.searchParams.set('r', openId);
 			u.searchParams.set('saved', '1');
@@ -1547,6 +1627,44 @@
 		}, function (err) { btn.prop('disabled', false); nuMessage([esc(err.message)]); }); };
 		send();
 	});
+
+	// nuBuilder Forte keeps the page after a save (one-page app): variables form code put on window while the user worked (window.x = …
+	// in an event) are still there for nuAfterSave. Here the save reloads the page – such variables with plain values (text, number,
+	// yes / no, small JSON) travel with it; what the page's own scripts define again is left alone.
+	var winKeys0 = null;
+	function winCarrySave(openId) {
+		if (!winKeys0) return;
+		var vars = {}, size = 0;
+		Object.keys(window).forEach(function (k) {
+			if (winKeys0[k] || /^(on|webkit|nuNext|Nu[A-Z]|CodeMirror|tinymce|tinyMCE|Uppy|ApexCharts|google)/.test(k)) return;   // libraries loaded later (NuCodeTools …) are no form variables
+			var v; try { v = window[k]; } catch (x) { return; }
+			var t = typeof v;
+			if (t === 'function' || t === 'undefined' || t === 'symbol' || t === 'bigint') return;
+			if (v !== null && t === 'object') { var proto = Object.getPrototypeOf(v); if (proto !== Object.prototype && proto !== Array.prototype) return; }
+			if (v !== null && t === 'object' && hasFn(v, 0)) return;            // an object with functions would come back without them
+			var j; try { j = JSON.stringify(v); } catch (x) { return; }
+			if (j === undefined || (size += j.length) > 50000) return;
+			vars[k] = v;
+		});
+		try { if (Object.keys(vars).length) sessionStorage.setItem('nuNextWinCarry', JSON.stringify({to: N.form.id + '|' + openId, vars: vars})); } catch (x) { /* storage full / blocked */ }
+	}
+	function hasFn(v, d) {
+		if (d > 4) return false;
+		for (var k in v) { if (!Object.prototype.hasOwnProperty.call(v, k)) continue; var x = v[k]; if (typeof x === 'function') return true; if (x && typeof x === 'object' && hasFn(x, d + 1)) return true; }
+		return false;
+	}
+	function winCarryRestore() {
+		winKeys0 = {};
+		Object.keys(window).forEach(function (k) { winKeys0[k] = 1; });
+		var raw = null;
+		try { raw = sessionStorage.getItem('nuNextWinCarry'); if (raw !== null) sessionStorage.removeItem('nuNextWinCarry'); } catch (x) { return; }
+		if (!raw || N.mode !== 'edit') return;
+		try {
+			var c = JSON.parse(raw);
+			if (!c || c.to !== N.form.id + '|' + N.record_id) return;
+			Object.keys(c.vars || {}).forEach(function (k) { if (!(k in window)) window[k] = c.vars[k]; });
+		} catch (x) { /* broken entry */ }
+	}
 
 	api('nuDeleteAction', function () {
 		$.confirm || typeof window.nuConfirmAsk === 'function' ? confirmDelete() : (window.confirm(M.delete_confirm) && doDelete());
@@ -2865,14 +2983,40 @@
 	// Off for one form: nuNextPhoneLayout(false) in nuOnLoad (or Global JS); not while designing.
 	var phoneOff = false, phoneMq = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
 	api('nuNextPhoneLayout', function (on) { phoneOff = on === false; phoneStack(); });
+	// nuBuilder Forte's nuPortraitScreen(columns): the edit form in one column at any width – here the phone layout (labels above the
+	// fields, html.nuPortrait caps the width on wide screens); lists are left as they are, as in Forte. Returns the scale (always 1).
+	var portrait = false;
+	api('nuPortraitScreen', function () {
+		if (N.mode !== 'edit') return 1;
+		portrait = true;
+		window.nuPORTRAITSCREEN = true;
+		phoneStack();
+		return 1;
+	});
+	function phoneListKey() { return 'nunext-browse-phone-' + ((N.form && N.form.id) || ''); }
+	function phoneListPref() { try { return localStorage.getItem(phoneListKey()) || ''; } catch (x) { return ''; } }
+	$(document).on('click', '#nuPhoneCardsBtn', function () {
+		var next = document.documentElement.classList.contains('nuPhoneCards') ? 'table' : 'cards';
+		try { if (next === 'cards') localStorage.removeItem(phoneListKey()); else localStorage.setItem(phoneListKey(), next); } catch (x) { /* storage blocked */ }
+		phoneStack();
+		if (window.nuStickyHeadCheck) window.nuStickyHeadCheck();
+	});
 	function phoneStack() {
 		var html = document.documentElement;
 		var phone = !!(phoneMq && phoneMq.matches) && !phoneOff && !html.classList.contains('nuDesigning');
+		var forced = portrait && !phoneOff && !html.classList.contains('nuDesigning');
 		// a form in a dialog (iframe) of a wide window keeps the desktop layout – a narrow dialog is not a phone (0.8.965)
 		if (phone && N.iframe) { try { if (window.top !== window && window.top.innerWidth >= 576) phone = false; } catch (x) { /* another origin */ } }
-		html.classList.toggle('nuPhoneCards', phone && !!document.getElementById('nuBrowseTable') && !document.body.classList.contains('nuPrintView'));   // browse rows as cards (F2)
-		var on = phone && !!document.querySelector('.nuLayout-absolute .nuAbsoluteCanvas');
+		// browse rows as cards (F2) – unless the user chose the table with the ▦ / ☰ button (0.8.992, per form on this device)
+		var cards = phone && !!document.getElementById('nuBrowseTable') && !document.body.classList.contains('nuPrintView') && phoneListPref() !== 'table';
+		html.classList.toggle('nuPhoneCards', cards);
+		var pb = document.getElementById('nuPhoneCardsBtn');
+		if (pb) { pb.setAttribute('aria-pressed', cards ? 'false' : 'true'); pb.classList.toggle('nuPhoneIsTable', !cards); }
+		var pa = document.querySelector('.nuPhAdd'), ab = g('nuAddButton');   // phones: Add next to the search only while Add exists (form code may hide it, 0.8.1003)
+		if (pa) pa.hidden = !ab || ab.hidden || ab.style.display === 'none';
+		var on = (phone || forced) && !!document.querySelector('.nuLayout-absolute .nuAbsoluteCanvas');
 		html.classList.toggle('nuPhoneStack', on);
+		html.classList.toggle('nuPortrait', on && forced);
 		if (!on) return;
 		$('.nuLayout-absolute .nuAbsoluteCanvas').each(function () {
 			$(this).children('.nuAbs').each(function () {
@@ -2979,6 +3123,34 @@
 		document.querySelectorAll('.nuLayout-absolute .nuAbsoluteCanvas > .nuAbs .nuHtml > *').forEach(function (el) { canvasRO.observe(el); });
 	}
 	$(document).on('shown.bs.tab', '.nuTab', function () { setTimeout(fitCanvases, 30); });
+	// fixed-layout forms wider than the window: nuBuilder Next's page margins (main + the tab pane) took ~55 px more than Forte's, so a
+	// form that fits Forte's window needed a sideways scroll. While a canvas would scroll, html.nuWideForm takes the margins away (form
+	// card to the window edges, no pane padding) and the canvas is only as wide as its objects (no 20 px gap after the last one)
+	function fitWide() {
+		var root = document.documentElement, form = document.getElementById('nuEditForm');
+		if (N.mode !== 'edit' || !form || root.classList.contains('nuPhoneStack') || root.classList.contains('nuDesigning')) { root.classList.remove('nuWideForm'); return; }
+		var canvases = Array.prototype.filter.call(document.querySelectorAll('.nuLayout-absolute .nuAbsoluteCanvas'), function (c) { return c.offsetParent !== null; });
+		root.classList.remove('nuWideForm');
+		form.style.marginLeft = form.style.marginRight = '';
+		var wide = false;
+		canvases.forEach(function (c) {
+			if (!c.hasAttribute('data-nu-minw')) c.setAttribute('data-nu-minw', c.style.minWidth || '');
+			c.style.minWidth = c.getAttribute('data-nu-minw');
+			var right = 0;
+			Array.prototype.forEach.call(c.children, function (el) { if (el.classList.contains('nuAbs') && el.offsetParent !== null) right = Math.max(right, el.offsetLeft + el.offsetWidth); });
+			var pane = c.parentElement, ps = getComputedStyle(pane), room = pane.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight);
+			if (c.offsetWidth > room + 1) { wide = true; c.setAttribute('data-nu-right', String(right)); }
+		});
+		if (!wide) return;
+		var main = form.closest('main'), ms = main ? getComputedStyle(main) : null;
+		root.classList.add('nuWideForm');
+		if (ms) { form.style.marginLeft = '-' + ms.paddingLeft; form.style.marginRight = '-' + ms.paddingRight; }
+		canvases.forEach(function (c) { var r = +c.getAttribute('data-nu-right'); if (r) c.style.minWidth = r + 'px'; });
+	}
+	var wideTimer = 0;
+	$(window).on('resize', function () { clearTimeout(wideTimer); wideTimer = setTimeout(fitWide, 150); });
+	$(document).on('shown.bs.tab', '.nuTab', function () { setTimeout(fitWide, 40); });
+	N.fitWide = fitWide;
 	N.fitCanvases = fitCanvases;
 
 	// read-only text fields of the fixed layout (Forte's widths): nuBuilder Next's font is a little wider, so a value like
@@ -4197,7 +4369,8 @@
 				if (!res || res.ok === false || !res.found) { nuMessage([nuTranslate('Failed to refresh the Display Object:') + ' ' + el.id]); return false; }
 				var f = el.getAttribute('data-nu-format');
 				var v = res.value === null || res.value === undefined ? '' : String(res.value);
-				if ('value' in el) el.value = f ? nuFORM.addFormatting(v, f) : v; else el.textContent = v;   // display objects are not saved: no "edited"
+				// as nuBuilder Forte (nuSetValue): the field changes – "edited", and the value is saved when the table has its column (0.8.989)
+				if ('value' in el) { var nv = f ? nuFORM.addFormatting(v, f) : v; if (el.value !== nv) { el.value = nv; $(el).trigger('change'); } } else el.textContent = v;
 				callHook('nuDisplayObjectRefreshed', el.id, formId);
 				return true;
 			});
@@ -4753,6 +4926,7 @@
 		var btn = $('<button type="button" class="btn btn-outline-secondary" id="nuOptions" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>')
 			.attr({title: S.options || 'Options', 'aria-label': S.options || 'Options'});
 		var ul = $('<ul class="dropdown-menu nuOptionsList"></ul>');
+		phoneDesignItems(ul);
 		ul.append($('<li><h6 class="dropdown-header"></h6></li>').find('h6').text(S.options || 'Options').end());
 		var last = null;
 		acts.forEach(function (a) {
@@ -4785,6 +4959,36 @@
 	}
 	N.shortcutActions = shortcutActions;
 
+	// phones (0.8.1001, the owner picked mockup C): Design, its ▾ entries, the (i) form info and the layout switch are hidden in the
+	// toolbar below 576 px (nuapp.css) and offered at the top of the ⋮ menu instead – items li.nuOptPhone, shown only there
+	function phoneDesignItems(ul) {
+		var ds = g('nuDesignButton'), sql = g('nuBrowseSqlEdit'), cols = g('nuBrowseColsEdit'), info = g('nuFormInfoBtn'), seg = g('nuLayoutSeg');
+		var items = [];
+		var item = function (icon, text, act) {
+			var el = typeof act === 'string' ? $('<a class="dropdown-item d-flex align-items-center gap-2"></a>').attr('href', act) : $('<button type="button" class="dropdown-item d-flex align-items-center gap-2"></button>').on('click', act);
+			return el.append($('<i class="bi" aria-hidden="true"></i>').addClass(icon)).append($('<span class="me-auto"></span>').text(text));
+		};
+		if (ds) items.push(item('bi-pencil-square', (ds.textContent || '').trim(), ds.getAttribute('href')).attr('data-nu-opt', 'design'));
+		[[sql, 'bi-filetype-sql', 'browse_sql'], [cols, 'bi-layout-three-columns', 'columns']].forEach(function (x) {
+			if (x[0]) items.push(item(x[1], (x[0].textContent || '').trim(), function () { x[0].click(); }).attr('data-nu-opt', x[2]));
+		});
+		if (info) items.push(item('bi-info-circle', info.getAttribute('title') || 'Info', function () {
+			var src = g('nuFormInfo'), box = $('<div class="nuFormInfo nuFormInfoPhone"></div>');
+			if (src) box.append($(src).children().not(':first').clone());
+			box.find('[id]').removeAttr('id');
+			nuMessage(info.getAttribute('title') || 'Info', [box.prop('outerHTML')]);
+		}).attr('data-nu-opt', 'info'));
+		var links = seg ? $(seg).children('a') : $();
+		if (!items.length && !links.length) return;
+		items.forEach(function (el) { ul.append($('<li class="nuOptPhone"></li>').append(el)); });
+		if (links.length) {
+			var grp = $('<div class="btn-group btn-group-sm nuSeg nuOptLayout" role="group"></div>').attr('aria-label', seg.getAttribute('aria-label') || '');
+			links.each(function () { grp.append($(this).clone().removeAttr('id')); });
+			ul.append($('<li class="nuOptPhone" data-nu-opt="layout"></li>').append(grp));
+		}
+		ul.append('<li class="nuOptPhone"><hr class="dropdown-divider"></li>');
+	}
+
 	// =================================================================== start (after the form's own scripts)
 	window.nuNextStart = function () {
 		callHook('nuBeforeAddActionButtons');
@@ -4798,6 +5002,7 @@
 			go(function () { return formUrl(N.form.id, '-1', extra); });
 		});
 		$('#nuJsErrors').on('click', function () { nuMessage(M.js_errors || 'JS errors', N.jsErrors.map(esc)); });
+		$(document).on('click', '.nuPhAdd', function () { $('#nuAddButton').trigger('click'); });   // phones: Add next to the search (0.8.1003)
 
 		if (N.mode === 'edit') {
 			if (window.nuOnEditorLoad) { try { window.nuOnEditorLoad(); } catch (x) { reportError(x.message, 'nuOnEditorLoad'); } }
@@ -4875,6 +5080,7 @@
 			try { window.nuBrowseStyleBadge(+i, N.browse.badges[i] && N.browse.badges[i].length ? N.browse.badges[i] : undefined); }
 			catch (e) { if (N.dev_mode) console.warn('badge', i, e); }
 		});
+		winCarryRestore();
 		callHook('nuOnLoad', N.form.id, N.form.code);
 		forteHidden();
 		brRestore();                                                       // column widths dragged in this tab (0.8.650)
@@ -4912,6 +5118,7 @@
 		if (N.mode === 'edit') inlineCodeFields();
 		// phones (review F1, 0.8.764): fixed-position forms stack their objects – after nuOnLoad, which may switch it off
 		phoneStack();
+		if (N.mode === 'edit') fitWide();   // wide fixed-layout forms: page margins away while the form would scroll sideways (0.8.988)
 		if (N.mode === 'edit') growFrames();
 		// first field gets the focus (mouse / trackpad only, see nuFocusFirst in assets/js/nuapp.js) – after nuOnLoad, which may set its own
 		// (in a popup yes, in an iframe object embedded in another form no – it would take the focus away from that form)

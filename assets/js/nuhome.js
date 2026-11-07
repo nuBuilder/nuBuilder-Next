@@ -404,6 +404,7 @@
 			try { localStorage.setItem(stripKey(st), folded ? 'folded' : 'open'); } catch (e) { /* storage blocked */ }
 		}
 		st.classList.toggle('nuHomeStripFolded', folded);
+		document.documentElement.classList.remove('nuHomeFold-' + st.getAttribute('data-nu-strip'));   // set in <head> by nutheme.js (0.8.995)
 		btn.setAttribute('aria-expanded', folded ? 'false' : 'true');
 		var cnt = $('.nuHomeStripCount', st);
 		if (cnt) cnt.textContent = String(st.querySelectorAll('.nuHomeChip').length);

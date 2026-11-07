@@ -68,6 +68,28 @@ final class NuAiContext
 		return $s;
 	}
 
+	/**
+	 * The pack of the prompt generator (0.8.991): PHP / JavaScript / SQL code, not a form spec – no request format, no example forms.
+	 * @param array $tables the tables chosen in the prompt ([] = all)
+	 */
+	public static function codeSections(array $tables, bool $full): array
+	{
+		$s = [];
+		$s['readme'] = ['How to use this file', "This file goes with a prompt of nuBuilder Next's prompt generator (code for forms, procedures, reports). Read it before answering the prompt.\n\n"
+			. "- nuBuilder Next is a front end for nuBuilder Forte 4.x on the same database tables (zzzzsys_*): forms, objects, browse lists, PHP hooks and JavaScript work as in nuBuilder Forte 4.9.\n"
+			. "- Use only the functions of the PHP and JavaScript reference below; a function that is not listed does not exist.\n"
+			. "- Use only tables and columns of the table list; refer to forms by their code.\n"
+			. "- Hash variables (#RECORD_ID#, #USER_ID#, field names …) are replaced before PHP and SQL run – see the list.\n"
+			. ($full ? '' : "- The function reference is compact: one line per function; ask the user for the full context file when you need parameters or examples of a function.\n")];
+		$s['tables'] = ['Database tables (structure only)', "Name: columns with their type. No data of the tables is included.\n\n" . NuFormSpec::schemaText('', $full ? 400 : 80, $tables)];
+		$s['forms'] = ['Existing forms (by code)', NuFormSpec::formsText()];
+		$s['hash'] = ['Hash variables', self::hashText()];
+		$s['guide'] = ['How forms work', self::guide($full)];
+		$s['php'] = ['PHP functions' . ($full ? '' : ' (compact)'), self::functions('php', $full)];
+		$s['js'] = ['JavaScript functions' . ($full ? '' : ' (compact)'), self::functions('js', $full)];
+		return $s;
+	}
+
 	/** One Markdown file of all sections. */
 	public static function markdown(array $sections, string $kind): string
 	{

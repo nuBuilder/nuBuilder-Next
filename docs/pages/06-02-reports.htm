@@ -11,8 +11,32 @@
 <li><b>Running</b>: a <em>run</em> object of type <em>Report</em> (button: PDF in a new tab; method iframe: the launch form or the PDF inside the form), the PDF button in the list, <code>index.php?p=report&amp;c=code</code>, and in JavaScript <code>nuRunReport(code[, iframeId])</code>, <code>nuRunReportSave(code, tag, callback(filename, id), fileName)</code> (writes the PDF to the server's <code>temp</code> folder and the table <code>pdf_temp</code> (shared with nuBuilder Forte), e.g. to attach it to an e-mail in PHP), and – new in nuBuilder Next – <code>nuPreviewReport(code)</code> (the PDF in a dialogue) and <code>nuEmailReportPDF(code, to, subject, body, fileName, callback)</code> (sends the PDF as attachment with the e-mail settings). The form's values are the criteria.</li>
 <li><b>Usage</b> and <b>History</b> as for procedures; a report that run objects use cannot be deleted. A procedure that a report prints from shows the report under its usage.</li>
 </ul>
+<h3 class="h5" id="report-procedure">A report from a procedure</h3>
+<p>When one query cannot deliver the report's rows – several steps, a value computed from all rows, data from more than one place – a procedure builds them: it creates the table <code>#TABLE_ID#</code>, the report prints that table, and nuBuilder Next drops it afterwards. An example on the <a href="#sample-data">sample application</a>: the customers of a country with the number and total of their orders and each customer's share.</p>
+<ol>
+<li><b>The procedure</b> (<em>Procedures → Add</em>, code <code>rpt_cust_orders</code>; it is not run from a button, so it needs no form and no access level):<pre><code>// the criteria: the field cus_country of the launch form ('' = all countries)
+$country = nuHash()['cus_country'] ?? '';
+
+// one row per customer, with the number and total of its orders
+nuRunQuery("CREATE TABLE #TABLE_ID# AS
+    SELECT c.cus_name, c.cus_country,
+        COUNT(o.sample_order_id) AS orders, COALESCE(SUM(o.ord_total), 0) AS total
+    FROM sample_customer c
+    LEFT JOIN sample_order o ON o.ord_sample_customer_id = c.sample_customer_id
+    WHERE c.cus_country = ? OR ? = ''
+    GROUP BY c.sample_customer_id, c.cus_name, c.cus_country", [$country, $country]);
+
+// a second step that one query cannot do: each customer's share of the total
+nuRunQuery("ALTER TABLE #TABLE_ID# ADD share DECIMAL(5,1) NULL");
+$sum = db_fetch_row(nuRunQuery("SELECT SUM(total) FROM #TABLE_ID#"))[0] ?? 0;
+if ($sum &gt; 0) nuRunQuery("UPDATE #TABLE_ID# SET share = ROUND(total * 100 / ?, 1)", [$sum]);</code></pre></li>
+<li><b>The criteria</b>: a form of type <em>Launch</em> with a select <code>cus_country</code> (copy the one of the customer form). Its fields reach the procedure as hash variables – read them with <code>nuHash()['cus_country'] ?? ''</code>: a <code>#name#</code> that has no value stays as it is, so <code>'#cus_country#'</code> in the code would be the text <code>#cus_country#</code> when the report runs without the form.</li>
+<li><b>The report</b>: <em>Reports → Add</em>, data source <em>Procedure</em> <code>rpt_cust_orders</code>, launch form the criteria form. The designer lists the table's columns (<code>cus_name</code>, <code>cus_country</code>, <code>orders</code>, <code>total</code>, <code>share</code>) – it runs the procedure with empty criteria to find them, so the procedure must create the table also when nothing is chosen.</li>
+<li><b>The layout</b>: the four columns in the detail band, <code>#cus_country#</code> in the report header (every criteria field is a column of each row too), and <code>SUM(total)</code> in the report footer.</li>
+</ol>
+<p data-level="detail">Pass values as parameters (<code>?</code> and an array) rather than writing them into the SQL. A query that fails writes its error to the Debug results and returns <code>-1</code>, as in nuBuilder Forte – when <code>#TABLE_ID#</code> was not created, the report says so. The SQL here is MySQL / MariaDB; on SQL Server write <code>SELECT … INTO #TABLE_ID# FROM …</code> instead of <code>CREATE TABLE … AS SELECT</code>.</p>
 <h3 class="h5" id="report-designer">Report designer</h3>
-<p><em>Designer</em> opens the layout: the page with its bands top to bottom – <b>report header</b> (once), <b>page header</b> (every page), the headers of the <b>sort groups</b>, <b>detail</b> (each row), the group footers, <b>page footer</b> and <b>report footer</b>.</p>
+<p><em>Designer</em> opens the layout: the page with its bands top to bottom – <b>report header</b> (once), <b>page header</b> (every page), the headers of the <b>sort groups</b>, <b>detail</b> (each row), the group footers, <b>page footer</b> and <b>report footer</b> (printed once, right after the last detail row – not at the bottom of the page).</p>
 <ul>
 <li><b>Fields</b> (left): the columns of the data source and the launch form fields – drag them onto a band, or double-click to add them to the selected band. Below: page numbers (<code>#page#</code>, <code>#pages#</code>), code, description, date, user, and the images of <a href="#files">Files</a>.</li>
 <li><b>Objects</b>: field, text, box, line and image (toolbar). Drag them – also into another band –, resize with the handles, select several with Shift-click or a frame, then align, make the same size or distribute them. Arrow keys move (Shift 4 mm, Alt 0.25 mm), Ctrl+Z / Ctrl+Y undo and redo, Ctrl+C / Ctrl+V / Ctrl+D copy and duplicate, Del deletes, Ctrl+S saves.</li>

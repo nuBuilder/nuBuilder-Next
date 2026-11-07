@@ -59,6 +59,7 @@ $rights = NuAcl::rights($meta->id);
 $ps     = is_string($in['ps'] ?? null) ? $in['ps'] : '';
 $props  = NuProps::merge($ps, $in['props'] ?? []);      // browser values; names set in PHP keep the server's value
 NuHash::$caller = NuProps::caller($ps);                 // fields of the edit form this page was opened from (0.8.976)
+NuHash::$state = NuHash::cleanState($in['crumb'] ?? null);   // nuBuilder Forte's breadcrumb keys in nuHash() (0.8.984)
 $in['props'] = $props;
 $values = is_array($in['values'] ?? null) ? $in['values'] : [];
 $record = (string)($in['record_id'] ?? '');
@@ -196,6 +197,11 @@ try {
 
 		case 'php':
 			$hash = NuHash::forForm($meta, $record, $values, $props);
+			// nuBuilder Forte sends the edit form's data with a procedure call: nuHash()['nuFORMdata'] = the form and its sub-forms (0.8.984)
+			if (is_array($in['formdata'] ?? null) && array_is_list($in['formdata'])) {
+				$fd = json_decode((string)json_encode(array_slice(array_filter($in['formdata'], 'is_array'), 0, 50)), false);
+				if (is_array($fd)) $hash['nuFORMdata'] = $fd;
+			}
 			NuPhp::reset();
 			$r = NuPhp::procedure((string)($in['code'] ?? ''), $hash);
 			if (!$r['ok']) nu_api_error($r['error'], 403);

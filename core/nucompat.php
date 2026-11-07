@@ -330,6 +330,9 @@ final class NuCompat
 		'G9' => null,
 		// G10 (0.8.585): users with additional access levels – nuBuilder 4.x gives them only the rights of the main level
 		'G10' => '0.8.585',
+		// G11 (0.8.983): form code that waits for the page to load (DOMContentLoaded, window load, readystatechange) – never runs in
+		// nuBuilder Forte (form code runs after the page has loaded); nuBuilder Next drops such handlers too (nuNextLoadGuard). Places listed
+		'G11' => '0.8.983',
 		// FE (0.8.784): forms for everyone (NuFormEveryone) that access levels created in nuBuilder Forte do not have yet
 		'FE' => '0.8.784',
 		// BS6 (0.8.740, developer mode only): Bootstrap 5 markup that Bootstrap 6 changes (NuBs6) – nothing to do while nuBuilder Next stays on 5.3
@@ -340,12 +343,15 @@ final class NuCompat
 	/** Findings that are a preparation, not a missing feature (grey, not counted as open) – BS6. */
 	public const PREP = ['BS6', 'J4'];
 
+	/** G11: code that waits for the page to load – addEventListener('DOMContentLoaded' | 'readystatechange'), window load, onload =. */
+	public const LOAD_WAIT = '/addEventListener\\s*\\(\\s*([\'"`])(DOMContentLoaded|readystatechange)\\1|\\b(window|self)\\s*\\.\\s*addEventListener\\s*\\(\\s*([\'"`])load\\4|\\b(window|document)\\s*\\.\\s*on(load|readystatechange)\\s*=[^=]|\\$\\s*\\(\\s*window\\s*\\)\\s*\\.\\s*(on\\s*\\(\\s*([\'"`])load\\8|load\\s*\\()/';
+
 	/** nuBuilder's global hook procedures (by code) – G2. */
 	public const HOOKS = ['nu_before_save', 'nu_before_edit', 'nu_before_delete', 'nu_startup', 'nu_invalid_login', 'nu_check_password_policy',
 		'nu_after_update', 'nu_debug_result_added'];
 
 	/** Hash variables of nuBuilder 4.9 that nuBuilder Next does not set – G7. */
-	public const MISSING_HASH = ['USER_A11Y', 'browse_sql', 'subforms'];   // form_id / record_id / hash_record_id: set since 0.8.576, USER_GROUP_ID since 0.8.581
+	public const MISSING_HASH = ['browse_sql'];   // form_id / record_id / hash_record_id: set since 0.8.576, USER_GROUP_ID since 0.8.581, USER_A11Y / subforms … since 0.8.984
 
 	/** @return array<string, list<array{where: string, form: string, detail: string}>> finding id => places (only ids with places) */
 	public static function findings(bool $withSystem = false): array
@@ -459,6 +465,11 @@ final class NuCompat
 			elseif (preg_match('/\b(nuRunReport|nuRunReportId|nuSavePDF|nuBuildTempTable)\s*\(/i', $code, $m)) $hit('M9', $src['where'], $src['form'], $m[1]);
 			if ($src['lang'] === 'php' && preg_match('/\bnuFORMdata\b|\bnu(Get|Set)NuDataValue\s*\(/', $code, $m)) $hit('G5', $src['where'], $src['form'], $m[0]);
 			if (preg_match('/#(' . implode('|', self::MISSING_HASH) . ')#/', $code, $m)) $hit('G7', $src['where'], $src['form'], $m[0]);
+		}
+		// G11: handlers that wait for the page to load, in form code (not Setup → Header: it is part of Forte's page and its handlers run)
+		foreach (self::sources($withSystem) as $src) {
+			if ($src['lang'] !== 'js' || str_starts_with($src['where'], 'Setup ·')) continue;
+			if (preg_match(self::LOAD_WAIT, self::stripComments($src['code']), $m)) $hit('G11', $src['where'], $src['form'], $m[0]);
 		}
 		// G9: Global JS (Custom code → All pages) that defines nuBuilder's hook names
 		try { foreach (NuCustomCode::hookClashes() as $n) $hit('G9', 'Custom code · Global JS', '', $n); } catch (Throwable) { /* no settings table */ }

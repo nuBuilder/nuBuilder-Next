@@ -63,9 +63,9 @@
    {
     "g": "db",
     "n": "nuRunQuery",
-    "s": "nuRunQuery(string $sql, array $params = [], bool $isInsert = false): NuResult|string",
-    "d": "Runs an SQL statement. Parameters as ? placeholders or :names (array keys). When the first line starts with #, every # line is run first as a command (as nuBuilder Forte, e.g. #SET @n := 0). Database errors stop the code with a message. Without SQL it returns [host, database, user, ''] – as nuBuilder Forte, but without the password.",
-    "r": "NuResult (for db_fetch_…), or the new id when $isInsert is true",
+    "s": "nuRunQuery(string $sql, array $params = [], bool $isInsert = false): NuResult|string|int",
+    "d": "Runs an SQL statement. Parameters as ? placeholders or :names (array keys). When the first line starts with #, every # line is run first as a command (as nuBuilder Forte, e.g. #SET @n := 0). A database error does not stop the code (as nuBuilder Forte): the query returns -1, the error goes to the Debug results and nuGetLastError() describes it. Without SQL it returns [host, database, user, ''] – as nuBuilder Forte, but without the password.",
+    "r": "NuResult (for db_fetch_…), the new id when $isInsert is true, or -1 after a database error",
     "e": "$t = nuRunQuery('SELECT cus_name FROM customer WHERE customer_id = ?', ['#RECORD_ID#']);\n$r = db_fetch_object($t);",
     "o": "nb",
     "x": "Bluepeak Systems – London\nMaple Ridge Supply – Toronto",
@@ -715,7 +715,7 @@
     "g": "form",
     "n": "nuHash",
     "s": "nuHash(): array",
-    "d": "All hash variables of the request (FORM_ID, RECORD_ID, the fields of the record …).",
+    "d": "All hash variables of the request, as nuBuilder Forte: system and user variables (FORM_ID, RECORD_ID, USER_ID, USER_A11Y …), the fields of the record as text (NULL = ''), properties, nuBuilder Forte's page state (title, search, rows, sort …) and hash cookies; in a procedure started from an edit form also nuFORMdata (the form and its sub-forms).",
     "r": "array",
     "e": "$h = nuHash();\n$status = $h['inv_status'];",
     "o": "nb",
@@ -1540,11 +1540,11 @@
     "g": "proc",
     "n": "nuGetLastError",
     "s": "nuGetLastError(): mixed",
-    "d": "nuBuilder Forte: the last database error – always null (nuBuilder Next stops the code on a database error).",
-    "r": "null",
+    "d": "The last error of nuRunQuery in this request, as nuBuilder Forte: an object with user, message, sql and trace; null when no query failed.",
+    "r": "object|null",
     "o": "nb",
-    "e": "$err = nuGetLastError();",
-    "x": "null"
+    "e": "if (nuRunQuery('INSERT INTO log_table (id) VALUES (?)', [nuID()]) === -1) {\n    $err = nuGetLastError();\n    nuDisplayError($err->message);\n}",
+    "x": "SQLSTATE[42S02]: Base table or view not found: 1146 Table 'db.log_table' doesn't exist"
    },
    {
     "g": "proc",
@@ -4123,7 +4123,7 @@
     "g": "values",
     "n": "nuCurrentProperties",
     "s": "nuCurrentProperties()",
-    "d": "Properties, hash cookies and form details (form_id, form_code, record_id …) as one object; on a list also browse_columns, browse_rows (the page's rows as the browse SQL returned them, unformatted; [0] = the primary key) and browse_filtered_rows (records found), as in nuBuilder Forte.",
+    "d": "The page's properties as nuBuilder Forte's breadcrumb: the same keys and value types (form_id, form_code, form_group, record_id, title, rows, row_height, redirect_form_id, sort, tab_start, session_id …) plus the properties set with nuSetProperty and the hash cookies. On a list also browse_columns (as stored: title, display, align, width, order, format, id), column_widths, browse_rows (the page's rows as the browse SQL returned them, unformatted; [0] = the primary key), browse_filtered_rows, pages and page_number; in an edit form these list keys are 0 or [] as in Forte. browse_sql holds only the #names# of the list's SQL that had no value, not the SQL. nuBuilder Next adds user_name, login_name, access_level_id, access_level_code and global_access.",
     "r": "object",
     "o": "nb",
     "e": "console.log(nuCurrentProperties().form_code);",
@@ -4941,6 +4941,19 @@
    },
    {
     "g": "form",
+    "n": "nuNextLoadGuard",
+    "s": "nuNextLoadGuard(on)",
+    "d": "Used by the form page around the form's code: while on, handlers that wait for the page to load (DOMContentLoaded, readystatechange, window load, window.onload =) are dropped, as in nuBuilder Forte, and named in the console. Returns how many were dropped. Form code does not need to call it.",
+    "r": "number",
+    "o": "next",
+    "e": "console.log(nuNextLoadGuard(false));",
+    "x": "1",
+    "p": {
+     "on": "true = start dropping, false = stop (puts window.onload back)"
+    }
+   },
+   {
+    "g": "form",
     "n": "nuNextRunDeferred",
     "s": "nuNextRunDeferred(root)",
     "d": "Runs the scripts of HTML objects added later (they run by themselves when the form loads).",
@@ -5239,6 +5252,20 @@
     "p": {
      "title": "tab title"
     }
+   },
+   {
+    "g": "tabs",
+    "n": "nuPortraitScreen",
+    "s": "nuPortraitScreen(columns)",
+    "d": "Shows the edit form in one column at any width: the objects of a form with fixed positions below each other, label above the field, in the order top, then left (the phone layout of nuBuilder Next, capped at 720 px on wide screens). Lists are not changed. nuBuilder Forte scales the page instead; the argument columns is accepted and not used.",
+    "r": "number",
+    "o": "nb",
+    "e": "function nuOnLoad() {\n  if (nuFormType() === 'edit') nuPortraitScreen();\n}",
+    "x": "1",
+    "p": {
+     "columns": "nuBuilder Forte: 1 = labels above, 2 = labels left (not used here)"
+    },
+    "h": "phones"
    },
    {
     "g": "tabs",
@@ -7176,7 +7203,7 @@
     "g": "user",
     "n": "nuUserName",
     "s": "nuUserName()",
-    "d": "Name of the user.",
+    "d": "Name of the user (the field Name of the user form) – an empty text for the globeadmin, as in nuBuilder Forte. The login name: nuUserLogin().",
     "r": "string",
     "o": "nb",
     "e": "console.log(nuUserName());",

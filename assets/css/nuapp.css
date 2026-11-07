@@ -2064,3 +2064,71 @@ body > .ts-dropdown { z-index: 1065; }
 
 /* Settings → Data & logs: audit trail Keep select (0.8.953) */
 #shAudKeep { max-width: 170px; }
+
+/* screenshots in the help (0.8.985): scaled to the page, a frame like a window */
+.nuHelpBody .doc-shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--bs-border-color); border-radius: .375rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.nuHelpBody .doc-shot figcaption { margin-top: .4rem; font-size: .875rem; color: var(--bs-secondary-color); }
+
+/* compact top bar on phones (0.8.990): theme and language at the top of the user menu (nu_menu_prefs) instead of the bar */
+.nuMenuPrefs { min-width: 15rem; }
+.nuMenuPrefs .btn-group .btn { flex: 1 1 0; }
+.nuMenuPrefs .form-select { min-width: 0; flex: 1 1 auto; }
+
+/* phones (0.8.994): "+ Add" of lists shows only its icon – the text stays as tooltip / accessible name (nuapp.js nuAddBtnNames) */
+@media (max-width: 575.98px) {
+	.btn.nuAddBtn:not(.w-100), .btn.nuIconPhone { font-size: 0; min-width: 2.75rem; padding-left: .75rem; padding-right: .75rem; }
+	.btn.nuAddBtn:not(.w-100) > .bi, .btn.nuIconPhone > .bi { font-size: 1.125rem; margin: 0 !important; }
+	/* form pages (0.8.1001, mockup C): Design, (i) and the layout switch live in the ⋮ menu's section "Design" (nuruntime.js phoneDesignItems) */
+	#nuActionHolder > #nuDesignGroup, #nuActionHolder > #nuDesignButton, #nuActionHolder > .nuFormInfoWrap, #nuActionHolder > #nuLayoutSeg { display: none !important; }
+}
+/* Back button on phones (0.8.1002, shared setting nuPhoneBackButton → html.nuBack-icon / html.nuBack-hidden, core/nulayout.php nu_head) */
+@media (max-width: 575.98px) {
+	html.nuBack-icon :is(.nuBackBtn, #nuBackButton, .btn.nuBtnAct:has(> .bi-arrow-left:first-child)) { font-size: 0; min-width: 2.75rem; padding-left: .75rem; padding-right: .75rem; }
+	html.nuBack-icon :is(.nuBackBtn, #nuBackButton, .btn.nuBtnAct:has(> .bi-arrow-left:first-child)) > .bi { font-size: 1.125rem; margin: 0 !important; }
+	html.nuBack-hidden :is(.nuBackBtn, #nuBackButton, .btn.nuBtnAct:has(> .bi-arrow-left:first-child)) { display: none !important; }
+}
+.nuOptionsList .nuOptPhone { display: none; }
+@media (max-width: 575.98px) { .nuOptionsList .nuOptPhone { display: list-item; } }
+.nuOptLayout { display: flex; margin: .15rem 1rem .35rem; }
+.nuOptLayout > .btn { flex: 1 1 0; }
+.nuFormInfoPhone { overflow-x: hidden; }
+.nuFormInfoPhone .nuFormInfoList { margin: 0; }
+
+/* Branding title (0.8.996): the phone title below 576 px, none when it is empty (NuBranding::titleHtml) */
+.nu-brand-title.nuTitlePhone { display: none; }
+@media (max-width: 575.98px) {
+	.nu-brand-title.nuTitleDesk { display: none; }
+	.nu-brand-title.nuTitlePhone { display: inline; }
+}
+@media (max-width: 575.98px) {
+	.nuNavCompact .navbar-brand:not(:has(img, .nuTitlePhone)) { display: none !important; }   /* phone title empty: nothing in the brand slot */
+}
+
+/* dark mode (0.8.1005, UI review): Bootstrap's contextual table rows keep their light colours in dark mode – a light row with light text */
+[data-bs-theme="dark"] .table-warning { --bs-table-bg: rgba(var(--bs-warning-rgb), .16); --bs-table-color: var(--bs-body-color); --bs-table-border-color: rgba(var(--bs-warning-rgb), .3); --bs-table-striped-bg: rgba(var(--bs-warning-rgb), .2); --bs-table-hover-bg: rgba(var(--bs-warning-rgb), .24); --bs-table-hover-color: var(--bs-body-color); }
+[data-bs-theme="dark"] .table-light { --bs-table-bg: var(--bs-tertiary-bg); --bs-table-color: var(--bs-body-color); --bs-table-border-color: var(--bs-border-color); }
+/* long "used by" menus of the formats list (UI review): scroll inside the menu instead of running off the screen */
+.nuFmtUsed .dropdown-menu { max-height: min(60vh, 26rem); overflow-y: auto; }
+
+/* compact header of the system lists on phones (UI review S7, like the form pages' header): Back as a small link above, the title
+   left, the buttons as plain icons right of it on the same line (no frames); texts stay as tooltip / accessible name */
+@media (max-width: 575.98px) {
+	.nuListCard > .nuListHead.nuTitleBar { display: flex; flex-wrap: wrap; align-items: center; column-gap: .125rem; row-gap: 0; padding-top: .25rem; padding-bottom: .25rem; }
+	.nuListCard > .nuListHead.nuTitleBar > .d-flex { display: contents !important; }
+	.nuListCard > .nuListHead > h1 { order: 0; flex: 1 1 0; min-width: 6.5rem; margin: 0; font-size: 1.2rem; font-weight: 650; display: block !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.nuListCard > .nuListHead > h1 > .btn { margin-left: .3rem; vertical-align: .05em; }
+	.nuListCard > .nuListHead > :not(h1):not(.d-flex), .nuListCard > .nuListHead .nuTitleSub { order: 3; flex: 0 0 100%; }
+	.nuListCard > .nuListHead > .d-flex .btn:not(.dropdown-item) { order: 1; --bs-btn-border-color: transparent; --bs-btn-bg: transparent; --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-border-color: transparent; --bs-btn-active-bg: var(--bs-secondary-bg); --bs-btn-active-border-color: transparent; border-color: transparent; background-color: transparent; box-shadow: none; }
+	.nuListCard > .nuListHead > .d-flex > .dropdown, .nuListCard > .nuListHead > .d-flex > .btn-group { order: 1; }
+	.nuListCard > .nuListHead > .d-flex .btn:not(.dropdown-item):has(> .bi) { min-width: 2.75rem; height: 2.75rem; padding: 0 .55rem; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+	.nuListCard > .nuListHead > .d-flex .btn:not(.dropdown-item):has(> .bi) > .bi { font-size: 1.2rem; margin: 0 !important; }
+	.nuListCard > .nuListHead > .d-flex .btn:not(.dropdown-item):has(> .bi) > span { display: none; }
+	.nuListCard > .nuListHead > .d-flex .dropdown-toggle::after { display: none; }
+	.nuListCard > .nuListHead > .d-flex .btn.nuAddBtn { color: var(--nu-accent, var(--bs-primary)); }
+	.nuListCard > .nuListHead > .d-flex .btn.nuLvPhoneBtn[aria-pressed="true"] { background-color: var(--bs-secondary-bg); }
+	.nuListCard > .nuListHead > .d-flex > .btn.nuBackBtn:not(.dropdown-item):has(> .bi) { order: -1; flex: 0 0 100%; justify-content: flex-start; height: 2rem; min-width: 0; padding: 0; margin-left: -.1rem; font-size: .9rem; color: var(--bs-link-color); }
+	.nuListCard > .nuListHead > .d-flex > .btn.nuBackBtn:not(.dropdown-item):has(> .bi) > .bi { font-size: 1rem; margin-right: .2rem !important; }
+	html:not(.nuBack-hidden) body:has(.nuListCard > .nuListHead .nuBackBtn) main nav[aria-label="breadcrumb"]:not(#nuNavCrumbs *) { display: none; }   /* Back leads to the same place */
+	html.nuBack-icon .nuListCard > .nuListHead > .d-flex > .btn.nuBackBtn:not(.dropdown-item):has(> .bi) { flex-basis: auto; width: 2rem; font-size: 0; }
+	html.nuBack-icon .nuListCard > .nuListHead > .d-flex > .btn.nuBackBtn:not(.dropdown-item):has(> .bi) > .bi { font-size: 1.2rem; margin: 0 !important; }
+}

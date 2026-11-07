@@ -430,7 +430,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 					<li class="list-group-item d-flex justify-content-between gap-2"><span class="text-body-secondary"><?= h(t('mail_from_address')) ?></span><span class="text-break text-end"><?= $s['from_address'] !== '' ? h(trim($s['from_name'] . ' <' . $s['from_address'] . '>')) : '<span class="text-danger">' . h(t('mail_not_set')) . '</span>' ?></span></li>
 					<li class="list-group-item d-flex justify-content-between gap-2"><span class="text-body-secondary">PHPMailer<?php // the folder (or the places searched) only as tooltip of the (i) ?>
 						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="nuTipWide" aria-label="<?= h($pmDir ?: implode(', ', NuMailer::phpMailerCandidates())) ?>"
-							title="<?= h($pmDir ?: implode(', ', NuMailer::phpMailerCandidates())) ?>"><i class="bi bi-info-circle"></i></span></span>
+							title="<?= h($pmDir ? nu_short_path($pmDir) : implode(', ', array_map('nu_short_path', NuMailer::phpMailerCandidates()))) ?>"><i class="bi bi-info-circle"></i></span></span>
 						<span><?= $pmDir ? h(NuMailer::phpMailerVersion()) : '<span class="text-danger">' . h(t('mail_phpmailer_missing')) . '</span>' ?></span></li>
 					<?php if (NuMailer::mailLogFile() !== ''): ?>
 						<li class="list-group-item text-warning-emphasis bg-warning-subtle"><i class="bi bi-file-earmark-text me-1"></i><?= h(t('mail_to_file', NuMailer::mailLogFile())) ?></li>

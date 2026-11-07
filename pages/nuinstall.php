@@ -114,8 +114,6 @@ if ($late) {
 					$notice = t('ins_db_created', $d['name']);
 				}
 				$S['detect'] = NuInstall::detect($db);
-				// an existing nuBuilder database: not while nuBuilder Next is being tested (0.8.380) – a new, empty one
-				if ($S['detect']['kind'] === 'nubuilder' && !NuInstall::existingMarker()) { $errors['_'] = t('ins_err_existing_db', $d['name']); break; }
 				if ($action === 'test') { $notice = trim($notice . ' ' . t('ins_db_ok')); break; }
 				$go('content');
 			} catch (Throwable $e) {
@@ -155,8 +153,10 @@ if ($late) {
 			if ($action === 'check') { if ($S['opt']['nub_path'] !== '' && is_file($S['opt']['nub_path'] . '/nubuilder4.sql')) $S['content']['choice'] = 'nubuilder'; break; }
 			if ($S['content']['choice'] === 'nubuilder' && !is_file($S['opt']['nub_path'] . '/nubuilder4.sql')) $S['content']['choice'] = 'nunext';
 			if (($S['detect']['kind'] ?? '') === 'other' && !$S['content']['confirm_other']) { $errors['confirm_other'] = t('ins_err_confirm_other'); break; }
-			// existing nuBuilder Forte database (marker file, 0.8.705): the integrity check's problems need the tick
+			// existing nuBuilder Forte database (0.8.705 / 0.8.1008): a backup must be confirmed, the integrity check's problems need the tick
 			if (($S['detect']['kind'] ?? '') === 'nubuilder') {
+				$S['content']['backup_ack'] = nu_check('backup_ack') === '1';
+				if (!$S['content']['backup_ack']) { $errors['backup_ack'] = t('ins_backup_needed'); break; }
 				$S['content']['ic_ack'] = nu_check('integrity_ack') === '1';
 				if (nu_install_integrity($S)['errors'] && !$S['content']['ic_ack']) { $errors['_'] = t('ic_ack_needed'); break; }
 			}
@@ -224,7 +224,7 @@ if ($late) {
 					$db = NuInstall::connect($d);
 				}
 				$det = NuInstall::detect($db);
-				if ($det['kind'] === 'nubuilder' && !NuInstall::existingMarker()) throw new RuntimeException(t('ins_err_existing_db', $d['name']));   // 0.8.380
+				if ($det['kind'] === 'nubuilder' && empty($S['content']['backup_ack'])) throw new RuntimeException(t('ins_backup_needed'));   // checked again (0.8.1008)
 				if ($det['kind'] === 'nubuilder' && nu_install_integrity($S)['errors'] && empty($S['content']['ic_ack'])) throw new RuntimeException(t('ic_ack_needed'));   // checked again (0.8.705)
 				$S['detect'] = $det;
 				$imported = 0;
@@ -467,6 +467,11 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 				<?php if ($det['kind'] === 'nubuilder'): $icR = nu_install_integrity($S); ?>
 					<div class="alert alert-success" id="insKind"><i class="bi bi-database-check me-1"></i><?= h(t('ins_content_nubuilder', $det['forms'], $det['users'])) ?></div>
 					<input type="hidden" name="choice" value="nunext">
+					<div class="alert alert-warning" id="insBackup"><div class="fw-semibold mb-1"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('ins_backup_title')) ?></div>
+						<div class="small mb-2"><?= h(t('ins_backup_text')) ?></div>
+						<div class="form-check mb-0"><input type="hidden" name="backup_ack" value="0"><input class="form-check-input<?= $err('backup_ack') ?>" type="checkbox" name="backup_ack" value="1" id="insBackupAck"<?= !empty($S['content']['backup_ack']) ? ' checked' : '' ?>>
+							<label class="form-check-label fw-semibold" for="insBackupAck"><?= h(t('ins_backup_ack')) ?></label><?= $fb('backup_ack') ?></div>
+					</div>
 					<div class="border rounded p-3 mb-3<?= $icR['errors'] ? ' border-danger' : '' ?>" id="insIntegrity">
 						<div class="fw-semibold small mb-2"><i class="bi bi-clipboard2-pulse me-1"></i><?= h(t('ic_title')) ?><?= NuListView::infoTip(t('ic_tip')) ?></div>
 						<?= NuIntegrity::html($icR, 'insContentForm') ?>

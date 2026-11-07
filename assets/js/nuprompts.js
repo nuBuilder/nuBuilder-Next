@@ -95,4 +95,31 @@
 	form.querySelectorAll('[data-confirm-submit]').forEach(function (b) {
 		b.addEventListener('click', function (e) { if (!window.confirm(b.getAttribute('data-confirm-submit'))) e.preventDefault(); });
 	});
+
+	// ------------------------------------------------------------------ AI context file (0.8.991, as Form with AI): download, attach to the chat
+	var ctxBox = document.getElementById('pgCtx'), ctxMsg = document.getElementById('pgCtxMsg');
+	if (ctxBox) ctxBox.addEventListener('click', function (e) {
+		var b = e.target.closest('[data-nu-ctx]');
+		if (!b) return;
+		var full = document.getElementById('pgCtxFull'), csrf = form.querySelector('input[name="_csrf"]');
+		var body = new URLSearchParams();
+		body.set('_csrf', csrf ? csrf.value : ''); body.set('action', 'context');
+		body.set('fmt', b.getAttribute('data-nu-ctx')); body.set('full', full && full.checked ? '1' : '0');
+		var tsel = document.getElementById('pge_table');
+		if (tsel) Array.prototype.forEach.call(tsel.selectedOptions, function (o) { body.append('tables[]', o.value); });
+		if (ctxMsg) ctxMsg.textContent = '';
+		fetch(form.getAttribute('action') || window.location.href, {method: 'POST', body: body, credentials: 'same-origin'}).then(function (r) {
+			if (!r.ok) throw new Error('HTTP ' + r.status);
+			var name = r.headers.get('X-Nu-File-Name') || 'nunext-context.md';
+			return r.blob().then(function (bl) {
+				var url = URL.createObjectURL(bl), a = document.createElement('a');
+				a.href = url; a.download = name; a.className = 'd-none';
+				document.body.appendChild(a); a.click(); a.remove();
+				setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+				if (ctxMsg) { ctxMsg.textContent = ctxMsg.getAttribute('data-done') || ''; ctxMsg.className = 'small w-100 text-success'; }
+			});
+		}).catch(function (x) {
+			if (ctxMsg) { ctxMsg.textContent = (ctxMsg.getAttribute('data-failed') || '%s').replace('%s', x.message); ctxMsg.className = 'small w-100 text-danger'; }
+		});
+	});
 })();

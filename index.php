@@ -210,17 +210,6 @@ if (empty($routes[$p]['public'])) {
 	// demo mode (core/nudemo.php): everything visible, read only – form posts and background saves answer "Not available in the demo"
 	if (!empty($user['demo'])) NuDemo::guardRequest($p, !empty($routes[$p]['json']));
 
-	// existing nuBuilder database without $nuConfigAllowExistingNuDB (0.8.380, NuInstall::existingBlocked): nothing but a notice
-	if (NuInstall::existingBlocked()) {
-		http_response_code(503);
-		if (!empty($routes[$p]['json'])) {
-			header('Content-Type: application/json');
-			exit(json_encode(['ok' => false, 'errors' => [['message' => t('existing_db_blocked'), 'field' => '']]]));
-		}
-		nu_page_minimal(t('existing_db_title'), t('existing_db_blocked') . ' ' . t('existing_db_how'), false, true);   // how to go on (0.8.645)
-		exit;
-	}
-
 	// database not set up (nuconfig.php written by hand for an empty database, tables missing, nuBuilder Forte older than 4.9 – 0.8.645,
 	// NuDbState): the globeadmin goes to the set-up page, everybody else gets a notice
 	if (!NuDbState::ready() && $p !== 'logout') {

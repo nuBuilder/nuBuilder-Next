@@ -81,7 +81,7 @@
 			}, function () { /* fields are optional */ });
 		}
 
-		btn.addEventListener('show.bs.dropdown', function () { search.value = ''; render(); loadExtras().then(render); });
+		btn.addEventListener('show.bs.dropdown', function () { search.value = ''; render(); loadExtras().then(function () { render(); try { dd.update(); } catch (x) { /* closed */ } }); });
 		btn.addEventListener('shown.bs.dropdown', function () { search.focus(); });
 		search.addEventListener('input', render);
 		search.addEventListener('keydown', function (e) {

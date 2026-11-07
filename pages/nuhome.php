@@ -38,10 +38,6 @@ if (nu_is_post() && nu_post('action') === 'hide_entry_notice' && !empty($u['glob
 	NuMigrate::entryNotice(false);
 	nu_redirect(nu_url('home'));
 }
-if (nu_is_post() && nu_post('action') === 'hide_dbwarn' && !empty($u['globeadmin']) && empty($u['demo'])) {   // review I1: until the next update
-	NuInstall::hideExistingWarn();
-	nu_redirect(nu_url('home'));
-}
 if (nu_is_post()) {
 	// editor of a user start page: the access level's own page goes – it shows the default again (form post, 0.8.425)
 	if ($editorPage && nu_post('action') === 'layout_reset') {
@@ -197,11 +193,6 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 		</ul></div>
 	<?php if (empty($u['demo'])): ?><form method="post" action="<?= h(nu_url('home')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_entry_notice">
 		<button type="submit" class="btn-close" id="nuEntryNoticeHide" title="<?= h(t('entry_ren_hide')) ?>" aria-label="<?= h(t('entry_ren_hide')) ?>"></button></form><?php endif; ?></div>
-<?php endif; ?>
-<?php if ($u['globeadmin'] && !$editorPage && NuInstall::existingWarn() && !NuInstall::existingWarnHidden()): // an existing nuBuilder database (0.8.380, NuInstall); hidden until the next update (review I1) ?>
-<div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuExistingDbWarn"><i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i><div class="flex-grow-1"><?= h(t('existing_db_warn')) ?></div>
-	<?php if (empty($u['demo'])): ?><form method="post" action="<?= h(nu_url('home')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_dbwarn">
-		<button type="submit" class="btn-close" id="nuExistingDbHide" title="<?= h(t('existing_db_hide')) ?>" aria-label="<?= h(t('existing_db_hide')) ?>"></button></form><?php endif; ?></div>
 <?php endif; ?>
 <?php // tutorial (0.8.328): until hidden or finished; right after the setup wizard also when hidden
 $tutBanner = $editorPage ? null : NuTutorial::banner();
@@ -380,13 +371,13 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 			<div class="dropdown-divider"></div>
 			<button type="button" class="btn btn-link btn-sm px-1 text-decoration-none" id="nuHomeSkAll"><?= h(t('home_sk_all')) ?></button>
 		</div>
-		<?php if (!$editorPage && NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) ?>
-		<a class="btn btn-outline-secondary nuHomeUhBtn" id="nuHomeUserHome" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" title="<?= h(t('home_userhome')) ?>" aria-label="<?= h(t('home_userhome')) ?>"><i class="bi bi-house-door" aria-hidden="true"></i></a>
-		<?php endif; ?>
 	</div>
 	<?php // one Customise button (0.8.452): the panel #nuHomeViewPanel with the tabs Content (edit mode / Personalise – the two hidden
 	// buttons below start them), Appearance (how the tiles look, before: View) and Layouts (choose, save, share) ?>
 	<div class="nuHomeTools">
+		<?php if (!$editorPage && NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) – its own button next to Customise, not part of the search field (0.8.998) ?>
+		<a class="btn btn-outline-secondary nuHomeUhBtn" id="nuHomeUserHome" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" title="<?= h(t('home_userhome')) ?>" aria-label="<?= h(t('home_userhome')) ?>"><i class="bi bi-house-door" aria-hidden="true"></i></a>
+		<?php endif; ?>
 		<button type="button" class="btn btn-outline-secondary" id="nuHomeViewBtn" aria-expanded="false" aria-controls="nuHomeViewPanel" title="<?= h(t('home_c_tip')) ?>" aria-label="<?= h(t('home_customize')) ?>">
 			<i class="bi bi-sliders2" aria-hidden="true"></i><span class="nuHomeBtnTx"><?= h(t('home_customize')) ?></span></button>
 		<?php if ($canLayout): ?><button type="button" hidden class="btn btn-outline-secondary" id="nuHomeCustomize" title="<?= h(t($editorPage ? 'home_u_customise_tip' : 'home_v_customise_tip')) ?>">
@@ -416,7 +407,7 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true" aria-controls="nuHomeStripFav"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-star-fill nuHomeStripStar" aria-hidden="true"></i><?= h(t('home_v_fav_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button></h2>
 		<div class="nuHomeChips" id="nuHomeStripFav"><?php foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) echo $chip((string)$k, $it); ?></div>
 	</section>
-	<section class="nuHomeStrip" data-nu-strip="recent" hidden aria-label="<?= h(t('home_v_recent_row')) ?>">
+	<section class="nuHomeStrip" data-nu-strip="recent"<?= $recentItems && !empty($view['recentStrip']) ? '' : ' hidden' /* shown by the server like Favourites (0.8.995) – was hidden until nuhome.js ran */ ?> aria-label="<?= h(t('home_v_recent_row')) ?>">
 		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true" aria-controls="nuHomeStripRecent"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-clock-history" aria-hidden="true"></i><?= h(t('home_v_recent_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button><?php if ($recentItems): ?><form method="post" action="<?= h(nu_url('sidebar')) ?>" class="nuHomeStripClearForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="clear"><input type="hidden" name="back" value="<?= h(nu_url('home')) ?>"><button type="submit" class="nuHomeStripClear" id="nuHomeRecentClear" title="<?= h(t('sb_recent_clear_menu')) ?>" aria-label="<?= h(t('sb_recent_clear_menu')) ?>"><i class="bi bi-x-circle" aria-hidden="true"></i></button></form><?php endif; ?></h2>
 		<div class="nuHomeChips" id="nuHomeStripRecent"><?php foreach ($recentItems as $it):
 			$body = '<span class="nu-tile-icon nuHomeIcon"' . ($it['color'] !== '' ? ' data-nu-color="' . h($it['color']) . '"' : '') . '><i class="bi ' . h($it['icon']) . '"></i></span><span class="nuHomeChipLabel">' . h($it['label']) . '</span>';

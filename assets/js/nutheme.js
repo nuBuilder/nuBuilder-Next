@@ -22,6 +22,29 @@
 		var lvPhone = lvRoute ? localStorage.getItem('nunext-lv-phone-' + lvRoute) : null;
 		if (lvPhone === 'table' || lvPhone === 'cards') document.documentElement.setAttribute('data-lv-phone', lvPhone);
 	} catch (e) {}
+	// form lists on phones (0.8.993): rows as cards from the first paint – nuruntime.js phoneStack() sets the same class only after
+	// loading, so the table showed for a moment. Not when the user chose the table for this form (nunext-browse-phone-<form>), in the
+	// print view, in design mode or in a dialog of a wide window; phoneStack() corrects it later in any other case
+	try {
+		var q = window.location.search, fm = (q.match(/[?&]f=([^&#]*)/) || [])[1] || '';
+		if (/[?&]p=form(&|$)/.test(q) && fm && !/[?&](print|design)=1/.test(q) && window.matchMedia && matchMedia('(max-width: 575.98px)').matches
+			&& localStorage.getItem('nunext-browse-phone-' + decodeURIComponent(fm)) !== 'table') {
+			var wide = false;
+			try { wide = window.top !== window && window.top.innerWidth >= 576; } catch (e2) {}
+			if (!wide) document.documentElement.classList.add('nuPhoneCards');
+		}
+	} catch (e) {}
+	// start page (0.8.995): rows Favourites / Recently used folded from the first paint as nuhome.js stripFold() will fold them
+	// (saved 'folded', Auto collapse, or Recently used on a phone without a choice) – html.nuHomeFold-<fav|recent>, removed by nuhome.js
+	try {
+		var qp = (window.location.search.match(/[?&]p=([\w-]+)/) || [])[1] || '';
+		if (qp === '' || qp === 'home') ['fav', 'recent'].forEach(function (k) {
+			var sv = localStorage.getItem('nunext-home-strip-' + k);
+			var fold = localStorage.getItem('nunext-home-strip-auto-' + k) === '1' || (sv ? sv === 'folded'
+				: k === 'recent' && window.matchMedia && matchMedia('(max-width: 575.98px)').matches);
+			if (fold) document.documentElement.classList.add('nuHomeFold-' + k);
+		});
+	} catch (e) {}
 	// page forms (0.8.387, $nu->theme()): the choice for the server too
 	try { document.cookie = 'nunext_theme=' + encodeURIComponent(stored) + '; path=' + window.location.pathname.replace(/[^/]*$/, '') + '; SameSite=Lax'; } catch (e) {}
 })();

@@ -229,19 +229,14 @@ final class NuSchema
 	/**
 	 * May this request change the database structure? (0.8.462, B2) Copying nuBuilder Next next to a live nuBuilder must not change
 	 * its database: the own tables are created by the installer, nucron.php or the globeadmin's first sign-in – never by an anonymous
-	 * request (login page, failed login, public links) and never while the database is blocked (NuInstall::existingBlocked). Once
+	 * request (login page, failed login, public links). Once
 	 * they exist, signed-in requests apply the database steps of an update, as before.
 	 */
 	private static function mayChange(): bool
 	{
 		if (self::$allowed || PHP_SAPI === 'cli') return true;
 		if (!self::present()) return false;
-		if (empty($_SESSION['nu_auth']['id'])) return false;
-		try {
-			return !NuInstall::existingBlocked();
-		} catch (Throwable) {
-			return false;
-		}
+		return !empty($_SESSION['nu_auth']['id']);
 	}
 
 	public static function ensure(): void

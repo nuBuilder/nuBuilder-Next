@@ -23,7 +23,7 @@ final class NuBranding
 	public const MAX_BYTES = 524288;
 	public const TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
 	public const DEFAULTS = ['accent' => '', 'logo' => false, 'logo_dark' => false, 'show_title' => false, 'favicon' => false, 'logo_show' => 'all',
-		'env_label' => '', 'env_color' => '#dc3545', 'title' => '', 'rev' => ''];
+		'env_label' => '', 'env_color' => '#dc3545', 'title' => '', 'title_phone' => '', 'show_title_phone' => true, 'rev' => ''];
 	public const ENV_LEN = 20;
 	public const TITLE_LEN = 100;   // own title of the application (0.8.736), '' = $nuConfigTitle
 	/** Where the logo shows (0.8.630): all = top bar and sign-in pages, login = sign-in pages only, none = nowhere. */
@@ -58,6 +58,8 @@ final class NuBranding
 		$out['env_color'] = self::hex($out['env_color']) ?: self::DEFAULTS['env_color'];
 		$out['env_label'] = mb_substr(trim($out['env_label']), 0, self::ENV_LEN);
 		$out['title'] = mb_substr(trim($out['title']), 0, self::TITLE_LEN);
+		$out['title_phone'] = mb_substr(trim((string)$out['title_phone']), 0, self::TITLE_LEN);   // phones (0.8.996), '' = no title there
+		$out['show_title_phone'] = (bool)$out['show_title_phone'];
 		if (!in_array($out['logo_show'], self::LOGO_SHOW, true)) $out['logo_show'] = 'all';
 		return self::$cache = $out;
 	}
@@ -112,7 +114,7 @@ final class NuBranding
 		$img = $b['logo_dark']
 			? '<img class="nu-brand-light" src="' . h(self::logoUrl(false)) . '" alt="' . h($title) . '"><img class="nu-brand-dark" src="' . h(self::logoUrl(true)) . '" alt="' . h($title) . '">'   // one of the two is shown: both carry the name (0.8.368)
 			: '<img src="' . h(self::logoUrl(false)) . '" alt="' . h($title) . '">';
-		$text = $b['show_title'] && $size === '' && nu_app_title(true) !== '' ? '<span class="nu-brand-title">' . h(nu_app_title(true)) . '</span>' : '';
+		$text = $size === '' ? self::titleHtml() : '';
 		return '<span class="' . $cls . '">' . $img . '</span>' . $text;
 	}
 
@@ -127,14 +129,28 @@ final class NuBranding
 	public static function titleNoLogo(): string
 	{
 		$b = self::get();
-		return $b['show_title'] && nu_app_title(true) !== '' ? '<span class="nu-brand-title">' . h(nu_app_title(true)) . '</span>' : '';
+		return self::titleHtml();
+	}
+
+	/**
+	 * The title of the top bar (0.8.996): the title on wider screens while "show title" is on, the phone title below 576 px while
+	 * "show the title on phones" is on (0.8.997) – an empty phone title shows nothing there (CSS .nuTitleDesk / .nuTitlePhone in nuapp.css)
+	 */
+	public static function titleHtml(): string
+	{
+		$b = self::get();
+		$desk = nu_app_title(true);
+		$out = $b['show_title'] && $desk !== '' ? '<span class="nu-brand-title nuTitleDesk">' . h($desk) . '</span>' : '';
+		// phones: own switch "Show the title on phones" (0.8.997)
+		if ($b['show_title_phone'] && $b['title_phone'] !== '') $out .= '<span class="nu-brand-title nuTitlePhone">' . h($b['title_phone']) . '</span>';
+		return $out;
 	}
 
 	/** Title next to nuBuilder Next's own logo (top bar) when "show title" is on but no own logo was uploaded. */
 	public static function titleOnly(): string
 	{
 		$b = self::get();
-		return !$b['logo'] && $b['show_title'] && nu_app_title(true) !== '' ? '<span class="nu-brand-title">' . h(nu_app_title(true)) . '</span>' : '';
+		return !$b['logo'] ? self::titleHtml() : '';
 	}
 
 	/** The environment label as a badge ('' when none). */
@@ -253,6 +269,8 @@ final class NuBranding
 		$new['logo_show'] = in_array((string)($in['logo_show'] ?? 'all'), self::LOGO_SHOW, true) ? (string)$in['logo_show'] : 'all';
 		if (!self::envFromConfig()) $new['env_label'] = $label;
 		if (array_key_exists('title', $in)) $new['title'] = mb_substr(trim((string)$in['title']), 0, self::TITLE_LEN);   // 0.8.736
+		if (array_key_exists('show_title_phone', $in)) $new['show_title_phone'] = !empty($in['show_title_phone']);   // 0.8.997
+		if (array_key_exists('title_phone', $in)) $new['title_phone'] = mb_substr(trim((string)$in['title_phone']), 0, self::TITLE_LEN);   // 0.8.996
 		$new['env_color'] = $envColor;
 		if ($accent !== '' && self::contrast($accent, '#ffffff') < 3) $warn[] = t('brand_warn_light');
 

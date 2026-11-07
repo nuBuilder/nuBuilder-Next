@@ -3,6 +3,200 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1010 – Release gate
+- Release gate (full test run: smoke, end-to-end, comparison with nuBuilder Forte, OWASP ZAP; installer test with an existing
+  nuBuilder Forte database).
+
+## 0.8.1009 – Fix: code tools after saving
+- Fix: after saving a form whose page had loaded the code editor tools later (e.g. the inline code editor of code snippets), the
+  reloaded page showed the error "NuCodeTools.attach is not a function". Variables that form code puts on window travel with the
+  reload after a save (since 0.8.1000) – now only plain values: no library objects and no objects that hold functions.
+
+## 0.8.1008 – Existing nuBuilder Forte databases allowed
+- Existing nuBuilder Forte databases are no longer blocked: the installer accepts a database with nuBuilder Forte's tables. Its
+  content step asks to confirm a backup of the database and the files first (e.g. phpMyAdmin → Export, Adminer, mysqldump or
+  SQL Server Management Studio) and shows the integrity check as before; nothing is imported, nuBuilder Next only adds its own tables.
+- nuconfig.php written by hand for a nuBuilder Forte database that nuBuilder Next has not set up yet: the sign-in page shows the
+  same backup note until the globeadmin's first sign-in adds the own tables (anonymous requests still change nothing). The notice
+  page "existing nuBuilder Forte database" and the start page / Security check warning of older installations are gone.
+- Fix: the installer stopped with a time-out at the database step (since the Back button setting for phones: the page head read
+  nuconfig.php before it existed and the error page called itself again).
+- Docs: installation, migration, start page, Reset database, tutorial and README updated.
+
+## 0.8.1007 – UI review suggestions
+- UI review, suggestions done: the system lists (users, forms, procedures, reports, log …) get the compact phone header of the form
+  pages – ← Back as a small link above, the title on the left, the buttons as plain icons on its right; the breadcrumb above is left
+  out on phones (Back leads to the same page). The shared setting Back Button on Phones applies here too.
+- Menus that open near the bottom of the window flip upwards once their content has loaded (hash variables menu, every dropdown).
+- The error page of reports (report missing, no right …) follows dark mode, fits phones and has a "Back to home" link.
+- Shared settings show their titles in the user's language (all eleven languages); a title changed in nuBuilder Forte is shown as
+  it is, the search of the settings centre also finds the English title.
+- Tooltips that only repeated the visible text of a link or label are dropped (nuDropEchoTitles in assets/js/nuapp.js).
+- Server paths in tooltips (library packs, PHPMailer on the e-mail page) are shown relative to the installation (nu_short_path()).
+- Texts that still pointed to "Admin tools → …" now name the place in the Settings centre or System status; the Security check
+  text on admin-equivalent rights says "forms" instead of "form builder". Seven language keys nothing used any more were removed.
+- Docs: phones (list header), shared settings (translated titles). Tests: run.php (nu_short_path, setting titles), e2e ui_suggestions.
+
+## 0.8.1006 – Docs: designer tools on phones
+- Help (forms: keyboard shortcuts and the options menu): on phones Design, its entries, form info and the layout switch are at the top of
+  the ⋮ menu.
+
+## 0.8.1005 – UI review: dark rows, menus, tooltips
+- UI review of every page (light, dark, phone width): no page wider than a phone screen and no menu outside it were found; fixed:
+  - dark mode: highlighted table rows (e.g. the primary key row of Inspect record) kept their light yellow / grey background with
+    light text – they now use a dark tint;
+  - Formats list: the "used by" menu of a much-used format scrolls inside the menu instead of running far below the screen;
+  - tooltips and texts brought up to date in all languages: custom user fields are a card on the tab General of the user form (not
+    a tab), the draft preview leads back to design mode, the dashboard placement hint and the Security setting "Form drafts" name
+    design mode instead of the form builder.
+
+## 0.8.1004 – Texts: design mode instead of the builder
+- Texts that still named the old form builder now name design mode, in all languages: the note under "Create draft" of Form with AI
+  (new form and change), the message when the published form was changed meanwhile, and the hints of the procedures page about
+  form events (edited in the design mode of the form, Code).
+
+## 0.8.1003 – Compact form header on phones
+- Phones (the owner picked mockup B): form pages get one compact header below 576 px – a link "‹ <previous page>" (replaces the
+  breadcrumb and the Back button) and the page title with the buttons as plain icons on its right (lists: table / cards, Export, ⋮;
+  records: Save, Clone, New, Delete, ⋮); an edited Save keeps its red frame. Add of a list sits as a blue button next to the search
+  field (hidden when form code hides Add). Wider screens are not changed.
+- The shared setting Back Button on Phones applies to that "‹" link on form pages: icon = only the chevron, hidden = no link.
+
+## 0.8.1002 – Back button on phones
+- Back button on phones: new shared setting Back Button on Phones (Settings → Shared settings, category Form; nuBuilder Next's own row
+  nuPhoneBackButton, which nuBuilder Forte shows and ignores) – text (icon and text, the default), icon (icon only, the text stays as
+  tooltip and accessible name) or hidden. Applies below 576 px to the Back buttons of form pages and nuBuilder Next's own pages; wider
+  screens are not changed. Without $nuConfigSettingsFromDB it is read from nuUXOptions['nuPhoneBackButton'] in nuconfig.php. The row is
+  added by a database step for existing installations.
+
+## 0.8.1001 – Designer tools in the ⋮ menu on phones
+- Phones (the owner picked mockup C): below 576 px the form toolbar keeps only the buttons every user needs – Design, its entries
+  Edit browse SQL… / Edit columns…, the (i) form info and the layout switch (Absolute · Auto · Grid) move to the top of the ⋮ menu
+  (the form info opens as a dialogue there); the toolbar of a record fits in one row again.
+- Phones: New on a record shows only its icon, like Add on lists (the text is the tooltip and the accessible name).
+
+## 0.8.1000 – Third Forte database compared
+- Found by comparing a third nuBuilder Forte database with nuBuilder Next, form by form:
+- A sub-form whose query fails (a foreign key column the sub-form's table does not have, a sub-form form without a table) no longer
+  stops the whole form with an error page: as in nuBuilder Forte the form opens and the sub-form shows only its blank row; the error
+  goes to Debug results.
+- A browse list whose SQL fails shows its column titles and no rows, as in nuBuilder Forte (the error goes to Debug results); the
+  globeadmin still sees the database's message above the list.
+- Multiple selects carry the blank item as in nuBuilder Forte, so form code that turns one into a single list box finds nothing chosen
+  (before, the first option was chosen).
+- nuPortraitScreen() (nuBuilder Forte) works: the edit form shows its objects in one column at any width – the phone layout, capped at
+  720 px on wide screens.
+- nuUserName() returns the user's name (the field Name of the user form) and an empty text for the globeadmin, as in nuBuilder Forte
+  (it returned the login name / "globeadmin"); nuSERVERRESPONSE.user_name likewise.
+- Variables that form code put on window while the record was edited (plain values: text, numbers, yes / no, small lists and objects)
+  are still there after a save reloads the page, as in nuBuilder Forte's one-page app – for example the field nuAfterSave should focus.
+- TinyMCE is loaded on form pages whose code starts it itself (tinymce.init on a textarea), as nuBuilder Forte loads it on every form
+  page.
+
+## 0.8.999 – SQL check in the code editors
+- Code editors: SQL is now checked too – by the database itself, without running it. Syntax errors (with their line), unknown
+  tables and columns are marked in the gutter like JavaScript and PHP problems, in the browse SQL pane, design mode and every other
+  SQL field. Hash variables and #TABLE_ID# do not count as errors; option lists are not checked. Only for users who may design forms.
+
+## 0.8.998 – Search row spacing
+- Start page: the User Home button is no longer part of the search field – search field, User Home and Customise now stand apart
+  with the same gap.
+
+## 0.8.997 – Phone title switch
+- Branding: "Show the title on phones" – its own switch for the phone title, independent of the switch for larger screens; the
+  phone fields now sit together below the title.
+
+## 0.8.996 – Title on phones
+- Branding: "Title on phones" – a separate (e.g. shorter) title for the top bar on screens narrower than 576 px; left empty, phones
+  show no title, so the bar keeps its room for the buttons.
+
+## 0.8.995 – Start page rows without a jump
+- Start page: the row Recently used is drawn with the page instead of appearing a moment later (it jumped open on every reload), and
+  a folded row Favourites / Recently used is folded from the first moment.
+
+## 0.8.994 – Add as icon on phones
+- Phones: the "+ Add" button of form lists and system lists shows only its icon (the text stays as tooltip and for screen readers);
+  the buttons after it move up into the first row.
+
+## 0.8.993 – No table flash on phones
+- Phones: lists of forms show their rows as cards from the first moment – the table no longer flashes up for a fraction of a second
+  while the page loads (unless the table was chosen for that form).
+
+## 0.8.992 – Cards or table in form lists
+- Phones: lists of forms get the ▦ / ☰ button of the system lists – rows as cards or as a table (scrolling sideways); the choice is
+  kept per form on the device.
+
+## 0.8.991 – Context file in the prompt generator
+- Prompt generator: "Download context" as in Form with AI – a file to attach to the AI chat with the prompt: the PHP and JavaScript
+  functions, hash variables and guide of this installation, the forms by code and the structure of the chosen tables (no data); a zip
+  and the full reference in the ▾ menu.
+
+## 0.8.990 – Phone top bar
+- Phones: when the top bar has no logo, the theme and language buttons move from the bar to the top of the user menu (theme buttons,
+  language and own theme as lists). The bar now fits on a phone also with an environment label; wider screens are unchanged.
+
+## 0.8.989 – Disabled selects, display objects
+- Fix: a select that form code disables with nuDisable() was sent as empty when saving – a required one stopped the save with
+  "… must not be empty", and its hash variable was empty in Before Save / After Save. The value is sent again (a mistake of 0.8.984).
+- Display objects refreshed with nuRefreshDisplayObject() count as a change and are saved into the column of the same name, as in
+  nuBuilder Forte (before, the value was only shown).
+- Found by comparing another nuBuilder Forte database with nuBuilder Next.
+
+## 0.8.988 – Wide forms
+- Record forms with a fixed layout that are wider than the window: the page margins around the form are taken away while the form
+  would need a sideways scroll, so a form that fits nuBuilder Forte's window fits in nuBuilder Next too.
+
+## 0.8.987 – Print of wide forms
+- Printing a record form that is wider than the paper (browser print or nuPrintEditForm()) no longer cuts off its right part: the form
+  area is no scroll box in print, so the browser shrinks the whole form to the page as in nuBuilder Forte. Found by comparing another
+  nuBuilder Forte database with nuBuilder Next.
+
+## 0.8.986 – Notes
+- Development notes: two open decisions recorded (spacing of the start page search row, the list SQL in browse_sql).
+
+## 0.8.985 – Help: screenshots and a report from a procedure
+- Help, "Your first application": eight screenshots of the steps (list, New form wizard, design mode, a lookup, a sub-form, the
+  report designer, an access level's form rights, a user's start page), taken from the sample application.
+- Help, "Reports": a worked report from a procedure – the procedure builds #TABLE_ID# in two steps, reads the criteria with
+  nuHash(), and the report prints the table.
+
+## 0.8.984 – nuHash() as in nuBuilder Forte
+- nuHash() in PHP holds what nuBuilder Forte's holds (compared in Before Browse, Before Edit and a hidden procedure on several forms):
+  the fields of the record as text (an empty column is ''), Forte's page state keys (title, search, page_number, sort,
+  sort_direction, rows, row_height, iframe, lookup_id, form_code, browse_columns … – in a procedure the open page's values),
+  #USER_A11Y#, and in a procedure started from an edit form nuFORMdata with the form and its sub-forms, so nuGetNuDataValue()
+  works there too.
+- nuFORM.data() / nuFORMdata as in Forte: the main form as 'nuBuilder4EditForm' with ID and nuDelete first, checkboxes as 0 / 1,
+  an edited mark for every field.
+- Fixed: the values of an edit form sent to the server contained the column titles of its sub-forms as empty fields.
+- Fixed: a select whose chosen option is disabled (the "English" placeholder that nuSelectAddEnglishOption adds to an empty
+  language select) sent that option's value – saving the user stored the language "1". It now sends '' as in Forte.
+- Documentation from an older nuBuilder Forte user guide: Forte's double-click shortcuts and report line in "If you know
+  nuBuilder Forte", the report footer's place, an empty user language in Forte.
+
+## 0.8.983 – Load handlers of form code as in nuBuilder Forte
+- Form code that waits for the page to load (document DOMContentLoaded / readystatechange, window load, window.onload =) no longer
+  runs, as in nuBuilder Forte, where form code runs after the page has loaded. The browser console names each dropped handler;
+  $(function () {…}) and nuOnLoad run as before. Setup → Header is not affected.
+- Compatibility check: new point G11 lists the forms whose code waits for the page to load, so the code can be moved into nuOnLoad().
+
+## 0.8.982 – nuRunQuery errors as in nuBuilder Forte
+- nuRunQuery() handles a database error as nuBuilder Forte does: the error goes to the Debug results (message, SQL and the code that
+  ran it), the query returns -1, nuGetLastError() describes it (user, message, sql, trace) and the procedure or hook goes on – before,
+  the code stopped with an error. nuRunQueryNoDebug() writes no Debug result. Refusals of demo mode still stop the code.
+
+## 0.8.981 – nuCurrentProperties as in nuBuilder Forte
+- nuCurrentProperties() and nuFORM.getCurrent() now return the same keys and value types as nuBuilder Forte (compared on the users
+  list and a user record in both): form_group, title, rows / row_height (20 / 18 when the form has none), redirect_form_id,
+  redirect_other_form_id, browse_target, browse_title_multiline, browse_autoresize_columns, mobile_view, data_mode, column_widths,
+  browse_table_id, session_id, lookup_id, run_code / run_description, sort, sort_direction, nosearch_columns, object_id, forms,
+  subforms, iframe, refreshed, username, password; browse_columns as stored (title, display, align, width, order, format, id); in an
+  edit form the list keys are 0 or [] and tab_start holds the selected tab as text, as in Forte.
+- nuFORM.getProperty / setProperty work on every one of these keys; a value set there wins in nuCurrentProperties().
+
+## 0.8.980 – Notes
+- Development notes: v0.8.979 is published on GitHub.
+
 ## 0.8.979 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, OWASP ZAP).
 - Documentation brought up to date for 0.8.964–0.8.978 (the comparison of another nuBuilder Forte database with nuBuilder Next):

@@ -283,12 +283,12 @@ final class NuBrowse
 	}
 
 	/**
-	 * @param array $opt search, runfilter, sort (column index), dir, page, per, filter => [sql on nuT, params]
+	 * The list's columns (title, expression with hash values, format, filter, badge, click action), keyed by browse index; also used
+	 * for the empty list shown when the browse SQL fails (emptyResult).
+	 * @return array<int, array<string, mixed>>
 	 */
-	public static function query(NuFormMeta $meta, array $hash, array $opt = []): array
+	public static function columns(NuFormMeta $meta, array $hash): array
 	{
-		$db = nu_db();
-
 		$cols = [];
 		foreach ($meta->browse as $i => $b) {
 			// column visibility / field data access (0.8.480, NuBrowseAccess): a hidden column is never selected, searched, filtered or
@@ -306,6 +306,25 @@ final class NuBrowse
 				'action' => str_starts_with($state, 'mask:') ? null : NuFormMeta::actionOf($b['sbr_json'] ?? null),   // On click (0.8.872)
 			];
 		}
+
+		return $cols;
+	}
+
+	/** As nuBuilder Forte when the browse SQL fails: the column titles and no rows (the error goes to Debug results). */
+	public static function emptyResult(NuFormMeta $meta, array $hash, int $per): array
+	{
+		try { $cols = self::columns($meta, $hash); } catch (Throwable) { $cols = []; }
+		return ['columns' => $cols, 'rows' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per' => $per];
+	}
+
+	/**
+	 * @param array $opt search, runfilter, sort (column index), dir, page, per, filter => [sql on nuT, params]
+	 */
+	public static function query(NuFormMeta $meta, array $hash, array $opt = []): array
+	{
+		$db = nu_db();
+
+		$cols = self::columns($meta, $hash);
 
 		[$inner, $defaultOrder] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), $cols);
 		$col = static fn(array $c): string => 'nuT.nu_c' . $c['index'];   // search, filters and sort work on the columns of the list query
@@ -523,6 +542,14 @@ function nu_browse_index_list(mixed $v): array
 }
 
 /** Browse state from the request: search, sort, direction, page and column filters. */
+/** nuBuilder Forte's breadcrumb keys of a list in nuHash() of Before Browse (0.8.984): search, page from 0, sort, direction, skipped columns. */
+function nu_browse_hash_state(): array
+{
+	$st = nu_browse_request();
+	return ['search' => $st['q'], 'page_number' => (string)($st['pg'] - 1), 'sort' => $st['sort'] === null ? '-1' : (string)$st['sort'],
+		'sort_direction' => $st['sort'] === null ? 'desc' : $st['dir'], 'nosearch_columns' => implode(',', $st['nsc'])];
+}
+
 function nu_browse_request(): array
 {
 	$flt = [];

@@ -45,6 +45,21 @@ if (nu_is_post()) {
 		header('Content-Type: application/json; charset=utf-8');
 		exit(json_encode(['prompt' => $prompt, 'chars' => mb_strlen($prompt)], JSON_UNESCAPED_UNICODE));
 	}
+	// AI context file (0.8.991, as Form with AI): functions, hash variables, guide and the chosen tables – attached to the chat with the prompt
+	if ($action === 'context') {
+		$tables = array_values(array_filter(array_map('strval', (array)($_POST['tables'] ?? [])), static fn($x) => $x !== ''));
+		$full = nu_post('full') === '1';
+		$secs = NuAiContext::codeSections($tables, $full);
+		$zip = nu_post('fmt') === 'zip' ? NuAiContext::zip($secs, 'code') : null;
+		if ($zip !== null) { header('Content-Type: application/zip'); $name = NuAiContext::fileName('code', 'zip'); $body = $zip; }
+		else { header('Content-Type: text/markdown; charset=utf-8'); $name = NuAiContext::fileName('code', 'md'); $body = NuAiContext::markdown($secs, 'code'); }
+		header('Content-Disposition: attachment; filename="' . $name . '"');
+		header('X-Nu-File-Name: ' . $name);
+		header('Cache-Control: no-store');
+		NuLog::write('form_ai_context', $T, $rec ? $id : '', ['kind' => 'code', 'fmt' => $zip !== null ? 'zip' : 'md', 'full' => $full]);
+		echo $body;
+		exit;
+	}
 	if ($action === 'save') {
 		NuAcl::require(NuAcl::FORM_PROMPT, $rec ? 'save' : ($src ? 'clone' : 'create'));
 		$row = NuPrompt::fromInput($_POST);
@@ -167,7 +182,9 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 						<textarea class="form-control font-monospace small pgResult" id="pgResult" readonly rows="18" aria-label="<?= h(t('pg_result')) ?>"><?= h(NuPrompt::build($val)) ?></textarea>
 						<div class="d-flex flex-wrap gap-2 align-items-center mt-2">
 							<button class="btn btn-primary" type="button" id="pgCopy"><i class="bi bi-clipboard me-1"></i><span><?= h(t('pg_copy')) ?></span></button>
-							<span class="small text-body-secondary"><i class="bi bi-shield-lock me-1"></i><?= h(t('pg_result_hint')) ?></span>
+							<?= nu_ai_context_menu('pgCtx', 'pg_ctx_tip') ?>
+							<span class="small text-body-secondary w-100"><i class="bi bi-shield-lock me-1"></i><?= h(t('pg_result_hint')) ?></span>
+							<span class="small w-100" id="pgCtxMsg" aria-live="polite" data-done="<?= h(t('fai_ctx_done')) ?>" data-failed="<?= h(t('fai_ctx_failed')) ?>"></span>
 						</div>
 					</div>
 				</div>

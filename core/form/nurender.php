@@ -305,9 +305,10 @@ final class NuRender
 			case 'select':
 				$multi = (string)$o['sob_select_multiple'] === '1';
 				$sel   = $multi ? (json_decode((string)$value, true) ?: array_filter(explode(',', (string)$value), static fn($s) => (string)$s !== '')) : [(string)$value];
-				// nuBuilder Forte 4.9.2: no blank item when the validation allows no blanks (1 No Blanks, 2 No Duplicates, 3 both) (0.8.958)
-				$noBlank = !$multi && in_array((string)$o['sob_all_validate'], ['1', '2', '3'], true);
-				$opts  = $multi || $noBlank ? '' : '<option value=""></option>';
+				// nuBuilder Forte 4.9.2: no blank item when the validation allows no blanks (1 No Blanks, 2 No Duplicates, 3 both) (0.8.958);
+				// multiple selects get it too, as in Forte's nuSELECT (form code that turns one into a single list box finds nothing chosen)
+				$noBlank = in_array((string)$o['sob_all_validate'], ['1', '2', '3'], true);
+				$opts  = $noBlank ? '' : '<option value=""></option>';
 				foreach ($this->options($o) as [$v, $t]) {
 					$is = in_array((string)$v, array_map('strval', (array)$sel), true);
 					$opts .= '<option value="' . h($v) . '"' . ($is ? ' selected' : '') . '>' . h($t) . '</option>';
@@ -317,7 +318,7 @@ final class NuRender
 				// searchable (Tom Select) only with "Select2" on, as nuBuilder Forte – a multiple select without it is the browser's list box,
 				// which form code can change like Forte's (removeAttr('multiple'), size …) (0.8.977; was: every multiple select)
 				$ts = (string)$o['sob_select_2'] === '1' ? ' nuSelect2' : '';
-				return '<select class="form-select ' . h($cls) . $ts . '"' . $common . ($multi ? ' multiple' : '') . ($noBlank ? ' data-nu-noblank="1"' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>' . $opts . '</select>';
+				return '<select class="form-select ' . h($cls) . $ts . '"' . $common . ($multi ? ' multiple' : '') . ($noBlank && !$multi ? ' data-nu-noblank="1"' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>' . $opts . '</select>';
 
 			case 'display':
 				$dv = $this->display($o);
@@ -883,7 +884,13 @@ final class NuRender
 			? fn(string $row, ?array $data) => $this->subformFormRow($sub, $sf, $cols, $row, $data, $canDelete, $sfEvents)
 			: fn(string $row, ?array $data) => $this->subformRow($sub, $sf, $cols, $row, $data, $canDelete, $sfEvents);
 
-		$rows = NuRecord::subformRows($o, $this->recordId);
+		try {
+			$rows = NuRecord::subformRows($o, $this->recordId);
+		} catch (Throwable $e) {                                         // as nuBuilder Forte: the query fails, only the blank row is shown
+			$rows = [];
+			error_log('nuBuilder Next sub-form ' . $o['sob_all_id'] . ': ' . $e->getMessage());
+			if (class_exists('NuDebugLog')) NuDebugLog::write('Subform ' . $o['sob_all_id'] . ":\n" . $e->getMessage());
+		}
 		$body = '';
 		foreach ($rows as $i => $r) $body .= $rowFn(sprintf('%03d', $i), $r);
 		if ($canAdd) $body .= $rowFn(sprintf('%03d', count($rows)), null);

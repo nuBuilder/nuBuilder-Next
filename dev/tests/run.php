@@ -72,6 +72,13 @@ check('menu choices', array_slice(array_keys(nu_lang_choices()), 0, 5) === ['de-
 // German (0.8.315): de.php = de-DE (ß, „“), de-CH generated (ss, «»)
 nu_set_lang('de');
 check('plain de = de-DE', nu_lang_variant() === 'de-DE' && nu_locale() === 'de-DE' && t('close') === 'Schließen');
+// UI review S6 / S5: server paths relative to the installation, shared setting titles translated only while unchanged
+check('nu_short_path inside', nu_short_path(NU_ROOT . '/vendor/packs/x') === 'vendor/packs/x');
+check('nu_short_path parent', dirname(NU_ROOT) === '/' || nu_short_path(dirname(NU_ROOT) . '/libsrc/y') === '../libsrc/y');
+check('nu_short_path other', nu_short_path('/etc/zz') === '/etc/zz' || str_starts_with(NU_ROOT, '/etc'));
+check('setting title default', NuSettings::title(['cfg_setting' => 'nuDebugIcon', 'cfg_title' => 'Debug Icon']) === t('cfgt_nudebugicon'));
+check('setting title own', NuSettings::title(['cfg_setting' => 'nuDebugIcon', 'cfg_title' => 'My icon']) === 'My icon');
+check('setting title unknown', NuSettings::title(['cfg_setting' => 'nuSomethingNew', 'cfg_title' => 'X']) === 'X');
 nu_set_lang('de-CH');
 check('de-CH text', nu_lang() === 'de' && nu_locale() === 'de-CH' && t('close') === 'Schliessen' && !str_contains(t('home_delete_tile_confirm'), '„'));
 $_SESSION = [];
@@ -857,6 +864,15 @@ check('NuTranslate::codeStrings: literals of nuTranslate, not template literals 
 check('NuTranslate::optionTexts: pairs, lines, JSON, odd end; SQL ignored', NuTranslate::optionTexts("a|Apple|b|Banana|") === ['Apple', 'Banana']
 	&& NuTranslate::optionTexts("1|One|\n2|Two|\n3") === ['One', 'Two', '3'] && NuTranslate::optionTexts('[["x","Ex"],"Why"]') === ['Ex', 'Why']
 	&& NuTranslate::optionTexts('SELECT a, b FROM t') === [] && NuTranslate::optionTexts("-- the countries\nSELECT a FROM t") === [] && NuTranslate::optionTexts('%LANGUAGES%') === []);
+
+// 0.8.999: SQL check of the code editors – hash variables filled in (strings and comments kept), line of a message
+$f = NuSqlCheck::fill("SELECT a FROM #TABLE_ID# WHERE b = '#x#' AND c = #RECORD_ID# -- #y#\n/* #z# */ AND d = `#q#`");
+check('sql check: fill', $f === "SELECT a FROM " . NuSqlCheck::TABLE_PH . " WHERE b = '#x#' AND c = NULL -- #y#\n/* #z# */ AND d = `#q#`", $f);
+check('sql check: line of a message', NuSqlCheck::lineOf("SELECT *\nFROM t\nWHER x = 1", "… near 'x = 1' at line 3") === 3
+	&& NuSqlCheck::lineOf("SELECT a\nFROM t\nWHERE ax = 1 AND x = 2", "Unknown column 'x' in 'WHERE'") === 3
+	&& NuSqlCheck::lineOf("SELECT a.b\nFROM t a\nJOIN u o ON 1\nWHERE o.bogus = 1", "Unknown column 'o.bogus' in 'where clause'") === 4
+	&& NuSqlCheck::lineOf("SELECT *\nFROM nope", "Table 'db.nope' doesn't exist") === 2
+	&& NuSqlCheck::lineOf("SELECT 1", 'other') === 1);
 
 // 0.8.879: select options as nuBuilder Forte reads them (NuSelectSource)
 $sk = static fn(string $s) => NuSelectSource::kind($s);

@@ -67,7 +67,7 @@ $control = static function (array $r, string $value, bool $invalid) use ($aceThe
 	if (NuDemo::active() && NuDemo::secretSetting((string)$r['cfg_setting'])) $value = $r['cfg_value'] = '••••••••';   // demo mode: no passwords / keys
 	$id = 'v_' . preg_replace('/\W/', '_', (string)$r['zzzzsys_config_id']);
 	$attr = ' class="%s setValue' . ($invalid ? ' is-invalid' : '') . '" id="' . h($id) . '" name="values[' . h((string)$r['zzzzsys_config_id']) . ']"'
-		. ' data-org="' . h((string)($r['cfg_value'] ?? '')) . '" aria-label="' . h((string)$r['cfg_title']) . '"';
+		. ' data-org="' . h((string)($r['cfg_value'] ?? '')) . '" aria-label="' . h(NuSettings::title($r)) . '"';
 	switch ((int)$r['cfg_type']) {
 		case 2:
 			$o = in_array($value, ['true', 'false'], true) ? '' : '<option value="' . h($value) . '" selected>' . h($value) . '</option>';
@@ -165,7 +165,7 @@ nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings'
 				$desc = (string)$r['cfg_description']; ?>
 				<tr data-category="<?= h((string)$r['cfg_category']) ?>" data-status="<?= h($st) ?>">
 					<td class="small text-body-secondary text-nowrap"><?= h((string)$r['cfg_category']) ?></td>
-					<td class="fw-semibold"><?= h((string)$r['cfg_title']) ?>
+					<td class="fw-semibold"><?= h(NuSettings::title($r)) ?>
 						<?php if ($desc !== ''): // narrow screens (< 800 px): the description column is hidden – (i) shows it on tap / click (0.8.242) ?><span class="nuInfoTip setDescTip ms-1" tabindex="0" role="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus click" data-bs-custom-class="nuTipWide" aria-label="<?= h($desc) ?>" title="<?= h($desc) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?>
 						<?php if ($st !== ''): // what the setting means for nuBuilder Next (0.8.279) ?><span class="badge border fw-normal ms-1 setSt setSt-<?= $st ?>" tabindex="0" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('set_r_' . $why)) ?>"><?= h(t('set_st_' . $st)) ?></span><?php endif; ?>
 						<?php if ($eff === '2' || $eff === '3'): ?><i class="bi bi-arrow-repeat text-body-secondary ms-1" role="img" title="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>" aria-label="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>"></i><?php endif; ?></td>

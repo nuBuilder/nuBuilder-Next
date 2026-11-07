@@ -892,6 +892,7 @@ final class NuMigrate
 				NuDB::forgetColumns($t);
 			}],
 			'0036-pwreset-templates' => ['Read-only e-mail templates nu_password_reset_template (group nunext, one per language) for the password reset of the user form', static fn() => NuPwReset::ensureTemplates()],
+			'0037-setting-phone-back' => ['Settings table: row nuPhoneBackButton (Back button on phones: text, icon or hidden) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
 		];
 	}
 
@@ -942,6 +943,7 @@ final class NuMigrate
 		'0029-webhooks' => [['zzzzsys_nunext_webhook', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_call', 'table', 'created when missing'], ['zzzzsys_nunext_webhook_try', 'table', 'created when missing']],
 		'0028-welcome-templates' => [['zzzzsys_email_template', 'data', 'read-only templates nu_send_welcome_email_template, group nunext, one per language (ids nx_welcome_…) added when missing – also checked with every later update']],
 		'0036-pwreset-templates' => [['zzzzsys_email_template', 'data', 'read-only templates nu_password_reset_template, group nunext, one per language (ids nx_pwreset_…) added when missing – also checked with every later update']],
+		'0037-setting-phone-back' => [['zzzzsys_config', 'data', 'row nuPhoneBackButton added when missing']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

@@ -164,8 +164,11 @@ if (!function_exists('db_fetch_value')) {
 	/** Like nuRunQuery, but errors are ignored (nuBuilder: no debug entry). */
 	function nuRunQueryNoDebug($query, $params = [], $isInsert = false): mixed
 	{
-		try { return nuRunQuery((string)$query, (array)$params, (bool)$isInsert); }
-		catch (Throwable) { return $isInsert ? '' : null; }
+		$GLOBALS['nu_run_query_quiet'] = true;
+		try { $r = nuRunQuery((string)$query, (array)$params, (bool)$isInsert); }
+		catch (Throwable) { $r = -1; }
+		finally { $GLOBALS['nu_run_query_quiet'] = false; }
+		return $r === -1 ? ($isInsert ? '' : null) : $r;
 	}
 
 	/** First column of the first row of a query (hash variables are replaced), '' for empty SQL. */
@@ -719,10 +722,10 @@ if (!function_exists('db_fetch_value')) {
 		return nuHasErrors();
 	}
 
-	/** nuBuilder: the last database error (nuBuilder Next stops the code on a database error instead) – always null. */
+	/** The last error of nuRunQuery in this request as nuBuilder Forte: {user, message, sql, trace}, null when there was none. */
 	function nuGetLastError(): mixed
 	{
-		return null;
+		return $GLOBALS['LAST_ERROR'] ?? null;
 	}
 
 	/** SQL saved with nuBuilder's SQL Builder (zzzzsys_select.sse_code), hash variables replaced; '' when missing. */

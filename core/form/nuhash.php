@@ -14,6 +14,30 @@ final class NuHash
 	/** Fields of the edit form this page was opened from (NuProps::caller) – the lowest source of a form's hash, as nuBuilder Forte. */
 	public static array $caller = [];
 
+	/**
+	 * nuBuilder Forte's request state in nuHash() (0.8.984): its browser sends the breadcrumb (nuFORM.getCurrent()) with every request and
+	 * nuHash() holds its keys as text (arrays as ''); a page hook gets a new breadcrumb's defaults, a procedure the open page's. Below the
+	 * fields and properties, above hash cookies. Set by pages/nuform.php (list state) and pages/nuformapi.php (the browser's crumb).
+	 */
+	public static array $state = [];
+	public const STATE_DEFAULTS = ['title' => '', 'call_type' => '', 'column_widths' => '0', 'forms' => '', 'iframe' => '0', 'lookup_id' => '',
+		'object_id' => '1', 'page_number' => '0', 'password' => '', 'rows' => '-1', 'row_height' => '25', 'search' => '', 'nosearch_columns' => '',
+		'sort' => '-1', 'sort_direction' => 'desc', 'subforms' => '0', 'tab_start' => '', 'username' => '', 'refreshed' => '-1', 'hash' => '',
+		'ID' => '', 'SUBFORM_ID' => '1', 'CODE' => '', 'nuDelete' => '0', 'nuFORMdata' => null];
+
+	/** A breadcrumb from the browser as nuBuilder Forte puts it into the hash: text and numbers as text, anything else ''. */
+	public static function cleanState(mixed $in): array
+	{
+		$out = [];
+		if (!is_array($in)) return $out;
+		foreach ($in as $k => $v) {
+			if (!is_string($k) || $k === '' || strlen($k) > 64 || !preg_match('/^[A-Za-z_][\w]*$/', $k)) continue;
+			$out[$k] = is_string($v) || is_int($v) || is_float($v) ? (string)$v : '';
+			if (count($out) >= 200) break;
+		}
+		return $out;
+	}
+
 	public const SQL  = 'sql';
 	public const PHP  = 'php';
 	public const HTML = 'html';
@@ -39,6 +63,7 @@ final class NuHash
 			'DEV_MODE' => self::devMode() ? '1' : '0', 'USER_PERMISSIONS' => '',
 			// main + active additional access levels, quoted for IN (…) (0.8.867); '' (matches nothing) for the globeadmin
 			'ACCESS_LEVEL_IDS' => self::idList($u['globeadmin'] ? [] : NuUserAccess::levels($u)),
+			'USER_A11Y' => false,                 // nuBuilder Forte: the user's accessibility features switch (0.8.984)
 		];
 		$db = nu_db();
 		if (!$u['globeadmin']) {
@@ -47,6 +72,7 @@ final class NuHash
 					  'ADDITIONAL1' => 'sus_additional1', 'ADDITIONAL2' => 'sus_additional2', 'FIRST_NAME' => 'sus_first_name', 'LAST_NAME' => 'sus_last_name'] as $k => $col) {
 				$h['USER_' . $k] = (string)($row[$col] ?? '');
 			}
+			$h['USER_A11Y'] = (string)($row['sus_accessibility_features'] ?? '') === '1';
 			$acc = $db->one('SELECT sal_code, sal_group, sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]);
 			$h['ACCESS_LEVEL_CODE']  = (string)($acc['sal_code'] ?? '');
 			$h['ACCESS_LEVEL_GROUP'] = (string)($acc['sal_group'] ?? '');
@@ -307,7 +333,9 @@ final class NuHash
 			'TABLE_ID' => self::tableId(), 'PREVIOUS_RECORD_ID' => $recordId,
 		] + self::now() + $extra;
 		foreach ($sys as $k => $v) { $h[$k] = $v; $src[$k] = 'system'; }
-		foreach (['record' => $values, 'property' => $props, 'global' => NuHashCookies::all(), 'caller' => self::$caller] as $from => $list) {
+		// fields of the record as nuBuilder Forte puts them into nuHash(): text, NULL as '' (0.8.984)
+		$values = array_map(static fn($v) => $v === null ? '' : (is_bool($v) ? ($v ? '1' : '') : (is_scalar($v) ? (string)$v : $v)), $values);
+		foreach (['record' => $values, 'property' => $props, 'state' => self::$state + self::STATE_DEFAULTS, 'global' => NuHashCookies::all(), 'caller' => self::$caller] as $from => $list) {
 			foreach ($list as $k => $v) {
 				if (!is_string($k) || $k === '' || array_key_exists($k, $h)) continue;
 				$h[$k] = $v;

@@ -274,11 +274,55 @@
 		});
 	});
 	applyTheme(document.documentElement.getAttribute('data-nu-theme') || 'light');
+	// theme buttons at the top of the user menu (phones, 0.8.990): a click there keeps the menu open (Bootstrap closes it on clicks inside)
+	var menuPrefs = document.getElementById('nuMenuPrefs');
+	if (menuPrefs) menuPrefs.addEventListener('click', function (e) { e.stopPropagation(); });
 	if (window.matchMedia) {
 		matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
 			if (document.documentElement.getAttribute('data-nu-theme') === 'auto') applyTheme('auto');
 		});
 	}
+
+	// ---------------------------------------------------------------- menus whose content grows after they open (lists filled by script, UI review
+	// 0.8.1007): place them again, so Popper turns one that no longer fits below the button upwards instead of running below the screen
+	document.addEventListener('shown.bs.dropdown', function (e) {
+		var t = e.target;
+		setTimeout(function () { try { if (t.classList.contains('show') || t.getAttribute('aria-expanded') === 'true') nuBs.dropdown(t).update(); } catch (x) { /* static menu */ } }, 80);
+	});
+
+	// ---------------------------------------------------------------- tooltips that only repeat the visible text (UI review 0.8.1007): a screen reader
+	// reads the name twice and the tooltip adds nothing – the title goes. Kept: buttons (phones show some only as an icon), cut text (… shows
+	// the whole), elements with their own tooltip set-up, and anything marked data-nu-keep-title.
+	function nuDropEchoTitles(root) {
+		var norm = function (x) { return String(x || '').replace(/\s+/g, ' ').trim().toLowerCase(); };
+		$$('[title]', root || document).forEach(function (el) {
+			if (el.closest('.btn, button, [data-bs-toggle], [data-nu-keep-title], .nuInfoTip, svg, input, select, textarea, .CodeMirror, .tox, #nuEditForm')) return;
+			var t = norm(el.getAttribute('title'));
+			if (!t || t !== norm(el.innerText)) return;                                         // the text the reader sees (hidden parts left out)
+			if (!(el.offsetWidth || el.offsetHeight) || parseFloat(getComputedStyle(el).fontSize) < 1) return;
+			if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) return;      // cut with … – the title shows the rest
+			var cut = false;
+			el.querySelectorAll('*').forEach(function (c) { if (c.scrollWidth > c.clientWidth + 1 && getComputedStyle(c).textOverflow === 'ellipsis') cut = true; });
+			if (!cut) el.removeAttribute('title');
+		});
+	}
+	window.nuDropEchoTitles = nuDropEchoTitles;
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { nuDropEchoTitles(); }); else nuDropEchoTitles();
+	document.addEventListener('nu:listrefresh', function () { nuDropEchoTitles(); });
+
+	// ---------------------------------------------------------------- "+ Add" buttons: the text as name / tooltip (phones show only the icon, 0.8.994)
+	function nuAddBtnNames() {
+		var sel = '.nuAddBtn, .nuIconPhone, .nuBackBtn, #nuBackButton';
+		try { document.querySelector('.btn.nuBtnAct:has(> .bi-arrow-left)'); sel += ', .btn.nuBtnAct:has(> .bi-arrow-left)'; } catch (x) { /* no :has */ }
+		$$(sel).forEach(function (b) {
+			var txt = (b.textContent || '').replace(/\s+/g, ' ').trim();
+			if (!txt) return;
+			if (!b.getAttribute('aria-label')) b.setAttribute('aria-label', txt);
+			if (!b.getAttribute('title')) b.setAttribute('title', txt);
+		});
+	}
+	nuAddBtnNames();
+	document.addEventListener('nu:listrefresh', nuAddBtnNames);
 
 	// ---------------------------------------------------------------- show / hide password
 	$$('[data-pw-toggle]').forEach(function (btn) {

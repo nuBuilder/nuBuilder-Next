@@ -245,7 +245,7 @@ final class NuSettingsHub
 			foreach (NuSettings::rows() as $r) {
 				$name = (string)$r['cfg_setting'];
 				$val = NuSecurity::secretName($name) ? '' : mb_substr((string)($r['cfg_value'] ?? ''), 0, 80);
-				$add('forte', (string)($r['cfg_title'] ?: $name), (string)($r['cfg_description'] ?? ''), nu_url('settings', ['s' => 'forte', 'q' => $name]), $name, $val);
+				$add('forte', (NuSettings::title($r) ?: $name), (string)($r['cfg_description'] ?? ''), nu_url('settings', ['s' => 'forte', 'q' => $name]), $name . ' ' . (string)$r['cfg_title'], $val);
 			}
 		}
 		// variables of nuconfig.php (no values: they may be secrets)

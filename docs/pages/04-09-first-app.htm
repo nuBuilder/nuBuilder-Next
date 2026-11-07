@@ -11,6 +11,7 @@
 		<li>the <strong>record</strong> (the <em>edit screen</em>): the fields of one row, with the action buttons <em>Save</em>, <em>Clone</em> and <em>Delete</em>. <em>Add</em> in the list opens the same screen, just empty.</li>
 	</ol>
 	<p>A tile on the start page (or a button) opens the list, the list opens the record – for customers, invoices, bookings, whatever you build. A user who has learnt this once can use the whole application, and you do not have to design menus: you design a list of forms.</p>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-list.webp" width="1280" height="760" loading="lazy" alt="A list: search, a country filter, columns and the pager"><figcaption>The list of a form – here the sample application's customers: search, filter, sort, then click a row.</figcaption></figure>
 	</div>
 	<div class="doc-sub">
 	<h3 id="first-app-tables">1. The tables</h3>
@@ -28,6 +29,7 @@ contact:       contact_id (key), con_organization_id (foreign key → organizati
 		<li>Step <em>Table and fields</em>: choose <code>organization</code> and the key <code>organization_id</code> – or <em>New table</em> and enter the columns. Every column gets an object; <em>Choose columns and order</em> decides which ones, their labels, which go into the list (here code, name, phone and e-mail) and in what order.</li>
 		<li>Step <em>Layout and access</em>, then create. The form opens in <a href="#design-mode">design mode</a>, already working: its list shows the organisations, a click opens one.</li>
 	</ol>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-wizard.webp" width="1280" height="760" loading="lazy" alt="The first step of the New form wizard: description, code and type"><figcaption><em>New form</em>, step <em>Form</em>: description, code and type; the next steps choose the table, the columns and who may use it.</figcaption></figure>
 	<p>The list's columns come from the form's <strong>browse SQL</strong> (<code>SELECT * FROM organization</code>) – in design mode click a column title on the list to change its title, width, alignment or format, or to add a filter (see <a href="#design-list">The list</a>).</p>
 	</div>
 	<div class="doc-sub">
@@ -38,6 +40,7 @@ contact:       contact_id (key), con_organization_id (foreign key → organizati
 		<li><strong>Placement</strong>: drag objects where you want them, or type <em>Top</em> and <em>Left</em> in pixels. Objects with the same <em>Left</em> form a column (for example 90 for the left column and 510 for the right one); the order inside a column follows <em>Top</em>. With several objects selected, <em>Arrange</em> lines them up and spaces them evenly (see <a href="#arrange-gap">Fixed gap</a>).</li>
 		<li><strong>Add</strong> (icon bar) lists the table's columns that are not on the form yet and every object type – click one to add it to the open tab.</li>
 	</ul>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-design.webp" width="1280" height="760" loading="lazy" alt="A record in design mode with the Name field selected and its settings in the panel"><figcaption>Design mode: click an object to select it – the panel on the right shows its ID, label, type, format and access; the icon bar on the left adds objects and opens the code.</figcaption></figure>
 	</div>
 	<div class="doc-sub">
 	<h3 id="first-app-types">4. Choosing the right object type</h3>
@@ -57,6 +60,7 @@ contact:       contact_id (key), con_organization_id (foreign key → organizati
 		<li>the <strong>code column</strong> of the other form's table (<code>org_code</code>) – what the user types or sees in the small box;</li>
 		<li>the <strong>description column</strong> (<code>org_name</code>) – shown next to it (<em>Description width</em> sets its width).</li>
 	</ol>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-lookup.webp" width="1280" height="760" loading="lazy" alt="A lookup selected in design mode: lookup form, code and description columns"><figcaption>A lookup in design mode: its ID is the foreign key, <em>Lookup form</em> the form to search in, the code and description columns what the user sees.</figcaption></figure>
 	<p>The <em>Lookup form</em> is the form whose list the user searches – here <code>org</code>; it must exist before the lookup. To copy more values when an organisation is picked, write PHP in <em>PHP after selection (AB)</em>: <code>nuLookupRecord()</code> returns the chosen row, <code>nuSetFormValue()</code> fills a field – for example <code>nuSetFormValue('con_phone', nuLookupRecord()-&gt;org_office_number);</code>. JavaScript after the selection goes into the lookup's JavaScript field.</p>
 	</div>
 	<div class="doc-sub">
@@ -66,6 +70,7 @@ contact:       contact_id (key), con_organization_id (foreign key → organizati
 		<li>Create the form for the rows: <em>New form</em> with type <em>Subform</em> on the table <code>contact</code> (its objects are the columns of the grid; leave out <code>con_organization_id</code>, which is filled automatically).</li>
 		<li>On the organisation form, <em>Add</em> a <em>Sub-form</em> object (for example ID <code>contact_sf</code>, width 900, height 300). Set <em>Subform form</em> to the form of step 1 and <em>Foreign key</em> to <code>con_organization_id</code>; tick <em>Rows can be added</em> / <em>Rows can be deleted</em> as needed and choose the layout <em>Grid</em> (one row per line) or <em>Form</em>.</li>
 	</ol>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-subform.webp" width="1280" height="760" loading="lazy" alt="An order with its items as a sub-form below the order fields"><figcaption>A sub-form: the items of an order as rows on the order's record, with a blank row for the next one and a delete box per row.</figcaption></figure>
 	<p>When the organisation is saved, its new contact rows get its key in <code>con_organization_id</code>. More on using sub-forms: <a href="#subforms">Sub-forms, lookups, files</a>.</p>
 	</div>
 	<div class="doc-sub">
@@ -77,7 +82,7 @@ contact:       contact_id (key), con_organization_id (foreign key → organizati
 	<p>A report has three parts: a <strong>criteria form</strong> where the user chooses what to print, the <strong>data</strong> (an SQL query that uses the choice) and the <strong>layout</strong>.</p>
 	<ol>
 		<li><strong>Criteria form</strong>: a form of type <em>Launch</em> (no table needed – it saves nothing) with the objects the user fills in, for example the state select of the organisation form (copy it: select it, <kbd>Ctrl</kbd>+<kbd>C</kbd>, open the criteria form in design mode, <kbd>Ctrl</kbd>+<kbd>V</kbd>).</li>
-		<li><strong>Data</strong>: in the <a href="#sql-builder">SQL builder</a> (or a procedure) a query that reads the criteria as <a href="#hash-variables">hash variables</a>:
+		<li><strong>Data</strong>: in the <a href="#sql-builder">SQL builder</a> (or a <a href="#report-procedure">procedure</a>, when one query is not enough) a query that reads the criteria as <a href="#hash-variables">hash variables</a>:
 <pre><code>SELECT org_code, org_name, org_office_email, org_state,
        (SELECT COUNT(*) FROM organization WHERE org_state = '#org_state#') AS total
 FROM organization
@@ -94,6 +99,7 @@ WHERE org_state = '#org_state#'</code></pre>
 			</ul>
 		Set each band's height in its properties, and save now and then; <em>Preview</em> prints the layout as it is.</li>
 	</ol>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-report.webp" width="1280" height="760" loading="lazy" alt="The report designer with its bands and the fields of the data source"><figcaption>The report designer: the data source's fields on the left, the bands from report header to report footer, the properties of the selection on the right.</figcaption></figure>
 	<p>Users start the report from its tile, a run object (<em>Run report</em>) or <code>nuRunReport('orgstate')</code>: the criteria form opens, <em>Run report</em> makes the PDF.</p>
 	</div>
 	<div class="doc-sub">
@@ -105,14 +111,18 @@ WHERE org_state = '#org_state#'</code></pre>
 		<li><em>Users → Add</em>: name, login, e-mail, the access level <em>Staff</em> and a password (or the welcome e-mail).</li>
 		<li><strong>Test it</strong>: open the user and choose <a href="#impersonate">Act as user</a> – you see exactly the start page, forms and buttons the user gets, without knowing the password. Or sign in with the new login in a private browser window.</li>
 	</ol>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-access.webp" width="1280" height="760" loading="lazy" alt="The form rights of an access level"><figcaption>The form rights of an access level: one row per form, with the buttons the users may use.</figcaption></figure>
+	<figure class="doc-figure doc-shot"><img src="assets/img/help/fa-user.webp" width="1280" height="760" loading="lazy" alt="The start page of a user of that access level"><figcaption>What a user of that level sees after signing in – here the sample application's sales start page.</figcaption></figure>
 	<p>Details: <a href="#access">Access levels</a> · <a href="#users">Users</a>.</p>
 	</div>
 	<div class="doc-sub">
 	<h3 id="first-app-forte">If you know nuBuilder Forte</h3>
 	<ul>
 		<li><em>Objects → Add</em>, <em>Fast Form</em> and <em>Arrange Objects</em> are all part of <a href="#design-mode">design mode</a> here: the <em>New form</em> wizard replaces Fast Form, and objects are added, moved and changed on the form itself.</li>
+		<li>nuBuilder Forte's shortcuts: a double-click on a label opened the object, a double-click on a tab title the form's object list, <em>Options → Form Properties</em> the form. Here a right-click on a label or a tab opens its <a href="#label-menu">menu</a> (properties, position, clone, delete), and in <a href="#design-mode">design mode</a> <em>Structure</em> lists the objects and <em>Form</em> holds the form's settings.</li>
 		<li>A sub-form object offers only forms of type <em>Subform</em>; a lookup offers forms of type <em>Browse</em> or <em>Browse and edit</em>.</li>
 		<li>A report's criteria form needs no table – a <em>Launch</em> form works; nuBuilder Forte's habit of using <code>zzzzsys_setup</code> as the table also works.</li>
+		<li>nuBuilder Forte's line in a report – a text object 1 high with a black background – still prints; the report designer also has a line object.</li>
 		<li>Users need no <code>nurunreport</code> form: their reports are on their start page. Everything stays compatible – the forms, objects and reports are stored in nuBuilder Forte's tables and open in nuBuilder Forte as well.</li>
 	</ul>
 	</div>
