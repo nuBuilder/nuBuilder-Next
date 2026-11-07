@@ -1,140 +1,61 @@
-# nuBuilder Next 0.8.1010 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.1012 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
 > [!WARNING]
-> **Alpha version – not ready for production.**
-> nuBuilder Next is still under heavy development. Functions, screens and its own database tables can change from one version to
-> the next. New versions may introduce breaking changes, and compatibility with previous versions or existing nuBuilder Forte
-> applications is not guaranteed. Some parts are verified only partly – SQL Server, for example, has run on one installation so far.
->
-> **Before using it on an existing nuBuilder Forte (4.x) database, back up the whole database and the files** (e.g. phpMyAdmin →
-> Export, Adminer or mysqldump) – better still, try it on a copy first.
+> **Alpha version – not ready for production.** Functions, screens and its own tables can still change from one version to the
+> next. Before using it on an existing nuBuilder Forte database, **back up the database and the files** – better still, try it on a
+> copy first.
 
----
+**Links:** [Releases](https://github.com/nuBuilder/nuBuilder-Next/releases) ·
+[Features](FEATURES.md) · [Changelog](CHANGELOG.md) · [Forum](https://forum.nubuilder.cloud/) ·
+documentation inside the app (user menu → *Documentation*, or F1)
 
-### Quick Links:
+## What it is
 
-- 📦 [Releases](https://github.com/nuBuilder/nuBuilder-Next/releases) – download `nunext.zip`
-- 📝 [Changelog](https://github.com/nuBuilder/nuBuilder-Next/blob/main/CHANGELOG.md)
-- 💬 [nuBuilder Forte Community Forum](https://forum.nubuilder.cloud/)
-- 📖 Documentation – in the app, user menu → *Documentation* (`?p=help`, tabs Guide and – for administrators – Code reference); source: one file per page in `docs/pages/`, in reading order in `docs/toc.json`
+nuBuilder Next is a new front end for nuBuilder Forte 4. It runs on nuBuilder Forte's own tables on **MySQL / MariaDB** or
+**SQL Server**, side by side with a live nuBuilder Forte on the same database: forms, reports, procedures, users and access levels
+work in both. nuBuilder Next only adds tables of its own.
 
----
+## Highlights
 
-## Overview
+- **Form designer** – design forms and lists where they run, with drafts, history, validation rules and phone layouts.
+- **Forms with AI** – describe a form, let any AI chat write it, check it and publish it.
+- **Lists that do more** – advanced search, coloured badges, export to Excel, CSV or print.
+- **Start page and dashboards** – tiles, favourites, search over everything, KPI tiles and charts.
+- **Secure by default** – two-step login, passkeys, single sign-on, password policy, audit trail, a built-in security check.
+- **Integration** – REST API, webhooks, e-mail templates, data import and export.
+- **Managed in the browser** – installer, setup wizard, signed updates with backup and rollback.
+- **For everyone** – phones, tablets and desktops, light and dark mode, eleven languages.
 
-**nuBuilder Next** is a modern front end for nuBuilder Forte 4. It runs on nuBuilder Forte's own tables (`zzzzsys_*`) on **MySQL / MariaDB** or **SQL Server** – side by side with a live nuBuilder Forte on the same database. Forms, reports, procedures, users and access levels made in nuBuilder Forte keep working in both.
-
-nuBuilder Forte's tables keep their structure: nuBuilder Next only adds its own tables (`zzzzsys_nunext_*`, created automatically), creates the shared settings table `zzzzsys_config` only on request and changes columns only when you confirm it in the structure check of an update.
-
-nuBuilder Next streamlines everyday database work:
-
-- **Search, Create, Read, Update, Delete** – plus Clone, export of every list as HTML page, CSV or Excel, and an audit trail with restore.
-
----
-
-## Why nuBuilder Next?
-
-- **🚀 Rapid Development**: Build forms, reports, dashboards and queries visually – and add code only where you need it.
-- **📱 Modern & Responsive**: A clean interface in light and dark mode that works on phones, tablets and desktops.
-- **🔒 Secure by Default**: Two-step login, admin roles, an audit trail, a built-in security check and signed updates.
-- **🛠️ Managed in the Browser**: Installer, setup wizard and updates with backup and rollback – all from the browser.
-- **🌎 Open-Source & Web-Based**: Free (GPL-3.0), in eleven languages – users need nothing but a browser.
-
----
-
-## Core Features
-
-### 👥 For Everyone
-
-- ✅ **Responsive** – works on phones, tablets and desktops; menus, lists and toolbars adapt to the screen.
-- ✅ **Fast Lists** – search, filter, sort and page through records; an advanced search with conditions per column (contains, between, last 30 days …) and saved searches; coloured badges for status values; values that open a related form, a list filtered by the row, a procedure or a report on click (as a link, button or icon); Print, Copy (pastes as a table into Excel or Word), CSV and Excel export.
-- ✅ **Comfortable Editing** – sub-forms, lookups and file uploads; required and unique fields are marked; unsaved changes are shown; Clone opens an unsaved copy, as in nuBuilder Forte.
-- ✅ **Dashboards on the Start Page** – KPI tiles, charts and tables for your access level.
-- ✅ **Notification Centre** – a bell with the number of unread messages, a page with all notifications, optionally also by e-mail.
-- ✅ **Keyboard Shortcuts** – save, clone, delete, search, print and more with Ctrl+Shift+key; the ⋮ menu lists the actions without a button of their own, with their shortcuts.
-- ✅ **Secure Sign-in** – two-step login (authenticator app or e-mail code), *Forgot password* with a one-time e-mail link and single sign-on with OpenID Connect (Microsoft Entra ID, Google Workspace, Keycloak …; access levels from the provider's groups, "SSO only" per access level) and passkeys (fingerprint, face or PIN – as the second step or without a password).
-- ✅ **Your Language, Your Theme** – eleven languages (Arabic right-to-left; UK / US / Australian English, German / Swiss German), light, dark or automatic mode, five built-in designs plus your own (colours, buttons, fields, tabs, fonts – per access level or chosen by the user); checked against WCAG 2.1 A/AA.
-
-### 🏗️ For Building Business Applications
-
-- ✅ **Low-Code Form Designer** – design a form where it runs: select, drag and arrange objects, a properties panel for every object type, the list's columns on the list itself (with filters and coloured badges by value, no code needed), code and history in one place, every list setting and column in one Browse list window (drag to reorder), validation rules without code (builder or expression, errors or warnings, sub-form rows, hash variables, per access level), drafts you publish when ready (with a note or in one click), keyboard shortcuts (rename, copy and paste objects – also between forms –, undo), right-click menus on objects, tabs and list column titles also outside design mode (rename, clone, align, size, filter …), the browse SQL and the list's columns in a resizable side pane right on the list, responsive boxes for the auto and grid layouts (side by side, one under the other or a grid, fixed / fitting / filling widths, hidden on phones or tablets), a phone layout with a bottom sheet, and a safe mode for broken form code; a New form wizard that picks the table's (or view's) columns and their order; inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons (forms, reports, procedures or a URL; a button to a form, report or procedure shows only for users who may open it); change a column's type with a data check first; a Maintenance status that closes a form for users with a message; text or UUID keys for new tables; nuBuilder Forte's form events keep working.
-- ✅ **Custom Pages** – your own PHP apps inside nuBuilder Next (created from Forms → Add, listed under Forms → Tools), with its login, rights and a stable page API; work on a draft while users keep the live version, publish it and roll back to earlier versions.
-- ✅ **Report Designer & SQL Builder** – design reports visually (fields and labels as text, HTML or Markdown, growing to the height they print), build queries without writing SQL and run reports as PDF.
-- ✅ **Dashboard Builder** – KPI tiles, charts (ApexCharts) and tables built from SQL, on the start page or on any form.
-- ✅ **Code Where You Need It** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte (optionally passed to the database as bound parameters); a code editor with syntax colours and a syntax check (JavaScript, PHP, CSS, HTML) before saving, search / replace, one-click formatting for PHP, SQL, JavaScript, HTML and CSS, and an Insert menu with every documented function plus suggestions while typing.
-- ✅ **E-mail & Templates** – SMTP settings with a test mail and a connection check that sends nothing, login with OAuth 2 (Google, Microsoft 365), e-mail templates with field placeholders and an e-mail log.
-- ✅ **Data import** – CSV files (and Excel / OpenDocument workbooks with the PhpSpreadsheet pack) into any table, with automatic encoding / separator detection and column mapping.
-- ✅ **Data export** – saved exports of tables, views and queries to Excel or CSV: columns, conditions, sorting, parameters, several sheets per file, streamed for any size; also through the REST API.
-- ✅ **Form Cloner & App Cloner** – copy a single form (or just write its SQL, for MySQL or SQL Server) or the whole application.
-- ✅ **AI Prompt Generator** – builds a complete prompt with your table structure to paste into any AI tool; new or changed forms – with their code and events, also a small app of several forms – written by an AI, checked before they are created, also from design mode into a draft; a downloadable context file (functions, hash variables, example forms, table structure – no data) to attach to the chat.
-- ✅ **REST API** – OAuth 2.0 client credentials, notifications, reports and unattended updates, with a playground to try it.
-- ✅ **Webhooks** – call n8n, Zapier, Teams or your own service after records are saved or deleted: signed, with retries and a log of every call.
-- ✅ **jQuery 4 Ready** – form pages run on jQuery 3.7 or 4.0 (or your own file), with jQuery Migrate to find upgrade issues while still on 3.7.
-- ✅ **Compatibility Check** – scans the code of your nuBuilder Forte application and shows which functions are supported (on SQL Server also the SQL it does not understand).
-- ✅ **Sample Applications** – a sales sample (customers, orders, every object type, reports, dashboards, lists with badges and filters) and a ticket system for a support desk (customers, agents, specialists, team lead; SLA, conversation with internal notes, attachments, e-mail templates, notifications, field access, dashboards per role), both built to learn from.
-
-### 🛡️ For Administrators
-
-- ✅ **Customisable Start Page** – for the globeadmin and admin roles: tiles in groups or tabs, tile sizes, favourites, own and shared layouts, one search list over tiles, pages, forms, procedures and reports (with a filter, also Ctrl+K). Users get a start page per access level (forms, reports, procedures, links – tiles shown by permission item, team or department) that they can personalise.
-- ✅ **Advanced User Management** – users with custom fields of your own, access levels (also additional ones per user, with an end date, and a view of the effective rights), admin roles and permission items; user import from CSV or Excel with a template; a welcome e-mail with a set-password link and a preview to edit it before sending; *Reset password* by the administrator (a personal link by e-mail or to pass on, optionally blocking the old password at once – the administrator never sees a password); the access levels of a form in one dialogue (or a form for everyone, also for new access levels); own titles for Code / Additional 1 / 2; own and shared list views; filters and links between users, access levels, permission items and the log.
-- ✅ **Security & Authentication** – two-step login, one-time login links, login rate limit, a password policy (length, leaked-password check with k-anonymity, optional regular change), sign-in only from allowed IP addresses / networks (per access level, globeadmin separately) and a built-in Security check.
-- ✅ **Act as User** – see the application exactly as a user sees it (view only or full access).
-- ✅ **Audit Trail & Log** – every change per field, with history and restore; a log of logins, exports and admin changes.
-- ✅ **Send Notifications** – to chosen users, departments or teams, with read receipts.
-- ✅ **Maintenance from the Browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php` editor that checks before saving and inserts missing variables; Global code – the form pages' header, style and include (Setup in nuBuilder Forte) plus global JavaScript / CSS for every page, with ready-made templates; System status; logged-in users (log out idle ones); phpMyAdmin, Adminer and File Manager links; housekeeping cron.
-- ✅ **Easy Start** – installer (also a database set-up when `nuconfig.php` was written by hand), setup wizard, a tutorial in three versions (basic, in depth, coming from nuBuilder Forte) and built-in documentation (F1 opens the page for the screen you are on).
-- ✅ **Branding & Demo Mode** – logo (shown everywhere, only on the sign-in pages or nowhere) and environment label; read-only demo users.
-
----
+The full list: [FEATURES.md](FEATURES.md).
 
 ## Requirements
-- PHP 8.1 or newer (8.2+ recommended; the PhpSpreadsheet pack needs 8.2) with `pdo_mysql` or `pdo_sqlsrv`, `mbstring`, `openssl`, `zip` and `sodium` (signed updates)
-- MySQL / MariaDB or SQL Server – a new, empty database or an existing nuBuilder Forte 4.9 database (back it up first)
-- Apache with `AllowOverride All` (for the `.htaccess` files) or nginx with the rules in the help (*Security check, server rules and housekeeping → Web server rules*)
+
+- PHP 8.1 or newer (8.2 recommended) with `pdo_mysql` or `pdo_sqlsrv`, `mbstring`, `openssl`, `zip` and `sodium`
+- MySQL / MariaDB or SQL Server – a new, empty database or an existing nuBuilder Forte 4.9 database
+- Apache with `AllowOverride All`, or nginx with the rules from the documentation
 
 ## Install
-1. Download **`nunext.zip`** from the [releases](../../releases) (the install package – `nunext-dev.zip` is only for the
-   development) and unpack it into the web folder.
-2. Open it in the browser: while `nuconfig.php` is missing, the **installer** runs and writes `nuconfig.php`. It asks for the setup
-   token from `_install/setup-token.txt` (read it by SFTP) – or create an empty file `install.allow` first.
-   By hand instead: rename `nuconfig-sample.php` to `nuconfig.php` and enter your settings (an existing nuBuilder Forte `nuconfig.php`
-   also works); on an empty database (or with tables missing) the globeadmin then gets the page *Set up the database* –
-   or run `install/schema_mysql.sql` (+ `schema_mysql_forms.sql`, + `notes_snippets_mysql.sql`) or `install/schema_mssql.sql` yourself. The package ships only the sample, so a new version never overwrites your `nuconfig.php`.
-3. Sign in as globeadmin.
-4. Open the start page tile **Security check** and fix what is red: HTTPS, a long globeadmin password, `$nuConfigBaseURL`, "Files on
-   the web" (the web server must not hand out `core/`, `install/`, `README.md` …) and the PHP version.
-5. Optional: cron for the housekeeping – `*/15 * * * * php /var/www/html/nunext/nucron.php` as the web server's user.
-6. Third-party code lives in `vendor/`: `vendor/bundled/` comes with the package, `vendor/packs/` holds the signed **library packs**
-   (TCPDF for reports, TinyMCE, phpMyAdmin, Adminer, Uppy, PhpSpreadsheet for reading Excel / OpenDocument files (data import, form code; PHP 8.2+) – Excel export is built in – from the GitHub release `libraries`; PHPMailer is in the
-   package). The installer offers them (step *Libraries*), later **Update → Libraries**. Without internet: copy the
-   `nunext-lib-*.zip` files into `_install/` or `_update/` first.
+
+1. Download **`nunext.zip`** from the [releases](../../releases) and unpack it into a web folder.
+2. Open it in the browser – the installer guides you (it asks for the setup token in `_install/setup-token.txt`).
+3. Sign in as globeadmin and open **Security check** – fix what is red.
+4. Optional: a cron job for housekeeping – `*/15 * * * * php /path/to/nunext/nucron.php`.
+
+Prefer to set it up by hand, or install without internet? See *Installation* in the documentation.
 
 ## Updating
-Start page tile **Update** (globeadmin, or an admin role with the right *Update*): choose the new `nunext.zip` – or copy it by FTP into the folder `_update/` and pick it
-there, or let the page download the newest release from GitHub – then *Check package* and *Install*. Packages are signed; the check shows "Signed by nuBuilder Next" and refuses a package
-that was changed. A backup is made first (with an SQL dump of nuBuilder's `zzzzsys_*` tables – all an update can change – or of the whole database) and can be rolled back; database steps run automatically.
 
-If the update page cannot be used (e.g. PHP may not write to the folder): unpack the new `nunext.zip` over the old folder (your
-`nuconfig.php` and `_backup/` stay) and log in as globeadmin – the database steps run on the first request. Replace **all** files:
-pages, `core/`, `lang/` and `assets/` belong together. If PHP OPcache runs with `opcache.validate_timestamps=0`, reload PHP-FPM /
-the web server afterwards.
+Start page → **Update**: upload the new `nunext.zip` or let the page fetch the newest release from GitHub, then *Check package*
+and *Install*. Packages are signed, a backup is made first, and an update can be rolled back.
 
-## Compatibility notes
-- Login: `sus_login_name` + `sus_login_password`; globeadmin from `nuconfig.php` is checked first (as in nuBuilder Forte).
-- Passwords: bcrypt and legacy md5 are accepted; md5 is upgraded to bcrypt on login (`$nuConfigPasswordUpgrade = false` keeps
-  md5 while an old nuBuilder Forte must still read it; `$nuUseMd5PasswordHash` is honoured).
-- Rights come from nuBuilder Forte's access levels (`zzzzsys_access_form`, `zzzzsys_access_php`, permission items); the system screens
-  are protected by rights on nuBuilder Forte's system forms (`nuuser`, `nuaccess`, `nuform` …). Globeadmin may do everything.
-- nuBuilder Forte writes only edited fields, keeps its JSON formats (reports, SQL builder, form layouts) and its PHP / JavaScript
-  functions – nuBuilder Next does the same, so records, forms and reports stay usable in nuBuilder Forte.
-- Language: `sus_language` with nuBuilder Forte's names (German, English, French, Italian, Spanish, Portuguese, Russian, Chinese
-  (Simplified), Dutch, Polish, Arabic); empty → the browser's language.
-- Own sessions (cookie `nunext`); a shared login with nuBuilder Forte is possible (`$nuConfigSharedLogin`).
-- Differences to nuBuilder Forte and what is not ported: help → Code reference → *Migrating from nuBuilder Forte 4.9* (`docs/pages/12-02-porting.htm`).
+## nuBuilder Forte compatibility
 
----
+nuBuilder Next uses nuBuilder Forte's tables, formats and PHP / JavaScript functions, so applications keep working in both. The
+**Compatibility check** scans your application's code; the remaining differences are listed in the documentation
+(*Code reference → Migrating from nuBuilder Forte 4.9*).
 
 ## Licence
+
 GPL-3.0, like nuBuilder Forte – see [LICENSE](LICENSE).
