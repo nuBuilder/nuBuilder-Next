@@ -737,6 +737,21 @@
 			{key: 'sfo_browse_redirect_form_id', search: true, options: options(D.forms, ['edit', 'browseedit'])}));
 		box.appendChild(field(t('ds_list_multi'), 'check', String(f.sfo_browse_title_multiline || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_title_multiline', BROWSE), {key: 'sfo_browse_title_multiline'}));
 		box.appendChild(field(t('ds_list_autofit'), 'check', String(f.sfo_browse_autoresize_columns || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_autoresize_columns', BROWSE), {key: 'sfo_browse_autoresize_columns'}));
+		// row details (0.8.1027, core/form/nurowdetails.php): sfo_json nunext.details {cols, sub}
+		var det = {};
+		try { det = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).details || {}; } catch (x) { det = {}; }
+		var detSave = function (k) {
+			return function (v) {
+				det = {cols: k === 'cols' ? v === '1' : !!det.cols, sub: k === 'sub' ? v : (det.sub || '')};
+				change('form.save', {fields: {details: det.cols || det.sub ? det : null}}, BROWSE).catch(function () { /* said */ });
+			};
+		};
+		var subs = S.objects.filter(function (o) { return o.sob_all_type === 'subform'; })
+			.map(function (o) { return [o.sob_all_id, plain(o.sob_all_label) || o.sob_all_id]; });
+		box.appendChild(h(t('ds_rd_title')));
+		box.appendChild(field(t('ds_rd_cols'), 'check', det.cols ? '1' : '0', detSave('cols'), {key: 'details_cols', tip: t('ds_rd_cols_tip')}));
+		box.appendChild(field(t('ds_rd_sub'), 'select', det.sub || '', detSave('sub'), {key: 'details_sub', tip: t('ds_rd_sub_tip'),
+			options: [['', t('ds_rd_none')]].concat(subs)}));
 		// code of the list
 		box.appendChild(h(t('ds_list_code')));
 		box.appendChild(el('div', {'class': 'nuDsTools'}, [
@@ -1183,6 +1198,41 @@
 	}
 	var fieldNo = 0;
 	/** A field of the panel: kind text | number | textarea | select | check | ro; save(value) is called on change. */
+	// department / team of the form (0.8.1020) and the datalist of the values already used on other forms
+	function formTag(f, k) {
+		try { var n = (JSON.parse(f.sfo_json || '{}') || {}).nunext || {}; return n[k] ? String(n[k]) : ''; } catch (x) { return ''; }
+	}
+	// user help pages (0.8.1023, core/nuuserhelp.php): page of the form (sfo_json nunext.help), of each tab (nunext.help_tabs), of a field (sob_all_json nunext.help)
+	function formHelp(f) {
+		try { var n = (JSON.parse(f.sfo_json || '{}') || {}).nunext || {}; return {help: n.help ? String(n.help) : '', tabs: n.help_tabs && typeof n.help_tabs === 'object' ? n.help_tabs : {}}; } catch (x) { return {help: '', tabs: {}}; }
+	}
+	function helpList() {
+		var dl = document.getElementById('nuDsHelpList');
+		if (!dl) {
+			dl = el('datalist', {id: 'nuDsHelpList'});
+			(D.help_codes || []).forEach(function (c) { dl.appendChild(el('option', {value: c[0], label: c[1]})); });
+			document.body.appendChild(dl);
+		}
+		return 'nuDsHelpList';
+	}
+	function helpLinks(code) {
+		if (!D.help_admin) return null;
+		var known = (D.help_codes || []).some(function (c) { return c[0] === code; });
+		return el('div', {'class': 'nuDsTools'}, [
+			el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsHelpManage', href: D.help_admin, target: '_blank', rel: 'noopener'}, [icon('bi-journal-bookmark me-1'), t('uh_admin_title')]),
+			code && D.help_edit ? el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsHelpOpen', target: '_blank', rel: 'noopener',
+				href: known ? 'index.php?p=userhelp&c=' + encodeURIComponent(code) : 'index.php?p=helppages&id=new&code=' + encodeURIComponent(code)}, [icon(known ? 'bi-eye me-1' : 'bi-plus-lg me-1'), t(known ? 'ds_help_view' : 'ds_help_create')]) : null
+		]);
+	}
+	function tagList(k) {
+		var id = 'nuDsTagList_' + k, dl = document.getElementById(id);
+		if (!dl) {
+			dl = el('datalist', {id: id});
+			((D.form_tags || {})[k] || []).forEach(function (v) { dl.appendChild(el('option', {value: v})); });
+			document.body.appendChild(dl);
+		}
+		return id;
+	}
 	function field(label, kind, value, save, opt) {
 		opt = opt || {};
 		var id = 'nuDsF' + (++fieldNo), input;
@@ -1203,6 +1253,11 @@
 		} else if (kind === 'check') {
 			input = el('input', {type: 'checkbox', 'class': 'form-check-input', id: id, role: 'switch', checked: value === '1' ? true : null, 'data-key': opt.key || null});
 			var wrapC = el('div', {'class': 'form-check form-switch nuDsField'}, [input, el('label', {'class': 'form-check-label', 'for': id, text: label})]);
+			if (opt.tip) {                                          // (i) after the label, outside it (0.8.1027)
+				var tipC = el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': opt.tip, title: opt.tip}, [icon('bi-info-circle')]);
+				wrapC.appendChild(tipC);
+				if (window.nuBs && window.nuBs.tooltip) setTimeout(function () { if (tipC.isConnected) window.nuBs.tooltip(tipC); }, 0);
+			}
 			input.addEventListener('change', function () { save(input.checked ? '1' : '0'); });
 			return wrapC;
 		} else {
@@ -1381,6 +1436,10 @@
 				el('div', {'class': 'nuDsGrid2'}, [
 					field(t('builder_code'), 'text', f.sfo_code, fsave('sfo_code'), {key: 'sfo_code', mono: true}),
 					field(t('builder_group'), 'text', f.sfo_group, fsave('sfo_group'), {key: 'sfo_group'})]),
+				// department / team (0.8.1020): sfo_json nunext – only for grouping and filtering the forms list; suggestions = values in use
+				el('div', {'class': 'nuDsGrid2'}, ['department', 'team'].map(function (k) {
+					return field(t('builder_' + k), 'text', formTag(f, k), fsave(k), {key: 'nunext_' + k, list: tagList(k), tip: t('builder_tags_tip')});
+				})),
 				el('div', {'class': 'nuDsGrid2'}, [
 					field(t('builder_type'), 'select', f.sfo_type, fsave('sfo_type', true), {key: 'sfo_type', options: ['browseedit', 'browse', 'edit', 'launch', 'subform'].map(function (x) { return [x, t('form_type_' + x)]; })}),
 					field(t('builder_status'), 'select', String(f.sfo_status === null || f.sfo_status === undefined || f.sfo_status === '' ? '1' : f.sfo_status), fsave('sfo_status', true),
@@ -1418,6 +1477,19 @@
 				[icon('bi-translate me-1'), t('ds_trl'), trk.length ? el('span', {'class': 'badge text-bg-warning ms-1', text: t('ds_trl_missing').replace('%s', trk.map(function (l) { return trm[l]; }).reduce(function (a, b) { return a + b; }, 0))}) : null]));
 		}
 		if (D.can_delete_form && !DR) tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger', id: 'nuDsDeleteForm', onclick: deleteForm}, [icon('bi-trash me-1'), t('builder_delete_form')]));
+		if (!D.userhome) {                                       // user help pages (0.8.1023): ? button of the form and its tabs
+			var fh = formHelp(f);
+			var tabRows = !BROWSE && S.tabs && S.tabs.length > 1 ? S.tabs.map(function (tb) {
+				return field(t('ds_help_tab').replace('%s', plain(tb.syt_title) || tb.zzzzsys_tab_id), 'text', fh.tabs[tb.zzzzsys_tab_id] || '', function (v) {
+					var m = {}; Object.keys(fh.tabs).forEach(function (k) { m[k] = fh.tabs[k]; });
+					if (String(v || '').trim()) m[tb.zzzzsys_tab_id] = String(v).trim(); else delete m[tb.zzzzsys_tab_id];
+					change('form.save', {fields: {help_tabs: m}}, false).catch(function () { /* said */ });
+				}, {key: 'nunext_help_tab_' + tb.zzzzsys_tab_id, mono: true, list: helpList()});
+			}) : [];
+			section('help', t('ds_sec_help'), [
+				field(t('ds_help_form'), 'text', fh.help, fsave('help'), {key: 'nunext_help', mono: true, list: helpList(), tip: t('ds_help_tip')})
+			].concat(tabRows, [helpLinks(fh.help)]));
+		}
 		if (tools.length) section('tools', t('ds_sec_tools'), [el('div', {'class': 'nuDsTools'}, tools)]);
 		foot([el('p', {'class': 'nuDsHint', text: t(BROWSE ? 'ds_hint_list' : 'ds_hint')})]);
 	}
@@ -2080,6 +2152,8 @@
 			onclick: function () { openColumnChange(o.sob_all_id); }}, [icon('bi-database-gear me-1'), t('builder_colchg_btn')]));
 		if (D.dataaccess && VALUE_TYPES.indexOf(type) >= 0) otools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsObjAccess', href: D.dataaccess}, [icon('bi-shield-lock me-1'), t('da_title')]));
 		if (otools.length) section('tools', t('ds_sec_tools'), [el('div', {'class': 'nuDsTools'}, otools)]);
+		if (['contentbox', 'html'].indexOf(type) < 0) section('help', t('ds_sec_help'), [   // user help page of the field (0.8.1023): (?) after its label
+			field(t('ds_help_field'), 'text', nunext(o).help || '', save('nunext_help', true), {key: 'nunext_help', mono: true, list: helpList(), tip: t('ds_help_field_tip')}), helpLinks(nunext(o).help || '')]);
 	}
 
 	// live view while typing (0.8.664) – the label (as the form draws it: the text as HTML, then the required / unique marks), the position

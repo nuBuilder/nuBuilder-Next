@@ -206,6 +206,7 @@ final class NuRender
 			default    => 'form-label nuLabel',
 		};
 		$marks = $o['sob_all_type'] !== 'subform' ? $this->marks($o) : '';
+		$marks .= NuUserHelp::mark($o);                          // user help page of the field (0.8.1023, sob_all_json nunext.help)
 		return '<label id="label_' . h($id) . '" for="' . h($for) . '" class="' . $cls . '">' . $text . $marks . '</label>';
 	}
 

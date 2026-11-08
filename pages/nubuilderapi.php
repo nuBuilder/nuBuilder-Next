@@ -51,7 +51,7 @@ const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_al
 	'sob_subform_zzzzsys_form_id', 'sob_subform_foreign_key', 'sob_subform_add', 'sob_subform_delete', 'sob_subform_type', 'sob_subform_table',
 	'sob_input_format', 'sob_input_type', 'sob_input_icon', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_input_file_target', 'sob_html_code',
 	'sob_html_chart_type', 'sob_html_javascript', 'sob_html_title', 'sob_html_vertical_label', 'sob_html_horizontal_label',
-	'sob_select_2', 'sob_image_zzzzsys_file_id', 'nunext_run_url'];
+	'sob_select_2', 'sob_image_zzzzsys_file_id', 'nunext_run_url', 'nunext_help'];
 
 const NB_INT_FIELDS = ['sob_all_order', 'sob_all_top', 'sob_all_left', 'sob_all_width', 'sob_all_height', 'sfo_browse_rows_per_page'];
 const NB_TYPES      = ['input', 'select', 'textarea', 'editor', 'display', 'calc', 'lookup', 'subform', 'html', 'chart', 'word', 'contentbox', 'run', 'image'];
@@ -293,7 +293,7 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
 			$layout = null;
 			if (array_key_exists('layout', $in['fields'] ?? [])) $layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? (string)$in['fields']['layout'] : 'absolute';
-			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS);
+			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS, NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
 			$store->commit('form.save');
 			$out();
 
@@ -646,6 +646,9 @@ try {
 				$layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? $in['fields']['layout'] : 'absolute';
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['layout' => $layout === 'absolute' ? null : $layout]);
 			}
+			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team (0.8.1020), help pages (0.8.1023): sfo_json nunext
+				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($meta->form['sfo_json'] ?? null), $tags);
+			}
 			if ($fields) $db->update('zzzzsys_form', $fields, 'zzzzsys_form_id', $formId);
 			if (is_array($in['php'] ?? null)) {
 				foreach (NB_HOOKS as $h) if (array_key_exists($h, $in['php'])) nb_upsert_php($formId . '_' . $h, $in['php'][$h] === null ? null : (string)$in['php'][$h]);
@@ -750,6 +753,10 @@ try {
 				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, NuResponsive::gridKeys($g, (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '')));
 			}
 
+			if (array_key_exists('nunext_help', $fields)) {            // user help page of the field (0.8.1023): sob_all_json nunext.help
+				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
+				unset($fields['nunext_help']);
+			}
 			if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
 				$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
 				if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) nb_err(t('builder_err_run_url'));

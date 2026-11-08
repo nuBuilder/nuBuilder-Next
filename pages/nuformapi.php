@@ -122,6 +122,9 @@ try {
 			if (NuDemo::active()) nu_api_error(t('demo_no_delete'), 403);
 			nu_api_out(NuRecord::delete($meta, $record, $props, $in));
 
+		case 'details':                                    // row details of the list (0.8.1027): the related list of one record – reading only
+			nu_api_out(['ok' => true] + NuRowDetails::related($meta, $record));
+
 		case 'presence':                                   // concurrent edits (0.8.401): "also open by …" (passive – see index.php)
 			if (!NuConflict::presenceEnabled()) nu_api_out(['ok' => true, 'others' => []]);
 			nu_api_out(['ok' => true, 'others' => NuConflict::ping($meta->id, $record, !empty($in['edited']), !empty($in['leave']))]);

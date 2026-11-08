@@ -10,7 +10,7 @@ defined('NU_ROOT') || exit;
  *
  * Format "nunext-form-1":
  *   {"format": "nunext-form-1",
- *    "form": {code, description, type, table, primary_key, browse_sql?, rows_per_page?, browse?: [{title, field, width?, align?, format?}]},
+ *    "form": {code, description, type, table, primary_key, browse_sql?, rows_per_page?, department?, team?, browse?: [{title, field, width?, align?, format?}]},
  *    "tabs": [{title, objects: [object …]}]}
  *   object: {id, type, label, input?, format?, width?, height?, top?, left?, same_row?, required?, unique?, readonly?, hidden?, access?,
  *            options?: [[value, text] …] | sql?, multiple?, lookup?: {form, code, description, description_width?},
@@ -66,7 +66,7 @@ final class NuFormSpec
 			'code' => (string)$f['sfo_code'], 'description' => (string)$f['sfo_description'], 'type' => (string)$f['sfo_type'],
 			'table' => (string)($f['sfo_table'] ?? ''), 'primary_key' => (string)($f['sfo_primary_key'] ?? ''),
 			'browse_sql' => trim((string)($f['sfo_browse_sql'] ?? '')), 'rows_per_page' => (int)($f['sfo_browse_rows_per_page'] ?? 0) ?: null,
-		], static fn($v) => $v !== '' && $v !== null)];
+		] + NuFormMeta::tagsOf(isset($f['sfo_json']) ? (string)$f['sfo_json'] : null), static fn($v) => $v !== '' && $v !== null)];   // department / team (0.8.1020)
 		$browse = $snap['browse'];
 		usort($browse, static fn($a, $b) => (int)$a['sbr_order'] <=> (int)$b['sbr_order']);
 		if ($browse) $out['form']['browse'] = array_map(static fn($b) => array_filter(['title' => (string)$b['sbr_title'], 'field' => (string)$b['sbr_display'],
@@ -230,6 +230,7 @@ final class NuFormSpec
     "table": "customer",                 // database table; a table that does not exist yet is created from the objects
     "primary_key": "customer_id",        // its primary key column (text ids are created by nuBuilder)
     "rows_per_page": 20,
+    "department": "Sales", "team": "North",   // optional: only for grouping and filtering the forms list (free text, max. 60 characters)
     "browse": [ {"title": "Name", "field": "cus_name", "width": 200, "align": "left", "format": ""} ],   // list columns
     "columns": [ {"name": "cus_parent_id", "type": "id"} ]   // optional: columns to create that no object shows
   },
@@ -597,6 +598,8 @@ TXT;
 		elseif (!$base || trim((string)($form['sfo_browse_sql'] ?? '')) === '' || ($base['form']['sfo_table'] ?? '') !== $table) $form['sfo_browse_sql'] = $table !== '' ? 'SELECT * FROM ' . $table : null;
 		if (isset($f['rows_per_page'])) $form['sfo_browse_rows_per_page'] = max(1, min(500, (int)$f['rows_per_page']));
 		if (!$base) $form['sfo_breadcrumb_title'] = '|' . $form['sfo_description'];
+		// department / team (0.8.1020): optional – a key that is there replaces (empty = removed), a missing key keeps the form's value
+		if ($tags = NuFormMeta::tagsIn($f)) $form['sfo_json'] = NuFormMeta::mergeNunextJson(isset($form['sfo_json']) ? (string)$form['sfo_json'] : null, $tags);
 
 		// tabs: matched by title
 		$baseTabs = [];

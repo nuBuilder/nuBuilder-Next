@@ -689,3 +689,26 @@ html.nuPhoneCards #nuBrowseTable div.nuCell { max-height: none !important; }
 	html.nuBack-hidden .nuFormHeader > .nuPhBack { display: none; }
 	.nuListSearch > .nuPhAdd { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; flex: 0 0 auto; }
 }
+
+/* row details of form lists (0.8.1027, nuruntime.js detOpen): ▸ column, the strip below the row */
+#nuBrowseTable th.nuDetCol, #nuBrowseTable td.nuDetCol { width: 36px; min-width: 36px; padding: 0 .1rem; text-align: center; }
+#nuBrowseTable .nuDetBtn { padding: .1rem .35rem; color: var(--bs-secondary-color); line-height: 1; }
+#nuBrowseTable .nuDetBtn:hover, #nuBrowseTable .nuDetBtn:focus-visible { color: var(--bs-primary); }
+#nuBrowseTable .nuDetBtn > .bi { display: inline-block; transition: transform .15s; }
+#nuBrowseTable tr.nuDetOpen .nuDetBtn > .bi { transform: rotate(90deg); }
+#nuBrowseTable tr.nuDetOpen > td { border-bottom-color: transparent; }
+#nuBrowseTable > tbody > tr.nuDetRow > td.nuDetTd { padding: .25rem .75rem .75rem 2.6rem; background: var(--bs-tertiary-bg); cursor: default; white-space: normal; }
+.nuDetBody { display: flex; flex-wrap: wrap; gap: .75rem 2rem; align-items: flex-start; }
+.nuDetCols { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .15rem .9rem; margin: 0; max-width: 40rem; font-size: .875rem; }
+.nuDetCols dt { font-weight: 500; color: var(--bs-secondary-color); }
+.nuDetCols dd { margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
+.nuDetRel { min-width: 0; max-width: 100%; flex: 0 1 auto; font-size: .875rem; }
+.nuDetRelHead { font-weight: 600; margin-bottom: .25rem; }
+.nuDetTable { --bs-table-bg: transparent; font-size: .8125rem; width: auto; min-width: 18rem; }
+.nuDetTable > :not(caption) > * > * { padding-inline: .5rem .9rem; }
+.nuDetTable > thead > tr > th { font-weight: 500; color: var(--bs-secondary-color); white-space: nowrap; }
+.nuDetOpenRec { margin-top: .5rem; }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuDetRow { display: block; }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuDetRow > td.nuDetTd { display: block; padding-left: .75rem; }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuDetCol { order: 98; margin-inline-start: auto; width: auto; }
+@media print { #nuBrowseTable .nuDetCol, #nuBrowseTable .nuDetRow { display: none; } }

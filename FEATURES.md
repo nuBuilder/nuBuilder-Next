@@ -9,13 +9,15 @@ page) for how to use it.
 - **Works on every screen** – phones, tablets and desktops; light, dark or automatic mode; checked against WCAG 2.1 A/AA.
 - **Fast lists** – search, filters, sorting and paging; an advanced search with conditions per column and saved searches;
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
+- **Row details** – a ▸ on each row of a list shows hidden columns, cut text and a related list (e.g. the items of an order) below the row.
+- **Lists by keyboard** – search, ↓ into the rows, ↑ / ↓ / Page Down to move, Enter to open, Esc back to the search; the row is kept when you come back.
 - **Export** – every list as print page, CSV or Excel; copy rows straight into Excel or Word.
 - **Comfortable editing** – sub-forms, lookups and file uploads; required and unique fields marked; unsaved changes shown;
   Clone opens an unsaved copy.
 - **Start page** – tiles, favourites, recently used and one search over everything (also Ctrl+K); dashboards with KPI tiles,
   charts and tables.
 - **Notification centre** – a bell with unread messages, optionally also by e-mail.
-- **Keyboard shortcuts** for save, clone, delete, search, print and more.
+- **Keyboard shortcuts** for save, clone, delete, search, print and more; *Back* returns to the page you came from.
 - **Secure sign-in** – two-step login (authenticator app or e-mail code), passkeys, single sign-on (OpenID Connect: Microsoft
   Entra ID, Google Workspace, Keycloak …) and *Forgot password* by e-mail.
 - **Eleven languages** – including Arabic (right to left) and regional variants of English and German; themes per access level
@@ -25,6 +27,7 @@ page) for how to use it.
 
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
   list's columns and settings right on the list, responsive layouts for phones, tabs, events and code in one place.
+- **Forms grouped** by group, department and team – shown and filtered in the forms list.
 - **Drafts and history** – changes go into a draft that you publish when ready; every published version can be compared
   and restored.
 - **Validation rules without code** – as a builder or an expression, as errors or warnings, also for sub-form rows and per
@@ -39,6 +42,8 @@ page) for how to use it.
 - **Code where you need it** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with
   syntax check, formatting, search / replace and an Insert menu with every documented function.
 - **Reports and queries** – a visual report designer (text, HTML or Markdown fields), an SQL builder, PDF output.
+- **Help pages for your users** – write help in the browser (visual editor or Markdown), open it from a form, a tab or a
+  field in a side panel; whole pages or parts of a page only for some access levels, translations, search, export / import.
 - **Dashboards** – KPI tiles, charts and tables built from SQL, on the start page or on any form.
 - **Custom pages** – your own PHP apps inside nuBuilder Next, with its sign-in, rights, a stable page API, drafts and
   versions.

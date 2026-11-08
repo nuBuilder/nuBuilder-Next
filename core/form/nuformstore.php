@@ -95,12 +95,13 @@ final class NuDraftStore
 	}
 
 	// ---------------------------------------------------------------- actions (pages/nubuilderapi.php, draft mode)
-	public function formSave(array $fields, ?string $layout, ?array $php, array $hooks): void
+	public function formSave(array $fields, ?string $layout, ?array $php, array $hooks, array $tags = []): void
 	{
 		if (isset($fields['sfo_code']) && (int)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$fields['sfo_code'], $this->formId])) {
 			throw new RuntimeException(t('builder_err_code_taken'));
 		}
 		if ($layout !== null) $fields['sfo_json'] = NuFormMeta::mergeNunextJson($this->snap['form']['sfo_json'] ?? null, ['layout' => $layout === 'absolute' ? null : $layout]);
+		if ($tags) $fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($this->snap['form']['sfo_json'] ?? null), $tags);   // department / team (0.8.1020)
 		$this->snap['form'] = self::set($this->snap['form'], $fields);
 		if ($php !== null) foreach ($hooks as $h) if (array_key_exists($h, $php)) $this->upsertPhp($this->formId . '_' . $h, $php[$h] === null ? null : (string)$php[$h]);
 	}
@@ -127,6 +128,10 @@ final class NuDraftStore
 		}
 		if ($grid !== null) {
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, NuResponsive::gridKeys($grid, $type));
+		}
+		if (array_key_exists('nunext_help', $fields)) {            // user help page of the field (0.8.1023): sob_all_json nunext.help
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
+			unset($fields['nunext_help']);
 		}
 		if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
 			$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);

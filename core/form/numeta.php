@@ -217,6 +217,49 @@ final class NuFormMeta
 		return $b === null ? null : ($b === true ? [] : $b);
 	}
 
+	/**
+	 * Department and team of a form (0.8.1020, sfo_json nunext.department / nunext.team): free text for grouping and filtering the forms
+	 * list only – no effect on rights or behaviour, no link to the users' fields. nuBuilder Forte ignores the nunext key.
+	 */
+	public const FORM_TAGS = ['department', 'team'];
+	public const TAG_MAX = 60;
+
+	/** Trimmed, inner white space folded, at most TAG_MAX characters; '' → null (= key removed). */
+	public static function cleanTag(mixed $v): ?string
+	{
+		if (!is_scalar($v)) return null;
+		$s = trim((string)preg_replace('/\s+/u', ' ', (string)$v));
+		return $s === '' ? null : mb_substr($s, 0, self::TAG_MAX);
+	}
+
+	/** The tags present in a field list of form.save, cleaned (null = remove). */
+	public static function tagsIn(array $fields): array
+	{
+		$out = [];
+		foreach (self::FORM_TAGS as $k) if (array_key_exists($k, $fields)) $out[$k] = self::cleanTag($fields[$k]);
+		return $out;
+	}
+
+	/** department / team of a form's sfo_json ('' when not set). */
+	public static function tagsOf(?string $json): array
+	{
+		$n = self::nunextJson($json);
+		$out = [];
+		foreach (self::FORM_TAGS as $k) $out[$k] = (string)(self::cleanTag($n[$k] ?? null) ?? '');
+		return $out;
+	}
+
+	/** Values already used on forms – the suggestions of the fields (sorted, unique, case kept of the first one). */
+	public static function tagValues(): array
+	{
+		$seen = array_fill_keys(self::FORM_TAGS, []);
+		foreach (nu_db()->all("SELECT sfo_json FROM zzzzsys_form WHERE sfo_json LIKE '%nunext%'") as $r) {
+			foreach (self::tagsOf((string)$r['sfo_json']) as $k => $v) if ($v !== '') $seen[$k][mb_strtolower($v)] ??= $v;
+		}
+		foreach ($seen as $k => $vals) { $vals = array_values($vals); natcasesort($vals); $seen[$k] = array_values($vals); }
+		return $seen;
+	}
+
 	/** Merges $nunext into the existing JSON value without touching other keys. */
 	public static function mergeNunextJson(?string $json, array $nunext): ?string
 	{

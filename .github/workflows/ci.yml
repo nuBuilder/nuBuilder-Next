@@ -37,8 +37,8 @@ jobs:
         with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium', coverage: none }
       - run: git clone --depth 1 https://github.com/nuBuilder/nuBuilder.git nub && mv nunext nub/nunext
       # a new installation as the installer makes it: empty database → nuBuilder Forte's nubuilder4.sql through the database set-up
-      # (NuDbState::setUp – brought to 4.9, own tables, origin 'nunext', database steps); importing the dump by hand would leave a database
-      # with nuBuilder Forte's tables that nuBuilder Next did not set up, and every page answers 503 (existing databases are blocked)
+      # (NuDbState::setUp – brought to 4.9, own tables, origin 'nunext', database steps); the step fails unless the database is ready and
+      # set up by nuBuilder Next (no backup note on the sign-in page). dev/tests/run.php checks that every Nu…::method() called here exists
       - run: |
           cat > nub/nunext/nuconfig.php <<'PHP'
           <?php
@@ -47,7 +47,7 @@ jobs:
           $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099/nunext";
           $nuConfigShowInstaller = false; $nuConfigDevMode = true;
           PHP
-          cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("upload", "../nubuilder4.sql"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
+          cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("upload", "../nubuilder4.sql"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && NuInstall::origin() === "nunext" && !NuInstall::backupNeeded() ? 0 : 1);'
       - run: (cd nub && php -d opcache.jit=disable -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v5
         with: { node-version: '22' }
@@ -104,7 +104,7 @@ jobs:
           $nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; $nuConfigBaseURL = "http://127.0.0.1:8099";
           $nuConfigShowInstaller = false; $nuConfigDevMode = true;
           PHP
-          cd nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("scripts"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && !NuInstall::existingBlocked() ? 0 : 1);'
+          cd nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("scripts"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && NuInstall::origin() === "nunext" && !NuInstall::backupNeeded() ? 0 : 1);'
       - run: (cd nunext && php -d opcache.jit=disable -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v5
         with: { node-version: '22' }

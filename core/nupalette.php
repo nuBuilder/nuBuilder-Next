@@ -56,6 +56,10 @@ final class NuPalette
 			$r = NuHome::resolve((string)$k, $layout);
 			if ($r && $r['href']) $add('t:' . $k, (string)$r['label'], t('pal_group_own'), (string)$r['icon'], ['url' => (string)$r['href']], (string)$r['hint']);
 		}
+		try {                                                      // user help pages (0.8.1023): those this user may read
+			$hb = NuUserHelp::bases();
+			foreach (NuUserHelp::readableCodes() as $hc => $_) $add('h:' . $hc, NuUserHelp::titleOf((string)$hc), t('uh_title'), 'bi-question-circle', ['url' => nu_url('userhelp', ['c' => (string)$hc])], trim((string)($hb[$hc]['keywords'] ?? '')));
+		} catch (Throwable) { /* no help table yet */ }
 		$db = nu_db();
 		foreach (nu_forms() as $id => $f) {
 			if ($f['type'] === 'subform' || $f['system']) continue;    // nuBuilder's own forms: reached through the pages above

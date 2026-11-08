@@ -826,3 +826,22 @@
 		else { f.select(); try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ } }
 	});
 })();
+
+// Person card (0.8.1018 / 0.8.1019): initials + name in its header follow first / last name, else the full name
+(function () {
+	'use strict';
+	var txt = document.getElementById('userAvatarTxt'), icon = document.getElementById('userAvatarIcon');
+	if (!txt) return;
+	var f = document.getElementById('sus_first_name'), l = document.getElementById('sus_last_name'), n = document.getElementById('sus_name');
+	function first(s) { var c = Array.from(s || '')[0]; return c || ''; }
+	function upd() {
+		var a = (f && f.value.trim()) || '', b = (l && l.value.trim()) || '', w;
+		if (a || b) w = [a, b].filter(Boolean); else w = ((n && n.value) || '').trim().split(/\s+/).filter(Boolean);
+		var s = w.length ? (first(w[0]) + (w.length > 1 ? first(w[w.length - 1]) : '')).toUpperCase() : '';
+		txt.textContent = s;
+		if (icon) icon.classList.toggle('d-none', s !== '');
+		var who = document.getElementById('userAvatarName'), full = ((n && n.value) || '').trim();
+		if (who) { who.textContent = '· ' + full; who.hidden = full === ''; }
+	}
+	[f, l, n].forEach(function (e) { if (e) e.addEventListener('input', upd); });
+})();

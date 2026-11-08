@@ -43,7 +43,6 @@ if (nu_is_post()) {
 }
 
 $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
-$fullBadge = '<span class="badge text-bg-danger ms-1 nuAdmFull" title="' . h(t('adm_full_tip')) . '">' . h(t('adm_full')) . '</span>';
 
 // ------------------------------------------------------------------ list
 if ($id === '') {                                          // a system list (0.8.687): search, views, export, filters (core/nulistdefs.php)
@@ -104,21 +103,24 @@ nu_layout_start(t('adm_title'), 'home');
 		<?php if (isset($errors['rights'])): ?><div class="alert alert-danger m-3 mb-0"><?= h($errors['rights']) ?></div><?php endif; ?>
 		<div id="admRightsWrap">
 			<table class="table nu-table mb-0 align-middle" id="admRights">
-				<?php // sortable titles (0.8.739, assets/js/nuadminroles.js): a sorted list is flat (no group rows), a third click goes back to the groups ?>
-				<thead><tr><th class="admSort" data-sort="name"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="<?= h(t('adm_sort_tip')) ?>"><?= h(t('adm_right')) ?></button></th>
-					<?php foreach (['' => 'adm_none', 'view' => 'adm_view', 'change' => 'adm_change'] as $lv => $lk): ?><th class="text-center admSort" data-sort="lvl:<?= $lv ?>"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="<?= h(t('adm_sort_tip')) ?>"><?= h(t($lk)) ?></button></th><?php endforeach; ?></tr></thead>
+				<?php // own columns (0.8.1022): Right · Area · Full access · None · View · Change – one flat list in the order of the groups;
+				      // sortable titles (assets/js/nuadminroles.js), the third click goes back to that order ?>
+				<?php $sortTh = static fn(string $key, string $label, string $cls = '') => '<th class="admSort' . $cls . '" data-sort="' . h($key) . '"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="' . h(t('adm_sort_tip')) . '">' . h($label) . '</button></th>'; ?>
+				<thead><tr><?= $sortTh('name', t('adm_right')) ?><?= $sortTh('area', t('adm_area'), ' admAreaTh') ?><?= $sortTh('full', t('adm_full'), ' admFullTh') ?>
+					<?php foreach (['' => 'adm_none', 'view' => 'adm_view', 'change' => 'adm_change'] as $lv => $lk): ?><?= $sortTh('lvl:' . $lv, t($lk), ' text-center') ?><?php endforeach; ?></tr></thead>
 				<tbody>
-				<?php foreach (NuAdmin::GROUPS as $g => $gLabel): ?>
-					<tr class="nuAdmGroup"><th colspan="4" scope="rowgroup"><i class="bi <?= h(['system' => 'bi-gear', 'data' => 'bi-database', 'dev' => 'bi-code-slash', 'users' => 'bi-people', 'look' => 'bi-palette', 'comm' => 'bi-envelope', 'integration' => 'bi-plug', 'logs' => 'bi-journal-text'][$g] ?? 'bi-folder') ?> me-2" aria-hidden="true"></i><?= h(t($gLabel)) ?></th></tr>
+				<?php $gi = 0; foreach (NuAdmin::GROUPS as $g => $gLabel): $gi++; ?>
 					<?php foreach (NuAdmin::RIGHTS as $k => [$grp, $label, $full, $levels]): if ($grp !== $g) continue;
 						$cur = $role['rights'][$k] ?? '';
 						$may = $grant[$k] ?? '';                       // what the editing user may give
 						$dis = static fn(string $lvl) => $own || ($lvl !== '' && $may !== 'change' && !($may === 'view' && $lvl === 'view') && $cur !== $lvl) ? ' disabled' : ''; ?>
-						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-name="<?= h(t($label)) ?>">
-							<td><?php if (isset(NuAdmin::PAGES[$k])): [$pr, $pp] = NuAdmin::PAGES[$k]; ?><a href="<?= h(nu_url($pr, $pp)) ?>" target="_blank" rel="noopener" class="admRightLink" title="<?= h(t('adm_open_page')) ?>"><?= h(t($label)) ?><i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a><?php else: ?><?= h(t($label)) ?><?php endif; ?><?= $full ? $fullBadge : '' ?>
-								<span class="admGrpTag small text-body-secondary ms-1"><?= h(t($gLabel)) ?></span></td>
+						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-area="<?= sprintf('%02d', $gi) ?>" data-full="<?= $full ? '1' : '0' ?>" data-name="<?= h(t($label)) ?>">
+							<td class="admName"><?php if (isset(NuAdmin::PAGES[$k])): [$pr, $pp] = NuAdmin::PAGES[$k]; ?><a href="<?= h(nu_url($pr, $pp)) ?>" target="_blank" rel="noopener" class="admRightLink" title="<?= h(t('adm_open_page')) ?>"><?= h(t($label)) ?><i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a><?php else: ?><?= h(t($label)) ?><?php endif; ?></td>
+							<td class="admArea text-body-secondary small"><?= h(t($gLabel)) ?></td>
+							<td class="admFull"><?php if ($full): ?><span class="nuAdmFull" title="<?= h(t('adm_full_tip')) ?>"><i class="bi bi-shield-fill-exclamation" aria-hidden="true"></i><span class="admFullTxt"><?= h(t('adm_full')) ?></span></span><?php else: ?><span class="text-body-tertiary" aria-hidden="true">–</span><?php endif; ?></td>
 							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="" aria-label="<?= h(t($label) . ': ' . t('adm_none')) ?>"<?= $cur === '' ? ' checked' : '' ?><?= $own ? ' disabled' : '' ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_none')) ?></span></label></td>
-							<td class="text-center admLvlCell"><?php if ($levels === 'vc'): ?><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="view" aria-label="<?= h(t($label) . ': ' . t('adm_view')) ?>"<?= $cur === 'view' ? ' checked' : '' ?><?= $dis('view') ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_view')) ?></span></label><?php endif; ?></td>
+							<?php if ($levels === 'vc'): ?><td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="view" aria-label="<?= h(t($label) . ': ' . t('adm_view')) ?>"<?= $cur === 'view' ? ' checked' : '' ?><?= $dis('view') ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_view')) ?></span></label></td>
+							<?php else: ?><td class="text-center admLvlCell admNoLvl"><span class="text-body-tertiary" title="<?= h(t('adm_no_view')) ?>">—</span><span class="visually-hidden"><?= h(t('adm_no_view')) ?></span></td><?php endif; ?>
 							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="change" aria-label="<?= h(t($label) . ': ' . t('adm_change')) ?>"<?= $cur === 'change' ? ' checked' : '' ?><?= $dis('change') ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_change')) ?></span></label></td>
 						</tr>
 					<?php endforeach; ?>

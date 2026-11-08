@@ -24,7 +24,7 @@ final class NuListDefs
 {
 	/** @return array<string, array> */
 	/** Keys of all lists with views (0.8.329: users, access; 0.8.334: the other system lists). */
-	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'webhooks', 'webhookcalls', 'exports', 'selftest'];
+	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'helppages', 'webhooks', 'webhookcalls', 'exports', 'selftest'];
 
 	public static function get(string $list): ?array
 	{
@@ -33,7 +33,7 @@ final class NuListDefs
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),
 			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(), 'userfields' => self::userFields(), 'apiclients' => self::apiClients(),
 			'adminroles' => self::adminRoles(), 'sqlbuilder' => self::sqlBuilder(), 'emailtemplates' => self::emailTemplates(),
-			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(),
+			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'helppages' => self::helpPages(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(),
 			default => null,
 		};
 	}
@@ -66,6 +66,7 @@ final class NuListDefs
 		'notifications' => ['level' => false, 'state' => false, 'created' => 'date'],
 		'dashboards' => ['where' => false, 'widgets' => 'number', 'updated' => 'date'],
 		'webhooks' => ['status' => 'bool', 'calls' => 'number', 'updated' => 'date'],
+		'helppages' => ['status' => 'bool', 'langs' => false, 'used' => false, 'access' => false, 'order' => 'number', 'updated' => 'date'],
 		'webhookcalls' => ['created' => 'date', 'status' => false, 'attempts' => 'number', 'answer' => 'number', 'next' => 'date', 'source' => false],
 		'exports' => ['format' => false, 'runs' => 'number', 'last_run' => 'date', 'updated' => 'date'],
 		'selftest' => ['status' => false, 'ms' => 'number', 'pos' => 'number'],
@@ -449,6 +450,13 @@ final class NuListDefs
 		$facOk = NuAcl::can(NuAcl::FORM_ACCESS);
 		$everyone = NuFormEveryone::all();                                 // forms for everyone (0.8.784)
 		$dbTool = NuAdmin::can('dbtool', 'change') && NuVendor::primaryDb() !== '';
+		// department / team of a form (0.8.1020, sfo_json nunext.*): only rows with valid JSON; no ", " inside (the sort splits on it)
+		$tag = static fn(string $k): string => match (nu_db()->type) {
+			'mysql' => "CASE WHEN f.sfo_json IS NOT NULL AND f.sfo_json <> '' AND JSON_VALID(f.sfo_json) THEN JSON_UNQUOTE(JSON_EXTRACT(f.sfo_json,'$.nunext.$k')) END",
+			'sqlsrv' => "CASE WHEN ISJSON(f.sfo_json) = 1 THEN JSON_VALUE(f.sfo_json,'$.nunext.$k') END",
+			default => "json_extract(f.sfo_json,'$.nunext.$k')",
+		};
+		$tagsUsed = NuFormMeta::tagValues();
 		$cols = [
 			'actions' => ['label' => '', 'select' => ['lv_draft_id' => $dId], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'if' => static fn() => $designer, 'text' => static fn($r) => '', 'noexport' => true,
 				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('builder', ['f' => $r['__id'], 'draft' => ($r['lv_draft_id'] ?? null) ? '1' : null])) . '" title="' . h(t('ds_mode')) . '" aria-label="' . h(t('ds_mode')) . '"><i class="bi bi-tools"></i></a>'
@@ -466,6 +474,9 @@ final class NuListDefs
 					. '<button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none nuTableLink" title="' . h(t('forms_table_open')) . '">' . h((string)$r['sfo_table']) . ' <i class="bi bi-box-arrow-up-right small" aria-hidden="true"></i></button></form>'
 				: h((string)$r['sfo_table'])],
 			'group' => array_replace(self::col('sfo_group', 'f.sfo_group', t('builder_group'), 'small'), ['sort' => 'f.sfo_group, f.sfo_description']),
+			// department / team (0.8.1020): sfo_json nunext – grouping only; hidden in the built-in views except All
+			'department' => self::col('lv_department', $tag('department'), t('builder_department'), 'small'),
+			'team' => self::col('lv_team', $tag('team'), t('builder_team'), 'small'),
 			// how many access levels may open the form; the number opens "Access levels of this form" (0.8.688, assets/js/nu/nuformaccess.js)
 			'access' => ['label' => t('forms_col_access'), 'select' => ['lv_nacc' => $nAcc], 'sort' => $nAcc, 'align' => 'end', 'class' => 'small',
 				// forms for everyone (0.8.784, NuFormEveryone): a badge instead of the number
@@ -494,6 +505,8 @@ final class NuListDefs
 			'type' => ['label' => t('builder_type'), 'type' => 'select', 'options' => static fn() => array_combine($t = ['browseedit', 'browse', 'edit', 'launch', 'subform', 'page'], array_map(static fn($x) => t('form_type_' . $x), $t)),
 				'where' => static fn(string $v) => ["COALESCE(NULLIF(f.sfo_type, ''), 'browseedit') = ?", [$v]]],
 			'group' => ['label' => t('builder_group'), 'type' => 'distinct', 'expr' => 'f.sfo_group', 'none' => t('forms_group_none')],
+			'department' => ['label' => t('builder_department'), 'type' => 'distinct', 'expr' => $tag('department'), 'none' => t('lv_none')],
+			'team' => ['label' => t('builder_team'), 'type' => 'distinct', 'expr' => $tag('team'), 'none' => t('lv_none')],
 			'status' => ['label' => t('builder_status'), 'type' => 'select', 'all' => 'all',
 				'options' => static fn() => ['na' => t('forms_status_not_archived')] + array_map('t', $status),
 				'where' => static fn(string $v) => $v === 'na' ? ["$st <> '3'", []] : (isset($status[$v]) ? ["$st = ?", [$v]] : null)],
@@ -525,7 +538,7 @@ final class NuListDefs
 			'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
 				'default' => ['columns' => ['actions', 'description', 'code', 'type', 'table', 'group', 'layout', 'status', 'draft', 'access'], 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code', 'table', 'group']],
-					'sort' => ['group', 'asc'], 'per' => 500, 'filters' => ['shown' => array_values(array_filter(['type', 'group', 'status', $drafts ? 'draft' : null])), 'values' => ['status' => 'na']]],   // Has draft (0.8.688)
+					'sort' => ['group', 'asc'], 'per' => 500, 'filters' => ['shown' => array_values(array_filter(['type', 'group', $tagsUsed['department'] ? 'department' : null, $tagsUsed['team'] ? 'team' : null, 'status', $drafts ? 'draft' : null])), 'values' => ['status' => 'na']]],   // Has draft (0.8.688); department / team once a form has one (0.8.1020)
 				'compact' => ['columns' => ['actions', 'description', 'code', 'type'], 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code']],
 					'sort' => ['description', 'asc'], 'per' => 100, 'filters' => ['shown' => ['type', 'status'], 'values' => ['status' => 'na']]],
 				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code', 'table', 'group', 'status']],
@@ -1240,6 +1253,59 @@ final class NuListDefs
 			'builtin' => [
 				'default' => $base,
 				'compact' => ['columns' => ['name', 'status', 'scopes'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['scopes']]] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
+
+	/** User help pages (0.8.1023, core/nuuserhelp.php): the pages themselves (lang ''), with their translations, access levels and where they are used. */
+	private static function helpPages(): array
+	{
+		$T = NuUserHelp::T;
+		$levels = [];
+		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a) $levels[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
+		$usage = NuUserHelp::usage();
+		$titles = array_map(static fn($b) => (string)$b['title'], NuUserHelp::bases());
+		$accOf = static function ($r) use ($levels): array { $j = json_decode((string)$r['hp_acc'], true); return array_map(static fn($x) => $levels[$x] ?? (string)$x, is_array($j) ? $j : []); };
+		$cols = [
+			'title' => ['label' => t('uh_f_title'), 'main' => true, 'locked' => true, 'select' => ['hp_title' => 'h.title', 'hp_code' => 'h.code'], 'sort' => 'h.title',
+				'text' => static fn($r) => (string)$r['hp_title'],
+				'html' => static fn($r) => '<span class="fw-semibold">' . h((string)$r['hp_title']) . '</span><div class="small text-body-secondary font-monospace">' . h((string)$r['hp_code']) . '</div>'],
+			'code' => self::col('hp_code2', 'h.code', t('uh_f_code'), 'small font-monospace'),
+			'parent' => ['label' => t('uh_f_parent'), 'select' => ['hp_parent' => 'h.parent'], 'sort' => 'h.parent', 'class' => 'small',
+				'text' => static fn($r) => (string)$r['hp_parent'] !== '' ? ($titles[(string)$r['hp_parent']] ?? (string)$r['hp_parent']) : ''],
+			'order' => array_replace(self::col('hp_sort', 'h.sort_order', t('uh_f_order'), 'small'), ['align' => 'end']),
+			'langs' => ['label' => t('uh_translations'), 'select' => [], 'sort' => null, 'class' => 'small',
+				'text' => static fn($r) => implode(', ', NuUserHelp::langsOf((string)$r['hp_code']))],
+			'access' => ['label' => t('uh_f_access'), 'select' => ['hp_acc' => 'h.access'], 'sort' => null, 'class' => 'small',
+				'text' => static fn($r) => ($a = $accOf($r)) ? implode(', ', $a) : t('uh_access_all'),
+				'html' => static fn($r) => ($a = $accOf($r)) ? implode(' ', array_map(static fn($x) => self::badge($x), $a)) : '<span class="text-body-secondary">' . h(t('uh_access_all')) . '</span>'],
+			'used' => ['label' => t('uh_used'), 'select' => [], 'sort' => null, 'class' => 'small',
+				'text' => static fn($r) => implode('; ', array_map(static fn($u) => $u[1] . ' – ' . $u[2], $usage[(string)$r['hp_code']] ?? []))],
+			'status' => ['label' => t('status'), 'select' => ['hp_active' => 'h.active'], 'sort' => 'h.active',
+				'text' => static fn($r) => t((string)$r['hp_active'] === '1' ? 'uh_active' : 'uh_inactive'),
+				'html' => static fn($r) => self::badge(t((string)$r['hp_active'] === '1' ? 'uh_active' : 'uh_inactive'), (string)$r['hp_active'] === '1' ? 'text-bg-success' : 'text-bg-secondary')],
+			'updated' => ['label' => t('fi_changed'), 'select' => ['hp_upd' => 'h.updated_at'], 'sort' => 'h.updated_at', 'class' => 'small text-nowrap', 'text' => static fn($r) => self::date($r['hp_upd'] ?? null, true)],
+			'id' => self::idCol('h.zzzzsys_nunext_help_id'),
+		];
+		$filters = [
+			'status' => ['label' => t('status'), 'type' => 'select', 'options' => static fn() => ['on' => t('uh_active'), 'off' => t('uh_inactive')],
+				'where' => static fn(string $v) => $v === 'on' ? ["h.active = '1'", []] : ($v === 'off' ? ["COALESCE(h.active, '0') <> '1'", []] : null)],
+			'level' => ['label' => t('uh_f_access'), 'type' => 'select', 'options' => static fn() => ['*' => t('uh_access_all')] + $levels,
+				'where' => static fn(string $v) => $v === '*' ? ["COALESCE(h.access, '') = ''", []] : ($v !== '' ? ['h.access LIKE ?', ['%"' . $v . '"%']] : null)],
+			'parent' => ['label' => t('uh_f_parent'), 'type' => 'select', 'options' => static fn() => $titles,
+				'where' => static fn(string $v) => $v !== '' ? ['h.parent = ?', [$v]] : null],
+		];
+		$base = ['columns' => ['title', 'parent', 'langs', 'access', 'used', 'status'], 'card' => ['title' => 'title', 'badge' => 'status', 'lines' => ['parent', 'access', 'used']],
+			'sort' => ['title', 'asc'], 'per' => 50, 'filters' => ['shown' => ['status', 'level'], 'values' => []]];
+		return [
+			'key' => 'helppages', 'title' => t('uh_admin_title'), 'route' => 'helppages', 'new_url' => nu_url('helppages', ['id' => 'new']), 'empty_icon' => 'bi-journal-bookmark', 'form' => NuAcl::FORM_USERHELP,
+			'from' => " FROM $T h", 'where' => ["h.lang = ''"], 'params' => [], 'id' => 'h.zzzzsys_nunext_help_id',
+			'link' => static fn($r) => nu_url('helppages', ['id' => $r['__id']]),
+			'search' => ['h.title', 'h.code', 'h.keywords'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'compact' => ['columns' => ['title', 'status']] + $base,
 				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
 			],
 		];

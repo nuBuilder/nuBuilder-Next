@@ -229,6 +229,8 @@
 	// <body data-nu-help="index.php?p=help#…">, opened in a new tab; pages without it leave F1 to the browser
 	document.addEventListener('keydown', function (e) {
 		if (e.key !== 'F1' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+		// a user help page of this form / tab (0.8.1023, assets/js/nuuserhelp.js) comes first
+		if (typeof window.nuUserHelpF1 === 'function' && window.nuUserHelpF1()) { e.preventDefault(); return; }
 		var url = document.body && document.body.getAttribute('data-nu-help');
 		if (!url) return;
 		e.preventDefault();
@@ -1822,4 +1824,202 @@ window.nuPageNoGo = function (value) {
 	document.addEventListener('nu:listrefresh', queue);
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', queue); else queue();
 	window.nuStickyHeadCheck = queue;
+})();
+
+// ---------------------------------------------------------------- Back = the page you came from (0.8.1017)
+// Every app page is noted in sessionStorage (this browser tab only). Back buttons (nu_back_button, the form runtime's
+// #nuBackButton, the phone header's ‹) then lead to the page before instead of the fixed parent – the server's link stays the
+// fallback (a new tab, a page opened from a bookmark). Going back (Back, breadcrumb, the browser's Back) cuts the trail at that
+// page, any other link adds a step, and "the same page" (same route + form, list or record) replaces the last entry: paging, searching, a
+// save that turns ?r=-1 into the new id, ?id=new into the saved record. Pop-ups and frames (iframes, bare pages) do not count.
+(function () {
+	'use strict';
+	var KEY = 'nunext-trail', MAX = 40, SKIP = {login: 1, logout: 1, reauth: 1, vendor: 1, lang: 1, twofa: 1, reset: 1};
+	var b = document.body;
+	if (window.top !== window || !b || !b.classList.contains('nu-app') || b.classList.contains('nu-bare') || !b.hasAttribute('data-nu-tab-sections')) return;
+	function load() {
+		try { var a = JSON.parse(sessionStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (e) { return e && typeof e.u === 'string'; }) : []; }
+		catch (x) { return []; }
+	}
+	function save(a) { try { sessionStorage.setItem(KEY, JSON.stringify(a.slice(-MAX))); } catch (x) { /* no storage */ } }
+	function url(u) { try { return new URL(u, window.location.href); } catch (x) { return null; } }
+	function rel(u) { var x = url(u); return x ? x.pathname + x.search : ''; }
+	function ident(u) {
+		var x = url(u); if (!x) return '';
+		var q = x.searchParams, rec = (q.get('r') || '') !== '' || (q.get('id') || '') !== '';
+		return x.pathname + '|' + (q.get('p') || 'home') + '|' + (q.get('f') || '') + '|' + (rec ? 'r' : 'l');
+	}
+	function title() {
+		var h = document.querySelector('.nuPhTitle, main h1, h1');
+		var t = h ? (h.textContent || '').replace(/\s+/g, ' ').trim() : '';
+		return (t || document.title || '').slice(0, 80);
+	}
+	var here = window.location.href, me = ident(here), page = (url(here).searchParams.get('p') || 'home');
+	if (SKIP[page]) return;
+	// going back (our Back / breadcrumb links, the browser's Back): cut the trail at that page; any other link adds a step
+	var GO = 'nunext-trail-go', go = null, nav = null;
+	try { go = sessionStorage.getItem(GO); sessionStorage.removeItem(GO); } catch (x) { /* no storage */ }
+	try { nav = (performance.getEntriesByType('navigation')[0] || {}).type || null; } catch (x) { /* old browser */ }
+	var a = load(), at = -1, backNav = (go !== null && ident(go) === me) || nav === 'back_forward';
+	if (backNav) for (var i = a.length - 1; i >= 0; i--) if (ident(a[i].u) === me) { at = i; break; }
+	if (at >= 0) a = a.slice(0, at);
+	else if (a.length && ident(a[a.length - 1].u) === me) a.pop();          // the same page again (search, paging, save, reload)
+	a.push({u: rel(here), t: title()});
+	save(a);
+	document.addEventListener('click', function (e) {
+		var l = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+		if (!l || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || (l.target && l.target !== '_self')) return;
+		if (!(l.hasAttribute('data-nu-back-default') || l.matches('.nuBackBtn, #nuBackButton, .nuPhBack, .breadcrumb a, a.nuBreadcrumb'))) return;
+		try { sessionStorage.setItem(GO, rel(l.getAttribute('href') || '')); } catch (x) { /* no storage */ }
+	}, true);
+	// the list swapped in place (pushState of nulistsmooth.js / the form runtime) – keep the entry's address current
+	function keepCurrent() {
+		var t = load();
+		if (t.length && ident(t[t.length - 1].u) === ident(window.location.href)) { t[t.length - 1].u = rel(window.location.href); save(t); }
+	}
+	window.addEventListener('pagehide', keepCurrent);
+	document.addEventListener('nu:listrefresh', keepCurrent);
+	var prev = a.length > 1 ? a[a.length - 2] : null;
+	window.nuTrailBack = function () { return prev ? prev.u : null; };
+	function apply() {
+		if (!prev) return;
+		var links = [].slice.call(document.querySelectorAll('a.nuBackBtn:not(.dropdown-item), a#nuBackButton, a.nuPhBack'));
+		document.querySelectorAll('a.btn.nuBtnAct').forEach(function (l) {      // hand-written Back buttons of record pages (arrow first)
+			var c = l.firstElementChild;
+			if (c && c.classList.contains('bi-arrow-left') && links.indexOf(l) < 0) links.push(l);
+		});
+		var crumbs = !!url(window.location.href).searchParams.get('bt');         // a form opened from another form: its breadcrumb trail IS the way back
+		links.forEach(function (l) {
+			if (l.hasAttribute('data-nu-back-fixed')) return;                      // a page that wants its own Back target
+			if (crumbs && (l.id === 'nuBackButton' || l.classList.contains('nuPhBack'))) return;
+			if (rel(l.getAttribute('href') || '') === prev.u) return;
+			l.setAttribute('data-nu-back-default', l.getAttribute('href') || '');
+			l.setAttribute('href', prev.u);
+			if (l.classList.contains('nuPhBack') && prev.t) { var s = l.querySelector('span'); if (s) s.textContent = prev.t; }
+		});
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
+})();
+
+// ---------------------------------------------------------------- keyboard navigation in lists (0.8.1026)
+// Rows that open something – tr[data-href] of the system lists and own pages, tr.nuBrowseRow of form lists and lookups – are one tab
+// stop (roving tabindex). On a row: ↑ / ↓ next row, Home / End first / last, PageDown / PageUp next / previous page (the pager's
+// link; the new page starts on its first / last row), Enter opens (Ctrl+Enter: new tab; form rows: nuruntime.js openRow), Esc back to
+// the search field. In the search field ↓ goes to the first row. A row opened with the keyboard has the focus again when its list is
+// shown again (Back). Not in design mode's list (.nuDsBrowse).
+(function () {
+	'use strict';
+	var ROW = 'tr[data-href], tr.nuBrowseRow', SEARCH = '#nuSearchField, .nuListSearch input[type=search], #q';
+	var KB = 'nunext-list-kb', BACK = 'nunext-list-kbrow';
+	function store(k, v) { try { if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (x) { /* no storage */ } }
+	function read(k) { try { return sessionStorage.getItem(k); } catch (x) { return null; } }
+	function here() { return window.location.pathname + window.location.search; }
+	function ok(r) { return r && r.matches && r.matches(ROW) && !r.closest('.nuDsBrowse, template') && r.getClientRects().length > 0; }
+	function rowsOf(r) { var tb = r.parentNode; return tb ? [].filter.call(tb.children, ok) : []; }
+	function keyOf(r) { return r.getAttribute('data-href') || r.getAttribute('data-nu-primary-key') || ''; }
+	function bodies() {
+		var out = [];
+		document.querySelectorAll('tbody').forEach(function (tb) { if ([].some.call(tb.children, ok)) out.push(tb); });
+		return out;
+	}
+	function rove(r) {
+		rowsOf(r).forEach(function (x) { x.tabIndex = x === r ? 0 : -1; });
+	}
+	function focusRow(r) {
+		if (!r) return;
+		rove(r);
+		r.setAttribute('data-nu-kb', '');                         // shown as the focused row also after a script focus (CSS)
+		r.focus({preventScroll: true});
+		r.scrollIntoView({block: 'nearest'});
+	}
+	function pagerLink(r, cls) {
+		for (var el = r.closest('table'); el && el !== document.body; el = el.parentElement) {
+			var a = el.querySelector('a.nuPager' + cls);
+			if (a) return a;
+		}
+		return null;
+	}
+	function searchOf(r) {
+		for (var el = r.closest('table'); el && el !== document.body; el = el.parentElement) {
+			var s = el.querySelector(SEARCH);
+			if (s) return s;
+		}
+		return document.querySelector(SEARCH);
+	}
+	function setup() {
+		var want = read(KB), back = null;
+		try { back = JSON.parse(read(BACK) || 'null'); } catch (x) { back = null; }
+		bodies().forEach(function (tb, i) {
+			var rows = [].filter.call(tb.children, ok);
+			if (!rows.length) return;
+			var pick = rows[0];
+			if (back && back.p === here()) rows.forEach(function (x) { if (keyOf(x) === back.k) pick = x; });
+			rove(pick);
+			tb.closest('table').setAttribute('data-nu-kbnav', '');
+			if (i > 0) return;
+			if (want) focusRow(want === 'last' ? rows[rows.length - 1] : rows[0]);
+			else if (back && back.p === here() && keyOf(pick) === back.k) focusRow(pick);
+		});
+		store(KB, null);
+		if (back && back.p === here()) store(BACK, null);
+	}
+	document.addEventListener('keydown', function (e) {
+		var t = e.target;
+		if (!t || !t.matches) return;
+		if (t.matches(SEARCH)) {                                    // search field: ↓ = first row
+			if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+			var tb = bodies()[0];
+			var first = tb && [].filter.call(tb.children, ok)[0];
+			if (!first || document.querySelector('.ts-dropdown.ts-active, .dropdown-menu.show')) return;
+			e.preventDefault();
+			focusRow(first);
+			return;
+		}
+		if (!ok(t) || e.altKey) return;
+		var rows = rowsOf(t), i = rows.indexOf(t), go = null;
+		switch (e.key) {
+			case 'ArrowDown': go = rows[i + 1]; break;
+			case 'ArrowUp': go = rows[i - 1]; break;
+			case 'Home': go = rows[0]; break;
+			case 'End': go = rows[rows.length - 1]; break;
+			case 'PageDown':
+			case 'PageUp': {
+				var down = e.key === 'PageDown', a = pagerLink(t, down ? 'Next' : 'Prev');
+				e.preventDefault();
+				if (a) { store(KB, down ? 'first' : 'last'); a.click(); } else focusRow(down ? rows[rows.length - 1] : rows[0]);
+				return;
+			}
+			case ' ':
+			case 'ArrowRight':
+			case 'ArrowLeft': {                                        // row details (0.8.1027): Space toggles, → opens, ← closes
+				var rd = window.nuNext && window.nuNext.rowDetails;
+				if (!rd || !t.querySelector('.nuDetBtn')) return;
+				e.preventDefault();
+				rd(t, e.key === ' ' ? undefined : e.key === 'ArrowRight');
+				return;
+			}
+			case 'Escape': {
+				var s = searchOf(t);
+				if (s && !document.querySelector('.modal.show')) { e.preventDefault(); s.focus(); if (s.select) s.select(); }
+				return;
+			}
+			case 'Enter':
+				store(BACK, JSON.stringify({p: here(), k: keyOf(t)}));
+				if (t.matches('tr[data-href]')) {                       // form rows: nuruntime.js opens them
+					e.preventDefault();
+					if (e.ctrlKey || e.metaKey) window.nuOpenTabFront(t.getAttribute('data-href'));
+					else window.location.href = t.getAttribute('data-href');
+				}
+				return;
+			default: return;
+		}
+		e.preventDefault();
+		if (go) focusRow(go);
+	});
+	document.addEventListener('focusin', function (e) { if (ok(e.target)) rove(e.target); });
+	document.addEventListener('focusout', function (e) { if (e.target && e.target.removeAttribute && e.target.hasAttribute('data-nu-kb')) e.target.removeAttribute('data-nu-kb'); });
+	document.addEventListener('pointerdown', function (e) { var r = e.target.closest && e.target.closest('tr[data-nu-kb]'); if (r) r.removeAttribute('data-nu-kb'); });   // a click / Tab makes it the list's stop
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup); else setup();
+	document.addEventListener('nu:listrefresh', setup);
+	window.nuListKeyNav = setup;
 })();

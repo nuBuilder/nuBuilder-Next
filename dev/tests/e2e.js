@@ -5818,12 +5818,41 @@ T.admin_role_table = async (s) => {
 	const grouped = await names();
 	await p.click('#admRights th[data-sort="name"] button');
 	const asc = await names();
-	expect(JSON.stringify(asc) === JSON.stringify([...asc].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))) && await p.isHidden('#admRights tr.nuAdmGroup >> nth=0')
-		&& await p.getAttribute('#admRights th[data-sort="name"]', 'aria-sort') === 'ascending', 'sorted by name, flat');
+	expect(JSON.stringify(asc) === JSON.stringify([...asc].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })))
+		&& await p.getAttribute('#admRights th[data-sort="name"]', 'aria-sort') === 'ascending', 'sorted by name');
 	await p.click('#admRights th[data-sort="name"] button');
 	expect((await names())[0] === asc[asc.length - 1], 'descending');
 	await p.click('#admRights th[data-sort="name"] button');
-	expect(JSON.stringify(await names()) === JSON.stringify(grouped) && await p.isVisible('#admRights tr.nuAdmGroup >> nth=0'), 'back to the groups');
+	expect(JSON.stringify(await names()) === JSON.stringify(grouped), 'back to the order of the groups');
+	// own columns (0.8.1022): six titles, every row six cells, the shield only in the Full access column, a dash where View is missing
+	const cols = await p.evaluate(() => {
+		const t = document.getElementById('admRights'), rows = [...t.querySelectorAll('tbody tr.nuAdmRight')];
+		return { th: t.querySelectorAll('thead th').length, cells: rows.every((r) => r.cells.length === 6), groupRows: t.querySelectorAll('tr.nuAdmGroup').length,
+			badgeInName: !!t.querySelector('td.admName .nuAdmFull, td.admName .badge'), full: t.querySelectorAll('td.admFull .nuAdmFull').length,
+			fullAttr: rows.filter((r) => r.dataset.full === '1').length, dash: t.querySelectorAll('td.admNoLvl').length,
+			noView: rows.filter((r) => !r.querySelector('input[value=view]')).length, area: rows.every((r) => r.querySelector('td.admArea').textContent.trim() !== '') };
+	});
+	expect(cols.th === 6 && cols.cells && cols.groupRows === 0 && !cols.badgeInName && cols.full > 0 && cols.full === cols.fullAttr && cols.dash === cols.noView && cols.area, 'columns: ' + JSON.stringify(cols));
+	await p.click('#admRights th[data-sort="full"] button');
+	const fl = await p.$$eval('#admRights tr.nuAdmRight', (r) => r.map((x) => x.dataset.full));
+	expect(fl.indexOf('0') === cols.full && fl.slice(cols.full).every((v) => v === '0'), 'full access first');
+	await p.click('#admRights th[data-sort="area"] button');
+	const ar = await p.$$eval('#admRights tr.nuAdmRight', (r) => r.map((x) => x.dataset.area));
+	expect(JSON.stringify(ar) === JSON.stringify([...ar].sort()), 'sorted by area');
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 800 }, storageState: await p.context().storageState() });
+	const ph = await ctx.newPage();
+	try {
+		await ph.goto(BASE + 'index.php?p=adminroles&id=' + encodeURIComponent(role));
+		const m = await ph.evaluate(() => {
+			const r = [...document.querySelectorAll('#admRights tr.nuAdmRight')].find((x) => x.dataset.full === '1');
+			const n = r.querySelector('td.admName').getBoundingClientRect(), a = r.querySelector('td.admArea').getBoundingClientRect(), lv = r.querySelector('td.admLvlCell').getBoundingClientRect();
+			return { thead: getComputedStyle(document.querySelector('#admRights thead')).display, sameLine: Math.abs(n.top - a.top) < 12, areaRight: a.left > n.left,
+				below: lv.top > n.bottom - 2, wide: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+		});
+		expect(m.thead === 'none' && m.sameLine && m.areaRight && m.below && m.wide, 'phone: ' + JSON.stringify(m));
+	} finally { await ctx.close(); }
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-adm-rights-sort'); } catch (e) { /* */ } });
+	await open(p, 'index.php?p=adminroles&id=' + encodeURIComponent(role));
 	await p.click('#admRights th[data-sort="lvl:change"] button');
 	const lv = await p.$$eval('#admRights tr.nuAdmRight', (r) => r.map((x) => { const c = x.querySelector('input[type=radio]:checked'); return c ? c.value : ''; }));
 	const firstOther = lv.findIndex((v) => v !== 'change');
@@ -10773,6 +10802,16 @@ T.home_btn_focus = async (s) => {
 	await Promise.all([p.waitForNavigation(), p.click('.nu-navbar .navbar-brand')]);   // with a logo: the logo
 	await p.waitForTimeout(300);
 	expect(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'nuHomeSearch', 'logo: focus in the search');
+	// touch screens (phone): no focus – the on-screen keyboard would pop up
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 800 }, isMobile: true, hasTouch: true, storageState: await p.context().storageState() });
+	try {
+		const m = await ctx.newPage();
+		await m.goto(BASE + 'index.php?p=users'); await m.waitForLoadState('networkidle');
+		await m.evaluate(() => sessionStorage.setItem('nunext-home-focus', '1'));
+		await m.goto(BASE + 'index.php?p=home'); await m.waitForLoadState('networkidle'); await m.waitForTimeout(300);
+		expect(await m.evaluate(() => document.activeElement && document.activeElement.id) !== 'nuHomeSearch', 'phone: search focused (keyboard pops up)');
+		expect(await m.evaluate(() => window.nuHomeReset(location.href) && document.activeElement && document.activeElement.id) !== 'nuHomeSearch', 'phone: Home on the start page focused the search');
+	} finally { await ctx.close(); }
 	const had = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'") !== '0';
 	if (had) return;                                         // compact bar only on a site without own branding
 	sql(`INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('branding', '{"logo_show":"login"}')`);
@@ -13616,6 +13655,177 @@ T.prompt_ai_context = async (s) => {
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
+T.back_trail = async (s) => {
+	// 0.8.1017: user form (i) → "Changes to this user (log)" opens the log with its filter set but folded (?nf=1); Back leads to
+	// the page before (sessionStorage nunext-trail), not to the fixed parent; the same page again (paging) does not add a step
+	const p = s.ga;
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name LIKE 'sample_%' ORDER BY sus_login_name LIMIT 1");
+	if (!uid) { s.skip = 'no sample users'; return; }
+	await open(p, 'index.php?p=users');
+	await open(p, 'index.php?p=user&id=' + uid);
+	const userUrl = await p.evaluate(() => location.pathname + location.search);
+	const link = await p.evaluate(() => [...document.querySelectorAll('a')].map(a => a.getAttribute('href') || '').find(h => /p=log/.test(h) && /[?&]q=/.test(h)) || '');
+	expect(/[?&]nf=1/.test(link), 'record info link without nf=1: ' + link);
+	await open(p, link.replace(/^\/?/, ''));
+	const f = await p.evaluate(() => { const c = document.getElementById('nuLvFilters'); return c ? {show: c.classList.contains('show'), open: !!(c.offsetWidth || c.offsetHeight), min: c.getAttribute('data-nu-open-min')} : null; });
+	expect(f && !f.show && !f.open && !f.min, 'log filters shown at first: ' + JSON.stringify(f));
+	let back = await p.evaluate(() => document.querySelector('a.nuBackBtn')?.getAttribute('href'));
+	expect(back === userUrl, 'Back of the log is not the user form: ' + back + ' / ' + userUrl);
+	// the same page again (search / page 2) is no extra step
+	await open(p, 'index.php?p=log&q=zz_no_hit_e2e');
+	back = await p.evaluate(() => document.querySelector('a.nuBackBtn')?.getAttribute('href'));
+	expect(back === userUrl, 'a second log page became a step: ' + back);
+	await Promise.all([p.waitForNavigation(), p.click('a.nuBackBtn')]);
+	expect(/p=user&id=/.test(p.url()), 'Back did not open the user form: ' + p.url());
+	// back on the user form: its Back leads to the users list (the page before it), the log is no longer in the trail
+	back = await p.evaluate(() => [...document.querySelectorAll('a.btn.nuBtnAct')].find(a => a.firstElementChild?.classList.contains('bi-arrow-left'))?.getAttribute('href'));
+	expect(/p=users(&|$)/.test(back || ''), 'user form Back: ' + back);
+	// form runtime: a list → record → the record's Back = that list page as it was (here page 2 / a search)
+	await open(p, 'index.php?p=form&f=samplecustomer&q=a');
+	const rid = sql("SELECT sample_customer_id FROM sample_customer ORDER BY cus_code LIMIT 1");
+	if (rid) {
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + rid);
+		back = await p.evaluate(() => document.getElementById('nuBackButton')?.getAttribute('href'));
+		expect(/f=samplecustomer/.test(back || '') && /[?&]q=a/.test(back || ''), 'form Back: ' + back);
+		// a plain link to a page visited before is a new step, not a jump back: Back of the users list = this record
+		await open(p, 'index.php?p=users');
+		back = await p.evaluate(() => document.querySelector('a.nuBackBtn')?.getAttribute('href'));
+		expect(/f=samplecustomer&r=/.test(back || ''), 'users list opened again: Back ' + back);
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.user_ident_strip = async (s) => {
+	// 0.8.1018 / 0.8.1019: user form layout = Person card (initials + name in its header, name / e-mail / code fields) + three columns Organisation · Login · Access / Account
+	const p = s.ga;
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name LIKE 'sample_%' ORDER BY sus_login_name LIMIT 1");
+	if (!uid) { s.skip = 'no sample users'; return; }
+	await p.setViewportSize({ width: 1440, height: 900 });
+	try {
+		await open(p, 'index.php?p=user&id=' + uid);
+		const r = await p.evaluate(() => {
+			const top = (sel) => { const e = document.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().top) : null; };
+			const inStrip = ['sus_name', 'sus_first_name', 'sus_last_name', 'sus_email', 'sus_code'].every(id => document.getElementById(id)?.closest('.userIdentFields'));
+			const inOrg = ['sus_position', 'sus_department', 'sus_team', 'sus_additional1', 'sus_additional2'].every(id => document.getElementById(id)?.closest('.userCardOrg'));
+			return { inStrip, inOrg, head: !!document.querySelector('.userCardPerson .card-header #userAvatar'), ini: document.getElementById('userAvatarTxt')?.textContent, cols: [top('.userCardOrg'), top('.userCardLogin'), top('.userCardAccess')] };
+		});
+		expect(r.inStrip && r.inOrg && r.head, 'fields not in strip / Organisation, or initials not in the header: ' + JSON.stringify(r));
+		expect(r.cols[0] !== null && r.cols[0] === r.cols[1] && r.cols[1] === r.cols[2], 'three columns not side by side: ' + JSON.stringify(r.cols));
+		expect(/^\S{1,2}$/.test(r.ini || ''), 'initials: ' + r.ini);
+		await p.fill('#sus_first_name', 'Zoe'); await p.fill('#sus_last_name', 'Quinn');
+		expect(await p.textContent('#userAvatarTxt') === 'ZQ', 'initials do not follow the name');
+		await p.fill('#sus_first_name', ''); await p.fill('#sus_last_name', '');
+		await p.fill('#sus_name', 'Mia Lou Berg');
+		expect(await p.textContent('#userAvatarTxt') === 'MB', 'initials from the full name');
+		expect(/Mia Lou Berg/.test(await p.textContent('#userAvatarName')), 'name in the header does not follow');
+	} finally { await p.setViewportSize({ width: 1300, height: 900 }); await p.reload().catch(() => {}); }
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.form_tags = async (s) => {
+	// 0.8.1020: department / team of a form (sfo_json nunext) – saved through the draft, published, undo, other nunext keys kept,
+	// design panel fields with suggestions, forms list columns + filters, form spec of Form with AI
+	const p = s.ga, F = 'samplecustomer';
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-formtags.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_nunext_form_draft zzzzsys_nunext_form_history > ' + keep);
+	const json = () => { const j = sql("SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'"); try { return JSON.parse(j || '{}'); } catch (e) { return {}; } };
+	sql("UPDATE zzzzsys_form SET sfo_json = '{\"forte\":1,\"nunext\":{\"e2e_keep\":\"yes\"}}' WHERE zzzzsys_form_id = '" + F + "'");
+	try {
+		await open(p, 'index.php?p=form&f=' + F + '&design=1');
+		const api = (body) => p.evaluate(async (bd) => {
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': nuNext.csrf }, body: JSON.stringify(bd) });
+			return Object.assign({ status: r.status }, await r.json());
+		}, Object.assign({ form_id: F }, body));
+		let r = await api({ action: 'draft.start', note: 'e2e tags' });
+		if (!r.ok && r.draft) r = { ok: true, draft: r.draft };
+		expect(r.ok && r.draft, 'draft.start: ' + JSON.stringify(r).slice(0, 200));
+		const D = r.draft;
+		r = await api({ action: 'form.save', draft_id: D.id, rev: D.rev, fields: { department: '  E2E   Sales ', team: 'E2E North' } });
+		expect(r.ok, 'draft form.save: ' + (r.error || ''));
+		let j = json();
+		expect(!j.nunext.department, 'the draft changed the live form');
+		r = await api({ action: 'form.save', draft_id: D.id, rev: r.draft.rev, fields: { team: '' } });
+		r = await api({ action: 'draft.undo', draft_id: D.id, rev: r.draft.rev });
+		expect(r.ok, 'undo: ' + (r.error || ''));
+		r = await api({ action: 'draft.publish', draft_id: D.id, note: 'E2E tags' });
+		if (!r.ok && r.warnings) r = await api({ action: 'draft.publish', draft_id: D.id, note: 'E2E tags', warnings_ok: true });
+		expect(r.ok, 'publish: ' + (r.error || JSON.stringify(r).slice(0, 200)));
+		j = json();
+		expect(j.forte === 1 && j.nunext.e2e_keep === 'yes' && j.nunext.department === 'E2E Sales' && j.nunext.team === 'E2E North', 'published JSON: ' + JSON.stringify(j));
+		// design panel: the fields show the values, the suggestions list them
+		await open(p, 'index.php?p=form&f=' + F + '&design=1');
+		await p.waitForSelector('[data-key="nunext_department"]', { timeout: 10000 });
+		const ui = await p.evaluate(() => { const d = document.querySelector('[data-key="nunext_department"]'), dl = d && document.getElementById(d.getAttribute('list'));
+			return { v: d && d.value, t: document.querySelector('[data-key="nunext_team"]')?.value, opts: dl ? [...dl.options].map(o => o.value) : [] }; });
+		expect(ui.v === 'E2E Sales' && ui.t === 'E2E North' && ui.opts.includes('E2E Sales'), 'design panel: ' + JSON.stringify(ui));
+		// live save without a draft (empty = removed)
+		const live = await api({ action: 'form.save', fields: { team: '' } });
+		if (live.ok) { j = json(); expect(!('team' in j.nunext) && j.nunext.department === 'E2E Sales' && j.nunext.e2e_keep === 'yes', 'live save: ' + JSON.stringify(j)); }
+		// forms list: column + filter
+		await open(p, 'index.php?p=forms&view=all&department=' + encodeURIComponent('E2E Sales'));
+		const lst = await p.evaluate(() => ({ rows: document.querySelectorAll('.nuListCard tbody tr[data-href], .nuListCard tbody tr').length, txt: document.querySelector('.nuListCard tbody')?.textContent || '',
+			opts: [...document.querySelectorAll('select[name="department"] option')].map(o => o.value) }));
+		expect(lst.txt.includes('E2E Sales') && lst.opts.includes('E2E Sales') && lst.opts.includes('-'), 'forms list filter: ' + JSON.stringify(lst).slice(0, 300));
+		await open(p, 'index.php?p=forms&view=all&department=-');
+		expect(!(await p.evaluate(() => document.querySelector('.nuListCard tbody')?.textContent || '')).includes('E2E Sales'), '(none) filter shows the tagged form');
+		// Form with AI: the spec carries them
+		await open(p, 'index.php?p=formai&f=' + F);
+		const spec = await p.evaluate(async (f) => {
+			const b = new URLSearchParams({ _csrf: document.querySelector('#faForm input[name=_csrf]').value, action: 'context', kind: 'form', fmt: 'md', full: '0' });
+			return (await fetch('index.php?p=formai&f=' + f, { method: 'POST', body: b, credentials: 'same-origin' })).text();
+		}, F);
+		expect(/"department":\s*"E2E Sales"/.test(spec), 'form spec without department');
+	} finally {
+		execSync('mysql ' + DB, { input: require('fs').readFileSync(keep) });
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.sessions_phone_cards = async (s) => {
+	// 0.8.1021: Logged-in users on phones = one card per user (status, login, badges, Logged in / Last activity, log out);
+	// IP and browser only on the unfolded sessions; desktop keeps the table
+	const ctx = await s.ga.context().browser().newContext({ viewport: { width: 390, height: 844 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		await p.goto(BASE + 'index.php?p=sessions');
+		const r = await p.evaluate(() => {
+			const tr = document.querySelector('#sessTable tbody tr:not(.nuSessChild)');
+			const vis = (el) => !!el && getComputedStyle(el).display !== 'none';
+			return { head: vis(document.querySelector('#sessTable thead')), grid: tr && getComputedStyle(tr).display,
+				ip: vis(tr && tr.querySelector('td.sIp')), agent: vis(tr && tr.querySelector('td.sAgent')),
+				label: tr ? getComputedStyle(tr.querySelector('td.sLast'), '::before').content : '', wide: document.documentElement.scrollWidth };
+		});
+		expect(!r.head && r.grid === 'grid' && !r.ip && !r.agent && /Last activity|Letzte/.test(r.label) && r.wide <= 390, 'phone cards: ' + JSON.stringify(r));
+	} finally { await ctx.close(); }
+	// desktop: still the table
+	await open(s.ga, 'index.php?p=sessions');
+	expect(await s.ga.evaluate(() => getComputedStyle(document.querySelector('#sessTable thead')).display) !== 'none', 'desktop lost the table head');
+};
+
+T.prompt_next_links = async (s) => {
+	// 0.8.1014 / 0.8.1015: the prompt generator points to nuBuilder Next's repository (+ the Forte wiki, mostly valid) (function reference, docs pages, source) – not to nuBuilder
+	// Forte's wiki / repository; a record that still holds the old default instruction gets the new one
+	const p = s.ga;
+	await open(p, 'index.php?p=prompts&id=new&lang=' + encodeURIComponent('["nuphp","nujavascript","mysql"]'));
+	await p.waitForSelector('#pgResult');
+	const pr = await p.inputValue('#pgResult');
+	for (const part of ['nuBuilder-Next/refs/heads/main/docs/nunext-functions.json', 'docs/pages/10-01-php-api.htm', 'assets/js/nu/nuruntime.js', 'for nuBuilder Next'])
+		expect(pr.includes(part), 'prompt without ' + part);
+	expect(!/nuBuilder\/nuBuilder\/|nucommon\.php/.test(pr), 'prompt still links nuBuilder Forte source files: ' + pr.slice(0, 400));
+	expect(/\[nuBuilder Forte wiki\]\(https:\/\/wiki\.nubuilder\.cloud\/index\.php\?title=PHP\)/.test(pr), 'Forte wiki link missing (still mostly valid)');
+	const id = 'e2e_pg_old';
+	sql("DELETE FROM zzzzsys_prompt_generator WHERE zzzzsys_prompt_generator_id = '" + id + "'");
+	sql("INSERT INTO zzzzsys_prompt_generator (zzzzsys_prompt_generator_id, pge_code, pge_prompt, pge_instruction, pge_language) VALUES ('" + id + "', 'e2e_pg_old', 'Test', "
+		+ "'Generate code snippets and explanations following nuBuilder conventions. Use the information below when relevant to the request. This context is provided to help understand the requirements. If something is unclear or missing, say so instead of guessing.', '[\"nuphp\"]')");
+	try {
+		await open(p, 'index.php?p=prompts&id=' + id);
+		await p.waitForSelector('#pgResult');
+		const r = await p.evaluate(() => ({ins: document.getElementById('pge_instruction').value, res: document.getElementById('pgResult').value}));
+		expect(/for nuBuilder Next/.test(r.ins) && /for nuBuilder Next/.test(r.res) && !/following nuBuilder conventions/.test(r.res), 'old instruction kept: ' + r.ins);
+	} finally { sql("DELETE FROM zzzzsys_prompt_generator WHERE zzzzsys_prompt_generator_id = '" + id + "'"); }
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.ai_context = async (s) => {
 	// 0.8.961: Form with AI / Ask AI "Download context" – one .md or a zip with the format, tables (structure only), forms, example forms,
 	// hash variables, guide pages and the function reference (compact / full); no data rows; the prompt points to the file
@@ -13773,6 +13983,182 @@ T.home_no_twin_tiles = async (s) => {
 	}
 };
 
+T.user_help = async (s) => {
+	// 0.8.1023: user help pages – editor (TinyMCE / textarea), cleaning, access levels of a page, [[level]] / [[not]] / [[else]] parts,
+	// hash variables, #help= links, translations, reader + search + view as, ? button / F1 / (?) of a field with the side panel, design
+	// mode fields, palette, export / import
+	const p = s.ga, F = 'samplecustomer';
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-userhelp.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_object zzzzsys_nunext_form_draft zzzzsys_nunext_form_history > ' + keep);
+	sql('DELETE FROM zzzzsys_nunext_help');
+	const post = (url, fields) => p.evaluate(async ([u, f]) => {
+		const fd = new FormData(); fd.append('_csrf', document.querySelector('input[name=_csrf]').value);
+		for (const [k, v] of Object.entries(f)) { if (Array.isArray(v)) v.forEach(x => fd.append(k + '[]', x)); else fd.append(k, v); }
+		const r = await fetch(u, { method: 'POST', body: fd, redirect: 'follow' }); return { status: r.status, url: r.url, text: await r.text() };
+	}, [url, fields]);
+	try {
+		// editor: a new page through the form (visual editor when the pack is there, else the text field)
+		await open(p, 'index.php?p=helppages&id=new');
+		await p.fill('#uhTitle', 'E2E customers'); await p.fill('#uhCode', 'e2e_cust');
+		const body = '<p>Hello #USER_FIRST_NAME#.</p><p>[[level: sample_sales]]</p><p>E2E sales part.</p><p>[[else]]</p><p>E2E other part.</p><p>[[/level]]</p>'
+			+ '<p>[[not: sample_viewer]]</p><p>E2E not for viewers.</p><p>[[/not]]</p><p><a href="#help=e2e_orders">E2E link</a> <a href="#help=e2e_secret">E2E secret link</a></p>'
+			+ '<script>window.e2eBad=1</script><p onclick="x()">E2E click</p><img src="javascript:alert(1)"><p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" alt="E2E pic"></p>';
+		const tiny = await p.waitForFunction(() => window.tinymce && tinymce.activeEditor && tinymce.activeEditor.initialized, null, { timeout: 8000 }).then(() => true, () => false);
+		if (tiny) await p.evaluate((b) => tinymce.activeEditor.setContent(b), body); else await p.fill('#uhBody', body);
+		await Promise.all([p.waitForNavigation(), p.click('#uhSave')]);
+		const stored = sql("SELECT body FROM zzzzsys_nunext_help WHERE code = 'e2e_cust' AND lang = ''");
+		expect(stored.includes('[[level: sample_sales]]') && !/script|onclick|javascript:/i.test(stored), 'cleaned body: ' + stored.slice(0, 300));
+		const base = sql("SELECT zzzzsys_nunext_help_id FROM zzzzsys_nunext_help WHERE code = 'e2e_cust' AND lang = ''");
+		// pictures become files (0.8.1024): custom/userhelp/<sha256>.png, served to signed-in users only; an upload that is no picture is refused
+		const pic = (stored.match(/userhelpimg&(?:amp;)?f=([a-f0-9]{64}\.png)/) || [])[1];
+		expect(pic && !stored.includes('data:image') && (!SITE || fs.existsSync(path.join(SITE, 'custom/userhelp', pic))), 'picture as file: ' + stored.slice(-300));
+		const picSt = await p.evaluate(async (n) => { const r = await fetch('index.php?p=userhelpimg&f=' + n); return [r.status, r.headers.get('content-type')]; }, pic);
+		expect(picSt[0] === 200 && picSt[1] === 'image/png', 'picture served: ' + picSt);
+		const anon = await p.context().browser().newContext();
+		try {
+			const ap = await anon.newPage();
+			const ar = await ap.request.get(BASE + 'index.php?p=userhelpimg&f=' + pic, { maxRedirects: 0 });
+			expect(!(ar.status() === 200 && (ar.headers()['content-type'] || '').startsWith('image/')), 'picture served without a session');
+		} finally { await anon.close(); }
+		const bad = await p.evaluate(async () => {
+			const fd = new FormData(); fd.append('_csrf', document.querySelector('input[name=_csrf]').value); fd.append('action', 'upload_image');
+			fd.append('file', new Blob(['<?php echo 1;'], { type: 'image/png' }), 'x.png');
+			return (await fetch('index.php?p=helppages', { method: 'POST', body: fd })).status;
+		});
+		expect(bad === 400, 'non-picture upload: ' + bad);
+		// more pages: a linked one, a restricted one (only sample_editor), a draft; a German translation
+		let r = await post('index.php?p=helppages&id=new', { action: 'save', code: 'e2e_orders', title: 'E2E orders', body: '<p>E2E orders text with keyword zebrafish.</p>', format: 'html', parent: 'e2e_cust', active: '1', sort_order: '1' });
+		expect(r.status === 200, 'second page: ' + r.status);
+		await post('index.php?p=helppages&id=new', { action: 'save', code: 'e2e_secret', title: 'E2E secret', body: '<p>E2E secret text.</p>', format: 'html', active: '1', access: ['sample_editor'] });
+		await post('index.php?p=helppages&id=new', { action: 'save', code: 'e2e_draft', title: 'E2E draft', body: '# E2E markdown\n\nE2E **bold** [orders](#help=e2e_orders)', format: 'md', active: '0' });
+		await post('index.php?p=helppages&id=new&tr=e2e_orders&lang=de', { action: 'save', lang: 'de', title: 'E2E Bestellungen', body: '<p>E2E deutscher Text.</p>', format: 'html' });
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_help") === '5', 'rows: ' + sql("SELECT GROUP_CONCAT(code, '/', lang) FROM zzzzsys_nunext_help"));
+		// errors: duplicate code, parent loop
+		r = await post('index.php?p=helppages&id=new', { action: 'save', code: 'e2e_orders', title: 'x', body: '', format: 'html' });
+		expect(r.text.includes('is-invalid'), 'duplicate code accepted');
+		r = await post('index.php?p=helppages&id=' + base, { action: 'save', code: 'e2e_cust', title: 'E2E customers', body: stored, format: 'html', parent: 'e2e_orders', active: '1' });
+		expect(r.text.includes('is-invalid'), 'parent loop accepted');
+		// list
+		await open(p, 'index.php?p=helppages');
+		const lst = await p.evaluate(() => document.querySelector('.nuListCard tbody')?.textContent || '');
+		expect(lst.includes('E2E customers') && lst.includes('E2E draft') && !lst.includes('E2E Bestellungen'), 'list: ' + lst.slice(0, 200));
+		// link the pages: form + tab (live save), a field
+		await open(p, 'index.php?p=form&f=' + F + '&design=1');
+		const api = (b) => p.evaluate(async (bd) => {
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': nuNext.csrf }, body: JSON.stringify(bd) });
+			return Object.assign({ status: r.status }, await r.json());
+		}, Object.assign({ form_id: F }, b));
+		await p.waitForSelector('[data-key="nunext_help"]', { timeout: 10000 });
+		r = await api({ action: 'form.save', fields: { help: 'e2e_cust', help_tabs: { sample_customer_t2: 'e2e_orders' } } });
+		expect(r.ok, 'form.save help: ' + (r.error || JSON.stringify(r).slice(0, 200)));
+		const oid = sql("SELECT zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '" + F + "' AND sob_all_id = 'cus_email'");
+		r = await api({ action: 'object.save', object_id: oid, fields: { nunext_help: 'e2e_orders' } });
+		expect(r.ok, 'object.save help: ' + (r.error || ''));
+		const fj = JSON.parse(sql("SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'") || '{}');
+		expect(fj.nunext && fj.nunext.help === 'e2e_cust' && fj.nunext.help_tabs.sample_customer_t2 === 'e2e_orders', 'sfo_json: ' + JSON.stringify(fj));
+		expect(JSON.parse(sql("SELECT sob_all_json FROM zzzzsys_object WHERE zzzzsys_object_id = '" + oid + "'")).nunext.help === 'e2e_orders', 'sob_all_json');
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1');
+		await p.waitForSelector('[data-key="nunext_help"]', { timeout: 10000 });
+		const dsv = await p.evaluate(() => ({ v: document.querySelector('[data-key="nunext_help"]').value, tab: document.querySelector('[data-key="nunext_help_tab_sample_customer_t2"]')?.value,
+			opts: [...(document.getElementById('nuDsHelpList')?.options || [])].map(o => o.value) }));
+		expect(dsv.v === 'e2e_cust' && dsv.tab === 'e2e_orders' && dsv.opts.includes('e2e_secret'), 'design fields: ' + JSON.stringify(dsv));
+		// usage on the editor
+		await open(p, 'index.php?p=helppages&id=' + base);
+		expect((await p.textContent('#uhUsage')).length > 3, 'usage empty');
+		// a user of sample_sales: panel, conditions, field mark, F1, the tab's page
+		const dario = await login('sample_dario', UPW);
+		try {
+			await open(dario, 'index.php?p=form&f=' + F + '&r=sample_cus_01');
+			expect(await dario.isVisible('#nuHelpButton'), 'no ? button: ' + (await dario.evaluate(() => (document.getElementById('nuHelpButton')?.outerHTML || 'none') + ' | ' + location.href + ' | ' + document.body.innerText.slice(0, 200))));
+			await dario.click('#nuHelpButton');
+			await dario.waitForSelector('#nuUhPanelBody p', { timeout: 8000 });
+			const pan = await dario.evaluate(() => ({ t: document.getElementById('nuUhPanelTitle').textContent, b: document.getElementById('nuUhPanelBody').textContent,
+				links: [...document.querySelectorAll('#nuUhPanelBody > p a[data-nu-uhelp]')].map(a => a.getAttribute('data-nu-uhelp')), cond: document.querySelectorAll('#nuUhPanelBody .nuUhCond').length }));
+			expect(pan.t === 'E2E customers' && pan.b.includes('E2E sales part') && !pan.b.includes('E2E other part') && pan.b.includes('E2E not for viewers') && pan.cond === 0
+				&& !pan.b.includes('#USER_FIRST_NAME#') && pan.links.join() === 'e2e_orders' && pan.b.includes('E2E secret link'), 'panel (sales): ' + JSON.stringify(pan));
+			await dario.click('#nuUhPanelBody > p a[data-nu-uhelp="e2e_orders"]');
+			await dario.waitForFunction(() => document.getElementById('nuUhPanelTitle').textContent === 'E2E orders', null, { timeout: 8000 });
+			expect(await dario.isVisible('#nuUhPanelBack'), 'no back in the panel');
+			await dario.keyboard.press('Escape');
+			expect(await dario.isHidden('#nuUhPanel'), 'Esc did not close');
+			// field mark with the first paragraph as tooltip
+			const tip = await dario.evaluate(() => { const t = document.querySelector('#label_cus_email .nuUhTip'); return t ? t.getAttribute('title') : null; });
+			expect(tip && tip.includes('zebrafish'), 'field mark: ' + tip);
+			// the Details tab has its own page; F1 opens it
+			await dario.click('.nuTab[data-nu-tab-id="sample_customer_t2"]');
+			await dario.keyboard.press('F1');
+			await dario.waitForFunction(() => document.getElementById('nuUhPanelTitle')?.textContent === 'E2E orders', null, { timeout: 8000 });
+			// reader: no secret page, no draft; search
+			await open(dario, 'index.php?p=userhelp');
+			const nav = await dario.evaluate(() => [...document.querySelectorAll('.nuUhNavLink')].map(a => a.dataset.code));
+			expect(nav.includes('e2e_cust') && nav.includes('e2e_orders') && !nav.includes('e2e_secret') && !nav.includes('e2e_draft'), 'reader nav: ' + nav);
+			await open(dario, 'index.php?p=userhelp&c=e2e_secret');
+			expect(await dario.isVisible('#nuUhNone') && !(await dario.textContent('body')).includes('E2E secret text'), 'secret page shown');
+			await open(dario, 'index.php?p=userhelp&q=zebrafish');
+			expect((await dario.textContent('#nuUhHits')).includes('E2E orders'), 'search');
+			expect(await dario.isVisible('#nuMenuUserHelp') || (await dario.locator('#nuMenuUserHelp').count()) > 0, 'user menu entry');
+			expect(dario.errors.length === 0, dario.errors.join(' | '));
+		} finally { await dario.context().close(); }
+		// sample_anna (viewer): the else part, not the "not for viewers" part
+		const anna = await login('sample_anna', UPW);
+		try {
+			const j = await anna.evaluate(async () => (await fetch('index.php?p=userhelp&c=e2e_cust&frag=1')).json());
+			expect(j.ok && j.html.includes('E2E other part') && !j.html.includes('E2E sales part') && !j.html.includes('E2E not for viewers'), 'viewer: ' + JSON.stringify(j).slice(0, 300));
+		} finally { await anna.context().close(); }
+		// editor view: marked parts, draft and secret pages, view as
+		await open(p, 'index.php?p=userhelp&c=e2e_cust');
+		expect(await p.locator('#nuUhArticle .nuUhCond').count() === 3, 'editor marks');
+		await open(p, 'index.php?p=userhelp&c=e2e_cust&as=sample_viewer');
+		const asv = await p.textContent('#nuUhArticle');
+		expect(asv.includes('E2E other part') && !asv.includes('E2E sales part') && await p.locator('#nuUhArticle .nuUhCond').count() === 0, 'view as viewer');
+		await open(p, 'index.php?p=userhelp&c=e2e_draft');
+		expect((await p.innerHTML('#nuUhArticle')).includes('<b>bold</b>') && await p.locator('#nuUhArticle a[data-nu-uhelp="e2e_orders"]').count() === 1, 'markdown page');
+		// German translation
+		await p.goto(BASE + 'index.php?p=lang&l=de-DE&r=' + encodeURIComponent('p=home'));
+		const de = await p.evaluate(async () => (await fetch('index.php?p=userhelp&c=e2e_orders&frag=1')).json());
+		await p.goto(BASE + 'index.php?p=lang&l=en-GB&r=' + encodeURIComponent('p=home'));
+		expect(de.title === 'E2E Bestellungen' && de.html.includes('deutscher'), 'translation: ' + JSON.stringify(de).slice(0, 200));
+		// 0.8.1025: Draft with AI – related screens of a form (sub-form ticked, lookup offered) and their fields in the prompt
+		const rel = JSON.parse((await post('index.php?p=helppages', { action: 'related', form: 'sampleorder' })).text);
+		const rSf = (rel.related || []).find(x => x.id === 'sampleorderitem'), rLu = (rel.related || []).find(x => x.id === 'samplecustomer');
+		expect(rel.ok && rSf && rSf.kind === 'subform' && rSf.on && rLu && rLu.kind === 'lookup' && !rLu.on && rLu.kind_text, 'related: ' + JSON.stringify(rel).slice(0, 300));
+		const pr = JSON.parse((await post('index.php?p=helppages', { action: 'ai_prompt', form: 'sampleorder', related: ['sampleorderitem'] })).text);
+		const prompt = pr.prompt || '';
+		expect(/## Related:/.test(prompt) && prompt.split('## Related:').length === 2, 'prompt without the related screen: ' + prompt.slice(0, 400));
+		await open(p, 'index.php?p=helppages&id=new');
+		if (await p.locator('#uhAiForm').count()) {
+			await p.evaluate(() => { const s = document.getElementById('uhAiForm'); s.value = 'sampleorder'; s.dispatchEvent(new Event('change', { bubbles: true })); if (s.tomselect) s.tomselect.setValue('sampleorder'); });
+			await p.waitForSelector('#uhAiRel .uhAiRelChk', { state: 'attached', timeout: 5000 });
+			expect(await p.locator('#uhAiRel .uhAiRelChk[value="sampleorderitem"]:checked').count() === 1, 'related checkbox of the sub-form not ticked');
+		}
+		// palette
+		const pal = await p.evaluate(async () => (await fetch('index.php?p=palette')).json());
+		expect(JSON.stringify(pal).includes('h:e2e_cust'), 'palette entry missing');
+		// export → delete → import
+		const exp = await p.evaluate(async () => (await fetch('index.php?p=helppages&export=1')).text());
+		const ej = JSON.parse(exp);
+		expect(ej.pages.some(x => x.code === 'e2e_cust' && x.body.includes('data:image/png;base64,')), 'export without the picture inside');
+		expect(ej.format === 'nunext-help-1' && ej.pages.length === 5 && ej.pages.some(x => x.code === 'e2e_secret' && x.access.includes('sample_editor')), 'export: ' + exp.slice(0, 200));
+		sql("DELETE FROM zzzzsys_nunext_help");
+		const imp = await p.evaluate(async (txt) => {
+			const fd = new FormData(); fd.append('_csrf', document.querySelector('input[name=_csrf]').value); fd.append('action', 'import');
+			fd.append('file', new Blob([txt], { type: 'application/json' }), 'h.json');
+			return (await fetch('index.php?p=helppages', { method: 'POST', body: fd })).status;
+		}, exp);
+		expect(imp === 200 && sql("SELECT COUNT(*) FROM zzzzsys_nunext_help") === '5' && sql("SELECT parent FROM zzzzsys_nunext_help WHERE code = 'e2e_orders' AND lang = ''") === 'e2e_cust'
+			&& sql("SELECT access FROM zzzzsys_nunext_help WHERE code = 'e2e_secret'").includes('sample_editor'), 'import');
+		expect(sql("SELECT body FROM zzzzsys_nunext_help WHERE code = 'e2e_cust'").includes('userhelpimg'), 'import: picture as file again');
+		// delete a page with its translation
+		const oidOrders = sql("SELECT zzzzsys_nunext_help_id FROM zzzzsys_nunext_help WHERE code = 'e2e_orders' AND lang = ''");
+		await post('index.php?p=helppages&id=' + oidOrders, { action: 'delete' });
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_help WHERE code = 'e2e_orders'") === '0', 'delete with translations');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+		sql('DELETE FROM zzzzsys_nunext_help');
+	}
+};
+
 T.recent_tile_default_layout = async (s) => {
 	// 0.8.940 (bug report): a start page tile opened while the built-in default layout is in use (custom tiles = an empty object) was not
 	// recorded as recently used – "Cannot use object of type stdClass as array" in the server log
@@ -13792,6 +14178,103 @@ T.recent_tile_default_layout = async (s) => {
 	} finally {
 		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
 	}
+};
+
+T.row_details = async (s) => {                           // 0.8.1027: row details of form lists (core/form/nurowdetails.php)
+	const p = s.ga;
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") || sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") === '0') { s.skip = 'no sample data'; return; }
+	const keep = sql("SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'");
+	try {
+		await open(p, 'index.php?p=form&f=sampleorder');
+		expect(await p.locator('#nuBrowseTable .nuDetBtn').count() === 0, 'details column without the setting');
+		// set through the design API (live form: no draft open)
+		const api = (bd) => p.evaluate(async (b) => {
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': nuNext.csrf }, body: JSON.stringify(b) });
+			return Object.assign({ status: r.status }, await r.json());
+		}, Object.assign({ form_id: 'sampleorder' }, bd));
+		let r = await api({ action: 'form.save', fields: { details: { cols: true, sub: 'sample_items' } } });
+		if (r.draft && r.draft.id) { await api({ action: 'draft.publish', draft_id: r.draft.id, rev: r.draft.rev, note: 'e2e' }); }
+		const stored = sql("SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'");
+		expect(/"details":\{"cols":true,"sub":"sample_items"\}/.test(stored), 'stored: ' + stored + ' / ' + JSON.stringify(r).slice(0, 200));
+		await open(p, 'index.php?p=form&f=sampleorder');
+		const n = await p.locator('#nuBrowseTable tbody tr.nuBrowseRow .nuDetBtn').count();
+		expect(n > 0, 'no ▸ buttons');
+		const pk = await p.locator('#nuBrowseTable tbody tr.nuBrowseRow').first().getAttribute('data-nu-primary-key');
+		const items = +sql(`SELECT COUNT(*) FROM sample_order_item WHERE ori_sample_order_id = '${pk}'`);
+		const url0 = p.url();
+		await p.locator('#nuBrowseTable tbody tr.nuBrowseRow .nuDetBtn').first().click();
+		await p.waitForSelector('#nuBrowseTable tr.nuDetRow .nuDetRel .nuDetRelHead, #nuBrowseTable tr.nuDetRow .nuDetRel:not(:empty)', { timeout: 8000 });
+		await p.waitForTimeout(300);
+		expect(p.url() === url0, 'the ▸ opened the record');
+		const det = await p.evaluate(() => { const d = document.querySelector('#nuBrowseTable tr.nuDetRow'); return { cols: [...d.querySelectorAll('.nuDetCols dt')].map(x => x.textContent), head: (d.querySelector('.nuDetRelHead') || {}).textContent || '', rows: d.querySelectorAll('.nuDetTable tbody tr').length, text: d.textContent }; });
+		expect(det.cols.includes('Customer id'), 'hidden column missing: ' + JSON.stringify(det.cols));
+		expect(det.rows === Math.min(items, 10) && det.head.includes('(' + items + ')'), 'related rows: ' + JSON.stringify(det) + ' items ' + items);
+		// lookup shown by its description, not the id
+		const prodId = sql(`SELECT ori_sample_product_id FROM sample_order_item WHERE ori_sample_order_id = '${pk}' LIMIT 1`);
+		if (prodId) expect(!det.text.includes(prodId), 'lookup id shown instead of the product');
+		// keyboard: Space closes, → opens, ← closes
+		await p.focus('#nuBrowseTable tbody tr.nuBrowseRow >> nth=0');
+		await p.keyboard.press(' ');
+		expect(await p.locator('#nuBrowseTable tr.nuDetRow').count() === 0, 'Space did not close');
+		await p.keyboard.press('ArrowRight');
+		await p.waitForSelector('#nuBrowseTable tr.nuDetRow', { timeout: 5000 });
+		await p.keyboard.press('ArrowDown');
+		expect(await p.evaluate(() => document.activeElement.classList.contains('nuBrowseRow') && document.activeElement.getAttribute('data-nu-row') === '1'), '↓ did not skip the details row');
+		await p.keyboard.press('ArrowUp'); await p.keyboard.press('ArrowLeft');
+		expect(await p.locator('#nuBrowseTable tr.nuDetRow').count() === 0, '← did not close');
+		// design mode → Browse list: the two settings show the stored values
+		await open(p, 'index.php?p=form&f=sampleorder&design=1&dswork=list');
+		await p.waitForSelector('#nuDsListFly [data-key="details_sub"]', { timeout: 8000 });
+		expect(await p.$eval('#nuDsListFly [data-key="details_sub"]', x => x.value) === 'sample_items' && await p.$eval('#nuDsListFly [data-key="details_cols"]', x => x.checked), 'design mode settings');
+		// rights: a user without the form gets 403
+		const u = await login('sample_anna', UPW);
+		const denied = await u.evaluate(async () => {
+			const r = await fetch('index.php?p=formapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': (window.nuNext || {}).csrf || (document.querySelector('input[name=_csrf]') || {}).value || '' }, body: JSON.stringify({ action: 'details', form_id: 'nuuser', record_id: 'x' }) });
+			return r.status;
+		}).catch(() => 403);
+		await u.context().close();
+		expect(denied === 403, 'details of a form without rights: ' + denied);
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, { input: "UPDATE zzzzsys_form SET sfo_json = " + (keep === '' ? 'NULL' : "'" + keep.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'") + " WHERE zzzzsys_form_id = 'sampleorder'" });
+		sql("DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = 'sampleorder'");
+	}
+};
+
+T.list_keynav = async (s) => {                           // 0.8.1026: keyboard navigation in lists (assets/js/nuapp.js)
+	const p = s.ga;
+	const act = () => p.evaluate(() => { const a = document.activeElement; return a && a.tagName === 'TR' ? (a.getAttribute('data-href') || a.getAttribute('data-nu-primary-key') || '?') : (a ? a.id || a.tagName : ''); });
+	// system list: search ↓ → first row, ↓, End, Home, one tab stop, Enter opens, Back has the row again
+	await open(p, 'index.php?p=users');
+	const hrefs = await p.$$eval('#main table tbody tr[data-href]', r => r.map(x => x.getAttribute('data-href')));
+	expect(hrefs.length >= 3, 'users list rows: ' + hrefs.length);
+	await p.focus('#q'); await p.keyboard.press('ArrowDown');
+	expect(await act() === hrefs[0], 'search ↓: ' + await act());
+	await p.keyboard.press('ArrowDown'); expect(await act() === hrefs[1], '↓: ' + await act());
+	await p.keyboard.press('End'); expect(await act() === hrefs[hrefs.length - 1], 'End: ' + await act());
+	await p.keyboard.press('Home'); expect(await act() === hrefs[0], 'Home: ' + await act());
+	await p.keyboard.press('ArrowDown');
+	expect(await p.$$eval('#main table tbody tr[data-href]', r => r.filter(x => x.tabIndex === 0).length) === 1, 'more than one tab stop');
+	expect(await p.evaluate(() => getComputedStyle(document.activeElement).outlineStyle) === 'solid', 'focused row without an outline');
+	await Promise.all([p.waitForNavigation(), p.keyboard.press('Enter')]);
+	expect(p.url().includes(hrefs[1].replace(/^.*\?/, '')), 'Enter opened: ' + p.url());
+	await p.goBack(); await p.waitForLoadState('networkidle');
+	expect(await act() === hrefs[1], 'back: row not focused again: ' + await act());
+	await p.keyboard.press('Escape'); expect(await act() === 'q', 'Esc → search: ' + await act());
+	// form list: PageDown / PageUp through the pager, Enter (nuruntime.js) opens the record
+	await open(p, 'index.php?p=form&f=samplecustomer&per=5');
+	await p.focus('#nuSearchField'); await p.keyboard.press('ArrowDown');
+	const pk1 = await act();
+	const firstPk = await p.$eval('#nuBrowseTable tbody tr.nuBrowseRow', r => r.getAttribute('data-nu-primary-key'));
+	expect(pk1 === firstPk, 'form list ↓: ' + pk1 + ' / ' + firstPk);
+	await p.keyboard.press('PageDown');
+	await p.waitForFunction((k) => { const a = document.activeElement; return a && a.tagName === 'TR' && a.getAttribute('data-nu-primary-key') !== k; }, pk1, { timeout: 8000 });
+	expect(/pg=2|page=2|p=2/.test(p.url()) || await p.$eval('.nuPager', n => /2/.test(n.textContent)), 'PageDown: ' + p.url());
+	await p.keyboard.press('PageUp');
+	await p.waitForFunction(() => { const a = document.activeElement; return a && a.tagName === 'TR'; }, null, { timeout: 8000 });
+	const rows1 = await p.$$eval('#nuBrowseTable tbody tr.nuBrowseRow', r => r.map(x => x.getAttribute('data-nu-primary-key')));
+	expect(await act() === rows1[rows1.length - 1], 'PageUp: last row of the page before: ' + await act());
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 T.js_errors = async (s) => {

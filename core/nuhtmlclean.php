@@ -182,4 +182,99 @@ final class NuHtmlClean
 		if ($st === '' || strlen($st) > 500 || preg_match('~url\s*\(|expression|javascript:|@import|behavior|-moz-binding|[\\\\<>]~i', $st)) return '';
 		return $st;
 	}
+
+	// ------------------------------------------------------------------ user help pages (0.8.1023, core/nuuserhelp.php)
+
+	/** Elements a user help page may hold (TinyMCE output): text, headings, lists, tables, images, links, code. */
+	public const DOC_TAGS = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'ins', 'sub', 'sup', 'small', 'mark', 'kbd', 'code', 'pre', 'abbr',
+		'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'dl', 'dt', 'dd', 'a', 'img', 'figure', 'figcaption', 'blockquote', 'hr', 'span', 'div',
+		'table', 'caption', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'colgroup', 'col', 'details', 'summary'];
+	private const DOC_ATTRS = ['class', 'id', 'title', 'alt', 'width', 'height', 'colspan', 'rowspan', 'scope', 'start', 'type', 'open', 'span'];
+
+	/**
+	 * A user help page as safe HTML: DOC_TAGS with harmless attributes; links = safeLink, "#help=<code>" and "#anchor"; images = http(s),
+	 * data:image (base64) or a relative path; inline styles are dropped (the strict CSP would ignore them) – text-align and the float of
+	 * images become classes nuUhAl-<left|center|right|justify> / nuUhFl-<l|r>, a pixel width of an image its width attribute.
+	 */
+	public static function doc(string $html): string
+	{
+		if (trim($html) === '') return '';
+		$dom = new DOMDocument();
+		$prev = libxml_use_internal_errors(true);
+		$dom->loadHTML('<?xml encoding="utf-8"?><div id="nuCleanRoot">' . $html . '</div>', LIBXML_NONET | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+		libxml_clear_errors();
+		libxml_use_internal_errors($prev);
+		$root = null;
+		foreach ($dom->getElementsByTagName('div') as $d) { if ($d->getAttribute('id') === 'nuCleanRoot') { $root = $d; break; } }
+		if (!$root) return h(strip_tags($html));
+		self::walkDoc($root);
+		$out = '';
+		foreach ($root->childNodes as $c) $out .= $dom->saveHTML($c);
+		return trim($out);
+	}
+
+	private static function walkDoc(DOMNode $node): void
+	{
+		foreach (iterator_to_array($node->childNodes) as $c) {
+			if ($c instanceof DOMElement) {
+				$tag = strtolower($c->tagName);
+				if (in_array($tag, self::DROP, true) && $tag !== 'img') { $node->removeChild($c); continue; }
+				self::walkDoc($c);
+				if (!in_array($tag, self::DOC_TAGS, true)) {
+					while ($c->firstChild) $node->insertBefore($c->firstChild, $c);
+					$node->removeChild($c);
+					continue;
+				}
+				$keep = [];
+				foreach (self::DOC_ATTRS as $a) if ($c->hasAttribute($a)) $keep[$a] = trim($c->getAttribute($a));
+				$cls = isset($keep['class']) && preg_match('~^[\w\s-]{0,200}$~', $keep['class']) ? preg_split('~\s+~', $keep['class'], -1, PREG_SPLIT_NO_EMPTY) : [];
+				$cls = array_values(array_filter($cls, static fn($x) => !str_starts_with($x, 'nu') || str_starts_with($x, 'nuUh')));   // no app classes
+				$style = strtolower($c->getAttribute('style'));
+				if (preg_match('~text-align\s*:\s*(left|center|right|justify)~', $style, $m)) $cls[] = 'nuUhAl-' . $m[1];
+				if ($tag === 'img' && preg_match('~float\s*:\s*(left|right)~', $style, $m)) $cls[] = 'nuUhFl-' . $m[1][0];
+				if ($tag === 'img' && !isset($keep['width']) && preg_match('~(?:^|;)\s*width\s*:\s*(\d{1,4})px~', $style, $m)) $keep['width'] = $m[1];
+				if (($tag === 'img' || $tag === 'figure') && preg_match('~margin-left\s*:\s*auto~', $style) && preg_match('~margin-right\s*:\s*auto~', $style)) $cls[] = 'nuUhAl-center';
+				if ($cls) $keep['class'] = implode(' ', array_unique($cls)); else unset($keep['class']);
+				if (isset($keep['id']) && !preg_match('~^[A-Za-z][\w-]{0,60}$~', $keep['id'])) unset($keep['id']);
+				foreach (['width', 'height'] as $a) if (isset($keep[$a]) && !preg_match('~^\d{1,4}(%)?$~', $keep[$a])) unset($keep[$a]);
+				foreach (['colspan', 'rowspan', 'start', 'span'] as $a) if (isset($keep[$a]) && !preg_match('~^\d{1,3}$~', $keep[$a])) unset($keep[$a]);
+				if (isset($keep['type']) && !in_array($keep['type'], ['1', 'a', 'A', 'i', 'I', 'disc', 'circle', 'square'], true)) unset($keep['type']);
+				if (isset($keep['scope']) && !in_array($keep['scope'], ['row', 'col', 'rowgroup', 'colgroup'], true)) unset($keep['scope']);
+				if (isset($keep['open'])) $keep['open'] = 'open';
+				foreach (['title', 'alt'] as $a) if (isset($keep[$a])) $keep[$a] = mb_substr($keep[$a], 0, 300);
+				$href = $tag === 'a' ? self::docHref($c->getAttribute('href')) : '';
+				$src = $tag === 'img' ? self::docSrc($c->getAttribute('src')) : '';
+				$target = $tag === 'a' ? strtolower($c->getAttribute('target')) : '';
+				foreach (iterator_to_array($c->attributes) as $a) $c->removeAttribute($a->nodeName);
+				if ($tag === 'img' && $src === '') { $node->removeChild($c); continue; }
+				if ($tag === 'a' && $href === '') { while ($c->firstChild) $node->insertBefore($c->firstChild, $c); $node->removeChild($c); continue; }
+				foreach ($keep as $a => $val) $c->setAttribute($a, $val);
+				if ($tag === 'img') { $c->setAttribute('src', $src); if (!$c->hasAttribute('alt')) $c->setAttribute('alt', ''); }
+				if ($tag === 'a') {
+					$c->setAttribute('href', $href);
+					if ($target === '_blank' || preg_match('~^(https?:|mailto:)~i', $href)) { $c->setAttribute('target', '_blank'); $c->setAttribute('rel', 'noopener noreferrer'); }
+				}
+			} elseif (!($c instanceof DOMText)) {
+				$node->removeChild($c);
+			}
+		}
+	}
+
+	/** safeLink, or "#help=<code>" (a link to another help page, optionally "#help=<code>#<anchor>"). */
+	private static function docHref(string $href): string
+	{
+		$h = trim(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+		if (preg_match('~^#help=[A-Za-z0-9][A-Za-z0-9_.-]{0,59}(#[A-Za-z][\w-]{0,60})?$~', $h)) return $h;
+		return self::safeLink($href);
+	}
+
+	/** Like safeSrc, but larger pictures (pasted screenshots, up to about 4 MB). */
+	private static function docSrc(string $src): string
+	{
+		$s = trim($src);
+		if ($s === '' || strlen($s) > 6000000) return '';
+		if (preg_match('~^data:image/(png|gif|jpe?g|webp|bmp);base64,[a-z0-9+/=\s]+$~i', $s)) return $s;
+		if (preg_match('~^https?://[^\s"<>]+$~i', $s)) return $s;
+		return preg_match('~^[\w./%-]+(\?[^\s"<>]*)?$~', $s) && !str_starts_with($s, '//') && !str_contains($s, '..') ? $s : '';
+	}
 }

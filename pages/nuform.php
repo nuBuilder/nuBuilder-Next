@@ -225,6 +225,8 @@ $cellActs = [];
 if ($mode === 'browse' && $lookupTo === '' && empty($printMode)) foreach ((array)($data['columns'] ?? []) as $c) {
 	if (is_array($c) && !empty($c['action']) && ($ca = NuRender::cellAction($c['action'])) !== null) $cellActs[$c['index']] = $ca;
 }
+// row details (0.8.1027, core/form/nurowdetails.php): a ▸ column at the start of each row – not in lookups, print view or design mode
+$rowDetails = $mode === 'browse' && $lookupTo === '' && empty($printMode) && !$design ? NuRowDetails::client($meta) : null;
 // "Edit browse SQL" next to the Design button of a list (0.8.930): the SQL in a side pane, saved with builderapi form.save
 $browseSqlEdit = $mode === 'browse' && $lookupTo === '' && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta);
 const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh', 'ds_list_rowh_tip', 'ds_list_target', 'ds_list_target_0',
@@ -297,6 +299,7 @@ $client = [
 	// hl: the words / phrases of the search to highlight (NuBrowse::terms, 0.8.427), nsc / sc: columns left out of / limited to by the search
 	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'hl' => NuBrowse::terms($state['q'])['in'], 'nsc' => array_values((array)$state['nsc']), 'sc' => array_values((array)$state['sc']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1, 'total' => (int)($data['total'] ?? 0),
 		// badges set in design mode (0.8.688): column index => rules of nuBrowseStyleBadge ([] = the default look), applied before nuOnLoad
+		'details' => $rowDetails,
 		'badges' => (object)array_map(static fn($c) => $c['badge'], array_filter((array)($data['columns'] ?? []), static fn($c) => is_array($c) && ($c['badge'] ?? null) !== null && !isset($cellActs[$c['index']]))),
 		// click actions of cells (0.8.872): column index => NuRender::cellAction (only those the user may open; none in lookups)
 		'actions' => (object)$cellActs,
@@ -361,6 +364,7 @@ $client = [
 		'hash_src' => ['system' => t('hash_src_system'), 'user' => t('hash_src_user'), 'record' => t('hash_src_record'), 'property' => t('hash_src_property'), 'global' => t('hash_src_global'), 'caller' => t('hash_src_caller')],
 		'file_too_large' => t('file_too_large'), 'empty' => t('form_filter_empty'),
 		// concurrent edits (0.8.401)
+		'rd_show' => t('rd_show'), 'rd_hide' => t('rd_hide'), 'rd_open' => t('rd_open'), 'rd_more' => t('rd_more'), 'rd_empty' => t('rd_empty'), 'rd_loading' => t('uh_loading'), 'rd_error' => t('rd_error'), 'rd_none_rows' => t('rd_none_rows'),
 		'cc_title' => t('form_cc_title'), 'cc_by' => t('form_cc_by'), 'cc_anon' => t('form_cc_anon'), 'cc_field' => t('form_cc_field'), 'cc_original' => t('form_cc_original'), 'cc_yours' => t('form_cc_yours'), 'cc_theirs' => t('form_cc_theirs'), 'cc_keep_mine' => t('form_cc_keep_mine'), 'cc_keep_theirs' => t('form_cc_keep_theirs'), 'cc_row' => t('form_cc_row'), 'cc_row_gone' => t('form_cc_row_gone'), 'cc_row_changed' => t('form_cc_row_changed'), 'cc_delete_row' => t('form_cc_delete_row'), 'cc_keep_row' => t('form_cc_keep_row'), 'cc_kept' => t('form_cc_kept'), 'cc_save' => t('form_cc_save'), 'cc_reload' => t('form_cc_reload'), 'cc_record_gone' => t('form_cc_record_gone'), 'cc_delete_by' => t('form_cc_delete_by'), 'cc_delete_anon' => t('form_cc_delete_anon'), 'cc_empty' => t('form_cc_empty'), 'pr_open' => t('form_pr_open'), 'pr_editing' => t('form_pr_editing'),
 	],
 ];
@@ -568,6 +572,8 @@ $client['uppyBase'] = $uppyDir;                               // nuUppySetLangua
 if ($googleLoader) $head .= '<script src="https://www.gstatic.com/charts/loader.js"></script>';   // as nuBuilder Forte (0.8.957)
 if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
 
+$uHelpAny = !$bare && empty($printMode) && NuUserHelp::any();     // user help pages (0.8.1023)
+$uHelp = $uHelpAny ? NuUserHelp::forForm($meta) : null;
 $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>'
 	. NuJquery::tags((string)$meta->form['zzzzsys_form_id'])                  // jQuery 3 / 4 / own file + Migrate (0.8.741)
 	. '<script src="' . nu_asset(NU_JQCONFIRM . '/jquery-confirm.min.js') . '"></script>'
@@ -583,6 +589,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. ($mode === 'browse' ? '<script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>' : '')
 	. ($mode === 'edit' && NuFormRules::of($meta) ? '<script src="' . nu_asset('assets/js/nu/nurules.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
+	. ($uHelpAny ? NuUserHelp::foot() : '')                       // user help pages (0.8.1023): side panel, F1, (?) of fields
 	. (NuAcl::can(NuAcl::FORM_ACCESS) ? '<script src="' . nu_asset('assets/js/nu/nuformaccess.js') . '"></script>' : '')
 	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects (0.8.387)
 	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript (0.8.298)
@@ -682,6 +689,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseColsEdit"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><?= h(t('bsq_edit_cols')) ?></button></li></ul></div>
 			<?php else: ?><?= $dsBtn ?><?php endif; ?>
 		<?php endif; ?>
+		<?php if (!$bare && empty($printMode) && !$design && $uHelp) echo NuUserHelp::button($uHelp);   // user help pages (0.8.1023): ? of the form / tab ?>
 		<?php if ($u['globeadmin'] && !$bare): ?>
 			<?= str_replace('<div class="dropdown">', '<div class="dropdown nuFormInfoWrap">', NuFormInfo::html($meta, $mode, $r)) /* (i) form info for the globeadmin (0.8.435) */ ?>
 			<div class="btn-group nuSeg" id="nuLayoutSeg" role="group" aria-label="<?= h(t('form_layout')) ?>">
@@ -808,15 +816,16 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 			$colSum = 0;
 			if (!$bw && !$fitCols && $lookupTo === '' && empty($printMode)) {
 				foreach ($data['columns'] as $c) if ($c['width'] > 0) $colSum += (int)$c['width'] + NU_BROWSE_CELL_PAD;
-				$colSum += $rowDel ? 44 : 0;
+				$colSum += ($rowDel ? 44 : 0) + ($rowDetails ? 36 : 0);
 			}
 			if ($bw) {
 				foreach ($data['columns'] as $c) if ($c['width'] > 0) $bwSum += $bw[$c['index']] ?? (int)$c['width'] + NU_BROWSE_CELL_PAD;
-				$bwSum += $rowDel ? 44 : 0;
+				$bwSum += ($rowDel ? 44 : 0) + ($rowDetails ? 36 : 0);
 			}
 			?>
 			<table class="table table-hover align-middle mb-0 nu-table nuBrowseTable<?= $rowDel ? ' nuBrowseRowDel' : '' ?><?= $browseCls ?><?= $bw ? ' nuColFixed nuBrowseFixed' : '' ?>" id="nuBrowseTable" data-nu-sticky-head<?= $rowH > 0 ? ' data-nu-row-height="' . min(400, $rowH) . '"' : '' ?><?= $bw ? ' style="width:' . $bwSum . 'px"' : ($colSum > 0 ? ' style="width:' . $colSum . 'px;min-width:100%"' : '') ?>>
 				<thead><tr>
+					<?php if ($rowDetails): ?><th scope="col" class="nuDetCol"><span class="visually-hidden"><?= h(t('rd_details')) ?></span></th><?php endif; ?>
 					<?php if ($rowDel): ?><th scope="col" class="nuRowDelCol"<?= $bw ? ' style="width:44px"' : '' ?>><span class="visually-hidden"><?= h(t('delete')) ?></span></th><?php endif; ?>
 					<?php foreach ($data['columns'] as $c):
 						$hidden = $c['width'] <= 0;
@@ -833,10 +842,11 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 				</thead>
 				<tbody id="nuRECORD"><?php /* id as nuBuilder Forte's browse (code that loops '#nuRECORD .nuCell') */ ?>
 				<?php if (!$data['rows']): ?>
-					<tr><td colspan="<?= max(1, count($data['columns'])) + ($rowDel ? 1 : 0) ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
+					<tr><td colspan="<?= max(1, count($data['columns'])) + ($rowDel ? 1 : 0) + ($rowDetails ? 1 : 0) ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ($data['rows'] as $ri => $row): ?>
 					<tr class="nuBrowseRow" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-row="<?= $ri ?>" tabindex="0"<?= $rowH > 0 ? ' style="height:' . min(400, $rowH) . 'px"' : '' ?>>
+						<?php if ($rowDetails): ?><td class="nuDetCol"><button type="button" class="btn btn-sm btn-link nuDetBtn" aria-expanded="false" tabindex="-1" title="<?= h(t('rd_show')) ?>" aria-label="<?= h(t('rd_show')) ?>"><i class="bi bi-chevron-right" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php if ($rowDel): ?><td class="nuRowDelCol"><button type="button" class="btn btn-sm btn-outline-danger nuRowDel" data-nu-pk="<?= h($row['pk']) ?>" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php foreach ($data['columns'] as $ci => $c): ?>
 							<?php /* the cell = a div as in nuBuilder Forte (id nucell_<row>_<column>, data-nu-*) inside the table cell – form code that

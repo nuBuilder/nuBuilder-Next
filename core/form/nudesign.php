@@ -78,7 +78,7 @@ final class NuDesign
 		foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) {
 			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_|om_|fmt_type_|fms_|vr_)/', $k)) $texts[$k] = t($k);
 		}
-		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search'] as $k) $texts[$k] = t($k);
+		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search', 'uh_admin_title'] as $k) $texts[$k] = t($k);
 		$db = nu_db();
 		// lists of the panel (stage 4, as the builder: pages/nubuilder.php)
 		$forms = array_map(static fn($f) => [$f['zzzzsys_form_id'], $f['sfo_code'] . ' – ' . $f['sfo_description'], $f['sfo_type']],
@@ -107,6 +107,8 @@ final class NuDesign
 			'files' => $db->tableExists('zzzzsys_file') ? array_map(static fn($f) => [$f['zzzzsys_file_id'], $f['sfi_code'] . ($f['sfi_description'] ? ' – ' . $f['sfi_description'] : '')],
 				$db->all('SELECT zzzzsys_file_id, sfi_code, sfi_description FROM zzzzsys_file ORDER BY sfi_code')) : [],
 			'formats_all' => NuFormat::choices(), 'format_designer' => nu_format_designer_data(),
+			'form_tags' => NuFormMeta::tagValues(),                     // suggestions of Department / Team (0.8.1020)
+			'help_codes' => NuUserHelp::codeList(), 'help_admin' => NuUserHelp::canManage() ? nu_url('helppages') : '', 'help_edit' => NuUserHelp::canEdit(),   // user help pages (0.8.1023)
 			'ai' => $meta->isSystem() ? '' : nu_url('formai', ['f' => $meta->id]),
 			'dataaccess' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
 			'translations' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_TRANSLATE) ? ['url' => nu_url('translations', ['view' => 'missing', 'f' => $meta->id]),

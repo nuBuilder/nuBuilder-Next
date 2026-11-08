@@ -649,6 +649,7 @@ final class NuListView
 		<?php if ($keep[$vp] !== null): ?><input type="hidden" name="<?= h($vp) ?>" value="<?= h($view['id']) ?>"><?php endif; ?>
 		<?php if ($keep['per'] !== null): ?><input type="hidden" name="per" value="<?= (int)$keep['per'] ?>"><?php endif; ?>
 		<?php if ($keep['adv'] !== null): ?><input type="hidden" name="adv" value="<?= h($keep['adv']) ?>"><?php endif; ?>
+		<?php $nf = ($_GET['nf'] ?? '') === '1'; ?>
 		<div class="row g-2 align-items-end">
 			<?php // advanced search (0.8.769): ▾ in the search field opens the same panel as on form lists (assets/js/nu/nuadvsearch.js)
 			$advBtn = $advCols ? '<button class="btn btn-outline-secondary nuSearchBtn nuAdvBtn' . ($adv ? ' active' : '') . '" id="nuAdvButton" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="'
@@ -656,8 +657,9 @@ final class NuListView
 			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null, $advBtn) ?></div>
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
 			<?php // a view with open filters shows them from 768 px on (phones: folded, the funnel opens them – 0.8.761); a filter that is set keeps them open
-			$openMin = $def['open'] ? max(768, (int)($L['open_min'] ?? 768)) : (int)($L['open_min'] ?? 0); ?>
-			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse nuLvFlt-<?= h((string)$L['key']) ?><?= $filtered ? ' show' : '' ?>" id="nuLvFilters"<?= $openMin > 0 ? ' data-nu-open-min="' . $openMin . '"' : '' ?>><div class="row g-2">
+			$openMin = $def['open'] ? max(768, (int)($L['open_min'] ?? 768)) : (int)($L['open_min'] ?? 0);
+			if ($nf) $openMin = 0;   // ?nf=1 (0.8.1017): opened from another page with its filter set (record info links) – filters folded, the funnel opens them ?>
+			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse nuLvFlt-<?= h((string)$L['key']) ?><?= $filtered && !$nf ? ' show' : '' ?>" id="nuLvFilters"<?= $openMin > 0 ? ' data-nu-open-min="' . $openMin . '"' : '' ?>><div class="row g-2">
 				<?php foreach ($def['filters']['shown'] as $k): $f = $L['filters'][$k];
 					$input = in_array($f['type'], ['text', 'datefrom', 'dateto'], true);
 					$all = (string)($f['all'] ?? ($input ? '' : '*'));

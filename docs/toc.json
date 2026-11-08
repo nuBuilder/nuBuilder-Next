@@ -463,6 +463,11 @@
      "id": "webhooks",
      "title": "Webhooks",
      "file": "09-10-webhooks.htm"
+    },
+    {
+     "id": "user-help",
+     "title": "Help pages for your users",
+     "file": "09-11-user-help.htm"
     }
    ]
   },

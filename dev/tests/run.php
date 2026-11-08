@@ -1154,6 +1154,28 @@ NuDB::$override = null;
 NuPasskey::$testOrigin = null;
 unset($_SESSION['nu_schema']);
 
+// form department / team (0.8.1020): sfo_json nunext, other keys kept, empty = removed
+check('form tag cleaned', NuFormMeta::cleanTag("  Sales \t  North ") === 'Sales North' && NuFormMeta::cleanTag('  ') === null && mb_strlen((string)NuFormMeta::cleanTag(str_repeat('x', 80))) === 60);
+$tj = NuFormMeta::mergeNunextJson('{"x":1,"nunext":{"rules":[{"id":"r1"}],"layout":"grid"}}', NuFormMeta::tagsIn(['department' => ' Sales ', 'team' => 'North', 'other' => 'no']));
+$td = json_decode((string)$tj, true);
+check('form tags merged, other nunext keys kept', ($td['x'] ?? null) === 1 && ($td['nunext']['rules'][0]['id'] ?? '') === 'r1' && ($td['nunext']['layout'] ?? '') === 'grid'
+	&& ($td['nunext']['department'] ?? '') === 'Sales' && ($td['nunext']['team'] ?? '') === 'North' && !isset($td['nunext']['other']));
+$td2 = json_decode((string)NuFormMeta::mergeNunextJson($tj, NuFormMeta::tagsIn(['team' => ''])), true);
+check('form tag emptied = key removed', !array_key_exists('team', $td2['nunext']) && ($td2['nunext']['department'] ?? '') === 'Sales' && NuFormMeta::tagsOf($tj) === ['department' => 'Sales', 'team' => 'North'] && NuFormMeta::tagsOf(null) === ['department' => '', 'team' => '']);
+
+// CI workflow (0.8.1016): every static call Nu…::method() in .github/workflows/ci.yml exists (a removed method failed both jobs)
+if (is_file(NU_ROOT . '/.github/workflows/ci.yml')) {
+	preg_match_all('~\\b(Nu[A-Za-z0-9]+)::([a-zA-Z_][a-zA-Z0-9_]*)\\(~', (string)file_get_contents(NU_ROOT . '/.github/workflows/ci.yml'), $ciM, PREG_SET_ORDER);
+	$ciBad = [];
+	foreach ($ciM as [, $c, $m]) if (!class_exists($c) || !method_exists($c, $m)) $ciBad[] = "$c::$m";
+	check('CI workflow calls existing methods', count($ciM) > 3 && !$ciBad, implode(', ', array_unique($ciBad)));
+}
+
+// prompt generator (0.8.1014): every link points to a file of nuBuilder Next's repository that exists
+$pgUrls = array_merge(array_column(NuPrompt::topics(), 'url'), ...array_values(array_map(static function ($e) { preg_match_all('~\((https://[^)]+)\)~', $e['text'], $m); return $m[1]; }, NuPrompt::languages())));
+$pgBad = array_filter($pgUrls, static fn($u) => !str_starts_with($u, NuPrompt::WIKI) && (!str_starts_with($u, NuPrompt::REPO) || !is_file(NU_ROOT . '/' . substr($u, strlen(NuPrompt::REPO)))));
+check('prompt generator links nuBuilder Next files (+ Forte wiki)', !$pgBad && count($pgUrls) > 30, implode(', ', $pgBad));
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

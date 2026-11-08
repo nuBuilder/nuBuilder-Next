@@ -2092,6 +2092,102 @@
 		openRow(this, e.ctrlKey || e.metaKey);
 	});
 	$(document).on('keydown', 'tr.nuBrowseRow', function (e) { if (e.key === 'Enter' && !e.target.closest('.nuRowDel, .nuCellAct')) openRow(this, e.ctrlKey || e.metaKey); });
+	// row details (0.8.1027, core/form/nurowdetails.php): the ▸ of a row folds a strip open below it – the row's hidden (width 0) columns
+	// and cut texts (read from the row itself) and the related list of the record (formapi action "details", loaded once per row)
+	function detClose(tr) {
+		var n = tr.nextElementSibling;
+		if (n && n.classList.contains('nuDetRow')) n.remove();
+		var b = tr.querySelector('.nuDetBtn');
+		if (b) { b.setAttribute('aria-expanded', 'false'); b.title = M.rd_show; b.setAttribute('aria-label', M.rd_show); }
+		tr.classList.remove('nuDetOpen');
+	}
+	function detCols(tr) {
+		var dl = document.createElement('dl');
+		dl.className = 'nuDetCols';
+		tr.querySelectorAll('td.nuCellTd').forEach(function (td) {
+			var div = td.querySelector('div.nuCell'), label = td.getAttribute('data-nu-label') || '';
+			if (!div || !label) return;
+			var txt = (td.style.display === 'none' ? div.textContent : (div.innerText || div.textContent) || '').trim();
+			if (!txt) return;
+			var hidden = td.style.display === 'none';
+			if (!hidden && !(div.scrollWidth > div.clientWidth + 1 || div.scrollHeight > div.clientHeight + 1)) return;
+			var dt = document.createElement('dt'), dd = document.createElement('dd');
+			dt.textContent = label; dd.textContent = txt;
+			dl.appendChild(dt); dl.appendChild(dd);
+		});
+		return dl.children.length ? dl : null;
+	}
+	function detRelated(box, tr, res) {
+		box.textContent = '';
+		if (!res || !res.ok) { box.textContent = M.rd_error; return; }
+		if (!res.title) { box.remove(); return; }
+		var h = document.createElement('div');
+		h.className = 'nuDetRelHead';
+		h.textContent = res.title + ' (' + res.total + ')';
+		box.appendChild(h);
+		if (!res.rows.length) { var p = document.createElement('div'); p.className = 'text-body-secondary small'; p.textContent = M.rd_none_rows; box.appendChild(p); return; }
+		var tbl = document.createElement('table'), th = document.createElement('thead'), hr = document.createElement('tr'), tb = document.createElement('tbody');
+		tbl.className = 'table table-sm mb-1 nuDetTable';
+		res.cols.forEach(function (c, i) { var x = document.createElement('th'); x.scope = 'col'; x.textContent = c; if (res.align[i] === 'r') x.className = 'text-end'; hr.appendChild(x); });
+		th.appendChild(hr);
+		res.rows.forEach(function (r) {
+			var row = document.createElement('tr');
+			r.forEach(function (v, i) { var td = document.createElement('td'); td.textContent = v; if (res.align[i] === 'r') td.className = 'text-end'; row.appendChild(td); });
+			tb.appendChild(row);
+		});
+		tbl.appendChild(th); tbl.appendChild(tb);
+		var wrap = document.createElement('div');
+		wrap.className = 'table-responsive';
+		wrap.appendChild(tbl);
+		box.appendChild(wrap);
+		if (res.more) { var m = document.createElement('div'); m.className = 'small text-body-secondary'; m.textContent = M.rd_more.replace('%d', String(res.total - res.rows.length)); box.appendChild(m); }
+	}
+	function detOpen(tr) {
+		var D = (N.browse || {}).details;
+		if (!D || tr.classList.contains('nuDetOpen')) return;
+		tr.classList.add('nuDetOpen');
+		var b = tr.querySelector('.nuDetBtn');
+		if (b) { b.setAttribute('aria-expanded', 'true'); b.title = M.rd_hide; b.setAttribute('aria-label', M.rd_hide); }
+		var row = document.createElement('tr'), td = document.createElement('td'), body = document.createElement('div');
+		row.className = 'nuDetRow';
+		td.className = 'nuDetTd';
+		td.colSpan = tr.children.length;
+		body.className = 'nuDetBody';
+		td.appendChild(body); row.appendChild(td);
+		tr.parentNode.insertBefore(row, tr.nextSibling);
+		var cols = D.cols ? detCols(tr) : null;
+		if (cols) body.appendChild(cols);
+		var pk = tr.getAttribute('data-nu-primary-key') || '';
+		if (D.sub) {
+			var box = document.createElement('div');
+			box.className = 'nuDetRel';
+			box.textContent = M.rd_loading;
+			body.appendChild(box);
+			var done = function (res) { tr._nuDet = res; detRelated(box, tr, res); if (!body.children.length) body.textContent = M.rd_empty; };
+			if (tr._nuDet) done(tr._nuDet);
+			else call('details', {record_id: pk}).then(done, function () { box.textContent = M.rd_error; });
+		} else if (!cols) body.textContent = M.rd_empty;
+		var open = document.createElement('button');
+		open.type = 'button';
+		open.className = 'btn btn-sm btn-outline-secondary nuDetOpenRec';
+		open.innerHTML = '<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>';
+		open.appendChild(document.createTextNode(M.rd_open));
+		open.addEventListener('click', function (e) { e.stopPropagation(); openRow(tr, e.ctrlKey || e.metaKey); });
+		td.appendChild(open);
+	}
+	function detToggle(tr, want) {
+		var on = tr.classList.contains('nuDetOpen');
+		if (want === undefined) want = !on;
+		if (want && !on) detOpen(tr); else if (!want && on) detClose(tr);
+	}
+	N.rowDetails = detToggle;
+	$(document).on('click', '#nuBrowseTable .nuDetBtn', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		var tr = this.closest('tr.nuBrowseRow');
+		if (tr) detToggle(tr);
+	});
+	$(document).on('click', '#nuBrowseTable tr.nuDetRow', function (e) { e.stopPropagation(); });
 	// click action of a cell (0.8.872, design mode → column → On click): instead of the row's edit form – another form, a list in the
 	// context of the row, a procedure, a report or a JavaScript function. The row's id goes along as a property (#PARENT_ID# by default)
 	$(document).on('click', '#nuBrowseTable .nuCellAct', function (e) {

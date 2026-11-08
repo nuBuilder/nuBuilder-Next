@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.1010",
+    "version": "0.8.1028",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -480,6 +480,17 @@
                     "table": "zzzzsys_config",
                     "kind": "data",
                     "what": "row nuPhoneBackButton added when missing"
+                }
+            ]
+        },
+        {
+            "id": "0038-user-help",
+            "description": "User help pages (zzzzsys_nunext_help): help for the users of the application, opened from forms, tabs and fields",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_help",
+                    "kind": "table",
+                    "what": "created when missing"
                 }
             ]
         }
@@ -1717,6 +1728,75 @@
                     "text",
                     "50"
                 ]
+            ]
+        },
+        "zzzzsys_nunext_help": {
+            "pk": "zzzzsys_nunext_help_id",
+            "cols": [
+                [
+                    "code",
+                    "text",
+                    "60"
+                ],
+                [
+                    "lang",
+                    "text",
+                    "10"
+                ],
+                [
+                    "title",
+                    "text",
+                    "200"
+                ],
+                [
+                    "body",
+                    "longtext"
+                ],
+                [
+                    "format",
+                    "text",
+                    "10"
+                ],
+                [
+                    "parent",
+                    "text",
+                    "60"
+                ],
+                [
+                    "sort_order",
+                    "int"
+                ],
+                [
+                    "access",
+                    "text",
+                    "2000"
+                ],
+                [
+                    "keywords",
+                    "text",
+                    "500"
+                ],
+                [
+                    "active",
+                    "text",
+                    "1"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "code"
             ]
         },
         "zzzzsys_nunext_export": {

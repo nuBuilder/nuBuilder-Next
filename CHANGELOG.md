@@ -3,6 +3,133 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1028 – Release gate
+- Release gate: the full test run (smoke, all end-to-end tests, the cross-test against nuBuilder Forte, OWASP ZAP).
+- Documentation brought up to date: the tutorial explains lists by keyboard, row details and help pages for users; the feature
+  list names Back to the page before and forms grouped by department / team.
+
+## 0.8.1027 – Row details in lists
+- Row details of form lists: a ▸ at the start of each row folds a strip open below it, without leaving the list. Set in design
+  mode → Browse list → Row details: "Hidden columns and cut text" (columns with width 0 and the full text of cells that end in …)
+  and "Related list" (one of the form's sub-forms: its rows for the record, up to 10, with the number of all rows – e.g. the items
+  of an order). Values as on the edit screen (option texts, lookup descriptions, formatted numbers and dates); fields hidden or
+  withheld for the reader are left out, masked ones stay masked. The strip has "Open record". Keys on a row: Space folds it open
+  or closed, → opens, ← closes. Not in lookups, print views or design mode; works in the phone card view.
+- Design mode: switches of the panel can carry an (i) tooltip.
+
+## 0.8.1026 – Lists by keyboard
+- Lists by keyboard (form lists, lookups and the system lists): in the search field ↓ moves to the first row; on a row ↑ / ↓,
+  Home / End, Page Down / Page Up (next / previous page, the new page starts on its first / last row), Enter opens (Ctrl+Enter:
+  new tab), Esc back to the search field. A list is one Tab stop; the focused row is outlined. After opening a record with Enter
+  and going back, the same row has the focus again.
+- Help pages: the "Answer from the AI" label of Draft with AI on its own line.
+
+## 0.8.1025 – Help pages: related screens in the AI prompt
+- Help pages → Draft with AI: related screens of the chosen form are found and offered as ticks – sub-forms (ticked), the
+  lists a field picks its value from, and forms opened by buttons. Ticked ones are added to the prompt with their fields and how
+  they are used from the screen, so the help also explains adding rows or picking a value.
+- The prompt lists fields by tab only when a form has several tabs; lookup fields say a value is picked from a list.
+- Fix: the AI prompt and the translation editor showed "Array" instead of the language name (PHP warning).
+
+## 0.8.1024 – Help pages: pictures as files
+- Help pages: pictures are stored as files on the server instead of inside the page – the editor uploads pasted and chosen
+  pictures (PNG, JPEG, GIF or WebP, checked by their content, up to 10 MB), pictures that still come inside a text (Markdown
+  pages, AI answers, imports) become files when the page is saved. They are shown only to users who are signed in; the same
+  picture is kept once; pictures no page uses any more are removed by the housekeeping after a day. An export still carries
+  the pictures inside the JSON file, so it can be imported on another server.
+
+## 0.8.1023 – Help pages for your users
+- Help pages for your users: write help for the people who use your application in the browser, without code – a visual
+  editor (TinyMCE library pack; pictures pasted or chosen from a file are kept inside the page) or Markdown. New tile and
+  admin right Help pages (view = list, change = write). Pages have a code, a parent page and an order (the contents is a tree),
+  keywords, access levels and a draft / published switch. The text is cleaned on save (no scripts, event handlers, frames,
+  unsafe links).
+- Opened where it is needed: in design mode (section Help) link a page to the whole form, to each tab and to a field. The
+  form gets a Help button (also F1) that opens the page in a side panel next to the form; a tab with its own page opens that
+  one; a field gets a (?) after its label with the first paragraph as tooltip. Links between pages (#help=<code>) open
+  inside the panel, which also has Back, Edit and Open in a new tab.
+- Different help per access level: a whole page only for some access levels, or parts of a page with
+  [[level: codes]] … [[else]] … [[/level]] and [[not: codes]] … [[/not]]. Editors see every part framed and labelled; View as
+  shows the help exactly as a user of one access level reads it. Hash variables such as #USER_FIRST_NAME# are filled in.
+- Reader page Help (user menu, ?p=userhelp): contents, search over title, keywords and text, sub-pages, print. Help pages are
+  in the start page search / Ctrl+K and can be a tile on user start pages (page userhelp).
+- Translations of a page per installed language (users read theirs, else the page itself); Draft with AI / Translate with AI
+  build a prompt (the tabs and fields of a form, or the page to translate) to paste into any AI chat; export / import of all
+  pages as JSON (access levels by their code).
+
+## 0.8.1022 – Admin role rights in own columns
+- Admin role form: the rights table has its own columns – Right, Area (grey), Full access (red shield instead of the badge
+  next to the name), None, View, Change. A right without a View level shows a dash. One flat list in the order of the areas;
+  every column title sorts (third click = back to that order). On phones each right shows name, shield and area in one line
+  with None / View / Change as buttons below.
+
+## 0.8.1021 – Logged-in users as cards on phones
+- Logged-in users on phones (below 576 px): one card per user instead of the wide table – status, login, name and badges, then
+  Logged in and Last activity as label and value, and the log-out button. IP address and browser show only on the sessions of a
+  user with several, unfolded under the card as compact lines with an icon to log that session out. Desktop keeps the table.
+
+## 0.8.1020 – Department and team of forms
+- Forms: two optional settings, Department and Team (design mode → form settings → Content), free text of up to 60 characters
+  for grouping and filtering the forms list – no effect on access, rights or behaviour, no link to the users' department / team.
+  Suggestions while typing are the values other forms already use. They are kept in the form's JSON settings (sfo_json, key
+  "nunext"; nuBuilder Forte ignores it, no new columns), go through the draft like the other settings (undo / redo, publish,
+  history), and an empty value removes them.
+- Forms list: columns Department and Team (list view All, or add them to your own view) and filters with the values in use plus
+  "– none –"; the filters appear in the default view once a form has a value. Works on MySQL / MariaDB and SQL Server.
+- Form with AI: the form format accepts optional "department" and "team"; a changed form keeps its values unless the answer sets
+  them. The Form cloner and the App cloner copy them with the form.
+
+## 0.8.1019 – Compact Person card
+- User form: the Person card is compact – the initials and the full name sit in the card's header, the card holds only the fields
+  (full name, first and last name, e-mail, code) with less padding.
+
+## 0.8.1018 – User form layout, Back fixes
+- User form: new layout – the person's identity as a strip across the top (initials, full name, first and last name, e-mail,
+  code at their natural width; the initials follow the names as you type), below it three columns: Organisation (position,
+  department, team, additional 1 / 2, then the custom user fields), Login credentials, and Access & roles with Account settings.
+  Two columns below 1200 px, one on phones.
+- Back: a plain link to a page visited before now adds a step (Back leads to where you just were); only Back, the breadcrumb and
+  the browser's Back go back along the trail. A form opened from another form keeps its breadcrumb as the way back.
+
+## 0.8.1017 – Back goes to the page you came from
+- Back goes to the page you came from, on every page: own pages, records, lists, form pages (#nuBackButton) and the phone
+  header's ‹ link. nuBuilder Next notes the pages of the browser tab; searching, paging or saving on the same page does not add a
+  step, and going back to a page drops the steps after it. Without a page before (new tab, bookmark) Back keeps its fixed target
+  (the page above in the breadcrumb).
+- User form → (i) → "Log of this user", "Changes to this user (log)" and the logged-in users open with their filter set but the
+  filter fields folded; the funnel opens them (?nf=1 on any system list).
+
+## 0.8.1016 – CI set-up step fixed
+- CI (GitHub Actions, MySQL and SQL Server jobs): the database set-up step still called a check removed together with the block of
+  existing nuBuilder Forte databases, so both jobs stopped right after a successful set-up. The step now checks that the database is
+  ready, was set up by nuBuilder Next and needs no backup note. The unit tests now check that every nuBuilder Next method the CI
+  workflow calls exists.
+
+## 0.8.1015 – Prompt generator: Forte wiki links back
+- Prompt generator: the matching nuBuilder Forte wiki pages are linked again next to nuBuilder Next's own pages (PHP, JavaScript,
+  HTML, naming conventions and every topic) – most of the wiki applies to nuBuilder Next too. The instruction tells the AI that
+  nuBuilder Next's function reference is right where the two differ.
+
+## 0.8.1014 – Prompt generator links nuBuilder Next
+- Prompt generator: the prompt now points to nuBuilder Next instead of nuBuilder Forte. Languages link the PHP / JavaScript
+  function pages, the function reference (JSON) and the runtime source files of nuBuilder Next's repository; topics link the
+  matching pages of nuBuilder Next's documentation. The default instruction names nuBuilder Next and asks the AI to use only the
+  functions of its function reference; saved prompts that still hold the earlier default instruction get the new one.
+
+## 0.8.1013 – No keyboard on the phone start page
+- Start page on phones and tablets: going back to the start page (Home button, logo, title) no longer puts the cursor into the
+  search field, so the on-screen keyboard no longer pops up. With mouse and keyboard the cursor still goes there.
+
+## 0.8.1012 – Shorter README, FEATURES.md
+- README.md shortened to the essentials (about 500 words instead of 2,500): what nuBuilder Next is, eight highlights,
+  requirements, install in four steps, updating, compatibility and licence – table names, settings variables and other
+  details stay in the documentation.
+- New FEATURES.md in the repository: the full feature list, one line per feature, grouped for users, application builders,
+  administrators and nuBuilder Forte users.
+
+## 0.8.1011 – Notes
+- Notes: v0.8.1010 published on GitHub (dev/release-notes.md).
+
 ## 0.8.1010 – Release gate
 - Release gate (full test run: smoke, end-to-end, comparison with nuBuilder Forte, OWASP ZAP; installer test with an existing
   nuBuilder Forte database).

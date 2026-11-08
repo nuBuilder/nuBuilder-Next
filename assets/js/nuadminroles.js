@@ -1,5 +1,5 @@
-/* Admin role form (0.8.739): sortable rights table – by name or by the chosen level (None / View / Change: ticked first). A sorted
-   table is flat (group rows hidden, the group as a small tag); the third click on a title goes back to the groups. Kept per browser. */
+/* Admin role form (0.8.739, own columns 0.8.1022): sortable rights table – by name, area, full access or the chosen level
+   (None / View / Change: ticked first). The third click on a title goes back to the order of the groups. Kept per browser. */
 (function () {
 	'use strict';
 	var table = document.getElementById('admRights');
@@ -10,22 +10,21 @@
 	var cmp = function (a, b) { return a.localeCompare(b, undefined, {sensitivity: 'base', numeric: true}); };
 	function key(tr, col) {
 		if (col === 'name') return tr.getAttribute('data-name') || '';
+		if (col === 'area') return tr.getAttribute('data-area') || '';
+		if (col === 'full') return tr.getAttribute('data-full') === '1' ? '0' : '1';   // full access first
 		return level(tr) === col.slice(4) ? '0' : '1';           // lvl:<level> – rows with that level first
 	}
 	function apply(col, dir) {
 		table.querySelectorAll('th.admSort').forEach(function (o) { o.removeAttribute('aria-sort'); });
-		if (!col) {                                                // back to the groups
+		if (!col) {                                                // back to the order of the groups
 			original.forEach(function (tr) { body.appendChild(tr); });
-			table.classList.remove('admFlat');
 			return;
 		}
-		var rows = original.filter(function (tr) { return tr.classList.contains('nuAdmRight'); });
+		var rows = original.slice();
 		rows.sort(function (a, b) {
 			return cmp(key(a, col), key(b, col)) * (dir === 'desc' ? -1 : 1) || cmp(key(a, 'name'), key(b, 'name'));
 		});
 		rows.forEach(function (tr) { body.appendChild(tr); });
-		original.forEach(function (tr) { if (!tr.classList.contains('nuAdmRight')) body.appendChild(tr); });   // group rows go to the end (hidden)
-		table.classList.add('admFlat');
 		var th = table.querySelector('th.admSort[data-sort="' + col + '"]');
 		if (th) th.setAttribute('aria-sort', dir === 'desc' ? 'descending' : 'ascending');
 	}

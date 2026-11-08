@@ -53,7 +53,8 @@ final class NuAdmin
 		'homelayout'    => ['look', 'adm_r_homelayout', false, 'c', []],
 		'listviews'     => ['look', 'adm_r_listviews', false, 'c', []],   // shared list views, default view of a list (0.8.329)
 		'email'         => ['comm', 'nav_email', false, 'vc', [NuAcl::FORM_SETUP, NuAcl::FORM_EMAILLOG, NuAcl::FORM_EMAILTEMPLATE]],
-		'notifications' => ['comm', 'ntf_title', false, 'vc', [NuAcl::FORM_NOTIFY]],   // notification centre (0.8.357): view = all + read receipts, change = send
+		'notifications' => ['comm', 'ntf_title', false, 'vc', [NuAcl::FORM_NOTIFY]],
+		'userhelp'      => ['comm', 'uh_admin_title', false, 'vc', [NuAcl::FORM_USERHELP]],   // user help pages (0.8.1023): view = list, change = write; HTML cleaned on save   // notification centre (0.8.357): view = all + read receipts, change = send
 		'apiclients'    => ['integration', 'api_title', true, 'vc', [NuAcl::FORM_APICLIENT]],
 		'webhooks'      => ['integration', 'wh_title', true, 'vc', [NuAcl::FORM_WEBHOOK]],   // webhooks (0.8.715): calls other systems with record data – full access
 		'log'           => ['logs', 'adm_r_log', false, 'vc', [NuAcl::FORM_LOG]],
@@ -69,7 +70,7 @@ final class NuAdmin
 		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'users' => ['users', []], 'access' => ['access', []],
 		'userfields' => ['userfields', []], 'sessions' => ['sessions', []], 'adminroles' => ['adminroles', []], 'branding' => ['branding', []],
 		'homelayout' => ['home', ['customize' => '1']], 'email' => ['email', []], 'notifications' => ['notifications', ['tab' => 'manage']],
-		'apiclients' => ['apiclients', []], 'webhooks' => ['webhooks', []], 'log' => ['log', []], 'audit' => ['audit', []], 'debug' => ['debug', []],
+		'apiclients' => ['apiclients', []], 'webhooks' => ['webhooks', []], 'userhelp' => ['helppages', []], 'log' => ['log', []], 'audit' => ['audit', []], 'debug' => ['debug', []],
 		'compat' => ['compat', []],
 	];
 	public const GROUPS = ['system' => 'home_group_system', 'data' => 'home_group_data', 'dev' => 'home_group_dev', 'users' => 'home_group_users',

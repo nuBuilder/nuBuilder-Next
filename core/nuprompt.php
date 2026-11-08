@@ -18,29 +18,46 @@ final class NuPrompt
 	];
 	public const MAX_TABLES = 15;
 
-	private const WIKI   = 'https://wiki.nubuilder.cloud/index.php?title=';
-	private const GITHUB = 'https://raw.githubusercontent.com/nuBuilder/nuBuilder/refs/heads/master/core/';
+	/** nuBuilder Next's repository on GitHub (raw files an AI chat can read): source, function reference, documentation pages. */
+	public const REPO = 'https://raw.githubusercontent.com/nuBuilder/nuBuilder-Next/refs/heads/main/';
+	private const DOCS = self::REPO . 'docs/pages/';
+	private const FNREF = self::REPO . 'docs/nunext-functions.json';
+	/** nuBuilder Forte's wiki – most of it applies to nuBuilder Next too (same functions); nuBuilder Next's reference wins where they differ. */
+	public const WIKI = 'https://wiki.nubuilder.cloud/index.php?title=';
+
+	/** Default instructions of earlier versions – replaced by the current one when a record still holds them. */
+	private const OLD_INSTRUCTIONS = [
+		'Generate code snippets and explanations following nuBuilder conventions. Use the information below when relevant to the request. '
+			. 'This context is provided to help understand the requirements. If something is unclear or missing, say so instead of guessing.',
+	];
 
 	public static function defaultInstruction(): string
 	{
-		return 'Generate code snippets and explanations following nuBuilder conventions. Use the information below when relevant to the request. '
-			. 'This context is provided to help understand the requirements. If something is unclear or missing, say so instead of guessing.';
+		return 'Generate code snippets and explanations for nuBuilder Next, a front end for nuBuilder Forte 4.9 that uses the same tables and the same '
+			. 'PHP / JavaScript functions. Use only the functions listed in nuBuilder Next\'s function reference (' . self::FNREF . '); a function that is not '
+			. 'listed does not exist. The nuBuilder Forte wiki mostly applies too; where it differs, nuBuilder Next\'s reference is right. Use the information below when relevant to the request. If something is unclear or missing, say so instead of guessing.';
 	}
 
-	// ------------------------------------------------------------------ catalog (codes as in nuBuilder)
+	/** The instruction of a record – the current default while it still holds an earlier default. */
+	public static function instruction(string $stored): string
+	{
+		return in_array(trim(str_replace("\r\n", "\n", $stored)), self::OLD_INSTRUCTIONS, true) ? self::defaultInstruction() : $stored;
+	}
+
+	// ------------------------------------------------------------------ catalog (codes as in nuBuilder Forte)
 
 	/** @return array<string, array{label: string, text: string}> */
 	public static function languages(): array
 	{
-		$w = self::WIKI; $g = self::GITHUB;
+		$d = self::DOCS; $r = self::REPO; $f = self::FNREF; $w = self::WIKI;
 		return [
-			'nuphp'        => ['label' => 'PHP', 'text' => "PHP 8 – use nuBuilder's PDO functions (nuRunQuery() with ? parameters, db_fetch_array(), db_fetch_object()), never string-concatenated SQL: [Documentation]({$w}PHP) | [nucommon.php]({$g}nucommon.php) | [nudatabase.php]({$g}nudatabase.php)"],
-			'nujavascript' => ['label' => 'JavaScript', 'text' => "JavaScript – use nuBuilder's JavaScript functions (nuGetValue(), nuSetValue(), nuHide(), nuShow(), nuMessage() …): [Wiki]({$w}Javascript) | [nucommon.js]({$g}nucommon.js) | [nuform.js]({$g}nuform.js)"],
-			'nujquery'     => ['label' => 'jQuery', 'text' => 'jQuery (bundled with nuBuilder) – object ids are the field names: $(\'#field_name\').'],
-			'nuhtml'       => ['label' => 'HTML', 'text' => "HTML – nuBuilder HTML objects and templates: [Wiki]({$w}HTML)"],
-			'nucss'        => ['label' => 'CSS', 'text' => 'CSS – style nuBuilder objects by their id (#field_name) or by classes added with nuAddClass() / the object\'s Style settings.'],
-			'mysql'        => ['label' => 'MySQL / MariaDB', 'text' => "Database: MySQL / MariaDB – nuBuilder primary keys are VARCHAR(25) (generated with nuID()), tables use InnoDB: [Naming Conventions]({$w}Naming_Conventions)"],
-			'mssql'        => ['label' => 'SQL Server', 'text' => 'Database: Microsoft SQL Server (T-SQL) – use TOP / OFFSET … FETCH instead of LIMIT, square brackets for identifiers.'],
+			'nuphp'        => ['label' => 'PHP', 'text' => "PHP 8 – use nuBuilder Next's database functions (nuRunQuery() with ? parameters, db_fetch_array(), db_fetch_object()), never string-concatenated SQL: [PHP functions]({$d}10-01-php-api.htm) | [Function reference (JSON)]({$f}) | [nuphp_api.php]({$r}core/form/nuphp_api.php) | [nuphp_compat.php]({$r}core/form/nuphp_compat.php) | [nuBuilder Forte wiki]({$w}PHP)"],
+			'nujavascript' => ['label' => 'JavaScript', 'text' => "JavaScript – use nuBuilder Next's JavaScript functions (nuGetValue(), nuSetValue(), nuHide(), nuShow(), nuMessage() …): [JavaScript functions]({$d}10-02-js-api.htm) | [Function reference (JSON)]({$f}) | [nuruntime.js]({$r}assets/js/nu/nuruntime.js) | [nucompat.js]({$r}assets/js/nu/nucompat.js) | [nuBuilder Forte wiki]({$w}Javascript)"],
+			'nujquery'     => ['label' => 'jQuery', 'text' => "jQuery (bundled with nuBuilder Next: 3.7 or 4.0, chosen by the administrator) – object ids are the field names: \$('#field_name'): [jQuery version]({$d}08-17-jquery.htm)"],
+			'nuhtml'       => ['label' => 'HTML', 'text' => "HTML – HTML objects of a form (scripts inside them run after the form is loaded): [Object types]({$d}04-05-object-types.htm) | [nuBuilder Forte wiki]({$w}HTML)"],
+			'nucss'        => ['label' => 'CSS', 'text' => "CSS – style objects by their id (#field_name) or by classes added with nuAddClass() / the object's Style settings; form pages support light and dark mode: [Theming and CSS]({$d}11-03-theming.htm)"],
+			'mysql'        => ['label' => 'MySQL / MariaDB', 'text' => "Database: MySQL / MariaDB – primary keys are VARCHAR(25) (generated with nuID()) or a 36-character UUID, tables use InnoDB: [Database basics]({$d}01-07-db-basics.htm) | [Naming conventions (nuBuilder Forte wiki)]({$w}Naming_Conventions)"],
+			'mssql'        => ['label' => 'SQL Server', 'text' => "Database: Microsoft SQL Server (T-SQL) – use TOP / OFFSET … FETCH instead of LIMIT, square brackets for identifiers: [Databases]({$d}01-03-databases.htm)"],
 		];
 	}
 
@@ -55,53 +72,54 @@ final class NuPrompt
 			'nuphp_as'           => ['label' => 'PHP After Save (AS)', 'text' => 'PHP After Save (AS): logic after the record is saved – notifications, logging, related records. #RECORD_ID# is the saved id.'],
 			'nuphp_bd'           => ['label' => 'PHP Before Delete (BD)', 'text' => 'PHP Before Delete (BD): validate or prevent the deletion with nuDisplayError().'],
 			'nuphp_ad'           => ['label' => 'PHP After Delete (AD)', 'text' => 'PHP After Delete (AD): clean up related data after a record was deleted.'],
-			'nubrowse_form'      => ['label' => 'Browse Form (JS)', 'text' => 'Browse Form (client-side JavaScript): runs when the record list is displayed – e.g. nuOnLoad(), row styling, nuSelectBrowse().'],
+			'nubrowse_form'      => ['label' => 'Browse Form (JS)', 'text' => 'Browse Form (client-side JavaScript): runs when the record list is displayed – e.g. nuOnLoad(), row styling, nuBrowseStyleBadge(), nuSelectBrowse().'],
 			'nuedit_form'        => ['label' => 'Edit Form (JS)', 'text' => 'Edit Form (client-side JavaScript): events and validation while editing a record – nuOnLoad(), nuBeforeSave(), object onchange events.'],
 			'nuform_custom_code' => ['label' => 'Form Custom Code (JS)', 'text' => 'Form Custom Code: JavaScript only – omit <script> tags; runs on every load of the form.'],
-			'nusql'              => ['label' => 'SQL (Browse / Select / Lookup)', 'text' => 'SQL of a Browse, Select or Lookup object: a SELECT statement; hash cookies like #USER_ID# or #field# are replaced before it runs.'],
-			'nusetup_header'     => ['label' => 'Setup Header', 'text' => 'Setup → Header: JavaScript functions that are available on every form (global helpers, nuLoadEditGlobal() …).'],
+			'nusql'              => ['label' => 'SQL (Browse / Select / Lookup)', 'text' => 'SQL of a Browse, Select or Lookup object: a SELECT statement; hash variables like #USER_ID# or #field# are replaced before it runs.'],
+			'nusetup_header'     => ['label' => 'Setup Header', 'text' => 'Header of the form pages (Global code → Form pages): JavaScript functions available on every form (global helpers, nuLoadEditGlobal() …).'],
 		];
 	}
 
 	/**
-	 * Topics with wiki link and keywords for the local suggestion (English and German, lower case, matched as word starts).
-	 * @return array<string, array{label: string, url: string, keys: string[]}>
+	 * Topics with a link to nuBuilder Next's documentation page (+ the nuBuilder Forte wiki page) and keywords for the local suggestion (English and German, lower case, matched as word starts).
+	 * @return array<string, array{label: string, url: string, wiki: string, keys: string[]}>
 	 */
 	public static function topics(): array
 	{
-		$t = static fn(string $label, string $slug, array $keys, string $url = '') => ['label' => $label, 'url' => $url !== '' ? $url : self::WIKI . $slug, 'keys' => $keys];
+		$t = static fn(string $label, string $page, array $keys, string $wiki = '') => ['label' => $label, 'url' => $page === 'fnref' ? self::FNREF : self::DOCS . $page . '.htm',
+			'wiki' => $wiki !== '' ? self::WIKI . $wiki : '', 'keys' => $keys];
 		return [
-			'nuforms'             => $t('Forms', 'Forms', ['form', 'formular', 'browse', 'edit form', 'launch']),
-			'nuobjects'           => $t('Objects', 'Objects', ['object', 'objekt', 'field', 'feld', 'input', 'button', 'subform', 'unterformular', 'lookup', 'select', 'dropdown', 'textarea', 'calc', 'display', 'html object', 'checkbox']),
-			'nuprocedures'        => $t('Procedures', 'Procedures', ['procedure', 'prozedur', 'nurunphp', 'run php']),
-			'nufunctions'         => $t('Functions', 'Functions', ['function', 'funktion', 'nuget', 'nuset']),
-			'nuhash_cookies'      => $t('Hash Cookies', 'Hash_Cookies', ['hash', 'cookie', 'nusetproperty', 'property', 'record_id', 'user_id']),
-			'nudatabase'          => $t('Database', 'Database', ['database', 'datenbank', 'table', 'tabelle', 'column', 'spalte', 'query', 'abfrage', 'sql', 'join', 'index']),
-			'nusql_builder'       => $t('SQL Builder', 'SQL_Builder', ['sql builder', 'query builder']),
-			'nureports'           => $t('Reports', 'Reports', ['report', 'bericht', 'pdf', 'print', 'drucken']),
-			'nureport_builder'    => $t('Report Builder', 'Report_Builder', ['report builder']),
-			'nureport_designer'   => $t('Report Designer', 'Report_Designer', ['report designer']),
-			'nuuser_access'       => $t('User Access', 'User_Access', ['access level', 'zugriff', 'permission', 'berechtigung', 'right', 'recht', 'role', 'rolle']),
-			'nuusers'             => $t('Users', 'User_Access', ['user', 'benutzer', 'account', 'konto']),
-			'nulogging_in'        => $t('Logging in', 'Login', ['login', 'log in', 'anmeld', 'password', 'passwort', 'session', 'sitzung']),
-			'nu2fa'               => $t('Two Factor Authentication (2FA)', 'Two_Factor_Authentication_-_2FA', ['2fa', 'two factor', 'zwei-faktor', 'authenticator', 'otp', 'totp']),
-			'nusso'               => $t('Single sign-on (SSO)', 'Single_sign-on_(SSO)', ['sso', 'single sign', 'oauth', 'saml', 'ldap', 'azure', 'entra']),
-			'nusearch'            => $t('Search', 'Search', ['search', 'such', 'filter']),
-			'nuitems'             => $t('Items', 'Items', ['item', 'eintrag', 'list values']),
-			'nutranslations'      => $t('Translations', 'Translations', ['translat', 'übersetz', 'language', 'sprache', 'multilingual', 'mehrsprach']),
-			'nufiles'             => $t('Files', 'Files', ['file', 'datei', 'upload', 'image', 'bild', 'attachment', 'anhang']),
-			'nufile_manager'      => $t('File Manager', 'File_Manager', ['file manager', 'dateimanager']),
-			'nufile_includes'     => $t('Custom File Includes', 'Custom_File_Includes', ['include', 'custom file', 'library', 'bibliothek']),
-			'nunavigation'        => $t('Navigation', 'Navigation', ['navigat', 'breadcrumb', 'menu', 'menü', 'tab', 'open form', 'nuform(']),
-			'nuformat_builder'    => $t('Format Builder', 'Format_Builder', ['format', 'date format', 'datumsformat', 'number format', 'zahlenformat', 'currency', 'währung']),
-			'nucsv_transfer'      => $t('CSV Transfer', 'CSV_Transfer', ['csv', 'import', 'export']),
-			'nulogging_activity'  => $t('Logging Activity', 'Logging_Activity', ['logging', 'audit', 'activity', 'protokoll', 'history', 'verlauf', 'change log', 'änderungsprotokoll']),
-			'nucloner'            => $t('Cloner', 'Cloner', ['cloner', 'clone', 'klonen', 'copy form']),
-			'nufast_form_builder' => $t('Fast Form Builder', 'Form_Builder', ['fast form', 'form builder']),
-			'nusetup'             => $t('Setup', 'Setup', ['setup', 'setting', 'einstellung', 'config', 'konfig']),
-			'nuinstallation'      => $t('Installation', 'nuBuilder-Installation-Guide', ['install'], 'https://github.com/nuBuilder/nuBuilder/wiki/nuBuilder-Installation-Guide'),
-			'nuupdating'          => $t('Updating', 'Updating', ['updat', 'upgrade', 'aktualis']),
-			'nuaiprompt_generator' => $t('Prompt Generator', 'Prompt_Generator', ['prompt generator']),
+			'nuforms'             => $t('Forms', '04-01-form-lifecycle', ['form', 'formular', 'browse', 'edit form', 'launch'], 'Forms'),
+			'nuobjects'           => $t('Objects', '04-05-object-types', ['object', 'objekt', 'field', 'feld', 'input', 'button', 'subform', 'unterformular', 'lookup', 'select', 'dropdown', 'textarea', 'calc', 'display', 'html object', 'checkbox'], 'Objects'),
+			'nuprocedures'        => $t('Procedures', '05-03-procedures', ['procedure', 'prozedur', 'nurunphp', 'run php'], 'Procedures'),
+			'nufunctions'         => $t('Functions', 'fnref', ['function', 'funktion', 'nuget', 'nuset'], 'Functions'),
+			'nuhash_cookies'      => $t('Hash variables', '10-03-label-menu', ['hash', 'cookie', 'nusetproperty', 'property', 'record_id', 'user_id'], 'Hash_Cookies'),
+			'nudatabase'          => $t('Database', '01-07-db-basics', ['database', 'datenbank', 'table', 'tabelle', 'column', 'spalte', 'query', 'abfrage', 'sql', 'join', 'index'], 'Database'),
+			'nusql_builder'       => $t('SQL Builder', '06-03-sql-builder', ['sql builder', 'query builder'], 'SQL_Builder'),
+			'nureports'           => $t('Reports', '06-02-reports', ['report', 'bericht', 'pdf', 'print', 'drucken'], 'Reports'),
+			'nureport_builder'    => $t('Report Builder', '06-02-reports', ['report builder'], 'Report_Builder'),
+			'nureport_designer'   => $t('Report Designer', '06-02-reports', ['report designer'], 'Report_Designer'),
+			'nuuser_access'       => $t('User Access', '07-02-access', ['access level', 'zugriff', 'permission', 'berechtigung', 'right', 'recht', 'role', 'rolle'], 'User_Access'),
+			'nuusers'             => $t('Users', '08-01-users', ['user', 'benutzer', 'account', 'konto'], 'User_Access'),
+			'nulogging_in'        => $t('Logging in', '02-01-sign-in', ['login', 'log in', 'anmeld', 'password', 'passwort', 'session', 'sitzung'], 'Login'),
+			'nu2fa'               => $t('Two Factor Authentication (2FA)', '07-01-signin-methods', ['2fa', 'two factor', 'zwei-faktor', 'authenticator', 'otp', 'totp'], 'Two_Factor_Authentication_-_2FA'),
+			'nusso'               => $t('Single sign-on (SSO)', '07-10-sso', ['sso', 'single sign', 'oauth', 'saml', 'ldap', 'azure', 'entra'], 'Single_sign-on_(SSO)'),
+			'nusearch'            => $t('Search', '02-03-lists', ['search', 'such', 'filter'], 'Search'),
+			'nuitems'             => $t('Items', '04-08-items', ['item', 'eintrag', 'list values'], 'Items'),
+			'nutranslations'      => $t('Translations', '09-04-translations', ['translat', 'übersetz', 'language', 'sprache', 'multilingual', 'mehrsprach'], 'Translations'),
+			'nufiles'             => $t('Files', '09-05-files', ['file', 'datei', 'upload', 'image', 'bild', 'attachment', 'anhang'], 'Files'),
+			'nufile_manager'      => $t('File Manager', '08-08-admin-tools', ['file manager', 'dateimanager'], 'File_Manager'),
+			'nufile_includes'     => $t('Custom File Includes', '08-05-globalcode', ['include', 'custom file', 'library', 'bibliothek'], 'Custom_File_Includes'),
+			'nunavigation'        => $t('Navigation', '02-02-navigation', ['navigat', 'breadcrumb', 'menu', 'menü', 'tab', 'open form', 'nuform('], 'Navigation'),
+			'nuformat_builder'    => $t('Format Builder', '04-07-formats', ['format', 'date format', 'datumsformat', 'number format', 'zahlenformat', 'currency', 'währung'], 'Format_Builder'),
+			'nucsv_transfer'      => $t('CSV Transfer', '08-09-csv-import', ['csv', 'import', 'export'], 'CSV_Transfer'),
+			'nulogging_activity'  => $t('Logging Activity', '05-04-log', ['logging', 'audit', 'activity', 'protokoll', 'history', 'verlauf', 'change log', 'änderungsprotokoll'], 'Logging_Activity'),
+			'nucloner'            => $t('Cloner', '09-06-cloner', ['cloner', 'clone', 'klonen', 'copy form'], 'Cloner'),
+			'nufast_form_builder' => $t('Fast Form Builder', '04-02-new-form', ['fast form', 'form builder'], 'Form_Builder'),
+			'nusetup'             => $t('Setup', '08-04-settings', ['setup', 'setting', 'einstellung', 'config', 'konfig'], 'Setup'),
+			'nuinstallation'      => $t('Installation', '01-02-install', ['install']),
+			'nuupdating'          => $t('Updating', '01-04-updating', ['updat', 'upgrade', 'aktualis'], 'Updating'),
+			'nuaiprompt_generator' => $t('Prompt Generator', '09-03-prompts', ['prompt generator'], 'Prompt_Generator'),
 		];
 	}
 
@@ -229,7 +247,7 @@ final class NuPrompt
 		};
 		$section('## Languages & Technologies', self::list($row['pge_language'] ?? ''), self::languages(), static fn($e) => $e['text']);
 		$section('## Context & Scopes', self::list($row['pge_scope'] ?? ''), self::scopes(), static fn($e) => $e['text']);
-		$section('## Topics & References', self::list($row['pge_tag'] ?? ''), self::topics(), static fn($e) => $e['label'] . ': ' . $e['url']);
+		$section('## Topics & References', self::list($row['pge_tag'] ?? ''), self::topics(), static fn($e) => $e['label'] . ': ' . $e['url'] . ($e['wiki'] !== '' ? ' | nuBuilder Forte wiki: ' . $e['wiki'] : ''));
 		return implode("\n", $lines);
 	}
 
@@ -237,7 +255,8 @@ final class NuPrompt
 	public static function build(array $row): string
 	{
 		$parts = [];
-		if (trim((string)($row['pge_instruction'] ?? '')) !== '') $parts[] = trim((string)$row['pge_instruction']);
+		$ins = self::instruction((string)($row['pge_instruction'] ?? ''));
+		if (trim($ins) !== '') $parts[] = trim($ins);
 		$ctx = self::context($row);
 		if ($ctx !== '') $parts[] = $ctx;
 		if (trim((string)($row['pge_prompt'] ?? '')) !== '') $parts[] = "## Request\n" . trim((string)$row['pge_prompt']);

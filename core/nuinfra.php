@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 27;
+	public const VERSION = 28;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -162,6 +162,13 @@ final class NuSchema
 		'zzzzsys_nunext_permission_type' => [                     // types of permission items (0.8.773, core/nupermtype.php): pk = zzzzsys_permission_item_id
 			'pk' => 'zzzzsys_nunext_permission_type_id',
 			'cols' => [['type', 'text', '30'], ['settings', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+		],
+		'zzzzsys_nunext_help' => [                                // user help pages (0.8.1023, core/nuuserhelp.php): lang '' = the page, else a translation
+			'pk' => 'zzzzsys_nunext_help_id',
+			'cols' => [['code', 'text', '60'], ['lang', 'text', '10'], ['title', 'text', '200'], ['body', 'longtext'], ['format', 'text', '10'], ['parent', 'text', '60'],
+				['sort_order', 'int'], ['access', 'text', '2000'], ['keywords', 'text', '500'], ['active', 'text', '1'], ['created_at', 'datetime'],
+				['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+			'index' => ['code'],
 		],
 		'zzzzsys_nunext_export' => [                              // data export (0.8.758, core/nudataexport.php): saved exports
 			'pk' => 'zzzzsys_nunext_export_id',

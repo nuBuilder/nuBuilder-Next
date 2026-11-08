@@ -57,6 +57,9 @@ $routes = [
 	'filemanager' => [],                      // File Manager = the page nuFiles (0.8.479, pages/nufilemanager.php)
 	'apiclients'  => [],
 	'webhooks'    => [],   // webhooks (0.8.715, pages/nuwebhooks.php)
+	'helppages'   => [],   // user help pages: list / editor (0.8.1023, pages/nuhelppages.php)
+	'userhelp'    => [],   // user help pages: reader + JSON for the side panel (0.8.1023, pages/nuuserhelp.php)
+	'userhelpimg' => [],   // pictures of the user help pages (0.8.1024, pages/nuuserhelpimg.php)
 	'apiplayground' => [],
 	'settings'    => [],
 	'configfile'  => [],

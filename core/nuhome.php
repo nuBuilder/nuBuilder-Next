@@ -30,12 +30,12 @@ final class NuHome
 	/** User start pages (0.8.425): list key, default layout id in access_ids, pages a user tile may open, condition kinds. */
 	public const LIST_USER = 'home_user';
 	public const ALL_LEVELS = '*';
-	public const USER_PAGES = ['help', 'password', 'security', 'notifications', 'import'];   // import (0.8.773): users with permission items of type Data import
+	public const USER_PAGES = ['help', 'password', 'security', 'notifications', 'import', 'userhelp'];   // import (0.8.773): users with permission items of type Data import
 	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'email', 'emailtemplates',
 		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'dataexport', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
-		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields'];
+		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields', 'helppages', 'userhelp'];
 	/** Pinned pages of a tile's menu that open the same page as a tile of their own (0.8.934): shown only while that tile is not on the page. */
 	public const SAME_PAGE = ['s_form_clone' => 'cloner'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
@@ -86,7 +86,7 @@ final class NuHome
 		'integration' => ['icon' => 'bi-plug', 'display' => 'groups', 'size' => 'compact', 'view' => ['style' => 'compact'],
 			'groups' => [['g_api', 'home_pf_g_api', '', ['apiclients', 's_api_new', 's_api_playground', 'webhooks', 's_wh_calls', 'compat']],
 				['g_mail', 'nav_email', '', ['email', 's_mail_settings', 's_mail_templates', 's_mail_test', 's_mail_log']],
-				['g_msg', 'home_pf_g_messages', '', ['notifications', 'prompts']]]],
+				['g_msg', 'home_pf_g_messages', '', ['notifications', 'helppages', 'prompts']]]],
 		'blank'       => ['icon' => 'bi-square', 'display' => 'groups', 'size' => 'large', 'groups' => [['g_own', 'home_pf_g_own', '', []]]],
 	];
 	/** View of a layout (0.8.420): allowed values and defaults – see the class comment. */
@@ -142,6 +142,7 @@ final class NuHome
 			'webhooks'    => ['webhooks', 'bi-broadcast', t('wh_title'), t('home_wh_hint')],
 			'email'       => ['email', 'bi-envelope', t('nav_email'), t('home_email_hint')],
 			'notifications' => [['notifications', ['tab' => 'manage']], 'bi-bell', t('ntf_title'), t('home_ntf_hint')],
+			'helppages'   => ['helppages', 'bi-journal-bookmark', t('uh_admin_title'), t('uh_card_hint')],   // user help pages (0.8.1023)
 		];
 		// nuBuilder Forte's User Home (0.8.602): the launch form nuuserhome with the run buttons of the New form wizard
 		if (NuUserHome::available()) $c['userhome'] = [['form', ['f' => NuUserHome::FORM]], 'bi-house-door', t('home_userhome'), t('home_userhome_hint')];
@@ -358,7 +359,7 @@ final class NuHome
 				$tiles = [];
 				foreach ($g['tiles'] as $k) {
 					$tiles[] = $k;
-					if ($k === 'email') $tiles[] = 'notifications';
+					if ($k === 'email') { $tiles[] = 'notifications'; $tiles[] = 'helppages'; }
 					if ($id !== 'all') continue;
 					// every page of the tile's ▾ / + – not import / sessions (tiles of their own) and not s_debug (the tile itself opens Debug)
 					foreach ($sub as $sk => $s) if ($s[3] === $k && !isset($cat[$sk]) && $sk !== 's_debug' && !isset(self::SAME_PAGE[$sk])) $tiles[] = $sk;
@@ -445,7 +446,7 @@ final class NuHome
 		$l['hidden'] = array_values(array_filter($l['hidden'], static fn($k) => in_array($k, $knownAll, true)));
 		$missing = array_values(array_diff($known, $placed));
 		// tiles of a later version next to their neighbour when it is placed (reports after procedures, 0.8.183)
-		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'dataexport' => 'import', 'userfields' => 'permissions'] as $tile => $after) {
+		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'dataexport' => 'import', 'userfields' => 'permissions', 'helppages' => 'notifications'] as $tile => $after) {
 			if (!in_array($tile, $missing, true)) continue;
 			foreach ($l['groups'] as &$g) {
 				$i = array_search($after, $g['tiles'], true);
@@ -807,7 +808,7 @@ final class NuHome
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
 		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'], 'themes' => ['branding', 'view'],
 		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'dataexport' => ['dataexport', 'view'], 'appcloner' => ['appcloner', 'change'], 'cloner' => ['forms', 'change'], 'sample' => ['sample', 'view'],
-		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'],
+		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'], 'helppages' => ['userhelp', 'view'],
 		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'], 's_user_home' => ['homelayout', 'change'],
 	];
 	/** Pages an own tile (kind page) may open => the tile whose right decides. */
@@ -817,7 +818,7 @@ final class NuHome
 		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import', 'dataexport' => 'dataexport',
 		'cloner' => 'cloner', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
 		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
-		'tutorial' => 'tutorial'];
+		'tutorial' => 'tutorial', 'helppages' => 'helppages'];
 
 	/** May the signed-in user see this tile? */
 	public static function visible(string $key, array $layout): bool
@@ -838,7 +839,7 @@ final class NuHome
 		$c = (array)(((array)$layout['custom'])[$key] ?? []);
 		if (!$c) return false;
 		if (($c['kind'] ?? '') === 'form') return NuAcl::can((string)$c['target']);
-		if (($c['kind'] ?? '') === 'page') return isset(self::PAGE_TILE[$c['target']]) ? self::visible(self::PAGE_TILE[$c['target']], $layout) : in_array($c['target'], ['help', 'security', 'password'], true);
+		if (($c['kind'] ?? '') === 'page') return isset(self::PAGE_TILE[$c['target']]) ? self::visible(self::PAGE_TILE[$c['target']], $layout) : in_array($c['target'], ['help', 'security', 'password', 'userhelp'], true);
 		return true;
 	}
 
@@ -1301,7 +1302,8 @@ final class NuHome
 				return $db->tableExists('zzzzsys_access_php') && (bool)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, $target]);
 			case 'page':
 				return in_array($target, self::USER_PAGES, true) && !($target === 'security' && NuImpersonate::active())
-					&& ($target !== 'import' || $preview || NuImport::canTables() || NuImport::canUsers());
+					&& ($target !== 'import' || $preview || NuImport::canTables() || NuImport::canUsers())
+					&& ($target !== 'userhelp' || $preview || NuUserHelp::readableCodes());
 			default:
 				return true;
 		}

@@ -31,7 +31,7 @@ import datetime, hashlib, json, os, re, shlex, subprocess, sys, zipfile
 sys.stdout.reconfigure(line_buffering=True)                    # 0.8.768: progress reaches a log file line by line
 
 # never deployed to a server (readable there, and not needed): development notes, open points, tools, CI
-DEV_ONLY = ('CLAUDE.md', 'TODO.md', '.gitignore', '.deepsource.toml')
+DEV_ONLY = ('CLAUDE.md', 'TODO.md', 'FEATURES.md', '.gitignore', '.deepsource.toml')
 DEV_DIRS = ('dev/', '.github/')
 
 

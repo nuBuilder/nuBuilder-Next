@@ -1,0 +1,51 @@
+<section id="user-help" data-doc="admin">
+	<h2 id="user-help-h">Help pages for your users</h2>
+	<p class="doc-lead">Write help for the people who use your application – in the browser, without code – and open it from a form, a tab or a field.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles with the right Help pages)</p>
+	<p>This guide explains nuBuilder Next itself. The help pages are for the application <em>you</em> build: what a screen is for, how to do the usual tasks, what a field means. Your users read them in a side panel next to the form they are working on, or on the help page of their own (user menu → <em>Help</em>, <code>index.php?p=userhelp</code>), with contents, search and links between the pages.</p>
+	<div class="doc-sub" id="user-help-write"><h3 id="user-help-write-h">Write a page</h3>
+	<ol>
+	<li><em>Help pages</em> (start page tile, <code>index.php?p=helppages</code>) → <em>Add</em>.</li>
+	<li>A <strong>title</strong> and a <strong>code</strong> – the short name forms and other pages use to point at the page (letters, digits, <code>_ . -</code>).</li>
+	<li>Write the <strong>text</strong> in the visual editor: headings, lists, tables, pictures (pasted or chosen from a file – PNG, JPEG, GIF or WebP up to 10 MB, stored as files on the server and shown only to users who are signed in), links. Without the TinyMCE library pack, or if you prefer, switch to <em>Markdown</em>.</li>
+	<li>Optional: a <strong>parent page</strong> and an <strong>order</strong> (the contents of the help is a tree), <strong>keywords</strong> for the search, <strong>access levels</strong> (below).</li>
+	<li>Leave <em>Published</em> off while you write: a draft is only shown to those who edit the help pages.</li>
+	</ol>
+	<p>The text is cleaned when it is saved: scripts, event handlers, frames and forms are removed, links keep only safe targets.</p>
+	<p><em>Insert</em> adds the markers described below, a link to another help page or a hash variable. <em>Draft with AI</em> builds a prompt with the tabs and fields of a form. Related screens are found too – sub-forms, the lists a field picks its value from, forms opened by buttons – and offered as ticks (sub-forms ticked), so the help also explains adding rows or picking a value. Paste the prompt into the AI chat you use, paste the answer back, check it, publish it. <em>View</em> opens the page as your users see it.</p>
+	</div>
+	<div class="doc-sub" id="user-help-open"><h3 id="user-help-open-h">Open it from a form, a tab or a field</h3>
+	<p>In design mode, section <em>Help</em>:</p>
+	<ul>
+	<li><strong>Help page of the form</strong> – a <em>Help</em> button appears in the form's button row; it and <kbd>F1</kbd> open the page in the side panel.</li>
+	<li><strong>Tab …</strong> – a tab with its own page opens that one while the tab is shown.</li>
+	<li>Select a field: <strong>Help page of the field</strong> – a small (?) after its label shows the first paragraph of the page as a tooltip and opens the page on a click.</li>
+	</ul>
+	<p>The panel has a link to open the page in a new tab, links to other pages open inside the panel (← goes back). Users only see the button and the marks when they may read the page. The editor lists under <em>Used on</em> where a page is linked.</p>
+	</div>
+	<div class="doc-sub" id="user-help-levels"><h3 id="user-help-levels-h">Different help for different access levels</h3>
+	<p><strong>A whole page</strong>: choose its <em>access levels</em> – only users with one of them (main or additional level) see it in the contents, the search and the panel. Empty = everyone who is signed in.</p>
+	<p><strong>Parts of a page</strong>: put markers with the codes of access levels in paragraphs of their own:</p>
+	<pre><code>[[level: sales, support]]
+Text only these levels read.
+[[else]]
+Text everybody else reads.
+[[/level]]
+
+[[not: guest]]
+Hidden from guests.
+[[/not]]</code></pre>
+	<p><code>[[else]]</code> is optional, markers can be nested, <code>globeadmin</code> works as a code. Those who edit the help pages see every part, framed and labelled; on the help page, <em>View as</em> shows the help exactly as a user of one access level (or of none of them) reads it.</p>
+	</div>
+	<div class="doc-sub" id="user-help-more"><h3 id="user-help-more-h">Links, names, translations, moving the help</h3>
+	<ul>
+	<li><strong>Links between pages</strong>: <code>#help=&lt;code&gt;</code> as the address (<em>Insert → Link to another help page</em>, or the link dialogue's list). A link to a page the reader may not open is shown as plain text.</li>
+	<li><strong>Hash variables</strong> such as <code>#USER_NAME#</code>, <code>#USER_FIRST_NAME#</code>, <code>#ACCESS_LEVEL_CODE#</code> or <code>#USER_DEPARTMENT#</code> are filled in for the reader.</li>
+	<li><strong>Translations</strong>: <em>Translations</em> on a saved page adds the text in another installed language (title, text, keywords; the rest belongs to the page). Users read their language, else the page itself. <em>Translate with AI</em> builds the prompt from the page.</li>
+	<li><strong>Export / import</strong>: all pages as one JSON file (format <code>nunext-help-1</code>) – to move the help to another installation. Access levels travel by their code; levels missing there are left out and named.</li>
+	<li>Users find the pages in the start page search and Ctrl+K too. A tile for user start pages: an own tile of kind page with the target <code>userhelp</code>.</li>
+	</ul>
+	<p data-level="detail">Stored in the table <code>zzzzsys_nunext_help</code> (one row per page and language), the pictures in the folder <code>custom/userhelp/</code> (named after their content, so the same picture is kept once; pictures no page uses are removed by the housekeeping after a day; an export carries them inside the JSON file, an import makes files of them again); the links of forms, tabs and fields in <code>sfo_json</code> / <code>sob_all_json</code> under <code>nunext.help</code> and <code>nunext.help_tabs</code> – nuBuilder Forte ignores them.</p>
+	</div>
+	<p class="doc-see">See also: <a href="#builder-work">Designing a form</a> · <a href="#access">Access levels</a> · <a href="#translations">Translations</a></p>
+</section>

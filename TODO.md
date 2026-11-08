@@ -162,7 +162,17 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Sub-form columns in the designer**: edit them inside the sub-form; default values (Forte has no such field – would need sob_all_json).
 - [ ] **New table column grid**: no reordering yet (the existing-table column list has it, 0.8.675).
 
-## Lists, start page and look
+- [ ] **Help pages for users – please verify** (0.8.1023 / 0.8.1024) – write a page with pictures (pasted screenshots become files in
+  custom/userhelp/ – check that the folder is writable on the live server), link it to a form / tab / field in design mode, read it as a
+  user of two access levels ([[level: …]] parts), translation, export / import into the second server. Decided: no (?) on list
+  columns for now. Open: a Help tile on user start pages by default?
+  Draft with AI (0.8.1025): related screens (sub-forms ticked, pick lists and forms opened by buttons offered) in the copied prompt.
+- [ ] **Lists by keyboard and row details** (0.8.1026 / 0.8.1027): on a real list – search, ↓, ↑ / ↓ / Page Down, Enter, Back (same row
+  focused again), Esc; row details with *Hidden columns and cut text* and a *Related list* on a form with a sub-form (lookups shown by
+  their text, fields of a user with field access rules hidden / masked), Space / → / ← on a row, the phone card view.
+- [ ] **Back = the page before** (0.8.1017 / 0.8.1018): Back on own pages and form pages after opening them from different places (start
+  page, side bar, search, a link in a record); after the browser's own Back.
+- [ ] **Form department / team** (0.8.1020): set in design mode, filter the forms list by them.
 - [ ] **UI review suggestions** (0.8.1007): phone header of the system lists (← Back above, icons right of the title), menus near the
       bottom open upwards, report error page in dark mode with Home, shared setting titles in the user's language, server paths in
       tooltips relative to the installation.
@@ -188,6 +198,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       items, sub-form link columns without an index on forms made before 0.8.366.
 
 ## Users, access levels and permissions
+- [ ] **User form layout** (0.8.1018 / 0.8.1019): the Person card with initials, the three cards below on a laptop and a phone.
+- [ ] **Admin roles / Logged-in users on phones** (0.8.1021 / 0.8.1022): the rights table in own columns (sort by area / full access)
+  and the Logged-in users cards on a real phone.
 - [ ] **Users / access links** (0.8.687): users list filters Permission item / Access level (also additional), Department + Team; access
       badge → level; user (i) links (log, changes, sessions); access levels: counts link, filter Can open form, "Show in the users list";
       permission item users search; admin roles as a system list; Logged-in users filters, one folded row per user, End sessions per user.

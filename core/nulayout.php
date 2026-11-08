@@ -257,6 +257,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php endif; ?>
 						<?php // side bar on / off: start page → Customise → Appearance (0.8.708); "for everyone": Settings → Look ?>
 						<li><hr class="dropdown-divider"></li>
+						<?php if (NuUserHelp::any()): // user help pages of this installation (0.8.1023) ?><li><a class="dropdown-item" href="<?= h(nu_url('userhelp')) ?>" id="nuMenuUserHelp"><i class="bi bi-journal-bookmark me-2"></i><?= h(t('uh_title')) ?></a></li><?php endif; ?>
 						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>

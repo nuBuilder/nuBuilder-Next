@@ -115,7 +115,7 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 	// ------------------------------------------------------------------ editor
 	$posted = nu_is_post() && nu_post('action') === 'save';
 	if ($posted) $val = NuPrompt::fromInput($_POST);
-	elseif ($rec) $val = $rec;
+	elseif ($rec) $val = ['pge_instruction' => NuPrompt::instruction((string)($rec['pge_instruction'] ?? ''))] + $rec;
 	elseif ($src) $val = $src;                                // a clone shows the values of its source
 	else {                                                    // new: defaults, optional prefill from the URL
 		$val = ['pge_code' => '', 'pge_description' => '', 'pge_instruction' => NuPrompt::defaultInstruction(), 'pge_prompt' => '', 'pge_template' => '0',

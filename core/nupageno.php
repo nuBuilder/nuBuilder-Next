@@ -22,7 +22,7 @@ final class NuPageNo
 		'270' => ['reports', []], '275' => ['reportdesigner', []], '280' => ['sqlbuilder', []], '290' => ['prompts', []],
 		'300' => ['import', []], '310' => ['dataexport', []], '320' => ['cloner', []], '330' => ['appcloner', []], '340' => ['sample', []], '390' => ['dbreset', []],
 		'400' => ['email', []], '400.1' => ['email', ['tab' => 'settings']], '400.2' => ['email', ['tab' => 'test']], '400.3' => ['email', ['tab' => 'log']],
-		'410' => ['emailtemplates', []], '420' => ['notifications', []], '420.1' => ['notifications', []], '420.2' => ['notifications', ['tab' => 'manage']],
+		'410' => ['emailtemplates', []], '420' => ['notifications', []], '420.1' => ['notifications', []], '420.2' => ['notifications', ['tab' => 'manage']], '425' => ['helppages', []], '426' => ['userhelp', []],
 		'430' => ['dashboards', []], '440' => ['webhooks', []], '450' => ['apiclients', []], '455' => ['apiplayground', []],
 		'500' => ['log', []], '510' => ['audit', []], '520' => ['debug', []], '590' => ['selftest', []],
 		'600' => ['settings', []], '600.1' => ['settings', ['s' => 'general']], '600.2' => ['settings', ['s' => 'look']], '600.3' => ['settings', ['s' => 'users']],

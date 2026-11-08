@@ -559,10 +559,10 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<?php // (i) links to the activity of this user (0.8.687): its log entries, the log about this record, its sessions
 			$riLinks = [];
 			if (NuAcl::can(NuAcl::FORM_LOG)) {
-				$riLinks[] = ['bi-journal-text', t('user_ri_log'), nu_url('log', ['login' => (string)$existing['sus_login_name']])];
-				$riLinks[] = ['bi-clock-history', t('user_ri_changes'), nu_url('log', ['q' => (string)$id])];
+				$riLinks[] = ['bi-journal-text', t('user_ri_log'), nu_url('log', ['login' => (string)$existing['sus_login_name'], 'nf' => '1'])];
+				$riLinks[] = ['bi-clock-history', t('user_ri_changes'), nu_url('log', ['q' => (string)$id, 'nf' => '1'])];
 			}
-			if (NuAdmin::can('sessions')) $riLinks[] = ['bi-people', t('user_ri_sessions'), nu_url('sessions', ['user' => (string)$id])]; ?>
+			if (NuAdmin::can('sessions')) $riLinks[] = ['bi-people', t('user_ri_sessions'), nu_url('sessions', ['user' => (string)$id, 'nf' => '1'])]; ?>
 			<?= NuFormInfo::record('zzzzsys_user', (string)$id, ['login' => (string)$existing['sus_login_name']], 'nuRecInfo', $pwInfo !== '' ? ['pw_changed' => $pwInfo] : [], $riLinks) /* (i): record ID, table, created / changed (0.8.500) */ ?>
 		<?php endif; ?>
 	</div>
@@ -588,26 +588,46 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 	</ul>
 	<div class="tab-content">
 	<div class="tab-pane fade<?= $userTab === '' ? ' show active' : '' ?>" id="userTabGeneral" role="tabpanel" aria-labelledby="userTabGeneralBtn" tabindex="0">
+	<?php // layout (0.8.1018, the owner's mockup 6): identity strip on top (initials + name / e-mail / code at their natural width),
+	// below three columns Organisation (+ custom fields) · Login credentials · Access & roles + Account settings
+	$ini = static function (string $first, string $last, string $full): string {
+		$w = trim($first) !== '' || trim($last) !== '' ? array_filter([trim($first), trim($last)]) : preg_split('/\s+/u', trim($full), -1, PREG_SPLIT_NO_EMPTY);
+		$w = array_values($w ?: []);
+		$c = $w ? mb_substr($w[0], 0, 1) . (count($w) > 1 ? mb_substr($w[count($w) - 1], 0, 1) : '') : '';
+		return mb_strtoupper($c);
+	};
+	$initials = $ini((string)$v['sus_first_name'], (string)$v['sus_last_name'], (string)$v['sus_name']); ?>
+	<div class="card shadow-sm mb-3 userCardPerson">
+		<div class="card-header fw-semibold d-flex align-items-center gap-2 userPersonHead">   <?php // initials in the header (0.8.1019, the owner's mockup C) ?>
+			<div class="userAvatar" id="userAvatar" aria-hidden="true"><span id="userAvatarTxt"><?= h($initials) ?></span><i class="bi bi-person<?= $initials !== '' ? ' d-none' : '' ?>" id="userAvatarIcon"></i></div>
+			<span><?= h(t('user_sec_person')) ?></span>
+			<span class="userPersonWho text-body-secondary fw-normal text-truncate" id="userAvatarName"<?= trim((string)$v['sus_name']) === '' ? ' hidden' : '' ?>>· <?= h((string)$v['sus_name']) ?></span>
+		</div>
+		<div class="card-body userPersonBody">
+			<div class="userIdentFields">
+				<div class="uiF uiF-name"><?= $input('sus_name', 'text', ['required' => true]) ?></div>
+				<div class="uiF uiF-first"><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
+				<div class="uiF uiF-last"><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
+				<div class="uiF uiF-email"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
+				<div class="uiF uiF-code"><?= $input('sus_code', 'text', ['unique' => true]) ?></div>
+			</div>
+		</div>
+	</div>
 	<div class="row g-3">
-		<div class="col-lg-6 d-flex flex-column gap-3">   <?php // Person + custom fields (0.8.591: card instead of the tab Additional fields) ?>
-			<div class="card shadow-sm">
-				<div class="card-header fw-semibold"><i class="bi bi-person-vcard me-2"></i><?= h(t('user_sec_person')) ?></div>
+		<div class="col-lg-6 col-xl-4 d-flex flex-column gap-3">   <?php // Organisation + custom fields (0.8.591: card instead of the tab Additional fields) ?>
+			<div class="card shadow-sm userCardOrg">
+				<div class="card-header fw-semibold"><i class="bi bi-diagram-3 me-2"></i><?= h(t('user_sec_org')) ?></div>
 				<div class="card-body">
 					<div class="row g-3">
-						<div class="col-12"><?= $input('sus_name', 'text', ['required' => true]) ?></div>
-						<div class="col-sm-6"><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
-						<div class="col-sm-6"><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
-						<div class="col-sm-8"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
-						<div class="col-sm-4"><?= $input('sus_code', 'text', ['unique' => true]) ?></div>
-						<div class="col-sm-4"><?= $input('sus_position') ?></div>
-						<div class="col-sm-4"><?= $input('sus_department') ?></div>
-						<div class="col-sm-4"><?= $input('sus_team') ?></div>
-						<div class="col-sm-6"><?= $input('sus_additional1') ?></div>
-						<div class="col-sm-6"><?= $input('sus_additional2') ?></div>
+						<div class="col-12"><?= $input('sus_position') ?></div>
+						<div class="col-12"><?= $input('sus_department') ?></div>
+						<div class="col-12"><?= $input('sus_team') ?></div>
+						<div class="col-12"><?= $input('sus_additional1') ?></div>
+						<div class="col-12"><?= $input('sus_additional2') ?></div>
 					</div>
 				</div>
 			</div>
-			<?php if ($ufAll): // custom user fields (0.8.454) – own card below Person (0.8.591) ?>
+			<?php if ($ufAll): // custom user fields (0.8.454) – own card below Organisation ?>
 			<div class="card shadow-sm" id="userTabMore">
 				<div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-ui-checks me-2"></i><?= h(t('user_tab_more')) ?></span>
 					<?php if (NuAdmin::can('userfields')): ?><a class="small" href="<?= h(nu_url('userfields')) ?>" id="userFieldsManage"><i class="bi bi-gear me-1"></i><?= h(t('uf_manage')) ?></a><?php endif; ?></div>
@@ -618,7 +638,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<?php endif; ?>
 		</div>
 
-		<div class="col-lg-6 d-flex flex-column gap-3">   <?php // three cards (0.8.586): login credentials · access & roles · account settings ?>
+		<div class="col-lg-6 col-xl-4 d-flex flex-column gap-3">   <?php // login credentials (0.8.586 cards; 0.8.1018: own column) ?>
 			<div class="card shadow-sm userCardLogin">
 				<div class="card-header fw-semibold"><i class="bi bi-key me-2"></i><?= h(t('user_sec_credentials')) ?></div>
 				<div class="card-body">
@@ -725,6 +745,8 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					</div>
 				</div>
 			</div>
+		</div>
+		<div class="col-lg-6 col-xl-4 d-flex flex-column gap-3">   <?php // access & roles + account settings ?>
 			<div class="card shadow-sm userCardAccess">
 				<div class="card-header fw-semibold"><i class="bi bi-shield-lock me-2"></i><?= h(t('user_sec_access')) ?></div>
 				<div class="card-body">
