@@ -96,6 +96,23 @@ final class NuFormDraft
 		return self::get($id) ?? [];
 	}
 
+	/**
+	 * A change made to the live form outside the draft (0.8.1054: help pages linked from the help page editor) applied to an open draft too:
+	 * $fn changes a snapshot; it runs on the draft AND on its base, so publishing neither drops the change nor reports it as a conflict.
+	 * No undo step (not the designer's change). Returns true when a draft was changed.
+	 */
+	public static function patchOpen(string $formId, callable $fn): bool
+	{
+		$d = self::openFor($formId);
+		if (!$d) return false;
+		$snap = $fn(self::snapshotOf($d));
+		$base = $fn(self::snapshotOf($d, 'base_snapshot'));
+		nu_db()->update(self::TABLE, ['snapshot' => self::json($snap), 'base_snapshot' => self::json($base), 'base_hash' => NuFormSnapshot::hash($base),
+			'updated_at' => self::now()], 'zzzzsys_nunext_form_draft_id', (string)$d['zzzzsys_nunext_form_draft_id']);
+		unset(self::$previewCache[$formId]);
+		return true;
+	}
+
 	/** Every change of a draft: the previous snapshot goes to the undo list, rev + 1 – refused when rev is not the current one. */
 	public static function save(string $id, int $rev, array $snap, string $label): int
 	{

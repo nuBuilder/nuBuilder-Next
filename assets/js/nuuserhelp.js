@@ -12,7 +12,7 @@
 	var T = {};
 	var tEl = document.getElementById('nuUhPanelTexts');
 	var base = (btn && btn.getAttribute('data-nu-uhelp-base')) || (tEl && tEl.getAttribute('data-uhelp-base')) || 'index.php?p=userhelp';
-	if (tEl) ['close', 'back', 'newtab', 'loading', 'error', 'insection', 'edit'].forEach(function (k) { T[k] = tEl.getAttribute('data-' + k) || k; });
+	if (tEl) ['close', 'back', 'newtab', 'loading', 'error', 'insection', 'edit', 'resize'].forEach(function (k) { T[k] = tEl.getAttribute('data-' + k) || k; });
 	var panel = null, bodyEl, titleEl, newTab, backBtn, editLink, history = [], current = '', opener = null;
 
 	var tabs = {};
@@ -52,6 +52,7 @@
 		bodyEl.tabIndex = 0;
 		panel.append(head, bodyEl);
 		document.body.appendChild(panel);
+		splitter();
 		close.addEventListener('click', hide);
 		backBtn.addEventListener('click', function () { if (history.length) load(history.pop(), false); });
 		bodyEl.addEventListener('click', function (e) {
@@ -63,6 +64,49 @@
 		document.addEventListener('keydown', function (e) {
 			if (e.key === 'Escape' && !panel.hidden && !document.querySelector('.modal.show')) { e.stopPropagation(); hide(); }
 		});
+	}
+	// width by the splitter on the left edge (0.8.1052): stored per browser, 300 px … 90 % of the window, double-click / Home = default;
+	// phones (< 576 px) keep the full width
+	var WKEY = 'nunext-uh-w', WDEF = 440, WMIN = 300;
+	function clampW(w) { return Math.round(Math.max(WMIN, Math.min(w, Math.max(WMIN, window.innerWidth * 0.9)))); }
+	function setW(w, save) {
+		w = clampW(w);
+		document.documentElement.style.setProperty('--nu-uh-w', w + 'px');
+		var sp = panel && panel.querySelector('.nuUhSplit'); if (sp) sp.setAttribute('aria-valuenow', String(w));
+		if (save) { try { if (w === WDEF) localStorage.removeItem(WKEY); else localStorage.setItem(WKEY, String(w)); } catch (e) { /* no storage */ } }
+	}
+	function splitter() {
+		var saved = 0;
+		try { saved = parseInt(localStorage.getItem(WKEY) || '0', 10) || 0; } catch (e) { /* no storage */ }
+		var sp = el('div', 'nuUhSplit');
+		sp.setAttribute('role', 'separator'); sp.setAttribute('aria-orientation', 'vertical'); sp.tabIndex = 0;
+		sp.setAttribute('aria-valuemin', String(WMIN));
+		if (T.resize) { sp.title = T.resize; sp.setAttribute('aria-label', T.resize); }
+		panel.appendChild(sp);
+		setW(saved || WDEF, false);
+		var vw = function () { return document.documentElement.clientWidth; };
+		sp.addEventListener('pointerdown', function (e) {
+			if (e.button !== 0) return;
+			e.preventDefault();
+			try { sp.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+			document.documentElement.classList.add('nuUhResizing');
+			var off = vw() - e.clientX - panel.getBoundingClientRect().width;   // where on the splitter it was grabbed
+			var move = function (ev) { setW(vw() - ev.clientX - off, false); };
+			var up = function (ev) {
+				sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); sp.removeEventListener('pointercancel', up);
+				document.documentElement.classList.remove('nuUhResizing');
+				setW(vw() - ev.clientX - off, true);
+			};
+			sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up); sp.addEventListener('pointercancel', up);
+		});
+		sp.addEventListener('dblclick', function () { setW(WDEF, true); });
+		sp.addEventListener('keydown', function (e) {
+			var w = panel.getBoundingClientRect().width;
+			if (e.key === 'ArrowLeft') { e.preventDefault(); setW(w + 20, true); }
+			else if (e.key === 'ArrowRight') { e.preventDefault(); setW(w - 20, true); }
+			else if (e.key === 'Home') { e.preventDefault(); setW(WDEF, true); }
+		});
+		window.addEventListener('resize', function () { var w = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nu-uh-w'), 10); if (w) setW(w, false); });
 	}
 	function hide() {
 		if (!panel || panel.hidden) return;

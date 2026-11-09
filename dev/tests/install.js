@@ -48,13 +48,28 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		const next = async () => { await Promise.all([p.waitForNavigation(), p.click('#insNext')]); };
 		await p.goto(BASE);
 		expect(await p.locator('main.nu-install').count() === 1, 'no installer: ' + p.url());
+		// 0.8.1047: server checks – passed ones folded under one summary line, problems always visible
+		const rq = await p.evaluate(() => { const r = document.getElementById('insReq'), f = document.getElementById('insReqOk');
+			return {ok: +r.dataset.ok, bad: +r.dataset.bad, open: !!(f && f.open), shown: [...r.querySelectorAll('.insReqRow')].filter((x) => x.checkVisibility()).length,
+				all: r.querySelectorAll('.insReqRow').length}; });
+		expect(rq.ok > 0 && !rq.open && rq.shown === rq.bad && rq.all === rq.ok + rq.bad, 'server checks folded: ' + JSON.stringify(rq));
+		await p.click('#insReqOk > summary');
+		expect(await p.evaluate(() => [...document.querySelectorAll('#insReq .insReqRow')].every((x) => x.checkVisibility())), 'Show all lists every check');
 		await Promise.all([p.waitForNavigation(), p.click('main form button[type=submit]')]);           // start (local server: no token)
 		await p.selectOption('#type', 'mysql');
 		for (const [id, v] of [['host', '127.0.0.1'], ['port', '3306'], ['name', NAME], ['user', 'nu'], ['password', 'nu']]) await p.fill('#' + id, v);
 		// 0.8.703: "Test connection" answers on the installer page (0.8.701–0.8.702 stopped with "nuconfig.php not found")
 		await Promise.all([p.waitForNavigation(), p.click('#insTest')]);
 		expect(await p.locator('#insDbForm').count() === 1 && !/nuconfig-sample\.php/.test(await p.content()), 'test connection: ' + (await p.locator('main').textContent()).slice(0, 200));
+		// 0.8.1048: library packs in _install/ are not offered as database dumps
+		const fakeLib = path.join(SITE, '_install', 'nunext-lib-e2etest-1.0.zip'), fakeSql = path.join(SITE, '_install', 'zz-e2e-pick.sql');
+		fs.mkdirSync(path.join(SITE, '_install'), { recursive: true });
+		fs.writeFileSync(fakeLib, 'x'); fs.writeFileSync(fakeSql, '-- x');
 		await next();
+		const picks = await p.locator('#dump_pick option').allTextContents();
+		fs.unlinkSync(fakeLib); fs.unlinkSync(fakeSql);
+		expect(picks.some((o) => o.includes('zz-e2e-pick.sql')), 'dump not offered: ' + picks.join(', '));
+		expect(!picks.some((o) => o.includes('nunext-lib-')), 'library pack offered as dump: ' + picks.join(', '));
 		expect(await p.locator('#choice_up').count() === 1, 'no upload option');
 		// a dump with a statement on another table is refused
 		await p.check('#choice_up');
@@ -77,17 +92,19 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		await p.check('#lang_en'); await p.check('#lang_fr');
 		await next();                                                                                          // options
 		expect(await p.locator('#insLibsForm').count() === 1, 'no step Libraries');
+		// 0.8.1049: every pack that can be installed is ticked by default
+		expect(await p.locator('.nuInsLib input:not(:disabled):not(:checked)').count() === 0, 'pack not ticked by default');
 		const ticked = {};
 		for (const r of await p.locator('.nuInsLib').all()) ticked[await r.getAttribute('data-slot')] = await r.locator('input').isChecked();
 		if (packs.length) {
 			const has = (s) => packs.some((f) => f.startsWith('nunext-lib-' + s + '-'));
 			if (has('tcpdf')) expect(ticked.tcpdf, 'TCPDF not ticked');
-			if (has('phpmyadmin')) expect(!ticked.phpmyadmin, 'phpMyAdmin ticked');
+			if (has('phpmyadmin')) expect(ticked.phpmyadmin, 'phpMyAdmin not ticked');   // 0.8.1049: all ticked by default
 			expect(await p.locator('.nuInsLib .text-danger').count() >= 1, 'changed pack not refused');
 		}
 		await next();                                                                                          // libraries
 		if (packs.length) expect(/TCPDF|PHPMailer/.test(await p.locator('#insSumLibs').textContent()), 'summary without libraries');
-		await Promise.all([p.waitForNavigation({ timeout: 300000 }), p.click('#insInstall')]);
+		await Promise.all([p.waitForNavigation({ timeout: 300000 }), p.click('#insInstall', { noWaitAfter: true })]);
 		const done = await p.locator('main').textContent();
 		expect(!/alert-danger/.test(await p.content()) || /insUpgraded/.test(await p.content()), 'install failed: ' + done.slice(0, 300));
 		// the structure of 4.9 (columns of every version up to 4.9 present)
@@ -139,7 +156,7 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		await next2();                                                                                         // admin
 		await next2();                                                                                         // options
 		await next2();                                                                                         // libraries
-		await Promise.all([q.waitForNavigation({ timeout: 300000 }), q.click('#insInstall')]);
+		await Promise.all([q.waitForNavigation({ timeout: 300000 }), q.click('#insInstall', { noWaitAfter: true })]);
 		const cfg = fs.readFileSync(path.join(SITE, 'nuconfig.php'), 'utf8');
 		expect(!/nuConfigAllowExistingNuDB/.test(cfg), 'nuconfig.php still gets $nuConfigAllowExistingNuDB');
 		expect(sql("SELECT setting_value FROM " + NAME + ".zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'db_origin'") === 'nubuilder', 'origin');

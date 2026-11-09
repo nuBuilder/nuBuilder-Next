@@ -169,7 +169,9 @@ final class NuInstall
 		$https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 		$cfgDir = dirname(self::configPath());
 		return [
-			['PHP ≥ 8.1', PHP_VERSION_ID >= 80100, PHP_VERSION . (PHP_VERSION_ID < 80200 ? ' – ' . t('secchk_php_old') : '') . (NuSecurity::phpFixNote() !== '' ? ' – ' . NuSecurity::phpFixNote() : ''), true],
+			// 5th element (0.8.1047): passed, but with a note to read – shown outside the folded list of passed checks
+			['PHP ≥ 8.1', PHP_VERSION_ID >= 80100, PHP_VERSION . (PHP_VERSION_ID < 80200 ? ' – ' . t('secchk_php_old') : '') . (NuSecurity::phpFixNote() !== '' ? ' – ' . NuSecurity::phpFixNote() : ''), true,
+				PHP_VERSION_ID < 80200 || NuSecurity::phpFixNote() !== ''],
 			['PDO MySQL / MariaDB', extension_loaded('pdo_mysql'), extension_loaded('pdo_mysql') ? 'ok' : t('ins_missing'), false],
 			['PDO MSSQL', extension_loaded('pdo_sqlsrv'), extension_loaded('pdo_sqlsrv') ? 'ok' : t('ins_optional'), false],
 			['mbstring', extension_loaded('mbstring'), extension_loaded('mbstring') ? 'ok' : t('ins_missing'), true],
@@ -306,7 +308,8 @@ final class NuInstall
 		foreach (glob(self::dir() . '/*') ?: [] as $f) {
 			$b = basename($f);
 			// files of the wizard itself (an upload, the checked copy) are not offered again
-			if (is_file($f) && preg_match('/\.(sql|sql\.gz|zip)$/i', $b) && !str_ends_with(strtolower($b), '.checked.sql') && !str_starts_with($b, 'upload-')) $out[$b] = $f;
+			if (is_file($f) && preg_match('/\.(sql|sql\.gz|zip)$/i', $b) && !str_ends_with(strtolower($b), '.checked.sql') && !str_starts_with($b, 'upload-')
+				&& !str_starts_with(strtolower($b), 'nunext-lib-')) $out[$b] = $f;   // library packs of the package are not database dumps
 		}
 		ksort($out);
 		return $out;

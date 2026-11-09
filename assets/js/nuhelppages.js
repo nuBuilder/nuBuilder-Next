@@ -243,4 +243,102 @@
 			if (getText().trim() && window.nuConfirmAsk) window.nuConfirmAsk(tx('replace'), go); else go();
 		});
 	}
+
+	// "Used on" (0.8.1054): link the page to a form, a tab or a field from here, × removes a link – POST actions link_targets / link
+	var usage = document.getElementById('uhUsage'), linkDlg = document.getElementById('uhLinkDlg');
+	function linkPost(data) {
+		var fd = new FormData();
+		fd.append('_csrf', (form.querySelector('input[name=_csrf]') || {}).value || '');
+		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+		return fetch(form.getAttribute('data-ai-url'), {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); });
+	}
+	function drawUsage(list) {
+		if (!usage) return;
+		var ul = document.createElement(list.length ? 'ul' : 'div');
+		ul.id = 'uhUsage';
+		ul.className = list.length ? 'list-unstyled small mb-0' : 'small text-body-secondary';
+		if (!list.length) ul.textContent = tx('none');
+		list.forEach(function (u) {
+			var li = document.createElement('li'), sp = document.createElement('span'), a = document.createElement('a'), pl = document.createElement('span'), b = document.createElement('button');
+			li.className = 'd-flex align-items-start gap-1';
+			sp.className = 'flex-grow-1';
+			a.href = u.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = u.name;
+			pl.className = 'text-body-secondary'; pl.textContent = ' – ' + u.place;
+			sp.append(a, pl);
+			b.type = 'button'; b.className = 'btn btn-link btn-sm p-0 text-body-secondary uhUnlink';
+			b.setAttribute('data-form', u.form); b.setAttribute('data-place', u.v); b.setAttribute('data-what', u.name + ' – ' + u.place);
+			b.title = tx('unlink'); b.setAttribute('aria-label', tx('unlink'));
+			b.innerHTML = '<i class="bi bi-x-lg"></i>';
+			li.append(sp, b);
+			ul.appendChild(li);
+		});
+		usage.replaceWith(ul);
+		usage = ul;
+	}
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest('.uhUnlink');
+		if (!b) return;
+		var code = (document.getElementById('uhLinkBody') || {getAttribute: function () { return ''; }}).getAttribute('data-code');
+		var go = function () {
+			linkPost({action: 'link', unlink: '1', code: code, form: b.getAttribute('data-form'), place: b.getAttribute('data-place')}).then(function (j) {
+				if (j.usage) drawUsage(j.usage); else if (j.error) window.alert(j.error);
+			});
+		};
+		if (window.nuConfirmAsk) window.nuConfirmAsk(tx('unlink-ask').replace('%s', b.getAttribute('data-what')), go, tx('unlink-ok'), 'btn btn-danger', {cancelFirst: true}); else if (window.confirm(tx('unlink-ask').replace('%s', b.getAttribute('data-what')))) go();
+	});
+	if (linkDlg) {
+		var lf = document.getElementById('uhLinkForm'), lp = document.getElementById('uhLinkPlace'), lgo = document.getElementById('uhLinkGo'),
+			lcur = document.getElementById('uhLinkCur'), lerr = document.getElementById('uhLinkErr'), lcode = document.getElementById('uhLinkBody').getAttribute('data-code'), lseq = 0;
+		var showErr = function (t) { lerr.textContent = t || ''; lerr.classList.toggle('d-none', !t); };
+		// another page at the chosen place: the note says it will be replaced and the button turns into "Replace" – that is the question
+		var goLabel = lgo.innerHTML, replaceMode = false;
+		var setReplace = function (cur) {
+			replaceMode = !!cur;
+			lcur.textContent = cur ? tx('link-now').replace('%s', cur) : '';
+			lcur.classList.toggle('d-none', !cur);
+			lgo.className = 'btn ' + (cur ? 'btn-warning' : 'btn-primary');
+			lgo.innerHTML = cur ? '<i class="bi bi-arrow-repeat me-1"></i>' + tx('link-replace-ok') : goLabel;
+		};
+		var showCur = function () {
+			var o = lp.options[lp.selectedIndex], cur = o ? o.getAttribute('data-cur') || '' : '';
+			setReplace(cur && cur !== lcode ? cur : '');
+			lgo.disabled = !o || cur === lcode;
+		};
+		lf.addEventListener('change', function () {
+			var my = ++lseq;
+			showErr('');
+			lp.innerHTML = ''; lp.disabled = true; lgo.disabled = true; lcur.classList.add('d-none');
+			if (!lf.value) return;
+			linkPost({action: 'link_targets', form: lf.value}).then(function (j) {
+				if (my !== lseq) return;
+				if (!j.places) { showErr(j.error || ''); return; }
+				var groups = {};
+				j.places.forEach(function (p) {
+					var o = document.createElement('option');
+					o.value = p.v; o.setAttribute('data-cur', p.cur || '');
+					o.textContent = p.label + (p.cur === lcode ? ' ✓' : (p.cur ? ' · ' + p.cur : ''));
+					if (!p.group) { lp.appendChild(o); return; }
+					if (!groups[p.group]) { groups[p.group] = document.createElement('optgroup'); groups[p.group].label = p.group; lp.appendChild(groups[p.group]); }
+					groups[p.group].appendChild(o);
+				});
+				lp.disabled = false;
+				showCur();
+			});
+		});
+		lp.addEventListener('change', showCur);
+		var send = function () {
+			lgo.disabled = true;
+			linkPost({action: 'link', code: lcode, form: lf.value, place: lp.value, replace: replaceMode ? '1' : ''}).then(function (j) {
+				lgo.disabled = false;
+				if (j.ask) { setReplace(j.ask); return; }      // another page was linked there meanwhile: ask again
+				
+				if (j.error) { showErr(j.error); return; }
+				drawUsage(j.usage || []);
+				nuBs.modal(linkDlg).hide();
+			}).catch(function () { lgo.disabled = false; });
+		};
+		lgo.addEventListener('click', send);
+		linkDlg.addEventListener('show.bs.modal', function () { showErr(''); if (lf.value) lf.dispatchEvent(new Event('change')); });
+	}
 })();
+

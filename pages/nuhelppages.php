@@ -45,6 +45,23 @@ if (nu_is_post()) {
 		echo json_encode(['ok' => true, 'related' => array_map(static fn($r) => $r + ['kind_text' => $kinds[$r['kind']]], NuUserHelp::related((string)($_POST['form'] ?? '')))]);
 		exit;
 	}
+	if ($action === 'link_targets' || $action === 'link') {     // JSON (0.8.1054): link / unlink a page at a form, a tab or a field ("Used on")
+		header('Content-Type: application/json; charset=utf-8');
+		$fid = (string)($_POST['form'] ?? '');
+		if (!NuUserHelp::canLink()) { http_response_code(403); echo json_encode(['error' => t('err_forbidden')]); exit; }
+		if ($action === 'link_targets') {
+			$tg = NuUserHelp::targets($fid);
+			echo json_encode($tg === null ? ['error' => t('form_err_not_found')] : ['ok' => true, 'places' => $tg]);
+			exit;
+		}
+		$code = (string)($_POST['code'] ?? '');
+		$r = NuUserHelp::link($fid, (string)($_POST['place'] ?? ''), ($_POST['unlink'] ?? '') === '1' ? null : $code, ($_POST['replace'] ?? '') === '1', ($_POST['unlink'] ?? '') === '1' ? $code : '');
+		if (isset($r['error'])) http_response_code(400);
+		if (!empty($r['ok'])) $r['usage'] = array_map(static fn($u) => ['form' => $u[0], 'name' => $u[1], 'place' => $u[2], 'v' => $u[3] === 'form' ? 'form' : $u[3] . ':' . $u[4],
+			'url' => nu_url('form', ['f' => $u[0], 'design' => '1'])], NuUserHelp::usage()[$code] ?? []);
+		echo json_encode($r);
+		exit;
+	}
 	if ($action === 'md_html') {                               // JSON (0.8.1038): an AI answer in Markdown → HTML for the visual editor
 		header('Content-Type: application/json; charset=utf-8');
 		echo json_encode(['ok' => true, 'html' => NuHtmlClean::doc(NuMarkdown::toWeb(mb_substr((string)($_POST['text'] ?? ''), 0, 200000)))]);
@@ -238,9 +255,11 @@ echo NuListView::crumbs($crumbs); ?>
 					<input class="form-control" id="uhKeywords" name="keywords" maxlength="500" value="<?= h($v('keywords')) ?>"></div>
 				<?php if (!$isTr): ?>
 				<div class="mb-1 fw-semibold small"><?= h(t('uh_used')) ?><?= $tip(t('uh_used_tip')) ?></div>
+				<?php $canLink = $row && NuUserHelp::canLink(); ?>
 				<?php if ($usage): ?><ul class="list-unstyled small mb-0" id="uhUsage">
-					<?php foreach ($usage as [$fid, $fname, $place]): ?><li><a href="<?= h(nu_url('form', ['f' => $fid, 'design' => '1'])) ?>" target="_blank" rel="noopener"><?= h($fname) ?></a> <span class="text-body-secondary">– <?= h($place) ?></span></li><?php endforeach; ?>
+					<?php foreach ($usage as [$fid, $fname, $place, $kind, $ref]): ?><li class="d-flex align-items-start gap-1"><span class="flex-grow-1"><a href="<?= h(nu_url('form', ['f' => $fid, 'design' => '1'])) ?>" target="_blank" rel="noopener"><?= h($fname) ?></a> <span class="text-body-secondary">– <?= h($place) ?></span></span><?php if ($canLink): ?><button type="button" class="btn btn-link btn-sm p-0 text-body-secondary uhUnlink" data-form="<?= h($fid) ?>" data-place="<?= h($kind === 'form' ? 'form' : $kind . ':' . $ref) ?>" data-what="<?= h($fname . ' – ' . $place) ?>" title="<?= h(t('uh_unlink')) ?>" aria-label="<?= h(t('uh_unlink')) ?>"><i class="bi bi-x-lg"></i></button><?php endif; ?></li><?php endforeach; ?>
 				</ul><?php else: ?><div class="small text-body-secondary" id="uhUsage"><?= h(t('uh_used_none')) ?></div><?php endif; ?>
+				<?php if ($canLink): ?><button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="uhLinkAdd" data-bs-toggle="modal" data-bs-target="#uhLinkDlg"><i class="bi bi-plus-lg"></i> <?= h(t('uh_link_add')) ?></button><?php endif; ?>
 				<?php endif; ?>
 				<?php if ($row): ?><div class="small text-body-secondary mt-3"><?= h(t('fi_changed')) ?>: <?= h(date(nu_dfmt('d.m.Y H:i'), (int)strtotime((string)$row['updated_at']))) ?><?= (string)$row['updated_by'] !== '' ? ' · ' . h((string)$row['updated_by']) : '' ?></div><?php endif; ?>
 			</div></div>
@@ -256,14 +275,14 @@ echo NuListView::crumbs($crumbs); ?>
 		<?php if (!$isTr): ?>
 		<div class="row g-2 mb-2">
 			<div class="col-md-5"><label class="form-label" for="uhAiForm"><?= h(t('uh_ai_form')) ?></label>
-				<select class="form-select nuListTomSelect" id="uhAiForm"><option value=""></option>
+				<select class="form-select nuListTomSelect" id="uhAiForm" data-ts-search data-placeholder="<?= h(t('uh_ai_form_search')) ?>"><option value=""></option>
 					<?php foreach ($formOpts as $fid => $f): ?><option value="<?= h((string)$fid) ?>" data-sub="<?= h((string)$f['code']) ?>"<?= isset($usage[0]) && $usage[0][0] === (string)$fid ? ' selected' : '' ?>><?= h((string)$f['description'] ?: (string)$f['code']) ?></option><?php endforeach; ?>
 				</select></div>
 			<div class="col-md-3"><label class="form-label" for="uhAiLang"><?= h(t('uh_ai_lang')) ?></label><?= NuListView::infoTip(t('uh_ai_lang_tip')) ?>
 				<select class="form-select" id="uhAiLang" data-default="<?= h(nu_lang()) ?>">
 					<?php foreach (NuLanguages::installed() as $lc): ?><option value="<?= h($lc) ?>"<?= $lc === nu_lang() ? ' selected' : '' ?>><?= h((string)(NU_LANGS[$lc][0] ?? $lc)) ?></option><?php endforeach; ?>
 				</select></div>
-			<div class="col-md-4"><label class="form-label" for="uhAiNote"><?= h(t('uh_ai_note')) ?></label><input class="form-control" id="uhAiNote" maxlength="1000"></div>
+			<div class="col-md-4"><label class="form-label" for="uhAiNote"><?= h(t('uh_ai_note')) ?></label><?= NuListView::infoTip(t('uh_ai_note_tip')) ?><input class="form-control" id="uhAiNote" maxlength="1000" placeholder="<?= h(t('uh_ai_note_ph')) ?>"></div>
 		</div>
 		<fieldset class="border rounded p-2 mb-3 d-none" id="uhAiRelBox"><legend class="float-none w-auto px-1 mb-0 small fw-semibold"><?= h(t('uh_rel_title')) ?></legend>
 			<div class="small text-body-secondary mb-1"><?= h(t('uh_rel_tip')) ?></div><div id="uhAiRel"></div></fieldset>
@@ -276,7 +295,25 @@ echo NuListView::crumbs($crumbs); ?>
 	<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button><button type="button" class="btn btn-primary" id="uhAiInsert"><?= h(t('uh_ai_insert')) ?></button></div>
 </div></div></div>
 
-<div id="uhTexts" hidden data-hash="<?= h(t('uh_ins_hash_ph')) ?>" data-pick="<?= h(t('uh_ins_link_pick')) ?>" data-level-ph="<?= h(t('uh_ins_level_ph')) ?>"
+<?php if (!$isTr && $row && NuUserHelp::canLink()): ?>
+<div class="modal fade" id="uhLinkDlg" tabindex="-1" aria-labelledby="uhLinkTitle" aria-hidden="true"><div class="modal-dialog"><div class="modal-content">
+	<div class="modal-header"><h2 class="modal-title h5" id="uhLinkTitle"><i class="bi bi-link-45deg me-1"></i><?= h(t('uh_link_title')) ?></h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+	<div class="modal-body" id="uhLinkBody" data-code="<?= h($code) ?>">
+		<div class="alert alert-danger py-2 small d-none" id="uhLinkErr" role="alert"></div>
+		<div class="mb-3"><label class="form-label" for="uhLinkForm"><?= h(t('uh_link_form')) ?></label>
+			<select class="form-select nuListTomSelect" id="uhLinkForm" data-ts-search data-placeholder="<?= h(t('uh_ai_form_search')) ?>"><option value=""></option>
+				<?php foreach ($formOpts as $fid => $f): ?><option value="<?= h((string)$fid) ?>" data-sub="<?= h((string)$f['code']) ?>"><?= h((string)$f['description'] ?: (string)$f['code']) ?></option><?php endforeach; ?>
+			</select></div>
+		<div class="mb-2"><label class="form-label" for="uhLinkPlace"><?= h(t('uh_link_place')) ?></label><?= NuListView::infoTip(t('uh_link_place_tip')) ?>
+			<select class="form-select" id="uhLinkPlace" disabled></select></div>
+		<div class="small text-body-secondary d-none" id="uhLinkCur"></div>
+	</div>
+	<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button><button type="button" class="btn btn-primary" id="uhLinkGo" disabled><i class="bi bi-link-45deg me-1"></i><?= h(t('uh_link_go')) ?></button></div>
+</div></div></div>
+<?php endif; ?>
+
+<div id="uhTexts" hidden data-link-now="<?= h(t('uh_link_now')) ?>" data-link-replace-ok="<?= h(t('uh_link_replace_ok')) ?>"
+	data-unlink-ask="<?= h(t('uh_unlink_ask')) ?>" data-unlink-ok="<?= h(t('uh_unlink_ok')) ?>" data-unlink="<?= h(t('uh_unlink')) ?>" data-none="<?= h(t('uh_used_none')) ?>" data-hash="<?= h(t('uh_ins_hash_ph')) ?>" data-pick="<?= h(t('uh_ins_link_pick')) ?>" data-level-ph="<?= h(t('uh_ins_level_ph')) ?>"
 	data-only="<?= h(t('uh_ins_only_txt')) ?>" data-other="<?= h(t('uh_ins_other_txt')) ?>" data-copy-failed="<?= h(t('copy_failed')) ?>" data-replace="<?= h(t('uh_ai_replace')) ?>"
 	data-levels="<?= h(implode(', ', array_map(static fn($a) => (string)$a['sal_code'], $levels))) ?>"></div>
 <?php nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuhelppages.js') . '"></script>');

@@ -110,6 +110,8 @@ return [
 	'uh_delete_confirm' => 'Hilfeseite «%s» mit ihren Übersetzungen löschen? Ihre Unterseiten rücken eine Ebene nach oben.',
 	'uh_delete_tr_confirm' => 'Übersetzung «%s» löschen?',
 	'uh_deleted' => '«%s» gelöscht.',
+	'uh_link_now' => 'Zeigt jetzt die Hilfeseite «%s» – sie wird ersetzt.',
+	'uh_ai_note_ph' => 'z. B. Ticket abschliessen',
 	'ntf_mine_hint' => 'Benachrichtigungen für dich, angeheftete zuerst, dann die neuesten. Gelesene bleiben, bis sie ablaufen; ausgeblendete stehen unter «Ausgeblendet».',
 	'ntf_manage_hint' => 'Benachrichtigungen, die du sehen darfst: Status, Empfänger, Lesebestätigungen. Senden dürfen: der Globeadmin, das Admin-Rollen-Recht «Benachrichtigungen» = ändern, oder die Berechtigungen NUNEXT_NOTIFY (an alle) / NUNEXT_NOTIFY_OWN (nur eigene Abteilung / eigenes Team).',
 	'ntf_form_hint' => 'Als Entwurf speichern hält sie unsichtbar; Veröffentlichen zeigt sie den Empfängern jetzt (oder ab «Veröffentlichen am»). Nach dem Veröffentlichen ändern sich die Empfänger (feste Liste) und «Bestätigung nötig» nicht mehr.',

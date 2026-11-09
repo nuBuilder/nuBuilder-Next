@@ -402,12 +402,28 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 				<noscript><div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><?= h(t('ok')) ?></button></div></noscript>
 			</form>
 			<h2 class="h6 mt-3"><?= h(t('ins_server')) ?></h2>
-			<ul class="list-group small mb-3" id="insReq">
-				<?php foreach ($reqs as [$label, $ok, $detail, $must]): ?>
-					<li class="list-group-item d-flex gap-2"><i class="bi <?= $ok ? 'bi-check-circle text-success' : ($must ? 'bi-x-circle text-danger' : 'bi-exclamation-circle text-warning') ?>"></i>
-						<span class="me-auto"><?= h($label) ?></span><span class="text-body-secondary text-end"><?= h($detail) ?></span></li>
+			<?php // server checks (0.8.1047, the owner picked mockup A): one summary line, passed checks folded below it, problems always listed
+			$clean = static fn(array $r): bool => $r[1] && empty($r[4]);            // passed without a note to read
+			$reqRow = static fn(array $r): string => '<i class="bi ' . ($clean($r) ? 'bi-check-circle text-success' : ($r[3] && !$r[1] ? 'bi-x-circle text-danger' : 'bi-exclamation-circle text-warning')) . '"></i>'
+				. '<span class="me-auto text-nowrap">' . h($r[0]) . '</span><span class="text-body-secondary ' . (mb_strlen($r[2]) > 60 ? 'insReqLong' : 'text-end') . '">' . h($r[2]) . '</span>';
+			$reqOk = array_values(array_filter($reqs, $clean));
+			$reqBad = array_values(array_filter($reqs, static fn($r) => !$clean($r))); ?>
+			<div class="list-group small mb-3" id="insReq" data-ok="<?= count($reqOk) ?>" data-bad="<?= count($reqBad) ?>">
+				<?php if ($reqOk): ?>
+				<details class="list-group-item p-0 insReqFold" id="insReqOk">
+					<summary class="d-flex gap-2 align-items-center px-3 py-2"><i class="bi bi-check-circle text-success"></i>
+						<span class="me-auto"><?= h($reqBad ? t('ins_req_passed', count($reqOk), count($reqs)) : t('ins_req_all_ok', count($reqs))) ?></span>
+						<span class="text-primary text-nowrap insReqMore"><?= h(t('ins_req_show')) ?> <i class="bi bi-chevron-down"></i></span>
+						<span class="text-primary text-nowrap insReqLess"><?= h(t('ins_req_hide')) ?> <i class="bi bi-chevron-up"></i></span></summary>
+					<ul class="list-unstyled mb-0">
+						<?php foreach ($reqOk as $r): ?><li class="d-flex gap-2 px-3 py-2 border-top insReqRow"><?= $reqRow($r) ?></li><?php endforeach; ?>
+					</ul>
+				</details>
+				<?php endif; ?>
+				<?php foreach ($reqBad as $r): ?>
+					<div class="list-group-item d-flex gap-2 insReqRow <?= $r[3] && !$r[1] ? 'insReqErr list-group-item-danger' : 'insReqWarn list-group-item-warning' ?>"><?= $reqRow($r) ?></div>
 				<?php endforeach; ?>
-			</ul>
+			</div>
 			<form method="post" action="<?= h(nu_url('install', ['step' => 'start'])) ?>" novalidate>
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="next">
 				<?php if ($needsToken && !$S['auth']): ?>
@@ -582,7 +598,7 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 				<?= nu_csrf_field() ?>
 				<div class="list-group mb-2">
 				<?php foreach ($lv as $sl => $x): $best = $x['best'];
-					$checked = isset($S['libs_set']) ? in_array($sl, (array)($S['libs'] ?? []), true) : ($x['rec'] && $best && $x['pack'] === ''); ?>
+					$checked = isset($S['libs_set']) ? in_array($sl, (array)($S['libs'] ?? []), true) : ($best && $x['pack'] === ''); ?><?php // 0.8.1049: every available pack ticked by default (also the optional ones) ?>
 					<label class="list-group-item d-flex gap-3 align-items-start nuInsLib" data-slot="<?= h($sl) ?>">
 						<input class="form-check-input flex-shrink-0 mt-1" type="checkbox" name="slots[]" value="<?= h($sl) ?>"<?= $checked && $best ? ' checked' : '' ?><?= $best ? '' : ' disabled' ?>>
 						<span class="flex-grow-1"><span class="fw-semibold"><?= h($x['title']) ?></span> <span class="small text-body-secondary">· <?= h(t('upd_libuse_' . $x['use'])) ?></span>

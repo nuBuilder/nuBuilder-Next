@@ -50,7 +50,13 @@
 	// ---------------------------------------------------------------- edit forms: focus the first field (0.8.145)
 	// Only with mouse / trackpad: on touch screens a focused field would pop up the on-screen keyboard, so there nothing gets the
 	// focus automatically (also autofocus attributes are dropped). nuFocusFirst(root) is used by the form runtime after nuOnLoad.
-	window.nuHasKeyboard = function () { return matchMedia('(hover: hover) and (pointer: fine)').matches; };
+	// a real keyboard is likely: mouse-like pointer, and not a touch device with a phone-sized screen (0.8.1046 – some phones report
+	// hover / fine pointer, so the search field got the focus and the on-screen keyboard popped up)
+	window.nuHasKeyboard = function () {
+		if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return false;
+		var touch = (navigator.maxTouchPoints || 0) > 0 || matchMedia('(any-pointer: coarse)').matches;
+		return !(touch && Math.min(screen.width || 9999, screen.height || 9999) < 820);
+	};
 	var focusSkip = /^(hidden|button|submit|reset|image|file|range|color)$/;
 	window.nuFocusFirst = function (root) {
 		if (!window.nuHasKeyboard()) return false;

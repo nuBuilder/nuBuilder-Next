@@ -1047,7 +1047,7 @@ T.mail_xfer = async (s) => {
 	const before = await p.inputValue('#m_fromname');
 	await p.click('#nuMailXferBtn');
 	await p.click('#nuMailPaste');
-	await p.waitForSelector('#nuMailPasteModal.show', { timeout: 5000 });
+	await p.waitForSelector('#nuMailPasteModal.show', );
 	await p.fill('#nuMailPasteText', JSON.stringify(Object.assign({}, j, { from_name: 'E2E xfer' })));
 	await p.click('#nuMailPasteApply');
 	expect(await p.inputValue('#m_fromname') === 'E2E xfer', 'pasted file content not applied');
@@ -3117,6 +3117,23 @@ T.browse_alias = async (s) => {                         // 0.8.731: a list colum
 		expect(cells.length > 1 && cells[0] === want && !/error|fehler/i.test(await p.textContent('main')), 'alias column: ' + cells.slice(0, 2).join(' | ') + ' / ' + want);
 		await p.fill('#nuSearchField', ' / '); await p.press('#nuSearchField', 'Enter'); await p.waitForLoadState('networkidle');
 		expect(await p.locator('#nuBrowseTable div.nuCell[data-nu-column="0"]').count() === cells.length, 'search in the alias column');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, { input: `UPDATE zzzzsys_form SET sfo_browse_sql = ${JSON.stringify(oldSql)} WHERE zzzzsys_form_id = 'samplecustomer'; UPDATE zzzzsys_browse SET sbr_display = ${JSON.stringify(oldCol)} WHERE zzzzsys_browse_id = 'sample_customer_b1';` });
+	}
+};
+
+T.browse_alias_expr = async (s) => {                    // 0.8.1059: an alias of the browse SQL's field list INSIDE a column's expression (tester's report)
+	const p = s.ga;
+	const oldSql = sql("SELECT sfo_browse_sql FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	const oldCol = sql("SELECT sbr_display FROM zzzzsys_browse WHERE zzzzsys_browse_id = 'sample_customer_b1'");
+	try {
+		execSync('mysql ' + DB, { input: "UPDATE zzzzsys_form SET sfo_browse_sql = 'SELECT sample_customer.*, CHAR_LENGTH(cus_name) + 1 AS name_len FROM sample_customer GROUP BY sample_customer.sample_customer_id HAVING name_len > 0 ORDER BY CAST(name_len AS UNSIGNED) DESC, cus_name' WHERE zzzzsys_form_id = 'samplecustomer';"
+			+ " UPDATE zzzzsys_browse SET sbr_display = 'IF(cus_name LIKE ''%name_len%'' OR 1 = 1, name_len * 2, '''')' WHERE zzzzsys_browse_id = 'sample_customer_b1';" });
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		const cells = await p.$$eval('#nuBrowseTable div.nuCell[data-nu-column="0"]', (t) => t.map((x) => x.textContent.trim()));
+		const want = sql("SELECT (CHAR_LENGTH(cus_name) + 1) * 2 FROM sample_customer ORDER BY CHAR_LENGTH(cus_name) DESC, cus_name LIMIT 1");
+		expect(cells.length > 1 && cells[0] === want && !/error|fehler/i.test(await p.textContent('main')), 'alias inside IF: ' + cells.slice(0, 3).join(' | ') + ' / ' + want);
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		execSync('mysql ' + DB, { input: `UPDATE zzzzsys_form SET sfo_browse_sql = ${JSON.stringify(oldSql)} WHERE zzzzsys_form_id = 'samplecustomer'; UPDATE zzzzsys_browse SET sbr_display = ${JSON.stringify(oldCol)} WHERE zzzzsys_browse_id = 'sample_customer_b1';` });
@@ -10918,6 +10935,19 @@ T.home_btn_focus = async (s) => {
 		expect(await m.evaluate(() => document.activeElement && document.activeElement.id) !== 'nuHomeSearch', 'phone: search focused (keyboard pops up)');
 		expect(await m.evaluate(() => window.nuHomeReset(location.href) && document.activeElement && document.activeElement.id) !== 'nuHomeSearch', 'phone: Home on the start page focused the search');
 	} finally { await ctx.close(); }
+	// 0.8.1046: a phone that reports a mouse-like pointer (hover / fine) but has a touch screen – no focus either
+	const ctx2 = await p.context().browser().newContext({ viewport: { width: 390, height: 800 }, screen: { width: 390, height: 800 }, isMobile: false, hasTouch: true, storageState: await p.context().storageState() });
+	try {
+		const m = await ctx2.newPage();
+		await m.addInitScript(() => {                         // such a phone: hover / fine pointer reported although it is a touch screen
+			const mm = window.matchMedia.bind(window);
+			window.matchMedia = (q) => { const r = mm(q); return /hover: hover/.test(q) ? { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} } : r; };
+		});
+		await m.goto(BASE + 'index.php?p=users'); await m.waitForLoadState('networkidle');
+		await Promise.all([m.waitForNavigation(), m.evaluate(() => { const b = document.getElementById('nuHomeBtn') || document.querySelector('.navbar-brand'); b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })); if (!b.href) location.href = 'index.php?p=home'; })]);
+		await m.waitForLoadState('networkidle'); await m.waitForTimeout(300);
+		expect(await m.evaluate(() => [window.nuHasKeyboard(), document.activeElement && document.activeElement.id].join()) === 'false,', 'touch phone with hover: ' + await m.evaluate(() => [window.nuHasKeyboard(), matchMedia('(hover: hover) and (pointer: fine)').matches, navigator.maxTouchPoints, document.activeElement && document.activeElement.id].join()));
+	} finally { await ctx2.close(); }
 	const had = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'") !== '0';
 	if (had) return;                                         // compact bar only on a site without own branding
 	sql(`INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('branding', '{"logo_show":"login"}')`);
@@ -11206,6 +11236,170 @@ T.file_manager_ctx = async (s) => {
 		expect(Math.abs((mb2.x + mb2.width) - (bb.x + bb.width)) < 30, 'the ⋮ menu sits at its button again: ' + JSON.stringify(mb2));
 	} finally {
 		created.reverse().forEach(x => fs.rmSync(x, { recursive: true, force: true }));
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
+// 0.8.1056: File Manager on phones – the shares side bar closes without choosing anything: tap outside (backdrop), Esc, swipe left
+T.file_manager_side_close = async (s) => {
+	if (!SITE) return 'skip';
+	const ga = s.ga;
+	let made = false;
+	const vp = ga.viewportSize();
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		await ga.setViewportSize({ width: 390, height: 800 });
+		await open(ga, 'index.php?p=filemanager');
+		await ga.waitForSelector('#nufSideToggle', { state: 'visible' });
+		const isOpen = () => ga.evaluate(() => document.getElementById('nufApp').classList.contains('nuf-side-open'));
+		const shown = () => ga.evaluate(() => document.getElementById('nufSide').getBoundingClientRect().right > 10);
+		const openSide = async () => {
+			await ga.click('#nufSideToggle');
+			await ga.waitForTimeout(350);
+			expect(await isOpen() && await shown(), 'side bar open');
+			expect(await ga.getAttribute('#nufSideToggle', 'aria-expanded') === 'true', 'aria-expanded true');
+		};
+		// tap outside the side bar
+		await openSide();
+		await ga.mouse.click(370, 400);
+		await ga.waitForTimeout(350);
+		expect(!(await isOpen()) && !(await shown()), 'closed by a tap outside');
+		expect(await ga.getAttribute('#nufSideToggle', 'aria-expanded') === 'false', 'aria-expanded false');
+		// Esc
+		await openSide();
+		await ga.keyboard.press('Escape');
+		await ga.waitForTimeout(350);
+		expect(!(await isOpen()), 'closed by Esc');
+		// swipe to the left inside the side bar
+		await openSide();
+		await ga.evaluate(() => {
+			const el = document.getElementById('nufSide');
+			const tp = (x) => new Touch({ identifier: 1, target: el, clientX: x, clientY: 300 });
+			el.dispatchEvent(new TouchEvent('touchstart', { touches: [tp(200)], changedTouches: [tp(200)], bubbles: true }));
+			el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [tp(80)], bubbles: true }));
+		});
+		await ga.waitForTimeout(350);
+		expect(!(await isOpen()), 'closed by a swipe to the left');
+		// the toggle still closes it, and wide screens show no backdrop
+		await openSide();
+		await ga.click('#nufSideToggle', { force: true }).catch(() => {});
+		await ga.setViewportSize(vp);
+		expect(await ga.evaluate(() => getComputedStyle(document.getElementById('nufSideBackdrop')).display) === 'none', 'no backdrop on wide screens');
+	} finally {
+		await ga.setViewportSize(vp);
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
+// 0.8.1057: File Manager path – phones: ‹ parent + folder name ▾ (the whole path as a list); wider: folders in between fold into "…"
+T.file_manager_path = async (s) => {
+	if (!SITE) return 'skip';
+	const ga = s.ga;
+	let made = false, base = '';
+	const vp = ga.viewportSize();
+	const deep = ['e2e_path', 'projects', '2026', 'customer-letters', 'scans-before-migration', 'originals-second-round'];
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		base = path.join(set.shares.find(x => x.id === 'uploads').path, 'e2e_path');
+		fs.mkdirSync(path.join(base, ...deep.slice(1)), { recursive: true });
+		await ga.setViewportSize({ width: 390, height: 800 });
+		await open(ga, 'index.php?p=filemanager');
+		await ga.waitForSelector('#nufCrumbs', { state: 'attached' });
+		const url = ga.url().split('#')[0];
+		await ga.goto(url + '#/uploads/' + deep.join('/'));
+		await ga.waitForFunction(() => (document.querySelector('#nufPhPath .nuf-ph-title span') || {}).textContent === 'originals-second-round');
+		expect(await ga.isHidden('#nufCrumbs'), 'phone: no breadcrumb');
+		await ga.waitForTimeout(300);
+		const t = await ga.locator('#nufPhPath .nuf-ph-title').boundingBox(), sp = await ga.locator('#nufPhPath .nuf-ph-title span');
+		expect(await sp.evaluate(e => e.scrollWidth <= e.clientWidth + 1), 'phone: the folder name is not cut');
+		const tg = await ga.locator('#nufSideToggle').boundingBox();
+		expect(t && tg, 'phone: title / ☰ shown: ' + JSON.stringify([t, tg]));
+		expect(Math.abs((t.y + t.height / 2) - (tg.y + tg.height / 2)) < 8, 'phone: path in the row of ☰');
+		expect((await ga.getAttribute('#nufPhPath .nuf-ph-up', 'href')).endsWith('/scans-before-migration'), 'phone: ‹ goes to the parent');
+		await ga.click('#nufPhPath .nuf-ph-title');
+		await ga.waitForSelector('#nufPhPath .nuf-ph-menu.show');
+		const n = await ga.locator('#nufPhPath .nuf-ph-menu .dropdown-item').count();
+		expect(n === deep.length + 1, 'phone: every level in the list: ' + n);
+		const mb = await ga.locator('#nufPhPath .nuf-ph-menu').boundingBox();
+		expect(mb.x >= 0 && mb.x + mb.width <= 391, 'phone: the list fits the screen: ' + JSON.stringify(mb));
+		await ga.locator('#nufPhPath .nuf-ph-menu a.dropdown-item', { hasText: '2026' }).click();
+		await ga.waitForFunction(() => (document.querySelector('#nufPhPath .nuf-ph-title span') || {}).textContent === '2026');
+		await ga.click('#nufPhPath .nuf-ph-up', { timeout: 6000 });
+		await ga.waitForFunction(() => (document.querySelector('#nufPhPath .nuf-ph-title span') || {}).textContent === 'projects');
+		// wider: the breadcrumb folds the middle into "…"
+		await ga.setViewportSize({ width: 700, height: 800 });
+		await ga.goto(url + '#/uploads/' + deep.join('/'));
+		await ga.waitForFunction(() => document.querySelector('#nufCrumbs .nuf-crumb-more'));
+		const last = ga.locator('#nufCrumbs li[data-i]:last-child');
+		expect(await last.evaluate(e => e.scrollWidth <= e.clientWidth + 1 && e.textContent === 'originals-second-round'), 'wide: the current folder is not cut');
+		expect(await ga.locator('#nufCrumbs li[data-i="0"]').isVisible(), 'wide: the share stays');
+		await ga.click('#nufCrumbs .nuf-crumb-more-btn', { timeout: 7000 });
+		const hid = await ga.locator('#nufCrumbs .nuf-crumb-more .dropdown-item').allTextContents();
+		expect(hid.length >= 1 && hid[0].trim() === 'e2e_path', 'wide: hidden folders in the … menu: ' + JSON.stringify(hid));
+		const mm = await ga.locator('#nufCrumbs .nuf-crumb-more .dropdown-menu').boundingBox();
+		expect(mm && mm.height > 20, 'wide: the … menu is not clipped: ' + JSON.stringify(mm));
+		await ga.locator('#nufCrumbs .nuf-crumb-more .dropdown-item').first().click({ timeout: 7000 });
+		await ga.waitForFunction(() => (document.querySelector('#nufCrumbs li[data-i]:last-child') || {}).textContent === 'e2e_path');
+		expect(await ga.locator('#nufCrumbs .nuf-crumb-more').count() === 0, 'wide: no … for a short path');
+	} finally {
+		await ga.setViewportSize(vp);
+		if (base) fs.rmSync(base, { recursive: true, force: true });
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
+// 0.8.1058: File Manager toolbar in one row on phones (320 / 360 / 390 px): no separator, tighter gaps and buttons
+T.file_manager_toolbar_row = async (s) => {
+	if (!SITE) return 'skip';
+	const ga = s.ga;
+	let made = false;
+	const vp = ga.viewportSize();
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		await open(ga, 'index.php?p=filemanager');
+		await ga.waitForSelector('#nufUploadBtn', { state: 'visible' });
+		for (const w of [320, 360, 390]) {
+			await ga.setViewportSize({ width: w, height: 700 });
+			await ga.waitForTimeout(250);
+			const r = await ga.evaluate(() => {
+				const items = [...document.querySelectorAll('#nufTools > .btn, #nufTools > .btn-group')].filter(e => e.offsetParent);
+				const tops = [...new Set(items.map(e => Math.round(e.getBoundingClientRect().top)))];
+				const sep = [...document.querySelectorAll('#nufTools .nuf-sep')].some(e => e.offsetParent);
+				const right = Math.max(...items.map(e => e.getBoundingClientRect().right));
+				return { n: items.length, tops, sep, right, h: Math.min(...items.map(e => e.getBoundingClientRect().height)) };
+			});
+			expect(r.n >= 9 && r.tops.length === 1, w + ' px: one row: ' + JSON.stringify(r));
+			expect(!r.sep && r.right <= w, w + ' px: no separator, inside the screen: ' + JSON.stringify(r));
+			expect(r.h >= 28, w + ' px: buttons still easy to tap: ' + r.h);
+		}
+	} finally {
+		await ga.setViewportSize(vp);
 		if (made) {
 			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
 			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
@@ -12969,6 +13163,150 @@ T.tinymce_no_source_flash = async (s) => {
 	} finally {
 		await p.unroute(/tinymce\.min\.js/);
 	}
+};
+
+T.content_sheet = async (s) => {
+	// 0.8.1053: from 1680 px the content sits in one framed sheet (max 1600 px) on a darker page; narrower windows and design mode unchanged
+	const p = s.ga, vp = p.viewportSize();
+	try {
+	const look = () => p.evaluate(() => { const m = document.getElementById('main'), cs = getComputedStyle(m);
+		return { border: parseFloat(cs.borderTopWidth), w: Math.round(m.getBoundingClientRect().width), main: cs.backgroundColor, body: getComputedStyle(document.body).backgroundColor }; });
+	await p.setViewportSize({ width: 2200, height: 900 });
+	for (const u of ['index.php?p=users', 'index.php?p=settings', 'index.php?p=form&f=nuuserhome']) {
+		await open(p, u);
+		const l = await look();
+		expect(l.border === 1 && l.w === 1600 && l.main !== l.body, 'no sheet on ' + u + ': ' + JSON.stringify(l));
+	}
+	await p.setViewportSize({ width: 1500, height: 900 });
+	await open(p, 'index.php?p=users');
+	{ const l = await look(); expect(l.border === 0, 'sheet below 1680 px: ' + JSON.stringify(l)); }
+	} finally { await p.setViewportSize(vp); }
+};
+
+T.help_link_forms = async (s) => {
+	// 0.8.1054: help page editor → "Used on": Add to a form… (form / tab / field), replace asks, × removes; an open draft gets the change too (no publish conflict)
+	const p = s.ga;
+	let step = 'start';
+	if (sql("SELECT COUNT(*) FROM zzzzsys_nunext_help WHERE code = 'tkt_help_kb' AND lang = ''") !== '1') { s.skip = 'ticket sample not installed'; return; }
+	const meta = ['zzzzsys_form', 'zzzzsys_object', 'zzzzsys_tab', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft'];
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-uhlink.sql');
+	execSync('mysqldump ' + DB + ' ' + meta.join(' ') + ' > ' + keep);
+	try {
+		await open(p, 'index.php?p=helppages&id=tkt_help_005');
+		const api = (body) => p.evaluate(async (bd) => {
+			const csrf = document.querySelector('input[name=_csrf]').value;
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(bd) });
+			return r.json();
+		}, body);
+		let r = await api({ action: 'draft.start', form_id: 'tktcategory', note: 'e2e' });
+		expect(r.ok && r.draft, 'draft start: ' + JSON.stringify(r).slice(0, 200));
+		const D = r.draft;
+		await open(p, 'index.php?p=helppages&id=tkt_help_005');
+		const items = () => p.locator('#uhUsage li').count();
+		const n0 = await items();
+		const pick = async (form, place, replace) => {
+			step = 'add ' + place;
+			await p.click('#uhLinkAdd', { timeout: 8000 });
+			await p.locator('#uhLinkDlg.show').waitFor();
+			await p.waitForTimeout(400);                         // the modal takes the focus at the end of its fade
+			await p.locator('#uhLinkDlg .ts-wrapper .ts-control').click();
+			await p.locator('#uhLinkDlg .ts-dropdown input.dropdown-input').waitFor();
+			await p.keyboard.type(form);
+			await p.waitForTimeout(300);
+			await p.keyboard.press('Enter');
+			await p.waitForFunction(() => !document.getElementById('uhLinkPlace').disabled);
+			const vals = await p.evaluate(() => [...document.getElementById('uhLinkPlace').options].map((o) => o.value));
+			expect(vals.includes(place), 'place ' + place + ' not offered: ' + vals.join(', ') + ' / form ' + await p.inputValue('#uhLinkForm'));
+			await p.selectOption('#uhLinkPlace', place);
+			if (replace) expect(await p.getAttribute('#uhLinkGo', 'class') === 'btn btn-warning' && !(await p.locator('#uhLinkCur').isHidden()), 'no replace question');
+			step = 'go ' + place + ' ' + await p.evaluate(() => document.activeElement.id + '.' + document.activeElement.className + ' open=' + (document.querySelector('#uhLinkDlg .ts-dropdown').offsetParent !== null));
+			await p.click('#uhLinkGo', { timeout: 8000 });
+		};
+		// a field of the category form (has an open draft)
+		const obj = sql("SELECT zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'tktcategory' AND sob_all_id = 'cat_name'");
+		await pick('categories', 'field:' + obj);
+		await p.locator('#uhLinkDlg').waitFor({ state: 'hidden' });
+		expect(await items() === n0 + 1, 'usage list not updated');
+		expect(sql("SELECT sob_all_json FROM zzzzsys_object WHERE zzzzsys_object_id = '" + obj + "'").includes('tkt_help_kb'), 'field not linked');
+		const dr = sql("SELECT CONCAT(snapshot LIKE '%tkt_help_kb%', base_snapshot LIKE '%tkt_help_kb%') FROM zzzzsys_nunext_form_draft WHERE zzzzsys_nunext_form_draft_id = '" + D.id + "'");
+		expect(dr === '11', 'open draft / its base not changed: ' + dr);
+		// the whole ticket form shows another page → asked, then replaced
+		await pick('tkt_ticket', 'form', true);
+		await p.locator('#uhLinkDlg').waitFor({ state: 'hidden' });
+		expect(/"help":"tkt_help_kb"/.test(sql("SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = 'tktticket'")), 'form help not replaced');
+		// × removes the field link again
+		await p.locator('.uhUnlink[data-place="field:' + obj + '"]').click();
+		await p.locator('.modal.show .btn-danger').click();
+		await p.waitForFunction((o) => !document.querySelector('.uhUnlink[data-place="field:' + o + '"]'), obj);
+		expect(!sql("SELECT IFNULL(sob_all_json, '') FROM zzzzsys_object WHERE zzzzsys_object_id = '" + obj + "'").includes('tkt_help_kb'), 'field link not removed');
+		// publishing the draft: no conflict (its base followed the live form)
+		r = await api({ action: 'draft.publish', form_id: 'tktcategory', draft_id: D.id, note: 'e2e' });
+		expect(r.ok && !r.conflict, 'publish after linking: ' + JSON.stringify(r).slice(0, 200));
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'userhelp_linked' AND record_id = 'tktticket'") !== '0', 'not logged');
+	} catch (e) { await p.screenshot({ path: path.join(require('os').tmpdir(), 'uhlink-fail.png') }); throw new Error(step + ': ' + e.message.split('\n')[0]); } finally {
+		execSync('mysql ' + DB, { input: fs.readFileSync(keep) });
+	}
+};
+
+T.help_panel_resize = async (s) => {
+	// 0.8.1052: the help panel of form pages gets a splitter on its left edge – drag, keys, double-click; width kept per browser
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_nunext_help WHERE code = 'tkt_help_ticket' AND lang = ''") !== '1') { s.skip = 'ticket sample not installed'; return; }
+	const vp = p.viewportSize();
+	try {
+	await p.setViewportSize({ width: 1300, height: 850 });
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-uh-w'); } catch (e) { /* */ } });
+	await open(p, 'index.php?p=form&f=tktticket&r=-1');
+	await p.click('#nuHelpButton');
+	await p.waitForSelector('#nuUhPanel:not([hidden]) .nuUhSplit');
+	const w = () => p.evaluate(() => Math.round(document.getElementById('nuUhPanel').getBoundingClientRect().width));
+	expect(await w() === 440, 'default width ' + await w());
+	const box = await p.locator('.nuUhSplit').boundingBox();
+	await p.mouse.move(box.x + 4, box.y + 200);
+	await p.mouse.down();
+	await p.mouse.move(box.x - 150, box.y + 200, { steps: 6 });
+	await p.mouse.up();
+	const dragged = await w();
+	expect(dragged >= 580 && dragged <= 600, 'dragged width ' + dragged);
+	expect(await p.evaluate(() => localStorage.getItem('nunext-uh-w')) === String(dragged), 'width not stored');
+	await p.focus('.nuUhSplit'); await p.keyboard.press('ArrowRight');
+	expect(await w() === dragged - 20, 'arrow key');
+	await p.mouse.move(box.x - 300, box.y + 400);
+	await open(p, 'index.php?p=form&f=tktticket&r=-1');
+	await p.click('#nuHelpButton');
+	await p.waitForSelector('#nuUhPanel:not([hidden])');
+	expect(await w() === dragged - 20, 'width not kept after reload: ' + await w());
+	await p.dblclick('.nuUhSplit');
+	expect(await w() === 440 && await p.evaluate(() => localStorage.getItem('nunext-uh-w')) === null, 'double-click = default');
+	await p.setViewportSize({ width: 390, height: 800 });
+	expect(await w() === 390 && !(await p.locator('.nuUhSplit').isVisible()), 'phones: full width, no splitter');
+	} finally {
+		await p.setViewportSize(vp);   // the shared page: a phone width left here broke every later test (gate 0.8.1060)
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-uh-w'); } catch (e) { /* */ } });
+	}
+};
+
+T.help_ai_form_search = async (s) => {
+	// 0.8.1050: Draft with AI – "Form the page is about" is a Tom Select with a search field in the open list
+	const p = s.ga;
+	await open(p, 'index.php?p=helppages&id=new');
+	if (!(await p.locator('#uhAiBtn').count())) { s.skip = 'no Draft with AI button'; return; }
+	await p.click('#uhAiBtn');
+	await p.locator('#uhAiDlg.show').waitFor();
+	await p.waitForTimeout(400);
+	await p.locator('#uhAiDlg .ts-wrapper .ts-control').click();
+	expect(await p.locator('#uhAiDlg .ts-dropdown input.dropdown-input').waitFor({ timeout: 3000 }).then(() => true, () => false), 'no search field in the list');
+	const all = await p.locator('#uhAiDlg .ts-dropdown .option').count();
+	const first = (await p.locator('#uhAiDlg .ts-dropdown .option').nth(1).innerText()).split('\n')[0];
+	await p.keyboard.type(first.slice(0, 6));
+	await p.waitForTimeout(300);
+	const n = await p.locator('#uhAiDlg .ts-dropdown .option').count();
+	expect(n >= 1 && (n < all || all <= 2), 'search did not filter (' + n + ' of ' + all + ')');
+	await p.keyboard.press('Enter');
+	expect(await p.evaluate(() => document.getElementById('uhAiForm').value) !== '', 'no form chosen');
+	// 0.8.1051: (i) next to Focus (optional) + example placeholder
+	expect(await p.locator('label[for="uhAiNote"] + .nuInfoTip').count() === 1, 'no (i) next to Focus');
+	expect((await p.getAttribute('#uhAiNote', 'placeholder') || '') !== '', 'no placeholder on Focus');
 };
 
 T.tinymce_theme_switch = async (s) => {
@@ -14738,6 +15076,15 @@ T.logout = async (s) => {
 			s.skip = '';
 			try { await fn(s); results.push([name, s.skip ? 'skip' : 'ok', s.skip]); }
 			catch (e) { results.push([name, 'FAIL', e.message.split('\n')[0]]); if (process.env.E2E_STACK) console.log(e.stack); }
+			// a test that leaves the shared page at another size makes later tests fail (gate 0.8.1060: a phone width) – put it back, fail it
+			try {
+				const v = s.ga.viewportSize();
+				if (v && (v.width !== 1300 || v.height !== 900)) {
+					await s.ga.setViewportSize({ width: 1300, height: 900 });
+					// a phone / tablet width changes the layout of every later page; other sizes (1300 × 800 …) are only reset
+					if (v.width < 992 && results[results.length - 1][1] !== 'FAIL') results[results.length - 1] = [name, 'FAIL', 'left the shared page at ' + v.width + ' × ' + v.height];
+				}
+			} catch (e) { /* page closed */ }
 			const r = results[results.length - 1];
 			console.log((r[1] === 'ok' ? 'ok   ' : r[1] === 'skip' ? 'skip ' : 'FAIL ') + name.padEnd(18) + String(Date.now() - t).padStart(6) + ' ms  ' + (r[2] || ''));
 		}

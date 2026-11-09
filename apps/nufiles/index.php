@@ -61,11 +61,12 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 			<button type="button" class="nav-link nuf-side-link d-none" id="nufLogBtn"><i class="bi bi-journal-text" aria-hidden="true"></i> <?= $t('log') ?></button>
 		</div>
 	</aside>
+	<div class="nuf-side-backdrop" id="nufSideBackdrop" aria-hidden="true"></div>
 
 	<main class="nuf-main" id="nufMain">
 		<div class="nuf-bar">
-			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufSideToggle" aria-controls="nufSide" title="<?= $t('shares') ?>"><i class="bi bi-list"></i></button>
-			<nav aria-label="breadcrumb" class="nuf-crumbs"><ol class="breadcrumb mb-0" id="nufCrumbs"></ol></nav>
+			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufSideToggle" aria-controls="nufSide" aria-expanded="false" title="<?= $t('shares') ?>"><i class="bi bi-list"></i></button>
+			<nav aria-label="breadcrumb" class="nuf-crumbs"><ol class="breadcrumb mb-0" id="nufCrumbs"></ol><div class="nuf-phpath" id="nufPhPath"></div></nav>
 			<form class="nuf-search" id="nufSearchForm" role="search">
 				<div class="input-group input-group-sm">
 					<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>

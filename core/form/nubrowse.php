@@ -219,18 +219,27 @@ final class NuBrowse
 		foreach ($items as $it) { [$e, $a] = self::stripAlias($it); if ($a !== null) $aliases[strtolower($a)] = $e; }
 		$f = ["$pkIdent AS nu_pk"];
 		// a column that names an alias of the field list (SELECT CONCAT(a, b) AS full_name … with the column full_name, 0.8.731, reported
-		// by a tester): the field list is replaced, so the alias would not exist – its expression is used instead. Only for a bare name that
-		// is not a real column of the tables in FROM (a real column wins, as in nuBuilder Forte, which never resolves aliases); when a
-		// source cannot be checked (derived table, other database, unknown table) the name stays as it is.
+		// by a tester): the field list is replaced, so the alias would not exist – its expression is used instead. Since 0.8.1059 also an
+		// alias INSIDE a column's expression (IF(…, amount, ''), CONCAT(…), CAST(amount AS …)) – reported by a tester with a patch
+		// (expandAliases). A real column of the tables in FROM wins, as in nuBuilder Forte, which never resolves aliases; when a source
+		// cannot be checked (derived table, other database, unknown table) the names stay as they are.
 		$real = null;
-		$isAlias = function (string $e) use ($aliases, $p, $columnsOf, &$real): ?string {
-			$name = trim($e);
-			if (!preg_match('/^(?:`[^`]+`|"[^"]+"|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$]*)$/', $name)) return null;
-			$key = strtolower(trim($name, '`"[]'));
-			if (!isset($aliases[$key]) || strtolower(trim($aliases[$key], '`"[] ')) === $key) return null;
+		$realCols = function () use ($p, $columnsOf, &$real): ?array {
 			$real ??= self::sourceColumns($p['from'], $columnsOf) ?? false;
-			if ($real === false || isset($real[$key])) return null;
-			return $aliases[$key];
+			return $real === false ? null : $real;
+		};
+		$isAlias = function (string $e) use ($aliases, $realCols): ?string {
+			if (!$aliases) return null;
+			$name = trim($e);
+			if (preg_match('/^(?:`[^`]+`|"[^"]+"|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$]*)$/', $name)) {      // the whole column is one name
+				$key = strtolower(trim($name, '`"[]'));
+				if (!isset($aliases[$key]) || strtolower(trim($aliases[$key], '`"[] ')) === $key) return null;
+				$real = $realCols();
+				return $real === null || isset($real[$key]) ? null : $aliases[$key];
+			}
+			if (self::expandAliases($e, $aliases, null) === null) return null;                // no alias in it: no need to look at the tables
+			$real = $realCols();
+			return $real === null ? null : self::expandAliases($e, $aliases, $real);
 		};
 		foreach ($cols as $c) {
 			$e = self::stripAlias($c['expr'])[0];
@@ -244,12 +253,106 @@ final class NuBrowse
 				$e = isset($items[(int)$e - 1]) && !str_ends_with(trim($items[(int)$e - 1]), '*') ? self::stripAlias($items[(int)$e - 1])[0] : '';
 				if ($e === '') continue;
 			}
+			else $e = self::expandAliases($e, $aliases, null) ?? $e;                                           // ORDER BY CAST(alias AS …): MySQL takes the alias first
 			$f[] = $e . ' AS nu_o' . $k;
 			$outer[] = 'nuT.nu_o' . $k . $dir;
+		}
+		// GROUP BY / HAVING may name an alias of the field list too (MySQL allows both) – a real column wins
+		if ($aliases && (($p['group'] !== '' && self::expandAliases($p['group'], $aliases, null, true) !== null)
+			|| ($p['having'] !== '' && self::expandAliases($p['having'], $aliases, null, true) !== null)) && ($rc = $realCols()) !== null) {
+			foreach (['group', 'having'] as $part) if ($p[$part] !== '') $p[$part] = self::expandAliases($p[$part], $aliases, $rc, true) ?? $p[$part];
 		}
 		$inner = 'SELECT ' . implode(', ', $f) . ' ' . $p['from'] . ($p['where'] !== '' ? ' ' . $p['where'] : '') . ($p['group'] !== '' ? ' ' . $p['group'] : '')
 			. ($p['having'] !== '' ? ' ' . $p['having'] : '');
 		return [$inner, implode(', ', $outer)];
+	}
+
+	/**
+	 * Names of the field list's aliases inside an expression replaced by their expressions (in brackets unless one name / call / bracket):
+	 * IF(t.flag = 1, total, 0) → IF(t.flag = 1, (t.a + t.b), 0). Left alone: text in quotes ('…', "…"), qualified names (x.total,
+	 * total.x), function names (total( …), the word after AS / USING (CAST(x AS date)), after a number (INTERVAL 1 day) or after ")",
+	 * an alias that is a real column ($real: lower-case names; null = aliases always win, as in MySQL's ORDER BY) and an alias that
+	 * only names itself. $skipKeyword: the expression is a clause that begins with a key word (GROUP BY …, HAVING …). null = no change.
+	 * (0.8.1059, from a tester's patch)
+	 */
+	public static function expandAliases(string $e, array $aliases, ?array $real, bool $skipKeyword = false): ?string
+	{
+		if (!$aliases) return null;
+		$out = '';
+		$changed = false;
+		$len = strlen($e);
+		$prev = '';          // last token outside quotes: a word (lower case), '.', ')', '0' (number) or another character
+		for ($i = 0; $i < $len; $i++) {
+			$c = $e[$i];
+			if ($c === "'" || $c === '"') {                     // text: up to the closing quote ('' / \' inside)
+				$j = $i + 1;
+				while ($j < $len) {
+					if ($e[$j] === '\\') { $j += 2; continue; }
+					if ($e[$j] === $c) { if (($e[$j + 1] ?? '') === $c) { $j += 2; continue; } break; }
+					$j++;
+				}
+				$out .= substr($e, $i, $j - $i + 1);
+				$i = $j;
+				$prev = 'q';
+				continue;
+			}
+			$word = null;
+			$raw = '';
+			if ($c === '`' || $c === '[') {                      // quoted name
+				$close = $c === '`' ? '`' : ']';
+				$j = strpos($e, $close, $i + 1);
+				if ($j === false) { $out .= substr($e, $i); break; }
+				$raw = substr($e, $i, $j - $i + 1);
+				$word = substr($raw, 1, -1);
+			} elseif (preg_match('/\G[A-Za-z_][A-Za-z0-9_$]*/', $e, $m, 0, $i)) {
+				$raw = $word = $m[0];
+			} elseif (preg_match('/\G[0-9]+(?:\.[0-9]+)?/', $e, $m, 0, $i)) {
+				$out .= $m[0];
+				$i += strlen($m[0]) - 1;
+				$prev = '0';
+				continue;
+			}
+			if ($word === null) {
+				$out .= $c;
+				if (!ctype_space($c)) $prev = $c;
+				continue;
+			}
+			$rest = ltrim(substr($e, $i + strlen($raw)));
+			$key = strtolower($word);
+			$use = isset($aliases[$key]) && strtolower(trim($aliases[$key], '`"[] ')) !== $key
+				&& !in_array($prev, ['.', ')', '0', 'as', 'using'], true) && ($rest === '' || ($rest[0] !== '.' && $rest[0] !== '('))
+				&& ($real === null || !isset($real[$key])) && !($skipKeyword && $out === '');
+			if ($use) {
+				$x = trim($aliases[$key]);
+				$out .= self::isAtom($x) ? $x : '(' . $x . ')';
+				$changed = true;
+			} else {
+				$out .= $raw;
+			}
+			$i += strlen($raw) - 1;
+			$prev = $key;
+		}
+		return $changed ? $out : null;
+	}
+
+	/** One name, a qualified name, a number, a function call or one bracket around everything – needs no extra brackets. */
+	private static function isAtom(string $x): bool
+	{
+		if (preg_match('/^(?:`[^`]+`|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$]*)(?:\.(?:`[^`]+`|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$]*))*$/', $x)) return true;
+		if (preg_match('/^-?[0-9]+(?:\.[0-9]+)?$/', $x)) return true;
+		$k = preg_match('/^[A-Za-z_][A-Za-z0-9_$]*\s*\(/', $x, $m) ? strlen($m[0]) - 1 : ($x !== '' && $x[0] === '(' ? 0 : -1);
+		if ($k < 0) return false;
+		$depth = 0;
+		$q = null;
+		$n = strlen($x);
+		for ($i = $k; $i < $n; $i++) {
+			$c = $x[$i];
+			if ($q !== null) { if ($c === '\\') $i++; elseif ($c === $q) $q = null; continue; }
+			if ($c === "'" || $c === '"' || $c === '`') { $q = $c; continue; }
+			if ($c === '(') $depth++;
+			elseif ($c === ')' && --$depth === 0) return $i === $n - 1;
+		}
+		return false;
 	}
 
 	/**

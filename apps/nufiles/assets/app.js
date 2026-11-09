@@ -357,29 +357,84 @@
 		m.classList.toggle('d-none', !text);
 	}
 
+	// the path: a breadcrumb from 576 px (folders in between fold into "…" when it does not fit), on phones ‹ parent + the folder's
+	// name, which opens the whole path as a list
 	function crumbs() {
-		var ol = $('nufCrumbs');
+		var ol = $('nufCrumbs'), ph = $('nufPhPath');
 		ol.textContent = '';
+		ph.textContent = '';
+		var items = [];   // {label, href|null, icon}
 		if (state.view === 'trash' || state.view === 'log') {
-			ol.appendChild(el('li', {'class': 'breadcrumb-item active', text: t(state.view === 'trash' ? 'trash' : 'log')}));
-			NuPage.setTitle(t('title') + ' – ' + t(state.view === 'trash' ? 'trash' : 'log'));
-			return;
+			items.push({label: t(state.view === 'trash' ? 'trash' : 'log'), href: null, icon: state.view === 'trash' ? 'trash3' : 'journal-text'});
+			NuPage.setTitle(t('title') + ' – ' + items[0].label);
+		} else if (state.share) {
+			var parts = state.path ? state.path.split('/') : [], search = state.view === 'search';
+			items.push({label: state.share.label, href: parts.length || search ? hashFor(state.share.id, '') : null, icon: state.share.type === 'code' ? 'code-square' : 'folder2'});
+			parts.forEach(function (p, i) {
+				var last = i === parts.length - 1 && !search;
+				items.push({label: p, href: last ? null : hashFor(state.share.id, parts.slice(0, i + 1).join('/'))});
+			});
+			if (search) items.push({label: t('search_results', state.query), href: null, icon: 'search'});
+			NuPage.setTitle(t('title') + ' – ' + state.share.label + (state.path ? '/' + state.path : ''));
 		}
-		if (!state.share) return;
-		var parts = state.path ? state.path.split('/') : [];
-		var li = el('li', {'class': 'breadcrumb-item' + (parts.length || state.view === 'search' ? '' : ' active')});
-		li.appendChild(parts.length || state.view === 'search' ? el('a', {href: hashFor(state.share.id, '')}, [icon(state.share.type === 'code' ? 'code-square' : 'folder2'), ' ', state.share.label])
-			: el('span', {}, [icon(state.share.type === 'code' ? 'code-square' : 'folder2'), ' ', state.share.label]));
-		ol.appendChild(li);
-		parts.forEach(function (p, i) {
-			var last = i === parts.length - 1 && state.view !== 'search';
-			var item = el('li', {'class': 'breadcrumb-item' + (last ? ' active' : '')});
-			item.appendChild(last ? el('span', {text: p}) : el('a', {href: hashFor(state.share.id, parts.slice(0, i + 1).join('/')), text: p}));
-			ol.appendChild(item);
+		if (!items.length) return;
+		items.forEach(function (it, i) {
+			var last = i === items.length - 1;
+			var li = el('li', {'class': 'breadcrumb-item' + (last ? ' active' : ''), 'aria-current': last ? 'page' : null, 'data-i': String(i)});
+			var kids = it.icon ? [icon(it.icon), ' ', it.label] : [it.label];
+			li.appendChild(it.href ? el('a', {href: it.href, title: it.label}, kids) : el('span', {title: it.label}, kids));
+			ol.appendChild(li);
 		});
-		if (state.view === 'search') ol.appendChild(el('li', {'class': 'breadcrumb-item active', text: t('search_results', state.query)}));
-		NuPage.setTitle(t('title') + ' – ' + state.share.label + (state.path ? '/' + state.path : ''));
+		ol._items = items;
+		fitCrumbs();
+		// phones
+		var cur = items[items.length - 1], up = null;
+		for (var j = items.length - 2; j >= 0; j--) if (items[j].href) { up = items[j]; break; }
+		if (up) ph.appendChild(el('a', {'class': 'nuf-ph-up', href: up.href, title: t('up') + ': ' + up.label, 'aria-label': t('up') + ': ' + up.label}, [icon('chevron-left'), el('span', {text: up.label})]));
+		var dd = el('div', {'class': 'dropdown nuf-ph-cur'});
+		var btn = el('button', {type: 'button', 'class': 'nuf-ph-title', 'data-bs-toggle': items.length > 1 ? 'dropdown' : null, 'aria-expanded': 'false',
+			'aria-label': t('path') + ': ' + items.map(function (x) { return x.label; }).join(' / ')}, [
+			cur.icon ? icon(cur.icon) : null, el('span', {text: cur.label}), items.length > 1 ? icon('chevron-down') : null]);
+		if (items.length < 2) btn.disabled = true;
+		dd.appendChild(btn);
+		if (items.length > 1) {
+			var ul = el('ul', {'class': 'dropdown-menu nuf-ph-menu'});
+			items.forEach(function (it, i) {
+				var kids = [el('span', {'class': 'nuf-ph-ind', 'aria-hidden': 'true'}, [icon(it.icon || (i === items.length - 1 ? 'folder2-open' : 'folder2'))]), el('span', {'class': 'nuf-ph-nm', text: it.label})];
+				var a = it.href ? el('a', {'class': 'dropdown-item', href: it.href}, kids) : el('span', {'class': 'dropdown-item active', 'aria-current': 'page'}, kids);
+				a.style.paddingLeft = (0.75 + Math.min(i, 8) * 0.7) + 'rem';
+				ul.appendChild(el('li', {}, [a]));
+			});
+			dd.appendChild(ul);
+		}
+		ph.appendChild(dd);
 	}
+
+	// breadcrumb wider than the bar: hide folders after the first one and show "…" with them as a menu (the last two stay)
+	function fitCrumbs() {
+		var ol = $('nufCrumbs'), items = ol._items;
+		if (!items) return;
+		var old = ol.querySelector('.nuf-crumb-more');
+		if (old) old.remove();
+		Array.prototype.forEach.call(ol.children, function (li) { li.hidden = false; });
+		var lastLi = ol.lastElementChild;
+		function tooWide() { return ol.scrollWidth > ol.clientWidth + 1 || lastLi.scrollWidth > lastLi.clientWidth + 1; }
+		if (!ol.offsetParent || items.length < 4 || !tooWide()) return;
+		var more = el('li', {'class': 'breadcrumb-item nuf-crumb-more dropdown'});
+		var ul = el('ul', {'class': 'dropdown-menu'});
+		more.appendChild(el('button', {type: 'button', 'class': 'btn btn-link btn-sm p-0 nuf-crumb-more-btn', 'data-bs-toggle': 'dropdown', 'data-bs-popper-config': '{"strategy":"fixed"}', 'aria-expanded': 'false', 'aria-label': t('more_levels'), title: t('more_levels')}, [icon('three-dots')]));
+		more.appendChild(ul);
+		ol.insertBefore(more, ol.children[1]);
+		var lis = ol.querySelectorAll('li[data-i]');
+		for (var i = 1; i < lis.length - 2; i++) {
+			lis[i].hidden = true;
+			var it = items[i];
+			ul.appendChild(el('li', {}, [el('a', {'class': 'dropdown-item', href: it.href}, [icon('folder2'), ' ', it.label])]));
+			if (!tooWide()) break;
+		}
+	}
+	var fitTimer = null;
+	window.addEventListener('resize', function () { clearTimeout(fitTimer); fitTimer = setTimeout(fitCrumbs, 120); });
 
 	function toolbar() {
 		var files = state.view === 'files' || state.view === 'search';
@@ -1269,8 +1324,30 @@
 
 	// ================================================================== side bar (small screens), theme, start
 
-	$('nufSideToggle').addEventListener('click', function () { $('nufApp').classList.toggle('nuf-side-open'); });
-	$('nufShares').addEventListener('click', function (e) { if (e.target.closest('a')) $('nufApp').classList.remove('nuf-side-open'); });
+	// closed by: the button again, a tap outside (backdrop), Esc, a swipe to the left, choosing a share / Trash / Log
+	function sideOpen(on) {
+		$('nufApp').classList.toggle('nuf-side-open', on);
+		$('nufSideToggle').setAttribute('aria-expanded', on ? 'true' : 'false');
+		if (!on && $('nufSide').contains(document.activeElement)) $('nufSideToggle').focus();
+	}
+	function sideIsOpen() { return $('nufApp').classList.contains('nuf-side-open'); }
+	$('nufSideToggle').addEventListener('click', function () { sideOpen(!sideIsOpen()); });
+	$('nufSideBackdrop').addEventListener('click', function () { sideOpen(false); });
+	$('nufShares').addEventListener('click', function (e) { if (e.target.closest('a')) sideOpen(false); });
+	['nufTrashBtn', 'nufLogBtn'].forEach(function (id) { $(id).addEventListener('click', function () { sideOpen(false); }); });
+	document.addEventListener('keydown', function (e) {
+		if (e.key === 'Escape' && sideIsOpen() && !document.querySelector('.modal.show')) { e.preventDefault(); sideOpen(false); }
+	});
+	(function swipe() {
+		var x0 = null, y0 = 0;
+		$('nufSide').addEventListener('touchstart', function (e) { if (e.touches.length === 1) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; } }, {passive: true});
+		$('nufSide').addEventListener('touchend', function (e) {
+			if (x0 === null) return;
+			var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+			x0 = null;
+			if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.5) sideOpen(false);
+		}, {passive: true});
+	})();
 
 	// theme: nuBuilder Next's choice (localStorage "nunext-theme", the server got it as cookie); follows a change in another tab
 	(function theme() {

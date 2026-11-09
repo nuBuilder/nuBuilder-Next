@@ -3,6 +3,96 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1060 – Release gate
+- Release gate: the full test run (smoke test, all end-to-end tests, the cross-test against nuBuilder Forte, the OWASP ZAP scan)
+  passed. Documentation brought up to date first: the feature list (help pages linked from their editor, the file manager on
+  phones and as a single file for nuBuilder Forte) and the open points to verify.
+- Tests: two new browser tests left the shared test page at another window size, which made later tests fail; they put it back
+  now, and the test runner fails any test that leaves the size changed (and resets it).
+
+## 0.8.1059 – Lists: computed fields inside column expressions
+- Lists: a column that uses a computed field of the browse SQL inside an expression now shows its value
+  (SELECT a + b AS total … with the column IF(paid = 1, total, '') or CONCAT(total, ' €')). Before, only a column that was
+  exactly the alias name was resolved; inside IF, CONCAT, CAST or arithmetic the alias stayed and the column was empty.
+  Text in quotes, qualified names (x.total), function names, real columns of the tables and the word after AS
+  (CAST(x AS date)) are left alone; the expression is put in brackets so that total * 2 keeps its meaning.
+  The same now works in the browse SQL's ORDER BY (CAST(total AS UNSIGNED)), GROUP BY and HAVING.
+  Reported with a ready patch by a tester – thank you.
+
+## 0.8.1058 – File Manager: toolbar in one row on phones
+- File Manager on phones: the toolbar fits in one row again (also on 320 px wide screens) – the separator line is left out and
+  the buttons sit closer together; they keep their full height for tapping.
+- The single-file File Manager for nuBuilder Forte got the same change.
+
+## 0.8.1057 – File Manager: readable folder path on phones
+- File Manager: the folder path stays readable in deep folders. On phones it shows ‹ with the parent folder and the full name of
+  the current folder; a tap on the name lists the whole path, each level one tap away. On wider screens the folders in between
+  fold into "…" (a list of them) as soon as the path no longer fits, so the share and the last folders keep their full names.
+  On phones and tablets the search field gets its own full-width row.
+- The single-file File Manager for nuBuilder Forte got the same change.
+
+## 0.8.1056 – File Manager: close the folder list on phones
+- File Manager on phones: the folder list opened with ☰ now closes without choosing anything – tap outside it (the page behind
+  is dimmed), swipe it to the left or press Esc; Trash and Log close it too. The ☰ button reports open / closed to screen readers.
+- The single-file File Manager for nuBuilder Forte got the same change.
+
+## 0.8.1055 – nuFiles for nuBuilder Forte
+- nuFiles for nuBuilder Forte: nuBuilder Next's File Manager as ONE php file for nuBuilder Forte – saved as
+  third_party/tinyfilemanager/tinyfilemanager.php it replaces Tiny File Manager and opens from Forte's own File Manager
+  entry. Users as before (globeadmin + $nuConfigFileMangerUsers, optional read-only users); folders, uploads (chunked,
+  drag and drop), new folder / file, rename, copy / move, delete with recycle bin and restore, zip / unzip, preview,
+  download, code editor (Forte's Ace: search, Ctrl+S, PHP / JSON check, conflict check, older versions), permissions
+  (globeadmin), change log, password confirmation for code folders, light / dark, English / German. Settings in an
+  array at the top of the file (or nufiles-settings.php next to it). Built from the File Manager's sources with
+  dev/forte/build_nufiles_forte.py (developer package only; not part of nunext.zip).
+
+## 0.8.1054 – Help pages: link to forms from the editor
+- Help pages: "Used on" can be changed in the editor itself. "Add to a form…" opens a dialog – choose the form (searchable),
+  then the whole form (its Help button), a tab or a field. A place that already shows another help page names it and the
+  button becomes "Replace". The × next to an entry removes the link after a confirmation; the help page itself stays.
+  The published form changes at once; an open draft of the form gets the same change, so publishing it neither drops the
+  link nor reports a conflict. Each change is in the form history and the log.
+- Searchable selects in dialogues close their list after a choice.
+
+## 0.8.1053 – Content sheet on large screens
+- Large screens: from 1680 pixels the content of every page sits in one framed sheet (at most 1600 pixels wide, rounded
+  corners, hairline border) centred on a slightly darker background, so the cards no longer hang loose on the page. The top
+  bar keeps the full width; design mode, the report designer and narrower windows look as before. Light and dark mode.
+
+## 0.8.1052 – Help panel resizable
+- Help panel of form pages: its left edge is a splitter – drag to make the panel wider or narrower, double-click
+  for the default width, arrow keys when focused. The width is kept in the browser; phones keep the full width.
+
+## 0.8.1051 – Help pages: Focus explained in Draft with AI
+- Help pages, Draft with AI: "Focus (optional)" has an (i) explaining it (a hint for the AI on what the page should
+  cover or stress – a task, a group of users, a tricky field; empty = a general page about the form) and an example
+  placeholder.
+
+## 0.8.1050 – Help pages: form search in Draft with AI
+- Help pages, Draft with AI: the list "Form the page is about" opens with a search field at the top, so a form
+  can be found by its name or code.
+
+## 0.8.1049 – Installer: all library packs ticked
+- Installer, step Libraries: every library pack that can be installed is now ticked by default, also the
+  optional ones (they can still be unticked).
+
+## 0.8.1048 – Installer: no library packs in the dump list
+- Installer: the list "Or a file in the folder _install/" no longer offers the library packs of the package
+  (nunext-lib-….zip) – they are not database dumps.
+
+## 0.8.1047 – Installer: server checks folded
+- Installer: the server checks on the first step show one summary line ("9 of 10 checks passed – Show all");
+  the passed checks are folded below it, problems and warnings are always listed. A check that passes but
+  carries a note (an old or unpatched PHP version) is shown as a warning.
+
+## 0.8.1046 – Phones: no keyboard after Home
+- Phones: tapping Home no longer puts the cursor into the start page's search field, so the on-screen keyboard no longer
+  pops up. Some phones report a mouse-like pointer, which made nuBuilder Next take them for a computer with a keyboard; a
+  touch screen of phone size now counts as a phone. Fields focused automatically on other pages follow the same rule.
+
+## 0.8.1045 – Notes
+- Notes for development: v0.8.1044 is the last published GitHub release.
+
 ## 0.8.1044 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan). Documentation brought
   up to date: feature list (help pages drafted in any language, the ticket sample's project and help pages), open points to verify.

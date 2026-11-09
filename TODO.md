@@ -106,6 +106,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Computed fields inside list columns** (0.8.1059, a tester's report) – please verify with the tester's real list: `IF(…, alias, '')`, `CONCAT(…, alias)`, `ORDER BY CAST(alias AS UNSIGNED)`, aliases in GROUP BY / HAVING
+- [ ] **Help pages linked from the editor** (0.8.1054) – *Add to a form…* on a form with an open draft (published afterwards without a conflict); **content sheet** on screens ≥ 1680 px (0.8.1053) – look at forms with wide fixed layouts
 - [ ] **Projects** (0.8.1035) – please verify on a real application: Suggest related on forms with many sub-forms / run buttons, the list filter Project while working on a project, export with table rows and import into a second installation (forms replaced → form history, new tables, project merged by code). Not built: a project filter in design mode's Structure (it lists one form only), Ctrl+K narrowed to the project, the working project kept across sign-ins
 - [ ] **Responsive boxes** (0.8.959) – please verify on real forms: a box with a direction inside the auto / grid layout (side by side wrapping, grid 3 · 2 · 1, fixed / fit / fill widths, Hide on phone), nested boxes, "Put in a new box". Not built: moving an object into / out of a box by drag in design mode (use the Box field of the Layout section), a preview switch for phone / tablet width in design mode
 - [ ] **Validation rules** (0.8.812–0.8.816): on a real form a rule in design mode (builder and expression), Publish, then save as a user –
@@ -246,6 +248,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       accordion → details; check every page (smoke, a11y); decide on a compatibility CSS for application code.
 
 ## Update page, backups and admin tools
+- [ ] **File Manager on phones** (0.8.1056–0.8.1058): folder list closes by a tap outside / swipe / Esc, the path as ‹ parent + folder name ▾, the toolbar in one row – please verify on a real phone (also a very long folder name, 320 px screens)
+- [ ] **Installer** (0.8.1047–0.8.1049): start step with passed checks folded, no library packs in the dump list, all packs ticked – please verify with a fresh installation on the live host
 - [ ] **Masking personal data in copies** (idea from mydumper's masquerade, 0.8.1032) – masking rules per column (e-mail, names, phone) for the App cloner download / copies of live data on test systems; not built.
 - [ ] **Restore database from a backup** (0.8.1031 / 0.8.1032 – way back on failure, row counts, free space): please verify on the live server with a copy – a whole-database backup and a nuBuilder-tables backup, with the backup first; large dumps (read line by line) and the time limit of the host (the restore sets none).
 - [ ] **GitHub pack does not match its index**: a clearer message ("publish packs and libraries.json from the same build"); 0.8.556 reads
@@ -279,6 +283,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
 
 ## nuBuilder Forte compatibility
+- [ ] **File manager for nuBuilder Forte** (0.8.1055–0.8.1058, one file `tinyfilemanager.php`, built by `dev/forte/build_nufiles_forte.py`) – please verify in a real Forte installation: sign-in from Forte's File Manager entry, `$nuConfigFileMangerUsers`, the Uploads folder, the code share with password, `_nufiles_data` blocked on the web server (nginx: deny it or set `data_dir`). Untested: SQL Server (log table), chmod on the host
 - [ ] **List cells as div inside the td, sub-form cell ids, nuAddRow, label positions, canvas growth** (0.8.965) – please verify on a real application: row colouring by `div[id^='nucell_…']`, lists in phone view, column widths by dragging, design mode of lists; code that selects sub-form cells by id; Add row buttons; forms whose code moves labels.
 - [ ] **Second Forte database compared form by form** (0.8.965–0.8.978) – please verify on the live application: framed lists with
       properties of the opening form and run filters on hidden columns, hash variables of the opening edit form, lookups whose id is not

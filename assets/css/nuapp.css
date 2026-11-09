@@ -5,9 +5,13 @@
 	--nu-accent-2: #1fa39a;
 	--nu-surface: var(--bs-body-bg);
 	--nu-page: #f4f6f9;
+	--nu-desk: #e6eaf0;        /* page around the content sheet on wide screens (0.8.1053) */
+	--nu-sheet-line: #d5dbe3;
 }
 [data-bs-theme="dark"] {
 	--nu-page: #14171c;
+	--nu-desk: #0b0d10;
+	--nu-sheet-line: #2b313a;
 	--nu-surface: #1c2027;
 }
 
@@ -2235,7 +2239,7 @@ img.nuUhAl-center { display: block; margin-left: auto; margin-right: auto; }
 }
 @media print { .nuUhNav, nav[aria-label=breadcrumb], .nuNavbar, .navbar { display: none !important; } .nuUhLayout { display: block; } }
 /* side panel + (?) of fields on form pages */
-.nuUhPanel { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100vw); z-index: 1046; background: var(--bs-body-bg); border-left: 1px solid var(--bs-border-color);
+.nuUhPanel { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--nu-uh-w, 440px), 100vw); z-index: 1046; background: var(--bs-body-bg); border-left: 1px solid var(--bs-border-color);
 	box-shadow: -.5rem 0 1.5rem rgba(0, 0, 0, .15); display: flex; flex-direction: column; }
 .nuUhPanel[hidden] { display: none; }
 .nuUhPanelHead { display: flex; align-items: center; gap: .5rem; padding: .6rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
@@ -2262,3 +2266,27 @@ textarea.nuTmceWait::placeholder { color: transparent; }
 /* TinyMCE in dark mode (0.8.1042): until the editor's dark styles are there, its box and frame are white for a moment – the colours of
    the oxide-dark skin from the start (form pages load nuapp.css too) */
 [data-bs-theme="dark"] .tox.tox-tinymce, [data-bs-theme="dark"] .tox .tox-edit-area__iframe { background-color: #222f3e; }
+
+/* installer server checks (0.8.1047): passed checks folded under one summary line, problems always shown */
+#insReq .insReqFold > summary { cursor: pointer; list-style: none; }
+#insReq .insReqFold > summary::-webkit-details-marker { display: none; }
+#insReq .insReqFold:not([open]) .insReqLess, #insReq .insReqFold[open] .insReqMore { display: none; }
+#insReq .insReqFold > summary:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
+#insReq .insReqLong { flex: 1 1 60%; }
+/* help panel splitter (0.8.1052): left edge, width in --nu-uh-w (assets/js/nuuserhelp.js) */
+.nuUhSplit { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
+.nuUhSplit::after { content: ''; position: absolute; left: 3px; top: 0; bottom: 0; width: 2px; background: transparent; transition: background .15s; }
+.nuUhSplit:hover::after, .nuUhSplit:focus-visible::after, html.nuUhResizing .nuUhSplit::after { background: var(--bs-primary); }
+.nuUhSplit:focus-visible { outline: none; }
+html.nuUhResizing, html.nuUhResizing * { cursor: col-resize !important; user-select: none !important; }
+html.nuUhResizing iframe { pointer-events: none; }
+@media (max-width: 575.98px) { .nuUhPanel { width: 100vw; } .nuUhSplit { display: none; } }
+/* content sheet on wide screens (0.8.1053, the owner picked "1 Sheet, 1600, top bar full width"): from 1680 px the content of every page
+   (own pages, form lists / records, narrow container pages) sits in one framed sheet of at most 1600 px on a slightly darker page –
+   below that the window's edges frame it as before; tool pages with the full width (design mode, report designer, builder) stay as they are */
+@media screen and (min-width: 1680px) {
+	html:not(.nuEmbedded) body.nu-app:not(.nu-bare):not(.nuDesignMode):has(> main#main:is(.nuContainer, .nuFormContainer, .container, .container-xl), > .nuShell main#main:is(.nuContainer, .nuFormContainer, .container, .container-xl)) { background: var(--nu-desk); }
+	html:not(.nuEmbedded) body.nu-app:not(.nu-bare):not(.nuDesignMode) main#main:is(.nuContainer, .nuFormContainer, .container, .container-xl) { background: var(--nu-page);
+		border: 1px solid var(--nu-sheet-line); border-radius: 14px; margin-top: 1rem; margin-bottom: 1.5rem; padding: 1.25rem 1.5rem 1.5rem !important; }
+	html:not(.nuEmbedded) body.nu-app:not(.nu-bare):not(.nuDesignMode) main#main:is(.nuContainer, .nuFormContainer) { max-width: 1600px; }
+}

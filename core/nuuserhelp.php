@@ -411,7 +411,99 @@ final class NuUserHelp
 		return $out;
 	}
 
-	/** Where each page is used: code => list of [form id, form code / description, place text]. */
+	// ------------------------------------------------------------------ linking from the help page editor (0.8.1054)
+
+	/** Who may link pages to forms: change right on help pages + save right on nuform (as design mode), not in demo mode. */
+	public static function canLink(): bool
+	{
+		return self::canEdit() && NuFormDraft::canEdit();
+	}
+
+	/** Object types that can carry a field help page – everything with a value or an action. */
+	private const LINK_TYPES = ['input', 'select', 'lookup', 'textarea', 'calc', 'display', 'subform', 'run', 'image', 'editor'];
+
+	/**
+	 * Places of a form a page can be linked to: [{v: 'form' | 'tab:<id>' | 'field:<object id>', label, group, cur}] – cur = the help code there now
+	 * (from the live form). Null for a form that does not exist or is a system form.
+	 */
+	public static function targets(string $formId): ?array
+	{
+		$db = nu_db();
+		$form = $db->one('SELECT zzzzsys_form_id, sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
+		if (!$form || (str_starts_with($formId, 'nu') && $formId !== NuUserHome::FORM)) return null;
+		$n = NuFormMeta::nunextJson((string)$form['sfo_json']);
+		$out = [['v' => 'form', 'label' => t('uh_link_whole'), 'group' => '', 'cur' => self::cleanCode($n['help'] ?? null) ?? '']];
+		$tabs = $db->all('SELECT zzzzsys_tab_id, syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ? ORDER BY syt_order', [$formId]);
+		$tabTitle = [];
+		foreach ($tabs as $t) {
+			$tid = (string)$t['zzzzsys_tab_id'];
+			$tabTitle[$tid] = trim(strip_tags((string)$t['syt_title'])) ?: $tid;
+			$out[] = ['v' => 'tab:' . $tid, 'label' => t('uh_used_tab', $tabTitle[$tid]), 'group' => t('uh_link_tabs'), 'cur' => self::cleanCode(((array)($n['help_tabs'] ?? []))[$tid] ?? null) ?? ''];
+		}
+		$objs = $db->all('SELECT zzzzsys_object_id, sob_all_id, sob_all_label, sob_all_type, sob_all_zzzzsys_tab_id, sob_all_json FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ? ORDER BY sob_all_order, sob_all_top, sob_all_left', [$formId]);
+		foreach ($objs as $o) {
+			if (!in_array((string)$o['sob_all_type'], self::LINK_TYPES, true)) continue;
+			$lbl = trim(html_entity_decode(strip_tags((string)$o['sob_all_label']), ENT_QUOTES | ENT_HTML5));
+			$lbl = $lbl !== '' ? $lbl . ' (' . $o['sob_all_id'] . ')' : (string)$o['sob_all_id'];
+			$tab = $tabTitle[(string)$o['sob_all_zzzzsys_tab_id']] ?? '';
+			$out[] = ['v' => 'field:' . $o['zzzzsys_object_id'], 'label' => $lbl, 'group' => t('uh_link_fields') . ($tab !== '' && count($tabs) > 1 ? ' – ' . $tab : ''),
+				'cur' => self::cleanCode(NuFormMeta::nunextJson((string)$o['sob_all_json'])['help'] ?? null) ?? ''];
+		}
+		return $out;
+	}
+
+	/**
+	 * Links ($code) or unlinks ($code null) a help page at a place of a form ('form', 'tab:<id>', 'field:<object id>'): the live form at once
+	 * (history snapshot first), an open draft of the form too (NuFormDraft::patchOpen). Returns ['ok' => true] or ['ask' => current code]
+	 * when another page is there and $replace is false, or ['error' => text].
+	 */
+	public static function link(string $formId, string $place, ?string $code, bool $replace = false, string $expect = ''): array
+	{
+		if (!self::canLink()) return ['error' => t('err_forbidden')];
+		$targets = self::targets($formId);
+		if ($targets === null) return ['error' => t('form_err_not_found')];
+		$t = null;
+		foreach ($targets as $x) if ($x['v'] === $place) $t = $x;
+		if ($t === null) return ['error' => t('uh_link_err_place')];
+		if ($code !== null && !(int)nu_db()->value('SELECT COUNT(*) FROM ' . self::T . " WHERE code = ? AND lang = ''", [$code])) return ['error' => t('uh_link_err_page')];
+		$cur = (string)$t['cur'];
+		if ($code === null && $expect !== '' && $cur !== $expect) return ['ok' => true];      // already gone / something else linked meanwhile
+		if ($code !== null && $cur !== '' && $cur !== $code && !$replace) return ['ask' => $cur];
+		if ($cur === (string)$code) return ['ok' => true];
+		[$kind, $ref] = array_pad(explode(':', $place, 2), 2, '');
+		$apply = static function (array $snap) use ($kind, $ref, $code): array {
+			if ($kind === 'field') {
+				foreach ($snap['objects'] ?? [] as $i => $o) {
+					if ((string)$o['zzzzsys_object_id'] === $ref) $snap['objects'][$i]['sob_all_json'] = NuFormMeta::mergeNunextJson($o['sob_all_json'] ?? null, ['help' => $code]);
+				}
+				return $snap;
+			}
+			if (!isset($snap['form'])) return $snap;
+			if ($kind === 'form') {
+				$snap['form']['sfo_json'] = NuFormMeta::mergeNunextJson($snap['form']['sfo_json'] ?? null, ['help' => $code]);
+			} else {
+				$tabs = (array)(NuFormMeta::nunextJson($snap['form']['sfo_json'] ?? null)['help_tabs'] ?? []);
+				if ($code === null) unset($tabs[$ref]); else $tabs[$ref] = $code;
+				$snap['form']['sfo_json'] = NuFormMeta::mergeNunextJson($snap['form']['sfo_json'] ?? null, ['help_tabs' => $tabs ?: null]);
+			}
+			return $snap;
+		};
+		$db = nu_db();
+		NuFormHistory::snapshot($formId, ($code === null ? 'help page removed ' : 'help page ') . ($code ?? $cur) . ' (' . $place . ')');
+		if ($kind === 'field') {
+			$json = $db->value('SELECT sob_all_json FROM zzzzsys_object WHERE zzzzsys_object_id = ?', [$ref]);
+			$db->update('zzzzsys_object', ['sob_all_json' => $apply(['objects' => [['zzzzsys_object_id' => $ref, 'sob_all_json' => $json]]])['objects'][0]['sob_all_json']], 'zzzzsys_object_id', $ref);
+		} else {
+			$json = $db->value('SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
+			$db->update('zzzzsys_form', ['sfo_json' => $apply(['form' => ['sfo_json' => $json]])['form']['sfo_json']], 'zzzzsys_form_id', $formId);
+		}
+		NuFormMeta::forget($formId);
+		$draft = NuFormDraft::patchOpen($formId, $apply);
+		NuLog::write($code === null ? 'userhelp_unlinked' : 'userhelp_linked', 'zzzzsys_form', $formId, ['page' => $code ?? $cur, 'place' => $place, 'replaced' => $code !== null && $cur !== '' ? $cur : null, 'draft' => $draft ?: null]);
+		return ['ok' => true, 'draft' => $draft];
+	}
+
+	/** Where each page is used: code => list of [form id, form code / description, place text, kind form|tab|field, tab id / object id]. */
 	public static function usage(): array
 	{
 		$out = [];
@@ -423,20 +515,20 @@ final class NuUserHelp
 			$n = NuFormMeta::nunextJson((string)$f['sfo_json']);
 			$fid = (string)$f['zzzzsys_form_id'];
 			$name = (string)($forms[$fid]['description'] ?? '') ?: (string)($forms[$fid]['code'] ?? $fid);
-			if (($c = self::cleanCode($n['help'] ?? null)) !== null) $out[$c][] = [$fid, $name, t('uh_used_form')];
+			if (($c = self::cleanCode($n['help'] ?? null)) !== null) $out[$c][] = [$fid, $name, t('uh_used_form'), 'form', ''];
 			foreach ((array)($n['help_tabs'] ?? []) as $tab => $code) {
 				if (($c = self::cleanCode($code)) === null) continue;
 				$tabTitles[$tab] ??= (string)$db->value('SELECT syt_title FROM zzzzsys_tab WHERE zzzzsys_tab_id = ?', [(string)$tab]);
-				$out[$c][] = [$fid, $name, t('uh_used_tab', $tabTitles[$tab] ?: (string)$tab)];
+				$out[$c][] = [$fid, $name, t('uh_used_tab', $tabTitles[$tab] ?: (string)$tab), 'tab', (string)$tab];
 			}
 		}
-		foreach ($db->all("SELECT sob_all_zzzzsys_form_id, sob_all_id, sob_all_label, sob_all_json FROM zzzzsys_object WHERE sob_all_json LIKE '%\"help\"%'") as $o) {
+		foreach ($db->all("SELECT zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_id, sob_all_label, sob_all_json FROM zzzzsys_object WHERE sob_all_json LIKE '%\"help\"%'") as $o) {
 			$c = self::cleanCode(NuFormMeta::nunextJson((string)$o['sob_all_json'])['help'] ?? null);
 			if ($c === null) continue;
 			$fid = (string)$o['sob_all_zzzzsys_form_id'];
 			$name = (string)($forms[$fid]['description'] ?? '') ?: (string)($forms[$fid]['code'] ?? $fid);
 			$lbl = trim(strip_tags((string)$o['sob_all_label']));
-			$out[$c][] = [$fid, $name, t('uh_used_field', $lbl !== '' ? $lbl : (string)$o['sob_all_id'])];
+			$out[$c][] = [$fid, $name, t('uh_used_field', $lbl !== '' ? $lbl : (string)$o['sob_all_id']), 'field', (string)$o['zzzzsys_object_id']];
 		}
 		return $out;
 	}
@@ -620,7 +712,7 @@ final class NuUserHelp
 	public static function foot(): string
 	{
 		return '<div id="nuUhPanelTexts" hidden data-uhelp-base="' . h(nu_url('userhelp')) . '" data-close="' . h(t('close')) . '" data-back="' . h(t('back')) . '" data-newtab="' . h(t('uh_newtab'))
-			. '" data-loading="' . h(t('uh_loading')) . '" data-error="' . h(t('uh_not_found')) . '" data-insection="' . h(t('uh_in_section')) . '" data-edit="' . h(t('edit')) . '"></div>'
+			. '" data-loading="' . h(t('uh_loading')) . '" data-error="' . h(t('uh_not_found')) . '" data-insection="' . h(t('uh_in_section')) . '" data-edit="' . h(t('edit')) . '" data-resize="' . h(t('bsq_resize')) . '"></div>'
 			. '<script src="' . nu_asset('assets/js/nuuserhelp.js') . '"></script>';
 	}
 

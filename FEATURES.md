@@ -43,7 +43,7 @@ page) for how to use it.
   syntax check, formatting, search / replace and an Insert menu with every documented function.
 - **Reports and queries** – a visual report designer (text, HTML or Markdown fields), an SQL builder, PDF output.
 - **Help pages for your users** – write help in the browser (visual editor or Markdown), open it from a form, a tab or a
-  field in a side panel; whole pages or parts of a page only for some access levels, translations, search, export / import;
+  field in a side panel (link a page to forms right from its editor); whole pages or parts of a page only for some access levels, translations, search, export / import;
   drafted with AI in any installed language.
 - **Dashboards** – KPI tiles, charts and tables built from SQL, on the start page or on any form.
 - **Custom pages** – your own PHP apps inside nuBuilder Next, with its sign-in, rights, a stable page API, drafts and
@@ -69,7 +69,8 @@ page) for how to use it.
 - **Start pages per access level** – users get their own tiles and can personalise them.
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
   database from a backup (MySQL / MariaDB); a `nuconfig.php`
-  editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager.
+  editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
+  versions, code editor; made for phones too).
 - **Easy start** – installer, setup wizard, a tutorial (basic, in depth, coming from nuBuilder Forte) and built-in
   documentation.
 - **Branding and demo mode** – logo, title, environment label; read-only demo users.
@@ -81,4 +82,6 @@ page) for how to use it.
 - **Compatibility check** – scans your application's code and shows which functions are supported (on SQL Server also the SQL
   it does not understand).
 - **jQuery 4 ready** – form pages run on jQuery 3.7 or 4.0, with jQuery Migrate to find upgrade issues.
+- **File manager for nuBuilder Forte** – the file manager is also available as a single file that replaces Tiny File
+  Manager in a nuBuilder Forte installation.
 - The differences that remain are listed in the documentation: *Code reference → Migrating from nuBuilder Forte 4.9*.
