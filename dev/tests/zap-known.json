@@ -10,6 +10,7 @@
   {"id": "90022", "url": "[?&]p=help(&|$)", "reason": "the documentation mentions error texts and driver names (ODBC Driver, SQLSTATE …) – ZAP takes them for an error message of the page"},
   {"id": "2", "url": "[?&]p=help(&|$)", "reason": "the documentation shows addresses such as 127.0.0.1 and 192.168.x.x as examples"},
   {"id": "10096", "reason": "numbers that look like Unix timestamps: version stamps, ids and dates in lists – no secret"},
+  {"id": "40012", "url": "[?&]p=form(&|$)", "param": "^q$", "reason": "form lists: the search words go back to the page's own data (window.nuNext browse.q / browse.hl for highlighting) through json_encode with JSON_HEX_TAG / AMP (quotes escaped as backslash-quote) – ZAP's payload \";alert(1);\" splits at the quotes into the word ;alert(1); which then stands between JSON's own quotes; it is a string value and never code (checked with </script>, quotes and tags: all escaped). The search field shows it HTML-escaped"},
   {"id": "10024", "url": "[?&]p=(log|debug|audit|sessions)(&|$)", "reason": "the user name as a list filter in the address (?user=…) – a filter of the admin lists, not a credential"}
  ]
 }

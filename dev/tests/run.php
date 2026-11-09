@@ -360,10 +360,34 @@ $full = $okDump . "CREATE TABLE `customers` (`id` int);\nLOCK TABLES `customers`
 check('dump: application tables refused for the installer', !NuInstall::checkDump($full)['ok']);
 $r = NuInstall::checkDump($full, true);
 check('dump: complete dump for Reset database', $r['ok'] && $r['app'] === 1 && $r['tables'] === 6 && $r['users'] === 3, json_encode($r));
-foreach (['USE' => 'USE mysql', 'GRANT' => "GRANT ALL ON *.* TO 'x'@'%'", 'OUTFILE' => "SELECT * FROM customers INTO OUTFILE '/tmp/x'", 'trigger' => 'CREATE TRIGGER t BEFORE INSERT ON customers FOR EACH ROW SET @a = 1',
+foreach (['USE' => 'USE mysql', 'GRANT' => "GRANT ALL ON *.* TO 'x'@'%'", 'OUTFILE' => "SELECT * FROM customers INTO OUTFILE '/tmp/x'", 'DEFINER trigger' => 'CREATE DEFINER=`root`@`%` TRIGGER t BEFORE INSERT ON customers FOR EACH ROW SET @a = 1',
+	'DEFINER procedure' => 'CREATE DEFINER=root@localhost PROCEDURE p() BEGIN END', 'routine with OUTFILE' => "CREATE PROCEDURE p() SELECT 1 INTO OUTFILE '/tmp/x'",
 	'other database' => 'CREATE TABLE mysql.x (a int)', 'INSERT … SELECT' => 'INSERT INTO customers SELECT * FROM mysql.user'] as $what => $stmt) {
 	check('dump (any table): refused ' . $what, !NuInstall::checkDump($full . $stmt . ";\n", true)['ok']);
 }
+// complete dumps with routines (0.8.1031): DELIMITER blocks, views, triggers, procedures, sequences as nuBuilder Next's backups write them
+$routines = "DROP VIEW IF EXISTS `v_cust`;\nCREATE ALGORITHM=UNDEFINED SQL SECURITY INVOKER VIEW `v_cust` AS select `id` AS `id` from `customers`;\n"
+	. "DROP TRIGGER IF EXISTS `t_cust`;\nSET @nu_saved_sql_mode = @@SESSION.sql_mode;\nDELIMITER \$\$\nCREATE TRIGGER `t_cust` BEFORE INSERT ON `customers` FOR EACH ROW BEGIN SET NEW.id = NEW.id + 1; SET @x = 'a;b'; END \$\$\nDELIMITER ;\n"
+	. "DROP PROCEDURE IF EXISTS `p_x`;\nDELIMITER \$\$\nCREATE PROCEDURE `p_x`() BEGIN SELECT 1; SELECT 2; END \$\$\nDELIMITER ;\nDROP SEQUENCE IF EXISTS `s1`;\nCREATE SEQUENCE `s1` start with 1 minvalue 1 maxvalue 9223372036854775806 increment by 1 cache 1000 nocycle ENGINE=InnoDB;\nDO SETVAL(`s1`, 5, 0);\n";
+$r = NuInstall::checkDump($full . $routines, true);
+check('dump (any table): routines, triggers, views, sequences accepted', $r['ok'], json_encode($r));
+check('dump: routines still refused for the installer', !NuInstall::checkDump($okDump . $routines)['ok']);
+$sp = NuSqlImport::split($routines);
+check('split: DELIMITER blocks stay one statement', count($sp) === 10 && str_ends_with($sp[4], "SET @x = 'a;b'; END") && $sp[6] === 'CREATE PROCEDURE `p_x`() BEGIN SELECT 1; SELECT 2; END', json_encode($sp));
+$sp = NuSqlImport::split("SET a=1; -- x;\n# y;\nINSERT INTO t VALUES ('a\\';\nb', \"c;\", 'it''s;'); /* z; */ SELECT `q;`; /*!40000 ALTER TABLE t DISABLE KEYS */;\nSELECT 2");
+check('split: strings, comments, conditional comments', $sp === ['SET a=1', "INSERT INTO t VALUES ('a\\';\nb', \"c;\", 'it''s;')", 'SELECT `q;`', '/*!40000 ALTER TABLE t DISABLE KEYS */', 'SELECT 2'], json_encode($sp));
+$sp = NuSqlImport::split("CREATE TABLE [a;b] (x int)\nGO\nINSERT INTO #t VALUES (N'C:\\', 'x;y')\nGO\n", 'sqlsrv');
+check('split: SQL Server batches (GO, [names], no backslash escapes, #temp)', $sp === ['CREATE TABLE [a;b] (x int)', "INSERT INTO #t VALUES (N'C:\\', 'x;y')"], json_encode($sp));
+$tmpSql = sys_get_temp_dir() . '/nunext-split-' . bin2hex(random_bytes(4)) . '.sql.gz';
+file_put_contents($tmpSql, gzencode($full . $routines));
+$prog = [];
+$fromFile = iterator_to_array(NuSqlImport::statements($tmpSql, 'mysql', static function ($d, $t) use (&$prog) { $prog[] = [$d, $t]; }), false);
+check('split: .sql.gz read line by line = the same statements', $fromFile === NuSqlImport::split($full . $routines) && NuSqlImport::size($tmpSql) === strlen($full . $routines)
+	&& $prog && end($prog)[0] === strlen($full . $routines), json_encode(end($prog)));
+check('split: checkDump on a file stream', NuInstall::checkDump(NuSqlImport::statements($tmpSql), true)['ok']);
+@unlink($tmpSql);
+check('restore: free space check', NuSqlDump::spaceProblem('.', 100 << 20, 50.0 * 1048576) !== null && NuSqlDump::spaceProblem('.', 100 << 20, 500.0 * 1048576) === null
+	&& NuSqlDump::spaceProblem('.', 10 << 20, 25.0 * 1048576) !== null);
 check('dump: 4.9 table definitions', count(NuInstall::tables49()) === 35 && isset(NuInstall::tables49()['zzzzsys_object']['sob_all_access_condition']));
 
 // ---------------------------------------------------------------- form drafts: snapshot canonical form, hash, diff (0.8.386)
@@ -1112,8 +1136,9 @@ $pkB = static fn(string $b): string => NuPasskey::b64($b);
 $pkAuth = static function (string $flags, int $count, string $att = '') { return hash('sha256', 'localhost', true) . $flags . pack('N', $count) . $att; };
 $pkClient = static fn(string $type, string $c, string $origin = 'http://localhost:8099') => json_encode(['type' => $type, 'challenge' => $c, 'origin' => $origin]);
 $pkKeys = [];
+// OpenSSL gives the EC coordinates without leading zero bytes (about one key in 64 has a shorter x or y) – a COSE key always has 32
 $ec = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
-if ($ec) { $d = openssl_pkey_get_details($ec)['ec']; $pkKeys['ES256'] = [[1 => 2, 3 => -7, -1 => 1, -2 => ['__b' => $d['x']], -3 => ['__b' => $d['y']]], static fn($m) => openssl_sign($m, $sg, $ec, OPENSSL_ALGO_SHA256) ? $sg : '']; }
+if ($ec) { $d = openssl_pkey_get_details($ec)['ec']; $pkKeys['ES256'] = [[1 => 2, 3 => -7, -1 => 1, -2 => ['__b' => str_pad($d['x'], 32, "\0", STR_PAD_LEFT)], -3 => ['__b' => str_pad($d['y'], 32, "\0", STR_PAD_LEFT)]], static fn($m) => openssl_sign($m, $sg, $ec, OPENSSL_ALGO_SHA256) ? $sg : '']; }
 $rsa = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
 if ($rsa) { $d = openssl_pkey_get_details($rsa)['rsa']; $pkKeys['RS256'] = [[1 => 3, 3 => -257, -1 => ['__b' => $d['n']], -2 => ['__b' => $d['e']]], static fn($m) => openssl_sign($m, $sg, $rsa, OPENSSL_ALGO_SHA256) ? $sg : '']; }
 if (function_exists('sodium_crypto_sign_keypair')) { $kp = sodium_crypto_sign_keypair(); $pkKeys['EdDSA'] = [[1 => 1, 3 => -8, -1 => 6, -2 => ['__b' => sodium_crypto_sign_publickey($kp)]], static fn($m) => sodium_crypto_sign_detached($m, sodium_crypto_sign_secretkey($kp))]; }

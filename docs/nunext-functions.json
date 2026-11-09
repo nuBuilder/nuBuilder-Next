@@ -1610,6 +1610,21 @@
    },
    {
     "g": "proc",
+    "n": "nuEval",
+    "s": "nuEval($phpid, $returnOutput = false): ?string",
+    "d": "Runs a row of zzzzsys_php by its id – a procedure or an event of a form (\"<form id>_BS\", \"…_AS\" …) – with the hash variables of this request, as nuBuilder Forte's nuEval. Its $result is put into $_POST['nuRunPHPHiddenResult']; errors join the request's errors. No access check.",
+    "r": "with $returnOutput what the code printed, else null; '' when the id does not exist or has no code",
+    "o": "nb",
+    "e": "$html = nuEval('my_proc_id', true);\nnuEval(nuHash()['form_id'] . '_BS');   // the form's Before Save once more",
+    "x": "'<b>Total: 42</b>'",
+    "p": {
+     "$phpid": "id of the zzzzsys_php row (zzzzsys_php_id) – not the code",
+     "$returnOutput": "true: return what the code prints instead of printing it"
+    },
+    "a": ["nuRunProcedure", "nuProcedure", "nuRunPHPHidden"]
+   },
+   {
+    "g": "proc",
     "n": "nuRunPHPHidden",
     "s": "nuRunPHPHidden($nuCode): object",
     "d": "Runs a procedure from PHP (access is checked); its output, JavaScript and errors join this request.",
@@ -1879,6 +1894,20 @@
     "a": [
      "nuNextSpreadsheetAvailable"
     ]
+   },
+   {
+    "g": "str",
+    "n": "nuGetTranslation",
+    "s": "nuGetTranslation($l): array",
+    "d": "Every translation of a language from zzzzsys_translate, as nuBuilder Forte reads it at sign-in: sorted by the English text, the installation's own rows before nuBuilder Forte's (ids nu…).",
+    "r": "list of ['english' => …, 'translation' => …]; [] when the language has none",
+    "o": "nb",
+    "e": "foreach (nuGetTranslation('German') as $t) {\n    if ($t['english'] === 'Save') echo $t['translation'];\n}",
+    "x": "[['english' => 'Save', 'translation' => 'Speichern'], …]",
+    "p": {
+     "$l": "language as stored in trl_language, e.g. 'German'"
+    },
+    "a": ["nuTranslate"]
    },
    {
     "g": "str",

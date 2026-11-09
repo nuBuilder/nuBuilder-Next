@@ -43,7 +43,8 @@ page) for how to use it.
   syntax check, formatting, search / replace and an Insert menu with every documented function.
 - **Reports and queries** – a visual report designer (text, HTML or Markdown fields), an SQL builder, PDF output.
 - **Help pages for your users** – write help in the browser (visual editor or Markdown), open it from a form, a tab or a
-  field in a side panel; whole pages or parts of a page only for some access levels, translations, search, export / import.
+  field in a side panel; whole pages or parts of a page only for some access levels, translations, search, export / import;
+  drafted with AI in any installed language.
 - **Dashboards** – KPI tiles, charts and tables built from SQL, on the start page or on any form.
 - **Custom pages** – your own PHP apps inside nuBuilder Next, with its sign-in, rights, a stable page API, drafts and
   versions.
@@ -51,8 +52,11 @@ page) for how to use it.
   views and queries to Excel or CSV, streamed for any size.
 - **Integration** – a REST API (OAuth 2.0 client credentials) with a playground, webhooks to n8n, Zapier, Teams or your own
   service (signed, with retries and a log), e-mail via SMTP or OAuth 2 (Google, Microsoft 365) with templates.
+- **Projects** – group the forms, procedures, reports, tables and other parts of one piece of work, with "Suggest related",
+  Markdown notes, to-dos with notifications, lists narrowed to the project, and export / import as one package.
 - **Cloners** – copy a single form or the whole application.
-- **Sample applications** – a sales application and a ticket system for a support desk, both built to learn from.
+- **Sample applications** – a sales application and a ticket system for a support desk (with its project and help pages
+  for its users per role), both built to learn from.
 
 ## For administrators
 
@@ -63,7 +67,8 @@ page) for how to use it.
   access per user group, and a built-in Security check.
 - **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes.
 - **Start pages per access level** – users get their own tiles and can personalise them.
-- **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; a `nuconfig.php`
+- **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
+  database from a backup (MySQL / MariaDB); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager.
 - **Easy start** – installer, setup wizard, a tutorial (basic, in depth, coming from nuBuilder Forte) and built-in
   documentation.

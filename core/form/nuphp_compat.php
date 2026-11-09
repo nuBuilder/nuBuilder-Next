@@ -363,6 +363,40 @@ if (!function_exists('db_fetch_value')) {
 		return $error === '' ? true : $error;
 	}
 
+	/**
+	 * nuBuilder Forte's nuGetTranslation (0.8.1034): every row of zzzzsys_translate for a language as [['english' => …, 'translation' => …], …],
+	 * sorted by the English text with the installation's own rows before nuBuilder Forte's (ids nu…) – as Forte reads it at sign-in.
+	 */
+	function nuGetTranslation($l): array
+	{
+		$a = [];
+		$rows = nu_db()->all("SELECT trl_english, trl_translation FROM zzzzsys_translate WHERE trl_language = ? ORDER BY trl_english, CASE WHEN zzzzsys_translate_id LIKE 'nu%' THEN 1 ELSE 0 END", [(string)$l]);
+		foreach ($rows as $r) $a[] = ['english' => $r['trl_english'], 'translation' => $r['trl_translation']];
+		return $a;
+	}
+
+	/**
+	 * nuBuilder Forte's nuEval (0.8.1033): runs a row of zzzzsys_php by its id – a procedure or an event of a form such as
+	 * "<form id>_BS" – with the hash variables of this request and $nudata. Its $result goes to $_POST['nuRunPHPHiddenResult'], errors
+	 * join the request's errors. $returnOutput: what the code prints is returned instead of being printed. No access check (as in
+	 * nuBuilder Forte – it is called from code, not from the browser). @return string|null '' when the row is missing or empty
+	 */
+	function nuEval($phpid, $returnOutput = false): ?string
+	{
+		$r = nu_db()->one('SELECT sph_code, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [(string)$phpid]);
+		if (!$r || trim((string)$r['sph_php']) === '') return '';
+		$before = strlen(NuPhp::$output);
+		$fd = NuPhp::$hash['nuFORMdata'] ?? '';
+		$hash = NuPhp::$hash;
+		NuPhp::run((string)$r['sph_php'], $hash, 'nuEval ' . ($r['sph_code'] !== null && $r['sph_code'] !== '' ? (string)$r['sph_code'] : (string)$phpid), ['nudata' => $fd]);
+		NuPhp::$hash = $hash;
+		$_POST['nuRunPHPHiddenResult'] = NuPhp::$result;
+		if (!$returnOutput) return null;
+		$out = substr(NuPhp::$output, $before);
+		NuPhp::$output = substr(NuPhp::$output, 0, $before);
+		return $out;
+	}
+
 	/** Runs a procedure hidden from PHP (access is checked); its output, JavaScript and errors join the current request. */
 	function nuRunPHPHidden($nuCode): object
 	{

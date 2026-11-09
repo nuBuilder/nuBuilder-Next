@@ -712,3 +712,8 @@ html.nuPhoneCards #nuBrowseTable > tbody > tr.nuDetRow { display: block; }
 html.nuPhoneCards #nuBrowseTable > tbody > tr.nuDetRow > td.nuDetTd { display: block; padding-left: .75rem; }
 html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuDetCol { order: 98; margin-inline-start: auto; width: auto; }
 @media print { #nuBrowseTable .nuDetCol, #nuBrowseTable .nuDetRow { display: none; } }
+
+/* Notes (nuBuilder Forte's system form nunotes, 0.8.1043): its title field carries an inline style of Forte (maroon, bold, 15px – hardly
+   readable in dark mode) – shown as a standard field; Forte's row stays as it is */
+body[data-nu-form="nunotes"] #not_title { color: var(--bs-body-color) !important; font-weight: normal !important; font-size: 1rem !important; padding-left: .75rem !important; }
+body[data-nu-form="nunotes"] .nuAbs #not_title { font-size: .85rem !important; padding-left: .4rem !important; }

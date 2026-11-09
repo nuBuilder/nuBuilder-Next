@@ -4001,9 +4001,11 @@
 	// TinyMCE is not bundled: a library pack (Update → Libraries, vendor/packs/tinymce-<version>/); nuNext.tinymceBase = its folder.
 	function tiny() { return window.tinymce || null; }
 
+	var tinyArgs = {};                                        // arguments of the last nuInitTinyMCE per field – the theme switch starts it again (0.8.1041)
 	api('nuInitTinyMCE', function (id, options, mobile, toolbar, toolbarGroups, menubar, contextmenu, quickbars) {
 		var ta = g(id), box = g(id + '_container');
 		if (!ta || !box) return;
+		tinyArgs[id] = Array.prototype.slice.call(arguments);
 		if (!tiny()) {
 			$(box).hide(); $(ta).show().addClass('nuEditorFallback');
 			if (!warned.tinymce) { warned.tinymce = true; console.warn('nuBuilder Next: TinyMCE not found – install its library pack (Update → Libraries)'); }
@@ -4073,6 +4075,19 @@
 		if (old) old.remove();
 		tiny().init(cfg);
 	});
+
+	// light / dark switch (0.8.1041): TinyMCE cannot change its skin while it runs – each editor is started again with the other skin;
+	// the field holds its HTML already (input / change handler) – copied only when the editor still has unsent changes, because TinyMCE's own
+	// cleaning (<b> → <strong>) would otherwise mark an untouched record as edited; the new editor takes the field's HTML
+	new MutationObserver(function () {
+		if (!tiny()) return;
+		Object.keys(tinyArgs).forEach(function (id) {
+			var ed = tiny().get(id + '_container'), ta = g(id);
+			if (!ed) return;
+			if (ta && ed.isDirty()) { var html = ed.getContent(); if (html !== ta.value) { ta.value = html; markEdited(ta); } }
+			window.nuInitTinyMCE.apply(null, tinyArgs[id]);
+		});
+	}).observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
 
 	/** Copies the editors' HTML into their fields (nuBuilder nuSaveEditor). */
 	function syncEditors() {

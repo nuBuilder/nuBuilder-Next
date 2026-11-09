@@ -19,7 +19,7 @@ final class NuPageNo
 		'100' => ['users', []], '110' => ['access', []], '120' => ['permissions', []], '130' => ['adminroles', []], '140' => ['userfields', []], '150' => ['sessions', []],
 		'200' => ['forms', []], '205' => ['builder', []], '206' => ['formai', []], '210' => ['dataaccess', []], '215' => ['inspect', []],
 		'220' => ['items', []], '230' => ['files', []], '240' => ['formats', []], '250' => ['translations', []], '260' => ['procedures', []],
-		'270' => ['reports', []], '275' => ['reportdesigner', []], '280' => ['sqlbuilder', []], '290' => ['prompts', []],
+		'270' => ['reports', []], '275' => ['reportdesigner', []], '280' => ['sqlbuilder', []], '290' => ['prompts', []], '295' => ['projects', []],
 		'300' => ['import', []], '310' => ['dataexport', []], '320' => ['cloner', []], '330' => ['appcloner', []], '340' => ['sample', []], '390' => ['dbreset', []],
 		'400' => ['email', []], '400.1' => ['email', ['tab' => 'settings']], '400.2' => ['email', ['tab' => 'test']], '400.3' => ['email', ['tab' => 'log']],
 		'410' => ['emailtemplates', []], '420' => ['notifications', []], '420.1' => ['notifications', []], '420.2' => ['notifications', ['tab' => 'manage']], '425' => ['helppages', []], '426' => ['userhelp', []],

@@ -47,6 +47,13 @@ declare(strict_types=1);
  *   --check  read and check the file only, list the tables that would be deleted – nothing changes (no --yes needed)
  *   --backup a backup with the whole database first (Update → Backups)      --sample  install the sample application afterwards
  */
+/*
+ * Restore the database part of a backup (0.8.1031, MySQL / MariaDB; Update → Backups, file name as listed there or in _backup/):
+ *     php nucron.php restore <backup file name> [--check] [--no-backup] --yes
+ *   --check      read and check the dump only – nothing changes (no --yes needed)
+ *   --no-backup  no backup of the current database first (default: one with the same scope – put back by itself when the restore fails)
+ *   Exit code 1 also when row counts differ from the backup afterwards.
+ */
 if (PHP_SAPI !== 'cli') {
 	http_response_code(404);
 	exit;
@@ -73,7 +80,10 @@ if (($args[0] ?? '') === 'reset') {
 	if (!empty($ro['check'])) exit(0);
 	if (empty($ro['yes'])) { fwrite(STDERR, "Nothing done: add --yes to delete all tables and import the file.\n" . $usage); exit(2); }
 	try {
-		$r = NuDbReset::run($file, !empty($ro['backup']), !empty($ro['sample']), 'cli');
+		$r = NuDbReset::run($file, !empty($ro['backup']), !empty($ro['sample']), 'cli', static function (int $done, int $all) {
+			fwrite(STDOUT, "\r" . str_pad('progress', 14) . ($all > 0 ? min(100, intdiv($done * 100, $all)) . ' %' : NuFile::size($done)) . '   ');
+		});
+		echo "\n";
 	} catch (Throwable $e) {
 		fwrite(STDERR, 'Failed: ' . $e->getMessage() . "\n");
 		exit(1);
@@ -83,6 +93,36 @@ if (($args[0] ?? '') === 'reset') {
 	if ($r['sample'] !== '') echo str_pad('sample', 14) . ($r['sample'] === 'ok' ? 'installed (Admin tools → Sample data → New passwords)' : 'failed: ' . $r['sample']) . "\n";
 	echo "Done. Open index.php?p=setupwizard to set up the installation.\n";
 	exit(0);
+}
+if (($args[0] ?? '') === 'restore') {
+	$usage = "Usage: php nucron.php restore <backup file name> [--check] [--no-backup] --yes\n";
+	$name = (string)($args[1] ?? '');
+	$flags = array_slice($args, 2);
+	if (!NuSqlDump::canRestore()) { fwrite(STDERR, "Restoring the database needs a MySQL / MariaDB database.\n"); exit(2); }
+	$f = $name !== '' ? NuUpdate::backupPath(basename($name)) : null;
+	if (!$f) { fwrite(STDERR, ($name === '' ? 'No backup named.' : 'Backup not found: ' . $name) . "\n" . $usage); exit(2); }
+	$chk = NuSqlDump::restoreCheck($f);
+	if (!$chk['ok']) { fwrite(STDERR, 'The backup cannot be restored: ' . $chk['error'] . "\n"); exit(1); }
+	echo str_pad('backup', 14) . basename($f) . "\n" . str_pad('version', 14) . $chk['version'] . ' (' . $chk['created'] . ")\n" . str_pad('scope', 14) . $chk['scope']
+		. "\n" . str_pad('creates', 14) . $chk['tables'] . ' table(s), ' . $chk['rows'] . " row(s)\n" . str_pad('drops', 14) . $chk['drops'] . " table(s) / object(s) first\n";
+	if (in_array('--check', $flags, true)) exit(0);
+	if (!in_array('--yes', $flags, true)) { fwrite(STDERR, "Nothing done: add --yes to replace the database.\n" . $usage); exit(2); }
+	NuAuth::cliGlobeadmin();
+	try {
+		$r = NuSqlDump::restore($f, !in_array('--no-backup', $flags, true), 'cli', static function (int $done, int $all) {
+			fwrite(STDOUT, "\r" . str_pad('progress', 14) . ($all > 0 ? min(100, intdiv($done * 100, $all)) . ' %' : NuFile::size($done)) . '   ');
+		});
+	} catch (Throwable $e) {
+		fwrite(STDERR, "\nFailed: " . $e->getMessage() . "\n");
+		exit(1);
+	}
+	echo "\n";
+	if ($r['safety'] !== '') echo str_pad('safety', 14) . $r['safety'] . "\n";
+	echo str_pad('dropped', 14) . $r['dropped'] . "\n" . str_pad('statements', 14) . $r['statements'] . "\n" . str_pad('steps', 14) . count($r['steps']) . "\n";
+	if ($r['checked']) echo str_pad('row counts', 14) . ($r['mismatch'] ? count($r['mismatch']) . ' of ' . $r['checked'] . ' table(s) differ (backup → now): '
+		. implode(', ', array_map(static fn($t, $c) => $t . ' ' . $c[0] . ' → ' . $c[1], array_keys($r['mismatch']), $r['mismatch'])) : $r['checked'] . ' table(s) as in the backup') . "\n";
+	echo "Done.\n";
+	exit($r['mismatch'] ? 1 : 0);
 }
 if (($args[0] ?? '') === 'iprules') {
 	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php nucron.php iprules off\n"); exit(2); }

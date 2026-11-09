@@ -7767,7 +7767,7 @@ T.help_level = async (s) => {
 		await p.fill('#helpSearch', ''); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
 		await p.click('label[for="helpLvl_standard"]'); await p.waitForTimeout(300);
 		expect(await p.evaluate(() => !document.documentElement.classList.contains('nuHelpLite')
-			&& Array.from(document.querySelectorAll('#helpBody [data-level="detail"]')).every(e => e.offsetParent !== null || e.closest('[hidden]'))), 'Standard hides details');
+			&& Array.from(document.querySelectorAll('#helpBody [data-level="detail"]')).every(e => e.offsetParent !== null || e.closest('[hidden]') || e.closest('[data-level="advanced"]'))), 'Standard hides details');
 	} finally {
 		await p.evaluate(() => { try { localStorage.removeItem('nunext-help-level'); } catch (e) { /* */ } });
 	}
@@ -7906,7 +7906,8 @@ nuHome.on('tile', function () { throw new Error('E2E js boom'); });`);
 		expect(st.badge === 'JS 5' && st.hint === 'JS hint' && st.notes === true && /^:.*x_e2e_tile/.test(st.search || ''), 'tile changes: ' + JSON.stringify(st));
 		expect(st.toasts === 1, 'error toast once for the globeadmin: ' + st.toasts);
 		await p.fill('#nuHomeSearch', 'notes'); await p.waitForTimeout(250);
-		expect(await p.evaluate(() => window.__search) === 'notes:', 'a tile hidden by code is found by the search');
+		const srch = await p.evaluate(() => window.__search);              // other tiles may mention notes (Projects); the hidden one must not come back
+		expect(/^notes:/.test(srch) && !srch.slice(6).split(',').includes('notes'), 'a tile hidden by code is found by the search: ' + srch);
 		await p.fill('#nuHomeSearch', ''); await p.waitForTimeout(200);
 		if (await p.locator('#nuHomeCustomize').count()) { await homeEdit(p); await p.waitForTimeout(400); expect(await p.evaluate(() => window.__cust) === true, 'no customize event'); }
 		// safe mode: no script; the file needs a tile page user
@@ -8040,6 +8041,111 @@ T.backup_scope = async (s) => {
 		expect(await p.locator('#updBackups .badge.text-bg-success[title*="zzzzsys_"], #updBackups .badge.text-bg-success[data-bs-original-title*="zzzzsys_"]').count() >= 1, 'SQL badge names the scope');
 	} finally {
 		for (const f of made) fs.rmSync(path.join(dir, f), { force: true });
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// Restore the database part of a backup (0.8.1031): a whole-database backup with a view, a trigger and a procedure (DELIMITER blocks
+// in the dump), numbers written without quotes; changes afterwards are undone, the safety backup is made first.
+T.backup_restore = async (s) => {
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	const p = s.ga, dir = path.join(SITE, '_backup');
+	const list = () => fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^nunext-.*\.zip$/.test(f)) : [];
+	const before = list();
+	const sessDump = execSync('mysqldump --no-create-info --insert-ignore ' + DB + ' zzzzsys_session zzzzsys_nunext_session zzzzsys_nunext_token').toString();
+	const reauth = async (url) => {
+		await open(p, url);
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, url); }
+	};
+	sql("DROP VIEW IF EXISTS e2e_rst_v; DROP TABLE IF EXISTS e2e_rst, e2e_rst_new; DROP PROCEDURE IF EXISTS e2e_rst_p;\n"
+		+ "CREATE TABLE e2e_rst (id int PRIMARY KEY, n decimal(10,2), s varchar(30));\nINSERT INTO e2e_rst VALUES (1, -12.50, 'a;b'), (2, NULL, 'it''s');\n"
+		+ "CREATE VIEW e2e_rst_v AS SELECT id FROM e2e_rst;\nDELIMITER $$\nCREATE TRIGGER e2e_rst_tr BEFORE INSERT ON e2e_rst FOR EACH ROW BEGIN SET NEW.s = CONCAT(NEW.s, ';x'); END $$\n"
+		+ "CREATE PROCEDURE e2e_rst_p() BEGIN SELECT 1; SELECT 2; END $$\nDELIMITER ;\n");
+	let made = [];
+	try {
+		await reauth('index.php?p=update&tab=backups#backups');
+		await p.selectOption('#updBkScope', 'all');
+		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#updBackupForm button[type=submit]')]);
+		made = list().filter(f => !before.includes(f));
+		expect(made.length === 1, 'one backup made: ' + made);
+		const dump = execSync('python3 -', { input: "import zipfile, gzip\nz=zipfile.ZipFile(" + JSON.stringify(path.join(dir, made[0])) + ")\nprint(gzip.decompress(z.read('db/database.sql.gz')).decode('utf-8','replace'))", maxBuffer: 256 << 20 }).toString();
+		expect(/\(1, -12\.50, 'a;b'\)/.test(dump), 'numbers without quotes in the dump');
+		expect(/DELIMITER \$\$\nCREATE TRIGGER `?e2e_rst_tr`? /.test(dump), 'trigger between DELIMITER lines');
+		// changes after the backup
+		sql("UPDATE e2e_rst SET s = 'changed' WHERE id = 2; DROP PROCEDURE e2e_rst_p; CREATE TABLE e2e_rst_new (a int);");
+		await reauth('index.php?p=update&tab=backups#backups');
+		const link = p.locator('#updBackups a.updRestore[href*="' + made[0] + '"]');
+		expect(await link.count() === 1, 'Restore database button on the backup row');
+		await Promise.all([p.waitForNavigation(), link.click()]);
+		await p.waitForLoadState('networkidle');
+		expect(await p.locator('#updRestoreCard #updRestoreForm').count() === 1, 'restore card with the form (' + p.url() + '): ' + (await p.textContent('#updRestoreCard').catch(() => '')).slice(0, 200));
+		expect(/\d+ table/.test(await p.textContent('#updRestoreInfo')), 'what the dump creates');
+		expect(await p.locator('#rstSafetyNote').count() === 1 && await p.locator('#rstVerifyNote').count() === 1, 'notes: backup first, row counts compared');
+		await p.click('#rstRun');
+		await p.waitForTimeout(400);
+		await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#nuConfirm.show .js-confirm-ok')]);
+		await p.waitForLoadState('networkidle');
+		const flash = (await p.locator('.alert-success').allTextContents()).join(' | ');
+		expect(/restored/i.test(flash), 'success message: ' + flash);
+		expect(/Row counts checked/.test(flash), 'row counts compared: ' + flash);
+		expect(sql("SELECT s FROM e2e_rst WHERE id = 2") === "it's", 'row back as it was');
+		expect(sql("SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'e2e_rst_p'") === '1', 'procedure back');
+		expect(sql("SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME = 'e2e_rst_tr'") === '1', 'trigger back');
+		expect(sql("SELECT COUNT(*) FROM e2e_rst_v") === '2', 'view back');
+		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_rst_new'") === '0', 'table made afterwards is gone');
+		expect(list().filter(f => !before.includes(f)).length === 2, 'safety backup made first');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'database_restore'") !== '0', 'logged');
+		await open(p, 'index.php?p=home');
+		expect(!/p=login/.test(p.url()), 'still signed in');
+	} finally {
+		execSync('mysql ' + DB, { input: sessDump });   // the other test users stay signed in
+		sql('DROP VIEW IF EXISTS e2e_rst_v; DROP TABLE IF EXISTS e2e_rst, e2e_rst_new; DROP PROCEDURE IF EXISTS e2e_rst_p;');
+		for (const f of list().filter(f => !before.includes(f))) fs.rmSync(path.join(dir, f), { force: true });
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// A restore that fails after the tables were dropped (0.8.1032): the backup made first is put back by itself.
+T.backup_restore_fail = async (s) => {
+	if (!SITE || !fs.existsSync(path.join(SITE, 'nuconfig.php'))) { s.skip = 'SITE not set'; return; }
+	const p = s.ga, dir = path.join(SITE, '_backup');
+	const list = () => fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^nunext-.*\.zip$/.test(f)) : [];
+	const before = list();
+	const sessDump = execSync('mysqldump --no-create-info --insert-ignore ' + DB + ' zzzzsys_session zzzzsys_nunext_session zzzzsys_nunext_token').toString();
+	const reauth = async (url) => {
+		await open(p, url);
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, url); }
+	};
+	sql("DROP TABLE IF EXISTS e2e_rst, e2e_rst_new; CREATE TABLE e2e_rst (id int PRIMARY KEY, s varchar(30)); INSERT INTO e2e_rst VALUES (1, 'a'), (2, 'b');");
+	const broken = 'nunext-0.0.1-broken-' + Date.now() + '.zip';
+	try {
+		await reauth('index.php?p=update&tab=backups#backups');
+		await p.selectOption('#updBkScope', 'all');
+		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#updBackupForm button[type=submit]')]);
+		const made = list().filter(f => !before.includes(f));
+		expect(made.length === 1, 'one backup made: ' + made);
+		// a copy whose dump fails half way: a duplicate key just before the end marker (complete and allowed, but it cannot run)
+		execSync('python3 -', { input: "import zipfile, gzip\nsrc=" + JSON.stringify(path.join(dir, made[0])) + "\ndst=" + JSON.stringify(path.join(dir, broken))
+			+ "\nzi=zipfile.ZipFile(src)\nzo=zipfile.ZipFile(dst,'w')\nfor i in zi.infolist():\n  d=zi.read(i.filename)\n  if i.filename=='db/database.sql.gz':\n"
+			+ "    t=gzip.decompress(d).decode('utf-8')\n    k=t.rindex('\\n-- nuBuilder Next SQL dump completed')\n    t=t[:k]+\"\\nINSERT INTO `e2e_rst` (`id`, `s`) VALUES (1, 'dup');\\n\"+t[k:]\n    d=gzip.compress(t.encode('utf-8'))\n"
+			+ "    zo.writestr(i, d, compress_type=zipfile.ZIP_STORED)\n  else: zo.writestr(i, d, compress_type=zipfile.ZIP_DEFLATED)\nzo.close()\n", maxBuffer: 64 << 20 });
+		sql("UPDATE e2e_rst SET s = 'changed' WHERE id = 2; CREATE TABLE e2e_rst_new (a int);");
+		await reauth('index.php?p=update&tab=backups&restore=' + broken + '#backups');
+		expect(await p.locator('#updRestoreForm').count() === 1, 'the broken copy passes the check');
+		await p.click('#rstRun');
+		await p.waitForTimeout(400);
+		await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#nuConfirm.show .js-confirm-ok')]);
+		await p.waitForLoadState('networkidle');
+		const err = (await p.locator('.alert-danger').allTextContents()).join(' | ');
+		expect(/put back/.test(err) && /Duplicate/i.test(err), 'error names the failure and the way back: ' + err);
+		expect(sql("SELECT s FROM e2e_rst WHERE id = 2") === 'changed', 'database as it was before the restore');
+		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_rst_new'") === '1', 'tables made since are back too');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'database_restore_failed'") !== '0', 'logged');
+		expect(!fs.existsSync(path.join(dir, 'maintenance.json')), 'no maintenance mode left');
+	} finally {
+		execSync('mysql ' + DB, { input: sessDump });
+		sql('DROP TABLE IF EXISTS e2e_rst, e2e_rst_new;');
+		for (const f of list().filter(f => !before.includes(f))) fs.rmSync(path.join(dir, f), { force: true });
 	}
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
@@ -11778,6 +11884,33 @@ T.sample_ticket = async (s) => {
 		expect(+sql('SELECT COUNT(*) FROM tkt_ticket') >= 50 && +sql('SELECT COUNT(*) FROM tkt_comment') > 100, 'sample data missing');
 		// dates moved to today: the newest ticket is at most two days old
 		expect(+sql('SELECT DATEDIFF(CURRENT_DATE, MAX(created_at)) FROM tkt_ticket') <= 2, 'dates not moved');
+		// 0.8.1036: the sample's project – parts, notes, to-dos with moved due dates, link on the sample page
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_project_item WHERE project_id = 'tkt_prj_001'") === '22' && sql("SELECT COUNT(*) FROM zzzzsys_nunext_project_note WHERE project_id = 'tkt_prj_001'") === '2', 'sample project parts / notes');
+		// 0.8.1039: help pages of the sample – linked from the forms / the Handling tab / the Due field, parts per role, a German translation
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_help WHERE code LIKE 'tkt_help%'") === '6', 'sample help pages');
+		{
+			const cu = await login('tkt_clara', pw.tkt_clara);
+			const fr = await cu.evaluate(async () => (await fetch('index.php?p=userhelp&c=tkt_help_ticket&frag=1')).json());
+			expect(fr.title === 'Tickets' && /Rate the solution/.test(fr.html) && !/Internal note/.test(fr.html) && !/Handling a ticket/.test(fr.html), 'customer view of the ticket help: ' + (fr.html || '').slice(0, 200));
+			const no = await cu.evaluate(async () => (await fetch('index.php?p=userhelp&c=tkt_help_categories&frag=1')).status);
+			expect(no === 404, 'categories page only for the team lead: ' + no);
+			await open(cu, 'index.php?p=form&f=tktticket&r=-1');
+			expect(await cu.locator('#nuHelpButton').count() === 1, 'help button on the ticket form');
+			await cu.context().close();
+			const ag = await login('tkt_alex', pw.tkt_alex);
+			const fa = await ag.evaluate(async () => (await fetch('index.php?p=userhelp&c=tkt_help_ticket&frag=1')).json());
+			expect(/Internal note/.test(fa.html) && /Handling a ticket/.test(fa.html) && !/Rate the solution/.test(fa.html), 'agent view of the ticket help');
+			await ag.context().close();
+		}
+		expect(+sql("SELECT DATEDIFF(MIN(due), CURRENT_DATE) FROM zzzzsys_nunext_project_task WHERE project_id = 'tkt_prj_001' AND status = 'open'") >= 3, 'to-do due dates moved');
+		await p.click('#smp_ticket_contents_tab');
+		await Promise.all([p.waitForNavigation(), p.click('#smpSet_ticket .smpProjectLink')]); await p.waitForLoadState('networkidle');
+		expect(await p.locator('#prjKind-form tr[data-ref]').count() === 6 && (await p.textContent('#prjPinned')).includes('Tickets'), 'sample project page');
+		await p.click('#prjTab-items'); await p.click('#prjSuggestBtn');
+		await p.waitForSelector('#prjSuggestList .list-group-item');
+		expect(await p.locator('#prjSuggestList input[value^="form|"]').count() === 0, 'every form of the sample is in its project');
+		await p.keyboard.press('Escape');
+		await open(p, 'index.php?p=sample&s=ticket');
 		// customer: only own tickets, no internal notes, another customer's ticket refused
 		const own = sql("SELECT COUNT(*) FROM tkt_ticket WHERE tic_requester_id = 'tkt_clara'");
 		const c = await login('tkt_clara', pw.tkt_clara);
@@ -11825,6 +11958,7 @@ T.sample_ticket = async (s) => {
 		await Promise.all([p.waitForLoadState('networkidle'), p.click('#nuConfirm.show .js-confirm-ok')]);
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'tkthome'") === '0' && sql("SHOW TABLES LIKE 'tkt_ticket'") === '', 'not removed');
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_user WHERE SUBSTRING(zzzzsys_user_id, 1, 4) = 'tkt_'") === '0' && sql("SELECT COUNT(*) FROM zzzzsys_object WHERE SUBSTRING(zzzzsys_object_id, 1, 4) = 'tkto'") === '0', 'rows left');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_project WHERE zzzzsys_nunext_project_id = 'tkt_prj_001'") === '0' && sql("SELECT COUNT(*) FROM zzzzsys_nunext_project_item WHERE project_id = 'tkt_prj_001'") === '0', 'sample project left');
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'tkthome'") === '1') php("NuSampleSet::remove('ticket');");
@@ -12000,7 +12134,7 @@ T.seg_control = async (s) => {
 		const cs = getComputedStyle(el), m = cs.backgroundColor.match(/\d+(\.\d+)?/g).map(Number);
 		return { lum: (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255, line: /inset/.test(cs.boxShadow) && /-2px/.test(cs.boxShadow) };
 	}, sel);
-	await open(p, 'index.php?p=notifications&tab=manage&id=new');
+	await open(p, 'index.php?p=notifications&id=new');
 	let r = await look('.nuNtfLevels .btn-check:checked + .btn');
 	expect(r && r.lum > 0.9 && r.line, 'notification level: ' + JSON.stringify(r));
 	await open(p, 'index.php?p=help');
@@ -12620,6 +12754,274 @@ nuAddJavascript('window.e2ePhp = ' . json_encode(['table' => $f ? $f->sfo_table 
 	} finally {
 		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'samplecustomer_BE'; DROP TABLE IF EXISTS e2e_ctfs_tmp");
 	}
+};
+
+T.php_nueval = async (s) => {
+	// 0.8.1033: nuEval($phpid, $returnOutput) as nuBuilder Forte – runs a procedure row by its id with the hash variables of the
+	// request, $result → $_POST['nuRunPHPHiddenResult'], printed output returned with $returnOutput, '' for a missing id
+	const p = s.ga;
+	const rec = sql('SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1');
+	if (!rec) { s.skip = 'no sample data'; return; }
+	const proc = "echo '<b>' . '#RECORD_ID#' . '</b>'; $result = 'r-' . nuHash()['form_id'];";
+	const be = `$out = nuEval('e2e_nueval_proc', true);
+$none = nuEval('no_such_php_id');
+$res = $_POST['nuRunPHPHiddenResult'] ?? null;
+nuAddJavascript('window.e2eEval = ' . json_encode(['out' => $out, 'none' => $none, 'res' => $res]) . ';');`;
+	execSync('mysql ' + DB, {input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_group, sph_php, sph_system) VALUES ('e2e_nueval_proc', 'e2e_nueval', 'e2e nuEval', '', " + JSON.stringify(proc) + ", '0'), "
+		+ "('samplecustomer_BE', 'samplecustomer_BE', 'System PHP', 'nubuilder', " + JSON.stringify(be) + ", '1')"});
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + rec);
+		const r = await p.evaluate(() => window.e2eEval);
+		expect(r && r.out === '<b>' + rec + '</b>', 'output returned, hash variables filled: ' + JSON.stringify(r));
+		expect(r.none === '' && r.res === 'r-samplecustomer', '$result and a missing id: ' + JSON.stringify(r));
+		expect(!(await p.evaluate(() => document.body.innerText)).includes('<b>' + rec), 'output not printed into the page');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id IN ('samplecustomer_BE', 'e2e_nueval_proc')");
+	}
+};
+
+T.php_nugettranslation = async (s) => {
+	// 0.8.1034: nuGetTranslation($l) as nuBuilder Forte – rows of the language sorted by English, own rows before nu… rows
+	const p = s.ga;
+	const rec = sql('SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1');
+	if (!rec) { s.skip = 'no sample data'; return; }
+	const be = "nuAddJavascript('window.e2eTr = ' . json_encode(['l' => nuGetTranslation('E2eLang'), 'none' => nuGetTranslation('NoSuchLang')]) . ';');";
+	execSync('mysql ' + DB, {input: "INSERT INTO zzzzsys_translate (zzzzsys_translate_id, trl_language, trl_english, trl_translation) VALUES "
+		+ "('nue2etr1', 'E2eLang', 'Save', 'Forte-Save'), ('e2etr1', 'E2eLang', 'Save', 'Own-Save'), ('e2etr2', 'E2eLang', 'Delete', 'Own-Delete'), ('e2etr3', 'OtherLang', 'Save', 'x');\n"
+		+ "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_group, sph_php, sph_system) VALUES ('samplecustomer_BE', 'samplecustomer_BE', 'System PHP', 'nubuilder', " + JSON.stringify(be) + ", '1')"});
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + rec);
+		const r = await p.evaluate(() => window.e2eTr);
+		expect(r && JSON.stringify(r.l) === JSON.stringify([{english: 'Delete', translation: 'Own-Delete'}, {english: 'Save', translation: 'Own-Save'}, {english: 'Save', translation: 'Forte-Save'}]),
+			'sorted by English, own rows first: ' + JSON.stringify(r));
+		expect(Array.isArray(r.none) && r.none.length === 0, 'unknown language = []');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'samplecustomer_BE'; DELETE FROM zzzzsys_translate WHERE zzzzsys_translate_id IN ('nue2etr1', 'e2etr1', 'e2etr2', 'e2etr3')");
+	}
+};
+
+const prjClean = () => sql("DELETE FROM zzzzsys_nunext_project_item WHERE project_id IN (SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code LIKE 'e2e%');"
+	+ " DELETE FROM zzzzsys_nunext_project_note WHERE project_id IN (SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code LIKE 'e2e%');"
+	+ " DELETE FROM zzzzsys_nunext_project_task WHERE project_id IN (SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code LIKE 'e2e%');"
+	+ " DELETE FROM zzzzsys_nunext_project WHERE code LIKE 'e2e%'");
+
+T.projects = async (s) => {
+	// 0.8.1035: projects – create, add parts, Suggest related, Markdown note, to-do with a notification, done, working on → list filter
+	const p = s.ga;
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'").startsWith('1')) { s.skip = 'no sample data'; return; }
+	await open(p, 'index.php?p=projects');
+	expect(await p.locator('.nuListCard').count() === 1, 'list of projects');
+	prjClean();
+	const user = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	try {
+		await open(p, 'index.php?p=projects&id=new');
+		await p.fill('#prjName', 'E2E Shop');
+		await Promise.all([p.waitForNavigation(), p.click('#prjSave')]);
+		const pid = sql("SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code = 'e2e_shop'");
+		expect(pid !== '', 'project saved with the code made from the name');
+		// add a form
+		await p.click('#prjTab-items'); await p.click('#prjAddBtn');
+		await p.waitForSelector('#prjAddList input[value="form|sampleorder"]');
+		await p.fill('#prjAddQ', 'sample_order');
+		await p.waitForFunction(() => document.querySelectorAll('#prjAddList input').length > 0 && !document.querySelector('#prjAddList input[value="form|sampleproduct"]'));
+		await p.check('#prjAddList input[value="form|sampleorder"]');
+		expect((await p.textContent('#prjAddCount')).includes('1'), 'count of picks');
+		await Promise.all([p.waitForNavigation(), p.click('#prjAddGo')]);
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_project_item WHERE project_id = '${pid}'`) === '1', 'one part');
+		// suggest related
+		await p.click('#prjSuggestBtn');
+		await p.waitForSelector('#prjSuggestList input[value="form|samplecustomer"]');
+		for (const v of ['form|sampleorderitem', 'table|sample_order']) expect(await p.locator(`#prjSuggestList input[value="${v}"]`).count() === 1, 'suggested ' + v);
+		expect(await p.locator('#prjSuggestList input[value="form|sampleorder"]').count() === 0, 'members are not suggested');
+		await Promise.all([p.waitForNavigation(), p.click('#prjSuggestGo')]);
+		const n = +sql(`SELECT COUNT(*) FROM zzzzsys_nunext_project_item WHERE project_id = '${pid}'`);
+		expect(n >= 4, 'suggested parts added: ' + n);
+		expect(await p.locator('#prjKind-form tr[data-ref="samplecustomer"] a.prjItemLink').count() === 1, 'link to the form');
+		// note
+		await open(p, 'index.php?p=projects&id=' + pid + '&tab=notes');
+		await p.fill('#prjNoteNew input[name=title]', 'Plan');
+		await p.fill('#prjNoteNew textarea[name=body]', 'Check **totals** <script>x</script>');
+		await p.check('#prjNoteNew input[name=pinned]');
+		await Promise.all([p.waitForNavigation(), p.click('#prjNoteNew button[type=submit]')]);
+		expect(await p.locator('.prjNoteView b').first().textContent() === 'totals', 'Markdown shown');
+		expect(await p.locator('.prjNoteView script').count() === 0, 'HTML escaped');
+		// to-do for a user, due today → notification
+		await open(p, 'index.php?p=projects&id=' + pid + '&tab=tasks');
+		await p.fill('#prjTaskTitle', 'Check the totals');
+		await p.evaluate((u) => { const s = document.getElementById('prjTaskAssignee'); s.value = u; if (s.tomselect) s.tomselect.setValue(u, true); }, user);
+		await p.fill('#prjTaskDue', new Date().toISOString().slice(0, 10));
+		await Promise.all([p.waitForNavigation(), p.click('#prjTaskSave')]);
+		const kid = sql(`SELECT zzzzsys_nunext_project_task_id FROM zzzzsys_nunext_project_task WHERE project_id = '${pid}'`);
+		expect(kid !== '', 'to-do saved');
+		const ntf = sql(`SELECT COUNT(*) FROM zzzzsys_nunext_notification n JOIN zzzzsys_nunext_notification_user u ON u.notification_id = n.zzzzsys_nunext_notification_id WHERE n.title LIKE '%Check the totals%' AND u.user_id = '${user}'`);
+		expect(+ntf >= 1, 'assignee notified: ' + ntf);
+		await open(p, 'index.php?p=projects&id=' + pid);
+		expect((await p.textContent('#prjOverviewTasks')).includes('Check the totals'), 'open to-do on the overview');
+		expect((await p.textContent('#prjPinned')).includes('totals'), 'pinned note on the overview');
+		await Promise.all([p.waitForNavigation(), p.check('#prjOverviewTasks input[name=done]')]);
+		expect(sql(`SELECT status FROM zzzzsys_nunext_project_task WHERE zzzzsys_nunext_project_task_id = '${kid}'`) === 'done', 'to-do done');
+		// working on → the forms list shows only the project's forms
+		await Promise.all([p.waitForNavigation(), p.click('#prjWork')]);
+		await open(p, 'index.php?p=forms');
+		const forms = await p.$$eval('.nuListCard tbody tr[data-href]', (rs) => rs.map((r) => r.getAttribute('data-href')));
+		expect(forms.some((h) => h.includes('sampleorder')) && !forms.some((h) => h.includes('sampleproduct')), 'forms filtered by the project: ' + forms.length);
+		await open(p, 'index.php?p=forms&project=');
+		const all = await p.$$eval('.nuListCard tbody tr[data-href]', (rs) => rs.length);
+		expect(all > forms.length, 'filter cleared shows more: ' + all);
+		await open(p, 'index.php?p=projects&id=' + pid);
+		await Promise.all([p.waitForNavigation(), p.click('#prjWork')]);
+		await open(p, 'index.php?p=forms');
+		expect(await p.$$eval('.nuListCard tbody tr[data-href]', (rs) => rs.length) === all, 'working off');
+		// remove a part
+		await open(p, 'index.php?p=projects&id=' + pid + '&tab=items');
+		await Promise.all([p.waitForNavigation(), p.locator('#prjKind-form tr[data-ref="samplecustomer"] .prjRemove').click()]);
+		expect(+sql(`SELECT COUNT(*) FROM zzzzsys_nunext_project_item WHERE project_id = '${pid}'`) === n - 1, 'part removed');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		prjClean();
+		sql("DELETE u FROM zzzzsys_nunext_notification_user u JOIN zzzzsys_nunext_notification n ON n.zzzzsys_nunext_notification_id = u.notification_id WHERE n.title LIKE '%Check the totals%'; DELETE FROM zzzzsys_nunext_notification WHERE title LIKE '%Check the totals%'");
+	}
+};
+
+T.project_package = async (s) => {
+	// 0.8.1035: export a project as a package, delete form + table + project, import it again (check table, choices)
+	const p = s.ga;
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleproduct'").startsWith('1')) { s.skip = 'no sample data'; return; }
+	await open(p, 'index.php?p=projects');
+	prjClean();
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-prjpkg.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_tab zzzzsys_object zzzzsys_browse zzzzsys_event zzzzsys_php sample_product zzzzsys_nunext_form_history > ' + keep);
+	const pid = 'e2eprjpkg';
+	sql(`INSERT INTO zzzzsys_nunext_project (zzzzsys_nunext_project_id, code, name, description, status) VALUES ('${pid}', 'e2e_pkg', 'E2E package', 'For the test', 'active');
+INSERT INTO zzzzsys_nunext_project_item (zzzzsys_nunext_project_item_id, project_id, kind, ref) VALUES ('e2eprjpi1', '${pid}', 'form', 'sampleproduct'), ('e2eprjpi2', '${pid}', 'table', 'sample_product');
+INSERT INTO zzzzsys_nunext_project_note (zzzzsys_nunext_project_note_id, project_id, title, body, pinned) VALUES ('e2eprjpn1', '${pid}', 'Read me', 'Hello', '0')`);
+	try {
+		await open(p, 'index.php?p=projects&id=' + pid);
+		await p.click('#prjExportBtn');
+		const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#prjExportData')]);
+		const file = await dl.path();
+		const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+		expect(pkg.format === 'nunext-project-1' && pkg.forms && pkg.tables, 'package format: ' + Object.keys(pkg).join(','));
+		const rows = +sql('SELECT COUNT(*) FROM sample_product');
+		// remove what the package holds
+		sql("DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'sampleproduct'; DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = 'sampleproduct'; DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = 'sampleproduct';"
+			+ " DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleproduct'; RENAME TABLE sample_product TO e2e_sample_product_keep");
+		prjClean();
+		// import
+		await open(p, 'index.php?p=projects');
+		await p.click('#prjImportBtn'); await p.waitForSelector('#prjImportFile', {state: 'visible'});
+		await p.setInputFiles('#prjImportFile', file);
+		await Promise.all([p.waitForNavigation(), p.click('#prjImportCheck')]);
+		await p.waitForSelector('#prjImportTable');
+		const states = await p.$$eval('#prjImportTable tr[data-key]', (rs) => rs.map((r) => r.getAttribute('data-key') + '=' + r.getAttribute('data-state')));
+		for (const k of ['form|sampleproduct=new', 'table|sample_product=new', 'project|e2e_pkg=new']) expect(states.includes(k), k + ' in ' + states.join(' '));
+		p.removeAllListeners('dialog'); p.on('dialog', (d) => d.accept());
+		await p.click('#prjImportRun');
+		const ok = p.locator('.modal.show .modal-footer .btn-primary');
+		await ok.first().waitFor({timeout: 5000});
+		await Promise.all([p.waitForNavigation(), ok.first().click()]);
+		await p.waitForLoadState('networkidle');
+		if ((await p.url()).includes('p=reauth')) { await p.fill('input[type=password]', 'nu'); await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]); await p.waitForLoadState('networkidle'); }
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleproduct'") === '1', 'form imported');
+		expect(+sql('SELECT COUNT(*) FROM sample_product') === rows, 'table with its rows imported');
+		const np = sql("SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code = 'e2e_pkg'");
+		expect(np !== '' && sql(`SELECT COUNT(*) FROM zzzzsys_nunext_project_item WHERE project_id = '${np}'`) === '2' && sql(`SELECT COUNT(*) FROM zzzzsys_nunext_project_note WHERE project_id = '${np}'`) === '1', 'project with parts and note');
+		await open(p, 'index.php?p=form&f=sampleproduct');
+		expect(await p.locator('#nuBrowseTable tbody tr').count() > 0, 'imported form opens');
+		// a second check of the same package: everything the same / exists
+		await open(p, 'index.php?p=projects');
+		await p.click('#prjImportBtn'); await p.waitForSelector('#prjImportFile', {state: 'visible'});
+		await p.setInputFiles('#prjImportFile', file);
+		await Promise.all([p.waitForNavigation(), p.click('#prjImportCheck')]);
+		const again = await p.$$eval('#prjImportTable tr[data-key]', (rs) => rs.map((r) => r.getAttribute('data-key') + '=' + r.getAttribute('data-state')));
+		expect(again.includes('form|sampleproduct=same') && again.includes('table|sample_product=exists'), 'second check: ' + again.join(' '));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		prjClean();
+		sql('DROP TABLE IF EXISTS sample_product');
+		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
+		sql('DROP TABLE IF EXISTS e2e_sample_product_keep');
+	}
+};
+
+T.tinymce_no_source_flash = async (s) => {
+	// 0.8.1040: help pages / notifications – the HTML source is not shown while TinyMCE loads (textarea.nuTmceWait, removed on init)
+	const p = s.ga;
+	await p.route(/tinymce\.min\.js/, async (r) => { await new Promise((x) => setTimeout(x, 1200)); r.continue().catch(() => {}); });
+	try {
+		await p.goto(BASE + 'index.php?p=helppages&id=new', { waitUntil: 'domcontentloaded' });
+		if (!(await p.getAttribute('#uhForm', 'data-tiny'))) { s.skip = 'no TinyMCE pack'; return; }
+		const early = await p.$eval('#uhBody', (x) => [x.classList.contains('nuTmceWait'), getComputedStyle(x).color, x.offsetHeight]);
+		expect(early[0] && early[1] === 'rgba(0, 0, 0, 0)' && early[2] >= 500, 'source hidden while loading: ' + JSON.stringify(early));
+		await p.waitForFunction(() => !document.getElementById('uhBody').classList.contains('nuTmceWait'), null, { timeout: 8000 });
+		expect(await p.locator('.tox-tinymce').count() === 1, 'editor shown');
+		// Markdown page: no waiting at all
+		await p.click('label[for=uhFmtMd]');
+		expect(!(await p.$eval('#uhBody', (x) => x.classList.contains('nuTmceWait'))), 'Markdown shows the text');
+		await p.goto(BASE + 'index.php?p=notifications&id=new', { waitUntil: 'networkidle' });
+		if (await p.locator('#ntf_format').count()) {
+			if (!(await p.isChecked('#ntf_format'))) await p.check('#ntf_format');
+			await p.waitForFunction(() => !document.getElementById('ntf_body').classList.contains('nuTmceWait'), null, { timeout: 8000 });
+		}
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		await p.unroute(/tinymce\.min\.js/);
+	}
+};
+
+T.tinymce_theme_switch = async (s) => {
+	// 0.8.1041: light ⇄ dark switches the skin of TinyMCE at once (help pages, form editor objects) – text kept, nothing marked as changed
+	const p = s.ga;
+	await open(p, 'index.php?p=helppages&id=new');
+	if (!(await p.getAttribute('#uhForm', 'data-tiny'))) { s.skip = 'no TinyMCE pack'; return; }
+	const skin = (id) => p.evaluate((i) => { const e = i ? window.tinymce.get(i) : window.tinymce.activeEditor; return e && e.initialized ? e.options.get('skin') : null; }, id);
+	await p.waitForFunction(() => window.tinymce && window.tinymce.activeEditor && window.tinymce.activeEditor.initialized);
+	const was = await p.evaluate(() => document.documentElement.getAttribute('data-bs-theme'));
+	const to = was === 'dark' ? 'light' : 'dark';
+	await p.evaluate(() => { window.tinymce.activeEditor.setContent('<p>Keep me</p>'); window.tinymce.activeEditor.save(); });
+	await p.evaluate(() => document.querySelectorAll('.nuSaveEdited').forEach((b) => b.classList.remove('nuSaveEdited')));
+	await p.evaluate((t) => document.documentElement.setAttribute('data-bs-theme', t), to);
+	await p.waitForFunction((k) => { const e = window.tinymce.activeEditor; return e && e.initialized && e.options.get('skin') === k; }, to === 'dark' ? 'oxide-dark' : 'oxide', { timeout: 8000 });
+	expect((await p.evaluate(() => window.tinymce.activeEditor.getContent())).includes('Keep me'), 'text kept');
+	expect(await p.locator('.nuSaveEdited').count() === 0, 'theme switch marked the page as changed');
+	expect(await p.locator('.tox-tinymce').count() === 1, 'one editor');
+	// 0.8.1042: opened in dark mode, the editor is never white while it loads
+	await p.evaluate(() => { try { localStorage.setItem('nunext-theme', 'dark'); } catch (e) { /* */ } });
+	await p.goto(BASE + 'index.php?p=helppages&id=new', { waitUntil: 'commit' });
+	const first = await p.waitForFunction(() => { const f = document.querySelector('.tox-tinymce .tox-edit-area__iframe'); return f ? getComputedStyle(f).backgroundColor : null; }, null, { polling: 5, timeout: 8000 });
+	expect(await first.jsonValue() !== 'rgb(255, 255, 255)', 'white editor frame in dark mode: ' + await first.jsonValue());
+	await p.waitForLoadState('networkidle');
+	await p.evaluate((t) => { try { localStorage.setItem('nunext-theme', t); } catch (e) { /* */ } }, was || 'light');
+	// a form with an editor object
+	const id = sql('SELECT sample_all_id FROM sample_all ORDER BY 1 LIMIT 1');
+	if (id) {
+		await open(p, 'index.php?p=form&f=sampleall&r=' + id);
+		const box = 'all_editor_container';
+		await p.waitForFunction((b) => window.tinymce && window.tinymce.get(b) && window.tinymce.get(b).initialized, box, { timeout: 8000 }).catch(() => {});
+		const before = await skin(box);
+		if (before) {
+			await p.evaluate((t) => document.documentElement.setAttribute('data-bs-theme', t), before === 'oxide' ? 'dark' : 'light');
+			await p.waitForFunction((a) => { const e = window.tinymce.get(a[0]); return e && e.initialized && e.options.get('skin') !== a[1]; }, [box, before], { timeout: 8000 });
+			expect(await p.evaluate(() => !window.nuIsSaved || window.nuIsSaved()), 'form marked as edited by the theme switch');
+		}
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.notes_title_standard = async (s) => {
+	// 0.8.1043: Notes – the title field looks like every other field (Forte's inline style maroon / bold / 15px overridden, its row unchanged)
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'nunotes'") !== '1') { s.skip = 'no Notes form'; return; }
+	await open(p, 'index.php?p=form&f=nunotes&r=-1');
+	const r = await p.evaluate(() => {
+		const t = getComputedStyle(document.getElementById('not_title')), o = getComputedStyle(document.getElementById('not_zzzzsys_note_category_idcode') || document.getElementById('not_updated_on'));
+		return [t.color === o.color, t.fontWeight === o.fontWeight, t.fontSize === o.fontSize, t.paddingLeft === o.paddingLeft, t.color, o.color, t.fontSize, o.fontSize];
+	});
+	expect(r.slice(0, 4).every(Boolean), 'title field: ' + JSON.stringify(r));
+	expect(/maroon/.test(sql("SELECT sob_all_style FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'nunotes' AND sob_all_id = 'not_title'")), "Forte's row changed");
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 T.obj_menu_clone = async (s) => {
@@ -14130,6 +14532,28 @@ T.user_help = async (s) => {
 			await p.evaluate(() => { const s = document.getElementById('uhAiForm'); s.value = 'sampleorder'; s.dispatchEvent(new Event('change', { bubbles: true })); if (s.tomselect) s.tomselect.setValue('sampleorder'); });
 			await p.waitForSelector('#uhAiRel .uhAiRelChk', { state: 'attached', timeout: 5000 });
 			expect(await p.locator('#uhAiRel .uhAiRelChk[value="sampleorderitem"]:checked').count() === 1, 'related checkbox of the sub-form not ticked');
+			// 0.8.1037: language of the draft – a select in the dialog (interface language first), sent with the prompt, remembered
+			expect(await p.$eval('#uhAiLang', (s) => s.value) === 'en' && await p.locator('#uhAiLang option[value="de"]').count() === 1, 'language select');
+			await p.click('#uhAiBtn'); await p.waitForSelector('#uhAiLang', { state: 'visible' });
+			await p.selectOption('#uhAiLang', 'de');
+			const sent = p.waitForRequest((r) => r.method() === 'POST' && (r.postData() || '').includes('ai_prompt'));
+			await p.click('#uhAiCopy');
+			expect(/name="lang"\r\n\r\nde\r\n/.test((await sent).postData()), 'language sent with the prompt');
+			await p.waitForFunction(() => document.getElementById('uhAiPrompt').value !== '');
+			expect(/Language of the help page: German/.test(await p.$eval('#uhAiPrompt', (t) => t.value)), 'prompt in German');
+			await open(p, 'index.php?p=helppages&id=new');
+			expect(await p.$eval('#uhAiLang', (s) => s.value) === 'de', 'last language remembered');
+			await p.evaluate(() => { try { localStorage.removeItem('nunext-uh-ai-lang'); } catch (e) { /* */ } });
+			// 0.8.1038: an answer in Markdown becomes HTML on a page with the visual editor (it was one paragraph without line breaks)
+			if (await p.locator('#uhFmtHtml:checked').count()) {
+				await p.click('#uhAiBtn'); await p.waitForSelector('#uhAiAnswer', { state: 'visible' });
+				await p.fill('#uhAiAnswer', '# Orders\n\n## How to use\n\n1. Open a tab.\n2. Enter **text**.\n\n- one\n- two\n\nLast line.');
+				await p.click('#uhAiInsert');
+				await p.waitForFunction(() => { const e = window.tinymce && window.tinymce.activeEditor; const v = e ? e.getContent() : document.getElementById('uhBody').value; return /<h2/.test(v); }, null, { timeout: 8000 });
+				const v = await p.evaluate(() => { const e = window.tinymce && window.tinymce.activeEditor; return e ? e.getContent() : document.getElementById('uhBody').value; });
+				expect(/<ol>\s*<li>Open a tab\.<\/li>/.test(v) && /<strong>text<\/strong>/.test(v) && /<ul>/.test(v) && /<p>Last line\.<\/p>/.test(v), 'Markdown answer converted: ' + v.slice(0, 300));
+			}
+			expect(/ONE code block/.test(prompt), 'prompt asks for one code block');
 		}
 		// palette
 		const pal = await p.evaluate(async () => (await fetch('index.php?p=palette')).json());

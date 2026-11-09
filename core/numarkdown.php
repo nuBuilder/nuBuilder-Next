@@ -11,6 +11,16 @@ defined('NU_ROOT') || exit;
  */
 final class NuMarkdown
 {
+	/** Web flavour (0.8.1038): <code> and <strong> / <em>, tables without TCPDF's border / cellpadding – for the help page editor. */
+	private static bool $web = false;
+
+	public static function toWeb(string $md): string
+	{
+		$was = self::$web;
+		self::$web = true;
+		try { return self::toHtml($md); } finally { self::$web = $was; }
+	}
+
 	public static function toHtml(string $md): string
 	{
 		$md = str_replace(["\r\n", "\r"], "\n", $md);
@@ -47,12 +57,12 @@ final class NuMarkdown
 				$flush();
 				$cells = static fn(string $row): array => array_map('trim', explode('|', trim(trim($row), '|')));
 				$aligns = array_map(static fn($c) => str_starts_with($c, ':') && str_ends_with($c, ':') ? 'center' : (str_ends_with($c, ':') ? 'right' : 'left'), $cells($lines[$i + 1]));
-				$html = '<table border="1" cellpadding="3"><tr>';
-				foreach ($cells($t) as $k => $c) $html .= '<th align="' . ($aligns[$k] ?? 'left') . '"><b>' . self::inline($c) . '</b></th>';
+				$html = self::$web ? '<table><tr>' : '<table border="1" cellpadding="3"><tr>';
+				foreach ($cells($t) as $k => $c) $html .= self::$web ? '<th>' . self::inline($c) . '</th>' : '<th align="' . ($aligns[$k] ?? 'left') . '"><b>' . self::inline($c) . '</b></th>';
 				$html .= '</tr>';
 				for ($i += 2; $i < $n && str_starts_with(trim($lines[$i]), '|'); $i++) {
 					$html .= '<tr>';
-					foreach ($cells($lines[$i]) as $k => $c) $html .= '<td align="' . ($aligns[$k] ?? 'left') . '">' . self::inline($c) . '</td>';
+					foreach ($cells($lines[$i]) as $k => $c) $html .= self::$web ? '<td>' . self::inline($c) . '</td>' : '<td align="' . ($aligns[$k] ?? 'left') . '">' . self::inline($c) . '</td>';
 					$html .= '</tr>';
 				}
 				$i--;
@@ -108,14 +118,15 @@ final class NuMarkdown
 	{
 		$t = h($t);
 		$codes = [];
-		$t = (string)preg_replace_callback('/`([^`]+)`/', static function ($m) use (&$codes) { $codes[] = '<font face="courier">' . $m[1] . '</font>'; return "\x01" . (count($codes) - 1) . "\x01"; }, $t);
+		$t = (string)preg_replace_callback('/`([^`]+)`/', static function ($m) use (&$codes) { $codes[] = self::$web ? '<code>' . $m[1] . '</code>' : '<font face="courier">' . $m[1] . '</font>'; return "\x01" . (count($codes) - 1) . "\x01"; }, $t);
 		$t = (string)preg_replace_callback('/\[([^\]]+)\]\(([^)\s]+)\)/', static function ($m) {
 			$url = html_entity_decode($m[2], ENT_QUOTES);
 			return preg_match('~^(https?://|mailto:)~i', $url) ? '<a href="' . h($url) . '">' . $m[1] . '</a>' : $m[1];
 		}, $t);
-		$t = (string)preg_replace('/(\*\*|__)(?=\S)(.+?)(?<=\S)\1/', '<b>$2</b>', $t);
-		$t = (string)preg_replace('/(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?!\*)/', '<i>$1</i>', $t);
-		$t = (string)preg_replace('/(?<![\w_])_(?=\S)(.+?)(?<=\S)_(?![\w_])/', '<i>$1</i>', $t);
+		[$b, $i] = self::$web ? ['strong', 'em'] : ['b', 'i'];
+		$t = (string)preg_replace('/(\*\*|__)(?=\S)(.+?)(?<=\S)\1/', "<$b>\$2</$b>", $t);
+		$t = (string)preg_replace('/(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?!\*)/', "<$i>\$1</$i>", $t);
+		$t = (string)preg_replace('/(?<![\w_])_(?=\S)(.+?)(?<=\S)_(?![\w_])/', "<$i>\$1</$i>", $t);
 		$t = (string)preg_replace('/~~(?=\S)(.+?)(?<=\S)~~/', '<del>$1</del>', $t);
 		return (string)preg_replace_callback("/\x01(\\d+)\x01/", static fn($m) => $codes[(int)$m[1]] ?? '', $t);
 	}

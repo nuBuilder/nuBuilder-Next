@@ -35,8 +35,11 @@
 			return r.json().then(function (j) { if (!r.ok || !j.location) throw new Error(j.error || 'upload'); return j.location; });
 		});
 	}
+	// the HTML source stays hidden (class nuTmceWait, set by the page) until TinyMCE is there or cannot come (0.8.1040)
+	function shown() { body.classList.remove('nuTmceWait'); }
+	setTimeout(shown, 10000);
 	function startEditor() {
-		if (!tinyUrl || isMd() || editor) return;
+		if (!tinyUrl || isMd() || editor) { shown(); return; }
 		loadTiny().then(function () {
 			if (isMd() || editor) return;
 			var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
@@ -58,12 +61,23 @@
 				skin: dark ? 'oxide-dark' : 'oxide', content_css: dark ? 'dark' : 'default',
 				setup: function (ed) {
 					editor = ed;
-					ed.on('input change undo redo SetContent', function () { ed.save(); changed(); });
+					ed.on('init', function () { quiet = false; shown(); });
+					ed.on('input change undo redo SetContent', function () { ed.save(); if (!quiet) changed(); });
 				}
 			});
-		}).catch(function () { var n = document.getElementById('uhNoTiny'); if (n) n.classList.remove('d-none'); });
+		}).catch(function () { shown(); var n = document.getElementById('uhNoTiny'); if (n) n.classList.remove('d-none'); });
 	}
-	function stopEditor() { if (editor) { editor.save(); editor.remove(); editor = null; } }
+	function stopEditor() { if (editor) { editor.save(); editor.remove(); editor = null; } shown(); }   // after remove(): TinyMCE puts the class back
+	// light / dark switch (0.8.1041): TinyMCE cannot change its skin while it runs – started again with the other skin, the text kept,
+	// the page not marked as changed (quiet until the new editor is ready)
+	var quiet = false;
+	new MutationObserver(function () {
+		if (!editor) return;
+		quiet = true;
+		editor.save(); editor.remove(); editor = null;
+		body.classList.add('nuTmceWait');
+		startEditor();
+	}).observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
 	function getText() { if (editor) editor.save(); return body.value; }
 	function setText(v) { if (editor) { editor.setContent(v); editor.save(); } else body.value = v; changed(); }
 	function insert(html, md) {
@@ -168,6 +182,17 @@
 		});
 	}
 	if (aiForm) { aiForm.addEventListener('change', loadRelated); if (aiForm.value) loadRelated(); }
+	// language of a draft (0.8.1037): the last choice is kept for the next draft, a change hides the old prompt
+	var aiLang = document.getElementById('uhAiLang');
+	if (aiLang) {
+		try { var keep = localStorage.getItem('nunext-uh-ai-lang'); if (keep && aiLang.querySelector('option[value="' + keep + '"]')) aiLang.value = keep; } catch (e) { /* no storage */ }
+		aiLang.addEventListener('change', function () {
+			try { localStorage.setItem('nunext-uh-ai-lang', aiLang.value); } catch (e) { /* no storage */ }
+			var pb = document.getElementById('uhAiPrompt'), cp = document.getElementById('uhAiCopied');
+			if (pb) { pb.value = ''; pb.classList.add('d-none'); }
+			if (cp) cp.classList.add('d-none');
+		});
+	}
 	if (ai && copyBtn) {
 		copyBtn.addEventListener('click', function () {
 			var fd = new FormData();
@@ -175,7 +200,8 @@
 			fd.append('action', 'ai_prompt');
 			fd.append('mode', ai.getAttribute('data-mode'));
 			fd.append('code', ai.getAttribute('data-code'));
-			fd.append('lang', ai.getAttribute('data-lang'));
+			var lg = document.getElementById('uhAiLang');               // draft: the chosen language (0.8.1037), translation: its own
+			fd.append('lang', lg ? lg.value : ai.getAttribute('data-lang'));
 			var f = document.getElementById('uhAiForm'), n = document.getElementById('uhAiNote');
 			if (f) fd.append('form', f.value);
 			document.querySelectorAll('#uhAiRel input:checked').forEach(function (c) { fd.append('related[]', c.value); });
@@ -197,10 +223,22 @@
 				var m = a.match(/^([^\n<]{1,200})\n\s*\n([\s\S]*)$/);
 				if (m) { document.getElementById('uhTitle').value = m[1].replace(/^title:\s*/i, '').trim(); a = m[2].trim(); }
 			}
+			var isHtml = /<(p|h[1-6]|ul|ol|li|table|div|strong|br)\b[^>]*>/i.test(a);
+			var put = function (v) { setText(v); nuBs.modal(document.getElementById('uhAiDlg')).hide(); };
 			var go = function () {
-				if (/<[a-z][\s\S]*>/i.test(a) && fmtHtml && !fmtHtml.checked) { fmtHtml.checked = true; startEditor(); }
-				setText(a);
-				nuBs.modal(document.getElementById('uhAiDlg')).hide();
+				if (isHtml) {
+					if (fmtHtml && !fmtHtml.checked) { fmtHtml.checked = true; startEditor(); }
+					put(a);
+					return;
+				}
+				// Markdown or plain text (0.8.1038): kept as it is on a Markdown page, converted to HTML for the visual editor
+				if (fmtMd && fmtMd.checked) { put(a); return; }
+				var fd = new FormData();
+				fd.append('_csrf', (form.querySelector('input[name=_csrf]') || {}).value || '');
+				fd.append('action', 'md_html');
+				fd.append('text', a);
+				fetch(form.getAttribute('data-ai-url'), {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); })
+					.then(function (j) { put(j.ok ? j.html : a); }, function () { put(a); });
 			};
 			if (getText().trim() && window.nuConfirmAsk) window.nuConfirmAsk(tx('replace'), go); else go();
 		});

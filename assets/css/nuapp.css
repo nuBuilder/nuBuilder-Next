@@ -2250,3 +2250,15 @@ img.nuUhAl-center { display: block; margin-left: auto; margin-right: auto; }
 .nuBrowseTable > tbody > tr.nuBrowseRow[data-nu-kb]:focus { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
 .nu-table > tbody > tr[data-nu-kb]:focus > *, .nuBrowseTable > tbody > tr.nuBrowseRow[data-nu-kb]:focus > * { --bs-table-bg-state: var(--nu-row-hover); }
 .nu-table > tbody > tr[data-href]:focus:not(:focus-visible):not([data-nu-kb]) { outline: 0; }
+
+/* textareas a WYSIWYG editor (TinyMCE) replaces: the HTML source is not shown while the editor loads (0.8.1040) – the box keeps its
+   place and the editor's height, so nothing jumps; nuhelppages.js / nunotifications.js remove the class on init or when it cannot load */
+textarea.nuTmceWait { color: transparent !important; caret-color: transparent; pointer-events: none; resize: none; overflow: hidden;
+	background: var(--bs-tertiary-bg); }
+textarea.nuTmceWait::placeholder { color: transparent; }
+#uhBody.nuTmceWait { height: 520px; }
+#ntf_body.nuTmceWait { height: 260px; }
+
+/* TinyMCE in dark mode (0.8.1042): until the editor's dark styles are there, its box and frame are white for a moment – the colours of
+   the oxide-dark skin from the start (form pages load nuapp.css too) */
+[data-bs-theme="dark"] .tox.tox-tinymce, [data-bs-theme="dark"] .tox .tox-edit-area__iframe { background-color: #222f3e; }

@@ -114,24 +114,21 @@ final class NuDbReset
 	public static function check(string $path): array
 	{
 		if (self::isPackage($path)) return self::checkPackage($path);
-		$sql = NuInstall::dumpSql($path);
-		if ($sql === null) return ['ok' => false, 'error' => t('ins_dump_err_read')];
-		$chk = NuInstall::checkDump($sql, true);
+		// read line by line (0.8.1031): no size limit, routines / triggers between DELIMITER lines
+		try { $chk = NuInstall::checkDump(NuSqlImport::statements($path), true); } catch (RuntimeException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
 		$tables = self::currentTables();
-		return $chk + ['file' => basename($path), 'bytes' => strlen($sql), 'current' => $tables, 'database' => (string)nu_db()->value('SELECT DATABASE()')];
+		return $chk + ['file' => basename($path), 'bytes' => NuSqlImport::size($path), 'current' => $tables, 'database' => (string)nu_db()->value('SELECT DATABASE()')];
 	}
 
 	/**
 	 * Runs the reset. $backup: a backup with the whole database first (Update → Backups). $sample: the sample application afterwards.
 	 * @return array{backup: string, dropped: int, statements: int, upgraded: array, steps: array, sample: string}
 	 */
-	public static function run(string $path, bool $backup, bool $sample, string $via = 'page'): array
+	public static function run(string $path, bool $backup, bool $sample, string $via = 'page', ?callable $progress = null): array
 	{
 		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
 		nu_time_limit(0);
-		$sql = NuInstall::dumpSql($path);
-		if ($sql === null) throw new RuntimeException(t('ins_dump_err_read'));
-		$chk = NuInstall::checkDump($sql, true);
+		$chk = NuInstall::checkDump(NuSqlImport::statements($path), true);
 		if (!$chk['ok']) throw new RuntimeException($chk['error']);
 		$out = ['backup' => '', 'dropped' => 0, 'statements' => 0, 'upgraded' => [], 'steps' => [], 'sample' => ''];
 		if ($backup) $out['backup'] = NuUpdate::backup('dbreset', 'all', false);
@@ -144,7 +141,7 @@ final class NuDbReset
 				$db->exec(($kind === 'VIEW' ? 'DROP VIEW IF EXISTS ' : 'DROP TABLE IF EXISTS ') . '`' . str_replace('`', '``', $t) . '`');
 				$out['dropped']++;
 			}
-			$out['statements'] = NuInstall::importSql($db, $sql, basename($path));
+			$out['statements'] = NuSqlImport::run($db, $path, $progress, true);
 		} finally {
 			$db->exec('SET FOREIGN_KEY_CHECKS = 1');
 		}

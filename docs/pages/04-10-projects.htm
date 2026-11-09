@@ -1,0 +1,36 @@
+<section id="projects" data-doc="admin">
+	<h2 id="projects-h">Projects</h2>
+	<p class="doc-lead">Keep the forms, procedures, reports and tables of one piece of work together – with notes and to-dos – and move them to another installation as one file.</p>
+	<p class="doc-for" data-doc="admin">For: Developers (globeadmin, admin roles with the right Projects, users who may change forms)</p>
+	<p>An application grows: an order system soon has a dozen forms, procedures for its buttons, reports, SQL queries and e-mail templates. A <strong>project</strong> lists the parts that belong together. The parts stay where they are – a form can belong to several projects, and removing it from a project changes nothing else. Open the projects from the start page tile <em>Projects</em> (<code>index.php?p=projects</code>). The <a href="#sample-ticket">ticket system sample</a> comes with a project to look at.</p>
+	<div class="doc-sub" id="projects-parts"><h3 id="projects-parts-h">Parts</h3>
+	<ol>
+	<li><em>Projects</em> → <em>Add</em>: a name, optionally a code (letters, digits, <code>_ . -</code>; made from the name when empty) and a description.</li>
+	<li>Tab <em>Parts</em> → <em>Add parts</em>: choose the kind – forms, procedures, reports, SQL queries, tables, e-mail templates, snippets or help pages – search and tick. Picks of several kinds and searches are added together.</li>
+	<li><em>Suggest related</em> lists what the parts already in the project use and is not in it yet: the sub-forms, lookups and run buttons of a form, its table and the tables of its list SQL, procedures and reports named in its code, the launch form and data source of a report, the tables of an SQL query. Untick what does not belong and add the rest.</li>
+	</ol>
+	<p>Each part links to its editor (form in design mode, procedure, report …) in a new tab. A part deleted elsewhere stays in the list, marked <em>No longer exists here</em>, until you remove it.</p>
+	</div>
+	<div class="doc-sub" id="projects-notes"><h3 id="projects-notes-h">Notes and to-dos</h3>
+	<p><strong>Notes</strong> are written in Markdown (<code>**bold**</code>, lists with <code>-</code>, <code>`code`</code>, links). A pinned note is shown on the <em>Overview</em>.</p>
+	<p>A <strong>to-do</strong> has a title, optionally details, a user it is for, a due date and the part it is about. The user gets a notification (the bell) when the to-do is given to them, and again on the day it is due. Tick it on the <em>Overview</em> or the <em>To-do</em> tab when it is done. Your own open to-dos of all projects are listed above the list of projects.</p>
+	<p>The <em>Overview</em> also shows the recent changes of the project's forms from the form history and their open drafts.</p>
+	</div>
+	<div class="doc-sub" id="projects-working"><h3 id="projects-working-h">Working on a project</h3>
+	<p><em>Work on this</em> on the project page narrows the lists of forms, procedures, reports, SQL queries and e-mail templates to the project's parts – their filter <em>Project</em> is set for you. Choose another project or none in that filter to see more; <em>Stop working on it</em> ends it. The choice lasts until you sign out and only affects you.</p>
+	</div>
+	<div class="doc-sub" id="projects-package"><h3 id="projects-package-h">Export and import</h3>
+	<p><em>Export</em> writes one JSON file with the project, its notes and to-dos and its parts: forms with their tabs, objects, list columns, events and code, procedures, reports, SQL queries with their clauses, e-mail templates, snippets, help pages and the structure of the tables. <em>Package with table rows</em> (globeadmin only) also contains the rows of the tables, up to 20,000 per table.</p>
+	<p><em>Import project</em> (globeadmin) reads such a file and shows each part with its state here – new, the same, different, exists, conflict – and what will happen. Nothing changes before you confirm:</p>
+	<ul>
+	<li>New parts are added with their ids. A form that exists and differs is replaced only when you choose <em>Replace</em>; its version before the import stays in the form history, so you can go back.</li>
+	<li data-level="detail">A form whose code another form already uses is skipped. An open draft of a replaced form stays and may conflict when it is published.</li>
+	<li>Tables that exist here are never changed. New tables (and views) are created on MySQL / MariaDB only, with their rows when the package has them.</li>
+	<li>A project with the same code gets the new parts; its notes and to-dos stay. Otherwise a new project is made with the package's notes and to-dos.</li>
+	</ul>
+	<p>Access rights are not part of a package: give the access levels their rights on the new forms, procedures and reports afterwards (<a href="#access">Access levels</a>). Back up the database before a larger import (<a href="#update-backups">Backups</a>).</p>
+	</div>
+	<div class="doc-sub" id="projects-rights" data-level="advanced"><h3 id="projects-rights-h">Who may do what</h3>
+	<p>Viewing projects needs the admin right <em>Projects</em> (view) or the save right on the Forms form; changing them the right <em>Projects</em> (change), the save right on the Forms form or the globeadmin. Import and the export with table rows are for the globeadmin. Projects are stored in nuBuilder Next's own tables; nuBuilder Forte does not see them.</p>
+	</div>
+</section>

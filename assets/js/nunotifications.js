@@ -129,10 +129,13 @@
 		});
 		return loading;
 	}
+	// the HTML source stays hidden (class nuTmceWait, set by the page) until TinyMCE is there or cannot come (0.8.1040)
+	function shown() { if (body) body.classList.remove('nuTmceWait'); }
+	setTimeout(shown, 10000);
 	function startEditor() {
-		if (!fmt.getAttribute('data-tiny')) { if (noTiny) noTiny.classList.remove('d-none'); return; }
+		if (!fmt.getAttribute('data-tiny')) { shown(); if (noTiny) noTiny.classList.remove('d-none'); return; }
 		loadTiny().then(function () {
-			if (!fmt.checked || editor) return;
+			if (!fmt.checked || editor) { shown(); return; }
 			var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
 			window.tinymce.init({
 				target: body, base_url: fmt.getAttribute('data-base'), suffix: '.min', license_key: 'gpl', promotion: false, branding: false,
@@ -143,14 +146,24 @@
 				skin: dark ? 'oxide-dark' : 'oxide', content_css: dark ? 'dark' : 'default',
 				setup: function (ed) {
 					editor = ed;
+					ed.on('init', shown);
 					ed.on('input change undo redo', function () { ed.save(); changed(); });
 				}
 			});
-		}).catch(function () { if (noTiny) noTiny.classList.remove('d-none'); });
+		}).catch(function () { shown(); if (noTiny) noTiny.classList.remove('d-none'); });
 	}
 	function stopEditor() {
 		if (editor) { editor.save(); editor.remove(); editor = null; }
+		shown();                                                  // after remove(): TinyMCE puts the class back
 	}
+	// light / dark switch (0.8.1041): TinyMCE cannot change its skin while it runs – started again with the other skin, the text kept
+	new MutationObserver(function () {
+		if (!editor) return;
+		editor.save(); editor.remove(); editor = null;
+		body.classList.add('nuTmceWait');
+		startEditor();
+	}).observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
+
 	if (fmt && body) {
 		if (fmt.checked) startEditor();
 		fmt.addEventListener('change', function () {

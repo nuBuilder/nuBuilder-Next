@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.1028",
+    "version": "0.8.1044",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -489,6 +489,32 @@
             "changes": [
                 {
                     "table": "zzzzsys_nunext_help",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0039-projects",
+            "description": "Projects (zzzzsys_nunext_project, _item, _note, _task): forms, procedures, reports … that belong together, with notes and to-dos",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_project",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_project_item",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_project_note",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_project_task",
                     "kind": "table",
                     "what": "created when missing"
                 }
@@ -1728,6 +1754,209 @@
                     "text",
                     "50"
                 ]
+            ]
+        },
+        "zzzzsys_nunext_project": {
+            "pk": "zzzzsys_nunext_project_id",
+            "cols": [
+                [
+                    "code",
+                    "text",
+                    "60"
+                ],
+                [
+                    "name",
+                    "text",
+                    "200"
+                ],
+                [
+                    "description",
+                    "text",
+                    "2000"
+                ],
+                [
+                    "status",
+                    "text",
+                    "20"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "code"
+            ]
+        },
+        "zzzzsys_nunext_project_item": {
+            "pk": "zzzzsys_nunext_project_item_id",
+            "cols": [
+                [
+                    "project_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "kind",
+                    "text",
+                    "20"
+                ],
+                [
+                    "ref",
+                    "text",
+                    "100"
+                ],
+                [
+                    "note",
+                    "text",
+                    "500"
+                ],
+                [
+                    "added_at",
+                    "datetime"
+                ],
+                [
+                    "added_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "project_id",
+                "ref"
+            ]
+        },
+        "zzzzsys_nunext_project_note": {
+            "pk": "zzzzsys_nunext_project_note_id",
+            "cols": [
+                [
+                    "project_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "title",
+                    "text",
+                    "200"
+                ],
+                [
+                    "body",
+                    "longtext"
+                ],
+                [
+                    "pinned",
+                    "text",
+                    "1"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ]
+            ],
+            "index": [
+                "project_id"
+            ]
+        },
+        "zzzzsys_nunext_project_task": {
+            "pk": "zzzzsys_nunext_project_task_id",
+            "cols": [
+                [
+                    "project_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "title",
+                    "text",
+                    "300"
+                ],
+                [
+                    "body",
+                    "text",
+                    "4000"
+                ],
+                [
+                    "status",
+                    "text",
+                    "10"
+                ],
+                [
+                    "assignee",
+                    "text",
+                    "25"
+                ],
+                [
+                    "due",
+                    "datetime"
+                ],
+                [
+                    "item",
+                    "text",
+                    "130"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ],
+                [
+                    "created_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "done_at",
+                    "datetime"
+                ],
+                [
+                    "done_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "notified_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "project_id",
+                "assignee"
             ]
         },
         "zzzzsys_nunext_help": {

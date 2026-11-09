@@ -286,35 +286,10 @@ final class NuInstall
 		return $n;
 	}
 
-	/** Splits SQL on ";" outside strings, quoted names and comments (MySQL's /*! … *\/ stays code). */
+	/** Splits SQL on ";" outside strings, quoted names and comments (MySQL's /*! … *\/ stays code; DELIMITER lines – NuSqlImport). */
 	public static function splitSql(string $sql): array
 	{
-		$out = [];
-		$buf = '';
-		$len = strlen($sql);
-		for ($i = 0; $i < $len; $i++) {
-			$c = $sql[$i];
-			$n = $i + 1 < $len ? $sql[$i + 1] : '';
-			if ($c === "'" || $c === '"' || $c === '`') {                 // string / quoted name
-				$q = $c; $buf .= $c;
-				for ($i++; $i < $len; $i++) {
-					$buf .= $sql[$i];
-					if ($sql[$i] === '\\' && $q !== '`' && $i + 1 < $len) { $buf .= $sql[++$i]; continue; }
-					if ($sql[$i] === $q) {
-						if ($i + 1 < $len && $sql[$i + 1] === $q) { $buf .= $sql[++$i]; continue; }   // doubled quote
-						break;
-					}
-				}
-				continue;
-			}
-			if ($c === '-' && $n === '-' && ($i + 2 >= $len || ctype_space($sql[$i + 2]))) { $e = strpos($sql, "\n", $i); $i = $e === false ? $len : $e; $buf .= "\n"; continue; }
-			if ($c === '#') { $e = strpos($sql, "\n", $i); $i = $e === false ? $len : $e; $buf .= "\n"; continue; }
-			if ($c === '/' && $n === '*' && ($i + 2 >= $len || $sql[$i + 2] !== '!')) { $e = strpos($sql, '*/', $i + 2); $i = $e === false ? $len : $e + 1; $buf .= ' '; continue; }
-			if ($c === ';') { if (trim($buf) !== '') $out[] = trim($buf); $buf = ''; continue; }
-			$buf .= $c;
-		}
-		if (trim($buf) !== '') $out[] = trim($buf);
-		return $out;
+		return NuSqlImport::split($sql);
 	}
 
 	// ------------------------------------------------------------------ nubuilder4.sql of any 4.x version (0.8.384)
@@ -364,14 +339,7 @@ final class NuInstall
 			if (!class_exists('ZipArchive')) return null;
 			$z = new ZipArchive();
 			if ($z->open($path) !== true) return null;
-			$pick = null; $sqls = [];
-			for ($i = 0; $i < $z->numFiles; $i++) {
-				$n = (string)$z->getNameIndex($i);
-				if (!preg_match('/\.sql$/i', $n)) continue;
-				$sqls[] = $i;
-				if (strtolower(basename($n)) === 'nubuilder4.sql') $pick = $i;
-			}
-			if ($pick === null && count($sqls) === 1) $pick = $sqls[0];
+			$pick = NuSqlImport::zipPick($z);
 			$st = $pick !== null ? $z->statIndex($pick) : false;
 			$sql = $st && (int)$st['size'] <= self::DUMP_MAX ? $z->getFromIndex((int)$pick) : false;
 			$z->close();
@@ -390,13 +358,13 @@ final class NuInstall
 	 * $anyTable (0.8.628, Reset database in developer mode): tables of the application too (a complete dump of a nuBuilder database);
 	 * the other rules stay. @return array{ok: bool, error: string, tables: int, forms: int, users: int, app: int}
 	 */
-	public static function checkDump(string $sql, bool $anyTable = false): array
+	public static function checkDump(string|iterable $sql, bool $anyTable = false, bool $needCore = true): array
 	{
 		$res = ['ok' => false, 'error' => '', 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0];
 		$created = [];
 		$tbl = $anyTable ? '`?(\w+)`?' : '`?(zzzzsys_\w+)`?';
 		$insert = '/^(INSERT|REPLACE)\s+INTO\s+' . $tbl . '\s*(\([^)]*\)\s*)?VALUES\b/i';
-		foreach (self::splitSql($sql) as $stmt) {
+		foreach (is_string($sql) ? self::splitSql($sql) : $sql as $stmt) {
 			$s = trim((string)preg_replace('#^/\*!\d*\s*(.*?)\s*\*/$#s', '$1', trim($stmt)));
 			if ($s === '') continue;
 			$bad = static fn() => ['ok' => false, 'error' => t('ins_dump_err_stmt', mb_substr((string)preg_replace('/\s+/', ' ', $s), 0, 80)), 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0];
@@ -417,9 +385,17 @@ final class NuInstall
 			if (preg_match('/^(ALTER\s+TABLE|DROP\s+TABLE(\s+IF\s+EXISTS)?|DROP\s+VIEW(\s+IF\s+EXISTS)?)\s+' . $tbl . '(\s|$)/i', $s)) continue;
 			// nuBuilder 4.5: zzzzsys_object_list / zzzzsys_report_data / zzzzsys_run_list as views (upgradeTo49 replaces them as 4.9 does)
 			if (preg_match('/^CREATE\s+(OR\s+REPLACE\s+)?(ALGORITHM\s*=\s*\w+\s+)?(SQL\s+SECURITY\s+(DEFINER|INVOKER)\s+)?VIEW\s+' . $tbl . '\s+AS\s+SELECT\b/i', $s)) continue;
+			// a complete dump (0.8.1031): views of the application, routines, triggers, events and MariaDB sequences – as nuBuilder Next's
+			// own backups write them (without DEFINER, refused above)
+			if ($anyTable) {
+				if (preg_match('/^CREATE\s+(OR\s+REPLACE\s+)?(ALGORITHM\s*=\s*\w+\s+)?(SQL\s+SECURITY\s+(DEFINER|INVOKER)\s+)?VIEW\s+' . $tbl . '\s+AS\s+(SELECT|WITH|\()/i', $s)) continue;
+				if (preg_match('/^CREATE\s+(TRIGGER|PROCEDURE|FUNCTION|EVENT|SEQUENCE)\s+/i', $s)) continue;
+				if (preg_match('/^DROP\s+(TRIGGER|PROCEDURE|FUNCTION|EVENT|SEQUENCE)\s+(IF\s+EXISTS\s+)?`?\w+`?$/i', $s)) continue;
+				if (preg_match('/^DO\s+SETVAL\s*\(\s*`?\w+`?\s*,\s*-?\d+\s*,\s*[01]\s*\)$/i', $s)) continue;
+			}
 			return $bad();
 		}
-		$missing = array_diff(self::DUMP_CORE, array_keys($created));
+		$missing = $needCore ? array_diff(self::DUMP_CORE, array_keys($created)) : [];   // $needCore false: a backup of nuBuilder Next's own tables
 		if ($missing) { $res['error'] = t('ins_dump_err_core', implode(', ', $missing)); return $res; }
 		$res['ok'] = true;
 		$res['tables'] = count($created);

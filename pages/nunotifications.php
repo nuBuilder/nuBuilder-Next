@@ -159,7 +159,7 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 						<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="ntf_format" name="format" value="html"<?= $html ? ' checked' : '' ?>
 							data-tiny="<?= $tiny ? h(nu_asset($tinyDir . '/tinymce.min.js')) : '' ?>" data-base="<?= h($tinyDir) ?>" data-lang="<?= h(nu_lang()) ?>"
 							data-confirm-text="<?= h(t('ntf_format_off_confirm')) ?>"><label class="form-check-label" for="ntf_format"><?= h(t('ntf_f_format')) ?></label></div><?= NuListView::infoTip(t('ntf_f_format_tip')) ?></div>
-					<textarea class="form-control<?= isset($err['body']) ? ' is-invalid' : '' ?>" name="body" id="ntf_body" rows="6"<?= $html ? '' : ' maxlength="4000"' ?>><?= h((string)($v['body'] ?? '')) ?></textarea><?= $fe('body') ?>
+					<textarea class="form-control<?= isset($err['body']) ? ' is-invalid' : '' ?><?= $html && $tiny ? ' nuTmceWait' : '' ?>" name="body" id="ntf_body" rows="6"<?= $html ? '' : ' maxlength="4000"' ?>><?= h((string)($v['body'] ?? '')) ?></textarea><?= $fe('body') ?>
 					<?php if (!$tiny): ?><div class="form-text<?= $html ? '' : ' d-none' ?>" id="ntfNoTiny"><?= h(t('ntf_tinymce_missing')) ?> <?= nu_lp_hint('lp_get_pack') ?></div><?php endif; ?></div>
 				<div class="mb-3"><span class="form-label d-block"><?= h(t('ntf_f_level')) ?></span>
 					<div class="btn-group flex-wrap nuNtfLevels" role="group" aria-label="<?= h(t('ntf_f_level')) ?>">

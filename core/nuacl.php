@@ -23,6 +23,7 @@ final class NuAcl
 	public const FORM_USERHELP = 'nunextuserhelp';   // user help pages list (nuBuilder Next only, 0.8.1023) – right through the admin right userhelp
 	public const FORM_WEBHOOK = 'nunextwebhook';     // webhooks + their calls (nuBuilder Next only, 0.8.715) – right through the admin right webhooks
 	public const FORM_DASHBOARD = 'nunextdashboard'; // dashboards list (nuBuilder Next only, 0.8.690) – right through the admin right dashboards
+	public const FORM_PROJECT = 'nunextproject';     // projects list (nuBuilder Next only, 0.8.1035) – admin right projects, or the save right on the Forms form
 	public const FORM_NOTIFY = 'nunextnotify';       // notifications → Manage list (0.8.690) – view / print for everybody NuNotify::canManage() lets in
 	public const FORM_USERFIELD = 'nunextuserfield'; // custom user fields list (nuBuilder Next only, 0.8.546) – right through the admin right userfields
 	public const FORM_SETUP  = 'nusetup';     // nuBuilder setup form (e-mail settings, test mail)
@@ -78,6 +79,7 @@ final class NuAcl
 		if (!$r['view'] && $formId === NuUserHome::FORM && NuUserHome::isHomeOf($u)) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
 		// notification centre → Manage (0.8.690): senders and viewers (admin right, permission items) see the list – the rows are filtered by NuNotify
 		if (!$r['view'] && $formId === self::FORM_NOTIFY && NuNotify::canManage()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
+		if (!$r['view'] && $formId === self::FORM_PROJECT && NuProject::canView()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // projects (0.8.1035): form designers too
 		// admin role (0.8.323): rights on nuBuilder's system forms on top of the access level (core/nuadmin.php)
 		$lvl = class_exists('NuAdmin') ? NuAdmin::formLevel($formId) : '';
 		if ($lvl === 'change') $r = array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true) + self::FREE;

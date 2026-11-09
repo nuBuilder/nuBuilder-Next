@@ -43,6 +43,7 @@ final class NuAdmin
 		'reports'       => ['dev', 'adm_r_reports', false, 'vc', [NuAcl::FORM_REPORT, NuAcl::FORM_SELECT]],
 		'dashboards'    => ['dev', 'dash_title', false, 'vc', [NuAcl::FORM_DASHBOARD]],   // list: system list (0.8.690)
 		'prompts'       => ['dev', 'pg_title', false, 'vc', [NuAcl::FORM_PROMPT]],
+		'projects'      => ['dev', 'prj_title', false, 'vc', [NuAcl::FORM_PROJECT]],   // projects (0.8.1035): view = read, change = members / notes / to-dos; import only the globeadmin
 		'users'         => ['users', 'adm_r_users', false, 'vc', [NuAcl::FORM_USER, NuAcl::FORM_PERMISSION]],
 		'access'        => ['users', 'nav_access', false, 'vc', [NuAcl::FORM_ACCESS]],
 		'userfields'    => ['users', 'uf_title', false, 'vc', [NuAcl::FORM_USERFIELD]],   // custom user fields (0.8.454): change = add / change / delete fields
@@ -67,7 +68,7 @@ final class NuAdmin
 		'update' => ['update', []], 'configfile' => ['configfile', []], 'settings' => ['settings', []], 'globalcode' => ['globalcode', []],
 		'securitycheck' => ['securitycheck', []], 'setupwizard' => ['setupwizard', []], 'status' => ['vendor', []], 'filemanager' => ['filemanager', []],
 		'import' => ['import', []], 'dataexport' => ['dataexport', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
-		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'users' => ['users', []], 'access' => ['access', []],
+		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'projects' => ['projects', []], 'users' => ['users', []], 'access' => ['access', []],
 		'userfields' => ['userfields', []], 'sessions' => ['sessions', []], 'adminroles' => ['adminroles', []], 'branding' => ['branding', []],
 		'homelayout' => ['home', ['customize' => '1']], 'email' => ['email', []], 'notifications' => ['notifications', ['tab' => 'manage']],
 		'apiclients' => ['apiclients', []], 'webhooks' => ['webhooks', []], 'userhelp' => ['helppages', []], 'log' => ['log', []], 'audit' => ['audit', []], 'debug' => ['debug', []],

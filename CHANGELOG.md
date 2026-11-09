@@ -3,6 +3,111 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1044 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan). Documentation brought
+  up to date: feature list (help pages drafted in any language, the ticket sample's project and help pages), open points to verify.
+
+## 0.8.1043 – Notes: standard title field
+- Notes: the title field looks like every other field (no maroon, bold, larger text – hard to read in dark mode). Only
+  nuBuilder Next shows it this way; the form in nuBuilder Forte is unchanged.
+
+## 0.8.1042 – Editor without a white flash in dark mode
+- Dark mode: the visual editor (TinyMCE) no longer shows a white box for a moment while it loads – help pages,
+  notifications and editor fields of forms.
+
+## 0.8.1041 – Editor follows light / dark
+- The visual editor (TinyMCE) follows a switch between light and dark at once – on help pages, in notifications and in the
+  editor fields of forms; no page reload needed. The text is kept and the page or record is not marked as changed.
+
+## 0.8.1040 – No HTML source before the editor
+- Help pages and notifications: the HTML source of the text no longer shows for a moment before the visual editor (TinyMCE)
+  appears. The box keeps its place and height while the editor loads, so nothing jumps; if the editor cannot load, the text is
+  shown as before. The editor objects of forms already hid it.
+
+## 0.8.1039 – Ticket sample with help pages
+- Ticket system sample: help pages for its users – Support desk, Tickets (with a German translation), Handling a ticket,
+  Knowledge base and Categories. Customers and the support team read different parts of the same page; Handling a ticket
+  is for the team only, Categories for the team lead only. The forms open them with the help button, the tab Handling and
+  the field Due have their own page. The pages are parts of the sample's project.
+- Ticket system sample: the labels of the created / changed fields were German – now English.
+- Refresh the sample (version 7) to get the help pages.
+
+## 0.8.1038 – Draft with AI: Markdown answers
+- FIX Help pages → Draft with AI: an answer in Markdown (headings with #, numbered and bulleted lists, tables, bold) was
+  put into the visual editor as one block of text without line breaks. It is now converted into the editor's formatting
+  (headings, lists, tables, bold, code); on a page in Markdown format the text is kept as it is.
+- The prompt asks the AI for the HTML in one code block, without text or suggestions around it, so it can be copied cleanly.
+
+## 0.8.1037 – Draft with AI: language of the page
+- Help pages → Draft with AI: new field Language – the AI writes the page in the chosen language (installed languages,
+  your interface language first; the last choice is remembered). Changing it clears a prompt already built. Translations of
+  an existing page still use the translations menu.
+
+## 0.8.1036 – Ticket sample with a project
+- Ticket system sample: now comes with the project "Ticket system" – all its forms, procedures, the report, the e-mail
+  templates and the tables as parts, a pinned note on how the parts fit together, an ideas note and four to-dos (one done,
+  dates moved to the day of installing like the rest of the sample). Sample data → Ticket system → Contents → "Open the
+  project". Removing the sample removes the project too; refresh the sample (version 6) to get it.
+
+## 0.8.1035 – Projects
+- Projects: a project groups the forms, procedures, reports, SQL queries, tables, e-mail templates, snippets and help pages of
+  one piece of work, with notes and to-dos (start page tile Projects, page number P295). The parts stay where they are.
+- Add parts by kind with a search; "Suggest related" lists what the parts already use and is not in the project yet
+  (sub-forms, lookups, run buttons, tables of the list SQL, procedures and reports named in the code, report sources, the
+  tables of SQL queries).
+- Notes in Markdown, pinned notes on the overview; to-dos with a user, a due date and the part they are about – the user
+  gets a notification when it is given to them and on the day it is due. Your open to-dos are listed above the projects.
+- The overview shows the recent changes of the project's forms and their open drafts.
+- "Work on this": the lists of forms, procedures, reports, SQL queries and e-mail templates show only the project's parts
+  (new filter Project in these lists) until you stop or sign out.
+- Export a project as one JSON package (with or without the rows of its tables); Import project shows every part with its
+  state and lets you choose add / replace / leave before anything changes. Existing tables are never changed, a replaced
+  form keeps its earlier version in the form history, access rights are not part of a package.
+- New admin right Projects; users who may change forms can use projects too. Help page "Projects".
+
+## 0.8.1034 – PHP function nuGetTranslation
+- PHP function nuGetTranslation($l) as in nuBuilder Forte: every translation of a language from zzzzsys_translate as a list of
+  ['english' => …, 'translation' => …], sorted by the English text with the installation's own rows before nuBuilder Forte's.
+  In the function reference; no longer listed as not ported.
+
+## 0.8.1033 – PHP function nuEval
+- PHP function nuEval($phpid, $returnOutput = false) as in nuBuilder Forte: runs a row of the procedures table by its id – a
+  procedure or an event of a form such as "<form id>_BS" – with the hash variables of the request and $nudata. Its $result is put
+  into $_POST['nuRunPHPHiddenResult'], errors join the request's errors; with $returnOutput what the code prints is returned instead
+  of printed. In the function reference; no longer listed as not ported.
+
+## 0.8.1032 – Restore database: way back on failure, row counts, free space
+- Restore database: if the restore fails after the tables were dropped (a statement of the dump that cannot run), the backup of
+  the current database made first is put back by itself, and the message names both; you stay signed in. From the update page
+  this backup is now always made (command line: --no-backup still leaves it out).
+- Restore database: backups note the row count of every table; after a restore the counts are compared and a difference is shown
+  (backup → now) and logged. The check card says so.
+- SQL dumps: a large table is committed about every 10 MB on import instead of in one transaction.
+- Backups and restores check the free disk space first (program files plus an estimate of the dump) and refuse with the space
+  needed and free; hosts that do not report free space are not checked.
+
+## 0.8.1031 – Restore database from a backup, dump reader with DELIMITER
+- Restore the database from a backup (Update → Backups, globeadmin, MySQL / MariaDB): a new button in the row of a backup with a
+  complete SQL dump checks the dump first (read to its end, what it holds, what is replaced and dropped – nothing changes), then
+  restores it: optionally a backup of the current database first (ticked; if it fails, nothing changes), maintenance mode, the
+  tables of the dump's scope dropped (whole database: also views, routines and events; nuBuilder tables: every zzzzsys_ table),
+  the dump run, then nuBuilder Next's tables and the database steps of the installed version. You stay signed in; logged.
+  Command line: php nucron.php restore <backup> [--check] [--no-backup] --yes (with progress).
+- FIX: an SQL dump with functions, procedures, triggers or events could not be read back by nuBuilder Next itself – the importer
+  split their bodies at the first ";". The new reader understands DELIMITER lines (and GO batches of SQL Server), strings,
+  quoted names and comments; Reset database now also accepts such complete dumps (still without DEFINER, other databases,
+  users, rights or files).
+- Reset database reads the SQL file line by line (.sql / .sql.gz / .zip): no 64 MB limit any more, constant memory; progress on
+  the command line.
+- SQL dumps (backups, App cloner download): numbers are written without quotes – smaller files and faster imports.
+
+## 0.8.1030 – Passkey unit test fixed
+- Tests: the passkey unit test failed now and then (about one run in 64) because the test's own EC key sometimes had a
+  coordinate shorter than 32 bytes; the test key is now padded as an authenticator sends it. No change to the application.
+
+## 0.8.1029 – Notes
+- Notes: last published GitHub release is v0.8.1028.
+
 ## 0.8.1028 – Release gate
 - Release gate: the full test run (smoke, all end-to-end tests, the cross-test against nuBuilder Forte, OWASP ZAP).
 - Documentation brought up to date: the tutorial explains lists by keyboard, row details and help pages for users; the feature

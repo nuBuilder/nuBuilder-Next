@@ -39,6 +39,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Object menu on more objects**: nuBuilder Forte also offers the right-click menu on words, images, tabs and sub-form titles.
 
 ## SQL Server
+- [ ] **Restore database from a backup on SQL Server** (0.8.1031) – only offered on MySQL / MariaDB; the SQL Server dump (GO batches) is read by NuSqlImport (dialect sqlsrv), but dropping / restoring was not tried on a server.
 - [ ] **SQL check on SQL Server** (0.8.999) – the code editors' SQL check uses SET NOEXEC ON there (compiled, not run); untested here: check that a wrong column / table is marked with the right line and that NOEXEC is switched off again.
 - [ ] **Nothing ran on a real SQL Server yet** (no image / pdo_sqlsrv here; code checked with simulated catalogues and sqlglot; installation,
       lists and Adminer with a fixed TCP port work on the owner's SQL Server Express – 0.8.793): own tables and migration steps (0004,
@@ -105,6 +106,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Projects** (0.8.1035) – please verify on a real application: Suggest related on forms with many sub-forms / run buttons, the list filter Project while working on a project, export with table rows and import into a second installation (forms replaced → form history, new tables, project merged by code). Not built: a project filter in design mode's Structure (it lists one form only), Ctrl+K narrowed to the project, the working project kept across sign-ins
 - [ ] **Responsive boxes** (0.8.959) – please verify on real forms: a box with a direction inside the auto / grid layout (side by side wrapping, grid 3 · 2 · 1, fixed / fit / fill widths, Hide on phone), nested boxes, "Put in a new box". Not built: moving an object into / out of a box by drag in design mode (use the Box field of the Layout section), a preview switch for phone / tablet width in design mode
 - [ ] **Validation rules** (0.8.812–0.8.816): on a real form a rule in design mode (builder and expression), Publish, then save as a user –
       error stops, warning asks "Save anyway?", the field turns red / yellow while typing; sub-form rows and COUNT(sub-form) with rows added /
@@ -221,6 +223,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Dashboard table widgets** (0.8.682): column nu_record_id + link to a form → rows open the record; option "Open in a new tab".
 
 ## Code editors and libraries
+- [ ] **Visual editor (TinyMCE) look** (0.8.1040–0.8.1042): help pages, notifications, editor fields of forms – no HTML source and no
+      white box while it loads (also dark mode), light ⇄ dark switches the editor at once without marking the record as changed.
+- [ ] **Help pages → Draft with AI** (0.8.1037 / 0.8.1038): the field Language; an answer in Markdown becomes headings / lists in the
+      visual editor.
 - [ ] **CodeMirror 6 in every editor** (0.8.898, see Decisions): procedures, Global code, nuconfig.php, data export SQL, design mode code
       window / workspace, form page code window (double-click), code snippets, File Manager editor – typing, Ctrl+F, Ctrl+/, Ctrl+- / Ctrl++
       shortcuts (0.8.905), Tab, suggestions (nu…), Format, syntax check marks, dark mode, phones; custom pages that load
@@ -240,6 +246,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       accordion → details; check every page (smoke, a11y); decide on a compatibility CSS for application code.
 
 ## Update page, backups and admin tools
+- [ ] **Masking personal data in copies** (idea from mydumper's masquerade, 0.8.1032) – masking rules per column (e-mail, names, phone) for the App cloner download / copies of live data on test systems; not built.
+- [ ] **Restore database from a backup** (0.8.1031 / 0.8.1032 – way back on failure, row counts, free space): please verify on the live server with a copy – a whole-database backup and a nuBuilder-tables backup, with the backup first; large dumps (read line by line) and the time limit of the host (the restore sets none).
 - [ ] **GitHub pack does not match its index**: a clearer message ("publish packs and libraries.json from the same build"); 0.8.556 reads
       the index again before installing.
 - [ ] **Last GitHub check date** also next to an error, and drop a stored error saved under another PHP / nuBuilder Next version (proposed).
@@ -263,6 +271,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       tkt_sam (specialist), tkt_lea (team lead) – start pages, ticket list per role, a customer cannot open another customer's ticket, internal
       notes hidden, Take ticket / Escalate, notifications, dashboards, the three mail templates; filters / badges, attachments tab, Due next
       rows; Remove leaves nothing behind.
+- [ ] **Ticket sample project and help pages** (0.8.1036 / 0.8.1039, version 7 – *Refresh*): Sample data → Ticket system → Contents →
+      *Open the project* (22 parts, notes, to-dos); help pages from the ticket form's ? button / F1, the tab Handling and the field Due –
+      sign in as tkt_clara and tkt_alex and compare the page Tickets; Categories only for tkt_lea.
 - [ ] **Samples in nuBuilder Forte**: the orders list shows the customer link, the other badges / filters are absent (design-mode settings).
 - [ ] **Sample data page** (0.8.858): *Remove* in the title row of a sample; greyed out while another user has a sample access level.
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.

@@ -70,6 +70,11 @@ $homes = [];
 foreach ($lids as $l) foreach ($db->all("SELECT * FROM zzzzsys_nunext_list_view WHERE list_key = ? AND access_ids = ?", [NuHome::LIST_USER, json_encode([$l])]) as $x) { $rows[] = ['zzzzsys_nunext_list_view', $x]; $homes[] = $x; }
 $dash = $take('zzzzsys_nunext_dashboard', $like('code'));
 $take('zzzzsys_nunext_widget', 'dashboard_id IN (' . $in(array_column($dash, 'zzzzsys_nunext_dashboard_id')) . ')');
+$take('zzzzsys_nunext_help', $like('code'));                     // help pages for users whose code starts with the prefix, with translations (0.8.1039)
+if ($db->tableExists('zzzzsys_nunext_project')) {                // projects whose code starts with the prefix + their parts, notes, to-dos (0.8.1036)
+	$prj = $take('zzzzsys_nunext_project', $like('code'));
+	foreach (['zzzzsys_nunext_project_item', 'zzzzsys_nunext_project_note', 'zzzzsys_nunext_project_task'] as $pt) $take($pt, 'project_id IN (' . $in(array_column($prj, 'zzzzsys_nunext_project_id')) . ')');
+}
 
 // ---------------------------------------------------------------- own tables
 $tables = [];
@@ -115,7 +120,8 @@ foreach ($users as $u) $map[$u['zzzzsys_user_id']] = (string)$u['sus_login_name'
 $kinds = ['zzzzsys_tab' => 'tab', 'zzzzsys_event' => 'ev', 'zzzzsys_browse' => 'br', 'zzzzsys_nunext_object_access' => 'fa', 'zzzzsys_report' => 'rpt',
 	'zzzzsys_select' => 'sql', 'zzzzsys_select_clause' => 'sqc', 'zzzzsys_email_template' => 'emt', 'zzzzsys_file' => 'file', 'zzzzsys_access_form' => 'af',
 	'zzzzsys_access_php' => 'ap', 'zzzzsys_access_report' => 'ar', 'zzzzsys_permission_item' => 'pi', 'zzzzsys_user_permission' => 'up',
-	'zzzzsys_nunext_list_view' => 'uh', 'zzzzsys_nunext_dashboard' => 'dash', 'zzzzsys_nunext_widget' => 'w', 'zzzzsys_php' => 'proc'];
+	'zzzzsys_nunext_list_view' => 'uh', 'zzzzsys_nunext_dashboard' => 'dash', 'zzzzsys_nunext_widget' => 'w', 'zzzzsys_php' => 'proc',
+	'zzzzsys_nunext_help' => 'help', 'zzzzsys_nunext_project' => 'prj', 'zzzzsys_nunext_project_item' => 'pit', 'zzzzsys_nunext_project_note' => 'pnt', 'zzzzsys_nunext_project_task' => 'ptk'];
 $pkOf = static fn(string $t) => $t . '_id';
 foreach ($rows as [$t, $r]) {
 	$id = (string)($r[$pkOf($t)] ?? '');
@@ -139,6 +145,10 @@ $clean = static function ($v) use ($map, $long) {
 };
 $out = [];
 foreach ($rows as [$t, $r]) {
+	if (str_starts_with($t, 'zzzzsys_nunext_project') || $t === 'zzzzsys_nunext_help') {           // project rows: authors neutral, no notification state
+		foreach (['created_by', 'updated_by', 'added_by', 'done_by'] as $k) if (!empty($r[$k])) $r[$k] = 'sample';
+		if (array_key_exists('notified_at', $r)) $r['notified_at'] = null;
+	}
 	if (in_array($t, ['zzzzsys_nunext_list_view', 'zzzzsys_nunext_dashboard', 'zzzzsys_nunext_widget', 'zzzzsys_nunext_object_access'], true)) {
 		foreach (['updated_at', 'updated_by'] as $k) if (array_key_exists($k, $r)) $r[$k] = $k === 'updated_by' ? 'sample' : null;
 	}

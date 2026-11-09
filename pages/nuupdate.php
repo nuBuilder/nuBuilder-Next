@@ -4,7 +4,7 @@ defined('NU_ROOT') || exit;
 
 /*
  * Update nuBuilder Next (globeadmin): upload a package → check and preview → install (backup, maintenance mode, copy, clean up)
- * → finish with the new code (database steps). Backups: download, roll back, delete. See core/nuupdate.php.
+ * → finish with the new code (database steps). Backups: download, roll back, restore the database part (?restore=<backup>, 0.8.1031), delete. See core/nuupdate.php.
  *   ?p=update · ?p=update&check=<upload id> · ?p=update&finish=1 · ?p=update&download=<backup>
  */
 
@@ -51,7 +51,7 @@ if (nu_is_post()) {
 	$action = nu_post('action');
 	try {
 		// $nuConfigEnableDatabaseUpdate = false: no update, rollback or structure change (0.8.281) – checked here, not only in the page
-		if (!NuUpdate::enabled() && in_array($action, ['upload', 'install', 'rollback', 'schema_apply', 'github_download'], true)) throw new RuntimeException(t('upd_disabled'));
+		if (!NuUpdate::enabled() && in_array($action, ['upload', 'install', 'rollback', 'restore_db', 'schema_apply', 'github_download'], true)) throw new RuntimeException(t('upd_disabled'));
 		if ($action === 'upload') {
 			$f = $_FILES['package'] ?? null;
 			$err = is_array($f) ? (int)($f['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
@@ -223,6 +223,17 @@ if (nu_is_post()) {
 			nu_flash('success', t('upd_rollback_done', $r['version'], $safety));
 			nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
 		}
+		if ($action === 'restore_db') {                                              // database part of a backup back (0.8.1031): globeadmin only
+			if (empty(NuAuth::user()['globeadmin'])) throw new RuntimeException(t('uf_edit_globeadmin'));
+			$f = NuUpdate::backupPath(nu_post('name'));
+			if (!$f) throw new RuntimeException(t('upd_err_backup_invalid'));
+			$r = NuSqlDump::restore($f, true);   // always with a backup first: the way back if the restore fails (0.8.1032)
+			nu_flash('success', t('rst_done', $r['version'], $r['statements'], count($r['steps'])));
+			if ($r['mismatch']) nu_flash('warning', t('rst_verify_diff', count($r['mismatch']), implode(', ', array_map(static fn($t, $c) => $t . ' ' . $c[0] . ' → ' . $c[1], array_keys($r['mismatch']), $r['mismatch']))));
+			elseif ($r['checked']) nu_flash('success', t('rst_verify_ok', $r['checked']));
+			if ($r['safety'] !== '') nu_flash('info', t('rst_done_safety', $r['safety']));
+			nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
+		}
 		if ($action === 'schema_apply') {
 			$exp = NuSchemaCheck::installed();
 			if (!$exp) throw new RuntimeException(t('upd_schema_nofile'));
@@ -313,7 +324,8 @@ if (nu_is_post()) {
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next update: ' . $e->getMessage());
 		nu_flash('danger', $e->getMessage());
-		nu_redirect(str_starts_with((string)$action, 'lp_') ? nu_url('update', ['tab' => 'libraries']) . '#libraries' : nu_url('update'));
+		nu_redirect(str_starts_with((string)$action, 'lp_') ? nu_url('update', ['tab' => 'libraries']) . '#libraries'
+			: ($action === 'restore_db' ? nu_url('update', ['tab' => 'backups']) . '#backups' : nu_url('update')));
 	}
 }
 
@@ -785,6 +797,38 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 <?php endif; ?>
 </div>
 <div class="tab-pane fade<?= $updTab === 'backups' ? ' show active' : '' ?>" id="updPane-backups" role="tabpanel" aria-labelledby="updTabBtn-backups" tabindex="0">
+		<?php $rstOk = !empty(NuAuth::user()['globeadmin']) && NuSqlDump::canRestore() && NuUpdate::enabled();
+		$rstName = is_string($_GET['restore'] ?? null) ? (string)$_GET['restore'] : '';
+		$rstFile = $rstOk && $rstName !== '' ? NuUpdate::backupPath($rstName) : null;
+		if ($rstFile): // restore the database part of a backup: dry run first, then the form (0.8.1031)
+			$rc = NuSqlDump::restoreCheck($rstFile); ?>
+		<div class="card shadow-sm mb-3 border-warning" id="updRestoreCard">
+			<div class="card-header fw-semibold"><i class="bi bi-database-up me-2"></i><?= h(t('rst_title')) ?></div>
+			<div class="card-body small">
+				<?php if (!$rc['ok']): ?>
+					<div class="alert alert-danger py-2 mb-2" id="updRestoreErr"><?= h(t('rst_check_failed', $rc['error'])) ?></div>
+					<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('update', ['tab' => 'backups'])) ?>#backups"><?= h(t('cancel')) ?></a>
+				<?php else: ?>
+					<p class="mb-2"><?= h(t('rst_intro', t('upd_rollback'))) ?></p>
+					<ul class="mb-2" id="updRestoreInfo">
+						<li><?= h(t('rst_info', $rc['version'], $rc['created'] !== '' ? date(nu_dfmt('d.m.Y H:i'), (int)strtotime($rc['created'])) : '?', (int)$rc['tables'], number_format((int)$rc['rows'], 0, '.', "'"), NuFile::size((int)$rc['bytes']))) ?></li>
+						<li><?= h(t('rst_scope_' . $rc['scope'])) ?></li>
+						<li><?= h(t('rst_drops', (int)$rc['drops'])) ?></li>
+						<?php if (!empty($rc['without_logs'])): ?><li><?= h(t('rst_nologs')) ?></li><?php endif; ?>
+						<?php if ($rc['version'] !== NU_VERSION): ?><li><?= h(t('rst_version_note', $rc['version'])) ?></li><?php endif; ?>
+						<li id="rstSafetyNote"><?= h(t('rst_backup_always')) ?></li>
+						<?php if (!empty($rc['counts'])): ?><li id="rstVerifyNote"><?= h(t('rst_verify_note', (int)$rc['counts'])) ?></li><?php endif; ?>
+					</ul>
+					<form method="post" action="<?= h(nu_url('update')) ?>" id="updRestoreForm" class="d-flex flex-wrap gap-2 align-items-center" data-nu-once
+						data-confirm="<?= h(t('rst_confirm', $rc['version'])) ?>" data-confirm-ok="<?= h(t('rst_open')) ?>" data-confirm-class="btn btn-danger">
+						<?= nu_csrf_field() ?><input type="hidden" name="action" value="restore_db"><input type="hidden" name="name" value="<?= h($rstName) ?>">
+						<button class="btn btn-sm btn-danger" type="submit" id="rstRun" data-nu-busy="<?= h(t('rst_busy')) ?>"><i class="bi bi-database-up me-1"></i><?= h(t('rst_open')) ?></button>
+						<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('update', ['tab' => 'backups'])) ?>#backups"><?= h(t('cancel')) ?></a>
+					</form>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php endif; ?>
 		<div class="card shadow-sm" id="updBackupsCard">
 			<?php // newest first, 10 per page with the list footer (first / previous / page x of y / next / last)
 			$allBackups = NuUpdate::backups();
@@ -903,6 +947,9 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 									</div>
 								<?php else: ?>
 									<a class="btn btn-sm btn-outline-secondary nuRowBtn" href="<?= h(nu_url('update', ['download' => $b['name']])) ?>" title="<?= h(t('upd_download')) ?>" aria-label="<?= h(t('upd_download')) ?>"><i class="bi bi-download"></i></a>
+								<?php endif; ?>
+								<?php if ($rstOk && $b['sql'] && !empty($b['sql']['complete']) && empty($b['sql']['removed'])): // database part back (0.8.1031) ?>
+									<a class="btn btn-sm btn-outline-secondary nuRowBtn updRestore" href="<?= h(nu_url('update', ['tab' => 'backups', 'restore' => $b['name']])) ?>#backups" title="<?= h(t('rst_open')) ?>" aria-label="<?= h(t('rst_open')) ?>"><i class="bi bi-database-up"></i></a>
 								<?php endif; ?>
 								<?php if ($updOn): ?>
 								<form method="post" action="<?= h(nu_url('update')) ?>" class="d-inline" data-confirm="<?= h(t('upd_rollback_confirm', $b['version'])) ?>" data-confirm-ok="<?= h(t('upd_rollback')) ?>" data-confirm-class="btn btn-warning">

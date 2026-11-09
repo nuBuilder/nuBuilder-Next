@@ -57,6 +57,7 @@ final class NuHousekeeping
 		$step('log', static fn() => NuLog::purge());
 		$step('audit', static fn() => NuAudit::purge());
 		$step('userhelp_images', static fn() => NuUserHelp::purgeImages());   // pictures of help pages no page uses (0.8.1024)
+		$step('project_tasks', static fn() => NuProject::dueHousekeeping());   // to-dos of projects due today or earlier: one notification each (0.8.1035)
 		$step('notifications', static fn() => NuNotify::housekeeping());   // due e-mails of scheduled notifications, old ones deleted (0.8.357)               // audit trail beyond "Keep" (0.8.350)
 		$step('webhooks', static fn() => NuWebhook::housekeeping());       // due retries of webhook calls, old calls deleted (0.8.715)
 		$step('report_files', static fn() => NuReportApi::purge());

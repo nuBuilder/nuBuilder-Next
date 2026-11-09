@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  *   ?p=helppages&id=<id>               a page or a translation
  *   ?p=helppages&id=new&tr=<code>&lang=<l>  new translation of a page
  *   ?p=helppages&export=1              all pages as JSON (nunext-help-1)
- * POST actions: save, delete, import, ai_prompt (JSON: the prompt for an AI chat, nothing stored).
+ * POST actions: save, delete, import, ai_prompt (JSON: the prompt for an AI chat, nothing stored), md_html (JSON: Markdown → HTML).
  */
 NuAdmin::require('userhelp');
 NuSchema::ensure();
@@ -43,6 +43,11 @@ if (nu_is_post()) {
 		header('Content-Type: application/json; charset=utf-8');
 		$kinds = ['subform' => t('uh_rel_subform'), 'lookup' => t('uh_rel_lookup'), 'button' => t('uh_rel_button')];
 		echo json_encode(['ok' => true, 'related' => array_map(static fn($r) => $r + ['kind_text' => $kinds[$r['kind']]], NuUserHelp::related((string)($_POST['form'] ?? '')))]);
+		exit;
+	}
+	if ($action === 'md_html') {                               // JSON (0.8.1038): an AI answer in Markdown → HTML for the visual editor
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode(['ok' => true, 'html' => NuHtmlClean::doc(NuMarkdown::toWeb(mb_substr((string)($_POST['text'] ?? ''), 0, 200000)))]);
 		exit;
 	}
 	if ($action === 'ai_prompt') {                             // JSON: nothing stored
@@ -203,7 +208,7 @@ echo NuListView::crumbs($crumbs); ?>
 					<button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#uhAiDlg" id="uhAiBtn"><i class="bi bi-stars me-1"></i><?= h(t($isTr ? 'uh_ai_tr' : 'uh_ai')) ?></button>
 					<?= $tip(t('uh_body_tip')) ?>
 				</div>
-				<textarea class="form-control font-monospace<?= $inv('body') ?>" id="uhBody" name="body" rows="22" spellcheck="true"><?= h($v('body')) ?></textarea><?= $err('body') ?>
+				<textarea class="form-control font-monospace<?= $inv('body') ?><?= $tiny && $format === 'html' ? ' nuTmceWait' : '' ?>" id="uhBody" name="body" rows="22" spellcheck="true"><?= h($v('body')) ?></textarea><?= $err('body') ?>
 				<?php if ($canEdit && !$tiny): ?><div class="form-text" id="uhNoTiny"><?= h(t('uh_no_tiny')) ?> <?= nu_lp_hint('lp_get_pack') ?></div><?php endif; ?>
 				<?php if ($isTr): ?><details class="mt-3" id="uhOriginal"><summary class="small"><?= h(t('uh_original')) ?></summary>
 					<div class="nuUhArticle border rounded p-3 mt-2"><?= NuUserHelp::render((string)$base['body'], (string)$base['format']) ?></div></details><?php endif; ?>
@@ -250,11 +255,15 @@ echo NuListView::crumbs($crumbs); ?>
 		<p class="small text-body-secondary"><?= h(t($isTr ? 'uh_ai_tr_tip' : 'uh_ai_tip')) ?></p>
 		<?php if (!$isTr): ?>
 		<div class="row g-2 mb-2">
-			<div class="col-md-7"><label class="form-label" for="uhAiForm"><?= h(t('uh_ai_form')) ?></label>
+			<div class="col-md-5"><label class="form-label" for="uhAiForm"><?= h(t('uh_ai_form')) ?></label>
 				<select class="form-select nuListTomSelect" id="uhAiForm"><option value=""></option>
 					<?php foreach ($formOpts as $fid => $f): ?><option value="<?= h((string)$fid) ?>" data-sub="<?= h((string)$f['code']) ?>"<?= isset($usage[0]) && $usage[0][0] === (string)$fid ? ' selected' : '' ?>><?= h((string)$f['description'] ?: (string)$f['code']) ?></option><?php endforeach; ?>
 				</select></div>
-			<div class="col-md-5"><label class="form-label" for="uhAiNote"><?= h(t('uh_ai_note')) ?></label><input class="form-control" id="uhAiNote" maxlength="1000"></div>
+			<div class="col-md-3"><label class="form-label" for="uhAiLang"><?= h(t('uh_ai_lang')) ?></label><?= NuListView::infoTip(t('uh_ai_lang_tip')) ?>
+				<select class="form-select" id="uhAiLang" data-default="<?= h(nu_lang()) ?>">
+					<?php foreach (NuLanguages::installed() as $lc): ?><option value="<?= h($lc) ?>"<?= $lc === nu_lang() ? ' selected' : '' ?>><?= h((string)(NU_LANGS[$lc][0] ?? $lc)) ?></option><?php endforeach; ?>
+				</select></div>
+			<div class="col-md-4"><label class="form-label" for="uhAiNote"><?= h(t('uh_ai_note')) ?></label><input class="form-control" id="uhAiNote" maxlength="1000"></div>
 		</div>
 		<fieldset class="border rounded p-2 mb-3 d-none" id="uhAiRelBox"><legend class="float-none w-auto px-1 mb-0 small fw-semibold"><?= h(t('uh_rel_title')) ?></legend>
 			<div class="small text-body-secondary mb-1"><?= h(t('uh_rel_tip')) ?></div><div id="uhAiRel"></div></fieldset>

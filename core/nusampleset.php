@@ -21,6 +21,9 @@ final class NuSampleSet
 
 	/** System tables and their primary keys, children first (removal order). */
 	private const PK = [
+		'zzzzsys_nunext_project_task' => 'zzzzsys_nunext_project_task_id', 'zzzzsys_nunext_project_note' => 'zzzzsys_nunext_project_note_id',
+		'zzzzsys_nunext_project_item' => 'zzzzsys_nunext_project_item_id', 'zzzzsys_nunext_project' => 'zzzzsys_nunext_project_id',
+		'zzzzsys_nunext_help' => 'zzzzsys_nunext_help_id',
 		'zzzzsys_nunext_object_access' => 'zzzzsys_nunext_object_access_id', 'zzzzsys_nunext_widget' => 'zzzzsys_nunext_widget_id',
 		'zzzzsys_nunext_dashboard' => 'zzzzsys_nunext_dashboard_id', 'zzzzsys_nunext_list_view' => 'zzzzsys_nunext_list_view_id',
 		'zzzzsys_user_permission' => 'zzzzsys_user_permission_id', 'zzzzsys_permission_item' => 'zzzzsys_permission_item_id',
@@ -30,6 +33,13 @@ final class NuSampleSet
 		'zzzzsys_select' => 'zzzzsys_select_id', 'zzzzsys_user' => 'zzzzsys_user_id', 'zzzzsys_access' => 'zzzzsys_access_id', 'zzzzsys_php' => 'zzzzsys_php_id',
 		'zzzzsys_email_template' => 'zzzzsys_email_template_id', 'zzzzsys_file' => 'zzzzsys_file_id', 'zzzzsys_format' => 'zzzzsys_format_id',
 		'zzzzsys_form' => 'zzzzsys_form_id',
+	];
+
+	/** Date columns of nuBuilder Next's own tables the sample's rows carry (moved like the sample's own dates, 0.8.1036). */
+	private const OWN_DATES = [
+		'zzzzsys_nunext_project' => ['created_at', 'updated_at'], 'zzzzsys_nunext_project_item' => ['added_at'],
+		'zzzzsys_nunext_project_note' => ['created_at', 'updated_at'], 'zzzzsys_nunext_project_task' => ['created_at', 'updated_at', 'due', 'done_at'],
+		'zzzzsys_nunext_help' => ['created_at', 'updated_at'],
 	];
 
 	/** @return list<string> */
@@ -61,7 +71,7 @@ final class NuSampleSet
 		return is_array($j) ? (int)($j['version'] ?? 0) : 0;
 	}
 
-	/** @return array{installed: bool, version: int, current: int, when: string, counts: array<string, int>, tables: list<string>, leftovers: bool, blocking: list<string>} */
+	/** @return array{project: string, installed: bool, version: int, current: int, when: string, counts: array<string, int>, tables: list<string>, leftovers: bool, blocking: list<string>} */
 	public static function status(string $key): array
 	{
 		$d = self::definition($key);
@@ -70,14 +80,17 @@ final class NuSampleSet
 		$info = $form ? ((json_decode((string)$form['sfo_json'], true) ?: [])['nunext']['sample'] ?? []) : [];
 		$ids = self::ids($d);
 		$counts = [];
-		foreach (['zzzzsys_user' => 'users', 'zzzzsys_access' => 'access', 'zzzzsys_form' => 'forms', 'zzzzsys_object' => 'objects', 'zzzzsys_php' => 'php', 'zzzzsys_email_template' => 'templates', 'zzzzsys_nunext_dashboard' => 'dashboards'] as $t => $k) {
+		foreach (['zzzzsys_user' => 'users', 'zzzzsys_access' => 'access', 'zzzzsys_form' => 'forms', 'zzzzsys_object' => 'objects', 'zzzzsys_php' => 'php', 'zzzzsys_email_template' => 'templates', 'zzzzsys_nunext_dashboard' => 'dashboards', 'zzzzsys_nunext_project' => 'projects'] as $t => $k) {
 			$counts[$k] = 0;
 			$list = $ids[$t] ?? [];
 			if ($t === 'zzzzsys_user') $list = array_column($d['users'] ?? [], 'zzzzsys_user_id');
 			if ($list && $db->tableExists($t)) $counts[$k] = (int)$db->value('SELECT COUNT(*) FROM ' . $t . ' WHERE ' . self::PK[$t] . ' IN (' . self::marks($list) . ')', $list);
 		}
 		$tables = array_values(array_filter(array_keys($d['tables'] ?? []), static fn($t) => $db->tableExists((string)$t)));
+		$project = '';                                            // the sample's project (0.8.1036), when it is there
+		foreach ($ids['zzzzsys_nunext_project'] ?? [] as $pid) if ($db->tableExists('zzzzsys_nunext_project') && $db->value('SELECT COUNT(*) FROM zzzzsys_nunext_project WHERE zzzzsys_nunext_project_id = ?', [$pid])) { $project = $pid; break; }
 		return [
+			'project' => $project,
 			'installed' => (bool)$form, 'version' => (int)($info['version'] ?? 0), 'current' => (int)$d['version'],
 			'when' => (string)($info['installed'] ?? ''), 'counts' => $counts, 'tables' => $tables,
 			'leftovers' => !$form && (array_sum($counts) > 0 || $tables),
@@ -237,6 +250,7 @@ final class NuSampleSet
 			foreach ($spec['columns'] as $c) if (in_array($c['type'], ['date', 'datetime'], true)) $out[$t][$c['name']] = $c['type'];
 			if (!empty($spec['audit'])) foreach (['created_at', 'updated_at'] as $c) $out[$t][$c] = 'datetime';
 		}
+		foreach (self::OWN_DATES as $t => $cols) foreach ($cols as $c) $out[$t][$c] = 'datetime';
 		return $out;
 	}
 

@@ -70,6 +70,7 @@ foreach (NuSampleSet::keys() as $key) {
 	foreach ($def['users'] as $u) $users[] = [(string)$u['sus_login_name'], (string)$u['sus_zzzzsys_access_id'], trim((string)$u['sus_name'] . (isset($levels[$u['sus_zzzzsys_access_id']]) ? ' · ' . $levels[$u['sus_zzzzsys_access_id']] : ''))];
 	$samples[$key] = ['title' => t('smp_' . $key . '_title'), 'icon' => ['ticket' => 'headset'][$key] ?? 'box-seam', 'intro' => t('smp_' . $key . '_intro'), 'st' => $ss,
 		'pw' => $setPw[$key] ?? [], 'users' => $users, 'open' => nu_url('form', ['f' => (string)$def['home']]), 'more' => t('smp_' . $key . '_more'), 'set' => $key,
+		'project' => $ss['project'] !== '' && NuProject::canView() ? nu_url('projects', ['id' => $ss['project']]) : '',
 		'counts' => $ss['installed'] ? t('smp_set_counts', $ss['counts']['users'], $ss['counts']['access'], $ss['counts']['forms'], $ss['counts']['objects'], $ss['counts']['templates'], $ss['counts']['dashboards']) : ''];
 }
 $sel = is_string($_GET['s'] ?? null) && isset($samples[$_GET['s']]) ? (string)$_GET['s'] : (string)array_key_first($samples);
@@ -154,6 +155,9 @@ nu_layout_start(t('smp_title'), 'home');
 								<?php if (NuHome::canManage()): ?><a href="<?= h(nu_url('home', ['for' => 'sample_sales'])) ?>"><?= h(t('home_u_title')) ?></a><?php endif; ?></p></div>
 						<?php endif; ?>
 							<div class="col-12"><h3 class="h6"><?= h(t('smp_c_more')) ?></h3><p class="mb-0"><?= h($x['more']) ?></p></div>
+						<?php if (($x['project'] ?? '') !== ''): ?>
+							<div class="col-12"><h3 class="h6"><?= h(t('prj_title_one')) ?></h3><p class="mb-0"><?= h(t('smp_project_hint')) ?> <a href="<?= h($x['project']) ?>" class="smpProjectLink"><i class="bi bi-kanban me-1"></i><?= h(t('smp_project_open')) ?></a></p></div>
+						<?php endif; ?>
 						</div>
 					</div>
 					<div class="tab-pane fade<?= $tab === 'logins' ? ' show active' : '' ?>" id="<?= $tid ?>logins" role="tabpanel" aria-labelledby="<?= $tid ?>logins_tab" tabindex="0">

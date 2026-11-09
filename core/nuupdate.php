@@ -454,7 +454,7 @@ final class NuUpdate
 	// ------------------------------------------------------------------ backups
 
 	/** Program files (what an update may change) – from the manifest, or the known folders for versions without one. */
-	private static function programFiles(): array
+	public static function programFiles(): array
 	{
 		$files = [];
 		$m = self::installedManifest();
@@ -499,6 +499,8 @@ final class NuUpdate
 		$tmp = '';
 		try {
 			$withSql = in_array($sqlScope, ['nubuilder', 'nunext', 'all'], true) && self::loadDump() && NuSqlDump::available();
+			// enough free space? (0.8.1032) – a backup that fills the disk can break the database server too; unknown space = no check
+			if (self::loadDump() && ($p = NuSqlDump::spaceProblem($dir, NuSqlDump::backupNeed($withSql ? $sqlScope : 'none', $withoutLogs)))) throw new RuntimeException($p);
 			@file_put_contents($dir . '/' . self::RUNNING, json_encode(['name' => $name, 'since' => time(), 'reason' => $reason, 'sql' => $withSql ? $sqlScope : 'none']));
 			$sql = null;
 			if ($withSql) {
@@ -894,6 +896,7 @@ final class NuMigrate
 			'0036-pwreset-templates' => ['Read-only e-mail templates nu_password_reset_template (group nunext, one per language) for the password reset of the user form', static fn() => NuPwReset::ensureTemplates()],
 			'0037-setting-phone-back' => ['Settings table: row nuPhoneBackButton (Back button on phones: text, icon or hidden) when missing', static function (): void { if (NuSettings::available()) NuSettings::addOwn(); }],
 			'0038-user-help' => ['User help pages (zzzzsys_nunext_help): help for the users of the application, opened from forms, tabs and fields', static fn() => NuSchema::create()],
+			'0039-projects' => ['Projects (zzzzsys_nunext_project, _item, _note, _task): forms, procedures, reports … that belong together, with notes and to-dos', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -946,6 +949,8 @@ final class NuMigrate
 		'0036-pwreset-templates' => [['zzzzsys_email_template', 'data', 'read-only templates nu_password_reset_template, group nunext, one per language (ids nx_pwreset_…) added when missing – also checked with every later update']],
 		'0037-setting-phone-back' => [['zzzzsys_config', 'data', 'row nuPhoneBackButton added when missing']],
 		'0038-user-help' => [['zzzzsys_nunext_help', 'table', 'created when missing']],
+		'0039-projects' => [['zzzzsys_nunext_project', 'table', 'created when missing'], ['zzzzsys_nunext_project_item', 'table', 'created when missing'],
+			['zzzzsys_nunext_project_note', 'table', 'created when missing'], ['zzzzsys_nunext_project_task', 'table', 'created when missing']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

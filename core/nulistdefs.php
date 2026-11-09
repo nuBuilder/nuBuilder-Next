@@ -24,7 +24,7 @@ final class NuListDefs
 {
 	/** @return array<string, array> */
 	/** Keys of all lists with views (0.8.329: users, access; 0.8.334: the other system lists). */
-	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'helppages', 'webhooks', 'webhookcalls', 'exports', 'selftest'];
+	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'helppages', 'webhooks', 'webhookcalls', 'exports', 'selftest', 'projects'];
 
 	public static function get(string $list): ?array
 	{
@@ -33,7 +33,7 @@ final class NuListDefs
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),
 			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(), 'userfields' => self::userFields(), 'apiclients' => self::apiClients(),
 			'adminroles' => self::adminRoles(), 'sqlbuilder' => self::sqlBuilder(), 'emailtemplates' => self::emailTemplates(),
-			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'helppages' => self::helpPages(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(),
+			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'helppages' => self::helpPages(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(), 'projects' => self::projects(),
 			default => null,
 		};
 	}
@@ -70,6 +70,7 @@ final class NuListDefs
 		'webhookcalls' => ['created' => 'date', 'status' => false, 'attempts' => 'number', 'answer' => 'number', 'next' => 'date', 'source' => false],
 		'exports' => ['format' => false, 'runs' => 'number', 'last_run' => 'date', 'updated' => 'date'],
 		'selftest' => ['status' => false, 'ms' => 'number', 'pos' => 'number'],
+		'projects' => ['status' => false, 'items' => 'number', 'tasks' => 'number', 'updated' => 'date'],
 	];
 
 	/** "a, f(b, c), d" → ['a', 'f(b, c)', 'd'] (commas outside brackets and quotes). */
@@ -520,6 +521,7 @@ final class NuListDefs
 					return ['f.zzzzsys_form_id IN (' . implode(', ', array_fill(0, count($everyone), '?')) . ')', array_keys($everyone)];
 				}],
 		];
+		if ($pf = NuProject::listFilter('form', 'f.zzzzsys_form_id')) $filters['project'] = $pf;   // projects (0.8.1035)
 		if ($drafts) $filters['draft'] = ['label' => t('forms_col_draft'), 'type' => 'select', 'options' => static fn() => ['1' => t('forms_with_draft')],
 			'where' => static fn(string $v) => $v === '1' ? ["$dBy IS NOT NULL", []] : null];
 		// ?type=page = the list Custom pages (0.8.861)
@@ -586,6 +588,7 @@ final class NuListDefs
 					default => null,
 				}],
 		];
+		if ($pf = NuProject::listFilter('procedure', 'p.zzzzsys_php_id')) $filters['project'] = $pf;   // projects (0.8.1035)
 		return [
 			'key' => 'procedures', 'title' => t('proc_title'), 'route' => 'procedures', 'form' => NuAcl::FORM_PROCEDURE,
 			'from' => ' FROM ' . NuProcedure::TABLE . ' p LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = p.sph_zzzzsys_form_id', 'where' => [NuProcedure::listCondition('p')], 'params' => [],
@@ -643,6 +646,7 @@ final class NuListDefs
 				'options' => static function (): array { $o = []; foreach (nu_db()->all('SELECT DISTINCT sre_zzzzsys_php_id AS s FROM ' . NuReport::TABLE . ' WHERE sre_zzzzsys_php_id IS NOT NULL ORDER BY 1') as $x) $o[(string)$x['s']] = NuReport::sourceLabel((string)$x['s']); return $o; },
 				'where' => static fn(string $v) => ['r.sre_zzzzsys_php_id = ?', [$v]]],
 		];
+		if ($pf = NuProject::listFilter('report', 'r.zzzzsys_report_id')) $filters['project'] = $pf;   // projects (0.8.1035)
 		return [
 			'key' => 'reports', 'title' => t('rpt_title_list'), 'route' => 'reports', 'form' => NuAcl::FORM_REPORT,
 			'from' => ' FROM ' . NuReport::TABLE . ' r LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = r.sre_zzzzsys_form_id', 'where' => [], 'params' => [],
@@ -1259,6 +1263,47 @@ final class NuListDefs
 	}
 
 	/** User help pages (0.8.1023, core/nuuserhelp.php): the pages themselves (lang ''), with their translations, access levels and where they are used. */
+	/** Projects (0.8.1035, core/nuproject.php). */
+	private static function projects(): array
+	{
+		$T = NuProject::T;
+		$nItems = '(SELECT COUNT(*) FROM ' . NuProject::I . ' i WHERE i.project_id = p.zzzzsys_nunext_project_id)';
+		$nTasks = nu_db()->tableExists(NuProject::K) ? '(SELECT COUNT(*) FROM ' . NuProject::K . " k WHERE k.project_id = p.zzzzsys_nunext_project_id AND k.status <> 'done')" : '0';
+		$w = NuProject::working();
+		$cols = [
+			'name' => ['label' => t('prj_f_name'), 'main' => true, 'locked' => true, 'select' => ['pj_name' => 'p.name', 'pj_code' => 'p.code'], 'sort' => 'p.name',
+				'text' => static fn($r) => (string)$r['pj_name'],
+				'html' => static fn($r) => '<span class="fw-semibold">' . h((string)$r['pj_name']) . '</span>' . ((string)$r['__id'] === $w ? ' ' . self::badge(t('prj_working_badge'), 'text-bg-primary nuPrjWorkBadge') : '')
+					. '<div class="small text-body-secondary font-monospace">' . h((string)$r['pj_code']) . '</div>'],
+			'code' => self::col('pj_code2', 'p.code', t('prj_f_code'), 'small font-monospace'),
+			'description' => self::col('pj_desc', 'p.description', t('prj_f_description'), 'small'),
+			'items' => array_replace(self::col('pj_items', $nItems, t('prj_items'), 'small'), ['align' => 'end']),
+			'tasks' => array_replace(self::col('pj_tasks', $nTasks, t('prj_open_tasks'), 'small'), ['align' => 'end']),
+			'status' => ['label' => t('status'), 'select' => ['pj_status' => 'p.status'], 'sort' => 'p.status',
+				'text' => static fn($r) => t((string)$r['pj_status'] === 'archived' ? 'prj_archived' : 'prj_active'),
+				'html' => static fn($r) => self::badge(t((string)$r['pj_status'] === 'archived' ? 'prj_archived' : 'prj_active'), (string)$r['pj_status'] === 'archived' ? 'text-bg-secondary' : 'text-bg-success')],
+			'updated' => ['label' => t('fi_changed'), 'select' => ['pj_upd' => 'p.updated_at'], 'sort' => 'p.updated_at', 'class' => 'small text-nowrap', 'text' => static fn($r) => self::date($r['pj_upd'] ?? null, true)],
+			'id' => self::idCol('p.zzzzsys_nunext_project_id'),
+		];
+		$filters = [
+			'status' => ['label' => t('status'), 'type' => 'select', 'all' => 'all', 'options' => static fn() => ['active' => t('prj_active'), 'archived' => t('prj_archived')],
+				'where' => static fn(string $v) => $v === 'archived' ? ["p.status = 'archived'", []] : ($v === 'active' ? ["COALESCE(p.status, 'active') <> 'archived'", []] : null)],
+		];
+		$base = ['columns' => ['name', 'description', 'items', 'tasks', 'status', 'updated'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['description', 'items', 'tasks']],
+			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['status'], 'values' => ['status' => 'active']]];
+		return [
+			'key' => 'projects', 'title' => t('prj_title'), 'route' => 'projects', 'new_url' => NuProject::canChange() ? nu_url('projects', ['id' => 'new']) : '', 'empty_icon' => 'bi-kanban', 'form' => NuAcl::FORM_PROJECT,
+			'from' => " FROM $T p", 'where' => [], 'params' => [], 'id' => 'p.zzzzsys_nunext_project_id',
+			'link' => static fn($r) => nu_url('projects', ['id' => $r['__id']]),
+			'search' => ['p.name', 'p.code', 'p.description'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'compact' => ['columns' => ['name', 'items', 'status']] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => ['status' => 'active']]] + $base,
+			],
+		];
+	}
+
 	private static function helpPages(): array
 	{
 		$T = NuUserHelp::T;
@@ -1524,6 +1569,7 @@ final class NuListDefs
 		];
 		$base = ['columns' => ['code', 'description', 'tables', 'mode', 'reports'], 'card' => ['title' => 'code', 'badge' => 'mode', 'lines' => ['description', 'tables', 'reports']],
 			'sort' => ['code', 'asc'], 'per' => 50, 'filters' => ['shown' => ['mode', 'used'], 'values' => []]];
+		if ($pf = NuProject::listFilter('select', 's.zzzzsys_select_id')) $filters['project'] = $pf;   // projects (0.8.1035)
 		return [
 			'key' => 'sqlbuilder', 'title' => t('sqb_title'), 'route' => 'sqlbuilder', 'form' => NuAcl::FORM_SELECT,
 			'from' => ' FROM ' . NuSqlSelect::TABLE . ' s', 'where' => ["COALESCE(s.sse_system, '') = ''"], 'params' => [], 'id' => 's.zzzzsys_select_id',
@@ -1575,6 +1621,7 @@ final class NuListDefs
 		];
 		$base = ['columns' => ['code', 'group', 'category', 'language', 'form', 'subject', 'to'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['language', 'subject']],
 			'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group', 'category', 'language', 'form'], 'values' => []]];
+		if ($pf = NuProject::listFilter('emailtemplate', 't.zzzzsys_email_template_id')) $filters['project'] = $pf;   // projects (0.8.1035)
 		return [
 			'key' => 'emailtemplates', 'title' => t('emt_title'), 'route' => 'emailtemplates', 'form' => NuAcl::FORM_EMAILTEMPLATE,
 			'from' => " FROM $T t LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = t.emt_form_id", 'where' => [], 'params' => [], 'id' => 't.zzzzsys_email_template_id',

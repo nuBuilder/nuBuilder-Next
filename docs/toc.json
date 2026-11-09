@@ -193,6 +193,11 @@
      "id": "items",
      "title": "Items",
      "file": "04-08-items.htm"
+    },
+    {
+     "id": "projects",
+     "title": "Projects",
+     "file": "04-10-projects.htm"
     }
    ]
   },

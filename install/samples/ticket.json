@@ -1,6 +1,6 @@
 {
     "key": "ticket",
-    "version": 5,
+    "version": 7,
     "prefix": "tkt_",
     "home": "tkthome",
     "date_ref": "2026-10-29",
@@ -225,7 +225,7 @@
                 "sfo_edit_javascript": null,
                 "sfo_style": null,
                 "sfo_mobile_view": null,
-                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"sample\":{\"version\":1,\"installed\":\"2026-10-29 07:19\",\"key\":\"ticket\"}}}"
+                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"sample\":{\"version\":1,\"installed\":\"2026-10-29 07:19\",\"key\":\"ticket\"},\"help\":\"tkt_help\"}}"
             }
         ],
         [
@@ -252,7 +252,7 @@
                 "sfo_edit_javascript": null,
                 "sfo_style": null,
                 "sfo_mobile_view": null,
-                "sfo_json": "{\"nunext\":{\"layout\":\"grid\"}}"
+                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"help\":\"tkt_help_categories\"}}"
             }
         ],
         [
@@ -279,7 +279,7 @@
                 "sfo_edit_javascript": null,
                 "sfo_style": null,
                 "sfo_mobile_view": null,
-                "sfo_json": "{\"nunext\":{\"layout\":\"auto\",\"audit\":true}}"
+                "sfo_json": "{\"nunext\":{\"layout\":\"auto\",\"audit\":true,\"help\":\"tkt_help_kb\"}}"
             }
         ],
         [
@@ -360,7 +360,7 @@
                 "sfo_edit_javascript": "// the ticket as the customer sees it: no Handling tab, no internal fields; rating once the ticket is resolved\nif (window.tktLevel === 'tkt_customer') {\n\tnuHideTabByTitle('Handling');\n\tif (['resolved', 'closed'].indexOf(nuGetValue('tic_status')) < 0) nuHide('tic_rating');\n} else if (nuIsNewRecord()) {\n\tnuHide('tic_rating');\n}\n// new ticket: sensible defaults (Before Save sets them as well)\nif (nuIsNewRecord()) {\n\tif (!nuGetValue('tic_priority')) nuSetValue('tic_priority', 'normal');\n\tif (!nuGetValue('tic_status')) nuSetValue('tic_status', 'new');\n\tif (!nuGetValue('tic_channel')) nuSetValue('tic_channel', window.tktLevel === 'tkt_customer' ? 'portal' : 'phone');\n}\n// buttons of the Handling tab: only where they make sense\nif (nuIsNewRecord() || nuGetValue('tic_agent_id') === window.tktMe) nuHide('tic_take');\nif (nuIsNewRecord() || nuGetValue('tic_level') === '2' || !nuUserHasPermission('tkt_escalate')) nuHide('tic_escalate');\n",
                 "sfo_style": null,
                 "sfo_mobile_view": null,
-                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"audit\":true}}"
+                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"audit\":true,\"help\":\"tkt_help_ticket\",\"help_tabs\":{\"tkt_tab_006\":\"tkt_help_handling\"}}}"
             }
         ],
         [
@@ -1809,7 +1809,7 @@
                 "sob_all_table": "tkt_kb",
                 "sob_all_type": "input",
                 "sob_all_id": "updated_by",
-                "sob_all_label": "Geändert von",
+                "sob_all_label": "Changed by",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_002",
                 "sob_all_order": 90,
                 "sob_all_top": 312,
@@ -2019,7 +2019,7 @@
                 "sob_all_table": "tkt_kb",
                 "sob_all_type": "input",
                 "sob_all_id": "updated_at",
-                "sob_all_label": "Geändert am",
+                "sob_all_label": "Changed",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_002",
                 "sob_all_order": 80,
                 "sob_all_top": 280,
@@ -2089,7 +2089,7 @@
                 "sob_all_table": "tkt_kb",
                 "sob_all_type": "input",
                 "sob_all_id": "created_by",
-                "sob_all_label": "Erstellt von",
+                "sob_all_label": "Created by",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_002",
                 "sob_all_order": 70,
                 "sob_all_top": 248,
@@ -2159,7 +2159,7 @@
                 "sob_all_table": "tkt_kb",
                 "sob_all_type": "input",
                 "sob_all_id": "created_at",
-                "sob_all_label": "Erstellt am",
+                "sob_all_label": "Created",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_002",
                 "sob_all_order": 60,
                 "sob_all_top": 216,
@@ -2357,7 +2357,7 @@
                 "sob_html_vertical_label": null,
                 "sob_html_horizontal_label": null,
                 "sob_image_zzzzsys_file_id": null,
-                "sob_all_json": "{\"nunext\":{\"row\":1,\"col\":10,\"span\":3}}",
+                "sob_all_json": "{\"nunext\":{\"row\":1,\"col\":10,\"span\":3,\"help\":\"tkt_help_handling\"}}",
                 "sob_json": null
             }
         ],
@@ -3069,7 +3069,7 @@
                 "sob_all_table": "tkt_ticket",
                 "sob_all_type": "input",
                 "sob_all_id": "created_at",
-                "sob_all_label": "Erstellt am",
+                "sob_all_label": "Created",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_006",
                 "sob_all_order": 150,
                 "sob_all_top": 544,
@@ -3209,7 +3209,7 @@
                 "sob_all_table": "tkt_ticket",
                 "sob_all_type": "input",
                 "sob_all_id": "updated_by",
-                "sob_all_label": "Geändert von",
+                "sob_all_label": "Changed by",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_006",
                 "sob_all_order": 180,
                 "sob_all_top": 640,
@@ -3489,7 +3489,7 @@
                 "sob_all_table": "tkt_ticket",
                 "sob_all_type": "input",
                 "sob_all_id": "created_by",
-                "sob_all_label": "Erstellt von",
+                "sob_all_label": "Created by",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_006",
                 "sob_all_order": 160,
                 "sob_all_top": 576,
@@ -3559,7 +3559,7 @@
                 "sob_all_table": "tkt_ticket",
                 "sob_all_type": "input",
                 "sob_all_id": "updated_at",
-                "sob_all_label": "Geändert am",
+                "sob_all_label": "Changed",
                 "sob_all_zzzzsys_tab_id": "tkt_tab_006",
                 "sob_all_order": 170,
                 "sob_all_top": 608,
@@ -9299,6 +9299,506 @@
                 "sob_image_zzzzsys_file_id": null,
                 "sob_all_json": "{\"nunext\":{\"span\":12,\"row\":5}}",
                 "sob_json": null
+            }
+        ],
+        [
+            "zzzzsys_nunext_project",
+            {
+                "zzzzsys_nunext_project_id": "tkt_prj_001",
+                "code": "tkt_system",
+                "name": "Ticket system",
+                "description": "The support desk sample: tickets with conversation and attachments, knowledge base, categories, role start pages, dashboards, e-mails and a report.\nOpen \"Parts\" for everything it is made of.",
+                "status": "active",
+                "created_at": "2026-09-29 09:00:00",
+                "created_by": "sample",
+                "updated_at": "2026-10-27 09:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_001",
+                "project_id": "tkt_prj_001",
+                "kind": "form",
+                "ref": "tkthome",
+                "note": null,
+                "added_at": "2026-09-29 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_002",
+                "project_id": "tkt_prj_001",
+                "kind": "form",
+                "ref": "tktticket",
+                "note": null,
+                "added_at": "2026-09-29 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_003",
+                "project_id": "tkt_prj_001",
+                "kind": "form",
+                "ref": "tktcomment",
+                "note": null,
+                "added_at": "2026-09-29 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_004",
+                "project_id": "tkt_prj_001",
+                "kind": "form",
+                "ref": "tktattachment",
+                "note": null,
+                "added_at": "2026-09-29 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_005",
+                "project_id": "tkt_prj_001",
+                "kind": "form",
+                "ref": "tktkb",
+                "note": null,
+                "added_at": "2026-09-29 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_006",
+                "project_id": "tkt_prj_001",
+                "kind": "form",
+                "ref": "tktcategory",
+                "note": null,
+                "added_at": "2026-09-29 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_007",
+                "project_id": "tkt_prj_001",
+                "kind": "procedure",
+                "ref": "tkt_proc_escalate",
+                "note": null,
+                "added_at": "2026-09-30 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_008",
+                "project_id": "tkt_prj_001",
+                "kind": "procedure",
+                "ref": "tkt_proc_close",
+                "note": null,
+                "added_at": "2026-09-30 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_009",
+                "project_id": "tkt_prj_001",
+                "kind": "report",
+                "ref": "tkt_rpt_tickets",
+                "note": null,
+                "added_at": "2026-09-30 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_010",
+                "project_id": "tkt_prj_001",
+                "kind": "emailtemplate",
+                "ref": "tkt_emt_created",
+                "note": null,
+                "added_at": "2026-09-30 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_011",
+                "project_id": "tkt_prj_001",
+                "kind": "emailtemplate",
+                "ref": "tkt_emt_assigned",
+                "note": null,
+                "added_at": "2026-09-30 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_012",
+                "project_id": "tkt_prj_001",
+                "kind": "emailtemplate",
+                "ref": "tkt_emt_resolved",
+                "note": null,
+                "added_at": "2026-09-30 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_013",
+                "project_id": "tkt_prj_001",
+                "kind": "table",
+                "ref": "tkt_ticket",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_014",
+                "project_id": "tkt_prj_001",
+                "kind": "table",
+                "ref": "tkt_comment",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_015",
+                "project_id": "tkt_prj_001",
+                "kind": "table",
+                "ref": "tkt_attachment",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_016",
+                "project_id": "tkt_prj_001",
+                "kind": "table",
+                "ref": "tkt_kb",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_017",
+                "project_id": "tkt_prj_001",
+                "kind": "table",
+                "ref": "tkt_category",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_018",
+                "kind": "helppage",
+                "ref": "tkt_help_001",
+                "project_id": "tkt_prj_001",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_019",
+                "kind": "helppage",
+                "ref": "tkt_help_002",
+                "project_id": "tkt_prj_001",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_020",
+                "kind": "helppage",
+                "ref": "tkt_help_004",
+                "project_id": "tkt_prj_001",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_021",
+                "kind": "helppage",
+                "ref": "tkt_help_005",
+                "project_id": "tkt_prj_001",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_item",
+            {
+                "zzzzsys_nunext_project_item_id": "tkt_pit_022",
+                "kind": "helppage",
+                "ref": "tkt_help_006",
+                "project_id": "tkt_prj_001",
+                "note": null,
+                "added_at": "2026-10-01 09:00:00",
+                "added_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_note",
+            {
+                "zzzzsys_nunext_project_note_id": "tkt_pnt_001",
+                "project_id": "tkt_prj_001",
+                "title": "How it fits together",
+                "body": "- **Tickets** is the main form: the list for agents, the record with the conversation (sub-form *Tickets: conversation*) and attachments.\n- Customers see only their own tickets – the row-level rule is in the list SQL and in *Before Edit* of the form.\n- Saving a ticket sends the e-mail templates `tkt_mail_created`, `tkt_mail_assigned` and `tkt_mail_resolved` (*After Save*).\n- The buttons *Escalate* and *Close resolved tickets* run the procedures `tkt_escalate` and `tkt_close_resolved`.\n- Start pages per role: agents, specialists, team lead, customers.",
+                "pinned": "1",
+                "created_at": "2026-10-01 09:00:00",
+                "created_by": "sample",
+                "updated_at": "2026-10-01 09:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_note",
+            {
+                "zzzzsys_nunext_project_note_id": "tkt_pnt_002",
+                "project_id": "tkt_prj_001",
+                "title": "Ideas for later",
+                "body": "- SLA warning one hour before the due time\n- Customer satisfaction rating when a ticket is closed\n- Merge duplicate tickets",
+                "pinned": "0",
+                "created_at": "2026-10-24 09:00:00",
+                "created_by": "sample",
+                "updated_at": "2026-10-24 09:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_task",
+            {
+                "zzzzsys_nunext_project_task_id": "tkt_ptk_001",
+                "project_id": "tkt_prj_001",
+                "title": "Check the escalation e-mail texts",
+                "body": "Wording of the notification to the 2nd level.",
+                "status": "done",
+                "assignee": "tkt_lea",
+                "due": "2026-10-19 00:00:00",
+                "item": "procedure|tkt_proc_escalate",
+                "created_at": "2026-10-09 09:00:00",
+                "created_by": "sample",
+                "updated_at": "2026-10-09 09:00:00",
+                "updated_by": "sample",
+                "done_at": "2026-10-20 16:30:00",
+                "done_by": "sample",
+                "notified_at": null
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_task",
+            {
+                "zzzzsys_nunext_project_task_id": "tkt_ptk_002",
+                "project_id": "tkt_prj_001",
+                "title": "Add more knowledge base articles",
+                "body": "At least one article per category.",
+                "status": "open",
+                "assignee": "tkt_sam",
+                "due": "2026-11-03 00:00:00",
+                "item": "form|tktkb",
+                "created_at": "2026-10-10 09:00:00",
+                "created_by": "sample",
+                "updated_at": "2026-10-10 09:00:00",
+                "updated_by": "sample",
+                "done_at": null,
+                "done_by": null,
+                "notified_at": null
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_task",
+            {
+                "zzzzsys_nunext_project_task_id": "tkt_ptk_003",
+                "project_id": "tkt_prj_001",
+                "title": "Review the categories with the team",
+                "body": "",
+                "status": "open",
+                "assignee": "tkt_lea",
+                "due": "2026-11-10 00:00:00",
+                "item": "form|tktcategory",
+                "created_at": "2026-10-11 09:00:00",
+                "created_by": "sample",
+                "updated_at": "2026-10-11 09:00:00",
+                "updated_by": "sample",
+                "done_at": null,
+                "done_by": null,
+                "notified_at": null
+            }
+        ],
+        [
+            "zzzzsys_nunext_project_task",
+            {
+                "zzzzsys_nunext_project_task_id": "tkt_ptk_004",
+                "project_id": "tkt_prj_001",
+                "title": "Translate the e-mail templates",
+                "body": "German and French versions of the three templates.",
+                "status": "open",
+                "assignee": "",
+                "due": null,
+                "item": "emailtemplate|tkt_emt_created",
+                "created_at": "2026-10-12 09:00:00",
+                "created_by": "sample",
+                "updated_at": "2026-10-12 09:00:00",
+                "updated_by": "sample",
+                "done_at": null,
+                "done_by": null,
+                "notified_at": null
+            }
+        ],
+        [
+            "zzzzsys_nunext_help",
+            {
+                "zzzzsys_nunext_help_id": "tkt_help_001",
+                "code": "tkt_help",
+                "lang": "",
+                "title": "Support desk",
+                "body": "<p>The support desk collects every question and problem in one place: as a <strong>ticket</strong> with its own number, a conversation and, where needed, attachments.</p>\n[[level: tkt_customer]]\n<h2>What you can do</h2>\n<ul>\n<li>Report a problem: <a href=\"#help=tkt_help_ticket\">Tickets</a> → <em>Add</em>.</li>\n<li>Follow your tickets and answer questions of the support team.</li>\n<li>Look for a quick answer in the <a href=\"#help=tkt_help_kb\">knowledge base</a> first – many questions are answered there.</li>\n</ul>\n[[else]]\n<h2>Your day in the support desk</h2>\n<ol>\n<li>Open the start page: the dashboard shows the tickets that are due next.</li>\n<li>Take a new ticket, answer the customer and set the status.</li>\n<li>Can't solve it? Escalate it to the 2nd level.</li>\n<li>When it is solved, write the resolution and set the status to <em>Resolved</em>.</li>\n</ol>\n<p>Details: <a href=\"#help=tkt_help_ticket\">Tickets</a>, <a href=\"#help=tkt_help_kb\">Knowledge base</a>.</p>\n[[/level]]",
+                "format": "html",
+                "parent": null,
+                "sort_order": 0,
+                "access": null,
+                "keywords": "help, support, start",
+                "active": "1",
+                "created_at": "2026-10-04 10:00:00",
+                "updated_at": "2026-10-04 10:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_help",
+            {
+                "zzzzsys_nunext_help_id": "tkt_help_002",
+                "code": "tkt_help_ticket",
+                "lang": "",
+                "title": "Tickets",
+                "body": "<h2>What is a ticket?</h2>\n<p>A ticket is one question or problem. It keeps everything about it together: the description, the messages back and forth, attachments and how it was solved.</p>\n<h2>Report a problem</h2>\n<ol>\n<li>Click <em>Add</em> in the list of tickets.</li>\n<li>Write a short <strong>Subject</strong> – for example \"VPN does not connect\".</li>\n<li>Choose the <strong>Category</strong> that fits best. It decides which team handles the ticket and how quickly.</li>\n<li>Describe the problem in <strong>Description</strong>: what you did, what happened, any error message.</li>\n<li>Add screenshots or files on the tab <em>Attachments</em>.</li>\n<li>Click <em>Save</em>. The ticket gets its number and you receive an e-mail.</li>\n</ol>\n<h2>The conversation</h2>\n<p>On the tab <em>Conversation</em> you write to each other. Add a row, write your message and save the ticket.</p>\n[[not: tkt_customer]]\n<p>Tick <strong>Internal note</strong> for notes only the team should read – customers never see them.</p>\n[[/not]]\n<h2>Status</h2>\n<table>\n<tr><th>Status</th><th>Meaning</th></tr>\n<tr><td>New</td><td>Nobody has taken the ticket yet.</td></tr>\n<tr><td>Open</td><td>Someone is working on it.</td></tr>\n<tr><td>Waiting for customer</td><td>The team needs an answer from the customer.</td></tr>\n<tr><td>Escalated</td><td>A specialist of the 2nd level is working on it.</td></tr>\n<tr><td>Resolved</td><td>The problem is solved. A new message opens the ticket again.</td></tr>\n<tr><td>Closed</td><td>Finished. Resolved tickets are closed after 7 days.</td></tr>\n</table>\n[[level: tkt_customer]]\n<h2>Rate the solution</h2>\n<p>When your ticket is resolved, a <strong>Rating</strong> appears. One to five stars tell the team how well it went.</p>\n[[else]]\n<h2>Handling a ticket</h2>\n<p>The tab <a href=\"#help=tkt_help_handling\">Handling</a> shows who works on the ticket, the level and when it is due.</p>\n[[/level]]",
+                "format": "html",
+                "parent": "tkt_help",
+                "sort_order": 10,
+                "access": null,
+                "keywords": "ticket, problem, report, status",
+                "active": "1",
+                "created_at": "2026-10-04 10:00:00",
+                "updated_at": "2026-10-04 10:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_help",
+            {
+                "zzzzsys_nunext_help_id": "tkt_help_003",
+                "code": "tkt_help_ticket",
+                "lang": "de",
+                "title": "Tickets",
+                "body": "<h2>Was ist ein Ticket?</h2>\n<p>Ein Ticket ist eine Frage oder ein Problem. Es hält alles zusammen: die Beschreibung, die Nachrichten hin und her, Anhänge und wie es gelöst wurde.</p>\n<h2>Ein Problem melden</h2>\n<ol>\n<li>In der Ticketliste auf <em>Hinzufügen</em> klicken.</li>\n<li>Einen kurzen <strong>Betreff</strong> schreiben – zum Beispiel „VPN verbindet nicht“.</li>\n<li>Die passende <strong>Kategorie</strong> wählen. Sie bestimmt, welches Team das Ticket bearbeitet und wie schnell.</li>\n<li>Das Problem unter <strong>Beschreibung</strong> schildern: was du getan hast, was passiert ist, eine Fehlermeldung.</li>\n<li>Bildschirmfotos oder Dateien im Reiter <em>Attachments</em> anfügen.</li>\n<li>Auf <em>Speichern</em> klicken. Das Ticket erhält seine Nummer und du bekommst eine E-Mail.</li>\n</ol>\n<h2>Die Unterhaltung</h2>\n<p>Im Reiter <em>Conversation</em> schreibt ihr euch. Eine Zeile hinzufügen, die Nachricht schreiben und das Ticket speichern.</p>\n[[not: tkt_customer]]\n<p><strong>Internal note</strong> ankreuzen für Notizen, die nur das Team lesen soll – Kunden sehen sie nie.</p>\n[[/not]]\n<h2>Status</h2>\n<table>\n<tr><th>Status</th><th>Bedeutung</th></tr>\n<tr><td>New</td><td>Noch niemand hat das Ticket übernommen.</td></tr>\n<tr><td>Open</td><td>Jemand arbeitet daran.</td></tr>\n<tr><td>Waiting for customer</td><td>Das Team braucht eine Antwort des Kunden.</td></tr>\n<tr><td>Escalated</td><td>Eine Spezialistin oder ein Spezialist des 2nd Level arbeitet daran.</td></tr>\n<tr><td>Resolved</td><td>Das Problem ist gelöst. Eine neue Nachricht öffnet das Ticket wieder.</td></tr>\n<tr><td>Closed</td><td>Erledigt. Gelöste Tickets werden nach 7 Tagen geschlossen.</td></tr>\n</table>\n[[level: tkt_customer]]\n<h2>Die Lösung bewerten</h2>\n<p>Ist dein Ticket gelöst, erscheint ein <strong>Rating</strong>. Ein bis fünf Sterne sagen dem Team, wie es gelaufen ist.</p>\n[[else]]\n<h2>Ein Ticket bearbeiten</h2>\n<p>Der Reiter <a href=\"#help=tkt_help_handling\">Handling</a> zeigt, wer am Ticket arbeitet, den Level und wann es fällig ist.</p>\n[[/level]]",
+                "format": "html",
+                "parent": null,
+                "sort_order": null,
+                "access": null,
+                "keywords": "Ticket, Problem, melden, Status",
+                "active": null,
+                "created_at": "2026-10-04 10:00:00",
+                "updated_at": "2026-10-04 10:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_help",
+            {
+                "zzzzsys_nunext_help_id": "tkt_help_004",
+                "code": "tkt_help_handling",
+                "lang": "",
+                "title": "Handling a ticket",
+                "body": "<p>The tab <em>Handling</em> is for the support team only.</p>\n<ul>\n<li><strong>Assigned to</strong> – who works on the ticket. <em>Take ticket</em> assigns it to you. Only the team lead may give a ticket to someone else.</li>\n<li><strong>Level</strong> – 1st level is the service desk, 2nd level the specialists.</li>\n<li><strong>Due</strong> – set when the ticket is saved: the category's time limit, a quarter of it for urgent tickets. Overdue tickets are marked red in the list.</li>\n<li><strong>Escalate to 2nd level</strong> – hands the ticket to the specialists and notifies them.</li>\n<li><strong>Resolution</strong> – how the problem was solved. Write it before you set the status to <em>Resolved</em>; it helps the next person with the same problem.</li>\n</ul>",
+                "format": "html",
+                "parent": "tkt_help_ticket",
+                "sort_order": 10,
+                "access": "[\"tkt_agent\",\"tkt_specialist\",\"tkt_lead\"]",
+                "keywords": "assign, escalate, due, SLA",
+                "active": "1",
+                "created_at": "2026-10-04 10:00:00",
+                "updated_at": "2026-10-04 10:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_help",
+            {
+                "zzzzsys_nunext_help_id": "tkt_help_005",
+                "code": "tkt_help_kb",
+                "lang": "",
+                "title": "Knowledge base",
+                "body": "<p>The knowledge base has short articles with answers to frequent questions – for example how to reset a password or where to find invoices.</p>\n<ol>\n<li>Open <em>Knowledge base</em> from the start page.</li>\n<li>Search for a word of your question.</li>\n<li>Open the article and follow the steps.</li>\n</ol>\n<p>Didn't help? <a href=\"#help=tkt_help_ticket\">Report a problem</a> and mention the article you tried.</p>\n[[not: tkt_customer]]\n<h2>Writing articles</h2>\n<p>Write an article when the same question comes up a second time. Tick <strong>Visible to customers</strong> when customers may read it; articles without the tick are for the team only.</p>\n[[/not]]",
+                "format": "html",
+                "parent": "tkt_help",
+                "sort_order": 20,
+                "access": null,
+                "keywords": "article, answer, FAQ",
+                "active": "1",
+                "created_at": "2026-10-04 10:00:00",
+                "updated_at": "2026-10-04 10:00:00",
+                "updated_by": "sample"
+            }
+        ],
+        [
+            "zzzzsys_nunext_help",
+            {
+                "zzzzsys_nunext_help_id": "tkt_help_006",
+                "code": "tkt_help_categories",
+                "lang": "",
+                "title": "Categories",
+                "body": "<p>Each ticket belongs to a category. The category decides:</p>\n<ul>\n<li><strong>Team</strong> – who handles tickets of this kind.</li>\n<li><strong>SLA hours</strong> – how many hours the team has to resolve a ticket. Urgent tickets get a quarter of it.</li>\n<li><strong>Active</strong> – only active categories can be chosen for new tickets. Untick instead of deleting a category that is still used.</li>\n</ul>",
+                "format": "html",
+                "parent": "tkt_help",
+                "sort_order": 30,
+                "access": "[\"tkt_lead\"]",
+                "keywords": "category, SLA, team",
+                "active": "1",
+                "created_at": "2026-10-04 10:00:00",
+                "updated_at": "2026-10-04 10:00:00",
+                "updated_by": "sample"
             }
         ]
     ],

@@ -42,10 +42,16 @@ final class NuAppCloner
 	/** Rows that do not belong into a copy: logged-in sessions and one-time tokens (password reset links …) – the tables are created. */
 	public const SESSION_TABLES = ['zzzzsys_session', 'zzzzsys_nunext_session', 'zzzzsys_nunext_token'];
 	private const BATCH = 500;
+	/** MySQL column types written as plain numbers in the SQL file, when the value looks like one (else quoted as before). */
+	private const NUMERIC = ['tinyint', 'smallint', 'mediumint', 'int', 'integer', 'bigint', 'decimal', 'numeric', 'float', 'double', 'real'];
+	private const NUMBER = '/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/';
 	/** Rows per INSERT of the SQL file (the size limit below usually comes first). */
 	private const BATCH_EXPORT = 10000;
 	/** Size of one INSERT (bytes) – as mysqldump's net_buffer_length; in a direct copy at most half of the target's max_allowed_packet. */
 	private const BATCH_BYTES = 1048576;
+	/** SQL file: a COMMIT after about this many bytes of INSERTs within one table (0.8.1032, as myloader's --max-transaction-size) – a large
+	 *  table is no longer imported in one huge transaction. */
+	private const COMMIT_BYTES = 10485760;
 
 	private NuDB $src;
 	private PDO $s;
@@ -55,6 +61,8 @@ final class NuAppCloner
 	private $out;                 // callable(string $sql) – SQL file
 	private array $stats = ['tables' => 0, 'views' => 0, 'rows' => 0, 'functions' => 0, 'procedures' => 0, 'triggers' => 0, 'events' => 0, 'files' => 0, 'bytes' => 0];
 	private array $warnings = [];
+	/** Rows written per table (0.8.1032): stored with a backup, compared after a restore. @var array<string, int> */
+	private array $counts = [];
 	private string $srcDb;
 	/** SQL Server instead of MySQL / MariaDB (source and target are the same kind). */
 	private bool $ms = false;
@@ -141,7 +149,7 @@ final class NuAppCloner
 
 		$this->say(t('ac_done_in', round(microtime(true) - $start, 1)), 'ok');
 		if (!$this->o['dry'] && !$this->o['export']) NuLog::write('app_cloned', 'database', (string)$this->o['target']['db'], ['stats' => $this->stats, 'files' => $this->o['files'] ? $this->o['target_path'] : '']);
-		return ['stats' => $this->stats, 'warnings' => $this->warnings];
+		return ['stats' => $this->stats, 'warnings' => $this->warnings, 'counts' => $this->counts];
 	}
 
 	/**
@@ -456,6 +464,8 @@ final class NuAppCloner
 		$binary = array_flip(array_column(array_filter($cols, static fn($c) => preg_match('/blob|binary|geometry|point|linestring|polygon|geometrycollection/i', $c[1])), 0));
 		// BIT: read as a number and written as a number (0.8.291 – PDO returns BIT as an integer; written as text "170" it became 0xFF)
 		$bits = array_flip(array_column(array_filter($cols, static fn($c) => strtolower((string)$c[1]) === 'bit'), 0));
+		// numbers without quotes in the SQL file (0.8.1031, as mysqldump): smaller, and imported without a text → number conversion
+		$nums = array_flip(array_column(array_filter($cols, static fn($c) => in_array(strtolower((string)$c[1]), self::NUMERIC, true)), 0));
 		$selList = implode(', ', array_map(static fn($n) => isset($bits[$n]) ? 'CAST(' . self::q($n) . ' AS UNSIGNED) AS ' . self::q($n) : self::q($n), $names));
 		$where = '';
 		$pk = $tb . '_id';
@@ -481,12 +491,14 @@ final class NuAppCloner
 		$maxBytes = $export ? self::BATCH_BYTES : $this->maxBytes;
 		$ph = '(' . implode(', ', array_fill(0, count($names), '?')) . ')';
 		$total = 0;
-		$buf = []; $bytes = 0;
-		$flush = function () use (&$buf, &$bytes, &$total, $export, $verb, $tb, $colList, $ph, $names, $bits, $binary): void {
+		$buf = []; $bytes = 0; $uncommitted = 0;
+		$flush = function () use (&$buf, &$bytes, &$total, &$uncommitted, $export, $verb, $tb, $colList, $ph, $names, $bits, $binary): void {
 			if (!$buf) return;
 			if ($export) {
 				if ($total === 0) $this->emit("\n-- " . $tb . "\n/*!40000 ALTER TABLE " . self::q($tb) . " DISABLE KEYS */;\nSET autocommit = 0;\n");
+				elseif ($uncommitted >= self::COMMIT_BYTES) { $this->emit("COMMIT;\n"); $uncommitted = 0; }
 				$this->emit($verb . self::q($tb) . ' ' . $colList . " VALUES\n" . implode(",\n", $buf) . ";\n");
+				$uncommitted += $bytes;
 			} else {
 				$st = $this->t->prepare($verb . self::q($tb) . ' ' . $colList . ' VALUES ' . implode(', ', array_fill(0, count($buf), $ph)));
 				$k = 1;
@@ -512,7 +524,8 @@ final class NuAppCloner
 			while (($r = $rs->fetch(PDO::FETCH_NUM)) !== false) {
 				if ($export) {
 					$v = [];
-					foreach ($r as $i => $x) $v[] = $x === null ? 'NULL' : (isset($bits[$names[$i]]) ? (string)(int)$x : (isset($binary[$names[$i]]) ? ($x === '' ? "''" : '0x' . bin2hex((string)$x)) : $this->s->quote((string)$x)));
+					foreach ($r as $i => $x) $v[] = $x === null ? 'NULL' : (isset($bits[$names[$i]]) ? (string)(int)$x : (isset($binary[$names[$i]]) ? ($x === '' ? "''" : '0x' . bin2hex((string)$x))
+						: (isset($nums[$names[$i]]) && preg_match(self::NUMBER, (string)$x) ? (string)$x : $this->s->quote((string)$x))));
 					$line = '(' . implode(', ', $v) . ')';
 					$size = strlen($line) + 2;
 					if ($buf && $bytes + $size > $maxBytes) $flush();
@@ -545,6 +558,7 @@ final class NuAppCloner
 		}
 		$rs->closeCursor();
 		$this->s->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $buffered);
+		$this->counts[$tb] = $total;
 		if ($total > 0) $this->say(t('ac_n_rows', $tb, $total));
 	}
 

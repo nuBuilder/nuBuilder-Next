@@ -354,6 +354,7 @@
 				<li>Add a <em>Word / text</em> object from <em>Add</em>, then <em>Publish</em> with a short note – or <em>Discard</em> to throw the changes away.</li>
 			</ol>
 		</div>
+		<div class="tut-note">Once an application has more than a few forms, collect the forms, procedures and reports of one piece of work in a <a data-help="projects">project</a> – with notes and to-dos, and <em>Work on this</em> narrows the lists to them.</div>
 		<p><a data-help="design-mode">Design mode</a></p>
 	</section>
 
@@ -604,7 +605,7 @@
 		<ol>
 			<li>Choose <code>nunext.zip</code> and click <em>Check package</em>: version, changed files, what's new, database changes, and whether the package is <em>signed by nuBuilder Next</em>. Nothing changes yet.</li>
 			<li><em>Install</em> makes a <strong>backup</strong> (program files, nuBuilder Next's tables and an SQL dump of the <em>nuBuilder tables</em> – every <code>zzzzsys_</code> table, all an update can change; or of the whole database), switches on maintenance mode, copies the files and runs the database steps. If copying fails, the backup is put back automatically.</li>
-			<li><strong>Roll back</strong> puts the program files of an earlier backup back. Backups can be downloaded – the SQL dump imports with phpMyAdmin.</li>
+			<li><strong>Roll back</strong> puts the program files of an earlier backup back; <strong>Restore database</strong> (the database icon of a backup with an SQL dump) puts its database back – after a check, and with a backup of the current database first. Backups can also be downloaded – the SQL dump imports with phpMyAdmin.</li>
 		</ol>
 		<ul>
 			<li>The <em>Change history</em> card lists what changed in every version.</li>

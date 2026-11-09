@@ -820,6 +820,7 @@ final class NuUserHelp
 			. ($extra !== '' ? "- Related screens are listed after the screen: explain how they are used from this screen (adding rows, picking a value, what a button opens), not as screens of their own.\n" : '')
 			. "- Short sentences, plain words, no technical terms (no table, column, SQL or code names).\n"
 			. "- Answer with HTML only, no <html>, <head> or <body>: use <h2>, <h3>, <p>, <ul>/<ol>/<li>, <strong>, <table> where it helps. No styles, no scripts.\n"
+			. "- Put the whole HTML in ONE code block (```html … ```), nothing before or after it, no follow-up suggestions.\n"
 			. "- Parts only some users should see can be wrapped in a paragraph [[level: code]] before and [[/level]] after (codes of access levels); leave them out unless I ask.\n"
 			. "\n## The screen \"" . $name($meta) . "\" – its fields (label, type, notes):\n" . implode("\n", self::fieldLines($meta)) . "\n" . $extra;
 	}

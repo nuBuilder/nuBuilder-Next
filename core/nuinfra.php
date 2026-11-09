@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 28;
+	public const VERSION = 29;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -162,6 +162,30 @@ final class NuSchema
 		'zzzzsys_nunext_permission_type' => [                     // types of permission items (0.8.773, core/nupermtype.php): pk = zzzzsys_permission_item_id
 			'pk' => 'zzzzsys_nunext_permission_type_id',
 			'cols' => [['type', 'text', '30'], ['settings', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+		],
+		'zzzzsys_nunext_project' => [                             // projects (0.8.1035, core/nuproject.php)
+			'pk' => 'zzzzsys_nunext_project_id',
+			'cols' => [['code', 'text', '60'], ['name', 'text', '200'], ['description', 'text', '2000'], ['status', 'text', '20'], ['created_at', 'datetime'],
+				['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+			'index' => ['code'],
+		],
+		'zzzzsys_nunext_project_item' => [                        // members of a project: kind (form, procedure, …) + ref (id / table name)
+			'pk' => 'zzzzsys_nunext_project_item_id',
+			'cols' => [['project_id', 'text', '25'], ['kind', 'text', '20'], ['ref', 'text', '100'], ['note', 'text', '500'], ['added_at', 'datetime'], ['added_by', 'text', '50']],
+			'index' => ['project_id', 'ref'],
+		],
+		'zzzzsys_nunext_project_note' => [                        // notes of a project (Markdown)
+			'pk' => 'zzzzsys_nunext_project_note_id',
+			'cols' => [['project_id', 'text', '25'], ['title', 'text', '200'], ['body', 'longtext'], ['pinned', 'text', '1'], ['created_at', 'datetime'],
+				['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
+			'index' => ['project_id'],
+		],
+		'zzzzsys_nunext_project_task' => [                        // to-dos of a project (assignee = user id or 'globeadmin')
+			'pk' => 'zzzzsys_nunext_project_task_id',
+			'cols' => [['project_id', 'text', '25'], ['title', 'text', '300'], ['body', 'text', '4000'], ['status', 'text', '10'], ['assignee', 'text', '25'], ['due', 'datetime'],
+				['item', 'text', '130'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50'],
+				['done_at', 'datetime'], ['done_by', 'text', '50'], ['notified_at', 'datetime']],
+			'index' => ['project_id', 'assignee'],
 		],
 		'zzzzsys_nunext_help' => [                                // user help pages (0.8.1023, core/nuuserhelp.php): lang '' = the page, else a translation
 			'pk' => 'zzzzsys_nunext_help_id',

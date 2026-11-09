@@ -35,7 +35,7 @@ final class NuHome
 	/** nuBuilder Next pages an own tile may open (kind page). */
 	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'email', 'emailtemplates',
 		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'dataexport', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
-		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields', 'helppages', 'userhelp'];
+		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields', 'helppages', 'userhelp', 'projects'];
 	/** Pinned pages of a tile's menu that open the same page as a tile of their own (0.8.934): shown only while that tile is not on the page. */
 	public const SAME_PAGE = ['s_form_clone' => 'cloner'];
 	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
@@ -58,7 +58,7 @@ final class NuHome
 			'tabs' => [['t_build', 'home_pf_t_build'], ['t_debug', 'home_pf_t_debug'], ['t_int', 'home_group_integration']],
 			'groups' => [
 				['g_forms', 'nav_forms', 't_build', ['forms', 's_form_new', 'cloner', 's_snippets', 's_items', 's_files', 's_formats', 's_translations']],
-				['g_code', 'home_pf_g_code', 't_build', ['procedures', 's_proc_new', 'reports', 's_report_new', 's_sqlbuilder', 'prompts']],
+				['g_code', 'home_pf_g_code', 't_build', ['procedures', 's_proc_new', 'reports', 's_report_new', 's_sqlbuilder', 'prompts', 'projects']],
 				// the pages Debug and Log – not the tile "Log" (it opens Debug; next to the page Log there would be two tiles called "Log")
 				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
 				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'dataexport', 'appcloner', 'sample']],
@@ -138,6 +138,7 @@ final class NuHome
 			'procedures'  => ['procedures', 'bi-filetype-php', t('proc_title'), t('home_proc_hint')],
 			'reports'     => ['reports', 'bi-file-earmark-richtext', t('rpt_title_list'), t('home_reports_hint')],
 			'prompts'     => ['prompts', 'bi-stars', t('pg_title'), t('home_prompts_hint')],
+			'projects'    => ['projects', 'bi-kanban', t('prj_title'), t('prj_card_hint')],   // projects (0.8.1035)
 			'apiclients'  => ['apiclients', 'bi-plug', t('api_title'), t('home_api_hint')],
 			'webhooks'    => ['webhooks', 'bi-broadcast', t('wh_title'), t('home_wh_hint')],
 			'email'       => ['email', 'bi-envelope', t('nav_email'), t('home_email_hint')],
@@ -331,7 +332,7 @@ final class NuHome
 		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => (object)[], 'view' => self::VIEW_DEFAULTS,
 			'tabs' => [['id' => 't_home', 'title' => t('nav_home')], ['id' => 't_admin', 'title' => t('vendor_title')]], 'groups' => [
 			['id' => 'g_users', 'title' => t('home_group_users'), 'tab' => 't_home', 'tiles' => ['users', 'access', 'permissions', 'userfields', 'sessions', 'adminroles']],
-			['id' => 'g_dev', 'title' => t('home_group_dev'), 'tab' => 't_home', 'tiles' => ['forms', 'userhome', 'procedures', 'reports', 'debug']],
+			['id' => 'g_dev', 'title' => t('home_group_dev'), 'tab' => 't_home', 'tiles' => ['forms', 'userhome', 'procedures', 'reports', 'projects', 'debug']],
 			['id' => 'g_comm', 'title' => t('home_group_comm'), 'tab' => 't_home', 'tiles' => ['email', 'notes']],
 		]];
 		foreach (self::ADMIN_GROUPS as $id => [$title, $tiles]) $l['groups'][] = ['id' => $id, 'title' => t($title), 'tab' => 't_admin', 'tiles' => $tiles];
@@ -446,7 +447,7 @@ final class NuHome
 		$l['hidden'] = array_values(array_filter($l['hidden'], static fn($k) => in_array($k, $knownAll, true)));
 		$missing = array_values(array_diff($known, $placed));
 		// tiles of a later version next to their neighbour when it is placed (reports after procedures, 0.8.183)
-		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'dataexport' => 'import', 'userfields' => 'permissions', 'helppages' => 'notifications'] as $tile => $after) {
+		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'dataexport' => 'import', 'userfields' => 'permissions', 'helppages' => 'notifications', 'projects' => 'reports'] as $tile => $after) {
 			if (!in_array($tile, $missing, true)) continue;
 			foreach ($l['groups'] as &$g) {
 				$i = array_search($after, $g['tiles'], true);
@@ -808,7 +809,7 @@ final class NuHome
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
 		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'], 'themes' => ['branding', 'view'],
 		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'dataexport' => ['dataexport', 'view'], 'appcloner' => ['appcloner', 'change'], 'cloner' => ['forms', 'change'], 'sample' => ['sample', 'view'],
-		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'], 'helppages' => ['userhelp', 'view'],
+		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'], 'helppages' => ['userhelp', 'view'], 'projects' => ['acl', NuAcl::FORM_PROJECT],
 		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'], 's_user_home' => ['homelayout', 'change'],
 	];
 	/** Pages an own tile (kind page) may open => the tile whose right decides. */
@@ -818,7 +819,7 @@ final class NuHome
 		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import', 'dataexport' => 'dataexport',
 		'cloner' => 'cloner', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
 		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
-		'tutorial' => 'tutorial', 'helppages' => 'helppages'];
+		'tutorial' => 'tutorial', 'helppages' => 'helppages', 'projects' => 'projects'];
 
 	/** May the signed-in user see this tile? */
 	public static function visible(string $key, array $layout): bool
