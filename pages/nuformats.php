@@ -64,18 +64,17 @@ nu_layout_start(t('fmt_title'), 'forms');
 		<li class="breadcrumb-item active" aria-current="page"><?= h(t('fmt_title')) ?></li>
 	</ol>
 </nav>
-<div class="nuTitleBar mb-3">
-	<h1 class="h3 mb-0"><?= h(t('fmt_title')) ?></h1>
-	<div class="nuTitleSub text-body-secondary small"><?= h(t('fmt_subtitle')) ?></div>
-	<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
-		<?php if ($designer['rights']['add']): ?>
-			<button type="button" class="btn nuAddBtn" title="<?= h(t('fmt_new')) ?>" id="fmtNew"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></button>
-		<?php endif; ?>
-		<?= $rows ? NuListExport::buttons(NuAcl::FORM_FORMAT, 'formats', ['q' => $q, 'type' => $type]) : '' /* no records: nothing to export (0.8.749) */ ?>
+<div class="card shadow-sm nuListCard"><?php /* review N6: the list card of the other lists */ ?>
+	<div class="card-header nuListHead nuTitleBar">
+		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('fmt_title')) ?><?= NuListView::infoTip(t('fmt_subtitle')) ?></h1>
+		<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
+			<?php if ($designer['rights']['add']): ?>
+				<button type="button" class="btn nuAddBtn" title="<?= h(t('fmt_new')) ?>" id="fmtNew"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></button>
+			<?php endif; ?>
+			<?= $rows ? NuListExport::buttons(NuAcl::FORM_FORMAT, 'formats', ['q' => $q, 'type' => $type]) : '' /* no records: nothing to export (0.8.749) */ ?>
+		</div>
 	</div>
-</div>
-
-<form class="card card-body shadow-sm mb-3 py-3" method="get" action="index.php" role="search">
+<form class="nuListFilter border-bottom px-3 py-2" method="get" action="index.php" role="search">
 	<input type="hidden" name="p" value="formats">
 	<div class="row g-2 align-items-end">
 		<div class="col-md-6"><?= nu_list_search($q, '', 'nuFmtFilters', $type !== '', $q !== '' || $type !== '' ? nu_url('formats') : null) ?></div>
@@ -88,10 +87,8 @@ nu_layout_start(t('fmt_title'), 'forms');
 		</div>
 	</div>
 </form>
-
-<div class="card shadow-sm">
 	<div class="table-responsive">
-		<table class="table table-hover align-middle mb-0 nu-table" id="fmtTable">
+		<table class="table table-hover align-middle mb-0 nu-table" data-nu-phcards id="fmtTable">
 			<thead><tr>
 				<th scope="col"><?= h(t('fmt_type')) ?></th>
 				<th scope="col"><?= h(t('fmt_format')) ?></th>

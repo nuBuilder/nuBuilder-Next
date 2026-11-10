@@ -18,3 +18,15 @@
 	boxes.forEach(function (b) { b.addEventListener('change', sync); });
 	sync();
 })();
+
+/* Remove older versions (0.8.1065): the button works only while a version is ticked. */
+(function () {
+	'use strict';
+	Array.prototype.forEach.call(document.querySelectorAll('.nuLpOldDlg'), function (dlg) {
+		var go = dlg.querySelector('.nuLpOldGo');
+		var boxes = Array.prototype.slice.call(dlg.querySelectorAll('.nuLpOldChk'));
+		function sync() { go.disabled = !boxes.some(function (b) { return b.checked; }); }
+		boxes.forEach(function (b) { b.addEventListener('change', sync); });
+		sync();
+	});
+})();

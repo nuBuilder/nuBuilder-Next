@@ -628,8 +628,8 @@ final class NuListView
 		$more = !empty($opt['more']);                             // ⋮ menu on phones (more()): Print moves into it
 		ob_start();
 		?>
-<div class="card shadow-sm nuListCard nuLv<?= ($def['phone'] ?? 'cards') === 'table' ? ' nuLvPhoneTable' : '' ?>" data-lv-list="<?= h($L['key']) ?>" data-lv-phone="<?= h($def['phone'] ?? 'cards') ?>"<?= !empty($opt['smooth']) ? ' data-lv-smooth="' . h($vp) . '"' : '' ?>>
-	<div class="card-header nuListHead nuTitleBar">
+<div class="card shadow-sm nuListCard nuLv<?= ($def['phone'] ?? 'cards') === 'table' ? ' nuLvPhoneTable' : '' ?><?= count($cols) > 5 ? ' nuLvWide' : '' /* review M5: cards up to 992 px when the table has many columns */ ?>" data-lv-list="<?= h($L['key']) ?>" data-lv-phone="<?= h($def['phone'] ?? 'cards') ?>"<?= !empty($opt['smooth']) ? ' data-lv-smooth="' . h($vp) . '"' : '' ?>>
+	<div class="card-header nuListHead nuTitleBar" data-nu-more-label="<?= h(t('more_actions')) ?>">
 		<?php if ($title !== ''): ?><h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h($title) ?><?= $opt['title_extra'] ?? '' ?></h1><?php endif; ?>
 		<?= $opt['title_sub'] ?? '' ?>
 		<div class="d-flex flex-wrap gap-2 align-items-center"><?= ($opt['back'] ?? true) ? nu_back_button() : '' ?>

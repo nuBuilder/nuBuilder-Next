@@ -157,8 +157,9 @@ nu_layout_start(t('da_title_form', $meta->description()), 'forms');
 <div class="tab-content card card-body border-top-0 rounded-top-0 shadow-sm mb-4">
 	<!-- Fields -->
 	<div class="tab-pane fade<?= $tab === 'fields' ? ' show active' : '' ?>" id="da_fields" role="tabpanel" aria-labelledby="da_fields_tab">
-		<p class="small text-body-secondary"><?= h(t('da_intro_fields')) ?><?= $tip(t('da_modes_tip')) ?></p>
+		<p class="small text-body-secondary mb-2"><?= h(t('da_intro_short')) ?><?= $tip(t('da_intro_fields') . ' ' . t('da_modes_tip')) ?></p>
 		<?php if (!$fields): ?><p class="text-body-secondary"><?= h(t('da_nothing')) ?></p><?php else: ?>
+		<p class="small mb-2" id="daAllEditable"><i class="bi bi-pencil me-1" aria-hidden="true"></i><?= h(t('da_all_editable')) ?></p>
 		<form method="post" action="<?= h($back) ?>" data-nu-guard id="daFieldsForm">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="save_fields">
 			<?php foreach ($groups as [$m, $sfId]):
@@ -169,7 +170,7 @@ nu_layout_start(t('da_title_form', $meta->description()), 'forms');
 					<details class="daField border rounded mb-2"<?= $rules ? ' open' : '' ?> id="da_o_<?= h($oid) ?>" data-oid="<?= h($oid) ?>">
 						<summary class="px-3 py-2 d-flex flex-wrap gap-2 align-items-center">
 							<code><?= h((string)$o['sob_all_id']) ?></code> <span><?= h($label($o)) ?></span>
-							<span class="badge text-bg-light border">nuBuilder Forte: <?= h($nubAccess($o)) ?></span>
+							<?php if (!in_array((string)$o['sob_all_access'], ['', '0'], true)): // review M8: only what differs from "editable" ?><span class="badge text-bg-light border">nuBuilder Forte: <?= h($nubAccess($o)) ?></span><?php endif; ?>
 							<?php foreach ($rules as $r): ?>
 								<span class="badge <?= in_array($r['mode'], ['wh', 'mask', 'prot'], true) ? 'text-bg-warning' : 'text-bg-secondary' ?>"><?= h(($r['type'] === 'default' ? t('da_type_default') : t('da_type_' . $r['type']) . ' ' . $subjectName($r['type'], $r['subject'])) . ': ' . $modeLabel($r['mode'])) ?></span>
 							<?php endforeach; ?>

@@ -144,8 +144,9 @@ $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" rol
 			<span class="small text-body-secondary"><?= h(t('n_records', count($rows))) ?></span>
 			<div class="d-flex flex-wrap gap-2"><a class="btn nuAddBtn" href="<?= h(nu_url('appcloner', ['id' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a></div>
 		</div>
+		<?php if (!$rows && $q === ''): echo nu_empty_state('bi-copy', t('ac_empty'), nu_url('appcloner', ['id' => 'new'])); else: // review M10 ?>
 		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 nu-table">
+			<table class="table table-hover align-middle mb-0 nu-table" data-nu-phcards>
 				<thead><tr><th><?= h(t('ac_code')) ?></th><th><?= h(t('ac_description')) ?></th><th><?= h(t('ac_target_db')) ?></th><th><?= h(t('ac_files_col')) ?></th></tr></thead>
 				<tbody>
 				<?php if (!$rows): ?><tr><td colspan="4" class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
@@ -160,6 +161,7 @@ $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" rol
 				</tbody>
 			</table>
 		</div>
+		<?php endif; ?>
 	</div>
 <?php nu_layout_end();
 	return;

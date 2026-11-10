@@ -31,7 +31,7 @@ nu_center_start(t('vendor_tfm'), t('fm_not_set_up'), 'bi-folder2-open');
 <?php if (!NuFileManager::shipped()): ?>
 	<div class="alert alert-warning small mb-3" id="fmMissing"><?= h(t('fm_missing_files', NuPage::shownFolder(NuFileManager::CODE))) ?></div>
 <?php elseif ($ga): ?>
-	<p class="small text-body-secondary"><?= h(t('fm_setup_hint')) ?></p>
+	<details class="small text-body-secondary mb-3 nuMoreHint"><summary><?= h(t('more_info')) ?></summary><?= h(t('fm_setup_hint')) ?></details><?php /* review M3 */ ?>
 	<form method="post" action="<?= h(nu_url('filemanager')) ?>" data-nu-once>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="setup">
 		<button class="btn btn-primary w-100 py-2" type="submit" id="fmSetup" data-nu-busy="<?= h(t('fm_setup')) ?>"><i class="bi bi-magic me-2"></i><?= h(t('fm_setup')) ?></button>

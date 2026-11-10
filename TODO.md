@@ -81,6 +81,15 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Database tools in an installed app** (0.8.852–0.8.854): phpMyAdmin and Adminer open from the app window (Chrome / Edge "Install").
 
 ## Sign-in and security
+- [ ] **Hardening from the security check of 0.8.1061** (decision: which to build) – no exploitable finding; four optional points:
+      1. *Inline styles in list cells*: the cleaner keeps `style` (without `url()` / scripts), so `position: fixed` could draw over the
+         page → allow only harmless properties (colour, font, padding, border).
+      2. *Images with relative addresses in list cells*: a cell value can make a viewer's browser send a GET to any address of the app
+         (no GET changes data except the language) → allow only `http(s)`, `data:image` and the file routes.
+      3. *Unquoted hash variables in SQL* (`WHERE id = #x#`): escaping protects only quoted values; the bound-parameter switch
+         `$nuDevSelectQueryRunParameterised` closes it but is off by default → a Compatibility check point listing such places.
+      4. *`_nu_then` after a save* accepts a tab character (browsers strip it, `/<tab>/host` would leave the site; needs a valid CSRF
+         token and a successful save) → refuse control characters.
 - [ ] **2FA safe addresses** (0.8.958) – `$nuConfig2FASafeIPAddresses` (globeadmin list, users `*` or a login name; addresses, prefixes, `*` parts) skips the second factor – please verify behind the live proxy (the address is `nu_client_ip()`)
 - [ ] **One password eye in Edge** (0.8.944): sign-in / user form show only nuBuilder Next's eye in Microsoft Edge; other password fields keep Edge's.
 - [ ] **Passkeys on the live server** (0.8.877, https, the real domain): add one with Windows Hello, Touch ID / Face ID, an Android phone and
@@ -106,6 +115,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **UI review on devices** (0.8.1066–0.8.1070) – please verify on a real phone and a touch tablet: list title bars (only Back / Add / view menu, the rest in ⋮ with Card or table first), folded column filters of form lists, settings section select, full-size fields on touch tablets, Origin filter (procedures / items: own rows only by default; e-mail templates: own language) – is hiding the read-only nx_ templates under Own wanted?
 - [ ] **Computed fields inside list columns** (0.8.1059, a tester's report) – please verify with the tester's real list: `IF(…, alias, '')`, `CONCAT(…, alias)`, `ORDER BY CAST(alias AS UNSIGNED)`, aliases in GROUP BY / HAVING
 - [ ] **Help pages linked from the editor** (0.8.1054) – *Add to a form…* on a form with an open draft (published afterwards without a conflict); **content sheet** on screens ≥ 1680 px (0.8.1053) – look at forms with wide fixed layouts
 - [ ] **Projects** (0.8.1035) – please verify on a real application: Suggest related on forms with many sub-forms / run buttons, the list filter Project while working on a project, export with table rows and import into a second installation (forms replaced → form history, new tables, project merged by code). Not built: a project filter in design mode's Structure (it lists one form only), Ctrl+K narrowed to the project, the working project kept across sign-ins
@@ -220,6 +230,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       is hidden – `NU_FEATURE_ACCESSIBILITY` in `core/nuapp.php`; saving a user keeps the stored value).
 
 ## Reports and dashboards
+- [ ] **TCPDF 7 pack** (0.8.1062) – please verify a report with pictures (photos per row, a logo by web path) on the live server after installing the 7.0.22 pack; Roll back to 6 if anything is left out
+- [ ] **Report pictures with TCPDF 7** (0.8.1062): a report with photos (`<img src="/folder/x.jpg">` in an HTML field, an image object with an
+      address of the own server) on a server with the TCPDF 7 pack – they were left out before. Pictures from another host stay blocked
+      with TCPDF 7 (decision: a setting for further hosts?).
 - [ ] **Reports with HTML fields** (0.8.874): an existing report with "Fields contain HTML" on real data (page breaks follow the printed
       height now); an HTML / Markdown field that runs over a page break; the same report saved in Forte's designer (is `contentType` kept?).
 - [ ] **Dashboard table widgets** (0.8.682): column nu_record_id + link to a form → rows open the record; option "Open in a new tab".

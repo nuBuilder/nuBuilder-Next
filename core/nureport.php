@@ -506,6 +506,28 @@ final class NuReport
 		return is_file("$dir/vendor/autoload.php") ? "$dir/vendor/autoload.php" : '';
 	}
 
+	/** Folders TCPDF 7 may read pictures from: the web root, nuBuilder Next, nuBuilder Forte's folder and the PDF cache (existing ones). */
+	public static function tcpdfAllowedPaths(): array
+	{
+		$out = [];
+		foreach ([(string)($_SERVER['DOCUMENT_ROOT'] ?? ''), NU_ROOT, (string)(NuBuilderLib::path() ?? ''), self::tcpdfCacheDir()] as $d) {
+			$r = $d !== '' ? realpath($d) : false;
+			if ($r !== false && $r !== DIRECTORY_SEPARATOR && is_dir($r) && !in_array($r, $out, true)) $out[] = $r;
+		}
+		return $out;
+	}
+
+	/** Hosts TCPDF 7 may load pictures from: this installation's own (base URL and the request's host), nothing else. */
+	public static function tcpdfAllowedHosts(): array
+	{
+		$out = [];
+		foreach ([(string)parse_url(nu_base_url(), PHP_URL_HOST), (string)preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? ''))] as $h) {
+			$h = strtolower(trim($h));
+			if ($h !== '' && preg_match('/^[a-z0-9.\-\[\]:]+$/', $h) && !in_array($h, $out, true)) $out[] = $h;
+		}
+		return $out;
+	}
+
 	/** Loads TCPDF once; exceptions instead of die() on errors. */
 	public static function loadTcpdf(): void
 	{
@@ -524,6 +546,11 @@ final class NuReport
 		// own cache folder (0.8.770): TCPDF deletes every image it used whose path starts with K_PATH_CACHE – with the default (the system's
 		// temp folder, e.g. /tmp/) that included a report's photos stored below it
 		if (!defined('K_PATH_CACHE')) define('K_PATH_CACHE', self::tcpdfCacheDir() . '/');
+		// TCPDF 7 reads local files only below its own folders and the running script's folder, and no remote ones (0.8.1062): pictures of a
+		// report (<img> in HTML fields, image objects with a path) usually sit elsewhere below the web root or in nuBuilder Forte's folder –
+		// without these they are silently left out. Remote pictures: only from this installation's own host.
+		if (!defined('K_ALLOWED_PATHS')) define('K_ALLOWED_PATHS', self::tcpdfAllowedPaths());
+		if (!defined('K_ALLOWED_HOSTS')) define('K_ALLOWED_HOSTS', self::tcpdfAllowedHosts());
 		if (!defined('K_TCPDF_EXTERNAL_CONFIG')) {
 			define('K_TCPDF_EXTERNAL_CONFIG', true);
 			define('K_PATH_MAIN', $dir . '/');

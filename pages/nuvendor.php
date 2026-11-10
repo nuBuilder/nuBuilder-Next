@@ -164,10 +164,10 @@ $dbTools = NuVendor::dbTools();
 					<h2 class="h5"><i class="bi bi-database me-2"></i><?= h(t('vendor_pma')) ?> <span class="badge ms-1 text-bg-secondary"><?= h(t('vendor_missing')) ?></span></h2>
 					<?php if ($mysql): ?>
 						<p class="small text-body-secondary mb-1"><strong>phpMyAdmin</strong> – <?= h(t('vendor_copy', NuVendor::APPS['PMA']['dir'])) ?> <?= nu_lp_hint() ?></p>
-						<code class="small d-block text-break mb-3"><?= h(NuVendor::dir('PMA')) ?>/</code>
+						<code class="small d-block text-break mb-3" title="<?= h(NuVendor::dir('PMA')) ?>/"><?= h(nu_short_path(NuVendor::dir('PMA'))) ?>/</code>
 					<?php endif; ?>
 					<p class="small text-body-secondary mb-1"><strong>Adminer</strong> – <?= h(t('vendor_adminer_copy')) ?> <?= nu_lp_hint() ?></p>
-					<code class="small d-block text-break"><?= h(NuVendor::dir('ADM')) ?>/adminer.php</code>
+					<code class="small d-block text-break" title="<?= h(NuVendor::dir('ADM')) ?>/adminer.php"><?= h(nu_short_path(NuVendor::dir('ADM'))) ?>/adminer.php</code>
 				</div>
 			</div>
 		</div>

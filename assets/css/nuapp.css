@@ -1978,7 +1978,7 @@ body:has(.nuRecHead) main .form-label { font-size: .875rem; margin-bottom: .25re
 body:has(.nuRecHead) main .card-body .form-check-label { font-size: .875rem; }
 body:has(.nuRecHead) main .nav-tabs.mb-3 { margin-bottom: .625rem !important; }
 body:has(.nuRecHead) main .nuRecHead.mb-3 { margin-bottom: .625rem !important; }
-@media (min-width: 576px) {
+@media (min-width: 576px) and (pointer: fine) {
 	body:has(.nuRecHead) main .card-body .form-control:not(.form-control-sm):not(.form-control-lg),
 	body:has(.nuRecHead) main .card-body .form-select:not(.form-select-sm):not(.form-select-lg),
 	body:has(.nuRecHead) main .card-body .input-group:not(.input-group-sm) > .btn,
@@ -2289,4 +2289,77 @@ html.nuUhResizing iframe { pointer-events: none; }
 	html:not(.nuEmbedded) body.nu-app:not(.nu-bare):not(.nuDesignMode) main#main:is(.nuContainer, .nuFormContainer, .container, .container-xl) { background: var(--nu-page);
 		border: 1px solid var(--nu-sheet-line); border-radius: 14px; margin-top: 1rem; margin-bottom: 1.5rem; padding: 1.25rem 1.5rem 1.5rem !important; }
 	html:not(.nuEmbedded) body.nu-app:not(.nu-bare):not(.nuDesignMode) main#main:is(.nuContainer, .nuFormContainer) { max-width: 1600px; }
+}
+
+/* ---- UI review M1–M12 (0.8.1066) ---------------------------------------------------------------------------------------- */
+/* M1: phones – one way back: "‹ parent" instead of breadcrumb + Back button (nuapp.js) */
+a.nuPhBackOwn { display: none; }
+@media (max-width: 575.98px) {
+	a.nuPhBackOwn { display: inline-flex; align-items: center; gap: .15rem; max-width: 100%; min-height: 2rem; margin-bottom: .25rem; font-size: .9rem; text-decoration: none; }
+	a.nuPhBackOwn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	nav.nuPhCrumbOff, a.nuPhBtnOff { display: none !important; }
+	html.nuBack-icon a.nuPhBackOwn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+/* M4: phones – wide tables as cards (table[data-nu-phcards], labels from nuapp.js) */
+@media (max-width: 575.98px) {
+	table[data-nu-phcards] > thead { display: none; }
+	table[data-nu-phcards], table[data-nu-phcards] > tbody, table[data-nu-phcards] > tbody > tr, table[data-nu-phcards] > tbody > tr > td { display: block; width: 100%; }
+	table[data-nu-phcards] > tbody > tr { padding: .5rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
+	table[data-nu-phcards] > tbody > tr > td { border: 0; padding: .1rem 0 !important; text-align: start !important; white-space: normal !important; }
+	table[data-nu-phcards] > tbody > tr > td:empty { display: none; }
+	table[data-nu-phcards] > tbody > tr > td[data-label]:not([data-label=""])::before { content: attr(data-label); display: inline-block; min-width: 6.5rem; margin-right: .5rem;
+		color: var(--bs-secondary-color); font-size: .78rem; text-transform: uppercase; letter-spacing: .02em; }
+	.table-responsive:has(> table[data-nu-phcards]) { overflow-x: visible; }
+}
+/* M5: tablets – system lists with more than five columns show cards up to 992 px */
+@media (min-width: 768px) and (max-width: 991.98px) {
+	.nuLv.nuLvWide:not(.nuLvPhoneTable) .nuLvTableWrap { display: none; }
+	.nuLv.nuLvWide:not(.nuLvPhoneTable) .nuLvCards { display: block; }
+	html[data-lv-phone="table"] .nuLv.nuLvWide .nuLvTableWrap { display: block; }
+	html[data-lv-phone="table"] .nuLv.nuLvWide .nuLvCards { display: none; }
+}
+/* M3: long explanations folded */
+details.nuMoreHint > summary { cursor: pointer; color: var(--bs-link-color); width: fit-content; }
+/* M1: record pages on phones – the breadcrumb named the record; with "‹ parent" instead the heading names it again */
+@media (max-width: 575.98px) {
+	main:has(nav.nuPhCrumbOff) .nuTitleBar.nuRecHead > h1:not(:has(.badge, a, button)) { position: static !important; width: auto !important; height: auto !important;
+		margin: 0 0 .25rem !important; overflow: visible !important; clip: auto !important; white-space: normal !important; font-size: 1.15rem; }
+}
+/* ---- UI review N1–N7 (0.8.1067) ---- */
+/* N2: tool tabs (Debug · Log · Audit trail · Logged-in users) on one line, scrolling sideways on phones */
+.nav-tabs.nuTabsScroll { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.nav-tabs.nuTabsScroll::-webkit-scrollbar { display: none; }
+.nav-tabs.nuTabsScroll > .nav-item { flex: 0 0 auto; }
+.nav-tabs.nuTabsScroll .nav-link { white-space: nowrap; }
+/* N3: the setup wizard names the current step on phones */
+.nuWizSteps .nuWizCur { margin-left: .15rem; }
+/* N1: items whose value is an id */
+.nuItemId { font-size: .75rem; }
+/* N7: help index – finger-sized lines on touch screens */
+@media (pointer: coarse) {
+	.nuHelpToc a { display: block; padding-top: .35rem; padding-bottom: .35rem; }
+}
+/* ---- UI review H1–H6 (0.8.1068) ---- */
+/* H3: list title bars on phones – extra actions live in ⋮ (nuapp.js) */
+@media (max-width: 575.98px) {
+	.nuListCard > .nuListHead .nuPhOverflow { display: none !important; }
+	.nuListCard > .nuListHead .nuMoreMenu { order: 2; }
+}
+/* H2: form lists – column filters folded on phones until the funnel is pressed */
+@media (max-width: 575.98px) { #nuBrowseFilters.nuFltPhoneHide { display: none !important; } }
+/* H1: start page notices compact */
+details.nuNoticeFold > summary { cursor: pointer; list-style: none; }
+details.nuNoticeFold > summary::-webkit-details-marker { display: none; }
+@media (max-width: 575.98px) {
+	.nuTutBanner { padding: .5rem .75rem; flex-wrap: nowrap !important; }
+	.nuTutBanner > .bi { display: none; }
+	.nuTutBanner .fw-semibold { font-size: .9rem; }
+}
+
+/* settings frame on phones (review H6, 0.8.1068) */
+.nuSetPhSel { display: none; }
+@media (max-width: 575.98px) {
+	.nuSetFrame .nuSetSections { display: none; }
+	.nuSetFrame .nuSetPhSel { display: block; margin-top: .5rem; }
+	.nuSetFrame .nuTitleSub { display: none; }
 }

@@ -1128,6 +1128,17 @@ check('markdown: blocks and inline', str_contains($mdh, '<h1>Title</h1>') && str
 	&& str_contains($mdh, '<br>next') && str_contains($mdh, '<ul><li>one</li><li>two<ul><li>deep</li></ul></li></ul>') && str_contains($mdh, '<ol><li>first</li></ol>')
 	&& str_contains($mdh, '<td align="right">2</td>') && str_contains($mdh, '<blockquote><p>q</p></blockquote>') && str_contains($mdh, '<hr>'), $mdh);
 check('markdown: hash names keep their underscores', NuMarkdown::toHtml('#USER_NAME# and #nu_pages#') === '<p>#USER_NAME# and #nu_pages#</p>');
+// 0.8.1062: <img> paths of the web server become full file paths (TCPDF 7 does not look below the document root)
+$liDir = sys_get_temp_dir() . '/nunext-li-' . getmypid();
+@mkdir($liDir . '/fotos', 0777, true);
+file_put_contents($liDir . '/fotos/a b.jpg', 'x');
+file_put_contents($liDir . '/secret.php', 'x');
+$liReal = realpath($liDir);
+$li = NuReportEngine::localImages('<p><img src="/fotos/a%20b.jpg?v=1" width="5"><img src=\'fotos/a b.jpg\'><img src="/fotos/none.jpg"><img src="/secret.php"><img src="../x.jpg"><img src="https://h/x.jpg"><img src="data:image/png;base64,AA"></p>', [$liDir]);
+check('localImages: root-relative and relative paths resolved', substr_count($li, 'src="' . $liReal . '/fotos/a b.jpg"') === 2 && str_contains($li, 'width="5"'));
+check('localImages: missing files, other types, .., addresses and data URLs untouched', str_contains($li, 'src="/fotos/none.jpg"') && str_contains($li, 'src="/secret.php"') && str_contains($li, 'src="../x.jpg"') && str_contains($li, 'src="https://h/x.jpg"') && str_contains($li, 'src="data:image/png;base64,AA"'));
+check('localImages: text without pictures unchanged', NuReportEngine::localImages('a < b', [$liDir]) === 'a < b');
+@unlink($liDir . '/fotos/a b.jpg'); @unlink($liDir . '/secret.php'); @rmdir($liDir . '/fotos'); @rmdir($liDir);
 $sh = NuReportEngine::safeHtml('<link rel="stylesheet" href="http://x/a.css"><img src="/p.jpg"><img src="phar://a.jpg"><img src="../x.png"><img src="data:image/png;base64,AA"><img src=\'/a.png\' src="file:///b"><a href="javascript:x">j</a><script>s()</script><style>b{color:red}</style>');
 check('report html: unsafe parts removed', $sh === '<img src="/p.jpg"><img src="data:image/png;base64,AA"><a>j</a><style>b{color:red}</style>', $sh);
 

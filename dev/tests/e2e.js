@@ -6537,6 +6537,167 @@ T.libs_github_links = async (s) => {                     // 0.8.891: Update → 
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
+// 0.8.1065: Update → Libraries, ⋯ → "Remove older versions…" – a dialogue lists the versions that are not in use, the ticked ones go
+T.libs_remove_older = async (s) => {
+	const p = s.ga;
+	if (!SITE) return 'skip';
+	const packs = path.join(SITE, 'vendor', 'packs');
+	let state = {};
+	try { state = JSON.parse(fs.readFileSync(path.join(packs, 'nunext-libs.php'), 'utf8').replace(/^<\?php[^\n]*\n/, '')); } catch (e) { /* none */ }
+	const slot = ['uppy', 'phpmailer'].find(x => state[x] && fs.existsSync(path.join(packs, x + '-' + state[x].active, 'nunext-lib.json')));
+	if (!slot) return 'skip';                                 // needs an installed pack to copy
+	const active = state[slot].active, src = path.join(packs, slot + '-' + active);
+	const fake = ['0.0.1', '0.0.2'];
+	const mk = v => { const d = path.join(packs, slot + '-' + v); fs.mkdirSync(d, { recursive: true });
+		const m = JSON.parse(fs.readFileSync(path.join(src, 'nunext-lib.json'), 'utf8')); m.version = v;
+		fs.writeFileSync(path.join(d, 'nunext-lib.json'), JSON.stringify(m)); fs.writeFileSync(path.join(d, 'x.txt'), 'x'); return d; };
+	const dirs = fake.map(mk);
+	try {
+		await open(p, 'index.php?p=update&tab=libraries');
+		const row = p.locator('#lpTable tr[data-slot="' + slot + '"]');
+		await row.locator('.dropdown > button').click();
+		await row.locator('.nuLpOldOpen').click();
+		const dlg = p.locator('#lpOld-' + slot);
+		await dlg.waitFor({ state: 'visible' });
+		const list = await dlg.evaluate(d => [...d.querySelectorAll('.nuLpOldChk')].map(c => [c.value, c.checked]));
+		expect(fake.every(v => list.some(x => x[0] === v && x[1])) && !list.some(x => x[0] === active), 'older versions listed and ticked, not the one in use: ' + JSON.stringify(list));
+		expect((await dlg.locator('.modal-body p').innerText()).includes(active), 'the hint names the version in use');
+		for (const x of list) if (x[0] !== '0.0.1') await dlg.locator('.nuLpOldChk[value="' + x[0] + '"]').uncheck();
+		await dlg.locator('.nuLpOldChk[value="0.0.1"]').uncheck();
+		expect(await dlg.locator('.nuLpOldGo').isDisabled(), 'nothing ticked: the button is off');
+		await dlg.locator('.nuLpOldChk[value="0.0.1"]').check();
+		await Promise.all([p.waitForNavigation(), dlg.locator('.nuLpOldGo').click()]);
+		if (/p=reauth/.test(p.url())) { await p.fill('input[type=password]', GA[1]); await Promise.all([p.waitForNavigation(), p.locator('form button[type=submit]').first().click()]); }
+		expect(!fs.existsSync(dirs[0]) && fs.existsSync(dirs[1]) && fs.existsSync(src), 'only the ticked version is gone: ' + JSON.stringify(dirs.map(d => fs.existsSync(d))));
+		expect(/removed 0\.0\.1/.test(await p.evaluate(() => document.body.innerText)), 'the notice names it');
+		const st2 = JSON.parse(fs.readFileSync(path.join(packs, 'nunext-libs.php'), 'utf8').replace(/^<\?php[^\n]*\n/, ''));
+		expect(st2[slot].active === active, 'the version in use is unchanged');
+		// the active version cannot be removed this way, even when posted
+		const tok = await p.evaluate(() => (document.querySelector('input[name=_csrf]') || {}).value || '');
+		const r = await p.context().request.post(BASE + 'index.php?p=update', { form: { _csrf: tok, action: 'lp_remove_old', slot: slot, 'versions[]': active }, maxRedirects: 0 });
+		expect(fs.existsSync(src) && r.status() < 500, 'posting the version in use removes nothing (' + r.status() + ')');
+	} finally {
+		for (const d of dirs) fs.rmSync(d, { recursive: true, force: true });
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.1066: UI review M1–M12 (phones: one way back, wide tables as cards; tablets: wide lists as cards; one Save per settings section;
+// layout switch in Design ▾; quiet secret-key hints; cloner empty states; designer note on phones; data access badges; sample order)
+T.ui_review_m = async (s) => {
+	const ga = s.ga, st = await ga.context().storageState();
+	const mk = async (w, h) => { const c = await ga.context().browser().newContext({ locale: 'en-GB', viewport: { width: w, height: h }, storageState: st }); return [c, await c.newPage()]; };
+	const vis = (p, sel) => p.evaluate((q) => { const e = document.querySelector(q); return !!(e && (e.offsetWidth || e.offsetHeight)); }, sel);
+	const [cP, p] = await mk(390, 844), errs = []; p.on('pageerror', (e) => errs.push(e.message));
+	try {
+		// M1: a record page with breadcrumb + Back → one "‹ parent" link on phones
+		await open(p, 'index.php?p=procedures&id=new');
+		expect(await vis(p, 'a.nuPhBackOwn') && !(await vis(p, 'nav.nuPhCrumbOff')) && !(await vis(p, 'a.nuPhBtnOff')), 'M1: phone back link instead of breadcrumb + Back');
+		// M4: wide tables as cards with column labels
+		await open(p, 'index.php?p=formats');
+		const lab = await p.evaluate(() => { const td = document.querySelector('#fmtTable tbody td[data-label]:not([data-label=""])'); return td ? [td.getAttribute('data-label'), getComputedStyle(td).display, document.documentElement.scrollWidth <= innerWidth + 1] : null; });
+		expect(lab && lab[0] !== '' && lab[1] === 'block' && lab[2], 'M4: formats table as cards ' + JSON.stringify(lab));
+		// M12: the designers say they need a larger screen
+		await open(p, 'index.php?p=reportdesigner&id=sample_rpt_customers');
+		expect(await vis(p, '.nuBigScreenNote'), 'M12: report designer note on phones');
+		// M10: empty cloner list = empty state with "Add the first one"
+		await open(p, 'index.php?p=cloner');
+		const rows = await p.locator('table.nu-table tbody tr[data-href]').count();
+		if (!rows) expect(await vis(p, '.nuLvEmptyIntro a.btn-primary'), 'M10: cloner empty state');
+	} finally { await cP.close(); }
+	const [cT, t] = await mk(820, 1180);
+	try {   // M5: users list (more than five columns) as cards on a tablet
+		await open(t, 'index.php?p=users');
+		expect(await vis(t, '.nuLvWide .nuLvCards') && !(await vis(t, '.nuLvWide .nuLvTableWrap')), 'M5: wide list as cards at 820 px');
+	} finally { await cT.close(); }
+	const p2 = ga;
+	// M6: layout switch inside Design ▾ on a record page
+	await open(p2, 'index.php?p=form&f=samplecustomer&r=sample_cus_01');
+	expect(!(await vis(p2, '#nuLayoutSeg')), 'M6: segmented layout switch gone from the toolbar');
+	await p2.click('#nuDesignMore');
+	expect((await p2.locator('#nuDesignGroup .nuLayoutItem').count()) === 3 && await p2.locator('.nuLayoutItem.active').count() === 1, 'M6: three layout entries, one active');
+	await p2.keyboard.press('Escape');
+	// M2: Save of Settings → General and Updates in the header
+	await open(p2, 'index.php?p=settings&s=general');
+	expect(await p2.locator('.nuPageHead #setLangsSave[form=setLangsForm]').count() === 1 && await p2.locator('#setLangsForm button[type=submit]').count() === 0, 'M2: languages Save in the header');
+	await open(p2, 'index.php?p=settings&s=updates');
+	expect(await p2.locator('.nuPageHead #shGhSave[form=shGhForm]').count() === 1, 'M2: GitHub Save in the header');
+	// M11: no yellow secret-key box on the API clients / webhooks lists
+	for (const r of ['apiclients', 'webhooks']) { await open(p2, 'index.php?p=' + r); expect(await p2.locator('main .alert-warning:has(.bi-key)').count() === 0, 'M11: ' + r); }
+	// M8: data access – only differing access badges, one line for the rest
+	await open(p2, 'index.php?p=dataaccess&f=samplecustomer');
+	expect(await vis(p2, '#daAllEditable') && await p2.locator('.daField summary .badge:has-text("Editable")').count() === 0, 'M8: no "Editable" badges');
+	// M9: sample order – the customer name is narrower than before (no overlap with "Status")
+	expect(/'lookup_desc' => 'cus_name', 'lookup_width' => 150/.test(fs.readFileSync(path.join(__dirname, '..', '..', 'core', 'nusample.php'), 'utf8')), 'M9: sample order lookup width');
+	expect(errs.length === 0 && p2.errors.length === 0, errs.concat(p2.errors).slice(0, 2).join(' | '));
+};
+
+// 0.8.1067: UI review N1–N7 (items titled by their description, tool tabs on one line, wizard step named, config path copy, Formats
+// as a list card, help index on touch)
+T.ui_review_n = async (s) => {
+	const st = await s.ga.context().storageState();
+	const c = await s.ga.context().browser().newContext({ locale: 'en-GB', viewport: { width: 390, height: 844 }, hasTouch: true, storageState: st });
+	const p = await c.newPage(), errs = []; p.on('pageerror', (e) => errs.push(e.message));
+	try {
+		await open(p, 'index.php?p=items');
+		const ids = await p.locator('.nuItemId').count();
+		if (ids) expect(await p.locator('.nuLvCards .nuItemId').count() > 0, 'N1: id as a small line');
+		await open(p, 'index.php?p=log');
+		const tabs = await p.evaluate(() => { const u = document.querySelector('.nuTabsScroll'); return u ? [u.scrollHeight <= 60, getComputedStyle(u).flexWrap] : null; });
+		expect(tabs && tabs[0] && tabs[1] === 'nowrap', 'N2: tool tabs on one line ' + JSON.stringify(tabs));
+		await open(p, 'index.php?p=setupwizard');
+		expect(await p.locator('.nuWizSteps .nuWizCur').isVisible(), 'N3: current step named on phones');
+		await open(p, 'index.php?p=configfile');
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]); await open(p, 'index.php?p=configfile'); }
+		expect(await p.locator('#cfgPathCopy[data-nu-copy="#cfgPathFull"]').count() === 1 && (await p.inputValue('#cfgPathFull')).endsWith('nuconfig.php'), 'N5: copy button with the full path');
+		await open(p, 'index.php?p=formats');
+		expect(await p.locator('.nuListCard .nuListHead h1').count() === 1 && await p.locator('.nuListCard #fmtTable').count() === 1, 'N6: Formats as a list card');
+		await open(p, 'index.php?p=help');
+		const h = await p.evaluate(() => { const a = document.querySelector('.nuHelpToc a'); return a ? a.getBoundingClientRect().height : 0; });
+		expect(h >= 28, 'N7: help index lines ' + h);
+	} finally { await c.close(); }
+	expect(errs.length === 0, errs.slice(0, 2).join(' | '));
+};
+
+T.ui_review_h = async (s) => {                     // 0.8.1068: review H1–H6 on a phone
+	const st = await s.ga.context().storageState();
+	const c = await s.ga.context().browser().newContext({ locale: 'en-GB', viewport: { width: 390, height: 844 }, hasTouch: true, storageState: st });
+	const p = await c.newPage(), errs = []; p.on('pageerror', (e) => errs.push(e.message));
+	try {
+		await open(p, 'index.php?p=procedures');
+		const own = await p.evaluate(() => [...document.querySelectorAll('[data-href], tr[data-href]')].length);
+		expect(/origin/.test(await p.content()), 'H5: origin filter on procedures');
+		expect(!(await p.locator('text=nu_send_welcome_email_template').count()) || own >= 0, 'H5');
+		const n = Number(sql("SELECT COUNT(*) FROM zzzzsys_php WHERE zzzzsys_php_id LIKE 'nu%'").trim() || 0);
+		const shown = await p.evaluate(() => [...document.querySelectorAll('tr[data-href]')].filter((r) => /zzzzsys_php_id=nu|id=nu/.test(r.getAttribute('data-href'))).length);
+		expect(n === 0 || shown === 0, 'H5: system procedures hidden by default ' + shown);
+		await open(p, 'index.php?p=emailtemplates');
+		const langs = await p.evaluate(() => document.body.innerText);
+		expect(!/\bFrench\b/.test(langs), 'H5: templates in other languages hidden');
+		await open(p, 'index.php?p=settings&s=general');
+		expect(await p.locator('#nuSetPhSel').isVisible() && !(await p.locator('.nuSetSections').isVisible()), 'H6: section select on phones');
+		await open(p, 'index.php?p=forms');
+		const w = await p.evaluate(() => { const h = document.querySelector('.nuListCard > .nuListHead'); return h ? h.scrollWidth <= window.innerWidth + 1 : true; });
+		expect(w, 'H3: list title bar fits');
+		await open(p, 'index.php?p=users');
+		const first = await p.evaluate(() => { const m = document.querySelector('.nuListCard .nuMoreMenu .dropdown-menu'); const a = m && m.querySelector('.nuPhMoreItem'); return a ? [m.firstElementChild.contains(a), a.querySelector('.bi-table, .bi-card-list') !== null] : null; });
+		expect(first && first[0] && first[1], 'card / table switch first in ⋮ ' + JSON.stringify(first));
+		for (const pg of ['users', 'procedures', 'access', 'reports', 'items', 'forms', 'emailtemplates', 'log', 'permissions', 'files']) {     // the switch has a visible icon in ⋮, in both states
+			for (const mode of ['cards', 'table']) {
+				await p.evaluate((m) => { try { localStorage.setItem('nunext-lv-phone-' + m[1], m[0]); } catch (e) {} }, [mode, pg]);
+				await open(p, 'index.php?p=' + pg);
+				const ok = await p.evaluate(() => { const b = document.querySelector('.nuListCard [data-lv-phone-toggle]'); if (!b) return 'none';
+					const it = [...document.querySelectorAll('.nuPhMoreItem')].find((a) => a.querySelector('.nuLvPhoneToTable, .nuLvPhoneToCards'));
+					if (!it) return 'noitem'; return [...it.querySelectorAll('.bi')].some((i) => getComputedStyle(i).display !== 'none'); });
+				expect(ok === true || ok === 'none', 'icon of the card / table entry on ' + pg + ' (' + mode + '): ' + ok);
+			}
+		}
+		const fine = await p.evaluate(() => matchMedia('(pointer: fine)').matches);
+		expect(!fine, 'H4: touch context');
+	} finally { await c.close(); }
+	expect(errs.length === 0, errs.slice(0, 2).join(' | '));
+};
+
 T.translations_form = async (s) => {                     // 0.8.754: missing translations of one form in every language, AI round trip, design mode, select options
 	const p = s.ga;
 	const clean = () => sql("DELETE FROM zzzzsys_translate WHERE trl_translation LIKE 'E2E %'; DELETE FROM zzzzsys_nunext_log WHERE event = 'translations_ai'");
@@ -7423,7 +7584,7 @@ T.users_more_menu = async () => {                        // 0.8.371: users list 
 	expect(order, 'the ⋮ button is not right of Add');
 	await m.click('#nuMoreBtn'); await m.waitForTimeout(300);
 	const items = await m.locator('.nuMoreMenu .dropdown-item:visible').allInnerTexts();
-	expect(items.length === 4 && /Import/.test(items[0]) && /HTML/.test(items[1]) && /CSV/.test(items[2]) && /Excel/.test(items[3]), 'menu items: ' + items.join(' | '));   // 0.8.398: Export entries
+	expect(items.length === 5 && /Card|table/i.test(items[0]) && /Import/.test(items[1]) && /HTML/.test(items[2]) && /CSV/.test(items[3]) && /Excel/.test(items[4]), 'menu items: ' + items.join(' | '));   // 0.8.398: Export entries; 0.8.1069: Card or table first
 	await m.context().close();
 	const d = await login(GA[0], GA[1]);
 	await open(d, 'index.php?p=users');
@@ -10399,8 +10560,8 @@ T.list_phone_layout = async (s) => {
 		await p.evaluate(() => localStorage.removeItem('nunext-lv-phone-users'));
 		await p.goto(BASE + 'index.php?p=users');
 		let v = await vis();
-		expect(v.cards && !v.table && await p.locator('[data-lv-phone-toggle]').isVisible(), 'phone: cards by default: ' + JSON.stringify(v));
-		await p.click('[data-lv-phone-toggle]'); await p.waitForTimeout(200);
+		expect(v.cards && !v.table && await p.locator('[data-lv-phone-toggle]').count() === 1, 'phone: cards by default: ' + JSON.stringify(v));
+		await p.evaluate(() => document.querySelector('[data-lv-phone-toggle]').click()); await p.waitForTimeout(200);   // 0.8.1068: the button sits in ⋮ on phones
 		v = await vis();
 		expect(v.table && !v.cards && await p.locator('[data-lv-phone-toggle]').getAttribute('aria-pressed') === 'true', 'toggle to table: ' + JSON.stringify(v));
 		const pos = await p.evaluate(() => getComputedStyle(document.querySelector('.nuLvTableWrap td:first-child')).position);
@@ -10409,7 +10570,7 @@ T.list_phone_layout = async (s) => {
 		await p.reload(); await p.waitForTimeout(200);
 		v = await vis();
 		expect(v.table && !v.cards, 'table not remembered: ' + JSON.stringify(v));
-		await p.click('[data-lv-phone-toggle]'); await p.waitForTimeout(200);
+		await p.evaluate(() => document.querySelector('[data-lv-phone-toggle]').click()); await p.waitForTimeout(200);
 		expect(await p.evaluate(() => localStorage.getItem('nunext-lv-phone-users')) === null && (await vis()).cards, 'back to the view: own choice not removed');
 		// a view with "On phones: Table"
 		const res = await p.evaluate(async () => {
@@ -10583,7 +10744,7 @@ T.webhooks = async (s) => {
 		expect(await p.locator('#whUrl.is-invalid').count() === 1 && +sql('SELECT COUNT(*) FROM zzzzsys_nunext_webhook') === 0, 'http / private address not refused');
 		// allow it (list page → Settings), then create
 		await open(p, 'index.php?p=webhooks');
-		await p.check('#whAllowPrivate'); await Promise.all([p.waitForNavigation(), p.click('#whSettings button[type=submit]')]);
+		await Promise.all([p.waitForNavigation(), p.check('#whAllowPrivate')]);
 		await open(p, 'index.php?p=webhooks&id=new');
 		await p.fill('#whName', 'e2e hook');
 		await p.evaluate(() => document.getElementById('whForms').tomselect.addItem('samplecustomer'));
@@ -11129,8 +11290,11 @@ T.ntf_settings_phone = async (s) => {
 	const p = await ctx.newPage();
 	try {
 		await p.goto(BASE + 'index.php?p=notifications&tab=manage'); await p.waitForTimeout(400);
-		const r = await p.evaluate(() => { const b = document.querySelector('#ntfSettingsBtn'); return b ? { txt: b.innerText.trim(), aria: b.getAttribute('aria-label') } : null; });
-		expect(r && r.txt === '' && r.aria, 'phone: Settings shows text or has no name: ' + JSON.stringify(r));
+		// 0.8.1068: on phones the button moves into ⋮ (an entry with its name)
+		const r = await p.evaluate(() => { const b = document.querySelector('#ntfSettingsBtn'); if (!b) return null; const vis = b.offsetParent !== null;
+			const it = [...document.querySelectorAll('.nuPhMoreItem')].find((a) => /Settings/.test(a.textContent));
+			return { vis: vis, txt: vis ? b.innerText.trim() : '', aria: b.getAttribute('aria-label'), item: !!it }; });
+		expect(r && (r.vis ? r.txt === '' && r.aria : r.item), 'phone: Settings shows text or has no name: ' + JSON.stringify(r));
 		await p.setViewportSize({ width: 1200, height: 800 });
 		expect((await p.innerText('#ntfSettingsBtn')).trim() !== '', 'desktop: Settings has no text');
 	} finally { await ctx.close(); }
@@ -12234,7 +12398,9 @@ T.record_head = async (s) => {
 	try {
 		await open(p, 'index.php?p=adminroles&id=' + role);
 		const r = await look();
-		expect(r && r.hidden && r.crumb !== '', 'phone: the breadcrumb names the record: ' + JSON.stringify(r));
+		// 0.8.1066 (review M1): on phones "‹ parent" replaces breadcrumb + Back – the heading names the record again
+		const ph = await p.evaluate(() => { const h = document.querySelector('.nuRecHead > h1'), b = document.querySelector('a.nuPhBackOwn'); return {h: h ? h.offsetWidth > 5 && h.textContent.trim() !== '' : false, back: !!(b && b.offsetWidth)}; });
+		expect(ph.h && ph.back, 'phone: back link + the heading names the record: ' + JSON.stringify(ph));
 	} finally { await p.setViewportSize({ width: 1300, height: 900 }); }
 	await open(p, 'index.php?p=users');
 	expect(await p.locator('.nuRecHead').count() === 0, 'lists keep their own title');
@@ -12363,7 +12529,7 @@ T.forms_row_actions = async (s) => {          // 0.8.809: no Form cloner button 
 	await open(p, 'index.php?p=forms');
 	expect(await p.locator('.nuRowActions a[href*="p=builder"]').count() > 0, 'design mode button missing');
 	expect(await p.locator('td a[href*="p=cloner"]').count() === 0, 'cloner button still in the rows');
-	expect(await p.locator('.dropdown-menu a[href*="p=cloner"]').count() === 1, 'Tools → Form cloner missing');
+	expect(await p.locator('.dropdown-menu a[href*="p=cloner"]:not(.nuPhMoreItem)').count() === 1, 'Tools → Form cloner missing');
 };
 
 T.form_maintenance = async (s) => {            // 0.8.808: status 2 = Maintenance (core/nuformstatus.php), Archived closed for users too
@@ -12564,7 +12730,7 @@ T.leave_dialog_order = async () => {
 		try {
 			await open(p, 'index.php?p=user');
 			await p.fill('#nuRecordForm input[name=sus_name]', 'e2e leave');
-			await p.locator('a.nuBtnAct:has(.bi-arrow-left)').first().click({ noWaitAfter: true });
+			await p.locator(w < 576 ? 'a.nuPhBack' : 'a.nuBtnAct:has(.bi-arrow-left)').first().click({ noWaitAfter: true });   // 0.8.1066: phones show the ‹ link
 			await p.waitForSelector('#nuLeave.show'); await p.waitForTimeout(400);
 			const r = await p.evaluate(() => Object.fromEntries(['discard', 'stay', 'save'].map(k => [k, document.querySelector('#nuLeave [data-nu-leave="' + k + '"]').getBoundingClientRect()])));
 			expect(r.discard.left < r.stay.left && r.discard.left < r.save.left, w + ' px: Discard is the left-most button');

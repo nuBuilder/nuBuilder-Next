@@ -683,16 +683,21 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 		<?php endif; ?>
 		<?php if (($mode === 'edit' || ($mode === 'browse' && $lookupTo === '')) && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta)): // design mode (0.8.662; the list 0.8.669) ?>
 			<?php $dsBtn = '<a class="btn btn-outline-primary nuActionButton" id="nuDesignButton" href="' . h(nu_url('form', ['f' => $meta->id, 'r' => $mode === 'edit' ? $r : null, 'design' => '1'])) . '" title="' . h(t('ds_design_tip')) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(t('ds_design')) . '</a>'; ?>
-			<?php if ($browseSqlEdit): ?>
+			<?php $layoutInMenu = $mode === 'edit' && $u['globeadmin'] && !$bare;   // review M6: the layout switch lives in Design ▾ ?>
+			<?php if ($browseSqlEdit || $layoutInMenu): ?>
 				<div class="btn-group" id="nuDesignGroup"><?= $dsBtn ?><button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" id="nuDesignMore" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h(t('bsq_more')) ?>"><span class="visually-hidden"><?= h(t('bsq_more')) ?></span></button>
-					<ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseSqlEdit"><i class="bi bi-filetype-sql" aria-hidden="true"></i><?= h(t('bsq_edit')) ?></button></li>
-						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseColsEdit"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><?= h(t('bsq_edit_cols')) ?></button></li></ul></div>
+					<ul class="dropdown-menu dropdown-menu-end">
+					<?php if ($browseSqlEdit): ?><li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseSqlEdit"><i class="bi bi-filetype-sql" aria-hidden="true"></i><?= h(t('bsq_edit')) ?></button></li>
+						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseColsEdit"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><?= h(t('bsq_edit_cols')) ?></button></li><?php endif; ?>
+					<?php if ($layoutInMenu): ?><li><h6 class="dropdown-header"><?= h(t('form_layout')) ?></h6></li>
+						<?php foreach (['absolute', 'auto', 'grid'] as $l): ?><li><a class="dropdown-item d-flex align-items-center gap-2 nuLayoutItem<?= $layout === $l ? ' active' : '' ?>" data-nu-layout="<?= h($l) ?>"<?= $layout === $l ? ' aria-current="true"' : '' ?> href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>"><i class="bi <?= $layout === $l ? 'bi-check2' : 'bi-dot' ?>" aria-hidden="true"></i><?= h(t('form_layout_' . $l)) ?></a></li><?php endforeach; ?>
+					<?php endif; ?></ul></div>
 			<?php else: ?><?= $dsBtn ?><?php endif; ?>
 		<?php endif; ?>
 		<?php if (!$bare && empty($printMode) && !$design && $uHelp) echo NuUserHelp::button($uHelp);   // user help pages (0.8.1023): ? of the form / tab ?>
 		<?php if ($u['globeadmin'] && !$bare): ?>
 			<?= str_replace('<div class="dropdown">', '<div class="dropdown nuFormInfoWrap">', NuFormInfo::html($meta, $mode, $r)) /* (i) form info for the globeadmin (0.8.435) */ ?>
-			<div class="btn-group nuSeg" id="nuLayoutSeg" role="group" aria-label="<?= h(t('form_layout')) ?>">
+			<div class="btn-group nuSeg<?= !empty($layoutInMenu) ? ' d-none' : '' ?>" id="nuLayoutSeg" role="group" aria-label="<?= h(t('form_layout')) ?>">
 				<?php if ($mode === 'edit'): foreach (['absolute', 'auto', 'grid'] as $l): ?>
 					<a class="btn btn-outline-secondary<?= $layout === $l ? ' active' : '' ?>" href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>" title="<?= h(t('form_layout_' . $l)) ?>"><?= h(t('form_layout_' . $l)) ?></a>
 				<?php endforeach; endif; ?>
@@ -765,7 +770,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 			</div></div>
 			<?php if ($fltCols): $n = count($fltCols); ?>
 			<?php // embedded in a form (run object, review F3): the filters stay folded behind the funnel until one is set ?>
-			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse<?= $iframe && !$fltOn ? '' : ' show' ?>" id="nuBrowseFilters"><div class="row g-2">
+			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse<?= $iframe && !$fltOn ? '' : ' show' ?><?= !$fltOn ? ' nuFltPhoneHide' : '' /* review H2: folded on phones until the funnel is pressed */ ?>" id="nuBrowseFilters"><div class="row g-2">
 				<?php foreach ($fltCols as $c): ?>
 					<div class="<?= $n > 3 ? 'col-sm-6 col-lg-3' : ($n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4')) ?>">
 						<label class="form-label small mb-1" for="nuFlt<?= (int)$c['index'] ?>"><?= h(NuHtmlClean::cellText((string)$c['title'])) ?></label>

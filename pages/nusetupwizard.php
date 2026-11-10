@@ -101,7 +101,7 @@ nu_layout_start(t('wiz_title'), 'home', ['head' => nu_ts_head()]);
 	<div class="card-body pb-0">
 		<ul class="nav nav-tabs nuWizSteps" role="list">
 			<?php foreach ($steps as $n => $s): ?>
-			<li class="nav-item" role="listitem"><span class="nav-link<?= $s === $step ? ' active' : ($n > $i ? ' disabled' : '') ?>"<?= $s === $step ? ' aria-current="step"' : '' ?>><i class="bi <?= $icons[$s] ?>"></i> <span class="d-none d-sm-inline"><?= h(t('wiz_step_' . $s)) ?></span></span></li>
+			<li class="nav-item" role="listitem"><span class="nav-link<?= $s === $step ? ' active' : ($n > $i ? ' disabled' : '') ?>"<?= $s === $step ? ' aria-current="step"' : '' ?>><i class="bi <?= $icons[$s] ?>"></i> <span class="<?= $s === $step ? 'nuWizCur' : 'd-none d-sm-inline' /* review N3: the current step is named on phones */ ?>"><?= h(t('wiz_step_' . $s)) ?></span></span></li>
 			<?php endforeach; ?>
 		</ul>
 	</div>

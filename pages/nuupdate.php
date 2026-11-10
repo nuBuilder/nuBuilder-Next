@@ -251,7 +251,7 @@ if (nu_is_post()) {
 		// remove, self-test, look on GitHub. Every pack needs a valid signature.
 		if (str_starts_with($action, 'lp_')) {
 			$back = nu_url('update', ['tab' => 'libraries']) . '#libraries';
-			if (in_array($action, ['lp_install', 'lp_upload', 'lp_rollback', 'lp_remove'], true) && !NuUpdate::enabled()) throw new RuntimeException(t('upd_disabled'));
+			if (in_array($action, ['lp_install', 'lp_upload', 'lp_rollback', 'lp_remove', 'lp_remove_old'], true) && !NuUpdate::enabled()) throw new RuntimeException(t('upd_disabled'));
 			$slots = array_values(array_intersect(array_map('strval', nu_post('slot') !== '' ? [nu_post('slot')] : (array)($_POST['slots'] ?? [])), array_keys(NuLibs::SLOTS)));
 			if ($action === 'lp_gh_check') {
 				$g = NuLibs::ghCheck();
@@ -310,6 +310,13 @@ if (nu_is_post()) {
 			}
 			if ($action === 'lp_remove') {
 				foreach ($slots as $sl) { NuLibs::remove($sl); nu_flash('success', t('lp_removed', NuLibs::SLOTS[$sl]['title']), true); }
+				nu_redirect($back);
+			}
+			if ($action === 'lp_remove_old') {                 // the ticked older versions of one library (0.8.1065)
+				$sl = $slots[0] ?? '';
+				$gone = $sl !== '' ? NuLibs::removeOlder($sl, array_filter((array)($_POST['versions'] ?? []), 'is_string')) : [];
+				if (!$gone) throw new RuntimeException(t('lp_remove_old_none'));
+				nu_flash('success', t('lp_removed_old', NuLibs::SLOTS[$sl]['title'], implode(', ', $gone)), true);
 				nu_redirect($back);
 			}
 			if ($action === 'lp_test') {
@@ -915,7 +922,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 			</div>
 			<?php endif; ?>
 			<div class="table-responsive">
-				<table class="table table-sm align-middle mb-0 nu-table" id="updBackups">
+				<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards id="updBackups">
 					<thead><tr><th class="updBkSelCol"><input class="form-check-input" type="checkbox" id="updBkAll" aria-label="<?= h(t('upd_bk_select_page')) ?>" title="<?= h(t('upd_bk_select_page')) ?>"></th><th><?= h(t('upd_version')) ?></th><th><?= h(t('upd_created')) ?></th><th><?= h(t('upd_reason')) ?></th><th class="text-end"><?= h(t('upd_size')) ?></th><th></th></tr></thead>
 					<tbody>
 					<?php if (!$backups): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
@@ -978,7 +985,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<button class="btn btn-sm btn-outline-secondary" type="submit"><?= h(t('save')) ?></button>
 				</form>
 			<?php endif; ?>
-			<div class="card-footer small text-body-secondary"><?= h(t('upd_backups_hint', $dir)) ?></div>
+			<details class="card-footer small text-body-secondary nuMoreHint"><summary><?= h(t('more_info')) ?></summary><?= h(t('upd_backups_hint', nu_short_path($dir))) ?></details><?php /* review M3 */ ?>
 		</div>
 	
 </div>
@@ -1040,7 +1047,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 		· <?= h(t('lp_folder_hint', '_update/')) ?>
 	</div>
 	<div class="table-responsive">
-		<table class="table table-sm nu-table mb-0 small align-middle" id="lpTable">
+		<table class="table table-sm nu-table mb-0 small align-middle" data-nu-phcards id="lpTable">
 			<thead><tr><th class="nuLpCheck"><input class="form-check-input" type="checkbox" id="lpAll" aria-label="<?= h(t('lp_select_all')) ?>"></th><th><?= h(t('upd_libs_name')) ?></th><th class="d-none d-md-table-cell"><?= h(t('lp_col_inuse')) ?></th><th class="d-none d-md-table-cell"><?= h(t('lp_col_available')) ?></th><th class="d-none d-md-table-cell"><?= h(t('upd_libs_state')) ?></th><th class="text-end"><span class="visually-hidden"><?= h(t('lp_col_actions')) ?></span></th></tr></thead>
 			<tbody>
 			<?php foreach ($lpView as $sl => $x):
@@ -1085,6 +1092,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 								<?php if ($best && !$x['update'] && $lpCan): ?><li><button class="dropdown-item" type="submit" form="lpF-lp_install-<?= h($sl) ?>"><i class="bi bi-arrow-repeat me-2"></i><?= h(t('lp_reinstall', $best['version'])) ?></button></li><?php endif; ?>
 								<li><button class="dropdown-item" type="submit" form="lpF-lp_test-<?= h($sl) ?>"><i class="bi bi-clipboard2-pulse me-2"></i><?= h(t('lp_test')) ?></button></li>
 								<?php if ($x['prev'] !== '' && $lpCan): ?><li><button class="dropdown-item" type="submit" form="lpF-lp_rollback-<?= h($sl) ?>"><i class="bi bi-arrow-counterclockwise me-2"></i><?= h(t('lp_rollback', $x['prev'])) ?></button></li><?php endif; ?>
+								<?php if ($lpCan && NuLibs::older($sl)): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item nuLpOldOpen" type="button" data-bs-toggle="modal" data-bs-target="#lpOld-<?= h($sl) ?>"><i class="bi bi-layers-half me-2"></i><?= h(t('lp_remove_old')) ?></button></li><?php endif; ?>
 								<?php if ($x['installed'] && $lpCan): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger" type="submit" form="lpF-lp_remove-<?= h($sl) ?>"><i class="bi bi-trash me-2"></i><?= h(t('lp_remove')) ?></button></li><?php endif; ?>
 							</ul>
 						</div>
@@ -1098,6 +1106,22 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 		$cf = $a === 'lp_rollback' ? t('lp_rollback_confirm', $x['title'], $x['prev']) : ($a === 'lp_remove' ? t('lp_remove_confirm', $x['title']) : ''); ?>
 		<form method="post" action="<?= h(nu_url('update')) ?>" id="lpF-<?= $a ?>-<?= h($sl) ?>" class="d-none" data-nu-once<?= $cf !== '' ? ' data-confirm="' . h($cf) . '"' . ($a === 'lp_remove' ? ' data-confirm-ok="' . h(t('lp_remove')) . '" data-confirm-class="btn btn-danger"' : '') : '' ?>><?= nu_csrf_field() ?><input type="hidden" name="action" value="<?= $a ?>"><input type="hidden" name="slot" value="<?= h($sl) ?>"></form>
 	<?php endforeach; endforeach; ?>
+	<?php if ($lpCan): foreach ($lpView as $sl => $x): $lpOld = NuLibs::older($sl); if (!$lpOld) continue; // remove older versions (0.8.1065): tick what goes ?>
+		<div class="modal fade nuLpOldDlg" id="lpOld-<?= h($sl) ?>" tabindex="-1" aria-labelledby="lpOldT-<?= h($sl) ?>" aria-hidden="true"><div class="modal-dialog"><form class="modal-content" method="post" action="<?= h(nu_url('update')) ?>" data-nu-once><?= nu_csrf_field() ?>
+			<input type="hidden" name="action" value="lp_remove_old"><input type="hidden" name="slot" value="<?= h($sl) ?>">
+			<div class="modal-header"><h2 class="modal-title h5" id="lpOldT-<?= h($sl) ?>"><?= h(t('lp_remove_old_title', $x['title'])) ?></h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+			<div class="modal-body">
+				<p class="text-body-secondary small"><?= h(t('lp_remove_old_hint', (string)$x['pack'])) ?></p>
+				<?php foreach ($lpOld as $i => $o): ?>
+					<div class="form-check mb-1">
+						<input class="form-check-input nuLpOldChk" type="checkbox" name="versions[]" value="<?= h($o['version']) ?>" id="lpOld-<?= h($sl) ?>-<?= $i ?>"<?= $o['prev'] ? '' : ' checked' ?>>
+						<label class="form-check-label" for="lpOld-<?= h($sl) ?>-<?= $i ?>"><?= h($o['version']) ?> <span class="text-body-secondary small">· <?= h(number_format($o['size'] / 1048576, 1)) ?> MB</span><?php if ($o['prev']): ?> <span class="badge text-bg-light border nuLpOldPrev"><?= h(t('lp_remove_old_prev')) ?></span><?php endif; ?></label>
+					</div>
+				<?php endforeach; ?>
+			</div>
+			<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button><button type="submit" class="btn btn-danger nuLpOldGo"><i class="bi bi-trash me-1"></i><?= h(t('lp_remove_old_ok')) ?></button></div>
+		</form></div></div>
+	<?php endforeach; endif; ?>
 	<form method="post" action="<?= h(nu_url('update')) ?>" id="lpForm" class="card-footer d-flex flex-wrap align-items-center gap-2" data-nu-once><?= nu_csrf_field() ?>
 		<?php if ($lpCan): ?><button class="btn btn-sm btn-primary" type="submit" name="action" value="lp_install" id="lpInstallSel" data-lp-bulk disabled data-nu-busy="<?= h(t('lp_installing')) ?>"><i class="bi bi-download me-1"></i><?= h(t('lp_install_sel')) ?></button><?php endif; ?>
 		<button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="lp_test" id="lpTestSel" data-lp-bulk disabled><i class="bi bi-clipboard2-pulse me-1"></i><?= h(t('lp_test_sel')) ?></button>
@@ -1120,7 +1144,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 		<span class="badge text-bg-secondary ms-1"><?= count($libs) ?></span><?php if ($libProblems): ?><span class="badge text-bg-warning ms-1"><i class="bi bi-exclamation-triangle me-1"></i><?= $libProblems ?></span><?php endif; ?></span>
 		<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_libs_hint')) ?>" title="<?= h(t('upd_libs_hint')) ?>"><i class="bi bi-info-circle"></i></span></summary>
 	<div class="table-responsive">
-		<table class="table table-sm nu-table mb-0 small">
+		<table class="table table-sm nu-table mb-0 small" data-nu-phcards>
 			<thead><tr><th><?= h(t('upd_libs_name')) ?></th><th><?= h(t('upd_libs_version')) ?></th><th><?= h(t('upd_libs_where')) ?></th><th class="d-none d-md-table-cell"><?= h(t('upd_libs_use')) ?></th><th class="d-none d-lg-table-cell"><?= h(t('upd_libs_license')) ?></th><th><?= h(t('upd_libs_state')) ?></th></tr></thead>
 			<tbody>
 			<?php $lastKind = ''; foreach ($libs as $l): if ($l['kind'] !== $lastKind): $lastKind = $l['kind']; ?>

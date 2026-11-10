@@ -149,7 +149,7 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 		<form method="post" id="dbrCancel"><?= nu_csrf_field() ?><input type="hidden" name="action" value="cancel"></form>
 	<?php else:
 		$src = NuDbReset::sources(); ?>
-		<p class="mb-3"><?= h(t('dbr_intro', $dbName)) ?></p>
+		<details class="mb-3 nuMoreHint"><summary class="small"><?= h(t('more_info')) ?></summary><p class="mb-0 mt-1"><?= h(t('dbr_intro', $dbName)) ?></p></details><?php /* review M3 */ ?>
 		<?php if ($chk && !$chk['ok']): ?><div class="alert alert-danger small text-break" id="dbrBad"><?= h(t('dbr_err_check', $chk['error'])) ?></div><?php endif; ?>
 		<form method="post" enctype="multipart/form-data" id="dbrForm" data-nu-once>
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="check">

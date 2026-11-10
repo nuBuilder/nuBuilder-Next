@@ -124,7 +124,14 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 <?php $dataSave = $sec === 'data' && (NuAdmin::can('audit', 'change') || NuSettingsHub::ga() || NuAdmin::can('notifications', 'change') || NuAdmin::can('update', 'change')); ?>
 <?= nu_page_header($title, ['icon' => $sec !== '' ? NuSettingsHub::SECTIONS[$sec][0] : 'bi-gear', 'sub' => $sec === '' ? t('sh_overview_hint') : t(NuSettingsHub::SECTIONS[$sec][2]),
 	'crumbs' => $sec === '' ? [] : [[t('set_title'), nu_url('settings')]],
-	'buttons' => $dataSave ? '<button class="btn nuBtnAct nuBtnSave" type="submit" form="shDataForm" id="shDataSave" data-nu-save><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
+	// one Save per section, in the header (review M2): data = the whole form, general = languages, updates = GitHub
+	'buttons' => (static function (string $sec, bool $dataSave): string {
+		$b = static fn(string $form, string $id): string => '<button class="btn nuBtnAct nuBtnSave" type="submit" form="' . $form . '" id="' . $id . '" data-nu-save><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>';
+		if ($sec === 'data') return $dataSave ? $b('shDataForm', 'shDataSave') : '';
+		if ($sec === 'general') return NuAdmin::can('settings', 'change') ? $b('setLangsForm', 'setLangsSave') : '';
+		if ($sec === 'updates') return NuAdmin::can('update', 'change') ? $b('shGhForm', 'shGhSave') : '';
+		return '';
+	})($sec, $dataSave)]) ?>
 
 <?php if ($sec === ''): // ------------------------------------------------------------------ overview ?>
 <div class="row g-3" id="shOverview">
@@ -145,7 +152,7 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 	<?php if (NuAdmin::can('settings', 'view')):
 		$lngOn = NuLanguages::installed(); $lngUsers = NuLanguages::userCounts();
 		ob_start(); ?>
-		<form method="post" action="<?= h(nu_url('settings', ['s' => 'general'])) ?>" id="setLangsForm" class="d-flex flex-wrap align-items-center gap-3">
+		<form method="post" action="<?= h(nu_url('settings', ['s' => 'general'])) ?>" id="setLangsForm" data-nu-guard class="d-flex flex-wrap align-items-center gap-3">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="langs">
 			<?php foreach (NU_LANGS as $lc => [$native]): $lu = (int)($lngUsers[$lc] ?? 0); ?>
 				<?php $vars = array_keys(array_filter(NU_LANG_VARIANTS, static fn($x) => $x[0] === $lc)); $varOn = NuLanguages::variants($lc); ?>
@@ -160,7 +167,6 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 						<?php endforeach; ?></span>
 					<?php endif; ?></div>
 			<?php endforeach; ?>
-			<button class="btn btn-sm btn-primary ms-auto" type="submit" id="setLangsSave"><i class="bi bi-floppy me-1"></i><?= h(t('lng_save')) ?></button>
 		</form>
 		<?= $card('setLangs', 'bi-translate', t('lng_title'), (string)ob_get_clean(), t('lng_tip') . ' ' . t('lng_var_hint')) ?>
 	<?php endif; ?>
@@ -247,14 +253,13 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 
 <?php elseif ($sec === 'updates'): // ------------------------------------------------------- updates ?>
 	<?php $gs = NuGitHub::settings(); $canU = NuAdmin::can('update', 'change'); ob_start(); ?>
-		<form method="post" action="<?= h(nu_url('settings', ['s' => 'updates'])) ?>" class="row g-3 align-items-end"><?= nu_csrf_field() ?><input type="hidden" name="action" value="gh_set">
+		<form method="post" action="<?= h(nu_url('settings', ['s' => 'updates'])) ?>" id="shGhForm" data-nu-guard class="row g-3 align-items-end"><?= nu_csrf_field() ?><input type="hidden" name="action" value="gh_set">
 			<fieldset class="contents"<?= $canU ? '' : ' disabled' ?>>
 			<div class="col-md-5"><label class="form-label small mb-1" for="shGhRepo"><?= h(t('gh_repo')) ?></label><?= $tip(t('gh_repo_tip')) ?>
 				<input type="text" class="form-control form-control-sm" name="repo" id="shGhRepo" value="<?= h($gs['repo']) ?>" maxlength="140" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+" spellcheck="false" autocomplete="off"></div>
 			<div class="col-md-4"><label class="form-label small mb-1" for="shGhEvery"><?= h(t('gh_set_every')) ?></label>
 				<select class="form-select form-select-sm" name="every" id="shGhEvery"><?php foreach (array_keys(NuGitHub::EVERY) as $ev): ?><option value="<?= h($ev) ?>"<?= $gs['every'] === $ev ? ' selected' : '' ?>><?= h(t('gh_every_' . $ev)) ?></option><?php endforeach; ?></select></div>
 			<div class="col-md-3"><div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" role="switch" name="pre" value="1" id="shGhPre"<?= $gs['pre'] ? ' checked' : '' ?>><label class="form-check-label small" for="shGhPre"><?= h(t('gh_set_pre')) ?></label></div></div>
-			<div class="col-12 text-end"><button class="btn btn-sm btn-primary" type="submit" id="shGhSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button></div>
 			</fieldset>
 		</form>
 	<?= $card('shGitHub', 'bi-github', t('gh_title'), (string)ob_get_clean(), t('gh_tip')) ?>

@@ -283,6 +283,29 @@ final class NuReportEngine
 		}, $html);
 	}
 
+	/**
+	 * <img src> with a path of the web server ("/photos/1.jpg", "photos/1.jpg") → the file's full path (0.8.1062): TCPDF 6 found such
+	 * files by itself, TCPDF 7 leaves them out. Looked for below the web root, nuBuilder Next's and nuBuilder Forte's folder
+	 * (NuReport::tcpdfAllowedPaths – nothing outside them, no ".."); other addresses and files not found stay as they are.
+	 */
+	public static function localImages(string $html, ?array $bases = null): string
+	{
+		if (stripos($html, '<img') === false) return $html;
+		$bases ??= NuReport::tcpdfAllowedPaths();
+		return (string)preg_replace_callback('~(<img\b[^>]*?(?<![\w-])src\s*=\s*)(?:"([^"]*)"|\'([^\']*)\')~i', static function ($m) use ($bases) {
+			$src = html_entity_decode(($m[2] ?? '') . ($m[3] ?? ''), ENT_QUOTES | ENT_HTML5);
+			$path = rawurldecode((string)preg_replace('~[?#].*$~', '', $src));
+			if ($path === '' || preg_match('~^([a-z][a-z0-9+.-]*:|//|@)~i', $path) || preg_match('~(^|[/\\\\])\.\.([/\\\\]|$)~', $path) || preg_match('~[\x00-\x1f]~', $path)) return $m[0];
+			if (!preg_match('~\.(png|jpe?g|gif|webp|bmp|svg)$~i', $path)) return $m[0];      // pictures only
+			foreach ($bases as $b) {
+				$b = rtrim((string)$b, '/\\');
+				$f = realpath($b . '/' . ltrim($path, '/'));
+				if ($f !== false && is_file($f) && str_starts_with($f, $b . DIRECTORY_SEPARATOR)) return $m[1] . '"' . htmlspecialchars($f, ENT_QUOTES) . '"';
+			}
+			return $m[0];
+		}, $html);
+	}
+
 	private ?TCPDF $measure = null;
 	/** @var array<string, float> */
 	private array $measured = [];
@@ -305,7 +328,7 @@ final class NuReportEngine
 		$m = $this->measure;
 		$m->AddPage();
 		$m->SetFont($family, $weight, $size, '', false);
-		$m->writeHTMLCell((float)$O->width, 0, 0, 0, $html, 0, 1, false, true, $align, true);
+		$m->writeHTMLCell((float)$O->width, 0, 0, 0, self::localImages($html), 0, 1, false, true, $align, true);
 		$h = (float)$m->GetY();
 		$m->deletePage($m->getPage());
 		if (count($this->measured) > 2000) $this->measured = [];
@@ -365,7 +388,7 @@ final class NuReportEngine
 		$this->pdf->StartTransform();
 		$this->pdf->Rect($x, $top, $w, $h, 'CNZ');
 		if ($first > 0) $this->pdf->Translate(0, -$first * $rowH);
-		$this->pdf->writeHTMLCell($w, 0, $x, $top, (string)$c->html, 0, 0, false, true, $align, true);
+		$this->pdf->writeHTMLCell($w, 0, $x, $top, self::localImages((string)$c->html), 0, 0, false, true, $align, true);
 		$this->pdf->StopTransform();
 		$this->pdf->setAutoPageBreak(true);
 		if ($border != 0) $this->pdf->Rect($x, $top, $w, $h, 'D');

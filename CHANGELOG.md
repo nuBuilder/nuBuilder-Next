@@ -3,6 +3,81 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1071 – Release gate
+- Release gate: help pages for phones (list title bars, settings, touch screens, folded filters), procedures / items /
+  e-mail templates (Origin and language filters), library packs (remove older versions); FEATURES.md and TODO.md updated
+  The e2e tests follow the phone list layout of the UI review (⋮ menu, phone back link).
+
+## 0.8.1070 – Card or table icon in the list menu
+- Lists on phones: the "Card or table" entry of the ⋮ menu lost its icon while a list was shown as a table (e.g. Procedures) – fixed on every list
+
+## 0.8.1069 – Card or table first in the list menu
+- Lists on phones: "Card or table" is now the first entry of the ⋮ menu
+
+## 0.8.1068 – UI review H1–H6
+- UI review H1–H6: compact start page notices; column filters of form lists folded on phones; list title bars on
+  phones keep Back, Add and the view menu – the other actions move into ⋮; compact record fields only with a mouse,
+  touch tablets keep full-size controls; procedures and items show your own rows by default (system rows behind the
+  new Origin filter), e-mail templates show your language by default; settings on phones: sections as one select,
+  no subtitle
+
+## 0.8.1067 – UI review: items, tabs, wizard, formats, help index
+- Items: an item whose value is only an id (nuBuilder Forte's own items) shows its description as the title and the id as a small
+  line below.
+- Debug · Log · Audit trail · Logged-in users: the tabs stay on one line and scroll sideways on phones.
+- Setup wizard: on phones the current step is named next to its icon.
+- Configuration file: the short path with a button that copies the full path.
+- Formats: the same list card as the other lists – title, Back, Add and Export in its header, the search inside the card.
+- Help: the index has finger-sized lines on touch screens.
+
+## 0.8.1066 – UI review: phones, tablets, settings, empty states
+- Phones: nuBuilder Next's own pages with a breadcrumb and a Back button show one link "‹ previous page" instead of both; on
+  record pages the record's name is shown below it.
+- Phones: wide tables (backups, library packs, Compatibility check, formats, form and app cloner) show each row as a card with
+  the column titles.
+- Tablets: system lists with more than five columns (users, forms, procedures …) show cards up to 992 px wide.
+- Settings → General and Updates & libraries: Save is in the header, as on the other settings pages. Webhooks: the setting for
+  addresses in your own network is saved when switched.
+- Long explanations (backups, Reset database, File Manager set-up) are folded behind "More information"; long server paths are
+  shortened (configuration file, System status). Data access: a short intro with the details behind (i), and an access badge
+  only for fields that are not editable.
+- Record pages of forms (globeadmin): the layout switch (Absolute / Auto / Grid) moved into Design ▾.
+- New form: the start page and the wizard start at the left, like every other page.
+- The secret-key notice on API clients and webhooks is a quiet line; the Security check keeps the warning.
+- Form cloner and App cloner: an empty list shows a short explanation and "Add the first one".
+- Report designer and SQL builder: on phones a note says they need a larger screen.
+- Sales sample (version 23): in the order form the customer's name no longer runs into the label "Status" – refresh the sample
+  to get it.
+- Texts in all languages; Help → Phones and Using forms describe the changes.
+
+## 0.8.1065 – Libraries: remove older versions
+- Update → Libraries: new entry "Remove older versions…" in the ⋯ menu of a library that has more than one version on the server.
+  A dialogue lists the versions that are not in use with their size; the ticked ones are deleted. The version in use always
+  stays; the previous version is not ticked by default, because without it there is no rolling back. Texts in all languages.
+- Help → Installation (library packs) describes it.
+
+## 0.8.1064 – Development scripts: DeepSource Python findings
+- Development scripts only (DeepSource's Python report): the build script of the file manager for nuBuilder Forte no longer reuses
+  a variable name of the module, a type the checker could not follow is clear now, and reading project files by path is marked as
+  intended. The built file is unchanged. No change to the application.
+
+## 0.8.1063 – Notes
+- Notes for development: the TCPDF 7.0.22 library pack is in the GitHub release "libraries"; open hardening ideas of the
+  security check recorded in TODO.md. No change to the application.
+
+## 0.8.1062 – Reports: pictures with TCPDF 7, TCPDF 7.0.22 pack
+- Reports with TCPDF 7: pictures were left out of the PDF – an <img src="/folder/photo.jpg"> in an HTML field, or a picture stored
+  outside nuBuilder Next's own folder. TCPDF 7 only reads files below its own folders; nuBuilder Next now also allows the web
+  server's document root, its own folder, nuBuilder Forte's folder and the PDF cache, and turns web paths of pictures into file
+  paths before printing. Pictures given as an address are loaded from this installation's own host only (TCPDF 7 loads nothing
+  from other servers). TCPDF 6 behaves as before.
+- Library pack TCPDF 7.0.22 (tc-lib-pdf 8.84.0) for the GitHub release "libraries"; the pack is built by the new
+  dev/tcpdf_assemble.py (development package only).
+- Help → Reports: where pictures of a report are read from.
+
+## 0.8.1061 – Notes
+- Notes for development: v0.8.1060 recorded as the last published GitHub release. No change to the application.
+
 ## 0.8.1060 – Release gate
 - Release gate: the full test run (smoke test, all end-to-end tests, the cross-test against nuBuilder Forte, the OWASP ZAP scan)
   passed. Documentation brought up to date first: the feature list (help pages linked from their editor, the file manager on

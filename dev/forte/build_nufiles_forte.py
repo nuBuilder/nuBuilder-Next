@@ -18,8 +18,9 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(ROOT), 
 
 
 def rd(p):
-    with open(p, encoding='utf-8') as f:
-        return f.read()
+    # a build script of the development package: the paths are files of this project (APP, HERE), never request data
+    with open(p, encoding='utf-8') as src:  # skipcq: PTC-W6004
+        return src.read()
 
 
 def must(s, old, new, count=1):
@@ -86,12 +87,12 @@ LINES = {"$v('NU_BS', 'vendor/bundled/bootstrap-5.3.8', 'css/bootstrap.min.css')
          "$v('NU_CODEMIRROR', 'vendor/bundled/codemirror-6.43.15', 'codemirror.css')": None,
          "'js/bootstrap.bundle.min.js')": '<script src="<?= $nu->h(NUF_FORTE_URL . \'third_party/bootstrap/bootstrap.bundle.min.js\') ?>"></script>',
          "'codemirror-bundle.js')": '<script src="<?= $nu->h(NUF_FORTE_URL . \'third_party/ace/src-min-noconflict/ace.js\') ?>"></script>'}
-out_lines = []
+out_lines: list[str] = []
 for line in page.split('\n'):
     hit = [k for k in LINES if k in line]
     if hit:
-        if LINES[hit[0]] is not None: out_lines.append(LINES[hit[0]])
-        LINES.pop(hit[0])
+        repl = LINES.pop(hit[0])
+        if repl is not None: out_lines.append(repl)
         continue
     out_lines.append(line)
 if LINES: raise SystemExit('build: page lines not found: ' + ', '.join(LINES))

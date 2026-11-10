@@ -456,6 +456,43 @@ final class NuLibs
 	}
 
 	/**
+	 * Installed versions of $slot other than the active one (0.8.1065) – what "Remove older versions" offers, newest first.
+	 * @return list<array{version: string, prev: bool, size: int, at: string}>
+	 */
+	public static function older(string $slot): array
+	{
+		$st = self::state()[$slot] ?? [];
+		$out = [];
+		foreach (self::installed($slot) as $v) {
+			if ($v['version'] === (string)($st['active'] ?? '')) continue;
+			$m = json_decode((string)@file_get_contents($v['dir'] . '/' . self::MANIFEST), true);
+			$size = 0;
+			foreach ((array)($m['files'] ?? []) as $f) $size += (int)($f['size'] ?? 0);
+			$out[] = ['version' => $v['version'], 'prev' => $v['version'] === (string)($st['prev'] ?? ''), 'size' => $size, 'at' => $v['at']];
+		}
+		return $out;
+	}
+
+	/**
+	 * Removes the given older versions of $slot (0.8.1065); never the active one. Removing the previous version ends rolling back
+	 * (prev is cleared). @return list<string> the versions removed
+	 */
+	public static function removeOlder(string $slot, array $versions): array
+	{
+		$have = array_column(self::older($slot), 'version');
+		$gone = array_values(array_intersect($have, array_map('strval', $versions)));
+		if (!$gone) return [];
+		$s = self::state();
+		if (isset($s[$slot]) && in_array((string)$s[$slot]['prev'], $gone, true)) {
+			$s[$slot]['prev'] = '';
+			self::saveState($s);
+		}
+		foreach ($gone as $v) self::rmTree(self::folder($slot, $v));
+		if (self::$log) NuLog::write('nunext_lib_remove', self::PACKS, $slot, ['versions' => $gone, 'kept' => (string)(self::state()[$slot]['active'] ?? '')]);
+		return $gone;
+	}
+
+	/**
 	 * Deletes every pack of a RETIRED slot – vendor/packs/<dir>-*, third_party/<dir>-* (packs of 0.8.405–0.8.408) – and its entry in
 	 * nunext-libs.php (readState() skips unknown slots, so saving the state drops it). @return list<string> removed folders
 	 */

@@ -77,7 +77,7 @@ if ($id === '' && $callId === '') {
 	nu_layout_start(t('wh_title'), 'home', ['head' => NuListView::head() . nu_ts_head()]);
 	echo NuListView::crumbs([[t('wh_title')]]) . $tabs($tab);
 	if (!function_exists('curl_init')) echo '<div class="alert alert-warning small">' . h(t('wh_err_curl')) . '</div>';
-	if ((string)nu_cfg('nuConfigSecretKey') === '') echo '<div class="alert alert-warning small"><i class="bi bi-key me-1"></i>' . h(t('wh_no_key')) . '</div>';
+	if ((string)nu_cfg('nuConfigSecretKey') === '') echo '<p class="small text-body-secondary nuKeyHint mb-2"><i class="bi bi-key me-1"></i>' . h(t('wh_no_key')) . ' <a href="' . h(nu_url('securitycheck')) . '">' . h(t('secchk_title')) . '</a></p>';   // review M11: once in the Security check, a quiet line here
 	echo NuListView::card($st, $tab === 'calls' ? ['title_extra' => NuListView::infoTip(t('wh_calls_tip'))] : [
 		'title_extra' => NuListView::infoTip(t('wh_hint')),
 		'buttons' => '<a class="btn nuAddBtn" href="' . h(nu_url('webhooks', ['id' => 'new'])) . '" id="whNew"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>',
@@ -89,11 +89,10 @@ if ($id === '' && $callId === '') {
 			<div class="card-body d-flex flex-wrap align-items-center gap-3">
 				<h2 class="h6 mb-0"><i class="bi bi-gear me-1"></i><?= h(t('wh_settings')) ?></h2>
 				<div class="form-check form-switch mb-0">
-					<input class="form-check-input" type="checkbox" role="switch" name="allow_private" value="1" id="whAllowPrivate"<?= $set['allow_private'] ? ' checked' : '' ?>>
+					<input class="form-check-input js-autosubmit" type="checkbox" role="switch" name="allow_private" value="1" id="whAllowPrivate"<?= $set['allow_private'] ? ' checked' : '' ?>>
 					<label class="form-check-label" for="whAllowPrivate"><?= h(t('wh_allow_private')) ?></label>
 				</div>
 				<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('wh_allow_private_tip')) ?>" title="<?= h(t('wh_allow_private_tip')) ?>"><i class="bi bi-info-circle"></i></span>
-				<button class="btn btn-outline-secondary btn-sm ms-auto" type="submit"><i class="bi bi-check-lg me-1"></i><?= h(t('save')) ?></button>
 			</div>
 		</form>
 	<?php }

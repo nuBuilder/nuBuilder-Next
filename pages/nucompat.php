@@ -54,7 +54,7 @@ nu_layout_start(t('compat_title'), 'home');
 			<span class="badge text-bg-success"><?= $count('ok') ?> <?= h(t('compat_ok')) ?></span>
 		</div>
 		<div class="table-responsive">
-			<table class="table table-sm align-middle mb-0 nu-table">
+			<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards>
 				<thead><tr><th><?= h(t('compat_function')) ?></th><th><?= h(t('compat_status')) ?></th><th class="text-end"><?= h(t('compat_calls')) ?></th><th><?= h(t('compat_where')) ?></th></tr></thead>
 				<tbody>
 				<?php $shown = 0; foreach ($list as $name => $r):
@@ -100,7 +100,7 @@ nu_layout_start(t('compat_title'), 'home');
 		<span class="badge <?= $open ? 'text-bg-danger' : 'text-bg-success' ?>"><?= h(t('compat_f_open', $open)) ?></span>
 	</div>
 	<div class="table-responsive">
-		<table class="table table-sm align-middle mb-0 nu-table">
+		<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards>
 			<thead><tr><th>ID</th><th><?= h(t('compat_f_feature')) ?></th><th><?= h(t('compat_status')) ?></th><th><?= h(t('compat_where')) ?></th></tr></thead>
 			<tbody>
 			<?php foreach ($fnd as $id => $places): $since = NuCompat::SINCE[$id] ?? null; ?>
@@ -134,7 +134,7 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 		<span class="badge <?= $ms ? 'text-bg-warning' : 'text-bg-success' ?>" id="compatMsCount"><?= $msN ?></span>
 	</div>
 	<div class="table-responsive">
-		<table class="table table-sm align-middle mb-0 nu-table">
+		<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards>
 			<thead><tr><th><?= h(t('compat_ms_mysql')) ?></th><th><?= h(t('compat_ms_tsql')) ?></th><th><?= h(t('compat_where')) ?></th></tr></thead>
 			<tbody>
 			<?php foreach (NuCompat::MSSQL_RULES as $id => [$what, , $tsql]): if (empty($ms[$id])) continue; $places = $ms[$id]; ?>
@@ -168,7 +168,7 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 		<span class="badge <?= $unq ? 'text-bg-warning' : 'text-bg-success' ?>"><?= count($unq) ?></span>
 	</div>
 	<div class="table-responsive">
-		<table class="table table-sm align-middle mb-0 nu-table">
+		<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards>
 			<thead><tr><th><?= h(t('compat_where')) ?></th><th><?= h(t('compat_hash_lang')) ?></th><th><?= h(t('compat_hash_vars')) ?></th></tr></thead>
 			<tbody>
 			<?php foreach ($unq as $u): $fid = $u['form']; ?>

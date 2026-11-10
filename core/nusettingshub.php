@@ -142,7 +142,17 @@ final class NuSettingsHub
 			}
 			$html .= '</li>';
 		}
-		return $html . '</ul></aside>';
+		// phones: the sections as one select (review H6, 0.8.1068)
+		$opt = '<option value="' . h(nu_url('settings')) . '"' . ($section === '' ? ' selected' : '') . '>' . h(t('sh_overview')) . '</option>';
+		foreach ($pages as $s => $list) {
+			$opt .= '<optgroup label="' . h(t(self::SECTIONS[$s][1])) . '">';
+			foreach ($list as [$k, $label, $url]) {
+				$cur = $s === $section && ($k === $key || ($key === '' && $k === $list[0][0]));
+				$opt .= '<option value="' . h($url) . '"' . ($cur ? ' selected' : '') . '>' . h($label) . '</option>';
+			}
+			$opt .= '</optgroup>';
+		}
+		return $html . '</ul><select class="form-select nuSetPhSel" id="nuSetPhSel" aria-label="' . h(t('sh_title')) . '">' . $opt . '</select></aside>';
 	}
 
 	/** Frame around a page (called by nu_layout_start with the option 'settings'): side bar left, the page right. */

@@ -575,6 +575,8 @@ final class NuListDefs
 			'id' => self::idCol('p.zzzzsys_php_id'),
 		];
 		$filters = [
+			'origin' => ['label' => t('lv_origin'), 'type' => 'select', 'options' => static fn() => ['own' => t('lv_origin_own'), 'system' => t('lv_origin_sys')],   // system rows hidden by default (0.8.1068)
+				'where' => static fn(string $v) => match ($v) { 'own' => ["p.zzzzsys_php_id NOT LIKE 'nu%' AND p.zzzzsys_php_id NOT LIKE 'nx\\_%'", []], 'system' => ["(p.zzzzsys_php_id LIKE 'nu%' OR p.zzzzsys_php_id LIKE 'nx\\_%')", []], default => null }],
 			'group' => ['label' => t('proc_group'), 'type' => 'distinct', 'expr' => 'p.sph_group', 'none' => t('lv_empty')],
 			'status' => ['label' => t('proc_status'), 'type' => 'select', 'options' => static fn() => array_map('t', NuProcedure::STATUS),
 				'where' => static fn(string $v) => ["COALESCE(NULLIF(p.sph_status, ''), '1') = ?", [$v]]],
@@ -596,7 +598,7 @@ final class NuListDefs
 			'search' => ['p.sph_code', 'p.sph_description', 'p.sph_group', 'p.sph_category', 'f.sfo_code'], 'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
 				'default' => ['columns' => ['code', 'group', 'category', 'status', 'description', 'run', 'launch', 'access'], 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description', 'group']],
-					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group', 'status', 'category', 'run'], 'values' => []]],   // category + run (0.8.688)
+					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group', 'status', 'category', 'run'], 'values' => ['origin' => 'own']]],   // category + run (0.8.688)
 				'compact' => ['columns' => ['code', 'description', 'status'], 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description']],
 					'sort' => ['code', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group'], 'values' => []]],
 				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description', 'group', 'launch', 'access']],
@@ -741,9 +743,13 @@ final class NuListDefs
 				'html' => static fn($r) => (string)($r['sfo_code'] ?? '') !== '' && NuAcl::can((string)$r['lv_item_form'])
 					? '<a class="text-decoration-none" href="' . h(nu_url('form', ['f' => (string)$r['lv_item_form']])) . '">' . h((string)$r['sfo_code']) . '</a>' : h((string)($r['sfo_code'] ?? ''))]),
 			'object' => self::col('sob_all_id', 'o.sob_all_id', t('item_object'), 'small'),
-			'value' => ['label' => t('item_value'), 'main' => true, 'locked' => true, 'select' => ['itm_value' => 'i.itm_value', 'itm_icon' => 'i.itm_icon'], 'sort' => 'i.itm_value', 'class' => 'text-break',
+			'value' => ['label' => t('item_value'), 'main' => true, 'locked' => true, 'select' => ['itm_value' => 'i.itm_value', 'itm_icon' => 'i.itm_icon', 'lv_item_desc' => 'i.itm_description'], 'sort' => 'i.itm_value', 'class' => 'text-break',
 				'text' => static fn($r) => (string)$r['itm_value'],
-				'html' => static fn($r) => ((string)$r['itm_icon'] !== '' ? '<i class="' . h($r['itm_icon']) . ' me-1"></i>' : '') . h($r['itm_value'])],
+				// review N1: a value that is only an id (nuBuilder Forte's own items) – the description is the title, the id a small line
+				'html' => static fn($r) => ((string)$r['itm_icon'] !== '' ? '<i class="' . h($r['itm_icon']) . ' me-1"></i>' : '')
+					. (preg_match('/^[a-z]{0,3}[0-9a-f]{12,}$/i', (string)$r['itm_value']) && trim((string)($r['lv_item_desc'] ?? '')) !== ''
+						? h(mb_strimwidth(trim((string)$r['lv_item_desc']), 0, 80, '…')) . '<div class="small text-body-secondary fw-normal font-monospace nuItemId">' . h($r['itm_value']) . '</div>'
+						: h($r['itm_value']))],
 			'description' => self::col('itm_description', 'i.itm_description', t('item_description'), 'small text-break') + ['html' => static fn($r) => h(mb_strimwidth((string)$r['itm_description'], 0, 90, '…'))],
 			'group' => self::badgeCol('itm_group', 'i.itm_group', t('item_group')),
 			'category' => self::col('itm_category', 'i.itm_category', t('item_category'), 'small'),
@@ -757,6 +763,8 @@ final class NuListDefs
 			'id' => self::idCol('i.zzzzsys_item_id'),
 		];
 		$filters = [
+			'origin' => ['label' => t('lv_origin'), 'type' => 'select', 'options' => static fn() => ['own' => t('lv_origin_own'), 'system' => t('lv_origin_sys')],   // system rows hidden by default (0.8.1068)
+				'where' => static fn(string $v) => match ($v) { 'own' => ["i.zzzzsys_item_id NOT LIKE 'nu%' AND i.zzzzsys_item_id NOT LIKE 'nx\\_%'", []], 'system' => ["(i.zzzzsys_item_id LIKE 'nu%' OR i.zzzzsys_item_id LIKE 'nx\\_%')", []], default => null }],
 			'group' => ['label' => t('item_group'), 'type' => 'distinct', 'expr' => 'i.itm_group', 'none' => t('lv_empty')],
 			'active' => ['label' => t('item_active'), 'type' => 'select', 'all' => 'all',
 				'options' => static fn() => ['1' => '✔ ' . t('item_active_only'), '0' => '✖ ' . t('item_inactive_only')],
@@ -773,11 +781,11 @@ final class NuListDefs
 			'search' => ['i.itm_value', 'i.itm_description', 'i.itm_category', 'i.itm_tag', 'i.itm_language', 'o.sob_all_id', 'f.sfo_code'], 'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
 				'default' => ['columns' => ['form', 'object', 'value', 'description', 'group', 'category', 'tags', 'language', 'active', 'updated'], 'card' => ['title' => 'value', 'badge' => 'group', 'lines' => ['description', 'form', 'object']],
-					'sort' => ['form', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group', 'active', 'form'], 'values' => ['active' => '1']]],   // form (0.8.688)
+					'sort' => ['form', 'asc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group', 'active', 'form'], 'values' => ['active' => '1', 'origin' => 'own']]],   // form (0.8.688)
 				'compact' => ['columns' => ['value', 'description', 'group'], 'card' => ['title' => 'value', 'badge' => 'group', 'lines' => ['description']],
-					'sort' => ['value', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group', 'active'], 'values' => ['active' => '1']]],
+					'sort' => ['value', 'asc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group', 'active'], 'values' => ['active' => '1', 'origin' => 'own']]],
 				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'value', 'badge' => 'group', 'lines' => ['description', 'form', 'object', 'category']],
-					'sort' => ['form', 'asc'], 'per' => 50, 'filters' => ['shown' => array_keys($filters), 'values' => ['active' => '1']]],
+					'sort' => ['form', 'asc'], 'per' => 50, 'filters' => ['shown' => array_keys($filters), 'values' => ['active' => '1', 'origin' => 'own']]],
 			],
 		];
 	}
@@ -1611,6 +1619,10 @@ final class NuListDefs
 			'id' => self::idCol('t.zzzzsys_email_template_id'),
 		];
 		$filters = [
+			'langcur' => ['label' => t('lv_lang_cur'), 'type' => 'select', 'options' => static fn() => ['cur' => t('lv_lang_cur_only')],   // current language + no language (0.8.1068)
+				'where' => static fn(string $v) => $v === 'cur' ? ["COALESCE(t.emt_language, '') IN ('', ?)", [NU_LANGS[nu_lang()][1] ?? 'English']] : null],
+			'origin' => ['label' => t('lv_origin'), 'type' => 'select', 'options' => static fn() => ['own' => t('lv_origin_own'), 'system' => t('lv_origin_sys')],   // system rows hidden by default (0.8.1068)
+				'where' => static fn(string $v) => match ($v) { 'own' => ["t.zzzzsys_email_template_id NOT LIKE 'nu%' AND t.zzzzsys_email_template_id NOT LIKE 'nx\\_%'", []], 'system' => ["(t.zzzzsys_email_template_id LIKE 'nu%' OR t.zzzzsys_email_template_id LIKE 'nx\\_%')", []], default => null }],
 			'group' => ['label' => t('emt_group'), 'type' => 'distinct', 'expr' => 't.emt_group', 'none' => t('lv_empty')],
 			'category' => ['label' => t('emt_category'), 'type' => 'distinct', 'expr' => 't.emt_category', 'none' => t('lv_empty')],
 			'language' => ['label' => t('emt_language'), 'type' => 'distinct', 'expr' => 't.emt_language', 'none' => t('lv_empty')],
@@ -1620,7 +1632,7 @@ final class NuListDefs
 			'template' => ['label' => t('emt_template_badge'), 'type' => 'bool', 'expr' => "t.emt_template = '1'"],
 		];
 		$base = ['columns' => ['code', 'group', 'category', 'language', 'form', 'subject', 'to'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['language', 'subject']],
-			'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group', 'category', 'language', 'form'], 'values' => []]];
+			'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['langcur', 'origin', 'group', 'category', 'language', 'form'], 'values' => ['langcur' => 'cur']]];
 		if ($pf = NuProject::listFilter('emailtemplate', 't.zzzzsys_email_template_id')) $filters['project'] = $pf;   // projects (0.8.1035)
 		return [
 			'key' => 'emailtemplates', 'title' => t('emt_title'), 'route' => 'emailtemplates', 'form' => NuAcl::FORM_EMAILTEMPLATE,

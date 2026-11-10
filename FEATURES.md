@@ -7,6 +7,7 @@ page) for how to use it.
 ## For everyone
 
 - **Works on every screen** – phones, tablets and desktops; light, dark or automatic mode; checked against WCAG 2.1 A/AA.
+- **Tidy lists on phones** – at most three buttons in a list's title bar (the rest in ⋮), folded filters, cards or table per list; system rows hidden until you ask for them.
 - **Fast lists** – search, filters, sorting and paging; an advanced search with conditions per column and saved searches;
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
 - **Row details** – a ▸ on each row of a list shows hidden columns, cut text and a related list (e.g. the items of an order) below the row.
@@ -71,6 +72,7 @@ page) for how to use it.
   database from a backup (MySQL / MariaDB); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
   versions, code editor; made for phones too).
+- **Library packs** – install, update, roll back and remove older versions of the bundled libraries (TCPDF 7, PHPMailer, TinyMCE …) from the browser.
 - **Easy start** – installer, setup wizard, a tutorial (basic, in depth, coming from nuBuilder Forte) and built-in
   documentation.
 - **Branding and demo mode** – logo, title, environment label; read-only demo users.

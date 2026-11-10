@@ -114,6 +114,7 @@ if ($id !== '') {
 }
 nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nusqlbuilder.css') . '">', 'container' => $id !== '' ? 'container-fluid' : 'nuContainer']);
 ?>
+<?php if ($id !== ''): ?><div class="alert alert-info small py-2 mb-2 d-sm-none nuBigScreenNote"><i class="bi bi-display me-1" aria-hidden="true"></i><?= h(t('big_screen_note')) ?></div><?php /* review M12 */ ?><?php endif; ?>
 <nav aria-label="breadcrumb">
 	<ol class="breadcrumb small mb-2">
 		<li class="breadcrumb-item"><a href="<?= h(nu_url('forms')) ?>"><?= h(t('nav_forms')) ?></a></li>

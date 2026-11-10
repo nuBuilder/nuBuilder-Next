@@ -703,6 +703,14 @@ function nu_page_header(string $title, array $o = []): string
 		. '<div class="d-flex flex-wrap gap-2">' . $btn . (string)($o['buttons'] ?? '') . '</div></div>';
 }
 
+/** Empty state of an own list (review M10): icon, one sentence, "Add the first one" – as NuListView::emptyState. */
+function nu_empty_state(string $icon, string $text, ?string $addUrl = null): string
+{
+	return '<div class="text-center py-5 px-3 nuLvEmpty nuLvEmptyIntro"><i class="bi ' . h($icon) . ' fs-2 d-block mb-2 text-body-secondary" aria-hidden="true"></i>'
+		. '<p class="mb-3 mx-auto nuLvEmptyText">' . h($text) . '</p>'
+		. ($addUrl !== null ? '<a class="btn btn-primary" href="' . h($addUrl) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(t('lv_empty_first')) . '</a>' : '') . '</div>';
+}
+
 /** $attrs (0.8.651): more attributes of the th, already escaped (e.g. ' data-nu-col="name"' for the column widths of NuListView) */
 /** Sortable column header link. */
 function nu_sort_th(string $label, string $col, string $sort, string $dir, string $route, array $params, string $class = '', string $attrs = ''): string

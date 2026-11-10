@@ -81,10 +81,10 @@ nu_layout_start(t('api_title'), 'home', ($lvState ? [] : ['container' => 'contai
 	</div>
 <?php endif; ?>
 <?php if ((string)nu_cfg('nuConfigSecretKey') === ''): ?>
-	<div class="alert alert-warning small d-flex flex-wrap align-items-center gap-2">
-		<span class="flex-grow-1"><i class="bi bi-key me-1"></i><?= h(t('api_no_key')) ?></span>
+	<div class="small text-body-secondary nuKeyHint d-flex flex-wrap align-items-center gap-2 mb-2"><?php /* review M11: a quiet line; the Security check carries the warning */ ?>
+		<span><i class="bi bi-key me-1"></i><?= h(t('api_no_key')) ?></span>
 		<?php if (NuConfigFile::writable() && !NuDemo::active()): ?>
-			<button class="btn btn-sm btn-warning text-nowrap" type="button" data-bs-toggle="modal" data-bs-target="#nuKeyGen"><i class="bi bi-key me-1"></i><?= h(t('key_generate')) ?></button>
+			<button class="btn btn-link btn-sm p-0 text-nowrap" type="button" data-bs-toggle="modal" data-bs-target="#nuKeyGen"><i class="bi bi-key me-1"></i><?= h(t('key_generate')) ?></button>
 		<?php elseif (!NuDemo::active()): ?>
 			<span class="text-body-secondary"><?= h(t('cfg_err_not_writable', NuConfigFile::path())) ?></span>
 		<?php endif; ?>

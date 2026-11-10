@@ -186,11 +186,11 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 
 <?php if ($u['globeadmin'] && !$editorPage && NuMigrate::entryNotice()): // 0.8.825 / 0.8.826: cron.php, dbadmin.php → nu… (NuMigrate step 0033) ?>
 <div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuEntryNotice"><i class="bi bi-signpost-split mt-1" aria-hidden="true"></i>
-	<div class="flex-grow-1"><strong><?= h(t('entry_ren_title')) ?></strong>
+	<details class="flex-grow-1 nuNoticeFold"><summary class="fw-semibold"><?= h(t('entry_ren_title')) ?> <span class="small fw-normal text-decoration-underline"><?= h(t('more_info')) ?></span></summary><?php /* review H1: one line, details folded */ ?>
 		<ul class="mb-0 mt-1 small">
 			<li><?= h(t('entry_ren_cron')) ?> <code>php <?= h(NU_ROOT) ?>/nucron.php</code></li>
 			<li><?= h(t('entry_ren_db')) ?></li>
-		</ul></div>
+		</ul></details>
 	<?php if (empty($u['demo'])): ?><form method="post" action="<?= h(nu_url('home')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_entry_notice">
 		<button type="submit" class="btn-close" id="nuEntryNoticeHide" title="<?= h(t('entry_ren_hide')) ?>" aria-label="<?= h(t('entry_ren_hide')) ?>"></button></form><?php endif; ?></div>
 <?php endif; ?>
@@ -203,7 +203,7 @@ if ($tutBanner): ?>
 <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 nuTutBanner" role="note">
 	<i class="bi bi-mortarboard fs-4 me-1" aria-hidden="true"></i>
 	<div class="me-auto"><div class="fw-semibold"><?= h(t($tutOffer ? 'tut_banner_wizard' : 'tut_banner_title')) ?></div>
-		<div class="small"><?= h(t('tut_banner')) ?><?php if ($tutBanner['done']): ?> · <?= h(t('tut_progress', $tutBanner['done'], $tutBanner['total'])) ?><?php endif; ?></div></div>
+		<div class="small d-none d-sm-block"><?= h(t('tut_banner')) ?><?php if ($tutBanner['done']): ?> · <?= h(t('tut_progress', $tutBanner['done'], $tutBanner['total'])) ?><?php endif; ?></div></div>
 	<a class="btn btn-primary btn-sm" href="<?= h(nu_url('tutorial', $tutBanner['next'] !== '' ? ['l' => $tutBanner['next']] : [])) ?>"><i class="bi bi-play-fill me-1"></i><?= h(t($tutBanner['done'] ? 'tut_continue_short' : 'tut_start')) ?></a>
 	<form method="post" action="<?= h(nu_url('tutorial')) ?>" class="d-inline"><?= nu_csrf_field() ?><input type="hidden" name="back" value="home">
 		<button class="btn btn-outline-secondary btn-sm" type="submit" name="action" value="hide" title="<?= h(t('tut_banner_hide_tip')) ?>"><?= h(t('tut_banner_hide')) ?></button></form>

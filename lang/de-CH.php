@@ -7,6 +7,7 @@ defined('NU_ROOT') || exit;
 return [
 	'close' => 'Schliessen',
 	'as_op_gt' => 'ist grösser als',
+	'big_screen_note' => 'Dieser Designer braucht einen grösseren Bildschirm – zum Ändern auf einem Tablet oder Computer öffnen.',
 	'sb_recent_remove' => 'Aus «Zuletzt verwendet» entfernen',
 	'sb_menu_default' => 'Seitenleiste standardmässig für alle',
 	'login_err_md5' => 'Dieses Passwort ist in einem alten Format gespeichert, das nicht mehr angenommen wird. Bitte «Passwort vergessen» verwenden oder beim Administrator ein neues Passwort anfordern.',

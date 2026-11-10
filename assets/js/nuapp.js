@@ -683,6 +683,14 @@
 		});
 	};
 	window.nuOpenMin(document);
+	// form lists (review H2): the column filters start folded on phones (CSS .nuFltPhoneHide) – the funnel opens them the first time
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest && e.target.closest('.nuFilterToggle[data-bs-target="#nuBrowseFilters"]');
+		var c = b && document.getElementById('nuBrowseFilters');
+		if (!c || !c.classList.contains('nuFltPhoneHide') || window.innerWidth >= 576) return;
+		e.preventDefault(); e.stopImmediatePropagation();
+		c.classList.remove('nuFltPhoneHide'); c.classList.add('show'); b.setAttribute('aria-expanded', 'true');
+	}, true);
 
 	// ---------------------------------------------------------------- "Please check the highlighted fields" (0.8.718)
 	// The message becomes a button: it lists the fields marked .is-invalid (label + message); a click on one shows its tab / folded
@@ -1830,6 +1838,127 @@ window.nuPageNoGo = function (value) {
 	document.addEventListener('nu:listrefresh', queue);
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', queue); else queue();
 	window.nuStickyHeadCheck = queue;
+})();
+
+// ---------------------------------------------------------------- phones: one way back (review M1)
+// Own pages with a breadcrumb AND a Back button showed both below 576 px. A link "‹ <parent>" (a.nuPhBack, like the form pages)
+// takes their place; the breadcrumb and the Back button are hidden by CSS on phones only. Runs before the trail below, which then
+// points the link to the page before. Not with the shared setting nuPhoneBackButton = hidden (html.nuBack-hidden).
+(function () {
+	'use strict';
+	function run() {
+		var main = document.getElementById('main');
+		if (!main || document.documentElement.classList.contains('nuBack-hidden') || main.querySelector('.nuFormHeader, a.nuPhBackOwn')) return;
+		var nav = main.querySelector('nav[aria-label=breadcrumb]');
+		if (!nav || nav.closest('.nuListCard, .modal')) return;
+		var bar = null, btn = null;
+		main.querySelectorAll('.nuTitleBar').forEach(function (b) {
+			if (btn || b.closest('.nuListCard, .card-header, .modal')) return;
+			var c = b.querySelector('a.nuBackBtn') || [].filter.call(b.querySelectorAll('a.btn.nuBtnAct'), function (a) { var f = a.firstElementChild; return f && f.classList.contains('bi-arrow-left'); })[0];
+			if (c) { bar = b; btn = c; }
+		});
+		if (!btn) return;
+		var crumbs = nav.querySelectorAll('.breadcrumb-item a');
+		var last = crumbs.length ? crumbs[crumbs.length - 1] : null;
+		var a = document.createElement('a');
+		a.className = 'nuPhBack nuPhBackOwn';
+		a.href = btn.getAttribute('href') || (last ? last.getAttribute('href') : '') || 'index.php';
+		var i = document.createElement('i'); i.className = 'bi bi-chevron-left'; i.setAttribute('aria-hidden', 'true');
+		var sp = document.createElement('span'); sp.textContent = (last ? last.textContent : btn.textContent || '').trim();
+		a.appendChild(i); a.appendChild(sp);
+		nav.parentNode.insertBefore(a, nav);
+		nav.classList.add('nuPhCrumbOff');
+		btn.classList.add('nuPhBtnOff');
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();
+
+// ---------------------------------------------------------------- phones: at most three actions in a list's title bar (review H3)
+// Below 576 px the header of a list card keeps Back, Add, the view menu and ⋮; every other button / menu of the bar is offered in ⋮
+// (items that click the original, so their own handlers run) and hidden in the bar (.nuPhOverflow). The users list's own ⋮
+// (.nuMoreMenu) is reused.
+(function () {
+	'use strict';
+	function keep(el) {
+		if (el.matches('.nuBackBtn, .nuAddBtn, .nuMoreMenu, .nuPhMore')) return true;
+		if (el.querySelector('.nuLvMenuBtn')) return true;                                   // the view menu
+		return /(?:New|Add)$/.test(el.id || '');
+	}
+	function label(el) {
+		var t = el.getAttribute('title') || el.getAttribute('aria-label') || '';
+		if (!t) { var c = el.cloneNode(true); c.querySelectorAll('.visually-hidden, .badge').forEach(function (x) { x.remove(); }); t = c.textContent; }
+		return (t || '').replace(/\s+/g, ' ').trim();
+	}
+	function item(src, text) {
+		var a = document.createElement(src.tagName === 'A' && src.getAttribute('href') ? 'a' : 'button');
+		a.className = 'dropdown-item d-flex align-items-center gap-2 nuPhMoreItem';
+		if (a.tagName === 'A') { a.href = src.getAttribute('href'); if (src.target) a.target = src.target; } else a.type = 'button';
+		// every icon of the button (the card / table switch has two, one shown by the CSS of the current state)
+		var ics = src.querySelectorAll(':scope > .bi'); if (!ics.length) ics = [].slice.call(src.querySelectorAll('.bi'), 0, 1);
+		[].forEach.call(ics, function (ic) { var i = document.createElement('i'); i.className = ic.className; i.classList.remove('me-1', 'me-2'); i.setAttribute('aria-hidden', 'true'); a.appendChild(i); });
+		var sp = document.createElement('span'); sp.textContent = text; a.appendChild(sp);
+		if (a.tagName !== 'A') a.addEventListener('click', function () { src.click(); });
+		var li = document.createElement('li'); li.appendChild(a); return li;
+	}
+	function run(root) {
+		(root || document).querySelectorAll('.nuListCard > .nuListHead').forEach(function (head) {
+			if (head.hasAttribute('data-nu-ph-done')) return;
+			head.setAttribute('data-nu-ph-done', '1');
+			var bar = head.querySelector(':scope > .d-flex'); if (!bar) return;
+			var extra = [].filter.call(bar.children, function (el) { return !keep(el) && !el.matches('.d-none, [hidden]') && (el.matches('a.btn, button.btn, .dropdown, .btn-group')); });
+			if (!extra.length) return;
+			var menu = bar.querySelector('.nuMoreMenu .dropdown-menu');
+			if (!menu) {
+				var dd = document.createElement('div'); dd.className = 'dropdown d-sm-none nuMoreMenu nuPhMore';
+				var lb = head.getAttribute('data-nu-more-label') || '⋮';
+				var b = document.createElement('button'); b.type = 'button'; b.className = 'btn nuBtnAct'; b.setAttribute('data-bs-toggle', 'dropdown'); b.setAttribute('aria-expanded', 'false'); b.title = lb; b.setAttribute('aria-label', lb);
+				var bi = document.createElement('i'); bi.className = 'bi bi-three-dots-vertical'; b.appendChild(bi);
+				menu = document.createElement('ul'); menu.className = 'dropdown-menu dropdown-menu-end shadow-sm';
+				dd.appendChild(b); dd.appendChild(menu); bar.appendChild(dd);
+			} else if (menu.children.length) { var hr = document.createElement('li'); hr.innerHTML = '<hr class="dropdown-divider">'; menu.appendChild(hr); }
+			extra.forEach(function (el) {
+				el.classList.add('nuPhOverflow');
+				var sub = el.matches('.dropdown, .btn-group') ? el.querySelectorAll('.dropdown-menu .dropdown-item') : [];
+				if (sub.length) {
+					var h = document.createElement('li'); var h6 = document.createElement('h6'); h6.className = 'dropdown-header'; h6.textContent = label(el.querySelector('[data-bs-toggle="dropdown"]') || el); h.appendChild(h6); menu.appendChild(h);
+					[].forEach.call(sub, function (x) { menu.appendChild(item(x, label(x))); });
+				} else {
+					var btn = el.matches('a, button') ? el : el.querySelector('a.btn, button.btn');
+					if (btn && btn.hasAttribute('data-lv-phone-toggle')) {                  // card / table switch first in ⋮
+						var li = item(btn, label(btn)), sep = document.createElement('li'); sep.innerHTML = '<hr class="dropdown-divider">';
+						if (menu.firstChild) menu.insertBefore(sep, menu.firstChild);
+						menu.insertBefore(li, menu.firstChild);
+					} else if (btn) menu.appendChild(item(btn, label(btn)));
+				}
+			});
+		});
+	}
+	window.nuPhoneMoreMenu = run;
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { run(); }); else run();
+	document.addEventListener('nu:listrefresh', function () { run(); });
+})();
+
+// ---------------------------------------------------------------- phones: wide tables as cards (review M4)
+// table[data-nu-phcards]: below 576 px every row is a card, each cell carries the title of its column (data-label, from <thead>).
+(function () {
+	'use strict';
+	function label(root) {
+		(root || document).querySelectorAll('table[data-nu-phcards]').forEach(function (t) {
+			var heads = t.tHead && t.tHead.rows.length ? [].map.call(t.tHead.rows[t.tHead.rows.length - 1].cells, function (c) { return (c.textContent || '').replace(/\s+/g, ' ').trim(); }) : [];
+			[].forEach.call(t.tBodies, function (tb) {
+				[].forEach.call(tb.rows, function (r) {
+					var col = 0;
+					[].forEach.call(r.cells, function (c) {
+						if (!c.hasAttribute('data-label')) c.setAttribute('data-label', r.cells.length === 1 ? '' : (heads[col] || ''));
+						col += c.colSpan || 1;
+					});
+				});
+			});
+		});
+	}
+	window.nuPhoneCardsLabel = label;
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { label(); }); else label();
+	document.addEventListener('nu:listrefresh', function () { label(); });
 })();
 
 // ---------------------------------------------------------------- Back = the page you came from (0.8.1017)

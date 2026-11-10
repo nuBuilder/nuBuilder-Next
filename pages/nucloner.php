@@ -134,8 +134,9 @@ $heading = $row ? nu_form_label((string)$row['clo_form_source']) : t('cl_new_set
 			<span class="small text-body-secondary"><?= h(t('n_records', count($rows))) ?></span>
 			<div class="d-flex flex-wrap gap-2"><a class="btn nuAddBtn" href="<?= h(nu_url('cloner', ['id' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a></div>
 		</div>
+		<?php if (!$rows && $q === ''): echo nu_empty_state('bi-files', t('cl_empty'), nu_url('cloner', ['id' => 'new'])); else: // review M10 ?>
 		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0 nu-table">
+			<table class="table table-hover align-middle mb-0 nu-table" data-nu-phcards>
 				<thead><tr><th><?= h(t('cl_source')) ?></th><th><?= h(t('cl_dest')) ?></th><th><?= h(t('cl_dump_short')) ?></th><th><?= h(t('cl_without_objects')) ?></th><th><?= h(t('cl_notes')) ?></th></tr></thead>
 				<tbody>
 				<?php if (!$rows): ?><tr><td colspan="5" class="text-center text-body-secondary py-5"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
@@ -152,6 +153,7 @@ $heading = $row ? nu_form_label((string)$row['clo_form_source']) : t('cl_new_set
 				</tbody>
 			</table>
 		</div>
+		<?php endif; ?>
 	</div>
 <?php nu_layout_end();
 	return;

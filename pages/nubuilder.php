@@ -47,7 +47,7 @@ if ($isNew && ($_GET['start'] ?? '') !== 'wizard') {
 	$openPage = $canSave && ($_GET['start'] ?? '') === 'page';
 	nu_layout_start(t('nfc_title'), 'forms', ['container' => 'container-fluid nuBuilderContainer']);
 	?>
-	<div class="row justify-content-center"><div class="col-xl-11 col-xxl-10" id="nuNfStart" data-csrf="<?= h(nu_csrf_token()) ?>" data-api="<?= h(nu_url('builderapi')) ?>"<?= $openPage ? ' data-open="page"' : '' ?>>
+	<div class="row"><div class="col-xl-11 col-xxl-10" id="nuNfStart" data-csrf="<?= h(nu_csrf_token()) ?>" data-api="<?= h(nu_url('builderapi')) ?>"<?= $openPage ? ' data-open="page"' : '' ?>>
 		<?= nu_page_header(t('nfc_title'), ['icon' => 'bi-magic', 'sub' => t('nfc_ask'), 'back' => nu_url('forms'), 'crumbs' => [[t('nav_forms'), nu_url('forms')]]]) ?>
 		<div class="row g-3">
 			<?= $card('wizard', nu_url('builder', ['new' => '1', 'start' => 'wizard']), 'bi-list-check', t('nfc_wizard'), t('nfc_wizard_d'), h(t('nfc_wizard_k'))) ?>
@@ -100,7 +100,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 	. '<li class="breadcrumb-item active" aria-current="page">' . h(t('builder_new_form')) . '</li></ol></nav>';
 ?>
 <?php if ($isNew): ?>
-	<div class="row justify-content-center">
+	<div class="row"><?php /* review M7: narrow pages start at the left like every other page */ ?>
 		<div class="col-lg-10 col-xl-8">
 			<?= $crumb   // inside the centred column, so it lines up with the card (0.8.249) ?>
 			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1></div>

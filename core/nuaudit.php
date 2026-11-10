@@ -83,7 +83,7 @@ final class NuAudit
 		if (NuAcl::can(NuAcl::FORM_AUDIT)) $t['audit'] = ['bi-clock-history', t('aud_title')];
 		if (NuAdmin::can('sessions')) $t['sessions'] = ['bi-people', t('sess_title')];
 		if (count($t) < 2) return '';
-		$out = '<ul class="nav nav-tabs mb-3">';
+		$out = '<ul class="nav nav-tabs mb-3 nuTabsScroll">';   // review N2: one line, scrolls sideways on phones
 		foreach ($t as $k => [$ic, $lb]) {
 			$out .= '<li class="nav-item"><a class="nav-link' . ($k === $active ? ' active" aria-current="page' : '') . '" href="' . h(nu_url($k)) . '"><i class="bi ' . $ic . ' me-1"></i>' . h($lb) . '</a></li>';
 		}

@@ -153,3 +153,9 @@
 	// disabled boxes are not sent: the server keeps the stored variants of a language that is switched off
 	form.addEventListener('submit', function () { form.querySelectorAll('.setLangVars input:disabled').forEach(function (b) { b.disabled = false; }); });
 })();
+
+// phones: section select (review H6, 0.8.1068)
+(function () {
+	var sel = document.getElementById('nuSetPhSel');
+	if (sel) sel.addEventListener('change', function () { if (sel.value) window.location.href = sel.value; });
+})();
