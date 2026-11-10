@@ -10,14 +10,6 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       names of the unset hash variables (the SQL is not sent to the browser). Send the real SQL (forms that reuse it, e.g. to export the
       list in a procedure) or keep it as is. The owner decides later.
 - [ ] **DeepSource** (0.8.944) – the owner looks into it later: turn it off (1), keep only the Secrets analyzer (2, recommended – change `.deepsource.toml`, goes up with the next gate push), or keep it and ignore the style rules (3). Findings so far assessed in 0.8.887 / 0.8.937–0.8.939.
-- [ ] **ApexCharts licence** (0.8.896): 4.7.0 is the last MIT release. From 5.0 the LICENSE file is a dual licence (Community: free only
-      below 2 M USD revenue / budget; embedding in a platform used by others – a low-code builder like nuBuilder Next – needs the paid OEM
-      licence). Stays on 4.7.0 until the owner decides (alternatives: Chart.js / ECharts, MIT / Apache-2.0).
-- [ ] **CodeMirror 6 – keep or go back** (0.8.898, trial): every editor runs on CodeMirror 6 through an adapter with the CodeMirror 5 calls
-      we use (dev/cm6/adapter.js, built by dev/cm6/build.sh into vendor/bundled/codemirror-6.43.15/). Updated servers keep the CodeMirror 5
-      folder (updates never delete library folders); the package no longer has it – going back = a release with codemirror-5.65.21/ (git
-      history) + NU_CODEMIRROR, the paths in nuruntime.js / apps/nufiles/index.php, the registry and the add-on loads. Not done yet: the
-      adapter has no CodeMirror 5 modes / defineMode (custom pages that call more of the CodeMirror 5 API than nuBuilder Next does would break).
 - [ ] **dev / test / prod and git** (forum question, 26 Oct 2026): proposals M1–M3 (moving forms / procedures between installations) and
       G1–G3 (git sync of the application's metadata) – the owner decides later.
 - [ ] **Custom pages: "Test copy"** – besides the draft (0.8.599) a clone of the custom page + its folder, published back (option A, not
@@ -36,7 +28,6 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Drawing order of objects** (absolute layout): nuBuilder Forte sorts content boxes first, then sob_all_order, then the tab order,
       run objects last at the same order; nuBuilder Next sorts tab, sob_all_order, top, left. Matters only for objects with the same order
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
-- [ ] **Object menu on more objects**: nuBuilder Forte also offers the right-click menu on words, images, tabs and sub-form titles.
 
 ## SQL Server
 - [ ] **Restore database from a backup on SQL Server** (0.8.1031) – only offered on MySQL / MariaDB; the SQL Server dump (GO batches) is read by NuSqlImport (dialect sqlsrv), but dropping / restoring was not tried on a server.
@@ -115,6 +106,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Grid rows** (0.8.1088) – please verify with the tester's converted forms: three wide fields in one row stay on one line, a dragged object / a lower column number keeps its place
+- [ ] **Object menu on words, images, sub-form titles** (0.8.1082) – please verify right-click on a word, an image and a grid sub-form column title (Properties opens the child form)
 - [ ] **Browse aliases with a sub-query in FROM** (0.8.1075) – please verify with the tester's list
 - [ ] **UI review on devices** (0.8.1066–0.8.1070) – please verify on a real phone and a touch tablet: list title bars (only Back / Add / view menu, the rest in ⋮ with Card or table first), folded column filters of form lists, settings section select, full-size fields on touch tablets, Origin filter (procedures / items: own rows only by default; e-mail templates: own language) – is hiding the read-only nx_ templates under Own wanted?
 - [ ] **Computed fields inside list columns** (0.8.1059, a tester's report) – please verify with the tester's real list: `IF(…, alias, '')`, `CONCAT(…, alias)`, `ORDER BY CAST(alias AS UNSIGNED)`, aliases in GROUP BY / HAVING
@@ -245,7 +238,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       white box while it loads (also dark mode), light ⇄ dark switches the editor at once without marking the record as changed.
 - [ ] **Help pages → Draft with AI** (0.8.1037 / 0.8.1038): the field Language; an answer in Markdown becomes headings / lists in the
       visual editor.
-- [ ] **CodeMirror 6 in every editor** (0.8.898, see Decisions): procedures, Global code, nuconfig.php, data export SQL, design mode code
+- [ ] **CodeMirror 6 in every editor** (0.8.898, kept – the owner 0.8.1080): procedures, Global code, nuconfig.php, data export SQL, design mode code
       window / workspace, form page code window (double-click), code snippets, File Manager editor – typing, Ctrl+F, Ctrl+/, Ctrl+- / Ctrl++
       shortcuts (0.8.905), Tab, suggestions (nu…), Format, syntax check marks, dark mode, phones; custom pages that load
       `vendor('codemirror', …)` and call more of the CodeMirror 5 API than the adapter offers.
@@ -267,6 +260,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **File Manager on phones** (0.8.1056–0.8.1058): folder list closes by a tap outside / swipe / Esc, the path as ‹ parent + folder name ▾, the toolbar in one row – please verify on a real phone (also a very long folder name, 320 px screens)
 - [ ] **Installer** (0.8.1047–0.8.1049): start step with passed checks folded, no library packs in the dump list, all packs ticked – please verify with a fresh installation on the live host
 - [ ] **Masking personal data in copies** (idea from mydumper's masquerade, 0.8.1032) – masking rules per column (e-mail, names, phone) for the App cloner download / copies of live data on test systems; not built.
+- [ ] **Log: Delete older entries** (0.8.1087) – please verify on the live server (30 / 90 / 365 days, all; the password is asked again)
 - [ ] **Restore database from a backup** (0.8.1031 / 0.8.1032 – way back on failure, row counts, free space): please verify on the live server with a copy – a whole-database backup and a nuBuilder-tables backup, with the backup first; large dumps (read line by line) and the time limit of the host (the restore sets none).
 - [ ] **GitHub pack does not match its index**: a clearer message ("publish packs and libraries.json from the same build"); 0.8.556 reads
       the index again before installing.

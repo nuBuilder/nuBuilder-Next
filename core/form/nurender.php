@@ -875,7 +875,7 @@ final class NuRender
 			$hidden = NuRecord::hiddenFor($c);
 			// + 4 px = the cell's side padding (2 px each, nuform.css): the control gets the object's width as in nuBuilder Forte (0.8.965)
 			$w = max(30, (int)$c['sob_all_width'] + ($c['sob_all_type'] === 'lookup' ? self::lookupDescWidth($c) + 40 : 0)) + 4;
-			$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" style="min-width:' . $w . 'px;width:' . $w . 'px' . ($hidden ? ';display:none' : '') . '">'
+			$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="' . h((string)$c['zzzzsys_object_id']) . '" data-nu-sf-form="' . h((string)$o['sob_subform_zzzzsys_form_id']) . '" style="min-width:' . $w . 'px;width:' . $w . 'px' . ($hidden ? ';display:none' : '') . '">'
 				. self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</th>';
 		}
 		if ($canDelete) $head .= '<th class="nuSubformDeleteTitle" title="' . h(t('delete')) . '"><i class="bi bi-trash"></i></th>';

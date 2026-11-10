@@ -74,6 +74,7 @@ final class NuLayout
 		foreach ($explicit as $o) $rows[(int)$o['nunext']['row']][] = $o;
 		ksort($rows);
 		$rows = array_values($rows);
+		$explicitRows = count($rows);                         // these keep the column order set in design mode
 
 		// automatic rows by top position
 		usort($implicit, static fn($a, $b) => [(int)$a['sob_all_top'], (int)$a['sob_all_left']] <=> [(int)$b['sob_all_top'], (int)$b['sob_all_left']]);
@@ -91,14 +92,22 @@ final class NuLayout
 		if ($current) $rows[] = $current;
 
 		$out = [];
-		foreach ($rows as $row) {
-			usort($row, static fn($a, $b) => (int)$a['sob_all_left'] <=> (int)$b['sob_all_left']);
+		foreach ($rows as $r => $row) {
+			// grid rows are already ordered by column (then left); only automatic rows go by the left position
+			if ($r >= $explicitRows) usort($row, static fn($a, $b) => (int)$a['sob_all_left'] <=> (int)$b['sob_all_left']);
+			$fixed = [];
+			$spans = [];
+			foreach ($row as $i => $o) {
+				$own = $mode === 'grid' && isset($o['nunext']['span']) && (int)$o['nunext']['span'] > 0;
+				$fixed[$i] = $own;
+				$spans[$i] = max(1, min(12, $own ? (int)$o['nunext']['span'] : self::span($o, $containerWidth)));
+			}
+			$spans = self::fitRow($spans, $fixed);
 			$items = [];
-			foreach ($row as $o) {
-				$span = ($mode === 'grid' && isset($o['nunext']['span'])) ? (int)$o['nunext']['span'] : self::span($o, $containerWidth);
+			foreach ($row as $i => $o) {
 				$items[] = [
 					'obj'      => $o,
-					'span'     => max(1, min(12, $span)),
+					'span'     => $spans[$i],
 					'children' => $o['sob_all_type'] === 'contentbox'
 						? self::tree($o['zzzzsys_object_id'], $all, $parent, max(200, (int)($o['sob_all_width'] ?? 0)), $mode, $depth + 1)
 						: null,
@@ -107,6 +116,52 @@ final class NuLayout
 			$out[] = $items;
 		}
 		return ['rows' => $out];
+	}
+
+	/**
+	 * Spans worked out from widths are rounded one by one, so a row of them can add up to more than 12 and Bootstrap
+	 * would push the last field into a new line. Such spans are scaled down to the room left next to the spans set by
+	 * hand (largest remainder, at least 1 each) – spans set in design mode are never changed.
+	 *
+	 * @param array<int, int>  $spans
+	 * @param array<int, bool> $fixed  true = span set by hand
+	 * @return array<int, int>
+	 */
+	public static function fitRow(array $spans, array $fixed): array
+	{
+		$auto = array_keys(array_filter($fixed, static fn($f) => !$f));
+		if (!$auto || array_sum($spans) <= 12) return $spans;
+		$room = 12;
+		foreach ($spans as $i => $s) if (!empty($fixed[$i])) $room -= $s;
+		if ($room < count($auto)) {                           // no room: one column each, the row wraps
+			foreach ($auto as $i) $spans[$i] = 1;
+			return $spans;
+		}
+		$sum = 0;
+		foreach ($auto as $i) $sum += $spans[$i];
+		$rest = [];
+		$used = 0;
+		foreach ($auto as $i) {
+			$exact = $spans[$i] * $room / $sum;
+			$spans[$i] = max(1, (int)floor($exact));
+			$rest[$i] = $exact - floor($exact);
+			$used += $spans[$i];
+		}
+		arsort($rest);                                        // stable in PHP 8: equal remainders keep the row order
+		foreach (array_keys($rest) as $i) {
+			if ($used >= $room) break;
+			$spans[$i]++;
+			$used++;
+		}
+		// the minimum of 1 can go over the room – take it back from the widest automatic spans
+		while ($used > $room) {
+			$w = null;
+			foreach ($auto as $i) if ($spans[$i] > 1 && ($w === null || $spans[$i] > $spans[$w])) $w = $i;
+			if ($w === null) break;
+			$spans[$w]--;
+			$used--;
+		}
+		return $spans;
 	}
 
 	public static function effectiveWidth(array $o): int

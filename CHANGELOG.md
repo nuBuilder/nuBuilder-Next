@@ -3,6 +3,60 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1089 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, ZAP); documentation brought up to date.
+- File Manager: the "…" menu of a long path stays open when the window is resized right after it was opened (the breadcrumb was rebuilt and the menu closed).
+
+## 0.8.1088 – Grid rows fit 12 columns
+- Grid and auto layout: the widths of one row are shared out so that a row never needs more than 12 columns – a row of
+  wide fields shrank to one line instead of pushing its last field to the next line (each width was rounded on its own,
+  e.g. 5 + 5 + 5 = 15). Spans set by hand in design mode stay as set. Also in the design mode preview and when a form is
+  converted to the grid layout.
+- Grid layout: the objects of a row follow their column numbers. They were ordered by their old pixel position again, so an
+  object dragged before another one, or given a lower column number, could stay behind it.
+
+## 0.8.1087 – Log: delete older entries
+- Log: Delete older entries… (globeadmin, asks for the password again): removes log entries older than 30 / 90 / 365 days
+  or all of them – the last 15 minutes always stay for the sign-in limit, and the deletion itself is written to the log
+
+## 0.8.1086 – Compatibility check counts on phones
+- Compatibility check on phones: the JavaScript / PHP cards show their counts (missing, stub, your own, supported) as one quiet
+  line with coloured dots below the title instead of four badges; counts that need attention are bold
+
+## 0.8.1085 – Config file warning can be closed
+- Configuration file page: the yellow warning can be closed with ×; it stays closed in this browser, and the warning symbol
+  next to the (i) shows it again
+
+## 0.8.1084 – Settings (i) on phones
+- Settings pages on phones: tapping the (i) next to a page title (e.g. the configuration file) shows its explanation again –
+  the explanation was hidden on small screens together with the subtitle
+
+## 0.8.1083 – Admin roles on phones: fixed columns
+- Admin roles on phones: the rights are shown like on the desktop – the titles None / View / Change stay at the top and
+  every right has its three choices in the same columns, so Change never moves when a right has no View level
+
+## 0.8.1082 – Object menu on words, images and sub-form titles
+- Right-click menu on more objects (as nuBuilder Forte): words and images now open the object menu too, and a right-click
+  on a column title of a grid sub-form opens a menu for that column – copy its id, Properties (the sub-form's form in design
+  mode with the column chosen) and Design the sub-form's form
+
+## 0.8.1081 – ApexCharts stays on 4.7.0
+- Charts: ApexCharts stays on 4.7.0, the last release under the MIT licence (decision); the open point in the to-do list is closed
+
+## 0.8.1080 – CodeMirror 6 stays
+- Code editors: CodeMirror 6 stays (decision); the open point in the to-do list is closed
+
+## 0.8.1079 – Searchable lists of forms and tables
+- Searchable lists: every dropdown of forms, tables, procedures or reports can now be searched – also "Open records in
+  form" in the browse SQL pane, the form / report / procedure of a start page tile and the item of a project task
+
+## 0.8.1078 – Form lists: edges like the system lists
+- Form lists: the first and last column have the same 16 px edge as the system lists (users, procedures …); the
+  columns in between keep their spacing, so stored column widths hardly change
+
+## 0.8.1077 – Notes
+- Notes: v0.8.1076 published on GitHub
+
 ## 0.8.1076 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, ZAP); feature list and open checks updated.
 

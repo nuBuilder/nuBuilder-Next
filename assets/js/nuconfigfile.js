@@ -167,3 +167,21 @@ function initInsert(cm) {
 		render();
 	});
 }
+
+// the warning above the editor (0.8.1084): × hides it – kept in this browser (localStorage nunext-cfg-warn-hidden) –, the ⚠ next to the title shows it again
+(function () {
+	var warn = document.getElementById('cfgWarn'), hideB = document.getElementById('cfgWarnHide'), showB = document.getElementById('cfgWarnShow');
+	if (!warn || !hideB || !showB) return;
+	var KEY = 'nunext-cfg-warn-hidden';
+	function set(hidden, store) {
+		warn.hidden = hidden; showB.hidden = !hidden;
+		showB.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+		if (store) { try { if (hidden) localStorage.setItem(KEY, '1'); else localStorage.removeItem(KEY); } catch (e) { /* this page only */ } }
+		window.dispatchEvent(new Event('resize'));          // the editor takes the room
+	}
+	var was = false;
+	try { was = localStorage.getItem(KEY) === '1'; } catch (e) { was = false; }
+	set(was, false);
+	hideB.addEventListener('click', function () { set(true, true); showB.focus(); });
+	showB.addEventListener('click', function () { set(false, true); hideB.focus(); });
+})();

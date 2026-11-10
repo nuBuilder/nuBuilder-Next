@@ -2495,7 +2495,7 @@
 				head, divider(),
 				item('bi-sliders', T.properties, function () { if (N.objMenuHook) { N.objMenuHook('properties', o); return; } window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id), '_blank'); }),
 				item('bi-input-cursor-text', T.rename, function () {
-					var cur = labelText(id);
+					var cur = labelText(id) || o.label || '';            // words / images have no separate label (0.8.1082)
 					var v = window.prompt(T.rename_prompt.replace('%s', id), cur);
 					if (v !== null && v.trim() !== '' && v !== cur) change(o, {sob_all_label: v.trim()});
 				}),
@@ -2658,7 +2658,8 @@
 		// key / Shift+F10 opens it at the element
 		// 0.8.569: also the title an HTML object draws itself (a framed box from the form's CSS: .title, h1–h6, legend, .card-header)
 		var HTML_TITLES = ['.title', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'legend', '.card-header'].map(function (x) { return '#nuEditForm .nuHtml[id] ' + x; }).join(', ');
-		$(document).on('contextmenu', '#nuEditForm label[id^="label_"], #nuEditForm .nuContentBoxTitle[id^="label_"], #nuEditForm button.nuButton[id], #nuEditForm button.nuRunButton[id], ' + HTML_TITLES, function (e) {
+		// 0.8.1082: also words and images (as nuBuilder Forte)
+		$(document).on('contextmenu', '#nuEditForm label[id^="label_"], #nuEditForm .nuContentBoxTitle[id^="label_"], #nuEditForm button.nuButton[id], #nuEditForm button.nuRunButton[id], #nuEditForm .nuWord[id], #nuEditForm img.nuImage[id], ' + HTML_TITLES, function (e) {
 			if (e.ctrlKey) return;
 			var html = $(this).closest('.nuHtml[id]');
 			var id = html.length && !$(this).is('label, button') ? html.attr('id') : (/^label_/.test(this.id) && !$(this).is('button') ? this.id.substring(6) : this.id);
@@ -2668,6 +2669,34 @@
 			var x = e.clientX, y = e.clientY;
 			if (!x && !y) { var r = this.getBoundingClientRect(); x = r.left + 8; y = r.bottom; }   // from the keyboard
 			open(id, x, y);
+		});
+		// sub-form column titles (0.8.1082, as nuBuilder Forte): the column is an object of the sub-form's own form – its id, Properties
+		// (design mode of that form with the object chosen) and the sub-form's form in design mode
+		function openSfCol(th, x, y) {
+			close();
+			var id = th.getAttribute('data-nu-field'), oid = th.getAttribute('data-nu-obj'), f = th.getAttribute('data-nu-sf-form');
+			var url = function (obj) { return N.base + '?p=form&f=' + encodeURIComponent(f) + '&r=-1&design=1' + (obj ? '&dsobj=' + encodeURIComponent(obj) : ''); };
+			var head = $('<li></li>').append($('<button type="button" class="dropdown-item nuOmHead"></button>')
+				.append($('<span class="text-body-secondary"></span>').text(T.object + ': ')).append($('<b></b>').text(id))
+				.attr('title', T.copied.replace('%s', id))
+				.on('click', function (e) {
+					e.stopPropagation(); close();
+					if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(id).then(function () { nuToast(T.copied.replace('%s', id), 'success'); });
+					else window.prompt(T.object, id);
+				}));
+			menu = $('<ul class="dropdown-menu show nuObjMenu nuSfColMenu shadow" role="menu"></ul>').append(head, divider(),
+				item('bi-sliders', T.properties, function () { window.open(url(oid), '_blank'); }),
+				item('bi-ui-checks-grid', T.sf_form || T.properties, function () { window.open(url(''), '_blank'); })
+			).appendTo('body');
+			placeMenu(x, y);
+		}
+		$(document).on('contextmenu', '#nuEditForm th.nuSubformTitle[data-nu-obj][data-nu-sf-form]', function (e) {
+			if (e.ctrlKey || N.objMenuHook || !OM.design) return;          // design mode: the form's own tools · no design right: the browser's menu
+			e.preventDefault();
+			e.stopPropagation();
+			var x = e.clientX, y = e.clientY;
+			if (!x && !y) { var r = this.getBoundingClientRect(); x = r.left + 8; y = r.bottom; }
+			openSfCol(this, x, y);
 		});
 		N.objMenuOpen = open;                                                // design mode opens it from the object's overlay (0.8.664)
 		$(document).on('click', function (e) { if (menu && !$(e.target).closest('.nuObjMenu').length) close(); });
@@ -3666,6 +3695,10 @@
 			box.appendChild(mk('div', {'class': 'nuBsqGrid'}, [lab(T.builder_rows_per_page, num('rows')), lab(T.ds_list_rowh, num('rowh'), T.ds_list_rowh_tip),
 				lab(T.ds_list_target, sel('target', ['0', '1', '2', '3'].map(function (x) { return [x, T['ds_list_target_' + x]]; }))),
 				lab(T.builder_redirect, sel('redirect', [['', T.please_select]].concat(L.forms || [])))]));
+			// lists of forms are searchable (0.8.1079): Tom Select, its list in <body> above the pane
+			var rs = box.querySelector('[data-bsq=redirect]');
+			if (rs && window.TomSelect) new TomSelect(rs, {maxOptions: null, allowEmptyOption: true, create: false, dropdownParent: 'body', plugins: ['dropdown_input'],
+				onItemAdd: function () { this.close(); this.blur(); }});
 			box.appendChild(mk('div', {'class': 'nuBsqChecks'}, [chk('multi', T.ds_list_multi), chk('autofit', T.ds_list_autofit)]));
 			box.appendChild(mk('h3', {'class': 'nuBsqSub', text: T.builder_sec_columns}));
 			var tbody = mk('tbody');

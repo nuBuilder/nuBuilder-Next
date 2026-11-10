@@ -48,10 +48,16 @@ nu_layout_start(t('compat_title'), 'home');
 		<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 			<span class="fw-semibold me-auto"><?= h($title) ?></span>
 			<span class="small text-body-secondary"><?= h(t('compat_summary', count($list), $calls)) ?></span>
-			<span class="badge text-bg-danger"><?= $count('missing') ?> <?= h(t('compat_missing')) ?></span>
-			<span class="badge text-bg-warning"><?= $count('stub') ?> <?= h(t('compat_stub')) ?></span>
-			<span class="badge bg-secondary-subtle text-secondary-emphasis"><?= $count('custom') ?> <?= h(t('compat_custom')) ?></span>
-			<span class="badge text-bg-success"><?= $count('ok') ?> <?= h(t('compat_ok')) ?></span>
+			<span class="badge text-bg-danger compatBdg"><?= $count('missing') ?> <?= h(t('compat_missing')) ?></span>
+			<span class="badge text-bg-warning compatBdg"><?= $count('stub') ?> <?= h(t('compat_stub')) ?></span>
+			<span class="badge bg-secondary-subtle text-secondary-emphasis compatBdg"><?= $count('custom') ?> <?= h(t('compat_custom')) ?></span>
+			<span class="badge text-bg-success compatBdg"><?= $count('ok') ?> <?= h(t('compat_ok')) ?></span>
+			<?php /* phones (0.8.1086, the owner picked mockup C): one quiet line of counters on its own row instead of the badges */ ?>
+			<div class="compatDots small text-body-secondary">
+				<?php foreach (['missing' => ['danger', 'compat_missing'], 'stub' => ['warning', 'compat_stub'], 'custom' => ['secondary', 'compat_custom'], 'ok' => ['success', 'compat_ok']] as $st => [$col, $lk]): $n = $count($st); ?>
+					<span class="compatDot<?= $n && $st !== 'ok' ? ' compatDotOn text-' . $col . '-emphasis' : '' ?>" data-st="<?= h($st) ?>"><i class="bg-<?= $col ?>" aria-hidden="true"></i><b><?= $n ?></b> <?= h(t($lk)) ?></span>
+				<?php endforeach; ?>
+			</div>
 		</div>
 		<div class="table-responsive">
 			<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards>

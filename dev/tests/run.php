@@ -1239,6 +1239,16 @@ $pgUrls = array_merge(array_column(NuPrompt::topics(), 'url'), ...array_values(a
 $pgBad = array_filter($pgUrls, static fn($u) => !str_starts_with($u, NuPrompt::WIKI) && (!str_starts_with($u, NuPrompt::REPO) || !is_file(NU_ROOT . '/' . substr($u, strlen(NuPrompt::REPO)))));
 check('prompt generator links nuBuilder Next files (+ Forte wiki)', !$pgBad && count($pgUrls) > 30, implode(', ', $pgBad));
 
+// grid / auto layout (0.8.1088): worked-out spans of one row never add up to more than 12; grid rows keep the column order
+check('layout spans fit 12', NuLayout::fitRow([5, 5, 5], [false, false, false]) === [4, 4, 4] && NuLayout::fitRow([6, 6], [false, false]) === [6, 6]
+	&& array_sum(NuLayout::fitRow([7, 3, 5, 2], [false, false, false, false])) === 12 && NuLayout::fitRow([8, 5, 5], [true, false, false]) === [8, 2, 2]
+	&& NuLayout::fitRow([7, 7], [true, true]) === [7, 7] && NuLayout::fitRow([11, 4, 4], [true, false, false]) === [11, 1, 1]);
+$lyO = static fn($id, $left, $w, $g = null) => ['zzzzsys_object_id' => $id, 'sob_all_id' => $id, 'sob_all_type' => 'input', 'sob_input_type' => 'text', 'sob_all_top' => 10, 'sob_all_left' => $left, 'sob_all_width' => $w, 'sob_all_height' => 20] + ($g ? ['nunext' => $g] : []);
+$ly = NuLayout::build([$lyO('a', 10, 700), $lyO('b', 720, 700), $lyO('c', 1430, 700)], 'auto');
+check('layout three wide fields stay in one row', count($ly['rows']) === 1 && array_sum(array_column($ly['rows'][0], 'span')) === 12);
+$ly = NuLayout::build([$lyO('a', 10, 200, ['row' => 10, 'col' => 20]), $lyO('b', 300, 200, ['row' => 10, 'col' => 15]), $lyO('c', 600, 200, ['row' => 10, 'col' => 10])], 'grid');
+check('layout grid row follows the column, not the left position', array_map(static fn($it) => $it['obj']['sob_all_id'], $ly['rows'][0]) === ['c', 'b', 'a']);
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

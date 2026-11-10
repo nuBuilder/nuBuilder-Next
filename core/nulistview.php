@@ -771,6 +771,7 @@ final class NuListView
 			$blank = !empty($i['blank']) ? ' target="_blank" rel="noopener"' : '';
 			$title = (string)($i['title'] ?? '') !== '' ? ' title="' . h((string)$i['title']) . '"' : '';
 			$id = (string)($i['id'] ?? '') !== '' ? ' id="' . h((string)$i['id']) . '"' : '';
+			if ((string)($i['modal'] ?? '') !== '') $blank = ' data-bs-toggle="modal" data-bs-target="#' . h((string)$i['modal']) . '"';   // opens a dialog of the page (0.8.1087)
 			$btns .= '<a class="btn btn-outline-secondary d-none d-sm-inline-block"' . $id . ' href="' . h((string)$i['href']) . '"' . $blank . $title . '><i class="bi ' . h((string)$i['icon']) . ' me-1"></i>' . h((string)$i['label']) . '</a>';
 			$menu .= '<li><a class="dropdown-item" href="' . h((string)$i['href']) . '"' . $blank . '><i class="bi ' . h((string)$i['icon']) . ' me-2"></i>' . h((string)$i['label']) . '</a></li>';
 		}

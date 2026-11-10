@@ -415,6 +415,7 @@
 		var ol = $('nufCrumbs'), items = ol._items;
 		if (!items) return;
 		var old = ol.querySelector('.nuf-crumb-more');
+		if (old && old.querySelector('.dropdown-menu.show')) return;   // a resize while the "…" menu is open keeps it
 		if (old) old.remove();
 		Array.prototype.forEach.call(ol.children, function (li) { li.hidden = false; });
 		var lastLi = ol.lastElementChild;

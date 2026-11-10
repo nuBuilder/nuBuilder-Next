@@ -925,6 +925,18 @@ T.sessions_layout = async (s) => {
 
 // 0.8.650: column widths by dragging a title (as nuBuilder Forte) – the width follows the pointer, at least 40 px, a click without moving
 // sorts, the drag does not; kept through sort / paging (sessionStorage of this tab), a new tab starts fresh; nuDisableBrowseResize(); touch
+T.browse_edge_padding = async (s) => {                // 0.8.1078: form lists have the system lists' 16 px at the outer edges
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=samplecustomer');
+	const r = await p.evaluate(() => {
+		const row = document.querySelector('#nuBrowseTable tbody tr.nuBrowseRow'), th = document.querySelectorAll('#nuBrowseTable thead th');
+		const px = (e, k) => parseFloat(getComputedStyle(e)[k]);
+		return [px(th[0], 'paddingLeft'), px(row.firstElementChild, 'paddingLeft'), px(row.lastElementChild, 'paddingRight'), row.children.length > 2 ? px(row.children[1], 'paddingLeft') : 4.8];
+	});
+	expect(r[0] === 16 && r[1] === 16 && r[2] === 16 && r[3] < 6, 'edges / inner: ' + r.join(' '));
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.browse_resize = async (s) => {
 	const p = s.ga, KEY = 'nunext-browse-w:samplecustomer';
 	const width = (pg) => pg.evaluate(() => Math.round(document.querySelector('#nuBrowseTable thead th[data-nu-col="1"]').getBoundingClientRect().width));
@@ -5944,11 +5956,17 @@ T.admin_role_table = async (s) => {
 		await ph.goto(BASE + 'index.php?p=adminroles&id=' + encodeURIComponent(role));
 		const m = await ph.evaluate(() => {
 			const r = [...document.querySelectorAll('#admRights tr.nuAdmRight')].find((x) => x.dataset.full === '1');
-			const n = r.querySelector('td.admName').getBoundingClientRect(), a = r.querySelector('td.admArea').getBoundingClientRect(), lv = r.querySelector('td.admLvlCell').getBoundingClientRect();
-			return { thead: getComputedStyle(document.querySelector('#admRights thead')).display, sameLine: Math.abs(n.top - a.top) < 12, areaRight: a.left > n.left,
-				below: lv.top > n.bottom - 2, wide: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+			// 0.8.1083 (mockup C): titles shown once, None / View / Change in fixed columns – a right without View keeps Change in place
+			const n = r.querySelector('td.admName').getBoundingClientRect(), a = r.querySelector('td.admArea').getBoundingClientRect();
+			const colX = (tr) => [...tr.querySelectorAll('td.admLvlCell')].map((c) => Math.round(c.getBoundingClientRect().left + c.getBoundingClientRect().width / 2));
+			const rows = [...document.querySelectorAll('#admRights tr.nuAdmRight')];
+			const noView = rows.find((x) => x.querySelector('td.admNoLvl')), withView = rows.find((x) => !x.querySelector('td.admNoLvl'));
+			const th = [...document.querySelectorAll('#admRights thead th')].filter((x) => getComputedStyle(x).display !== 'none').slice(-3).map((x) => Math.round(x.getBoundingClientRect().left + x.getBoundingClientRect().width / 2));
+			return { thead: getComputedStyle(document.querySelector('#admRights thead')).display, areaBelow: a.top >= n.bottom - 2, cols: colX(withView), colsNoView: noView ? colX(noView) : null, th,
+				dash: noView ? getComputedStyle(noView.querySelector('td.admNoLvl')).display : 'x', wide: document.documentElement.scrollWidth <= window.innerWidth + 1 };
 		});
-		expect(m.thead === 'none' && m.sameLine && m.areaRight && m.below && m.wide, 'phone: ' + JSON.stringify(m));
+		const same = (x, y) => x && y && x.length === 3 && y.length === 3 && x.every((v, i) => Math.abs(v - y[i]) <= 2);
+		expect(m.thead !== 'none' && m.areaBelow && same(m.cols, m.colsNoView) && same(m.cols, m.th) && m.dash !== 'none' && m.wide, 'phone: ' + JSON.stringify(m));
 	} finally { await ctx.close(); }
 	await p.evaluate(() => { try { localStorage.removeItem('nunext-adm-rights-sort'); } catch (e) { /* */ } });
 	await open(p, 'index.php?p=adminroles&id=' + encodeURIComponent(role));
@@ -6739,6 +6757,25 @@ T.ui_review_n = async (s) => {
 		expect(h >= 28, 'N7: help index lines ' + h);
 	} finally { await c.close(); }
 	expect(errs.length === 0, errs.slice(0, 2).join(' | '));
+};
+
+T.settings_hint_phone = async (s) => {                // 0.8.1084: the (i) of a settings page opens its hint on phones too
+	const p = s.ga;
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 800 }, storageState: await p.context().storageState() });
+	const ph = await ctx.newPage();
+	try {
+		await ph.goto(BASE + 'index.php?p=configfile');
+		await ph.click('button.nuInfoBtn[data-bs-target="#cfgHint"]');
+		await ph.waitForTimeout(500);
+		expect(await ph.isVisible('#cfgHint'), 'hint shown after the tap');
+		// 0.8.1085: the warning can be hidden (×) and comes back with the ⚠ next to the title, also after a reload
+		await ph.click('#cfgWarnHide');
+		expect(!(await ph.isVisible('#cfgWarn')) && await ph.isVisible('#cfgWarnShow'), 'warning hidden, ⚠ shown');
+		await ph.reload();
+		expect(!(await ph.isVisible('#cfgWarn')) && await ph.isVisible('#cfgWarnShow'), 'stays hidden after a reload');
+		await ph.click('#cfgWarnShow');
+		expect(await ph.isVisible('#cfgWarn') && !(await ph.isVisible('#cfgWarnShow')), 'shown again');
+	} finally { await ctx.close(); }
 };
 
 T.ui_review_h = async (s) => {                     // 0.8.1068: review H1–H6 on a phone
@@ -11594,12 +11631,16 @@ T.file_manager_path = async (s) => {
 		await ga.setViewportSize({ width: 700, height: 800 });
 		await ga.goto(url + '#/uploads/' + deep.join('/'));
 		await ga.waitForFunction(() => document.querySelector('#nufCrumbs .nuf-crumb-more'));
+		await ga.waitForTimeout(300);                          // the resize of setViewportSize fits the breadcrumb 120 ms later
 		const last = ga.locator('#nufCrumbs li[data-i]:last-child');
 		expect(await last.evaluate(e => e.scrollWidth <= e.clientWidth + 1 && e.textContent === 'originals-second-round'), 'wide: the current folder is not cut');
 		expect(await ga.locator('#nufCrumbs li[data-i="0"]').isVisible(), 'wide: the share stays');
 		await ga.click('#nufCrumbs .nuf-crumb-more-btn', { timeout: 7000 });
 		const hid = await ga.locator('#nufCrumbs .nuf-crumb-more .dropdown-item').allTextContents();
 		expect(hid.length >= 1 && hid[0].trim() === 'e2e_path', 'wide: hidden folders in the … menu: ' + JSON.stringify(hid));
+		await ga.evaluate(() => window.dispatchEvent(new Event('resize')));
+		await ga.waitForTimeout(300);
+		expect(await ga.locator('#nufCrumbs .nuf-crumb-more .dropdown-menu.show').count() === 1, 'wide: a resize keeps the open … menu');
 		const mm = await ga.locator('#nufCrumbs .nuf-crumb-more .dropdown-menu').boundingBox();
 		expect(mm && mm.height > 20, 'wide: the … menu is not clipped: ' + JSON.stringify(mm));
 		await ga.locator('#nufCrumbs .nuf-crumb-more .dropdown-item').first().click({ timeout: 7000 });
@@ -12791,6 +12832,38 @@ T.active_link_noreload = async (s) => {
 };
 
 // Compatibility check (0.8.791): SQL that SQL Server does not understand – only on SQL Server (developer mode: ?mssql=1 on MySQL)
+T.compat_phone_counts = async (s) => {               // 0.8.1086: compatibility check cards on phones – counts on their own row, no badges
+	const p = s.ga;
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 800 }, storageState: await p.context().storageState() });
+	const ph = await ctx.newPage();
+	try {
+		await ph.goto(BASE + 'index.php?p=compat');
+		const m = await ph.evaluate(() => {
+			const h = document.querySelector('#compat_js .card-header'), d = h.querySelector('.compatDots'), t = h.querySelector('.fw-semibold');
+			return { badges: [...h.querySelectorAll('.compatBdg')].filter((b) => getComputedStyle(b).display !== 'none').length, dots: d ? d.querySelectorAll('.compatDot').length : 0,
+				below: d ? d.getBoundingClientRect().top > t.getBoundingClientRect().bottom - 2 : false, wide: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+		});
+		expect(m.badges === 0 && m.dots === 4 && m.below && m.wide, 'phone: ' + JSON.stringify(m));
+	} finally { await ctx.close(); }
+	await open(p, 'index.php?p=compat');
+	expect(await p.evaluate(() => getComputedStyle(document.querySelector('#compat_js .compatDots')).display === 'none' && document.querySelectorAll('#compat_js .compatBdg').length === 4), 'desktop keeps the badges');
+};
+
+T.log_purge = async (s) => {                         // 0.8.1087: Log → Delete older entries… (globeadmin)
+	const p = s.ga;
+	sql("INSERT INTO zzzzsys_nunext_log (zzzzsys_nunext_log_id, log_time, login, event, details) VALUES ('e2e_lp_old', NOW() - INTERVAL 40 DAY, 'e2e', 'e2e_purge', ''), ('e2e_lp_new', NOW() - INTERVAL 5 DAY, 'e2e', 'e2e_purge', '')");
+	await open(p, 'index.php?p=log');
+	await p.click('#logPurgeOpen');
+	await p.waitForSelector('#logPurgeDlg.show');
+	await p.check('#logPurge30');
+	await Promise.all([p.waitForNavigation(), p.click('#logPurgeGo')]);
+	const left = sql("SELECT GROUP_CONCAT(zzzzsys_nunext_log_id ORDER BY zzzzsys_nunext_log_id) FROM zzzzsys_nunext_log WHERE event = 'e2e_purge'");
+	const rec = sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'log_cleared' AND log_time > NOW() - INTERVAL 2 MINUTE");
+	expect(left === 'e2e_lp_new' && +rec >= 1 && /\d/.test(await p.textContent('.alert-success')), 'purge: ' + left + ' / ' + rec);
+	sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'e2e_purge'");
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.compat_mssql = async (s) => {
 	const p = s.ga;
 	const F = 'e2e_mssql_form';
@@ -12947,6 +13020,27 @@ T.browse_prop_filter = async (s) => {
 	} finally {
 		execSync('mysql ' + DB, {input: `UPDATE zzzzsys_form SET sfo_browse_sql = ${JSON.stringify(old)}, sfo_browse_javascript = ${JSON.stringify(oldJs)} WHERE zzzzsys_form_id = '${F}'`});
 	}
+};
+
+T.obj_menu_more = async (s) => {                      // 0.8.1082: the object menu also on words, images and sub-form column titles (as nuBuilder Forte)
+	const p = s.ga;
+	const r = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleall'");
+	if (!r) { console.log('     (sampleall missing – skipped)'); return; }
+	await open(p, 'index.php?p=form&f=sampleall&r=-1');
+	for (const id of ['all_word', 'all_image']) {
+		await p.evaluate((i) => { const e = document.getElementById(i); e.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 200, clientY: 200})); }, id);
+		const head = await p.textContent('.nuObjMenu .nuOmHead').catch(() => '');
+		expect(head.includes(id), id + ': menu with the object: ' + head);
+		await p.keyboard.press('Escape');
+	}
+	await open(p, 'index.php?p=form&f=sampleorder&r=-1');
+	const th = p.locator('#nuEditForm th.nuSubformTitle[data-nu-obj]:visible').first();
+	await th.click({button: 'right'});
+	expect(await p.locator('.nuSfColMenu').count() === 1, 'sub-form column title: menu');
+	const [pop] = await Promise.all([p.context().waitForEvent('page'), p.locator('.nuSfColMenu button').nth(1).click()]);
+	expect(/design=1/.test(pop.url()) && /dsobj=/.test(pop.url()) && !pop.url().includes('f=sampleorder&'), 'Properties opens the sub-form\'s form in design mode: ' + pop.url());
+	await pop.close();
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 T.tab_context_menu = async (s) => {
@@ -13770,6 +13864,20 @@ T.browse_sql_edit = async (s) => {
 		await p.evaluate(() => localStorage.removeItem('nunext-bsq-pin')).catch(() => {});
 		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
 	}
+};
+
+T.form_selects_searchable = async (s) => {             // 0.8.1079: selects of forms are Tom Selects (browse SQL pane, start page tile editor)
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=samplecustomer'); await p.waitForSelector('#nuDesignMore');
+	await p.click('#nuDesignMore'); await p.click('#nuBrowseColsEdit'); await p.waitForSelector('#nuBsqColTable');
+	expect(await p.evaluate(() => !!document.getElementById('nuBsq_redirect').tomselect), 'Open records in form: Tom Select');
+	await p.click('#nuBsq_redirect + .ts-wrapper .ts-control'); await p.waitForTimeout(200);
+	const dd = await p.evaluate(() => { const d = [...document.querySelectorAll('body > .ts-dropdown')].find((x) => x.offsetParent !== null); return d ? [d.querySelectorAll('.option').length, +getComputedStyle(d).zIndex] : [0, 0]; });
+	expect(dd[0] > 0 && dd[1] > 1019, 'its list opens above the pane: ' + dd.join(' / '));
+	await p.keyboard.press('Escape');
+	await open(p, 'index.php?p=home');
+	expect(await p.evaluate(() => typeof window.nuListSelects === 'function'), 'start page loads Tom Select');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 T.browse_sql_cols = async (s) => {
@@ -14919,6 +15027,34 @@ T.responsive_boxes = async (s) => {
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		await p.setViewportSize({width: 1280, height: 900});
+		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
+	}
+};
+
+T.grid_row_fit = async (s) => {
+	// 0.8.1088: grid layout – three wide fields of one row stay in one line (spans scaled to 12), a row follows the column numbers
+	const p = s.ga;
+	const F = 'samplecustomer';
+	const cus = sql("SELECT sample_customer_id FROM sample_customer ORDER BY cus_code LIMIT 1");
+	if (!cus) { s.skip = 'no sample data'; return; }
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-gridfit.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_object > ' + keep);
+	const nj = (o) => JSON.stringify({nunext: o}).replace(/'/g, "''");
+	const ids = ['cus_code', 'cus_name', 'cus_phone'];
+	try {
+		sql("UPDATE zzzzsys_form SET sfo_json = '" + nj({layout: 'grid'}) + "' WHERE zzzzsys_form_id = '" + F + "'");
+		// same top, 700 px each: rounded one by one they gave 5 + 5 + 5 = 15 columns
+		ids.forEach((id, i) => sql("UPDATE zzzzsys_object SET sob_all_top = 4000, sob_all_left = " + (10 + i * 710) + ", sob_all_width = 700, sob_all_json = NULL WHERE sob_all_zzzzsys_form_id = '" + F + "' AND sob_all_id = '" + id + "'"));
+		const tops = async () => { await open(p, 'index.php?p=form&f=' + F + '&r=' + cus);
+			return p.evaluate((l) => l.map((id) => { const e = document.getElementById('nuw_' + id); return e ? [Math.round(e.getBoundingClientRect().top), Math.round(e.getBoundingClientRect().left)] : null; }), ids); };
+		let t = await tops();
+		expect(t.every(Boolean) && t[0][0] === t[1][0] && t[1][0] === t[2][0], 'one line: ' + JSON.stringify(t));
+		// grid row 10: column numbers in the opposite order of the left positions (as after dragging) → shown by column
+		ids.forEach((id, i) => sql("UPDATE zzzzsys_object SET sob_all_json = '" + nj({row: 10, col: 30 - i * 10}) + "' WHERE sob_all_zzzzsys_form_id = '" + F + "' AND sob_all_id = '" + id + "'"));
+		t = await tops();
+		expect(t.every(Boolean) && t[2][1] < t[1][1] && t[1][1] < t[0][1] && t[0][0] === t[2][0], 'by column: ' + JSON.stringify(t));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
 		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
 	}
 };

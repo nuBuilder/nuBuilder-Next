@@ -346,7 +346,7 @@ $client = [
 		'm' => ['object' => t('om_object'), 'copied' => t('om_copied'), 'properties' => t('om_properties'), 'rename' => t('om_rename'), 'rename_prompt' => t('om_rename_prompt'),
 			'actions' => t('om_actions'), 'clone' => t('om_clone'), 'delete' => t('delete'), 'delete_confirm' => t('om_delete_confirm'), 'move' => t('om_move_tab'), 'access' => t('om_access'),
 			'align' => t('om_align'), 'left' => t('om_left'), 'center' => t('om_center'), 'right' => t('om_right'), 'validation' => t('om_validation'),
-			'unsaved' => t('om_unsaved'), 'error' => t('form_error'),
+			'unsaved' => t('om_unsaved'), 'error' => t('form_error'), 'sf_form' => t('om_sf_form'),
 			'access_v' => array_map(static fn($i) => t('bf_access_' . $i), range(0, 4)), 'validate_v' => array_map(static fn($i) => t('bf_validate_' . $i), range(0, 3)),
 			'tab' => t('om_tab'), 'tab_rename' => t('ds_tab_rename'), 'tab_rename_prompt' => t('om_tab_rename_prompt'), 'tab_access' => t('om_tab_access'),
 			'tab_visible' => t('om_tab_visible'), 'tab_hide' => t('ds_tab_hide'), 'tab_hide_users' => t('ds_tab_hide_users'), 'tab_left' => t('ds_tab_left'),

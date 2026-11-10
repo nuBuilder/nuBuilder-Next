@@ -717,3 +717,9 @@ html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuDetCol { order:
    readable in dark mode) – shown as a standard field; Forte's row stays as it is */
 body[data-nu-form="nunotes"] #not_title { color: var(--bs-body-color) !important; font-weight: normal !important; font-size: 1rem !important; padding-left: .75rem !important; }
 body[data-nu-form="nunotes"] .nuAbs #not_title { font-size: .85rem !important; padding-left: .4rem !important; }
+
+/* form lists: outer edges as on the system lists (16 px); the inner cells keep Forte's padding, so stored widths hardly move (0.8.1078) */
+html:not(.nuPhoneCards) #nuBrowseTable > thead > tr > th:first-child,
+html:not(.nuPhoneCards) #nuBrowseTable > tbody > tr.nuBrowseRow > td:first-child { padding-left: 1rem; }
+html:not(.nuPhoneCards) #nuBrowseTable > thead > tr > th:last-child,
+html:not(.nuPhoneCards) #nuBrowseTable > tbody > tr.nuBrowseRow > td:last-child { padding-right: 1rem; }

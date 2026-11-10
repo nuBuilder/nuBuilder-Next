@@ -112,7 +112,9 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 		<div class="card-header nuListHead nuTitleBar">
 			<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1">nuconfig.php
 				<button type="button" class="btn btn-link btn-sm p-0 lh-1 text-body-secondary nuInfoBtn" data-bs-toggle="collapse" data-bs-target="#cfgHint" aria-expanded="false" aria-controls="cfgHint"
-					title="<?= h(t('info')) ?>" aria-label="<?= h(t('info')) ?>"><i class="bi bi-info-circle"></i></button></h1>
+					title="<?= h(t('info')) ?>" aria-label="<?= h(t('info')) ?>"><i class="bi bi-info-circle"></i></button>
+				<button type="button" class="btn btn-link btn-sm p-0 lh-1 text-warning-emphasis" id="cfgWarnShow" hidden aria-controls="cfgWarn" aria-expanded="false"
+					title="<?= h(t('cfg_warn_show')) ?>" aria-label="<?= h(t('cfg_warn_show')) ?>"><i class="bi bi-exclamation-triangle"></i></button></h1>
 			<div class="nuTitleSub text-body-secondary small"><code class="text-break" title="<?= h(NuConfigFile::path()) ?>"><?= h(nu_short_path(NuConfigFile::path())) ?></code><input type="hidden" id="cfgPathFull" value="<?= h(NuConfigFile::path()) ?>"><button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline" id="cfgPathCopy" data-nu-copy="#cfgPathFull" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button><?php /* review N5 */ ?></div>
 			<div class="collapse nuTitleSub text-body-secondary small" id="cfgHint"><?= h(t('cfg_hint', NuConfigFile::KEEP)) ?></div>
 			<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
@@ -132,7 +134,7 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 				</div>
 			</div>
 		</div>
-		<div class="alert alert-warning small rounded-0 border-start-0 border-end-0 mb-0"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('cfg_warning')) ?></div>
+		<div class="alert alert-warning alert-dismissible small rounded-0 border-start-0 border-end-0 mb-0" id="cfgWarn"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('cfg_warning')) ?><button type="button" class="btn-close" id="cfgWarnHide" title="<?= h(t('scode_warn_hide')) ?>" aria-label="<?= h(t('scode_warn_hide')) ?>"></button></div>
 		<div class="alert alert-danger rounded-0 border-start-0 border-end-0 mb-0 text-break" id="cfgLive" role="alert" hidden></div>
 		<div class="cfgEditor">
 			<div class="d-flex flex-wrap gap-2 align-items-center px-3 py-2 border-bottom cfgToolbar">

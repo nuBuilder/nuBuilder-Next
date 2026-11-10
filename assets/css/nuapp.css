@@ -2182,23 +2182,34 @@ body > .ts-dropdown { z-index: 1065; }
 #admRights .admArea { white-space: nowrap; }
 #admRights .nuAdmFull { display: inline-flex; align-items: center; gap: .35rem; color: var(--bs-danger-text-emphasis); font-size: .875rem; white-space: nowrap; }
 #admRights .nuAdmFull .bi { color: var(--bs-danger); }
+/* Phones (0.8.1083, the owner picked mockup C): like the desktop – the titles None / View / Change once (sticky), each right one grid row:
+   name with area + shield below, then three fixed radio columns; a right without View keeps its dash, so Change never moves */
 @media (max-width: 575.98px) {
-	#admRights > thead { display: none; }
 	#admRights, #admRights > tbody { display: block; width: 100%; min-width: 0 !important; }
-	#admRights > tbody > tr.nuAdmRight { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .35rem; padding: .55rem .75rem;
-		border-bottom: 1px solid var(--bs-border-color); }
-	#admRights > tbody > tr.nuAdmRight::after { content: ""; order: 2; flex-basis: 100%; height: 0; }   /* line break before the levels */
-	#admRights > tbody > tr.nuAdmRight > td { display: block; border: 0; padding: 0; order: 3; }
-	#admRights > tbody > tr.nuAdmRight > td.admName { order: 1; flex: 1 1 auto; min-width: 0; white-space: normal; font-weight: 500; }
-	#admRights > tbody > tr.nuAdmRight > td.admFull, #admRights > tbody > tr.nuAdmRight > td.admArea { order: 1; }
-	#admRights .admFull > span[aria-hidden] { display: none; }
+	#admRights > thead { display: block; position: sticky; top: calc(var(--nu-sticky-top, var(--nu-nav-h, 57px)) + var(--nu-sticky-h, 0px)); z-index: 3;
+		background: var(--bs-card-bg, var(--bs-body-bg)); box-shadow: inset 0 -1px 0 var(--bs-border-color); }
+	#admRights > thead > tr, #admRights > tbody > tr.nuAdmRight { display: grid; grid-template-columns: auto minmax(0, 1fr) 3.6rem 3.6rem 3.6rem; align-items: center; }
+	#admRights > thead > tr > th:first-child { grid-column: 1 / span 2; }
+	#admRights > thead > tr > th { position: static; box-shadow: none; padding: .45rem 0; font-size: .66rem; letter-spacing: 0; border: 0; text-align: center; overflow-wrap: anywhere; }
+	#admRights > thead > tr > th .btn { font-size: inherit; letter-spacing: 0; }
+	#admRights > thead > tr > th:first-child { padding-left: .75rem; text-align: left; }
+	#admRights > thead > tr > th.admAreaTh, #admRights > thead > tr > th.admFullTh { display: none; }
+	#admRights > tbody > tr.nuAdmRight { padding: .5rem 0 .5rem .75rem; border-bottom: 1px solid var(--bs-border-color); row-gap: .1rem; }
+	#admRights > tbody > tr.nuAdmRight > td { display: block; border: 0; padding: 0; }
+	#admRights > tbody > tr.nuAdmRight > td.admName { grid-column: 1 / span 2; grid-row: 1; min-width: 0; white-space: normal; font-weight: 500; }
+	#admRights > tbody > tr.nuAdmRight > td.admArea { grid-column: 1; grid-row: 2; font-size: .78rem; }
+	#admRights > tbody > tr.nuAdmRight > td.admFull { grid-column: 2; grid-row: 2; justify-self: start; margin-left: .35rem; }
+	#admRights > tbody > tr.nuAdmRight > td.admFull:has(.text-body-tertiary) { display: none; }
 	#admRights .admFullTxt { display: none; }
-	#admRights > tbody > tr.nuAdmRight > td.admNoLvl { display: none; }
-	#admRights .admLvl { border: 1px solid var(--bs-border-color); border-radius: 2rem; padding: .35rem .8rem; min-height: 40px; }
-	#admRights .admLvl:has(:checked) { background: var(--bs-primary-bg-subtle); border-color: var(--bs-primary-border-subtle); font-weight: 600; }
+	#admRights > tbody > tr.nuAdmRight > td.admLvlCell { grid-row: 1 / span 2; justify-self: center; }
+	#admRights > tbody > tr.nuAdmRight > td.admLvlCell:nth-child(4) { grid-column: 3; }
+	#admRights > tbody > tr.nuAdmRight > td.admLvlCell:nth-child(5) { grid-column: 4; }
+	#admRights > tbody > tr.nuAdmRight > td.admLvlCell:nth-child(6) { grid-column: 5; }
+	#admRights .admLvl { padding: .55rem; }                      /* 44 px touch target around the radio */
+	#admRights .admLvl .form-check-input { width: 1.25rem; height: 1.25rem; margin: 0; }
 	#admRights .admLvl:has(:disabled) { opacity: .55; cursor: not-allowed; }
-	#admRights .admLvlTxt { display: inline; font-size: .875rem; }
 }
+
 
 /* User help pages (0.8.1023, core/nuuserhelp.php): reader (?p=userhelp), article, marked parts for editors, side panel of the form pages */
 .nuUhLayout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 2rem; align-items: start; }
@@ -2361,5 +2372,16 @@ details.nuNoticeFold > summary::-webkit-details-marker { display: none; }
 @media (max-width: 575.98px) {
 	.nuSetFrame .nuSetSections { display: none; }
 	.nuSetFrame .nuSetPhSel { display: block; margin-top: .5rem; }
-	.nuSetFrame .nuTitleSub { display: none; }
+	.nuSetFrame .nuTitleSub:not(.collapse) { display: none; }   /* a hint opened by (i) stays (0.8.1084) */
+}
+
+/* Compatibility check on phones (0.8.1086, mockup C): title + counts on the first line, the four counts as a quiet dotted line below */
+.compatDots { display: none; }
+@media (max-width: 575.98px) {
+	.card-header > .compatBdg { display: none; }
+	.compatDots { display: flex; flex-wrap: wrap; gap: .25rem .9rem; flex-basis: 100%; }
+	.compatDot { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
+	.compatDot > i { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; }
+	.compatDot > b { color: var(--bs-body-color); }
+	.compatDotOn, .compatDotOn > b { font-weight: 700; color: inherit; }
 }

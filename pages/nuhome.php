@@ -140,7 +140,7 @@ if ($showRights) {
 
 $homeDash = NuDashboard::forHome();   // dashboards of the user's access level (Admin tools → Dashboards, 0.8.298)
 if ($homeDash) NuDashboard::csp();
-nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nuhome.css') . '">']);   // tile styles and View panel (0.8.420)
+nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nuhome.css') . '">' . nu_ts_head()]);   // tile styles and View panel (0.8.420)
 ?>
 <?php if ($editorPage): // the editor of the user start pages (0.8.425): which access level, where its page comes from
 	$choices = NuHome::levelChoices();
@@ -502,7 +502,7 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 </details>
 <?php endif; ?>
 <?php
-$foot = $homeDash ? NuDashboard::scriptTag() : '';
+$foot = nu_ts_foot() . ($homeDash ? NuDashboard::scriptTag() : '');
 if ($admin || $userPage) {
 	// set by the tile page above (same condition) – named again for the analysers
 	$hlCur ??= NuHome::current(); $hlAll ??= NuHome::layouts(); $hlDef ??= NuListView::listDefault(NuHome::LIST); $hlManage ??= NuHome::canManage();

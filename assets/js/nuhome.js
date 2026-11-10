@@ -2183,6 +2183,8 @@
 		document.body.appendChild(m);
 		sync();
 		modal = nuBs.modal(m);
+		[form, report, proc].forEach(function (x) { x.classList.add('nuListTomSelect'); });   // lists of forms / reports / procedures are searchable (0.8.1079)
+		if (window.nuListSelects) window.nuListSelects(m);
 		m.addEventListener('shown.bs.modal', function () { (kind.value === 'builtin' ? builtin : label).focus(); });
 		ok.addEventListener('click', function () {
 			var k = kind.value;

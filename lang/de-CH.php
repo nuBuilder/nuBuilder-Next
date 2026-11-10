@@ -104,6 +104,7 @@ return [
 	'builder_err_column_length' => 'Ungültige Länge für «%s» (z. B. 255 oder 15,2).',
 	'builder_missing_column' => 'Tabelle %2$s hat keine Spalte «%1$s» – Werte dieses Objekts werden nicht gespeichert.',
 	'reset_mail_text' => 'Für das Konto «%s» wurde das Zurücksetzen des Passworts angefordert. Mit dem Button lässt sich ein neues setzen.',
+	'log_purge_all' => 'Alles (ausser den letzten 15 Minuten)',
 	'prj_items_tip' => 'Füge Formulare, Prozeduren, Berichte, SQL-Abfragen, Tabellen, E-Mail-Vorlagen, Snippets und Hilfeseiten hinzu. «Zugehörige vorschlagen» findet, was sie verwenden.',
 	'prj_note_delete_confirm' => 'Notiz «%s» löschen?',
 	'prj_task_delete_confirm' => 'Aufgabe «%s» löschen?',

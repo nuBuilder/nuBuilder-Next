@@ -27,7 +27,7 @@ page) for how to use it.
 ## For building applications
 
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
-  list's columns and settings right on the list, responsive layouts for phones, tabs, events and code in one place.
+  list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs, events and code in one place.
 - **Forms grouped** by group, department and team – shown and filtered in the forms list.
 - **Drafts and history** – changes go into a draft that you publish when ready; every published version can be compared
   and restored.
@@ -66,7 +66,7 @@ page) for how to use it.
   password; *Act as user* to see the application as a user does.
 - **Security** – login rate limit, password policy with a leaked-password check, sign-in only from allowed networks, field
   access per user group, and a built-in Security check.
-- **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes.
+- **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes (older entries can be deleted).
 - **Start pages per access level** – users get their own tiles and can personalise them.
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
   database from a backup (MySQL / MariaDB); a `nuconfig.php`
