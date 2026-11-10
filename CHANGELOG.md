@@ -3,6 +3,30 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1076 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, ZAP); feature list and open checks updated.
+
+## 0.8.1075 – Browse aliases with sub-queries in FROM
+- Lists: an alias of the browse SQL's field list is now also replaced when FROM holds a sub-query (for example
+  LEFT JOIN (SELECT … SUM(…) AS total …) s) – in a plain column and inside expressions such as IF(…, alias, ''),
+  CONCAT, COALESCE, and in GROUP BY / HAVING. A sub-query gives the names of its own field list; a real column still
+  wins. Where a source cannot be checked the alias is used (reported by a tester).
+
+## 0.8.1074 – Custom user fields: worked-out defaults
+- Custom user fields: the default can now be worked out when a user is created – dates (today, yesterday, today+30d,
+  month_end …), a counter (next:EMP-{0000}), the new user's own values ({first_name}.{last_name}, {email}) and hash
+  variables (#USER_NAME#); the globeadmin can also use a read-only SQL query (= SELECT …) or a procedure (proc:<code>).
+  Insert ▾ next to Default lists them, an example below the field shows the result, and a default that does not fit
+  the field's type is refused. The user form shows the value when it opens (templates fill in while the name is typed);
+  data import and REST API work it out for every new user
+
+## 0.8.1073 – Notes
+- Notes: v0.8.1071 published on GitHub
+
+## 0.8.1072 – Development script: DeepSource Python findings
+- Development script dev/tcpdf_assemble.py (DeepSource): main() split into four steps, programs started with their
+  full path; the built TCPDF pack is unchanged
+
 ## 0.8.1071 – Release gate
 - Release gate: help pages for phones (list title bars, settings, touch screens, folded filters), procedures / items /
   e-mail templates (Origin and language filters), library packs (remove older versions); FEATURES.md and TODO.md updated

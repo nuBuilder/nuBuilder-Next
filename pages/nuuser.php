@@ -377,6 +377,10 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	$wEdit = $welcome && nu_post('welcome_edit') === '1' && !NuWelcome::hasProcedure();
 	$wHtml = $wEdit ? str_replace("\r\n", "\n", (string)($_POST['welcome_html'] ?? '')) : '';
 	if ($wEdit && nu_post('welcome_link') === '1' && !str_contains($wHtml . nu_post('welcome_subject'), NuWelcome::MARKER)) $errors['welcome'] = t('welcome_pv_err_link', NuWelcome::MARKER);
+	if ($isNew) {   // defaults that use the new user's values ({first_name} …), when the field is still empty (0.8.1074)
+		$tplVals = NuUserDefault::forNew(array_filter($ufVals + $ufNew, static fn($x) => (string)$x !== ''), $v);
+		foreach ($tplVals as $code => $x) if (NuUserDefault::onSave((string)$ufAll[$code]['default_value']) && (string)($ufNew[$code] ?? '') === '') { $ufNew[$code] = $x; $ufVals[$code] = $x; }
+	}
 	if ($isNew) foreach ($ufAll as $code => $f) if (!isset($ufNew[$code]) && !isset($ufErr[$code]) && !isset($ufEdit[$code]) && ($ufVals[$code] ?? '') !== '') $ufNew[$code] = $ufVals[$code];   // defaults of fields this admin may not edit
 
 	// preview of the welcome e-mail (0.8.684, JSON for assets/js/nuuser.js): every check above ran, nothing is written

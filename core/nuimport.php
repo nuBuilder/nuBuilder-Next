@@ -940,7 +940,7 @@ final class NuImport
 		foreach ($created as [$id, $row, $hasPw, $sendWelcome, $variant, $line, $ufv]) {
 			if ($variant !== '') NuUserJson::set($id, 'NUNEXT_LANG_VARIANT', $variant);
 			if ($hasPw) NuUserJson::passwordChanged($id, 'admin');
-			$ufv += array_filter(array_diff_key(NuUserFields::defaults(), $ufv), static fn($d) => $d !== '');   // defaults for the fields left out
+			$ufv += NuUserDefault::forNew($ufv, $row);   // defaults for the fields left out, worked out with the row's values (0.8.1074)
 			[$ufOk] = NuUserFields::validate($ufv, $id, 'import');
 			$ufDiff = NuUserFields::save($id, $ufOk);
 			NuUserJson::stamp($id, true, 'import');

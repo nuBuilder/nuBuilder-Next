@@ -22,8 +22,17 @@ ORG = 'tecnickcom'
 REPO = {'tcpdf': 'TCPDF'}          # package name → repository name where they differ
 
 
-def run(*a, cwd=None, quiet=True):
-    return subprocess.run(a, cwd=cwd, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE if quiet else None).stdout
+def exe(name):
+    """Full path of a program (git, composer, php) – processes are started with an absolute path."""
+    path = shutil.which(name)
+    if not path:
+        sys.exit(f'{name} not found – it is needed to build the pack')
+    return os.path.abspath(path)
+
+
+def run(prog, *a, cwd=None, quiet=True, env=None):
+    return subprocess.run([exe(prog), *a], cwd=cwd, check=True, text=True, env=env,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE if quiet else None).stdout
 
 
 def tags(pkg):
@@ -51,12 +60,9 @@ def pick(pkg, rule):
     return '.'.join(str(x) for x in ok[-1])
 
 
-def main():
-    if len(sys.argv) < 2:
-        sys.exit(__doc__)
-    out = os.path.abspath(sys.argv[1])
-    work = tempfile.mkdtemp(prefix='nunext-tcpdf-')
-    todo = {'tcpdf': sys.argv[2] if len(sys.argv) > 2 else '^7.0'}
+def clone_all(work, first_rule):
+    """TCPDF and every tecnickcom library it requires, each cloned at the highest allowed tag → {package: version}."""
+    todo = {'tcpdf': first_rule}
     done = {}
     while todo:
         pkg, rule = todo.popitem()
@@ -73,7 +79,11 @@ def main():
                 if short not in done and short not in todo:
                     todo[short] = r
         print(f'  {pkg} {ver}')
+    return done
 
+
+def composer_install(work, done):
+    """A Composer project from the local clones (no Packagist, no network) → its folder."""
     proj = os.path.join(work, 'proj')
     os.makedirs(proj)
     repos = [{'packagist.org': False}]
@@ -83,7 +93,7 @@ def main():
         json.dump({'name': 'nunext/tcpdf-pack', 'description': 'TCPDF for nuBuilder Next', 'require': {f'{ORG}/tcpdf': done['tcpdf']},
                    'repositories': repos, 'config': {'optimize-autoloader': True, 'platform-check': True}}, f, indent=4)
     env = dict(os.environ, COMPOSER_ALLOW_SUPERUSER='1', COMPOSER_DISABLE_NETWORK='1', COMPOSER_NO_INTERACTION='1')
-    subprocess.run(['composer', 'install', '--no-dev', '--no-progress', '--ignore-platform-req=ext-*', '-q'], cwd=proj, check=True, env=env)
+    run('composer', 'install', '--no-dev', '--no-progress', '--ignore-platform-req=ext-*', '-q', cwd=proj, env=env)
 
     # the pack carries no absolute paths of this computer: the lock file and installed.json keep only names and versions
     for rel in ('composer.json', 'composer.lock', os.path.join('vendor', 'composer', 'installed.json')):
@@ -92,17 +102,26 @@ def main():
             s = fh.read().replace(json.dumps(os.path.join(work, 'src'))[1:-1], 'src').replace(os.path.join(work, 'src'), 'src')
         with open(p, 'w', encoding='utf-8') as fh:
             fh.write(s)
+    return proj
+
+
+def build_fonts(proj):
+    """Fonts of tc-lib-pdf-font, built with the library's own converter."""
     # the fonts (tc-lib-pdf-font/target/fonts) are built from tecnickcom/tc-font-mirror with the library's own converter; kept: the
     # families nuBuilder's reports use (core, dejavu, freefont, pdfa) - unifont and cid0 would add 25 MB
     fontlib = os.path.join(proj, 'vendor', ORG, 'tc-lib-pdf-font')
     mirror = os.path.join(fontlib, 'util', 'vendor', ORG, 'tc-font-mirror')
     mver = '.'.join(str(x) for x in tags('tc-font-mirror')[-1])
     run('git', 'clone', '-q', '--depth', '1', '--branch', mver, f'https://github.com/{ORG}/tc-font-mirror.git', mirror)
-    subprocess.run(['php', 'bulk_convert.php'], cwd=os.path.join(fontlib, 'util'), check=True, stdout=subprocess.DEVNULL)
+    run('php', 'bulk_convert.php', cwd=os.path.join(fontlib, 'util'))
     shutil.rmtree(os.path.join(fontlib, 'util', 'vendor'))
     for extra in ('unifont', 'cid0'):
         shutil.rmtree(os.path.join(fontlib, 'target', 'fonts', extra), ignore_errors=True)
     print(f'  fonts from tc-font-mirror {mver}: ' + ', '.join(sorted(os.listdir(os.path.join(fontlib, 'target', 'fonts')))))
+
+
+def strip_extras(proj, done):
+    """Tests, examples and tooling of the libraries are not needed to make PDFs."""
     # tests, examples and tooling of the libraries are not needed to make PDFs
     for pkg in done:
         base = os.path.join(proj, 'vendor', ORG, pkg)
@@ -114,6 +133,17 @@ def main():
                 shutil.rmtree(p)
             elif os.path.isfile(p):
                 os.remove(p)
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    out = os.path.abspath(sys.argv[1])
+    work = tempfile.mkdtemp(prefix='nunext-tcpdf-')
+    done = clone_all(work, sys.argv[2] if len(sys.argv) > 2 else '^7.0')
+    proj = composer_install(work, done)
+    build_fonts(proj)
+    strip_extras(proj, done)
     with open(os.path.join(proj, 'VERSION'), 'w') as f:
         f.write(done['tcpdf'] + '\n')
     with open(os.path.join(proj, 'README-nuBuilder-Next.txt'), 'w', encoding='utf-8') as f:

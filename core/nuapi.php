@@ -468,7 +468,7 @@ final class NuApi
 		$row += ['sus_login_password' => NuAuth::hash($pw !== '' ? $pw : bin2hex(random_bytes(24))), 'sus_change_password' => $row['sus_change_password'] ?? ($pw === '' ? '1' : '0')];
 		$db->insert('zzzzsys_user', ['zzzzsys_user_id' => $id] + $row);
 		if ($pw !== '') NuUserJson::passwordChanged($id, 'admin');
-		$uf += array_filter(array_diff_key(NuUserFields::defaults(), $uf), static fn($d) => $d !== '');
+		$uf += NuUserDefault::forNew($uf, $row);   // defaults worked out with the new user's values (0.8.1074)
 		NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + NuUserFields::save($id, $uf), 'via' => 'api']);
 		NuUserJson::stamp($id, true, 'api');
 		if (isset($in['permissions']) && is_array($in['permissions'])) self::setPerms($id, $in['permissions']);

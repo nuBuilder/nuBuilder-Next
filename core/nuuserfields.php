@@ -121,11 +121,15 @@ final class NuUserFields
 		$row['edit_by'] = in_array((string)($in['edit_by'] ?? ''), self::EDIT_BY, true) ? (string)$in['edit_by'] : 'admin';
 		$row['in_list'] = !empty($in['in_list']) ? '1' : '0';
 		$def = trim((string)($in['default_value'] ?? ''));
+		$dyn = NuUserDefault::dynamic($def);   // keywords, counter, template, SQL, procedure (0.8.1074)
 		if ($def !== '' && !isset($e['type'])) {
-			$err = self::checkValue(['type' => $type, 'options' => $row['options'], 'code' => $row['code'] ?? $old['code'], 'is_unique' => '0', 'required' => '0'], $def, null);
+			$fd = ['type' => $type, 'options' => $row['options'], 'code' => $row['code'] ?? $old['code'], 'is_unique' => '0', 'required' => '0'];
+			$err = $dyn ? NuUserDefault::check($fd, $def) : self::checkValue($fd, $def, null);
 			if ($err !== null) $e['default_value'] = $err;
 		}
-		$row['default_value'] = $def === '' ? '' : (string)self::normalise($type, $def);
+		// an admin without globeadmin rights keeps an SQL / procedure default the globeadmin wrote, but cannot write one
+		if ($old && $def === trim((string)($old['default_value'] ?? ''))) unset($e['default_value']);
+		$row['default_value'] = $def === '' ? '' : ($dyn ? $def : (string)self::normalise($type, $def));
 		return [$row, $e];
 	}
 
@@ -352,10 +356,19 @@ final class NuUserFields
 		});
 	}
 
-	/** Defaults of the fields for a new user. */
-	public static function defaults(): array
+	/**
+	 * Defaults of the fields for a new user (0.8.1074: worked out – keywords, counter, SQL, procedure). Without $ctx (the user form when it
+	 * opens) templates with {fields} stay empty – nuuser.js fills them while typing, the save fills what is still empty.
+	 */
+	public static function defaults(?array $ctx = null): array
 	{
-		return array_map(static fn($f) => (string)$f['default_value'], self::all());
+		$out = [];
+		foreach (self::all() as $code => $f) {
+			$d = (string)$f['default_value'];
+			if ($d === '' || ($ctx === null && NuUserDefault::onSave($d))) { $out[$code] = ''; continue; }
+			try { $out[$code] = NuUserDefault::value($f, $d, $ctx ?? []); } catch (Throwable $e) { error_log('nuBuilder Next: default of user field ' . $code . ': ' . $e->getMessage()); $out[$code] = ''; }
+		}
+		return $out;
 	}
 
 	/** Stores values (code => normalised value, '' = NULL). @return array<string, array{0: string, 1: string}> changes for the log */
@@ -404,6 +417,9 @@ final class NuUserFields
 		$inv = $error !== null ? ' is-invalid' : '';
 		$ro = $readOnly ? ' disabled' : '';
 		$attr = ' id="' . h($id) . '" name="' . h($name) . '"' . ($req && !$readOnly ? ' required' : '') . $ro . ' data-uf="' . h($code) . '"';
+		$tpl = (string)($f['default_value'] ?? '');
+		if (str_contains($tpl, '#') && NuUserDefault::usesFields($tpl)) $tpl = (string)NuHash::replace($tpl, NuHash::plain());   // hash variables now, {fields} in the browser
+		if ($value === '' && NuUserDefault::usesFields($tpl) && !$readOnly) $attr .= ' data-uf-tpl="' . h($tpl) . '"';   // filled while the user's fields are typed (nuuser.js, 0.8.1074)
 		$tip = self::hint($f) !== '' ? ' <span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h(self::hint($f))
 			. '" title="' . h(self::hint($f)) . '"><i class="bi bi-info-circle"></i></span>' : '';
 		$kind = $showType ? ' <span class="text-body-secondary small nuUfType">(' . h(t('uf_type_' . $type)) . ')</span>' : '';   // user form (0.8.508)

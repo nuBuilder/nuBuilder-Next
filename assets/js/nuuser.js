@@ -845,3 +845,26 @@
 	}
 	[f, l, n].forEach(function (e) { if (e) e.addEventListener('input', upd); });
 })();
+
+/* Custom user fields whose default uses the new user's values ({first_name}.{last_name}, 0.8.1074): filled while those fields are
+   typed, until the field itself is changed by hand. */
+(function () {
+	'use strict';
+	var tpls = document.querySelectorAll('[data-uf-tpl]');
+	if (!tpls.length) return;
+	function get(name) {
+		name = name.toLowerCase();
+		var el = document.querySelector('[name="' + name + '"]') || document.querySelector('[name="sus_' + name + '"]') || document.querySelector('[name="uf[' + name + ']"]');
+		return el ? String(el.value || '').trim() : '';
+	}
+	function fill() {
+		tpls.forEach(function (t) {
+			if (t.getAttribute('data-uf-own') === '1') return;
+			t.value = t.getAttribute('data-uf-tpl').replace(/\{([A-Za-z_]\w*)\}/g, function (m, n) { return get(n); });
+		});
+	}
+	tpls.forEach(function (t) { t.addEventListener('input', function () { t.setAttribute('data-uf-own', '1'); }); });
+	var form = tpls[0].form;
+	if (form) form.addEventListener('input', function (e) { if (!e.target.hasAttribute('data-uf-tpl')) fill(); });
+	fill();
+})();

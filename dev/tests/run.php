@@ -329,7 +329,7 @@ check('browse: real column wins, qualified name unchanged, alias inside a call r
 	&& str_contains($in4, 'c.full_name AS nu_c4') && str_contains($in4, "UPPER(CONCAT(c.cus_code, ' ', c.cus_name)) AS nu_c5") && str_contains($in4, "CONCAT(c.cus_code, ' ', c.cus_name) AS nu_o0"), $in4);
 [$in5] = NuBrowse::build("SELECT x.a AS al FROM (SELECT a FROM t) x", 'id', [['index' => 0, 'expr' => 'al']], $bCols);
 [$in6] = NuBrowse::build("SELECT u.a AS al FROM tunknown u", 'id', [['index' => 0, 'expr' => 'al']], $bCols);
-check('browse: alias kept with a derived or unknown table', str_contains($in5, 'al AS nu_c0') && !str_contains($in5, 'x.a AS nu_c0') && str_contains($in6, 'al AS nu_c0') && !str_contains($in6, 'u.a AS nu_c0'), $in5 . ' | ' . $in6);
+check('browse: alias expanded with a derived or unknown table', str_contains($in5, 'x.a AS nu_c0') && str_contains($in6, 'u.a AS nu_c0'), $in5 . ' | ' . $in6);
 [$in7] = NuBrowse::build('SELECT *, CONCAT(prefix, number, postfix) AS anumber FROM apartment', 'apartment_id', [['index' => 0, 'expr' => 'anumber']],
 	static fn(string $t): array => $t === 'apartment' ? ['apartment_id', 'prefix', 'number', 'postfix'] : []);
 check('browse: the tester\'s case (SELECT *, … AS anumber)', $in7 === 'SELECT apartment_id AS nu_pk, CONCAT(prefix, number, postfix) AS nu_c0 FROM apartment', $in7);
@@ -353,9 +353,15 @@ check('browse: alias after AS / INTERVAL n / qualified / function name stays', s
 check('browse: alias in ORDER BY / GROUP BY / HAVING expressions', str_contains($in8, 'CAST((t.a + t.b) AS UNSIGNED) AS nu_o0')
 	&& str_contains($in8, 'GROUP BY (t.a + t.b)') && str_contains($in8, 'HAVING (t.a + t.b) > 1'), $in8);
 [$in9] = NuBrowse::build("SELECT x.a + 1 AS c FROM (SELECT a FROM t) x", 'id', [['index' => 0, 'expr' => 'IF(1, c, 0)']], $tCols);
-check('browse: alias inside an expression kept with a derived table', str_contains($in9, 'IF(1, c, 0) AS nu_c0'), $in9);
+check('browse: alias inside an expression with a derived table', str_contains($in9, 'IF(1, (x.a + 1), 0) AS nu_c0'), $in9);
+[$in10] = NuBrowse::build("SELECT t.id, s.total AS amount_due, t.name AS label FROM t LEFT JOIN (SELECT ref, SUM(v) AS total FROM w GROUP BY ref) s ON (s.ref = t.id)", 'id',
+	[['index' => 0, 'expr' => "IF(label LIKE '%a%', amount_due, '')"], ['index' => 1, 'expr' => 'COALESCE(total, ref)']], $tCols);
+check('browse: alias with a LEFT JOIN of a derived table', str_contains($in10, "IF(t.name LIKE '%a%', s.total, '') AS nu_c0") && str_contains($in10, 'COALESCE(total, ref) AS nu_c1'), $in10);
+[$in11] = NuBrowse::build("SELECT s.v AS amount FROM (SELECT * FROM w) s", 'id', [['index' => 0, 'expr' => 'CONCAT(amount, \'\')']], $tCols);
+check('browse: alias expanded when a source cannot be checked', str_contains($in11, "CONCAT(s.v, '') AS nu_c0"), $in11);
+$dc = NuBrowse::sourceColumns("FROM tcustomer c LEFT JOIN (SELECT ref, SUM(v) AS total, x.y FROM w x) z ON (z.ref = c.id)", $bCols);
 check('browse: sources of FROM', NuBrowse::sourceColumns('FROM tcustomer c, tcountry t', $bCols) !== null && NuBrowse::sourceColumns('FROM db2.tcustomer c', $bCols) === null
-	&& NuBrowse::sourceColumns('FROM tcustomer c JOIN (SELECT 1) z ON 1 = 1', $bCols) === null);
+	&& isset($dc['ref'], $dc['total'], $dc['y']) && NuBrowse::sourceColumns('FROM (SELECT * FROM w) z', $bCols) === null, json_encode($dc));
 check('browse: nu_filter_match expanded', str_contains(NuBrowse::expandFilterMatch("SELECT * FROM t WHERE nu_filter_match('cus_type', 'abc')"), "FIND_IN_SET(cus_type, '#abc_filter#')"));
 
 // ---------------------------------------------------------------- installer: nubuilder4.sql of any 4.x version (0.8.384)

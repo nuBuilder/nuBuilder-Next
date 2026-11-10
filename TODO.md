@@ -115,6 +115,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Browse aliases with a sub-query in FROM** (0.8.1075) – please verify with the tester's list
 - [ ] **UI review on devices** (0.8.1066–0.8.1070) – please verify on a real phone and a touch tablet: list title bars (only Back / Add / view menu, the rest in ⋮ with Card or table first), folded column filters of form lists, settings section select, full-size fields on touch tablets, Origin filter (procedures / items: own rows only by default; e-mail templates: own language) – is hiding the read-only nx_ templates under Own wanted?
 - [ ] **Computed fields inside list columns** (0.8.1059, a tester's report) – please verify with the tester's real list: `IF(…, alias, '')`, `CONCAT(…, alias)`, `ORDER BY CAST(alias AS UNSIGNED)`, aliases in GROUP BY / HAVING
 - [ ] **Help pages linked from the editor** (0.8.1054) – *Add to a form…* on a form with an open draft (published afterwards without a conflict); **content sheet** on screens ≥ 1680 px (0.8.1053) – look at forms with wide fixed layouts
@@ -212,6 +213,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       items, sub-form link columns without an index on forms made before 0.8.366.
 
 ## Users, access levels and permissions
+- [ ] **User field defaults** (0.8.1074) – please verify: today+30d, next:EMP-{0000}, {first_name}.{last_name}, = SELECT …, proc:<code> on a new user, data import and REST
 - [ ] **User form layout** (0.8.1018 / 0.8.1019): the Person card with initials, the three cards below on a laptop and a phone.
 - [ ] **Admin roles / Logged-in users on phones** (0.8.1021 / 0.8.1022): the rights table in own columns (sort by area / full access)
   and the Logged-in users cards on a real phone.

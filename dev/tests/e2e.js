@@ -710,6 +710,81 @@ T.hash_bound = async (s) => {
 // 0.8.687: users ↔ access levels ↔ permission items – filters and links; admin roles as a system list; logged-in users filters / groups
 // user stamps (0.8.759): sus_json NUNEXT_CREATED / NUNEXT_CHANGED {t, by} written by the user form (create / change), shown in the (i) panel and
 // in the users list columns Created / Last changed (view "all"); a user from before gets the created stamp from the log on the next change
+// 0.8.1074: defaults of custom user fields worked out when a user is created – keywords, counter, templates, SQL, procedure; Insert ▾ + example
+T.user_field_defaults = async (s) => {
+	const p = s.ga;
+	const go = async (u) => {
+		await open(p, u);
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, u); }
+	};
+	const add = async (label, code, type, def) => {
+		await go('index.php?p=userfields&id=new');
+		await p.fill('#ufLabel', label); await p.fill('#ufCode', code); await p.selectOption('#ufType', type);
+		await p.fill('#ufDefault', def);
+		await p.waitForFunction(() => /→|text-danger/.test((document.getElementById('ufDefaultEx') || {}).outerHTML || ''), null, { timeout: 5000 }).catch(() => {});
+		const ex = await p.textContent('#ufDefaultEx');
+		await Promise.all([p.waitForNavigation(), p.click('#ufSave')]);
+		const bad = await p.evaluate(() => [...document.querySelectorAll('.invalid-feedback, .alert-danger')].map(e => e.textContent.trim()).filter(Boolean).join(' | '));
+		expect(!bad, 'field ' + code + ' not saved: ' + bad);
+		return ex;
+	};
+	const today = new Date(); const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+	const t30 = new Date(today.getTime() + 30 * 86400000);
+	sql("DELETE FROM zzzzsys_user WHERE sus_login_name IN ('e2e_ufd1', 'e2e_ufd2')");
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_ufd_proc'");
+	sql("INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_global) VALUES ('e2e_ufd_proc', 'e2e_ufd_proc', 'e2e', '$result = \"P-\" . \"#NEW_LOGIN_NAME#\";', '1')");
+	try {
+		// Insert ▾ and example
+		await go('index.php?p=userfields&id=new');
+		await p.selectOption('#ufType', 'date');
+		await p.click('#ufDefaultIns');
+		await p.click('.ufdIns[data-ins="today+30d"]');
+		await p.waitForFunction(() => /→/.test(document.getElementById('ufDefaultEx').textContent), null, { timeout: 5000 });
+		expect((await p.inputValue('#ufDefault')) === 'today+30d' && (await p.textContent('#ufDefaultEx')).includes(ymd(t30)), 'Insert + example: ' + await p.textContent('#ufDefaultEx'));
+		await p.selectOption('#ufType', 'integer'); await p.fill('#ufDefault', 'today'); await p.waitForTimeout(900);
+		expect(await p.locator('#ufDefaultEx.text-danger').count() === 1, 'today on a number field not refused');
+		expect(await p.locator('.ufdIns[data-ins="= SELECT "]').count() === 1, 'SQL entry missing for the globeadmin');
+		// fields
+		const ex1 = await add('E2E start', 'e2e_ufd_start', 'date', 'today+30d');
+		expect(ex1.includes(ymd(t30)), 'example start: ' + ex1);
+		await add('E2E nick', 'e2e_ufd_nick', 'text', '{first_name}.{last_name}');
+		await add('E2E staff no', 'e2e_ufd_no', 'text', 'next:EMP-{000}');
+		const exs = await add('E2E sqlv', 'e2e_ufd_sql', 'text', "= SELECT CONCAT('S', '-1')");
+		expect(exs.includes('S-1'), 'SQL example: ' + exs);
+		await add('E2E procv', 'e2e_ufd_proc', 'text', 'proc:e2e_ufd_proc');
+		expect(sql("SELECT default_value FROM zzzzsys_nunext_user_field WHERE code = 'e2e_ufd_start'") === 'today+30d', 'keyword stored as typed');
+		sql("INSERT INTO zzzzsys_nunext_user_ext (zzzzsys_user_id, e2e_ufd_no) VALUES ('e2e_ufd_other', 'EMP-007')");
+		// new user form: prefilled, template follows the name fields
+		await open(p, 'index.php?p=user');
+		expect((await p.inputValue('#uf_e2e_ufd_start')) === ymd(t30), 'date prefilled: ' + await p.inputValue('#uf_e2e_ufd_start'));
+		expect((await p.inputValue('#uf_e2e_ufd_no')) === 'EMP-008', 'counter prefilled: ' + await p.inputValue('#uf_e2e_ufd_no'));
+		expect((await p.inputValue('#uf_e2e_ufd_sql')) === 'S-1', 'SQL prefilled');
+		await p.fill('#sus_login_name', 'e2e_ufd1'); await p.fill('#sus_name', 'Ada Lovelace');
+		await p.locator('#sus_name').blur(); await p.waitForTimeout(200);   // the name splits into first / last name
+		expect((await p.inputValue('#uf_e2e_ufd_nick')) === 'Ada.Lovelace', 'template not filled while typing: ' + await p.inputValue('#uf_e2e_ufd_nick'));
+		await p.fill('#sus_email', 'e2e_ufd1@example.com');
+		await p.fill('#password', UPW); await p.fill('#password_confirm', UPW);
+		await p.selectOption('#sus_zzzzsys_access_id', { index: 1 });
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		const id = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'e2e_ufd1'");
+		expect(id !== '', 'user not created: ' + p.url());
+		const row = sql("SELECT CONCAT_WS('|', e2e_ufd_start, e2e_ufd_nick, e2e_ufd_no, e2e_ufd_sql, IFNULL(e2e_ufd_proc, '-')) FROM zzzzsys_nunext_user_ext WHERE zzzzsys_user_id = '" + id + "'");
+		expect(row === ymd(t30) + '|Ada.Lovelace|EMP-008|S-1|P-e2e_ufd1', 'stored values: ' + row);
+		// REST-like path: worked out with the row (procedure gets #NEW_…#, counter goes on)
+		const out = execSync('php -r ' + JSON.stringify("chdir('" + SITE + "'); require 'core/nuapp.php'; NuAuth::cliGlobeadmin(); echo json_encode(NuUserDefault::forNew([], ['sus_login_name' => 'zed', 'sus_first_name' => 'Zed', 'sus_last_name' => 'Ray']));"), { cwd: SITE }).toString();
+		const j = JSON.parse(out.slice(out.indexOf('{')));
+		expect(j.e2e_ufd_no === 'EMP-009' && j.e2e_ufd_nick === 'Zed.Ray' && j.e2e_ufd_proc === 'P-zed', 'forNew: ' + out);
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_user_ext WHERE zzzzsys_user_id IN (SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name LIKE 'e2e_ufd%') OR zzzzsys_user_id = 'e2e_ufd_other'");
+		sql("DELETE FROM zzzzsys_user WHERE sus_login_name LIKE 'e2e_ufd%'");
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_ufd_proc'");
+		for (const c of ['e2e_ufd_start', 'e2e_ufd_nick', 'e2e_ufd_no', 'e2e_ufd_sql', 'e2e_ufd_proc']) {
+			if (sql("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'zzzzsys_nunext_user_ext' AND COLUMN_NAME = '" + c + "'") === '1') sql('ALTER TABLE zzzzsys_nunext_user_ext DROP COLUMN ' + c);
+		}
+		sql("DELETE FROM zzzzsys_nunext_user_field WHERE code LIKE 'e2e_ufd%'");
+	}
+};
+
 T.user_stamps = async (s) => {
 	const p = s.ga;
 	sql("DELETE FROM zzzzsys_user WHERE sus_login_name = 'e2e_stamp'");
@@ -3117,6 +3192,13 @@ T.browse_alias = async (s) => {                         // 0.8.731: a list colum
 		expect(cells.length > 1 && cells[0] === want && !/error|fehler/i.test(await p.textContent('main')), 'alias column: ' + cells.slice(0, 2).join(' | ') + ' / ' + want);
 		await p.fill('#nuSearchField', ' / '); await p.press('#nuSearchField', 'Enter'); await p.waitForLoadState('networkidle');
 		expect(await p.locator('#nuBrowseTable div.nuCell[data-nu-column="0"]').count() === cells.length, 'search in the alias column');
+		// 0.8.1075: a derived table in FROM (LEFT JOIN (SELECT … SUM(…) AS …) s) – the alias is still expanded
+		execSync('mysql ' + DB, { input: "UPDATE zzzzsys_form SET sfo_browse_sql = 'SELECT sample_customer.*, s.total AS amount_due FROM sample_customer LEFT JOIN (SELECT ord_sample_customer_id AS cid, SUM(ord_total) AS total FROM sample_order GROUP BY ord_sample_customer_id) s ON (s.cid = sample_customer.sample_customer_id) ORDER BY cus_name' WHERE zzzzsys_form_id = 'samplecustomer';"
+			+ " UPDATE zzzzsys_browse SET sbr_display = 'IF(cus_name LIKE ''%'', CONCAT(''x'', COALESCE(amount_due, 0)), '''')' WHERE zzzzsys_browse_id = 'sample_customer_b1';" });
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		const c2 = await p.$$eval('#nuBrowseTable div.nuCell[data-nu-column="0"]', (t) => t.map((x) => x.textContent.trim()));
+		const want2 = sql("SELECT CONCAT('x', COALESCE((SELECT SUM(ord_total) FROM sample_order WHERE ord_sample_customer_id = sample_customer_id), 0)) FROM sample_customer ORDER BY cus_name LIMIT 1");
+		expect(c2.length > 1 && c2[0] === want2 && !/error|fehler/i.test(await p.textContent('main')), 'alias with a derived table: ' + c2.slice(0, 3).join(' | ') + ' / ' + want2);
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		execSync('mysql ' + DB, { input: `UPDATE zzzzsys_form SET sfo_browse_sql = ${JSON.stringify(oldSql)} WHERE zzzzsys_form_id = 'samplecustomer'; UPDATE zzzzsys_browse SET sbr_display = ${JSON.stringify(oldCol)} WHERE zzzzsys_browse_id = 'sample_customer_b1';` });

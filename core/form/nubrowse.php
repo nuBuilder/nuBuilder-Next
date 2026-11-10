@@ -222,11 +222,11 @@ final class NuBrowse
 		// by a tester): the field list is replaced, so the alias would not exist – its expression is used instead. Since 0.8.1059 also an
 		// alias INSIDE a column's expression (IF(…, amount, ''), CONCAT(…), CAST(amount AS …)) – reported by a tester with a patch
 		// (expandAliases). A real column of the tables in FROM wins, as in nuBuilder Forte, which never resolves aliases; when a source
-		// cannot be checked (derived table, other database, unknown table) the names stay as they are.
+		// cannot be checked (other database, unknown table, SELECT * of a derived table) the alias is used (0.8.1075, a tester's report:
+		// the field list is replaced, so a name that is no alias fails either way); derived tables give their output names.
 		$real = null;
-		$realCols = function () use ($p, $columnsOf, &$real): ?array {
-			$real ??= self::sourceColumns($p['from'], $columnsOf) ?? false;
-			return $real === false ? null : $real;
+		$realCols = function () use ($p, $columnsOf, &$real): array {
+			return $real ??= self::sourceColumns($p['from'], $columnsOf) ?? [];
 		};
 		$isAlias = function (string $e) use ($aliases, $realCols): ?string {
 			if (!$aliases) return null;
@@ -235,11 +235,10 @@ final class NuBrowse
 				$key = strtolower(trim($name, '`"[]'));
 				if (!isset($aliases[$key]) || strtolower(trim($aliases[$key], '`"[] ')) === $key) return null;
 				$real = $realCols();
-				return $real === null || isset($real[$key]) ? null : $aliases[$key];
+				return isset($real[$key]) ? null : $aliases[$key];
 			}
 			if (self::expandAliases($e, $aliases, null) === null) return null;                // no alias in it: no need to look at the tables
-			$real = $realCols();
-			return $real === null ? null : self::expandAliases($e, $aliases, $real);
+			return self::expandAliases($e, $aliases, $realCols());
 		};
 		foreach ($cols as $c) {
 			$e = self::stripAlias($c['expr'])[0];
@@ -259,7 +258,8 @@ final class NuBrowse
 		}
 		// GROUP BY / HAVING may name an alias of the field list too (MySQL allows both) – a real column wins
 		if ($aliases && (($p['group'] !== '' && self::expandAliases($p['group'], $aliases, null, true) !== null)
-			|| ($p['having'] !== '' && self::expandAliases($p['having'], $aliases, null, true) !== null)) && ($rc = $realCols()) !== null) {
+			|| ($p['having'] !== '' && self::expandAliases($p['having'], $aliases, null, true) !== null))) {
+			$rc = $realCols();
 			foreach (['group', 'having'] as $part) if ($p[$part] !== '') $p[$part] = self::expandAliases($p[$part], $aliases, $rc, true) ?? $p[$part];
 		}
 		$inner = 'SELECT ' . implode(', ', $f) . ' ' . $p['from'] . ($p['where'] !== '' ? ' ' . $p['where'] : '') . ($p['group'] !== '' ? ' ' . $p['group'] : '')
@@ -356,20 +356,56 @@ final class NuBrowse
 	}
 
 	/**
-	 * Columns of the tables in a FROM clause (lower-case names as keys), or null when one source cannot be checked: a derived table
-	 * (FROM / JOIN followed by "("), a qualified name (other database / schema) or a table without columns (unknown). (0.8.731)
+	 * Columns of the sources in a FROM clause (lower-case names as keys), or null when one source cannot be checked: a qualified name
+	 * (other database / schema), a table without columns (unknown) or a derived table with SELECT *. A derived table
+	 * ("JOIN (SELECT … ) x") gives the output names of its SELECT (0.8.731; derived tables 0.8.1075).
 	 */
 	public static function sourceColumns(string $from, ?callable $columnsOf = null): ?array
 	{
-		if (preg_match('/\b(?:FROM|JOIN)\s*\(/i', $from)) return null;
+		$out = [];
+		$rest = '';
+		$len = strlen($from);
+		for ($i = 0; $i < $len; $i++) {                      // take out "( … )" with its output names, quotes respected
+			$c = $from[$i];
+			if ($c === "'" || $c === '"' || $c === '`') {
+				$j = $i + 1;
+				while ($j < $len && $from[$j] !== $c) $j += $from[$j] === '\\' ? 2 : 1;
+				$rest .= substr($from, $i, $j - $i + 1);
+				$i = $j;
+				continue;
+			}
+			if ($c !== '(') { $rest .= $c; continue; }
+			$depth = 0;
+			for ($j = $i; $j < $len; $j++) {
+				if ($from[$j] === "'" || $from[$j] === '"' || $from[$j] === '`') { $q = $from[$j]; for ($j++; $j < $len && $from[$j] !== $q; $j++) if ($from[$j] === '\\') $j++; continue; }
+				if ($from[$j] === '(') $depth++;
+				elseif ($from[$j] === ')' && --$depth === 0) break;
+			}
+			$inner = substr($from, $i + 1, $j - $i - 1);
+			if (preg_match('/(?:\bFROM|\bJOIN|,)\s*$/i', $rest)) {
+				$sp = self::splitSelect($inner);
+				if ($sp === null) return null;
+				foreach (self::splitList($sp['fields']) as $it) {
+					[$e, $a] = self::stripAlias($it);
+					if ($a === null) {
+						if (str_ends_with(trim($e), '*')) return null;
+						if (!preg_match('/([A-Za-z_][A-Za-z0-9_$]*)[`"\]]?\s*$/', $e, $mm)) continue;
+						$a = $mm[1];
+					}
+					$out[strtolower(trim($a, '`"[]'))] = true;
+				}
+				$rest .= ' nu_derived';
+			} else $rest .= ' ';                              // ON (…) / USING (…) / functions
+			$i = $j;
+		}
 		$id = '(?:`[^`]+`|"[^"]+"|\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$]*)';
-		preg_match_all('/(?:\bFROM|\bJOIN|,)\s+(' . $id . '(?:\.' . $id . ')*)/i', $from, $m);
-		if (!$m[1]) return null;
+		preg_match_all('/(?:\bFROM|\bJOIN|,)\s+(' . $id . '(?:\.' . $id . ')*)/i', $rest, $m);
+		$tables = array_diff(array_unique($m[1]), ['nu_derived']);
+		if (!$tables && !$out) return null;
 		$columnsOf ??= static function (string $t): array {
 			try { return array_keys(nu_db()->columns($t)); } catch (Throwable) { return []; }
 		};
-		$out = [];
-		foreach (array_unique($m[1]) as $t) {
+		foreach ($tables as $t) {
 			if (str_contains($t, '.')) return null;
 			$cols = $columnsOf(trim($t, '`"[]'));
 			if (!$cols) return null;

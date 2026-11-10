@@ -27,6 +27,18 @@ $errors = [];
 $in = [];
 if (nu_is_post()) {
 	$action = nu_post('action');
+	if ($action === 'default_preview') {   // example of a worked-out default + its check (0.8.1074, JSON for nuuserfields.js)
+		header('Content-Type: application/json; charset=utf-8');
+		$fd = ['type' => (string)nu_post('type'), 'options' => (string)nu_post('options'), 'code' => (string)nu_post('code'), 'is_unique' => '0', 'required' => '0'];
+		if (!isset(NuUserFields::TYPES[$fd['type']])) $fd['type'] = 'text';
+		$d = trim((string)nu_post('default_value'));
+		$old = $id !== 'new' ? NuUserFields::byId($id) : null;
+		$kept = $old && $d === trim((string)$old['default_value']);
+		$ex = NuUserDefault::example($fd, $d);
+		$err = $d === '' ? null : (NuUserDefault::dynamic($d) ? NuUserDefault::check($fd, $d) : NuUserFields::checkValue($fd, $d, null));
+		if ($kept && $err === t('ufd_err_ga')) $err = null;
+		exit((string)json_encode($ex + ['error' => $err ?? ($ex['error'] ?? null)], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+	}
 	try {
 		if ($action === 'move') {
 			NuUserFields::move(nu_post('id'), nu_post('dir') === 'up' ? -1 : 1);
@@ -133,7 +145,17 @@ if ($id !== '') {
 			<div class="col-sm-6">
 				<label class="form-label" for="ufDefault"><?= h(t('uf_default')) ?></label>
 				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('uf_default_tip')) ?>" title="<?= h(t('uf_default_tip')) ?>"><i class="bi bi-info-circle"></i></span>
-				<?= $fld('default_value', '<input class="form-control' . $inv('default_value') . '" id="ufDefault" name="default_value" maxlength="1000" value="' . h($val('default_value')) . '">') ?>
+				<?php
+					$ins = [['today', 'ufd_today'], ['yesterday', 'ufd_yesterday'], ['tomorrow', 'ufd_tomorrow'], ['today+30d', 'ufd_in30'], ['month_end', 'ufd_month_end'], ['year_start', 'ufd_year_start'], ['now', 'ufd_now'], null,
+						['next:{0000}', 'ufd_counter'], ['{first_name}.{last_name}', 'ufd_fields'], ['{email}', 'ufd_email'], ['#USER_NAME#', 'ufd_admin'], null];
+					if (!empty(NuAuth::user()['globeadmin'])) { $ins[] = ['= SELECT ', 'ufd_sql']; $ins[] = ['proc:', 'ufd_proc']; }
+					$menu = '';
+					foreach ($ins as $it) $menu .= $it === null ? '<li><hr class="dropdown-divider"></li>' : '<li><button type="button" class="dropdown-item d-flex justify-content-between gap-3 ufdIns" data-ins="' . h($it[0]) . '"><span>' . h(t($it[1])) . '</span><code class="small">' . h($it[0]) . '</code></button></li>';
+				?>
+				<?= $fld('default_value', '<div class="input-group"><input class="form-control font-monospace' . $inv('default_value') . '" id="ufDefault" name="default_value" maxlength="1000" value="' . h($val('default_value')) . '" data-preview="' . h(nu_url('userfields', ['id' => $id])) . '">'
+					. '<button type="button" class="btn btn-outline-secondary dropdown-toggle" id="ufDefaultIns" data-bs-toggle="dropdown" aria-expanded="false">' . h(t('ufd_insert')) . '</button>'
+					. '<ul class="dropdown-menu dropdown-menu-end shadow-sm">' . $menu . '</ul></div>'
+					. '<div class="form-text" id="ufDefaultEx" aria-live="polite"></div>') ?>
 			</div>
 			<div class="col-sm-6">
 				<label class="form-label" for="ufHint"><?= h(t('uf_hint')) ?></label>

@@ -62,7 +62,7 @@ page) for how to use it.
 ## For administrators
 
 - **Users and rights** – access levels (also extra ones per user, with an end date), admin roles, permission items, custom
-  user fields; user import from CSV or Excel; welcome e-mails; password reset by the administrator without ever seeing a
+  user fields with worked-out defaults (dates, counters, templates, SQL, procedures); user import from CSV or Excel; welcome e-mails; password reset by the administrator without ever seeing a
   password; *Act as user* to see the application as a user does.
 - **Security** – login rate limit, password policy with a leaked-password check, sign-in only from allowed networks, field
   access per user group, and a built-in Security check.
