@@ -3,6 +3,114 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1103 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan).
+- Documentation brought up to date: README highlight "Forms and reports with AI", tutorial tips for Reports with AI and AI
+  providers, feature list.
+
+## 0.8.1102 – Prompt generator: full table schema
+- Prompt generator: a chosen table is now described in full in the complete prompt. Below the columns it lists – only where
+  they exist – a primary key over several columns, unique keys, indexes over several columns, foreign keys with their delete /
+  update rule, the tables that refer to this one, CHECK constraints, generated columns, triggers, the table comment, the
+  approximate number of rows, and for a view its SELECT.
+- It also lists the relations nuBuilder itself knows, because nuBuilder applications rarely declare foreign keys: the forms on
+  the table with their primary key, lookups (which column points at which table) and sub-forms (child table and link column),
+  in both directions. No data rows are included.
+- Help: Prompt generator.
+
+## 0.8.1101 – AI providers: API key encrypted with the password
+- AI providers: in a configuration protected by a password, the API key is now encrypted with that password as well (on top of
+  the server's secret key). Without the password nobody can use or read the key – not from the database, not from a backup, and
+  not an administrator who does not know it. No hash of the password is stored.
+- After the password is entered, the configuration is unlocked for the session. The key needed for that is kept in the session
+  encrypted with a random value that only the browser holds in a cookie – the session file alone opens nothing.
+- The configuration's page shows a bar "locked / unlocked for this session" with the password field. Test, Fetch models, a new
+  API key, a new password and switching to another access rule need the configuration unlocked (or the API key entered again).
+- Passwords of AI configurations need at least 12 characters. A forgotten password cannot be reset: enter the API key again
+  with a new password.
+- Password-protected configurations of 0.8.1099 / 0.8.1100 convert by themselves the first time they are unlocked.
+- Needs PHP's sodium extension with Argon2 (already required for signed updates on most installations).
+- Database: one new column in the AI providers table.
+- Help: AI providers → Who may use a configuration.
+
+## 0.8.1100 – Ask AI: correction round in Form with AI
+- Form with AI: "Ask AI" now runs the automatic correction round (the check's errors were not handed back, so the first answer
+  stayed as it was).
+
+## 0.8.1099 – AI providers
+- AI providers (new page, start page tile and Settings → Logs & integration; admin right "AI providers"): configurations of AI
+  services – Anthropic (Claude), OpenAI-compatible (OpenAI, Azure OpenAI, Mistral, OpenRouter, local models such as Ollama or
+  LM Studio) and Google Gemini. Per configuration: address, API key (stored encrypted, never shown again), model with "Fetch
+  models", temperature, maximum answer length, timeout, an extra instruction, extra parameters as JSON, and "Test".
+- "Ask AI" in every AI dialogue (Form with AI, Ask AI in design mode, Reports with AI, help page draft, translations, prompt
+  generator), next to "Copy prompt": the prompt is sent from the server to the chosen service and the answer is put into the
+  answer box. It is checked like a pasted answer – nothing is created or applied by the request itself. Copy and paste stays.
+- Automatic correction: when the check of a form or report answer finds errors, they are sent back to the AI once and the
+  corrected answer is checked again.
+- Who may use a configuration: everyone who can open the AI dialogue, chosen access levels, or whoever knows its password – the
+  password is asked once per session (5 wrong tries lock it for 15 minutes).
+- Usage: every request is recorded with user, place, model, tokens and duration – never the content. The list shows requests and
+  tokens of the month; an optional monthly token limit per configuration refuses further requests.
+- Safety: only https addresses on the public internet unless "Allow private addresses" is switched on (needed for local models);
+  no redirects; the key never reaches the browser; no AI requests in demo mode.
+- Database: two new own tables (configurations, usage).
+- Help: Features → AI providers.
+
+## 0.8.1098 – Report page break on the first group header
+- Reports: a page break on a group header no longer leaves the first page empty. The first group now starts on page 1 below the
+  report header; every later group still starts a new page. (nuBuilder Forte prints the empty first page – a deliberate difference.)
+- Reports with AI: the prompt describes a page break as starting a new page BEFORE the band and tells the AI to set it on the
+  group header for a new page per group (it said "after", so the AI put it on the group footer and the totals moved to the next page).
+- Reports with AI: a box or line without a border gets its hairline frame in the fill colour – a coloured bar no longer shows a
+  thin black frame (in both nuBuilder Next and nuBuilder Forte).
+- Help: Reports → Report designer (New page), differences to nuBuilder Forte.
+
+## 0.8.1097 – Reports with AI
+- Reports with AI: a report layout can be written or changed by an AI chat, by copy and paste (no API key). The report page has the
+  button "Create with AI…" / "Change with AI…", the report designer has it in its toolbar, and a new report offers "Save and create
+  with AI…" after code, description and data source are entered.
+- The dialogue: describe the report (or the change), copy the prompt – it holds the description format, the columns of the data
+  source, the criteria fields, formats, fonts, stored images and the current layout –, paste the answer. The answer is checked
+  (bands, places and sizes, column names, formats, fonts, colours) and a plan shows paper, sort groups, bands and how many objects
+  are kept, new and removed. "Preview PDF" prints the described layout without saving; "Apply" stores it.
+- "Download context" gives a file to attach to the chat (format, data source with column types, layout, the guide to reports);
+  the first three rows of the data only when ticked.
+- Optional: "The AI may write a new query" – the prompt then describes the chosen tables and the answer may hold a SELECT. Only a
+  read-only query that runs is accepted; on Apply it is saved as an SQL builder query and becomes the report's data source. Needs
+  the rights to add and save SQL builder queries.
+- Earlier layouts: before a layout is applied or restored, the current one (with its data source) is kept – tab History of the
+  report, "Earlier layouts", with Restore. The newest 20 per report are kept; deleting a report removes them.
+- The AI answers in a short format (millimetres, bands by name); it is converted to nuBuilder Forte's layout format, so both
+  designers open the result. An unchanged layout converts back identically.
+- Database: new table for the earlier layouts of reports.
+- Help: Reports → Reports with AI.
+
+## 0.8.1096 – Phones: Refresh in the Debug title bar
+- Debug results on phones: Refresh stays as an icon in the title bar instead of being the only entry of a ⋮ menu; ⋮ appears only
+  when there is more to offer (Export). In general a list's title bar on phones no longer folds a single button into ⋮.
+
+## 0.8.1095 – File Manager: size or date on phones
+- File Manager on phones: a button left of Refresh switches the list between the size and the modified date (only one fits on a
+  phone); the choice is kept in this browser. The nuFiles build for nuBuilder Forte has it too.
+
+## 0.8.1094 – Spreadsheet import: memory check instead of 10 MB
+- Data import: Excel and OpenDocument files no longer have a fixed 10 MB limit – the same file size limit as CSV applies, and the
+  chosen sheet is checked against the server's memory (PHP memory_limit) before it is read. A sheet that would not fit is
+  refused with a clear message and the hint to save it as CSV, instead of a PHP memory error (a 1 MB .xlsx full of numbers
+  can need over 100 MB to read). Old .xls files are limited by their file size and the memory.
+
+## 0.8.1093 – Lists on phones: filters folded
+- Lists on phones: the filters stay folded also while a filter is set (e.g. the reports list while you work on a project) – the chips below the search show what is set and the filter button opens them; from 768 px a set filter still opens them
+
+## 0.8.1092 – Projects list: short descriptions
+- Projects list: a description longer than 70 characters is cut with … in the cards and the table; the full text shows as a tooltip
+
+## 0.8.1091 – Additional access levels: wider select
+- User form, additional access levels: the access level select gets more room and the "until" date field is only as wide as a date needs (on phones the select was cut to a few letters)
+
+## 0.8.1090 – Notes
+- Notes: v0.8.1089 published on GitHub
+
 ## 0.8.1089 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, ZAP); documentation brought up to date.
 - File Manager: the "…" menu of a long path stays open when the window is resized right after it was opened (the breadcrumb was rebuilt and the menu closed).

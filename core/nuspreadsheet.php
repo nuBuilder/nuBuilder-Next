@@ -17,8 +17,16 @@ final class NuSpreadsheet
 	public const EXTENSIONS = ['ctype', 'dom', 'fileinfo', 'filter', 'gd', 'iconv', 'libxml', 'mbstring', 'simplexml', 'xml', 'xmlreader', 'xmlwriter', 'zip', 'zlib'];
 	public const MAX_ROWS = 200000;
 	public const MAX_COLS = 500;
-	/** Spreadsheet files are read into memory as a whole: their own size limit (MB), below the CSV import's. */
-	public const MAX_MB = 10;
+	/**
+	 * Spreadsheets are read into memory as a whole (the library cannot stream them): reading a sheet needs about MEM_FACTOR times its
+	 * unpacked XML (measured with the pack: 12–19×; a 1 MB .xlsx of 200,000 numbers unpacks to 6.6 MB and needs ~125 MB). Instead of a
+	 * fixed file size (10 MB until 0.8.1094) the sheet is checked against the server's memory_limit before it is loaded (memoryCheck).
+	 */
+	public const MEM_FACTOR = 20;
+	/** Memory kept free for the page itself (bytes). */
+	public const MEM_RESERVE = 24 * 1048576;
+	/** .xls is binary (no unpacked size to look at): file size × this must fit in the memory. */
+	public const XLS_FACTOR = 40;
 
 	private static ?bool $loaded = null;
 
@@ -41,6 +49,85 @@ final class NuSpreadsheet
 		if (($p = NuLibs::phpProblem('phpspreadsheet')) !== '') return $p;
 		$m = self::missingExtensions();
 		return $m ? t('lp_test_ext', implode(', ', $m)) : '';
+	}
+
+	/** PHP's memory_limit in bytes, -1 = no limit. */
+	public static function memoryLimit(): int
+	{
+		$v = trim(nu_ini_get('memory_limit'));
+		if ($v === '' || $v === '-1') return -1;
+		$n = (int)$v;
+		$n *= match (strtolower(substr($v, -1))) { 'g' => 1073741824, 'm' => 1048576, 'k' => 1024, default => 1 };
+		return $n > 0 ? $n : -1;
+	}
+
+	/** Memory a sheet may use (bytes, -1 = no limit): memory_limit minus what this request uses and a reserve. */
+	public static function memoryFree(?int $limit = null): int
+	{
+		$limit ??= self::memoryLimit();
+		return $limit < 0 ? -1 : max(0, $limit - memory_get_usage() - self::MEM_RESERVE);
+	}
+
+	/** Largest upload (bytes) of this type the memory allows before looking inside: .xls by its file size, zipped types are checked by memoryCheck(). */
+	public static function maxBytes(string $ext = 'xlsx', ?int $limit = null): int
+	{
+		$free = self::memoryFree($limit);
+		if ($free < 0 || strtolower($ext) !== 'xls') return PHP_INT_MAX;
+		return max(1048576, intdiv($free, self::XLS_FACTOR));
+	}
+
+	/**
+	 * Unpacked XML size (bytes) the library reads for one sheet: the sheet's XML + shared strings (.xlsx), content.xml (.ods); null = unknown (.xls,
+	 * a file that is not a zip).
+	 */
+	public static function unpackedSize(string $file, string $ext, string $sheetName = '', int $sheetIdx = 0): ?int
+	{
+		$ext = strtolower($ext);
+		if (!in_array($ext, ['xlsx', 'ods'], true) || !class_exists('ZipArchive')) return null;
+		$z = new ZipArchive();
+		if ($z->open($file, ZipArchive::RDONLY) !== true) return null;
+		try {
+			$size = static fn(string $n): int => (int)(($st = $z->statName($n)) ? $st['size'] : 0);
+			if ($ext === 'ods') return $size('content.xml') ?: null;
+			$sheetPath = self::xlsxSheetPath($z, $sheetName, $sheetIdx);
+			$all = 0;
+			if ($sheetPath === null) {                       // unknown layout: every worksheet counts
+				for ($i = 0; $i < $z->numFiles; $i++) { $st = $z->statIndex($i); if ($st && preg_match('#^xl/worksheets/[^/]+\.xml$#', $st['name'])) $all += (int)$st['size']; }
+			} else $all = $size($sheetPath);
+			return $all + $size('xl/sharedStrings.xml');
+		} finally { $z->close(); }
+	}
+
+	/** Path of a sheet's XML inside an .xlsx (workbook.xml → relationship target), null when it cannot be found. */
+	private static function xlsxSheetPath(ZipArchive $z, string $name, int $idx): ?string
+	{
+		$wb = $z->getFromName('xl/workbook.xml');
+		$rels = $z->getFromName('xl/_rels/workbook.xml.rels');
+		if (!is_string($wb) || !is_string($rels)) return null;
+		if (!preg_match_all('#<(?:\w+:)?sheet\b[^>]*>#', $wb, $sm)) return null;
+		$rid = null;
+		foreach ($sm[0] as $i => $tag) {
+			$n = preg_match('#\bname="([^"]*)"#', $tag, $m) ? html_entity_decode($m[1], ENT_QUOTES | ENT_XML1, 'UTF-8') : '';
+			if (($name !== '' && $n === $name) || ($name === '' && $i === $idx)) { $rid = preg_match('#\br:id="([^"]+)"#', $tag, $m) ? $m[1] : null; break; }
+		}
+		if ($rid === null || !preg_match('#<Relationship\b[^>]*\bId="' . preg_quote($rid, '#') . '"[^>]*>#', $rels, $rm)
+			|| !preg_match('#\bTarget="([^"]+)"#', $rm[0], $tm)) return null;
+		$t = $tm[1];
+		return str_starts_with($t, '/') ? ltrim($t, '/') : 'xl/' . preg_replace('#^\./#', '', $t);
+	}
+
+	/**
+	 * Refuses a sheet that would not fit in PHP's memory – before the library loads it (a fatal "Allowed memory size exhausted" otherwise).
+	 * @throws RuntimeException pss_err_memory (with the hint to save the sheet as CSV)
+	 */
+	public static function memoryCheck(string $file, string $ext, string $sheetName = '', int $sheetIdx = 0, ?int $limit = null): void
+	{
+		$limit ??= self::memoryLimit();
+		$free = self::memoryFree($limit);
+		if ($free < 0) return;
+		$ext = strtolower($ext);
+		$need = $ext === 'xls' ? (int)@filesize($file) * self::XLS_FACTOR : (int)(self::unpackedSize($file, $ext, $sheetName, $sheetIdx) ?? 0) * self::MEM_FACTOR;
+		if ($need > $free) throw new RuntimeException(t('pss_err_memory', (int)ceil($need / 1048576), (int)round($limit / 1048576)));
 	}
 
 	/** Loads the pack's autoloader once. */
@@ -94,6 +181,7 @@ final class NuSpreadsheet
 		if (!$names) throw new RuntimeException(t('imp_err_sheet'));
 		$idx = is_int($sheet) ? $sheet : array_search($sheet, $names, true);
 		if ($idx === false || !isset($names[$idx])) throw new RuntimeException(t('pss_err_no_sheet', (string)$sheet));
+		self::memoryCheck($file, $ext, (string)$names[$idx], (int)$idx);   // 0.8.1094: instead of a fixed 10 MB file limit
 		try {
 			$r = self::reader($file, $ext);
 			$r->setReadEmptyCells(false);

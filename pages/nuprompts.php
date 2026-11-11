@@ -184,6 +184,11 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 							<button class="btn btn-primary" type="button" id="pgCopy"><i class="bi bi-clipboard me-1"></i><span><?= h(t('pg_copy')) ?></span></button>
 							<?= nu_ai_context_menu('pgCtx', 'pg_ctx_tip') ?>
 							<span class="small text-body-secondary w-100"><i class="bi bi-shield-lock me-1"></i><?= h(t('pg_result_hint')) ?></span>
+							<?php if (($pgAsk = NuAiProvider::host('prompt', 'pgAsk', 'w-100')) !== ''): ?><?= $pgAsk ?>
+								<div class="w-100" id="pgAnswerBox" hidden><label class="form-label small fw-semibold mb-1" for="pgAnswer"><?= h(t('aip_answer')) ?></label>
+									<textarea class="form-control font-monospace small" id="pgAnswer" rows="14" readonly></textarea>
+									<button class="btn btn-sm btn-outline-secondary mt-2" type="button" id="pgAnswerCopy" data-nu-copy="#pgAnswer"><i class="bi bi-clipboard me-1"></i><?= h(t('copy')) ?></button></div>
+							<?php endif; ?>
 							<span class="small w-100" id="pgCtxMsg" aria-live="polite" data-done="<?= h(t('fai_ctx_done')) ?>" data-failed="<?= h(t('fai_ctx_failed')) ?>"></span>
 						</div>
 					</div>
@@ -193,4 +198,4 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 	</form>
 <?php endif; ?>
 <?php
-nu_layout_end($id !== '' ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nuprompts.js') . '"></script>' : '');
+nu_layout_end($id !== '' ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nuaiask.js') . '"></script><script src="' . nu_asset('assets/js/nuprompts.js') . '"></script>' : '');

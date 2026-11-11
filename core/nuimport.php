@@ -81,8 +81,8 @@ final class NuImport
 	private static function uploadSheet(array $f, string $ext): array
 	{
 		if (!NuSpreadsheet::available()) throw new RuntimeException(NuSpreadsheet::problem());
-		$max = min(self::maxBytes(), NuSpreadsheet::MAX_MB * 1048576);
-		if ((int)$f['size'] > $max) throw new RuntimeException(t('imp_err_size', $max >> 20));
+		$max = min(self::maxBytes(), NuSpreadsheet::maxBytes($ext));   // the sheet itself is checked against the memory when it is read (0.8.1094)
+		if ((int)$f['size'] > $max) throw new RuntimeException(t($max < self::maxBytes() ? 'pss_err_xls_size' : 'imp_err_size', max(1, $max >> 20)));
 		self::discard();
 		$src = self::dir() . '/' . bin2hex(random_bytes(16)) . '.' . $ext;
 		if (!@move_uploaded_file((string)$f['tmp_name'], $src) && !@copy((string)$f['tmp_name'], $src)) throw new RuntimeException(t('imp_err_upload', 0));

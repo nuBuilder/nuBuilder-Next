@@ -43,6 +43,11 @@ page) for how to use it.
 - **Code where you need it** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with
   syntax check, formatting, search / replace and an Insert menu with every documented function.
 - **Reports and queries** – a visual report designer (text, HTML or Markdown fields), an SQL builder, PDF output.
+- **Reports with AI** – describe a report, paste the AI chat's answer: the layout is checked, previewed as PDF and applied; optionally
+  with a query written by the AI; earlier layouts are kept and can be restored.
+- **AI providers** – configurations for Claude, OpenAI-compatible services (also local models) and Gemini; the AI dialogues then offer
+  "Ask AI": prompt sent from the server, answer checked with one automatic correction round; per configuration access levels or a
+  password that also encrypts the API key, a monthly token limit and a usage list.
 - **Help pages for your users** – write help in the browser (visual editor or Markdown), open it from a form, a tab or a
   field in a side panel (link a page to forms right from its editor); whole pages or parts of a page only for some access levels, translations, search, export / import;
   drafted with AI in any installed language.

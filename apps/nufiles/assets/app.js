@@ -837,6 +837,23 @@
 		}).catch(fail);
 	}
 
+	// phones: one of size / modified date is shown – the button left of Refresh switches, remembered in this browser
+	(function () {
+		var b = $('nufColToggle'), app = $('nufApp');
+		if (!b || !app) return;
+		function set(time) {
+			app.classList.toggle('nuf-show-time', time);
+			b.setAttribute('aria-pressed', time ? 'true' : 'false');
+			var lbl = t(time ? 'show_size' : 'show_modified');
+			b.title = lbl; b.setAttribute('aria-label', lbl);
+		}
+		try { set(localStorage.getItem('nufPhoneCol') === 'time'); } catch (e) { set(false); }
+		b.addEventListener('click', function () {
+			var time = !app.classList.contains('nuf-show-time');
+			set(time);
+			try { localStorage.setItem('nufPhoneCol', time ? 'time' : 'size'); } catch (e) { /* private mode */ }
+		});
+	})();
 	$('nufMkdirBtn').addEventListener('click', mkdir);
 	$('nufNewFileBtn').addEventListener('click', newFile);
 	$('nufRefreshBtn').addEventListener('click', function () {

@@ -94,6 +94,7 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 			<button type="button" class="btn btn-sm btn-outline-danger" id="nufDeleteBtn" data-sel="1" data-need="delete"><i class="bi bi-trash3"></i> <span class="nuf-lbl"><?= $t('delete') ?></span></button>
 			<span class="ms-auto"></span>
 			<span class="badge text-bg-warning d-none" id="nufRoBadge"><?= $t('readonly_badge') ?></span>
+			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufColToggle" title="<?= $t('show_modified') ?>" aria-label="<?= $t('show_modified') ?>" aria-pressed="false"><i class="bi bi-clock nuf-ic-time"></i><i class="bi bi-hdd nuf-ic-size"></i></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufRefreshBtn" title="<?= $t('refresh') ?>"><i class="bi bi-arrow-clockwise"></i></button>
 		</div>
 

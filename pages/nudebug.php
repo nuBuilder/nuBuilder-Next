@@ -88,7 +88,7 @@ nu_layout_start(t('debug_title'), 'log');
 		<span class="nuInfoTip fs-6 fw-normal ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="<?= h(t('debug_hint')) ?>" title="<?= h(t('debug_hint')) ?>"><i class="bi bi-info-circle"></i></span></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<?php // Back · Refresh · Print in one style (0.8.262); the auto refresh switch at the right end, on phones in its own row ?>
-		<a class="btn nuBtnAct" href="<?= h(nu_url('debug', $keep)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
+		<a class="btn nuBtnAct nuPhKeep" href="<?= h(nu_url('debug', $keep)) ?>" title="<?= h(t('debug_refresh')) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
 		<?= $total > 0 ? NuListExport::buttons(NuAcl::FORM_DEBUG, 'debug', $keep, false, 'nuBtnAct') : '' /* no records: nothing to export (0.8.749) */ ?>
 		<?php if ($canDelete && $total): ?>
 			<form method="post" class="d-inline" data-confirm="<?= h(t('debug_delete_all_confirm')) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">

@@ -81,12 +81,13 @@ $data = [
 	'source' => NuReport::sourceLabel((string)$report['sre_zzzzsys_php_id']), 'canSave' => $canSave,
 	'layout' => NuReport::layout((string)$report['sre_layout']), 'fonts' => NuReport::fonts(), 'formats' => NuReport::formats(), 'images' => $images,
 	'papers' => NuReport::PAPER, 'url' => nu_url('reportdesigner', ['id' => $id]), 'back' => nu_url('reports', ['id' => $id]), 'csrf' => nu_csrf_token(),
-	'tcpdf' => NuReport::tcpdfDir() !== null, 'msg' => $msg,
+	'tcpdf' => NuReport::tcpdfDir() !== null, 'msg' => $msg + ['ai' => t('rai_button_change'), 'ai_tip' => t('rai_button_tip')],
 ];
 header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
-$head = '<link rel="stylesheet" href="' . nu_asset('assets/css/nureportdesigner.css') . '">';
+$head = '<link rel="stylesheet" href="' . nu_asset('assets/css/nureportdesigner.css') . '">' . nu_ts_head();
 $foot = '<script type="application/json" id="rdData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
-	. '<script src="' . nu_asset('assets/js/nureportdesigner.js') . '"></script>';
+	. '<script src="' . nu_asset('assets/js/nureportdesigner.js') . '"></script>'
+	. ($canSave ? nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script>' . '<script src="' . nu_asset('assets/js/nureportai.js') . '"></script>' : '');
 nu_layout_start(t('rd_title') . ' · ' . $report['sre_code'], 'forms', ['head' => $head, 'container' => 'container-fluid rdContainer', 'body_class' => 'rdBody']);
 ?>
 <div class="alert alert-info small py-2 mb-2 d-sm-none nuBigScreenNote"><i class="bi bi-display me-1" aria-hidden="true"></i><?= h(t('big_screen_note')) ?></div><?php /* review M12 */ ?>
@@ -106,5 +107,6 @@ nu_layout_start(t('rd_title') . ' · ' . $report['sre_code'], 'forms', ['head' =
 		</div>
 	</div>
 </div>
+<?php if ($canSave) echo NuReportSpec::dialog($report, true); ?>
 <?php
 nu_layout_end($foot);

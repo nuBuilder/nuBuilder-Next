@@ -21,6 +21,7 @@ final class NuAcl
 	public const FORM_APICLIENT = 'nunextapiclient'; // API clients list (nuBuilder Next only, 0.8.547) – right through the admin right apiclients
 	public const FORM_EXPORT = 'nunextexport';       // data exports list (nuBuilder Next only, 0.8.758) – right through the admin right dataexport
 	public const FORM_USERHELP = 'nunextuserhelp';   // user help pages list (nuBuilder Next only, 0.8.1023) – right through the admin right userhelp
+	public const FORM_AIPROVIDER = 'nunextaiprovider'; // AI providers list (nuBuilder Next only, 0.8.1099) – right through the admin right aiproviders
 	public const FORM_WEBHOOK = 'nunextwebhook';     // webhooks + their calls (nuBuilder Next only, 0.8.715) – right through the admin right webhooks
 	public const FORM_DASHBOARD = 'nunextdashboard'; // dashboards list (nuBuilder Next only, 0.8.690) – right through the admin right dashboards
 	public const FORM_PROJECT = 'nunextproject';     // projects list (nuBuilder Next only, 0.8.1035) – admin right projects, or the save right on the Forms form

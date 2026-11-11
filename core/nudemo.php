@@ -38,6 +38,7 @@ final class NuDemo
 		'builder'        => ['prompt'],
 		'formai'         => ['prompt', 'check', 'context'],   // form with AI (0.8.403): copy the prompt, check an answer       // page forms (0.8.387): "Copy AI prompt" only reads
 		'emailtemplates' => ['preview'],      // renders a template with a record
+		'reportai'       => ['prompt', 'check', 'preview', 'context'],   // reports with AI (0.8.1097): nothing is written
 		'reportdesigner' => ['preview', 'fields'],   // report designer: PDF preview of the layout, field list of the data source
 		'sqlbuilder'     => ['preview'],      // SQL builder: runs the SELECT (NuDB lets only reading statements through)
 		'impersonate'    => ['stop'],

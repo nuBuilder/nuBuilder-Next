@@ -340,6 +340,9 @@ final class NuReport
 		return $parentId;
 	}
 
+	/** SQL texts by a temporary id, used instead of an SQL builder query ("SQL:<id>") – NuReportSpec::TEMP_SQL. @var array<string, string> */
+	public static array $sqlText = [];
+
 	/**
 	 * Rows of a data source as associative arrays, with nuBuilder's criteria values: every hash variable that is not a column becomes one
 	 * (so form fields of the launch form can be printed). $forFields: only the columns are needed (designer) – a SQL source is tried without
@@ -377,10 +380,14 @@ final class NuReport
 		} elseif ($kind === 'TABLE') {
 			[$cols, $rows] = $fetch('SELECT * FROM ' . NuDB::ident($id) . ($forFields ? ' WHERE 1 = 0' : ''));
 		} elseif ($kind === 'SQL') {
-			$sql = $db->tableExists('zzzzsys_select') ? $db->value('SELECT sse_sql FROM zzzzsys_select WHERE zzzzsys_select_id = ?', [$id]) : null;
+			$temp = array_key_exists($id, self::$sqlText);       // a query that is not saved yet (Reports with AI): read only
+			$sql = $temp ? self::$sqlText[$id] : ($db->tableExists('zzzzsys_select') ? $db->value('SELECT sse_sql FROM zzzzsys_select WHERE zzzzsys_select_id = ?', [$id]) : null);
 			if ($sql === null || trim((string)$sql) === '') throw new RuntimeException(t('rpt_err_sql_missing', $id));
 			$sql = rtrim(trim(NuHash::replace((string)$sql, $hash, NuHash::SQL)), ';');
-			try {
+			if ($temp) {
+				if (!NuDemo::readOnlySql($sql)) throw new RuntimeException(t('sqb_err_select_only'));
+				[$cols, $rows] = $db->readOnly(static fn() => $fetch($sql), 60);
+			} else try {
 				[$cols, $rows] = $fetch($sql);
 			} catch (Throwable $e) {
 				if (!$forFields) throw $e;

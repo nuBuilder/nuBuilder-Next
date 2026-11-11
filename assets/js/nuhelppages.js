@@ -194,7 +194,7 @@
 		});
 	}
 	if (ai && copyBtn) {
-		copyBtn.addEventListener('click', function () {
+		var aiPrompt = function () {
 			var fd = new FormData();
 			fd.append('_csrf', (form.querySelector('input[name=_csrf]') || {}).value || '');
 			fd.append('action', 'ai_prompt');
@@ -206,10 +206,19 @@
 			if (f) fd.append('form', f.value);
 			document.querySelectorAll('#uhAiRel input:checked').forEach(function (c) { fd.append('related[]', c.value); });
 			if (n) fd.append('note', n.value);
-			fetch(form.getAttribute('data-ai-url'), {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
-				if (!j.ok) return;
+			return fetch(form.getAttribute('data-ai-url'), {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+				if (!j.ok) return '';
 				promptBox.value = j.prompt;
 				promptBox.classList.remove('d-none');
+				return j.prompt;
+			});
+		};
+		// "Ask AI" with a configured AI service (0.8.1099, assets/js/nuaiask.js): the answer lands in the answer box, Insert as before
+		if (window.NuAiAsk && document.getElementById('uhAiAsk')) window.NuAiAsk.mount(document.getElementById('uhAiAsk'), {prompt: aiPrompt, answer: function (text) { answer.value = text; }});
+		copyBtn.addEventListener('click', function () {
+			aiPrompt().then(function (p) {
+				if (!p) return;
+				var j = {prompt: p};
 				var done = function () { document.getElementById('uhAiCopied').classList.remove('d-none'); };
 				if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(j.prompt).then(done, function () { promptBox.select(); });
 				else { promptBox.select(); }

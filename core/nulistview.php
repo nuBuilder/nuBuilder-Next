@@ -658,8 +658,9 @@ final class NuListView
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
 			<?php // a view with open filters shows them from 768 px on (phones: folded, the funnel opens them – 0.8.761); a filter that is set keeps them open
 			$openMin = $def['open'] ? max(768, (int)($L['open_min'] ?? 768)) : (int)($L['open_min'] ?? 0);
-			if ($nf) $openMin = 0;   // ?nf=1 (0.8.1017): opened from another page with its filter set (record info links) – filters folded, the funnel opens them ?>
-			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse nuLvFlt-<?= h((string)$L['key']) ?><?= $filtered && !$nf ? ' show' : '' ?>" id="nuLvFilters"<?= $openMin > 0 ? ' data-nu-open-min="' . $openMin . '"' : '' ?>><div class="row g-2">
+			if ($nf) $openMin = 0;   // ?nf=1 (0.8.1017): opened from another page with its filter set (record info links) – filters folded, the funnel opens them
+			// a filter that is set keeps them open – on phones (< 768 px) they stay folded, the chips below show what is set (nuapp.js .nuLvPhFold, 0.8.1093) ?>
+			<div class="<?= $n > 3 ? 'col-12' : 'col-md' ?> collapse nuLvFlt-<?= h((string)$L['key']) ?><?= $filtered && !$nf ? ' show nuLvPhFold' : '' ?>" id="nuLvFilters"<?= $openMin > 0 ? ' data-nu-open-min="' . $openMin . '"' : '' ?>><div class="row g-2">
 				<?php foreach ($def['filters']['shown'] as $k): $f = $L['filters'][$k];
 					$input = in_array($f['type'], ['text', 'datefrom', 'dateto'], true);
 					$all = (string)($f['all'] ?? ($input ? '' : '*'));

@@ -33,7 +33,7 @@ final class NuHome
 	public const USER_PAGES = ['help', 'password', 'security', 'notifications', 'import', 'userhelp'];   // import (0.8.773): users with permission items of type Data import
 	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
-	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'email', 'emailtemplates',
+	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'aiproviders', 'email', 'emailtemplates',
 		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'dataexport', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
 		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields', 'helppages', 'userhelp', 'projects'];
 	/** Pinned pages of a tile's menu that open the same page as a tile of their own (0.8.934): shown only while that tile is not on the page. */
@@ -43,7 +43,7 @@ final class NuHome
 		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest', 'dbreset']],
 		'g_adm_look'   => ['home_group_look', ['branding', 'themes', 'dashboards']],
 		'g_adm_data'   => ['home_group_data', ['pma', 'tfm', 'import', 'dataexport', 'cloner', 'appcloner', 'sample']],
-		'g_adm_int'    => ['home_group_integration', ['apiclients', 'webhooks', 'prompts', 'compat']],
+		'g_adm_int'    => ['home_group_integration', ['apiclients', 'webhooks', 'aiproviders', 'prompts', 'compat']],
 	];
 	/**
 	 * Start page profiles (0.8.385): ready-made layouts for Customise → "Start from" and Save as new layout → "Based on".
@@ -63,7 +63,7 @@ final class NuHome
 				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
 				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'dataexport', 'appcloner', 'sample']],
 				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest', 'dbreset']],
-				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'webhooks', 'compat', 's_mail_test']],
+				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'webhooks', 'aiproviders', 'compat', 's_mail_test']],
 			],
 			'fav' => ['forms', 'procedures', 's_debug', 'pma']],
 		'minimal'     => ['icon' => 'bi-dash-square', 'display' => 'groups', 'size' => 'list', 'view' => ['style' => 'list'],
@@ -84,7 +84,7 @@ final class NuHome
 				['g_dash', 'dash_title', '', ['dashboards', 's_dash_new']],
 				['g_rdata', 'home_group_data', '', ['pma', 'import']]]],
 		'integration' => ['icon' => 'bi-plug', 'display' => 'groups', 'size' => 'compact', 'view' => ['style' => 'compact'],
-			'groups' => [['g_api', 'home_pf_g_api', '', ['apiclients', 's_api_new', 's_api_playground', 'webhooks', 's_wh_calls', 'compat']],
+			'groups' => [['g_api', 'home_pf_g_api', '', ['apiclients', 's_api_new', 's_api_playground', 'webhooks', 's_wh_calls', 'aiproviders', 'compat']],
 				['g_mail', 'nav_email', '', ['email', 's_mail_settings', 's_mail_templates', 's_mail_test', 's_mail_log']],
 				['g_msg', 'home_pf_g_messages', '', ['notifications', 'helppages', 'prompts']]]],
 		'blank'       => ['icon' => 'bi-square', 'display' => 'groups', 'size' => 'large', 'groups' => [['g_own', 'home_pf_g_own', '', []]]],
@@ -141,6 +141,7 @@ final class NuHome
 			'projects'    => ['projects', 'bi-kanban', t('prj_title'), t('prj_card_hint')],   // projects (0.8.1035)
 			'apiclients'  => ['apiclients', 'bi-plug', t('api_title'), t('home_api_hint')],
 			'webhooks'    => ['webhooks', 'bi-broadcast', t('wh_title'), t('home_wh_hint')],
+			'aiproviders' => ['aiproviders', 'bi-stars', t('aip_title'), t('home_aip_hint')],
 			'email'       => ['email', 'bi-envelope', t('nav_email'), t('home_email_hint')],
 			'notifications' => [['notifications', ['tab' => 'manage']], 'bi-bell', t('ntf_title'), t('home_ntf_hint')],
 			'helppages'   => ['helppages', 'bi-journal-bookmark', t('uh_admin_title'), t('uh_card_hint')],   // user help pages (0.8.1023)
@@ -804,7 +805,7 @@ final class NuHome
 	private const TILE_RIGHTS = [
 		'users' => ['acl', NuAcl::FORM_USER], 'access' => ['acl', NuAcl::FORM_ACCESS], 'permissions' => ['acl', NuAcl::FORM_PERMISSION],
 		'sessions' => ['sessions', 'view'], 'forms' => ['acl', NuAcl::FORM_FORM], 'procedures' => ['acl', NuAcl::FORM_PROCEDURE],
-		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'], 'webhooks' => ['webhooks', 'view'],
+		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'], 'webhooks' => ['webhooks', 'view'], 'aiproviders' => ['aiproviders', 'view'],
 		'email' => ['email', 'view'], 'debug' => ['acl', NuAcl::FORM_DEBUG], 'update' => ['update', 'view'], 'settings' => ['settings', 'view'],
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
 		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'], 'themes' => ['branding', 'view'],
@@ -814,7 +815,7 @@ final class NuHome
 	];
 	/** Pages an own tile (kind page) may open => the tile whose right decides. */
 	private const PAGE_TILE = ['users' => 'users', 'access' => 'access', 'permissions' => 'permissions', 'sessions' => 'sessions', 'forms' => 'forms',
-		'procedures' => 'procedures', 'reports' => 'reports', 'sqlbuilder' => 'reports', 'prompts' => 'prompts', 'apiclients' => 'apiclients', 'webhooks' => 'webhooks',
+		'procedures' => 'procedures', 'reports' => 'reports', 'sqlbuilder' => 'reports', 'prompts' => 'prompts', 'apiclients' => 'apiclients', 'webhooks' => 'webhooks', 'aiproviders' => 'aiproviders',
 		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit', 'notifications' => 'notifications', 'update' => 'update',
 		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import', 'dataexport' => 'dataexport',
 		'cloner' => 'cloner', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',

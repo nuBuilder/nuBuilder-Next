@@ -56,7 +56,7 @@ if (nu_is_post()) {
 			if ($src) $details['clone_of'] = (string)$db->value("SELECT sre_code FROM $T WHERE zzzzsys_report_id = ?", [$cloneId]);
 			if ($details['fields'] || count($details) > 2 || !$report) NuLog::write($report ? 'report_changed' : 'report_created', $T, $newId, $details);
 			nu_flash('success', t('saved'));
-			nu_redirect(nu_post('then') === 'design' ? nu_url('reportdesigner', ['id' => $newId]) : nu_url('reports', ['id' => $newId]));
+			nu_redirect(nu_post('then') === 'design' ? nu_url('reportdesigner', ['id' => $newId]) : nu_url('reports', ['id' => $newId, 'ai' => nu_post('then') === 'ai' ? '1' : null]));
 		}
 	}
 	if ($action === 'delete' && $report) {
@@ -69,6 +69,7 @@ if (nu_is_post()) {
 				$db->delete(NuReport::ACCESS, 'sre_zzzzsys_report_id', $id);
 				$db->delete($T, 'zzzzsys_report_id', $id);
 			});
+			NuReportSpec::deleteVersions($id);
 			NuLog::write('report_deleted', $T, $id, ['code' => (string)$report['sre_code']]);
 			nu_flash('success', t('rpt_deleted'));
 			nu_redirect(nu_url('reports'));
@@ -128,6 +129,7 @@ $tcpdf = NuReport::tcpdfDir();
 	if ($posted) { $sent = array_flip(array_filter((array)($_POST['access'] ?? []), 'is_string')); foreach ($access as &$a) $a['granted'] = isset($sent[$a['zzzzsys_access_id']]); unset($a); }
 	$usage = $report ? NuReport::usage($id, (string)$report['sre_code']) : [];
 	$history = $report ? NuReport::history($id) : [];
+	$versions = $report ? NuReportSpec::versions($id) : [];
 	$nAccess = count(array_filter($access, static fn($a) => $a['granted']));
 	$sources = NuReport::sources();
 	$current = $v('sre_zzzzsys_php_id');
@@ -146,6 +148,7 @@ $tcpdf = NuReport::tcpdfDir();
 		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="rptSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if ($report): ?>
 			<a class="btn btn-outline-primary" href="<?= h(nu_url('reportdesigner', ['id' => $id])) ?>" id="rptDesign"><i class="bi bi-vector-pen me-1"></i><?= h(t('rpt_designer')) ?></a>
+			<?php if ($rights['save']): ?><button type="button" class="btn btn-outline-primary" data-rai-open id="rptAi" title="<?= h(t('rai_button_tip')) ?>"><i class="bi bi-stars me-1"></i><?= h(t($nObjects ? 'rai_button_change' : 'rai_button_new')) ?></button><?php endif; ?>
 			<a class="btn btn-outline-secondary" href="<?= h(nu_url('report', ['c' => (string)$report['sre_code']])) ?>" target="_blank" rel="noopener" id="rptRun"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rpt_run')) ?></a>
 		<?php endif; ?>
 		<?php if ($report && $rights['clone']): ?>
@@ -208,7 +211,11 @@ $tcpdf = NuReport::tcpdfDir();
 						<a class="btn btn-primary" href="<?= h(nu_url('reportdesigner', ['id' => $id])) ?>"><i class="bi bi-vector-pen me-1"></i><?= h(t('rpt_designer_open')) ?></a>
 					</div>
 				<?php elseif (!$report && !$locked): ?>
-					<button class="btn btn-outline-primary" type="submit" name="then" value="design"><i class="bi bi-vector-pen me-1"></i><?= h(t('rpt_save_design')) ?></button>
+					<div class="d-flex flex-wrap gap-2 align-items-center">
+						<button class="btn btn-outline-primary" type="submit" name="then" value="design"><i class="bi bi-vector-pen me-1"></i><?= h(t('rpt_save_design')) ?></button>
+						<button class="btn btn-outline-primary" type="submit" name="then" value="ai" id="rptSaveAi"><i class="bi bi-stars me-1"></i><?= h(t('rai_save_ai')) ?></button>
+						<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('rai_save_ai_tip')) ?>" title="<?= h(t('rai_save_ai_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+					</div>
 				<?php endif; ?>
 			</div>
 
@@ -245,6 +252,18 @@ $tcpdf = NuReport::tcpdfDir();
 				<?php endif; ?>
 			</div>
 			<div class="tab-pane fade" id="rptTabHistory" role="tabpanel">
+				<?php if ($versions): ?>
+					<h2 class="h6"><?= h(t('rai_versions')) ?> <span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('rai_versions_tip')) ?>" title="<?= h(t('rai_versions_tip')) ?>"><i class="bi bi-info-circle"></i></span></h2>
+					<table class="table table-sm align-middle mb-4" id="rptVersions">
+						<tbody><?php foreach ($versions as $ver): ?>
+							<tr><td class="small fw-semibold text-nowrap"><?= h(date(nu_dfmt('d.m.Y H:i:s'), strtotime((string)$ver['saved_at']))) ?></td>
+								<td class="small"><?= h((string)$ver['saved_by']) ?></td>
+								<td><span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h(t($ver['reason'] === 'restore' ? 'rai_ver_restore' : 'rai_ver_ai')) ?></span></td>
+								<td class="small text-body-secondary w-100"><?= h((string)$ver['note']) ?></td>
+								<td class="text-end"><?php if ($rights['save']): ?><button type="button" data-version="<?= h((string)$ver['id']) ?>" class="btn btn-sm btn-outline-secondary text-nowrap rptVerRestore"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('rai_restore')) ?></button><?php endif; ?></td></tr>
+						<?php endforeach; ?></tbody>
+					</table>
+				<?php endif; ?>
 				<?php if (!$history): ?><p class="text-body-secondary mb-0"><?= h(t('proc_history_none')) ?></p><?php endif; ?>
 				<?php foreach ($history as $hst): $d = json_decode((string)$hst['details'], true) ?: []; ?>
 					<div class="border-bottom py-2">
@@ -267,6 +286,11 @@ $tcpdf = NuReport::tcpdfDir();
 		</div>
 		</fieldset>
 	</form>
+	<?php if ($report && $rights['save']): ?>
+		<form method="post" action="<?= h(nu_url('reportai', ['id' => $id])) ?>" id="rptRestoreForm" data-confirm="<?= h(t('rai_restore_confirm')) ?>" data-confirm-ok="<?= h(t('rai_restore')) ?>">
+			<?= nu_csrf_field() ?><input type="hidden" name="action" value="restore"><input type="hidden" name="version" value=""></form>
+		<?= NuReportSpec::dialog($report, true, ($_GET['ai'] ?? '') === '1') ?>
+	<?php endif; ?>
 <?php endif; ?>
 <?php
-nu_layout_end($foot);
+nu_layout_end($foot . ($report && $rights['save'] ? '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script>' . '<script src="' . nu_asset('assets/js/nureportai.js') . '"></script>' : ''));

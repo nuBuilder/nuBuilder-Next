@@ -145,6 +145,10 @@ body.nuf { margin: 0; background: var(--bs-body-bg); color: var(--bs-body-color)
 	.nuf-app.nuf-side-open .nuf-side-backdrop { opacity: 1; visibility: visible; }
 	.nuf-lbl { display: none; }
 	.nuf-c-time { display: none; }
+	.nuf-app.nuf-show-time .nuf-c-time { display: table-cell; }   /* toggle #nufColToggle: date instead of size */
+	.nuf-app.nuf-show-time .nuf-c-size { display: none; }
+	#nufColToggle .nuf-ic-size, .nuf-app.nuf-show-time #nufColToggle .nuf-ic-time { display: none; }
+	.nuf-app.nuf-show-time #nufColToggle .nuf-ic-size { display: inline-block; }
 	.nuf-search { flex-basis: 10rem; }
 	.nuf-bar { flex-wrap: wrap; }
 }
@@ -162,7 +166,7 @@ body.nuf { margin: 0; background: var(--bs-body-bg); color: var(--bs-body-color)
 	.nuf-tools > .btn, .nuf-tools > .btn-group > .btn { flex: 0 0 auto; padding-left: .45rem; padding-right: .45rem; }
 	.nuf-tools > .btn-group > .dropdown-toggle-split { padding-left: .3rem; padding-right: .3rem; }
 }
-@media (max-width: 359.98px) {
+@media (max-width: 419.98px) {   /* phones up to 420 px: the column toggle (0.8.1095) needs the room */
 	.nuf-tools { gap: .2rem; padding-left: .35rem; padding-right: .35rem; }
 	.nuf-tools > .btn, .nuf-tools > .btn-group > .btn { padding-left: .3rem; padding-right: .3rem; }
 	.nuf-tools > .btn-group > .dropdown-toggle-split { padding-left: .2rem; padding-right: .2rem; }

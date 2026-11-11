@@ -1249,6 +1249,126 @@ check('layout three wide fields stay in one row', count($ly['rows']) === 1 && ar
 $ly = NuLayout::build([$lyO('a', 10, 200, ['row' => 10, 'col' => 20]), $lyO('b', 300, 200, ['row' => 10, 'col' => 15]), $lyO('c', 600, 200, ['row' => 10, 'col' => 10])], 'grid');
 check('layout grid row follows the column, not the left position', array_map(static fn($it) => $it['obj']['sob_all_id'], $ly['rows'][0]) === ['c', 'b', 'a']);
 
+
+// spreadsheet memory check instead of a fixed 10 MB (0.8.1094)
+$xl = tempnam(sys_get_temp_dir(), 'nuxl') . '.xlsx';
+$z = new ZipArchive(); $z->open($xl, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+$z->addFromString('xl/workbook.xml', '<workbook xmlns:r="x"><sheets><sheet name="Small" sheetId="1" r:id="rId1"/><sheet name="Big &amp; wide" sheetId="2" r:id="rId2"/></sheets></workbook>');
+$z->addFromString('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Target="/xl/worksheets/sheet2.xml"/></Relationships>');
+$z->addFromString('xl/worksheets/sheet1.xml', str_repeat('a', 1000));
+$z->addFromString('xl/worksheets/sheet2.xml', str_repeat('b', 3000000));
+$z->addFromString('xl/sharedStrings.xml', str_repeat('c', 500));
+$z->close();
+check('spreadsheet unpacked size of the chosen sheet', NuSpreadsheet::unpackedSize($xl, 'xlsx', 'Small') === 1500 && NuSpreadsheet::unpackedSize($xl, 'xlsx', 'Big & wide') === 3000500
+	&& NuSpreadsheet::unpackedSize($xl, 'xlsx', '', 1) === 3000500 && NuSpreadsheet::unpackedSize($xl, 'xls') === null);
+$memErr = static function (string $sheet, int $limit) use ($xl): string { $c = NuDB::$connected; NuDB::$connected = false; try { NuSpreadsheet::memoryCheck($xl, 'xlsx', $sheet, 0, $limit); return ''; } catch (RuntimeException $e) { return $e->getMessage(); } finally { NuDB::$connected = $c; } };
+$base = memory_get_usage() + NuSpreadsheet::MEM_RESERVE;
+check('spreadsheet memory check: small sheet fits, big one refused, no limit = no check', $memErr('Small', $base + 10485760) === ''
+	&& $memErr('Big & wide', $base + 10485760) !== '' && $memErr('Big & wide', $base + 80 * 1048576) === '' && $memErr('Big & wide', -1) === '');
+check('spreadsheet .xls file limit follows the memory, zipped types by content', NuSpreadsheet::maxBytes('xls', $base + 40 * 1048576) === 1048576
+	&& NuSpreadsheet::maxBytes('xlsx', $base + 40 * 1048576) === PHP_INT_MAX && NuSpreadsheet::maxBytes('xls', -1) === PHP_INT_MAX);
+@unlink($xl);
+
+// ---- reports with AI (0.8.1097): the short format ⇄ nuBuilder Forte's layout
+$rsSpec = ['format' => 'nunext-report-1', 'report' => ['paper' => 'A4', 'orientation' => 'landscape'], 'groups' => [['field' => 'grp', 'dir' => 'desc']], 'bands' => [
+	'page_header' => ['height' => 8, 'objects' => [['type' => 'text', 'text' => 'Title #page#', 'x' => 15, 'y' => 1, 'w' => 100, 'h' => 5, 'bold' => true, 'color' => '#0f766e'],
+		['type' => 'line', 'x' => 15, 'y' => 7, 'w' => 180, 'h' => 0.5]]],
+	'group_header_1' => ['height' => 7, 'objects' => [['type' => 'field', 'field' => 'grp', 'x' => 15, 'y' => 1, 'w' => 60, 'h' => 5]]],
+	'detail' => ['height' => 6, 'objects' => [['type' => 'field', 'field' => 'amount', 'x' => 150, 'y' => 0.5, 'w' => 40, 'h' => 5, 'align' => 'right', 'format' => 'N|1,000.00']]],
+	'group_footer_1' => ['height' => 7, 'objects' => [['type' => 'sum', 'field' => 'amount', 'x' => 150, 'y' => 1, 'w' => 40, 'h' => 5], ['type' => 'average', 'fields' => ['amount', 'qty'], 'x' => 100, 'y' => 1, 'w' => 40, 'h' => 5]]]]];
+$rsL = NuReportSpec::toLayout($rsSpec, null);
+$rsG = $rsL->groups;
+check('report spec: bands land in nuBuilder Forte\'s groups, mm become px', NuReportSpec::bandPos('detail') === [0, 0] && NuReportSpec::bandPos('group_footer_2') === [4, 1]
+	&& NuReportSpec::bandPos('nope') === null && $rsL->orientation === 'L' && $rsG[3]->sortField === 'grp' && $rsG[3]->sortBy === 'd'
+	&& (int)$rsG[0]->sections[0]->height === 24 && (int)$rsG[0]->sections[0]->objects[0]->left === 600 && (int)$rsG[0]->sections[0]->objects[0]->width === 160);
+check('report spec: sum / average / line as nuBuilder Forte writes them', $rsG[3]->sections[1]->objects[0]->fieldName === 'SUM(amount)'
+	&& $rsG[3]->sections[1]->objects[1]->fieldName === 'AVERAGE(amount,qty)' && $rsG[2]->sections[0]->objects[1]->objectType === 'label'
+	&& $rsG[2]->sections[0]->objects[1]->fieldName === 'KEEP EXACT HEIGHT' && $rsG[2]->sections[0]->objects[0]->fieldName === 'Title #page#');
+$rsBack = NuReportSpec::fromLayout($rsL);
+$rsStrip = static function (array $sp): array { foreach ($sp['bands'] as &$b) foreach ($b['objects'] as &$o) unset($o['id']); return $sp['bands']; };
+check('report spec: layout → spec gives the same bands, objects and places', $rsBack['report']['orientation'] === 'landscape' && $rsBack['groups'] === [['field' => 'grp', 'dir' => 'desc']]
+	&& array_keys($rsBack['bands']) === ['page_header', 'group_header_1', 'detail', 'group_footer_1'] && $rsBack['bands']['detail']['objects'][0]['format'] === 'N|1,000.00'
+	&& $rsBack['bands']['group_footer_1']['objects'][1]['fields'] === ['amount', 'qty'] && $rsBack['bands']['page_header']['objects'][1]['type'] === 'line'
+	&& (float)$rsBack['bands']['page_header']['objects'][1]['h'] === 0.5 && isset($rsBack['bands']['detail']['objects'][0]['id']));
+check('report spec: an unchanged layout comes back identical (ids, extra keys, colour spelling)', (static function () use ($rsL): bool {
+	$base = json_decode(json_encode($rsL));
+	$base->groups[0]->sections[0]->objects[0]->zzExtra = 'kept';
+	$base->groups[2]->sections[0]->objects[0]->fontColor = '#0F766E';
+	$again = NuReportSpec::toLayout(NuReportSpec::fromLayout($base), $base);
+	return json_encode($again) === json_encode($base);
+})());
+check('report spec: the answer is read from a code block, other text is refused', is_array(NuReportSpec::parse("Sure:\n```json\n" . json_encode($rsSpec) . "\n```\nDone."))
+	&& is_array(NuReportSpec::parse(json_encode($rsSpec))) && is_string((static function () { $c = NuDB::$connected; NuDB::$connected = false; try { return NuReportSpec::parse('no json here'); } finally { NuDB::$connected = $c; } })())
+	&& NuReportSpec::hex('#abc') === '#aabbcc' && NuReportSpec::hex('red') === '#ff0000' && NuReportSpec::hex('javascript:1') === '');
+
+check('report spec: a box without a border gets its frame in the fill colour; the prompt says a page break starts a new page before the band', (static function (): bool {
+	$L = NuReportSpec::toLayout(['format' => 'nunext-report-1', 'bands' => ['detail' => ['height' => 6, 'objects' => [
+		['type' => 'box', 'color' => '#1e3a8a', 'x' => 15, 'y' => 0, 'w' => 100, 'h' => 6],
+		['type' => 'box', 'color' => '#1e3a8a', 'x' => 15, 'y' => 0, 'w' => 100, 'h' => 6, 'border' => ['width' => 1, 'color' => '#ff0000']]]]]], null);
+	$o = $L->groups[0]->sections[0]->objects;
+	return strcasecmp($o[0]->borderColor, '#1e3a8a') === 0 && (string)$o[0]->borderWidth === '0' && strcasecmp($o[1]->borderColor, '#ff0000') === 0
+		&& str_contains(NuReportSpec::formatHelp(), 'BEFORE the band') && !str_contains(NuReportSpec::formatHelp(), 'a new page after it');
+})());
+
+// ---- AI providers (0.8.1099): the request of each kind, reading the answers
+$aiD = static fn(string $kind, array $x = []) => $x + ['id' => 'p1', 'name' => 'n', 'kind' => $kind, 'base_url' => '', 'api_key' => 'plain:k-123', 'model' => 'm-1', 'temperature' => '0.2',
+	'max_tokens' => 0, 'timeout' => 60, 'system' => 'Be exact.', 'params' => '', 'active' => true, 'access' => 'all', 'levels' => [], 'password' => '', 'month_limit' => 0];
+$aiM = [['user', 'Prompt'], ['assistant', 'First'], ['user', 'Fix it']];
+[$aiU, $aiH, $aiB] = NuAiProvider::build($aiD('anthropic'), $aiM);
+check('AI providers: Anthropic request', $aiU === 'https://api.anthropic.com/v1/messages' && in_array('x-api-key: k-123', $aiH, true) && in_array('anthropic-version: 2023-06-01', $aiH, true)
+	&& $aiB['model'] === 'm-1' && $aiB['max_tokens'] === 8192 && $aiB['system'] === 'Be exact.' && $aiB['temperature'] === 0.2 && count($aiB['messages']) === 3
+	&& $aiB['messages'][1] === ['role' => 'assistant', 'content' => 'First']);
+[$aiU, $aiH, $aiB] = NuAiProvider::build($aiD('openai', ['max_tokens' => 500, 'params' => '{"top_p": 0.9, "temperature": null}']), $aiM);
+check('AI providers: OpenAI request (system message, max_completion_tokens, extra parameters win, null removes)', $aiU === 'https://api.openai.com/v1/chat/completions'
+	&& in_array('Authorization: Bearer k-123', $aiH, true) && $aiB['messages'][0] === ['role' => 'system', 'content' => 'Be exact.'] && count($aiB['messages']) === 4
+	&& $aiB['max_completion_tokens'] === 500 && !isset($aiB['max_tokens']) && $aiB['top_p'] === 0.9 && !array_key_exists('temperature', $aiB));
+[$aiU, , $aiB] = NuAiProvider::build($aiD('openai', ['base_url' => 'http://localhost:11434/v1/', 'max_tokens' => 500, 'api_key' => '']), $aiM);
+check('AI providers: an OpenAI-compatible server gets max_tokens at its own address', $aiU === 'http://localhost:11434/v1/chat/completions' && $aiB['max_tokens'] === 500);
+[$aiU, $aiH, $aiB] = NuAiProvider::build($aiD('gemini', ['model' => 'models/g-1', 'max_tokens' => 900]), $aiM);
+check('AI providers: Gemini request', $aiU === 'https://generativelanguage.googleapis.com/v1beta/models/g-1:generateContent' && in_array('x-goog-api-key: k-123', $aiH, true)
+	&& $aiB['contents'][1] === ['role' => 'model', 'parts' => [['text' => 'First']]] && $aiB['systemInstruction']['parts'][0]['text'] === 'Be exact.'
+	&& $aiB['generationConfig'] === ['temperature' => 0.2, 'maxOutputTokens' => 900]);
+$aiT = static function (string $kind, int $code, array $j): array { $c = NuDB::$connected; NuDB::$connected = false; try { return NuAiProvider::parse($kind, $code, (string)json_encode($j)); } finally { NuDB::$connected = $c; } };
+check('AI providers: answers of the three kinds are read with their tokens', $aiT('anthropic', 200, ['content' => [['type' => 'text', 'text' => 'A'], ['type' => 'text', 'text' => 'B']], 'usage' => ['input_tokens' => 7, 'output_tokens' => 3]]) === ['AB', 7, 3, '']
+	&& $aiT('openai', 200, ['choices' => [['message' => ['content' => 'C'], 'finish_reason' => 'stop']], 'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 2]]) === ['C', 5, 2, '']
+	&& $aiT('gemini', 200, ['candidates' => [['content' => ['parts' => [['text' => 'D']]], 'finishReason' => 'STOP']], 'usageMetadata' => ['promptTokenCount' => 4, 'candidatesTokenCount' => 1]]) === ['D', 4, 1, '']);
+check('AI providers: errors and cut answers are reported', str_contains($aiT('anthropic', 401, ['error' => ['type' => 'authentication_error', 'message' => 'invalid x-api-key']])[3], 'invalid x-api-key')
+	&& $aiT('openai', 200, ['choices' => [['message' => ['content' => 'half'], 'finish_reason' => 'length']]])[0] === 'half' && $aiT('openai', 200, ['choices' => [['message' => ['content' => 'half'], 'finish_reason' => 'length']]])[3] !== ''
+	&& $aiT('anthropic', 200, ['content' => []])[3] !== '' && str_contains(NuAiProvider::fixMessage(['Unknown column "x"']), 'Unknown column "x"'));
+
+// ---- AI providers (0.8.1101): the API key behind a configuration's password
+if (NuAiProvider::canDerive()) {
+	$aiSalt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
+	$aiK = NuAiProvider::derive('correct horse battery', $aiSalt);
+	$aiStored = NuAiProvider::lock('sk-secret-123', $aiK);
+	$aiP = $aiD('anthropic', ['access' => 'password', 'api_key' => $aiStored, 'salt' => base64_encode($aiSalt)]);
+	$aiRef = new ReflectionClass('NuAiProvider');
+	$aiCall = static function (string $m, ...$a) use ($aiRef) { $f = $aiRef->getMethod($m); $f->setAccessible(true); return $f->invoke(null, ...$a); };
+	$_SESSION['nu_ai_unlocked'] = [];
+	NuAiProvider::$cookieTest = '';
+	check('AI key behind a password: stored without the key or a hash, locked without the session', str_starts_with($aiStored, 'pw:') && !str_contains($aiStored, 'sk-secret') && !str_contains(base64_decode(substr($aiStored, 3)), 'sk-secret')
+		&& NuAiProvider::pwMode($aiP) && NuAiProvider::apiKey($aiP) === null && !NuAiProvider::unlocked($aiP)
+		&& $aiCall('unlockKey', $aiStored, NuAiProvider::derive('wrong password!!', $aiSalt)) === null && $aiCall('unlockKey', $aiStored, $aiK) !== null);
+	$aiCall('remember', 'p1', $aiK);
+	$aiSess = (string)$_SESSION['nu_ai_unlocked']['p1'];
+	$aiCookie = (string)NuAiProvider::$cookieTest;
+	check('AI key behind a password: unlocked with session + cookie, neither alone opens it', NuAiProvider::apiKey($aiP) === 'sk-secret-123' && NuAiProvider::unlocked($aiP)
+		&& !str_contains(base64_decode($aiSess), $aiK) && (static function () use ($aiP, $aiCookie): bool {
+			NuAiProvider::$cookieTest = '';                                  // the session file without the browser's cookie
+			$noCookie = NuAiProvider::apiKey($aiP) === null;
+			NuAiProvider::$cookieTest = base64_encode(random_bytes(32));     // another browser
+			$other = NuAiProvider::apiKey($aiP) === null;
+			NuAiProvider::$cookieTest = $aiCookie;
+			return $noCookie && $other && NuAiProvider::apiKey($aiP) === 'sk-secret-123';
+		})());
+	$aiSalt2 = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
+	$aiP2 = ['api_key' => NuAiProvider::lock('sk-secret-123', NuAiProvider::derive('another password 1', $aiSalt2)), 'salt' => base64_encode($aiSalt2)] + $aiP;
+	check('AI key behind a password: a new password locks the configuration again; the request carries the key only when unlocked', NuAiProvider::apiKey($aiP2) === null && !NuAiProvider::unlocked($aiP2)
+		&& in_array('x-api-key: sk-secret-123', NuAiProvider::build($aiP, $aiM)[1], true) && in_array('x-api-key: ', NuAiProvider::build($aiP2, $aiM)[1], true));
+	NuAiProvider::$cookieTest = null;
+	unset($_SESSION['nu_ai_unlocked']);
+}
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

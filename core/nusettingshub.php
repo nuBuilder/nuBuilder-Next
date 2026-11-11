@@ -48,7 +48,7 @@ final class NuSettingsHub
 			if (NuAdmin::can('audit', 'view')) $out['audit'] = ['bi-clock-history', t('aud_title'), t('sh_audit_d'), nu_url('audit')];
 			if (NuAcl::can(NuAcl::FORM_EMAILLOG)) $out['emaillog'] = ['bi-envelope-paper', t('mail_tab_log'), t('sh_emaillog_d'), nu_url('email', ['tab' => 'log'])];
 			if (NuAcl::can(NuAcl::FORM_DEBUG)) $out['debug'] = ['bi-bug', t('sh_debug'), t('sh_debug_d'), nu_url('debug')];
-			foreach (['apiclients', 'webhooks'] as $k) if ($x = $tile($k)) $out[$k] = $x;
+			foreach (['apiclients', 'webhooks', 'aiproviders'] as $k) if ($x = $tile($k)) $out[$k] = $x;
 		}
 		return $out;
 	}
@@ -240,7 +240,7 @@ final class NuSettingsHub
 		$kw = ['users' => 'user users login password account', 'access' => 'access level rights roles forms', 'adminroles' => 'admin role rights administrator',
 			'permissions' => 'permission item permissions', 'userfields' => 'custom field user fields', 'sessions' => 'session sessions logged in online log out',
 			'log' => 'log events sign-in', 'audit' => 'audit history changes restore', 'emaillog' => 'mail e-mail sent log', 'debug' => 'debug results errors',
-			'apiclients' => 'api rest token client key', 'webhooks' => 'webhook hook http callback'];
+			'apiclients' => 'api rest token client key', 'webhooks' => 'webhook hook http callback', 'aiproviders' => 'ai artificial intelligence provider claude openai gemini model api key llm'];
 		foreach (['users', 'logs'] as $sx) foreach (self::tools($sx) as $k => [, $label, $hint, $url]) $add($sx, $label, $hint, $url, $k . ' ' . ($kw[$k] ?? ''));
 		// the editor pages: what they hold, for the search
 		if ($can('branding')) {

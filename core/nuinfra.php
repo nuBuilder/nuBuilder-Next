@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 29;
+	public const VERSION = 32;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -186,6 +186,25 @@ final class NuSchema
 				['item', 'text', '130'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50'],
 				['done_at', 'datetime'], ['done_by', 'text', '50'], ['notified_at', 'datetime']],
 			'index' => ['project_id', 'assignee'],
+		],
+		'zzzzsys_nunext_ai_provider' => [                         // AI providers (0.8.1099, core/nuaiprovider.php): configurations of AI services
+			'pk' => 'zzzzsys_nunext_ai_provider_id',
+			'cols' => [['name', 'text', '100'], ['kind', 'text', '20'], ['base_url', 'text', '500'], ['api_key', 'longtext'], ['model', 'text', '200'], ['temperature', 'text', '10'],
+				['max_tokens', 'int'], ['timeout', 'int'], ['system_text', 'longtext'], ['params', 'longtext'], ['active', 'text', '1'], ['access', 'text', '10'], ['levels', 'longtext'],
+				['password', 'text', '255'], ['pw_salt', 'text', '64'], ['month_limit', 'int'], ['updated_at', 'datetime'], ['updated_by', 'text', '100']],
+			'index' => [],
+		],
+		'zzzzsys_nunext_ai_call' => [                             // one row per AI request: who, tokens, time – never the content
+			'pk' => 'zzzzsys_nunext_ai_call_id',
+			'cols' => [['provider_id', 'text', '25'], ['user_login', 'text', '100'], ['feature', 'text', '20'], ['model', 'text', '200'], ['tokens_in', 'int'], ['tokens_out', 'int'],
+				['ms', 'int'], ['status', 'text', '10'], ['error', 'text', '300'], ['created_at', 'datetime']],
+			'index' => ['provider_id', 'created_at'],
+		],
+		'zzzzsys_nunext_report_version' => [                      // earlier layouts of a report (0.8.1097, NuReportSpec: kept before an AI change / a restore)
+			'pk' => 'zzzzsys_nunext_report_version_id',
+			'cols' => [['report_id', 'text', '25'], ['saved_at', 'datetime'], ['saved_by', 'text', '50'], ['reason', 'text', '20'], ['note', 'text', '200'],
+				['source', 'text', '60'], ['layout', 'longtext']],
+			'index' => ['report_id'],
 		],
 		'zzzzsys_nunext_help' => [                                // user help pages (0.8.1023, core/nuuserhelp.php): lang '' = the page, else a translation
 			'pk' => 'zzzzsys_nunext_help_id',

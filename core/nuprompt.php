@@ -229,6 +229,137 @@ final class NuPrompt
 		return $parts ? implode(', ', $parts) : null;
 	}
 
+	/**
+	 * What the column line does not say (0.8.1102): keys over several columns, unique keys, indexes, foreign keys (both directions),
+	 * CHECK constraints, generated columns, triggers, the view's SELECT, table comment, approximate rows – and the relations
+	 * nuBuilder itself knows (forms on the table, lookups, sub-forms), since nuBuilder applications rarely declare foreign keys.
+	 * @return string[] Markdown lines "label: text" – only what exists.
+	 */
+	public static function details(string $table): array
+	{
+		$db = nu_db();
+		if (!in_array($table, self::tables(), true)) return [];
+		$out = [];
+		$cut = static fn($v, int $n = 200) => mb_strimwidth(trim((string)preg_replace('/\s+/', ' ', (string)$v)), 0, $n, '…');
+		$try = static function (callable $fn): array { try { return $fn(); } catch (Throwable) { return []; } };    // a catalog view this server lacks: that part is left out
+		$idx = [];             // name => [unique, primary, [cols]]
+		$fk = []; $in = []; $checks = []; $trig = []; $gen = []; $view = ''; $comment = ''; $rows = null;
+		if ($db->type === 'mysql') {
+			foreach ($try(fn() => $db->all('SELECT INDEX_NAME AS i, NON_UNIQUE AS nu, COLUMN_NAME AS c FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX', [$table])) as $r) {
+				$idx[(string)$r['i']] ??= [(int)$r['nu'] === 0, (string)$r['i'] === 'PRIMARY', []];
+				$idx[(string)$r['i']][2][] = (string)$r['c'];
+			}
+			$fkSql = 'SELECT k.CONSTRAINT_NAME AS n, k.TABLE_NAME AS t, k.COLUMN_NAME AS c, k.REFERENCED_TABLE_NAME AS rt, k.REFERENCED_COLUMN_NAME AS rc, r.DELETE_RULE AS d, r.UPDATE_RULE AS u
+				FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND r.TABLE_NAME = k.TABLE_NAME
+				WHERE k.TABLE_SCHEMA = DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL AND ';
+			$fk = $try(fn() => $db->all($fkSql . 'k.TABLE_NAME = ? ORDER BY k.CONSTRAINT_NAME, k.ORDINAL_POSITION', [$table]));
+			$in = $try(fn() => $db->all($fkSql . 'k.REFERENCED_TABLE_NAME = ? AND k.REFERENCED_TABLE_SCHEMA = DATABASE() ORDER BY k.TABLE_NAME, k.CONSTRAINT_NAME, k.ORDINAL_POSITION', [$table]));
+			$checks = $try(fn() => $db->all('SELECT c.CONSTRAINT_NAME AS n, c.CHECK_CLAUSE AS x FROM information_schema.CHECK_CONSTRAINTS c JOIN information_schema.TABLE_CONSTRAINTS t
+				ON t.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA AND t.CONSTRAINT_NAME = c.CONSTRAINT_NAME AND t.CONSTRAINT_TYPE = \'CHECK\'
+				WHERE c.CONSTRAINT_SCHEMA = DATABASE() AND t.TABLE_NAME = ? ORDER BY c.CONSTRAINT_NAME', [$table]));
+			$trig = $try(fn() => $db->all('SELECT TRIGGER_NAME AS n, ACTION_TIMING AS w, EVENT_MANIPULATION AS e FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? ORDER BY TRIGGER_NAME', [$table]));
+			$gen = $try(fn() => $db->all("SELECT COLUMN_NAME AS n, GENERATION_EXPRESSION AS x FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND GENERATION_EXPRESSION IS NOT NULL AND GENERATION_EXPRESSION <> '' ORDER BY ORDINAL_POSITION", [$table]));
+			$t = $try(fn() => $db->all('SELECT TABLE_TYPE AS ty, TABLE_COMMENT AS c, TABLE_ROWS AS r FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table]))[0] ?? [];
+			if (($t['ty'] ?? '') === 'VIEW') $view = (string)($try(fn() => $db->all('SELECT VIEW_DEFINITION AS v FROM information_schema.VIEWS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table]))[0]['v'] ?? '');
+			else { $comment = (string)($t['c'] ?? ''); $rows = isset($t['r']) ? (int)$t['r'] : null; }
+		} elseif ($db->type === 'sqlsrv') {
+			foreach ($try(fn() => $db->all('SELECT i.name AS i, i.is_unique AS u, i.is_primary_key AS p, c.name AS c FROM sys.indexes i JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+				JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id WHERE i.object_id = OBJECT_ID(?) AND i.name IS NOT NULL AND ic.is_included_column = 0 ORDER BY i.name, ic.key_ordinal', [$table])) as $r) {
+				$idx[(string)$r['i']] ??= [(int)$r['u'] === 1, (int)$r['p'] === 1, []];
+				$idx[(string)$r['i']][2][] = (string)$r['c'];
+			}
+			$fkSql = "SELECT f.name AS n, OBJECT_NAME(f.parent_object_id) AS t, pc.name AS c, OBJECT_NAME(f.referenced_object_id) AS rt, rc.name AS rc,
+				REPLACE(f.delete_referential_action_desc, '_', ' ') AS d, REPLACE(f.update_referential_action_desc, '_', ' ') AS u
+				FROM sys.foreign_keys f JOIN sys.foreign_key_columns k ON k.constraint_object_id = f.object_id
+				JOIN sys.columns pc ON pc.object_id = k.parent_object_id AND pc.column_id = k.parent_column_id
+				JOIN sys.columns rc ON rc.object_id = k.referenced_object_id AND rc.column_id = k.referenced_column_id WHERE ";
+			$fk = $try(fn() => $db->all($fkSql . 'f.parent_object_id = OBJECT_ID(?) ORDER BY f.name, k.constraint_column_id', [$table]));
+			$in = $try(fn() => $db->all($fkSql . 'f.referenced_object_id = OBJECT_ID(?) ORDER BY 2, f.name, k.constraint_column_id', [$table]));
+			$checks = $try(fn() => $db->all('SELECT name AS n, definition AS x FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(?) ORDER BY name', [$table]));
+			$trig = $try(fn() => $db->all("SELECT t.name AS n, CASE WHEN t.is_instead_of_trigger = 1 THEN 'INSTEAD OF' ELSE 'AFTER' END AS w,
+				STUFF((SELECT ' / ' + e.type_desc FROM sys.trigger_events e WHERE e.object_id = t.object_id FOR XML PATH('')), 1, 3, '') AS e FROM sys.triggers t WHERE t.parent_id = OBJECT_ID(?) ORDER BY t.name", [$table]));
+			$gen = $try(fn() => $db->all('SELECT name AS n, definition AS x FROM sys.computed_columns WHERE object_id = OBJECT_ID(?) ORDER BY column_id', [$table]));
+			$view = (string)($try(fn() => $db->all('SELECT m.definition AS v FROM sys.views v JOIN sys.sql_modules m ON m.object_id = v.object_id WHERE v.object_id = OBJECT_ID(?)', [$table]))[0]['v'] ?? '');
+			if ($view === '') $rows = (int)($try(fn() => $db->all('SELECT SUM(p.rows) AS r FROM sys.partitions p WHERE p.object_id = OBJECT_ID(?) AND p.index_id IN (0, 1)', [$table]))[0]['r'] ?? 0) ?: null;
+		} else {
+			$q = '"' . str_replace('"', '""', $table) . '"';
+			foreach ($try(fn() => $db->all("PRAGMA index_list($q)")) as $i) {
+				$cols = array_map(static fn($r) => (string)$r['name'], $try(fn() => $db->all('PRAGMA index_info("' . str_replace('"', '""', (string)$i['name']) . '")')));
+				if ($cols) $idx[(string)$i['name']] = [(int)$i['unique'] === 1, ($i['origin'] ?? '') === 'pk', $cols];
+			}
+			foreach ($try(fn() => $db->all("PRAGMA foreign_key_list($q)")) as $r) $fk[] = ['n' => 'fk' . $r['id'], 't' => $table, 'c' => $r['from'], 'rt' => $r['table'], 'rc' => $r['to'], 'd' => $r['on_delete'], 'u' => $r['on_update']];
+		}
+
+		$name = static fn(string $n) => '`' . $n . '`';
+		$list = static fn(array $c) => '(' . implode(', ', array_map($name, $c)) . ')';
+		$uniq = []; $plain = [];
+		foreach ($idx as $n => [$u, $p, $cols]) {
+			if ($p) { if (count($cols) > 1) $out[] = 'Primary key: ' . $list($cols); continue; }
+			if ($u) $uniq[] = $list($cols) . ' ' . $name((string)$n);
+			elseif (count($cols) > 1) $plain[] = $list($cols) . ' ' . $name((string)$n);       // single-column indexes are marked on the column
+		}
+		if ($uniq) $out[] = 'Unique: ' . implode('; ', array_slice($uniq, 0, 20));
+		if ($plain) $out[] = 'Indexes over several columns: ' . implode('; ', array_slice($plain, 0, 20));
+		$group = static function (array $rows, bool $incoming) use ($name): array {
+			$g = [];
+			foreach ($rows as $r) {
+				$k = $r['t'] . '|' . $r['n'];
+				$g[$k] ??= ['t' => (string)$r['t'], 'rt' => (string)$r['rt'], 'c' => [], 'rc' => [], 'd' => strtoupper((string)$r['d']), 'u' => strtoupper((string)$r['u'])];
+				$g[$k]['c'][] = (string)$r['c']; $g[$k]['rc'][] = (string)$r['rc'];
+			}
+			$lines = [];
+			foreach ($g as $x) {
+				$rule = implode(', ', array_filter([in_array($x['d'], ['', 'RESTRICT', 'NO ACTION'], true) ? '' : 'on delete ' . strtolower($x['d']), in_array($x['u'], ['', 'RESTRICT', 'NO ACTION'], true) ? '' : 'on update ' . strtolower($x['u'])]));
+				$from = ($incoming ? $name($x['t']) . '.' : '') . implode(' + ', array_map($name, $x['c']));
+				$to = ($incoming ? '' : $name($x['rt']) . '.') . implode(' + ', array_map($name, $x['rc']));
+				$lines[] = $from . ' → ' . $to . ($rule !== '' ? ' (' . $rule . ')' : '');
+			}
+			return array_slice($lines, 0, 30);
+		};
+		if ($l = $group($fk, false)) $out[] = 'Foreign keys: ' . implode('; ', $l);
+		if ($l = $group($in, true)) $out[] = 'Referenced by: ' . implode('; ', $l);
+		if ($checks) $out[] = 'Checks: ' . implode('; ', array_map(static fn($c) => $name((string)$c['n']) . ' ' . $cut($c['x'], 160), array_slice($checks, 0, 15)));
+		if ($gen) $out[] = 'Generated columns: ' . implode('; ', array_map(static fn($c) => $name((string)$c['n']) . ' = ' . $cut($c['x'], 160), array_slice($gen, 0, 15)));
+		if ($trig) $out[] = 'Triggers: ' . implode('; ', array_map(static fn($c) => $name((string)$c['n']) . ' (' . strtolower(trim($c['w'] . ' ' . $c['e'])) . ')', array_slice($trig, 0, 15)));
+		if ($view !== '' && $db->type === 'mysql') $view = (string)preg_replace('/`' . preg_quote((string)$db->value('SELECT DATABASE()'), '/') . '`\./', '', $view);   // without the schema prefix
+		if ($view !== '') $out[] = 'View: ' . $cut($view, 1200);
+		if ($comment !== '') $out[] = 'Comment: ' . $cut($comment);
+		if ($rows !== null && $rows >= 1000) $out[] = 'Rows: about ' . number_format((int)round($rows, -(strlen((string)$rows) - 2)), 0, '.', ',');
+
+		// what nuBuilder knows: forms on the table, their lookups (→ the looked-up form's table) and sub-forms (child table + its link column)
+		$nb = $try(function () use ($db, $table, $name): array {
+			$o = [];
+			$forms = $db->all("SELECT zzzzsys_form_id AS id, sfo_code AS c, sfo_type AS t, sfo_primary_key AS pk FROM zzzzsys_form WHERE sfo_table = ? AND zzzzsys_form_id NOT LIKE 'nu%' ORDER BY sfo_code", [$table]);
+			if (!$forms) return [];
+			$o[] = 'nuBuilder forms: ' . implode('; ', array_map(static fn($f) => $f['c'] . ' (' . $f['t'] . ((string)$f['pk'] !== '' ? ', primary key ' . $name((string)$f['pk']) : '') . ')', array_slice($forms, 0, 10)));
+			$ids = array_column($forms, 'id');
+			$ph = implode(',', array_fill(0, count($ids), '?'));
+			$look = []; $subs = [];
+			foreach ($db->all("SELECT o.sob_all_id AS id, o.sob_all_type AS ty, o.sob_subform_foreign_key AS fk, f.sfo_table AS tb, f.sfo_primary_key AS pk
+				FROM zzzzsys_object o JOIN zzzzsys_form f ON f.zzzzsys_form_id = CASE WHEN o.sob_all_type = 'lookup' THEN o.sob_lookup_zzzzsys_form_id ELSE o.sob_subform_zzzzsys_form_id END
+				WHERE o.sob_all_zzzzsys_form_id IN ($ph) AND o.sob_all_type IN ('lookup', 'subform') ORDER BY o.sob_all_id", $ids) as $r) {
+				if ((string)$r['tb'] === '') continue;
+				if ($r['ty'] === 'lookup') $look[$r['id']] = $name((string)$r['id']) . ' → ' . $name((string)$r['tb']) . ((string)$r['pk'] !== '' ? '.' . $name((string)$r['pk']) : '');
+				else $subs[$r['tb']] = $name((string)$r['tb']) . ((string)$r['fk'] !== '' ? '.' . $name((string)$r['fk']) : '') . ' → this table\'s primary key';
+			}
+			if ($look) $o[] = 'nuBuilder lookups (no database constraint): ' . implode('; ', array_slice(array_values($look), 0, 30));
+			if ($subs) $o[] = 'nuBuilder sub-forms (child rows): ' . implode('; ', array_slice(array_values($subs), 0, 20));
+			// the other direction: lookups of other forms that point at this table, forms this table is a sub-form of
+			$from = []; $parents = [];
+			foreach ($db->all("SELECT o.sob_all_id AS id, o.sob_all_type AS ty, o.sob_subform_foreign_key AS fk, f.sfo_table AS tb
+				FROM zzzzsys_object o JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id
+				WHERE o.sob_all_type IN ('lookup', 'subform') AND (o.sob_lookup_zzzzsys_form_id IN ($ph) OR o.sob_subform_zzzzsys_form_id IN ($ph)) ORDER BY f.sfo_table, o.sob_all_id", array_merge($ids, $ids)) as $r) {
+				if ((string)$r['tb'] === '' || (string)$r['tb'] === $table) continue;
+				if ($r['ty'] === 'lookup') $from[$r['tb'] . '.' . $r['id']] = $name((string)$r['tb']) . '.' . $name((string)$r['id']);
+				else $parents[$r['tb']] = ((string)$r['fk'] !== '' ? $name((string)$r['fk']) . ' → ' : '') . $name((string)$r['tb']);
+			}
+			if ($parents) $o[] = 'nuBuilder sub-form of (parent rows): ' . implode('; ', array_slice(array_values($parents), 0, 20));
+			if ($from) $o[] = 'nuBuilder looked up from: ' . implode('; ', array_slice(array_values($from), 0, 30));
+			return $o;
+		});
+		return array_merge($out, $nb);
+	}
+
 	// ------------------------------------------------------------------ building the prompt
 
 	/** The context ("Extra information"): table schemas, languages, scopes, topics – Markdown. */
@@ -237,7 +368,10 @@ final class NuPrompt
 		$lines = [];
 		$tables = array_slice(self::list($row['pge_table'] ?? ''), 0, self::MAX_TABLES);
 		$schemas = [];
-		foreach ($tables as $tb) if (($s = self::schema($tb)) !== null) $schemas[] = "- **{$tb}**: {$s}";
+		foreach ($tables as $tb) if (($s = self::schema($tb)) !== null) {
+			$schemas[] = "- **{$tb}**: {$s}";
+			foreach (self::details($tb) as $d) $schemas[] = '  - ' . $d;      // keys, constraints, relations (0.8.1102)
+		}
 		if ($schemas) array_push($lines, '## Table Schemas', ...$schemas);
 
 		$section = static function (string $title, array $codes, array $catalog, callable $fmt) use (&$lines): void {

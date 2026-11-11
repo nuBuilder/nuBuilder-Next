@@ -110,6 +110,7 @@ final class NuDesign
 			'form_tags' => NuFormMeta::tagValues(),                     // suggestions of Department / Team (0.8.1020)
 			'help_codes' => NuUserHelp::codeList(), 'help_admin' => NuUserHelp::canManage() ? nu_url('helppages') : '', 'help_edit' => NuUserHelp::canEdit(),   // user help pages (0.8.1023)
 			'ai' => $meta->isSystem() ? '' : nu_url('formai', ['f' => $meta->id]),
+			'aiask' => $meta->isSystem() ? null : NuAiProvider::client('design'),     // "Ask AI" with a configured AI service (0.8.1099)
 			'dataaccess' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
 			'translations' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_TRANSLATE) ? ['url' => nu_url('translations', ['view' => 'missing', 'f' => $meta->id]),
 				'missing' => NuTranslate::summary($meta->id)] : null,               // Tools → Translations with the missing ones per language (0.8.754)

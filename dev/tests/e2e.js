@@ -9389,6 +9389,48 @@ T.update_check = async (s) => {
 
 // PhpSpreadsheet pack for a test (0.8.756): built from ../libsrc/phpspreadsheet with the owner's key and uploaded on the update page;
 // returns a function that removes it again (packs of the slot that were there before come back). null = cannot be built here.
+// 0.8.1094: spreadsheets are checked against PHP's memory_limit before they are loaded (no fixed 10 MB any more) – a second PHP server
+// with memory_limit 96M gets a small .xlsx whose sheet unpacks to ~8 MB: refused with the CSV hint instead of a fatal memory error
+T.spreadsheet_memory = async (s) => {
+	if (!SITE || !fs.existsSync(path.resolve(__dirname, '../../../libsrc/phpspreadsheet/autoload.php'))) return 'skip';
+	const undo = await pssPack(s.ga);
+	if (!undo) return 'skip';
+	const port = 8093, docroot = path.resolve(SITE, '..'), sub = path.basename(SITE);
+	const srv = require('child_process').spawn('php', ['-d', 'memory_limit=96M', '-S', '127.0.0.1:' + port, '-t', docroot], { stdio: 'ignore' });
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nupssm-'));
+	let ctx;
+	try {
+		const big = path.join(tmp, 'big.xlsx');
+		execSync('php', { input: `<?php $z = new ZipArchive(); $z->open(${JSON.stringify(big)}, ZipArchive::CREATE);
+$z->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>');
+$z->addFromString('_rels/.rels', '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+$z->addFromString('xl/workbook.xml', '<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets></workbook>');
+$z->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>');
+$rows = ''; for ($r = 1; $r <= 60000; $r++) $rows .= '<row r="' . $r . '"><c r="A' . $r . '"><v>' . $r . '</v></c><c r="B' . $r . '"><v>' . ($r * 2) . '</v></c><c r="C' . $r . '"><v>3</v></c></row>';
+$z->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' . $rows . '</sheetData></worksheet>');
+$z->close();` });
+		expect(fs.statSync(big).size < 2 * 1048576, 'the test file is small: ' + fs.statSync(big).size);
+		const base = 'http://127.0.0.1:' + port + '/' + sub + '/';
+		for (let i = 0; i < 30; i++) { try { execSync('curl -s -o /dev/null ' + base); break; } catch (e) { await new Promise((r) => setTimeout(r, 200)); } }
+		ctx = await browser.newContext({ locale: 'en-GB', viewport: { width: 1300, height: 900 } });
+		const p = await ctx.newPage();
+		await p.goto(base + 'index.php?p=login');
+		await p.fill('#username', GA[0]); await p.fill('#password', GA[1]);
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('form button[type=submit]:not([name=demo_user])')]);
+		await p.goto(base + 'index.php?p=import');
+		expect(/memory/.test(await p.locator('#impFile').evaluate((e) => e.closest('label, .card, form').textContent)), 'drop hint mentions the memory');
+		await p.setInputFiles('#impFile', big);
+		await p.waitForFunction(() => /memory_limit/.test(document.body.textContent), null, { timeout: 15000 });
+		const txt = await p.evaluate(() => document.body.textContent);
+		expect(/96 MB \(memory_limit\)/.test(txt) && /CSV/.test(txt), 'refused with the memory and the CSV hint');
+	} finally {
+		if (ctx) await ctx.close();
+		srv.kill();
+		undo();
+		fs.rmSync(tmp, { recursive: true, force: true });
+	}
+};
+
 async function pssPack(p) {
 	const key = process.env.NUNEXT_SIGNING_KEY && fs.existsSync(process.env.NUNEXT_SIGNING_KEY) ? process.env.NUNEXT_SIGNING_KEY : path.resolve(__dirname, '../../../nunext-signing.key');
 	const src = path.resolve(__dirname, '../../../libsrc/phpspreadsheet');
@@ -11658,6 +11700,419 @@ T.file_manager_path = async (s) => {
 };
 
 // 0.8.1058: File Manager toolbar in one row on phones (320 / 360 / 390 px): no separator, tighter gaps and buttons
+// 0.8.1095: File Manager on phones – the button left of Refresh switches the column between size and modified date (remembered)
+// 0.8.1096: Debug results on phones – Refresh stays in the title bar (.nuPhKeep); without records no ⋮ with one entry, with records ⋮ = Export
+T.debug_phone_refresh = async (s) => {
+	const ga = s.ga, vp = ga.viewportSize();
+	const dump = path.join(os.tmpdir(), 'nunext-e2e-1096.sql');
+	execSync(`mysqldump ${DB} zzzzsys_debug > ${dump}`);
+	try {
+		await ga.setViewportSize({ width: 390, height: 800 });
+		const look = () => ga.evaluate(() => {
+			const bar = document.querySelector('.nuListHead > .d-flex'), ref = bar.querySelector('.nuPhKeep'), more = bar.querySelector('.nuPhMore');
+			return { ref: !!ref && ref.offsetParent !== null, more: !!more && more.offsetParent !== null, items: more ? more.querySelectorAll('.dropdown-item').length : 0 };
+		});
+		sql("INSERT INTO zzzzsys_debug (zzzzsys_debug_id, deb_message, deb_added) VALUES ('e2e_1096', 'e2e debug row', UNIX_TIMESTAMP())");
+		await open(ga, 'index.php?p=debug');
+		let r = await look();
+		expect(r.ref && r.more && r.items >= 1, 'with records: Refresh in the bar, ⋮ for Export: ' + JSON.stringify(r));
+		sql('DELETE FROM zzzzsys_debug');
+		await open(ga, 'index.php?p=debug');
+		r = await look();
+		expect(r.ref && !r.more, 'no records: Refresh in the bar, no ⋮: ' + JSON.stringify(r));
+	} finally {
+		await ga.setViewportSize(vp);
+		execSync(`mysql ${DB} < ${dump}`);
+	}
+};
+
+// 0.8.1097: reports with AI – new report "Save and create with AI", prompt, a wrong answer, a good answer (plan), preview PDF, apply (old
+// layout = a version), restore; the variant with a query written by the AI (saved as an SQL builder query)
+T.report_ai = async (s) => {
+	const ga = s.ga;
+	const dump = path.join(os.tmpdir(), 'nunext-e2e-1097.sql');
+	execSync(`mysqldump ${DB} zzzzsys_report zzzzsys_select zzzzsys_select_clause zzzzsys_nunext_report_version zzzzsys_nunext_log > ${dump}`);
+	const post = (data) => ga.evaluate(async (d) => {
+		const D = JSON.parse(document.getElementById('raiDlg').dataset.rai), b = new URLSearchParams(Object.assign({ _csrf: D.csrf }, d));
+		const r = await fetch(D.url, { method: 'POST', body: b }), buf = await r.arrayBuffer();
+		return { status: r.status, type: r.headers.get('content-type') || '', size: buf.byteLength, head: new TextDecoder().decode(buf.slice(0, 5)) };
+	}, data);
+	try {
+		// a new report: saved with an empty layout, the dialogue opens
+		await open(ga, 'index.php?p=reports&id=new');
+		await ga.fill('#sre_code', 'e2e_rai');
+		await ga.fill('#sre_description', 'e2e report with AI');
+		await ga.evaluate(() => { const x = document.getElementById('sre_zzzzsys_php_id'); x.value = 'TABLE:sample_customer'; if (x.tomselect) x.tomselect.sync(); });
+		await Promise.all([ga.waitForNavigation(), ga.click('#rptSaveAi')]);
+		await ga.waitForSelector('#raiDlg.show');
+		const id = sql("SELECT zzzzsys_report_id FROM zzzzsys_report WHERE sre_code = 'e2e_rai'").trim();
+		expect(id !== '', 'the report row was saved before the dialogue');
+		expect((await ga.textContent('#raiDlg .modal-title')).length > 5 && await ga.locator('#raiFoot').isHidden(), 'dialogue open, nothing to apply yet');
+		// the prompt needs a description; it names the columns and the format
+		await ga.click('#raiCopy');
+		expect(await ga.locator('#raiReq.is-invalid').count() === 1, 'no prompt without a description');
+		await ga.fill('#raiReq', 'Customers by country with a total');
+		await ga.click('#raiCopy');
+		await ga.waitForFunction(() => document.getElementById('raiPrompt').value.length > 500);
+		const prompt = await ga.inputValue('#raiPrompt');
+		expect(prompt.includes('nunext-report-1') && prompt.includes('cus_country') && prompt.includes('Customers by country with a total'), 'prompt: format, columns, request');
+		expect(!prompt.includes('"sql"'), 'no query part while the switch is off');
+		// answers
+		const spec = { format: 'nunext-report-1', report: { paper: 'A4', orientation: 'landscape' }, groups: [{ field: 'cus_country', dir: 'asc' }], bands: {
+			page_header: { height: 8, objects: [{ type: 'text', text: 'Customers #page#', x: 15, y: 1, w: 100, h: 5, bold: true }, { type: 'line', x: 15, y: 7, w: 260, h: 0.5 }] },
+			group_header_1: { height: 7, objects: [{ type: 'field', field: 'cus_country', x: 15, y: 1, w: 80, h: 5, bold: true }] },
+			detail: { height: 6, objects: [{ type: 'field', field: 'cus_name', x: 15, y: 0.5, w: 90, h: 5 }, { type: 'field', field: 'cus_credit', x: 200, y: 0.5, w: 40, h: 5, align: 'right', format: 'N|1,000.00' }] },
+			report_footer: { height: 8, objects: [{ type: 'sum', field: 'cus_credit', x: 200, y: 1, w: 40, h: 5, align: 'right', bold: true }] } } };
+		const answer = async (obj, raw) => {
+			await ga.fill('#raiAns', raw || 'Here is the report:\n```json\n' + JSON.stringify(obj, null, 1) + '\n```');
+			await ga.click('#raiCheck');
+			await ga.waitForFunction(() => !document.querySelector('#raiMsgs .spinner-border'));
+		};
+		await answer(null, 'Sorry, I cannot help.');
+		expect(await ga.locator('#raiMsgs .alert-danger').count() === 1 && await ga.locator('#raiFoot').isHidden(), 'an answer without JSON is refused');
+		const bad = JSON.parse(JSON.stringify(spec));
+		bad.bands.detail.objects.push({ type: 'field', field: 'no_such_column', x: 250, y: 0.5, w: 30, h: 5 });
+		await answer(bad);
+		expect((await ga.innerText('#raiMsgs')).includes('no_such_column') && await ga.locator('#raiFoot').isHidden(), 'an unknown column is an error');
+		const withSql = JSON.parse(JSON.stringify(spec));
+		withSql.source = { code: 'e2e_rai_q', description: 'x', sql: 'SELECT cus_country, cus_name, cus_credit FROM sample_customer' };
+		await answer(withSql);
+		expect(await ga.locator('#raiMsgs .alert-danger').count() === 1 && await ga.locator('#raiFoot').isHidden(), 'a query is refused while the switch is off');
+		await answer(spec);
+		expect(await ga.locator('#raiOk').count() === 1 && await ga.locator('#raiFoot').isVisible(), 'the good answer passes');
+		expect((await ga.textContent('#raiPlanObjects')).trim() === '6', 'plan: 6 objects: ' + await ga.textContent('#raiPlanObjects'));
+		let pv = await post({ action: 'preview', answer: JSON.stringify(spec), allow_sql: '0' });
+		expect(pv.status === 200 && pv.type.includes('pdf') && pv.head === '%PDF-' && pv.size > 2000, 'preview PDF: ' + JSON.stringify(pv));
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_report_version WHERE report_id = '${id}'`).trim() === '0', 'check and preview write nothing');
+		await Promise.all([ga.waitForNavigation(), ga.click('#raiApply')]);
+		const lay = JSON.parse(execSync(`mysql ${DB} -N -r -e "SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = '${id}'"`).toString());
+		expect(lay.orientation === 'L' && lay.groups[0].sections[0].objects.length === 2 && lay.groups[3].sortField === 'cus_country', 'layout stored in nuBuilder Forte\'s format: ' + lay.orientation + ' ' + lay.groups[3].sortField);
+		expect(lay.groups[0].sections[0].objects[1].left === 800 && lay.groups[2].sections[0].objects[1].fieldName === 'KEEP EXACT HEIGHT', 'mm → px, line = exact-height label');
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_report_version WHERE report_id = '${id}' AND reason = 'ai'`).trim() === '1', 'the old layout is a version');
+		// the report runs
+		const run = await ga.evaluate(async (u) => { const r = await fetch(u); return [r.status, r.headers.get('content-type')]; }, 'index.php?p=report&c=e2e_rai');
+		expect(run[0] === 200 && String(run[1]).includes('pdf'), 'the report prints: ' + run);
+		// change: the prompt holds the current layout with ids; a query by the AI
+		await ga.click('#rptAi');
+		await ga.waitForSelector('#raiDlg.show');
+		await ga.check('#raiSql');
+		expect(await ga.locator('#raiTablesBox').isVisible(), 'tables to describe shown');
+		await ga.fill('#raiReq', 'Only name and number of orders');
+		await ga.click('#raiCopy');
+		await ga.waitForFunction(() => document.getElementById('raiPrompt').value.includes('"source"'));
+		const p2 = await ga.inputValue('#raiPrompt');
+		expect(p2.includes('"id"') && p2.includes('KEEP') === false && p2.includes('landscape'), 'change prompt: current layout in the short format');
+		const q = { format: 'nunext-report-1', report: { paper: 'A4', orientation: 'portrait' }, groups: [],
+			source: { code: 'e2e_rai_q', description: 'e2e customers with orders', sql: 'SELECT c.cus_name, COUNT(o.sample_order_id) AS orders FROM sample_customer c LEFT JOIN sample_order o ON o.ord_sample_customer_id = c.sample_customer_id GROUP BY c.cus_name;' },
+			bands: { detail: { height: 6, objects: [{ type: 'field', field: 'cus_name', x: 15, y: 0.5, w: 90, h: 5 }, { type: 'field', field: 'orders', x: 160, y: 0.5, w: 30, h: 5, align: 'right' }] } } };
+		const del = JSON.parse(JSON.stringify(q)); del.source.sql = 'DELETE FROM sample_customer';
+		await answer(del);
+		expect(await ga.locator('#raiFoot').isHidden() && sql('SELECT COUNT(*) FROM sample_customer').trim() !== '0', 'only SELECT is accepted');
+		await answer(q);
+		expect(await ga.locator('#raiOk').count() === 1 && (await ga.textContent('#raiPlanSql')).includes('COUNT(o.sample_order_id)'), 'query checked and shown in the plan');
+		pv = await post({ action: 'preview', answer: JSON.stringify(q), allow_sql: '1' });
+		expect(pv.status === 200 && pv.head === '%PDF-', 'preview with the unsaved query: ' + JSON.stringify(pv));
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_select WHERE sse_code = 'e2e_rai_q'").trim() === '0', 'the preview saved no query');
+		await Promise.all([ga.waitForNavigation(), ga.click('#raiApply')]);
+		const sel = sql("SELECT zzzzsys_select_id FROM zzzzsys_select WHERE sse_code = 'e2e_rai_q'").trim();
+		expect(sel !== '' && sql(`SELECT sre_zzzzsys_php_id FROM zzzzsys_report WHERE zzzzsys_report_id = '${id}'`).trim() === 'SQL:' + sel, 'query saved in the SQL builder and set as data source');
+		// restore the layout before the query: the data source comes back too
+		await ga.click('a[href="#rptTabHistory"], [data-bs-target="#rptTabHistory"]');
+		expect(await ga.locator('#rptVersions tbody tr').count() === 2, 'two versions listed');
+		await ga.locator('.rptVerRestore').first().click();
+		await ga.waitForSelector('.modal.show [data-nu-confirm-ok], .modal.show .btn-primary');
+		await Promise.all([ga.waitForNavigation(), ga.locator('.modal.show .modal-footer .btn-primary').click()]);
+		expect(sql(`SELECT sre_zzzzsys_php_id FROM zzzzsys_report WHERE zzzzsys_report_id = '${id}'`).trim() === 'TABLE:sample_customer', 'restored: the table is the source again');
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_report_version WHERE report_id = '${id}'`).trim() === '3', 'the replaced layout became a version too');
+		// the designer has the button; the context file downloads
+		await open(ga, 'index.php?p=reportdesigner&id=' + id);
+		await ga.waitForSelector('.rdAiBtn');
+		await ga.click('.rdAiBtn');
+		await ga.waitForSelector('#raiDlg.show');
+		const cx = await post({ action: 'context', samples: '0' });
+		expect(cx.status === 200 && cx.type.includes('markdown') && cx.size > 3000, 'context file: ' + JSON.stringify(cx));
+	} finally {
+		execSync(`mysql ${DB} < ${dump}`);
+	}
+};
+
+// 0.8.1098: a page break on the first group headers no longer leaves page 1 empty (the first group starts under the report header);
+// later groups still start a new page. Printed through the preview of Reports with AI – nothing is saved.
+T.report_first_header_break = async (s) => {
+	const ga = s.ga;
+	await open(ga, 'index.php?p=reports&id=sample_rpt_orders');
+	const pdfText = async (spec) => {
+		const b64 = await ga.evaluate(async (a) => {
+			const D = JSON.parse(document.getElementById('raiDlg').dataset.rai);
+			const r = await fetch(D.url, { method: 'POST', body: new URLSearchParams({ _csrf: D.csrf, action: 'preview', answer: a, allow_sql: '0' }) });
+			if (r.status !== 200) return '';
+			const u = new Uint8Array(await r.arrayBuffer()); let t = '';
+			for (let i = 0; i < u.length; i += 8192) t += String.fromCharCode.apply(null, u.subarray(i, i + 8192));
+			return btoa(t);
+		}, JSON.stringify(spec));
+		expect(b64 !== '', 'the preview printed');
+		const f = path.join(os.tmpdir(), 'e2e_fhb_' + Date.now() + '.pdf');
+		fs.writeFileSync(f, Buffer.from(b64, 'base64'));
+		try { return execSync(`pdftotext -layout "${f}" -`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().replace(/\f$/, '').split('\f'); }
+		catch (e) { return null; } finally { fs.unlinkSync(f); }
+	};
+	const spec = (breakOn) => { const sp = { format: 'nunext-report-1', report: { paper: 'A4', orientation: 'portrait' }, groups: [{ field: 'cus_country', dir: 'asc' }, { field: 'cus_name', dir: 'asc' }], bands: {
+		report_header: { height: 12, objects: [{ type: 'text', text: 'E2E-TITLE', x: 15, y: 2, w: 100, h: 8, size: 16 }] },
+		page_header: { height: 7, objects: [{ type: 'text', text: 'E2E-PAGEHEAD', x: 15, y: 1, w: 60, h: 5 }] },
+		group_header_1: { height: 7, objects: [{ type: 'text', text: 'E2E-COUNTRY', x: 15, y: 1, w: 45, h: 5 }, { type: 'field', field: 'cus_country', x: 65, y: 1, w: 40, h: 5 }] },
+		group_header_2: { height: 7, objects: [{ type: 'text', text: 'E2E-CUSTOMER', x: 15, y: 1, w: 45, h: 5 }, { type: 'field', field: 'cus_name', x: 65, y: 1, w: 90, h: 5 }] },
+		detail: { height: 5, objects: [{ type: 'field', field: 'ord_number', x: 15, y: 0, w: 40, h: 5 }] },
+		report_footer: { height: 8, objects: [{ type: 'text', text: 'E2E-GRANDTOTAL', x: 15, y: 1, w: 60, h: 5 }] } } };
+		sp.bands[breakOn].page_break = true; return sp; };
+	const countries = Number(sql('SELECT COUNT(DISTINCT c.cus_country) FROM sample_customer c JOIN sample_order o ON c.sample_customer_id = o.ord_sample_customer_id').trim());
+	const customers = Number(sql('SELECT COUNT(DISTINCT CONCAT(c.cus_country, c.cus_name)) FROM sample_customer c JOIN sample_order o ON c.sample_customer_id = o.ord_sample_customer_id').trim());
+	let pg = await pdfText(spec('group_header_1'));
+	if (pg === null) return 'skip: no pdftotext';
+	expect(pg.length === countries, 'break on the country header: one page per country (' + countries + '), got ' + pg.length);
+	expect(pg[0].includes('E2E-TITLE') && pg[0].includes('E2E-COUNTRY') && pg[0].includes('E2E-CUSTOMER'), 'page 1 holds the report header AND the first country: ' + JSON.stringify(pg[0]));
+	expect(pg.every(t => (t.match(/E2E-COUNTRY/g) || []).length === 1 && t.includes('E2E-PAGEHEAD')), 'every page has exactly one country');
+	expect(pg[pg.length - 1].includes('E2E-GRANDTOTAL'), 'the last page ends with the report footer');
+	pg = await pdfText(spec('group_header_2'));
+	expect(pg.length === customers, 'break on the customer header: one page per customer (' + customers + '), got ' + pg.length);
+	expect(pg[0].includes('E2E-TITLE') && pg[0].includes('E2E-CUSTOMER') && pg.every(t => (t.match(/E2E-CUSTOMER/g) || []).length === 1), 'the first customer starts on page 1, each later one on its own page');
+};
+
+// 0.8.1099: AI providers – a configuration (fake service: dev/tests/fakeai.py), Fetch models, Test, "Ask AI" in Reports with AI with
+// one automatic correction round, the password of a configuration (once per session), the monthly token limit, the usage rows; the
+// control is offered in the other AI dialogues too. Nothing is applied by the request itself.
+T.ai_providers = async (s) => {
+	const ga = s.ga;
+	const port = 8772, log = path.join(os.tmpdir(), 'e2e-ai-' + Date.now() + '.log'), answers = path.join(os.tmpdir(), 'e2e-ai-' + Date.now() + '.json');
+	const dump = path.join(os.tmpdir(), 'nunext-e2e-1099.sql');
+	execSync(`mysqldump ${DB} zzzzsys_nunext_ai_provider zzzzsys_nunext_ai_call zzzzsys_nunext_setting zzzzsys_nunext_log > ${dump}`);
+	const srv = require('child_process').spawn('python3', ['-I', path.join(__dirname, 'fakeai.py'), String(port), log, answers], { stdio: 'ignore' });
+	const lines = () => fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l)) : [];
+	const reauth = async (url) => { if (/p=reauth/.test(ga.url())) { await ga.fill('#reauthPassword', GA[1]); await Promise.all([ga.waitForLoadState('networkidle'), ga.click('button[type=submit]')]); await open(ga, url); } };
+	const idle = (host) => ga.waitForFunction((h) => { const m = document.querySelector(h + ' .nuAiAskMsg'); return m && m.textContent.trim() !== '' && !document.querySelector(h).classList.contains('nuAiAskBusy'); }, host, { timeout: 20000 });
+	try {
+		await new Promise(r => setTimeout(r, 700));
+		await open(ga, 'index.php?p=aiproviders'); await reauth('index.php?p=aiproviders');
+		expect(await ga.locator('#aipNew').count() === 1, 'the list with Add');
+		if (!(await ga.isChecked('#aipAllowPrivate'))) await Promise.all([ga.waitForNavigation(), ga.check('#aipAllowPrivate')]);
+		// a new configuration: a private address is refused while the setting is off – it is on now
+		await open(ga, 'index.php?p=aiproviders&id=new');
+		await ga.fill('#aipName', 'e2e fake AI');
+		await ga.selectOption('#aipKind', 'anthropic');
+		await ga.fill('#aipUrl', `http://127.0.0.1:${port}/anthropic`);
+		await ga.fill('#aipKey', 'test-key');
+		await ga.click('#aipFetch');
+		await ga.waitForFunction(() => document.querySelectorAll('#aipModels option').length === 2);
+		await ga.fill('#aipModel', 'fake-large');
+		await ga.fill('#aipTemp', '0.2');
+		await ga.fill('#aipParams', '{"top_k": 5}');
+		await Promise.all([ga.waitForNavigation(), ga.click('#aipTest')]);
+		expect(await ga.locator('#aipTestResult.alert-success').count() === 1, 'Test: the service answered: ' + await ga.locator('#aipTestResult').innerText().catch(() => '-'));
+		const id = sql("SELECT zzzzsys_nunext_ai_provider_id FROM zzzzsys_nunext_ai_provider WHERE name = 'e2e fake AI'").trim();
+		const stored = sql(`SELECT api_key FROM zzzzsys_nunext_ai_provider WHERE zzzzsys_nunext_ai_provider_id = '${id}'`).trim();
+		expect(id !== '' && !stored.includes('test-key') || stored.startsWith('plain:'), 'saved; the key is sealed (or marked plain without a secret key)');
+		expect(!(await ga.content()).includes('test-key'), 'the key is never shown again');
+		let l = lines().filter(x => x.path.endsWith('/messages'));
+		const body = JSON.parse(l[l.length - 1].body);
+		expect(l[l.length - 1].headers['x-api-key'] === 'test-key' && body.model === 'fake-large' && body.temperature === 0.2 && body.top_k === 5 && body.max_tokens > 0, 'request: key header, model, temperature, extra parameter');
+		// Reports with AI: "Ask AI" – the first answer has an unknown column, the correction round fixes it
+		const spec = { format: 'nunext-report-1', report: { paper: 'A4', orientation: 'portrait' }, groups: [], bands: { detail: { height: 6, objects: [{ type: 'field', field: 'cus_name', x: 15, y: 0.5, w: 90, h: 5 }] } } };
+		const bad = JSON.parse(JSON.stringify(spec)); bad.bands.detail.objects.push({ type: 'field', field: 'no_such_column', x: 120, y: 0.5, w: 30, h: 5 });
+		fs.writeFileSync(answers, JSON.stringify(['```json\n' + JSON.stringify(bad) + '\n```', '```json\n' + JSON.stringify(spec) + '\n```']));
+		const before = sql("SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = 'sample_rpt_customers'");
+		await open(ga, 'index.php?p=reports&id=sample_rpt_customers');
+		await ga.click('#rptAi'); await ga.waitForSelector('#raiDlg.show');
+		expect(await ga.locator('#raiAsk .nuAiAskBtn').isVisible(), 'Ask AI offered in the report dialogue');
+		await ga.click('#raiAsk .nuAiAskBtn');
+		expect(await ga.locator('#raiReq.is-invalid').count() === 1 && lines().filter(x => x.path.endsWith('/messages')).length === l.length, 'nothing is sent without a description');
+		await ga.fill('#raiReq', 'Only the names');
+		await ga.click('#raiAsk .nuAiAskBtn');
+		await idle('#raiAsk');
+		expect(await ga.locator('#raiOk').count() === 1 && await ga.locator('#raiFoot').isVisible() && !(await ga.inputValue('#raiAns')).includes('no_such_column'), 'corrected answer in the box, it passes: ' + await ga.textContent('#raiAsk .nuAiAskMsg'));
+		l = lines().filter(x => x.path.endsWith('/messages'));
+		const fix = JSON.parse(l[l.length - 1].body);
+		expect(fix.messages.length === 3 && fix.messages[1].role === 'assistant' && fix.messages[2].content.includes('no_such_column') && fix.messages[0].content.includes('Only the names'), 'the correction round sent prompt, answer and the errors');
+		expect(sql("SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = 'sample_rpt_customers'") === before, 'the request applied nothing');
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_ai_call WHERE provider_id = '${id}' AND feature = 'report' AND status = 'ok' AND tokens_in = 120`).trim() === '2', 'two usage rows for the report');
+		// offered in the other dialogues; the prompt generator shows the answer
+		await open(ga, 'index.php?p=formai');
+		expect(await ga.locator('#faAsk .nuAiAskBtn').count() === 1, 'Form with AI has the control');
+		fs.writeFileSync(answers, JSON.stringify(['no json here', 'still no json']));
+		const nBefore = lines().filter(x => x.path.endsWith('/messages')).length;
+		await ga.fill('#faRequest', 'A list of books');
+		await ga.click('#faNext1');
+		await ga.click('#faAsk .nuAiAskBtn');
+		await idle('#faAsk');
+		expect(lines().filter(x => x.path.endsWith('/messages')).length === nBefore + 2 && await ga.locator('#faAsk .nuAiAskMsg.text-warning').count() === 1
+			&& await ga.inputValue('#faAnswer') === 'still no json' && await ga.locator('#faCreateBox').isHidden(), 'Form with AI: one correction round, then the errors stay listed');
+		await open(ga, 'index.php?p=prompts&id=new');
+		expect(await ga.locator('#pgAsk .nuAiAskBtn').count() === 1, 'the prompt generator has the control');
+		fs.writeFileSync(answers, JSON.stringify(['e2e prompt answer']));
+		await ga.click('#pgAsk .nuAiAskBtn');
+		await idle('#pgAsk');
+		expect(await ga.locator('#pgAnswerBox').isVisible() && await ga.inputValue('#pgAnswer') === 'e2e prompt answer', 'the answer is shown below the prompt');
+		const hp = sql("SELECT code FROM zzzzsys_nunext_help WHERE lang = '' LIMIT 1").trim();
+		if (hp) { await open(ga, 'index.php?p=helppages&c=' + encodeURIComponent(hp)); expect(await ga.locator('#uhAiAsk').count() <= 1, 'help page editor opens'); }
+		const sf = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'sample_customer' OR zzzzsys_form_id = 'samplecustomer' LIMIT 1").trim();
+		// a password on the configuration: asked once per session, wrong passwords are refused
+		await open(ga, 'index.php?p=aiproviders&id=' + id); await reauth('index.php?p=aiproviders&id=' + id);
+		await ga.check('#aipAcc_password');
+		await ga.fill('#aipPw', 'short');
+		await Promise.all([ga.waitForNavigation(), ga.click('[data-nu-save]')]);
+		expect(await ga.locator('#aipPw.is-invalid').count() === 1, 'a short password is refused');
+		await ga.check('#aipAcc_password');
+		await ga.fill('#aipPw', 'e2e-secret-pw');
+		await ga.fill('#aipLimit', '500');
+		await Promise.all([ga.waitForNavigation(), ga.click('[data-nu-save]')]);
+		const row = () => sql(`SELECT CONCAT(access, '|', COALESCE(password, ''), '|', LEFT(api_key, 3), '|', LENGTH(COALESCE(pw_salt, ''))) FROM zzzzsys_nunext_ai_provider WHERE zzzzsys_nunext_ai_provider_id = '${id}'`).trim();
+		expect(row() === 'password||pw:|24', 'the key is encrypted with the password, no password hash is stored: ' + row());
+		expect(await ga.locator('#aipLock[data-open="1"]').count() === 1, 'whoever set the password stays unlocked');
+		// the session alone does not open it: without the browser's cookie the configuration is locked again
+		const ck = (await ga.context().cookies()).find(c => c.name === 'nunext_aik');
+		expect(ck && ck.httpOnly && ck.sameSite === 'Strict', 'the cookie half of the key: httpOnly, SameSite=Strict');
+		await ga.context().clearCookies({ name: 'nunext_aik' });
+		await open(ga, 'index.php?p=aiproviders&id=' + id); await reauth('index.php?p=aiproviders&id=' + id);
+		expect(await ga.locator('#aipLock[data-open="0"]').count() === 1 && await ga.locator('#aipUnlockPw').count() === 1, 'locked on its own page');
+		await Promise.all([ga.waitForNavigation(), ga.click('#aipTest')]);
+		expect(await ga.locator('#aipTestResult.alert-danger').count() === 1, 'Test needs the password');
+		await ga.fill('#aipKey', 'another-key');
+		await Promise.all([ga.waitForNavigation(), ga.click('[data-nu-save]')]);
+		expect(await ga.locator('#aipKey.is-invalid, #aipKey ~ .invalid-feedback').count() >= 1 && row() === 'password||pw:|24', 'a locked configuration takes no new key without the password');
+		await open(ga, 'index.php?p=prompts&id=new');
+		expect(await ga.locator('#pgAsk .nuAiAskPwBox').isVisible() && await ga.locator('#pgAsk .nuAiAskBtn').isHidden(), 'locked: the password is asked instead of Ask AI');
+		const direct = await ga.evaluate(async (pid) => {
+			const D = JSON.parse(document.getElementById('pgAsk').dataset.nuAi);
+			const r = await fetch(D.url, { method: 'POST', body: new URLSearchParams({ _csrf: D.csrf, feature: 'prompt', provider: pid, action: 'ask', prompt: 'x' }) });
+			return r.json();
+		}, id);
+		expect(direct.ok === false && direct.text === '', 'a locked configuration answers no request: ' + JSON.stringify(direct));
+		await ga.fill('#pgAsk .nuAiAskPw', 'wrong-password');
+		await ga.click('#pgAsk .nuAiAskUnlock');
+		await ga.waitForFunction(() => document.querySelector('#pgAsk .nuAiAskMsg').classList.contains('text-danger'));
+		await ga.fill('#pgAsk .nuAiAskPw', 'e2e-secret-pw');
+		await ga.click('#pgAsk .nuAiAskUnlock');
+		await ga.waitForSelector('#pgAsk .nuAiAskBtn:visible');
+		await open(ga, 'index.php?p=prompts&id=new');
+		expect(await ga.locator('#pgAsk .nuAiAskBtn').isVisible(), 'unlocked for the rest of the session');
+		// the monthly limit (500 tokens; more than that is used)
+		await ga.click('#pgAsk .nuAiAskBtn');
+		await idle('#pgAsk');
+		expect(await ga.locator('#pgAsk .nuAiAskMsg.text-danger').count() === 1 && /500/.test(await ga.textContent('#pgAsk .nuAiAskMsg')), 'refused at the monthly limit: ' + await ga.textContent('#pgAsk .nuAiAskMsg'));
+		// back to "everyone": the key is re-sealed without the password (possible because the session is unlocked)
+		await open(ga, 'index.php?p=aiproviders&id=' + id); await reauth('index.php?p=aiproviders&id=' + id);
+		expect(await ga.locator('#aipLock[data-open="1"]').count() === 1, 'unlocked in the dialogue = unlocked on its page');
+		await ga.check('#aipAcc_all');
+		await Promise.all([ga.waitForNavigation(), ga.click('[data-nu-save]')]);
+		expect(/^all\|\|(enc|pla)\|0$/.test(row()), 'password removed: the key is sealed by the server only again: ' + row());
+		// a row of the first version (password hash, key not encrypted with it) converts on its first unlock
+		const hash = execSync(`php -r 'echo password_hash("legacy-password-1", PASSWORD_BCRYPT);'`).toString().trim();
+		sql(`UPDATE zzzzsys_nunext_ai_provider SET access = 'password', password = '${hash}', api_key = 'plain:test-key', pw_salt = '', month_limit = 0 WHERE zzzzsys_nunext_ai_provider_id = '${id}'`);
+		await open(ga, 'index.php?p=aiproviders&id=' + id); await reauth('index.php?p=aiproviders&id=' + id);
+		await ga.fill('#aipUnlockPw', 'legacy-password-1');
+		await Promise.all([ga.waitForNavigation(), ga.click('#aipUnlock')]);
+		expect(row() === 'password||pw:|24' && await ga.locator('#aipLock[data-open="1"]').count() === 1, 'converted on unlock: ' + row());
+		await Promise.all([ga.waitForNavigation(), ga.click('#aipTest')]);
+		expect(await ga.locator('#aipTestResult.alert-success').count() === 1, 'the converted key still works');
+		// usage on the configuration page, delete
+		await open(ga, 'index.php?p=aiproviders&id=' + id); await reauth('index.php?p=aiproviders&id=' + id);
+		expect(await ga.locator('#aipCalls tbody tr').count() >= 6 && parseInt(await ga.textContent('#aipUsageCalls'), 10) >= 6, 'usage of the month and the last requests');
+		await ga.click('#aipDelete');
+		await ga.waitForSelector('.modal.show .btn-danger');
+		await Promise.all([ga.waitForNavigation(), ga.locator('.modal.show .modal-footer .btn-danger').click()]);
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_ai_provider WHERE zzzzsys_nunext_ai_provider_id = '${id}'`).trim() === '0' && sql(`SELECT COUNT(*) FROM zzzzsys_nunext_ai_call WHERE provider_id = '${id}'`).trim() === '0', 'deleted with its usage rows');
+		await open(ga, 'index.php?p=prompts&id=new');
+		expect(await ga.locator('#pgAsk').count() === 0, 'without a configuration the dialogues show no Ask AI');
+		void sf;
+	} finally {
+		srv.kill();
+		execSync(`mysql ${DB} < ${dump}`);
+		for (const f of [log, answers]) if (fs.existsSync(f)) fs.unlinkSync(f);
+	}
+};
+
+// 0.8.1102: prompt generator – a picked table also lists its keys over several columns, unique keys, foreign keys in both
+// directions, checks, generated columns, triggers, a view's SELECT, and the relations nuBuilder knows (lookups, sub-forms)
+T.prompt_table_details = async (s) => {
+	const ga = s.ga;
+	const drop = () => sql('DROP VIEW IF EXISTS e2e_pd_view; DROP TABLE IF EXISTS e2e_pd_child; DROP TABLE IF EXISTS e2e_pd_parent');
+	drop();
+	try {
+		sql(`CREATE TABLE e2e_pd_parent (id INT PRIMARY KEY AUTO_INCREMENT, code VARCHAR(20) NOT NULL, region VARCHAR(10), UNIQUE KEY uq_code_region (code, region)) COMMENT = 'parents of the test';
+			CREATE TABLE e2e_pd_child (id INT PRIMARY KEY AUTO_INCREMENT, parent_id INT NOT NULL, qty INT NOT NULL DEFAULT 1, price DECIMAL(10,2), total DECIMAL(12,2) AS (qty * price) STORED, a INT, b INT, KEY ix_ab (a, b),
+				CONSTRAINT fk_pd_parent FOREIGN KEY (parent_id) REFERENCES e2e_pd_parent (id) ON DELETE CASCADE, CONSTRAINT chk_qty CHECK (qty > 0));
+			CREATE TRIGGER e2e_pd_trg BEFORE INSERT ON e2e_pd_child FOR EACH ROW SET NEW.a = COALESCE(NEW.a, 0);
+			CREATE VIEW e2e_pd_view AS SELECT c.id, p.code FROM e2e_pd_child c JOIN e2e_pd_parent p ON p.id = c.parent_id`);
+		await open(ga, 'index.php?p=prompts&id=new');
+		const prompt = await ga.evaluate(async (tables) => {
+			const f = document.getElementById('pgForm'), d = new FormData(f);
+			d.delete('pge_table[]'); d.delete('pge_table');
+			const name = (f.querySelector('[name^="pge_table"]') || {}).name || 'pge_table[]';
+			tables.forEach(t => d.append(name, t));
+			d.set('action', 'build');
+			const r = await fetch(f.getAttribute('action'), { method: 'POST', body: d, headers: { Accept: 'application/json' } });
+			const j = await r.json();
+			return j.prompt || j.text || j.result || JSON.stringify(j);
+		}, ['e2e_pd_parent', 'e2e_pd_child', 'e2e_pd_view', 'sample_order', 'sample_customer']);
+		const has = (t) => prompt.includes(t);
+		expect(has('- **e2e_pd_child**') && has('Foreign keys: `parent_id` → `e2e_pd_parent`.`id` (on delete cascade)'), 'foreign key with its rule: ' + prompt.slice(0, 300));
+		expect(has('Referenced by: `e2e_pd_child`.`parent_id` → `id`') && has('Unique: (`code`, `region`)') && has('Comment: parents of the test'), 'parent: referenced by, unique key, comment');
+		expect(has('Indexes over several columns: (`a`, `b`)') && /Checks: `chk_qty` .*qty.* > 0/.test(prompt) && /Generated columns: `total` = /.test(prompt) && has('Triggers: `e2e_pd_trg` (before insert)'), 'index, check, generated column, trigger');
+		expect(/View: select .* from .*e2e_pd_child/i.test(prompt) && !/`nutest`\./.test(prompt.split('**e2e_pd_view**')[1].split('\n- **')[0]), 'the view with its SELECT, without the schema prefix');
+		expect(has('nuBuilder lookups (no database constraint): `ord_sample_customer_id` → `sample_customer`.`sample_customer_id`') && has('nuBuilder sub-forms (child rows): `sample_order_item`.`ori_sample_order_id`'), 'relations nuBuilder knows: lookup and sub-form');
+		expect(/nuBuilder looked up from: .*`sample_order`\.`ord_sample_customer_id`/.test(prompt), 'and the other direction on the looked-up table');
+	} finally { drop(); }
+};
+
+T.file_manager_phone_col = async (s) => {
+	if (!SITE) return 'skip';
+	const ga = s.ga, vp = ga.viewportSize();
+	let made = false, file = '';
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		const dir = set.shares.find(x => x.id === 'uploads').path;
+		fs.mkdirSync(dir, { recursive: true });
+		file = path.join(dir, 'e2e_phone_col.txt');
+		fs.writeFileSync(file, 'x'.repeat(2048));
+		await ga.setViewportSize({ width: 390, height: 800 });
+		await open(ga, 'index.php?p=filemanager');
+		await ga.waitForSelector('#nufCrumbs', { state: 'attached' });
+		await ga.evaluate(() => { try { localStorage.removeItem('nufPhoneCol'); } catch (e) { /* */ } });
+		await ga.goto(ga.url().split('#')[0] + '#/uploads/');
+		await ga.reload(); await ga.waitForLoadState('networkidle');
+		await ga.waitForFunction(() => [...document.querySelectorAll('tbody tr')].some(x => /e2e_phone_col/.test(x.textContent)));
+		const vis = () => ga.evaluate(() => { const r = [...document.querySelectorAll('#nufBody tr, tbody tr')].find(x => /e2e_phone_col/.test(x.textContent));
+			return { size: r.querySelector('.nuf-c-size').offsetParent !== null, time: r.querySelector('.nuf-c-time').offsetParent !== null }; });
+		let v = await vis();
+		expect(v.size && !v.time, 'phone: size first: ' + JSON.stringify(v));
+		const b = await ga.locator('#nufColToggle').boundingBox(), rb = await ga.locator('#nufRefreshBtn').boundingBox();
+		expect(b && rb && b.x < rb.x && Math.abs(b.y - rb.y) < 4, 'toggle left of Refresh: ' + JSON.stringify([b, rb]));
+		await ga.click('#nufColToggle');
+		v = await vis();
+		expect(!v.size && v.time && await ga.getAttribute('#nufColToggle', 'aria-pressed') === 'true', 'phone: date after the toggle: ' + JSON.stringify(v));
+		await ga.reload(); await ga.waitForFunction(() => [...document.querySelectorAll('tbody tr')].some(x => /e2e_phone_col/.test(x.textContent)));
+		v = await vis();
+		expect(v.time && !v.size, 'remembered after a reload: ' + JSON.stringify(v));
+		await ga.setViewportSize({ width: 1280, height: 800 });
+		await ga.waitForTimeout(200);
+		v = await vis();
+		expect(v.time && v.size && !(await ga.isVisible('#nufColToggle')), 'wide: both columns, no toggle: ' + JSON.stringify(v));
+		await ga.evaluate(() => { try { localStorage.removeItem('nufPhoneCol'); } catch (e) { /* */ } });
+	} finally {
+		await ga.setViewportSize(vp);
+		if (file) fs.rmSync(file, { force: true });
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
 T.file_manager_toolbar_row = async (s) => {
 	if (!SITE) return 'skip';
 	const ga = s.ga;
@@ -12232,6 +12687,26 @@ T.access_users_filter = async (s) => {                  // access level → User
 };
 
 // additional access levels per user (0.8.585): dario (sample_sales) gets sample_editor on top – form sampleall opens; expired = gone
+// 0.8.1091: user form, additional access levels – the level select gets the room, the date field only what the date needs
+T.xa_row_widths = async (s) => {
+	const ga = s.ga, vp = ga.viewportSize();
+	const id = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name <> 'globeadmin' LIMIT 1");
+	try {
+		for (const w of [390, 1280]) {
+			await ga.setViewportSize({ width: w, height: 900 });
+			await open(ga, 'index.php?p=user&id=' + encodeURIComponent(id));
+			await ga.click('#xaAdd');
+			const r = await ga.evaluate(() => {
+				const row = [...document.querySelectorAll('#xaRows .xaRow')].pop();
+				const sel = row.querySelector('select').getBoundingClientRect().width, d = row.querySelector('.xaUntil');
+				return { sel, date: d.getBoundingClientRect().width, row: row.getBoundingClientRect().width };
+			});
+			expect(r.sel > r.date, w + ' px: the level select is wider than the date: ' + JSON.stringify(r));
+			expect(r.date >= 116 && r.date <= 150, w + ' px: date field fits a date: ' + JSON.stringify(r));
+		}
+	} finally { await ga.setViewportSize(vp); }
+};
+
 T.user_extra_access = async (s) => {
 	const dario = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_dario'");
 	if (!dario || !sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = 'sample_editor'")) { s.skip = 'no sample users'; return; }
@@ -13342,6 +13817,41 @@ const prjClean = () => sql("DELETE FROM zzzzsys_nunext_project_item WHERE projec
 	+ " DELETE FROM zzzzsys_nunext_project_note WHERE project_id IN (SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code LIKE 'e2e%');"
 	+ " DELETE FROM zzzzsys_nunext_project_task WHERE project_id IN (SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code LIKE 'e2e%');"
 	+ " DELETE FROM zzzzsys_nunext_project WHERE code LIKE 'e2e%'");
+
+// 0.8.1092: projects list – a description over 70 characters is cut with … (full text as tooltip), in cards and in the table
+// 0.8.1093: list filters on phones stay folded also when one is set (reports list; the chip shows it), open from 768 px; the funnel opens them in one tap
+T.list_filters_phone_folded = async (s) => {
+	const ga = s.ga, vp = ga.viewportSize();
+	const grp = sql("SELECT sre_group FROM zzzzsys_report WHERE sre_group <> '' LIMIT 1");
+	if (!grp) return 'skip';
+	try {
+		for (const [w, wide] of [[390, false], [1280, true]]) {
+			await ga.setViewportSize({ width: w, height: 900 });
+			await open(ga, 'index.php?p=reports&group=' + encodeURIComponent(grp));
+			const shown = await ga.evaluate(() => { const f = document.querySelector('#nuLvFilters'); return !!f && f.offsetHeight > 0; });
+			expect(shown === wide, w + ' px: filters ' + (wide ? 'open' : 'folded') + ' with a filter set');
+			expect(await ga.locator('#nuLvChips .nuLvChip').count() >= 1, w + ' px: the chip shows the set filter');
+			if (!wide) {
+				await ga.click('[data-bs-target="#nuLvFilters"]');
+				await ga.waitForFunction(() => document.querySelector('#nuLvFilters').offsetHeight > 0, null, { timeout: 3000 });
+			}
+		}
+	} finally { await ga.setViewportSize(vp); }
+};
+
+T.projects_desc_cut = async (s) => {
+	const ga = s.ga, vp = ga.viewportSize();
+	const desc = sql("SELECT description FROM zzzzsys_nunext_project WHERE code = 'tkt_system'");
+	if (!desc || desc.length <= 70) return 'skip';
+	try {
+		for (const w of [390, 1280]) {
+			await ga.setViewportSize({ width: w, height: 900 });
+			await open(ga, 'index.php?p=projects');
+			const r = await ga.evaluate(() => [...document.querySelectorAll('main span[title]')].filter(e => e.textContent.endsWith('…')).map(e => [e.textContent.length, e.title.length])[0]);
+			expect(r && r[0] === 71 && r[1] > 70, w + ' px: description cut to 70 + …: ' + JSON.stringify(r));
+		}
+	} finally { await ga.setViewportSize(vp); }
+};
 
 T.projects = async (s) => {
 	// 0.8.1035: projects – create, add parts, Suggest related, Markdown note, to-do with a notification, done, working on → list filter

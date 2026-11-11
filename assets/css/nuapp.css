@@ -1167,7 +1167,7 @@ label > .nuMarkUnique, .form-label > .nuMarkUnique { margin-inline-start: .25em;
 [data-bs-theme="dark"] .btn.updRollback .bi { color: #ffc54d; }
 /* debug page (0.8.262): the auto refresh switch at the right end of the buttons, on phones in its own row */
 .debugAutoWrap { margin-inline-start: auto; }
-@media (max-width: 575.98px) { .debugAutoWrap { flex-basis: 100%; margin-inline-start: 0; } }
+@media (max-width: 575.98px) { .debugAutoWrap { flex-basis: 100%; margin-inline-start: 0; order: 9; } }   /* the switch below the buttons and ⋮ (0.8.1096) */
 @media (hover: none) { .nuHomeEditing .nuHeItem > .nu-tile > .card-body { padding-top: 2.75rem; } }   /* touch: the tools stay visible above the text */
 @media (max-width: 575.98px) {
 	.nuHeGroupHead { flex-wrap: nowrap; }
@@ -1407,7 +1407,8 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .userCardLogin .card-body > div:last-of-type, .userCardAccess .card-body > div:last-of-type, .userCardAccount .card-body > div:last-of-type { margin-bottom: 0 !important; }   /* user form cards (0.8.586) */
 .userCardLogin, .userCardAccess, .userCardAccount { width: 100%; max-width: 530px; }   /* user form: right-hand cards at most 530 px wide (0.8.610) */
 .xaRow > select { flex: 1 1 auto; min-width: 0; }   /* user form: additional access levels (0.8.585) */
-.xaRow > .xaUntil { flex: 0 0 10.5rem; }
+.xaRow > .xaUntil { flex: 0 0 auto; width: 9.25rem; }   /* just the date + picker icon (0.8.1091) */
+@media (max-width: 575.98px) { .xaRow > .xaUntil { width: 7.75rem; padding-inline: .35rem; } .xaRow > .input-group-text { padding-inline: .35rem; } }
 .nuFormStatus { cursor: context-menu; border-radius: var(--bs-border-radius-pill); }   /* forms list: status with right-click menu (0.8.575) */
 .nuFormStatus:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
 .nuFormStatusBusy { opacity: .5; }
@@ -2385,3 +2386,16 @@ details.nuNoticeFold > summary::-webkit-details-marker { display: none; }
 	.compatDot > b { color: var(--bs-body-color); }
 	.compatDotOn, .compatDotOn > b { font-weight: 700; color: inherit; }
 }
+
+/* list filters opened because one is set: folded on phones until nuapp.js has run (0.8.1093) */
+@media (max-width: 767.98px) { .collapse.show.nuLvPhFold { display: none; } }
+
+/* ---- "Ask AI" control of the AI dialogues (0.8.1099, assets/js/nuaiask.js) */
+.nuAiAskHost { margin-top: .5rem; padding: .5rem .625rem; border: 1px dashed var(--bs-border-color); border-radius: var(--bs-border-radius); }
+.nuAiAskHost:empty { display: none; }
+.nuAiAskSel { width: auto; max-width: 18rem; flex: 0 1 auto; }
+.nuAiAskSel.nuAiAskOne { pointer-events: none; background-image: none; padding-right: .5rem; border-color: transparent; background-color: transparent; font-weight: 600; }
+.nuAiAskPwBox { width: auto; flex: 0 1 17rem; }
+.nuAiAskWait::before { content: ""; display: inline-block; width: .8em; height: .8em; margin-right: .4em; vertical-align: -.05em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nuAiAskSpin .75s linear infinite; }
+@keyframes nuAiAskSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .nuAiAskWait::before { animation-duration: 3s; } }

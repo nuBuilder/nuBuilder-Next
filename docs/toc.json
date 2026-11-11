@@ -473,6 +473,11 @@
      "id": "user-help",
      "title": "Help pages for your users",
      "file": "09-11-user-help.htm"
+    },
+    {
+     "id": "ai-providers",
+     "title": "AI providers",
+     "file": "09-12-ai-providers.htm"
     }
    ]
   },

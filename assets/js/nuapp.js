@@ -675,6 +675,14 @@
 	// ---------------------------------------------------------------- list filters shown at once on wide screens
 	// <div class="collapse" data-nu-open-min="800">: open when the window is at least that wide (the filter button still hides them)
 	window.nuOpenMin = function (root) {
+		// list filters opened because one is set stay folded on phones (0.8.1093) – the chips show what is set
+		$$('.collapse.nuLvPhFold', root).forEach(function (c) {
+			if (window.innerWidth < 768) {
+				c.classList.remove('show');
+				$$('[data-bs-target="#' + c.id + '"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); b.classList.add('collapsed'); });
+			}
+			c.classList.remove('nuLvPhFold');
+		});
 		$$('.collapse[data-nu-open-min]', root).forEach(function (c) {
 			var min = parseInt(c.getAttribute('data-nu-open-min'), 10) || 0;
 			if (window.innerWidth < min || c.classList.contains('show')) return;
@@ -1880,7 +1888,7 @@ window.nuPageNoGo = function (value) {
 (function () {
 	'use strict';
 	function keep(el) {
-		if (el.matches('.nuBackBtn, .nuAddBtn, .nuMoreMenu, .nuPhMore')) return true;
+		if (el.matches('.nuBackBtn, .nuAddBtn, .nuMoreMenu, .nuPhMore, .nuPhKeep')) return true;   // .nuPhKeep: the page's main action (0.8.1096)
 		if (el.querySelector('.nuLvMenuBtn')) return true;                                   // the view menu
 		return /(?:New|Add)$/.test(el.id || '');
 	}
@@ -1908,6 +1916,8 @@ window.nuPageNoGo = function (value) {
 			var extra = [].filter.call(bar.children, function (el) { return !keep(el) && !el.matches('.d-none, [hidden]') && (el.matches('a.btn, button.btn, .dropdown, .btn-group')); });
 			if (!extra.length) return;
 			var menu = bar.querySelector('.nuMoreMenu .dropdown-menu');
+			// a single button stays in the bar – a ⋮ with one entry only costs a tap (Debug results: Refresh, 0.8.1096)
+			if (!menu && extra.length === 1 && !extra[0].matches('.dropdown, .btn-group')) return;
 			if (!menu) {
 				var dd = document.createElement('div'); dd.className = 'dropdown d-sm-none nuMoreMenu nuPhMore';
 				var lb = head.getAttribute('data-nu-more-label') || '⋮';

@@ -30,6 +30,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
 
 ## SQL Server
+- [ ] **Prompt generator table details** (0.8.1102) – the catalog queries for SQL Server (sys.indexes, sys.foreign_keys, sys.check_constraints,
+      sys.triggers, sys.computed_columns, sys.views) are untested; a failing one only leaves its part out.
 - [ ] **Restore database from a backup on SQL Server** (0.8.1031) – only offered on MySQL / MariaDB; the SQL Server dump (GO batches) is read by NuSqlImport (dialect sqlsrv), but dropping / restoring was not tried on a server.
 - [ ] **SQL check on SQL Server** (0.8.999) – the code editors' SQL check uses SET NOEXEC ON there (compiled, not run); untested here: check that a wrong column / table is marked with the right line and that NOEXEC is switched off again.
 - [ ] **Nothing ran on a real SQL Server yet** (no image / pdo_sqlsrv here; code checked with simulated catalogues and sqlglot; installation,
@@ -225,6 +227,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       is hidden – `NU_FEATURE_ACCESSIBILITY` in `core/nuapp.php`; saving a user keeps the stored value).
 
 ## Reports and dashboards
+- [ ] **Reports with AI** (0.8.1097) – please verify with a real AI chat: a new report from a table (grouping, totals, page numbers), a
+      change to an existing report (ids kept – untouched objects stay as they were), the variant with a query written by the AI, the preview
+      of a report with a launch form (criteria are empty), Restore on the History tab; on SQL Server the query check is untested.
 - [ ] **TCPDF 7 pack** (0.8.1062) – please verify a report with pictures (photos per row, a logo by web path) on the live server after installing the 7.0.22 pack; Roll back to 6 if anything is left out
 - [ ] **Report pictures with TCPDF 7** (0.8.1062): a report with photos (`<img src="/folder/x.jpg">` in an HTML field, an image object with an
       address of the own server) on a server with the TCPDF 7 pack – they were left out before. Pictures from another host stay blocked
@@ -234,6 +239,12 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Dashboard table widgets** (0.8.682): column nu_record_id + link to a form → rows open the record; option "Open in a new tab".
 
 ## Code editors and libraries
+- [ ] **AI providers** (0.8.1099) – tested only against a stand-in service (dev/tests/fakeai.py). Please verify with real keys: Anthropic
+      (model list, a report and a form with the correction round), an OpenAI-compatible service (OpenAI itself uses max_completion_tokens;
+      a local Ollama with "Allow private addresses"), Gemini; a long request against the live server's request time limit (if the host
+      cuts requests early, a background job with polling would be the next step); the password and the monthly limit;
+      (0.8.1101) a password-protected configuration: unlock, Ask AI, sign out and in again (locked), change the password, a backup of the
+      table shows no readable key.
 - [ ] **Visual editor (TinyMCE) look** (0.8.1040–0.8.1042): help pages, notifications, editor fields of forms – no HTML source and no
       white box while it loads (also dark mode), light ⇄ dark switches the editor at once without marking the record as changed.
 - [ ] **Help pages → Draft with AI** (0.8.1037 / 0.8.1038): the field Language; an answer in Markdown becomes headings / lists in the

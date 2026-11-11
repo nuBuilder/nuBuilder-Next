@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.1089",
+    "version": "0.8.1103",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -515,6 +515,33 @@
                 },
                 {
                     "table": "zzzzsys_nunext_project_task",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0040-report-versions",
+            "description": "Report versions (zzzzsys_nunext_report_version): the layout of a report before an AI change or a restore",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_report_version",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0041-ai-providers",
+            "description": "AI providers and their usage (zzzzsys_nunext_ai_provider, zzzzsys_nunext_ai_call)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_ai_provider",
+                    "kind": "table",
+                    "what": "created when missing"
+                },
+                {
+                    "table": "zzzzsys_nunext_ai_call",
                     "kind": "table",
                     "what": "created when missing"
                 }
@@ -1957,6 +1984,190 @@
             "index": [
                 "project_id",
                 "assignee"
+            ]
+        },
+        "zzzzsys_nunext_ai_provider": {
+            "pk": "zzzzsys_nunext_ai_provider_id",
+            "cols": [
+                [
+                    "name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "kind",
+                    "text",
+                    "20"
+                ],
+                [
+                    "base_url",
+                    "text",
+                    "500"
+                ],
+                [
+                    "api_key",
+                    "longtext"
+                ],
+                [
+                    "model",
+                    "text",
+                    "200"
+                ],
+                [
+                    "temperature",
+                    "text",
+                    "10"
+                ],
+                [
+                    "max_tokens",
+                    "int"
+                ],
+                [
+                    "timeout",
+                    "int"
+                ],
+                [
+                    "system_text",
+                    "longtext"
+                ],
+                [
+                    "params",
+                    "longtext"
+                ],
+                [
+                    "active",
+                    "text",
+                    "1"
+                ],
+                [
+                    "access",
+                    "text",
+                    "10"
+                ],
+                [
+                    "levels",
+                    "longtext"
+                ],
+                [
+                    "password",
+                    "text",
+                    "255"
+                ],
+                [
+                    "pw_salt",
+                    "text",
+                    "64"
+                ],
+                [
+                    "month_limit",
+                    "int"
+                ],
+                [
+                    "updated_at",
+                    "datetime"
+                ],
+                [
+                    "updated_by",
+                    "text",
+                    "100"
+                ]
+            ],
+            "index": []
+        },
+        "zzzzsys_nunext_ai_call": {
+            "pk": "zzzzsys_nunext_ai_call_id",
+            "cols": [
+                [
+                    "provider_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "user_login",
+                    "text",
+                    "100"
+                ],
+                [
+                    "feature",
+                    "text",
+                    "20"
+                ],
+                [
+                    "model",
+                    "text",
+                    "200"
+                ],
+                [
+                    "tokens_in",
+                    "int"
+                ],
+                [
+                    "tokens_out",
+                    "int"
+                ],
+                [
+                    "ms",
+                    "int"
+                ],
+                [
+                    "status",
+                    "text",
+                    "10"
+                ],
+                [
+                    "error",
+                    "text",
+                    "300"
+                ],
+                [
+                    "created_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "provider_id",
+                "created_at"
+            ]
+        },
+        "zzzzsys_nunext_report_version": {
+            "pk": "zzzzsys_nunext_report_version_id",
+            "cols": [
+                [
+                    "report_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "saved_at",
+                    "datetime"
+                ],
+                [
+                    "saved_by",
+                    "text",
+                    "50"
+                ],
+                [
+                    "reason",
+                    "text",
+                    "20"
+                ],
+                [
+                    "note",
+                    "text",
+                    "200"
+                ],
+                [
+                    "source",
+                    "text",
+                    "60"
+                ],
+                [
+                    "layout",
+                    "longtext"
+                ]
+            ],
+            "index": [
+                "report_id"
             ]
         },
         "zzzzsys_nunext_help": {

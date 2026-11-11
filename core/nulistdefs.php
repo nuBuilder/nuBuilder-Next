@@ -24,7 +24,7 @@ final class NuListDefs
 {
 	/** @return array<string, array> */
 	/** Keys of all lists with views (0.8.329: users, access; 0.8.334: the other system lists). */
-	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'helppages', 'webhooks', 'webhookcalls', 'exports', 'selftest', 'projects'];
+	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'aiproviders', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'helppages', 'webhooks', 'webhookcalls', 'exports', 'selftest', 'projects'];
 
 	public static function get(string $list): ?array
 	{
@@ -33,7 +33,7 @@ final class NuListDefs
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),
 			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(), 'userfields' => self::userFields(), 'apiclients' => self::apiClients(),
 			'adminroles' => self::adminRoles(), 'sqlbuilder' => self::sqlBuilder(), 'emailtemplates' => self::emailTemplates(),
-			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'helppages' => self::helpPages(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(), 'projects' => self::projects(),
+			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'aiproviders' => self::aiProviders(), 'helppages' => self::helpPages(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(), 'projects' => self::projects(),
 			default => null,
 		};
 	}
@@ -72,6 +72,14 @@ final class NuListDefs
 		'selftest' => ['status' => false, 'ms' => 'number', 'pos' => 'number'],
 		'projects' => ['status' => false, 'items' => 'number', 'tasks' => 'number', 'updated' => 'date'],
 	];
+
+	/** Text cut to $max characters with … – the full text as tooltip when cut (0.8.1092). */
+	public static function cut(string $v, int $max): string
+	{
+		$v = trim($v);
+		if (mb_strlen($v) <= $max) return h($v);
+		return '<span title="' . h($v) . '">' . h(rtrim(mb_substr($v, 0, $max)) . '…') . '</span>';
+	}
 
 	/** "a, f(b, c), d" → ['a', 'f(b, c)', 'd'] (commas outside brackets and quotes). */
 	public static function splitSort(string $sql): array
@@ -1284,7 +1292,8 @@ final class NuListDefs
 				'html' => static fn($r) => '<span class="fw-semibold">' . h((string)$r['pj_name']) . '</span>' . ((string)$r['__id'] === $w ? ' ' . self::badge(t('prj_working_badge'), 'text-bg-primary nuPrjWorkBadge') : '')
 					. '<div class="small text-body-secondary font-monospace">' . h((string)$r['pj_code']) . '</div>'],
 			'code' => self::col('pj_code2', 'p.code', t('prj_f_code'), 'small font-monospace'),
-			'description' => self::col('pj_desc', 'p.description', t('prj_f_description'), 'small'),
+			'description' => self::col('pj_desc', 'p.description', t('prj_f_description'), 'small')
+				+ ['html' => static fn($r) => self::cut((string)$r['pj_desc'], 70)],
 			'items' => array_replace(self::col('pj_items', $nItems, t('prj_items'), 'small'), ['align' => 'end']),
 			'tasks' => array_replace(self::col('pj_tasks', $nTasks, t('prj_open_tasks'), 'small'), ['align' => 'end']),
 			'status' => ['label' => t('status'), 'select' => ['pj_status' => 'p.status'], 'sort' => 'p.status',
@@ -1411,6 +1420,49 @@ final class NuListDefs
 			'builtin' => [
 				'default' => $base,
 				'compact' => ['columns' => ['name', 'status', 'calls']] + $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
+
+	/** AI providers (0.8.1099, core/nuaiprovider.php): name, service, model, who may use it, active, usage of the month. */
+	private static function aiProviders(): array
+	{
+		$P = NuAiProvider::T; $C = NuAiProvider::CALL;
+		$month = date('Y-m-01 00:00:00');
+		$nCalls = "(SELECT COUNT(*) FROM $C x WHERE x.provider_id = p.zzzzsys_nunext_ai_provider_id AND x.created_at >= '$month')";
+		$nTok = "(SELECT COALESCE(SUM(x.tokens_in + x.tokens_out), 0) FROM $C x WHERE x.provider_id = p.zzzzsys_nunext_ai_provider_id AND x.created_at >= '$month')";
+		$num = static fn($v) => number_format((int)$v, 0, '.', "'");
+		$cols = [
+			'name' => ['label' => t('aip_name'), 'main' => true, 'locked' => true, 'select' => ['aip_name' => 'p.name'], 'sort' => 'p.name',
+				'text' => static fn($r) => (string)$r['aip_name'], 'html' => static fn($r) => '<span class="fw-semibold">' . h((string)$r['aip_name']) . '</span>'],
+			'kind' => ['label' => t('aip_kind'), 'select' => ['aip_kind' => 'p.kind'], 'sort' => 'p.kind', 'class' => 'small',
+				'text' => static fn($r) => isset(NuAiProvider::KINDS[(string)$r['aip_kind']]) ? t(NuAiProvider::KINDS[(string)$r['aip_kind']][0]) : (string)$r['aip_kind']],
+			'model' => ['label' => t('aip_model'), 'select' => ['aip_model' => 'p.model'], 'sort' => 'p.model', 'class' => 'small font-monospace text-break', 'text' => static fn($r) => (string)$r['aip_model']],
+			'access' => ['label' => t('aip_access'), 'select' => ['aip_access' => 'p.access'], 'sort' => 'p.access', 'class' => 'small',
+				'text' => static fn($r) => t('aip_access_' . (in_array((string)$r['aip_access'], NuAiProvider::ACCESS, true) ? (string)$r['aip_access'] : 'all'))],
+			'status' => ['label' => t('status'), 'select' => ['aip_active' => 'p.active'], 'sort' => 'p.active',
+				'text' => static fn($r) => t((string)$r['aip_active'] === '1' ? 'wh_on' : 'wh_off'),
+				'html' => static fn($r) => self::badge(t((string)$r['aip_active'] === '1' ? 'wh_on' : 'wh_off'), (string)$r['aip_active'] === '1' ? 'text-bg-success' : 'text-bg-secondary')],
+			'calls' => ['label' => t('aip_calls_month'), 'select' => ['aip_ncalls' => $nCalls], 'sort' => $nCalls, 'class' => 'small text-end', 'text' => static fn($r) => $num($r['aip_ncalls'])],
+			'tokens' => ['label' => t('aip_tokens_month'), 'select' => ['aip_ntok' => $nTok, 'aip_limit' => 'p.month_limit'], 'sort' => $nTok, 'class' => 'small text-end text-nowrap',
+				'text' => static fn($r) => $num($r['aip_ntok']) . ((int)$r['aip_limit'] > 0 ? ' / ' . $num($r['aip_limit']) : '')],
+			'updated' => ['label' => t('fi_changed'), 'select' => ['aip_upd' => 'p.updated_at'], 'sort' => 'p.updated_at', 'class' => 'small text-nowrap', 'text' => static fn($r) => self::date($r['aip_upd'] ?? null, true)],
+			'id' => self::idCol('p.zzzzsys_nunext_ai_provider_id'),
+		];
+		$filters = [
+			'status' => ['label' => t('status'), 'type' => 'select', 'options' => static fn() => ['on' => t('wh_on'), 'off' => t('wh_off')],
+				'where' => static fn(string $v) => $v === 'on' ? ["p.active = '1'", []] : ($v === 'off' ? ["COALESCE(p.active, '0') <> '1'", []] : null)],
+		];
+		$base = ['columns' => ['name', 'kind', 'model', 'access', 'status', 'calls', 'tokens'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['kind', 'model', 'tokens']],
+			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => [], 'values' => []]];
+		return [
+			'key' => 'aiproviders', 'title' => t('aip_title'), 'route' => 'aiproviders', 'new_url' => nu_url('aiproviders', ['id' => 'new']), 'empty_icon' => 'bi-stars', 'form' => NuAcl::FORM_AIPROVIDER,
+			'from' => " FROM $P p", 'where' => [], 'params' => [], 'id' => 'p.zzzzsys_nunext_ai_provider_id',
+			'link' => static fn($r) => nu_url('aiproviders', ['id' => $r['__id']]),
+			'search' => ['p.name', 'p.model', 'p.kind'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
 				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
 			],
 		];

@@ -103,6 +103,21 @@
 			.then(function () { b.disabled = false; });
 	});
 
+	// ---- 1a. "Ask AI" (0.8.1099, assets/js/nuaiask.js): the prompt goes to a configured AI service, the answer into step 3
+	if (window.NuAiAsk && $('faAsk')) window.NuAiAsk.mount($('faAsk'), {
+		prompt: function () {
+			if (!reqEl.value.trim()) { go(1, true); return ''; }
+			return post({action: 'prompt', request: reqEl.value, tables: chosenTables(), kind: kind()}).then(function (d) {
+				if (!d.ok) { $('faCopyMsg').textContent = d.error || ''; $('faCopyMsg').className = 'small text-danger'; return ''; }
+				$('faPrompt').value = d.text; $('faPromptBox').hidden = false;
+				if (!$('faNote').value) $('faNote').value = reqEl.value.split('\n')[0].slice(0, 200);
+				return d.text;
+			});
+		},
+		answer: function (text) { ansEl.value = text; },
+		check: function () { return check().then(function (d) { go(3); return d && d.errors ? d.errors : []; }); }
+	});
+
 	// ---- 1b. context file (0.8.961): functions, hash variables, guide, example forms – attached to the chat with the prompt
 	function download(blob, name) {
 		var url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -184,8 +199,9 @@
 			$('faDdlBox').hidden = !hasDdl(d);
 			$('faDdl').checked = false;
 			$('faResult').scrollIntoView({block: 'start', behavior: 'smooth'});
+			return d;
 		}).catch(function (e) { $('faResult').hidden = false; $('faMessages').innerHTML = list(L.fai_errors, 'alert-danger', [e.message]); })
-			.then(function () { b.disabled = false; });
+			.then(function (d) { b.disabled = false; return d; });
 	}
 	$('faCheck').addEventListener('click', check);
 	ansEl.addEventListener('input', function () { $('faCreateBox').hidden = true; });

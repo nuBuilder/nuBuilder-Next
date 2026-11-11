@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.1089 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.1103 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -20,7 +20,7 @@ work in both. nuBuilder Next only adds tables of its own.
 ## Highlights
 
 - **Form designer** – design forms and lists where they run, with drafts, history, validation rules and phone layouts.
-- **Forms with AI** – describe a form, let any AI chat write it, check it and publish it.
+- **Forms and reports with AI** – describe a form or a report, let any AI chat (or a connected AI service) write it, check it and apply it.
 - **Lists that do more** – advanced search, coloured badges, export to Excel, CSV or print.
 - **Start page and dashboards** – tiles, favourites, search over everything, KPI tiles and charts.
 - **Secure by default** – two-step login, passkeys, single sign-on, password policy, audit trail, a built-in security check.

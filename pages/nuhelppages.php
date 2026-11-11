@@ -289,6 +289,7 @@ echo NuListView::crumbs($crumbs); ?>
 		<?php endif; ?>
 		<button class="btn btn-outline-primary btn-sm mb-3" type="button" id="uhAiCopy"><i class="bi bi-clipboard me-1"></i><?= h(t('uh_ai_copy')) ?></button> <span class="small text-success d-none" id="uhAiCopied"><?= h(t('copy_done')) ?></span>
 		<textarea class="form-control font-monospace small d-none mb-3" id="uhAiPrompt" rows="6" readonly></textarea>
+		<?= NuAiProvider::host('help', 'uhAiAsk', 'mb-3') ?>
 		<label class="form-label d-block" for="uhAiAnswer"><?= h(t('uh_ai_answer')) ?></label>
 		<textarea class="form-control font-monospace small" id="uhAiAnswer" rows="8"></textarea>
 	</div>
@@ -316,4 +317,4 @@ echo NuListView::crumbs($crumbs); ?>
 	data-unlink-ask="<?= h(t('uh_unlink_ask')) ?>" data-unlink-ok="<?= h(t('uh_unlink_ok')) ?>" data-unlink="<?= h(t('uh_unlink')) ?>" data-none="<?= h(t('uh_used_none')) ?>" data-hash="<?= h(t('uh_ins_hash_ph')) ?>" data-pick="<?= h(t('uh_ins_link_pick')) ?>" data-level-ph="<?= h(t('uh_ins_level_ph')) ?>"
 	data-only="<?= h(t('uh_ins_only_txt')) ?>" data-other="<?= h(t('uh_ins_other_txt')) ?>" data-copy-failed="<?= h(t('copy_failed')) ?>" data-replace="<?= h(t('uh_ai_replace')) ?>"
 	data-levels="<?= h(implode(', ', array_map(static fn($a) => (string)$a['sal_code'], $levels))) ?>"></div>
-<?php nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuhelppages.js') . '"></script>');
+<?php nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script>' . '<script src="' . nu_asset('assets/js/nuhelppages.js') . '"></script>');

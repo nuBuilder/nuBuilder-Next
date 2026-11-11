@@ -164,6 +164,7 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 						<button class="btn btn-outline-primary" type="submit" id="trlAiCopy"><i class="bi bi-clipboard me-1"></i><?= h(t('trl_ai_copy')) ?></button>
 						<span class="small ms-2" id="trlAiMsg" role="status" aria-live="polite"></span>
 						<textarea class="form-control font-monospace small mt-2 d-none" id="trlAiPromptOut" rows="6" readonly data-fail="<?= h(t('trl_ai_copy_fail')) ?>" aria-label="<?= h(t('trl_ai_copy')) ?>"></textarea>
+						<?= NuAiProvider::host('translate', 'trlAiAsk') ?>
 					</form>
 					<hr>
 					<form method="post" id="trlAiCheckForm" action="<?= h(nu_url('translations', ['view' => 'missing', 'f' => $aiForm])) ?>">
@@ -306,4 +307,4 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 	</form>
 <?php endif; ?>
 <?php
-nu_layout_end($id !== '' ? '<script src="' . nu_asset('assets/js/nuitems.js') . '"></script>' : ($view === 'missing' ? nu_ts_foot() . '<script src="' . nu_asset('assets/js/nutranslations.js') . '"></script>' : ''));
+nu_layout_end($id !== '' ? '<script src="' . nu_asset('assets/js/nuitems.js') . '"></script>' : ($view === 'missing' ? nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script>' . '<script src="' . nu_asset('assets/js/nutranslations.js') . '"></script>' : ''));

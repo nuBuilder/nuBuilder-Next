@@ -56,6 +56,8 @@ $routes = [
 	'vendor'      => [],
 	'filemanager' => [],                      // File Manager = the page nuFiles (0.8.479, pages/nufilemanager.php)
 	'apiclients'  => [],
+	'aiproviders' => [],   // AI providers (0.8.1099, pages/nuaiproviders.php)
+	'aiask'       => ['json' => true],   // "Ask AI" of the AI dialogues (pages/nuaiask.php)
 	'webhooks'    => [],   // webhooks (0.8.715, pages/nuwebhooks.php)
 	'helppages'   => [],   // user help pages: list / editor (0.8.1023, pages/nuhelppages.php)
 	'projects'    => [],   // projects: list, project page, export / import (0.8.1035, pages/nuprojects.php)
@@ -84,6 +86,7 @@ $routes = [
 	'reports'     => [],
 	'report'      => [],
 	'reportdesigner' => [],
+	'reportai'    => [],                     // reports with AI (0.8.1097): prompt, check, preview, apply – POST only
 	'reportpdf'   => [],
 	'sqlbuilder'  => [],
 	'prompts'     => [],

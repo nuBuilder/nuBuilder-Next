@@ -1,0 +1,62 @@
+<section id="ai-providers" data-doc="admin">
+	<h2 id="ai-providers-h">AI providers</h2>
+	<p class="doc-lead">Let the AI dialogues send their prompt to an AI service and fetch the answer themselves – in addition to copy and paste.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles with the right AI providers)</p>
+	<p>Every AI dialogue of nuBuilder Next – <a href="#form-ai">Forms with AI</a>, <em>Ask AI</em> in design mode, <a href="#report-ai">Reports with AI</a>, the draft of a <a href="#user-help">help page</a>, <a href="#translations">translations</a> and the <a href="#prompts">prompt generator</a> – works by copying a prompt into an AI chat and pasting the answer. With an <strong>AI provider</strong> set up, the same dialogues also show <em>Ask AI</em>: the prompt is sent from the server to the service, and the answer lands in the answer box. From there on nothing changes – the answer is checked, the plan and the preview are shown, and only <em>Apply</em> / <em>Create</em> / <em>Insert</em> stores anything.</p>
+	<div class="doc-sub" id="ai-providers-setup"><h3 id="ai-providers-setup-h">Set up a configuration</h3>
+	<ol>
+	<li><em>AI providers</em> (start page tile, Settings → Logs &amp; integration, <code>index.php?p=aiproviders</code>) → <em>Add</em>.</li>
+	<li><strong>Service</strong>: <em>Anthropic (Claude)</em>, <em>OpenAI-compatible</em> or <em>Google Gemini</em>. OpenAI-compatible covers OpenAI itself, Azure OpenAI, Mistral, OpenRouter and local models (Ollama, LM Studio) – enter their <strong>address</strong>; for the three services themselves leave it empty.</li>
+	<li>The <strong>API key</strong> from the service's console. It is stored encrypted (with the secret key of the configuration file) and never shown again; leave the field empty later to keep it.</li>
+	<li><em>Fetch models</em> asks the service for its models; pick one or type its name.</li>
+	<li><em>Test</em> saves and sends a one-line request – the result shows the time and the tokens used.</li>
+	</ol>
+	<table class="table table-sm">
+	<thead><tr><th>Setting</th><th>What it does</th></tr></thead>
+	<tbody>
+	<tr><td>Temperature</td><td>0 to 2. Low values give exact, repeatable answers – right for forms and reports. Empty = the service's default (some models accept nothing else).</td></tr>
+	<tr><td>Max. answer length</td><td>In tokens. A whole form or report needs room – 8,000 or more. An answer cut at the limit is reported next to <em>Ask AI</em>.</td></tr>
+	<tr><td>Timeout</td><td>How long to wait, 10 to 900 seconds. A large report or small app can take a minute or two; the web server's own limit for one request must be at least as long.</td></tr>
+	<tr><td>Monthly token limit</td><td>Tokens in + out per calendar month. Once reached, requests with this configuration are refused until the next month.</td></tr>
+	<tr><td>Extra instruction</td><td>Sent with every request as system instruction, e.g. "Field labels in German."</td></tr>
+	<tr data-level="detail"><td>Extra parameters</td><td>A JSON object merged into the request, for settings of the service not offered here (<code>{"top_p": 0.9}</code>). A value of <code>null</code> removes a parameter the page would send.</td></tr>
+	</tbody></table>
+	<p data-level="detail">A local model runs on a private address (<code>http://localhost:11434/v1</code> for Ollama). Switch on <em>Allow private addresses</em> below the list for that; otherwise only https addresses on the public internet are called, and redirects are never followed.</p>
+	</div>
+	<div class="doc-sub" id="ai-providers-access"><h3 id="ai-providers-access-h">Who may use a configuration</h3>
+	<p>The dialogues keep their own rights – only someone who may design forms sees Form with AI at all. On top of that each configuration says who is offered it:</p>
+	<ul>
+	<li><strong>Everyone who can open the AI dialogue</strong>.</li>
+	<li><strong>Chosen access levels</strong> – a user needs one of them (the main level or an additional one). The globeadmin always may.</li>
+	<li><strong>Whoever knows the password</strong> – the dialogue asks for it once per session, in place of <em>Ask AI</em>. Five wrong passwords lock the question for 15 minutes; a new password locks the configuration again for everyone.</li>
+	</ul>
+	<p id="ai-providers-password"><strong>The password also protects the API key.</strong> In a password-protected configuration the key is encrypted with the password (at least 12 characters) on top of the server's secret key. Nobody can use or read it without the password – not from the database or a backup, and not an administrator who does not know it. What follows from that:</p>
+	<ul>
+	<li>A <strong>forgotten password cannot be reset</strong>. Enter the API key again together with a new password.</li>
+	<li>On the configuration's own page a bar shows whether it is locked. Enter the password there to <em>Test</em>, <em>Fetch models</em>, change the key, set a new password or switch to another access rule. Whoever sets the password is unlocked at once.</li>
+	<li>Choose a long password: someone who steals a database backup can try passwords without any limit.</li>
+	<li data-level="detail">No hash of the password is stored – a wrong password simply fails to decrypt. After unlocking, the key needed for decrypting stays in the session, itself encrypted with a random value that only the browser keeps in a cookie; neither the session file nor the cookie alone opens anything. It ends with the session.</li>
+	<li data-level="detail">This protects the stored key. It cannot protect against someone who can change the program files on the server while a session is unlocked.</li>
+	<li data-level="detail">Needs PHP's sodium extension with Argon2; without it the password rule cannot be chosen.</li>
+	</ul>
+	<p>With several configurations the dialogue shows a select; the last one used is remembered in the browser. An inactive configuration is offered to nobody.</p>
+	</div>
+	<div class="doc-sub" id="ai-providers-ask"><h3 id="ai-providers-ask-h">Ask AI in the dialogues</h3>
+	<ul>
+	<li>Describe what you want as before, then <em>Ask AI</em> instead of <em>Copy prompt</em>. While the service works, <em>Cancel</em> stops waiting.</li>
+	<li>The answer is put into the answer box and checked at once. If the check finds <strong>errors</strong> (an unknown column, a missing size), they are sent back to the AI <strong>once</strong>, and the corrected answer is checked again. If errors remain, they are listed – ask again or edit the answer.</li>
+	<li>The help page draft, translations and the prompt generator have no such check: the answer is put into the answer box (the prompt generator shows it below the prompt) and you go on as with a pasted answer.</li>
+	<li><strong>What is sent</strong>: the prompt – your description, the structure it lists (tables, columns, the current form or layout) and nothing else. The context file is not sent; data rows only where a dialogue lets you tick them into the prompt.</li>
+	</ul>
+	</div>
+	<div class="doc-sub" id="ai-providers-usage"><h3 id="ai-providers-usage-h">Usage and safety</h3>
+	<ul>
+	<li>Every request is recorded: time, user, where it was used, model, tokens in and out, duration, and the error when it failed. The <strong>content</strong> of prompts and answers is never stored. The list shows requests and tokens of the month; a configuration's page shows its last requests. Rows are kept for 400 days.</li>
+	<li>The request runs on the server; the API key never reaches the browser.</li>
+	<li>Saving, deleting and testing a configuration, and wrong passwords, are written to the <a href="#log">log</a>.</li>
+	<li>In demo mode there are no AI requests.</li>
+	<li data-level="detail">Without the PHP extension curl no request can be sent; without a secret key in the configuration file the API keys are stored unencrypted (the list says so).</li>
+	</ul>
+	<p class="doc-see">See also: <a href="#form-ai">Forms with AI</a> · <a href="#report-ai">Reports with AI</a> · <a href="#webhooks">Webhooks</a></p>
+	</div>
+</section>

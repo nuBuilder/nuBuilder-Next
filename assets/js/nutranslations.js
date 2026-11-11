@@ -20,6 +20,20 @@
 				if (ok) resolve(); else reject(new Error('copy'));
 			});
 		};
+		// "Ask AI" with a configured AI service (0.8.1099, assets/js/nuaiask.js): the answer goes into the answer box – then "Check"
+		var askHost = document.getElementById('trlAiAsk'), ansBox = document.getElementById('trlAiAnswer');
+		if (window.NuAiAsk && askHost && ansBox) window.NuAiAsk.mount(askHost, {
+			prompt: function () {
+				return fetch(form.getAttribute('data-url'), {method: 'POST', body: new FormData(form), credentials: 'same-origin', headers: {Accept: 'application/json'}})
+					.then(function (r) { return r.json(); })
+					.then(function (d) {
+						if (!d.ok || !d.prompt) { msg.textContent = d.message || ''; msg.className = 'small ms-2 text-danger'; return ''; }
+						out.value = d.prompt;
+						return d.prompt;
+					});
+			},
+			answer: function (text) { ansBox.value = text; ansBox.focus(); }
+		});
 		form.addEventListener('submit', function (e) {
 			e.preventDefault();
 			var btn = document.getElementById('trlAiCopy');

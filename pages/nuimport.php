@@ -126,7 +126,7 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 				<i class="bi bi-cloud-arrow-up fs-2 d-block mb-1"></i>
 				<?php $pssOk = NuSpreadsheet::available(); ?>
 				<span class="fw-semibold"><?= h(t($pssOk ? 'imp_drop_xlsx' : 'imp_drop')) ?></span>
-				<span class="small text-body-secondary d-block"><?= h($pssOk ? t('imp_drop_hint_xlsx', NuImport::maxBytes() >> 20, min(NuImport::maxBytes() >> 20, NuSpreadsheet::MAX_MB)) : t('imp_drop_hint', NuImport::maxBytes() >> 20)) ?></span>
+				<span class="small text-body-secondary d-block"><?= h($pssOk ? t('imp_drop_hint_xlsx2', NuImport::maxBytes() >> 20) : t('imp_drop_hint', NuImport::maxBytes() >> 20)) ?></span>
 				<input type="file" id="impFile" accept=".csv,.txt,.tsv,.tab,text/csv,text/plain<?= $pssOk ? ',.xlsx,.xls,.ods' : '' ?>" class="visually-hidden">
 			</label>
 			<?php if (!$pssOk): // Excel files need the PhpSpreadsheet library pack (0.8.755) ?>

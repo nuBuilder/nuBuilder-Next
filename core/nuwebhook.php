@@ -397,12 +397,12 @@ final class NuWebhook
 	 * '' = the URL may be called; else the reason. $resolve: also look up the host and check its addresses ($pin = "host:port:ip"
 	 * for CURLOPT_RESOLVE). https only, no private / reserved / loopback addresses – unless the setting allows them.
 	 */
-	public static function checkUrl(string $url, bool $resolve, ?string &$pin = null): string
+	public static function checkUrl(string $url, bool $resolve, ?string &$pin = null, ?bool $allowPrivate = null): string
 	{
 		$pin = null;
 		$p = parse_url($url);
 		if ($url === '' || !is_array($p) || empty($p['host']) || !in_array(strtolower((string)($p['scheme'] ?? '')), ['http', 'https'], true) || isset($p['user']) || isset($p['pass'])) return t('wh_err_url');
-		$allow = self::settings()['allow_private'];
+		$allow = $allowPrivate ?? self::settings()['allow_private'];      // $allowPrivate: another feature's own setting (AI providers)
 		$scheme = strtolower((string)$p['scheme']);
 		if ($scheme !== 'https' && !$allow) return t('wh_err_https');
 		$host = trim((string)$p['host'], '[]');

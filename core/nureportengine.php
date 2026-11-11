@@ -85,7 +85,7 @@ final class NuReportEngine
 		$top = $this->section($row, 2, 0, $top);                                // page header
 		$value = [];
 		foreach ($this->groups as $g => $f) {                                   // first group headers
-			$top = $this->section($row, 3 + $g, 0, $top);
+			$top = $this->section($row, 3 + $g, 0, $top, false, true);            // nothing but headers printed yet: no page break before them (0.8.1098)
 			$value[$f] = $row[$f] ?? null;
 		}
 		$first = true;
@@ -127,10 +127,11 @@ final class NuReportEngine
 		return is_numeric($a) && is_numeric($b) ? (float)$a == (float)$b : mb_strtolower((string)$a) === mb_strtolower((string)$b);
 	}
 
-	private function section(array $row, int $group, int $section, float $top, bool $lastGroupFooter = false): float
+	private function section(array $row, int $group, int $section, float $top, bool $lastGroupFooter = false, bool $firstHeader = false): float
 	{
 		$s = new NuReportSection($this, $this->pdf, $row, $this->lay, $group, $section, $top, $this->fontDir);
 		if ($lastGroupFooter && count($this->lay->groups[1]->sections[1]->objects) === 0) $s->noPageBreak();   // nuRemovePageBreak
+		if ($firstHeader) $s->noPageBreak();                                    // a break on the first group header left page 1 empty (as nuBuilder Forte does)
 		$next = $s->build();
 		array_push($this->out, ...$s->sections);
 		return $next;

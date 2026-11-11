@@ -164,6 +164,7 @@ $startStep = 1; ?>
 			<button type="button" class="btn btn-outline-primary" data-go="3" id="faNext2"><?= h(t('fai_wz_next')) ?><i class="bi bi-arrow-right ms-1"></i></button>
 			<span class="small text-body-secondary" id="faCopyMsg" aria-live="polite"></span>
 		</div>
+		<?= NuAiProvider::host('form', 'faAsk') ?>
 		<details class="mt-3" id="faPromptBox" hidden><summary class="small"><?= h(t('fai_show_prompt')) ?></summary>
 			<textarea class="form-control form-control-sm font-monospace mt-2" id="faPrompt" rows="8" readonly aria-label="<?= h(t('fai_show_prompt')) ?>"></textarea></details>
 	</div></section>
@@ -194,4 +195,4 @@ $startStep = 1; ?>
 	</div></section>
 </form>
 <?php
-nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuformai.js') . '"></script>');
+nu_layout_end(nu_ts_foot() . '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script>' . '<script src="' . nu_asset('assets/js/nuformai.js') . '"></script>');

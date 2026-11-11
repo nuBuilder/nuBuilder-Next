@@ -416,9 +416,9 @@
 		var apply = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsAiApply', disabled: 'disabled'}, [icon('bi-magic me-1'), t('fai_apply')]);
 		function li(items, cls) { return el('ul', {'class': 'mb-1 ps-3 ' + (cls || '')}, items.map(function (x) { return el('li', {text: x}); })); }
 		function check() {
-			if (ans.value.trim() === '') return;
+			if (ans.value.trim() === '') return Promise.resolve(null);
 			apply.disabled = true; plan.textContent = '';
-			aiPost({action: 'check', answer: ans.value}).then(function (d) {
+			return aiPost({action: 'check', answer: ans.value}).then(function (d) {
 				plan.textContent = '';
 				if (d.errors && d.errors.length) plan.appendChild(el('div', {'class': 'alert alert-danger py-2 mb-2'}, [el('div', {'class': 'fw-semibold', text: t('fai_errors')}), li(d.errors)]));
 				if (d.warnings && d.warnings.length) plan.appendChild(el('div', {'class': 'alert alert-warning py-2 mb-2'}, [el('div', {'class': 'fw-semibold', text: t('fai_warnings')}), li(d.warnings)]));
@@ -441,7 +441,8 @@
 					ddl.checked = false;
 					apply.disabled = false;
 				}
-			}, function (e) { plan.textContent = e.message; });
+				return d;
+			}, function (e) { plan.textContent = e.message; return null; });
 		}
 		ans.addEventListener('paste', function () { setTimeout(check, 0); });
 		ans.addEventListener('input', function () { apply.disabled = true; });
@@ -498,10 +499,24 @@
 				plan.appendChild(el('div', {'class': 'alert alert-danger py-2'}, [li(d.errors || ['?'])]));
 			}, function (e) { apply.disabled = false; plan.textContent = e.message; });
 		});
+		// "Ask AI" with a configured AI service (0.8.1099, assets/js/nuaiask.js)
+		var askHost = el('div', {'class': 'nuAiAskHost', id: 'nuDsAiAsk'});
+		if (D.aiask && window.NuAiAsk) window.NuAiAsk.mount(askHost, {data: D.aiask,
+			prompt: function () {
+				if (!req.value.trim()) { req.focus(); return ''; }
+				return aiPost({action: 'prompt', request: req.value}).then(function (d) {
+					if (!d.ok) { msg.textContent = d.error || ''; msg.className = 'small mt-1 text-danger'; return ''; }
+					aiDlg.prompt = d.text;
+					return d.text;
+				});
+			},
+			answer: function (text) { ans.value = text; },
+			check: function () { return check().then(function (d) { return d && d.errors ? d.errors : []; }); }
+		});
 		var body = [
 			el('p', {'class': 'small text-body-secondary', text: t('fai_ask_help')}),
 			el('label', {'class': 'form-label small fw-semibold', 'for': 'nuDsAiReq'}, [el('span', {'class': 'badge rounded-pill text-bg-primary me-1', text: '1'}), t('fai_ask_req')]), req,
-			el('div', {'class': 'd-flex flex-wrap gap-2 align-items-center mt-2'}, [copyB, ctxBox, el('a', {'class': 'small ms-auto', href: D.ai, id: 'nuDsAiFull', text: t('fai_ask_full')})]), msg,
+			el('div', {'class': 'd-flex flex-wrap gap-2 align-items-center mt-2'}, [copyB, ctxBox, el('a', {'class': 'small ms-auto', href: D.ai, id: 'nuDsAiFull', text: t('fai_ask_full')})]), msg, askHost,
 			el('label', {'class': 'form-label small fw-semibold mt-3', 'for': 'nuDsAiAns'}, [el('span', {'class': 'badge rounded-pill text-bg-primary me-1', text: '2'}), t('fai_step2')]), ans,
 			el('div', {'class': 'd-flex flex-wrap gap-2 mt-2'}, [pasteB, checkB]),
 			plan, ddlBox

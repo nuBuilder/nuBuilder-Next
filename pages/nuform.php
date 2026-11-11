@@ -611,7 +611,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 		array_map(static fn($k) => t('dsg_' . $k), ['title', 'hint', 'up', 'down', 'top', 'bottom', 'left', 'right', 'vertical', 'horizontal', 'shortest', 'tallest', 'thinnest', 'widest', 'drag', 'hgap', 'vgap', 'apply', 'gap_tip'])), JSON_UNESCAPED_UNICODE)) . '"></script>' : '')
 	. ($design ? '<script src="' . nu_asset('assets/js/nuformatdesigner.js') . '"></script>'     // format designer + attribute editor of the panel (0.8.669)
 		. '<script src="' . nu_asset('assets/js/nuattreditor.js') . '"></script>'
-		. '<script src="' . nu_asset('assets/js/nu/nudesign.js') . '"></script>' : '')
+		. '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script><script src="' . nu_asset('assets/js/nu/nudesign.js') . '"></script>' : '')
 	;
 
 nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '') . ($design ? ' nuDesignMode' : '')]);

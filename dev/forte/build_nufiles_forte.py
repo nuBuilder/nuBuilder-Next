@@ -49,7 +49,7 @@ FA = {
     'file-earmark-slides': 'fa-regular fa-file-powerpoint', 'file-earmark-spreadsheet': 'fa-regular fa-file-excel',
     'file-earmark-text': 'fa-regular fa-file-lines', 'file-earmark-word': 'fa-regular fa-file-word', 'info-circle': 'fa-solid fa-circle-info',
     'pencil': 'fa-solid fa-pencil', 'code-square': 'fa-solid fa-code', 'folder2': 'fa-regular fa-folder', 'folder2-open': 'fa-regular fa-folder-open',
-    'box-arrow-up': 'fa-solid fa-arrow-up-from-bracket', 'input-cursor-text': 'fa-solid fa-i-cursor', 'pencil-square': 'fa-regular fa-pen-to-square', 'eye': 'fa-regular fa-eye', 'key': 'fa-solid fa-key', 'file-earmark-arrow-down': 'fa-solid fa-file-arrow-down', 'chevron-left': 'fa-solid fa-chevron-left', 'chevron-down': 'fa-solid fa-chevron-down', 'three-dots': 'fa-solid fa-ellipsis',
+    'box-arrow-up': 'fa-solid fa-arrow-up-from-bracket', 'input-cursor-text': 'fa-solid fa-i-cursor', 'pencil-square': 'fa-regular fa-pen-to-square', 'eye': 'fa-regular fa-eye', 'key': 'fa-solid fa-key', 'file-earmark-arrow-down': 'fa-solid fa-file-arrow-down', 'chevron-left': 'fa-solid fa-chevron-left', 'chevron-down': 'fa-solid fa-chevron-down', 'three-dots': 'fa-solid fa-ellipsis', 'clock': 'fa-regular fa-clock', 'hdd': 'fa-solid fa-hard-drive',
 }
 
 

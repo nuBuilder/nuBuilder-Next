@@ -454,6 +454,7 @@
 		</ul>
 		<p>The <strong>SQL builder</strong> creates queries graphically: add tables, tick columns, drag a column onto another to join, add conditions and sorting. <em>Run</em> shows the first rows.</p>
 		<div class="tut-tip">A field or text can print <strong>HTML</strong> or <strong>Markdown</strong> (<code>**bold**</code>, lists, tables): <em>Content</em> in its properties. It grows to the height it prints (<a data-help="report-rich-text">rich text in reports</a>).</div>
+		<div class="tut-tip"><strong>With AI</strong>: on a report's page, <em>Create with AI…</em> / <em>Change with AI…</em> lets an AI chat write the layout from your description – you paste the answer, see the plan and a preview PDF, then apply it. The layout before is kept on the History tab (<a data-help="report-ai">Reports with AI</a>).</div>
 		<div class="tut-note">The PDF needs the TCPDF library pack (Update → Libraries); nuBuilder Forte's copy is used as a fallback when nuBuilder Next sits in its folder. Without it the report pages say so.</div>
 		<div class="tut-task">
 			<p>Open the sample report <code>sample_customers</code> (customers by country) in the designer, look at its bands and run <em>Preview</em>. Then open the SQL builder query <code>sample_orders</code>.</p>
@@ -793,7 +794,8 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<div class="tut-task">
 			<p>Ask an AI for a form <em>tutorial_contact</em> (name, e-mail, phone, a select for the type) with <a data-open="formai">Describe it – AI creates it</a>, check the answer and create the draft.</p>
 		</div>
-		<p><a data-help="form-ai">Forms with AI</a></p>
+		<div class="tut-tip">Without copying: set up an <a data-open="aiproviders">AI provider</a> (Claude, an OpenAI-compatible service or Gemini, with your API key) and the AI dialogues get <em>Ask AI</em> – the prompt is sent from the server and the answer is checked like a pasted one, with one automatic correction when the check finds errors. A configuration can be limited to access levels or protected by a password, which then also encrypts its API key.</div>
+		<p><a data-help="form-ai">Forms with AI</a> · <a data-help="ai-providers">AI providers</a></p>
 	</section>
 </article>
 

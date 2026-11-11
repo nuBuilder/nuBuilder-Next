@@ -171,6 +171,10 @@
 			el('div', {'class': 'btn-group btn-group-sm align-items-center rdZoom'}, [btn('zoom-out', M.zoom + ' −', function () { zoom(-0.25); }), ui.zoomLbl, btn('zoom-in', M.zoom + ' +', function () { zoom(0.25); })]),
 			el('div', {'class': 'btn-group btn-group-sm'}, [ui.gridBtn, ui.snapBtn]),
 			btn('file-earmark-pdf', M.preview, preview, {cls: 'btn-outline-primary', text: M.preview}),
+			// Reports with AI (0.8.1097, assets/js/nureportai.js): works on the saved layout – unsaved changes are saved first
+			ro || !document.getElementById('raiDlg') ? null : btn('stars', M.ai_tip, function () {
+				if (window.nuReportAiOpen) window.nuReportAiOpen({back: 'designer', dirty: function () { return S.dirty; }, applied: function () { S.dirty = false; }});
+			}, {cls: 'btn-outline-primary rdAiBtn', text: M.ai}),
 			btn('question-circle', M.help, function () { help(); })
 		]);
 		ui.left = el('aside', {'class': 'rdLeft', 'aria-label': M.fields});

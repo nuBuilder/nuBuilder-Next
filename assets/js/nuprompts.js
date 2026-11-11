@@ -49,6 +49,13 @@
 	});
 	showStats(result.value.length);
 
+	// ------------------------------------------------------------------ "Ask AI" with a configured AI service (0.8.1099, nuaiask.js)
+	var askHost = document.getElementById('pgAsk');
+	if (window.NuAiAsk && askHost) window.NuAiAsk.mount(askHost, {
+		prompt: function () { return result.value; },
+		answer: function (text) { document.getElementById('pgAnswer').value = text; document.getElementById('pgAnswerBox').hidden = false; }
+	});
+
 	// ------------------------------------------------------------------ copy
 	var copyBtn = document.getElementById('pgCopy');
 	copyBtn.addEventListener('click', function () {
