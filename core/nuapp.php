@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1129');
+define('NU_VERSION', '0.8.1131');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -10,7 +10,7 @@ define('NU_PACKS', 'vendor/packs');
 define('NU_BS', NU_VENDOR . '/bootstrap-5.3.8');
 define('NU_BI', NU_VENDOR . '/bootstrap-icons-1.13.2');
 define('NU_APEXCHARTS', NU_VENDOR . '/apexcharts-4.7.0');   // loaded on form pages when $nuConfigIncludeApexCharts is on (as nuBuilder)
-define('NU_TOMSELECT', NU_VENDOR . '/tom-select-2.6.2');
+define('NU_TOMSELECT', NU_VENDOR . '/tom-select-2.7.0');
 define('NU_CODEMIRROR', NU_VENDOR . '/codemirror-6.43.15');
 define('NU_QRCODE', NU_VENDOR . '/qrcode-generator-2.0.4');
 define('NU_ACORN', NU_VENDOR . '/acorn-8.19.0');        // JavaScript parser of the syntax check (0.8.781; loaded by assets/js/nu/nucodetools.js)

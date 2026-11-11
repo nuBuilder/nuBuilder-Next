@@ -3,6 +3,12 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1131 – Tom Select 2.7.0
+- Tom Select (the searchable selects) updated from 2.6.2 to 2.7.0. The new version brings fixes only: search no longer mixes up characters of Chinese, Japanese and Korean, ß is found as ss, late answers of a remote search no longer overwrite the current list, and the empty option stays first.
+
+## 0.8.1130 – Notes
+- Notes for development: version 0.8.1129 is published on GitHub; compiled Python files are kept out of the repository.
+
 ## 0.8.1129 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan).
 - Documentation brought up to date: feature list (totals and groups, a list's design in the side pane, Last opened, Recently used without favourites, file manager tiles, messages that close by themselves), README, tutorial (totals and groups in lists), open points to verify.
