@@ -15,3 +15,4 @@ node_modules/
 *.key
 phpstan.phar
 .DS_Store
+__pycache__/
