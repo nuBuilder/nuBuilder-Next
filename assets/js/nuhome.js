@@ -407,7 +407,7 @@
 		document.documentElement.classList.remove('nuHomeFold-' + st.getAttribute('data-nu-strip'));   // set in <head> by nutheme.js (0.8.995)
 		btn.setAttribute('aria-expanded', folded ? 'false' : 'true');
 		var cnt = $('.nuHomeStripCount', st);
-		if (cnt) cnt.textContent = String(st.querySelectorAll('.nuHomeChip').length);
+		if (cnt) cnt.textContent = String(st.querySelectorAll('.nuHomeChip:not([hidden])').length);
 		if (!btn.nuFoldBound) {
 			btn.nuFoldBound = true;
 			btn.addEventListener('click', function () { stripFold(st, true); });
@@ -463,7 +463,16 @@
 		var fs = $('[data-nu-strip="fav"]', viewEl);
 		if (fs) fs.hidden = !v.favRow || !$('.nuHomeChip', fs);
 		var rs = $('[data-nu-strip="recent"]', viewEl);
-		if (rs) { rs.hidden = !v.recentStrip || !$('.nuHomeChip', rs); }
+		if (rs) {
+			// 0.8.1115: the first 8 show; "Without favourites" leaves out what the Favourites row already holds (only while that row shows)
+			var noFav = !!v.recentNoFav && !!fs && !fs.hidden, shown = 0;
+			Array.prototype.forEach.call(rs.querySelectorAll('.nuHomeChip'), function (c) {
+				var on = shown < 8 && !(noFav && c.getAttribute('data-nu-fav') === '1');
+				if (on) shown++;
+				c.hidden = !on;
+			});
+			rs.hidden = !v.recentStrip || !shown;
+		}
 		[fs, rs].forEach(function (st) { if (st) stripFold(st); });
 		favTabs();
 		tableHeads();
@@ -726,7 +735,7 @@
 	var DESCS = [['auto', 'bi-magic'], ['inline', 'bi-text-paragraph'], ['tooltip', 'bi-chat-square-text'], ['hovercard', 'bi-window'], ['info', 'bi-info-circle'], ['off', 'bi-eye-slash']];
 	var NAVS = ['groups', 'tabs', 'sidebar', 'none'];
 	var KEYNAME = {style: 'home_v_style', listCols: 'home_v_list_cols', listWidth: 'home_v_list_width', desc: 'home_v_desc', lines: 'home_v_lines', delay: 'home_v_delay',
-		nav: 'home_v_nav', density: 'home_v_density', icon: 'home_v_icons', groupColors: 'home_v_group_colors', favRow: 'home_v_fav_row', recentStrip: 'home_v_recent_row',
+		nav: 'home_v_nav', density: 'home_v_density', icon: 'home_v_icons', groupColors: 'home_v_group_colors', favRow: 'home_v_fav_row', recentStrip: 'home_v_recent_row', recentNoFav: 'home_v_recent_nofav',
 		badges: 'home_v_badges', actions: 'home_v_actions'};
 	function sizeName(z) { return t('home_v_size_' + z); }
 	// user start pages (0.8.425): the editor of an access level's page (scope level) changes that page; users keep their own view
@@ -985,7 +994,19 @@
 		// on top of the page
 		secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_on_top'),
 			sw('favRow', t('home_v_fav_row'), v.favRow, t('home_v_fav_row_hint'), function (x) { setOpt('favRow', x); }),
-			sw('recentStrip', t('home_v_recent_row'), v.recentStrip, t('home_v_recent_row_hint'), function (x) { setOpt('recentStrip', x); })]));
+			sw('recentStrip', t('home_v_recent_row'), v.recentStrip, t('home_v_recent_row_hint'), function (x) { setOpt('recentStrip', x); }),
+			(function () {                                             // 0.8.1115 (mockup A): belongs to Recently used, off while it cannot do anything
+				var x = sw('recentNoFav', t('home_v_recent_nofav'), v.recentNoFav, '', function (on) { setOpt('recentNoFav', on); });
+				x.classList.add('nuHomeVpSub');
+				// 0.8.1116: the explanation behind an (i) – as a line it made the panel scroll sideways; a click on it does not flip the switch
+				var tip = el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide',
+					'data-bs-trigger': 'hover focus click', title: t('home_v_recent_nofav_hint'), 'aria-label': t('home_v_recent_nofav_hint')}, [icon('bi-info-circle')]);
+				tip.addEventListener('click', function (e) { e.preventDefault(); });
+				x.querySelector('b').appendChild(tip);
+				if (window.nuBs && nuBs.ready()) nuBs.tooltip(tip);
+				if (!v.favRow || !v.recentStrip) { x.classList.add('nuHomeVpOff'); x.querySelector('input').disabled = true; }
+				return x;
+			})()]));
 
 		// side bar (0.8.708, was in the user menu): only for me – POST ?p=sidebar action toggle, then the page again
 		if (D.sidebar) secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_sidebar_sec'),

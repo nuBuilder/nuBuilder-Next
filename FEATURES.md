@@ -10,6 +10,7 @@ page) for how to use it.
 - **Tidy lists on phones** – at most three buttons in a list's title bar (the rest in ⋮), folded filters, cards or table per list; system rows hidden until you ask for them.
 - **Fast lists** – search, filters, sorting and paging; an advanced search with conditions per column and saved searches;
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
+- **Totals and groups** – a row of totals below a list (sum, average, minimum, maximum, count) over everything the search matches, the totals of ticked rows, and lists grouped by a column with a heading and subtotals per group.
 - **Row details** – a ▸ on each row of a list shows hidden columns, cut text and a related list (e.g. the items of an order) below the row.
 - **Lists by keyboard** – search, ↓ into the rows, ↑ / ↓ / Page Down to move, Enter to open, Esc back to the search; the row is kept when you come back.
 - **Export** – every list as print page, CSV or Excel; copy rows straight into Excel or Word.
@@ -18,7 +19,8 @@ page) for how to use it.
 - **Start page** – tiles, favourites, recently used and one search over everything (also Ctrl+K); dashboards with KPI tiles,
   charts and tables.
 - **Notification centre** – a bell with unread messages, optionally also by e-mail.
-- **Keyboard shortcuts** for save, clone, delete, search, print and more; *Back* returns to the page you came from.
+- **Keyboard shortcuts** for save, clone, delete, search, print and more; *Back* returns to the page you came from; success messages close by themselves, warnings stay.
+- **Recently used** – the start page row and the side bar, optionally without the pages that are already favourites.
 - **Secure sign-in** – two-step login (authenticator app or e-mail code), passkeys, single sign-on (OpenID Connect: Microsoft
   Entra ID, Google Workspace, Keycloak …) and *Forgot password* by e-mail.
 - **Eleven languages** – including Arabic (right to left) and regional variants of English and German; themes per access level
@@ -28,7 +30,8 @@ page) for how to use it.
 
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
   list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs, events and code in one place.
-- **Forms grouped** by group, department and team – shown and filtered in the forms list.
+- **A list's design in a side pane** – browse SQL, PHP (Before Browse), JavaScript, columns with all their settings, row details and list settings next to the running list.
+- **Forms grouped** by group, department and team – shown and filtered in the forms list; forms, procedures, reports and SQL queries sorted by *Last opened*.
 - **Drafts and history** – changes go into a draft that you publish when ready; every published version can be compared
   and restored.
 - **Validation rules without code** – as a builder or an expression, as errors or warnings, also for sub-form rows and per
@@ -76,7 +79,7 @@ page) for how to use it.
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
   database from a backup (MySQL / MariaDB); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
-  versions, code editor; made for phones too).
+  versions, code editor, tiles with picture thumbnails; made for phones too).
 - **Library packs** – install, update, roll back and remove older versions of the bundled libraries (TCPDF 7, PHPMailer, TinyMCE …) from the browser.
 - **Easy start** – installer, setup wizard, a tutorial (basic, in depth, coming from nuBuilder Forte) and built-in
   documentation.
@@ -90,5 +93,5 @@ page) for how to use it.
   it does not understand).
 - **jQuery 4 ready** – form pages run on jQuery 3.7 or 4.0, with jQuery Migrate to find upgrade issues.
 - **File manager for nuBuilder Forte** – the file manager is also available as a single file that replaces Tiny File
-  Manager in a nuBuilder Forte installation.
+  Manager in a nuBuilder Forte installation, with its own light / dark switch.
 - The differences that remain are listed in the documentation: *Code reference → Migrating from nuBuilder Forte 4.9*.

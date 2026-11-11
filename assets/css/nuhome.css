@@ -495,3 +495,14 @@ html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeStripClearForm,
 html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripClearForm { display: none; }
 html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeStripChev,
 html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripChev { transform: rotate(-90deg); }
+
+/* Customise → Appearance: "Without favourites" belongs to Recently used (0.8.1115) */
+.nuHomeVpSw.nuHomeVpSub { margin-inline-start: .75rem; padding-inline-start: .75rem; border-inline-start: 2px solid var(--bs-border-color); }
+.nuHomeVpSw.nuHomeVpSub b { font-weight: 400; }
+.nuHomeVpSw.nuHomeVpOff { opacity: .5; cursor: default; }
+.nuHomeVpSw.nuHomeVpOff .form-check-input { cursor: default; }
+.nuHomeChip[hidden] { display: none !important; }
+/* 0.8.1116: the indented switch never makes the panel wider than it is */
+.nuHomeVpSw.nuHomeVpSub { box-sizing: border-box; max-width: calc(100% - .75rem); min-width: 0; }
+.nuHomeVpSw > span { min-width: 0; }
+.nuHomeVpSw.nuHomeVpSub b { display: inline-flex; align-items: center; }

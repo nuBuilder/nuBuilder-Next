@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.1103",
+    "version": "0.8.1129",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -542,6 +542,17 @@
                 },
                 {
                     "table": "zzzzsys_nunext_ai_call",
+                    "kind": "table",
+                    "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0042-opened",
+            "description": "\"Last opened\" of forms, procedures, reports and SQL queries (zzzzsys_nunext_opened)",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_opened",
                     "kind": "table",
                     "what": "created when missing"
                 }
@@ -2073,6 +2084,34 @@
                 ]
             ],
             "index": []
+        },
+        "zzzzsys_nunext_opened": {
+            "pk": "zzzzsys_nunext_opened_id",
+            "cols": [
+                [
+                    "user_id",
+                    "text",
+                    "50"
+                ],
+                [
+                    "kind",
+                    "text",
+                    "20"
+                ],
+                [
+                    "ref",
+                    "text",
+                    "60"
+                ],
+                [
+                    "opened_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "user_id",
+                "opened_at"
+            ]
         },
         "zzzzsys_nunext_ai_call": {
             "pk": "zzzzsys_nunext_ai_call_id",

@@ -68,6 +68,21 @@ final class NuDesign
 		return true;
 	}
 
+	/** Forms [id, label, type], procedures [id, label] and reports [id, label] an object or a list column can point to (design mode, the list's side pane). */
+	public static function lists(): array
+	{
+		$db = nu_db();
+		// lists of the panel (stage 4, as the builder: pages/nubuilder.php)
+		$forms = array_map(static fn($f) => [$f['zzzzsys_form_id'], $f['sfo_code'] . ' – ' . $f['sfo_description'], $f['sfo_type']],
+			$db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' ORDER BY sfo_code"));
+		$procs = array_map(static fn($p) => [$p['zzzzsys_php_id'], $p['sph_code'] . ($p['sph_description'] ? ' – ' . $p['sph_description'] : '')],
+			array_values(array_filter($db->all("SELECT zzzzsys_php_id, sph_code, sph_description FROM zzzzsys_php WHERE zzzzsys_php_id NOT LIKE 'nu%' AND COALESCE(sph_system, '') <> '1' ORDER BY sph_code"),
+				static fn($p) => !preg_match('/_(BB|BE|BS|AS|BD|AD|AB)$/', (string)$p['zzzzsys_php_id']))));
+		$reports = NuReport::available() ? array_map(static fn($r) => [(string)$r['zzzzsys_report_id'], $r['sre_code'] . ($r['sre_description'] ? ' – ' . $r['sre_description'] : '')],
+			$db->all('SELECT zzzzsys_report_id, sre_code, sre_description FROM zzzzsys_report ORDER BY sre_code')) : [];
+		return [$forms, $procs, $reports];
+	}
+
 	/** Client data of design mode (nuNext.design). */
 	public static function client(NuFormMeta $meta, string $record): array
 	{
@@ -80,14 +95,7 @@ final class NuDesign
 		}
 		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search', 'uh_admin_title'] as $k) $texts[$k] = t($k);
 		$db = nu_db();
-		// lists of the panel (stage 4, as the builder: pages/nubuilder.php)
-		$forms = array_map(static fn($f) => [$f['zzzzsys_form_id'], $f['sfo_code'] . ' – ' . $f['sfo_description'], $f['sfo_type']],
-			$db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' ORDER BY sfo_code"));
-		$procs = array_map(static fn($p) => [$p['zzzzsys_php_id'], $p['sph_code'] . ($p['sph_description'] ? ' – ' . $p['sph_description'] : '')],
-			array_values(array_filter($db->all("SELECT zzzzsys_php_id, sph_code, sph_description FROM zzzzsys_php WHERE zzzzsys_php_id NOT LIKE 'nu%' AND COALESCE(sph_system, '') <> '1' ORDER BY sph_code"),
-				static fn($p) => !preg_match('/_(BB|BE|BS|AS|BD|AD|AB)$/', (string)$p['zzzzsys_php_id']))));
-		$reports = NuReport::available() ? array_map(static fn($r) => [(string)$r['zzzzsys_report_id'], $r['sre_code'] . ($r['sre_description'] ? ' – ' . $r['sre_description'] : '')],
-			$db->all('SELECT zzzzsys_report_id, sre_code, sre_description FROM zzzzsys_report ORDER BY sre_code')) : [];
+		[$forms, $procs, $reports] = self::lists();
 		$formats = static fn(string $l) => array_map(static fn($f) => [(string)$f['value'], (string)$f['value'] . ($f['description'] !== '' ? ' – ' . $f['description'] : '')], NuFormat::choices($l));
 		return [
 			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'formats' => ['D' => $formats('D'), 'N' => $formats('N')],

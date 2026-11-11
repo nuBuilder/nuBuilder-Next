@@ -90,6 +90,7 @@ return [
 	'fai_err_code_block' => '«code» muss ein Objekt mit Textwerten sein (javascript, browse_javascript, edit_javascript, style, php).',
 	'fai_err_hook' => 'Unbekannter PHP-Hook «%s» – erlaubt: BB, BE, BS, AS, BD, AD.',
 	'fai_err_app_dup' => 'Zwei Formulare der App haben den Code «%s».',
+	'fai_err_total' => 'Listenspalte %s: «total» muss einer dieser Werte sein: %s.',
 	'builder_select_sql_help' => 'SQL (SELECT wert, text …; «-- »-Kommentarzeilen davor sind erlaubt), wert|text|wert|text, eine JSON-Liste ["erster", "zweiter"], SHOW TABLES oder %LANGUAGES% – wie in nuBuilder Forte. Hash-Variablen funktionieren in allen Formaten.',
 	'forms_status_not_archived' => 'Alle ausser archivierte',
 	'page_keys_all' => 'Die Seite liest ausserdem alle Einstellungen mit $nu->settings() – auch oben nicht genannte Schlüssel können verwendet werden.',

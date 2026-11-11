@@ -21,7 +21,7 @@ $hash = NuPhp::$hash + $hash;
 
 $max  = 50000;
 $data = NuBrowse::query($meta, $hash, ['search' => $state['q'], 'runfilter' => $state['rf'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => 1, 'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $max,
-	'process' => NuOnProcess::rowsHook($meta->php('BB'), $hash), 'raw' => NuPrintView::raw($hash)]);   // as the print view (0.8.958)
+	'process' => NuOnProcess::rowsHook($meta->php('BB'), $hash), 'raw' => NuPrintView::raw($hash), 'totals' => ($_GET['fmt'] ?? '') === 'xlsx']);   // as the print view (0.8.958); Excel gets the row of totals
 NuBrowse::dropTempTable();
 NuLog::write('browse_exported', $meta->code(), '', ['rows' => count($data['rows'])]);
 
@@ -34,6 +34,16 @@ foreach ($data['rows'] as $r) {
 }
 $head = array_map(static fn($c) => NuHtmlClean::cellText((string)$c['title']), $cols);
 // Excel (0.8.398): ?fmt=xlsx from the print view's "Export Excel"
+if (($_GET['fmt'] ?? '') === 'xlsx' && !empty($data['totals']) && $lines) {
+	// the row of totals as the last line (not in CSV: it would come back as a record on a re-import); a sum is the bare number, others carry their name
+	$line = []; $any = false;
+	foreach ($cols as $c) {
+		$tt = $data['totals'][$c['index']] ?? null;
+		$line[] = $tt ? ($tt['fn'] === 'sum' ? $tt['text'] : $tt['label'] . ': ' . $tt['text']) : '';
+		$any = $any || $tt;
+	}
+	if ($any) $lines[] = $line;
+}
 if (($_GET['fmt'] ?? '') === 'xlsx') NuListExport::writeXlsx($meta->code() ?: 'export', $meta->description() ?: $meta->code(), $head, $lines, $state['q'] !== '' ? t('search') . ': ' . $state['q'] : '');
 // options from the CSV dialog of the print view (sep, head, bom, name) – see core/nulistexport.php
 NuListExport::writeCsv($meta->code() ?: 'export', $head, $lines);

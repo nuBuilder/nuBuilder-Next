@@ -28,10 +28,13 @@ $tools = array_filter([
 	[NuAcl::can(NuAcl::FORM_FORMAT), nu_url('formats'), 'bi-type', t('fmt_title')],
 ], static fn($x) => $x[0]);
 $toolMenu = '';
-if ($tools) {
+$maint = NuFormStatus::canChange();   // "Maintenance…" (0.8.808: several forms at once) – an entry of Tools since 0.8.1113, was a button of its own
+if ($tools || $maint) {
 	$toolMenu = '<div class="dropdown"><button class="btn btn-outline-secondary nuToolBtn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-tools me-1"></i>'
 		. h(t('forms_tools')) . '</button><ul class="dropdown-menu">';
 	foreach ($tools as [, $url, $icon, $label]) $toolMenu .= '<li><a class="dropdown-item" href="' . h($url) . '"><i class="bi ' . $icon . ' me-2"></i>' . h($label) . '</a></li>';
+	if ($maint) $toolMenu .= ($tools ? '<li><hr class="dropdown-divider"></li>' : '') . '<li><button type="button" class="dropdown-item" id="nuFmsListBtn" title="' . h(t('fms_list_tip'))
+		. '"><i class="bi bi-cone-striped me-2" aria-hidden="true"></i>' . h(t('fms_title')) . '…</button></li>';
 	$toolMenu .= '</ul></div>';
 }
 // status menu of the list (0.8.575): texts and the builder API for assets/js/nuformstatus.js – only for those who may change forms
@@ -41,8 +44,6 @@ $stFoot = NuFormDraft::canEdit() && !NuImpersonate::readOnly()
 		'done' => t('forms_status_changed'), 'err' => t('forms_status_failed')], JSON_UNESCAPED_UNICODE)) . '"></div>'
 		. NuFormStatus::clientHtml() . '<script src="' . h(nu_asset('assets/js/nuformstatus.js')) . '"></script>'   // maintenance (0.8.808): the dialog before the menu
 	: '';
-// "Maintenance…" (0.8.808): several forms at once
-if (NuFormStatus::canChange()) $buttons .= '<button type="button" class="btn btn-outline-secondary" id="nuFmsListBtn" title="' . h(t('fms_list_tip')) . '"><i class="bi bi-cone-striped me-1" aria-hidden="true"></i>' . h(t('fms_title')) . '</button>';
 // "Access levels of this form" from the column Access levels (0.8.688)
 if (NuAcl::can(NuAcl::FORM_ACCESS)) $stFoot .= '<div id="nuFacData" hidden data-csrf="' . h(nu_csrf_token()) . '"></div><script src="' . h(nu_asset('assets/js/nu/nuformaccess.js')) . '"></script>';
 NuListView::page('forms', ['buttons' => $buttons, 'buttons_end' => $toolMenu, 'foot' => $stFoot]);

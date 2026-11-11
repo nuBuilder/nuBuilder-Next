@@ -27,7 +27,8 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({'received': n}).encode())
 
     def log_message(self, *a):
-        pass
+        """Keep the test output quiet: the request log of the base class is not written."""
+        return
 
 
 ThreadingHTTPServer(('127.0.0.1', PORT), H).serve_forever()

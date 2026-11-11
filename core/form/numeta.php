@@ -204,6 +204,28 @@ final class NuFormMeta
 		return $out;
 	}
 
+	/**
+	 * Total of a list column (sbr_json nunext.total – design mode → column → Total): a row below the list shows the sum / average /
+	 * minimum / maximum / count of the column over ALL rows the search and filters match (NuBrowse::query). nuBuilder Forte ignores it.
+	 */
+	public const TOTALS = ['sum', 'avg', 'min', 'max', 'count'];
+	public static function cleanTotal(mixed $v): ?string
+	{
+		return is_string($v) && in_array($v, self::TOTALS, true) ? $v : null;
+	}
+
+	/** The total function of a browse row's sbr_json, or null. */
+	public static function totalOf(?string $json): ?string
+	{
+		return self::cleanTotal(self::nunextJson($json)['total'] ?? null);
+	}
+
+	/** Is the list grouped by this column (sbr_json nunext.group – the first column that says so)? Heading and subtotal row per group. */
+	public static function groupOf(?string $json): bool
+	{
+		return !empty(self::nunextJson($json)['group']);
+	}
+
 	/** The click action of a browse row's sbr_json, or null. */
 	public static function actionOf(?string $json): ?array
 	{

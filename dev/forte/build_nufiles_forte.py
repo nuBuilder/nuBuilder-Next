@@ -9,7 +9,7 @@ Adaptations: Forte's libraries (Bootstrap 5.3 of third_party/bootstrap, Font Awe
 Icons, Ace of third_party/ace instead of CodeMirror – a small CodeMirror-like shim), assets served by the file itself (?asset=js|css),
 password confirmation in a dialogue (no separate window), the {FORTE} path placeholder, grants for $nuConfigFileMangerUsers / logins.
 """
-import json, os, re, sys
+import hashlib, json, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -49,7 +49,7 @@ FA = {
     'file-earmark-slides': 'fa-regular fa-file-powerpoint', 'file-earmark-spreadsheet': 'fa-regular fa-file-excel',
     'file-earmark-text': 'fa-regular fa-file-lines', 'file-earmark-word': 'fa-regular fa-file-word', 'info-circle': 'fa-solid fa-circle-info',
     'pencil': 'fa-solid fa-pencil', 'code-square': 'fa-solid fa-code', 'folder2': 'fa-regular fa-folder', 'folder2-open': 'fa-regular fa-folder-open',
-    'box-arrow-up': 'fa-solid fa-arrow-up-from-bracket', 'input-cursor-text': 'fa-solid fa-i-cursor', 'pencil-square': 'fa-regular fa-pen-to-square', 'eye': 'fa-regular fa-eye', 'key': 'fa-solid fa-key', 'file-earmark-arrow-down': 'fa-solid fa-file-arrow-down', 'chevron-left': 'fa-solid fa-chevron-left', 'chevron-down': 'fa-solid fa-chevron-down', 'three-dots': 'fa-solid fa-ellipsis', 'clock': 'fa-regular fa-clock', 'hdd': 'fa-solid fa-hard-drive',
+    'box-arrow-up': 'fa-solid fa-arrow-up-from-bracket', 'input-cursor-text': 'fa-solid fa-i-cursor', 'pencil-square': 'fa-regular fa-pen-to-square', 'eye': 'fa-regular fa-eye', 'key': 'fa-solid fa-key', 'file-earmark-arrow-down': 'fa-solid fa-file-arrow-down', 'chevron-left': 'fa-solid fa-chevron-left', 'chevron-down': 'fa-solid fa-chevron-down', 'three-dots': 'fa-solid fa-ellipsis', 'clock': 'fa-regular fa-clock', 'hdd': 'fa-solid fa-hard-drive', 'grid-3x3-gap': 'fa-solid fa-table-cells', 'list-ul': 'fa-solid fa-list', 'moon-stars': 'fa-solid fa-moon', 'sun': 'fa-solid fa-sun',
 }
 
 
@@ -99,7 +99,11 @@ if LINES: raise SystemExit('build: page lines not found: ' + ', '.join(LINES))
 page = '\n'.join(out_lines)
 page = re.sub(r"<\?php if \(function_exists\('nu_asset'\)\).*?<\?php endif; \?>\n", '', page, flags=re.S)
 page = must(page, "<?= $nu->sdk() ?>\n", '')
-page = must(page, "<?= $nu->h($nu->asset('assets/app.js')) ?>", "<?= $nu->h($nu->url(['asset' => 'js', 'v' => NUF_VERSION])) ?>")
+page = must(page, "<?= $nu->h($nu->asset('assets/app.js')) ?>", "<?= $nu->h($nu->url(['asset' => 'js', 'v' => NUF_ASSET_V])) ?>")
+# Forte has no light / dark switch of its own: one at the foot of the side bar (kept in this browser)
+page = must(page, """			<button type="button" class="nav-link nuf-side-link d-none" id="nufLogBtn">""",
+            """			<button type="button" class="nav-link nuf-side-link" id="nufThemeBtn" aria-pressed="false"><i class="bi bi-moon-stars nuf-ic-dark" aria-hidden="true"></i><i class="bi bi-sun nuf-ic-light" aria-hidden="true"></i> <span id="nufThemeLbl"></span></button>
+			<button type="button" class="nav-link nuf-side-link d-none" id="nufLogBtn">""")
 page = re.sub(r'bi bi-([a-z0-9-]+)', lambda m: fa(m.group(1)), page)
 page = must(page, '<body class="nuf">', '<body class="nuf" data-ace="<?= $nu->h(NUF_FORTE_URL . \'third_party/ace/src-min-noconflict\') ?>">')
 
@@ -146,6 +150,22 @@ js = js[:a] + r'''	var reauthWait = null;
 
 ''' + js[b:]
 js = must(js, 'return reauth(e.data.reauth).then(', 'return reauth().then(')
+js = must(js, "try { p = localStorage.getItem('nunext-theme'); } catch (e) { p = null; }", "try { p = localStorage.getItem('nufiles-theme'); } catch (e) { p = null; }")
+js = must(js, "window.addEventListener('storage', function (e) { if (e.key === 'nunext-theme') set(); });",
+          """window.addEventListener('storage', function (e) { if (e.key === 'nufiles-theme') { set(); label(); } });
+		var tb = $('nufThemeBtn');
+		function label() {
+			var dark = root.getAttribute('data-bs-theme') === 'dark';
+			tb.setAttribute('aria-pressed', dark ? 'true' : 'false');
+			$('nufThemeLbl').textContent = t(dark ? 'theme_light' : 'theme_dark');
+		}
+		label();
+		if (mq && mq.addEventListener) mq.addEventListener('change', label);
+		tb.addEventListener('click', function () {
+			var next = root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+			try { localStorage.setItem('nufiles-theme', next); } catch (e) { root.setAttribute('data-nuf-theme', next); }
+			set(); label();
+		});""")
 
 SHIM = r'''/* nuFiles for nuBuilder Forte: fetch with the CSRF token, and Ace (third_party/ace of Forte) behind the few CodeMirror calls app.js makes. */
 (function () {
@@ -209,6 +229,8 @@ css += '''
 .nuf-editor-body { position: relative; }
 .nuf-ace { position: absolute; inset: 0; }
 .nuf .bi { display: inline-block; width: 1.15em; text-align: center; }
+#nufThemeBtn .nuf-ic-light, [data-bs-theme="dark"] #nufThemeBtn .nuf-ic-dark { display: none; }
+[data-bs-theme="dark"] #nufThemeBtn .nuf-ic-light { display: inline-block; }
 '''
 
 # ------------------------------------------------------------------ the run (after the libraries)
@@ -301,7 +323,7 @@ $t = static fn(string $k): string => $nu->h($S[$k] ?? $k);
 $theme = $nu->theme();
 ?>'''
 
-head = rd(os.path.join(HERE, 'head.php')).replace('%%VERSION%%', VERSION).replace('%%NEXT%%', NEXT)
+head = rd(os.path.join(HERE, 'head.php')).replace('%%VERSION%%', VERSION).replace('%%NEXT%%', NEXT).replace('%%ASSETV%%', hashlib.sha1((js + css).encode('utf-8')).hexdigest()[:12])
 
 
 def nowdoc(name, text):

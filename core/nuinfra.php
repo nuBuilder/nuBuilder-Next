@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 32;
+	public const VERSION = 33;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -193,6 +193,11 @@ final class NuSchema
 				['max_tokens', 'int'], ['timeout', 'int'], ['system_text', 'longtext'], ['params', 'longtext'], ['active', 'text', '1'], ['access', 'text', '10'], ['levels', 'longtext'],
 				['password', 'text', '255'], ['pw_salt', 'text', '64'], ['month_limit', 'int'], ['updated_at', 'datetime'], ['updated_by', 'text', '100']],
 			'index' => [],
+		],
+		'zzzzsys_nunext_opened' => [                              // "Last opened" of the code lists (0.8.1117, core/nuopened.php): one row per person and object
+			'pk' => 'zzzzsys_nunext_opened_id',
+			'cols' => [['user_id', 'text', '50'], ['kind', 'text', '20'], ['ref', 'text', '60'], ['opened_at', 'datetime']],
+			'index' => ['user_id', 'opened_at'],
 		],
 		'zzzzsys_nunext_ai_call' => [                             // one row per AI request: who, tokens, time – never the content
 			'pk' => 'zzzzsys_nunext_ai_call_id',

@@ -100,9 +100,10 @@ final class NuHome
 	public const VIEW_LINES = [0, 1, 2, 3];
 	public const VIEW_DELAYS = [0, 300, 800];
 	public const VIEW_SIZES = ['tablet', 'phone'];
+	// recentNoFav (0.8.1115): Recently used leaves out what is in the Favourites row (start page and side bar)
 	// favStrip: unused since 0.8.806 (kept so stored views stay valid); favRow (0.8.807) = row Favourites shown while tiles are starred
 	public const VIEW_DEFAULTS = ['style' => 'large', 'listCols' => '1', 'listWidth' => 'readable', 'desc' => 'auto', 'lines' => 2, 'delay' => 300, 'nav' => 'groups',
-		'density' => 'comfortable', 'icon' => 'soft', 'groupColors' => false, 'favStrip' => false, 'favRow' => true, 'recentStrip' => false, 'badges' => true, 'actions' => true];
+		'density' => 'comfortable', 'icon' => 'soft', 'groupColors' => false, 'favStrip' => false, 'favRow' => true, 'recentStrip' => false, 'recentNoFav' => false, 'badges' => true, 'actions' => true];
 	/** Colours of groups without an own colour (by position) when "Colour per group" is on. */
 	public const GROUP_COLORS = ['#5b5bd6', '#2f6fd6', '#0f8f86', '#5f6b7a', '#c2417a', '#c27803', '#7a4fd0'];
 	/** Personal view per layout: users in sus_json, the globeadmin in a setting row, demo visitors in the session. */
@@ -761,7 +762,9 @@ final class NuHome
 		if (!$cur['editable']) return ['_' => t('err_forbidden')];
 		if (self::$for !== null) return self::saveUser(self::userOnly($layout), $login, $event, $details);
 		$id = $cur['id'];
+		$moveView = null;
 		if ($id === 'default') {                               // the built-in layout is never changed: a stored copy takes its place
+			$moveView = self::overlay('default');                  // 0.8.1115: the personal view goes along – it was left behind with 'default'
 			$shared = self::canManage();
 			$id = self::insertLayout($shared ? t('home_layout_standard') : t('home_layout_mine'), $shared ? 'shared' : 'user', [], $layout);
 			if ($shared) NuListView::storeListDefault(self::LIST, $id);
@@ -771,6 +774,7 @@ final class NuHome
 				'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)], 'zzzzsys_nunext_list_view_id', $id);
 		}
 		self::$current = self::$rows = null;                       // 0.8.652: also the rows – a stored copy of the built-in layout is current from now on
+		if ($moveView) { unset($moveView['at']); try { self::setOverlay((string)$id, $moveView, false); } catch (Throwable) { /* the view is a convenience: the layout is saved */ } }
 		NuLog::write($event, NuListView::TABLE, $id, $details ?? ['groups' => count($layout['groups']), 'hidden' => count($layout['hidden']), 'own' => count((array)$layout['custom'])]);
 		return [];
 	}

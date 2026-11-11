@@ -15,6 +15,7 @@ $rights = NuAcl::rights(NuAcl::FORM_REPORT);
 $id     = (string)($_GET['id'] ?? '');
 $report = NuReport::load($id);
 if (!$report || (string)$report['zzzzsys_report_id'] !== $id) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('report', $id);   // "Last opened" (0.8.1117)
 $canSave = $rights['save'];
 
 // ------------------------------------------------------------------ preview (form post into the preview frame)

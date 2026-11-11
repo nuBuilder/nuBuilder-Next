@@ -171,3 +171,33 @@ body.nuf { margin: 0; background: var(--bs-body-bg); color: var(--bs-body-color)
 	.nuf-tools > .btn, .nuf-tools > .btn-group > .btn { padding-left: .3rem; padding-right: .3rem; }
 	.nuf-tools > .btn-group > .dropdown-toggle-split { padding-left: .2rem; padding-right: .2rem; }
 }
+
+/* grid view (tiles with thumbnails) */
+#nufLayoutBtn .nuf-ic-list, .nuf-layout-grid #nufLayoutBtn .nuf-ic-grid { display: none; }
+.nuf-layout-grid #nufLayoutBtn .nuf-ic-list { display: inline-block; }
+#nufColToggle.nuf-off { display: none !important; }
+.nuf-gridbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: .75rem; padding: .3rem .75rem; background: var(--bs-body-bg); border-bottom: 1px solid var(--bs-border-color); }
+.nuf-gridbar .form-check-input { margin: 0 .25rem 0 0; }
+.nuf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .5rem; padding: .75rem; user-select: none; }
+.nuf-tile { position: relative; display: flex; flex-direction: column; min-width: 0; padding: .4rem .4rem .45rem; border: 1px solid transparent; border-radius: .5rem; color: var(--bs-body-color); text-decoration: none; cursor: default; }
+.nuf-tile:hover { background: var(--bs-tertiary-bg); }
+.nuf-tile.nuf-sel { background: var(--bs-primary-bg-subtle); border-color: var(--bs-primary-border-subtle); }
+.nuf-thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; border-radius: .35rem; overflow: hidden; }
+.nuf-thumb .bi { font-size: 3rem; color: var(--bs-secondary-color); }
+.nuf-thumb .nuf-ico-dir { color: #e0a526; }
+.nuf-thumb { position: relative; }
+.nuf-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; }   /* not display: none – a lazy picture would never load */
+.nuf-thumb-img { background: var(--bs-secondary-bg); }
+.nuf-thumb-img img { opacity: 1; }
+.nuf-thumb-img .bi { display: none; }
+.nuf-tname { display: block; margin-top: .35rem; font-size: .85rem; text-align: center; color: var(--bs-body-color); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.nuf-tname:hover { text-decoration: underline; }
+.nuf-tsub { font-size: .72rem; text-align: center; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuf-tcheck { position: absolute; top: .45rem; left: .45rem; z-index: 1; margin: 0; opacity: 0; }
+.nuf-tmenu { position: absolute; top: .15rem; right: .1rem; z-index: 1; opacity: 0; }
+.nuf-tmenu .nuf-more { padding: .1rem .25rem; background: var(--bs-body-bg); border-radius: .35rem; }
+.nuf-tile:hover .nuf-tcheck, .nuf-tile:focus-within .nuf-tcheck, .nuf-tile.nuf-sel .nuf-tcheck, .nuf-tile:hover .nuf-tmenu, .nuf-tile:focus-within .nuf-tmenu, .nuf-tmenu:has(.show) { opacity: 1; }
+@media (hover: none) { .nuf-tcheck, .nuf-tmenu { opacity: 1; } }
+@media (max-width: 575.98px) { .nuf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: .5rem; } }
+/* the narrowest phones: with the list / tiles switch the toolbar has one button too many for one row – Refresh goes (opening a folder reloads) */
+@media (max-width: 359.98px) { #nufRefreshBtn { display: none; } }

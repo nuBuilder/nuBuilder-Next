@@ -351,6 +351,100 @@ final class NufFs
 			}
 		}
 		foreach (glob($d . '/tmp/*') ?: [] as $f) if (@filemtime($f) < time() - 86400) @unlink($f);
+		foreach (glob($d . '/thumbs/*/*') ?: [] as $f) if (@filemtime($f) < time() - self::THUMB_KEEP_DAYS * 86400) @unlink($f);   // not shown for a month, or of a file that changed / is gone
+	}
+
+	// ============================================================ thumbnails (grid view)
+
+	public const THUMB_PX = 256;            // longest side
+	public const THUMB_MAX_BYTES = 40 * 1024 * 1024;
+	public const THUMB_MAX_PIXELS = 50_000_000;
+	public const THUMB_KEEP_DAYS = 30;
+	private const THUMB_TYPES = [IMAGETYPE_JPEG => 'imagecreatefromjpeg', IMAGETYPE_PNG => 'imagecreatefrompng', IMAGETYPE_GIF => 'imagecreatefromgif', IMAGETYPE_WEBP => 'imagecreatefromwebp'];
+
+	public static function thumbsAvailable(): bool
+	{
+		return function_exists('imagecreatetruecolor') && function_exists('getimagesize') && function_exists('imagecopyresampled') && function_exists('imagepng');
+	}
+
+	/** Bytes PHP may still use (PHP_INT_MAX without a limit). */
+	private static function memoryFree(): int
+	{
+		$l = trim((string)(function_exists('ini_get') ? ini_get('memory_limit') : ''));
+		if ($l === '' || $l === '-1') return PHP_INT_MAX;
+		$n = (int)$l;
+		$n *= match (strtolower(substr($l, -1))) { 'g' => 1 << 30, 'm' => 1 << 20, 'k' => 1 << 10, default => 1 };
+		return max(0, $n - memory_get_usage(true));
+	}
+
+	/**
+	 * The thumbnail of an image as [bytes, mime], or null (no GD, not a picture GD reads, too large for the memory).
+	 * Kept in <data>/thumbs/<share>/<sha1(path|mtime|size)> – a changed file gets a new one, the old one goes with housekeeping.
+	 */
+	public static function thumb(array $share, string $abs): ?array
+	{
+		if (!self::thumbsAvailable()) return null;
+		$size = (int)@filesize($abs);
+		if ($size <= 0 || $size > self::THUMB_MAX_BYTES) return null;
+		$cache = '';
+		if (NufConfig::$dataDir !== '') {
+			$dir = NufConfig::$dataDir . '/thumbs/' . preg_replace('/[^A-Za-z0-9_-]/', '_', (string)$share['id']);
+			$cache = $dir . '/' . sha1(NufGuard::rel($share, $abs) . '|' . (int)@filemtime($abs) . '|' . $size);
+			foreach (['jpg' => 'image/jpeg', 'png' => 'image/png'] as $e => $mime) {
+				if (is_file("$cache.$e")) {
+					if (@filemtime("$cache.$e") < time() - 86400) @touch("$cache.$e");   // still in use
+					return [(string)file_get_contents("$cache.$e"), $mime];
+				}
+			}
+		}
+		$info = @getimagesize($abs);
+		if (!$info || !isset(self::THUMB_TYPES[$info[2]]) || !function_exists(self::THUMB_TYPES[$info[2]])) return null;
+		[$w, $h] = $info;
+		if ($w < 1 || $h < 1 || $w * $h > self::THUMB_MAX_PIXELS || $w * $h * 5 + (8 << 20) > self::memoryFree()) return null;
+		$src = @(self::THUMB_TYPES[$info[2]])($abs);
+		if (!$src) return null;
+		if ($info[2] === IMAGETYPE_JPEG && function_exists('exif_read_data') && function_exists('imagerotate')) {
+			$o = (int)(@exif_read_data($abs)['Orientation'] ?? 1);
+			$deg = [3 => 180, 6 => -90, 8 => 90][$o] ?? 0;
+			if ($deg) { $r = imagerotate($src, $deg, 0); if ($r) { $src = $r; $w = imagesx($src); $h = imagesy($src); } }
+		}
+		$k = min(1, self::THUMB_PX / max($w, $h));
+		$tw = max(1, (int)round($w * $k)); $th = max(1, (int)round($h * $k));
+		$dst = imagecreatetruecolor($tw, $th);
+		$alpha = $info[2] !== IMAGETYPE_JPEG;
+		if ($alpha) { imagealphablending($dst, false); imagesavealpha($dst, true); imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127)); }
+		imagecopyresampled($dst, $src, 0, 0, 0, 0, $tw, $th, $w, $h);
+		ob_start();
+		if ($alpha || !function_exists('imagejpeg')) { imagepng($dst, null, 7); $ext = 'png'; $mime = 'image/png'; }
+		else { imagejpeg($dst, null, 82); $ext = 'jpg'; $mime = 'image/jpeg'; }
+		$bytes = (string)ob_get_clean();
+		if ($bytes === '') return null;
+		if ($cache !== '') {
+			if (!is_dir(dirname($cache))) @mkdir(dirname($cache), 0775, true);
+			if (@file_put_contents("$cache.$ext.part", $bytes) !== false) @rename("$cache.$ext.part", "$cache.$ext");
+		}
+		return [$bytes, $mime];
+	}
+
+	/** Answers with the thumbnail (or a small SVG as it is – as a picture, scripts off) and ends the request; 204 (empty) when there is none. */
+	public static function sendThumb(array $share, string $abs): never
+	{
+		$out = null;
+		if (strtolower(pathinfo($abs, PATHINFO_EXTENSION)) === 'svg') {
+			if ((int)filesize($abs) <= 1024 * 1024 && in_array(self::mime($abs), ['image/svg+xml', 'image/svg', 'text/xml', 'application/xml', 'text/plain', 'text/html'], true)) $out = [(string)file_get_contents($abs), 'image/svg+xml'];
+		} else {
+			try { $out = self::thumb($share, $abs); } catch (Throwable) { $out = null; }
+		}
+		while (ob_get_level() > 0) ob_end_clean();
+		header_remove('Content-Security-Policy');
+		header('Content-Security-Policy: default-src \'none\'; style-src \'unsafe-inline\'; sandbox');
+		header('X-Content-Type-Options: nosniff');
+		if ($out === null) { http_response_code(204); header('Cache-Control: private, max-age=300'); exit; }   // 204, not 404: no error line in the browser's console
+		header('Cache-Control: private, max-age=604800');   // the address carries the file's time and size
+		header('Content-Type: ' . $out[1]);
+		header('Content-Length: ' . strlen($out[0]));
+		echo $out[0];
+		exit;
 	}
 
 	// ============================================================ text editor

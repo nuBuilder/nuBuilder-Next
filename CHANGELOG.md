@@ -3,6 +3,146 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1129 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan).
+- Documentation brought up to date: feature list (totals and groups, a list's design in the side pane, Last opened, Recently used without favourites, file manager tiles, messages that close by themselves), README, tutorial (totals and groups in lists), open points to verify.
+- File Manager on the narrowest phones (below 360 px): with the list / tiles switch the toolbar wrapped into two rows - the Refresh button is left out there (opening a folder reloads).
+
+## 0.8.1128 – Lists of forms: groups with subtotals, totals of selected rows
+- Grouped lists: one column can group a list of a form (design mode: select the column - Behaviour - Group the list by this column; also in the side pane). The list is sorted by that column first; each group has a heading with its number of records and, where columns have a total, a row of subtotals. Count and subtotals cover the whole group, also when it continues on another page. A click on another column title sorts inside the groups.
+- Totals of selected rows: a list with a total has a checkbox in front of each row and one for the whole page. While rows are ticked, the row of totals turns blue and shows the values of the ticked rows only; the number in front clears the selection. The selection covers the page shown.
+- Form with AI: list columns carry "total" (sum, avg, min, max, count) and "group", so an AI can read and set both.
+- The print view shows groups and subtotals; lookup lists and CSV exports are not grouped.
+
+## 0.8.1127 – Column totals in lists of forms
+- Lists of forms can show column totals: per column Sum, Average, Minimum, Maximum or Count. A row below the list shows the value under its column, with the name of the function and in the column's format.
+- The totals cover all records the search and the filters match - every page, not only the one shown - and follow each search. They come with the query that counts the records, so the list needs no extra query.
+- On a date column minimum and maximum read Earliest and Latest; Count counts the rows that have a value. A column a user does not see, or sees masked, has no total.
+- The row stays in view at the bottom of the window while the list is longer than the window, becomes a card of its own on phones, is part of the print view and of the Excel export (not CSV), and is left out when nothing matches and in lookup lists.
+- Set it in design mode (select the column - Behaviour - Total) or in the side pane of a list (Columns tab, More settings of the column). nuBuilder Forte ignores the setting.
+- Form code finds the values in nuNext.browse.totals. On SQL Server the feature is untested.
+
+## 0.8.1126 – List side pane: Settings fold away
+- List side pane, Columns tab: the Settings block (rows per page, row height, click target, form, the two switches) folds away with a click on its heading, so the columns start at the top. The choice is kept in the browser.
+
+## 0.8.1125 – Design menu of lists: one heading instead of four times Edit
+- Lists, Design menu: the entries no longer all start with "Edit". A small heading "Edit" stands above them and the entries are the plain names - Browse SQL, PHP (Before Browse), JavaScript, Columns - like the tabs of the side pane they open. On phones, where these entries sit in the three-dots menu without a heading, they keep the full wording.
+
+## 0.8.1124 – Reports list: quieter run button
+- Reports list: the button that runs a report has the same grey frame as the designer button next to it; only its icon keeps the accent colour (was a blue frame in every row).
+
+## 0.8.1123 – File Manager for nuBuilder Forte: new file works at once
+- File Manager for nuBuilder Forte (the single-file version): after replacing the file, the browser kept using its stored copy of the old script and style for up to a day - new buttons such as the light / dark switch appeared but did nothing. The address of script and style now changes with every build, so a new file works at once.
+
+## 0.8.1122 – File Manager for nuBuilder Forte: light / dark switch
+- File Manager for nuBuilder Forte (the single-file version): a switch for light and dark mode at the foot of the side bar, as nuBuilder Forte has none of its own. The choice is kept in the browser; the code editor follows it.
+- The File Manager of nuBuilder Next is unchanged - it follows the theme of the application.
+
+## 0.8.1121 – File Manager: tiles with thumbnails
+- File Manager: a folder can be shown as tiles. The new button left of Refresh switches between the list and the tiles; the choice is kept in the browser.
+- Pictures (JPEG, PNG, GIF, WebP and small SVG files) show a thumbnail, every other file and folder the icon of its type. Thumbnails are made on the server on first view (PHP's GD), kept in the File Manager's data folder and removed when they are no longer used. Without GD the tiles show icons.
+- Tiles work like the rows of the list: click and Ctrl+click select, double click opens, right-click and the three-dots menu offer the same actions; a bar above the tiles selects all and sorts by name, size or date. On phones two tiles per row.
+- The single-file File Manager for nuBuilder Forte has the tiles too.
+
+## 0.8.1120 – Closed warnings no longer flash
+- Fixed: on the Global code page (and the config file page) the yellow warning, once closed with ×, still showed for
+  a moment every time the page opened. A closed warning is no longer drawn at all; the icon next to the title still
+  brings it back.
+
+## 0.8.1119 – Messages that close by themselves
+- Messages at the top of a page: a "done" message (green) now closes by itself – after 4 seconds for a short text,
+  later for a longer one, at most 12 seconds. A short note (blue, up to 90 characters) closes after 7 to 12 seconds.
+- A message stays while the pointer or the keyboard focus is on it, and while the browser tab is in the background.
+- Warnings, errors, longer notes and every message with a link or something to act on stay until closed. The sign-in,
+  password reset and installer pages are unchanged: nothing closes by itself there.
+
+## 0.8.1118 – View name Recently opened
+- Fixed: the new view of the forms, procedures, reports and SQL query lists was shown under its internal name
+  "recent". It is now called *Recently opened* (translated like the other standard views).
+
+## 0.8.1117 – Last opened in the code lists
+- Lists of forms, procedures, reports and SQL queries: new column *Last opened* and a ready-made view *Recently
+  opened* (view menu), sorted newest first with what was never opened at the end. It is personal: it shows when you
+  last opened a procedure, a report or a query, or a form in design mode. Using a form as a user does not count.
+- The column can be added to own views, sorted, and used in the advanced search. The default views are unchanged.
+- The update adds one small table for it; entries not touched for 400 days are removed.
+
+## 0.8.1116 – Customise panel: Without favourites with (i)
+- Start page, Customise → Appearance: the explanation of *Without favourites* is behind an (i) next to the name
+  (hover, focus or click) instead of a line of text, and the panel no longer scrolls sideways.
+
+## 0.8.1115 – Recently used without the favourites
+- Start page, Customise → Appearance → On top of the page: new switch *Without favourites* below *Recently used*.
+  Switched on, a page that is already in the Favourites row is left out of Recently used – on the start page and in
+  the side bar – and the row fills up with the next pages instead. Off by default; greyed out while the Favourites row
+  or Recently used is off.
+- Fixed: starring or hiding a tile for the first time on the built-in start page layout reset the personal view
+  (for example Recently used switched itself off). The view now stays.
+
+## 0.8.1114 – One row height in lists
+- Lists: a row with one line now has the same height everywhere (33 px) – whether it holds only text, a badge or
+  row buttons. Before, rows were 30, 32–33 or 42 px high depending on the list.
+- Forms and reports lists: the buttons in a row are smaller on desktop, so these rows are as high as in the other
+  lists (about a fifth more rows per screen). Touch screens keep the larger buttons.
+- Log, audit trail and e-mail log use the same row spacing and title row as the other lists.
+- Rows whose cells have two lines (help pages, projects, e-mail templates, formats) stay taller. Phone cards are
+  unchanged.
+
+## 0.8.1113 – Forms list: Maintenance in the Tools menu
+- Forms list: *Maintenance…* is the last entry of the *Tools* menu (below a divider) instead of a button of its own
+  in the title bar.
+
+## 0.8.1112 – One Help per place
+- Options menu (⋮) of forms: the entry that opens the manual is called *Documentation* (book icon), as in the user
+  menu. *Help* now means one thing on a form: the form's own help page, the button in the toolbar. Ctrl+Shift+? is
+  unchanged.
+- User menu: *Help* (the reader of the help pages) is no longer shown to the globeadmin and to administrators who
+  manage the help pages – they reach it from *Help pages*. Other users keep the entry. *Documentation* has the book
+  icon here too.
+
+## 0.8.1111 – List menus without double entries
+- Lists: *Browse SQL* and *PHP Before Browse* are no longer in the options menu (⋮) – they were there twice. Editing
+  a list is in the ▾ of *Design* only (browse SQL, PHP Before Browse, JavaScript, columns). Ctrl+Shift+B still opens
+  the pane. On phones the Design entries stay at the top of the ⋮ menu, because the Design button is hidden there.
+
+## 0.8.1110 – Version info shortcut removed
+- Forms: the shortcut Ctrl+Shift+V (Version info) is gone too. The installed version is shown on the update page.
+
+## 0.8.1109 – Options menu without Version info
+- Options menu (⋮) of forms: the entry *Version info* is gone. Ctrl+Shift+V still shows it.
+
+## 0.8.1108 – List side pane: PHP, JavaScript, column details, row details
+- Lists, side pane of the Design ▾ menu: two new entries, *Edit PHP (Before Browse)…* and *Edit JavaScript…*. The pane
+  now has the tabs Browse SQL · PHP · JavaScript · Columns; each code tab has the full code editor, and one Save stores
+  everything that changed and reloads the list.
+- Columns tab: the slider icon of a column opens its other settings below the row – format, filter, *Show as badge*
+  and what a click on its cells does (open a form or a list, run a procedure or a report, call a JavaScript function,
+  with target, record, where it opens, look). The icon is blue while one of them is set. Colour rules of a badge are
+  kept and still edited in design mode.
+- Columns tab: *Row details* (hidden columns and cut text, related list) below the columns, and a link to the column
+  access by access level.
+- On phones the two new entries are at the top of the ⋮ menu with the other designer tools.
+
+## 0.8.1107 – Design button in the neutral look
+- Lists and record pages: the Design button is a neutral button like the ones next to it – no blue outline and blue
+  text any more; only its pencil keeps the accent colour. The ▾ menu (Browse SQL, Columns, layout) is unchanged.
+
+## 0.8.1106 – Context menus: focused item by background only
+- Right-click menus of forms (object, tab, list column, sub-form column, and the tab menu of design mode): the item
+  under the keyboard is marked by its background only, a step darker than an item under the mouse – the thick outline
+  is gone, as in the browser's own context menu. Light and dark mode.
+
+## 0.8.1105 – Check & install shows the progress notice
+- Update page, developer mode: *Check & install* now shows the same notice as *Install* while it runs – a window
+  that cannot be closed, with the steps and the request to keep the page open until the result is shown.
+  *Check package* stays as it was.
+
+## 0.8.1104 – Notes, test helpers
+- Notes: v0.8.1103 is published on GitHub (release notes template and development notes updated).
+- Tests: the stand-in servers of the browser tests (AI service, password leak service, webhook receiver, OAuth and
+  OpenID Connect providers) say why their request log is switched off – a code analysis report flagged the empty
+  method. No change to the product.
+
 ## 0.8.1103 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan).
 - Documentation brought up to date: README highlight "Forms and reports with AI", tutorial tips for Reports with AI and AI

@@ -561,6 +561,28 @@
 	// ---------------------------------------------------------------- flash messages shown as toasts (nu_flash(type, msg, true), 0.8.377)
 	if (nuBs.ready()) $$('.nuFlashToast').forEach(function (t) { nuBs.toast(t).show(); });
 
+	// ---------------------------------------------------------------- messages at the top of the page that close by themselves (0.8.1119):
+	// the server says after how long (data-nu-autoclose, nu_flash_autoclose() in core/nulayout.php – "done" messages and short notes; warnings,
+	// errors and messages with a link stay). Signed-in pages only; the time stands still while the pointer or the focus is on the message
+	// and while the tab is in the background, so nothing disappears unread.
+	if (document.body.classList.contains('nu-app')) $$('.alert[data-nu-autoclose]').forEach(function (al) {
+		var left = parseInt(al.getAttribute('data-nu-autoclose'), 10) || 0, timer = null, since = 0, held = 0;
+		if (left < 1000) return;
+		function close() {
+			if (!al.isConnected) return;
+			var x = al.querySelector('.btn-close');
+			if (x) x.click(); else al.remove();
+		}
+		function run() { if (timer || held > 0 || document.hidden) return; since = Date.now(); timer = setTimeout(close, left); }
+		function stop() { if (!timer) return; clearTimeout(timer); timer = null; left = Math.max(1500, left - (Date.now() - since)); }
+		al.addEventListener('mouseenter', function () { held++; stop(); });
+		al.addEventListener('mouseleave', function () { held = Math.max(0, held - 1); run(); });
+		al.addEventListener('focusin', function () { held++; stop(); });
+		al.addEventListener('focusout', function () { held = Math.max(0, held - 1); run(); });
+		document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); else run(); });
+		run();
+	});
+
 	// ---------------------------------------------------------------- tabs restored by a script (0.8.444): shown once every script of the
 	// page has run (the hash tabs below, a remembered tab in nuprocedures.js …) – nutheme.js hid [data-nu-tab-restore] in the meantime
 	(function () {
@@ -1156,7 +1178,8 @@
 				b.appendChild(document.createTextNode(busy));
 			}
 			// data-nu-progress="#modal" (0.8.308): a modal that cannot be closed while the request runs – e.g. Install on the update page
-			var pm = f.getAttribute('data-nu-progress');
+			// the pressed button's own data-nu-progress wins (update page: only "Check & install" of the upload form shows one)
+			var pm = b.getAttribute('data-nu-progress') || f.getAttribute('data-nu-progress');
 			var pel = pm ? document.querySelector(pm) : null;
 			if (pel && window.nuBs && nuBs.ready()) nuBs.modal(pel, {backdrop: 'static', keyboard: false}).show();
 		}, 0);
@@ -1168,8 +1191,12 @@
 			f.querySelectorAll('[aria-busy="true"]').forEach(function (b) { b.disabled = false; b.removeAttribute('aria-busy'); if (b.dataset.nuLabel) b.innerHTML = b.dataset.nuLabel; });
 			var lock = f.getAttribute('data-nu-lock');
 			if (lock) document.querySelectorAll(lock).forEach(function (x) { x.disabled = false; x.removeAttribute('aria-busy'); });
-			var pm = f.getAttribute('data-nu-progress'), pel = pm ? document.querySelector(pm) : null;
-			if (pel && window.nuBs && nuBs.ready()) nuBs.modal(pel).hide();
+			var pms = [f.getAttribute('data-nu-progress')];
+			f.querySelectorAll('[type="submit"][data-nu-progress]').forEach(function (x) { pms.push(x.getAttribute('data-nu-progress')); });
+			pms.forEach(function (pm) {
+				var pel = pm ? document.querySelector(pm) : null;
+				if (pel && window.nuBs && nuBs.ready()) nuBs.modal(pel).hide();
+			});
 		});
 	});
 })();
@@ -1838,6 +1865,21 @@ window.nuPageNoGo = function (value) {
 			var on = shift > 0.5;
 			t.classList.toggle('nuHeadFloat', on);
 			cells.forEach(function (c) { c.style.transform = on ? 'translateY(' + Math.round(shift) + 'px)' : ''; });
+			// a row of totals (tfoot) stays in view at the bottom of the window while the list's end is below it
+			var foot = t.tFoot, fcells = foot ? foot.querySelectorAll('td, th') : [];
+			if (fcells.length) {
+				var up = 0;
+				if (!cards && foot.offsetParent !== null && t.tBodies.length && t.tBodies[0].rows.length > 3) {
+					var tr2 = t.getBoundingClientRect(), fh = foot.getBoundingClientRect().height, hh2 = head.getBoundingClientRect().height;
+					// the list's own footer (pager) may stick to the bottom of the window: the totals sit right above it
+					var line2 = window.innerHeight, card = t.closest('.card'), cf = card ? card.querySelector(':scope > .card-footer') : null;
+					if (cf && cf.offsetParent !== null && getComputedStyle(cf).position === 'sticky') line2 = Math.min(line2, cf.getBoundingClientRect().top);
+					up = Math.max(0, Math.min(tr2.bottom - line2, tr2.height - hh2 - fh * 2));
+				}
+				var fon = up > 0.5;
+				t.classList.toggle('nuFootFloat', fon);
+				fcells.forEach(function (c) { c.style.transform = fon ? 'translateY(' + (-Math.round(up)) + 'px)' : ''; });
+			}
 		});
 	}
 	function queue() { if (!queued) { queued = true; requestAnimationFrame(check); } }

@@ -760,10 +760,23 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 				<input class="form-control w-auto" type="file" name="package" id="updPackage" accept=".zip,application/zip" required aria-label="<?= h(t('upd_package')) ?>">
 				<button class="btn btn-primary d-none" type="submit" id="updUpload" data-nu-needs-file="#updPackage" data-nu-busy="<?= h(t('upd_checking')) ?>"><i class="bi bi-search me-1"></i><?= h(t('upd_check')) ?></button>
 				<?php if (NuHash::devMode()): // developer mode (0.8.733): check and install in one go ?>
-				<button class="btn btn-outline-primary d-none" type="submit" name="quick" value="1" id="updQuick" data-nu-needs-file="#updPackage" data-nu-busy="<?= h(t('upd_quick_busy')) ?>"
+				<button class="btn btn-outline-primary d-none" type="submit" name="quick" value="1" id="updQuick" data-nu-needs-file="#updPackage" data-nu-busy="<?= h(t('upd_quick_busy')) ?>" data-nu-progress="#updQuickProgress"
 					data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('upd_quick_tip')) ?>"><i class="bi bi-lightning-charge me-1"></i><?= h(t('upd_quick')) ?></button>
 				<?php endif; ?>
 			</form>
+			<?php if (NuHash::devMode()): // shown while "Check & install" runs – the same notice as Install shows ?>
+			<div class="modal fade" id="updQuickProgress" tabindex="-1" aria-labelledby="updQuickProgressTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+				<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+					<div class="modal-body p-4 text-center">
+						<div class="spinner-border text-primary mb-3 nuUpdSpinner" role="status" aria-hidden="true"></div>
+						<h2 class="h5 mb-2" id="updQuickProgressTitle"><?= h(t('upd_quick_progress_title')) ?></h2>
+						<p class="mb-3 small text-body-secondary"><?= h(t('upd_quick_progress_steps')) ?></p>
+						<div class="alert alert-warning text-start small mb-2 py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('upd_progress_keep')) ?></div>
+						<p class="small text-body-secondary text-start mb-0"><?= h(t('upd_progress_info')) ?></p>
+					</div>
+				</div></div>
+			</div>
+			<?php endif; ?>
 				</div>
 						<div class="mt-3 pt-3 border-top" id="updFolder">
 				<h3 class="h6 d-inline-flex align-items-center gap-1 mb-2"><i class="bi bi-folder2-open me-1"></i><?= h(t('upd_folder_title')) ?><?= NuListView::infoTip(t('upd_folder_tip')) ?></h3>

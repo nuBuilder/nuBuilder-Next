@@ -64,6 +64,7 @@ if ($r === null || $r === '') {
 $mode = ($r === null || $r === '') ? 'browse' : 'edit';
 $design = $designReq && ($mode === 'edit' || $mode === 'browse') && !$bare && empty($_GET['print']);   // browse (0.8.669): the list's columns
 $safe   = $design && NuDesign::safe();       // design mode without the form's own code (0.8.667): to fix a form whose code breaks it
+if ($design && $_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('form', (string)$meta->id);   // "Last opened" of the forms list (0.8.1117)
 // access level form type (0.8.461, as nuBuilder 4.9): "browse only" opens no record (also no new one), "edit only" no browse list
 if ($meta->type() !== 'launch' && !$rights[$mode]) {
 	http_response_code(403);
@@ -112,7 +113,8 @@ if ($mode === 'browse') {
 		try {
 			$data = NuBrowse::query($meta, $hash, ['search' => $state['q'], 'runfilter' => $state['rf'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $state['pg'], 'per' => $state['per'],
 				'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $printMode ? 5000 : 0,
-				'process' => NuOnProcess::rowsHook($meta->php('BB'), $hash), 'raw' => $printMode && NuPrintView::raw($hash)]);   // nuOnProcessBrowseRows(), print settings (0.8.958)
+				'process' => NuOnProcess::rowsHook($meta->php('BB'), $hash), 'raw' => $printMode && NuPrintView::raw($hash),   // nuOnProcessBrowseRows(), print settings (0.8.958)
+				'totals' => $lookupTo === '']);                        // row of column totals – not in lookup lists
 			if ($printMode) $data['columns'] = NuPrintView::columns($data['columns'], $hash);   // nuPrintIncludeColumns() …
 			foreach ($data['columns'] as &$col) {
 				if ($col['filter'] && !$printMode) $col['values'] = NuBrowse::distinctValues($meta, $hash, $col);
@@ -232,7 +234,13 @@ $browseSqlEdit = $mode === 'browse' && $lookupTo === '' && !$design && !$bare &&
 const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh', 'ds_list_rowh_tip', 'ds_list_target', 'ds_list_target_0',
 	'ds_list_target_1', 'ds_list_target_2', 'ds_list_target_3', 'builder_redirect', 'ds_list_multi', 'ds_list_autofit', 'builder_sec_columns', 'builder_col_title',
 	'builder_col_display', 'builder_col_width', 'builder_col_align', 'ds_col_hidden', 'ds_col_show', 'ds_col_left', 'ds_col_right', 'delete', 'ds_list_nocols',
-	'builder_add_column', 'ds_col_new', 'om_left', 'om_center', 'om_right', 'please_select', 'ds_col_drag'];
+	'builder_add_column', 'ds_col_new', 'om_left', 'om_center', 'om_right', 'please_select', 'ds_col_drag',
+	'bsq_tab_php', 'bsq_tab_js', 'bsq_col_more', 'bsq_col_access', 'builder_col_format', 'builder_col_filter', 'ds_col_badge', 'ds_col_badge_tip', 'bsq_badge_rules',
+	'ds_col_action', 'ds_col_action_tip', 'ds_act_none', 'ds_act_form', 'ds_act_list', 'ds_act_proc', 'ds_act_report', 'ds_act_js', 'ds_act_target_form', 'ds_act_target_list',
+	'builder_run_procedure', 'builder_run_report', 'ds_act_fn', 'ds_act_fn_tip', 'ds_act_rec', 'ds_act_rec_row', 'ds_act_rec_value', 'ds_act_rec_new', 'ds_act_open',
+	'ds_act_open_same', 'ds_act_open_tab', 'ds_act_open_popup', 'ds_act_pass', 'ds_act_pass_tip', 'ds_act_look', 'ds_act_look_link', 'ds_act_look_button', 'ds_act_look_icon',
+	'ds_act_icon', 'ds_act_icon_tip', 'ds_act_label', 'ds_act_label_tip', 'ds_act_need_target', 'ds_rd_title', 'ds_rd_cols', 'ds_rd_cols_tip', 'ds_rd_sub', 'ds_rd_sub_tip', 'ds_rd_none',
+	'fmt_type_date', 'fmt_type_number', 'fmt_type_text', 'ds_col_total', 'ds_col_total_tip', 'ds_tot_none', 'ds_tot_sum', 'ds_tot_avg', 'ds_tot_min', 'ds_tot_max', 'ds_tot_count', 'ds_col_group', 'ds_col_group_tip'];
 $bsqList = static function () use ($meta, $browseSqlEdit): array {
 	if (!$browseSqlEdit) return [];
 	$f = $meta->form;
@@ -240,12 +248,23 @@ $bsqList = static function () use ($meta, $browseSqlEdit): array {
 		nu_db()->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' AND sfo_type IN ('edit', 'browseedit') ORDER BY sfo_code"));
 	$cols = array_map(static function ($b) {
 		$j = json_decode((string)($b['sbr_json'] ?? ''), true);
+		$badge = $j['nunext']['badge'] ?? null;
+		$act = $j['nunext']['action'] ?? null;
 		return [(string)$b['zzzzsys_browse_id'], (string)($b['sbr_title'] ?? ''), (string)($b['sbr_display'] ?? ''), (string)($b['sbr_align'] ?? '') ?: 'l', (string)($b['sbr_format'] ?? ''),
-			($b['sbr_width'] ?? '') === '' || $b['sbr_width'] === null ? 100 : (int)$b['sbr_width'], !empty($j['nunext']['filter'])];
+			($b['sbr_width'] ?? '') === '' || $b['sbr_width'] === null ? 100 : (int)$b['sbr_width'], !empty($j['nunext']['filter']),
+			$badge ? (is_array($badge) ? array_values($badge) : true) : null, is_array($act) && !empty($act['t']) ? $act : null, NuFormMeta::totalOf($b['sbr_json'] ?? null), NuFormMeta::groupOf($b['sbr_json'] ?? null)];
 	}, $meta->browse);
+	// more of the list in the pane (0.8.1108): targets of a column's click action, formats, row details, the code tabs
+	[$allForms, $procs, $reports] = NuDesign::lists();
+	$subs = array_values(array_map(static fn($o) => [(string)$o['sob_all_id'], trim(strip_tags((string)$o['sob_all_label'])) ?: (string)$o['sob_all_id']],
+		array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'subform')));
+	$det = NuRowDetails::of($meta) ?? [];
 	return ['rows' => (string)($f['sfo_browse_rows_per_page'] ?? ''), 'rowh' => (string)($f['sfo_browse_row_height'] ?? ''), 'target' => (string)($f['sfo_browse_target'] ?? '') ?: '0',
 		'redirect' => (string)($f['sfo_browse_redirect_form_id'] ?? ''), 'multi' => (string)($f['sfo_browse_title_multiline'] ?? '') === '1',
-		'autofit' => (string)($f['sfo_browse_autoresize_columns'] ?? '') === '1', 'table' => (string)($f['sfo_table'] ?? ''), 'forms' => $forms, 'cols' => $cols];
+		'autofit' => (string)($f['sfo_browse_autoresize_columns'] ?? '') === '1', 'table' => (string)($f['sfo_table'] ?? ''), 'forms' => $forms, 'cols' => $cols,
+		'targets' => ['forms' => $allForms, 'procs' => $procs, 'reports' => $reports], 'formats' => NuFormat::choices(), 'subs' => $subs,
+		'details' => ['cols' => !empty($det['cols']), 'sub' => (string)($det['sub'] ?? '')], 'access' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
+		'php' => (string)($meta->php('BB') ?? ''), 'js' => (string)($f['sfo_browse_javascript'] ?? '')];
 };
 $client = [
 	// 0.8.942: tab Columns – settings of the list ($bsqList) and its columns [id, title, display, align, format, width, filter]
@@ -300,6 +319,9 @@ $client = [
 	'browse' => $mode === 'browse' ? ['q' => $state['q'], 'hl' => NuBrowse::terms($state['q'])['in'], 'nsc' => array_values((array)$state['nsc']), 'sc' => array_values((array)$state['sc']), 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => $data['page'] ?? 1, 'pages' => $data['pages'] ?? 1, 'total' => (int)($data['total'] ?? 0),
 		// badges set in design mode (0.8.688): column index => rules of nuBrowseStyleBadge ([] = the default look), applied before nuOnLoad
 		'details' => $rowDetails,
+		// row of totals: column index => {fn, label, value, text} over all matching rows (form code: nuNext.browse.totals)
+		'totals' => (object)($data['totals'] ?? []),
+		'formats' => (object)array_map(static fn($c) => (string)$c['format'], array_intersect_key((array)($data['columns'] ?? []), (array)($data['totals'] ?? []))),   // of the total columns: totals of selected rows
 		'badges' => (object)array_map(static fn($c) => $c['badge'], array_filter((array)($data['columns'] ?? []), static fn($c) => is_array($c) && ($c['badge'] ?? null) !== null && !isset($cellActs[$c['index']]))),
 		// click actions of cells (0.8.872): column index => NuRender::cellAction (only those the user may open; none in lookups)
 		'actions' => (object)$cellActs,
@@ -317,7 +339,6 @@ $client = [
 		'sessions' => NuAdmin::can('sessions'),
 		'browsesql' => $mode === 'browse' && NuDesign::allowed($meta) ? nu_url('form', ['f' => $meta->id, 'design' => '1', 'dswork' => 'code', 'dsitem' => 'sfo_browse_sql']) : '',   // ⋮ → Browse SQL (0.8.818)
 		'formaccess' => !$meta->isPage() && NuAcl::can(NuAcl::FORM_ACCESS) && empty($u['demo']),   // ⋮ → Access levels… (0.8.683, assets/js/nu/nuformaccess.js)
-		'version' => $u['globeadmin'] ? 'nuBuilder Next ' . NU_VERSION . ' · PHP ' . PHP_VERSION . ' · ' . nu_db()->type : '',
 	],
 	'shortcuts' => nu_shortcut_labels(), 'dev_mode' => NuHash::devMode(), 'db_type' => nu_db()->type, 'db_name' => $u['globeadmin'] && empty($u['demo']) ? (string)nu_cfg('nuConfigDBName') : '', 'hashCatalog' => $mode === 'edit' || $design ? NuHash::catalog() : null,
 	'formats' => (object)NuFormat::clientRegistry(), 'tinymceBase' => NuLibs::tinymce() ?: NU_TINYMCE,
@@ -374,6 +395,7 @@ function nu_shortcut_labels(): array
 {
 	$out = [];
 	foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) if (str_starts_with($k, 'sc_')) $out[substr($k, 3)] = t($k);
+	$out['help'] = t('help_title');   // ⋮ → Documentation (0.8.1112): the manual, as in the user menu – "Help" is the form's own help page (toolbar button)
 	return $out;
 }
 
@@ -682,13 +704,16 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php endif; ?>
 		<?php endif; ?>
 		<?php if (($mode === 'edit' || ($mode === 'browse' && $lookupTo === '')) && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta)): // design mode (0.8.662; the list 0.8.669) ?>
-			<?php $dsBtn = '<a class="btn btn-outline-primary nuActionButton" id="nuDesignButton" href="' . h(nu_url('form', ['f' => $meta->id, 'r' => $mode === 'edit' ? $r : null, 'design' => '1'])) . '" title="' . h(t('ds_design_tip')) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(t('ds_design')) . '</a>'; ?>
+			<?php $dsBtn = '<a class="btn btn-outline-secondary nuActionButton" id="nuDesignButton" href="' . h(nu_url('form', ['f' => $meta->id, 'r' => $mode === 'edit' ? $r : null, 'design' => '1'])) . '" title="' . h(t('ds_design_tip')) . '"><i class="bi bi-pencil-square me-1 nuDsPen" aria-hidden="true"></i>' . h(t('ds_design')) . '</a>'; ?>
 			<?php $layoutInMenu = $mode === 'edit' && $u['globeadmin'] && !$bare;   // review M6: the layout switch lives in Design ▾ ?>
 			<?php if ($browseSqlEdit || $layoutInMenu): ?>
-				<div class="btn-group" id="nuDesignGroup"><?= $dsBtn ?><button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" id="nuDesignMore" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h(t('bsq_more')) ?>"><span class="visually-hidden"><?= h(t('bsq_more')) ?></span></button>
+				<div class="btn-group" id="nuDesignGroup"><?= $dsBtn ?><button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" id="nuDesignMore" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h(t('bsq_more')) ?>"><span class="visually-hidden"><?= h(t('bsq_more')) ?></span></button>
 					<ul class="dropdown-menu dropdown-menu-end">
-					<?php if ($browseSqlEdit): ?><li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseSqlEdit"><i class="bi bi-filetype-sql" aria-hidden="true"></i><?= h(t('bsq_edit')) ?></button></li>
-						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseColsEdit"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><?= h(t('bsq_edit_cols')) ?></button></li><?php endif; ?>
+					<?php if ($browseSqlEdit): /* one heading carries the verb, the entries are the names of the pane's tabs; data-nu-full = the whole sentence for the phone ⋮ menu */ ?><li><h6 class="dropdown-header" id="nuDesignEditHead"><?= h(t('edit')) ?></h6></li>
+						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseSqlEdit" data-nu-full="<?= h(t('bsq_edit')) ?>"><i class="bi bi-filetype-sql" aria-hidden="true"></i><?= h(t('builder_browse_sql')) ?></button></li>
+						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowsePhpEdit" data-nu-full="<?= h(t('bsq_edit_php')) ?>"><i class="bi bi-filetype-php" aria-hidden="true"></i><span><?= h(t('bsq_tab_php')) ?> <span class="text-body-secondary">(Before Browse)</span></span></button></li>
+						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseJsEdit" data-nu-full="<?= h(t('bsq_edit_js')) ?>"><i class="bi bi-filetype-js" aria-hidden="true"></i><?= h(t('bsq_tab_js')) ?></button></li>
+						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseColsEdit" data-nu-full="<?= h(t('bsq_edit_cols')) ?>"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><?= h(t('lv_tab_columns')) ?></button></li><?php endif; ?>
 					<?php if ($layoutInMenu): ?><li><h6 class="dropdown-header"><?= h(t('form_layout')) ?></h6></li>
 						<?php foreach (['absolute', 'auto', 'grid'] as $l): ?><li><a class="dropdown-item d-flex align-items-center gap-2 nuLayoutItem<?= $layout === $l ? ' active' : '' ?>" data-nu-layout="<?= h($l) ?>"<?= $layout === $l ? ' aria-current="true"' : '' ?> href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>"><i class="bi <?= $layout === $l ? 'bi-check2' : 'bi-dot' ?>" aria-hidden="true"></i><?= h(t('form_layout_' . $l)) ?></a></li><?php endforeach; ?>
 					<?php endif; ?></ul></div>
@@ -819,17 +844,21 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 			$fitSet = (string)($meta->form['sfo_browse_autoresize_columns'] ?? '');
 			$fitCols = $fitSet === '1' || ($fitSet !== '0' && (NuSettings::uxOptions()['nuAutosizeBrowseColumns'] ?? true) !== false);
 			$colSum = 0;
+			// totals of selected rows: a checkbox column on lists with a total (not in lookups, the print view or design mode)
+			$selCol = !empty($data['totals']) && $data['rows'] && $lookupTo === '' && empty($printMode) && !$design;
+			$nCols = max(1, count($data['columns'])) + ($rowDel ? 1 : 0) + ($rowDetails ? 1 : 0) + ($selCol ? 1 : 0);
 			if (!$bw && !$fitCols && $lookupTo === '' && empty($printMode)) {
 				foreach ($data['columns'] as $c) if ($c['width'] > 0) $colSum += (int)$c['width'] + NU_BROWSE_CELL_PAD;
-				$colSum += ($rowDel ? 44 : 0) + ($rowDetails ? 36 : 0);
+				$colSum += ($rowDel ? 44 : 0) + ($rowDetails ? 36 : 0) + ($selCol ? 36 : 0);
 			}
 			if ($bw) {
 				foreach ($data['columns'] as $c) if ($c['width'] > 0) $bwSum += $bw[$c['index']] ?? (int)$c['width'] + NU_BROWSE_CELL_PAD;
-				$bwSum += ($rowDel ? 44 : 0) + ($rowDetails ? 36 : 0);
+				$bwSum += ($rowDel ? 44 : 0) + ($rowDetails ? 36 : 0) + ($selCol ? 36 : 0);
 			}
 			?>
 			<table class="table table-hover align-middle mb-0 nu-table nuBrowseTable<?= $rowDel ? ' nuBrowseRowDel' : '' ?><?= $browseCls ?><?= $bw ? ' nuColFixed nuBrowseFixed' : '' ?>" id="nuBrowseTable" data-nu-sticky-head<?= $rowH > 0 ? ' data-nu-row-height="' . min(400, $rowH) . '"' : '' ?><?= $bw ? ' style="width:' . $bwSum . 'px"' : ($colSum > 0 ? ' style="width:' . $colSum . 'px;min-width:100%"' : '') ?>>
 				<thead><tr>
+					<?php if ($selCol): ?><th scope="col" class="nuSelCol"><input type="checkbox" class="form-check-input" id="nuRowSelAll" aria-label="<?= h(t('ds_sel_all')) ?>" title="<?= h(t('ds_sel_all')) ?>"></th><?php endif; ?>
 					<?php if ($rowDetails): ?><th scope="col" class="nuDetCol"><span class="visually-hidden"><?= h(t('rd_details')) ?></span></th><?php endif; ?>
 					<?php if ($rowDel): ?><th scope="col" class="nuRowDelCol"<?= $bw ? ' style="width:44px"' : '' ?>><span class="visually-hidden"><?= h(t('delete')) ?></span></th><?php endif; ?>
 					<?php foreach ($data['columns'] as $c):
@@ -847,10 +876,30 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 				</thead>
 				<tbody id="nuRECORD"><?php /* id as nuBuilder Forte's browse (code that loops '#nuRECORD .nuCell') */ ?>
 				<?php if (!$data['rows']): ?>
-					<tr><td colspan="<?= max(1, count($data['columns'])) + ($rowDel ? 1 : 0) + ($rowDetails ? 1 : 0) ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
+					<tr><td colspan="<?= $nCols ?>" class="text-center text-body-secondary py-4 <?= trim($state['q']) !== '' ? 'nuBrowseNoResults' : 'nuBrowseNoData' ?>"><?= h(t('no_records')) ?></td></tr>
 				<?php endif; ?>
+				<?php
+				// grouped list: a heading row before each group, a row of subtotals (whole group, all pages) after it
+				$grpIdx = $data['group'] ?? null; $grpCur = null; $grpOpen = false;
+				$grpFoot = static function (?array $g) use ($data, $rowDetails, $rowDel, $selCol): string {
+					if (!$g || empty($g['totals'])) return '';
+					$h = '<tr class="nuGroupTotalRow">' . ($selCol ? '<td class="nuSelCol"></td>' : '') . ($rowDetails ? '<td class="nuDetCol"></td>' : '') . ($rowDel ? '<td class="nuRowDelCol"></td>' : '');
+					foreach ($data['columns'] as $c) {
+						$tt = $g['totals'][$c['index']] ?? null;
+						$h .= '<td class="nuTotalCell text-' . (['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start') . '"' . ($tt ? ' data-nu-total="' . h($tt['fn']) . '" data-nu-label="' . h(NuHtmlClean::cellText((string)$c['title'])) . '"' : '')
+							. ($c['width'] <= 0 ? ' style="display:none"' : '') . '>' . ($tt ? '<span class="nuTotalFn">' . h($tt['label']) . '</span> <span class="nuTotalVal">' . h($tt['text']) . '</span>' : '') . '</td>';
+					}
+					return $h . '</tr>';
+				};
+				?>
 				<?php foreach ($data['rows'] as $ri => $row): ?>
+					<?php if ($grpIdx !== null && (!$grpOpen || $row['group'] !== $grpCur)):
+						if ($grpOpen) echo $grpFoot($data['groups'][$grpCur] ?? null);
+						$grpCur = $row['group']; $grpOpen = true; $g = $data['groups'][$grpCur] ?? ['label' => '', 'count' => null]; ?>
+					<tr class="nuGroupRow" data-nu-group="<?= h((string)$grpCur) ?>"><th colspan="<?= $nCols ?>" scope="colgroup"><span class="nuGroupTitle"><?= h(NuHtmlClean::cellText((string)($data['columns'][$grpIdx]['title'] ?? ''))) ?></span> <span class="nuGroupName"><?= trim((string)$g['label']) !== '' ? h(NuHtmlClean::cellText((string)$g['label'])) : h(t('ds_grp_empty')) ?></span><?php if ($g['count'] !== null): ?> <span class="nuGroupCount"><?= (int)$g['count'] ?></span><?php endif; ?></th></tr>
+					<?php endif; ?>
 					<tr class="nuBrowseRow" data-nu-primary-key="<?= h($row['pk']) ?>" data-nu-row="<?= $ri ?>" tabindex="0"<?= $rowH > 0 ? ' style="height:' . min(400, $rowH) . 'px"' : '' ?>>
+						<?php if ($selCol): ?><td class="nuSelCol"><input type="checkbox" class="form-check-input nuRowSel" tabindex="-1" aria-label="<?= h(t('ds_sel_row')) ?>"></td><?php endif; ?>
 						<?php if ($rowDetails): ?><td class="nuDetCol"><button type="button" class="btn btn-sm btn-link nuDetBtn" aria-expanded="false" tabindex="-1" title="<?= h(t('rd_show')) ?>" aria-label="<?= h(t('rd_show')) ?>"><i class="bi bi-chevron-right" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php if ($rowDel): ?><td class="nuRowDelCol"><button type="button" class="btn btn-sm btn-outline-danger nuRowDel" data-nu-pk="<?= h($row['pk']) ?>" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash" aria-hidden="true"></i></button></td><?php endif; ?>
 						<?php foreach ($data['columns'] as $ci => $c): ?>
@@ -861,7 +910,18 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 						<?php endforeach; ?>
 					</tr>
 				<?php endforeach; ?>
+				<?php if ($grpIdx !== null && $grpOpen) echo $grpFoot($data['groups'][$grpCur] ?? null); ?>
 				</tbody>
+				<?php $totals = array_intersect_key((array)($data['totals'] ?? []), $data['columns']); if ($totals && $data['rows']): /* totals over ALL matching rows, not the page */ ?>
+				<tfoot id="nuBrowseTotals"><tr class="nuTotalRow" aria-label="<?= h(t('ds_tot_row')) ?>">
+					<?php if ($selCol): ?><td class="nuSelCol"><button type="button" class="nuSelClear" id="nuSelClear" hidden title="<?= h(t('ds_sel_clear')) ?>" aria-label="<?= h(t('ds_sel_clear')) ?>" data-nu-text="<?= h(t('ds_sel_n')) ?>"></button></td><?php endif; ?>
+					<?php if ($rowDetails): ?><td class="nuDetCol"></td><?php endif; ?>
+					<?php if ($rowDel): ?><td class="nuRowDelCol"></td><?php endif; ?>
+					<?php foreach ($data['columns'] as $c): $tt = $totals[$c['index']] ?? null; ?>
+						<td class="nuTotalCell text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>" data-nu-column="<?= (int)$c['index'] ?>"<?= $tt ? ' data-nu-total="' . h($tt['fn']) . '" data-nu-label="' . h(NuHtmlClean::cellText((string)$c['title'])) . '"' : '' ?><?= $c['width'] <= 0 ? ' style="display:none"' : '' ?>><?php if ($tt): ?><span class="nuTotalFn"><?= h($tt['label']) ?></span> <span class="nuTotalVal"><?= h($tt['text']) ?></span><?php endif; ?></td>
+					<?php endforeach; ?>
+				</tr></tfoot>
+				<?php endif; ?>
 			</table>
 		</div>
 		<?php nu_list_footer((int)$data['total'], (int)$data['page'], (int)$data['per'], 'form', $keep, 'card-footer', 'pg', '', empty($printMode), 'nuBrowseFooter'); ?>

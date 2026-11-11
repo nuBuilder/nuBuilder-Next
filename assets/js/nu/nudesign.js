@@ -2712,6 +2712,9 @@
 	function colBadge(c) { try { var b = (JSON.parse(c.sbr_json || '{}').nunext || {}).badge; return b ? (Array.isArray(b) ? b : true) : null; } catch (e) { return null; } }
 	// click action of a column (0.8.872): sbr_json nunext.action {t form|list|proc|report|js, id, rec, open, pass, look, icon, label}
 	function colAction(c) { try { var a = (JSON.parse(c.sbr_json || '{}').nunext || {}).action; return a && a.t ? a : null; } catch (e) { return null; } }
+	// total of a column: sum | avg | min | max | count (sbr_json nunext.total) – the row below the list
+	function colTotal(c) { try { return (JSON.parse(c.sbr_json || '{}').nunext || {}).total || ''; } catch (e) { return ''; } }
+	function colGroup(c) { try { return !!(JSON.parse(c.sbr_json || '{}').nunext || {}).group; } catch (e) { return false; } }
 	function colRows(edit) {
 		return (S.browse || []).map(function (c) {
 			var x = {id: c.zzzzsys_browse_id, title: c.sbr_title || '', display: c.sbr_display || '', align: c.sbr_align || 'l', format: c.sbr_format || '',
@@ -2862,7 +2865,15 @@
 		section('behaviour', t('ds_sec_behaviour'), [
 			field(t('builder_col_filter'), 'check', colFilter(c) ? '1' : '0', function (v) { colSave(c, {filter: v === '1'}); }, {key: 'filter'}),
 			field(t('ds_col_badge'), 'check', colBadge(c) ? '1' : '0', function (v) { colSave(c, {badge: v === '1' ? (colBadge(c) || true) : null}); }, {key: 'badge', tip: t('ds_col_badge_tip')}),
-			colBadge(c) && !colAction(c) ? badgeRulesEditor(c) : null
+			colBadge(c) && !colAction(c) ? badgeRulesEditor(c) : null,
+			field(t('ds_col_total'), 'select', colTotal(c), function (v) { colSave(c, {total: v || null}); }, {key: 'total', tip: t('ds_col_total_tip'),
+				options: [['', t('ds_tot_none')], ['sum', t('ds_tot_sum')], ['avg', t('ds_tot_avg')], ['min', t('ds_tot_min')], ['max', t('ds_tot_max')], ['count', t('ds_tot_count')]]}),
+			// one column groups the list: switching it on here takes it from the others
+			field(t('ds_col_group'), 'check', colGroup(c) ? '1' : '0', function (v) {
+				var e = {}; (S.browse || []).forEach(function (x) { e[x.zzzzsys_browse_id] = {group: false}; });
+				e[c.zzzzsys_browse_id] = {group: v === '1'};
+				saveCols(colRows(e), c.zzzzsys_browse_id);
+			}, {key: 'group', tip: t('ds_col_group_tip')})
 		].concat(actionEditor(c)));
 		foot([el('p', {'class': 'nuDsHint', text: t('ds_hint_list')})]);
 	}

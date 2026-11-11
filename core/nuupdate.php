@@ -899,6 +899,7 @@ final class NuMigrate
 			'0039-projects' => ['Projects (zzzzsys_nunext_project, _item, _note, _task): forms, procedures, reports … that belong together, with notes and to-dos', static fn() => NuSchema::create()],
 			'0040-report-versions' => ['Report versions (zzzzsys_nunext_report_version): the layout of a report before an AI change or a restore', static fn() => NuSchema::create()],
 			'0041-ai-providers' => ['AI providers and their usage (zzzzsys_nunext_ai_provider, zzzzsys_nunext_ai_call)', static fn() => NuSchema::create()],
+			'0042-opened' => ['"Last opened" of forms, procedures, reports and SQL queries (zzzzsys_nunext_opened)', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -955,6 +956,7 @@ final class NuMigrate
 			['zzzzsys_nunext_project_note', 'table', 'created when missing'], ['zzzzsys_nunext_project_task', 'table', 'created when missing']],
 		'0040-report-versions' => [['zzzzsys_nunext_report_version', 'table', 'created when missing']],
 		'0041-ai-providers' => [['zzzzsys_nunext_ai_provider', 'table', 'created when missing'], ['zzzzsys_nunext_ai_call', 'table', 'created when missing']],
+		'0042-opened' => [['zzzzsys_nunext_opened', 'table', 'created when missing']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

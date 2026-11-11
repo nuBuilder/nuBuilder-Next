@@ -443,6 +443,8 @@ final class NuBrowse
 				'filter' => !empty(NuFormMeta::nunextJson($b['sbr_json'] ?? null)['filter']) && $expr !== 'NULL' && !str_starts_with($state, 'mask:'),
 				'badge' => str_starts_with($state, 'mask:') ? null : NuFormMeta::badgeOf($b['sbr_json'] ?? null),   // design mode's Badge (0.8.688)
 				'action' => str_starts_with($state, 'mask:') ? null : NuFormMeta::actionOf($b['sbr_json'] ?? null),   // On click (0.8.872)
+				'total' => str_starts_with($state, 'mask:') || $expr === 'NULL' ? null : NuFormMeta::totalOf($b['sbr_json'] ?? null),   // row of totals
+				'group' => !str_starts_with($state, 'mask:') && $expr !== 'NULL' && NuFormMeta::groupOf($b['sbr_json'] ?? null),   // list grouped by this column
 			];
 		}
 
@@ -528,7 +530,25 @@ final class NuBrowse
 		}
 
 		$from  = " FROM ($inner) nuT" . ($where ? ' WHERE ' . implode(' AND ', $where) : '');
-		$total = (int)$db->value('SELECT COUNT(*)' . $from, $params);
+		// totals (opt totals): the columns' aggregates over ALL matching rows come with the count, in one query
+		$totals = [];
+		$aggs = !empty($opt['totals']) ? self::totalExprs($cols, $col, $db->type) : [];
+		$total = null;
+		if ($aggs) {
+			try {
+				$sel = 'SELECT COUNT(*) AS nu_n';
+				foreach ($aggs as $i => $e) $sel .= ", $e AS nu_t$i";
+				$agg = $db->one($sel . $from, $params);
+				if ($agg) {
+					$total = (int)$agg['nu_n'];
+					if ($total > 0) foreach ($aggs as $i => $e) $totals[$i] = self::totalCell($cols[$i], $agg['nu_t' . $i] ?? null);
+				}
+			} catch (Throwable $e) {                                         // e.g. a text column SQL Server cannot add up: the list without totals
+				$total = null; $totals = [];
+				if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Column totals:\n" . $e->getMessage()); } catch (Throwable) {} }
+			}
+		}
+		if ($total === null) $total = (int)$db->value('SELECT COUNT(*)' . $from, $params);
 
 		$per   = max(1, (int)($opt['per'] ?? 0) ?: ((int)$meta->form['sfo_browse_rows_per_page'] ?: 20));
 		if (!empty($opt['all'])) $per = max(1, min((int)$opt['all'], max($total, 1)));
@@ -545,6 +565,10 @@ final class NuBrowse
 		} else {
 			$order = $defaultOrder;
 		}
+		// grouped list (opt totals; a column with nunext.group): its column orders first, the chosen / default order sorts inside the groups
+		$grp = null;
+		if (!empty($opt['totals'])) foreach ($cols as $c) if (!empty($c['group'])) { $grp = $c; break; }
+		if ($grp !== null && (string)$sort !== (string)$grp['index']) $order = 'nu_c' . $grp['index'] . ' ASC' . ($order !== '' ? ', ' . $order : '');
 		// no ORDER BY in the browse SQL and no column sorted: MySQL keeps the table's own order, as nuBuilder Forte (LIMIT without
 		// ORDER BY) – e.g. a Before Browse table made with CREATE TABLE … SELECT … ORDER BY (0.8.956); SQL Server needs one for OFFSET
 		if ($order !== '') $order .= ', nu_pk';
@@ -582,10 +606,88 @@ final class NuBrowse
 				$cells[$k]   = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : (!empty($opt['raw']) ? (string)(NuSecurity::demoMask($c['expr'], $v) ?? '') : NuFormat::format(NuSecurity::demoMask($c['expr'], $v), $c['format']));   // raw: print view of nuPrintUseBrowseFormats(false) (0.8.958)   // demo: no hashes / secrets
 				$classes[$k] = $c['mask'] !== null ? '' : NuFormat::cssClass($v, $c['format']);
 			}
-			$rows[] = ['pk' => (string)$r['nu_pk'], 'cells' => $cells, 'classes' => $classes, 'raw' => $rawRow];
+			$rows[] = ['pk' => (string)$r['nu_pk'], 'cells' => $cells, 'classes' => $classes, 'raw' => $rawRow] + ($grp !== null ? ['group' => self::groupKey($r['nu_c' . $grp['index']])] : []);
+		}
+		// the groups of this page: number of records and subtotals of the WHOLE group (all pages), one query
+		$groups = [];
+		if ($grp !== null && $rows) {
+			foreach ($rows as $row) $groups[$row['group']] ??= ['label' => '', 'count' => null, 'totals' => []];
+			foreach ($fetched as $r) { $k = self::groupKey($r['nu_c' . $grp['index']]); if (($groups[$k]['label'] ?? '') === '') $groups[$k]['label'] = (string)NuFormat::format(NuSecurity::demoMask($grp['expr'], $r['nu_c' . $grp['index']]), $grp['format']); }
+			try {
+				$gx = $col($grp);
+				$gt = self::castText($gx);
+				$vals = array_values(array_filter(array_map('strval', array_keys($groups)), static fn($k) => $k !== ''));
+				$cond = [];
+				if ($vals) $cond[] = "$gt IN (" . implode(', ', array_fill(0, count($vals), '?')) . ')';
+				if (isset($groups[''])) $cond[] = "($gx IS NULL OR $gt = '')";
+				$sel = "SELECT $gt AS nu_g, COUNT(*) AS nu_n";
+				foreach ($aggs as $i => $e) $sel .= ", $e AS nu_t$i";
+				$gsql = $sel . " FROM ($inner) nuT WHERE " . ($where ? implode(' AND ', $where) . ' AND ' : '') . '(' . implode(' OR ', $cond) . ") GROUP BY $gt";
+				foreach ($db->all($gsql, array_merge($params, $vals)) as $g) {
+					$k = self::groupKey($g['nu_g']);
+					if (!isset($groups[$k])) continue;
+					$groups[$k]['count'] = (int)($groups[$k]['count'] ?? 0) + (int)$g['nu_n'];
+					if ($groups[$k]['totals'] === []) foreach ($aggs as $i => $e) $groups[$k]['totals'][$i] = self::totalCell($cols[$i], $g['nu_t' . $i] ?? null);
+				}
+			} catch (Throwable $e) {
+				if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Group subtotals:\n" . $e->getMessage()); } catch (Throwable) {} }
+			}
 		}
 
-		return ['columns' => $cols, 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per' => $per];
+		return ['columns' => $cols, 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per' => $per, 'totals' => $totals, 'group' => $grp !== null ? (int)$grp['index'] : null, 'groups' => $groups];
+	}
+
+	/** The key of a group: the value as text ('' for NULL / empty). */
+	public static function groupKey(mixed $v): string
+	{
+		return $v === null ? '' : (string)$v;
+	}
+
+	/** A column value as a number for SUM / AVG (text columns hold numbers too). */
+	private static function numExpr(string $x, string $dbType): string
+	{
+		return $dbType === 'sqlsrv' ? "TRY_CONVERT(DECIMAL(38, 10), $x)" : "($x + 0)";
+	}
+
+	/**
+	 * The aggregate of every column with a total, keyed by browse index: SUM / AVG over the value as a number; MIN / MAX as a number
+	 * for number formats, else as the column sorts (dates: earliest / latest); COUNT = rows with a value.
+	 * @return array<int, string>
+	 */
+	public static function totalExprs(array $cols, callable $col, string $dbType): array
+	{
+		$out = [];
+		foreach ($cols as $i => $c) {
+			$fn = $c['total'] ?? null;
+			if ($fn === null || $c['mask'] !== null) continue;
+			$x = $col($c);
+			$num = self::numExpr($x, $dbType);
+			$isNum = str_starts_with(strtoupper((string)$c['format']), 'N|');
+			$out[$i] = match ($fn) {
+				'sum' => "SUM($num)",
+				'avg' => "AVG($num)",
+				'min' => 'MIN(' . ($isNum ? $num : $x) . ')',
+				'max' => 'MAX(' . ($isNum ? $num : $x) . ')',
+				default => 'COUNT(NULLIF(' . self::castText($x) . ", ''))",
+			};
+		}
+		return $out;
+	}
+
+	/** One cell of the totals row: {fn, label, value (raw), text (in the column's format)}. */
+	public static function totalCell(array $c, mixed $v): array
+	{
+		$fn = (string)$c['total'];
+		$fmt = (string)$c['format'];
+		$isDate = str_starts_with(strtoupper($fmt), 'D|');
+		if ($fn === 'count') $text = (string)(int)$v;
+		elseif ($v === null || $v === '') $text = '';
+		elseif ($isDate && in_array($fn, ['sum', 'avg'], true)) $text = '';   // a date cannot be added up
+		elseif ($fmt !== '') $text = NuFormat::format($v, $fmt);
+		elseif (is_numeric($v)) { $text = rtrim(rtrim(number_format((float)$v, $fn === 'avg' ? 2 : 4, '.', ''), '0'), '.'); if ($text === '' || $text === '-0') $text = '0'; }
+		else $text = (string)$v;
+		$label = t('ds_tot_' . ($isDate && $fn === 'min' ? 'earliest' : ($isDate && $fn === 'max' ? 'latest' : $fn)));
+		return ['fn' => $fn, 'label' => $label, 'value' => $v === null ? null : (is_numeric($v) ? $v + 0 : (string)$v), 'text' => $text];
 	}
 
 	/** The filter choices are kept in the session for this long (0.8.761): a DISTINCT over a large list costs a second per filter. */

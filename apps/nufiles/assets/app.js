@@ -441,7 +441,12 @@
 		var files = state.view === 'files' || state.view === 'search';
 		$('nufTools').classList.toggle('d-none', !files || !state.share);
 		$('nufSearchForm').classList.toggle('d-none', !files || !state.share);
-		$('nufTable').classList.toggle('d-none', !files);
+		var grid = files && state.layout === 'grid';
+		$('nufTable').classList.toggle('d-none', !files || grid);
+		$('nufGrid').classList.toggle('d-none', !grid);
+		$('nufGridBar').classList.toggle('d-none', !grid || !state.share);
+		$('nufLayoutBtn').classList.toggle('d-none', !files);
+		$('nufColToggle').classList.toggle('nuf-off', grid);
 		$('nufTable2').classList.toggle('d-none', files);
 		$('nufRoBadge').classList.toggle('d-none', !(boot.readonly || (state.share && state.share.rights.length === 1)));
 		if (!state.share) return;
@@ -503,18 +508,29 @@
 	function render() {
 		toolbar();
 		crumbs();
-		var tb = $('nufRows');
+		var tb = $('nufRows'), gridOn = state.layout === 'grid';
 		tb.textContent = '';
+		$('nufGrid').textContent = '';
 		var items = sorted(state.items);
 		message(items.length ? '' : (state.view === 'search' ? t('no_results') : t('empty_folder')));
-		if (state.view === 'files' && state.path !== '') {
+		if (gridOn) {
+			var gf = document.createDocumentFragment();
+			if (state.view === 'files' && state.path !== '') {
+				gf.appendChild(el('a', {'class': 'nuf-tile nuf-tile-up', href: hashFor(state.share.id, parent(state.path)), title: t('up')}, [
+					el('div', {'class': 'nuf-thumb'}, [icon('arrow-90deg-up')]), el('div', {'class': 'nuf-tname', text: '..'})]));
+			}
+			items.forEach(function (it) { gf.appendChild(tile(it)); });
+			$('nufGrid').appendChild(gf);
+		} else if (state.view === 'files' && state.path !== '') {
 			tb.appendChild(el('tr', {'class': 'nuf-up', ondblclick: function () { go(state.share.id, parent(state.path)); }}, [
 				el('td'), el('td', {colspan: '4'}, [el('a', {href: hashFor(state.share.id, parent(state.path)), 'class': 'nuf-name'}, [icon('arrow-90deg-up'), ' ..'])])
 			]));
 		}
-		var frag = document.createDocumentFragment();
-		items.forEach(function (it) { frag.appendChild(row(it)); });
-		tb.appendChild(frag);
+		if (!gridOn) {
+			var frag = document.createDocumentFragment();
+			items.forEach(function (it) { frag.appendChild(row(it)); });
+			tb.appendChild(frag);
+		}
 		document.querySelectorAll('.nuf-sort').forEach(function (b) {
 			b.classList.toggle('nuf-sorted', b.getAttribute('data-sort') === state.sort.key);
 			b.setAttribute('data-dir', state.sort.dir > 0 ? 'asc' : 'desc');
@@ -572,10 +588,66 @@
 		return tr;
 	}
 
+	/** Pictures the grid view shows: a server thumbnail (GD) or, for SVG, the file itself. */
+	function thumbable(it) {
+		if (it.type === 'dir' || it.outside || !boot.features) return false;
+		var e = it.ext || ext(it.name);
+		if (e === 'svg') return (it.size || 0) <= 1048576;
+		return !!boot.features.thumbs && ['png', 'jpg', 'jpeg', 'gif', 'webp'].indexOf(e) >= 0 && (it.size || 0) > 0;
+	}
+
+	/** One tile of the grid view – same selection, double click, right-click and ⋮ menu as a row of the list. */
+	function tile(it) {
+		var key = keyOf(it), p = pathOf(it);
+		var chk = el('input', {type: 'checkbox', 'class': 'form-check-input nuf-tcheck', 'aria-label': it.name, checked: state.sel.has(key) ? true : null});
+		var ico = icon(fileIcon(it));
+		if (it.type === 'dir') ico.classList.add('nuf-ico-dir');
+		var box = el('div', {'class': 'nuf-thumb'}, [ico]);
+		if (thumbable(it)) {
+			var img = el('img', {alt: '', loading: 'lazy', decoding: 'async', draggable: 'false', src: url('thumb', {share: state.share.id, path: p, v: (it.mtime || 0) + '-' + (it.size || 0)})});
+			img.addEventListener('load', function () { box.classList.add('nuf-thumb-img'); });
+			img.addEventListener('error', function () { img.remove(); });
+			box.appendChild(img);
+		}
+		var name = el('a', {href: it.type === 'dir' ? hashFor(state.share.id, p) : '#', 'class': 'nuf-tname', title: it.outside ? t('link_outside') : it.name, text: it.name});
+		if (it.type !== 'dir') name.addEventListener('click', function (e) { e.preventDefault(); if (!e.ctrlKey && !e.metaKey) open(it, p); });
+		var sub = state.view === 'search' ? '/' + it.dir : (it.type === 'dir' ? when(it.mtime) : size(it.size));
+		var div = el('div', {'class': 'nuf-tile' + (state.sel.has(key) ? ' nuf-sel' : ''), 'data-key': key}, [
+			chk, el('div', {'class': 'nuf-tmenu'}, [menu(it, p)]), box, name, el('div', {'class': 'nuf-tsub', text: sub, title: when(it.mtime)})
+		]);
+		function clearOthers() {
+			state.sel.clear();
+			document.querySelectorAll('#nufGrid .nuf-tile.nuf-sel').forEach(function (x) { x.classList.remove('nuf-sel'); var c = x.querySelector('.nuf-tcheck'); if (c) c.checked = false; });
+		}
+		function apply() {
+			if (chk.checked) state.sel.add(key); else state.sel.delete(key);
+			div.classList.toggle('nuf-sel', chk.checked);
+			status(); toolbar();
+		}
+		chk.addEventListener('change', apply);
+		div.addEventListener('dblclick', function (e) {
+			if (e.target.closest('input, button, a, .dropdown-menu')) return;
+			if (it.type === 'dir') go(state.share.id, p); else open(it, p);
+		});
+		div.addEventListener('contextmenu', function (e) {
+			if (e.target.closest('.dropdown-menu') || !window.matchMedia('(any-pointer: fine)').matches) return;
+			e.preventDefault();
+			if (!state.sel.has(key)) { clearOthers(); chk.checked = true; apply(); }
+			openMenuAt(div.querySelector('.nuf-more'), e.clientX, e.clientY);
+		});
+		div.addEventListener('click', function (e) {
+			if (e.target.closest('input, button, a, .dropdown-menu')) return;
+			if (e.ctrlKey || e.metaKey) chk.checked = !chk.checked;
+			else { clearOthers(); chk.checked = true; }
+			apply();
+		});
+		return div;
+	}
+
 	/** Opens the ⋮ dropdown of a row at the mouse (a Bootstrap dropdown with a virtual reference); afterwards the ⋮ button works as before. */
 	function openMenuAt(btn, x, y) {
 		if (!btn) return;
-		document.querySelectorAll('#nufRows .dropdown-menu.show').forEach(function (m) { var b = m.parentNode.querySelector('.nuf-more'); var d = b && bootstrap.Dropdown.getInstance(b); if (d) d.hide(); });
+		document.querySelectorAll('#nufView .dropdown-menu.show').forEach(function (m) { var b = m.parentNode.querySelector('.nuf-more'); var d = b && bootstrap.Dropdown.getInstance(b); if (d) d.hide(); });
 		var old = bootstrap.Dropdown.getInstance(btn);
 		if (old) old.dispose();
 		var dd = new bootstrap.Dropdown(btn, {
@@ -627,6 +699,7 @@
 		var all = $('nufAll');
 		all.checked = state.items.length > 0 && state.sel.size === state.items.length;
 		all.indeterminate = state.sel.size > 0 && state.sel.size < state.items.length;
+		$('nufAllG').checked = all.checked; $('nufAllG').indeterminate = all.indeterminate;
 	}
 
 	function selectedPaths() {
@@ -639,6 +712,26 @@
 		if (on) state.items.forEach(function (i) { state.sel.add(keyOf(i)); });
 		render();
 	});
+
+	$('nufAllG').addEventListener('change', function () { $('nufAll').checked = this.checked; $('nufAll').dispatchEvent(new Event('change')); });
+
+	// list or tiles – the button left of Refresh switches, remembered in this browser
+	(function () {
+		var b = $('nufLayoutBtn');
+		function set(grid) {
+			state.layout = grid ? 'grid' : 'list';
+			$('nufApp').classList.toggle('nuf-layout-grid', grid);
+			b.setAttribute('aria-pressed', grid ? 'true' : 'false');
+			var lbl = t(grid ? 'view_list' : 'view_grid');
+			b.title = lbl; b.setAttribute('aria-label', lbl);
+		}
+		try { set(localStorage.getItem('nufLayout') === 'grid'); } catch (e) { set(false); }
+		b.addEventListener('click', function () {
+			set(state.layout !== 'grid');
+			try { localStorage.setItem('nufLayout', state.layout); } catch (e) { /* private mode */ }
+			if (state.view === 'files' || state.view === 'search') render(); else toolbar();
+		});
+	})();
 
 	document.querySelectorAll('.nuf-sort').forEach(function (b) {
 		b.addEventListener('click', function () {

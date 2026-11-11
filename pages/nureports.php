@@ -33,6 +33,7 @@ if ($cloneId !== '') {
 if ($id !== '' && !$isNew) {
 	$report = $db->one("SELECT * FROM $T WHERE zzzzsys_report_id = ?", [$id]);
 	if (!$report) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('report', $id);   // "Last opened" (0.8.1117)
 }
 $locked = !($report ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 $errors = [];

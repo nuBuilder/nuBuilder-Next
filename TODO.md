@@ -30,6 +30,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
 
 ## SQL Server
+- [ ] **Column totals of form lists** (0.8.1127) – SUM / AVG use TRY_CONVERT(DECIMAL(38, 10), column) on SQL Server; untested there. A failing
+      query shows the list without totals and writes a Debug result.
 - [ ] **Prompt generator table details** (0.8.1102) – the catalog queries for SQL Server (sys.indexes, sys.foreign_keys, sys.check_constraints,
       sys.triggers, sys.computed_columns, sys.views) are untested; a failing one only leaves its part out.
 - [ ] **Restore database from a backup on SQL Server** (0.8.1031) – only offered on MySQL / MariaDB; the SQL Server dump (GO batches) is read by NuSqlImport (dialect sqlsrv), but dropping / restoring was not tried on a server.
@@ -108,6 +110,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Totals, groups and selected rows of lists** (0.8.1127 / 0.8.1128) – please verify on real lists: a wide list that scrolls sideways (the floating row of totals), a list whose browse JavaScript walks the rows (heading and subtotal rows sit between the data rows), a grouped list on a phone, a text column that holds numbers. Excel has the grand total line but no group headings / subtotals. Values that differ only in case get separate headings where the database compares without case
+- [ ] **List side pane with PHP, JavaScript and column settings** (0.8.1108 / 0.8.1126) – please verify saving code and columns together on a form with an open draft
+- [ ] **Last opened** (0.8.1117) – please verify the view "Last opened" of reports and SQL queries (recording was only smoke-checked there); more lists on request
 - [ ] **Grid rows** (0.8.1088) – please verify with the tester's converted forms: three wide fields in one row stay on one line, a dragged object / a lower column number keeps its place
 - [ ] **Object menu on words, images, sub-form titles** (0.8.1082) – please verify right-click on a word, an image and a grid sub-form column title (Properties opens the child form)
 - [ ] **Browse aliases with a sub-query in FROM** (0.8.1075) – please verify with the tester's list
@@ -268,6 +273,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       accordion → details; check every page (smoke, a11y); decide on a compatibility CSS for application code.
 
 ## Update page, backups and admin tools
+- [ ] **File Manager tiles** (0.8.1121) – please verify with a folder of real photos (large phone pictures, orientation, loading speed) and in dark mode; no note is shown when PHP has no GD (tiles then show icons)
+- [ ] **File Manager for nuBuilder Forte** (0.8.1122 / 0.8.1123) – light / dark switch at the foot of the side bar; on phones it sits behind ☰ – wanted in the top bar there?
+- [ ] **Messages that close by themselves** (0.8.1119) – success after 4–12 s, short info after 7–12 s, warnings and errors stay: please verify the timing feels right
 - [ ] **File Manager on phones** (0.8.1056–0.8.1058): folder list closes by a tap outside / swipe / Esc, the path as ‹ parent + folder name ▾, the toolbar in one row – please verify on a real phone (also a very long folder name, 320 px screens)
 - [ ] **Installer** (0.8.1047–0.8.1049): start step with passed checks folded, no library packs in the dump list, all packs ticked – please verify with a fresh installation on the live host
 - [ ] **Masking personal data in copies** (idea from mydumper's masquerade, 0.8.1032) – masking rules per column (e-mail, names, phone) for the App cloner download / copies of live data on test systems; not built.

@@ -24,7 +24,8 @@ class H(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, *a):
-        pass
+        """Keep the test output quiet: the request log of the base class is not written."""
+        return
 
 
 http.server.HTTPServer(('127.0.0.1', port), H).serve_forever()

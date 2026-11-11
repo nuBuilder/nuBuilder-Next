@@ -35,7 +35,8 @@ def jwt(claims, key):
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
-        pass
+        """Keep the test output quiet: the request log of the base class is not written."""
+        return
 
     def note(self, s):
         with open(LOG, 'a') as f:

@@ -58,7 +58,8 @@ class H(BaseHTTPRequestHandler):
         return self.send(200, {'choices': [{'message': {'role': 'assistant', 'content': text}, 'finish_reason': 'stop'}], 'usage': {'prompt_tokens': 120, 'completion_tokens': 30}})
 
     def log_message(self, *a):
-        pass
+        """Keep the test output quiet: the request log of the base class is not written."""
+        return
 
 
 if not os.path.exists(ANSWERS):

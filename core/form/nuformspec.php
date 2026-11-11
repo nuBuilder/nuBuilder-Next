@@ -71,7 +71,8 @@ final class NuFormSpec
 		usort($browse, static fn($a, $b) => (int)$a['sbr_order'] <=> (int)$b['sbr_order']);
 		if ($browse) $out['form']['browse'] = array_map(static fn($b) => array_filter(['title' => (string)$b['sbr_title'], 'field' => (string)$b['sbr_display'],
 			'width' => (int)$b['sbr_width'] ?: null, 'align' => ['l' => 'left', 'c' => 'center', 'r' => 'right'][(string)$b['sbr_align']] ?? null,
-			'format' => (string)($b['sbr_format'] ?? '') ?: null], static fn($v) => $v !== null), $browse);
+			'format' => (string)($b['sbr_format'] ?? '') ?: null, 'total' => NuFormMeta::totalOf($b['sbr_json'] ?? null),
+			'group' => NuFormMeta::groupOf($b['sbr_json'] ?? null) ?: null], static fn($v) => $v !== null), $browse);
 		$out['tabs'] = [];
 		$evBy = [];
 		foreach ($snap['events'] ?? [] as $ev) $evBy[(string)$ev['sev_zzzzsys_object_id']][] = ['event' => (string)$ev['sev_event'], 'js' => (string)$ev['sev_javascript']];
@@ -231,7 +232,9 @@ final class NuFormSpec
     "primary_key": "customer_id",        // its primary key column (text ids are created by nuBuilder)
     "rows_per_page": 20,
     "department": "Sales", "team": "North",   // optional: only for grouping and filtering the forms list (free text, max. 60 characters)
-    "browse": [ {"title": "Name", "field": "cus_name", "width": 200, "align": "left", "format": ""} ],   // list columns
+    "browse": [ {"title": "Name", "field": "cus_name", "width": 200, "align": "left", "format": ""},     // list columns
+                {"title": "Country", "field": "cus_country", "group": true},                          // optional "group": true on ONE column – the list is grouped by it (heading + subtotals per group)
+                {"title": "Credit", "field": "cus_credit", "align": "right", "total": "sum"} ],       // optional "total": sum | avg | min | max | count – a row of totals below the list
     "columns": [ {"name": "cus_parent_id", "type": "id"} ]   // optional: columns to create that no object shows
   },
   "code": {                              // optional: the form's code – a key that is there replaces the form's, a missing key keeps it
@@ -461,6 +464,7 @@ TXT;
 			array_filter(array_map(static fn($o) => (string)$o['sob_all_id'], $base['objects'] ?? []), static fn($id) => isset($seen[strtolower($id)]))));
 		foreach (is_array($f['browse'] ?? null) ? $f['browse'] : [] as $b) {
 			if (!is_array($b) || trim((string)($b['field'] ?? '')) === '') $e[] = t('fai_err_browse');
+			elseif (isset($b['total']) && $b['total'] !== '' && NuFormMeta::cleanTotal($b['total']) === null) $e[] = t('fai_err_total', (string)$b['field'], implode(', ', NuFormMeta::TOTALS));
 		}
 
 		$plan = ['new_table' => $newTable ? ['table' => $table, 'pk' => $pk] : null, 'columns' => $addCols, 'removed' => $removed, 'code' => $codeParts,
@@ -682,6 +686,7 @@ TXT;
 			$old = [];
 			foreach ($browse as $b) $old[strtolower((string)$b['sbr_display'])] = $b;
 			$browse = [];
+			$grouped = false;
 			foreach ($f['browse'] as $i => $b) {
 				$field = trim((string)$b['field']);
 				$row = $old[strtolower($field)] ?? ['zzzzsys_browse_id' => nu_id(), 'sbr_zzzzsys_form_id' => $formId];
@@ -691,6 +696,11 @@ TXT;
 				$row['sbr_align'] = ['left' => 'l', 'center' => 'c', 'right' => 'r'][(string)($b['align'] ?? '')] ?? ($row['sbr_align'] ?? 'l');
 				$row['sbr_format'] = isset($b['format']) ? ((string)$b['format'] ?: null) : ($row['sbr_format'] ?? null);
 				$row['sbr_order'] = ($i + 1) * 10;
+				// total / group: a key that is there sets it ('' / false removes it), a missing key keeps the column's setting
+				$nx = [];
+				if (array_key_exists('total', $b)) $nx['total'] = NuFormMeta::cleanTotal($b['total']);
+				if (array_key_exists('group', $b)) $nx['group'] = !empty($b['group']) && !$grouped ? ($grouped = true) : null;
+				if ($nx) $row['sbr_json'] = NuFormMeta::mergeNunextJson($row['sbr_json'] ?? null, $nx);
 				$browse[] = $row;
 			}
 		} elseif (!$base && !in_array($type, ['edit', 'launch', 'subform'], true)) {

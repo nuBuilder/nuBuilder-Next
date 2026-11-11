@@ -18,6 +18,7 @@
 		var was = false;
 		try { was = localStorage.getItem(KEY) === '1'; } catch (e) { was = false; }
 		set(was, false);
+		document.documentElement.classList.remove('nuWarnOff-scode');   // nutheme.js hid the warning until here (0.8.1120)
 		hideB.addEventListener('click', function () { set(true, true); showB.focus(); });
 		showB.addEventListener('click', function () { set(false, true); hideB.focus(); });
 	})();

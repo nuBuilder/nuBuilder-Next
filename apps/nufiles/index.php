@@ -95,6 +95,7 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 			<span class="ms-auto"></span>
 			<span class="badge text-bg-warning d-none" id="nufRoBadge"><?= $t('readonly_badge') ?></span>
 			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufColToggle" title="<?= $t('show_modified') ?>" aria-label="<?= $t('show_modified') ?>" aria-pressed="false"><i class="bi bi-clock nuf-ic-time"></i><i class="bi bi-hdd nuf-ic-size"></i></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufLayoutBtn" title="<?= $t('view_grid') ?>" aria-label="<?= $t('view_grid') ?>" aria-pressed="false"><i class="bi bi-grid-3x3-gap nuf-ic-grid"></i><i class="bi bi-list-ul nuf-ic-list"></i></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufRefreshBtn" title="<?= $t('refresh') ?>"><i class="bi bi-arrow-clockwise"></i></button>
 		</div>
 
@@ -103,6 +104,14 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 		<div class="nuf-view" id="nufView" tabindex="-1">
 			<div class="nuf-drop" id="nufDrop" aria-hidden="true"><div><i class="bi bi-cloud-arrow-up"></i><br><?= $t('drop_here') ?></div></div>
 			<div class="nuf-msg text-body-secondary d-none" id="nufMsg"></div>
+			<div class="nuf-gridbar d-none" id="nufGridBar">
+				<input class="form-check-input" type="checkbox" id="nufAllG" aria-label="<?= $t('select_all') ?>">
+				<span class="text-body-secondary small"><?= $t('sort_by') ?></span>
+				<button type="button" class="nuf-sort" data-sort="name"><?= $t('name') ?></button>
+				<button type="button" class="nuf-sort" data-sort="size"><?= $t('size') ?></button>
+				<button type="button" class="nuf-sort" data-sort="mtime"><?= $t('modified') ?></button>
+			</div>
+			<div class="nuf-grid d-none" id="nufGrid"></div>
 			<table class="table table-sm table-hover align-middle nuf-table mb-0" id="nufTable">
 				<thead><tr>
 					<th class="nuf-c-check"><input class="form-check-input" type="checkbox" id="nufAll" aria-label="<?= $t('select_all') ?>"></th>

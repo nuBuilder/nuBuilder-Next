@@ -252,6 +252,8 @@ final class NuDraftStore
 			$data['sbr_json'] = NuFormMeta::mergeNunextJson($i !== null ? ($this->snap['browse'][$i]['sbr_json'] ?? null) : null, ['filter' => !empty($c['filter']) ? true : ($defFilter ? false : null)]);
 			if (array_key_exists('badge', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['badge' => NuFormMeta::cleanBadge($c['badge'])]);
 			if (array_key_exists('action', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['action' => NuFormMeta::cleanAction($c['action'])]);   // On click (0.8.872)
+					if (array_key_exists('total', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['total' => NuFormMeta::cleanTotal($c['total'])]);   // column total
+					if (array_key_exists('group', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['group' => !empty($c['group']) ? true : null]);   // group the list by this column
 			if (trim($data['sbr_display']) === '') continue;
 			$out[] = $i !== null ? self::set($this->snap['browse'][$i], $data) : self::row('zzzzsys_browse', ['zzzzsys_browse_id' => nu_id(), 'sbr_zzzzsys_form_id' => $this->formId] + $data);
 		}

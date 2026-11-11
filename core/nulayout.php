@@ -257,8 +257,8 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php endif; ?>
 						<?php // side bar on / off: start page → Customise → Appearance (0.8.708); "for everyone": Settings → Look ?>
 						<li><hr class="dropdown-divider"></li>
-						<?php if (NuUserHelp::any()): // user help pages of this installation (0.8.1023) ?><li><a class="dropdown-item" href="<?= h(nu_url('userhelp')) ?>" id="nuMenuUserHelp"><i class="bi bi-journal-bookmark me-2"></i><?= h(t('uh_title')) ?></a></li><?php endif; ?>
-						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener"><i class="bi bi-question-circle me-2"></i><?= h(t('help_title')) ?></a></li>
+						<?php if (NuUserHelp::any() && !NuUserHelp::canManage()): // user help pages of this installation (0.8.1023); not for those who manage them (0.8.1112: tile Help pages, the Help button of a form) ?><li><a class="dropdown-item" href="<?= h(nu_url('userhelp')) ?>" id="nuMenuUserHelp"><i class="bi bi-journal-bookmark me-2"></i><?= h(t('uh_title')) ?></a></li><?php endif; ?>
+						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener" id="nuMenuDocs"><i class="bi bi-book me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('password')) ?>"><i class="bi bi-key me-2"></i><?= h(t('nav_change_password')) ?></a></li>
@@ -368,6 +368,22 @@ function nu_sidebar(): void
 		. '</nav></aside>';
 }
 
+/**
+ * How long a message at the top of the page stays before it closes by itself (0.8.1119), in ms; 0 = it stays until closed.
+ * - "done" messages (success) close by themselves: the longer the text, the later (4 to 12 seconds);
+ * - notes (info) close by themselves only when short (up to 90 characters; 7 to 12 seconds) – a longer note is advice to read in peace;
+ * - warnings and errors stay; so does every message with a link or with something to act on.
+ * assets/js/nuapp.js runs the timer on signed-in pages only and holds it while the pointer or the focus is on the message.
+ */
+function nu_flash_autoclose(string $type, string $msg, bool $acts = false): int
+{
+	if ($acts) return 0;
+	$n = mb_strlen($msg);
+	if ($type === 'success') return (int)min(12000, max(4000, 2500 + $n * 55));
+	if ($type === 'info' && $n <= 90) return (int)min(12000, max(7000, 4000 + $n * 70));
+	return 0;
+}
+
 function nu_render_flashes(): void
 {
 	$toasts = '';
@@ -383,7 +399,9 @@ function nu_render_flashes(): void
 			continue;
 		}
 		$check = $msg === t('err_check_form');                // "Please check the highlighted fields" (0.8.718): nuapp.js lists them on a click
-		echo '<div class="alert alert-' . h($type) . ' alert-dismissible fade show d-flex align-items-start gap-2' . ($check ? ' nuCheckForm" data-tip="' . h(t('err_check_list')) : '') . '" role="alert">'
+		$auto = nu_flash_autoclose((string)$type, (string)$msg, isset($f[3][0], $f[3][1]) || $check);
+		echo '<div class="alert alert-' . h($type) . ' alert-dismissible fade show d-flex align-items-start gap-2' . ($check ? ' nuCheckForm" data-tip="' . h(t('err_check_list')) : '')
+			. ($auto ? '" data-nu-autoclose="' . $auto : '') . '" role="' . ($auto ? 'status' : 'alert') . '">'
 			. '<i class="bi ' . $icon . ' mt-1"></i><div>' . h($msg) . (isset($f[3][0], $f[3][1]) ? ' <a class="alert-link" href="' . h((string)$f[3][0]) . '">' . h((string)$f[3][1]) . '</a>' : '') . '</div>'
 			. '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="' . h(t('close')) . '"></button></div>';
 	}

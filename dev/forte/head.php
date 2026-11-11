@@ -73,6 +73,7 @@ $NUF_SETTINGS = [
 // ====================================================================================================================== bootstrap
 
 const NUF_VERSION = '%%VERSION%%';
+const NUF_ASSET_V = '%%ASSETV%%';   // hash of the script + style of this build: a new file is never shown with the browser's copy of the old ones
 const NUF_FORTE_EDITION = true;
 
 if (is_file(__DIR__ . '/nufiles-settings.php')) {
@@ -197,7 +198,7 @@ final class NufCtx
 	public function h(?string $s): string { return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 	public function url(array $params = []): string { return basename((string)$_SERVER['SCRIPT_NAME']) . ($params ? '?' . http_build_query($params) : ''); }
 	public function homeUrl(): string { return NUF_FORTE_URL . 'index.php'; }
-	public function asset(string $f): string { return $this->url(['asset' => $f === 'assets/app.css' ? 'css' : 'js']); }
+	public function asset(string $f): string { return $this->url(['asset' => $f === 'assets/app.css' ? 'css' : 'js', 'v' => NUF_ASSET_V]); }
 	public function &session(): array { if (!isset($_SESSION['nuf']) || !is_array($_SESSION['nuf'])) $_SESSION['nuf'] = []; return $_SESSION['nuf']; }
 	public function releaseSession(): void { if (session_status() === PHP_SESSION_ACTIVE) session_write_close(); }
 	public function log(string $m): void { error_log($m); }

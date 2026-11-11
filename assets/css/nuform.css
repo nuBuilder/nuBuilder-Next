@@ -723,3 +723,65 @@ html:not(.nuPhoneCards) #nuBrowseTable > thead > tr > th:first-child,
 html:not(.nuPhoneCards) #nuBrowseTable > tbody > tr.nuBrowseRow > td:first-child { padding-left: 1rem; }
 html:not(.nuPhoneCards) #nuBrowseTable > thead > tr > th:last-child,
 html:not(.nuPhoneCards) #nuBrowseTable > tbody > tr.nuBrowseRow > td:last-child { padding-right: 1rem; }
+
+/* right-click menus of forms (object, tab, column, sub-form column; design mode's tab menu): the item under the keyboard is marked by
+   its background only – a step darker than a hovered one – as the browser's own context menu does; no outline (0.8.1106) */
+.nuObjMenu .dropdown-item, .nuDsMenu .dropdown-item { outline: 0 !important; box-shadow: none !important; }
+.nuObjMenu .dropdown-item:hover, .nuDsMenu .dropdown-item:hover { background-color: var(--bs-tertiary-bg); }
+.nuObjMenu .dropdown-item:focus, .nuObjMenu .dropdown-item:focus-visible,
+.nuDsMenu .dropdown-item:focus, .nuDsMenu .dropdown-item:focus-visible { background-color: var(--bs-secondary-bg); }
+
+/* Design button (0.8.1107): a neutral button like its neighbours – only the pencil keeps the accent colour */
+#nuDesignButton > .nuDsPen { color: var(--bs-primary); }
+
+/* list side pane (0.8.1108): code tabs SQL · PHP · JavaScript, more settings per column, row details */
+.nuBsqBody[hidden] { display: none; }
+.nuBsqHead .nuBsqTabs .nav-link { white-space: nowrap; }
+.nuBsqColBtns { width: 6.75rem; }
+.nuBsqMoreRow > td { background: var(--bs-tertiary-bg); padding: .5rem .6rem .65rem !important; }
+.nuBsqMoreRow > td:first-child { padding: 0 !important; }
+.nuBsqMore .form-label { color: var(--bs-secondary-color); }
+.nuBsqMoreChecks { display: flex; flex-direction: column; gap: .15rem; justify-content: flex-end; }
+.nuBsqMore .ts-wrapper, .nuBsqCols .nuBsqGrid .ts-wrapper { font-size: .8125rem; }
+@media (max-width: 480px) { .nuBsqHead .nuBsqTabs .nav-link { padding: .35rem .5rem; } }
+
+/* list side pane, Columns tab: the Settings heading folds its block */
+.nuBsqFold { display: inline-flex; align-items: center; gap: .35rem; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.nuBsqFold:hover { color: var(--bs-body-color); }
+.nuBsqFold:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; border-radius: .2rem; }
+.nuBsqFold > .bi { font-size: .7rem; transition: transform .15s; }
+.nuBsqFold[aria-expanded="false"] > .bi { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) { .nuBsqFold > .bi { transition: none; } }
+
+/* row of column totals below a form list (tfoot#nuBrowseTotals): over all matching rows; stays in view at the bottom (nuapp.js) */
+#nuBrowseTotals > tr > td { border-top: 2px solid var(--bs-border-color); border-bottom: 0; background: var(--bs-tertiary-bg); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#nuBrowseTotals .nuTotalFn { font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .25rem; }
+html:not(.nuPhoneCards) #nuBrowseTable #nuBrowseTotals > tr > td:first-child { padding-left: 1rem; }
+html:not(.nuPhoneCards) #nuBrowseTable #nuBrowseTotals > tr > td:last-child { padding-right: 1rem; }
+#nuBrowseTable.nuFootFloat #nuBrowseTotals > tr > td { position: relative; z-index: 1; box-shadow: 0 -.25rem .5rem rgba(0, 0, 0, .08); }
+html.nuPhoneCards #nuBrowseTotals > tr { display: flex; flex-wrap: wrap; gap: .15rem 1rem; padding: .65rem .9rem; background: var(--bs-tertiary-bg); border-top: 2px solid var(--bs-border-color); }
+html.nuPhoneCards #nuBrowseTotals > tr > td { display: block; border: 0; padding: 0; background: none; width: auto !important; text-align: start !important; transform: none !important; }
+html.nuPhoneCards #nuBrowseTotals > tr > td:not([data-nu-total]) { display: none; }
+html.nuPhoneCards #nuBrowseTotals > tr > td[data-nu-total]::before { content: attr(data-nu-label) " · "; font-weight: 400; color: var(--bs-secondary-color); }
+@media print { #nuBrowseTotals > tr > td { transform: none !important; box-shadow: none !important; } }
+
+/* totals of selected rows (checkbox column of lists with totals) and grouped lists (heading + subtotal row per group) */
+#nuBrowseTable th.nuSelCol, #nuBrowseTable td.nuSelCol { width: 36px; min-width: 36px; padding: 0 .1rem 0 .75rem; text-align: center; }
+#nuBrowseTable .nuSelCol .form-check-input { margin: 0; vertical-align: middle; cursor: pointer; }
+#nuBrowseTotals.nuTotalSel > tr > td { background: var(--bs-primary-bg-subtle); }
+.nuSelClear { border: 0; border-radius: 1rem; padding: 0 .4rem; font-size: .7rem; font-weight: 700; line-height: 1.4; background: var(--bs-primary); color: #fff; cursor: pointer; }
+.nuSelClear:focus-visible { outline: 2px solid var(--bs-body-color); outline-offset: 1px; }
+#nuBrowseTable tr.nuGroupRow > th { background: var(--bs-tertiary-bg); font-weight: 600; padding: .35rem 1rem; border-bottom: 1px solid var(--bs-border-color); text-align: start; }
+#nuBrowseTable tr.nuGroupRow .nuGroupTitle { font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .35rem; }
+#nuBrowseTable tr.nuGroupRow .nuGroupCount { font-size: .72rem; font-weight: 600; color: var(--bs-secondary-color); background: var(--bs-secondary-bg); border-radius: 1rem; padding: 0 .45rem; margin-inline-start: .35rem; }
+#nuBrowseTable tr.nuGroupTotalRow > td { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; border-bottom: 2px solid var(--bs-border-color); }
+#nuBrowseTable tr.nuGroupTotalRow .nuTotalFn { font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .25rem; }
+html:not(.nuPhoneCards) #nuBrowseTable tr.nuGroupTotalRow > td:last-child { padding-right: 1rem; }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupRow, html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupRow > th { display: block; }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupTotalRow { display: flex; flex-wrap: wrap; gap: .15rem 1rem; padding: .5rem .9rem; border-bottom: 2px solid var(--bs-border-color); }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupTotalRow > td { display: block; border: 0; padding: 0; width: auto !important; text-align: start !important; }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupTotalRow > td:not([data-nu-total]) { display: none; }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupTotalRow > td[data-nu-total]::before { content: attr(data-nu-label) " · "; font-weight: 400; color: var(--bs-secondary-color); }
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuSelCol { order: 97; margin-inline-start: auto; width: auto; padding: 0; }
+html.nuPhoneCards #nuBrowseTotals > tr > td.nuSelCol:has(.nuSelClear:not([hidden])) { display: block; }
+@media print { #nuBrowseTable .nuSelCol { display: none; } }

@@ -76,6 +76,14 @@ check('plain de = de-DE', nu_lang_variant() === 'de-DE' && nu_locale() === 'de-D
 check('nu_short_path inside', nu_short_path(NU_ROOT . '/vendor/packs/x') === 'vendor/packs/x');
 check('nu_short_path parent', dirname(NU_ROOT) === '/' || nu_short_path(dirname(NU_ROOT) . '/libsrc/y') === '../libsrc/y');
 check('nu_short_path other', nu_short_path('/etc/zz') === '/etc/zz' || str_starts_with(NU_ROOT, '/etc'));
+// messages that close by themselves (0.8.1119): done messages and short notes, by length; warnings, errors and messages to act on stay
+if (!function_exists('nu_flash_autoclose')) require_once NU_ROOT . '/core/nulayout.php';
+check('autoclose success short', nu_flash_autoclose('success', 'Saved.') === 4000);
+check('autoclose success longer later', nu_flash_autoclose('success', str_repeat('x', 100)) === 8000 && nu_flash_autoclose('success', str_repeat('x', 400)) === 12000);
+check('autoclose info short', nu_flash_autoclose('info', str_repeat('x', 60)) === 8200 && nu_flash_autoclose('info', 'ok') === 7000);
+check('autoclose info long stays', nu_flash_autoclose('info', str_repeat('x', 91)) === 0);
+check('autoclose warning / error stay', nu_flash_autoclose('warning', 'x') === 0 && nu_flash_autoclose('danger', 'x') === 0);
+check('autoclose with a link stays', nu_flash_autoclose('success', 'Saved.', true) === 0);
 check('setting title default', NuSettings::title(['cfg_setting' => 'nuDebugIcon', 'cfg_title' => 'Debug Icon']) === t('cfgt_nudebugicon'));
 check('setting title own', NuSettings::title(['cfg_setting' => 'nuDebugIcon', 'cfg_title' => 'My icon']) === 'My icon');
 check('setting title unknown', NuSettings::title(['cfg_setting' => 'nuSomethingNew', 'cfg_title' => 'X']) === 'X');

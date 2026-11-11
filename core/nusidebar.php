@@ -251,9 +251,18 @@ final class NuSidebar
 	 * Favourites and recently used items: [key, label, icon, href|null, post app|null, color, newtab, fav, current, canFav].
 	 * @return array{fav: list<array>, recent: list<array>, canFav: bool}
 	 */
-	public static function data(int $recentMax = 8): array
+	public static function data(int $recentMax = 8, ?bool $skipFav = null): array
 	{
 		[$layout, $userPage, $mine] = self::startPage();
+		// 0.8.1115: Recently used without the favourites – the start page's view key recentNoFav (null = as that view says; the start page
+		// passes false and hides them itself, so its switch works without a reload)
+		if ($skipFav === null) {
+			try {
+				$skipFav = !empty(NuHome::effectiveView($layout, NuHome::overlay((string)(NuHome::current()['id'] ?? '')))['recentNoFav']);
+			} catch (Throwable) {
+				$skipFav = false;
+			}
+		}
 		$favList = array_key_exists('fav', $mine) ? (array)$mine['fav'] : (array)($layout['fav'] ?? []);
 		$hide = (array)($mine['hide'] ?? []);
 		$cur = self::currentKey();
@@ -284,7 +293,7 @@ final class NuSidebar
 		$recent = [];
 		foreach (self::recentKeys() as $k) {
 			if (count($recent) >= $recentMax) break;
-			if (($it = $item($k)) !== null) $recent[] = $it;
+			if (($it = $item($k)) !== null && !($skipFav && !empty($it['fav']))) $recent[] = $it;
 		}
 		return ['fav' => $fav, 'recent' => $recent, 'canFav' => $canFav];
 	}

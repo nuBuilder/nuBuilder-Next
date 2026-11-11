@@ -3942,8 +3942,19 @@ T.options_menu = async (s) => {
 	expect(!k.includes('a') && !k.includes('p') && !k.includes('s') && !k.includes('f') && !k.includes('o') && !k.includes('m') && !k.includes('r') && !k.includes('e') && !k.includes('j'), 'browse menu: ' + await items());
 	// 0.8.818: Browse SQL (lists only) → design mode, Code, the browse SQL; no Refresh / Database / Logged-in users / File Manager
 	const its = await items();
-	expect(its.includes('Browse SQLCtrl+Shift+B') && its.includes('PHP Before Browse') && !its.includes('File Manager') && !its.includes('Refresh'), 'browse menu items: ' + its);
+	// 0.8.1111: editing the list is in Design ▾ only – no Browse SQL / PHP Before Browse here
+	expect(!its.some((x) => /Browse SQL|Before Browse/.test(x)) && !k.includes('b') && !its.includes('File Manager') && !its.includes('Refresh'), 'browse menu items: ' + its);
+	expect(!its.some((x) => /^Version info/.test(x)) && its.some((x) => /^Hash variables/.test(x)), 'Version info is no menu entry (0.8.1109): ' + its);
+	// 0.8.1112: the manual is called Documentation here as in the user menu; "Help" is only the form's own help page
+	expect(its.some((x) => /^Documentation/.test(x)) && !its.some((x) => /^Help/.test(x)), 'the manual entry is called Documentation: ' + its);
+	expect(await p.locator('#nuMenuDocs').count() === 1 && await p.locator('#nuMenuUserHelp').count() === 0, 'user menu of the globeadmin: Documentation, no Help');
 	await p.keyboard.press('Escape');
+	const before = await p.evaluate(() => document.querySelectorAll('.jconfirm, .modal.show, .nuMessage').length);
+	await p.keyboard.press('Control+Shift+V'); await p.waitForTimeout(400);                      // 0.8.1110: no shortcut either
+	expect(await p.evaluate(() => document.querySelectorAll('.jconfirm, .modal.show, .nuMessage').length) === before && !/PHP \d+\.\d+\.\d+ · /.test(await p.evaluate(() => document.body.innerText)), 'Ctrl+Shift+V still shows the version');
+	await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+	await p.evaluate(() => { document.querySelectorAll('.jconfirm .jconfirm-buttons button, .nuMessage .btn-close, .modal.show [data-bs-dismiss]').forEach((b) => b.click()); });
+	await p.waitForTimeout(300);
 	await Promise.all([p.waitForNavigation(), p.keyboard.press('Control+Shift+A')]);
 	expect(/[?&]r=-1\b/.test(p.url()), 'Ctrl+Shift+A still adds: ' + p.url());
 	const id = sql('SELECT sample_customer_id FROM sample_customer ORDER BY 1 LIMIT 1');
@@ -3959,17 +3970,13 @@ T.options_menu = async (s) => {
 	await p.keyboard.press('Control+Shift+M'); await p.waitForTimeout(300);
 	expect(await p.isVisible('#nuFormInfo'), 'Ctrl+Shift+M opens the form info panel');
 	await open(p, 'index.php?p=form&f=samplecustomer');
-	await p.click('#nuOptions'); await p.waitForTimeout(200);
-	await p.click('.nuOptionsList .dropdown-item:not([data-nu-opt]):has(.bi-filetype-sql)');                     // 0.8.932: the pane of the list
+	await p.keyboard.press('Control+Shift+B');                                                    // the shortcut still opens the pane
 	await p.waitForSelector('#nuBsqPane .CodeMirror');
-	expect(/SELECT/i.test(await p.locator('#nuBsqPane .CodeMirror').first().textContent()), 'Browse SQL did not open the pane');
+	expect(/SELECT/i.test(await p.locator('#nuBsqPane .CodeMirror').first().textContent()), 'Ctrl+Shift+B did not open the pane');
 	await p.click('#nuBsqPane .nuBsqClose');
-	// 0.8.819: PHP Before Browse
-	await open(p, 'index.php?p=form&f=samplecustomer');
-	await p.click('#nuOptions'); await p.waitForTimeout(200);
-	await Promise.all([p.waitForNavigation(), p.click('.nuOptionsList .dropdown-item:has(.bi-filetype-php)')]);
-	await p.waitForSelector('#nuDsWork:not([hidden])'); await p.waitForTimeout(500);
-	expect(/dsitem=php%3ABB/.test(p.url()) && await p.locator('#nuDsWork [aria-current="true"], #nuDsWork .active').filter({hasText: 'Before Browse'}).count() > 0, 'PHP Before Browse not opened: ' + p.url());
+	await p.click('#nuDesignMore'); await p.waitForTimeout(200);
+	expect(/Ctrl\+Shift\+B/.test(await p.textContent('#nuBrowseSqlEdit')) && await p.isVisible('#nuBrowsePhpEdit'), 'Design ▾ has the entries');
+	await p.keyboard.press('Escape');
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
@@ -4974,6 +4981,20 @@ T.globalcode_warn_hide = async (s) => {                // 0.8.856: the warning o
 	expect(!(await p.isVisible('#scodeWarn')) && await p.isVisible('#scodeWarnShow'), 'not hidden');
 	await open(p, 'index.php?p=globalcode');
 	expect(!(await p.isVisible('#scodeWarn')) && await p.isVisible('#scodeWarnShow'), 'choice not kept');
+	// 0.8.1120: a hidden warning is not drawn at all – before, it showed until the page's script ran (that script held back here)
+	for (const [route, js, sel] of [['globalcode', 'nuglobalcode.js', '#scodeWarn'], ['configfile', 'nuconfigfile.js', '#cfgWarn']]) {
+		await p.evaluate((k) => { try { localStorage.setItem(k, '1'); } catch (e) { /* */ } }, route === 'globalcode' ? 'nunext-scode-warn-hidden' : 'nunext-cfg-warn-hidden');
+		const hold = (r) => r.abort().catch(() => {});
+		await p.route('**/' + js + '*', hold);
+		await p.goto(BASE + 'index.php?p=' + route, { waitUntil: 'domcontentloaded' });
+		if (/reauth/.test(p.url())) { await p.unroute('**/' + js + '*', hold); continue; }
+		expect(await p.locator(sel).count() === 1 && !(await p.isVisible(sel)), sel + ' flashes before the script hides it');
+		await p.unroute('**/' + js + '*', hold);
+		if (route === 'configfile') await p.evaluate(() => { try { localStorage.removeItem('nunext-cfg-warn-hidden'); } catch (e) { /* */ } });
+	}
+	p.errors.length = 0;
+	await open(p, 'index.php?p=globalcode');
+	expect(!(await p.isVisible('#scodeWarn')) && await p.isVisible('#scodeWarnShow'), 'still hidden with the script');
 	await p.click('#scodeWarnShow');
 	expect(await p.isVisible('#scodeWarn') && !(await p.isVisible('#scodeWarnShow')), '(i) does not show it');
 	await open(p, 'index.php?p=globalcode');
@@ -5665,7 +5686,7 @@ T.design_phone_menu = async (s) => {
 		await p.goto(BASE + 'index.php?p=form&f=samplecustomer'); await p.waitForSelector('#nuOptions');
 		await p.click('#nuOptions'); await p.waitForTimeout(300);
 		const l = await opts();
-		expect(l.join() === 'design,browse_sql,columns,info', 'list ⋮ items: ' + l.join());
+		expect(l.join() === 'design,browse_sql,browse_php,browse_js,columns,info', 'list ⋮ items: ' + l.join());
 		await p.click('.nuOptionsList [data-nu-opt=browse_sql]'); await p.waitForTimeout(800);
 		expect(await vis('#nuBsqPane'), 'Edit browse SQL… opens the pane');
 		await p.setViewportSize({ width: 1200, height: 800 }); await p.goto(BASE + 'index.php?p=form&f=samplecustomer&r=' + id); await p.waitForSelector('#nuSaveButton');
@@ -9339,7 +9360,18 @@ T.update_quick = async (s) => {
 	expect(await p.locator('#updQuick').isVisible() && /backup|Sicherung/i.test(await p.getAttribute('#updQuick', 'data-bs-original-title') || await p.getAttribute('#updQuick', 'title') || ''), 'Check & install with its tooltip');
 	const newer = pv.localeCompare(installed, undefined, { numeric: true }) > 0;
 	sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'nunext_update_quick'");
-	await Promise.all([p.waitForLoadState('networkidle'), p.click('#updQuick')]);
+	// the "do not interrupt" notice of Install also shows for Check & install – only for that button of the upload form
+	expect(await p.getAttribute('#updQuick', 'data-nu-progress') === '#updQuickProgress' && await p.getAttribute('#updUpload', 'data-nu-progress') === null
+		&& await p.locator('#updQuickProgress').count() === 1 && await p.locator('#updQuickProgress').isHidden(), 'progress notice of Check & install missing or already open');
+	// the request is held back once (a listener after the page's own), so the page is still there to look at
+	await p.evaluate(() => window.addEventListener('submit', (e) => e.preventDefault(), { once: true }));
+	await p.click('#updQuick', { noWaitAfter: true });
+	await p.waitForTimeout(900);
+	expect(await p.locator('#updQuickProgress.show').count() === 1 && /Keep this page open|Seite geöffnet/.test(await p.textContent('#updQuickProgress').catch(() => '')), 'Check & install shows no notice while it runs');
+	expect(await p.locator('#updQuickProgress .btn-close, #updQuickProgress [data-bs-dismiss]').count() === 0, 'the notice can be closed');
+	await p.evaluate(() => { const f = document.querySelector('#updQuick').form; f.dataset.nuSent = ''; const b = document.querySelector('#updQuick'); b.disabled = false; });
+	await Promise.all([p.waitForURL(/check=|finish=1/, { timeout: 90000 }), p.evaluate(() => document.querySelector('#updQuick').click())]);   // the notice covers the page: no real click possible
+	await p.waitForLoadState('networkidle');
 	await p.waitForTimeout(800);
 	if (!newer) {
 		expect(/check=/.test(p.url()) && await p.locator('#updInstallForm').count() + await p.locator('.alert-danger').count() > 0 && /Not installed at once|Nicht sofort installiert/.test(await p.textContent('body')), 'not newer: normal check with the reason: ' + p.url());
@@ -12113,6 +12145,87 @@ T.file_manager_phone_col = async (s) => {
 	}
 };
 
+T.file_manager_grid = async (s) => {
+	if (!SITE) return 'skip';
+	const ga = s.ga, vp = ga.viewportSize();
+	let made = false; const files = [];
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		const dir = set.shares.find(x => x.id === 'uploads').path;
+		fs.mkdirSync(dir, { recursive: true });
+		const put = (n, data) => { const f = path.join(dir, n); fs.writeFileSync(f, data); files.push(f); };
+		// a 600 x 300 PNG made by PHP's GD (the test needs GD like the feature)
+		const png = path.join(dir, 'e2e_grid_pic.png'); files.push(png);
+		execSync(`php -r '$i = imagecreatetruecolor(600, 300); imagefill($i, 0, 0, imagecolorallocate($i, 200, 60, 60)); imagepng($i, $argv[1]);' ${JSON.stringify(png)}`);
+		put('e2e_grid_note.txt', 'hello');
+		put('e2e_grid_vec.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="green"/></svg>');
+		put('e2e_grid_fake.jpg', 'this is not a picture');
+		await open(ga, 'index.php?p=filemanager');
+		await ga.waitForSelector('#nufCrumbs', { state: 'attached' });
+		await ga.evaluate(() => { try { localStorage.removeItem('nufLayout'); } catch (e) { /* */ } });
+		await ga.goto(ga.url().split('#')[0] + '#/uploads/');
+		await ga.reload(); await ga.waitForLoadState('networkidle');
+		await ga.waitForFunction(() => [...document.querySelectorAll('#nufRows tr')].some(x => /e2e_grid_pic/.test(x.textContent)));
+		expect(await ga.isVisible('#nufTable') && !(await ga.isVisible('#nufGrid')), 'the list is the default');
+		await ga.click('#nufLayoutBtn');
+		await ga.waitForSelector('#nufGrid .nuf-tile[data-key="e2e_grid_pic.png"]');
+		expect(!(await ga.isVisible('#nufTable')) && await ga.getAttribute('#nufLayoutBtn', 'aria-pressed') === 'true', 'tiles instead of the table');
+		await ga.locator('.nuf-tile[data-key="e2e_grid_pic.png"]').scrollIntoViewIfNeeded();
+		await ga.waitForFunction(() => { const i = document.querySelector('.nuf-tile[data-key="e2e_grid_pic.png"] img'); return i && i.complete && i.naturalWidth > 0; });
+		const pic = await ga.evaluate(() => { const i = document.querySelector('.nuf-tile[data-key="e2e_grid_pic.png"] img'); return { w: i.naturalWidth, h: i.naturalHeight, shown: i.offsetParent !== null, src: i.getAttribute('src') }; });
+		expect(pic.w === 256 && pic.h === 128 && pic.shown && /action=thumb/.test(pic.src), 'thumbnail 256 x 128 from the server: ' + JSON.stringify(pic));
+		// pictures load lazily: bring the tiles into view
+		await ga.locator('.nuf-tile[data-key="e2e_grid_vec.svg"]').scrollIntoViewIfNeeded();
+		await ga.locator('.nuf-tile[data-key="e2e_grid_fake.jpg"]').scrollIntoViewIfNeeded();
+		await ga.waitForFunction(() => { const i = document.querySelector('.nuf-tile[data-key="e2e_grid_vec.svg"] img'); return i && i.complete && i.naturalWidth > 0; });
+		await ga.waitForFunction(() => !document.querySelector('.nuf-tile[data-key="e2e_grid_fake.jpg"] img'));
+		const ico = await ga.evaluate(() => ['e2e_grid_fake.jpg', 'e2e_grid_note.txt'].map(k => { const t = document.querySelector('.nuf-tile[data-key="' + k + '"]'); return !t.querySelector('img') && t.querySelector('.nuf-thumb .bi').offsetParent !== null; }));
+		expect(ico[0] && ico[1], 'a broken picture and a text file show the type icon: ' + JSON.stringify(ico));
+		expect(fs.existsSync(path.join(SITE, 'custom/pages/nufiles/_data/thumbs/uploads')) && fs.readdirSync(path.join(SITE, 'custom/pages/nufiles/_data/thumbs/uploads')).length >= 1, 'the thumbnail is kept in the data folder');
+		// the answer of the server: picture type, cached privately; no thumbnail = an empty answer
+		const r = await ga.evaluate(async (src) => { const a = await fetch(src); const b = await fetch(src.replace('e2e_grid_pic.png', 'e2e_grid_fake.jpg')); return [a.status, a.headers.get('content-type'), a.headers.get('cache-control'), b.status]; }, pic.src);
+		expect(r[0] === 200 && r[1] === 'image/png' && /private/.test(r[2]) && r[3] === 204, 'thumb answers: ' + JSON.stringify(r));
+		// selection, right-click menu, sort
+		await ga.click('.nuf-tile[data-key="e2e_grid_note.txt"] .nuf-thumb');
+		await ga.click('.nuf-tile[data-key="e2e_grid_pic.png"] .nuf-thumb', { modifiers: ['Control'] });
+		expect(await ga.locator('#nufGrid .nuf-tile.nuf-sel').count() === 2 && !(await ga.isDisabled('#nufDownloadBtn')), 'click + Ctrl+click select two tiles');
+		await ga.click('.nuf-tile[data-key="e2e_grid_vec.svg"] .nuf-thumb', { button: 'right' });
+		await ga.waitForSelector('.nuf-tile[data-key="e2e_grid_vec.svg"] .dropdown-menu.show');
+		expect(await ga.locator('#nufGrid .nuf-tile.nuf-sel').count() === 1, 'right-click selects the tile');
+		await ga.keyboard.press('Escape');
+		await ga.click('#nufGridBar .nuf-sort[data-sort=size]');
+		const order = await ga.evaluate(() => [...document.querySelectorAll('#nufGrid .nuf-tile[data-key^=e2e_grid]')].map(x => x.getAttribute('data-key')));
+		expect(order[0] === 'e2e_grid_pic.png' || order[order.length - 1] === 'e2e_grid_pic.png', 'sorted by size from the bar: ' + order.join(','));
+		await ga.click('#nufGridBar .nuf-sort[data-sort=name]');
+		await ga.reload(); await ga.waitForSelector('#nufGrid .nuf-tile[data-key="e2e_grid_pic.png"]');
+		expect(!(await ga.isVisible('#nufTable')), 'remembered after a reload');
+		await ga.setViewportSize({ width: 390, height: 800 });
+		await ga.waitForTimeout(200);
+		const ph = await ga.evaluate(() => { const t = [...document.querySelectorAll('#nufGrid .nuf-tile')].slice(0, 3).map(x => x.getBoundingClientRect()); return { same: Math.abs(t[0].top - t[1].top) < 2, next: t[2].top > t[0].top + 10, over: document.documentElement.scrollWidth > window.innerWidth + 1 }; });
+		expect(ph.same && ph.next && !ph.over, 'phones: two tiles per row: ' + JSON.stringify(ph));
+		await ga.setViewportSize(vp);
+		await ga.click('#nufLayoutBtn');
+		await ga.waitForFunction(() => [...document.querySelectorAll('#nufRows tr')].some(x => /e2e_grid_pic/.test(x.textContent)));
+		expect(await ga.isVisible('#nufTable') && !(await ga.isVisible('#nufGrid')), 'back to the list');
+	} finally {
+		await ga.setViewportSize(vp);
+		await ga.evaluate(() => { try { localStorage.removeItem('nufLayout'); localStorage.removeItem('nufSort'); } catch (e) { /* */ } }).catch(() => {});
+		files.forEach(f => fs.rmSync(f, { force: true }));
+		if (SITE) fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data/thumbs'), { recursive: true, force: true });
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
 T.file_manager_toolbar_row = async (s) => {
 	if (!SITE) return 'skip';
 	const ga = s.ga;
@@ -13139,7 +13252,8 @@ T.form_maintenance = async (s) => {            // 0.8.808: status 2 = Maintenanc
 	try {
 		// forms list: "Maintenance…" with several forms, message and until
 		await open(p, 'index.php?p=forms');
-		await p.click('#nuFmsListBtn'); await p.waitForSelector('#nuFmsList .nuFmsRow');
+		expect(await p.locator('.nuToolBtn.dropdown-toggle + .dropdown-menu #nuFmsListBtn').count() === 1 && !(await p.isVisible('#nuFmsListBtn')), 'Maintenance is an entry of Tools (0.8.1113)');
+		await p.click('.dropdown:has(#nuFmsListBtn) > .nuToolBtn'); await p.click('#nuFmsListBtn'); await p.waitForSelector('#nuFmsList .nuFmsRow');
 		const code = sql("SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = '" + F + "'");
 		await p.fill('#nuFmsFilter', code);
 		expect(await p.locator('#nuFmsList .nuFmsRow:visible').count() >= 1, 'filter');
@@ -14242,6 +14356,284 @@ T.obj_menu_clone = async (s) => {
 	}
 };
 
+T.report_run_btn_neutral = async (s) => {
+	const ga = s.ga;
+	await open(ga, 'index.php?p=reports');
+	await ga.waitForSelector('.nuRowActions a.nuRowRun');
+	await ga.mouse.move(0, 0);
+	const v = await ga.evaluate(() => { const c = document.querySelector('.nuRowActions'), a = c.querySelectorAll('a.btn'), cs = e => getComputedStyle(e);
+		return { n: a.length, b0: cs(a[0]).borderTopColor, b1: cs(a[1]).borderTopColor, i0: cs(a[0].querySelector('.bi')).color, i1: cs(a[1].querySelector('.bi')).color,
+			primary: (() => { const d = document.createElement('span'); d.style.color = 'var(--bs-primary)'; document.body.appendChild(d); const x = cs(d).color; d.remove(); return x; })(), blank: a[1].target }; });
+	expect(v.n === 2 && v.b0 === v.b1, 'designer and run button have the same frame: ' + JSON.stringify(v));
+	expect(v.i1 === v.primary && v.i0 !== v.primary && v.blank === '_blank', 'only the run icon is in the accent colour: ' + JSON.stringify(v));
+};
+
+// grouped list (a column with nunext.group): heading + subtotal row per group over the WHOLE group, sort inside the groups; totals of
+// selected rows (checkbox column of lists with totals); Form with AI reads and writes "total" / "group" of list columns
+T.browse_groups_selection = async (s) => {
+	if (!SITE) return 'skip';
+	const ga = s.ga, vp = ga.viewportSize();
+	const before = sql("SELECT CONCAT(zzzzsys_browse_id, '=', IFNULL(TO_BASE64(sbr_json), '~')) FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = 'samplecustomer'").split('\n');
+	const set = (id, j) => sql(`UPDATE zzzzsys_browse SET sbr_json = '${JSON.stringify({ nunext: j })}' WHERE zzzzsys_browse_id = '${id}'`);
+	const num = v => (/^\(.*\)$/.test(String(v).trim()) ? -1 : 1) * parseFloat(String(v).replace(/[^0-9.-]/g, ''));
+	const php = (code) => require('child_process').execFileSync('php', ['-r', 'chdir(' + JSON.stringify(SITE) + "); require 'core/nuapp.php'; " + code]).toString();   // no shell: the code has $ variables
+	try {
+		set('sample_customer_b5', { total: 'sum' }); set('sample_customer_b3', { filter: true, group: true });
+		// ---- groups: 5 rows per page, so groups are split across pages
+		await open(ga, 'index.php?p=form&f=samplecustomer&per=5');
+		const g = await ga.evaluate(() => { const out = []; let cur = null;
+			document.querySelectorAll('#nuRECORD > tr').forEach(tr => {
+				if (tr.classList.contains('nuGroupRow')) { cur = { name: tr.querySelector('.nuGroupName').textContent, count: +tr.querySelector('.nuGroupCount').textContent, rows: [], sub: null }; out.push(cur); }
+				else if (tr.classList.contains('nuBrowseRow')) cur.rows.push([tr.querySelector('div.nuCell[data-nu-column="2"]').textContent.trim(), tr.querySelector('div.nuCell[data-nu-column="1"]').textContent.trim()]);
+				else if (tr.classList.contains('nuGroupTotalRow')) cur.sub = tr.querySelector('td[data-nu-total=sum] .nuTotalVal').textContent;
+			}); return out; });
+		const named = g.filter(x => x.rows[0] && x.rows[0][0] !== '');   // other tests may have left customers without a country: their group is "(empty)"
+		expect(named.length >= 2 && g.every(x => x.rows.length > 0 && x.sub !== null) && named.every(x => x.rows.every(r => r[0] === x.name)), 'heading, rows of the group and a subtotal row: ' + JSON.stringify(g).slice(0, 300));
+		const names = named.map(x => x.name);
+		expect(JSON.stringify(names) === JSON.stringify([...names].sort()), 'groups in order: ' + names.join(','));
+		for (const x of named) {
+			const [n, sum] = sql(`SELECT COUNT(*), IFNULL(SUM(cus_credit), 0) FROM sample_customer WHERE cus_country = '${x.name}'`).split('\t');
+			expect(x.count === +n && Math.abs((num(x.sub) || 0) - +sum) < 0.01, 'count and subtotal of the whole group ' + x.name + ': ' + JSON.stringify([x.count, x.sub, n, sum]));
+		}
+		// one row per page inside the largest group: the heading and the subtotal still cover the whole group
+		const big = sql("SELECT cus_country, COUNT(*), SUM(cus_credit) FROM sample_customer WHERE IFNULL(cus_country, '') <> '' GROUP BY cus_country ORDER BY COUNT(*) DESC LIMIT 1").split('\t');
+		const off = +sql(`SELECT COUNT(*) FROM sample_customer WHERE IFNULL(cus_country, '') < '${big[0]}'`);
+		await open(ga, 'index.php?p=form&f=samplecustomer&per=1&pg=' + (off + 1));
+		const one = await ga.evaluate(() => ({ rows: document.querySelectorAll('#nuRECORD tr.nuBrowseRow').length, name: document.querySelector('.nuGroupName').textContent, count: +document.querySelector('.nuGroupCount').textContent, sub: document.querySelector('tr.nuGroupTotalRow td[data-nu-total=sum] .nuTotalVal').textContent }));
+		expect(+big[1] > 1 && one.rows === 1 && one.name === big[0] && one.count === +big[1] && Math.abs(num(one.sub) - +big[2]) < 0.01, 'a group split across pages shows its whole subtotal: ' + JSON.stringify([one, big]));
+		await open(ga, 'index.php?p=form&f=samplecustomer&per=5');
+		const grand = await ga.textContent('#nuBrowseTotals td[data-nu-total=sum] .nuTotalVal');
+		expect(Math.abs(num(grand) - +sql('SELECT SUM(cus_credit) FROM sample_customer')) < 0.01, 'the row of totals stays the grand total');
+		// a click on another title sorts inside the groups
+		await open(ga, 'index.php?p=form&f=samplecustomer&sort=1&dir=desc');
+		const g2 = await ga.evaluate(() => { const out = []; let cur = null;
+			document.querySelectorAll('#nuRECORD > tr').forEach(tr => { if (tr.classList.contains('nuGroupRow')) { cur = []; out.push(cur); } else if (tr.classList.contains('nuBrowseRow')) cur.push(tr.querySelector('div.nuCell[data-nu-column="1"]').textContent.trim()); });
+			return out; });
+		expect(g2.length === +sql("SELECT COUNT(DISTINCT IFNULL(cus_country, '')) FROM sample_customer"), 'one heading per group when all rows fit: ' + g2.length);
+		expect(g2.every(x => JSON.stringify(x) === JSON.stringify([...x].sort((a, b) => a.toLowerCase() < b.toLowerCase() ? 1 : -1))), 'sorted by name descending inside each group: ' + JSON.stringify(g2).slice(0, 200));
+		// ---- totals of selected rows
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		const all = await ga.textContent('#nuBrowseTotals td[data-nu-total=sum] .nuTotalVal');
+		// two rows that have a credit value
+		const idx = await ga.evaluate(() => window.nuNext.browse.rows.map((r, i) => r[5] !== null && r[5] !== '' ? i : -1).filter(i => i >= 0).slice(0, 3));
+		const picks = await ga.evaluate(() => [...document.querySelectorAll('#nuRECORD tr.nuBrowseRow')].map(tr => tr.getAttribute('data-nu-primary-key')));
+		const url0 = ga.url();
+		await ga.locator('#nuRECORD tr.nuBrowseRow .nuRowSel').nth(idx[0]).check();
+		await ga.locator('#nuRECORD tr.nuBrowseRow .nuRowSel').nth(idx[2]).check();
+		expect(ga.url() === url0, 'ticking a row does not open it');
+		const want = +sql(`SELECT SUM(cus_credit) FROM sample_customer WHERE sample_customer_id IN ('${picks[idx[0]]}', '${picks[idx[2]]}')`);
+		let v = await ga.textContent('#nuBrowseTotals td[data-nu-total=sum] .nuTotalVal');
+		expect(Math.abs(num(v) - want) < 0.01 && /USD/.test(v) && v !== all, 'sum of the two ticked rows in the column format: ' + v + ' / ' + want);
+		expect(await ga.isVisible('#nuSelClear') && /2/.test(await ga.textContent('#nuSelClear')) && await ga.evaluate(() => document.getElementById('nuBrowseTotals').classList.contains('nuTotalSel') && document.getElementById('nuRowSelAll').indeterminate), 'marker with the number of rows');
+		await ga.click('#nuSelClear');
+		expect(await ga.textContent('#nuBrowseTotals td[data-nu-total=sum] .nuTotalVal') === all && !(await ga.isVisible('#nuSelClear')), 'cleared: all matching rows again');
+		await ga.check('#nuRowSelAll');
+		v = await ga.textContent('#nuBrowseTotals td[data-nu-total=sum] .nuTotalVal');
+		const pageSum = await ga.evaluate(() => window.nuNext.browse.rows.reduce((a, r) => a + (parseFloat(r[5]) || 0), 0));
+		expect(Math.abs(num(v) - pageSum) < 0.01, 'select all = the rows of the page: ' + v + ' / ' + pageSum);
+		await open(ga, 'index.php?p=form&f=samplecustomer&print=1');
+		expect(!(await ga.$('.nuSelCol')) && !!(await ga.$('tr.nuGroupRow')), 'print view: groups, no checkboxes');
+		await ga.setViewportSize({ width: 390, height: 800 });
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		await ga.waitForFunction(() => document.documentElement.classList.contains('nuPhoneCards'));
+		expect(!(await ga.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) && await ga.isVisible('tr.nuGroupRow') && await ga.isVisible('#nuRECORD .nuRowSel'), 'phones: headings and checkboxes fit');
+		await ga.setViewportSize(vp);
+		// ---- Form with AI: the columns' total / group are read and written
+		const spec = JSON.parse(php("echo json_encode(NuFormSpec::fromForm('samplecustomer'));"));
+		const bc = Object.fromEntries(spec.form.browse.map(b => [b.field, b]));
+		expect(bc.cus_credit.total === 'sum' && bc.cus_country.group === true && !('total' in bc.cus_name), 'spec carries total and group: ' + JSON.stringify(spec.form.browse));
+		const out = JSON.parse(php("$s = NuFormSpec::fromForm('samplecustomer'); foreach ($s['form']['browse'] as &$b) { if ($b['field'] === 'cus_credit') $b['total'] = 'avg'; if ($b['field'] === 'cus_country') $b['group'] = false; if ($b['field'] === 'cus_name') $b['group'] = true; } unset($b);"
+			+ " $c = NuFormSpec::check($s, 'samplecustomer'); $r = []; foreach (($c['plan']['snapshot']['browse'] ?? []) as $b) $r[$b['sbr_display']] = $b['sbr_json'] ?? null; echo json_encode(['e' => $c['errors'] ?? [], 'b' => $r]);"));
+		expect(out.e.length === 0 && /"total":"avg"/.test(out.b.cus_credit || '') && /"group":true/.test(out.b.cus_name || '') && !/group/.test(out.b.cus_country || '') && /"filter":true/.test(out.b.cus_country || ''), 'spec → snapshot: ' + JSON.stringify(out));
+		const bad = JSON.parse(php("$s = NuFormSpec::fromForm('samplecustomer'); $s['form']['browse'][0]['total'] = 'median'; echo json_encode(NuFormSpec::check($s, 'samplecustomer')['errors'] ?? []);"));
+		expect(bad.length === 1, 'an unknown total is an error: ' + JSON.stringify(bad));
+	} finally {
+		await ga.setViewportSize(vp);
+		before.forEach(l => { const id = l.split('=')[0], j = l.slice(id.length + 1).replace(/\s/g, ''); sql(`UPDATE zzzzsys_browse SET sbr_json = ${j === '~' ? 'NULL' : "FROM_BASE64('" + j + "')"} WHERE zzzzsys_browse_id = '${id}'`); });
+	}
+};
+
+// design mode sets a column's total into the draft; the designed list shows the row at once
+T.design_list_total = async (s) => {
+	const p = s.ga, F = 'samplecustomer', keep = path.join(os.tmpdir(), 'nunext-e2e-total.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_browse zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	try {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		await open(p, 'index.php?p=form&f=' + F + '&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(800);
+		await p.click('#nuBrowseTable th.nuBrowseTitle >> nth=4'); await p.waitForTimeout(400);
+		await p.selectOption('#nuDsPanel select[data-key="total"]', 'avg'); await p.waitForTimeout(1500);
+		const js = sql(`SELECT jt.j FROM zzzzsys_nunext_form_draft d, JSON_TABLE(d.snapshot, '$.browse[*]' COLUMNS(o INT PATH '$.sbr_order', j TEXT PATH '$.sbr_json')) jt WHERE d.form_id = '${F}' AND d.status = 'open' ORDER BY jt.o DESC LIMIT 1`);
+		expect(/"total":"avg"/.test(js), 'total in the draft: ' + js);
+		await p.waitForSelector('#nuBrowseTotals td[data-nu-total=avg]');
+		const v = await p.textContent('#nuBrowseTotals td[data-nu-total=avg] .nuTotalVal'), avg = +sql('SELECT AVG(cus_credit) FROM sample_customer');
+		expect(Math.abs(parseFloat(v.replace(/[^0-9.-]/g, '')) - avg) < 0.01, 'average shown while designing: ' + v + ' / ' + avg);
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally { execSync('mysql ' + DB, { input: fs.readFileSync(keep) }); fs.unlinkSync(keep); }
+};
+
+T.browse_totals = async (s) => {
+	const ga = s.ga, vp = ga.viewportSize();
+	const before = sql("SELECT CONCAT(zzzzsys_browse_id, '=', IFNULL(TO_BASE64(sbr_json), '~')) FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = 'samplecustomer'").split('\n');
+	const set = (id, fn) => sql(`UPDATE zzzzsys_browse SET sbr_json = '{"nunext":{"total":"${fn}"}}' WHERE zzzzsys_browse_id = '${id}'`);
+	const cell = i => ga.evaluate(i => { const c = document.querySelector('#nuBrowseTotals td[data-nu-column="' + i + '"]'); return c ? { fn: c.getAttribute('data-nu-total'), label: (c.querySelector('.nuTotalFn') || {}).textContent || '', val: (c.querySelector('.nuTotalVal') || {}).textContent || '' } : null; }, i);
+	const num = v => parseFloat(String(v).replace(/[^0-9.-]/g, ''));
+	try {
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		expect(!(await ga.$('#nuBrowseTotals')), 'no row of totals without a total');
+		const b3 = sql("SELECT IFNULL(sbr_json, '') FROM zzzzsys_browse WHERE zzzzsys_browse_id = 'sample_customer_b3'");
+		// the pane's Columns tab sets it (More settings of the Credit column) – saved into sbr_json nunext.total, the filter flag of others kept
+		await ga.click('#nuDesignMore'); await ga.click('#nuBrowseColsEdit');
+		await ga.waitForSelector('#nuBsqColTable .nuBsqMoreBtn');
+		await ga.locator('#nuBsqColTable .nuBsqMoreBtn').nth(4).click();
+		await ga.selectOption('.nuBsqMoreRow [data-lm=total]', 'sum');
+		await Promise.all([ga.waitForNavigation(), ga.click('#nuBsqPane .nuBsqSave')]);
+		expect(/"total":"sum"/.test(sql("SELECT sbr_json FROM zzzzsys_browse WHERE zzzzsys_browse_id = 'sample_customer_b5'")), 'saved in sbr_json');
+		expect(sql("SELECT IFNULL(sbr_json, '') FROM zzzzsys_browse WHERE zzzzsys_browse_id = 'sample_customer_b3'") === b3, 'other column settings kept');
+		set('sample_customer_b4', 'max'); set('sample_customer_b2', 'count'); set('sample_customer_b1', 'avg');
+		// more rows than a page shows: the total is over all of them
+		await open(ga, 'index.php?p=form&f=samplecustomer&per=5');
+		const all = sql('SELECT SUM(cus_credit), COUNT(cus_name), DATE_FORMAT(MAX(cus_since), "%d.%m.%Y"), COUNT(*) FROM sample_customer').split('\t');
+		const rows = await ga.locator('#nuRECORD tr.nuBrowseRow').count();
+		let c = await cell(4);
+		expect(rows < +all[3] && c && c.fn === 'sum' && Math.abs(num(c.val) - +all[0]) < 0.01 && /USD/.test(c.val) && c.label !== '', 'sum over all rows in the column format: ' + JSON.stringify([c, all, rows]));
+		c = await cell(1); expect(c && c.fn === 'count' && c.val === all[1], 'count: ' + JSON.stringify(c));
+		c = await cell(3); const cmax = c;
+		expect(c && c.fn === 'max' && c.val === all[2], 'latest date in the date format: ' + JSON.stringify([c, all[2]]));
+		const cmin = await cell(0);
+		expect(await ga.evaluate(() => !!(window.nuNext.browse.totals && window.nuNext.browse.totals[4] && window.nuNext.browse.totals[4].fn === 'sum')), 'totals for form code');
+		expect(cmax.label !== cmin.label, 'a date column names its maximum differently: ' + cmax.label);
+		// search and filter narrow the total
+		const cc = sql("SELECT cus_country FROM sample_customer GROUP BY cus_country ORDER BY COUNT(*) DESC LIMIT 1");
+		const part = sql(`SELECT SUM(cus_credit) FROM sample_customer WHERE cus_country = '${cc}'`);
+		sql(`UPDATE zzzzsys_browse SET sbr_json = '{"nunext":{"filter":true}}' WHERE zzzzsys_browse_id = 'sample_customer_b3'`);   // the Country filter – in a full run an earlier test may have left the column without it
+		await open(ga, 'index.php?p=form&f=samplecustomer&flt[2]=' + cc);
+		c = await cell(4);
+		expect(c && Math.abs(num(c.val) - +part) < 0.01 && +part < +all[0], 'the filter narrows the sum: ' + JSON.stringify([c, part]));
+		await open(ga, 'index.php?p=form&f=samplecustomer&q=zzzznothing');
+		expect(!(await ga.$('#nuBrowseTotals')), 'no totals when nothing matches');
+		// print view has it, a lookup list not; phones: a card with the totals only
+		await open(ga, 'index.php?p=form&f=samplecustomer&print=1');
+		expect(!!(await ga.$('#nuBrowseTotals td[data-nu-total=sum]')), 'print view shows the totals');
+		await open(ga, 'index.php?p=form&f=samplecustomer&lookup=x&iframe=1');
+		expect(!(await ga.$('#nuBrowseTotals')), 'not in lookup lists');
+		await ga.setViewportSize({ width: 390, height: 800 });
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		await ga.waitForFunction(() => document.documentElement.classList.contains('nuPhoneCards'));
+		const ph = await ga.evaluate(() => { const r = document.querySelector('#nuBrowseTotals tr'); return { shown: [...r.children].filter(x => x.offsetParent !== null).length, tot: r.querySelectorAll('[data-nu-total]').length, over: document.documentElement.scrollWidth > window.innerWidth + 1 }; });
+		expect(ph.shown === ph.tot && ph.tot === 4 && !ph.over, 'phone card of the totals: ' + JSON.stringify(ph));
+		// a short window: the row stays in view at the bottom
+		await ga.setViewportSize({ width: 1280, height: 420 });
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		await ga.waitForTimeout(300);
+		const fl = await ga.evaluate(() => { const c = document.querySelector('#nuBrowseTotals td[data-nu-total]'), r = c.getBoundingClientRect(), t = document.getElementById('nuBrowseTable');
+			const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+			return { bottom: r.bottom, win: window.innerHeight, floats: t.classList.contains('nuFootFloat'), seen: !!top && (top === c || c.contains(top)) }; });
+		expect(fl.floats && fl.seen && fl.bottom <= fl.win + 1, 'the row floats in view, above the pager: ' + JSON.stringify(fl));
+		await ga.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await ga.waitForTimeout(300);
+		expect(!(await ga.evaluate(() => document.getElementById('nuBrowseTable').classList.contains('nuFootFloat'))), 'at the end of the list the row is in its place');
+	} finally {
+		await ga.setViewportSize(vp);
+		before.forEach(l => { const [id, j] = l.split('='); sql(`UPDATE zzzzsys_browse SET sbr_json = ${j === '~' ? 'NULL' : "FROM_BASE64('" + l.slice(id.length + 1).replace(/\s/g, '') + "')"} WHERE zzzzsys_browse_id = '${id}'`); });
+		sql("DELETE FROM zzzzsys_nunext_form_history WHERE form_id = 'samplecustomer' AND created_at > NOW() - INTERVAL 10 MINUTE");
+	}
+};
+
+T.browse_pane_settings_fold = async (s) => {
+	const ga = s.ga;
+	const openCols = async () => { await open(ga, 'index.php?p=form&f=samplecustomer'); await ga.click('#nuDesignMore'); await ga.click('#nuBrowseColsEdit'); await ga.waitForSelector('#nuBsqColTable', { state: 'visible' }); };
+	try {
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		await ga.evaluate(() => { try { localStorage.removeItem('nunext-bsq-settings'); localStorage.removeItem('nunext-bsq-pin'); } catch (e) { /* */ } });
+		await openCols();
+		expect(await ga.isVisible('#nuBsq_rows') && await ga.getAttribute('#nuBsqSetToggle', 'aria-expanded') === 'true', 'settings open at first');
+		const y0 = (await ga.locator('#nuBsqColTable').boundingBox()).y;
+		await ga.click('#nuBsqSetToggle');
+		expect(!(await ga.isVisible('#nuBsq_rows')) && !(await ga.isVisible('#nuBsq_multi')) && await ga.getAttribute('#nuBsqSetToggle', 'aria-expanded') === 'false', 'a click on the heading folds the settings');
+		expect((await ga.locator('#nuBsqColTable').boundingBox()).y < y0 - 60 && await ga.isVisible('#nuBsq_dcols'), 'the columns move up, row details stay');
+		await openCols();
+		expect(!(await ga.isVisible('#nuBsq_rows')), 'remembered after a reload');
+		await ga.focus('#nuBsqSetToggle'); await ga.keyboard.press('Enter');
+		expect(await ga.isVisible('#nuBsq_rows'), 'opens again by keyboard');
+		expect(await ga.evaluate(() => localStorage.getItem('nunext-bsq-settings')) === '1', 'state stored');
+	} finally { await ga.evaluate(() => { try { localStorage.removeItem('nunext-bsq-settings'); } catch (e) { /* */ } }).catch(() => {}); }
+};
+
+T.design_menu_heading = async (s) => {
+	const ga = s.ga, vp = ga.viewportSize();
+	try {
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		await ga.click('#nuDesignMore');
+		await ga.waitForSelector('#nuBrowseSqlEdit', { state: 'visible' });
+		const v = await ga.evaluate(() => { const li = [...document.querySelectorAll('#nuDesignGroup .dropdown-menu > li')];
+			const txt = id => { const b = document.getElementById(id).cloneNode(true); b.querySelectorAll('.nuBsqKey').forEach(k => k.remove()); return b.textContent.replace(/\s+/g, ' ').trim(); };
+			return { head: li[0].querySelector('h6.dropdown-header') ? li[0].textContent.trim() : '', sql: txt('nuBrowseSqlEdit'), php: txt('nuBrowsePhpEdit'), js: txt('nuBrowseJsEdit'), cols: txt('nuBrowseColsEdit'), full: document.getElementById('nuBrowseSqlEdit').getAttribute('data-nu-full') }; });
+		expect(v.head !== '' && v.full !== v.sql && /…$/.test(v.full), 'a heading carries the verb: ' + JSON.stringify(v));
+		expect(![v.sql, v.php, v.js, v.cols].some(x => /…/.test(x) || x.indexOf(v.head) === 0) && /^PHP \(Before Browse\)$/.test(v.php) && v.js === 'JavaScript', 'entries are the plain names: ' + JSON.stringify(v));
+		await ga.click('#nuBrowseColsEdit');
+		await ga.waitForSelector('#nuBsqPane', { state: 'visible' });
+		expect(await ga.getAttribute('#nuBsqTabCols', 'aria-selected') === 'true', 'the entry still opens its tab');
+		// phones: the ⋮ menu has no heading, so its copies keep the whole sentence
+		await ga.setViewportSize({ width: 390, height: 800 });
+		await open(ga, 'index.php?p=form&f=samplecustomer');
+		const ph = await ga.evaluate(() => { const x = document.querySelector('[data-nu-opt=browse_sql]'); return x ? x.textContent.replace(/\s+/g, ' ').trim() : null; });
+		expect(ph === null || ph.indexOf(v.full) === 0, 'phone ⋮ entry keeps the full text: ' + ph);
+	} finally { await ga.setViewportSize(vp); }
+};
+
+T.design_btn_neutral = async (s) => {
+	// 0.8.1107: the Design button looks like its neighbours (no accent outline); only the pencil keeps the accent colour
+	const p = s.ga;
+	for (const u of ['index.php?p=form&f=samplecustomer', 'index.php?p=form&f=samplecustomer&r=-1']) {
+		await open(p, u); await p.waitForSelector('#nuDesignButton');
+		const d = await p.evaluate(() => {
+			const cs = (e) => { const c = getComputedStyle(e); return [c.borderTopColor, c.color, c.backgroundColor].join('|'); };
+			const b = document.getElementById('nuDesignButton'), m = document.getElementById('nuDesignMore');
+			const other = document.querySelector('#nuActionHolder .btn-outline-secondary:not(#nuDesignButton):not(#nuDesignMore)');
+			return { b: cs(b), m: m ? cs(m) : null, o: other ? cs(other) : null, cls: b.className + ' ' + (m ? m.className : ''), pen: getComputedStyle(b.querySelector('.bi')).color, txt: getComputedStyle(b).color };
+		});
+		expect(!/btn-outline-primary/.test(d.cls), 'Design still an accent button: ' + d.cls);
+		expect(d.o && d.b === d.o && (d.m === null || d.m === d.o), 'Design does not look like its neighbours on ' + u + ': ' + JSON.stringify(d));
+		expect(d.pen !== d.txt, 'the pencil lost its accent colour');
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.list_row_height = async (s) => {
+	// 0.8.1114: rows with one line are 33 px in every list – text only (access levels), badges (users), row buttons (forms), the log, form lists
+	const p = s.ga, seen = {};
+	for (const r of ['access', 'users', 'procedures', 'forms', 'log', 'form&f=samplecustomer', 'form&f=sampleorder']) {
+		await open(p, 'index.php?p=' + r); await p.waitForSelector('main table.nu-table tbody tr');
+		const d = await p.evaluate(() => {
+			const t = document.querySelector('main table.nu-table');
+			const hs = [...t.querySelectorAll('tbody > tr')].filter((x) => x.offsetParent).map((x) => x.getBoundingClientRect().height).sort((a, b) => a - b);
+			return { min: hs[0], mid: hs[Math.floor(hs.length / 2)], sm: t.classList.contains('table-sm'), head: t.querySelector('thead tr').getBoundingClientRect().height };
+		});
+		seen[r] = d;
+		expect(!d.sm && Math.abs(d.min - 33) < 0.8 && (r === 'log' || Math.abs(d.mid - 33) < 0.8), 'rows of ' + r + ' are not 33 px: ' + JSON.stringify(d));
+		expect(Math.abs(d.head - seen.access.head) < 0.8, 'title row of ' + r + ' differs: ' + d.head + ' / ' + seen.access.head);
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.obj_menu_focus_bg = async (s) => {
+	// 0.8.1106: the focused item of the right-click menus shows its background only (no outline), darker than a hovered one
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=samplecustomer'); await p.waitForSelector('#nuBrowseTable th.nuBrowseTitle');
+	await p.locator('#nuBrowseTable th.nuBrowseTitle:visible').first().click({button: 'right'}); await p.waitForSelector('.nuColMenu');
+	const look = (sel) => p.evaluate((q) => { const e = document.querySelector(q), c = getComputedStyle(e); return { o: c.outlineStyle + ' ' + c.outlineWidth, sh: c.boxShadow, bg: c.backgroundColor }; }, sel);
+	await p.keyboard.press('ArrowDown'); await p.waitForTimeout(250);
+	const foc = await p.evaluate(() => { const e = document.activeElement, c = getComputedStyle(e); return { item: e.classList.contains('dropdown-item') && !!e.closest('.nuColMenu'), vis: e.matches(':focus-visible'), o: c.outlineStyle, w: c.outlineWidth, sh: c.boxShadow, bg: c.backgroundColor }; });
+	expect(foc.item && foc.vis, 'the arrow key did not focus a menu item');
+	expect((foc.o === 'none' || foc.w === '0px') && foc.sh === 'none', 'focused item still has an outline: ' + JSON.stringify(foc));
+	expect(foc.bg !== 'rgba(0, 0, 0, 0)' && foc.bg !== 'transparent', 'focused item without a background');
+	const other = p.locator('.nuColMenu .dropdown-item:not(:focus)').last();
+	await other.hover(); await p.waitForTimeout(250);
+	const hov = await other.evaluate((e) => getComputedStyle(e).backgroundColor);
+	expect(hov !== foc.bg && hov !== 'rgba(0, 0, 0, 0)', 'hover and focus look the same: ' + hov + ' / ' + foc.bg);
+	await p.keyboard.press('Escape');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.browse_col_menu = async (s) => {
 	// 0.8.929: right-click on a column title of a list (outside design mode) → the column menu; width, filter, move, rename are saved
 	const p = s.ga, F = 'samplecustomer';
@@ -14390,6 +14782,67 @@ T.form_selects_searchable = async (s) => {             // 0.8.1079: selects of f
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
+T.browse_pane_more = async (s) => {
+	// 0.8.1108: the list's side pane – tabs PHP (Before Browse) and JavaScript, more settings per column (format, filter, badge, click), row details
+	const p = s.ga, F = 'samplecustomer';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-bsqm.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_browse zzzzsys_php zzzzsys_nunext_form_history > ' + keep);
+	const setCode = (k, v) => p.evaluate(([k, v]) => { document.querySelector('#nuBsqPane .nuBsqBody[data-code="' + k + '"] .CodeMirror').CodeMirror.setValue(v); }, [k, v]);
+	try {
+		await open(p, 'index.php?p=form&f=' + F); await p.waitForSelector('#nuDesignMore');
+		await p.click('#nuDesignMore');
+		expect(await p.locator('#nuBrowseSqlEdit, #nuBrowsePhpEdit, #nuBrowseJsEdit, #nuBrowseColsEdit').count() === 4, 'four entries in Design ▾');
+		await p.click('#nuBrowsePhpEdit');
+		await p.waitForSelector('#nuBsqPane .nuBsqBody[data-code=php] .CodeMirror');
+		expect(await p.getAttribute('#nuBsqTabPhp', 'aria-selected') === 'true' && await p.locator('#nuBsqPane .nuBsqBody[data-code=sql]').isHidden(), 'PHP tab shown alone');
+		const bb0 = sql(`SELECT COALESCE(MAX(sph_php), '') FROM zzzzsys_php WHERE zzzzsys_php_id = '${F}_BB'`);
+		await setCode('php', bb0 + "\n// e2e-pane-bb\nnuSetProperty('E2E_PANE', '1');");
+		// JavaScript tab by the arrow key from PHP
+		await p.focus('#nuBsqTabPhp'); await p.keyboard.press('ArrowRight');
+		await p.waitForSelector('#nuBsqPane .nuBsqBody[data-code=js] .CodeMirror');
+		expect(await p.getAttribute('#nuBsqTabJs', 'aria-selected') === 'true', 'arrow key goes to the JavaScript tab');
+		const js0 = sql(`SELECT COALESCE(sfo_browse_javascript, '') FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`);
+		await setCode('js', js0 + "\nwindow.e2ePaneJs = 'yes';\nfunction e2ePaneClick(o) { window.e2ePaneClicked = o.pk; }");
+		// columns: more settings of the first column
+		await p.click('#nuBsqTabCols'); await p.waitForSelector('#nuBsqColTable');
+		const first = sql(`SELECT zzzzsys_browse_id FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${F}' ORDER BY sbr_order LIMIT 1`);
+		await p.click('#nuBsqColTable tr.nuBsqCol >> nth=0 >> .nuBsqMoreBtn');
+		await p.waitForSelector('tr.nuBsqMoreRow');
+		expect(await p.locator('tr.nuBsqMoreRow').count() === 1 && await p.getAttribute('tr.nuBsqMoreRow', 'data-more') === first, 'more settings open below the first column');
+		await p.check('tr.nuBsqMoreRow [data-lm=badge]');
+		await p.selectOption('tr.nuBsqMoreRow [data-lm=action_t]', 'js');
+		await p.waitForSelector('tr.nuBsqMoreRow [data-lm=action_id]');
+		expect(await p.locator('tr.nuBsqMoreRow .nuBsqActNoTarget').count() === 1, 'hint while the click action has no target');
+		await p.fill('tr.nuBsqMoreRow [data-lm=action_id]', 'e2ePaneClick');
+		expect(await p.locator('tr.nuBsqMoreRow [data-lm=format] option').count() > 3, 'formats offered');
+		// row details and the link to the column access
+		await p.check('#nuBsq_dcols');
+		expect(/p=dataaccess/.test(await p.getAttribute('#nuBsqAccess', 'href') || ''), 'link to the column access');
+		await Promise.all([p.waitForNavigation(), p.click('#nuBsqPane .nuBsqSave')]);
+		await p.waitForSelector('#nuBrowseTable');
+		expect(/e2e-pane-bb/.test(sql(`SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = '${F}_BB'`)), 'PHP Before Browse saved');
+		expect(await p.evaluate(() => window.e2ePaneJs) === 'yes', 'the saved JavaScript runs on the list');
+		const j = JSON.parse(sql(`SELECT sbr_json FROM zzzzsys_browse WHERE zzzzsys_browse_id = '${first}'`) || '{}').nunext || {};
+		expect(j.badge === true && j.action && j.action.t === 'js' && j.action.id === 'e2ePaneClick', 'badge and click action saved: ' + JSON.stringify(j));
+		expect(/"details"/.test(sql(`SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`)), 'row details saved');
+		expect(await p.locator('#nuBrowseTable .nuDetBtn').count() > 0, 'rows show the details button');
+		await p.locator('#nuBrowseTable .nuCellAct').first().click(); await p.waitForTimeout(300);
+		expect(!!(await p.evaluate(() => window.e2ePaneClicked)), 'the click action calls the function');
+		// a save without touching the column keeps what the pane does not edit (badge, action)
+		await p.click('#nuDesignMore'); await p.click('#nuBrowseColsEdit'); await p.waitForSelector('#nuBsqColTable');
+		expect(await p.locator('#nuBsqColTable tr.nuBsqCol >> nth=0 >> .nuBsqMoreBtn.text-primary').count() === 1, 'a column with more settings is marked');
+		await p.fill('#nuBsqColTable tbody tr.nuBsqCol >> nth=1 >> input[data-lc="title"]', 'E2e other');
+		await Promise.all([p.waitForNavigation(), p.click('#nuBsqPane .nuBsqSave')]);
+		await p.waitForSelector('#nuBrowseTable');
+		const j2 = JSON.parse(sql(`SELECT sbr_json FROM zzzzsys_browse WHERE zzzzsys_browse_id = '${first}'`) || '{}').nunext || {};
+		expect(j2.badge === true && j2.action && j2.action.id === 'e2ePaneClick', 'badge / action kept by a later save: ' + JSON.stringify(j2));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-bsq-pin'); localStorage.removeItem('nunext-bsq-tab'); } catch (e) { /* ignore */ } }).catch(() => {});
+	}
+};
+
 T.browse_sql_cols = async (s) => {
 	// 0.8.942: tabs in the browse SQL pane – Columns = settings + columns of the list (as design mode's Browse list), saved with Save
 	const p = s.ga, F = 'samplecustomer';
@@ -14400,7 +14853,7 @@ T.browse_sql_cols = async (s) => {
 		await p.click('#nuDesignMore'); await p.click('#nuBrowseColsEdit');
 		await p.waitForSelector('#nuBsqColTable');
 		expect(await p.getAttribute('#nuBsqTabCols', 'aria-selected') === 'true', 'Edit columns… opens the Columns tab');
-		expect(await p.locator('#nuBsqPane .nuBsqBody').isHidden() && await p.locator('#nuBsqColTable').isVisible(), 'Columns tab shown');
+		expect(await p.locator('#nuBsqPane .nuBsqBody[data-code=sql]').isHidden() && await p.locator('#nuBsqColTable').isVisible(), 'Columns tab shown');
 		const n = sql(`SELECT COUNT(*) FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${F}'`);
 		expect(String(await p.locator('#nuBsqColTable tbody tr.nuBsqCol').count()) === String(n), 'one row per column');
 		const first = sql(`SELECT zzzzsys_browse_id FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${F}' ORDER BY sbr_order LIMIT 1`);
@@ -15068,6 +15521,136 @@ T.recent_fav = async (s) => {
 		const inFav = await p.locator('[data-nu-strip="fav"] [data-nu-chip="permissions"]').count() > 0;
 		expect(inFav === !wasFav, 'favourite not toggled (was ' + wasFav + ')');
 		expect(await p.locator(chip).getAttribute('data-nu-fav') === (wasFav ? null : '1'), 'chip does not show the new state');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
+T.flash_autoclose = async (s) => {
+	// 0.8.1119: a "done" message at the top closes by itself (time by its length), holds while the pointer is on it; errors stay
+	const p = s.ga, keep = path.join(os.tmpdir(), 'nunext-e2e-flashauto.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_nunext_list_view zzzzsys_nunext_setting > ' + keep);
+	try {
+		await open(p, 'index.php?p=procedures&view=compact');
+		await p.click('.nuLvMenuBtn'); await p.waitForTimeout(200);
+		const form = p.locator('.dropdown-menu.show form:has(input[name="action"][value="my_default"]):not(:has(input[name="clear"]))').first();
+		if (await form.count() === 0) { s.skip = 'no "Set as my default" in the view menu'; return; }
+		await Promise.all([p.waitForNavigation(), form.locator('button[type=submit]').first().click()]);
+		const al = p.locator('.alert.alert-success[data-nu-autoclose]');
+		expect(await al.count() === 1, 'the message says when it closes');
+		const ms = Number(await al.getAttribute('data-nu-autoclose'));
+		expect(ms >= 4000 && ms <= 12000 && await al.getAttribute('role') === 'status', 'time by length: ' + ms);
+		await al.hover(); await p.waitForTimeout(ms + 800);
+		expect(await al.count() === 1, 'it stays while the pointer is on it');
+		await p.mouse.move(5, 600); await p.waitForTimeout(ms + 1200);
+		expect(await p.locator('.alert.alert-success').count() === 0, 'it closes by itself after ' + ms + ' ms');
+		// an error stays
+		const html = await (await p.request.get(BASE + 'index.php?p=pageno&n=99999&back=' + encodeURIComponent('index.php?p=home'))).text();
+		expect(/class="alert alert-(warning|danger|info)[^"]*"[^>]*>/.test(html) && !/alert-(warning|danger)[^>]*data-nu-autoclose/.test(html), 'a warning / error has no timer');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
+T.list_last_opened = async (s) => {
+	// 0.8.1117: "Last opened" – opening a procedure / a form in design mode / a report / a SQL query is remembered per person; the lists
+	// get the sortable column and the view "Recently opened"
+	const p = s.ga;
+	const had = sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'zzzzsys_nunext_opened'") === '1';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-opened.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_nunext_list_view zzzzsys_nunext_setting' + (had ? ' zzzzsys_nunext_opened' : '') + ' > ' + keep);
+	try {
+		await open(p, 'index.php?p=home');                                             // the table comes with the globeadmin's page view (NuSchema)
+		sql('DELETE FROM zzzzsys_nunext_opened');
+		const procs = sql("SELECT zzzzsys_php_id FROM zzzzsys_php WHERE zzzzsys_php_id NOT LIKE 'nu%' AND COALESCE(sph_system, '') <> '1' AND sph_code NOT LIKE '%\\_%\\_B%' ORDER BY sph_code LIMIT 3").split('\n').filter(Boolean);
+		if (procs.length < 3) { s.skip = 'needs three procedures'; return; }
+		// opened in this order: the list's view shows the last one first
+		for (const id of [procs[0], procs[2]]) { await open(p, 'index.php?p=procedures&id=' + encodeURIComponent(id)); await p.waitForTimeout(1100); }
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_opened WHERE kind = 'procedure' AND user_id = 'globeadmin'") === '2', 'two procedures remembered: ' + sql('SELECT CONCAT(user_id, 0x2f, kind, 0x2f, ref) FROM zzzzsys_nunext_opened'));
+		await open(p, 'index.php?p=procedures&id=' + encodeURIComponent(procs[0]));   // the same again: no second row, a newer time
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_opened WHERE kind = 'procedure'") === '2', 'opening again adds no row');
+		await open(p, 'index.php?p=procedures&view=recent');
+		const rows = await p.$$eval('main table.nu-table tbody tr[data-href]', (t) => t.slice(0, 3).map((r) => (r.getAttribute('data-href').match(/[?&]id=([^&]+)/) || [])[1]));
+		expect(decodeURIComponent(rows[0] || '') === procs[0] && decodeURIComponent(rows[1] || '') === procs[2], 'Recently opened: newest first – ' + rows.join(', '));
+		const head = await p.$$eval('main table.nu-table thead th', (t) => t.map((x) => x.textContent.trim()));
+		expect(head.some((x) => /Last opened|Zuletzt geöffnet/i.test(x)), 'column Last opened: ' + head.join(' | '));
+		const cells = await p.$$eval('main table.nu-table tbody tr[data-href]', (t) => t.slice(0, 3).map((r) => r.lastElementChild.previousElementSibling ? r.textContent : r.textContent));
+		expect(/\d{2}[.\/-]\d{2}[.\/-]\d{4} \d{2}:\d{2}/.test(cells[0]) && !/\d{2}[.\/-]\d{2}[.\/-]\d{4} \d{2}:\d{2}/.test(cells[2]), 'date shown for opened rows only');
+		expect(/Recently opened|Zuletzt geöffnet/.test(await p.textContent('.nuLvMenuBtn')), 'the view is named (0.8.1118, was its id "recent"): ' + await p.textContent('.nuLvMenuBtn'));
+		// the default view is unchanged (no such column), the column is offered in "All columns"
+		await open(p, 'index.php?p=procedures');
+		expect(!(await p.$$eval('main table.nu-table thead th', (t) => t.map((x) => x.textContent.trim()))).some((x) => /Last opened|Zuletzt geöffnet/i.test(x)), 'the default view has no such column');
+		// a form opened in design mode, not by using it
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_opened WHERE kind = 'form'") === '0', 'using a form does not count');
+		await open(p, 'index.php?p=form&f=samplecustomer&design=1'); await p.waitForSelector('#nuDsBar');
+		expect(sql("SELECT ref FROM zzzzsys_nunext_opened WHERE kind = 'form'") === 'samplecustomer', 'design mode counts');
+		await open(p, 'index.php?p=forms&view=recent');
+		expect(/f=samplecustomer\b/.test(await p.getAttribute('main table.nu-table tbody tr[data-href] >> nth=0', 'data-href') || ''), 'forms list: the form designed last is first');
+		// another person has an own order
+		const anna = s.anna || null;
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_opened WHERE user_id <> 'globeadmin'") === '0', 'rows only for the person who opened');
+		for (const r of ['reports&view=recent', 'sqlbuilder&view=recent']) { await open(p, 'index.php?p=' + r); expect(await p.locator('main .nuListCard, main table.nu-table').count() > 0, r + ' opens'); }
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		if (had) execSync('mysql ' + DB + ' < ' + keep);
+		else { execSync('mysql ' + DB + ' < ' + keep); sql('DELETE FROM zzzzsys_nunext_opened'); }   // the table stays: the schema version is stored, nothing would create it again
+	}
+};
+
+T.recent_no_fav = async (s) => {
+	// 0.8.1115: Customise → Appearance → "Without favourites" below Recently used: a page that is a favourite is left out of the row (and of the side bar)
+	const p = s.ga, keep = path.join(os.tmpdir(), 'nunext-e2e-recentnofav.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_nunext_list_view zzzzsys_nunext_setting zzzzsys_nunext_recent > ' + keep);
+	const chip = '[data-nu-strip="recent"] [data-nu-recent="permissions"]', sw = async (id, on) => {
+		if ((await p.locator('#nuHomeVp_' + id).isChecked()) !== on) { await p.click('label[for="nuHomeVp_' + id + '"]', { timeout: 6000 }).catch((e) => { throw new Error('switch ' + id + ' → ' + on + ' not possible'); }); await p.waitForTimeout(1100); }
+	};
+	const off = (sel) => p.evaluate((q) => { const e = document.querySelector(q); return !e || e.hidden; }, sel);   // the hidden attribute: the row may be folded
+	try {
+		sql('DELETE FROM zzzzsys_nunext_recent');
+		await open(p, 'index.php?p=home'); await homeTab(p, 'appearance');
+		await sw('favRow', true); await sw('recentStrip', true);
+		expect(await p.locator('#nuHomeVp_recentNoFav').count() === 1 && !(await p.locator('#nuHomeVp_recentNoFav').isChecked()), 'the switch exists and is off by default');
+		expect(/Without favourites|Ohne Favoriten/.test(await p.textContent('label[for="nuHomeVp_recentNoFav"]')), 'the switch has its text');
+		// 0.8.1116: the explanation only behind the (i); the panel does not scroll sideways; a click on (i) leaves the switch as it is
+		const pv = await p.evaluate(() => { const l = document.querySelector('label[for="nuHomeVp_recentNoFav"]'); let sc = l.parentElement; while (sc && sc.scrollWidth <= sc.clientWidth && sc.id !== 'nuHomeViewPanel') sc = sc.parentElement;
+			return { small: !!l.querySelector('small'), tip: !!l.querySelector('.nuInfoTip[title], .nuInfoTip[data-bs-original-title]'), over: !!sc && sc.scrollWidth > sc.clientWidth + 1, right: l.querySelector('input').getBoundingClientRect().right <= document.querySelector('#nuHomeVp_recentStrip').getBoundingClientRect().right + 1 }; });
+		expect(!pv.small && pv.tip && !pv.over && pv.right, 'explanation as (i), no sideways scrolling: ' + JSON.stringify(pv));
+		await p.click('label[for="nuHomeVp_recentNoFav"] .nuInfoTip'); await p.waitForTimeout(300);
+		expect(!(await p.locator('#nuHomeVp_recentNoFav').isChecked()) && await p.locator('.tooltip.show').count() > 0, 'a click on (i) shows the text and does not flip the switch');
+		await p.keyboard.press('Escape'); await p.mouse.move(5, 400);
+		await open(p, 'index.php?p=permissions'); await open(p, 'index.php?p=access'); await open(p, 'index.php?p=home');
+		if (await p.locator(chip + '[data-nu-canfav="1"]').count() === 0) { s.skip = 'permissions not a tile of this layout'; return; }
+		if (await p.locator(chip).getAttribute('data-nu-fav') !== '1') {                        // make it a favourite
+			await p.locator(chip).click({ button: 'right' }); await p.waitForTimeout(200);
+			await Promise.all([p.waitForNavigation(), p.locator('.nuHomeCtx .dropdown-item').first().click()]); await p.waitForLoadState('networkidle');
+		}
+		expect(!(await off(chip)) && await p.locator('[data-nu-strip="fav"] [data-nu-chip="permissions"]').count() > 0, 'favourite shown in both rows while the option is off');
+		const before = Number(await p.textContent('[data-nu-strip="recent"] .nuHomeStripCount'));
+		await homeTab(p, 'appearance');
+		// (the first star on the built-in layout stores a copy of it: the personal view – Recently used on – must come along)
+		expect(await p.locator('#nuHomeVp_recentStrip').isChecked(), 'the personal view was lost when the layout was stored');
+		await sw('recentNoFav', true);
+		expect(await off(chip) && !(await off('[data-nu-strip="recent"] [data-nu-recent="access"]')), 'the favourite leaves Recently used at once, others stay');
+		expect(Number(await p.textContent('[data-nu-strip="recent"] .nuHomeStripCount')) === before - 1, 'the count of the row follows');
+		// kept after a reload, drawn by the server (no flash): hidden attribute in the page source
+		const html = await (await p.request.get(BASE + 'index.php?p=home')).text();
+		expect(/data-nu-recent="permissions"[^>]* hidden/.test(html), 'the server does not hide the favourite');
+		await open(p, 'index.php?p=home');
+		expect(await off(chip), 'hidden after a reload');
+		// side bar: the same
+		const sb = await (await p.request.get(BASE + 'index.php?p=users')).text();
+		if (/nuSbSec-recent/.test(sb)) {
+			const rec = sb.split('nuSbSec-recent')[1].split('</section>')[0];
+			expect(!/p=permissions\b/.test(rec) && /p=access\b/.test(rec), 'side bar: Recently used still lists the favourite');
+		}
+		// the switch is off (greyed) while the Favourites row is hidden, and the page shows again
+		await homeTab(p, 'appearance'); await sw('favRow', false);
+		expect(await p.locator('#nuHomeVp_recentNoFav').isDisabled() && !(await off(chip)), 'without the Favourites row nothing is left out');
+		await sw('favRow', true); await sw('recentNoFav', false);
+		expect(!(await off(chip)), 'switched off: the favourite is back in Recently used');
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		execSync('mysql ' + DB + ' < ' + keep);

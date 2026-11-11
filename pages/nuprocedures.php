@@ -30,6 +30,7 @@ if ($cloneId !== '') {
 if ($id !== '' && !$isNew) {
 	$proc = NuProcedure::load($id);
 	if (!$proc || ((string)$proc['sph_system'] === '1' && !NuHash::devMode())) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('procedure', $id);   // "Last opened" (0.8.1117)
 }
 $locked = ($proc && NuProcedure::locked($proc)) || !($proc ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 $errors = [];

@@ -49,9 +49,9 @@ final class NuListDefs
 		'users' => ['name' => ['text', "CONCAT_WS(' ', u.sus_first_name, u.sus_last_name, u.sus_name)"], 'dept' => ['text', "CONCAT_WS(' ', u.sus_department, u.sus_team)"],
 			'expires' => 'date', 'created' => 'date', 'changed' => 'date', 'last_login' => 'date'],
 		'access' => ['users' => 'number', 'forms' => 'number', 'procedures' => 'number', 'reports' => 'number', 'twofa' => 'bool'],
-		'forms' => ['access' => 'number', 'status' => false],
-		'procedures' => ['access' => 'number', 'status' => false, 'run' => false],
-		'reports' => ['access' => 'number', 'source' => false],
+		'forms' => ['access' => 'number', 'status' => false, 'opened' => 'date'],
+		'procedures' => ['access' => 'number', 'status' => false, 'run' => false, 'opened' => 'date'],
+		'reports' => ['access' => 'number', 'source' => false, 'opened' => 'date'],
 		'files' => ['used' => 'number'],
 		'items' => ['form' => ['text', 'f.sfo_code'], 'sort_order' => 'number', 'active' => 'bool', 'updated' => 'date'],
 		'permissions' => ['users' => 'number', 'type' => false],
@@ -62,7 +62,7 @@ final class NuListDefs
 		'userfields' => ['type' => false, 'edit_by' => false, 'required' => 'bool', 'unique' => 'bool', 'in_list' => 'bool', 'sort' => 'number', 'updated' => 'date'],
 		'apiclients' => ['status' => 'bool', 'last_used' => 'date', 'expires' => 'date', 'rate' => 'number', 'created' => 'date'],
 		'adminroles' => ['name' => ['text', 'r.name'], 'users' => 'number', 'updated' => 'date'],
-		'sqlbuilder' => ['mode' => false, 'reports' => 'number'],
+		'sqlbuilder' => ['mode' => false, 'reports' => 'number', 'opened' => 'date'],
 		'notifications' => ['level' => false, 'state' => false, 'created' => 'date'],
 		'dashboards' => ['where' => false, 'widgets' => 'number', 'updated' => 'date'],
 		'webhooks' => ['status' => 'bool', 'calls' => 'number', 'updated' => 'date'],
@@ -533,6 +533,7 @@ final class NuListDefs
 		if ($drafts) $filters['draft'] = ['label' => t('forms_col_draft'), 'type' => 'select', 'options' => static fn() => ['1' => t('forms_with_draft')],
 			'where' => static fn(string $v) => $v === '1' ? ["$dBy IS NOT NULL", []] : null];
 		// ?type=page = the list Custom pages (0.8.861)
+		$cols['opened'] = NuOpened::column('form', 'f.zzzzsys_form_id');   // 0.8.1117: when I last opened it in design mode
 		return [
 			'key' => 'forms', 'title' => t(($_GET['type'] ?? '') === 'page' ? 'upd_pages_title' : 'nav_forms'), 'route' => 'forms', 'form' => NuAcl::FORM_FORM, 'public' => true, 'from' => ' FROM zzzzsys_form f', 'where' => $where, 'params' => $params,
 			'id' => 'f.zzzzsys_form_id', 'always' => ['type'],
@@ -551,6 +552,8 @@ final class NuListDefs
 					'sort' => ['group', 'asc'], 'per' => 500, 'filters' => ['shown' => array_values(array_filter(['type', 'group', $tagsUsed['department'] ? 'department' : null, $tagsUsed['team'] ? 'team' : null, 'status', $drafts ? 'draft' : null])), 'values' => ['status' => 'na']]],   // Has draft (0.8.688); department / team once a form has one (0.8.1020)
 				'compact' => ['columns' => ['actions', 'description', 'code', 'type'], 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code']],
 					'sort' => ['description', 'asc'], 'per' => 100, 'filters' => ['shown' => ['type', 'status'], 'values' => ['status' => 'na']]],
+				'recent' => ['columns' => ['actions', 'description', 'code', 'type', 'group', 'status', 'opened'], 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code', 'opened']],
+					'sort' => ['opened', 'desc'], 'per' => 100, 'filters' => ['shown' => ['type', 'status'], 'values' => ['status' => 'na']]],   // Recently opened (0.8.1117)
 				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'description', 'badge' => 'type', 'lines' => ['code', 'table', 'group', 'status']],
 					'sort' => ['group', 'asc'], 'per' => 500, 'filters' => ['shown' => array_keys($filters), 'values' => ['status' => 'na']]],
 			],
@@ -599,6 +602,7 @@ final class NuListDefs
 				}],
 		];
 		if ($pf = NuProject::listFilter('procedure', 'p.zzzzsys_php_id')) $filters['project'] = $pf;   // projects (0.8.1035)
+		$cols['opened'] = NuOpened::column('procedure', 'p.zzzzsys_php_id');   // 0.8.1117
 		return [
 			'key' => 'procedures', 'title' => t('proc_title'), 'route' => 'procedures', 'form' => NuAcl::FORM_PROCEDURE,
 			'from' => ' FROM ' . NuProcedure::TABLE . ' p LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = p.sph_zzzzsys_form_id', 'where' => [NuProcedure::listCondition('p')], 'params' => [],
@@ -609,6 +613,8 @@ final class NuListDefs
 					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group', 'status', 'category', 'run'], 'values' => ['origin' => 'own']]],   // category + run (0.8.688)
 				'compact' => ['columns' => ['code', 'description', 'status'], 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description']],
 					'sort' => ['code', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group'], 'values' => []]],
+				'recent' => ['columns' => ['code', 'description', 'group', 'status', 'opened'], 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description', 'opened']],
+					'sort' => ['opened', 'desc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group'], 'values' => []]],   // Recently opened (0.8.1117): system procedures too
 				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description', 'group', 'launch', 'access']],
 					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => array_keys($filters), 'values' => []]],
 			],
@@ -625,7 +631,7 @@ final class NuListDefs
 		$cols = [
 			'actions' => ['label' => '', 'select' => ['sre_code' => 'r.sre_code'], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'text' => static fn($r) => '', 'noexport' => true,
 				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('reportdesigner', ['id' => $r['__id']])) . '" title="' . h(t('rpt_designer')) . '" aria-label="' . h(t('rpt_designer')) . '"><i class="bi bi-vector-pen"></i></a>'
-					. ' <a class="btn btn-sm btn-outline-primary" href="' . h(nu_url('report', ['c' => (string)$r['sre_code']])) . '" target="_blank" rel="noopener" title="' . h(t('rpt_run')) . '" aria-label="' . h(t('rpt_run')) . '"><i class="bi bi-file-earmark-pdf"></i></a>'],
+					. ' <a class="btn btn-sm btn-outline-secondary nuRowRun" href="' . h(nu_url('report', ['c' => (string)$r['sre_code']])) . '" target="_blank" rel="noopener" title="' . h(t('rpt_run')) . '" aria-label="' . h(t('rpt_run')) . '"><i class="bi bi-file-earmark-pdf"></i></a>'],
 			'code' => self::col('sre_code', 'r.sre_code', t('rpt_code')) + ['main' => true, 'locked' => true],
 			'description' => self::col('sre_description', 'r.sre_description', t('rpt_description'), 'small text-break'),
 			'group' => array_replace(self::badgeCol('sre_group', 'r.sre_group', t('rpt_group')), ['sort' => 'r.sre_group, r.sre_code']),
@@ -657,6 +663,7 @@ final class NuListDefs
 				'where' => static fn(string $v) => ['r.sre_zzzzsys_php_id = ?', [$v]]],
 		];
 		if ($pf = NuProject::listFilter('report', 'r.zzzzsys_report_id')) $filters['project'] = $pf;   // projects (0.8.1035)
+		$cols['opened'] = NuOpened::column('report', 'r.zzzzsys_report_id');   // 0.8.1117
 		return [
 			'key' => 'reports', 'title' => t('rpt_title_list'), 'route' => 'reports', 'form' => NuAcl::FORM_REPORT,
 			'from' => ' FROM ' . NuReport::TABLE . ' r LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = r.sre_zzzzsys_form_id', 'where' => [], 'params' => [],
@@ -667,6 +674,8 @@ final class NuListDefs
 					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group', 'srctype'], 'values' => []]],
 				'compact' => ['columns' => ['actions', 'code', 'description'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description']],
 					'sort' => ['code', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group'], 'values' => []]],
+				'recent' => ['columns' => ['actions', 'code', 'description', 'group', 'opened'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'opened']],
+					'sort' => ['opened', 'desc'], 'per' => 50, 'filters' => ['shown' => ['group'], 'values' => []]],   // Recently opened (0.8.1117)
 				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'source', 'launch', 'access']],
 					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => array_keys($filters), 'values' => []]],
 			],
@@ -1000,7 +1009,7 @@ final class NuListDefs
 		];
 		return [
 			'key' => 'log', 'title' => t('nav_log'), 'route' => 'log', 'form' => NuAcl::FORM_LOG, 'from' => ' FROM zzzzsys_nunext_log', 'where' => [], 'params' => [],
-			'id' => 'zzzzsys_nunext_log_id', 'link' => static fn($r) => '', 'table_class' => 'table-sm',
+			'id' => 'zzzzsys_nunext_log_id', 'link' => static fn($r) => '',
 			'search' => ['object', 'record_id', 'details', 'ip'], 'search_ph' => t('log_search_ph'), 'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
 				'default' => ['columns' => ['time', 'user', 'event', 'object', 'details', 'ip'], 'card' => ['title' => 'event', 'badge' => '', 'lines' => ['time', 'user', 'object', 'details']],
@@ -1122,7 +1131,7 @@ final class NuListDefs
 		];
 		return [
 			'key' => 'audit', 'title' => t('aud_title'), 'route' => 'audit', 'empty_icon' => 'bi-clock-history', 'form' => NuAcl::FORM_AUDIT, 'from' => " FROM $T", 'where' => [], 'params' => [],
-			'id' => 'zzzzsys_nunext_audit_id', 'always' => ['record'], 'table_class' => 'table-sm',
+			'id' => 'zzzzsys_nunext_audit_id', 'always' => ['record'],
 			'link' => static fn($r) => (string)$r['form_id'] !== '' ? nu_url('audithistory', ['f' => $r['form_id'], 'r' => (string)$r['parent_id'] !== '' ? $r['parent_id'] : $r['record_id']]) : '',
 			'search' => ['table_name', 'record_id', 'parent_id', 'column_name', 'old_value', 'new_value', 'form_code'], 'search_ph' => t('aud_search_ph'),
 			'columns' => $cols, 'filters' => $filters,
@@ -1630,6 +1639,7 @@ final class NuListDefs
 		$base = ['columns' => ['code', 'description', 'tables', 'mode', 'reports'], 'card' => ['title' => 'code', 'badge' => 'mode', 'lines' => ['description', 'tables', 'reports']],
 			'sort' => ['code', 'asc'], 'per' => 50, 'filters' => ['shown' => ['mode', 'used'], 'values' => []]];
 		if ($pf = NuProject::listFilter('select', 's.zzzzsys_select_id')) $filters['project'] = $pf;   // projects (0.8.1035)
+		$cols['opened'] = NuOpened::column('select', 's.zzzzsys_select_id');   // 0.8.1117
 		return [
 			'key' => 'sqlbuilder', 'title' => t('sqb_title'), 'route' => 'sqlbuilder', 'form' => NuAcl::FORM_SELECT,
 			'from' => ' FROM ' . NuSqlSelect::TABLE . ' s', 'where' => ["COALESCE(s.sse_system, '') = ''"], 'params' => [], 'id' => 's.zzzzsys_select_id',
@@ -1638,6 +1648,7 @@ final class NuListDefs
 			'builtin' => [
 				'default' => $base,
 				'compact' => ['columns' => ['code', 'description']] + $base,
+				'recent' => ['columns' => ['code', 'description', 'opened'], 'sort' => ['opened', 'desc']] + $base,   // Recently opened (0.8.1117)
 				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
 			],
 		];
@@ -1798,7 +1809,7 @@ final class NuListDefs
 		];
 		return [
 			'key' => 'emaillog', 'title' => t('mail_tab_log'), 'route' => 'email', 'route_params' => ['tab' => 'log'], 'empty_icon' => 'bi-envelope-paper', 'form' => NuAcl::FORM_EMAILLOG,
-			'from' => ' FROM ' . NuMailer::LOG_TABLE, 'where' => [], 'params' => [], 'id' => 'zzzzsys_email_log_id', 'table_class' => 'table-sm',
+			'from' => ' FROM ' . NuMailer::LOG_TABLE, 'where' => [], 'params' => [], 'id' => 'zzzzsys_email_log_id',
 			'link' => static fn($r) => nu_url('email', ['tab' => 'log', 'id' => $r['__id']]),
 			'search' => ['eml_to', 'eml_cc', 'eml_subject', 'eml_tag', 'eml_from'], 'search_ph' => t('mail_search_ph'), 'columns' => $cols, 'filters' => $filters,
 			'builtin' => [

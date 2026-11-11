@@ -2399,3 +2399,20 @@ details.nuNoticeFold > summary::-webkit-details-marker { display: none; }
 .nuAiAskWait::before { content: ""; display: inline-block; width: .8em; height: .8em; margin-right: .4em; vertical-align: -.05em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nuAiAskSpin .75s linear infinite; }
 @keyframes nuAiAskSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .nuAiAskWait::before { animation-duration: 3s; } }
+
+/* one row height in lists (0.8.1114): a row with one line of text is 33 px whether it holds only text, a badge or row buttons – before:
+   30 (text) / 32–33 (badge) / 42 (buttons). Cells with two lines stay taller; phone cards (cells as blocks) are left alone */
+@media (min-width: 576px) {
+	.nu-table:not(.table-sm) > tbody > tr > td { height: 2.0625rem; }
+	.nu-table:not(.table-sm) > tbody > tr.nuDetRow > td, .nu-table:not(.table-sm) > tbody > tr.nuBsqMoreRow > td { height: auto; }
+}
+@media (min-width: 576px) and (pointer: fine) {
+	.nu-table:not(.table-sm) > tbody > tr > td .btn.btn-sm:not(.btn-link):not(.dropdown-item) { --bs-btn-padding-y: .1rem; --bs-btn-padding-x: .45rem; --bs-btn-font-size: .8rem; line-height: 1.3; }
+}
+
+/* warnings closed for good are not drawn at all (0.8.1120, class set in <head> by nutheme.js) */
+html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn { display: none !important; }
+
+/* row button that runs the row (reports list): neutral frame like its neighbour, only the icon in the accent colour */
+.nuRowRun > .bi { color: var(--bs-primary); }
+.nuRowRun:hover > .bi, .nuRowRun:active > .bi { color: inherit; }

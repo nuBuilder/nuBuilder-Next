@@ -100,7 +100,7 @@ final class NuListView
 	public static function views(array $L): array
 	{
 		$list = $L['key'];
-		$names = ['default' => t('lv_builtin_default'), 'compact' => t('lv_builtin_compact'), 'all' => t('lv_builtin_all'), 'problems' => t('lv_builtin_problems')];
+		$names = ['default' => t('lv_builtin_default'), 'compact' => t('lv_builtin_compact'), 'all' => t('lv_builtin_all'), 'problems' => t('lv_builtin_problems'), 'recent' => t('lv_builtin_recent')];
 		$out = [];
 		foreach ($L['builtin'] as $id => $d) $out[$id] = ['id' => $id, 'name' => $names[$id] ?? $id, 'scope' => 'builtin', 'owner' => '', 'levels' => [],
 			'def' => self::normalize($d, $L), 'editable' => false, 'group' => 'builtin'];

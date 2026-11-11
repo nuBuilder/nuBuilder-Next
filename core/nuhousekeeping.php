@@ -60,6 +60,7 @@ final class NuHousekeeping
 		$step('project_tasks', static fn() => NuProject::dueHousekeeping());   // to-dos of projects due today or earlier: one notification each (0.8.1035)
 		$step('notifications', static fn() => NuNotify::housekeeping());   // due e-mails of scheduled notifications, old ones deleted (0.8.357)               // audit trail beyond "Keep" (0.8.350)
 		$step('ai_calls', static fn() => NuAiProvider::purge());            // usage rows of AI requests older than 400 days (0.8.1099)
+		$step('opened', static fn() => NuOpened::purge());                  // "Last opened" rows not touched for 400 days (0.8.1117)
 		$step('webhooks', static fn() => NuWebhook::housekeeping());       // due retries of webhook calls, old calls deleted (0.8.715)
 		$step('report_files', static fn() => NuReportApi::purge());
 		$step('dbreset_files', static fn() => NuDbReset::purgeUploads());   // uploads of Reset database left behind (0.8.847)       // PDFs of the REST API whose link expired or was used up (0.8.340)

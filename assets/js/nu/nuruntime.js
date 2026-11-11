@@ -2088,9 +2088,53 @@
 	$(document).on('click', 'tr.nuBrowseRow', function (e) {
 		// the form takes over row clicks – with the clicked cell as element, as nuBuilder (not an element inside it, 0.8.468)
 		if (window.nuSelectBrowse) { window.nuSelectBrowse(e, (e.target.closest && e.target.closest('div.nuCell')) || this); return; }
+		if (e.target.closest && e.target.closest('.nuSelCol')) return;        // the row's checkbox (totals of selected rows)
 		if (window.getSelection && String(window.getSelection()).length) return;
 		openRow(this, e.ctrlKey || e.metaKey);
 	});
+	// totals of selected rows: lists with a row of totals have a checkbox column; while rows of the page are ticked, the row of totals
+	// shows the values of those rows (worked out here from the unformatted values, in the column's format) – none ticked = all matching
+	(function () {
+		function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+		function plain(n) { var s = (Math.round(n * 10000) / 10000).toString(); return s === '-0' ? '0' : s; }
+		function selTotals() {
+			var B = N.browse || {}, T = B.totals || {}, F = B.formats || {}, raw = B.rows || [], foot = document.getElementById('nuBrowseTotals');
+			if (!foot) return;
+			var boxes = document.querySelectorAll('#nuRECORD tr.nuBrowseRow .nuRowSel'), sel = [];
+			boxes.forEach(function (b) { var tr = b.closest('tr'); tr.classList.toggle('table-active', b.checked); if (b.checked) sel.push(raw[+tr.getAttribute('data-nu-row')] || []); });
+			var all = document.getElementById('nuRowSelAll');
+			if (all) { all.checked = boxes.length > 0 && sel.length === boxes.length; all.indeterminate = sel.length > 0 && sel.length < boxes.length; }
+			var clr = document.getElementById('nuSelClear');
+			if (clr) { clr.hidden = !sel.length; clr.textContent = sel.length ? String(clr.getAttribute('data-nu-text') || '%d').replace('%d', String(sel.length)) : ''; }
+			foot.classList.toggle('nuTotalSel', sel.length > 0);
+			Object.keys(T).forEach(function (i) {
+				var cell = foot.querySelector('td[data-nu-column="' + i + '"] .nuTotalVal');
+				if (!cell) return;
+				if (!cell.hasAttribute('data-nu-all')) cell.setAttribute('data-nu-all', cell.textContent);
+				if (!sel.length) { cell.textContent = cell.getAttribute('data-nu-all'); return; }
+				var fn = T[i].fn, fmt = String(F[i] || ''), isNum = /^N\|/i.test(fmt), isDate = /^D\|/i.test(fmt);
+				var vals = sel.map(function (r) { return r[+i + 1]; }).filter(function (v) { return v !== null && v !== undefined && v !== ''; });
+				var out = '';
+				if (fn === 'count') out = String(vals.length);
+				else if (!vals.length || (isDate && (fn === 'sum' || fn === 'avg'))) out = '';
+				else {
+					var v;
+					if (fn === 'sum' || fn === 'avg') { v = vals.reduce(function (a, x) { return a + num(x); }, 0); if (fn === 'avg') v = v / vals.length; v = plain(v); }
+					else {
+						var numeric = isNum || (!isDate && vals.every(function (x) { return String(x).trim() !== '' && isFinite(Number(x)); }));
+						v = vals.reduce(function (a, x) { var less = numeric ? num(x) < num(a) : String(x) < String(a); return (fn === 'min') === less ? x : a; });
+						v = String(v);
+					}
+					try { out = fmt && window.NuFormatLib ? NuFormatLib.add(v, fmt) : v; } catch (e) { out = v; }
+				}
+				cell.textContent = out;
+			});
+		}
+		$(document).on('change', '#nuRECORD .nuRowSel', selTotals);
+		$(document).on('change', '#nuRowSelAll', function () { var on = this.checked; document.querySelectorAll('#nuRECORD tr.nuBrowseRow .nuRowSel').forEach(function (b) { b.checked = on; }); selTotals(); });
+		$(document).on('click', '#nuSelClear', function () { document.querySelectorAll('#nuRECORD .nuRowSel').forEach(function (b) { b.checked = false; }); selTotals(); });
+		N.selectedTotals = selTotals;
+	})();
 	$(document).on('keydown', 'tr.nuBrowseRow', function (e) { if (e.key === 'Enter' && !e.target.closest('.nuRowDel, .nuCellAct')) openRow(this, e.ctrlKey || e.metaKey); });
 	// row details (0.8.1027, core/form/nurowdetails.php): the ▸ of a row folds a strip open below it – the row's hidden (width 0) columns
 	// and cut texts (read from the row itself) and the related list of the record (formapi action "details", loaded once per row)
@@ -3591,10 +3635,17 @@
 		var B = N.browse_sql, btn = document.getElementById('nuBrowseSqlEdit');
 		if (!B || !btn) return;
 		var T = B.m, pane = null, cm = null, PIN = 'nunext-bsq-pin', TAB = 'nunext-bsq-tab', L = B.list || {}, ST = null, COLS = null, names = null;
+		// code tabs (0.8.1108): browse SQL, PHP Before Browse and the list's JavaScript – one editor each, made when its tab is first shown
+		var TABS = ['sql', 'php', 'js', 'cols'], OPEN = {};
+		var CODE = {sql: {cm: null, orig: B.sql, mode: 'text/x-sql', lang: 'SQL'}, php: {cm: null, orig: L.php || '', mode: 'application/x-httpd-php-open', lang: 'PHP'},
+			js: {cm: null, orig: L.js || '', mode: 'javascript', lang: 'JS'}};
+		function codeVal(k) { return CODE[k].cm ? CODE[k].cm.getValue() : CODE[k].orig; }
+		function codeDirty() { return ['sql', 'php', 'js'].some(function (k) { return CODE[k].cm && CODE[k].cm.getValue() !== CODE[k].orig; }); }
 		// tab Columns (0.8.942): the list's settings and columns as design mode's Browse list, edited here and saved with the pane's Save
 		function stInit() {
-			ST = {rows: L.rows || '', rowh: L.rowh || '', target: L.target || '0', redirect: L.redirect || '', multi: !!L.multi, autofit: !!L.autofit};
-			COLS = (L.cols || []).map(function (c) { return {id: c[0], title: c[1], display: c[2], align: c[3] || 'l', format: c[4], width: c[5], filter: !!c[6]}; });
+			var d = L.details || {};
+			ST = {rows: L.rows || '', rowh: L.rowh || '', target: L.target || '0', redirect: L.redirect || '', multi: !!L.multi, autofit: !!L.autofit, dcols: !!d.cols, dsub: d.sub || ''};
+			COLS = (L.cols || []).map(function (c) { return {id: c[0], title: c[1], display: c[2], align: c[3] || 'l', format: c[4], width: c[5], filter: !!c[6], badge: c[7] || null, action: c[8] || null, total: c[9] || null, group: !!c[10]}; });
 		}
 		var ST0 = '', COLS0 = '';
 		function stDirty() { return !!ST && JSON.stringify(ST) !== ST0; }
@@ -3602,7 +3653,7 @@
 		// kept open (0.8.931): a pinned pane opens again after the reload of a save, on the next page and on other lists
 		function pinned() { try { return localStorage.getItem(PIN) === '1'; } catch (e) { return false; } }
 		function setPin(on) { try { if (on) localStorage.setItem(PIN, '1'); else localStorage.removeItem(PIN); } catch (e) { /* no storage */ } }
-		function lastTab() { try { return localStorage.getItem(TAB) === 'cols' ? 'cols' : 'sql'; } catch (e) { return 'sql'; } }
+		function lastTab() { try { var k = localStorage.getItem(TAB); return TABS.indexOf(k) >= 0 ? k : 'sql'; } catch (e) { return 'sql'; } }
 		function drawPin() {
 			var b = pane && pane.querySelector('.nuBsqPin');
 			if (!b) return;
@@ -3622,20 +3673,23 @@
 				return j;
 			});
 		}
-		function dirty() { return (cm && cm.getValue() !== B.sql) || stDirty() || colsDirty(); }
+		function dirty() { return codeDirty() || stDirty() || colsDirty(); }
 		function close(force) {
 			if (!pane) return;
 			if (!force && dirty() && !window.confirm(T.unsaved)) return;
 			if (!force) setPin(false);                                       // closing it ends "keep open"
-			pane.remove(); pane = null; cm = null; ST = null; COLS = null;
+			pane.remove(); pane = null; cm = null; ST = null; COLS = null; OPEN = {};
+			['sql', 'php', 'js'].forEach(function (k) { CODE[k].cm = null; });
 			document.documentElement.classList.remove('nuBsqOpen');
 			btn.focus();
 		}
 		function save() {
 			if (!pane) return;
-			var v = cm ? cm.getValue() : B.sql, sb = pane.querySelector('.nuBsqSave'), err = pane.querySelector('.nuBsqErr');
-			var fields = {};
-			if (v !== B.sql) fields.sfo_browse_sql = v;
+			var v = codeVal('sql'), vp = codeVal('php'), vj = codeVal('js'), sb = pane.querySelector('.nuBsqSave'), err = pane.querySelector('.nuBsqErr');
+			var fields = {}, php = null;
+			if (v !== CODE.sql.orig) fields.sfo_browse_sql = v;
+			if (vj !== CODE.js.orig) fields.sfo_browse_javascript = vj;
+			if (vp !== CODE.php.orig) php = {BB: vp};
 			if (stDirty()) {
 				var o = JSON.parse(ST0);
 				if (ST.rows !== o.rows) fields.sfo_browse_rows_per_page = ST.rows;
@@ -3644,16 +3698,106 @@
 				if (ST.redirect !== o.redirect) fields.sfo_browse_redirect_form_id = ST.redirect;
 				if (ST.multi !== o.multi) fields.sfo_browse_title_multiline = ST.multi ? '1' : '0';
 				if (ST.autofit !== o.autofit) fields.sfo_browse_autoresize_columns = ST.autofit ? '1' : '0';
+				if (ST.dcols !== o.dcols || ST.dsub !== o.dsub) fields.details = ST.dcols || ST.dsub ? {cols: ST.dcols, sub: ST.dsub} : null;
 			}
 			var steps = [];
 			if (colsDirty()) steps.push(function () { return post({columns: COLS}, 'browse.save'); });
-			if (Object.keys(fields).length) steps.push(function () { return post({fields: fields}); });
+			if (Object.keys(fields).length || php) steps.push(function () { return post(php ? {fields: fields, php: php} : {fields: fields}); });
 			if (!steps.length) { close(true); return; }
 			sb.disabled = true; err.hidden = true;
-			steps.reduce(function (p, f) { return p.then(f); }, Promise.resolve()).then(function () { B.sql = v; ST0 = JSON.stringify(ST); COLS0 = JSON.stringify(COLS); close(true); window.location.reload(); })
+			steps.reduce(function (p, f) { return p.then(f); }, Promise.resolve()).then(function () { B.sql = v; CODE.sql.orig = v; CODE.php.orig = vp; CODE.js.orig = vj; ST0 = JSON.stringify(ST); COLS0 = JSON.stringify(COLS); close(true); window.location.reload(); })
 				.catch(function (e) { sb.disabled = false; err.textContent = e.message; err.hidden = false; });
 		}
-		function size() { if (cm && pane) { var b = pane.querySelector('.nuBsqBody'); if (b.offsetParent) cm.setSize('100%', Math.max(120, b.clientHeight) + 'px'); } }
+		function size() {
+			if (!pane) return;
+			['sql', 'php', 'js'].forEach(function (k) {
+				var b = pane.querySelector('.nuBsqBody[data-code="' + k + '"]');
+				if (CODE[k].cm && b && b.offsetParent) CODE[k].cm.setSize('100%', Math.max(120, b.clientHeight) + 'px');
+			});
+		}
+		// the editor of a code tab: made when the tab is first shown
+		function codeOpen(k, focus) {
+			var c = CODE[k];
+			if (c.cm) { c.cm.refresh(); if (focus) c.cm.focus(); return; }
+			loadCodeMirror().then(function () {
+				if (!pane || c.cm) return;
+				var ta = pane.querySelector('.nuBsqBody[data-code="' + k + '"] textarea');
+				ta.value = c.orig;
+				c.cm = CodeMirror.fromTextArea(ta, {mode: c.mode, lineNumbers: true, lineWrapping: true, indentWithTabs: true, tabSize: 4,
+					theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'default nuCmDark' : 'default'});
+				if (k === 'sql') cm = c.cm;
+				if (window.NuCodeTools) NuCodeTools.attach(c.cm, pane.querySelector('.nuBsqTools[data-code="' + k + '"]'), {lang: c.lang, db: N.db_type});
+				size();
+				if (focus) c.cm.focus();
+			});
+		}
+		// what a column offers beyond the four fields of its row (0.8.1108): format, filter, badge and what a click on its cells does
+		function fmtOptions(value) {
+			var kind = {D: T.fmt_type_date, N: T.fmt_type_number, T: T.fmt_type_text};
+			var nice = function (x) { var n = kind[String(x).charAt(0)]; return n && String(x).charAt(1) === '|' ? n + ': ' + String(x).substring(2) : String(x); };
+			var out = [['', '—']].concat((L.formats || []).map(function (f) { return [f.value, nice(f.value) + (f['default'] ? ' ★' : '') + (f.description ? ' – ' + f.description : '')]; }));
+			if (value && !(L.formats || []).some(function (f) { return f.value === value; })) out.push([value, value]);
+			return out;
+		}
+		function colMore(c, i) {
+			var tg = L.targets || {}, a = c.action || {t: ''}, uid = 'nuBsqC' + i + '_';
+			var fld = function (key, txt, input, tip) {
+				input.id = uid + key; input.setAttribute('data-lm', key);
+				return mk('div', {'class': 'nuBsqField'}, [mk('label', {'class': 'form-label small mb-1', 'for': uid + key, text: txt}),
+					tip ? mk('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', title: tip, 'aria-label': tip}, [ico('bi-info-circle')]) : null, input]);
+			};
+			var sel = function (opts, val, fn, search) {
+				var x = mk('select', {'class': 'form-select form-select-sm'}, opts.map(function (o) { return mk('option', {value: o[0], text: o[1], selected: String(val) === String(o[0])}); }));
+				x.addEventListener('change', function () { fn(x.value); });
+				if (search) x.setAttribute('data-ts', '1');
+				return x;
+			};
+			var txt = function (val, fn, ph) { var x = mk('input', {type: 'text', 'class': 'form-control form-control-sm nuBsqMono', value: val, placeholder: ph || null}); x.addEventListener('input', function () { fn(x.value); }); return x; };
+			var chk = function (key, label, on, fn, tip) {
+				var x = mk('input', {type: 'checkbox', 'class': 'form-check-input', id: uid + key, 'data-lm': key, checked: on});
+				x.addEventListener('change', function () { fn(x.checked); });
+				return mk('div', {'class': 'form-check form-switch'}, [x, mk('label', {'class': 'form-check-label small', 'for': uid + key, text: label}),
+					tip ? mk('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', title: tip, 'aria-label': tip}, [ico('bi-info-circle')]) : null]);
+			};
+			var act = function (part, redraw) {
+				var n = $.extend({}, a, part);
+				if (part.t !== undefined && part.t !== a.t) n = {t: part.t, look: a.look || 'link'};       // another kind: its own target
+				c.action = n.t ? n : null; a = n;
+				if (redraw) drawCols();
+			};
+			var pick = function (list, types) { return [['', T.please_select]].concat((list || []).filter(function (f) { return !types || types.indexOf(f[2]) >= 0; }).map(function (f) { return [f[0], f[1]]; })); };
+			var rules = Array.isArray(c.badge) ? c.badge.length : 0;
+			var kids = [mk('div', {'class': 'nuBsqGrid'}, [
+				fld('format', T.builder_col_format, sel(fmtOptions(c.format), c.format, function (v) { c.format = v; })),
+				mk('div', {'class': 'nuBsqMoreChecks'}, [chk('filter', T.builder_col_filter, c.filter, function (on) { c.filter = on; }),
+					chk('badge', T.ds_col_badge, !!c.badge, function (on) { c.badge = on ? (c.badge || true) : null; }, T.ds_col_badge_tip),
+					rules ? mk('div', {'class': 'small text-body-secondary nuBsqBadgeRules', text: String(T.bsq_badge_rules || '').replace('%d', String(rules))}) : null]),
+				fld('total', T.ds_col_total, sel([['', T.ds_tot_none], ['sum', T.ds_tot_sum], ['avg', T.ds_tot_avg], ['min', T.ds_tot_min], ['max', T.ds_tot_max], ['count', T.ds_tot_count]], c.total || '', function (v) { c.total = v || null; }), T.ds_col_total_tip),
+				mk('div', {'class': 'nuBsqMoreChecks'}, [chk('group', T.ds_col_group, !!c.group, function (on) { COLS.forEach(function (x) { x.group = false; }); c.group = on; drawCols(); }, T.ds_col_group_tip)])])];
+			var g = [fld('action_t', T.ds_col_action, sel([['', T.ds_act_none], ['form', T.ds_act_form], ['list', T.ds_act_list], ['proc', T.ds_act_proc], ['report', T.ds_act_report], ['js', T.ds_act_js]],
+				a.t || '', function (v) { act({t: v}, true); }), T.ds_col_action_tip)];
+			if (a.t === 'form') g.push(fld('action_id', T.ds_act_target_form, sel(pick(tg.forms, ['edit', 'browseedit']), a.id || '', function (v) { act({id: v}, true); }, true)));
+			if (a.t === 'list') g.push(fld('action_id', T.ds_act_target_list, sel(pick(tg.forms, ['browse', 'browseedit']), a.id || '', function (v) { act({id: v}, true); }, true)));
+			if (a.t === 'proc') g.push(fld('action_id', T.builder_run_procedure, sel(pick(tg.procs), a.id || '', function (v) { act({id: v}, true); }, true)));
+			if (a.t === 'report') g.push(fld('action_id', T.builder_run_report, sel(pick(tg.reports), a.id || '', function (v) { act({id: v}, true); }, true)));
+			if (a.t === 'js') g.push(fld('action_id', T.ds_act_fn, txt(a.id || '', function (v) { act({id: v.trim()}); }, 'openReadings'), T.ds_act_fn_tip));
+			if (a.t === 'form') g.push(fld('action_rec', T.ds_act_rec, sel([['row', T.ds_act_rec_row], ['value', T.ds_act_rec_value], ['new', T.ds_act_rec_new]], a.rec || 'row', function (v) { act({rec: v}); })));
+			if (a.t === 'form' || a.t === 'list') g.push(fld('action_open', T.ds_act_open, sel([['0', T.ds_act_open_same], ['2', T.ds_act_open_tab], ['3', T.ds_act_open_popup]], a.open || '0', function (v) { act({open: v}); })));
+			if (a.t && a.t !== 'js') g.push(fld('action_pass', T.ds_act_pass, txt(a.pass || 'PARENT_ID', function (v) { act({pass: v.trim()}); }), T.ds_act_pass_tip));
+			if (a.t) g.push(fld('action_look', T.ds_act_look, sel([['link', T.ds_act_look_link], ['button', T.ds_act_look_button], ['icon', T.ds_act_look_icon]], a.look || 'link', function (v) { act({look: v}, true); })));
+			if (a.t && (a.look === 'button' || a.look === 'icon')) {
+				g.push(fld('action_icon', T.ds_act_icon, txt(a.icon || '', function (v) { act({icon: v.trim()}); }, 'bi-speedometer2'), T.ds_act_icon_tip));
+				g.push(fld('action_label', T.ds_act_label, txt(a.label || '', function (v) { act({label: v}); }), T.ds_act_label_tip));
+			}
+			kids.push(mk('div', {'class': 'nuBsqGrid mt-2'}, g));
+			if (a.t && !a.id) kids.push(mk('p', {'class': 'small text-warning-emphasis mb-0 mt-1 nuBsqActNoTarget', text: T.ds_act_need_target}));
+			var box = mk('div', {'class': 'nuBsqMore'}, kids);
+			// lists of forms, procedures and reports are searchable: Tom Select, its list in <body> above the pane
+			if (window.TomSelect) Array.prototype.forEach.call(box.querySelectorAll('select[data-ts]'), function (x) {
+				new TomSelect(x, {maxOptions: null, allowEmptyOption: true, create: false, dropdownParent: 'body', plugins: ['dropdown_input'], onItemAdd: function () { this.close(); this.blur(); }});
+			});
+			return box;
+		}
 		function mk(tag, attrs, kids) {
 			var e = document.createElement(tag);
 			Object.keys(attrs || {}).forEach(function (k) { if (attrs[k] === null || attrs[k] === undefined || attrs[k] === false) return; if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k] === true ? '' : attrs[k]); });
@@ -3691,18 +3835,38 @@
 				i.addEventListener('change', function () { ST[k] = i.checked; });
 				return mk('div', {'class': 'form-check form-switch'}, [i, mk('label', {'class': 'form-check-label small', 'for': 'nuBsq_' + k, text: txt})]);
 			};
-			box.appendChild(mk('h3', {'class': 'nuBsqSub', text: T.ds_list_settings}));
-			box.appendChild(mk('div', {'class': 'nuBsqGrid'}, [lab(T.builder_rows_per_page, num('rows')), lab(T.ds_list_rowh, num('rowh'), T.ds_list_rowh_tip),
+			// Settings fold away (remembered in this browser): the heading is the switch
+			var setOpen = true;
+			try { setOpen = localStorage.getItem('nunext-bsq-settings') !== '0'; } catch (e) { setOpen = true; }
+			var setBody = mk('div', {id: 'nuBsqSetBody'});
+			var setBtn = mk('button', {type: 'button', 'class': 'nuBsqFold', id: 'nuBsqSetToggle', 'aria-controls': 'nuBsqSetBody'}, [ico('bi-chevron-down'), T.ds_list_settings]);
+			var setShow = function (on) { setBody.hidden = !on; setBtn.setAttribute('aria-expanded', on ? 'true' : 'false'); };
+			setBtn.addEventListener('click', function () {
+				setOpen = !setOpen; setShow(setOpen);
+				try { localStorage.setItem('nunext-bsq-settings', setOpen ? '1' : '0'); } catch (e) { /* private mode */ }
+			});
+			setShow(setOpen);
+			box.appendChild(mk('h3', {'class': 'nuBsqSub'}, [setBtn]));
+			box.appendChild(setBody);
+			setBody.appendChild(mk('div', {'class': 'nuBsqGrid'}, [lab(T.builder_rows_per_page, num('rows')), lab(T.ds_list_rowh, num('rowh'), T.ds_list_rowh_tip),
 				lab(T.ds_list_target, sel('target', ['0', '1', '2', '3'].map(function (x) { return [x, T['ds_list_target_' + x]]; }))),
 				lab(T.builder_redirect, sel('redirect', [['', T.please_select]].concat(L.forms || [])))]));
 			// lists of forms are searchable (0.8.1079): Tom Select, its list in <body> above the pane
 			var rs = box.querySelector('[data-bsq=redirect]');
 			if (rs && window.TomSelect) new TomSelect(rs, {maxOptions: null, allowEmptyOption: true, create: false, dropdownParent: 'body', plugins: ['dropdown_input'],
 				onItemAdd: function () { this.close(); this.blur(); }});
-			box.appendChild(mk('div', {'class': 'nuBsqChecks'}, [chk('multi', T.ds_list_multi), chk('autofit', T.ds_list_autofit)]));
+			setBody.appendChild(mk('div', {'class': 'nuBsqChecks'}, [chk('multi', T.ds_list_multi), chk('autofit', T.ds_list_autofit)]));
 			box.appendChild(mk('h3', {'class': 'nuBsqSub', text: T.builder_sec_columns}));
+			var rowDetails = function () {                                       // below the columns: what the ▸ of a row shows
+				box.appendChild(mk('h3', {'class': 'nuBsqSub', text: T.ds_rd_title}));
+				var dc = chk('dcols', T.ds_rd_cols);
+				dc.appendChild(mk('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', title: T.ds_rd_cols_tip, 'aria-label': T.ds_rd_cols_tip}, [ico('bi-info-circle')]));
+				box.appendChild(mk('div', {'class': 'nuBsqGrid'}, [dc, lab(T.ds_rd_sub, sel('dsub', [['', T.ds_rd_none]].concat(L.subs || [])), T.ds_rd_sub_tip)]));
+				if (L.access) box.appendChild(mk('p', {'class': 'small mt-3 mb-0'}, [mk('a', {href: L.access, target: '_blank', rel: 'noopener', id: 'nuBsqAccess'}, [ico('bi-shield-lock me-1'), T.bsq_col_access])]));
+			};
 			var tbody = mk('tbody');
 			var head = mk('tr', {}, ['#', T.builder_col_title, T.builder_col_display, T.builder_col_width, T.builder_col_align, ''].map(function (x) { return mk('th', {scope: 'col', text: x}); }));
+			var marks = function (c) { return !!(c.format || c.filter || c.badge || c.action || c.total || c.group); };
 			box.appendChild(mk('table', {'class': 'table table-sm align-middle nuBsqColTable', id: 'nuBsqColTable'}, [mk('thead', {}, [head]), tbody]));
 			COLS.forEach(function (c, i) {
 				var off = +c.width === 0;
@@ -3716,14 +3880,16 @@
 				width.addEventListener('input', function () { c.width = Math.max(1, parseInt(width.value, 10) || 100); });
 				align.addEventListener('change', function () { c.align = align.value; });
 				var b = function (ic, tip, cls, fn, dis) { var x = mk('button', {type: 'button', 'class': 'btn btn-sm btn-link p-0 ' + (cls || 'text-body-secondary'), title: tip, 'aria-label': tip, disabled: dis, 'data-act': ic}, [ico(ic)]); x.addEventListener('click', fn); return x; };
-				var move = function (d) { var x = COLS.splice(i, 1)[0]; COLS.splice(i + d, 0, x); drawCols(); };
+				var move = function (d) { var x = COLS.splice(i, 1)[0]; COLS.splice(i + d, 0, x); OPEN = {}; drawCols(); };
 				tbody.appendChild(mk('tr', {'class': 'nuBsqCol' + (off ? ' nuBsqColOff' : ''), 'data-col': c.id || ('new' + i)}, [
 					mk('td', {'class': 'nuBsqColNo'}, [mk('span', {'class': 'nuBsqGrip', draggable: 'true', 'data-grip': String(i), title: T.ds_col_drag}, [ico('bi-grip-vertical'), String(i + 1)])]), mk('td', {}, [title]), mk('td', {}, [disp]), mk('td', {'class': 'nuBsqColW'}, [width]), mk('td', {'class': 'nuBsqColA'}, [align]),
 					mk('td', {'class': 'nuBsqColBtns'}, [
+						b(OPEN[i] ? 'bi-chevron-up' : 'bi-sliders', T.bsq_col_more, marks(c) ? 'text-primary nuBsqMoreBtn' : 'text-body-secondary nuBsqMoreBtn', function () { OPEN[i] = !OPEN[i]; drawCols(); }),
 						b(off ? 'bi-eye-slash' : 'bi-eye', off ? T.ds_col_show : T.ds_col_hidden, '', function () { c.width = off ? 100 : 0; drawCols(); }),
 						b('bi-arrow-up', T.ds_col_left, '', function () { move(-1); }, i === 0),
 						b('bi-arrow-down', T.ds_col_right, '', function () { move(1); }, i === COLS.length - 1),
-						b('bi-trash', T.delete, 'text-danger', function () { COLS.splice(i, 1); drawCols(); })])]));
+						b('bi-trash', T.delete, 'text-danger', function () { COLS.splice(i, 1); OPEN = {}; drawCols(); })])]));
+				if (OPEN[i]) tbody.appendChild(mk('tr', {'class': 'nuBsqMoreRow', 'data-more': c.id || ('new' + i)}, [mk('td'), mk('td', {colspan: '5'}, [colMore(c, i)])]));
 			});
 			if (!COLS.length) tbody.appendChild(mk('tr', {}, [mk('td', {colspan: '6', 'class': 'small text-body-secondary', text: T.ds_list_nocols})]));
 			// drag by the number (0.8.946): drop above / below the row under the pointer
@@ -3758,27 +3924,28 @@
 				var f = from; from = -1; mark(null);
 				if (to > f) to--;
 				if (to === f || to < 0) { drawCols(); return; }
-				var x = COLS.splice(f, 1)[0]; COLS.splice(to, 0, x); drawCols();
+				var x = COLS.splice(f, 1)[0]; COLS.splice(to, 0, x); OPEN = {}; drawCols();
 			});
 			box.appendChild(namesList());
 			var add = mk('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuBsqAddCol'}, [ico('bi-plus-lg me-1'), T.builder_add_column]);
 			add.addEventListener('click', function () {
-				COLS.push({id: '', title: T.ds_col_new, display: '', align: 'l', format: '', width: 120, filter: false});
+				COLS.push({id: '', title: T.ds_col_new, display: '', align: 'l', format: '', width: 120, filter: false, badge: null, action: null});
 				drawCols();
 				var inp = box.querySelectorAll('input[data-lc="display"]');
 				if (inp.length) inp[inp.length - 1].focus();
 			});
 			box.appendChild(add);
+			rowDetails();
 		}
-		function showTab(k) {
+		function showTab(k, focus) {
 			if (!pane) return;
 			pane.querySelectorAll('.nuBsqTab').forEach(function (b) { var on = b.getAttribute('data-tab') === k; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
-			pane.querySelector('.nuBsqBody').hidden = k !== 'sql';
+			pane.querySelectorAll('.nuBsqBody, .nuBsqTools').forEach(function (x) { x.hidden = x.getAttribute('data-code') !== k; });
 			pane.querySelector('.nuBsqCols').hidden = k !== 'cols';
-			pane.querySelector('.nuBsqTools').hidden = k !== 'sql';
-			pane.querySelector('.nuBsqHint').hidden = k !== 'sql';
+			var hint = pane.querySelector('.nuBsqHint');
+			hint.hidden = k === 'cols';
 			try { localStorage.setItem(TAB, k); } catch (e) { /* no storage */ }
-			if (k === 'sql') { size(); if (cm) cm.refresh(); }
+			if (CODE[k]) { codeOpen(k, focus === true); size(); }
 		}
 		// width by the splitter on the left edge (0.8.947): stored per browser, 360 px … 90 % of the window, double-click = default
 		var WKEY = 'nunext-bsq-w', WDEF = 560;
@@ -3825,24 +3992,31 @@
 		}
 		function open(auto, tab) {
 			if (tab) { try { localStorage.setItem(TAB, tab); } catch (e) { /* no storage */ } }
-			if (pane) { if (tab) { showTab(tab); pane.querySelector('.nuBsqTab.active').focus(); } else if (cm && lastTab() === 'sql') cm.focus(); return; }
+			if (pane) { if (tab) showTab(tab, true); if (!tab || tab === 'cols') { var cur = lastTab(); if (CODE[cur] && CODE[cur].cm) CODE[cur].cm.focus(); else pane.querySelector('.nuBsqTab.active').focus(); } return; }
 			stInit(); ST0 = JSON.stringify(ST); COLS0 = JSON.stringify(COLS);
 			pane = document.createElement('aside');
 			pane.className = 'nuBsqPane';
 			pane.id = 'nuBsqPane';
 			pane.setAttribute('aria-label', T.title);
 			pane.innerHTML = '<div class="nuBsqHead"><ul class="nav nav-tabs nuBsqTabs me-auto" role="tablist"><li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="sql" id="nuBsqTabSql"></button></li>'
+				+ '<li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="php" id="nuBsqTabPhp"></button></li>'
+				+ '<li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="js" id="nuBsqTabJs"></button></li>'
 				+ '<li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="cols" id="nuBsqTabCols"></button></li></ul>'
 				+ '<button type="button" class="btn btn-sm btn-outline-secondary nuBsqPin" id="nuBsqPin"></button><button type="button" class="btn-close nuBsqClose"></button></div>'
-				+ '<div class="alert alert-danger py-1 px-2 m-2 mb-0 small nuBsqErr" role="alert" hidden></div><div class="nuBsqTools"></div><div class="nuBsqBody" role="tabpanel" aria-labelledby="nuBsqTabSql"><textarea></textarea></div>'
+				+ '<div class="alert alert-danger py-1 px-2 m-2 mb-0 small nuBsqErr" role="alert" hidden></div><div class="nuBsqTools" data-code="sql"></div><div class="nuBsqBody" data-code="sql" role="tabpanel" aria-labelledby="nuBsqTabSql"><textarea></textarea></div>'
+				+ '<div class="nuBsqTools" data-code="php" hidden></div><div class="nuBsqBody" data-code="php" role="tabpanel" aria-labelledby="nuBsqTabPhp" hidden><textarea></textarea></div>'
+				+ '<div class="nuBsqTools" data-code="js" hidden></div><div class="nuBsqBody" data-code="js" role="tabpanel" aria-labelledby="nuBsqTabJs" hidden><textarea></textarea></div>'
 				+ '<div class="nuBsqCols" role="tabpanel" aria-labelledby="nuBsqTabCols" hidden></div>'
 				+ '<div class="nuBsqFoot"><span class="small text-body-secondary nuBsqHint"></span><button type="button" class="btn btn-outline-secondary btn-sm nuBsqCancel"></button><button type="button" class="btn btn-primary btn-sm nuBsqSave"></button></div>';
 			pane.querySelector('#nuBsqTabSql').textContent = T.title;
+			pane.querySelector('#nuBsqTabPhp').textContent = T.bsq_tab_php;
+			pane.querySelector('#nuBsqTabJs').textContent = T.bsq_tab_js;
 			pane.querySelector('#nuBsqTabCols').textContent = T.builder_sec_columns;
 			pane.querySelectorAll('.nuBsqTab').forEach(function (b) { b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); }); });
 			pane.querySelector('.nuBsqTabs').addEventListener('keydown', function (e) {
 				if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-				var k = pane.querySelector('.nuBsqTab.active').getAttribute('data-tab') === 'sql' ? 'cols' : 'sql';
+				var at = TABS.indexOf(pane.querySelector('.nuBsqTab.active').getAttribute('data-tab'));
+				var k = TABS[(at + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
 				showTab(k); pane.querySelector('.nuBsqTab[data-tab="' + k + '"]').focus(); e.preventDefault();
 			});
 			pane.querySelector('.nuBsqHint').textContent = T.hint;
@@ -3859,7 +4033,7 @@
 			splitter();
 			drawCols();
 			var first = lastTab();
-			showTab(first);
+			showTab(first, auto !== true);                                   // a pane opened by itself leaves the focus on the list
 			pane.querySelector('.nuBsqClose').addEventListener('click', function () { close(); });
 			pane.querySelector('.nuBsqCancel').addEventListener('click', function () { close(); });
 			pane.querySelector('.nuBsqSave').addEventListener('click', save);
@@ -3867,21 +4041,15 @@
 				if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.stopPropagation(); save(); }
 				else if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); close(); }
 			});
-			loadCodeMirror().then(function () {
-				if (!pane) return;
-				var ta = pane.querySelector('textarea');
-				ta.value = B.sql;
-				cm = CodeMirror.fromTextArea(ta, {mode: 'text/x-sql', lineNumbers: true, lineWrapping: true, indentWithTabs: true, tabSize: 4,
-					theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'default nuCmDark' : 'default'});
-				if (window.NuCodeTools) NuCodeTools.attach(cm, pane.querySelector('.nuBsqTools'), {lang: 'SQL', db: N.db_type});
-				size();
-				if (auto !== true && first === 'sql') cm.focus();            // a pane opened by itself leaves the focus on the list
-			});
 			if (auto !== true && first === 'cols') { var f = pane.querySelector('.nuBsqTab.active'); if (f) f.focus(); }
 		}
 		btn.addEventListener('click', function () { open(false, 'sql'); });
 		var colsBtn = document.getElementById('nuBrowseColsEdit');                  // 0.8.943: Edit columns… = the pane on its Columns tab
 		if (colsBtn) colsBtn.addEventListener('click', function () { open(false, 'cols'); });
+		[['nuBrowsePhpEdit', 'php'], ['nuBrowseJsEdit', 'js']].forEach(function (x) {   // 0.8.1108: PHP Before Browse and the list's JavaScript
+			var e = document.getElementById(x[0]);
+			if (e) e.addEventListener('click', function () { open(false, x[1]); });
+		});
 		N.browseSqlOpen = function () { open(); };                         // Ctrl+Shift+B and the ⋮ entry Browse SQL (0.8.932)
 		$('<span class="ms-auto ps-3 small text-body-secondary nuBsqKey"></span>').text(/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌃⇧B' : 'Ctrl+Shift+B').appendTo(btn);
 		if (pinned()) open(true);
@@ -4982,8 +5150,7 @@
 			['a', 'arrange', 'bi-arrows-move', 0, edit && T.design, function () { openTab(builderUrl('arrange')); }],
 			['h', 'add_object', 'bi-plus-lg', 1, edit && T.design, function () { openTab(builderUrl('add')); }],
 			// 0.8.818: design mode → Code → Browse SQL; 0.8.932: Ctrl+Shift+B, the pane of the list where there is one
-			['b', 'browse_sql', 'bi-filetype-sql', 1, browse && (!!T.browsesql || !!N.browseSqlOpen), function () { if (N.browseSqlOpen) N.browseSqlOpen(); else window.location.href = T.browsesql; }],
-			['', 'php_bb', 'bi-filetype-php', 1, browse && !!T.browsesql, function () { window.location.href = T.browsesql.replace('sfo_browse_sql', 'php%3ABB'); }],   // 0.8.819: … → PHP Before Browse
+			['b', 'browse_sql', 'bi-filetype-sql', 0, browse && (!!T.browsesql || !!N.browseSqlOpen), function () { if (N.browseSqlOpen) N.browseSqlOpen(); else window.location.href = T.browsesql; }],   // 0.8.1111: shortcut only – the entry is in Design ▾
 			// the form's table in phpMyAdmin / Adminer (0.8.923; Ctrl+Shift+E stays the same without a menu entry of its own)
 			['', 'db_table', 'bi-table', 1, T.pma && !!N.form.table, function () { nuVendorLogin('DB', N.form.table); }],
 			['', 'form_access', 'bi-people', 1, !!T.formaccess && typeof window.nuFormAccessOpen === 'function', function () { window.nuFormAccessOpen(N.form.id); }],   // 0.8.683
@@ -4995,7 +5162,7 @@
 			['s', 'search', 'bi-search', 0, browse && has('nuSearchField'), function () { nuSearchAction(); }],
 			['a', 'add', 'bi-plus-lg', 0, browse && has('nuAddButton'), function () { $('#nuAddButton').trigger('click'); }],
 			['p', 'print', 'bi-printer', 0, browse && has('nuPrintButton'), function () { var h = $('#nuPrintButton').attr('data-print-url') || $('#nuPrintButton').attr('href'); go(function () { return printUrl(h); }, 'blank'); }],
-			['?', 'help', 'bi-question-circle', 3, true, function () { openTab(N.base + '?p=help#forms-use'); }],
+			['?', 'help', 'bi-book', 3, true, function () { openTab(N.base + '?p=help#forms-use'); }],
 			['r', 'refresh', 'bi-arrow-repeat', 0, true, function () { window.location.reload(); }],
 			['d', 'debug', 'bi-bug', 4, T.debug, function () { openTab(N.base + '?p=debug'); }],
 			['e', 'database', 'bi-database', 0, T.pma, function () { nuVendorLogin('DB', N.form.table || ''); }],   // the primary database tool (0.8.282)
@@ -5003,7 +5170,6 @@
 			['', 'file_manager', 'bi-folder2-open', 0, T.tfm, function () { nuVendorLogin('TFM'); }],   // no key: Ctrl+Shift+Q is Change password (nuBuilder Forte; review D8 – it meant both)
 			['q', 'password', 'bi-key', 5, edit && T.password, function () { openTab(N.base + '?p=password'); }],
 			['m', 'form_info', 'bi-info-circle', 0, ga, showFormInfo],
-			['v', 'version', 'bi-info-circle', 5, ga && T.version, function () { nuMessage(N.shortcuts.version || 'Version', [esc(T.version)]); }],
 			['x', 'properties', 'bi-braces', 5, ga, function () { showHash(); }],
 			// all columns of the open record with type and stored value (new tab); no shortcut – Ctrl+Shift+I opens the browser's tools
 			['', 'inspect', 'bi-table', 5, ga && edit && N.record_id && N.record_id !== '-1' && !!N.form.table, function () {
@@ -5113,8 +5279,8 @@
 			return el.append($('<i class="bi" aria-hidden="true"></i>').addClass(icon)).append($('<span class="me-auto"></span>').text(text));
 		};
 		if (ds) items.push(item('bi-pencil-square', (ds.textContent || '').trim(), ds.getAttribute('href')).attr('data-nu-opt', 'design'));
-		[[sql, 'bi-filetype-sql', 'browse_sql'], [cols, 'bi-layout-three-columns', 'columns']].forEach(function (x) {
-			if (x[0]) items.push(item(x[1], (x[0].textContent || '').trim(), function () { x[0].click(); }).attr('data-nu-opt', x[2]));
+		[[sql, 'bi-filetype-sql', 'browse_sql'], [g('nuBrowsePhpEdit'), 'bi-filetype-php', 'browse_php'], [g('nuBrowseJsEdit'), 'bi-filetype-js', 'browse_js'], [cols, 'bi-layout-three-columns', 'columns']].forEach(function (x) {
+			if (x[0]) items.push(item(x[1], x[0].getAttribute('data-nu-full') || (x[0].textContent || '').trim(), function () { x[0].click(); }).attr('data-nu-opt', x[2]));
 		});
 		if (info) items.push(item('bi-info-circle', info.getAttribute('title') || 'Info', function () {
 			var src = g('nuFormInfo'), box = $('<div class="nuFormInfo nuFormInfoPhone"></div>');

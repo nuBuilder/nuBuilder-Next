@@ -9,7 +9,7 @@ defined('NU_PAGE') || exit;
 final class NufApi
 {
 	/** GET actions (a POST works too); the POST-only actions change something. */
-	private const GET = ['boot', 'list', 'search', 'info', 'read', 'versions', 'version', 'trash', 'download', 'raw', 'logview', 'reauth_done'];
+	private const GET = ['boot', 'list', 'search', 'info', 'read', 'versions', 'version', 'trash', 'download', 'raw', 'thumb', 'logview', 'reauth_done'];
 	private const POST = ['save', 'newfile', 'mkdir', 'rename', 'move', 'copy', 'delete', 'restore', 'purge', 'upload_init', 'upload_chunk', 'zip', 'unzip', 'chmod'];
 
 	public static function handle(NuPageContext $nu, array $S): never
@@ -43,6 +43,7 @@ final class NufApi
 				'chmod' => self::chmod($nu),
 				'download' => self::download($nu),
 				'raw' => self::raw($nu),
+				'thumb' => self::thumb($nu),
 				'logview' => self::logView($nu),
 				'reauth_done' => self::reauthDone($nu, $S),
 			};
@@ -147,7 +148,7 @@ final class NufApi
 				'search_max' => NufConfig::$limits['search_max']],
 			'readonly' => $nu->readOnly(),
 			'problems' => $ga ? NufConfig::$problems : [],
-			'features' => ['zip' => class_exists('ZipArchive'), 'trash' => NufConfig::$dataDir !== '', 'log' => $ga, 'chmod' => $ga && NufFs::chmodAvailable()],
+			'features' => ['zip' => class_exists('ZipArchive'), 'trash' => NufConfig::$dataDir !== '', 'thumbs' => NufFs::thumbsAvailable(), 'log' => $ga, 'chmod' => $ga && NufFs::chmodAvailable()],
 			'base' => $nu->url(),
 			'home' => $nu->homeUrl(),
 			'lang' => $nu->lang(),
@@ -410,6 +411,16 @@ final class NufApi
 		$nu->releaseSession();
 		if ($nu->setting('log_reads', false)) NufLog::write($nu, 'preview', $share['id'], NufGuard::rel($share, $abs));
 		NufFs::send($abs, basename($abs), true);
+	}
+
+	/** Small picture of an image file for the grid view (made once, kept in the data folder). An empty answer = the client shows the type icon. */
+	private static function thumb(NuPageContext $nu): array
+	{
+		$share = self::read_($nu, self::p($nu, 'share'));
+		$abs = NufGuard::existing($share, self::p($nu, 'path'), false);
+		if (!is_file($abs)) throw new NufError('err_not_file');
+		$nu->releaseSession();
+		NufFs::sendThumb($share, $abs);
 	}
 
 	private static function logView(NuPageContext $nu): array

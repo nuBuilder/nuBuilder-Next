@@ -22,6 +22,7 @@ $q     = null;
 if ($id !== '' && !$isNew) {
 	$q = NuSqlSelect::load($id);
 	if (!$q) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+	if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('select', $id);   // "Last opened" (0.8.1117)
 }
 // clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy (tables, columns, clauses, SQL) that is saved only with Save
 $cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';

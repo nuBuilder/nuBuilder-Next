@@ -45,6 +45,13 @@
 			if (fold) document.documentElement.classList.add('nuHomeFold-' + k);
 		});
 	} catch (e) {}
+	// warnings a person closed for good (Global code, config file): hidden from the first paint – they flashed until the page's script
+	// hid them (0.8.1120). html.nuWarnOff-<scode|cfg>, removed by that script once it has set the hidden attributes
+	try {
+		[['scode', 'nunext-scode-warn-hidden'], ['cfg', 'nunext-cfg-warn-hidden']].forEach(function (w) {
+			if (localStorage.getItem(w[1]) === '1') document.documentElement.classList.add('nuWarnOff-' + w[0]);
+		});
+	} catch (e) {}
 	// page forms (0.8.387, $nu->theme()): the choice for the server too
 	try { document.cookie = 'nunext_theme=' + encodeURIComponent(stored) + '; path=' + window.location.pathname.replace(/[^/]*$/, '') + '; SameSite=Lax'; } catch (e) {}
 })();

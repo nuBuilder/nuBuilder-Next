@@ -335,7 +335,7 @@ if ($tutBanner): ?>
 	$tabbed = in_array($view['nav'], ['tabs', 'sidebar'], true);
 	$favCount = 0; foreach ($groups as $g) foreach ($g['items'] as $it) if (!empty($it['fav'])) $favCount++;
 	// row "Recently used" (0.8.492): the same list as the side bar (NuSidebar, per user in the database) – not in the layout editor
-	$recentItems = $editorPage ? [] : NuSidebar::data(8)['recent'];
+	$recentItems = $editorPage ? [] : NuSidebar::data(NuSidebar::KEEP, false)['recent'];   // all kept ones: 8 are shown – without the favourites when the view says so (0.8.1115)
 	$viewCls = 'nuHomeNav-' . $view['nav'] . ' nuHomeDesc-' . $view['desc'] . ' nuHomeDens-' . $view['density'] . ' nuHomeIcn-' . $view['icon']
 		. ($view['groupColors'] ? ' nuHomeGcol' : '') . (!$view['badges'] ? ' nuHomeNoBadges' : '') . (!$view['actions'] ? ' nuHomeNoActions' : '')
 		. ($view['style'] === 'list' ? ' nuHomeListCols-' . $view['listCols'] . ($view['listWidth'] === 'full' ? ' nuHomeListFull' : '') : '');
@@ -407,12 +407,18 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true" aria-controls="nuHomeStripFav"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-star-fill nuHomeStripStar" aria-hidden="true"></i><?= h(t('home_v_fav_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button></h2>
 		<div class="nuHomeChips" id="nuHomeStripFav"><?php foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) echo $chip((string)$k, $it); ?></div>
 	</section>
-	<section class="nuHomeStrip" data-nu-strip="recent"<?= $recentItems && !empty($view['recentStrip']) ? '' : ' hidden' /* shown by the server like Favourites (0.8.995) – was hidden until nuhome.js ran */ ?> aria-label="<?= h(t('home_v_recent_row')) ?>">
+	<?php // which chips of Recently used show (0.8.1115, as recentShow() of assets/js/nuhome.js): the first 8, favourites left out when the view says so and the Favourites row is shown
+	$noFav = !empty($view['recentNoFav']) && $favCount && $view['favRow'];
+	$recentOn = [];
+	foreach ($recentItems as $ri => $it) if (count($recentOn) < 8 && !($noFav && !empty($it['fav']))) $recentOn[$ri] = true;
+	?>
+	<section class="nuHomeStrip" data-nu-strip="recent"<?= $recentOn && !empty($view['recentStrip']) ? '' : ' hidden' /* shown by the server like Favourites (0.8.995) – was hidden until nuhome.js ran */ ?> aria-label="<?= h(t('home_v_recent_row')) ?>">
 		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true" aria-controls="nuHomeStripRecent"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-clock-history" aria-hidden="true"></i><?= h(t('home_v_recent_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button><?php if ($recentItems): ?><form method="post" action="<?= h(nu_url('sidebar')) ?>" class="nuHomeStripClearForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="clear"><input type="hidden" name="back" value="<?= h(nu_url('home')) ?>"><button type="submit" class="nuHomeStripClear" id="nuHomeRecentClear" title="<?= h(t('sb_recent_clear_menu')) ?>" aria-label="<?= h(t('sb_recent_clear_menu')) ?>"><i class="bi bi-x-circle" aria-hidden="true"></i></button></form><?php endif; ?></h2>
-		<div class="nuHomeChips" id="nuHomeStripRecent"><?php foreach ($recentItems as $it):
+		<div class="nuHomeChips" id="nuHomeStripRecent"><?php foreach ($recentItems as $ri => $it):
 			$body = '<span class="nu-tile-icon nuHomeIcon"' . ($it['color'] !== '' ? ' data-nu-color="' . h($it['color']) . '"' : '') . '><i class="bi ' . h($it['icon']) . '"></i></span><span class="nuHomeChipLabel">' . h($it['label']) . '</span>';
 			$attrs = ' data-nu-recent="' . h($it['key']) . '" title="' . h($it['label']) . '"' . ($it['color'] !== '' ? ' data-nu-gcolor="' . h($it['color']) . '"' : '')
 				. (!empty($it['canFav']) ? ' data-nu-canfav="1"' . (!empty($it['fav']) ? ' data-nu-fav="1"' : '') : '');   // 0.8.955: ☆ in the chip's menu
+			if (empty($recentOn[$ri])) $attrs .= ' hidden';
 			if ($it['post']) echo '<form method="post" action="' . h(nu_url('vendor')) . '" target="_blank" class="nuHomeTileForm">' . nu_csrf_field() . '<input type="hidden" name="app" value="' . h((string)$it['post']) . '"><button type="submit" class="nuHomeChip"' . $attrs . '>' . $body . '</button></form>';
 			else echo '<a class="nuHomeChip" href="' . h((string)$it['href']) . '"' . ($it['newtab'] ? ' target="_blank" rel="noopener"' : '') . $attrs . '>' . $body . '</a>';
 		endforeach; ?></div>
@@ -569,7 +575,7 @@ if ($admin || $userPage) {
 			// one Customise panel (0.8.452): tabs Content · Appearance · Layouts
 			'home_layouts', 'home_c_tab_content', 'home_c_tab_appearance', 'home_c_edit', 'home_c_edit_hint', 'home_c_edit_btn', 'home_c_mine_hint'], array_map('t', $k))
 			// View panel (0.8.420)
-			+ array_combine($k = array_map(static fn($x) => 'home_v_' . $x, ['view', 'personal', 'fav_row', 'fav_row_hint', 'recent_row', 'recent_row_hint', 'sidebar', 'sidebar_hint', 'sidebar_sec', 'sort_name', 'sort_group', 'sort_status', 'col_desc', 'hc_open',
+			+ array_combine($k = array_map(static fn($x) => 'home_v_' . $x, ['view', 'personal', 'fav_row', 'fav_row_hint', 'recent_row', 'recent_row_hint', 'recent_nofav', 'recent_nofav_hint', 'sidebar', 'sidebar_hint', 'sidebar_sec', 'sort_name', 'sort_group', 'sort_status', 'col_desc', 'hc_open',
 			'saved_everyone', 'size_desktop', 'size_tablet', 'size_phone', 'style', 'list_cols', 'list_width', 'desc', 'lines', 'delay', 'nav', 'density',
 			'icons', 'group_colors', 'badges', 'badges_hint', 'actions', 'actions_hint', 'own_one', 'default', 'more', 'layout', 'store_personal',
 			'store_shared_user', 'undo_mine', 'store_shared_admin', 'applies_to', 'only_me', 'everyone', 'everyone_note', 'mine_count', 'mine_count_one', 'make_layout', 'make_layout_title', 'make_layout_text', 'make_layout_ok', 'undo_mine_title', 'undo_mine_text', 'undo_mine_ok',
