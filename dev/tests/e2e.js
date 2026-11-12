@@ -5056,6 +5056,10 @@ T.globalcode_tabs_group = async (s) => {             // 0.8.857: switch Form pag
 	await p.click('#scodeTabBtn-style'); await p.waitForTimeout(150);
 	await p.click('#scodeSeg [data-scode-group="all"]'); await p.waitForTimeout(300);
 	expect((await shown()).join(',') === 'gjs:JavaScript,gcss:CSS' && await p.locator('#scodePane-gjs.active').count() === 1, 'all pages: ' + (await shown()).join(','));
+	// 0.8.1147: hovering a "Runs on" switch explains it
+	await p.hover('label[for="scodeScope-gjs-app"]'); await p.waitForTimeout(600);
+	const tip = await p.evaluate(() => (document.querySelector('.tooltip.show') || {}).textContent || '');
+	expect(/start page/i.test(tip), 'Other app pages tooltip: ' + tip);
 	await p.click('#scodeSeg [data-scode-group="forms"]'); await p.waitForTimeout(300);
 	expect(await p.locator('#scodePane-style.active').count() === 1, 'last tab of the group not reopened');
 	await open(p, 'index.php?p=globalcode#gcss'); await p.waitForTimeout(400);
@@ -5757,6 +5761,72 @@ T.phone_back_button = async (s) => {
 	} finally { fs.writeFileSync(cfg, orig); await ctx.close(); }
 };
 
+// 0.8.1151: pivot of a form list – rows / columns / values, totals, filter, drill, saved pivot, export
+T.list_pivot = async (s) => {
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") !== '1') { s.skip = 'no sample data'; return; }
+	const before = sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'pivot:sampleorder'");
+	try {
+		await open(p, 'index.php?p=form&f=sampleorder');
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-pivot-sampleorder'); } catch (e) { /* none */ } });
+		await p.click('#nuExportButton'); await p.click('#nuPivotOpen'); await p.waitForSelector('#nuPvDlg.show'); await p.waitForTimeout(300);
+		const add = async (z, name) => { await p.click(`.nuPvZone[data-zone=${z}] .nuPvAdd`); await p.click(`.nuPvZone[data-zone=${z}] .nuPvAddMenu button:text-is("${name}")`); await p.waitForTimeout(400); };
+		await add('rows', 'Status'); await add('vals', 'Total');
+		await p.waitForSelector('#nuPvTable'); await p.waitForTimeout(300);
+		const grand = await p.evaluate(() => document.querySelector('#nuPvTable tfoot td:last-child').textContent);
+		const dbSum = Number(sql('SELECT ROUND(SUM(ord_total), 2) FROM sample_order'));
+		const shown = Number(grand.replace(/[^\d.,-]/g, '').replace(/,(?=\d{3}\b)/g, '').replace(',', '.'));
+		expect(Math.abs(shown - dbSum) < 0.01, 'grand total ' + grand + ' vs ' + dbSum);
+		const nStat = Number(sql('SELECT COUNT(DISTINCT IFNULL(ord_status, \'\')) FROM sample_order'));
+		expect(await p.locator('#nuPvTable tbody tr').count() === nStat, 'one row per status');
+		// columns: Date by year; drill into a cell
+		await add('cols', 'Date');
+		expect(await p.evaluate(() => /\d{4}/.test(document.querySelector('#nuPvTable thead').textContent)), 'year columns');
+		await p.click('#nuPvTable td.nuPvCell[data-r]'); await p.waitForSelector('.nuPvDrillTable tbody tr');
+		// filter Status to one value
+		await add('flt', 'Status');
+		await p.click('.nuPvZone[data-zone=flt] .nuPvFltBtn'); await p.waitForSelector('.nuPvFltList input');
+		await p.locator('.nuPvFltList input').first().check(); await p.click('.nuPvFltPop .btn-primary'); await p.waitForTimeout(700);
+		expect(await p.locator('#nuPvTable tbody tr').count() === 1, 'filter keeps one status');
+		// save, list, delete
+		await p.click('#nuPvSavedBtn'); await p.fill('#nuPvSaveName', 'e2e pivot'); await p.click('#nuPvSave'); await p.waitForTimeout(500);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'pivot:sampleorder' AND name = 'e2e pivot'") === '1', 'pivot saved');
+		// export Excel
+		const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#nuPvExp_xlsx')]);
+		expect(/\.xlsx$/.test(dl.suggestedFilename()), 'xlsx: ' + dl.suggestedFilename());
+		await p.click('#nuPvMode_chart'); await p.waitForSelector('#nuPvChart svg', {timeout: 8000});
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, {input: "DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'pivot:sampleorder' AND name = 'e2e pivot'"});
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'pivot:sampleorder'") === before, 'cleaned up');
+	}
+};
+
+// 0.8.1150: a list whose form has its own JavaScript keeps its rows hidden until that code ran (cells it rewrites do not flash)
+T.browse_js_wait = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const old = sql(`SELECT IFNULL(sfo_browse_javascript, '') FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`);
+	if (old === null || old === undefined) { s.skip = 'no sample data'; return; }
+	execSync('mysql ' + DB, { input: `UPDATE zzzzsys_form SET sfo_browse_javascript = 'function nuOnLoad() { $(".nuCell[data-nu-column=\\'0\\']").text("done"); }' WHERE zzzzsys_form_id = '${F}'` });
+	try {
+		await open(p, 'index.php?p=form&f=' + F); await p.waitForTimeout(300);
+		const st = await p.evaluate(() => { const t = document.getElementById('nuBrowseTable'); return { wait: t.classList.contains('nuBrowseJsWait'), vis: getComputedStyle(t.tBodies[0]).visibility, txt: (t.querySelector('.nuCell[data-nu-column="0"]') || {}).textContent }; });
+		expect(!st.wait && st.vis === 'visible' && st.txt === 'done', 'rows shown after the form code: ' + JSON.stringify(st));
+		// without the runtime the rows are hidden at first, shown after 3 s by the CSS fallback
+		const ctx = await p.context().browser().newContext({ storageState: await p.context().storageState() });
+		const q = await ctx.newPage();
+		await q.route(/nuruntime\.js/, (r) => r.abort());
+		await q.goto(BASE + 'index.php?p=form&f=' + F);
+		const v0 = await q.evaluate(() => getComputedStyle(document.querySelector('#nuBrowseTable > tbody')).visibility);
+		await q.waitForTimeout(3500);
+		const v1 = await q.evaluate(() => getComputedStyle(document.querySelector('#nuBrowseTable > tbody')).visibility);
+		await ctx.close();
+		expect(v0 === 'hidden' && v1 === 'visible', 'fallback: ' + v0 + ' → ' + v1);
+	} finally {
+		execSync('mysql ' + DB, { input: `UPDATE zzzzsys_form SET sfo_browse_javascript = ${old === '' ? 'NULL' : "'" + old.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"} WHERE zzzzsys_form_id = '${F}'` });
+	}
+};
+
 T.design_phone_menu = async (s) => {
 	// 0.8.1001 (mockup C): on phones Design, its ▾ entries, the (i) form info and the layout switch move into the ⋮ menu; New shows its icon only
 	const id = sql('SELECT sample_customer_id FROM sample_customer ORDER BY 1 LIMIT 1');
@@ -5775,10 +5845,16 @@ T.design_phone_menu = async (s) => {
 		await p.click('#nuOptions'); await p.waitForTimeout(300);
 		const o = await opts();
 		expect(o.join() === 'design,info,layout', 'record ⋮ items: ' + o.join());
+		const lay = await p.evaluate(() => [...document.querySelectorAll('.nuOptLayout > .btn')].map(e => parseFloat(getComputedStyle(e).fontSize)));
+		expect(lay.length === 3 && lay.every(f => f > 10), 'layout switch labels readable (0.8.1146): ' + lay.join());
 		const href = await p.getAttribute('.nuOptionsList [data-nu-opt=design]', 'href');
 		expect(/design=1/.test(href || ''), 'Design link: ' + href);
 		await p.click('.nuOptionsList [data-nu-opt=info]'); await p.waitForTimeout(500);
 		expect(await vis('#nuMessageDiv .nuFormInfoPhone .nuFormInfoList'), 'form info as a dialogue');
+		// 0.8.1145: everything inside the dialogue (copy buttons, Copy all)
+		const out = await p.evaluate(() => { const m = document.querySelector('#nuMessageDiv .nuFormInfoPhone'), r = m.closest('.nuMessage').getBoundingClientRect();
+			return [...m.querySelectorAll('dt, dd, .btn')].filter(e => e.offsetParent && e.getBoundingClientRect().right > r.right + 1).map(e => e.className || e.tagName); });
+		expect(out.length === 0, 'form info content wider than the dialogue: ' + out.join(', '));
 		await p.click('#nuMessageDiv .nuMessageClose');
 
 		await p.goto(BASE + 'index.php?p=form&f=samplecustomer'); await p.waitForSelector('#nuOptions');

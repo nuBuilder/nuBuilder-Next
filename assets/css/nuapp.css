@@ -2076,7 +2076,14 @@ body > .ts-dropdown { z-index: 1065; }
 @media (max-width: 575.98px) { .nuOptionsList .nuOptPhone { display: list-item; } }
 .nuOptLayout { display: flex; margin: .15rem 1rem .35rem; }
 .nuOptLayout > .btn { flex: 1 1 0; }
-.nuFormInfoPhone { overflow-x: hidden; }
+.nuFormInfoPhone { overflow-x: hidden; width: 100%; max-width: none; }
+.nuMessage:has(.nuFormInfoPhone) { width: calc(100vw - 1.5rem); max-width: 30rem; }
+.nuMessage:has(.nuFormInfoPhone) .nuMessageLine { width: 100%; }
+/* phones (0.8.1145): label above the value, buttons right of the value – the box takes the message's width */
+.nuFormInfoPhone .nuFormInfoRow { grid-template-columns: minmax(0, 1fr) auto; gap: 0 .25rem; padding: .35rem 0; }
+.nuFormInfoPhone .nuFormInfoRow dt { grid-column: 1 / -1; padding-top: 0; font-size: .85rem; }
+.nuFormInfoPhone .nuFormInfoRow dd { padding-top: 0; }
+.nuFormInfoPhone .btn:not(.nuFormInfoCopy):not(.nuFormInfoView):not(.nuFormInfoEdit) { max-width: 100%; }
 .nuFormInfoPhone .nuFormInfoList { margin: 0; }
 
 /* Branding title (0.8.996): the phone title below 576 px, none when it is empty (NuBranding::titleHtml) */

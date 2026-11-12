@@ -155,7 +155,7 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settin
 						<span class="fw-semibold"><?= h(t('scode_scope')) ?>:</span>
 						<?php foreach (array_keys(NuCustomCode::SCOPES) as $sc): $sid = 'scodeScope-' . $k . '-' . $sc; ?>
 							<span class="form-check form-switch mb-0"><input class="form-check-input scodeScopeSw" type="checkbox" role="switch" id="<?= $sid ?>" data-scope="<?= $sc ?>"
-								<?= $k === 'gjs' ? 'name="scope[' . $sc . ']" value="1"' : '' ?><?= !empty($scope[$sc]) ? ' checked' : '' ?>><label class="form-check-label" for="<?= $sid ?>"><?= h(t('scode_scope_' . $sc)) ?></label></span>
+								<?= $k === 'gjs' ? 'name="scope[' . $sc . ']" value="1"' : '' ?><?= !empty($scope[$sc]) ? ' checked' : '' ?>><label class="form-check-label" for="<?= $sid ?>" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('scode_scope_' . $sc . '_tip')) ?>"><?= h(t('scode_scope_' . $sc)) ?></label></span>
 						<?php endforeach; ?>
 						<?php if ($k === 'gjs'): ?><input type="hidden" name="scope_sent" value="1"><?php endif; ?>
 						<span class="text-body-secondary"><?= h(t('scode_scope_never')) ?></span>

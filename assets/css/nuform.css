@@ -680,7 +680,7 @@ html.nuPhoneCards #nuBrowseTable div.nuCell { max-height: none !important; }
 	.nuFormHeader:has(> .nuPhTitle) > #nuActionHolder { flex: 0 0 auto; flex-wrap: nowrap; gap: 0; margin-right: -.4rem; }
 	.nuFormHeader:has(> .nuPhTitle) #nuBackButton, .nuFormHeader:has(> .nuPhTitle) #nuAddButton { display: none !important; }
 	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn:not(.dropdown-item):not(.nuSaveEdited) { --bs-btn-border-color: transparent; --bs-btn-bg: transparent; --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-border-color: transparent; --bs-btn-active-bg: var(--bs-secondary-bg); --bs-btn-active-border-color: transparent; border-color: transparent; background-color: transparent; box-shadow: none; }
-	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn:not(.dropdown-item) { min-width: 2.75rem; height: 2.75rem; padding: 0 .55rem; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn:not(.dropdown-item):not(.nuOptLayout > .btn) { min-width: 2.75rem; height: 2.75rem; padding: 0 .55rem; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
 	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn:not(.dropdown-item) > .bi { font-size: 1.2rem; margin: 0 !important; }
 	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .dropdown-toggle::after { display: none; }
 	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn-group > .btn { border-radius: var(--bs-border-radius) !important; }
@@ -790,3 +790,47 @@ html.nuPhoneCards #nuBrowseTotals > tr > td.nuSelCol:has(.nuSelClear:not([hidden
 .nuSubformTable.nuSubformFit { table-layout: fixed; width: 100%; }
 .nuSubformTable.nuSubformFit thead th { white-space: normal; overflow-wrap: anywhere; }
 .nuSubformFit td.nuSubformCell > :is(input, select, textarea, .form-control, .form-select, .nuLookupGroup, .ts-wrapper) { width: 100% !important; max-width: 100%; min-width: 0; }
+
+/* 0.8.1150: a list whose form has its own JavaScript keeps its rows hidden until that code ran (nuNextStart removes the class) –
+   cells the code rewrites (JSON → badges …) do not flash; after 3 s they show in any case (a script that stops before nuNextStart) */
+#nuBrowseTable.nuBrowseJsWait > tbody, #nuBrowseTable.nuBrowseJsWait > tfoot { visibility: hidden; animation: nuBrowseJsShow 0s 3s forwards; }
+@keyframes nuBrowseJsShow { to { visibility: visible; } }
+
+/* pivot of a form list (0.8.1151, assets/js/nu/nupivot.js) */
+.nuPvWrap { display: flex; min-height: 70vh; }
+.nuPvSide { flex: 0 0 15.5rem; border-right: 1px solid var(--bs-border-color); padding: .75rem; overflow-y: auto; background: var(--bs-tertiary-bg); }
+.nuPvMain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.nuPvHead { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); margin: .25rem 0 .35rem; }
+.nuPvFields { display: flex; flex-direction: column; gap: .25rem; max-height: 14rem; overflow-y: auto; margin-bottom: .5rem; }
+.nuPvChip { display: flex; align-items: center; gap: .3rem; padding: .2rem .45rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; background: var(--bs-body-bg); font-size: .85rem; cursor: grab; }
+.nuPvChip .nuPvName { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuPvChip .form-select { width: auto; max-width: 8.5rem; padding-top: .05rem; padding-bottom: .05rem; font-size: .78rem; }
+.nuPvIn { border-color: var(--bs-primary-border-subtle); cursor: grab; }
+.nuPvIn .form-select { flex: 0 1 auto; max-width: 7.5rem; }
+.nuPvIn .nuPvX { flex: none; margin-left: auto; }
+.nuPvZone { border: 1px dashed var(--bs-border-color); border-radius: .5rem; padding: .35rem .45rem .45rem; margin-bottom: .5rem; background: var(--bs-body-bg); }
+.nuPvZone.nuPvOver { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
+.nuPvZoneBody { display: flex; flex-direction: column; gap: .25rem; min-height: 1.6rem; }
+.nuPvZoneBody:empty::before { content: attr(data-empty); font-size: .75rem; color: var(--bs-secondary-color); }
+.nuPvBar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; padding: .5rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
+.nuPvOut { flex: 1 1 auto; overflow: auto; position: relative; }
+.nuPvOut.nuPvBusy { opacity: .5; }
+.nuPvStart { padding: 2rem; color: var(--bs-secondary-color); text-align: center; }
+.nuPvTable { margin: 0; font-size: .875rem; }
+.nuPvTable thead th { position: sticky; top: 0; background: var(--bs-body-bg); z-index: 1; white-space: nowrap; }
+.nuPvTable .nuPvRowHead { white-space: nowrap; }
+.nuPvTable td.nuPvRep { color: transparent; }
+.nuPvTable .nuPvTot, .nuPvTable tr.nuPvSub td, .nuPvTable tr.nuPvGrand td { font-weight: 600; background: var(--bs-tertiary-bg); }
+.nuPvTable td.nuPvCell { cursor: pointer; font-variant-numeric: tabular-nums; }
+.nuPvTable td.nuPvCell:hover, .nuPvTable td.nuPvCell:focus { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
+.nuPvDrill { border-top: 1px solid var(--bs-border-color); max-height: 40vh; overflow: auto; }
+.nuPvDrillTable tbody tr { cursor: pointer; }
+.nuPvChart { padding: .75rem; }
+.nuPvFltPop { position: absolute; z-index: 5; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .5rem; padding: .5rem; width: 14rem; }
+.nuPvZone { position: relative; }
+.nuPvFltList { max-height: 14rem; overflow-y: auto; }
+.nuPvSavedMenu { min-width: 16rem; }
+@media (max-width: 767.98px) {
+	.nuPvWrap { flex-direction: column; }
+	.nuPvSide { flex: none; border-right: 0; border-bottom: 1px solid var(--bs-border-color); max-height: 45vh; }
+}

@@ -5402,7 +5402,7 @@
 			catch (e) { if (N.dev_mode) console.warn('badge', i, e); }
 		});
 		winCarryRestore();
-		callHook('nuOnLoad', N.form.id, N.form.code);
+		try { callHook('nuOnLoad', N.form.id, N.form.code); } finally { $('#nuBrowseTable').removeClass('nuBrowseJsWait'); }   // rows shown after the form's code (0.8.1150)
 		forteHidden();
 		brRestore();                                                       // column widths dragged in this tab (0.8.650)
 		if (typeof window.nuNextPageHook === 'function') window.nuNextPageHook();   // Global JS: nuOnPageLoad / nu:pageload after nuOnLoad (0.8.523)

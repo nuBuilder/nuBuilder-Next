@@ -165,6 +165,7 @@ final class NuSqlDump
 	 */
 	public static function restoreCheck(string $zip): array
 	{
+		nu_time_limit(0);   // 0.8.1148: reading a large dump through
 		if (!self::canRestore()) return ['ok' => false, 'error' => t('rst_err_mysql')];
 		$tmp = '';
 		try {

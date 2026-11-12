@@ -609,6 +609,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset('assets/js/nu/nuruntime.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
 	. ($mode === 'browse' ? '<script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>' : '')
+	. ($mode === 'browse' && $rights['print'] && empty($printMode) ? '<script src="' . nu_asset('assets/js/nu/nupivot.js') . '" data-apex="' . h(nu_asset(NU_APEXCHARTS . '/apexcharts.min.js')) . '"></script>' : '')   // pivot (0.8.1151)
 	. ($mode === 'edit' && NuFormRules::of($meta) ? '<script src="' . nu_asset('assets/js/nu/nurules.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
 	. ($uHelpAny ? NuUserHelp::foot() : '')                       // user help pages (0.8.1023): side panel, F1, (?) of fields
@@ -682,7 +683,9 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php if ($rights['print'] && empty($printMode) && $lookupTo === '' && (int)($data['total'] ?? 0) > 0): // nothing to export without records (0.8.710) ?>
 				<?php $expKeep = array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1]); // Export menu (0.8.398): HTML page, CSV …, Excel ?>
 				<?= NuListExport::menu(nu_url('form', ['print' => '1'] + array_diff_key($keep, ['iframe' => 1])), nu_url('formexport', ['fmt' => 'xlsx'] + $expKeep),
-					NuListExport::csvDialog(['p' => 'formexport'] + $expKeep, $meta->code() ?: 'export', false), 'nuPrintButton', 'nuExportButton', false, 'btn-outline-secondary nuActionButton') ?>
+					NuListExport::csvDialog(['p' => 'formexport'] + $expKeep, $meta->code() ?: 'export', false), 'nuPrintButton', 'nuExportButton', false, 'btn-outline-secondary nuActionButton', '',
+					// pivot of the list (0.8.1151, assets/js/nu/nupivot.js): the list's search state goes along
+					'<li><hr class="dropdown-divider"></li><li><button class="dropdown-item" type="button" id="nuPivotOpen" data-nu-pivot="' . h(json_encode(['f' => $meta->id] + $expKeep, JSON_UNESCAPED_UNICODE)) . '" data-nu-pivot-texts="' . h(json_encode(NuPivot::texts(), JSON_UNESCAPED_UNICODE)) . '"><i class="bi bi-grid-3x3-gap me-2" aria-hidden="true"></i>' . h(t('pv_open')) . '</button></li>') ?>
 			<?php endif; ?>
 		<?php elseif (!$errors): ?>
 			<?php if (($client['is_new'] && $rights['create']) || (!$client['is_new'] && $rights['save'])): ?>
@@ -825,7 +828,10 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 			$rowDel = $meta->id === 'nunotes' && !empty($rights['delete']) && $lookupTo === '' && empty($printMode) && !NuDemo::active(); ?>
 			<?php // nuBuilder Forte's list settings (0.8.820): multi-line titles, columns fitted to the width, row height
 			$rowH = (int)($meta->form['sfo_browse_row_height'] ?? 0);
-			$browseCls = ((string)($meta->form['sfo_browse_title_multiline'] ?? '') === '1' ? ' nuBrowseMultiline' : '') . ((string)($meta->form['sfo_browse_autoresize_columns'] ?? '') === '1' ? ' nuBrowseAutoFit' : ''); ?>
+			$browseCls = ((string)($meta->form['sfo_browse_title_multiline'] ?? '') === '1' ? ' nuBrowseMultiline' : '') . ((string)($meta->form['sfo_browse_autoresize_columns'] ?? '') === '1' ? ' nuBrowseAutoFit' : '')
+				// 0.8.1150: rows hidden until the form's own code ran (it often rewrites the cells – raw values must not flash); nuNextStart
+				// removes the class after nuOnLoad, a CSS animation shows the rows after 3 s anyway
+				. (!$safe && empty($printMode) && !$design && trim((string)$meta->form['sfo_browse_javascript'] . (string)$meta->form['sfo_javascript']) !== '' ? ' nuBrowseJsWait' : ''); ?>
 			<?php
 			// column widths dragged in this browser (0.8.933, cookie nunext_bw of nuruntime.js brCookie): drawn by the server, so the page does
 			// not show the stored widths first and jump when the script restores the dragged ones

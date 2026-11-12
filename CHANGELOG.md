@@ -3,6 +3,46 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1152 – Release gate
+- Release gate: documentation for 0.8.1144–0.8.1151 (TODO please-verify, README, tutorial tip on the pivot).
+
+## 0.8.1151 – Pivot of form lists
+- Pivot of form lists (Export ▾ → Pivot…): drag the list's columns into Rows, Columns, Values and Filters, as in an Excel
+  pivot table. Date columns group by year, quarter, month, month of the year, week, weekday or day; values are the number of
+  records or Sum / Average / Minimum / Maximum / Count distinct of a column. The database works the numbers out over the
+  records the list shows (its search, filters, advanced search and column access apply), with totals per row, per column,
+  overall and subtotals of the outer row field. Show as % of row / column / total, heat map, sort by total and top N, chart
+  (bars, stacked, lines), a click on a number lists its records, "My pivots" saves a layout, CSV / Excel export of the table.
+
+## 0.8.1150 – Lists: no flash before the form code
+- Lists of forms with their own JavaScript: the rows stay hidden until the form's code has run, as in nuBuilder Forte – values the
+  code rewrites (for example JSON turned into coloured badges) no longer show for a moment. After 3 seconds the rows show in any
+  case, so a script that stops early cannot leave the list empty.
+
+## 0.8.1149 – Reset database: mysqldump views and triggers
+- Reset database / restore: SQL files made by mysqldump with views, triggers or routines are accepted – mysqldump writes them
+  in version comments with a DEFINER clause, which the check refused. The DEFINER clause is now left out on import, so the
+  objects belong to the database user that imports them (a definer missing on this server would stop the import anyway).
+
+## 0.8.1148 – Reset database: time limit of the check
+- Reset database and Update → Backups → Restore: checking a large SQL file no longer stops at the server's time limit
+  (max_execution_time, e.g. 60 seconds) – the check now lifts it like the import itself.
+
+## 0.8.1147 – Global code: Runs on tooltips
+- Global code → All pages: hovering the "Runs on" switches (Form pages, Other app pages, Sign-in pages) shows what each one
+  covers.
+
+## 0.8.1146 – Layout switch in the phone menu
+- Phones, ⋮ menu of a record: the layout switch below Form info (Fixed / Auto / Grid) showed as an empty box – the rule
+  that turns the toolbar buttons into icons also hid its labels.
+
+## 0.8.1145 – Form info on phones
+- Form info on phones (⋮ → Form info): the dialogue no longer runs past the right edge – it takes the screen's width, each
+  label sits above its value and the copy / view / edit buttons and Copy all stay inside.
+
+## 0.8.1144 – Notes
+- TODO: decision point for phone number checks and formatting without JavaScript (options A–E).
+
 ## 0.8.1143 – Release gate
 - Release gate: the test of design mode's attribute field also types into the field.
 

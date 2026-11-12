@@ -113,6 +113,7 @@ final class NuDbReset
 	/** Dry run: the file read and checked (only allowed statements), what it creates, what would be deleted. */
 	public static function check(string $path): array
 	{
+		nu_time_limit(0);   // 0.8.1148: a large file takes longer than max_execution_time to read through
 		if (self::isPackage($path)) return self::checkPackage($path);
 		// read line by line (0.8.1031): no size limit, routines / triggers between DELIMITER lines
 		try { $chk = NuInstall::checkDump(NuSqlImport::statements($path), true); } catch (RuntimeException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
@@ -168,6 +169,7 @@ final class NuDbReset
 	/** Dry run of a fresh installation: the package checked (signature must be valid), its version, packs, what would be deleted. */
 	public static function checkPackage(string $path): array
 	{
+		nu_time_limit(0);
 		$i = NuUpdate::inspect($path);
 		$out = ['kind' => 'package', 'file' => basename($path), 'bytes' => (int)@filesize($path), 'version' => $i['version'],
 			'signature' => (string)($i['signature'] ?? ''), 'packs' => self::packageLibs($path, $i['prefix'] ?? ''), 'current' => self::currentTables(),

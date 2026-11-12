@@ -25,6 +25,7 @@ page) for how to use it.
   Entra ID, Google Workspace, Keycloak …) and *Forgot password* by e-mail.
 - **Eleven languages** – including Arabic (right to left) and regional variants of English and German; themes per access level
   or chosen by the user.
+- Pivot of any form list (Export → Pivot…): rows, columns, values and filters by drag and drop, date grouping (year … day), totals and subtotals, % of row / column / total, heat map, top N, chart, drill down to the records, saved pivots, CSV / Excel
 
 ## For building applications
 

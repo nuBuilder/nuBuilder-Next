@@ -459,12 +459,12 @@ final class NuBrowse
 	}
 
 	/**
-	 * @param array $opt search, runfilter, sort (column index), dir, page, per, filter => [sql on nuT, params]
+	 * The list query with the search, filters and advanced search of $opt (0.8.1151, shared by query() and the pivot, NuPivot): columns,
+	 * the inner SQL (aliases nu_pk / nu_c<i>), its default ORDER BY, the WHERE parts on nuT and their parameters, and nuT's column expression.
+	 * @return array{cols: array, inner: string, order: string, where: list<string>, params: list<mixed>, col: callable}
 	 */
-	public static function query(NuFormMeta $meta, array $hash, array $opt = []): array
+	public static function filtered(NuFormMeta $meta, array $hash, array $opt = []): array
 	{
-		$db = nu_db();
-
 		$cols = self::columns($meta, $hash);
 
 		[$inner, $defaultOrder] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), $cols);
@@ -528,6 +528,18 @@ final class NuBrowse
 			$where[] = '(' . $opt['filter'][0] . ')';
 			array_push($params, ...$opt['filter'][1]);
 		}
+
+		return ['cols' => $cols, 'inner' => $inner, 'order' => $defaultOrder, 'where' => $where, 'params' => $params, 'col' => $col];
+	}
+
+	/**
+	 * @param array $opt search, runfilter, sort (column index), dir, page, per, filter => [sql on nuT, params]
+	 */
+	public static function query(NuFormMeta $meta, array $hash, array $opt = []): array
+	{
+		$db = nu_db();
+
+		['cols' => $cols, 'inner' => $inner, 'order' => $defaultOrder, 'where' => $where, 'params' => $params, 'col' => $col] = self::filtered($meta, $hash, $opt);
 
 		$from  = " FROM ($inner) nuT" . ($where ? ' WHERE ' . implode(' AND ', $where) : '');
 		// totals (opt totals): the columns' aggregates over ALL matching rows come with the count, in one query
@@ -793,21 +805,27 @@ function nu_browse_hash_state(): array
 
 function nu_browse_request(): array
 {
+	return nu_browse_request_from($_GET);
+}
+
+/** The list's search state from $src (GET of the list page; the pivot posts it, 0.8.1151). */
+function nu_browse_request_from(array $src): array
+{
 	$flt = [];
-	foreach ((array)($_GET['flt'] ?? []) as $k => $v) {
+	foreach ((array)($src['flt'] ?? []) as $k => $v) {
 		if (is_string($v) && $v !== '' && ctype_digit((string)$k)) $flt[(int)$k] = $v;
 	}
 	return [
-		'q'    => is_string($_GET['q'] ?? null) ? $_GET['q'] : '',
-		'rf'   => is_string($_GET['rf'] ?? null) ? trim($_GET['rf']) : '',     // run filter (nuBuilder sob_run_filter / nuForm filter): always applied, not shown
-		'sort' => isset($_GET['sort']) && $_GET['sort'] !== '' ? (int)$_GET['sort'] : null,
-		'dir'  => ($_GET['dir'] ?? '') === 'desc' ? 'desc' : 'asc',
-		'pg'   => max(1, (int)($_GET['pg'] ?? 1)),
-		'per'  => nu_per_param(true),   // the footer's page size menu (0.8.437; any size since 0.8.604 – nuBrowseRowsPerPageFilter); 0 = the form's rows per page
+		'q'    => is_string($src['q'] ?? null) ? $src['q'] : '',
+		'rf'   => is_string($src['rf'] ?? null) ? trim($src['rf']) : '',     // run filter (nuBuilder sob_run_filter / nuForm filter): always applied, not shown
+		'sort' => isset($src['sort']) && $src['sort'] !== '' ? (int)$src['sort'] : null,
+		'dir'  => ($src['dir'] ?? '') === 'desc' ? 'desc' : 'asc',
+		'pg'   => max(1, (int)($src['pg'] ?? 1)),
+		'per'  => $src === $_GET ? nu_per_param(true) : 0,   // the footer's page size menu (0.8.437; any size since 0.8.604 – nuBrowseRowsPerPageFilter); 0 = the form's rows per page
 		'flt'  => $flt,
-		'adv'  => NuAdvSearch::parse($_GET['adv'] ?? ''),   // advanced search (0.8.719)
+		'adv'  => NuAdvSearch::parse($src['adv'] ?? ''),   // advanced search (0.8.719)
 		// nuBuilder nuSetNoSearchColumns / nuSetSearchColumns: column indexes the search skips / is limited to ("1,3")
-		'nsc'  => nu_browse_index_list($_GET['nsc'] ?? ''),
-		'sc'   => nu_browse_index_list($_GET['sc'] ?? ''),
+		'nsc'  => nu_browse_index_list($src['nsc'] ?? ''),
+		'sc'   => nu_browse_index_list($src['sc'] ?? ''),
 	];
 }

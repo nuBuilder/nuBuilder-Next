@@ -41,6 +41,17 @@
 <li><em>Copy</em> puts the table on the clipboard – it pastes as a table into Excel, Word or an e-mail (as tab-separated text into plain-text fields). To print, use the browser's print command (Ctrl+P).</li>
 <li><em>Export CSV</em> asks for the delimiter (semicolon, comma, tab, pipe; default <code>$nuConfigCSVSeparator</code>), the file name, whether the first row holds the column titles and whether the file starts with a UTF-8 BOM (so that Excel shows umlauts correctly) – then the download starts (up to 50,000 rows). Your choices are remembered in this browser.</li>
 </ul></div>
+	<div class="doc-sub" id="list-pivot"><h3 id="list-pivot-h">Pivot: totals by rows and columns</h3><p>The <em>Export</em> menu of a form's list has <em>Pivot…</em> – a cross table like a pivot table in Excel, worked out by the database over the records the list shows (its search, filters and advanced search apply; columns you may not see are not offered).</p>
+<ul>
+<li>Drag the list's columns from <em>Fields</em> into <strong>Rows</strong>, <strong>Columns</strong>, <strong>Values</strong> and <strong>Filters</strong> (or use <strong>+</strong> of a box; on phones that is the way). Up to three fields per side.</li>
+<li>A date column groups by <em>Year, Quarter, Month, Month (all years), Week, Weekday</em> or <em>Day</em> – for example Rows = date as Month, Columns = date as Weekday, Values = Sum of an amount.</li>
+<li>Values: <em>Records</em> (count) or a column with <em>Sum, Average, Minimum, Maximum</em> or <em>Count distinct</em>. Totals per row, per column and overall, and subtotals for the outer row field, are worked out by the database too – an average stays a true average.</li>
+<li><em>Show as</em> value, % of the row, the column or the total; <em>Heat map</em> colours the cells; <em>Sort rows</em> by label or by total and show only the top 5 … 50 (one row field).</li>
+<li><em>Chart</em> shows the same numbers as bars, stacked bars or lines.</li>
+<li>A click on a number lists the records behind it; a click on one opens it in a new tab.</li>
+<li><em>My pivots</em> saves the layout under a name (for you only); the last layout of each list is remembered in this browser. <strong>CSV</strong> and <strong>Excel</strong> export the table as shown.</li>
+<li data-level="detail">Limits: 2,000 row groups and 200 column groups – group more coarsely or add a filter when the pivot says so.</li>
+</ul></div>
 	<p class="doc-see">See also: <a href="#list-views">List views</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nubrowse.php</code></li><li><code>core/nulistview.php</code></li><li><code>core/nulistexport.php</code></li></ul></details>
 </section>

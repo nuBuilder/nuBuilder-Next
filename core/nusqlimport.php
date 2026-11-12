@@ -156,9 +156,21 @@ final class NuSqlImport
 
 	private function emit(): void
 	{
-		$s = trim($this->buf);
+		$s = self::plainCreate(trim($this->buf));
 		if ($s !== '') $this->out[] = $s;
 		$this->buf = '';
+	}
+
+	/**
+	 * 0.8.1149: views, triggers and routines as mysqldump writes them – "/*!50001 CREATE ALGORITHM=… *\/ /*!50013 DEFINER=`u`@`h` SQL SECURITY
+	 * DEFINER *\/ /*!50001 VIEW … *\/" – become one plain CREATE without the DEFINER clause: the object then belongs to the user who imports it
+	 * (a definer that does not exist on this server, or needs SUPER, would stop the import) and the dump check accepts it.
+	 */
+	public static function plainCreate(string $s): string
+	{
+		if (!preg_match('#^(/\*!\d+\s*)?CREATE\b#i', $s)) return $s;
+		if ($s[0] === '/') $s = trim((string)preg_replace(['#/\*!\d+\s?#', '#\s?\*/#'], ['', ''], $s));
+		return (string)preg_replace('/\bDEFINER\s*=\s*(`[^`]*`|\'[^\']*\'|[\w.%-]+)@(`[^`]*`|\'[^\']*\'|[\w.%-]+)\s*/i', '', $s, 1);
 	}
 
 	private function finish(): void

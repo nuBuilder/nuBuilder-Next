@@ -383,7 +383,7 @@ check('dump: core tables required', !NuInstall::checkDump("CREATE TABLE `zzzzsys
 foreach (['other table' => 'CREATE TABLE customers (a int)', 'insert into other table' => 'INSERT INTO users VALUES (1)', 'USE' => 'USE mysql',
 	'DROP DATABASE' => 'DROP DATABASE x', 'GRANT' => "GRANT ALL ON *.* TO 'x'@'%'", 'CREATE USER' => "CREATE USER 'x'@'%'", 'SET PASSWORD' => "SET PASSWORD = 'x'",
 	'SET GLOBAL' => 'SET GLOBAL general_log = 1', 'OUTFILE' => "SELECT * FROM zzzzsys_user INTO OUTFILE '/tmp/x'", 'LOAD DATA' => "LOAD DATA INFILE '/etc/passwd' INTO TABLE zzzzsys_form",
-	'trigger' => 'CREATE TRIGGER t BEFORE INSERT ON zzzzsys_form FOR EACH ROW SET @a = 1', 'DEFINER view' => "CREATE DEFINER=`root`@`%` VIEW zzzzsys_v AS SELECT 1",
+	'trigger' => 'CREATE TRIGGER t BEFORE INSERT ON zzzzsys_form FOR EACH ROW SET @a = 1',
 	'view on other name' => 'CREATE VIEW users AS SELECT 1', 'INSERT … SELECT' => 'INSERT INTO zzzzsys_form SELECT * FROM mysql.user',
 	'conditional comment' => "/*!50003 CREATE PROCEDURE p() BEGIN END */",
 	'function in VALUES' => "INSERT INTO zzzzsys_form (a) VALUES ((SELECT LOAD_FILE('/etc/passwd')))", 'sub-query in VALUES' => "INSERT INTO zzzzsys_form VALUES ('a'), ((SELECT 1))"] as $what => $stmt) {
@@ -395,8 +395,8 @@ $full = $okDump . "CREATE TABLE `customers` (`id` int);\nLOCK TABLES `customers`
 check('dump: application tables refused for the installer', !NuInstall::checkDump($full)['ok']);
 $r = NuInstall::checkDump($full, true);
 check('dump: complete dump for Reset database', $r['ok'] && $r['app'] === 1 && $r['tables'] === 6 && $r['users'] === 3, json_encode($r));
-foreach (['USE' => 'USE mysql', 'GRANT' => "GRANT ALL ON *.* TO 'x'@'%'", 'OUTFILE' => "SELECT * FROM customers INTO OUTFILE '/tmp/x'", 'DEFINER trigger' => 'CREATE DEFINER=`root`@`%` TRIGGER t BEFORE INSERT ON customers FOR EACH ROW SET @a = 1',
-	'DEFINER procedure' => 'CREATE DEFINER=root@localhost PROCEDURE p() BEGIN END', 'routine with OUTFILE' => "CREATE PROCEDURE p() SELECT 1 INTO OUTFILE '/tmp/x'",
+foreach (['USE' => 'USE mysql', 'GRANT' => "GRANT ALL ON *.* TO 'x'@'%'", 'OUTFILE' => "SELECT * FROM customers INTO OUTFILE '/tmp/x'",
+	'routine with OUTFILE' => "CREATE PROCEDURE p() SELECT 1 INTO OUTFILE '/tmp/x'",
 	'other database' => 'CREATE TABLE mysql.x (a int)', 'INSERT … SELECT' => 'INSERT INTO customers SELECT * FROM mysql.user'] as $what => $stmt) {
 	check('dump (any table): refused ' . $what, !NuInstall::checkDump($full . $stmt . ";\n", true)['ok']);
 }
@@ -411,6 +411,13 @@ $sp = NuSqlImport::split($routines);
 check('split: DELIMITER blocks stay one statement', count($sp) === 10 && str_ends_with($sp[4], "SET @x = 'a;b'; END") && $sp[6] === 'CREATE PROCEDURE `p_x`() BEGIN SELECT 1; SELECT 2; END', json_encode($sp));
 $sp = NuSqlImport::split("SET a=1; -- x;\n# y;\nINSERT INTO t VALUES ('a\\';\nb', \"c;\", 'it''s;'); /* z; */ SELECT `q;`; /*!40000 ALTER TABLE t DISABLE KEYS */;\nSELECT 2");
 check('split: strings, comments, conditional comments', $sp === ['SET a=1', "INSERT INTO t VALUES ('a\\';\nb', \"c;\", 'it''s;')", 'SELECT `q;`', '/*!40000 ALTER TABLE t DISABLE KEYS */', 'SELECT 2'], json_encode($sp));
+// 0.8.1149: mysqldump's view / trigger form (version comments, DEFINER) → plain CREATE without DEFINER, accepted by the check
+$mdView = "/*!50001 CREATE ALGORITHM=UNDEFINED */\n/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */\n/*!50001 VIEW `v_abs` AS select `a`.`x` AS `x` from `customers` `a` */;\n"
+	. "DELIMITER ;;\n/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`%`*/ /*!50003 TRIGGER `t2` BEFORE INSERT ON `customers` FOR EACH ROW SET NEW.id = 1 */;;\nDELIMITER ;\n";
+$sp = NuSqlImport::split($mdView);
+check('split: mysqldump view / trigger without DEFINER', count($sp) === 2 && !preg_match('/DEFINER\s*=|\/\*!/', implode(' ', $sp)) && str_starts_with($sp[0], 'CREATE ALGORITHM=UNDEFINED') && str_contains($sp[0], 'VIEW `v_abs` AS select'), json_encode($sp));
+$r = NuInstall::checkDump(NuSqlImport::split($full . $mdView), true);
+check('dump (any table): mysqldump view / trigger accepted', $r['ok'], json_encode($r));
 $sp = NuSqlImport::split("CREATE TABLE [a;b] (x int)\nGO\nINSERT INTO #t VALUES (N'C:\\', 'x;y')\nGO\n", 'sqlsrv');
 check('split: SQL Server batches (GO, [names], no backslash escapes, #temp)', $sp === ['CREATE TABLE [a;b] (x int)', "INSERT INTO #t VALUES (N'C:\\', 'x;y')"], json_encode($sp));
 $tmpSql = sys_get_temp_dir() . '/nunext-split-' . bin2hex(random_bytes(4)) . '.sql.gz';

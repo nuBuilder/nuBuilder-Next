@@ -3,6 +3,11 @@ Grouped by topic (0.8.909, the owner): every point starts with a short **title**
 Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archive.md`.
 
 ## Decisions for the owner
+- [ ] **Phone numbers without JavaScript** (0.8.1143, a forum post with a global JS formatter for one country) – options:
+  A validation rule (matches, server + live; no reformat) · B HTML attributes pattern / inputmode="tel" (browser only) ·
+  C Before Save PHP with nuNextSaveValue / nuNextSetSaveValue (per form) · D built-in format "Phone" P|<country> or
+  P|#field# (design mode, display + save + check, lists / exports) · E library pack libphonenumber-for-php for every country
+  (used by D or nuNextPhone()). Recommendation: D, E as optional pack; A meanwhile. The owner decides later.
 - [ ] **Fewer places for settings** (0.8.1002) – the owner wants to rethink where settings live (Shared settings, nuBuilder Next's own settings
       table, Branding, Settings → Look / General, Security settings, nuconfig.php …): too many places. Back Button on Phones went into the
       Shared settings for now (own row nuPhoneBackButton) – move it once the new structure is decided.
@@ -30,6 +35,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
 
 ## SQL Server
+- [ ] **Pivot date groups on SQL Server** (0.8.1151) – NuPivot::dimExpr (DATEPART / FORMAT / iso_week, weekday via @@DATEFIRST) untested; open a pivot with a date by month / week / weekday
 - [ ] **Column totals of form lists** (0.8.1127) – SUM / AVG use TRY_CONVERT(DECIMAL(38, 10), column) on SQL Server; untested there. A failing
       query shows the list without totals and writes a Debug result.
 - [ ] **Prompt generator table details** (0.8.1102) – the catalog queries for SQL Server (sys.indexes, sys.foreign_keys, sys.check_constraints,
@@ -111,6 +117,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify: pivot of form lists** (0.8.1151) – Export ▾ → Pivot… on a real list: date groups, totals vs the list, filter, drill, My pivots, CSV / Excel; phones have no entry yet (Export menu only from 576 px)
+- [ ] **Please verify: list rows wait for the form's code** (0.8.1150) – lists with own JavaScript show their rows after nuOnLoad (3 s fallback); check a list whose code rewrites cells
+- [ ] **Please verify: phone menu of a record** (0.8.1145 / 0.8.1146) – Form info fits the screen, layout switch labels shown
 - [ ] **Grid sub-forms: fit columns to the width** (0.8.1141, a forum suggestion) – please verify on a migrated sub-form that is cut off on a laptop: switch on in design mode, columns share the width, hidden columns left out; a narrow window scrolls sideways once the columns reach about 60 % of their width; lookups and selects fill their cells
 - [ ] **Admin role cards on phones** (0.8.1140) – user count in brackets after the name, code · rights in one row; the keys card_count / card_join can be used for other lists
 - [ ] **Totals, groups and selected rows of lists** (0.8.1127 / 0.8.1128) – please verify on real lists: a wide list that scrolls sideways (the floating row of totals), a list whose browse JavaScript walks the rows (heading and subtotal rows sit between the data rows), a grouped list on a phone, a text column that holds numbers. Excel has the grand total line but no group headings / subtotals. Values that differ only in case get separate headings where the database compares without case
@@ -278,6 +287,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Tom Select 2.7.0** (0.8.1131) – searchable selects in light / dark (caret, empty option first, search with ß / umlauts).
 
 ## Update page, backups and admin tools
+- [ ] **Please verify: Reset database with a mysqldump file** (0.8.1148 / 0.8.1149) – large file (time limit of the check) and views / triggers with DEFINER (imported without it, owned by the importing user)
 - [ ] **File Manager tiles** (0.8.1121) – please verify with a folder of real photos (large phone pictures, orientation, loading speed) and in dark mode; no note is shown when PHP has no GD (tiles then show icons)
 - [ ] **File Manager for nuBuilder Forte** (0.8.1122 / 0.8.1123) – light / dark switch at the foot of the side bar; on phones it sits behind ☰ – wanted in the top bar there?
 - [ ] **Messages that close by themselves** (0.8.1119) – success after 4–12 s, short info after 7–12 s, warnings and errors stay: please verify the timing feels right

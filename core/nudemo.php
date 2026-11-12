@@ -27,6 +27,7 @@ final class NuDemo
 	/** Posts that only read (page => actions); every other post of a demo session is refused. */
 	private const READ_POSTS = [
 		'procedures'     => ['run'],
+		'pivot'          => ['fields', 'run', 'values', 'drill'],   // pivot of a form list: reads only (0.8.1151)
 		'codecheck'      => ['check'],      // syntax check of the code editors: parses only (0.8.781)
 		'projects'       => ['candidates', 'suggest', 'work'],   // projects: Add dialog, Suggest related, Working on (session only) (0.8.1035)
 		'dataexport'     => ['tables', 'columns', 'preview', 'count', 'check'],   // data export: the editor's lookups, nothing stored (0.8.758)

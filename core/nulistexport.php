@@ -85,12 +85,12 @@ final class NuListExport
 	}
 
 	/** The Export menu (lists and form browse lists): $id on the group, $btnId on the button; the CSV dialog is appended after the group. */
-	public static function menu(string $printUrl, string $xlsxUrl, string $csvDialog, string $id, string $btnId, bool $small, string $class, string $wrap = ''): string
+	public static function menu(string $printUrl, string $xlsxUrl, string $csvDialog, string $id, string $btnId, bool $small, string $class, string $wrap = '', string $extra = ''): string
 	{
 		return '<div class="dropdown d-inline-block nuExportMenu' . ($wrap !== '' ? ' ' . h($wrap) : '') . '" id="' . h($id) . '" data-print-url="' . h($printUrl) . '">'
 			. '<button class="btn' . ($small ? ' btn-sm' : '') . ' ' . h($class) . ' dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="' . h($btnId) . '" title="' . h(t('exp_menu')) . '" aria-label="' . h(t('exp_menu')) . '">'
 			. '<i class="bi bi-box-arrow-up-right me-sm-1" aria-hidden="true"></i><span class="d-none d-sm-inline">' . h(t('exp_menu')) . '</span></button>'   // phones: the icon only (0.8.711)
-			. '<ul class="dropdown-menu shadow-sm">' . self::menuItems($printUrl, $xlsxUrl) . '</ul></div>' . $csvDialog;
+			. '<ul class="dropdown-menu shadow-sm">' . self::menuItems($printUrl, $xlsxUrl) . $extra . '</ul></div>' . $csvDialog;   // $extra: further entries (form lists: Pivot…, 0.8.1151)
 	}
 
 	/** The three entries (also in the ⋮ menu of phones). */
