@@ -68,6 +68,11 @@ if (nu_is_post()) {
 				$msg[] = t('saved');
 			}
 		}
+		if (in_array('cron', $parts, true) && (NuSettingsHub::ga() || NuAdmin::can('procedures', 'change'))) {
+			$was = NuCronRun::settings();
+			if (!NuCronRun::saveSettings((string)nu_post('cron_mail'))) { nu_flash('danger', t('cron_err_mail')); nu_redirect(nu_url('settings', ['s' => 'data']) . '#shCron'); }
+			if ($was !== NuCronRun::settings()) $msg[] = t('saved');
+		}
 		nu_flash('success', $msg ? implode(' ', array_unique($msg)) : t('set_saved_none'));
 		nu_redirect(nu_url('settings', ['s' => 'data']));
 	}
@@ -121,7 +126,7 @@ $keepOpts = static function (int $cur, array $list): string {
 $title = $sec === '' ? t('set_title') : t(NuSettingsHub::SECTIONS[$sec][1]);
 nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $sec, 'settings_page' => $sec]);
 ?>
-<?php $dataSave = $sec === 'data' && (NuAdmin::can('audit', 'change') || NuSettingsHub::ga() || NuAdmin::can('notifications', 'change') || NuAdmin::can('update', 'change')); ?>
+<?php $dataSave = $sec === 'data' && (NuAdmin::can('audit', 'change') || NuSettingsHub::ga() || NuAdmin::can('notifications', 'change') || NuAdmin::can('update', 'change') || NuAdmin::can('procedures', 'change')); ?>
 <?= nu_page_header($title, ['icon' => $sec !== '' ? NuSettingsHub::SECTIONS[$sec][0] : 'bi-gear', 'sub' => $sec === '' ? t('sh_overview_hint') : t(NuSettingsHub::SECTIONS[$sec][2]),
 	'crumbs' => $sec === '' ? [] : [[t('set_title'), nu_url('settings')]],
 	// one Save per section, in the header (review M2): data = the whole form, general = languages, updates = GitHub
@@ -224,6 +229,14 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 				<select class="form-select form-select-sm" name="ntf_keep_days" id="shNtfKeep"><?= $keepOpts((int)$nk, [0, 30, 90, 180, 365, 730]) ?></select></div>
 		</div>
 		<?= $card('shNotify', 'bi-bell', t('ntf_title'), (string)ob_get_clean()) ?>
+	<?php endif; ?>
+	<?php if (NuSettingsHub::ga() || NuAdmin::can('procedures', 'change')): ob_start(); ?>
+		<div class="d-flex flex-wrap align-items-end gap-3"><input type="hidden" name="parts[]" value="cron">
+			<div class="flex-grow-1 shCronMail"><label class="form-label small mb-1" for="shCronMail"><?= h(t('cron_mail_label')) ?></label><?= $tip(t('cron_mail_tip')) ?>
+				<input type="text" class="form-control form-control-sm" name="cron_mail" id="shCronMail" maxlength="500" autocomplete="off" value="<?= h(NuCronRun::settings()['mail']) ?>"></div>
+		</div>
+		<div class="small text-secondary mt-2"><?= h(t('cron_hint')) ?> <code>php nucron.php run &lt;code&gt;</code><?php if (!NuMail::configured()): ?> · <span class="text-warning-emphasis" id="shCronNoMail"><?= h(t('cron_need_mail')) ?></span><?php endif; ?></div>
+		<?= $card('shCron', 'bi-alarm', t('cron_title'), (string)ob_get_clean()) ?>
 	<?php endif; ?>
 	<?php if (NuAdmin::can('update', 'view')): $rule = NuUpdate::cleanupRule(); ob_start(); ?>
 		<div class="row g-3 align-items-start"><?php if (NuAdmin::can('update', 'change')): ?><input type="hidden" name="parts[]" value="backups"><?php endif; ?>

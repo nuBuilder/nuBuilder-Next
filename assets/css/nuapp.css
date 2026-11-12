@@ -2416,3 +2416,8 @@ html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn { display: none !im
 /* row button that runs the row (reports list): neutral frame like its neighbour, only the icon in the accent colour */
 .nuRowRun > .bi { color: var(--bs-primary); }
 .nuRowRun:hover > .bi, .nuRowRun:active > .bi { color: inherit; }
+
+/* a tab that holds code: a small dot after its name (0.8.1133) – list side pane PHP / JavaScript, procedure form JS; the same sign as design mode's Code list */
+.nav-link.nuHasCode::after { content: ''; display: inline-block; width: .4rem; height: .4rem; margin-left: .4rem; border-radius: 50%; background: currentColor; opacity: .7; vertical-align: middle; }
+
+.shCronMail { max-width: 480px; }

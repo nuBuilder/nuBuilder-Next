@@ -3,6 +3,59 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1138 – Release gate
+- Release gate: documentation brought up to date (README: Docker under Install; open checks for the newest versions).
+
+## 0.8.1137 – Docker
+- Docker: an image (PHP 8.3 with Apache and every PHP extension nuBuilder Next uses, also the SQL Server driver) and
+  compose files in the repository folder docker/. "docker compose -f docker/compose.yml up -d" starts nuBuilder Next
+  with MariaDB on http://localhost:8080; docker/compose.sample.yml adds the sample application. With NUNEXT_DB_* set the
+  container writes nuconfig.php and sets the database up by itself; the globeadmin password comes from
+  NUNEXT_ADMIN_PASSWORD or is printed in the log. Without them the installer runs in the browser.
+- Updates in Docker: Update in the application as on any server, or a newer image – the container copies the new program
+  files into its volume (settings, custom pages, backups and data stay) and runs the database steps.
+- The image is published to the GitHub Container Registry for every release (ghcr.io/nubuilder/nubuilder-next, tags
+  <version> and edge; amd64 and arm64).
+- Automatic tests on GitHub: MariaDB 10.11, MariaDB 11.4 and MySQL 8.4, each with PHP 8.2 and 8.3, plus SQL Server, plus
+  the Docker image (build, start, smoke test).
+- Help: Installation → Docker.
+
+## 0.8.1136 – Installable app
+- Installable app: phones, tablets and computers can install nuBuilder Next with its own icon on the home screen and its
+  own window without browser bars. Name, short name and colour come from Branding; the icon is the logo when "Use the
+  logo as browser icon" is on, otherwise nuBuilder Next's icon. A long press on the icon lists the user's first
+  favourites.
+- The user menu shows "Install app" where the browser offers it; on iPhone / iPad it explains Share → Add to Home Screen.
+- Faster start: styles, scripts and icons of the program are kept on the device and replaced with each new version.
+  Pages and data always come from the server – nothing is stored for reading offline.
+- Without a connection the app shows a short page with "Try again" instead of the browser's error.
+- Branding → "Installable app" switches it off (on by default); an installed app then removes its stored files.
+- Help: Branding → Installable app.
+
+## 0.8.1135 – Procedures by cron
+- Procedures by cron: "php nucron.php run <procedure code>" runs a procedure from the server's cron – the crontab decides
+  when. Options: --user=<login name> (the user it runs as; default the globeadmin – a user needs the right on the
+  procedure), name=value (hash variables of the run), --quiet, --mail=<address>. #NU_CRON# is 1 in such a run.
+- Every run is one log entry (Procedure run by cron / … failed) with the duration and the error. Exit code 0 = done,
+  1 = failed, 2 = wrong call.
+- E-mail when a run fails: Settings → Data & logs → Scheduled procedures takes one or more addresses; the e-mail names the
+  procedure, time, user, error and output. --mail= replaces the address for one job.
+- nucron.php: a fatal problem (e.g. the database cannot be reached) is now one line of plain text with exit code 1 – it
+  was an HTML page with exit code 0, so cron could not see the failure.
+- Help: Procedures → Procedures by cron.
+
+## 0.8.1134 – Options menu: Database
+- Form ⋮ menu: the entry "Table in the database tool" is now called "Database" (all languages). It still opens the
+  form's table in phpMyAdmin or Adminer.
+
+## 0.8.1133 – A dot on tabs that hold code
+- List side pane: the PHP and JavaScript tabs show a small dot after their name while they hold code – it appears with
+  the first character typed and goes when the editor is emptied. The same sign as in design mode's Code list.
+- Procedure form: the JS tab shows the same dot instead of the badge "1", and follows typing.
+
+## 0.8.1132 – Python helper scripts tidied
+- Development only (code analysis of the Python helper scripts): the stand-in servers of the tests and the build script of the File Manager for nuBuilder Forte were tidied; nothing in the product changes. The Forte file's address stamp of script and style is now a SHA-256 value.
+
 ## 0.8.1131 – Tom Select 2.7.0
 - Tom Select (the searchable selects) updated from 2.6.2 to 2.7.0. The new version brings fixes only: search no longer mixes up characters of Chinese, Japanese and Korean, ß is found as ss, late answers of a remote search no longer overwrite the current list, and the empty option stays first.
 

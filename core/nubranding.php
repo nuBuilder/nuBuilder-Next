@@ -23,7 +23,7 @@ final class NuBranding
 	public const MAX_BYTES = 524288;
 	public const TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
 	public const DEFAULTS = ['accent' => '', 'logo' => false, 'logo_dark' => false, 'show_title' => false, 'favicon' => false, 'logo_show' => 'all',
-		'env_label' => '', 'env_color' => '#dc3545', 'title' => '', 'title_phone' => '', 'show_title_phone' => true, 'rev' => ''];
+		'env_label' => '', 'env_color' => '#dc3545', 'title' => '', 'title_phone' => '', 'show_title_phone' => true, 'pwa' => true, 'rev' => ''];
 	public const ENV_LEN = 20;
 	public const TITLE_LEN = 100;   // own title of the application (0.8.736), '' = $nuConfigTitle
 	/** Where the logo shows (0.8.630): all = top bar and sign-in pages, login = sign-in pages only, none = nowhere. */
@@ -269,6 +269,7 @@ final class NuBranding
 		$new['logo_show'] = in_array((string)($in['logo_show'] ?? 'all'), self::LOGO_SHOW, true) ? (string)$in['logo_show'] : 'all';
 		if (!self::envFromConfig()) $new['env_label'] = $label;
 		if (array_key_exists('title', $in)) $new['title'] = mb_substr(trim((string)$in['title']), 0, self::TITLE_LEN);   // 0.8.736
+		if (array_key_exists('pwa', $in)) $new['pwa'] = !empty($in['pwa']);   // installable app (0.8.1136)
 		if (array_key_exists('show_title_phone', $in)) $new['show_title_phone'] = !empty($in['show_title_phone']);   // 0.8.997
 		if (array_key_exists('title_phone', $in)) $new['title_phone'] = mb_substr(trim((string)$in['title_phone']), 0, self::TITLE_LEN);   // 0.8.996
 		$new['env_color'] = $envColor;
@@ -363,6 +364,21 @@ final class NuBranding
 	}
 
 	// ------------------------------------------------------------------ public route ?p=brand
+
+	/** Bytes of the own (light) logo, null when there is none (0.8.1136: icon of the installable app). */
+	public static function logoBytes(): ?string
+	{
+		if (!self::get()['logo']) return null;
+		try {
+			$row = nu_db()->tableExists(NuFile::TABLE) ? nu_db()->one('SELECT sfi_json FROM zzzzsys_file WHERE zzzzsys_file_id = ?', [self::FILE_LIGHT]) : null;
+		} catch (Throwable) {
+			return null;
+		}
+		$info = $row ? NuFile::info((string)$row['sfi_json']) : [];
+		if (!$info || !preg_match('#^data:(image/(?:png|jpeg|gif|webp))(;base64)?,#', $info['url'], $m)) return null;
+		$body = substr($info['url'], strlen($m[0]));
+		return $m[2] !== '' ? (string)base64_decode($body) : rawurldecode($body);
+	}
 
 	/** ?p=brand&a=css|logo|logodark – no login needed (sign-in pages); ends the request. */
 	public static function serve(string $a): never

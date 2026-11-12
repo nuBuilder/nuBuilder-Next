@@ -57,9 +57,10 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {'candidates': [{'content': {'parts': [{'text': text}]}, 'finishReason': 'STOP'}], 'usageMetadata': {'promptTokenCount': 120, 'candidatesTokenCount': 30}})
         return self.send(200, {'choices': [{'message': {'role': 'assistant', 'content': text}, 'finish_reason': 'stop'}], 'usage': {'prompt_tokens': 120, 'completion_tokens': 30}})
 
-    def log_message(self, *a):
-        """Keep the test output quiet: the request log of the base class is not written."""
-        return
+    def log_message(self, format, *args):   # the base class's signature (pylint: disable=redefined-builtin)
+        """Keeps the test output quiet: the request log is written only with NUNEXT_FAKE_VERBOSE=1."""
+        if os.environ.get('NUNEXT_FAKE_VERBOSE'):
+            super().log_message(format, *args)
 
 
 if not os.path.exists(ANSWERS):

@@ -3715,6 +3715,16 @@
 				if (CODE[k].cm && b && b.offsetParent) CODE[k].cm.setSize('100%', Math.max(120, b.clientHeight) + 'px');
 			});
 		}
+		// a dot on the PHP / JavaScript tab while it holds code (0.8.1133) – as the Code list of design mode
+		function codeMarks() {
+			if (!pane) return;
+			['php', 'js'].forEach(function (k) {
+				var b = pane.querySelector('.nuBsqTab[data-tab="' + k + '"]'), has = String(codeVal(k)).trim() !== '';
+				if (!b || b.classList.contains('nuHasCode') === has) return;
+				b.classList.toggle('nuHasCode', has);
+				if (has) { b.title = T.code_has; b.setAttribute('aria-label', b.textContent + ', ' + T.code_has); } else { b.removeAttribute('title'); b.removeAttribute('aria-label'); }
+			});
+		}
 		// the editor of a code tab: made when the tab is first shown
 		function codeOpen(k, focus) {
 			var c = CODE[k];
@@ -3725,7 +3735,7 @@
 				ta.value = c.orig;
 				c.cm = CodeMirror.fromTextArea(ta, {mode: c.mode, lineNumbers: true, lineWrapping: true, indentWithTabs: true, tabSize: 4,
 					theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'default nuCmDark' : 'default'});
-				if (k === 'sql') cm = c.cm;
+				if (k === 'sql') cm = c.cm; else c.cm.on('change', codeMarks);
 				if (window.NuCodeTools) NuCodeTools.attach(c.cm, pane.querySelector('.nuBsqTools[data-code="' + k + '"]'), {lang: c.lang, db: N.db_type});
 				size();
 				if (focus) c.cm.focus();
@@ -4012,6 +4022,7 @@
 			pane.querySelector('#nuBsqTabPhp').textContent = T.bsq_tab_php;
 			pane.querySelector('#nuBsqTabJs').textContent = T.bsq_tab_js;
 			pane.querySelector('#nuBsqTabCols').textContent = T.builder_sec_columns;
+			codeMarks();
 			pane.querySelectorAll('.nuBsqTab').forEach(function (b) { b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); }); });
 			pane.querySelector('.nuBsqTabs').addEventListener('keydown', function (e) {
 				if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;

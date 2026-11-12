@@ -26,6 +26,12 @@ declare(strict_types=1);
  *     php nucron.php update --finish=<job>     database steps of an installed job (started automatically in a new process)
  *   Exit code: 0 = done / checked, 1 = failed, 2 = wrong call.
  *
+ * Run a procedure (0.8.1135) – the crontab decides when, e.g. every day at 6:00:  0 6 * * *  php /var/www/html/nunext/nucron.php run my_procedure
+ *     php nucron.php run <procedure code> [--user=<login name>] [--mail=<address>] [--quiet] [name=value …]
+ *   --user   the user it runs as (rights, #USER_ID#; default: the globeadmin)      name=value  hash variables of the run (#name#)
+ *   --mail   where the e-mail goes when the run fails (default: the address of Settings → Data & logs; --mail= sends none)
+ *   --quiet  no output unless it fails. One log entry per run. Exit code: 0 = done, 1 = failed, 2 = wrong call.
+ *
  * IP access (0.8.722) – switched off when the rules lock everybody out (they stay stored):
  *     php nucron.php iprules off
  *
@@ -123,6 +129,20 @@ if (($args[0] ?? '') === 'restore') {
 		. implode(', ', array_map(static fn($t, $c) => $t . ' ' . $c[0] . ' → ' . $c[1], array_keys($r['mismatch']), $r['mismatch'])) : $r['checked'] . ' table(s) as in the backup') . "\n";
 	echo "Done.\n";
 	exit($r['mismatch'] ? 1 : 0);
+}
+if (($args[0] ?? '') === 'run') {
+	$ro = NuCronRun::parse(array_slice($args, 1));
+	if (is_string($ro)) { fwrite(STDERR, $ro . "\nUsage: php nucron.php run <procedure code> [--user=<login name>] [--mail=<address>] [--quiet] [name=value …]\n"); exit(2); }
+	$rr = NuCronRun::run($ro);
+	if ($rr['output'] !== '' && (!$ro['quiet'] || !$rr['ok'])) echo rtrim($rr['output'], "\n") . "\n";
+	if (!$rr['ok']) {
+		fwrite(STDERR, $ro['code'] . ' failed: ' . $rr['error'] . "\n");
+		if ($rr['mailed']) fwrite(STDERR, 'E-mail sent to ' . implode(', ', $rr['mailed']) . "\n");
+		if ($rr['mail_error'] !== '') fwrite(STDERR, 'E-mail not sent: ' . $rr['mail_error'] . "\n");
+		exit(1);
+	}
+	if (!$ro['quiet']) echo $ro['code'] . ' done (' . $rr['ms'] . " ms)\n";
+	exit(0);
 }
 if (($args[0] ?? '') === 'iprules') {
 	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php nucron.php iprules off\n"); exit(2); }

@@ -323,7 +323,7 @@ $t = static fn(string $k): string => $nu->h($S[$k] ?? $k);
 $theme = $nu->theme();
 ?>'''
 
-head = rd(os.path.join(HERE, 'head.php')).replace('%%VERSION%%', VERSION).replace('%%NEXT%%', NEXT).replace('%%ASSETV%%', hashlib.sha1((js + css).encode('utf-8')).hexdigest()[:12])
+head = rd(os.path.join(HERE, 'head.php')).replace('%%VERSION%%', VERSION).replace('%%NEXT%%', NEXT).replace('%%ASSETV%%', hashlib.sha256((js + css).encode('utf-8')).hexdigest()[:12])
 
 
 def nowdoc(name, text):

@@ -40,6 +40,7 @@ function nu_head(string $title, string $extraHead = ''): void
 	<link rel="stylesheet" href="<?= nu_asset(NU_BI . '/bootstrap-icons.min.css') ?>">
 	<link rel="stylesheet" href="<?= nu_asset('assets/css/nuapp.css') ?>">
 	<?= NuBranding::headTags() ?>
+	<?= NuDB::$connected ? NuPwa::headTags() : '' /* installable app (0.8.1136) */ ?>
 	<?= NuTheme::headTag() /* theme (0.8.632): after branding, before Global CSS */ ?>
 	<?= NuCustomCode::cssTag() /* Global CSS (0.8.523): before the page's own styles */ ?>
 	<?= $extraHead ?>
@@ -258,6 +259,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php // side bar on / off: start page → Customise → Appearance (0.8.708); "for everyone": Settings → Look ?>
 						<li><hr class="dropdown-divider"></li>
 						<?php if (NuUserHelp::any() && !NuUserHelp::canManage()): // user help pages of this installation (0.8.1023); not for those who manage them (0.8.1112: tile Help pages, the Help button of a form) ?><li><a class="dropdown-item" href="<?= h(nu_url('userhelp')) ?>" id="nuMenuUserHelp"><i class="bi bi-journal-bookmark me-2"></i><?= h(t('uh_title')) ?></a></li><?php endif; ?>
+						<li hidden id="nuMenuInstallLi"><button type="button" class="dropdown-item" id="nuMenuInstall" data-ios="<?= h(t('pwa_ios_hint')) ?>" data-title="<?= h(t('pwa_install')) ?>"><i class="bi bi-phone me-2"></i><?= h(t('pwa_install')) ?></button></li>
 						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener" id="nuMenuDocs"><i class="bi bi-book me-2"></i><?= h(t('help_title')) ?></a></li>
 						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>

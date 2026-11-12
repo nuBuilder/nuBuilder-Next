@@ -235,7 +235,7 @@ const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh
 	'ds_list_target_1', 'ds_list_target_2', 'ds_list_target_3', 'builder_redirect', 'ds_list_multi', 'ds_list_autofit', 'builder_sec_columns', 'builder_col_title',
 	'builder_col_display', 'builder_col_width', 'builder_col_align', 'ds_col_hidden', 'ds_col_show', 'ds_col_left', 'ds_col_right', 'delete', 'ds_list_nocols',
 	'builder_add_column', 'ds_col_new', 'om_left', 'om_center', 'om_right', 'please_select', 'ds_col_drag',
-	'bsq_tab_php', 'bsq_tab_js', 'bsq_col_more', 'bsq_col_access', 'builder_col_format', 'builder_col_filter', 'ds_col_badge', 'ds_col_badge_tip', 'bsq_badge_rules',
+	'bsq_tab_php', 'bsq_tab_js', 'code_has', 'bsq_col_more', 'bsq_col_access', 'builder_col_format', 'builder_col_filter', 'ds_col_badge', 'ds_col_badge_tip', 'bsq_badge_rules',
 	'ds_col_action', 'ds_col_action_tip', 'ds_act_none', 'ds_act_form', 'ds_act_list', 'ds_act_proc', 'ds_act_report', 'ds_act_js', 'ds_act_target_form', 'ds_act_target_list',
 	'builder_run_procedure', 'builder_run_report', 'ds_act_fn', 'ds_act_fn_tip', 'ds_act_rec', 'ds_act_rec_row', 'ds_act_rec_value', 'ds_act_rec_new', 'ds_act_open',
 	'ds_act_open_same', 'ds_act_open_tab', 'ds_act_open_popup', 'ds_act_pass', 'ds_act_pass_tip', 'ds_act_look', 'ds_act_look_link', 'ds_act_look_button', 'ds_act_look_icon',

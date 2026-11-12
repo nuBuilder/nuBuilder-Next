@@ -191,7 +191,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="access_sent" value="1">
 		<ul class="nav nav-tabs" role="tablist" id="procTabs" data-nu-tab-restore>
 			<li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#procTabPhp" role="tab" data-tab="php">PHP</button></li>
-			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabJs" role="tab" data-tab="js">JS<?= trim($v('sph_javascript')) !== '' ? ' <span class="badge text-bg-secondary">1</span>' : '' ?></button></li>
+			<li class="nav-item" role="presentation"><button class="nav-link<?= trim($v('sph_javascript')) !== '' ? ' nuHasCode' : '' ?>" type="button" data-bs-toggle="tab" data-bs-target="#procTabJs" role="tab" data-tab="js" id="procTabJsBtn" data-has="<?= h(t('code_has')) ?>">JS</button></li>
 			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabAccess" role="tab" data-tab="access"><?= h(t('nav_access')) ?> <span class="badge text-bg-secondary" id="procAccessCount" data-everyone="<?= h(t('proc_everyone')) ?>"><?= $chk('sph_global') ? h(t('proc_everyone')) : $nAccess ?></span></button></li>
 			<?php if ($proc): ?>
 				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabUsage" role="tab" data-tab="usage"><?= h(t('proc_usage')) ?> <span class="badge text-bg-secondary"><?= count($usage) ?></span></button></li>

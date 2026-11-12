@@ -28,6 +28,7 @@ $routes = [
 	'reset'       => ['public' => true],
 	'reportfile'  => ['public' => true],   // PDF of a report run through the REST API (token link, 0.8.340)
 	'brand'       => ['public' => true],
+	'pwa'         => ['public' => true],   // installable app: manifest, icons, service worker, offline page (0.8.1136, NuPwa)
 	'branding'    => [],
 	'setupwizard' => [],
 	'adminroles'  => [],

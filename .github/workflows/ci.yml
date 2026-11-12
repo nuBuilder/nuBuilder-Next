@@ -21,20 +21,32 @@ jobs:
       # ESLint 9 = the maintenance line (9.17.0 was marked unsupported on npm, 0.8.890); 10 changes the config defaults – not yet
       - run: npm install --no-save --prefix .. eslint@9.39.5 globals@15.14.0 && npx --prefix .. eslint -c dev/eslint.config.mjs assets/js
 
+  # (0.8.1137) three MySQL-type servers × two PHP versions: MySQL 8.4 differs from MariaDB in collation (utf8mb4_0900_ai_ci),
+  # SQL modes and the JSON type – the same installation, smoke test and self-test on each
   mysql:
     runs-on: ubuntu-latest
     needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        db: ['mariadb:10.11', 'mariadb:11.4', 'mysql:8.4']
+        php: ['8.2', '8.3']
+        include:
+          - { db: 'mariadb:10.11', health: 'healthcheck.sh --connect' }
+          - { db: 'mariadb:11.4', health: 'healthcheck.sh --connect' }
+          - { db: 'mysql:8.4', health: 'mysqladmin ping -h 127.0.0.1 -uroot -proot' }
+    name: mysql (${{ matrix.db }}, PHP ${{ matrix.php }})
     services:
-      mariadb:
-        image: mariadb:10.11
-        env: { MARIADB_ROOT_PASSWORD: root, MARIADB_DATABASE: nutest, MARIADB_USER: nu, MARIADB_PASSWORD: nu }
+      database:
+        image: ${{ matrix.db }}
+        env: { MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: nutest, MYSQL_USER: nu, MYSQL_PASSWORD: nu }
         ports: ['3306:3306']
-        options: --health-cmd="healthcheck.sh --connect" --health-interval=5s --health-retries=20
+        options: --health-cmd="${{ matrix.health }}" --health-interval=5s --health-retries=30
     steps:
       - uses: actions/checkout@v5
         with: { path: nunext }
       - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.3', extensions: 'pdo_mysql, mbstring, zip, sodium', coverage: none }
+        with: { php-version: '${{ matrix.php }}', extensions: 'pdo_mysql, mbstring, zip, sodium, gd', coverage: none }
       - run: git clone --depth 1 https://github.com/nuBuilder/nuBuilder.git nub && mv nunext nub/nunext
       # a new installation as the installer makes it: empty database → nuBuilder Forte's nubuilder4.sql through the database set-up
       # (NuDbState::setUp – brought to 4.9, own tables, origin 'nunext', database steps); the step fails unless the database is ready and
@@ -124,3 +136,27 @@ jobs:
           echo "no PHP messages in the server log"
       - if: failure()
         run: cat srv.log 2>/dev/null || true
+
+  # (0.8.1137) the Docker image: build it, start docker/compose.yml with the sample application, smoke test against the container
+  docker:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build and start
+        run: |
+          export NUNEXT_ADMIN_PASSWORD=ci-globeadmin-pw NUNEXT_BASE_URL=http://127.0.0.1:8080 NUNEXT_VERSION=ci
+          docker compose -f docker/compose.yml -f docker/compose.sample.yml up -d --build
+          for i in $(seq 1 90); do
+            if docker compose -f docker/compose.yml logs app | grep -q "sample application installed"; then break; fi
+            [ "$i" = 90 ] && { docker compose -f docker/compose.yml logs app; exit 1; }
+            sleep 2
+          done
+          docker compose -f docker/compose.yml logs app
+          curl -fsS -o /dev/null http://127.0.0.1:8080/index.php?p=login
+      - uses: actions/setup-node@v5
+        with: { node-version: '22' }
+      - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
+      - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8080/ ADMIN_PW=ci-globeadmin-pw node dev/tests/smoke.js
+      - if: failure()
+        run: docker compose -f docker/compose.yml logs

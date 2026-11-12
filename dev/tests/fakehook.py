@@ -1,7 +1,7 @@
 """Webhook receiver for the e2e test webhooks (0.8.715): python3 -I fakehook.py <port> <log file>
    /ok → 200 · /flaky → 500 for the first two calls, then 200 · /deny → 403 · /slow → waits 8 s (beyond the 5 s timeout).
    Every request is appended to the log file as one JSON line {path, headers, body}."""
-import json, sys, time
+import json, os, sys, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT, LOG = int(sys.argv[1]), sys.argv[2]
@@ -26,9 +26,10 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps({'received': n}).encode())
 
-    def log_message(self, *a):
-        """Keep the test output quiet: the request log of the base class is not written."""
-        return
+    def log_message(self, format, *args):   # the base class's signature (pylint: disable=redefined-builtin)
+        """Keeps the test output quiet: the request log is written only with NUNEXT_FAKE_VERBOSE=1."""
+        if os.environ.get('NUNEXT_FAKE_VERBOSE'):
+            super().log_message(format, *args)
 
 
 ThreadingHTTPServer(('127.0.0.1', PORT), H).serve_forever()

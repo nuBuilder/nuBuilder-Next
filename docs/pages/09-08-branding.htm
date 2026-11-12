@@ -14,6 +14,17 @@
 <li><strong>Environment label</strong>, e.g. <code>TEST</code> or <code>DEV</code>, with its own colour: a badge in the top bar and on the sign-in pages, a line of its colour at the top of every page and <code>[TEST]</code> in the browser tab title – so a test copy is not mistaken for the live system. <code>$nuConfigEnvironmentLabel</code> and <code>$nuConfigEnvironmentColor</code> in <code>nuconfig.php</code> take priority over the page (the field is then read-only): the label belongs to the server, and a database copied to a test server with the App cloner would otherwise bring the label of the server it came from. Example: <code>$nuConfigEnvironmentLabel = "TEST"; $nuConfigEnvironmentColor = "#e67e22";</code></li>
 <li>The <strong>preview</strong> on the page shows logo, title, colours and label before saving. <em>Reset</em> removes the logos and all branding settings. Error pages and the installer always use nuBuilder Next's look; a login page from <code>$nuWelcomeBodyInnerHTML</code> keeps its own HTML (accent colour and label apply). nuBuilder Forte (4.x) itself is not affected.</li>
 </ul>
-	<p class="doc-see">See also: <a href="#themes">Themes</a> · <a href="#theming">Theming and CSS</a></p>
+	<div class="doc-sub"><h3 id="pwa">Installable app</h3>
+<p>Phones, tablets and computers can install nuBuilder Next as an app: its own icon on the home screen or in the start menu, its own window without the browser's bars, and a faster start, because the program's files (styles, scripts, icons) are kept on the device. Chrome, Edge and Android offer <em>Install</em> in the browser; the user menu then shows <em>Install app</em>. On iPhone and iPad, Safari has no install button – <em>Install app</em> explains <em>Share → Add to Home Screen</em>.</p>
+<ul>
+<li><strong>Name and colour</strong> come from this page: the title (the phone title as short name) and the accent colour.</li>
+<li><strong>Icon</strong>: the logo, on a white square, when <em>Use the logo as browser icon</em> is on; otherwise nuBuilder Next's icon.</li>
+<li><strong>Shortcuts</strong>: a long press on the icon lists the user's first favourites of the start page.</li>
+<li><strong>Offline</strong>: pages and data always come from the server – nothing is stored on the device for reading. Without a connection the app shows a short page with <em>Try again</em> instead of the browser's error.</li>
+<li><strong>Switch</strong>: <em>Installable app</em> on this page (on by default). Switched off, browsers no longer offer the install, and an app already installed removes its stored files on the next visit.</li>
+</ul>
+<p data-level="detail">Installing needs HTTPS (or the server's own computer). Each installation in its own folder installs as its own app. Updates need nothing: a new version brings new files, and the old ones are dropped.</p>
+</div>
+<p class="doc-see">See also: <a href="#themes">Themes</a> · <a href="#theming">Theming and CSS</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nubranding.php</code></li></ul></details>
 </section>

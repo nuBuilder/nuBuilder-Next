@@ -1,0 +1,6 @@
+# nuBuilder Next to try out: as docker/compose.yml plus the sample application (customers, orders, reports, users sample_anna …).
+#   docker compose -f docker/compose.yml -f docker/compose.sample.yml up -d
+services:
+  app:
+    environment:
+      NUNEXT_SAMPLE: "1"

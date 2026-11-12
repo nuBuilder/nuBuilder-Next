@@ -37,7 +37,7 @@ if (nu_is_post()) {
 		if (!$errors) {
 			[$errors, $warn] = NuBranding::save([
 				'accent_on' => $b0['accent'] !== '', 'accent' => $b0['accent'],   // the accent colour is part of the themes (0.8.632) – an older one is kept
-				 'show_title' => nu_check('show_title') === '1', 'title' => nu_post('title'), 'title_phone' => nu_post('title_phone'), 'show_title_phone' => nu_check('show_title_phone') === '1',
+				 'show_title' => nu_check('show_title') === '1', 'title' => nu_post('title'), 'title_phone' => nu_post('title_phone'), 'show_title_phone' => nu_check('show_title_phone') === '1', 'pwa' => nu_check('pwa') === '1',
 				'favicon' => nu_check('favicon') === '1', 'logo_show' => nu_post('logo_show'), 'env_label' => nu_post('env_label'), 'env_color' => nu_post('env_color'),
 			], $files, ['light' => nu_check('remove_light') === '1', 'dark' => nu_check('remove_dark') === '1']);
 			if (!$errors) {
@@ -110,6 +110,10 @@ nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page'
 					<div class="form-check form-switch mb-3 d-flex align-items-center gap-1">
 						<input class="form-check-input me-1" type="checkbox" role="switch" id="show_title_phone" name="show_title_phone" value="1"<?= $b['show_title_phone'] ? ' checked' : '' ?>>
 						<label class="form-check-label" for="show_title_phone"><?= h(t('brand_show_title_phone')) ?></label><?= $tip(t('brand_show_title_phone_tip')) ?>
+					</div>
+					<div class="form-check form-switch mb-3 d-flex align-items-center gap-1">
+						<input class="form-check-input me-1" type="checkbox" role="switch" id="pwa" name="pwa" value="1"<?= $b['pwa'] ? ' checked' : '' ?>>
+						<label class="form-check-label" for="pwa"><?= h(t('brand_pwa')) ?></label><?= $tip(t('brand_pwa_tip')) ?>
 					</div>
 					<div class="form-check form-switch mb-4 d-flex align-items-center gap-1">
 						<input class="form-check-input me-1" type="checkbox" role="switch" id="favicon" name="favicon" value="1"<?= $b['favicon'] ? ' checked' : '' ?>>

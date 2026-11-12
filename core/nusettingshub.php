@@ -83,7 +83,7 @@ final class NuSettingsHub
 				self::ga() ? ['sso', t('sso_title'), nu_url('sso'), 'sso', true] : null,
 				$can('securitycheck') ? ['pwpolicy', t('pwp_title'), nu_url('pwpolicy'), 'pwpolicy', true] : null],
 			'mail'       => [$can('email') ? ['email', t('nav_email'), nu_url('email', ['tab' => 'settings']), 'email', true] : null],
-			'data'       => [$can('audit') || $can('update') || $can('notifications') || self::ga() || $can('log') ? ['data', t('sh_data'), $own('data'), 'settings', false] : null],
+			'data'       => [$can('audit') || $can('update') || $can('notifications') || $can('procedures') || self::ga() || $can('log') ? ['data', t('sh_data'), $own('data'), 'settings', false] : null],
 			'logs'       => self::toolPages('logs'),
 			'code'       => [$can('globalcode') ? ['globalcode', t('scode_title'), nu_url('globalcode'), 'globalcode', true] : null,
 				$can('globalcode') ? ['jquery', t('jq_title'), nu_url('jquery'), 'globalcode', true] : null],
@@ -210,6 +210,9 @@ final class NuSettingsHub
 			$add('data', t('aud_title') . ' · ' . t('aud_set_on'), t('aud_set_on_tip'), $own('data', 'shAudit'), 'audit', t($a['on'] ? 'sh_on' : 'sh_off'));
 			$add('data', t('aud_title') . ' · ' . t('aud_set_keep'), t('aud_set_keep_tip'), $own('data', 'shAudit'), 'audit keep_days', $a['keep_days'] ? t('aud_keep_days', $a['keep_days']) : t('aud_keep_ever'));
 			$add('data', t('aud_title') . ' · ' . t('aud_set_exclude'), t('aud_set_exclude_tip'), $own('data', 'shAudit'), 'audit exclude', $a['exclude']);
+		}
+		if (self::ga() || NuAdmin::can('procedures', 'change')) {
+			$add('data', t('cron_title') . ' · ' . t('cron_mail_label'), t('cron_mail_tip'), $own('data', 'shCron'), 'cron nucron.php run scheduled procedure e-mail', NuCronRun::settings()['mail']);
 		}
 		if (self::ga() || NuAdmin::can('notifications', 'change')) {
 			$k = NuNotify::settings()['keep_days'];

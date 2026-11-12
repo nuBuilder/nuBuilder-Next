@@ -61,6 +61,12 @@ page) for how to use it.
   views and queries to Excel or CSV, streamed for any size.
 - **Integration** – a REST API (OAuth 2.0 client credentials) with a playground, webhooks to n8n, Zapier, Teams or your own
   service (signed, with retries and a log), e-mail via SMTP or OAuth 2 (Google, Microsoft 365) with templates.
+- **Docker** – an image with every PHP extension (also SQL Server) and compose files: one command starts nuBuilder Next with
+  MariaDB, optionally with the sample application; a newer image updates the program and keeps the data.
+- **Installable app** – install on phones and computers with its own icon and window, the branding's name and colour,
+  favourites as shortcuts, a faster start and a clear page when offline.
+- **Procedures by cron** – one command runs a procedure from the server's cron, as a chosen user, with a log entry and an
+  e-mail when it fails.
 - **Projects** – group the forms, procedures, reports, tables and other parts of one piece of work, with "Suggest related",
   Markdown notes, to-dos with notifications, lists narrowed to the project, and export / import as one package.
 - **Cloners** – copy a single form or the whole application.

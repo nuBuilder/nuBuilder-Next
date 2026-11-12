@@ -73,7 +73,7 @@ $NUF_SETTINGS = [
 // ====================================================================================================================== bootstrap
 
 const NUF_VERSION = '%%VERSION%%';
-const NUF_ASSET_V = '%%ASSETV%%';   // hash of the script + style of this build: a new file is never shown with the browser's copy of the old ones
+const NUF_ASSET_V = '%%ASSETV%%';   // SHA-256 (start) of the script + style of this build: a new file is never shown with the browser's copy of the old ones
 const NUF_FORTE_EDITION = true;
 
 if (is_file(__DIR__ . '/nufiles-settings.php')) {

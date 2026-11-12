@@ -679,8 +679,9 @@ T.hash_bound = async (s) => {
 	const want = +sql(`SELECT COUNT(*) FROM sample_order WHERE ord_sample_customer_id = '${cust}'`);
 	const listWith = async (v) => {
 		await open(p, 'index.php?p=form&f=sampleorder');
-		await p.evaluate((v) => { nuSetProperty('PARENT_ID', v); nuForm('sampleorder', '', '', '', '0'); }, v);
-		await p.waitForLoadState('networkidle'); await p.waitForTimeout(300);
+		// a new page loads – wait for it by its marker, not for network quiet (the service worker / bell can keep the network busy, 0.8.1138)
+		await p.evaluate((v) => { window.e2eOld = 1; nuSetProperty('PARENT_ID', v); nuForm('sampleorder', '', '', '', '0'); }, v);
+		await p.waitForFunction(() => !window.e2eOld && document.readyState === 'complete' && window.nuNext && nuNext.browse, null, { timeout: 30000 }); await p.waitForTimeout(300);
 		return p.evaluate(() => ({ total: (window.nuNext && nuNext.browse) ? nuNext.browse.total : -1, err: !!document.querySelector('.alert-danger, #nuErrors .alert') }));
 	};
 	try {
@@ -1827,6 +1828,68 @@ T.hash_forte = async (s) => {
 		expect(sel === '' || sel === 'none', 'disabled chosen option has no value: ' + sel);
 	} finally {
 		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_hf'");
+	}
+};
+
+T.cron_run_procedure = async (s) => {
+	// 0.8.1135: php nucron.php run <code> – a procedure started by the server's cron: user, hash values, log entry, exit code, e-mail on failure
+	if (!SITE) { s.skip = 'needs SITE (nucron.php)'; return; }
+	const p = s.ga, port = 2600 + Math.floor(Math.random() * 300), slog = path.join(os.tmpdir(), 'e2e-cron-' + Date.now() + '.log'), sdata = slog + '.eml';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-cron.sql'), out = path.join(os.tmpdir(), 'e2e-cron-out-' + Date.now() + '.txt');
+	execSync('mysqldump ' + DB + ' zzzzsys_setup zzzzsys_email_log zzzzsys_php zzzzsys_access_php zzzzsys_nunext_setting > ' + keep);
+	const srv = require('child_process').spawn('python3', [path.join(__dirname, 'fakesmtp.py'), slog, String(port), sdata], { stdio: 'ignore' });
+	const mails = () => (fs.existsSync(sdata) ? fs.readFileSync(sdata, 'utf8').split('=====END=====').filter(x => x.trim()) : []);
+	const run = (args) => { const r = require('child_process').spawnSync('php', ['nucron.php', 'run'].concat(args), { cwd: SITE, encoding: 'utf8' }); return { code: r.status, out: r.stdout, err: r.stderr }; };
+	const logRow = (ev) => sql(`SELECT CONCAT(login, '|', details) FROM zzzzsys_nunext_log WHERE event = '${ev}' AND record_id LIKE 'e2e_cron%' ORDER BY log_time DESC, zzzzsys_nunext_log_id DESC LIMIT 1`);
+	try {
+		const ins = (id, php, glob) => execSync('mysql ' + DB, { input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_run, sph_global, sph_system, sph_php) VALUES ('" + id + "', '" + id + "', 'e2e cron', 'hide', '" + glob + "', '0', " + JSON.stringify(php) + ")" });
+		ins('e2e_cron_ok', "$h = nuHash(); file_put_contents(" + JSON.stringify(out).replace(/"/g, "'") + ", $h['USER_ID'] . '|' . ($h['E2E_DAY'] ?? '') . '|' . ($h['NU_CRON'] ?? '')); echo 'hello cron';", '0');
+		ins('e2e_cron_bad', "echo 'before'; nuRunQuery('SELECT 1'); throw new Exception('e2e boom');", '1');
+		sql("UPDATE zzzzsys_setup SET set_smtp_host = '127.0.0.1', set_smtp_port = " + port + ", set_smtp_use_ssl = '0', set_smtp_use_authentication = '0', set_smtp_from_address = 'noreply@example.com'");
+		await p.waitForTimeout(600);
+		// wrong calls
+		let r = run([]); expect(r.code === 2 && /Usage:/.test(r.err), 'no code = exit 2: ' + JSON.stringify(r));
+		r = run(['e2e_cron_ok', '--nope']); expect(r.code === 2, 'unknown option = exit 2');
+		r = run(['e2e_cron_ok', '--mail=not an address']); expect(r.code === 2, 'bad --mail = exit 2');
+		r = run(['e2e_cron_nope']); expect(r.code === 1 && /No procedure/.test(r.err), 'unknown procedure = exit 1: ' + JSON.stringify(r));
+		// a good run as the globeadmin with a hash value
+		r = run(['e2e_cron_ok', 'E2E_DAY=monday']);
+		expect(r.code === 0 && /hello cron/.test(r.out) && /e2e_cron_ok done/.test(r.out), 'good run: ' + JSON.stringify(r));
+		expect(fs.readFileSync(out, 'utf8') === 'globeadmin|monday|1', 'user, hash value, NU_CRON: ' + fs.readFileSync(out, 'utf8'));
+		expect(/"code":"e2e_cron_ok"/.test(logRow('procedure_cron')), 'log entry of the good run: ' + logRow('procedure_cron'));
+		r = run(['e2e_cron_ok', '--quiet']); expect(r.code === 0 && r.out === '', '--quiet prints nothing: ' + JSON.stringify(r.out));
+		// as a user: no right on the procedure = refused; with the right = runs as that user
+		const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+		if (uid) {
+			r = run(['e2e_cron_ok', '--user=sample_anna']); expect(r.code === 1, 'a user without the right is refused: ' + JSON.stringify(r));
+			sql("INSERT INTO zzzzsys_access_php (zzzzsys_access_php_id, slp_zzzzsys_access_id, slp_zzzzsys_php_id) SELECT 'e2e_cron_acc', sus_zzzzsys_access_id, 'e2e_cron_ok' FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'");
+			r = run(['e2e_cron_ok', '--user=sample_anna']); expect(r.code === 0 && fs.readFileSync(out, 'utf8').indexOf(uid + '|') === 0, 'runs as the user: ' + JSON.stringify(r) + ' ' + fs.readFileSync(out, 'utf8'));
+			r = run(['e2e_cron_ok', '--user=e2e_nobody']); expect(r.code === 1 && /No user/.test(r.err), 'unknown user = exit 1');
+		}
+		// a failing run: exit 1, error on stderr, log entry; no address = no e-mail
+		r = run(['e2e_cron_bad']);
+		expect(r.code === 1 && /e2e boom/.test(r.err) && /before/.test(r.out) && !/E-mail sent/.test(r.err), 'failing run: ' + JSON.stringify(r));
+		expect(/e2e boom/.test(logRow('procedure_cron_failed')), 'log entry of the failed run: ' + logRow('procedure_cron_failed'));
+		expect(mails().length === 0, 'no address, no e-mail');
+		// the address of Settings → Data & logs
+		await open(p, 'index.php?p=settings&s=data'); await p.waitForSelector('#shCronMail');
+		await p.fill('#shCronMail', 'not-an-address'); await Promise.all([p.waitForLoadState('networkidle'), p.click('#shDataSave')]);
+		expect(await p.locator('.alert-danger').count() > 0 && sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'cron_run'") === '0', 'an invalid address is not saved');
+		await p.fill('#shCronMail', 'ops@example.com; second@example.com'); await Promise.all([p.waitForLoadState('networkidle'), p.click('#shDataSave')]);
+		if (!(await p.locator('#shCronMail').count())) throw new Error('after save: ' + p.url() + ' ' + (await p.textContent('main')).replace(/\s+/g, ' ').slice(0, 300));
+		expect(await p.inputValue('#shCronMail') === 'ops@example.com, second@example.com', 'addresses saved: ' + await p.inputValue('#shCronMail'));
+		r = run(['e2e_cron_bad']);
+		expect(r.code === 1 && /E-mail sent to ops@example.com, second@example.com/.test(r.err), 'e-mail to the setting: ' + JSON.stringify(r));
+		let m = mails(); expect(m.length === 2 && /e2e_cron_bad/.test(m[0]) && /e2e boom/.test(m[1]), 'two e-mails naming procedure and error: ' + m.length);
+		// --mail replaces it, --mail= sends none; a good run never mails
+		r = run(['e2e_cron_bad', '--mail=other@example.com']); expect(/E-mail sent to other@example.com\n/.test(r.err) && mails().length === 3, '--mail replaces the setting: ' + r.err);
+		r = run(['e2e_cron_bad', '--mail=']); expect(r.code === 1 && mails().length === 3, '--mail= sends none');
+		r = run(['e2e_cron_ok']); expect(r.code === 0 && mails().length === 3, 'a good run sends nothing');
+	} finally {
+		srv.kill();
+		for (const f of [out, slog, sdata]) try { fs.unlinkSync(f); } catch (e) { /* not written */ }
+		sql("DELETE FROM zzzzsys_nunext_log WHERE record_id LIKE 'e2e_cron%' OR (event = 'cron_run_settings')");
+		execSync('mysql ' + DB + ' < ' + keep);
 	}
 };
 
@@ -5871,6 +5934,54 @@ T.logo_hide = async (s) => {
 };
 
 // 0.8.736: Branding – own title field (wins over $nuConfigTitle), "Show the title" label follows Show logo
+T.pwa_install = async (s) => {
+	// 0.8.1136: installable app – manifest (name, icons, shortcuts of the user), service worker (static files cached, pages never), offline page, switch in Branding
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-pwa.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_nunext_setting > ' + keep);
+	const p = await login(GA[0], GA[1]);
+	try {
+		const head = await p.evaluate(() => ({ m: (document.querySelector('link[rel=manifest]') || {}).href || '', theme: !!document.querySelector('meta[name=theme-color]'), apple: !!document.querySelector('link[rel=apple-touch-icon]') }));
+		expect(/p=pwa&a=manifest/.test(head.m) && head.theme && head.apple, 'head tags: ' + JSON.stringify(head));
+		const man = await p.evaluate(async (u) => (await fetch(u, { credentials: 'include' })).json(), head.m);
+		expect(man.display === 'standalone' && man.scope === './' && man.icons.length === 3 && man.icons.some(i => i.purpose === 'maskable'), 'manifest: ' + JSON.stringify(man).slice(0, 300));
+		const ic = await p.evaluate(async (u) => { const r = await fetch(new URL(u, location.href)); const b = new Uint8Array(await r.arrayBuffer()); return [r.headers.get('content-type'), b[1], b[2], b[3]]; }, man.icons[1].src);
+		expect(ic[0] === 'image/png' && String.fromCharCode(ic[1], ic[2], ic[3]) === 'PNG', 'icon is a PNG: ' + ic);
+		// the worker: registered for the folder, controls the page after a reload
+		await p.evaluate(() => navigator.serviceWorker.ready);
+		await open(p, 'index.php?p=home');
+		const ctl = await p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return [!!navigator.serviceWorker.controller, r ? r.scope : '']; });
+		expect(ctl[0] && /\/nunext\/$/.test(ctl[1]), 'worker controls the page, scope = folder: ' + ctl);
+		const cached = await p.evaluate(async () => { const ks = await caches.keys(); const urls = []; for (const k of ks) for (const r of await (await caches.open(k)).keys()) urls.push(r.url); return [ks, urls]; });
+		expect(cached[0].length === 1 && /^nunext-/.test(cached[0][0]), 'one cache: ' + cached[0]);
+		expect(cached[1].some(u => /assets\/css\/nuapp\.css\?v=/.test(u)) && cached[1].some(u => /p=pwa&a=offline/.test(u)), 'static files + offline page cached');
+		expect(!cached[1].some(u => /p=home|p=form|p=users/.test(u)), 'no page cached: ' + cached[1].filter(u => /index\.php/.test(u)).join(' '));
+		// offline: a page gives the offline page, not the browser's error
+		await p.context().setOffline(true);
+		await p.goto(BASE + 'index.php?p=users').catch(() => {});
+		const off = await p.evaluate(() => [!!document.getElementById('nuOffline'), (document.querySelector('.nuOffBtn') || {}).textContent || '']);
+		expect(off[0] && /Try again/.test(off[1]), 'offline page: ' + off);
+		await p.context().setOffline(false);
+		await open(p, 'index.php?p=home');
+		expect(!(await p.locator('#nuOffline').count()), 'back online: the page itself');
+		// favourites → shortcuts
+		const favs = await p.locator('.nuHomeStrip[data-nu-strip="fav"] a[href]').count();
+		if (favs) { const m2 = await p.evaluate(async (u) => (await fetch(u, { credentials: 'include' })).json(), head.m); expect(Array.isArray(m2.shortcuts) && m2.shortcuts.length > 0, 'shortcuts from favourites'); }
+		// switched off in Branding: no manifest, the worker goes, the cache is emptied
+		await open(p, 'index.php?p=branding');
+		await p.uncheck('#pwa');
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		await open(p, 'index.php?p=home');
+		expect(!(await p.locator('link[rel=manifest]').count()) && await p.getAttribute('meta[name=nu-pwa]', 'content') === 'off', 'off: no manifest');
+		let gone = false;
+		for (let i = 0; i < 20 && !gone; i++) { await p.waitForTimeout(300); gone = await p.evaluate(async () => !(await navigator.serviceWorker.getRegistration()) && (await caches.keys()).filter(k => k.indexOf('nunext-') === 0).length === 0); }
+		expect(gone, 'worker and cache removed');
+		expect(p.errors.length === 0, 'no JS errors: ' + p.errors.join(' | '));
+	} finally {
+		await p.context().close();
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
 T.branding_title = async (s) => {
 	const had = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'") !== '0';
 	if (had) { s.skip = 'branding set'; return; }
@@ -13814,7 +13925,8 @@ T.obj_menu_geometry = async (s) => {
 		// ⋮ menu: the form's table in the database tool (0.8.923)
 		await p.keyboard.press('Escape');
 		await p.click('#nuOptions'); await p.waitForTimeout(300);
-		const found = await p.evaluate(() => { HTMLFormElement.prototype.submit = function () { window.e2ePosted = Array.from(new FormData(this)).filter((kv) => kv[0] !== '_csrf'); }; const b = document.querySelector('.nuOptionsList [data-nu-act="db_table"]'); if (!b) return false; b.click(); return true; });
+		const found = await p.evaluate(() => { HTMLFormElement.prototype.submit = function () { window.e2ePosted = Array.from(new FormData(this)).filter((kv) => kv[0] !== '_csrf'); }; const b = document.querySelector('.nuOptionsList [data-nu-act="db_table"]'); if (!b) return false; window.e2eDbLabel = b.textContent.trim(); b.click(); return true; });
+		if (found) expect(/^Database$/.test(await p.evaluate(() => window.e2eDbLabel)), 'the entry is named Database: ' + await p.evaluate(() => window.e2eDbLabel));
 		await p.waitForTimeout(500);
 		const posted = found ? await p.evaluate(() => window.e2ePosted || null) : 'none';
 		// without phpMyAdmin / Adminer on the test site the entry is not offered (as Database)
@@ -14782,6 +14894,37 @@ T.form_selects_searchable = async (s) => {             // 0.8.1079: selects of f
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
+T.pane_tab_code_dot = async (s) => {
+	// 0.8.1133: a dot on the side pane's PHP / JavaScript tab while it holds code (follows typing); the procedure form's JS tab likewise
+	const p = s.ga, F = 'samplecustomer';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-ptcd.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_php > ' + keep);
+	const has = (id) => p.evaluate((id) => { const b = document.getElementById(id); return [b.classList.contains('nuHasCode'), getComputedStyle(b, '::after').content !== 'none', b.title, b.getAttribute('aria-label') || '']; }, id);
+	try {
+		execSync('mysql ' + DB, {input: "UPDATE zzzzsys_form SET sfo_browse_javascript = '// e2e dot' WHERE zzzzsys_form_id = '" + F + "'; DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = '" + F + "_BB';"});
+		await open(p, 'index.php?p=form&f=' + F); await p.waitForSelector('#nuDesignMore');
+		await p.click('#nuDesignMore'); await p.click('#nuBrowsePhpEdit'); await p.waitForSelector('#nuBsqPane .nuBsqBody[data-code="php"] .CodeMirror');
+		let php = await has('nuBsqTabPhp'), js = await has('nuBsqTabJs');
+		expect(!php[0] && !php[1] && php[2] === '', 'empty PHP tab without a dot: ' + JSON.stringify(php));
+		expect(js[0] && js[1] && js[2] !== '' && js[3].indexOf('JavaScript, ') === 0, 'JavaScript tab with code has the dot: ' + JSON.stringify(js));
+		for (const id of ['nuBsqTabSql', 'nuBsqTabCols']) expect(!(await has(id))[0], id + ' never marked');
+		await p.evaluate(() => { document.querySelector('#nuBsqPane .nuBsqBody[data-code="php"] .CodeMirror').CodeMirror.setValue('// x'); });
+		expect((await has('nuBsqTabPhp'))[0], 'the dot appears while typing');
+		await p.evaluate(() => { document.querySelector('#nuBsqPane .nuBsqBody[data-code="php"] .CodeMirror').CodeMirror.setValue('  \n'); });
+		expect(!(await has('nuBsqTabPhp'))[0], 'blank code = no dot');
+		await p.evaluate(() => { document.querySelector('#nuBsqPane .nuBsqBody[data-code="php"] .CodeMirror').CodeMirror.setValue(''); });
+		// procedure form
+		await open(p, 'index.php?p=procedures&id=new'); await p.waitForSelector('#procTabJsBtn');
+		expect(!(await has('procTabJsBtn'))[0] && (await p.locator('#procTabJsBtn .badge').count()) === 0, 'new procedure: JS tab without dot and without the old badge');
+		await p.click('#procTabJsBtn'); await p.waitForTimeout(300);
+		await p.evaluate(() => { document.querySelector('#procTabJs .CodeMirror').CodeMirror.setValue('function nuOnProcedureRun() {}'); });
+		const pj = await has('procTabJsBtn');
+		expect(pj[0] && pj[1] && pj[3].indexOf('JS, ') === 0, 'procedure JS tab gets the dot while typing: ' + JSON.stringify(pj));
+		await p.evaluate(() => { window.onbeforeunload = null; document.querySelectorAll('form[data-nu-guard]').forEach((f) => f.removeAttribute('data-nu-guard')); });
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
 T.browse_pane_more = async (s) => {
 	// 0.8.1108: the list's side pane – tabs PHP (Before Browse) and JavaScript, more settings per column (format, filter, badge, click), row details
 	const p = s.ga, F = 'samplecustomer';

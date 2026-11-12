@@ -111,6 +111,7 @@
 <tbody>
 <tr><td><code>php nucron.php</code></td><td>Housekeeping, e.g. every 15 minutes from cron: removes expired tokens and sessions, old API counters, log rows beyond the retention and temporary files, retries webhook calls, finishes an unattended update whose database steps are pending. Without cron, page views do this now and then.</td></tr>
 <tr><td><code>php nucron.php update …</code></td><td>Unattended update from a URL, a zip file or GitHub (<a href="#update-unattended">Unattended update</a>)</td></tr>
+<tr><td><code>php nucron.php run &lt;code&gt; …</code></td><td>Runs a procedure – for jobs the server's cron starts at set times (<a href="#procedure-cron">Procedures by cron</a>)</td></tr>
 <tr><td><code>php nucron.php integrity [--json]</code></td><td>The <a href="#integrity">integrity check</a> of the database; exit code 1 when it finds problems</td></tr>
 <tr><td><code>php nucron.php iprules off</code></td><td>Switches <a href="#ip-access">IP access</a> off when its rules lock everybody out (the rules stay stored)</td></tr>
 <tr><td><code>php nucron.php passkeys off &lt;login name&gt;</code></td><td>Removes every <a href="#passkeys-admin">passkey</a> of a user – lost device; the globeadmin: his login name or <code>globeadmin</code></td></tr>

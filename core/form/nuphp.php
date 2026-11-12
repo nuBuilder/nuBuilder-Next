@@ -82,7 +82,7 @@ final class NuPhp
 			error_log("nuBuilder Next PHP $label: " . $e->getMessage() . ' line ' . $e->getLine());
 			$u = NuAuth::user();
 			self::$errors[] = [
-				'message' => ($u && $u['globeadmin']) || nu_debug()
+				'message' => ($u && $u['globeadmin']) || nu_debug() || PHP_SAPI === 'cli'   // cli: nucron.php run – the administrator's own terminal / error mail (0.8.1135)
 					? "$label: " . $e->getMessage() . ' (line ' . $e->getLine() . ')'
 					: t('form_err_php', $label),
 				'field' => '',

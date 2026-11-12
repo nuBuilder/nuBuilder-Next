@@ -5,13 +5,13 @@
 #   GET  /authorize?…                           checks client_id cid, S256 challenge, redirect_uri, state, nonce → 302 redirect_uri?code=…&state=…
 #   POST /token                                 code + code_verifier (S256) + client cid / csec → id_token RS256 (wrong key with bad_sig)
 # Every request is logged as one line. Needs the Python package "cryptography".
-import base64, hashlib, json, secrets, sys, time, urllib.parse
+import base64, hashlib, json, os, secrets, sys, time, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes
 
 LOG, PORT = sys.argv[1], int(sys.argv[2])
-ISS = 'http://127.0.0.1:%d' % PORT
+ISS = f'http://127.0.0.1:{PORT}'
 KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 OTHER = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 person = {'email': 'sso.user@example.com', 'name': 'SSO User', 'groups': []}
@@ -34,11 +34,13 @@ def jwt(claims, key):
 
 
 class H(BaseHTTPRequestHandler):
-    def log_message(self, *a):
-        """Keep the test output quiet: the request log of the base class is not written."""
-        return
+    def log_message(self, format, *args):   # the base class's signature (pylint: disable=redefined-builtin)
+        """Keeps the test output quiet: the request log is written only with NUNEXT_FAKE_VERBOSE=1."""
+        if os.environ.get('NUNEXT_FAKE_VERBOSE'):
+            super().log_message(format, *args)
 
-    def note(self, s):
+    @staticmethod
+    def note(s):
         with open(LOG, 'a') as f:
             f.write(s + '\n')
 
@@ -63,7 +65,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == '/authorize':
             ok = q.get('client_id') == 'cid' and q.get('response_type') == 'code' and q.get('code_challenge_method') == 'S256' and q.get('code_challenge') and q.get('nonce') \
                 and q.get('state', '').startswith('sso.') and 'openid' in q.get('scope', '').split()
-            self.note('authorize ok=%s redirect=%s' % (ok, q.get('redirect_uri')))
+            self.note(f"authorize ok={ok} redirect={q.get('redirect_uri')}")
             red = q.get('redirect_uri', '')
             if person.get('deny') or not ok:
                 loc = red + '?' + urllib.parse.urlencode({'error': 'access_denied', 'error_description': 'denied by the test', 'state': q.get('state', '')})
@@ -88,7 +90,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == '/token':
             f = dict(urllib.parse.parse_qsl(body))
             c = codes.pop(f.get('code', ''), None)
-            self.note('token code=%s' % ('ok' if c else 'bad'))
+            self.note(f"token code={'ok' if c else 'bad'}")
             if f.get('client_id') != 'cid' or f.get('client_secret') != 'csec':
                 return self.answer(401, {'error': 'invalid_client'})
             if not c or f.get('redirect_uri') != c['redirect'] or b64u(hashlib.sha256(f.get('code_verifier', '').encode()).digest()) != c['challenge']:

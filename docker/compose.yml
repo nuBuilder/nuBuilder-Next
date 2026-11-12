@@ -1,0 +1,35 @@
+# nuBuilder Next with MariaDB – from the project folder:
+#   docker compose -f docker/compose.yml up -d        then open http://localhost:8080
+# The globeadmin password is printed by "docker compose -f docker/compose.yml logs app" unless NUNEXT_ADMIN_PASSWORD is set
+# (e.g. in a file docker/.env:  NUNEXT_ADMIN_PASSWORD=…  NUNEXT_DB_PASSWORD=…). Details: docker/README.md
+name: nunext
+services:
+  app:
+    image: ghcr.io/nubuilder/nubuilder-next:${NUNEXT_VERSION:-edge}
+    build: { context: .., dockerfile: docker/Dockerfile }
+    ports: ["${NUNEXT_PORT:-8080}:80"]
+    environment:
+      NUNEXT_DB_HOST: db
+      NUNEXT_DB_NAME: nunext
+      NUNEXT_DB_USER: nunext
+      NUNEXT_DB_PASSWORD: ${NUNEXT_DB_PASSWORD:-nunext-db-pw}
+      NUNEXT_ADMIN_PASSWORD: ${NUNEXT_ADMIN_PASSWORD:-}
+      NUNEXT_BASE_URL: ${NUNEXT_BASE_URL:-}
+      NUNEXT_SAMPLE: ${NUNEXT_SAMPLE:-0}
+    volumes: ["app:/var/www/html"]
+    depends_on: { db: { condition: service_healthy } }
+    restart: unless-stopped
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: nunext
+      MARIADB_USER: nunext
+      MARIADB_PASSWORD: ${NUNEXT_DB_PASSWORD:-nunext-db-pw}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes: ["db:/var/lib/mysql"]
+    healthcheck: { test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"], interval: 5s, retries: 30 }
+    restart: unless-stopped
+volumes:
+  app:
+  db:

@@ -1,0 +1,17 @@
+# files that do not belong into the Docker image (docker/Dockerfile copies the project folder)
+.git
+.github
+dev
+docker/compose*.yml
+docker/.env
+nuconfig.php
+_backup
+_update
+_libsrc
+temp/*
+vendor/packs
+CLAUDE.md
+TODO.md
+**/__pycache__
+*.zip
+*.key

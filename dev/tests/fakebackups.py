@@ -9,11 +9,11 @@ with zipfile.ZipFile(src) as z:
 now = datetime.datetime.now(datetime.timezone.utc)
 for i in range(1, count + 1):
     when = now - datetime.timedelta(days=i)
-    ver = '0.8.%d' % (199 - i)
+    ver = f'0.8.{199 - i}'
     m = dict(meta, version=ver, created=when.strftime('%Y-%m-%dT%H:%M:%S+00:00'),
-             reason='before rollback' if i == 5 else 'update to 0.8.%d' % (200 - i), by='e2e', sql=None)
+             reason='before rollback' if i == 5 else f'update to 0.8.{200 - i}', by='e2e', sql=None)
     m.pop('sql', None)
-    name = 'nunext-e2e-%s-%s-%s.zip' % (ver, when.strftime('%Y%m%d-%H%M%S'), secrets.token_hex(4))
+    name = f"nunext-e2e-{ver}-{when.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(4)}.zip"
     with zipfile.ZipFile(os.path.join(dest, name), 'w', zipfile.ZIP_DEFLATED) as out:
         out.writestr('backup.json', json.dumps(m))
         out.writestr('readme.txt', 'e2e test backup ' + str(i) + ' ' + ('x' * (i * 1000)))

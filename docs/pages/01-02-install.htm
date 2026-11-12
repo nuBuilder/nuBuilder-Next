@@ -42,6 +42,29 @@
 <p data-level="detail"><b>Own tables</b>: nuBuilder Next's tables (<code>zzzzsys_nunext_*</code>: log, form history, 2FA, tokens, sessions …) are created as InnoDB by the installer or by the globeadmin's first sign-in – never by a request without a login (login page, failed sign-in), and not at all on an existing nuBuilder Forte database, which is blocked. Until the globeadmin has signed in once, other users see “not set up yet”. Later updates add their database steps on the next signed-in request (or <em>Update</em>, <code>nucron.php</code>). Failed sign-ins are only counted for the login limit once the tables exist.</p>
 </div>
 	<div class="doc-sub" data-doc="admin">
+<h3 id="install-docker">Docker</h3>
+<p>The repository has a Docker image and compose files in the folder <code>docker/</code> – a quick way to try nuBuilder Next or to run a small installation. The image holds PHP 8.3 with Apache and every PHP extension nuBuilder Next uses, also the driver for SQL Server.</p>
+<pre><code># with MariaDB, from the project folder
+docker compose -f docker/compose.yml up -d
+
+# the same with the sample application
+docker compose -f docker/compose.yml -f docker/compose.sample.yml up -d</code></pre>
+<p>Then open <code>http://localhost:8080</code> and sign in as <code>globeadmin</code>. The password is in the container's log (<code>docker compose -f docker/compose.yml logs app</code>), or set it beforehand with <code>NUNEXT_ADMIN_PASSWORD</code>. The database is set up on the first start; no installer runs.</p>
+<table class="table table-sm">
+<thead><tr><th>Variable</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>NUNEXT_DB_HOST</code></td><td>Database server. Set = the container writes <code>nuconfig.php</code> and sets the database up; not set = the installer runs in the browser (its setup token is in the log).</td></tr>
+<tr><td><code>NUNEXT_DB_TYPE</code>, <code>_PORT</code>, <code>_NAME</code>, <code>_USER</code>, <code>_PASSWORD</code></td><td><code>mysql</code> (default) or <code>sqlsrv</code>, and the connection</td></tr>
+<tr><td><code>NUNEXT_ADMIN_PASSWORD</code></td><td>The globeadmin's password (default: a random one, printed in the log)</td></tr>
+<tr><td><code>NUNEXT_BASE_URL</code></td><td>The address users open, for links in e-mails</td></tr>
+<tr><td><code>NUNEXT_SAMPLE</code></td><td><code>1</code> = install the sample application once</td></tr>
+<tr><td><code>NUNEXT_PORT</code>, <code>NUNEXT_VERSION</code></td><td>Port on the computer (8080) and the image tag (<code>edge</code> = the newest release)</td></tr>
+</tbody>
+</table>
+<p><strong>Data</strong> lives in two volumes: the program folder (with <code>nuconfig.php</code>, custom pages, backups and library packs) and the database. <strong>Updates</strong> work both ways: <em>Update</em> in the application as on any server, or a newer image – on its start the container copies the new program files into the volume (leaving settings, custom pages and data alone) and runs the database steps of the new version.</p>
+<p data-level="detail">Library packs (TCPDF for reports, PHPMailer …) are installed from the GitHub release as on other servers: Update → Libraries. For HTTPS put the container behind a reverse proxy (Caddy, Traefik, nginx); nuBuilder Next reads <code>X-Forwarded-Proto</code>. The image is for trying out and small installations – it is not hardened for production.</p>
+</div>
+	<div class="doc-sub" data-doc="admin">
 <h3 id="setup-wizard">Setup wizard</h3>
 <p>Right after the globeadmin's sign-in, nuBuilder Next opens the <b>setup wizard</b> – after a new installation and also when <code>nuconfig.php</code> already exists, e.g. nuBuilder Next added to a running nuBuilder Forte. It asks only for nuBuilder Next's settings; the database is not touched otherwise. Nothing changes before <i>Apply</i> on the last step.</p>
 <ul>

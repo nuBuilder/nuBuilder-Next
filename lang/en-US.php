@@ -70,6 +70,7 @@ return [
 	'dash_thresholds' => 'Color by thresholds',
 	'dash_thresholds_tip' => 'Higher is better: from "high" green, below "low" red, between orange. Switched off: the other way round. Empty = no color. With a previous value the change ▲▼ is colored the same way.',
 	'brand_card_hint' => 'Own logo, accent color and an environment label ("TEST") for this installation.',
+	'brand_pwa_tip' => 'Phones and computers can install nuBuilder Next as an app: its own icon on the home screen, its own window without browser bars and a faster start (files of the program are kept on the device). Pages and data always come from the server – nothing is stored for reading offline. Name and color come from this page; the icon is the logo when "Use as browser icon" is on. Needs HTTPS.',
 	'theme_empty_hint' => 'An empty value keeps nuBuilder Next\'s own look. Dark mode: an empty color keeps nuBuilder Next\'s dark color.',
 	'theme_k_accent' => 'Accent color',
 	'theme_k_focus' => 'Focus color',

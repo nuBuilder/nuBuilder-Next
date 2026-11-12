@@ -32,6 +32,23 @@
 <li>Your own helper functions: <code>$nuConfigIncludePHP</code>.</li>
 </ul>
 </div>
-	<p class="doc-see">See also: <a href="#form-lifecycle">Form lifecycle and event order</a> · <a href="#php-api">PHP functions</a></p>
+	<div class="doc-sub" data-doc="admin"><h3 id="procedure-cron">Procedures by cron</h3>
+<p>A procedure that should run by itself – every night, every hour, on the first of the month – is started by the server's cron. The crontab decides when; nuBuilder Next runs the procedure, writes a log entry and sends an e-mail when it fails.</p>
+<pre><code># every day at 6:00
+0 6 * * *  php /var/www/html/nunext/nucron.php run my_procedure --quiet
+
+# as a user, with a value the code reads as #PERIOD#
+0 2 1 * *  php /var/www/html/nunext/nucron.php run month_end --user=service PERIOD=last_month</code></pre>
+<ul>
+<li><strong>The code</strong> is the procedure's code. Form events cannot be run this way.</li>
+<li><code>--user=&lt;login name&gt;</code>: the user the procedure runs as – its rights and <code>#USER_ID#</code>. Without it, the globeadmin. A user needs the right on the procedure, as when starting it from a button.</li>
+<li><code>name=value</code>: hash variables of the run, as <code>nuSetProperty()</code> would set them. <code>#NU_CRON#</code> is <code>1</code> in every such run, so the code can tell it from a start by hand.</li>
+<li><strong>Result</strong>: what the code prints is printed (<code>--quiet</code>: only when it fails). The run counts as failed when the code throws an error, a query fails with an exception or the code calls <code>nuDisplayError()</code>. Exit code 0 = done, 1 = failed, 2 = wrong call.</li>
+<li><strong>Log</strong>: every run is one entry in the <a href="#log">log</a> (<em>Procedure run by cron</em> / <em>… failed</em>, with the duration and the error).</li>
+<li><strong>E-mail when a run fails</strong>: <em>Settings → Data &amp; logs → Scheduled procedures</em> takes one or more addresses; the e-mail names the procedure, the time, the user, the error and the output, and goes through the <a href="#email">e-mail settings</a>. <code>--mail=&lt;address&gt;</code> replaces the address for one job, <code>--mail=</code> sends none.</li>
+</ul>
+<p data-level="detail">Run the command as the web server's user. A job that runs longer than its interval is started again by cron while the first still runs – guard such code yourself, or use <code>flock</code> in the crontab line.</p>
+</div>
+<p class="doc-see">See also: <a href="#form-lifecycle">Form lifecycle and event order</a> · <a href="#php-api">PHP functions</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuprocedure.php</code></li><li><code>core/form/nuphp.php</code></li><li><code>pages/nuprocedures.php</code></li></ul></details>
 </section>

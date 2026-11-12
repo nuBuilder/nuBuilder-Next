@@ -34,6 +34,16 @@
 		if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: ta.getAttribute('data-mode') === 'php' ? 'PHP' : 'JS', db: D.db, readOnly: ro});
 		if (tools && !ro && ta.id === 'sph_php' && window.NuHashVars && D.catalog) NuHashVars.attach(cm, tools, {catalog: D.catalog});
 	});
+	// a dot on the JS tab while it holds code (0.8.1133; was a badge "1" set by the server only)
+	var jsTab = $('#procTabJsBtn');
+	function jsMark() {
+		if (!jsTab) return;
+		var has = (editors.sph_javascript ? editors.sph_javascript.getValue() : ($('#sph_javascript') || {}).value || '').trim() !== '';
+		jsTab.classList.toggle('nuHasCode', has);
+		if (has) { jsTab.title = jsTab.getAttribute('data-has'); jsTab.setAttribute('aria-label', 'JS, ' + jsTab.title); } else { jsTab.removeAttribute('title'); jsTab.removeAttribute('aria-label'); }
+	}
+	if (editors.sph_javascript) editors.sph_javascript.on('change', jsMark);
+	jsMark();
 	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(document.getElementById('nuRecordForm'));   // syntax errors: ask before saving (0.8.781)
 	// editors in hidden tabs need a refresh when shown
 	$$('#procTabs [data-bs-toggle="tab"]').forEach(function (b) {

@@ -74,6 +74,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       call per row (not covered by the e2e test).
 - [ ] **Library packs on a live server** (0.8.865): Update → Libraries status "Installed (pack / nuBuilder Forte's copy / copied by hand)".
 - [ ] **Database tools in an installed app** (0.8.852–0.8.854): phpMyAdmin and Adminer open from the app window (Chrome / Edge "Install").
+- [ ] **Installable app** (0.8.1136) – on HTTPS: install on Android / desktop Chrome, Add to Home Screen on iPhone; icon, name, favourites as shortcuts, offline page in airplane mode, Branding switch off removes the worker; own logo as icon.
 
 ## Sign-in and security
 - [ ] **Hardening from the security check of 0.8.1061** (decision: which to build) – no exploitable finding; four optional points:
@@ -211,6 +212,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Browsers**: Safari (ApexCharts on the start page, CSP style-src-attr), phones with real touch (long tap menus, side bar, design mode).
 - [ ] **Real data**: list views of every system list (default columns, sort, filters, print), `#USER_PERMISSIONS#` with real permission
       items, sub-form link columns without an index on forms made before 0.8.366.
+- [ ] **Code dot on tabs** (0.8.1133) – list side pane PHP / JavaScript and the procedure form's JS tab show a dot while they hold code; follows typing.
 
 ## Users, access levels and permissions
 - [ ] **User field defaults** (0.8.1074) – please verify: today+30d, next:EMP-{0000}, {first_name}.{last_name}, = SELECT …, proc:<code> on a new user, data import and REST
@@ -271,6 +273,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       [--rule=…]` (~530 responsive classes in ~70 files) and the Compatibility check point BS6 (developer mode). At the switch: nubs.js
       imports the modules and sets `window.bootstrap` for Forte form code; the script rewrites the classes; side bar → drawer; themes
       accordion → details; check every page (smoke, a11y); decide on a compatibility CSS for application code.
+- [ ] **Tom Select 2.7.0** (0.8.1131) – searchable selects in light / dark (caret, empty option first, search with ß / umlauts).
 
 ## Update page, backups and admin tools
 - [ ] **File Manager tiles** (0.8.1121) – please verify with a folder of real photos (large phone pictures, orientation, loading speed) and in dark mode; no note is shown when PHP has no GD (tiles then show icons)
@@ -295,6 +298,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       languages (French, Italian … – nuFiles has English and German).
 - [ ] **CI on GitHub** (0.8.889 / 0.8.903): mysql + mssql jobs with the self-test step and the PHP message check (start-up warnings
       "in Unknown on line 0" are notices now).
+- [ ] **Procedures by cron** (0.8.1135) – `php nucron.php run <code>` on the live server: as globeadmin and with --user, a failing run → log entry + e-mail to Settings → Data & logs → Scheduled procedures; nucron.php with the database down now exits 1.
 
 ## Samples
 - [ ] **Sales sample showcase** (0.8.691, version 19 – *Refresh*): orders Status badges + filters Customer / Status, customer name →
@@ -440,7 +444,7 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [ ] **8 · Accessibility audit (WCAG 2.2 AA)** – keyboard use of forms and lists, screen reader labels, contrast in both themes.
 - [ ] **7 · Record-level rights** – rules per access level like "only own department" without writing them into every browse SQL.
 - [ ] **7 · Excel (.xlsx) export and import** – partly done (list exports 0.8.398, import 0.8.755, data export 0.8.758); subforms and reports to xlsx open.
-- [ ] **7 · Scheduled procedures** – run a procedure hourly / daily / monthly through nucron.php, with log and e-mail on error.
+- [x] **7 · Scheduled procedures** – built in 0.8.1135 as a command for the server's cron (`php nucron.php run <code>`, log entry, e-mail on failure). Not built (the owner chose the small version): schedules, run list and "Run now" inside the application for servers without crontab access.
 - [x] **7 · Password policy** – built in 0.8.745 (verify points under Sign-in and security).
 - [x] **7 · Webhooks** – built in 0.8.715.
 - [ ] **7 · Global search / command palette** – Ctrl+K: find forms, records (chosen fields), settings and pages from anywhere.
@@ -450,7 +454,8 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [x] **6 · In-app notifications** – the notification centre (0.8.357).
 - [ ] **6 · Recycle bin for records** – deleted records restorable for n days (soft delete per form, opt-in).
 - [x] **6 · Dashboard builder** – built in 0.8.298.
-- [ ] **6 · Docker image / docker-compose** – quick install and demo; CI with MySQL 8, MariaDB and SQL Server.
+- [x] **6 · Docker image / docker-compose** – built in 0.8.1137 (docker/, CI matrix MariaDB 10.11 / 11.4 + MySQL 8.4 × PHP 8.2 / 8.3, CI job docker, image to ghcr.io at every published release).
+- [ ] **Docker, please verify** (0.8.1137) – nothing of it could run here (no registry access): the first push runs the CI jobs mysql (6 combinations; MySQL 8.4 with the Forte dump is new) and docker (build + compose + smoke); the first published release runs .github/workflows/docker.yml (amd64 + arm64; check the package is public under the repository's Packages). Then try docker/compose.yml on a computer with Docker.
 - [ ] **6 · Health / status endpoint** – JSON for monitoring tools: database reachable, disk space, age of last backup and cron run.
 - [ ] **5–6 · The settings marked "Not yet"** on the Settings page – sticky list headers, close after save, user form labels, keep session
       alive, browser tab title, calendar options … Do the ones users ask for.
@@ -461,7 +466,7 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [ ] **5 · Smarter code editor** – autocomplete of tables, columns and hash variables in SQL / PHP / JS (functions done in 0.8.593).
 
 ### Nice to have (1–4)
-- [ ] **4 · Installable app (PWA)** – icon on the phone, faster start; offline only for reading.
+- [x] **4 · Installable app (PWA)** – built in 0.8.1136 (manifest, icons, service worker for static files, offline page, switch in Branding). Not built: reading offline (pages stay on the server – option C2 of the proposal, if users ask).
 - [x] **4 · "Who is editing" presence** – built with the concurrent-edit protection (0.8.401).
 - [ ] **3 · File storage on S3 / WebDAV** instead of the server folder / database.
 - [ ] **3 · Multi-tenancy** – see the proposal above.
