@@ -2739,6 +2739,8 @@ return [
 	'builder_subform_type' => 'Diseño',
 	'builder_subform_grid' => 'Cuadrícula (una fila por registro)',
 	'builder_subform_formlayout' => 'Formulario (una tarjeta por registro)',
+	'ds_sf_fit' => 'Ajustar las columnas al ancho',
+	'ds_sf_fit_tip' => 'La tabla ocupa el ancho del subformulario y las columnas lo reparten según sus anchos. Ninguna columna baja de aproximadamente el 60 % de su ancho; por debajo, la tabla se desplaza horizontalmente. Desactivado: anchos fijos en píxeles como en nuBuilder Forte.',
 	'builder_image_file' => 'Imagen (archivos de nuBuilder Forte)',
 	'builder_image_help' => 'Las imágenes se guardan en zzzzsys_file (nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'Filtro',

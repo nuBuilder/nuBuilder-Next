@@ -2364,6 +2364,8 @@ return [
 	'builder_subform_type' => 'Layout',
 	'builder_subform_grid' => 'Grid (one row per record)',
 	'builder_subform_formlayout' => 'Form (one card per record)',
+	'ds_sf_fit' => 'Fit columns to the width',
+	'ds_sf_fit_tip' => 'The table fills the width of the sub-form and the columns share it in the proportions of their widths. A column never gets narrower than about 60 % of its width – below that the table scrolls sideways as usual. Off: fixed pixel widths as in nuBuilder Forte.',
 	'builder_image_file' => 'Image (nuBuilder Forte files)',
 	'builder_image_help' => 'Images are stored in zzzzsys_file (nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'Filter',

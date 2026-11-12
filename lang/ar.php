@@ -2740,6 +2740,8 @@ return [
 	'builder_subform_type' => 'التخطيط',
 	'builder_subform_grid' => 'شبكة (صف لكل سجل)',
 	'builder_subform_formlayout' => 'نموذج (بطاقة لكل سجل)',
+	'ds_sf_fit' => 'ملاءمة الأعمدة للعرض',
+	'ds_sf_fit_tip' => 'يملأ الجدول عرض النموذج الفرعي وتتقاسم الأعمدة هذا العرض بنسبة عروضها. لا يصبح أي عمود أضيق من نحو 60 % من عرضه – وعندها يتم تمرير الجدول أفقيًا كالمعتاد. عند الإيقاف: عروض ثابتة بالبكسل كما في nuBuilder Forte.',
 	'builder_image_file' => 'صورة (ملفات nuBuilder Forte)',
 	'builder_image_help' => 'تُخزَّن الصور في zzzzsys_file ‏(nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'تصفية',

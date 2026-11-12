@@ -1287,10 +1287,11 @@
 				if (e.key === 'Enter' && input.tagName === 'INPUT') { e.preventDefault(); input.blur(); }
 			});
 		}
-		if (kind !== 'ro') input.addEventListener('change', function () {
-			var v = input.value;
-			if (opt.check && !opt.check(v)) { input.classList.add('is-invalid'); say(opt.err || 'Error', true); return; }
-			input.classList.remove('is-invalid');
+		var fld = input;   // input becomes a wrapper below (attribute editor) – the handler keeps the field (0.8.1143)
+		if (kind !== 'ro') fld.addEventListener('change', function () {
+			var v = fld.value;
+			if (opt.check && !opt.check(v)) { fld.classList.add('is-invalid'); say(opt.err || 'Error', true); return; }
+			fld.classList.remove('is-invalid');
 			if (v !== value) save(v);
 		});
 		var lab = el('label', {'class': 'form-label nuDsLabel', 'for': id, text: label});
@@ -1302,8 +1303,8 @@
 				onclick: function () { window.nuAttributeEditor.open(inA.value, function (v) { inA.value = v; inA.dispatchEvent(new Event('change')); }, L); }}, [icon('bi-sliders')])]);
 		}
 		// code fields (0.8.665): a button next to the label opens the code window
-		if (opt.code) lab = el('div', {'class': 'nuDsLabelRow'}, [lab, codeButton(label, opt.code, function () { return input.value; },
-			function (v) { input.value = v; input.dispatchEvent(new Event('change')); })]);
+		if (opt.code) lab = el('div', {'class': 'nuDsLabelRow'}, [lab, codeButton(label, opt.code, function () { return fld.value; },
+			function (v) { fld.value = v; fld.dispatchEvent(new Event('change')); })]);
 		var row = el('div', {'class': 'nuDsField' + (opt.half ? ' nuDsHalf' : '')}, [lab, input]);
 		if (opt.tip && window.nuBs && window.nuBs.tooltip) setTimeout(function () { var tip = row.querySelector('.nuInfoTip'); if (tip && tip.isConnected) window.nuBs.tooltip(tip); }, 0);
 		if (opt.after) row.appendChild(opt.after);
@@ -2099,6 +2100,7 @@
 			type === 'subform' ? field(t('builder_subform_delete'), 'check', String(o.sob_subform_delete) === '0' ? '0' : '1', save('sob_subform_delete'), {key: 'sob_subform_delete'}) : null,
 			type === 'lookup' ? field(t('builder_lookup_desc_width'), 'number', o.sob_lookup_description_width, save('sob_lookup_description_width'), {key: 'sob_lookup_description_width'}) : null,
 			type === 'subform' ? field(t('builder_subform_type'), 'select', o.sob_subform_type || 'g', save('sob_subform_type'), {key: 'sob_subform_type', options: [['g', t('builder_subform_grid')], ['f', t('builder_subform_formlayout')]]}) : null,
+			type === 'subform' && (o.sob_subform_type || 'g') !== 'f' ? field(t('ds_sf_fit'), 'check', nunext(o).fit ? '1' : '0', save('nunext_fit'), {key: 'nunext_fit', tip: t('ds_sf_fit_tip')}) : null,
 			type === 'select' ? field(t('builder_select_multiple'), 'check', String(o.sob_select_multiple || '0'), save('sob_select_multiple'), {key: 'sob_select_multiple'}) : null,
 			type === 'select' ? field(t('builder_select_search'), 'check', String(o.sob_select_2 || '0'), save('sob_select_2'), {key: 'sob_select_2'}) : null,
 			type === 'run' ? field(t('builder_run_method'), 'select', o.sob_run_method === 'i' ? 'i' : 'b', save('sob_run_method'), {key: 'sob_run_method', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]]}) : null,

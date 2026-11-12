@@ -1741,7 +1741,7 @@ final class NuListDefs
 		$base = ['columns' => ['name', 'code', 'rights', 'users'], 'card' => ['title' => 'name', 'badge' => '', 'lines' => ['code', 'rights', 'users']],
 			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['has_users'], 'values' => []]];
 		return [
-			'key' => 'adminroles', 'title' => t('adm_title'), 'route' => 'adminroles', 'new_url' => nu_url('adminroles', ['id' => 'new']), 'empty_icon' => 'bi-person-gear', 'form' => NuAcl::FORM_ADMINROLE,
+			'key' => 'adminroles', 'title' => t('adm_title'), 'route' => 'adminroles', 'new_url' => nu_url('adminroles', ['id' => 'new']), 'empty_icon' => 'bi-person-gear', 'form' => NuAcl::FORM_ADMINROLE, 'card_count' => 'users', 'card_join' => true,
 			'from' => " FROM $R r", 'where' => [], 'params' => [], 'id' => 'r.zzzzsys_nunext_admin_role_id',
 			'link' => static fn($r) => nu_url('adminroles', ['id' => $r['__id']]),
 			'search' => ['r.name', 'r.code', 'r.description'], 'columns' => $cols, 'filters' => $filters,

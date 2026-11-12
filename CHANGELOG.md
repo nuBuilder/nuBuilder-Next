@@ -3,6 +3,31 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1143 – Release gate
+- Release gate: the test of design mode's attribute field also types into the field.
+
+## 0.8.1142 – Design mode fixes, release gate notes
+- Design mode: a text message that a browser extension sends to the page (for example a plug-in for digital signatures) no
+  longer stops the designer's message handler (tester's report).
+- Design mode: Apply in the attribute editor of HTML attributes saves the field again – the change handler read the value of
+  the wrapper around the field instead of the field itself (tester's report).
+- Release gate: documentation for 0.8.1140 / 0.8.1141 (TODO please-verify, release notes record v0.8.1139 as published).
+- Installable app: the service worker no longer answers page loads while the browser is online – the browser loads pages
+  itself, the offline page is used only offline (a page load could stall while a new worker took over, seen after a
+  database reset from a package).
+
+## 0.8.1141 – Grid sub-forms: fit columns to the width
+- Grid sub-forms: new switch "Fit columns to the width" (design mode, properties of the sub-form object; a suggestion from
+  the forum). On: the table fills the sub-form's width and the columns share it in the proportions of their widths; hidden
+  columns are left out; no column gets narrower than about 60 % of its width (at least 50 px) – below that the table scrolls
+  sideways as before. Off (default): fixed pixel widths as in nuBuilder Forte. Stored in the sub-form object's own settings,
+  which nuBuilder Forte ignores. Form with AI knows it as "fit": true.
+
+## 0.8.1140 – Admin role cards: user count after the name
+- Admin roles list on phones: each card shows the number of users in brackets after the role name (grey), and the code and
+  the rights in one row – two lines per role instead of four. List definitions can use this for other lists too (keys
+  card_count / card_join).
+
 ## 0.8.1139 – Installable app: no sign-out
 - Installable app: the files the browser fetches by itself (service worker, offline page, icons, manifest) are now served
   without starting a session. One of these answers could carry a fresh session cookie and sign the user out – seen in

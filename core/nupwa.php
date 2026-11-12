@@ -151,7 +151,10 @@ self.addEventListener('fetch', function (e) {
 	var r = e.request;
 	if (r.method !== 'GET') return;
 	var u = new URL(r.url);
+	// pages: the browser loads them itself while online (a respondWith(fetch()) for navigations could stall the page while a new
+	// worker takes over – 0.8.1142); offline the offline page
 	if (r.mode === 'navigate' && u.href.indexOf(BASE) === 0) {
+		if (self.navigator.onLine !== false) return;
 		e.respondWith(fetch(r).catch(function () {
 			return caches.match(abs(C.offline)).then(function (m) { return m || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } }); });
 		}));

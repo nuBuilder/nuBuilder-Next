@@ -111,6 +111,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Grid sub-forms: fit columns to the width** (0.8.1141, a forum suggestion) – please verify on a migrated sub-form that is cut off on a laptop: switch on in design mode, columns share the width, hidden columns left out; a narrow window scrolls sideways once the columns reach about 60 % of their width; lookups and selects fill their cells
+- [ ] **Admin role cards on phones** (0.8.1140) – user count in brackets after the name, code · rights in one row; the keys card_count / card_join can be used for other lists
 - [ ] **Totals, groups and selected rows of lists** (0.8.1127 / 0.8.1128) – please verify on real lists: a wide list that scrolls sideways (the floating row of totals), a list whose browse JavaScript walks the rows (heading and subtotal rows sit between the data rows), a grouped list on a phone, a text column that holds numbers. Excel has the grand total line but no group headings / subtotals. Values that differ only in case get separate headings where the database compares without case
 - [ ] **List side pane with PHP, JavaScript and column settings** (0.8.1108 / 0.8.1126) – please verify saving code and columns together on a form with an open draft
 - [ ] **Last opened** (0.8.1117) – please verify the view "Last opened" of reports and SQL queries (recording was only smoke-checked there); more lists on request

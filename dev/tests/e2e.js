@@ -3412,6 +3412,41 @@ T.design_live_gap_menu = async (s) => {
 	}
 };
 
+// 0.8.1143 (a tester's report): a text message of a browser extension does not stop the designer's message handler; the
+// attribute editor's Apply saves the field (the change handler read the input-group wrapper's value)
+T.design_attr_editor_save = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const rec = sql('SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1');
+	if (!rec || sql(`SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${F}' AND sob_all_id = 'cus_name'`) !== '1') { s.skip = 'no sample data'; return; }
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-design1143.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_object zzzzsys_event zzzzsys_tab zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	let saves = [];
+	const count = (r) => { if (/builderapi/.test(r.url()) && /object\.save/.test(r.postData() || '')) saves.push(r.postData()); };
+	p.on('request', count);
+	try {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		await open(p, 'index.php?p=form&f=' + F + '&r=' + rec + '&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(700);
+		await p.evaluate(() => { window.postMessage('extension text', '*'); window.postMessage(42, '*'); });
+		await p.waitForTimeout(200);
+		await p.click('#nuw_cus_name .nuDesignOverlay', { position: { x: 5, y: 5 } }); await p.waitForTimeout(400);
+		if (await p.locator('.nuDsSecHead[data-sec="style"][aria-expanded="false"]').count()) { await p.click('.nuDsSecHead[data-sec="style"]'); await p.waitForTimeout(200); }
+		if (!await p.locator('#nuDsAttrBtn').count()) { await p.click('.nuDsAdv[data-adv="style"]'); await p.waitForTimeout(200); }
+		expect(await p.locator('#nuDsAttrBtn').count() === 1, 'attribute editor button');
+		await p.evaluate(() => { window.nuAttributeEditor.open = (v, cb) => cb('data-e2e="1143"'); });
+		await p.click('#nuDsAttrBtn'); await p.waitForTimeout(1500);
+		expect(saves.length === 1 && /data-e2e/.test(saves[0]), 'object.save sent: ' + saves.length);
+		// typed into the field + Enter (the same handler)
+		await p.waitForSelector('#nuDsPanel input[data-key="sob_input_attribute"]');
+		await p.fill('#nuDsPanel input[data-key="sob_input_attribute"]', 'data-typed="1"');
+		await p.press('#nuDsPanel input[data-key="sob_input_attribute"]', 'Enter'); await p.waitForTimeout(1500);
+		expect(saves.length === 2 && /data-typed/.test(saves[1]), 'typed value saved: ' + saves.length);
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		p.off('request', count);
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
 // 0.8.665: design mode – changes draw the form again without a page reload; a content box is picked and dragged by its frame /
 // title; code fields open a code window (CodeMirror + toolbar)
 // 0.8.667: design mode for users with the save right on the form builder (not only the globeadmin) – tabs not renamed, no Publish
@@ -13552,6 +13587,53 @@ T.compat_phone_counts = async (s) => {               // 0.8.1086: compatibility 
 	} finally { await ctx.close(); }
 	await open(p, 'index.php?p=compat');
 	expect(await p.evaluate(() => getComputedStyle(document.querySelector('#compat_js .compatDots')).display === 'none' && document.querySelectorAll('#compat_js .compatBdg').length === 4), 'desktop keeps the badges');
+};
+
+T.adminroles_card_count = async (s) => {             // 0.8.1140: admin roles on phones – users "(n)" after the name, code · rights in one row
+	const p = s.ga;
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 800 }, storageState: await p.context().storageState() });
+	const ph = await ctx.newPage();
+	try {
+		await ph.goto(BASE + 'index.php?p=adminroles');
+		const m = await ph.evaluate(() => [...document.querySelectorAll('.nuLvCard')].map((c) => ({ cnt: (c.querySelector('.nuLvCardTitle .nuLvCardCount') || {}).textContent || '',
+			lines: c.querySelectorAll('.nuLvCardLine').length, join: !!c.querySelector('.nuLvCardJoin code'), labels: c.querySelectorAll('.nuLvCardLabel').length })));
+		expect(m.length > 0 && m.every((x) => /^\(\d+\)$/.test(x.cnt) && x.lines === 1 && x.join && x.labels === 0), 'cards: ' + JSON.stringify(m));
+	} finally { await ctx.close(); }
+};
+
+// 0.8.1141: grid sub-form "Fit columns to the width" (sob_all_json nunext.fit, set through the design API) – percentages, table as wide
+// as its box, minimum width keeps scrolling on narrow screens; off = pixel widths as before
+T.subform_fit = async (s) => {
+	const p = s.ga;
+	if (!sql("SELECT 1 FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_order_o5'")) { s.skip = 'no sample data'; return; }
+	const before = sql("SELECT IFNULL(sob_all_json, '') FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_order_o5'");
+	const rec = sql('SELECT MIN(sample_order_id) FROM sample_order');
+	const wq = "FROM zzzzsys_object WHERE sob_all_id = 'ori_qty' AND sob_all_zzzzsys_form_id = (SELECT sob_subform_zzzzsys_form_id FROM (SELECT * FROM zzzzsys_object) x WHERE x.zzzzsys_object_id = 'sample_order_o5')";
+	const w0 = sql('SELECT sob_all_width ' + wq);
+	sql('UPDATE zzzzsys_object SET sob_all_width = 1500 WHERE zzzzsys_object_id IN (SELECT zzzzsys_object_id ' + wq.replace('FROM zzzzsys_object', 'FROM (SELECT * FROM zzzzsys_object) y') + ')');
+	try {
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + rec);
+		const api = (body) => p.evaluate(async (bd) => {
+			const r = await fetch('index.php?p=builderapi', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.nuNext.csrf }, body: JSON.stringify(bd) });
+			return r.json();
+		}, Object.assign({ form_id: 'sampleorder' }, body));
+		const look = () => p.evaluate(() => { const t = document.querySelector('#sample_items table.nuSubformTable'), b = document.getElementById('sample_itemsscrollDiv');
+			return { fit: t.classList.contains('nuSubformFit'), pct: [...t.querySelectorAll('th.nuSubformTitle')].every((h) => /%/.test(h.style.width)), over: t.offsetWidth > b.clientWidth + 1 }; });
+		let m = await look();
+		expect(!m.fit && m.over, 'off: pixel widths overflow ' + JSON.stringify(m));
+		const r = await api({ action: 'object.save', object_id: 'sample_order_o5', fields: { nunext_fit: '1' } });
+		expect(r.ok !== false, 'save: ' + JSON.stringify(r));
+		expect(sql("SELECT JSON_EXTRACT(sob_all_json, '$.nunext.fit') FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_order_o5'") === 'true', 'nunext.fit stored');
+		await p.setViewportSize({ width: 1280, height: 900 });
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + rec);
+		m = await look();
+		expect(m.fit && m.pct, 'on: ' + JSON.stringify(m));
+		await api({ action: 'object.save', object_id: 'sample_order_o5', fields: { nunext_fit: '0' } });
+		expect(sql("SELECT IFNULL(JSON_EXTRACT(sob_all_json, '$.nunext.fit'), 'none') FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_order_o5'") === 'none', 'switched off');
+	} finally {
+		sql('UPDATE zzzzsys_object SET sob_all_width = ' + Number(w0) + ' WHERE zzzzsys_object_id IN (SELECT zzzzsys_object_id ' + wq.replace('FROM zzzzsys_object', 'FROM (SELECT * FROM zzzzsys_object) y') + ')');
+		sql("UPDATE zzzzsys_object SET sob_all_json = " + (before === '' ? 'NULL' : "'" + before.replace(/'/g, "''") + "'") + " WHERE zzzzsys_object_id = 'sample_order_o5'");
+	}
 };
 
 T.log_purge = async (s) => {                         // 0.8.1087: Log → Delete older entries… (globeadmin)

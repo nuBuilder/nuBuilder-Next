@@ -785,3 +785,8 @@ html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupTotalRow > td[data-nu-total
 html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuSelCol { order: 97; margin-inline-start: auto; width: auto; padding: 0; }
 html.nuPhoneCards #nuBrowseTotals > tr > td.nuSelCol:has(.nuSelClear:not([hidden])) { display: block; }
 @media print { #nuBrowseTable .nuSelCol { display: none; } }
+
+/* grid sub-form "Fit columns to the width" (0.8.1141): table as wide as its box, columns share it; controls fill their cell */
+.nuSubformTable.nuSubformFit { table-layout: fixed; width: 100%; }
+.nuSubformTable.nuSubformFit thead th { white-space: normal; overflow-wrap: anywhere; }
+.nuSubformFit td.nuSubformCell > :is(input, select, textarea, .form-control, .form-select, .nuLookupGroup, .ts-wrapper) { width: 100% !important; max-width: 100%; min-width: 0; }

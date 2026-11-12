@@ -2739,6 +2739,8 @@ return [
 	'builder_subform_type' => 'Disposition',
 	'builder_subform_grid' => 'Grille (une ligne par enregistrement)',
 	'builder_subform_formlayout' => 'Formulaire (une carte par enregistrement)',
+	'ds_sf_fit' => 'Adapter les colonnes à la largeur',
+	'ds_sf_fit_tip' => 'Le tableau occupe toute la largeur du sous-formulaire et les colonnes se la partagent selon leurs largeurs. Aucune colonne ne descend sous environ 60 % de sa largeur – en dessous, le tableau défile horizontalement. Désactivé : largeurs fixes en pixels comme dans nuBuilder Forte.',
 	'builder_image_file' => 'Image (fichiers nuBuilder Forte)',
 	'builder_image_help' => 'Les images sont enregistrées dans zzzzsys_file (nuBuilder Forte : Setup → Files).',
 	'builder_col_filter' => 'Filtre',

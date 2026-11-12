@@ -2368,6 +2368,8 @@ return [
 	'builder_subform_type' => 'Darstellung',
 	'builder_subform_grid' => 'Raster (eine Zeile pro Datensatz)',
 	'builder_subform_formlayout' => 'Formular (eine Karte pro Datensatz)',
+	'ds_sf_fit' => 'Spalten an die Breite anpassen',
+	'ds_sf_fit_tip' => 'Die Tabelle füllt die Breite des Unterformulars, die Spalten teilen sie im Verhältnis ihrer Breiten. Keine Spalte wird schmaler als etwa 60 % ihrer Breite – darunter scrollt die Tabelle wie gewohnt seitlich. Aus: feste Pixelbreiten wie in nuBuilder Forte.',
 	'builder_image_file' => 'Bild (nuBuilder-Forte-Dateien)',
 	'builder_image_help' => 'Bilder liegen in zzzzsys_file (nuBuilder Forte: Setup → Dateien).',
 	'builder_col_filter' => 'Filter',

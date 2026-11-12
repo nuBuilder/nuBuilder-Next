@@ -133,6 +133,10 @@ final class NuDraftStore
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
 			unset($fields['nunext_help']);
 		}
+		if (array_key_exists('nunext_fit', $fields)) {             // grid sub-form: fit columns to the width (0.8.1141): sob_all_json nunext.fit
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);
+			unset($fields['nunext_fit']);
+		}
 		if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
 			$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
 			if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) throw new RuntimeException(t('builder_err_run_url'));

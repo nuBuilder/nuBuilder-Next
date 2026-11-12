@@ -2740,6 +2740,8 @@ return [
 	'builder_subform_type' => 'Lay-out',
 	'builder_subform_grid' => 'Raster (één rij per record)',
 	'builder_subform_formlayout' => 'Formulier (één kaart per record)',
+	'ds_sf_fit' => 'Kolommen aan de breedte aanpassen',
+	'ds_sf_fit_tip' => 'De tabel vult de breedte van het subformulier en de kolommen verdelen die naar verhouding van hun breedtes. Geen kolom wordt smaller dan ongeveer 60 % van zijn breedte – daaronder scrolt de tabel zijwaarts. Uit: vaste pixelbreedtes zoals in nuBuilder Forte.',
 	'builder_image_file' => 'Afbeelding (nuBuilder-Forte-bestanden)',
 	'builder_image_help' => 'Afbeeldingen worden opgeslagen in zzzzsys_file (nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'Filter',

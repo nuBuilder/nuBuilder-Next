@@ -2739,6 +2739,8 @@ return [
 	'builder_subform_type' => 'Макет',
 	'builder_subform_grid' => 'Сетка (одна строка на запись)',
 	'builder_subform_formlayout' => 'Форма (одна карточка на запись)',
+	'ds_sf_fit' => 'Подогнать столбцы по ширине',
+	'ds_sf_fit_tip' => 'Таблица занимает ширину подформы, а столбцы делят её пропорционально своим ширинам. Столбец не становится уже примерно 60 % своей ширины – тогда таблица прокручивается по горизонтали. Выключено: фиксированные ширины в пикселях, как в nuBuilder Forte.',
 	'builder_image_file' => 'Изображение (файлы nuBuilder Forte)',
 	'builder_image_help' => 'Изображения хранятся в zzzzsys_file (nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'Фильтр',

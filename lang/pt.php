@@ -2739,6 +2739,8 @@ return [
 	'builder_subform_type' => 'Disposição',
 	'builder_subform_grid' => 'Grelha (uma linha por registo)',
 	'builder_subform_formlayout' => 'Formulário (um cartão por registo)',
+	'ds_sf_fit' => 'Ajustar as colunas à largura',
+	'ds_sf_fit_tip' => 'A tabela ocupa a largura do subformulário e as colunas dividem-na na proporção das suas larguras. Nenhuma coluna fica abaixo de cerca de 60 % da sua largura – abaixo disso a tabela desloca-se na horizontal. Desligado: larguras fixas em píxeis como no nuBuilder Forte.',
 	'builder_image_file' => 'Imagem (ficheiros do nuBuilder Forte)',
 	'builder_image_help' => 'As imagens são guardadas em zzzzsys_file (nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'Filtro',

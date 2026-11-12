@@ -2739,6 +2739,8 @@ return [
 	'builder_subform_type' => '布局',
 	'builder_subform_grid' => '网格（每条记录一行）',
 	'builder_subform_formlayout' => '表单（每条记录一张卡片）',
+	'ds_sf_fit' => '列宽适应宽度',
+	'ds_sf_fit_tip' => '表格填满子表单的宽度，各列按其宽度比例分配。列宽不会小于其宽度的约 60%——再窄时表格照常横向滚动。关闭：与 nuBuilder Forte 相同的固定像素宽度。',
 	'builder_image_file' => '图片（nuBuilder Forte 文件）',
 	'builder_image_help' => '图片存储在 zzzzsys_file 中（nuBuilder Forte：Setup → Files）。',
 	'builder_col_filter' => '筛选',

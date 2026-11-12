@@ -14,7 +14,7 @@ defined('NU_ROOT') || exit;
  *    "tabs": [{title, objects: [object …]}]}
  *   object: {id, type, label, input?, format?, width?, height?, top?, left?, same_row?, required?, unique?, readonly?, hidden?, access?,
  *            options?: [[value, text] …] | sql?, multiple?, lookup?: {form, code, description, description_width?},
- *            subform?: {form, foreign_key, type?: grid|form, add?, delete?}, html?, keep?: true, column?: {type, length?}}
+ *            subform?: {form, foreign_key, type?: grid|form, add?, delete?, fit?}, html?, keep?: true, column?: {type, length?}}
  * Mapping to nuBuilder's rows (zzzzsys_form / _tab / _object / _browse) is done here (toSnapshot); objects keep their row ids, events
  * and code; keys an object of the spec does not have keep their value (update) or nuBuilder's defaults (new). Objects of types the spec
  * does not describe (calc, run, image, chart …) come as {"id", "type", "keep": true} and stay as they are.
@@ -125,7 +125,8 @@ final class NuFormSpec
 			'description_width' => (int)$o['sob_lookup_description_width'] ?: null], static fn($x) => $x !== null && $x !== '');
 		if ($type === 'subform') $s['subform'] = ['form' => $forms[(string)$o['sob_subform_zzzzsys_form_id']] ?? (string)$o['sob_subform_zzzzsys_form_id'],
 			'foreign_key' => (string)$o['sob_subform_foreign_key'], 'type' => strtolower((string)$o['sob_subform_type']) === 'f' ? 'form' : 'grid',
-			'add' => (string)$o['sob_subform_add'] !== '0', 'delete' => (string)$o['sob_subform_delete'] !== '0'];
+			'add' => (string)$o['sob_subform_add'] !== '0', 'delete' => (string)$o['sob_subform_delete'] !== '0']
+			+ (!empty(NuFormMeta::nunextJson($o['sob_all_json'] ?? null)['fit']) ? ['fit' => true] : []);   // fit columns to the width (0.8.1141)
 		return $s;
 	}
 
@@ -265,7 +266,7 @@ Rules:
 - Types: input (input: text, number, nuNumber, nuDate, checkbox, email, password, time, color, url, tel, nuAutoNumber, button, nuScroll, file),
   textarea, select (options as [value, text] pairs, or "sql": "SELECT value, text FROM …"; "multiple": true), lookup (picks a record of another
   form; saves its primary key), subform (rows of another form of type subform – it must exist; foreign_key = its column that holds this
-  record's primary key), display (read-only value from "sql"), html, word (a label).
+  record's primary key; "fit": true = grid columns share the sub-form's width instead of fixed pixel widths), display (read-only value from "sql"), html, word (a label).
 - Optional: label, width / height (pixels), required, unique, readonly, hidden, "same_row": true (next to the object before),
   format for nuDate ("D|dd.mm.yyyy", "D|yyyy-mm-dd hh:nn") and nuNumber ("N|1,000.00", "N|€ 1,000.00").
 - Layout: objects are placed in the given order, one per row; existing objects keep "top" / "left" – leave them unless asked to move.
@@ -583,6 +584,7 @@ TXT;
 			if (array_key_exists('delete', $sf)) $row['sob_subform_delete'] = !empty($sf['delete']) ? '1' : '0';
 			$row['sob_subform_add'] ??= '1';
 			$row['sob_subform_delete'] ??= '1';
+			if (array_key_exists('fit', $sf)) $row['sob_all_json'] = NuFormMeta::mergeNunextJson($row['sob_all_json'] ?? null, ['fit' => !empty($sf['fit']) ? true : null]);
 		}
 		return $row;
 	}

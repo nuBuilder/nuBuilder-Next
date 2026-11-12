@@ -2421,3 +2421,8 @@ html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn { display: none !im
 .nav-link.nuHasCode::after { content: ''; display: inline-block; width: .4rem; height: .4rem; margin-left: .4rem; border-radius: 50%; background: currentColor; opacity: .7; vertical-align: middle; }
 
 .shCronMail { max-width: 480px; }
+
+/* list cards: count after the title, lines joined in one row (0.8.1140, admin roles) */
+.nuLvCardCount { font-weight: 400; color: var(--bs-secondary-color); }
+.nuLvCardJoin { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .4rem; }
+.nuLvCardJoin .nuLvCardDot { color: var(--bs-secondary-color); }

@@ -2739,6 +2739,8 @@ return [
 	'builder_subform_type' => 'Layout',
 	'builder_subform_grid' => 'Griglia (una riga per record)',
 	'builder_subform_formlayout' => 'Modulo (una scheda per record)',
+	'ds_sf_fit' => 'Adatta le colonne alla larghezza',
+	'ds_sf_fit_tip' => 'La tabella riempie la larghezza del sottomodulo e le colonne se la dividono in proporzione alle loro larghezze. Nessuna colonna scende sotto circa il 60 % della sua larghezza – sotto, la tabella scorre in orizzontale. Disattivato: larghezze fisse in pixel come in nuBuilder Forte.',
 	'builder_image_file' => 'Immagine (file nuBuilder Forte)',
 	'builder_image_help' => 'Le immagini sono memorizzate in zzzzsys_file (nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'Filtro',

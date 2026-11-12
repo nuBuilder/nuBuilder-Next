@@ -743,11 +743,18 @@ final class NuListView
 			// a card that is a link must not hold links: a nested <a> ends the card early and its value lands below it (0.8.466)
 			$cell = static fn(string $k) => $href !== '' ? self::unlink(self::cellHtml($cols[$k], $r)) : self::cellHtml($cols[$k], $r); ?>
 			<<?= $tag ?> class="nuLvCard"<?= $href !== '' ? ' href="' . h($href) . '"' : '' ?>>
-				<span class="nuLvCardHead"><span class="nuLvCardTitle"><?= $cell($card['title']) ?></span>
+				<?php // list keys card_count (a column shown as "(n)" after the title) and card_join (lines as one row, no labels), 0.8.1140
+					$cnt = (string)($L['card_count'] ?? ''); $cnt = isset($cols[$cnt]) ? $cnt : ''; $join = !empty($L['card_join']);
+					$cntHtml = '';
+					if ($cnt !== '') { $n = trim(strip_tags(self::cellHtml($cols[$cnt], $r))); $cntHtml = ' <span class="nuLvCardCount' . ($n === '0' ? ' nuLvCardCount0' : '') . '" title="' . h($cols[$cnt]['label']) . '">(' . h($n) . ')</span>'; } ?>
+				<span class="nuLvCardHead"><span class="nuLvCardTitle"><?= $cell($card['title']) ?><?= $cntHtml ?></span>
 					<?php if ($card['badge'] !== ''): ?><span class="nuLvCardBadge"><?= $cell($card['badge']) ?></span><?php endif; ?></span>
-				<?php foreach ($card['lines'] as $k): $html = $cell($k); if (trim(strip_tags($html)) === '' && !str_contains($html, '<i')) continue; ?>
+				<?php $parts = [];
+				foreach ($card['lines'] as $k): if ($k === $cnt) continue; $html = $cell($k); if (trim(strip_tags($html)) === '' && !str_contains($html, '<i')) continue;
+					if ($join) { $parts[] = '<span class="nuLvCardVal">' . $html . '</span>'; continue; } ?>
 					<span class="nuLvCardLine"><?php if ($cols[$k]['label'] !== ''): ?><span class="nuLvCardLabel"><?= h($cols[$k]['label']) ?></span><?php endif; ?><span class="nuLvCardVal"><?= $html ?></span></span>
 				<?php endforeach; ?>
+				<?php if ($parts): ?><span class="nuLvCardLine nuLvCardJoin"><?= implode('<span class="nuLvCardDot" aria-hidden="true">·</span>', $parts) ?></span><?php endif; ?>
 			</<?= $tag ?>>
 		<?php endforeach; ?>
 	</div>

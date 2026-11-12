@@ -37,7 +37,7 @@ page) for how to use it.
 - **Validation rules without code** – as a builder or an expression, as errors or warnings, also for sub-form rows and per
   access level.
 - **Object types** – inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons (forms, reports,
-  procedures, URLs – shown only to users who may open them).
+  procedures, URLs – shown only to users who may open them); grid sub-forms can fit their columns to the width.
 - **New form wizard** – from a table or a view, with the columns and their order chosen up front; text or UUID keys for new
   tables; change a column's type with a data check first.
 - **Forms with AI** – describe a form (or a small app of several forms), paste the prompt into any AI chat and the answer

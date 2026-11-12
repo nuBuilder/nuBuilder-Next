@@ -133,7 +133,8 @@
 
 	// the builder selects objects from its list
 	window.addEventListener('message', function (e) {
-		if (e.origin === origin && e.data && 'nuBuilderTabOrder' in e.data) { showTabOrder(e.data.nuBuilderTabOrder); return; }
+		if (!e.data || typeof e.data !== 'object') return;   // text messages of browser extensions (0.8.1143)
+		if (e.origin === origin && 'nuBuilderTabOrder' in e.data) { showTabOrder(e.data.nuBuilderTabOrder); return; }
 		if (e.origin === origin && e.data && Array.isArray(e.data.nuBuilderOrder)) { reorder(e.data.nuBuilderOrder); return; }
 		if (e.origin === origin && e.data && e.data.nuBuilderSelectNone) { select(null, false); return; }   // design mode: Form settings (0.8.663)
 		// design mode (0.8.664): spacing with a fixed gap from the properties panel; the size typed in the panel, shown at once

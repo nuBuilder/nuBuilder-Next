@@ -870,15 +870,28 @@ final class NuRender
 		$canDelete = (string)$o['sob_subform_delete'] !== '0' && $this->editable();
 		$sfEvents  = $this->meta->events[$o['zzzzsys_object_id']] ?? [];
 
+		// "Fit columns to the width" (sob_all_json nunext.fit, 0.8.1141): widths as shares of the visible columns' total, table 100 % wide
+		// with table-layout fixed; each column keeps at least 60 % of its designed width (min 50 px) – below that the table scrolls as before
+		$fit = strtolower(trim((string)$o['sob_subform_type'])) !== 'f' && !empty(($o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null))['fit']);
+		$colW = static fn(array $c): int => max(30, (int)$c['sob_all_width'] + ($c['sob_all_type'] === 'lookup' ? self::lookupDescWidth($c) + 40 : 0)) + 4;
+		$fitTotal = 0; $fitMin = $canDelete ? 40 : 0;
+		if ($fit) foreach ($cols as $c) if (!NuRecord::hiddenFor($c)) { $fitTotal += $colW($c); $fitMin += max(50, (int)round($colW($c) * .6)); }
+		$fit = $fit && $fitTotal > 0;
 		$head = '';
 		foreach ($cols as $c) {
 			$hidden = NuRecord::hiddenFor($c);
+			if ($fit) {
+				$pct = $hidden ? 0 : round($colW($c) / $fitTotal * 100, 3);
+				$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="' . h((string)$c['zzzzsys_object_id']) . '" data-nu-sf-form="' . h((string)$o['sob_subform_zzzzsys_form_id']) . '" style="width:' . $pct . '%' . ($hidden ? ';display:none' : '') . '">'
+					. self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</th>';
+				continue;
+			}
 			// + 4 px = the cell's side padding (2 px each, nuform.css): the control gets the object's width as in nuBuilder Forte (0.8.965)
 			$w = max(30, (int)$c['sob_all_width'] + ($c['sob_all_type'] === 'lookup' ? self::lookupDescWidth($c) + 40 : 0)) + 4;
 			$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="' . h((string)$c['zzzzsys_object_id']) . '" data-nu-sf-form="' . h((string)$o['sob_subform_zzzzsys_form_id']) . '" style="min-width:' . $w . 'px;width:' . $w . 'px' . ($hidden ? ';display:none' : '') . '">'
 				. self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</th>';
 		}
-		if ($canDelete) $head .= '<th class="nuSubformDeleteTitle" title="' . h(t('delete')) . '"><i class="bi bi-trash"></i></th>';
+		if ($canDelete) $head .= '<th class="nuSubformDeleteTitle"' . ($fit ? ' style="width:40px"' : '') . ' title="' . h(t('delete')) . '"><i class="bi bi-trash"></i></th>';
 
 		$isForm = strtolower(trim((string)$o['sob_subform_type'])) === 'f';
 		$rowFn  = $isForm
@@ -918,7 +931,7 @@ final class NuRender
 		}
 		return '<div class="nuSubform" id="' . h($sf) . '" data-nu-subform="' . h($sf) . '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '">'
 			. '<div class="nuSubformScroll" id="' . h($sf) . 'scrollDiv"' . ($h > 0 ? ' style="max-height:' . max(80, $h) . 'px"' : '') . '>'
-			. '<table class="table table-sm align-middle mb-0 nuSubformTable"><thead><tr>' . $head . '</tr></thead><tbody class="nuSubformBody">' . $body . '</tbody></table></div>'
+			. '<table class="table table-sm align-middle mb-0 nuSubformTable' . ($fit ? ' nuSubformFit" style="min-width:' . $fitMin . 'px' : '') . '"><thead><tr>' . $head . '</tr></thead><tbody class="nuSubformBody">' . $body . '</tbody></table></div>'
 			. $template . '</div>';
 	}
 

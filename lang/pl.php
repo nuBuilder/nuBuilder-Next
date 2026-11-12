@@ -2740,6 +2740,8 @@ return [
 	'builder_subform_type' => 'Układ',
 	'builder_subform_grid' => 'Siatka (jeden wiersz na rekord)',
 	'builder_subform_formlayout' => 'Formularz (jedna karta na rekord)',
+	'ds_sf_fit' => 'Dopasuj kolumny do szerokości',
+	'ds_sf_fit_tip' => 'Tabela wypełnia szerokość podformularza, a kolumny dzielą ją proporcjonalnie do swoich szerokości. Żadna kolumna nie jest węższa niż ok. 60 % swojej szerokości – poniżej tabela przewija się w poziomie. Wyłączone: stałe szerokości w pikselach jak w nuBuilder Forte.',
 	'builder_image_file' => 'Obraz (pliki nuBuilder Forte)',
 	'builder_image_help' => 'Obrazy są przechowywane w zzzzsys_file (nuBuilder Forte: Setup → Files).',
 	'builder_col_filter' => 'Filtr',
