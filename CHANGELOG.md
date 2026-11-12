@@ -3,6 +3,11 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1139 – Installable app: no sign-out
+- Installable app: the files the browser fetches by itself (service worker, offline page, icons, manifest) are now served
+  without starting a session. One of these answers could carry a fresh session cookie and sign the user out – seen in
+  the automatic tests on GitHub.
+
 ## 0.8.1138 – Release gate
 - Release gate: documentation brought up to date (README: Docker under Install; open checks for the newest versions).
 

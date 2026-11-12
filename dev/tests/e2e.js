@@ -5946,6 +5946,11 @@ T.pwa_install = async (s) => {
 		expect(man.display === 'standalone' && man.scope === './' && man.icons.length === 3 && man.icons.some(i => i.purpose === 'maskable'), 'manifest: ' + JSON.stringify(man).slice(0, 300));
 		const ic = await p.evaluate(async (u) => { const r = await fetch(new URL(u, location.href)); const b = new Uint8Array(await r.arrayBuffer()); return [r.headers.get('content-type'), b[1], b[2], b[3]]; }, man.icons[1].src);
 		expect(ic[0] === 'image/png' && String.fromCharCode(ic[1], ic[2], ic[3]) === 'PNG', 'icon is a PNG: ' + ic);
+		// 0.8.1139: the browser fetches these by itself – they must never set a cookie (a new session cookie signed the user out in CI)
+		for (const a of ['sw', 'offline', 'manifest', 'icon&s=192']) {
+			const r = await p.request.get(BASE + 'index.php?p=pwa&a=' + a, { headers: { cookie: '' } });
+			expect(!r.headers()['set-cookie'], 'no cookie from ?p=pwa&a=' + a + ': ' + r.headers()['set-cookie']);
+		}
 		// the worker: registered for the folder, controls the page after a reload
 		await p.evaluate(() => navigator.serviceWorker.ready);
 		await open(p, 'index.php?p=home');
@@ -5962,7 +5967,7 @@ T.pwa_install = async (s) => {
 		expect(off[0] && /Try again/.test(off[1]), 'offline page: ' + off);
 		await p.context().setOffline(false);
 		await open(p, 'index.php?p=home');
-		expect(!(await p.locator('#nuOffline').count()), 'back online: the page itself');
+		expect(!(await p.locator('#nuOffline').count()) && !/p=login/.test(p.url()), 'back online: the page itself, still signed in: ' + p.url());
 		// favourites → shortcuts
 		const favs = await p.locator('.nuHomeStrip[data-nu-strip="fav"] a[href]').count();
 		if (favs) { const m2 = await p.evaluate(async (u) => (await fetch(u, { credentials: 'include' })).json(), head.m); expect(Array.isArray(m2.shortcuts) && m2.shortcuts.length > 0, 'shortcuts from favourites'); }

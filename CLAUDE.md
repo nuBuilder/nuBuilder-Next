@@ -638,6 +638,7 @@ Last gate 0.8.1138 (smoke, e2e 437, compat 84, ZAP 0 unknown; first run stopped 
 Gate 0.8.979 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.964–0.8.979 in one push; docs 12-02 / 10-03 / 04-05, tutorial Forte track, TODO checked first). Comparison of a second nuBuilder Forte database form by form (0.8.965–0.8.978): scratch scripts cmp.js / cmpdiff.js / flow.js in the session scratchpad (not in the project), findings in a Claude Doc (no names of the owner's application in any project file). The test site of that dump sends mail into a file ($nuConfigMailLog) – keep it so.
 
 Since the gate, newest first:
+- 0.8.1139 FIX (CI job mysql after the 0.8.1138 push: smoke signed out after the page loop – Print link null, sqlbuilder answered the sign-in page): ?p=pwa is served in index.php BEFORE nu_boot, without a session – the browser fetches the worker script / offline page / icons by itself, and an answer with a fresh session cookie (nu_boot's session_start for a request without the cookie) replaced the user's session; the manifest opens an existing session read-only (use_cookies false) for the favourites; never a Set-Cookie (e2e pwa_install checks, and that the user is still signed in). Not reproducible here (Playwright 1.63; CI uses 1.49)
 
 Up to the gate 0.8.1138, newest first:
 - 0.8.1138 release gate (README: Docker line under Install; TODO please-verify 0.8.1131–0.8.1137; CLAUDE.md architecture: nucronrun / nupwa / docker)

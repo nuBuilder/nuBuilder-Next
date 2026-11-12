@@ -9,6 +9,24 @@ if (($_GET['p'] ?? '') === 'fa') {
 	exit;
 }
 
+// installable app (0.8.1136 / 0.8.1139): manifest, icons, service worker, offline page – WITHOUT nu_boot's session: the browser fetches
+// them on its own (worker script, update checks, cache filling) – a fresh session cookie in such an answer replaced the user's
+// session and signed them out. The manifest reads an existing session read-only for the favourites, and never sends a cookie.
+if (($_GET['p'] ?? '') === 'pwa' && !NuInstall::needed()) {
+	nu_config();
+	nu_security_headers();
+	header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+	$sid = (string)($_COOKIE['nunext'] ?? '');
+	if (($_GET['a'] ?? '') === 'manifest' && preg_match('/^[A-Za-z0-9,-]{16,128}$/', $sid)) {
+		session_name('nunext');
+		session_id($sid);
+		@session_start(['read_and_close' => true, 'use_cookies' => false, 'use_only_cookies' => false, 'use_strict_mode' => false]);
+	}
+	nu_apply_timezone();
+	require __DIR__ . '/pages/nupwa.php';
+	exit;
+}
+
 // first run: no nuconfig.php yet → installer (core/nuinstall.php)
 // (also right after it: the installer finishes when nuconfig.php was copied by hand – see pages/nuinstall.php)
 if (NuInstall::needed() || (($_GET['p'] ?? '') === 'install' && isset($_COOKIE['nunext_install']))) {
