@@ -2418,7 +2418,7 @@ details.nuNoticeFold > summary::-webkit-details-marker { display: none; }
 }
 
 /* warnings closed for good are not drawn at all (0.8.1120, class set in <head> by nutheme.js) */
-html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn { display: none !important; }
+html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn, html.nuWarnOff-insp #inspHint { display: none !important; }
 
 /* row button that runs the row (reports list): neutral frame like its neighbour, only the icon in the accent colour */
 .nuRowRun > .bi { color: var(--bs-primary); }
@@ -2433,3 +2433,6 @@ html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn { display: none !im
 .nuLvCardCount { font-weight: 400; color: var(--bs-secondary-color); }
 .nuLvCardJoin { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .4rem; }
 .nuLvCardJoin .nuLvCardDot { color: var(--bs-secondary-color); }
+#inspHintHide { font-size: .6rem; margin-top: .25rem; }
+/* procedure form on phones (0.8.1158): the code toolbar starts at the left edge and wraps instead of running past the right one */
+@media (max-width: 575.98px) { .procCodeTools { margin-left: 0 !important; max-width: 100%; min-width: 0; } }

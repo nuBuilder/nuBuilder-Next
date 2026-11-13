@@ -16,6 +16,17 @@
 	var lang = document.documentElement.lang || undefined;
 	var nf = new Intl.NumberFormat(lang, {maximumFractionDigits: 2});
 	var pf = new Intl.NumberFormat(lang, {style: 'percent', maximumFractionDigits: 1});
+	var NF = [];   // per value: 2 decimals when any of its numbers has a fraction, else none (one look per column)
+	function setFormats() {
+		NF = (R.spec.vals || []).map(function (v, j) {
+			var frac = v.fn === 'avg';
+			var see = function (a) { if (a && a[j] !== null && a[j] !== undefined && Math.round(a[j]) !== a[j]) frac = true; };
+			Object.keys(R.cells).forEach(function (k) { see(R.cells[k]); });
+			Object.keys(R.rowTotals || {}).forEach(function (k) { see(R.rowTotals[k]); });
+			return new Intl.NumberFormat(lang, frac ? {minimumFractionDigits: 2, maximumFractionDigits: 2} : {maximumFractionDigits: 0});
+		});
+	}
+	function fmt(v, j) { return (NF[j] || nf).format(v); }
 
 	function t(k) { return T[k] || k; }
 	function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined && txt !== null) e.textContent = txt; return e; }
@@ -261,7 +272,10 @@
 			b.addEventListener('click', function () { if (s.spec && s.spec.spec) { S.spec = s.spec.spec; if (s.spec.view) VIEW = Object.assign(VIEW, s.spec.view); buildBar(); changed(); } });
 			var x = el('button', 'btn btn-sm btn-link text-danger p-0'); x.type = 'button'; x.innerHTML = '<i class="bi bi-trash"></i>'; x.title = t('delete');
 			x.addEventListener('click', function () { post('delete', {id: s.id}).then(function (d) { drawSaved(d.saved || []); }); });
-			row.appendChild(b); row.appendChild(x); m.appendChild(row);
+			row.appendChild(b);
+			if (s.shared) { var sh = el('span', 'text-body-secondary px-1'); sh.innerHTML = '<i class="bi bi-people"></i>'; sh.title = t('pv_shared'); row.appendChild(sh); }
+			else row.appendChild(x);
+			m.appendChild(row);
 		});
 		m.appendChild(el('hr', 'dropdown-divider'));
 		var f = el('div', 'd-flex gap-1');
@@ -291,7 +305,7 @@
 			if (my !== seq) return;
 			out.classList.remove('nuPvBusy');
 			if (!d.ok) { R = null; out.innerHTML = ''; out.appendChild(el('div', 'alert alert-warning m-3', d.error || t('pv_err_query'))); return; }
-			R = d; render();
+			R = d; setFormats(); render();
 		}).catch(function () { out.classList.remove('nuPvBusy'); });
 	}
 
@@ -300,7 +314,7 @@
 	function colTot(ck) { return R.spec.rows.length ? (R.colTotals[JSON.stringify(ck)] || null) : cellOf([], ck); }
 	function show(v, j, rk, ck) {
 		if (v === null || v === undefined) return '';
-		if (VIEW.show === 'val') return nf.format(v);
+		if (VIEW.show === 'val') return fmt(v, j);
 		var base = VIEW.show === 'row' ? (rowTot(rk) || [])[j] : VIEW.show === 'col' ? (colTot(ck) || [])[j] : (R.grand || [])[j];
 		return base ? pf.format(v / base) : '';
 	}
@@ -341,8 +355,8 @@
 			var sub = R.sub[JSON.stringify(pre)]; if (!sub) return;
 			var r = el('tr', 'nuPvSub');
 			var lab = el('td', 'nuPvRowHead', t('pv_total') + ' ' + keyText(pre, sp.rows)); lab.colSpan = nr; r.appendChild(lab);
-			cols.forEach(function (ck) { (sub[JSON.stringify(ck)] || new Array(nv).fill(null)).forEach(function (x) { r.appendChild(el('td', 'text-end', x === null ? '' : nf.format(x))); }); });
-			if (sp.cols.length) (sub['*'] || []).forEach(function (x) { r.appendChild(el('td', 'text-end nuPvTot', x === null ? '' : nf.format(x))); });
+			cols.forEach(function (ck) { (sub[JSON.stringify(ck)] || new Array(nv).fill(null)).forEach(function (x, j) { r.appendChild(el('td', 'text-end', x === null ? '' : fmt(x, j))); }); });
+			if (sp.cols.length) (sub['*'] || []).forEach(function (x, j) { r.appendChild(el('td', 'text-end nuPvTot', x === null ? '' : fmt(x, j))); });
 			body.appendChild(r);
 		};
 		rows.forEach(function (rk, ri) {
@@ -446,18 +460,31 @@
 	}
 
 	// ------------------------------------------------------------------ open
-	function open(btn) {
+	var Q = new URLSearchParams(location.search), PICK = Q.get('pivot'), ONLY = !!PICK && Q.get('pvonly') === '1';
+	function open(btn, pick) {
 		try { S = JSON.parse(btn.getAttribute('data-nu-pivot') || '{}'); T = JSON.parse(btn.getAttribute('data-nu-pivot-texts') || '{}'); } catch (e) { return; }
 		var last = store('nunext-pivot-' + S.f);
 		S.spec = last && last.spec ? last.spec : {rows: [], cols: [], vals: [], flt: []};
 		if (last && last.view) VIEW = Object.assign(VIEW, last.view);
-		post('fields').then(function (d) {
+		(pick && pick !== '-' ? post('saved').then(function (d) {   // a run button's saved pivot (0.8.1156)
+			var s = (d.saved || []).filter(function (x) { return x.id === pick; })[0];
+			if (s && s.spec && s.spec.spec) { S.spec = s.spec.spec; if (s.spec.view) VIEW = Object.assign(VIEW, s.spec.view); }
+		}) : Promise.resolve()).then(function () { return post('fields'); }).then(function (d) {
 			F = d.fields || []; BY = {}; F.forEach(function (f) { BY[f.c] = f; });
 			['rows', 'cols', 'flt', 'vals'].forEach(function (z) { S.spec[z] = (S.spec[z] || []).filter(function (it) { return it.c === -1 || BY[it.c]; }); });
 			if (D) D.remove();
 			build(); renderZones(); run();
-			nuBs.modal(D).show();
+			if (ONLY) {                                            // pivot only (run button: iframe, popup, new tab): no list behind, no close
+				document.documentElement.classList.add('nuPvOnly');
+				D.querySelector('.modal-dialog').className = 'modal-dialog modal-fullscreen';
+				D.querySelector('.btn-close').remove();
+				nuBs.modal(D, {backdrop: false, keyboard: false}).show();
+			} else nuBs.modal(D).show();
 		});
+	}
+	if (PICK) {
+		var go = function () { var b = document.getElementById('nuPivotOpen'); if (b) open(b, PICK); else document.documentElement.classList.remove('nuPvOnly'); };
+		if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 	}
 	document.addEventListener('click', function (e) {
 		var b = e.target.closest && e.target.closest('#nuPivotOpen');

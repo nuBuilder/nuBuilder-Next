@@ -137,6 +137,12 @@ final class NuDraftStore
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);
 			unset($fields['nunext_fit']);
 		}
+		if (array_key_exists('nunext_run_pivot', $fields)) {       // run object that shows a saved pivot (0.8.1156)
+			$pv = NuRender::cleanRunPivot($fields['nunext_run_pivot']);
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['pivot' => $pv]);
+			if ($pv) { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
+			unset($fields['nunext_run_pivot']);
+		}
 		if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
 			$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
 			if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) throw new RuntimeException(t('builder_err_run_url'));

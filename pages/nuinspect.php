@@ -146,7 +146,13 @@ nu_layout_start(t('insp_title') . ($meta ? ' · ' . $meta->code() : ''), 'forms'
 			</tbody>
 		</table>
 	</div>
-	<div class="card-footer small text-body-secondary"><?= h(t('insp_hint')) ?></div>
+	<div class="card-footer small text-body-secondary d-flex align-items-start gap-2" id="inspHint">
+		<span class="flex-grow-1"><?= h(t('insp_hint')) ?></span>
+		<button type="button" class="btn-close flex-shrink-0" id="inspHintHide" aria-label="<?= h(t('close')) ?>" title="<?= h(t('close')) ?>"></button>
+	</div>
+	<div class="card-footer small py-1 text-end" id="inspHintShow" hidden>
+		<button type="button" class="btn btn-link btn-sm p-0 text-body-secondary" id="inspHintShowBtn" aria-label="<?= h(t('insp_hint_show')) ?>" title="<?= h(t('insp_hint_show')) ?>"><i class="bi bi-info-circle"></i></button>
+	</div>
 </div>
 <?php endif;
 nu_layout_end('<script src="' . nu_asset('assets/js/nuinspect.js') . '"></script>');

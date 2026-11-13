@@ -98,7 +98,7 @@ final class NuDesign
 		[$forms, $procs, $reports] = self::lists();
 		$formats = static fn(string $l) => array_map(static fn($f) => [(string)$f['value'], (string)$f['value'] . ($f['description'] !== '' ? ' – ' . $f['description'] : '')], NuFormat::choices($l));
 		return [
-			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'formats' => ['D' => $formats('D'), 'N' => $formats('N')],
+			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'pivots' => NuPivot::forRunButtons(), 'formats' => ['D' => $formats('D'), 'N' => $formats('N')],
 			// the code window of the panel (0.8.665): CodeMirror is loaded on first use
 			'cm' => [nu_asset(NU_CODEMIRROR . '/codemirror.css'), nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js')],
 			'draft' => NuFormDraft::info($open),

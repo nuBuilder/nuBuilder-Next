@@ -617,11 +617,12 @@ final class NuRender
 		$u = NuAuth::user();
 		if (!$u) return false;
 		if (!empty($u['globeadmin'])) return true;
-		$key = $run['type'] . ':' . ($run['type'] === 'F' ? $run['form'] : $run['code']);
+		$key = $run['type'] . ':' . ($run['type'] === 'F' || $run['type'] === 'U' ? $run['form'] : $run['code']);
 		if (isset($cache[$key])) return $cache[$key];
 		try {
 			if (NuAcl::can(NuAcl::FORM_FORM, 'save')) return $cache[$key] = true;
 			if ($run['type'] === 'F') return $cache[$key] = $run['form'] === '' || !NuFormMeta::load($run['form']) || NuAcl::can($run['form'], 'view');
+			if ($run['type'] === 'U' && $run['form'] !== '') return $cache[$key] = NuAcl::can($run['form'], 'browse') && NuAcl::can($run['form'], 'print');   // pivot (0.8.1156)
 			if ($run['type'] === 'R') { $r = NuReport::load($run['code']); return $cache[$key] = !$r || NuReport::canRun($r); }
 			if ($run['type'] === 'P') {
 				$db = nu_db();
@@ -704,8 +705,25 @@ final class NuRender
 		return $out ? ' ' . implode(' ', array_keys($out)) : '';
 	}
 
+	/** A run object's pivot (0.8.1156): "<form id>|<saved pivot id>" or {f, id} → {f, id}, null when empty / invalid. */
+	public static function cleanRunPivot(mixed $v): ?array
+	{
+		if (is_string($v)) { $p = explode('|', $v, 2); $v = ['f' => $p[0], 'id' => $p[1] ?? '']; }
+		if (!is_array($v)) return null;
+		$f = trim((string)($v['f'] ?? '')); $id = trim((string)($v['id'] ?? ''));
+		return $f !== '' && strlen($f) <= 50 && preg_match('/^[\w.-]*$/', $id . $f) ? ['f' => $f, 'id' => $id] : null;
+	}
+
 	public static function runInfo(array $o, array $hash): array
 	{
+		$pv = self::cleanRunPivot(($o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null))['pivot'] ?? null);
+		if ($pv !== null) {                                        // 0.8.1156: a saved pivot of a form list – opens the list page in pivot-only mode
+			$method = (string)$o['sob_run_method'] === 'i' ? 'i' : 'b';
+			$runTarget = (string)($o['sob_run_target'] ?? '');
+			$runTarget = in_array($runTarget, ['0', '1', '2', '3'], true) ? $runTarget : '2';
+			return ['type' => 'U', 'form' => $pv['f'], 'code' => '', 'hidden' => false, 'record' => '', 'filter' => '', 'method' => $method, 'target' => $runTarget,
+				'url' => nu_url('form', ['f' => $pv['f'], 'pivot' => $pv['id'] === '' ? '-' : $pv['id'], 'pvonly' => $method === 'i' || $runTarget !== '0' ? '1' : null, 'iframe' => $method === 'i' ? '1' : null])];
+		}
 		$target = trim((string)$o['sob_run_zzzzsys_form_id']);
 		$type   = strtoupper(trim((string)($o['sob_run_type'] ?? '')));
 		$url    = self::cleanRunUrl((string)(($o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null))['url'] ?? ''));
@@ -769,6 +787,7 @@ final class NuRender
 		$run   = self::runInfo($o, $this->hash);
 		// 0.8.829: a button (or embedded frame) to a form, report or procedure the user may not open is not shown – an empty, hidden
 		// placeholder keeps the id for the form's JavaScript (nuHide / nuShow …); the run itself is refused on the server as before
+		if ($run['type'] === 'U' && $run['form'] !== '' && !self::runAllowed($run)) return '<span class="nuRunDenied d-none"' . $common . ' hidden aria-hidden="true" data-nu-run-denied="1"></span>';   // pivot (0.8.1156)
 		if ($run['type'] === 'U') {
 			if ($run['method'] === 'i') return '<iframe class="nuIframe nuIframeUrl ' . h($cls) . '"' . $common . ($run['url'] !== '' ? ' src="' . h($run['url']) . '"' : '')
 				. ' title="' . h($label ?: $run['url']) . '" referrerpolicy="strict-origin-when-cross-origin"></iframe>';

@@ -248,6 +248,7 @@ Oder von Hand aktualisieren: die Dateien aus nunext.zip über die alten hochlade
 	'imp_working' => 'Wird verarbeitet … grosse Dateien brauchen einen Moment.',
 	'imp_err_size' => 'Die Datei ist zu gross (höchstens %d MB).',
 	'pwg_upper' => 'Grossbuchstaben (A–Z)',
+	'builder_run_pivot_tip' => 'Ein gespeichertes Pivot einer Formularliste (Export ▾ → Pivot… → Meine Pivots). Als gemeinsames Pivot speichern – Einträge mit «nur du» sieht nur du. Die Schaltfläche öffnet nur das Pivot, als iframe, Popup oder neuen Tab; Benutzer brauchen Lese- und Druckrechte auf diese Liste.',
 	'file_size' => 'Grösse',
 	'ptype_import_hint' => 'Benutzer mit dieser Berechtigung dürfen den Datenimport für die hier gewählten Tabellen nutzen – ohne das Admin-Recht «Datenimport» (das erlaubt jede Tabelle).',
 	'perm_deleted' => 'Berechtigung «%s» wurde gelöscht.',

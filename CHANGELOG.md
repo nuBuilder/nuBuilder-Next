@@ -3,6 +3,43 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1161 – Release gate
+- Release gate: documentation for 0.8.1153–0.8.1160 (feature list, TODO please-verify).
+
+## 0.8.1160 – Object menu on phones
+- Object menu on phones: a long press on a label no longer selects its text (the browser's search sheet covered the bottom of
+  the screen and with it the lower part of the menu), and the menu fits into the visible part of the window.
+
+## 0.8.1159 – Procedures: own functions with a taken name
+- Procedures and form events that declare a function of their own with the same name as one of nuBuilder Next's helper
+  functions (for example h() or t()) run as in nuBuilder Forte: the function gets another name inside that code. PHP stopped
+  with a "Cannot redeclare" fatal error before, which could not be caught and broke the answer ("not valid JSON").
+
+## 0.8.1158 – Procedure toolbar on phones
+- Procedure form on phones: the code toolbar starts at the left edge and wraps, instead of running past the right edge.
+
+## 0.8.1157 – Inspect record: closable hint
+- Inspect record: the hint below the table closes with ×; it stays closed (in this browser), and an (i) brings it back.
+
+## 0.8.1156 – Run buttons show a pivot
+- Run buttons can show a pivot: run type "Show a pivot" in design mode picks a saved pivot of a form list (shared pivots, or
+  your own marked "only you"); the button opens just the pivot in a new tab, a popup or this tab, or shows it as an iframe in the
+  form. The list behind it stays hidden. The object is left out for users without view and print rights on that list.
+
+## 0.8.1155 – Samples with pivots
+- Samples with pivots: the sales sample (version 24) brings three shared pivots of the orders list – revenue by month and status
+  (heat map), top 5 customers by revenue, orders per quarter as a chart; the ticket sample (version 8) three of the tickets list –
+  by category and status, workload per agent, due tickets per month. Refresh the samples on the Sample data page to get them.
+- My pivots lists shared pivots (people icon) for everyone who opens the list; they cannot be deleted there.
+
+## 0.8.1154 – Pivot full width on phones
+- Pivot on phones: the window fills the screen again – the width rule of 0.8.1153 also applied to the full-screen window and
+  left a grey strip on the right.
+
+## 0.8.1153 – Pivot: width and number format
+- Pivot: the window keeps one width for every view, and each value column shows one number format (two decimals when any of
+  its numbers has a fraction, else none).
+
 ## 0.8.1152 – Release gate
 - Release gate: documentation for 0.8.1144–0.8.1151 (TODO please-verify, README, tutorial tip on the pivot).
 

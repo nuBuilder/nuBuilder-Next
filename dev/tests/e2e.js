@@ -1873,9 +1873,10 @@ T.cron_run_procedure = async (s) => {
 		expect(mails().length === 0, 'no address, no e-mail');
 		// the address of Settings → Data & logs
 		await open(p, 'index.php?p=settings&s=data'); await p.waitForSelector('#shCronMail');
-		await p.fill('#shCronMail', 'not-an-address'); await Promise.all([p.waitForLoadState('networkidle'), p.click('#shDataSave')]);
+		await p.fill('#shCronMail', 'not-an-address'); await Promise.all([p.waitForNavigation({waitUntil: 'load'}).catch(() => {}), p.click('#shDataSave')]);
+		await p.waitForSelector('.alert-danger', {timeout: 8000}).catch(() => {});
 		expect(await p.locator('.alert-danger').count() > 0 && sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'cron_run'") === '0', 'an invalid address is not saved');
-		await p.fill('#shCronMail', 'ops@example.com; second@example.com'); await Promise.all([p.waitForLoadState('networkidle'), p.click('#shDataSave')]);
+		await p.fill('#shCronMail', 'ops@example.com; second@example.com'); await Promise.all([p.waitForNavigation({waitUntil: 'load'}).catch(() => {}), p.click('#shDataSave')]);
 		if (!(await p.locator('#shCronMail').count())) throw new Error('after save: ' + p.url() + ' ' + (await p.textContent('main')).replace(/\s+/g, ' ').slice(0, 300));
 		expect(await p.inputValue('#shCronMail') === 'ops@example.com, second@example.com', 'addresses saved: ' + await p.inputValue('#shCronMail'));
 		r = run(['e2e_cron_bad']);
@@ -5762,6 +5763,83 @@ T.phone_back_button = async (s) => {
 };
 
 // 0.8.1151: pivot of a form list – rows / columns / values, totals, filter, drill, saved pivot, export
+T.inspect_hint_close = async (s) => {
+	// Inspect record (0.8.1157): the hint closes with × and stays closed; (i) shows it again
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM sample_customer WHERE sample_customer_id = 'sample_cus_01'") !== '1') { s.skip = 'no sample data'; return; }
+	await open(p, 'index.php?p=inspect&f=samplecustomer&r=sample_cus_01');
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-insp-hint-hidden'); } catch (e) { /* none */ } });
+	await open(p, 'index.php?p=inspect&f=samplecustomer&r=sample_cus_01');
+	expect(await p.isVisible('#inspHint') && !(await p.isVisible('#inspHintShow')), 'hint shown');
+	await p.click('#inspHintHide');
+	expect(!(await p.isVisible('#inspHint')) && await p.isVisible('#inspHintShowBtn'), 'hint closed, (i) shown');
+	await open(p, 'index.php?p=inspect&f=samplecustomer&r=sample_cus_01');
+	expect(!(await p.isVisible('#inspHint')), 'stays closed after reload');
+	await p.click('#inspHintShowBtn');
+	expect(await p.isVisible('#inspHint'), 'shown again');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.run_button_pivot = async (s) => {
+	// run button that shows a saved pivot (0.8.1156): new tab = the pivot alone (list hidden, no close); iframe the same inside the form
+	const p = s.ga;
+	if (!SITE) { s.skip = 'SITE not set'; return; }
+	if (sql("SELECT COUNT(*) FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_all_o45'") !== '1') { s.skip = 'no sample data'; return; }
+	const php = (code) => require('child_process').execFileSync('php', ['-r', 'chdir(' + JSON.stringify(SITE) + "); require 'core/nuapp.php'; " + code]).toString();
+	const was = sql("SELECT CONCAT_WS('|', sob_run_method, sob_run_target, IFNULL(sob_all_json, '~')) FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_all_o45'").split('|');
+	execSync('mysql ' + DB, {input: "DELETE FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id LIKE 'sample_pv_%'"});
+	php("foreach ((new ReflectionMethod('NuSample', 'pivots'))->invoke(null) as [$t, $r]) nu_db()->insert($t, $r);");
+	const setRun = (m, tg) => execSync('mysql ' + DB, {input: `UPDATE zzzzsys_object SET sob_run_method = '${m}', sob_run_target = '${tg}', sob_all_json = '{"nunext":{"pivot":{"f":"sampleorder","id":"sample_pv_p2"}}}' WHERE zzzzsys_object_id = 'sample_all_o45'`});
+	const rec = sql('SELECT sample_all_id FROM sample_all LIMIT 1');
+	try {
+		setRun('b', '2');
+		await open(p, 'index.php?p=form&f=sampleall&r=' + encodeURIComponent(rec));
+		const btn = p.locator('#all_run_form');
+		expect(await btn.getAttribute('data-nu-run-url').then((u) => /p=form&f=sampleorder&pivot=sample_pv_p2&pvonly=1/.test(u || '')), 'button url');
+		const [tab] = await Promise.all([p.context().waitForEvent('page'), p.evaluate(() => document.querySelector('#all_run_form').click())]);
+		await tab.waitForSelector('#nuPvTable', {timeout: 15000}); await tab.waitForTimeout(500);
+		const st = await tab.evaluate(() => ({only: document.documentElement.classList.contains('nuPvOnly'), close: !!document.querySelector('#nuPvDlg .btn-close'),
+			rows: document.querySelectorAll('#nuPvTable tbody tr').length, main: getComputedStyle(document.querySelector('main') || document.body).visibility}));
+		expect(st.only && !st.close && st.rows > 0 && st.rows <= 5 && st.main === 'hidden', 'pivot only: ' + JSON.stringify(st));
+		await tab.close();
+		setRun('i', '0');
+		await open(p, 'index.php?p=form&f=sampleall&r=' + encodeURIComponent(rec));
+		const fr = p.locator('iframe#all_run_form');
+		expect(await fr.count() === 1, 'iframe rendered');
+		await p.evaluate(() => { const f = document.querySelector('iframe#all_run_form'); const tab = f && f.closest('.tab-pane'); if (tab && tab.id) { const l = document.querySelector('[data-bs-target="#' + tab.id + '"], [href="#' + tab.id + '"]'); if (l) l.click(); } });
+		const fh = await fr.elementHandle(); const fc = await fh.contentFrame();
+		await fc.waitForSelector('#nuPvTable', {timeout: 15000});
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, {input: `UPDATE zzzzsys_object SET sob_run_method = '${was[0]}', sob_run_target = '${was[1]}', sob_all_json = ${was[2] === '~' ? 'NULL' : "'" + was[2].replace(/'/g, "''") + "'"} WHERE zzzzsys_object_id = 'sample_all_o45';
+			DELETE FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id LIKE 'sample_pv_%'`});
+	}
+};
+
+T.sample_pivots = async (s) => {
+	// shared pivots of the sales sample (0.8.1155): listed in My pivots for everyone, without delete, load a layout
+	const p = s.ga;
+	if (!SITE) { s.skip = 'SITE not set'; return; }
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") !== '1') { s.skip = 'no sample data'; return; }
+	const php = (code) => require('child_process').execFileSync('php', ['-r', 'chdir(' + JSON.stringify(SITE) + "); require 'core/nuapp.php'; " + code]).toString();
+	execSync('mysql ' + DB, {input: "DELETE FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id LIKE 'sample_pv_%'"});
+	php("foreach ((new ReflectionMethod('NuSample', 'pivots'))->invoke(null) as [$t, $r]) nu_db()->insert($t, $r);");
+	try {
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'pivot:sampleorder' AND scope = 'shared'") === '3', 'three shared pivots');
+		await open(p, 'index.php?p=form&f=sampleorder');
+		await p.click('#nuExportButton'); await p.click('#nuPivotOpen'); await p.waitForSelector('#nuPvDlg.show');
+		await p.click('#nuPvSavedBtn'); await p.waitForSelector('.nuPvLoad');
+		const rows = await p.evaluate(() => [...document.querySelectorAll('#nuPvSavedMenu .nuPvLoad')].map((b) => [b.textContent, !!b.parentElement.querySelector('.bi-trash'), !!b.parentElement.querySelector('.bi-people')]));
+		const top = rows.find((r) => r[0] === 'Top 5 customers by revenue');
+		expect(top && !top[1] && top[2], 'shared entry without delete: ' + JSON.stringify(rows));
+		await p.click('#nuPvSavedMenu .nuPvLoad:text-is("Top 5 customers by revenue")'); await p.waitForSelector('#nuPvTable'); await p.waitForTimeout(500);
+		expect(await p.locator('#nuPvTable tbody tr').count() <= 5, 'top 5 rows');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, {input: "DELETE FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id LIKE 'sample_pv_%'"});
+	}
+};
+
 T.list_pivot = async (s) => {
 	const p = s.ga;
 	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") !== '1') { s.skip = 'no sample data'; return; }
@@ -11075,10 +11153,10 @@ T.proc_tools_phone = async (s) => {
 		const r = await p.evaluate(() => {
 			const bs = Array.from(document.querySelectorAll('.procCodeTools[data-for="sph_php"] .btn')).map(b => b.getBoundingClientRect());
 			const snip = document.querySelector('.procCodeTools[data-for="sph_php"] .nuCtInsert');   // Insert menu (0.8.593, was the snippet button)
-			return { n: bs.length, sizes: Array.from(new Set(bs.map(x => Math.round(x.width) + 'x' + Math.round(x.height)))), rows: new Set(bs.map(x => Math.round(x.top))).size,
+			return { n: bs.length, sizes: Array.from(new Set(bs.map(x => Math.round(x.width) + 'x' + Math.round(x.height)))), rows: new Set(bs.map(x => Math.round(x.top))).size, right: Math.round(Math.max(...bs.map(x => x.right))), vw: document.documentElement.clientWidth,
 				label: snip ? getComputedStyle(snip.querySelector('.nuCtInsertLabel')).display : 'no snippets', aria: snip ? snip.getAttribute('aria-label') : '' };
 		});
-		expect(r.n >= 9 && r.sizes.length === 1 && r.rows === 1, 'buttons differ in size or wrap: ' + JSON.stringify(r));
+		expect(r.n >= 9 && r.sizes.length === 1 && r.rows <= 2 && r.right <= r.vw, 'buttons differ in size, or leave the screen: ' + JSON.stringify(r));
 		expect(r.label === 'none' && /snippet/i.test(r.aria), 'Insert button shows its text on a phone: ' + JSON.stringify(r));
 	} finally {
 		await ctx.close();

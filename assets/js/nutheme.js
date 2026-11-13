@@ -34,6 +34,8 @@
 			if (!wide) document.documentElement.classList.add('nuPhoneCards');
 		}
 	} catch (e) {}
+	// a run button's pivot (0.8.1156): the list page behind the pivot stays hidden from the first paint (nupivot.js)
+	try { if (/[?&]p=form(&|$)/.test(window.location.search) && /[?&]pvonly=1(&|$)/.test(window.location.search)) { document.documentElement.classList.add('nuPvOnly'); setTimeout(function () { if (!document.querySelector('.nuPvDlg')) document.documentElement.classList.remove('nuPvOnly'); }, 5000); } } catch (e) {}
 	// start page (0.8.995): rows Favourites / Recently used folded from the first paint as nuhome.js stripFold() will fold them
 	// (saved 'folded', Auto collapse, or Recently used on a phone without a choice) – html.nuHomeFold-<fav|recent>, removed by nuhome.js
 	try {
@@ -48,7 +50,7 @@
 	// warnings a person closed for good (Global code, config file): hidden from the first paint – they flashed until the page's script
 	// hid them (0.8.1120). html.nuWarnOff-<scode|cfg>, removed by that script once it has set the hidden attributes
 	try {
-		[['scode', 'nunext-scode-warn-hidden'], ['cfg', 'nunext-cfg-warn-hidden']].forEach(function (w) {
+		[['scode', 'nunext-scode-warn-hidden'], ['cfg', 'nunext-cfg-warn-hidden'], ['insp', 'nunext-insp-hint-hidden']].forEach(function (w) {
 			if (localStorage.getItem(w[1]) === '1') document.documentElement.classList.add('nuWarnOff-' + w[0]);
 		});
 	} catch (e) {}

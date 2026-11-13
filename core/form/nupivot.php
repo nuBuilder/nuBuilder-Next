@@ -7,7 +7,8 @@ defined('NU_ROOT') || exit;
  * with its search, filters, advanced search and column access (NuBrowse::filtered) becomes a sub-query, GROUP BY the chosen fields.
  * Date fields group by year, quarter, month, month of the year, week, weekday or day. Masked / hidden columns are never offered.
  * Spec: {rows: [{c, g}], cols: [{c, g}], vals: [{c, fn}], flt: [{c, g, v: [keys]}]} – c = list column index, g = date part ('' = value).
- * Saved pivots: zzzzsys_nunext_list_view, list_key pivot:<form id>, scope user (as "My searches" of the advanced search).
+ * Saved pivots: zzzzsys_nunext_list_view, list_key pivot:<form id>, scope user (as "My searches" of the advanced search);
+ * scope shared (owner '') = pivots for everyone who opens the list, e.g. those of the samples (0.8.1155) – listed, never deleted here.
  */
 final class NuPivot
 {
@@ -226,14 +227,31 @@ final class NuPivot
 		return !empty($u['globeadmin']) ? 'globeadmin' : (string)($u['id'] ?? '');
 	}
 
-	/** @return list<array{id: string, name: string, spec: mixed}> */
+	/** @return list<array{id: string, name: string, spec: mixed, shared: bool}> */
 	public static function saved(string $formId): array
 	{
 		$db = nu_db();
 		if (!$db->tableExists(NuListView::TABLE)) return [];
 		$out = [];
-		foreach ($db->all('SELECT zzzzsys_nunext_list_view_id AS id, name, definition FROM ' . NuListView::TABLE . " WHERE list_key = ? AND scope = 'user' AND owner = ? ORDER BY name",
-			[self::KEY . $formId, self::me()]) as $r) $out[] = ['id' => (string)$r['id'], 'name' => (string)$r['name'], 'spec' => json_decode((string)$r['definition'], true)];
+		foreach ($db->all('SELECT zzzzsys_nunext_list_view_id AS id, name, definition, scope FROM ' . NuListView::TABLE . " WHERE list_key = ? AND ((scope = 'user' AND owner = ?) OR scope = 'shared') ORDER BY name",
+			[self::KEY . $formId, self::me()]) as $r) $out[] = ['id' => (string)$r['id'], 'name' => (string)$r['name'], 'spec' => json_decode((string)$r['definition'], true),
+				'shared' => $r['scope'] === 'shared'];
+		return $out;
+	}
+
+	/** Every saved pivot the user sees, for run buttons in design mode (0.8.1156): [["<form id>|<id>", "<form code> – <name>"], …]; own ones marked. */
+	public static function forRunButtons(): array
+	{
+		$db = nu_db();
+		if (!$db->tableExists(NuListView::TABLE)) return [];
+		$out = [];
+		foreach ($db->all('SELECT v.zzzzsys_nunext_list_view_id AS id, v.list_key, v.name, v.scope FROM ' . NuListView::TABLE . " v WHERE v.list_key LIKE 'pivot:%'
+			AND ((v.scope = 'user' AND v.owner = ?) OR v.scope = 'shared') ORDER BY v.list_key, v.name", [self::me()]) as $r) {
+			$f = substr((string)$r['list_key'], strlen(self::KEY));
+			$m = NuFormMeta::load($f);
+			if (!$m) continue;
+			$out[] = [$f . '|' . $r['id'], ($m->code() ?: $f) . ' – ' . $r['name'] . ($r['scope'] === 'shared' ? '' : ' (' . t('pv_only_me') . ')')];
+		}
 		return $out;
 	}
 
@@ -262,7 +280,7 @@ final class NuPivot
 		$keys = ['pv_title', 'pv_note', 'pv_fields', 'pv_rows', 'pv_cols', 'pv_vals', 'pv_filters', 'pv_drop', 'pv_add', 'pv_remove', 'pv_records', 'pv_fn_count', 'pv_fn_sum',
 			'pv_fn_avg', 'pv_fn_min', 'pv_fn_max', 'pv_fn_countd', 'pv_g_value', 'pv_g_year', 'pv_g_quarter', 'pv_g_month', 'pv_g_monthnum', 'pv_g_week', 'pv_g_weekday', 'pv_g_day',
 			'pv_total', 'pv_show', 'pv_show_val', 'pv_show_row', 'pv_show_col', 'pv_show_all', 'pv_heat', 'pv_table', 'pv_chart', 'pv_chart_bar', 'pv_chart_stack', 'pv_chart_line',
-			'pv_sort', 'pv_sort_key', 'pv_sort_desc', 'pv_sort_asc', 'pv_top', 'pv_top_all', 'pv_saved', 'pv_save', 'pv_save_name', 'pv_none_saved', 'pv_clear', 'pv_empty_val',
+			'pv_sort', 'pv_sort_key', 'pv_sort_desc', 'pv_sort_asc', 'pv_top', 'pv_top_all', 'pv_saved', 'pv_shared', 'pv_save', 'pv_save_name', 'pv_none_saved', 'pv_clear', 'pv_empty_val',
 			'pv_start', 'pv_drill', 'pv_drill_tip', 'pv_working', 'exp_csv', 'exp_xlsx', 'close', 'delete', 'cancel', 'save'];
 		$out = [];
 		foreach ($keys as $k) $out[$k] = t($k);

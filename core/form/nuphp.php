@@ -67,6 +67,7 @@ final class NuPhp
 		NuDebugLog::$context = $label;
 		$code = NuHash::replace($code, $hash, NuHash::PHP);
 		$code = preg_replace('/^\s*<\?php/', '', $code);
+		$code = self::renameClashes($code);
 
 		set_error_handler(static function (int $no, string $str, string $file, int $line) use ($label): bool {
 			if (!(error_reporting() & $no)) return false;
@@ -94,6 +95,58 @@ final class NuPhp
 		NuDebugLog::$context = $prevContext;
 		if (self::$debug) self::logDebug();
 		return count(self::$errors) === $errorsBefore;
+	}
+
+	/**
+	 * Functions the code declares that nuBuilder Next itself already has (e.g. h() or t()) get another name in this code only (0.8.1159):
+	 * nuBuilder Forte has no such functions, so the same procedure ran there, while here PHP stopped with "Cannot redeclare" – a fatal
+	 * error that cannot be caught and broke the JSON answer. Methods, ->name, ::name and new name stay; line numbers do not change.
+	 */
+	public static function renameClashes(string $code): string
+	{
+		if (!preg_match('/\bfunction\s+&?\s*[A-Za-z_]/', $code)) return $code;
+		try { $tok = token_get_all('<?php ' . $code); } catch (Throwable) { return $code; }
+		$sig = static fn(int $i) => is_array($tok[$i]) && in_array($tok[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true);
+		$prev = static function (int $i) use ($sig) { for ($j = $i - 1; $j >= 0; $j--) if (!$sig($j)) return $j; return -1; };
+		$next = static function (int $i) use ($tok, $sig) { $n = count($tok); for ($j = $i + 1; $j < $n; $j++) if (!$sig($j)) return $j; return -1; };
+		// declarations outside classes (brace stack: 'c' = class body)
+		$stack = []; $pendingClass = false; $clash = [];
+		foreach ($tok as $i => $t) {
+			if (is_array($t) && in_array($t[0], [T_CLASS, T_TRAIT, T_INTERFACE, T_ENUM], true)) { $p = $prev($i); if ($p < 0 || !is_array($tok[$p]) || $tok[$p][0] !== T_DOUBLE_COLON) $pendingClass = true; }
+			if ($t === '{' || (is_array($t) && in_array($t[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true))) { $stack[] = $pendingClass && $t === '{' ? 'c' : 'b'; if ($t === '{') $pendingClass = false; }
+			elseif ($t === '}') array_pop($stack);
+			if (is_array($t) && $t[0] === T_FUNCTION && !in_array('c', $stack, true)) {
+				$n = $next($i);
+				if ($n >= 0 && $tok[$n] === '&') $n = $next($n);
+				if ($n >= 0 && is_array($tok[$n]) && $tok[$n][0] === T_STRING) {
+					$name = $tok[$n][1];
+					if (function_exists($name) && !(new ReflectionFunction($name))->isInternal()) $clash[strtolower($name)] = 'nu_proc_' . $name . '_' . substr(md5($code), 0, 8);
+				}
+			}
+		}
+		if (!$clash) return $code;
+		$out = '';
+		foreach ($tok as $i => $t) {
+			if ($i === 0) continue;                        // the "<?php " added above
+			if (is_array($t) && $t[0] === T_STRING && isset($clash[strtolower($t[1])])) {
+				$p = $prev($i); $n = $next($i);
+				$pt = $p >= 0 && is_array($tok[$p]) ? $tok[$p][0] : null;
+				$skip = in_array($pt, [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_NEW, T_CONST], true)
+					|| ($n >= 0 && is_array($tok[$n]) && $tok[$n][0] === T_DOUBLE_COLON);
+				if (!$skip && $pt === T_FUNCTION) {          // a method of the same name stays
+					$depthC = false; $st = []; $pc = false;
+					for ($j = 0; $j < $i; $j++) { $x = $tok[$j];
+						if (is_array($x) && in_array($x[0], [T_CLASS, T_TRAIT, T_INTERFACE, T_ENUM], true)) $pc = true;
+						if ($x === '{' || (is_array($x) && in_array($x[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true))) { $st[] = $pc && $x === '{' ? 'c' : 'b'; if ($x === '{') $pc = false; }
+						elseif ($x === '}') array_pop($st); }
+					$skip = in_array('c', $st, true);
+				}
+				$out .= $skip ? $t[1] : $clash[strtolower($t[1])];
+				continue;
+			}
+			$out .= is_array($t) ? $t[1] : $t;
+		}
+		return $out;
 	}
 
 	private static function evaluate(string $__code, array $__vars = []): void

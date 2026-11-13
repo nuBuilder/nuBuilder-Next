@@ -2552,16 +2552,21 @@
 		}
 		function placeMenu(x, y) {
 			// inside the window
-			var w = menu.outerWidth(), h = menu.outerHeight(), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+			// phones (0.8.1160): the long press selected a word – the browser's search sheet then covers the bottom; drop the selection
+			// and fit the menu into the visible part of the window (visualViewport), not the layout height
+			try { var sel = window.getSelection && window.getSelection(); if (sel && !sel.isCollapsed) sel.removeAllRanges(); } catch (e) { /* none */ }
+			var VV = window.visualViewport;
+			var w = menu.outerWidth(), h = menu.outerHeight(), vw = document.documentElement.clientWidth,
+				vh = VV ? Math.min(document.documentElement.clientHeight, VV.height + VV.offsetTop) : document.documentElement.clientHeight;
 			var left = Math.max(4, Math.min(x, vw - w - 4)), SUBW = 220;
 			// submenus beside the menu: right, or left near the right edge; no room on either side (phones) → they unfold inside the menu
 			var inline = left + w + SUBW > vw && left - SUBW < 0;
 			menu.toggleClass('nuOmInline', inline).toggleClass('nuOmFlip', !inline && left + w + SUBW > vw);
 			function place() {                                        // keep the whole menu inside the window (also after a submenu unfolds)
 				var hh = menu.outerHeight();
-				menu.css({top: Math.max(4, Math.min(parseFloat(menu.css('top')) || y, vh - hh - 4)) + 'px'});
+				menu.css({top: Math.max(4 + (VV ? VV.offsetTop : 0), Math.min(parseFloat(menu.css('top')) || y, vh - hh - 4)) + 'px'});
 			}
-			menu.css({position: 'fixed', left: left + 'px', top: Math.max(4, Math.min(y, vh - h - 4)) + 'px', zIndex: 1070, maxHeight: (vh - 8) + 'px', overflowY: inline ? 'auto' : ''});
+			menu.css({position: 'fixed', left: left + 'px', top: Math.max(4 + (VV ? VV.offsetTop : 0), Math.min(y, vh - h - 4)) + 'px', zIndex: 1070, maxHeight: (vh - 8 - (VV ? VV.offsetTop : 0)) + 'px', overflowY: inline ? 'auto' : ''});
 			// a submenu that would leave the window at the bottom opens upwards from its row
 			menu.on('mouseenter focusin click', '.nuOmSubWrap', function () {
 				if (inline) { place(); return; }

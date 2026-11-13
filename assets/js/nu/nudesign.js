@@ -2026,7 +2026,7 @@
 		var mb = missingBox(o);
 		if (mb) panel.appendChild(mb);
 		var save = function (key, reload) { return function (v) { var f = {}; f[key] = v; saveObj(o, f, reload); }; };
-		var runType = nunext(o).url ? 'U' : String(o.sob_run_type || '').toUpperCase() || ((D.procedures || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'P' : ((D.reports || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'R' : 'F'));
+		var runType = nunext(o).pivot ? 'V' : nunext(o).url ? 'U' : String(o.sob_run_type || '').toUpperCase() || ((D.procedures || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'P' : ((D.reports || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'R' : 'F'));
 		var fmtField = function (key, letters) {
 			return field(t('builder_input_format'), 'format', o[key] || '', save(key), {key: key, letters: letters, empty: '—',
 				tip: letters === 'T' ? t('builder_input_mask_help') : null});
@@ -2077,9 +2077,12 @@
 			type === 'image' ? field(t('builder_image_file'), 'select', o.sob_image_zzzzsys_file_id || '', save('sob_image_zzzzsys_file_id'), {key: 'sob_image_zzzzsys_file_id', search: true, tip: t('builder_image_help'),
 				options: [['', t('please_select')]].concat(D.files || [])}) : null,
 			type === 'run' ? field(t('builder_run_type'), 'select', runType, function (v) {   // URL (0.8.830): kept in sob_all_json nunext.url
-				if (v === 'U') saveObj(o, {nunext_run_url: 'https://', sob_run_type: null, sob_run_target: '2'});
-				else saveObj(o, {sob_run_type: v, nunext_run_url: runType === 'U' ? null : undefined});
-			}, {key: 'sob_run_type', options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')], ['U', t('builder_run_type_U')]]}) : null,
+				if (v === 'U') saveObj(o, {nunext_run_url: 'https://', nunext_run_pivot: runType === 'V' ? null : undefined, sob_run_type: null, sob_run_target: '2'});
+				else if (v === 'V') saveObj(o, {nunext_run_pivot: ((D.pivots || [])[0] || [''])[0] || null, nunext_run_url: runType === 'U' ? null : undefined, sob_run_type: null, sob_run_target: '2'});
+				else saveObj(o, {sob_run_type: v, nunext_run_url: runType === 'U' ? null : undefined, nunext_run_pivot: runType === 'V' ? null : undefined});
+			}, {key: 'sob_run_type', options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')], ['U', t('builder_run_type_U')], ['V', t('builder_run_type_V')]]}) : null,
+			type === 'run' && runType === 'V' ? field(t('builder_run_pivot'), 'select', nunext(o).pivot ? nunext(o).pivot.f + '|' + nunext(o).pivot.id : '', save('nunext_run_pivot'),
+				{key: 'nunext_run_pivot', search: true, tip: t('builder_run_pivot_tip'), options: [['', t('please_select')]].concat(D.pivots || [])}) : null,
 			type === 'run' && runType === 'U' ? field(t('builder_run_url'), 'text', nunext(o).url || '', save('nunext_run_url'), {key: 'nunext_run_url', mono: true, ph: 'https://example.com/item?id=#RECORD_ID#', tip: t('builder_run_url_help')}) : null,
 			type === 'run' && runType === 'F' ? field(t('builder_run_form'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.forms)}) : null,
 			type === 'run' && runType === 'P' ? field(t('builder_run_procedure'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.procedures)}) : null,
@@ -2106,7 +2109,7 @@
 			type === 'run' ? field(t('builder_run_method'), 'select', o.sob_run_method === 'i' ? 'i' : 'b', save('sob_run_method'), {key: 'sob_run_method', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]]}) : null,
 			type === 'run' && runType === 'F' && o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select', String(o.sob_run_target || '0'), save('sob_run_target'), {key: 'sob_run_target',
 				options: [0, 1, 2, 3].map(function (i) { return [String(i), t('builder_run_target_' + i)]; })}) : null,
-			type === 'run' && runType === 'U' && o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select', ['0', '1'].indexOf(String(o.sob_run_target)) >= 0 ? '0' : (String(o.sob_run_target) === '3' ? '3' : '2'), save('sob_run_target'), {key: 'sob_run_target',
+			type === 'run' && (runType === 'U' || runType === 'V') && o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select', ['0', '1'].indexOf(String(o.sob_run_target)) >= 0 ? '0' : (String(o.sob_run_target) === '3' ? '3' : '2'), save('sob_run_target'), {key: 'sob_run_target',
 				options: [['2', t('builder_run_target_2')], ['3', t('builder_run_url_popup')], ['0', t('builder_run_url_same')]]}) : null,
 			VALUE_TYPES.indexOf(type) >= 0 ? field(t('builder_obj_cloneable'), 'check', String(o.sob_all_cloneable) === '0' ? '0' : '1', save('sob_all_cloneable', false), {key: 'sob_all_cloneable'}) : null
 		]);

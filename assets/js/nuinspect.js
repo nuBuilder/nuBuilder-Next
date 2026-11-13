@@ -97,5 +97,20 @@
 	var cj = document.getElementById('inspCopyJson');
 	if (cj) cj.addEventListener('click', function () { copy(card.getAttribute('data-json') || '{}', cj); });
 
+	// the hint below the table (0.8.1157): closed for good with ×, (i) brings it back – localStorage nunext-insp-hint-hidden
+	var hint = document.getElementById('inspHint'), hintShow = document.getElementById('inspHintShow');
+	var setHint = function (off) {
+		if (!hint || !hintShow) return;
+		hint.classList.toggle('d-flex', !off); hint.hidden = off; hintShow.hidden = !off;
+		try { if (off) localStorage.setItem('nunext-insp-hint-hidden', '1'); else localStorage.removeItem('nunext-insp-hint-hidden'); } catch (e) { /* no storage */ }
+		document.documentElement.classList.remove('nuWarnOff-insp');
+	};
+	var off0 = false;
+	try { off0 = localStorage.getItem('nunext-insp-hint-hidden') === '1'; } catch (e) { /* no storage */ }
+	setHint(off0);
+	var hh = document.getElementById('inspHintHide'), hs = document.getElementById('inspHintShowBtn');
+	if (hh) hh.addEventListener('click', function () { setHint(true); });
+	if (hs) hs.addEventListener('click', function () { setHint(false); });
+
 	apply();
 })();

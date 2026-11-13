@@ -29,6 +29,12 @@ foreach (['SELECT 1' => true, "SELECT * FROM a JOIN b ON a.x = b.y WHERE s = 'DE
 	"SELECT * FROM t INTO OUTFILE '/tmp/x'" => false] as $sql => $want) {
 	check("readOnlySql: $sql", NuDemo::readOnlySql($sql) === $want);
 }
+// procedures that declare a function nuBuilder Next already has (0.8.1159): renamed in that code only, methods / ->h / ::h stay
+require_once NU_ROOT . '/core/form/nuphp.php';
+$rc = NuPhp::renameClashes("function h(\$v) { return \$v; }\nclass Q { function h() {} }\n\$o->h(); Q::h(); echo h(1);");
+check('renameClashes declaration', str_contains($rc, 'function nu_proc_h_') && str_contains($rc, 'echo nu_proc_h_'));
+check('renameClashes methods kept', str_contains($rc, 'class Q { function h() {} }') && str_contains($rc, '$o->h(); Q::h();'));
+check('renameClashes no clash', NuPhp::renameClashes('function myOwnThing() {} myOwnThing();') === 'function myOwnThing() {} myOwnThing();');
 check('tablesOf', NuDemo::tablesOf('SELECT * FROM zzzzsys_user u JOIN `Orders` o ON 1') === ['zzzzsys_user', 'orders']);
 check('sqlAllowed select', NuDemo::sqlAllowed('SELECT 1'));
 check('sqlAllowed update', !NuDemo::sqlAllowed('UPDATE customer SET a = 1'));

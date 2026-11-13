@@ -68,6 +68,8 @@ $items = $take('zzzzsys_permission_item', $like('pme_ident'));
 $take('zzzzsys_user_permission', 'upe_zzzzsys_user_id IN (' . $in($uids) . ') AND upe_ident IN (' . $in(array_column($items, 'zzzzsys_permission_item_id')) . ')');
 $homes = [];
 foreach ($lids as $l) foreach ($db->all("SELECT * FROM zzzzsys_nunext_list_view WHERE list_key = ? AND access_ids = ?", [NuHome::LIST_USER, json_encode([$l])]) as $x) { $rows[] = ['zzzzsys_nunext_list_view', $x]; $homes[] = $x; }
+// shared pivots of the sample's lists (0.8.1155; their own ids stay – give them the prefix before capturing)
+$take('zzzzsys_nunext_list_view', "scope = 'shared' AND list_key IN (" . $in(array_map(static fn($f) => 'pivot:' . $f, $fids)) . ')');
 $dash = $take('zzzzsys_nunext_dashboard', $like('code'));
 $take('zzzzsys_nunext_widget', 'dashboard_id IN (' . $in(array_column($dash, 'zzzzsys_nunext_dashboard_id')) . ')');
 $take('zzzzsys_nunext_help', $like('code'));                     // help pages for users whose code starts with the prefix, with translations (0.8.1039)

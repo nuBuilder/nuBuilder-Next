@@ -16,7 +16,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 23;             // 23: orders – the customer's name no longer runs into the label Status · 22: the PHP code of the procedures and form hooks formatted (as Format code does) · 21: Excel export – two procedures (built-in NuXlsx, PhpSpreadsheet with formulas and a chart) and their start tiles · 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 24;             // 24: three shared pivots of the orders list · 23: orders – the customer's name no longer runs into the label Status · 22: the PHP code of the procedures and form hooks formatted (as Format code does) · 21: Excel export – two procedures (built-in NuXlsx, PhpSpreadsheet with formulas and a chart) and their start tiles · 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 
@@ -276,6 +276,7 @@ final class NuSample
 		// ------------------------------------------------------------ dashboards (Admin tools → Dashboards)
 		foreach (self::dashboards() as [$t, $r]) $add($t, $r);
 		foreach (self::userHomes() as [$t, $r]) $add($t, $r);
+		foreach (self::pivots() as [$t, $r]) $add($t, $r);
 
 		// ------------------------------------------------------------ access levels + users
 		[$access, $users] = self::accessAndUsers();
@@ -861,6 +862,25 @@ PHP],
 			$def = $l + ['v' => NuHome::VERSION, 'size' => 'large', 'tabs' => [], 'hidden' => []];
 			$rows[] = ['zzzzsys_nunext_list_view', ['zzzzsys_nunext_list_view_id' => 'sample_uh_' . substr($access, 7), 'list_key' => NuHome::LIST_USER, 'scope' => 'shared', 'owner' => '',
 				'name' => $name, 'access_ids' => json_encode([$access]), 'definition' => json_encode(NuHome::clean($def, false)[0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+				'sort_order' => ++$i, 'updated_at' => $now, 'updated_by' => 'sample']];
+		}
+		return $rows;
+	}
+
+	/** Pivots of the orders list for everyone (0.8.1155; columns: 1 Date, 2 Customer, 3 Status, 4 Total). */
+	private static function pivots(): array
+	{
+		$p = [
+			'p1' => ['Revenue by month and status', ['rows' => [['c' => 1, 'g' => 'month']], 'cols' => [['c' => 3, 'g' => '']], 'vals' => [['c' => 4, 'fn' => 'sum']], 'flt' => []], ['heat' => true]],
+			'p2' => ['Top 5 customers by revenue', ['rows' => [['c' => 2, 'g' => '']], 'cols' => [], 'vals' => [['c' => 4, 'fn' => 'sum'], ['c' => -1, 'fn' => 'count']], 'flt' => []], ['sort' => 'desc', 'top' => 5]],
+			'p3' => ['Orders per quarter (chart)', ['rows' => [['c' => 1, 'g' => 'quarter']], 'cols' => [['c' => 3, 'g' => '']], 'vals' => [['c' => -1, 'fn' => 'count']], 'flt' => []], ['mode' => 'chart', 'ctype' => 'stack']],
+		];
+		$rows = [];
+		$now = date('Y-m-d H:i:s');
+		$i = 0;
+		foreach ($p as $k => [$name, $spec, $view]) {
+			$rows[] = ['zzzzsys_nunext_list_view', ['zzzzsys_nunext_list_view_id' => 'sample_pv_' . $k, 'list_key' => NuPivot::KEY . self::fid('sample_order'), 'scope' => 'shared', 'owner' => '',
+				'name' => $name, 'access_ids' => '[]', 'definition' => json_encode(['spec' => $spec, 'view' => $view], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
 				'sort_order' => ++$i, 'updated_at' => $now, 'updated_by' => 'sample']];
 		}
 		return $rows;

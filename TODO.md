@@ -117,6 +117,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify: run button "Show a pivot"** (0.8.1156) – design mode run type, a shared pivot as button (new tab / popup) and as iframe; a user without print right on the list does not see it
+- [ ] **Please verify: object menu on phones** (0.8.1160) – long press on a label near the bottom: no text selection / search sheet, menu fully visible
 - [ ] **Please verify: pivot of form lists** (0.8.1151) – Export ▾ → Pivot… on a real list: date groups, totals vs the list, filter, drill, My pivots, CSV / Excel; phones have no entry yet (Export menu only from 576 px)
 - [ ] **Please verify: list rows wait for the form's code** (0.8.1150) – lists with own JavaScript show their rows after nuOnLoad (3 s fallback); check a list whose code rewrites cells
 - [ ] **Please verify: phone menu of a record** (0.8.1145 / 0.8.1146) – Form info fits the screen, layout switch labels shown

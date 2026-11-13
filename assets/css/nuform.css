@@ -797,6 +797,10 @@ html.nuPhoneCards #nuBrowseTotals > tr > td.nuSelCol:has(.nuSelClear:not([hidden
 @keyframes nuBrowseJsShow { to { visibility: visible; } }
 
 /* pivot of a form list (0.8.1151, assets/js/nu/nupivot.js) */
+/* pivot only (run button, 0.8.1156): the list page behind it stays hidden */
+html.nuPvOnly body > :not(.nuPvDlg) { visibility: hidden; }
+html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
+@media (min-width: 992px) { .nuPvDlg .modal-dialog:not(.modal-fullscreen) { width: min(1140px, calc(100% - 3.5rem)); max-width: none; } }
 .nuPvWrap { display: flex; min-height: 70vh; }
 .nuPvSide { flex: 0 0 15.5rem; border-right: 1px solid var(--bs-border-color); padding: .75rem; overflow-y: auto; background: var(--bs-tertiary-bg); }
 .nuPvMain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
@@ -834,3 +838,5 @@ html.nuPhoneCards #nuBrowseTotals > tr > td.nuSelCol:has(.nuSelClear:not([hidden
 	.nuPvWrap { flex-direction: column; }
 	.nuPvSide { flex: none; border-right: 0; border-bottom: 1px solid var(--bs-border-color); max-height: 45vh; }
 }
+/* object menu on phones (0.8.1160): a long press on a label opens the menu, not a text selection with the browser's search sheet */
+@media (pointer: coarse) { #nuEditForm label[id^="label_"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } }
