@@ -3,6 +3,46 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1167 – Release gate
+- Release gate: help, tutorial, README, FEATURES.md and TODO.md brought up to date for 0.8.1162–0.8.1166.
+
+## 0.8.1166 – Calendars in the ticket sample
+- Ticket sample with calendars (sample version 9 – Sample data → Refresh): the tickets list has a calendar view by due date (a colour and a
+  chip per status, drag and drop moves the due date), each category shows its tickets in a calendar object (SQL source, opens and moves the
+  tickets), and the support dashboard has a "Due dates" calendar of the open tickets coloured by priority.
+- Calendars: the week and day views show the whole day unless hours are set (scrolled to 7 o'clock) – with the earlier default of
+  07:00–20:00 entries outside those hours were not shown at all; on phones the calendar opens with the list of the week; the "All" chip is
+  no longer struck through while groups are hidden; group colours with better contrast.
+
+## 0.8.1165 – Calendars
+- Calendar view of form lists (a forum suggestion): design mode → Browse list → Calendar view – start column (date or date and time), optional
+  end, title, group and colour columns, first view, hours of the day, all-day entries. The list then has a Calendar button: month, week, day and
+  list views of the records the list shows (search, filters and advanced search apply). Each group gets its own colour and a chip to show or
+  hide it. A click on an entry opens its record in a window above the calendar; a click or drag on empty days opens a new record with start and
+  end filled in. Optional drag and drop / resizing saves the record through the form – rights, validation, rules, Before Save and the audit
+  trail apply; a refused save puts the entry back and says why.
+- Calendar objects: design mode → Add → Calendar puts a calendar on a form (an HTML object with its settings beside it – nuBuilder Forte shows
+  an empty HTML object). Entries come from a list with a calendar view, filtered by the record (e.g. #RECORD_ID#), or from SQL with columns
+  named id, start, end, title, color, group, allday – with a form to open and move the entries.
+- Dashboards: new widget type Calendar (SQL, SQL builder query or procedure; columns by name; nu_record_id opens the record with a form link).
+- Library: FullCalendar 6.1.22 standard edition (MIT), loaded only when a calendar is shown; its styles come as a file for the strict content
+  security policy (dev/fullcalendar_build.py builds the folder from the npm packages).
+- Fix: design mode could not save an object whose id nuBuilder Forte allowed but nuBuilder Next does not (e.g. letters with accents) – such an
+  id is kept as long as it is not changed; publishing a draft with such an object works again.
+
+## 0.8.1164 – Publish with existing object ids
+- Publishing a form draft: an object id that nuBuilder Forte allows but nuBuilder Next would not give (for example with umlauts)
+  no longer blocks the publish when that object is unchanged – the check applies only to ids that are new or renamed in the draft.
+
+## 0.8.1163 – Button settings dialogue
+- Button settings: the right-click menu of a button (run object or input button) starts with "Button settings…" – one dialogue
+  with the tabs Run (what it runs, target, record, filter, button or iframe, where it opens, a link to the target), Events
+  (JavaScript per event), Label & look (label, icon) and Access; one Save, live or into the open draft. Alt+click on a button
+  opens it too.
+
+## 0.8.1162 – Notes
+- Notes: v0.8.1161 published.
+
 ## 0.8.1161 – Release gate
 - Release gate: documentation for 0.8.1153–0.8.1160 (feature list, TODO please-verify).
 

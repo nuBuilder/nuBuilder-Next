@@ -63,6 +63,8 @@ return [
 	'builder_delete_object_confirm' => 'Objekt «%s» und seine Ereignisse löschen?',
 	'ds_stack_dir_tip' => 'Wie die Box ihre Objekte auf jedem Bildschirm anordnet: untereinander, nebeneinander (umbrechend, wenn der Platz fehlt) oder in einem Raster mit einer Spaltenzahl je Bildschirmgrösse. Forte zeigt weiter die Positionen.',
 	'ds_key_esc' => 'Nichts auswählen (Formulareinstellungen) oder ein Panel schliessen',
+	'ds_cal_hours_tip' => 'Die Stunden, die Wochen- und Tagesansicht zeigen, z. B. 07:00-20:00 – Einträge ausserhalb werden nicht gezeigt. Standard: der ganze Tag, auf 7 Uhr gescrollt.',
+	'ds_cal_height_tip' => 'In Pixeln; 0 = die Grösse des Objekts (andere Layouts: so hoch, wie der Kalender braucht).',
 	'ds_col_delete_confirm' => 'Spalte «%s» aus der Liste entfernen?',
 	'ds_code_edit' => 'In grösserem Fenster bearbeiten',
 	'ds_add_to' => 'Zu «%s» hinzufügen',

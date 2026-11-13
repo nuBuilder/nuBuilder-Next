@@ -51,7 +51,7 @@ const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_al
 	'sob_subform_zzzzsys_form_id', 'sob_subform_foreign_key', 'sob_subform_add', 'sob_subform_delete', 'sob_subform_type', 'sob_subform_table',
 	'sob_input_format', 'sob_input_type', 'sob_input_icon', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_input_file_target', 'sob_html_code',
 	'sob_html_chart_type', 'sob_html_javascript', 'sob_html_title', 'sob_html_vertical_label', 'sob_html_horizontal_label',
-	'sob_select_2', 'sob_image_zzzzsys_file_id', 'nunext_run_url', 'nunext_run_pivot', 'nunext_help', 'nunext_fit'];
+	'sob_select_2', 'sob_image_zzzzsys_file_id', 'nunext_run_url', 'nunext_run_pivot', 'nunext_help', 'nunext_fit', 'nunext_calendar'];
 
 const NB_INT_FIELDS = ['sob_all_order', 'sob_all_top', 'sob_all_left', 'sob_all_width', 'sob_all_height', 'sfo_browse_rows_per_page'];
 const NB_TYPES      = ['input', 'select', 'textarea', 'editor', 'display', 'calc', 'lookup', 'subform', 'html', 'chart', 'word', 'contentbox', 'run', 'image'];
@@ -293,7 +293,7 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
 			$layout = null;
 			if (array_key_exists('layout', $in['fields'] ?? [])) $layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? (string)$in['fields']['layout'] : 'absolute';
-			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS, NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
+			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS, NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
 			$store->commit('form.save');
 			$out();
 
@@ -646,7 +646,7 @@ try {
 				$layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? $in['fields']['layout'] : 'absolute';
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['layout' => $layout === 'absolute' ? null : $layout]);
 			}
-			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team (0.8.1020), help pages (0.8.1023): sfo_json nunext
+			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team (0.8.1020), help pages (0.8.1023): sfo_json nunext
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($meta->form['sfo_json'] ?? null), $tags);
 			}
 			if ($fields) $db->update('zzzzsys_form', $fields, 'zzzzsys_form_id', $formId);
@@ -739,7 +739,8 @@ try {
 			$type = (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '');
 			$fid  = (string)($fields['sob_all_id'] ?? $existing['sob_all_id'] ?? '');
 			if (!in_array($type, NB_TYPES, true)) nb_err(t('builder_err_type'));
-			if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) nb_err(t('builder_err_id'));
+			// an id nuBuilder Forte allowed (umlauts …) is kept as long as it is not changed (0.8.1165)
+			if ($fid !== (string)($existing['sob_all_id'] ?? "\0") && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) nb_err(t('builder_err_id'));
 			if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ? AND sob_all_id = ? AND zzzzsys_object_id <> ?', [$formId, $fid, $objectId])) {
 				nb_err(t('builder_err_id_taken', $fid));
 			}
@@ -756,6 +757,11 @@ try {
 			if (array_key_exists('nunext_help', $fields)) {            // user help page of the field (0.8.1023): sob_all_json nunext.help
 				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
 				unset($fields['nunext_help']);
+			}
+			if (array_key_exists('nunext_calendar', $fields)) {        // calendar object (0.8.1165): sob_all_json nunext.calendar of an HTML object
+				$cc = is_string($fields['nunext_calendar']) ? json_decode($fields['nunext_calendar'], true) : $fields['nunext_calendar'];
+				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['calendar' => is_array($cc) ? NuCalendar::cleanObject($cc) : null]);
+				unset($fields['nunext_calendar']);
 			}
 			if (array_key_exists('nunext_fit', $fields)) {             // grid sub-form: fit columns to the width (0.8.1141): sob_all_json nunext.fit
 				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);

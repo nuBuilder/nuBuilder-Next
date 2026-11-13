@@ -2497,6 +2497,174 @@
 			return $().add(divider()).add(li);
 		}
 
+		// Button settings (0.8.1163): one dialog for a run object or an input button – Run (target, record, filter, method, open in),
+		// Events (JavaScript per event), Label & look (label, icon), Access; one Save through the builder API (live or the open draft)
+		var EVENTS = ['onclick', 'onchange', 'onblur', 'onfocus', 'oninput', 'onkeydown', 'onkeyup', 'ondblclick', 'onmouseover', 'onmouseout'];
+		function isButton(o) { return o && (o.type === 'run' || (o.type === 'input' && o.input === 'button')); }
+		function settings(id) {
+			var o = N.objects[id];
+			if (!isButton(o)) return;
+			if (N.objMenuHook) { N.objMenuHook('properties', o); return; }
+			$('#nuOmSetDlg').remove();
+			var L = OM.run_lists || {forms: [], procs: [], reports: [], pivots: []};
+			var r = o.run ? $.extend({}, o.run) : null;
+			var dlg = $('<div class="modal fade nuOmSetDlg" id="nuOmSetDlg" tabindex="-1" aria-labelledby="nuOmSetTitle"><div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down"><div class="modal-content">'
+				+ '<div class="modal-header py-2"><h2 class="modal-title fs-5 text-truncate" id="nuOmSetTitle"></h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
+				+ '<div class="modal-body pt-2"><ul class="nav nav-tabs mb-3" role="tablist"></ul><div class="nuOmSetPanes"></div></div>'
+				+ '<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"></button><button type="button" class="btn btn-primary" id="nuOmSetSave"></button></div>'
+				+ '</div></div></div>').appendTo('body');
+			dlg.find('.modal-title').append($('<i class="bi bi-gear me-2"></i>'), $('<code></code>').text(id));
+			dlg.find('.btn-close').attr('aria-label', T.cancel);
+			dlg.find('.modal-footer .btn-outline-secondary').text(T.cancel);
+			dlg.find('#nuOmSetSave').text(T.save);
+			var tabs = dlg.find('.nav-tabs'), panes = dlg.find('.nuOmSetPanes');
+			function pane(key, title) {
+				var b = $('<button type="button" class="nav-link" role="tab"></button>').attr({id: 'nuOmSetTab_' + key, 'data-pane': key}).text(title);
+				tabs.append($('<li class="nav-item" role="presentation"></li>').append(b));
+				var p = $('<div class="nuOmSetPane" role="tabpanel" hidden></div>').attr('id', 'nuOmSetPane_' + key);
+				panes.append(p);
+				b.on('click', function () {
+					tabs.find('.nav-link').removeClass('active').attr('aria-selected', 'false');
+					b.addClass('active').attr('aria-selected', 'true');
+					panes.children().prop('hidden', true); p.prop('hidden', false);
+					try { localStorage.setItem('nunext-om-set-tab', key); } catch (e) { /* none */ }
+				});
+				return p;
+			}
+			function row(label, ctl, tip) {
+				var lb = $('<label class="form-label mb-1"></label>').text(label);
+				var d = $('<div class="mb-3"></div>').append(lb);
+				if (tip) d.find('label').after($('<span class="nuInfoTip ms-1" tabindex="0" role="img"><i class="bi bi-info-circle"></i></span>').attr({title: tip, 'aria-label': tip}));
+				return d.append(ctl);
+			}
+			function select(id2, opts, val) {
+				var sel = $('<select class="form-select"></select>').attr('id', id2);
+				opts.forEach(function (x) { sel.append($('<option></option>').val(x[0]).text(x[1]).prop('selected', String(x[0]) === String(val))); });
+				return sel;
+			}
+
+			// --- Run
+			var runFields = null;
+			if (r) {
+				var pRun = pane('run', T.set_run);
+				var typeSel = select('nuOmSetType', ['F', 'P', 'R', 'U', 'V'].map(function (k) { return [k, T.r_types[k]]; }), r.type);
+				var tgtWrap = $('<div id="nuOmSetTargetWrap"></div>');
+				var urlIn = $('<input type="text" class="form-control font-monospace" id="nuOmSetUrl" placeholder="https://">').val(r.url || '');
+				var recIn = $('<input type="text" class="form-control font-monospace" id="nuOmSetRecord">').val(r.record);
+				var fltIn = $('<input type="text" class="form-control font-monospace" id="nuOmSetFilter">').val(r.filter);
+				var methSel = select('nuOmSetMethod', [['b', T.r_b], ['i', T.r_i]], r.method);
+				var openWrap = $('<div id="nuOmSetOpenWrap"></div>');
+				var link = $('<a class="small" target="_blank" rel="noopener" id="nuOmSetOpenTarget"></a>').append('<i class="bi bi-box-arrow-up-right me-1"></i>', document.createTextNode(T.open_target));
+				var recRow = row(T.r_record, recIn, T.r_record_tip), fltRow = row(T.r_filter, fltIn, T.r_filter_tip), urlRow = row(T.r_url, urlIn);
+				pRun.append(row(T.set_run, typeSel), tgtWrap, urlRow, recRow, fltRow, row(T.r_method, methSel), openWrap, link);
+				var ts = null, tgtSel = null;
+				var drawTarget = function (keep) {
+					var k = typeSel.val();
+					if (ts) { ts.destroy(); ts = null; }
+					tgtWrap.empty(); tgtSel = null;
+					var list = k === 'F' ? L.forms : k === 'P' ? L.procs : k === 'R' ? L.reports : k === 'V' ? L.pivots : null;
+					if (list) {
+						var cur = keep ? (k === 'V' ? r.pivot : r.target) : '';
+						tgtSel = select('nuOmSetTarget', [['', T.please_select]].concat(list.map(function (x) { return [x[0], x[1]]; })), cur);
+						tgtWrap.append(row(k === 'F' ? T.r_form : k === 'P' ? T.r_proc : k === 'R' ? T.r_report : T.r_pivot, tgtSel));
+						if (window.TomSelect) ts = new TomSelect(tgtSel[0], {maxOptions: null, allowEmptyOption: true, create: false, dropdownParent: 'body', plugins: ['dropdown_input'],
+							onItemAdd: function () { this.close(); this.blur(); }});
+						tgtSel.on('change', drawLink);
+					}
+					urlRow.prop('hidden', k !== 'U'); recRow.prop('hidden', k !== 'F'); fltRow.prop('hidden', k !== 'F');
+					drawOpen();
+					drawLink();
+				};
+				var drawOpen = function () {
+					var k = typeSel.val();
+					openWrap.empty();
+					if (methSel.val() === 'i' || k === 'P' || k === 'R') return;
+					var opts = k === 'F' ? [0, 1, 2, 3].map(function (i) { return [String(i), T.r_targets[i]]; }) : [['2', T.r_targets[2]], ['3', T.r_url_popup], ['0', T.r_url_same]];
+					var cur = String(r.open);
+					if (k !== 'F' && cur === '1') cur = '0';
+					openWrap.append(row(T.r_open, select('nuOmSetOpen', opts, opts.some(function (x) { return x[0] === cur; }) ? cur : opts[0][0])));
+				};
+				var drawLink = function () {
+					var k = typeSel.val(), v = tgtSel ? tgtSel.val() : '';
+					var href = !v ? '' : k === 'F' ? '?p=form&f=' + encodeURIComponent(v) : k === 'P' ? '?p=procedures&id=' + encodeURIComponent(v)
+						: k === 'R' ? '?p=reports&id=' + encodeURIComponent(v) : k === 'V' ? '?p=form&f=' + encodeURIComponent(v.split('|')[0]) : '';
+					link.prop('hidden', !href).attr('href', href ? N.base + href : null);
+				};
+				typeSel.on('change', function () { drawTarget(typeSel.val() === r.type); });
+				methSel.on('change', drawOpen);
+				drawTarget(true);
+				runFields = function () {
+					var k = typeSel.val(), v = tgtSel ? tgtSel.val() : '', op = $('#nuOmSetOpen').val();
+					var f = {sob_run_method: methSel.val()};
+					if (op !== undefined) f.sob_run_target = op;
+					if (k === 'V') return v ? $.extend(f, {nunext_run_pivot: v, nunext_run_url: null}) : null;
+					if (k === 'U') return urlIn.val().trim() ? $.extend(f, {nunext_run_url: urlIn.val().trim(), nunext_run_pivot: null}) : null;
+					if (!v) return null;
+					return $.extend(f, {sob_run_type: k, sob_run_zzzzsys_form_id: v, sob_run_id: k === 'F' ? recIn.val() : '', sob_run_filter: k === 'F' ? fltIn.val() : '',
+						nunext_run_url: null, nunext_run_pivot: null});
+				};
+			}
+
+			// --- Events
+			var pEv = pane('events', T.set_events + ((o.js || []).length ? ' (' + o.js.length + ')' : ''));
+			var evRows = $('<div class="nuOmSetEvRows d-grid gap-2"></div>');
+			var addEv = function (ev) {
+				var sel = select('', EVENTS.concat(ev.event && EVENTS.indexOf(ev.event) < 0 ? [ev.event] : []).map(function (x) { return [x, x]; }), ev.event || 'onclick')
+					.addClass('form-select-sm nuOmSetEvName').attr('aria-label', T.event).removeAttr('id');
+				var ta = $('<textarea class="form-control font-monospace nuOmSetEvJs" rows="3" spellcheck="false" aria-label="JavaScript"></textarea>').val(ev.js || '');
+				var del = $('<button type="button" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>').attr({title: T.delete, 'aria-label': T.delete});
+				var rw = $('<div class="nuOmSetEv"></div>').append($('<div class="d-flex gap-2 mb-1"></div>').append(sel.css('max-width', '14rem'), del.addClass('ms-auto')), ta);
+				del.on('click', function () { rw.remove(); });
+				evRows.append(rw);
+			};
+			(o.js || []).forEach(addEv);
+			pEv.append(evRows, $('<button type="button" class="btn btn-sm btn-outline-primary mt-2" id="nuOmSetEvAdd"><i class="bi bi-plus-lg me-1"></i></button>')
+				.append(document.createTextNode(T.add_event)).on('click', function () { addEv({}); evRows.find('textarea').last().trigger('focus'); }));
+
+			// --- Label & look
+			var pLook = pane('look', T.set_look);
+			var lblIn = $('<input type="text" class="form-control" id="nuOmSetLabel">').val(o.label_raw !== undefined ? o.label_raw : o.label);
+			var icoIn = $('<input type="text" class="form-control font-monospace" id="nuOmSetIcon" placeholder="bi-house">').val(o.icon || '');
+			pLook.append(row(T.label, lblIn), row(T.icon, icoIn, T.icon_tip));
+
+			// --- Access
+			var pAcc = pane('access', T.access);
+			var accSel = select('nuOmSetAccess', T.access_v.map(function (txt, i) { return [String(i), txt]; }), String(o.access || '0'));
+			pAcc.append(row(T.access, accSel));
+
+			var last = '';
+			try { last = localStorage.getItem('nunext-om-set-tab') || ''; } catch (e) { /* none */ }
+			(tabs.find('[data-pane="' + last + '"]').length ? tabs.find('[data-pane="' + last + '"]') : tabs.find('.nav-link').first()).trigger('click');
+
+			dlg.find('#nuOmSetSave').on('click', function () {
+				var f = {sob_all_label: lblIn.val(), sob_input_icon: icoIn.val().trim(), sob_all_access: accSel.val()};
+				if (runFields) {
+					var rf = runFields();
+					if (!rf) { tabs.find('[data-pane=run]').trigger('click'); (tgtSel || urlIn).trigger('focus'); return; }
+					$.extend(f, rf);
+				}
+				var events = evRows.children().map(function () {
+					return {event: $(this).find('.nuOmSetEvName').val(), js: $(this).find('.nuOmSetEvJs').val()};
+				}).get().filter(function (x) { return x.js.trim() !== ''; });
+				if (N.edited && !window.confirm(T.unsaved)) return;
+				var b = $(this).prop('disabled', true);
+				builderCall('object.save', {object_id: o.object_id, fields: f, events: events})
+					.then(function () { N.edited = false; window.location.reload(); })
+					.catch(function (e) { b.prop('disabled', false); nuMessage([esc(e.message)]); });
+			});
+			dlg.on('hidden.bs.modal', function () { if (ts) ts.destroy(); dlg.remove(); });
+			nuBs.modal(dlg[0]).show();
+		}
+		N.objButtonSettings = settings;
+		// Alt+click on a button opens its settings (not in design mode, which selects objects on click)
+		document.addEventListener('click', function (e) {
+			if (!e.altKey || N.objMenuHook || N.mode !== 'edit') return;
+			var b = e.target.closest && e.target.closest('#nuEditForm button.nuRunButton[id], #nuEditForm button.nuButton[id], #nuEditForm input[type=button][id]');
+			if (!b || !isButton(N.objects[b.id])) return;
+			e.preventDefault(); e.stopImmediatePropagation();
+			settings(b.id);
+		}, true);
+
 		function open(id, x, y) {
 			close();
 			var o = N.objects[id];
@@ -2537,6 +2705,7 @@
 
 			menu = $('<ul class="dropdown-menu show nuObjMenu shadow" role="menu"></ul>').append(
 				head, divider(),
+				isButton(o) ? (function () { var li = item('bi-gear', T.settings, function () { settings(id); }); li.find('button').attr({title: T.settings_tip, id: 'nuOmSettings'}); return li; })() : $(),
 				item('bi-sliders', T.properties, function () { if (N.objMenuHook) { N.objMenuHook('properties', o); return; } window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id), '_blank'); }),
 				item('bi-input-cursor-text', T.rename, function () {
 					var cur = labelText(id) || o.label || '';            // words / images have no separate label (0.8.1082)

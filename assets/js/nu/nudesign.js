@@ -767,6 +767,41 @@
 		box.appendChild(field(t('ds_rd_cols'), 'check', det.cols ? '1' : '0', detSave('cols'), {key: 'details_cols', tip: t('ds_rd_cols_tip')}));
 		box.appendChild(field(t('ds_rd_sub'), 'select', det.sub || '', detSave('sub'), {key: 'details_sub', tip: t('ds_rd_sub_tip'),
 			options: [['', t('ds_rd_none')]].concat(subs)}));
+		// calendar view (0.8.1165, core/form/nucalendar.php): sfo_json nunext.calendar {start, end, title, color, group: column ids, view, allday, edit, drag, min, max}
+		var cal = {};
+		try { cal = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).calendar || {}; } catch (x) { cal = {}; }
+		var calCols = [['', t('ds_cal_none')]].concat((S.browse || []).map(function (c, i) { return [c.zzzzsys_browse_id, (i + 1) + ' · ' + (plain(c.sbr_title) || c.sbr_display)]; }));
+		var calSave = function (k) {
+			return function (v) {
+				var n = {};
+				Object.keys(cal).forEach(function (x) { n[x] = cal[x]; });
+				n[k] = ['allday', 'edit', 'drag'].indexOf(k) >= 0 ? v === '1' : v;
+				if (['start', 'end', 'title', 'color', 'group'].indexOf(k) >= 0 && v === '') delete n[k];
+				cal = n;
+				change('form.save', {fields: {calendar: cal.start ? cal : null}}, BROWSE).catch(function () { /* said */ });
+			};
+		};
+		var calOn = function (k, d) { return cal[k] === undefined ? (d ? '1' : '0') : (cal[k] ? '1' : '0'); };
+		box.appendChild(h(t('ds_cal_title')));
+		box.appendChild(field(t('ds_cal_start'), 'select', cal.start || '', calSave('start'), {key: 'cal_start', tip: t('ds_cal_start_tip'), options: calCols}));
+		box.appendChild(el('div', {'class': 'nuDsGrid2'}, [
+			field(t('ds_cal_end'), 'select', cal.end || '', calSave('end'), {key: 'cal_end', options: calCols}),
+			field(t('ds_cal_ctitle'), 'select', cal.title || '', calSave('title'), {key: 'cal_title', options: calCols})]));
+		box.appendChild(el('div', {'class': 'nuDsGrid2'}, [
+			field(t('ds_cal_group'), 'select', cal.group || '', calSave('group'), {key: 'cal_group', tip: t('ds_cal_group_tip'), options: calCols}),
+			field(t('ds_cal_color'), 'select', cal.color || '', calSave('color'), {key: 'cal_color', tip: t('ds_cal_color_tip'), options: calCols})]));
+		box.appendChild(el('div', {'class': 'nuDsGrid2'}, [
+			field(t('ds_cal_view'), 'select', cal.view || 'month', calSave('view'), {key: 'cal_view', options: ['month', 'week', 'day', 'list'].map(function (x) { return [x, t('cal_' + x)]; })}),
+			field(t('ds_cal_hours'), 'text', (cal.min || '00:00') + '-' + (cal.max || '24:00'), function (v) {
+				var m = /^\s*(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s*$/.exec(v || '');
+				if (!m) return;
+				var pad = function (x) { return x.length === 4 ? '0' + x : x; };
+				var n = {}; Object.keys(cal).forEach(function (x) { n[x] = cal[x]; }); n.min = pad(m[1]); n.max = pad(m[2]); cal = n;
+				if (cal.start) change('form.save', {fields: {calendar: cal}}, BROWSE).catch(function () { /* said */ });
+			}, {key: 'cal_hours', tip: t('ds_cal_hours_tip'), ph: '00:00-24:00'})]));
+		box.appendChild(field(t('ds_cal_allday'), 'check', calOn('allday', false), calSave('allday'), {key: 'cal_allday', tip: t('ds_cal_allday_tip')}));
+		box.appendChild(field(t('ds_cal_edit'), 'check', calOn('edit', true), calSave('edit'), {key: 'cal_edit', tip: t('ds_cal_edit_tip')}));
+		box.appendChild(field(t('ds_cal_drag'), 'check', calOn('drag', false), calSave('drag'), {key: 'cal_drag', tip: t('ds_cal_drag_tip')}));
 		// code of the list
 		box.appendChild(h(t('ds_list_code')));
 		box.appendChild(el('div', {'class': 'nuDsTools'}, [
@@ -970,6 +1005,11 @@
 			dragSource(b, {type: ty});
 			grid.appendChild(b);
 		});
+		// calendar (0.8.1165): an HTML object with sob_all_json nunext.calendar – nuBuilder Forte shows it as an empty HTML object
+		var calB = el('button', {type: 'button', 'class': 'nuDsEl', id: 'nuDsAddCalendar', draggable: 'true', 'data-type': 'calendar',
+			onclick: function () { addObject('html', {calendar: true}); }}, [icon('bi-calendar3'), el('span', {text: t('ds_cal_obj')})]);
+		dragSource(calB, {type: 'html', calendar: true});
+		grid.appendChild(calB);
 		fly.appendChild(grid);
 		fly.appendChild(el('p', {'class': 'nuDsFlyFoot', text: t('ds_add_hint')}));
 	}
@@ -1030,13 +1070,17 @@
 		var tab = activeTabId() || ((S.tabs || [])[0] || {}).zzzzsys_tab_id || '';
 		var size = SIZES[type] || [250, 22];
 		var maxOrder = sorted(tab).reduce(function (m, x) { return Math.max(m, +x.sob_all_order || 0); }, 0);
-		var fid = spec.id ? uniqueId(spec.id) : uniqueId(type === 'contentbox' ? 'box' : 'new_' + (type === 'input' && spec.input ? spec.input.toLowerCase().replace(/[^a-z0-9]/g, '') : type));
+		var fid = spec.id ? uniqueId(spec.id) : uniqueId(spec.calendar ? 'calendar' : type === 'contentbox' ? 'box' : 'new_' + (type === 'input' && spec.input ? spec.input.toLowerCase().replace(/[^a-z0-9]/g, '') : type));
 		var input = spec.input || (type === 'input' ? 'text' : '');
 		var fields = {sob_all_type: type, sob_all_id: fid, sob_all_label: spec.id ? labelOf(spec.id) : (spec.label || t('bf_type_' + type)),
 			sob_all_zzzzsys_tab_id: tab, sob_all_order: maxOrder + 10, sob_all_top: pos ? pos.top : bottomOf(tab) + 12, sob_all_left: pos ? pos.left : 170,
 			sob_all_width: input === 'checkbox' || input === 'color' ? 30 : (['nuDate', 'date', 'time', 'button', 'nuNumber', 'number', 'month', 'week', 'nuAutoNumber'].indexOf(input) >= 0 ? 120 : size[0]), sob_all_height: input === 'button' ? 30 : size[1], sob_all_align: 'left', sob_input_type: input,
 			sob_subform_add: type === 'subform' ? '1' : '', sob_subform_delete: type === 'subform' ? '1' : '', sob_subform_type: type === 'subform' ? 'g' : '',
 			sob_run_method: type === 'run' ? 'b' : '', sob_run_type: type === 'run' ? 'F' : '', sob_run_target: type === 'run' ? '0' : '', sob_lookup_description_width: type === 'lookup' ? '200' : ''};
+		if (spec.calendar) {
+			fields.sob_all_label = t('ds_cal_obj'); fields.sob_all_width = 640; fields.sob_all_height = 460; fields.sob_html_code = '';
+			fields.nunext_calendar = JSON.stringify({src: 'form', view: 'month'});
+		}
 		selIds = [fid];
 		keepTab = tab;
 		chain([['object.save', {object_id: '', fields: fields}]]);
@@ -2058,7 +2102,7 @@
 			type === 'calc' ? field(t('builder_calc_formula'), 'textarea', o.sob_calc_formula, save('sob_calc_formula'), {key: 'sob_calc_formula', code: 'JS', mono: true, rows: '2'}) : null,
 			type === 'select' ? field(t('builder_select_sql'), 'textarea', o.sob_select_sql, save('sob_select_sql'), {key: 'sob_select_sql', code: 'SQL', mono: true, rows: '4', tip: t('builder_select_sql_help')}) : null,
 			type === 'display' ? field(t('builder_display_sql'), 'textarea', o.sob_display_sql, save('sob_display_sql'), {key: 'sob_display_sql', code: 'SQL', mono: true, rows: '3'}) : null,
-			type === 'html' ? field(t('builder_html'), 'textarea', o.sob_html_code, save('sob_html_code'), {key: 'sob_html_code', code: 'HTML', mono: true, rows: '6'}) : null,
+			type === 'html' && !nunext(o).calendar ? field(t('builder_html'), 'textarea', o.sob_html_code, save('sob_html_code'), {key: 'sob_html_code', code: 'HTML', mono: true, rows: '6'}) : null,
 			type === 'lookup' ? field(t('builder_lookup_form'), 'select', o.sob_lookup_zzzzsys_form_id, save('sob_lookup_zzzzsys_form_id'), {key: 'sob_lookup_zzzzsys_form_id', search: true, options: options(D.forms, ['browse', 'browseedit'])}) : null,
 			type === 'lookup' ? el('div', {'class': 'nuDsGrid2'}, [
 				field(t('builder_lookup_code'), 'text', o.sob_lookup_code, save('sob_lookup_code'), {key: 'sob_lookup_code', mono: true}),
@@ -2167,6 +2211,32 @@
 		], [
 			field(t('builder_attributes'), 'text', o.sob_input_attribute, save('sob_input_attribute'), {key: 'sob_input_attribute', mono: true, ph: t('builder_attributes_help'), attr: true})
 		]);
+		if (type === 'html' && nunext(o).calendar) {                   // calendar object (0.8.1165): sob_all_json nunext.calendar
+			var cc = nunext(o).calendar || {};
+			var ccSave = function (k) {
+				return function (v) {
+					var n = {}; Object.keys(cc).forEach(function (x) { n[x] = cc[x]; });
+					n[k] = ['edit', 'drag'].indexOf(k) >= 0 ? v === '1' : v;
+					saveObj(o, {nunext_calendar: JSON.stringify(n)}, k === 'src');
+				};
+			};
+			var isSql = cc.src === 'sql';
+			var cals = [['', t('please_select')]].concat((D.calendars || []).map(function (x) { return [x[0], x[1]]; }));
+			section('calendar', t('ds_cal_obj'), [
+				field(t('ds_cal_src'), 'select', isSql ? 'sql' : 'form', ccSave('src'), {key: 'cal_src', options: [['form', t('ds_cal_src_form')], ['sql', t('ds_cal_src_sql')]]}),
+				!isSql ? field(t('ds_cal_form'), 'select', cc.form || '', ccSave('form'), {key: 'cal_form', search: true, tip: t('ds_cal_form_tip'), options: cals}) : null,
+				!isSql ? field(t('ds_cal_filter'), 'text', cc.filter || '', ccSave('filter'), {key: 'cal_filter', mono: true, tip: t('ds_cal_filter_tip'), ph: '#RECORD_ID#'}) : null,
+				isSql ? field('SQL', 'textarea', cc.sql || '', ccSave('sql'), {key: 'cal_sql', code: 'SQL', mono: true, rows: '6', tip: t('ds_cal_sql_tip')}) : null,
+				isSql ? field(t('ds_cal_edit_form'), 'select', cc.edit_form || '', ccSave('edit_form'), {key: 'cal_edit_form', search: true, tip: t('ds_cal_edit_form_tip'), options: options(D.forms, ['edit', 'browseedit'])}) : null,
+				isSql ? el('div', {'class': 'nuDsGrid2'}, [field(t('ds_cal_sfield'), 'text', cc.start_field || '', ccSave('start_field'), {key: 'cal_sfield', mono: true}),
+					field(t('ds_cal_efield'), 'text', cc.end_field || '', ccSave('end_field'), {key: 'cal_efield', mono: true})]) : null,
+				el('div', {'class': 'nuDsGrid2'}, [
+					field(t('ds_cal_view'), 'select', cc.view || 'month', ccSave('view'), {key: 'cal_oview', options: ['month', 'week', 'day', 'list'].map(function (x) { return [x, t('cal_' + x)]; })}),
+					field(t('ds_cal_height'), 'number', cc.height || '', ccSave('height'), {key: 'cal_height', tip: t('ds_cal_height_tip'), ph: '0'})]),
+				field(t('ds_cal_edit'), 'check', cc.edit === false ? '0' : '1', ccSave('edit'), {key: 'cal_oedit', tip: t('ds_cal_edit_tip')}),
+				field(t('ds_cal_drag'), 'check', cc.drag ? '1' : '0', ccSave('drag'), {key: 'cal_odrag', tip: t('ds_cal_drag_tip')})
+			]);
+		}
 		var otools = [];
 		if (VALUE_TYPES.indexOf(type) >= 0 && type !== 'display' && type !== 'calc' && S.form.sfo_table) otools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsColChange',
 			onclick: function () { openColumnChange(o.sob_all_id); }}, [icon('bi-database-gear me-1'), t('builder_colchg_btn')]));

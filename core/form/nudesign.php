@@ -93,12 +93,12 @@ final class NuDesign
 		foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) {
 			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_|om_|fmt_type_|fms_|vr_)/', $k)) $texts[$k] = t($k);
 		}
-		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search', 'uh_admin_title'] as $k) $texts[$k] = t($k);
+		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search', 'uh_admin_title', 'cal_month', 'cal_week', 'cal_day', 'cal_list'] as $k) $texts[$k] = t($k);
 		$db = nu_db();
 		[$forms, $procs, $reports] = self::lists();
 		$formats = static fn(string $l) => array_map(static fn($f) => [(string)$f['value'], (string)$f['value'] . ($f['description'] !== '' ? ' – ' . $f['description'] : '')], NuFormat::choices($l));
 		return [
-			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'pivots' => NuPivot::forRunButtons(), 'formats' => ['D' => $formats('D'), 'N' => $formats('N')],
+			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'pivots' => NuPivot::forRunButtons(), 'calendars' => NuCalendar::forms(), 'formats' => ['D' => $formats('D'), 'N' => $formats('N')],
 			// the code window of the panel (0.8.665): CodeMirror is loaded on first use
 			'cm' => [nu_asset(NU_CODEMIRROR . '/codemirror.css'), nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js')],
 			'draft' => NuFormDraft::info($open),

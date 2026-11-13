@@ -148,7 +148,7 @@ if ($d && $wid !== '') {
 							<?php foreach (NuDashboard::CHARTS as $c): ?><option value="<?= $c ?>"<?= $sel($c === $opt['chart']) ?>><?= h(t('dash_chart_' . $c)) ?></option><?php endforeach; ?>
 						</select>
 					</div>
-					<div class="col-md-2" data-dash-type="chart">
+					<div class="col-md-2" data-dash-type="chart calendar">
 						<label class="form-label" for="dHeight"><?= h(t('dash_height')) ?></label>
 						<input class="form-control" type="number" min="120" max="800" step="10" id="dHeight" name="opt[height]" value="<?= (int)$opt['height'] ?>">
 					</div>
@@ -236,7 +236,7 @@ if ($d && $wid !== '') {
 			<div class="alert alert-danger small mb-0 mt-2" id="dashTestError" hidden></div>
 		</div>
 	</div>
-	<span hidden id="dashShapes" data-kpi="<?= h(t('dash_shape_kpi')) ?>" data-chart="<?= h(t('dash_shape_chart')) ?>" data-table="<?= h(t('dash_shape_table')) ?>" data-forms-label="<?= h(t('dash_link_form')) ?>"></span>
+	<span hidden id="dashShapes" data-kpi="<?= h(t('dash_shape_kpi')) ?>" data-chart="<?= h(t('dash_shape_chart')) ?>" data-table="<?= h(t('dash_shape_table')) ?>" data-calendar="<?= h(t('dash_shape_calendar')) ?>" data-forms-label="<?= h(t('dash_link_form')) ?>"></span>
 	<?php
 	nu_layout_end(NuDashboard::scriptTag() . nu_ts_foot() . '<script src="' . nu_asset('assets/js/nudashboards.js') . '"></script>');   // SQL builder select / procedure: searchable (0.8.536)
 	return;

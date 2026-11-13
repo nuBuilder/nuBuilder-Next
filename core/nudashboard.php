@@ -17,7 +17,7 @@ final class NuDashboard
 {
 	public const TD = 'zzzzsys_nunext_dashboard';
 	public const TW = 'zzzzsys_nunext_widget';
-	public const TYPES = ['kpi', 'chart', 'table'];
+	public const TYPES = ['kpi', 'chart', 'table', 'calendar'];
 	public const CHARTS = ['bar', 'barh', 'line', 'area', 'pie', 'donut', 'radial'];
 	public const SOURCES = ['sql', 'select', 'php'];
 	public const WIDTHS = [3, 4, 6, 8, 12];
@@ -26,7 +26,7 @@ final class NuDashboard
 	public const LINKS = ['', 'form', 'report', 'url'];
 	public const CODE_RE = '/^[A-Za-z0-9_.-]{1,50}$/';
 	/** Rows read at most: KPI 1, table up to 100, chart 1000. */
-	public const MAX_ROWS = ['kpi' => 1, 'table' => 100, 'chart' => 1000];
+	public const MAX_ROWS = ['kpi' => 1, 'table' => 100, 'chart' => 1000, 'calendar' => 2000];
 	public const TIMEOUT = 10;
 	public const OPT_DEFAULTS = ['width' => 0, 'height' => 280, 'chart' => 'bar', 'stacked' => false, 'format' => 'number', 'decimals' => 0,
 		'prefix' => '', 'suffix' => '', 'low' => '', 'high' => '', 'higher_better' => true, 'rows' => 10, 'link_type' => '', 'link' => '',
@@ -246,10 +246,18 @@ final class NuDashboard
 	{
 		$limit = self::MAX_ROWS[(string)$w['type']] ?? 1000;
 		if ($w['type'] === 'table') $limit = (int)$w['opt']['rows'];
-		if ($w['source'] === 'php') return self::runPhp($w, $hash, $limit);
-		$sql = $w['source'] === 'select' ? (string)(nu_db()->value('SELECT sse_sql FROM zzzzsys_select WHERE zzzzsys_select_id = ?', [(string)$w['query']]) ?? '') : (string)$w['query'];
-		if (trim($sql) === '') throw new RuntimeException(t('dash_err_no_source'));
-		return self::runSql($sql, $hash, $limit);
+		if ($w['source'] === 'php') $res = self::runPhp($w, $hash, $limit);
+		else {
+			$sql = $w['source'] === 'select' ? (string)(nu_db()->value('SELECT sse_sql FROM zzzzsys_select WHERE zzzzsys_select_id = ?', [(string)$w['query']]) ?? '') : (string)$w['query'];
+			if (trim($sql) === '') throw new RuntimeException(t('dash_err_no_source'));
+			$res = self::runSql($sql, $hash, $limit);
+		}
+		if ($w['type'] === 'calendar') {                      // calendar (0.8.1165): columns id, start, end, title, color, group, allday → events
+			$ev = NuCalendar::fromRows($res['columns'], $res['rows']);
+			if (!empty($ev['error'])) throw new RuntimeException($ev['error']);
+			$res['events'] = $ev['events'];
+		}
+		return $res;
 	}
 
 	public static function runSql(string $sql, array $hash, int $limit): array
@@ -467,7 +475,7 @@ final class NuDashboard
 			};
 		}
 		// table rows → their record: the form's link with r=<value of the column nu_record_id> (0.8.682)
-		$rowLink = $w['type'] === 'table' && $o['link_type'] === 'form' && $o['link'] !== '' ? nu_url('form', ['f' => $o['link'], 'r' => '__NU_RID__']) : '';
+		$rowLink = in_array($w['type'], ['table', 'calendar'], true) && $o['link_type'] === 'form' && $o['link'] !== '' ? nu_url('form', ['f' => $o['link'], 'r' => '__NU_RID__']) : '';
 		return ['id' => (string)$w['zzzzsys_nunext_widget_id'], 'type' => (string)$w['type'], 'title' => (string)$w['title'], 'link' => $link,
 			'row_link' => $rowLink, 'opt' => array_diff_key($o, array_flip(['link', 'link_type', 'cache']))];
 	}
@@ -488,7 +496,7 @@ final class NuDashboard
 	/** The renderer's <script> tag (start page, form pages, editor). */
 	public static function scriptTag(): string
 	{
-		return '<script src="' . nu_asset('assets/js/nudashboard.js') . '" data-url="' . h(nu_url('dashboardapi')) . '" data-csrf="' . h(nu_csrf_token())
+		return NuCalendar::scriptTag() . '<script src="' . nu_asset('assets/js/nudashboard.js') . '" data-url="' . h(nu_url('dashboardapi')) . '" data-csrf="' . h(nu_csrf_token())
 			. '" data-apex="' . h(nu_asset(NU_APEXCHARTS . '/apexcharts.min.js')) . '" data-apex-css="' . h(nu_asset(NU_APEXCHARTS . '/apexcharts.css')) . '"'
 			. (self::$nonce !== '' ? ' data-style-nonce="' . h(self::$nonce) . '"' : '') . '></script>';
 	}

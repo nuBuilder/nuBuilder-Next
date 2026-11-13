@@ -140,6 +140,7 @@ if ($mode === 'edit') {
 	$isNew = $r === '-1';
 	if ($isNew && !$rights['create'] && $meta->type() !== 'launch') NuAcl::require($meta->id, 'create');
 	$row = [];
+	if ($isNew) $row = NuCalendar::newValues($meta, (string)($_GET['nv'] ?? ''));   // a new record from the calendar: start / end filled in (0.8.1165)
 	if (!$isNew) {
 		try {
 			$row = NuRecord::load($meta, $r) ?? [];
@@ -364,6 +365,11 @@ $client = [
 		// [id, title as text, stored title, access 0 / 2 / 3] – the tab menu on a right-click of a tab (0.8.919) saves the whole list
 		'tabs' => array_map(static fn($t) => [(string)$t['zzzzsys_tab_id'], trim(strip_tags((string)$t['syt_title'])), (string)$t['syt_title'], (string)($t['syt_access'] ?? '0') ?: '0'], $meta->tabs),
 		'design' => NuDesign::allowed($meta) ? nu_url('form', ['f' => $meta->id, 'r' => $r, 'design' => '1']) : '',
+		// button settings dialog (0.8.1163): lists of run targets, only when the form has a run object
+		'run_lists' => $mode === 'edit' && array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'run') ? (static function () {
+			[$forms, $procs, $reports] = NuDesign::lists();
+			return ['forms' => array_map(static fn($f) => [$f[0], $f[1]], $forms), 'procs' => $procs, 'reports' => $reports, 'pivots' => NuPivot::forRunButtons()];
+		})() : null,
 		'm' => ['object' => t('om_object'), 'copied' => t('om_copied'), 'properties' => t('om_properties'), 'rename' => t('om_rename'), 'rename_prompt' => t('om_rename_prompt'),
 			'actions' => t('om_actions'), 'clone' => t('om_clone'), 'delete' => t('delete'), 'delete_confirm' => t('om_delete_confirm'), 'move' => t('om_move_tab'), 'access' => t('om_access'),
 			'align' => t('om_align'), 'left' => t('om_left'), 'center' => t('om_center'), 'right' => t('om_right'), 'validation' => t('om_validation'),
@@ -375,6 +381,14 @@ $client = [
 			'tab_delete_confirm_n' => t('ds_tab_delete_confirm_n'), 'tab_design' => t('om_tab_design'),
 			'col_width' => t('builder_col_width'), 'col_filter' => t('builder_col_filter'), 'col_left' => t('ds_col_left'), 'col_right' => t('ds_col_right'),
 			'col_hide' => t('ds_col_hide'), 'col_delete_confirm' => t('ds_col_delete_confirm'),
+			'settings' => t('om_settings'), 'settings_tip' => t('om_settings_tip'), 'set_run' => t('builder_run_type'), 'set_events' => t('builder_sec_events'), 'set_look' => t('om_set_look'),
+			'add_event' => t('builder_add_event'), 'event' => t('builder_event'), 'label' => t('builder_obj_label'), 'icon' => t('builder_obj_icon'), 'icon_tip' => t('builder_obj_icon_tip'),
+			'r_form' => t('builder_run_form'), 'r_proc' => t('builder_run_procedure'), 'r_report' => t('builder_run_report'), 'r_url' => t('builder_run_url'), 'r_pivot' => t('builder_run_pivot'),
+			'r_record' => t('builder_run_record'), 'r_record_tip' => t('builder_run_record_help'), 'r_filter' => t('builder_run_filter'), 'r_filter_tip' => t('builder_run_filter_help'),
+			'r_method' => t('builder_run_method'), 'r_b' => t('builder_run_b'), 'r_i' => t('builder_run_i'), 'r_open' => t('builder_run_target'),
+			'r_types' => ['F' => t('builder_run_type_F'), 'P' => t('builder_run_type_P'), 'R' => t('builder_run_type_R'), 'U' => t('builder_run_type_U'), 'V' => t('builder_run_type_V')],
+			'r_targets' => array_map(static fn($i) => t('builder_run_target_' . $i), range(0, 3)), 'r_url_same' => t('builder_run_url_same'), 'r_url_popup' => t('builder_run_url_popup'),
+			'open_target' => t('om_open_target'), 'save' => t('save'), 'cancel' => t('cancel'), 'please_select' => t('please_select'),
 			'geo_top' => t('builder_top'), 'geo_left' => t('builder_left'), 'geo_width' => t('builder_width'), 'geo_height' => t('builder_height')],
 	] : null,
 	'messages' => [
@@ -594,6 +608,8 @@ $client['uppyBase'] = $uppyDir;                               // nuUppySetLangua
 if ($googleLoader) $head .= '<script src="https://www.gstatic.com/charts/loader.js"></script>';   // as nuBuilder Forte (0.8.957)
 if ($apex) $head .= '<script src="' . nu_asset(NU_APEXCHARTS . '/apexcharts.min.js') . '"></script>';   // in the head, like nuBuilder: HTML objects' own scripts may use it
 
+$calList = $mode === 'browse' && empty($printMode) && $lookupTo === '' && !$design ? NuCalendar::ofForm($meta) : null;   // calendar view of the list (0.8.1165)
+$calObjects = $mode === 'edit' && str_contains((string)$body, 'nuCalHost');
 $uHelpAny = !$bare && empty($printMode) && NuUserHelp::any();     // user help pages (0.8.1023)
 $uHelp = $uHelpAny ? NuUserHelp::forForm($meta) : null;
 $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>'
@@ -610,6 +626,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
 	. ($mode === 'browse' ? '<script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>' : '')
 	. ($mode === 'browse' && $rights['print'] && empty($printMode) ? '<script src="' . nu_asset('assets/js/nu/nupivot.js') . '" data-apex="' . h(nu_asset(NU_APEXCHARTS . '/apexcharts.min.js')) . '"></script>' : '')   // pivot (0.8.1151)
+	. ($calList || $calObjects ? NuCalendar::scriptTag() : '')   // calendars (0.8.1165)
 	. ($mode === 'edit' && NuFormRules::of($meta) ? '<script src="' . nu_asset('assets/js/nu/nurules.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
 	. ($uHelpAny ? NuUserHelp::foot() : '')                       // user help pages (0.8.1023): side panel, F1, (?) of fields
@@ -686,6 +703,9 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 					NuListExport::csvDialog(['p' => 'formexport'] + $expKeep, $meta->code() ?: 'export', false), 'nuPrintButton', 'nuExportButton', false, 'btn-outline-secondary nuActionButton', '',
 					// pivot of the list (0.8.1151, assets/js/nu/nupivot.js): the list's search state goes along
 					'<li><hr class="dropdown-divider"></li><li><button class="dropdown-item" type="button" id="nuPivotOpen" data-nu-pivot="' . h(json_encode(['f' => $meta->id] + $expKeep, JSON_UNESCAPED_UNICODE)) . '" data-nu-pivot-texts="' . h(json_encode(NuPivot::texts(), JSON_UNESCAPED_UNICODE)) . '"><i class="bi bi-grid-3x3-gap me-2" aria-hidden="true"></i>' . h(t('pv_open')) . '</button></li>') ?>
+			<?php endif; ?>
+			<?php if ($calList): // calendar view of the list (0.8.1165, assets/js/nu/nucalendar.js): the list's search state goes along ?>
+				<button type="button" class="btn btn-outline-secondary nuActionButton nuIconPhone" id="nuCalendarOpen" data-nu-cal="<?= h(json_encode(NuCalendar::listClient($meta, $calList, array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1, 'pg' => 1, 'sort' => 1, 'dir' => 1])), JSON_UNESCAPED_UNICODE)) ?>"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i><?= h(t('cal_view')) ?></button>
 			<?php endif; ?>
 		<?php elseif (!$errors): ?>
 			<?php if (($client['is_new'] && $rights['create']) || (!$client['is_new'] && $rights['save'])): ?>

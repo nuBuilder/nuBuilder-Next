@@ -52,6 +52,15 @@
 <li><em>My pivots</em> saves the layout under a name (for you only); entries with <i class="bi bi-people"></i> are shared with everyone who opens the list – the sample applications bring a few (sales: revenue by month and status, top 5 customers, orders per quarter; tickets: by category and status, workload per agent, due tickets per month) – and cannot be deleted there. the last layout of each list is remembered in this browser. <strong>CSV</strong> and <strong>Excel</strong> export the table as shown.</li>
 <li data-level="detail">Limits: 2,000 row groups and 200 column groups – group more coarsely or add a filter when the pivot says so.</li>
 </ul></div>
+	<div class="doc-sub" id="list-calendar"><h3 id="list-calendar-h">Calendar view</h3><p>A form list with a date column can also show its records as a calendar: the button <em>Calendar</em> next to <em>Export</em> appears once the list has a calendar view (set up in design mode, <a href="#design-list-calendar">Browse list → Calendar view</a>). The calendar shows the records the list shows – its search, filters and advanced search apply.</p>
+<ul>
+<li><em>Month</em>, <em>Week</em>, <em>Day</em> and <em>List</em> views; the arrows and <em>Today</em> move through time. The calendar remembers the last view per list.</li>
+<li>When the calendar has a group column (a person, a room, a status …), each group gets its own colour, and the chips above the calendar show or hide a group.</li>
+<li>A click on an entry opens its record in a window above the calendar (the arrow button opens it in a new tab); closing the window reads the calendar again.</li>
+<li>A click on an empty day – or dragging over several days or hours – opens a new record with the start and end filled in.</li>
+<li>When moving is switched on, entries can be dragged to another day or time and stretched at their end. The record is saved as on the form: your rights, the validation and rules, Before Save and the audit trail apply – when the save is refused, the entry jumps back and the message says why.</li>
+<li data-level="detail">At most 2,000 entries per period are shown; the calendar says so when there are more.</li>
+</ul></div>
 	<p class="doc-see">See also: <a href="#list-views">List views</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/form/nubrowse.php</code></li><li><code>core/nulistview.php</code></li><li><code>core/nulistexport.php</code></li></ul></details>
 </section>

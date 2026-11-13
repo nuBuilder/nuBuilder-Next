@@ -2436,3 +2436,55 @@ html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn, html.nuWarnOff-ins
 #inspHintHide { font-size: .6rem; margin-top: .25rem; }
 /* procedure form on phones (0.8.1158): the code toolbar starts at the left edge and wraps instead of running past the right one */
 @media (max-width: 575.98px) { .procCodeTools { margin-left: 0 !important; max-width: 100%; min-width: 0; } }
+
+/* calendars (0.8.1165, assets/js/nu/nucalendar.js – FullCalendar 6): list view dialogue, calendar objects, dashboard widgets
+   (the --fc-* variables on the host: FullCalendar's own :root values come later in the page) */
+.nuCalHost {
+	--fc-border-color: var(--bs-border-color);
+	--fc-page-bg-color: var(--bs-body-bg);
+	--fc-neutral-bg-color: var(--bs-tertiary-bg);
+	--fc-list-event-hover-bg-color: var(--bs-tertiary-bg);
+	--fc-today-bg-color: rgba(var(--bs-primary-rgb), .07);
+	--fc-now-indicator-color: var(--bs-danger);
+	--fc-button-bg-color: var(--bs-body-bg);
+	--fc-button-border-color: var(--bs-border-color);
+	--fc-button-text-color: var(--bs-body-color);
+	--fc-button-hover-bg-color: var(--bs-tertiary-bg);
+	--fc-button-hover-border-color: var(--bs-border-color);
+	--fc-button-active-bg-color: var(--bs-secondary-bg);
+	--fc-button-active-border-color: var(--bs-secondary-border-subtle);
+	--fc-event-bg-color: var(--bs-primary);
+	--fc-event-border-color: var(--bs-primary);
+}
+.nuCalHost { display: flex; flex-direction: column; gap: .5rem; min-height: 0; }
+.nuCalHost.nuCalFill { height: 100%; }
+.nuCalHost .nuCalBox { flex: 1 1 auto; min-height: 0; }
+.nuCalHost .fc { font-size: .875rem; }
+.nuCalHost .fc .fc-toolbar { flex-wrap: wrap; gap: .5rem; }
+.nuCalHost .fc .fc-toolbar-title { font-size: 1.15rem; font-weight: 600; }
+.nuCalHost .fc .fc-button { font-size: .8125rem; padding: .3rem .6rem; box-shadow: none; }
+.nuCalHost .fc .fc-button-primary:not(:disabled).fc-button-active { color: var(--bs-primary); box-shadow: inset 0 -2px 0 var(--bs-primary); }
+.nuCalHost .fc .fc-button:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+.nuCalHost .fc a { color: inherit; text-decoration: none; }
+.nuCalHost .fc .fc-event { cursor: pointer; }
+.nuCalHost .fc .fc-daygrid-event { white-space: nowrap; overflow: hidden; }
+.nuCalGroups { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.nuCalChip { --bs-btn-padding-y: .1rem; --bs-btn-padding-x: .55rem; border: 1px solid var(--bs-border-color); border-radius: 999px; display: inline-flex; align-items: center; gap: .35rem; }
+.nuCalChip[aria-pressed="false"] { opacity: .5; text-decoration: line-through; }
+.nuCalChipAll[aria-pressed="false"] { opacity: .7; text-decoration: none; }
+.nuCalChipAll[aria-pressed="true"] { border-color: var(--bs-primary); color: var(--bs-primary); }
+.nuCalDot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--bs-primary); flex: 0 0 auto; }
+.nuCalDlg .modal-dialog:not(.modal-fullscreen) { max-width: min(1400px, 96vw); }
+.nuCalDlg .modal-body { height: min(80vh, 900px); }
+@media (max-width: 991.98px) { .nuCalDlg .modal-body { height: auto; } }
+.nuCalRecDlg { z-index: 1065; }
+.nuCalRecFrame { display: block; width: 100%; height: min(78vh, 900px); border: 0; }
+@media (max-width: 767.98px) { .nuCalRecFrame { height: calc(100vh - 4rem); } }
+.nuCalToast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 1090; background: var(--bs-dark); color: #fff; padding: .5rem 1rem; border-radius: .5rem; font-size: .875rem; box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .2); }
+.nuCalToastBad { background: var(--bs-danger); }
+.nuCalObj { overflow: hidden; }
+.nuCalObj .nuCalNone { padding: .5rem; border: 1px dashed var(--bs-border-color); height: 100%; }
+@media (max-width: 575.98px) {
+	.nuCalHost .fc .fc-toolbar { flex-direction: column; align-items: stretch; }
+	.nuCalHost .fc .fc-toolbar-chunk { display: flex; justify-content: center; }
+}

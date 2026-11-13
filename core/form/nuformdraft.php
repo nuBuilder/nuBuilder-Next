@@ -216,9 +216,13 @@ final class NuFormDraft
 		$seen = [];
 		$cols = trim((string)($f['sfo_table'] ?? '')) !== '' && ($f['sfo_type'] ?? '') !== 'launch' ? $db->columns((string)$f['sfo_table']) : [];
 		$formExists = static function (string $id) use ($db): bool { return $id === '' || (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$id]); };
+		// ids of the live form (0.8.1164): an id nuBuilder Forte allowed (e.g. with umlauts) blocks only when it is new or renamed in the draft
+		$liveIds = [];
+		foreach (($live ?? NuFormSnapshot::capture($formId))['objects'] ?? [] as $lo) $liveIds[(string)($lo['zzzzsys_object_id'] ?? '')] = (string)($lo['sob_all_id'] ?? '');
 		foreach ($snap['objects'] ?? [] as $o) {
 			$oid = (string)($o['sob_all_id'] ?? '');
-			if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $oid)) $e[] = t('builder_err_id') . ' (' . $oid . ')';
+			$kept = ($liveIds[(string)($o['zzzzsys_object_id'] ?? '')] ?? null) === $oid;
+			if (!$kept && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $oid)) $e[] = t('builder_err_id') . ' (' . $oid . ')';
 			elseif (isset($seen[$oid])) $e[] = t('builder_err_id_taken', $oid);
 			$seen[$oid] = true;
 			if (!in_array((string)($o['sob_all_type'] ?? ''), self::TYPES, true)) $e[] = t('builder_err_type') . ' (' . $oid . ')';

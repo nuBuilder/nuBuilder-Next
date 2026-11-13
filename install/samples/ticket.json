@@ -1,6 +1,6 @@
 {
     "key": "ticket",
-    "version": 8,
+    "version": 9,
     "prefix": "tkt_",
     "home": "tkthome",
     "date_ref": "2026-10-29",
@@ -360,7 +360,7 @@
                 "sfo_edit_javascript": "// the ticket as the customer sees it: no Handling tab, no internal fields; rating once the ticket is resolved\nif (window.tktLevel === 'tkt_customer') {\n\tnuHideTabByTitle('Handling');\n\tif (['resolved', 'closed'].indexOf(nuGetValue('tic_status')) < 0) nuHide('tic_rating');\n} else if (nuIsNewRecord()) {\n\tnuHide('tic_rating');\n}\n// new ticket: sensible defaults (Before Save sets them as well)\nif (nuIsNewRecord()) {\n\tif (!nuGetValue('tic_priority')) nuSetValue('tic_priority', 'normal');\n\tif (!nuGetValue('tic_status')) nuSetValue('tic_status', 'new');\n\tif (!nuGetValue('tic_channel')) nuSetValue('tic_channel', window.tktLevel === 'tkt_customer' ? 'portal' : 'phone');\n}\n// buttons of the Handling tab: only where they make sense\nif (nuIsNewRecord() || nuGetValue('tic_agent_id') === window.tktMe) nuHide('tic_take');\nif (nuIsNewRecord() || nuGetValue('tic_level') === '2' || !nuUserHasPermission('tkt_escalate')) nuHide('tic_escalate');\n",
                 "sfo_style": null,
                 "sfo_mobile_view": null,
-                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"audit\":true,\"help\":\"tkt_help_ticket\",\"help_tabs\":{\"tkt_tab_006\":\"tkt_help_handling\"}}}"
+                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"audit\":true,\"help\":\"tkt_help_ticket\",\"help_tabs\":{\"tkt_tab_006\":\"tkt_help_handling\"},\"calendar\":{\"start\":\"tkt_br_016\",\"title\":\"tkt_br_014\",\"group\":\"tkt_br_009\",\"view\":\"month\",\"allday\":false,\"edit\":true,\"drag\":true}}}"
             }
         ],
         [
@@ -678,6 +678,76 @@
                 "sob_html_horizontal_label": null,
                 "sob_image_zzzzsys_file_id": null,
                 "sob_all_json": "{\"nunext\":{\"span\":3,\"row\":2}}",
+                "sob_json": null
+            }
+        ],
+        [
+            "zzzzsys_object",
+            {
+                "zzzzsys_object_id": "tkto049",
+                "sob_all_zzzzsys_form_id": "tktcategory",
+                "sob_all_table": "",
+                "sob_all_type": "html",
+                "sob_all_id": "cat_calendar",
+                "sob_all_label": "Tickets due",
+                "sob_all_zzzzsys_tab_id": "tkt_tab_001",
+                "sob_all_order": 50,
+                "sob_all_top": 150,
+                "sob_all_left": 170,
+                "sob_all_width": 700,
+                "sob_all_height": 460,
+                "sob_all_cloneable": "1",
+                "sob_all_align": "left",
+                "sob_all_validate": "0",
+                "sob_all_access": "0",
+                "sob_all_access_condition": null,
+                "sob_all_event": null,
+                "sob_all_style_type": null,
+                "sob_all_style": null,
+                "sob_calc_formula": null,
+                "sob_calc_format": null,
+                "sob_run_zzzzsys_form_id": null,
+                "sob_run_filter": null,
+                "sob_run_method": null,
+                "sob_run_target": null,
+                "sob_run_type": null,
+                "sob_run_id": null,
+                "sob_display_sql": null,
+                "sob_display_procedure": null,
+                "sob_select_multiple": null,
+                "sob_select_2": "0",
+                "sob_select_sql": null,
+                "sob_select_procedure": null,
+                "sob_lookup_code": null,
+                "sob_lookup_description": null,
+                "sob_lookup_description_width": null,
+                "sob_lookup_autocomplete": null,
+                "sob_lookup_zzzzsys_form_id": null,
+                "sob_lookup_javascript": null,
+                "sob_lookup_php": null,
+                "sob_lookup_table": null,
+                "sob_subform_zzzzsys_form_id": null,
+                "sob_subform_foreign_key": null,
+                "sob_subform_add": null,
+                "sob_subform_delete": null,
+                "sob_subform_type": null,
+                "sob_subform_table": null,
+                "sob_input_count": null,
+                "sob_input_format": null,
+                "sob_input_type": null,
+                "sob_input_icon": null,
+                "sob_input_javascript": null,
+                "sob_input_datalist": null,
+                "sob_input_attribute": null,
+                "sob_input_file_target": "0",
+                "sob_html_code": "",
+                "sob_html_chart_type": null,
+                "sob_html_javascript": null,
+                "sob_html_title": null,
+                "sob_html_vertical_label": null,
+                "sob_html_horizontal_label": null,
+                "sob_image_zzzzsys_file_id": null,
+                "sob_all_json": "{\"nunext\":{\"span\":12,\"row\":3,\"calendar\":{\"src\":\"sql\",\"sql\":\"SELECT t.tkt_ticket_id AS id, t.tic_due AS start, CONCAT(t.tic_number, ' ', t.tic_subject) AS title,\\n  CASE t.tic_status WHEN 'new' THEN 'New' WHEN 'open' THEN 'Open' WHEN 'pending' THEN 'Waiting for customer' WHEN 'escalated' THEN 'Escalated' WHEN 'resolved' THEN 'Resolved' ELSE 'Closed' END AS \\\"group\\\", 1 AS allday\\nFROM tkt_ticket t WHERE t.tic_tkt_category_id = '#RECORD_ID#'\",\"edit_form\":\"tktticket\",\"start_field\":\"tic_due\",\"end_field\":\"\",\"view\":\"month\",\"height\":0,\"allday\":false,\"edit\":true,\"drag\":true,\"min\":\"00:00\",\"max\":\"24:00\"}}}",
                 "sob_json": null
             }
         ],
@@ -5181,6 +5251,19 @@
                 "source": "sql",
                 "query": "SELECT t.tkt_ticket_id AS nu_record_id, t.tic_number AS Ticket, t.tic_subject AS Subject, t.tic_priority AS Priority, t.tic_due AS Due FROM tkt_ticket t WHERE t.tic_status NOT IN ('resolved', 'closed') ORDER BY t.tic_due",
                 "options": "{\"width\":12,\"rows\":8,\"link_type\":\"form\",\"link\":\"tktticket\",\"new_tab\":true}"
+            }
+        ],
+        [
+            "zzzzsys_nunext_widget",
+            {
+                "zzzzsys_nunext_widget_id": "tkt_dash_support_w10",
+                "dashboard_id": "tkt_dash_support",
+                "sort_order": 100,
+                "type": "calendar",
+                "title": "Due dates",
+                "source": "sql",
+                "query": "SELECT t.tkt_ticket_id AS nu_record_id, t.tic_due AS start, CONCAT(t.tic_number, ' ', t.tic_subject) AS title,\n  CASE t.tic_priority WHEN 'low' THEN 'Low' WHEN 'high' THEN 'High' WHEN 'urgent' THEN 'Urgent' ELSE 'Normal' END AS \"group\",\n  CASE t.tic_priority WHEN 'low' THEN '#6c757d' WHEN 'high' THEN '#c2410c' WHEN 'urgent' THEN '#b91c1c' ELSE '#2563eb' END AS color, 1 AS allday\nFROM tkt_ticket t WHERE t.tic_status NOT IN ('resolved', 'closed') AND t.tic_due IS NOT NULL",
+                "options": "{\"width\":12,\"height\":0,\"link_type\":\"form\",\"link\":\"tktticket\",\"cache\":60}"
             }
         ],
         [

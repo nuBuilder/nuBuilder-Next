@@ -217,6 +217,13 @@
 			c.body.appendChild(box);
 			return;
 		}
+		if (w.type === 'calendar') {                                    // calendar (0.8.1165): events worked out by the server (NuCalendar::fromRows)
+			const host = el('div', 'nuCalHost nuDashCal');
+			c.body.appendChild(host);
+			if (window.NuCalendar) window.NuCalendar.mount(host, { f: '', key: 'dash-' + w.id, rows: data.events || [], view: 'month', height: o.height > 300 ? o.height : 'auto', link: w.row_link || '', newTab: !!o.new_tab });
+			if (data.more) c.body.appendChild(el('div', 'small text-body-secondary mt-1', M.more));
+			return;
+		}
 		if (w.type === 'table') {
 			const wrap = el('div', 'table-responsive nuDashTable');
 			const t = el('table', 'table table-sm nu-table mb-0'), th = el('thead'), tr = el('tr');

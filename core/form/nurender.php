@@ -170,7 +170,10 @@ final class NuRender
 			$this->clientObjects[$id] += ['access' => (string)$o['sob_all_access'], 'align' => (string)$o['sob_all_align'], 'validate' => (string)$o['sob_all_validate'],
 				'tab' => (string)$o['sob_all_zzzzsys_tab_id'],
 				// position and size for the menu's number fields (0.8.921, as nuBuilder Forte's object menu)
-				'top' => (int)$o['sob_all_top'], 'left' => (int)$o['sob_all_left'], 'width' => (int)$o['sob_all_width'], 'height' => (int)$o['sob_all_height']];
+				'top' => (int)$o['sob_all_top'], 'left' => (int)$o['sob_all_left'], 'width' => (int)$o['sob_all_width'], 'height' => (int)$o['sob_all_height'],
+				'label_raw' => (string)$o['sob_all_label'], 'icon' => (string)($o['sob_input_icon'] ?? '')];
+			// button settings dialog (0.8.1163): what a run object runs and how it opens
+			if ($type === 'run') $this->clientObjects[$id]['run'] = self::runSettings($o);
 		}
 
 		if ($type === 'contentbox') return $this->contentbox($o, '');
@@ -342,6 +345,10 @@ final class NuRender
 				return '<div class="nuWord ' . h($cls) . '"' . $common . self::iconAttr($o) . '>' . self::withIcon(self::closeFragment((string)$o['sob_all_label']), $o) . '</div>';
 
 			case 'html':
+				if (($calendar = NuCalendar::ofObject($o)) !== null) {      // calendar object (0.8.1165): an HTML object with nunext.calendar – Forte shows its (empty) code
+					$cc = NuCalendar::objectClient($this->meta, $o, $this->recordId);
+					return '<div class="nuHtml nuCalObj ' . h($cls) . '"' . $common . '>' . ($cc ? NuCalendar::host($cc, '', $this->layout === 'absolute' && !$calendar['height'] ? 'nuCalFill' : '') : '<div class="nuCalNone small text-body-secondary">' . h(t('cal_err_none')) . '</div>') . '</div>';
+				}
 				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(self::closeFragment(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML))) . '</div>';
 
 			case 'run':
@@ -706,6 +713,24 @@ final class NuRender
 	}
 
 	/** A run object's pivot (0.8.1156): "<form id>|<saved pivot id>" or {f, id} → {f, id}, null when empty / invalid. */
+	/** The settings of a run object for the object menu's button settings dialog (0.8.1163): type F / P / R / U / V, target, record, filter, method, open in. */
+	public static function runSettings(array $o): array
+	{
+		$nx = $o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null);
+		$target = trim((string)$o['sob_run_zzzzsys_form_id']);
+		$pv = self::cleanRunPivot($nx['pivot'] ?? null);
+		$url = self::cleanRunUrl((string)($nx['url'] ?? ''));
+		$type = $pv ? 'V' : ($url !== null ? 'U' : strtoupper(trim((string)($o['sob_run_type'] ?? ''))));
+		if (!in_array($type, ['F', 'P', 'R', 'U', 'V'], true)) {
+			$db = nu_db();
+			$type = $target !== '' && $db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$target]) ? 'P'
+				: ($target !== '' && $db->tableExists('zzzzsys_report') && $db->value('SELECT COUNT(*) FROM zzzzsys_report WHERE zzzzsys_report_id = ?', [$target]) ? 'R' : 'F');
+		}
+		return ['type' => $type, 'target' => $target, 'record' => (string)($o['sob_run_id'] ?? ''), 'filter' => (string)($o['sob_run_filter'] ?? ''),
+			'method' => (string)$o['sob_run_method'] === 'i' ? 'i' : 'b', 'open' => (string)($o['sob_run_target'] ?? '0') ?: '0',
+			'url' => $url ?? '', 'pivot' => $pv ? $pv['f'] . '|' . $pv['id'] : ''];
+	}
+
 	public static function cleanRunPivot(mixed $v): ?array
 	{
 		if (is_string($v)) { $p = explode('|', $v, 2); $v = ['f' => $p[0], 'id' => $p[1] ?? '']; }

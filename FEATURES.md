@@ -26,6 +26,7 @@ page) for how to use it.
 - **Eleven languages** – including Arabic (right to left) and regional variants of English and German; themes per access level
   or chosen by the user.
 - Pivot of any form list (Export → Pivot…): rows, columns, values and filters by drag and drop, date grouping (year … day), totals and subtotals, % of row / column / total, heat map, top N, chart, drill down to the records, saved and shared pivots (the samples bring some), CSV / Excel; a run button can show a saved pivot (iframe, popup, new tab)
+- Calendar view of form lists (month / week / day / list): colour and filter chips per group, a click opens the record in a window, a click on an empty day adds one with start and end filled in, drag and drop saves through the form (rights, validation, audit); calendar objects on forms (a list's calendar filtered by the record, or SQL) and calendar widgets on dashboards
 
 ## For building applications
 
@@ -38,7 +39,9 @@ page) for how to use it.
 - **Validation rules without code** – as a builder or an expression, as errors or warnings, also for sub-form rows and per
   access level.
 - **Object types** – inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons (forms, reports,
-  procedures, URLs – shown only to users who may open them); grid sub-forms can fit their columns to the width.
+  procedures, URLs, saved pivots – shown only to users who may open them), calendars on forms; grid sub-forms can fit their columns to the width.
+- **Button settings in one dialogue** – right-click a button (or Alt+click): what it runs, target, record, filter, where it opens,
+  JavaScript events, label, icon and access in one place, live or into the open draft.
 - **New form wizard** – from a table or a view, with the columns and their order chosen up front; text or UUID keys for new
   tables; change a column's type with a data check first.
 - **Forms with AI** – describe a form (or a small app of several forms), paste the prompt into any AI chat and the answer

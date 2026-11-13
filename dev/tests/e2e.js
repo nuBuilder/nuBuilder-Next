@@ -5763,6 +5763,40 @@ T.phone_back_button = async (s) => {
 };
 
 // 0.8.1151: pivot of a form list – rows / columns / values, totals, filter, drill, saved pivot, export
+T.button_settings = async (s) => {
+	// object menu → Button settings… (0.8.1163): one dialog for run target, open in, events, label, access; one save
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_all_o45'") !== '1') { s.skip = 'no sample data'; return; }
+	const was = sql("SELECT CONCAT_WS('|', sob_run_target, sob_all_label) FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_all_o45'").split('|');
+	const rec = sql('SELECT sample_all_id FROM sample_all LIMIT 1');
+	try {
+		await open(p, 'index.php?p=form&f=sampleall&r=' + encodeURIComponent(rec));
+		await p.evaluate(() => { const b = document.querySelector('#all_run_form'); const t = b.closest('.tab-pane'); const l = document.querySelector('[data-bs-target="#' + t.id + '"], [href="#' + t.id + '"]'); if (l) l.click(); });
+		await p.waitForTimeout(300);
+		// right-click menu entry
+		await p.click('#all_run_form', {button: 'right'}); await p.waitForSelector('#nuOmSettings');
+		await p.click('#nuOmSettings'); await p.waitForSelector('#nuOmSetDlg.show'); await p.waitForTimeout(300);
+		await p.click('#nuOmSetTab_run');
+		expect(await p.$eval('#nuOmSetType', (x) => x.value) === 'F' && await p.$eval('#nuOmSetTarget', (x) => x.value) === 'samplecustomer', 'run type and target shown');
+		await p.selectOption('#nuOmSetOpen', '2');
+		await p.click('#nuOmSetTab_events'); await p.click('#nuOmSetEvAdd');
+		await p.locator('.nuOmSetEvJs').last().fill("console.log('e2e settings');");
+		await p.click('#nuOmSetTab_look'); await p.fill('#nuOmSetLabel', 'E2E settings');
+		await Promise.all([p.waitForNavigation(), p.click('#nuOmSetSave')]);
+		expect(sql("SELECT CONCAT_WS('|', sob_run_target, sob_all_label) FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_all_o45'") === '2|E2E settings', 'run target + label saved');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_event WHERE sev_zzzzsys_object_id = 'sample_all_o45' AND sev_javascript LIKE '%e2e settings%'") === '1', 'event saved');
+		// Alt+click opens it too
+		await p.evaluate(() => { const b = document.querySelector('#all_run_form'); const t = b.closest('.tab-pane'); const l = document.querySelector('[data-bs-target="#' + t.id + '"], [href="#' + t.id + '"]'); if (l) l.click(); });
+		await p.waitForTimeout(300);
+		await p.click('#all_run_form', {modifiers: ['Alt']}); await p.waitForSelector('#nuOmSetDlg.show');
+		expect(await p.locator('.nuOmSetEv').count() === 1, 'event listed again');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, {input: `UPDATE zzzzsys_object SET sob_run_target = '${was[0]}', sob_all_label = '${was[1].replace(/'/g, "''")}' WHERE zzzzsys_object_id = 'sample_all_o45';
+			DELETE FROM zzzzsys_event WHERE sev_zzzzsys_object_id = 'sample_all_o45' AND sev_javascript LIKE '%e2e settings%'`});
+	}
+};
+
 T.inspect_hint_close = async (s) => {
 	// Inspect record (0.8.1157): the hint closes with × and stays closed; (i) shows it again
 	const p = s.ga;
@@ -5878,6 +5912,160 @@ T.list_pivot = async (s) => {
 		execSync('mysql ' + DB, {input: "DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'pivot:sampleorder' AND name = 'e2e pivot'"});
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'pivot:sampleorder'") === before, 'cleaned up');
 	}
+};
+
+// 0.8.1165: calendar view of a form list – events of the list, a group filter, drag and drop saves the record, a new record from an empty day
+T.list_calendar = async (s) => {
+	const p = s.ga, F = 'sampleorder';
+	if (sql(`SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`) !== '1') { s.skip = 'no sample data'; return; }
+	const oldJson = sql(`SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`);
+	const row = sql("SELECT CONCAT(sample_order_id, '|', ord_date, '|', ord_number) FROM sample_order WHERE ord_date IS NOT NULL ORDER BY ord_date DESC LIMIT 1").split('|');
+	const cfg = JSON.stringify({nunext: {calendar: {start: 'sample_order_b2', title: 'sample_order_b1', group: 'sample_order_b4', drag: true, view: 'month'}}});
+	execSync('mysql ' + DB, {input: `UPDATE zzzzsys_form SET sfo_json = '${cfg}' WHERE zzzzsys_form_id = '${F}'`});
+	try {
+		await open(p, 'index.php?p=form&f=' + F);
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-cal-view-sampleorder'); } catch (e) { /* none */ } });
+		await p.click('#nuCalendarOpen'); await p.waitForSelector('#nuCalDlg.show .fc');
+		await p.evaluate((d) => document.getElementById('nuCalListHost')._nuCal.gotoDate(d), row[1]);
+		await p.waitForSelector(`#nuCalDlg .fc-event:has-text("${row[2]}")`, {timeout: 8000});
+		const inMonth = Number(sql(`SELECT COUNT(*) FROM sample_order WHERE DATE_FORMAT(ord_date, '%Y-%m') = '${row[1].slice(0, 7)}'`));
+		const shown = await p.locator('#nuCalDlg .fc-daygrid-day:not(.fc-day-other) .fc-event').count();
+		expect(shown >= inMonth, 'events of the month: ' + shown + ' / ' + inMonth);
+		// group chips: one per status, a click hides that status
+		const chips = await p.locator('#nuCalDlg .nuCalChip:not(.nuCalChipAll)').count();
+		if (chips > 1) {
+			const before = await p.locator('#nuCalDlg .fc-event').count();
+			await p.locator('#nuCalDlg .nuCalChip:not(.nuCalChipAll)').first().click(); await p.waitForTimeout(500);
+			expect(await p.locator('#nuCalDlg .fc-event').count() < before, 'a group hidden');
+			await p.click('#nuCalDlg .nuCalChipAll'); await p.waitForTimeout(500);
+		}
+		// drag the event one day on (to the day cell right of it, or left on Sundays)
+		const ev = p.locator(`#nuCalDlg .fc-event:has-text("${row[2]}")`).first();
+		const cell = p.locator(`#nuCalDlg .fc-daygrid-day[data-date="${row[1]}"]`);
+		const cb = await cell.boundingBox(), eb = await ev.boundingBox();
+		const dx = cb.x + cb.width * 1.5 > (await p.locator('#nuCalDlg .fc-daygrid-body').boundingBox()).x + (await p.locator('#nuCalDlg .fc-daygrid-body').boundingBox()).width ? -cb.width : cb.width;
+		await p.mouse.move(eb.x + 10, eb.y + eb.height / 2); await p.mouse.down();
+		for (let i = 1; i <= 8; i++) { await p.mouse.move(eb.x + 10 + dx * i / 8, eb.y + eb.height / 2); await p.waitForTimeout(40); }
+		await p.mouse.up();
+		await p.waitForSelector('.nuCalToast', {timeout: 8000});
+		const exp = new Date(row[1] + 'T12:00:00'); exp.setDate(exp.getDate() + (dx > 0 ? 1 : -1));
+		const want = exp.toISOString().slice(0, 10);
+		expect(sql(`SELECT ord_date FROM sample_order WHERE sample_order_id = '${row[0]}'`) === want, 'moved to ' + want);
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'calendar_moved' AND record_id = '${row[0]}'`) !== '0', 'logged');
+		// a click on an empty day opens a new record with the date filled in
+		const empty = await p.evaluate(() => { const c = [...document.querySelectorAll('#nuCalDlg .fc-daygrid-day:not(.fc-day-other)')].find((d) => !d.querySelector('.fc-event')); return c ? c.getAttribute('data-date') : ''; });
+		await p.locator(`#nuCalDlg .fc-daygrid-day[data-date="${empty}"] .fc-daygrid-day-frame`).click({position: {x: 30, y: 40}});
+		await p.waitForSelector('.nuCalRecDlg.show iframe');
+		const fr = p.frameLocator('.nuCalRecDlg.show iframe');
+		await fr.locator('#ord_date').waitFor();
+		const v = await fr.locator('#ord_date').inputValue();
+		const [y, m, d] = empty.split('-');
+		expect(v.includes(d) && v.includes(y) || v === empty, 'date filled in: ' + v + ' / ' + empty);
+		await p.click('.nuCalRecDlg .btn-close'); await p.waitForTimeout(400);
+		// a click on an event opens its record
+		await p.locator('#nuCalDlg .fc-event').first().click();
+		await p.waitForSelector('.nuCalRecDlg.show iframe');
+		await p.frameLocator('.nuCalRecDlg.show iframe').locator('#ord_number').waitFor();
+		await p.click('.nuCalRecDlg .btn-close');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, {input: `UPDATE zzzzsys_form SET sfo_json = ${oldJson === '' ? 'NULL' : `'${oldJson.replace(/'/g, "''")}'`} WHERE zzzzsys_form_id = '${F}'; UPDATE sample_order SET ord_date = '${row[1]}' WHERE sample_order_id = '${row[0]}'`});
+	}
+};
+
+// 0.8.1165: calendar objects (an HTML object with nunext.calendar: a list's calendar with a filter of the record, or SQL) and the dashboard widget
+T.calendar_object = async (s) => {
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") !== '1') { s.skip = 'no sample data'; return; }
+	const oldJson = sql("SELECT IFNULL(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'");
+	const tab = sql("SELECT zzzzsys_tab_id FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = 'samplecustomer' ORDER BY syt_order LIMIT 1");
+	const cus = sql("SELECT ord_sample_customer_id FROM sample_order GROUP BY 1 ORDER BY COUNT(*) DESC, 1 LIMIT 1");
+	const first = sql(`SELECT CONCAT(MIN(ord_date), '|', COUNT(*)) FROM sample_order WHERE ord_sample_customer_id = '${cus}'`).split('|');
+	const lc = JSON.stringify({nunext: {calendar: {start: 'sample_order_b2', title: 'sample_order_b1', drag: false}}});
+	const obj = (id, top, c) => `INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_zzzzsys_tab_id, sob_all_type, sob_all_id, sob_all_label, sob_all_top, sob_all_left, sob_all_width, sob_all_height, sob_all_order, sob_html_code, sob_all_json)
+		VALUES ('${id}', 'samplecustomer', '${tab}', 'html', '${id}', 'Calendar', ${top}, 20, 700, 460, 990, '', '${JSON.stringify({nunext: {calendar: c}}).replace(/'/g, "''")}');`;
+	execSync('mysql ' + DB, {input: `UPDATE zzzzsys_form SET sfo_json = '${lc}' WHERE zzzzsys_form_id = 'sampleorder';`
+		+ obj('e2e_cal_f', 2000, {src: 'form', form: 'sampleorder', filter: '#RECORD_ID#'})
+		+ obj('e2e_cal_s', 2500, {src: 'sql', sql: "SELECT sample_order_id AS id, ord_date AS start, ord_number AS title, ord_status AS `group` FROM sample_order WHERE ord_sample_customer_id = '#RECORD_ID#'", edit_form: 'sampleorder', start_field: 'ord_date'})
+		+ "INSERT INTO zzzzsys_nunext_widget (zzzzsys_nunext_widget_id, dashboard_id, sort_order, type, title, source, query, options) VALUES ('e2e_cal_w', 'sample_dash_country', 999, 'calendar', 'Orders', 'sql', 'SELECT sample_order_id AS nu_record_id, ord_date AS start, ord_number AS title, ord_status AS `group` FROM sample_order', '{\"width\":12,\"height\":420,\"link_type\":\"form\",\"link\":\"sampleorder\",\"cache\":0}')"});
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + cus);
+		for (const id of ['e2e_cal_f', 'e2e_cal_s']) {
+			await p.waitForSelector(`#${id} .fc`, {timeout: 8000});
+			await p.evaluate(([id, d]) => document.querySelector(`#${id} .nuCalHost`)._nuCal.gotoDate(d), [id, first[0]]);
+			await p.waitForTimeout(800);
+			const n = await p.evaluate((id) => { const h = document.querySelector(`#${id} .nuCalHost`); return h._nuCal.getEvents().length; }, id);
+			expect(n >= 1 && n <= Number(first[1]), id + ': events of this customer only: ' + n + ' / ' + first[1]);
+		}
+		// SQL source: the group filter chips and a click opening the record of the edit form
+		await p.locator('#e2e_cal_s .fc-event').first().click();
+		await p.waitForSelector('.nuCalRecDlg.show iframe');
+		await p.frameLocator('.nuCalRecDlg.show iframe').locator('#ord_number').waitFor();
+		await p.click('.nuCalRecDlg .btn-close');
+		// dashboard widget on the sample start page
+		await open(p, 'index.php?p=form&f=samplehome&r=-1');
+		await p.waitForSelector('[data-nu-dashboard] .nuDashCal .fc', {timeout: 10000});
+		await p.evaluate((d) => document.querySelector('.nuDashCal')._nuCal.gotoDate(d), first[0]);
+		await p.waitForSelector('.nuDashCal .fc-event', {timeout: 5000});
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, {input: `DELETE FROM zzzzsys_object WHERE zzzzsys_object_id IN ('e2e_cal_f', 'e2e_cal_s'); DELETE FROM zzzzsys_nunext_widget WHERE zzzzsys_nunext_widget_id = 'e2e_cal_w';
+			UPDATE zzzzsys_form SET sfo_json = ${oldJson === '' ? 'NULL' : `'${oldJson.replace(/'/g, "''")}'`} WHERE zzzzsys_form_id = 'sampleorder'`});
+	}
+};
+
+// 0.8.1165: design mode – the list's calendar view (Browse list workspace) and Add → Calendar on the edit page, both in a draft
+T.design_calendar = async (s) => {
+	const p = s.ga;
+	const rec = sql('SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1');
+	if (!rec || sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") !== '1') { s.skip = 'no sample data'; return; }
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-design-cal.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_object zzzzsys_event zzzzsys_tab zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	try {
+		sql("DELETE FROM zzzzsys_nunext_form_draft WHERE form_id IN ('sampleorder', 'samplecustomer')");
+		await open(p, 'index.php?p=form&f=sampleorder&design=1&dswork=list'); await p.waitForSelector('[data-key=cal_start]');
+		await p.selectOption('[data-key=cal_start]', 'sample_order_b2'); await p.waitForTimeout(1500);
+		await open(p, 'index.php?p=form&f=sampleorder&design=1&dswork=list'); await p.waitForSelector('[data-key=cal_group]');
+		expect(await p.inputValue('[data-key=cal_start]') === 'sample_order_b2', 'start column kept');
+		await p.selectOption('[data-key=cal_group]', 'sample_order_b4'); await p.waitForTimeout(1500);
+		const raw = (q) => execSync('mysql -N -r ' + DB, {input: q}).toString().trim();
+		const snap = raw("SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = 'sampleorder' AND status = 'open' ORDER BY created_at DESC LIMIT 1");
+		const cal = (JSON.parse(JSON.parse(snap).form.sfo_json || '{}').nunext || {}).calendar || {};
+		expect(cal.start === 'sample_order_b2' && cal.group === 'sample_order_b4', 'calendar in the draft: ' + JSON.stringify(cal));
+		// the preview of the draft shows the Calendar button on the list
+		await open(p, 'index.php?p=form&f=sampleorder&design=1');
+		expect(await p.locator('#nuCalendarOpen').count() === 0, 'no Calendar button while designing');
+		// Add → Calendar on the customer page: an HTML object with nunext.calendar
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + rec + '&design=1'); await p.waitForSelector('#nuDsRail'); await p.waitForTimeout(500);
+		await p.click('#nuDsRailAdd'); await p.click('#nuDsAddCalendar'); await p.waitForTimeout(1800);
+		const s2 = JSON.parse(raw("SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = 'samplecustomer' AND status = 'open' ORDER BY created_at DESC LIMIT 1"));
+		const o = s2.objects.find((x) => /^calendar/.test(x.sob_all_id));
+		expect(o && o.sob_all_type === 'html' && /"calendar"/.test(o.sob_all_json || ''), 'calendar object in the draft');
+		await p.waitForSelector('[data-key=cal_src]', {timeout: 5000});
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
+// 0.8.1166: the ticket sample brings calendars – the tickets list (Due), the category form (calendar object) and the support dashboard
+T.sample_ticket_calendar = async (s) => {
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'tktticket'") !== '1') { s.skip = 'no ticket sample'; return; }
+	await open(p, 'index.php?p=form&f=tktticket');
+	await p.click('#nuCalendarOpen'); await p.waitForSelector('#nuCalDlg.show .fc');
+	const due = sql("SELECT DATE_FORMAT(MAX(tic_due), '%Y-%m-%d') FROM tkt_ticket");
+	await p.evaluate((d) => document.getElementById('nuCalListHost')._nuCal.gotoDate(d), due);
+	await p.waitForSelector('#nuCalDlg .fc-event', {timeout: 8000});
+	expect(await p.locator('#nuCalDlg .nuCalChip').count() > 2, 'status chips');
+	const cat = sql('SELECT tic_tkt_category_id FROM tkt_ticket GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1');
+	await open(p, 'index.php?p=form&f=tktcategory&r=' + cat);
+	await p.waitForSelector('.nuCalObj .fc', {timeout: 8000});
+	const n = await p.evaluate((d) => new Promise((ok) => { const c = document.querySelector('.nuCalObj .nuCalHost')._nuCal; c.gotoDate(d); setTimeout(() => ok(c.getEvents().length), 1200); }), due);
+	expect(n >= 0, 'calendar object');
+	await open(p, 'index.php?p=form&f=tkthome&r=-1');
+	await p.waitForSelector('.nuDashCal .fc', {timeout: 10000});
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
 // 0.8.1150: a list whose form has its own JavaScript keeps its rows hidden until that code ran (cells it rewrites do not flash)

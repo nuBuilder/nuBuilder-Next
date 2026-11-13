@@ -10,7 +10,7 @@
 	function src() { const r = form.querySelector('input[name="source"]:checked'); return r ? r.value : 'sql'; }
 	function toggle() {
 		form.querySelectorAll('[data-dash-src]').forEach((e) => { e.hidden = e.getAttribute('data-dash-src') !== src(); });
-		form.querySelectorAll('[data-dash-type]').forEach((e) => { e.hidden = e.getAttribute('data-dash-type') !== type.value; });
+		form.querySelectorAll('[data-dash-type]').forEach((e) => { e.hidden = e.getAttribute('data-dash-type').split(' ').indexOf(type.value) < 0; });
 		$('dShape').textContent = shapes.getAttribute('data-' + type.value) || '';
 		links();
 	}

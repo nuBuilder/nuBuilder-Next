@@ -121,7 +121,7 @@ final class NuDraftStore
 		$type = (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '');
 		$fid = (string)($fields['sob_all_id'] ?? $existing['sob_all_id'] ?? '');
 		if (!in_array($type, NuFormDraft::TYPES, true)) throw new RuntimeException(t('builder_err_type'));
-		if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) throw new RuntimeException(t('builder_err_id'));
+		if ($fid !== (string)($existing['sob_all_id'] ?? "\0") && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) throw new RuntimeException(t('builder_err_id'));   // kept Forte ids (0.8.1165)
 		foreach ($this->snap['objects'] as $o) if ((string)$o['sob_all_id'] === $fid && (string)$o['zzzzsys_object_id'] !== $objectId) throw new RuntimeException(t('builder_err_id_taken', $fid));
 		if (isset($fields['sob_all_zzzzsys_tab_id']) && $fields['sob_all_zzzzsys_tab_id'] !== null && $this->find('tabs', 'zzzzsys_tab_id', (string)$fields['sob_all_zzzzsys_tab_id']) === null) {
 			throw new RuntimeException(t('builder_err_tab'));
@@ -132,6 +132,11 @@ final class NuDraftStore
 		if (array_key_exists('nunext_help', $fields)) {            // user help page of the field (0.8.1023): sob_all_json nunext.help
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
 			unset($fields['nunext_help']);
+		}
+		if (array_key_exists('nunext_calendar', $fields)) {        // calendar object (0.8.1165): sob_all_json nunext.calendar of an HTML object
+			$cc = is_string($fields['nunext_calendar']) ? json_decode($fields['nunext_calendar'], true) : $fields['nunext_calendar'];
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['calendar' => is_array($cc) ? NuCalendar::cleanObject($cc) : null]);
+			unset($fields['nunext_calendar']);
 		}
 		if (array_key_exists('nunext_fit', $fields)) {             // grid sub-form: fit columns to the width (0.8.1141): sob_all_json nunext.fit
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);

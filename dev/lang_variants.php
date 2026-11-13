@@ -24,7 +24,7 @@ const ROOT = __DIR__ . '/..';
 const KEEP_KEYS = [];
 
 /** Exact words that stay as written in both directions (case-sensitive). */
-const PROTECT = ['Authorization'];
+const PROTECT = ['Authorization', 'color'];   // color: the column name of calendar SQL (0.8.1165)
 
 /** British => American, whole words (lower case; capitalised and upper-case forms follow). */
 function uk_us_words(): array

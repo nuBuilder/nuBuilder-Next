@@ -227,6 +227,13 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       items, sub-form link columns without an index on forms made before 0.8.366.
 - [ ] **Code dot on tabs** (0.8.1133) – list side pane PHP / JavaScript and the procedure form's JS tab show a dot while they hold code; follows typing.
 
+- [ ] **Button settings dialogue** (0.8.1163) – right-click / Alt+click on run buttons and input buttons of a real form: change the target,
+      events and label, live and with an open draft; check the draft publishes (0.8.1164: kept ids with umlauts no longer block it).
+- [ ] **Calendars** (0.8.1165) – list view, calendar objects, dashboard calendars with FullCalendar 6: please try with real data – entries with times
+      (week / day views, the hours setting), all-day entries with an end (FullCalendar's end is exclusive: a two-day entry 1.–2. must show on both days
+      and stay 1.–2. after a move), moving on a form with Before Save code or validation rules, a new record from a dragged range, phones (touch drag
+      needs a long press). SQL Server not tested (the date range filter compares the list column with 'Y-m-d H:i:s' text).
+
 ## Users, access levels and permissions
 - [ ] **User field defaults** (0.8.1074) – please verify: today+30d, next:EMP-{0000}, {first_name}.{last_name}, = SELECT …, proc:<code> on a new user, data import and REST
 - [ ] **User form layout** (0.8.1018 / 0.8.1019): the Person card with initials, the three cards below on a laptop and a phone.

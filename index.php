@@ -140,6 +140,7 @@ $routes = [
 	'snippetlist' => ['json' => true],
 	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (0.8.719, pages/nuadvsearch.php)   // code snippets of one code editor (0.8.714, pages/nusnippetlist.php)
 	'pivot'       => ['json' => true],   // pivot of a form list (0.8.1151, pages/nupivot.php; GET fmt=xlsx|csv = file)
+	'calendar'    => ['json' => true],   // calendars: list view, calendar objects, moving events (0.8.1165, pages/nucalendar.php)
 	'formstatus'  => ['json' => true],   // maintenance of forms on / off (0.8.808, pages/nuformstatus.php)
 	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (0.8.683, pages/nuformaccess.php)   // function list of the code editors (0.8.593, pages/nufnlist.php)
 	'builder'     => [],
