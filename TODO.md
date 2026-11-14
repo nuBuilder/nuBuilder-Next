@@ -117,6 +117,19 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify: code pane beside the record** (0.8.1197 / 0.8.1199) – Ctrl+Shift+B or Design ▾ → Code on a record of a real form: every part
+      as in design mode's Code tab, cards with counts, one Save for several parts (live and with an open draft), Esc with unsaved changes; User Home shows Before Edit only.
+- [ ] **Please verify: form info and browse SQL "As run"** (0.8.1180–0.8.1187) – the (i) panel in section cards, description / code changed in the
+      panel (also with an open draft), Esc closes the panel and the side pane one layer at a time; the list pane's *As run* on a list whose browse SQL uses
+      properties / hash cookies (unset ones amber).
+- [ ] **Please verify: Properties… selects the object** (0.8.1192–0.8.1194) – right-click → Properties… on several object types and records, also with
+      Global code that rewrites the address (pushState); the design tab opens on the same record with the object selected.
+- [ ] **Please verify: unique tab names** (0.8.1198) – adding tabs gives New tab, New tab 2 …; renaming to a name in use (other case) is refused in
+      design mode and in the tab menu; forms that already have two tabs of the same name still save while those tabs are left unchanged.
+- [ ] **Please verify: quiet read-only fields** (0.8.1181) – fields made read-only or disabled by form code (nuDisable, nuReadonly) on real forms:
+      readable, the lock does not cover text of narrow fields, dark mode; selects, lookups, date fields, checkboxes.
+- [ ] **Please verify: nuAttachSaveButtonTo with a hidden target** (0.8.1196) – a form that hides / shows the target object (e.g. by a select):
+      the Save button stays below the object's place, also when called again after the change.
 - [ ] **Please verify: run button "Show a pivot"** (0.8.1156) – design mode run type, a shared pivot as button (new tab / popup) and as iframe; a user without print right on the list does not see it
 - [ ] **Please verify: object menu on phones** (0.8.1160) – long press on a label near the bottom: no text selection / search sheet, menu fully visible
 - [ ] **Please verify: pivot of form lists** (0.8.1151) – Export ▾ → Pivot… on a real list: date groups, totals vs the list, filter, drill, My pivots, CSV / Excel; phones have no entry yet (Export menu only from 576 px)
@@ -198,7 +211,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
   Draft with AI (0.8.1025): related screens (sub-forms ticked, pick lists and forms opened by buttons offered) in the copied prompt.
 - [ ] **Lists by keyboard and row details** (0.8.1026 / 0.8.1027): on a real list – search, ↓, ↑ / ↓ / Page Down, Enter, Back (same row
   focused again), Esc; row details with *Hidden columns and cut text* and a *Related list* on a form with a sub-form (lookups shown by
-  their text, fields of a user with field access rules hidden / masked), Space / → / ← on a row, the phone card view.
+  their text, fields of a user with field access rules hidden / masked), Space / → / ← on a row, the phone card view. 0.8.1189 / 0.8.1190: the soft
+  rounded highlight of the focused / hovered row and scrolling – the row stays visible below the top bar, the floating titles and above a sticky footer.
 - [ ] **Back = the page before** (0.8.1017 / 0.8.1018): Back on own pages and form pages after opening them from different places (start
   page, side bar, search, a link in a record); after the browser's own Back.
 - [ ] **Form department / team** (0.8.1020): set in design mode, filter the forms list by them.
@@ -266,6 +280,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Dashboard table widgets** (0.8.682): column nu_record_id + link to a form → rows open the record; option "Open in a new tab".
 
 ## Code editors and libraries
+- [ ] **Bootstrap 5.3.9** (0.8.1188) – fixes only; please glance at modals, tooltips, dropdowns and tabs on the live server (also form code that
+      uses `window.bootstrap`).
 - [ ] **Code search and replace** (0.8.1172–0.8.1176) – please search a real application: places, filters, project filter, line links
       into design mode / procedures / Global code, export; "Functions nuBuilder Next lacks" on Forte code (false hits?); Replace on a copy
       first: preview, ticked lines only, a form with an open draft is skipped, Undo of a batch.
@@ -289,7 +305,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       collected messages and the Compatibility check point J4; then decide when to switch everyone (default for new installations =
       NuJquery::DEFAULTS['jq']). jquery-confirm is our build 3.3.4-nu1 ($.trim replaced); its project is inactive – replace it with an own
       dialogue if more breaks.
-- [ ] **Bootstrap 6** (alpha 8 Oct 2026): stay on 5.3.8 until 6.0 is stable; write the migration script when the beta is out. The alpha:
+- [ ] **Bootstrap 6** (alpha 8 Oct 2026): stay on 5.3 (now 5.3.9) until 6.0 is stable; write the migration script when the beta is out. The alpha:
       Chrome / Edge 130+, Firefox 132+, Safari 18+; JavaScript as ES modules only (no `window.bootstrap`, no bundle with Popper); prefixed
       responsive / state classes (`d-md-none` → `md:d-none`, `col-lg-6` → `lg:col-6`); offcanvas → drawer, accordion on `<details>`,
       modals on `<dialog>`; prefixed CSS variables (our `var(--bs-…)` change). Prepared (0.8.740): `php dev/bs6_scan.php [--files]

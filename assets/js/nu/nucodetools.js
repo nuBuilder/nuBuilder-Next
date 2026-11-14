@@ -404,7 +404,8 @@
 	 */
 	var JUMP = (function () {
 		try {
-			var u = new URLSearchParams(window.location.search), l = parseInt(u.get('cl') || '', 10);
+			var st = window.nuNext && window.nuNext.design && window.nuNext.design.start;   // 0.8.1194: design mode gets them from the server
+			var u = new URLSearchParams(st && st.cl ? st : window.location.search), l = parseInt(u.get('cl') || '', 10);
 			return l > 0 ? {line: l, key: u.get('ck') || '', q: u.get('cq') || '', done: false} : null;
 		} catch (e) { return null; }
 	})();

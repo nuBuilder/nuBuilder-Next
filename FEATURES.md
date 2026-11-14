@@ -12,10 +12,11 @@ page) for how to use it.
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
 - **Totals and groups** – a row of totals below a list (sum, average, minimum, maximum, count) over everything the search matches, the totals of ticked rows, and lists grouped by a column with a heading and subtotals per group.
 - **Row details** – a ▸ on each row of a list shows hidden columns, cut text and a related list (e.g. the items of an order) below the row.
-- **Lists by keyboard** – search, ↓ into the rows, ↑ / ↓ / Page Down to move, Enter to open, Esc back to the search; the row is kept when you come back.
+- **Lists by keyboard** – search, ↓ into the rows, ↑ / ↓ / Page Down to move, Enter to open, Esc back to the search; the row is kept when you come back,
+  shown with a soft rounded highlight and always scrolled into view.
 - **Export** – every list as print page, CSV or Excel; copy rows straight into Excel or Word.
 - **Comfortable editing** – sub-forms, lookups and file uploads; required and unique fields marked; unsaved changes shown;
-  Clone opens an unsaved copy.
+  Clone opens an unsaved copy; fields you cannot change look quiet (soft fill, a small lock) but stay fully readable.
 - **Start page** – tiles, favourites, recently used and one search over everything (also Ctrl+K); dashboards with KPI tiles,
   charts and tables.
 - **Notification centre** – a bell with unread messages, optionally also by e-mail.
@@ -31,8 +32,12 @@ page) for how to use it.
 ## For building applications
 
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
-  list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs, events and code in one place.
-- **A list's design in a side pane** – browse SQL, PHP (Before Browse), JavaScript, columns with all their settings, row details and list settings next to the running list.
+  list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs (with unique names), events and code in one place;
+  *Properties…* in an object's right-click menu opens it selected in design mode.
+- **A list's design in a side pane** – browse SQL, PHP (Before Browse), JavaScript, columns with all their settings, row details and list settings next to the running list;
+  *As run* shows the SQL the list really ran, hash variables filled in and unset ones marked.
+- **A form's code beside the record** – every JavaScript, CSS and PHP event of a form in a side pane on the record (Ctrl+Shift+B), grouped in cards, saved in one go.
+- **Form info** – the form's details in section cards (form, data, list, record), description and code changed right in the panel.
 - **Forms grouped** by group, department and team – shown and filtered in the forms list; forms, procedures, reports and SQL queries sorted by *Last opened*.
 - **Drafts and history** – changes go into a draft that you publish when ready; every published version can be compared
   and restored.

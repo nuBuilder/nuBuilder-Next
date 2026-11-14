@@ -18,7 +18,12 @@
 	var deferred = null;
 	function item() { return document.getElementById('nuMenuInstall'); }
 	function show(yes) { var li = document.getElementById('nuMenuInstallLi'); if (li) li.hidden = !yes; }
-	window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; show(true); });
+	// 0.8.1195: the event is kept for the menu entry; preventDefault() only on touch screens, where it stops Chrome's own mini bar –
+	// on desktops there is no such bar, and the call only made Chrome log "Banner not shown: … preventDefault() called" on every page
+	window.addEventListener('beforeinstallprompt', function (e) {
+		if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) e.preventDefault();
+		deferred = e; show(true);
+	});
 	window.addEventListener('appinstalled', function () { deferred = null; show(false); });
 	var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 	document.addEventListener('DOMContentLoaded', function () {

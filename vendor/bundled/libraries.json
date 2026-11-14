@@ -1,8 +1,8 @@
 [
 	{
 		"name": "Bootstrap",
-		"version": "5.3.8",
-		"dir": "bootstrap-5.3.8",
+		"version": "5.3.9",
+		"dir": "bootstrap-5.3.9",
 		"file": "css/bootstrap.min.css",
 		"detect": "Bootstrap\\s+v([0-9.]+)",
 		"license": "MIT",

@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.1179",
- "built": "2026-11-14 01:55",
+ "version": "0.8.1200",
+ "built": "2026-11-14 13:08",
  "requires": {
   "php": "8.1"
  },
@@ -11,15 +11,15 @@
    "size": 1263
   },
   "CHANGELOG.md": {
-   "sha256": "441032a1f6c419af9199d75ebbf8b20b3dd8a30448eefb283b4abf6af528ec8d",
-   "size": 749253
+   "sha256": "d18d37afcdbb028850f024a833f54c4bc47494a76ef066347f30b1ecb06f051d",
+   "size": 759724
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "384e853f2858ac9961edabf48d1df7266e028061e8968789917c6a200bc83c5d",
+   "sha256": "11369657a7ea3918a06da2e4f8720fce3f36b0b87562a1e77d573ca125a4fc37",
    "size": 3646
   },
   "api.php": {
@@ -47,7 +47,7 @@
    "size": 453
   },
   "apps/nufiles/index.php": {
-   "sha256": "65965ee3d0284cb399eddf55f52e292c5e120f68fa6913983da5715f566d8413",
+   "sha256": "396f798e4f37a3f41cb3ca6cbde737fb7058ac23ff8444d033e9a2f55e83a358",
    "size": 15455
   },
   "apps/nufiles/lib/api.php": {
@@ -83,8 +83,8 @@
    "size": 1371
   },
   "assets/css/nuapp.css": {
-   "sha256": "825fad235a4d84f3162dad883927d4e2d50894e1b33e2c7ea9725e8837de8553",
-   "size": 205956
+   "sha256": "930e50d820163d05ad2b02582f06fd0886b3bb0e04682a51572564b7aef731ea",
+   "size": 213811
   },
   "assets/css/nubuilder.css": {
    "sha256": "bfe266d05ec6ebb7f2e9219cb80d0fbf4059517a510a486619f4a01b07e98c79",
@@ -95,8 +95,8 @@
    "size": 28625
   },
   "assets/css/nuform.css": {
-   "sha256": "b663f310a4112d11c1b518f085748701fd45a9419515a8a480031d9b877e387e",
-   "size": 76026
+   "sha256": "e6e23dafb059cf130e7a6b1a40a2b865daf06f1ad6ad51a462e072669787e353",
+   "size": 84963
   },
   "assets/css/nuhome.css": {
    "sha256": "d69a619f947d63373e319fafd3bfc55c9ed9d0d6a82594af45723b28c281a1e8",
@@ -183,16 +183,16 @@
    "size": 13902
   },
   "assets/js/nu/nucodetools.js": {
-   "sha256": "d3a1aef5d4e74130cb07c564bd18280fe7d29c170627c9c1e8e277d4f8956755",
-   "size": 79255
+   "sha256": "566fa3197deed2a93329bc4e39d2479a697e2e940cbb72206f47523ee9f6f62b",
+   "size": 79408
   },
   "assets/js/nu/nucompat.js": {
    "sha256": "07ca9f0e7350e3acd6952c8ed0260c4777fccc878aa20604c6ce6a9983c0ddb0",
    "size": 65392
   },
   "assets/js/nu/nudesign.js": {
-   "sha256": "7179384ea6a3141bc3b171ad9a36e8ee1707c1dc01566e71cc994003891fb7c4",
-   "size": 259378
+   "sha256": "fdfd9fa341558edcf315fdbcba35d43741e32d3bd054eb114d7e969bb4c56713",
+   "size": 261213
   },
   "assets/js/nu/nudesigner.js": {
    "sha256": "554260ad783529e19c88a582e20793cb2ce8af5525f9e22bea72c79284fd3b62",
@@ -231,8 +231,8 @@
    "size": 8455
   },
   "assets/js/nu/nuruntime.js": {
-   "sha256": "e84ce703c94a84ce5ef4e7334e1dc70c5f27a52b6971791e253b63d980ab95ce",
-   "size": 351968
+   "sha256": "1c419cb40d7558c16c4e555befda81ecfaf69122f70a38c1bf8cc080bb852824",
+   "size": 376143
   },
   "assets/js/nu/nutooltip.js": {
    "sha256": "ef077398d0cf9bb0b8fe52255f7523d773db46c7f4e010c9cda36240471422c5",
@@ -263,8 +263,8 @@
    "size": 22047
   },
   "assets/js/nuapp.js": {
-   "sha256": "d1288340ab291c88afa755f87c6643cd4b355b166d48a1d0457370bb05901542",
-   "size": 129424
+   "sha256": "2fc8464848c65c586701db5ff254292cde56292fde326ba1b9b03e33e158bbd2",
+   "size": 133141
   },
   "assets/js/nuappcloner.js": {
    "sha256": "c7521387073a2cddfbdbb6bb7b108d33588e1cfffb2fc9407ea77ed5bab0fb6c",
@@ -463,8 +463,8 @@
    "size": 6997
   },
   "assets/js/nupwa.js": {
-   "sha256": "4d3bb3de53237cc1b989a125bc9fcd85b1d109a874bb32c04bb7ee8bfe346cf6",
-   "size": 2281
+   "sha256": "7114731f17afa25817fa4bcc1c8bcbbabf2c46da0726df11ddb98a5ce6fc2f01",
+   "size": 2626
   },
   "assets/js/nupwpolicy.js": {
    "sha256": "ca10011a1e879c9f339b3df9d8235bc132a866e955c36c58e0f585933af31433",
@@ -575,8 +575,8 @@
    "size": 16353
   },
   "core/form/nubrowse.php": {
-   "sha256": "0b9bc0e91ba17641b9a64eef2380b4afa735f49d0a35f6493105be13f23beb36",
-   "size": 41532
+   "sha256": "25f048f52162e90f7078a22ea7f5fd3bbd907947cf2ce0b8f500352dffbd8502",
+   "size": 42030
   },
   "core/form/nubuilder_gen.php": {
    "sha256": "49b3cad12bb1880f0941a93b4ba5008a0cfaedbb9e4eb5bf69470ca8ac5abdeb",
@@ -599,8 +599,8 @@
    "size": 8077
   },
   "core/form/nudesign.php": {
-   "sha256": "250e4231f0101f6281d5ebb65222a02374160695ebd84aac91dc9ddf7b264d85",
-   "size": 10482
+   "sha256": "8a1608bbd9b6f0c12f2abd02cb67839327df3df9098a1904ac66b626c697abdf",
+   "size": 11269
   },
   "core/form/nuformat.php": {
    "sha256": "10fd94ed43e2c5a2cbc14dafa3294c5498807be555a9f01a5c2ac1f576d278c5",
@@ -611,8 +611,8 @@
    "size": 28277
   },
   "core/form/nuforminfo.php": {
-   "sha256": "335fc5a7ed28a820cff70b7e1426fb5f9d6c002daf5f04c48202a46403a69bcf",
-   "size": 11889
+   "sha256": "5d7f48275c1ba3763934445e1b46820f2e0e9e822ed7370baa3d49636605579c",
+   "size": 15528
   },
   "core/form/nuformspec.php": {
    "sha256": "4cf141a8bf4c197006a9dfdd3249adc9afd99078248c3e6d2e9c24faca13ed26",
@@ -727,7 +727,7 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "26ce6abe4eec2cedcc6052751c6a98d1c8c347d3ee9aa7fd7e45d89a9cddc3cd",
+   "sha256": "822d1f9e5bc538003669cd11210c92d9d056cfdbc179811bb3d70a8edfc22819",
    "size": 42125
   },
   "core/nuappcloner.php": {
@@ -1219,12 +1219,12 @@
    "size": 177
   },
   "docs/nunext-functions.json": {
-   "sha256": "238b0c7cf46b94220c1380754498f315e18cea1e3d9ea91b43bea4a5de65d247",
-   "size": 261337
+   "sha256": "f8a7b58b2c1664aa9c4bf3ace196b9892249ff69acede9734f768bf55e9cacda",
+   "size": 261545
   },
   "docs/nunext-tutorial.htm": {
-   "sha256": "31d2279bb453554bb6f21bcb63fa830b83472da490bd3fe57210088e74140e36",
-   "size": 111773
+   "sha256": "95c738b121ac879d3c78312eb8b846c9d1476463881597087833bcd81d557406",
+   "size": 112223
   },
   "docs/pages/01-00-overview.htm": {
    "sha256": "076a27ad6554df31895a14b2309933a79d1c4de3b3513e536c3c961617e14ee8",
@@ -1271,12 +1271,12 @@
    "size": 15796
   },
   "docs/pages/02-03-lists.htm": {
-   "sha256": "1f86a0437107821baccba34a7a44dfe4a5ada28a229494b2c3a8f23b572c8eaa",
-   "size": 18098
+   "sha256": "fd1e590b680a684f6bb8a8b449ed0ec7b5a94b57f1119be7d4a268afd7d59fae",
+   "size": 18263
   },
   "docs/pages/02-04-forms-use.htm": {
-   "sha256": "3c441f0be3a178882107ea64e2dd672c7d552b04a37f4c5b60d22ec2bdc33f65",
-   "size": 10493
+   "sha256": "36937aca3963bd3f79c86dd53a262f52784394da4f7182028201c78a56fb5974",
+   "size": 11022
   },
   "docs/pages/02-05-concurrent-edits.htm": {
    "sha256": "2f8c4012f60378f3779cd8a8c1ee67fa71aa4e03e05e28293952bef478f8876f",
@@ -1331,8 +1331,8 @@
    "size": 11948
   },
   "docs/pages/04-03-builder-work.htm": {
-   "sha256": "ea0a6c007b6b7887a44cd542a210b0ef84553cf32c12b5fd2a96196070063e7c",
-   "size": 35840
+   "sha256": "0c8ac347aa87a724081a1f3e0e865e40cf077b78435be2a71ff0e001e94c0d21",
+   "size": 37686
   },
   "docs/pages/04-04-form-drafts.htm": {
    "sha256": "73d2b3b2bc9b90437e005e075a3847a66ad0ade029e26a63c8d76a281d635360",
@@ -1451,8 +1451,8 @@
    "size": 6329
   },
   "docs/pages/08-00-administration.htm": {
-   "sha256": "6a55ff5ae780281e14ecd2cad45802ec977fe17c896c303d7f42330885cf6c91",
-   "size": 2281
+   "sha256": "47a9cf3127bc9d4f7e062b5bc4f01c6509d91cfe15b5a8c41880f0faa3aad1d5",
+   "size": 2310
   },
   "docs/pages/08-01-users.htm": {
    "sha256": "0cad5b5a8eedc72fab9194cbeda19a3733a94e80ce9df55b6bf9167c44e51cfc",
@@ -1587,8 +1587,8 @@
    "size": 16704
   },
   "docs/pages/10-03-label-menu.htm": {
-   "sha256": "bc081cea3fce5df9bb83334a34d40c850aad488a0e30de117a57af2fee270f0b",
-   "size": 11206
+   "sha256": "1e965708518091e5e1b7130d118b5f092bfa22fb3f900f533ccc3c3cfeba82ca",
+   "size": 11281
   },
   "docs/pages/10-04-ref.htm": {
    "sha256": "c841e7639a6596548cb4446fdc2a2b3aa749312af66a52e9b51a16c4a18c91a6",
@@ -1683,7 +1683,7 @@
    "size": 73026
   },
   "install/db_changes.json": {
-   "sha256": "b09a343efbb40ca3880775081e51ef7be9415c4cfaec76fa8ac19f53c9d7c9de",
+   "sha256": "777eb52ffa43270adb9787f3c37496f2bd86e1ba24129027db728237c9e45ffd",
    "size": 74205
   },
   "install/libraries-required.json": {
@@ -1731,16 +1731,16 @@
    "size": 177
   },
   "lang/ar.php": {
-   "sha256": "aca437d6c9582a3656bc07247dd2c5f585fba75d3171457e724a4d1a65372f8a",
-   "size": 643903
+   "sha256": "eff0bff1520870300f5391b71d251b54a5c30efb4c171732ba647c3a891d1688",
+   "size": 645489
   },
   "lang/de-CH.php": {
-   "sha256": "1844c3ce2ba5037acdc5a590d3434f968d93a74f71af14eb7f7d329f44896694",
-   "size": 51335
+   "sha256": "9fd1fb3aa0574b8ca828997634f65fd351b8688b06550a3fab8dfadee48254ce",
+   "size": 51518
   },
   "lang/de.php": {
-   "sha256": "d8383a5115148b29f74fe390c2f98108cc3ae1c331c76da9533fa4e8d0e5a354",
-   "size": 528640
+   "sha256": "7cc49ddbea0c293ea39990763897b023d772a37d81edef84e64a4fb440c864ae",
+   "size": 530065
   },
   "lang/en-AU.php": {
    "sha256": "ada75936000a02c38cf523214ed6484c63de2b097d58d52c7306e0c4c1dc66b5",
@@ -1751,40 +1751,40 @@
    "size": 12543
   },
   "lang/en.php": {
-   "sha256": "7356daa33fea4de515b4c72a6f16b6d28eae8e373848355a88e424767bb2b8f1",
-   "size": 478040
+   "sha256": "170eae57607f366a124696516d0918158fe7f742060931202637761ec75cefc7",
+   "size": 479290
   },
   "lang/es.php": {
-   "sha256": "e197b24d7ae83b5f90b7218e8ed6ae9c3956b010c1e4ecb9195271275bfe4b91",
-   "size": 531086
+   "sha256": "2109959b4393a14110d4949606d3790fd2177d914f627535b2d993ab814997b1",
+   "size": 532449
   },
   "lang/fr.php": {
-   "sha256": "fe8af02a234c639a5b1e49a58a7275269273aae4d441c054cb5f413a44fcad69",
-   "size": 555564
+   "sha256": "bd7c09594250b13ae7278a63dd0d494bbf71ec7adddd4a383971ad1aed235558",
+   "size": 556989
   },
   "lang/it.php": {
-   "sha256": "3bfbd59cd6da2ed1ead97d39bbd3e77a28eba1f1669c3f2cdbc0b21c85063850",
-   "size": 519995
+   "sha256": "ae95b98975cb481c4dd13dda899957958de16047cd1018fb0ea7c84b4d7ee654",
+   "size": 521377
   },
   "lang/nl.php": {
-   "sha256": "f656cf6bf501f0cdf63598c21ce5964bb6062fe24414456a25d98dad6b2461a7",
-   "size": 518723
+   "sha256": "3e45b5ac08a7c03e0109cbd7007bf7245bd7e3782244d5b4be770dc7a05a3bad",
+   "size": 520093
   },
   "lang/pl.php": {
-   "sha256": "b4457b61c6e143cf26d9310b3588eaad568636c5a9e734cb7f8946b3f63041b4",
-   "size": 515667
+   "sha256": "bde1dad65a21baa93dc973fd4bdb6b9951dbccdbd298be118d262490a43e9038",
+   "size": 517001
   },
   "lang/pt.php": {
-   "sha256": "b333dfc6adbae445d946a901e68b51d0982b86bd0d35ab1a7bf585c73164fd72",
-   "size": 533985
+   "sha256": "5a87bf3a4d4633012334adcbb33459f352bcf08e977a922e683b5c63fad671dd",
+   "size": 535350
   },
   "lang/ru.php": {
-   "sha256": "d0bc80f319fe128e3c7091b574b712558c316bef5304d6ecac87d63c4617ca20",
-   "size": 724194
+   "sha256": "7cf7335b4d4d2be0737f99e79b8cf6929870a4f3e9c14cb4fed5b984edb20706",
+   "size": 725981
   },
   "lang/zh.php": {
-   "sha256": "03f57ae2c0a80c2ccf4e294e2f93e031b4cfaee011e723d48cccbca490a3bcbc",
-   "size": 476141
+   "sha256": "a56dad8dc7f182782a0865393abe0bd2a08cd4c989ca648d1e37387702364f97",
+   "size": 477430
   },
   "nuconfig-sample.php": {
    "sha256": "644517ef2af7f6ff6884fb544c25e2fa490c0fab90de55c7aabf96ed4d2c079c",
@@ -1875,8 +1875,8 @@
    "size": 23333
   },
   "pages/nubuilderapi.php": {
-   "sha256": "e80d31e2b69f19af8640443d392d9cc8d913b1f63e5e04d9b92bd19beafd5f78",
-   "size": 57973
+   "sha256": "0505461acd524ff7da2547ba99091d556f4454426428b356e78340b98d4cf332",
+   "size": 59456
   },
   "pages/nucalendar.php": {
    "sha256": "55ddd3fa0d2b4c654ce6f545401dfdff8c60548017b6dda1afae92f16eeadc4a",
@@ -1963,8 +1963,8 @@
    "size": 3998
   },
   "pages/nuform.php": {
-   "sha256": "df96516e564098a5c0d10c9ce224127774083cf37090d84c7e804ace8b77c8bf",
-   "size": 91363
+   "sha256": "e63c7c7e5320a38c938991b1e8f458ed67218cfbe53a77fc6dca4e3221acefe9",
+   "size": 94225
   },
   "pages/nuformaccess.php": {
    "sha256": "21fc7ade43d6354c6cf07c94814e7ae3cd7f1eee61edb319d74d14a6fbe174d1",
@@ -2498,6 +2498,22 @@
    "sha256": "9436953f4c2d40be1def855f4c98d950312c726de61752f65622c18c8c2148b5",
    "size": 80454
   },
+  "vendor/bundled/bootstrap-5.3.9/LICENSE": {
+   "sha256": "bc0cd18d94c028f1c0b62ec9fdaddcb9921c1e07c29cf52dc7df8cca9daf2488",
+   "size": 1093
+  },
+  "vendor/bundled/bootstrap-5.3.9/css/bootstrap.min.css": {
+   "sha256": "06395d93f5adbc0593ed84544eb043fa32ab8619c6b7195e803e119f5b9f3672",
+   "size": 232315
+  },
+  "vendor/bundled/bootstrap-5.3.9/css/bootstrap.rtl.min.css": {
+   "sha256": "98d28e8e60bb5320c40f587ffc90c9ecafa9524d182774d721b077269ac611a6",
+   "size": 232419
+  },
+  "vendor/bundled/bootstrap-5.3.9/js/bootstrap.bundle.min.js": {
+   "sha256": "ba6170d422f7d715ae9ae061f879fb73752f3eeec8108fb75069dcbc0bac30c2",
+   "size": 80621
+  },
   "vendor/bundled/bootstrap-icons-1.13.2/LICENSE": {
    "sha256": "0fb3e11bd57e896c5a512afd64864d28a37de45d19835016c87ca1ad19ead969",
    "size": 1093
@@ -2651,7 +2667,7 @@
    "size": 87533
   },
   "vendor/bundled/libraries.json": {
-   "sha256": "cdbdeab2565af862bc3b9e8ca503a6e04ba5526c3d323f7659215bdc5d0d7e6f",
+   "sha256": "3bdd8f9ca14a01d343a127e91c884e4766334650a651806f629e00309487f727",
    "size": 4366
   },
   "vendor/bundled/qrcode-generator-2.0.4/qrcode.js": {
@@ -2701,6 +2717,111 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.1200",
+   "title": "Release gate",
+   "text": "- Release gate: full test run (smoke, all end-to-end tests, comparison with nuBuilder Forte, security scan).\n- Documentation brought up to date for 0.8.1180–0.8.1199: code pane of records, form info, browse SQL \"As run\",\n  quiet read-only fields, list row highlight, Properties… in the object menu, unique tab names, nuAttachSaveButtonTo."
+  },
+  {
+   "version": "0.8.1199",
+   "title": "Code pane: groups as cards",
+   "text": "- Code pane of record pages: each group of the part list (JavaScript, Style, PHP, List) is a small card with a\n  tinted heading and the number of its parts that hold code (\"2 / 5\"); the List card is dashed, as its parts act\n  on the list only."
+  },
+  {
+   "version": "0.8.1198",
+   "title": "Unique tab names",
+   "text": "- Tab names are unique: a new tab in design mode gets a free name (New tab, New tab 2 …), and renaming a tab to a name\n  another tab of the form already has – compared without HTML, spaces and case – is refused, in design mode (the field\n  stays open with a message) and in the tab menu outside it (the server checks it too). Tabs a form already has with the\n  same name (nuBuilder Forte allows them) are left as they are and do not block other changes."
+  },
+  {
+   "version": "0.8.1197",
+   "title": "Code of a form in a side pane beside the record",
+   "text": "- Code of a form beside the record: the ▾ next to Design on a record has a new entry Code (Ctrl+Shift+B, as the list's\n  pane on lists). A pane on the right lists the parts of design mode's Code – JavaScript (edit and list, edit), CSS, the\n  PHP events Before Edit / Before Save / After Save / Before Delete / After Delete and, greyed at the end, the parts that\n  only act on the list (its JavaScript, Before Browse, browse SQL) – with a dot on the parts that hold code, and the code\n  editor of the chosen part. Save (Ctrl+S) stores every changed part in one go and reloads; Esc closes; the width can be\n  dragged. On phones the entry is in the ⋮ menu."
+  },
+  {
+   "version": "0.8.1196",
+   "title": "nuAttachSaveButtonTo also for hidden objects",
+   "text": "- nuAttachSaveButtonTo() places the Save button as nuBuilder Forte does: from the object's CSS top and height, so the place\n  is right also while the object is hidden at that moment (it ended at the top of the tab before). Calling it again after\n  form code moved fields reuses the button's holder instead of leaving empty ones behind.\n- $(…).cssNumber() of older nuBuilder Forte forms is available (only when the site's own code does not define it)."
+  },
+  {
+   "version": "0.8.1195",
+   "title": "No install-banner console message on desktops",
+   "text": "- Installable app: on desktops the browser's install offer is no longer held back with preventDefault() – Chrome logged\n  \"Banner not shown: beforeinstallpromptevent.preventDefault() called …\" in the console on every page. The user menu's\n  \"Install app\" works as before; on touch screens the offer is still held back (it stops Chrome's own mini bar there)."
+  },
+  {
+   "version": "0.8.1194",
+   "title": "Design mode no longer loses its start parameters to code that rewrites the address",
+   "text": "- Design mode gets what to open and select (object of Properties…, code part, line of a code search link, flyout,\n  workspace) from the server instead of reading the address bar: form or global code that rewrites the address while the\n  page loads (for example a nuBuilder Forte style permalink ?f=…&r=…&h=…) removed these parameters, so Properties…\n  opened design mode without selecting the object."
+  },
+  {
+   "version": "0.8.1193",
+   "title": "Properties…: field id fallback and a message when nothing is selected",
+   "text": "- Object menu → Properties…: design mode also finds the object by its field id when the object id does not match its\n  data, and says so when the object cannot be selected (a message in the design bar and a line with the details in the\n  browser console) instead of opening without a selection."
+  },
+  {
+   "version": "0.8.1192",
+   "title": "Properties… selects the object reliably",
+   "text": "- Object menu → Properties…: design mode opens on the record that was open (it opened the form's first record before),\n  and the object is selected reliably – design mode tries again until the panel shows the object, instead of one try\n  after a fixed delay that a slow page or the form's own code could miss. When the object is not shown on that record,\n  a message says so (select it in Structure)."
+  },
+  {
+   "version": "0.8.1191",
+   "title": "Button settings: label column, fitted field widths",
+   "text": "- Button settings dialogue: the labels sit in a column on the left and each field is only as wide as its value needs\n  (Run, Method, Open in, icon and access short; form, filter, address and label wider; record ID short). The dialogue\n  is 640 px wide instead of the full large width. On phones the fields still stack below their labels.\n- TODO.md: the Bootstrap note names 5.3.9."
+  },
+  {
+   "version": "0.8.1190",
+   "title": "Keyboard row stays in view",
+   "text": "- Lists by keyboard: with ↓ / ↑ (and Home, End, PageDown, PageUp) the page now scrolls so the chosen row stays in view – it no\n  longer slides under the list's footer with the pager at the bottom of the window, or under the top bar, the sticky title\n  bar and the column titles at the top."
+  },
+  {
+   "version": "0.8.1189",
+   "title": "Soft rounded fill for the selected row",
+   "text": "- Lists: the row chosen with the keyboard is shown as a soft rounded fill in a light accent tint instead of a blue frame, and\n  a row under the mouse gets the same rounded shape in grey; the lines next to the row disappear. Form lists and the system\n  lists, light and dark, from tablet width up (phones keep their cards)."
+  },
+  {
+   "version": "0.8.1188",
+   "title": "Bootstrap 5.3.9",
+   "text": "- Bootstrap 5.3.8 → 5.3.9 (maintenance release, no breaking changes): placeholder animations respect \"reduce motion\", tooltip\n  and popover text written in data-bs-title / data-bs-content stays as written (no longer read as a number) and an empty\n  title no longer breaks them, the minute part of date / time fields has its padding back, carousel and scrollspy fixes, and a\n  new modal size .modal-xxl for form code. The old library folder stays on updated servers (an update never deletes library\n  files)."
+  },
+  {
+   "version": "0.8.1187",
+   "title": "Browse SQL as run in the side pane",
+   "text": "- The SQL a list ran moved from Form info to the list's side pane: the Browse SQL tab has a switch Written | As run. As run\n  shows, read only, the SQL this page ran with its hash variables filled in – filled values green, hash variables without a\n  value amber (they stay as text in the SQL) – and lists each variable with its value below; Copy copies that SQL. Save is off\n  while As run is shown; the pane remembers the choice.\n- Form info of a list now shows the sections Form and Data only; on a record page it still shows the stored browse SQL with\n  Show all and Edit (design mode in a new tab)."
+  },
+  {
+   "version": "0.8.1186",
+   "title": "Esc closes the side pane and Form info",
+   "text": "- Esc closes the list's side pane also when the cursor is in its code editor (after Ctrl+Shift+B the focus is there and the\n  editor kept the key); an open search box or suggestion list of the editor closes first. With the focus on the page Esc\n  closes the pane as well.\n- Esc closes the Form info panel wherever the focus is (before, only with the focus inside the panel). With the panel open\n  above the side pane, the first Esc closes the panel, the next one the pane."
+  },
+  {
+   "version": "0.8.1185",
+   "title": "Form info: Edit opens the side pane, description and code editable",
+   "text": "- Form info panel: the button below the browse SQL is now called Edit and opens the list's side pane on the browse SQL (as\n  Ctrl+Shift+B) instead of a new tab; with Ctrl held, and on record pages, it still opens design mode in a new tab.\n- Form info panel: description and code can be changed right in the panel by users who may design the form – the pencil\n  turns the value into a field, Enter or Save stores it (in the open draft when one is shown), Esc or Cancel keeps the old\n  value; errors (an empty value, a code another form already has) show below the field.\n- Form info panel: it now lies above the list's side pane when both are open."
+  },
+  {
+   "version": "0.8.1184",
+   "title": "Form info as section cards",
+   "text": "- Form info (i) panel as section cards (layout 5 of the mockups): a head with an info icon, the title and Copy all; each\n  section (Form, Data, List, Record) is its own card with a tinted title bar and an icon. The form type is shown by name with\n  an icon (Copy still copies the stored type). The browse SQL sits in a box with an accent stripe and its Copy button inside;\n  Show all and Edit in design mode below it. Dark mode and the phone dialogue follow the same layout (on phones Copy sits\n  below the SQL). The record info of the own record pages uses the same cards."
+  },
+  {
+   "version": "0.8.1183",
+   "title": "Form info in grouped sections",
+   "text": "- Form info (i) panel in grouped sections (layout 1 of the mockups): a head with the title and Copy all, then the sections\n  Form (description, code, form ID, type, title), Data (table, primary key), List (browse SQL as run, hash variables) and,\n  on a record, Record (ID, created, last changed) – each with a small upper-case heading. Codes and IDs are shown as quiet\n  chips; the browse SQL takes the full width with Show all · Edit in design mode · Copy as buttons below it. The record info\n  of the own record pages (users, procedures, reports …) uses the same layout (Record, then Data). On phones the dialogue\n  of the ⋮ menu keeps Copy all."
+  },
+  {
+   "version": "0.8.1182",
+   "title": "Form info: SQL as run, four lines",
+   "text": "- Form info (i) on lists: only the Browse SQL as run is shown (the stored Browse SQL row is left out there – it stays\n  on record pages); its edit link moved to that row. Long values (SQL, hash variables) show four lines, faded at the\n  bottom when there is more, without a scroll bar; a click on the box (or ↗) opens the whole text."
+  },
+  {
+   "version": "0.8.1181",
+   "title": "Read-only fields: quiet surface",
+   "text": "- Forms: read-only and disabled fields have a new look – a soft fill without a border, the value in full contrast\n  (was grey on grey) and a small lock at the right; calculated fields show \"=\", a disabled select shows the lock\n  instead of its arrow, a disabled checkbox keeps a readable tick. Lookup descriptions, narrow fields, date / time\n  / number pickers and sub-form grid cells get the fill without an icon. Words, HTML objects and images switched off\n  by form code no longer get a grey band. Light and dark mode (help: Working with forms)."
+  },
+  {
+   "version": "0.8.1180",
+   "title": "Form info panel taller and wider",
+   "text": "- Form info (i): the panel uses the height of the window below its button, so the Browse SQL and the other long values\n  show in full without a scroll bar of their own; only a panel taller than the window scrolls, as a whole. On wider\n  screens the panel is wider (from 768 px and 1200 px)."
   },
   {
    "version": "0.8.1179",
@@ -8621,8 +8742,8 @@
  "libraries": [
   {
    "name": "Bootstrap",
-   "version": "5.3.8",
-   "dir": "bootstrap-5.3.8",
+   "version": "5.3.9",
+   "dir": "bootstrap-5.3.9",
    "license": "MIT"
   },
   {
@@ -8819,7 +8940,7 @@
   ],
   "js_deprecated": []
  },
- "last_gate": "0.8.1179",
+ "last_gate": "0.8.1200",
  "gated": true,
  "requires_libs": {
   "tcpdf": {
@@ -8843,5 +8964,5 @@
    "needed": false
   }
  },
- "signature": "Pr4Ht4yWAiNnPInHDV6rq1KHX5L2n0eHsF6lM714dxXuxtnXcCVJXDenQ4zCd9PkCMNx8jTsrZZq8pDhAi79Dw=="
+ "signature": "tQzpCO5lAhgjRE0AMDotY4dOyV9DmtCrerikPZHAYV1gBiXHYNUIpzEdpF+j4Yd+RhON53ByRX3pmrSl5+q6Dg=="
 }

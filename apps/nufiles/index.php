@@ -42,7 +42,7 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= $t('title') ?></title>
-<link rel="stylesheet" href="<?= $v('NU_BS', 'vendor/bundled/bootstrap-5.3.8', 'css/bootstrap.min.css') ?>">
+<link rel="stylesheet" href="<?= $v('NU_BS', 'vendor/bundled/bootstrap-5.3.9', 'css/bootstrap.min.css') ?>">
 <link rel="stylesheet" href="<?= $v('NU_BI', 'vendor/bundled/bootstrap-icons-1.13.2', 'bootstrap-icons.min.css') ?>">
 <link rel="stylesheet" href="<?= $v('NU_CODEMIRROR', 'vendor/bundled/codemirror-6.43.15', 'codemirror.css') ?>">
 <link rel="stylesheet" href="<?= $nu->h($nu->asset('assets/app.css')) ?>">
@@ -202,7 +202,7 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 <!-- trash / log / info / search results share the main view; the toasts -->
 <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" id="nufToasts" aria-live="polite"></div>
 
-<script src="<?= $v('NU_BS', 'vendor/bundled/bootstrap-5.3.8', 'js/bootstrap.bundle.min.js') ?>"></script>
+<script src="<?= $v('NU_BS', 'vendor/bundled/bootstrap-5.3.9', 'js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= $v('NU_CODEMIRROR', 'vendor/bundled/codemirror-6.43.15', 'codemirror-bundle.js') ?>"></script>
 <?php if (function_exists('nu_asset')): // nuBuilder Next's code editor toolbar (undo / redo, search, replace, comment, format, copy / paste) ?>
 <script src="<?= $nu->h(nu_asset('assets/js/nu/nucodetools.js')) ?>"></script>

@@ -3713,7 +3713,7 @@
     "o": "next",
     "v": "0.8.479",
     "e": "<link rel=\"stylesheet\" href=\"<?= $nu->vendor('bootstrap', 'css/bootstrap.min.css') ?>\">",
-    "x": "'vendor/bundled/bootstrap-5.3.8/css/bootstrap.min.css?v=…'",
+    "x": "'vendor/bundled/bootstrap-5.3.9/css/bootstrap.min.css?v=…'",
     "p": {
      "$lib": "library name",
      "$file": "file inside the library folder"
@@ -4861,7 +4861,7 @@
     "g": "form",
     "n": "nuAttachSaveButtonTo",
     "s": "nuAttachSaveButtonTo(id, dx, dy, height, width, fontSize)",
-    "d": "Moves the Save button below an object (15 px gap; dx / dy shift it, height / width / fontSize size it). In the absolute layout the tab grows when the button would end below it.",
+    "d": "Moves the Save button below an object (15 px gap; dx / dy shift it, height / width / fontSize size it). In the absolute layout the tab grows when the button would end below it. As in nuBuilder Forte the place comes from the object's position and height as set in the form, so the button also lands in the right place while the object is hidden; calling it again moves the same button.",
     "o": "nb",
     "e": "nuAttachSaveButtonTo('inv_notes', 0, 0, 24, 80);",
     "p": {

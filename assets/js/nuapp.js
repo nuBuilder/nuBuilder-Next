@@ -1848,6 +1848,7 @@ window.nuPageNoGo = function (value) {
 		});
 		return top;
 	}
+	window.nuStickyLine = line;
 	function check() {
 		queued = false;
 		var tables = document.querySelectorAll('table[data-nu-sticky-head]');
@@ -2117,7 +2118,32 @@ window.nuPageNoGo = function (value) {
 		rove(r);
 		r.setAttribute('data-nu-kb', '');                         // shown as the focused row also after a script focus (CSS)
 		r.focus({preventScroll: true});
-		r.scrollIntoView({block: 'nearest'});
+		reveal(r);
+	}
+	// keep the focused row in view (0.8.1190): scroll boxes the row sits in first, then the window so that the row is not under
+	// what sticks at the top (top bar, sticky title bar, the list's floating column titles) or at the bottom (sticky pager /
+	// list footer, floating totals row); twice, because scrolling can make a title bar or the column titles stick
+	function reveal(r) {
+		r.scrollIntoView({block: 'nearest', behavior: 'instant'});           // instant: Bootstrap sets scroll-behavior: smooth on :root
+		for (var pass = 0; pass < 2; pass++) {
+			var box = r.getBoundingClientRect(), t = r.closest('table'), M = 6;
+			var top = window.nuStickyLine ? window.nuStickyLine() : 0;
+			var head = t && t.tHead, tr = t ? t.getBoundingClientRect() : null;
+			if (head && t.hasAttribute('data-nu-sticky-head') && tr && tr.top < top + 1) top += head.getBoundingClientRect().height;
+			var bottom = window.innerHeight;
+			document.querySelectorAll('.nuListFooter, .card-footer').forEach(function (f) {
+				if (f.offsetParent !== null && getComputedStyle(f).position === 'sticky') {
+					var fr = f.getBoundingClientRect();
+					if (fr.height && fr.top < bottom && fr.top > 0) bottom = fr.top;
+				}
+			});
+			if (t && t.tFoot && t.tFoot.offsetParent !== null && tr && tr.bottom > bottom) bottom -= t.tFoot.getBoundingClientRect().height;
+			var dy = 0;
+			if (box.bottom > bottom - M) dy = box.bottom - bottom + M;
+			if (box.top - dy < top + M) dy = box.top - top - M;
+			if (Math.abs(dy) < 1) break;
+			window.scrollBy({top: dy, behavior: 'instant'});
+		}
 	}
 	function pagerLink(r, cls) {
 		for (var el = r.closest('table'); el && el !== document.body; el = el.parentElement) {
@@ -2209,4 +2235,39 @@ window.nuPageNoGo = function (value) {
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup); else setup();
 	document.addEventListener('nu:listrefresh', setup);
 	window.nuListKeyNav = setup;
+})();
+
+// Form info (i) panel (0.8.1180): as tall as the window allows below its button, so the panel and its SQL boxes need no scroll bar
+// of their own while they fit; only when the window is too short the panel itself scrolls.
+(function () {
+	'use strict';
+	function fit(menu) {
+		if (!menu || !menu.classList.contains('nuFormInfo')) return;
+		menu.style.maxHeight = '';
+		var top = menu.getBoundingClientRect().top, room = Math.max(160, window.innerHeight - Math.max(top, 0) - 12);
+		menu.style.maxHeight = room + 'px';
+		menu.querySelectorAll('.nuFormInfoSql').forEach(function (b) { b.classList.toggle('nuFiCut', b.scrollHeight > b.clientHeight + 2); });   // fade only what is cut (0.8.1182)
+	}
+	document.addEventListener('shown.bs.dropdown', function (e) {
+		var btn = e.target, wrap = btn && btn.closest ? btn.closest('.dropdown') : null;
+		var menu = wrap ? wrap.querySelector(':scope > .dropdown-menu.nuFormInfo') : null;
+		if (menu) setTimeout(function () { fit(menu); }, 0);
+		if (menu) document.documentElement.classList.add('nuFiOpen');   // its bar above the list's side pane while open (0.8.1185)
+	});
+	document.addEventListener('hidden.bs.dropdown', function () {
+		if (!document.querySelector('.dropdown-menu.nuFormInfo.show')) document.documentElement.classList.remove('nuFiOpen');
+	});
+	// Esc closes the panel wherever the focus is (0.8.1186) – Bootstrap only does so with the focus in the panel or on its button;
+	// not while one of its dialogues is open or a value is being changed (that Esc cancels the field)
+	document.addEventListener('keydown', function (e) {
+		if (e.key !== 'Escape' || document.querySelector('.modal.show')) return;
+		var m = document.querySelector('.dropdown-menu.nuFormInfo.show');
+		if (!m || (e.target.classList && e.target.classList.contains('nuFiInput'))) return;
+		var b = m.parentNode.querySelector('[data-bs-toggle="dropdown"]');
+		if (!b || !window.nuBs) return;
+		e.preventDefault(); e.stopImmediatePropagation();
+		nuBs.dropdown(b).hide();
+		b.focus();
+	}, true);
+	window.addEventListener('resize', function () { document.querySelectorAll('.dropdown-menu.nuFormInfo.show').forEach(fit); });
 })();

@@ -62,7 +62,15 @@ final class NuBrowse
 				$vars[$n] = $v === null ? null : (is_scalar($v) ? (string)$v : (string)json_encode($v, JSON_UNESCAPED_UNICODE));
 			}
 		}
-		self::$shown = ['sql' => NuHash::replace($sql, $hash, NuHash::SQL), 'vars' => $vars];
+		// the SQL as run in parts (0.8.1187, side pane "As run"): text, or [name, value as put into the SQL | null = not set, stays as text]
+		$parts = [];
+		foreach (preg_split('/(#[A-Za-z_][A-Za-z0-9_]*#)/', $sql, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: [] as $bit) {
+			if (preg_match('/^#([A-Za-z_][A-Za-z0-9_]*)#$/', $bit, $mm)) {
+				$r = NuHash::replace($bit, $hash, NuHash::SQL);
+				$parts[] = [$mm[1], $r === $bit ? null : $r];
+			} else $parts[] = $bit;
+		}
+		self::$shown = ['sql' => NuHash::replace($sql, $hash, NuHash::SQL), 'vars' => $vars, 'parts' => $parts];
 		return NuHash::sql($sql, $hash);   // text, or bound parameters with $nuDevSelectQueryRunParameterised (0.8.873)
 	}
 

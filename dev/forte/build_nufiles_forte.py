@@ -82,7 +82,7 @@ libs = lib('guard') + cfg + lib('fs') + lib('log') + i18n + api
 # ------------------------------------------------------------------ the page (body of index.php)
 idx = rd(os.path.join(APP, 'index.php'))
 page = idx[idx.index('?><!doctype html>') + 2:]
-LINES = {"$v('NU_BS', 'vendor/bundled/bootstrap-5.3.8', 'css/bootstrap.min.css')": '<link rel="stylesheet" href="<?= $nu->h(NUF_FORTE_URL . \'third_party/bootstrap/bootstrap.min.css\') ?>">',
+LINES = {"$v('NU_BS', 'vendor/bundled/bootstrap-5.3.9', 'css/bootstrap.min.css')": '<link rel="stylesheet" href="<?= $nu->h(NUF_FORTE_URL . \'third_party/bootstrap/bootstrap.min.css\') ?>">',
          "$v('NU_BI',": '<link rel="stylesheet" href="<?= $nu->h(NUF_FORTE_URL . \'third_party/fontawesome/css/all.min.css\') ?>">',
          "$v('NU_CODEMIRROR', 'vendor/bundled/codemirror-6.43.15', 'codemirror.css')": None,
          "'js/bootstrap.bundle.min.js')": '<script src="<?= $nu->h(NUF_FORTE_URL . \'third_party/bootstrap/bootstrap.bundle.min.js\') ?>"></script>',

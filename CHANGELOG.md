@@ -3,6 +3,136 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1200 – Release gate
+- Release gate: full test run (smoke, all end-to-end tests, comparison with nuBuilder Forte, security scan).
+- Documentation brought up to date for 0.8.1180–0.8.1199: code pane of records, form info, browse SQL "As run",
+  quiet read-only fields, list row highlight, Properties… in the object menu, unique tab names, nuAttachSaveButtonTo.
+
+## 0.8.1199 – Code pane: groups as cards
+- Code pane of record pages: each group of the part list (JavaScript, Style, PHP, List) is a small card with a
+  tinted heading and the number of its parts that hold code ("2 / 5"); the List card is dashed, as its parts act
+  on the list only.
+
+## 0.8.1198 – Unique tab names
+- Tab names are unique: a new tab in design mode gets a free name (New tab, New tab 2 …), and renaming a tab to a name
+  another tab of the form already has – compared without HTML, spaces and case – is refused, in design mode (the field
+  stays open with a message) and in the tab menu outside it (the server checks it too). Tabs a form already has with the
+  same name (nuBuilder Forte allows them) are left as they are and do not block other changes.
+
+## 0.8.1197 – Code of a form in a side pane beside the record
+- Code of a form beside the record: the ▾ next to Design on a record has a new entry Code (Ctrl+Shift+B, as the list's
+  pane on lists). A pane on the right lists the parts of design mode's Code – JavaScript (edit and list, edit), CSS, the
+  PHP events Before Edit / Before Save / After Save / Before Delete / After Delete and, greyed at the end, the parts that
+  only act on the list (its JavaScript, Before Browse, browse SQL) – with a dot on the parts that hold code, and the code
+  editor of the chosen part. Save (Ctrl+S) stores every changed part in one go and reloads; Esc closes; the width can be
+  dragged. On phones the entry is in the ⋮ menu.
+
+## 0.8.1196 – nuAttachSaveButtonTo also for hidden objects
+- nuAttachSaveButtonTo() places the Save button as nuBuilder Forte does: from the object's CSS top and height, so the place
+  is right also while the object is hidden at that moment (it ended at the top of the tab before). Calling it again after
+  form code moved fields reuses the button's holder instead of leaving empty ones behind.
+- $(…).cssNumber() of older nuBuilder Forte forms is available (only when the site's own code does not define it).
+
+## 0.8.1195 – No install-banner console message on desktops
+- Installable app: on desktops the browser's install offer is no longer held back with preventDefault() – Chrome logged
+  "Banner not shown: beforeinstallpromptevent.preventDefault() called …" in the console on every page. The user menu's
+  "Install app" works as before; on touch screens the offer is still held back (it stops Chrome's own mini bar there).
+
+## 0.8.1194 – Design mode no longer loses its start parameters to code that rewrites the address
+- Design mode gets what to open and select (object of Properties…, code part, line of a code search link, flyout,
+  workspace) from the server instead of reading the address bar: form or global code that rewrites the address while the
+  page loads (for example a nuBuilder Forte style permalink ?f=…&r=…&h=…) removed these parameters, so Properties…
+  opened design mode without selecting the object.
+
+## 0.8.1193 – Properties…: field id fallback and a message when nothing is selected
+- Object menu → Properties…: design mode also finds the object by its field id when the object id does not match its
+  data, and says so when the object cannot be selected (a message in the design bar and a line with the details in the
+  browser console) instead of opening without a selection.
+
+## 0.8.1192 – Properties… selects the object reliably
+- Object menu → Properties…: design mode opens on the record that was open (it opened the form's first record before),
+  and the object is selected reliably – design mode tries again until the panel shows the object, instead of one try
+  after a fixed delay that a slow page or the form's own code could miss. When the object is not shown on that record,
+  a message says so (select it in Structure).
+
+## 0.8.1191 – Button settings: label column, fitted field widths
+- Button settings dialogue: the labels sit in a column on the left and each field is only as wide as its value needs
+  (Run, Method, Open in, icon and access short; form, filter, address and label wider; record ID short). The dialogue
+  is 640 px wide instead of the full large width. On phones the fields still stack below their labels.
+- TODO.md: the Bootstrap note names 5.3.9.
+
+## 0.8.1190 – Keyboard row stays in view
+- Lists by keyboard: with ↓ / ↑ (and Home, End, PageDown, PageUp) the page now scrolls so the chosen row stays in view – it no
+  longer slides under the list's footer with the pager at the bottom of the window, or under the top bar, the sticky title
+  bar and the column titles at the top.
+
+## 0.8.1189 – Soft rounded fill for the selected row
+- Lists: the row chosen with the keyboard is shown as a soft rounded fill in a light accent tint instead of a blue frame, and
+  a row under the mouse gets the same rounded shape in grey; the lines next to the row disappear. Form lists and the system
+  lists, light and dark, from tablet width up (phones keep their cards).
+
+## 0.8.1188 – Bootstrap 5.3.9
+- Bootstrap 5.3.8 → 5.3.9 (maintenance release, no breaking changes): placeholder animations respect "reduce motion", tooltip
+  and popover text written in data-bs-title / data-bs-content stays as written (no longer read as a number) and an empty
+  title no longer breaks them, the minute part of date / time fields has its padding back, carousel and scrollspy fixes, and a
+  new modal size .modal-xxl for form code. The old library folder stays on updated servers (an update never deletes library
+  files).
+
+## 0.8.1187 – Browse SQL as run in the side pane
+- The SQL a list ran moved from Form info to the list's side pane: the Browse SQL tab has a switch Written | As run. As run
+  shows, read only, the SQL this page ran with its hash variables filled in – filled values green, hash variables without a
+  value amber (they stay as text in the SQL) – and lists each variable with its value below; Copy copies that SQL. Save is off
+  while As run is shown; the pane remembers the choice.
+- Form info of a list now shows the sections Form and Data only; on a record page it still shows the stored browse SQL with
+  Show all and Edit (design mode in a new tab).
+
+## 0.8.1186 – Esc closes the side pane and Form info
+- Esc closes the list's side pane also when the cursor is in its code editor (after Ctrl+Shift+B the focus is there and the
+  editor kept the key); an open search box or suggestion list of the editor closes first. With the focus on the page Esc
+  closes the pane as well.
+- Esc closes the Form info panel wherever the focus is (before, only with the focus inside the panel). With the panel open
+  above the side pane, the first Esc closes the panel, the next one the pane.
+
+## 0.8.1185 – Form info: Edit opens the side pane, description and code editable
+- Form info panel: the button below the browse SQL is now called Edit and opens the list's side pane on the browse SQL (as
+  Ctrl+Shift+B) instead of a new tab; with Ctrl held, and on record pages, it still opens design mode in a new tab.
+- Form info panel: description and code can be changed right in the panel by users who may design the form – the pencil
+  turns the value into a field, Enter or Save stores it (in the open draft when one is shown), Esc or Cancel keeps the old
+  value; errors (an empty value, a code another form already has) show below the field.
+- Form info panel: it now lies above the list's side pane when both are open.
+
+## 0.8.1184 – Form info as section cards
+- Form info (i) panel as section cards (layout 5 of the mockups): a head with an info icon, the title and Copy all; each
+  section (Form, Data, List, Record) is its own card with a tinted title bar and an icon. The form type is shown by name with
+  an icon (Copy still copies the stored type). The browse SQL sits in a box with an accent stripe and its Copy button inside;
+  Show all and Edit in design mode below it. Dark mode and the phone dialogue follow the same layout (on phones Copy sits
+  below the SQL). The record info of the own record pages uses the same cards.
+
+## 0.8.1183 – Form info in grouped sections
+- Form info (i) panel in grouped sections (layout 1 of the mockups): a head with the title and Copy all, then the sections
+  Form (description, code, form ID, type, title), Data (table, primary key), List (browse SQL as run, hash variables) and,
+  on a record, Record (ID, created, last changed) – each with a small upper-case heading. Codes and IDs are shown as quiet
+  chips; the browse SQL takes the full width with Show all · Edit in design mode · Copy as buttons below it. The record info
+  of the own record pages (users, procedures, reports …) uses the same layout (Record, then Data). On phones the dialogue
+  of the ⋮ menu keeps Copy all.
+
+## 0.8.1182 – Form info: SQL as run, four lines
+- Form info (i) on lists: only the Browse SQL as run is shown (the stored Browse SQL row is left out there – it stays
+  on record pages); its edit link moved to that row. Long values (SQL, hash variables) show four lines, faded at the
+  bottom when there is more, without a scroll bar; a click on the box (or ↗) opens the whole text.
+
+## 0.8.1181 – Read-only fields: quiet surface
+- Forms: read-only and disabled fields have a new look – a soft fill without a border, the value in full contrast
+  (was grey on grey) and a small lock at the right; calculated fields show "=", a disabled select shows the lock
+  instead of its arrow, a disabled checkbox keeps a readable tick. Lookup descriptions, narrow fields, date / time
+  / number pickers and sub-form grid cells get the fill without an icon. Words, HTML objects and images switched off
+  by form code no longer get a grey band. Light and dark mode (help: Working with forms).
+
+## 0.8.1180 – Form info panel taller and wider
+- Form info (i): the panel uses the height of the window below its button, so the Browse SQL and the other long values
+  show in full without a scroll bar of their own; only a panel taller than the window scrolls, as a whole. On wider
+  screens the panel is wider (from 768 px and 1200 px).
+
 ## 0.8.1179 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan) of 0.8.1168–0.8.1178.
 

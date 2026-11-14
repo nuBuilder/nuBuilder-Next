@@ -32,7 +32,7 @@ final class NuDesign
 	{
 		$open = (string)($q['open'] ?? '');
 		if (!self::allowed($meta)) return nu_url('form', ['f' => $meta->id, 'r' => $meta->hasBrowse() ? null : '-1']);
-		$extra = ['dsobj' => is_string($q['obj'] ?? null) ? $q['obj'] : null, 'dscolchg' => is_string($q['colchg'] ?? null) ? $q['colchg'] : null,
+		$extra = ['dsobj' => is_string($q['obj'] ?? null) ? $q['obj'] : null, 'dsfid' => is_string($q['fid'] ?? null) && $q['fid'] !== '' ? mb_substr($q['fid'], 0, 100) : null, 'dscolchg' => is_string($q['colchg'] ?? null) ? $q['colchg'] : null,
 			'dsdelete' => ($q['delete'] ?? '') === '1' ? '1' : null,
 			'dswork' => in_array($open, ['code', 'history'], true) ? $open : (($q['draft'] ?? '') === '1' && $open === 'compare' ? 'changes' : null),
 			'dsfly' => $open === 'add' ? 'add' : ($open === 'objects' ? 'structure' : ($open === 'rules' ? 'rules' : null))];
@@ -41,8 +41,9 @@ final class NuDesign
 		$extra += ['dsitem' => $str('dsitem', 40), 'ck' => $str('ck', 40), 'cl' => ctype_digit((string)($q['cl'] ?? '')) ? (string)$q['cl'] : null, 'cq' => $str('cq', 100)];
 		if ($open === 'list') { $extra['dswork'] = 'list'; $open = 'browse'; }
 		if ((!$meta->hasEdit() && $meta->type() !== 'subform') || ($open === 'browse' && $meta->hasBrowse())) return nu_url('form', ['f' => $meta->id, 'design' => '1'] + $extra);
-		$r = '-1';
-		if ($meta->table() !== '' && $meta->primaryKey() !== '' && $meta->type() !== 'launch') {
+		// the record the link came from (0.8.1192: Properties… of the object menu keeps the record that was open)
+		$r = is_string($q['r'] ?? null) && $q['r'] !== '' && $q['r'] !== '-1' && strlen($q['r']) <= 100 ? $q['r'] : '-1';
+		if ($r === '-1' && $meta->table() !== '' && $meta->primaryKey() !== '' && $meta->type() !== 'launch') {
 			try {
 				$pk = nu_db()->page('SELECT ' . NuDB::ident($meta->primaryKey()) . ' AS pk FROM ' . NuDB::ident($meta->table()), [], NuDB::ident($meta->primaryKey()), 1, 0);
 				if ($pk) $r = (string)$pk[0]['pk'];
@@ -112,6 +113,10 @@ final class NuDesign
 			'userhome' => $meta->isUserHome(),                      // User Home: only its Before Edit PHP is code of its own (0.8.605)           // tabs: only the globeadmin renames or deletes them (as the builder API)
 			'safe' => self::safe(),
 			'self' => nu_url('form', ['f' => $meta->id, 'r' => $record, 'design' => '1', 'safe' => self::safe() ? '1' : null]),
+			// what to open / select first (0.8.1194): the parameters of the address as the server got them – form code that rewrites the
+			// address bar while the page loads (a permalink without them) must not lose them
+			'start' => (object)array_filter(array_intersect_key($_GET, array_flip(['dsobj', 'dsfid', 'dsitem', 'dswork', 'dsfly', 'dscolchg', 'dsdelete', 'cl', 'ck', 'cq'])),
+				static fn($v): bool => is_string($v) && $v !== '' && strlen($v) <= 200),
 			'safe_url' => nu_url('form', ['f' => $meta->id, 'r' => $record, 'design' => '1', 'safe' => self::safe() ? null : '1']),
 			'exit' => nu_url('form', ['f' => $meta->id, 'r' => $record, 'draft' => 'off']),
 			'texts' => $texts,

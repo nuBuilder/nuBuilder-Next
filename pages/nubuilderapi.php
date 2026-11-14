@@ -25,6 +25,28 @@ function nb_err(string $msg, int $status = 400): never
 	nb_out(['ok' => false, 'error' => $msg], $status);
 }
 
+/**
+ * Unique tab names (0.8.1198): a tab that is new or renamed may not take the name of another tab of the form (compared without HTML,
+ * spaces and case). Tabs a nuBuilder Forte form already has with the same name stay as they are, so such a form can still be saved.
+ * @param array<int, mixed> $rows the list sent (id, title)
+ * @param array<int, array<string, mixed>> $cur the form's tabs now (zzzzsys_tab_id, syt_title)
+ */
+function nb_tab_dupe(array $rows, array $cur): void
+{
+	$norm = static fn($v): string => mb_strtolower(trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string)$v), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? ''));
+	$was = [];
+	foreach ($cur as $c) $was[(string)$c['zzzzsys_tab_id']] = trim((string)$c['syt_title']);
+	$names = [];
+	foreach (array_values($rows) as $i => $t) $names[$i] = $norm(trim((string)(is_array($t) ? ($t['title'] ?? '') : '')) ?: 'Tab');
+	foreach (array_values($rows) as $i => $t) {
+		if (!is_array($t)) continue;
+		$id = (string)($t['id'] ?? '');
+		$title = trim((string)($t['title'] ?? '')) ?: 'Tab';
+		if ($id !== '' && array_key_exists($id, $was) && $was[$id] === $title) continue;   // unchanged
+		foreach ($names as $k => $n) if ($k !== $i && $n === $names[$i]) nb_err(sprintf(t('ds_tab_dupe'), trim(strip_tags($title))), 409);
+	}
+}
+
 if (!nu_is_post()) nb_err('POST required', 405);
 
 $in = json_decode((string)file_get_contents('php://input'), true);
@@ -379,6 +401,7 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 					if (!array_key_exists($id, $sent) || $sent[$id] !== trim((string)$cur['syt_title'])) nb_err(t('builder_tabs_globeadmin'), 403);
 				}
 			}
+			nb_tab_dupe($rows, $store->snapshot()['tabs'] ?? []);
 			$store->tabsSave($rows);
 			$store->commit('tabs.save');
 			$out();
@@ -870,6 +893,7 @@ try {
 			nb_form($formId);
 			$rows = is_array($in['tabs'] ?? null) ? $in['tabs'] : [];
 			if (!$rows) nb_err(t('builder_err_one_tab'));
+			nb_tab_dupe($rows, $db->all('SELECT zzzzsys_tab_id, syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ?', [$formId]));
 			$db->transaction(static function (NuDB $db) use ($rows, $formId) {
 				$keep = [];
 				foreach (array_values($rows) as $i => $t) {

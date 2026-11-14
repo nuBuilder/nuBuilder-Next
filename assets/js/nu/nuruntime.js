@@ -1877,7 +1877,9 @@
 	api('nuAttachSaveButtonTo', function (id, dx, dy, h, w, fs) {
 		var b = g('nuSaveButton'), target = g('nuw_' + id) || g(id);
 		if (!b || !target) return $(b);
-		var holder = $('<div class="nuAttachedSave"></div>').append(b);
+		// one holder, moved on every call (form code calls it again after it moved fields – each call made a new one before, 0.8.1196)
+		var holder = $(b).closest('.nuAttachedSave');
+		if (!holder.length) holder = $('<div class="nuAttachedSave"></div>').append(b);
 		$(target).after(holder);
 		if (Number(w) > 0) b.style.width = Number(w) + 'px';
 		if (Number(h) > 0) { b.style.height = Number(h) + 'px'; b.style.minHeight = '0'; b.style.paddingTop = '0'; b.style.paddingBottom = '0'; }
@@ -1887,7 +1889,12 @@
 			if (b.scrollWidth > b.clientWidth + 1) b.classList.add('nuSaveNoIcon');
 		}
 		if (target.classList.contains('nuAbs')) {
-			var top = target.offsetTop + target.offsetHeight + 15 + (Number(dy) || 0), left = target.offsetLeft + (Number(dx) || 0);
+			// as nuBuilder Forte: from the object's CSS top / height – also while it is hidden (form code shows it later); the drawn place
+			// (offsetTop) of a hidden object is 0, so the button ended at the top of the tab (0.8.1196)
+			var ctl = g(id), css = function (el, k) { var n = el ? parseFloat(el.style[k]) : NaN; return isNaN(n) ? null : n; };
+			var tTop = css(target, 'top'), tLeft = css(target, 'left');
+			var tH = css(ctl, 'height') !== null ? css(ctl, 'height') : (ctl && ctl.offsetHeight) || css(target, 'height') || target.offsetHeight;
+			var top = (tTop !== null ? tTop : target.offsetTop) + tH + 15 + (Number(dy) || 0), left = (tLeft !== null ? tLeft : target.offsetLeft) + (Number(dx) || 0);
 			holder.addClass('nuAbs').css({top: top + 'px', left: left + 'px'});
 			var canvas = target.closest('.nuAbsoluteCanvas');
 			if (canvas) {
@@ -2509,7 +2516,7 @@
 			$('#nuOmSetDlg').remove();
 			var L = OM.run_lists || {forms: [], procs: [], reports: [], pivots: []};
 			var r = o.run ? $.extend({}, o.run) : null;
-			var dlg = $('<div class="modal fade nuOmSetDlg" id="nuOmSetDlg" tabindex="-1" aria-labelledby="nuOmSetTitle"><div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down"><div class="modal-content">'
+			var dlg = $('<div class="modal fade nuOmSetDlg" id="nuOmSetDlg" tabindex="-1" aria-labelledby="nuOmSetTitle"><div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down nuOmSetDialog"><div class="modal-content">'
 				+ '<div class="modal-header py-2"><h2 class="modal-title fs-5 text-truncate" id="nuOmSetTitle"></h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
 				+ '<div class="modal-body pt-2"><ul class="nav nav-tabs mb-3" role="tablist"></ul><div class="nuOmSetPanes"></div></div>'
 				+ '<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"></button><button type="button" class="btn btn-primary" id="nuOmSetSave"></button></div>'
@@ -2534,9 +2541,10 @@
 			}
 			function row(label, ctl, tip) {
 				var lb = $('<label class="form-label mb-1"></label>').text(label);
-				var d = $('<div class="mb-3"></div>').append(lb);
-				if (tip) d.find('label').after($('<span class="nuInfoTip ms-1" tabindex="0" role="img"><i class="bi bi-info-circle"></i></span>').attr({title: tip, 'aria-label': tip}));
-				return d.append(ctl);
+				if (ctl && ctl.attr && ctl.attr('id')) lb.attr('for', ctl.attr('id'));
+				var head = $('<div class="nuOmSetLbl"></div>').append(lb);
+				if (tip) head.append($('<span class="nuInfoTip ms-1" tabindex="0" role="img"><i class="bi bi-info-circle"></i></span>').attr({title: tip, 'aria-label': tip}));
+				return $('<div class="mb-3 nuOmSetRow"></div>').append(head, $('<div class="nuOmSetCtl"></div>').append(ctl));
 			}
 			function select(id2, opts, val) {
 				var sel = $('<select class="form-select"></select>').attr('id', id2);
@@ -2555,7 +2563,7 @@
 				var fltIn = $('<input type="text" class="form-control font-monospace" id="nuOmSetFilter">').val(r.filter);
 				var methSel = select('nuOmSetMethod', [['b', T.r_b], ['i', T.r_i]], r.method);
 				var openWrap = $('<div id="nuOmSetOpenWrap"></div>');
-				var link = $('<a class="small" target="_blank" rel="noopener" id="nuOmSetOpenTarget"></a>').append('<i class="bi bi-box-arrow-up-right me-1"></i>', document.createTextNode(T.open_target));
+				var link = $('<a class="small nuOmSetLink" target="_blank" rel="noopener" id="nuOmSetOpenTarget"></a>').append('<i class="bi bi-box-arrow-up-right me-1"></i>', document.createTextNode(T.open_target));
 				var recRow = row(T.r_record, recIn, T.r_record_tip), fltRow = row(T.r_filter, fltIn, T.r_filter_tip), urlRow = row(T.r_url, urlIn);
 				pRun.append(row(T.set_run, typeSel), tgtWrap, urlRow, recRow, fltRow, row(T.r_method, methSel), openWrap, link);
 				var ts = null, tgtSel = null;
@@ -2707,7 +2715,7 @@
 			menu = $('<ul class="dropdown-menu show nuObjMenu shadow" role="menu"></ul>').append(
 				head, divider(),
 				isButton(o) ? (function () { var li = item('bi-gear', T.settings, function () { settings(id); }); li.find('button').attr({title: T.settings_tip, id: 'nuOmSettings'}); return li; })() : $(),
-				item('bi-sliders', T.properties, function () { if (N.objMenuHook) { N.objMenuHook('properties', o); return; } window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id), '_blank'); }),
+				item('bi-sliders', T.properties, function () { if (N.objMenuHook) { N.objMenuHook('properties', o); return; } window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id) + '&fid=' + encodeURIComponent(id) + (N.record_id && N.record_id !== '-1' ? '&r=' + encodeURIComponent(N.record_id) : ''), '_blank'); }),
 				item('bi-input-cursor-text', T.rename, function () {
 					var cur = labelText(id) || o.label || '';            // words / images have no separate label (0.8.1082)
 					var v = window.prompt(T.rename_prompt.replace('%s', id), cur);
@@ -3074,6 +3082,8 @@
 	if (!$.fn.nuSearchablePopup) $.fn.nuSearchablePopup = function () { return this; };
 	if (!$.fn.nuSearchableMultiPopup) $.fn.nuSearchableMultiPopup = function () { return this; };
 	if (!$.fn.nuCSSNumber) $.fn.nuCSSNumber = function (p) { return parseInt(this.css(p), 10) || 0; };
+	// older nuBuilder Forte name (0.8.1196) – only when no code of the site defines it
+	if (!$.fn.cssNumber) $.fn.cssNumber = function (p) { return parseInt(this.css(p), 10) || 0; };
 
 	// =================================================================== files in fields (nuBuilder format)
 	function fileSize(b) { return !b ? '' : (b < 1024 ? b + ' B' : (b < 1048576 ? Math.round(b / 1024) + ' KB' : (b / 1048576).toFixed(1) + ' MB')); }
@@ -3859,7 +3869,7 @@
 			btn.focus();
 		}
 		function save() {
-			if (!pane) return;
+			if (!pane || RUN) return;                                         // As run is read only (0.8.1187)
 			var v = codeVal('sql'), vp = codeVal('php'), vj = codeVal('js'), sb = pane.querySelector('.nuBsqSave'), err = pane.querySelector('.nuBsqErr');
 			var fields = {}, php = null;
 			if (v !== CODE.sql.orig) fields.sfo_browse_sql = v;
@@ -4122,15 +4132,91 @@
 			box.appendChild(add);
 			rowDetails();
 		}
+		// Browse SQL tab, Written | As run (0.8.1187): the SQL this page ran with its hash variables filled in (B.run.parts from
+		// NuBrowse::$shown), read only – filled values green, unset ones amber, the variables listed below; Save is off meanwhile
+		var RUNKEY = 'nunext-bsq-run', RUN = false;
+		try { RUN = !!B.run && localStorage.getItem(RUNKEY) === '1'; } catch (e) { RUN = false; }
+		function runText() {
+			return (B.run.parts || []).map(function (x) { return typeof x === 'string' ? x : (x[1] === null ? '#' + x[0] + '#' : x[1]); }).join('');
+		}
+		function drawRun() {
+			var box = pane && pane.querySelector('.nuBsqRun');
+			if (!box || !B.run) return;
+			box.innerHTML = '<div class="nuBsqRunNote"><i class="bi bi-lock" aria-hidden="true"></i><span></span>'
+				+ '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto nuBsqRunCopy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i></button></div>'
+				+ '<ol class="nuBsqRunSql" tabindex="0"></ol><div class="nuBsqRunVars"></div>';
+			box.querySelector('.nuBsqRunNote span').textContent = T.bsq_run_note;
+			box.querySelector('.nuBsqRunCopy').appendChild(document.createTextNode(T.copy));
+			box.querySelector('.nuBsqRunCopy').setAttribute('data-nu-copy-text', runText());
+			var ol = box.querySelector('.nuBsqRunSql'), li = document.createElement('li');
+			ol.appendChild(li);
+			function text(t, into) {
+				String(t).split('\n').forEach(function (bit, i) {
+					if (i) { li = document.createElement('li'); ol.appendChild(li); into = li; }
+					if (bit !== '') into.appendChild(document.createTextNode(bit));
+				});
+			}
+			(B.run.parts || []).forEach(function (x) {
+				if (typeof x === 'string') { text(x, li); return; }
+				var m = document.createElement('mark');
+				m.className = x[1] === null ? 'nuBsqUnset' : 'nuBsqFill';
+				m.title = '#' + x[0] + '# – ' + (x[1] === null ? T.fi_hash_unset : T.bsq_run_filled);
+				text(x[1] === null ? '#' + x[0] + '#' : x[1], m);
+				li.appendChild(m);
+			});
+			var vars = B.run.vars || {}, names = Object.keys(vars), vb = box.querySelector('.nuBsqRunVars');
+			var h = document.createElement('div');
+			h.className = 'nuBsqRunHead';
+			h.textContent = names.length ? T.bsq_run_vars.replace('%d', names.length) : T.bsq_run_none;
+			vb.appendChild(h);
+			names.forEach(function (n) {
+				var r = document.createElement('div'), unset = vars[n] === null;
+				r.className = 'nuBsqRunVar' + (unset ? ' nuBsqRunNo' : '');
+				r.setAttribute('data-var', n);
+				r.innerHTML = '<code></code><span class="nuBsqRunVal"></span><span class="badge"></span>';
+				r.querySelector('code').textContent = '#' + n + '#';
+				r.querySelector('.nuBsqRunVal').textContent = unset ? T.fi_hash_unset : vars[n];
+				r.querySelector('.badge').textContent = unset ? T.bsq_run_unset : T.bsq_run_filled;
+				r.querySelector('.badge').className = 'badge ' + (unset ? 'nuBsqBadgeUnset' : 'nuBsqBadgeFill');
+				vb.appendChild(r);
+			});
+		}
+		function setRun(on) {
+			RUN = !!on && !!B.run;
+			try { localStorage.setItem(RUNKEY, RUN ? '1' : '0'); } catch (e) { /* no storage */ }
+			if (!pane) return;
+			pane.querySelectorAll('.nuBsqMode button').forEach(function (b) { var a = (b.getAttribute('data-mode') === 'run') === RUN; b.classList.toggle('active', a); b.setAttribute('aria-pressed', a ? 'true' : 'false'); });
+			pane.classList.toggle('nuBsqRunOn', RUN);
+			pane.querySelector('.nuBsqSave').disabled = RUN;
+			var cur = pane.querySelector('.nuBsqTab.active');
+			if (cur && cur.getAttribute('data-tab') === 'sql') showTab('sql', !RUN);
+		}
+		function modeSwitch() {
+			var t = pane && pane.querySelector('.nuBsqTools[data-code="sql"]');
+			if (!t || !B.run || t.querySelector('.nuBsqMode')) return;
+			var g = document.createElement('div');
+			g.className = 'btn-group btn-group-sm nuSeg nuBsqMode';
+			g.setAttribute('role', 'group');
+			g.setAttribute('aria-label', T.bsq_run_mode);
+			[['written', T.bsq_written], ['run', T.bsq_as_run]].forEach(function (x) {
+				var b = document.createElement('button');
+				b.type = 'button'; b.className = 'btn btn-outline-secondary'; b.setAttribute('data-mode', x[0]); b.textContent = x[1];
+				b.addEventListener('click', function () { setRun(x[0] === 'run'); });
+				g.appendChild(b);
+			});
+			t.appendChild(g);
+		}
 		function showTab(k, focus) {
 			if (!pane) return;
 			pane.querySelectorAll('.nuBsqTab').forEach(function (b) { var on = b.getAttribute('data-tab') === k; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
 			pane.querySelectorAll('.nuBsqBody, .nuBsqTools').forEach(function (x) { x.hidden = x.getAttribute('data-code') !== k; });
+			if (k === 'sql' && RUN) pane.querySelector('.nuBsqBody[data-code="sql"]').hidden = true;
+			pane.querySelector('.nuBsqRun').hidden = !(k === 'sql' && RUN);
 			pane.querySelector('.nuBsqCols').hidden = k !== 'cols';
 			var hint = pane.querySelector('.nuBsqHint');
 			hint.hidden = k === 'cols';
 			try { localStorage.setItem(TAB, k); } catch (e) { /* no storage */ }
-			if (CODE[k]) { codeOpen(k, focus === true); size(); }
+			if (CODE[k]) { codeOpen(k, focus === true && !(k === 'sql' && RUN)); size(); }
 		}
 		// width by the splitter on the left edge (0.8.947): stored per browser, 360 px … 90 % of the window, double-click = default
 		var WKEY = 'nunext-bsq-w', WDEF = 560;
@@ -4188,7 +4274,7 @@
 				+ '<li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="js" id="nuBsqTabJs"></button></li>'
 				+ '<li class="nav-item" role="presentation"><button type="button" class="nav-link nuBsqTab" role="tab" data-tab="cols" id="nuBsqTabCols"></button></li></ul>'
 				+ '<button type="button" class="btn btn-sm btn-outline-secondary nuBsqPin" id="nuBsqPin"></button><button type="button" class="btn-close nuBsqClose"></button></div>'
-				+ '<div class="alert alert-danger py-1 px-2 m-2 mb-0 small nuBsqErr" role="alert" hidden></div><div class="nuBsqTools" data-code="sql"></div><div class="nuBsqBody" data-code="sql" role="tabpanel" aria-labelledby="nuBsqTabSql"><textarea></textarea></div>'
+				+ '<div class="alert alert-danger py-1 px-2 m-2 mb-0 small nuBsqErr" role="alert" hidden></div><div class="nuBsqTools" data-code="sql"></div><div class="nuBsqBody" data-code="sql" role="tabpanel" aria-labelledby="nuBsqTabSql"><textarea></textarea></div><div class="nuBsqRun" hidden></div>'
 				+ '<div class="nuBsqTools" data-code="php" hidden></div><div class="nuBsqBody" data-code="php" role="tabpanel" aria-labelledby="nuBsqTabPhp" hidden><textarea></textarea></div>'
 				+ '<div class="nuBsqTools" data-code="js" hidden></div><div class="nuBsqBody" data-code="js" role="tabpanel" aria-labelledby="nuBsqTabJs" hidden><textarea></textarea></div>'
 				+ '<div class="nuBsqCols" role="tabpanel" aria-labelledby="nuBsqTabCols" hidden></div>'
@@ -4218,6 +4304,9 @@
 			document.documentElement.classList.add('nuBsqOpen');
 			splitter();
 			drawCols();
+			modeSwitch();
+			drawRun();
+			setRun(RUN);
 			var first = lastTab();
 			showTab(first, auto !== true);                                   // a pane opened by itself leaves the focus on the list
 			pane.querySelector('.nuBsqClose').addEventListener('click', function () { close(); });
@@ -4225,8 +4314,15 @@
 			pane.querySelector('.nuBsqSave').addEventListener('click', save);
 			pane.addEventListener('keydown', function (e) {
 				if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.stopPropagation(); save(); }
-				else if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); close(); }
 			});
+			// Esc closes the pane also from inside a code editor (0.8.1186: the editor took the key) – in the capture phase, before the
+			// editor; left to the editor while its search panel or suggestion list is open, and to an open menu / select list of the pane
+			pane.addEventListener('keydown', function (e) {
+				if (e.key !== 'Escape' || document.querySelector('.modal.show')) return;
+				if (pane.querySelector('.cm-panel.cm-search, .cm-tooltip-autocomplete, .dropdown-menu.show') || document.querySelector('.CodeMirror-hints, .ts-dropdown:not([hidden])[style*="block"]')) return;
+				e.preventDefault(); e.stopPropagation();
+				close();
+			}, true);
 			if (auto !== true && first === 'cols') { var f = pane.querySelector('.nuBsqTab.active'); if (f) f.focus(); }
 		}
 		btn.addEventListener('click', function () { open(false, 'sql'); });
@@ -4236,11 +4332,275 @@
 			var e = document.getElementById(x[0]);
 			if (e) e.addEventListener('click', function () { open(false, x[1]); });
 		});
+		// Esc with the focus on the page (not in a field, a menu or a dialogue) closes the pane as well (0.8.1186)
+		document.addEventListener('keydown', function (e) {
+			if (e.key !== 'Escape' || !pane || e.defaultPrevented || document.querySelector('.modal.show, .dropdown-menu.show')) return;
+			var t = e.target;
+			if (t && t.closest && (t.closest('input, textarea, select, [contenteditable]') || pane.contains(t))) return;
+			e.preventDefault();
+			close();
+		});
 		N.browseSqlOpen = function () { open(); };                         // Ctrl+Shift+B and the ⋮ entry Browse SQL (0.8.932)
 		$('<span class="ms-auto ps-3 small text-body-secondary nuBsqKey"></span>').text(/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌃⇧B' : 'Ctrl+Shift+B').appendTo(btn);
 		if (pinned()) open(true);
 		window.addEventListener('resize', size);
 		window.addEventListener('beforeunload', function (e) { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
+	})();
+
+	// The edit form's code in a side pane (0.8.1197, the owner picked mockup B of the canvas "Edit form code pane"): the parts of design
+	// mode's Code tab as a grouped list on the left (a dot = has code; the list's parts greyed at the end), one editor per part made when
+	// it is first shown, all changes saved in ONE builder API form.save (fields + php) and the page reloaded. Design ▾ → Code, Ctrl+Shift+B.
+	(function () {
+		var C = N.code_pane, btn = document.getElementById('nuEditCodeEdit');
+		if (!C || !btn || !C.items || !C.items.length) return;
+		var T = C.m, pane = null, ED = {}, LAST = 'nunext-ecp-item', WKEY = 'nunext-ecp-w', WDEF = 700;
+		var MODE = {JS: 'javascript', CSS: 'css', PHP: 'application/x-httpd-php-open', SQL: 'text/x-sql'};
+		var item = function (k) { return C.items.filter(function (x) { return x[0] === k; })[0]; };
+		var val = function (k) { return ED[k] ? ED[k].getValue() : item(k)[4]; };
+		var dirtyKeys = function () { return C.items.filter(function (x) { return ED[x[0]] && ED[x[0]].getValue() !== x[4]; }).map(function (x) { return x[0]; }); };
+		var cur = function () { var b = pane && pane.querySelector('.nuEcpItem.active'); return b ? b.getAttribute('data-key') : ''; };
+		function post(data) {
+			return fetch(N.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
+				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
+				body: JSON.stringify($.extend({action: 'form.save', form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
+			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); }).then(function (j) {
+				if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok && window.confirm(j.error)) return post($.extend({}, data, {live_ok: true}));
+				if (!j.ok) throw new Error(j.error || T.error);
+				return j;
+			});
+		}
+		function marks() {
+			if (!pane) return;
+			pane.querySelectorAll('.nuEcpItem').forEach(function (b) {
+				var has = String(val(b.getAttribute('data-key'))).trim() !== '';
+				b.classList.toggle('nuEcpHas', has);
+				b.setAttribute('aria-label', b.textContent + (has ? ', ' + T.code_has : ''));
+			});
+			pane.querySelectorAll('.nuEcpCard').forEach(function (c) {
+				var n = c.querySelectorAll('.nuEcpItem').length, h = c.querySelectorAll('.nuEcpItem.nuEcpHas').length;
+				c.querySelector('.nuEcpCount').textContent = h + ' / ' + n;
+			});
+		}
+		function size() {
+			if (!pane) return;
+			Object.keys(ED).forEach(function (k) { var b = pane.querySelector('.nuBsqBody[data-code="' + k + '"]'); if (b && b.offsetParent) ED[k].setSize('100%', Math.max(120, b.clientHeight) + 'px'); });
+		}
+		function show(k, focus) {
+			if (!pane || !item(k)) return;
+			pane.querySelectorAll('.nuEcpItem').forEach(function (b) { var on = b.getAttribute('data-key') === k; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
+			pane.querySelectorAll('.nuEcpMain [data-code]').forEach(function (el) { el.hidden = el.getAttribute('data-code') !== k; });
+			pane.querySelector('.nuEcpWhat').textContent = item(k)[2] + ' · ' + item(k)[1];
+			try { localStorage.setItem(LAST, k); } catch (e) { /* no storage */ }
+			if (ED[k]) { ED[k].refresh(); size(); if (focus) ED[k].focus(); return; }
+			loadCodeMirror().then(function () {
+				if (!pane || ED[k]) return;
+				var it = item(k), ta = pane.querySelector('.nuBsqBody[data-code="' + k + '"] textarea');
+				ta.value = it[4];
+				ED[k] = CodeMirror.fromTextArea(ta, {mode: MODE[it[2]], lineNumbers: true, lineWrapping: true, indentWithTabs: true, tabSize: 4,
+					theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'default nuCmDark' : 'default'});
+				ED[k].on('change', marks);
+				if (window.NuCodeTools) NuCodeTools.attach(ED[k], pane.querySelector('.nuBsqTools[data-code="' + k + '"]'), {lang: it[2], db: N.db_type, codeKey: k});
+				size();
+				if (focus) ED[k].focus();
+			});
+		}
+		function close(force) {
+			if (!pane) return;
+			if (!force && dirtyKeys().length && !window.confirm(T.unsaved)) return;
+			pane.remove(); pane = null; ED = {};
+			document.documentElement.classList.remove('nuBsqOpen');
+			document.documentElement.style.removeProperty('--nu-bsq-w');
+			btn.focus();
+		}
+		function save() {
+			if (!pane) return;
+			var keys = dirtyKeys(), sb = pane.querySelector('.nuBsqSave'), err = pane.querySelector('.nuBsqErr');
+			if (!keys.length) { close(true); return; }
+			var fields = {}, php = {};
+			keys.forEach(function (k) { if (k.indexOf('php:') === 0) php[k.substr(4)] = val(k); else fields[k] = val(k); });
+			sb.disabled = true; err.hidden = true;
+			post(Object.keys(php).length ? {fields: fields, php: php} : {fields: fields}).then(function () {
+				keys.forEach(function (k) { item(k)[4] = val(k); });
+				close(true); window.location.reload();
+			}).catch(function (e) { sb.disabled = false; err.textContent = e.message; err.hidden = false; });
+		}
+		// width by the splitter on the left edge, as the list's pane (own default 700 px and own stored width)
+		function setW(w, keep) {
+			w = Math.round(Math.max(360, Math.min(w, Math.max(360, window.innerWidth * 0.9))));
+			document.documentElement.style.setProperty('--nu-bsq-w', w + 'px');
+			if (keep) { try { if (w === WDEF) localStorage.removeItem(WKEY); else localStorage.setItem(WKEY, String(w)); } catch (e) { /* no storage */ } }
+			size();
+		}
+		function splitter() {
+			var saved = 0;
+			try { saved = parseInt(localStorage.getItem(WKEY) || '0', 10) || 0; } catch (e) { /* no storage */ }
+			var sp = document.createElement('div');
+			sp.className = 'nuBsqSplit'; sp.tabIndex = 0;
+			sp.setAttribute('role', 'separator'); sp.setAttribute('aria-orientation', 'vertical'); sp.setAttribute('aria-label', T.resize || '');
+			if (T.resize) sp.title = T.resize;
+			pane.appendChild(sp);
+			setW(saved || WDEF, false);
+			sp.addEventListener('pointerdown', function (e) {
+				if (e.button !== 0) return;
+				e.preventDefault();
+				try { sp.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+				document.documentElement.classList.add('nuBsqResizing');
+				var vw = function () { return document.documentElement.clientWidth; }, off = vw() - e.clientX - pane.getBoundingClientRect().width;
+				var move = function (ev) { setW(vw() - ev.clientX - off, false); };
+				var up = function (ev) { sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); sp.removeEventListener('pointercancel', up);
+					document.documentElement.classList.remove('nuBsqResizing'); setW(vw() - ev.clientX - off, true); };
+				sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up); sp.addEventListener('pointercancel', up);
+			});
+			sp.addEventListener('dblclick', function () { setW(WDEF, true); });
+			sp.addEventListener('keydown', function (e) {
+				var w = pane.getBoundingClientRect().width;
+				if (e.key === 'ArrowLeft') { e.preventDefault(); setW(w + 20, true); } else if (e.key === 'ArrowRight') { e.preventDefault(); setW(w - 20, true); } else if (e.key === 'Home') { e.preventDefault(); setW(WDEF, true); }
+			});
+		}
+		function open() {
+			if (document.getElementById('nuBsqPane')) return;                 // the list's pane is open (a form with both on one page)
+			if (pane) { var k0 = cur(); if (ED[k0]) ED[k0].focus(); return; }
+			pane = document.createElement('aside');
+			pane.className = 'nuBsqPane nuEcpPane';
+			pane.id = 'nuEcpPane';
+			pane.setAttribute('aria-label', T.title);
+			var head = $('<div class="nuBsqHead"><h2 class="h6 m-0 me-auto nuEcpTitle"></h2><button type="button" class="btn-close nuBsqClose"></button></div>');
+			head.find('.nuEcpTitle').text(T.title + ' – ' + (N.form.description || N.form.code || ''));
+			head.find('.nuBsqClose').attr('aria-label', T.close).on('click', function () { close(); });
+			var list = $('<div class="nuEcpList" role="tablist" aria-orientation="vertical"></div>').attr('aria-label', T.title), main = $('<div class="nuEcpMain"></div>');
+			var grp = '', card = null;
+			C.items.forEach(function (it) {
+				// 0.8.1199 (the owner picked mockup B of the canvas "Code pane sections"): each group a small card – tinted heading with the
+				// number of its parts that hold code; the list's card is dashed (its parts act on the list only)
+				if (it[3] !== grp) {
+					grp = it[3];
+					card = $('<div class="nuEcpCard" role="presentation"></div>').attr('data-grp', grp)
+						.append($('<div class="nuEcpGroup"></div>').append($('<span></span>').text(T.groups[grp] || grp), '<span class="nuEcpCount"></span>'));
+					list.append(card);
+				}
+				card.append($('<button type="button" class="nuEcpItem" role="tab"></button>').attr({'data-key': it[0], 'data-grp': it[3]}).text(it[1]));
+				main.append($('<div class="nuBsqTools" hidden></div>').attr('data-code', it[0]));
+				main.append($('<div class="nuBsqBody" role="tabpanel" hidden><textarea></textarea></div>').attr('data-code', it[0]));
+			});
+			main.prepend('<div class="nuEcpWhat small text-body-secondary"></div>');
+			var foot = $('<div class="nuBsqFoot"><span class="small text-body-secondary nuBsqHint"></span><button type="button" class="btn btn-outline-secondary btn-sm nuBsqCancel"></button><button type="button" class="btn btn-primary btn-sm nuBsqSave"><i class="bi bi-floppy me-1" aria-hidden="true"></i></button></div>');
+			foot.find('.nuBsqHint').text(T.hint);
+			foot.find('.nuBsqCancel').text(T.close).on('click', function () { close(); });
+			foot.find('.nuBsqSave').append(document.createTextNode(T.save)).on('click', save);
+			$(pane).append(head, '<div class="alert alert-danger py-1 px-2 m-2 mb-0 small nuBsqErr" role="alert" hidden></div>', $('<div class="nuEcpBody"></div>').append(list, main), foot);
+			list.on('click', '.nuEcpItem', function () { show(this.getAttribute('data-key'), true); });
+			list.on('keydown', '.nuEcpItem', function (e) {
+				if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+				var all = list.find('.nuEcpItem').toArray(), i = all.indexOf(this);
+				var n = e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : Math.max(0, Math.min(all.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+				e.preventDefault(); show(all[n].getAttribute('data-key'), false); all[n].focus();
+			});
+			document.body.appendChild(pane);
+			document.documentElement.classList.add('nuBsqOpen');
+			splitter();
+			marks();
+			var last = '';
+			try { last = localStorage.getItem(LAST) || ''; } catch (e) { /* no storage */ }
+			if (!item(last)) { var withCode = C.items.filter(function (x) { return x[3] !== 'list' && String(x[4]).trim() !== ''; })[0]; last = (withCode || C.items[0])[0]; }
+			show(last, true);
+			pane.addEventListener('keydown', function (e) {
+				if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.stopPropagation(); save(); }
+			});
+			pane.addEventListener('keydown', function (e) {            // Esc also from inside an editor (as the list's pane, 0.8.1186)
+				if (e.key !== 'Escape' || document.querySelector('.modal.show')) return;
+				if (pane.querySelector('.cm-panel.cm-search, .cm-tooltip-autocomplete, .dropdown-menu.show') || document.querySelector('.CodeMirror-hints')) return;
+				e.preventDefault(); e.stopPropagation(); close();
+			}, true);
+		}
+		btn.addEventListener('click', function () { open(); });
+		document.addEventListener('keydown', function (e) {
+			if (e.key !== 'Escape' || !pane || e.defaultPrevented || document.querySelector('.modal.show, .dropdown-menu.show')) return;
+			var t = e.target;
+			if (t && t.closest && (t.closest('input, textarea, select, [contenteditable]') || pane.contains(t))) return;
+			e.preventDefault(); close();
+		});
+		N.codePaneOpen = function () { open(); };                          // Ctrl+Shift+B on edit forms
+		$('<span class="ms-auto ps-3 small text-body-secondary nuBsqKey"></span>').text(/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌃⇧B' : 'Ctrl+Shift+B').appendTo(btn);
+		window.addEventListener('resize', size);
+		window.addEventListener('beforeunload', function (e) { if (pane && dirtyKeys().length) { e.preventDefault(); e.returnValue = ''; } });
+	})();
+
+	// Form info panel (0.8.1185): description and code are changed right in the panel (pencil → field, Enter / Save, Esc / Cancel),
+	// saved with the builder API's form.save (the previewed draft when one is open; a live change while a draft is open is confirmed)
+	(function () {
+		function texts(el) {
+			var h = (el && el.closest('[data-nu-fi-texts]')) || g('nuFormInfo');
+			try { return JSON.parse(h.getAttribute('data-nu-fi-texts')) || {}; } catch (e) { return {}; }
+		}
+		function post(fields, live) {
+			return fetch(N.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
+				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
+				body: JSON.stringify($.extend({action: 'form.save', form_id: N.form.id, fields: fields}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, live ? {live_ok: true} : {}))
+			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); }).then(function (j) {
+				if (!j.ok && j.code === 'draft_open_confirm' && !live && window.confirm(j.error)) return post(fields, true);
+				if (j.ok && j.draft && N.draft) N.draft = j.draft;
+				return j;
+			});
+		}
+		function edit(btn) {
+			var row = btn.closest('.nuFormInfoRow'), dd = row && row.querySelector('dd'), val = dd && dd.querySelector('.nuFiVal');
+			if (!val || row.classList.contains('nuFiEditing')) return;
+			var T = texts(btn), old = btn.getAttribute('data-nu-fi-value') || '', field = btn.getAttribute('data-nu-fi-field');
+			var box = $('<div class="nuFiEditBox"><input type="text" class="form-control form-control-sm nuFiInput" maxlength="300">'
+				+ '<button type="button" class="btn btn-sm btn-primary nuFiSave"></button><button type="button" class="btn btn-sm btn-outline-secondary nuFiCancel"></button>'
+				+ '<div class="invalid-feedback d-block nuFiErr" hidden></div></div>');
+			box.find('.nuFiSave').text(T.save || 'Save');
+			box.find('.nuFiCancel').text(T.cancel || 'Cancel');
+			var inp = box.find('input').val(old).attr('aria-label', (row.querySelector('dt') || {}).textContent || '');
+			row.classList.add('nuFiEditing');
+			val.hidden = true;
+			box.appendTo(dd);
+			inp.trigger('focus').trigger('select');
+			function done() { box.remove(); val.hidden = false; row.classList.remove('nuFiEditing'); btn.focus(); }
+			function fail(msg) { box.find('.nuFiErr').text(msg).prop('hidden', false); inp.addClass('is-invalid').trigger('focus'); box.find('button').prop('disabled', false); }
+			function save() {
+				var v = String(inp.val()).trim();
+				if (v === old) { done(); return; }
+				if (v === '') { fail(T.required || ''); return; }
+				box.find('button').prop('disabled', true);
+				var f = {}; f[field] = v;
+				post(f).then(function (j) {
+					if (!j.ok) { fail(j.error || 'Error'); return; }
+					var code = val.querySelector('code');
+					(code || val).textContent = v;
+					btn.setAttribute('data-nu-fi-value', v);
+					var cp = row.querySelector('.nuFormInfoCopy');
+					if (cp) cp.setAttribute('data-nu-copy-text', v);
+					var all = document.querySelector('#nuFormInfoCopyAll'), lbl = (row.querySelector('dt') || {}).textContent || '';
+					if (all && lbl) all.setAttribute('data-nu-copy-text', all.getAttribute('data-nu-copy-text').split('\n').map(function (l) { return l.indexOf(lbl + ': ') === 0 ? lbl + ': ' + v : l; }).join('\n'));
+					if (field === 'sfo_code') N.form.code = v;
+					if (field === 'sfo_description') N.form.description = v;
+					done();
+					row.classList.add('nuFiSavedFlash');
+					btn.setAttribute('title', T.saved || 'Saved');
+					setTimeout(function () { row.classList.remove('nuFiSavedFlash'); }, 1600);
+				}).catch(function (e) { fail(e.message); });
+			}
+			box.find('.nuFiSave').on('click', function (e) { e.stopPropagation(); save(); });
+			box.find('.nuFiCancel').on('click', function (e) { e.stopPropagation(); done(); });
+			inp.on('keydown', function (e) {
+				if (e.key === 'Enter') { e.preventDefault(); save(); }
+			});
+			box.on('click', function (e) { e.stopPropagation(); });
+		}
+		// Esc in the field cancels it only – Bootstrap's dropdown listens in the capture phase on document, so this one sits on window
+		window.addEventListener('keydown', function (e) {
+			if (e.key !== 'Escape' || !e.target.classList || !e.target.classList.contains('nuFiInput')) return;
+			e.preventDefault(); e.stopPropagation();
+			var c = e.target.parentNode.querySelector('.nuFiCancel');
+			if (c) c.click();
+		}, true);
+		document.addEventListener('click', function (e) {
+			var b = e.target.closest && e.target.closest('.nuFiChange');
+			if (!b) return;
+			e.preventDefault();
+			edit(b);
+		});
 	})();
 
 	api('nuOpenAce', function (lang, id) {
@@ -5336,7 +5696,7 @@
 			['a', 'arrange', 'bi-arrows-move', 0, edit && T.design, function () { openTab(builderUrl('arrange')); }],
 			['h', 'add_object', 'bi-plus-lg', 1, edit && T.design, function () { openTab(builderUrl('add')); }],
 			// 0.8.818: design mode → Code → Browse SQL; 0.8.932: Ctrl+Shift+B, the pane of the list where there is one
-			['b', 'browse_sql', 'bi-filetype-sql', 0, browse && (!!T.browsesql || !!N.browseSqlOpen), function () { if (N.browseSqlOpen) N.browseSqlOpen(); else window.location.href = T.browsesql; }],   // 0.8.1111: shortcut only – the entry is in Design ▾
+			['b', 'browse_sql', 'bi-filetype-sql', 0, (browse && (!!T.browsesql || !!N.browseSqlOpen)) || (edit && !!N.codePaneOpen), function () { if (N.codePaneOpen && !browse) N.codePaneOpen(); else if (N.browseSqlOpen) N.browseSqlOpen(); else window.location.href = T.browsesql; }],   // 0.8.1197: the code pane on edit forms   // 0.8.1111: shortcut only – the entry is in Design ▾
 			// the form's table in phpMyAdmin / Adminer (0.8.923; Ctrl+Shift+E stays the same without a menu entry of its own)
 			['', 'db_table', 'bi-table', 1, T.pma && !!N.form.table, function () { nuVendorLogin('DB', N.form.table); }],
 			['', 'form_access', 'bi-people', 1, !!T.formaccess && typeof window.nuFormAccessOpen === 'function', function () { window.nuFormAccessOpen(N.form.id); }],   // 0.8.683
@@ -5466,12 +5826,13 @@
 			return el.append($('<i class="bi" aria-hidden="true"></i>').addClass(icon)).append($('<span class="me-auto"></span>').text(text));
 		};
 		if (ds) items.push(item('bi-pencil-square', (ds.textContent || '').trim(), ds.getAttribute('href')).attr('data-nu-opt', 'design'));
-		[[sql, 'bi-filetype-sql', 'browse_sql'], [g('nuBrowsePhpEdit'), 'bi-filetype-php', 'browse_php'], [g('nuBrowseJsEdit'), 'bi-filetype-js', 'browse_js'], [cols, 'bi-layout-three-columns', 'columns']].forEach(function (x) {
+		[[sql, 'bi-filetype-sql', 'browse_sql'], [g('nuBrowsePhpEdit'), 'bi-filetype-php', 'browse_php'], [g('nuBrowseJsEdit'), 'bi-filetype-js', 'browse_js'], [cols, 'bi-layout-three-columns', 'columns'], [g('nuEditCodeEdit'), 'bi-code-slash', 'edit_code']].forEach(function (x) {
 			if (x[0]) items.push(item(x[1], x[0].getAttribute('data-nu-full') || (x[0].textContent || '').trim(), function () { x[0].click(); }).attr('data-nu-opt', x[2]));
 		});
 		if (info) items.push(item('bi-info-circle', info.getAttribute('title') || 'Info', function () {
 			var src = g('nuFormInfo'), box = $('<div class="nuFormInfo nuFormInfoPhone"></div>');
-			if (src) box.append($(src).children().not(':first').clone());
+			if (src) box.append($(src).children().clone());
+			box.find('.nuFiTitle').remove();                     // the message has the title; Copy all stays in the head (0.8.1183)
 			box.find('[id]').removeAttr('id');
 			nuMessage(info.getAttribute('title') || 'Info', [box.prop('outerHTML')]);
 		}).attr('data-nu-opt', 'info'));

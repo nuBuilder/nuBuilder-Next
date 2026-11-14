@@ -2,12 +2,12 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1179');
+define('NU_VERSION', '0.8.1200');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
 define('NU_PACKS', 'vendor/packs');
-define('NU_BS', NU_VENDOR . '/bootstrap-5.3.8');
+define('NU_BS', NU_VENDOR . '/bootstrap-5.3.9');
 define('NU_BI', NU_VENDOR . '/bootstrap-icons-1.13.2');
 define('NU_APEXCHARTS', NU_VENDOR . '/apexcharts-4.7.0');   // loaded on form pages when $nuConfigIncludeApexCharts is on (as nuBuilder)
 define('NU_FULLCALENDAR', NU_VENDOR . '/fullcalendar-6.1.22');   // calendars (0.8.1165): list view, calendar objects, dashboard widgets – assets/js/nu/nucalendar.js

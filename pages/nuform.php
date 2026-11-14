@@ -91,6 +91,8 @@ $errors = [];
 $breadcrumbs = [['title' => t('nav_home'), 'url' => nu_url('home')]];
 
 // ===================================================================== browse
+$state = [];                                             // set by the list branch below; empty on edit pages (PHPStan, 0.8.1197)
+$data = null;
 if ($mode === 'browse') {
 	// nuBuilder Forte's breadcrumb keys in nuHash() of Before Browse: the list's search, page and sort (0.8.984)
 	NuHash::$state += nu_browse_hash_state();
@@ -232,6 +234,25 @@ if ($mode === 'browse' && $lookupTo === '' && empty($printMode)) foreach ((array
 $rowDetails = $mode === 'browse' && $lookupTo === '' && empty($printMode) && !$design ? NuRowDetails::client($meta) : null;
 // "Edit browse SQL" next to the Design button of a list (0.8.930): the SQL in a side pane, saved with builderapi form.save
 $browseSqlEdit = $mode === 'browse' && $lookupTo === '' && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta);
+// the edit form's code in a side pane (0.8.1197, the owner picked mockup B of the canvas "Edit form code pane"): the parts of design mode's
+// Code tab as a grouped list beside one editor, saved with builderapi form.save; Design ▾ → Code, Ctrl+Shift+B
+$codeEdit = $mode === 'edit' && $lookupTo === '' && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta);
+$codePane = static function () use ($meta): array {
+	$f = $meta->form;
+	$it = static fn(string $key, string $label, string $lang, string $grp, ?string $val): array => [$key, $label, $lang, $grp, (string)($val ?? '')];
+	if ($meta->isUserHome()) return [$it('php:BE', t('ecp_php_BE'), 'PHP', 'php', $meta->php('BE'))];   // User Home: Before Edit only, as design mode
+	$items = [$it('sfo_javascript', t('ecp_js_both'), 'JS', 'js', $f['sfo_javascript'] ?? ''), $it('sfo_edit_javascript', t('ecp_js_edit'), 'JS', 'js', $f['sfo_edit_javascript'] ?? ''),
+		$it('sfo_style', t('builder_css'), 'CSS', 'style', $f['sfo_style'] ?? '')];
+	foreach (['BE', 'BS', 'AS', 'BD', 'AD'] as $h) $items[] = $it('php:' . $h, t('ecp_php_' . $h), 'PHP', 'php', $meta->php($h));
+	if ($meta->hasBrowse()) {                                 // the list's parts – greyed at the end, they act on the list only
+		$items[] = $it('sfo_browse_javascript', t('ecp_js_list'), 'JS', 'list', $f['sfo_browse_javascript'] ?? '');
+		$items[] = $it('php:BB', t('ecp_php_BB'), 'PHP', 'list', $meta->php('BB'));
+		$items[] = $it('sfo_browse_sql', t('builder_browse_sql'), 'SQL', 'list', $f['sfo_browse_sql'] ?? '');
+	}
+	return ['items' => $items, 'm' => ['title' => t('ecp_title'), 'hint' => t('ecp_hint'), 'save' => t('save'), 'close' => t('close'), 'unsaved' => t('bsq_unsaved'),
+		'error' => t('form_error'), 'resize' => t('bsq_resize'), 'code_has' => t('code_has'),
+		'groups' => ['js' => t('bsq_tab_js'), 'style' => t('ecp_grp_style'), 'php' => t('bsq_tab_php'), 'list' => t('ecp_grp_list')]]];
+};
 const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh', 'ds_list_rowh_tip', 'ds_list_target', 'ds_list_target_0',
 	'ds_list_target_1', 'ds_list_target_2', 'ds_list_target_3', 'builder_redirect', 'ds_list_multi', 'ds_list_autofit', 'builder_sec_columns', 'builder_col_title',
 	'builder_col_display', 'builder_col_width', 'builder_col_align', 'ds_col_hidden', 'ds_col_show', 'ds_col_left', 'ds_col_right', 'delete', 'ds_list_nocols',
@@ -241,7 +262,8 @@ const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh
 	'builder_run_procedure', 'builder_run_report', 'ds_act_fn', 'ds_act_fn_tip', 'ds_act_rec', 'ds_act_rec_row', 'ds_act_rec_value', 'ds_act_rec_new', 'ds_act_open',
 	'ds_act_open_same', 'ds_act_open_tab', 'ds_act_open_popup', 'ds_act_pass', 'ds_act_pass_tip', 'ds_act_look', 'ds_act_look_link', 'ds_act_look_button', 'ds_act_look_icon',
 	'ds_act_icon', 'ds_act_icon_tip', 'ds_act_label', 'ds_act_label_tip', 'ds_act_need_target', 'ds_rd_title', 'ds_rd_cols', 'ds_rd_cols_tip', 'ds_rd_sub', 'ds_rd_sub_tip', 'ds_rd_none',
-	'fmt_type_date', 'fmt_type_number', 'fmt_type_text', 'ds_col_total', 'ds_col_total_tip', 'ds_tot_none', 'ds_tot_sum', 'ds_tot_avg', 'ds_tot_min', 'ds_tot_max', 'ds_tot_count', 'ds_col_group', 'ds_col_group_tip'];
+	'fmt_type_date', 'fmt_type_number', 'fmt_type_text', 'ds_col_total', 'ds_col_total_tip', 'ds_tot_none', 'ds_tot_sum', 'ds_tot_avg', 'ds_tot_min', 'ds_tot_max', 'ds_tot_count', 'ds_col_group', 'ds_col_group_tip',
+	'bsq_written', 'bsq_as_run', 'bsq_run_mode', 'bsq_run_note', 'bsq_run_vars', 'bsq_run_none', 'bsq_run_filled', 'bsq_run_unset', 'fi_hash_unset', 'copy'];
 $bsqList = static function () use ($meta, $browseSqlEdit): array {
 	if (!$browseSqlEdit) return [];
 	$f = $meta->form;
@@ -269,9 +291,12 @@ $bsqList = static function () use ($meta, $browseSqlEdit): array {
 };
 $client = [
 	// 0.8.942: tab Columns – settings of the list ($bsqList) and its columns [id, title, display, align, format, width, filter]
-	'browse_sql' => $browseSqlEdit ? ['sql' => (string)($meta->form['sfo_browse_sql'] ?? ''), 'list' => $bsqList(), 'm' => ['title' => t('builder_browse_sql'), 'hint' => t('bsq_hint'),
+	'browse_sql' => $browseSqlEdit ? ['sql' => (string)($meta->form['sfo_browse_sql'] ?? ''), 'list' => $bsqList(),
+		'run' => NuBrowse::$shown ? ['parts' => NuBrowse::$shown['parts'] ?? [], 'vars' => NuBrowse::$shown['vars']] : null,   // As run (0.8.1187)
+		'm' => ['title' => t('builder_browse_sql'), 'hint' => t('bsq_hint'),
 		'save' => t('save'), 'close' => t('close'), 'unsaved' => t('bsq_unsaved'), 'pin' => t('bsq_pin'), 'error' => t('form_error'), 'resize' => t('bsq_resize')]
 		+ array_combine(NU_BSQ_TEXTS, array_map('t', NU_BSQ_TEXTS))] : null,
+	'code_pane' => $codeEdit ? $codePane() : null,                            // 0.8.1197: Design ▾ → Code on edit forms
 	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'lookup' => $lookupTo,
 	'form' => [
 		'id' => $meta->id, 'code' => $meta->code(), 'description' => $meta->description(), 'type' => $meta->type(),
@@ -731,7 +756,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 		<?php if (($mode === 'edit' || ($mode === 'browse' && $lookupTo === '')) && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta)): // design mode (0.8.662; the list 0.8.669) ?>
 			<?php $dsBtn = '<a class="btn btn-outline-secondary nuActionButton" id="nuDesignButton" href="' . h(nu_url('form', ['f' => $meta->id, 'r' => $mode === 'edit' ? $r : null, 'design' => '1'])) . '" title="' . h(t('ds_design_tip')) . '"><i class="bi bi-pencil-square me-1 nuDsPen" aria-hidden="true"></i>' . h(t('ds_design')) . '</a>'; ?>
 			<?php $layoutInMenu = $mode === 'edit' && $u['globeadmin'] && !$bare;   // review M6: the layout switch lives in Design ▾ ?>
-			<?php if ($browseSqlEdit || $layoutInMenu): ?>
+			<?php if ($browseSqlEdit || $codeEdit || $layoutInMenu): ?>
 				<div class="btn-group" id="nuDesignGroup"><?= $dsBtn ?><button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" id="nuDesignMore" data-bs-toggle="dropdown" aria-expanded="false" title="<?= h(t('bsq_more')) ?>"><span class="visually-hidden"><?= h(t('bsq_more')) ?></span></button>
 					<ul class="dropdown-menu dropdown-menu-end">
 					<?php if ($browseSqlEdit): /* one heading carries the verb, the entries are the names of the pane's tabs; data-nu-full = the whole sentence for the phone ⋮ menu */ ?><li><h6 class="dropdown-header" id="nuDesignEditHead"><?= h(t('edit')) ?></h6></li>
@@ -739,6 +764,8 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowsePhpEdit" data-nu-full="<?= h(t('bsq_edit_php')) ?>"><i class="bi bi-filetype-php" aria-hidden="true"></i><span><?= h(t('bsq_tab_php')) ?> <span class="text-body-secondary">(Before Browse)</span></span></button></li>
 						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseJsEdit" data-nu-full="<?= h(t('bsq_edit_js')) ?>"><i class="bi bi-filetype-js" aria-hidden="true"></i><?= h(t('bsq_tab_js')) ?></button></li>
 						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuBrowseColsEdit" data-nu-full="<?= h(t('bsq_edit_cols')) ?>"><i class="bi bi-layout-three-columns" aria-hidden="true"></i><?= h(t('lv_tab_columns')) ?></button></li><?php endif; ?>
+					<?php if ($codeEdit): ?><li><h6 class="dropdown-header"><?= h(t('edit')) ?></h6></li>
+						<li><button type="button" class="dropdown-item d-flex align-items-center gap-2" id="nuEditCodeEdit" data-nu-full="<?= h(t('ecp_menu_full')) ?>"><i class="bi bi-code-slash" aria-hidden="true"></i><?= h(t('ecp_title')) ?></button></li><?php endif; ?>
 					<?php if ($layoutInMenu): ?><li><h6 class="dropdown-header"><?= h(t('form_layout')) ?></h6></li>
 						<?php foreach (['absolute', 'auto', 'grid'] as $l): ?><li><a class="dropdown-item d-flex align-items-center gap-2 nuLayoutItem<?= $layout === $l ? ' active' : '' ?>" data-nu-layout="<?= h($l) ?>"<?= $layout === $l ? ' aria-current="true"' : '' ?> href="<?= h(nu_url('form', ['f' => $meta->id, 'r' => $r, 'layout' => $l])) ?>"><i class="bi <?= $layout === $l ? 'bi-check2' : 'bi-dot' ?>" aria-hidden="true"></i><?= h(t('form_layout_' . $l)) ?></a></li><?php endforeach; ?>
 					<?php endif; ?></ul></div>

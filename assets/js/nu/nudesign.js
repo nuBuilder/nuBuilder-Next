@@ -1126,6 +1126,10 @@
 
 	// ------------------------------------------------------------------ tabs on the form (stage 3)
 	function tabRows() { return (S.tabs || []).map(function (x) { return {id: x.zzzzsys_tab_id, title: x.syt_title, access: String(x.syt_access || '0')}; }); }
+	// unique tab names (0.8.1198): compared without HTML, spaces and case – as the builder API (nb_tab_dupe)
+	function tabKey(v) { return plain(v).replace(/\s+/g, ' ').trim().toLowerCase(); }
+	function tabTaken(v, exceptId) { var k = tabKey(v); return (S.tabs || []).some(function (x) { return x.zzzzsys_tab_id !== exceptId && tabKey(x.syt_title) === k; }); }
+	function tabFreeName(base) { var n = base, i = 2; while (tabTaken(n, null)) n = base + ' ' + (i++); return n; }
 	function saveTabs(rows, focusId) { keepTab = focusId !== undefined ? focusId : activeTabId(); return change('tabs.save', {tabs: rows}, true).catch(function () { /* said */ }); }
 	function setupTabs() {
 		var holder = document.getElementById('nuTabHolder');
@@ -1164,7 +1168,7 @@
 		// "+" next to the tabs, outside the tab list (a tablist holds tabs only)
 		var add = el('button', {type: 'button', 'class': 'btn btn-sm nuDsTabAdd', id: 'nuDsTabAdd', title: t('ds_tab_add'), 'aria-label': t('ds_tab_add'), onclick: function () {
 			var rows = tabRows();
-			rows.push({id: '', title: t('ds_tab_new'), access: '0'});
+			rows.push({id: '', title: tabFreeName(t('ds_tab_new')), access: '0'});   // New tab, New tab 2 … (0.8.1198)
 			keepTab = '__last';
 			change('tabs.save', {tabs: rows}, true).catch(function () { /* said */ });
 		}}, [icon('bi-plus-lg')]);
@@ -1188,6 +1192,13 @@
 			if (done) return;
 			done = true;
 			var v = inp.value.trim();
+			if (ok && v !== '' && v !== old && tabTaken(v, row.zzzzsys_tab_id)) {   // the name of another tab: say so, the field stays open
+				done = false;
+				say(fmt(t('ds_tab_dupe'), v), true);
+				inp.classList.add('is-invalid'); inp.setAttribute('aria-invalid', 'true');
+				setTimeout(function () { inp.focus(); inp.select(); }, 0);
+				return;
+			}
 			if (!ok || v === '' || v === old) { b.innerHTML = keep; return; }
 			saveTabs(tabRows().map(function (x) { return x.id === row.zzzzsys_tab_id ? Object.assign(x, {title: v}) : x; }), row.zzzzsys_tab_id);
 		};
@@ -3353,7 +3364,7 @@
 	}
 	place();
 	renderBar();
-	var v0 = new URLSearchParams(window.location.search);     // back from the password confirmation: the dialog again
+	var v0 = new URLSearchParams(D.start || window.location.search);   // 0.8.1194: from the server – form code may rewrite the address     // back from the password confirmation: the dialog again
 	api('state', {}).then(function (j) {
 		if (!j.ok) throw new Error(j.error || 'Error');
 		S = j;
@@ -3373,8 +3384,29 @@
 		if (v0.get('dscolchg')) openColumnChange(v0.get('dscolchg'));
 		if (v0.get('dsdelete') === '1') deleteForm();
 		// old builder links (0.8.670, NuDesign::fromBuilder): an object, Code / History / Changes, Structure / Add
-		var o0 = v0.get('dsobj') ? objById(v0.get('dsobj')) : null;
-		if (o0) setTimeout(function () { var tb = o0.sob_all_zzzzsys_tab_id; if (tb) selectTabById(tb); post({nuBuilderSelect: o0.sob_all_id}); }, 400);
+		// an object to select (old builder links, the object menu's Properties…): by object id, else by field id (0.8.1193); tried again
+		// until the panel shows it (0.8.1192) – a slow page, the form's own code or tab restore came after one fixed try
+		var o0 = (v0.get('dsobj') ? objById(v0.get('dsobj')) : null) || (v0.get('dsfid') ? objByFid(v0.get('dsfid')) : null);
+		var fid0 = o0 ? o0.sob_all_id : (v0.get('dsfid') || '');
+		if (fid0) (function () {
+			var tries = 0;
+			var go = function () {
+				if (selIds.indexOf(fid0) >= 0) return;
+				var w = document.getElementById('nuw_' + fid0);
+				if (++tries > 40) {
+					say(fmt(t('ds_obj_not_shown'), fid0), true);
+					if (window.console) console.warn('nuBuilder Next design mode: object not selected', {obj: v0.get('dsobj'), fid: fid0, inData: !!o0, onPage: !!w, selected: selIds.slice()});
+					return;
+				}
+				if (w) {
+					var tb = o0 && o0.sob_all_zzzzsys_tab_id;
+					if (tb && activeTabId() !== tb) selectTabById(tb);
+					post({nuBuilderSelect: fid0});
+				}
+				setTimeout(go, 250);
+			};
+			setTimeout(go, 300);
+		})();
 		if (v0.get('dsfly') === 'list' && HASLIST) openWork('list'); else if (v0.get('dsfly')) openFly(['add', 'rules'].indexOf(v0.get('dsfly')) >= 0 ? v0.get('dsfly') : 'structure');
 		if (v0.get('dsitem')) W.item = v0.get('dsitem');
 		if (['code', 'history'].indexOf(v0.get('dswork')) >= 0 || (v0.get('dswork') === 'changes' && DR) || (v0.get('dswork') === 'list' && HASLIST)) openWork(v0.get('dswork'));
