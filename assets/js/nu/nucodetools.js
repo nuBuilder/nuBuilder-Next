@@ -394,7 +394,44 @@
 			if (chk) chk.detach();
 			g.remove();
 		};
+		jumpTo(cm, opt);
 		return g;
+	}
+
+	/**
+	 * A link of the code search (0.8.1172, pages/nucodesearch.php): ?cl=<line>&ck=<key>[&cq=<text>] opens the editor whose textarea has that
+	 * name / id (or opt.codeKey – design mode's Code workspace) at the line, marks it for a while and selects the text on it. Once per page.
+	 */
+	var JUMP = (function () {
+		try {
+			var u = new URLSearchParams(window.location.search), l = parseInt(u.get('cl') || '', 10);
+			return l > 0 ? {line: l, key: u.get('ck') || '', q: u.get('cq') || '', done: false} : null;
+		} catch (e) { return null; }
+	})();
+	function jumpTo(cm, opt) {
+		if (!JUMP || JUMP.done || !cm) return;
+		var ta = cm.getTextArea ? cm.getTextArea() : null;
+		var keys = [opt.codeKey || '', ta ? ta.name : '', ta ? ta.id : ''];
+		if (JUMP.key && keys.indexOf(JUMP.key) < 0) return;
+		JUMP.done = true;
+		// a hidden tab that holds the editor: show it first (procedures: tab JavaScript)
+		var w = cm.getWrapperElement ? cm.getWrapperElement() : null;
+		var pane = w && w.closest ? w.closest('.tab-pane') : null;
+		if (pane && !pane.classList.contains('active') && pane.id && window.nuBs) {
+			var tb = document.querySelector('[data-bs-target="#' + pane.id + '"], a[href="#' + pane.id + '"]');
+			if (tb) { try { nuBs.tab(tb).show(); } catch (e) { /* keep going */ } }
+		}
+		setTimeout(function () {
+			var n = Math.min(JUMP.line, cm.lineCount()) - 1, text = cm.getLine(n) || '', ch = 0, to = 0;
+			if (JUMP.q) { var i = text.toLowerCase().indexOf(JUMP.q.toLowerCase()); if (i >= 0) { ch = i; to = i + JUMP.q.length; } }
+			if (cm.refresh) cm.refresh();
+			if (to > ch) cm.setSelection({line: n, ch: ch}, {line: n, ch: to}); else cm.setCursor({line: n, ch: 0});
+			cm.scrollIntoView({line: n, ch: ch}, 120);
+			if (w && w.scrollIntoView) w.scrollIntoView({block: 'nearest'});
+			cm.addLineClass(n, 'background', 'nuCodeHitLine');
+			setTimeout(function () { try { cm.removeLineClass(n, 'background', 'nuCodeHitLine'); } catch (e) { /* gone */ } }, 6000);
+			cm.focus();
+		}, 250);
 	}
 
 	// ------------------------------------------------------------------ Insert: functions of the help's reference + snippets (0.8.593)

@@ -1,0 +1,41 @@
+<section id="code-search" data-doc="admin">
+	<h2 id="code-search-h">Code search</h2>
+	<p class="doc-lead">Find where something is used in the code of the application – a function, a table, a column, a hash variable – across forms, procedures, SQL and templates at once, and replace it where you tick it.</p>
+	<p class="doc-for" data-doc="admin">For: Developers (globeadmin, admin roles with the right Code search)</p>
+	<p>Open it from the start page tile <em>Code search</em> (<code>index.php?p=codesearch</code>, page number 296), from a form's ⋮ menu → <em>Find in this form's code</em>, or from the function reference: the <i class="bi bi-search"></i> next to a function searches for its calls. The search only reads – nothing typed here is run, and nothing is changed unless you use <a href="#code-search-replace">Replace</a>.</p>
+	<div class="doc-sub" id="code-search-where"><h3 id="code-search-where-h">What is searched</h3>
+	<ul>
+	<li><strong>Procedures</strong> – PHP and JavaScript.</li>
+	<li><strong>Forms</strong> – JavaScript, Browse JS, Edit JS, CSS, Browse SQL, the SQL of list columns, validation rules and the form events (Before Browse, Before Edit, Before Save, After Save, Before Delete, After Delete).</li>
+	<li><strong>Objects</strong> – event JavaScript (onclick, onchange …), lookup JavaScript and PHP with their After Browse PHP, HTML code and its JavaScript, input JavaScript, the options and display SQL of selects and displays, calc formulas, access conditions, run filters and styles.</li>
+	<li><strong>SQL builder</strong> queries – also those reports run on.</li>
+	<li><strong>Global code</strong> – header, style and include of the form pages, Global JavaScript and CSS.</li>
+	<li><strong>Code snippets</strong> and <strong>e-mail templates</strong> (subject and body).</li>
+	<li>Dashboard widget SQL, data export SQL, webhook templates and the default values of custom user fields.</li>
+	<li>The files of <a href="#pages">custom pages</a> (PHP, JavaScript, CSS, HTML, SQL, JSON … up to 1 MB each) and the <a href="#form-drafts">open drafts</a> of forms – marked <em>draft</em>.</li>
+	</ul>
+	<p data-level="detail">nuBuilder Forte's own forms, procedures and templates (ids starting with <code>nu</code> or <code>nx_</code>) are left out unless you switch them on under <em>Filters</em>.</p>
+	</div>
+	<div class="doc-sub" id="code-search-how"><h3 id="code-search-how-h">Searching</h3>
+	<ul>
+	<li><em>Exact text</em> finds the text as typed. <em>All words</em> finds the parts that contain all of the words, <em>Any word</em> those with at least one; <code>"words in quotes"</code> stay together.</li>
+	<li><em>Whole word</em> does not match inside a longer name (<code>nuGetValue</code> does not find <code>nuGetValues</code>). <em>Match case</em> and <em>Regular expression</em> work as in a code editor.</li>
+	<li><em>Without</em> leaves out every part that contains that text.</li>
+	<li><em>Filters</em>: language, where (procedures, form events, object SQL …), forms, form group, department, team and project.</li>
+	<li><em>Where is … used?</em> fills the search with a documented function, a table or a hash variable. <em>Functions nuBuilder Next lacks</em> finds calls of nuBuilder Forte functions that are listed under <a href="#porting-missing">Not ported</a>.</li>
+	</ul>
+	</div>
+	<div class="doc-sub" id="code-search-results"><h3 id="code-search-results-h">Results</h3>
+	<p>The hits are grouped by form, procedure, query or template, each part with its lines and two lines around them. A click on a line number opens the editor at that line – design mode's <em>Code</em>, the procedure, the SQL builder, Global code; parts without a code editor (object properties, list columns, rules) open at their place in design mode. <em>Open</em> opens the whole form or item.</p>
+	<p><em>Export</em> writes the hits as CSV or Excel. <em>My searches</em> keeps searches you use again; they belong to you. At most 2,000 hits are shown – narrow the search when the list says so.</p>
+	</div>
+	<div class="doc-sub" id="code-search-replace"><h3 id="code-search-replace-h">Search and replace</h3>
+	<p>For the globeadmin: <em>Replace…</em> opens a field for the new text, <em>Preview</em> shows every hit with the line as it will read afterwards (password confirmed first). Untick the lines that should stay, then <em>Replace in … ticked lines</em>.</p>
+	<ul>
+	<li>Replace needs <em>Exact text</em> or a <em>Regular expression</em>; in a regular expression <code>$1</code>, <code>$2</code> … insert its groups. <em>Whole word</em> and <em>Match case</em> apply.</li>
+	<li>Only the ticked lines change; the other hits of the same part stay. A part that changed since the preview is left alone (search again), and PHP that would no longer be valid afterwards is not written.</li>
+	<li>Not replaced here: forms with an open <a href="#form-drafts">draft</a> (change them in design mode or publish first), drafts, files of custom pages, data export queries, validation rules, SQL builder queries and nuBuilder Forte's own code – the preview says why next to such a part.</li>
+	<li>Every form that changes gets a version in its history first (design mode → History). <em>Recent replacements</em> lists the last runs; <em>Undo</em> puts each part back while it still holds what the run wrote.</li>
+	</ul>
+	</div>
+</section>

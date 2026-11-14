@@ -927,3 +927,246 @@
 		return uppy;
 	});
 })();
+
+/*
+ * Context menus of form code (nuBuilder Forte: nuOpenContextMenu / nuContextMenuItemText / nuContextMenuClose with the ctxmenu library).
+ * Forte form code such as   onclick: menuClick(this, event, 'Reports')   with
+ *   nuOpenContextMenu(event, [{text: 'Title'}, {text: nuContextMenuItemText('Open', 'fa fa-table'), action: function () { … }}], this)
+ * keeps working: window.ctxmenu (show / hide / attach / update / delete) is drawn as nuBuilder Next's own menu (.nuObjMenu look, dark mode).
+ * Menu items as in ctxmenu: {text} = heading · {text, action} · {text, href, target, download} · {text, subMenu: [...]} · {isDivider: true} ·
+ * {html} / {element}; optional disabled, tooltip, icon (picture url), style, attributes, events. text / disabled / subMenu may be functions.
+ * A real ctxmenu library loaded by the application (Setup → Include) takes precedence.
+ */
+(function () {
+	'use strict';
+
+	var $ = window.jQuery;
+	function api(name, fn) { window[name] = fn; }
+	function val(x) { return typeof x === 'function' ? x() : x; }
+	function has(o, k) { return !!o && Object.prototype.hasOwnProperty.call(o, k); }
+	function isSub(it) { return has(it, 'subMenu'); }
+	function isAct(it) { return has(it, 'action') || has(it, 'href') || isSub(it); }
+	function isOff(it) { return (isAct(it) && !!val(it.disabled)) || (isSub(it) && !(val(it.subMenu) || []).length); }
+
+	var root = null, hooks = {};
+
+	function item(it) {
+		var li = document.createElement('li');
+		if (has(it, 'isDivider')) { li.innerHTML = '<hr class="dropdown-divider">'; return li; }
+		if (has(it, 'element') || has(it, 'html')) {
+			li.className = 'nuCtxHtml px-2';
+			var el = val(it.element);
+			if (el) li.append(el); else li.innerHTML = val(it.html) || '';
+			return li;
+		}
+		if (!isAct(it)) {                                    // a heading
+			var h = document.createElement('h6');
+			h.className = 'dropdown-header nuCtxHead';
+			h.innerHTML = val(it.text) || '';
+			li.appendChild(h);
+			return li;
+		}
+		var off = isOff(it), href = has(it, 'href') && !off;
+		var b = document.createElement(href ? 'a' : 'button');
+		b.className = 'dropdown-item d-flex align-items-center' + (off ? ' disabled' : '');
+		if (href) {
+			b.href = val(it.href);
+			if (it.target) b.target = val(it.target);
+			if (it.download !== undefined) b.download = val(it.download);
+		} else b.type = 'button';
+		if (off) b.setAttribute('aria-disabled', 'true');
+		b.innerHTML = '<span class="nuCtxText">' + (val(it.text) || '') + '</span>';
+		if (it.icon) { var img = document.createElement('img'); img.className = 'nuCtxIcon'; img.alt = ''; img.src = val(it.icon); b.prepend(img); }
+		if (it.tooltip) b.title = val(it.tooltip);
+		if (it.style) b.style.cssText += ';' + val(it.style);
+		Object.entries(val(it.attributes) || {}).forEach(function (a) { b.setAttribute(a[0], a[1]); });
+		Object.entries(val(it.events) || {}).forEach(function (e) {
+			if (typeof e[1] === 'function') b.addEventListener(e[0], e[1]);
+			else if (e[1] && typeof e[1].listener === 'function') b.addEventListener(e[0], e[1].listener, e[1].options);
+		});
+		li.appendChild(b);
+		if (isSub(it) && !off) {
+			li.className = 'nuOmSubWrap';
+			b.classList.add('nuOmHasSub');
+			b.setAttribute('aria-haspopup', 'true');
+			b.setAttribute('aria-expanded', 'false');
+			b.insertAdjacentHTML('beforeend', '<i class="bi bi-chevron-right ms-auto ps-3" aria-hidden="true"></i>');
+			var made = false;
+			var make = function () {
+				if (made) return;
+				made = true;
+				var sub = list(val(it.subMenu), val(it.subMenuAttributes));
+				sub.classList.add('nuOmSub');
+				li.appendChild(sub);
+			};
+			li.addEventListener('mouseenter', make);
+			li.addEventListener('focusin', make);
+			b.addEventListener('click', function (ev) {
+				ev.stopPropagation();
+				make();
+				var open = !li.classList.contains('nuOmOpen');
+				Array.prototype.forEach.call(li.parentNode.children, function (s) { if (s !== li) s.classList.remove('nuOmOpen'); });
+				li.classList.toggle('nuOmOpen', open);
+				b.setAttribute('aria-expanded', open ? 'true' : 'false');
+			});
+			return li;
+		}
+		if (!off) {
+			if (has(it, 'action') && typeof it.action === 'function') b.addEventListener('click', function (ev) { hide(); it.action(ev); });
+			else b.addEventListener('click', function () { hide(); });
+		}
+		return li;
+	}
+
+	function list(items, attrs) {
+		var ul = document.createElement('ul');
+		ul.className = 'dropdown-menu show ctxmenu';
+		ul.setAttribute('role', 'menu');
+		(items || []).forEach(function (it) { if (it) ul.appendChild(item(it)); });
+		Object.entries(attrs || {}).forEach(function (a) { ul.setAttribute(a[0], a[1]); });
+		return ul;
+	}
+
+	function place(ul, at) {
+		var VV = window.visualViewport, top0 = VV ? VV.offsetTop : 0;
+		var vw = document.documentElement.clientWidth, vh = VV ? Math.min(document.documentElement.clientHeight, VV.height + top0) : document.documentElement.clientHeight;
+		var w = ul.offsetWidth, h = ul.offsetHeight, x, y;
+		if (at instanceof Element) {                         // as ctxmenu: beside the element (right, else left), top aligned
+			var r = at.getBoundingClientRect();
+			x = r.right + w <= vw - 4 ? r.right : r.left - w;
+			y = r.top;
+		} else if (at && typeof at.clientX === 'number') { x = at.clientX; y = at.clientY; }
+		else { x = vw / 2 - w / 2; y = vh / 3; }
+		var left = Math.max(4, Math.min(x, vw - w - 4)), SUBW = 220;
+		var inline = left + w + SUBW > vw && left - SUBW < 0;
+		ul.classList.toggle('nuOmInline', inline);
+		ul.classList.toggle('nuOmFlip', !inline && left + w + SUBW > vw);
+		ul.style.left = left + 'px';
+		ul.style.top = Math.max(4 + top0, Math.min(y, vh - h - 4)) + 'px';
+		ul.style.maxHeight = (vh - 8 - top0) + 'px';
+		if (inline) ul.style.overflowY = 'auto';
+	}
+
+	function hide() {
+		if (!root) return;
+		var r = root, o = hooks;
+		if (typeof o.onBeforeHide === 'function') o.onBeforeHide(r);
+		root = null; hooks = {};
+		r.remove();
+		document.removeEventListener('mousedown', outside, true);
+		document.removeEventListener('keydown', keys, true);
+		window.removeEventListener('resize', hide);
+		if (typeof o.onHide === 'function') o.onHide(r);
+	}
+	function outside(e) { if (root && !root.contains(e.target)) hide(); }
+	function keys(e) {
+		if (!root) return;
+		if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hide(); return; }
+		if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+		var all = Array.prototype.filter.call(root.querySelectorAll('.dropdown-item:not(.disabled)'), function (b) { return b.offsetParent !== null; });
+		if (!all.length) return;
+		e.preventDefault();
+		var i = all.indexOf(document.activeElement);
+		i = e.key === 'ArrowDown' ? (i + 1) % all.length : (i <= 0 ? all.length - 1 : i - 1);
+		all[i].focus();
+	}
+
+	function show(menu, at, options) {
+		var o = options || {};
+		if (at && typeof at.preventDefault === 'function' && !(at instanceof Element)) { at.preventDefault(); at.stopPropagation(); }
+		hide();
+		var items = typeof o.onBeforeShow === 'function' ? (o.onBeforeShow((menu || []).slice(), at instanceof Element ? undefined : at) || menu) : menu;
+		var ul = list(items, o.attributes);
+		ul.classList.add('nuObjMenu', 'nuCtxMenu', 'shadow');
+		ul.style.position = 'fixed';
+		ul.style.zIndex = '1070';
+		ul.addEventListener('contextmenu', function (e) { e.preventDefault(); e.stopPropagation(); });
+		ul.addEventListener('click', function (e) { e.stopPropagation(); });
+		document.body.appendChild(ul);
+		place(ul, at);
+		root = ul; hooks = o;
+		// listeners after this event: the click that opened the menu must not close it again
+		setTimeout(function () {
+			if (root !== ul) return;
+			document.addEventListener('mousedown', outside, true);
+			document.addEventListener('keydown', keys, true);
+			window.addEventListener('resize', hide);
+		}, 0);
+		if (typeof o.onShow === 'function') o.onShow(ul);
+		return ul;
+	}
+
+	var attached = {};
+	function target(sel) { return typeof sel === 'string' ? document.querySelector(sel) : sel; }
+	if (!window.ctxmenu) {
+		window.ctxmenu = {
+			show: show,
+			hide: hide,
+			attach: function (sel, menu, options) {
+				var el = target(sel);
+				if (!el) { console.error('target element ' + sel + ' not found'); return; }
+				if (attached[sel]) { console.error('target element ' + sel + ' already has a context menu assigned. Use ContextMenu.update() instead.'); return; }
+				var rec = {menu: menu, options: options || {}};
+				rec.fn = function (e) { show(rec.menu, e, rec.options); };
+				rec.el = el;
+				attached[sel] = rec;
+				el.addEventListener('contextmenu', rec.fn);
+			},
+			update: function (sel, menu, options) {
+				var rec = attached[sel];
+				if (!rec) { this.attach(sel, menu, options); return; }
+				if (menu) rec.menu = menu;
+				if (options) rec.options = Object.assign({}, rec.options, options);
+			},
+			delete: function (sel) {
+				var rec = attached[sel];
+				if (!rec) { console.error('no context menu for target element ' + sel + ' found'); return; }
+				rec.el.removeEventListener('contextmenu', rec.fn);
+				delete attached[sel];
+			}
+		};
+	}
+
+	api('nuOpenContextMenu', function (event, menu, element) {
+		if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+		window.ctxmenu.show(menu, element || event);
+	});
+	api('nuContextMenuItemText', function (label, iconClass) {
+		var t = typeof window.nuTranslate === 'function' ? window.nuTranslate(label) : label;
+		return '<i class="' + String(iconClass || '').replace(/"/g, '&quot;') + '" aria-hidden="true"></i> <span class="nuCtxLabel">' + t + '</span>';
+	});
+	api('nuContextMenuClose', function () { if (window.ctxmenu) window.ctxmenu.hide(); });
+	if ($) $(window).on('beforeunload', hide);
+})();
+
+/*
+ * Textareas of the fixed (absolute) layout above the other objects while in use (0.8.1177, the owner): a textarea the user clicks into
+ * or resizes (Chrome / Edge: the corner handle) lies over the fields below it instead of under them – until the user clicks elsewhere.
+ * Its new size stays. Grid / auto layouts need nothing: the objects below move down there.
+ */
+(function () {
+	'use strict';
+	var raised = null;
+	function holder(ta) {
+		var w = ta.closest('.nuAbs');
+		if (w && w.closest('.nuAbsoluteCanvas')) return w;
+		return ta.closest('.nuAbsoluteCanvas') && getComputedStyle(ta).position === 'absolute' ? ta : null;
+	}
+	function lower() { if (raised) { raised.classList.remove('nuAbsRaised'); raised = null; } }
+	function raise(ta) {
+		var h = holder(ta);
+		if (!h || h === raised) return;
+		lower();
+		raised = h;
+		h.classList.add('nuAbsRaised');
+	}
+	document.addEventListener('pointerdown', function (e) {
+		var ta = e.target && e.target.closest ? e.target.closest('textarea') : null;
+		if (ta) { raise(ta); return; }
+		if (raised && !raised.contains(e.target)) lower();
+	}, true);
+	document.addEventListener('focusin', function (e) {
+		if (e.target && e.target.tagName === 'TEXTAREA') raise(e.target);
+		else if (raised && !raised.contains(e.target)) lower();
+	});
+})();

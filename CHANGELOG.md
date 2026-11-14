@@ -3,6 +3,75 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1179 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, security scan) of 0.8.1168–0.8.1178.
+
+## 0.8.1178 – Code search line links into procedures
+- Code search: a line link into a procedure opened the tab used last (e.g. JavaScript) instead of the tab with that
+  line.
+- Documentation: feature list, tutorial tip for the code search, points to verify.
+
+## 0.8.1177 – Text fields above their neighbours while in use
+- Forms in fixed layout: a large text field you click into or enlarge by dragging its corner now lies above the
+  fields around it, so it no longer disappears behind its neighbours; a click elsewhere puts it back in its layer.
+  It keeps its new size (help: Working with forms).
+
+## 0.8.1176 – Code search: calls only
+- Code search, "Functions nuBuilder Next lacks": a function the form's code declares itself (function nuSomething() { … } – e.g. an empty
+  hook of the same name) and methods of objects (x.nuSomething()) no longer count as calls; JavaScript names are looked for only in
+  JavaScript / HTML and PHP names only in PHP, PHP names without regard to case as PHP does (nuAddJavaScript() in PHP is nuAddJavascript).
+
+## 0.8.1175 – Code search: lacking functions
+- Code search, "Functions nuBuilder Next lacks": functions that work were found as well (e.g. nuSetFormValue) – the list was read from
+  the whole section of the help page, including the explanations that name working functions. Now only the lists themselves count, and
+  any documented function nuBuilder Next has is left out. The chip of this search sits below the search field (with × to end it), so the
+  field keeps its width.
+
+## 0.8.1174 – Code search: search and replace
+- Code search: search and replace (globeadmin, password confirmed). Replace… → Preview shows every hit with the line as it will read
+  afterwards; untick the lines that should stay, then "Replace in … ticked lines". Exact text or a regular expression (with $1 … of its
+  groups); a part that changed since the preview is left alone, PHP that would no longer be valid is not written. Forms get a version in
+  their history first; "Recent replacements" lists the last runs with Undo (each part is put back while it still holds what the run wrote).
+  Not replaced here: forms with an open draft, drafts, custom page files, data export queries, validation rules, SQL builder queries and
+  nuBuilder Forte's own code – the preview names the reason. New table for the undo data (database step 0043).
+
+## 0.8.1173 – Code search preset
+- Code search: "Functions nuBuilder Next lacks" failed on servers with nginx (414 Request-URI Too Large) – the regular expression over
+  all function names went into the address. The search is now built on the server and shown as a chip in the search field; typing an own
+  text ends it.
+
+## 0.8.1172 – Code search
+- Code search (start page tile Code search, page number 296): one search over the code of the application – procedures (PHP and
+  JavaScript), form JavaScript / CSS / Browse SQL / list columns / validation rules / form events, object code (event JavaScript, lookup
+  JavaScript and PHP with After Browse, HTML, input JavaScript, select and display SQL, calc formulas, access conditions, run filters,
+  styles), SQL builder queries, header / style / include of the form pages and Global JS / CSS, code snippets, e-mail templates, dashboard
+  widget SQL, data export SQL, webhook templates, defaults of custom user fields, the files of custom pages and open form drafts (marked).
+  Exact text, all words or any word, whole word, match case, regular expression and "Without"; filters by language, place, forms, form group,
+  department, team and project; nuBuilder Forte's own rows on request. Results grouped by form / procedure / item with the lines around each
+  hit; a click on a line number opens the editor at that line (design mode's Code, procedures, Global code …). Export as CSV or Excel,
+  "My searches" per user, quick searches: where a function, table or hash variable is used, and calls of nuBuilder Forte functions nuBuilder
+  Next lacks. Read only – nothing typed there runs.
+- Also: form ⋮ menu → Find in this form's code; the function reference has a "Where used" link per function; new admin right Code search
+  (full access, part of the Developer role).
+
+## 0.8.1171 – Current date and time format
+- nuCurrentDateTime(format): a date format such as 'dd.mm.yyyy hh:nn' is applied as in nuBuilder Forte – before, the value came
+  back unformatted unless the format started with 'D|'. The function reference shows how to fill a field with the current date
+  and time: nuSetValue('field', nuCurrentDateTime()).
+
+## 0.8.1170 – Context menus of form code
+- Context menus of form code as in nuBuilder Forte: a button whose onclick event calls nuOpenContextMenu(event, menu, this)
+  with items built by nuContextMenuItemText(label, icon) now opens its menu – headings, actions, links, sub menus, dividers
+  and disabled items as with Forte's ctxmenu library; window.ctxmenu (show, hide, attach, update, delete) and
+  nuContextMenuClose() work too. The menu has nuBuilder Next's look (dark mode included), opens beside the button and closes
+  with a click outside, Esc or after an action. Help: function reference, differences to nuBuilder Forte.
+
+## 0.8.1169 – Build script check
+- Development: the FullCalendar build script stops with a clear message when npx is missing (DeepSource type check TYP-050).
+
+## 0.8.1168 – Notes
+- Notes: v0.8.1167 published.
+
 ## 0.8.1167 – Release gate
 - Release gate: help, tutorial, README, FEATURES.md and TODO.md brought up to date for 0.8.1162–0.8.1166.
 

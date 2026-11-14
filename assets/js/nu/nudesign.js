@@ -2601,7 +2601,7 @@
 			hash.innerHTML = '';
 			if (window.NuHashVars && N.hashCatalog && (it[2] === 'SQL' || it[2] === 'PHP')) window.NuHashVars.attach(W.cm, hash, {catalog: N.hashCatalog, globals: N.globals});
 			cmTools.innerHTML = '';
-			if (window.NuCodeTools) window.NuCodeTools.attach(W.cm, cmTools, {lang: it[2], db: N.db_type});
+			if (window.NuCodeTools) window.NuCodeTools.attach(W.cm, cmTools, {lang: it[2], db: N.db_type, codeKey: k});   // codeKey: a code search link jumps to its line (0.8.1172)
 			W.cm.refresh();
 			W.cm.focus();
 		}

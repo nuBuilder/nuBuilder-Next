@@ -15951,6 +15951,85 @@ T.forte_db2_compat = async (s) => {
 	}
 };
 
+T.current_datetime_format = async (s) => {
+	// nuCurrentDateTime(format) as nuBuilder Forte: a format without 'D|' is a date format; nuSetValue with it fills a field and marks it edited
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=sampleorder&r=-1'); await p.waitForSelector('#nuSaveButton');
+	const r = await p.evaluate(() => {
+		const plain = nuCurrentDateTime(), f1 = nuCurrentDateTime('dd.mm.yyyy hh:nn'), f2 = nuCurrentDateTime('D|dd.mm.yyyy hh:nn');
+		nuSetValue('ord_note', plain);
+		return {plain, f1, f2, val: document.getElementById('ord_note').value, edited: !nuIsSaved()};
+	});
+	expect(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(r.plain) && /^\d\d\.\d\d\.\d{4} \d\d:\d\d$/.test(r.f1) && r.f1 === r.f2, 'formats: ' + JSON.stringify(r));
+	expect(r.val === r.plain && r.edited, 'nuSetValue fills the field and marks the record: ' + JSON.stringify(r));
+};
+
+T.forte_ctxmenu = async (s) => {
+	// context menus of form code as in nuBuilder Forte: a button's onclick → nuOpenContextMenu(event, menu, this) with nuContextMenuItemText
+	const p = s.ga;
+	const ord = sql("SELECT sample_order_id FROM sample_order ORDER BY ord_number LIMIT 1");
+	if (!ord) { s.skip = 'no sample data'; return; }
+	await open(p, 'index.php?p=form&f=sampleorder&r=' + ord); await p.waitForSelector('#nuSaveButton');
+	await p.evaluate(() => {
+		window.e2eCtx = [];
+		window.e2eMenu = function (el, ev) {
+			nuOpenContextMenu(ev, [
+				{text: nuTranslate('Reports')},
+				{text: nuContextMenuItemText('First', 'fa-solid fa fa-table'), action: (e) => window.e2eCtx.push('first:' + (e && e.type))},
+				{isDivider: true},
+				{text: 'More', subMenu: [{text: 'Inner', action: () => window.e2eCtx.push('inner')}]},
+				{text: 'Off', disabled: true, action: () => window.e2eCtx.push('off')}
+			], el);
+		};
+		const b = document.createElement('button');
+		b.id = 'e2eCtxBtn'; b.type = 'button'; b.textContent = 'Menu';
+		b.setAttribute('onclick', 'e2eMenu(this, event)');
+		b.style.cssText = 'position:fixed;left:40px;top:200px;z-index:2000';
+		document.body.appendChild(b);
+	});
+	await p.click('#e2eCtxBtn');
+	await p.waitForTimeout(200);
+	const m = await p.evaluate(() => {
+		const ul = document.querySelector('ul.nuCtxMenu');
+		if (!ul) return null;
+		const b = document.getElementById('e2eCtxBtn').getBoundingClientRect(), r = ul.getBoundingClientRect();
+		return {head: ul.querySelector('.nuCtxHead').textContent, items: ul.querySelectorAll('.dropdown-item').length, icon: !!ul.querySelector('.dropdown-item i.fa-table'),
+			label: ul.querySelector('.nuCtxLabel') ? ul.querySelector('.nuCtxLabel').textContent : '', beside: Math.round(r.left) >= Math.round(b.right) - 1 && Math.abs(r.top - b.top) < 2,
+			off: ul.querySelectorAll('.dropdown-item.disabled').length, div: ul.querySelectorAll('.dropdown-divider').length};
+	});
+	expect(m && m.head === 'Reports' && m.items === 3 && m.icon && m.label === 'First' && m.off === 1 && m.div === 1, 'menu drawn: ' + JSON.stringify(m));
+	expect(m.beside, 'menu opens beside the button: ' + JSON.stringify(m));
+	await p.click('ul.nuCtxMenu .dropdown-item:has-text("First")');
+	await p.waitForTimeout(150);
+	let st = await p.evaluate(() => ({log: window.e2eCtx.slice(), open: !!document.querySelector('ul.nuCtxMenu')}));
+	expect(st.log.join() === 'first:click' && !st.open, 'action runs and the menu closes: ' + JSON.stringify(st));
+	// sub menu, disabled item, Esc, click outside
+	await p.click('#e2eCtxBtn'); await p.waitForTimeout(150);
+	await p.hover('ul.nuCtxMenu .nuOmSubWrap > .dropdown-item'); await p.waitForTimeout(150);
+	await p.click('ul.nuCtxMenu .nuOmSub .dropdown-item:has-text("Inner")');
+	await p.click('#e2eCtxBtn'); await p.waitForTimeout(150);
+	await p.click('ul.nuCtxMenu .dropdown-item.disabled', {force: true});
+	await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+	const esc = await p.evaluate(() => !document.querySelector('ul.nuCtxMenu'));
+	await p.click('#e2eCtxBtn'); await p.waitForTimeout(150);
+	await p.mouse.click(600, 500); await p.waitForTimeout(100);
+	st = await p.evaluate(() => ({log: window.e2eCtx.slice(), open: !!document.querySelector('ul.nuCtxMenu'), att: typeof ctxmenu.attach}));
+	expect(st.log.join() === 'first:click,inner' && esc && !st.open && st.att === 'function', 'sub menu / disabled / Esc / outside: ' + JSON.stringify(st) + ' esc ' + esc);
+	// ctxmenu.attach: right-click on an element; nuContextMenuClose
+	await p.evaluate(() => ctxmenu.attach('#e2eCtxBtn', [{text: 'Attached', action: () => window.e2eCtx.push('att')}]));
+	await p.click('#e2eCtxBtn', {button: 'right'}); await p.waitForTimeout(150);
+	const att = await p.evaluate(() => { const ok = !!document.querySelector('ul.nuCtxMenu'); nuContextMenuClose(); return ok && !document.querySelector('ul.nuCtxMenu'); });
+	expect(att, 'ctxmenu.attach opens on right-click, nuContextMenuClose closes');
+	// dark mode: menu uses the theme's colours
+	await p.evaluate(() => document.documentElement.setAttribute('data-bs-theme', 'dark'));
+	await p.click('#e2eCtxBtn'); await p.waitForTimeout(150);
+	const bg = await p.evaluate(() => getComputedStyle(document.querySelector('ul.nuCtxMenu')).backgroundColor);
+	await p.screenshot({path: (process.env.SHOTS || '/tmp') + '/e2e_ctxmenu_dark.png'});
+	await p.keyboard.press('Escape');
+	await p.evaluate(() => document.documentElement.setAttribute('data-bs-theme', 'light'));
+	expect(!/255, 255, 255/.test(bg), 'dark menu background: ' + bg);
+};
+
 T.forte_align = async (s) => {
 	// 0.8.951: functions that behaved differently from nuBuilder Forte 4.9 (review list J1–J18, P1–P7)
 	const p = s.ga;
@@ -16123,6 +16202,205 @@ T.flash_autoclose = async (s) => {
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
+T.textarea_raise = async (s) => {
+	// 0.8.1177: a textarea of the fixed layout that is clicked into / resized lies above the objects below it until the user clicks elsewhere
+	const p = s.ga;
+	let info = null;
+	for (const f of ['sampleorder', 'samplecustomer', 'sampleall']) {
+		await open(p, 'index.php?p=form&f=' + f + '&r=-1&layout=absolute');
+		info = await p.evaluate(() => {
+			const ta = [...document.querySelectorAll('.nuAbsoluteCanvas textarea')].find((t) => t.getBoundingClientRect().height > 0 && t.closest('.nuAbs'));
+			if (!ta) return null;
+			const tw = ta.closest('.nuAbs');
+			const ow = [...tw.parentElement.querySelectorAll(':scope > .nuAbs')].find((w) => w !== tw && w.getBoundingClientRect().height > 0 && w.querySelector('input:not([type=hidden])'));
+			if (!ow) return null;
+			const other = ow.querySelector('input:not([type=hidden])');
+			// a field right below the textarea, then the textarea made taller over it – what dragging its corner does
+			tw.after(ow); // an object that comes later in the layout (as one placed below usually does)
+			ow.style.top = (tw.offsetTop + tw.offsetHeight + 8) + 'px';
+			ow.style.left = tw.offsetLeft + 'px';
+			ta.style.height = (ta.offsetHeight + 80) + 'px';
+			const b = other.getBoundingClientRect();
+			return {x: b.left + 5, y: b.top + b.height / 2, ta: ta.id, other: other.id};
+		});
+		if (info) break;
+	}
+	if (!info) { s.skip = 'no sample form in fixed layout with a textarea'; return; }
+	const topAt = () => p.evaluate((pt) => { const e = document.elementFromPoint(pt.x, pt.y); return e ? e.id : ''; }, info);
+	expect(await topAt() === info.other, 'before: the field lies above the grown textarea (layer order of the layout)');
+	await p.click('#' + info.ta, {position: {x: 10, y: 10}});
+	const during = await topAt();
+	expect(during === info.ta, 'the textarea in use lies above: ' + during);
+	await p.mouse.click(5, 300);
+	await p.waitForTimeout(100);
+	const after = await topAt();
+	expect(after === info.other && !(await p.$('.nuAbsRaised')), 'back to its layer after a click elsewhere: ' + after);
+};
+
+T.code_search = async (s) => {
+	// 0.8.1172: code search – procedures / form code, match options, filters, line links into the editors, export, saved searches, entries
+	const p = s.ga;
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_cs_proc'");
+	sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'codesearch'");
+	execSync('mysql ' + DB, {input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_run, sph_global, sph_system, sph_php, sph_javascript) VALUES ('e2e_cs_proc', 'e2e_cs_proc', 'e2e', 'hide', '1', '0', '$a = 1;\\n$b = 2;\\n$c = \\'e2eCsMarker\\'; // e2eCsNot', 'console.log(\"e2eCsMarker\");')"});
+	try {
+		const summary = async (q) => {
+			await open(p, 'index.php?p=codesearch&go=1&drafts=1&pages=1&' + q);
+			return p.evaluate(() => { const e = document.getElementById('csSummary'); return {hits: e ? Number(e.dataset.hits) : -1, parts: e ? Number(e.dataset.parts) : -1, err: (document.getElementById('csError') || {}).textContent || '',
+				groups: [...document.querySelectorAll('.csGroupTitle')].map((x) => x.textContent)}; });
+		};
+		let r = await summary('q=e2eCsMarker');
+		expect(r.hits === 2 && r.parts === 2 && r.groups.join() === 'e2e_cs_proc', 'PHP + JavaScript of the procedure: ' + JSON.stringify(r));
+		r = await summary('q=e2eCsMarker&lang[]=php');
+		expect(r.hits === 1, 'language filter: ' + JSON.stringify(r));
+		r = await summary('q=e2eCsMarker&x=e2eCsNot');
+		expect(r.hits === 1, 'Without leaves out the PHP part: ' + JSON.stringify(r));
+		r = await summary('q=e2eCsMarker+zzzzNotThere&m=all');
+		expect(r.hits === 0, 'all words: ' + JSON.stringify(r));
+		r = await summary('q=e2eCsMarker+zzzzNotThere&m=any');
+		expect(r.hits === 2, 'any word: ' + JSON.stringify(r));
+		r = await summary('q=' + encodeURIComponent('e2eCs[M]ark') + '&r=1');
+		expect(r.hits === 2, 'regular expression: ' + JSON.stringify(r));
+		r = await summary('q=' + encodeURIComponent('e2eCs[') + '&r=1');
+		expect(r.err !== '', 'invalid regular expression: ' + JSON.stringify(r));
+		r = await summary('q=E2ECSMARKER&c=1');
+		expect(r.hits === 0, 'match case: ' + JSON.stringify(r));
+		r = await summary('q=e2eCsMark&w=1');
+		expect(r.hits === 0, 'whole word: ' + JSON.stringify(r));
+		r = await summary('q=e2eCsMarker&place[]=formjs');
+		expect(r.hits === 0, 'place filter: ' + JSON.stringify(r));
+		// a line link of the procedure opens its editor at the line
+		await summary('q=e2eCsMarker&lang[]=php');
+		const href = await p.$eval('.csHit a.csNo', (a) => a.getAttribute('href'));
+		expect(/p=procedures/.test(href) && /cl=3/.test(href) && /ck=sph_php/.test(href), 'line link: ' + href);
+		await open(p, href);
+		await p.waitForSelector('.nuCodeHitLine', {timeout: 5000}).catch(async () => {
+			const st = await p.evaluate(() => ({url: location.href, tab: (document.querySelector('#procTabs .active') || {}).textContent, cms: document.querySelectorAll('.CodeMirror').length,
+				php: (document.querySelector('#procTabPhp') || {}).className, err: (document.querySelector('.alert-danger') || {}).textContent}));
+			throw new Error('no marked line: ' + JSON.stringify(st));
+		});
+		const hl = await p.$eval('.nuCodeHitLine', (e) => e.textContent);
+		expect(/e2eCsMarker/.test(hl), 'the procedure editor marks line 3: ' + hl);
+		// form code: design mode's Code workspace at the line
+		r = await summary('q=' + encodeURIComponent("nuSetValue('ord_status'") + '&f[]=sampleorder');
+		if (r.hits > 0) {
+			const fh = await p.$eval('.csHit a.csNo', (a) => a.getAttribute('href'));
+			expect(/p=builder/.test(fh) && /dsitem=sfo_/.test(fh), 'form code link: ' + fh);
+			await open(p, fh);
+			await p.waitForSelector('.nuCodeHitLine', {timeout: 8000});
+			const fl = await p.$eval('.nuCodeHitLine', (e) => e.textContent);
+			expect(/ord_status/.test(fl), 'design mode Code at the line: ' + fl);
+		}
+		// export
+		await summary('q=e2eCsMarker');
+		const csv = await p.evaluate(async (u) => (await fetch(u)).text(), await p.$eval('#csExpCsv', (a) => a.getAttribute('href')));
+		expect(/e2eCsMarker/.test(csv) && /e2e_cs_proc/.test(csv), 'CSV export: ' + csv.slice(0, 200));
+		const xl = await p.evaluate(async (u) => { const r = await fetch(u); return [r.headers.get('content-type'), (await r.arrayBuffer()).byteLength]; }, await p.$eval('#csExpXlsx', (a) => a.getAttribute('href')));
+		expect(/sheet/.test(xl[0]) && xl[1] > 1000, 'Excel export: ' + xl.join(' '));
+		// My searches
+		await p.click('#csSavedBtn'); await p.click('#csSaveOpen');
+		await p.fill('#csSaveName', 'e2e marker');
+		await Promise.all([p.waitForNavigation(), p.click('#csSaveForm button[type=submit]')]);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'codesearch' AND name = 'e2e marker'") === '1', 'search saved');
+		await p.click('#csSavedBtn');
+		const saved = await p.$$eval('#csSavedMenu a.dropdown-item', (a) => a.map((x) => x.textContent + '|' + x.getAttribute('href')));
+		expect(saved.some((x) => /^e2e marker\|.*q=e2eCsMarker/.test(x)), 'listed in My searches: ' + saved.join(', '));
+		await Promise.all([p.waitForNavigation(), p.click('#csSavedMenu .csSavedDel')]);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'codesearch'") === '0', 'saved search deleted');
+		// quick search: functions nuBuilder Next lacks (one regular expression, no error)
+		await open(p, 'index.php?p=codesearch');
+		await Promise.all([p.waitForNavigation(), p.click('#csQuickMissing')]);
+		// 0.8.1173: built on the server (preset=missing) – the regular expression over all names made the address too long for nginx (414)
+		const qm = await p.evaluate(() => ({chip: !!document.getElementById('csPresetChip'), err: !!document.getElementById('csError'), sum: !!document.getElementById('csSummary'), len: location.href.length}));
+		expect(qm.chip && !qm.err && qm.sum && qm.len < 300, 'Functions nuBuilder Next lacks: ' + JSON.stringify(qm));
+		// a Forte-only call in a procedure is found; typing an own text ends the preset
+		sql("UPDATE zzzzsys_php SET sph_javascript = 'nuOpenNuDebug();' WHERE zzzzsys_php_id = 'e2e_cs_proc'");
+		await p.reload();
+		expect(await p.$$eval('.csGroupTitle', (g) => g.some((x) => x.textContent === 'e2e_cs_proc')), 'preset finds a call of a function nuBuilder Next lacks');
+		// 0.8.1175: functions that work are not in the list (the help text above the lists names nuSetFormValue as working)
+		// 0.8.1176: a declaration of the same name (a hook of the form's own) and a PHP call of a JavaScript-only name in another case are not calls of a missing function
+		sql("UPDATE zzzzsys_php SET sph_javascript = 'function nuOpenNuDebug() {}', sph_php = 'nuSetFormValue(\\'x\\', 1);\\nnuAddJavaScript(\\'y\\');' WHERE zzzzsys_php_id = 'e2e_cs_proc'");
+		await p.reload();
+		expect(!(await p.$$eval('.csGroupTitle', (g) => g.some((x) => x.textContent === 'e2e_cs_proc'))), 'nuSetFormValue is not reported as missing');
+		const qw = await p.evaluate(() => document.getElementById('csQ').getBoundingClientRect().width);
+		expect(qw > 200, 'the search field keeps its width next to the preset: ' + qw);
+		await p.fill('#csQ', 'e2eCsMarker');
+		await Promise.all([p.waitForNavigation(), p.click('#csGo')]);
+		expect(!/preset=/.test(p.url()) && !(await p.$('#csPresetChip')), 'own text ends the preset: ' + p.url());
+		// entries: the form's ⋮ menu, the function reference, the start page tile
+		await open(p, 'index.php?p=form&f=sampleorder');
+		const tool = await p.evaluate(() => (window.nuNext.tools || {}).codesearch || '');
+		expect(/p=codesearch/.test(tool) && /sampleorder/.test(tool), 'form ⋮ entry: ' + tool);
+		await open(p, 'index.php?p=help&part=ref');
+		expect(await p.$$eval('a.nuFnUsed', (a) => a.length) > 50, 'function reference: Where used links');
+		await open(p, 'index.php?p=home');
+		expect(await p.$$eval('[data-nu-tile="codesearch"], a[href*="p=codesearch"]', (a) => a.length) > 0, 'start page tile');
+		expect(!s.ga.errors || !s.ga.errors.length, 'no JS errors');
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_cs_proc'");
+		sql("DELETE FROM zzzzsys_nunext_list_view WHERE list_key = 'codesearch'");
+	}
+};
+
+T.code_replace = async (s) => {
+	// 0.8.1174: search and replace of the code search – preview with ticks, only ticked lines, form history snapshot, undo, $1 of a
+	// regular expression, mode check, "changed meanwhile"
+	const p = s.ga;
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-cr.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_log > ' + keep);
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_cr_proc'");
+	execSync('mysql ' + DB, {input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_run, sph_global, sph_system, sph_php, sph_javascript) VALUES ('e2e_cr_proc', 'e2e_cr_proc', 'e2e', 'hide', '1', '0', '$a = 1;\\n$b = \\'e2eRpOld\\';\\n$c = 3;\\n$d = \\'e2eRpOld\\';', 'console.log(\"e2eRpOld\");')"});
+	execSync('mysql ' + DB, {input: "UPDATE zzzzsys_form SET sfo_javascript = CONCAT(COALESCE(sfo_javascript, ''), '\\n// e2eRpOld') WHERE zzzzsys_form_id = 'sampleorder'"});
+	const php = () => sql("SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_cr_proc'");
+	try {
+		await open(p, 'index.php?p=codesearch&q=e2eRpOld&go=1&rmode=1&rp=e2eRpNew');
+		if (/p=reauth/.test(p.url())) { await p.fill('input[type=password]', GA[1]); await Promise.all([p.waitForNavigation(), p.click('form button[type=submit]')]); await p.waitForLoadState('networkidle'); }
+		const pv = await p.evaluate(() => ({form: !!document.getElementById('csRpForm'), ticks: document.querySelectorAll('.csRpTick').length,
+			news: [...document.querySelectorAll('.csNewLine .csText')].map((x) => x.textContent), go: (document.getElementById('csRpGo') || {}).textContent}));
+		expect(pv.form && pv.ticks === 4 && pv.news.every((x) => /e2eRpNew/.test(x) && !/e2eRpOld/.test(x)) && /4/.test(pv.go), 'preview: ' + JSON.stringify(pv));
+		// leave line 4 of the PHP as it is
+		await p.evaluate(() => { const c = [...document.querySelectorAll('.csRpTick')].find((x) => x.value === '4' && x.closest('.csPart').dataset.lang === 'php'); if (c) c.click(); });
+		expect(/3/.test(await p.textContent('#csRpGo')), 'the button counts the ticked lines');
+		await p.click('#csRpGo');
+		await p.waitForSelector('#nuConfirm.show .js-confirm-ok');
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm.show .js-confirm-ok')]);
+		await p.waitForLoadState('networkidle');
+		const after = php();
+		expect(/\$b = 'e2eRpNew'/.test(after) && /\$d = 'e2eRpOld'/.test(after), 'only the ticked PHP line replaced: ' + after);
+		expect(sql("SELECT sph_javascript FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_cr_proc'") === 'console.log("e2eRpNew");', 'JavaScript replaced');
+		expect(/e2eRpNew/.test(sql("SELECT sfo_javascript FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'")), 'form JavaScript replaced');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_form_history WHERE form_id = 'sampleorder' AND action = 'code search: replace'") !== '0', 'form history snapshot before the replace');
+		expect(sql("SELECT CONCAT(part_count, 0x2f, line_count) FROM zzzzsys_nunext_code_replace ORDER BY created_at DESC LIMIT 1") === '3/3', 'run recorded');
+		expect(await p.locator('.alert-success').count() > 0, 'success message');
+		// undo
+		await p.click('#csBatches summary').catch(() => {});
+		await p.click('.csBatch .csUndo');
+		await p.waitForSelector('#nuConfirm.show .js-confirm-ok');
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm.show .js-confirm-ok')]);
+		expect(/\$b = 'e2eRpOld'/.test(php()) && /e2eRpOld/.test(sql("SELECT sph_javascript FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_cr_proc'")), 'undo put the code back: ' + php());
+		expect(!/e2eRpNew/.test(sql("SELECT sfo_javascript FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'")), 'undo put the form JavaScript back');
+		expect(await p.locator('.csBatch .badge').count() > 0, 'run marked as undone');
+		// regular expression with $1; a mode that cannot replace
+		await open(p, 'index.php?p=codesearch&q=' + encodeURIComponent('(e2eRp)Old') + '&r=1&go=1&rmode=1&rp=' + encodeURIComponent('$1X') + '&lang[]=js&place[]=proc');
+		const rx = await p.$$eval('.csNewLine .csText', (a) => a.map((x) => x.textContent));
+		expect(rx.length === 1 && /e2eRpX/.test(rx[0]), 'regex preview with $1: ' + rx.join(' | '));
+		await open(p, 'index.php?p=codesearch&q=e2eRpOld&m=any&go=1&rmode=1&rp=x');
+		expect(await p.locator('#csRpErr').count() === 1 && await p.locator('#csRpForm').count() === 0, 'Any word cannot replace');
+		// changed meanwhile: nothing written
+		await open(p, 'index.php?p=codesearch&q=e2eRpOld&go=1&rmode=1&rp=e2eRpNew&place[]=proc');
+		sql("UPDATE zzzzsys_php SET sph_php = CONCAT(sph_php, '\\n// later') WHERE zzzzsys_php_id = 'e2e_cr_proc'");
+		await p.click('#csRpGo');
+		await p.waitForSelector('#nuConfirm.show .js-confirm-ok');
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm.show .js-confirm-ok')]);
+		expect(!/e2eRpNew/.test(php()) && await p.locator('.alert-warning').count() > 0, 'a part changed since the preview is not replaced');
+		expect(!s.ga.errors || !s.ga.errors.length, 'no JS errors');
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_cr_proc'");
+		execSync('mysql ' + DB + ' < ' + keep);
+		sql("DELETE FROM zzzzsys_nunext_code_replace");
 	}
 };
 

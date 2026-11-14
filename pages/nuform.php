@@ -340,6 +340,8 @@ $client = [
 		'sessions' => NuAdmin::can('sessions'),
 		'browsesql' => $mode === 'browse' && NuDesign::allowed($meta) ? nu_url('form', ['f' => $meta->id, 'design' => '1', 'dswork' => 'code', 'dsitem' => 'sfo_browse_sql']) : '',   // ⋮ → Browse SQL (0.8.818)
 		'formaccess' => !$meta->isPage() && NuAcl::can(NuAcl::FORM_ACCESS) && empty($u['demo']),   // ⋮ → Access levels… (0.8.683, assets/js/nu/nuformaccess.js)
+		// ⋮ → Find in this form's code (0.8.1172): the code search with this form as filter
+		'codesearch' => NuCodeSearch::allowed() ? nu_url('codesearch', ['f' => [$meta->id], 'go' => '1', 'sys' => $meta->isSystem() ? '1' : null, 'drafts' => '1', 'pages' => '1']) : '',
 	],
 	'shortcuts' => nu_shortcut_labels(), 'dev_mode' => NuHash::devMode(), 'db_type' => nu_db()->type, 'db_name' => $u['globeadmin'] && empty($u['demo']) ? (string)nu_cfg('nuConfigDBName') : '', 'hashCatalog' => $mode === 'edit' || $design ? NuHash::catalog() : null,
 	'formats' => (object)NuFormat::clientRegistry(), 'tinymceBase' => NuLibs::tinymce() ?: NU_TINYMCE,

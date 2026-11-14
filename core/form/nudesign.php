@@ -35,7 +35,11 @@ final class NuDesign
 		$extra = ['dsobj' => is_string($q['obj'] ?? null) ? $q['obj'] : null, 'dscolchg' => is_string($q['colchg'] ?? null) ? $q['colchg'] : null,
 			'dsdelete' => ($q['delete'] ?? '') === '1' ? '1' : null,
 			'dswork' => in_array($open, ['code', 'history'], true) ? $open : (($q['draft'] ?? '') === '1' && $open === 'compare' ? 'changes' : null),
-			'dsfly' => $open === 'add' ? 'add' : ($open === 'objects' ? 'structure' : null)];
+			'dsfly' => $open === 'add' ? 'add' : ($open === 'objects' ? 'structure' : ($open === 'rules' ? 'rules' : null))];
+		// code search links (0.8.1172): the code part, its line (cl / ck / cq – assets/js/nu/nucodetools.js) and the list workspace
+		$str = static fn(string $k, int $max): ?string => is_string($q[$k] ?? null) && $q[$k] !== '' ? mb_substr($q[$k], 0, $max) : null;
+		$extra += ['dsitem' => $str('dsitem', 40), 'ck' => $str('ck', 40), 'cl' => ctype_digit((string)($q['cl'] ?? '')) ? (string)$q['cl'] : null, 'cq' => $str('cq', 100)];
+		if ($open === 'list') { $extra['dswork'] = 'list'; $open = 'browse'; }
 		if ((!$meta->hasEdit() && $meta->type() !== 'subform') || ($open === 'browse' && $meta->hasBrowse())) return nu_url('form', ['f' => $meta->id, 'design' => '1'] + $extra);
 		$r = '-1';
 		if ($meta->table() !== '' && $meta->primaryKey() !== '' && $meta->type() !== 'launch') {

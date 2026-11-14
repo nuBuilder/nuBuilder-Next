@@ -7000,6 +7000,52 @@
    },
    {
     "g": "msg",
+    "n": "nuOpenContextMenu",
+    "s": "nuOpenContextMenu(event, menu, element)",
+    "d": "Opens a context menu – e.g. from a button's onclick event. menu = a list of items: {text} = a heading, {text, action} = a click runs action, {text, href, target}, {text, subMenu: [...]}, {isDivider: true}; optional disabled, tooltip, style, attributes. With element the menu opens beside it, else at the mouse. Closes with a click outside or Esc. The same as nuBuilder Forte's ctxmenu; window.ctxmenu (show / hide / attach / update / delete) is available too.",
+    "o": "nb",
+    "e": "function reportsMenu(button, event) {\n    nuOpenContextMenu(event, [\n        {text: nuTranslate('Reports')},\n        {text: nuContextMenuItemText('Sales per day', 'fa fa-table'), action: () => nuForm('sales_day', '', '', '', event.ctrlKey ? '2' : '0')},\n        {isDivider: true},\n        {text: nuContextMenuItemText('Details', 'fa fa-search'), action: () => nuForm('sales_detail', '')}\n    ], button);\n}\n// onclick event of the button: reportsMenu(this, event)",
+    "p": {
+     "event": "the click event",
+     "menu": "array of menu items",
+     "element": "element to open the menu beside (optional; without it: at the mouse)"
+    },
+    "a": [
+     "nuContextMenuItemText",
+     "nuContextMenuClose"
+    ]
+   },
+   {
+    "g": "msg",
+    "n": "nuContextMenuItemText",
+    "s": "nuContextMenuItemText(label, iconClass)",
+    "d": "The text of a context menu item: an icon (Font Awesome or Bootstrap Icons class) and the translated label.",
+    "r": "string (HTML)",
+    "o": "nb",
+    "e": "var t = nuContextMenuItemText('Details', 'fa fa-search');",
+    "x": "<i class=\"fa fa-search\" aria-hidden=\"true\"></i> <span class=\"nuCtxLabel\">Details</span>",
+    "p": {
+     "label": "text (translated with nuTranslate)",
+     "iconClass": "icon class, e.g. 'fa fa-table' or 'bi bi-table'"
+    },
+    "a": [
+     "nuOpenContextMenu"
+    ]
+   },
+   {
+    "g": "msg",
+    "n": "nuContextMenuClose",
+    "s": "nuContextMenuClose()",
+    "d": "Closes an open context menu.",
+    "o": "nb",
+    "e": "nuContextMenuClose();",
+    "p": {},
+    "a": [
+     "nuOpenContextMenu"
+    ]
+   },
+   {
+    "g": "msg",
     "n": "nuSafeHtml",
     "s": "nuSafeHtml(html)",
     "d": "The HTML without script: script-like elements, on… attributes and javascript: links removed – what nuSetTitle, nuSetLabelText and nuMessage show. Use it before putting record values into the page yourself.",
@@ -7629,11 +7675,11 @@
     "g": "util",
     "n": "nuCurrentDateTime",
     "s": "nuCurrentDateTime(fmt)",
-    "d": "Now as yyyy-mm-dd hh:nn:ss or in a format.",
+    "d": "Now as yyyy-mm-dd hh:nn:ss, or in a date format such as 'dd.mm.yyyy hh:nn' (as nuBuilder Forte; 'D|…' works too). To fill a field: nuSetValue('field', nuCurrentDateTime()) – it marks the record as edited and fires change.",
     "r": "string",
     "o": "nb",
-    "e": "console.log(nuCurrentDateTime());",
-    "x": "'2026-10-24 09:27:13'",
+    "e": "console.log(nuCurrentDateTime(), nuCurrentDateTime('dd.mm.yyyy hh:nn'));\nnuSetValue('ord_done_at', nuCurrentDateTime());",
+    "x": "'2026-10-24 09:27:13' '24.10.2026 09:27'",
     "p": {
      "fmt": "format (default yyyy-mm-dd hh:nn:ss)"
     }

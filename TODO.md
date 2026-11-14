@@ -266,6 +266,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Dashboard table widgets** (0.8.682): column nu_record_id + link to a form → rows open the record; option "Open in a new tab".
 
 ## Code editors and libraries
+- [ ] **Code search and replace** (0.8.1172–0.8.1176) – please search a real application: places, filters, project filter, line links
+      into design mode / procedures / Global code, export; "Functions nuBuilder Next lacks" on Forte code (false hits?); Replace on a copy
+      first: preview, ticked lines only, a form with an open draft is skipped, Undo of a batch.
 - [ ] **AI providers** (0.8.1099) – tested only against a stand-in service (dev/tests/fakeai.py). Please verify with real keys: Anthropic
       (model list, a report and a form with the correction round), an OpenAI-compatible service (OpenAI itself uses max_completion_tokens;
       a local Ollama with "Allow private addresses"), Gemini; a long request against the live server's request time limit (if the host
@@ -337,6 +340,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
 
 ## nuBuilder Forte compatibility
+- [ ] **Context menus of form code and large text fields** (0.8.1170 / 0.8.1177) – a form that builds a menu with `nuOpenContextMenu`
+      (icons, sub-menus, actions); a text area enlarged by its corner lies above its neighbours while in use (Chrome, fixed layout).
 - [ ] **File manager for nuBuilder Forte** (0.8.1055–0.8.1058, one file `tinyfilemanager.php`, built by `dev/forte/build_nufiles_forte.py`) – please verify in a real Forte installation: sign-in from Forte's File Manager entry, `$nuConfigFileMangerUsers`, the Uploads folder, the code share with password, `_nufiles_data` blocked on the web server (nginx: deny it or set `data_dir`). Untested: SQL Server (log table), chmod on the host
 - [ ] **List cells as div inside the td, sub-form cell ids, nuAddRow, label positions, canvas growth** (0.8.965) – please verify on a real application: row colouring by `div[id^='nucell_…']`, lists in phone view, column widths by dragging, design mode of lists; code that selects sub-form cells by id; Add row buttons; forms whose code moves labels.
 - [ ] **Second Forte database compared form by form** (0.8.965–0.8.978) – please verify on the live application: framed lists with

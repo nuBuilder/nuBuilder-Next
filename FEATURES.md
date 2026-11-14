@@ -47,6 +47,9 @@ page) for how to use it.
 - **Forms with AI** – describe a form (or a small app of several forms), paste the prompt into any AI chat and the answer
   back; it is checked before anything is created and lands as a draft. A context file (functions, examples, table structure –
   no data) can be attached to the chat.
+- **Code search** – one page searches the code of every form, event, procedure, SQL query, e-mail template, global code and
+  custom page (text, words, regular expressions; filters by language, place, form group, project), jumps to the line in its
+  editor, exports the hits and can replace in ticked lines – checked again before saving, with history and undo.
 - **Code where you need it** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with
   syntax check, formatting, search / replace and an Insert menu with every documented function.
 - **Reports and queries** – a visual report designer (text, HTML or Markdown fields), an SQL builder, PDF output.
@@ -101,6 +104,8 @@ page) for how to use it.
   saved in nuBuilder Next stay usable in nuBuilder Forte.
 - **Compatibility check** – scans your application's code and shows which functions are supported (on SQL Server also the SQL
   it does not understand).
+- **Context menus of form code** (`nuOpenContextMenu`, `ctxmenu`) work as in nuBuilder Forte; a quick search lists the
+  places that call functions nuBuilder Next does not have.
 - **jQuery 4 ready** – form pages run on jQuery 3.7 or 4.0, with jQuery Migrate to find upgrade issues.
 - **File manager for nuBuilder Forte** – the file manager is also available as a single file that replaces Tiny File
   Manager in a nuBuilder Forte installation, with its own light / dark switch.

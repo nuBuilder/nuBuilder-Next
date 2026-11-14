@@ -79,6 +79,7 @@ $routes = [
 	'aiask'       => ['json' => true],   // "Ask AI" of the AI dialogues (pages/nuaiask.php)
 	'webhooks'    => [],   // webhooks (0.8.715, pages/nuwebhooks.php)
 	'helppages'   => [],   // user help pages: list / editor (0.8.1023, pages/nuhelppages.php)
+	'codesearch'  => [],   // code search (0.8.1172, pages/nucodesearch.php)
 	'projects'    => [],   // projects: list, project page, export / import (0.8.1035, pages/nuprojects.php)
 	'userhelp'    => [],   // user help pages: reader + JSON for the side panel (0.8.1023, pages/nuuserhelp.php)
 	'userhelpimg' => [],   // pictures of the user help pages (0.8.1024, pages/nuuserhelpimg.php)

@@ -198,6 +198,11 @@
      "id": "projects",
      "title": "Projects",
      "file": "04-10-projects.htm"
+    },
+    {
+     "id": "code-search",
+     "title": "Code search",
+     "file": "04-11-code-search.htm"
     }
    ]
   },

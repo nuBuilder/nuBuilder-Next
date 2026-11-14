@@ -22,7 +22,7 @@ final class NuHelpLink
 		'translations' => 'translations', 'files' => 'files', 'filemanager' => 'file-manager', 'cloner' => 'cloner', 'appcloner' => 'appcloner',
 		'branding' => 'branding', 'brand' => 'branding', 'themes' => 'themes', 'settings' => 'settings', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'jquery' => 'jquery',
 		'setupwizard' => 'install', 'sample' => 'sample-data', 'inspect' => 'inspect', 'selftest' => 'selftest', 'dbreset' => 'db-reset', 'compat' => 'compat',
-		'update' => 'updating-p', 'apiclients' => 'api', 'webhooks' => 'webhooks', 'aiproviders' => 'ai-providers', 'helppages' => 'user-help', 'userhelp' => 'user-help', 'projects' => 'projects', 'apiplayground' => 'api-playground', 'debug' => 'debugging-p',
+		'update' => 'updating-p', 'apiclients' => 'api', 'webhooks' => 'webhooks', 'aiproviders' => 'ai-providers', 'helppages' => 'user-help', 'userhelp' => 'user-help', 'projects' => 'projects', 'codesearch' => 'code-search', 'apiplayground' => 'api-playground', 'debug' => 'debugging-p',
 		'password' => 'password', 'account' => 'password', 'tutorial' => 'tutorial-doc', 'listview' => 'list-views',
 	];
 

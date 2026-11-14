@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 33;
+	public const VERSION = 34;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -193,6 +193,12 @@ final class NuSchema
 				['max_tokens', 'int'], ['timeout', 'int'], ['system_text', 'longtext'], ['params', 'longtext'], ['active', 'text', '1'], ['access', 'text', '10'], ['levels', 'longtext'],
 				['password', 'text', '255'], ['pw_salt', 'text', '64'], ['month_limit', 'int'], ['updated_at', 'datetime'], ['updated_by', 'text', '100']],
 			'index' => [],
+		],
+		'zzzzsys_nunext_code_replace' => [                        // search and replace of the code search (0.8.1174, core/nucodesearch.php): one row per run, undo data
+			'pk' => 'zzzzsys_nunext_code_replace_id',
+			'cols' => [['created_at', 'datetime'], ['login', 'text', '50'], ['search', 'text', '1000'], ['replace_with', 'text', '1000'], ['part_count', 'int'], ['line_count', 'int'],
+				['changes', 'longtext'], ['undone_at', 'datetime'], ['undone_by', 'text', '50']],
+			'index' => ['created_at'],
 		],
 		'zzzzsys_nunext_opened' => [                              // "Last opened" of the code lists (0.8.1117, core/nuopened.php): one row per person and object
 			'pk' => 'zzzzsys_nunext_opened_id',

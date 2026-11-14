@@ -840,3 +840,14 @@ html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
 }
 /* object menu on phones (0.8.1160): a long press on a label opens the menu, not a text selection with the browser's search sheet */
 @media (pointer: coarse) { #nuEditForm label[id^="label_"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } }
+
+/* context menus of form code (nucompat.js window.ctxmenu / nuOpenContextMenu – nuBuilder Forte's ctxmenu) */
+.nuCtxMenu { min-width: 12rem; margin: 0; }
+.nuCtxMenu .nuCtxHead { font-weight: 600; color: var(--bs-body-color); padding: 3px 11px; white-space: nowrap; }
+.nuCtxMenu .dropdown-item > .nuCtxText { white-space: nowrap; }
+.nuCtxMenu .nuCtxLabel { padding-left: 8px; white-space: nowrap; }
+.nuCtxMenu .dropdown-item .fa, .nuCtxMenu .dropdown-item [class*="fa-"] { width: 1.1em; text-align: center; }
+.nuCtxMenu .nuCtxIcon { width: 18px; height: 18px; object-fit: contain; margin-right: 6px; }
+
+/* a textarea in use lies above the other objects of the fixed layout (0.8.1177, nucompat.js) */
+.nuAbsoluteCanvas .nuAbsRaised { z-index: 50 !important; }

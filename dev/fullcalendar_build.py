@@ -21,6 +21,8 @@ for fn in ('function injectStyles(styleText) {', 'function ensureElHasStyles(el)
 tmp = out / '_fc.js'
 tmp.write_text(js, encoding='utf-8')
 npx = shutil.which('npx')
+if npx is None:
+    sys.exit('npx not found (Node.js is needed to minify)')
 res = subprocess.run([npx, '--yes', 'terser@5', str(tmp), '-c', '-m', '--comments', '/^!/'], capture_output=True, text=True, check=True)
 (out / 'fullcalendar.min.js').write_text(res.stdout, encoding='utf-8')
 tmp.unlink()

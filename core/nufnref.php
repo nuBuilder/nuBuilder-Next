@@ -93,8 +93,11 @@ final class NuFnRef
 	}
 
 	/** HTML of one reference (search field, A–Z index, one block per group). */
+	private static bool $search = false;
+
 	public static function render(string $lang): string
 	{
+		self::$search = NuCodeSearch::allowed();
 		$ref = self::load()[$lang] ?? null;
 		if (!is_array($ref) || empty($ref['items'])) return '';
 		$items = $ref['items'];
@@ -184,7 +187,10 @@ final class NuFnRef
 		if ($kind === 'method' && !$next) $badge .= '<span class="badge nuFnKind">method</span>';
 		$h = '<article class="nuFn" id="' . h(self::anchor($lang, $n)) . '" data-nu-fn="' . h(strtolower($n)) . '">'
 			. '<header class="nuFnHead"><h5 class="nuFnName">' . h($n) . '</h5>' . $badge
-			. '<a class="nuFnLink" href="#' . h(self::anchor($lang, $n)) . '" title="Link" aria-label="Link to ' . h($n) . '"><i class="bi bi-link-45deg"></i></a></header>'
+			. '<a class="nuFnLink" href="#' . h(self::anchor($lang, $n)) . '" title="Link" aria-label="Link to ' . h($n) . '"><i class="bi bi-link-45deg"></i></a>'
+			// where the application calls it (0.8.1172, the code search) – only for those who may search
+			. ($kind === 'fn' && self::$search ? '<a class="nuFnUsed" href="' . h(nu_url('codesearch', ['q' => $n, 'w' => '1', 'go' => '1', 'drafts' => '1', 'pages' => '1', 'lang' => [$lang]])) . '" target="_blank" rel="noopener" title="Where used" aria-label="Where ' . h($n) . ' is used"><i class="bi bi-search"></i></a>' : '')
+			. '</header>'
 			. '<pre class="nuFnSig"><code>' . self::sigHtml((string)$it['s'], $n) . '</code></pre>'
 			. '<dl class="nuFnSpec">';
 		$params = self::params((string)$it['s']);

@@ -172,7 +172,8 @@
 	api('nuCurrentDateTime', function (fmt) {
 		var d = new Date();
 		var s = d.getFullYear() + '-' + nuPad2(d.getMonth() + 1) + '-' + nuPad2(d.getDate()) + ' ' + nuPad2(d.getHours()) + ':' + nuPad2(d.getMinutes()) + ':' + nuPad2(d.getSeconds());
-		return fmt ? nuFORM.addFormatting(s, fmt) : s;
+		// as nuBuilder Forte: a format without the type prefix is a date format ('dd.mm.yyyy hh:nn' = 'D|dd.mm.yyyy hh:nn')
+		return fmt === undefined || fmt === null || fmt === '' ? s : nuFORM.addFormatting(s, /^[A-Z]\|/.test(fmt) ? fmt : 'D|' + fmt);
 	});
 	/** nuBuilder Forte's breadcrumb list properties (0.8.960): browse_rows = the page's rows as [pk, value 0, value 1 …] (unformatted, 0.8.965), browse_columns
 	 *  = {title, display, align, width} per column, browse_filtered_rows = the number of records of the list. Read from the drawn table. */
@@ -5339,6 +5340,7 @@
 			// the form's table in phpMyAdmin / Adminer (0.8.923; Ctrl+Shift+E stays the same without a menu entry of its own)
 			['', 'db_table', 'bi-table', 1, T.pma && !!N.form.table, function () { nuVendorLogin('DB', N.form.table); }],
 			['', 'form_access', 'bi-people', 1, !!T.formaccess && typeof window.nuFormAccessOpen === 'function', function () { window.nuFormAccessOpen(N.form.id); }],   // 0.8.683
+			['', 'code_search', 'bi-search', 1, !!T.codesearch, function () { openTab(T.codesearch); }],   // 0.8.1172: the code search with this form as filter
 			['f', 'form_properties', 'bi-gear', 0, T.design, function () { openTab(builderUrl('form')); }],
 			['o', 'object_list', 'bi-list-ul', 0, T.design, function () { openTab(builderUrl('objects')); }],
 			['s', 'save', 'bi-floppy', 0, edit && has('nuSaveButton'), function () { if (document.activeElement) $(document.activeElement).trigger('blur'); nuSaveAction(); }],

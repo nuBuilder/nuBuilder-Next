@@ -2488,3 +2488,47 @@ html.nuWarnOff-scode #scodeWarn, html.nuWarnOff-cfg #cfgWarn, html.nuWarnOff-ins
 	.nuCalHost .fc .fc-toolbar { flex-direction: column; align-items: stretch; }
 	.nuCalHost .fc .fc-toolbar-chunk { display: flex; justify-content: center; }
 }
+
+/* code search (0.8.1172, pages/nucodesearch.php) */
+.csForm .csQ { flex: 1 1 22rem; max-width: 46rem; }
+.csWithout .form-control { width: 12rem; }
+.csQuickSel { min-width: 13rem; flex: 0 1 15rem; }
+.csSavedMenu { min-width: 16rem; max-height: 60vh; overflow-y: auto; }
+.csSaveName { max-width: 22rem; }
+.csGroup > summary { cursor: pointer; list-style: none; }
+.csGroup > summary::-webkit-details-marker { display: none; }
+.csGroup > summary::before { content: "\F285"; font-family: "bootstrap-icons"; font-size: .75rem; transition: transform .15s; color: var(--bs-secondary-color); }
+.csGroup[open] > summary::before { transform: rotate(90deg); }
+.csGroupSub { max-width: 40ch; }
+.csPart + .csPart { border-top: 1px solid var(--bs-border-color-translucent); }
+.csPartHead { background: var(--bs-tertiary-bg); font-size: .875rem; }
+.csPartLabel { font-family: var(--bs-font-monospace); font-size: .82rem; overflow-wrap: anywhere; }
+.csCode { font-family: var(--bs-font-monospace); font-size: .8125rem; line-height: 1.5; overflow-x: auto; padding: .25rem 0; }
+.csLine { display: flex; min-width: max-content; }
+.csLine.csHit { background: color-mix(in srgb, var(--bs-warning) 10%, transparent); }
+.csNo { flex: 0 0 3.75rem; text-align: right; padding-right: .75rem; color: var(--bs-secondary-color); user-select: none; text-decoration: none; }
+a.csNo { color: var(--bs-link-color); font-weight: 600; }
+a.csNo:hover { text-decoration: underline; }
+.csText { white-space: pre; color: var(--bs-body-color); padding-right: 1rem; font-size: inherit; }
+.csText mark { padding: 0 1px; border-radius: 2px; background: #ffe066; color: #212529; }
+[data-bs-theme="dark"] .csText mark { background: #b8860b; color: #fff; }
+.csGap { padding-left: 3.75rem; color: var(--bs-secondary-color); line-height: 1.1; }
+/* a code search link opened an editor at this line (assets/js/nu/nucodetools.js jumpTo) */
+.nuCodeHitLine { background: color-mix(in srgb, var(--bs-warning) 30%, transparent) !important; }
+@media (max-width: 575.98px) {
+	.csQuickSel { flex: 1 1 100%; }
+	.csWithout { flex: 1 1 100%; }
+	.csWithout .form-control { flex: 1; width: auto; }
+	.csNo { flex-basis: 2.75rem; padding-right: .5rem; }
+}
+.nuFnUsed { color: var(--bs-secondary-color); opacity: 0; transition: opacity .15s; margin-inline-start: .35rem; }
+.nuFn:hover .nuFnUsed, .nuFnUsed:focus { opacity: 1; }
+/* code search: search and replace (0.8.1174) */
+.csRpInput { width: 20rem; max-width: 100%; }
+.csRpTick { flex: 0 0 auto; margin: .2rem .5rem 0 0; }
+.csRpTickGap { flex: 0 0 1.5rem; }
+.csHit:has(.csRpTick:not(:checked)) .csText mark { background: transparent; text-decoration: line-through; color: var(--bs-secondary-color); }
+.csHit:has(.csRpTick:not(:checked)) + .csNewLine { display: none; }
+.csNewLine { background: color-mix(in srgb, var(--bs-success) 12%, transparent); }
+.csNewLine .csNo { color: var(--bs-success-text-emphasis); }
+.csRpNo { font-weight: 400; }
