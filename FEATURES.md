@@ -79,6 +79,7 @@ page) for how to use it.
   favourites as shortcuts, a faster start and a clear page when offline.
 - **Procedures by cron** – one command runs a procedure from the server's cron, as a chosen user, with a log entry and an
   e-mail when it fails.
+- **Suggestions while typing** – a text input offers a list (fixed, or the rows of a query with the typed text as a bound value) and a choice can fill other fields too; `nuNextAutocomplete()` in code, and a stand-in for jQuery UI's `autocomplete`.
 - **Projects** – group the forms, procedures, reports, tables and other parts of one piece of work, with "Suggest related",
   Markdown notes, to-dos with notifications, lists narrowed to the project, and export / import as one package.
 - **Cloners** – copy a single form or the whole application.
@@ -93,7 +94,8 @@ page) for how to use it.
 - **Security** – login rate limit, password policy with a leaked-password check, sign-in only from allowed networks, field
   access per user group, and a built-in Security check.
 - **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes (older entries can be deleted).
-- **Start pages per access level** – users get their own tiles and can personalise them.
+- **Tile pages per access level** – users get their own tiles and can personalise them; or, per access level, the Home form opens
+  after sign-in as in nuBuilder Forte – set on the access level's tab *Start page*, with a preview of the tiles.
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
   database from a backup (MySQL / MariaDB); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
@@ -111,6 +113,9 @@ page) for how to use it.
   it does not understand).
 - **Context menus of form code** (`nuOpenContextMenu`, `ctxmenu`) work as in nuBuilder Forte; a quick search lists the
   places that call functions nuBuilder Next does not have.
+- **Code of older nuBuilder Forte versions keeps running** – lookups whose list lacks the key, the earlier names of the
+  upload procedures, self-built Uppy uploads, `$phpid` and `nuSubformObject('')` in events, includes of Forte's core files,
+  scripts that place lookup parts or select the tabs by id, `nuOnPropertySet`, records opened under an id the table does not have.
 - **jQuery 4 ready** – form pages run on jQuery 3.7 or 4.0, with jQuery Migrate to find upgrade issues.
 - **File manager for nuBuilder Forte** – the file manager is also available as a single file that replaces Tiny File
   Manager in a nuBuilder Forte installation, with its own light / dark switch.

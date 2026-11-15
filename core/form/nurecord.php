@@ -131,7 +131,11 @@ final class NuRecord
 
 		if ($meta->table() === '' || $meta->primaryKey() === '') return self::fail(t('form_err_no_table'));
 		$oldRow = $isNew ? [] : (self::load($meta, $recordId) ?? null);
-		if ($oldRow === null || (!$isNew && !self::visible($meta, $recordId))) return self::fail(t('record_not_found'));
+		// 0.8.1211, as nuBuilder Forte: a record id that is not in the table – the form was opened empty under that id; the UPDATE of
+		// the main record changes nothing, the sub-form rows are saved with this id as their foreign key
+		$ghost = !$isNew && $oldRow === null;
+		if ($ghost) $oldRow = [];
+		if (!$isNew && !$ghost && !self::visible($meta, $recordId)) return self::fail(t('record_not_found'));
 
 		$table   = NuDB::ident($meta->table());
 		$pk      = NuDB::ident($meta->primaryKey());
@@ -139,7 +143,7 @@ final class NuRecord
 		if (!$columns) return self::fail(t('form_err_table_missing', $meta->table()));
 
 		// concurrent edits (0.8.401): fields someone else changed since the form was opened – before Before Save runs
-		$checkCc = !$isNew && empty($p['cc_force']) && is_array($p['cc'] ?? null);
+		$checkCc = !$isNew && !$ghost && empty($p['cc_force']) && is_array($p['cc'] ?? null);
 		if ($checkCc && ($c = NuConflict::check($meta, $recordId, $p, false))) return ['ok' => false, 'conflict' => $c];
 
 		NuPhp::reset();
@@ -183,7 +187,7 @@ final class NuRecord
 		// clone (0.8.480): the source record, when the user may see it – for the fields he cannot write
 		$cloneFrom = $isNew && !empty($p['clone']) ? trim((string)($p['clone_from'] ?? '')) : '';
 		$cloneSrc = $cloneFrom !== '' && NuFieldAccess::rulesOfForm($meta->id) && self::visible($meta, $cloneFrom) ? self::load($meta, $cloneFrom) : null;
-		$newId = $db->transaction(function (NuDB $db) use ($meta, $isNew, $recordId, $values, $edited, $columns, $table, $pk, $posted, $oldRow, $audit, &$written, $checkCc, $p, $cloneSrc) {
+		$newId = $db->transaction(function (NuDB $db) use ($meta, $isNew, $ghost, $recordId, $values, $edited, $columns, $table, $pk, $posted, $oldRow, $audit, &$written, $checkCc, $p, $cloneSrc) {
 			if ($checkCc && ($c = NuConflict::check($meta, $recordId, $p, true))) throw new NuConflictFound($c);   // again, with the rows locked
 			$row = [];
 			foreach ($meta->objects as $o) {
@@ -232,7 +236,7 @@ final class NuRecord
 			$nl = self::nulogColumn($columns, $meta->table());
 			if ($nl !== null) unset($row[$nl]);
 			$written = $row;
-			if ($nl !== null && ($isNew || $row !== [])) $row[$nl] = $isNew ? self::nulogAdded() : self::nulogEdited($db->value("SELECT $nl FROM $table WHERE $pk = ?", [$recordId]));
+			if ($nl !== null && !$ghost && ($isNew || $row !== [])) $row[$nl] = $isNew ? self::nulogAdded() : self::nulogEdited($db->value("SELECT $nl FROM $table WHERE $pk = ?", [$recordId]));
 
 			if ($isNew) {
 				$pkCol = self::column($columns, $meta->primaryKey());
@@ -242,14 +246,14 @@ final class NuRecord
 				NuAudit::record('insert', $meta->table(), (string)$id, [], $written, array_filter($audit));
 			} else {
 				$id = $recordId;
-				if ($row) $db->update($table, $row, $pk, $id);
-				NuAudit::record('update', $meta->table(), (string)$id, $oldRow, $written, array_filter($audit));
+				if ($row && !$ghost) $db->update($table, $row, $pk, $id);
+				if (!$ghost) NuAudit::record('update', $meta->table(), (string)$id, $oldRow, $written, array_filter($audit));
 			}
 
 			foreach ($posted as $sfId => $sf) self::saveSubform($meta, (string)$sfId, is_array($sf) ? $sf : [], $id, $audit);
 			// webhooks (0.8.715): queued in this transaction (gone again with a rollback), sent once the page has answered
 			$whEvent = $isNew ? 'insert' : 'update';
-			if (NuWebhook::of($meta->id, $whEvent)) NuWebhook::queue($meta->id, $meta->code(), $meta->table(), $whEvent, (string)$id, (array)$db->one("SELECT * FROM $table WHERE $pk = ?", [$id]), $isNew ? [] : (array)$oldRow);
+			if (!$ghost && NuWebhook::of($meta->id, $whEvent)) NuWebhook::queue($meta->id, $meta->code(), $meta->table(), $whEvent, (string)$id, (array)$db->one("SELECT * FROM $table WHERE $pk = ?", [$id]), $isNew ? [] : (array)$oldRow);
 			return $id;
 		});
 		} catch (NuConflictFound $cf) {

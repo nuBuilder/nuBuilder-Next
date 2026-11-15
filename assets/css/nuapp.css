@@ -2611,3 +2611,12 @@ html.nuFiOpen .nuStickyBar, html.nuFiOpen #nuActionHolder { z-index: 1025 !impor
 	html:not(.nuPhoneCards) .nu-table > tbody > tr[data-href]:is(:focus-visible, [data-nu-kb]:focus) > *,
 	html:not(.nuPhoneCards) .nuBrowseTable > tbody > tr.nuBrowseRow[data-nu-kb]:focus > * { --bs-table-bg-state: var(--nu-row-sel); }
 }
+
+/* access level form, tab Start page (0.8.1213): read-only preview of the level's tile page */
+.accPv .accPvGroup + .accPvGroup { margin-top: 1rem; }
+.accPv .accPvTitle { margin: 0 0 .4rem; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-secondary-color); }
+.accPv .accPvTiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .5rem; }
+.accPv .accPvTile { display: flex; align-items: center; gap: .55rem; min-width: 0; padding: .45rem .65rem; border: 1px solid var(--bs-border-color); border-radius: .55rem; background: var(--bs-tertiary-bg); font-size: .875rem; }
+.accPv .accPvTile > .bi { flex: 0 0 auto; color: var(--bs-primary); }
+.accPv .accPvTile > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.accPv .accPvTile.accPvCond { border-style: dashed; }

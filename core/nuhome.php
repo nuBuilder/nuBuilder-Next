@@ -1173,6 +1173,35 @@ final class NuHome
 			'mine' => false, 'own' => $own, 'source' => $own && $acc !== self::ALL_LEVELS ? 'level' : 'default']];
 	}
 
+	/**
+	 * The tile page users of an access level get, for the access level form's tab Start page (0.8.1213) – read only:
+	 * ['source' => level | default | auto, 'name', 'fav' => [tile …], 'groups' => [['title', 'tiles' => [['label', 'icon', 'cond' => bool]]]], 'hidden' => n].
+	 * Conditions are not applied (the preview shows every tile, marked when it has one).
+	 */
+	public static function levelPreview(string $access): array
+	{
+		$keepFor = self::$for; $keepCur = self::$current;
+		try {
+			self::forLevel($access, true);
+			$cur = self::current();
+			$l = self::layout();
+			$tile = static function (string $k) use ($l): ?array {
+				$t = self::resolve($k, $l);
+				if (!$t) return null;
+				return ['label' => trim(strip_tags((string)$t['label'])), 'icon' => (string)$t['icon'], 'cond' => array_filter((array)($t['cond'] ?? [])) !== []];
+			};
+			$groups = [];
+			foreach ($l['groups'] as $g) {
+				$tiles = array_values(array_filter(array_map($tile, $g['tiles'])));
+				if ($tiles) $groups[] = ['title' => trim((string)$g['title']), 'tiles' => $tiles, 'cond' => array_filter((array)($g['cond'] ?? [])) !== []];
+			}
+			return ['source' => (string)($cur['source'] ?? 'auto'), 'name' => (string)($cur['name'] ?? ''), 'fav' => array_values(array_filter(array_map($tile, (array)$l['fav']))),
+				'groups' => $groups, 'hidden' => count($l['hidden'])];
+		} finally {
+			self::$for = $keepFor; self::$current = $keepCur;
+		}
+	}
+
 	/** Only own tiles on a user start page (keys of the catalogue, pinned pages and stale keys are dropped). */
 	private static function userOnly(array $l): array
 	{
@@ -1477,6 +1506,54 @@ final class NuHome
 		if (str_starts_with($key, 'c_')) return 'own';
 		if (isset(self::catalog()[$key])) return 'builtin';
 		return isset(self::subTiles()[$key]) ? 'pinned' : 'own';
+	}
+
+	// ------------------------------------------------------------------ start page per access level (0.8.1203)
+
+	/** Setting row: {levels: {access id: 'form'}} – access levels whose users open their Home form (sal_zzzzsys_form_id) instead of the tile page. */
+	public const START_SETTING = 'start_page';
+
+	/** 'form' = the access level's Home form opens after sign-in and with Home; 'tiles' (default) = the tile page. */
+	public static function startMode(string $access): string
+	{
+		if ($access === '') return 'tiles';
+		$lv = self::startLevels();
+		return ($lv[$access] ?? '') === 'form' ? 'form' : 'tiles';
+	}
+
+	/** Stores the start page of an access level (only 'form' is kept; 'tiles' removes the entry). */
+	public static function setStartMode(string $access, string $mode): void
+	{
+		if ($access === '') return;
+		NuSchema::ensure();
+		$lv = self::startLevels();
+		if ($mode === 'form') $lv[$access] = 'form'; else unset($lv[$access]);
+		nu_setting_save(self::START_SETTING, ['setting_value' => json_encode(['levels' => (object)$lv])]);
+	}
+
+	/** access id => 'form' of the setting row start_page. */
+	public static function startLevels(): array
+	{
+		try { $v = nu_setting_value(self::START_SETTING); } catch (Throwable) { return []; }
+		$d = $v === null ? null : json_decode($v, true);
+		$lv = is_array($d) && is_array($d['levels'] ?? null) ? $d['levels'] : [];
+		return array_filter($lv, static fn($m, $k) => is_string($k) && $m === 'form', ARRAY_FILTER_USE_BOTH);
+	}
+
+	/**
+	 * The form a signed-in user (not the globeadmin) opens instead of the tile page: the Home form of his main access level when its
+	 * start page is "Home form", the form exists (no sub-form, not nuhome) and the user may open it; null = the tile page.
+	 */
+	public static function startForm(?array $u): ?string
+	{
+		if (!$u || !empty($u['globeadmin'])) return null;
+		$acc = (string)($u['access_id'] ?? '');
+		if (self::startMode($acc) !== 'form') return null;
+		$fid = (string)(nu_db()->value('SELECT sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$acc]) ?? '');
+		if ($fid === '' || $fid === 'nuhome') return null;
+		$f = nu_forms()[$fid] ?? null;
+		if (!$f || $f['type'] === 'subform') return null;
+		return NuAcl::can($fid, 'view') ? $fid : null;
 	}
 
 	/** Launch form for the globeadmin from $nuConfigGlobeadminHome (id or code); null = this start page ('' / nuhome / unknown form). */

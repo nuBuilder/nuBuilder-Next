@@ -67,14 +67,15 @@ final class NuUserHome
 		return true;
 	}
 
-	/** Is nuuserhome the home form of one of the user's access levels (main or additional)? */
-	public static function isHomeOf(array $u): bool
+	/** Is $form (default nuuserhome) the home form of one of the user's access levels (main or additional)? */
+	public static function isHomeOf(array $u, string $form = self::FORM): bool
 	{
+		if ($form === '') return false;
 		$lv = NuUserAccess::levels($u);
 		if (!$lv) return false;
 		$qm = implode(', ', array_fill(0, count($lv), '?'));
 		try {
-			return (int)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_access WHERE sal_zzzzsys_form_id = ? AND zzzzsys_access_id IN ($qm)", array_merge([self::FORM], $lv)) > 0;
+			return (int)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_access WHERE sal_zzzzsys_form_id = ? AND zzzzsys_access_id IN ($qm)", array_merge([$form], $lv)) > 0;
 		} catch (Throwable) {
 			return false;
 		}

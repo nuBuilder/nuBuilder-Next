@@ -52,6 +52,12 @@
    "reason": "false positive (0.8.1167 gate): the 'proof' ZAP found is the sign-in redirect of a request whose session the scan had ended – its Location header carries the requested address URL-encoded as next=…, so the digits of the payload {{print \"2522\" \"4475\"}} show up in %2522… escapes. Nothing is evaluated: ps is only looked up as a property scope key (NuProps: 16 hex characters, anything else is ignored) and is never put into a template; with a session the page answers a new scope key and the payload appears nowhere"
   },
   {
+   "id": "90035",
+   "url": "[?&]p=forms(&|$)",
+   "param": ".*",
+   "reason": "false positive (0.8.1216 gate): the forms list puts the address of the page, URL-encoded, into its sort and pager links (nu_url) – the payload {{print \"2522\" \"2320\"}} becomes %2B%25222320… there, which contains the digits ZAP looks for. Nothing is evaluated: the list parameters are matched against fixed values and only ever written escaped (checked: the page holds 25222320 only inside those %-escapes)"
+  },
+  {
    "id": "40012",
    "url": "[?&]p=form(&|$)",
    "param": "^q$",

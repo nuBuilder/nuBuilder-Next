@@ -150,11 +150,14 @@ if ($mode === 'edit') {
 			error_log('nuBuilder Next load ' . $meta->code() . ': ' . $e->getMessage());
 			nu_fatal(t('form_err_load'), $u['globeadmin'] ? $e->getMessage() : '', true);
 		}
-		if (!$row || !NuRecord::visible($meta, $r)) {        // Security check: "Records only through the form's list"
+		// 0.8.1211, as nuBuilder Forte: an id that is not in the table opens the form empty under that id (forms that only carry
+		// sub-forms are opened with the parent's id) – its sub-forms list the rows of this id, a save writes no main record
+		$ghost = !$row;
+		if (!$ghost && !NuRecord::visible($meta, $r)) {      // Security check: "Records only through the form's list"
 			http_response_code(404);
 			nu_fatal(t('record_not_found'), '', true);
 		}
-		if (!$design) NuRecord::nulogViewed($meta, $r);         // <table>_nulog "viewed", as nuBuilder Forte (0.8.965)
+		if (!$design && !$ghost) NuRecord::nulogViewed($meta, $r);   // <table>_nulog "viewed", as nuBuilder Forte (0.8.965)
 	}
 	$dbRow = $row;                                          // as stored – for the check of concurrent edits (0.8.401)
 	$hash = NuHash::forForm($meta, $isNew ? '-1' : $r, $row, $props);
@@ -173,7 +176,8 @@ if ($mode === 'edit') {
 	$render = new NuRender($meta, $isNew ? '-1' : $r, $row, $hash, $layout);
 	$render->setReadonly(!$isNew && !$rights['save']);
 	$body  = $errors ? '' : $render->tabs();
-	$title = $meta->breadcrumb($isNew, NuFieldAccess::scrubHash($meta, $hash));   // no withheld / masked values in the title (0.8.480)
+	// no withheld / masked values in the title (0.8.480); a record Before Edit refused shows only the form's name (0.8.1211)
+	$title = $errors ? $meta->description() : $meta->breadcrumb($isNew, NuFieldAccess::scrubHash($meta, $hash));
 	if ($meta->hasBrowse()) $breadcrumbs[] = ['title' => $meta->description(), 'url' => nu_url('form', ['f' => $meta->id])];
 	$breadcrumbs[] = ['title' => $title, 'url' => ''];
 }
@@ -200,6 +204,21 @@ $selfTrail = array_slice($breadcrumbs, 1);
 $selfTrail[count($selfTrail) - 1]['url'] = NuTrail::currentUrl();
 $bt = $bare ? ['child' => '', 'same' => ''] : ['child' => NuTrail::store($selfTrail), 'same' => NuTrail::store(array_slice($selfTrail, 0, -1))];
 
+// a form opens instead of the tile page (start page "Home form" of the access level / $nuConfigGlobeadminHome, 0.8.1206): the first
+// breadcrumb is that form, as in nuBuilder Forte – "Home" would only lead back to it. On the form itself (or below it) no extra crumb.
+if (!$bare && $u) {
+	$homeForm = !empty($u['globeadmin']) ? NuHome::globeadminForm() : NuHome::startForm($u);
+	if ($homeForm !== null) {
+		$first = $breadcrumbs[1]['url'] ?? '';
+		parse_str((string)parse_url($first, PHP_URL_QUERY), $fq);
+		$fromHome = $trail !== null && (string)($fq['f'] ?? '') === $homeForm;
+		if (($homeForm === (string)$meta->id && $trail === null) || $fromHome) array_shift($breadcrumbs);
+		else {
+			$hf = nu_forms()[$homeForm] ?? null;
+			$breadcrumbs[0] = ['title' => $hf ? ($hf['description'] !== '' ? $hf['description'] : $hf['code']) : t('nav_home'), 'url' => nu_url('form', ['f' => $homeForm])];
+		}
+	}
+}
 // iframes and lookup popups have their own trail, starting with their form (nuGetBreadcrumb(0) = reload)
 if ($bare) $breadcrumbs = array_values(array_slice($breadcrumbs, 1));
 
@@ -651,6 +670,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. ($design ? '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>' : '')   // design mode: its code windows; else loaded on first use (review B3)
 	. '<script src="' . nu_asset('assets/js/nu/nuruntime.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nu/nucompat.js') . '"></script>'
+	. ($mode === 'edit' ? '<script src="' . nu_asset('assets/js/nu/nusuggest.js') . '"></script>' : '')   // suggestions while typing (0.8.1212)
 	. ($mode === 'browse' ? '<script src="' . nu_asset('assets/js/nu/nuadvsearch.js') . '"></script>' : '')
 	. ($mode === 'browse' && $rights['print'] && empty($printMode) ? '<script src="' . nu_asset('assets/js/nu/nupivot.js') . '" data-apex="' . h(nu_asset(NU_APEXCHARTS . '/apexcharts.min.js')) . '"></script>' : '')   // pivot (0.8.1151)
 	. ($calList || $calObjects ? NuCalendar::scriptTag() : '')   // calendars (0.8.1165)

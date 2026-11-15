@@ -2081,6 +2081,12 @@
 		var mb = missingBox(o);
 		if (mb) panel.appendChild(mb);
 		var save = function (key, reload) { return function (v) { var f = {}; f[key] = v; saveObj(o, f, reload); }; };
+		var sgOn = type === 'input' && ['', 'text', 'search', 'tel', 'email', 'url', 'number'].indexOf(it || '') >= 0, sg = nunext(o).suggest || {};
+		var sgSave = function (patch) {
+			if (patch === null) return saveObj(o, {nunext_suggest: null});
+			var c = {}; Object.keys(sg).forEach(function (k) { c[k] = sg[k]; }); Object.keys(patch).forEach(function (k) { c[k] = patch[k]; });
+			return saveObj(o, {nunext_suggest: JSON.stringify(c)});
+		};
 		var runType = nunext(o).pivot ? 'V' : nunext(o).url ? 'U' : String(o.sob_run_type || '').toUpperCase() || ((D.procedures || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'P' : ((D.reports || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'R' : 'F'));
 		var fmtField = function (key, letters) {
 			return field(t('builder_input_format'), 'format', o[key] || '', save(key), {key: key, letters: letters, empty: '—',
@@ -2145,6 +2151,21 @@
 			type === 'run' && runType === 'F' ? el('div', {'class': 'nuDsGrid2'}, [
 				field(t('builder_run_record'), 'text', o.sob_run_id, save('sob_run_id', false), {key: 'sob_run_id', mono: true, tip: t('builder_run_record_help')}),
 				field(t('builder_run_filter'), 'text', o.sob_run_filter, save('sob_run_filter', false), {key: 'sob_run_filter', mono: true, tip: t('builder_run_filter_help')})]) : null
+,
+			// suggestions while typing (0.8.1212, NuSuggest): a fixed list or the rows of a query – sob_all_json nunext.suggest
+			sgOn ? field(t('sg_source'), 'select', sg.src || '', function (v) {
+				if (v === '') return sgSave(null);
+				sgSave(v === 'sql' ? {src: 'sql', sql: sg.sql || "SELECT DISTINCT " + o.sob_all_id + " FROM " + ((S.form && S.form.sfo_table) || 'my_table') + "\nWHERE " + o.sob_all_id + " LIKE CONCAT(#term#, '%')\nORDER BY 1"}
+					: {src: 'list', list: sg.list && sg.list.length ? sg.list : ['Example 1', 'Example 2']});
+			}, {key: 'nunext_suggest_src', tip: t('sg_source_tip'), options: [['', t('sg_src_none')], ['list', t('sg_src_list')], ['sql', t('sg_src_sql')]]}) : null,
+			sgOn && sg.src === 'list' ? field(t('sg_list'), 'textarea', (sg.list || []).join('\n'), function (v) { sgSave({list: v.split(/\r\n|\r|\n/)}); }, {key: 'nunext_suggest_list', rows: '4', tip: t('sg_list_tip')}) : null,
+			sgOn && sg.src === 'sql' ? field(t('sg_sql'), 'textarea', sg.sql || '', function (v) { sgSave({sql: v}); }, {key: 'nunext_suggest_sql', code: 'SQL', mono: true, rows: '4', tip: t('sg_sql_tip')}) : null,
+			sgOn && sg.src === 'sql' ? field(t('sg_fill'), 'text', Object.keys(sg.fill || {}).map(function (c) { return c + ' = ' + sg.fill[c]; }).join(', '), function (v) { sgSave({fill: v}); },
+				{key: 'nunext_suggest_fill', mono: true, ph: 'zip = adr_zip, city = adr_city', tip: t('sg_fill_tip')}) : null,
+			sgOn && sg.src ? el('div', {'class': 'nuDsGrid2'}, [
+				field(t('sg_min'), 'number', sg.min === undefined ? 1 : sg.min, function (v) { sgSave({min: v}); }, {key: 'nunext_suggest_min', tip: t('sg_min_tip')}),
+				field(t('sg_max'), 'number', sg.max || 15, function (v) { sgSave({max: v}); }, {key: 'nunext_suggest_max'})]) : null,
+			sgOn && sg.src ? field(t('sg_strict'), 'check', sg.strict ? '1' : '0', function (v) { sgSave({strict: v === '1' || v === true}); }, {key: 'nunext_suggest_strict', tip: t('sg_strict_tip')}) : null
 		], [
 			type === 'input' && ['text', 'number', 'email', 'tel', 'url'].indexOf(it) >= 0 ? field(t('builder_input_datalist'), 'textarea', o.sob_input_datalist, save('sob_input_datalist'),
 				{key: 'sob_input_datalist', rows: '2', ph: 'Red, Green, Blue', tip: t('builder_input_datalist_help')}) : null,

@@ -35,6 +35,9 @@ $rc = NuPhp::renameClashes("function h(\$v) { return \$v; }\nclass Q { function 
 check('renameClashes declaration', str_contains($rc, 'function nu_proc_h_') && str_contains($rc, 'echo nu_proc_h_'));
 check('renameClashes methods kept', str_contains($rc, 'class Q { function h() {} }') && str_contains($rc, '$o->h(); Q::h();'));
 check('renameClashes no clash', NuPhp::renameClashes('function myOwnThing() {} myOwnThing();') === 'function myOwnThing() {} myOwnThing();');
+$fi = NuPhp::forteIncludes("require_once ('nusecurity.php');\n\$a = 1;\ninclude \"../core/nucommon.php\";\nrequire_once('../libs/own.php');\n\$x->require('nucommon.php');");
+check('forteIncludes core files out', !str_contains($fi, 'nusecurity') && !str_contains($fi, 'core/nucommon.php') && substr_count($fi, "\n") === 4);
+check('forteIncludes own files and methods kept', str_contains($fi, "require_once('../libs/own.php');") && str_contains($fi, "\$x->require('nucommon.php');"));
 check('tablesOf', NuDemo::tablesOf('SELECT * FROM zzzzsys_user u JOIN `Orders` o ON 1') === ['zzzzsys_user', 'orders']);
 check('sqlAllowed select', NuDemo::sqlAllowed('SELECT 1'));
 check('sqlAllowed update', !NuDemo::sqlAllowed('UPDATE customer SET a = 1'));
@@ -946,6 +949,22 @@ check('sql check: line of a message', NuSqlCheck::lineOf("SELECT *\nFROM t\nWHER
 	&& NuSqlCheck::lineOf("SELECT *\nFROM nope", "Table 'db.nope' doesn't exist") === 2
 	&& NuSqlCheck::lineOf("SELECT 1", 'other') === 1);
 
+// 0.8.1212: suggestions while typing (NuSuggest) – settings cleaned, the typed text always a value
+$sgE = static fn(string $v): string => str_replace(["\\", "'"], ["\\\\", "''"], $v);
+$sgM = '__nu_suggest_term__';
+check('suggest: settings cleaned', NuSuggest::clean(['src' => 'x']) === null && NuSuggest::clean(['src' => 'sql', 'sql' => ' ']) === null && NuSuggest::clean(['src' => 'list', 'list' => []]) === null
+	&& NuSuggest::clean('{"src":"list","list":"a\n a \n\nb","min":-3,"max":900,"strict":"0","width":5}') === ['src' => 'list', 'list' => ['a', 'b'], 'min' => 0, 'max' => 50]
+	&& NuSuggest::clean(['src' => 'sql', 'sql' => 'SELECT 1', 'fill' => 'zip = adr_zip; city=adr_city, bad col! = x, y = no good', 'strict' => true, 'width' => 300])
+		=== ['src' => 'sql', 'sql' => 'SELECT 1', 'min' => 1, 'max' => 15, 'strict' => true, 'fill' => ['zip' => 'adr_zip', 'city' => 'adr_city'], 'width' => 300]
+	&& NuSuggest::fillText(['zip' => 'adr_zip', 'city' => 'adr_city']) === 'zip = adr_zip, city = adr_city');
+check('suggest: #term# alone becomes a quoted text, inside \'…\' its escaped content, nothing inside "…" / `…` / comments',
+	NuSuggest::bindTerm("SELECT a FROM t WHERE a LIKE CONCAT($sgM, '%')", "x' OR '1'='1", $sgE) === "SELECT a FROM t WHERE a LIKE CONCAT('x'' OR ''1''=''1', '%')"
+	&& NuSuggest::bindTerm("WHERE a LIKE '$sgM%' AND b = 'it''s' AND c = $sgM", "o'k\\", $sgE) === "WHERE a LIKE 'o''k\\\\%' AND b = 'it''s' AND c = 'o''k\\\\'"
+	&& NuSuggest::bindTerm("SELECT `$sgM`, \"$sgM\" -- $sgM\n/* $sgM */ FROM t", 'zz', $sgE) === "SELECT ``, \"\" -- $sgM\n/* $sgM */ FROM t");
+check('suggest: only text inputs offer it', NuSuggest::offers(['sob_all_type' => 'input', 'sob_input_type' => 'text']) && NuSuggest::offers(['sob_all_type' => 'input', 'sob_input_type' => ''])
+	&& !NuSuggest::offers(['sob_all_type' => 'input', 'sob_input_type' => 'nuDate']) && !NuSuggest::offers(['sob_all_type' => 'select'])
+	&& NuSuggest::client(['sob_all_type' => 'input', 'sob_input_type' => 'text', 'sob_all_json' => '{"nunext":{"suggest":{"src":"sql","sql":"SELECT 1","fill":{"a":"b"}}}}']) === ['src' => 'sql', 'min' => 1, 'max' => 15, 'fill' => ['a' => 'b']]);
+
 // 0.8.879: select options as nuBuilder Forte reads them (NuSelectSource)
 $sk = static fn(string $s) => NuSelectSource::kind($s);
 check('select source: kinds', $sk('') === '' && $sk('SELECT a FROM t') === 'query' && $sk("-- note\n  select a from t") === 'query' && $sk("/* x */ WITH c AS (SELECT 1) SELECT * FROM c") === 'query'
@@ -1147,6 +1166,19 @@ $bq = NuHash::sql("SELECT id FROM tb WHERE p = '#PARENT_ID#' AND '#PARENT_ID#' L
 check('bound sql: runs with the value as a parameter', array_column($bdb->all($bq . ' ORDER BY id'), 'id') === ['1', '3'] && str_contains($bq, '__nuhp_'), $bq);
 NuDB::$override = null;
 NuHash::$bindTest = null; NuHash::$bound = [];
+
+// 0.8.1209: backup JSON copies streamed into a file (large tables ran out of memory)
+$jdb = new NuDB(['type' => 'sqlite', 'name' => ':memory:', 'host' => '', 'user' => '', 'pass' => '']);
+$jdb->exec("CREATE TABLE tj (id TEXT, v TEXT)"); $jdb->exec("INSERT INTO tj VALUES ('1', 'ä\"x'), ('2', NULL)");
+$jf = tempnam(sys_get_temp_dir(), 'nutj');
+$jn = NuUpdate::tableJson($jdb, 'tj', $jf);
+check('backup json: rows streamed, valid JSON', $jn === 2 && json_decode((string)file_get_contents($jf), true) === [['id' => '1', 'v' => 'ä"x'], ['id' => '2', 'v' => null]], (string)file_get_contents($jf));
+NuUpdate::tableJson($jdb, 'tj', $jf, true);
+check('backup json: rows left out = []', file_get_contents($jf) === '[]');
+$jdb->exec("CREATE TABLE tje (id TEXT)");
+NuUpdate::tableJson($jdb, 'tje', $jf);
+check('backup json: empty table = []', file_get_contents($jf) === '[]');
+@unlink($jf);
 
 // 0.8.874: Markdown in report fields, HTML made safe for TCPDF
 $mdh = NuMarkdown::toHtml("# Title\nA **b** *i* `c` ~~d~~ [l](https://x.org) [j](javascript:x) <b>x</b>\nnext\n\n- one\n- two\n  - deep\n1. first\n\n| a | b |\n|---|--:|\n| 1 | 2 |\n\n> q\n\n---");

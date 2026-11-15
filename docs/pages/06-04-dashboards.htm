@@ -15,6 +15,6 @@
 <li data-level="detail"><strong>Examples</strong> in the sample data (start page tile <em>Sample data</em>): <code>sample_sales</code> (start page of sample_manager / sample_sales: KPIs, charts, latest orders, date filter), <code>sample_products</code> (start page of every sample level: SQL, the SQL builder query <code>sample_orders</code> and the PHP procedure <code>sample_dashboard_data</code>), <code>sample_customer</code> (customer form, tab <em>Statistics</em>, <code>#RECORD_ID#</code>) and <code>sample_country</code> (sample start form: the field <code>home_country</code> filters, its onchange calls <code>nuNextDashboardRefresh('sample_country')</code>).</li>
 <li data-level="detail">Stored in nuBuilder Next's tables <code>zzzzsys_nunext_dashboard</code> and <code>zzzzsys_nunext_widget</code> (part of backups and App cloner copies). Charts use the bundled ApexCharts (loaded only where a dashboard has a chart) and follow dark mode and the branding accent colour. Pages with dashboards allow style attributes and a per-page style nonce for ApexCharts; scripts stay restricted.</li>
 </ul>
-	<p class="doc-see">See also: <a href="#home-users">Start pages of users</a></p>
+	<p class="doc-see">See also: <a href="#home-users">Tile pages of users</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudashboard.php</code></li><li><code>pages/nudashboards.php</code></li></ul></details>
 </section>

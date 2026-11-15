@@ -1,6 +1,6 @@
 {
     "key": "ticket",
-    "version": 9,
+    "version": 10,
     "prefix": "tkt_",
     "home": "tkthome",
     "date_ref": "2026-10-29",
@@ -2917,7 +2917,7 @@
                 "sob_html_vertical_label": null,
                 "sob_html_horizontal_label": null,
                 "sob_image_zzzzsys_file_id": null,
-                "sob_all_json": "{\"nunext\":{\"row\":2,\"col\":10,\"span\":12}}",
+                "sob_all_json": "{\"nunext\":{\"row\":2,\"col\":10,\"span\":12,\"suggest\":{\"src\":\"sql\",\"sql\":\"SELECT DISTINCT tic_subject\\nFROM tkt_ticket\\nWHERE tic_subject LIKE CONCAT('%', #term#, '%')\\nORDER BY tic_subject\",\"min\":3,\"max\":8}}}",
                 "sob_json": null
             }
         ],

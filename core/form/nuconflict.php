@@ -45,7 +45,12 @@ final class NuConflict
 	public static function rowSigs(array $row): array
 	{
 		$out = [];
-		foreach ($row as $k => $v) $out[strtolower((string)$k)] = self::sig($v);
+		foreach ($row as $k => $v) {
+			$k = strtolower((string)$k);
+			// nuBuilder Forte's <table>_nulog column changes on every view ("viewed", NuRecord::nulogViewed) – never a conflict (0.8.1215)
+			if (str_ends_with($k, '_nulog')) continue;
+			$out[$k] = self::sig($v);
+		}
 		return $out;
 	}
 

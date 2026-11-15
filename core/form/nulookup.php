@@ -66,6 +66,11 @@ final class NuLookup
 		return preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $col) ? "nuT.$col" : $col;
 	}
 
+	private static function plain(string $col): string
+	{
+		return trim($col) === '' ? "''" : trim($col);
+	}
+
 	/** @return array{pk:string,code:string,description:string,row:array}|null */
 	public static function byId(array $o, string $pk, array $hash): ?array
 	{
@@ -76,10 +81,30 @@ final class NuLookup
 			$row = nu_db()->one("SELECT nuT.*, " . self::expr((string)$o['sob_lookup_code']) . " AS nu_code, " . self::expr((string)$o['sob_lookup_description'])
 				. " AS nu_description FROM ($inner) nuT WHERE nuT.$pkCol = ?", [$pk]);
 		} catch (Throwable $e) {
-			error_log('nuBuilder Next lookup ' . $o['sob_all_id'] . ': ' . $e->getMessage());
-			return null;
+			// the list's SELECT does not give the primary key (or a column of code / description): read them from its tables,
+			// as nuBuilder Forte did before 4.9 – "SELECT key, code, description FROM … WHERE key = ?"
+			$row = self::fromTables($o, $inner, $pkCol, "$pkCol = ?", [$pk])[0] ?? null;
+			if (!$row) { error_log('nuBuilder Next lookup ' . $o['sob_all_id'] . ': ' . $e->getMessage()); return null; }
 		}
 		return $row ? self::shape($row, $pkCol) : null;
+	}
+
+	/**
+	 * Key, code and description straight from the FROM part of the lookup form's list SQL (no GROUP BY / UNION / WITH); [] when
+	 * that cannot be done. $where is put after the list's own WHERE.
+	 * @return list<array<string, mixed>>
+	 */
+	private static function fromTables(array $o, string $inner, string $pkCol, string $where, array $params, int $limit = 1): array
+	{
+		$p = NuBrowse::splitSelect($inner);
+		if (!$p || $p['from'] === '' || $p['group'] !== '' || $p['having'] !== '') return [];
+		$sql = "SELECT $pkCol AS $pkCol, " . self::plain((string)$o['sob_lookup_code']) . ' AS nu_code, ' . self::plain((string)$o['sob_lookup_description'])
+			. ' AS nu_description ' . $p['from'] . ' WHERE ' . ($p['where'] !== '' ? '(' . preg_replace('/^\s*WHERE\s+/i', '', $p['where']) . ') AND ' : '') . "($where)";
+		try {
+			return nu_db()->page($sql, $params, $pkCol, $limit, 0);
+		} catch (Throwable) {
+			return [];
+		}
 	}
 
 	/** Records whose code equals $code (exact, then prefix) – at most 2, to tell "unique" from "ambiguous". */
@@ -91,7 +116,13 @@ final class NuLookup
 		$codeExpr = self::expr((string)$o['sob_lookup_code']);
 		$sel = "SELECT nuT.*, $codeExpr AS nu_code, " . self::expr((string)$o['sob_lookup_description']) . " AS nu_description FROM ($inner) nuT";
 		$db  = nu_db();
-		$rows = $db->page("$sel WHERE $codeExpr = ?", [$code], "nuT.$pkCol", 2, 0);
+		try {
+			$rows = $db->page("$sel WHERE $codeExpr = ?", [$code], "nuT.$pkCol", 2, 0);
+		} catch (Throwable $e) {                              // the list does not select the key: from its tables (see byId)
+			$c = self::plain((string)$o['sob_lookup_code']);
+			$rows = self::fromTables($o, $inner, $pkCol, "$c = ?", [$code], 2) ?: self::fromTables($o, $inner, $pkCol, "$c LIKE ? ESCAPE '!'", [NuDB::like($code)], 2);
+			return array_map(static fn($r) => self::shape($r, $pkCol), $rows);
+		}
 		// nuBuilder Forte: no exact code → code OR description contains the text (nuGetAllLookupList)
 		$descExpr = self::expr((string)$o['sob_lookup_description']);
 		if (!$rows) $rows = $db->page("$sel WHERE $codeExpr LIKE ? ESCAPE '!'" . ($descExpr !== "''" ? " OR $descExpr LIKE ? ESCAPE '!'" : ''), $descExpr !== "''" ? [NuDB::like($code), NuDB::like($code)] : [NuDB::like($code)], "nuT.$pkCol", 2, 0);

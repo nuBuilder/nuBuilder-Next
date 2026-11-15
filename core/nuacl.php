@@ -78,6 +78,9 @@ final class NuAcl
 		$r = self::rightsOf($u, $formId);
 		// nuBuilder Forte's User Home (0.8.602): open for a user whose access level has it as home form – a launch form without data
 		if (!$r['view'] && $formId === NuUserHome::FORM && NuUserHome::isHomeOf($u)) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
+		// the Home form of the user's access level opens without a row in zzzzsys_access_form, as in nuBuilder Forte (its nuFormAccessList
+		// adds HOME_ID; not for admin-equivalent system forms) – without Add / Save / Delete / Clone / Print (0.8.1204)
+		elseif (!$r['view'] && !in_array($formId, NuSecurity::ADMIN_FORMS, true) && NuUserHome::isHomeOf($u, $formId)) $r = ['view' => true] + self::FREE + self::none();
 		// notification centre → Manage (0.8.690): senders and viewers (admin right, permission items) see the list – the rows are filtered by NuNotify
 		if (!$r['view'] && $formId === self::FORM_NOTIFY && NuNotify::canManage()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
 		if (!$r['view'] && $formId === self::FORM_PROJECT && NuProject::canView()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // projects (0.8.1035): form designers too

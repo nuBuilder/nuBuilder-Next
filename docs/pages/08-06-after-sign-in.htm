@@ -1,0 +1,27 @@
+<section id="after-sign-in" data-doc="admin">
+	<h2 id="after-sign-in-h">What users see after sign-in</h2>
+	<p class="doc-lead">The start page – the page that opens after sign-in and with Home – and the words used for it.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
+	<table class="table table-sm">
+		<thead><tr><th>Term</th><th>What it is</th><th>Where it is set</th></tr></thead>
+		<tbody>
+			<tr><td><strong>Start page</strong></td><td>Whatever opens after sign-in, with the Home button and with the logo: a tile page or a form.</td><td><em>Access levels</em> → an access level → tab <em>Start page</em>: <em>Tile page</em> or <em>Home form</em>, with a preview of the level's tiles.</td></tr>
+			<tr><td><strong>Tile page</strong></td><td>A page of tiles, groups and tabs. Administrators have their own (<a href="#home-page">Start page of the globeadmin</a>); every access level has one for its users (<a href="#home-users">Tile pages of users</a>).</td><td>The start page → <em>Customise</em>; for access levels: the tile <em>Access levels</em> ▾ → <em>Tile pages</em>.</td></tr>
+			<tr><td><strong>Automatic tile page</strong></td><td>The tile page of an access level nobody has set up: its forms and reports, the Home form first.</td><td>Nothing to set – <em>Customise</em> turns it into a page of its own.</td></tr>
+			<tr><td><strong>Home form</strong></td><td>One form per access level (the same field as in nuBuilder Forte (4.x)). It opens after sign-in when the start page is <em>Home form</em>; it is also the first tile of the automatic tile page and the value of <code>#HOME_ID#</code>.</td><td><em>Access levels</em> → an access level → <em>Home form</em>.</td></tr>
+			<tr><td><strong>User Home</strong></td><td>nuBuilder Forte's launch form <code>nuuserhome</code> with the buttons of new forms – just one form that can be chosen as the Home form. Reachable from the user menu by everyone who may open it.</td><td>The <a href="#new-form">New form wizard</a> adds buttons to it.</td></tr>
+		</tbody>
+	</table>
+	<div class="doc-sub">
+		<h3 id="after-sign-in-order">Which page opens</h3>
+		<ol>
+			<li>A link the user followed while signed out (for example an e-mail with a record) opens first, after sign-in.</li>
+			<li><strong>globeadmin</strong>: the form of the setting <code>$nuConfigGlobeadminHome</code> when one is set, else the administrators' tile page.</li>
+			<li><strong>Everyone else</strong>: the Home form when the access level's start page is <em>Home form</em>. As in nuBuilder Forte, users may open their Home form even when it is not in the access level's form rights – then without Add, Save, Delete, Clone and Print. Admin forms (users, access levels, forms, procedures, SQL, setup) are never opened this way. Otherwise the tile page: users with an admin role get the administrators' tile page, all others the tile page of their access level (its own, else the default for all access levels, else the automatic one).</li>
+		</ol>
+		<p>When a form opens instead of the tile page, the user menu shows <em>Tile page</em>, so the tiles stay one click away. The default is <em>Tile page</em>, so nothing changes until an access level is switched.</p>
+		<p>The breadcrumb then starts with the Home form instead of <em>Home</em>, as in nuBuilder Forte: on the Home form itself there is no extra step, on a form opened from it the first step leads back to the Home form.</p>
+		<p data-level="detail">nuBuilder Forte always opens the Home form. In nuBuilder Next the access level's choice is kept in nuBuilder Next's own settings (row <code>start_page</code>); nuBuilder Forte's tables are not changed.</p>
+	</div>
+	<p class="doc-see">See also: <a href="#access">Access levels</a>, <a href="#home-users">Tile pages of users</a>, <a href="#home-page">Start page of the globeadmin</a>.</p>
+</section>

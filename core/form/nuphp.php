@@ -54,6 +54,21 @@ final class NuPhp
 	/**
 	 * @return bool  false when the code reported an error (nuDisplayError) or failed
 	 */
+	private const EVENT_OF = ['Before Browse' => 'BB', 'Before Edit' => 'BE', 'Before Save' => 'BS', 'After Save' => 'AS', 'Before Delete' => 'BD', 'After Delete' => 'AD'];
+
+	/** nuBuilder Forte's own core files: code that includes them finds their functions here already. */
+	public const FORTE_CORE = ['nusecurity', 'nucommon', 'nudatabase', 'nuchoosesetup', 'nusession', 'nusessiondata', 'nuform', 'nuemailer', 'nusanitize'];
+
+	/**
+	 * Takes include / require of a nuBuilder Forte core file (require_once('nusecurity.php');) out of the code – the file is not
+	 * part of nuBuilder Next and the include would stop the code. Lines stay as they are.
+	 */
+	public static function forteIncludes(string $code): string
+	{
+		if (stripos($code, '.php') === false) return $code;
+		return (string)preg_replace('/(?<![\\w$>])(?:require|include)(?:_once)?\\s*\\(?\\s*([\'"])(?:\\.{0,2}\\/)*(?:core\\/)?(?:' . implode('|', self::FORTE_CORE) . ')\\.php\\1\\s*\\)?\\s*;/i', '', $code);
+	}
+
 	public static function run(?string $code, array $hash, string $label, array $vars = []): bool
 	{
 		self::$hash = $hash;
@@ -67,7 +82,10 @@ final class NuPhp
 		NuDebugLog::$context = $label;
 		$code = NuHash::replace($code, $hash, NuHash::PHP);
 		$code = preg_replace('/^\s*<\?php/', '', $code);
+		$code = self::forteIncludes($code);
 		$code = self::renameClashes($code);
+		// nuBuilder Forte runs the code inside nuEval($phpid): code reads $phpid (<form id>_BS …) to know its event
+		if (!isset($vars['phpid']) && isset(self::EVENT_OF[$label])) $vars['phpid'] = (string)($hash['FORM_ID'] ?? '') . '_' . self::EVENT_OF[$label];
 
 		set_error_handler(static function (int $no, string $str, string $file, int $line) use ($label): bool {
 			if (!(error_reporting() & $no)) return false;
@@ -213,6 +231,11 @@ final class NuPhp
 		}
 		$db  = nu_db();
 		$php = $db->one('SELECT * FROM zzzzsys_php WHERE sph_code = ? OR zzzzsys_php_id = ?', [$codeOrId, $codeOrId]);
+		// nuBuilder Forte 4.9 renamed its upload procedures NUUPLOADFILE… → nu_upload_file…; older form code still asks for the old name
+		if (!$php && stripos($codeOrId, 'NUUPLOADFILE') === 0) {
+			$new = 'nu_upload_file' . substr($codeOrId, 12);
+			$php = $db->one('SELECT * FROM zzzzsys_php WHERE sph_code = ?', [$new]);
+		}
 		if (!$php) return ['ok' => false, 'error' => t('form_err_proc_missing', $codeOrId)];
 
 		$u = NuAuth::user();
@@ -224,7 +247,7 @@ final class NuPhp
 			$granted = (int)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, $php['zzzzsys_php_id']]);
 			if (!$granted) return ['ok' => false, 'error' => t('form_err_proc_denied', $codeOrId)];
 		}
-		self::run((string)$php['sph_php'], $hash + ['PROCEDURE_CODE' => $php['sph_code']], (string)$php['sph_code']);
+		self::run((string)$php['sph_php'], $hash + ['PROCEDURE_CODE' => $php['sph_code']], (string)$php['sph_code'], ['phpid' => (string)$php['zzzzsys_php_id']]);
 		return ['ok' => true];
 	}
 }

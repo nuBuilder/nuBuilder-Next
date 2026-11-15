@@ -777,7 +777,8 @@
 		propsDirty = true;
 		if (persist === true) {
 			N.globals[k] = v;
-			return call('global', {name: k, value: v}).then(function (res) { if (res && res.globals) N.globals = res.globals; else nuDisplayError(res); return res; });
+			// 0.8.1210: nuBuilder Forte's hook nuOnPropertySet(name, value) – after the server stored a hash cookie (persist = true only)
+			return call('global', {name: k, value: v}).then(function (res) { if (res && res.globals) { N.globals = res.globals; callHook('nuOnPropertySet', k, v); } else nuDisplayError(res); return res; });
 		}
 	});
 	api('nuGetProperty', function (k) {
@@ -4915,6 +4916,30 @@
 	api('nuOpenTab', function (i) { nuSelectTab(+i); });
 	// nuBuilder Forte returns the number as text ("0", "1" …)
 	api('nuSelectedTabNumber', function () { var t = selectedTab(); return t ? String(t.getAttribute('data-nu-tab')) : null; });
+	// 0.8.1210: nuBuilder Forte's nuGetFirstObject(objects, tabNr) – the first object of a tab (-1 = any) a user can type into, as jQuery
+	// object (lookup: its code field); null when there is none. objects = nuSERVERRESPONSE.objects.
+	function shown(el) { var $e = $(el); return $e.length > 0 && $e.css('display') !== 'none' && $e.css('visibility') !== 'hidden' && !$e.is(':hidden'); }
+	api('nuGetFirstObject', function (objects, tabNr) {
+		var SKIP = ['nuReadonly', 'nuHtml', 'nuImage', 'nuWord', 'nuCalculator', 'nuContentBoxContainer'];
+		var any = tabNr === undefined || tabNr === null || Number(tabNr) === -1;
+		var tabId = any ? null : $('.nuTab[data-nu-tab="' + String(tabNr).replace(/[^0-9]/g, '') + '"]').attr('data-nu-tab-id');
+		var list = objects || [];
+		for (var i = 0; i < list.length; i++) {
+			var id = list[i] && list[i].id, o = (N.objects || {})[id], el = id ? g(id) : null;
+			if (!el || !o) continue;
+			if (!any && String(o.tab) !== String(tabId)) continue;
+			var code = g(id + 'code'), ts = el.tomselect ? el.tomselect.control_input : null;
+			// own visibility test: form code may replace nuIsVisible() with a version that takes only an id (0.8.1215)
+			if (!nuIsEnabled(id) || !(shown(el) || (code && shown(code)) || (ts && shown(ts)))) continue;
+			if (SKIP.some(function (c) { return el.classList.contains(c); }) || el.readOnly) continue;
+			return code ? $(code) : (ts && !shown(el) ? $(ts) : $(el));
+		}
+		return null;
+	});
+	// nuBuilder Forte's nuAddHome(): its Home icon in the breadcrumb – nuBuilder Next always shows its own Home, so nothing to add
+	api('nuAddHome', function () { window.nuLoginH = ''; });
+	// suggestions while typing (0.8.1212, assets/js/nu/nusuggest.js): a list below a text input – a list, a function, a URL or the object's query
+	api('nuNextAutocomplete', function (id, options) { return window.NuSuggest ? window.NuSuggest.attach(id, options) : null; });
 	api('nuSelectedTabId', function () { var t = selectedTab(); return t ? t.getAttribute('data-nu-tab-id') : null; });
 	api('nuSelectedTabTitle', function () { var t = selectedTab(); return t ? t.innerHTML : null; });
 	api('nuShowTabByTitle', function (title, visible) {
@@ -4927,7 +4952,7 @@
 		Array.prototype.forEach.call(arguments, function (i) {
 			var t = g('nuTab' + i);
 			if (!t) return;
-			var pane = g('nuTabPane' + i);
+			var pane = g('nuPane' + i);
 			$(t).closest('li').remove();
 			if (pane) $(pane).find('[data-nu-field]').addClass('nuRemovedTab');   // values are kept, the tab is gone
 			if (pane) $(pane).hide();
@@ -5178,6 +5203,7 @@
 		});
 		return v;
 	}
+	N.rowValues = rowValues;
 	/** Elements to refresh: prefix + id; with another form id and no prefix, that field in every row of the subforms showing that form. */
 	function refreshTargets(prefix, id, formId) {
 		if (prefix || !formId || formId === N.form.id) { var el = g((prefix || '') + id); return el ? [el] : []; }

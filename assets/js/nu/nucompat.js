@@ -833,6 +833,40 @@
 		if (el.id === 'label_' + id) return {w: w, label: true};
 		return null;
 	}
+	// a lookup's code / button / description (0.8.1215): nuBuilder Forte places each one on its own – reading gives its form position,
+	// setting moves just that part (out of the input group) to the form position given
+	function partOf(el) {
+		if (!el || el.nodeType !== 1 || !el.id) return null;
+		var m = /^(.+?)(code|button|description)$/.exec(el.id);
+		if (!m) return null;
+		var w = document.getElementById('nuw_' + m[1]);
+		if (!w || !w.classList.contains('nuAbs') || !w.classList.contains('nuWrap_lookup') || !w.contains(el)) return null;
+		return w;
+	}
+	function formPos(w, node, prop) {   // form coordinate of a node inside the wrapper
+		var a = node.getBoundingClientRect(), b = w.getBoundingClientRect();
+		return wpos(w, prop) + (prop === 'top' ? a.top - b.top : a.left - b.left);
+	}
+	function placePart(el, w, prop, v) {
+		if (!el.hasAttribute('data-nu-part-free')) {
+			var t = formPos(w, el, 'top'), l = formPos(w, el, 'left'), wd = el.offsetWidth;
+			el.setAttribute('data-nu-part-free', '1');
+			el.setAttribute('data-nu-abs-top', String(t)); el.setAttribute('data-nu-abs-left', String(l));
+			if (!el.style.width && wd) el.style.width = wd + 'px';
+			el.style.position = 'absolute'; el.style.zIndex = '1';
+		}
+		el.setAttribute('data-nu-abs-' + prop, String(v));
+		placeParts(w);
+	}
+	function placeParts(w) {
+		w.querySelectorAll('[data-nu-part-free]').forEach(function (el) {
+			var op = el.offsetParent || w;
+			['top', 'left'].forEach(function (p) {
+				var off = op === w ? 0 : formPos(w, op, p) - wpos(w, p);
+				el.style[p] = (+el.getAttribute('data-nu-abs-' + p) - wpos(w, p) - off) + 'px';
+			});
+		});
+	}
 	function px(v) { var n = parseFloat(v); return isNaN(n) ? null : n; }
 	function wpos(w, prop) { var n = px(w.style[prop] || window.getComputedStyle(w)[prop]); return n === null ? 0 : n; }
 	// a label with a form position of its own: its offset inside the wrapper follows the wrapper
@@ -846,14 +880,16 @@
 		var prev = jq.cssHooks[prop] || {};
 		jq.cssHooks[prop] = {
 			get: function (el, computed, extra) {
-				var x = wrapOf(el);
+				var x = wrapOf(el), pw = x ? null : partOf(el);
+				if (pw) return (el.hasAttribute('data-nu-abs-' + prop) ? +el.getAttribute('data-nu-abs-' + prop) : formPos(pw, el, prop)) + 'px';
 				if (x && !x.label) return x.w.style[prop] || window.getComputedStyle(x.w)[prop];
 				if (x) return (wpos(x.w, prop) + (prop === 'top' ? el.offsetTop : el.offsetLeft)) + 'px';
 				return prev.get ? prev.get(el, computed, extra) : undefined;
 			},
 			set: function (el, value, extra) {
-				var x = wrapOf(el);
-				if (x && !x.label) { x.w.style[prop] = value; placeLabel(x.w); return undefined; }   // undefined: jQuery does not set the element itself
+				var x = wrapOf(el), pw = x ? null : partOf(el);
+				if (pw && px(value) !== null) { placePart(el, pw, prop, px(value)); return undefined; }
+				if (x && !x.label) { x.w.style[prop] = value; placeLabel(x.w); placeParts(x.w); return undefined; }   // undefined: jQuery does not set the element itself
 				if (x && px(value) !== null) { el.setAttribute('data-nu-abs-' + prop, String(px(value))); placeLabel(x.w); return undefined; }
 				return prev.set ? prev.set(el, value, extra) : value;
 			}
@@ -905,23 +941,40 @@
 		return res;
 	});
 
+	// Uppy built by the form's own code (new Uppy.Core() / new Uppy.Uppy() with XHRUpload to 'core/nuapi.php', as older nuBuilder Forte
+	// templates did) goes the same way as nuUppyCreate(): Uppy's use() is wrapped once on the class (0.8.1215)
+	function fixOpts(plugin, opts, inst) {
+		var U = window.Uppy;
+		if (plugin === U.XHRUpload && opts && typeof opts.endpoint === 'string' && ENDPOINT.test(opts.endpoint)) {
+			var headers = Object.assign({}, typeof opts.headers === 'object' && opts.headers ? opts.headers : {}, {'X-CSRF-Token': N.csrf || ''});
+			opts = Object.assign({}, opts, {endpoint: 'index.php?p=upload', headers: headers});
+			if (inst && typeof inst.setMeta === 'function') inst.setMeta({form_id: N.form ? N.form.id : ''});
+		}
+		// the Dashboard in nuBuilder Next's colour mode when the code sets no theme (nuBuilder: always light)
+		if (plugin === U.Dashboard && opts && opts.theme === undefined) {
+			opts = Object.assign({}, opts, {theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light'});
+		}
+		return opts;
+	}
+	function patchUppy() {
+		var U = window.Uppy;
+		[U && U.Uppy, U && U.Core].forEach(function (C) {
+			if (typeof C !== 'function' || !C.prototype || typeof C.prototype.use !== 'function' || C.prototype.use.nuNext) return;
+			var use = C.prototype.use;
+			C.prototype.use = function (plugin, opts) { return use.call(this, plugin, fixOpts(plugin, opts, this)); };
+			C.prototype.use.nuNext = true;
+		});
+	}
+	patchUppy();
+	document.addEventListener('DOMContentLoaded', patchUppy);
+	window.nuNextPatchUppy = patchUppy;
+
 	api('nuUppyCreate', function (language, languageFallback) {
 		if (!window.Uppy || typeof window.Uppy.Uppy !== 'function') {
 			throw new Error('Uppy is not installed – library pack "Uppy": Update → tab Libraries');
 		}
+		patchUppy();
 		var uppy = new window.Uppy.Uppy();
-		var use = uppy.use;
-		uppy.use = function (plugin, opts) {
-			if (plugin === window.Uppy.XHRUpload && opts && typeof opts.endpoint === 'string' && ENDPOINT.test(opts.endpoint)) {
-				var headers = Object.assign({}, typeof opts.headers === 'object' && opts.headers ? opts.headers : {}, {'X-CSRF-Token': N.csrf || ''});
-				opts = Object.assign({}, opts, {endpoint: 'index.php?p=upload', headers: headers});
-			}
-			// the Dashboard in nuBuilder Next's colour mode when the template sets no theme (nuBuilder: always light)
-			if (plugin === window.Uppy.Dashboard && opts && opts.theme === undefined) {
-				opts = Object.assign({}, opts, {theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light'});
-			}
-			return use.call(this, plugin, opts);
-		};
 		uppy.setMeta({form_id: N.form ? N.form.id : ''});      // the template adds procedure, session_id and record_id on 'upload'
 		window.nuUppySetLanguage(uppy, language, languageFallback);
 		return uppy;

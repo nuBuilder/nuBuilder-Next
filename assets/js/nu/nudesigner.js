@@ -148,7 +148,7 @@
 		var w = document.getElementById('nuw_' + e.data.nuBuilderSelect);
 		if (!w) return;
 		var pane = w.closest('.tab-pane');
-		if (pane && !pane.classList.contains('active') && window.nuSelectTab) window.nuSelectTab(+pane.id.replace('nuTabPane', ''));
+		if (pane && !pane.classList.contains('active') && window.nuSelectTab) window.nuSelectTab(+pane.id.replace('nuPane', ''));
 		if (sel.indexOf(w) < 0 || sel.length < 2) select(w, false);
 		w.scrollIntoView({block: 'nearest'});
 	});

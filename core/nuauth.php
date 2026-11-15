@@ -581,10 +581,17 @@ final class NuAuth
 	 */
 	public static function applyLanguage(?string $susLanguage, string $userId, bool $userWins): void
 	{
-		$own = nu_lang_from_db($susLanguage);
 		$browser = nu_lang_browser();
 		$browserVar = $browser !== null ? nu_lang_variant_of($browser[1]) : null;
-		$picked = isset($_SESSION['nu_lang']);
+		// a language left in the session by the user before (logout keeps it for the sign-in page) is not "picked" (0.8.1205)
+		$picked = isset($_SESSION['nu_lang']) && empty($_SESSION['nu_lang_carried']);
+		unset($_SESSION['nu_lang_carried']);
+		// the globeadmin (no user row): the language he chose last (setting lang_ga, written by ?p=lang) – 0.8.1205
+		if ($susLanguage === null && $userId === '') {
+			$ga = self::gaLanguage();
+			if ($ga !== null && ($userWins || !$picked)) { nu_set_lang($ga); return; }
+		}
+		$own = nu_lang_from_db($susLanguage);
 		if ($own !== null && ($userWins || !$picked)) nu_set_lang($own);
 		elseif (!$picked && ($dl = NuSetupWizard::defaultLang())) nu_set_lang($dl);
 		elseif (!$picked) nu_set_lang(nu_lang());                // the browser's language, now fixed in the session
@@ -598,13 +605,25 @@ final class NuAuth
 		if ($browserVar !== null && NU_LANG_VARIANTS[$browserVar][0] === $lang) nu_set_lang($browserVar);
 	}
 
+	/** The globeadmin's language (choice code: de, en-GB …) from the setting lang_ga, null = none stored yet (0.8.1205). */
+	public const LANG_GA = 'lang_ga';
+
+	public static function gaLanguage(): ?string
+	{
+		try { $v = trim((string)nu_setting_value(self::LANG_GA)); } catch (Throwable) { return null; }
+		$base = NU_LANG_VARIANTS[$v][0] ?? $v;
+		return $v !== '' && isset(NU_LANGS[$base]) && NuLanguages::has($base) ? $v : null;
+	}
+
 	public static function logout(): void
 	{
 		NuSessions::forget();
 		$lang = $_SESSION['nu_lang'] ?? null;
+		$var = $_SESSION['nu_lang_variant'] ?? null;
 		$_SESSION = [];
 		session_regenerate_id(true);
-		if ($lang) $_SESSION['nu_lang'] = $lang;
+		// the sign-in page stays in this language, but it does not count as picked for the next sign-in (0.8.1205)
+		if ($lang) { $_SESSION['nu_lang'] = $lang; $_SESSION['nu_lang_carried'] = 1; if ($var) $_SESSION['nu_lang_variant'] = $var; }
 		self::$user   = null;
 		self::$loaded = true;
 	}

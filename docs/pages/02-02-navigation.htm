@@ -27,6 +27,6 @@
 <li data-level="detail">A right-click on an entry of <em>Recently used</em> (a long press on a phone) → <em>Remove from recently used</em> takes that one out – in the side bar and in the start page's row. ⊗ next to <em>Recently used</em> – or a right-click on the list → <em>Clear recently used</em> – empties the list (also the start page's row). Entries you no longer have the right to open are not shown. The list is kept on the server per user (table <code>zzzzsys_nunext_recent</code>, the last 10), also while the side bar is off – the start page's row <em>Recently used</em> shows the same list; tiles opened on the start page that lead to no page of their own (reports, links, tools) count too. Demo visitors keep it for the session.</li>
 <li data-doc="admin">The globeadmin sets the default for everybody without an own choice: <a href="#settings-centre">Settings → Look</a> → <em>Side bar for everyone by default</em>. A user's own choice (in <code>sus_json</code>, key <code>NUNEXT_SIDEBAR</code>) wins.</li>
 </ul></div>
-	<p class="doc-see">See also: <a href="#home-page">Start page of the globeadmin</a> · <a href="#home-users">Start pages of users</a></p>
+	<p class="doc-see">See also: <a href="#home-page">Start page of the globeadmin</a> · <a href="#home-users">Tile pages of users</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nulayout.php</code></li><li><code>core/nuhome.php</code></li><li><code>core/nusidebar.php</code></li></ul></details>
 </section>

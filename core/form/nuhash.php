@@ -357,7 +357,8 @@ final class NuHash
 	private static function lowerAliases(mixed $formId, mixed $recordId, array $h = []): array
 	{
 		return ['form_id' => (string)$formId, 'record_id' => (string)$recordId, 'hash_record_id' => (string)$recordId,
-			'user_id' => (string)($h['USER_ID'] ?? ''), 'session_id' => (string)($h['SESSION_ID'] ?? ''), 'redirect_form_id' => (string)$formId];
+			'user_id' => (string)($h['USER_ID'] ?? ''), 'session_id' => (string)($h['SESSION_ID'] ?? ''), 'redirect_form_id' => (string)$formId,
+			'form_code' => (string)($h['FORM_CODE'] ?? '')];
 	}
 
 	/** Names a property may not take (system and user variables). */

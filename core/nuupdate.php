@@ -497,7 +497,9 @@ final class NuUpdate
 		$name = 'nunext-' . NU_VERSION . '-' . date('Ymd-His') . '-' . bin2hex(random_bytes(8)) . '.zip';
 		$path = $dir . '/' . $name;
 		$tmp = '';
+		$tmpJson = [];
 		try {
+			self::loadDump();   // NuSqlDump::LOG_TABLES for the JSON copies
 			$withSql = in_array($sqlScope, ['nubuilder', 'nunext', 'all'], true) && self::loadDump() && NuSqlDump::available();
 			// enough free space? (0.8.1032) – a backup that fills the disk can break the database server too; unknown space = no check
 			if (self::loadDump() && ($p = NuSqlDump::spaceProblem($dir, NuSqlDump::backupNeed($withSql ? $sqlScope : 'none', $withoutLogs)))) throw new RuntimeException($p);
@@ -517,12 +519,21 @@ final class NuUpdate
 			$pages = [];
 			if ($withPages) foreach (self::customFiles() as $rel => $abs) { $z->addFile($abs, 'custom/' . substr($rel, 7)); $pages[] = $rel; }
 			$tables = [];
+			$tableErrors = [];
 			$db = nu_db();
 			foreach ($db->type === 'sqlite' ? [] : self::nunextTables() as $t) {
+				// rows streamed into a temp file next to the backup (0.8.1209, a forum report): $db->all() + one json_encode of a large table
+				// (the log) ran out of memory whatever memory_limit said. Without logs: the log table's rows are left out, as in the SQL dump.
+				$tf = $dir . '/.' . $name . '.' . $t . '.json.tmp';
 				try {
-					$z->addFromString('db/' . $t . '.json', json_encode($db->all('SELECT * FROM ' . NuDB::ident($t)), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
+					self::tableJson($db, $t, $tf, $withoutLogs && in_array($t, NuSqlDump::LOG_TABLES, true));
+					$z->addFile($tf, 'db/' . $t . '.json');
+					$tmpJson[] = $tf;
 					$tables[] = $t;
-				} catch (Throwable) {
+				} catch (Throwable $e) {
+					if (is_file($tf)) @unlink($tf);
+					$tableErrors[$t] = $e->getMessage();
+					error_log('nuBuilder Next backup: table ' . $t . ' left out – ' . $e->getMessage());
 				}
 			}
 			if ($sql !== null && is_file($tmp)) {
@@ -530,17 +541,52 @@ final class NuUpdate
 				$z->setCompressionName(self::SQL_ENTRY, ZipArchive::CM_STORE);   // already gzip
 			}
 			$z->addFromString('backup.json', json_encode(['product' => 'nuNext', 'version' => NU_VERSION, 'created' => date('c'), 'reason' => $reason,
-				'by' => (string)(NuAuth::currentRaw()['login'] ?? ''), 'files' => $files, 'tables' => $tables, 'sql' => $sql, 'custom' => $pages], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+				'by' => (string)(NuAuth::currentRaw()['login'] ?? ''), 'files' => $files, 'tables' => $tables, 'table_errors' => (object)$tableErrors, 'sql' => $sql, 'custom' => $pages], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 			if (!$z->close()) throw new RuntimeException(t('upd_err_backup'));
 			@chmod($path, 0600);
 			self::$lastSql = $sql;
 		} finally {
 			if ($tmp !== '' && is_file($tmp)) @unlink($tmp);
+			foreach ($tmpJson as $tf) if (is_file($tf)) @unlink($tf);   // only after the zip is closed (addFile reads them then)
 			@unlink($dir . '/' . self::RUNNING);
 			if ($lock) { flock($lock, LOCK_UN); fclose($lock); }
 		}
 		if (self::$lastSql !== null) self::pruneSql();
 		return $name;
+	}
+
+	/**
+	 * One table as a JSON array in $file, row by row (0.8.1209): unbuffered on MySQL, so neither the result set nor the JSON text is
+	 * held in memory; $empty = only "[]" (rows left out). A row that cannot be encoded fails the table (no silent half rows).
+	 */
+	public static function tableJson(NuDB $db, string $table, string $file, bool $empty = false): int
+	{
+		$fp = @fopen($file, 'wb');
+		if (!$fp) throw new RuntimeException(t('upd_err_backup'));
+		$n = 0;
+		$pdo = $db->pdo();
+		$buffered = null;
+		try {
+			fwrite($fp, '[');
+			if (!$empty) {
+				if ($db->type === 'mysql') { try { $buffered = $pdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY); $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false); } catch (Throwable) { $buffered = null; } }
+				$st = $db->run('SELECT * FROM ' . NuDB::ident($table));
+				try {
+					while (($row = $st->fetch(PDO::FETCH_ASSOC)) !== false) {
+						$j = json_encode($row, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+						if (fwrite($fp, ($n ? ",\n" : "\n") . $j) === false) throw new RuntimeException(t('upd_err_backup'));
+						$n++;
+					}
+				} finally {
+					$st->closeCursor();
+				}
+			}
+			if (fwrite($fp, $n ? "\n]" : ']') === false) throw new RuntimeException(t('upd_err_backup'));
+		} finally {
+			fclose($fp);
+			if ($buffered !== null) { try { $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $buffered); } catch (Throwable) {} }
+		}
+		return $n;
 	}
 
 	public const SQL_ENTRY = 'db/database.sql.gz';
@@ -566,7 +612,7 @@ final class NuUpdate
 		try {
 			$d = json_decode((string)@file_get_contents($f), true);
 			@unlink($f);
-			foreach (glob($dir . '/.nunext-*.sql.gz.tmp') ?: [] as $t) @unlink($t);
+			foreach (array_merge(glob($dir . '/.nunext-*.sql.gz.tmp') ?: [], glob($dir . '/.nunext-*.json.tmp') ?: []) as $t) @unlink($t);
 			if (is_array($d) && isset($d['name']) && is_file($dir . '/' . basename((string)$d['name']))) @unlink($dir . '/' . basename((string)$d['name']));   // never a half zip
 			return is_array($d) ? $d : ['since' => 0, 'reason' => '', 'sql' => ''];
 		} finally {

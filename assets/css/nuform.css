@@ -937,3 +937,11 @@ html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
 .nuEcpWhat { padding: .35rem .75rem 0; }
 .nuEcpTitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 @media (max-width: 575.98px) { .nuEcpBody { grid-template-columns: 9rem minmax(0, 1fr); } .nuEcpList { padding: .4rem; gap: .4rem; } .nuEcpItem { padding-inline: .5rem; } .nuEcpGroup { padding-inline: .5rem; } .nuEcpCount { display: none; } }
+
+/* suggestions while typing (0.8.1212, assets/js/nu/nusuggest.js): the list below a text input – fixed to the window, above dialogues */
+.nuSuggestList { position: fixed; z-index: 1085; margin: 0; padding: .25rem 0; overflow-y: auto; overscroll-behavior: contain; font-size: .875rem; box-shadow: 0 .5rem 1.25rem rgba(0, 0, 0, .14); }
+.nuSuggestList[hidden] { display: none; }
+.nuSuggestList .nuSuggestItem { padding: .3rem .7rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nuSuggestList .nuSuggestItem mark { padding: 0; background: none; color: inherit; font-weight: 700; }
+.nuSuggestList .nuSuggestItem.active { background: var(--bs-primary); color: #fff; }
+@media (pointer: coarse) { .nuSuggestList .nuSuggestItem { padding: .6rem .8rem; } }

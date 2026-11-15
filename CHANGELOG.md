@@ -3,6 +3,136 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1216 – Release gate
+- Release gate: documentation brought up to date (language of the globeadmin, breadcrumb on a Home form, the Database steps card,
+  backups of large logs, code of older nuBuilder Forte versions, suggestions in the tutorial), feature list and open checks.
+- Tests: the end-to-end suite starts with the globeadmin's stored language cleared and fails a test that leaves it in another
+  language (stored since the language fix of 0.8.1205); one test now puts it back the way a user would.
+- Tests: the test that signs out runs last; a ZAP false positive on the forms list noted.
+- Tests: the suggestion test uses an input of its own for nuNextAutocomplete().
+
+## 0.8.1215 – Delete without false change warning, self-built uploads, lookup parts placed by code
+- Delete: a record whose table has nuBuilder Forte's ..._nulog column no longer asks "changed by ... after you opened it" every
+  time – that column is written when the record is viewed and is not a change by another user.
+- Uploads: Uppy built by the form's own code (new Uppy.Core() with an upload to core/nuapi.php, as older templates did) now
+  uploads through nuBuilder Next, as nuUppyCreate() already did.
+- Form code that replaces nuIsVisible() with a version for ids only no longer causes a JavaScript error on opening a record.
+- Fixed layout: css('top') / css('left') on a lookup's code field, button or description read and set form positions as in
+  nuBuilder Forte, so code that places the description below the code field puts it there.
+
+## 0.8.1214 – Code of older nuBuilder Forte versions: lookups, uploads, event code, tab panes
+- Lookups: a lookup form whose list does not select its primary key works again – key, code and description are then read
+  from the list's tables, as nuBuilder Forte did before 4.9. Before, such a lookup stayed empty (and a required one stopped the save).
+- Uploads: form code that still names the upload procedures as before nuBuilder Forte 4.9 (NUUPLOADFILE…) finds them under
+  their new names (nu_upload_file…).
+- PHP code that includes a core file of nuBuilder Forte (for example require_once('nusecurity.php')) no longer stops: the line
+  is left out, the functions are there already.
+- Event code: $phpid (form id and event, e.g. …_BS) is set as in nuBuilder Forte; nuSubformObject('') gives the main form
+  with its table and primary key; the hash variable #form_code# exists.
+- Tab panes have the ids nuPane0, nuPane1 … (were nuTabPane…): scripts written for nuBuilder Forte that select the tabs with
+  DIV[id^=nuTab] emptied the form's content.
+
+## 0.8.1213 – Start page tab on access levels, suggestions in the ticket sample
+- Access levels: a third tab "Start page" holds everything users of the level see first. The choice Tile page / Home form and
+  the Home form moved there from the General tab. Next to them a read-only preview shows the level's tile page – its tiles by
+  group, a dashed tile where a condition decides – with a badge that says where the page comes from (own tile page, the default
+  for all access levels, or automatic = the forms and reports of the level). "Edit tile page" / "Own tile page for this level"
+  opens the tile editor for the level, "Edit default" the one for all levels without an own page. The tab stays after Save
+  (&tab=start); the button "Tile page" in the title bar is gone.
+- Ticket sample (version 10): the subject of a ticket shows suggestions while typing – the subjects of earlier tickets that
+  contain the typed text. Refresh the sample under Sample data to get it.
+- Help (Access levels, What users see after sign-in, Tile pages of users, Sample data), tutorial; tests start_page_form and
+  sample_ticket_suggest.
+
+## 0.8.1212 – Suggestions while typing
+- New: suggestions while typing. A text input (text, search, tel, e-mail, url, number) can open a list below the field – a fixed
+  list, or the rows of a query – and a choice fills the field. With a query, a choice can also fill other fields from the columns
+  of the chosen row (for example postcode → city); in a sub-form the fields of the same row. Set in design mode: select the
+  input → Content → Suggestions while typing (source, values or query, Fill fields, From characters, Rows at most, Only values of
+  the list).
+- The query is one SELECT with #term# for the typed text and the usual hash variables. It stays on the server; the typed text is
+  always put in as a value (quoted where #term# stands alone, escaped inside '…'), so it cannot change the query. Only a read-only
+  SELECT runs, with a row limit, for signed-in users with a right on the form.
+- Keys: ↓ ↑ move, Enter or Tab take the marked row, Esc closes; the typed part is marked in each row; late answers are dropped.
+- JavaScript: nuNextAutocomplete(id, {source, min, max, delay, strict, fill, width, autoFocus, select}) – source = a list, an own
+  function (term, done) or a URL. Form code written for jQuery UI – $(…).autocomplete({source, minLength, delay, autoFocus,
+  select}) – is answered by the same list when jQuery UI is not included.
+- Help (Object types → Suggestions while typing), function reference, FEATURES.md; tests input_suggest and unit tests.
+
+## 0.8.1211 – Unknown record IDs open an empty form
+- Found while comparing another nuBuilder Forte database with nuBuilder Next: a form opened with a record ID that is not in its
+  table now opens empty under that ID, as in nuBuilder Forte – before, the page said "The record no longer exists". Its sub-forms
+  list the rows that belong to the ID; a save writes those rows but no main record. Forms that only carry a sub-form and are opened
+  with the parent's ID (run object with #RECORD_ID#) work this way. A record that exists but is not in the user's list is still
+  refused when the Security setting "Records only through the form's list" is on.
+- A record that Before Edit refuses (nuDisplayError) no longer shows the record's title in the breadcrumb and the browser tab –
+  only the form's name.
+- Help (Object types → Run objects); test record_unknown_id.
+
+## 0.8.1210 – nuOnPropertySet hook, nuGetFirstObject
+- Found while comparing another nuBuilder Forte database with nuBuilder Next: the hook nuOnPropertySet(name, value) is now called –
+  after nuSetProperty(name, value, true) once the hash cookie is stored, as in nuBuilder Forte (not for properties without persist).
+  Buttons that set a hash cookie and open a form from this hook did nothing before.
+- New JavaScript functions of nuBuilder Forte: nuGetFirstObject(objects, tabNr) – the first object of a tab a user can type into
+  (lookup: its code field; null when there is none) – and nuAddHome() (does nothing: nuBuilder Next always shows its own Home).
+  Global code that focuses the first field on load no longer stops with "nuGetFirstObject is not defined".
+- Function reference and porting page updated; test forte_property_hook.
+
+## 0.8.1209 – Backup without running out of memory
+- Fix (reported in the forum): the backup before an update ran out of memory on large databases ("Allowed memory size …
+  exhausted" in core/nuupdate.php). The copies of nuBuilder Next's own tables were read into memory as a whole and encoded
+  as one JSON text. They are now written row by row into a temporary file (unbuffered query on MySQL) and added to the zip
+  from there; the temporary files are removed after the zip is closed, also when the backup stops.
+  Measured: 200,000 log rows (150 MB of JSON) with memory_limit 64M – peak 8 MB (before: out of memory).
+- "Without logs" (the default) now also leaves the log rows out of these JSON copies, as the SQL dump already did.
+- A table that cannot be copied is no longer dropped silently: backup.json lists it under table_errors and the reason goes
+  to the PHP error log. A row that cannot be encoded fails its table instead of being written half.
+
+## 0.8.1208 – Tooltips close for dialogues
+- Fix: on phones, tapping "Check & install" showed the button's tooltip on top of the installation dialogue that the same tap
+  opened. Opening a dialogue or sending a form now closes every tooltip, and the page behind an open dialogue shows none
+  (tooltips inside the dialogue still work). Applies to every page.
+
+## 0.8.1207 – Database steps folded
+- Update → System: the card "Database steps" is folded by default, with the number of steps next to its title. It opens by
+  itself while a step is still pending (the badge then shows pending / all in yellow).
+
+## 0.8.1206 – Home form as first breadcrumb
+- Fix: when a form opens instead of the tile page (start page "Home form" of the access level, or the globeadmin's
+  $nuConfigGlobeadminHome), its breadcrumb started with "Home", which only led back to the same form. Now, as in nuBuilder
+  Forte, the Home form itself is the first breadcrumb: on the Home form (and on forms opened from it) there is no extra crumb,
+  on other forms the first crumb is the Home form instead of "Home".
+
+## 0.8.1205 – Globeadmin keeps his language
+- Fix: the globeadmin got the language of the user who signed in before him in the same browser. The globeadmin has no user
+  row, so his language came from the session, which keeps the last language for the sign-in page after a log-out. His own
+  choice of language is now stored (nuBuilder Next's own setting) and used at his next sign-in.
+- A language left over from the previous user no longer counts as "picked on the sign-in page": users without a language of
+  their own get the default language again instead of the previous user's. A language chosen on the sign-in page still counts.
+
+## 0.8.1204 – Home form opens without a form rights row
+- Fix: an access level with the start page "Home form" still showed the tile page when its Home form was not in the level's form
+  rights. As in nuBuilder Forte, users may now open the Home form of their access level without a form rights row – without Add,
+  Save, Delete, Clone and Print. Admin-equivalent system forms (users, access levels, forms, procedures, SQL, setup) are excluded.
+
+## 0.8.1203 – Start page per access level, tile pages
+- Start page per access level: the access level form has a new choice "Start page" – Tile page (default, unchanged behaviour) or
+  Home form. With Home form, users of the level open their Home form after sign-in and with Home / the logo, as in nuBuilder Forte,
+  provided the form exists and they may open it (otherwise the tile page). The user menu then offers "Tile page". Stored in
+  nuBuilder Next's own settings; nuBuilder Forte's tables are unchanged. Home form requires a form to be chosen.
+- Names: the tile editor "Start pages of users" is now "Tile pages" (Tile page for, Automatic tile page, Use the default …) in all
+  eleven languages; the Home form explains itself in an (i) tooltip. The tile editor shows a note for levels that open their Home form.
+- The User Home icon left the start page's search row (User Home stays in the user menu and as a tile).
+- Help: new page "What users see after sign-in" (the terms and which page opens); access levels, tile pages, tutorial and the
+  differences to nuBuilder Forte updated.
+
+## 0.8.1202 – Start page editor: access level choice fits phones
+- Start pages of users: the "Start page for" choice is searchable and never wider than the screen – long access level
+  names are cut with "…" on phones instead of pushing the page sideways.
+
+## 0.8.1201 – Notes
+- Notes: v0.8.1200 published on GitHub.
+
 ## 0.8.1200 – Release gate
 - Release gate: full test run (smoke, all end-to-end tests, comparison with nuBuilder Forte, security scan).
 - Documentation brought up to date for 0.8.1180–0.8.1199: code pane of records, form info, browse SQL "As run",

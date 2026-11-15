@@ -35,6 +35,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
 
 ## SQL Server
+- [ ] **Suggestions while typing** (0.8.1212) – NuSuggest::rows wraps the query as `SELECT TOP n * FROM (…) nuS` on SQL Server (falls back to the query as written when that fails, e.g. with ORDER BY); untested there
 - [ ] **Pivot date groups on SQL Server** (0.8.1151) – NuPivot::dimExpr (DATEPART / FORMAT / iso_week, weekday via @@DATEFIRST) untested; open a pivot with a date by month / week / weekday
 - [ ] **Column totals of form lists** (0.8.1127) – SUM / AVG use TRY_CONVERT(DECIMAL(38, 10), column) on SQL Server; untested there. A failing
       query shows the list without totals and writes a Debug result.
@@ -117,6 +118,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Suggestions while typing** (0.8.1212) – please verify on a real form: a query with fill of two fields, a sub-form column, "Only values of the list", phones. Not built: Form with AI key, a preview of the rows in design mode, a procedure as source
 - [ ] **Please verify: code pane beside the record** (0.8.1197 / 0.8.1199) – Ctrl+Shift+B or Design ▾ → Code on a record of a real form: every part
       as in design mode's Code tab, cards with counts, one Save for several parts (live and with an open draft), Esc with unsaved changes; User Home shows Before Edit only.
 - [ ] **Please verify: form info and browse SQL "As run"** (0.8.1180–0.8.1187) – the (i) panel in section cards, description / code changed in the
@@ -249,6 +251,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       needs a long press). SQL Server not tested (the date range filter compares the list column with 'Y-m-d H:i:s' text).
 
 ## Users, access levels and permissions
+- [ ] **Access level tab Start page** (0.8.1213) – choice Tile page / Home form, Home form, preview of the tiles, Edit tile page / Edit default:
+      please check with a level that has its own tile page, one on the default and one with conditional tiles; also the Home form breadcrumb (0.8.1206)
+      and the globeadmin's language after another user signed out in the same browser (0.8.1205).
+- [ ] **Start page per access level** (0.8.1203) – please verify: access level → Start page *Home form* with a Home form → a user of that level opens the form after sign-in and with Home, the user menu shows *Tile page*; *Tile page* (default) unchanged; a Home form the user may not open falls back to the tiles; the editor *Tile pages* shows the note; the house icon is gone from the start page search row.
 - [ ] **User field defaults** (0.8.1074) – please verify: today+30d, next:EMP-{0000}, {first_name}.{last_name}, = SELECT …, proc:<code> on a new user, data import and REST
 - [ ] **User form layout** (0.8.1018 / 0.8.1019): the Person card with initials, the three cards below on a laptop and a phone.
 - [ ] **Admin roles / Logged-in users on phones** (0.8.1021 / 0.8.1022): the rights table in own columns (sort by area / full access)
@@ -315,6 +321,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Tom Select 2.7.0** (0.8.1131) – searchable selects in light / dark (caret, empty option first, search with ß / umlauts).
 
 ## Update page, backups and admin tools
+- [ ] **Backup memory** (0.8.1209) – please verify a backup before an update on the live server with a large log (the forum report);
+      the folded Database steps card (0.8.1207) and no tooltip over the Check & install dialogue on a phone (0.8.1208).
 - [ ] **Please verify: Reset database with a mysqldump file** (0.8.1148 / 0.8.1149) – large file (time limit of the check) and views / triggers with DEFINER (imported without it, owned by the importing user)
 - [ ] **File Manager tiles** (0.8.1121) – please verify with a folder of real photos (large phone pictures, orientation, loading speed) and in dark mode; no note is shown when PHP has no GD (tiles then show icons)
 - [ ] **File Manager for nuBuilder Forte** (0.8.1122 / 0.8.1123) – light / dark switch at the foot of the side bar; on phones it sits behind ☰ – wanted in the top bar there?
@@ -356,6 +364,15 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
 
 ## nuBuilder Forte compatibility
+- [ ] **Further Forte 4.5 database compared form by form** (0.8.1210–0.8.1215) – please verify on the live application: `nuOnPropertySet` after
+      `nuSetProperty(…, true)`, `nuGetFirstObject`, a form opened with a parent's id that is not in its table (sub-form only), lookups whose list
+      does not select the key (code + description shown, required lookups saved), uploads with `NUUPLOADFILE…` and with Uppy built by the form
+      (`new Uppy.Core()`), `require_once('nusecurity.php')` in procedures, `$phpid` / `nuSubformObject('')` / `#form_code#` in Before Save,
+      scripts selecting `DIV[id^=nuTab]` (accessibility mode), delete without the "changed by" warning on tables with a `_nulog` column,
+      a lookup description moved below its code by form code.
+- [ ] **Value set in Before Save not written** (0.8.1214, open) – in one compared form `nuSetNuDataValue($nudata, …, '<prefix>_aktualisiert_am', date(…))`
+      for a non-globeadmin is not saved while the user id set next to it is; cause not found yet.
+- [ ] **Not built (owner's choice)**: `#USER_NAME#` of the globeadmin is his display name in Next, empty in Forte.
 - [ ] **Context menus of form code and large text fields** (0.8.1170 / 0.8.1177) – a form that builds a menu with `nuOpenContextMenu`
       (icons, sub-menus, actions); a text area enlarged by its corner lies above its neighbours while in use (Chrome, fixed layout).
 - [ ] **File manager for nuBuilder Forte** (0.8.1055–0.8.1058, one file `tinyfilemanager.php`, built by `dev/forte/build_nufiles_forte.py`) – please verify in a real Forte installation: sign-in from Forte's File Manager entry, `$nuConfigFileMangerUsers`, the Uploads folder, the code share with password, `_nufiles_data` blocked on the web server (nginx: deny it or set `data_dir`). Untested: SQL Server (log table), chmod on the host

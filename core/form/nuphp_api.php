@@ -378,6 +378,8 @@ if (!function_exists('nuRunQuery')) {
 	/** Posted subform, shaped like nuBuilder's object: rows, fields, deleted, edited. */
 	function nuSubformObject(string $id): object
 	{
+		// nuBuilder Forte: '' = the main form (id nuBuilder4EditForm, with table and primary_key)
+		if ($id === '' && isset(NuPhp::$hash['nuFORMdata'][0]) && is_object(NuPhp::$hash['nuFORMdata'][0])) return NuPhp::$hash['nuFORMdata'][0];
 		return (object)(NuPhp::$subforms[$id] ?? ['id' => $id, 'fields' => [], 'rows' => [], 'deleted' => [], 'edited' => []]);
 	}
 

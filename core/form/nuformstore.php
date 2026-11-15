@@ -138,6 +138,12 @@ final class NuDraftStore
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['calendar' => is_array($cc) ? NuCalendar::cleanObject($cc) : null]);
 			unset($fields['nunext_calendar']);
 		}
+		if (array_key_exists('nunext_suggest', $fields)) {         // suggestions while typing (0.8.1212): sob_all_json nunext.suggest of a text input
+			$sg = NuSuggest::clean($fields['nunext_suggest']);
+			if ($sg && ($sp = NuSuggest::problem($sg)) !== null) throw new RuntimeException($sp);
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['suggest' => $sg]);
+			unset($fields['nunext_suggest']);
+		}
 		if (array_key_exists('nunext_fit', $fields)) {             // grid sub-form: fit columns to the width (0.8.1141): sob_all_json nunext.fit
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);
 			unset($fields['nunext_fit']);

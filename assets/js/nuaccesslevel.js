@@ -94,3 +94,14 @@
 		if (keep[0]) sortBy(keep[0], keep[1] === 'desc' ? 'desc' : 'asc');
 	} catch (e) { /* no storage */ }
 })();
+
+// tab Start page (0.8.1213): the note "users land on the Home form" follows the choice
+(function () {
+	'use strict';
+	var note = document.getElementById('accStartFormNote'), form = document.getElementById('accStartForm'), tiles = document.getElementById('accStartTiles');
+	if (!note || !form || !tiles) return;
+	function sync() { note.hidden = !form.checked; }
+	form.addEventListener('change', sync);
+	tiles.addEventListener('change', sync);
+	sync();
+})();

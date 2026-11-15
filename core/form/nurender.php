@@ -43,12 +43,12 @@ final class NuRender
 			$hidden = $access === '2' || ($access === '3' && !$isAdmin);
 			$nav .= '<li class="nav-item" role="presentation"' . ($hidden ? ' style="display:none"' : '') . '>'
 				. '<button type="button" class="nav-link nuTab' . ($i === 0 ? ' active nuTabSelected' : '') . '" id="nuTab' . $i . '" data-nu-tab="' . $i . '"'
-				. ' data-nu-tab-id="' . h($t['zzzzsys_tab_id']) . '" data-bs-toggle="tab" data-bs-target="#nuTabPane' . $i . '" role="tab"'
-				. ' aria-controls="nuTabPane' . $i . '" aria-selected="' . ($i === 0 ? 'true' : 'false') . '">' . h($t['syt_title']) . '</button></li>';
+				. ' data-nu-tab-id="' . h($t['zzzzsys_tab_id']) . '" data-bs-toggle="tab" data-bs-target="#nuPane' . $i . '" role="tab"'
+				. ' aria-controls="nuPane' . $i . '" aria-selected="' . ($i === 0 ? 'true' : 'false') . '">' . h($t['syt_title']) . '</button></li>';
 			$objects = $this->meta->objectsOfTab((string)$t['zzzzsys_tab_id']);
 			// the pane carries data-nu-pane-tab, not data-nu-tab-id: in nuBuilder Forte only the tab has that attribute, and form code
 			// such as $('div[data-nu-tab-id=…]').html(title) (Forte's Procedures form) would otherwise empty the pane (0.8.960)
-			$panes .= '<div class="tab-pane nuTabPane' . ($i === 0 ? ' show active' : '') . '" id="nuTabPane' . $i . '" role="tabpanel" aria-labelledby="nuTab' . $i . '" data-nu-pane-tab="' . h($t['zzzzsys_tab_id']) . '">'
+			$panes .= '<div class="tab-pane nuTabPane' . ($i === 0 ? ' show active' : '') . '" id="nuPane' . $i . '" role="tabpanel" aria-labelledby="nuTab' . $i . '" data-nu-pane-tab="' . h($t['zzzzsys_tab_id']) . '">'
 				. ($this->layout === 'absolute' ? $this->absolute($objects) : $this->flow($objects)) . '</div>';
 		}
 		$navHtml = count($tabs) > 1 || $this->meta->tabs === [] ? '<ul class="nav nav-tabs nuTabHolder" id="nuTabHolder" role="tablist">' . $nav . '</ul>' : '<ul class="nav nav-tabs nuTabHolder d-none" id="nuTabHolder" role="tablist">' . $nav . '</ul>';
@@ -400,6 +400,8 @@ final class NuRender
 		if ($type === 'datetime-local' && $value) $value = str_replace(' ', 'T', substr((string)$value, 0, 16));
 		if ($type === 'date' && $value) $value = substr((string)$value, 0, 10);
 		$list = trim((string)($o['sob_input_datalist'] ?? '')) !== '' ? ' list="nuDatalist_' . h($id) . '"' : '';
+		// suggestions while typing (0.8.1212, NuSuggest): the settings without the query – assets/js/nu/nusuggest.js attaches on focus
+		if (!$ro && ($sg = NuSuggest::client($o)) !== null) $list .= ' data-nu-suggest="' . h((string)json_encode($sg, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '" role="combobox" aria-autocomplete="list" aria-expanded="false"';
 		$mask = str_starts_with($fmt, 'T|') && in_array($type, ['text', 'tel', 'search'], true)
 			? ' data-nu-format="' . h($fmt) . '" placeholder="' . h(self::maskPlaceholder(substr($fmt, 2))) . '"' : '';
 		if ($mask !== '') $value = NuFormat::format($value, $fmt);

@@ -166,6 +166,16 @@ try {
 			if ($o['sob_all_type'] === 'select') nu_api_out(['ok' => true, 'found' => true, 'options' => $r->options($o)]);
 			nu_api_out(['ok' => true, 'found' => false]);
 
+		case 'suggest':
+			// suggestions while typing (0.8.1212, NuSuggest): rows of the input's query for the typed text. The browser names the
+			// object; the query stays on the server. The object belongs to this form or one of its sub-forms.
+			$o = nu_api_object($meta, (string)($in['object_id'] ?? ''));
+			if (NuRecord::hiddenFor($o) || NuFieldAccess::withheld($o)) nu_api_out(['ok' => true, 'cols' => [], 'rows' => []]);
+			$rowValues = is_array($in['row'] ?? null) ? $in['row'] : [];
+			$hash = NuHash::forForm($meta, $record, $rowValues + $values, $props, ['SUBFORM_ID' => nu_api_subform_id($meta, (string)$o['sob_all_zzzzsys_form_id'])]);
+			session_write_close();
+			nu_api_out(['ok' => true] + NuSuggest::rows($o, (string)($in['term'] ?? ''), $hash));
+
 		case 'props':
 			nu_api_out(['ok' => true, 'ps' => NuProps::fork($ps, $in['props'] ?? [], $in['caller'] ?? null)]);
 

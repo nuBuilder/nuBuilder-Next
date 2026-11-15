@@ -96,7 +96,7 @@ final class NuDesign
 		// the format designer and the attribute editor use them
 		$texts = [];
 		foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) {
-			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_|om_|fmt_type_|fms_|vr_)/', $k)) $texts[$k] = t($k);
+			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_|om_|fmt_type_|fms_|vr_|sg_)/', $k)) $texts[$k] = t($k);
 		}
 		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search', 'uh_admin_title', 'cal_month', 'cal_week', 'cal_day', 'cal_list'] as $k) $texts[$k] = t($k);
 		$db = nu_db();

@@ -1126,7 +1126,15 @@
 			if (t && el.getAttribute('aria-describedby')) t.hide();
 		});
 	};
-	document.addEventListener('show.bs.tooltip', function (e) { hideOthers(e.target); });
+	document.addEventListener('show.bs.tooltip', function (e) {
+		// none from the page behind an open dialogue (0.8.1208)
+		if (document.querySelector('.modal.show') && !(e.target.closest && e.target.closest('.modal'))) { e.preventDefault(); return; }
+		hideOthers(e.target);
+	});
+	// a dialogue or a send closes every tooltip (0.8.1208): a tap on a button with a tooltip (Check & install) showed it on top
+	// of the progress dialogue that the same tap opened – touch screens show tooltips on tap and keep them
+	document.addEventListener('show.bs.modal', function () { hideOthers(null); });
+	document.addEventListener('submit', function () { hideOthers(null); }, true);
 	document.addEventListener('click', function (e) {
 		var on = e.target.closest && e.target.closest('[data-bs-toggle="tooltip"]');
 		if (!on) hideOthers(null);

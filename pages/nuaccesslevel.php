@@ -33,6 +33,7 @@ if (nu_is_post() && nu_post('action') === 'delete') {
 		if ($db->tableExists('zzzzsys_access_report')) $db->delete('zzzzsys_access_report', 'sre_zzzzsys_access_id', $id);
 		$db->delete('zzzzsys_access', 'zzzzsys_access_id', $id);
 	});
+	if (NuHome::startMode($id) === 'form') NuHome::setStartMode($id, 'tiles');
 	NuLog::write('access_deleted', 'zzzzsys_access', $id, ['code' => $existing['sal_code']]);
 	nu_flash('success', t('access_deleted', $existing['sal_code']));
 	nu_redirect(nu_url('access'));
@@ -58,6 +59,8 @@ $v = [];
 foreach ($text as $col => $_) $v[$col] = (string)($source[$col] ?? '');
 $v['sal_zzzzsys_form_id'] = (string)($source['sal_zzzzsys_form_id'] ?? '');
 $v['sal_use_2fa']         = (string)($source['sal_use_2fa'] ?? '') === '1' ? '1' : '0';
+// start page (0.8.1203, nuBuilder Next's own setting start_page): tiles = the tile page, form = the Home form opens
+$v['start_page']          = NuHome::startMode((string)($source['zzzzsys_access_id'] ?? ''));
 
 // form-right rows of this level (or of the clone source), keyed by id
 $rightsSql = 'SELECT * FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?';
@@ -104,6 +107,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	}
 	$v['sal_zzzzsys_form_id'] = nu_post('sal_zzzzsys_form_id');
 	$v['sal_use_2fa']         = nu_check('sal_use_2fa');
+	$v['start_page']          = nu_post('start_page') === 'form' ? 'form' : 'tiles';
 
 	if ($v['sal_code'] === '') {
 		$errors['sal_code'] = t('err_required');
@@ -113,6 +117,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	if ($v['sal_zzzzsys_form_id'] !== '' && !isset($forms[$v['sal_zzzzsys_form_id']]) && $v['sal_zzzzsys_form_id'] !== (string)($existing['sal_zzzzsys_form_id'] ?? '')) {
 		$errors['sal_zzzzsys_form_id'] = t('err_invalid');
 	}
+	if ($v['start_page'] === 'form' && $v['sal_zzzzsys_form_id'] === '') $errors['sal_zzzzsys_form_id'] = t('acc_start_err_form');
 
 	// rights grid
 	$rows = [];
@@ -209,13 +214,14 @@ if (nu_is_post() && nu_post('action') === 'save') {
 			return $id;
 		});
 
-		NuLog::write($isNew ? 'access_created' : 'access_updated', 'zzzzsys_access', $newId, ['code' => $v['sal_code'], 'forms' => count(array_filter($rows, static fn($r) => empty($r['remove'])))]);
+		if (NuHome::startMode((string)$newId) !== $v['start_page']) NuHome::setStartMode((string)$newId, $v['start_page']);
+		NuLog::write($isNew ? 'access_created' : 'access_updated', 'zzzzsys_access', $newId, ['code' => $v['sal_code'], 'forms' => count(array_filter($rows, static fn($r) => empty($r['remove']))), 'start_page' => $v['start_page']]);
 		nu_flash('success', $isNew ? t('access_created', $v['sal_code']) : t('saved'));
 		if ($isNew) {                                                     // forms for everyone (0.8.784): a new level gets them at once
 			$evAdded = NuFormEveryone::addToLevel((string)$newId);
 			if ($evAdded) nu_flash('info', t('fac_ev_added', count($evAdded), implode(', ', $evAdded)));
 		}
-		nu_redirect(nu_url('accesslevel', ['id' => $newId, 'tab' => nu_post('tab') === 'rights' ? 'rights' : null]));   // stays on the tab it was saved from
+		nu_redirect(nu_url('accesslevel', ['id' => $newId, 'tab' => in_array(nu_post('tab'), ['rights', 'start'], true) ? nu_post('tab') : null]));   // stays on the tab it was saved from
 	}
 	nu_flash('danger', t('err_check_form'));
 }
@@ -289,9 +295,6 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 		<a class="btn nuBtnAct" href="<?= h(nu_url('access')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if ($canSave): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if (!$isNew): ?>
-			<?php if (NuHome::canManage()): // its start page (user start pages, 0.8.425) ?>
-				<a class="btn nuBtnAct" href="<?= h(nu_url('home', ['for' => $id])) ?>" id="nuAccessHome"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i><?= h(t('home_u_edit_level')) ?></a>
-			<?php endif; ?>
 			<?php if ($rights['clone']): ?>
 				<a class="btn nuBtnAct" href="<?= h(nu_url('accesslevel', ['clone' => $id])) ?>"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
@@ -319,14 +322,18 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 	<fieldset<?= $ro ?>>
 	<?php
 	// tab General / Form rights (0.8.484): ?tab=rights, the tab it was saved from; an error opens the tab that shows it (General first)
-	$genErr = array_diff_key($errors, ['rights' => 1]) !== [];
-	$accTab = !$genErr && (isset($errors['rights']) || (string)($_GET['tab'] ?? '') === 'rights') ? 'rights' : '';
+	// tab Start page (0.8.1213): what users of the level see after sign-in – the choice, the Home form and a preview of the tile page
+	$genErr = array_diff_key($errors, ['rights' => 1, 'sal_zzzzsys_form_id' => 1]) !== [];
+	$wantTab = (string)($_GET['tab'] ?? '');
+	$accV = $v;                                             // the General tab's lists reuse \$v
+	$accTab = $genErr ? '' : (isset($errors['sal_zzzzsys_form_id']) ? 'start' : (isset($errors['rights']) || $wantTab === 'rights' ? 'rights' : ($wantTab === 'start' ? 'start' : '')));
 	$rightsCount = count(array_filter($rows, static fn($r) => empty($r['remove'])));
 	?>
 	<input type="hidden" name="tab" id="accessTab" value="<?= h($accTab) ?>">
 	<ul class="nav nav-tabs mb-3" id="accessTabs" role="tablist" data-nu-tabfield="accessTab">
 		<li class="nav-item" role="presentation"><button class="nav-link<?= $accTab === '' ? ' active' : '' ?>" id="accessTabGeneralBtn" data-bs-toggle="tab" data-bs-target="#accessTabGeneral" data-nu-tab="" type="button" role="tab" aria-controls="accessTabGeneral" aria-selected="<?= $accTab === '' ? 'true' : 'false' ?>"><i class="bi bi-card-text me-1"></i><?= h(t('access_sec_general')) ?></button></li>
 		<li class="nav-item" role="presentation"><button class="nav-link<?= $accTab === 'rights' ? ' active' : '' ?>" id="accessTabRightsBtn" data-bs-toggle="tab" data-bs-target="#accessTabRights" data-nu-tab="rights" type="button" role="tab" aria-controls="accessTabRights" aria-selected="<?= $accTab === 'rights' ? 'true' : 'false' ?>"><i class="bi bi-ui-checks-grid me-1"></i><?= h(t('access_forms')) ?> <span class="badge text-bg-secondary js-rights-count"><?= $rightsCount ?></span><?php if (isset($errors['rights'])): ?> <i class="bi bi-exclamation-circle text-danger" role="img" aria-label="<?= h(t('err_check_form')) ?>"></i><?php endif; ?></button></li>
+		<li class="nav-item" role="presentation"><button class="nav-link<?= $accTab === 'start' ? ' active' : '' ?>" id="accessTabStartBtn" data-bs-toggle="tab" data-bs-target="#accessTabStart" data-nu-tab="start" type="button" role="tab" aria-controls="accessTabStart" aria-selected="<?= $accTab === 'start' ? 'true' : 'false' ?>"><i class="bi bi-house-door me-1" aria-hidden="true"></i><?= h(t('acc_start_page')) ?></button></li>
 	</ul>
 	<div class="tab-content">
 	<div class="tab-pane fade<?= $accTab === '' ? ' show active' : '' ?>" id="accessTabGeneral" role="tabpanel" aria-labelledby="accessTabGeneralBtn" tabindex="0">
@@ -350,25 +357,6 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 						<input class="form-control<?= nu_invalid($errors, 'sal_group') ?>" id="sal_group" name="sal_group" value="<?= h($v['sal_group']) ?>" maxlength="80" list="dl_groups" autocomplete="off">
 						<datalist id="dl_groups"><?php foreach ($groups as $g): ?><option value="<?= h($g) ?>"><?php endforeach; ?></datalist>
 						<?= nu_feedback($errors, 'sal_group') ?>
-					</div>
-					<div class="mb-3">
-						<label class="form-label" for="sal_zzzzsys_form_id"><?= h(t('home_form')) ?></label>
-						<?php $homeUrl = nu_url('form', ['f' => '__ID__']); $homeNone = $v['sal_zzzzsys_form_id'] === ''; ?>
-						<div class="input-group<?= isset($errors['sal_zzzzsys_form_id']) ? ' has-validation' : '' ?>">
-						<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'sal_zzzzsys_form_id') ?>" id="sal_zzzzsys_form_id" name="sal_zzzzsys_form_id">
-							<option value=""><?= h(t('please_select')) ?></option>
-							<?php if ($v['sal_zzzzsys_form_id'] !== '' && !isset($forms[$v['sal_zzzzsys_form_id']])): ?>
-								<option value="<?= h($v['sal_zzzzsys_form_id']) ?>" selected><?= h($v['sal_zzzzsys_form_id']) ?></option>
-							<?php endif; ?>
-							<?= $formOptions($v['sal_zzzzsys_form_id']) ?>
-						</select>
-						<?php // opens the chosen home form in a new tab (0.8.693, as the access level button of the user form – assets/js/nuaccesslevel.js keeps it in step) ?>
-						<a class="btn btn-outline-secondary nuOpenBtn<?= $homeNone ? ' disabled' : '' ?>" id="homeFormOpen" target="_blank" rel="noopener"
-						   data-url="<?= h($homeUrl) ?>" href="<?= h($homeNone ? '#' : str_replace('__ID__', rawurlencode($v['sal_zzzzsys_form_id']), $homeUrl)) ?>"
-						   <?= $homeNone ? 'aria-disabled="true" tabindex="-1"' : '' ?> title="<?= h(t('acc_home_open')) ?>" aria-label="<?= h(t('acc_home_open')) ?>"><i class="bi bi-box-arrow-up-right"></i></a>
-						<?= nu_feedback($errors, 'sal_zzzzsys_form_id') ?>
-						</div>
-						<div class="form-text"><?= h(t('home_form_hint')) ?></div>
 					</div>
 					<div class="form-check form-switch">
 						<input class="form-check-input" type="checkbox" role="switch" id="sal_use_2fa" name="sal_use_2fa" value="1"<?= $v['sal_use_2fa'] === '1' ? ' checked' : '' ?>>
@@ -434,6 +422,80 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 	</div>
 	</div>
 
+	<div class="tab-pane fade<?= $accTab === 'start' ? ' show active' : '' ?>" id="accessTabStart" role="tabpanel" aria-labelledby="accessTabStartBtn" tabindex="0">
+	<?php $v = $accV; ?>
+	<div class="row g-3">
+		<div class="col-lg-4">
+			<div class="card shadow-sm mb-3" id="accStartCard">
+				<div class="card-header fw-semibold"><i class="bi bi-box-arrow-in-right me-2"></i><?= h(t('acc_start_after')) ?></div>
+				<div class="card-body">
+					<div class="mb-3" id="accStartPage">
+						<?php // what the users of this level see after sign-in and with Home (0.8.1203) ?>
+						<span class="form-label d-block" id="accStartLbl"><?= h(t('acc_start_page')) ?>
+							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('acc_start_tip')) ?>" aria-label="<?= h(t('acc_start_tip')) ?>"><i class="bi bi-info-circle"></i></span></span>
+						<div class="btn-group" role="radiogroup" aria-labelledby="accStartLbl">
+							<input type="radio" class="btn-check" name="start_page" id="accStartTiles" value="tiles"<?= $v['start_page'] !== 'form' ? ' checked' : '' ?>>
+							<label class="btn btn-outline-secondary" for="accStartTiles"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i><?= h(t('acc_start_tiles')) ?></label>
+							<input type="radio" class="btn-check" name="start_page" id="accStartForm" value="form"<?= $v['start_page'] === 'form' ? ' checked' : '' ?>>
+							<label class="btn btn-outline-secondary" for="accStartForm"><i class="bi bi-window me-1" aria-hidden="true"></i><?= h(t('acc_start_form')) ?></label>
+						</div>
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="sal_zzzzsys_form_id"><?= h(t('home_form')) ?></label>
+						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('home_form_hint')) ?>" aria-label="<?= h(t('home_form_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+						<?php $homeUrl = nu_url('form', ['f' => '__ID__']); $homeNone = $v['sal_zzzzsys_form_id'] === ''; ?>
+						<div class="input-group<?= isset($errors['sal_zzzzsys_form_id']) ? ' has-validation' : '' ?>">
+						<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'sal_zzzzsys_form_id') ?>" id="sal_zzzzsys_form_id" name="sal_zzzzsys_form_id">
+							<option value=""><?= h(t('please_select')) ?></option>
+							<?php if ($v['sal_zzzzsys_form_id'] !== '' && !isset($forms[$v['sal_zzzzsys_form_id']])): ?>
+								<option value="<?= h($v['sal_zzzzsys_form_id']) ?>" selected><?= h($v['sal_zzzzsys_form_id']) ?></option>
+							<?php endif; ?>
+							<?= $formOptions($v['sal_zzzzsys_form_id']) ?>
+						</select>
+						<?php // opens the chosen home form in a new tab (0.8.693, as the access level button of the user form – assets/js/nuaccesslevel.js keeps it in step) ?>
+						<a class="btn btn-outline-secondary nuOpenBtn<?= $homeNone ? ' disabled' : '' ?>" id="homeFormOpen" target="_blank" rel="noopener"
+						   data-url="<?= h($homeUrl) ?>" href="<?= h($homeNone ? '#' : str_replace('__ID__', rawurlencode($v['sal_zzzzsys_form_id']), $homeUrl)) ?>"
+						   <?= $homeNone ? 'aria-disabled="true" tabindex="-1"' : '' ?> title="<?= h(t('acc_home_open')) ?>" aria-label="<?= h(t('acc_home_open')) ?>"><i class="bi bi-box-arrow-up-right"></i></a>
+						<?= nu_feedback($errors, 'sal_zzzzsys_form_id') ?>
+						</div>
+					</div>
+					<div class="alert alert-info small mb-0 py-2" id="accStartFormNote"<?= $v['start_page'] === 'form' ? '' : ' hidden' ?>><?= h(t('acc_start_form_note')) ?></div>
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-8">
+			<?php if ($isNew): ?>
+				<div class="card shadow-sm mb-3"><div class="card-body text-body-secondary small" id="accStartNew"><?= h(t('acc_start_new')) ?></div></div>
+			<?php else:
+				$pv = NuHome::levelPreview($id);
+				$srcKey = ['level' => 'acc_start_src_level', 'default' => 'acc_start_src_default', 'auto' => 'acc_start_src_auto'][$pv['source']] ?? 'acc_start_src_auto';
+				$pvTile = static fn(array $tl) => '<div class="accPvTile' . ($tl['cond'] ? ' accPvCond' : '') . '"' . ($tl['cond'] ? ' title="' . h(t('acc_start_cond')) . '"' : '') . '><i class="bi ' . h(preg_match('/^bi-[a-z0-9-]+$/', $tl['icon']) ? $tl['icon'] : 'bi-square') . '" aria-hidden="true"></i><span>' . h($tl['label']) . '</span></div>';
+			?>
+			<div class="card shadow-sm mb-3" id="accStartPreview" data-source="<?= h($pv['source']) ?>">
+				<div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+					<span class="fw-semibold"><i class="bi bi-grid-1x2 me-2"></i><?= h(t('acc_start_preview')) ?></span>
+					<span class="d-flex flex-wrap gap-2 align-items-center">
+						<span class="badge <?= $pv['source'] === 'level' ? 'text-bg-primary' : 'text-bg-secondary' ?>" id="accStartSrc"><?= h(t($srcKey)) ?></span>
+						<?php if (NuHome::canManage()): ?>
+							<a class="btn btn-sm btn-outline-secondary" id="accStartEdit" href="<?= h(nu_url('home', ['for' => $id])) ?>"><i class="bi bi-pencil me-1" aria-hidden="true"></i><?= h(t($pv['source'] === 'level' ? 'acc_start_edit' : 'acc_start_own')) ?></a>
+							<?php if ($pv['source'] !== 'level'): ?><a class="btn btn-sm btn-outline-secondary" id="accStartEditDefault" href="<?= h(nu_url('home', ['for' => NuHome::ALL_LEVELS])) ?>"><i class="bi bi-pencil me-1" aria-hidden="true"></i><?= h(t('acc_start_edit_default')) ?></a><?php endif; ?>
+						<?php endif; ?>
+					</span>
+				</div>
+				<div class="card-body accPv">
+					<p class="small text-body-secondary mb-3"><?= h(t($pv['source'] === 'level' ? 'acc_start_pv_hint' : ($pv['source'] === 'default' ? 'acc_start_pv_default' : 'acc_start_pv_auto'))) ?></p>
+					<?php if ($pv['fav']): ?><div class="accPvGroup"><h3 class="accPvTitle"><i class="bi bi-star-fill me-1" aria-hidden="true"></i><?= h(t('home_fav')) ?></h3><div class="accPvTiles"><?= implode('', array_map($pvTile, $pv['fav'])) ?></div></div><?php endif; ?>
+					<?php foreach ($pv['groups'] as $g): ?>
+						<div class="accPvGroup"><?php if ($g['title'] !== ''): ?><h3 class="accPvTitle"><?= h($g['title']) ?></h3><?php endif; ?><div class="accPvTiles"><?= implode('', array_map($pvTile, $g['tiles'])) ?></div></div>
+					<?php endforeach; ?>
+					<?php if (!$pv['groups'] && !$pv['fav']): ?><p class="text-body-secondary mb-0" id="accStartEmpty"><?= h(t('acc_start_pv_empty')) ?></p><?php endif; ?>
+					<?php if ($pv['hidden'] > 0): ?><p class="small text-body-secondary mb-0 mt-2"><?= h(t('acc_start_pv_hidden', $pv['hidden'])) ?></p><?php endif; ?>
+				</div>
+			</div>
+			<?php endif; ?>
+		</div>
+	</div>
+	</div>
 	<div class="tab-pane fade<?= $accTab === 'rights' ? ' show active' : '' ?>" id="accessTabRights" role="tabpanel" aria-labelledby="accessTabRightsBtn" tabindex="0">
 			<div class="card shadow-sm">
 				<div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">

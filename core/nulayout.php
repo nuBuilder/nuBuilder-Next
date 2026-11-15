@@ -253,8 +253,8 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php if (NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" id="nuMenuUserHome"><i class="bi bi-house-door me-2"></i><?= h(t('home_userhome')) ?></a></li>
 						<?php endif; ?>
-						<?php if ($u['globeadmin'] && NuHome::globeadminForm() !== null): // $nuConfigGlobeadminHome opens a form – the tile page stays reachable here ?>
-							<li><a class="dropdown-item" href="<?= h(nu_url('home', ['tiles' => '1'])) ?>"><i class="bi bi-grid me-2"></i><?= h(t('home_tiles_link')) ?></a></li>
+						<?php if ($u['globeadmin'] ? NuHome::globeadminForm() !== null : NuHome::startForm($u) !== null): // a form opens instead of the tile page ($nuConfigGlobeadminHome, start page "Home form" of the access level 0.8.1203) – the tile page stays reachable here ?>
+							<li><a class="dropdown-item" id="nuMenuTiles" href="<?= h(nu_url('home', ['tiles' => '1'])) ?>"><i class="bi bi-grid me-2"></i><?= h(t('home_tiles_link')) ?></a></li>
 						<?php endif; ?>
 						<?php // side bar on / off: start page → Customise → Appearance (0.8.708); "for everyone": Settings → Look ?>
 						<li><hr class="dropdown-divider"></li>

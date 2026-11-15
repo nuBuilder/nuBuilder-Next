@@ -194,10 +194,10 @@
 	</section>
 
 	<section class="tut-lesson" id="user-start-pages" data-right="homelayout" data-level="advanced">
-		<h3>Start pages of users</h3>
-		<p>Users without an admin role get a tile start page of their access level. Until you set one up, it shows the level's forms and reports automatically. Each access level can have its own page, and one default page serves all levels without their own.</p>
+		<h3>Tile pages of users</h3>
+		<p>Users without an admin role get the tile page of their access level after sign-in. Until you set one up, it shows the level's forms and reports automatically. Each access level can have its own page, and one default page serves all levels without their own. An access level can instead open its <strong>Home form</strong>, as nuBuilder Forte does: its <em>Start page</em> switch on the access level form (<a data-help="after-sign-in">what users see after sign-in</a>).</p>
 		<ul>
-			<li>Open an access level and click <strong>Start page</strong> (or <em>Access levels</em> ▾ → <em>Start pages of users</em>). The page shows what its users would see – only tiles their rights allow.</li>
+			<li>Open an access level, go to the tab <strong>Start page</strong> and click <strong>Edit tile page</strong> (or <em>Access levels</em> ▾ → <em>Tile pages</em>). The page shows what its users would see – only tiles their rights allow.</li>
 			<li><strong>Customise</strong> works as on your own start page: groups, tabs, tiles for forms, <strong>reports</strong>, procedures and links. <em>Done</em> saves the page for that access level.</li>
 			<li><strong>Only for</strong>: a tile or a whole group (the funnel next to its name) can be limited to a permission item, team, department or position. The editor marks such tiles with a funnel but shows them all.</li>
 			<li>Users <strong>personalise</strong> their page themselves: favourites and tiles they hide – only for them.</li>
@@ -205,12 +205,12 @@
 		<div class="tut-task">
 			<ol>
 				<li>Look at the examples of the sample data: <a data-open="home" data-args="for=sample_sales">sample_sales</a> (favourites, a group only for a permission item), <a data-open="home" data-args="for=sample_manager">sample_manager</a> (two tabs, a group only for a team) and <a data-open="home" data-args="for=sample_editor">sample_editor</a> (a list in two columns).</li>
-				<li>Open <a data-open="home" data-args="for=sample_viewer">the start page of <code>sample_viewer</code></a>: the automatic page with forms and reports.</li>
+				<li>Open <a data-open="home" data-args="for=sample_viewer">the tile page of <code>sample_viewer</code></a>: the automatic page with forms and reports.</li>
 				<li>Customise: add a tile for the report <em>Sample: orders by customer</em> in a new group <em>Reports to check</em>, give the group the condition <em>Department</em> = <code>Sample</code>, and save.</li>
 				<li>Act as <code>sample_anna</code> (department <em>Sample</em>) and look at her start page; then <em>Use the default</em> to remove the page again.</li>
 			</ol>
 		</div>
-		<p><a data-help="home-users">Start pages of users in the documentation</a></p>
+		<p><a data-help="home-users">Tile pages of users in the documentation</a></p>
 	</section>
 
 	<section class="tut-lesson" id="users" data-right="acl:nuuser">
@@ -379,6 +379,7 @@
 			<p>Open the sample form <a data-open="form" data-args="f=sampleall">All objects</a> and click through its tabs – every object type is there. Then open it in design mode to see how each is set up.</p>
 		</div>
 		<p><a data-help="object-types">Object types</a> · <a data-help="select-options">Options of a select</a> · <a data-help="run-objects">Run objects</a></p>
+		<div class="tut-tip">A text field can offer suggestions while typing: in design mode select it → <em>Content</em> → <em>Suggestions</em> – a fixed list or a query with <code>#term#</code> (for example the subjects of earlier records); a choice can fill other fields too. In code: <code>nuNextAutocomplete('field', {…})</code>.</div>
 	</section>
 
 	<section class="tut-lesson" id="form-code">

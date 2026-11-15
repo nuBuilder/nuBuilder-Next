@@ -361,13 +361,18 @@
      "file": "08-17-jquery.htm"
     },
     {
+     "id": "after-sign-in",
+     "title": "What users see after sign-in",
+     "file": "08-06-after-sign-in.htm"
+    },
+    {
      "id": "home-page",
      "title": "Start page of the globeadmin",
      "file": "08-06-home-page.htm"
     },
     {
      "id": "home-users",
-     "title": "Start pages of users",
+     "title": "Tile pages of users",
      "file": "08-07-home-users.htm"
     },
     {

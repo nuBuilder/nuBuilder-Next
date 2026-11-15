@@ -781,7 +781,7 @@
     "g": "form",
     "n": "nuSubformObject",
     "s": "nuSubformObject(string $id): object",
-    "d": "A posted subform (Before Save): rows, fields, deleted, edited – as in nuBuilder Forte.",
+    "d": "A posted subform (Before Save): rows, fields, deleted, edited – as in nuBuilder Forte. An empty id gives the main form, with table and primary_key.",
     "r": "object",
     "e": "$sf = nuSubformObject('items_sf');\nforeach ($sf->rows as $i => $row) { if ($sf->deleted[$i]) continue; … }",
     "o": "nb",
@@ -8917,6 +8917,55 @@
     "p": {
      "on": "false = keep the desktop layout, true = stack on phones (the default)"
     }
+   },
+   {
+    "g": "hooks",
+    "k": "hook",
+    "n": "nuOnPropertySet",
+    "s": "nuOnPropertySet(name, value)",
+    "d": "A hash cookie was stored: called after nuSetProperty(name, value, true) once the server has saved it, as nuBuilder Forte. Not called for properties without persist.",
+    "o": "nb",
+    "e": "function nuOnPropertySet(name, value) {\n    if (name === 'REGION') nuForm('customers', '', '', '', '0');\n}",
+    "p": {
+     "name": "name of the hash cookie",
+     "value": "its new value"
+    }
+   },
+   {
+    "g": "objects",
+    "n": "nuGetFirstObject",
+    "s": "nuGetFirstObject(objects, tabNr)",
+    "d": "The first object of a tab a user can type into (enabled, visible, not read-only, not a word / image / HTML object) as jQuery object – of a lookup its code field. null when there is none.",
+    "r": "jQuery object, null",
+    "o": "nb",
+    "e": "const first = nuGetFirstObject(nuSERVERRESPONSE.objects, nuSelectedTabNumber());\nif (first !== null) first.trigger('focus');",
+    "p": {
+     "objects": "the form's objects (nuSERVERRESPONSE.objects)",
+     "tabNr": "tab number, -1 = any tab"
+    },
+    "x": "jQuery object of the first field"
+   },
+   {
+    "g": "nav",
+    "n": "nuAddHome",
+    "s": "nuAddHome()",
+    "d": "nuBuilder Forte adds its Home icon to the breadcrumb with it. nuBuilder Next always shows its own Home button, so the call does nothing.",
+    "o": "nb",
+    "e": "nuAddHome();"
+   },
+   {
+    "g": "objects",
+    "n": "nuNextAutocomplete",
+    "s": "nuNextAutocomplete(id, options)",
+    "d": "Suggestions while typing on a text input: a list opens below the field and a choice fills it. Without source the query set on the object in design mode (Suggestions while typing) is used. Works in sub-form rows too. Where jQuery UI is not loaded, $(…).autocomplete({source, minLength, delay, autoFocus, select}) is answered by the same list.",
+    "r": "{search(text), close(), destroy()}, null when the field is missing",
+    "o": "next",
+    "e": "nuNextAutocomplete('adr_city', {\n    source: ['Basel', 'Bern', 'Zürich'],\n    min: 1\n});\n\n// own function, fills a second field\nnuNextAutocomplete('adr_zip', {\n    source: (term, done) => done([{label: '8000 Zürich', value: '8000', city: 'Zürich'}]),\n    fill: {city: 'adr_city'},\n    select: (item) => console.log(item.value)\n});",
+    "p": {
+     "id": "field id or the input element",
+     "options": "source (array of texts or {label, value, …} | function (term, done) | URL answering ?term= with a JSON array), min (characters, 1), max (rows, 15), delay (ms, 250), strict (only values of the list), fill ({key of the item or column: field id}), width (px), autoFocus, select (function (item, input) – return false to keep the field as it is)"
+    },
+    "x": "{search: ƒ, close: ƒ, destroy: ƒ, element: input}"
    }
   ]
  }

@@ -1192,10 +1192,12 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 			<div class="card-footer small text-body-secondary"><?= h(t('upd_req_hint')) ?></div>
 		</div>
 	
+<?php $stAll = NuMigrate::status(); $stPend = count(array_filter($stAll, static fn($s) => !$s['applied'])); // folded unless a step is pending (0.8.1207) ?>
 <div class="card shadow-sm mb-4" id="updStepsCard">
-	<div class="card-header fw-semibold"><?= h(t('upd_db_steps')) ?></div>
-	<ul class="list-group list-group-flush small" id="updSteps">
-		<?php foreach (NuMigrate::status() as $s): ?>
+	<div class="card-header fw-semibold"><button class="btn btn-link p-0 fw-semibold text-decoration-none text-body nuChevToggle<?= $stPend ? '' : ' collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#updSteps" aria-expanded="<?= $stPend ? 'true' : 'false' ?>" aria-controls="updSteps" id="updStepsToggle"><i class="bi bi-chevron-right me-1"></i><?= h(t('upd_db_steps')) ?></button>
+		<span class="badge text-bg-<?= $stPend ? 'warning' : 'secondary' ?> ms-1" id="updStepsCount"><?= $stPend ? (int)$stPend . ' / ' . count($stAll) : count($stAll) ?></span></div>
+	<ul class="list-group list-group-flush small collapse<?= $stPend ? ' show' : '' ?>" id="updSteps">
+		<?php foreach ($stAll as $s): ?>
 			<li class="list-group-item d-flex flex-wrap gap-2 nuUpdStep"><i class="bi <?= $s['applied'] ? 'bi-check-circle text-success' : 'bi-hourglass text-warning' ?>"></i>
 				<code><?= h($s['id']) ?></code><span class="me-auto nuUpdStepDesc"><?= h($s['description']) ?></span>
 				<span class="text-body-secondary text-nowrap"><?= $s['applied'] ? h(date(nu_dfmt('d.m.Y H:i'), strtotime($s['applied'])) . ' · ' . $s['version']) : h(t('upd_pending')) ?></span></li>
