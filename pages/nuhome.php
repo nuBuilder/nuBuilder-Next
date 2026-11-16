@@ -381,6 +381,9 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 	<?php // one Customise button (0.8.452): the panel #nuHomeViewPanel with the tabs Content (edit mode / Personalise – the two hidden
 	// buttons below start them), Appearance (how the tiles look, before: View) and Layouts (choose, save, share) ?>
 	<div class="nuHomeTools">
+		<?php if (!$editorPage && NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) – its own button next to Customise (0.8.998; back 0.8.1220) ?>
+		<a class="btn btn-outline-secondary nuHomeUhBtn" id="nuHomeUserHome" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" title="<?= h(t('home_userhome')) ?>" aria-label="<?= h(t('home_userhome')) ?>"><i class="bi bi-house-door" aria-hidden="true"></i></a>
+		<?php endif; ?>
 		<button type="button" class="btn btn-outline-secondary" id="nuHomeViewBtn" aria-expanded="false" aria-controls="nuHomeViewPanel" title="<?= h(t('home_c_tip')) ?>" aria-label="<?= h(t('home_customize')) ?>">
 			<i class="bi bi-sliders2" aria-hidden="true"></i><span class="nuHomeBtnTx"><?= h(t('home_customize')) ?></span></button>
 		<?php if ($canLayout): ?><button type="button" hidden class="btn btn-outline-secondary" id="nuHomeCustomize" title="<?= h(t($editorPage ? 'home_u_customise_tip' : 'home_v_customise_tip')) ?>">

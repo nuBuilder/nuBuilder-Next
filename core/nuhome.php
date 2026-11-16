@@ -1528,7 +1528,61 @@ final class NuHome
 		NuSchema::ensure();
 		$lv = self::startLevels();
 		if ($mode === 'form') $lv[$access] = 'form'; else unset($lv[$access]);
-		nu_setting_save(self::START_SETTING, ['setting_value' => json_encode(['levels' => (object)$lv])]);
+		self::startSave($lv, self::startForte());
+	}
+
+	private static function startSave(array $levels, bool $forte): void
+	{
+		nu_setting_save(self::START_SETTING, ['setting_value' => json_encode(['levels' => (object)$levels] + ($forte ? ['forte' => true] : []))]);
+	}
+
+	/**
+	 * true when the database came from nuBuilder Forte (0.8.1219, step 0044): it had access levels when nuBuilder Next set it up or was
+	 * updated – new access levels with a Home form then start on it, as in Forte; a database set up in nuBuilder Next starts on tiles.
+	 */
+	public static function startForte(): bool
+	{
+		try { $v = nu_setting_value(self::START_SETTING); } catch (Throwable) { return false; }
+		$d = $v === null ? null : json_decode($v, true);
+		return is_array($d) && !empty($d['forte']);
+	}
+
+	/** Start page of a new access level with this Home form: 'form' on a database from nuBuilder Forte, else 'tiles'. */
+	public static function newLevelMode(string $homeForm): string
+	{
+		return self::startForte() && trim($homeForm) !== '' && $homeForm !== 'nuhome' ? 'form' : 'tiles';
+	}
+
+	/**
+	 * Step 0044 (0.8.1219): on a database with nuBuilder Forte's access levels every level with a Home form starts on it, as in Forte
+	 * (levels already set to "Home form" stay); the database is marked as coming from Forte. A database without access levels (a new
+	 * nuBuilder Next installation) is left as it is. Returns the number of levels switched.
+	 */
+	public static function startFromForte(?NuDB $db = null): int
+	{
+		$db ??= nu_db();
+		if (!$db->tableExists('zzzzsys_access')) return 0;
+		// levels of nuBuilder Next's sample applications (Admin tools → Sample data) do not count – a database set up in nuBuilder Next
+		// may hold them; their ids start with the sample's prefix
+		$pre = ['sample_'];
+		foreach (NuSampleSet::SETS as $file) {
+			$j = @file_get_contents(NU_ROOT . '/install/samples/' . $file, false, null, 0, 4096);
+			if (is_string($j) && preg_match('/"prefix"\s*:\s*"([A-Za-z0-9_]+)"/', $j, $m)) $pre[] = $m[1];
+		}
+		$own = static fn(string $id): bool => (bool)array_filter($pre, static fn($p) => str_starts_with($id, $p));
+		$all = array_filter($db->all('SELECT zzzzsys_access_id, sal_zzzzsys_form_id FROM zzzzsys_access'), static fn($r) => !$own((string)$r['zzzzsys_access_id']));
+		if (!$all) return 0;
+		$lv = self::startLevels();
+		$n = 0;
+		foreach ($all as $r) {
+			$id = (string)$r['zzzzsys_access_id'];
+			$home = trim((string)($r['sal_zzzzsys_form_id'] ?? ''));
+			if ($home === '' || $home === 'nuhome' || isset($lv[$id])) continue;
+			$lv[$id] = 'form';
+			$n++;
+		}
+		self::startSave($lv, true);
+		return $n;
 	}
 
 	/** access id => 'form' of the setting row start_page. */

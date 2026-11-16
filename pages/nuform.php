@@ -622,6 +622,15 @@ $client['crumb'] = (static function () use ($meta, $mode, $crumbShown, $hash, $l
 	}
 	return $c;
 })();
+// nuFORM.getCurrent().browse_sql as nuBuilder Forte (nuBrowseRows: $S->SQL – primary key and the column expressions in front of the
+// list's SQL with its hash variables filled in, wrapped as Forte 4.9 does; a #name# without a value stays as text). Form code builds
+// exports from it. Columns hidden or masked by field data access are left out (0.8.1218; before: only the unset #names#, 0.8.973)
+if ($mode === 'browse' && is_array($client['browse'] ?? null) && isset(NuBrowse::$shown['sql'])) {
+	$bsCols = [$meta->primaryKey()];
+	foreach ($client['crumb']['columns'] as $bc) if (trim((string)$bc['display']) !== '') $bsCols[] = trim((string)$bc['display']);
+	$bsSql = rtrim(trim((string)preg_replace('/\s+/', ' ', (string)NuBrowse::$shown['sql'])), ';');
+	$client['browse']['sql'] = 'SELECT ' . implode(',', array_filter($bsCols, 'strlen')) . ' FROM (SELECT * FROM (' . $bsSql . ') AS wrapped) AS wrapped_query WHERE 1';
+}
 // WYSIWYG editor objects need TinyMCE (not bundled – a library pack, or the old hand copy in assets/vendor/tinymce)
 // – and form code that starts TinyMCE itself (tinymce.init on a textarea): nuBuilder Forte loads it on every form page
 $hasEditor = $mode === 'edit' && (array_filter($meta->objects, static fn($o) => $o['sob_all_type'] === 'editor')

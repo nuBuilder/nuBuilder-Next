@@ -510,3 +510,6 @@ html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripChev { t
 .nuHomeVpSw.nuHomeVpSub { box-sizing: border-box; max-width: calc(100% - .75rem); min-width: 0; }
 .nuHomeVpSw > span { min-width: 0; }
 .nuHomeVpSw.nuHomeVpSub b { display: inline-flex; align-items: center; }
+
+/* User Home button next to Customise (0.8.998, back 0.8.1220) */
+.nuHomeUhBtn > .bi { position: relative; top: 1px; }

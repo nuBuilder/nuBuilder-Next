@@ -105,3 +105,20 @@
 	tiles.addEventListener('change', sync);
 	sync();
 })();
+
+// a new access level on a database from nuBuilder Forte (0.8.1219): picking a Home form also picks "Home form" as start page, as in
+// Forte – until the user chooses the start page himself
+(function () {
+	'use strict';
+	var box = document.getElementById('accStartPage'), sel = document.getElementById('sal_zzzzsys_form_id');
+	var form = document.getElementById('accStartForm'), tiles = document.getElementById('accStartTiles');
+	if (!box || box.getAttribute('data-forte-new') !== '1' || !sel || !form || !tiles) return;
+	var own = false;
+	[form, tiles].forEach(function (r) { r.addEventListener('click', function () { own = true; }); });
+	sel.addEventListener('change', function () {
+		if (own) return;
+		var on = sel.value !== '' && sel.value !== 'nuhome';
+		(on ? form : tiles).checked = true;
+		(on ? form : tiles).dispatchEvent(new Event('change', {bubbles: true}));
+	});
+})();

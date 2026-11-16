@@ -61,6 +61,9 @@ $v['sal_zzzzsys_form_id'] = (string)($source['sal_zzzzsys_form_id'] ?? '');
 $v['sal_use_2fa']         = (string)($source['sal_use_2fa'] ?? '') === '1' ? '1' : '0';
 // start page (0.8.1203, nuBuilder Next's own setting start_page): tiles = the tile page, form = the Home form opens
 $v['start_page']          = NuHome::startMode((string)($source['zzzzsys_access_id'] ?? ''));
+// a new level on a database from nuBuilder Forte (0.8.1219): choosing a Home form also chooses "Home form" as start page, as in Forte
+$startForteNew = $isNew && $cloneId === '' && NuHome::startForte();
+if ($startForteNew) $v['start_page'] = NuHome::newLevelMode($v['sal_zzzzsys_form_id']);
 
 // form-right rows of this level (or of the clone source), keyed by id
 $rightsSql = 'SELECT * FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?';
@@ -429,7 +432,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 			<div class="card shadow-sm mb-3" id="accStartCard">
 				<div class="card-header fw-semibold"><i class="bi bi-box-arrow-in-right me-2"></i><?= h(t('acc_start_after')) ?></div>
 				<div class="card-body">
-					<div class="mb-3" id="accStartPage">
+					<div class="mb-3" id="accStartPage"<?= $startForteNew ? ' data-forte-new="1"' : '' ?>>
 						<?php // what the users of this level see after sign-in and with Home (0.8.1203) ?>
 						<span class="form-label d-block" id="accStartLbl"><?= h(t('acc_start_page')) ?>
 							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('acc_start_tip')) ?>" aria-label="<?= h(t('acc_start_tip')) ?>"><i class="bi bi-info-circle"></i></span></span>

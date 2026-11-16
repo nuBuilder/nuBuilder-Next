@@ -4766,7 +4766,7 @@ T.user_home_ensure = async (s) => {
 		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'userhome_created'") >= 1, 'logged');
 		const p = s.ga;
 		await open(p, 'index.php?p=home');
-		expect(await p.locator('#nuHomeUserHome').count() === 0, 'no house icon in the search row any more (0.8.1203)');
+		expect(await p.locator('.nuHomeTools > #nuHomeUserHome').count() === 1, 'User Home button next to Customise (back in 0.8.1220)');
 		expect(await p.locator('#nuMenuUserHome').count() === 1, 'User Home in the user menu');
 		await open(p, 'index.php?p=form&f=nuuserhome');
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
@@ -4800,7 +4800,9 @@ T.start_page_form = async (s) => {
 		expect(await p.isChecked('#accStartTiles'), 'Tile page not chosen by default');
 		await p.evaluate(() => { const e = document.getElementById('sal_zzzzsys_form_id'); if (e.tomselect) e.tomselect.clear(); else e.value = ''; });
 		await p.click('label[for=accStartForm]');
-		await Promise.all([p.waitForLoadState('load'), p.click('[data-nu-save]')]);
+		// waitForLoadState('load') right after the click resolved on the page still shown (gate 0.8.1221): wait for the answer of the POST
+		await Promise.all([p.waitForNavigation(), p.click('[data-nu-save]')]);
+		await p.waitForSelector('#sal_zzzzsys_form_id.is-invalid, .ts-wrapper.is-invalid', {state: 'attached', timeout: 5000}).catch(() => {});
 		expect(await p.locator('#sal_zzzzsys_form_id.is-invalid, .ts-wrapper.is-invalid').count() >= 1, 'no error without a Home form');
 		// with a Home form
 		expect(await p.locator('#accessTabStart.active').count() === 1, 'the error opens the Start page tab');
@@ -13531,9 +13533,12 @@ T.db_reset = async (s) => {
 // package's own, every table deleted and the database built from the install scripts; the next request (new code) runs the steps
 // and the sample data; custom/ stays. Database, vendor/packs put back. Needs PKG (same version as the site) and SITE.
 T.db_reset_package = async (s) => {
+	// pages right after a database reset / a new copy of the program files compile every file anew – on the PHP test server under a full
+	// run one took longer than the 30 s of open() (gate 0.8.1221): one more try with a longer wait
+	const go = (u) => open(s.ga, u).catch(() => s.ga.goto(BASE + u, {timeout: 90000}));
 	const p = s.ga, PKG = process.env.PKG ? path.resolve(process.env.PKG) : '';
 	if (!PKG || !SITE || !fs.existsSync(PKG)) { s.skip = 'needs PKG and SITE'; return; }
-	const r = await open(p, 'index.php?p=dbreset');
+	const r = await go('index.php?p=dbreset');
 	if (r.status() === 404) { s.skip = 'developer mode off / not MySQL'; return; }
 	const ver = (fs.readFileSync(path.join(SITE, 'core/nuapp.php'), 'utf8').match(/NU_VERSION',\s*'([^']+)'/) || [])[1];
 	const pkgVer = (execSync('unzip -p ' + JSON.stringify(PKG) + ' nunext/nunext-manifest.json').toString().match(/"version":\s*"([^"]+)"/) || [])[1];
@@ -13545,7 +13550,7 @@ T.db_reset_package = async (s) => {
 	fs.writeFileSync(marker, 'x');
 	try {
 		sql('CREATE TABLE e2e_dbp_marker (id INT PRIMARY KEY)');
-		await open(p, 'index.php?p=dbreset');
+		await go('index.php?p=dbreset');
 		expect(await p.locator('#dbrFreshHint').count() === 1, 'no hint for packages');
 		await p.setInputFiles('#dbrUpload', PKG);
 		await p.uncheck('#dbrBackup0');
@@ -13558,7 +13563,7 @@ T.db_reset_package = async (s) => {
 		await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#dbrRun')]);
 		if (/p=reauth/.test(p.url())) {
 			await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]);
-			await open(p, 'index.php?p=dbreset');
+			await go('index.php?p=dbreset');
 			await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
 			await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#dbrRun')]);
 		}
@@ -13573,8 +13578,8 @@ T.db_reset_package = async (s) => {
 		expect(fs.existsSync(marker), 'custom/ file removed');
 		expect(fs.readdirSync(packs).some(d => /^phpmailer-/.test(d)), 'package pack not installed: ' + fs.readdirSync(packs).join(','));
 		expect(!fs.existsSync(path.join(SITE, '_backup/maintenance.json')), 'maintenance mode still on');
-		const u = await open(p, 'index.php?p=users');
-		expect(u.status() === 200 && /p=users/.test(p.url()), 'signed out after the fresh installation: ' + p.url());
+		const u = await go('index.php?p=users');
+		expect(u && u.status() === 200 && /p=users/.test(p.url()), 'signed out after the fresh installation: ' + p.url());
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		execSync('mysql ' + DB, { input: fs.readFileSync(dump) });
@@ -18222,6 +18227,106 @@ T.sample_ticket_suggest = async (s) => {
 		expect((await p.inputValue('#tic_subject')).includes(word), 'subject taken: ' + await p.inputValue('#tic_subject'));
 		await p.evaluate(() => nuHasNotBeenEdited());
 	} finally { put(keep); }
+};
+
+T.checkbox_value_attr = async (s) => {
+	// checkboxes of a saved record carry the stored value as value attribute ('' for NULL), as nuBuilder Forte's nuINPUTSetValue –
+	// form code reading $(…).val() gets '1' / ''; a new record without a value keeps none ($(…).val() = 'on'); the save uses .checked
+	const p = s.ga;
+	const on = sql("SELECT MIN(sample_all_id) FROM sample_all WHERE all_checkbox = '1'"), off = sql('SELECT MIN(sample_all_id) FROM sample_all WHERE all_checkbox IS NULL');
+	expect(on && off, 'sample_all needs a ticked and a NULL row');
+	const read = async (r) => { await open(p, 'index.php?p=form&f=sampleall&r=' + r); await p.waitForSelector('#all_checkbox', {state: 'attached'});
+		return p.evaluate(() => { const e = document.getElementById('all_checkbox'); return {attr: e.getAttribute('value'), jq: $(e).val(), checked: e.checked, get: nuGetValue('all_checkbox')}; }); };
+	const a = await read(on), b = await read(off), n = await read('-1');
+	expect(a.attr === '1' && a.jq === '1' && a.checked && a.get === true, 'ticked: ' + JSON.stringify(a));
+	expect(b.attr === '' && b.jq === '' && !b.checked && b.get === false, 'NULL: ' + JSON.stringify(b));
+	expect(n.attr === null && n.jq === 'on', 'new record: ' + JSON.stringify(n));
+	// ticking a NULL box still saves '1' (from .checked, not the value attribute)
+	await open(p, 'index.php?p=form&f=sampleall&r=' + off); await p.waitForSelector('#all_checkbox', {state: 'attached'});
+	try {
+		await p.evaluate(() => { const e = document.getElementById('all_checkbox'); e.click(); });
+		await p.click('#nuSaveButton'); await p.waitForTimeout(1500);
+		expect(sql("SELECT IFNULL(all_checkbox, 'NULL') FROM sample_all WHERE sample_all_id = '" + off + "'") === '1', 'tick not saved');
+	} finally { sql("UPDATE sample_all SET all_checkbox = NULL WHERE sample_all_id = '" + off + "'"); }
+};
+
+T.framed_list_outer_values = async (s) => {
+	// a list shown in a run object (iframe) that reloads itself (nuGetBreadcrumb(0)) after a filter select of the outer form changed:
+	// its hash variables come from the outer form's current fields, as nuBuilder Forte's parent.nuHashFromEditForm(); nuHideHolders(0, 1)
+	// in the frame hides the search row and the title; nuFORM.getCurrent().browse_sql = the list's SQL filled in; a narrow select keeps its value readable
+	const p = s.ga, L = 'e2e_fr_launch', B = 'e2e_fr_list', T = 'e2e_fr_tab';
+	const b64 = (t) => Buffer.from(t).toString('base64');
+	const drop = () => sql(`DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id IN ('${L}', '${B}'); DELETE FROM zzzzsys_event WHERE zzzzsys_event_id = 'e2e_fr_ev';
+		DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id IN ('${L}', '${B}'); DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${B}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id IN ('${L}', '${B}')`);
+	drop();
+	try {
+		const bsql = "SELECT * FROM sample_customer WHERE IFNULL(cus_country, '') = '#e2e_fr_pick#' ORDER BY cus_code";
+		sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_table, sfo_primary_key, sfo_browse_sql, sfo_browse_javascript, sfo_browse_rows_per_page) VALUES
+			('${B}', 'browse', '${B}', 'E2E framed list', 'sample_customer', 'sample_customer_id', FROM_BASE64('${b64(bsql)}'), 'if (nuIsIframe()) { nuHideHolders(0, 1); }', 50),
+			('${L}', 'launch', '${L}', 'E2E outer form', '', '', '', '', 0);
+			INSERT INTO zzzzsys_tab (zzzzsys_tab_id, syt_zzzzsys_form_id, syt_title, syt_order) VALUES ('${T}', '${L}', 'Main', 10), ('${T}b', '${B}', 'Main', 10);
+			INSERT INTO zzzzsys_browse (zzzzsys_browse_id, sbr_zzzzsys_form_id, sbr_title, sbr_display, sbr_align, sbr_width, sbr_order) VALUES ('e2e_fr_b1', '${B}', 'Code', 'cus_code', 'l', 100, 10), ('e2e_fr_b2', '${B}', 'Country', 'cus_country', 'l', 80, 20);
+			INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_zzzzsys_tab_id, sob_all_id, sob_all_label, sob_all_type, sob_select_sql, sob_all_top, sob_all_left, sob_all_width, sob_all_height, sob_all_order, sob_input_file_target) VALUES
+			('e2e_fr_o1', '${L}', '${T}', 'e2e_fr_pick', 'Country', 'select', 'GB|GB|US|US|CA|CA', 20, 120, 54, 20, 10, 0);
+			INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_zzzzsys_tab_id, sob_all_id, sob_all_label, sob_all_type, sob_run_zzzzsys_form_id, sob_run_method, sob_all_top, sob_all_left, sob_all_width, sob_all_height, sob_all_order, sob_input_file_target) VALUES
+			('e2e_fr_o2', '${L}', '${T}', 'e2e_fr_run', '', 'run', '${B}', 'i', 60, 20, 600, 400, 20, 0);
+			INSERT INTO zzzzsys_event (zzzzsys_event_id, sev_zzzzsys_object_id, sev_event, sev_javascript) VALUES ('e2e_fr_ev', 'e2e_fr_o1', 'onchange', '$("#e2e_fr_run")[0].contentWindow.nuGetBreadcrumb(0);');`);
+		await open(p, 'index.php?p=form&f=' + L + '&r=-1&layout=absolute'); await p.waitForSelector('#e2e_fr_run', {state: 'attached'}); await p.waitForTimeout(1500);
+		const frame = async () => { const h = await p.$('#e2e_fr_run'); const f = h ? await h.contentFrame() : null; await f.waitForSelector('#nuBrowseTable', {state: 'attached'}); await p.waitForTimeout(400); return f; };
+		const read = async () => (await frame()).evaluate(() => ({codes: Array.from(document.querySelectorAll('#nuRECORD tr.nuBrowseRow')).map(r => (r.querySelector('div.nuCell') || {}).textContent.trim()),
+			search: (() => { const e = document.querySelector('.nuBrowseSearch, .nuListSearch'); return !!(e && e.offsetWidth); })(),
+			title: (() => { const e = document.getElementById('nuBreadcrumbHolder'); return !!(e && e.offsetWidth); })(),
+			bs: String(nuFORM.getCurrent().browse_sql)}));
+		const pick = async (v) => { await p.evaluate((v) => { const e = document.getElementById('e2e_fr_pick'); e.value = v; jQuery(e).trigger('change'); }, v);
+			await p.waitForFunction((v) => { try { return document.getElementById('e2e_fr_run').contentWindow.nuFORM.getCurrent().browse_sql.includes("'" + v + "'"); } catch (x) { return false; } }, v, {timeout: 15000}).catch(() => {}); };
+		for (const c of ['GB', 'US']) {
+			await pick(c);
+			const r = await read(), want = sql(`SELECT GROUP_CONCAT(cus_code ORDER BY cus_code SEPARATOR ',') FROM sample_customer WHERE IFNULL(cus_country, '') = '${c}'`);
+			expect(r.codes.join(',') === (want === 'NULL' ? '' : want), c + ': rows ' + r.codes.join(',') + ' want ' + want);
+			expect(!r.search && !r.title, c + ': search row / title still shown ' + JSON.stringify([r.search, r.title]));
+			expect(/^SELECT sample_customer_id,cus_code,cus_country FROM \(SELECT \* FROM \(SELECT \* FROM sample_customer WHERE/.test(r.bs) && r.bs.includes("= '" + c + "'"), c + ': browse_sql ' + r.bs.slice(0, 200));
+		}
+		// the 54 px select shows its value: the text fits next to the arrow
+		const sel = await p.evaluate(() => { const e = document.getElementById('e2e_fr_pick'); const cs = getComputedStyle(e); return {w: e.clientWidth, pr: parseFloat(cs.paddingRight), pl: parseFloat(cs.paddingLeft)}; });
+		expect(sel.w - sel.pr - sel.pl >= 30, 'narrow select text room ' + JSON.stringify(sel));
+	} finally { drop(); }
+};
+
+T.start_page_forte = async (s) => {
+	// 0.8.1219: on a database from nuBuilder Forte (access levels that are not nuBuilder Next's samples) step 0044 sets every level with a
+	// Home form to start on it; levels already set stay, sample levels and levels without a Home form keep tiles; the database is marked,
+	// and a new access level created there picks "Home form" when a Home form is chosen
+	if (!SITE) return 'skip: needs SITE';
+	const p = s.ga, L = 'e2e_spf_lvl', N = 'e2e_spf_none';
+	const php = (code) => require('child_process').execFileSync('php', ['-r', 'chdir(' + JSON.stringify(SITE) + "); require 'core/nuapp.php'; " + code]).toString();
+	const keep = sql("SELECT IFNULL(MAX(setting_value), '-') FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'start_page'");
+	const mode = (id) => php(`echo NuHome::startMode('${id}');`).trim();
+	try {
+		sql(`DELETE FROM zzzzsys_access WHERE zzzzsys_access_id IN ('${L}', '${N}') OR sal_code = 'e2e_spf_new';
+			INSERT INTO zzzzsys_access (zzzzsys_access_id, sal_code, sal_description, sal_zzzzsys_form_id, sal_use_2fa) VALUES ('${L}', '${L}', 'E2E Forte level', 'samplehome', '0'), ('${N}', '${N}', 'E2E level without home form', '', '0');
+			DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'start_page'; DELETE FROM zzzzsys_nunext_migration WHERE zzzzsys_nunext_migration_id = '0044-start-page-forte'`);
+		php('NuMigrate::run();');
+		expect(mode(L) === 'form' && mode(N) === 'tiles' && mode('sample_sales') === 'tiles', 'after the step: ' + [mode(L), mode(N), mode('sample_sales')].join());
+		expect(php("echo NuHome::startForte() ? 'y' : 'n';").trim() === 'y', 'database not marked as from Forte');
+		// only sample levels: nothing changes, no mark
+		sql(`DELETE FROM zzzzsys_access WHERE zzzzsys_access_id IN ('${L}', '${N}'); DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'start_page'; DELETE FROM zzzzsys_nunext_migration WHERE zzzzsys_nunext_migration_id = '0044-start-page-forte'`);
+		php('NuMigrate::run();');
+		expect(php("echo NuHome::startForte() ? 'y' : 'n';").trim() === 'n' && mode('sample_sales') === 'tiles', 'sample levels alone counted as Forte');
+		// a new level on a database from Forte: choosing a Home form chooses "Home form"
+		sql(`INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('start_page', '{"levels":{},"forte":true}')`);
+		await open(p, 'index.php?p=accesslevel'); await p.waitForSelector('#accStartPage[data-forte-new="1"]', {state: 'attached'});
+		expect(await p.isChecked('#accStartTiles'), 'a new level without Home form starts on tiles');
+		await p.fill('#sal_code', 'e2e_spf_new');
+		await p.evaluate(() => { const e = document.getElementById('sal_zzzzsys_form_id'); e.value = 'samplehome'; if (e.tomselect) e.tomselect.setValue('samplehome'); e.dispatchEvent(new Event('change', {bubbles: true})); });
+		expect(await p.isChecked('#accStartForm'), 'choosing a Home form did not choose "Home form"');
+		await p.click('button[data-nu-save]');
+		await p.waitForTimeout(1500);
+		const nid = sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE sal_code = 'e2e_spf_new'");
+		expect(nid && nid !== 'NULL' && mode(nid) === 'form', 'the new level does not start on its Home form: ' + nid);
+	} finally {
+		sql(`DELETE FROM zzzzsys_access WHERE zzzzsys_access_id IN ('${L}', '${N}') OR sal_code = 'e2e_spf_new'; DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'start_page'`);
+		if (keep !== '-') sql(`INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('start_page', FROM_BASE64('${Buffer.from(keep).toString('base64')}'))`);
+	}
 };
 
 // keep this test LAST (also after tests defined below the runner): it signs the shared globeadmin page out (tests added after it failed at the gate 0.8.1216)

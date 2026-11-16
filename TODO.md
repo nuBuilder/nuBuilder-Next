@@ -251,6 +251,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       needs a long press). SQL Server not tested (the date range filter compares the list column with 'Y-m-d H:i:s' text).
 
 ## Users, access levels and permissions
+- [ ] **Start page Home form on a Forte database** (0.8.1219) – please verify after the update on the live server: every access level with a Home form opens it after sign-in (Access levels → a level → Start page shows Home form); levels switched back to Tile page stay so; a new level with a Home form starts on it
 - [ ] **Access level tab Start page** (0.8.1213) – choice Tile page / Home form, Home form, preview of the tiles, Edit tile page / Edit default:
       please check with a level that has its own tile page, one on the default and one with conditional tiles; also the Home form breadcrumb (0.8.1206)
       and the globeadmin's language after another user signed out in the same browser (0.8.1205).
@@ -364,6 +365,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
 
 ## nuBuilder Forte compatibility
+- [ ] **Two more forms of the Forte 4.5 database** (0.8.1217 / 0.8.1218) – please verify on the live application: checkbox `$(…).val()` in form
+      code (stored value on saved records), a list in a run object following the filter selects of the form around it, its title and
+      search row hidden, a narrow select readable, an export procedure that loads its library with `dirname(__FILE__)`
 - [ ] **Further Forte 4.5 database compared form by form** (0.8.1210–0.8.1215) – please verify on the live application: `nuOnPropertySet` after
       `nuSetProperty(…, true)`, `nuGetFirstObject`, a form opened with a parent's id that is not in its table (sub-form only), lookups whose list
       does not select the key (code + description shown, required lookups saved), uploads with `NUUPLOADFILE…` and with Uppy built by the form

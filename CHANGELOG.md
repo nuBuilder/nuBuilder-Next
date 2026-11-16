@@ -3,6 +3,40 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1221 – Release gate
+- Release gate: documentation brought up to date (differences to nuBuilder Forte, start page after sign-in, feature list, open points to verify).
+
+## 0.8.1220 – User Home button back on the start page
+- The User Home button (house icon) is back in the start page's search row, next to Customise – for users who may open User Home
+  (removed in 0.8.1203; User Home stays in the user menu and as a tile too).
+
+## 0.8.1219 – Home form as start page on Forte databases
+- Start page of access levels on a database from nuBuilder Forte: every access level with a Home form now starts on it, as in Forte –
+  before, all levels started on the tile page until "Home form" was chosen on the level's Start page tab. Set once by a database step
+  when nuBuilder Next is installed on a Forte database (installer, first sign-in, Reset database) or updated; levels already set to
+  "Home form" stay, levels without a Home form and the levels of the sample applications keep the tile page. A database set up in
+  nuBuilder Next keeps the tile page as default.
+- On such a database a new access level with a Home form starts on it too: on the access level form choosing a Home form also chooses
+  "Home form" as start page (until the start page is chosen by hand), and the REST API's new access levels do the same.
+
+## 0.8.1218 – Framed lists follow the outer form, browse SQL as Forte
+- Lists shown in a run object (a form in a frame) take the current field values of the form around them each time they load again
+  (nuGetBreadcrumb(0) in the frame), as nuBuilder Forte does: a list that filters by selects of the outer form now follows them –
+  before it kept the values of its first load and only took over properties set with nuSetProperty.
+- nuHideHolders(0, 1) in a framed list also hides the list's search row and the form title, as in nuBuilder Forte.
+- nuFORM.getCurrent().browse_sql / nuCurrentProperties().browse_sql is the list's SQL again, as nuBuilder Forte builds it: the primary key
+  and the column expressions in front of the list's SQL with its hash variables filled in (a hash variable without a value stays as
+  text). Form code that builds an export from it works. Columns hidden or masked by field data access are left out.
+- __FILE__ and __DIR__ in PHP code of forms and procedures point to nuBuilder Forte's core folder, as when Forte runs the code, so code
+  that finds its own files with dirname(__FILE__) . '/../libs/…' reaches the application's folder (nuBuilder Next's own folder when no
+  Forte folder is found).
+- Selects narrower than 80 px in the fixed layout get slim padding and a small arrow, so a short value such as a year stays readable.
+
+## 0.8.1217 – Checkbox values as nuBuilder Forte
+- Checkboxes carry the stored value as on nuBuilder Forte: on a saved record a checkbox has its stored value as value attribute
+  ('1', or empty for an unset value), so form code reading `$(…).val()` or `.value` gets the same result as in Forte – before it
+  was always "on". A new record without a value keeps "on", as in Forte. Ticking and saving still go by whether the box is ticked.
+
 ## 0.8.1216 – Release gate
 - Release gate: documentation brought up to date (language of the globeadmin, breadcrumb on a Home form, the Database steps card,
   backups of large logs, code of older nuBuilder Forte versions, suggestions in the tutorial), feature list and open checks.

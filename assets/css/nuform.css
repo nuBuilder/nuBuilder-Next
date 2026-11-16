@@ -945,3 +945,8 @@ html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
 .nuSuggestList .nuSuggestItem mark { padding: 0; background: none; color: inherit; font-weight: 700; }
 .nuSuggestList .nuSuggestItem.active { background: var(--bs-primary); color: #fff; }
 @media (pointer: coarse) { .nuSuggestList .nuSuggestItem { padding: .6rem .8rem; } }
+
+/* narrow selects of the fixed layout (0.8.1218): a year in a 54 px select – nuBuilder Forte's arrow takes ~14 px, Bootstrap's 2.25rem cut
+   the value ("20:"); the select gets Forte's slim padding and a small arrow */
+.nuAbsNarrow select.form-select:not([multiple]) { padding-left: 3px; padding-right: 15px; background-position: right 3px center; background-size: 9px 7px; }
+

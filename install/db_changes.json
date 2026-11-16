@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.1216",
+    "version": "0.8.1221",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -566,6 +566,17 @@
                     "table": "zzzzsys_nunext_code_replace",
                     "kind": "table",
                     "what": "created when missing"
+                }
+            ]
+        },
+        {
+            "id": "0044-start-page-forte",
+            "description": "Start page of access levels: on a database from nuBuilder Forte every level with a Home form starts on it, as in Forte",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_setting",
+                    "kind": "data",
+                    "what": "row start_page: access levels with a Home form start on it (database from nuBuilder Forte only)"
                 }
             ]
         }

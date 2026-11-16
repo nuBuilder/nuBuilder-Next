@@ -195,8 +195,9 @@
 			pages: Number(N.browse.pages || 1), page_number: Math.max(0, Number(N.browse.page || 1) - 1)};   // Forte: page_number from 0 (0.8.974)
 	}
 	// the run filter of the opening run button / nuForm(…, filter) (sob_run_filter → ?rf=) – nuBuilder Forte's breadcrumb property "filter"
-	// nuFORM.getCurrent().browse_sql: the hash variables of the list's SQL that had no value (not the SQL – see pages/nuform.php)
-	function browseSqlLeft() { return N.browse && N.browse.unset ? N.browse.unset.join(' ') : ''; }
+	// nuFORM.getCurrent().browse_sql: the list's SQL with its hash variables filled in, as nuBuilder Forte (0.8.1218, pages/nuform.php);
+	// a #name# without a value stays in it as text
+	function browseSqlLeft() { return N.browse ? (typeof N.browse.sql === 'string' ? N.browse.sql : (N.browse.unset ? N.browse.unset.join(' ') : '')) : ''; }
 	function runFilter() { try { return new URL(window.location.href).searchParams.get('rf') || ''; } catch (x) { return ''; } }
 	// nuBuilder Forte keeps the page: methods the form's code adds to built-in prototypes stay defined from the list. Each record is a
 	// new page here, so such top-level definitions (Date.prototype.valid = function () {…}) run before the form's code (pages/nuform.php)
@@ -800,11 +801,20 @@
 	/** Runs fn(scopeKey) with a server scope that holds the current properties (stored first when they changed here). */
 	// 0.8.976: from an edit form the opened form also gets this record's fields as hash variables (below its own values), as nuBuilder
 	// Forte's nuHashFromEditForm; from a list nothing – a scope that carries an older caller is replaced, so it is not passed on
+	// 0.8.1218: in a frame (a run object showing a form) the fields come from the page around it, as Forte's getform requests take
+	// parent.nuHashFromEditForm() – a framed list that reloads (nuGetBreadcrumb(0)) sees the current values of the outer form's filters
+	function outerEdit() {
+		try {
+			var P = window.parent !== window ? window.parent.nuNext : null;
+			return P && P.mode === 'edit' && P.form && typeof P.mainValues === 'function' ? P : null;
+		} catch (x) { return null; }   // another origin
+	}
 	function withScope(fn) {
-		var edit = N.mode === 'edit' && !!N.form;
+		var outer = outerEdit();
+		var edit = (N.mode === 'edit' && !!N.form) || !!outer;
 		if (!propsDirty && !edit && !N.caller) { fn(N.ps || ''); return; }
 		var data = {};
-		if (edit) { try { data.caller = N.mainValues ? N.mainValues() : {}; } catch (x) { data.caller = {}; } }
+		if (edit) { try { data.caller = outer ? outer.mainValues() : (N.mainValues ? N.mainValues() : {}); } catch (x) { data.caller = {}; } }
 		call('props', data).then(function (res) {
 			if (res && res.ps) {
 				// the new scope while fn builds its URL (formUrl reads N.ps); this page keeps its own unless properties changed
@@ -3390,7 +3400,7 @@
 	// #nuSearchField) at load hides the search row; the title bar goes when nothing in it is left
 	function forteHidden() {
 		if (N.mode !== 'browse') return;
-		var off = function (sel) { var e = document.querySelector(sel); return !!e && e.style.display === 'none'; };
+		var off = function (sel) { var e = document.querySelector(sel); return !!e && (e.style.display === 'none' || e.classList.contains('nuHolderHidden')); };   // 0.8.1218: also nuHideHolders
 		var form = document.querySelector('.nuBrowseSearch');
 		if (form && off('#nuActionHolder')) form.style.display = 'none';
 		else if (off('#nuSearchField')) $('.nuSearchGroup').hide();
@@ -5072,8 +5082,10 @@
 		window.dispatchEvent(new Event('resize'));          // sticky rows measure again (nuapp.js)
 		return remove;
 	}
-	api('nuHideHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (+a === 1) holderNav(false); else if (HOLDERS[a]) $(HOLDERS[a]).addClass('nuHolderHidden'); }); });
-	api('nuRemoveHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (+a === 1) holderNav(true); else if (HOLDERS[a]) $(HOLDERS[a]).remove(); }); });
+	// 0.8.1218: in a frame there is no top bar – 1 hides the form's title there, nuBuilder Forte's breadcrumb holder; the list's search row
+	// goes with 0 (in Forte it sits in the action holder) – forteHidden() also runs after nuOnLoad
+	api('nuHideHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (+a === 1) { holderNav(false); if (N.iframe) $('#nuBreadcrumbHolder').addClass('nuHolderHidden'); } else if (HOLDERS[a]) $(HOLDERS[a]).addClass('nuHolderHidden'); }); forteHidden(); });
+	api('nuRemoveHolders', function () { Array.prototype.forEach.call(arguments, function (a) { if (+a === 1) { holderNav(true); if (N.iframe) $('#nuBreadcrumbHolder').addClass('nuHolderHidden'); } else if (HOLDERS[a]) $(HOLDERS[a]).remove(); }); forteHidden(); });
 	api('nuSetVerticalTabs', function () { $('#nuEditForm').addClass('nuVerticalTabs'); });
 	api('nuPrintEditForm', function (hideObjects, showObjects) {
 		hideObjects = arr(hideObjects); showObjects = arr(showObjects);

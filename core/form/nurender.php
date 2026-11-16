@@ -75,8 +75,9 @@ final class NuRender
 			// input buttons keep their height like run buttons (as in nuBuilder, 0.8.518) – other inputs size themselves
 			$isBtn = $o['sob_all_type'] === 'input' && (string)($o['sob_input_type'] ?? '') === 'button';
 			$style = "top:{$top}px;left:{$left}px;width:{$w}px;" . ($h > 0 && ($isBtn || !in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'lookup', 'word'], true)) ? "height:{$h}px;" : '') . $z;
-			// narrow text fields (a time "05:00" in 47 px): Forte's 2 px side padding instead of .4rem, the value stays readable (0.8.974)
-			$narrow = in_array($o['sob_all_type'], ['input', 'calc', 'display'], true) && !in_array((string)($o['sob_input_type'] ?? ''), ['button', 'checkbox'], true) && (int)$o['sob_all_width'] < 80;
+			// narrow text fields (a time "05:00" in 47 px): Forte's 2 px side padding instead of .4rem, the value stays readable (0.8.974);
+			// narrow selects (a year in 54 px) get a smaller arrow (0.8.1218)
+			$narrow = in_array($o['sob_all_type'], ['input', 'calc', 'display', 'select'], true) && !in_array((string)($o['sob_input_type'] ?? ''), ['button', 'checkbox'], true) && (int)$o['sob_all_width'] < 80;
 			$html .= $this->wrapper($o, $narrow ? 'nuAbs nuAbsNarrow' : 'nuAbs', $style, $this->object($o, 'absolute'));
 		}
 		return '<div class="nuAbsoluteCanvas" style="height:' . $height . 'px;min-width:' . $width . 'px">' . $html . '</div>';
@@ -377,8 +378,11 @@ final class NuRender
 					. self::nameIfIconOnly((string)$o['sob_all_label'], '') . ($ro ? ' disabled' : '') . '>'
 					. self::withIcon('<span class="nuButtonLabel">' . self::closeFragment((string)$o['sob_all_label']) . '</span>', $o, (string)$o['sob_all_label']) . '</button>';
 			case 'checkbox':
-				// no value attribute (0.8.975): $(…).val() of a checkbox is "on", as in nuBuilder Forte – the saved value comes from .checked
-				return '<input type="checkbox" class="form-check-input ' . h($cls) . '"' . $common . ((string)$value === '1' ? ' checked' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>';
+				// value attribute as nuBuilder Forte's nuINPUTSetValue: the stored value on a saved record ('' for NULL), none on a new record
+				// without a value – $(…).val() is then "on" (0.8.975); the saved value always comes from .checked
+				$isNew = $this->recordId === '-1' || $this->recordId === '';
+				$valAttr = !$isNew || (string)$value !== '' ? ' value="' . h((string)$value) . '"' : '';
+				return '<input type="checkbox" class="form-check-input ' . h($cls) . '"' . $common . $valAttr . ((string)$value === '1' ? ' checked' : '') . ($ro ? ' disabled data-nu-readonly="1"' : '') . '>';
 			case 'nuDate':
 				return '<input type="text" class="form-control nuDate ' . h($cls) . '"' . $common . ' autocomplete="off" data-nu-format="' . h($fmt) . '"'
 					. ($ro ? ' readonly' : ' onclick="nuPopupCalendar(this);"') . ' value="' . h(NuFormat::format($value, $fmt)) . '">';

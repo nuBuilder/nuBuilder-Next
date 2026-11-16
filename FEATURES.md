@@ -113,6 +113,8 @@ page) for how to use it.
   it does not understand).
 - **Context menus of form code** (`nuOpenContextMenu`, `ctxmenu`) work as in nuBuilder Forte; a quick search lists the
   places that call functions nuBuilder Next does not have.
+- **Forte databases start as in Forte** – access levels with a Home form open it after sign-in; lists in run objects follow the
+  fields of the form around them; `browse_sql`, checkbox values and `__FILE__` as Forte gives them to form code.
 - **Code of older nuBuilder Forte versions keeps running** – lookups whose list lacks the key, the earlier names of the
   upload procedures, self-built Uppy uploads, `$phpid` and `nuSubformObject('')` in events, includes of Forte's core files,
   scripts that place lookup parts or select the tabs by id, `nuOnPropertySet`, records opened under an id the table does not have.

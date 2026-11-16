@@ -69,6 +69,26 @@ final class NuPhp
 		return (string)preg_replace('/(?<![\\w$>])(?:require|include)(?:_once)?\\s*\\(?\\s*([\'"])(?:\\.{0,2}\\/)*(?:core\\/)?(?:' . implode('|', self::FORTE_CORE) . ')\\.php\\1\\s*\\)?\\s*;/i', '', $code);
 	}
 
+	/**
+	 * __FILE__ / __DIR__ in the code as in nuBuilder Forte, which runs it inside core/nucommon.php (0.8.1218): code that finds its own
+	 * files with dirname(__FILE__) . '/../libs/…' reaches the application's folder next to Forte's core/ – here that is nuBuilder Forte's
+	 * folder (NuBuilderLib::path()) when it has a core/ folder, else nuBuilder Next's. Lines stay as they are.
+	 */
+	public static function forteFileConsts(string $code): string
+	{
+		if (!str_contains($code, '__FILE__') && !str_contains($code, '__DIR__')) return $code;
+		$base = NuBuilderLib::path();
+		$core = (is_dir($base . '/core') ? $base : NU_ROOT) . '/core';
+		$out = '';
+		foreach (token_get_all('<?php ' . $code) as $i => $tk) {
+			if ($i === 0) continue;                                   // the added open tag
+			if (is_array($tk) && $tk[0] === T_FILE) $out .= var_export($core . '/nucommon.php', true);
+			elseif (is_array($tk) && $tk[0] === T_DIR) $out .= var_export($core, true);
+			else $out .= is_array($tk) ? $tk[1] : $tk;
+		}
+		return $out;
+	}
+
 	public static function run(?string $code, array $hash, string $label, array $vars = []): bool
 	{
 		self::$hash = $hash;
@@ -84,6 +104,7 @@ final class NuPhp
 		$code = preg_replace('/^\s*<\?php/', '', $code);
 		$code = self::forteIncludes($code);
 		$code = self::renameClashes($code);
+		$code = self::forteFileConsts($code);
 		// nuBuilder Forte runs the code inside nuEval($phpid): code reads $phpid (<form id>_BS …) to know its event
 		if (!isset($vars['phpid']) && isset(self::EVENT_OF[$label])) $vars['phpid'] = (string)($hash['FORM_ID'] ?? '') . '_' . self::EVENT_OF[$label];
 

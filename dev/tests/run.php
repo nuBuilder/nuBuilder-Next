@@ -38,6 +38,10 @@ check('renameClashes no clash', NuPhp::renameClashes('function myOwnThing() {} m
 $fi = NuPhp::forteIncludes("require_once ('nusecurity.php');\n\$a = 1;\ninclude \"../core/nucommon.php\";\nrequire_once('../libs/own.php');\n\$x->require('nucommon.php');");
 check('forteIncludes core files out', !str_contains($fi, 'nusecurity') && !str_contains($fi, 'core/nucommon.php') && substr_count($fi, "\n") === 4);
 check('forteIncludes own files and methods kept', str_contains($fi, "require_once('../libs/own.php');") && str_contains($fi, "\$x->require('nucommon.php');"));
+$fc = NuPhp::forteFileConsts("\$d = dirname(__FILE__) . '/../libs/x.php';\n\$e = __DIR__;\n\$s = '__FILE__ stays in a string';");
+$fcCore = (is_dir(NuBuilderLib::path() . '/core') ? NuBuilderLib::path() : NU_ROOT) . '/core';
+check('forteFileConsts __FILE__ = core/nucommon.php of Forte', str_contains($fc, var_export($fcCore . '/nucommon.php', true)) && str_contains($fc, '$e = ' . var_export($fcCore, true) . ';'));
+check('forteFileConsts strings and lines kept', str_contains($fc, "'__FILE__ stays in a string'") && substr_count($fc, "\n") === 2 && NuPhp::forteFileConsts('$a = 1;') === '$a = 1;');
 check('tablesOf', NuDemo::tablesOf('SELECT * FROM zzzzsys_user u JOIN `Orders` o ON 1') === ['zzzzsys_user', 'orders']);
 check('sqlAllowed select', NuDemo::sqlAllowed('SELECT 1'));
 check('sqlAllowed update', !NuDemo::sqlAllowed('UPDATE customer SET a = 1'));
