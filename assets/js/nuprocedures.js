@@ -47,8 +47,34 @@
 	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(document.getElementById('nuRecordForm'));   // syntax errors: ask before saving (0.8.781)
 	// editors in hidden tabs need a refresh when shown
 	$$('#procTabs [data-bs-toggle="tab"]').forEach(function (b) {
-		b.addEventListener('shown.bs.tab', function () { Object.keys(editors).forEach(function (k) { editors[k].refresh(); }); });
+		b.addEventListener('shown.bs.tab', function () { Object.keys(editors).forEach(function (k) { editors[k].refresh(); }); fitEditors(); });
 	});
+	// the editor of the shown tab fills the window down to its bottom edge (0.8.1229, as the nuconfig.php editor): the page's content below
+	// it (a test result …) stays reachable by scrolling; at least 22rem / 16rem (JS); not while the code tools' full screen sizes it
+	function fitEditors() {
+		Object.keys(editors).forEach(function (k) {
+			var cm = editors[k], w = cm.getWrapperElement();
+			if (!w.offsetParent || w.closest('.nuCodeFull')) return;
+			w.classList.add('procCMFit');
+			cm.setSize(null, 'auto');
+			var r = w.getBoundingClientRect(), main = document.getElementById('main'), end = 0;
+			// the end of the page's content (not the window: a short page is stretched to the window's height)
+			[main].concat(main ? [].slice.call(main.parentElement.children).filter(function (x) { return x !== main && x.offsetParent && getComputedStyle(x).position !== 'fixed'; }) : []).forEach(function (x) {
+				if (x) end = Math.max(end, x.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(x).marginBottom) || 0));
+			});
+			var after = end - r.bottom;
+			var min = k === 'sph_javascript' ? 256 : 352;
+			cm.setSize(null, Math.max(min, Math.floor(window.innerHeight - (r.top + window.scrollY) - Math.max(0, after) - 1)));
+		});
+	}
+	var fitTm = null, fitLater = function () { clearTimeout(fitTm); fitTm = setTimeout(fitEditors, 80); };
+	window.addEventListener('resize', fitLater);
+	document.addEventListener('shown.bs.collapse', fitLater);   // Details opened / closed
+	document.addEventListener('hidden.bs.collapse', fitLater);
+	var pf = document.getElementById('procFields');
+	if (pf) pf.addEventListener('toggle', fitLater);
+	fitEditors();
+	setTimeout(fitEditors, 300);                               // after fonts and the remembered tab
 
 	// ------------------------------------------------------------------ JS tab: example
 	var ex = $('#procJsExample');

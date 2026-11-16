@@ -73,6 +73,12 @@
    "url": "[?&]p=login(&|$)",
    "param": "^password$",
    "reason": "sign-in page: the password never reaches SQL (the user row is read by login name with a bound parameter, the password is checked with password_verify / the globeadmin's from the configuration file). ZAP compares the pages of the payloads nu' AND '1'='1' --  and nu' OR '1'='1' --  and saw a difference because the login rate limit started between the two requests (another message after several failures). Checked by hand: both payloads are refused with the same page as any wrong password"
+  },
+  {
+   "id": "40018",
+   "url": "[?&]p=formexport(&|$)",
+   "param": "^bt$",
+   "reason": "form list export (Excel): bt is the key of the breadcrumb trail in the session (12 hex characters, checked by NuTrail::get – anything else is ignored) and never reaches SQL; the export does not even read it. ZAP compares the downloads of its payloads and saw a difference because the .xlsx file carries its creation time (docProps/core.xml, one second apart). Checked by hand: the sheets of bt=<key>, <key>' AND '1'='1' -- and <key>' AND '1'='2' -- are byte for byte the same"
   }
  ]
 }

@@ -137,6 +137,7 @@ $routes = [
 	'translations' => [],
 	'formatapi'   => ['json' => true],
 	'fnlist'      => ['json' => true],
+	'sysinfo'     => ['json' => true],   // System info dialog (0.8.1237)
 	'codecheck'   => ['json' => true],             // PHP syntax check of the code editors (0.8.781)
 	'snippetlist' => ['json' => true],
 	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (0.8.719, pages/nuadvsearch.php)   // code snippets of one code editor (0.8.714, pages/nusnippetlist.php)

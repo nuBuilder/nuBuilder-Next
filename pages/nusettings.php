@@ -47,6 +47,15 @@ if (nu_is_post()) {
 		}
 		$back('general', 'setLangs');
 	}
+	if ($action === 'page_width') {                    // default page width of the installation (0.8.1226, NuPageWidth)
+		if (!NuSettingsHub::ga()) NuAdmin::require('branding', 'change');
+		$before = NuPageWidth::default();
+		$mode = nu_post('pw_mode');
+		$w = NuPageWidth::save($mode === 'custom' ? nu_post('pgw_px') : $mode, (string)(NuAuth::user()['login'] ?? ''));
+		if ($w !== $before) NuLog::write('page_width_changed', 'zzzzsys_nunext_setting', NuPageWidth::KEY, ['from' => $before, 'to' => $w]);
+		nu_flash('success', t('pgw_saved', NuPageWidth::label($w)));
+		$back('look', 'shPageWidth');
+	}
 	if ($action === 'data_set') {                      // Data & logs (review E2): one form, one Save for audit trail, notifications and backups
 		$parts = array_map('strval', is_array($_POST['parts'] ?? null) ? $_POST['parts'] : []);
 		$msg = [];
@@ -113,7 +122,7 @@ $card = static function (string $id, string $icon, string $title, string $body, 
 $linkCard = static function (string $icon, string $title, string $desc, string $url, string $id = ''): string {
 	return '<a class="list-group-item list-group-item-action d-flex align-items-start gap-3 nuSetLink"' . ($id !== '' ? ' id="' . h($id) . '"' : '') . ' href="' . h($url) . '">'
 		. '<i class="bi ' . h($icon) . ' fs-5 text-body-secondary" aria-hidden="true"></i><span><span class="fw-semibold d-block">' . h($title) . '</span>'
-		. '<span class="small text-body-secondary">' . h($desc) . '</span></span><i class="bi bi-chevron-right ms-auto align-self-center text-body-secondary" aria-hidden="true"></i></a>';
+		. '<span class="small text-body-secondary nuSetDesc">' . h($desc) . '</span></span><i class="bi bi-chevron-right ms-auto align-self-center text-body-secondary" aria-hidden="true"></i></a>';
 };
 $keepOpts = static function (int $cur, array $list): string {
 	if (!in_array($cur, $list, true)) $list[] = $cur;
@@ -130,7 +139,12 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 <?= nu_page_header($title, ['icon' => $sec !== '' ? NuSettingsHub::SECTIONS[$sec][0] : 'bi-gear', 'sub' => $sec === '' ? t('sh_overview_hint') : t(NuSettingsHub::SECTIONS[$sec][2]),
 	'crumbs' => $sec === '' ? [] : [[t('set_title'), nu_url('settings')]],
 	// one Save per section, in the header (review M2): data = the whole form, general = languages, updates = GitHub
-	'buttons' => (static function (string $sec, bool $dataSave): string {
+	'class' => 'nuSetHead',
+	// Compact (0.8.1240, the owner picked mockup A): hides the descriptions of the overview cards and the section entries; per device
+	// (localStorage nunext-settings-compact, html.nuSetCompact set by nutheme.js before the first paint, switched by nusettingshub.js)
+	'buttons' => '<div class="form-check form-switch mb-0 d-flex align-items-center gap-2 nuSetCompactSw"><input class="form-check-input mt-0" type="checkbox" role="switch" id="nuSetCompact">'
+		. '<label class="form-check-label small" for="nuSetCompact">' . h(t('sh_compact')) . '</label></div>'
+		. (static function (string $sec, bool $dataSave): string {
 		$b = static fn(string $form, string $id): string => '<button class="btn nuBtnAct nuBtnSave" type="submit" form="' . $form . '" id="' . $id . '" data-nu-save><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>';
 		if ($sec === 'data') return $dataSave ? $b('shDataForm', 'shDataSave') : '';
 		if ($sec === 'general') return NuAdmin::can('settings', 'change') ? $b('setLangsForm', 'setLangsSave') : '';
@@ -145,7 +159,7 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 		<div class="card shadow-sm h-100 nuSetSecCard" data-sh="<?= h($s) ?>">
 			<div class="card-body">
 				<a class="stretched-link text-decoration-none text-reset" href="<?= h($list[0][2]) ?>"><h2 class="h6 fw-semibold mb-1"><i class="bi <?= h($icon) ?> me-2" aria-hidden="true"></i><?= h(t($tKey)) ?></h2></a>
-				<p class="small text-body-secondary mb-2"><?= h(t($dKey)) ?></p>
+				<p class="small text-body-secondary mb-2 nuSetDesc"><?= h(t($dKey)) ?></p>
 				<?php if (count($list) > 1): ?><div class="small nuSetSecPages"><?= h(implode(' · ', array_column(array_slice($list, 1), 1))) ?></div><?php endif; ?>
 			</div>
 		</div>
@@ -190,6 +204,21 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 			<button class="btn btn-sm btn-outline-primary" type="submit" id="nuSidebarDefault" aria-pressed="<?= $sbDef ? 'true' : 'false' ?>"><i class="bi bi-layout-sidebar me-1"></i><?= h(t($sbDef ? 'sh_switch_off' : 'sh_switch_on')) ?></button>
 		</form>
 		<?= $card('shSidebar', 'bi-layout-sidebar', t('sb_menu_default'), (string)ob_get_clean()) ?>
+	<?php endif; ?>
+	<?php if (NuSettingsHub::ga() || NuAdmin::can('branding', 'view')): $pw = NuPageWidth::default(); $pwCan = NuSettingsHub::ga() || NuAdmin::can('branding', 'change'); $pwCustom = ctype_digit($pw); ob_start(); ?>
+		<form method="post" action="<?= h(nu_url('settings', ['s' => 'look'])) ?>" class="d-flex flex-wrap align-items-end gap-3" id="shPageWidthForm"><?= nu_csrf_field() ?>
+			<input type="hidden" name="action" value="page_width">
+			<fieldset class="contents d-flex flex-wrap align-items-end gap-3"<?= $pwCan ? '' : ' disabled' ?>>
+				<div><label class="form-label small" for="shPwMode"><?= h(t('pgw_set_default')) ?></label>
+					<select class="form-select" name="pw_mode" id="shPwMode">
+						<?php foreach (['standard', 'wide', 'full', 'custom'] as $m): ?><option value="<?= $m ?>"<?= ($pwCustom ? 'custom' : $pw) === $m ? ' selected' : '' ?>><?= h(t('pgw_' . $m)) ?></option><?php endforeach; ?>
+					</select></div>
+				<div id="shPwPxWrap"<?= $pwCustom ? '' : ' hidden' ?>><label class="form-label small" for="shPwPx"><?= h(t('pgw_px_label')) ?></label>
+					<input type="number" class="form-control" name="pw_px" id="shPwPx" min="<?= NuPageWidth::MIN ?>" max="<?= NuPageWidth::MAX ?>" step="10" value="<?= $pwCustom ? h($pw) : '' ?>"></div>
+				<?php if ($pwCan): ?><button class="btn btn-primary" type="submit" id="shPwSave"><?= h(t('save')) ?></button><?php endif; ?>
+			</fieldset>
+		</form>
+		<?= $card('shPageWidth', 'bi-arrows-expand-vertical', t('pgw_title'), (string)ob_get_clean(), t('pgw_set_tip')) ?>
 	<?php endif; ?>
 	<div class="list-group shadow-sm mb-3">
 		<?php if (NuAdmin::can('branding', 'view')) { echo $linkCard('bi-brush', t('brand_title'), t('sh_kw_branding'), nu_url('branding')); echo $linkCard('bi-palette2', t('theme_title'), t('sh_kw_themes'), nu_url('themes')); } ?>

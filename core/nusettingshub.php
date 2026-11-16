@@ -204,6 +204,7 @@ final class NuSettingsHub
 		$own = static fn(string $s, string $anchor): string => nu_url('settings', ['s' => $s]) . '#' . $anchor;
 		if ($can('settings')) $add('general', t('lng_title'), t('lng_tip'), $own('general', 'setLangs'), 'languages language sprachen', implode(', ', array_map(static fn($c) => NU_LANGS[$c][0], NuLanguages::installed())));
 		if (self::ga()) $add('look', t('sb_menu_default'), t('sh_sb_default_tip'), $own('look', 'shSidebar'), 'sidebar_default', t(NuSidebar::defaultOn() ? 'sh_on' : 'sh_off'));
+		if (self::ga() || $can('branding')) $add('look', t('pgw_title'), t('pgw_set_tip'), $own('look', 'shPageWidth'), 'page width wide full container breite', NuPageWidth::label(NuPageWidth::default()));
 		if ($can('homelayout')) $add('look', t('sh_home_layouts'), t('sh_home_layouts_d'), nu_url('home', ['customize' => '1']), 'home start page layout');
 		if ($can('audit')) {
 			$a = NuAudit::settings();

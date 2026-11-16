@@ -6,7 +6,7 @@
 <ol>
 <li>Create a user (e.g. login <code>demo</code>) with a password and any access level – it is only needed to log in.</li>
 <li>In <code>nuconfig.php</code>: <code>$nuConfigDemoUser = "demo";</code> – the login name or the user id. Several demo users are separated by commas.</li>
-<li>Optional: <code>$nuConfigDemoSavingAllowedIds = "form_id,form_code";</code> – forms where demo users may still <em>save</em> (nuBuilder Forte's setting, also in Admin tools → Settings).</li>
+<li>Optional: <code>$nuConfigDemoSavingAllowedIds = "form_id,form_code";</code> – forms where demo users may still <em>save</em> (nuBuilder Forte's setting, also under Settings → Shared settings).</li>
 </ol>
 <p><strong>nuBuilder Forte's demo globeadmin</strong>: with <code>$nuConfigIsDemo = true</code>, <code>$nuConfigDemoDBGlobeadminUsername</code> and <code>$nuConfigDemoDBGlobeadminPassword</code> – the same settings as in nuBuilder Forte (4.x) – that name and password sign in as a read-only demo globeadmin, also in nuBuilder Next (and the login page offers it under <em>Try the demo</em>). The real globeadmin's name and password always win. Changing the three settings ends running demo globeadmin sessions. Developer mode is never on for a demo session.</p>
 <p>The login page then shows <strong>Try the demo</strong> (one button per demo user): one click logs in without a password. A demo user can also log in with name and password, or through an auto-login link. In the top bar a badge <em>Demo – read only</em> shows the mode.</p>

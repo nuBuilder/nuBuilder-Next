@@ -592,89 +592,60 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 	</ul>
 	<div class="tab-content">
 	<div class="tab-pane fade<?= $userTab === '' ? ' show active' : '' ?>" id="userTabGeneral" role="tabpanel" aria-labelledby="userTabGeneralBtn" tabindex="0">
-	<?php // layout (0.8.1018, the owner's mockup 6): identity strip on top (initials + name / e-mail / code at their natural width),
-	// below three columns Organisation (+ custom fields) · Login credentials · Access & roles + Account settings
+	<?php // layout (0.8.1230, the owner picked mockup A of the canvas "User form layouts"): a summary card on the left (initials, name,
+	// login, status, dates, the sign-in tools), on the right three sections Person · Organisation · Sign-in & access, each one even grid
 	$ini = static function (string $first, string $last, string $full): string {
 		$w = trim($first) !== '' || trim($last) !== '' ? array_filter([trim($first), trim($last)]) : preg_split('/\s+/u', trim($full), -1, PREG_SPLIT_NO_EMPTY);
 		$w = array_values($w ?: []);
 		$c = $w ? mb_substr($w[0], 0, 1) . (count($w) > 1 ? mb_substr($w[count($w) - 1], 0, 1) : '') : '';
 		return mb_strtoupper($c);
 	};
-	$initials = $ini((string)$v['sus_first_name'], (string)$v['sus_last_name'], (string)$v['sus_name']); ?>
-	<div class="card shadow-sm mb-3 userCardPerson">
-		<div class="card-header fw-semibold d-flex align-items-center gap-2 userPersonHead">   <?php // initials in the header (0.8.1019, the owner's mockup C) ?>
-			<div class="userAvatar" id="userAvatar" aria-hidden="true"><span id="userAvatarTxt"><?= h($initials) ?></span><i class="bi bi-person<?= $initials !== '' ? ' d-none' : '' ?>" id="userAvatarIcon"></i></div>
-			<span><?= h(t('user_sec_person')) ?></span>
-			<span class="userPersonWho text-body-secondary fw-normal text-truncate" id="userAvatarName"<?= trim((string)$v['sus_name']) === '' ? ' hidden' : '' ?>>· <?= h((string)$v['sus_name']) ?></span>
-		</div>
-		<div class="card-body userPersonBody">
-			<div class="userIdentFields">
-				<div class="uiF uiF-name"><?= $input('sus_name', 'text', ['required' => true]) ?></div>
-				<div class="uiF uiF-first"><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
-				<div class="uiF uiF-last"><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
-				<div class="uiF uiF-email"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
-				<div class="uiF uiF-code"><?= $input('sus_code', 'text', ['unique' => true]) ?></div>
-			</div>
-		</div>
-	</div>
-	<div class="row g-3">
-		<div class="col-lg-6 col-xl-4 d-flex flex-column gap-3">   <?php // Organisation + custom fields (0.8.591: card instead of the tab Additional fields) ?>
-			<div class="card shadow-sm userCardOrg">
-				<div class="card-header fw-semibold"><i class="bi bi-diagram-3 me-2"></i><?= h(t('user_sec_org')) ?></div>
-				<div class="card-body">
-					<div class="row g-3">
-						<div class="col-12"><?= $input('sus_position') ?></div>
-						<div class="col-12"><?= $input('sus_department') ?></div>
-						<div class="col-12"><?= $input('sus_team') ?></div>
-						<div class="col-12"><?= $input('sus_additional1') ?></div>
-						<div class="col-12"><?= $input('sus_additional2') ?></div>
-					</div>
+	$initials = $ini((string)$v['sus_first_name'], (string)$v['sus_last_name'], (string)$v['sus_name']);
+	$lastLogin = '';
+	if (!$isNew) {
+		try { $ll = nu_db()->value("SELECT MAX(log_time) FROM zzzzsys_nunext_log WHERE user_id = ? AND event = 'login'", [$id]); $lastLogin = $ll ? date(nu_dfmt('d.m.Y H:i'), (int)strtotime((string)$ll)) : ''; } catch (Throwable) { /* no log table */ }
+	}
+	[$stCreated, $stChanged] = $isNew ? ['', ''] : NuUserJson::stamps((string)$id);
+	$accCode = '';
+	foreach ($accessLevels as $a) if ($v['sus_zzzzsys_access_id'] === $a['zzzzsys_access_id']) $accCode = (string)($a['sal_code'] ?: $a['zzzzsys_access_id']);
+	$expired = !$isNew && nu_is_expired($existing['sus_expires_on']); ?>
+	<div class="userLayout">
+	<aside class="card shadow-sm userSummary" aria-label="<?= h(t('user_summary')) ?>">
+		<div class="card-body">
+			<div class="userSumHead">
+				<div class="userAvatar userAvatarLg" id="userAvatar" aria-hidden="true"><span id="userAvatarTxt"><?= h($initials) ?></span><i class="bi bi-person<?= $initials !== '' ? ' d-none' : '' ?>" id="userAvatarIcon"></i></div>
+				<div class="userSumName" id="userAvatarName" data-new="<?= h(t('user_new')) ?>"><?= h(trim((string)$v['sus_name']) !== '' ? (string)$v['sus_name'] : t('user_new')) ?></div>
+				<div class="userSumSub"><?php if (trim((string)$v['sus_login_name']) !== ''): ?><button type="button" class="userSumJump" data-nu-jump="sus_login_name" title="<?= h(t('user_login_name')) ?>"><?= h(trim((string)$v['sus_login_name'])) ?></button><?php endif; ?><?php if (trim((string)$v['sus_code']) !== ''): ?> · <button type="button" class="userSumJump" data-nu-jump="sus_code"><?= h(t('user_code')) . ' ' . h((string)$v['sus_code']) ?></button><?php endif; ?></div>
+				<div class="userSumBadges">
+					<?php if (!$isNew): ?><button type="button" class="badge rounded-pill userSumJump <?= $expired ? 'text-bg-danger' : 'userSumActive' ?>" data-nu-jump="sus_expires_on" title="<?= h(t('user_expires')) ?>"><?= h(t($expired ? 'user_expired' : 'user_active')) ?></button><?php endif; ?>
+					<?php if ($accCode !== ''): ?><button type="button" class="badge rounded-pill userSumJump userSumLevel" data-nu-jump="sus_zzzzsys_access_id" title="<?= h(t('access_level') . ': ' . $accCode) ?>"><?= h($accCode) ?></button><?php endif; ?>
 				</div>
 			</div>
-			<?php if ($ufAll): // custom user fields (0.8.454) – own card below Organisation ?>
-			<div class="card shadow-sm" id="userTabMore">
-				<div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-ui-checks me-2"></i><?= h(t('user_tab_more')) ?></span>
-					<?php if (NuAdmin::can('userfields')): ?><a class="small" href="<?= h(nu_url('userfields')) ?>" id="userFieldsManage"><i class="bi bi-gear me-1"></i><?= h(t('uf_manage')) ?></a><?php endif; ?></div>
-				<div class="card-body"><div class="row g-3">
-					<?php foreach ($ufAll as $code => $f) echo NuUserFields::inputHtml($f, (string)($ufVals[$code] ?? ''), $ufErr[$code] ?? null, !isset($ufEdit[$code]), true); ?>
-				</div></div>
-			</div>
-			<?php endif; ?>
-		</div>
-
-		<div class="col-lg-6 col-xl-4 d-flex flex-column gap-3">   <?php // login credentials (0.8.586 cards; 0.8.1018: own column) ?>
-			<div class="card shadow-sm userCardLogin">
-				<div class="card-header fw-semibold"><i class="bi bi-key me-2"></i><?= h(t('user_sec_credentials')) ?></div>
-				<div class="card-body">
-					<div class="mb-3"><?= $input('sus_login_name', 'text', ['required' => true, 'unique' => true, 'autocomplete' => 'off', 'spellcheck' => 'false']) ?></div>
-
-					<div class="row g-3 mb-3">
-						<div class="col-sm-6">
-							<label class="form-label" for="password"><?= h(t('login_password')) ?><?= $isNew ? ' <span class="text-danger">*</span>' : '' ?></label>
-							<div class="input-group<?= isset($errors['password']) ? ' has-validation' : '' ?>">
-								<input type="password" class="form-control<?= nu_invalid($errors, 'password') ?>" id="password" name="password" autocomplete="new-password"<?= $isNew ? '' : ' placeholder="' . h(t('user_pw_unchanged')) . '" title="' . h(t('user_pw_keep')) . '"' ?>>
-								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#password" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
-								<?php if ($canSave): ?><button class="btn btn-outline-secondary nuPwGenBtn" type="button" data-bs-toggle="modal" data-bs-target="#nuPwGen" title="<?= h(t('pwg_title')) ?>" aria-label="<?= h(t('pwg_title')) ?>"><i class="bi bi-magic"></i></button><?php endif; ?>
-								<?= nu_feedback($errors, 'password') ?>
-							</div>
-							<?php // existing user (0.8.587): placeholder "(unchanged)" instead of the hint below; "Password last changed" is in the (i) panel ?>
-							<div class="form-text<?= $isNew ? '' : ' d-none' ?>" id="passwordHint"><?= h($isNew ? t('pw_min_hint', $min) : '') ?></div>
-							<?= NuPwPolicy::rulesHtml('password', true) ?>
-							<?php if (!$isNew && $me['globeadmin'] && empty($me['demo']) && nu_cfg('nuConfigAutoLogin') && (string)($existing['sus_login_password'] ?? '') !== ''): // never for demo visitors: it logs in as that user
-								$alLinks = [];
-								foreach ([7, 1, 30, 90, 0] as $d) $alLinks[$d] = NuAuth::autoLoginLink($existing, $d); ?>
-								<details class="mt-2" id="autoLoginBox"><summary class="small"><i class="bi bi-link-45deg me-1"></i><?= h(t('user_autologin')) ?></summary>
-									<div class="input-group input-group-sm mt-1">
-										<select class="form-select flex-grow-0 w-auto" id="autoLoginDays" aria-label="<?= h(t('user_autologin_valid')) ?>" title="<?= h(t('user_autologin_valid')) ?>">
-											<?php foreach ($alLinks as $d => $link): ?><option value="<?= $d ?>" data-link="<?= h($link) ?>"><?= h($d === 0 ? t('user_autologin_forever') : ($d === 1 ? t('user_autologin_day') : t('user_autologin_days', $d))) ?></option><?php endforeach; ?>
-										</select>
-										<input class="form-control font-monospace" id="autoLoginUrl" readonly value="<?= h($alLinks[7]) ?>" aria-label="<?= h(t('user_autologin')) ?>">
-										<button class="btn btn-outline-secondary" type="button" id="autoLoginCopy" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
-										<button class="btn btn-outline-danger" type="submit" form="autoLoginRevokeForm" title="<?= h(t('user_autologin_revoke_hint')) ?>"><i class="bi bi-x-octagon me-1"></i><?= h(t('user_autologin_revoke')) ?></button>
-									</div>
-									<div class="form-text"><?= h(t('user_autologin_hint')) ?></div>
-								</details>
+			<?php if (!$isNew): ?>
+			<dl class="userSumMeta">
+				<dt><?= h(t('lv_last_login')) ?></dt><dd><?= h($lastLogin !== '' ? $lastLogin : t('user_sum_never')) ?></dd>
+				<?php if ($stCreated !== ''): ?><dt><?= h(t('user_sum_created')) ?></dt><dd><?= h($stCreated) ?></dd><?php endif; ?>
+				<?php if ($stChanged !== ''): ?><dt><?= h(t('user_sum_changed')) ?></dt><dd><?= h($stChanged) ?></dd><?php endif; ?>
+				<?php if (!empty($pwInfo)): ?><dt><?= h(t('user_sum_pw')) ?></dt><dd><?= h($pwInfo) ?></dd><?php endif; ?>
+			</dl>
+			<div class="userSumTools">
+					<?php $pwrShow = !$isNew && $rights['save'] && NuPwReset::refusal($existing, $me) === null;
+					$pwrRow = is_array($_SESSION['nu_pwr_link'] ?? null) ? $_SESSION['nu_pwr_link'] : [];   // only after "create link" (0.8.976: a new user's '' id matched the missing row)
+					$pwrLink = $id !== '' && ($pwrRow['id'] ?? null) === $id ? (string)($pwrRow['link'] ?? '') : '';
+					unset($_SESSION['nu_pwr_link']);
+					if ($pwrShow): ?>
+						<div class="mb-3" id="pwrBox">
+							<button class="btn btn-outline-secondary btn-sm" type="button" id="pwrOpen" data-bs-toggle="modal" data-bs-target="#pwrDlg"><i class="bi bi-key me-1"></i><?= h(t('pwr_button')) ?></button>
+							<?php if ($pwrLink !== ''): ?>
+								<div class="input-group input-group-sm mt-2">
+									<span class="input-group-text"><?= h(t('pwr_link_title')) ?></span>
+									<input class="form-control font-monospace" id="pwrLinkUrl" readonly value="<?= h($pwrLink) ?>" aria-label="<?= h(t('pwr_link_title')) ?>">
+									<button class="btn btn-outline-secondary" type="button" id="pwrLinkCopy" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
+								</div>
+								<div class="form-text"><?= h(t('pwr_shown_once', NuPwReset::HOURS)) ?></div>
 							<?php endif; ?>
+						</div>
+					<?php endif; ?>
 							<?php if (!$isNew && $me['globeadmin'] && empty($me['demo']) && NuLoginToken::enabled() && !(class_exists('NuApiClient') && NuApiClient::isServiceUser($id))):
 								$ltState = NuLoginToken::state($id);
 								$ltNew = ($_SESSION['nu_ltok_link']['id'] ?? '') === $id ? (string)$_SESSION['nu_ltok_link']['link'] : '';
@@ -703,16 +674,21 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 									</div>
 								</details>
 							<?php endif; ?>
-						</div>
-						<div class="col-sm-6">
-							<label class="form-label" for="password_confirm"><?= h(t('pw_confirm')) ?></label>
-							<div class="input-group<?= isset($errors['password_confirm']) ? ' has-validation' : '' ?>">
-								<input type="password" class="form-control<?= nu_invalid($errors, 'password_confirm') ?>" id="password_confirm" name="password_confirm" autocomplete="new-password"<?= $isNew ? '' : ' placeholder="' . h(t('user_pw_unchanged')) . '"' ?>>
-								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#password_confirm" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
-								<?= nu_feedback($errors, 'password_confirm') ?>
-							</div>
-						</div>
-					</div>
+							<?php if (!$isNew && $me['globeadmin'] && empty($me['demo']) && nu_cfg('nuConfigAutoLogin') && (string)($existing['sus_login_password'] ?? '') !== ''): // never for demo visitors: it logs in as that user
+								$alLinks = [];
+								foreach ([7, 1, 30, 90, 0] as $d) $alLinks[$d] = NuAuth::autoLoginLink($existing, $d); ?>
+								<details class="mt-2" id="autoLoginBox"><summary class="small"><i class="bi bi-link-45deg me-1"></i><?= h(t('user_autologin')) ?></summary>
+									<div class="input-group input-group-sm mt-1">
+										<select class="form-select flex-grow-0 w-auto" id="autoLoginDays" aria-label="<?= h(t('user_autologin_valid')) ?>" title="<?= h(t('user_autologin_valid')) ?>">
+											<?php foreach ($alLinks as $d => $link): ?><option value="<?= $d ?>" data-link="<?= h($link) ?>"><?= h($d === 0 ? t('user_autologin_forever') : ($d === 1 ? t('user_autologin_day') : t('user_autologin_days', $d))) ?></option><?php endforeach; ?>
+										</select>
+										<input class="form-control font-monospace" id="autoLoginUrl" readonly value="<?= h($alLinks[7]) ?>" aria-label="<?= h(t('user_autologin')) ?>">
+										<button class="btn btn-outline-secondary" type="button" id="autoLoginCopy" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
+										<button class="btn btn-outline-danger" type="submit" form="autoLoginRevokeForm" title="<?= h(t('user_autologin_revoke_hint')) ?>"><i class="bi bi-x-octagon me-1"></i><?= h(t('user_autologin_revoke')) ?></button>
+									</div>
+									<div class="form-text"><?= h(t('user_autologin_hint')) ?></div>
+								</details>
+							<?php endif; ?>
 					<?php if (!$isNew && $rights['save'] && ($userPks = NuPasskey::list($id))):   // passkeys of the user (0.8.877): seen and removed here, added only by the user ?>
 						<details class="mb-3" id="userPasskeys" data-nu-noguard><summary class="small"><i class="bi bi-fingerprint me-1"></i><?= h(t('pk_title')) ?> <span class="badge rounded-pill text-bg-secondary"><?= count($userPks) ?></span></summary>
 							<ul class="list-group list-group-flush small mt-1">
@@ -725,36 +701,70 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 							</ul>
 						</details>
 					<?php endif; ?>
-
-					<?php $pwrShow = !$isNew && $rights['save'] && NuPwReset::refusal($existing, $me) === null;
-					$pwrRow = is_array($_SESSION['nu_pwr_link'] ?? null) ? $_SESSION['nu_pwr_link'] : [];   // only after "create link" (0.8.976: a new user's '' id matched the missing row)
-					$pwrLink = $id !== '' && ($pwrRow['id'] ?? null) === $id ? (string)($pwrRow['link'] ?? '') : '';
-					unset($_SESSION['nu_pwr_link']);
-					if ($pwrShow): ?>
-						<div class="mb-3" id="pwrBox">
-							<button class="btn btn-outline-secondary btn-sm" type="button" id="pwrOpen" data-bs-toggle="modal" data-bs-target="#pwrDlg"><i class="bi bi-key me-1"></i><?= h(t('pwr_button')) ?></button>
-							<?php if ($pwrLink !== ''): ?>
-								<div class="input-group input-group-sm mt-2">
-									<span class="input-group-text"><?= h(t('pwr_link_title')) ?></span>
-									<input class="form-control font-monospace" id="pwrLinkUrl" readonly value="<?= h($pwrLink) ?>" aria-label="<?= h(t('pwr_link_title')) ?>">
-									<button class="btn btn-outline-secondary" type="button" id="pwrLinkCopy" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
-								</div>
-								<div class="form-text"><?= h(t('pwr_shown_once', NuPwReset::HOURS)) ?></div>
-							<?php endif; ?>
-						</div>
-					<?php endif; ?>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="sus_change_password" name="sus_change_password" value="1"<?= $v['sus_change_password'] === '1' ? ' checked' : '' ?>>
-						<label class="form-check-label" for="sus_change_password"><?= h(t('user_change_pw')) ?></label>
-					</div>
+			</div>
+			<?php endif; ?>
+		</div>
+	</aside>
+	<div class="userMain">
+		<section class="card shadow-sm userCardPerson">
+			<div class="card-body">
+				<h2 class="userSecTitle"><?= h(t('user_sec_person')) ?></h2>
+				<div class="userGrid">
+					<div class="uiF-name"><?= $input('sus_name', 'text', ['required' => true]) ?></div>
+					<div><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
+					<div><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
+					<div class="userSpan2"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
+					<div><?= $input('sus_code', 'text', ['unique' => true]) ?></div>
 				</div>
 			</div>
-		</div>
-		<div class="col-lg-6 col-xl-4 d-flex flex-column gap-3">   <?php // access & roles + account settings ?>
-			<div class="card shadow-sm userCardAccess">
-				<div class="card-header fw-semibold"><i class="bi bi-shield-lock me-2"></i><?= h(t('user_sec_access')) ?></div>
-				<div class="card-body">
-					<div class="mb-3">
+		</section>
+		<section class="card shadow-sm userCardOrg">
+			<div class="card-body">
+				<h2 class="userSecTitle"><?= h(t('user_sec_org')) ?></h2>
+				<div class="userGrid">
+					<div><?= $input('sus_position') ?></div>
+					<div><?= $input('sus_department') ?></div>
+					<div><?= $input('sus_team') ?></div>
+					<div><?= $input('sus_additional1') ?></div>
+					<div><?= $input('sus_additional2') ?></div>
+				</div>
+			</div>
+		</section>
+			<?php if ($ufAll): // custom user fields (0.8.454) – own card below Organisation ?>
+			<div class="card shadow-sm" id="userTabMore">
+				<div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto"><i class="bi bi-ui-checks me-2"></i><?= h(t('user_tab_more')) ?></span>
+					<?php if (NuAdmin::can('userfields')): ?><a class="small" href="<?= h(nu_url('userfields')) ?>" id="userFieldsManage"><i class="bi bi-gear me-1"></i><?= h(t('uf_manage')) ?></a><?php endif; ?></div>
+				<div class="card-body"><div class="row g-3">
+					<?php foreach ($ufAll as $code => $f) echo NuUserFields::inputHtml($f, (string)($ufVals[$code] ?? ''), $ufErr[$code] ?? null, !isset($ufEdit[$code]), true); ?>
+				</div></div>
+			</div>
+			<?php endif; ?>
+		<section class="card shadow-sm userCardLogin">
+			<div class="card-body">
+				<h2 class="userSecTitle"><?= h(t('user_sec_signin')) ?></h2>
+				<div class="userGrid">
+					<div><?= $input('sus_login_name', 'text', ['required' => true, 'unique' => true, 'autocomplete' => 'off', 'spellcheck' => 'false']) ?></div>
+					<div>
+							<label class="form-label" for="password"><?= h(t('login_password')) ?><?= $isNew ? ' <span class="text-danger">*</span>' : '' ?></label>
+							<div class="input-group<?= isset($errors['password']) ? ' has-validation' : '' ?>">
+								<input type="password" class="form-control<?= nu_invalid($errors, 'password') ?>" id="password" name="password" autocomplete="new-password"<?= $isNew ? '' : ' placeholder="' . h(t('user_pw_unchanged')) . '" title="' . h(t('user_pw_keep')) . '"' ?>>
+								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#password" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
+								<?php if ($canSave): ?><button class="btn btn-outline-secondary nuPwGenBtn" type="button" data-bs-toggle="modal" data-bs-target="#nuPwGen" title="<?= h(t('pwg_title')) ?>" aria-label="<?= h(t('pwg_title')) ?>"><i class="bi bi-magic"></i></button><?php endif; ?>
+								<?= nu_feedback($errors, 'password') ?>
+							</div>
+							<?php // existing user (0.8.587): placeholder "(unchanged)" instead of the hint below; "Password last changed" is in the (i) panel ?>
+							<div class="form-text<?= $isNew ? '' : ' d-none' ?>" id="passwordHint"><?= h($isNew ? t('pw_min_hint', $min) : '') ?></div>
+							<?= NuPwPolicy::rulesHtml('password', true) ?>
+					</div>
+					<div>
+							<label class="form-label" for="password_confirm"><?= h(t('pw_confirm')) ?></label>
+							<div class="input-group<?= isset($errors['password_confirm']) ? ' has-validation' : '' ?>">
+								<input type="password" class="form-control<?= nu_invalid($errors, 'password_confirm') ?>" id="password_confirm" name="password_confirm" autocomplete="new-password"<?= $isNew ? '' : ' placeholder="' . h(t('user_pw_unchanged')) . '"' ?>>
+								<button class="btn btn-outline-secondary" type="button" data-pw-toggle="#password_confirm" aria-label="<?= h(t('show_password')) ?>"><i class="bi bi-eye"></i></button>
+								<?= nu_feedback($errors, 'password_confirm') ?>
+							</div>
+					</div>
+					<div class="userCardAccess">
 						<label class="form-label" for="sus_zzzzsys_access_id"><?= h(t('access_level')) ?> <span class="text-danger">*</span></label>
 						<?php $canOpenAccess = NuAcl::can(NuAcl::FORM_ACCESS); $accessUrl = nu_url('accesslevel', ['id' => '__ID__']); ?>
 						<div class="<?= $canOpenAccess ? 'input-group' . (isset($errors['sus_zzzzsys_access_id']) ? ' has-validation' : '') : '' ?>">
@@ -774,32 +784,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<?= nu_feedback($errors, 'sus_zzzzsys_access_id') ?>
 						</div>
 					</div>
-					<?php // additional access levels (0.8.585, core/nuuseraccess.php): rows [level, valid until], added / removed in assets/js/nuuser.js ?>
-					<div class="mb-3" id="xaBox">
-						<input type="hidden" name="xa_sent" value="1">
-						<div class="d-flex align-items-center gap-2 mb-1">
-							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('xa_tip')) ?>" title="<?= h(t('xa_tip')) ?>"><i class="bi bi-info-circle"></i></span>
-							<span class="ms-auto d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary<?= $xaSel ? '' : ' d-none' ?>" id="xaEff" data-bs-toggle="modal" data-bs-target="#xaEffDlg"><i class="bi bi-shield-check me-1"></i><?= h(t('eff_btn')) ?></button>
-							<button type="button" class="btn btn-sm btn-outline-secondary" id="xaAdd"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-plus-lg me-1"></i><?= h(t('xa_add')) ?></button></span>
-						</div>
-						<?php $xaOpt = static function (string $sel) use ($accessLevels): string {
-							$o = '<option value="">' . h(t('please_select')) . '</option>';
-							foreach ($accessLevels as $a) $o .= '<option value="' . h($a['zzzzsys_access_id']) . '"' . ($sel === (string)$a['zzzzsys_access_id'] ? ' selected' : '') . '>' . h((string)($a['sal_code'] ?: $a['zzzzsys_access_id']) . ((string)$a['sal_description'] !== '' ? ' – ' . $a['sal_description'] : '')) . '</option>';
-							return $o;
-						}; $xaRow = static function (string $acc, string $until) use ($xaOpt, $canSave): string {
-							$gone = $until !== '' && !NuUserAccess::active($until);
-							return '<div class="input-group input-group-sm mb-1 xaRow' . ($gone ? ' xaExpired' : '') . '">'
-								. '<select class="form-select" name="xa_acc[]" aria-label="' . h(t('access_level')) . '"' . ($canSave ? '' : ' disabled') . '>' . $xaOpt($acc) . '</select>'
-								. '<span class="input-group-text">' . h(t('xa_until')) . '</span>'
-								. '<input type="date" class="form-control xaUntil" name="xa_until[]" value="' . h($until) . '" aria-label="' . h(t('xa_until')) . '"' . ($canSave ? '' : ' disabled') . '>'
-								. ($gone ? '<span class="input-group-text text-body-secondary">' . h(t('user_expired')) . '</span>' : '')
-								. '<button type="button" class="btn btn-outline-danger xaDel" title="' . h(t('remove')) . '" aria-label="' . h(t('remove')) . '"' . ($canSave ? '' : ' disabled') . '><i class="bi bi-x-lg"></i></button></div>';
-						}; ?>
-						<div id="xaRows"><?php foreach ($xaSel as [$xa, $xu]) echo $xaRow((string)$xa, (string)$xu); ?></div>
-						<template id="xaTpl"><?= $xaRow('', '') ?></template>
-						<div class="small text-body-secondary<?= $xaSel ? ' d-none' : '' ?>" id="xaNone"><?= h(t('xa_none')) ?></div>
-						<?php if (isset($errors['xa'])): ?><div class="invalid-feedback d-block"><?= h($errors['xa']) ?></div><?php endif; ?>
-					</div>
+					<div>
 					<?php if ($admRoleMay || $admRoleCur !== ''): $admRoles = NuAdmin::roles(); ?>
 					<div class="mb-3" id="admRoleField">
 						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('adm_role_field_tip')) ?>" title="<?= h(t('adm_role_field_tip')) ?>"><i class="bi bi-info-circle"></i></span>
@@ -817,27 +802,25 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						</div>
 					</div>
 					<?php endif; ?>
-				</div>
-			</div>
-			<div class="card shadow-sm userCardAccount">
-				<div class="card-header fw-semibold"><i class="bi bi-gear me-2"></i><?= h(t('user_sec_account')) ?></div>
-				<div class="card-body">
-					<div class="row g-3 mb-3">
-						<div class="col-sm-6">
+					</div>
+					<div class="userCardAccount">
 							<label class="form-label" for="sus_expires_on"><?= h(t('user_expires')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('user_expires_hint')) ?>" title="<?= h(t('user_expires_hint')) ?>"><i class="bi bi-info-circle"></i></span>
 							<input type="date" class="form-control<?= nu_invalid($errors, 'sus_expires_on') ?>" id="sus_expires_on" name="sus_expires_on" value="<?= h($v['sus_expires_on']) ?>">
 							<?= nu_feedback($errors, 'sus_expires_on') ?>
-						</div>
-						<div class="col-sm-6">
+					</div>
+					<div>
 							<label class="form-label" for="sus_language"><?= h(t('user_language')) ?></label>
 							<select class="form-select" id="sus_language" name="sus_language">
 								<?php foreach ($langOptions as $val => $label): ?>
 									<option value="<?= h($val) ?>"<?= $langSelected === (string)$val ? ' selected' : '' ?>><?= h($label) ?></option>
 								<?php endforeach; ?>
 							</select>
-						</div>
 					</div>
-
+					<div class="userSpan2 userSwitches">
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" id="sus_change_password" name="sus_change_password" value="1"<?= $v['sus_change_password'] === '1' ? ' checked' : '' ?>>
+						<label class="form-check-label" for="sus_change_password"><?= h(t('user_change_pw')) ?></label>
+					</div>
 					<?php if ($canSave):
 						// 0.8.657: always shown – greyed out while e-mail is not set up, the (i) says so and a link leads to the E-mail settings (with that right)
 						$wHint = $mailOk ? t('welcome_option_hint', NuWelcome::hours()) : t('welcome_need_mail'); ?>
@@ -865,10 +848,39 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<label class="form-check-label" for="sus_accessibility_features"><?= h(t('user_accessibility')) ?></label>
 					</div>
 					<?php endif; ?>
+					</div>
+					<div class="userSpan3">
+					<?php // additional access levels (0.8.585, core/nuuseraccess.php): rows [level, valid until], added / removed in assets/js/nuuser.js ?>
+					<div class="mb-3" id="xaBox">
+						<input type="hidden" name="xa_sent" value="1">
+						<div class="d-flex align-items-center gap-2 mb-1">
+							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('xa_tip')) ?>" title="<?= h(t('xa_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+							<span class="ms-auto d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary<?= $xaSel ? '' : ' d-none' ?>" id="xaEff" data-bs-toggle="modal" data-bs-target="#xaEffDlg"><i class="bi bi-shield-check me-1"></i><?= h(t('eff_btn')) ?></button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" id="xaAdd"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-plus-lg me-1"></i><?= h(t('xa_add')) ?></button></span>
+						</div>
+						<?php $xaOpt = static function (string $sel) use ($accessLevels): string {
+							$o = '<option value="">' . h(t('please_select')) . '</option>';
+							foreach ($accessLevels as $a) $o .= '<option value="' . h($a['zzzzsys_access_id']) . '"' . ($sel === (string)$a['zzzzsys_access_id'] ? ' selected' : '') . '>' . h((string)($a['sal_code'] ?: $a['zzzzsys_access_id']) . ((string)$a['sal_description'] !== '' ? ' – ' . $a['sal_description'] : '')) . '</option>';
+							return $o;
+						}; $xaRow = static function (string $acc, string $until) use ($xaOpt, $canSave): string {
+							$gone = $until !== '' && !NuUserAccess::active($until);
+							return '<div class="input-group input-group-sm mb-1 xaRow' . ($gone ? ' xaExpired' : '') . '">'
+								. '<select class="form-select" name="xa_acc[]" aria-label="' . h(t('access_level')) . '"' . ($canSave ? '' : ' disabled') . '>' . $xaOpt($acc) . '</select>'
+								. '<span class="input-group-text">' . h(t('xa_until')) . '</span>'
+								. '<input type="date" class="form-control xaUntil" name="xa_until[]" value="' . h($until) . '" aria-label="' . h(t('xa_until')) . '"' . ($canSave ? '' : ' disabled') . '>'
+								. ($gone ? '<span class="input-group-text text-body-secondary">' . h(t('user_expired')) . '</span>' : '')
+								. '<button type="button" class="btn btn-outline-danger xaDel" title="' . h(t('remove')) . '" aria-label="' . h(t('remove')) . '"' . ($canSave ? '' : ' disabled') . '><i class="bi bi-x-lg"></i></button></div>';
+						}; ?>
+						<div id="xaRows"><?php foreach ($xaSel as [$xa, $xu]) echo $xaRow((string)$xa, (string)$xu); ?></div>
+						<template id="xaTpl"><?= $xaRow('', '') ?></template>
+						<div class="small text-body-secondary<?= $xaSel ? ' d-none' : '' ?>" id="xaNone"><?= h(t('xa_none')) ?></div>
+						<?php if (isset($errors['xa'])): ?><div class="invalid-feedback d-block"><?= h($errors['xa']) ?></div><?php endif; ?>
+					</div>
+					</div>
 				</div>
 			</div>
-		</div>
-
+		</section>
+	</div>
 	</div>
 	</div>
 	<div class="tab-pane fade<?= $permTab ? ' show active' : '' ?>" id="userTabPerm" role="tabpanel" aria-labelledby="userTabPermBtn" tabindex="0">

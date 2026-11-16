@@ -153,18 +153,30 @@ if ($mode === 'edit') {
 		// 0.8.1211, as nuBuilder Forte: an id that is not in the table opens the form empty under that id (forms that only carry
 		// sub-forms are opened with the parent's id) – its sub-forms list the rows of this id, a save writes no main record
 		$ghost = !$row;
-		if (!$ghost && !NuRecord::visible($meta, $r)) {      // Security check: "Records only through the form's list"
-			http_response_code(404);
-			nu_fatal(t('record_not_found'), '', true);
+		// Security check "Records only through the form's list". 0.8.1234: a form whose Before Edit calls nuNextRecordCheck() decides
+		// itself – its Before Edit runs first and the record is refused after it unless it called nuNextRecordCheck(false)
+		$rcPending = false;
+		if (!$ghost && !NuRecord::visible($meta, $r)) {
+			if ($safe || !str_contains((string)($meta->php('BE') ?? ''), 'nuNextRecordCheck')) {
+				http_response_code(404);
+				nu_fatal(t('record_not_found'), '', true);
+			}
+			$rcPending = true;
 		}
-		if (!$design && !$ghost) NuRecord::nulogViewed($meta, $r);   // <table>_nulog "viewed", as nuBuilder Forte (0.8.965)
+		if (!$design && !$ghost && !$rcPending) NuRecord::nulogViewed($meta, $r);   // <table>_nulog "viewed", as nuBuilder Forte (0.8.965)
 	}
 	$dbRow = $row;                                          // as stored – for the check of concurrent edits (0.8.401)
 	$hash = NuHash::forForm($meta, $isNew ? '-1' : $r, $row, $props);
 	NuPhp::reset();
 	NuConflict::$formCheck = NuConflict::$formPresence = null;
+	NuRecord::$formRecordCheck = null;
 	// global hook nu_before_edit first (0.8.462, as nuBuilder 4.9); an error stops the form's Before Edit
 	if (!NuProcedure::hook('nu_before_edit', $hash) || (!$safe && !NuPhp::run($meta->php('BE'), $hash, 'Before Edit'))) $errors = NuPhp::$errors ?: [['message' => NuPhp::$error, 'field' => '']];
+	if (!empty($rcPending)) {                                // see above (0.8.1234)
+		if (NuRecord::$formRecordCheck !== false) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+		NuRecord::allowRecord($meta->id, $r);
+		if (!$design) NuRecord::nulogViewed($meta, $r);
+	}
 	$js   = NuPhp::$js;
 	$hash = NuPhp::$hash + $hash;
 	foreach (NuPhp::$formValues as $k => $v) $row[$k] = $v;          // nuSetFormValue in BE
@@ -259,14 +271,16 @@ $codeEdit = $mode === 'edit' && $lookupTo === '' && !$design && !$bare && empty(
 $codePane = static function () use ($meta): array {
 	$f = $meta->form;
 	$it = static fn(string $key, string $label, string $lang, string $grp, ?string $val): array => [$key, $label, $lang, $grp, (string)($val ?? '')];
-	if ($meta->isUserHome()) return [$it('php:BE', t('ecp_php_BE'), 'PHP', 'php', $meta->php('BE'))];   // User Home: Before Edit only, as design mode
-	$items = [$it('sfo_javascript', t('ecp_js_both'), 'JS', 'js', $f['sfo_javascript'] ?? ''), $it('sfo_edit_javascript', t('ecp_js_edit'), 'JS', 'js', $f['sfo_edit_javascript'] ?? ''),
-		$it('sfo_style', t('builder_css'), 'CSS', 'style', $f['sfo_style'] ?? '')];
-	foreach (['BE', 'BS', 'AS', 'BD', 'AD'] as $h) $items[] = $it('php:' . $h, t('ecp_php_' . $h), 'PHP', 'php', $meta->php($h));
-	if ($meta->hasBrowse()) {                                 // the list's parts – greyed at the end, they act on the list only
-		$items[] = $it('sfo_browse_javascript', t('ecp_js_list'), 'JS', 'list', $f['sfo_browse_javascript'] ?? '');
-		$items[] = $it('php:BB', t('ecp_php_BB'), 'PHP', 'list', $meta->php('BB'));
-		$items[] = $it('sfo_browse_sql', t('builder_browse_sql'), 'SQL', 'list', $f['sfo_browse_sql'] ?? '');
+	if ($meta->isUserHome()) $items = [$it('php:BE', t('ecp_php_BE'), 'PHP', 'php', $meta->php('BE'))];   // User Home: Before Edit only, as design mode (0.8.1223: was returned without 'items' / 'm')
+	else {
+		$items = [$it('sfo_javascript', t('ecp_js_both'), 'JS', 'js', $f['sfo_javascript'] ?? ''), $it('sfo_edit_javascript', t('ecp_js_edit'), 'JS', 'js', $f['sfo_edit_javascript'] ?? ''),
+			$it('sfo_style', t('builder_css'), 'CSS', 'style', $f['sfo_style'] ?? '')];
+		foreach (['BE', 'BS', 'AS', 'BD', 'AD'] as $h) $items[] = $it('php:' . $h, t('ecp_php_' . $h), 'PHP', 'php', $meta->php($h));
+		if ($meta->hasBrowse()) {                                 // the list's parts – greyed at the end, they act on the list only
+			$items[] = $it('sfo_browse_javascript', t('ecp_js_list'), 'JS', 'list', $f['sfo_browse_javascript'] ?? '');
+			$items[] = $it('php:BB', t('ecp_php_BB'), 'PHP', 'list', $meta->php('BB'));
+			$items[] = $it('sfo_browse_sql', t('builder_browse_sql'), 'SQL', 'list', $f['sfo_browse_sql'] ?? '');
+		}
 	}
 	return ['items' => $items, 'm' => ['title' => t('ecp_title'), 'hint' => t('ecp_hint'), 'save' => t('save'), 'close' => t('close'), 'unsaved' => t('bsq_unsaved'),
 		'error' => t('form_error'), 'resize' => t('bsq_resize'), 'code_has' => t('code_has'),

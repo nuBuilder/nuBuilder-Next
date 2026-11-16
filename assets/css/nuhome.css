@@ -513,3 +513,11 @@ html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripChev { t
 
 /* User Home button next to Customise (0.8.998, back 0.8.1220) */
 .nuHomeUhBtn > .bi { position: relative; top: 1px; }
+/* 0.8.1222: the tile pages editor's level select opens above the sticky search row (z 1005) below it */
+.nuHomeForBar { position: relative; z-index: 1006; }
+
+/* Customise → Appearance → This device → Page width (0.8.1227) */
+.nuHomeVpPwRow { flex-wrap: wrap; }
+.nuHomeVpPwCtl { display: flex; gap: .5rem; align-items: center; flex: 1 1 12rem; min-width: 0; }
+.nuHomeVpPwCtl .form-select { flex: 1 1 auto; min-width: 0; }
+.nuHomeVpPwCtl .nuHomeVpPx { width: 5.5rem; flex: 0 0 auto; }

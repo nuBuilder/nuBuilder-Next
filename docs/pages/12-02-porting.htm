@@ -6,7 +6,7 @@
 <div class="doc-sub">
 <h3 id="porting-report">nuBuilder Forte 4.9 compatibility report: what is supported</h3>
 <p>The compatibility analysis of a real nuBuilder Forte 4.9 application (findings C1–C6, M1–M9, N1–N10) is worked off in steps;
-the Compatibility check (Admin tools → <em>Compatibility check</em>) lists each finding found in the application's code with the version
+the Compatibility check (start page tile <em>Compatibility check</em>) lists each finding found in the application's code with the version
 that supports it.</p>
 <table class="table table-sm">
 <thead>
@@ -40,7 +40,7 @@ that supports it.</p>
 <tr>
 
 <td>–</td>
-<td>Setup → Include (<code>set_include</code>) used on form pages – its <code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> / <code>&lt;style&gt;</code> elements (nuBuilder Forte 4.9 itself saves the field but did not output it in our tests); page <em>Setup code</em> edits Header / Style / Include</td>
+<td>Setup → Include (<code>set_include</code>) used on form pages – its <code>&lt;link&gt;</code> / <code>&lt;script&gt;</code> / <code>&lt;style&gt;</code> elements (nuBuilder Forte 4.9 itself saves the field but did not output it in our tests); page <em>Global code</em> → <em>Form pages</em> edits Header / Style / Include</td>
 </tr>
 <tr>
 

@@ -5,7 +5,7 @@
 	<p>JSON API for users, access levels with their form rights, permission items, reports (PDF), notifications, saved data exports and updates: <code>api.php/v1/…</code> (no URL rewriting needed). Switch it on with <code>$nuConfigApi = true</code> in <code>nuconfig.php</code> and set a long random <code>$nuConfigSecretKey</code>. HTTPS only (localhost excepted; <code>$nuConfigApiAllowHttp = true</code> for tests). Access tokens live <code>$nuConfigApiTokenMinutes</code> minutes (default 15).</p>
 <h3 class="h6 mt-3" id="api-new-client">Create a client – step by step</h3>
 <ol>
-<li><strong>Switch the API on</strong>: <em>Admin tools → API clients</em> shows a notice while it is off – <em>Switch the API on</em> sets <code>$nuConfigApi = true</code> in <code>nuconfig.php</code>. A second notice asks for <code>$nuConfigSecretKey</code>: <em>Generate key</em> makes a long random key and writes it there (without it secrets and tokens are hashed without a key).</li>
+<li><strong>Switch the API on</strong>: the start page tile <em>API clients</em> shows a notice while it is off – <em>Switch the API on</em> sets <code>$nuConfigApi = true</code> in <code>nuconfig.php</code>. A second notice asks for <code>$nuConfigSecretKey</code>: <em>Generate key</em> makes a long random key and writes it there (without it secrets and tokens are hashed without a key).</li>
 <li><strong>Add</strong>: give the client a <em>Name</em> (e.g. the system that will call the API); <em>Active</em> stays on.</li>
 <li><strong>Service user</strong> – one of the two: <em>New service user</em> creates a user on <em>Save</em> (login name – filled with <code>api_</code> to start with –, display name and <em>access level</em>); <em>Existing user</em> lets you search for a user (login name, full name or access level) and shows that user's access level below the list. The access level decides which records the client may read and change – give the service user its own access level with only the form rights it needs. A user can be the service user of one client only, so users of other clients are not in the list.</li>
 <li><strong>Scopes</strong>: tick only what the client needs (e.g. <code>users:read</code> for reading users). A request needs the scope <em>and</em> the right of the access level.</li>
@@ -13,7 +13,7 @@
 <li><strong>Save</strong> – the page shows the <code>client_id</code> and the <code>client_secret</code>. <strong>Copy the secret now</strong>: it is shown only this once (later it can only be replaced with <em>New secret</em>).</li>
 <li><strong>Test</strong> it in the <a href="#api-playground">API playground</a> (choose the client, <code>GET /v1/me</code>, <em>Send</em>), or fetch a token yourself with the <code>curl</code> request below and call <code>api.php/v1/…</code> with <code>Authorization: Bearer …</code>.</li>
 </ol>
-<h3 class="h6 mt-3" id="api-clients">Clients and scopes – <em>Admin tools → API clients</em></h3>
+<h3 class="h6 mt-3" id="api-clients">Clients and scopes – <em>API clients</em></h3>
 <ul>
 <li>The list works like the other system lists: list views, search, filters by status (active, inactive, expired) and scope, print and export, cards on phones. The scopes of a client sit behind a small button with their number – a click shows the list.</li>
 <li><strong>Secrets</strong>: only HMAC hashes of secrets and tokens are stored. <em>New secret</em> (the old one stays valid 24 h or ends at once), <em>Revoke all tokens</em>, <em>Delete</em>.</li>
@@ -77,7 +77,7 @@ curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/us
 <li><strong>Long reports</strong>: <code>"async": true</code> answers <code>202 {"job", "status_url"}</code> at once; ask <code>GET /v1/reports/jobs/{job}</code> until <code>done</code> – the <code>result</code> is the same as above. With PHP-FPM the report runs right after the answer; otherwise it runs when the status is asked for the first time. Jobs belong to the client that started them.</li>
 <li><strong>Limit</strong>: 10 report runs per minute per client (<code>429</code>), on top of the client's request limit.</li>
 </ul>
-<h3 class="h6 mt-3" id="api-playground">Playground – <em>Admin tools → API clients → API playground</em></h3>
+<h3 class="h6 mt-3" id="api-playground">Playground – <em>API clients → API playground</em></h3>
 <ul>
 <li>Choose a client (and optionally fewer scopes) and press <em>Send</em>: a token is fetched for the client without its secret (logged with <code>via: playground</code>) and the request goes from the browser to <code>api.php</code> exactly like a real client's. Under <i class="bi bi-sliders"></i> you can instead test the real token request with the client secret – it is not stored.</li>
 <li><em>Endpoints</em> fills in method, path and an example body. The answer shows status, time, body and headers; <em>curl</em> copies the request as a command line.</li>

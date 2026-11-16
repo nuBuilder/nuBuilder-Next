@@ -3,6 +3,143 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1248 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, OWASP ZAP). Documentation, tutorial, FEATURES.md
+  and the open points (TODO.md) brought up to date first.
+
+## 0.8.1247 – Tab sections on the user form
+- FIX found by the release gate: the ▾ / long tap on a tab with several sections listed nothing on the user form's General tab since
+  the new layout – section cards with a title of their own are listed again (Person, Organisation, Sign-in & access …).
+- Tests: the record check test picks a customer of the sample itself and says why a field cannot be filled; the security scan's
+  report of the list export to Excel (parameter bt) is a known false positive – only the file's creation time differs.
+
+## 0.8.1246 – Documentation review
+- Documentation checked again: "Admin tools →" (no longer exists) replaced by the start page tile or Settings in eleven pages; the user
+  form's sections and summary named as they are now (users, phones, sign-in methods: Reset password, passkeys, welcome e-mail, additional
+  access levels); shortcuts and the ⋮ menu corrected (E / J only as shortcuts, Q = change password, no Browse SQL / PHP in ⋮);
+  "What's new" through System info; User Home button next to Customise; Customise → Appearance instead of View; Tile page in the user menu;
+  Global code instead of the old Setup code page.
+- Added: one line per list row with the full text as tooltip and widths kept while sorting (Lists), User Home in the Form cloner, the
+  procedure editor filling the window, Acorn in the bundled libraries, phones: user summary and code search, page width vs the framed sheet;
+  FEATURES.md: records only through a form's list.
+
+## 0.8.1245 – Compact user summary on phones
+- User form on phones: the summary card is compact – avatar beside the name, status and access level in one row (a long access level is
+  cut with … and shown in full as tooltip), smaller text and spacing; Reset password and the one-time login link side by side where they fit.
+
+## 0.8.1244 – Tutorial up to date
+- Tutorial brought up to date: user menu (Documentation, System info…), Back returns to the page before, ⋮ / Design ▾ of forms, the
+  access level's Start page tab (tile page or Home form), the user form's summary (Reset password) and Permission items tab, the Log
+  out menu of Logged-in users (also idle users), the New form start page (wizard, AI, copy, custom page; views in a group of their own),
+  the read-only welcome e-mail template, Customise with its tabs Appearance / Content / Layouts, Delete older log entries, database tools
+  as library packs, procedures from cron, seven library packs (with PhpSpreadsheet), the GitHub check interval; Forte track: Home form
+  as start page, Save = Ctrl+Shift+S, the new user form layout.
+
+## 0.8.1243 – Docs: existing Forte databases
+- Documentation: the tutorial (lesson on migrating), the FAQ and the installation page still said that existing nuBuilder Forte
+  databases are refused – they are accepted after a backup (installer and sign-in page ask for it); the texts now say so.
+
+## 0.8.1242 – Code search placeholder
+- Code search: the search field shows the short placeholder "Search…" (the longer hint is its tooltip now).
+
+## 0.8.1241 – Code search on phones
+- Code search on phones: one search row like the start page – field, Options and Filters (with the number set); the Search
+  button is left out (Enter searches). Options (match mode, whole word, case, regular expression, Without, quick searches) and the
+  filters open as sheets from the bottom; closing one after a change searches again. Chips below the field show what is set, × removes
+  it. Wider screens unchanged.
+
+## 0.8.1240 – Compact settings
+- Settings centre: switch "Compact" next to the title of the overview and of each section hides the descriptions of the
+  cards and entries, so more sections fit on the screen (the page links stay). Remembered per device, applied before the page is
+  drawn.
+
+## 0.8.1239 – Summary jumps without on-screen keyboard
+- User form summary: on phones and tablets a click on the login name or the code scrolls to the field and marks it without
+  focusing it, so the on-screen keyboard no longer opens. With a keyboard the field still gets the cursor.
+
+## 0.8.1238 – User summary jumps to its fields
+- User form: in the summary on the left, the login name, the code, the status badge (Active / Expired) and the access level badge are
+  now clickable – they scroll to their field (the status to "Valid until"), focus it and mark it briefly.
+
+## 0.8.1237 – System info dialog
+- User menu → "System info…" (globeadmin and admins with the right Update; replaces the version link): a dialog with nuBuilder Next
+  (version, fully tested or not, newest on GitHub, developer mode, nuBuilder Forte version), the server (PHP and its limits, web
+  server, operating system, time zone, missing PHP extensions), the database (server and version, name and collation, size and
+  tables, own tables) and the browser (browser and system, screen, window, pixel ratio, language, time zone, theme, page width).
+  "Copy for support" copies all of it as text; no passwords, keys, database host or user. JSON route ?p=sysinfo.
+
+## 0.8.1236 – Security settings: narrow number fields
+- Security settings: the three numbers (Keep the log, Ask for the password again after, … in developer mode) are only as wide as five
+  digits (were a third of the card each).
+
+## 0.8.1235 – Shorter description of the welcome template
+- Read-only welcome e-mail template (nu_send_welcome_email_template): shorter description – "Welcome e-mail (read-only). Clone it as
+  nu_send_welcome_email to use your own text." (11 languages); existing rows that still have the old text get the new one with the update.
+
+## 0.8.1234 – Record check per form
+- "Records only through the form's list" per form: design mode → Form → Data → "Any record can be opened (no list check)" switches
+  the check off for that form (sfo_json nunext.record_check, ignored by nuBuilder Forte; open, save and delete; the form's rights
+  still apply). For single records: nuNextRecordCheck(false) in Before Edit – a form whose Before Edit calls it runs Before Edit
+  before the check, and the record stays allowed (also for Save / Delete) for 12 hours of the session.
+
+## 0.8.1233 – Full text of a cut list cell as title
+- Form lists: the pointer on a cell whose text is cut shows the whole text (line by line) as its title; a cell that fits, or one with
+  a title of its own, is left alone.
+
+## 0.8.1232 – List rows stay one line high
+- Form lists: every row stays one line high, as in nuBuilder Forte – a cell with a long text or with line breaks (HTML with <br>)
+  shows its first line, cut with …, instead of making its row many lines high. A form with its own row height keeps it; phone
+  cards and the print view show the whole text.
+
+## 0.8.1231 – User form keeps its width on wide windows
+- User form: the sections stop at 1100 px next to the summary – on wide windows (page width Wide / Full) the rest stays empty
+  instead of stretching every field; Code, Valid until and Language at most 200 px, a row of additional access levels at most
+  520 px.
+
+## 0.8.1230 – User form: summary on the left, one grid
+- User form, new layout (the owner picked mockup A of five): a summary card on the left – initials, full name, login name and code,
+  Active / Expired, access level, last sign-in, created / changed, last password change, and the sign-in tools (Reset password…,
+  one-time login link, passkeys). On the right three sections Person, Organisation and Sign-in & access, each in the same
+  three-column grid, so all fields line up. Below 992 px the summary sits above the sections, on phones every field takes the
+  full width. Field names, rules and saving are unchanged.
+
+## 0.8.1229 – Procedure code editor fills the window
+- Procedures: the code editor (PHP and JS tab) fills the window down to its bottom edge – it grows and shrinks with the window and
+  when Details are opened or closed (at least 22rem / 16rem); the full screen of the code tools is unchanged.
+
+## 0.8.1228 – Lists keep their column widths when sorting
+- System lists (access levels, users, procedures …): sorting, paging and searching keep the column widths. The rows of the new page
+  sized the columns anew, so every sort moved them; the widths as shown before now carry over (as shares of the table width – a
+  column whose new content needs more still grows). Widths dragged by hand are kept as before.
+
+## 0.8.1227 – Page width in Customise → Appearance
+- Page width of a device moved from the user menu to the start page: Customise → Appearance → This device (desktop screens).
+  The default for everyone stays in Settings → Look.
+
+## 0.8.1226 – Page width per device
+- Page width: the width of the pages can be widened. Per device in the user menu (from 992 px): Standard (as before, up to 1600 px),
+  Wide (2400 px), Full width (no limit, no sheet frame) or a custom pixel value (1200–3840) – kept in this browser, applied at once and
+  before the first paint. A default for everyone in Settings → Look → Page width (globeadmin or the admin right Branding); "Default" in
+  the user menu follows it. Pages that already use the full window (design mode, report designer, SQL builder) are not touched.
+
+## 0.8.1225 – Back from list after record leads back to the start page
+- Back: the Back button of a record page (access level, user, procedure, permission item …) whose link already was the page before
+  counted as a step forward, so Back on the list then led to the record again instead of the start page. Every Back button now
+  counts as going back.
+
+## 0.8.1224 – Remembered tab without a flash of the first tab
+- Forms with several tabs: a record or launch form shown again (reload, back / forward, after Save) opens on its remembered tab
+  without the first tab flashing up for a moment – the tabs stay hidden from the first paint until that tab is selected.
+
+## 0.8.1223 – User Home: code pane, Form cloner
+- Design ▾ → Code on the User Home form opened nothing: the code pane got no parts for it. It now opens with Before Edit,
+  the one code part User Home has, as in design mode.
+- Form cloner: User Home is listed with the application's forms (it was only offered after "Show nuBuilder Forte's forms").
+
+## 0.8.1222 – Tile pages: level list above the search row
+- Tile pages (start page editor of an access level): the list of the level select opens above the search row below
+  it – the sticky search row covered part of the list.
+
 ## 0.8.1221 – Release gate
 - Release gate: documentation brought up to date (differences to nuBuilder Forte, start page after sign-in, feature list, open points to verify).
 

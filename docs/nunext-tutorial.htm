@@ -67,8 +67,8 @@
 			<li><strong>Badges</strong> on tiles show information at a glance: an update of the <em>Sample data</em>, how many points of <em>System status</em> need a look.</li>
 			<li>The <strong>search field</strong> above the tiles shows one list of results as you type (<kbd>/</kbd> jumps into it): the matching tiles first, then forms, procedures, reports and the pages of the ▾ menus. The funnel button in the field chooses what is included. English words always work, too.</li>
 			<li><kbd>Ctrl</kbd>+<kbd>K</kbd> (or the magnifier in the top bar) opens the same search on <em>every</em> page.</li>
-			<li>The <strong>top bar</strong>: the logo always leads back to the start page; the theme button switches light / dark / automatic; the language menu changes the interface language; the <strong>user menu</strong> (top right) holds Help, this tutorial, the database tools and Sign out (System status and Security are start page tiles).</li>
-			<li><strong>Back</strong> (first button on every page) goes one level up – from a record to its list, from a list to the start page.</li>
+			<li>The <strong>top bar</strong>: the logo always leads back to the start page; the theme button switches light / dark / automatic; the language menu changes the interface language; the <strong>user menu</strong> (top right) holds the documentation, this tutorial, the database tools, <em>System info…</em> (versions of nuBuilder Next, PHP, the database and your browser – <em>Copy for support</em>) and Sign out (System status and Security are start page tiles).</li>
+			<li><strong>Back</strong> (first button on every page) returns to the page you came from; opened directly, it goes one level up – from a record to its list, from a list to the start page.</li>
 		</ul>
 		<div class="tut-task">
 			<ol>
@@ -123,7 +123,7 @@
 			<li>As soon as something changes, <strong>Save</strong> turns red. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves. Leaving with unsaved changes asks first.</li>
 			<li><strong>Clone</strong> copies the record into a new, unsaved one (yellow frame) – nuBuilder Next's own pages (procedures, reports, access levels …) do the same: the copy is only stored when you save it. <strong>Delete</strong> asks first.</li>
 			<li>A red <code>*</code> after a label means "required", a key <i class="bi bi-key"></i> means "must be unique" – hover it for the explanation.</li>
-			<li>The <strong>⋮</strong> button at the end of the toolbar lists everything you can do on this form, each with its keyboard shortcut. As globeadmin you also find the design shortcuts, <em>Inspect record</em> and the hash variables there.</li>
+			<li>The <strong>⋮</strong> button at the end of the toolbar lists everything you can do on this form, each with its keyboard shortcut. As globeadmin you also find <em>Inspect record</em>, the hash variables and <em>Access levels…</em> there; <em>Design</em> ▾ next to it opens design mode and the code of the form or list.</li>
 			<li>Sub-forms (rows inside a record): typing in the empty last row adds a row. Lookups: type a code or click the search button.</li>
 		</ul>
 		<div class="tut-task">
@@ -141,7 +141,7 @@
 		<h3>Help, documentation and the log</h3>
 		<p>Three places answer most questions:</p>
 		<ul>
-			<li>The <a data-open="help">documentation</a> (user menu → Help): searchable, with an index. Every user sees only the chapters for their rights; the globeadmin sees everything, including the administration chapters. <em>View: As user</em> at the top of the help page shows what a user without special rights sees.</li>
+			<li>The <a data-open="help">documentation</a> (user menu → Documentation): searchable, with an index. Every user sees only the chapters for their rights; the globeadmin sees everything, including the administration chapters. <em>View: As user</em> at the top of the help page shows what a user without special rights sees.</li>
 			<li>The <strong>reading level</strong> on the left of the documentation: <em>Essentials</em> for the main points of every topic (<strong>…</strong> opens what was left out), <em>Standard</em> with the details, <em>Everything</em> with the advanced topics.</li>
 			<li>The <strong>(i)</strong> icons next to labels explain a field when you point at them or tap them.</li>
 			<li><strong>Help pages for your users</strong> (<a data-open="route" data-args="p=helppages">Help pages</a>): write help for your own forms, link it to a form, tab or field in design mode – users open it with the <strong>?</strong> button or <kbd>F1</kbd>. Parts of a page can be limited to some access levels, and <em>Draft with AI</em> builds a prompt from the form and its related screens.</li>
@@ -181,7 +181,7 @@
 			<li><strong>Procedures</strong> and <strong>reports</strong>: on their own tabs.</li>
 			<li><strong>From the form</strong>: on any form, ⋮ → <em>Access levels…</em> (or <em>Tools</em> in design mode, or the number in the forms list's column <em>Access levels</em>) shows every level for that one form – the quick way to give a new form to several levels at once.</li>
 			<li><strong>Use two-factor authentication</strong>: users of this level confirm the login with an authenticator app or an e-mail code.</li>
-			<li>The level's <strong>start form</strong> (nuBuilder Forte's <em>home form</em>) opens in nuBuilder Forte after signing in; in nuBuilder Next it is the first tile of the level's automatic start page (next lesson).</li>
+			<li>Tab <strong>Start page</strong>: what the level's users see after signing in – a <em>tile page</em> (next lesson) or the level's <strong>Home form</strong> (nuBuilder Forte's <em>home form</em>), with a preview of the tiles.</li>
 			<li>An access level with users cannot be deleted. <em>Clone</em> copies it with all rights – the quickest way to a similar level.</li>
 		</ul>
 		<div class="tut-task">
@@ -219,7 +219,7 @@
 		<ul>
 			<li><strong>New user</strong>: full name (it fills first and last name), e-mail, login name (unique), access level and a password – the magic wand creates a strong one. <em>Change password at next login</em> makes the user choose a new one.</li>
 			<li><strong>Welcome e-mail</strong> (when e-mail is set up): instead of telling the user a password, send a personal link to set one. The password field can then stay empty. With <em>Preview the e-mail before sending</em> you see the mail before the user is saved – recipient, subject and text with every placeholder filled in; you can change the text or choose another template, and the link to set the password stays in place.</li>
-			<li><strong>Reset password…</strong> (card <em>Login credentials</em>): the user gets a personal link to set a new password – by e-mail or shown once for you to pass on; you never see the password. <em>Block the current password now</em> is for an account that may be compromised: the user is signed out everywhere at once.</li>
+			<li><strong>Reset password…</strong> (in the summary on the left of the user form): the user gets a personal link to set a new password – by e-mail or shown once for you to pass on; you never see the password. <em>Block the current password now</em> is for an account that may be compromised: the user is signed out everywhere at once.</li>
 			<li><strong>Valid until</strong>: the login works through that day. <strong>Archive</strong> sets it to yesterday – the user can no longer sign in, but all data stays. <strong>Delete</strong> removes the user for good.</li>
 			<li><strong>Language</strong>: the user's interface language (empty = browser). <strong>Position, department, team</strong> suggest values of the other users.</li>
 			<li><strong>Reset 2FA</strong> removes the user's authenticator app – e.g. after a lost phone.</li>
@@ -240,7 +240,7 @@
 		<p>Sometimes users of the same access level need different rights – one sales person may give discounts, the others may not. <a data-open="permissions">Permission items</a> solve this:</p>
 		<ul>
 			<li>An item has an <strong>ident</strong> (the name used in code, e.g. <code>sales_discount</code>) and a group.</li>
-			<li>Assign users on the item, or tick items at the bottom of the user form – both edit the same list.</li>
+			<li>Assign users on the item, or tick items on the tab <em>Permission items</em> of the user form – both edit the same list.</li>
 			<li>Your code asks: PHP <code>nuUserHasPermission('sales_discount')</code>, JavaScript the same, SQL <code>#USER_PERMISSIONS#</code>. <em>Used in code</em> on the item shows where.</li>
 		</ul>
 		<div class="tut-tip">Always check on the server (e.g. in <em>Before Save</em>) – a check in the browser alone can be bypassed.</div>
@@ -266,7 +266,7 @@
 		<p><a data-open="sessions">Logged-in users</a> shows every active session: user, address, browser, login time and last activity (green = active in the last five minutes).</p>
 		<ul>
 			<li><strong>End session</strong> signs one user out at the next click – e.g. after changing that user's rights.</li>
-			<li><strong>Log out all others</strong> before maintenance work; <strong>Log out everyone</strong> includes you.</li>
+			<li>The <strong>Log out</strong> menu: <em>Log out all others</em> before maintenance work, <em>Log out everyone</em> (includes you) or <em>Log out idle users</em> whose last activity is older than a few hours.</li>
 			<li>The (i) next to the title shows the session timeouts (<code>$nuConfigSessionTimeout</code>, default 120 minutes; the globeadmin 12 hours).</li>
 		</ul>
 		<p><a data-help="sessions">Logged-in users in the documentation</a></p>
@@ -306,15 +306,15 @@
 
 	<section class="tut-lesson" id="new-form">
 		<h3>Creating a form</h3>
-		<p><a data-open="builder" data-args="new=1">New form</a> asks in three steps: the form (description, code, type), the table and its fields, then the layout and who may use it. For the table there are two ways:</p>
+		<p><a data-open="builder" data-args="new=1">New form</a> first asks how to start: <em>Step by step</em> (the wizard), <em>Describe it – AI creates it</em>, <em>Copy an existing form</em> or a <em>custom page</em>. The wizard asks in three steps: the form (description, code, type), the table and its fields, then the layout and who may use it. For the table there are two ways:</p>
 		<ul>
-			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns; <em>Choose columns and order</em> picks only some of them, their labels and their order. Views are marked “(view)”: the key column is suggested, and a view the database cannot save to makes the form a <em>Browse</em> form.</li>
+			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns; <em>Choose columns and order</em> picks only some of them, their labels and their order. Views are listed in a group of their own: the key column is suggested, and a view the database cannot save to makes the form a <em>Browse</em> form.</li>
 			<li><strong>New table</strong>: enter the columns (name, label, type, length, required). The table gets a nuBuilder-Forte-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
 		</ul>
 		<p>Afterwards the form opens in <a data-lesson="design-mode">design mode</a>. Give your forms a meaningful <em>code</em> and a <em>group</em> – the forms list and the access level page filter by them.</p>
 		<div class="tut-note">A new form is not yet in any access level: only the globeadmin can open it until you add it to an <a data-lesson="access-levels">access level</a>.</div>
 		<div class="tut-task">
-			<p>Create a form <code>tutorial_task</code> with a <em>new table</em> <code>tutorial_task</code> and the columns <code>tsk_title</code> (text, required), <code>tsk_due</code> (date) and <code>tsk_done</code> (checkbox), with audit columns. Open it and add two records.</p>
+			<p>Choose <em>Step by step</em> and create a form <code>tutorial_task</code> with a <em>new table</em> <code>tutorial_task</code> and the columns <code>tsk_title</code> (text, required), <code>tsk_due</code> (date) and <code>tsk_done</code> (checkbox), with audit columns. Open it and add two records.</p>
 		</div>
 		<p><a data-help="new-form">Creating a form</a></p>
 	</section>
@@ -510,7 +510,7 @@
 			<li>SMTP server, port (465 = SSL/TLS, 587 = STARTTLS), user, password and sender. The password is never shown again – leave the field empty to keep it.</li>
 			<li><a data-open="email" data-args="tab=test">Test mail</a> shows the whole conversation with the server – the fastest way to find a wrong setting.</li>
 			<li><a data-open="email" data-args="tab=log">E-mail log</a>: every mail with its status and error.</li>
-			<li><a data-open="emailtemplates">Templates</a>: subject and body with placeholders (<code>#cus_name#</code>), per language. Clone nuBuilder Forte's <code>nu_send_welcome_email_template</code> to write your own welcome e-mail.</li>
+			<li><a data-open="emailtemplates">Templates</a>: subject and body with placeholders (<code>#cus_name#</code>), per language. The welcome e-mail comes from nuBuilder Next's read-only template <code>nu_send_welcome_email_template</code> – clone it to write your own (the copy, <code>nu_send_welcome_email</code>, is used instead).</li>
 		</ul>
 		<div class="tut-task">
 			<p>Enter your mail server and send a <a data-open="email" data-args="tab=test">test mail</a> to yourself. If it fails, read the server conversation.</p>
@@ -522,11 +522,11 @@
 	<section class="tut-lesson" id="branding" data-right="branding">
 		<h3>Branding and the start page layout</h3>
 		<p><a data-open="branding">Branding</a> gives the installation its own look: logo (also one for dark mode), title next to the logo, accent colour and an <strong>environment label</strong> such as <code>TEST</code> – a coloured badge and line on every page, so a test copy is never mistaken for the live system.</p>
-		<p>The start page itself is arranged with <strong>Customise</strong> (top right): drag tiles and groups, rename groups, hide tiles, add your own tiles (a form, a page, a procedure or a link) and tabs. <strong>Start from</strong> loads a ready-made profile – <em>Standard</em> is the default. The pin in a ▾ menu puts a page on the start page as a tile of its own. <strong>View</strong> next to it (key <kbd>V</kbd>) changes how the tiles look – style (large, cards, compact, list, launcher, panels, table), descriptions, tabs, sidebar or groups, colours – for all screen sizes or only for the phone or tablet; on a shared layout these changes are your own unless you choose <em>Everyone</em>. Its section <em>Layout</em> holds several <strong>saved layouts</strong> – your own ones, and shared ones that can be limited to admin roles – and switches between them.</p>
+		<p>The start page itself is arranged with <strong>Customise</strong> (the button next to the search field), in three tabs. <em>Appearance</em> (key <kbd>V</kbd>) changes how the tiles look – style (large, cards, compact, list, launcher, panels, table), descriptions, tabs, sidebar or groups, colours, the rows <em>Favourites</em> and <em>Recently used</em>, the page width on this device – for all screen sizes or only for the phone or tablet; on a shared layout these changes are your own unless you choose <em>Everyone</em>. <em>Content</em> → <em>Edit tiles and groups</em> lets you drag tiles and groups, rename groups, hide tiles, add your own tiles (a form, a page, a procedure or a link) and tabs; <strong>Start from</strong> loads a ready-made profile – <em>Standard</em> is the default. <em>Layouts</em> holds several <strong>saved layouts</strong> – your own ones, and shared ones that can be limited to admin roles – and switches between them. The pin in a ▾ menu puts a page on the start page as a tile of its own.</p>
 		<div class="tut-task">
 			<ol>
 				<li>Set the environment label <code>TEST</code> with an orange colour in <a data-open="branding">Branding</a> and look at the top bar.</li>
-				<li>On the <a data-open="home">start page</a>, click <em>Customise</em> → <em>Edit tiles and groups</em>, add a tile that opens the form <code>tutorial_task</code> and click <em>Done</em>.</li>
+				<li>On the <a data-open="home">start page</a>, click <em>Customise</em> → <em>Content</em> → <em>Edit tiles and groups</em>, add a tile that opens the form <code>tutorial_task</code> and click <em>Done</em>.</li>
 			</ol>
 		</div>
 		<p><a data-help="branding">Branding</a> · <a data-help="home-page">Start page</a></p>
@@ -601,7 +601,7 @@
 			<li>The <a data-open="log">Log</a> records logins and failed logins, two-factor events, password changes, changes to users, access levels, forms and settings, exports, imports and updates. Filter by event, user, date or text.</li>
 			<li>The <a data-open="audit">Audit trail</a> records every change made in the forms – one row per column with old and new value, also sub-form rows, deletes, clones and data imports. In a record, ⋮ → <em>History of this record</em> shows its changes; ↺ puts an old value or a deleted row back.</li>
 			<li><a data-open="debug">Debug</a> collects what <code>nuDebug()</code> writes in PHP code – your main tool when a procedure or event does not do what it should.</li>
-			<li><em>Keep the log (days)</em> in the security settings deletes old entries automatically (0 = keep for ever).</li>
+			<li><em>Keep the log (days)</em> in the security settings deletes old entries automatically (0 = keep for ever); <em>Delete older entries…</em> on the Log page cleans up by hand (globeadmin).</li>
 		</ul>
 		<p><a data-help="log">Log and debug results</a></p>
 	</section>
@@ -630,7 +630,7 @@
 		<ul>
 			<li><a data-open="vendor">System status</a> lists what needs a look: the time zone, a missing database tool or File Manager, tables that are not InnoDB, the demo mode. The badge on its tile counts these points.</li>
 			<li><strong>Storage engine</strong>: older nuBuilder Forte databases often still use MyISAM tables, which have no transactions. <em>Convert all to InnoDB</em> fixes that (make a backup first).</li>
-			<li><strong>Database tools</strong>: phpMyAdmin and / or Adminer and the File Manager open from the user menu and the start page, signed in through nuBuilder Next. They are not part of the package – System status says where to copy them.</li>
+			<li><strong>Database tools</strong>: phpMyAdmin and / or Adminer and the File Manager open from the user menu and the start page, signed in through nuBuilder Next. phpMyAdmin and Adminer come as library packs (<em>Update → Libraries</em>); the File Manager is part of nuBuilder Next.</li>
 		</ul>
 		<div class="tut-note">phpMyAdmin, Adminer and the File Manager give full access to the database and the web folder. Use them with care, and only as globeadmin or with a role you fully trust.</div>
 		<p><a data-help="admin-tools">System status and tools</a> · <a data-help="innodb">Storage engine</a></p>
@@ -640,6 +640,7 @@
 		<h3>Housekeeping and the live-server checklist</h3>
 		<p><code>nucron.php</code> removes expired tokens and sessions, old log entries and temporary files. Run it every 15 minutes as the web server's user:</p>
 		<pre class="small"><code>*/15 * * * * sudo -u www-data php /var/www/html/nunext/nucron.php &gt; /dev/null</code></pre>
+		<p>The same cron can run a procedure of yours on a schedule – <code>php nucron.php run &lt;code&gt;</code>, with an e-mail when it fails (<a data-help="procedure-cron">procedures from cron</a>).</p>
 		<p>Before users start working on a live server:</p>
 		<ul>
 			<li>HTTPS only; <code>$nuConfigBaseURL</code> and <code>$nuConfigSecretKey</code> set.</li>
@@ -901,7 +902,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 	<section class="tut-lesson" id="adv-libraries" data-right="update">
 		<h3>Library packs and the File Manager</h3>
 		<ul>
-			<li>Six libraries are not in the package but come as signed <strong>library packs</strong>: TCPDF (reports), PHPMailer (e-mail), TinyMCE (editor fields), and optionally phpMyAdmin, Adminer and Uppy (uploads). <a data-open="update" data-args="tab=libraries">Update → Libraries</a> installs them from GitHub or as an uploaded zip, tests and rolls them back.</li>
+			<li>Seven libraries are not in the package but come as signed <strong>library packs</strong>: TCPDF (reports), PHPMailer (e-mail), TinyMCE (editor fields), and optionally phpMyAdmin, Adminer, Uppy (uploads) and PhpSpreadsheet (reading Excel files). <a data-open="update" data-args="tab=libraries">Update → Libraries</a> installs them from GitHub or as an uploaded zip, tests and rolls them back.</li>
 			<li>The <strong>File Manager</strong> (nuFiles) is a custom page that comes with nuBuilder Next: it runs on the nuBuilder Next login, shows <em>shares</em> (folders) per permission item or access level, and has a recycle bin and older versions. The globeadmin sets it up with one click.</li>
 		</ul>
 		<div class="tut-task">
@@ -913,7 +914,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 	<section class="tut-lesson" id="adv-unattended" data-right="update">
 		<h3>Updates from GitHub and the command line</h3>
 		<ul>
-			<li><em>Update from GitHub</em> finds the newest release and checks once a day; a new version shows a badge on the Update tile. Only signed packages can be installed.</li>
+			<li><em>Update from GitHub</em> finds the newest release and looks for a new one automatically – never, daily, weekly or monthly; a new version shows a badge on the Update tile. Only signed packages can be installed.</li>
 			<li>A package can also be copied by FTP into the folder <code>_update</code> – useful for a small upload limit.</li>
 			<li>Unattended: <code>php nucron.php update --github</code> (or <code>--zip=…</code>, <code>--dry-run</code>, <code>--backup=…</code>) – run it as the web server's user. The same is possible through the REST API.</li>
 			<li>Every update makes a backup first (default: all <code>zzzzsys_*</code> tables); <em>Rollback</em> brings back the program files.</li>
@@ -945,7 +946,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 	<section class="tut-lesson" id="forte-welcome">
 		<h3>Same application, new front end</h3>
 		<p>nuBuilder Next uses the <strong>same tables</strong> as nuBuilder Forte (4.x): the same forms, objects, users, access levels, procedures, reports and SQL builder queries – stored in the same <code>zzzzsys_</code> tables and formats. On a database that nuBuilder Next set up, both can run side by side: what you build or change in one opens in the other.</p>
-		<div class="tut-note">Existing nuBuilder Forte databases are not supported yet – the installer refuses them. Install nuBuilder Next on a new database and try your application on a <strong>copy</strong>: in developer mode, <a data-help="db-reset">Reset database</a> imports an SQL dump of the nuBuilder Forte database (<a data-help="migration">Migrating from nuBuilder Forte 4.9</a>).</div>
+		<div class="tut-note">nuBuilder Next can run on an existing nuBuilder Forte database – <strong>back up the database and the files first</strong> (the installer and the sign-in page ask for it). Better still, try your application on a <strong>copy</strong> first: in developer mode, <a data-help="db-reset">Reset database</a> imports an SQL dump of the nuBuilder Forte database (<a data-help="migration">Migrating from nuBuilder Forte 4.9</a>).</div>
 		<ul>
 			<li>Your forms keep their code: Before Browse, Before Edit, Before Save, After Save, Before Delete, the form's JavaScript, <code>nuOnLoad</code>, object events and procedures run as in nuBuilder Forte, with nuBuilder Forte's PHP and JavaScript function names.</li>
 			<li>nuBuilder Next only adds its own tables (<code>zzzzsys_nunext_…</code>) for what nuBuilder Forte does not have – log, sessions, settings, dashboards, audit trail …</li>
@@ -962,9 +963,9 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<p>Instead of nuBuilder Forte's home form with its launch buttons, nuBuilder Next opens a <strong>start page with tiles</strong>.</p>
 		<ul>
 			<li>Administrators see the admin tools as tiles (users, forms, procedures, reports, settings …); <em>Customise</em> arranges them, saves layouts and marks favourites.</li>
-			<li>Users get a start page per access level with tiles for their forms and reports – made automatically from their rights or arranged by you (<a data-help="home-users">user start pages</a>). A level's home form from nuBuilder Forte still works.</li>
+			<li>Users get a start page per access level with tiles for their forms and reports – made automatically from their rights or arranged by you (<a data-help="home-users">user start pages</a>). An access level can open its nuBuilder Forte <em>Home form</em> instead (tab <em>Start page</em> of the access level); on an existing nuBuilder Forte database the levels with a Home form start there.</li>
 			<li>The <strong>top bar</strong> has a search (<kbd>Ctrl</kbd>+<kbd>K</kbd>: any page, form, procedure, report), notifications, light / dark mode, language and the user menu. An optional side bar shows favourites and recently used pages.</li>
-			<li>The <strong>breadcrumb</strong> (above the page, or in the top bar when no logo is shown) replaces nuBuilder Forte's breadcrumb and Back – the browser's Back button works too.</li>
+			<li>The <strong>breadcrumb</strong> (above the page, or in the top bar when no logo is shown) replaces nuBuilder Forte's breadcrumb; <em>Back</em> returns to the page you came from, and the browser's Back button works too.</li>
 			<li>Everything works on phones: lists become cards, the menus fold.</li>
 		</ul>
 		<div class="tut-task"><p class="mb-0">Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, type the code of one of your forms and open it.</p></div>
@@ -974,7 +975,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Forms at work</h3>
 		<p>Your forms open as they are; the frame around them is nuBuilder Next's (<a data-help="forms-use">Working with forms</a>).</p>
 		<ul>
-			<li><strong>Buttons</strong>: <em>Back</em>, <em>Save</em> (turns red with unsaved changes, <kbd>Ctrl</kbd>+<kbd>S</kbd>), <em>Clone</em>, <em>New</em>, <em>Delete</em> – as nuBuilder Forte's action buttons. Leaving with unsaved changes asks first.</li>
+			<li><strong>Buttons</strong>: <em>Back</em>, <em>Save</em> (turns red with unsaved changes, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>), <em>Clone</em>, <em>New</em>, <em>Delete</em> – as nuBuilder Forte's action buttons. Leaving with unsaved changes asks first.</li>
 			<li><strong>Layout</strong>: <em>Absolute</em> shows the pixel positions of nuBuilder Forte; <em>Auto</em> and <em>Grid</em> arrange the same objects in rows – useful on small screens. The choice is kept per form.</li>
 			<li><strong>Browse lists</strong>: the form's browse SQL runs unchanged; search, sortable columns, column filters, page size and an export menu (HTML page, CSV, Excel) are built in. HTML in column titles and values (icons, bold, links) is drawn as before, cleaned of scripts.</li>
 			<li><strong>Validation</strong>: <em>No blanks</em> shows a red <code>*</code>, <em>No duplicates</em> a key symbol – both are checked again on the server.</li>
@@ -1015,7 +1016,7 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 	<section class="tut-lesson" id="forte-admin">
 		<h3>Users, rights and settings</h3>
 		<ul>
-			<li>The <a data-open="users">user form</a> is laid out in cards: person, login, access and account settings; a user can have <strong>additional access levels</strong> with an end date, and <strong>custom user fields</strong> extend it without changing <code>zzzzsys_user</code>.</li>
+			<li>The <a data-open="users">user form</a> shows a summary on the left (name, status, access level, last sign-in, password reset) and the sections Person, Organisation and Sign-in &amp; access on the right; a user can have <strong>additional access levels</strong> with an end date, and <strong>custom user fields</strong> extend it without changing <code>zzzzsys_user</code>.</li>
 			<li><strong>Access levels</strong> work as in nuBuilder Forte. New: <a data-help="admin-roles">admin roles</a> give a user part of the globeadmin's tools (e.g. only users, or only reports) – in nuBuilder Forte that was all or nothing.</li>
 			<li><strong>Settings</strong>: nuBuilder Forte's Setup form is split into <a data-open="settings">Settings</a> (also the values of <code>nuconfig.php</code>, with descriptions), <a data-open="email">E-mail</a> (with a connection check and test mail), <a data-open="branding">Branding</a> and <a data-open="themes">Themes</a>.</li>
 			<li><strong>Updating</strong>: instead of copying files, <a data-open="update">Update</a> installs a signed package – with a backup first, a check of the database changes and a way back.</li>

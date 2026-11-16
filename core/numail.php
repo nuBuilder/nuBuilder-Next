@@ -1012,6 +1012,21 @@ final class NuWelcome
 	 * cloned like nuBuilder Forte's templates: the copy is called nu_send_welcome_email, can be edited and is used first.
 	 * @return int rows added
 	 */
+	/** The description of the read-only templates until 0.8.1234 – replaced by the shorter one (0.8.1235) while a row still has it. */
+	private const OLD_TPL_DESC = [
+		'en' => 'Welcome e-mail of nuBuilder Next (read-only), sent when “Send welcome e-mail” is ticked. Clone it to change the text – the copy, nu_send_welcome_email, is used instead.',
+		'de' => 'Willkommens-E-Mail von nuBuilder Next (schreibgeschützt), gesendet bei „Willkommens-E-Mail senden“. Zum Ändern klonen – die Kopie nu_send_welcome_email wird dann verwendet.',
+		'fr' => 'E-mail de bienvenue de nuBuilder Next (lecture seule), envoyé avec « Envoyer l’e-mail de bienvenue ». Clonez-le pour modifier le texte – la copie nu_send_welcome_email est alors utilisée.',
+		'it' => 'E-mail di benvenuto di nuBuilder Next (sola lettura), inviata con «Invia e-mail di benvenuto». Clonala per cambiare il testo – viene usata la copia nu_send_welcome_email.',
+		'es' => 'E-mail de bienvenida de nuBuilder Next (solo lectura), enviado con «Enviar e-mail de bienvenida». Clónalo para cambiar el texto – se usa la copia nu_send_welcome_email.',
+		'pt' => 'E-mail de boas-vindas do nuBuilder Next (só de leitura), enviado com «Enviar e-mail de boas-vindas». Clone-o para alterar o texto – é usada a cópia nu_send_welcome_email.',
+		'nl' => 'Welkomstmail van nuBuilder Next (alleen-lezen), verstuurd met ‘Welkomstmail versturen’. Kloon hem om de tekst te wijzigen – de kopie nu_send_welcome_email wordt dan gebruikt.',
+		'pl' => 'Wiadomość powitalna nuBuilder Next (tylko do odczytu), wysyłana z opcją „Wyślij wiadomość powitalną”. Sklonuj, aby zmienić tekst – używana jest wtedy kopia nu_send_welcome_email.',
+		'ru' => 'Приветственное письмо nuBuilder Next (только чтение), отправляется при «Отправить приветственное письмо». Клонируйте, чтобы изменить текст, – тогда используется копия nu_send_welcome_email.',
+		'zh' => 'nuBuilder Next 的欢迎邮件（只读），勾选“发送欢迎邮件”时发送。如需修改文本请克隆 – 之后使用副本 nu_send_welcome_email。',
+		'ar' => 'رسالة ترحيب nuBuilder Next (للقراءة فقط)، تُرسل عند تحديد «إرسال رسالة ترحيب». استنسخها لتغيير النص – تُستخدم عندها النسخة nu_send_welcome_email.',
+	];
+
 	public static function ensureTemplates(): int
 	{
 		$db = nu_db();
@@ -1026,7 +1041,14 @@ final class NuWelcome
 				'emt_body' => self::body('#sus_name#', '#sus_login_name#', '#SET_PASSWORD_URL#', '#LOGIN_URL#',
 					str_replace(['99999', '88888'], ['#SET_PASSWORD_HOURS#', '#PASSWORD_MIN_LENGTH#'], h(t('welcome_valid', 99999, '88888')))),
 				'emt_to' => '#sus_email#', 'emt_cc' => '', 'emt_bcc' => '', 'emt_form_id' => NuAcl::FORM_USER]);   // the user form's fields as placeholders
-			if ((int)$db->value('SELECT COUNT(*) FROM ' . NuEmailTemplate::TABLE . ' WHERE zzzzsys_email_template_id = ?', [$id]) > 0) continue;   // never changed
+			if ((int)$db->value('SELECT COUNT(*) FROM ' . NuEmailTemplate::TABLE . ' WHERE zzzzsys_email_template_id = ?', [$id]) > 0) {   // never changed – only the old description
+				if (isset(self::OLD_TPL_DESC[$l]) && isset($cols['emt_description'])) {
+					$o = self::OLD_TPL_DESC[$l];
+					foreach (array_unique([$o, strtr($o, ['„' => '«', '“' => '»'])]) as $was)   // also the Swiss variant of the German text
+						$db->run('UPDATE ' . NuEmailTemplate::TABLE . ' SET emt_description = ? WHERE zzzzsys_email_template_id = ? AND emt_description = ?', [$row['emt_description'], $id, mb_substr($was, 0, 200)]);
+				}
+				continue;
+			}
 			$db->insert(NuEmailTemplate::TABLE, array_intersect_key($row, $cols));
 			$n++;
 		}

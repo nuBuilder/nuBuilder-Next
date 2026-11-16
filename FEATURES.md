@@ -75,6 +75,9 @@ page) for how to use it.
   service (signed, with retries and a log), e-mail via SMTP or OAuth 2 (Google, Microsoft 365) with templates.
 - **Docker** – an image with every PHP extension (also SQL Server) and compose files: one command starts nuBuilder Next with
   MariaDB, optionally with the sample application; a newer image updates the program and keeps the data.
+- **System info** – user menu → System info…: versions of nuBuilder Next, PHP, database and browser at a glance, copied as text for support
+- **Page width** – wider pages per device (start page → Customise → Appearance) (standard, wide, full width or a pixel value), with a default for everyone in Settings → Look
+- **Compact settings** – a switch on the settings overview and its sections hides the descriptions (remembered per device)
 - **Installable app** – install on phones and computers with its own icon and window, the branding's name and colour,
   favourites as shortcuts, a faster start and a clear page when offline.
 - **Procedures by cron** – one command runs a procedure from the server's cron, as a chosen user, with a log entry and an
@@ -92,7 +95,7 @@ page) for how to use it.
   user fields with worked-out defaults (dates, counters, templates, SQL, procedures); user import from CSV or Excel; welcome e-mails; password reset by the administrator without ever seeing a
   password; *Act as user* to see the application as a user does.
 - **Security** – login rate limit, password policy with a leaked-password check, sign-in only from allowed networks, field
-  access per user group, and a built-in Security check.
+  access per user group, records reachable only through a form's list (switchable per form), and a built-in Security check.
 - **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes (older entries can be deleted).
 - **Tile pages per access level** – users get their own tiles and can personalise them; or, per access level, the Home form opens
   after sign-in as in nuBuilder Forte – set on the access level's tab *Start page*, with a preview of the tiles.

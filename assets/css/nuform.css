@@ -950,3 +950,12 @@ html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
    the value ("20:"); the select gets Forte's slim padding and a small arrow */
 .nuAbsNarrow select.form-select:not([multiple]) { padding-left: 3px; padding-right: 15px; background-position: right 3px center; background-size: 9px 7px; }
 
+
+/* 0.8.1224: the remembered tab of a record shown again – tabs and panes hidden until nuruntime.js has selected it (nutheme.js) */
+html.nuFormTabPending #nuEditForm .nuTabHolder, html.nuFormTabPending #nuTabHolder, html.nuFormTabPending #nuRECORD.tab-content { visibility: hidden; }
+
+/* list cells on one line (0.8.1232): without a row height of its own (sfo_browse_row_height) a cell shows its first line, cut with … – a
+   long text or one with line breaks (<br> of HTML in a cell) made its row many lines high; nuBuilder Forte keeps every row at the row
+   height. Not on phone cards, not in the print view; a form with a row height keeps that (max-height on div.nuCell, 0.8.974) */
+html:not(.nuPhoneCards) body:not(.nuPrintView) #nuBrowseTable:not([data-nu-row-height]) > tbody > tr > td.nuCellTd > div.nuCell {
+	display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; overflow-wrap: anywhere; }

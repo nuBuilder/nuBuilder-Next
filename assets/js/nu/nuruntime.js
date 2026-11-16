@@ -5900,6 +5900,7 @@
 		$('#nuJsErrors').on('click', function () { nuMessage(M.js_errors || 'JS errors', N.jsErrors.map(esc)); });
 		$(document).on('click', '.nuPhAdd', function () { $('#nuAddButton').trigger('click'); });   // phones: Add next to the search (0.8.1003)
 
+		if (N.mode !== 'edit') document.documentElement.classList.remove('nuFormTabPending');   // a list page has no tabs to restore (0.8.1224)
 		if (N.mode === 'edit') {
 			if (window.nuOnEditorLoad) { try { window.nuOnEditorLoad(); } catch (x) { reportError(x.message, 'nuOnEditorLoad'); } }
 			else $('#nuEditForm textarea.nuEditor').each(function () { nuInitTinyMCE(this.id); });
@@ -5920,6 +5921,7 @@
 				if (sameRecord() && t !== null && g('nuTab' + t) && $(g('nuTab' + t)).parent().is(':visible')) nuSelectTab(+t);
 				else sessionStorage.removeItem(tabKey());
 			} catch (x) { /* ignore */ }
+			document.documentElement.classList.remove('nuFormTabPending');   // nutheme.js hid the tabs until here (0.8.1224)
 			// nuBuilder's Notes form (0.8.508): an existing note with an empty editor but text on the tab Additional opens that tab
 			var only = {nunotes: ['not_content', 'not_text']}[N.form.id];
 			if (only && !N.is_new) {
@@ -6037,4 +6039,20 @@
 			if (N.edited && N.mode === 'edit' && !N.iframe && (N.form || {}).type !== 'launch') { e.preventDefault(); e.returnValue = M.unsaved || ''; }
 		});
 	};
+})();
+
+// list cells cut to one line (0.8.1232): the pointer on a cut cell shows the whole text as its title (0.8.1233) – set when the pointer
+// arrives, only while the text does not fit, never over a title the cell or the form's code set
+(function () {
+	'use strict';
+	document.addEventListener('mouseover', function (e) {
+		var c = e.target && e.target.closest ? e.target.closest('#nuBrowseTable td.nuCellTd > div.nuCell') : null;
+		if (!c) return;
+		var mine = c.hasAttribute('data-nu-cut-title');
+		if (c.hasAttribute('title') && !mine) return;
+		var cut = c.scrollHeight > c.clientHeight + 1 || c.scrollWidth > c.clientWidth + 1;
+		var text = (c.innerText || c.textContent || '').replace(/[ \t]+\n/g, '\n').trim();
+		if (cut && text !== '') { c.setAttribute('title', text); c.setAttribute('data-nu-cut-title', ''); }
+		else if (mine) { c.removeAttribute('title'); c.removeAttribute('data-nu-cut-title'); }
+	});
 })();

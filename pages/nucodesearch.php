@@ -99,6 +99,23 @@ $langNames = ['php' => 'PHP', 'js' => 'JavaScript', 'sql' => 'SQL', 'css' => 'CS
 $chk = static fn(bool $on): string => $on ? ' checked' : '';
 $sel = static fn(bool $on): string => $on ? ' selected' : '';
 
+// chips on phones (0.8.1241): options / filters that are set, each × = the same search without it
+$chipUrl = static function (array $drop): string {
+	$q = $_GET;
+	foreach ($drop as $k) unset($q[$k]);
+	return 'index.php?' . http_build_query($q);
+};
+$chipList = [];
+if (isset($_GET['go'])) {
+	if ($s['m'] !== 'phrase') $chipList[] = [t('cs_mode_' . $s['m']), ['m']];
+	if ($s['w']) $chipList[] = [t('cs_word'), ['w']];
+	if ($s['c']) $chipList[] = [t('cs_case'), ['c']];
+	if ($s['r']) $chipList[] = [t('cs_regex'), ['r']];
+	if ($s['x'] !== '') $chipList[] = [t('cs_without') . ' ' . $s['x'], ['x']];
+	if ($filterCount) $chipList[] = [t('cs_filters') . ' (' . $filterCount . ')', ['lang', 'place', 'f', 'grp', 'dep', 'team', 'prj', 'sys', 'drafts', 'pages']];
+}
+$chips = $chipList ? '<div class="d-flex d-sm-none flex-wrap gap-2 mt-2 csChips" id="csChips">' . implode('', array_map(static fn($c) => '<a class="csChip" href="'
+	. h($c[1][0] === 'lang' ? $chipUrl($c[1]) . '&drafts=1&pages=1' : $chipUrl($c[1])) . '" aria-label="' . h(t('cs_chip_remove', $c[0])) . '">' . h($c[0]) . ' <i class="bi bi-x" aria-hidden="true"></i></a>', $chipList)) . '</div>' : '';
 nu_layout_start(t('cs_title'), 'home', ['head' => nu_ts_head()]);
 echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint'),
 	'buttons' => '<div class="dropdown"><button type="button" class="btn nuBtnAct dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="csSavedBtn"><i class="bi bi-bookmark me-1"></i>' . h(t('cs_saved')) . '</button>'
@@ -117,26 +134,30 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 		<div class="d-flex flex-wrap gap-2 align-items-center">
 			<div class="input-group csQ">
 				<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-				<input type="search" class="form-control font-monospace" name="q" id="csQ" value="<?= h($s['q']) ?>" placeholder="<?= h(t('cs_q_ph')) ?>" aria-label="<?= h(t('cs_title')) ?>" autocomplete="off" spellcheck="false" autofocus>
+				<input type="search" class="form-control font-monospace" name="q" id="csQ" value="<?= h($s['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" title="<?= h(t('cs_q_ph')) ?>" aria-label="<?= h(t('cs_title')) ?>" autocomplete="off" spellcheck="false" autofocus>
 				<button class="btn btn-primary" type="submit" id="csGo"><?= h(t('cs_search')) ?></button>
 			</div>
-			<div class="btn-group" role="group" aria-label="<?= h(t('cs_mode_phrase')) ?>">
+			<?php // phones (0.8.1241, the owner picked mockup A): Options / Filters open sheets – nucodesearch.js moves the controls into them ?>
+			<button type="button" class="btn btn-outline-secondary d-sm-none csPhBtn" id="csOptBtn" aria-label="<?= h(t('cs_options')) ?>" title="<?= h(t('cs_options')) ?>"><i class="bi bi-sliders" aria-hidden="true"></i></button>
+			<button type="button" class="btn btn-outline-secondary d-sm-none csPhBtn position-relative" id="csFiltBtn" aria-label="<?= h(t('cs_filters')) ?><?= $filterCount ? ' (' . $filterCount . ')' : '' ?>" title="<?= h(t('cs_filters')) ?>"><i class="bi bi-funnel" aria-hidden="true"></i><?= $filterCount ? '<span class="badge rounded-pill text-bg-primary csPhCount">' . $filterCount . '</span>' : '' ?></button>
+			<div class="btn-group" role="group" aria-label="<?= h(t('cs_mode_phrase')) ?>" data-cs-opt="mode">
 				<?php foreach (['phrase', 'all', 'any'] as $m): ?>
 				<input type="radio" class="btn-check" name="m" id="csM_<?= $m ?>" value="<?= $m ?>"<?= $chk($s['m'] === $m) ?>><label class="btn btn-outline-secondary btn-sm" for="csM_<?= $m ?>"><?= h(t('cs_mode_' . $m)) ?></label>
 				<?php endforeach; ?>
 			</div>
-			<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('cs_mode_tip')) ?>" title="<?= h(t('cs_mode_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+			<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('cs_mode_tip')) ?>" title="<?= h(t('cs_mode_tip')) ?>" data-cs-opt="modetip"><i class="bi bi-info-circle"></i></span>
 		</div>
+		<?= $chips ?>
 		<?php if ($s['preset'] === 'missing'): ?>
 		<div class="mt-2 csPresetRow" id="csPresetChip"><span class="badge rounded-pill text-bg-secondary d-inline-flex align-items-center gap-2 py-2 px-3 csPresetChip">
 			<i class="bi bi-exclamation-diamond" aria-hidden="true"></i><?= h(t('cs_quick_missing')) ?>
 			<a class="text-reset" href="<?= h(nu_url('codesearch')) ?>" title="<?= h(t('close')) ?>" aria-label="<?= h(t('close')) ?>"><i class="bi bi-x-lg"></i></a></span></div>
 		<?php endif; ?>
 		<div class="d-flex flex-wrap gap-3 align-items-center mt-2">
-			<div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="w" value="1" id="csW"<?= $chk($s['w']) ?>><label class="form-check-label small" for="csW"><?= h(t('cs_word')) ?></label></div>
-			<div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="c" value="1" id="csC"<?= $chk($s['c']) ?>><label class="form-check-label small" for="csC"><?= h(t('cs_case')) ?></label></div>
-			<div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="r" value="1" id="csR"<?= $chk($s['r']) ?>><label class="form-check-label small" for="csR"><?= h(t('cs_regex')) ?></label></div>
-			<div class="d-flex align-items-center gap-1 csWithout"><label class="small text-body-secondary" for="csX"><?= h(t('cs_without')) ?></label>
+			<div class="form-check mb-0" data-cs-opt="csW"><input class="form-check-input" type="checkbox" name="w" value="1" id="csW"<?= $chk($s['w']) ?>><label class="form-check-label small" for="csW"><?= h(t('cs_word')) ?></label></div>
+			<div class="form-check mb-0" data-cs-opt="csC"><input class="form-check-input" type="checkbox" name="c" value="1" id="csC"<?= $chk($s['c']) ?>><label class="form-check-label small" for="csC"><?= h(t('cs_case')) ?></label></div>
+			<div class="form-check mb-0" data-cs-opt="csR"><input class="form-check-input" type="checkbox" name="r" value="1" id="csR"<?= $chk($s['r']) ?>><label class="form-check-label small" for="csR"><?= h(t('cs_regex')) ?></label></div>
+			<div class="d-flex align-items-center gap-1 csWithout" data-cs-opt="without"><label class="small text-body-secondary" for="csX"><?= h(t('cs_without')) ?></label>
 				<input type="text" class="form-control form-control-sm font-monospace" name="x" id="csX" value="<?= h($s['x']) ?>" autocomplete="off" spellcheck="false">
 				<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="<?= h(t('cs_without_tip')) ?>" title="<?= h(t('cs_without_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
 			<?php if ($canReplace): ?><button class="btn btn-sm btn-link px-0 ms-auto csRpBtn" type="button" data-bs-toggle="collapse" data-bs-target="#csRpRow" aria-expanded="<?= $rmode ? 'true' : 'false' ?>" aria-controls="csRpRow" id="csRpToggle"><i class="bi bi-arrow-left-right me-1"></i><?= h(t('cs_replace')) ?></button><?php endif; ?>
@@ -188,7 +209,7 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 				<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" name="sys" value="1" id="csSys"<?= $chk($s['sys']) ?>><label class="form-check-label" for="csSys"><?= h(t('cs_src_sys')) ?></label></div>
 			</div>
 		</div>
-		<div class="d-flex flex-wrap gap-2 align-items-center mt-3 pt-2 border-top csQuick">
+		<div class="d-flex flex-wrap gap-2 align-items-center mt-3 pt-2 border-top csQuick" data-cs-opt="quick">
 			<span class="small text-body-secondary me-1"><?= h(t('cs_quick')) ?></span>
 			<div class="csQuickSel"><select class="form-select form-select-sm nuListTomSelect" id="csQuickFn" data-placeholder="<?= h(t('cs_quick_fn')) ?>" aria-label="<?= h(t('cs_quick_fn')) ?>"><option value=""></option>
 				<?php foreach ($quick['fn'] as [$n, $l]): ?><option value="<?= h($n) ?>" data-lang="<?= $l ?>" data-sub="<?= $l === 'php' ? 'PHP' : 'JavaScript' ?>"><?= h($n) ?></option><?php endforeach; ?></select></div>
@@ -199,6 +220,11 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 			<a class="btn btn-sm btn-outline-secondary<?= $s['preset'] === 'missing' ? ' active' : '' ?>" id="csQuickMissing" href="<?= h(nu_url('codesearch', ['preset' => 'missing', 'go' => '1', 'drafts' => '1', 'pages' => '1'])) ?>" title="<?= h(t('cs_quick_missing_tip')) ?>" data-bs-toggle="tooltip"><i class="bi bi-exclamation-diamond me-1"></i><?= h(t('cs_quick_missing')) ?></a>
 		</div>
 	</div>
+	<?php foreach (['csOptSheet' => 'cs_options', 'csFiltSheet' => 'cs_filters'] as $sid => $stl): ?>
+	<div class="modal fade csSheet" id="<?= $sid ?>" tabindex="-1" aria-labelledby="<?= $sid ?>T" aria-hidden="true"><div class="modal-dialog"><div class="modal-content">
+		<div class="modal-header"><h2 class="modal-title h5" id="<?= $sid ?>T"><?= h(t($stl)) ?></h2><button type="button" class="btn btn-link csSheetDone" data-bs-dismiss="modal"><?= h(t('ds_done')) ?></button></div>
+		<div class="modal-body"></div></div></div></div>
+	<?php endforeach; ?>
 </form>
 
 <?php if ($s['q'] !== '' || $s['preset'] !== ''): ?>

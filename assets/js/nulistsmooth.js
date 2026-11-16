@@ -32,6 +32,31 @@
 		document.dispatchEvent(new CustomEvent('nu:listrefresh', {detail: {card: root}}));
 	}
 
+	// column widths kept over sorting / paging / searching (0.8.1228): the rows of the new page would size the columns anew, so every sort
+	// moved them. The widths as shown before the swap go onto the same columns of the new table as percentages – in the normal (auto)
+	// layout, so a column whose new content needs more still grows and the others give way. Not for widths dragged by hand (fixed layout,
+	// nuColResize) and not on phone cards (titles not shown).
+	function colWidths(card) {
+		var t = card && card.querySelector('table[data-nu-resize]');
+		if (!t || (t.nuColResize && t.nuColResize.fixed())) return null;
+		var tw = t.getBoundingClientRect().width, o = {}, n = 0;
+		if (!(tw > 0)) return null;
+		t.querySelectorAll('thead > tr > th').forEach(function (th, i) {
+			var w = th.getBoundingClientRect().width;
+			if (w > 0) { o[(th.getAttribute('data-nu-col') || '') + '#' + i] = w / tw * 100; n++; }
+		});
+		return n ? o : null;
+	}
+	function keepWidths(card, o) {
+		var t = card && card.querySelector('table[data-nu-resize]');
+		if (!o || !t || (t.nuColResize && t.nuColResize.fixed())) return;
+		var ths = t.querySelectorAll('thead > tr > th'), keys = [];
+		ths.forEach(function (th, i) { keys.push((th.getAttribute('data-nu-col') || '') + '#' + i); });
+		if (keys.length !== Object.keys(o).length || keys.some(function (k) { return !(k in o); })) return;   // other columns: as drawn
+		ths.forEach(function (th, i) { th.style.width = o[keys[i]].toFixed(3) + '%'; });
+		t.setAttribute('data-nu-kept-widths', '');
+	}
+
 	/** Fetches url and swaps the card; false = not handled (the caller loads the page normally). */
 	function go(url, push) {
 		if (!sameList(url)) return false;
@@ -52,7 +77,7 @@
 			if (!fresh) throw new Error('fallback');
 			var cur = document.querySelector('.nuListCard[data-lv-smooth]');
 			if (!cur) throw new Error('fallback');
-			var node = document.importNode(fresh, true);
+			var node = document.importNode(fresh, true), widths = colWidths(cur);
 			cur.replaceWith(node);
 			['nuLvData'].forEach(function (id) {             // the view editor's data next to the card
 				var a = document.getElementById(id), b = doc.getElementById(id);
@@ -61,6 +86,7 @@
 			if (push !== false) history.pushState({nuLv: 1}, '', res[1]);
 			if (doc.title) document.title = doc.title;
 			rerun(node);
+			keepWidths(node, widths);
 			if (focusId) {
 				var f = document.getElementById(focusId);
 				if (f) { f.focus({preventScroll: true}); try { if (caret !== null) f.setSelectionRange(caret, caret); } catch (e) { /* select */ } }

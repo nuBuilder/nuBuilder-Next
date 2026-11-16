@@ -1484,7 +1484,8 @@
 		var sel = tab.getAttribute('data-bs-target') || tab.getAttribute('href') || '';
 		var pane = sel.charAt(0) === '#' ? document.querySelector(sel) : null;
 		if (!pane) return [];
-		return Array.prototype.filter.call(pane.querySelectorAll('.card > .card-header'), function (h) {
+		// a card's header, or the title of a section card (user form, 0.8.1248: <section class="card"><div class="card-body"><h2 class="userSecTitle">)
+		return Array.prototype.filter.call(pane.querySelectorAll('.card > .card-header, .card > .card-body > .userSecTitle:first-child'), function (h) {
 			return !h.closest('.modal') && !h.closest('.card.d-none') && h.closest('.tab-pane') === pane && (h.textContent || '').trim() !== '';
 		});
 	}
@@ -2065,7 +2066,7 @@ window.nuPageNoGo = function (value) {
 	document.addEventListener('click', function (e) {
 		var l = e.target && e.target.closest ? e.target.closest('a[href]') : null;
 		if (!l || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || (l.target && l.target !== '_self')) return;
-		if (!(l.hasAttribute('data-nu-back-default') || l.matches('.nuBackBtn, #nuBackButton, .nuPhBack, .breadcrumb a, a.nuBreadcrumb'))) return;
+		if (!(l.hasAttribute('data-nu-back-default') || l.hasAttribute('data-nu-back') || l.matches('.nuBackBtn, #nuBackButton, .nuPhBack, .breadcrumb a, a.nuBreadcrumb'))) return;
 		try { sessionStorage.setItem(GO, rel(l.getAttribute('href') || '')); } catch (x) { /* no storage */ }
 	}, true);
 	// the list swapped in place (pushState of nulistsmooth.js / the form runtime) – keep the entry's address current
@@ -2078,12 +2079,15 @@ window.nuPageNoGo = function (value) {
 	var prev = a.length > 1 ? a[a.length - 2] : null;
 	window.nuTrailBack = function () { return prev ? prev.u : null; };
 	function apply() {
-		if (!prev) return;
 		var links = [].slice.call(document.querySelectorAll('a.nuBackBtn:not(.dropdown-item), a#nuBackButton, a.nuPhBack'));
 		document.querySelectorAll('a.btn.nuBtnAct').forEach(function (l) {      // hand-written Back buttons of record pages (arrow first)
 			var c = l.firstElementChild;
 			if (c && c.classList.contains('bi-arrow-left') && links.indexOf(l) < 0) links.push(l);
 		});
+		// 0.8.1225: every Back button counts as going back – also one whose link already is the page before (a hand-written Back of a
+		// record page was taken for a step forward: Back on the list then led to the record again instead of the start page)
+		links.forEach(function (l) { l.setAttribute('data-nu-back', ''); });
+		if (!prev) return;
 		var crumbs = !!url(window.location.href).searchParams.get('bt');         // a form opened from another form: its breadcrumb trail IS the way back
 		links.forEach(function (l) {
 			if (l.hasAttribute('data-nu-back-fixed')) return;                      // a page that wants its own Back target

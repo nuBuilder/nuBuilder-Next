@@ -550,6 +550,7 @@ if ($admin || $userPage) {
 	$data = [
 		'url' => $selfUrl, 'csrf' => nu_csrf_token(), 'layout' => $layout, 'mode' => $mode, 'usedUrl' => $editorPage ? '' : nu_url('sidebar'),
 		'sidebar' => $editorPage ? null : ['on' => NuSidebar::enabled(), 'url' => nu_url('sidebar'), 'back' => 'index.php?' . (string)($_SERVER['QUERY_STRING'] ?? '')],   // Customise → Appearance → Side bar (0.8.708)
+		'pageWidth' => $editorPage ? null : ['def' => NuPageWidth::default(), 'defLabel' => NuPageWidth::label(NuPageWidth::default()), 'min' => NuPageWidth::MIN, 'max' => NuPageWidth::MAX],   // Customise → Appearance → This device (0.8.1227)
 		'favUrl' => !$editorPage && NuSidebar::canFav() ? nu_url('sidebar') : '',   // right-click / long press → add to / remove from favourites (0.8.497)
 		// … and Hide (0.8.652): in the layout on admin start pages, for me on user start pages (same rights as the ☆)
 		'hideMode' => !$editorPage && NuSidebar::canFav() ? ($mode === 'user' ? 'me' : 'layout') : '',
@@ -565,7 +566,7 @@ if ($admin || $userPage) {
 			'roles' => $hlManage && !$userPage ? array_map(static fn($r) => ['id' => $r['id'], 'name' => $r['name']], NuAdmin::roles()) : []], 'presets' => $userPage ? (object)[] : NuHome::presets(), 'catalog' => (object)$cat,
 		'forms' => $formList, 'pages' => $userPage ? NuHome::USER_PAGES : NuHome::PAGES, 'procedures' => $procs, 'reports' => $reportList, 'cond' => $condOpts, 'icons' => NuHome::ICONS,
 		'procUrl' => $userPage ? nu_url('home', ['for' => $for, 'run' => '__ID__']) : nu_url('procedures', ['id' => '__ID__']),
-		't' => array_combine($k = ['home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_fav_edit', 'home_row_hide', 'home_row_autofold', 'home_row_autofold_tip', 'home_row_hidden', 'home_v_fav_row', 'home_v_fav_row_hint', 'home_c_tab_appearance', 'home_size_list', 'home_size_listwide', 'home_size_list2',
+		't' => array_combine($k = ['pgw_title', 'pgw_default', 'pgw_device_tip', 'pgw_standard', 'pgw_wide', 'pgw_full', 'pgw_custom', 'pgw_px_label', 'pgw_device_sec', 'home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact', 'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit', 'home_fav_edit', 'home_row_hide', 'home_row_autofold', 'home_row_autofold_tip', 'home_row_hidden', 'home_v_fav_row', 'home_v_fav_row_hint', 'home_c_tab_appearance', 'home_size_list', 'home_size_listwide', 'home_size_list2',
 			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned', 'home_unpinned', 'home_hidden', 'home_hidden_hint', 'home_group_title', 'home_group_new', 'home_group_untitled',
 			'home_group_delete', 'home_move_up', 'home_move_down', 'home_move_left', 'home_move_right', 'home_hide', 'home_show', 'home_edit_tile', 'home_delete_tile',
 			'home_tile_new', 'home_tile_label', 'home_tile_hint', 'home_tile_icon', 'home_tile_color', 'home_tile_no_color', 'home_tile_kind', 'home_kind_form', 'home_kind_page',

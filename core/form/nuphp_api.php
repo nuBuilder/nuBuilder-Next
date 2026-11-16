@@ -521,6 +521,8 @@ if (!function_exists('nuDashboardData')) {
 	 * was opened) or the "also open by …" hint off – or on again – for this form.
 	 */
 	function nuNextConflictCheck(bool $on = true): void { NuConflict::$formCheck = $on; }
+	/** Before Edit (0.8.1234): false = this record may be opened, saved and deleted although the form's list does not show it ("Records only through the form's list"). */
+	function nuNextRecordCheck(bool $on = true): void { NuRecord::$formRecordCheck = $on; }
 	function nuNextPresence(bool $on = true): void { NuConflict::$formPresence = $on; }
 
 	/**

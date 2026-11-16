@@ -1016,6 +1016,44 @@
 				fetch(D.sidebar.url, {method: 'POST', body: f, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
 			})]));
 
+		// this device (0.8.1227, was in the user menu in 0.8.1226): page width of this browser – localStorage nunext-page-width, applied at
+		// once by nutheme.js's nuPageWidthApply(); "Default" = Settings → Look. Not on phones (the pages are narrower anyway)
+		if (D.pageWidth && window.nuPageWidthApply && size === 'desktop') secs.push((function () {
+			var PW = D.pageWidth, cur = '';
+			try { cur = localStorage.getItem('nunext-page-width') || ''; } catch (e) { /* none */ }
+			var custom = /^\d+$/.test(cur);
+			var store = function (val) {
+				try { if (val) localStorage.setItem('nunext-page-width', val); else localStorage.removeItem('nunext-page-width'); } catch (e) { /* storage blocked */ }
+				window.nuPageWidthApply();
+				window.dispatchEvent(new Event('resize'));
+			};
+			var px = el('input', {type: 'number', 'class': 'form-control form-control-sm nuHomeVpPx', id: 'nuHomeVpPwPx', min: String(PW.min), max: String(PW.max), step: '10',
+				'aria-label': t('pgw_px_label'), placeholder: 'px', value: custom ? cur : null});
+			px.hidden = !custom;
+			var commit = function () {
+				var n = Math.round(+px.value || 0);
+				if (!n) return;
+				n = Math.max(PW.min, Math.min(PW.max, n)); px.value = String(n);
+				store(String(n));
+			};
+			px.addEventListener('change', commit);
+			px.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+			var opts = [['', t('pgw_default').replace('%s', PW.defLabel)], ['standard', t('pgw_standard')], ['wide', t('pgw_wide')], ['full', t('pgw_full')], ['custom', t('pgw_custom')]];
+			var sel = el('select', {'class': 'form-select form-select-sm', id: 'nuHomeVpPw', 'aria-label': t('pgw_title')}, opts.map(function (o) {
+				return el('option', {value: o[0], selected: (custom ? 'custom' : cur) === o[0] ? 'selected' : null, text: o[1]});
+			}));
+			sel.addEventListener('change', function () {
+				if (sel.value === 'custom') {
+					px.hidden = false;
+					if (!px.value) px.value = String(Math.max(PW.min, Math.min(PW.max, Math.round(window.innerWidth / 10) * 10)));
+					store(px.value); px.focus();
+				} else { px.hidden = true; store(sel.value); }
+			});
+			return el('section', {'class': 'nuHomeVpSec', 'data-f': 'pagewidth'}, [lbl('pgw_device_sec'),
+				el('div', {'class': 'nuHomeVpSub nuHomeVpPwRow'}, [el('span', {text: t('pgw_title')}), el('div', {'class': 'nuHomeVpPwCtl'}, [sel, px])]),
+				el('p', {'class': 'nuHomeVpHelp', text: t('pgw_device_tip')})]);
+		})());
+
 		// look (collapsed)
 		var look = [el('button', {type: 'button', 'class': 'nuHomeVpMore', 'data-f': 'look', 'aria-expanded': VP.more ? 'true' : 'false', onclick: function () { VP.more = !VP.more; drawPanel(); }},
 			[el('span', {'class': 'nuHomeVpLbl', text: t('home_v_look')}), icon('bi-chevron-' + (VP.more ? 'up' : 'down'))])];

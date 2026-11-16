@@ -255,6 +255,22 @@ final class NuFormMeta
 	}
 
 	/** The tags present in a field list of form.save, cleaned (null = remove). */
+	/**
+	 * "Records only through the form's list" per form (0.8.1234, the owner: A + B): sfo_json nunext.record_check = false skips the
+	 * check of NuRecord::visible() on this form (open, save, delete); set in design mode → Form → Data. design API field
+	 * record_check '1' (default, checked) | '0' (not checked). nuBuilder Forte ignores the key.
+	 */
+	public static function recordCheckIn(array $fields): array
+	{
+		if (!array_key_exists('record_check', $fields)) return [];
+		return ['record_check' => in_array((string)$fields['record_check'], ['0', 'false', 'off'], true) ? false : null];   // null = default (checked): key removed
+	}
+
+	public static function recordCheckOff(?string $json): bool
+	{
+		return (self::nunextJson($json)['record_check'] ?? null) === false;
+	}
+
 	public static function tagsIn(array $fields): array
 	{
 		$out = [];

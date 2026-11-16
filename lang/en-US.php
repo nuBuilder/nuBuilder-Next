@@ -13,6 +13,7 @@ return [
 	'sb_fav' => 'Add %s to the favorites',
 	'sb_unfav' => 'Remove %s from the favorites',
 	'sb_fav_not_possible' => 'This favorite cannot be changed here – the start page layout is shared.',
+	'pgw_set_tip' => 'How wide the pages are for everyone. Standard = up to 1600 px in a framed sheet on large screens, Wide = 2400 px, Full width = no limit. Each user can choose another width for a device on the start page under Customize → Appearance.',
 	'home_customize' => 'Customize',
 	'home_fav' => 'Favorites',
 	'home_fav_add' => 'Add to favorites',

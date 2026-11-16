@@ -118,6 +118,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Record check per form** (0.8.1234) – please verify: design mode → Form → Data "Any record may be opened" lets a link to a record outside the list open; `nuNextRecordCheck(false)` in Before Edit does the same for one record.
+- [ ] **List cells one line, widths while sorting** (0.8.1228 / 0.8.1232 / 0.8.1233) – please verify on a list with long text: one line with …, tooltip with the whole text; sorting / paging keeps the column widths.
+- [ ] **Remembered tab without a flash** (0.8.1224) – please verify on a form with tabs: after a refresh the first tab no longer shows for a moment.
 - [ ] **Suggestions while typing** (0.8.1212) – please verify on a real form: a query with fill of two fields, a sub-form column, "Only values of the list", phones. Not built: Form with AI key, a preview of the rows in design mode, a procedure as source
 - [ ] **Please verify: code pane beside the record** (0.8.1197 / 0.8.1199) – Ctrl+Shift+B or Design ▾ → Code on a record of a real form: every part
       as in design mode's Code tab, cards with counts, one Save for several parts (live and with an open draft), Esc with unsaved changes; User Home shows Before Edit only.
@@ -251,6 +254,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       needs a long press). SQL Server not tested (the date range filter compares the list column with 'Y-m-d H:i:s' text).
 
 ## Users, access levels and permissions
+- [ ] **User form layout** (0.8.1230–0.8.1245) – please verify on the live server: summary on the left (jumps to login / code / status / level, no keyboard on phones), sections capped in width, compact summary on phones.
 - [ ] **Start page Home form on a Forte database** (0.8.1219) – please verify after the update on the live server: every access level with a Home form opens it after sign-in (Access levels → a level → Start page shows Home form); levels switched back to Tile page stay so; a new level with a Home form starts on it
 - [ ] **Access level tab Start page** (0.8.1213) – choice Tile page / Home form, Home form, preview of the tiles, Edit tile page / Edit default:
       please check with a level that has its own tile page, one on the default and one with conditional tiles; also the Home form breadcrumb (0.8.1206)
@@ -322,6 +326,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Tom Select 2.7.0** (0.8.1131) – searchable selects in light / dark (caret, empty option first, search with ß / umlauts).
 
 ## Update page, backups and admin tools
+- [ ] **System info, page width, compact settings, code search on phones** (0.8.1226–0.8.1242) – please verify: System info… in the user menu (Copy for support), Customise → Appearance → page width on a large monitor, Settings → Compact, code search on a phone (Options / Filters sheets, chips).
 - [ ] **Backup memory** (0.8.1209) – please verify a backup before an update on the live server with a large log (the forum report);
       the folded Database steps card (0.8.1207) and no tooltip over the Check & install dialogue on a phone (0.8.1208).
 - [ ] **Please verify: Reset database with a mysqldump file** (0.8.1148 / 0.8.1149) – large file (time limit of the check) and views / triggers with DEFINER (imported without it, owned by the importing user)

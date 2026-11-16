@@ -315,7 +315,7 @@ function nb_draft(NuDraftStore $store, string $action, array $in): never
 			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
 			$layout = null;
 			if (array_key_exists('layout', $in['fields'] ?? [])) $layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? (string)$in['fields']['layout'] : 'absolute';
-			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS, NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
+			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS, NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::recordCheckIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
 			$store->commit('form.save');
 			$out();
 
@@ -669,7 +669,7 @@ try {
 				$layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? $in['fields']['layout'] : 'absolute';
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['layout' => $layout === 'absolute' ? null : $layout]);
 			}
-			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team (0.8.1020), help pages (0.8.1023): sfo_json nunext
+			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::recordCheckIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team (0.8.1020), help pages (0.8.1023): sfo_json nunext
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($meta->form['sfo_json'] ?? null), $tags);
 			}
 			if ($fields) $db->update('zzzzsys_form', $fields, 'zzzzsys_form_id', $formId);

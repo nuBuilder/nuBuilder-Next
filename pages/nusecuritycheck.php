@@ -106,11 +106,11 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'setti
 				<?= $tip(t('secchk_set_' . $k . '_tip')) ?>
 			</div>
 		<?php endforeach; ?>
-		<div class="row g-3">
+		<div class="row g-3">   <?php // numbers of up to 5 digits: each field only as wide as that (0.8.1236; was a third of the card) ?>
 			<?php foreach (['log_keep_days' => 36500, 'reauth_minutes' => 1440, 'reauth_minutes_dev' => 1440] as $k => $max): ?>
-				<div class="col-sm-6 col-lg-4 d-flex flex-column">
+				<div class="col-12 col-sm-auto d-flex flex-column secNumField">
 					<div class="form-label"><label for="sec_<?= $k ?>"><?= h(t('secchk_set_' . $k)) ?></label><?= $tip(t('secchk_set_' . $k . '_tip')) ?></div>
-					<input class="form-control mt-auto" type="number" min="0" max="<?= $max ?>" step="1" id="sec_<?= $k ?>" name="<?= $k ?>" value="<?= (int)$set[$k] ?>">
+					<input class="form-control mt-auto secNum" type="number" min="0" max="<?= $max ?>" step="1" id="sec_<?= $k ?>" name="<?= $k ?>" value="<?= (int)$set[$k] ?>">
 				</div>
 			<?php endforeach; ?>
 		</div>

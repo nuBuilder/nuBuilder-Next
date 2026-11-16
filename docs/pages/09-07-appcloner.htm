@@ -2,7 +2,7 @@
 	<h2 id="appcloner-h">App cloner (copy the whole application)</h2>
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Test and development copies of the whole application.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p><em>Admin tools → App cloner</em> (globeadmin or the admin role right <em>App cloner</em>, a full-access right; MySQL / MariaDB or SQL Server – source and target are the same kind) copies the whole application – e.g. for a test or development copy:</p>
+	<p>The start page tile <em>App cloner</em> (globeadmin or the admin role right <em>App cloner</em>, a full-access right; MySQL / MariaDB or SQL Server – source and target are the same kind) copies the whole application – e.g. for a test or development copy:</p>
 <ul>
 <li><strong>Database</strong>: into another database on the same or another server (it can be created). Choose what is copied: nuBuilder Forte (4.x) system tables and views, own tables and views, system records (<code>nu…</code>), application records (forms, users …), data of own tables, functions, procedures, triggers, events – all tables or chosen ones. When the target is not empty: stop, add to it, or empty it first. Sessions and one-time tokens (password reset links) are left out by default.</li>
 <li><strong>Files</strong> (optional): the nuBuilder Forte folder – with nuBuilder Next inside – into another folder; folders to leave out (e.g. <code>.git</code>, backups) can be listed. The database settings in the copied <code>nuconfig.php</code> files are changed to the target database.</li>

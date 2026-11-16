@@ -574,6 +574,8 @@ final class NuRecord
 	{
 		if (!NuSecurity::get('record_check') || $recordId === '' || $recordId === '-1') return true;
 		if (NuAuth::user()['globeadmin'] && empty(NuAuth::user()['demo'])) return true;
+		if (NuFormMeta::recordCheckOff((string)($meta->form['sfo_json'] ?? ''))) return true;   // the form's own setting (0.8.1234)
+		if (self::recordAllowed($meta->id, $recordId)) return true;                              // nuNextRecordCheck(false) in Before Edit (0.8.1234)
 		if (trim((string)$meta->form['sfo_browse_sql']) === '' || $meta->primaryKey() === '') return true;
 		try {
 			[$inner] = NuBrowse::build(NuBrowse::innerSql($meta, NuHash::forForm($meta, $recordId, [], [])), $meta->primaryKey(), []);   // as the list (0.8.382)
@@ -582,6 +584,28 @@ final class NuRecord
 			error_log('nuBuilder Next record check ' . $meta->code() . ': ' . $e->getMessage());
 			return true;
 		}
+	}
+
+	/**
+	 * nuNextRecordCheck(false) in Before Edit (0.8.1234): this record of this form may be opened although the form's list does not show it –
+	 * kept in the session (12 hours, at most 200 records) so its Save / Delete pass too. $formRecordCheck = what Before Edit set (null = not called).
+	 */
+	public static ?bool $formRecordCheck = null;
+	private const RC_KEY = 'nu_record_ok', RC_HOURS = 12, RC_MAX = 200;
+
+	public static function allowRecord(string $formId, string $recordId): void
+	{
+		if (session_status() !== PHP_SESSION_ACTIVE) return;
+		$a = is_array($_SESSION[self::RC_KEY] ?? null) ? $_SESSION[self::RC_KEY] : [];
+		$a[$formId . '|' . $recordId] = time();
+		if (count($a) > self::RC_MAX) { asort($a); $a = array_slice($a, -self::RC_MAX, null, true); }
+		$_SESSION[self::RC_KEY] = $a;
+	}
+
+	public static function recordAllowed(string $formId, string $recordId): bool
+	{
+		$t = (int)($_SESSION[self::RC_KEY][$formId . '|' . $recordId] ?? 0);
+		return $t > 0 && $t > time() - self::RC_HOURS * 3600;
 	}
 
 	/** Hidden for this user: nuBuilder's access 2 / 3 / 4, or field data access hide / withheld (0.8.480, NuFieldAccess). */

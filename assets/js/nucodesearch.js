@@ -84,3 +84,52 @@
 	count();
 	q.addEventListener('keydown', function (e) { if (e.key === 'Escape' && q.value) { q.value = ''; e.preventDefault(); } });
 })();
+
+// phones (0.8.1241, the owner picked mockup A of the canvas "Code search on phones"): one search row – field · Options · Filters (count).
+// Below 576 px the options (match mode, whole word, case, regular expression, Without, quick searches) and the filters are moved into
+// two bottom sheets (#csOptSheet / #csFiltSheet – inside the form, so they are still sent); back to their places from 576 px on.
+// Closing a sheet after a change searches again when there is something to search for.
+(function () {
+	'use strict';
+	var form = document.getElementById('csForm'), optS = document.getElementById('csOptSheet'), filtS = document.getElementById('csFiltSheet');
+	if (!form || !optS || !filtS || !window.nuBs) return;
+	var mq = window.matchMedia('(max-width: 575.98px)'), moved = [], changed = false;
+	function park(el, sheet) {
+		var mark = document.createComment('cs-home');
+		el.parentNode.insertBefore(mark, el);
+		sheet.querySelector('.modal-body').appendChild(el);
+		moved.push([el, mark]);
+	}
+	function apply() {
+		if (mq.matches && !moved.length) {
+			Array.prototype.forEach.call(form.querySelectorAll('[data-cs-opt]'), function (el) { park(el, optS); });
+			var f = document.getElementById('csFilters');
+			if (f) { park(f, filtS); f.classList.add('show', 'csInSheet'); }
+		} else if (!mq.matches && moved.length) {
+			moved.forEach(function (m) { m[1].parentNode.insertBefore(m[0], m[1]); m[1].remove(); });
+			var f2 = document.getElementById('csFilters');
+			if (f2) {
+				f2.classList.remove('csInSheet');
+				var btn = form.querySelector('.csFiltersBtn');
+				if (btn && btn.getAttribute('aria-expanded') !== 'true') f2.classList.remove('show');
+			}
+			moved = [];
+			[optS, filtS].forEach(function (s) { if (s.classList.contains('show')) nuBs.modal(s).hide(); });
+		}
+	}
+	apply();
+	if (mq.addEventListener) mq.addEventListener('change', apply);
+	document.getElementById('csOptBtn').addEventListener('click', function () { changed = false; nuBs.modal(optS).show(); });
+	document.getElementById('csFiltBtn').addEventListener('click', function () { changed = false; nuBs.modal(filtS).show(); });
+	[optS, filtS].forEach(function (s) {
+		s.addEventListener('change', function () { changed = true; });
+		s.addEventListener('input', function () { changed = true; });
+		s.addEventListener('hidden.bs.modal', function () {
+			var q = document.getElementById('csQ');
+			if (changed && mq.matches && (q && q.value.trim() !== '' || document.getElementById('csPreset'))) {
+				changed = false;
+				form.requestSubmit ? form.requestSubmit() : form.submit();
+			}
+		});
+	});
+})();

@@ -1088,6 +1088,19 @@
    },
    {
     "g": "form",
+    "n": "nuNextRecordCheck",
+    "s": "nuNextRecordCheck(bool $on = true): void",
+    "d": "In Before Edit: false lets this record be opened, saved and deleted although the form's list does not show it (Security setting \"Records only through the form's list\"). Only forms whose Before Edit contains the call run it before the check; the record stays allowed for this session (12 hours). For a whole form use design mode → Form → Data → \"Any record can be opened\".",
+    "r": "",
+    "o": "next",
+    "v": "0.8.1234",
+    "e": "if (nuUserHasPermission('TEAMLEAD')) nuNextRecordCheck(false);",
+    "p": {
+     "$on": "false = not checked for this record, true = checked (default)"
+    }
+   },
+   {
+    "g": "form",
     "n": "nuFieldAccessMode",
     "s": "nuFieldAccessMode(string $form, string $field): string",
     "d": "Field data access of a field for the signed-in user (Form builder → Data access): edit, ro, hide, prot, ins, upd, mask or wh (withheld); '' when the form (id or code) or field does not exist.",

@@ -1522,7 +1522,11 @@
 				el('div', {'class': 'nuDsGrid2'}, [
 					field(t('builder_table'), 'text', f.sfo_table, fsave('sfo_table', true), {key: 'sfo_table', mono: true, list: 'nuDsTables'}),
 					field(t('builder_primary_key'), 'text', f.sfo_primary_key, fsave('sfo_primary_key', true), {key: 'sfo_primary_key', mono: true})]),
-				tablesList()
+				tablesList(),
+				// "Records only through the form's list" not for this form (0.8.1234): sfo_json nunext.record_check = false
+				field(t('ds_rc_any'), 'check', (function () { try { return ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).record_check === false ? '1' : '0'; } catch (x) { return '0'; } })(),
+					function (v) { change('form.save', {fields: {record_check: v === '1' ? '0' : '1'}}, false).catch(function () { /* said */ }); },
+					{key: 'record_check', tip: D.record_check ? t('ds_rc_any_tip') : t('ds_rc_any_tip_off')})
 			]);
 		}
 		if (HASLIST && !D.userhome) section('list', t('ds_sec_list'), [el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsOpenListFly',

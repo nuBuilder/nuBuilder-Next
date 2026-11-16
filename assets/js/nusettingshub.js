@@ -159,3 +159,26 @@
 	var sel = document.getElementById('nuSetPhSel');
 	if (sel) sel.addEventListener('change', function () { if (sel.value) window.location.href = sel.value; });
 })();
+
+// Settings → Look → Page width (0.8.1226): the pixel field only for "Custom"
+(function () {
+	var m = document.getElementById('shPwMode'), w = document.getElementById('shPwPxWrap'), px = document.getElementById('shPwPx');
+	if (!m || !w || !px) return;
+	m.addEventListener('change', function () {
+		w.hidden = m.value !== 'custom';
+		px.required = m.value === 'custom';
+		if (m.value === 'custom' && !px.value) px.value = '2000';
+	});
+})();
+
+// "Compact" switch of the settings overview and sections (0.8.1240): hides the descriptions, remembered per device
+(function () {
+	var sw = document.getElementById('nuSetCompact');
+	if (!sw) return;
+	var root = document.documentElement, KEY = 'nunext-settings-compact';
+	sw.checked = root.classList.contains('nuSetCompact');
+	sw.addEventListener('change', function () {
+		root.classList.toggle('nuSetCompact', sw.checked);
+		try { if (sw.checked) localStorage.setItem(KEY, '1'); else localStorage.removeItem(KEY); } catch (e) { /* storage blocked: this page only */ }
+	});
+})();

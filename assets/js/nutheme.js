@@ -14,6 +14,39 @@
 		document.documentElement.classList.add('nuTabsPending');
 		setTimeout(function () { document.documentElement.classList.remove('nuTabsPending'); }, 3000);
 	}
+	// form record pages and launch forms (0.8.1224): the tab nuruntime.js restores for the same record shown again (reload, back / forward, after Save,
+	// opened from itself) – tabs and panes hidden until it is selected, so the first tab does not flash up (html.nuFormTabPending,
+	// removed by nuruntime.js after the restore, at the latest after 3 s)
+	try {
+		var fq = window.location.search, ff = (fq.match(/[?&]f=([^&#]*)/) || [])[1] || '', fr = (fq.match(/[?&]r=([^&#]*)/) || [])[1] || '';
+		var ft = ff && /[?&]p=form(&|$)/.test(fq) ? sessionStorage.getItem('nuNextTab:' + decodeURIComponent(ff)) : null;
+		if (ft !== null && ft !== '0') {
+			var nv = window.performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null, same = /[?&]saved=1(&|$)/.test(fq)
+				|| (nv && (nv.type === 'reload' || nv.type === 'back_forward'));
+			if (!same && document.referrer) {
+				var rf = new URL(document.referrer);
+				same = rf.origin === window.location.origin && rf.pathname === window.location.pathname && rf.searchParams.get('p') === 'form'
+					&& rf.searchParams.get('f') === decodeURIComponent(ff) && (rf.searchParams.get('r') || '') === decodeURIComponent(fr);
+			}
+			if (same) {
+				document.documentElement.classList.add('nuFormTabPending');
+				setTimeout(function () { document.documentElement.classList.remove('nuFormTabPending'); }, 3000);
+			}
+		}
+	} catch (e) {}
+	// page width (0.8.1226, core/nupagewidth.php): this device's choice (localStorage nunext-page-width) or the installation's default
+	// (<html data-nu-pw>, Settings → Look) – html.nuPwSet + --nu-pw (px) / html.nuPwFull before the first paint; nuapp.js calls it again
+	window.nuPageWidthApply = function () {
+		var de = document.documentElement, v = '';
+		try { v = localStorage.getItem('nunext-page-width') || ''; } catch (e) {}
+		if (!v) v = de.getAttribute('data-nu-pw') || 'standard';
+		var px = v === 'wide' ? 2400 : (/^\d+$/.test(v) ? Math.max(1200, Math.min(3840, +v)) : 0);
+		de.classList.toggle('nuPwFull', v === 'full');
+		de.classList.toggle('nuPwSet', v === 'full' || px > 0);
+		if (px) de.style.setProperty('--nu-pw', px + 'px'); else de.style.removeProperty('--nu-pw');
+		return v;
+	};
+	try { window.nuPageWidthApply(); } catch (e) {}
 	// side bar: the icon rail of 0.8.460–0.8.512 is gone (0.8.513) – forget its remembered state
 	try { localStorage.removeItem('nunext-sidebar-collapsed'); } catch (e) {}
 	// system lists on phones (0.8.471): cards or table chosen with the ▦ / ☰ button of this list (?p=<route>) – before drawing
@@ -54,6 +87,8 @@
 			if (localStorage.getItem(w[1]) === '1') document.documentElement.classList.add('nuWarnOff-' + w[0]);
 		});
 	} catch (e) {}
+	// settings centre "Compact" (0.8.1240): descriptions hidden from the first paint
+	try { if (localStorage.getItem('nunext-settings-compact') === '1') document.documentElement.classList.add('nuSetCompact'); } catch (e) {}
 	// page forms (0.8.387, $nu->theme()): the choice for the server too
 	try { document.cookie = 'nunext_theme=' + encodeURIComponent(stored) + '; path=' + window.location.pathname.replace(/[^/]*$/, '') + '; SameSite=Lax'; } catch (e) {}
 })();

@@ -1628,8 +1628,7 @@ T.user_tabs = async (s) => {
 	await open(p, 'index.php?p=user&id=' + id);
 	await p.evaluate(() => { const s = document.getElementById('userPermState'); if (s) { s.value = 'all'; s.dispatchEvent(new Event('change')); } });   // 0.8.642: the list opens on "Assigned"
 	expect(await p.isVisible('#userTabGeneral') && !await p.isVisible('#userPerms'), 'General first');
-	const cw = await p.evaluate(() => ['.userCardLogin', '.userCardAccess', '.userCardAccount'].map(c => Math.round(document.querySelector(c).getBoundingClientRect().width)));
-	expect(cw.every(w => w > 300 && w <= 530), 'right-hand cards at most 530 px (0.8.610): ' + cw.join(', '));
+
 	await p.click('#userTabPermBtn'); await p.waitForTimeout(300);
 	expect(new URL(p.url()).searchParams.get('tab') === 'perm' && await p.isVisible('#userPerms'), 'Permission items tab: ' + p.url());
 	const n0 = +await p.textContent('#userPermTabCount');
@@ -6146,6 +6145,71 @@ T.home_for_select_phone = async (s) => {
 	}
 };
 
+// 0.8.1222: the level select's list opens above the sticky search row below it
+T.home_for_select_over_search = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=home&for=*');
+	await p.waitForSelector('.nuHomeForBar .ts-wrapper');
+	await p.click('.nuHomeForBar .ts-control');
+	await p.waitForSelector('.ts-dropdown .option');
+	const r = await p.evaluate(() => {
+		const row = document.querySelector('.nuHomeSearchRow'), dd = document.querySelector('.nuHomeForBar .ts-dropdown') || document.querySelector('.ts-dropdown');
+		if (!row || !dd) return { skip: true };
+		const a = row.getBoundingClientRect(), b = dd.getBoundingClientRect();
+		const y = Math.max(a.top, b.top) + 5, x = Math.min(a.right, b.right) - 20;
+		if (y > Math.min(a.bottom, b.bottom)) return { skip: true, a: a.top, b: b.bottom };
+		const el = document.elementFromPoint(x, y);
+		return { inside: !!(el && el.closest('.ts-dropdown')), el: el ? el.className : '' };
+	});
+	await p.keyboard.press('Escape');
+	expect(r.skip || r.inside, 'the select list lies under the search row: ' + JSON.stringify(r));
+	expect(!r.skip, 'list and search row do not overlap – test setup');
+};
+
+// 0.8.1223: Design ▾ → Code on User Home opened nothing (the pane data lacked items)
+T.edit_code_pane_userhome = async (s) => {
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'nuuserhome'") !== '1') { s.skip = 'no User Home'; return; }
+	await open(p, 'index.php?p=form&f=nuuserhome&r=-1');
+	await p.click('#nuDesignMore'); await p.click('#nuEditCodeEdit');
+	await p.waitForSelector('#nuEcpPane .nuEcpItem.active', {timeout: 5000});
+	const keys = await p.$$eval('#nuEcpPane .nuEcpItem', (x) => x.map((e) => e.getAttribute('data-key')));
+	expect(keys.join() === 'php:BE', 'User Home parts: ' + keys.join());
+	await p.keyboard.press('Escape');
+};
+
+// 0.8.1224: a record shown again opens on its remembered tab without the first tab flashing up first
+T.form_tab_restore_noflash = async (s) => {
+	const p = await s.ga.context().newPage();
+	try {
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") !== '1') { s.skip = 'no sample data'; return; }
+	const rec = sql('SELECT sample_customer_id FROM sample_customer LIMIT 1');
+	await open(p, 'index.php?p=form&f=samplecustomer&r=' + encodeURIComponent(rec));
+	await p.click('#nuTab1'); await p.waitForTimeout(300);
+	// every frame while the page loads: was the first pane shown (active and not hidden)?
+	await p.addInitScript(() => {
+		window.__nuFlash = 0;
+		const look = () => { const a = document.getElementById('nuPane0'), h = document.getElementById('nuRECORD');
+			if (a && h && a.classList.contains('active') && getComputedStyle(h).visibility !== 'hidden' && a.getBoundingClientRect().height > 0) window.__nuFlash++;
+			if (!window.__nuDone) requestAnimationFrame(look); };
+		requestAnimationFrame(look);
+		setTimeout(() => { window.__nuDone = true; }, 4000);
+	});
+	await p.reload(); await p.waitForTimeout(1500);
+	const r = await p.evaluate(() => ({ flash: window.__nuFlash, active: document.querySelector('.nuTab.active') && document.querySelector('.nuTab.active').id, pending: document.documentElement.classList.contains('nuFormTabPending') }));
+	expect(r.active === 'nuTab1' && !r.pending, 'tab not restored: ' + JSON.stringify(r));
+	expect(r.flash === 0, 'first tab shown before the restore: ' + JSON.stringify(r));
+	// a launch form (no record id in the address) – User Home with its two tabs
+	if (sql("SELECT COUNT(*) FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = 'nuuserhome'") === '2') {
+		await p.goto(BASE + 'index.php?p=form&f=nuuserhome'); await p.waitForSelector('#nuTab1');
+		await p.click('#nuTab1'); await p.waitForTimeout(300);
+		await p.reload(); await p.waitForTimeout(1500);
+		const u = await p.evaluate(() => ({ flash: window.__nuFlash, active: document.querySelector('.nuTab.active') && document.querySelector('.nuTab.active').id }));
+		expect(u.active === 'nuTab1' && u.flash === 0, 'User Home: ' + JSON.stringify(u));
+	}
+	} finally { await p.close(); }
+};
+
 T.edit_code_pane = async (s) => {
 	const p = s.ga;
 	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") !== '1') { s.skip = 'no sample data'; return; }
@@ -6955,7 +7019,7 @@ T.tab_sections = async (s) => {
 			el.dispatchEvent(new TouchEvent('touchend', { touches: [], targetTouches: [], changedTouches: [t], bubbles: true, cancelable: true }));
 		});
 		const items = await p.locator('.nuTabSections .dropdown-item').allTextContents();
-		expect(items.length >= 4 && items.some(x => /Login|Anmelde/.test(x)), 'sections: ' + JSON.stringify(items));
+		expect(items.length >= 3 && items.some(x => /Sign-in|Anmeld|Login/.test(x)), 'sections: ' + JSON.stringify(items));
 		const before = await p.evaluate(() => window.scrollY);
 		await p.locator('.nuTabSections .dropdown-item').nth(items.length - 1).click();
 		await p.waitForTimeout(900);
@@ -14174,7 +14238,9 @@ T.cloner_sources = async (s) => {             // 0.8.811: only forms that can be
 		await open(p, 'index.php?p=cloner&id=new');
 		let o = await opts();
 		expect(o.includes('samplecustomer'), 'application form missing');
-		expect(!o.some(x => x.startsWith('nu')), 'nuBuilder Forte forms listed by default: ' + o.filter(x => x.startsWith('nu')).slice(0, 3).join(','));
+		expect(!o.some(x => x.startsWith('nu') && x !== 'nuuserhome'), 'nuBuilder Forte forms listed by default: ' + o.filter(x => x.startsWith('nu')).slice(0, 3).join(','));
+		// 0.8.1223: User Home is listed with the application's forms
+		if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'nuuserhome'") === '1') expect(o.includes('nuuserhome'), 'User Home missing from the sources');
 		expect(!o.includes(fake), 'built-in page form listed');
 		await Promise.all([p.waitForNavigation(), p.click('#clSystemToggle')]);
 		o = await opts();
@@ -17196,8 +17262,395 @@ T.back_trail = async (s) => {
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
+// 0.8.1225: start page → list → record → Back → Back ends on the start page (a record's Back whose link already was the list
+// counted as a step forward, so Back on the list led to the record again)
+T.back_trail_home = async (s) => {
+	const p = await s.ga.context().newPage();
+	try {
+		const clickTo = async (sel) => Promise.all([p.waitForNavigation(), p.locator(sel).first().evaluate((e) => e.click())]);
+		const where = () => new URL(p.url()).searchParams.get('p') || 'home';
+		await p.goto(BASE + 'index.php?p=home');
+		const flows = [['a[href$="p=access"]', 'access', 'tr[data-href]', 'accesslevel', 'a.btn.nuBtnAct:has(> .bi-arrow-left:first-child)']];
+		if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") === '1') flows.push(['a[href$="p=users"]', 'users', 'tr[data-href]', 'user', 'a.btn.nuBtnAct:has(> .bi-arrow-left:first-child)']);
+		for (const [tile, list, row, rec, recBack] of flows) {
+			await p.goto(BASE + 'index.php?p=home');
+			await clickTo(tile); expect(where() === list, 'tile → ' + p.url());
+			await clickTo(row); expect(where() === rec, 'row → ' + p.url());
+			await clickTo(recBack); expect(where() === list, rec + ' Back → ' + p.url());
+			await clickTo('a.nuBackBtn'); expect(where() === 'home', list + ' Back → ' + p.url());
+		}
+		// form runtime: list → record → Back → Back
+		if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") === '1') {
+			await p.goto(BASE + 'index.php?p=home');
+			await p.evaluate(() => { const a = document.createElement('a'); a.href = 'index.php?p=form&f=samplecustomer'; a.id = 'e2eGo'; document.body.appendChild(a); });
+			await clickTo('#e2eGo');
+			await clickTo('tr.nuBrowseRow');
+			expect(new URL(p.url()).searchParams.get('r'), 'record not opened: ' + p.url());
+			await clickTo('#nuBackButton'); expect(!new URL(p.url()).searchParams.get('r') && /f=samplecustomer/.test(p.url()), 'form Back → ' + p.url());
+			const b2 = await p.evaluate(() => { const a = document.querySelector('a#nuBackButton, a.nuBackBtn'); return a && a.getAttribute('href'); });
+			expect(/p=home/.test(b2 || ''), 'Back of the list does not lead home: ' + b2);
+		}
+	} finally { await p.close(); }
+};
+
+// 0.8.1226 / 0.8.1227: page width – per device (start page → Customise → Appearance, localStorage) and the default of Settings → Look (<html data-nu-pw>)
+T.page_width = async (s) => {
+	const p = await s.ga.context().newPage();
+	const before = sql("SELECT COALESCE(MAX(setting_value), '') FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'page_width'");
+	try {
+		await p.setViewportSize({ width: 2560, height: 1000 });
+		const w = () => p.evaluate(() => Math.round(document.getElementById('main').getBoundingClientRect().width));
+		await p.goto(BASE + 'index.php?p=users');
+		expect(await w() === 1600, 'standard width: ' + await w());
+		expect(await p.locator('#nuPwSel').count() === 0, 'still in the user menu');
+		// 0.8.1227: start page → Customise → Appearance → This device
+		await p.goto(BASE + 'index.php?p=home'); await homeTab(p, 'appearance');
+		await p.waitForSelector('#nuHomeVpPw', {state: 'visible'});
+		await p.selectOption('#nuHomeVpPw', 'wide');
+		const mw = () => p.evaluate(() => getComputedStyle(document.getElementById('main')).maxWidth);   // the open panel takes room beside the page
+		expect(await mw() === '2400px' && await p.isVisible('#nuHomeVpPw'), 'wide at once, panel open: ' + await mw());
+		await p.selectOption('#nuHomeVpPw', 'custom'); await p.fill('#nuHomeVpPwPx', '2000'); await p.press('#nuHomeVpPwPx', 'Enter');
+		expect(await mw() === '2000px', 'custom 2000: ' + await mw());
+		await p.goto(BASE + 'index.php?p=home'); await homeTab(p, 'appearance');
+		expect(await p.inputValue('#nuHomeVpPw') === 'custom' && await p.inputValue('#nuHomeVpPwPx') === '2000', 'the panel shows the choice of this device');
+		// the device's choice before the first paint, also on form pages
+		await p.addInitScript(() => { window.__pw = []; const t = () => { const m = document.getElementById('main'); if (m) window.__pw.push(Math.round(m.getBoundingClientRect().width)); if (window.__pw.length < 30) requestAnimationFrame(t); }; requestAnimationFrame(t); });
+		await p.goto(BASE + 'index.php?p=form&f=samplecustomer'); await p.waitForTimeout(800);
+		const seen = await p.evaluate(() => window.__pw);
+		expect(seen.length && seen.every((x) => x === 2000), 'form page not at 2000 from the first paint: ' + seen.slice(0, 5).join());
+		// the default of Settings → Look; "Default" in the menu follows it
+		await p.evaluate(() => localStorage.removeItem('nunext-page-width'));
+		await p.goto(BASE + 'index.php?p=settings&s=look');
+		await p.selectOption('#shPwMode', 'full');
+		await Promise.all([p.waitForNavigation(), p.click('#shPwSave')]);
+		await p.goto(BASE + 'index.php?p=home'); await homeTab(p, 'appearance');
+		expect(/Full width|Volle Breite/.test(await p.$eval('#nuHomeVpPw option', (o) => o.textContent)), '"Default" names the default');
+		await p.goto(BASE + 'index.php?p=users');
+		const full = await p.evaluate(() => ({ w: Math.round(document.getElementById('main').getBoundingClientRect().width), vw: document.documentElement.clientWidth, attr: document.documentElement.getAttribute('data-nu-pw'), sheet: getComputedStyle(document.getElementById('main')).borderTopStyle }));
+		expect(full.attr === 'full' && full.w >= full.vw - 20 && full.sheet === 'none', 'default full width: ' + JSON.stringify(full));
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'page_width_changed'") !== '0', 'change not logged');
+	} finally {
+		await p.close();
+		if (before === '') sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'page_width'");
+		else sql("UPDATE zzzzsys_nunext_setting SET setting_value = '" + before.replace(/'/g, "''") + "' WHERE zzzzsys_nunext_setting_id = 'page_width'");
+	}
+};
+
+// 0.8.1228: sorting / paging a system list keeps the column widths (the new page's rows sized the columns anew)
+T.list_sort_widths = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=access&per=3');
+	const ws = () => p.$$eval('table[data-nu-resize] thead th', (x) => x.map((th) => Math.round(th.getBoundingClientRect().width)));
+	const w0 = await ws();
+	expect(w0.length > 2, 'no list: ' + w0.join());
+	const sorts = await p.$$eval('table[data-nu-resize] thead th a[href*="sort="]', (x) => x.map((a) => a.getAttribute('href')));
+	expect(sorts.length >= 2, 'sortable titles: ' + sorts.length);
+	for (const i of [1, 0]) {
+		const n0 = await p.evaluate(() => +document.documentElement.getAttribute('data-nu-lv-swaps') || 0);
+		await p.locator('table[data-nu-resize] thead th a[href*="sort="]').nth(i).click();
+		await p.waitForFunction((n) => (+document.documentElement.getAttribute('data-nu-lv-swaps') || 0) > n, n0);
+		const w1 = await ws();
+		expect(w1.every((w, k) => Math.abs(w - w0[k]) <= 2), 'widths changed after sorting: ' + w0.join() + ' → ' + w1.join());
+	}
+	// next page
+	if (await p.locator('a.nuPagerNext').count()) {
+		const n0 = await p.evaluate(() => +document.documentElement.getAttribute('data-nu-lv-swaps') || 0);
+		await p.locator('a.nuPagerNext').first().click();
+		await p.waitForFunction((n) => (+document.documentElement.getAttribute('data-nu-lv-swaps') || 0) > n, n0);
+		const w2 = await ws();
+		expect(w2.every((w, k) => Math.abs(w - w0[k]) <= 2), 'widths changed on the next page: ' + w0.join() + ' → ' + w2.join());
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// 0.8.1229: the procedure's code editor fills the window down to its bottom edge
+T.proc_editor_fill = async (s) => {
+	const p = s.ga;
+	const id = sql("SELECT zzzzsys_php_id FROM zzzzsys_php WHERE zzzzsys_php_id LIKE 'sample_proc%' ORDER BY zzzzsys_php_id LIMIT 1");
+	if (!id) { s.skip = 'no procedure'; return; }
+	try {
+		for (const h of [900, 1200]) {
+			await p.setViewportSize({ width: 1280, height: h });
+			await open(p, 'index.php?p=procedures&id=' + encodeURIComponent(id));
+			await p.waitForTimeout(400);
+			await p.click('#procTabs [data-bs-target="#procTabPhp"]'); await p.waitForTimeout(400);   // a tab remembered by an earlier test
+			const r = await p.evaluate(() => { const w = document.querySelector('#procTabPhp .procCM'); const b = w.getBoundingClientRect();
+				return { bottom: Math.round(b.bottom + window.scrollY), page: document.documentElement.scrollHeight, vh: window.innerHeight, h: Math.round(b.height), scroll: document.documentElement.scrollHeight > window.innerHeight + 1 }; });
+			expect(r.h > 380 && !r.scroll && r.bottom >= r.vh - 60, 'editor at ' + h + ' px: ' + JSON.stringify(r));
+		}
+		// Details opened: still no page scroll, the editor smaller
+		await p.click('#procFields > summary'); await p.waitForTimeout(400);
+		const o = await p.evaluate(() => ({ h: Math.round(document.querySelector('#procTabPhp .procCM').getBoundingClientRect().height), scroll: document.documentElement.scrollHeight > window.innerHeight + 1 }));
+		expect(!o.scroll && o.h >= 352, 'with Details open: ' + JSON.stringify(o));
+	} finally { await p.setViewportSize({ width: 1280, height: 900 }); }
+};
+
+// 0.8.1232: a list cell with a long text or line breaks keeps its row one line high (first line, cut with …)
+T.list_cell_one_line = async (s) => {
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") !== '1') { s.skip = 'no sample data'; return; }
+	const id = sql('SELECT sample_customer_id FROM sample_customer ORDER BY cus_name LIMIT 1');
+	const name0 = sql("SELECT cus_name FROM sample_customer WHERE sample_customer_id = '" + id + "'");
+	const rh0 = sql("SELECT COALESCE(sfo_browse_row_height, '') FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	sql("UPDATE zzzzsys_form SET sfo_browse_row_height = NULL WHERE zzzzsys_form_id = 'samplecustomer'");
+	sql("UPDATE sample_customer SET cus_name = CONCAT('AAA first line<br/>second line<br/>third line ', REPEAT('long text ', 3)) WHERE sample_customer_id = '" + id + "'");
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer&s=cus_name');
+		const r = await p.evaluate((pk) => {
+			const rows = [...document.querySelectorAll('#nuBrowseTable tr.nuBrowseRow')];
+			const mine = rows.find((x) => x.getAttribute('data-nu-primary-key') === pk), other = rows.find((x) => x !== mine);
+			return { mine: mine && Math.round(mine.getBoundingClientRect().height), other: other && Math.round(other.getBoundingClientRect().height) };
+		}, id);
+		expect(r.mine && r.other && Math.abs(r.mine - r.other) <= 2, 'row with long / multi-line text higher than the others: ' + JSON.stringify(r));
+		// 0.8.1233: the pointer on the cut cell shows the whole text as its title (line by line)
+		const cell = p.locator('#nuBrowseTable tr.nuBrowseRow[data-nu-primary-key="' + id + '"] td.nuCellTd > div.nuCell', { hasText: 'AAA first line' });
+		await cell.hover(); await p.waitForTimeout(100);
+		const tt = await cell.getAttribute('title');
+		expect(/AAA first line\nsecond line\nthird line long text/.test(tt || ''), 'title of the cut cell: ' + JSON.stringify(tt));
+		const short = p.locator('#nuBrowseTable tr.nuBrowseRow:not([data-nu-primary-key="' + id + '"]) td.nuCellTd > div.nuCell').first();
+		await short.hover(); await p.waitForTimeout(100);
+		expect(await short.getAttribute('title') === null, 'a cell that fits got a title');
+		// print view shows everything
+		await open(p, 'index.php?p=form&f=samplecustomer&print=1&s=cus_name');
+		const pv = await p.evaluate((pk) => { const rows = [...document.querySelectorAll('#nuBrowseTable tr.nuBrowseRow')];
+			const mine = rows.find((x) => x.getAttribute('data-nu-primary-key') === pk), other = rows.find((x) => x !== mine);
+			return { mine: mine && Math.round(mine.getBoundingClientRect().height), other: other && Math.round(other.getBoundingClientRect().height) }; }, id);
+		expect(!pv.mine || pv.mine > pv.other, 'print view cut the text: ' + JSON.stringify(pv));
+	} finally {
+		sql("UPDATE sample_customer SET cus_name = '" + name0.replace(/'/g, "''") + "' WHERE sample_customer_id = '" + id + "'");
+		sql("UPDATE zzzzsys_form SET sfo_browse_row_height = " + (rh0 === '' ? 'NULL' : "'" + rh0 + "'") + " WHERE zzzzsys_form_id = 'samplecustomer'");
+	}
+};
+
+// 0.8.1234: "Records only through the form's list" per form – design mode setting (sfo_json nunext.record_check = false) and
+// nuNextRecordCheck(false) in Before Edit
+T.record_check_form = async (s) => {
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") !== '1') { s.skip = 'no sample data'; return; }
+	// a customer of the sample itself (earlier tests of a full run add rows of their own)
+	const id = sql("SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIKE 'sample_cus_%' DESC, sample_customer_id LIMIT 1");
+	const phone0 = sql("SELECT COALESCE(cus_phone, '') FROM sample_customer WHERE sample_customer_id = '" + id + "'");
+	const sec0 = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'security'");
+	const secV = sec0 === '1' ? sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'security'") : '';
+	const bsql = sql("SELECT sfo_browse_sql FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	const json0 = sql("SELECT COALESCE(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	const q = (v) => "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "''") + "'";
+	const j = sec0 === '1' ? JSON.parse(secV || '{}') : {};
+	j.record_check = true;
+	if (sec0 === '1') sql('UPDATE zzzzsys_nunext_setting SET setting_value = ' + q(JSON.stringify(j)) + " WHERE zzzzsys_nunext_setting_id = 'security'");
+	else sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('security', " + q(JSON.stringify(j)) + ')');
+	sql('UPDATE zzzzsys_form SET sfo_browse_sql = ' + q("SELECT * FROM sample_customer WHERE sample_customer_id <> '" + id + "'") + " WHERE zzzzsys_form_id = 'samplecustomer'");
+	const u = await login('sample_carla', UPW);
+	const opens = async () => { await u.goto(BASE + 'index.php?p=form&f=samplecustomer&r=' + encodeURIComponent(id)); await u.waitForLoadState('load'); return await u.locator('#nuEditForm').count() > 0; };
+	try {
+		expect(!(await opens()), 'record outside the list opened while the check is on');
+		// A: the form's setting
+		sql('UPDATE zzzzsys_form SET sfo_json = ' + q('{"nunext":{"record_check":false}}') + " WHERE zzzzsys_form_id = 'samplecustomer'");
+		expect(await opens(), 'form setting "any record" not honoured');
+		sql('UPDATE zzzzsys_form SET sfo_json = ' + (json0 === '' ? 'NULL' : q(json0)) + " WHERE zzzzsys_form_id = 'samplecustomer'");
+		expect(!(await opens()), 'refused again without the setting');
+		// B: Before Edit
+		sql("INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_php, sph_zzzzsys_form_id) VALUES ('samplecustomer_BE', 'samplecustomer_BE', 'nuNextRecordCheck(true);', 'samplecustomer')");
+		expect(!(await opens()), 'nuNextRecordCheck(true) let the record open');
+		sql('UPDATE zzzzsys_php SET sph_php = ' + q('if ("#RECORD_ID#" !== "") nuNextRecordCheck(false);') + " WHERE zzzzsys_php_id = 'samplecustomer_BE'");
+		expect(await opens(), 'nuNextRecordCheck(false) in Before Edit not honoured');
+		// … and the record may be saved now (the session remembers it)
+		// the value is set through the form's API (nuSetValue = edited, as typing): in a full run the field was once on the page but
+		// hidden (cause not found – an earlier test's state); what this part checks is that the save of the allowed record goes through
+		await u.waitForFunction(() => typeof window.nuSetValue === 'function' && !!document.getElementById('cus_phone'), null, { timeout: 15000 });
+		s.result = await u.evaluate(() => {
+			const e = document.getElementById('cus_phone'); let h = null;
+			for (let n = e; n && n !== document.body; n = n.parentElement) if (getComputedStyle(n).display === 'none') { h = (n.id || '') + '.' + n.className; break; }
+			window.nuSetValue('cus_phone', '+41 00 000 12 34');
+			return { shown: !!e.offsetParent, hiddenBy: h, html: document.documentElement.className };
+		});
+		await save(u);
+		expect(sql("SELECT cus_phone FROM sample_customer WHERE sample_customer_id = '" + id + "'") === '+41 00 000 12 34', 'save of the allowed record refused');
+	} finally {
+		await u.context().close();
+		sql('UPDATE sample_customer SET cus_phone = ' + (phone0 === '' ? 'NULL' : q(phone0)) + " WHERE sample_customer_id = '" + id + "'");
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'samplecustomer_BE'");
+		sql('UPDATE zzzzsys_form SET sfo_browse_sql = ' + q(bsql) + ', sfo_json = ' + (json0 === '' ? 'NULL' : q(json0)) + " WHERE zzzzsys_form_id = 'samplecustomer'");
+		if (sec0 === '1') sql('UPDATE zzzzsys_nunext_setting SET setting_value = ' + q(secV) + " WHERE zzzzsys_nunext_setting_id = 'security'");
+		else sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'security'");
+	}
+};
+
+// 0.8.1237: user menu → System info… – dialog with nuBuilder Next, server, database (?p=sysinfo) and the browser, Copy for support
+T.system_info = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	expect(await p.locator('#nuVersionLink').count() === 0, 'old version link still there');
+	await p.click('.nuUserBtn'); await p.click('#nuSysInfoBtn');
+	await p.waitForSelector('#nuSysInfoDlg.show .nuSiSec[data-si="browser"]');
+	const r = await p.evaluate(() => {
+		const sec = (id) => { const x = document.querySelector('.nuSiSec[data-si="' + id + '"]'); return x ? x.innerText : ''; };
+		return { next: sec('next'), server: sec('server'), db: sec('db'), browser: sec('browser') };
+	});
+	expect(r.next.includes(await p.evaluate(() => document.querySelector('meta[name=nu-version]')?.content || '') || '0.8.'), 'version: ' + r.next);
+	expect(/PHP\s*\n?\s*8\./.test(r.server) && /(MariaDB|MySQL) \d/.test(r.db) && /\d+ × \d+/.test(r.browser), 'sections: ' + JSON.stringify(r));
+	const all = Object.values(r).join(' ');
+	expect(!/nu\b.*password|127\.0\.0\.1|DBPassword/i.test(all), 'secrets or the host shown');
+	await p.click('#nuSysInfoCopy'); await p.waitForTimeout(200);
+	const copied = await p.getAttribute('#nuSysInfoDlg', 'data-copied');
+	expect(/nuBuilder Next\n  .+: 0\.8\./.test(copied || '') && /PHP: 8\./.test(copied || ''), 'copied text: ' + (copied || '').slice(0, 200));
+	await p.keyboard.press('Escape');
+	// JSON only for admins with the right update
+	const u = await login('sample_ben', UPW);
+	try {
+		const st = await u.evaluate(async () => (await fetch('index.php?p=sysinfo')).status);
+		expect(st === 403 || st === 302 || st === 200 && false, 'sysinfo for a user without the right: ' + st);
+		expect(await u.locator('#nuSysInfoBtn').count() === 0, 'menu entry shown to a user');
+	} finally { await u.context().close(); }
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.code_search_phone = async (s) => {
+	// 0.8.1241 (the owner picked mockup A): on phones one row field · Options · Filters (count), no Search button; options and filters in
+	// bottom sheets inside the form; chips of what is set (× = without it); closing a sheet after a change searches again; back to the
+	// normal layout from 576 px on
+	const p = s.ga;
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, storageState: await p.context().storageState() });
+	const m = await ctx.newPage();
+	const errs = []; m.on('pageerror', e => errs.push(e.message));
+	try {
+		await m.goto(BASE + 'index.php?p=codesearch&q=nuSetValue&go=1&w=1&lang[]=js&drafts=1&pages=1');
+		const row = await m.evaluate(() => {
+			const r = (id) => document.getElementById(id).getBoundingClientRect();
+			const q = r('csQ'), o = r('csOptBtn'), f = r('csFiltBtn');
+			return { go: !!document.getElementById('csGo').offsetParent, sameRow: Math.abs(q.top - o.top) < 8 && Math.abs(q.top - f.top) < 8,
+				fits: f.right <= innerWidth, count: document.querySelector('#csFiltBtn .csPhCount')?.textContent, wInSheet: !!document.querySelector('#csOptSheet #csW'),
+				filtInSheet: !!document.querySelector('#csFiltSheet #csFilters'), ph: document.getElementById('csQ').placeholder, chips: [...document.querySelectorAll('#csChips .csChip')].map(c => c.textContent.trim()) };
+		});
+		if (row.go || !row.sameRow || !row.fits || row.count !== '1' || !row.wInSheet || !row.filtInSheet || row.chips.length !== 2 || !/…$/.test(row.ph) || row.ph.length > 15) throw new Error('phone row: ' + JSON.stringify(row));
+		await m.click('#csOptBtn');
+		await m.waitForSelector('#csOptSheet.show');
+		await m.click('#csOptSheet label[for=csC]');
+		await Promise.all([m.waitForNavigation(), m.click('#csOptSheet .csSheetDone')]);
+		if (!/[?&]c=1/.test(m.url())) throw new Error('closing the sheet did not search again: ' + m.url());
+		// chip × = the same search without it
+		const href = await m.getAttribute('#csChips .csChip:first-child', 'href');
+		if (/[?&]w=1/.test(href)) throw new Error('chip link keeps whole word: ' + href);
+		await m.setViewportSize({ width: 1200, height: 844 });
+		await m.waitForTimeout(300);
+		const desk = await m.evaluate(() => ({ back: !document.querySelector('#csOptSheet #csW') && !!document.querySelector('#csForm .card-body #csW'),
+			go: !!document.getElementById('csGo').offsetParent, opt: !!document.getElementById('csOptBtn').offsetParent }));
+		if (!desk.back || !desk.go || desk.opt) throw new Error('desktop: ' + JSON.stringify(desk));
+		if (errs.length) throw new Error('JS errors: ' + errs.join(' | '));
+		s.result = { row, desk };
+	} finally { await ctx.close(); }
+};
+
+T.settings_compact = async (s) => {
+	// 0.8.1240 (the owner picked mockup A): switch "Compact" next to the title of the settings overview / sections hides the descriptions;
+	// per device (localStorage nunext-settings-compact), applied before the first paint (nutheme.js)
+	const p = s.ga;
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 844 }, storageState: await p.context().storageState() });
+	const m = await ctx.newPage();
+	try {
+		await m.goto(BASE + 'index.php?p=settings');
+		const shown = () => m.evaluate(() => [...document.querySelectorAll('.nuSetDesc')].filter(e => e.offsetParent).length);
+		const before = await shown();
+		if (!before) throw new Error('no descriptions shown at first');
+		const h0 = await m.evaluate(() => document.getElementById('shOverview').offsetHeight);
+		await m.click('label[for=nuSetCompact]');
+		const after = await shown(), h1 = await m.evaluate(() => document.getElementById('shOverview').offsetHeight);
+		if (after || h1 >= h0) throw new Error('compact did not hide: ' + JSON.stringify({ after, h0, h1 }));
+		const side = await m.evaluate(() => { const h = document.querySelector('.nuSetHead h1').getBoundingClientRect(), w = document.querySelector('.nuSetCompactSw').getBoundingClientRect(); return Math.abs((h.top + h.bottom) / 2 - (w.top + w.bottom) / 2) < 16; });
+		if (!side) throw new Error('switch not next to the title on a phone');
+		// remembered: a section page, scripts blocked = the class comes from the head
+		await m.route(/nusettingshub\.js/, r => r.abort());
+		await m.goto(BASE + 'index.php?p=settings&s=general');
+		const sec = await m.evaluate(() => ({ cls: document.documentElement.classList.contains('nuSetCompact'), desc: [...document.querySelectorAll('.nuSetDesc')].filter(e => e.offsetParent).length }));
+		if (!sec.cls || sec.desc) throw new Error('not kept: ' + JSON.stringify(sec));
+		await m.unroute(/nusettingshub\.js/);
+		await m.reload();
+		if (!(await m.isChecked('#nuSetCompact'))) throw new Error('switch not checked after reload');
+		await m.click('label[for=nuSetCompact]');
+		const off = await m.evaluate(() => [localStorage.getItem('nunext-settings-compact'), [...document.querySelectorAll('.nuSetDesc')].filter(e => e.offsetParent).length]);
+		if (off[0] !== null || !off[1]) throw new Error('switch off failed: ' + JSON.stringify(off));
+		s.result = { before, h0, h1, sec };
+	} finally { await ctx.close(); }
+};
+
+T.user_summary_phone = async (s) => {
+	// 0.8.1245 (the owner picked mockup A): on phones the summary is compact – avatar 44 px beside the name, status + access level in one
+	// row (a long level cut with …, full text as title), the tools side by side
+	const p = s.ga;
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name LIKE 'sample_%' ORDER BY sus_login_name LIMIT 1");
+	if (!uid) { s.skip = 'no sample users'; return; }
+	const acc = sql("SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'");
+	const oldCode = sql("SELECT sal_code FROM zzzzsys_access WHERE zzzzsys_access_id = '" + acc + "'");
+	sql("UPDATE zzzzsys_access SET sal_code = 'e2e_a_rather_long_access_level_code_for_phones' WHERE zzzzsys_access_id = '" + acc + "'");
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, storageState: await p.context().storageState() });
+	const m = await ctx.newPage();
+	try {
+		await m.goto(BASE + 'index.php?p=user&id=' + uid);
+		const r = await m.evaluate(() => {
+			const b = (q) => document.querySelector(q).getBoundingClientRect();
+			const av = b('#userAvatar'), nm = b('#userAvatarName'), st = document.querySelector('.userSumBadges > .badge:first-child'), lv = document.querySelector('.userSumLevel');
+			const sb = st.getBoundingClientRect(), lb = lv.getBoundingClientRect(), card = b('.userSummary');
+			const pw = document.getElementById('pwrOpen'), lt = document.querySelector('#loginTokenBox summary');
+			return { av: Math.round(av.width), beside: av.right < nm.left, oneRow: Math.abs(sb.top - lb.top) < 4, cut: lv.scrollWidth > lv.clientWidth,
+				inCard: lb.right <= card.right, title: lv.title, h: Math.round(card.height),
+				tools: pw && lt ? lt.getBoundingClientRect().top - pw.getBoundingClientRect().bottom < 22 : null };   // side by side where they fit, else close below
+		});
+		if (r.av > 48 || !r.beside || !r.oneRow || !r.cut || !r.inCard || !/rather_long/.test(r.title) || r.tools === false) throw new Error(JSON.stringify(r));
+		s.result = r;
+	} finally {
+		await ctx.close();
+		sql("UPDATE zzzzsys_access SET sal_code = " + (oldCode === '' ? 'NULL' : "'" + oldCode + "'") + " WHERE zzzzsys_access_id = '" + acc + "'");
+	}
+};
+
+T.user_summary_jump = async (s) => {
+	// 0.8.1238: the summary's login, code, status badge and access level badge scroll to (and mark) their fields
+	const p = s.ga;
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name LIKE 'sample_%' ORDER BY sus_login_name LIMIT 1");
+	if (!uid) { s.skip = 'no sample users'; return; }
+	const old = sql("SELECT COALESCE(sus_code, '') FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'");
+	sql("UPDATE zzzzsys_user SET sus_code = 'J1238' WHERE zzzzsys_user_id = '" + uid + "'");
+	await p.setViewportSize({ width: 1280, height: 560 });
+	try {
+		await open(p, 'index.php?p=user&id=' + uid);
+		const got = {};
+		for (const f of ['sus_login_name', 'sus_code', 'sus_expires_on', 'sus_zzzzsys_access_id']) {
+			await p.evaluate(() => window.scrollTo(0, 0));
+			const b = p.locator('.userSummary .userSumJump[data-nu-jump="' + f + '"]');
+			if (!(await b.count())) throw new Error('no jump button for ' + f);
+			await b.click();
+			await p.waitForTimeout(500);
+			got[f] = await p.evaluate((id) => {
+				const el = document.getElementById(id);
+				const v = el.tomselect ? el.tomselect.wrapper : el;
+				const r = v.getBoundingClientRect();
+				return { inView: r.top >= 0 && r.bottom <= innerHeight, flash: !!document.querySelector('.nuJumpFlash'),
+					focus: el.tomselect ? true : document.activeElement === el };
+			}, f);
+			if (!got[f].inView || !got[f].flash || !got[f].focus) throw new Error(f + ': ' + JSON.stringify(got[f]));
+		}
+		// 0.8.1239: on a phone (touch, no keyboard) the field is scrolled to and marked but not focused – no on-screen keyboard
+		const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 760 }, hasTouch: true, isMobile: true, storageState: await p.context().storageState() });
+		const m = await ctx.newPage();
+		try {
+			await m.goto(BASE + 'index.php?p=user&id=' + uid);
+			for (const f of ['sus_login_name', 'sus_code']) {
+				await m.locator('.userSummary .userSumJump[data-nu-jump="' + f + '"]').tap();
+				await m.waitForTimeout(600);
+				const r = await m.evaluate((id) => ({ focus: document.activeElement === document.getElementById(id), flash: !!document.querySelector('.nuJumpFlash') }), f);
+				if (r.focus || !r.flash) throw new Error('phone ' + f + ': ' + JSON.stringify(r));
+				got['phone_' + f] = r;
+			}
+		} finally { await ctx.close(); }
+		s.result = got;
+	} finally {
+		sql("UPDATE zzzzsys_user SET sus_code = " + (old === '' ? 'NULL' : "'" + old + "'") + " WHERE zzzzsys_user_id = '" + uid + "'");
+		await p.setViewportSize({ width: 1280, height: 900 });
+	}
+};
+
 T.user_ident_strip = async (s) => {
-	// 0.8.1018 / 0.8.1019: user form layout = Person card (initials + name in its header, name / e-mail / code fields) + three columns Organisation · Login · Access / Account
+	// 0.8.1230 (the owner picked mockup A; before: 0.8.1018 / 0.8.1019 Person strip + three columns): summary card on the left (initials,
+	// name, login, status, access level, last sign-in, sign-in tools), on the right Person · Organisation · Sign-in & access, each an even grid
 	const p = s.ga;
 	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name LIKE 'sample_%' ORDER BY sus_login_name LIMIT 1");
 	if (!uid) { s.skip = 'no sample users'; return; }
@@ -17205,20 +17658,37 @@ T.user_ident_strip = async (s) => {
 	try {
 		await open(p, 'index.php?p=user&id=' + uid);
 		const r = await p.evaluate(() => {
-			const top = (sel) => { const e = document.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().top) : null; };
-			const inStrip = ['sus_name', 'sus_first_name', 'sus_last_name', 'sus_email', 'sus_code'].every(id => document.getElementById(id)?.closest('.userIdentFields'));
-			const inOrg = ['sus_position', 'sus_department', 'sus_team', 'sus_additional1', 'sus_additional2'].every(id => document.getElementById(id)?.closest('.userCardOrg'));
-			return { inStrip, inOrg, head: !!document.querySelector('.userCardPerson .card-header #userAvatar'), ini: document.getElementById('userAvatarTxt')?.textContent, cols: [top('.userCardOrg'), top('.userCardLogin'), top('.userCardAccess')] };
+			const box = (e) => e ? e.getBoundingClientRect() : null;
+			const sum = box(document.querySelector('.userSummary')), main = box(document.querySelector('.userMain'));
+			const inP = ['sus_name', 'sus_first_name', 'sus_last_name', 'sus_email', 'sus_code'].every(id => document.getElementById(id)?.closest('.userCardPerson .userGrid'));
+			const inOrg = ['sus_position', 'sus_department', 'sus_team', 'sus_additional1', 'sus_additional2'].every(id => document.getElementById(id)?.closest('.userCardOrg .userGrid'));
+			const inSign = ['sus_login_name', 'password', 'password_confirm', 'sus_zzzzsys_access_id', 'sus_expires_on', 'sus_language', 'sus_change_password'].every(id => document.getElementById(id)?.closest('.userCardLogin .userGrid'));
+			// one grid: the three columns of every section start at the same x
+			const lefts = (sel) => [...document.querySelectorAll(sel + ' .userGrid > div')].slice(0, 3).map(d => Math.round(d.getBoundingClientRect().left));
+			return { inP, inOrg, inSign, side: sum && main && sum.right <= main.left && Math.abs(sum.top - main.top) < 2, sumW: sum && Math.round(sum.width),
+				avatar: !!document.querySelector('.userSummary #userAvatar'), ini: document.getElementById('userAvatarTxt')?.textContent,
+				meta: !!document.querySelector('.userSummary .userSumMeta'), tools: !!document.querySelector('.userSummary #pwrOpen'),
+				cols: [lefts('.userCardPerson'), lefts('.userCardOrg'), lefts('.userCardLogin')] };
 		});
-		expect(r.inStrip && r.inOrg && r.head, 'fields not in strip / Organisation, or initials not in the header: ' + JSON.stringify(r));
-		expect(r.cols[0] !== null && r.cols[0] === r.cols[1] && r.cols[1] === r.cols[2], 'three columns not side by side: ' + JSON.stringify(r.cols));
+		expect(r.inP && r.inOrg && r.inSign, 'fields not in their sections: ' + JSON.stringify(r));
+		expect(r.side && r.sumW === 300 && r.avatar && r.meta && r.tools, 'summary card on the left: ' + JSON.stringify(r));
+		expect(r.cols[0].join() === r.cols[1].join() && r.cols[1].join() === r.cols[2].join(), 'sections not on one grid: ' + JSON.stringify(r.cols));
 		expect(/^\S{1,2}$/.test(r.ini || ''), 'initials: ' + r.ini);
 		await p.fill('#sus_first_name', 'Zoe'); await p.fill('#sus_last_name', 'Quinn');
 		expect(await p.textContent('#userAvatarTxt') === 'ZQ', 'initials do not follow the name');
 		await p.fill('#sus_first_name', ''); await p.fill('#sus_last_name', '');
 		await p.fill('#sus_name', 'Mia Lou Berg');
 		expect(await p.textContent('#userAvatarTxt') === 'MB', 'initials from the full name');
-		expect(/Mia Lou Berg/.test(await p.textContent('#userAvatarName')), 'name in the header does not follow');
+		expect((await p.textContent('#userAvatarName')).trim() === 'Mia Lou Berg', 'name in the summary does not follow');
+		// 0.8.1231: a wide window – sections at most 1100 px, short fields about 200 px
+		await p.setViewportSize({ width: 2400, height: 900 }); await p.evaluate(() => { try { localStorage.setItem('nunext-page-width', 'full'); } catch (e) {} }); await p.reload(); await p.waitForTimeout(300);
+		const wide = await p.evaluate(() => ({ main: Math.round(document.querySelector('.userMain').getBoundingClientRect().width), code: Math.round(document.getElementById('sus_code').getBoundingClientRect().width), lang: Math.round(document.getElementById('sus_language').getBoundingClientRect().width) }));
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-page-width'); } catch (e) {} });
+		expect(wide.main <= 1100 && wide.main > 1000 && wide.code <= 200 && wide.lang <= 200, 'capped on a wide window: ' + JSON.stringify(wide));
+		// below 992 px the summary sits above the sections
+		await p.setViewportSize({ width: 900, height: 900 }); await p.waitForTimeout(200);
+		const st = await p.evaluate(() => { const a = document.querySelector('.userSummary').getBoundingClientRect(), b = document.querySelector('.userMain').getBoundingClientRect(); return a.bottom <= b.top; });
+		expect(st, 'summary not above the sections at 900 px');
 	} finally { await p.setViewportSize({ width: 1300, height: 900 }); await p.reload().catch(() => {}); }
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };

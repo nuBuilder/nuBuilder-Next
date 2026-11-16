@@ -827,7 +827,7 @@
 	});
 })();
 
-// Person card (0.8.1018 / 0.8.1019): initials + name in its header follow first / last name, else the full name
+// summary card (0.8.1230; Person card header 0.8.1018 / 0.8.1019): initials + name follow first / last name, else the full name
 (function () {
 	'use strict';
 	var txt = document.getElementById('userAvatarTxt'), icon = document.getElementById('userAvatarIcon');
@@ -841,7 +841,7 @@
 		txt.textContent = s;
 		if (icon) icon.classList.toggle('d-none', s !== '');
 		var who = document.getElementById('userAvatarName'), full = ((n && n.value) || '').trim();
-		if (who) { who.textContent = '· ' + full; who.hidden = full === ''; }
+		if (who) who.textContent = full || who.getAttribute('data-new') || '';   // summary card (0.8.1230)
 	}
 	[f, l, n].forEach(function (e) { if (e) e.addEventListener('input', upd); });
 })();
@@ -867,4 +867,31 @@
 	var form = tpls[0].form;
 	if (form) form.addEventListener('input', function (e) { if (!e.target.hasAttribute('data-uf-tpl')) fill(); });
 	fill();
+})();
+
+// summary: login, code, status and access level jump to their fields (0.8.1238)
+(function () {
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest && e.target.closest('.userSumJump[data-nu-jump]');
+		if (!b) return;
+		var el = document.getElementById(b.getAttribute('data-nu-jump'));
+		if (!el) return;
+		e.preventDefault();
+		var pane = el.closest('.tab-pane');
+		if (pane && !pane.classList.contains('active')) {
+			var tb = document.querySelector('[data-bs-target="#' + pane.id + '"], [href="#' + pane.id + '"]');
+			if (tb) tb.click();
+		}
+		var ts = el.tomselect;
+		var vis = ts ? ts.wrapper : el;
+		var box = vis.closest('.input-group') || vis;
+		box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		setTimeout(function () {
+			if (!ts && (!window.nuHasKeyboard || window.nuHasKeyboard())) el.focus({ preventScroll: true });   // no on-screen keyboard on touch screens (0.8.1239)
+			box.classList.remove('nuJumpFlash');
+			void box.offsetWidth;
+			box.classList.add('nuJumpFlash');
+			setTimeout(function () { box.classList.remove('nuJumpFlash'); }, 1700);
+		}, 350);
+	});
 })();

@@ -30,7 +30,7 @@ function nu_head(string $title, string $extraHead = ''): void
 	$pb = NuDB::$connected ? NuSettings::phoneBack() : '';   // shared setting nuPhoneBackButton (0.8.1002): Back on phones as icon / hidden
 	$hc = trim(($env !== '' ? 'nu-env' : '') . ($pb !== '' ? ' nuBack-' . $pb : ''));
 	?><!doctype html>
-<html lang="<?= h(nu_lang_choice()) ?>"<?= nu_lang_rtl() ? ' dir="rtl"' : '' ?> data-bs-theme="light"<?= $hc !== '' ? ' class="' . h($hc) . '"' : '' ?>>
+<html lang="<?= h(nu_lang_choice()) ?>"<?= nu_lang_rtl() ? ' dir="rtl"' : '' ?> data-bs-theme="light"<?= $hc !== '' ? ' class="' . h($hc) . '"' : '' ?><?= NuPageWidth::htmlAttr() /* page width default (0.8.1226) – nutheme.js */ ?>>
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -295,9 +295,9 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 								<li><a class="dropdown-item" href="<?= h(NuFileManager::url()) ?>" target="_blank" rel="noopener" id="nuMenuFiles"><i class="bi bi-folder2-open me-2"></i><?= h(t('vendor_tfm')) ?></a></li>
 							<?php endif; ?>
 						<?php endif; ?>
-						<?php if (NuAdmin::can('update')): // version and change history (Update page) ?>
+						<?php if (NuSysInfo::allowed()): // System info dialog (0.8.1237; was the version link to the Update page) ?>
 							<li><hr class="dropdown-divider"></li>
-							<li><a class="dropdown-item small text-body-secondary" href="<?= h(nu_url('update')) ?>#updHistory" id="nuVersionLink"><i class="bi bi-clock-history me-2"></i><?= h(t('upd_version_link', NU_VERSION)) ?></a></li>
+							<li><button type="button" class="dropdown-item" id="nuSysInfoBtn" data-bs-toggle="modal" data-bs-target="#nuSysInfoDlg"><i class="bi bi-info-circle me-2"></i><?= h(t('si_menu')) ?></button></li>
 						<?php endif; ?>
 						<?php if (NuSharedLogin::url() !== ''): ?>
 							<li><a class="dropdown-item" href="<?= h(NuSharedLogin::url()) ?>"><i class="bi bi-box-arrow-up-right me-2"></i>nuBuilder Forte</a></li>
@@ -417,6 +417,30 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 </main>
 <?= NuSidebar::$drawn ? '</div>' : '' /* side bar wrapper .nuShell (0.8.460) */ ?>
 
+<?php if (!$bare && NuAuth::user() && NuSysInfo::allowed()): // System info (0.8.1237): filled by assets/js/nusysinfo.js from ?p=sysinfo + the browser ?>
+<div class="modal fade" id="nuSysInfoDlg" tabindex="-1" aria-labelledby="nuSysInfoTitle" aria-hidden="true" data-url="<?= h(nu_url('sysinfo')) ?>"
+	data-t="<?= h((string)json_encode(['browser' => t('si_browser'), 'b_browser' => t('si_b_browser'), 'b_screen' => t('si_b_screen'), 'b_screen_v' => t('si_b_screen_v'), 'b_lang' => t('si_b_lang'),
+		'b_theme' => t('si_b_theme'), 'pw' => ['' => t('pgw_standard'), 'standard' => t('pgw_standard'), 'wide' => t('pgw_wide'), 'full' => t('pgw_full')], 'copied' => t('si_copied'), 'error' => t('form_error'), 'user' => t('si_user')], JSON_UNESCAPED_UNICODE)) ?>"
+	data-user="<?= h((string)(NuAuth::user()['login'] ?? '')) ?>">
+	<div class="modal-dialog modal-dialog-scrollable modal-lg nuSysInfoDialog">
+		<div class="modal-content">
+			<div class="modal-header gap-2">
+				<h1 class="modal-title fs-5 me-auto" id="nuSysInfoTitle"><?= h(t('si_title')) ?></h1>
+				<button type="button" class="btn btn-outline-secondary btn-sm" id="nuSysInfoCopy"><i class="bi bi-clipboard me-1"></i><?= h(t('si_copy')) ?></button>
+				<button type="button" class="btn-close ms-1" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button>
+			</div>
+			<div class="modal-body" id="nuSysInfoBody"><div class="text-center text-body-secondary py-4"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span><?= h(t('loading')) ?></div></div>
+			<div class="modal-footer justify-content-start gap-3 small">
+				<a href="<?= h(nu_url('update')) ?>"><?= h(t('upd_title')) ?></a>
+				<?php if (NuAdmin::can('securitycheck')): ?><a href="<?= h(nu_url('securitycheck')) ?>"><?= h(t('secchk_title')) ?></a><?php endif; ?>
+				<?php if (NuHash::devMode() && !empty(NuAuth::user()['globeadmin'])): ?><a href="<?= h(nu_url('selftest')) ?>"><?= h(t('st_title')) ?></a><?php endif; ?>
+				<a href="<?= h(nu_url('update')) ?>#updHistory"><?= h(t('si_changes')) ?></a>
+				<span class="ms-auto text-body-secondary"><?= h(t('si_no_secrets')) ?></span>
+			</div>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
 <div class="modal fade" id="nuLeave" tabindex="-1" aria-labelledby="nuLeaveTitle" aria-hidden="true" data-text-nosave="<?= h(t('leave_text_nosave')) ?>" data-text="<?= h(t('leave_text')) ?>">
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
@@ -456,6 +480,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
 <?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
+<?php if (!$bare && NuAuth::user() && NuSysInfo::allowed()): ?><script src="<?= nu_asset('assets/js/nusysinfo.js') ?>"></script><?php endif; /* System info dialog (0.8.1237) */ ?>
 <?= $extraBody ?>
 </body>
 </html>
