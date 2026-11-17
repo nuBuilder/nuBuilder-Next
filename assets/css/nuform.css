@@ -788,6 +788,9 @@ html.nuPhoneCards #nuBrowseTotals > tr > td.nuSelCol:has(.nuSelClear:not([hidden
    cells the code rewrites (JSON → badges …) do not flash; after 3 s they show in any case (a script that stops before nuNextStart) */
 #nuBrowseTable.nuBrowseJsWait > tbody, #nuBrowseTable.nuBrowseJsWait > tfoot { visibility: hidden; animation: nuBrowseJsShow 0s 3s forwards; }
 @keyframes nuBrowseJsShow { to { visibility: visible; } }
+/* the same for the panes of a record page: hidden until nuNextStart ran the form's code (nuOnLoad) and the phone layout – what the code hides
+   or moves (and the desktop positions of a phone's stacked layout) no longer shows for a moment while a slow phone loads */
+.tab-content.nuEditJsWait { visibility: hidden; animation: nuBrowseJsShow 0s 3s forwards; }
 
 /* pivot of a form list (0.8.1151, assets/js/nu/nupivot.js) */
 /* pivot only (run button, 0.8.1156): the list page behind it stays hidden */

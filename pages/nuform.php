@@ -188,6 +188,9 @@ if ($mode === 'edit') {
 	$render = new NuRender($meta, $isNew ? '-1' : $r, $row, $hash, $layout);
 	$render->setReadonly(!$isNew && !$rights['save']);
 	$body  = $errors ? '' : $render->tabs();
+	// the record's tabs stay hidden until nuruntime.js has run the form's code and laid the page out (nuNextStart removes the class) – objects
+	// the code hides or moves, and the phone layout, no longer flash up in the first paint; after 3 s they show in any case (nuform.css)
+	if ($mode === 'edit' && !$design && $body !== '') $body = preg_replace('/class="tab-content /', 'class="tab-content nuEditJsWait ', $body, 1) ?? $body;
 	// no withheld / masked values in the title (0.8.480); a record Before Edit refused shows only the form's name (0.8.1211)
 	$title = $errors ? $meta->description() : $meta->breadcrumb($isNew, NuFieldAccess::scrubHash($meta, $hash));
 	if ($meta->hasBrowse()) $breadcrumbs[] = ['title' => $meta->description(), 'url' => nu_url('form', ['f' => $meta->id])];

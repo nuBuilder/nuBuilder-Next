@@ -627,6 +627,8 @@ button.nuPagerCur:focus-visible { outline: 2px solid var(--bs-focus-ring-color);
 }
 html.nuCodeFullOpen, html.nuCodeFullOpen body { overflow: hidden; }
 .nuCodeFull .CodeMirror-scroll { max-height: none !important; min-height: 0 !important; }
+/* descriptions and settings around an editor (.nuCodeFullHide) give their room to the code while it is full screen (0.8.1260) */
+.nuCodeFull .nuCodeFullHide { display: none !important; }
 .nu-tile-icon { flex-shrink: 0; }
 button.nu-tile { font: inherit; color: inherit; background: var(--bs-card-bg); cursor: pointer; }
 
@@ -2731,3 +2733,20 @@ html.nuSetCompact .nuSetLink { padding-top: .55rem; padding-bottom: .55rem; alig
 	.userSumTools { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin-top: .6rem; padding-top: .6rem; }
 	.userSumTools > #pwrBox:has(#pwrLinkUrl), .userSumTools > details[open] { flex-basis: 100%; }
 }
+
+/* procedures list: "Code" box inside the search field (0.8.1254) */
+.nuListSearch .nuSearchExtra { cursor: pointer; user-select: none; background: var(--bs-body-bg); }
+.nuListSearch .nuSearchExtra .form-check-input { cursor: pointer; }
+
+/* procedure editor tools on phones (0.8.1255): tools, {*} and # in one row – narrower buttons, smaller gaps */
+@media (max-width: 575.98px) {
+	.procCodeTools { gap: .25rem !important; }
+	/* all of them one size (0.8.1262) – the toolbar buttons, the Insert menu and # */
+	.procCodeTools :is(.nuCodeTools .btn, .nuCtInsert, .nuHashVarsBtn) { width: 1.625rem; padding-left: 0; padding-right: 0; display: inline-flex; align-items: center; justify-content: center; }
+}
+
+/* Sample data: change history (0.8.1256) */
+.smpChanges .smpChg { padding: .35rem 0; border-bottom: 1px solid var(--bs-border-color-translucent); }
+.smpChanges .smpChg:last-child { border-bottom: 0; }
+.smpChanges .smpChgV { font-weight: 600; white-space: nowrap; margin-right: .25rem; }
+.smpWhatsNew .smpChg { border-color: rgba(0, 0, 0, .08); }

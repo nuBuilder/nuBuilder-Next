@@ -112,6 +112,37 @@ final class NuUserAccess
 	}
 
 	/**
+	 * Who still uses an access level, for deleting it (0.8.1250): active = users who can sign in with it (main level and not
+	 * expired, or an additional level that is still valid for a user who is not expired); expired = ids of expired users whose
+	 * MAIN level it is – Delete empties their level. Additional assignments of expired users or that have ended do not count.
+	 * @return array{active: int, expired: list<string>}
+	 */
+	public static function levelUse(string $accessId): array
+	{
+		$db = nu_db();
+		$active = 0;
+		$expired = [];
+		foreach ($db->all('SELECT zzzzsys_user_id, sus_expires_on FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$accessId]) as $r) {
+			if (nu_is_expired($r['sus_expires_on'] ?? null)) $expired[] = (string)$r['zzzzsys_user_id'];
+			else $active++;
+		}
+		$xa = array_values(array_filter(self::usersOf($accessId), static fn($x) => $x['active']));
+		if ($xa) {
+			$ids = array_column($xa, 'user_id');
+			foreach ($db->all('SELECT sus_expires_on FROM zzzzsys_user WHERE zzzzsys_user_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', $ids) as $r)
+				if (!nu_is_expired($r['sus_expires_on'] ?? null)) $active++;
+		}
+		return ['active' => $active, 'expired' => $expired];
+	}
+
+	/** Inside the delete transaction of a level: empty the main level of its expired users, drop its additional assignments. */
+	public static function releaseLevel(NuDB $db, string $accessId, array $expired): void
+	{
+		foreach ($expired as $uid) $db->update('zzzzsys_user', ['sus_zzzzsys_access_id' => ''], 'zzzzsys_user_id', $uid);
+		if (self::ready()) $db->delete(self::TABLE, 'access_id', $accessId);
+	}
+
+	/**
 	 * Replace the extra levels of a user. $rows: list of [access_id, valid_until ('' or Y-m-d)]; the main level and duplicates are
 	 * dropped. @return array<string, array{0: string, 1: string}> changes for the log: code => [before, after]
 	 */

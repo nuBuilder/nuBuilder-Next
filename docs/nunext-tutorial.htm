@@ -409,7 +409,7 @@
 ]);</code></pre>
 			<p class="mb-0">The first rule that matches wins. Without code, design mode does the same: select the column title → <em>Show as badge</em> → <em>Colour rule</em>.</p>
 		</div>
-		<div class="tut-tip">A value in a list can open something else than the row: select the column title in design mode → <em>Behaviour</em> → <em>On click of a column</em> – a related form, a list filtered by the row (from customers to their orders: the target's browse SQL uses <code>'#PARENT_ID#'</code>), a procedure or a report, shown as a link, a button or an icon (<a data-help="design-list-click">column click actions</a>).</div>
+		<div class="tut-tip">A value in a list can open something else than the row: select the column title in design mode → <em>Behaviour</em> → <em>On click</em> – a related form, a list filtered by the row (from customers to their orders: the target's browse SQL uses <code>'#PARENT_ID#'</code>), a procedure or a report, shown as a link, a button or an icon (<a data-help="design-list-click">column click actions</a>).</div>
 		<p><a data-help="hooks">PHP hooks and procedures</a> · <a data-help="hash-variables">Hash variables</a> · <a data-help="js-api">JavaScript functions</a> · <a data-help="js-browse-badge">Badges in a list</a></p>
 	</section>
 
@@ -814,13 +814,13 @@ function nuBeforeSave() { return confirm('Save this task?'); }</code></pre>
 		<h3>Drafts: change a form without disturbing users</h3>
 		<p>In design mode, the first change starts a draft – a copy of the whole form. Users keep working with the live form while you change the draft; <em>Publish</em> replaces it in one step.</p>
 		<ul>
-			<li><em>Save</em> and <em>Undo</em> (20 steps) work in the draft only; <em>Preview</em> shows the draft to you alone, with a yellow banner.</li>
-			<li><em>Compare with live</em> lists every change – objects, events, code line by line, list columns.</li>
-			<li><em>Publish…</em> checks the draft, asks for a note and keeps the live form in the history first. Publishing needs the globeadmin or the admin right <em>Publish forms (drafts)</em>.</li>
+			<li>Every change is written into the draft only; <em>Undo</em> in the design bar goes back (20 steps). <em>Preview</em> (the cone next to the form in the forms list) shows the draft to you alone, with a yellow banner.</li>
+			<li><em>Changes of the draft</em> (<i class="bi bi-file-diff" aria-hidden="true"></i> in the design bar) lists every change against the live form – objects, events, code line by line, list columns.</li>
+			<li><em>Publish</em> checks the draft and keeps the live form in the history first; a note is optional (▾ → <em>Publish with a note…</em>). Publishing needs the globeadmin or the admin right <em>Publish forms (drafts)</em>.</li>
 			<li>The Security setting <em>Only through drafts</em> makes drafts the rule.</li>
 		</ul>
 		<div class="tut-task">
-			<p>Start a draft of <code>tutorial_task</code>, rename a label, <em>Preview</em> it, look at <em>Compare with live</em> and publish it with a note.</p>
+			<p>Start a draft of <code>tutorial_task</code> (rename a label in design mode), look at <em>Changes of the draft</em> and publish it with a note.</p>
 		</div>
 		<p><a data-help="form-drafts">Drafts and publishing</a></p>
 	</section>

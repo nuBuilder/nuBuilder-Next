@@ -169,6 +169,9 @@ $def = ['key' => $key, 'version' => $version, 'prefix' => $prefix, 'home' => $ho
 	'tables' => $tables, 'indexes' => $indexes, 'rows' => $out, 'users' => $userRows];
 @mkdir($project . '/install/samples', 0755, true);
 $file = $project . '/install/samples/' . $key . '.json';
+// the change history of the sample (0.8.1256, shown on the Sample data page) is kept from the file – add the new version's line there by hand
+$old = is_file($file) ? json_decode((string)file_get_contents($file), true) : null;
+if (is_array($old) && isset($old['changes'])) $def = array_slice($def, 0, 5, true) + ['changes' => $old['changes']] + array_slice($def, 5, null, true);
 file_put_contents($file, json_encode($def, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n");
 $left = [];
 $all = json_encode($def);

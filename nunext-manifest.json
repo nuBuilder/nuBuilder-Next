@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.1248",
- "built": "2026-11-16 23:25",
+ "version": "0.8.1262",
+ "built": "2026-11-17 03:32",
  "requires": {
   "php": "8.1"
  },
@@ -11,15 +11,15 @@
    "size": 1263
   },
   "CHANGELOG.md": {
-   "sha256": "2cc01a8257859d96aef1d6e47cd732ea6448f2eba57715aa704fce18c5aa2812",
-   "size": 785166
+   "sha256": "dbab96fd4667ec8040c1b95c61be4df7ace58c21db5507d4f53a4b9812e16263",
+   "size": 790430
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "fe3e263a6273e8eb4a82e569eadf2f26648a038b662b15c9d6c1c74538b808e0",
+   "sha256": "8124c614604923191952741099acd4124238dbe9972d34d751368423dcf908db",
    "size": 3646
   },
   "api.php": {
@@ -39,8 +39,8 @@
    "size": 16130
   },
   "apps/nufiles/assets/app.js": {
-   "sha256": "58150890e08250ce7029f9f3a2413c78e3b455f471407951965df985f3625215",
-   "size": 78054
+   "sha256": "ca652f9f7f8f33634b3f801d89389b7b34045babcd0af32370c1c45d8bcc41c0",
+   "size": 78627
   },
   "apps/nufiles/assets/reauth.js": {
    "sha256": "fbfa5294ea0ace4942a65082ccd2ef8625c7c0f6866f0a814db175c674503069",
@@ -83,8 +83,8 @@
    "size": 1371
   },
   "assets/css/nuapp.css": {
-   "sha256": "1e2843906c7d4433e4c90f8e8b87df04842c844f2ffeb8fce883c16384f4362f",
-   "size": 224923
+   "sha256": "13f0ef1f3f58f70f18473cecadf20755602e5d079021a25593185b4e4c13c331",
+   "size": 226167
   },
   "assets/css/nubuilder.css": {
    "sha256": "bfe266d05ec6ebb7f2e9219cb80d0fbf4059517a510a486619f4a01b07e98c79",
@@ -95,8 +95,8 @@
    "size": 28625
   },
   "assets/css/nuform.css": {
-   "sha256": "03fd5495e564cbfa0db905ee72b5e9e57ab443049a38d303b859a6535ccfdde1",
-   "size": 87091
+   "sha256": "84b9a0705c4e29ed3625c02efa290066427cd34c48f268d72691693bd55febdd",
+   "size": 87453
   },
   "assets/css/nuhome.css": {
    "sha256": "2b2e620993238c8170450ab60a0287783167068501181c27667ef573c11e698d",
@@ -231,8 +231,8 @@
    "size": 8455
   },
   "assets/js/nu/nuruntime.js": {
-   "sha256": "e56642624e0990f62cf03c95ed23bf5eb6d5d46518961551fa610afebe8e61e7",
-   "size": 380613
+   "sha256": "09c5e7220de9971d3465a0de83ef8a8aa53126b3f475b9e47d23d58bb0b34d5e",
+   "size": 380753
   },
   "assets/js/nu/nusuggest.js": {
    "sha256": "ff712086b949726d9a6448381905463f8a422c4ea5bac368b65a640f3effb84a",
@@ -727,8 +727,8 @@
    "size": 34438
   },
   "core/nuapi.php": {
-   "sha256": "b0df744da60706cbffc95b6187a885019444a22053b63a89e11c984fd6707e7f",
-   "size": 54895
+   "sha256": "eeb18de5c10697ba101562cd02dee60afc3f2488952fd58e9e44b2d8e0a022ac",
+   "size": 55059
   },
   "core/nuapiclient.php": {
    "sha256": "2d98ba688e841f35b53a7e4e0f7d74d54dd4022b6352c936036f648ee8de8e0a",
@@ -739,7 +739,7 @@
    "size": 6525
   },
   "core/nuapp.php": {
-   "sha256": "e882945a2cec32b492061e281949316be161b2a2fd2f710a9566810af142254d",
+   "sha256": "6d3e5f711dce433197c932307b709e1b7a1d3c098ad56c2442becf5c408c0376",
    "size": 42245
   },
   "core/nuappcloner.php": {
@@ -947,16 +947,16 @@
    "size": 62526
   },
   "core/nulistdefs.php": {
-   "sha256": "ac94f48ebd99c06661eb6dc00d88b13c3fbb05050238c60c5e8d3021ac9ac62d",
-   "size": 175383
+   "sha256": "a482203f3426c539d53987cf27af3ac7d701c7ecacdb8e864470ab600a56e7be",
+   "size": 175684
   },
   "core/nulistexport.php": {
    "sha256": "f4a2cfc29202de188245421fc7147b3488c8ed33e49bb31dd6ad817898479794",
    "size": 15744
   },
   "core/nulistview.php": {
-   "sha256": "a4db33445c157747fe607411eab461dae56e3af718353b6b226cbc2622daf919",
-   "size": 54642
+   "sha256": "2b584c2c4b22712a459897c98f9ceffc5dfb55d940970ceafe26c8faab23bb86",
+   "size": 56002
   },
   "core/nulogintoken.php": {
    "sha256": "8cd1c6b981241dea49c448823e98e405c4400260a6d4583548d72f23949ee737",
@@ -1063,8 +1063,8 @@
    "size": 44972
   },
   "core/nusample.php": {
-   "sha256": "22190324d411369c887d75b941c37fd8c2a96d6ce354aced661021eaff9ad79f",
-   "size": 111769
+   "sha256": "f1a50cd7d71d21c857015e0312b089b07485e839a619bc919452267c25316356",
+   "size": 112233
   },
   "core/nusampleset.php": {
    "sha256": "b739d7671c4b822657b29efe78ba48c1dfd877e395a72000bd11f504270113b4",
@@ -1171,8 +1171,8 @@
    "size": 12379
   },
   "core/nuuseraccess.php": {
-   "sha256": "40c5816b9edb42e90a2350a1735d15e8b4f6f79b0b0dd3a09d06b5f3aedbe94e",
-   "size": 12236
+   "sha256": "6fe4bd73e743196733dee209119aa16c33e5e0afd9c0222fc35812b35bc7c9dc",
+   "size": 13876
   },
   "core/nuuserdefault.php": {
    "sha256": "5e5510916f261203fa7d5499533be4ea3c615d6be49b02902e01acac85f22d3e",
@@ -1243,8 +1243,8 @@
    "size": 265169
   },
   "docs/nunext-tutorial.htm": {
-   "sha256": "08b2375ca05ff3c1e6a499fb309d76ec71a4e463aea204daccb9cbaead516367",
-   "size": 114543
+   "sha256": "92214666464eeef69f86ba7d9c58a976ffc3d65dacf1b8192618c2516d8a1efa",
+   "size": 114745
   },
   "docs/pages/01-00-overview.htm": {
    "sha256": "076a27ad6554df31895a14b2309933a79d1c4de3b3513e536c3c961617e14ee8",
@@ -1291,8 +1291,8 @@
    "size": 16913
   },
   "docs/pages/02-03-lists.htm": {
-   "sha256": "648481ceacaeaed88af37c398e5b12c54c12afa255915a84c2317a399eb9a273",
-   "size": 18671
+   "sha256": "ec4ab1b167e2102597e53a38a34b9bed44dc20ec5529d12133d1eb011fb12b27",
+   "size": 18677
   },
   "docs/pages/02-04-forms-use.htm": {
    "sha256": "457107f69a80d63f5c3d994b6d2b1fcf21401138c7f1a67077d2acd31a6237ef",
@@ -1311,8 +1311,8 @@
    "size": 1026
   },
   "docs/pages/02-08-phones.htm": {
-   "sha256": "64407956ca95cfe6db0d24fe8f40cbec9f6da239a266bc823e46d80af860e2b6",
-   "size": 7487
+   "sha256": "201e1be23efe021120e4c146069398c5ca7e1e480271ef1d2878c1429bb212a4",
+   "size": 7648
   },
   "docs/pages/03-00-architecture.htm": {
    "sha256": "180880b245ed0e1e7967cb779e770b2c67b9766db7d745fef87b429964f1e08b",
@@ -1351,12 +1351,12 @@
    "size": 11963
   },
   "docs/pages/04-03-builder-work.htm": {
-   "sha256": "0c8ac347aa87a724081a1f3e0e865e40cf077b78435be2a71ff0e001e94c0d21",
+   "sha256": "23a809fb8f000fbdb1e88f0c5ea9c5ccb530d8e4e9626336af4a88c57e550fbc",
    "size": 37686
   },
   "docs/pages/04-04-form-drafts.htm": {
-   "sha256": "73d2b3b2bc9b90437e005e075a3847a66ad0ade029e26a63c8d76a281d635360",
-   "size": 8508
+   "sha256": "59feaee9195c5f143fbcd9e2180082625e07b355e5984daea2c0293ffb031473",
+   "size": 8613
   },
   "docs/pages/04-05-object-types.htm": {
    "sha256": "46ec81167d76c0b2e753c38aba6ccf37e5c26f8697ea0815c32e47500f771880",
@@ -1399,8 +1399,8 @@
    "size": 9197
   },
   "docs/pages/05-03-procedures.htm": {
-   "sha256": "425f02174e49e31775f0540a493da59377b54df980ba4ef539d00ac7bce8aa20",
-   "size": 10416
+   "sha256": "867516b238b2a7b61edba792d24c28ce91a15d5b2f520bd2e32a65e3f37eb772",
+   "size": 10654
   },
   "docs/pages/05-04-log.htm": {
    "sha256": "da06787222df70cd027a5c5a8568696286c26af998389f4d341c9ec87e413d13",
@@ -1435,8 +1435,8 @@
    "size": 10916
   },
   "docs/pages/07-02-access.htm": {
-   "sha256": "4a0b92ba96ba60e373588b34685d9435b1208ac6d3b0bb37ac3e55e1dffdfcfc",
-   "size": 14790
+   "sha256": "7c4ef56ece43ff15cc29848bd6e66758c17ea3d3b042cbae0aa0902e1280b8bf",
+   "size": 15083
   },
   "docs/pages/07-03-permissions.htm": {
    "sha256": "e7de0895b847a7f2268b73d51994ac839c712264928bd0960a6e90c56521a0b0",
@@ -1491,8 +1491,8 @@
    "size": 10508
   },
   "docs/pages/08-05-globalcode.htm": {
-   "sha256": "9fd97acd1e599dcf305715e7c696fd79a34b706880526322bb27ce53611cc883",
-   "size": 10540
+   "sha256": "2be71c7b538f408c730355b25f511c72b13976843c38db46e4e057ea63efe59d",
+   "size": 10648
   },
   "docs/pages/08-06-after-sign-in.htm": {
    "sha256": "2405dbcd0278dd1276d4369446c099f7c72ec6c68aafbdb352e815fb80ead6ce",
@@ -1507,8 +1507,8 @@
    "size": 9552
   },
   "docs/pages/08-08-admin-tools.htm": {
-   "sha256": "4cf04874f0f8514856aab8c207ce77366d7e372113917fe7860a356bcb30c21b",
-   "size": 11987
+   "sha256": "a42ab909eca031bb7f2fd222284dee33749a69a0a20981cd9e3c25beb6150c3a",
+   "size": 12163
   },
   "docs/pages/08-09-csv-import.htm": {
    "sha256": "8671b6798a746665b5ac5c85499a5523183476260138e2c62ad726094217542a",
@@ -1519,8 +1519,8 @@
    "size": 5896
   },
   "docs/pages/08-11-sample-data.htm": {
-   "sha256": "3fa7ed0e5afde4260420f4ff7a7ff9b9f9d84bbd4b203941ca32d02e6e7ee008",
-   "size": 11888
+   "sha256": "0b4b30ffb4758fc183cd33b7b76848d96159cff15611422e10e0e24408ef17de",
+   "size": 12118
   },
   "docs/pages/08-12-inspect.htm": {
    "sha256": "4badd554ddd811ae64462a22f8e94a2317c43360ad34da8024f5e6c71e72358f",
@@ -1591,8 +1591,8 @@
    "size": 6394
   },
   "docs/pages/09-11-user-help.htm": {
-   "sha256": "14922c849c727d81ce2856872d625cef0e7268e2dd6a6f00f3a35adfda32f8df",
-   "size": 7441
+   "sha256": "5c7a5de5696b34256f1f98bb81bf5e84d3256f1b5497b44ffc1b4cfd849255ca",
+   "size": 7445
   },
   "docs/pages/09-12-ai-providers.htm": {
    "sha256": "a26b5122735cc31dfa64bdee29405b299987f5824da402a4fc70099fa04f80e9",
@@ -1619,8 +1619,8 @@
    "size": 1501
   },
   "docs/pages/10-05-api.htm": {
-   "sha256": "82c886a336245d92135eb2b6e7207d15e36b9b6ae088a8e28c0c3d30e2766682",
-   "size": 16079
+   "sha256": "ec14a6ad5803d2173675aaa8e4bbcc0e1d133f8184387257651de617c217cbb2",
+   "size": 16126
   },
   "docs/pages/10-06-table-ref.htm": {
    "sha256": "658c8e336a3867a38d14982b80027e734da4304a820f44a3684ff146a255b4e9",
@@ -1707,7 +1707,7 @@
    "size": 73026
   },
   "install/db_changes.json": {
-   "sha256": "efd6ba5ac9d24278576b0a9c2dc833ecaf3d659ca4c88770f6da419669afa093",
+   "sha256": "b5719cc0138bf3b883729c5af5006746792c05314abc97ca152933cc702264a4",
    "size": 74710
   },
   "install/libraries-required.json": {
@@ -1727,8 +1727,8 @@
    "size": 2114
   },
   "install/samples/ticket.json": {
-   "sha256": "ae6b3ea5fb81aca3f5f9e83387232d411232c5ce3e20468bab91888a98e7023a",
-   "size": 432366
+   "sha256": "c13c742629aeb6465c65499a7a2b54728bf700188577d832d42972c0d4e499c8",
+   "size": 433787
   },
   "install/schema_expected.json": {
    "sha256": "d58df1008e6b47cafc6932b81db03fe5b65c7953c0e08a4b5df90465abaf928d",
@@ -1755,16 +1755,16 @@
    "size": 177
   },
   "lang/ar.php": {
-   "sha256": "295638435435f495d4ffe02756f369c976d67fa2c8318abfbc6d74533e4357ed",
-   "size": 654383
+   "sha256": "da29ebbb26cb0a96fcf11a3578a0dedb6f87612eddb4066f2958204f7ad3d628",
+   "size": 655102
   },
   "lang/de-CH.php": {
-   "sha256": "2682d24863703737c6d5f7f9f71aaef09529044eaf71a1114b3e707cb19bd8ab",
-   "size": 53102
+   "sha256": "0fcbe806875bc6118a5f66555f30c1fb880991f460623f1192bcc44da2eb3d2c",
+   "size": 53175
   },
   "lang/de.php": {
-   "sha256": "2ac64f18a30f44511188e0d696393487fcf21486f417404f4f1e2856d010035b",
-   "size": 537285
+   "sha256": "8beb1e7eb97034001aebe841e1ebf5acaea01b50115e5c630ae4463efbaddc87",
+   "size": 537870
   },
   "lang/en-AU.php": {
    "sha256": "ada75936000a02c38cf523214ed6484c63de2b097d58d52c7306e0c4c1dc66b5",
@@ -1775,40 +1775,40 @@
    "size": 12785
   },
   "lang/en.php": {
-   "sha256": "7de23cfe90850944ff79908f82ffa61c5d744ab5318f982887131b80df0560e9",
-   "size": 485621
+   "sha256": "2d580f4d8ec3fbe635c313fb5cecbc85ddaf41d9ffa74c8fb111d32762ace8f6",
+   "size": 486146
   },
   "lang/es.php": {
-   "sha256": "40753e4197d3b68d09754c8edd2d090d914cdd2fbfd7753b3b278ad53f88bb81",
-   "size": 539831
+   "sha256": "0c371ac9995e2954fda5d69f5d5719b4f1650f6b39606053c621d980b43ce843",
+   "size": 540406
   },
   "lang/fr.php": {
-   "sha256": "d84984eccf916d7ef3a748744abf1764339ecabb5fd7370ea6a71ed09affcfb8",
-   "size": 564565
+   "sha256": "eaa1c4ebbd120f17a0ac809d3a2a39a74bd7f5f21272713559ed72326c04137c",
+   "size": 565199
   },
   "lang/it.php": {
-   "sha256": "ac9f86440d2ffa6b561138a4b91533bf57a39135875a4c3284a377110679b667",
-   "size": 528600
+   "sha256": "513f4eeac8ac917244b16cf55eb14e7277184f3c21caa53ea235a09f23a970c1",
+   "size": 529182
   },
   "lang/nl.php": {
-   "sha256": "003a8b961261b26d70c56f03499e44d18aebc47bd38d70e3480bc04aa917e167",
-   "size": 527094
+   "sha256": "63452901eeeb291dcb81b4fca394db31765b5de86b887b0171c19591b7ed67ff",
+   "size": 527674
   },
   "lang/pl.php": {
-   "sha256": "990d11c5e8407438238c305e85889d39679f4923133ff8ef93734242601bb8d4",
-   "size": 524081
+   "sha256": "2c364d7cdc66adc8fc83f87596525446b9c0eecc67281d52b8a3b523393b46b1",
+   "size": 524656
   },
   "lang/pt.php": {
-   "sha256": "4518aaffbb0f6e77d527ed8ef44e7cbcf535b11ad32ce0514da44db9d5d9df7d",
-   "size": 542763
+   "sha256": "5769f4415fa46f1d142e3eaca317c2bbf40aaafdc3fccd93517bb44d467b9696",
+   "size": 543361
   },
   "lang/ru.php": {
-   "sha256": "9e9ff535020c288bac21d7fd018eb43504afa47e8d77c3d5242d91251f40c029",
-   "size": 736098
+   "sha256": "fe45e91ca2e39317366183c69d6b861f00aa12a16ece1c4a2b0d775ca82003e6",
+   "size": 736933
   },
   "lang/zh.php": {
-   "sha256": "d6a4e576effaae991d6ef196ca1723f6e033d0101427e24cd3e4dd81966f9bad",
-   "size": 483738
+   "sha256": "9d8533592c1588dc023872136186976a2c755962823b5261a48bbe16651f2743",
+   "size": 484256
   },
   "nuconfig-sample.php": {
    "sha256": "644517ef2af7f6ff6884fb544c25e2fa490c0fab90de55c7aabf96ed4d2c079c",
@@ -1835,8 +1835,8 @@
    "size": 582
   },
   "pages/nuaccesslevel.php": {
-   "sha256": "97b86257029929c0fcbf040781a90acfff5813a7099b0cc0e88f5d6d4b49167a",
-   "size": 47338
+   "sha256": "c9e6d63234728c9bb99a2e88341f0094c2f2d4922ab3c8319088e28cbe357809",
+   "size": 48011
   },
   "pages/nuaccount.php": {
    "sha256": "935ffdbf49c3a66e72154e2c28686e8ee0e537d305185034dac865d01168e28b",
@@ -1987,8 +1987,8 @@
    "size": 3998
   },
   "pages/nuform.php": {
-   "sha256": "a798d3e30db3dffd8b4d9ad4ff054921d16fbf1f2bd87866074650866885980f",
-   "size": 97302
+   "sha256": "1919c4c3b147c27acfe40480ddcacae7c3ea7acab4f87b4d99745f3122ac16ba",
+   "size": 97733
   },
   "pages/nuformaccess.php": {
    "sha256": "21fc7ade43d6354c6cf07c94814e7ae3cd7f1eee61edb319d74d14a6fbe174d1",
@@ -2023,8 +2023,8 @@
    "size": 2962
   },
   "pages/nuglobalcode.php": {
-   "sha256": "b58f0b7908e9addcb48a49ca0aac5aa6c780f361c93317a5d489bc61f1f2092d",
-   "size": 16004
+   "sha256": "f03a67aa7b344e3d8e049ac63ac21d085e5dde5e45e5ae85e8419f7c31bdbd5c",
+   "size": 16049
   },
   "pages/nuglobalcodefile.php": {
    "sha256": "1fd04281eee46fc535ac9a62000e1cf037734d27612fc026fc63a3ac2fc93daa",
@@ -2203,8 +2203,8 @@
    "size": 3886
   },
   "pages/nusample.php": {
-   "sha256": "18007106633ef38fb93732855d28b8ed27e88b9a5e6a06a07bcd5b72e36a5408",
-   "size": 16142
+   "sha256": "8f9ed6a6dc88a54d7d8414ae52af4c8f4fdd355a54595bba255a4ba9470b0051",
+   "size": 17811
   },
   "pages/nusecurity.php": {
    "sha256": "8a4972e390b2722bd5f6a5316f2a142668cea01688a6cf12598745b305945a9e",
@@ -2745,6 +2745,76 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.1262",
+   "title": "Release gate",
+   "text": "- Release gate. Documentation checked page by page against the application: every page's buttons, fields and menus compared with\n  its help page, and every menu path and label named in the help and the tutorial compared with the texts of the application.\n  Corrected: the tutorial's drafts lesson (the Changes button of the design bar, Publish with one click or with a note, the\n  preview from the forms list), the names \"On click\" of list columns, \"Use the answer\" of help pages with AI and \"Copy\" of the\n  print view; feature list and open checks brought up to date."
+  },
+  {
+   "version": "0.8.1261",
+   "title": "Procedure tools on phones: one size",
+   "text": "- Procedure editor on phones: the toolbar buttons, the Insert menu and # are one size again (26 px each) and still fit in one row\n  on a 360 px screen – 0.8.1255 had made them slightly different widths. Documentation checked page by page against the\n  application and the tutorial (see the next release)."
+  },
+  {
+   "version": "0.8.1260",
+   "title": "Global code: full screen shows only the code",
+   "text": "- Global code: full screen of a code editor shows only the toolbar and the code – the description above it (what the tab is for)\n  and the \"Runs on\" switches of Global JS / CSS are hidden while it lasts and come back when it ends."
+  },
+  {
+   "version": "0.8.1259",
+   "title": "Record pages without a load flash",
+   "text": "- Record pages no longer flash while they load: the tabs' contents stay hidden until the form's code (nuOnLoad) has run and the\n  layout is done, then appear at once. On phones the fields no longer show for a moment at their desktop positions before they\n  are put below each other, and objects the form's code hides or moves no longer appear briefly. If the page's scripts fail,\n  the record still appears after 3 seconds."
+  },
+  {
+   "version": "0.8.1258",
+   "title": "Notes: PHPMailer pack published",
+   "text": "- Notes only: the PHPMailer 7.2.0 library pack is now in the GitHub release \"libraries\" – existing installations see it\n  under Update → Libraries."
+  },
+  {
+   "version": "0.8.1257",
+   "title": "PHPMailer 7.2.0",
+   "text": "- PHPMailer 7.1.1 → 7.2.0 (library pack). Fixes only: an XOAUTH2 login with a long token could be reported as successful\n  when it had failed, long address lines are folded correctly, S/MIME signed messages no longer contain bare line feeds,\n  no QUIT while DATA is being sent. nuBuilder Next uses none of the parts 7.2.0 deprecates. New installations get 7.2.0\n  from nunext.zip; existing ones see it under Update → Libraries once the pack is in the GitHub release \"libraries\"\n  (pack and new index given to the owner to upload there)."
+  },
+  {
+   "version": "0.8.1256",
+   "title": "Sample data: change history",
+   "text": "- Sample data: every sample has a tab \"Changes\" with the history of its versions, newest first – the versions not installed yet\n  are marked \"New\". When a sample is out of date, the Overview tab lists what Refresh brings (the versions after the installed\n  one). The history is written in English, like the changelog."
+  },
+  {
+   "version": "0.8.1255",
+   "title": "Procedure editor tools in one row on phones",
+   "text": "- Procedures on phones: the editor tools, the insert button {*} and the # button stay in one row on a 360 px wide screen\n  (narrower buttons and smaller gaps below 576 px); the # button no longer wraps onto a line of its own."
+  },
+  {
+   "version": "0.8.1254",
+   "title": "Procedures list: search the code too",
+   "text": "- Procedures list: a box \"Code\" in the search field also searches the PHP and JavaScript of the procedures (off by default;\n  ticking it searches again, sorting and paging keep it). Without it the search looks at code, description, group, category\n  and launch form as before. Other system lists can get such optional search columns the same way."
+  },
+  {
+   "version": "0.8.1253",
+   "title": "File Manager editor without on-screen keyboard",
+   "text": "- File Manager: a file opened in the editor no longer takes the focus by itself on phones and tablets, so the on-screen keyboard\n  only comes up when you tap into the text. With a mouse or trackpad the editor is focused as before. Also in the File Manager\n  for nuBuilder Forte."
+  },
+  {
+   "version": "0.8.1252",
+   "title": "Notes",
+   "text": "- Notes for development: the TCPDF 7.0.24 library pack is in the GitHub release \"libraries\". No change to the application."
+  },
+  {
+   "version": "0.8.1251",
+   "title": "TCPDF 7.0.24 pack",
+   "text": "- Library pack TCPDF 7.0.24 (tc-lib-pdf 8.84.1) for the GitHub release \"libraries\". Fixes of 7.0.23 / 7.0.24: PDF/A documents and\n  the sRGB mode no longer fail with \"Unable to read sRGB.icc.z\" when TCPDF is installed with Composer (as in the pack); fonts that\n  are not in a custom font folder are still found in the bundled font packages. Reports tested with the pack: pictures, rich text,\n  group headers, reports with AI. No change to nuBuilder Next itself."
+  },
+  {
+   "version": "0.8.1250",
+   "title": "Delete access levels used only by expired users",
+   "text": "- Access levels: a level that only expired users still have can be deleted. Delete is blocked only by active users –\n  the level is their main level, or a still valid additional level. The confirmation says how many expired users will be\n  left without an access level; their user form asks for a new level if one of them is reactivated. Additional\n  assignments of the level that ended or belong to expired users are removed with it. The same rule applies to\n  DELETE /v1/access-levels/{id} of the REST API. Logged with the users left without a level."
+  },
+  {
+   "version": "0.8.1249",
+   "title": "Notes",
+   "text": "- Development notes: v0.8.1248 recorded as the last published GitHub release."
   },
   {
    "version": "0.8.1248",
@@ -9208,7 +9278,7 @@
   ],
   "js_deprecated": []
  },
- "last_gate": "0.8.1248",
+ "last_gate": "0.8.1262",
  "gated": true,
  "requires_libs": {
   "tcpdf": {
@@ -9232,5 +9302,5 @@
    "needed": false
   }
  },
- "signature": "RW97hYmw0wrOt8UhGcm/qe/bbziAoUBwgz4PjrN+D42Q9IvRQS3JkoagzNyXr72/IyyuWK3g1ltHuDAVLyJhBw=="
+ "signature": "NZkcpgIS6YJ+NeGRHMgG3OCpXT41W0pGNDvm40qUUUlPCIHmu31xzEGj7UH2HGGMxVJ8hVs9rfqBIdrFxJgdDg=="
 }

@@ -60,7 +60,7 @@ $salesUsers = [['sample_anna', 'sample_viewer', t('smp_u_viewer')], ['sample_ben
 	['sample_dario', 'sample_sales', t('smp_u_sales')], ['sample_eva', 'sample_secure', t('smp_u_secure')]];
 $samples['sales'] = ['title' => t('smp_sales_title'), 'icon' => 'cart3', 'intro' => t('smp_intro'), 'st' => $st, 'pw' => $pw, 'users' => $salesUsers,
 	'counts' => $st['installed'] ? t('smp_counts', $st['counts']['users'], $st['counts']['access'], $st['counts']['forms'], $st['counts']['objects'], $st['counts']['php'], $st['counts']['formats']) : '',
-	'open' => nu_url('form', ['f' => NuSample::fid(NuSample::HOME)]), 'more' => t('smp_more'), 'set' => ''];
+	'open' => nu_url('form', ['f' => NuSample::fid(NuSample::HOME)]), 'more' => t('smp_more'), 'set' => '', 'changes' => NuSample::CHANGES];
 $errors = [];
 foreach (NuSampleSet::keys() as $key) {
 	try { $ss = NuSampleSet::status($key); $def = NuSampleSet::definition($key); } catch (Throwable $e) { $errors[] = $e->getMessage(); continue; }
@@ -71,6 +71,7 @@ foreach (NuSampleSet::keys() as $key) {
 	$samples[$key] = ['title' => t('smp_' . $key . '_title'), 'icon' => ['ticket' => 'headset'][$key] ?? 'box-seam', 'intro' => t('smp_' . $key . '_intro'), 'st' => $ss,
 		'pw' => $setPw[$key] ?? [], 'users' => $users, 'open' => nu_url('form', ['f' => (string)$def['home']]), 'more' => t('smp_' . $key . '_more'), 'set' => $key,
 		'project' => $ss['project'] !== '' && NuProject::canView() ? nu_url('projects', ['id' => $ss['project']]) : '',
+		'changes' => array_combine(array_map('intval', array_keys((array)($def['changes'] ?? []))), array_values((array)($def['changes'] ?? []))),
 		'counts' => $ss['installed'] ? t('smp_set_counts', $ss['counts']['users'], $ss['counts']['access'], $ss['counts']['forms'], $ss['counts']['objects'], $ss['counts']['templates'], $ss['counts']['dashboards']) : ''];
 }
 $sel = is_string($_GET['s'] ?? null) && isset($samples[$_GET['s']]) ? (string)$_GET['s'] : (string)array_key_first($samples);
@@ -80,6 +81,18 @@ $badge = static function (array $st, string $extra = ''): string {
 	if ($out) return '<span class="badge text-bg-warning' . $extra . '">' . h(t('smp_outdated', $st['version'], $st['current'])) . '</span>';
 	if ($st['installed']) return '<span class="badge text-bg-success' . $extra . '">' . h(t('smp_is_installed', $st['version'])) . '</span>';
 	return '<span class="badge text-bg-secondary' . $extra . '">' . h(t('smp_not_installed')) . '</span>';
+};
+// change history of a sample (0.8.1256): versions newest first; $since > 0 = only the versions after it (what a refresh brings), marked New
+$history = static function (array $changes, int $installed, int $since = 0): string {
+	krsort($changes);
+	$out = '';
+	foreach ($changes as $v => $text) {
+		if ($since > 0 && $v <= $since) continue;
+		$new = $installed > 0 && $v > $installed;
+		$out .= '<li class="smpChg' . ($new ? ' smpChgNew' : '') . '" data-v="' . (int)$v . '"><span class="smpChgV">' . h(t('smp_version_n', $v)) . '</span>'
+			. ($new ? ' <span class="badge text-bg-warning smpChgBadge">' . h(t('smp_chg_new')) . '</span>' : '') . ' <span class="smpChgText">' . h((string)$text) . '</span></li>';
+	}
+	return $out === '' ? '' : '<ul class="list-unstyled mb-0 smpChanges">' . $out . '</ul>';
 };
 $hidden = static fn(string $key): string => $key !== '' ? '<input type="hidden" name="set" value="' . h($key) . '">' : '';
 
@@ -131,7 +144,7 @@ nu_layout_start(t('smp_title'), 'home');
 				<?php if ($s['blocking']): ?><div class="alert alert-warning small"<?= $set === '' ? ' id="smpBlocking"' : '' ?>><?= h(t('smp_err_blocking', implode(', ', $s['blocking']))) ?></div><?php endif; ?>
 				<?php if ($s['leftovers'] && !$s['installed']): ?><div class="alert alert-warning small"><?= h(t('smp_leftovers')) ?></div><?php endif; ?>
 				<ul class="nav nav-tabs mb-3" role="tablist">
-				<?php foreach (['overview', 'contents', 'logins', 'maint'] as $tb): ?>
+				<?php foreach (['overview', 'contents', 'logins', 'changes', 'maint'] as $tb): ?>
 					<li class="nav-item" role="presentation"><button class="nav-link<?= $tb === $tab ? ' active' : '' ?>" type="button" role="tab" data-bs-toggle="tab" data-bs-target="#<?= $tid . $tb ?>"
 						id="<?= $tid . $tb ?>_tab" aria-controls="<?= $tid . $tb ?>" aria-selected="<?= $tb === $tab ? 'true' : 'false' ?>"><?= h(t('smp_tab_' . $tb)) ?><?php if ($tb === 'logins'): ?> <span class="badge rounded-pill text-bg-light border"><?= count($x['users']) ?></span><?php endif; ?></button></li>
 				<?php endforeach; ?>
@@ -140,6 +153,12 @@ nu_layout_start(t('smp_title'), 'home');
 					<div class="tab-pane fade<?= $tab === 'overview' ? ' show active' : '' ?>" id="<?= $tid ?>overview" role="tabpanel" aria-labelledby="<?= $tid ?>overview_tab" tabindex="0">
 						<p class="mb-2"><?= h($x['intro']) ?></p>
 						<?php if ($x['counts'] !== ''): ?><p class="small text-body-secondary mb-0"><?= h($x['counts']) ?></p><?php endif; ?>
+						<?php if ($out && ($new = $history($x['changes'], $s['version'], $s['version'])) !== ''): // what a refresh brings (0.8.1256) ?>
+						<div class="alert alert-warning small mt-3 mb-0 smpWhatsNew"><div class="fw-semibold mb-1"><i class="bi bi-stars me-1" aria-hidden="true"></i><?= h(t('smp_chg_since', $s['version'], $s['current'])) ?></div><?= $new ?></div>
+						<?php endif; ?>
+					</div>
+					<div class="tab-pane fade" id="<?= $tid ?>changes" role="tabpanel" aria-labelledby="<?= $tid ?>changes_tab" tabindex="0">
+						<?= $history($x['changes'], $s['installed'] ? $s['version'] : 0) ?: '<p class="small text-body-secondary mb-0">' . h(t('smp_chg_none')) . '</p>' ?>
 					</div>
 					<div class="tab-pane fade" id="<?= $tid ?>contents" role="tabpanel" aria-labelledby="<?= $tid ?>contents_tab" tabindex="0">
 						<div class="row g-4 small"<?= $set === '' ? ' id="smpContents"' : '' ?>>

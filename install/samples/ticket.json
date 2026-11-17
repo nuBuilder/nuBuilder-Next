@@ -4,6 +4,18 @@
     "prefix": "tkt_",
     "home": "tkthome",
     "date_ref": "2026-10-29",
+    "changes": {
+        "10": "The subject of a ticket suggests the subjects of earlier tickets while typing.",
+        "9": "Calendars: the tickets list has a calendar view by due date, the category form a calendar of its tickets, the support dashboard a \"Due dates\" calendar.",
+        "8": "Three shared pivots of the tickets list: by category and status, workload per agent, due tickets per month.",
+        "7": "Help pages for the users of the sample (support desk, tickets, handling a ticket, knowledge base, categories), with parts per role and a German translation; field labels of the audit columns in English.",
+        "6": "Comes with the project \"Ticket system\": its forms, procedures, report, e-mail templates and help pages, notes and to-dos.",
+        "5": "The PHP code of the procedures and form hooks is formatted (one statement per line).",
+        "4": "The tickets list no longer uses table aliases in its columns, so nuBuilder Forte shows it too; filters for assigned to and requester, overdue due dates as a red badge.",
+        "3": "Lists as a showcase: badges, filters and an overdue rule in the tickets list; \"What to look at\" on the start form.",
+        "2": "Tickets list with filters for category, priority and status and coloured badges; attachments on their own tab; dashboard rows open the ticket in a new tab.",
+        "1": "First version of the ticket system sample."
+    },
     "tables": {
         "tkt_attachment": {
             "columns": [

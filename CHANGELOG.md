@@ -3,6 +3,77 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1262 – Release gate
+- Release gate. Documentation checked page by page against the application: every page's buttons, fields and menus compared with
+  its help page, and every menu path and label named in the help and the tutorial compared with the texts of the application.
+  Corrected: the tutorial's drafts lesson (the Changes button of the design bar, Publish with one click or with a note, the
+  preview from the forms list), the names "On click" of list columns, "Use the answer" of help pages with AI and "Copy" of the
+  print view; feature list and open checks brought up to date.
+
+## 0.8.1261 – Procedure tools on phones: one size
+- Procedure editor on phones: the toolbar buttons, the Insert menu and # are one size again (26 px each) and still fit in one row
+  on a 360 px screen – 0.8.1255 had made them slightly different widths. Documentation checked page by page against the
+  application and the tutorial (see the next release).
+
+## 0.8.1260 – Global code: full screen shows only the code
+- Global code: full screen of a code editor shows only the toolbar and the code – the description above it (what the tab is for)
+  and the "Runs on" switches of Global JS / CSS are hidden while it lasts and come back when it ends.
+
+## 0.8.1259 – Record pages without a load flash
+- Record pages no longer flash while they load: the tabs' contents stay hidden until the form's code (nuOnLoad) has run and the
+  layout is done, then appear at once. On phones the fields no longer show for a moment at their desktop positions before they
+  are put below each other, and objects the form's code hides or moves no longer appear briefly. If the page's scripts fail,
+  the record still appears after 3 seconds.
+
+## 0.8.1258 – Notes: PHPMailer pack published
+- Notes only: the PHPMailer 7.2.0 library pack is now in the GitHub release "libraries" – existing installations see it
+  under Update → Libraries.
+
+## 0.8.1257 – PHPMailer 7.2.0
+- PHPMailer 7.1.1 → 7.2.0 (library pack). Fixes only: an XOAUTH2 login with a long token could be reported as successful
+  when it had failed, long address lines are folded correctly, S/MIME signed messages no longer contain bare line feeds,
+  no QUIT while DATA is being sent. nuBuilder Next uses none of the parts 7.2.0 deprecates. New installations get 7.2.0
+  from nunext.zip; existing ones see it under Update → Libraries once the pack is in the GitHub release "libraries"
+  (pack and new index given to the owner to upload there).
+
+## 0.8.1256 – Sample data: change history
+- Sample data: every sample has a tab "Changes" with the history of its versions, newest first – the versions not installed yet
+  are marked "New". When a sample is out of date, the Overview tab lists what Refresh brings (the versions after the installed
+  one). The history is written in English, like the changelog.
+
+## 0.8.1255 – Procedure editor tools in one row on phones
+- Procedures on phones: the editor tools, the insert button {*} and the # button stay in one row on a 360 px wide screen
+  (narrower buttons and smaller gaps below 576 px); the # button no longer wraps onto a line of its own.
+
+## 0.8.1254 – Procedures list: search the code too
+- Procedures list: a box "Code" in the search field also searches the PHP and JavaScript of the procedures (off by default;
+  ticking it searches again, sorting and paging keep it). Without it the search looks at code, description, group, category
+  and launch form as before. Other system lists can get such optional search columns the same way.
+
+## 0.8.1253 – File Manager editor without on-screen keyboard
+- File Manager: a file opened in the editor no longer takes the focus by itself on phones and tablets, so the on-screen keyboard
+  only comes up when you tap into the text. With a mouse or trackpad the editor is focused as before. Also in the File Manager
+  for nuBuilder Forte.
+
+## 0.8.1252 – Notes
+- Notes for development: the TCPDF 7.0.24 library pack is in the GitHub release "libraries". No change to the application.
+
+## 0.8.1251 – TCPDF 7.0.24 pack
+- Library pack TCPDF 7.0.24 (tc-lib-pdf 8.84.1) for the GitHub release "libraries". Fixes of 7.0.23 / 7.0.24: PDF/A documents and
+  the sRGB mode no longer fail with "Unable to read sRGB.icc.z" when TCPDF is installed with Composer (as in the pack); fonts that
+  are not in a custom font folder are still found in the bundled font packages. Reports tested with the pack: pictures, rich text,
+  group headers, reports with AI. No change to nuBuilder Next itself.
+
+## 0.8.1250 – Delete access levels used only by expired users
+- Access levels: a level that only expired users still have can be deleted. Delete is blocked only by active users –
+  the level is their main level, or a still valid additional level. The confirmation says how many expired users will be
+  left without an access level; their user form asks for a new level if one of them is reactivated. Additional
+  assignments of the level that ended or belong to expired users are removed with it. The same rule applies to
+  DELETE /v1/access-levels/{id} of the REST API. Logged with the users left without a level.
+
+## 0.8.1249 – Notes
+- Development notes: v0.8.1248 recorded as the last published GitHub release.
+
 ## 0.8.1248 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, OWASP ZAP). Documentation, tutorial, FEATURES.md
   and the open points (TODO.md) brought up to date first.

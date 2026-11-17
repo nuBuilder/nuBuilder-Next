@@ -18800,6 +18800,210 @@ T.start_page_forte = async (s) => {
 };
 
 // keep this test LAST (also after tests defined below the runner): it signs the shared globeadmin page out (tests added after it failed at the gate 0.8.1216)
+T.file_manager_edit_nokbd = async (s) => {
+	// 0.8.1253: opening a file in the editor focuses it only with a real keyboard – on a phone no on-screen keyboard pops up
+	if (!SITE) return 'skip';
+	const ga = s.ga;
+	let made = false, file = '', ctx = null;
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		const dir = set.shares.find(x => x.id === 'uploads').path;
+		fs.mkdirSync(dir, { recursive: true });
+		file = path.join(dir, 'e2e_edit_nokbd.txt');
+		fs.writeFileSync(file, 'hello\n');
+		const edit = async (pg, tap) => {
+			await open(pg, 'index.php?p=filemanager');
+			await pg.waitForSelector('#nufCrumbs', { state: 'attached' });
+			await pg.goto(pg.url().split('#')[0] + '#/uploads/');
+			await pg.reload(); await pg.waitForLoadState('networkidle');
+			const row = pg.locator('tbody tr', { hasText: 'e2e_edit_nokbd' }).first();
+			await row.waitFor();
+			await row.locator('.nuf-c-size').dblclick();
+			await pg.waitForSelector('#nufEditor.show');
+			await pg.waitForTimeout(700);
+			const r = await pg.evaluate(() => ({ inEditor: !!document.activeElement && !!document.activeElement.closest('#nufEditor .CodeMirror'), tag: document.activeElement && document.activeElement.className }));
+			await pg.keyboard.press('Escape').catch(() => {});
+			return r;
+		};
+		ctx = await ga.context().browser().newContext({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, storageState: await ga.context().storageState() });
+		const ph = await ctx.newPage();
+		const phone = await edit(ph);
+		expect(!phone.inEditor, 'phone: the editor took the focus (on-screen keyboard): ' + JSON.stringify(phone));
+		const desk = await edit(ga);
+		expect(desk.inEditor, 'desktop: the editor did not take the focus: ' + JSON.stringify(desk));
+		s.result = { phone, desk };
+	} finally {
+		if (ctx) await ctx.close();
+		if (file) fs.rmSync(file, { force: true });
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
+T.procedures_search_code = async (s) => {
+	// 0.8.1254: the procedures list searches the PHP / JavaScript code only when the box "Code" in the search field is ticked
+	const p = s.ga;
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_psc'");
+	sql("INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_javascript) VALUES ('e2e_psc', 'e2e_psc', 'E2E code search', 'echo \"zqxCodeToken\";', 'var jsOnlyTok = 1;')");
+	try {
+		const rows = () => p.evaluate(() => [...document.querySelectorAll('.nuListCard tbody tr')].filter(r => /e2e_psc/.test(r.textContent)).length);
+		await open(p, 'index.php?p=procedures&q=zqxCodeToken');
+		expect(await p.locator('.nuListSearch .nuSearchExtra input[name=qc]').count() === 1, 'no Code box in the search field');
+		expect(!(await p.locator('input[name=qc]').isChecked()), 'Code box ticked by default');
+		expect(await rows() === 0, 'code found without the box');
+		await p.locator('input[name=qc]').check();
+		await p.waitForFunction(() => /[?&]qc=1/.test(location.search) && !document.querySelector('.nuLvLoading'), null, { timeout: 15000 });
+		await p.waitForFunction(() => [...document.querySelectorAll('.nuListCard tbody tr')].some(r => /e2e_psc/.test(r.textContent)), null, { timeout: 10000 }).catch(() => {});
+		expect(await rows() === 1, 'PHP code not found with the box: ' + p.url());
+		await open(p, 'index.php?p=procedures&qc=1&q=jsOnlyTok');
+		expect(await rows() === 1, 'JavaScript not found with the box');
+		const sortHref = await p.locator('.nuListCard thead a[href*="sort="]').first().getAttribute('href');
+		expect(/qc=1/.test(sortHref || ''), 'sort link drops the box: ' + sortHref);
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_psc'");
+	}
+};
+
+T.proc_tools_one_row_phone = async (s) => {
+	// 0.8.1255: on a 360 px phone the procedure editor's tools, {*} and # stay in one row
+	const p = s.ga, vp = p.viewportSize();
+	try {
+		await p.setViewportSize({ width: 360, height: 780 });
+		await open(p, 'index.php?p=procedures&id=new');
+		const tops = await p.evaluate(() => [...document.querySelector('.procCodeTools[data-for=sph_php]').children].map(c => Math.round(c.getBoundingClientRect().top)));
+		expect(tops.length === 3 && tops.every(t => t === tops[0]), 'tools wrap: ' + JSON.stringify(tops));
+	} finally { await p.setViewportSize(vp); }
+};
+
+T.sample_changes = async (s) => {
+	// 0.8.1256: Sample data shows the change history of each sample (tab Changes) and, when outdated, what Refresh brings
+	const p = s.ga;
+	const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplehome'");
+	if (!fid) { s.skip = 'no sales sample'; return; }
+	const json0 = sql("SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplehome'");
+	const q = (v) => "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "''") + "'";
+	const j = JSON.parse(json0); const cur = j.nunext.sample.version;
+	j.nunext.sample.version = cur - 3;
+	sql('UPDATE zzzzsys_form SET sfo_json = ' + q(JSON.stringify(j)) + " WHERE zzzzsys_form_id = 'samplehome'");
+	try {
+		await open(p, 'index.php?p=sample&s=sales');
+		const r = await p.evaluate(() => ({
+			whats: [...document.querySelectorAll('#smpSet_sales .smpWhatsNew .smpChg')].map(li => +li.dataset.v),
+			all: document.querySelectorAll('#smp_sales_changes .smpChg').length,
+			newBadges: document.querySelectorAll('#smp_sales_changes .smpChgNew').length,
+			tab: !!document.getElementById('smp_sales_changes_tab'),
+			ticketTab: document.querySelectorAll('#smp_ticket_changes .smpChg').length,
+		}));
+		expect(r.tab, 'no Changes tab');
+		expect(JSON.stringify(r.whats) === JSON.stringify([cur, cur - 1, cur - 2]), 'what Refresh brings: ' + JSON.stringify(r.whats));
+		expect(r.all >= 20 && r.newBadges === 3, 'history: ' + JSON.stringify(r));
+		expect(r.ticketTab >= 10, 'ticket sample history missing: ' + r.ticketTab);
+		s.result = r;
+	} finally {
+		sql('UPDATE zzzzsys_form SET sfo_json = ' + q(json0) + " WHERE zzzzsys_form_id = 'samplehome'");
+	}
+};
+
+// 0.8.1259: a record page keeps its panes hidden until nuNextStart ran the form's code and the phone layout – objects the code hides
+// (and the desktop positions of a phone's stacked layout) do not flash up for a moment
+T.edit_js_wait = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const id = sql('SELECT sample_customer_id FROM sample_customer ORDER BY 1 LIMIT 1');
+	if (!id) { s.skip = 'no sample data'; return; }
+	const url = BASE + 'index.php?p=form&f=' + F + '&r=' + id;
+	await open(p, 'index.php?p=form&f=' + F + '&r=' + id);
+	const st = await p.evaluate(() => { const t = document.querySelector('#nuEditForm .tab-content'); return { wait: t.classList.contains('nuEditJsWait'), vis: getComputedStyle(t).visibility }; });
+	expect(!st.wait && st.vis === 'visible', 'shown after the form code: ' + JSON.stringify(st));
+	// phone: the first frame the page shows already has the stacked layout – the panes are hidden while the desktop positions apply
+	const ctx = await p.context().browser().newContext({ storageState: await p.context().storageState(), viewport: { width: 390, height: 800 }, isMobile: true, hasTouch: true });
+	const q = await ctx.newPage();
+	await q.addInitScript(() => {
+		window.__seen = [];
+		const look = () => {
+			const t = document.querySelector('#nuEditForm .tab-content');
+			if (t && getComputedStyle(t).visibility === 'visible') window.__seen.push(document.documentElement.classList.contains('nuPhoneStack') ? 'stack' : 'desktop');
+			if (!window.__done) requestAnimationFrame(look);
+		};
+		requestAnimationFrame(look);
+	});
+	await q.goto(url); await q.waitForTimeout(1200);
+	const seen = await q.evaluate(() => { window.__done = true; return window.__seen; });
+	expect(seen.length > 0 && !seen.includes('desktop'), 'phone frames: ' + [...new Set(seen)].join(','));
+	await ctx.close();
+	// without the runtime the panes are hidden at first, shown after 3 s by the CSS fallback (own context: no cached nuruntime.js)
+	const ctx2 = await p.context().browser().newContext({ storageState: await p.context().storageState() });
+	const r = await ctx2.newPage();
+	await r.route(/nuruntime\.js/, (x) => x.abort());
+	await r.goto(url);
+	const v0 = await r.evaluate(() => getComputedStyle(document.querySelector('#nuEditForm .tab-content')).visibility);
+	await r.waitForTimeout(3500);
+	const v1 = await r.evaluate(() => getComputedStyle(document.querySelector('#nuEditForm .tab-content')).visibility);
+	await ctx2.close();
+	expect(v0 === 'hidden' && v1 === 'visible', 'fallback: ' + v0 + ' → ' + v1);
+};
+
+// 0.8.1260: Global code – full screen of an editor hides the description and the "Runs on" switches above it
+T.globalcode_full_hides_hint = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=globalcode&tab=gjs');
+	await p.waitForSelector('#scodePane-gjs .nuCtFull', {timeout: 8000});
+	const vis = () => p.evaluate(() => { const pn = document.getElementById('scodePane-gjs'); const v = (sel) => { const e = pn.querySelector(sel); return !!e && e.offsetParent !== null; };
+		return { hint: v('.scodeHint'), scope: v('.scodeScope'), full: pn.classList.contains('nuCodeFull'), cm: (pn.querySelector('.CodeMirror') || {}).offsetHeight || 0 }; });
+	const a = await vis();
+	expect(a.hint && a.scope && !a.full, 'before: ' + JSON.stringify(a));
+	await p.click('#scodePane-gjs .nuCtFull'); await p.waitForTimeout(300);
+	const b = await vis();
+	expect(b.full && !b.hint && !b.scope && b.cm > a.cm, 'full screen: ' + JSON.stringify(b));
+	await p.click('#scodePane-gjs .nuCtFull'); await p.waitForTimeout(300);
+	const c = await vis();
+	expect(!c.full && c.hint && c.scope, 'after: ' + JSON.stringify(c));
+};
+
+T.access_delete_expired = async (s) => {
+	// 0.8.1250: expired users do not block deleting an access level; their level is emptied, extra assignments go with it
+	const p = s.ga;
+	const del = () => sql(`DELETE FROM zzzzsys_user WHERE zzzzsys_user_id IN ('e2e_ad_u1', 'e2e_ad_u2'); DELETE FROM zzzzsys_access WHERE zzzzsys_access_id = 'e2e_ad_lvl';
+		DELETE FROM zzzzsys_nunext_user_access WHERE zzzzsys_nunext_user_access_id = 'e2e_ad_x1'`);
+	del();
+	const other = sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id <> 'e2e_ad_lvl' ORDER BY zzzzsys_access_id LIMIT 1");
+	sql(`INSERT INTO zzzzsys_access (zzzzsys_access_id, sal_code, sal_description) VALUES ('e2e_ad_lvl', 'e2eAdLvl', 'E2E delete');
+		INSERT INTO zzzzsys_user (zzzzsys_user_id, sus_zzzzsys_access_id, sus_name, sus_login_name, sus_expires_on) VALUES
+		('e2e_ad_u1', 'e2e_ad_lvl', 'AD 1', 'e2e_ad_u1', NULL), ('e2e_ad_u2', '${other}', 'AD 2', 'e2e_ad_u2', NULL)`);
+	sql("INSERT INTO zzzzsys_nunext_user_access (zzzzsys_nunext_user_access_id, user_id, access_id, valid_until) VALUES ('e2e_ad_x1', 'e2e_ad_u2', 'e2e_ad_lvl', '2020-01-01')");
+	try {
+		await open(p, 'index.php?p=accesslevel&id=e2e_ad_lvl');
+		expect(await p.locator('.nuBtnDel.nuBtnBlocked').count() === 1, 'Delete not blocked while an active user has the level');
+		expect(/1 active user/.test(await p.getAttribute('.nuBtnDel.nuBtnBlocked', 'title')), 'reason: ' + await p.getAttribute('.nuBtnDel.nuBtnBlocked', 'title'));
+		sql("UPDATE zzzzsys_user SET sus_expires_on = DATE_SUB(CURDATE(), INTERVAL 2 DAY) WHERE zzzzsys_user_id = 'e2e_ad_u1'");
+		await open(p, 'index.php?p=accesslevel&id=e2e_ad_lvl');
+		expect(await p.locator('.nuBtnDel.nuBtnBlocked').count() === 0, 'expired user (and an ended extra level) still block Delete');
+		const conf = await p.locator('input[name=action][value=delete]').evaluate(i => i.form.getAttribute('data-confirm'));
+		expect(/1 expired user/.test(conf), 'confirmation names the expired users: ' + conf);
+		await p.click('button.nuBtnDel[type=submit]');
+		await p.waitForSelector('#nuConfirm.show .js-confirm-ok');
+		await Promise.all([p.waitForNavigation(), p.click('#nuConfirm.show .js-confirm-ok')]);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = 'e2e_ad_lvl'") === '0', 'level not deleted');
+		expect(sql("SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = 'e2e_ad_u1'") === '', 'expired user still points at the level');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_user_access WHERE access_id = 'e2e_ad_lvl'") === '0', 'extra assignment left behind');
+		expect(sql("SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = 'e2e_ad_u2'") === other, 'other user changed');
+		// the user form asks for a level again (required field, empty)
+		await open(p, 'index.php?p=user&id=e2e_ad_u1');
+		expect(await p.locator('#sus_zzzzsys_access_id').evaluate(e => e.value === '' && e.required && e.validity.valueMissing), 'user form would save without an access level');
+		s.result = { conf };
+	} finally {
+		del();
+	}
+};
+
 T.logout = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=home&tiles=1');

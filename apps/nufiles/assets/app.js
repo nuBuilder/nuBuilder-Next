@@ -1069,6 +1069,14 @@
 		return 'text/plain';
 	}
 
+	// a real keyboard (mouse / trackpad, not a phone or small tablet): only then the editor takes the focus by itself – on a touch
+	// screen the focus would open the on-screen keyboard over the file (same test as nuBuilder Next's nuHasKeyboard)
+	function hasKeyboard() {
+		if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return false;
+		var touch = (navigator.maxTouchPoints || 0) > 0 || matchMedia('(any-pointer: coarse)').matches;
+		return !(touch && Math.min(screen.width || 9999, screen.height || 9999) < 820);
+	}
+
 	function editor(share, p) {
 		api('read', {share: share.id, path: p}).then(function (d) {
 			if (!d.text) {
@@ -1089,7 +1097,7 @@
 				});
 				ed.cm.on('changes', editorState);
 				ed.cm.on('cursorActivity', function () { var c = ed.cm.getCursor(); $('nufEditorPos').textContent = (c.line + 1) + ':' + (c.ch + 1); });
-				$('nufEditor').addEventListener('shown.bs.modal', function () { ed.cm.refresh(); ed.cm.focus(); });
+				$('nufEditor').addEventListener('shown.bs.modal', function () { ed.cm.refresh(); if (hasKeyboard()) ed.cm.focus(); });
 				try { $('nufWrap').checked = localStorage.getItem('nufWrap') === '1'; } catch (e) { /* none */ }
 				ed.cm.setOption('lineWrapping', $('nufWrap').checked);
 			}
@@ -1155,7 +1163,7 @@
 				var line = e.data.lint && e.data.lint.line ? e.data.lint.line : 0;
 				if (line > 0) { ed.cm.setCursor({line: line - 1, ch: 0}); ed.cm.scrollIntoView(null, 120); }
 				dialog({title: t('lint_title'), text: e.message, buttons: [{label: t('cancel'), value: false}, {label: t('save_anyway'), value: true, cls: 'btn-warning'}]})
-					.then(function (v) { if (v === true) save(force, true); else ed.cm.focus(); });
+					.then(function (v) { if (v === true) save(force, true); else if (hasKeyboard()) ed.cm.focus(); });
 			} else fail(e);
 		});
 	}

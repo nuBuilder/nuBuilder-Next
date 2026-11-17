@@ -43,7 +43,7 @@ curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/us
 <tr><td><code>POST /v1/users/{id}/login-link</code></td><td>users:login_link</td><td><code>{"minutes": 1440, "form_id": "…", "record_id": "…", "email": false}</code> → 201 <code>{"url": "…", "expires_at": "…Z" | null, "emailed": false}</code> – one-time login link (minutes 0 = no expiry); <code>DELETE</code> removes the user's token. Needs the save right on the user form.</td></tr>
 <tr><td><code>GET / PUT /v1/users/{id}/permissions</code></td><td>permissions:read / write</td><td><code>{"items": ["sample_discount", …]}</code> – the complete list</td></tr>
 <tr><th colspan="3">Access levels</th></tr>
-<tr><td><code>GET, POST /v1/access-levels</code>, <code>GET, PATCH, DELETE /v1/access-levels/{id}</code></td><td>access:read / write</td><td>code, description, group, home_form_id, use_2fa; DELETE only without users (<code>409</code>)</td></tr>
+<tr><td><code>GET, POST /v1/access-levels</code>, <code>GET, PATCH, DELETE /v1/access-levels/{id}</code></td><td>access:read / write</td><td>code, description, group, home_form_id, use_2fa; DELETE only without active users (<code>409</code>; expired users are left without a level)</td></tr>
 <tr><td><code>GET / PUT /v1/access-levels/{id}/forms</code></td><td>access:read / write</td><td><code>{"forms": [{"form_id": "nuuser", "add": true, "save": true, "delete": false, "clone": false, "new": true, "print": false}]}</code> – replaces the rights</td></tr>
 <tr><th colspan="3">Permission items</th></tr>
 <tr><td><code>GET, POST /v1/permission-items</code>, <code>GET, PATCH, DELETE /v1/permission-items/{id}</code></td><td>permissions:read / write</td><td>ident, group, description</td></tr>

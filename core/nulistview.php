@@ -384,15 +384,26 @@ final class NuListView
 		return $o;
 	}
 
+	/**
+	 * Optional extra search columns of a list (0.8.1254): NuListDefs key search_extra = [param, cols, label, short, icon] – a box in the
+	 * search field (param = '1') adds cols to the quick search (procedures: their PHP and JavaScript).
+	 */
+	private static function searchExtraOn(array $L): bool
+	{
+		return !empty($L['search_extra']['cols']) && (string)($_GET[$L['search_extra']['param']] ?? '') === '1';
+	}
+
 	/** Search, filters and sort of the request for this view: [from+where, params, order]. */
 	private static function query(array $L, array $view, array $sortCol): array
 	{
 		$where = $L['where'];
 		$params = $L['params'];
 		$q = trim((string)($_GET['q'] ?? ''));
+		$searchCols = $L['search'];
+		if (self::searchExtraOn($L)) $searchCols = array_merge($searchCols, $L['search_extra']['cols']);   // e.g. procedures: the code too (0.8.1254)
 		foreach (preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY) as $term) {
-			$where[] = '(' . implode(' OR ', array_map(static fn($c) => "$c LIKE ? ESCAPE '!'", $L['search'])) . ')';
-			array_push($params, ...array_fill(0, count($L['search']), NuDB::like($term)));
+			$where[] = '(' . implode(' OR ', array_map(static fn($c) => "$c LIKE ? ESCAPE '!'", $searchCols)) . ')';
+			array_push($params, ...array_fill(0, count($searchCols), NuDB::like($term)));
 		}
 		foreach ($L['filters'] as $k => $f) {
 			$w = self::filterWhere($f, self::filterValue($L, $view, $k));
@@ -546,6 +557,7 @@ final class NuListView
 		$keep = ['q' => trim((string)($_GET['q'] ?? '')), $vp => isset($_GET[$vp]) ? $view['id'] : null, 'per' => nu_per_param() ?: null,
 			'adv' => NuAdvSearch::encode(self::adv($L)) ?: null];   // advanced search (0.8.769)
 		foreach (array_keys($L['filters']) as $k) if (array_key_exists($k, $_GET)) $keep[$k] = (string)$_GET[$k];
+		if (self::searchExtraOn($L)) $keep[$L['search_extra']['param']] = '1';
 		$keepSort = $keep + (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []);
 
 		// Print / CSV: the view's columns in its order
@@ -654,7 +666,11 @@ final class NuListView
 			<?php // advanced search (0.8.769): ▾ in the search field opens the same panel as on form lists (assets/js/nu/nuadvsearch.js)
 			$advBtn = $advCols ? '<button class="btn btn-outline-secondary nuSearchBtn nuAdvBtn' . ($adv ? ' active' : '') . '" id="nuAdvButton" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="'
 				. h(t('as_title')) . '" aria-label="' . h(t('as_title')) . '"><i class="bi bi-chevron-down"></i></button><div class="dropdown-menu dropdown-menu-end p-3 nuAdvMenu" id="nuAdvPanel" aria-labelledby="nuAdvButton"></div>' : ''; ?>
-			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null, $advBtn) ?></div>
+			<?php // optional extra search columns (0.8.1254): a box inside the search field, sent with the search (changing it searches again)
+			$sx = $L['search_extra'] ?? null;
+			$extraBox = $sx ? '<label class="input-group-text nuSearchExtra" title="' . h((string)$sx['label']) . '"><input class="form-check-input mt-0 js-autosubmit" type="checkbox" name="' . h((string)$sx['param']) . '" value="1"'
+				. (self::searchExtraOn($L) ? ' checked' : '') . ' aria-label="' . h((string)$sx['label']) . '"><i class="bi ' . h((string)($sx['icon'] ?? 'bi-code-slash')) . ' ms-2" aria-hidden="true"></i><span class="d-none d-sm-inline ms-1">' . h((string)$sx['short']) . '</span></label>' : ''; ?>
+			<div class="col-md-6"><?= nu_list_search($keep['q'], (string)($L['search_ph'] ?? ''), $def['filters']['shown'] ? 'nuLvFilters' : '', $filtered, $hasQuery ? nu_url($route, $rp + ($keep[$vp] !== null ? [$vp => $view['id']] : [])) : null, $extraBox . $advBtn) ?></div>
 			<?php if ($def['filters']['shown']): $n = count($def['filters']['shown']); $colCls = $n === 1 ? 'col-12' : ($n === 2 ? 'col-sm-6' : 'col-sm-6 col-lg-4'); ?>
 			<?php // a view with open filters shows them from 768 px on (phones: folded, the funnel opens them – 0.8.761); a filter that is set keeps them open
 			$openMin = $def['open'] ? max(768, (int)($L['open_min'] ?? 768)) : (int)($L['open_min'] ?? 0);

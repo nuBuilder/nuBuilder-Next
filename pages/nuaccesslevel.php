@@ -18,23 +18,30 @@ if ($id !== '' && !$existing) {
 
 $userCount = $existing ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id]) : 0;
 $xaUsers = $existing ? NuUserAccess::usersOf($id) : [];          // users with this level as an additional one (0.8.585)
-$userCount += count($xaUsers);                                   // also blocks Delete
+$userCount += count($xaUsers);                                   // shown on the Users card
+// Delete is blocked only by users who can still sign in with this level (0.8.1250, the owner: option B) – expired users
+// do not block it; their main level is emptied, additional assignments of the level are removed (NuUserAccess::levelUse).
+$use = $existing ? NuUserAccess::levelUse($id) : ['active' => 0, 'expired' => []];
+$activeCount = $use['active'];
+$expiredMain = $use['expired'];
 
 // ------------------------------------------------------------------ delete (with child rows, like nuBuilder)
 if (nu_is_post() && nu_post('action') === 'delete') {
 	NuAcl::require(NuAcl::FORM_ACCESS, 'delete');
-	if ($userCount > 0) {
-		nu_flash('danger', t('access_err_in_use', $userCount));
+	if ($activeCount > 0) {
+		nu_flash('danger', t('access_err_in_use_active', $activeCount));
 		nu_redirect(nu_url('accesslevel', ['id' => $id]));
 	}
-	$db->transaction(static function (NuDB $db) use ($id) {
+	$emptied = $expiredMain;
+	$db->transaction(static function (NuDB $db) use ($id, $emptied) {
+		NuUserAccess::releaseLevel($db, $id, $emptied);
 		$db->delete('zzzzsys_access_form', 'slf_zzzzsys_access_id', $id);
 		$db->delete('zzzzsys_access_php', 'slp_zzzzsys_access_id', $id);
 		if ($db->tableExists('zzzzsys_access_report')) $db->delete('zzzzsys_access_report', 'sre_zzzzsys_access_id', $id);
 		$db->delete('zzzzsys_access', 'zzzzsys_access_id', $id);
 	});
 	if (NuHome::startMode($id) === 'form') NuHome::setStartMode($id, 'tiles');
-	NuLog::write('access_deleted', 'zzzzsys_access', $id, ['code' => $existing['sal_code']]);
+	NuLog::write('access_deleted', 'zzzzsys_access', $id, ['code' => $existing['sal_code']] + ($emptied ? ['users_without_level' => $emptied] : []));
 	nu_flash('success', t('access_deleted', $existing['sal_code']));
 	nu_redirect(nu_url('access'));
 }
@@ -302,10 +309,10 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 				<a class="btn nuBtnAct" href="<?= h(nu_url('accesslevel', ['clone' => $id])) ?>"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($rights['delete']): ?>
-				<form method="post" action="<?= h(nu_url('accesslevel', ['id' => $id])) ?>" data-confirm="<?= h(t('access_delete_confirm', $existing['sal_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+				<form method="post" action="<?= h(nu_url('accesslevel', ['id' => $id])) ?>" data-confirm="<?= h(t('access_delete_confirm', $existing['sal_code']) . ($expiredMain ? ' ' . t('access_delete_expired', count($expiredMain)) : '')) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 					<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
-					<?php if ($userCount): // still in use: the button says why instead of doing nothing ?>
-						<button class="btn nuBtnAct nuBtnDel nuBtnBlocked" type="button" title="<?= h(t('access_err_in_use', $userCount)) ?>" data-nu-info="<?= h(t('access_err_in_use', $userCount)) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+					<?php if ($activeCount): // still in use by users who can sign in: the button says why instead of doing nothing ?>
+						<button class="btn nuBtnAct nuBtnDel nuBtnBlocked" type="button" title="<?= h(t('access_err_in_use_active', $activeCount)) ?>" data-nu-info="<?= h(t('access_err_in_use_active', $activeCount)) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 					<?php else: ?>
 						<button class="btn nuBtnAct nuBtnDel" type="submit"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 					<?php endif; ?>

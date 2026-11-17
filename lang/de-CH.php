@@ -240,6 +240,7 @@ Oder von Hand aktualisieren: die Dateien aus nunext.zip über die alten hochlade
 	'ins_manual_config' => 'Die Datenbank ist bereit, aber nuconfig.php konnte nicht geschrieben werden. Den Inhalt unten als %s speichern (herunterladen oder kopieren) und auf «Erneut prüfen» klicken.',
 	'ins_libs_copy' => 'Ohne Internet – oder wenn PHP GitHub nicht über HTTPS erreicht (Erweiterungen openssl / curl, CA-Zertifikate in der php.ini) – Pakete nach %s kopieren (%s) und «Erneut suchen» anklicken.',
 	'ins_next_backup' => 'Eine Kopie von nuconfig.php aufbewahren und die Datenbank regelmässig sichern.',
+	'smp_chg_since' => 'Was «Aktualisieren» bringt (Version %d → %d):',
 	'smp_err_definition' => 'Die Beschreibung des Beispiels «%s» fehlt oder ist ungültig.',
 	'smp_pw_hint' => 'Werden nur jetzt angezeigt – bitte kopieren. «Neue Passwörter» erzeugt jederzeit neue.',
 	'smp_c_more' => 'Ausserdem',

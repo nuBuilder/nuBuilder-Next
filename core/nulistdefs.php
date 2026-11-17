@@ -7,7 +7,7 @@ defined('NU_ROOT') || exit;
  *
  * A list: key => [
  *   'title', 'route' (the page), 'form' (nuBuilder form whose rights apply), 'from' (FROM … JOIN …), 'where' / 'params' (always applied),
- *   'id' (SQL of the record id), 'link' => fn(row): url, 'search' => [SQL columns of the quick search], 'search_ph', 'open_min' (px: filters
+ *   'id' (SQL of the record id), 'link' => fn(row): url, 'search' => [SQL columns of the quick search], 'search_extra' => [param, cols, label, short, icon] (optional columns behind a box in the search field), 'search_ph', 'open_min' (px: filters
  *   shown at once from this width),
  *   'columns' => [key => [
  *       'label', 'select' => [alias => SQL] (columns the cell needs), 'sort' => SQL ("a, b" – the direction applies to each) or null,
@@ -608,6 +608,7 @@ final class NuListDefs
 			'from' => ' FROM ' . NuProcedure::TABLE . ' p LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = p.sph_zzzzsys_form_id', 'where' => [NuProcedure::listCondition('p')], 'params' => [],
 			'id' => 'p.zzzzsys_php_id', 'link' => static fn($r) => nu_url('procedures', ['id' => $r['__id']]),
 			'search' => ['p.sph_code', 'p.sph_description', 'p.sph_group', 'p.sph_category', 'f.sfo_code'], 'columns' => $cols, 'filters' => $filters,
+			'search_extra' => ['param' => 'qc', 'cols' => ['p.sph_php', 'p.sph_javascript'], 'label' => t('lv_search_code'), 'short' => t('lv_search_code_short'), 'icon' => 'bi-code-slash'],   // 0.8.1254
 			'builtin' => [
 				'default' => ['columns' => ['code', 'group', 'category', 'status', 'description', 'run', 'launch', 'access'], 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description', 'group']],
 					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group', 'status', 'category', 'run'], 'values' => ['origin' => 'own']]],   // category + run (0.8.688)

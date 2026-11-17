@@ -6018,6 +6018,7 @@
 		phoneStack();
 		if (N.mode === 'edit') fitWide();   // wide fixed-layout forms: page margins away while the form would scroll sideways (0.8.988)
 		if (N.mode === 'edit') growFrames();
+		$('#nuRECORD.nuEditJsWait').removeClass('nuEditJsWait');   // the record shown once the form's code and the layout ran (pages/nuform.php)
 		// first field gets the focus (mouse / trackpad only, see nuFocusFirst in assets/js/nuapp.js) – after nuOnLoad, which may set its own
 		// (in a popup yes, in an iframe object embedded in another form no – it would take the focus away from that form)
 		var embedded = false;

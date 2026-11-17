@@ -82,16 +82,17 @@ page) for how to use it.
   favourites as shortcuts, a faster start and a clear page when offline.
 - **Procedures by cron** – one command runs a procedure from the server's cron, as a chosen user, with a log entry and an
   e-mail when it fails.
+- **Procedures list searches the code** – tick *Code* in the search field to find procedures by their PHP or JavaScript.
 - **Suggestions while typing** – a text input offers a list (fixed, or the rows of a query with the typed text as a bound value) and a choice can fill other fields too; `nuNextAutocomplete()` in code, and a stand-in for jQuery UI's `autocomplete`.
 - **Projects** – group the forms, procedures, reports, tables and other parts of one piece of work, with "Suggest related",
   Markdown notes, to-dos with notifications, lists narrowed to the project, and export / import as one package.
 - **Cloners** – copy a single form or the whole application.
 - **Sample applications** – a sales application and a ticket system for a support desk (with its project and help pages
-  for its users per role), both built to learn from.
+  for its users per role), both built to learn from; the Sample data page shows what changed in each sample version.
 
 ## For administrators
 
-- **Users and rights** – access levels (also extra ones per user, with an end date), admin roles, permission items, custom
+- **Users and rights** – access levels (also extra ones per user, with an end date; a level whose users have all expired can be deleted), admin roles, permission items, custom
   user fields with worked-out defaults (dates, counters, templates, SQL, procedures); user import from CSV or Excel; welcome e-mails; password reset by the administrator without ever seeing a
   password; *Act as user* to see the application as a user does.
 - **Security** – login rate limit, password policy with a leaked-password check, sign-in only from allowed networks, field

@@ -134,9 +134,9 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settin
 		<?php foreach ($tabs as $k => [, $mode]): if (!isset($cols[$k])) continue; $global = $k === 'gjs' || $k === 'gcss'; ?>
 			<div class="tab-pane fade<?= $k === $scTab ? ' show active' : '' ?>" id="scodePane-<?= $k ?>" role="tabpanel" aria-labelledby="scodeTabBtn-<?= $k ?>" tabindex="0">
 				<div class="d-flex flex-wrap align-items-start gap-2 mb-2">
-					<p class="small text-body-secondary mb-0 scodeHint"><?= h(t('scode_hint_' . $k)) ?><?php if (!$global): $nbTip = t('scode_nb_field', ['header' => 'Header', 'style' => 'Style', 'include' => 'Include'][$k], NU_SETUP_CODE[$k] ?? $k); // nuBuilder's name of the field (0.8.525) ?>
+					<p class="small text-body-secondary mb-0 scodeHint nuCodeFullHide"><?= h(t('scode_hint_' . $k)) ?><?php if (!$global): $nbTip = t('scode_nb_field', ['header' => 'Header', 'style' => 'Style', 'include' => 'Include'][$k], NU_SETUP_CODE[$k] ?? $k); // nuBuilder's name of the field (0.8.525) ?>
 						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($nbTip) ?>" title="<?= h($nbTip) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?></p>
-					<div class="w-100" aria-hidden="true"></div>
+					<div class="w-100 nuCodeFullHide" aria-hidden="true"></div>
 					<span class="scodeTools d-flex gap-2" data-for="scode-<?= $k ?>"></span><?php // hint on its own line, the toolbar below it on the left, right above the editor (0.8.592) ?><?php // editor toolbar (0.8.554): undo / redo, search, comment, format, full screen – nucodetools.js ?>
 					<?php if ($canChange && !empty($tplData['tabs'][$k])): // templates (0.8.524, core/nucodetemplates.php): insert at the cursor or preview ?>
 						<div class="dropdown scodeTpl" data-tab="<?= $k ?>">
@@ -150,7 +150,7 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settin
 						<div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('scode_hook_clash', implode(', ', $clash))) ?></div>
 					<?php endif; ?>
 					<?php // where it runs – the same three switches on both global tabs, kept in step by nuglobalcode.js (only the first is sent) ?>
-					<fieldset class="scodeScope mb-2 d-flex flex-wrap align-items-center gap-3 small"<?= $canChange ? '' : ' disabled' ?>>
+					<fieldset class="scodeScope nuCodeFullHide mb-2 d-flex flex-wrap align-items-center gap-3 small"<?= $canChange ? '' : ' disabled' ?>>
 						<legend class="visually-hidden"><?= h(t('scode_scope')) ?></legend>
 						<span class="fw-semibold"><?= h(t('scode_scope')) ?>:</span>
 						<?php foreach (array_keys(NuCustomCode::SCOPES) as $sc): $sid = 'scodeScope-' . $k . '-' . $sc; ?>

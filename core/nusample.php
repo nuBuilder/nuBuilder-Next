@@ -16,7 +16,33 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 24;             // 24: three shared pivots of the orders list · 23: orders – the customer's name no longer runs into the label Status · 22: the PHP code of the procedures and form hooks formatted (as Format code does) · 21: Excel export – two procedures (built-in NuXlsx, PhpSpreadsheet with formulas and a chart) and their start tiles · 20: the code snippets get a scope ("Selectable in") · 19: lists as a showcase – badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form · 18: start tiles – own icons for the new-tab, procedure and report tiles (run buttons bring none any more), tiles wrap; all objects – headings and notes for the 13 px text of HTML objects · 17: international sample names · 16: all objects – tab Upload (Uppy, file system) · 15: start pages of users for sample_sales, sample_manager, sample_editor · 14: four dashboards (start page, customer form tab Statistics, start form with country filter) · 13: orders – more room below the items · 12: all objects – tabs Run / Subform and Charts / Miscellaneous split · 11: reports (PDF), SQL builder query, auto numbers · 2: neutral number formats · 3: hash cookie demo · 4: lookup After Browse with #ROW#, more hash variables · 5: permission items · 6: all objects – HTML no longer overlaps the image · 7: tab New features · 8: charts · 9: start form redesigned (tiles)
+	public const VERSION = 24;   // what each version changed: CHANGES (shown on the Sample data page, 0.8.1256)
+	/** Change history of the sample, newest first (English, like the changelog; shown on the Sample data page – 0.8.1256). Add a line with every new VERSION. */
+	public const CHANGES = [
+		24 => 'Three shared pivots of the orders list.',
+		23 => 'Orders: the customer\'s name no longer runs into the label Status.',
+		22 => 'The PHP code of the procedures and form hooks is formatted (one statement per line).',
+		21 => 'Excel export: two procedures (built-in Excel writer, and PhpSpreadsheet with formulas and a chart) and their start tiles.',
+		20 => 'The code snippets get a scope ("Selectable in").',
+		19 => 'Lists as a showcase: badges (design mode and nuBrowseStyleBadge rules), filters, a customer link in the orders list, "What to look at" on the start form.',
+		18 => 'Start tiles with their own icons for the new-tab, procedure and report tiles, tiles wrap; All objects: headings and notes for the text of HTML objects.',
+		17 => 'International sample names.',
+		16 => 'All objects: tab Upload (Uppy, file system).',
+		15 => 'Start pages of users for sample_sales, sample_manager and sample_editor.',
+		14 => 'Four dashboards: start page, customer form tab Statistics, start form with a country filter.',
+		13 => 'Orders: more room below the items.',
+		12 => 'All objects: tabs Run / Subform and Charts / Miscellaneous split.',
+		11 => 'Reports (PDF), an SQL builder query, auto numbers.',
+		9 => 'Start form redesigned with tiles.',
+		8 => 'Charts.',
+		7 => 'Tab New features.',
+		6 => 'All objects: the HTML object no longer overlaps the image.',
+		5 => 'Permission items.',
+		4 => 'Lookup After Browse with #ROW#, more hash variables.',
+		3 => 'Hash cookie demo.',
+		2 => 'Neutral number formats.',
+		1 => 'First version: customers, products, orders with items, a form with all object types and a start form.',
+	];
 	public const PREFIX = 'sample_';
 	public const HOME = 'sample_home';            // form code; the id is samplehome (see fid())
 

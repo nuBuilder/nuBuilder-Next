@@ -68,7 +68,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 ## Live server, e-mail and deployment
 - [ ] **Existing nuBuilder Forte database** (0.8.1008, no longer blocked): installer on a copy of the live Forte database – backup
       tick, integrity check, nuBuilder Forte keeps working afterwards; a hand-written nuconfig.php shows the backup note on the sign-in page.
-- [ ] **E-mail → Test → Check connection** with the real SMTP server (also OAuth 2); PHPMailer 7.1.1 (0.8.894) with that server.
+- [ ] **E-mail → Test → Check connection** with the real SMTP server (also OAuth 2); PHPMailer 7.2.0 (0.8.1257) with that server.
 - [ ] **Cron and unattended updates**: `php nucron.php update` as the web server's user (--url over https, proxy), unattended update from
       GitHub; after the entry file rename (0.8.825 / 0.8.826) the crontab line (`nucron.php`) and Adminer bookmarks – `api.php` and
       `oauth.php` unchanged, a REST client and the OAuth 2 mail login still work.
@@ -252,8 +252,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       (week / day views, the hours setting), all-day entries with an end (FullCalendar's end is exclusive: a two-day entry 1.–2. must show on both days
       and stay 1.–2. after a move), moving on a form with Before Save code or validation rules, a new record from a dragged range, phones (touch drag
       needs a long press). SQL Server not tested (the date range filter compares the list column with 'Y-m-d H:i:s' text).
+- [ ] **Procedures list: search in code** (0.8.1254) – please verify: tick *Code* next to the search of the procedures list; procedures whose PHP or JavaScript contains the text are found.
 
 ## Users, access levels and permissions
+- [ ] **Delete access level with expired users** (0.8.1250) – a level used only by expired users can be deleted; check that those users show an empty access level and that nuBuilder Forte's user form handles them
 - [ ] **User form layout** (0.8.1230–0.8.1245) – please verify on the live server: summary on the left (jumps to login / code / status / level, no keyboard on phones), sections capped in width, compact summary on phones.
 - [ ] **Start page Home form on a Forte database** (0.8.1219) – please verify after the update on the live server: every access level with a Home form opens it after sign-in (Access levels → a level → Start page shows Home form); levels switched back to Tile page stay so; a new level with a Home form starts on it
 - [ ] **Access level tab Start page** (0.8.1213) – choice Tile page / Home form, Home form, preview of the tiles, Edit tile page / Edit default:
@@ -282,7 +284,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Reports with AI** (0.8.1097) – please verify with a real AI chat: a new report from a table (grouping, totals, page numbers), a
       change to an existing report (ids kept – untouched objects stay as they were), the variant with a query written by the AI, the preview
       of a report with a launch form (criteria are empty), Restore on the History tab; on SQL Server the query check is untested.
-- [ ] **TCPDF 7 pack** (0.8.1062) – please verify a report with pictures (photos per row, a logo by web path) on the live server after installing the 7.0.22 pack; Roll back to 6 if anything is left out
+- [ ] **TCPDF 7 pack** (0.8.1062) – please verify a report with pictures (photos per row, a logo by web path) on the live server after installing the 7.0.24 pack (0.8.1251); Roll back to 6 if anything is left out
 - [ ] **Report pictures with TCPDF 7** (0.8.1062): a report with photos (`<img src="/folder/x.jpg">` in an HTML field, an image object with an
       address of the own server) on a server with the TCPDF 7 pack – they were left out before. Pictures from another host stay blocked
       with TCPDF 7 (decision: a setting for further hosts?).
@@ -353,6 +355,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **CI on GitHub** (0.8.889 / 0.8.903): mysql + mssql jobs with the self-test step and the PHP message check (start-up warnings
       "in Unknown on line 0" are notices now).
 - [ ] **Procedures by cron** (0.8.1135) – `php nucron.php run <code>` on the live server: as globeadmin and with --user, a failing run → log entry + e-mail to Settings → Data & logs → Scheduled procedures; nucron.php with the database down now exits 1.
+- [ ] **File Manager editor on phones** (0.8.1253) – please verify: opening a file for editing on a phone no longer pops up the on-screen keyboard.
 
 ## Samples
 - [ ] **Sales sample showcase** (0.8.691, version 19 – *Refresh*): orders Status badges + filters Customer / Status, customer name →
@@ -368,6 +371,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Samples in nuBuilder Forte**: the orders list shows the customer link, the other badges / filters are absent (design-mode settings).
 - [ ] **Sample data page** (0.8.858): *Remove* in the title row of a sample; greyed out while another user has a sample access level.
 - [ ] **Form designer usability review**: the shared doc "nuBuilder Next – form designer usability review" – pick the proposals to build.
+- [ ] **Sample change history** (0.8.1256) – please verify on Settings → Sample data: tab *Changes* per sample; an outdated sample shows what is new in Overview.
 
 ## nuBuilder Forte compatibility
 - [ ] **Two more forms of the Forte 4.5 database** (0.8.1217 / 0.8.1218) – please verify on the live application: checkbox `$(…).val()` in form

@@ -898,15 +898,17 @@ final class NuApi
 		$old = self::accessRow($id);
 		self::guardAccess($id);
 		self::ifMatch(self::accessOut($old));
-		$n = (int)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id]);
-		if ($n > 0) throw new NuApiError(409, "The access level is used by $n user(s).");
-		nu_db()->transaction(static function (NuDB $db) use ($id) {
+		$use = NuUserAccess::levelUse($id);          // expired users do not block (0.8.1250)
+		if ($use['active'] > 0) throw new NuApiError(409, "The access level is used by {$use['active']} active user(s).");
+		$emptied = $use['expired'];
+		nu_db()->transaction(static function (NuDB $db) use ($id, $emptied) {
+			NuUserAccess::releaseLevel($db, $id, $emptied);
 			$db->delete('zzzzsys_access_form', 'slf_zzzzsys_access_id', $id);
 			if ($db->tableExists('zzzzsys_access_php')) $db->delete('zzzzsys_access_php', 'slp_zzzzsys_access_id', $id);
 			if ($db->tableExists('zzzzsys_access_report')) $db->delete('zzzzsys_access_report', 'sre_zzzzsys_access_id', $id);
 			$db->delete('zzzzsys_access', 'zzzzsys_access_id', $id);
 		});
-		NuLog::write('access_deleted', 'zzzzsys_access', $id, ['code' => $old['sal_code'], 'via' => 'api']);
+		NuLog::write('access_deleted', 'zzzzsys_access', $id, ['code' => $old['sal_code'], 'via' => 'api'] + ($emptied ? ['users_without_level' => $emptied] : []));
 		return [204, null, []];
 	}
 
